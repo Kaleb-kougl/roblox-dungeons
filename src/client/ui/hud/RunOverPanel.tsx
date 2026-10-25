@@ -1,11 +1,24 @@
-import React from "@rbxts/react";
+import React, { useEffect, useRef } from "@rbxts/react";
 import { useSelector } from "@rbxts/react-reflex";
-import { selectInputDevice, selectLastBossId, selectSnapshot } from "client/store";
+import { GuiService } from "@rbxts/services";
+import {
+	selectAnyPanelOpen,
+	selectBindings,
+	selectInputDevice,
+	selectLastBossId,
+	selectMyLobbyId,
+	selectRunInfo,
+	selectSnapshot,
+	selectVerdict,
+} from "client/store";
 import { str } from "client/ui/theme";
-import { RESTART_HINT } from "shared/play";
+import { restartHint } from "shared/play";
 import { SIM_HZ } from "shared/sim";
+import { SFX } from "shared/view/audio";
 import { HUD_STRINGS, HUD_VIEW, SCORE_SOURCE_KEYS, formatClock, formatCombo } from "shared/view/hud";
-import { Panel, Row, Text } from "./primitives";
+import { MENU_STRINGS, PAD_CONFIRM_LABEL, partyRunOverLine, runOverExits } from "shared/view/menu";
+import { useHudActions } from "./actions";
+import { MenuButton, Panel, Row, Text } from "./primitives";
 
 const HALF = 0.5;
 const STAT_WIDTH = 150;
@@ -73,17 +86,49 @@ function ScoreBreakdown(props: { order: number; score: number; points: ReadonlyA
  * stats): "Run over" / "Victory", "You died — press R to retry" or "<boss name> defeated — press R to play again"
  * with the restart key of the device used last (R / D-pad down) and the other one below, then the run's time, hits
  * taken and kills; in a scored run (M2) the score and its breakdown by source.
+ *
+ * Exits (L3 / L6): "Again" (solo runs; R) and "Main menu", or "Back to lobby" while in a lobby. A party run has no
+ * Again: R / the button go back to the lobby (once the party's verdict is in). A party run the server ended before the
+ * wipe (desync, an error, expiry) shows here too, its main line naming the verdict's reason (partyRunOverLine), as
+ * does a wiped party's run the server rejected. The panel counts as a menu, so the pad
+ * drives the GUI selection here (it starts on the first button): the pad's hint is A, not the D-pad restart.
  */
 export function RunOverPanel() {
 	const s = useSelector(selectSnapshot);
 	const device = useSelector(selectInputDevice);
 	const lastBoss = useSelector(selectLastBossId);
-	if (s.outcome === "playing") return undefined;
+	const info = useSelector(selectRunInfo);
+	const bindings = useSelector(selectBindings);
+	const myLobby = useSelector(selectMyLobbyId);
+	const panelOpen = useSelector(selectAnyPanelOpen);
+	const verdict = useSelector(selectVerdict);
+	const actions = useHudActions();
+	const firstRef = useRef<TextButton>();
+	const over = s.outcome !== "playing";
+
+	useEffect(() => {
+		if (!over || panelOpen || device !== "gamepad") return;
+		const button = firstRef.current;
+		if (button !== undefined) GuiService.SelectedObject = button;
+		return () => {
+			if (GuiService.SelectedObject === button) GuiService.SelectedObject = undefined;
+		};
+	}, [over, panelOpen, device]);
+
+	if (!over) return undefined;
 	const victory = s.outcome === "victory";
-	const key = RESTART_HINT[device];
-	const otherKey = RESTART_HINT[device === "gamepad" ? "keyboard" : "gamepad"];
+	const padKey = PAD_CONFIRM_LABEL;
+	const hint = restartHint(bindings);
+	const key = device === "gamepad" ? padKey : hint.keyboard;
+	const otherKey = device === "gamepad" ? hint.keyboard : padKey;
 	const bossName = lastBoss !== "" ? str(`${lastBoss}.name`) : "";
-	const main = victory ? str(HUD_STRINGS.victory, { name: bossName, key }) : str(HUD_STRINGS.dead, { key });
+	const exits = runOverExits(info.coop, myLobby !== undefined);
+	const party = partyRunOverLine(verdict, info.run);
+	const main = info.coop
+		? str(party.key, { key, reason: party.reason })
+		: victory
+		? str(HUD_STRINGS.victory, { name: bossName, key })
+		: str(HUD_STRINGS.dead, { key });
 	return (
 		<Panel
 			position={UDim2.fromScale(HALF, HALF)}
@@ -119,6 +164,30 @@ export function RunOverPanel() {
 			{s.scoring ? (
 				<ScoreBreakdown order={5} score={s.score} points={s.scorePoints} maxCombo={s.maxCombo} />
 			) : undefined}
+			<Row order={6} align={Enum.HorizontalAlignment.Center}>
+				{exits.again ? (
+					<MenuButton
+						ref={firstRef}
+						order={1}
+						name="Again"
+						text={str(MENU_STRINGS.again)}
+						onActivated={() => {
+							actions.playUi(SFX.uiConfirm);
+							actions.restart();
+						}}
+					/>
+				) : undefined}
+				<MenuButton
+					ref={exits.again ? undefined : firstRef}
+					order={2}
+					name="Exit"
+					text={str(exits.exitKey)}
+					onActivated={() => {
+						actions.playUi(SFX.uiClick);
+						actions.exitRun();
+					}}
+				/>
+			</Row>
 		</Panel>
 	);
 }

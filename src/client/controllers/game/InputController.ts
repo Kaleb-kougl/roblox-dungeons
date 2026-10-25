@@ -1,15 +1,23 @@
 import { Controller, OnStart } from "@flamework/core";
 import { ContextActionService, TextChatService, UserInputService, Workspace } from "@rbxts/services";
-import { clientStore } from "client/store";
+import { clientStore, selectBindings, selectInputCaptured } from "client/store";
 import {
+	DEFAULT_BINDINGS,
+	HeldInputGate,
 	InputDeviceTracker,
+	KBM_MOUSE_NAMES,
+	PAD_BUTTON_NAMES,
+	TRIGGER_THRESHOLD,
 	boundKeyNames,
+	boundMouseButtonNames,
 	boundPadButtonNames,
 	driverKeyAction,
+	isMouseButtonName,
 	mapDevicesToInput,
 	maskDebugButtons,
 	LEFT_TRIGGER,
 	RIGHT_TRIGGER,
+	type Bindings,
 	type DriverKeyAction,
 	type GamepadSnapshot,
 } from "shared/play";
@@ -21,8 +29,8 @@ const SINK_ACTION = "KV_GameInput";
 const SUNK_STICKS = ["Thumbstick1", "Thumbstick2"];
 /**
  * Gamepad keys Roblox's GUI selection uses (move the selection, press / back). While a menu is open (pause overlay,
- * juice settings) they pass through to the GUI instead of being sunk, and their driver actions (D-pad down restart)
- * are off: the menu has its own Restart button.
+ * Options) they pass through to the GUI instead of being sunk, and their driver actions (D-pad down restart) are off:
+ * the menu has its own Restart button.
  */
 const UI_NAV_KEYS = new Set(["ButtonA", "ButtonB", "DPadUp", "DPadDown", "DPadLeft", "DPadRight", "Thumbstick1"]);
 
@@ -32,6 +40,24 @@ function keyCodeByName(): Map<string, Enum.KeyCode> {
 	const out = new Map<string, Enum.KeyCode>();
 	for (const item of Enum.KeyCode.GetEnumItems()) out.set(item.Name, item);
 	return out;
+}
+
+const KEY_CODES = keyCodeByName();
+
+function mouseTypeByName(): Map<string, Enum.UserInputType> {
+	const out = new Map<string, Enum.UserInputType>();
+	for (const item of Enum.UserInputType.GetEnumItems()) {
+		if (KBM_MOUSE_NAMES.includes(item.Name)) out.set(item.Name, item);
+	}
+	return out;
+}
+
+const MOUSE_TYPES = mouseTypeByName();
+
+/** The gamepad the game reads: Gamepad1 when connected, else the first one. */
+function activePad(pads: ReadonlyArray<Enum.UserInputType>): Enum.UserInputType | undefined {
+	if (pads.size() === 0) return undefined;
+	return pads.includes(Enum.UserInputType.Gamepad1) ? Enum.UserInputType.Gamepad1 : pads[0];
 }
 
 /**
@@ -47,6 +73,12 @@ function keyCodeByName(): Map<string, Enum.KeyCode> {
  *
  * Mouse aim: the camera ray through the pointer (Camera:ViewportPointToRay on UserInputService:GetMouseLocation)
  * onto the floor plane, as a world vector from the player's sim position (shared/view pointerAimFromRay).
+ *
+ * Bindings (task L4b): the player's layout comes from the store (`selectBindings`: DEFAULT_BINDINGS plus the saved
+ * controls overrides) and goes to every mapping call. When it changes, the CAS sink is bound again with the new key
+ * list, and every input held at that moment reads as released until it is let go (HeldInputGate), so a key just
+ * captured into a slot (or moved to another action) does not fire. While a rebind capture owns the input
+ * (`options.inputCaptured`) the sink swallows everything and reports no driver keys (R would otherwise restart).
  */
 /** A TextBox has focus: one of ours / legacy chat (GetFocusedTextBox) or the TextChatService input bar (CoreGui). */
 function chatFocused(): boolean {
@@ -58,14 +90,22 @@ function chatFocused(): boolean {
 @Controller({})
 export class InputController implements OnStart {
 	private readonly tracker = new InputDeviceTracker();
-	private readonly keyCodes = new Array<[Enum.KeyCode, string]>();
-	private readonly padCodes = new Array<[Enum.KeyCode, string]>();
+	private bindings: Bindings = DEFAULT_BINDINGS;
+	private sinkBound = false;
+	private keyCodes = new Array<[Enum.KeyCode, string]>();
+	private padCodes = new Array<[Enum.KeyCode, string]>();
+	private mouseTypes = new Array<[Enum.UserInputType, string]>();
+	private readonly keyGate = new HeldInputGate();
+	private readonly mouseGate = new HeldInputGate();
+	private readonly padGate = new HeldInputGate();
 	private readonly keys = new Set<string>();
 	private readonly mouse = new Set<string>();
 	private readonly padButtons = new Set<string>();
 	private readonly driverListeners = new Array<DriverListener>();
 	private debugButtons = false;
 	private uiNavigation = false;
+	/** A rebind capture owns the input (Options screen): nothing reaches the game or the driver keys. */
+	private inputCaptured = false;
 	/** A menu button was clicked: ignore the mouse buttons until they are released (no swing on resume). */
 	private mouseSuppressed = false;
 	private runOverOrPaused: () => boolean = () => false;
@@ -75,53 +115,34 @@ export class InputController implements OnStart {
 	private pads = new Array<Enum.UserInputType>();
 
 	onStart(): void {
-		const codes = keyCodeByName();
-		for (const name of boundKeyNames()) {
-			const code = codes.get(name);
-			if (code !== undefined) this.keyCodes.push([code, name]);
-		}
-		for (const name of boundPadButtonNames()) {
-			const code = codes.get(name);
-			if (code !== undefined) this.padCodes.push([code, name]);
-		}
+		const refreshPads = () => (this.pads = UserInputService.GetConnectedGamepads());
+		refreshPads();
+		UserInputService.GamepadConnected.Connect(refreshPads);
+		UserInputService.GamepadDisconnected.Connect(refreshPads);
 
-		const sunk = new Array<Enum.KeyCode>();
-		for (const [code] of this.keyCodes) sunk.push(code);
-		for (const [code] of this.padCodes) sunk.push(code);
-		for (const name of SUNK_STICKS) {
-			const code = codes.get(name);
-			if (code !== undefined) sunk.push(code);
-		}
-		ContextActionService.BindActionAtPriority(
-			SINK_ACTION,
-			(_, state, input) => {
-				if (this.uiNavigation && UI_NAV_KEYS.has(input.KeyCode.Name)) return Enum.ContextActionResult.Pass;
-				if (state === Enum.UserInputState.Begin) {
-					const action = driverKeyAction(input.KeyCode.Name, this.debugButtons, this.runOverOrPaused());
-					if (action !== undefined) for (const listener of this.driverListeners) listener(action);
-				}
-				return Enum.ContextActionResult.Sink;
-			},
-			false,
-			Enum.ContextActionPriority.High.Value,
-			...sunk,
-		);
+		this.applyBindings(selectBindings(clientStore.getState()));
+		clientStore.subscribe(selectBindings, (b) => this.applyBindings(b));
+		this.inputCaptured = selectInputCaptured(clientStore.getState());
+		clientStore.subscribe(selectInputCaptured, (on) => (this.inputCaptured = on));
 
-		UserInputService.InputBegan.Connect((input) => {
+		UserInputService.InputBegan.Connect((input, processed) => {
 			const t = input.UserInputType;
 			if (t === Enum.UserInputType.Keyboard) this.tracker.keyPressed();
 			else if (t === Enum.UserInputType.MouseButton1 || t === Enum.UserInputType.MouseButton2) {
 				this.tracker.mouseClicked();
 			}
 			this.publishDevice();
+			// A restart bound to a mouse button (CAS sinks keys only): not over a GUI, not during a capture.
+			if (!processed && !this.inputCaptured && isMouseButtonName(t.Name)) this.reportDriver(t.Name);
 		});
 		UserInputService.InputChanged.Connect((input) => {
 			if (input.UserInputType === Enum.UserInputType.MouseMovement) this.tracker.mouseMoved();
 		});
-		const refreshPads = () => (this.pads = UserInputService.GetConnectedGamepads());
-		refreshPads();
-		UserInputService.GamepadConnected.Connect(refreshPads);
-		UserInputService.GamepadDisconnected.Connect(refreshPads);
+	}
+
+	/** The layout in use (the store's: applied in onStart and on every change). */
+	getBindings(): Bindings {
+		return this.bindings;
 	}
 
 	/** Debug keys on: K / J reach the sim (else stripped), F8 checks the replay. */
@@ -130,11 +151,17 @@ export class InputController implements OnStart {
 	}
 
 	/**
-	 * A menu is open (pause overlay, juice settings): gamepad navigation keys go to the GUI selection instead of the
-	 * game. The sim is paused then, so nothing they would press reaches a tick.
+	 * A menu is open (pause overlay, Options): gamepad navigation keys go to the GUI selection instead of the game.
+	 * A solo sim is paused then, so nothing they would press reaches a tick; a co-op run never pauses, so the
+	 * SimController sends neutral input instead while `menuOwnsInput()` (shared/lockstep CoopMenuInputGate).
 	 */
 	setUiNavigation(on: boolean): void {
 		this.uiNavigation = on;
+	}
+
+	/** A menu (HUD / menu shell) is open or a rebind capture owns the input: `sample()` is not meant for the game. */
+	menuOwnsInput(): boolean {
+		return this.uiNavigation || this.inputCaptured;
 	}
 
 	/** Called when a menu button is activated: mouse buttons read as released until they actually are. */
@@ -171,9 +198,92 @@ export class InputController implements OnStart {
 				pointerAimZ: this.pointerAimZ,
 			},
 			out,
+			this.bindings,
 		);
 		frame.buttons = maskDebugButtons(frame.buttons, this.debugButtons);
 		return frame;
+	}
+
+	/**
+	 * Switches to `b`: the poll lists, the CAS sink's key list, the device tracker; inputs held at a change read as
+	 * released until let go. The default layout gives exactly the pre-rebinding key lists.
+	 */
+	private applyBindings(b: Bindings): void {
+		const changed = this.sinkBound && b !== this.bindings;
+		this.bindings = b;
+		this.tracker.bindings = b;
+		const keyCodes = new Array<[Enum.KeyCode, string]>();
+		for (const name of boundKeyNames(b)) {
+			const code = KEY_CODES.get(name);
+			if (code !== undefined) keyCodes.push([code, name]);
+		}
+		const padCodes = new Array<[Enum.KeyCode, string]>();
+		for (const name of boundPadButtonNames(b)) {
+			const code = KEY_CODES.get(name);
+			if (code !== undefined) padCodes.push([code, name]);
+		}
+		const mouseTypes = new Array<[Enum.UserInputType, string]>();
+		for (const name of boundMouseButtonNames(b)) {
+			const t = MOUSE_TYPES.get(name);
+			if (t !== undefined) mouseTypes.push([t, name]);
+		}
+		this.keyCodes = keyCodes;
+		this.padCodes = padCodes;
+		this.mouseTypes = mouseTypes;
+		if (changed) this.blockHeldInputs();
+		this.bindSink();
+	}
+
+	/** Every keyboard key, mouse button and pad button held right now reads as released until it is let go. */
+	private blockHeldInputs(): void {
+		const keys = new Set<string>();
+		for (const obj of UserInputService.GetKeysPressed()) keys.add(obj.KeyCode.Name);
+		this.keyGate.block(keys);
+		const mouse = new Set<string>();
+		for (const [name, t] of MOUSE_TYPES) if (UserInputService.IsMouseButtonPressed(t)) mouse.add(name);
+		this.mouseGate.block(mouse);
+		const gamepad = activePad(this.pads);
+		if (gamepad === undefined) return;
+		const pad = new Set<string>();
+		for (const name of PAD_BUTTON_NAMES) {
+			const code = KEY_CODES.get(name);
+			if (code !== undefined && UserInputService.IsGamepadButtonDown(gamepad, code)) pad.add(name);
+		}
+		for (const obj of UserInputService.GetGamepadState(gamepad)) {
+			const name = obj.KeyCode.Name;
+			if ((name === LEFT_TRIGGER || name === RIGHT_TRIGGER) && obj.Position.Z > TRIGGER_THRESHOLD) pad.add(name);
+		}
+		this.padGate.block(pad);
+	}
+
+	/** (Re)binds the CAS sink to the current key list and both sticks. */
+	private bindSink(): void {
+		if (this.sinkBound) ContextActionService.UnbindAction(SINK_ACTION);
+		const sunk = new Array<Enum.KeyCode>();
+		for (const [code] of this.keyCodes) sunk.push(code);
+		for (const [code] of this.padCodes) sunk.push(code);
+		for (const name of SUNK_STICKS) {
+			const code = KEY_CODES.get(name);
+			if (code !== undefined) sunk.push(code);
+		}
+		ContextActionService.BindActionAtPriority(
+			SINK_ACTION,
+			(_, state, input) => {
+				if (this.inputCaptured) return Enum.ContextActionResult.Sink;
+				if (this.uiNavigation && UI_NAV_KEYS.has(input.KeyCode.Name)) return Enum.ContextActionResult.Pass;
+				if (state === Enum.UserInputState.Begin) this.reportDriver(input.KeyCode.Name);
+				return Enum.ContextActionResult.Sink;
+			},
+			false,
+			Enum.ContextActionPriority.High.Value,
+			...sunk,
+		);
+		this.sinkBound = true;
+	}
+
+	private reportDriver(name: string): void {
+		const action = driverKeyAction(name, this.debugButtons, this.runOverOrPaused(), this.bindings);
+		if (action !== undefined) for (const listener of this.driverListeners) listener(action);
 	}
 
 	private pollKeyboardMouse(): void {
@@ -181,20 +291,21 @@ export class InputController implements OnStart {
 		this.mouse.clear();
 		if (chatFocused()) return; // typing in chat
 		for (const [code, name] of this.keyCodes) if (UserInputService.IsKeyDown(code)) this.keys.add(name);
-		const left = UserInputService.IsMouseButtonPressed(Enum.UserInputType.MouseButton1);
-		const right = UserInputService.IsMouseButtonPressed(Enum.UserInputType.MouseButton2);
+		this.keyGate.filter(this.keys);
+		for (const [t, name] of this.mouseTypes) if (UserInputService.IsMouseButtonPressed(t)) this.mouse.add(name);
 		if (this.mouseSuppressed) {
-			if (left || right) return;
+			if (this.mouse.size() > 0) {
+				this.mouse.clear();
+				return;
+			}
 			this.mouseSuppressed = false;
 		}
-		if (left) this.mouse.add("MouseButton1");
-		if (right) this.mouse.add("MouseButton2");
+		this.mouseGate.filter(this.mouse);
 	}
 
 	private pollGamepad(): GamepadSnapshot | undefined {
-		const pads = this.pads;
-		if (pads.size() === 0) return undefined;
-		const gamepad = pads.includes(Enum.UserInputType.Gamepad1) ? Enum.UserInputType.Gamepad1 : pads[0];
+		const gamepad = activePad(this.pads);
+		if (gamepad === undefined) return undefined;
 		let leftX = 0;
 		let leftY = 0;
 		let rightX = 0;
@@ -219,6 +330,12 @@ export class InputController implements OnStart {
 		for (const [code, name] of this.padCodes) {
 			if (UserInputService.IsGamepadButtonDown(gamepad, code)) this.padButtons.add(name);
 		}
+		// A blocked trigger (held across a bindings change) also reads 0 on its analog axis until it is let go.
+		if (leftTrigger > TRIGGER_THRESHOLD) this.padButtons.add(LEFT_TRIGGER);
+		if (rightTrigger > TRIGGER_THRESHOLD) this.padButtons.add(RIGHT_TRIGGER);
+		this.padGate.filter(this.padButtons);
+		if (this.padGate.isBlocked(LEFT_TRIGGER)) leftTrigger = 0;
+		if (this.padGate.isBlocked(RIGHT_TRIGGER)) rightTrigger = 0;
 		return { leftX, leftY, rightX, rightY, leftTrigger, rightTrigger, buttons: this.padButtons };
 	}
 

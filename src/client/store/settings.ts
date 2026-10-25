@@ -1,23 +1,33 @@
 import { createProducer, createSelector } from "@rbxts/reflex";
-import { applyJuicePatch, resolveJuiceSettings, sanitizeJuiceOverrides, type JuiceOverrides } from "shared/settings";
+import { DEFAULT_BINDINGS, applyControlsOverrides } from "shared/play";
+import {
+	applySettingsPatch,
+	resolveAudioSettings,
+	resolveDisplaySettings,
+	resolveJuiceSettings,
+	reuseSameGroups,
+	sanitizeSettingsOverrides,
+	type SettingsOverrides,
+} from "shared/settings";
 
 /**
- * Client-local Reflex slice for the juice settings (task 8 part B) and the menu layer. Juice settings are
- * presentation only: nothing here reaches the sim.
+ * Client-local Reflex slice for the player's settings (task 8 part B; every group since task L4) and the menu layer.
+ * Presentation only: nothing here reaches the sim (bindings only change which device inputs make the InputFrame).
  *
- * `overrides` are what the player changed (the server stores exactly these: docs/SERVER.md "DataStores"); the effective
- * settings resolve them against the defaults with reducedMotion defaulting to the Roblox "Reduce Motion" setting
- * (`selectJuice`, shared/settings resolveJuiceSettings, the web build's rule). Changes apply locally at once
- * (optimistic) and are sent with `updateSettings`; the server's `settingsChanged` answer replaces them. Before (or
- * without) an answer the game runs on the defaults plus whatever the player changed this session.
+ * `overrides` are what the player changed, every group (the server stores exactly these: docs/SERVER.md
+ * "DataStores", settings document v2); the effective settings resolve them against the defaults: `selectJuice`
+ * (reducedMotion defaulting to the Roblox "Reduce Motion" setting, the web build's rule), `selectBindings`,
+ * `selectAudio`, `selectDisplay`. Changes apply locally at once (optimistic) and are sent with `updateSettings`; the
+ * server's `settingsChanged` answer replaces them. Before (or without) an answer the game runs on the defaults plus
+ * whatever the player changed this session.
  */
 export interface SettingsState {
-	readonly overrides: JuiceOverrides;
+	readonly overrides: SettingsOverrides;
 	/** GuiService.ReducedMotionEnabled (the default for reducedMotion). */
 	readonly systemReducedMotion: boolean;
 	/** The server has answered at least once (settings loaded / saved). */
 	readonly synced: boolean;
-	/** The juice settings panel is open (O, or "Juice settings" in the pause overlay). */
+	/** The Options screen is open (O, "Options" in the pause overlay, or a menu's open-settings action). */
 	readonly panelOpen: boolean;
 }
 
@@ -29,16 +39,16 @@ const initialState: SettingsState = {
 };
 
 export const settingsSlice = createProducer(initialState, {
-	/** The server's stored overrides (settingsChanged). */
-	setOverrides: (state, overrides: JuiceOverrides, synced: boolean) => ({
+	/** The server's stored overrides (settingsChanged), or a full local reset. */
+	setOverrides: (state, overrides: SettingsOverrides, synced: boolean) => ({
 		...state,
-		overrides: sanitizeJuiceOverrides(overrides),
+		overrides: reuseSameGroups(state.overrides, sanitizeSettingsOverrides(overrides)),
 		synced: state.synced || synced,
 	}),
-	/** A local change (applied before the server answers). */
-	patchOverrides: (state, patch: JuiceOverrides) => ({
+	/** A local change (applied before the server answers): each group in `patch` replaces that group. */
+	patchOverrides: (state, patch: SettingsOverrides) => ({
 		...state,
-		overrides: applyJuicePatch(state.overrides, patch),
+		overrides: reuseSameGroups(state.overrides, applySettingsPatch(state.overrides, patch)),
 	}),
 	setSystemReducedMotion: (state, systemReducedMotion: boolean) =>
 		state.systemReducedMotion === systemReducedMotion ? state : { ...state, systemReducedMotion },
@@ -49,9 +59,28 @@ export const selectSettings = (state: { settings: SettingsState }) => state.sett
 export const selectPanelOpen = (state: { settings: SettingsState }) => state.settings.panelOpen;
 export const selectSettingsSynced = (state: { settings: SettingsState }) => state.settings.synced;
 export const selectSystemReducedMotion = (state: { settings: SettingsState }) => state.settings.systemReducedMotion;
+export const selectOverrides = (state: { settings: SettingsState }) => state.settings.overrides;
 
 /** The effective juice settings (memoized: the same object until the overrides or the system setting change). */
 export const selectJuice = createSelector(
-	[(state: { settings: SettingsState }) => state.settings.overrides, selectSystemReducedMotion] as const,
-	(overrides, system) => resolveJuiceSettings(overrides, system),
+	[(state: { settings: SettingsState }) => state.settings.overrides.juice, selectSystemReducedMotion] as const,
+	(juice, system) => resolveJuiceSettings(juice, system),
+);
+
+/** The player's key bindings: DEFAULT_BINDINGS with the controls overrides on top (memoized; always valid). */
+export const selectBindings = createSelector(
+	[(state: { settings: SettingsState }) => state.settings.overrides.controls] as const,
+	(controls) => (controls === undefined ? DEFAULT_BINDINGS : applyControlsOverrides(DEFAULT_BINDINGS, controls)),
+);
+
+/** The effective audio volumes (whole percents). */
+export const selectAudio = createSelector(
+	[(state: { settings: SettingsState }) => state.settings.overrides.audio] as const,
+	(audio) => resolveAudioSettings(audio),
+);
+
+/** The effective display settings (HUD scale percent). */
+export const selectDisplay = createSelector(
+	[(state: { settings: SettingsState }) => state.settings.overrides.display] as const,
+	(display) => resolveDisplaySettings(display),
 );

@@ -20,9 +20,21 @@ export const PARTY_REVIVE_HALF_HEARTS = 2;
 /**
  * Port input bit (lockstep relay only): the player left the run. The server writes it into that player's merged frame
  * from the tick they left on; the sim marks them `left` (dead for the rest of the run, never revived). Outside Button
- * / ALL_BUTTONS / SIM_BUTTONS: only party recordings (recordingCodec's party variant) and party steps accept it.
+ * / ALL_BUTTONS / SIM_BUTTONS: only the binary recording codec (both variants) and the steps accept it; a solo step
+ * reads it as FORFEIT_BUTTON.
  */
 export const PARTY_LEFT_BUTTON = 16384;
+
+/**
+ * Port input bit (solo runs, L6a "Leave run counts as a death"): the SAME bit as PARTY_LEFT_BUTTON, named for the solo
+ * path. Both mean "this player leaves the run for good": co-op marks them `left` (dead, never revived), a solo step
+ * kills the player at that tick through the death bookkeeping a lethal hit uses (killPlayerState + events.playerDied;
+ * step.ts forfeitSoloRun), so the run ends as a death. One bit for one meaning keeps the codec's solo and party
+ * variants accepting the same set (recordingCodec RECORDED_BUTTONS), and it stays outside SIM_BUTTONS, so the lockstep
+ * relay still refuses it from clients (only the relay writes a co-op leave). A forfeit can only end a run early: it
+ * never revives, skips a floor, scores or bypasses anything; a run that never sets it is unchanged.
+ */
+export const FORFEIT_BUTTON = PARTY_LEFT_BUTTON;
 
 /** True for an integer party size in [1, MAX_PARTY_SIZE]. */
 export function isValidPartySize(n: unknown): n is number {

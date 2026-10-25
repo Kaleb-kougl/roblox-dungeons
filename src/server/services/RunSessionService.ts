@@ -4,15 +4,13 @@ import { HttpService, Players, RunService } from "@rbxts/services";
 import { serverLogger } from "server/log";
 import { Events } from "server/network";
 import { partyContributors, type LeaderboardMember } from "shared/leaderboard";
-import type { LeaderboardPostStatus, PartyInviteUpdate, RunFinishVerdict } from "shared/network";
+import { LobbyRunTracker, type LobbyRunStart } from "shared/lobby";
+import type { LeaderboardPostStatus, RunFinishVerdict } from "shared/network";
+import { RANKED_WORLD_KIND } from "shared/play";
 import {
 	DEFAULT_RUN_SCORE,
-	DEFAULT_RUN_SESSION_LIMITS,
 	MAX_RUN_ID_CHARS,
 	MAX_RUN_SEED,
-	PARTY_INVITE_RATE,
-	PARTY_INVITE_TTL_SECONDS,
-	PartyInvites,
 	REPLAY_BUDGET_SECONDS,
 	REPLAY_TURN_MAX_TICKS,
 	RUN_SESSION_SWEEP_SECONDS,
@@ -25,9 +23,6 @@ import {
 	SlidingWindowLimiter,
 	replayTurn,
 	truncateReason,
-	type PartyInvite,
-	type PartyInviteContext,
-	type PartyInviteRequest,
 	type RunFinal,
 	type RunSegment,
 	type RunSession,
@@ -42,6 +37,7 @@ import {
 	LOCKSTEP_FINAL_RATE,
 	LOCKSTEP_HASH_RATE,
 	LOCKSTEP_INPUT_RATE,
+	LOCKSTEP_LEAVE_RATE,
 	LockstepSession,
 	type LockstepStepResult,
 } from "shared/lockstep";
@@ -66,6 +62,12 @@ interface SessionMeta {
 
 const NOT_LEFT = -1;
 
+/** A lobby's run is over (`reason` is for the log). */
+export type LobbyRunEndedListener = (lobbyId: string, reason: string) => void;
+
+/** `startLobbyRun`'s answer: a refusal sends the lobby back to `forming` with the reason. */
+export type LobbyRunStartResult = { readonly ok: true } | { readonly ok: false; readonly reason: string };
+
 /**
  * Segmented runs (M3 / M5; pure logic in shared/run runSessions.ts and segments.ts, docs/SERVER.md "Segmented
  * runs"). The server keeps its own SimState per active run and advances it as segments arrive, so a run of any
@@ -83,15 +85,19 @@ const NOT_LEFT = -1;
  * Open sessions expire (sweep every RUN_SESSION_SWEEP_SECONDS) and are dropped when their player leaves; a session
  * whose final arrived keeps validating after its player left (counted for TelemetryService's waitUntilIdle).
  *
- * Co-op (M4, shared/lockstep, docs/SERVER.md "Co-op lockstep (M4)"): a party run starts only from an invite every
- * member accepted (`partyInvite` / `partyRespond`, shared/run PartyInvites; the registry refuses a party without that
- * consent, and members of an unconcluded party run are `busy`). It also gets a LockstepSession; every member gets
- * `partyRunStarted` (with the inviteId). Each Heartbeat steps it (finalizing merged frames on the
+ * Co-op (M4, shared/lockstep, docs/SERVER.md "Co-op lockstep (M4)"): a party run starts only from a lobby's Start
+ * (LobbyService -> `startLobbyRun`, the lobby's members are the consent; the registry refuses a party without it, and
+ * members of an unconcluded party run are `busy`). It also gets a LockstepSession; every member gets
+ * `partyRunStarted` (with the lobbyId). Each Heartbeat steps it (finalizing merged frames on the
  * server clock) and broadcasts `lockstepFrames` to the members; their `lockstepInput` / `lockstepHash` /
  * `lockstepFinal` go to it. It feeds its OWN merged log to the session's validator (clients' `submitSegment` /
  * `finishRun` are refused for party runs), so the verdict and the Co-op board post use the server's replayed score.
- * A member leaving makes them dead for the rest of the run (the owner leaving does not abandon it). A desync ends the
- * run unranked (`runFinished` code "desync" to every member).
+ * A member leaving (the server, or the run with `lockstepLeave`) makes them dead for the rest of the run (the owner
+ * leaving does not abandon it). A desync ends the run unranked (`runFinished` code "desync" to every member).
+ *
+ * Lobby runs (shared/lobby LobbyRunTracker): a one-member lobby's run is the next ranked session its player starts
+ * after `lobbyRunStart`. Whenever a lobby's run ends (its session concluded with any outcome, its solo player left,
+ * or no solo start came in time) the `onLobbyRunEnded` listeners hear the lobbyId (LobbyService -> `runEnded`).
  */
 @Service({})
 export class RunSessionService implements OnStart {
@@ -124,16 +130,13 @@ export class RunSessionService implements OnStart {
 		LOCKSTEP_FINAL_RATE.count,
 		LOCKSTEP_FINAL_RATE.windowSeconds,
 	);
-	/** Co-op consent: a party run starts only from an invite every member accepted. */
-	private readonly invites = new PartyInvites({
-		newId: () => HttpService.GenerateGUID(false),
-		ttlSeconds: PARTY_INVITE_TTL_SECONDS,
-		limits: DEFAULT_RUN_SESSION_LIMITS,
-	});
-	private readonly inviteLimiter = new SlidingWindowLimiter<Player>(
-		PARTY_INVITE_RATE.count,
-		PARTY_INVITE_RATE.windowSeconds,
+	private readonly leaveLimiter = new SlidingWindowLimiter<Player>(
+		LOCKSTEP_LEAVE_RATE.count,
+		LOCKSTEP_LEAVE_RATE.windowSeconds,
 	);
+	/** Which lobby each run belongs to (LobbyService hears when it ends). */
+	private readonly lobbyRuns = new LobbyRunTracker();
+	private readonly lobbyRunEndedListeners = new Set<LobbyRunEndedListener>();
 
 	constructor(private readonly runs: RunValidationService, private readonly leaderboards: LeaderboardService) {}
 
@@ -185,13 +188,10 @@ export class RunSessionService implements OnStart {
 			}),
 		);
 		this.janitor.Add(
-			Events.partyInvite.connect((player, request) => {
-				if (player.Parent !== undefined) this.invite(player, request);
-			}),
-		);
-		this.janitor.Add(
-			Events.partyRespond.connect((player, inviteId, accept) => {
-				if (player.Parent !== undefined) this.respond(player, inviteId, accept);
+			Events.lockstepLeave.connect((player, runId) => {
+				if (player.Parent === undefined) return; // PlayerRemoving already released them
+				if (!this.leaveLimiter.tryAcquire(player, os.clock())) return;
+				this.leaveParty(player.UserId, runId);
 			}),
 		);
 		this.janitor.Add(RunService.Heartbeat.Connect(() => this.stepLockstep()));
@@ -202,12 +202,15 @@ export class RunSessionService implements OnStart {
 				this.inputLimiter.forget(player);
 				this.hashLimiter.forget(player);
 				this.finalLimiter.forget(player);
-				this.inviteLimiter.forget(player);
-				for (const invite of this.invites.removePlayer(player.UserId)) this.notifyInvite(invite);
+				this.leaveLimiter.forget(player);
 				// Co-op: the player is dead for the rest of every party run they are in (the run goes on), and free to
 				// join another run once back.
 				for (const [, entry] of this.lockstep) entry.coop.leave(player.UserId);
 				this.registry.releaseFromParties(player.UserId);
+				// Their solo lobby run (pending or bound) is over.
+				for (const lobbyId of this.lobbyRuns.playerRemoving(player.UserId)) {
+					this.lobbyRunEnded(lobbyId, "the player left");
+				}
 				const open = this.registry.openSession(player.UserId);
 				if (open !== undefined && this.lockstep.has(open.runId)) return;
 				const dropped = this.registry.dropOpen(player.UserId);
@@ -225,7 +228,7 @@ export class RunSessionService implements OnStart {
 		this.janitor.Add(() => task.cancel(sweep));
 	}
 
-	/** Creates a run session (public so a Studio command bar can drive it). A party here needs an accepted invite. */
+	/** Creates a run session (public so a Studio command bar can drive it). A party starts only from a lobby. */
 	start(player: Player, request: StartRunRequest): StartRunReply {
 		const requestId = typeIs(request, "table") && typeIs(request.requestId, "number") ? request.requestId : 0;
 		if (!this.startLimiter.tryAcquire(player, os.clock())) {
@@ -270,8 +273,9 @@ export class RunSessionService implements OnStart {
 			return r;
 		}
 		const s = r.session;
-		// The replaced open session (a solo restart; a party run is never replaced: start answers busy) is concluded
-		// properly: the client hears runFinished("abandoned") for it.
+		// The replaced open session (a solo restart) is concluded properly: the client hears runFinished("abandoned")
+		// for it. A party run is never replaced (start answers busy, or, for an owner who left it, only detaches it:
+		// its lockstep session goes on and concludes it for the others).
 		if (r.replaced !== undefined) this.conclude(player, r.replaced, r.replaced.validator.getResult()!);
 		const members: LeaderboardMember[] = s.members.map((id) => {
 			const p = Players.GetPlayerByUserId(id);
@@ -280,6 +284,11 @@ export class RunSessionService implements OnStart {
 			return m;
 		});
 		this.meta.set(s, { members, pumping: false });
+		// A solo lobby run: the player's next ranked start after lobbyRunStart is the lobby's run.
+		if (s.members.size() === 1 && s.worldKind === RANKED_WORLD_KIND) {
+			const lobbyId = this.lobbyRuns.soloStarted(s.ownerId, s.runId);
+			if (lobbyId !== undefined) log.info("LOBBY_RUN", `run ${s.runId} is lobby ${lobbyId}'s solo run`);
+		}
 		log.info(
 			"STARTED",
 			`${player.UserId} run ${s.runId} world ${s.worldKind} seed ${s.seed} party ${s.members.size()}` +
@@ -288,119 +297,44 @@ export class RunSessionService implements OnStart {
 		return { ok: true, session: s };
 	}
 
-	// --- co-op consent (invites) ----------------------------------------------------------------
+	// --- lobbies (LobbyService) -----------------------------------------------------------------
 
-	private inviteContext(): PartyInviteContext {
-		return {
-			now: os.clock(),
-			isInServer: (id) => Players.GetPlayerByUserId(id) !== undefined,
-			busyReason: (id) => this.registry.busyReason(id),
-		};
+	/** Why the player cannot group up now (in an unconcluded party run), or undefined. Solo runs are not busy. */
+	busyReason(userId: number): string | undefined {
+		return this.registry.busyReason(userId);
 	}
 
-	private inviteUpdate(invite: PartyInvite, status: PartyInviteUpdate["status"]): PartyInviteUpdate {
-		return {
-			inviteId: invite.inviteId,
-			status,
-			hostId: invite.hostId,
-			members: [...invite.members],
-			accepted: [...invite.accepted],
-			expiresIn: math.max(0, invite.expiresAt - os.clock()),
-			reason: invite.reason,
-		};
-	}
-
-	/** Tells every member still here what became of `invite` (its current status). */
-	private notifyInvite(invite: PartyInvite): void {
-		const update = this.inviteUpdate(invite, invite.status);
-		for (const id of invite.members) {
-			const p = Players.GetPlayerByUserId(id);
-			if (p !== undefined) Events.partyInviteUpdate.fire(p, update);
-		}
-	}
-
-	private refuseInvite(player: Player, inviteId: string, code: string, reason: string, requestId?: number): void {
-		log.warn("INVITE_REFUSED", `${player.UserId} ${code}: ${reason}`);
-		Events.partyInviteUpdate.fire(player, {
-			inviteId: typeIs(inviteId, "string") ? inviteId.sub(1, MAX_RUN_ID_CHARS) : "",
-			status: "refused",
-			hostId: player.UserId,
-			members: [],
-			accepted: [],
-			requestId,
-			code,
-			reason,
-		});
-	}
-
-	/** `partyInvite`: the host asks the named players (public for Studio command bars). */
-	invite(player: Player, request: PartyInviteRequest): void {
-		const requestId = typeIs(request, "table") && typeIs(request.requestId, "number") ? request.requestId : 0;
-		if (!this.inviteLimiter.tryAcquire(player, os.clock())) {
-			this.refuseInvite(player, "", "rate_limited", "too many invites; try again later", requestId);
-			return;
-		}
-		const r = this.invites.invite(player.UserId, request, this.inviteContext());
-		if (!r.ok) {
-			this.refuseInvite(player, "", r.code, r.reason, requestId);
-			return;
-		}
-		if (r.replaced !== undefined) this.notifyInvite(r.replaced);
-		const invite = r.invite;
-		log.info("INVITED", `${player.UserId} invite ${invite.inviteId}: ${invite.members.join(",")}`);
-		Events.partyInviteUpdate.fire(player, { ...this.inviteUpdate(invite, "pending"), requestId });
-		const invited = this.inviteUpdate(invite, "invited");
-		for (const id of invite.members) {
-			if (id === invite.hostId) continue;
-			const p = Players.GetPlayerByUserId(id);
-			if (p !== undefined) Events.partyInviteUpdate.fire(p, invited);
-		}
-	}
-
-	/** `partyRespond`: a member accepts or declines; the last accept starts the run. */
-	respond(player: Player, inviteId: string, accept: boolean): void {
-		if (!this.inviteLimiter.tryAcquire(player, os.clock())) {
-			this.refuseInvite(player, inviteId, "rate_limited", "too many answers; try again later");
-			return;
-		}
-		const r = this.invites.respond(player.UserId, inviteId, accept, this.inviteContext());
-		if (!r.ok) {
-			this.refuseInvite(player, inviteId, r.code, r.reason);
-			if (r.invite !== undefined && r.invite.status !== "pending") this.notifyInvite(r.invite);
-			return;
-		}
-		const invite = r.invite;
-		if (invite.status !== "ready") {
-			this.notifyInvite(invite);
-			return;
-		}
-		this.startParty(invite);
+	/** Calls `listener` whenever a lobby's run is over (see the class comment). Returns the unsubscribe. */
+	onLobbyRunEnded(listener: LobbyRunEndedListener): () => void {
+		this.lobbyRunEndedListeners.add(listener);
+		return () => this.lobbyRunEndedListeners.delete(listener);
 	}
 
 	/**
-	 * Every member accepted: the party run is created with their consent, each member's open SOLO session is
-	 * concluded first ("abandoned", runFinished: they chose to leave it), and the lockstep run is announced.
+	 * A lobby's countdown ended (LobbyService, `Lobbies.tick`). Party: the run is created with the members (join
+	 * order, the first is the owner) as consent, each member's open SOLO session is concluded first ("abandoned":
+	 * they chose to leave it), and the lockstep run is announced (`partyRunStarted` with the lobbyId). Solo: the one
+	 * member's client is told to start a ranked run (`lobbyRunStart`); that start is bound to the lobby.
 	 */
-	private startParty(invite: PartyInvite): void {
-		const host = Players.GetPlayerByUserId(invite.hostId);
-		if (host === undefined) {
-			const gone = this.invites.cancel(invite.inviteId, "the host left");
-			if (gone !== undefined) this.notifyInvite(gone);
-			return;
+	startLobbyRun(start: LobbyRunStart): LobbyRunStartResult {
+		if (start.kind === "solo") {
+			const player = Players.GetPlayerByUserId(start.userId);
+			if (player === undefined) return { ok: false, reason: "the player left" };
+			const replaced = this.lobbyRuns.expectSolo(start.userId, start.lobbyId, os.clock());
+			if (replaced !== undefined) this.lobbyRunEnded(replaced, "another lobby run was requested");
+			Events.lobbyRunStart.fire(player, { lobbyId: start.lobbyId, kind: "solo" });
+			log.info("LOBBY_SOLO", `${start.userId} lobby ${start.lobbyId}: solo run requested`);
+			return { ok: true };
 		}
+		const members = start.members;
+		const owner = Players.GetPlayerByUserId(members[0]);
+		if (owner === undefined) return { ok: false, reason: "a member left" };
 		const others: number[] = [];
-		for (const id of invite.members) if (id !== invite.hostId) others.push(id);
-		const r = this.createSession(
-			host,
-			{ requestId: 0, worldKind: invite.worldKind, party: others },
-			invite.members,
-		);
-		if (!r.ok) {
-			const failed = this.invites.cancel(invite.inviteId, `could not start: ${r.reason}`);
-			if (failed !== undefined) this.notifyInvite(failed);
-			return;
-		}
+		for (let i = 1; i < members.size(); i++) others.push(members[i]);
+		const r = this.createSession(owner, { requestId: 0, worldKind: RANKED_WORLD_KIND, party: others }, members);
+		if (!r.ok) return { ok: false, reason: `could not start: ${r.reason}` };
 		const s = r.session;
+		this.lobbyRuns.party(s.runId, start.lobbyId);
 		for (const id of others) {
 			const open = this.registry.openSession(id);
 			if (open === undefined || open.members.size() > 1) continue;
@@ -410,15 +344,36 @@ export class RunSessionService implements OnStart {
 				this.registry.close(open, "abandoned", "joined a party run"),
 			);
 		}
-		this.notifyInvite({ ...invite, status: "started" });
-		for (const other of this.invites.started(invite.inviteId)) this.notifyInvite(other);
-		this.startLockstep(s, invite.inviteId);
+		this.startLockstep(s, start.lobbyId);
+		return { ok: true };
+	}
+
+	/**
+	 * `lockstepLeave`: `userId` leaves party run `runId` for good, as on PlayerRemoving for that run (dead for the rest
+	 * of it, released so they are no longer busy), but stays in the server and in their lobby. Only a member of that
+	 * live run; idempotent. The owner too: their next start leaves the party run running (registry.start detaches it).
+	 */
+	leaveParty(userId: number, runId: string): void {
+		if (!typeIs(runId, "string")) return;
+		const entry = this.lockstep.get(runId);
+		if (entry === undefined || !entry.session.members.includes(userId)) return;
+		if (entry.session.released.has(userId)) return;
+		entry.coop.leave(userId);
+		this.registry.releaseMember(entry.session, userId);
+		log.info("PARTY_LEAVE", `${userId} left party run ${runId}`);
+	}
+
+	private lobbyRunEnded(lobbyId: string, reason: string): void {
+		for (const listener of this.lobbyRunEndedListeners) {
+			const [ok, err] = pcall(() => listener(lobbyId, reason));
+			if (!ok) log.warn("LOBBY_LISTENER_FAILED", `lobby ${lobbyId}: ${tostring(err)}`);
+		}
 	}
 
 	// --- co-op lockstep -------------------------------------------------------------------------
 
 	/** A party run: its lockstep session (server clock from now), announced to every member. */
-	private startLockstep(s: RunSession, inviteId: string): void {
+	private startLockstep(s: RunSession, lobbyId: string): void {
 		const spawn = s.setup.spawn ?? { x: 0, z: 0 };
 		const coop = new LockstepSession({
 			runId: s.runId,
@@ -430,7 +385,14 @@ export class RunSessionService implements OnStart {
 			tunables: { ...DEFAULT_LOCKSTEP, allowDebugInput: s.debug },
 		});
 		this.lockstep.set(s.runId, { coop, session: s });
-		const start = { runId: s.runId, seed: s.seed, worldKind: s.worldKind, members: [...s.members], inviteId };
+		const start = {
+			runId: s.runId,
+			seed: s.seed,
+			worldKind: s.worldKind,
+			members: [...s.members],
+			// The old invite flow's field (removed with it, task L7): the lobby id, so it is never a stale invite's.
+			lobbyId,
+		};
 		for (const p of this.memberPlayers(s)) Events.partyRunStarted.fire(p, start);
 	}
 
@@ -452,10 +414,12 @@ export class RunSessionService implements OnStart {
 		return n;
 	}
 
-	/** Heartbeat: invite expiry, then every party run's clock, broadcasts, validator feed and ending. */
+	/** Heartbeat: solo lobby starts that never came, then every party run's clock, broadcasts, validator feed and ending. */
 	private stepLockstep(): void {
 		const now = os.clock();
-		if (this.invites.size() > 0) for (const invite of this.invites.sweep(now)) this.notifyInvite(invite);
+		if (this.lobbyRuns.hasPending()) {
+			for (const lobbyId of this.lobbyRuns.sweep(now)) this.lobbyRunEnded(lobbyId, "the solo run never started");
+		}
 		if (this.lockstep.size() === 0) return;
 		const done: string[] = [];
 		for (const [runId, { coop, session }] of this.lockstep) {
@@ -627,6 +591,9 @@ export class RunSessionService implements OnStart {
 		if (meta === undefined) return; // already concluded
 		this.meta.delete(session);
 		this.registry.remove(session);
+		// A lobby's run (any outcome): the lobby goes back to forming (its members are no longer busy by now).
+		const lobbyId = this.lobbyRuns.concluded(session.runId);
+		if (lobbyId !== undefined) this.lobbyRunEnded(lobbyId, `run ${session.runId} concluded`);
 		let leaderboard: LeaderboardPostStatus | undefined;
 		const s = result.summary;
 		if (result.ok) {

@@ -86,26 +86,3 @@ export function sameJuiceOverrides(a: Readonly<JuiceOverrides>, b: Readonly<Juic
 	for (const k of JUICE_SETTING_KEYS) if (a[k] !== b[k]) return false;
 	return true;
 }
-
-// ---------------------------------------------------------------------------------------------
-// The stored document (one DataStore value per player)
-
-/** Bump when the document's shape changes incompatibly (old documents then read as empty). */
-export const SETTINGS_DOC_VERSION = 1;
-
-export interface SettingsDoc {
-	v: number;
-	juice: JuiceOverrides;
-}
-
-export function encodeSettingsDoc(juice: Readonly<JuiceOverrides>): SettingsDoc {
-	return { v: SETTINGS_DOC_VERSION, juice: sanitizeJuiceOverrides(juice) };
-}
-
-/** Overrides from a stored value: anything missing, of another version or malformed reads as no overrides. */
-export function decodeSettingsDoc(raw: unknown): JuiceOverrides {
-	if (!typeIs(raw, "table")) return {};
-	const doc = raw as { v?: unknown; juice?: unknown };
-	if (doc.v !== SETTINGS_DOC_VERSION) return {};
-	return sanitizeJuiceOverrides(doc.juice);
-}

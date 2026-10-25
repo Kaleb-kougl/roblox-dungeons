@@ -10,13 +10,13 @@ import {
 	SETTINGS_DATASTORE_NAME,
 	SETTINGS_REQUEST_RATE,
 	SETTINGS_RETRY,
-	applyJuicePatch,
+	applySettingsPatch,
 	decodeSettingsDoc,
 	encodeSettingsDoc,
 	playerDataKey,
-	sameJuiceOverrides,
+	sameSettingsOverrides,
 	type DocCodec,
-	type JuiceOverrides,
+	type SettingsOverrides,
 	type KeyValueStore,
 } from "shared/settings";
 import { DataStoreKeyValue } from "./data/DataStoreKeyValue";
@@ -27,7 +27,7 @@ const log = serverLogger("Settings");
 const SHUTDOWN_SAVE_TIMEOUT_SECONDS = 25;
 const SHUTDOWN_POLL_SECONDS = 0.1;
 
-const SETTINGS_CODEC: DocCodec<JuiceOverrides> = {
+const SETTINGS_CODEC: DocCodec<SettingsOverrides> = {
 	decode(raw) {
 		return decodeSettingsDoc(raw);
 	},
@@ -35,7 +35,7 @@ const SETTINGS_CODEC: DocCodec<JuiceOverrides> = {
 		return encodeSettingsDoc(doc);
 	},
 	equals(a, b) {
-		return sameJuiceOverrides(a, b);
+		return sameSettingsOverrides(a, b);
 	},
 	empty() {
 		return {};
@@ -43,9 +43,11 @@ const SETTINGS_CODEC: DocCodec<JuiceOverrides> = {
 };
 
 /**
- * Per-player juice settings (enemy health bars, damage numbers, freeze frame, particles, reduced motion), the web
- * build's localStorage settings (src/fx/settings.ts) moved to a DataStore. Stores only the keys a player changed
- * (shared/settings juice.ts); the client resolves them against its defaults.
+ * Per-player settings (the web build's localStorage juice settings, src/fx/settings.ts, moved to a DataStore; since
+ * task L4 also key bindings, audio volumes and the HUD scale): one settings document v2 per player (shared/settings
+ * doc.ts; a stored v1 document migrates on load, its juice kept). Stores only what a player changed, sanitized here
+ * (`applySettingsPatch`: reserved / duplicate bindings, bad volumes, unknown keys dropped); the client resolves it
+ * against its defaults. `updateSettings` replaces each group its patch carries.
  *
  * Loaded on join (with retries) into a session cache, served from it, saved when dirty on leave, on BindToClose and
  * every SETTINGS_AUTOSAVE_SECONDS. A failed load runs the session on defaults and never overwrites the stored value
@@ -60,7 +62,7 @@ const SETTINGS_CODEC: DocCodec<JuiceOverrides> = {
 @Service({})
 export class SettingsService implements OnStart {
 	private readonly janitor = new Janitor();
-	private readonly cache: PlayerDocCache<JuiceOverrides>;
+	private readonly cache: PlayerDocCache<SettingsOverrides>;
 	private readonly limiter = new SlidingWindowLimiter<Player>(
 		SETTINGS_REQUEST_RATE.count,
 		SETTINGS_REQUEST_RATE.windowSeconds,
@@ -98,7 +100,7 @@ export class SettingsService implements OnStart {
 				}
 				const current = this.loadFor(player);
 				if (current === undefined) return;
-				const updated = applyJuicePatch(current, patch);
+				const updated = applySettingsPatch(current, patch);
 				this.cache.set(playerDataKey(player.UserId), updated);
 				this.send(player, updated);
 			}),
@@ -128,7 +130,7 @@ export class SettingsService implements OnStart {
 	}
 
 	/** This player's stored overrides, or undefined before they are loaded. */
-	getOverrides(player: Player): Readonly<JuiceOverrides> | undefined {
+	getOverrides(player: Player): Readonly<SettingsOverrides> | undefined {
 		return this.cache.get(playerDataKey(player.UserId));
 	}
 
@@ -158,7 +160,7 @@ export class SettingsService implements OnStart {
 	 * The player's overrides, loading them if needed (may yield). Undefined when the player left while it yielded:
 	 * their entry is dropped then, so nothing stays cached for a departed player.
 	 */
-	private loadFor(player: Player): JuiceOverrides | undefined {
+	private loadFor(player: Player): SettingsOverrides | undefined {
 		const overrides = this.cache.load(playerDataKey(player.UserId), [player.UserId]);
 		if (player.Parent === undefined) {
 			this.release(player);
@@ -173,7 +175,7 @@ export class SettingsService implements OnStart {
 		if (current !== undefined) this.send(player, current);
 	}
 
-	private send(player: Player, overrides: JuiceOverrides): void {
+	private send(player: Player, overrides: SettingsOverrides): void {
 		if (player.Parent !== undefined) Events.settingsChanged.fire(player, overrides);
 	}
 

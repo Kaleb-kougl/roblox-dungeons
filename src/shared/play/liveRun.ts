@@ -21,15 +21,24 @@
  * `segmentFallbackTicks` so a run without floor changes segments too. `takeSegments()` drains the cut segments for
  * sending; `final()` cuts the rest and returns the `finishRun` claim.
  *
+ * Leave run (L6a): `requestForfeit()` makes the next frame() step exactly one tick with the frame's input plus
+ * FORFEIT_BUTTON, paused or not (the menu that offers "Leave run" pauses the run) and whatever the pacer says; the sim
+ * kills the player at that tick (shared/sim forfeitSoloRun), so outcome() becomes "dead" and the run ends through the
+ * ordinary death path (summary died = true, segments / final as for any death). The bit is in the recording, so the
+ * server's replay reproduces the death without trusting the client.
+ *
  * Restart = a new LiveRun from the same setup (fresh state, fresh recording).
  */
 import {
 	ALL_EVENT_FIELDS,
 	Button,
+	EMPTY_INPUT,
+	FORFEIT_BUTTON,
 	FixedStepLoop,
 	Recorder,
 	SOLO_PLAYER,
 	START_HALF_HEARTS,
+	copyInput,
 	createSimState,
 	encodeRecording,
 	eventDefault,
@@ -264,6 +273,10 @@ export class LiveRun implements RunView {
 	private readonly cutSegments: RunSegment[] = [];
 	/** Ticks whose recorded frames were released (releaseVerifiedFrames): recorder.frames[0] is this tick's. */
 	private releasedTicks = 0;
+	/** requestForfeit() was called: the next frame() steps the forfeit tick. */
+	private forfeitPending = false;
+	/** Scratch for the forfeit tick's frame (the caller's input is never written). */
+	private readonly forfeitFrame: InputFrame = { ...EMPTY_INPUT };
 
 	/** Throws whatever createSimState throws (e.g. an encounter naming an unregistered archetype). */
 	constructor(setup: LiveRunSetup) {
@@ -290,6 +303,11 @@ export class LiveRun implements RunView {
 		this.scorePops.clear();
 		this.runEvents.clear();
 		this.ticksThisFrame = 0;
+		if (this.forfeitPending) {
+			this.forfeitPending = false;
+			this.stepForfeit(input);
+			return this.ticksThisFrame;
+		}
 		if (this.paused || pauseEdge) {
 			this.wasPaused = true;
 			return 0;
@@ -318,6 +336,31 @@ export class LiveRun implements RunView {
 			this.observeTick();
 		});
 		return this.ticksThisFrame;
+	}
+
+	/**
+	 * "Leave run" (L6a): the next frame() steps one tick with its input plus FORFEIT_BUTTON (see the file comment), in
+	 * which the player dies. Returns false (and does nothing) once the run is over (dead, or an M1 victory): a forfeit
+	 * can only end a run that is still being played. Calling it again before that frame changes nothing.
+	 */
+	requestForfeit(): boolean {
+		if (this.outcome() !== "playing" || this.state.player.dead !== 0) return false;
+		this.forfeitPending = true;
+		return true;
+	}
+
+	/** requestForfeit() was accepted and the forfeit tick has not been stepped yet. */
+	isForfeitPending(): boolean {
+		return this.forfeitPending;
+	}
+
+	/** The forfeit tick: `input` with FORFEIT_BUTTON, recorded and stepped like any tick (outside the loop's timing). */
+	private stepForfeit(input: Readonly<InputFrame>): void {
+		const f = copyInput(input, this.forfeitFrame);
+		f.buttons = bit32.bor(f.buttons, FORFEIT_BUTTON);
+		this.recorder.record(f);
+		step(this.state, f, this.setup.config);
+		this.observeTick();
 	}
 
 	private observeTick(): void {

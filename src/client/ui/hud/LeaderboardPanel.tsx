@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from "@rbxts/react";
 import { useSelector } from "@rbxts/react-reflex";
 import { GuiService } from "@rbxts/services";
-import { selectInputDevice, selectLeaderboard } from "client/store";
+import { selectBindings, selectInputDevice, selectLeaderboard } from "client/store";
 import { role, str } from "client/ui/theme";
 import {
 	LEADERBOARD_BOARDS,
@@ -11,7 +11,8 @@ import {
 	type LeaderboardView,
 } from "shared/leaderboard";
 import { SFX } from "shared/view/audio";
-import { HUD_VIEW, LEADERBOARD_HINT, LEADERBOARD_STRINGS, LEADERBOARD_VIEW } from "shared/view/hud";
+import { leaderboardHint } from "shared/play";
+import { HUD_VIEW, LEADERBOARD_STRINGS, LEADERBOARD_VIEW } from "shared/view/hud";
 import { useHudActions } from "./actions";
 import { MenuButton, Panel, Row, Text } from "./primitives";
 
@@ -88,6 +89,7 @@ function mineLine(view: LeaderboardView | undefined): string {
 export function LeaderboardPanel(props: { localUserId: number }) {
 	const lb = useSelector(selectLeaderboard);
 	const device = useSelector(selectInputDevice);
+	const bindings = useSelector(selectBindings);
 	const actions = useHudActions();
 	const firstRef = useRef<TextButton>();
 
@@ -178,7 +180,7 @@ export function LeaderboardPanel(props: { localUserId: number }) {
 					order={7}
 					size={HUD_VIEW.smallText}
 					color="uiTextDim"
-					text={str(LEADERBOARD_STRINGS.hint, { key: LEADERBOARD_HINT[device] })}
+					text={str(LEADERBOARD_STRINGS.hint, { key: leaderboardHint(bindings)[device] })}
 				/>
 			</Panel>
 		</frame>

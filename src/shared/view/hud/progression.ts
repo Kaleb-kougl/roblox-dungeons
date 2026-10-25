@@ -61,12 +61,7 @@ export function rarityColorRole(rarity: number): ColorRole {
 	return RARITY_COLOR_ROLES[rarity] ?? RARITY_COLOR_ROLES[0];
 }
 
-/** Key names the draft hint and the shrine hint show, per last-used device (keyboard: A / D, click, 1). */
-export const DRAFT_HINT = {
-	keyboard: { left: "A", right: "D", confirm: "Click" },
-	gamepad: { left: "Stick left", right: "Stick right", confirm: "RT" },
-} as const;
-export const SHRINE_HINT = { keyboard: "1", gamepad: "A" } as const;
+// The draft and shrine hints' key names follow the player's bindings: shared/play draftHint / shrineHint.
 
 /** Layout (reference pixels) and timing of the progression HUD. */
 export const PROGRESSION_VIEW = {

@@ -10,14 +10,15 @@
 
 import { EMPTY_INPUT, type InputFrame } from "./input";
 import { clearEvents, type SimState } from "./state";
-import { stepPlayer } from "./player";
+import { killPlayerState, stepPlayer } from "./player";
 import { stepCombat } from "./combat/combat";
 import { simWorldConfig, stepEndless, type EndlessConfig } from "./endless";
 import type { EncounterConfig } from "./combat/actors/encounter";
 import { clearScoreEvents, stepScore, type ScoringConfig } from "./score/score";
-import { clearRunEvents, stepDraft, stepRun } from "./progression/progression";
-import { isDraftOpen } from "./progression/runMods";
+import { clearRunEvents, closeDraft, stepDraft, stepRun } from "./progression/progression";
+import { SOLO_PLAYER, isDraftOpen } from "./progression/runMods";
 import { hasLeftBit, markPlayerLeft, partySize, playerAt, weaponsAt, type PartyConfig } from "./party";
+import { FORFEIT_BUTTON } from "./partyData";
 
 export { PLAYER_RADIUS, PLAYER_SPEED } from "./playerData";
 
@@ -127,15 +128,16 @@ const partyPrev: number[] = [];
  * Advances `state` by exactly one tick of SIM_DT, in place. Solo runs only (a party state needs stepParty).
  *
  * Tick order (fixed; part of the determinism contract):
- *   1. clear per-tick events
- *   2. stepPlayer   (movement, facing, roll, hearts, flask, Ember)
+ *   1. clear per-tick events; then FORFEIT_BUTTON ("Leave run") -> forfeitSoloRun: the player dies at this tick
+ *   2. stepPlayer  (movement, facing, roll, hearts, flask, Ember)
  *   3. stepCombat   (Ember clear, actors act, the player's weapons, bullets step, hits, contact damage)
  *   4. stepEndless  (endless mode only: Depth, floor clear points + stairwell / next floor, deferred room spawns)
  *   5. stepRun      (endless mode only: a new floor opens the boon draft; Warding, relic pedestals, the curse shrine)
  *   6. stepScore    (only with config.scoring: hit cuts, combo timer, rooms; kills / grazes / guard score inside 3)
  *   7. tick += 1
  * While a boon draft is open (endless mode, progression/progression.ts) the world is frozen: after the event clears
- * only stepDraft runs (the stick selects, a FIRE press confirms), then tick += 1.
+ * only stepDraft runs (the stick selects, a FIRE press confirms), then tick += 1 (a forfeit on such a tick closes the
+ * draft without a pick and the tick stays frozen, like a co-op leaver's).
  * In endless mode steps 2-3 run with the current floor's SimConfig (simWorldConfig). Scoring is read from the top-level
  * config (createSimState). Kills score inside 3, so a boss kill's points use the Depth from BEFORE stepEndless raises it.
  */
@@ -152,9 +154,12 @@ export function step(
 	const score = state.score;
 	if (score !== undefined) clearScoreEvents(score);
 	const run = state.run;
+	// Read before the forfeit, which closes an open draft: that tick stays a frozen draft tick.
+	const frozen = run !== undefined && isDraftOpen(state);
+	if (bit32.band(input.buttons, FORFEIT_BUTTON) !== 0) forfeitSoloRun(state);
 	if (run !== undefined) {
 		clearRunEvents(run);
-		if (isDraftOpen(state)) {
+		if (frozen) {
 			stepDraft(state, soloInputs);
 			state.tick += 1;
 			return;
@@ -166,6 +171,25 @@ export function step(
 	if (run !== undefined) stepRun(state, soloInputs, config, soloPrev);
 	if (score !== undefined) stepScore(state);
 	state.tick += 1;
+}
+
+/**
+ * "Leave run" in a solo run (L6a; FORFEIT_BUTTON in the tick's input; step() calls it right after the event clears):
+ * the player dies at this tick with exactly the bookkeeping of a lethal hit (killPlayerState, events.playerDied = 1),
+ * so the run ends as a death everywhere a death is read (isPartyWiped, stepEndless / stepRun stop, LiveRun outcome,
+ * telemetry, the server's summary `died`). It is not a hit: no playerHits, no armor, no Second Wind, no Hourglass. An
+ * open boon draft is closed without a pick (the dead take nothing). Idempotent: a dead player stays dead and nothing
+ * happens (no second event). Returns true when it killed the player. Never revives, scores or skips anything. No new
+ * state: every field it writes is already hashed.
+ */
+export function forfeitSoloRun(state: SimState): boolean {
+	const p = state.player;
+	if (p.dead !== 0) return false;
+	killPlayerState(p);
+	state.events.playerDied = 1;
+	const me = state.run?.players[SOLO_PLAYER];
+	if (me !== undefined && me.draftOpen !== 0) closeDraft(me);
+	return true;
 }
 
 /**

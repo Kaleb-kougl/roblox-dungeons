@@ -1,8 +1,8 @@
 # Server (task 9): run validation, telemetry, settings
 
 Single-player first (PLAN.md): the client runs the deterministic sim and the server never simulates live. The server
-checks **finished** runs by replaying them, derives telemetry from its own replay, and stores per-player juice
-settings.
+checks **finished** runs by replaying them, derives telemetry from its own replay, and stores per-player settings
+(juice, key bindings, audio, display: the settings document v2).
 
 | Piece | Where | Tested |
 | --- | --- | --- |
@@ -21,8 +21,9 @@ settings.
 | Score reader (`state.score.total`, `state.endless.floor`) | `src/shared/run/score.ts` | headless |
 | Client segment cutting | `src/shared/play/liveRun.ts` `SegmentCutter`, `LiveRun.cutSegment` | headless |
 | Leaderboards: ordered value, PB rules, write queue, read cache, view (M5) | `src/shared/leaderboard/` | headless |
+| Same-server lobbies: model, who-hears-what outbox, friend cache, lobby run tracker, analytics (L2) | `src/shared/lobby/` | headless |
 | Remotes | `src/shared/network.ts`, `src/server/network.ts` | Studio |
-| Services | `src/server/services/{RunValidation,RunSession,Leaderboard,Telemetry,Settings}Service.ts`, `data/` | Studio |
+| Services | `src/server/services/{RunValidation,RunSession,Leaderboard,Telemetry,Settings,Lobby}Service.ts`, `data/` | Studio |
 
 M3 / M5 (sections "Segmented runs" and "Leaderboards" below) add the ranked path: the server picks the seed, the
 client uploads its recording in segments while it plays, and the server keeps its own SimState per run and replays
@@ -119,6 +120,13 @@ bytes are `malformed`. The encoding is canonical (one encoding per recording; a 
 differ from the previous one), so anything the decoder accepts re-encodes to the same bytes. Frames of one run share
 one frozen table.
 
+Button bits: `RECORDED_BUTTONS` = `SIM_BUTTONS` plus 16384, in both variants: a party stream's `PARTY_LEFT_BUTTON`
+(the relay's leave mark), a solo stream's `FORFEIT_BUTTON` (the same bit: "Leave run", L6a). The sim kills a solo
+player on a tick whose input carries it (`forfeitSoloRun`: the lethal-hit death bookkeeping, no hit), so a forfeited
+run replays to `died = true` and the endless board posts it like any death. It is not a debug bit (`debug_input`
+ignores it) and needs no trust: it can only end the submitter's own run early. Allowing it changed no existing
+encoding (every fixture recording encodes to the same bytes).
+
 Flamework's generated guard checks the field as `t.typeof("buffer")` (`out/server/network.luau`); `validateRun`
 checks `typeIs(recording, "buffer")` again.
 
@@ -130,20 +138,26 @@ Event pairs, like the user's other Flamework project. Flamework generates a runt
 | Direction | Event | Payload | Reply |
 | --- | --- | --- | --- |
 | client -> server | `submitRun` | `RunSubmission { seed, atBossDoor, recording: buffer, claimedHash, claimed: RunSummary }` | `runVerdict` (none if the player already left) |
-| client -> server | `requestSettings` | none | `settingsChanged` |
-| client -> server | `updateSettings` | `JuiceOverrides` (partial juice settings) | `settingsChanged` (also when rate limited: the stored overrides) |
-| client -> server | `resetSettings` | none | `settingsChanged` (also when rate limited: the stored overrides) |
+| client -> server | `requestSettings` | none | `settingsChanged` (every group) |
+| client -> server | `updateSettings` | `SettingsOverrides { juice?, controls?, audio?, display? }`: each group present REPLACES the stored one (`{}` clears it), sanitized by `applySettingsPatch` | `settingsChanged` (also when rate limited: the stored overrides) |
+| client -> server | `resetSettings` | none (every group back to the defaults) | `settingsChanged` (also when rate limited: the stored overrides) |
 | server -> client | `runVerdict` | `RunVerdict { ok, claimedHash, code?, reason?, serverHash, summary, runId? }` | |
-| server -> client | `settingsChanged` | `JuiceOverrides` (sent once after join too) | |
+| server -> client | `settingsChanged` | `SettingsOverrides` (only what the player changed; sent once after join too) | |
 | client -> server | `startRun` | `StartRunRequest { requestId, worldKind, party?, atBossDoor?, classId? }` | `runStarted` (`StartRunReply`) |
 | client -> server | `submitSegment` | `RunSegment { runId, index, startTick, recording: buffer, claimedEndHash, checkpointHashes }` | `segmentVerdict` (`SegmentVerdict`) once replayed |
 | client -> server | `finishRun` | `RunFinal { runId, finalTick, claimedHash, claimed: FinalRunSummary }` | `runFinished` (`RunFinishVerdict`) |
 | client -> server | `getLeaderboard` | `"solo" \| "coop"` | `leaderboard` (`LeaderboardView`) |
-| client -> server | `partyInvite` | `PartyInviteRequest { requestId, worldKind, members }` (the others' UserIds) | `partyInviteUpdate` (`pending` to the host, `invited` to each member) |
-| client -> server | `partyRespond` | `inviteId, accept` | `partyInviteUpdate` to every member; the last accept starts the run (`partyRunStarted { ..., inviteId }`) |
+| client -> server | `lobbyCreate` / `lobbyJoin` / `lobbyLeave` / `lobbyKick` / `lobbySetVisibility` / `lobbySetName` / `lobbyTransferHost` / `lobbyInvite` / `lobbyAnswerInvite` / `lobbySetReady` / `lobbyStart` | see "Lobbies" | the state they change (`lobbyState`, `lobbyInvites`, `lobbyList`) or `lobbyNotice { kind: "refused", requestKind, code, reason }` |
+| client -> server | `lobbyRequestList` | none | `lobbyList`, `lobbyState`, `lobbyInvites` (the current state) |
+| server -> client | `lobbyRunStart` | `LobbySoloRunStart { lobbyId, kind: "solo" }` | the client starts a ranked solo run (`startRun`) |
+| server -> client | `partyRunStarted` | `PartyRunStart { runId, seed, worldKind, members, lobbyId }` | |
 | client -> server | `lockstepInput` / `lockstepHash` / `lockstepFinal` | inputs; `runId, ticks[], hashes[]` (batched, resent until acknowledged); `RunFinal` | `lockstepFrames(runId, firstTick, data, hashAck)` |
+| client -> server | `lockstepLeave` | `runId` | none (the leaver's frames carry the leave bit from the next tick; `runFinished` still comes) |
 
-The client side is `src/client/network.ts` (`GlobalEvents.createClient`); `SimController` submits each finished run once and shows the verdict, and `SettingsController` syncs juice settings (see `docs/CLIENT.md`).
+The M4 invite flow (`partyInvite` / `partyRespond` / `partyInviteUpdate`, `shared/run` `PartyInvites`) was removed in
+task L7: lobbies replace it.
+
+The client side is `src/client/network.ts` (`GlobalEvents.createClient`); `SimController` submits each finished run once and shows the verdict, and `SettingsController` syncs the settings document (juice, controls, audio, display; see `docs/CLIENT.md`).
 
 ## Limits (data: `src/shared/run/limits.ts`, `src/shared/settings/config.ts`)
 
@@ -288,17 +302,19 @@ client                                                server (RunSessionService)
 | `RUN_START_RATE` / `SEGMENT_SUBMIT_RATE` | 10 / 30 per 60 s per player |
 | `REPLAY_TURN_MAX_TICKS` | 1,800 (30 s of play) replayed per queue turn at most; a longer segment resumes on the session's next turn |
 | `MAX_PARTY_SIZE` | 8 |
-| `PARTY_INVITE_TTL_SECONDS` / `PARTY_INVITE_RATE` | 60 s / 10 `partyInvite` + `partyRespond` per 60 s per player |
+| `LOBBY_REQUEST_RATE` / `LOBBY_INVITE_RATE` / `LOBBY_LIST_REQUEST_RATE` (shared/lobby) | 20 lobby requests per 10 s / 10 `lobbyInvite` per 60 s / 10 `lobbyRequestList` per 10 s per player |
+| `LOCKSTEP_LEAVE_RATE` (shared/lockstep) | 4 `lockstepLeave` per 10 s per player |
 
 Players and sessions: one OPEN session per player (a new start replaces it, concluded as `abandoned` with a
 `runFinished` the client does not show); after `finishRun` it keeps validating
 even if the player leaves (counted by `RunValidationService.trackExternal`, so TelemetryService's session summary
 waits for it) and fires the same accepted / rejected listeners as `submitRun` (`reportAccepted` / `reportRejected`).
-A party of 2+ starts only from an invite EVERY member accepted, all in the same server; it plays ONE lockstep sim
+A party of 2+ starts only from a lobby's Start ("Lobbies" below), all in the same server; it plays ONE lockstep sim
 validated from the server's own merged log ("Co-op lockstep (M4)" below), and the members who contributed get credit
 on the co-op board. A party run that is not concluded (still played, or its final still replaying) makes its members
-`busy`: neither the owner's restart nor anyone's new start or invite can replace it, so a LockstepSession never keeps
-running without its run session, and every member gets the run's `runFinished`.
+`busy`: neither the owner's restart nor anyone's new start or lobby can replace it, so a LockstepSession never keeps
+running without its run session, and every member gets the run's `runFinished`. A member who left it (the owner
+included) is free to start another run; the party run goes on without them.
 
 **World registry** (`worlds.ts`): `registerRunWorld(kind, (seed, { atBossDoor }) => RunSetup)`; "game",
 "dungeonNoEncounter", "greybox" and "endless" (`buildEndlessRunConfig`, which ignores the boss door) are built in. A
@@ -321,21 +337,27 @@ A party run (2..8 players) is ONE deterministic sim that every member steps from
 logic in `src/shared/lockstep/` (headless specs drive it with simulated clients); `RunSessionService` and
 `SimController` only wire remotes and clocks.
 
-**Start: consent first** (`src/shared/run/partyInvites.ts` `PartyInvites`, pure). The host's `partyInvite` names the
-others (`resolveParty`: members in this server, at most 8; nobody `busy`); each invited member gets
-`partyInviteUpdate { status: "invited" }` and answers `partyRespond(inviteId, accept)`. A decline cancels the invite for
-everyone; an accept from a member who is busy (in an unconcluded party run) is refused and the invite stays open; an
-invite expires after `PARTY_INVITE_TTL_SECONDS`, and a member leaving the server cancels it. Only when EVERY member
-accepted does the service call `RunSessionRegistry.start` with `partyConsent` = the invite's members; the registry
-refuses any party (2+ members) whose resolved party is not exactly that list, so a client's `startRun` can never name
-a party on its own. Each member's open SOLO session is then concluded (`abandoned`, they chose to leave it), the
-registry builds the world for the party (`buildWorldSetup(kind, seed, { partySize })`: endless scales enemy hp and
-room budgets with it), the service creates a `LockstepSession` and fires `partyRunStarted { runId, seed, worldKind,
-members, inviteId }` to every member; other pending invites naming any of them are cancelled. A client switches to a
-party run only when `inviteId` is the invite it accepted (or hosts): an unsolicited `partyRunStarted` is ignored.
-A client's player index is its place in `members` (owner = 0). Minimal start path until the Hub's party pad exists:
-Workspace attribute `KV_Party` = true makes the lowest UserId invite everyone else in the server at each run start
-(the others answer in the HUD prompt, or `KV_PartyAutoAccept` accepts for them). No drop-in mid-run.
+**Start: a lobby's Start is the consent** ("Lobbies" below). When a lobby of 2+ finishes its countdown, LobbyService
+calls `RunSessionService.startLobbyRun({ kind: "party", lobbyId, members })`: `RunSessionRegistry.start` for the
+first member (join order) with `partyConsent` = the lobby's members, in the ranked world (`RANKED_WORLD_KIND`). The
+registry refuses any party (2+ members) whose resolved party is not exactly that list, so a client's `startRun` can
+never name a party on its own (members in this server, at most 8, nobody `busy`). Each member's open SOLO session is
+then concluded (`abandoned`, they chose to leave it), the registry builds the world for the party
+(`buildWorldSetup(kind, seed, { partySize })`: endless scales enemy hp and room budgets with it), the service creates
+a `LockstepSession` and fires `partyRunStarted { runId, seed, worldKind, members, lobbyId }` to
+every member. A client switches to a party run only when `lobbyId` is the lobby it is in: an unsolicited
+`partyRunStarted` is ignored. A client's player index is its place in `members` (owner = 0). No drop-in mid-run.
+(The M4 invite flow, `partyInvite` / `partyRespond`, was removed in task L7.)
+
+**Leaving a party run** (`lockstepLeave(runId)`, rate limited by `LOCKSTEP_LEAVE_RATE`): only a member of that live
+party run; it does for that run what PlayerRemoving does (`LockstepSession.leave`: the leave bit from the next tick,
+dead for the rest of the run; `registry.releaseMember`: no longer `busy`) while the player stays in the server and in
+their lobby (still `inRun` until the run concludes). Idempotent (a second call, or a call after a stall drop, does
+nothing; a call from a player already leaving the server is dropped). They still get the run's `runFinished`. The
+OWNER may leave too: their next `startRun` (Leave run -> main menu -> Play solo) never replaces the party run
+(`RunSessionRegistry.start` only closes a solo open session; an unconcluded party run the owner was released from is
+just detached from them, and its LockstepSession concludes it for the others), and a party run its owner left does
+not count toward their `maxFinishingPerPlayer`.
 
 **Relay** (`relay.ts`, tunables in `config.ts`). The server clock finalizes tick T once real time reaches it (at most
 `MAX_SERVER_TICKS_PER_STEP` per Heartbeat). Each player's frame for T is the input they sent for T, else (missed
@@ -418,6 +440,52 @@ is ignored quietly). Measured in the specs: a client frozen for 15 s catches up 
 validates ranked with no call refused by any limiter. Bandwidth: 8 players moving cost ~30 bytes per tick down
 (~1.8 KB/s per client) and 10 bytes per tick up.
 
+## Lobbies (L2)
+
+Same-server lobbies are how players group up for a run; they replace the M4 invite flow. The model is pure
+(`src/shared/lobby/lobbies.ts` `Lobbies`, its header has the rules: visibility open / friends / closed, joins,
+invites, host-only kick / visibility / name / transfer / start, ready + countdown, host migration, kick cooldown);
+`LobbyService` (`src/server/services/LobbyService.ts`) owns one per server and only wires it:
+
+- **Requests.** Every `lobby*` remote goes straight into `Lobbies` (it shape-checks every client value), per player
+  rate limited: `LOBBY_REQUEST_RATE` for all of them except `lobbyInvite` (`LOBBY_INVITE_RATE`) and
+  `lobbyRequestList` (`LOBBY_LIST_REQUEST_RATE`, extra calls dropped quietly). A refusal (or a spent budget, code
+  `rateLimited`) is a `lobbyNotice { kind: "refused", requestKind: "<remote name>", code, reason }` to the requester.
+  `lobbyInvite` also refuses a player who is not in this server (`badRequest`). `lobbyAnswerInvite(id, true)` joins
+  the invite's lobby (the join consumes it); `false` declines.
+- **Pushes** (`src/shared/lobby/outbox.ts` `LobbyOutbox`, specced: who hears what). After every request, tick and run
+  end the service flushes: `lobbyState` (a `LobbyView`: `countdownIn` = seconds left, `invited` = the live invites to
+  the lobby) to every member of a changed lobby and `{}` to a leaver; `lobbyInvites` (the full list) to each player
+  whose received invites changed; `lobbyNotice` for kicks, host changes (`hostChanged` to the new host), countdown
+  cancels (a member left / un-readied / became busy / the run could not start, with the reason), invites dropped with
+  a lobby (`inviteDropped`) or expired (`inviteExpired`); invites a player dropped by joining or creating a lobby
+  themselves are silent. `lobbyList` (per viewer `summariesFor`, never closed lobbies) goes to EVERY player, coalesced
+  behind a dirty flag to one round per `LOBBY_SERVICE.listPushSeconds` (0.5 s). PlayerAdded and `lobbyRequestList` get
+  the current list, state and invites at once.
+- **Clock.** Heartbeat runs `Lobbies.tick` every `LOBBY_SERVICE.tickSeconds` (0.25 s): due countdowns, invite expiry,
+  kick cooldowns.
+- **Friends** (`src/shared/lobby/friendCache.ts` `FriendCache`, specced with an injected fetcher). `areFriends(a, b)`
+  answers from a per-pair cache and never waits: a miss is false and schedules `Player:IsFriendsWithAsync` in the
+  background (pcall; at most `FRIEND_CACHE.maxConcurrentFetches` at once; a failure counts as not friends and is
+  retried after `retrySeconds`; a known answer is refreshed after `refreshSeconds`). A landed answer that changed marks
+  the lists dirty. Pairs with a new player are prefetched on PlayerAdded and forgotten on PlayerRemoving.
+- **Busy** = `RunSessionService.busyReason` (a member of an unconcluded party run). A player in a solo run is NOT busy:
+  they can be invited and join (their client shows a badge); a party start abandons their solo run.
+- **Run handoff.** A due countdown hands the run to `RunSessionService.startLobbyRun(start)`. Party: the run is created
+  and announced (`partyRunStarted` with `lobbyId`, "Co-op lockstep" above). Solo (one member): the client gets
+  `lobbyRunStart { lobbyId, kind: "solo" }` and starts a ranked run itself (`startRun`); the server binds that player's
+  NEXT ranked session start to the lobby (`src/shared/lobby/runTracker.ts` `LobbyRunTracker`). A refused start
+  (a member left, `busy`, ...) sends the lobby straight back to `forming` with a countdownCancelled notice.
+- **Run end.** `RunSessionService.onLobbyRunEnded(lobbyId)` fires when the lobby's run is over and LobbyService calls
+  `Lobbies.runEnded` (back to `forming`, Ready cleared): the run session concluded with ANY outcome (accepted, rejected,
+  desync, expired, a solo restart's `abandoned`); for a solo lobby run also when the player leaves the server, or when
+  no ranked start came within `LOBBY_SERVICE.soloStartTimeoutSeconds` (30 s). A party run goes on when members leave
+  (the server or the run, `lockstepLeave`); the lobby stays `inRun` until it concludes.
+- **Leaving the server**: `Lobbies.playerRemoving` (leaves the lobby, drops the invites they received; the ones they
+  sent stay) and the pushes it causes.
+
+Not done yet: the `followed` notice (a friend followed a player into a closed lobby).
+
 ## Leaderboards (M5)
 
 Two all-time boards, **Solo** (party of 1) and **Co-op** (party of 2..8). Only runs ACCEPTED by segmented validation
@@ -428,7 +496,8 @@ Eligibility (`leaderboardEligibility`, `LEADERBOARD_POLICY`): world kind in `LEA
 (`postFromStudio: false`), not a VIP server (`PrivateServerOwnerId !== 0`; reserved servers may post), and the run
 ended (`postAbandoned: false`): in `deathOnlyWorlds` (`["endless"]`) only a death (the whole party wiped) ends a run -
 a boss kill there is one floor of the descent, so R after a boss is an abandoned run and never posts; in other worlds a
-death or the boss kill. A party run also needs 2+ contributors (`ineligible:contributors`, "Co-op credit" above). The
+death or the boss kill. "Leave run" in a solo run is a death (L6a: `LiveRun.requestForfeit()` records one tick with
+`FORFEIT_BUTTON`, the replay kills the player there), so it posts; a run simply dropped without it stays abandoned. A party run also needs 2+ contributors (`ineligible:contributors`, "Co-op credit" above). The
 verdict's `leaderboard` field says `queued` or `ineligible:<reason>`.
 
 **Ordered value** (`orderedValue.ts`, layout `ORDERED_VALUE_LAYOUT`): one integer per entry, higher ranks first:
@@ -553,6 +622,12 @@ Custom events (`LogCustomEvent`; fields are `CustomField01..03`):
 | `SessionRuns` | runs | | | | player leaves |
 | `SessionRetriesAfterDeath` | deaths followed by another run | | | | player leaves |
 | `SessionLongestRetryStreak` | longest died -> retried streak | | | | player leaves |
+| `LobbyCreated` | 1 | visibility (`open` / `friends` / `closed`) | | | a lobby is created (host) |
+| `LobbyStarted` | lobby size | `solo` / `party` | | | a countdown ends and the run is handed off (host) |
+| `LobbyInviteSent` | 1 | | | | a lobby invite is sent (sender) |
+| `LobbyInviteAnswered` | 1 | `accept` / `decline` / `expire` | | | an invite is accepted (joined), declined or expires (invitee) |
+
+Lobby events come from `src/shared/lobby/analytics.ts`, logged through `TelemetryService.logEvents(player, specs)`.
 
 Every field value comes from a small fixed set (Roblox: 8,000 combinations, 100 custom event names, 10 funnels).
 The web build's per-run markers (`boss.phase`, `boss.engaged`, `boss.defeated`, `player.death`, `run.victory`) and
@@ -565,7 +640,7 @@ JSON session files and F9 export.
 
 | DataStore | Key | Value | Written |
 | --- | --- | --- | --- |
-| `PlayerSettings` | `u_<UserId>` | `{ v: 1, juice: JuiceOverrides }` (only the settings the player changed) | when dirty: on leave, on `BindToClose` (parallel, 25 s budget), every 120 s |
+| `PlayerSettings` | `u_<UserId>` | settings document v2 `{ v: 2, juice, controls, audio, display }` (only what the player changed; v1 `{ v: 1, juice }` migrates on read) | when dirty: on leave, on `BindToClose` (parallel, 25 s budget), every 120 s |
 | `Runs` (off: `RUNS_DATASTORE_ENABLED = false`) | `u_<UserId>` | the last 50 accepted runs `{ id, seed, hash, ticks, kills, boss, died, at }` (UpdateAsync) | on each accepted run |
 
 Every write is tagged with the owner's UserId (`SetAsync`'s `userIds`, UpdateAsync's second return value), for
@@ -573,16 +648,37 @@ erasure requests: the cache passes the `userIds` given to `load(key, userIds)`; 
 
 Every call retries 3 times with backoff (1 s, 2 s) (`withRetries`). Settings are cached for the session; if the load
 fails the session runs on defaults and the stored value is not overwritten unless the player changes something. Last
-write wins (no session lock: settings are low value). Juice settings never reach the sim.
+write wins (no session lock: settings are low value). Settings never reach the sim (key bindings only change which
+device inputs make the InputFrame).
 
 Concurrency in `PlayerDocCache`: a `load` while the same key is loading waits for that read (the join load and an
 early `requestSettings` make one `GetAsync`); a `save` while the same key is saving waits for it and writes only if
 the document is still dirty (the leave save and the `BindToClose` save never both write). Waiters are resumed with
 `task.spawn`. After any yield, a settings handler drops the player's entry instead of using it if they left meanwhile.
 
-Settings semantics are the web build's (`src/fx/settings.ts`): defaults `healthBars: onDamage`, `damageNumbers: true`,
-`freezeFrame: true`, `particles: normal`, `reducedMotion: <system>`. The client resolves the stored overrides with
-`resolveJuiceSettings(overrides, GuiService.ReducedMotionEnabled)`; reset clears them (back to the system setting).
+Juice settings semantics are the web build's (`src/fx/settings.ts`): defaults `healthBars: onDamage`,
+`damageNumbers: true`, `freezeFrame: true`, `particles: normal`, `reducedMotion: <system>`. The client resolves the
+stored overrides with `resolveJuiceSettings(overrides.juice, GuiService.ReducedMotionEnabled)`; reset clears them
+(back to the system setting).
+
+### Settings document v2 (task L4, `src/shared/settings/doc.ts`)
+
+`{ v: 2, juice, controls, audio, display }`, every group overrides-only (an empty group is stored as `{}`):
+
+| Group | Type | Sanitized by | Holds |
+| --- | --- | --- | --- |
+| `juice` | `JuiceOverrides` | `sanitizeJuiceOverrides` | as v1 |
+| `controls` | `ControlsOverrides` (shared/play bindings.ts) | `sanitizeControlsOverrides` | per device, the actions whose inputs differ from `DEFAULT_BINDINGS`; unknown / reserved inputs, unknown actions, values equal to the default and any override that would bind an input twice are dropped, so applying it always gives a valid layout |
+| `audio` | `AudioOverrides` | `sanitizeAudioOverrides` | `master` / `music` / `sfx`, whole percents 0..100 (default 100) |
+| `display` | `DisplayOverrides` | `sanitizeDisplayOverrides` | `hudScale`, one of `HUD_SCALE_PERCENTS` (80 / 90 / 100 / 110 / 125, default 100) |
+
+Versions (`decodeSettingsDoc`): **v1** `{ v: 1, juice }` migrates (its juice kept, the other groups empty; anything
+else in it is ignored); it stays v1 in the DataStore until the player changes something (a clean document is not
+written), then it is written as v2. **v2** reads as is (sanitized). **Any other version** (a newer server's document,
+a missing `v`, garbage) reads as no overrides, as before; if that player then changes something, the document is
+overwritten as v2 (last write wins, unchanged from v1). Patches (`applySettingsPatch`): each group present replaces the
+stored group after sanitizing; absent groups are kept. The Flamework guard checks the payload's shape (every group and
+field optional, slots as 1- or 2-string tuples); the sanitizers check values.
 
 ## Testing
 
@@ -647,4 +743,7 @@ player who left while their run validated), yielding replays and the queue under
 5. AnalyticsService events from Studio sessions are not recorded; check them in the Creator Hub analytics of a
    published place (custom events appear after a delay). In Studio, a failing call logs `[Telemetry] ANALYTICS_FAILED`.
 6. Settings: fire `updateSettings`, leave, rejoin: `settingsChanged` brings the change back. Stop the server with a
-   dirty setting to exercise `BindToClose`.
+   dirty setting to exercise `BindToClose`. v1 migration: with Studio API access, write a v1 value from the command
+   bar (`game:GetService("DataStoreService"):GetDataStore("PlayerSettings"):SetAsync("u_<your UserId>", { v = 1,
+   juice = { particles = "low" } })`), join: Options > Juice shows Particles Low; rebind a key, leave: the stored
+   value is now `{ v = 2, juice = { particles = "low" }, controls = { kbm = { ... } }, audio = {}, display = {} }`.

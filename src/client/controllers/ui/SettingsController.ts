@@ -1,31 +1,51 @@
 import { Controller, OnStart } from "@flamework/core";
 import { Janitor } from "@rbxts/janitor";
-import { GuiService, UserInputService } from "@rbxts/services";
+import { GuiService, UserInputService, Workspace } from "@rbxts/services";
 import { Events } from "client/network";
-import { clientStore, selectAnyPanelOpen, selectPanelOpen } from "client/store";
-import { sanitizeJuiceOverrides, type JuiceOverrides } from "shared/settings";
+import { clientStore, selectAnyPanelOpen, selectOverrides, selectPanelOpen } from "client/store";
+import { diffControlsOverrides, type Bindings } from "shared/play";
+import {
+	SETTINGS_ATTRIBUTES,
+	applyJuicePatch,
+	sanitizeAudioOverrides,
+	sanitizeDisplayOverrides,
+	sanitizeJuiceOverrides,
+	sanitizeSettingsOverrides,
+	sanitizeSettingsPatch,
+	type AudioOverrides,
+	type DisplayOverrides,
+	type JuiceOverrides,
+	type SettingsGroup,
+	type SettingsOverrides,
+} from "shared/settings";
 import { SETTINGS_KEY, SETTINGS_PAD_CLOSE_KEY } from "shared/view/hud";
 import { SimController } from "../game/SimController";
 
 /**
- * The player's juice settings (port of the store + O key of project-kaleb-vale src/fx/settings.ts and
- * JuiceSettingsPanel.tsx @ 42897e2, persisted by the server instead of localStorage: docs/SERVER.md):
+ * The player's settings (port of the store + O key of project-kaleb-vale src/fx/settings.ts and
+ * JuiceSettingsPanel.tsx @ 42897e2, persisted by the server instead of localStorage: docs/SERVER.md; since task L4
+ * every group of the settings document v2: juice, controls, audio, display):
  *
  *   load     `requestSettings` at start; every `settingsChanged` (also sent once after join) replaces the overrides.
  *            Until the server answers, the game runs on the defaults (works offline / in a server-less test place).
- *   change   applied locally at once (Reflex `patchOverrides`), then sent with `updateSettings`; the server's answer
- *            confirms or corrects it. Reset clears the overrides (reducedMotion follows the system again).
+ *            With the Workspace attribute KV_ResetBindings on, the first answer's bindings are cleared (dev tool).
+ *   change   applied locally at once (Reflex `patchOverrides`), then sent with `updateSettings` as the whole changed
+ *            group; the server's answer confirms or corrects it. A group reset sends that group empty; `reset()`
+ *            with no group clears every group (reducedMotion follows the system again).
  *   system   GuiService.ReducedMotionEnabled (and its changes) is the default for reducedMotion.
- *   panel    O toggles the juice settings panel (not while typing); the pause overlay opens it too (gamepad route).
- *            While it is open the run is paused (SimController.setUiPause) so its clicks never reach the game.
+ *   panel    O toggles the Options screen (not while typing, not while a rebind capture owns the input); the pause
+ *            overlay opens it too (gamepad route). Pad B closes it (or, first, the swap prompt / reset confirmation
+ *            on it). While it is open the run is paused (SimController.setUiPause) so its clicks never reach the game.
  */
 @Controller({})
 export class SettingsController implements OnStart {
 	private readonly janitor = new Janitor();
+	private bindingsResetPending = false;
 
 	constructor(private readonly sim: SimController) {}
 
 	onStart(): void {
+		this.bindingsResetPending = Workspace.GetAttribute(SETTINGS_ATTRIBUTES.resetBindings) === true;
 		clientStore.setSystemReducedMotion(GuiService.ReducedMotionEnabled);
 		this.janitor.Add(
 			GuiService.GetPropertyChangedSignal("ReducedMotionEnabled").Connect(() =>
@@ -33,18 +53,25 @@ export class SettingsController implements OnStart {
 			),
 		);
 		this.janitor.Add(
-			Events.settingsChanged.connect((overrides) =>
-				clientStore.setOverrides(sanitizeJuiceOverrides(overrides), true),
-			),
+			Events.settingsChanged.connect((overrides) => {
+				clientStore.setOverrides(sanitizeSettingsOverrides(overrides), true);
+				if (!this.bindingsResetPending) return;
+				this.bindingsResetPending = false;
+				if (selectOverrides(clientStore.getState()).controls !== undefined) this.patch({ controls: {} });
+			}),
 		);
 		Events.requestSettings.fire();
 
 		this.janitor.Add(
 			UserInputService.InputBegan.Connect((input, processed) => {
-				const open = selectPanelOpen(clientStore.getState());
-				// B (GUI "back") closes the panel; the GUI may have processed it already, so `processed` is ignored.
+				const state = clientStore.getState();
+				if (state.options.inputCaptured) return; // the rebind capture owns this input
+				const open = selectPanelOpen(state);
+				// B (GUI "back") closes a prompt, then the screen; the GUI may have processed it, so `processed` is ignored.
 				if (open && input.KeyCode.Name === SETTINGS_PAD_CLOSE_KEY) {
-					this.setPanelOpen(false);
+					if (state.options.conflict !== undefined) clientStore.setConflict(undefined);
+					else if (state.options.confirmReset !== undefined) clientStore.setConfirmReset(undefined);
+					else this.setPanelOpen(false);
 					return;
 				}
 				if (processed || input.KeyCode.Name !== SETTINGS_KEY) return;
@@ -53,28 +80,62 @@ export class SettingsController implements OnStart {
 			}),
 		);
 		this.janitor.Add(
-			// Either menu panel (juice settings, leaderboards) pauses the run while open.
+			// Either menu panel (Options, leaderboards) pauses the run while open.
 			clientStore.subscribe(selectAnyPanelOpen, (open) => {
 				this.sim.setUiPause(open);
 			}),
 		);
 	}
 
+	/** Opens / closes the Options screen (one menu panel at a time). The existing "open settings" action. */
 	setPanelOpen(open: boolean): void {
-		if (open) clientStore.setLeaderboardOpen(false); // one menu panel at a time
+		if (open) clientStore.setLeaderboardOpen(false);
+		else clientStore.clearRebindUi();
 		clientStore.setPanelOpen(open);
 	}
 
-	/** Change some settings (invalid keys / values are dropped by the store and by the server). */
+	/** Change some juice settings (merged into the juice group; invalid keys / values are dropped). */
 	update(patch: JuiceOverrides): void {
-		const clean = sanitizeJuiceOverrides(patch);
-		clientStore.patchOverrides(clean);
-		Events.updateSettings.fire(clean);
+		const juice = applyJuicePatch(
+			selectOverrides(clientStore.getState()).juice ?? {},
+			sanitizeJuiceOverrides(patch),
+		);
+		this.patch({ juice });
 	}
 
-	/** Back to the defaults (reducedMotion follows the system setting again). */
-	reset(): void {
+	/** Change some volumes (merged into the audio group). */
+	updateAudio(patch: AudioOverrides): void {
+		const current = selectOverrides(clientStore.getState()).audio ?? {};
+		this.patch({ audio: sanitizeAudioOverrides({ ...current, ...patch }) });
+	}
+
+	/** Change display settings (merged into the display group). */
+	updateDisplay(patch: DisplayOverrides): void {
+		const current = selectOverrides(clientStore.getState()).display ?? {};
+		this.patch({ display: sanitizeDisplayOverrides({ ...current, ...patch }) });
+	}
+
+	/** Store a whole key layout (as its overrides: the actions that differ from the defaults). */
+	setBindings(bindings: Bindings): void {
+		this.patch({ controls: diffControlsOverrides(bindings) });
+	}
+
+	/** One group back to its defaults, or (no group) every group (reducedMotion follows the system setting again). */
+	reset(group?: SettingsGroup): void {
+		if (group !== undefined) {
+			const clear: Record<string, object> = {};
+			clear[group] = {};
+			this.patch(clear as SettingsOverrides);
+			return;
+		}
 		clientStore.setOverrides({}, false);
 		Events.resetSettings.fire();
+	}
+
+	/** Applies `patch` locally (each group present replaces that group) and sends it. */
+	private patch(patch: SettingsOverrides): void {
+		const clean = sanitizeSettingsPatch(patch);
+		clientStore.patchOverrides(clean);
+		Events.updateSettings.fire(clean);
 	}
 }

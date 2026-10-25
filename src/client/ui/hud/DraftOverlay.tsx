@@ -1,10 +1,10 @@
 import React from "@rbxts/react";
 import { useSelector } from "@rbxts/react-reflex";
-import { selectInputDevice, selectSnapshot } from "client/store";
+import { selectBindings, selectInputDevice, selectSnapshot } from "client/store";
+import { draftHint } from "shared/play";
 import { HUD_FONT, role, str } from "client/ui/theme";
 import { BOONS, DRAFT_OFFER_COUNT } from "shared/sim";
 import {
-	DRAFT_HINT,
 	HUD_VIEW,
 	PROGRESSION_STRINGS,
 	PROGRESSION_VIEW,
@@ -108,6 +108,7 @@ function WaitingLine(props: { order: number; count: number }) {
 export function DraftOverlay() {
 	const s = useSelector(selectSnapshot);
 	const device = useSelector(selectInputDevice);
+	const bindings = useSelector(selectBindings);
 	if (!s.draftOpen) {
 		if (s.draftWaiting <= 0) return undefined;
 		return (
@@ -125,7 +126,7 @@ export function DraftOverlay() {
 	}
 	const v = PROGRESSION_VIEW;
 	const width = DRAFT_CARDS_WIDTH;
-	const hint = DRAFT_HINT[device];
+	const hint = draftHint(bindings)[device];
 	const cards = s.draftOffers.map((boon, i) => (
 		<DraftCard key={`c${i}`} order={i + 1} boon={boon} selected={i === s.draftSelected} />
 	));

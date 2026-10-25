@@ -45,6 +45,10 @@ export interface RunInfo {
 	readonly notice: string;
 	/** The floor's biome, 1..5 (theme BIOMES order), or 0 without a floor (greybox). Picks the biome music. */
 	readonly biome: number;
+	/** A co-op (lockstep) run: no pause, no restart; the pause key opens the non-pausing party overlay. */
+	readonly coop: boolean;
+	/** The lobby whose start began this run ("" for a run started from the main menu or by R). */
+	readonly lobbyId: string;
 }
 
 /** One HUD toast (M2: boon taken, relic found, curse accepted, Second Wind, Fang heal); text from the theme. */
@@ -59,15 +63,6 @@ export interface ToastView {
 	readonly until: number;
 }
 
-/** A co-op invite waiting for this player's answer (the HUD prompt: accept / decline). */
-export interface PartyInviteView {
-	readonly inviteId: string;
-	readonly hostName: string;
-	/** Players in the party, the host included. */
-	readonly count: number;
-	readonly accepted: number;
-}
-
 export interface GameState {
 	readonly snapshot: GameSnapshot;
 	/** The last boss seen this run (its corpse may be gone by the time the victory line shows). */
@@ -79,8 +74,8 @@ export interface GameState {
 	readonly active: boolean;
 	/** Newest last; at most PROGRESSION_VIEW.maxToasts. */
 	readonly toasts: ReadonlyArray<ToastView>;
-	/** A co-op invite to answer, or undefined. */
-	readonly partyInvite: PartyInviteView | undefined;
+	/** A run start is on its way (the ranked `startRun` waits for the server): the menu layer shows "Starting run". */
+	readonly starting: boolean;
 }
 
 const NO_VERDICT: VerdictView = { status: "none" };
@@ -91,10 +86,21 @@ const initialState: GameState = {
 	inputDevice: "keyboard",
 	verdict: NO_VERDICT,
 	replayCheck: undefined,
-	run: { seed: 0, world: "game", placeKey: "", dungeonName: "", debug: false, run: 0, notice: "", biome: 0 },
+	run: {
+		seed: 0,
+		world: "game",
+		placeKey: "",
+		dungeonName: "",
+		debug: false,
+		run: 0,
+		notice: "",
+		biome: 0,
+		coop: false,
+		lobbyId: "",
+	},
 	active: false,
 	toasts: [],
-	partyInvite: undefined,
+	starting: false,
 };
 
 export const gameSlice = createProducer(initialState, {
@@ -118,15 +124,25 @@ export const gameSlice = createProducer(initialState, {
 		replayCheck: undefined,
 		active: true,
 		toasts: [],
+		starting: false,
 	}),
+	/** The run was left for the menu (run over, Leave run): no run, no HUD; the last verdict stays. */
+	endRun: (state) => ({
+		...state,
+		snapshot: EMPTY_SNAPSHOT,
+		lastBossId: "",
+		replayCheck: undefined,
+		active: false,
+		toasts: [],
+		starting: false,
+	}),
+	setRunStarting: (state, starting: boolean) => (state.starting === starting ? state : { ...state, starting }),
 	/** Adds a toast (the oldest drops past `max`). */
 	pushToast: (state, toast: ToastView, max: number) => {
 		const toasts = [...state.toasts, toast];
 		while (toasts.size() > max) toasts.remove(0);
 		return { ...state, toasts };
 	},
-	/** The co-op invite prompt (undefined hides it). */
-	setPartyInvite: (state, partyInvite: PartyInviteView | undefined) => ({ ...state, partyInvite }),
 	/** Drops the toasts whose time is up (no change, no new state). */
 	expireToasts: (state, now: number) =>
 		state.toasts.some((t) => t.until <= now)
@@ -143,4 +159,4 @@ export const selectReplayCheck = (state: { game: GameState }) => state.game.repl
 export const selectRunInfo = (state: { game: GameState }) => state.game.run;
 export const selectGameActive = (state: { game: GameState }) => state.game.active;
 export const selectToasts = (state: { game: GameState }) => state.game.toasts;
-export const selectPartyInvite = (state: { game: GameState }) => state.game.partyInvite;
+export const selectRunStarting = (state: { game: GameState }) => state.game.starting;

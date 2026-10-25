@@ -1,0 +1,252 @@
+import React, { useRef, useState } from "@rbxts/react";
+import { useSelector } from "@rbxts/react-reflex";
+import { Players } from "@rbxts/services";
+import { selectInputDevice, selectLobby } from "client/store";
+import { MenuButton, Panel, Row, Text } from "client/ui/hud";
+import { str } from "client/ui/theme";
+import { LOBBY_VISIBILITIES } from "shared/lobby";
+import { SFX } from "shared/view/audio";
+import { HUD_VIEW } from "shared/view/hud";
+import {
+	LOBBY_STRINGS,
+	MENU_BACK_HINT,
+	MENU_STRINGS,
+	MENU_VIEW,
+	countdownLeft,
+	inviteCandidates,
+	lobbyRoomModel,
+	lobbyVisibilityKey,
+} from "shared/view/menu";
+import { useMenuActions } from "./actions";
+import { spec, useClock, useGamepadFocus, useNameOf } from "./hooks";
+import { Cell, ListRow, ScrollList } from "./widgets";
+
+const HALF = 0.5;
+const SMALL = new Vector2(MENU_VIEW.smallButton.x, MENU_VIEW.smallButton.y);
+const WIDE = new Vector2(MENU_VIEW.wideButton.x, MENU_VIEW.wideButton.y);
+
+/**
+ * The lobby room (task L5): the lobby's name and status (waiting / everyone ready / "Starting in N..." / "Run in
+ * progress"), its members in join order (name, host crown, ready tick; the host gets Kick and Make host on the others'
+ * rows), the host's controls (visibility Open / Friends / Closed, Rename through the preset names, Start: "Start solo
+ * run" when alone, enabled once everyone is ready), and for everyone Ready, Invite (the players in this server outside
+ * the lobby; "Invited" while an invite is live) and Leave lobby. Host-only controls are hidden for the others.
+ */
+export function LobbyRoom() {
+	const actions = useMenuActions();
+	const lobby = useSelector(selectLobby);
+	const device = useSelector(selectInputDevice);
+	const nameOf = useNameOf();
+	const [inviting, setInviting] = useState(false);
+	const firstRef = useRef<TextButton>();
+	const view = lobby.mine;
+	const now = useClock(view?.phase === "countdown");
+	useGamepadFocus(firstRef, `lobby${view?.lobbyId ?? ""}${inviting ? "i" : ""}`, view !== undefined);
+	if (view === undefined) return undefined;
+
+	const me = Players.LocalPlayer.UserId;
+	const m = lobbyRoomModel(view, me, nameOf, countdownLeft(view.countdownIn, now - lobby.mineAt));
+
+	const memberRows = m.members.map((r, i) => (
+		<ListRow key={`m${r.userId}`} order={i + 1}>
+			<Cell
+				order={1}
+				width={MENU_VIEW.nameWidth}
+				color={r.me ? "uiAccent" : "uiText"}
+				text={r.me ? `${r.name} ${str(LOBBY_STRINGS.you)}` : r.name}
+			/>
+			<Cell
+				order={2}
+				width={MENU_VIEW.countWidth}
+				color="uiAccent"
+				text={r.host ? str(LOBBY_STRINGS.host) : ""}
+			/>
+			<Cell
+				order={3}
+				width={MENU_VIEW.tagWidth}
+				color={r.ready ? "uiAccent" : "uiTextDim"}
+				text={str(r.ready ? LOBBY_STRINGS.ready : LOBBY_STRINGS.notReady)}
+			/>
+			{r.canKick ? (
+				<MenuButton
+					order={4}
+					name={`Kick_${r.userId}`}
+					size={SMALL}
+					textSize={HUD_VIEW.smallText}
+					text={str(LOBBY_STRINGS.kick)}
+					onActivated={() => {
+						actions.playUi(SFX.uiClick);
+						actions.kick(r.userId);
+					}}
+				/>
+			) : undefined}
+			{r.canMakeHost ? (
+				<MenuButton
+					order={5}
+					name={`MakeHost_${r.userId}`}
+					size={SMALL}
+					textSize={HUD_VIEW.smallText}
+					text={str(LOBBY_STRINGS.makeHost)}
+					onActivated={() => {
+						actions.playUi(SFX.uiClick);
+						actions.makeHost(r.userId);
+					}}
+				/>
+			) : undefined}
+		</ListRow>
+	));
+
+	const hostControls = m.isHost ? (
+		<Row order={5} align={Enum.HorizontalAlignment.Center}>
+			<Text order={1} width={MENU_VIEW.tagWidth} text={str(LOBBY_STRINGS.visibility)} />
+			{LOBBY_VISIBILITIES.map((v, i) => (
+				<MenuButton
+					key={v}
+					order={i + 2}
+					name={`Vis_${v}`}
+					size={SMALL}
+					textSize={HUD_VIEW.smallText}
+					text={str(lobbyVisibilityKey(v))}
+					active={v === m.visibility}
+					disabled={!m.canEdit}
+					onActivated={() => {
+						actions.playUi(SFX.uiClick);
+						actions.setVisibility(v);
+					}}
+				/>
+			))}
+			<MenuButton
+				order={LOBBY_VISIBILITIES.size() + 2}
+				name="Rename"
+				size={SMALL}
+				textSize={HUD_VIEW.smallText}
+				text={str(LOBBY_STRINGS.rename)}
+				disabled={!m.canEdit}
+				onActivated={() => {
+					actions.playUi(SFX.uiClick);
+					actions.rename();
+				}}
+			/>
+		</Row>
+	) : undefined;
+
+	const candidates = inviting ? inviteCandidates(lobby.players, view, me, m.canInvite) : [];
+	const invitePanel = inviting ? (
+		<Panel position={new UDim2()} anchor={new Vector2()} order={7} width={MENU_VIEW.screenWidth - HUD_VIEW.pad * 4}>
+			<Text order={1} color="uiAccent" text={str(LOBBY_STRINGS.inviteTitle)} />
+			<ScrollList order={2} height={MENU_VIEW.inviteListHeight}>
+				{candidates.size() > 0 ? (
+					candidates.map((c, i) => (
+						<ListRow key={`c${c.userId}`} order={i + 1}>
+							<Cell order={1} width={MENU_VIEW.nameWidth} text={c.name} />
+							<MenuButton
+								order={2}
+								name={`Invite_${c.userId}`}
+								size={SMALL}
+								textSize={HUD_VIEW.smallText}
+								text={str(c.invited ? LOBBY_STRINGS.invited : LOBBY_STRINGS.inviteSend)}
+								disabled={!c.canInvite}
+								onActivated={() => {
+									actions.playUi(SFX.uiConfirm);
+									actions.invite(c.userId);
+								}}
+							/>
+						</ListRow>
+					))
+				) : (
+					<Text key="None" order={1} color="uiTextDim" text={str(LOBBY_STRINGS.inviteNone)} />
+				)}
+			</ScrollList>
+		</Panel>
+	) : undefined;
+
+	return (
+		<Panel
+			position={UDim2.fromScale(HALF, HALF)}
+			anchor={new Vector2(HALF, HALF)}
+			width={MENU_VIEW.screenWidth}
+			padding={HUD_VIEW.pad * 2}
+			name="LobbyRoom"
+		>
+			<Text order={1} size={HUD_VIEW.titleText} color="uiAccent" text={spec(m.title)} />
+			<Text order={2} color={m.inRun ? "uiTextDim" : "uiText"} text={spec(m.status)} />
+			<Text order={3} size={HUD_VIEW.smallText} color="uiTextDim" text={spec(m.membersLine)} />
+			<ScrollList order={4} height={MENU_VIEW.listHeight}>
+				{memberRows}
+			</ScrollList>
+			{hostControls}
+			<Row order={6} align={Enum.HorizontalAlignment.Center}>
+				<MenuButton
+					ref={firstRef}
+					order={1}
+					name="Ready"
+					size={SMALL}
+					textSize={HUD_VIEW.smallText}
+					text={str(m.meReady ? LOBBY_STRINGS.unready : LOBBY_STRINGS.readyUp)}
+					active={m.meReady}
+					disabled={!m.canReady}
+					onActivated={() => {
+						actions.playUi(SFX.uiClick);
+						actions.setReady(!m.meReady);
+					}}
+				/>
+				<MenuButton
+					order={2}
+					name="Invite"
+					size={SMALL}
+					textSize={HUD_VIEW.smallText}
+					text={str(LOBBY_STRINGS.invite)}
+					active={inviting}
+					onActivated={() => {
+						actions.playUi(SFX.uiClick);
+						setInviting(!inviting);
+					}}
+				/>
+				{m.isHost ? (
+					<MenuButton
+						order={3}
+						name="Start"
+						size={WIDE}
+						textSize={HUD_VIEW.smallText}
+						text={str(m.startKey)}
+						disabled={!m.canStart}
+						onActivated={() => {
+							actions.playUi(SFX.uiConfirm);
+							actions.startLobby();
+						}}
+					/>
+				) : undefined}
+				<MenuButton
+					order={4}
+					name="Leave"
+					size={SMALL}
+					textSize={HUD_VIEW.smallText}
+					text={str(LOBBY_STRINGS.leave)}
+					onActivated={() => {
+						actions.playUi(SFX.uiClick);
+						actions.leaveLobby();
+					}}
+				/>
+				<MenuButton
+					order={5}
+					name="Back"
+					size={SMALL}
+					textSize={HUD_VIEW.smallText}
+					text={str(MENU_STRINGS.back)}
+					onActivated={() => {
+						actions.playUi(SFX.uiClick);
+						actions.back();
+					}}
+				/>
+			</Row>
+			{invitePanel}
+			<Text
+				order={8}
+				size={HUD_VIEW.smallText}
+				color="uiTextDim"
+				align={Enum.TextXAlignment.Center}
+				text={str(MENU_STRINGS.backHint, { key: MENU_BACK_HINT[device] })}
+			/>
+		</Panel>
+	);
+}

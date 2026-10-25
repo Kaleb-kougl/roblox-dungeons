@@ -8,6 +8,8 @@
  *
  * Roblox remaps (Roblox reserves Escape and Tab): PAUSE is P (web: Escape), SWAP is E (web: Tab). Gamepad bindings
  * are the web build's standard mapping: RT fire, LT alt, LB roll, RB Ember, Y swap, dpad up flask, Start pause.
+ * The layout is rebindable (task L4b): every mapping function takes a `Bindings` (shared/play bindings.ts), default
+ * DEFAULT_BINDINGS (the layout above); the exported tables below are that default layout's.
  */
 import { CAMERA_YAW_DEG } from "shared/config";
 import {
@@ -19,71 +21,109 @@ import {
 	quantizeInput,
 	type InputFrame,
 } from "shared/sim";
-import { STICK_DEADZONE, TRIGGER_THRESHOLD } from "./config";
+import {
+	ACTION_BUTTONS,
+	DEFAULT_BINDINGS,
+	KBM_ACTIONS,
+	PAD_ACTIONS,
+	isMouseButtonName,
+	type Bindings,
+} from "./bindings";
+import { DEBUG_REPLAY_CHECK_KEYS, FIXED_INPUTS, STICK_DEADZONE, TRIGGER_THRESHOLD } from "./config";
 
 // ---------------------------------------------------------------------------------------------
-// Bindings
+// Bindings (bindings.ts holds the rebindable layout; this compiles one into lookup tables)
 
-/** Enum.KeyCode name -> button bit (web KEY_BINDINGS with the Roblox remaps). */
-export const KEY_BINDINGS: ReadonlyMap<string, number> = new Map<string, number>([
-	["Space", Button.ROLL],
-	["Q", Button.EMBER],
-	["One", Button.SKILL1],
-	["Two", Button.SKILL2],
-	["Three", Button.SKILL3],
-	["Four", Button.SKILL4],
-	["F", Button.FLASK],
-	["E", Button.SWAP], // web: Tab (Roblox: player list)
-	["P", Button.PAUSE], // web: Escape (Roblox: the game menu)
-	["K", Button.DEBUG_HIT], // debug: one normal hit on the player
-	["J", Button.DEBUG_BOSS], // debug: 10% of max hp off an engaged boss
-	["N", DEBUG_FLOOR_BUTTON], // debug (endless): end the floor now (Roblox port)
-]);
-
-/** Movement keys (web: WASD; the arrows are a Roblox convenience). */
-export const MOVE_KEYS = {
-	up: ["W", "Up"],
-	down: ["S", "Down"],
-	left: ["A", "Left"],
-	right: ["D", "Right"],
-} as const;
-
-/** Enum.UserInputType name -> button bit (web MOUSE_BINDINGS). */
-export const MOUSE_BINDINGS: ReadonlyMap<string, number> = new Map<string, number>([
-	["MouseButton1", Button.FIRE],
-	["MouseButton2", Button.ALT],
-]);
-
-/** Gamepad Enum.KeyCode name -> button bit (web PAD_BINDINGS, standard mapping). */
-export const PAD_BINDINGS: ReadonlyMap<string, number> = new Map<string, number>([
-	["ButtonR2", Button.FIRE], // RT
-	["ButtonL2", Button.ALT], // LT
-	["ButtonL1", Button.ROLL], // LB
-	["ButtonR1", Button.EMBER], // RB
-	["ButtonA", Button.SKILL1],
-	["ButtonB", Button.SKILL2],
-	["ButtonX", Button.SKILL3],
-	["ButtonY", Button.SWAP],
-	["DPadRight", Button.SKILL4],
-	["DPadUp", Button.FLASK],
-	["ButtonStart", Button.PAUSE],
-]);
-
-/** Analog trigger names: pressed when held OR their analog value passes TRIGGER_THRESHOLD. */
+/** Analog trigger names: pressed when held OR their analog value passes TRIGGER_THRESHOLD, whatever they are bound to. */
 export const LEFT_TRIGGER = "ButtonL2";
 export const RIGHT_TRIGGER = "ButtonR2";
 
-/** Driver keys (not sim input; web driverKeys.ts): restart (any time), replay check (debug only). */
-export const RESTART_KEY = "R";
-/** F8 as in the web build; L as well, because Roblox Studio can take F8 for itself while playing. */
-export const REPLAY_CHECK_KEYS: ReadonlyArray<string> = ["F8", "L"];
-/** Gamepad restart: only while the run is over (dead / victory) or paused, so a stray press never ends a run. */
-export const PAD_RESTART_KEY = "DPadDown";
+/** One Bindings as lookup tables: input name -> button bits, the move keys, the restart inputs. */
+interface CompiledBindings {
+	readonly source: Bindings;
+	/** Enum.KeyCode name -> button bits (the rebindable actions plus the fixed pause and debug keys). */
+	readonly keyBits: ReadonlyMap<string, number>;
+	/** Enum.UserInputType mouse button name -> button bits. */
+	readonly mouseBits: ReadonlyMap<string, number>;
+	/** Gamepad Enum.KeyCode name -> button bits (plus the fixed Start pause). */
+	readonly padBits: ReadonlyMap<string, number>;
+	readonly up: ReadonlyArray<string>;
+	readonly down: ReadonlyArray<string>;
+	readonly left: ReadonlyArray<string>;
+	readonly right: ReadonlyArray<string>;
+	readonly restartKbm: ReadonlyArray<string>;
+	readonly restartPad: string;
+}
 
-/** The key the HUD names for SWAP, per device (web: Tab / Y). */
-export const SWAP_HINT = { keyboard: "E", gamepad: "Y" } as const;
-/** The key the HUD names for restart, per device. */
-export const RESTART_HINT = { keyboard: RESTART_KEY, gamepad: "D-pad down" } as const;
+function orInto(map: Map<string, number>, name: string, bit: number): void {
+	map.set(name, bit32.bor(map.get(name) ?? 0, bit));
+}
+
+function compile(b: Bindings): CompiledBindings {
+	const keyBits = new Map<string, number>();
+	const mouseBits = new Map<string, number>();
+	const padBits = new Map<string, number>();
+	orInto(keyBits, FIXED_INPUTS.pause, Button.PAUSE); // web: Escape (Roblox: the game menu)
+	orInto(keyBits, FIXED_INPUTS.debugHit, Button.DEBUG_HIT); // debug: one normal hit on the player
+	orInto(keyBits, FIXED_INPUTS.debugBoss, Button.DEBUG_BOSS); // debug: 10% of max hp off an engaged boss
+	orInto(keyBits, FIXED_INPUTS.debugFloor, DEBUG_FLOOR_BUTTON); // debug (endless): end the floor now (Roblox port)
+	orInto(padBits, FIXED_INPUTS.padPause, Button.PAUSE);
+	for (const action of KBM_ACTIONS) {
+		const bit = ACTION_BUTTONS.get(action);
+		if (bit === undefined) continue;
+		for (const name of b.kbm[action]) orInto(isMouseButtonName(name) ? mouseBits : keyBits, name, bit);
+	}
+	for (const action of PAD_ACTIONS) {
+		const bit = ACTION_BUTTONS.get(action);
+		if (bit !== undefined) orInto(padBits, b.pad[action], bit);
+	}
+	return {
+		source: b,
+		keyBits,
+		mouseBits,
+		padBits,
+		up: b.kbm.moveUp,
+		down: b.kbm.moveDown,
+		left: b.kbm.moveLeft,
+		right: b.kbm.moveRight,
+		restartKbm: b.kbm.restart,
+		restartPad: b.pad.restart,
+	};
+}
+
+const DEFAULT_COMPILED = compile(DEFAULT_BINDINGS);
+/** One-entry cache: Bindings are immutable values (every edit returns a new one), so identity is enough. */
+let lastCompiled = DEFAULT_COMPILED;
+
+function compiled(b: Bindings): CompiledBindings {
+	if (b === DEFAULT_COMPILED.source) return DEFAULT_COMPILED;
+	if (b !== lastCompiled.source) lastCompiled = compile(b);
+	return lastCompiled;
+}
+
+/** Enum.KeyCode name -> button bit, default layout (web KEY_BINDINGS with the Roblox remaps: E swap, P pause). */
+export const KEY_BINDINGS: ReadonlyMap<string, number> = DEFAULT_COMPILED.keyBits;
+
+/** Movement keys of the default layout (web: WASD; the arrows are a Roblox convenience). */
+export const MOVE_KEYS = {
+	up: DEFAULT_COMPILED.up,
+	down: DEFAULT_COMPILED.down,
+	left: DEFAULT_COMPILED.left,
+	right: DEFAULT_COMPILED.right,
+} as const;
+
+/** Enum.UserInputType name -> button bit, default layout (web MOUSE_BINDINGS). */
+export const MOUSE_BINDINGS: ReadonlyMap<string, number> = DEFAULT_COMPILED.mouseBits;
+
+/** Gamepad Enum.KeyCode name -> button bit, default layout (web PAD_BINDINGS, standard mapping). */
+export const PAD_BINDINGS: ReadonlyMap<string, number> = DEFAULT_COMPILED.padBits;
+
+/** Driver keys (not sim input; web driverKeys.ts): the default restart key (any time). */
+export const RESTART_KEY = DEFAULT_BINDINGS.kbm.restart[0];
+/** F8 as in the web build; L as well, because Roblox Studio can take F8 for itself while playing. Fixed. */
+export const REPLAY_CHECK_KEYS: ReadonlyArray<string> = DEBUG_REPLAY_CHECK_KEYS;
+/** Default gamepad restart: only while the run is over (dead / victory) or paused, so a stray press never ends a run. */
+export const PAD_RESTART_KEY = DEFAULT_BINDINGS.pad.restart;
 
 /** Button bits that only exist for debugging: stripped unless debug keys are on (web DEBUG_BUTTONS). */
 export const DEBUG_BUTTONS = bit32.bor(Button.DEBUG_HIT, Button.DEBUG_BOSS);
@@ -176,26 +216,38 @@ export function normalizeOrZero(x: number, y: number, minLength = 1e-6): Vec2 {
 	return { x: x / len, y: y / len };
 }
 
-function anyHeld(keys: ReadonlySet<string>, names: ReadonlyArray<string>): boolean {
-	for (const n of names) if (keys.has(n)) return true;
+const NO_NAMES: ReadonlySet<string> = new Set<string>();
+
+function anyHeld(keys: ReadonlySet<string>, mouse: ReadonlySet<string>, names: ReadonlyArray<string>): boolean {
+	for (const n of names) if (keys.has(n) || mouse.has(n)) return true;
 	return false;
 }
 
-/** WASD / arrows -> screen-relative (right, up), diagonals normalized to length 1. */
-export function keyboardMoveVector(keys: ReadonlySet<string>): Vec2 {
-	const x = (anyHeld(keys, MOVE_KEYS.right) ? 1 : 0) - (anyHeld(keys, MOVE_KEYS.left) ? 1 : 0);
-	const y = (anyHeld(keys, MOVE_KEYS.up) ? 1 : 0) - (anyHeld(keys, MOVE_KEYS.down) ? 1 : 0);
+/**
+ * The bound move keys (default WASD / arrows) -> screen-relative (right, up), diagonals normalized to length 1.
+ * A move slot may hold a mouse button: pass the held mouse buttons for those.
+ */
+export function keyboardMoveVector(
+	keys: ReadonlySet<string>,
+	bindings: Bindings = DEFAULT_BINDINGS,
+	mouseButtons: ReadonlySet<string> = NO_NAMES,
+): Vec2 {
+	const c = compiled(bindings);
+	const x = (anyHeld(keys, mouseButtons, c.right) ? 1 : 0) - (anyHeld(keys, mouseButtons, c.left) ? 1 : 0);
+	const y = (anyHeld(keys, mouseButtons, c.up) ? 1 : 0) - (anyHeld(keys, mouseButtons, c.down) ? 1 : 0);
 	if (x !== 0 && y !== 0) return { x: x * SQRT1_2, y: y * SQRT1_2 };
 	return { x, y };
 }
 
-export function keyboardMouseButtons(kbm: KeyboardMouseSnapshot): number {
+export function keyboardMouseButtons(kbm: KeyboardMouseSnapshot, bindings: Bindings = DEFAULT_BINDINGS): number {
+	const c = compiled(bindings);
 	let bits = 0;
-	for (const key of kbm.keys) bits = bit32.bor(bits, KEY_BINDINGS.get(key) ?? 0);
-	for (const b of kbm.mouseButtons) bits = bit32.bor(bits, MOUSE_BINDINGS.get(b) ?? 0);
+	for (const key of kbm.keys) bits = bit32.bor(bits, c.keyBits.get(key) ?? 0);
+	for (const b of kbm.mouseButtons) bits = bit32.bor(bits, c.mouseBits.get(b) ?? 0);
 	return bits;
 }
 
+/** Held, or (a trigger, whatever action it is bound to) its analog value is past TRIGGER_THRESHOLD. */
 function padButtonDown(pad: GamepadSnapshot, name: string): boolean {
 	if (pad.buttons.has(name)) return true;
 	if (name === LEFT_TRIGGER) return finite(pad.leftTrigger) > TRIGGER_THRESHOLD;
@@ -203,9 +255,9 @@ function padButtonDown(pad: GamepadSnapshot, name: string): boolean {
 	return false;
 }
 
-export function gamepadButtons(pad: GamepadSnapshot): number {
+export function gamepadButtons(pad: GamepadSnapshot, bindings: Bindings = DEFAULT_BINDINGS): number {
 	let bits = 0;
-	for (const [name, bit] of PAD_BINDINGS) if (padButtonDown(pad, name)) bits = bit32.bor(bits, bit);
+	for (const [name, bit] of compiled(bindings).padBits) if (padButtonDown(pad, name)) bits = bit32.bor(bits, bit);
 	return bits;
 }
 
@@ -227,17 +279,28 @@ export function isStickAiming(pad: GamepadSnapshot | undefined, deadzone: number
 }
 
 /** True if any mapped pad button is down or either stick is outside the deadzone (the player is using the pad). */
-export function isPadActive(pad: GamepadSnapshot | undefined, deadzone: number = STICK_DEADZONE): boolean {
+export function isPadActive(
+	pad: GamepadSnapshot | undefined,
+	deadzone: number = STICK_DEADZONE,
+	bindings: Bindings = DEFAULT_BINDINGS,
+): boolean {
 	if (pad === undefined) return false;
-	if (gamepadButtons(pad) !== 0) return true;
+	if (gamepadButtons(pad, bindings) !== 0) return true;
 	const ls = gamepadMoveVector(pad, deadzone);
 	return ls.x !== 0 || ls.y !== 0 || isStickAiming(pad, deadzone);
 }
 
-/** Combines every device into one quantized, world-space InputFrame (web mapDevicesToInput). */
-export function mapDevicesToInput(snap: DeviceSnapshot, out: InputFrame = { ...EMPTY_INPUT }): InputFrame {
+/**
+ * Combines every device into one quantized, world-space InputFrame (web mapDevicesToInput) through `bindings`
+ * (default: today's layout). A rebound layout pressed with the equivalent inputs gives the same frame, bit for bit.
+ */
+export function mapDevicesToInput(
+	snap: DeviceSnapshot,
+	out: InputFrame = { ...EMPTY_INPUT },
+	bindings: Bindings = DEFAULT_BINDINGS,
+): InputFrame {
 	// Move: keyboard + left stick, summed and clamped to unit length, then rotated to world.
-	const kb = keyboardMoveVector(snap.kbm.keys);
+	const kb = keyboardMoveVector(snap.kbm.keys, bindings, snap.kbm.mouseButtons);
 	const ls = snap.pad !== undefined ? gamepadMoveVector(snap.pad) : ZERO;
 	const moveScreen = clampUnit(kb.x + ls.x, kb.y + ls.y);
 	const move = screenToWorld(moveScreen.x, moveScreen.y);
@@ -252,8 +315,8 @@ export function mapDevicesToInput(snap: DeviceSnapshot, out: InputFrame = { ...E
 		aim = normalizeOrZero(w.x, w.z);
 	}
 
-	let buttons = keyboardMouseButtons(snap.kbm);
-	if (snap.pad !== undefined) buttons = bit32.bor(buttons, gamepadButtons(snap.pad));
+	let buttons = keyboardMouseButtons(snap.kbm, bindings);
+	if (snap.pad !== undefined) buttons = bit32.bor(buttons, gamepadButtons(snap.pad, bindings));
 
 	quantizeInput(move.x, move.z, aim.x, aim.y, buttons, out);
 	// quantizeButtons keeps the web build's bits only; the port's own bits (PORT_BUTTONS) pass through here.
@@ -270,6 +333,8 @@ export function mapDevicesToInput(snap: DeviceSnapshot, out: InputFrame = { ...E
 export class InputDeviceTracker {
 	aimDevice: AimDevice = "none";
 	device: InputDeviceKind = "keyboard";
+	/** The layout whose pad buttons count as "using the pad". */
+	bindings: Bindings = DEFAULT_BINDINGS;
 
 	keyPressed(): void {
 		this.device = "keyboard";
@@ -287,7 +352,7 @@ export class InputDeviceTracker {
 	/** Called once per sample with the current pad (or undefined). */
 	padSampled(pad: GamepadSnapshot | undefined): void {
 		if (isStickAiming(pad)) this.aimDevice = "stick";
-		if (isPadActive(pad)) this.device = "gamepad";
+		if (isPadActive(pad, STICK_DEADZONE, this.bindings)) this.device = "gamepad";
 	}
 }
 
@@ -299,32 +364,52 @@ export function maskDebugButtons(buttons: number, debugAllowed: boolean): number
 export type DriverKeyAction = "replayCheck" | "reset" | undefined;
 
 /**
- * A pressed key / button name -> driver action (web driverKeyAction). R restarts any time, the pad's restart only
- * while the run is over or paused; F8 / L only with debug keys on.
+ * A pressed key / button name -> driver action (web driverKeyAction). The restart key (default R) restarts any time,
+ * the pad's restart (default D-pad down) only while the run is over or paused; F8 / L only with debug keys on.
  */
-export function driverKeyAction(name: string, debugKeys: boolean, runOverOrPaused: boolean): DriverKeyAction {
-	if (name === RESTART_KEY) return "reset";
-	if (name === PAD_RESTART_KEY && runOverOrPaused) return "reset";
+export function driverKeyAction(
+	name: string,
+	debugKeys: boolean,
+	runOverOrPaused: boolean,
+	bindings: Bindings = DEFAULT_BINDINGS,
+): DriverKeyAction {
+	const c = compiled(bindings);
+	if (c.restartKbm.includes(name)) return "reset";
+	if (name === c.restartPad && runOverOrPaused) return "reset";
 	if (debugKeys && REPLAY_CHECK_KEYS.includes(name)) return "replayCheck";
 	return undefined;
 }
 
-/** Every Enum.KeyCode name the game reads (bindings, movement, driver keys): the InputController polls / sinks these. */
-export function boundKeyNames(): ReadonlyArray<string> {
+/**
+ * Every Enum.KeyCode name the game reads (bindings, movement, restart, the fixed pause and debug keys): the
+ * InputController polls / sinks these. Not the leaderboard key (its controller reads it unsunk) nor mouse buttons
+ * (boundMouseButtonNames).
+ */
+export function boundKeyNames(bindings: Bindings = DEFAULT_BINDINGS): ReadonlyArray<string> {
 	const out = new Array<string>();
-	for (const [name] of KEY_BINDINGS) out.push(name);
-	for (const names of [MOVE_KEYS.up, MOVE_KEYS.down, MOVE_KEYS.left, MOVE_KEYS.right]) {
-		for (const n of names) out.push(n);
+	for (const action of KBM_ACTIONS) {
+		if (action === "leaderboard") continue;
+		for (const name of bindings.kbm[action]) if (!isMouseButtonName(name)) out.push(name);
 	}
-	out.push(RESTART_KEY);
+	out.push(FIXED_INPUTS.pause, FIXED_INPUTS.debugHit, FIXED_INPUTS.debugBoss, FIXED_INPUTS.debugFloor);
 	for (const k of REPLAY_CHECK_KEYS) out.push(k);
 	return out;
 }
 
-/** Every gamepad Enum.KeyCode name the game reads (bindings and the pad restart). */
-export function boundPadButtonNames(): ReadonlyArray<string> {
+/** Every mouse button (Enum.UserInputType name) a game action is bound to (default: MouseButton1, MouseButton2). */
+export function boundMouseButtonNames(bindings: Bindings = DEFAULT_BINDINGS): ReadonlyArray<string> {
 	const out = new Array<string>();
-	for (const [name] of PAD_BINDINGS) out.push(name);
-	out.push(PAD_RESTART_KEY);
+	for (const action of KBM_ACTIONS) {
+		if (action === "leaderboard") continue;
+		for (const name of bindings.kbm[action]) if (isMouseButtonName(name)) out.push(name);
+	}
+	return out;
+}
+
+/** Every gamepad Enum.KeyCode name the game reads (bindings, the pad restart and the fixed Start pause). */
+export function boundPadButtonNames(bindings: Bindings = DEFAULT_BINDINGS): ReadonlyArray<string> {
+	const out = new Array<string>();
+	for (const action of PAD_ACTIONS) out.push(bindings.pad[action]);
+	out.push(FIXED_INPUTS.padPause);
 	return out;
 }

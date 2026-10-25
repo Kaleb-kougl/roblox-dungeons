@@ -16,6 +16,8 @@ const HALF = 0.5;
 /** A diamond pip: a square turned 45 degrees, shrunk so its corners stay inside the cell. */
 const DIAMOND_ROTATION = 45;
 const DIAMOND_FILL = 0.72;
+/** A disabled MenuButton's text transparency. */
+const DISABLED_TEXT = 0.6;
 /** Text box height = text size + this (room for the stroke). */
 const LINE_SLACK = 4;
 
@@ -149,11 +151,15 @@ export interface MenuButtonProps {
 	text: string;
 	order: number;
 	onActivated: () => void;
+	/** False: the gamepad selection skips it (a prompt is open over it). Default true. */
+	selectable?: boolean;
 	/** Highlighted as the current choice (settings options). */
 	active?: boolean;
 	size?: Vector2;
 	textSize?: number;
 	name?: string;
+	/** Greyed out and inert (still selectable, so the pad's selection can pass over it). */
+	disabled?: boolean;
 }
 
 /**
@@ -164,6 +170,7 @@ export const MenuButton = React.forwardRef<TextButton, MenuButtonProps>((props, 
 	const [focused, setFocused] = useState(false);
 	const size = props.size ?? new Vector2(HUD_VIEW.buttonSize.x, HUD_VIEW.buttonSize.y);
 	const active = props.active === true;
+	const disabled = props.disabled === true;
 	return (
 		<textbutton
 			key={props.name}
@@ -171,7 +178,7 @@ export const MenuButton = React.forwardRef<TextButton, MenuButtonProps>((props, 
 			LayoutOrder={props.order}
 			Size={new UDim2(0, size.X, 0, size.Y)}
 			AutoButtonColor={false}
-			Selectable={true}
+			Selectable={props.selectable !== false}
 			BackgroundColor3={role(active ? "uiAccent" : "uiPanel")}
 			BackgroundTransparency={active || focused ? 0 : HUD_VIEW.panelTransparency}
 			BorderSizePixel={0}
@@ -179,8 +186,11 @@ export const MenuButton = React.forwardRef<TextButton, MenuButtonProps>((props, 
 			TextSize={props.textSize ?? HUD_VIEW.textSize}
 			TextColor3={role(active ? "uiPanel" : focused ? "uiText" : "uiTextDim")}
 			Text={props.text}
+			TextTransparency={disabled ? DISABLED_TEXT : 0}
 			Event={{
-				Activated: () => props.onActivated(),
+				Activated: () => {
+					if (!disabled) props.onActivated();
+				},
 				MouseEnter: () => setFocused(true),
 				MouseLeave: () => setFocused(false),
 				SelectionGained: () => setFocused(true),

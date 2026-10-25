@@ -17,3 +17,22 @@ export const SETTINGS_AUTOSAVE_SECONDS = 120;
 
 /** Per-player budget for settings remotes (get / update / reset together): `count` per `windowSeconds`. */
 export const SETTINGS_REQUEST_RATE = table.freeze({ count: 20, windowSeconds: 10 });
+
+/**
+ * Workspace attributes the client's settings read (Explorer -> Workspace -> Attributes). Off / unset by default.
+ *   resetBindings  Boolean, dev only: on join, clear this player's saved key bindings (the `controls` group) once
+ *                  the server's settings arrive. The other groups are kept.
+ */
+export const SETTINGS_ATTRIBUTES = {
+	resetBindings: "KV_ResetBindings",
+} as const;
+
+/** Audio volumes are stored as whole percents 0..100; the Options screen steps them by `step`. Default: full. */
+export const VOLUME_PERCENT = { min: 0, max: 100, step: 10, default: 100 } as const;
+
+/**
+ * The HUD scale choices (percent of the automatic scale, shared/view/hud computeHudScale). Only these are accepted
+ * from a stored doc; 100 is the default.
+ */
+export const HUD_SCALE_PERCENTS: ReadonlyArray<number> = [80, 90, 100, 110, 125];
+export const DEFAULT_HUD_SCALE_PERCENT = 100;

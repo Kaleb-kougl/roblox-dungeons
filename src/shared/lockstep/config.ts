@@ -66,6 +66,8 @@ export const LOCKSTEP_HASH_RATE = table.freeze({ count: 60, windowSeconds: 10 })
  * traffic can never starve it). Extra calls are dropped and logged.
  */
 export const LOCKSTEP_FINAL_RATE = table.freeze({ count: 4, windowSeconds: 10 });
+/** Per player: lockstepLeave calls per window (an honest client sends one per run; the leave is idempotent). */
+export const LOCKSTEP_LEAVE_RATE = table.freeze({ count: 4, windowSeconds: 10 });
 
 export interface LockstepTunables {
 	readonly inputDelay: number;

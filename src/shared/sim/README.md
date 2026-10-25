@@ -34,7 +34,7 @@ import from inside would create require cycles).
 | `playerData.ts` | `src/sim/playerData.ts` | player tunables, `secondsToTicks` |
 | `player.ts` | `src/sim/player.ts` | `stepPlayer`, `movePlayer`, `damagePlayer`, respawn / refill, `writePlayerHash` (+ dump names) |
 | `state.ts` | `src/sim/state.ts` | `SimState`, `createSimState`, `cloneSimState`, `SimEvents`, `clearEvents` |
-| `step.ts` | `src/sim/step.ts` | `step`, `SimConfig` (+ `MoveResolver`, `BulletBlocker`, `ActorMover`), `DEFAULT_SIM_CONFIG` |
+| `step.ts` | `src/sim/step.ts` | `step`, `SimConfig` (+ `MoveResolver`, `BulletBlocker`, `ActorMover`), `DEFAULT_SIM_CONFIG`; Roblox: `stepParty`, `forfeitSoloRun` |
 | `replay.ts` | `src/sim/replay.ts` | `Recorder`, `runReplay`, `writeHashFields`, `hashNumbers` (FNV-1a over `buffer.writef64` bytes), `hashState`, `serializeRecording` / `deserializeRecording` (same messages), `float64Hex` / `float64FromHex` |
 | `recordingCodec.ts` | (Roblox only) | `encodeRecording` / `decodeRecording`: the compact binary recording (`buffer`) the `submitRun` remote carries; hostile-input-safe decode (docs/SERVER.md "The wire format") |
 | `observer.ts` | `src/sim/observer.ts` | `SimObserver` / `SimControls` types |
@@ -45,7 +45,7 @@ import from inside would create require cycles).
 | `combat/` | see below | bullets, actors, archetypes, weapons |
 | `score/` | (M2, new) | opt-in scoring (`SimConfig.scoring`; every endless run): `scoreData.ts` tunables, `score.ts` state / hooks / `stepScore` / `writeScoreHash` (the "score" hash subsystem, appended after `endless` only when `state.score` exists), Depth / floor from `state.endless` (`scoreDepth` / `scoreFloor`), deferred room records for endless floors (`buildDeferredScoreRooms`, `attachScoreRoomMembers`); see the file comment |
 | `progression/` | (M2, new) | in-run progression, endless runs only (`SimState.run`, hashed as the "run" group after `score`): `progressionData.ts` tunables and the BOONS (12) / RELICS (4) / CURSES (4) tables; `runMods.ts` the per-player state (`run.players[i]`), THE accessor `runMods(state, playerIndex)` + helpers (`playerHitDamage`, `attackTicks`, `rollIframeTicks`) and gameplay hooks (`runOnPlayerHit`, `runSecondWind`, `runOnKill`, `consumeEnemyBulletTimeScale`), a leaf module; `progression.ts` the draft (`drawBoonOffers`, `openDraft`, `stepDraft`, `draftColumn`), `grantBoon` / `grantRelic` / `acceptCurse`, `stepRun` (pedestals, shrine, Warding), `writeRunHash`; see the file comments |
-| `partyData.ts` | (Roblox only) | M4 co-op tunables: MAX_PARTY_SIZE 8, enemy hp x [1, 1.6, ... 4.4] by party size, the revive hearts, the server's `PARTY_LEFT_BUTTON` bit |
+| `partyData.ts` | (Roblox only) | M4 co-op tunables: MAX_PARTY_SIZE 8, enemy hp x [1, 1.6, ... 4.4] by party size, the revive hearts, the server's `PARTY_LEFT_BUTTON` bit (= `FORFEIT_BUTTON`, the solo "Leave run"; see "Solo forfeit") |
 | `party.ts` | (Roblox only) | M4 co-op: `SimConfig.party`, `SimState.party` (players by index, [0] aliasing `state.player`), `playerAt` / `weaponsAt` / `partySize`, nearest-living targeting, leave / revive, `writePartyHash` (the "party" group); see "Co-op" below |
 | `testing/` | `src/sim/actors/__test__/testArchetypes.ts` | test-only archetypes for specs (never imported by the game) |
 
@@ -179,7 +179,7 @@ the party's leave bits handled right after the event clears):
 | # | Phase | Only when |
 | --- | --- | --- |
 | 1 | `clearEvents` | |
-| 2 | `clearScoreEvents` | `state.score` |
+| 2 | `clearScoreEvents`; then (solo) `FORFEIT_BUTTON` -> `forfeitSoloRun` | `state.score` (the forfeit: always) |
 | 3 | `stepPlayer` (current floor's config in endless) | |
 | 4 | `stepCombat` (kills score here: `scoreKill` in killActor, grazes, guard cancels) | |
 | 5 | `stepEndless`: boss kill -> Depth + 1; dead -> stop; stairwell / debug skip -> `awardFloorClear(floor, bossFloor, bossDead)` (floor(1000 x floor x rooms cleared / enemy rooms), the boss one more room on a boss floor, the full 1000 x floor without enemy rooms; then the multipliers), next floor, `rebuildScoreRooms`; first room entry -> deferred spawns -> `attachScoreRoomMembers` | `state.endless` |
@@ -213,3 +213,22 @@ each player's `run.players[i].events` are presentation only and not hashed. New 
 `ENDLESS_EVENT_FIELDS` / `ALL_EVENT_FIELDS`): `floorChanged`, `depthChanged`, `stairwellOpened`, `roomEntered`.
 `DEBUG_FLOOR_BUTTON` (8192) is a port bit outside `ALL_BUTTONS` (pinned by fixtures/input.json): `SIM_BUTTONS` /
 `isValidSimInput` accept it, and the binary recording codec does too; the JSON recordings keep the web build's rules.
+
+## Solo forfeit (L6a "Leave run counts as a death")
+
+`FORFEIT_BUTTON` (partyData.ts) IS `PARTY_LEFT_BUTTON` (16384): one bit meaning "this player leaves the run for good"
+(co-op: marked `left`; solo: dead). It stays outside `SIM_BUTTONS` (the lockstep relay keeps refusing it from clients);
+the binary codec accepts it in both variants (`RECORDED_BUTTONS`). On a solo tick whose input carries it, step() calls
+`forfeitSoloRun` right after the event clears: `killPlayerState` + `events.playerDied = 1`, the bookkeeping of a lethal
+hit but no hit (no playerHits, armor, Second Wind or Hourglass), and an open boon draft closes without a pick (that tick
+stays a frozen draft tick). Idempotent (a dead player: nothing). Everything downstream reads it as a death:
+`isPartyWiped`, stepEndless / stepRun stop, the telemetry (`deathCause` "forfeit"), the server summary `died`. No new
+state and no hash change: a run that never sets the bit steps exactly as before (every fixture unchanged). The client
+side is `LiveRun.requestForfeit()` (shared/play). Spec: `forfeit.spec.ts` (+ `play/liveRun.forfeit.spec.ts`: the
+validators accept it with died = true).
+
+| Bit | Name | Where |
+| --- | --- | --- |
+| 1 .. 4096 | `Button.*` (`ALL_BUTTONS` 8191) | the web build's, fixtures/input.json |
+| 8192 | `DEBUG_FLOOR_BUTTON` (`PORT_BUTTONS`; `SIM_BUTTONS` 16383) | endless debug floor skip (a debug bit) |
+| 16384 | `PARTY_LEFT_BUTTON` = `FORFEIT_BUTTON` (`RECORDED_BUTTONS` 32767) | co-op leave (relay only) / solo "Leave run" |

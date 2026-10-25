@@ -15,7 +15,7 @@
  *  - Explicit stats the web build left in counters: weapon swaps, first kill tick, boss engage tick, highest boss
  *    phase, and the death cause (the archetype of the hit that killed the player).
  */
-import { SIM_EVENT_FIELDS, archetypeIds, type SimEvents } from "shared/sim";
+import { FORFEIT_BUTTON, SIM_EVENT_FIELDS, archetypeIds, type SimEvents } from "shared/sim";
 
 export type RunEndReason = "death" | "victory" | "abandoned";
 
@@ -54,7 +54,10 @@ export interface RunTelemetryRecord {
 	/** Highest boss phase seen (0 = never engaged). */
 	bossPhaseReached: number;
 	bossDefeated: boolean;
-	/** Archetype id of the last hit before death ("unknown" for a debug / stress hit); undefined if alive. */
+	/**
+	 * Archetype id of the last hit before death ("unknown" for a debug / stress hit; FORFEIT_DEATH_CAUSE for a solo
+	 * "Leave run"); undefined if alive.
+	 */
 	deathCause: string | undefined;
 	/** Player hits by archetype id (`hitBy.<id>` counters, without the prefix). */
 	hitsBySource: Map<string, number>;
@@ -100,8 +103,12 @@ export function hitSourceName(src: number, names: ReadonlyArray<string>): string
 export interface TickView {
 	readonly tick: number;
 	readonly events: Readonly<Partial<SimEvents>>;
-	readonly player: { readonly hearts: number; readonly dead: number };
+	/** `prevButtons` (the tick's input buttons once stepped): a death with FORFEIT_BUTTON there is a forfeit. */
+	readonly player: { readonly hearts: number; readonly dead: number; readonly prevButtons?: number };
 }
+
+/** deathCause of a solo "Leave run" (L6a: the death tick's input carried FORFEIT_BUTTON). */
+export const FORFEIT_DEATH_CAUSE = "forfeit";
 
 function num(v: number | undefined): number {
 	return v !== undefined && v === v && v !== math.huge && v !== -math.huge ? v : 0;
@@ -203,7 +210,8 @@ export class RunTelemetry {
 
 		if ((num(e.playerDied) > 0 || num(view.player.dead) > 0) && this.deathTick === undefined) {
 			this.deathTick = tick;
-			this.deathCause = this.lastHitBy ?? "unknown";
+			const forfeit = bit32.band(num(view.player.prevButtons), FORFEIT_BUTTON) !== 0;
+			this.deathCause = forfeit ? FORFEIT_DEATH_CAUSE : this.lastHitBy ?? "unknown";
 			this.mark(tick, "player.death");
 		}
 	}

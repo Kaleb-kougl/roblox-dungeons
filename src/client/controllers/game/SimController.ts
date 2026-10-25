@@ -2,8 +2,8 @@ import { Controller, OnStart } from "@flamework/core";
 import { GuiService, Players, RunService, Workspace } from "@rbxts/services";
 import { Events } from "client/network";
 import { clientStore, type RunInfo, type VerdictView } from "client/store";
-import type { PartyInviteUpdate, PartyRunStart, RunFinishVerdict, RunVerdict } from "shared/network";
-import { LockstepClient } from "shared/lockstep";
+import type { PartyRunStart, RunFinishVerdict, RunVerdict } from "shared/network";
+import { CoopMenuInputGate, LockstepClient } from "shared/lockstep";
 import {
 	DEFAULT_RUN_SEED,
 	HUD_SNAPSHOT_INTERVAL_SEC,
@@ -38,7 +38,6 @@ import {
 } from "shared/run";
 import {
 	EMPTY_INPUT,
-	MAX_PARTY_SIZE,
 	isDraftOpen,
 	partySize,
 	playerAt,
@@ -51,6 +50,7 @@ import { BIOMES, type ThemePack } from "shared/theme";
 import { RENDER_ORDER } from "shared/view";
 import { HitstopClock, simPacerFor } from "shared/view/fx";
 import { PROGRESSION_VIEW, toastFor } from "shared/view/hud";
+import { lobbyStartAccepted, restartForfeits } from "shared/view/menu";
 import type { Dungeon } from "shared/dungeon";
 import { InputController } from "./InputController";
 import { ThemeController } from "./ThemeController";
@@ -91,9 +91,13 @@ export interface RunContext {
 	readonly floor: number;
 	/** Endless mode: each floor's world and layout (the run's cached floors); undefined outside endless runs. */
 	readonly endlessFloor: ((floor: number) => EndlessRunFloor) | undefined;
+	/** The lobby whose start began this run (a party run, or a one-player lobby's solo run); "" otherwise. */
+	readonly lobbyId: string;
 }
 
 export type RunListener = (ctx: RunContext) => void;
+/** The run was left for the menu: "left" (Leave run, mid-run) or "exited" (Main menu / Back to lobby after it). */
+export type RunExitListener = (how: "left" | "exited") => void;
 
 interface MadeRun {
 	readonly run: LiveRun;
@@ -122,15 +126,6 @@ function placeKeyFor(pack: ThemePack, dungeon: Dungeon | undefined): string {
 	return biome !== undefined ? pack.biome(biome.id).nameKey : "";
 }
 
-/** KV_Party: every player in the server (at most MAX_PARTY_SIZE), UserIds ascending: the first one invites. */
-function coopPartyIds(): number[] {
-	const ids = Players.GetPlayers().map((p) => p.UserId);
-	ids.sort((a, b) => a < b);
-	const out: number[] = [];
-	for (let i = 0; i < ids.size() && i < MAX_PARTY_SIZE; i++) out.push(ids[i]);
-	return out;
-}
-
 /** The floor's biome as 1..5 (theme BIOMES order), 0 without a floor. */
 function biomeIndexFor(dungeon: Dungeon | undefined): number {
 	if (dungeon === undefined) return 0;
@@ -152,6 +147,15 @@ function biomeIndexFor(dungeon: Dungeon | undefined): number {
  * KV_Scoring (M2 scoring on an M1 world, off by default; endless runs are always scored).
  * Pause: P / Start (the sim's PAUSE bit), automatically while the Roblox menu or the juice settings panel is open, and
  * resumable from the pause overlay (resume()).
+ *
+ * Menu (task L3): no run starts on its own; MenuController calls `startSolo()` (Play solo, a one-player lobby's
+ * `lobbyRunStart`, or at once with KV_SkipMenu), and a party run starts on `partyRunStarted` for the lobby this
+ * client is in (shared/view/menu lobbyStartAccepted). `leaveRun()` (pause overlay "Leave run", task L6): a solo run is
+ * forfeited (LiveRun.requestForfeit: it ends as a death and is submitted like one), a party run is left with
+ * `lockstepLeave`; `exitRun()` leaves a finished run (run-over "Main menu" / "Back to lobby"). Either way the run
+ * stops (no context, the HUD inactive) and the exit listener (MenuController) opens the menu. R / Restart mid-run
+ * forfeits a ranked solo run too and starts the next one once that death was submitted (restartForfeits); in a party
+ * run R only works once the party is down, and then goes back to the lobby.
  *
  * Hitstop: the run's HitstopClock (`hitstop`, fed by the FreezeFrameController's rules) paces the loop exactly as the
  * web SimDriver's computeFrameAdvance: a frozen frame runs no tick and records nothing, slow motion feeds less time.
@@ -205,17 +209,20 @@ export class SimController implements OnStart {
 		| undefined;
 	private startReply: StartRunReply | undefined;
 	private startRequests = 0;
-	/**
-	 * Co-op consent: the invite this client accepted or hosts. `partyRunStarted` for any other invite is ignored: the
-	 * client never switches to a party run it did not agree to.
-	 */
-	private acceptedInvite: string | undefined;
-	/** An invite waiting for this player's answer (the HUD prompt). */
-	private pendingInvite: PartyInviteUpdate | undefined;
-	/** requestId of this client's own last `partyInvite` (the host's "pending" echo carries it). */
-	private inviteRequest = 0;
-	/** R pressed after the party went down, before its verdict: the next run starts when `runFinished` arrives. */
-	private restartAfterVerdict = false;
+	/** Back to the lobby asked after the party went down, before its verdict: the run is left when it arrives. */
+	private exitAfterVerdict = false;
+	/** Leave run was asked: the forfeit tick is pending; the run is left once its death was submitted. */
+	private leaveAfterForfeit = false;
+	/** R / Restart forfeited a ranked run: the next run starts once its death was submitted. */
+	private restartAfterForfeit = false;
+	/** The lobby the next solo run belongs to (startSolo); "" for the main menu's Play solo and for restarts. */
+	private nextRunLobbyId = "";
+	private readonly exitListeners = new Array<RunExitListener>();
+
+	/** Co-op: neutral input while a menu owns the controls (a party run never pauses under one). */
+	private readonly coopMenuGate = new CoopMenuInputGate();
+	/** The Roblox menu is open (GuiService.MenuOpened / MenuClosed). */
+	private robloxMenuOpen = false;
 
 	/** The freeze frame / slow motion clock (presentation pacing only; cleared at every run start). */
 	readonly hitstop = new HitstopClock();
@@ -234,7 +241,6 @@ export class SimController implements OnStart {
 			return run === undefined || run.isPaused() || run.outcome() !== "playing";
 		});
 		Events.partyRunStarted.connect((start) => this.startCoop(start));
-		Events.partyInviteUpdate.connect((update) => this.onInviteUpdate(update));
 		Events.lockstepFrames.connect((runId, firstTick, data, hashAck) => {
 			const coop = this.ctx?.coop;
 			if (coop === undefined || coop.runId !== runId) return;
@@ -253,18 +259,20 @@ export class SimController implements OnStart {
 		});
 		Events.runFinished.connect((verdict) => this.onRunFinished(verdict));
 		GuiService.MenuOpened.Connect(() => {
-			const run = this.ctx?.live; // a co-op run never pauses (the server's clock paces it)
+			this.robloxMenuOpen = true;
+			const run = this.ctx?.live; // a co-op run never pauses (the server's clock paces it): neutral input instead
 			if (run !== undefined && !run.isPaused()) {
 				run.setPaused(true);
 				this.pausedByMenu = true;
 			}
 		});
 		GuiService.MenuClosed.Connect(() => {
+			this.robloxMenuOpen = false;
 			if (this.pausedByMenu) this.ctx?.live?.setPaused(false);
 			this.pausedByMenu = false;
 		});
 
-		this.beginRun();
+		// No run yet: MenuController starts one (Play solo, a lobby, or at once with KV_SkipMenu).
 		RunService.BindToRenderStep(RENDER_STEP, Enum.RenderPriority.Input.Value + RENDER_ORDER.simAfterInput, (dt) =>
 			this.frame(dt),
 		);
@@ -303,15 +311,91 @@ export class SimController implements OnStart {
 		this.ctx?.live?.setPaused(false);
 	}
 
-	/** Restart on the next frame (pause overlay "Restart"; same as R). */
+	/** Restart on the next frame (pause overlay "Restart", run-over "Again"; same as R). */
 	requestRestart(): void {
 		this.pendingReset = true;
 	}
 
-	/** The HUD's co-op invite prompt: join (accept) or decline the pending invite. */
-	answerPartyInvite(accept: boolean): void {
-		const invite = this.pendingInvite;
-		if (invite !== undefined) this.respondToInvite(invite.inviteId, accept);
+	/**
+	 * Starts a solo run now (the menu's Play solo; `lobbyId` for a one-player lobby's `lobbyRunStart`): ranked unless
+	 * a debug attribute says otherwise (beginRun). Ignored while a party run is on.
+	 */
+	startSolo(lobbyId?: string): void {
+		if (this.ctx?.coop !== undefined && !this.ctx.coop.isOver()) return;
+		this.clearExits();
+		if (this.ctx?.live !== undefined) this.submit("abandoned"); // (only if not submitted yet, as R does)
+		this.nextRunLobbyId = lobbyId ?? "";
+		this.beginRun();
+	}
+
+	/**
+	 * Leave run (pause overlay / party overlay, after the confirm). Solo: the run is forfeited (the next frame steps
+	 * the forfeit tick: a death, submitted like any death), then left. Party: `lockstepLeave` (the server plays this
+	 * player as disconnected; the others play on) and the run is left at once. A finished run is just left; a ranked
+	 * start still waiting for the server is dropped (the server abandons that session at the next startRun).
+	 */
+	leaveRun(): void {
+		const ctx = this.ctx;
+		if (ctx === undefined) {
+			this.stopRun("left");
+			return;
+		}
+		const coop = ctx.coop;
+		if (coop !== undefined) {
+			if (!coop.isOver()) {
+				Events.lockstepLeave.fire(coop.runId);
+				print(`[Sim] left co-op run ${ctx.counter} (${coop.runId})`);
+			}
+			coop.stop();
+			this.stopRun("left");
+			return;
+		}
+		const live = ctx.live;
+		if (live !== undefined && live.requestForfeit()) {
+			this.restartAfterForfeit = false;
+			this.leaveAfterForfeit = true;
+			print(`[Sim] run ${ctx.counter}: leaving (forfeit; counts as a death)`);
+			return;
+		}
+		this.exitRun();
+	}
+
+	/**
+	 * Leaves a finished run for the menu (run-over "Main menu" / "Back to lobby"; R once a party is down). A party
+	 * run waits for its verdict first (the server decides it from every member's final). A run still being played is
+	 * left through leaveRun (forfeit / lockstepLeave).
+	 */
+	exitRun(): void {
+		const ctx = this.ctx;
+		if (ctx === undefined) {
+			this.stopRun("exited");
+			return;
+		}
+		const coop = ctx.coop;
+		if (coop !== undefined) {
+			if (!coop.isOver()) {
+				this.leaveRun();
+				return;
+			}
+			if (this.rankedRuns.get(coop.runId)?.decided === true) {
+				coop.stop();
+				this.stopRun("exited");
+			} else if (!this.exitAfterVerdict) {
+				this.exitAfterVerdict = true;
+				print("[Sim] the party's verdict is still being decided; back to the lobby once it arrives");
+			}
+			return;
+		}
+		if (ctx.live !== undefined && ctx.live.outcome() === "playing") {
+			this.leaveRun();
+			return;
+		}
+		this.stopRun("exited");
+	}
+
+	/** The run was left for the menu (leaveRun / exitRun, once done). MenuController opens the menu. */
+	onRunExited(listener: RunExitListener): void {
+		this.exitListeners.push(listener);
 	}
 
 	/**
@@ -373,6 +457,7 @@ export class SimController implements OnStart {
 		}
 		// The old run stops here; views see no run until the server answers (or the timeout falls back).
 		this.ctx = undefined;
+		clientStore.setRunStarting(true);
 		this.startRequests++;
 		this.startReply = undefined;
 		const request: StartRunRequest = {
@@ -390,89 +475,27 @@ export class SimController implements OnStart {
 			busyRetries: 0,
 		};
 		Events.startRun.fire(request);
-		// KV_Party (M4): the lowest UserId invites everyone else in the server; each of them must accept (the HUD
-		// prompt, or KV_PartyAutoAccept) before the party run starts. Everyone plays solo meanwhile; the server
-		// concludes those solo runs (abandoned) when the party run starts.
-		const party = Workspace.GetAttribute(RUN_ATTRIBUTES.party) === true ? coopPartyIds() : [];
-		if (party.size() > 1 && party[0] === Players.LocalPlayer.UserId) {
-			this.inviteRequest++;
-			const members = party.filter((id) => id !== Players.LocalPlayer.UserId);
-			Events.partyInvite.fire({ requestId: this.inviteRequest, worldKind: RANKED_WORLD_KIND, members });
-			print(`[Sim] invited ${members.size()} player(s) to a co-op run`);
-		}
 	}
 
-	// --- co-op consent (invites) ----------------------------------------------------------------
-
-	private respondToInvite(inviteId: string, accept: boolean): void {
-		Events.partyRespond.fire(inviteId, accept);
-		if (accept) this.acceptedInvite = inviteId;
-		if (this.pendingInvite?.inviteId === inviteId) {
-			this.pendingInvite = undefined;
-			clientStore.setPartyInvite(undefined);
-		}
-		print(`[Sim] ${accept ? "joined" : "declined"} co-op invite ${inviteId}`);
+	/** Drops the pending leave / restart / exit requests (a new run starts, or the run was left). */
+	private clearExits(): void {
+		this.leaveAfterForfeit = false;
+		this.restartAfterForfeit = false;
+		this.exitAfterVerdict = false;
+		this.pendingReset = false;
 	}
 
-	private showInvite(u: PartyInviteUpdate): void {
-		const host = Players.GetPlayerByUserId(u.hostId);
-		clientStore.setPartyInvite({
-			inviteId: u.inviteId,
-			hostName: host !== undefined ? host.DisplayName : `#${u.hostId}`,
-			count: u.members.size(),
-			accepted: u.accepted.size(),
-		});
-	}
-
-	private onInviteUpdate(u: PartyInviteUpdate): void {
-		const me = Players.LocalPlayer.UserId;
-		const mine =
-			u.inviteId !== "" && (u.inviteId === this.acceptedInvite || u.inviteId === this.pendingInvite?.inviteId);
-		switch (u.status) {
-			case "invited":
-				if (!u.members.includes(me) || u.hostId === me) return;
-				if (Workspace.GetAttribute(RUN_ATTRIBUTES.partyAutoAccept) === true) {
-					this.respondToInvite(u.inviteId, true);
-					return;
-				}
-				this.pendingInvite = u;
-				this.showInvite(u);
-				print(
-					`[Sim] co-op invite ${u.inviteId} from ${u.hostId} (${u.members.size()} players): Join or Decline`,
-				);
-				return;
-			case "pending":
-				if (u.hostId === me && u.requestId === this.inviteRequest) this.acceptedInvite = u.inviteId;
-				if (this.pendingInvite?.inviteId === u.inviteId) {
-					this.pendingInvite = u;
-					this.showInvite(u);
-				}
-				return;
-			case "ready":
-			case "started":
-				if (this.pendingInvite?.inviteId === u.inviteId) {
-					this.pendingInvite = undefined;
-					clientStore.setPartyInvite(undefined);
-				}
-				return;
-			default:
-				// declined / cancelled / expired / refused: it will not start (for this client).
-				if (u.status === "refused" && u.inviteId === "") {
-					warn(`[Sim] co-op invite refused (${u.code ?? "?"}): ${u.reason ?? ""}`);
-					return;
-				}
-				if (!mine) return;
-				if (u.inviteId === this.acceptedInvite) this.acceptedInvite = undefined;
-				if (this.pendingInvite?.inviteId === u.inviteId) {
-					this.pendingInvite = undefined;
-					clientStore.setPartyInvite(undefined);
-				}
-				warn(
-					`[Sim] co-op invite ${u.inviteId} ${u.status}${u.code !== undefined ? ` (${u.code})` : ""}: ${
-						u.reason ?? ""
-					}`,
-				);
-		}
+	/** No run any more (the menu takes over): no context, no pending start, the HUD inactive; tells the listeners. */
+	private stopRun(how: "left" | "exited"): void {
+		this.clearExits();
+		this.ctx = undefined;
+		this.awaitingStart = undefined;
+		this.startReply = undefined;
+		this.pausedByMenu = false;
+		this.pausedByUi = false;
+		this.hitstop.clear();
+		clientStore.endRun();
+		for (const listener of this.exitListeners) listener(how);
 	}
 
 	// --- co-op (M4, shared/lockstep) ------------------------------------------------------------
@@ -484,13 +507,13 @@ export class SimController implements OnStart {
 	private startCoop(start: PartyRunStart): void {
 		const localIndex = start.members.indexOf(Players.LocalPlayer.UserId);
 		if (localIndex < 0 || !isValidRunSeed(start.seed)) return;
-		// Consent: only the party run of the invite this client accepted (or hosts).
-		if (this.acceptedInvite === undefined || start.inviteId !== this.acceptedInvite) {
-			warn(`[Sim] ignored party run ${start.runId}: not from an invite this client accepted`);
+		// Consent: only the party run of the lobby this client is in (its Start began it).
+		const myLobby = clientStore.getState().lobby.mine?.lobbyId;
+		if (!lobbyStartAccepted(start.lobbyId, myLobby)) {
+			warn(`[Sim] ignored party run ${start.runId}: lobby ${start.lobbyId} is not this client's lobby`);
 			return;
 		}
-		this.acceptedInvite = undefined;
-		this.restartAfterVerdict = false;
+		this.clearExits();
 		// The owner's own `runStarted` reply follows; it must not start a solo run on top of this one.
 		this.awaitingStart = undefined;
 		this.startReply = undefined;
@@ -532,6 +555,7 @@ export class SimController implements OnStart {
 			counter: this.counter,
 			floor,
 			endlessFloor: setup.endlessFloor,
+			lobbyId: start.lobbyId,
 		};
 		this.ctx = ctx;
 		this.rankedRuns.set(start.runId, { run: this.counter, decided: false });
@@ -546,7 +570,12 @@ export class SimController implements OnStart {
 	/** One rendered frame of a co-op run: step the merged frames that arrived, send inputs / hashes / the final. */
 	private coopFrame(ctx: RunContext, coop: LockstepClient, dt: number): void {
 		const me = playerAt(coop.state, ctx.localIndex);
-		const input = this.inputController.sample(me.x, me.z, this.input);
+		// A menu over the run (party overlay, Options, a rebind capture, leaderboards, the Roblox menu): the pad and
+		// keys drive the menu, never the character (solo pauses instead).
+		const input = this.coopMenuGate.apply(
+			this.inputController.sample(me.x, me.z, this.input),
+			this.inputController.menuOwnsInput() || this.robloxMenuOpen,
+		);
 		const res = coop.pump(dt, () => input);
 		const runId = coop.runId;
 		for (const b of res.inputs) Events.lockstepInput.fire(runId, b.firstTick, b.data);
@@ -694,7 +723,9 @@ export class SimController implements OnStart {
 			counter: this.counter,
 			floor,
 			endlessFloor,
+			lobbyId: this.nextRunLobbyId,
 		};
+		this.nextRunLobbyId = ""; // a restart (R) is a plain solo run
 		this.ctx = ctx;
 		if (runId !== undefined) this.rankedRuns.set(runId, { run: this.counter, decided: false });
 
@@ -717,6 +748,8 @@ export class SimController implements OnStart {
 			run: ctx.counter,
 			notice,
 			biome: biomeIndexFor(ctx.dungeon),
+			coop: ctx.coop !== undefined,
+			lobbyId: ctx.lobbyId,
 		};
 	}
 
@@ -775,20 +808,7 @@ export class SimController implements OnStart {
 	private frame(dt: number): void {
 		if (this.pendingReset) {
 			this.pendingReset = false;
-			// Co-op: no restart mid-run (no drop-in either); once the party is down, R starts the next run as soon as
-			// the party's verdict arrived (the server refuses a start while the run is still being decided).
-			const coop = this.ctx?.coop;
-			if (coop === undefined) {
-				this.submit("abandoned");
-				this.beginRun();
-			} else if (coop.isOver()) {
-				if (this.rankedRuns.get(coop.runId)?.decided === true) {
-					this.beginRun();
-				} else if (!this.restartAfterVerdict) {
-					this.restartAfterVerdict = true;
-					print("[Sim] the party's verdict is still being decided; the next run starts once it arrives");
-				}
-			}
+			this.handleReset();
 		}
 		if (this.pollRunStart()) return;
 		const ctx = this.ctx;
@@ -818,6 +838,18 @@ export class SimController implements OnStart {
 
 		const outcome = run.outcome();
 		if (outcome !== "playing" && !this.submitted) this.submit(outcome === "dead" ? "death" : "victory");
+		// Leave run / a forfeiting restart: the forfeit tick ran and its death was submitted.
+		if (outcome !== "playing" && this.submitted) {
+			if (this.leaveAfterForfeit) {
+				this.stopRun("left");
+				return;
+			}
+			if (this.restartAfterForfeit) {
+				this.restartAfterForfeit = false;
+				this.beginRun();
+				return;
+			}
+		}
 
 		// M2 progression: toasts for this frame's events; the draft overlay follows the stick every frame.
 		this.pushToasts(run);
@@ -834,6 +866,34 @@ export class SimController implements OnStart {
 			this.hudTimer = 0;
 			clientStore.setSnapshot(this.snapshot(run));
 		}
+	}
+
+	/**
+	 * R / Restart / Again. Solo: a ranked run still being played is forfeited (restartForfeits: it counts as a death
+	 * and is submitted; the next run starts once it was), any other run is submitted as abandoned and the next starts
+	 * now. With no run (the menu) R does nothing. Co-op: no restart mid-run (no drop-in either); once the party is
+	 * down it goes back to the lobby (after the party's verdict: exitRun).
+	 */
+	private handleReset(): void {
+		const ctx = this.ctx;
+		if (ctx === undefined) {
+			if (this.awaitingStart !== undefined) this.beginRun(); // ask again (as before the menu existed)
+			return;
+		}
+		const coop = ctx.coop;
+		if (coop !== undefined) {
+			if (coop.isOver()) this.exitRun();
+			return;
+		}
+		const live = ctx.live;
+		if (live === undefined || this.restartAfterForfeit || this.leaveAfterForfeit) return;
+		if (restartForfeits(ctx.runId !== undefined, live.outcome() === "playing") && live.requestForfeit()) {
+			this.restartAfterForfeit = true;
+			print(`[Sim] run ${ctx.counter}: restarting (forfeit; counts as a death)`);
+			return;
+		}
+		this.submit("abandoned");
+		this.beginRun();
 	}
 
 	/** M2 progression toasts for the local player's events of the last frame (solo or co-op), then expiry. */
@@ -985,16 +1045,30 @@ export class SimController implements OnStart {
 		const entry = this.rankedRuns.get(v.runId);
 		if (entry === undefined || entry.decided) return;
 		entry.decided = true;
+		// Only the current run's verdict reaches the HUD: one for a run this client already left (a forfeiting restart,
+		// Leave run, a party run left for the menu or a new run) is only logged.
+		const current = this.ctx !== undefined && entry.run === this.ctx.counter;
 		const coop = this.ctx?.coop;
 		if (coop !== undefined && coop.runId === v.runId) {
+			if (!coop.isOver()) {
+				// The server ended the party run before the wipe (desync, replay_error, expiry): it is over here too,
+				// so the run-over panel and its exits show (with the verdict's reason).
+				coop.end(v.code ?? "ended");
+				entry.ending = "ended";
+				this.hudTimer = HUD_SNAPSHOT_INTERVAL_SEC;
+				clientStore.setSnapshot(this.coopSnapshot(coop));
+				warn(
+					`[Sim] co-op run ${entry.run} (${v.runId}) ended by the server: ${v.code ?? ""} ${v.reason ?? ""}`,
+				);
+			}
 			coop.stop(); // nothing more to report
-			if (this.restartAfterVerdict) {
-				this.restartAfterVerdict = false;
-				this.pendingReset = true;
+			if (this.exitAfterVerdict) {
+				this.exitAfterVerdict = false;
+				this.stopRun("exited");
 			}
 		}
 		// A run this client already left (a restart, or joining a party run) concluded as abandoned: nothing to show.
-		if (v.code === "abandoned" && entry.run !== this.ctx?.counter) {
+		if (v.code === "abandoned" && !current) {
 			print(`[Sim] run ${entry.run} (${v.runId}) closed: ${v.reason ?? "abandoned"}`);
 			return;
 		}
@@ -1007,11 +1081,11 @@ export class SimController implements OnStart {
 			serverHash: v.serverHash,
 			leaderboard: v.leaderboard,
 		};
-		clientStore.setVerdict(view);
+		if (current) clientStore.setVerdict(view);
 		const where = v.failedSegment !== undefined ? ` (segment ${v.failedSegment})` : "";
-		const line =
-			`[Sim] ranked verdict for run ${entry.run}: ${v.ok ? "ACCEPTED" : `REJECTED ${v.code ?? ""}`}${where} ` +
-			`${v.reason ?? ""} score ${v.score.score} floor ${v.score.floor} ${v.leaderboard ?? ""}`;
+		const line = `[Sim] ranked verdict for run ${entry.run}${current ? "" : " (left)"}: ${
+			v.ok ? "ACCEPTED" : `REJECTED ${v.code ?? ""}`
+		}${where} ${v.reason ?? ""} score ${v.score.score} floor ${v.score.floor} ${v.leaderboard ?? ""}`;
 		if (v.ok) print(line);
 		else warn(line);
 	}

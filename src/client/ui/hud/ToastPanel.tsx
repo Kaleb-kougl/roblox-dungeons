@@ -1,8 +1,9 @@
 import React from "@rbxts/react";
 import { useSelector } from "@rbxts/react-reflex";
-import { selectInputDevice, selectSnapshot, selectToasts } from "client/store";
+import { selectBindings, selectInputDevice, selectSnapshot, selectToasts } from "client/store";
+import { shrineHint } from "shared/play";
 import { str } from "client/ui/theme";
-import { HUD_VIEW, PROGRESSION_STRINGS, PROGRESSION_VIEW, SHRINE_HINT } from "shared/view/hud";
+import { HUD_VIEW, PROGRESSION_STRINGS, PROGRESSION_VIEW } from "shared/view/hud";
 import { Panel, Text } from "./primitives";
 
 const HALF = 0.5;
@@ -16,6 +17,7 @@ export function ToastPanel() {
 	const toasts = useSelector(selectToasts);
 	const s = useSelector(selectSnapshot);
 	const device = useSelector(selectInputDevice);
+	const bindings = useSelector(selectBindings);
 	if (toasts.size() === 0 && !s.atShrine) return undefined;
 	const lines = toasts.map((t, i) => (
 		<Text
@@ -44,7 +46,7 @@ export function ToastPanel() {
 					size={HUD_VIEW.smallText}
 					color="uiMana"
 					align={Enum.TextXAlignment.Center}
-					text={str(PROGRESSION_STRINGS.shrineHint, { key: SHRINE_HINT[device] })}
+					text={str(PROGRESSION_STRINGS.shrineHint, { key: shrineHint(bindings)[device] })}
 				/>
 			) : undefined}
 		</Panel>

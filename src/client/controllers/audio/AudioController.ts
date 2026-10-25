@@ -2,9 +2,10 @@ import { Controller, OnStart } from "@flamework/core";
 import { Janitor } from "@rbxts/janitor";
 import { SoundService, TweenService } from "@rbxts/services";
 import { createSelector } from "@rbxts/reflex";
-import { clientStore, selectRunInfo, selectSnapshot } from "client/store";
+import { clientStore, selectAudio, selectRunInfo, selectSnapshot } from "client/store";
+import type { AudioSettings } from "shared/settings";
 import { SOUND_GROUPS, type SoundGroupName, type ThemePack } from "shared/theme";
-import { AUDIO_VIEW, AudioCueMapper, musicFor } from "shared/view/audio";
+import { AUDIO_VIEW, AudioCueMapper, musicFor, soundGroupVolume } from "shared/view/audio";
 import { SimController } from "../game/SimController";
 import { ThemeController } from "../game/ThemeController";
 import { FxTrackerController } from "../fx/FxTrackerController";
@@ -27,7 +28,9 @@ interface Voices {
  * that ID play here with no code change.
  *
  *   SoundGroups  SoundService."sfx" and SoundService."music" (found or created; theme contract SOUND_GROUPS), volume
- *                AUDIO_VIEW.groupVolume[group] x AUDIO_VIEW.masterVolume. Each Sound's own Volume is the manifest's.
+ *                AUDIO_VIEW.groupVolume[group] x AUDIO_VIEW.masterVolume x the player's master and group volume
+ *                (Options > Audio, shared/view/audio soundGroupVolume; follows changes live). Each Sound's own Volume
+ *                is the manifest's.
  *   sfx          the pure mapper (shared/view/audio AudioCueMapper) turns each frame's summed sim events, the hit
  *                tracker's events and the enemy-bullet spawn counter into IDs (once per frame, per-ID cooldowns);
  *                each ID plays on a small pool of Sounds (AUDIO_VIEW.voicesPerSfx, round-robin).
@@ -58,6 +61,9 @@ export class AudioController implements OnStart {
 	onStart(): void {
 		this.pack = this.theme.getPack();
 		for (const name of SOUND_GROUPS) this.groups.set(name, this.soundGroup(name));
+		// The player's volumes (Options > Audio) scale the SoundGroups, live.
+		this.applyVolumes(selectAudio(clientStore.getState()));
+		this.janitor.Add(clientStore.subscribe(selectAudio, (audio) => this.applyVolumes(audio)));
 		const folder = new Instance("Folder");
 		folder.Name = AUDIO_VIEW.folderName;
 		folder.Parent = SoundService;
@@ -99,6 +105,10 @@ export class AudioController implements OnStart {
 		group.Volume = AUDIO_VIEW.groupVolume[name] * AUDIO_VIEW.masterVolume;
 		group.Parent = SoundService;
 		return group;
+	}
+
+	private applyVolumes(audio: AudioSettings): void {
+		for (const [name, group] of this.groups) group.Volume = soundGroupVolume(name, audio);
 	}
 
 	/** A Sound for `id` (theme volume, its SoundGroup), or undefined while the ID is silent. */

@@ -29,14 +29,10 @@ export const RUN_ATTRIBUTES = {
 	 */
 	scoring: "KV_Scoring",
 	/**
-	 * Boolean (M4 co-op, the minimal party start until the Hub's party pad exists): at each run start the player with
-	 * the lowest UserId INVITES everyone else in the server (`partyInvite`); everyone plays solo meanwhile. Each invited
-	 * player answers in the HUD prompt (Join / Decline); the party run starts only once every one of them joined (the
-	 * server enforces it), and a client only switches to a party run it accepted.
+	 * Boolean, dev only (task L3): skip the main menu on join and start a solo run at once, as before the menu
+	 * existed. Off by default. Co-op runs start from a lobby (the menu's Lobbies screen).
 	 */
-	party: "KV_Party",
-	/** Boolean, dev only: accept every co-op invite at once (no prompt). Off by default. */
-	partyAutoAccept: "KV_PartyAutoAccept",
+	skipMenu: "KV_SkipMenu",
 } as const;
 
 /** The web build's DEFAULT_SEED (`?seed=` absent). */
@@ -78,3 +74,100 @@ export const RUN_START_TIMEOUT_SECONDS = 5;
  */
 export const RUN_START_BUSY_RETRY_SECONDS = 2;
 export const RUN_START_BUSY_RETRIES = 15;
+
+// ---------------------------------------------------------------------------------------------
+// Key rebinding (task L4b; shared/play bindings.ts). Pure string lists of Enum.KeyCode / Enum.UserInputType NAMES
+// (no Enum here: the lists are checked headlessly and against untrusted stored overrides).
+
+/** Rebinding tunables: the settings panel's "press a key" capture gives up after this long. */
+export const REBIND = {
+	captureTimeoutSeconds: 5,
+} as const;
+
+/**
+ * Inputs that are not rebindable: they keep their meaning whatever the bindings say (pause, the settings panel, the
+ * menus' pad close button, the debug keys). The keyboard and Start ones are in RESERVED_KBM_INPUTS /
+ * RESERVED_PAD_INPUTS; the pad close button only acts while a panel is open, so in game it stays bindable (skill 2).
+ */
+export const FIXED_INPUTS = {
+	/** Pause (web: Escape; Roblox keeps Escape for its menu). */
+	pause: "P",
+	padPause: "ButtonStart",
+	/** The juice settings panel (shared/view/hud SETTINGS_KEY). */
+	settings: "O",
+	/** Closes the settings / leaderboard panels on a pad (shared/view/hud SETTINGS_PAD_CLOSE_KEY; GUI "back"). */
+	padMenuClose: "ButtonB",
+	/** Debug (KV_Debug only): one hit on the player, 10% off an engaged boss, end the endless floor. */
+	debugHit: "K",
+	debugBoss: "J",
+	debugFloor: "N",
+} as const;
+
+/** The debug replay check (KV_Debug only): F8 as in the web build, L because Studio can take F8 for itself. */
+export const DEBUG_REPLAY_CHECK_KEYS: ReadonlyArray<string> = ["F8", "L"];
+
+/**
+ * Keyboard / mouse names a binding may never take. Roblox: Escape (game menu), Tab (player list), Slash (chat),
+ * F9 (developer console), F11 (fullscreen). The game's fixed keys: P (pause), O (settings). Debug: K, J, N, F8, L.
+ */
+export const RESERVED_KBM_INPUTS: ReadonlyArray<string> = [
+	"Escape",
+	"Tab",
+	"Slash",
+	"F9",
+	"F11",
+	"P",
+	"O",
+	"K",
+	"J",
+	"N",
+	"F8",
+	"L",
+];
+
+/** Gamepad names a binding may never take: Start (pause), Select (Roblox), both sticks (move / aim, fixed). */
+export const RESERVED_PAD_INPUTS: ReadonlyArray<string> = ["ButtonStart", "ButtonSelect", "Thumbstick1", "Thumbstick2"];
+
+/** Every Enum.KeyCode name a keyboard binding slot accepts (reserved names are refused before this list is read). */
+// prettier-ignore
+export const KBM_KEY_NAMES: ReadonlyArray<string> = [
+	// letters
+	"A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M",
+	"N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z",
+	// number row
+	"Zero", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine",
+	// function keys
+	"F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8", "F9", "F10", "F11", "F12",
+	// whitespace, editing, modifiers
+	"Space", "Return", "Backspace", "CapsLock",
+	"LeftShift", "RightShift", "LeftControl", "RightControl", "LeftAlt", "RightAlt",
+	// navigation
+	"Up", "Down", "Left", "Right", "Insert", "Delete", "Home", "End", "PageUp", "PageDown",
+	// punctuation
+	"Minus", "Equals", "LeftBracket", "RightBracket", "BackSlash", "Semicolon", "Quote", "Comma", "Period", "Backquote",
+	// keypad
+	"KeypadZero", "KeypadOne", "KeypadTwo", "KeypadThree", "KeypadFour",
+	"KeypadFive", "KeypadSix", "KeypadSeven", "KeypadEight", "KeypadNine",
+	"KeypadPeriod", "KeypadDivide", "KeypadMultiply", "KeypadMinus", "KeypadPlus", "KeypadEnter",
+];
+
+/** Mouse buttons (Enum.UserInputType names) a keyboard / mouse binding slot accepts. */
+export const KBM_MOUSE_NAMES: ReadonlyArray<string> = ["MouseButton1", "MouseButton2", "MouseButton3"];
+
+/** Every gamepad Enum.KeyCode name a pad binding accepts (a trigger keeps its analog threshold wherever bound). */
+export const PAD_BUTTON_NAMES: ReadonlyArray<string> = [
+	"ButtonA",
+	"ButtonB",
+	"ButtonX",
+	"ButtonY",
+	"ButtonL1",
+	"ButtonR1",
+	"ButtonL2",
+	"ButtonR2",
+	"ButtonL3",
+	"ButtonR3",
+	"DPadUp",
+	"DPadDown",
+	"DPadLeft",
+	"DPadRight",
+];

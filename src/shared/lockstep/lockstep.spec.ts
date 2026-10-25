@@ -501,6 +501,58 @@ for (const [players, lo, hi] of NET_RUNS) {
 	});
 }
 
+describe("LockstepClient.end (the server decided the run before the wipe)", () => {
+	function client(): { c: LockstepClient; enc: MergedEncoder } {
+		const setup = buildEndlessRunConfig(SEED, 2);
+		const c = new LockstepClient({
+			runId: "coop",
+			seed: SEED,
+			spawn: setup.spawn!,
+			config: setup.config,
+			players: 2,
+			localIndex: 0,
+			tunables: TUNABLES,
+		});
+		return { c, enc: new MergedEncoder(2) };
+	}
+	const idle = (n: number) => {
+		const ticks: InputFrame[][] = [];
+		for (let t = 0; t < n; t++) ticks.push([{ ...EMPTY_INPUT }, { ...EMPTY_INPUT }]);
+		return ticks;
+	};
+
+	it("ends the run on this client: over, nothing more stepped or sent", () => {
+		const { c, enc } = client();
+		expect(c.receive(0, enc.encode(idle(TUNABLES.hashEvery)))).toBe(true);
+		for (let k = 0; k < 10 && c.backlog() > 0; k++) c.pump(DT, () => EMPTY_INPUT);
+		expect(c.state.tick).toBe(TUNABLES.hashEvery);
+		expect(c.isOver()).toBe(false);
+		expect(c.endReason()).toBe(undefined);
+		c.end("desync");
+		expect(c.isOver()).toBe(true);
+		expect(c.endReason()).toBe("desync");
+		expect(c.unacknowledged()).toBe(0);
+		// Frames already on the way are not stepped: no inputs, hashes or final go out.
+		expect(c.receive(TUNABLES.hashEvery, enc.encode(idle(TUNABLES.hashEvery)))).toBe(true);
+		const res = c.pump(DT, () => EMPTY_INPUT);
+		expect([res.stepped, res.inputs.size(), res.hashes.size(), res.final]).toEqual([0, 0, 0, undefined]);
+		expect(c.state.tick).toBe(TUNABLES.hashEvery);
+	});
+
+	it("does nothing to the reason once the party is down (a wipe's verdict)", () => {
+		const { c, enc } = client();
+		// Both players leave at tick 0: the party is down at once.
+		const left: InputFrame[][] = [[{ ...LEFT_FRAME }, { ...LEFT_FRAME }]];
+		expect(c.receive(0, enc.encode(left))).toBe(true);
+		const res = c.pump(DT, () => EMPTY_INPUT);
+		expect(res.final).never.toBe(undefined);
+		expect(c.isOver()).toBe(true);
+		c.end("desync");
+		expect(c.endReason()).toBe(undefined);
+		expect(c.isOver()).toBe(true);
+	});
+});
+
 describe("co-op failure cases", () => {
 	it("a client that diverges is caught at its next hash report: the run ends unranked (desync)", () => {
 		let sabotaged = -1;

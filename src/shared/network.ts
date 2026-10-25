@@ -1,7 +1,14 @@
 import { Networking } from "@flamework/networking";
 import type { LeaderboardBoard, LeaderboardView } from "shared/leaderboard";
 import type {
-	PartyInviteRequest,
+	LobbyCreateRequest,
+	LobbyNameId,
+	LobbyPhase,
+	LobbyRefusal,
+	LobbySummary,
+	LobbyVisibility,
+} from "shared/lobby";
+import type {
 	RunFinal,
 	RunRejectCode,
 	RunScore,
@@ -13,14 +20,14 @@ import type {
 	StartRunReply,
 	StartRunRequest,
 } from "shared/run";
-import type { JuiceOverrides } from "shared/settings";
+import type { SettingsOverrides } from "shared/settings";
 
 /**
  * Typed remotes between client and server (task 9). The only shared contract between `client/` and `server/`.
  *
  * Flamework generates a runtime type guard for every parameter below, so a payload of the wrong SHAPE never reaches a
  * handler. The guard does not bound values (string lengths, NaN, ranges): the server re-checks those
- * (`validateRun`'s shape and size checks, `sanitizeJuiceOverrides`). Keep the types tight; never widen one to
+ * (`validateRun`'s shape and size checks, `sanitizeSettingsPatch`). Keep the types tight; never widen one to
  * `unknown`.
  *
  * Request / reply as an event pair (the pattern of the user's other Flamework project): the client fires a request,
@@ -49,10 +56,9 @@ export interface RunVerdict {
 }
 
 /**
- * Co-op (M4, shared/lockstep): a party run is starting. Sent to EVERY member once every one of them accepted the
- * host's invite (`partyInvite` / `partyRespond`); a client starts the run only for the invite it accepted or hosts
- * (`inviteId`), finds its player index as `members.indexOf(LocalPlayer.UserId)` and plays the run in lockstep (merged
- * frames from `lockstepFrames` only).
+ * Co-op (M4, shared/lockstep): a party run is starting. Sent to EVERY member of the lobby whose Start began it
+ * (shared/lobby); a client starts the run only for the lobby it is in (`lobbyId`), finds its player index as
+ * `members.indexOf(LocalPlayer.UserId)` and plays the run in lockstep (merged frames from `lockstepFrames` only).
  */
 export interface PartyRunStart {
 	runId: string;
@@ -61,33 +67,72 @@ export interface PartyRunStart {
 	/** UserIds in player index order (owner first). */
 	members: number[];
 	/**
-	 * The invite every member accepted (`partyInvite` / `partyRespond`). A client switches to the run only when this
-	 * is the invite it accepted (or hosts).
+	 * The lobby whose Start began this run (shared/lobby). A client switches to the run only when this is the lobby it
+	 * is in.
 	 */
-	inviteId: string;
+	lobbyId: string;
+}
+
+/** A member's view of the lobby they are in (`lobbyState`). Clocks differ, so the countdown is a duration. */
+export interface LobbyView {
+	lobbyId: string;
+	nameId: LobbyNameId;
+	hostId: number;
+	visibility: LobbyVisibility;
+	phase: LobbyPhase;
+	/** Join order (the run's player order). */
+	members: number[];
+	ready: number[];
+	/** Seconds left on the start countdown (phase "countdown" only). */
+	countdownIn?: number;
+	/** Players with a live invite to this lobby (shown as "Invited"; no duplicate invites). */
+	invited: number[];
+}
+
+/** `lobbyState`: the lobby this player is in, or none. */
+export interface LobbyStateUpdate {
+	lobby?: LobbyView;
 }
 
 /**
- * Co-op consent (shared/run partyInvites.ts): what became of an invite, sent to its members.
- *   invited    to each invited player: answer with partyRespond(inviteId, accept)
- *   pending    to the host on creation (requestId echoed), then to everyone after each accept (`accepted`)
- *   ready / started   everyone accepted; the run starts (`partyRunStarted` follows)
- *   declined / cancelled / expired   it will not start (`reason`)
- *   refused    to the sender only: the invite request or the answer was refused (`code`, `reason`)
+ * `lobbyRunStart`: the countdown of this player's ONE-member lobby ended. The client starts a ranked solo run at once
+ * (`startRun` with shared/play RANKED_WORLD_KIND); the server binds this player's next ranked start to the lobby, and
+ * the lobby returns to `forming` when that run is decided (any outcome, a restart included), when the player leaves,
+ * or when no start came within shared/lobby LOBBY_SERVICE.soloStartTimeoutSeconds. A party lobby gets
+ * `partyRunStarted` (with `lobbyId`) instead.
  */
-export interface PartyInviteUpdate {
-	/** "" for a refused invite request (no invite was created). */
+export interface LobbySoloRunStart {
+	lobbyId: string;
+	kind: "solo";
+}
+
+/** One live invite this player received (`lobbyInvites` carries the whole current list). */
+export interface LobbyInviteView {
 	inviteId: string;
-	status: "invited" | "pending" | "ready" | "started" | "declined" | "cancelled" | "expired" | "refused";
+	lobbyId: string;
+	nameId: LobbyNameId;
 	hostId: number;
-	/** Host first. */
-	members: number[];
-	accepted: number[];
-	/** Seconds until it expires (pending / invited). */
-	expiresIn?: number;
-	requestId?: number;
-	code?: string;
+	fromUserId: number;
+	/** Seconds until it expires. */
+	expiresIn: number;
+}
+
+/**
+ * Something the player should be told about (a toast):
+ *   refused             their own request was refused (`code`, `reason`; `requestKind` names the request)
+ *   kicked              the host removed them (`lobbyId`)
+ *   hostChanged         they are the new host (`lobbyId`)
+ *   countdownCancelled  a start countdown stopped (`reason`)
+ *   inviteExpired / inviteDropped   an invite they received is gone (`lobbyId`)
+ *   followed            a friend followed them into this server but cannot join their (closed) lobby (`userId`)
+ */
+export interface LobbyNotice {
+	kind: "refused" | "kicked" | "hostChanged" | "countdownCancelled" | "inviteExpired" | "inviteDropped" | "followed";
+	requestKind?: string;
+	code?: LobbyRefusal;
 	reason?: string;
+	lobbyId?: string;
+	userId?: number;
 }
 
 /** Where a validated segmented run went on the leaderboards: "posted", "ineligible:<reason>", "failed". */
@@ -131,11 +176,14 @@ export interface ClientToServerEvents {
 	finishRun(final: RunFinal): void;
 	/** Top rows of a board plus the caller's best; answered with `leaderboard`. */
 	getLeaderboard(board: LeaderboardBoard): void;
-	/** Asks for this player's saved juice settings; answered with `settingsChanged`. */
+	/** Asks for this player's saved settings (every group); answered with `settingsChanged`. */
 	requestSettings(): void;
-	/** Changes some juice settings (invalid keys / values are dropped); answered with `settingsChanged`. */
-	updateSettings(patch: JuiceOverrides): void;
-	/** Back to the defaults (reducedMotion follows the system again); answered with `settingsChanged`. */
+	/**
+	 * Changes settings groups (shared/settings doc.ts): every group present REPLACES the stored one (`{}` clears it),
+	 * absent groups are kept; invalid keys / values / bindings are dropped. Answered with `settingsChanged`.
+	 */
+	updateSettings(patch: SettingsOverrides): void;
+	/** Every group back to the defaults (reducedMotion follows the system again); answered with `settingsChanged`. */
 	resetSettings(): void;
 	/**
 	 * Co-op lockstep (M4): this player's inputs for ticks firstTick.. of party run `runId` (shared/lockstep wire.ts
@@ -150,10 +198,34 @@ export interface ClientToServerEvents {
 	lockstepHash(runId: string, ticks: number[], hashes: string[]): void;
 	/** Co-op lockstep: the final claim once this client's sim shows the whole party down. */
 	lockstepFinal(final: RunFinal): void;
-	/** Co-op consent: invite the named players to a party run (answered with `partyInviteUpdate`). */
-	partyInvite(request: PartyInviteRequest): void;
-	/** Co-op consent: accept or decline invite `inviteId` (answered with `partyInviteUpdate`). */
-	partyRespond(inviteId: string, accept: boolean): void;
+	/**
+	 * Leave run (party): this player leaves party run `runId` for good, as if they had disconnected (their character
+	 * dies for the rest of the run; the others play on). A solo run's leave is in its own recording (the forfeit bit).
+	 */
+	lockstepLeave(runId: string): void;
+	/**
+	 * Lobbies (shared/lobby). Every request is answered by the state it changes (`lobbyState`, `lobbyList`,
+	 * `lobbyInvites`) or by a `lobbyNotice` of kind "refused". All are rate limited.
+	 */
+	lobbyCreate(request: LobbyCreateRequest): void;
+	lobbyJoin(lobbyId: string): void;
+	lobbyLeave(): void;
+	/** Host only. */
+	lobbyKick(userId: number): void;
+	/** Host only. */
+	lobbySetVisibility(visibility: string): void;
+	/** Host only; a LOBBY_NAMES id. */
+	lobbySetName(nameId: string): void;
+	/** Host only. */
+	lobbyTransferHost(userId: number): void;
+	/** Any member. */
+	lobbyInvite(userId: number): void;
+	lobbyAnswerInvite(inviteId: string, accept: boolean): void;
+	lobbySetReady(ready: boolean): void;
+	/** Host only: begins the start countdown (every member ready; one member is enough). */
+	lobbyStart(): void;
+	/** Asks for `lobbyList` now (the browser opened); the server also pushes it while lobbies change. */
+	lobbyRequestList(): void;
 }
 
 export interface ServerToClientEvents {
@@ -168,14 +240,22 @@ export interface ServerToClientEvents {
 	/** The answer to `getLeaderboard`. */
 	leaderboard(view: LeaderboardView): void;
 	/**
-	 * This player's stored juice overrides (only the keys they changed). The client resolves them against its
-	 * defaults: `resolveJuiceSettings(overrides, GuiService.ReducedMotionEnabled)`. Also sent once after join.
+	 * This player's stored overrides, every group (only what they changed). The client resolves them against its
+	 * defaults (`resolveJuiceSettings(overrides.juice, GuiService.ReducedMotionEnabled)`, `applyControlsOverrides`,
+	 * ...). Also sent once after join.
 	 */
-	settingsChanged(overrides: JuiceOverrides): void;
+	settingsChanged(overrides: SettingsOverrides): void;
 	/** Co-op (M4): a party run starts (every member gets it, only after every member accepted the invite). */
 	partyRunStarted(start: PartyRunStart): void;
-	/** Co-op consent: an invite's state changed (see PartyInviteUpdate). */
-	partyInviteUpdate(update: PartyInviteUpdate): void;
+	/** Lobbies: the lobbies this player may see and join (never closed ones), sorted. Throttled. */
+	lobbyList(summaries: LobbySummary[]): void;
+	/** Lobbies: the lobby this player is in changed (or they left / were removed: `lobby` undefined). */
+	lobbyState(update: LobbyStateUpdate): void;
+	/** Lobbies: every live invite this player has received. */
+	lobbyInvites(invites: LobbyInviteView[]): void;
+	lobbyNotice(notice: LobbyNotice): void;
+	/** Lobbies: a one-member lobby's run starts; the client starts a ranked solo run (see LobbySoloRunStart). */
+	lobbyRunStart(start: LobbySoloRunStart): void;
 	/**
 	 * Co-op lockstep: merged frames for ticks firstTick.. (shared/lockstep wire.ts merged batch). The ONLY input a party
 	 * client's sim ever steps with. `hashAck`: the highest tick whose hash reports the server decided (the client stops

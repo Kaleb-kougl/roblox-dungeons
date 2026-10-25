@@ -58,6 +58,14 @@ export class TelemetryService implements OnStart {
 		);
 	}
 
+	/**
+	 * Logs custom / funnel / progression events that are not derived from a run's replay (LobbyService: shared/lobby
+	 * analytics.ts). Each failing call is logged and skipped.
+	 */
+	logEvents(player: Player, specs: ReadonlyArray<AnalyticsEventSpec>): void {
+		this.logAll(player, specs, undefined);
+	}
+
 	/** Waits for the player's runs still validating, then logs the session summary and forgets the player. */
 	private endSession(player: Player): void {
 		this.runs.waitUntilIdle(player);

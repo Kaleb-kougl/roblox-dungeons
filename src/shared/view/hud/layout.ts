@@ -19,9 +19,12 @@ export const HUD_FONTS = {
 	mono: "Code",
 } as const;
 
-/** Enum.KeyCode name that toggles the juice settings panel (web: KeyO). */
+/** The HUD scale setting is a whole percent (shared/settings display.ts). */
+const PERCENT = 100;
+
+/** Enum.KeyCode name that toggles the Options screen (the juice settings panel; web: KeyO). */
 export const SETTINGS_KEY = "O";
-/** Gamepad button that closes the juice settings panel (B: GUI "back"). */
+/** Gamepad button that closes the Options screen (B: GUI "back"). */
 export const SETTINGS_PAD_CLOSE_KEY = "ButtonB";
 /** Key names the menus show, per last-used device. */
 export const SETTINGS_HINT = { keyboard: SETTINGS_KEY, gamepad: "B" } as const;
@@ -67,19 +70,20 @@ export const HUD_VIEW = {
 	/** Results breakdown: label and value column widths. */
 	breakdownLabelWidth: 200,
 	breakdownValueWidth: 110,
-	/** Co-op invite prompt (top centre, under the toasts): offset from the top. */
-	partyInviteTop: 200,
-	partyButtonSize: { x: 150, y: 40 },
 	/** Display order: the HUD under the pause / settings layer. */
 	hudDisplayOrder: 10,
 	menuDisplayOrder: 20,
 } as const;
 
-/** The clamped HUD scale for a viewport (console screens get HUD_VIEW.tenFootBoost). */
-export function computeHudScale(viewportW: number, viewportH: number, tenFoot: boolean): number {
-	if (!(viewportW > 0) || !(viewportH > 0)) return 1;
+/**
+ * The clamped HUD scale for a viewport (console screens get HUD_VIEW.tenFootBoost), times the player's HUD scale
+ * setting (`userPercent`, shared/settings display.ts; applied after the clamp so 80 % is always smaller).
+ */
+export function computeHudScale(viewportW: number, viewportH: number, tenFoot: boolean, userPercent = PERCENT): number {
+	const user = userPercent > 0 ? userPercent / PERCENT : 1;
+	if (!(viewportW > 0) || !(viewportH > 0)) return user;
 	const s = math.min(viewportW / HUD_VIEW.referenceSize.x, viewportH / HUD_VIEW.referenceSize.y);
-	return math.clamp(s * (tenFoot ? HUD_VIEW.tenFootBoost : 1), HUD_VIEW.minScale, HUD_VIEW.maxScale);
+	return math.clamp(s * (tenFoot ? HUD_VIEW.tenFootBoost : 1), HUD_VIEW.minScale, HUD_VIEW.maxScale) * user;
 }
 
 /** Splits half-heart health into per-heart fills (2 full, 1 half, 0 empty), one entry per heart of heartsMax. */
@@ -96,8 +100,7 @@ export function heartFills(hearts: number, heartsMax: number): number[] {
  * panel from the pause overlay (no pad binding). hud.spec.ts checks it clashes with no other binding.
  */
 export const LEADERBOARD_KEY = "B";
-/** Key names the leaderboard panel's close hint shows, per last-used device. */
-export const LEADERBOARD_HINT = { keyboard: LEADERBOARD_KEY, gamepad: "B" } as const;
+// The leaderboard panel's close hint follows the player's bindings: shared/play leaderboardHint (default B / B).
 
 /** Leaderboard panel layout (reference pixels) and refresh. */
 export const LEADERBOARD_VIEW = {

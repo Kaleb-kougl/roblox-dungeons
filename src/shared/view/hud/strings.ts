@@ -97,14 +97,6 @@ export const LEADERBOARD_STRINGS = {
 	postedPrefix: "hud.leaderboard.posted.",
 } as const;
 
-/** The co-op invite prompt (M4 consent: a party run starts only once every member accepted). */
-export const PARTY_STRINGS = {
-	invited: "hud.party.invited",
-	accepted: "hud.party.accepted",
-	accept: "hud.party.accept",
-	decline: "hud.party.decline",
-} as const;
-
 /** The leaderboard status words a verdict's `leaderboard` field starts with. */
 export const LEADERBOARD_POST_STATUSES = ["queued", "ineligible", "failed"] as const;
 
@@ -117,7 +109,12 @@ export function leaderboardPostKey(status: string | undefined): string | undefin
 	return undefined;
 }
 
-/** The ending key for a run ending ("death" | "victory" | "abandoned"); unknown endings read as abandoned. */
+/**
+ * The ending key for a run ending ("death" | "victory" | "abandoned" | "ended": a party run the server ended before
+ * the wipe); unknown endings read as abandoned.
+ */
 export function endingKey(ending: string | undefined): string {
-	return ending === "death" || ending === "victory" ? `hud.ending.${ending}` : "hud.ending.abandoned";
+	return ending === "death" || ending === "victory" || ending === "ended"
+		? `hud.ending.${ending}`
+		: "hud.ending.abandoned";
 }

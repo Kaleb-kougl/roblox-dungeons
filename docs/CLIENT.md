@@ -3,14 +3,15 @@
 The client runs the deterministic sim live (single-player first, PLAN.md), draws it with theme placeholders, and at
 the end of a run sends the recording to the server, which replays it (docs/SERVER.md). Part A built the loop and the
 renderers; part B added the React HUD, the juice layer (health bars, damage numbers, freeze frame, particles, camera
-nudge), the juice settings panel and audio. Everything presentation-side reads the sim and never writes it.
+nudge), the juice settings panel and audio; task L4 grew the panel into the Options screen (juice, controls with key
+rebinding, audio, display). Everything presentation-side reads the sim and never writes it.
 
 ## Controller map
 
 | Controller | File | Job |
 |---|---|---|
 | `ThemeController` | `src/client/controllers/game/ThemeController.ts` | Loads the theme pack in `onInit`; every visual comes from it (placeholder shapes + colour roles). |
-| `InputController` | `.../game/InputController.ts` | Polls keyboard, mouse and the gamepad once per frame into an `InputFrame` (pure mapping: `shared/play/inputMapping.ts`). Sinks every bound key and both sticks in ContextActionService (High priority) so stock controls never act. Mouse aim: camera ray through the pointer onto the floor plane. Tracks the last-used device for the HUD hint (`game.inputDevice` in Reflex). Reports driver keys (R, F8 / L, D-pad down). |
+| `InputController` | `.../game/InputController.ts` | Polls keyboard, mouse and the gamepad once per frame into an `InputFrame` (pure mapping: `shared/play/inputMapping.ts`). Sinks every bound key and both sticks in ContextActionService (High priority) so stock controls never act. Mouse aim: camera ray through the pointer onto the floor plane. Tracks the last-used device for the HUD hint (`game.inputDevice` in Reflex). Reports driver keys (R, F8 / L, D-pad down). Reads the player's bindings from the store (`selectBindings`) and re-binds the sink when they change (see "Options screen"). |
 | `SimController` | `.../game/SimController.ts` | Owns the live run: `buildWorldSetup(world, seed, { atBossDoor })` (the server's own world registry; `endless` by default), a `LiveRun` (`shared/play/liveRun.ts`), pause, restart, F8 replay check, the ranked start (`startRun`), per-floor segments (`submitSegment`, cut on `floorChanged`) and `finishRun`, the unranked `submitRun`, verdicts, the ~10 Hz HUD snapshot. Read-only accessors for views: `getContext()` (the current floor's config / dungeon in endless runs), `getState()`, `getAlpha()`, `getFrameEvents()`, `onRunStarted(cb)`, `onFloorChanged(cb)` (endless: WorldController rebuilds, CameraController snaps). |
 | `CameraController` | `.../game/CameraController.ts` | Spike B's iso rig on the live run: Scriptable, FOV 7, yaw 45 / pitch 55, distance for 16.875 tiles of view height, damped follow (tau 1/6 s) of the interpolated player, 1-texel snap. Snaps to the player at every run start. Stands down while `KV_SpikeCamera` is on. |
 | `WorldController` | `.../game/WorldController.ts` | Builds the floor: greedy-merged floor / wall / pool Parts (`shared/view/tileMerge.ts`) in the biome's `tile.biome.N.*` placeholder colours, plus one backdrop slab (`background` role). Rebuilds only when the floor changes. When the pack has the biome floor tile as an image with `tilesPerImage`, each floor slab gets a top-face `Texture` repeating every `tilesPerImage * STUDS_PER_TILE` studs (colour stays the biome's). Each Part takes the biome's `materials` (`ThemePack.biome(id).materials.floor / wall / pool`, `Enum.Material[name]`, SmoothPlastic by default); a textured floor is always SmoothPlastic. Solid pillars are WALL tiles and merge into the wall Parts. |
@@ -27,9 +28,12 @@ nudge), the juice settings panel and audio. Everything presentation-side reads t
 | `DamageNumberController` | `.../fx/DamageNumberController.ts` | Damage numbers: 48 pooled BillboardGuis, merge window, heavy / capped colours, "CAP" tag, rise + fade. |
 | `ScorePopController` | `.../fx/ScorePopController.ts` | Scored runs (M2): a rising, fading `+points` BillboardGui per kill (`LiveRun.scorePops`, pooled `ScorePopPool`). |
 | `ParticleController` | `.../fx/ParticleController.ts` | Death bursts, boss waves, roar sparks, hit sparks: pooled 1-3 px Parts, one BulkMoveTo per frame, particle budget. |
-| `AudioController` | `.../audio/AudioController.ts` | Theme sounds for sim events and music through the `sfx` / `music` SoundGroups (all silent today). |
-| `SettingsController` | `.../ui/SettingsController.ts` | Juice settings: server sync (request / update / reset / settingsChanged), the system Reduce Motion flag, O toggles the panel, B closes it, the panel pauses the run. |
-| `HudController` | `.../ui/HudController.tsx` | Mounts `GameHud` (React + Reflex; two ScreenGuis through a portal) with the menu actions, switches gamepad navigation on while a menu is open, hides the stock Health / Backpack CoreGui. |
+| `AudioController` | `.../audio/AudioController.ts` | Theme sounds for sim events and music through the `sfx` / `music` SoundGroups (all silent today); the player's volumes scale the groups. |
+| `SettingsController` | `.../ui/SettingsController.ts` | The player's settings (juice, controls, audio, display): server sync (request / update / reset / settingsChanged), the system Reduce Motion flag, `KV_ResetBindings`, O toggles the Options screen, B closes a prompt on it or the screen, the screen pauses the run. |
+| `RebindController` | `.../ui/RebindController.ts` | The Options screen's rebinding: capture (countdown, cancel, owns the input), swap prompt, refusal notes, Clear, Reset device, the input test strip. |
+| `HudController` | `.../ui/HudController.tsx` | Mounts `GameHud` (React + Reflex; two ScreenGuis through a portal) and the menu shell `MenuLayer` (client/ui/menu, its own ScreenGui) with the HUD and menu actions, switches gamepad navigation on while a menu is open (menu screens, pause / party overlay, run-over panel, panels), hides the stock Health / Backpack CoreGui. |
+| `MenuController` | `.../ui/MenuController.ts` | L3 / L6: the main menu on join (no run starts on its own; `KV_SkipMenu` starts one at once), the screen + back stack (Reflex `menu`; pad B / Backspace go back), Play solo / Lobbies / Options / Leaderboard, the menu after a run (the lobby room while in a lobby, else the main menu), the co-op party overlay (the pause key in a party run) and Leave run. See "Main menu, lobbies and Leave run". |
+| `LobbyController` | `.../ui/LobbyController.ts` | L5: the lobby remotes into the Reflex `lobby` slice (list, my lobby, invites, notice toasts, the players in this server), the lobby requests, and `lobbyRunStart` (a one-player lobby's ranked solo run). |
 
 Pure, headlessly tested logic: `src/shared/play/` (input mapping, live loop, HUD snapshot), `src/shared/view/`
 (iso camera, studs <-> sim units, aim ray, greedy tile merge, marking geometry, dash layout, presentation tunables),
@@ -104,9 +108,10 @@ Mouse aim uses the previous frame's camera (the web build does the same).
 | Dodge roll | Space | LB | same |
 | Flask | F | D-pad up | same |
 | Ember (bullet clear) | Q | RB | same |
-| Pause (overlay: Resume / Restart / Juice settings) | **P** | Start | **Escape** / Start |
-| Juice settings panel | **O** (B or Close closes it) | pause overlay -> Juice settings; B closes | O |
-| Restart (same seed) | R (any time) | **D-pad down** (only when dead, victorious or paused) | R |
+| Pause (overlay: Resume / Restart / Leave run / Options / Leaderboards; co-op: the non-pausing party overlay) | **P** | Start | **Escape** / Start |
+| Options screen (juice settings, controls, audio, display) | **O** (B or Close closes it) | pause overlay -> Options; B closes | O (juice panel) |
+| Restart (same seed) | R (any time; a ranked run still being played is forfeited first: a death) | the pause overlay's Restart; after a death / victory **A** on the selected Again (menus and the run-over panel take the pad, so the D-pad-down restart binding never fires there) | R |
+| Menu back (main menu, lobby screens, the Leave run confirm, the party overlay) | Backspace | B | (none) |
 | Debug: one hit on the player | K (KV_Debug only) | | K |
 | Debug: 10 % off an engaged boss | J (KV_Debug only) | | J |
 | Debug: replay check | F8 or **L** (KV_Debug only) | | F8 |
@@ -122,13 +127,24 @@ debug floor skip, and `inputMapping.spec.ts` checks B against every game and dri
 finished / paused run so a stray press cannot end a fight. L duplicates F8 because Studio may keep F8 for itself.
 Opening the Roblox menu (Escape, or Start on some pads) also pauses the run and resumes it when the menu closes.
 
+Rebinding (task L4b; pure half in `shared/play/bindings.ts`, lists in `shared/play/config.ts`): the table above is
+`DEFAULT_BINDINGS`. Rebindable: move (keyboard only, a primary and a secondary key each), attack, alt, roll, Ember,
+flask, swap, skills 1-4 (skill 1 is also the shrine accept), restart and the leaderboard key (keyboard only); a
+keyboard slot also takes MouseButton1-3, a pad action one button (a trigger keeps its analog threshold wherever bound).
+Fixed: pause (P / Start), settings (O; pad B closes panels), aim, the pad's sticks, UI navigation and the debug keys.
+Refused: Escape, Tab, Slash, F9, F11 and every fixed key. `rebind` swaps with the action that held the input, so no
+input is ever bound twice on a device and every action keeps a primary; the stored form is `ControlsOverrides` (the
+actions that differ), cleaned by `sanitizeControlsOverrides`. The sim only sees the resulting bits: a rebound layout
+pressed the same way gives the same InputFrame (`bindings.spec.ts`). The client half (Options > Controls, stored in
+the settings document v2's `controls` group) is in "Options screen" below; the table above is only the default.
+
 The boon draft (M2, after every endless floor) uses the existing sim input only (no new bit, no codec change): the
 sim reads the move vector's SCREEN-horizontal component (the InputFrame's move is world space; `DRAFT_SCREEN_RIGHT_*`
 is screen-right for the 45-degree camera, checked against `screenToWorld` in `inputMapping.spec.ts`), beyond a 0.5
 dead zone left / right, else the centre card (two cards: left / right, centre selects none); a FIRE press edge
 confirms once the draft has been open `DRAFT_MIN_OPEN_TICKS` (0.5 s). The world is frozen meanwhile. The shrine uses
 SKILL1 (key 1 / pad A), which does nothing else anywhere in the sim (FIRE would swing the sword there). Co-op
-(`KV_Party`): every player drafts from their own offers with their own stick / FIRE (through the lockstep input like
+(a lobby's party run): every player drafts from their own offers with their own stick / FIRE (through the lockstep input like
 any other frame), and the world stays frozen until all of them confirmed.
 
 Menus (pause overlay, settings panel): while one is open the gamepad's A / B / D-pad / left stick go to Roblox's GUI
@@ -141,11 +157,14 @@ swing on Resume).
 ## HUD (`src/client/ui/hud/`, React + Reflex)
 
 Two ScreenGuis (`KV_GameHud` display order 10, `KV_GameMenu` 20), laid out at a 1280x720 reference under a UIScale
-(`useHudScale`: min(w / 1280, h / 720) clamped to 0.6..1.75, x1.25 on a ten-foot console screen; `computeHudScale`)
-inside the safe area (`ScreenInsets = CoreUISafeInsets`). Every text is a theme string (`shared/view/hud` HUD_STRINGS /
-SETTINGS_STRINGS, all checked to exist by `hud.spec.ts`), every colour a theme role, the font the token
-`HUD_FONTS.text` (Roblox's pixel font **Arcade**; `HUD_FONTS.mono` = Code for the debug line), resolved once in
-`client/ui/theme`. Change the font there and only there.
+(`useHudScale`: min(w / 1280, h / 720) clamped to 0.6..1.75, x1.25 on a ten-foot console screen, then x the player's
+HUD scale, Options > Display, 80-125 %; `computeHudScale`) inside the safe area (`ScreenInsets =
+CoreUISafeInsets`). Every text is a theme string (`shared/view/hud` HUD_STRINGS / SETTINGS_STRINGS / OPTIONS_STRINGS,
+all checked to exist by `hud.spec.ts`), every colour a theme role, the font the token `HUD_FONTS.text` (Roblox's pixel
+font **Arcade**; `HUD_FONTS.mono` = Code for the debug line), resolved once in `client/ui/theme`. Change the font there
+and only there. Every key prompt (swap, restart, the shrine accept, the boon draft, the leaderboard close) names the
+player's bound key for the last-used device (`selectBindings` + shared/play `swapHint` / `restartHint` / `shrineHint` /
+`draftHint` / `leaderboardHint`); pause (P / Start) and Options (O / B) are fixed.
 
 | Where | Component | Shows |
 | --- | --- | --- |
@@ -157,9 +176,9 @@ SETTINGS_STRINGS, all checked to exist by `hud.spec.ts`), every colour a theme r
 | centre (endless) | `DraftOverlay` | M2 boon draft: `Choose a boon`, up to 3 cards (`<id>.name` in the rarity colour, `boon.rarity.<r>`, `<id>.desc`), the card under the stick highlighted (`uiAccent` ring, scaled up; the snapshot is taken every frame while the draft is open), the device's hint (`A / D to choose · Click to take`) once a confirm counts. Co-op: the LOCAL player's offers and selection, plus `Waiting for N teammate(s) to choose` (`hud.draft.waiting`) while others still choose (alone once this player confirmed) |
 | top centre (endless) | `ToastPanel` | M2: `Boon: <name>` / `Relic found: <name>` / `Cursed: <name>` / `Second Wind!` / Vampire Fang heals for 3 s (store `game.toasts`, from the run view's `runEvents`: the local player's own events, solo or co-op), and the `1: accept a curse` hint while the player stands in an unused shrine's zone |
 | top centre | `BossBar` | while a boss is engaged: `<boss id>.name`, `Phase I / II / III`, an hp bar (`boss` role) with notches at the phase marks (66 % / 33 %, from the archetype's `phaseHp`) |
-| centre | `RunOverPanel` | after a death / victory: `Run over` / `Victory`, `You died — press R to retry` / `Mother Bramble defeated — press R to play again` (R or D-pad down by device) + `or <other key>`, time, hits taken, kills; in scored runs the score, best combo and the points per source (kills, grazes, guard, rooms, perfect, fast, floors, boss). Endless runs have no victory: only death ends them. |
-| centre (menu) | `PauseOverlay` | while paused and playing: dimmed scene, `Paused`, Resume / Restart / Juice settings, `P to resume` / `Start to resume` |
-| centre (menu) | `SettingsPanel` | the juice settings (below) |
+| centre | `RunOverPanel` | after a death / victory: `Run over` / `Victory`, `You died — press R to retry` / `Mother Bramble defeated — press R to play again` (R, or A with a pad: the selection starts on Again) + `or <other key>`, time, hits taken, kills; in scored runs the score, best combo and the points per source (kills, grazes, guard, rooms, perfect, fast, floors, boss); then **Again** (solo) and **Main menu**, or **Back to lobby** while in a lobby. A party run: `The party is down — press R to return` (or `The server ended the run (<reason>) — press R to return` once the server rejected it, also before the wipe), Back to lobby only. Endless runs have no victory: only death ends them. |
+| centre (menu) | `PauseOverlay` | solo, while paused and playing: dimmed scene, `Paused`, Resume / Restart / Leave run / Options / Leaderboards, `P to resume` / `Start to resume`. Co-op (the pause key; the run goes on, no dimming): `Party run`, Resume / Leave run / Options / Leaderboards, `P to close · the run does not pause`. Leave run shows the confirm first (`Leaving ends your run. It counts as a death and your score is submitted.`, Leave / Cancel; Cancel selected with a pad) |
+| centre (menu) | `OptionsScreen` | the Options screen: Juice / Controls / Audio / Display tabs (below) |
 | bottom right | `InfoPanel` | `Project Kaleb-Vale · <biome> · seed N · <dungeon>`, the fallback notice, the verdict line (`Run 2 (death): verified by the server (ab12cd34)` / `submitted, checking...` / `rejected (code) reason` / `not submitted (stress)`), and with KV_Debug the debug line (tick, recorded ticks, enemies, bullets, replay check) |
 
 The snapshot (`shared/play` `GameSnapshot`) gained `bossPhaseMarks`, `kills`, `hitsTaken` and `endTick` (the tick the
@@ -242,17 +261,58 @@ under a known prefix validate). Each sound starts at most once per frame. `sfx.l
 in M1. `hud.spec.ts` checks the mapping table and that every ID it can play exists in the placeholder pack, in the
 right SoundGroup.
 
-## Juice settings panel and persistence
+## Options screen and persistence (task L4 / L4b client)
 
-O (keyboard) or the pause overlay's "Juice settings" (gamepad route) opens it; B, O or Close closes it. Rows: enemy
-health bars (always / when hit / off), damage numbers, freeze frame on kill, particles (off / low / normal / high),
-reduced motion (on / off, with `(system: on/off)` below), then Reset to defaults and Close. Every pick applies at once
-(Reflex `settings` slice, `patchOverrides`) and is sent with `updateSettings`; the server's `settingsChanged` (sent
-after join and after every request) replaces the overrides. Before the server answers the panel shows "Not saved yet:
-the server has not answered" and the game runs on the defaults plus the local changes. (The client does need the
-server runtime to have created the remotes: `client/network.ts` waits for them, with no timeout, while the controllers
-load. If the server script dies before `GlobalEvents.createServer`, no controller starts.)
-Reset clears the overrides (`resetSettings`), so reduced motion follows the system again.
+`OptionsScreen` (`client/ui/hud/OptionsScreen.tsx`) is the former juice settings panel grown into tabs. It opens and
+closes exactly as the panel did: O (keyboard), the pause overlay's "Options" button (the gamepad route) and the HUD
+action `setSettingsOpen(true)` (any other menu, e.g. a main menu, opens it through that action; the Reflex flag is still
+`settings.panelOpen`); B, O or Close closes it, and the run is paused while it is open. Tabs (`OPTIONS_TABS`):
+
+| Tab | Rows | Group (stored) |
+| --- | --- | --- |
+| Juice | enemy health bars (always / when hit / off), damage numbers, freeze frame on kill, particles (off / low / normal / high), reduced motion (on / off, `(system: on/off)` below) | `juice` |
+| Controls | Keyboard & mouse / Gamepad sub-tabs; one row per rebindable action (`KBM_ACTIONS` / `PAD_ACTIONS`, names `options.action.*`): primary + secondary (+ Clear when a secondary is set) on keyboard / mouse, one button on the pad; the input test strip; Reset <device> (asks first) | `controls` (`ControlsOverrides`) |
+| Audio | master, music, sound effects: `-` / `+` in 10 % steps (0..100) | `audio` |
+| Display | HUD scale 80 / 90 / 100 / 110 / 125 % (multiplies the automatic scale) | `display` |
+
+Juice, Audio and Display have a "Reset to defaults" for that tab only (`updateSettings({ <group>: {} })`); Controls
+resets per device. Every pick applies at once (Reflex `patchOverrides`, optimistic) and is sent with `updateSettings`
+as the whole changed group; the server sanitizes it and its `settingsChanged` (sent after join and after every request)
+replaces the overrides. Before the server answers the screen shows "Not saved yet: the server has not answered" and
+the game runs on the defaults plus the local changes. (The client does need the server runtime to have created the
+remotes: `client/network.ts` waits for them, with no timeout, while the controllers load. If the server script dies
+before `GlobalEvents.createServer`, no controller starts.) Audio volumes scale the SoundGroups live
+(`soundGroupVolume`: group x master x the group's own percent); everything is silent with the placeholder pack, so the
+Audio tab only becomes audible once sound IDs are uploaded. No separate screen-shake option: the only shake is the
+1-pixel boss nudge, which Reduced motion already turns off.
+
+Rebinding (Controls tab; RebindController, pure flow in `shared/play/rebindFlow.ts`):
+
+- **Capture.** Activating a slot shows `Press a key... (5)` (`Press a button...` on the pad sub-tab), counting down from
+  `REBIND.captureTimeoutSeconds`; the timeout, Escape, or opening the Roblox menu cancels with nothing changed. The press
+  that opened it never counts (input is taken from the next frame). The capture OWNS the input from its start until
+  the frame after it ends (`options.inputCaptured`): InputController sinks everything and reports no driver keys (so R
+  does not restart), O / the pad's B close / the leaderboard key do nothing, and Roblox's GUI selection is switched off
+  (`GuiNavigationEnabled`) so pad A does not press the selected button. Keyboard captures take keys and mouse buttons
+  1-3; pad captures take pad buttons (triggers included).
+- **Result** (`planRebind`): a free input binds at once; one held by another action asks `X is already used by Y.`
+  [Swap] [Cancel] (Swap gives Y this slot's old input, or clears Y's secondary when this slot was empty; B also
+  cancels); the action's own other slot swaps the two silently; a reserved input (Escape, Tab, Slash, F9, F11, P, O,
+  the debug keys; Start / Select / sticks on the pad) or a swap that would leave Y with no input is refused with a note
+  under the list.
+- **Clear** empties a keyboard / mouse secondary; **Reset <device>** asks `Reset every <device> binding to the
+  default?` first.
+- **Test strip.** While the Controls tab is open, one chip per action of the shown device lights up while its input is
+  held (`pressedActions`). With a pad, A / B / the D-pad still navigate the menu while you test them.
+- **Applying.** InputController reads `selectBindings` (DEFAULT_BINDINGS + the stored overrides; memoized, the store
+  keeps an unchanged group's object so other settings changes do not re-bind), re-binds its CAS sink with the new key
+  list, and treats every input held at the change as released until it is let go (`HeldInputGate`), so the key you
+  just pressed into a slot does not fire on resume. The default layout gives exactly the old key lists and sim bits.
+- **Gamepad.** Every control is a Selectable MenuButton; the first tab is selected on open; a prompt selects its first
+  button and makes the rows behind it unselectable; when the prompt closes the selection returns to the slot that
+  opened it. The bindings list scrolls (ScrollingFrame) and follows the selection.
+
+`KV_ResetBindings` (Workspace attribute, below) clears the saved bindings once on join.
 
 ## Ranked runs and the leaderboard panel (M3 / M5)
 
@@ -260,8 +320,9 @@ Unless `KV_Seed` or `KV_World` is set (or stress is on), every run start asks th
 plays the seed the server picked on `RANKED_WORLD_KIND` (`"endless"`: scored, one segment per floor); the views see
 no run until it answers (an unranked local run after `RUN_START_TIMEOUT_SECONDS` or a refusal; a `busy` answer, e.g.
 the player's party run still being decided, is retried every `RUN_START_BUSY_RETRY_SECONDS` up to
-`RUN_START_BUSY_RETRIES` times first). A `runFinished` with code `abandoned` for a run the client already left (a
-restart, or joining a party run) is not shown. The LiveRun cuts a
+`RUN_START_BUSY_RETRIES` times first). A `runFinished` for a run the client already left (a forfeiting restart whose
+next run already started, Leave run, a party run left for the menu or a new run) only goes to the output log; only
+the current run's verdict reaches the verdict line. The LiveRun cuts a
 segment on every floor change (`segmentCutAfterTick: (s) => s.events.floorChanged !== 0`, else every
 `SEGMENT_FALLBACK_TICKS`), the SimController uploads them as they are cut (`submitSegment`) and sends `finishRun` at
 the end; `runFinished` fills the verdict line, with the leaderboard status. Each `segmentVerdict` ok releases that
@@ -270,7 +331,7 @@ whole recording). Details: docs/SERVER.md "Segmented runs".
 
 B (or Leaderboards in the pause overlay) opens the leaderboard panel: Solo / Co-op tabs, the top 100 (your row
 highlighted) and your best with its rank when it is in the top. B, pad B or Close closes it; the run pauses while it
-is open, and only one of the juice settings / leaderboard panels is open at a time.
+is open, and only one of the Options screen / leaderboard panel is open at a time.
 
 ## Workspace attributes (read at every run start, i.e. on R)
 
@@ -282,11 +343,68 @@ is open, and only one of the juice settings / leaderboard panels is open at a ti
 | `KV_Stress` | number | The web build's `?stress=N`: rings keep ~N enemy bullets alive. Stress runs are never submitted. |
 | `KV_World` | string | `endless` (default: shared/config `PLAY_MODE`), `game` (the M1 run), `dungeonNoEncounter`, `greybox`. Set: the run is unranked. Pair with the server's `KV_RunValidationWorld` (Studio). |
 | `KV_Scoring` | boolean | M2 scoring on an M1 world (`game` etc.; endless is always scored). Such runs are not submitted (`not submitted (scored)`): the server replays M1 unscored. |
-| `KV_Party` | boolean | M4 co-op (until the Hub's party pad exists): at each run start the lowest UserId INVITES everyone else in the server (`partyInvite`); everyone keeps playing solo meanwhile. Each invited player gets the `PartyInvitePanel` prompt (top centre: "<host> invites you to a co-op run", Join / Decline); the party run starts only once every one of them joined (the server enforces it), their solo runs end as abandoned, and a client only switches to a party run whose `inviteId` it accepted (or hosts). The camera, HUD and weapon view follow this client's own player; every member is drawn; in parties of 5+ teammates' bolts draw at 40 % opacity. No pause and no restart until the whole party is down, and then R starts the next run once the party's verdict arrived (pressed earlier, it waits for it); hitstop never slows the co-op sim (docs/SERVER.md "Co-op lockstep (M4)"). |
-| `KV_PartyAutoAccept` | boolean | Dev only: accept every co-op invite at once, without the prompt. Off by default. |
+| `KV_SkipMenu` | boolean | Dev only (read once, on join): no main menu; a solo run starts at once, as before the menu existed. Off by default. Co-op runs start from a lobby (Lobbies in the main menu): see "Main menu, lobbies and Leave run". |
+| `KV_ResetBindings` | boolean | Dev only, read ONCE when the client starts (not on R): when the server's settings arrive, the saved key bindings (`controls` group) are cleared and saved that way; the other groups are kept. Off by default (shared/settings `SETTINGS_ATTRIBUTES`). |
 
 If the `game` world cannot start (e.g. a build without the actor archetypes: "Unknown archetype"), the client falls
 back to `dungeonNoEncounter` and says so in the HUD's info line.
+
+## Main menu, lobbies and Leave run (L3 / L5 / L6, client half)
+
+Pure half: `src/shared/view/menu/` (the screen + back stack reducer `menuNavReduce`, the lobby view models
+`browserRows` / `lobbyRoomModel` / `inviteCandidates` / `receivedInvites` / `noticeSpec`, the run handoff and exit
+rules `lobbyStartAccepted` / `afterRunPath` / `runOverExits` / `pauseItems` / `restartForfeits`, every `menu.*` /
+`lobby.*` string key, layout tunables), specced in `menu.spec.ts` (string keys in `hud.spec.ts`). Drawing:
+`src/client/ui/menu/` (`MenuLayer`, ScreenGui `KV_MenuShell`, display order 15: over the HUD, under the pause /
+settings layer). Reflex: `menu` (screen, back stack, Leave run confirm, party overlay) and `lobby` (list, my lobby with
+its arrival time, received invites, notices, the players in this server).
+
+- **Join**: the main menu over a dark backdrop (no world yet): the title, **Play solo** (a ranked solo run; "Starting
+  run..." while the server answers), **Lobbies** ("Your lobby" while in one: straight to the room), **Options** (the
+  juice settings panel for now) and **Leaderboard** (the leaderboard panel). Pad: the selection starts on Play solo;
+  B / Backspace go back a screen (not while a panel is open: B closes the panel). Escape stays Roblox's menu key.
+- **Lobby browser**: one row per lobby the server lists for this player (never closed ones): the preset name
+  (`lobby.name.*`; "{host}'s descent" with the host's DisplayName from the Player in this server), count / max,
+  Open / Friends, a tag (In run greyed, Starting, Your lobby, Friend inside) and Join (only when not in a lobby, the
+  lobby forming and not full). Top bar: the new lobby's visibility (Open / Friends / Closed) and Create lobby (or Your
+  lobby while in one). Refresh and Back. Opening the browser sends `lobbyRequestList`; the server pushes changes.
+- **Lobby room** (opens on create / join; leaving or a kick goes back to the browser): name, status (waiting /
+  everyone ready / `Starting in N...` counted down locally from `countdownIn` / `Run in progress`), members in join
+  order (name, `(you)`, Host, Ready / Not ready; the host also sees Kick and Make host on the others' rows while
+  forming), host-only controls (visibility, Rename: the next preset), everyone's Ready toggle, Invite (the players in
+  this server outside the lobby; `Invited` while `LobbyView.invited` has them), Start (host only: `Start solo run`
+  when alone, enabled once everyone is ready), Leave lobby, Back.
+- **Invites**: top-right toasts on menu screens (`{from} invites you to {lobby}`, Join / Decline; gone when expired,
+  counted from the list's arrival); during a run a `Lobby invites: N` badge (bottom centre). **Notices**
+  (`lobbyNotice`) are top-centre toasts for 4 s: refusals read `lobby.err.<code>`, the rest `lobby.notice.<kind>`.
+- **Run handoff**: `partyRunStarted` is taken only when its `lobbyId` is the lobby this client is in (replaces the
+  old invite consent); `lobbyRunStart` (`kind: "solo"`) starts a ranked solo run the same way. Any run start closes
+  the menu. After a run that came from a lobby (while still in it) the run-over panel offers Back to lobby.
+- **Leave run**: the pause overlay's Leave run, after the confirm. Solo: `LiveRun.requestForfeit()`; the next frame
+  steps the forfeit tick (paused or not), the run is a death, submitted through the normal death / segment / finish
+  path, then the run stops and the menu opens (the lobby room while in a lobby, else the main menu). Party runs never
+  pause: the pause key opens the **party overlay** over the running run (Resume closes it); Leave run sends
+  `lockstepLeave(runId)`, stops the lockstep client and opens the lobby room, which reads `Run in progress` until the
+  lobby is back to forming. R / Restart / Again mid-run on a **ranked** solo run is a forfeit too (a death,
+  submitted), and the next run starts once that death was submitted; unranked runs restart as before (abandoned). In
+  a party run R does nothing until the party is down, then goes back to the lobby (after the party's verdict).
+- **A party run the server ended**: when the party's `runFinished` arrives while the party is still up (desync,
+  `replay_error`, expiry), the run ends on this client too (`LockstepClient.end`: `isOver()`, nothing more stepped or
+  sent): the run-over panel shows `The server ended the run (<reason>) — press R to return` (shared/view/menu
+  `partyRunOverLine`; also for a wiped party's run the server rejected) with Back to lobby / Main menu, R goes back,
+  and the verdict line reads `Run N (ended by the server): rejected (desync) ...`.
+- **Co-op input under a menu**: a party run never pauses, so while a menu owns the controls (the party overlay,
+  Options, a rebind capture, Leaderboards, the run-over panel, the Roblox menu: `InputController.menuOwnsInput()` or
+  `GuiService.MenuOpened`) the co-op frames carry EMPTY_INPUT (shared/lockstep `CoopMenuInputGate`): no move, no
+  buttons, no aim (a pointer over the menu would turn the character; with neither move nor aim the facing stays).
+  Buttons still held when the menu closes (the A on Close) stay masked until released. Solo runs pause instead.
+- **Run over is a menu**: while the run-over panel shows, the pad drives the GUI selection (Again / Main menu), so
+  D-pad down (the pad's restart binding) no longer restarts there; the panel's pad hint is A (Again starts selected).
+- When a run stops, the HUD goes inactive (Reflex `endRun`); the world views keep their last frame under the menu
+  backdrop until the next run starts.
+
+The old M4 invite flow is gone (task L7): `KV_Party`, `KV_PartyAutoAccept`, `PartyInvitePanel`, the
+`partyInvite*` remotes, `shared/run/partyInvites.ts` and the `hud.party.*` strings.
 
 ## The default character
 
@@ -323,10 +441,18 @@ snapshot, the aim ray, the greedy merge (exact cover on random grids and seed 13
 freeze rules (driving a real FixedStepLoop), bar layout / state, the damage number pool, the particle system (ports of
 the web build's tests), the hitstop-vs-replay determinism of the live loop (`liveRun.hitstop.spec.ts`), the audio
 mapping and music choice, every sound ID and HUD / settings string key in the placeholder pack, the HUD scale rule
-and helpers.
+and helpers. Task L4 / L4b: the settings document v2 (v1 migration, unknown versions, sanitize, overrides-only, group
+patches; `settings.spec.ts`), the rebinding flow (`rebindFlow.spec.ts`: bind / swap prompt / refusals, capture
+events, countdown, test strip, held-input gate), every `options.*` string and action name, the input label tables, the
+HUD scale setting and the SoundGroup volume rule (`hud.spec.ts`).
+
+Headless (L3 / L5 / L6): the menu back stack, the lobby browser / room / invite / notice view models, the run
+handoff gate and the exit rules (`shared/view/menu/menu.spec.ts`), every `menu.*` / `lobby.*` string
+(`hud.spec.ts`), the solo forfeit (`shared/play/liveRun.forfeit.spec.ts`).
 
 Studio only: every controller (input polling and sinking, camera, Parts, BulkMoveTo, BillboardGuis, the React HUD,
-GUI selection, SoundGroups / Sounds, remotes).
+the menu shell and lobby screens, GUI selection, SoundGroups / Sounds, remotes), the Options screen and the rebinding
+capture.
 
 ## Studio smoke test
 
@@ -334,7 +460,16 @@ Setup: `npm run build`, `rojo serve`, open a **Baseplate** place, connect Rojo. 
 (its haze washes out a scene seen from ~550 studs). Game Settings > Security: enable Studio Access to API Services.
 With the actors merged the default `game` world has enemies; without them see "fallback" below.
 
-1. **Start (F5).** Output: `[Sim] run 1 started: seed 1337, world game` and `[World] built 134 parts (...)`.
+0. **Main menu (F5).** The main menu shows (title, Play solo, Lobbies, Options, Leaderboard) over a dark backdrop;
+   no run starts. Play solo starts the run below (with `KV_SkipMenu` on Workspace the menu is skipped). For lobbies
+   use Studio's Test > Clients and Servers (3 players): Lobbies > Create lobby (Open) on Player1 -> its room;
+   Player2 / Player3 see it in their browser (`Player1's descent 1/8 Open`) and Join; Ready on all three; Player1's
+   Start counts down (`Starting in 3...`) and every client switches to the party run. In the run, P opens `Party run`
+   without pausing; Leave run -> confirm -> Leave: that player lands in the lobby room (`Run in progress`), the others
+   play on. Solo: P -> Leave run -> Leave: the run ends as a death (verdict submitted) and the main menu shows.
+   Invite (from the room) shows a Join / Decline toast on the invited player's menu; Kick sends the `You were
+   removed from the lobby` toast and puts them back in the browser; a closed lobby never lists.
+1. **Start (Play solo).** Output: `[Sim] run 1 started: seed 1337, world game` and `[World] built 134 parts (...)`.
    The view is an angled top-down dungeon (dark floor, lighter walls one tile tall), the tan capsule (the player)
    centred, a small light diamond on the floor in front of it. No Roblox character, health bar or backpack is
    visible. HUD (pixel font): top left `HP` + three red hearts, `Flask` + three gold dots, `Ember` + two amber
@@ -356,7 +491,7 @@ With the actors merged the default `game` world has enemies; without them see "f
    (snipers) show an orange dashed aim line before shooting pink neon balls, red blocks (bruisers) flash and send an
    orange dashed shockwave ring with a gap. Enemies flash near-white when hit, fade out when killed. Getting hit:
    the last heart turns half red and the capsule blinks for ~0.75 s.
-8. **Pause.** P: the scene dims, the overlay shows `Paused`, `Resume`, `Restart`, `Juice settings`, `P to resume`;
+8. **Pause.** P: the scene dims, the overlay shows `Paused`, `Resume`, `Restart`, `Options`, `Leaderboards`, `P to resume`;
    everything freezes; P again (or Resume) resumes, and the click on Resume does not swing the sword. Restart starts
    a new run. Escape (Roblox menu) also freezes the game, and it resumes when the menu closes.
 9. **Boss.** (Faster: set `KV_Debug` and `KV_SpawnBoss` true on Workspace, then R.) Enter the boss room: a large
@@ -368,11 +503,11 @@ With the actors merged the default `game` world has enemies; without them see "f
    With KV_Debug, J takes 10 % off.
 10. **Victory.** Kill the boss: a short freeze, then ~0.5 s of slow motion, the camera jiggles one pixel, three
     waves of yellow particles. The centre panel: `Victory` (gold), `Mother Bramble defeated — press R to play again`,
-    `or D-pad down`, the time, hits taken and kills. Bottom right `Run 1 (victory): submitted, checking...` then
+    `or A`, the time, hits taken and kills. Bottom right `Run 1 (victory): submitted, checking...` then
     `Run 1 (victory): verified by the server (<hash>)`.
     (A boss-door / K / J run is rejected `debug_spawn` / `debug_input` unless the server has `KV_AllowDebugRuns`.)
 11. **Death.** R, then let enemies (or K with KV_Debug) take all hearts: the capsule lies down grey, the centre panel
-    `Run over` (red), `You died — press R to retry`, `or D-pad down`, the time survived, hits taken, kills; the verdict
+    `Run over` (red), `You died — press R to retry`, `or A`, the time survived, hits taken, kills; the verdict
     line `Run 2 (death): ... verified`. Press R: a fresh run from the entrance (`[Sim] run 3 started`), the panel
     disappears, the floor is not rebuilt (no new `[World] built` line).
 12. **Abandon.** Play at least 10 s, press R: the old run is submitted as `abandoned` (Output: `[Sim] submitted run N
@@ -388,10 +523,10 @@ With the actors merged the default `game` world has enemies; without them see "f
 14. **Seed change.** Set `KV_Seed` = 42, press R: a different floor (`[World] built ...` again).
 15. **Gamepad.** Connect a controller and repeat 2-11 with the pad: left stick moves, right stick aims (the diamond
     follows it and keeps the last direction when released), RT attack, LT guard / charge, Y swap (the hint now
-    reads `Y swap`), LB roll, D-pad up flask, RB Ember, Start pause. After a death or victory, **D-pad down**
-    restarts; mid-run it does nothing. Moving the mouse switches aim back to the mouse. Start opens the pause
-    overlay with `Resume` selected; D-pad / stick move the selection, A presses, Start resumes; `Juice settings`
-    opens the panel with the first option selected, A picks, B closes it (back to the overlay).
+    reads `Y swap`), LB roll, D-pad up flask, RB Ember, Start pause. After a death or victory the run-over panel
+    has `Again` selected: **A** restarts (D-pad right moves to Main menu); mid-run D-pad down does nothing. Moving the mouse switches aim back to the mouse. Start opens the pause
+    overlay with `Resume` selected; D-pad / stick move the selection, A presses, Start resumes; `Options`
+    opens the Options screen with the `Juice` tab button selected, A picks, B closes it (back to the overlay).
 16. **Stress (optional).** `KV_Stress` = 1000, R: rings of pink bullets from the entrance; check fps (Shift+F5 /
     MicroProfiler label `KV Bullets`). Verdict line: `not submitted (stress)`. Clear the attribute and press R.
 17. **Fallback (no actors merged).** HUD info line in orange: `enemies unavailable (Unknown archetype ...); playing
@@ -407,7 +542,8 @@ With the actors merged the default `game` world has enemies; without them see "f
     no jump), a burst of green and orange/white bits that hop and fade in ~0.5 s, and a ring of dots. A bruiser: a
     slightly longer hitch and 3 bigger chunks. Kill a whole pack at once: the hitches never add up past ~150 ms per
     second. Boss phase 2 / 3: a 120 ms hitch, a 1-pixel camera dip, yellow roar sparks.
-20. **Juice settings.** Press O mid-fight: the game pauses behind the panel `Juice`; rows Enemy health bars (Always /
+20. **Juice settings.** Press O mid-fight: the game pauses behind the `Options` screen, tabs Juice / Controls / Audio /
+    Display, Juice open; rows Enemy health bars (Always /
     When hit / Off), Damage numbers (On / Off), Freeze frame on kill, Particles (Off / Low / Normal / High), Reduced
     motion, `(system: off)`, Reset to defaults, Close, `O to close`. Pick Always: close: every enemy shows a bar.
     Damage numbers Off: no numbers. Freeze frame Off: kills no longer hitch. Particles Off: no bursts; High: denser.
@@ -424,7 +560,24 @@ With the actors merged the default `game` world has enemies; without them see "f
     fades the music out.
 22. **Phone / console layout.** Studio's device emulator (a phone in landscape, an Xbox / 1080p TV): the HUD keeps
     its layout, scaled (never below 0.6 of the reference size), inside the safe area; the pause overlay and the
-    settings panel fit on screen and are usable by touch.
+    Options screen fit on screen and are usable by touch.
+23. **Rebinding (Options > Controls).** O, Controls: Keyboard & mouse rows `Move up  W  Up arrow  Clear`, ...,
+    `Attack  Click  -`. Click `E` on Swap weapons: `Press a key... (5)` counts down; press G: the row reads `G`, close,
+    the weapon panel says `G swap`, G swaps and E does nothing. Swap again, press Q: `Q is already used by Ember.`
+    [Swap] [Cancel]; Swap: Swap weapons = Q, Ember = G; Cancel (or pad B) changes nothing. Press Escape (or wait 5 s)
+    during a capture: cancelled, nothing changed, the Roblox menu may open. Press P or Tab: `P is reserved and cannot
+    be bound`. Press R during a capture: bound if free, and the run does NOT restart. Capture Left Shift into Dodge roll
+    and keep it held while closing with the mouse: no roll until Shift is released and pressed again. Clear on Move up: the
+    secondary reads `-`, the arrow no longer moves up. Hold W / click: the test strip lights `Move up` / `Attack`.
+    `Reset Keyboard & mouse` asks first; Reset: the defaults are back. Gamepad sub-tab (with a pad): one `Button`
+    column (RT, LT, LB, ...), select a row with the D-pad, A: `Press a button... (5)`, press X: bound or the swap
+    prompt opens with `Swap` selected; the selection returns to the row after it; the rows behind a prompt cannot be
+    selected. Leave and rejoin: the bindings come back. With `KV_ResetBindings` on Workspace, rejoin: the defaults
+    are back (juice / audio / display choices kept). The draft hint, shrine hint, restart line and leaderboard hint
+    name the rebound keys.
+24. **Audio / Display tabs.** Audio: `-` / `+` steps Master / Music / Sound effects by 10 % (0..100 %); SoundService's
+    `sfx` / `music` SoundGroup Volume follows (Explorer; music = 0.6 x master x music). Display: HUD scale 80 % shrinks
+    every panel, 125 % grows it, at once; it survives a rejoin. Each tab's Reset to defaults resets only that tab.
 
 ## Gotchas
 

@@ -39,9 +39,11 @@
  *   bytes 2-21  seed u32, spawn x f64, spawn z f64 (as above)
  *   varint      frame count (per player: every stream covers exactly this many frames)
  *   n streams   player 0's runs, then player 1's, ...: each exactly the solo run encoding above (its own previous
- *               frame, starting from EMPTY_INPUT); buttons may also carry PARTY_LEFT_BUTTON (the server's leave mark)
+ *               frame, starting from EMPTY_INPUT)
  *
- * A solo recording (no `others`) encodes byte for byte as version 1, as before. Per-player streams compress far
+ * Buttons (both variants): SIM_BUTTONS plus PARTY_LEFT_BUTTON = FORFEIT_BUTTON (RECORDED_BUTTONS): the server's leave
+ * mark in a party stream, the player's "Leave run" in a solo one (L6a). Allowing it changed no encoding: a solo
+ * recording (no `others`) encodes byte for byte as version 1, as before. Per-player streams compress far
  * better than interleaved frames (each player's input is smooth on its own).
  *
  * Pure and deterministic (integer arithmetic and the `buffer` library only); it lives in src/shared/sim, under the
@@ -50,7 +52,7 @@
 import { AXIS_MAX, EMPTY_INPUT, SIM_BUTTONS, isValidSimInput, type InputFrame } from "./input";
 import { isFiniteNumber, isIntegerNumber } from "./jsnum";
 import type { Recording } from "./replay";
-import { MAX_PARTY_SIZE, PARTY_LEFT_BUTTON } from "./partyData";
+import { FORFEIT_BUTTON, MAX_PARTY_SIZE, PARTY_LEFT_BUTTON } from "./partyData";
 
 /** Byte 0 of every (solo) binary recording. */
 export const BINARY_RECORDING_VERSION = 1;
@@ -60,6 +62,13 @@ export const PARTY_BINARY_RECORDING_VERSION = 2;
 export const PARTY_BINARY_RECORDING_HEADER_BYTES = 22;
 /** Every bit a party stream's buttons may carry: SIM_BUTTONS plus the leave mark. */
 export const PARTY_SIM_BUTTONS = bit32.bor(SIM_BUTTONS, PARTY_LEFT_BUTTON);
+/**
+ * Every bit a recorded frame may carry, solo or party: SIM_BUTTONS plus FORFEIT_BUTTON (= PARTY_LEFT_BUTTON, so this
+ * equals PARTY_SIM_BUTTONS; one bit, one meaning: the player leaves the run for good).
+ */
+export const RECORDED_BUTTONS = bit32.bor(SIM_BUTTONS, FORFEIT_BUTTON, PARTY_LEFT_BUTTON);
+/** The recorded bits beyond SIM_BUTTONS (the one leave / forfeit bit). */
+const LEAVE_BITS = bit32.bor(FORFEIT_BUTTON, PARTY_LEFT_BUTTON);
 const MIN_PARTY_STREAMS = 2;
 
 const OFFSET_SEED = 1;
@@ -174,18 +183,18 @@ function sameFrame(a: Readonly<InputFrame>, b: Readonly<InputFrame>): boolean {
 	);
 }
 
-/** A valid party-stream frame: isValidSimInput, with PARTY_LEFT_BUTTON allowed too. */
-function isValidPartyFrame(frame: Readonly<InputFrame>): boolean {
+/** A valid recorded frame (solo or party stream): isValidSimInput, with FORFEIT_BUTTON / PARTY_LEFT_BUTTON allowed. */
+function isValidRecordedFrame(frame: Readonly<InputFrame>): boolean {
 	if (isValidSimInput(frame)) return true;
 	const b = frame.buttons;
-	if (!isIntegerNumber(b) || b < 0 || bit32.band(b, PARTY_LEFT_BUTTON) === 0) return false;
-	return isValidSimInput({ ...frame, buttons: bit32.band(b, bit32.bnot(PARTY_LEFT_BUTTON)) });
+	if (!isIntegerNumber(b) || b < 0 || bit32.band(b, LEAVE_BITS) === 0) return false;
+	return isValidSimInput({ ...frame, buttons: bit32.band(b, bit32.bnot(LEAVE_BITS)) });
 }
 
 /**
  * The binary form of `recording` (see the file comment). Throws on what no live run produces: a seed outside
- * [0, 2^32), a non-finite spawn, or an invalid frame (shared/sim `isValidSimInput`: the web bits plus PORT_BUTTONS;
- * party streams also PARTY_LEFT_BUTTON), or party streams of the wrong count / length.
+ * [0, 2^32), a non-finite spawn, or an invalid frame (shared/sim `isValidSimInput`: the web bits plus PORT_BUTTONS,
+ * plus the leave / forfeit bit: RECORDED_BUTTONS), or party streams of the wrong count / length.
  */
 export function encodeRecording(recording: Readonly<Recording>): buffer {
 	const seed = recording.seed;
@@ -211,27 +220,22 @@ export function encodeRecording(recording: Readonly<Recording>): buffer {
 	w.f64(recording.spawn.z);
 	w.varint(count);
 	if (others === undefined) {
-		encodeRuns(w, frames, isValidSimInput, "");
+		encodeRuns(w, frames, "");
 	} else {
-		encodeRuns(w, frames, isValidPartyFrame, "player 0 ");
-		for (let k = 0; k < others.size(); k++) encodeRuns(w, others[k], isValidPartyFrame, `player ${k + 1} `);
+		encodeRuns(w, frames, "player 0 ");
+		for (let k = 0; k < others.size(); k++) encodeRuns(w, others[k], `player ${k + 1} `);
 	}
 	return w.finish();
 }
 
 /** One stream of runs (the solo encoding) for `frames`, from EMPTY_INPUT. */
-function encodeRuns(
-	w: ByteWriter,
-	frames: ReadonlyArray<InputFrame>,
-	valid: (f: Readonly<InputFrame>) => boolean,
-	who: string,
-): void {
+function encodeRuns(w: ByteWriter, frames: ReadonlyArray<InputFrame>, who: string): void {
 	const count = frames.size();
 	let prev: Readonly<InputFrame> = EMPTY_INPUT;
 	let i = 0;
 	while (i < count) {
 		const a = frames[i];
-		if (!valid(a)) encodeFail(`invalid ${who}frame at ${i}`);
+		if (!isValidRecordedFrame(a)) encodeFail(`invalid ${who}frame at ${i}`);
 		let j = i + 1;
 		while (j < count && sameFrame(frames[j], a)) j++;
 		const length = j - i;
@@ -364,13 +368,13 @@ function decodeUnsafe(buf: buffer, limits: RecordingDecodeLimits): Recording {
 	if (n > limits.maxTicks) fail("too_long", `run too long: ${n} ticks (max ${limits.maxTicks})`);
 
 	if (players === 1) {
-		const frames = decodeRuns(r, n, SIM_BUTTONS, "");
+		const frames = decodeRuns(r, n, RECORDED_BUTTONS, "");
 		if (r.pos !== r.len) fail("malformed", `malformed recording: ${r.len - r.pos} trailing bytes`);
 		return { seed, spawn: { x: spawnX, z: spawnZ }, frames };
 	}
-	const frames = decodeRuns(r, n, PARTY_SIM_BUTTONS, "player 0 ");
+	const frames = decodeRuns(r, n, RECORDED_BUTTONS, "player 0 ");
 	const others: InputFrame[][] = [];
-	for (let k = 1; k < players; k++) others.push(decodeRuns(r, n, PARTY_SIM_BUTTONS, `player ${k} `));
+	for (let k = 1; k < players; k++) others.push(decodeRuns(r, n, RECORDED_BUTTONS, `player ${k} `));
 	if (r.pos !== r.len) fail("malformed", `malformed recording: ${r.len - r.pos} trailing bytes`);
 	return { seed, spawn: { x: spawnX, z: spawnZ }, frames, others };
 }

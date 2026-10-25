@@ -183,12 +183,6 @@ export const RUN_START_RATE = table.freeze({ count: 10, windowSeconds: 60 });
 /** Segments per player (sliding window). An honest client sends one per floor; going over rejects the run. */
 export const SEGMENT_SUBMIT_RATE = table.freeze({ count: 30, windowSeconds: 60 });
 
-/** A co-op invite (partyInvites.ts) expires this long after it was sent unless every member accepted. */
-export const PARTY_INVITE_TTL_SECONDS = 60;
-
-/** partyInvite / partyRespond calls per player (sliding window). */
-export const PARTY_INVITE_RATE = table.freeze({ count: 10, windowSeconds: 60 });
-
 /** Largest party (co-op) a run session accepts: the sim's (shared/sim partyData.ts). */
 export const MAX_PARTY_SIZE = SIM_MAX_PARTY_SIZE;
 

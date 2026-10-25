@@ -33,6 +33,7 @@ export * from "./state";
 export {
 	DEFAULT_BOUNDS,
 	DEFAULT_SIM_CONFIG,
+	forfeitSoloRun,
 	step,
 	stepParty,
 	type ActorMover,

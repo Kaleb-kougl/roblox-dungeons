@@ -11,6 +11,8 @@
  *                              call per pump at most, throttled; resent until the server's ack covers them,
  *                              `acknowledge`), and once the whole party is down returns the RunFinal claim and stops
  *                              stepping.
+ *   end(reason)                the server decided the run before the party went down (desync, expiry, an error):
+ *                              over here too, nothing more is stepped or sent.
  *
  * Hitstop is never applied here: a co-op sim is paced by the server's frames alone (shared/view/fx freezeRules
  * `simPacerFor`); presentation may freeze sprites or the camera instead. The local player's character may be drawn
@@ -110,6 +112,7 @@ export class LockstepClient implements RunView {
 	private sinceResend = 0;
 	private freshHashes = false;
 	private stopped = false;
+	private endedReason: string | undefined;
 	/** Deadline misses of this client's own input (diagnostics). */
 	misses = 0;
 
@@ -144,9 +147,23 @@ export class LockstepClient implements RunView {
 		return this.broken;
 	}
 
-	/** The party is down: the run is over on this client. */
+	/** The party is down, or the server ended the run first (`end`): the run is over on this client. */
 	isOver(): boolean {
-		return isPartyWiped(this.state);
+		return this.endedReason !== undefined || isPartyWiped(this.state);
+	}
+
+	/**
+	 * The server decided the run while the party was still up (desync, an error, expiry: its `runFinished`): the run
+	 * is over here too (`isOver`), nothing more is stepped or sent. No effect once the party is down.
+	 */
+	end(reason: string): void {
+		if (!this.isOver()) this.endedReason = reason;
+		this.stop();
+	}
+
+	/** Why the server ended the run before the party went down (`end`); undefined otherwise. */
+	endReason(): string | undefined {
+		return this.endedReason;
 	}
 
 	/** Interpolation alpha for rendering prev -> current: time since the last step, in ticks, clamped to [0, 1]. */
@@ -216,6 +233,7 @@ export class LockstepClient implements RunView {
 		const state = this.state;
 		while (
 			this.broken === undefined &&
+			this.endedReason === undefined &&
 			!this.finalSent &&
 			stepped < this.tunables.maxCatchup &&
 			this.queueHead < this.queue.size()

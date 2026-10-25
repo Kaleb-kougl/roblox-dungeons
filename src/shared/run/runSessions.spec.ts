@@ -162,6 +162,57 @@ describe("RunSessionRegistry", () => {
 		expect(again.ok && again.replaced).toBe(undefined);
 	});
 
+	it("an owner who left their party run starts a solo run; the party run is detached, never concluded", () => {
+		const reg = registry();
+		const party = reg.start(OWNER, { ...REQUEST, party: [FRIEND] }, ctx(0, { partyConsent: [OWNER, FRIEND] }));
+		if (!party.ok) error("party start failed");
+		const s = party.session;
+		// Leave run (lockstepLeave) -> lobby -> main menu -> Play solo.
+		reg.releaseMember(s, OWNER);
+		expect(reg.busyReason(OWNER)).toBe(undefined);
+		const solo = reg.start(OWNER, REQUEST, ctx());
+		expect(solo.ok).toBe(true);
+		if (!solo.ok) return;
+		expect(solo.replaced).toBe(undefined); // nothing for the service to conclude
+		expect(s.validator.getStatus()).toBe("open");
+		expect(s.validator.getResult()).toBe(undefined);
+		expect(reg.get(s.runId, OWNER)).toBe(s); // still tracked: the lockstep session concludes it
+		expect(reg.openSession(OWNER)).toBe(solo.session);
+		// The others play on, still busy.
+		expect(reg.busyReason(FRIEND)).never.toBe(undefined);
+		// The owner's restart replaces the solo run, not the party run.
+		const restart = reg.start(OWNER, REQUEST, ctx());
+		if (!restart.ok) error("restart failed");
+		expect(restart.replaced).toBe(solo.session);
+		expect(s.validator.getStatus()).toBe("open");
+		// The party run concluding later leaves the owner's open solo session alone.
+		reg.markFinishing(s);
+		reg.close(s, "desync", "test");
+		expect(reg.openSession(OWNER)).toBe(restart.session);
+		expect(reg.busyReason(FRIEND)).toBe(undefined);
+		expect(reg.size()).toBe(1);
+	});
+
+	it("a member who left their party run starts a solo run; the party run and its owner are unaffected", () => {
+		const reg = registry();
+		const party = reg.start(OWNER, { ...REQUEST, party: [FRIEND] }, ctx(0, { partyConsent: [OWNER, FRIEND] }));
+		if (!party.ok) error("party start failed");
+		const s = party.session;
+		reg.releaseMember(s, FRIEND);
+		const solo = reg.start(FRIEND, REQUEST, ctx());
+		if (!solo.ok) error("solo start failed");
+		expect(solo.replaced).toBe(undefined);
+		expect(s.validator.getStatus()).toBe("open");
+		expect(reg.get(s.runId, OWNER)).toBe(s);
+		expect(reg.openSession(OWNER)).toBe(s);
+		expect(reg.busyReason(OWNER)).never.toBe(undefined);
+		expect(reg.openSession(FRIEND)).toBe(solo.session);
+		// The member restarts their solo run: still only their own session is replaced.
+		const again = reg.start(FRIEND, REQUEST, ctx());
+		expect(again.ok && again.replaced).toBe(solo.session);
+		expect(s.validator.getStatus()).toBe("open");
+	});
+
 	it("a new start replaces the open session (aborted as abandoned); a finishing one is kept, up to `busy`", () => {
 		const reg = registry();
 		const a = reg.start(OWNER, REQUEST, ctx());

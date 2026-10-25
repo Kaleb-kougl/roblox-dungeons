@@ -1,22 +1,38 @@
-// Juice settings schema (defaults and sanitize rules of the web build's src/fx/settings.ts) and the mockable
-// persistence layer: retries, session cache, dirty tracking, save on release.
+// Juice settings schema (defaults and sanitize rules of the web build's src/fx/settings.ts), the settings document
+// v2 (every group, v1 migration, sanitize, patches) and the mockable persistence layer: retries, session cache,
+// dirty tracking, save on release.
 import { describe, expect, it } from "@rbxts/jest-globals";
 import {
+	DEFAULT_HUD_SCALE_PERCENT,
+	HUD_SCALE_PERCENTS,
 	PlayerDocCache,
+	SETTINGS_DOC_V1,
 	SETTINGS_DOC_VERSION,
+	VOLUME_PERCENT,
 	applyJuicePatch,
+	applySettingsPatch,
 	decodeSettingsDoc,
+	defaultAudioSettings,
+	defaultDisplaySettings,
 	defaultJuiceSettings,
 	encodeSettingsDoc,
 	playerDataKey,
+	resolveAudioSettings,
+	resolveDisplaySettings,
 	resolveJuiceSettings,
+	reuseSameGroups,
 	sameJuiceOverrides,
+	sameSettingsOverrides,
 	sanitizeJuiceOverrides,
 	sanitizeJuiceSettings,
+	sanitizeSettingsOverrides,
+	sanitizeSettingsPatch,
+	stepVolume,
 	withRetries,
 	type DocCodec,
 	type JuiceOverrides,
 	type KeyValueStore,
+	type SettingsOverrides,
 } from "shared/settings";
 
 describe("juice settings schema", () => {
@@ -60,16 +76,131 @@ describe("juice settings schema", () => {
 		expect(sameJuiceOverrides(a, { particles: "low" })).toBe(false);
 	});
 
-	it("the stored document round-trips; other versions and garbage read as no overrides", () => {
-		const doc = encodeSettingsDoc({ healthBars: "off" });
-		expect(doc).toEqual({ v: SETTINGS_DOC_VERSION, juice: { healthBars: "off" } });
-		expect(decodeSettingsDoc(doc)).toEqual({ healthBars: "off" });
-		expect(decodeSettingsDoc(undefined)).toEqual({});
-		expect(decodeSettingsDoc({ v: 99, juice: { healthBars: "off" } })).toEqual({});
-		expect(decodeSettingsDoc({ v: SETTINGS_DOC_VERSION, juice: "x" })).toEqual({});
+	it("the player data key", () => {
 		expect(playerDataKey(12345)).toBe("u_12345");
 	});
 });
+
+const EMPTY_DOC = { v: SETTINGS_DOC_VERSION, juice: {}, controls: {}, audio: {}, display: {} };
+
+describe("settings document v2", () => {
+	it("round-trips every group; empty groups are stored as {} and read back as absent", () => {
+		expect(SETTINGS_DOC_VERSION).toBe(2);
+		const overrides: SettingsOverrides = {
+			juice: { healthBars: "off" },
+			controls: { kbm: { swap: ["G"] }, pad: { roll: "ButtonX", skill3: "ButtonL1" } },
+			audio: { music: 40 },
+			display: { hudScale: 125 },
+		};
+		const doc = encodeSettingsDoc(overrides);
+		expect(doc).toEqual({ v: 2, ...overrides });
+		expect(decodeSettingsDoc(doc)).toEqual(overrides);
+		expect(encodeSettingsDoc({})).toEqual(EMPTY_DOC);
+		expect(decodeSettingsDoc(EMPTY_DOC)).toEqual({});
+	});
+
+	it("migrates a v1 document: its juice is kept, the new groups start empty", () => {
+		const v1 = { v: SETTINGS_DOC_V1, juice: { particles: "low", reducedMotion: true, bogus: 1 } };
+		expect(decodeSettingsDoc(v1)).toEqual({ juice: { particles: "low", reducedMotion: true } });
+		// A v1 doc never carried other groups: anything else in it is ignored.
+		expect(decodeSettingsDoc({ v: 1, juice: {}, controls: { kbm: { swap: ["G"] } } })).toEqual({});
+		// Written back, it is a v2 document.
+		expect(encodeSettingsDoc(decodeSettingsDoc(v1))).toEqual({
+			...EMPTY_DOC,
+			juice: { particles: "low", reducedMotion: true },
+		});
+	});
+
+	it("unknown versions and garbage read as no overrides", () => {
+		expect(decodeSettingsDoc(undefined)).toEqual({});
+		expect(decodeSettingsDoc("doc")).toEqual({});
+		expect(decodeSettingsDoc({ juice: { healthBars: "off" } })).toEqual({});
+		expect(decodeSettingsDoc({ v: 0, juice: { healthBars: "off" } })).toEqual({});
+		expect(decodeSettingsDoc({ v: 3, juice: { healthBars: "off" } })).toEqual({});
+		expect(decodeSettingsDoc({ v: "2", juice: { healthBars: "off" } })).toEqual({});
+		expect(decodeSettingsDoc({ v: 2, juice: "x", controls: 5, audio: [], display: true })).toEqual({});
+	});
+
+	it("sanitizes every group: unknown keys, bad values, reserved / duplicate bindings and defaults are dropped", () => {
+		expect(
+			sanitizeSettingsOverrides({
+				juice: { particles: "loud", freezeFrame: false },
+				controls: {
+					kbm: { swap: ["Escape"], roll: ["LeftShift"], ember: ["Q"], dance: ["G"] },
+					pad: { fire: "ButtonStart", alt: "ButtonR2" }, // alt on RT duplicates fire's default
+				},
+				audio: { master: 55, music: 101, sfx: -10, voice: 20 },
+				display: { hudScale: 95 },
+				extra: { a: 1 },
+			}),
+		).toEqual({ juice: { freezeFrame: false }, controls: { kbm: { roll: ["LeftShift"] } }, audio: { master: 55 } });
+		expect(sanitizeSettingsOverrides({ audio: { master: 50.5, music: 0 } })).toEqual({ audio: { music: 0 } });
+		expect(sanitizeSettingsOverrides({ audio: { master: 100 }, display: { hudScale: 100 } })).toEqual({});
+		expect(sanitizeSettingsOverrides(42)).toEqual({});
+	});
+
+	it("is overrides-only: what resolves is the defaults plus what the player changed", () => {
+		expect(resolveAudioSettings(undefined)).toEqual(defaultAudioSettings());
+		expect(resolveAudioSettings({ sfx: 30 })).toEqual({ master: 100, music: 100, sfx: 30 });
+		expect(resolveDisplaySettings({})).toEqual(defaultDisplaySettings());
+		expect(resolveDisplaySettings({ hudScale: 80 }).hudScale).toBe(80);
+		expect(HUD_SCALE_PERCENTS.includes(DEFAULT_HUD_SCALE_PERCENT)).toBe(true);
+		expect([
+			stepVolume(100, 1),
+			stepVolume(100, -1),
+			stepVolume(0, -1),
+			stepVolume(VOLUME_PERCENT.step, -1),
+		]).toEqual([100, 90, 0, 0]);
+	});
+
+	it("a patch replaces each group it carries; {} clears a group; other groups are kept", () => {
+		const current: SettingsOverrides = { juice: { particles: "low" }, audio: { music: 20 } };
+		expect(applySettingsPatch(current, { juice: { damageNumbers: false } })).toEqual({
+			juice: { damageNumbers: false },
+			audio: { music: 20 },
+		});
+		expect(applySettingsPatch(current, { audio: {} })).toEqual({ juice: { particles: "low" } });
+		expect(applySettingsPatch(current, { controls: { kbm: { flask: ["G"] } } })).toEqual({
+			...current,
+			controls: { kbm: { flask: ["G"] } },
+		});
+		expect(applySettingsPatch(current, "nope")).toEqual(current);
+		expect(applySettingsPatch(current, { juice: { particles: "bogus" } })).toEqual({ audio: { music: 20 } });
+		// The wire form keeps a present-but-empty group (it means "clear"); sanitizeSettingsOverrides drops it.
+		expect(sanitizeSettingsPatch({ juice: { particles: "x" }, controls: {}, nope: 1 })).toEqual({
+			juice: {},
+			controls: {},
+		});
+		expect(sanitizeSettingsOverrides({ juice: {}, controls: {} })).toEqual({});
+	});
+
+	it("reuses unchanged groups' objects (memoized readers update only for the group that changed)", () => {
+		const prev: SettingsOverrides = { juice: { particles: "low" }, controls: { kbm: { swap: ["G"] } } };
+		expect(reuseSameGroups(prev, { juice: { particles: "low" }, controls: { kbm: { swap: ["G"] } } })).toBe(prev);
+		const changed = reuseSameGroups(prev, applySettingsPatch(prev, { juice: { particles: "high" } }));
+		expect(changed.controls).toBe(prev.controls);
+		expect(changed.juice).toEqual({ particles: "high" });
+		expect(reuseSameGroups(prev, { juice: { particles: "low" } }).juice).toBe(prev.juice);
+		expect(reuseSameGroups(prev, { juice: { particles: "low" } }).controls).toBe(undefined);
+	});
+
+	it("compares override sets group by group (absent = empty)", () => {
+		const a: SettingsOverrides = { controls: { kbm: { moveUp: ["I", "Up"] } }, audio: { sfx: 10 } };
+		expect(sameSettingsOverrides(a, { audio: { sfx: 10 }, controls: { kbm: { moveUp: ["I", "Up"] } } })).toBe(true);
+		expect(sameSettingsOverrides(a, { audio: { sfx: 10 }, controls: { kbm: { moveUp: ["I"] } } })).toBe(false);
+		expect(sameSettingsOverrides(a, { controls: a.controls })).toBe(false);
+		expect(sameSettingsOverrides({}, { juice: {}, controls: {}, audio: {}, display: {} })).toBe(true);
+		expect(sameSettingsOverrides({ controls: { pad: { swap: "ButtonX" } } }, {})).toBe(false);
+	});
+});
+
+function encodeJuice(juice: JuiceOverrides): unknown {
+	return encodeSettingsDoc({ juice });
+}
+
+function decodeJuice(raw: unknown): JuiceOverrides {
+	return decodeSettingsDoc(raw).juice ?? {};
+}
 
 /**
  * In-memory store that fails the next `failures` calls. With `yields` set, every call yields its coroutine once
@@ -109,10 +240,10 @@ function resume(waiter: thread): void {
 
 const CODEC: DocCodec<JuiceOverrides> = {
 	decode(raw) {
-		return decodeSettingsDoc(raw);
+		return decodeJuice(raw);
 	},
 	encode(doc) {
-		return encodeSettingsDoc(doc);
+		return encodeJuice(doc);
 	},
 	equals(a, b) {
 		return sameJuiceOverrides(a, b);
@@ -150,7 +281,7 @@ describe("withRetries", () => {
 describe("PlayerDocCache", () => {
 	it("loads once per session, saves only when dirty, releases on leave", () => {
 		const store = new MockStore();
-		store.data.set("u_1", encodeSettingsDoc({ particles: "low" }));
+		store.data.set("u_1", encodeJuice({ particles: "low" }));
 		const cache = new PlayerDocCache(store, CODEC, POLICY, () => undefined);
 		expect(cache.load("u_1")).toEqual({ particles: "low" });
 		cache.load("u_1");
@@ -161,10 +292,7 @@ describe("PlayerDocCache", () => {
 		cache.set("u_1", applyJuicePatch(cache.get("u_1")!, { freezeFrame: false }));
 		expect(cache.isDirty("u_1")).toBe(true);
 		expect(cache.release("u_1")).toBe("saved");
-		expect(store.data.get("u_1")).toEqual({
-			v: SETTINGS_DOC_VERSION,
-			juice: { particles: "low", freezeFrame: false },
-		});
+		expect(store.data.get("u_1")).toEqual({ ...EMPTY_DOC, juice: { particles: "low", freezeFrame: false } });
 		expect(cache.get("u_1")).toBe(undefined);
 		expect(cache.save("u_1")).toBe("unknown");
 	});
@@ -183,13 +311,13 @@ describe("PlayerDocCache", () => {
 
 	it("after a failed load it never overwrites the stored value unless the player changed something", () => {
 		const store = new MockStore();
-		store.data.set("u_3", encodeSettingsDoc({ particles: "high" }));
+		store.data.set("u_3", encodeJuice({ particles: "high" }));
 		store.failures = 3;
 		const cache = new PlayerDocCache(store, CODEC, POLICY, () => undefined);
 		expect(cache.load("u_3")).toEqual({});
 		expect(cache.loadFailed("u_3")).toBe(true);
 		expect(cache.release("u_3")).toBe("clean");
-		expect(decodeSettingsDoc(store.data.get("u_3"))).toEqual({ particles: "high" });
+		expect(decodeJuice(store.data.get("u_3"))).toEqual({ particles: "high" });
 	});
 
 	it("a failed save keeps the document dirty for the next try", () => {
@@ -215,7 +343,7 @@ describe("PlayerDocCache", () => {
 
 	it("concurrent loads of one key share the first read (join + early requestSettings: one GetAsync)", () => {
 		const store = new MockStore();
-		store.data.set("u_6", encodeSettingsDoc({ healthBars: "always" }));
+		store.data.set("u_6", encodeJuice({ healthBars: "always" }));
 		store.yields = true;
 		const cache = new PlayerDocCache(store, CODEC, POLICY, () => undefined, resume);
 		const got: JuiceOverrides[] = [];
@@ -250,7 +378,7 @@ describe("PlayerDocCache", () => {
 		expect(store.sets).toBe(1);
 		expect(outcomes).toEqual(["close clean", "release saved"]);
 		expect(cache.get("u_7")).toBe(undefined);
-		expect(decodeSettingsDoc(store.data.get("u_7"))).toEqual({ freezeFrame: false });
+		expect(decodeJuice(store.data.get("u_7"))).toEqual({ freezeFrame: false });
 	});
 
 	it("a waiting save writes after a failed one (the document is still dirty)", () => {

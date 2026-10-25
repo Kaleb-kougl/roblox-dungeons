@@ -4,7 +4,8 @@
  *
  * M3 / M5 add segmented validation: the world registry (worlds.ts), server run sessions with server-picked seeds
  * (runSessions.ts), the segment protocol and SegmentedValidator (segments.ts) and the injectable score reader
- * (score.ts). M4 co-op consent: party invites every member must accept before a party run starts (partyInvites.ts).
+ * (score.ts). M4 co-op: a party run starts only with consent (`partyConsent`): the
+ * members of a lobby whose host pressed Start (shared/lobby).
  *
  * Plain TypeScript, no Roblox APIs (headlessly tested); the Flamework services in src/server/services wrap it.
  * docs/SERVER.md describes the flow.
@@ -23,4 +24,3 @@ export * from "./worlds";
 export * from "./score";
 export * from "./segments";
 export * from "./runSessions";
-export * from "./partyInvites";

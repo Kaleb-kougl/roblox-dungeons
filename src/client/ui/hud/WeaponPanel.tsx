@@ -1,8 +1,8 @@
 import React from "@rbxts/react";
 import { useSelector } from "@rbxts/react-reflex";
-import { selectInputDevice, selectSnapshot } from "client/store";
+import { selectBindings, selectInputDevice, selectSnapshot } from "client/store";
 import { HUD_FONT, role, str, themePack } from "client/ui/theme";
-import { SWAP_HINT } from "shared/play";
+import { swapHint } from "shared/play";
 import { HUD_STRINGS, HUD_VIEW } from "shared/view/hud";
 import { Panel, Row, Text } from "./primitives";
 
@@ -63,6 +63,7 @@ function WeaponSlot(props: { order: number; index: number; id: string; active: b
 export function WeaponPanel() {
 	const s = useSelector(selectSnapshot);
 	const device = useSelector(selectInputDevice);
+	const bindings = useSelector(selectBindings);
 	if (s.weapons.size() === 0) return undefined;
 	const slots = s.weapons.map((id, i) => (
 		<WeaponSlot key={`w${i}`} order={i + 1} index={i} id={id} active={i === s.activeSet} />
@@ -74,7 +75,7 @@ export function WeaponPanel() {
 				order={2}
 				size={HUD_VIEW.smallText}
 				color="uiTextDim"
-				text={str(HUD_STRINGS.weaponSwap, { key: SWAP_HINT[device] })}
+				text={str(HUD_STRINGS.weaponSwap, { key: swapHint(bindings)[device] })}
 			/>
 		</Panel>
 	);

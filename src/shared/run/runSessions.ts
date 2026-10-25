@@ -2,7 +2,8 @@
  * Server-side run sessions (M3): `startRun` creates one, with a seed the SERVER picks, and every segment and the
  * final submit name its runId. Players never choose seeds, and a runId is only good for its owner.
  *
- * Per player: at most one OPEN session (a new start drops the old open one: a restart), plus up to
+ * Per player: at most one OPEN session (a new start drops the old open one: a restart; a party run the owner left is
+ * only detached, never dropped, see `start`), plus up to
  * `maxFinishingPerPlayer` sessions still validating their last segment (one more start answers `busy`). Open
  * sessions expire after `idleSeconds` without a segment or `maxAgeSeconds` in all (`sweep`).
  *
@@ -93,7 +94,7 @@ export interface StartContext {
 	/** Debug input allowed for this run (Studio tooling): also marks the session `debug`. */
 	readonly allowDebugInput: boolean;
 	/**
-	 * Co-op consent: the members (owner first) of an invite every one of them ACCEPTED (partyInvites.ts). A start
+	 * Co-op consent: the members (owner first) of a lobby whose host pressed Start (shared/lobby). A start
 	 * whose party has 2+ members is refused unless its resolved party is exactly this list: a client's `startRun` can
 	 * never name a party on its own.
 	 */
@@ -163,6 +164,13 @@ function requestShape(r: StartRunRequest): string | undefined {
 	return undefined;
 }
 
+/** A party run (2+ members) still being played or decided: never replaced by its owner's new start. */
+function isUnconcludedParty(s: RunSession): boolean {
+	if (s.members.size() < 2) return false;
+	const status = s.validator.getStatus();
+	return status === "open" || status === "finishing";
+}
+
 /** All run sessions of one server (see the file comment). */
 export class RunSessionRegistry {
 	private readonly byId = new Map<string, RunSession>();
@@ -178,7 +186,8 @@ export class RunSessionRegistry {
 
 	/**
 	 * Creates a session for `ownerId`: request shape, world kind, debug spawn, party, `busy`, then the world (built
-	 * from a server-picked seed). Replaces (and returns) the owner's open session, which is aborted as `abandoned`.
+	 * from a server-picked seed). Replaces (and returns) the owner's open solo session, which is aborted as
+	 * `abandoned`; an unconcluded party run the owner was released from is detached instead (not returned).
 	 */
 	start(ownerId: number, request: StartRunRequest, ctx: StartContext): StartRunResult {
 		const shape = requestShape(request);
@@ -250,7 +259,12 @@ export class RunSessionRegistry {
 				readScore: this.deps.readScore,
 			}),
 		};
-		const replaced = this.openByOwner.get(ownerId);
+		// The owner's open session: a solo one is replaced (a restart, aborted as `abandoned`). A party run still being
+		// played or decided is never replaced: its owner can only get here released from it (left it, or stalled; else
+		// `busy` above), and the others play on. It is only detached (no longer the owner's open session); its
+		// lockstep session concludes it.
+		const previous = this.openByOwner.get(ownerId);
+		const replaced = previous !== undefined && !isUnconcludedParty(previous) ? previous : undefined;
 		if (replaced !== undefined) this.close(replaced, "abandoned", "a new run started");
 		this.byId.set(runId, session);
 		this.openByOwner.set(ownerId, session);
@@ -294,10 +308,16 @@ export class RunSessionRegistry {
 		for (const [, s] of this.byId) if (s.members.size() > 1) this.releaseMember(s, userId);
 	}
 
-	/** The owner's sessions that finished and are still validating. */
+	/**
+	 * The owner's sessions that finished and are still validating. A party run its owner was released from (left)
+	 * does not count: they are out of it, as free as the other leavers.
+	 */
 	finishingCount(ownerId: number): number {
 		let n = 0;
-		for (const [, s] of this.byId) if (s.ownerId === ownerId && s.validator.getStatus() === "finishing") n++;
+		for (const [, s] of this.byId) {
+			if (s.ownerId !== ownerId || s.released.has(ownerId)) continue;
+			if (s.validator.getStatus() === "finishing") n++;
+		}
 		return n;
 	}
 

@@ -7,11 +7,10 @@ import { DraftOverlay } from "./DraftOverlay";
 import { Players } from "@rbxts/services";
 import { InfoPanel } from "./InfoPanel";
 import { LeaderboardPanel } from "./LeaderboardPanel";
-import { PartyInvitePanel } from "./PartyInvitePanel";
 import { PauseOverlay } from "./PauseOverlay";
 import { RunOverPanel } from "./RunOverPanel";
 import { ScorePanel } from "./ScorePanel";
-import { SettingsPanel } from "./SettingsPanel";
+import { OptionsScreen } from "./OptionsScreen";
 import { StatusPanel } from "./StatusPanel";
 import { ToastPanel } from "./ToastPanel";
 import { useHudScale } from "./useHudScale";
@@ -25,8 +24,9 @@ import { WeaponPanel } from "./WeaponPanel";
  *                 RunOverPanel (centre: death / victory + stats, the score breakdown in scored runs), InfoPanel
  *                 (bottom right: info, verdict, debug line), ToastPanel (top centre: M2 progression toasts and the
  *                 curse shrine hint), DraftOverlay (centre: the M2 boon draft's cards)
- *   KV_GameMenu   PauseOverlay, the co-op PartyInvitePanel (M4 consent: Join / Decline), the juice SettingsPanel and the
- *                 LeaderboardPanel (M5), above the HUD
+ *   KV_GameMenu   PauseOverlay (solo: paused; co-op: the non-pausing party overlay; both with Leave run), the
+ *                 OptionsScreen (tabs: juice, controls / rebinding, audio, display) and the LeaderboardPanel (M5),
+ *                 above the HUD and the menu shell (client/ui/menu MenuLayer, mounted next to this by HudController)
  *
  * Both lay out at the 1280x720 reference size under a UIScale (useHudScale) and sit inside the device's safe area
  * (ScreenInsets = CoreUISafeInsets: notches, the Roblox top bar). Reads only Reflex (the ~10 Hz snapshot, the input
@@ -68,8 +68,7 @@ export function GameHud() {
 			>
 				<uiscale Scale={scale} />
 				{active ? <PauseOverlay key="Pause" /> : undefined}
-				<PartyInvitePanel key="PartyInvite" />
-				<SettingsPanel key="Settings" />
+				<OptionsScreen key="Options" />
 				<LeaderboardPanel key="Leaderboards" localUserId={Players.LocalPlayer.UserId} />
 			</screengui>
 		</>
