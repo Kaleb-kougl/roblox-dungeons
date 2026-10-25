@@ -1,0 +1,106 @@
+/**
+ * Scoring tunables (M2, GDD "Scoring"). Data only: score.ts reads these, nothing is inline in the logic.
+ *
+ *   points per award = floor(base x combo x depth x curse), base x floor scaling for non-boss kills.
+ *
+ * Every multiplier is kept as an integer numerator over a fixed denominator so each award is integer arithmetic
+ * (exact in a double, identical on every machine): combo in tenths (/COMBO_DENOMINATOR), curse in quarters
+ * (/CURSE_DENOMINATOR), floor scaling in percent (/FLOOR_SCALE_DENOMINATOR).
+ */
+
+import { secondsToTicks } from "../playerData";
+import { TILE_SIZE } from "../units";
+
+// --- Kills ---------------------------------------------------------------------------------------------
+
+/** Base kill points per archetype id. Bosses (data.boss) score into the "boss" source, everything else "kills". */
+export const KILL_POINTS: ReadonlyMap<string, number> = new Map<string, number>([
+	["swarmer", 50],
+	["sniper", 100],
+	["bruiser", 200],
+	["turret.caster", 150],
+	["turret.sniper", 150],
+	["turret.sprayer", 150],
+	["boss.act1", 5000],
+]);
+/** Kill points of an archetype id not in the table (test archetypes). */
+export const DEFAULT_KILL_POINTS = 50;
+/** Extra boss points when the player took no landed hit during the boss's final phase. */
+export const BOSS_NO_HIT_BONUS = 2500;
+/** A boss's final phase (ActorState.phase), per archetype id: the no-hit bonus window. */
+export const BOSS_FINAL_PHASE: ReadonlyMap<string, number> = new Map<string, number>([["boss.act1", 3]]);
+
+/** Non-boss kill floor scaling: x (1 + FLOOR_SCALE_PERCENT_PER_FLOOR / 100 x (floor - 1)) = 1 + 0.08 (floor - 1). */
+export const FLOOR_SCALE_PERCENT_PER_FLOOR = 8;
+export const FLOOR_SCALE_DENOMINATOR = 100;
+
+// --- Bullets -------------------------------------------------------------------------------------------
+
+/** Points per graze (an enemy bullet passing through the graze ring without ever entering the hit circle). */
+export const GRAZE_POINTS = 5;
+/** The graze ring reaches this far beyond the hit distance (PLAYER_RADIUS + ENEMY_BULLET_RADIUS), world units. */
+export const GRAZE_MARGIN = 0.5 * TILE_SIZE;
+/** Points per enemy bullet erased by the sword's guard. */
+export const GUARD_CANCEL_POINTS = 10;
+
+// --- Rooms and floors ------------------------------------------------------------------------------------
+
+/** The last member of an encounter room died. */
+export const ROOM_CLEAR_POINTS = 250;
+/** ... and no hit landed on the player from the room's engagement to its clear. */
+export const ROOM_PERFECT_POINTS = 500;
+/** ... plus this many points per tick the clear beat the room's par time. */
+export const FAST_POINTS_PER_TICK = 1;
+/** Room par time = ROOM_PAR_BASE_TICKS + ROOM_PAR_TICKS_PER_COST x (sum of encounterCost over the room's spawns). */
+export const ROOM_PAR_BASE_SECONDS = 6;
+export const ROOM_PAR_SECONDS_PER_COST = 1.5;
+export const ROOM_PAR_BASE_TICKS = secondsToTicks(ROOM_PAR_BASE_SECONDS); // 360
+export const ROOM_PAR_TICKS_PER_COST = secondsToTicks(ROOM_PAR_SECONDS_PER_COST); // 90
+/** Floor clear: FLOOR_CLEAR_POINTS x floor (awardFloorClear). */
+export const FLOOR_CLEAR_POINTS = 1000;
+
+// --- Multipliers -----------------------------------------------------------------------------------------
+
+/** The combo is an integer of tenths: 10 = x1.0 .. 50 = x5.0. */
+export const COMBO_DENOMINATOR = 10;
+export const COMBO_MIN = 10;
+export const COMBO_MAX = 50;
+/** Every kill or graze adds this many tenths (+0.1), capped at COMBO_MAX. */
+export const COMBO_STEP = 1;
+/** With no kill or graze for this long the combo resets to COMBO_MIN. */
+export const COMBO_WINDOW_SECONDS = 3;
+export const COMBO_WINDOW_TICKS = secondsToTicks(COMBO_WINDOW_SECONDS); // 180
+/**
+ * A landed hit cuts the combo by 1 / max(COMBO_CUT_MIN_DIVISOR, partySize), i.e. cut = min(1/2, 1/partySize):
+ * combo = max(COMBO_MIN, floor(combo x (d - 1) / d)) in tenths (rounded DOWN to the tenth).
+ */
+export const COMBO_CUT_MIN_DIVISOR = 2;
+/** Default party size (solo). */
+export const DEFAULT_PARTY_SIZE = 1;
+
+/** The curse multiplier is an integer of quarters: 4 = x1.0, +1 (+0.25) per curse. */
+export const CURSE_DENOMINATOR = 4;
+export const CURSE_BASE = 4;
+export const CURSE_STEP = 1;
+
+/** Depth / floor when endless mode is absent. */
+export const DEFAULT_DEPTH = 1;
+export const DEFAULT_FLOOR = 1;
+
+// --- Sources (the results screen's breakdown) ----------------------------------------------------------------
+
+/** Index of each score source in ScoreState.points / counts. Append only (hash order). */
+export const ScoreSource = {
+	KILLS: 0,
+	GRAZES: 1,
+	GUARD: 2,
+	ROOMS: 3,
+	PERFECT: 4,
+	FAST: 5,
+	FLOORS: 6,
+	BOSS: 7,
+} as const;
+export type ScoreSourceId = (typeof ScoreSource)[keyof typeof ScoreSource];
+/** Source names in index order (dump names, results screen string keys `score.source.<name>`). */
+export const SCORE_SOURCE_NAMES = ["kills", "grazes", "guard", "rooms", "perfect", "fast", "floors", "boss"] as const;
+export const SCORE_SOURCE_COUNT = SCORE_SOURCE_NAMES.size();

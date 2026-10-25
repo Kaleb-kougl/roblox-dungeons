@@ -1,0 +1,6 @@
+{
+	"name": "KalebValeTestRunner",
+	"tree": {
+		"$path": "plugin/RunTestsPlugin.server.lua"
+	}
+}

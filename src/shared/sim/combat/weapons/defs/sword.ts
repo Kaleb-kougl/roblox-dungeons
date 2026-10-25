@@ -1,0 +1,209 @@
+/**
+ * 'weapon.sword' (E1.8; source: `src/sim/weapons/defs/sword.ts`): the melee weapon set.
+ *
+ *   FIRE held  a 3-hit combo: swings 1 and 2 (120-degree arcs for `damage`), then a wind-up (finisherWindupTicks)
+ *              lunging lungeDistance forward, then the finisher (180 degrees, longer, finisherDamage). Every swing
+ *              hits each actor in its arc once and deletes the enemy bullets inside it. swingRecoveryTicks between
+ *              swings, finisherRecoveryTicks after the finisher. Not holding FIRE for comboWindowTicks after a swing's
+ *              recovery resets the combo.
+ *   ALT press  guard: for guardTicks a wide frontal arc deletes enemy bullets every tick (no damage), walking at
+ *              guardMoveMultiplier; guardCooldownTicks from the guard's start (slot.cooldown).
+ *   A roll cancels a wind-up or a guard and pauses the combo; a SWAP (in) resets the combo and the guard.
+ *   M2 (endless runs): Sharpened scales the damage when it hits, Swift Strikes the swing / finisher recovery; with
+ *   the Mirror Cloak relic every bullet the guard erases comes back as a player bullet (sweepArc reflectSource).
+ *   Co-op: always the swinging player's own modifiers (ctx.playerIndex, bound for the weapons phase).
+ */
+
+import { secondsToTicks } from "../../../playerData";
+import { movePlayer } from "../../../player";
+import { sweepArc, type ArcActorHit } from "../melee";
+import { registerWeapon } from "../registry";
+import type { WeaponData, WeaponSlotState } from "../types";
+import { altPressed } from "./altButton";
+import { scoreGuardCancels } from "../../../score/score";
+import type { SimCtx } from "../../ctx";
+import { attackTicks, playerHitDamage, runMods } from "../../../progression/runMods";
+
+export interface SwordData extends WeaponData {
+	/** Swings 1 and 2: reach (world units from the player's center) and half-angle cosine (0.5 = 120-degree arc). */
+	reach: number;
+	halfAngleCos: number;
+	finisherDamage: number;
+	finisherReach: number;
+	finisherHalfAngleCos: number;
+	/** Ticks from one swing to the next while FIRE is held. */
+	swingRecoveryTicks: number;
+	/** Ticks from the finisher's press to the finisher (the lunge happens during them). */
+	finisherWindupTicks: number;
+	/** Lunge distance, world units, spread evenly over the wind-up (through the world's collision). */
+	lungeDistance: number;
+	/** Walking speed multiplier during the wind-up. */
+	windupMoveMultiplier: number;
+	/** Ticks after the finisher before swing 1 can start again. */
+	finisherRecoveryTicks: number;
+	/** Idle ticks (after a swing's recovery) before the combo resets to swing 1. */
+	comboWindowTicks: number;
+	guardTicks: number;
+	guardCooldownTicks: number;
+	guardReach: number;
+	guardHalfAngleCos: number;
+	guardMoveMultiplier: number;
+}
+
+export const SWORD_DATA: SwordData = {
+	cooldownTicks: 0, // trigger 'custom': the sword times itself (slot.cooldown = the guard's cooldown)
+	damage: 3,
+	style: "melee",
+	spriteId: "item.weapon.sword",
+	reach: 1.7,
+	halfAngleCos: 0.5,
+	finisherDamage: 6,
+	finisherReach: 2.2,
+	finisherHalfAngleCos: 0,
+	swingRecoveryTicks: 12, // 0.2 s
+	finisherWindupTicks: 9, // 0.15 s
+	lungeDistance: 0.6,
+	windupMoveMultiplier: 0.35,
+	finisherRecoveryTicks: secondsToTicks(0.35), // 21
+	comboWindowTicks: secondsToTicks(0.5), // 30
+	guardTicks: secondsToTicks(0.3), // 18
+	guardCooldownTicks: secondsToTicks(1), // 60
+	guardReach: 1.9,
+	guardHalfAngleCos: -0.2, // ~203 degrees: everything in front and a little to the sides
+	guardMoveMultiplier: 0.5,
+};
+
+/** Scratch slots (slot.v). */
+export const SWORD_V_STEP = 0; // next combo swing: 0, 1 (swing 1, 2), 2 (finisher next), SWORD_STEP_WINDUP
+export const SWORD_V_BUSY = 1; // ticks until the next swing may start (recovery), or until the finisher (wind-up)
+export const SWORD_V_WINDOW = 2; // idle ticks left before the combo resets
+export const SWORD_V_GUARD = 3; // guard ticks left (0 = not guarding)
+export const SWORD_V_LAST = 4; // last swing: 0 none, 1 / 2 combo swings, 3 finisher
+/** SWORD_V_STEP while the finisher winds up. */
+export const SWORD_STEP_WINDUP = 3;
+/** SWORD_V_LAST of a finisher. */
+export const SWORD_FINISHER = 3;
+
+const LUNGE_STEP = SWORD_DATA.lungeDistance / SWORD_DATA.finisherWindupTicks;
+
+// Module-level hit callbacks (no closure per swing).
+const hitSwing: ArcActorHit = (ctx, actor) => {
+	ctx.damageActor(actor, playerHitDamage(ctx.state, ctx.playerIndex, SWORD_DATA.damage));
+};
+const hitFinisher: ArcActorHit = (ctx, actor) => {
+	ctx.damageActor(actor, playerHitDamage(ctx.state, ctx.playerIndex, SWORD_DATA.finisherDamage));
+};
+
+function resetCombo(v: number[]): void {
+	v[SWORD_V_STEP] = 0;
+	v[SWORD_V_BUSY] = 0;
+	v[SWORD_V_WINDOW] = 0;
+}
+
+function swing(ctx: SimCtx, v: number[], n: number): void {
+	const p = ctx.player;
+	if (n === SWORD_FINISHER) {
+		sweepArc(
+			ctx,
+			p.x,
+			p.z,
+			p.faceX,
+			p.faceZ,
+			SWORD_DATA.finisherReach,
+			SWORD_DATA.finisherHalfAngleCos,
+			hitFinisher,
+			true,
+		);
+		v[SWORD_V_STEP] = 0;
+		v[SWORD_V_BUSY] = attackTicks(ctx.state, ctx.playerIndex, SWORD_DATA.finisherRecoveryTicks);
+	} else {
+		sweepArc(ctx, p.x, p.z, p.faceX, p.faceZ, SWORD_DATA.reach, SWORD_DATA.halfAngleCos, hitSwing, true);
+		v[SWORD_V_STEP] = n; // the next one
+		v[SWORD_V_BUSY] = attackTicks(ctx.state, ctx.playerIndex, SWORD_DATA.swingRecoveryTicks);
+	}
+	v[SWORD_V_WINDOW] = SWORD_DATA.comboWindowTicks;
+	v[SWORD_V_LAST] = n;
+}
+
+export const SWORD = registerWeapon<SwordData>({
+	id: "weapon.sword",
+	data: SWORD_DATA,
+	trigger: "custom",
+	step(ctx, slot) {
+		const v = slot.v;
+		const p = ctx.player;
+		if (ctx.events.weaponSwapped !== 0) {
+			resetCombo(v);
+			v[SWORD_V_GUARD] = 0;
+		}
+		if (p.rollTicks > 0) {
+			if (v[SWORD_V_STEP] === SWORD_STEP_WINDUP) resetCombo(v);
+			v[SWORD_V_GUARD] = 0;
+			return;
+		}
+
+		// Guard (ALT press, off cooldown): cancels the combo.
+		if (altPressed(ctx) && slot.cooldown === 0) {
+			resetCombo(v);
+			v[SWORD_V_GUARD] = SWORD_DATA.guardTicks;
+			slot.cooldown = SWORD_DATA.guardCooldownTicks;
+		}
+		if (v[SWORD_V_GUARD] > 0) {
+			v[SWORD_V_GUARD]--;
+			const deletedBefore = ctx.events.bulletsDeleted;
+			sweepArc(
+				ctx,
+				p.x,
+				p.z,
+				p.faceX,
+				p.faceZ,
+				SWORD_DATA.guardReach,
+				SWORD_DATA.guardHalfAngleCos,
+				undefined,
+				true,
+				false,
+				runMods(ctx.state, ctx.playerIndex).mirror ? slot.weapon + 1 : undefined,
+			);
+			// M2 scoring (opt-in): guard cancels, told apart from swing deletes.
+			if (ctx.state.score !== undefined) scoreGuardCancels(ctx.state, ctx.events.bulletsDeleted - deletedBefore);
+			return;
+		}
+
+		// Finisher wind-up: lunge, then strike.
+		if (v[SWORD_V_STEP] === SWORD_STEP_WINDUP) {
+			movePlayer(ctx.state, p.faceX * LUNGE_STEP, p.faceZ * LUNGE_STEP, ctx.config, p);
+			v[SWORD_V_BUSY] -= 1;
+			if (v[SWORD_V_BUSY] <= 0) swing(ctx, v, SWORD_FINISHER);
+			return;
+		}
+
+		if (v[SWORD_V_BUSY] > 0) {
+			v[SWORD_V_BUSY]--;
+		} else if (v[SWORD_V_WINDOW] > 0) {
+			v[SWORD_V_WINDOW] -= 1;
+			if (v[SWORD_V_WINDOW] === 0) v[SWORD_V_STEP] = 0;
+		}
+
+		if (ctx.fireHeld() && v[SWORD_V_BUSY] === 0) {
+			if (v[SWORD_V_STEP] < 2) {
+				swing(ctx, v, v[SWORD_V_STEP] + 1);
+			} else {
+				v[SWORD_V_STEP] = SWORD_STEP_WINDUP;
+				v[SWORD_V_BUSY] = SWORD_DATA.finisherWindupTicks;
+			}
+		}
+	},
+	fire() {
+		return false; // trigger 'custom': never called
+	},
+	moveMultiplier(slot) {
+		if (slot.v[SWORD_V_GUARD] > 0) return SWORD_DATA.guardMoveMultiplier;
+		if (slot.v[SWORD_V_STEP] === SWORD_STEP_WINDUP) return SWORD_DATA.windupMoveMultiplier;
+		return 1;
+	},
+});
+
+/** Guard progress of a sword slot: 1 at the guard's start, 0 when down (render). */
+export function swordGuard(slot: Readonly<WeaponSlotState>): number {
+	return slot.v[SWORD_V_GUARD] / SWORD_DATA.guardTicks;
+}

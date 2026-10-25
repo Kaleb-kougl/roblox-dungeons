@@ -1,0 +1,302 @@
+/**
+ * The actor pool and the generic actor rules (E1.8; source: `src/sim/actors/actors.ts`): spawning into slots, the
+ * per-tick loop that drives archetypes, damage (with the per-second cap), death, corpses, contact damage, hashing.
+ * Archetype code calls these through SimCtx (ctx.spawnActor, ctx.damageActor, ...).
+ *
+ * Pool (CombatState.actors): an array that grows up to MAX_ACTORS slots and never shrinks within a run. A spawn takes
+ * the LOWEST-index free slot (kind === NO_KIND), else appends a new slot, else (pool full) returns undefined and
+ * counts CombatState.actorsDropped. Slots are freed when a corpse times out (ArchetypeData.corpseTicks, default
+ * CORPSE_TICKS) or on ctx.freeActor. Everything is in slot order, so the reuse order is deterministic.
+ */
+
+import {
+	CORPSE_TICKS,
+	DAMAGE_CAP_BUCKETS,
+	DAMAGE_CAP_BUCKET_TICKS,
+	DAMAGE_CAP_WINDOW_SECONDS,
+	HIT_FLASH_TICKS,
+	MAX_ACTORS,
+} from "../combatData";
+import { PLAYER_RADIUS } from "../../playerData";
+import { SQRT1_2 } from "../../jsnum";
+import { endlessActorHp } from "../../endlessData";
+import { partyHpMultiplier } from "../../partyData";
+import { partySize, playerAt } from "../../party";
+import type { SimCtx } from "../ctx";
+import { archetypeAt } from "./registry";
+import { scoreKill } from "../../score/score";
+import { runOnKill } from "../../progression/runMods";
+import { ACTOR_HASH_FIELDS, ACTOR_SCRATCH_SLOTS, AiState, NO_KIND, type ActorState } from "./types";
+
+function zeros(n: number): number[] {
+	const out: number[] = [];
+	for (let i = 0; i < n; i++) out.push(0);
+	return out;
+}
+
+/** A free slot (kind NO_KIND, capBucket -1, everything else 0). */
+export function createFreeActor(): ActorState {
+	return {
+		id: 0,
+		kind: NO_KIND,
+		spawnTick: 0,
+		x: 0,
+		z: 0,
+		prevX: 0,
+		prevZ: 0,
+		faceX: 0,
+		faceZ: 0,
+		hp: 0,
+		hpMax: 0,
+		radius: 0,
+		alive: 0,
+		deadTicks: 0,
+		aiState: 0,
+		aiTicks: 0,
+		attack: 0,
+		cooldown: 0,
+		flashTicks: 0,
+		emitterId: 0,
+		phase: 0,
+		capBucket: -1,
+		capWindow: zeros(DAMAGE_CAP_BUCKETS),
+		v: zeros(ACTOR_SCRATCH_SLOTS),
+	};
+}
+
+export function cloneActor(a: Readonly<ActorState>): ActorState {
+	return { ...a, capWindow: [...a.capWindow], v: [...a.v] };
+}
+
+/** True for a slot holding an actor (alive or a corpse). */
+export function isActorPresent(a: Readonly<ActorState>): boolean {
+	return a.kind !== NO_KIND;
+}
+
+function fill(arr: number[], v: number): void {
+	for (let k = 0; k < arr.size(); k++) arr[k] = v;
+}
+
+function clearActor(a: ActorState): void {
+	a.id = 0;
+	a.kind = NO_KIND;
+	a.spawnTick = 0;
+	a.x = 0;
+	a.z = 0;
+	a.prevX = 0;
+	a.prevZ = 0;
+	a.faceX = 0;
+	a.faceZ = 0;
+	a.hp = 0;
+	a.hpMax = 0;
+	a.radius = 0;
+	a.alive = 0;
+	a.deadTicks = 0;
+	a.aiState = AiState.IDLE;
+	a.aiTicks = 0;
+	a.attack = 0;
+	a.cooldown = 0;
+	a.flashTicks = 0;
+	a.emitterId = 0;
+	a.phase = 0;
+	a.capBucket = -1;
+	fill(a.capWindow, 0);
+	fill(a.v, 0);
+}
+
+/** Spawns archetype index `kind` at (x, z); see SimCtx.spawnActor. */
+export function spawnActor(ctx: SimCtx, kind: number, x: number, z: number): ActorState | undefined {
+	const c = ctx.combat;
+	const actors = c.actors;
+	const def = archetypeAt(kind); // throws before touching the pool for a bad kind
+	let a: ActorState | undefined;
+	for (let i = 0; i < actors.size(); i++) {
+		if (actors[i].kind === NO_KIND) {
+			a = actors[i];
+			break;
+		}
+	}
+	if (a === undefined) {
+		if (actors.size() >= MAX_ACTORS) {
+			c.actorsDropped += 1;
+			return undefined;
+		}
+		a = createFreeActor();
+		actors.push(a);
+	}
+	const d = def.data;
+	a.id = c.nextActorId;
+	c.nextActorId += 1;
+	a.kind = kind;
+	a.spawnTick = ctx.tick;
+	a.x = x;
+	a.z = z;
+	a.prevX = x;
+	a.prevZ = z;
+	// Face the camera (screen-down) until the archetype turns it.
+	a.faceX = SQRT1_2;
+	a.faceZ = SQRT1_2;
+	// Endless mode (Roblox port): hp scaled by the floor and Depth at the moment of the spawn (bosses: Depth only),
+	// then (co-op, M4) by the party size (bosses too).
+	const endless = ctx.state.endless;
+	let hp = endless !== undefined ? endlessActorHp(d.hp, d.boss === true, endless.floor, endless.depth) : d.hp;
+	if (endless !== undefined && ctx.state.party !== undefined) hp *= partyHpMultiplier(ctx.state.party.size);
+	a.hp = hp;
+	a.hpMax = hp;
+	a.radius = d.radius;
+	a.alive = 1;
+	a.emitterId = c.enemyBullets.acquireEmitter();
+	c.enemyEmitters += 1;
+	ctx.events.actorsSpawned += 1;
+	if (def.init !== undefined) def.init(ctx, a);
+	return a;
+}
+
+/**
+ * Books `dmg` against the actor's per-second cap (budget cap x DAMAGE_CAP_WINDOW_SECONDS per window); returns how much
+ * may land. Ticks are never negative, so Luau's floored `%` equals the source's `((b % n) + n) % n` / `b % n`.
+ */
+function applyDamageCap(a: ActorState, tick: number, dmg: number, cap: number): number {
+	const n = DAMAGE_CAP_BUCKETS;
+	const bucket = math.floor(tick / DAMAGE_CAP_BUCKET_TICKS);
+	if (a.capBucket !== bucket) {
+		// Clear the buckets we moved through since the last write (all of them after a long pause).
+		const gap = a.capBucket < 0 ? n : math.min(n, bucket - a.capBucket);
+		for (let k = 0; k < gap; k++) a.capWindow[(((bucket - k) % n) + n) % n] = 0;
+		a.capBucket = bucket;
+	}
+	let taken = 0;
+	for (let k = 0; k < n; k++) taken += a.capWindow[k];
+	const room = cap * DAMAGE_CAP_WINDOW_SECONDS - taken;
+	if (room <= 0) return 0;
+	const applied = dmg < room ? dmg : room;
+	a.capWindow[bucket % n] += applied;
+	return applied;
+}
+
+/** Damages a live actor; see SimCtx.damageActor. Returns the hp removed. */
+export function damageActor(ctx: SimCtx, a: ActorState, amount: number): number {
+	if (a.kind === NO_KIND || a.alive === 0 || !(amount > 0)) return 0;
+	const def = archetypeAt(a.kind);
+	const ev = ctx.events;
+	ev.enemyHits += 1;
+	let dmg = def.filterDamage !== undefined ? def.filterDamage(ctx, a, amount) : amount;
+	if (!(dmg > 0)) dmg = 0;
+	const cap = def.data.damageCapPerSecond;
+	if (cap !== undefined && dmg > 0) dmg = applyDamageCap(a, ctx.tick, dmg, cap);
+	if (dmg > a.hp) dmg = a.hp; // overkill does not count
+	if (dmg > 0) {
+		a.hp -= dmg;
+		ev.damageDealt += dmg;
+		if (a.hp > 0) a.flashTicks = HIT_FLASH_TICKS;
+	}
+	if (def.onHit !== undefined) def.onHit(ctx, a, dmg);
+	if (a.alive !== 0 && a.hp <= 0) killActor(ctx, a);
+	return dmg;
+}
+
+/** Kills a live actor; see SimCtx.killActor. */
+export function killActor(ctx: SimCtx, a: ActorState): void {
+	if (a.kind === NO_KIND || a.alive === 0) return;
+	a.alive = 0;
+	a.hp = 0;
+	a.deadTicks = 0;
+	a.flashTicks = 0;
+	ctx.events.actorsKilled += 1;
+	ctx.events.enemiesKilled += 1;
+	// M2 scoring (opt-in), before onDeath's own kills. The killer is the bound player (ctx.playerIndex: the bullet's
+	// owner or the swinging player; solo: 0) for Bounty and Vampire Fang.
+	if (ctx.state.score !== undefined) scoreKill(ctx.state, a, ctx.playerIndex);
+	const def = archetypeAt(a.kind);
+	// M2 Vampire Fang (endless runs): reviving archetypes (turrets) never count.
+	if (ctx.state.run !== undefined) runOnKill(ctx.state, ctx.playerIndex, def.stepDead !== undefined);
+	if (def.onDeath !== undefined) def.onDeath(ctx, a);
+}
+
+/** Revives a dead actor in place with full hp. */
+export function reviveActor(a: ActorState): void {
+	if (a.kind === NO_KIND) return;
+	a.alive = 1;
+	a.hp = a.hpMax;
+	a.deadTicks = 0;
+}
+
+/** Frees the slot (no onDeath). Its in-flight bullets keep their emitter id and keep flying. */
+export function freeActor(ctx: SimCtx, a: ActorState): void {
+	if (a.kind === NO_KIND) return;
+	ctx.combat.enemyBullets.releaseEmitter(a.emitterId);
+	clearActor(a);
+}
+
+/**
+ * The actor phase of stepCombat: every present actor in slot order, except those spawned this tick.
+ * prev = position; flash counts down; alive -> def.step; dead -> deadTicks += 1, then def.stepDead or the corpse timer.
+ * A `while` loop: archetypes may append slots mid-loop (runtime spawns), and the bound must be re-read like JS does
+ * (the new slots are skipped anyway: spawnTick === tick).
+ */
+export function stepActors(ctx: SimCtx): void {
+	const actors = ctx.combat.actors;
+	const tick = ctx.tick;
+	// Co-op: each actor's hooks see its own target (the nearest living player) as ctx.player.
+	const party = ctx.state.party !== undefined;
+	let i = 0;
+	while (i < actors.size()) {
+		const a = actors[i];
+		i++;
+		if (a.kind === NO_KIND || a.spawnTick === tick) continue;
+		a.prevX = a.x;
+		a.prevZ = a.z;
+		if (a.flashTicks > 0) a.flashTicks--;
+		const def = archetypeAt(a.kind);
+		if (party) ctx.targetNearest(a);
+		if (a.alive !== 0) {
+			def.step(ctx, a);
+		} else {
+			a.deadTicks++;
+			if (def.stepDead !== undefined) def.stepDead(ctx, a);
+			else if (a.deadTicks >= (def.data.corpseTicks ?? CORPSE_TICKS)) freeActor(ctx, a);
+		}
+	}
+	if (party) ctx.actingPlayer(0);
+}
+
+/**
+ * Contact damage: the first live actor (slot order) with contactDamage > 0 overlapping the player hurts them.
+ * Co-op: the same for every living player, in player index order.
+ */
+export function stepContactDamage(ctx: SimCtx): void {
+	const n = partySize(ctx.state);
+	for (let k = 0; k < n; k++) contactDamageOn(ctx, k);
+}
+
+function contactDamageOn(ctx: SimCtx, k: number): void {
+	const p = playerAt(ctx.state, k);
+	if (p.dead !== 0) return;
+	const actors = ctx.combat.actors;
+	for (let i = 0; i < actors.size(); i++) {
+		const a = actors[i];
+		if (a.kind === NO_KIND || a.alive === 0) continue;
+		const dmg = archetypeAt(a.kind).data.contactDamage;
+		if (dmg <= 0) continue;
+		const r = a.radius + PLAYER_RADIUS;
+		const dx = p.x - a.x;
+		const dz = p.z - a.z;
+		if (dx * dx + dz * dz >= r * r) continue;
+		if (ctx.hurtPlayerAt(k, dmg, a.kind)) return; // landed: post-hit invulnerability ignores the rest anyway
+	}
+}
+
+/** Hash fields of one actor slot, fixed order: ACTOR_HASH_FIELDS, capWindow, v. */
+export function writeActorHash(a: Readonly<ActorState>, out: number[]): void {
+	for (const f of ACTOR_HASH_FIELDS) out.push(a[f]);
+	for (const n of a.capWindow) out.push(n);
+	for (const n of a.v) out.push(n);
+}
+
+/** Dump names for writeActorHash of slot `slot`, same order (`actors[3].hp`, `actors[3].capWindow[0]`, ...). */
+export function actorHashNames(a: Readonly<ActorState>, slot: number, out: string[]): void {
+	const p = `actors[${slot}]`;
+	for (const f of ACTOR_HASH_FIELDS) out.push(`${p}.${f}`);
+	for (let k = 0; k < a.capWindow.size(); k++) out.push(`${p}.capWindow[${k}]`);
+	for (let k = 0; k < a.v.size(); k++) out.push(`${p}.v[${k}]`);
+}

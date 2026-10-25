@@ -1,0 +1,154 @@
+// The sprite contract must port UNCHANGED (art made for the web build fits here). These values are
+// copied from project-kaleb-vale src/theme/contract.ts @ 42897e2; a change here is a contract break.
+import { describe, expect, it } from "@rbxts/jest-globals";
+import {
+	AUDIO_EVENTS,
+	BIOMES,
+	BOSS,
+	BULLET,
+	CHARACTER,
+	DIGIT_FONT,
+	ENEMY,
+	FACINGS,
+	GAMEPLAY_KEY_WORDS,
+	ITEM,
+	MIN_DAMAGE_NUMBER_CONTRAST,
+	MIN_ENEMY_BULLET_CONTRAST,
+	MIN_HEALTH_BAR_CONTRAST,
+	MAX_IMAGE_SIDE,
+	MUSIC,
+	REQUIRED_ASSET_IDS,
+	REQUIRED_STRING_KEYS,
+	SFX,
+	SLOTS,
+	SPRITE_FACING_COUNTS,
+	SPRITE_RESAMPLE_MODES,
+	TILE,
+	UI,
+	requiredAnimationList,
+	requiredAnimations,
+	requiredBaseAnimations,
+	slotFor,
+} from "./contract";
+import { sortedKeys } from "./util";
+
+describe("sprite contract", () => {
+	it("keeps the web build's cells, pivots, frame counts and facings", () => {
+		expect(FACINGS).toEqual(["down", "up", "left", "right"]);
+		expect([CHARACTER.cell, CHARACTER.pivot, CHARACTER.animations, CHARACTER.facings]).toEqual([
+			{ w: 16, h: 24 },
+			{ x: 8, y: 23 },
+			{ idle: 4, run: 6, roll: 4, hit: 2, death: 6 },
+			FACINGS,
+		]);
+		expect([ENEMY.cell, ENEMY.pivot, ENEMY.animations, ENEMY.facings]).toEqual([
+			{ w: 16, h: 16 },
+			{ x: 8, y: 15 },
+			{ idle: 4, move: 4, attack: 4, hit: 2, death: 4 },
+			FACINGS,
+		]);
+		expect([BOSS.cell, BOSS.pivot, BOSS.animations, BOSS.facings]).toEqual([
+			{ w: 48, h: 48 },
+			{ x: 24, y: 47 },
+			{ idle: 4, move: 4, attack: 6, hit: 2, death: 8 },
+			[],
+		]);
+		expect([BULLET.cell, BULLET.pivot, BULLET.animations]).toEqual([{ w: 8, h: 8 }, { x: 4, y: 4 }, { fly: 2 }]);
+		expect([TILE.cell, ITEM.cell, UI.cell]).toEqual([{ w: 16, h: 16 }, { w: 16, h: 16 }, undefined]);
+	});
+
+	it("lists every contract animation in the order map", () => {
+		for (const slot of SLOTS) {
+			const order = slot.animationOrder ?? [];
+			const names = new Set<string>();
+			for (const name of sortedKeys(slot.animations ?? {})) {
+				names.add(name);
+			}
+			expect([slot.slot, order.size()]).toEqual([slot.slot, names.size()]);
+			for (const n of order) {
+				expect([slot.slot, names.has(n)]).toEqual([slot.slot, true]);
+			}
+		}
+	});
+
+	it("requires <anim>.<facing> for directional slots, in contract order", () => {
+		const list = requiredAnimationList(CHARACTER);
+		expect(list.size()).toBe(20);
+		expect(list.map((a) => a.name).filter((_, i) => i < 5)).toEqual([
+			"idle.down",
+			"idle.up",
+			"idle.left",
+			"idle.right",
+			"run.down",
+		]);
+		expect(requiredAnimations(CHARACTER)["roll.left"]).toBe(4);
+		expect(requiredAnimations(BOSS)).toEqual({ idle: 4, move: 4, attack: 6, hit: 2, death: 8 });
+		expect(requiredAnimations(TILE)).toEqual({});
+	});
+
+	it("routes IDs to slots by prefix, and audio to SoundGroups", () => {
+		expect(slotFor("class.ranger")).toBe(CHARACTER);
+		expect(slotFor("bullet.enemy.wave")).toBe(BULLET);
+		expect(slotFor("ui.font.digits")).toBe(UI);
+		expect(slotFor("weapon.sword")).toBeUndefined();
+		expect(SFX.soundGroup).toBe("sfx");
+		expect(MUSIC.soundGroup).toBe("music");
+		expect(slotFor("music.boss")?.soundGroup).toBe("music");
+	});
+
+	it("accepts placeholders for visuals and silence for audio", () => {
+		expect(CHARACTER.kinds).toEqual(["spritesheet", "sprites", "placeholder"]);
+		expect(BULLET.kinds).toEqual(["spritesheet", "placeholder"]);
+		expect(TILE.kinds).toEqual(["image", "placeholder"]);
+		expect(SFX.kinds).toEqual(["sound", "silent"]);
+	});
+
+	it("v2: actor slots also accept sprite sets, requiring only the base animation names", () => {
+		expect([CHARACTER.kinds, ENEMY.kinds, BOSS.kinds]).toEqual([
+			["spritesheet", "sprites", "placeholder"],
+			["spritesheet", "sprites", "placeholder"],
+			["spritesheet", "sprites", "placeholder"],
+		]);
+		for (const slot of [BULLET, TILE, ITEM, UI, SFX, MUSIC]) {
+			expect([slot.slot, slot.kinds.includes("sprites")]).toEqual([slot.slot, false]);
+		}
+		expect(requiredBaseAnimations(CHARACTER)).toEqual(["idle", "run", "roll", "hit", "death"]);
+		expect(requiredBaseAnimations(ENEMY)).toEqual(["idle", "move", "attack", "hit", "death"]);
+		expect(requiredBaseAnimations(BOSS)).toEqual(["idle", "move", "attack", "hit", "death"]);
+		expect(requiredBaseAnimations(TILE)).toEqual([]);
+		// A copy: callers may not edit the contract through it.
+		requiredBaseAnimations(CHARACTER).push("dance");
+		expect(CHARACTER.animationOrder).toEqual(["idle", "run", "roll", "hit", "death"]);
+		expect(MAX_IMAGE_SIDE).toBe(1024);
+		expect(SPRITE_FACING_COUNTS).toEqual([1, 4, 8, 16]);
+		expect(SPRITE_RESAMPLE_MODES).toEqual(["Default", "Pixelated"]);
+	});
+
+	it("keeps the digit font layout consistent", () => {
+		expect(DIGIT_FONT.cellW).toBe(DIGIT_FONT.glyphW + 2 * DIGIT_FONT.pad);
+		expect(DIGIT_FONT.cellH).toBe(DIGIT_FONT.glyphH + 2 * DIGIT_FONT.pad);
+		expect(DIGIT_FONT.glyphs.size() * DIGIT_FONT.cellW).toBe(80);
+	});
+});
+
+describe("required IDs and strings", () => {
+	it("has the web build's roster, every ID unique and in a slot", () => {
+		// 5 classes + 6 enemies + 5 bosses + 6 bullets + 12 items + 6 ui + 20 audio events.
+		expect(REQUIRED_ASSET_IDS.size()).toBe(60);
+		expect(AUDIO_EVENTS.size()).toBe(20);
+		expect(new Set(REQUIRED_ASSET_IDS).size()).toBe(REQUIRED_ASSET_IDS.size());
+		for (const id of REQUIRED_ASSET_IDS) {
+			expect([id, slotFor(id) !== undefined]).toEqual([id, true]);
+		}
+		expect(REQUIRED_STRING_KEYS.size()).toBe(41);
+		expect(new Set(REQUIRED_STRING_KEYS).size()).toBe(REQUIRED_STRING_KEYS.size());
+		expect(BIOMES.map((b) => b.forgeTheme)).toEqual(["ancient", "molten", "frost", "grim", "verdant"]);
+	});
+
+	it("keeps the contrast thresholds and gameplay key words", () => {
+		expect([MIN_ENEMY_BULLET_CONTRAST, MIN_HEALTH_BAR_CONTRAST, MIN_DAMAGE_NUMBER_CONTRAST]).toEqual([3, 3, 4.5]);
+		expect(GAMEPLAY_KEY_WORDS.size()).toBe(26);
+		expect(GAMEPLAY_KEY_WORDS).toContain("hitbox");
+		expect(GAMEPLAY_KEY_WORDS).toContain("stats");
+	});
+});

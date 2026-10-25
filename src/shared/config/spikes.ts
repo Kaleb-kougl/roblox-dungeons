@@ -1,0 +1,93 @@
+/**
+ * Task 1 go/no-go spikes (docs/SPIKES.md). Both are OFF unless enabled here or by a Workspace
+ * attribute, so a normal play session never runs them.
+ *
+ * Enable at runtime from the Studio command bar (client context while playing, or on the server
+ * so it replicates):
+ *   workspace:SetAttribute("KV_SpikeBullets", true)
+ *   workspace:SetAttribute("KV_SpikeCamera", true)
+ * An attribute, when present, overrides the default below; setting it to false stops the spike
+ * and cleans up everything it made.
+ */
+
+/** Compile-time defaults. Flip one to true to run a spike without touching attributes. */
+export const SPIKE_DEFAULTS = {
+	bullets: false,
+	camera: false,
+} as const;
+
+/** Workspace attribute names that override SPIKE_DEFAULTS. */
+export const SPIKE_ATTRIBUTES = {
+	bullets: "KV_SpikeBullets",
+	camera: "KV_SpikeCamera",
+} as const;
+
+export type SpikeName = keyof typeof SPIKE_DEFAULTS;
+
+/** Spike A: pooled bullet Parts moved with one workspace:BulkMoveTo per frame. */
+export const BULLET_SPIKE = {
+	/** Selectable bullet counts (keys 1-4, or the HUD buttons). */
+	counts: [100, 500, 1000, 2000],
+	/** Index into `counts` used on start: 1000, the E1.6 target. */
+	defaultCountIndex: 2,
+	/** Bullet sphere diameter, studs (0.15 tiles at 4 studs/tile reads like the web's bullets). */
+	diameterStuds: 0.6,
+	/** Bullets per ring (one ring = one burst from the emitter). */
+	perRing: 40,
+	/** Outward speed, studs per second. */
+	speedStuds: 12,
+	/** Rings are recycled at this radius, studs (the web view is ~30 x 17 tiles). */
+	maxRadiusStuds: 60,
+	/** Height of the bullet plane above the floor, studs. */
+	heightStuds: 1.5,
+	/** Spin of the spiral pattern, radians per second. */
+	spiralSpinRadPerSec: 1.2,
+	/** Angle added per ring in the spiral pattern, radians. */
+	spiralStepRad: 0.25,
+	/** Ring colors, cycled (placeholder for the theme's bullet color roles). */
+	colors: [
+		[255, 90, 90],
+		[255, 200, 80],
+		[120, 200, 255],
+		[200, 120, 255],
+	],
+	/** Seconds between HUD stat refreshes. */
+	statsIntervalSec: 0.5,
+	/** Folder name under Workspace (cleaned up on stop). */
+	folderName: "KV_SpikeBullets",
+	/** MicroProfiler label for the per-frame update. */
+	profileLabel: "KV BulletSpike",
+} as const;
+
+/** Spike B: iso camera rig (low FOV from far away, damped follow, optional grid snap). */
+export const CAMERA_SPIKE = {
+	/** FOVs to compare, degrees (key F or the HUD button cycles). 70 is Roblox's default. */
+	fovs: [5, 7, 10, 20, 70],
+	/** Index into `fovs` used on start. */
+	defaultFovIndex: 1,
+	/** Follow damping time constant, seconds (0 = rigid). */
+	followTauSec: 0.12,
+	/** Snap grid sizes to compare, in render texels: 1 = the web build's texel grid. */
+	snapTexels: [1, 4, 16],
+	/** Placeholder character walk speed, studs per second (the web's 6 tiles/s). */
+	walkStuds: 24,
+	/** Placeholder character size, studs (1 x 1.5 x 1 tiles). */
+	characterSize: [3, 6, 3],
+	/** Auto-walk circle radius (studs) and angular speed (rad/s), for touch-only devices. */
+	autoWalkRadiusStuds: 20,
+	autoWalkRadPerSec: 0.5,
+	/** Checker floor: half-extent in tiles, and pillars every N tiles for depth reference. */
+	floorHalfTiles: 16,
+	pillarEveryTiles: 6,
+	pillarHeightTiles: 2,
+	floorColors: [
+		[70, 76, 92],
+		[58, 62, 76],
+	],
+	pillarColor: [150, 120, 90],
+	characterColor: [90, 200, 120],
+	/** Folder name under Workspace (cleaned up on stop). */
+	folderName: "KV_SpikeCamera",
+	/** RenderStep priority: after the default camera (Camera = 200), so ours wins. */
+	renderPriorityOffset: 1,
+} as const;

@@ -1,0 +1,132 @@
+import type { SpriteSet } from "shared/theme";
+import {
+	SPRITE_VIEW,
+	spriteBillboard,
+	spriteFacing,
+	spriteFrame,
+	type IsoBasis,
+	type SpriteAnimChoice,
+	type SpriteClock,
+} from "shared/view";
+import { renderPart } from "./placeholders";
+
+const WHITE = new Color3(1, 1, 1);
+const HIDDEN = 1;
+
+/**
+ * One pooled sprite (docs/ART.md S4): a BillboardGui + ImageLabel on an invisible feet-anchor Part, for a theme
+ * `sprites` asset. The owner moves `anchor` (BulkMoveTo, a CFrame at the actor's feet) and calls `update` with the
+ * chosen animation (shared/view sprites.ts) every frame; the label's Image / ImageRect are written only when the
+ * frame, facing or sheet changes. Tint / transparency / visibility are written only when they change.
+ *
+ * The anchor is its own Part, not the placeholder model: placeholder pieces sit at shape offsets and turn with the
+ * facing (and tumble while rolling), which would drag the billboard. The billboard's StudsOffset (camera space) puts
+ * the set's pivot pixel on the feet.
+ */
+export class SpriteView {
+	readonly anchor: Part;
+	private readonly gui: BillboardGui;
+	private readonly label: ImageLabel;
+	private clock: SpriteClock | undefined;
+	private facing = 0;
+	private shownAnim = "";
+	private shownFacing = -1;
+	private shownFrame = -1;
+	private image = "";
+	private tint = WHITE;
+	private transparency = 0;
+	private visible = true;
+
+	constructor(readonly set: SpriteSet, parent: Instance) {
+		const anchor = renderPart("Part", false);
+		anchor.Name = `${set.id}.anchor`;
+		anchor.Transparency = HIDDEN;
+		anchor.Size = new Vector3(SPRITE_VIEW.anchorStuds, SPRITE_VIEW.anchorStuds, SPRITE_VIEW.anchorStuds);
+		this.anchor = anchor;
+
+		const b = spriteBillboard(set);
+		const gui = new Instance("BillboardGui");
+		gui.Name = set.id;
+		gui.Size = new UDim2(b.w, 0, b.h, 0);
+		gui.StudsOffset = new Vector3(b.offsetX, b.offsetY, b.offsetZ);
+		gui.LightInfluence = 0;
+		gui.AlwaysOnTop = false;
+		gui.ResetOnSpawn = false;
+		gui.Adornee = anchor;
+		this.gui = gui;
+
+		const label = new Instance("ImageLabel");
+		label.Name = "Frame";
+		label.BackgroundTransparency = HIDDEN;
+		label.BorderSizePixel = 0;
+		label.Size = UDim2.fromScale(1, 1);
+		label.ResampleMode = Enum.ResamplerMode[set.resample];
+		label.ImageColor3 = WHITE;
+		label.Parent = gui;
+		this.label = label;
+
+		gui.Parent = anchor;
+		anchor.Parent = parent;
+	}
+
+	/** Back to a fresh state for a new actor in this pooled view (clock, facing, juice). */
+	reset(): void {
+		this.clock = undefined;
+		this.facing = 0;
+		this.setTint(WHITE);
+		this.setTransparency(0);
+		this.setVisible(true);
+		this.gui.Enabled = true;
+	}
+
+	/** Parked: the billboard stops drawing (the owner parks the anchor). */
+	park(): void {
+		this.gui.Enabled = false;
+	}
+
+	/** Shows `choice` facing the sim direction (dirX, dirZ) under the camera `basis`; `dtSec` steps the clock. */
+	update(choice: SpriteAnimChoice, dirX: number, dirZ: number, basis: IsoBasis, dtSec: number): void {
+		const set = this.set;
+		const facing = spriteFacing(dirX, dirZ, set.facings, basis, this.facing);
+		this.facing = facing;
+		const pick = spriteFrame(set, choice, this.clock, dtSec);
+		this.clock = pick;
+		if (pick.anim === this.shownAnim && pick.frame === this.shownFrame && facing === this.shownFacing) return;
+		this.shownAnim = pick.anim;
+		this.shownFrame = pick.frame;
+		this.shownFacing = facing;
+		const f = set.frame(pick.anim, facing, pick.frame);
+		if (f.image !== this.image) {
+			this.image = f.image;
+			this.label.Image = f.image;
+		}
+		this.label.ImageRectOffset = f.offset;
+		this.label.ImageRectSize = f.size;
+	}
+
+	/** ImageColor3 (multiplies the art: a tint, never a white flash). */
+	setTint(color: Color3): void {
+		if (color === this.tint) return;
+		this.tint = color;
+		this.label.ImageColor3 = color;
+	}
+
+	setTransparency(t: number): void {
+		if (t === this.transparency) return;
+		this.transparency = t;
+		this.label.ImageTransparency = t;
+	}
+
+	setVisible(v: boolean): void {
+		if (v === this.visible) return;
+		this.visible = v;
+		this.label.Visible = v;
+	}
+
+	destroy(): void {
+		this.anchor.Destroy();
+	}
+}
+
+/** The neutral tint (ImageColor3 white = the art as authored). */
+export const SPRITE_TINT_NONE = WHITE;

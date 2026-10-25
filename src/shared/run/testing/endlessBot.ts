@@ -1,0 +1,406 @@
+/**
+ * Test support for specs (never imported by the game): the endless-mode walking bot (moved here from
+ * run/endless.spec.ts so several specs can share the recorded run) and `recordEndlessRun`, the recorded seed-1337
+ * descent: floors 1-4 by the debug skip, floor 5 walked into Mother Bramble's arena, the boss killed (J presses), the
+ * stairwell walked, floor 6 walked to its stairwell, floor 7 skipped, ending on floor 8 at Depth 2. M2: every floor
+ * change opens a boon draft, which the bot resolves (resolveDraft: the stick on a card for DRAFT_MIN_OPEN_TICKS, then
+ * a FIRE press); before skipping the first floor with both a TREASURE and a SHRINE room it walks onto the relic
+ * pedestal and into the shrine and accepts the curse (SHRINE_BUTTON).
+ *
+ * The bot: a BFS distance field over FLOOR tiles to a target tile; each tick steps toward the lowest neighbour.
+ */
+import {
+	AXIS_MAX,
+	BOSS_ACT1_ID,
+	Button,
+	DEBUG_FLOOR_BUTTON,
+	DRAFT_COLUMN_CENTRE,
+	DRAFT_COLUMN_LEFT,
+	DRAFT_COLUMN_RIGHT,
+	DRAFT_CONFIRM_BUTTON,
+	DRAFT_MIN_OPEN_TICKS,
+	DRAFT_SCREEN_RIGHT_X,
+	DRAFT_SCREEN_RIGHT_Z,
+	NO_KIND,
+	NO_SELECTION,
+	SHRINE_BUTTON,
+	SHRINE_RADIUS,
+	SOLO_PLAYER,
+	draftCardFor,
+	isDraftOpen,
+	Recorder,
+	archetypeIndex,
+	createSimState,
+	hashState,
+	step,
+	type InputFrame,
+	type Recording,
+	type SimConfig,
+	type SimState,
+} from "shared/sim";
+import { TileType, gridToWorld, worldToGrid, type Dungeon } from "shared/dungeon";
+import { jsRound } from "shared/jsmath";
+import { buildEndlessRunConfig, type EndlessRunSetup } from "../endless";
+
+/** A BFS distance field to a target (exported for the party bot). */
+export interface Field {
+	readonly d: Dungeon;
+	readonly dist: number[];
+	readonly tx: number;
+	readonly tz: number;
+}
+
+const NEIGHBOURS: ReadonlyArray<readonly [number, number]> = [
+	[1, 0],
+	[-1, 0],
+	[0, 1],
+	[0, -1],
+	[1, 1],
+	[1, -1],
+	[-1, 1],
+	[-1, -1],
+];
+
+function isFloor(d: Dungeon, gx: number, gy: number): boolean {
+	return gx >= 0 && gy >= 0 && gx < d.W && gy < d.H && d.grid[gy * d.W + gx] === TileType.FLOOR;
+}
+
+/** Tiles this close (world units) to an avoided point are left out of a distance field (the open stairwell). */
+const AVOID_RADIUS = 2.5;
+
+export function distanceField(d: Dungeon, tx: number, tz: number, avoid?: readonly [number, number]): Field {
+	const dist = new Array<number>(d.W * d.H, math.huge);
+	const avoided = (gx: number, gy: number) => {
+		if (avoid === undefined) return false;
+		const dx = gridToWorld(gx) - avoid[0];
+		const dz = gridToWorld(gy) - avoid[1];
+		return dx * dx + dz * dz <= AVOID_RADIUS * AVOID_RADIUS;
+	};
+	const gx0 = worldToGrid(tx);
+	const gy0 = worldToGrid(tz);
+	const queue: number[] = [gy0 * d.W + gx0];
+	dist[gy0 * d.W + gx0] = 0;
+	let head = 0;
+	while (head < queue.size()) {
+		const i = queue[head++];
+		const gx = i % d.W;
+		const gy = math.floor(i / d.W);
+		for (let k = 0; k < 4; k++) {
+			const [ox, oy] = NEIGHBOURS[k];
+			const nx = gx + ox;
+			const ny = gy + oy;
+			if (!isFloor(d, nx, ny) || avoided(nx, ny)) continue;
+			const j = ny * d.W + nx;
+			if (dist[j] <= dist[i] + 1) continue;
+			dist[j] = dist[i] + 1;
+			queue.push(j);
+		}
+	}
+	return { d, dist, tx, tz };
+}
+
+/** Unit move (dx, dz) toward the field's target from (x, z). */
+export function walkDir(f: Field, x: number, z: number): [number, number] {
+	const d = f.d;
+	const gx = worldToGrid(x);
+	const gy = worldToGrid(z);
+	let best = f.dist[gy * d.W + gx] ?? math.huge;
+	let tx = f.tx;
+	let tz = f.tz;
+	if (best > 0) {
+		for (const [ox, oy] of NEIGHBOURS) {
+			const nx = gx + ox;
+			const ny = gy + oy;
+			if (!isFloor(d, nx, ny)) continue;
+			// Diagonals only past open corners.
+			if (ox !== 0 && oy !== 0 && (!isFloor(d, gx + ox, gy) || !isFloor(d, gx, gy + oy))) continue;
+			const v = f.dist[ny * d.W + nx];
+			if (v < best) {
+				best = v;
+				tx = gridToWorld(nx);
+				tz = gridToWorld(ny);
+			}
+		}
+	}
+	const dx = tx - x;
+	const dz = tz - z;
+	const len = math.sqrt(dx * dx + dz * dz);
+	return len > 1e-9 ? [dx / len, dz / len] : [0, 0];
+}
+
+export function frame(mx: number, mz: number, buttons = 0, ax = 0, az = 0): InputFrame {
+	return {
+		moveX: jsRound(mx * AXIS_MAX),
+		moveZ: jsRound(mz * AXIS_MAX),
+		aimX: jsRound(ax * AXIS_MAX),
+		aimZ: jsRound(az * AXIS_MAX),
+		buttons,
+	};
+}
+
+/**
+ * Test-only: closes every open boon draft WITHOUT a pick (state surgery; the game has no way to decline). For specs
+ * about other systems that debug-skip floors (the offers' rng draws stay done).
+ */
+export function dismissDraft(s: SimState): void {
+	const r = s.run;
+	if (r === undefined) return;
+	for (const p of r.players) {
+		p.draftOpen = 0;
+		p.draftTicks = 0;
+		p.draftOffers = [];
+		p.draftSelected = NO_SELECTION;
+	}
+}
+
+/** Test-only: debug-skips floors until `floor` (press, release), dismissing each draft (dismissDraft). */
+export function skipToFloor(s: SimState, config: Readonly<SimConfig>, floor: number): void {
+	while (s.endless!.floor < floor) {
+		step(s, frame(0, 0, DEBUG_FLOOR_BUTTON), config);
+		dismissDraft(s);
+		step(s, frame(0, 0), config);
+	}
+}
+
+/** A live endless run that records every frame it steps. */
+export class Driver {
+	readonly state: SimState;
+	readonly recorder: Recorder;
+	readonly floorTicks: number[] = [];
+	readonly depthTicks: number[] = [];
+	readonly stairwellEntries: number[] = [];
+	readonly hashes = new Map<number, string>();
+	/** Boons taken (Boon indices), in draft order. */
+	readonly drafted: number[] = [];
+	bossKills = 0;
+	maxActors = 0;
+	private lastAssist = 0;
+
+	constructor(readonly setup: EndlessRunSetup, readonly seed: number) {
+		const spawn = setup.spawn!;
+		this.state = createSimState(seed, spawn.x, spawn.z, setup.config);
+		this.recorder = new Recorder(seed, spawn.x, spawn.z);
+	}
+
+	floor(): number {
+		return this.state.endless!.floor;
+	}
+
+	world() {
+		return this.setup.endlessFloor(this.floor());
+	}
+
+	tick(input: InputFrame): void {
+		const s = this.state;
+		const before = s.endless!.floor;
+		const stair = this.world();
+		const p = s.player;
+		const ddx = p.x - stair.stairX;
+		const ddz = p.z - stair.stairZ;
+		this.recorder.record(input);
+		step(s, input, this.setup.config);
+		const e = s.events;
+		if (e.floorChanged !== 0) {
+			this.floorTicks.push(s.tick);
+			// Entered by walking (no debug skip pressed on this tick)?
+			if (bit32.band(input.buttons, DEBUG_FLOOR_BUTTON) === 0 || ddx * ddx + ddz * ddz < 4) {
+				this.stairwellEntries.push(before);
+			}
+		}
+		if (e.depthChanged !== 0) this.depthTicks.push(s.tick);
+		this.bossKills += e.bossDefeated;
+		let present = 0;
+		for (const a of s.combat.actors) if (a.kind !== NO_KIND) present++;
+		if (present > this.maxActors) this.maxActors = present;
+		if (s.tick % 97 === 0) this.hashes.set(s.tick, hashState(s));
+	}
+
+	/** `buttons` plus a careful player's reflexes: a flask at <= 3 half hearts, an Ember at <= 2 (press edges). */
+	assisted(buttons: number): number {
+		const p = this.state.player;
+		let want = 0;
+		if (p.hearts <= 3 && p.flask > 0 && p.flaskTicks === 0) want = bit32.bor(want, Button.FLASK);
+		if (p.hearts <= 2 && p.embers > 0) want = bit32.bor(want, Button.EMBER);
+		const press = bit32.band(want, bit32.bnot(this.lastAssist));
+		this.lastAssist = want;
+		return bit32.bor(buttons, press);
+	}
+
+	/** Presses DEBUG_FLOOR_BUTTON (one tick down, one up), then resolves the draft that opens. */
+	skipFloor(): void {
+		this.tick(frame(0, 0, DEBUG_FLOOR_BUTTON));
+		this.tick(frame(0, 0));
+		this.resolveDraft();
+	}
+
+	/**
+	 * Resolves an open boon draft: the stick on `column` (left / centre / right; for two cards the centre falls back to
+	 * the left one) until the draft has been open DRAFT_MIN_OPEN_TICKS, one FIRE press, then a release. No-op without
+	 * an open draft.
+	 */
+	resolveDraft(column: number = DRAFT_COLUMN_CENTRE): void {
+		const p = this.state.run?.players[SOLO_PLAYER];
+		if (p === undefined || !isDraftOpen(this.state)) return;
+		let col = column;
+		if (draftCardFor(col, p.draftOffers.size()) < 0) col = DRAFT_COLUMN_LEFT;
+		const side = col === DRAFT_COLUMN_RIGHT ? 1 : col === DRAFT_COLUMN_LEFT ? -1 : 0;
+		const mx = side * DRAFT_SCREEN_RIGHT_X;
+		const mz = side * DRAFT_SCREEN_RIGHT_Z;
+		const pick = p.draftOffers[draftCardFor(col, p.draftOffers.size())];
+		while (p.draftTicks + 1 < DRAFT_MIN_OPEN_TICKS) this.tick(frame(mx, mz));
+		this.tick(frame(mx, mz, DRAFT_CONFIRM_BUTTON));
+		if (p.draftOpen !== 0) error("resolveDraft: the confirm did not close the draft", 0);
+		this.drafted.push(pick);
+		this.tick(frame(0, 0));
+	}
+
+	/** One SHRINE_BUTTON press (down, then up). */
+	pressShrine(): void {
+		this.tick(frame(0, 0, SHRINE_BUTTON));
+		this.tick(frame(0, 0));
+	}
+
+	/** Walks to world (tx, tz) until `done()` or the tick budget runs out; rolls now and then. Returns ticks used. */
+	walkTo(tx: number, tz: number, done: () => boolean, maxTicks: number, avoid?: readonly [number, number]): number {
+		const field = distanceField(this.world().dungeon, tx, tz, avoid);
+		const startFloor = this.floor();
+		let n = 0;
+		while (n < maxTicks && !done() && this.state.player.dead === 0 && this.floor() === startFloor) {
+			const p = this.state.player;
+			const [mx, mz] = walkDir(field, p.x, p.z);
+			this.tick(frame(mx, mz, this.assisted(n % 50 === 25 ? Button.ROLL : 0)));
+			n++;
+		}
+		return n;
+	}
+}
+
+/** Mother Bramble, if present. */
+export function bossOf(s: SimState) {
+	return s.combat.actors.find((a) => a.kind === archetypeIndex(BOSS_ACT1_ID) && a.alive !== 0);
+}
+
+/**
+ * Fights the boss: circle-strafes at ~5 units, aims and fires at it, rolls now and then, drinks a flask when hurt,
+ * and presses J (DEBUG_BOSS) every 20 ticks. Returns when the boss is dead, the player is dead or time is up.
+ */
+export function fightBoss(drv: Driver, maxTicks: number): void {
+	let n = 0;
+	while (n < maxTicks && drv.state.player.dead === 0) {
+		if (isDraftOpen(drv.state)) return;
+		const boss = bossOf(drv.state);
+		if (boss === undefined) return;
+		const p = drv.state.player;
+		const dx = boss.x - p.x;
+		const dz = boss.z - p.z;
+		const dist = math.max(1e-6, math.sqrt(dx * dx + dz * dz));
+		const ux = dx / dist;
+		const uz = dz / dist;
+		const radial = dist > 5.5 ? 0.6 : dist < 4.5 ? -0.6 : 0;
+		let mx = -uz + ux * radial;
+		let mz = ux + uz * radial;
+		const len = math.sqrt(mx * mx + mz * mz);
+		mx /= len;
+		mz /= len;
+		let buttons: number = Button.FIRE;
+		if (n % 20 === 10) buttons = bit32.bor(buttons, Button.DEBUG_BOSS);
+		if (n % 40 === 0) buttons = bit32.bor(buttons, Button.ROLL);
+		drv.tick(frame(mx, mz, drv.assisted(buttons), ux, uz));
+		n++;
+	}
+}
+
+/** What recordEndlessRun produced. */
+export interface RecordedEndlessRun {
+	readonly seed: number;
+	readonly setup: EndlessRunSetup;
+	readonly drv: Driver;
+	readonly recording: Recording;
+	readonly finalHash: string;
+	/** Depth right after the boss fight. */
+	readonly depthAfterBoss: number;
+	/** The floor after walking floor 6 to its stairwell (7 when both walks reached a stairwell). */
+	readonly afterWalk: number;
+	/** Milestones: tick, floor and hearts at each (printed by the spec). */
+	readonly log: ReadonlyArray<string>;
+	/** The floor where the bot took a relic and a curse (0: no floor among 1-4 has both a treasure and a shrine). */
+	readonly relicFloor: number;
+}
+
+/** Treasure-room pedestal and shrine centres of the driver's current floor (the first of each), if any. */
+function pedestalAndShrine(drv: Driver): { pedestal?: [number, number]; shrine?: [number, number] } {
+	const rooms = drv.world().config.encounter?.rooms ?? [];
+	const t = rooms.find((r) => r.type === "treasure");
+	const sh = rooms.find((r) => r.type === "shrine");
+	return {
+		pedestal: t !== undefined ? [t.cx, t.cz] : undefined,
+		shrine: sh !== undefined ? [sh.cx, sh.cz] : undefined,
+	};
+}
+
+/** Walks onto the floor's first pedestal (a relic), then into the shrine and accepts its curse. */
+function takeRelicAndCurse(drv: Driver, note: (what: string) => void): void {
+	const { pedestal, shrine } = pedestalAndShrine(drv);
+	const run = drv.state.run!;
+	const me = run.players[SOLO_PLAYER];
+	const w = drv.world();
+	const stair: [number, number] = [w.stairX, w.stairZ]; // open on floors 1-4: walking into it would end the floor
+	if (pedestal !== undefined) {
+		const before = me.relics.size();
+		drv.walkTo(pedestal[0], pedestal[1], () => me.relics.size() > before, 3000, stair);
+		note("relic");
+	}
+	if (shrine !== undefined) {
+		const p = drv.state.player;
+		const near = () => {
+			const dx = p.x - shrine[0];
+			const dz = p.z - shrine[1];
+			return dx * dx + dz * dz < SHRINE_RADIUS * SHRINE_RADIUS * 0.25;
+		};
+		drv.walkTo(shrine[0], shrine[1], near, 3000, stair);
+		if (near()) drv.pressShrine();
+		note("curse");
+	}
+}
+
+/** Plays and records the descent described in the file comment on `seed` (the specs use 1337). */
+export function recordEndlessRun(seed = 1337): RecordedEndlessRun {
+	const setup = buildEndlessRunConfig(seed);
+	const drv = new Driver(setup, seed);
+	const log: string[] = [];
+	const note = (what: string) =>
+		log.push(`${what}: tick ${drv.state.tick} floor ${drv.floor()} hearts ${drv.state.player.hearts}`);
+	// Floors 1-4: the debug skip; on the first of them with a treasure and a shrine room, a relic and a curse first.
+	let relicFloor = 0;
+	while (drv.floor() < 5 && drv.state.player.dead === 0) {
+		const here = pedestalAndShrine(drv);
+		if (relicFloor === 0 && here.pedestal !== undefined && here.shrine !== undefined) {
+			relicFloor = drv.floor();
+			takeRelicAndCurse(drv, note);
+		}
+		drv.skipFloor();
+	}
+	// Floor 5: walk into Mother Bramble's arena (rooms on the way spawn their enemies as the bot passes), kill her
+	// (J), then walk onto the stairwell where she stood.
+	const w5 = drv.world();
+	drv.walkTo(w5.stairX, w5.stairZ, () => drv.state.combat.actors.some((a) => a.phase > 0), 3000);
+	note("engaged");
+	fightBoss(drv, 4000);
+	note("fight over");
+	const depthAfterBoss = drv.state.endless!.depth;
+	drv.walkTo(w5.stairX, w5.stairZ, () => false, 1200);
+	drv.resolveDraft();
+	note("floor 5 done");
+	// Floor 6: walk the whole floor to its stairwell.
+	const w6 = drv.world();
+	drv.walkTo(w6.stairX, w6.stairZ, () => false, 4000);
+	drv.resolveDraft();
+	note("floor 6 done");
+	const afterWalk = drv.floor();
+	// Floor 7: the debug skip, to floor 8.
+	while (drv.floor() < 8 && drv.state.player.dead === 0) drv.skipFloor();
+	const recording = drv.recorder.getRecording();
+	const finalHash = hashState(drv.state);
+
+	return { seed, setup, drv, recording, finalHash, depthAfterBoss, afterWalk, log, relicFloor };
+}

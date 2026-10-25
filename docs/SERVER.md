@@ -1,0 +1,650 @@
+# Server (task 9): run validation, telemetry, settings
+
+Single-player first (PLAN.md): the client runs the deterministic sim and the server never simulates live. The server
+checks **finished** runs by replaying them, derives telemetry from its own replay, and stores per-player juice
+settings.
+
+| Piece | Where | Tested |
+| --- | --- | --- |
+| Run config from a seed (App.tsx's M1 run) | `src/shared/run/config.ts` `buildRunConfig` | headless |
+| Validation by replay | `src/shared/run/validate.ts` `validateRun` | headless |
+| Binary recording codec (the wire format) | `src/shared/sim/recordingCodec.ts` | headless |
+| Replay time budget, server-wide replay queue | `src/shared/run/replay.ts` `ReplayBudget`, `queue.ts` `WorkQueue` | headless |
+| Client submit rules (short abandons, caps) | `src/shared/play/submitPolicy.ts` | headless |
+| Telemetry from the replay (port of the web playtest telemetry) | `src/shared/run/telemetry.ts`, `session.ts` | headless |
+| AnalyticsService mapping | `src/shared/run/analytics.ts` | headless |
+| Rate limiter | `src/shared/run/rateLimit.ts` | headless |
+| Settings schema, stored document, retrying session cache (load / save sharing) | `src/shared/settings/` | headless |
+| World registry (world kind -> RunSetup) | `src/shared/run/worlds.ts` | headless |
+| Run sessions: server-picked seeds, party, expiry (M3) | `src/shared/run/runSessions.ts` | headless |
+| Segment protocol + `SegmentedValidator` (M3) | `src/shared/run/segments.ts` | headless |
+| Score reader (`state.score.total`, `state.endless.floor`) | `src/shared/run/score.ts` | headless |
+| Client segment cutting | `src/shared/play/liveRun.ts` `SegmentCutter`, `LiveRun.cutSegment` | headless |
+| Leaderboards: ordered value, PB rules, write queue, read cache, view (M5) | `src/shared/leaderboard/` | headless |
+| Remotes | `src/shared/network.ts`, `src/server/network.ts` | Studio |
+| Services | `src/server/services/{RunValidation,RunSession,Leaderboard,Telemetry,Settings}Service.ts`, `data/` | Studio |
+
+M3 / M5 (sections "Segmented runs" and "Leaderboards" below) add the ranked path: the server picks the seed, the
+client uploads its recording in segments while it plays, and the server keeps its own SimState per run and replays
+each segment as it arrives. The whole-run `submitRun` path below is unchanged and still used for unranked runs.
+
+**The vertical slice** (all of it wired together, `src/shared/run/slice.spec.ts`): a ranked run is an **endless** run
+(`RANKED_WORLD_KIND = "endless"`), always **scored** (M2: `buildEndlessRunConfig` sets `scoring: ENDLESS_SCORING`,
+party size 1, on client and server alike), cut into **one segment per floor** (SimController's
+`segmentCutAfterTick: (s) => s.events.floorChanged !== 0`, plus the 5-minute fallback), validated segment by segment,
+and posted to the boards with the score and floor of the server's replay (`readRunScore`). M2 in-run progression
+(boon drafts, relics, curses) is part of every endless run's sim state (the hash's "run" group): the server replays it
+from the input like everything else, so nothing about it is trusted from the client. Unranked endless runs
+(no server answer) go through `submitRun` and are scored in the replay too. The M1 "game" world stays unscored
+(fixtures, `validateRun` defaults); a client run with `KV_Scoring` on an M1 world is never submitted (`scored`). The floor-clear bonus pays by the share of the floor's enemy rooms cleared
+(floor(1000 x floor x cleared / rooms with enemies) before the multipliers; the boss is one more room on a boss floor;
+a floor without enemy rooms pays the full bonus), so sprinting to the always-open stairwell past every room earns no
+floor bonus (sim README "Endless mode").
+
+## Flow
+
+```
+client (live sim)                                   server
+  run ends (death / victory / restart)
+  short abandon? not sent (submitPolicy)
+  over the caps? not sent, local too_large
+  submitRun({ seed, atBossDoor, recording,  ───────►  RunValidationService
+              claimedHash, claimed })                   player gone? ignored
+    recording = encodeRecording(...) (buffer)           RUN_PENDING_PER_PLAYER pending? busy (not charged)
+                                                        rate limit (RUN_SUBMIT_RATE)
+                                                        replay queue (REPLAY_CONCURRENCY at once, FIFO)
+                                                        validateRun(submission, DEFAULT_RUN_LIMITS):
+                                                          shape -> byte cap -> tick bound -> decode -> seed
+                                                          -> debug bits -> boss-door flag -> buildRunConfig(seed)
+                                                          -> spawn -> replay (yield when 4 ms of CPU piled up)
+                                                          -> hashState == claim? -> recomputed summary == claim?
+                                                        accepted: keep in memory (+ "Runs" DataStore if enabled),
+                                                                  fire onRunAccepted (TelemetryService; rewards later)
+                                                        rejected: log, fire onRunRejected (TelemetryService)
+  runVerdict({ ok, code?, reason?,          ◄───────
+               serverHash, summary, runId? })
+```
+
+- **Endless mode** (shared/config `PLAY_MODE`, default `"endless"`): live servers validate with `LIVE_RUN_LIMITS`
+  (`DEFAULT_RUN_LIMITS` in world `"endless"`): `buildRunConfig(seed, { world: "endless" })` =
+  `buildEndlessRunConfig(seed)` rebuilds every floor from the run seed (floors cached per config, dungeons in a
+  server-wide LRU of `ENDLESS_DUNGEON_CACHE_SIZE`; solid pillars and the `actorSteerMover` are part of every endless
+  floor, so client and server agree). The endless debug floor skip (N, `DEBUG_FLOOR_BUTTON`) is a debug
+  bit like K / J (`debug_input` unless `allowDebugInput`, also in segments). `PLAY_MODE = "m1"` brings back the M1
+  run below. Endless configs are scored (`ENDLESS_SCORING`), so the replayed hash includes the `score` group.
+- The **world is rebuilt from the seed alone** (`buildRunConfig`): the Dungeon Forge floor (cached per seed, LRU of
+  `DUNGEON_CACHE_SIZE`), `circleMover` / `bulletBlocker` / `actorMover`, `placeEncounter(d, DEFAULT_ENCOUNTER)`, the
+  default loadout, no stress. The client must build its live run with the same function.
+- The spawn is not trusted either: the recording's spawn must equal `runSpawn(dungeon, atBossDoor)` exactly.
+- The summary the server reports (ticks, kills, boss defeated, died) is recomputed from the replay's own events. The
+  client's claim is only compared (a mismatch rejects the run as `summary_mismatch`).
+- `validateRun` never throws: an error inside the sim becomes
+  `{ ok: false, code: "replay_error", reason: "replay error: ..." }`. Every reject reason is cut to
+  `MAX_REJECT_REASON_CHARS` (200) in one place (`truncateReason`, also used for the service's internal-error path),
+  because reasons can quote sim errors and go to the server log, analytics and the client.
+
+## The wire format: binary recordings (`src/shared/sim/recordingCodec.ts`)
+
+The recording travels as a Luau `buffer` (`encodeRecording` / `decodeRecording`). The JSON form
+(`serializeRecording` / `deserializeRecording`) stays the fixtures' format and the tests' input; the server only
+accepts the binary form (a string `recording` is `bad_submission`).
+
+Layout (little-endian): version byte, seed u32, spawn x / z as f64 (exact), varint frame count, then runs until they
+cover exactly that count. A run is one tag byte (bits 0-4: which of moveX, moveZ, aimX, aimZ, buttons differ from the
+previous run's frame; bits 5-7: run length 1..7, or 7 = 8 + a varint) followed by one varint per changed field: a
+zigzag delta for an axis, the XOR for the buttons. Varints are LEB128, at most 4 bytes, minimal.
+
+Why this scheme: aim (mouse or stick) changes almost every tick but by small steps, so a delta is one byte; held keys
+and buttons cost nothing until they change; identical frames collapse into runs. A linear predictor
+(`2 * prev - prevprev`) was measured too: it only wins on the scripted bot's perfectly smooth sweeps (run-boss 3.8 vs
+5.1 bytes per tick) and loses on every other fixture.
+
+Measured (the codec spec prints these):
+
+| Recording | Ticks | JSON (chars) | Binary (bytes) | Bytes / tick |
+| --- | --- | --- | --- | --- |
+| `run-player` | 996 | 968 | 280 | 0.28 |
+| `run-player-dungeon-1337` | 600 | 2,361 | 467 | 0.78 |
+| `run-bullets` | 499 | 348 | 135 | 0.27 |
+| `run-full-1337` | 3,600 | 12,802 | 4,132 | **1.15** |
+| `run-boss-1337` | 1,800 | 38,808 | 9,138 | **5.08** (a bot moving and aiming on every tick: the worst case on record) |
+
+A typical keyboard-and-mouse run (aim changing every tick, keys held) is ~3 bytes per tick: ~32 KB for 3 minutes.
+
+Decoding is written for hostile input and never throws (fuzzed in the spec: every truncation of a real encoding,
+3,000 random / mutated buffers): the byte cap is checked before reading, the frame count is checked against
+`maxTicks` before a single frame is built, a run may never cover more frames than the count, every read is
+bounds-checked, overlong / over-4-byte varints, out-of-range axes, unknown button bits, non-finite spawns and trailing
+bytes are `malformed`. The encoding is canonical (one encoding per recording; a flagged field must change, a run must
+differ from the previous one), so anything the decoder accepts re-encodes to the same bytes. Frames of one run share
+one frozen table.
+
+Flamework's generated guard checks the field as `t.typeof("buffer")` (`out/server/network.luau`); `validateRun`
+checks `typeIs(recording, "buffer")` again.
+
+## Network contract (`src/shared/network.ts`)
+
+Event pairs, like the user's other Flamework project. Flamework generates a runtime type guard for every parameter
+(visible in `out/server/network.luau`); values (string length, NaN, ranges) are re-checked by the server.
+
+| Direction | Event | Payload | Reply |
+| --- | --- | --- | --- |
+| client -> server | `submitRun` | `RunSubmission { seed, atBossDoor, recording: buffer, claimedHash, claimed: RunSummary }` | `runVerdict` (none if the player already left) |
+| client -> server | `requestSettings` | none | `settingsChanged` |
+| client -> server | `updateSettings` | `JuiceOverrides` (partial juice settings) | `settingsChanged` (also when rate limited: the stored overrides) |
+| client -> server | `resetSettings` | none | `settingsChanged` (also when rate limited: the stored overrides) |
+| server -> client | `runVerdict` | `RunVerdict { ok, claimedHash, code?, reason?, serverHash, summary, runId? }` | |
+| server -> client | `settingsChanged` | `JuiceOverrides` (sent once after join too) | |
+| client -> server | `startRun` | `StartRunRequest { requestId, worldKind, party?, atBossDoor?, classId? }` | `runStarted` (`StartRunReply`) |
+| client -> server | `submitSegment` | `RunSegment { runId, index, startTick, recording: buffer, claimedEndHash, checkpointHashes }` | `segmentVerdict` (`SegmentVerdict`) once replayed |
+| client -> server | `finishRun` | `RunFinal { runId, finalTick, claimedHash, claimed: FinalRunSummary }` | `runFinished` (`RunFinishVerdict`) |
+| client -> server | `getLeaderboard` | `"solo" \| "coop"` | `leaderboard` (`LeaderboardView`) |
+| client -> server | `partyInvite` | `PartyInviteRequest { requestId, worldKind, members }` (the others' UserIds) | `partyInviteUpdate` (`pending` to the host, `invited` to each member) |
+| client -> server | `partyRespond` | `inviteId, accept` | `partyInviteUpdate` to every member; the last accept starts the run (`partyRunStarted { ..., inviteId }`) |
+| client -> server | `lockstepInput` / `lockstepHash` / `lockstepFinal` | inputs; `runId, ticks[], hashes[]` (batched, resent until acknowledged); `RunFinal` | `lockstepFrames(runId, firstTick, data, hashAck)` |
+
+The client side is `src/client/network.ts` (`GlobalEvents.createClient`); `SimController` submits each finished run once and shows the verdict, and `SettingsController` syncs juice settings (see `docs/CLIENT.md`).
+
+## Limits (data: `src/shared/run/limits.ts`, `src/shared/settings/config.ts`)
+
+| Limit | Value | Why |
+| --- | --- | --- |
+| `MAX_RUN_TICKS` | 72,000 (20 min) | Bounds replay CPU. Checked on the frame count **before** a frame is built (a 30-byte buffer can claim 268 million frames). |
+| `MAX_RECORDING_BYTES` | 432,021 bytes | Header (21) + `MAX_RUN_TICKS` x `RECORDING_BYTES_PER_TICK_BUDGET` (6) = 21 + 72,000 x 6. 6 bytes per tick is ~18 % over the worst measured recording (run-boss, 5.08); only pathological input (every axis jumping 64+ units on every tick) needs more (up to 11). Checked before decoding, and by the client before sending (it keeps the run and shows `too_large`, reason `not sent: recording over cap`). The old JSON cap (200,000 chars) rejected any real run over ~2.5 min. |
+| `MAX_REJECT_REASON_CHARS` | 200 | Reject reasons are cut here (`truncateReason`). |
+| `RUN_SUBMIT_RATE` | 6 per 60 s per player (sliding window) | Each submission costs a replay. Was 4: every R restart submitted, so restarts dropped legit runs. The client now skips abandoned runs under 10 s (except the retry right after a death), so honest play stays under 6 a minute. |
+| `RUN_PENDING_PER_PLAYER` | 2 | Submissions per player validating or queued at once (a long run's replay can outlast a short next run). A third answers `busy`; `busy` is checked **before** the rate limit, so it costs nothing. |
+| `REPLAY_BUDGET_SECONDS` | 4 ms | The replay yields (`task.wait()`) whenever 4 ms of `os.clock()` work piled up since the last yield (was: every 2,000 ticks, ~160 ms blocks). The check runs in the replay's `onCheckpoint` hook (`ReplayBudget`, clock injected), so validate.ts and the sim never read a clock. At ~80 us per tick (an M1 floor) a 20-minute run takes ~25 s of wall time; deep endless floors cost far more per tick ("Replay capacity" below). Segmented replays check it every `SEGMENT_BUDGET_CHECK_TICKS` = 4 ticks (was 16: at ~1.1 ms per tick a check could overshoot by ~18 ms). |
+| `REPLAY_CONCURRENCY` | 1 | Server-wide replay queue (`WorkQueue`, FIFO): concurrent players' replays run one after another instead of stacking CPU time on the same frames. The log line shows the queue wait. |
+| `SETTINGS_REQUEST_RATE` | 20 per 10 s per player | Settings remotes. |
+| Seeds | integers in [0, 2^32) | What the web build's `seedFromQuery` produces. |
+| Debug input (`DEBUG_HIT`, `DEBUG_BOSS` bits) | rejected (`debug_input`) | K / J are debug keys. |
+| Boss-door start | rejected (`debug_spawn`) | The web build's `?spawn=boss` is debug only. |
+| Stress mode | never accepted | `buildRunConfig` never sets `stress`, so a stress recording fails the hash. |
+
+Studio only (ignored on live servers): the Workspace attribute `KV_AllowDebugRuns = true` accepts debug input and
+boss-door starts; `KV_RunValidationWorld = "dungeonNoEncounter" | "greybox"` validates in a test world (see Testing).
+
+Reject codes (`RunRejectCode`, also the analytics breakdown): `bad_submission`, `too_large`, `too_long`, `malformed`,
+`seed_mismatch`, `debug_input`, `debug_spawn`, `config_error`, `spawn_mismatch`, `replay_error`, `hash_mismatch`,
+`summary_mismatch`; before validation: `busy` (checked first, free), `rate_limited`.
+
+## Players leaving mid-validation
+
+- `submitRun` from a player who is no longer parented to Players is ignored (no limiter entry is recreated after
+  leave). The same holds for the settings remotes.
+- A validation still queued or running when its player leaves finishes: the run is logged, its listeners fire (it
+  counts for the session), no `runVerdict` is sent and it is not kept in the in-memory accepted list.
+- TelemetryService holds the leaving player's session summary until `RunValidationService.waitUntilIdle(player)`
+  returns (no submission of theirs validating or queued), so late runs are folded into the session events
+  (`SessionEnded`, `SessionRuns`, ...); then it drops the player. Nothing is retained for a departed player afterwards.
+
+## Client submit rules (`src/shared/play/submitPolicy.ts`, SimController)
+
+- Deaths and victories are always submitted. An abandoned run (R) is submitted only when it lasted at least
+  `MIN_ABANDONED_SUBMIT_TICKS` (10 s of sim time) or when it is the first run after a submitted death. The exception
+  keeps the session's retry signal: "died, pressed R, restarted again after 3 s" still counts the death as retried.
+  Skipped runs show `not submitted (short)`.
+- Effect on the session numbers (`summarizeRunSession`): an abandoned run under 10 s that is not the first after a
+  death is not a run (not in `SessionRuns`, its seconds not in `aliveSeconds`). A death followed only by such quick
+  restarts and then a quit still counts as retried, because the first restart after it was sent. (Leaving mid-run
+  never submitted anything, as before.)
+- A submission over `MAX_RECORDING_BYTES` or `MAX_RUN_TICKS` is not sent: the verdict line shows it rejected locally
+  (`too_large` / `too_long`, reason `not sent: ...`).
+
+## What replay validation does and does not prevent
+
+It proves: **this outcome follows from these inputs, on the world this seed generates, under the shipped sim.** So a
+client cannot claim kills, a boss kill, a survival or a run length it did not simulate; cannot edit its state (hearts,
+positions, boss hp), skip ticks, spawn elsewhere, change the loadout or use the debug keys; and cannot send telemetry
+(there is no telemetry remote; every analytics event is derived from the server's replay).
+
+It does NOT prevent:
+
+- **Input bots / assisted play.** A bot (or a human with a script) that plays through the real input path produces a
+  valid recording. The web build's own test bots (`run-full-1337`, `run-boss-1337`) are exactly that. Detecting them
+  would need behavioural heuristics (reaction times, input entropy), not replay.
+- **Offline search / tool-assisted runs.** The sim is deterministic and ships to the client: anyone can replay
+  candidate inputs locally until a perfect run comes out, then submit it. It is a legitimate recording.
+- **Seed shopping.** Today any valid seed is accepted, so a player can pick an easy floor. When rewards exist, the
+  server should hand out the seed (and a nonce) at run start and only accept that seed once.
+- **Replayed submissions.** The same recording can be submitted twice (each is accepted). Rewards should key on the
+  server-issued run nonce; `runId` is generated per acceptance.
+- **Irrelevant edits.** An input edit that changes nothing in the simulation (e.g. pressing FLASK at full hearts)
+  replays to the same hash and is accepted: it IS the same run (test: "an edit the sim ignores").
+- **Pause / timing.** Recordings contain ticks, not wall time: slowing the game down (lag switch, pause abuse) is not
+  visible to the server.
+- **Code version skew.** A replay only matches the same sim code. Old clients after an update will fail validation;
+  version the submission once clients outlive deploys (`buildVersion` in the web build). There is no ruleset version in
+  recordings, segments or board entries today: a recording is replayed once, live, by the server build that received
+  it, and nothing stored is ever re-validated, so a rules change needs no bump to stay consistent. It does leave the
+  boards mixed: entries posted before a rules change (e.g. solid pillars on endless floors, 2026-10-25) stay on
+  `LB_Solo_v1` / `LB_Coop_v1`. Renaming the stores (`_v2`) is how to start fresh boards if that matters.
+
+## Segmented runs (M3)
+
+Endless runs outlast `MAX_RUN_TICKS`, and a leaderboard must only show what the server reproduced. So a ranked run is
+validated in **segments** while it is played; the server keeps one live `SimState` per active run and only ever steps
+it forward (`cloneSimState` throws once bullets exist, so it can never rewind).
+
+```
+client                                                server (RunSessionService)
+  run start: startRun({ requestId, worldKind,  ───────►  rate limit (RUN_START_RATE) -> RunSessionRegistry.start:
+             party?, atBossDoor?, classId? })            shape, world kind (registry), debug spawn, party, busy,
+                                                         SEED PICKED BY THE SERVER, world built (worlds.ts),
+                                                         the player's open session replaced ("abandoned")
+  runStarted({ requestId, ok, runId, seed,     ◄───────
+               worldKind, members, code? })
+  (no answer in RUN_START_TIMEOUT_SECONDS or refused: an unranked run on the local seed, old submitRun path)
+  play; LiveRun cuts a segment on a floor change (hook) or every SEGMENT_FALLBACK_TICKS
+  submitSegment({ runId, index, startTick,     ───────►  owner check -> rate limit (SEGMENT_SUBMIT_RATE) ->
+                  recording, claimedEndHash,             validator.offer (cheap checks, queued) -> pump: replay
+                  checkpointHashes })                    through RunValidationService's replay queue (replayTurn:
+                                                         at most one segment and REPLAY_TURN_MAX_TICKS per queue
+                                                         turn), ReplayBudget yields
+  segmentVerdict({ runId, index, ok, code?,    ◄───────
+                   startTick, endTick, serverHash, matchedThroughTick?, mismatchAtTick? })
+  death / victory / R: last segment, then
+  finishRun({ runId, finalTick, claimedHash,   ───────►  validator.finish -> decided after the last segment's replay:
+              claimed: { ticks, kills,                   final tick, hash, summary (recomputed), score (readRunScore
+              bossDefeated, died, score, floor } })      on the SERVER's state) -> telemetry listeners, leaderboards
+  runFinished({ runId, ok, code?, reason?,     ◄───────  (also sent when a segment rejects the run or it expires)
+                failedSegment?, matchedThroughTick?, mismatchAtTick?, verifiedTicks, serverHash, summary, score,
+                leaderboard? })
+```
+
+- **Segment encoding**: an ordinary binary recording (`encodeRecording`) of the run's seed and spawn plus the frames of
+  ticks `[startTick, endTick)`; the delta coding restarts at every segment. Same decoder, same hostile-input safety.
+- **Checkpoint hashes**: `hashState` after every tick `T` with `startTick < T < endTick` and
+  `T % SEGMENT_CHECKPOINT_TICKS === 0` (10 s), exactly that many (`checkpointCount`). A mismatch is then located to a
+  10 s window: `matchedThroughTick` (last tick known good) .. `mismatchAtTick` (first known bad).
+- **Order of checks on arrival** (`offer`; each failure rejects the whole run with its code): status (`run_rejected`,
+  `run_closed` - these two do not change the run), shape (`bad_segment`), runId, `out_of_order` (index !== expected),
+  `tick_gap` (startTick !== previous end), decode (`segment_too_large`, `segment_too_long`, `malformed`),
+  `empty_segment`, `seed_mismatch`, `spawn_mismatch`, `run_too_long` (MAX_SEGMENTED_RUN_TICKS), `debug_input`,
+  `clock_ahead` (the run's ticks / 60 exceed the session's wall-clock age + SEGMENT_CLOCK_SLACK_SECONDS), checkpoint
+  count (`bad_segment`), `backlog_full` (MAX_PENDING_SEGMENT_TICKS received but not replayed).
+- **Replay** (`advance`): `replay_error` (the sim threw), `hash_mismatch` (a checkpoint or the end hash).
+- **Final** (`finish` / after the last replay): `bad_final`, `final_tick_mismatch`, `empty_run`, `clock_ahead`,
+  `hash_mismatch`, `summary_mismatch`, `score_mismatch`.
+- **Session**: `unknown_run` (no such run for this player), `expired` (no segment for RUN_SESSION_IDLE_SECONDS or older
+  than RUN_SESSION_MAX_AGE_SECONDS), `abandoned` (a new start replaced it, or the player left; not reported to
+  analytics), `rate_limited`.
+- **Start codes** (`runStarted.code`): `bad_request`, `unknown_world`, `debug_spawn`, `bad_party` (also: a party
+  without every member's accepted invite, see "Co-op lockstep"), `busy` (the player already has RUN_PENDING_PER_PLAYER
+  finished runs still validating, or a member - the owner included - is in a party run that is not concluded yet:
+  `RunSessionRegistry.busyReason`), `config_error`, `rate_limited`. The client retries `busy` a few times
+  (`RUN_START_BUSY_RETRY_SECONDS`) before playing unranked.
+
+| Limit (`src/shared/run/limits.ts`) | Value |
+| --- | --- |
+| `MAX_SEGMENT_TICKS` / `MAX_SEGMENT_BYTES` | 36,000 (10 min) / 216,021 bytes (header + 6 B per tick) |
+| `MAX_SEGMENTED_RUN_TICKS` | 1,296,000 (6 h) |
+| `SEGMENT_FALLBACK_TICKS` (client) | 18,000 (5 min) |
+| `SEGMENT_CHECKPOINT_TICKS` | 600 (10 s) |
+| `MAX_PENDING_SEGMENT_TICKS` | 72,000 |
+| `SEGMENT_CLOCK_SLACK_SECONDS` | 30 |
+| `RUN_SESSION_IDLE_SECONDS` / `RUN_SESSION_MAX_AGE_SECONDS` | 30 min / 8 h (open sessions only; a finished one validates to the end) |
+| `RUN_START_RATE` / `SEGMENT_SUBMIT_RATE` | 10 / 30 per 60 s per player |
+| `REPLAY_TURN_MAX_TICKS` | 1,800 (30 s of play) replayed per queue turn at most; a longer segment resumes on the session's next turn |
+| `MAX_PARTY_SIZE` | 8 |
+| `PARTY_INVITE_TTL_SECONDS` / `PARTY_INVITE_RATE` | 60 s / 10 `partyInvite` + `partyRespond` per 60 s per player |
+
+Players and sessions: one OPEN session per player (a new start replaces it, concluded as `abandoned` with a
+`runFinished` the client does not show); after `finishRun` it keeps validating
+even if the player leaves (counted by `RunValidationService.trackExternal`, so TelemetryService's session summary
+waits for it) and fires the same accepted / rejected listeners as `submitRun` (`reportAccepted` / `reportRejected`).
+A party of 2+ starts only from an invite EVERY member accepted, all in the same server; it plays ONE lockstep sim
+validated from the server's own merged log ("Co-op lockstep (M4)" below), and the members who contributed get credit
+on the co-op board. A party run that is not concluded (still played, or its final still replaying) makes its members
+`busy`: neither the owner's restart nor anyone's new start or invite can replace it, so a LockstepSession never keeps
+running without its run session, and every member gets the run's `runFinished`.
+
+**World registry** (`worlds.ts`): `registerRunWorld(kind, (seed, { atBossDoor }) => RunSetup)`; "game",
+"dungeonNoEncounter", "greybox" and "endless" (`buildEndlessRunConfig`, which ignores the boss door) are built in. A
+new world is one line in `registerBuiltinWorlds`. The client builds its live run with the same builder
+(`SimController.makeRun` -> `buildWorldSetup`; an endless setup also hands out `endlessFloor` for the views). Ranked
+runs ask for `RANKED_WORLD_KIND` (shared/play config.ts): `"endless"`.
+
+**Score** (`score.ts`): `readRunScore(state) -> { score, floor }` = `{ state.score?.total ?? 0, state.endless?.floor
+?? 1 }` (`stateRunScore`, the DEFAULT reader, so no load order can leave a side on a placeholder; `setRunScoreReader`
+remains for tests). Used by the client for its claim and by the server on its replayed state; only the server's goes
+anywhere. An unscored M1 run scores 0 on floor 1.
+
+**Client recording trim**: once `segmentVerdict` says a segment is ok, the client drops the frames before its end tick
+(`LiveRun.releaseVerifiedFrames`), so a long endless run's recording stays bounded. Only on ranked runs (they never
+fall back to `submitRun`) and not with `KV_Debug` (F8's replay check needs the whole recording).
+
+## Co-op lockstep (M4)
+
+A party run (2..8 players) is ONE deterministic sim that every member steps from the same merged input log. Pure
+logic in `src/shared/lockstep/` (headless specs drive it with simulated clients); `RunSessionService` and
+`SimController` only wire remotes and clocks.
+
+**Start: consent first** (`src/shared/run/partyInvites.ts` `PartyInvites`, pure). The host's `partyInvite` names the
+others (`resolveParty`: members in this server, at most 8; nobody `busy`); each invited member gets
+`partyInviteUpdate { status: "invited" }` and answers `partyRespond(inviteId, accept)`. A decline cancels the invite for
+everyone; an accept from a member who is busy (in an unconcluded party run) is refused and the invite stays open; an
+invite expires after `PARTY_INVITE_TTL_SECONDS`, and a member leaving the server cancels it. Only when EVERY member
+accepted does the service call `RunSessionRegistry.start` with `partyConsent` = the invite's members; the registry
+refuses any party (2+ members) whose resolved party is not exactly that list, so a client's `startRun` can never name
+a party on its own. Each member's open SOLO session is then concluded (`abandoned`, they chose to leave it), the
+registry builds the world for the party (`buildWorldSetup(kind, seed, { partySize })`: endless scales enemy hp and
+room budgets with it), the service creates a `LockstepSession` and fires `partyRunStarted { runId, seed, worldKind,
+members, inviteId }` to every member; other pending invites naming any of them are cancelled. A client switches to a
+party run only when `inviteId` is the invite it accepted (or hosts): an unsolicited `partyRunStarted` is ignored.
+A client's player index is its place in `members` (owner = 0). Minimal start path until the Hub's party pad exists:
+Workspace attribute `KV_Party` = true makes the lowest UserId invite everyone else in the server at each run start
+(the others answer in the HUD prompt, or `KV_PartyAutoAccept` accepts for them). No drop-in mid-run.
+
+**Relay** (`relay.ts`, tunables in `config.ts`). The server clock finalizes tick T once real time reaches it (at most
+`MAX_SERVER_TICKS_PER_STEP` per Heartbeat). Each player's frame for T is the input they sent for T, else (missed
+deadline) a REPEAT of their last finalized frame. Inputs for finalized ticks are late (dropped); further than
+`MAX_INPUT_AHEAD_TICKS` ahead, refused; debug bits are stripped unless the session is a debug one. A player who leaves
+(or stalls, below) sends `PARTY_LEFT_BUTTON` alone from the next tick on: the sim marks them `left` (dead, never
+revived). The server's merged log is the authority: it is what every client steps and what the server validates.
+
+**Clients** (`client.ts`). The sim steps ONLY with merged frames (`lockstepFrames`, delta-coded per player in
+`wire.ts`; ~1-4 bytes per player per tick), at most `MAX_CATCHUP_TICKS_PER_FRAME` per rendered frame. After
+stepping tick T a client samples its input once and sends it for T + lead (`lockstepInput`, 10 bytes per frame); the
+lead starts at `INPUT_DELAY_TICKS` = 3 and grows by one on every missed deadline (seen as its own frame not being what
+the server finalized), shrinking again after 10 s without misses; measured in the specs: ~15 ticks at 20-120 ms
+one-way, ~25 at 0-200 ms. No pause, no hitstop pacing (`simPacerFor`: hitstop is view-only in co-op), no restart
+until the party is down. Not done: visual prediction of the local character (it is drawn at the merged state).
+
+**Desync detection** (`ledger.ts`). Every client reports `hashState` after each tick that is a multiple of
+`HASH_REPORT_EVERY_TICKS` (60). Reports are reliable without trusting the transport: the client keeps every report
+until the server ACKS it (`lockstepFrames`' `hashAck` = the highest tick the ledger decided) and sends them batched,
+ONE `lockstepHash(runId, ticks, hashes)` call per pump at most (`MAX_HASH_BATCH` = 32, oldest first), at most one call
+per `HASH_SEND_MIN_SECONDS` (0.25 s) however fast it steps, and resends the unacknowledged ones every
+`HASH_RESEND_SECONDS` (2 s): a dropped call (a limiter, a lost packet) is recovered by the next resend, and resends
+of decided ticks are harmless. Ticks are decided in order once every present player reported: all
+equal = agreed (its consensus hash), any differ = DESYNC (logged `DESYNC run <id> tick <T>: p0=.. p1=.. (diverged:
+pN)`; the odd ones out are the minority). Policy: the run ends **unranked** at once (validator aborted with code
+`desync`, `runFinished` to every member). A player silent for `HASH_REPORT_TIMEOUT_TICKS` (20 s) past a tick is
+dropped from the run like a leaver; stall detection runs on the real server clock even after a final claim, so a
+member silent below the claimed final tick is dropped too (marked left from the current tick, past the final: the
+claimed run is unchanged). A divergence that heals before the next report (e.g. a 1e-6 drift clamped away
+by a wall) is never seen; only lasting differences matter, and those are caught at the next report.
+
+**Validation.** Every `PARTY_SEGMENT_TICKS` (5 min) of AGREED ticks the session offers its own log's slice to the
+run's `SegmentedValidator` as a segment (party codec variant, one stream per player) whose claimed end and checkpoint
+hashes are the consensus hashes: the server's replay of its own log must reproduce what the clients agreed on
+(otherwise `hash_mismatch`). Clients' `submitSegment` / `finishRun` are ignored for party runs.
+
+**The end.** When a client's sim shows the whole party down (`isPartyWiped`) it stops and sends its `RunFinal`
+(`lockstepFinal`). Once EVERY present member claimed the identical final (tick, hash, summary, score, floor), the last
+slice and the final go to the validator; its verdict (the server's replayed score) posts to the **Co-op** board with
+the members who contributed (`LeaderboardService`, `boardForParty`, below). Differing claims, a member who does not
+claim within `FINAL_CLAIM_TIMEOUT_TICKS` (the relay keeps running meanwhile, so a lying claimant cannot freeze the
+others), or no consensus on every checkpoint below the final within `FINAL_CHECKPOINT_TIMEOUT_TICKS` (40 s after the
+first claim; logged `no hash consensus below the final tick ...`, instead of waiting for the 30-minute session expiry)
+end the run unranked (`desync`). A malformed claim (`runFinalProblem`: NaN / fractional / negative ticks, a bad hash,
+any claimed number not a non-negative integer) is refused before it is recorded, so it can neither open the claim
+window nor turn into a `bad_final` verdict for the party. Everyone gone: `abandoned`. One griefing member can always
+force a run unranked; nobody can make the server post a score it did not replay.
+
+**Co-op credit** (`shared/leaderboard` `partyContributors`). A member CONTRIBUTED when their merged frames never
+carried the leave bit before the run's final tick (they were in it until the wipe), or only after the run's first
+floor change (they played at least one full floor; the server's replay records that tick,
+`SegmentedRunResult.firstFloorChangeTick`). Leavers and stalled players before that are not credited. Only
+contributors are written to the Co-op board (the entry's details keep the party size); a party run with fewer than
+two contributors is not a co-op post at all (`ineligible:contributors`).
+
+**Combo in co-op.** The score's hit cut divides by the players PRESENT (not left) at the tick of the hit (`max(2, n)`,
+sim `presentPlayerCount`; `party.left` is hashed), so a party that lost members is cut as the smaller party it now is.
+Solo is unchanged (d = 2).
+
+**In-run progression in co-op** (M2 x M4, `src/shared/sim/README.md` "Co-op"): every member has their own boons,
+relics and curses (`run.players[i]`, hashed in the "run" group before "party"). After every floor change each member
+still in the run drafts from their OWN three offers with their own input, and the world stays frozen until all of them
+have confirmed; the merged log simply carries those draft frames (the stick and a FIRE press), so the server's replay
+reproduces every pick and nothing is trusted from a client. A member who leaves mid-draft (`PARTY_LEFT_BUTTON`) has
+their draft closed without a pick, so a leaver never holds the party. Relics go to whoever reaches the pedestal first
+(player index order on a tie), a shrine's curse to the member who presses SKILL1 in it. Personal effects use that
+member's modifiers (their bullets' damage, their i-frames, their Second Wind); the combo window, the hit cut and the
+world curses (enemy bullet speed, combo decay) are team-wide and never stack. Not handled: a member who stays connected
+but never confirms keeps the world frozen (their repeated frames never press FIRE); there is no draft timeout yet.
+
+**Wire format** (`recordingCodec.ts`): version byte 2 = party recording: byte 1 the player count, then the solo
+header fields, the frame count, and one solo-format run stream per player, back to back. A solo recording is still
+version 1, byte for byte as before.
+
+**Rates.** Per player: `lockstepInput` `LOCKSTEP_INPUT_RATE` (180 / s); `lockstepHash` `LOCKSTEP_HASH_RATE`
+(60 / 10 s: the client sends at most 4 batched calls a second, catch-up at `MAX_CATCHUP_TICKS_PER_FRAME` included,
+so 1.5x headroom; a dropped batch is resent anyway); `lockstepFinal` its own `LOCKSTEP_FINAL_RATE` (4 / 10 s: an honest
+client sends one per run, so hash traffic can never starve it; a dropped final is logged `FINAL_DROPPED`, a duplicate
+is ignored quietly). Measured in the specs: a client frozen for 15 s catches up (8 ticks per frame) and the run
+validates ranked with no call refused by any limiter. Bandwidth: 8 players moving cost ~30 bytes per tick down
+(~1.8 KB/s per client) and 10 bytes per tick up.
+
+## Leaderboards (M5)
+
+Two all-time boards, **Solo** (party of 1) and **Co-op** (party of 2..8). Only runs ACCEPTED by segmented validation
+post, with the score and floor of the server's replay (`LeaderboardService.post`, rules in `shared/leaderboard`).
+
+Eligibility (`leaderboardEligibility`, `LEADERBOARD_POLICY`): world kind in `LEADERBOARD_ELIGIBLE_WORLDS`
+(`["endless"]`: the unscored M1 run never posts), not a debug session (Studio debug attributes / boss door), not Studio
+(`postFromStudio: false`), not a VIP server (`PrivateServerOwnerId !== 0`; reserved servers may post), and the run
+ended (`postAbandoned: false`): in `deathOnlyWorlds` (`["endless"]`) only a death (the whole party wiped) ends a run -
+a boss kill there is one floor of the descent, so R after a boss is an abandoned run and never posts; in other worlds a
+death or the boss kill. A party run also needs 2+ contributors (`ineligible:contributors`, "Co-op credit" above). The
+verdict's `leaderboard` field says `queued` or `ineligible:<reason>`.
+
+**Ordered value** (`orderedValue.ts`, layout `ORDERED_VALUE_LAYOUT`): one integer per entry, higher ranks first:
+
+```
+value = (score * 2^10 + floor) * 2^16 + (2^16 - 1 - timeSlot)      timeSlot = floor((at - 2026-01-01Z) / 7200 s)
+         27 bits      10 bits    16 bits                           53 bits in all: exact in a double, < 2^53
+```
+
+So score first, then the deeper floor, then the EARLIER submission (inverted time); runs in the same 2-hour slot with
+equal score and floor tie by key. Each field clamps (score < 134,217,728, floor < 1,024, slots until ~2041), never
+overflowing into its neighbour. Rebalance the bits in `ORDERED_VALUE_LAYOUT` once scoring exists (old entries would
+need re-encoding: bump the store names).
+
+**Personal best** (`postPersonalBest`): one entry per player per board, replaced only by a strictly higher ordered
+value (higher score; equal score and deeper floor; never a later equal run). A co-op run queues one write per member
+to the co-op board. Both checks run inside UpdateAsync, so two servers never lower a best; a retry after a half-done
+write (ordered written, details failed) still writes the details.
+
+| DataStore | Kind | Key | Value |
+| --- | --- | --- | --- |
+| `LB_Solo_v1`, `LB_Coop_v1` | OrderedDataStore | `u_<UserId>` | the ordered value (no userIds tag: ordered stores take none; the key names the player) |
+| `LB_Details_v1` | DataStore | `solo_u_<UserId>`, `coop_u_<UserId>` | `{ v: 1, value, score, floor, partySize, members: [{ userId, name, classId? }], at, runId, worldKind }`, tagged `[UserId]` |
+
+Budgets: writes go through `LeaderboardWriteQueue` (at most `LEADERBOARD_WRITE_RATE` = 20 jobs per 60 s per server,
+coalesced per player + board keeping the best, failed writes retried with backoff 2 s doubling to 60 s, 5 tries).
+BindToClose (`flushOnShutdown`, pure, tested against a fake clock): for up to `LEADERBOARD_SHUTDOWN_FLUSH_SECONDS`
+(20 s) in all it waits for runs still validating that may post (RunSessionService's finals replaying and party runs
+collecting claims, `setPendingPosts`) and drains the queue in a loop (rate and backoff ignored, failed writes retried)
+until nothing is queued, in flight or validating, so posts that arrive during the flush are written too; what the
+deadline cuts off is logged (`FLUSH_INCOMPLETE` with counts). Reads: the top 100 per board with one `GetSortedAsync` per board per
+`LEADERBOARD_CACHE_SECONDS` (60 s), shared by concurrent callers (`SharedTtlCache`), names via
+`UserService:GetUserInfosByUserIdsAsync` (cached for the server's life); score and floor are decoded from the ordered
+value, so rows cost no details reads. The caller's own best is one details `GetAsync` (cached 60 s, dropped when they
+post: an invalidate during a load in flight wins - a generation counter keeps that load's value from being cached as
+fresh, so the next read fetches again). A failed read serves the last one marked stale.
+
+Rank: shown when the player is in the top 100. OrderedDataStore has no rank-of-key query, so "around me" would mean
+paging the whole board; not offered.
+
+Client: B (`LEADERBOARD_KEY`; N is the endless debug floor skip, L / F8 the debug replay check, O the settings) or
+Leaderboards in the pause overlay opens the panel
+(Solo / Co-op tabs, top 100, my best); the run pauses while it is open (`LeaderboardController`,
+`client/ui/hud/LeaderboardPanel.tsx`).
+
+## Replay capacity (`src/shared/run/replay.bench.spec.ts`)
+
+The server replays every live ranked run in real time (one live SimState per run, segment by segment), so the replay's
+cost per tick bounds how many live players one server can verify. The bench measures one replayed tick (stepRecorded's
+work: `step` / `stepParty` + `RunTelemetry.observe`, plus `hashState` at every 600-tick checkpoint) on endless floor
+15 at Depth 3, players standing in the floor's busiest room while its enemies fight at full strength (nobody killed,
+hearts topped up), headless under Lune (a pessimistic host: no Luau fast paths or native codegen in the sandbox, see
+`bench.spec.ts`). Three runs of each case on the build machine (ranges):
+
+| Case | Actors | Enemy bullets | ms per replayed tick | ms of replay per second of play |
+| --- | --- | --- | --- | --- |
+| solo, one room (the typical fight) | 16 | 50 | 0.19-0.21 | ~12 |
+| 8 players, one room | 17 | 107 | 0.54-0.60 (0.07 per player) | ~34 per party (~4 per player) |
+| solo, whole floor entered (64 = MAX_ACTORS) | 64 | 73 | 0.72-0.77 | ~44 |
+| 8 players, whole floor entered | 64 | 111 | 0.98-1.17 (0.12-0.15 per player) | ~65 per party (~8 per player) |
+
+`hashState` itself costs 2-8 ms per checkpoint (amortized ~0.01 ms per tick).
+
+**Capacity estimate.** Replays share ONE queue (`REPLAY_CONCURRENCY` = 1) whose holder yields after every 4 ms of work
+(`REPLAY_BUDGET_SECONDS`), i.e. at most ~4 ms per 60 Hz frame = ~240 ms of replay per second of wall time. With the
+headless numbers that verifies, in real time:
+
+- solo players in typical fights: 240 / 12 = **~20 live players**; all on fully entered deep floors: 240 / 44 = **~5**
+- 8-player parties: 240 / 34 = **~7 parties (~56 players)** in typical fights; 240 / 65 = **~3.5 parties (~28)** worst
+
+Roblox runs the same bytecode with the builtin fast paths on (~1.8x faster than this host, bench.spec.ts), so expect
+roughly 35 solo players typical / 10 worst per server. Past that the replay falls behind: segments queue up, verdicts
+arrive later, and a run whose unreplayed backlog reaches `MAX_PENDING_SEGMENT_TICKS` (20 min of play) is rejected
+(`backlog_full`). Raising `REPLAY_BUDGET_SECONDS` buys capacity at the cost of server frame time; party runs are the
+cheapest per player.
+
+**Fairness.** A queue turn replays at most one segment and at most `REPLAY_TURN_MAX_TICKS` (1,800 ticks = 30 s of play:
+~0.4-2 s of CPU at these costs, spread over frames by the budget) of it (`replayTurn`); a longer segment (up to 10 min
+for a solo fallback cut, 5 min for party slices) resumes on the session's next turn, behind the runs that queued
+meanwhile, so one long segment no longer holds every other player's verdicts for its whole replay.
+
+## Telemetry (AnalyticsService)
+
+Derived server-side from each **accepted** run's replay (`RunTelemetry` observes every tick: the web build's
+`PlaytestTelemetry.observeTick` + `DEFAULT_TAPS`), so a client cannot forge it. Rejected runs only log `RunRejected`.
+Per player, the session's accepted runs are summarized on leave (`summarizeRunSession`, the web build's
+`aggregate.mjs` loop: a death followed by another run counts as a retry).
+
+Funnel (`LogFunnelStepEvent`, funnel session id = the run's server-generated `runId`), only the steps reached:
+
+| Funnel | Step | Name | Reached when |
+| --- | --- | --- | --- |
+| `M1Run` | 1 | `RunStarted` | always |
+| `M1Run` | 2 | `FirstKill` | first `enemiesKilled` event |
+| `M1Run` | 3 | `BossEngaged` | `bossEngaged` |
+| `M1Run` | 4 | `BossPhase2` | boss phase 2 seen |
+| `M1Run` | 5 | `BossPhase3` | boss phase 3 seen |
+| `M1Run` | 6 | `BossDefeated` | `bossDefeated` |
+
+Roblox treats skipped intermediate steps as completed (a run that reaches the boss without a kill counts `FirstKill`).
+
+Progression (`LogProgressionEvent`): path `ActI`, level 1 `MotherBramble`: `Start` on the first boss engage, `Complete`
+on the boss kill, `Fail` (field 1 = death cause) when the player died after engaging.
+
+Custom events (`LogCustomEvent`; fields are `CustomField01..03`):
+
+| Event | Value | Field 01 | Field 02 | Field 03 | When |
+| --- | --- | --- | --- | --- | --- |
+| `RunEnded` | seconds alive | end reason (`death` / `victory` / `abandoned`) | `phase0`..`phase3` (highest boss phase) | death cause (archetype id, `unknown`, `none`) | every accepted run |
+| `RunDuration` | seconds of sim time (incl. after death) | | | | every accepted run |
+| `PlayerDeath` | seconds survived | death cause (archetype of the last hit) | `boss` / `rooms` | | the player died |
+| `RunKills` | kills | | | | every accepted run |
+| `HitsTaken` | hits from that source | source archetype id (or `unknown`) | | | one per source hit by |
+| `HeartsLost` | half hearts lost | | | | every accepted run |
+| `WeaponSwaps` | swaps | | | | every accepted run |
+| `FlasksUsed` | flasks | | | | every accepted run |
+| `EmbersUsed` | Embers | | | | every accepted run |
+| `RollsStarted` | rolls | | | | every accepted run |
+| `BossAttempt` | boss engages | outcome (`victory` / `death` / `abandoned`) | | | boss engaged |
+| `RunRejected` | 1 | reject code | | | a rejected submission |
+| `SessionEnded` | seconds alive in the session | `retried` / `quitAfterDeath` / `noDeaths` | | | player leaves after >= 1 run |
+| `SessionRuns` | runs | | | | player leaves |
+| `SessionRetriesAfterDeath` | deaths followed by another run | | | | player leaves |
+| `SessionLongestRetryStreak` | longest died -> retried streak | | | | player leaves |
+
+Every field value comes from a small fixed set (Roblox: 8,000 combinations, 100 custom event names, 10 funnels).
+The web build's per-run markers (`boss.phase`, `boss.engaged`, `boss.defeated`, `player.death`, `run.victory`) and
+`event.<field>` counters are kept on `RunTelemetryRecord` for future sinks; they are not all sent.
+
+Not ported (no Roblox counterpart): the post-run screen, the "Fight it again?" answer, retry delay (wall clock), the
+JSON session files and F9 export.
+
+## DataStores
+
+| DataStore | Key | Value | Written |
+| --- | --- | --- | --- |
+| `PlayerSettings` | `u_<UserId>` | `{ v: 1, juice: JuiceOverrides }` (only the settings the player changed) | when dirty: on leave, on `BindToClose` (parallel, 25 s budget), every 120 s |
+| `Runs` (off: `RUNS_DATASTORE_ENABLED = false`) | `u_<UserId>` | the last 50 accepted runs `{ id, seed, hash, ticks, kills, boss, died, at }` (UpdateAsync) | on each accepted run |
+
+Every write is tagged with the owner's UserId (`SetAsync`'s `userIds`, UpdateAsync's second return value), for
+erasure requests: the cache passes the `userIds` given to `load(key, userIds)`; the Runs store passes `[userId]`.
+
+Every call retries 3 times with backoff (1 s, 2 s) (`withRetries`). Settings are cached for the session; if the load
+fails the session runs on defaults and the stored value is not overwritten unless the player changes something. Last
+write wins (no session lock: settings are low value). Juice settings never reach the sim.
+
+Concurrency in `PlayerDocCache`: a `load` while the same key is loading waits for that read (the join load and an
+early `requestSettings` make one `GetAsync`); a `save` while the same key is saving waits for it and writes only if
+the document is still dirty (the leave save and the `BindToClose` save never both write). Waiters are resumed with
+`task.spawn`. After any yield, a settings handler drops the player's entry instead of using it if they left meanwhile.
+
+Settings semantics are the web build's (`src/fx/settings.ts`): defaults `healthBars: onDamage`, `damageNumbers: true`,
+`freezeFrame: true`, `particles: normal`, `reducedMotion: <system>`. The client resolves the stored overrides with
+`resolveJuiceSettings(overrides, GuiService.ReducedMotionEnabled)`; reset clears them (back to the system setting).
+
+## Testing
+
+Headless (`npm test`): `src/shared/run/*.spec.ts`, `src/shared/sim/recordingCodec.spec.ts`,
+`src/shared/play/submitPolicy.spec.ts` and `src/shared/settings/settings.spec.ts`.
+
+- The slice (`src/shared/run/slice.spec.ts`, on the recorded seed-1337 endless run of `shared/run/testing`): the
+  scored run replays twice to the live hash and score; floor(1000 x floor x rooms cleared / enemy rooms) per floor
+  cleared (the boss counting as a room on a boss floor) at the Depth in force; the boss
+  kill scored at Depth 1 (5000 x combo, no-hit bonus rule) with Depth 2 after it; a ranked LiveRun cutting a segment
+  per floor validates through `SegmentedValidator` (debug input allowed) to the same final hash with
+  `readRunScore` = the replayed score, trimming verified frames as it goes; an edited frame in the floor-6 segment
+  rejects the run at that segment (`hash_mismatch`, located to its checkpoint window).
+
+- Every run fixture round-trips through the binary codec exactly (frames, seed, spawn; re-encodes byte for byte) and
+  validates over the binary path with its fixture hash: `run-player`, `run-player-dungeon-1337`, `run-full-1337`,
+  `run-boss-1337` through `validateRun`, `run-bullets` (greybox + stress, which `buildRunConfig` never builds) through
+  `runReplay` of the decoded recording.
+
+- `run-player.json` (greybox, dev limits because its schedule presses `DEBUG_HIT`) validates with the web build's
+  final hash `03c59442`; under live limits it is rejected as `debug_input`.
+- `run-player-dungeon-1337.json` validates under live limits on the seed-1337 floor (`11838a2d`).
+- Tampering: a flipped button bit (SWAP, ROLL) or a nudged move axis on one frame, a forged hash, a lying summary, a
+  wrong seed (`seed_mismatch`, or `spawn_mismatch` / `hash_mismatch` when re-seeded consistently), a moved spawn,
+  oversize (`too_large`, `too_long`, an RLE bomb), debug bits, a boss-door start, malformed buffers, a JSON string:
+  each rejected with its code and reason.
+- The replay budget (`ReplayBudget` with a fake clock), the queue (`WorkQueue` driven with coroutines: order, limit,
+  errors), the submit rules, and the cache's load / save sharing (coroutine-driven store that yields like a DataStore).
+- Telemetry is checked against the web build's recorded event streams of all four run fixtures (totals, hits by source,
+  death / engage / phase ticks), and the server replay of `run-player.json` gives the same record.
+
+Studio (needs the engine; not covered headlessly): remotes and their Flamework guards (including a `buffer` crossing
+the remote), the services' wiring, DataStore calls (`userIds`), BindToClose, AnalyticsService (including events for a
+player who left while their run validated), yielding replays and the queue under several players.
+
+1. Game Settings > Security: enable **Studio Access to API Services** (DataStores; without it the settings load fails
+   and the session runs on defaults, logged as `[Settings] LOAD_FAILED`).
+2. Push a fixture through the real service (Play, switch the command bar to the Server, one player in game). This
+   example uses the player-only world (Studio-only attribute); drop the attribute and use `run-full-1337` for the
+   full game:
+
+   ```lua
+   workspace:SetAttribute("KV_RunValidationWorld", "dungeonNoEncounter")
+   local Flamework = require(game.ReplicatedStorage.rbxts_include.node_modules["@flamework"].core.out).Flamework
+   local svc = Flamework.resolveDependency("server/services/RunValidationService@RunValidationService")
+   local fx = require(game.ReplicatedStorage.TS["fixtures-generated"]["run-player-dungeon-1337"]).default
+   local sim = require(game.ReplicatedStorage.TS.sim)
+   local sub = { seed = fx.seed, atBossDoor = false,
+                 recording = sim.encodeRecording(sim.deserializeRecording(fx.recording)),
+                 claimedHash = fx.finalHash, claimed = { ticks = fx.ticks, kills = 0, bossDefeated = false, died = false } }
+   local v = svc:submit(game.Players:GetPlayers()[1], sub)
+   print(v.ok, v.code, v.reason, v.serverHash)          --> true nil nil 11838a2d
+   sub.claimedHash = "deadbeef"; print(svc:submit(game.Players:GetPlayers()[1], sub).code)  --> hash_mismatch
+   ```
+
+   The output shows `[RunValidation] ACCEPTED ...` / `REJECTED ...`, and accepted runs log their analytics events.
+   A seventh call within a minute answers `rate_limited`. Remove the attribute afterwards (live servers ignore it).
+   (Fixtures are only in the test place; `npm run build:place` leaves them out.)
+3. Debug runs (K / J, boss door) need the Workspace attribute `KV_AllowDebugRuns = true` (Studio only).
+4. Once task 8 builds the client's network module, play a run and check the client receives `runVerdict` with
+   `ok = true`; then edit one recorded frame before sending and check `hash_mismatch`.
+5. AnalyticsService events from Studio sessions are not recorded; check them in the Creator Hub analytics of a
+   published place (custom events appear after a delay). In Studio, a failing call logs `[Telemetry] ANALYTICS_FAILED`.
+6. Settings: fire `updateSettings`, leave, rejoin: `settingsChanged` brings the change back. Stop the server with a
+   dirty setting to exercise `BindToClose`.

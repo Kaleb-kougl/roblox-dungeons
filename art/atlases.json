@@ -1,0 +1,137 @@
+{
+	"$comment": [
+		"Config for scripts/art/build-atlases.js (npm run art:build). Paths are relative to art/vendor/.",
+		"Output: art/build/<sheet>.png (upload these), art/build/contact/<id>.png (check by eye),",
+		"src/shared/theme/packs/vale/layout.ts (generated, committed). See docs/ART.md task S3.",
+		"Facings in the output follow SpriteSetAsset (src/shared/theme/types.ts): facing d points at d * 360 / count",
+		"degrees counter-clockwise from screen right (zeroDeg 0, ccw true): 0 = right, 90 = up (away from the camera),",
+		"270 = down (towards the camera). Cells: start + d * (stride ?? frames) + f, row-major in the sheet.",
+		"noiseAlpha: source pixels with alpha <= noiseAlpha are cleared before anything else (Lords of Pain dithers its",
+		"soft shadows with alpha 1-2 noise over the whole 256 px frame, <= 0.8% opacity, invisible; without this the",
+		"crop box is the whole frame). pad: transparent pixels added around the union crop box on every side.",
+		"pivot: the feet, measured on `measure` (animation, facing, kept-frame index): body = pixels with alpha >",
+		"bodyAlpha and max(R, G, B) > bodyMinRgb (both packs bake a pure-black shadow, so 'lit' separates it from the",
+		"body; the alpha cut is per pack, see each set); pivot.y = the edge below the lowest body row; pivot.x = the",
+		"midpoint of the body pixels in the lowest footBand rows (between the outer edges of the feet), rounded. The",
+		"same frame's body height / bodyTiles gives pixelsPerTile (rounded to 0.1). Measured facing towards the camera",
+		"(the feet are side by side there, level with the root); the build prints the same measure for every facing."
+	],
+	"spriteSets": {
+		"class.vanguard": {
+			"$comment": [
+				"SmallScaleInt knight, 'With shadows' sheets: 1920x1024 = 15 frames x 8 rows of 128x128.",
+				"Union box over the 8 animations is the whole 128x128 cell (Melee2 touches all four edges, Die the left,",
+				"right and bottom ones), so cells stay 128 with no pad: 8 x 8 = 64 cells fill a 1024x1024 atlas",
+				"exactly, so each animation gets its own atlas and keeps 8 of its 15 frames.",
+				"Kept frames: loops (idle, run) floor(i * 15 / 8) = 0,1,3,5,7,9,11,13 (even spacing round the cycle);",
+				"one-shots 0,2,...,14 (keeps the first and the final pose, which death holds)."
+			],
+			"source": { "type": "grid", "dir": "smallscale-knight/Spritesheets/With shadows", "frameW": 128, "frameH": 128 },
+			"facingCount": 8,
+			"rowForFacing": [0, 7, 6, 5, 4, 3, 2, 1],
+			"rowOrderEvidence": [
+				"Source row order is undocumented; determined by eye from Idle and Run crops (4x, mid-grey). The rows go",
+				"CLOCKWISE from screen right: row r faces (360 - 45 r) mod 360 degrees, so output facing d (ccw) = row (8 - d) % 8.",
+				"row 0 = right (0): Run leans and strides to the right, head leading on the right; Idle shield edge-on on the right.",
+				"row 1 = down-right (315): the shield's light outer face is visible, held to the right.",
+				"row 2 = down (270, towards camera): Idle shield face-on over the body's right half, sword hanging at",
+				"screen left, i.e. shield in the left hand and sword in the right as seen from the front; Run comes at the camera.",
+				"row 3 = down-left (225): shield outer face visible, held to the left.",
+				"row 4 = left (180): Run strides to the left, head leading on the left; Idle shield edge-on on the left.",
+				"row 5 = up-left (135): the shield's dark inner side is visible, top left.",
+				"row 6 = up (90, away from camera): shield inner side at screen left, sword upright at screen right (the back",
+				"view of the same left/right hands); Run seen from behind.",
+				"row 7 = up-right (45): shield inner side visible, top right.",
+				"Consistency check: the shield is held in front, so its outer face shows exactly on the rows with a",
+				"towards-camera component (1, 2, 3) and its inner side on the rows facing away (5, 6, 7). Reading the rows",
+				"counter-clockwise instead would put the outer face on rows 5-7, which it is not."
+			],
+			"noiseAlpha": 0,
+			"pad": 0,
+			"pivot": { "measure": { "animation": "idle", "facing": 6, "frame": 0 }, "bodyAlpha": 240, "bodyMinRgb": 8, "footBand": 4 },
+			"pivotNote": "The knight's baked shadow is black at alpha 200-239 (core ~216) and every body pixel has alpha >= 248, so alpha > 200 would count the shadow: the body cut is alpha > 240.",
+			"bodyTiles": 1.5,
+			"resample": "Default",
+			"animations": {
+				"idle": { "file": "Idle.png", "frames": [0, 1, 3, 5, 7, 9, 11, 13], "fps": 7, "loop": true },
+				"run": { "file": "Run.png", "frames": [0, 1, 3, 5, 7, 9, 11, 13], "fps": 12, "loop": true },
+				"roll": { "file": "Rolling.png", "frames": [0, 2, 4, 6, 8, 10, 12, 14], "fps": 14, "loop": false },
+				"hit": { "file": "TakeDamage.png", "frames": [0, 2, 4, 6, 8, 10, 12, 14], "fps": 14, "loop": false },
+				"death": { "file": "Die.png", "frames": [0, 2, 4, 6, 8, 10, 12, 14], "fps": 10, "loop": false },
+				"attack.1": { "file": "Melee.png", "frames": [0, 2, 4, 6, 8, 10, 12, 14], "fps": 16, "loop": false },
+				"attack.2": { "file": "Melee2.png", "frames": [0, 2, 4, 6, 8, 10, 12, 14], "fps": 16, "loop": false },
+				"attack.3": { "file": "MeleeSpin.png", "frames": [0, 2, 4, 6, 8, 10, 12, 14], "fps": 16, "loop": false }
+			},
+			"sheets": [
+				{ "name": "vanguard-idle", "animations": ["idle"] },
+				{ "name": "vanguard-run", "animations": ["run"] },
+				{ "name": "vanguard-roll", "animations": ["roll"] },
+				{ "name": "vanguard-hit", "animations": ["hit"] },
+				{ "name": "vanguard-death", "animations": ["death"] },
+				{ "name": "vanguard-attack1", "animations": ["attack.1"] },
+				{ "name": "vanguard-attack2", "animations": ["attack.2"] },
+				{ "name": "vanguard-attack3", "animations": ["attack.3"] }
+			]
+		},
+		"enemy.swarmer": {
+			"$comment": [
+				"Lords of Pain skeleton: one 256x256 PNG per frame, <folder>/<facing>/<folder>_<facing>_<angle>_<frame>.png.",
+				"The folder angles are screen angles (E = 0, N = 90, counter-clockwise), the output convention already;",
+				"the script rebuilds each file name from d * 22.5 and fails if it does not exist, so the order below is checked.",
+				"By eye: E/W stride right/left, N shows the back (spine and pelvis, skull clear above the shoulders),",
+				"S the front (ribcage, skull bowed over the chest towards the camera).",
+				"Union box (alpha > noiseAlpha) is 92x68 + 1 px pad = 94x70: 10 per row, so walk + death (256 cells) need",
+				"two atlases (one 1024 atlas holds 140), not one. Stand-ins (docs/ART.md S5): idle and hit = walk frame 0",
+				"held (frames 1, stride 8), attack = the walk's cells."
+			],
+			"source": { "type": "frames", "dir": "lords-of-pain-demo/enemy/skeleton", "frameW": 256, "frameH": 256 },
+			"facingCount": 16,
+			"facingDirs": ["E", "NEE", "NE", "NNE", "N", "NNW", "NW", "NWW", "W", "SWW", "SW", "SSW", "S", "SSE", "SE", "SEE"],
+			"noiseAlpha": 2,
+			"pad": 1,
+			"pivot": { "measure": { "animation": "idle", "facing": 12, "frame": 0 }, "bodyAlpha": 64, "bodyMinRgb": 8, "footBand": 3 },
+			"pivotNote": "The skeleton's shadow is black at alpha <= ~140; its thin bones are anti-aliased (only ~20 pixels per frame reach 255), so alpha > 200 would drop the shins: the body cut is lit pixels at alpha > 64.",
+			"bodyTiles": 1.25,
+			"resample": "Default",
+			"animations": {
+				"move": { "folder": "skeleton_default_walk", "frames": [0, 1, 2, 3, 4, 5, 6, 7], "fps": 10, "loop": true },
+				"death": { "folder": "skeleton_special_death", "frames": [0, 1, 2, 3, 4, 5, 6, 7], "fps": 10, "loop": false },
+				"idle": { "cellsOf": "move", "frames": 1, "fps": 1, "loop": true },
+				"attack": { "cellsOf": "move", "fps": 14, "loop": true },
+				"hit": { "cellsOf": "move", "frames": 1, "fps": 1, "loop": false }
+			},
+			"sheets": [
+				{ "name": "swarmer-move", "animations": ["move"] },
+				{ "name": "swarmer-death", "animations": ["death"] }
+			]
+		}
+	},
+	"images": {
+		"tile.biome.1.floor": {
+			"$comment": "256x256, opaque, seamless: used whole. meanHex = rounded mean sRGB of all pixels (the biome.1 floor colour).",
+			"file": "lords-of-pain-demo/environment/ground_stone1.png",
+			"name": "tile-biome1-floor",
+			"crop": "none",
+			"tilesPerImage": 4,
+			"meanHex": true
+		},
+		"ui.ring.player": {
+			"$comment": "Soft ring; cropped to alpha > noiseAlpha + pad. Pivot = centre of the crop (the ring sits centred under the player).",
+			"file": "lords-of-pain-demo/user interface/highlight/highlight_yellow.png",
+			"name": "ui-ring-player",
+			"crop": "alpha",
+			"noiseAlpha": 2,
+			"pad": 3,
+			"pivot": "center"
+		},
+		"ui.marker.pedestal": {
+			"$comment": "2 px vertical beam; cropped to alpha > noiseAlpha + pad. Pivot = bottom centre (the beam rises from the pedestal).",
+			"file": "lords-of-pain-demo/user interface/loot-indicator/loot_indicator_yellow.png",
+			"name": "ui-marker-pedestal",
+			"crop": "alpha",
+			"noiseAlpha": 2,
+			"pad": 3,
+			"pivot": "bottom"
+		}
+	}
+}
