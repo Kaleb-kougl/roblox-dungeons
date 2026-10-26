@@ -372,6 +372,7 @@ export class ThemePack {
 			transparency: a.transparency,
 			emissive: a.emissive,
 			role: a.role,
+			flipbook: a.flipbook,
 			color: this.color(a.role),
 		};
 	}

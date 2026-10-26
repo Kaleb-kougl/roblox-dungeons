@@ -486,10 +486,10 @@ describe("validateManifest: decor pieces and effects", () => {
 		);
 		expect(withAssets({ "decor.fx.ambient.b1": ambient({ particle: { size: 0.2 }, pixelsPerTile: 32 }) })).toEqual([
 			`${P}.pixelsPerTile: unknown key (allowed: kind, assetId, w, h, particle, emissive)`,
-			`${P}.particle.size: unknown key (allowed: sizeStuds, transparency)`,
+			`${P}.particle.size: unknown key (allowed: sizeStuds, transparency, flipbook)`,
 		]);
 		expect(withAssets({ "decor.fx.ambient.b1": ambient({ particle: 0.2 }) })).toEqual([
-			`${P}.particle: must be { "sizeStuds"?: number, "transparency"?: number }`,
+			`${P}.particle: must be { "sizeStuds"?: number, "transparency"?: number, "flipbook"?: { grid, fps, mode } }`,
 		]);
 		expect(withAssets({ "decor.fx.ambient.b1": rockSprites({}, "layer") })).toEqual([
 			`${P}.kind: decor.fx.ambient.* is a particle texture: kind "image", got "sprites"`,

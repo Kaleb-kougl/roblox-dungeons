@@ -11,6 +11,8 @@
  *                                        from the built atlases through the layout's cell formula; a white arrow
  *                                        in the margin shows each row's facing, a red cross the pivot
  *   -> src/shared/theme/packs/vale/layout.ts   generated (committed): frame sizes, pivots, cells, sheets by file name
+ *   -> src/shared/theme/packs/vale/fxLayout.ts generated (committed): the sprite-effect atlas and the ambient particle
+ *                                        textures (docs/FX_AUDIO.md F2, F6; config keys `fx` and `ambient`)
  *
  * Every sprite set has one cell size and one pivot (SpriteSetAsset): each frame of the set is cropped to the union
  * bounding box (alpha > noiseAlpha) over all its animations and facings, plus `pad`. Facings are written in the
@@ -41,6 +43,7 @@ const BUILD = path.join(ART, "build");
 const CONTACT = path.join(BUILD, "contact");
 const LAYOUT_DIR = path.join(ROOT, "src", "shared", "theme", "packs", "vale");
 const LAYOUT_FILE = path.join(LAYOUT_DIR, "layout.ts");
+const FX_LAYOUT_FILE = path.join(LAYOUT_DIR, "fxLayout.ts");
 
 /** Roblox stores images at most this many pixels on a side. */
 const MAX_ATLAS = 1024;
@@ -231,6 +234,8 @@ function sourceFiles(config) {
 		}
 	}
 	for (const id of Object.keys(config.images).sort()) files.add(config.images[id].file);
+	for (const id of fxIds(config)) files.add(config.fx.sets[id].file);
+	for (const id of ambientIds(config)) files.add(config.ambient[id].file);
 	return [...files].sort();
 }
 
@@ -704,6 +709,393 @@ function layoutModule(sets, images, floorHex) {
 }
 
 // ---------------------------------------------------------------------------------------------
+// Sprite effects and ambient particle textures (docs/FX_AUDIO.md F2, F6; config keys `fx` and `ambient`)
+
+/** Contact sheets of effects: cells scaled this much (pixel art 24-66 px), with this gap and label row. */
+const FX_CONTACT_SCALE = 4;
+const FX_CONTACT_GAP = 8;
+const FX_CONTACT_LABEL = 14;
+/** Rec. 601 luma weights, per mille (integer maths). */
+const LUMA = [299, 587, 114];
+/** Per-mille fixed point. */
+const MILLE = 1000;
+/** ParticleEmitter flipbook grids (Grid2x2 / Grid4x4 / Grid8x8), 1 = a single frame. */
+const AMBIENT_GRIDS = [1, 2, 4, 8];
+/** Flipbook modes the theme accepts (shared/theme contract PARTICLE_FLIPBOOK_MODES). */
+const AMBIENT_MODES = ["Loop", "OneShot", "PingPong", "Random"];
+
+function fxIds(config) {
+	return config.fx ? Object.keys(config.fx.sets).sort() : [];
+}
+
+function ambientIds(config) {
+	return config.ambient ? Object.keys(config.ambient).filter((k) => !k.startsWith("$")).sort() : [];
+}
+
+/** The frames of a horizontal strip (frameW wide, the strip's height), `keep` (default all) in order. */
+function stripFrames(what, def) {
+	const src = readPng(def.file);
+	if (src.w !== def.frameW * def.frames) {
+		throw new Error(`${what}: ${def.file} is ${src.w} px wide, not ${def.frames} frames x ${def.frameW} px`);
+	}
+	const keep = def.keep || [...Array(def.frames).keys()];
+	return keep.map((f) => {
+		if (!(f >= 0 && f < def.frames)) throw new Error(`${what}: keep frame ${f} outside 0..${def.frames - 1}`);
+		const img = raster(def.frameW, src.h);
+		blit(src, f * def.frameW, 0, def.frameW, src.h, img, 0, 0, 0);
+		return img;
+	});
+}
+
+/** Straight-alpha src over dst at (dx, dy), src alpha scaled by `permille`; outside dst is clipped. Integer maths. */
+function compositeOver(src, dst, dx, dy, permille) {
+	for (let y = 0; y < src.h; y++) {
+		for (let x = 0; x < src.w; x++) {
+			const tx = dx + x;
+			const ty = dy + y;
+			if (tx < 0 || ty < 0 || tx >= dst.w || ty >= dst.h) continue;
+			const si = (y * src.w + x) * 4;
+			const a = Math.floor((src.data[si + 3] * permille + MILLE / 2) / MILLE);
+			if (a === 0) continue;
+			const di = (ty * dst.w + tx) * 4;
+			const da = dst.data[di + 3];
+			const outA = a + Math.floor((da * (255 - a) + 127) / 255);
+			for (let k = 0; k < 3; k++) {
+				const num = src.data[si + k] * a * 255 + dst.data[di + k] * da * (255 - a);
+				dst.data[di + k] = Math.floor((num + (outA * 255) / 2) / (outA * 255));
+			}
+			dst.data[di + 3] = outA;
+		}
+	}
+}
+
+/** A particle strip's pieces composed into a burst (def.burst; see the `fx` $comment in art/atlases.json). */
+function burstFrames(what, def) {
+	const b = def.burst;
+	const pieces = stripFrames(what, def).map((img) => {
+		const box = alphaBounds(img, 0, 0, img.w, img.h, 0);
+		if (!box) throw new Error(`${what}: an empty piece`);
+		const w = box[2] - box[0] + 1;
+		const h = box[3] - box[1] + 1;
+		const piece = raster(w, h);
+		blit(img, box[0], box[1], w, h, piece, 0, 0, 0);
+		return piece;
+	});
+	if (!(b.frames >= 2) || !(b.fadeFrom >= 0 && b.fadeFrom < b.frames)) throw new Error(`${what}: bad burst frames`);
+	const out = [];
+	const c = Math.floor(b.cell / 2);
+	const span = b.frames - 1;
+	for (let f = 0; f < b.frames; f++) {
+		const img = raster(b.cell, b.cell);
+		const r = b.radiusFrom + Math.floor(((b.radiusTo - b.radiusFrom) * f * 2 + span) / (2 * span));
+		const fade = f < b.fadeFrom ? MILLE : Math.floor(((b.frames - f) * MILLE) / (b.frames - b.fadeFrom));
+		pieces.forEach((piece, k) => {
+			const [dx, dy] = b.dirs[k % b.dirs.length];
+			const px = c + Math.floor((dx * r + MILLE / 2) / MILLE) - Math.floor(piece.w / 2);
+			const py = c - Math.floor((dy * r + MILLE / 2) / MILLE) - Math.floor(piece.h / 2);
+			compositeOver(piece, img, px, py, Math.min(MILLE, fade));
+		});
+		out.push(img);
+	}
+	return out;
+}
+
+/** Alpha-weighted mean colour "#rrggbb" of the visible pixels of `imgs`. */
+function meanColor(imgs) {
+	const sum = [0, 0, 0];
+	let weight = 0;
+	for (const img of imgs) {
+		for (let i = 0; i < img.w * img.h; i++) {
+			const a = img.data[i * 4 + 3];
+			weight += a;
+			for (let k = 0; k < 3; k++) sum[k] += img.data[i * 4 + k] * a;
+		}
+	}
+	if (weight === 0) throw new Error("meanColor of nothing");
+	return "#" + sum.map((s) => Math.floor((2 * s + weight) / (2 * weight)).toString(16).padStart(2, "0")).join("");
+}
+
+/** Greys `imgs` in place: luminance stretched so the brightest visible pixel of all of them is white; alpha kept. */
+function greyInPlace(imgs) {
+	const luma = (d, i) => Math.floor((LUMA[0] * d[i] + LUMA[1] * d[i + 1] + LUMA[2] * d[i + 2] + MILLE / 2) / MILLE);
+	let max = 0;
+	for (const img of imgs) {
+		for (let i = 0; i < img.w * img.h; i++) if (img.data[i * 4 + 3] > 0) max = Math.max(max, luma(img.data, i * 4));
+	}
+	for (const img of imgs) {
+		for (let i = 0; i < img.w * img.h; i++) {
+			const p = i * 4;
+			const v = max > 0 ? Math.floor((luma(img.data, p) * 255 * 2 + max) / (2 * max)) : 0;
+			img.data[p] = v;
+			img.data[p + 1] = v;
+			img.data[p + 2] = v;
+		}
+	}
+}
+
+/** One effect set: its frames cropped to their union alpha box (+ pad), greyed or measured. */
+function buildFxSet(id, def, pad) {
+	if (def.preview === undefined && def.fps === undefined) throw new Error(`${id}: no preview timing and no fps`);
+	const fps = def.fps !== undefined ? def.fps : Math.round((10 * MILLE) / def.preview.ms) / 10;
+	if (def.preview !== undefined && def.preview.frames !== def.frames && !def.previewNote) {
+		throw new Error(`${id}: Preview.gif shows ${def.preview.frames} frames, the strip ${def.frames}: add a previewNote`);
+	}
+	const raw = def.burst ? burstFrames(id, def) : stripFrames(id, def);
+	let box = null;
+	for (const img of raw) box = unionBox(box, alphaBounds(img, 0, 0, img.w, img.h, 0));
+	if (!box) throw new Error(`${id}: no visible pixels`);
+	const frameW = box[2] - box[0] + 1 + 2 * pad;
+	const frameH = box[3] - box[1] + 1 + 2 * pad;
+	const frames = raw.map((img) => {
+		const cell = raster(frameW, frameH);
+		blit(img, box[0] - pad, box[1] - pad, frameW, frameH, cell, 0, 0, 0);
+		return cell;
+	});
+	const grey = def.grey === true;
+	const mean = grey ? undefined : meanColor(frames);
+	if (grey) greyInPlace(frames);
+	return { id, def, frames, frameW, frameH, fps, loop: def.loop === true, grey, meanColor: mean, box, sourceH: raw[0].h };
+}
+
+/**
+ * Packs every effect set into one atlas: each set a band of rows starting at x 0 and at a y that is a multiple of its
+ * frame height, so a set's frames are cells `start .. start + frames - 1` of the SpriteSetAsset formula with perRow =
+ * floor(atlas w / frameW). Bands by frame height (tallest first, then id); the width with the smallest area wins
+ * (then the narrowest).
+ */
+function packFx(sets) {
+	const order = [...sets].sort((a, b) => b.frameH - a.frameH || (a.id < b.id ? -1 : 1));
+	const minW = Math.max(...sets.map((s) => s.frameW));
+	let best = null;
+	for (let w = minW; w <= MAX_ATLAS; w++) {
+		let y = 0;
+		const placed = [];
+		for (const s of order) {
+			const perRow = Math.floor(w / s.frameW);
+			const y0 = Math.ceil(y / s.frameH) * s.frameH;
+			placed.push({ s, y0, perRow, start: (y0 / s.frameH) * perRow });
+			y = y0 + Math.ceil(s.frames.length / perRow) * s.frameH;
+		}
+		if (y > MAX_ATLAS) continue;
+		if (!best || w * y < best.w * best.h) best = { w, h: y, placed };
+	}
+	if (!best) throw new Error(`fx: the effects do not fit one ${MAX_ATLAS}x${MAX_ATLAS} atlas`);
+	const img = raster(best.w, best.h);
+	let used = 0;
+	for (const p of best.placed) {
+		p.s.frames.forEach((cell, f) => {
+			const c = p.start + f;
+			blit(cell, 0, 0, p.s.frameW, p.s.frameH, img, (c % p.perRow) * p.s.frameW, Math.floor(c / p.perRow) * p.s.frameH, -1);
+		});
+		used += p.s.frames.length * p.s.frameW * p.s.frameH;
+	}
+	alphaBleed(img);
+	return { img, w: best.w, h: best.h, placed: best.placed, used };
+}
+
+function fxLayoutOf(p) {
+	const s = p.s;
+	const out = {
+		frameW: s.frameW,
+		frameH: s.frameH,
+		pivot: { x: s.frameW / 2, y: s.frameH / 2 },
+		start: p.start,
+		frames: s.frames.length,
+		fps: s.fps,
+		loop: s.loop,
+		grey: s.grey,
+	};
+	if (s.meanColor !== undefined) out.meanColor = s.meanColor;
+	return out;
+}
+
+/** The cell of frame f of a placed set, read through the layout's formula (start + f, perRow = floor(w / frameW)). */
+function fxCellAt(atlasW, layout, f) {
+	const perRow = Math.floor(atlasW / layout.frameW);
+	const c = layout.start + f;
+	return [(c % perRow) * layout.frameW, Math.floor(c / perRow) * layout.frameH];
+}
+
+// 3x5 digits for contact-sheet frame labels.
+const DIGITS = ["111101101101111", "010110010010111", "111001111100111", "111001111001111", "101101111001001", "111100111001111", "111100111101111", "111001001001001", "111101111101111", "111101111001111"];
+
+function drawNumber(img, x, y, n, scale, rgb) {
+	const text = String(n);
+	for (let i = 0; i < text.length; i++) {
+		const bits = DIGITS[text.charCodeAt(i) - 48];
+		for (let k = 0; k < 15; k++) {
+			if (bits[k] === "1") fillRect(img, x + (i * 4 + (k % 3)) * scale, y + Math.floor(k / 3) * scale, scale, scale, rgb);
+		}
+	}
+}
+
+/** Frames side by side at FX_CONTACT_SCALE on mid-grey, each labelled with its index; a red cross on the pivot. */
+function scaledContact(cells, w, h, pivot) {
+	const S = FX_CONTACT_SCALE;
+	const cw = w * S + FX_CONTACT_GAP;
+	const out = raster(FX_CONTACT_GAP + cells.length * cw, FX_CONTACT_LABEL + h * S + FX_CONTACT_GAP);
+	fillRect(out, 0, 0, out.w, out.h, [CONTACT_BG, CONTACT_BG, CONTACT_BG]);
+	cells.forEach(([src, sx, sy], f) => {
+		const ox = FX_CONTACT_GAP + f * cw;
+		const oy = FX_CONTACT_LABEL;
+		drawNumber(out, ox, 2, f, 2, [240, 240, 240]);
+		fillRect(out, ox - 1, oy - 1, w * S + 2, h * S + 2, [96, 96, 96]);
+		fillRect(out, ox, oy, w * S, h * S, [CONTACT_BG, CONTACT_BG, CONTACT_BG]);
+		for (let y = 0; y < h; y++) {
+			for (let x = 0; x < w; x++) {
+				const si = ((sy + y) * src.w + sx + x) * 4;
+				const a = src.data[si + 3];
+				if (a === 0) continue;
+				const rgb = [0, 1, 2].map((k) => Math.floor((src.data[si + k] * a + CONTACT_BG * (255 - a) + 127) / 255));
+				fillRect(out, ox + x * S, oy + y * S, S, S, rgb);
+			}
+		}
+		if (pivot) {
+			fillRect(out, ox + Math.floor(pivot.x * S) - 6, oy + Math.floor(pivot.y * S), 13, 1, [230, 30, 30]);
+			fillRect(out, ox + Math.floor(pivot.x * S), oy + Math.floor(pivot.y * S) - 6, 1, 13, [230, 30, 30]);
+		}
+	});
+	return out;
+}
+
+function nextPow2(n) {
+	let p = 1;
+	while (p < n) p *= 2;
+	return p;
+}
+
+/** An ambient particle texture: grid x grid power-of-two square cells, the strip frame centred in each, greyed. */
+function buildAmbient(id, def) {
+	if (!AMBIENT_GRIDS.includes(def.grid)) throw new Error(`${id}: grid ${def.grid} (one of ${AMBIENT_GRIDS.join(", ")})`);
+	if (def.grid > 1 && !AMBIENT_MODES.includes(def.mode)) throw new Error(`${id}: mode ${def.mode} (${AMBIENT_MODES.join(", ")})`);
+	if (def.grid > 1 && !(def.fps > 0)) throw new Error(`${id}: a flipbook needs fps > 0`);
+	const frames = stripFrames(id, def);
+	const n = def.grid * def.grid;
+	const cells = def.cells || [...Array(n).keys()].map((i) => Math.floor((i * frames.length) / n));
+	if (cells.length !== n) throw new Error(`${id}: ${cells.length} cells for a ${def.grid}x${def.grid} grid`);
+	const cell = nextPow2(Math.max(def.frameW, frames[0].h));
+	const side = cell * def.grid;
+	if (side > MAX_ATLAS) throw new Error(`${id}: ${side} px > ${MAX_ATLAS}`);
+	const img = raster(side, side);
+	const ox = Math.floor((cell - def.frameW) / 2);
+	const oy = Math.floor((cell - frames[0].h) / 2);
+	cells.forEach((f, i) => {
+		const src = frames[f];
+		if (!src) throw new Error(`${id}: cell frame ${f} outside 0..${frames.length - 1}`);
+		blit(src, 0, 0, src.w, src.h, img, (i % def.grid) * cell + ox, Math.floor(i / def.grid) * cell + oy, 0);
+	});
+	greyInPlace([img]);
+	alphaBleed(img);
+	const layout = { file: `${def.name}.png`, w: side, h: side, grid: def.grid };
+	if (def.grid > 1) {
+		layout.fps = def.fps;
+		layout.mode = def.mode;
+	}
+	return { id, img, layout, cell, cells };
+}
+
+function fxLayoutModule(atlas, fxLayouts, ambientLayouts) {
+	const out = [
+		"// GENERATED by `npm run art:build` (scripts/art/build-atlases.js) from art/atlases.json. Do not edit.",
+		"",
+		"/**",
+		comment([
+			"Layout of the `vale` pack's sprite effects (docs/FX_AUDIO.md F2) and ambient particle textures (F6). No asset",
+			"IDs: `file` names the PNG in art/build/ to upload. Every effect is a one-facing flipbook in the ONE effects atlas",
+			"VALE_FX_SHEET, cells `start + f` of the SpriteSetAsset formula (perRow = floor(sheet w / frameW)); `grey` sets",
+			"were greyed for tinting, the others carry their alpha-weighted mean colour. Ambient textures are square",
+			"`grid` x `grid` ParticleEmitter flipbooks (grid 1: one frame).",
+		]),
+		" */",
+		"",
+		'import type { HexColor, ParticleFlipbookMode, Pivot } from "../../types";',
+		'import type { ValeSheetFile } from "./layout";',
+		"",
+		"/** One effect's flipbook in VALE_FX_SHEET. */",
+		"export interface ValeFxLayout {",
+		"\tframeW: number;",
+		"\tframeH: number;",
+		"\tpivot: Pivot;",
+		"\tstart: number;",
+		"\tframes: number;",
+		"\tfps: number;",
+		"\tloop: boolean;",
+		"\tgrey: boolean;",
+		"\tmeanColor?: HexColor;",
+		"}",
+		"",
+		"/** An ambient particle texture: a square of grid x grid flipbook cells. */",
+		"export interface ValeAmbientLayout extends ValeSheetFile {",
+		"\tgrid: number;",
+		"\tfps?: number;",
+		"\tmode?: ParticleFlipbookMode;",
+		"}",
+		"",
+		`export const VALE_FX_SHEET: ValeSheetFile = ${tsValue(atlas, 0, PRINT_WIDTH)};`,
+		"",
+		`export const VALE_FX_LAYOUTS: Record<string, ValeFxLayout> = ${tsValue(fxLayouts, 0, PRINT_WIDTH)};`,
+		"",
+		`export const VALE_AMBIENT_LAYOUTS: Record<string, ValeAmbientLayout> = ${tsValue(ambientLayouts, 0, PRINT_WIDTH)};`,
+		"",
+	];
+	const text = out.join("\n");
+	for (const line of text.split("\n")) {
+		if (line.replace(/\t/g, "    ").length > PRINT_WIDTH) throw new Error(`fxLayout.ts line over ${PRINT_WIDTH} columns: ${line}`);
+	}
+	return text;
+}
+
+/** Builds the effects atlas and the ambient textures; emits their PNGs and contact sheets. Returns what main prints. */
+function buildEffects(config, emit, builtFiles, contactFiles) {
+	if (!config.fx && !config.ambient) return undefined;
+	const pad = config.fx ? config.fx.pad : 0;
+	const sets = fxIds(config).map((id) => buildFxSet(id, config.fx.sets[id], pad));
+	const fxLayouts = {};
+	let atlas = { file: `${config.fx.atlas}.png`, w: 0, h: 0 };
+	let packed;
+	if (sets.length > 0) {
+		packed = packFx(sets);
+		atlas = { file: `${config.fx.atlas}.png`, w: packed.w, h: packed.h };
+		emit(BUILD, atlas.file, packed.img, builtFiles);
+		for (const p of [...packed.placed].sort((a, b) => (a.s.id < b.s.id ? -1 : 1))) {
+			const l = fxLayoutOf(p);
+			fxLayouts[p.s.id] = l;
+			const cells = [];
+			for (let f = 0; f < l.frames; f++) cells.push([packed.img, ...fxCellAt(packed.w, l, f)]);
+			emit(CONTACT, `${p.s.id}.png`, scaledContact(cells, l.frameW, l.frameH, l.pivot), contactFiles);
+		}
+	}
+	const ambient = ambientIds(config).map((id) => buildAmbient(id, config.ambient[id]));
+	const ambientLayouts = {};
+	for (const a of ambient) {
+		ambientLayouts[a.id] = a.layout;
+		emit(BUILD, a.layout.file, a.img, builtFiles);
+		const cells = [];
+		for (let i = 0; i < a.layout.grid * a.layout.grid; i++) cells.push([a.img, (i % a.layout.grid) * a.cell, Math.floor(i / a.layout.grid) * a.cell]);
+		emit(CONTACT, `${a.id}.png`, scaledContact(cells, a.cell, a.cell, undefined), contactFiles);
+	}
+	return { sets, packed, atlas, fxLayouts, ambient, ambientLayouts };
+}
+
+function printEffects(fx) {
+	if (!fx) return;
+	if (fx.packed) {
+		const fill = (100 * fx.packed.used) / (fx.packed.w * fx.packed.h);
+		console.log(`fx: ${fx.atlas.file} ${fx.packed.w}x${fx.packed.h}, ${fx.sets.length} sets, ${fill.toFixed(1)}% of its area in cells`);
+	}
+	for (const s of fx.sets) {
+		const l = fx.fxLayouts[s.id];
+		const p = s.def.preview;
+		const gif = p ? `preview ${p.frames} @ ${p.ms} ms${p.frames !== s.def.frames ? " (MISMATCH, see previewNote)" : ""}` : "no preview";
+		console.log(`  ${s.id}: ${s.def.file.split("/").slice(-2).join("/")} ${s.def.frames} x ${s.def.frameW}x${s.sourceH}${s.def.burst ? " (burst cells)" : ""} -> cell ${l.frameW}x${l.frameH}, start ${l.start}, ${l.frames} frames @ ${l.fps} fps${l.loop ? " loop" : ""}, ${s.grey ? "grey" : `mean ${s.meanColor}`}; ${gif}`);
+	}
+	for (const a of fx.ambient) {
+		const l = a.layout;
+		console.log(`${a.id}: ${l.file} ${l.w}x${l.h}, grid ${l.grid} (cells ${a.cells.join(",")})${l.grid > 1 ? `, ${l.mode} @ ${l.fps} fps` : ""}`);
+	}
+}
+
+// ---------------------------------------------------------------------------------------------
 // Main
 
 function writeIfChanged(file, content) {
@@ -753,10 +1145,12 @@ function main() {
 		emit(CONTACT, `${s.id}.png`, contactSheet(s), contactFiles);
 	}
 	for (const i of images) emit(BUILD, i.layout.file, i.img, builtFiles);
+	const fx = buildEffects(config, emit, builtFiles, contactFiles);
 	removeStale(BUILD, builtFiles);
 	removeStale(CONTACT, contactFiles);
 
 	if (writeIfChanged(LAYOUT_FILE, layoutModule(sets, images, floor.meanHex))) changed++;
+	if (fx && writeIfChanged(FX_LAYOUT_FILE, fxLayoutModule(fx.atlas, fx.fxLayouts, fx.ambientLayouts))) changed++;
 
 	for (const s of sets) {
 		const l = s.layout;
@@ -765,6 +1159,7 @@ function main() {
 		for (const sh of s.sheets) console.log(`  ${sh.file}: ${sh.img.w}x${sh.img.h}, ${sh.cells} cells`);
 	}
 	for (const i of images) console.log(`${i.id}: ${i.layout.file} ${i.layout.w}x${i.layout.h}${i.meanHex ? ` mean ${i.meanHex}` : ""}`);
+	printEffects(fx);
 	console.log(`art:build: ${builtFiles.size} atlas/image file(s), ${contactFiles.size} contact sheet(s), ${changed} file(s) updated`);
 }
 

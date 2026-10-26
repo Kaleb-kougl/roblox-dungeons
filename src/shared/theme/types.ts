@@ -158,6 +158,23 @@ export interface DecorParticle {
 	sizeStuds?: number;
 	/** ParticleEmitter.Transparency: in [DECOR_PARTICLE.minTransparency, 1]. */
 	transparency?: number;
+	/**
+	 * Roblox port (docs/FX_AUDIO.md F6): the texture is a square ParticleEmitter flipbook of `grid` x `grid` cells
+	 * (contract.ts PARTICLE_FLIPBOOK_GRIDS: Grid2x2 / Grid4x4 / Grid8x8). Absent: one still frame.
+	 */
+	flipbook?: ParticleFlipbook;
+}
+
+/** ParticleEmitter.FlipbookMode names (OneShot plays once over each particle's life; fps is then unused). */
+export type ParticleFlipbookMode = "Loop" | "OneShot" | "PingPong" | "Random";
+
+/** An ambient particle texture's flipbook (DecorParticle.flipbook). Presentation only. */
+export interface ParticleFlipbook {
+	/** Cells per side: 2, 4 or 8 (FlipbookLayout Grid2x2 / Grid4x4 / Grid8x8). */
+	grid: number;
+	/** FlipbookFramerate, in (0, MAX_ANIMATION_FPS]. */
+	fps: number;
+	mode: ParticleFlipbookMode;
 }
 
 export interface AnimationDef {
