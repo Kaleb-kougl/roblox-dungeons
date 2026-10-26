@@ -6,6 +6,47 @@ clutter. Work it task by task, like `PLAN.md` and `docs/ART.md`; each task ends 
 the one exception, and it is done: endless pillars are solid walls). Phase 2 (below) makes the decoration dynamic and
 adds the second exception, D4: breakable barrels and crates are sim objects.
 
+## Status (2026-10-26, branch `decor-dynamic`)
+
+R2-R4, R6 and R8-R13 are **code-complete and verified headlessly only** (`npm run verify`: 117 suites, 1611 of 1612
+tests; the one failure is the known x86 `forge.spec.ts` seedToState vector). **Nothing has run in Studio**, and no
+decor art is uploaded, so with the placeholder / `vale` packs only the breakable placeholder blocks and the decor
+PointLights draw. Open: R5 (atlases, upload, ids), R7 / R14 docs leftovers (PROVENANCE, THIRD_PARTY_NOTICES,
+art/README, docs/SERVER.md replay cost), R15 playtest, and every Studio check (`docs/CLIENT.md` steps 25-31 and the
+"Breakables" section).
+
+As built, differing from the text below:
+
+- **R3 is not a port.** The web repo (`35307022`) was not reachable, so `shared/view/decor/decorPlan.ts` was written
+  from this doc's rules, keeping the web's names (`planDecor`, `MAX_TALL_PER_ROOM`, `TALL_MIN_SPACING`,
+  `MAX_DECOR_SHARE`, `BULLET_Y`, `BULLET_PAD_PX`, `DECOR_BOX`, `WALL_DEPTH_BIAS`); diff it against the web source when
+  available (D3 still stands for that comparison; no PROVENANCE row until then). The footprint rule uses the game
+  camera's real projection (cached per box shape: ~15 ms per floor) and treats POOL cells as open. A spec re-checks it
+  with ray casts: 0 hidden bullets. `DECOR_BOX` sizes are estimates; re-measure in R5. Drawn art is clamped to its box
+  (and flames / glows at their maximum growth) at render time, so oversized art can never break the rule.
+- **Census per endless floor** (runs 1-20 x floors 1-5): ~25 tall (9 wall segments, 5.6 columns, 6 icicles, ...), ~150
+  flat, ~67 wall pieces (64 torches). No solid pillar gets a stump (each has open floor behind it). Braziers mostly
+  leave the boss ring (~1.4 survive the cap), so the **boss ring is drawn as flat fire pits** at the Forge's
+  boss-room brazier spots (floor glow + PointLight), lit 2 / 4 / 6 by phase. The depth band's flat thinning rarely
+  bites (Forge clutter is under 20 % of a room already).
+- **R2 contract**: kind segments are lowercase in ids (`decor.delve.b3.shardice`; code uses `decorId()`); added
+  `pixelsPerTile`, `rect`, `glowAt`, variants `.1`..`.4`, kinds `gems` / `brokenBarrel` / `brokenCrate`; one
+  `decor.fx.flame` role (not per biome). `decor.fx.*` roles must differ from the enemy-bullet roles by >= 40 CIE76.
+  Breakables: required `breakable.barrel` / `.crate` (asset, role, name), `sfx.breakable.hit` / `.break`.
+- **R9 / R10**: director `{ state, events, scene, dt, motion }` (no config: boss floors come from the scene); light
+  pool of 6 plus <= 6 fixed lights; the band scales decor lights and particles only, not world Lighting. ~233 planned
+  pieces per floor (above this doc's ~150 guess); up to ~1,050 instances per floor once every kind has art.
+- **R11 / R12 breakables**: own stream `floorSeed ^ BREAKABLE.salt`. Pieces keep clear of the actual deferred spawns,
+  which depend on party size, so solo and co-op floors with the same seed get different pieces. Counts are per
+  150-tile room, scaled by area, capped at 16 (census: kept 2.2, worn 4.3, ruined 6.7, abyss 8.9 per room). Toughness
+  in bow damage units (barrel 2, crate 4; an enemy bullet half an arrow); pieces take base weapon damage (no
+  Sharpened). Bullets check walls, then pieces, without the `blocked` argument (the sim needs the slot). The slam rule
+  is nearly dormant (boss rooms get no pieces; 1 of 240 boss floors has one in reach). Replay bench: +0-10 %. The
+  `score` hash group of every scored run (tutorial included) gains `points/counts.breakables`; gameplay outside
+  endless runs is unchanged.
+- **R13**: placeholder blocks (crate 4x2x4, barrel 3.5x2.5x3.5 studs), blink / shake / chips / sparks (sparks at the
+  piece centre, not the contact point), the sniper aim line clipped at intact pieces; art capped at 5/8 tile tall.
+
 ## What already exists
 
 **The data is there, nothing draws it.** The Dungeon Forge already decorates every floor (`Dungeon.props`,
@@ -142,12 +183,12 @@ others. Biome-specific kinds (icicle, moss, grave) have no art and stay undrawn 
   the theme README), and floor variants by cell hash are skipped (greedy merging leaves no per-cell Parts).
   - [ ] Studio check: each biome reads at the game camera, and enemy bullets stand out against the textured walls.
 
-- [ ] **R2. Decor contract.** Port the web `DECOR` slot: `decor.<group>.<...>` IDs, free-size `image` / `sprites`
+- [x] **R2. Decor contract.** Port the web `DECOR` slot: `decor.<group>.<...>` IDs, free-size `image` / `sprites`
   art with `layer` (flat / low / tall / wall), `pivot`, and `glow` / `emissive` flags. Use `decor.delve.b<n>.<kind>`
   (b1..b5 = biome.1..5) and `decor.fx.torch`, as on the web. Placeholder: no art means nothing is drawn.
   → Verify: validator specs; the placeholder and vale packs validate clean.
 
-- [ ] **R3. Port `decorPlan.ts`** to `src/shared/view/decor/` (view code: it reads the Dungeon, never the sim), with
+- [x] **R3. Port `decorPlan.ts`** to `src/shared/view/decor/` (view code: it reads the Dungeon, never the sim), with
   its spec and `decor.ts`'s pure parts (fade selection, glow points). Keep the constants (`MAX_TALL_PER_ROOM` 3,
   `TALL_MIN_SPACING` 3, `MAX_DECOR_SHARE` 40 %, the footprint rule with `BULLET_Y` / `BULLET_PAD_PX`, `DECOR_BOX`),
   re-derive the pixel ones for this camera (`STUDS_PER_TILE`, the true on-screen projection from `sprites.ts`), and
@@ -157,7 +198,7 @@ others. Biome-specific kinds (icicle, moss, grave) have no art and stay undrawn 
   → Verify: ported specs pass, plus slice cases (nothing on a pedestal, shrine, stairwell or doorway tile; no tall
   piece where a walkable cell behind it is hidden; caps hold over the census seeds).
 
-- [ ] **R4. Decor renderer (`DecorController`).** Built on `onFloorChanged`, cleaned up with Janitor:
+- [x] **R4. Decor renderer (`DecorController`).** Built on `onFloorChanged`, cleaned up with Janitor:
   - **tall and low pieces:** pooled BillboardGuis (reuse `uprightImageBillboard` and the floor-clearance offset);
   - **flat pieces:** Decals on thin floor Parts (same as the player ring);
   - **wall pieces:** billboards pushed toward the camera off the wall face (the web's `WALL_DEPTH_BIAS`);
@@ -175,7 +216,7 @@ others. Biome-specific kinds (icicle, moss, grave) have no art and stay undrawn 
   reads it.
   → Verify: contact sheets by eye; `npm run verify`.
 
-- [ ] **R6. Far-wall dressing.** `wall2` / `wall3` segments on the far-wall runs and `column1` on corners and doorway
+- [x] **R6. Far-wall dressing.** `wall2` / `wall3` segments on the far-wall runs and `column1` on corners and doorway
   jambs (layer 2 under "Walls"): a segment needs a straight run of wall tops about 4 tiles long; shorter runs get a
   column or nothing. Same footprint rule and caps as the other tall pieces.
   → Verify: in Studio the segments line up with the 3D walls under them in every room shape (rect, ellipse, oct), and
@@ -351,29 +392,29 @@ build's Delve floor handles breakable walls at `35307022` (D3) and reuse what fi
 
 ### Tasks
 
-- [ ] **R8. Depth profile.** (needs R3) `decorProfile`, `DECOR_DEPTH`, band swaps and thinning inside the R3 plan, the
+- [x] **R8. Depth profile.** (needs R3) `decorProfile`, `DECOR_DEPTH`, band swaps and thinning inside the R3 plan, the
   darkest-band contrast check, `KV_DecorBand` (force a band in Studio).
   → Verify: specs: the same floor gives the same plan; band boundaries; never over the R3 caps; the validator passes
   for every band. In Studio, `N` through floors 1-16 shows the four looks.
-- [ ] **R9. Ambient life.** (needs R4, R5 for the flame art) flame loops, the light pool and flicker, the biome
+- [x] **R9. Ambient life.** (needs R4, R5 for the flame art) flame loops, the light pool and flicker, the biome
   emitters, treasure glint, `decor.fx.*` roles.
   → Verify: validator spec for the fx roles; in Studio every biome at every band, Reduced motion on and off; fps and
   particle counts on PC and the phone emulator written down.
-- [ ] **R10. Decor director.** (needs R4) `DecorDirector`, `DecorView`, the trigger table above, wired into
+- [x] **R10. Decor director.** (needs R4) `DecorDirector`, `DecorView`, the trigger table above, wired into
   `DecorController`.
   → Verify: headless specs over a recorded endless run (torches out until entry, braziers on clear, the boss ring by
   phase, stairwell glow, pause and draft freeze it); in Studio a full floor and a boss floor, solo and 2-player.
-- [ ] **R11. Breakable placement.** (independent; can start now) `shared/dungeon/breakables.ts`, `BREAKABLE`
+- [x] **R11. Breakable placement.** (independent; can start now) `shared/dungeon/breakables.ts`, `BREAKABLE`
   tunables, the floor world's `breakables`, the `roomSpawnTiles` filter.
   → Verify: specs: deterministic; every placement rule; reachability over the 100 census floors; counts per band;
   every Forge digest and layout fixture unchanged.
-- [ ] **R12. Breakables in the sim.** (needs R11) state, hash group, the `blocked` argument, damage from each source,
+- [x] **R12. Breakables in the sim.** (needs R11) state, hash group, the `blocked` argument, damage from each source,
   events, the score source, floor rebuilds.
   → Verify: every golden fixture and M1 hash unchanged; new specs: players, enemies (steering) and bullets blocked;
   each damage source and hit count from B4; heavy-arrow pierce; slam radius; no combo, no room-clear effect; clone and
   hash; party. Re-record the endless runs (`run/slice.spec.ts`, `run/endless.spec.ts`, `run/party.spec.ts`) and check
   they replay and validate segmented. Replay bench within budget.
-- [ ] **R13. Breakables on screen.** (needs R12; art after R5) `BreakableRenderController`, contract IDs and
+- [x] **R13. Breakables on screen.** (needs R12; art after R5) `BreakableRenderController`, contract IDs and
   placeholders, the sfx IDs, chips and sparks; barrel / crate and `_break` added to `art/atlases.json`.
   → Verify: validator and contract specs; in Studio crates block, take hits and break from every source on keyboard
   and gamepad; nothing hides a bullet.
