@@ -631,6 +631,23 @@ its arrival time, received invites, notices, the players in this server).
 The old M4 invite flow is gone (task L7): `KV_Party`, `KV_PartyAutoAccept`, `PartyInvitePanel`, the
 `partyInvite*` remotes, `shared/run/partyInvites.ts` and the `hud.party.*` strings.
 
+## Co-op spectating (docs/SPECTATE.md; not run in Studio yet)
+
+Presentation only (no sim, lockstep, server or hash change). In a party run a dead player watches a living teammate:
+after `SPECTATE.holdOnDeathSec` (1.5 s) on their own corpse the view moves to the living teammate nearest to it;
+Attack / Alt (left / right click, RT / LT; the player's own bindings) cycle to the next / previous living teammate in
+party order, skipping the dead and the left. The watched player's death holds 1.5 s, then moves to the one nearest to
+them; the floor change revives everyone and the view snaps back; a wipe keeps the last view under the run-over panel.
+`SimController` owns the `SpectateTracker` (shared/view/spectate.ts) and exposes `getViewPlayerIndex()`, which the
+camera, weapon view, bullet transparency, actor ring colour and audio read instead of the local index. The HUD's
+vitals (hearts, armor, flask, Embers, weapons) follow the watched player (`SnapshotExtras.vitalsIndex`); boons,
+toasts, drafts and the shrine hint stay the local player's. `SpectateBar` (bottom centre): `Spectating <name> · 2 / 3`,
+the next / previous hint, `You're back on the next floor`. While dead the co-op frames carry EMPTY_INPUT (plus debug
+bits under KV_Debug); buttons held at the revive stay masked until released; a press that began over a GUI button
+never switches.
+
+**Studio smoke test**: docs/SPECTATE.md "Studio smoke test" (3 clients, `KV_Debug`).
+
 ## The tutorial run (first-run flow, docs/TUTORIAL.md)
 
 1. **Join.** Nothing starts until the TutorialController's first-run gate decides (`shared/tutorial`

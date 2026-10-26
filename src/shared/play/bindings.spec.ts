@@ -42,6 +42,7 @@ import {
 	restartHint,
 	sanitizeControlsOverrides,
 	shrineHint,
+	spectateHint,
 	swapHint,
 	type BindingDevice,
 	type BindingSlot,
@@ -152,6 +153,10 @@ describe("DEFAULT_BINDINGS", () => {
 		expect(draftHint()).toEqual({
 			keyboard: { left: "A", right: "D", confirm: "Click" },
 			gamepad: { left: "Stick left", right: "Stick right", confirm: "RT" },
+		});
+		expect(spectateHint()).toEqual({
+			keyboard: { next: "Click", previous: "Right click" },
+			gamepad: { next: "RT", previous: "LT" },
 		});
 		expect(PAUSE_HINT).toEqual({
 			keyboard: inputLabel(FIXED_INPUTS.pause),
@@ -428,6 +433,9 @@ describe("labels", () => {
 		expect(shrineHint(b)).toEqual({ keyboard: "G", gamepad: "A" });
 		expect(draftHint(b).keyboard).toEqual({ left: "Left arrow", right: "D", confirm: "Click" });
 		expect(draftHint(b).gamepad.confirm).toBe("RB");
+		expect(spectateHint(b).gamepad).toEqual({ next: "RB", previous: "LT" });
+		b = ok(rebind(b, "kbm", "alt", 0, "F"));
+		expect(spectateHint(b).keyboard).toEqual({ next: "Click", previous: "F" });
 	});
 });
 

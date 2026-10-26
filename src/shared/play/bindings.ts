@@ -630,3 +630,20 @@ export function draftHint(b: Bindings = DEFAULT_BINDINGS): {
 		},
 	};
 }
+
+/** The spectate bar's switch keys (docs/SPECTATE.md): Attack is next, Alt previous (spectateCommand). */
+export interface SpectateHintKeys {
+	readonly next: string;
+	readonly previous: string;
+}
+
+/** Co-op spectating's switch hint (defaults: Click / Right click, RT / LT; the HUD's SpectateBar). */
+export function spectateHint(b: Bindings = DEFAULT_BINDINGS): {
+	readonly keyboard: SpectateHintKeys;
+	readonly gamepad: SpectateHintKeys;
+} {
+	return {
+		keyboard: { next: actionLabel(b, "kbm", "fire"), previous: actionLabel(b, "kbm", "alt") },
+		gamepad: { next: actionLabel(b, "pad", "fire"), previous: actionLabel(b, "pad", "alt") },
+	};
+}

@@ -15,6 +15,17 @@ import {
 	START_HALF_HEARTS,
 	archetypeIndex,
 	createSimState,
+	Curse,
+	Relic,
+	acceptCurse,
+	closeDraft,
+	endlessFloorWorld,
+	grantRelic,
+	playerAt,
+	stepParty,
+	weaponsAt,
+	type SimConfig,
+	type SimState,
 } from "shared/sim";
 import { EMPTY_SNAPSHOT, bossPhaseMarks, findBoss, snapshotsEqual, takeSnapshot, type GameSnapshot } from "shared/play";
 import { buildEndlessRunConfig } from "shared/run";
@@ -91,5 +102,124 @@ describe("snapshotsEqual", () => {
 		expect(snapshotsEqual(base, EMPTY_SNAPSHOT)).toBe(false);
 		expect(snapshotsEqual(base, { ...base, kills: 1 })).toBe(false);
 		expect(snapshotsEqual(base, { ...base, bossPhaseMarks: [0.5] })).toBe(false);
+	});
+});
+
+describe("takeSnapshot: co-op vitals and spectating (docs/SPECTATE.md S2)", () => {
+	/** A 2-player endless run; player 1 carries the bow in set 0 so the two players' weapon lists differ. */
+	function coopRun(): { st: SimState; config: SimConfig } {
+		const setup = buildEndlessRunConfig(42, 2);
+		const config: SimConfig = {
+			...setup.config,
+			party: { size: 2, loadouts: [undefined, ["weapon.bow", "weapon.sword"]] },
+		};
+		return { st: createSimState(42, setup.spawn!.x, setup.spawn!.z, config), config };
+	}
+
+	it("vitals and weapons come from vitalsIndex; boons / relics / curses and the shrine hint from playerIndex", () => {
+		const { st, config } = coopRun();
+		grantBoon(st, 0, Boon.LINGERING);
+		grantRelic(st, 1, Relic.HOURGLASS);
+		acceptCurse(st, 1, Curse.HASTE);
+		const me = playerAt(st, 0);
+		const mate = playerAt(st, 1);
+		mate.hearts = me.hearts - 3;
+		mate.heartsMax = me.heartsMax + 2;
+		mate.armor = me.armor + 1;
+		mate.armorMax = me.armorMax + 1;
+		mate.flask = me.flask - 1;
+		mate.flaskMax = me.flaskMax + 1;
+		mate.embers = me.embers - 1;
+		mate.emberMax = me.emberMax + 1;
+		weaponsAt(st, 1).activeSet = 1;
+		// Player 0 stands in floor 1's shrine zone, player 1 does not.
+		const r = st.run!;
+		expect(r.shrineRoom).toBeGreaterThanOrEqual(0);
+		const shrine = endlessFloorWorld(st, config)!.config.encounter!.rooms[r.shrineRoom];
+		me.x = shrine.cx;
+		me.z = shrine.cz;
+		const extras = { ...EXTRAS, config };
+
+		const watching = takeSnapshot(st, { ...extras, playerIndex: 0, vitalsIndex: 1 });
+		expect([watching.hearts, watching.heartsMax, watching.armor, watching.armorMax]).toEqual([
+			mate.hearts,
+			mate.heartsMax,
+			mate.armor,
+			mate.armorMax,
+		]);
+		expect([watching.flask, watching.flaskMax, watching.embers, watching.emberMax]).toEqual([
+			mate.flask,
+			mate.flaskMax,
+			mate.embers,
+			mate.emberMax,
+		]);
+		expect([watching.weapons, watching.activeSet]).toEqual([["weapon.bow", "weapon.sword"], 1]);
+		expect([watching.boons, watching.relics, watching.curses]).toEqual([[Boon.LINGERING], [], []]);
+		expect(watching.atShrine).toBe(true);
+
+		const other = takeSnapshot(st, { ...extras, playerIndex: 1, vitalsIndex: 0 });
+		expect([other.hearts, other.armor, other.flask, other.embers]).toEqual([
+			me.hearts,
+			me.armor,
+			me.flask,
+			me.embers,
+		]);
+		expect([other.weapons, other.activeSet]).toEqual([["weapon.sword", "weapon.bow"], 0]);
+		expect([other.boons, other.relics, other.curses]).toEqual([[], [Relic.HOURGLASS], [Curse.HASTE]]);
+		expect(other.atShrine).toBe(false);
+	});
+
+	it("the draft and the waiting count follow playerIndex, never vitalsIndex", () => {
+		const { st, config } = coopRun();
+		stepParty(st, [{ ...EMPTY_INPUT, buttons: DEBUG_FLOOR_BUTTON }, EMPTY_INPUT], config);
+		const r = st.run!;
+		closeDraft(r.players[1]); // player 1 has confirmed; player 0 is still choosing
+		const extras = { ...EXTRAS, config };
+		const mine = takeSnapshot(st, { ...extras, playerIndex: 0, vitalsIndex: 1 });
+		expect([mine.draftOpen, mine.draftWaiting]).toEqual([true, 0]);
+		expect(mine.draftOffers).toEqual(r.players[0].draftOffers);
+		const theirs = takeSnapshot(st, { ...extras, playerIndex: 1, vitalsIndex: 0 });
+		expect([theirs.draftOpen, theirs.draftOffers, theirs.draftWaiting]).toEqual([false, [], 1]);
+	});
+
+	it("without vitalsIndex and spectate: today's snapshot (vitals from playerIndex, not spectating)", () => {
+		const { st, config } = coopRun();
+		playerAt(st, 1).hearts -= 1;
+		const extras = { ...EXTRAS, config, playerIndex: 1 };
+		const plain = takeSnapshot(st, extras);
+		expect(plain).toEqual(takeSnapshot(st, { ...extras, vitalsIndex: 1 }));
+		expect([plain.hearts, plain.weapons]).toEqual([playerAt(st, 1).hearts, ["weapon.bow", "weapon.sword"]]);
+		expect([plain.spectating, plain.spectateName, plain.spectatePosition, plain.spectateCount]).toEqual([
+			false,
+			"",
+			0,
+			0,
+		]);
+		const solo = takeSnapshot(createSimState(1, 0, 0, DEFAULT_SIM_CONFIG), EXTRAS);
+		expect([solo.spectating, solo.spectateName, solo.spectatePosition, solo.spectateCount]).toEqual([
+			false,
+			"",
+			0,
+			0,
+		]);
+		expect([EMPTY_SNAPSHOT.spectating, EMPTY_SNAPSHOT.spectateName]).toEqual([false, ""]);
+		expect([EMPTY_SNAPSHOT.spectatePosition, EMPTY_SNAPSHOT.spectateCount]).toEqual([0, 0]);
+	});
+
+	it("carries the spectate bar's fields, and snapshotsEqual sees each of them", () => {
+		const { st, config } = coopRun();
+		const s = takeSnapshot(st, {
+			...EXTRAS,
+			config,
+			playerIndex: 0,
+			vitalsIndex: 1,
+			spectate: { name: "Bea", position: 1, count: 1 },
+		});
+		expect([s.spectating, s.spectateName, s.spectatePosition, s.spectateCount]).toEqual([true, "Bea", 1, 1]);
+		expect(snapshotsEqual(s, { ...s })).toBe(true);
+		expect(snapshotsEqual(s, { ...s, spectating: false })).toBe(false);
+		expect(snapshotsEqual(s, { ...s, spectateName: "Cal" })).toBe(false);
+		expect(snapshotsEqual(s, { ...s, spectatePosition: 2 })).toBe(false);
+		expect(snapshotsEqual(s, { ...s, spectateCount: 2 })).toBe(false);
 	});
 });

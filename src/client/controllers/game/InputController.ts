@@ -108,6 +108,11 @@ export class InputController implements OnStart {
 	private inputCaptured = false;
 	/** A menu button was clicked: ignore the mouse buttons until they are released (no swing on resume). */
 	private mouseSuppressed = false;
+	/**
+	 * Mouse buttons whose press began over a GUI (InputBegan's gameProcessedEvent: a HUD button such as the top-bar
+	 * pause button), until released (mousePressOnGui).
+	 */
+	private readonly guiMouse = new Set<Enum.UserInputType>();
 	private runOverOrPaused: () => boolean = () => false;
 	private pointerAimX = 0;
 	private pointerAimZ = 0;
@@ -134,6 +139,10 @@ export class InputController implements OnStart {
 			this.publishDevice();
 			// A restart bound to a mouse button (CAS sinks keys only): not over a GUI, not during a capture.
 			if (!processed && !this.inputCaptured && isMouseButtonName(t.Name)) this.reportDriver(t.Name);
+			if (processed && isMouseButtonName(t.Name)) this.guiMouse.add(t);
+		});
+		UserInputService.InputEnded.Connect((input) => {
+			this.guiMouse.delete(input.UserInputType);
 		});
 		UserInputService.InputChanged.Connect((input) => {
 			if (input.UserInputType === Enum.UserInputType.MouseMovement) this.tracker.mouseMoved();
@@ -162,6 +171,16 @@ export class InputController implements OnStart {
 	/** A menu (HUD / menu shell) is open or a rebind capture owns the input: `sample()` is not meant for the game. */
 	menuOwnsInput(): boolean {
 		return this.uiNavigation || this.inputCaptured;
+	}
+
+	/**
+	 * A mouse button whose press began over a GUI (a HUD or top-bar button) is still held: that click belongs to the
+	 * GUI, not the game. The polled frame still carries it (solo pauses under the menu it opens); co-op spectating
+	 * ignores its switch edge (SimController). A release missed by InputEnded (focus loss) is dropped here.
+	 */
+	mousePressOnGui(): boolean {
+		for (const t of this.guiMouse) if (!UserInputService.IsMouseButtonPressed(t)) this.guiMouse.delete(t);
+		return this.guiMouse.size() > 0;
 	}
 
 	/** Called when a menu button is activated: mouse buttons read as released until they actually are. */

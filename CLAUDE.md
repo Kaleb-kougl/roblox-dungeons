@@ -114,6 +114,12 @@ Decision log (deviations from `PLAN.md`):
   neon placeholders. `decor.fx.ambient.b<n>`: main's R5 mote (`decor-mote.png`) wins once uploaded; the Ninja
   Adventure flipbooks (`fx-ambient-b<n>.png`) only fill a biome it leaves empty. Presentation only: no sim, dungeon or
   hash change.
+- **Co-op spectating (docs/SPECTATE.md).** Presentation only (no sim, lockstep, server, hash or replay change). A dead
+  party member watches a living teammate and cycles with Attack / Alt; `SimController.getViewPlayerIndex()` replaces
+  the local index in the camera, weapon view, bullet transparency, actor ring and audio, and `SnapshotExtras.vitalsIndex`
+  drives the HUD's vitals (personal fields keep `playerIndex`). A dead client's co-op frames carry EMPTY_INPUT (debug
+  bits kept under KV_Debug), which changes the hashed `prevButtons` of the dead player but cannot desync (every client
+  steps the same merged log). Tunables `SPECTATE` in `shared/view/spectateConfig.ts`.
 
 ## Commands
 

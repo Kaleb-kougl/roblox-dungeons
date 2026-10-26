@@ -436,7 +436,7 @@ export class ActorRenderController implements OnStart {
 		if (pack === undefined || folder === undefined) return;
 		const n = partySize(state);
 		while (this.players.size() < n) this.players.push(this.buildPlayerView(pack, folder));
-		const localIndex = this.sim.getLocalPlayerIndex();
+		const localIndex = this.sim.getViewPlayerIndex(); // co-op spectating: the watched player gets the local ring
 		for (let i = 0; i < this.players.size(); i++) {
 			const view = this.players[i];
 			if (i < n) {

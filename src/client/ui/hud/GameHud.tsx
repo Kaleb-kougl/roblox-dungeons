@@ -12,6 +12,7 @@ import { PauseButton } from "./PauseButton";
 import { PauseOverlay } from "./PauseOverlay";
 import { RunOverPanel } from "./RunOverPanel";
 import { ScorePanel } from "./ScorePanel";
+import { SpectateBar } from "./SpectateBar";
 import { OptionsScreen } from "./OptionsScreen";
 import { StatusPanel } from "./StatusPanel";
 import { ToastPanel } from "./ToastPanel";
@@ -28,7 +29,8 @@ import { WeaponPanel } from "./WeaponPanel";
  *                 hint), BossBar (top centre), ScorePanel (top right, scored runs: score + combo meter),
  *                 RunOverPanel (centre: death / victory + stats, the score breakdown in scored runs), InfoPanel
  *                 (bottom right: info, verdict, debug line), ToastPanel (top centre: M2 progression toasts and the
- *                 curse shrine hint), DraftOverlay (centre: the M2 boon draft's cards); the first-run tutorial's
+ *                 curse shrine hint), DraftOverlay (centre: the M2 boon draft's cards), SpectateBar (bottom centre,
+ *                 co-op: who a dead player watches, the switch hint); the first-run tutorial's
  *                 TutorialPanel (lower centre: prompt, progress, pause hint) and ObjectiveCard (centre), and its
  *                 highlight ring on the taught element (tutorial slice `highlight`) and the ghost half heart
  *   KV_GameMenu   PauseOverlay (solo: paused; co-op: the non-pausing party overlay; both with Leave run; a tutorial
@@ -73,6 +75,7 @@ export function GameHud() {
 						<InfoPanel key="Info" />
 						<ToastPanel key="Toasts" />
 						<DraftOverlay key="Draft" />
+						<SpectateBar key="Spectate" />
 						<TutorialPanel key="TutorialPanel" />
 						<ObjectiveCard key="ObjectiveCard" />
 					</>

@@ -2,9 +2,11 @@ import { Controller, OnStart } from "@flamework/core";
 import { RunService, Workspace } from "@rbxts/services";
 import { CAMERA_PITCH_DEG, CAMERA_YAW_DEG, PIXELS_PER_TILE, STUDS_PER_TILE, VIEW_TILES_HIGH } from "shared/config";
 import { playerAt } from "shared/sim";
+import { clientStore, selectJuice } from "client/store";
 import {
 	GAME_CAMERA,
 	RENDER_ORDER,
+	SPECTATE,
 	cameraPosition,
 	degToRad,
 	distanceForFov,
@@ -17,6 +19,7 @@ import {
 	studsZ,
 	type Vec3,
 } from "shared/view";
+import { motionScale } from "shared/view/fx";
 import { FreezeFrameController } from "../fx/FreezeFrameController";
 import { isSpikeEnabled } from "../spikes";
 import { SimController } from "./SimController";
@@ -29,10 +32,18 @@ const RENDER_STEP = "KV_GameCamera";
  * following the player's INTERPOLATED sim position with exponential damping and snapping to the render-texel grid
  * (web IsoCamera). Snaps straight to the player at every run start. Stands down while spike B runs (KV_SpikeCamera).
  * The freeze frame's 1-render-pixel nudge (boss phase / death; off under reduced motion) is added after the snap.
+ *
+ * Co-op spectating (docs/SPECTATE.md): it follows SimController.getViewPlayerIndex(). When that index changes the
+ * camera snaps to the new player if they are farther than SPECTATE.snapBeyondTiles from the focus or under reduced
+ * motion, else glides there (damping SPECTATE.glideTauSec) for SPECTATE.glideSettleSec, then follows as usual.
  */
 @Controller({})
 export class CameraController implements OnStart {
 	private focus: Vec3 | undefined;
+	/** The player index the camera followed last frame (undefined: none yet this run / floor). */
+	private viewIndex: number | undefined;
+	/** Seconds left of a spectate switch's glide to the newly watched player (0: none running). */
+	private glideLeft = 0;
 
 	constructor(private readonly sim: SimController, private readonly freeze: FreezeFrameController) {}
 
@@ -43,13 +54,9 @@ export class CameraController implements OnStart {
 		const right = new Vector3(basis.right[0], basis.right[1], basis.right[2]);
 		const up = new Vector3(basis.up[0], basis.up[1], basis.up[2]);
 
-		this.sim.onRunStarted(() => {
-			this.focus = undefined; // snap on the next frame
-		});
+		this.sim.onRunStarted(() => this.snapNext()); // snap on the next frame
 		// Endless mode: the player arrives at the next floor's entrance; snap there instead of gliding across.
-		this.sim.onFloorChanged(() => {
-			this.focus = undefined;
-		});
+		this.sim.onFloorChanged(() => this.snapNext());
 
 		RunService.BindToRenderStep(
 			RENDER_STEP,
@@ -60,16 +67,25 @@ export class CameraController implements OnStart {
 				const state = this.sim.getState();
 				if (camera === undefined || state === undefined) return;
 				const dt = math.min(math.max(rawDt, 0), GAME_CAMERA.maxFollowDtSec);
-				const p = playerAt(state, this.sim.getLocalPlayerIndex()); // co-op: follow this client's player
+				// Co-op: this client's player, or the teammate it watches while spectating.
+				const index = this.sim.getViewPlayerIndex();
+				const p = playerAt(state, index);
 				const alpha = this.sim.getAlpha();
 				const tx = studsX(lerp(p.prevX, p.x, alpha));
 				const tz = studsZ(lerp(p.prevZ, p.z, alpha));
 				const y = floorStudsY();
+				if (index !== this.viewIndex) {
+					if (this.viewIndex !== undefined) this.startSwitch(tx, tz);
+					this.viewIndex = index;
+				}
 				let focus = this.focus;
 				if (focus === undefined) {
 					focus = [tx, y, tz];
+					this.glideLeft = 0;
 				} else {
-					const a = followAlpha(dt, GAME_CAMERA.followTauSec);
+					const tau = this.glideLeft > 0 ? SPECTATE.glideTauSec : GAME_CAMERA.followTauSec;
+					this.glideLeft = math.max(this.glideLeft - dt, 0);
+					const a = followAlpha(dt, tau);
 					focus = [focus[0] + (tx - focus[0]) * a, y, focus[2] + (tz - focus[2]) * a];
 				}
 				this.focus = focus;
@@ -92,4 +108,31 @@ export class CameraController implements OnStart {
 			},
 		);
 	}
+
+	/** Run start / floor change: snap to the followed player on the next frame, no glide. */
+	private snapNext(): void {
+		this.focus = undefined;
+		this.viewIndex = undefined;
+		this.glideLeft = 0;
+	}
+
+	/** The followed player changed (spectating): snap when far or under reduced motion, else glide to (tx, tz) studs. */
+	private startSwitch(tx: number, tz: number): void {
+		const focus = this.focus;
+		if (focus === undefined) return; // snapping anyway
+		const far = distanceTiles(focus, tx, tz) > SPECTATE.snapBeyondTiles;
+		if (far || motionScale(selectJuice(clientStore.getState())) <= 0) {
+			this.focus = undefined;
+			this.glideLeft = 0;
+		} else {
+			this.glideLeft = SPECTATE.glideSettleSec;
+		}
+	}
+}
+
+/** Floor-plane distance from a camera focus (studs) to (tx, tz) studs, in tiles. */
+function distanceTiles(focus: Vec3, tx: number, tz: number): number {
+	const dx = tx - focus[0];
+	const dz = tz - focus[2];
+	return math.sqrt(dx * dx + dz * dz) / STUDS_PER_TILE;
 }

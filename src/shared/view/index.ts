@@ -8,6 +8,8 @@
  *   tileMerge.ts  greedy rectangle meshing of the dungeon grid (few Parts per floor)
  *   markings.ts   telegraph / weapon arc / seal geometry as line segments, dash layout
  *   party.ts      co-op presentation rules (teammates' bullets faded in large parties)
+ *   spectate.ts   co-op spectating (docs/SPECTATE.md): whose player the views follow after the local player died, the
+ *                 switch command, SpectateTracker (tunables: SPECTATE in spectateConfig.ts)
  *   floorTexture.ts  world-anchored Texture offsets so merged floor slabs show one continuous pattern
  *   sprites.ts    sprite renderer logic: world facing -> screen facing, animation + frame from sim state, billboard
  *   breakables.ts breakable barrels / crates on screen: the frame diff, hit blink / shake, placement, debris, aim clip
@@ -27,6 +29,8 @@ export * from "./space";
 export * from "./tileMerge";
 export * from "./markings";
 export * from "./party";
+export * from "./spectateConfig";
+export * from "./spectate";
 export * from "./sprites";
 export * from "./floorTexture";
 export * from "./breakablesConfig";

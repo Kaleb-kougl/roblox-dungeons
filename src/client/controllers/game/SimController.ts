@@ -5,6 +5,7 @@ import { clientStore, type RunInfo, type VerdictView } from "client/store";
 import type { PartyRunStart, RunFinishVerdict, RunVerdict } from "shared/network";
 import { CoopMenuInputGate, LockstepClient } from "shared/lockstep";
 import {
+	ALL_DEBUG_BUTTONS,
 	DEFAULT_RUN_SEED,
 	HUD_SNAPSHOT_INTERVAL_SEC,
 	LiveRun,
@@ -40,6 +41,7 @@ import {
 } from "shared/run";
 import {
 	EMPTY_INPUT,
+	copyInput,
 	isDraftOpen,
 	partySize,
 	playerAt,
@@ -50,7 +52,7 @@ import {
 } from "shared/sim";
 import { TUTORIAL } from "shared/config";
 import { BIOMES, type ThemePack } from "shared/theme";
-import { RENDER_ORDER } from "shared/view";
+import { RENDER_ORDER, SpectateTracker, spectateCommand, type SpectateView } from "shared/view";
 import { HitstopClock, simPacerFor, type FrameAdvance, type FramePacer } from "shared/view/fx";
 import { PROGRESSION_VIEW, toastFor } from "shared/view/hud";
 import { afterRobloxMenuClosed, lobbyStartAccepted, restartForfeits } from "shared/view/menu";
@@ -85,6 +87,13 @@ export interface RunContext {
 	readonly coop: LockstepClient | undefined;
 	/** This client's player index (0 solo; co-op: its place in the party). */
 	readonly localIndex: number;
+	/**
+	 * Co-op spectating (docs/SPECTATE.md): whose player the views follow once this client's player died; undefined
+	 * in a solo run and the tutorial (they never spectate).
+	 */
+	readonly spectate: SpectateTracker | undefined;
+	/** Co-op: each member's display name in player index order (the spectate bar); empty in a solo run. */
+	readonly memberNames: ReadonlyArray<string>;
 	readonly seed: number;
 	/** The world registry kind (shared/run worlds.ts). */
 	readonly world: RunWorldKind;
@@ -146,6 +155,14 @@ function placeKeyFor(pack: ThemePack, dungeon: Dungeon | undefined): string {
 	if (dungeon === undefined) return "";
 	const biome = BIOMES.find((b) => b.forgeTheme === dungeon.params.themeKey);
 	return biome !== undefined ? pack.biome(biome.id).nameKey : "";
+}
+
+/**
+ * A party member's name for the spectate bar: the Player's DisplayName, or `#<userId>` (the lobby's fallback,
+ * client/ui/menu useNameOf) for a member already gone from the server (never watched: left players are no candidates).
+ */
+function memberName(userId: number): string {
+	return Players.GetPlayerByUserId(userId)?.DisplayName ?? `#${userId}`;
 }
 
 /** The floor's biome as 1..5 (theme BIOMES order), 0 without a floor. */
@@ -248,6 +265,14 @@ export class SimController implements OnStart {
 
 	/** Co-op: neutral input while a menu owns the controls (a party run never pauses under one). */
 	private readonly coopMenuGate = new CoopMenuInputGate();
+	/**
+	 * Co-op spectating: the raw sampled input of this frame and the last (copied before the menu gate rewrites the
+	 * sampled frame in place), for the switch command's rising edges (spectateCommand).
+	 */
+	private readonly spectateRaw = { ...EMPTY_INPUT };
+	private readonly spectatePrevRaw = { ...EMPTY_INPUT };
+	/** The co-op run's spectate view after the last frame (undefined before its first frame and outside co-op). */
+	private spectateView: SpectateView | undefined;
 	/** The Roblox menu is open (GuiService.MenuOpened / MenuClosed). */
 	private robloxMenuOpen = false;
 	/** The finished tutorial run is frozen on screen (no ticks) until the next run starts. */
@@ -337,6 +362,21 @@ export class SimController implements OnStart {
 	/** This client's player index in the run (co-op: its place in the party; 0 solo). */
 	getLocalPlayerIndex(): number {
 		return this.ctx?.localIndex ?? 0;
+	}
+
+	/**
+	 * The player index the views follow (camera, weapon visuals, bullet transparency, ring colour, the audio split,
+	 * the HUD's vitals): the watched teammate while this client spectates (docs/SPECTATE.md), else the local index.
+	 */
+	getViewPlayerIndex(): number {
+		const ctx = this.ctx;
+		if (ctx?.spectate === undefined) return this.getLocalPlayerIndex();
+		return this.spectateView?.viewIndex ?? ctx.localIndex;
+	}
+
+	/** Co-op spectating: the spectate view after the last frame; undefined outside a co-op run or before its first frame. */
+	getSpectateView(): SpectateView | undefined {
+		return this.ctx?.spectate !== undefined ? this.spectateView : undefined;
 	}
 
 	/** The buttons of the input sampled for the last frame (the tutorial director's FIRE edge). */
@@ -664,11 +704,16 @@ export class SimController implements OnStart {
 		this.hudTimer = 0;
 		this.hitstop.clear();
 		const floor = client.state.endless?.floor ?? 0;
+		const spectate = new SpectateTracker(localIndex); // a fresh session: the local player, no hold
+		this.spectateView = undefined;
+		copyInput(EMPTY_INPUT, this.spectatePrevRaw);
 		const ctx: RunContext = {
 			run: client,
 			live: undefined,
 			coop: client,
 			localIndex,
+			spectate,
+			memberNames: start.members.map((id) => memberName(id)),
 			seed: start.seed,
 			world: start.worldKind,
 			atBossDoor: false,
@@ -699,10 +744,23 @@ export class SimController implements OnStart {
 		const me = playerAt(coop.state, ctx.localIndex);
 		// A menu over the run (party overlay, Options, a rebind capture, leaderboards, the Roblox menu): the pad and
 		// keys drive the menu, never the character (solo pauses instead).
-		const input = this.coopMenuGate.apply(
-			this.inputController.sample(me.x, me.z, this.input),
-			this.inputController.menuOwnsInput() || this.robloxMenuOpen,
-		);
+		const menuOpen = this.inputController.menuOwnsInput() || this.robloxMenuOpen;
+		const sampled = this.inputController.sample(me.x, me.z, this.input);
+		// Co-op spectating (docs/SPECTATE.md): the switch press comes from the raw buttons (the gate below rewrites the
+		// sampled frame in place), never while a menu owns the controls or from a click that began on a HUD button
+		// (the pause button's mouse-down comes before the overlay it opens).
+		const raw = copyInput(sampled, this.spectateRaw);
+		const guiClick = this.inputController.mousePressOnGui();
+		const cmd = menuOpen || guiClick ? undefined : spectateCommand(this.spectatePrevRaw, raw);
+		copyInput(raw, this.spectatePrevRaw);
+		// Dead (spectating, or the hold on the own corpse): neutral input like under a menu, so Attack / Alt switch the
+		// view instead of reaching the sim (a dead player's input never acts anyway), and the buttons held at the
+		// floor change's revive stay masked until released. The debug bits (K / J / the floor skip N, present only
+		// when debug keys are on: InputController masks them otherwise) still go through outside a menu, so a dead
+		// player can skip the floor in a KV_Debug session.
+		const dead = me.dead !== 0;
+		const input = this.coopMenuGate.apply(sampled, menuOpen || dead);
+		if (dead && !menuOpen) input.buttons = bit32.band(raw.buttons, ALL_DEBUG_BUTTONS);
 		const res = coop.pump(dt, () => input);
 		const runId = coop.runId;
 		for (const b of res.inputs) Events.lockstepInput.fire(runId, b.firstTick, b.data);
@@ -728,19 +786,33 @@ export class SimController implements OnStart {
 		}
 		const floor = coop.state.endless?.floor;
 		if (floor !== undefined && floor !== ctx.floor) this.changeFloor(ctx, floor);
+		// After the step (and the floor change's reset): whose player the views follow this frame.
+		const viewBefore = this.spectateView?.viewIndex;
+		const activeBefore = this.spectateView?.active === true;
+		const view = ctx.spectate?.update(coop.state, dt, cmd);
+		this.spectateView = view;
+		const spectateChanged = view !== undefined && (view.viewIndex !== viewBefore || view.active !== activeBefore);
 		// M2 progression: the local player's toasts; while any draft is open (the world frozen until every player
 		// confirmed) the overlay follows the stick and the "waiting for N teammates" line every frame.
 		this.pushToasts(coop);
 		this.hudTimer += math.max(dt, 0);
-		if (coop.runEvents.size() > 0 || isDraftOpen(coop.state)) this.hudTimer = HUD_SNAPSHOT_INTERVAL_SEC;
+		if (coop.runEvents.size() > 0 || isDraftOpen(coop.state) || spectateChanged) {
+			this.hudTimer = HUD_SNAPSHOT_INTERVAL_SEC;
+		}
 		if (this.hudTimer >= HUD_SNAPSHOT_INTERVAL_SEC) {
 			this.hudTimer = 0;
 			clientStore.setSnapshot(this.coopSnapshot(coop));
 		}
 	}
 
+	/** The co-op HUD snapshot: this client's own items, the vitals and spectate bar of the player the views follow. */
 	private coopSnapshot(coop: LockstepClient) {
 		const over = coop.isOver();
+		const ctx = this.ctx;
+		const view = ctx !== undefined && ctx.coop === coop ? this.getSpectateView() : undefined;
+		// The spectate bar only while the run goes on: after a wipe or a server-ended run the tracker still watches the
+		// last player (the camera and vitals stay there) but the run-over panel takes over.
+		const watched = view !== undefined && view.active && !over ? view.viewIndex : undefined;
 		return takeSnapshot(coop.state, {
 			paused: false,
 			outcome: over ? "dead" : "playing",
@@ -749,6 +821,11 @@ export class SimController implements OnStart {
 			hitsTaken: coop.hitsTaken,
 			endTick: coop.state.tick,
 			playerIndex: coop.localIndex,
+			vitalsIndex: view?.viewIndex,
+			spectate:
+				view !== undefined && watched !== undefined
+					? { name: ctx?.memberNames[watched] ?? "", position: view.position, count: view.count }
+					: undefined,
 			config: coop.config,
 		});
 	}
@@ -851,6 +928,8 @@ export class SimController implements OnStart {
 			live: run,
 			coop: undefined,
 			localIndex: 0,
+			spectate: undefined,
+			memberNames: [],
 			seed,
 			world,
 			atBossDoor,
@@ -900,6 +979,7 @@ export class SimController implements OnStart {
 		if (endlessFloor === undefined) return;
 		const w = endlessFloor(floor);
 		const moved: RunContext = { ...ctx, floor, config: w.config, dungeon: w.dungeon };
+		moved.spectate?.reset(); // everyone dead and still here comes back at the entrance
 		this.ctx = moved;
 		clientStore.changeFloor(this.runInfo(this.theme.getPack(), moved, clientStore.getState().game.run.notice));
 		print(`[Sim] run ${moved.counter}: floor ${floor} (${w.dungeon.name}${w.bossFloor ? ", boss floor" : ""})`);
