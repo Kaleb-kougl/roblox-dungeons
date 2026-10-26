@@ -20,6 +20,7 @@ Record every ported module in `PROVENANCE.md` (ported module, source path, sourc
 | `docs/SPIKES.md` | Task 1 spikes: how to run them in Studio and the recorded results |
 | `docs/ART.md` | Vertical-slice art: packs, licences, contract v2, atlas pipeline, renderer, status |
 | `docs/TUTORIAL.md` | First-run tutorial ("Practice Descent"): plan, as-built notes, tasks T1-T8, owner decisions |
+| `docs/OUTLINE.md` | Enemy outlines: plan, as-built notes, tasks O1-O7, decisions E1-E6 |
 
 Decision log (deviations from `PLAN.md`):
 - **Art (docs/ART.md).** The theme contract gained a `"sprites"` kind (large pre-rendered cells, 1/4/8/16 screen-space
@@ -80,6 +81,12 @@ Decision log (deviations from `PLAN.md`):
   `KV_Scoring` M1 run's state hashes differ from older builds (no fixture is scored); endless replays and scores
   changed. Mother Bramble's slam rule is nearly dormant: boss rooms get no pieces, so it only reaches one in a room
   that touches the boss room (1 of 240 boss floors, run seeds 1-60 x floors 5-20).
+- **Enemy outlines (docs/OUTLINE.md).** Presentation only (no sim, hash or replay change). A new colour role
+  `enemyOutline` (validated >= 3:1 on every biome floor and wall, CIE76 >= 40 from the enemy-bullet roles). Placeholder
+  enemies and bosses sit under `KV_Actors/Enemies`, a Model with ONE `Highlight` (never one per actor: the engine
+  draws at most 31); corpses move to `KV_Actors/Corpses`. Sprite enemies draw a baked `<sheet>-outline.png` (from
+  `art/atlases.json` `outline`) in a second ImageLabel behind the frame. The skeleton's `pad` went 1 -> 3 (cells 98x74),
+  so its old upload ids were removed from `assetIds.ts`: it draws as a placeholder until re-uploaded.
 
 ## Commands
 
@@ -92,6 +99,7 @@ npm run dev         # rbxtsc -w + rojo serve
 npm run build:place # publishable place: build/kaleb-vale.rbxl from publish.project.json (no specs, fixtures or Jest)
 npm run test:plugin # Studio test-runner plugin (same specs under real @rbxts/jest in Studio)
 npm run art:build   # art/vendor -> art/build atlases + packs/vale/layout.ts (art:lock rewrites art/vendor.lock.json)
+npm run test:art    # node:test specs of the atlas pipeline (scripts/art/*.test.js; part of verify)
 ```
 
 Tools come from `rokit.toml` (`rokit install`): rojo 7.7.0, lune 0.11.0.

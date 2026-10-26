@@ -161,8 +161,11 @@ describe("vale pack", () => {
 		const halfSet = new ThemePack(half, { warn: quiet }).sprites("enemy.swarmer")!;
 		expect(halfSet.frame("move", 0, 0).outlineImage).toBe(fakeIds()["swarmer-move-outline.png"]);
 		expect(halfSet.frame("death", 0, 0).outlineImage).toBe(undefined);
-		// an outline alone never switches a set on
-		const outlinesOnly = buildValeManifest(fakeIds("swarmer-move.png"));
+		// outline sheets alone never switch a set on: both outlines uploaded, neither atlas
+		const outlinesOnlyIds = fakeIds("swarmer-move.png", "swarmer-death.png");
+		expect(outlinesOnlyIds["swarmer-move-outline.png"]).never.toBe(undefined);
+		expect(outlinesOnlyIds["swarmer-death-outline.png"]).never.toBe(undefined);
+		const outlinesOnly = buildValeManifest(outlinesOnlyIds);
 		expect(outlinesOnly.assets["enemy.swarmer"]).toEqual({ kind: "placeholder" });
 	});
 
