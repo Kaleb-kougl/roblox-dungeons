@@ -8,6 +8,8 @@
  *   art/vendor/**           (gitignored)          the raw packs (art/README.md says where to get them)
  *
  *   -> art/build/audio/<file>.ogg                   one file per clip, to upload (Roblox audio: private assets)
+ *   -> art/upload/<file>.ogg                        the same files, flat, next to art:build's PNGs: one folder holds
+ *                                                   every asset to upload, for one Bulk Import
  *   -> src/shared/theme/packs/vale/audioLayout.ts   generated (committed): per sound ID its built files (the clip
  *                                                   pool: first file = assetId, the rest = variants), volume, pitch,
  *                                                   minInterval; per file its length, sample rate and channels
@@ -22,7 +24,8 @@
  * Deterministic: same inputs and the same ffmpeg build -> byte-identical outputs (sorted iteration, measured values
  * printed at fixed precision, `-map_metadata -1`, `-fflags +bitexact`, `-flags:a +bitexact`, one thread, no
  * timestamps; the OGG stream serial is fixed by +bitexact). The layout module holds no encoder bytes, so it only
- * changes when the config (or a clip's length) does. Stale .ogg files in art/build/audio are removed.
+ * changes when the config (or a clip's length) does. Stale .ogg files in art/build/audio and art/upload are removed
+ * (only .ogg: art:build owns the PNGs in art/upload).
  *
  * Hard checks that fail the build (Roblox audio upload limits, config `limits`): every output under 20 MB, under
  * 7 minutes, sample rate <= 48 kHz. The log ends with an ebur128 loudness summary per category; a file outside its
@@ -46,6 +49,10 @@ const VENDOR = path.join(ART, "vendor");
 const CONFIG_FILE = path.join(ART, "audio.json");
 const LOCK_FILE = path.join(ART, "audio.lock.json");
 const BUILD = path.join(ART, "build", "audio");
+/** The flat upload folder art:build also fills (its PNGs; this pipeline only touches .ogg files there). */
+const UPLOAD = path.join(ART, "upload");
+/** Where the uploaded IDs live (keyed by built file name). */
+const ASSET_IDS_FILE = path.join(ROOT, "src", "shared", "theme", "packs", "vale", "assetIds.ts");
 const AUDITION_FILE = path.join(ART, "audio-audition.html");
 const LAYOUT_FILE = path.join(ROOT, "src", "shared", "theme", "packs", "vale", "audioLayout.ts");
 
@@ -464,14 +471,37 @@ function loudnessSummary(config, results) {
 	return flagged;
 }
 
-function removeStale(keep) {
-	if (!fs.existsSync(BUILD)) return;
-	for (const entry of fs.readdirSync(BUILD, { withFileTypes: true })) {
+function removeStale(keep, dir = BUILD) {
+	if (!fs.existsSync(dir)) return;
+	for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
 		if (entry.isFile() && entry.name.endsWith(".ogg") && !keep.has(entry.name)) {
-			fs.unlinkSync(path.join(BUILD, entry.name));
-			console.log(`audio:build: removed stale ${path.relative(ROOT, path.join(BUILD, entry.name))}`);
+			fs.unlinkSync(path.join(dir, entry.name));
+			console.log(`audio:build: removed stale ${path.relative(ROOT, path.join(dir, entry.name))}`);
 		}
 	}
+}
+
+/** Copies every built .ogg into art/upload/ (flat, beside art:build's PNGs); returns how many changed. */
+function copyToUpload(keep) {
+	fs.mkdirSync(UPLOAD, { recursive: true });
+	let changed = 0;
+	for (const name of [...keep].sort()) {
+		const bytes = fs.readFileSync(path.join(BUILD, name));
+		const dest = path.join(UPLOAD, name);
+		if (fs.existsSync(dest) && fs.readFileSync(dest).equals(bytes)) continue;
+		fs.writeFileSync(dest, bytes);
+		changed++;
+	}
+	removeStale(keep, UPLOAD);
+	return changed;
+}
+
+/** The .ogg file names packs/vale/assetIds.ts already has IDs for. */
+function uploadedFiles() {
+	const out = new Set();
+	if (!fs.existsSync(ASSET_IDS_FILE)) return out;
+	for (const m of fs.readFileSync(ASSET_IDS_FILE, "utf8").matchAll(/"([^"]+\.ogg)"\s*:\s*"rbxassetid:\/\/\d+"/g)) out.add(m[1]);
+	return out;
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -594,6 +624,7 @@ function build() {
 	const problems = [];
 	for (const r of results) checkLimits(config, r, problems);
 	if (problems.length > 0) fail(`Roblox upload limits exceeded:\n  ${problems.join("\n  ")}`);
+	const uploadChanged = copyToUpload(keep);
 	const layoutChanged = writeIfChanged(LAYOUT_FILE, layoutModule(sounds, results));
 	const flagged = loudnessSummary(config, results);
 	const total = results.reduce((a, r) => a + r.info.bytes, 0);
@@ -604,6 +635,12 @@ function build() {
 			`${sounds.length - silent.length} sound ID(s) (${silent.length} silent: ${silent.join(", ") || "none"}), ` +
 			`${flagged} outside their loudness window, layout ${layoutChanged ? "updated" : "unchanged"}`,
 	);
+	const uploaded = uploadedFiles();
+	const pending = [...keep].sort().filter((f) => !uploaded.has(f));
+	console.log(
+		`audio:build: art/upload/ holds ${keep.size} OGG(s) (${uploadChanged} updated); ${pending.length} still need an ID in packs/vale/assetIds.ts${pending.length > 0 ? ":" : ""}`,
+	);
+	for (const f of pending) console.log(`  ${f}`);
 }
 
 // ---------------------------------------------------------------------------------------------

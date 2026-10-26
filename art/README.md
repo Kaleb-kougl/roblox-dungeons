@@ -19,7 +19,7 @@ run when a file is missing or different.
 
 `npm run art:build` (see `scripts/art/build-atlases.js`): reads `art/atlases.json`, writes `art/build/*.png` (the
 atlases), `art/build/contact/*.png` (to check by eye; `decor.<piece>.png` for the world art, with its outline in cyan
-and glow point in yellow) and `art/upload/*.png` (exactly the PNGs to upload, in one flat folder), regenerates the
+and glow point in yellow) and `art/upload/*.png` (exactly the PNGs to upload, in one flat folder; `audio:build` adds its `.ogg` files there), regenerates the
 layout module in `src/shared/theme/packs/vale/`, and ends by listing the files `assetIds.ts` has no ID for yet. Same
 inputs, byte-identical outputs; files no longer built are removed from all three folders.
 
@@ -66,8 +66,10 @@ ffmpeg and ffprobe must be on the PATH (`brew install ffmpeg`).
 
 ### Uploading audio
 
-1. Upload every `art/build/audio/*.ogg` **as the experience's owner** (the user or group that owns the place), in
-   Studio's Asset Manager (Bulk Import) or the Creator Hub. Audio uploads are **private**: only the uploader's
+1. `npm run audio:build` also copies every `.ogg` into `art/upload/`, next to `art:build`'s PNGs, and ends by listing
+   the files `assetIds.ts` has no ID for yet. So after both builds, `art/upload/` is one flat folder holding every
+   image and sound to upload: select it all in one Bulk Import. Upload **as the experience's owner** (the user or
+   group that owns the place), in Studio's Asset Manager (Bulk Import) or the Creator Hub. Audio uploads are **private**: only the uploader's
    experiences can play them, so uploading as someone else means granting the experience permission to each asset
    (Creator Hub > the asset > Permissions). Then wait for moderation.
 2. Mind the limit: 100 audio uploads per 30 days on an unverified account, 2,000 with a verified ID. One build is
