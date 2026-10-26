@@ -1,6 +1,7 @@
 /**
  * Barrel for the game's renderers (task 8): pooled, interpolated placeholder views of the sim (bullets, actors and the
- * player, weapon arcs, telegraphs and the arena seal, run markers, the tutorial's world marker), plus their Part helpers.
+ * player, weapon arcs, telegraphs and the arena seal, run markers, the tutorial's world marker, breakable barrels and
+ * crates), plus their Part helpers.
  */
 export * from "./placeholders";
 export * from "./SpriteView";
@@ -12,3 +13,4 @@ export * from "./WeaponViewController";
 export * from "./TelegraphController";
 export * from "./RunMarkerController";
 export * from "./TutorialMarkerController";
+export * from "./BreakableRenderController";

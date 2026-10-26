@@ -3,8 +3,8 @@ import { Janitor } from "@rbxts/janitor";
 import { RunService, Workspace } from "@rbxts/services";
 import { CAMERA_PITCH_DEG } from "shared/config";
 import { archetypeAt, archetypeIds } from "shared/sim";
-import type { ColorRole } from "shared/theme";
-import { RENDER_ORDER, degToRad, floorStudsY, studsX, studsZ } from "shared/view";
+import { BREAKABLE_KINDS, type ColorRole } from "shared/theme";
+import { BREAKABLE_VIEW, RENDER_ORDER, degToRad, floorStudsY, studsX, studsZ } from "shared/view";
 import {
 	DeathParticleSystem,
 	FX_VIEW,
@@ -13,6 +13,7 @@ import {
 	PARTICLE_QUAD_CAPACITY,
 	burstSeed,
 	particleColorRole,
+	type ChipBurst,
 	type ParticleWriter,
 } from "shared/view/fx";
 import { SimController } from "../game/SimController";
@@ -49,6 +50,10 @@ interface ParticlePart {
  *   'hit'           2-3 tiny sparks (normal / high only; never displaces death particles)
  *   'reset'         drop everything
  *
+ * Breakables (docs/DECOR.md D4; called by BreakableRenderController, not tracker events): `breakableChips` (a piece
+ * broke: chips in its `breakable.<kind>` role, appended to the palette after the archetypes, + sparks;
+ * BREAKABLE_VIEW.chips) and `breakableHitSparks` (a piece was hit: the same tiny sparks as an actor hit).
+ *
  * Budget: at most particleBudget(settings) live particles (128 / 320 / 512; one level lower under reducedMotion) plus
  * the ring dots, PARTICLE_QUAD_CAPACITY parts at most; the pool grows lazily and never shrinks (unused parts parked).
  * Time: real frame time (clamped to FX_VIEW.maxParticleDt) x the hitstop clock's time scale (0 frozen, the slow-mo
@@ -61,6 +66,9 @@ export class ParticleController implements OnStart, ParticleWriter {
 	private readonly parts = new Array<ParticlePart>();
 	private readonly palette = new Array<Color3>();
 	private readonly kindScale = new Array<number>();
+	/** Palette index of BREAKABLE_KINDS[0]'s colour; chip bursts per kind (BREAKABLE_VIEW.chips). */
+	private breakableBase = PAL_SPARK;
+	private readonly chipBursts = new Array<ChipBurst>();
 	private readonly moveParts = new Array<BasePart>();
 	private readonly moveCFrames = new Array<CFrame>();
 	private folder: Folder | undefined;
@@ -85,6 +93,20 @@ export class ParticleController implements OnStart, ParticleWriter {
 			const data = archetypeAt(k).data;
 			this.kindScale.push(data.spriteScale ?? 1);
 			this.palette.push(pack.color(particleColorRole(data)));
+		}
+		this.breakableBase = this.palette.size();
+		const v = BREAKABLE_VIEW;
+		for (let k = 0; k < BREAKABLE_KINDS.size(); k++) {
+			this.palette.push(pack.breakable(BREAKABLE_KINDS[k]).color);
+			const c = v.chips[k] ?? v.chips[0];
+			this.chipBursts.push({
+				chunks: c.chunks,
+				bits: c.bits,
+				sparks: c.sparks,
+				startPx: v.chipStartPx,
+				radius: v.chipRadiusTiles,
+				speed: v.chipSpeed,
+			});
 		}
 
 		this.fx.onEvent((e, settings) => {
@@ -127,6 +149,18 @@ export class ParticleController implements OnStart, ParticleWriter {
 			(dt) => this.frame(dt),
 		);
 		this.janitor.Add(() => RunService.UnbindFromRenderStep(RENDER_STEP), true);
+	}
+
+	/** A breakable piece of `kind` (BreakableKind index) broke at sim (x, z): its chip burst. */
+	breakableChips(x: number, z: number, kind: number, seed: number): void {
+		const burst = this.chipBursts[kind];
+		if (burst === undefined) return;
+		this.system.chips(x, z, this.breakableBase + kind, burst, seed, this.fx.settings());
+	}
+
+	/** A breakable piece was hit at sim (x, z) (a stopped bullet, a swing): the hit sparks. */
+	breakableHitSparks(x: number, z: number, seed: number): void {
+		this.system.hit(x, z, false, seed, this.fx.settings());
 	}
 
 	private frame(rawDt: number): void {

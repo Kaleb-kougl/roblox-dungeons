@@ -248,4 +248,24 @@ describe("actorFxMarkings", () => {
 		a.aiTicks = -5; // age 25: past showTicks
 		expect(actorFxMarkings(new Collect(), new Collect(), a, wave, 0, 0, 0)).toBe(false);
 	});
+
+	it("an aim clip shortens the aim line (an intact breakable in the way)", () => {
+		const a = createFreeActor();
+		a.kind = 0;
+		a.alive = 1;
+		a.aiState = AiState.TELEGRAPH;
+		a.aiTicks = 30;
+		a.v[3] = 1;
+		a.v[4] = 0;
+		a.v[5] = 6;
+		const fx = { aimLine: { dirX: 3, dirZ: 4, lenSlot: 5, boldTicks: 10 } };
+		const dim = new Collect();
+		const asked = new Array<number>();
+		actorFxMarkings(new Collect(), dim, a, fx, 2, 1, 0, (x, z, dx, dz, len) => {
+			asked.push(x, z, dx, dz, len);
+			return 2.5;
+		});
+		expect(asked).toEqual([2, 1, 1, 0, 6]);
+		expect(dim.segs).toEqual([[2, 1, 4.5, 1]]);
+	});
 });

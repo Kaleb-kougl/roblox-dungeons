@@ -647,6 +647,21 @@ interface BurstSpec {
 }
 
 /**
+ * A breaking barrel / crate's wood chips (Roblox port, docs/DECOR.md D4; shared/view BREAKABLE_VIEW holds the game's
+ * numbers): counts at the `normal` level (scaled by LEVEL_SCALE like every burst), the start height (render px above
+ * the floor), spawn spread (world units) and a speed multiplier. Chunks and bits take the piece's colour, sparks
+ * uiText / particleSpark. No ring.
+ */
+export interface ChipBurst {
+	readonly chunks: number;
+	readonly bits: number;
+	readonly sparks: number;
+	readonly startPx: number;
+	readonly radius: number;
+	readonly speed: number;
+}
+
+/**
  * Bursts from FX events, stepped and drawn every frame. Settings are passed in on every call (the live settings), so
  * a change applies to the next burst.
  */
@@ -757,6 +772,38 @@ export class DeathParticleSystem {
 		s.radius = BOSS_SPAWN_RADIUS;
 		this.burst(s, settings);
 		this.ring(x, z, ROAR_RING_R1, BOSS_RING_LIFE, PAL_BOSS, settings, BIG_RING_SEGMENTS);
+	}
+
+	/**
+	 * A breakable piece broke at (x, z): a radial burst of `burst` (counts x the particle level; nothing when particles
+	 * are off) in palette colour `color` (the piece's role). Recycles like a kill burst.
+	 */
+	chips(
+		x: number,
+		z: number,
+		color: number,
+		burst: Readonly<ChipBurst>,
+		seed: number,
+		settings: Readonly<JuiceSettings>,
+	): void {
+		const m = LEVEL_SCALE[effectiveParticles(settings)];
+		if (m <= 0) return;
+		this.rng.seed(seed);
+		const s = this.spec;
+		s.x = x;
+		s.z = z;
+		s.chunks = math.round(burst.chunks * m);
+		s.body = math.round(burst.bits * m);
+		s.sparks = math.round(burst.sparks * m);
+		if (s.chunks + s.body + s.sparks <= 0) return;
+		s.bodyColor = color;
+		s.sparkColorA = PAL_WHITE;
+		s.sparkColorB = PAL_SPARK;
+		s.speed = burst.speed;
+		s.startH = burst.startPx;
+		s.big = BIG_BIT_CHANCE;
+		s.radius = burst.radius;
+		this.burst(s, settings);
 	}
 
 	/** A few tiny sparks on a hit (HIT_SPARKS_ENABLED, normal / high only, never recycling death particles). */

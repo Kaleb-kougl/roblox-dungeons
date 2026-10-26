@@ -22,8 +22,9 @@ rebinding, audio, display). Everything presentation-side reads the sim and never
 | `SpriteView` | `.../render/SpriteView.ts` | One pooled sprite for a theme `sprites` set: a BillboardGui + ImageLabel on an invisible feet-anchor Part (moved in the actors' BulkMoveTo). Size / StudsOffset from `spriteBillboard` (pivot pixel on the feet), `ResampleMode` from the set, `LightInfluence` 0, not AlwaysOnTop; writes Image / ImageRect only when the frame, facing or sheet changes; tint (ImageColor3), fade (ImageTransparency) and blink (Visible) only on change. |
 | `WeaponViewController` | `.../render/WeaponViewController.ts` | Sword swing fans + sweeping blade, finisher wind-up, guard fan, bow charge ring + aim line, heavy-arrow release ring (dashed floor markings). |
 | `RunMarkerController` | `.../render/RunMarkerController.ts` | M2 (endless runs): a relic pedestal (Cylinder, `uiAccent`) on each TREASURE room's centre tile and the curse shrine's zone (flat disc, `uiMana`) in the SHRINE room; a taken pedestal / used shrine dims (`uiTextDim`). Rebuilt per floor. With the `ui.marker.pedestal` image, a camera-facing beam stands on each live pedestal (hidden once taken). |
+| `BreakableRenderController` | `.../render/BreakableRenderController.ts` | Endless runs: barrels and crates from `state.breakables` (placeholder box, sprite set or image), hit blink + shake, chips and debris on break. See "Breakables". |
 | `TutorialMarkerController` | `.../render/TutorialMarkerController.ts` | Tutorial runs only: one upright beam (a Neon Cylinder in `uiAccent`; plus a camera-facing `ui.marker.tutorial` billboard if the pack has that image) on the director's marker target (next lesson door, pedestal, shrine, stairwell, the live boss), bobbing / breathing by the juice `motionScale` (still under reduced motion), hidden without a target and once the tutorial ended. Built per tutorial run (Janitor). |
-| `TelegraphController` | `.../render/TelegraphController.ts` | Sniper aim lines, bruiser shockwave rings (archetype `data.fx`), a ring for any other wind-up, Mother Bramble's attack previews, slam lane, roar rings and the arena seal fence. |
+| `TelegraphController` | `.../render/TelegraphController.ts` | Sniper aim lines (cut at the first intact breakable), bruiser shockwave rings (archetype `data.fx`), a ring for any other wind-up, Mother Bramble's attack previews, slam lane, roar rings and the arena seal fence. |
 | `FxTrackerController` | `.../fx/FxTrackerController.ts` | Right after the sim (render step 102): the pure `HitTracker` diffs the live actors and dispatches the frame's FX events (hit, killed, spawned, capped, bossPhase, bossDefeated, reset) to the juice views and audio, with the effective juice settings. |
 | `FreezeFrameController` | `.../fx/FreezeFrameController.ts` | FX events -> hitstop requests on `SimController.hitstop` (kill 50 ms, heavy / elite 80 ms, boss phase 120 ms, boss death 250 ms + slow-mo); clears it when the setting goes off; the 1-render-pixel camera nudge (`getNudge()`, read by CameraController). |
 | `HealthBarController` | `.../fx/HealthBarController.ts` | Enemy health bars: one pooled BillboardGui per actor slot (64), plate / chip / fill or pips, elite outline. |
@@ -77,6 +78,34 @@ All sprite logic is pure and specced in `src/shared/view/sprites.ts`:
 - Tunables: `SPRITE_VIEW` (depth bias, reference speeds, loop rate clamp, hit / death stretch, anchor and ring sizes),
   `PROGRESSION_VIEW.pedestalBeamHeightTiles`.
 
+## Breakables (docs/DECOR.md D4, R13)
+
+`BreakableRenderController` (`src/client/controllers/render/`, render step `KV_Breakables` at Camera + 2) draws the
+endless floors' barrels and crates. Pure logic and tunables: `src/shared/view/breakables.ts` (spec next to it) and
+`BREAKABLE_VIEW` in `src/shared/view/breakablesConfig.ts`.
+
+- **What it reads, each frame:** `getContext().run.state.breakables` (no state: nothing drawn), the tick and alpha.
+  `BreakableTracker` diffs every piece's `hp` / `brokenTick` against its copy from the last frame, so a frame that
+  ran several ticks loses nothing (the sim's `hitSlots` / `brokenSlots` keep only the last tick and are not read). A
+  new layout (first frame, `onRunStarted`, `onFloorChanged`, the tick going back on a restart, a different piece list)
+  rebuilds every view without effects; a piece already broken shows its debris. `onRunExited` / no run parks
+  everything and drops the floor's debris (floor Janitor).
+- **Intact:** per kind, what `pack.breakable(kind)` has: a sprite set's `idle` (a `SpriteView`), an image billboard,
+  or the placeholder box in the kind's colour role. Nothing is drawn taller than `maxHeightTiles` (5/8 tile): the box
+  height is capped (`breakableBoxStuds`), art is scaled down (`breakableArtLayout`). Bodies are pooled per kind across
+  floors; static pieces are placed once, all moves go in one BulkMoveTo.
+- **Hit:** a blink in `flashRole` (`hitBlinkSec`, `blinkPeriodSec`) and a decaying shake along the screen's x axis
+  (`shakeSec`, `shakeStuds`, `shakeHz`) x the juice `motionScale` (none under reduced motion), on sim time; the juice
+  layer's hit sparks at the piece (`ParticleController.breakableHitSparks`), which is the spark a bullet stopped by a
+  crate ends in (at the piece's centre: the sim does not say which bullet stopped where).
+- **Break:** chips (`ParticleController.breakableChips` -> `DeathParticleSystem.chips`, `chips` per kind, in the
+  `breakable.<kind>` role, scaled by the particle level), the set's one-shot `shatter` if it has one, then the flat
+  debris decal: the floor biome's decor `brokenBarrel` / `brokenCrate`, a variant by cell hash (`debrisVariant`), laid
+  as a top-face SurfaceGui on a thin invisible Part turned by the camera yaw (nothing when the pack has none).
+- **Sounds:** `AudioController` maps the frame's summed `breakablesBroken` / `breakableHits` (table under "Audio").
+- **Sniper aim line:** `TelegraphController` cuts it where it first enters an intact piece's cell
+  (`clipToSolidCells` over `solidCells(state)`), where its bullet will stop; sight is not blocked (B2).
+
 ## Data flow per rendered frame
 
 BindToRenderStep priorities (`shared/view` `RENDER_ORDER`):
@@ -96,8 +125,8 @@ BindToRenderStep priorities (`shared/view` `RENDER_ORDER`):
    `tutorialStep` per new funnel step, callout toasts, the ghost heart.
 3. **Camera + 1 (201) `KV_GameCamera`**: follows the interpolated player (+ the freeze-frame nudge).
 4. **Camera + 2 (202)** `KV_Bullets`, `KV_Actors`, `KV_Weapons`, `KV_Telegraphs`, `KV_HealthBars`,
-   `KV_DamageNumbers`, `KV_Particles`: read `getState()` / `getAlpha()`, move pooled Parts / BillboardGuis. They never
-   write the sim.
+   `KV_DamageNumbers`, `KV_Particles`, `KV_Breakables`: read `getState()` / `getAlpha()`, move pooled Parts /
+   BillboardGuis. They never write the sim.
 5. React re-renders the HUD from Reflex when the snapshot changed (at most ~10 Hz).
 
 Mouse aim uses the previous frame's camera (the web build does the same).
@@ -263,6 +292,8 @@ voices per sfx ID. Music loops and cross-fades (0.75 s).
 | FX `killed` (not a boss) | `sfx.enemy.death` | 0.04 s |
 | FX `bossPhase` (phase >= 2) | `sfx.boss.roar` | |
 | FX `bossDefeated` | `sfx.boss.death` * | |
+| `breakablesBroken` | `sfx.breakable.break` | 0.05 s |
+| `breakableHits` > `breakablesBroken` (hits that did not break) | `sfx.breakable.hit` | 0.06 s |
 | pause overlay / settings buttons | `sfx.ui.confirm` (resume, restart, reset) / `sfx.ui.click` (options, settings, close) | |
 | music | `music.biome.<1..5>` (the floor's biome), `music.boss` while a boss is engaged, none after a death | cross-fade |
 
@@ -475,6 +506,7 @@ character's root is anchored locally so it never falls and respawns in a loop.
 | Arena seal | ~144 (seed 1337: 72-tile perimeter, one 1.5-stud dash per 2 studs) | while the boss fight is on |
 | Weapon arcs | ~20-60 | 0.5-stud dashes |
 | Particles | up to 512 live particles + 16 rings x 32 dots (1,024 Parts at most; budget 128 / 320 / 512 by setting) | grows lazily to the high-water mark, parked when unused |
+| Breakables | 1 Part per intact piece (placeholder) or an anchor + BillboardGui (art), + 1 Part per debris decal | pooled per kind; endless floors only |
 | Health bars / damage numbers | 64 / 48 BillboardGuis (built at start, disabled when unused) | Attachments on one anchored holder Part each |
 
 Pools only grow; parked parts sit at y = -10,000. Bullets and markings cast no shadows.

@@ -32,6 +32,9 @@ export const SFX = {
 	bossRoar: "sfx.boss.roar",
 	bossDeath: "sfx.boss.death",
 	victory: "sfx.victory",
+	/** Breakable barrels / crates (docs/DECOR.md D4; the theme's BREAKABLE_AUDIO_EVENTS, required in every pack). */
+	breakableHit: "sfx.breakable.hit",
+	breakableBreak: "sfx.breakable.break",
 	uiClick: "sfx.ui.click",
 	uiConfirm: "sfx.ui.confirm",
 } as const;
@@ -55,6 +58,8 @@ export const ALL_SFX: ReadonlyArray<SfxId> = [
 	SFX.bossRoar,
 	SFX.bossDeath,
 	SFX.victory,
+	SFX.breakableHit,
+	SFX.breakableBreak,
 	SFX.uiClick,
 	SFX.uiConfirm,
 ];
@@ -124,6 +129,8 @@ export const SFX_MIN_INTERVAL: Readonly<Partial<Record<SfxId, number>>> = {
 	[SFX.enemyHurt]: 0.05,
 	[SFX.enemyDeath]: 0.04,
 	[SFX.playerHurt]: 0.1,
+	[SFX.breakableHit]: 0.06,
+	[SFX.breakableBreak]: 0.05,
 };
 
 /** The FX events the mapper reads (the tracker's pooled buffer satisfies it). */
@@ -170,6 +177,10 @@ export class AudioCueMapper {
 			else if (e.type === "bossPhase" && e.phase >= 2) this.cue(SFX.bossRoar, now, out);
 			else if (e.type === "bossDefeated") this.cue(SFX.bossDeath, now, out);
 		}
+		// Breakables (summed over the frame's ticks): a break plays its own sound; the hit sound only for hits that
+		// did not break (breakableHits counts the breaking hit too).
+		if (events.breakablesBroken > 0) this.cue(SFX.breakableBreak, now, out);
+		if (events.breakableHits > events.breakablesBroken) this.cue(SFX.breakableHit, now, out);
 		if (this.lastEnemySpawned >= 0 && enemySpawned > this.lastEnemySpawned) this.cue(SFX.enemyShoot, now, out);
 		this.lastEnemySpawned = enemySpawned;
 		return out;
