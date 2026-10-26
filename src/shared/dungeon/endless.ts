@@ -13,6 +13,9 @@
  *                 spawn tiles (enemyRooms.ts). They are NOT spawned at floor start: the sim spawns a room's list when
  *                 the player first walks into that room (deferred), which keeps the live actor count under MAX_ACTORS
  *                 however large the budgets grow.
+ *   breakables    barrels and crates in combat / elite / treasure rooms (./breakables.ts, docs/DECOR.md D4), placed
+ *                 last from their own stream hash(floor seed, BREAKABLE.salt) and kept clear of the room spawns
+ *                 (which depend on the party size, so the pieces do too); their cells leave roomSpawnTiles
  *
  * Generating the dungeon is left to the caller (`dungeonFor`), so shared/run can cache it (LRU).
  */
@@ -31,6 +34,7 @@ import {
 } from "./encounter";
 import { BOSS_ACT1_KIND, SPREAD_TRIES, SWARMER_KIND, nearestFree, roomSpawnTiles, spreadTile } from "./enemyRooms";
 import { encounterCost } from "./encounterCost";
+import { placeBreakables, withoutBreakableCells, type BreakablePlacement } from "./breakables";
 import type { ActorSpawn, EncounterConfig, EncounterRoom, EncounterRoomType } from "./encounterTypes";
 import {
 	BOSS_FLOOR_EVERY,
@@ -262,6 +266,11 @@ export interface EndlessFloorLayout {
 	readonly spawn: WorldXZ;
 	/** The stairwell: the boss room's center floor tile (world). */
 	readonly stairwell: WorldXZ;
+	/**
+	 * Breakable barrels and crates (./breakables.ts placeBreakables, docs/DECOR.md D4), tile coordinates; their cells
+	 * are already left out of roomSpawnTiles. Absent: none (the tutorial's hand-built floors).
+	 */
+	readonly breakables?: ReadonlyArray<BreakablePlacement>;
 }
 
 /**
@@ -282,6 +291,12 @@ export function buildEndlessFloor(
 	if (bossRoom === undefined) error(`buildEndlessFloor: floor ${floor} (seed ${params.seed}) has no boss room`, 0);
 	const spawn = entranceSpawn(d);
 	const roomSpawns = endlessRoomSpawns(d, floor, partySize);
+	const stairwell = { x: bossRoom.cx, z: bossRoom.cz };
+	// Breakables run last, on their own rng stream (./breakables.ts): nothing above moves.
+	const breakables = placeBreakables(
+		{ seed: params.seed, dungeon: d, encounter, roomSpawns, spawn, stairwell },
+		floor,
+	);
 	return {
 		floor,
 		seed: params.seed,
@@ -290,8 +305,9 @@ export function buildEndlessFloor(
 		bossFloor,
 		encounter,
 		roomSpawns,
-		roomSpawnTiles: endlessRoomSpawnTiles(d, roomSpawns),
+		roomSpawnTiles: withoutBreakableCells(endlessRoomSpawnTiles(d, roomSpawns), breakables),
 		spawn: { x: spawn.x, z: spawn.z },
-		stairwell: { x: bossRoom.cx, z: bossRoom.cz },
+		stairwell,
+		breakables,
 	};
 }
