@@ -45,6 +45,8 @@ import {
 	HEALTH_BAR_FILL_ROLES,
 	MAX_ANIMATION_FPS,
 	MAX_IMAGE_SIDE,
+	PARTICLE_FLIPBOOK_GRIDS,
+	PARTICLE_FLIPBOOK_MODES,
 	MIN_DAMAGE_NUMBER_CONTRAST,
 	MIN_DECOR_FX_BULLET_DIFFERENCE,
 	MIN_ENEMY_BULLET_CONTRAST,
@@ -1083,6 +1085,9 @@ function validateWorldImage(def: Obj, path: Array<string>, slot: SlotContract, e
 	const sizeOk = isImageSide(def.w) && isImageSide(def.h);
 	if (ambient) {
 		validateParticle(def.particle, append(path, "particle"), err, unknownKeys);
+		if (isObj(def.particle) && def.particle.flipbook !== undefined && sizeOk && def.w !== def.h) {
+			err(append(path, "particle", "flipbook"), `a flipbook texture must be square, got ${def.w}x${def.h}`);
+		}
 		if (def.emissive !== undefined && !typeIs(def.emissive, "boolean")) {
 			err(append(path, "emissive"), "must be true or false");
 		}
@@ -1164,10 +1169,34 @@ function validateParticle(p: unknown, pp: Array<string>, err: Err, unknownKeys: 
 		return;
 	}
 	if (!isObj(p)) {
-		err(pp, 'must be { "sizeStuds"?: number, "transparency"?: number }');
+		err(pp, 'must be { "sizeStuds"?: number, "transparency"?: number, "flipbook"?: { grid, fps, mode } }');
 		return;
 	}
-	unknownKeys(p, pp, ["sizeStuds", "transparency"]);
+	unknownKeys(p, pp, ["sizeStuds", "transparency", "flipbook"]);
+	const fb = p.flipbook;
+	if (fb !== undefined) {
+		const fp = append(pp, "flipbook");
+		if (!isObj(fb)) {
+			err(fp, 'must be { "grid": 2 | 4 | 8, "fps": number, "mode": "Loop" | "OneShot" | "PingPong" | "Random" }');
+		} else {
+			unknownKeys(fb, fp, ["grid", "fps", "mode"]);
+			if (!PARTICLE_FLIPBOOK_GRIDS.includes(fb.grid as number)) {
+				err(
+					append(fp, "grid"),
+					`must be one of ${PARTICLE_FLIPBOOK_GRIDS.join(", ")}, got ${describeValue(fb.grid)}`,
+				);
+			}
+			if (!isFiniteNumber(fb.fps) || !(fb.fps > 0) || fb.fps > MAX_ANIMATION_FPS) {
+				err(append(fp, "fps"), `must be a number in (0, ${MAX_ANIMATION_FPS}]`);
+			}
+			if (!PARTICLE_FLIPBOOK_MODES.some((m) => m === fb.mode)) {
+				err(
+					append(fp, "mode"),
+					`must be one of ${PARTICLE_FLIPBOOK_MODES.join(", ")}, got ${describeValue(fb.mode)}`,
+				);
+			}
+		}
+	}
 	const size = p.sizeStuds;
 	if (size !== undefined && (!isFiniteNumber(size) || !(size > 0) || size > DECOR_PARTICLE.maxSizeStuds)) {
 		err(

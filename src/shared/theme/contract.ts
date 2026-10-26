@@ -26,7 +26,7 @@
  * at the end of this file.
  */
 
-import type { AssetKind, ColorRole, Pivot } from "./types";
+import type { AssetKind, ColorRole, ParticleFlipbookMode, Pivot } from "./types";
 import { startsWith } from "./util";
 
 /** Directional slots draw one animation row per facing, in this order. */
@@ -712,6 +712,14 @@ export const DECOR_PARTICLE = {
 	/** Transparency when the pack sets none. */
 	defaultTransparency: 0.6,
 } as const;
+
+/**
+ * Roblox port (docs/FX_AUDIO.md F6): an ambient particle texture may be a ParticleEmitter flipbook (DecorParticle
+ * `flipbook`): a square texture of `grid` x `grid` cells, grid one of these (FlipbookLayout Grid2x2 / Grid4x4 /
+ * Grid8x8), played in one of PARTICLE_FLIPBOOK_MODES.
+ */
+export const PARTICLE_FLIPBOOK_GRIDS: ReadonlyArray<number> = [2, 4, 8];
+export const PARTICLE_FLIPBOOK_MODES: ReadonlyArray<ParticleFlipbookMode> = ["Loop", "OneShot", "PingPong", "Random"];
 
 /** What a decor ID names (`parseDecorId`). */
 export type DecorIdInfo =

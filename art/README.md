@@ -32,3 +32,9 @@ upload) and `art/build/contact/*.png` (to check by eye), and regenerates the lay
 4. `npm run verify` (validator, contrast checks, `check-asset-ids`).
 
 Re-upload a PNG and paste its new ID whenever `art:build` changes it (the layout module changes with it).
+
+Sprite effects and ambient particle textures (docs/FX_AUDIO.md F2, F6; `fx` and `ambient` in `art/atlases.json`):
+every `fx.*` effect lives in the one atlas `fx-effects.png` and switches on once that file has an ID; each
+`fx-ambient-b<n>.png` is its own ParticleEmitter texture (a square flipbook grid) and switches on with its own ID. Their
+layout is the generated `packs/vale/fxLayout.ts`; contact sheets are `contact/fx.*.png` and
+`contact/decor.fx.ambient.*.png` (frames numbered).

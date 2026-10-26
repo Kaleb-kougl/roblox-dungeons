@@ -28,6 +28,8 @@ import {
 	FX_SPRITE_MAX_TILES,
 	MAX_ANIMATION_FPS,
 	MAX_IMAGE_SIDE,
+	PARTICLE_FLIPBOOK_GRIDS,
+	PARTICLE_FLIPBOOK_MODES,
 	SPRITE_FACING_COUNTS,
 	SOUND_PITCH_LIMITS,
 	SPRITE_RESAMPLE_MODES,
@@ -57,6 +59,8 @@ import {
 	type AssetDef,
 	type ColorRole,
 	type HexColor,
+	type ParticleFlipbook,
+	type ParticleFlipbookMode,
 	type PitchRange,
 	type Pivot,
 	type SpriteAnimationDef,
@@ -356,6 +360,8 @@ export interface AmbientParticleArt {
 	readonly emissive: boolean;
 	/** The tint: `decor.fx.ambient.b<n>`. */
 	readonly role: ColorRole;
+	/** The texture's flipbook (docs/FX_AUDIO.md F6), or undefined: one still frame (also for a malformed one). */
+	readonly flipbook: Readonly<ParticleFlipbook> | undefined;
 }
 
 /** A breakable kind's theme (docs/DECOR.md D4): always drawable, art or placeholder. */
@@ -838,6 +844,26 @@ export class ThemeCore {
 		const particle: Obj = isObj(d.particle) ? d.particle : {};
 		const size = isFiniteNum(particle.sizeStuds) && particle.sizeStuds > 0 ? particle.sizeStuds : undefined;
 		const t = isFiniteNum(particle.transparency) ? particle.transparency : undefined;
+		const fb: Obj | undefined = isObj(particle.flipbook) ? particle.flipbook : undefined;
+		let flipbook: ParticleFlipbook | undefined;
+		if (
+			fb !== undefined &&
+			PARTICLE_FLIPBOOK_GRIDS.includes(fb.grid as number) &&
+			isFiniteNum(fb.fps) &&
+			fb.fps > 0 &&
+			PARTICLE_FLIPBOOK_MODES.some((m) => m === fb.mode)
+		) {
+			flipbook = {
+				grid: fb.grid as number,
+				fps: math.min(fb.fps, MAX_ANIMATION_FPS),
+				mode: fb.mode as ParticleFlipbookMode,
+			};
+		} else if (fb !== undefined) {
+			this.warnOnce(
+				`ambient:${id}:flipbook`,
+				`ambient particle "${id}" has a malformed flipbook, using one frame`,
+			);
+		}
 		return {
 			id,
 			assetId: d.assetId,
@@ -845,6 +871,7 @@ export class ThemeCore {
 			transparency: math.clamp(t ?? DECOR_PARTICLE.defaultTransparency, DECOR_PARTICLE.minTransparency, 1),
 			emissive: d.emissive === true,
 			role: decorAmbientRole(biome),
+			flipbook,
 		};
 	}
 

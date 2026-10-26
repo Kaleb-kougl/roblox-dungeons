@@ -28,6 +28,7 @@ import type {
 import { deepClone, sortedKeys } from "../../util";
 import { PLACEHOLDER_MANIFEST } from "../placeholder";
 import { VALE_ASSET_IDS } from "./assetIds";
+import { valeAmbientAssets, valeFxAssets } from "./fx";
 import { VALE_FLOOR_HEX, VALE_IMAGE_LAYOUTS, VALE_SPRITE_LAYOUTS, type ValeSpriteLayout } from "./layout";
 
 /** The image whose mean colour VALE_FLOOR_HEX is. */
@@ -152,6 +153,17 @@ export function buildValeManifest(ids: AssetIds = VALE_ASSET_IDS): ThemeManifest
 			out.floor = undefined; // a textured floor stays SmoothPlastic (DEFAULT_BIOME_MATERIAL)
 		}
 		biome.materials = out;
+	}
+
+	// Sprite effects and ambient particle textures (docs/FX_AUDIO.md F2, F6; fx.ts): optional slots, so an entry
+	// without its uploaded PNG is simply absent (nothing drawn).
+	const fx = valeFxAssets(ids);
+	for (const id of sortedKeys(fx)) {
+		manifest.assets[id] = fx[id];
+	}
+	const ambient = valeAmbientAssets(ids);
+	for (const id of sortedKeys(ambient)) {
+		manifest.assets[id] = ambient[id];
 	}
 
 	const floor = VALE_IMAGE_LAYOUTS[VALE_FLOOR_TEXTURE_ID];
