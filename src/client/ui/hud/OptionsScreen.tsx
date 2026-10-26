@@ -579,7 +579,7 @@ function OptionsModal(props: { options: OptionsState; actions: HudActions; devic
 						name: "Cancel",
 						text: str(OPTIONS_STRINGS.cancel),
 						onActivated: () => {
-							actions.playUi(SFX.uiClick);
+							actions.playUi(SFX.uiBack);
 							actions.answerConflict(false);
 						},
 					},
@@ -606,7 +606,7 @@ function OptionsModal(props: { options: OptionsState; actions: HudActions; devic
 						name: "Cancel",
 						text: str(OPTIONS_STRINGS.cancel),
 						onActivated: () => {
-							actions.playUi(SFX.uiClick);
+							actions.playUi(SFX.uiBack);
 							actions.askResetBindings(undefined);
 						},
 					},
@@ -734,7 +734,7 @@ export function OptionsScreen() {
 						text={str(OPTIONS_STRINGS.close)}
 						selectable={selectable}
 						onActivated={() => {
-							actions.playUi(SFX.uiClick);
+							actions.playUi(SFX.uiBack);
 							actions.setSettingsOpen(false);
 						}}
 					/>

@@ -1,0 +1,618 @@
+{
+	"$comment": "Audio pipeline config (docs/FX_AUDIO.md A0 / A1; scripts/audio/build-audio.js). Paths are relative to art/vendor/. Each sound ID: category (sfx | jingle | music | ambience), clips (several = variants, played round-robin; a clip is a path or { src, gainDb?, trim?: [startSec, endSec?], mix?: [paths layered on src], lowpassHz? }), volume (0..1, the SoundAsset volume), pitch ([min, max] PlaybackSpeed jitter), minInterval (seconds, overrides the code's default), gainDb (on top of the category's normalisation), confirmed (false until the owner picked it by ear), alternates (listed on the audition page), notes. \"silent\": true leaves the ID silent. After editing: npm run audio:lock, npm run audio:build, npm run audio:audition.",
+	"output": {
+		"$comment": "Vorbis at a fixed quality. Lossy encoding overshoots transients: a decoded sample peak above maxDecodedPeakDb is re-encoded with the gain lowered by the overshoot plus peakStepDb (at most peakPasses encodes).",
+		"codec": "libvorbis",
+		"quality": 5,
+		"sampleRate": 44100,
+		"maxDecodedPeakDb": -0.3,
+		"peakStepDb": 0.1,
+		"peakPasses": 4
+	},
+	"limits": {
+		"$comment": "Roblox audio upload limits: under 20 MB, under 7 minutes, 48 kHz or lower.",
+		"maxBytes": 20000000,
+		"maxSeconds": 420,
+		"maxSampleRate": 48000
+	},
+	"silence": {
+		"$comment": "Silence trim (sfx and jingles): threshold, and how much silence to keep before the onset and after the end.",
+		"thresholdDb": -50,
+		"keepStartSec": 0.005,
+		"keepEndSec": 0.02
+	},
+	"categories": {
+		"sfx": {
+			"channels": 1,
+			"trimSilence": true,
+			"normalize": {
+				"mode": "peak",
+				"peakDb": -1,
+				"windowDb": 1
+			}
+		},
+		"jingle": {
+			"channels": 2,
+			"trimSilence": true,
+			"normalize": {
+				"mode": "peak",
+				"peakDb": -1,
+				"windowDb": 1
+			}
+		},
+		"music": {
+			"channels": 2,
+			"trimSilence": false,
+			"normalize": {
+				"mode": "loudnorm",
+				"lufs": -18,
+				"truePeakDb": -1.5,
+				"lra": 11,
+				"windowLu": 1
+			}
+		},
+		"ambience": {
+			"channels": 2,
+			"trimSilence": false,
+			"normalize": {
+				"mode": "loudnorm",
+				"lufs": -18,
+				"truePeakDb": -1.5,
+				"lra": 11,
+				"windowLu": 1
+			}
+		}
+	},
+	"sounds": {
+		"sfx.player.shoot": {
+			"category": "sfx",
+			"clips": [
+				"ninja-adventure/Audio/Sounds/Whoosh & Slash/Launch.wav"
+			],
+			"volume": 0.35,
+			"pitch": [
+				0.95,
+				1.05
+			],
+			"alternates": [
+				"ninja-adventure/Audio/Sounds/Whoosh & Slash/Whoosh.wav"
+			],
+			"notes": "Bow volley; 0.06 s minimum interval in code. Launch is quiet raw (-22 dBFS peak); the build peak-normalises it.",
+			"confirmed": false
+		},
+		"sfx.player.swing": {
+			"category": "sfx",
+			"clips": [
+				"ninja-adventure/Audio/Sounds/Whoosh & Slash/Slash.wav",
+				"ninja-adventure/Audio/Sounds/Whoosh & Slash/Slash2.wav",
+				"ninja-adventure/Audio/Sounds/Whoosh & Slash/Slash3.wav",
+				"ninja-adventure/Audio/Sounds/Whoosh & Slash/Slash4.wav",
+				"ninja-adventure/Audio/Sounds/Whoosh & Slash/Slash5.wav"
+			],
+			"volume": 0.5,
+			"pitch": [
+				0.95,
+				1.05
+			],
+			"notes": "Sword combo swings 1 and 2 (the finisher plays sfx.player.finisher).",
+			"confirmed": false
+		},
+		"sfx.player.roll": {
+			"category": "sfx",
+			"clips": [
+				"ninja-adventure/Audio/Sounds/Jump & Bounce/Jump.wav"
+			],
+			"volume": 0.4,
+			"alternates": [
+				"ninja-adventure/Audio/Sounds/Whoosh & Slash/Whoosh2.wav"
+			],
+			"notes": "Roll start; keep it soft.",
+			"confirmed": false
+		},
+		"sfx.player.flask": {
+			"category": "sfx",
+			"clips": [
+				"ninja-adventure/Audio/Sounds/Magic & Skill/Heal.wav"
+			],
+			"volume": 0.6,
+			"alternates": [
+				"ninja-adventure/Audio/Sounds/Magic & Skill/Heal2.wav"
+			],
+			"confirmed": false
+		},
+		"sfx.player.swap": {
+			"category": "sfx",
+			"clips": [
+				"ninja-adventure/Audio/Sounds/Menu/Move3.wav"
+			],
+			"volume": 0.4,
+			"alternates": [
+				"ninja-adventure/Audio/Sounds/Whoosh & Slash/Sword2.wav"
+			],
+			"notes": "Weapon swap; very short.",
+			"confirmed": false
+		},
+		"sfx.player.hurt": {
+			"category": "sfx",
+			"clips": [
+				"ninja-adventure/Audio/Sounds/Hit & Impact/Hit2.wav"
+			],
+			"volume": 1,
+			"alternates": [
+				"ninja-adventure/Audio/Sounds/Hit & Impact/Hit5.wav"
+			],
+			"notes": "Must cut through everything: the loudest sound effect.",
+			"confirmed": false
+		},
+		"sfx.player.death": {
+			"category": "sfx",
+			"clips": [
+				"ninja-adventure/Audio/Sounds/Hit & Impact/Impact5.wav"
+			],
+			"volume": 1,
+			"notes": "The run-over jingle is sfx.jingle.gameover.",
+			"confirmed": false
+		},
+		"sfx.player.deflect": {
+			"category": "sfx",
+			"clips": [
+				"ninja-adventure/Audio/Sounds/Hit & Impact/Impact.wav"
+			],
+			"volume": 0.6,
+			"alternates": [
+				"ninja-adventure/Audio/Sounds/Magic & Skill/Magic2.wav"
+			],
+			"notes": "Guard deletes bullets; 0.08 s minimum interval in code.",
+			"confirmed": false
+		},
+		"sfx.ember": {
+			"category": "sfx",
+			"clips": [
+				"ninja-adventure/Audio/Sounds/Magic & Skill/Magic3.wav"
+			],
+			"volume": 0.9,
+			"alternates": [
+				"ninja-adventure/Audio/Sounds/Elemental/Explosion6.wav"
+			],
+			"notes": "Bullet clear: rare and big, ducks the music. Magic3 is 2.7 s; check it is not too long.",
+			"confirmed": false
+		},
+		"sfx.enemy.shoot": {
+			"category": "sfx",
+			"clips": [
+				"ninja-adventure/Audio/Sounds/Elemental/Fireball.wav"
+			],
+			"volume": 0.2,
+			"pitch": [
+				0.95,
+				1.05
+			],
+			"alternates": [
+				"ninja-adventure/Audio/Sounds/Magic & Skill/Magic1.wav"
+			],
+			"notes": "Bullet-hell density: quiet, 0.08 s interval in code.",
+			"confirmed": false
+		},
+		"sfx.enemy.telegraph": {
+			"category": "sfx",
+			"clips": [
+				"ninja-adventure/Audio/Sounds/Alert/Alert2.wav"
+			],
+			"volume": 0.8,
+			"alternates": [
+				"ninja-adventure/Audio/Sounds/Alert/Alert3.wav"
+			],
+			"notes": "A warning: must be distinct from every hit sound.",
+			"confirmed": false
+		},
+		"sfx.enemy.hurt": {
+			"category": "sfx",
+			"clips": [
+				"ninja-adventure/Audio/Sounds/Hit & Impact/Hit1.wav",
+				"ninja-adventure/Audio/Sounds/Hit & Impact/Hit3.wav",
+				"ninja-adventure/Audio/Sounds/Hit & Impact/Hit6.wav",
+				"ninja-adventure/Audio/Sounds/Hit & Impact/Hit7.wav",
+				"ninja-adventure/Audio/Sounds/Hit & Impact/Hit8.wav",
+				"ninja-adventure/Audio/Sounds/Hit & Impact/Hit9.wav"
+			],
+			"volume": 0.4,
+			"pitch": [
+				0.92,
+				1.08
+			],
+			"notes": "The pack has no Hit4.",
+			"confirmed": false
+		},
+		"sfx.enemy.death": {
+			"category": "sfx",
+			"clips": [
+				"ninja-adventure/Audio/Sounds/Hit & Impact/Impact2.wav",
+				"ninja-adventure/Audio/Sounds/Hit & Impact/Impact3.wav",
+				"ninja-adventure/Audio/Sounds/Hit & Impact/Impact4.wav"
+			],
+			"volume": 0.5,
+			"pitch": [
+				0.95,
+				1.05
+			],
+			"alternates": [
+				"ninja-adventure/Audio/Sounds/Elemental/Explosion3.wav"
+			],
+			"confirmed": false
+		},
+		"sfx.boss.roar": {
+			"category": "sfx",
+			"clips": [
+				"ninja-adventure/Audio/Sounds/Magic & Skill/Strange.wav"
+			],
+			"volume": 0.9,
+			"alternates": [
+				"ninja-adventure/Audio/Sounds/Magic & Skill/Spirit.wav"
+			],
+			"notes": "Gap: no real roar in the pack. Strange.wav is 3.3 s but silent after 0.8 s: the build's silence trim keeps the 0.8 s.",
+			"confirmed": false
+		},
+		"sfx.boss.death": {
+			"category": "sfx",
+			"clips": [
+				"ninja-adventure/Audio/Sounds/Elemental/Explosion6.wav"
+			],
+			"volume": 0.9,
+			"alternates": [
+				"ninja-adventure/Audio/Sounds/Elemental/Explosion4.wav"
+			],
+			"confirmed": false
+		},
+		"sfx.victory": {
+			"category": "jingle",
+			"clips": [
+				"ninja-adventure/Audio/Jingles/Success3.wav"
+			],
+			"volume": 0.8,
+			"alternates": [
+				"ninja-adventure/Audio/Jingles/LevelUp2.wav"
+			],
+			"notes": "A jingle: ducks the music.",
+			"confirmed": false
+		},
+		"sfx.breakable.hit": {
+			"category": "sfx",
+			"clips": [
+				"ninja-adventure/Audio/Sounds/Hit & Impact/Impact4.wav"
+			],
+			"volume": 0.4,
+			"pitch": [
+				0.95,
+				1.05
+			],
+			"notes": "Gap: no wood sounds in the pack.",
+			"confirmed": false
+		},
+		"sfx.breakable.break": {
+			"category": "sfx",
+			"clips": [
+				"ninja-adventure/Audio/Sounds/Hit & Impact/Impact5.wav"
+			],
+			"volume": 0.6,
+			"alternates": [
+				"ninja-adventure/Audio/Sounds/Elemental/Explosion2.wav"
+			],
+			"notes": "Gap: no wood sounds in the pack.",
+			"confirmed": false
+		},
+		"sfx.loot.drop": {
+			"silent": true,
+			"alternates": [
+				"ninja-adventure/Audio/Sounds/Bonus/Coin.wav"
+			],
+			"notes": "No caller yet (no loot lands in this build): silent so it costs no upload. Pick from the alternates when loot lands.",
+			"confirmed": false
+		},
+		"sfx.loot.rare": {
+			"silent": true,
+			"alternates": [
+				"ninja-adventure/Audio/Sounds/Bonus/PowerUp1.wav"
+			],
+			"notes": "No caller yet: silent, like sfx.loot.drop.",
+			"confirmed": false
+		},
+		"sfx.ui.click": {
+			"category": "sfx",
+			"clips": [
+				"ninja-adventure/Audio/Sounds/Menu/Move1.wav"
+			],
+			"volume": 0.5,
+			"alternates": [
+				"ninja-adventure/Audio/Sounds/Menu/Move2.wav"
+			],
+			"confirmed": false
+		},
+		"sfx.ui.confirm": {
+			"category": "sfx",
+			"clips": [
+				"ninja-adventure/Audio/Sounds/Menu/Accept4.wav"
+			],
+			"volume": 0.6,
+			"alternates": [
+				"ninja-adventure/Audio/Sounds/Menu/Accept6.wav"
+			],
+			"notes": "Not Menu/Accept.wav: that one is 2 s long.",
+			"confirmed": false
+		},
+		"sfx.ui.back": {
+			"category": "sfx",
+			"clips": [
+				"ninja-adventure/Audio/Sounds/Menu/Cancel2.wav"
+			],
+			"volume": 0.5,
+			"confirmed": false
+		},
+		"sfx.ui.move": {
+			"category": "sfx",
+			"clips": [
+				"ninja-adventure/Audio/Sounds/Menu/Move4.wav"
+			],
+			"volume": 0.25,
+			"notes": "Gamepad focus moves: very quiet, rate-limited in code (SFX_MIN_INTERVAL).",
+			"confirmed": false
+		},
+		"sfx.player.finisher": {
+			"category": "sfx",
+			"clips": [
+				{
+					"src": "ninja-adventure/Audio/Sounds/Whoosh & Slash/Sword2.wav",
+					"mix": [
+						"ninja-adventure/Audio/Sounds/Whoosh & Slash/Slash4.wav"
+					]
+				}
+			],
+			"volume": 0.6,
+			"alternates": [
+				"ninja-adventure/Audio/Sounds/Whoosh & Slash/Sword2.wav"
+			],
+			"notes": "The sword's 3rd swing: Sword2 layered over Slash4 (the plan's 'Sword2 + Slash4').",
+			"confirmed": false
+		},
+		"sfx.player.charged": {
+			"category": "sfx",
+			"clips": [
+				"ninja-adventure/Audio/Sounds/Magic & Skill/Magic4.wav"
+			],
+			"volume": 0.5,
+			"notes": "Bow charge reaches full (the local player's only).",
+			"confirmed": false
+		},
+		"sfx.room.clear": {
+			"category": "jingle",
+			"clips": [
+				"ninja-adventure/Audio/Jingles/Success1.wav"
+			],
+			"volume": 0.6,
+			"notes": "0.45 s. Ducks the music.",
+			"confirmed": false
+		},
+		"sfx.relic.take": {
+			"category": "sfx",
+			"clips": [
+				"ninja-adventure/Audio/Sounds/Bonus/PowerUp2.wav"
+			],
+			"volume": 0.7,
+			"alternates": [
+				"ninja-adventure/Audio/Sounds/Bonus/Gold1.wav"
+			],
+			"confirmed": false
+		},
+		"sfx.shrine.use": {
+			"category": "jingle",
+			"clips": [
+				"ninja-adventure/Audio/Jingles/Secret2.wav"
+			],
+			"volume": 0.7,
+			"alternates": [
+				"ninja-adventure/Audio/Sounds/Magic & Skill/Spirit.wav"
+			],
+			"notes": "Ducks the music.",
+			"confirmed": false
+		},
+		"sfx.stairwell.open": {
+			"category": "sfx",
+			"clips": [
+				"ninja-adventure/Audio/Sounds/Magic & Skill/Fx.wav"
+			],
+			"volume": 0.7,
+			"confirmed": false
+		},
+		"sfx.floor.enter": {
+			"category": "sfx",
+			"clips": [
+				"ninja-adventure/Audio/Sounds/Jump & Bounce/Bounce2.wav"
+			],
+			"volume": 0.6,
+			"alternates": [
+				"ninja-adventure/Audio/Jingles/Secret1.wav"
+			],
+			"confirmed": false
+		},
+		"sfx.depth.up": {
+			"category": "jingle",
+			"clips": [
+				"ninja-adventure/Audio/Jingles/LevelUp1.wav"
+			],
+			"volume": 0.8,
+			"notes": "A boss kill grows the Depth. Ducks the music.",
+			"confirmed": false
+		},
+		"sfx.jingle.gameover": {
+			"category": "jingle",
+			"clips": [
+				"ninja-adventure/Audio/Jingles/GameOver.wav"
+			],
+			"volume": 0.8,
+			"alternates": [
+				"ninja-adventure/Audio/Jingles/GameOver3.wav"
+			],
+			"notes": "Run over (every player dead), over the music fading out; then silence (X7).",
+			"confirmed": false
+		},
+		"music.menu": {
+			"category": "music",
+			"clips": [
+				"ninja-adventure/Audio/Musics/38 - Intro.ogg"
+			],
+			"volume": 1,
+			"alternates": [
+				"ninja-adventure/Audio/Musics/1 - Adventure Begin.ogg"
+			],
+			"confirmed": false
+		},
+		"music.biome.1": {
+			"category": "music",
+			"clips": [
+				"ninja-adventure/Audio/Musics/21 - Dungeon.ogg"
+			],
+			"volume": 1,
+			"alternates": [
+				"ninja-adventure/Audio/Musics/30 - Ruins.ogg"
+			],
+			"notes": "ancient",
+			"confirmed": false
+		},
+		"music.biome.2": {
+			"category": "music",
+			"clips": [
+				"ninja-adventure/Audio/Musics/24 - Final Area.ogg"
+			],
+			"volume": 1,
+			"alternates": [
+				"ninja-adventure/Audio/Musics/10 - Dark Castle.ogg"
+			],
+			"notes": "molten. Dark Castle is 33 s: check it does not get repetitive.",
+			"confirmed": false
+		},
+		"music.biome.3": {
+			"category": "music",
+			"clips": [
+				"ninja-adventure/Audio/Musics/13 - Mystical.ogg"
+			],
+			"volume": 1,
+			"alternates": [
+				"ninja-adventure/Audio/Musics/12 - Temple.ogg"
+			],
+			"notes": "frost",
+			"confirmed": false
+		},
+		"music.biome.4": {
+			"category": "music",
+			"clips": [
+				"ninja-adventure/Audio/Musics/40 - Crypt.ogg"
+			],
+			"volume": 1,
+			"alternates": [
+				"ninja-adventure/Audio/Musics/14 - Curse.ogg"
+			],
+			"notes": "grim",
+			"confirmed": false
+		},
+		"music.biome.5": {
+			"category": "music",
+			"clips": [
+				"ninja-adventure/Audio/Musics/37 - Dark Forest.ogg"
+			],
+			"volume": 1,
+			"notes": "verdant",
+			"confirmed": false
+		},
+		"music.boss": {
+			"category": "music",
+			"clips": [
+				"ninja-adventure/Audio/Musics/34  - Fight.ogg"
+			],
+			"volume": 1,
+			"alternates": [
+				"ninja-adventure/Audio/Musics/17 - Fight.ogg"
+			],
+			"notes": "The pack's file name has two spaces before the dash.",
+			"confirmed": false
+		},
+		"music.tutorial": {
+			"category": "music",
+			"clips": [
+				"ninja-adventure/Audio/Musics/27 - Chill.ogg"
+			],
+			"volume": 1,
+			"alternates": [
+				"ninja-adventure/Audio/Musics/5 - Peaceful.ogg"
+			],
+			"notes": "The tutorial played the biome.1 track before this ID existed (it still does while this ID is silent).",
+			"confirmed": false
+		},
+		"music.lobby": {
+			"silent": true,
+			"alternates": [
+				"ninja-adventure/Audio/Musics/33 - Calm Village.ogg"
+			],
+			"notes": "Silent: the lobby room plays music.menu (the fallback). Give it a track only if the lobby should not share the menu's.",
+			"confirmed": false
+		},
+		"amb.b1": {
+			"category": "ambience",
+			"clips": [
+				"ninja-adventure/Audio/Sounds/Ambient/Wind2.wav"
+			],
+			"volume": 0.6,
+			"notes": "ancient: very low.",
+			"confirmed": false
+		},
+		"amb.b2": {
+			"silent": true,
+			"alternates": [
+				"ninja-adventure/Audio/Sounds/Elemental/Fire2.wav",
+				"ninja-adventure/Audio/Sounds/Elemental/Fire.wav"
+			],
+			"notes": "molten. Gap: no fire-crackle bed in the pack (Elemental/Fire* are one-shots, not loops). Silent until another CC0 source is found.",
+			"confirmed": false
+		},
+		"amb.b3": {
+			"category": "ambience",
+			"clips": [
+				{
+					"src": "ninja-adventure/Audio/Sounds/Ambient/Wind.wav",
+					"trim": [
+						0.917,
+						20.273
+					]
+				}
+			],
+			"volume": 0.8,
+			"notes": "frost. Wind.wav starts with 0.92 s and ends with 0.73 s of silence: trimmed so the loop has no gap (check the seam).",
+			"confirmed": false
+		},
+		"amb.b4": {
+			"category": "ambience",
+			"clips": [
+				{
+					"src": "ninja-adventure/Audio/Sounds/Ambient/Storm.wav",
+					"lowpassHz": 3000
+				}
+			],
+			"volume": 0.7,
+			"alternates": [
+				"ninja-adventure/Audio/Sounds/Ambient/Rain.wav"
+			],
+			"notes": "grim: low-passed and quiet.",
+			"confirmed": false
+		},
+		"amb.b5": {
+			"category": "ambience",
+			"clips": [
+				"ninja-adventure/Audio/Sounds/Ambient/River.wav"
+			],
+			"volume": 0.8,
+			"alternates": [
+				"ninja-adventure/Audio/Sounds/Ambient/Rain.wav"
+			],
+			"notes": "verdant",
+			"confirmed": false
+		}
+	}
+}

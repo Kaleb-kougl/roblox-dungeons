@@ -12,6 +12,10 @@
  * A sprite set switches from its placeholder to the art once the sheets of its REQUIRED animations have IDs
  * (class.vanguard: idle, run, roll, hit, death; enemy.swarmer: swarmer-move.png and swarmer-death.png); optional ones
  * (vanguard-attack1..3.png) join when their IDs are added. An image switches once its file has one. Re-upload (and paste the new ID) whenever `art:build` changes a PNG.
+ *
+ * Audio (art/README.md, "Audio"): `npm run audio:build` writes art/build/audio/*.ogg; paste each file's ID here the same
+ * way ("sfx-player-hurt.ogg": "rbxassetid://<digits>"). A sound ID switches on once ALL of its files (its variants)
+ * have IDs (audioLayout.ts lists them).
  */
 import type { RobloxAssetId } from "../../types";
 

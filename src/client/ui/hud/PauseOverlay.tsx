@@ -132,7 +132,7 @@ export function PauseOverlay() {
 						size={CONFIRM_BUTTON}
 						text={str(spec.no)}
 						onActivated={() => {
-							actions.playUi(SFX.uiClick);
+							actions.playUi(SFX.uiBack);
 							spec.onNo(actions);
 						}}
 					/>
