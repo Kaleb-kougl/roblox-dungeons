@@ -125,10 +125,10 @@ describe("ThemePack fallbacks for missing IDs", () => {
 	it("is silent for silent and missing audio events instead of crashing", () => {
 		const w = sink();
 		const p = pack(w);
-		expect(p.sound("sfx.player.shoot")).toEqual({ assetId: undefined, volume: 0, group: "sfx" });
-		expect(p.sound("music.boss")).toEqual({ assetId: undefined, volume: 0, group: "music" });
-		expect(p.sound("sfx.nope")).toEqual({ assetId: undefined, volume: 0, group: "sfx" });
-		expect(p.sound("sfx.nope")).toEqual({ assetId: undefined, volume: 0, group: "sfx" });
+		expect(p.sound("sfx.player.shoot")).toEqual({ assetId: undefined, volume: 0, group: "sfx", variants: [] });
+		expect(p.sound("music.boss")).toEqual({ assetId: undefined, volume: 0, group: "music", variants: [] });
+		expect(p.sound("sfx.nope")).toEqual({ assetId: undefined, volume: 0, group: "sfx", variants: [] });
+		expect(p.sound("sfx.nope")).toEqual({ assetId: undefined, volume: 0, group: "sfx", variants: [] });
 		expect(w.messages).toHaveLength(1);
 	});
 
@@ -441,11 +441,11 @@ describe("sprite sets: ThemeCore.sprites layout", () => {
 		const m = clone();
 		const set = swarmerSet();
 		at(set, "animations").idle = undefined;
-		at(m, "assets")["fx.spark"] = set;
-		const noIdle = pack(v, m).core.sprites("fx.spark")!;
+		at(m, "assets")["test.spark"] = set;
+		const noIdle = pack(v, m).core.sprites("test.spark")!;
 		expect(noIdle.frame("dance", 0, 3)).toEqual(noIdle.frame("attack", 0, 3));
 		expect(v.messages).toEqual([
-			'[theme:placeholder] sprite set "fx.spark" has no animation "dance", using "attack"',
+			'[theme:placeholder] sprite set "test.spark" has no animation "dance", using "attack"',
 		]);
 	});
 

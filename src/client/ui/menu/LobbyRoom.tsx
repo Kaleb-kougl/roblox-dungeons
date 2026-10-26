@@ -234,7 +234,7 @@ export function LobbyRoom() {
 					textSize={HUD_VIEW.smallText}
 					text={str(MENU_STRINGS.back)}
 					onActivated={() => {
-						actions.playUi(SFX.uiClick);
+						actions.playUi(SFX.uiBack);
 						actions.back();
 					}}
 				/>

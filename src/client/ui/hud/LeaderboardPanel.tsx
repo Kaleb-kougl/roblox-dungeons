@@ -172,7 +172,7 @@ export function LeaderboardPanel(props: { localUserId: number }) {
 					name="Close"
 					text={str(LEADERBOARD_STRINGS.close)}
 					onActivated={() => {
-						actions.playUi(SFX.uiClick);
+						actions.playUi(SFX.uiBack);
 						actions.setLeaderboardOpen(false);
 					}}
 				/>

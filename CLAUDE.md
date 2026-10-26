@@ -21,6 +21,7 @@ Record every ported module in `PROVENANCE.md` (ported module, source path, sourc
 | `docs/ART.md` | Vertical-slice art: packs, licences, contract v2, atlas pipeline, renderer, status |
 | `docs/TUTORIAL.md` | First-run tutorial ("Practice Descent"): plan, as-built notes, tasks T1-T8, owner decisions |
 | `docs/OUTLINE.md` | Enemy outlines: plan, as-built notes, tasks O1-O7, decisions E1-E6 |
+| `docs/FX_AUDIO.md` | Sprite effects and audio (Ninja Adventure FX / Audio): slots, pipelines, cue mappers, tasks X0 / F0-F6 / A0-A5 |
 
 Decision log (deviations from `PLAN.md`):
 - **Art (docs/ART.md).** The theme contract gained a `"sprites"` kind (large pre-rendered cells, 1/4/8/16 screen-space
@@ -87,6 +88,18 @@ Decision log (deviations from `PLAN.md`):
   draws at most 31); corpses move to `KV_Actors/Corpses`. Sprite enemies draw a baked `<sheet>-outline.png` (from
   `art/atlases.json` `outline`) in a second ImageLabel behind the frame. The skeleton's `pad` went 1 -> 3 (cells 98x74),
   so its old upload ids were removed from `assetIds.ts`: it draws as a placeholder until re-uploaded.
+- **Sprite effects and audio (docs/FX_AUDIO.md).** Source: the Ninja Adventure pack's FX and Audio folders (CC0),
+  in gitignored `art/vendor/ninja-adventure/`. Theme port additions: sound assets take `variants` / `pitch` /
+  `minInterval` (not on looped `music.*` / `amb.*`); `PORT_AUDIO_EVENTS` (the old `PORT_SFX` plus 13 new IDs) and
+  `amb.b1`..`b5` are required (SILENT in the placeholder); an optional `fx.*` slot (one-facing sprites, `play`
+  animation, `sizeTiles` <= 3, `tint` / `meanColor` >= 40 CIE76 from the enemy-bullet roles) and the `fx.heal` /
+  `fx.curse` roles. `npm run audio:build` (`art/audio.json`, `art/audio.lock.json`) makes `art/build/audio/*.ogg` and
+  `packs/vale/audioLayout.ts`; `art:build` also makes the `fx-effects.png` atlas and ambient flipbooks
+  (`packs/vale/fxLayout.ts`). A vale sound turns on once every one of its files has an id; effects once the atlas has
+  one. Effects are drawn flat on the floor (`FxSpriteController`), under markings and bullets; bullets keep their
+  neon placeholders. `decor.fx.ambient.b<n>`: main's R5 mote (`decor-mote.png`) wins once uploaded; the Ninja
+  Adventure flipbooks (`fx-ambient-b<n>.png`) only fill a biome it leaves empty. Presentation only: no sim, dungeon or
+  hash change.
 
 ## Commands
 
@@ -98,8 +111,9 @@ npm run build       # gen fixtures -> rbxtsc -> out/
 npm run dev         # rbxtsc -w + rojo serve
 npm run build:place # publishable place: build/kaleb-vale.rbxl from publish.project.json (no specs, fixtures or Jest)
 npm run test:plugin # Studio test-runner plugin (same specs under real @rbxts/jest in Studio)
-npm run art:build   # art/vendor -> art/build atlases + packs/vale/layout.ts (art:lock rewrites art/vendor.lock.json)
+npm run art:build   # art/vendor -> art/build atlases + packs/vale/layout.ts / fxLayout.ts (art:lock rewrites art/vendor.lock.json)
 npm run test:art    # node:test specs of the atlas pipeline (scripts/art/*.test.js; part of verify)
+npm run audio:build # art/vendor/ninja-adventure/Audio -> art/build/audio/*.ogg + packs/vale/audioLayout.ts (audio:lock, audio:audition)
 ```
 
 Tools come from `rokit.toml` (`rokit install`): rojo 7.7.0, lune 0.11.0.

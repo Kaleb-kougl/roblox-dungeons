@@ -1712,6 +1712,111 @@
 			"bytes": 43097
 		},
 		{
+			"path": "ninja-adventure/FX/Attack/Cut/SpriteSheet.png",
+			"sha256": "7f730ce178179d31f5e6e2a1ba34dca084dc0429ced27819534960ca57557fff",
+			"bytes": 408
+		},
+		{
+			"path": "ninja-adventure/FX/Attack/CutDouble/SpriteSheet.png",
+			"sha256": "ae2cf619472f46fd728ff9f24ed8fce191e7edfef643b607ddc6dd7efdd32c84",
+			"bytes": 397
+		},
+		{
+			"path": "ninja-adventure/FX/Elemental/Explosion/SpriteSheet.png",
+			"sha256": "98f3dfc6cdcdfaf122d7cf70b7cbc8e14c96f4e76f1e8f430099575d6b942219",
+			"bytes": 2939
+		},
+		{
+			"path": "ninja-adventure/FX/Elemental/RockSpike/SpriteSheet.png",
+			"sha256": "1aff9fbdb48bb00612b3f4379f00e70db0e3a24dbf936cd2b75af82de6d374db",
+			"bytes": 6725
+		},
+		{
+			"path": "ninja-adventure/FX/Magic/Aura/SpriteSheet.png",
+			"sha256": "55f3c93e7666be29780fedffab4e7eb5bf1a864ce329fd10e6c3970263394699",
+			"bytes": 1706
+		},
+		{
+			"path": "ninja-adventure/FX/Magic/Boost/SpriteSheet.png",
+			"sha256": "dac0e257f7bd11b4208d1c309c5388ec0b54c671d487e2e2e0a4127c7313d063",
+			"bytes": 810
+		},
+		{
+			"path": "ninja-adventure/FX/Magic/Circle/SpriteSheetSpark.png",
+			"sha256": "fd88f439972415d13e069cf3791146e838e2079c28d5b7fbd7e3031cfd314672",
+			"bytes": 784
+		},
+		{
+			"path": "ninja-adventure/FX/Magic/Circle/SpriteSheetSpark2.png",
+			"sha256": "21cc436180846a0bef5feeb40a523abd2726baa4e492f2068425d2b9ecbab93c",
+			"bytes": 686
+		},
+		{
+			"path": "ninja-adventure/FX/Magic/Shield/SpriteSheetBlue.png",
+			"sha256": "47efef506d7d00376f303662c4b43770d43e82989062a306bdd4b8c0e661ca0f",
+			"bytes": 1523
+		},
+		{
+			"path": "ninja-adventure/FX/Magic/Spark/SpriteSheet.png",
+			"sha256": "cfd7d4cb3b4d1c0f1137543cbef0d32a07b3db77a08e876c16bbbcbbcd0695eb",
+			"bytes": 1490
+		},
+		{
+			"path": "ninja-adventure/FX/Magic/Spirit/SpriteSheet.png",
+			"sha256": "7d4254b58ab5944d34698e68544a674116534a78ed5de4325de69bcd5cf81147",
+			"bytes": 485
+		},
+		{
+			"path": "ninja-adventure/FX/Particle/Clouds.png",
+			"sha256": "7f0157a5b071d9a8d460cd2faaee02837ebddb10bc55600650df6960b88642b6",
+			"bytes": 333
+		},
+		{
+			"path": "ninja-adventure/FX/Particle/Fire.png",
+			"sha256": "e447e560e6981d23efc27a7d7ac85dcfef23c91d1ca13450baa728c56974b29d",
+			"bytes": 446
+		},
+		{
+			"path": "ninja-adventure/FX/Particle/Leaf.png",
+			"sha256": "4c46d476572fe8ce8d1f29fade6e1aa25e9c4550ff45b195f67fb344dd16a95c",
+			"bytes": 287
+		},
+		{
+			"path": "ninja-adventure/FX/Particle/Snow.png",
+			"sha256": "0b0c8b81de3ee0902b6834551d37c0c5283a9212820f9b3de51ff3b2dd8bcf47",
+			"bytes": 163
+		},
+		{
+			"path": "ninja-adventure/FX/Particle/Wood.png",
+			"sha256": "5a1ab0c044afba74f1998e55adb5ddcc476d02e7e61021fc5394382673c628d7",
+			"bytes": 540
+		},
+		{
+			"path": "ninja-adventure/FX/Slash/SpriteSheetSlash01.png",
+			"sha256": "0711f7f7a595217d45040bacb09471c8388b2f2c5c5cc8d9f4a908e7b44e7af6",
+			"bytes": 658
+		},
+		{
+			"path": "ninja-adventure/FX/Slash/SpriteSheetSlash02.png",
+			"sha256": "ce2d8ab87b94987779497bb31f21ed75615307b7be9413e694705d813725294d",
+			"bytes": 1599
+		},
+		{
+			"path": "ninja-adventure/FX/Slash/SpriteSheetSlash03.png",
+			"sha256": "ef5eb36344d8adf54de0438c2448f973ddb4118bdf2b3e83b3e6d4b69857be4c",
+			"bytes": 875
+		},
+		{
+			"path": "ninja-adventure/FX/Smoke/Smoke/SpriteSheet.png",
+			"sha256": "33b2fc9c855a3dfc620f3bc5e494ab08e559b29737d72ea0b80283b779e5023d",
+			"bytes": 1446
+		},
+		{
+			"path": "ninja-adventure/FX/Smoke/SmokeCircular/SpriteSheet.png",
+			"sha256": "b50cbe5ebabfe2c1c7698aae056513aa45e378007588a94ba16c94e5aad5a614",
+			"bytes": 673
+		},
+		{
 			"path": "smallscale-knight/Spritesheets/With shadows/Die.png",
 			"sha256": "21d6c27199e3573abafa15acc83b165abef057cf36807f50cd726b0f67902751",
 			"bytes": 492341

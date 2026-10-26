@@ -9,7 +9,7 @@
  */
 
 import { parseHex } from "./color";
-import type { BiomeId, BreakableKind, DecorKind, DecorLayer } from "./contract";
+import { FX_ANIMATION, type BiomeId, type BreakableKind, type DecorKind, type DecorLayer, type FxId } from "./contract";
 import {
 	DEFAULT_PACK_ID,
 	MISSING_COLOR,
@@ -18,6 +18,7 @@ import {
 	type BiomeTheme,
 	type BreakableTheme,
 	type DecorArt,
+	type FxArt,
 	type ImageRef,
 	type SoundRef,
 	type SpriteSetLayout,
@@ -187,6 +188,30 @@ export interface Breakable {
 	readonly core: BreakableTheme;
 }
 
+/**
+ * A sprite effect (ThemeCore.fx) with Roblox types: a one-facing SpriteSet, its flipbook and how to draw it. Drawn
+ * widthTiles x heightTiles; `ImageColor3 = color`; `additive`: LightInfluence 0.
+ */
+export interface FxSprite {
+	readonly id: FxId;
+	readonly set: SpriteSet;
+	readonly frames: number;
+	readonly fps: number;
+	readonly loop: boolean;
+	readonly sizeTiles: number;
+	readonly widthTiles: number;
+	readonly heightTiles: number;
+	readonly tint: ColorRole | undefined;
+	/** The tint as a Color3, white when untinted (ImageColor3 multiplies, so white keeps the sheet's colours). */
+	readonly color: Color3;
+	readonly additive: boolean;
+	/** Frame `index` of the flipbook (wraps when looping, holds the last frame otherwise). */
+	readonly frame: (index: number) => SpriteFrame;
+	readonly core: FxArt;
+}
+
+const UNTINTED = new Color3(1, 1, 1);
+
 export interface BiomeColors extends BiomeTheme {
 	readonly floorColor: Color3;
 	readonly wallColor: Color3;
@@ -219,6 +244,7 @@ export class ThemePack {
 	private readonly spriteSets = new Map<string, SpriteSet>();
 	private readonly decorPieces = new Map<string, DecorPiece | false>();
 	private readonly breakables = new Map<BreakableKind, Breakable>();
+	private readonly fxSprites = new Map<string, FxSprite | false>();
 
 	/** Defensive: a manifest that failed validation still loads; bad entries fall back individually. */
 	constructor(manifest: unknown, opts: ThemePackOptions = {}) {
@@ -356,6 +382,7 @@ export class ThemePack {
 			transparency: a.transparency,
 			emissive: a.emissive,
 			role: a.role,
+			flipbook: a.flipbook,
 			color: this.color(a.role),
 		};
 	}
@@ -385,9 +412,44 @@ export class ThemePack {
 		return this.core.placeholder(id);
 	}
 
-	/** Audio event -> { assetId | undefined, volume, group }. Silent or missing: assetId undefined, volume 0. */
+	/**
+	 * Audio event -> { assetId | undefined, volume, group, variants, pitch, minInterval } (cached). Silent or missing:
+	 * assetId undefined, volume 0, no variants.
+	 */
 	sound(id: string): SoundRef {
 		return this.core.sound(id);
+	}
+
+	// --- sprite effects (docs/FX_AUDIO.md F1) -----------------------------------------------------
+
+	/** A sprite effect, cached. Undefined, without a warning, when the pack has no art for it: draw nothing. */
+	fx(id: FxId): FxSprite | undefined {
+		const cached = this.fxSprites.get(id);
+		if (cached !== undefined) {
+			return cached === false ? undefined : cached;
+		}
+		const core = this.core.fx(id);
+		const set = core !== undefined ? this.sprites(id) : undefined;
+		let out: FxSprite | undefined;
+		if (core !== undefined && set !== undefined) {
+			out = {
+				id,
+				set,
+				frames: core.frames,
+				fps: core.fps,
+				loop: core.loop,
+				sizeTiles: core.sizeTiles,
+				widthTiles: core.widthTiles,
+				heightTiles: core.heightTiles,
+				tint: core.tint,
+				color: core.tint !== undefined ? this.color(core.tint) : UNTINTED,
+				additive: core.additive,
+				frame: (index) => set.frame(FX_ANIMATION, 0, index),
+				core,
+			};
+		}
+		this.fxSprites.set(id, out ?? false);
+		return out;
 	}
 
 	// --- colors --------------------------------------------------------------------------------

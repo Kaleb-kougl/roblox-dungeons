@@ -368,5 +368,238 @@
 				"own": "decor-mote"
 			}
 		}
+	},
+	"fx": {
+		"$comment": [
+			"Sprite effects (docs/FX_AUDIO.md F2): one-facing flipbooks for the theme's fx.* IDs, all packed into ONE atlas",
+			"(art/build/<atlas>.png, <= 1024 a side) and described by the generated src/shared/theme/packs/vale/fxLayout.ts.",
+			"Source: horizontal strips of `frames` cells `frameW` wide (the strip's full height); the build fails unless the",
+			"strip is exactly frames x frameW wide. `keep` (optional): the strip frames used, in play order (default all).",
+			"`preview`: what the strip's Preview.gif shows, measured with PIL (frame count, ms per frame); fps = 1000 / ms",
+			"unless `fps` overrides it. `previewNote` records every mismatch between the GIF and the strip. `grey`:",
+			"desaturate to luminance (integer Rec. 601 weights) and stretch so the set's brightest pixel is white, alpha kept,",
+			"so ImageColor3 can tint it to a theme role; an untinted set (grey false) gets its alpha-weighted mean colour",
+			"(meanColor) for the enemy-bullet colour rule. `burst` (optional): the strip's frames are separate pieces (a",
+			"particle strip), composed into a `frames`-frame burst in a `cell` x `cell` square: piece k flies from the centre",
+			"along dirs[k % dirs.length] (per-mille unit vectors, integer maths), radiusFrom -> radiusTo px, fading out",
+			"linearly from frame fadeFrom. Each set is cropped to its union alpha box (+ pad); its pivot is the box centre.",
+			"Packing: each set is one band of rows at a y that is a multiple of its frame height (so SpriteSetAsset's",
+			"`start + f` cell formula addresses it in the shared atlas), bands sorted by frame height; the atlas width is",
+			"the one with the smallest area."
+		],
+		"atlas": "fx-effects",
+		"pad": 1,
+		"sets": {
+			"fx.hit.light": {
+				"file": "ninja-adventure/FX/Attack/Cut/SpriteSheet.png",
+				"frameW": 32,
+				"frames": 4,
+				"preview": { "frames": 4, "ms": 100 },
+				"loop": false,
+				"grey": true
+			},
+			"fx.hit.heavy": {
+				"file": "ninja-adventure/FX/Attack/CutDouble/SpriteSheet.png",
+				"frameW": 32,
+				"frames": 5,
+				"preview": { "frames": 6, "ms": 100 },
+				"previewNote": "Preview.gif has 6 frames: the 5 strip cells and a blank 6th (200 ms).",
+				"loop": false,
+				"grey": true
+			},
+			"fx.swing.1": {
+				"file": "ninja-adventure/FX/Slash/SpriteSheetSlash01.png",
+				"frameW": 26,
+				"frames": 5,
+				"preview": { "frames": 7, "ms": 50 },
+				"previewNote": "Slash/Preview.gif shows every Slash sheet at once (7 frames: 200 ms, then 50 ms each), not this strip alone; 130 = 5 x 26 by the strip's gaps.",
+				"loop": false,
+				"grey": true
+			},
+			"fx.swing.2": {
+				"file": "ninja-adventure/FX/Slash/SpriteSheetSlash03.png",
+				"frameW": 57,
+				"frames": 4,
+				"preview": { "frames": 7, "ms": 50 },
+				"previewNote": "Slash/Preview.gif is the shared composite (see fx.swing.1); 228 = 4 x 57 by the strip's gaps.",
+				"loop": false,
+				"grey": true
+			},
+			"fx.swing.3": {
+				"file": "ninja-adventure/FX/Slash/SpriteSheetSlash02.png",
+				"frameW": 66,
+				"frames": 6,
+				"preview": { "frames": 7, "ms": 50 },
+				"previewNote": "Slash/Preview.gif is the shared composite (see fx.swing.1); 396 = 6 x 66 by the strip's gaps.",
+				"loop": false,
+				"grey": true
+			},
+			"fx.death.puff": {
+				"file": "ninja-adventure/FX/Smoke/Smoke/SpriteSheet.png",
+				"frameW": 32,
+				"frames": 6,
+				"preview": { "frames": 6, "ms": 100 },
+				"loop": false,
+				"grey": true
+			},
+			"fx.roll.dust": {
+				"file": "ninja-adventure/FX/Smoke/SmokeCircular/SpriteSheet.png",
+				"frameW": 30,
+				"frames": 8,
+				"preview": { "frames": 8, "ms": 60 },
+				"loop": false,
+				"grey": true
+			},
+			"fx.guard.shield": {
+				"file": "ninja-adventure/FX/Magic/Shield/SpriteSheetBlue.png",
+				"frameW": 24,
+				"frames": 6,
+				"preview": { "frames": 6, "ms": 60 },
+				"loop": false,
+				"grey": true
+			},
+			"fx.ember.ring": {
+				"file": "ninja-adventure/FX/Magic/Circle/SpriteSheetSpark.png",
+				"frameW": 32,
+				"frames": 6,
+				"preview": { "frames": 7, "ms": 100 },
+				"previewNote": "PreviewSpark.gif has 7 frames: the 6 strip cells and a blank 7th (500 ms). The ring and the spark in one strip.",
+				"loop": false,
+				"grey": true
+			},
+			"fx.flask": {
+				"file": "ninja-adventure/FX/Magic/Boost/SpriteSheet.png",
+				"frameW": 53,
+				"frames": 8,
+				"preview": { "frames": 11, "ms": 80 },
+				"previewNote": "Preview.gif has 11 frames, the strip 8: 424 px is 8 x 53 (424 / 11 is not whole); the GIF's last 3 frames repeat the final pose (equal pixel counts). The strip is a palette PNG (mode P), read as RGBA.",
+				"loop": false,
+				"grey": true
+			},
+			"fx.boss.phase": {
+				"file": "ninja-adventure/FX/Magic/Aura/SpriteSheet.png",
+				"frameW": 25,
+				"frames": 5,
+				"preview": { "frames": 5, "ms": 80 },
+				"loop": false,
+				"grey": true
+			},
+			"fx.boss.slam": {
+				"file": "ninja-adventure/FX/Elemental/RockSpike/SpriteSheet.png",
+				"frameW": 54,
+				"frames": 10,
+				"preview": { "frames": 10, "ms": 80 },
+				"previewNote": "Frame 7 of Preview.gif holds 200 ms (the spikes standing); played evenly here.",
+				"loop": false,
+				"grey": false
+			},
+			"fx.boss.death": {
+				"file": "ninja-adventure/FX/Elemental/Explosion/SpriteSheet.png",
+				"frameW": 36,
+				"frames": 10,
+				"preview": { "frames": 10, "ms": 80 },
+				"loop": false,
+				"grey": false
+			},
+			"fx.relic.take": {
+				"file": "ninja-adventure/FX/Magic/Spark/SpriteSheet.png",
+				"frameW": 27,
+				"frames": 10,
+				"preview": { "frames": 10, "ms": 100 },
+				"loop": false,
+				"grey": true
+			},
+			"fx.shrine.use": {
+				"file": "ninja-adventure/FX/Magic/Spirit/SpriteSheet.png",
+				"frameW": 32,
+				"frames": 5,
+				"preview": { "frames": 6, "ms": 100 },
+				"previewNote": "Preview.gif has 6 frames: the 5 strip cells and a blank 6th.",
+				"loop": false,
+				"grey": true
+			},
+			"fx.stairwell": {
+				"file": "ninja-adventure/FX/Magic/Circle/SpriteSheetSpark2.png",
+				"frameW": 32,
+				"frames": 5,
+				"preview": { "frames": 5, "ms": 100 },
+				"loop": true,
+				"grey": true
+			},
+			"fx.breakable.splinter": {
+				"file": "ninja-adventure/FX/Particle/Wood.png",
+				"frameW": 16,
+				"frames": 6,
+				"previewNote": "Particle strips have no Preview.gif: the 6 cells are separate wood pieces, composed into a burst.",
+				"burst": {
+					"frames": 6,
+					"cell": 48,
+					"radiusFrom": 3,
+					"radiusTo": 15,
+					"fadeFrom": 3,
+					"dirs": [
+						[1000, 0],
+						[500, 866],
+						[-500, 866],
+						[-1000, 0],
+						[-500, -866],
+						[500, -866]
+					]
+				},
+				"fps": 15,
+				"loop": false,
+				"grey": true
+			}
+		}
+	},
+	"ambient": {
+		"$comment": [
+			"Ambient particle textures (docs/FX_AUDIO.md F6) for the decor.fx.ambient.b<n> ParticleEmitters, one PNG each",
+			"(art/build/<name>.png): `grid` x `grid` square cells of a power-of-two side (the strip frame centred in each), so",
+			"a ParticleEmitter flipbook (FlipbookLayout Grid2x2 / Grid4x4 / Grid8x8) can play them; grid 1 is a single",
+			"frame (no flipbook). `cells`: the strip frame shown in each cell, row-major (default: evenly resampled from",
+			"the strip). Always grey (luminance stretched to white): the emitter's Color is the biome's ambient role. `fps`",
+			"and `mode` (Loop, OneShot = once over a particle's life, PingPong, Random) go into the theme's particle",
+			"flipbook. Grim (b4) has no match in the pack and keeps no texture."
+		],
+		"decor.fx.ambient.b1": {
+			"$comment": "ancient: Particle/Clouds as dust, one frame (80x36) in a 128 cell.",
+			"file": "ninja-adventure/FX/Particle/Clouds.png",
+			"name": "fx-ambient-b1",
+			"frameW": 80,
+			"frames": 1,
+			"grid": 1
+		},
+		"decor.fx.ambient.b2": {
+			"$comment": "molten: Particle/Fire (12 frames, a flame burning down) on a 4x4 grid played once over each particle's life.",
+			"file": "ninja-adventure/FX/Particle/Fire.png",
+			"name": "fx-ambient-b2",
+			"frameW": 8,
+			"frames": 12,
+			"grid": 4,
+			"fps": 12,
+			"mode": "OneShot"
+		},
+		"decor.fx.ambient.b3": {
+			"$comment": "frost: Particle/Snow, its growing flake (frames 0-3) ping-ponged as a twinkle.",
+			"file": "ninja-adventure/FX/Particle/Snow.png",
+			"name": "fx-ambient-b3",
+			"frameW": 8,
+			"frames": 7,
+			"grid": 2,
+			"cells": [0, 1, 2, 3],
+			"fps": 6,
+			"mode": "PingPong"
+		},
+		"decor.fx.ambient.b5": {
+			"$comment": "verdant: Particle/Leaf (6 frames, a tumbling leaf) resampled onto a 4x4 grid, looped.",
+			"file": "ninja-adventure/FX/Particle/Leaf.png",
+			"name": "fx-ambient-b5",
+			"frameW": 12,
+			"frames": 6,
+			"grid": 4,
+			"fps": 12,
+			"mode": "Loop"
+		}
 	}
 }

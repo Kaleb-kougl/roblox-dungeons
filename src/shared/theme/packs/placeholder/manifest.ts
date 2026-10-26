@@ -5,7 +5,8 @@
  * Ported from project-kaleb-vale `src/theme/packs/placeholder/manifest.json` @ 42897e2: same colors,
  * biomes, strings and asset IDs; every `generated` asset became `{ kind: "placeholder" }` (its shape and
  * colour now live in PLACEHOLDER_VISUALS) and every `silent` one stayed silent. Roblox-port additions are marked
- * (enemy.dummy, the port sfx, breakables and the decor fx colour roles; no decor art: decor is optional).
+ * (enemy.dummy, the port sfx, breakables and the decor fx colour roles; no decor art: decor is optional; the port
+ * audio IDs, ambience beds and fx colour roles of docs/FX_AUDIO.md; no fx art: sprite effects are optional).
  *
  * To replace art or audio later, change an entry's kind and paste the uploaded asset ID, e.g.
  *   "enemy.sniper": { kind: "spritesheet", assetId: "rbxassetid://<n>", frameW: 16, frameH: 16, pivot: { x: 8, y: 15 }, animations: { ... } },
@@ -81,6 +82,9 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		"decor.fx.ambient.b5": "#8fe6b8",
 		"breakable.barrel": "#5a3a1e",
 		"breakable.crate": "#533d1e",
+		// Roblox port (docs/FX_AUDIO.md F1): effect tints, far from the pink enemy bullets (CIE76 137 / 59).
+		"fx.heal": "#6ee08a",
+		"fx.curse": "#8a6ad8",
 	},
 	biomes: {
 		"biome.1": {
@@ -186,7 +190,7 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		"sfx.loot.rare": SILENT,
 		"sfx.ui.click": SILENT,
 		"sfx.ui.confirm": SILENT,
-		// Roblox-port additions (shared/view/audio PORT_SFX): events the web contract has no audio ID for.
+		// Roblox-port additions (contract.ts PORT_AUDIO_EVENTS): events the web contract has no audio ID for.
 		"sfx.player.swing": SILENT,
 		"sfx.player.flask": SILENT,
 		"sfx.player.swap": SILENT,
@@ -194,6 +198,17 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		"sfx.enemy.telegraph": SILENT,
 		"sfx.boss.death": SILENT,
 		"sfx.victory": SILENT,
+		"sfx.ui.back": SILENT,
+		"sfx.ui.move": SILENT,
+		"sfx.player.finisher": SILENT,
+		"sfx.player.charged": SILENT,
+		"sfx.room.clear": SILENT,
+		"sfx.relic.take": SILENT,
+		"sfx.shrine.use": SILENT,
+		"sfx.stairwell.open": SILENT,
+		"sfx.floor.enter": SILENT,
+		"sfx.depth.up": SILENT,
+		"sfx.jingle.gameover": SILENT,
 		"sfx.breakable.hit": SILENT,
 		"sfx.breakable.break": SILENT,
 		"music.menu": SILENT,
@@ -203,6 +218,15 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		"music.biome.4": SILENT,
 		"music.biome.5": SILENT,
 		"music.boss": SILENT,
+		"music.tutorial": SILENT,
+		"music.lobby": SILENT,
+		// Roblox port (docs/FX_AUDIO.md A2): biome ambience beds (contract.ts AMBIENCE_IDS). No fx.* entries: sprite
+		// effects are optional and this pack draws none.
+		"amb.b1": SILENT,
+		"amb.b2": SILENT,
+		"amb.b3": SILENT,
+		"amb.b4": SILENT,
+		"amb.b5": SILENT,
 	},
 	strings: {
 		"game.title": "Project Kaleb-Vale",

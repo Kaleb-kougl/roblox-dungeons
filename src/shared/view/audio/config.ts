@@ -1,6 +1,7 @@
 /**
  * Audio mixing tunables (the client's AudioController). Presentation only. Per-sound volume comes from the theme
- * manifest (`{ kind: "sound", assetId, volume }`); these scale it per SoundGroup and overall.
+ * manifest (`{ kind: "sound", assetId, volume }`); these scale it per SoundGroup and overall, cap the starts per
+ * frame, quieten teammates, duck the music and set the ambience level.
  */
 import type { AudioSettings } from "shared/settings";
 import type { SoundGroupName } from "shared/theme";
@@ -19,6 +20,20 @@ export const AUDIO_VIEW = {
 	musicFadeSec: 0.75,
 	/** Folder (under SoundService) holding the pooled Sounds. */
 	folderName: "KV_Audio",
+	/** Most sound starts per rendered frame; a busier frame keeps the highest SFX_PRIORITY (cues.ts). */
+	maxStartsPerFrame: 6,
+	/** Co-op (docs/FX_AUDIO.md X4): a teammate's hurt / death / roll / flask / swing, times the sound's volume. */
+	teammateVolume: 0.4,
+	/** Seed of the PlaybackSpeed jitter generator (voices.ts PitchJitter; presentation only). */
+	pitchSeed: 1,
+	/**
+	 * The music dips to `level` (of its volume) while a DUCKING_SFX sound plays (jingles, the Ember), falling in
+	 * attackSec and coming back in releaseSec. A clip whose length is not known yet holds it for holdSec.
+	 */
+	duck: { level: 0.4, attackSec: 0.08, releaseSec: 0.6, holdSec: 1.5 },
+	/** Ambience beds (amb.b<n>, through the sfx SoundGroup, X5): their volume times this, and their cross-fade. */
+	ambientVolume: 0.35,
+	ambientFadeSec: 1.5,
 } as const;
 
 /**

@@ -19,9 +19,14 @@
  * Roblox-port slots (docs/DECOR.md): DECOR (`decor.*`, optional room decoration: the web build's DECOR slot, rebuilt
  * from the plan) and BREAKABLE (`breakable.*`, required: breakable clutter is a gameplay object). Both take free-size
  * world art (`image` with `pixelsPerTile`, or `sprites`); see the Decor section at the end of this file.
+ *
+ * Roblox-port slots (docs/FX_AUDIO.md A2, F1): AMBIENCE (`amb.b<n>`, required biome ambience loops, sound or silent)
+ * and FX (`fx.*`, optional one-shot sprite effects: one-facing `sprites` sets); the port's audio IDs
+ * (PORT_AUDIO_EVENTS); sound variants, pitch jitter and per-clip minimum intervals. See the Effects and audio section
+ * at the end of this file.
  */
 
-import type { AssetKind, ColorRole, Pivot } from "./types";
+import type { AssetKind, ColorRole, ParticleFlipbookMode, Pivot } from "./types";
 import { startsWith } from "./util";
 
 /** Directional slots draw one animation row per facing, in this order. */
@@ -117,6 +122,19 @@ export const SFX: SlotContract = { slot: "sfx", prefix: "sfx.", kinds: AUDIO, fa
 export const MUSIC: SlotContract = { slot: "music", prefix: "music.", kinds: AUDIO, facings: [], soundGroup: "music" };
 
 /**
+ * Roblox port (docs/FX_AUDIO.md A2): biome ambience beds, `amb.b<n>` (AMBIENCE_IDS), looped quietly under the music.
+ * Required like every audio event (silent in the placeholder pack), so the contract knows every ID the game plays
+ * and a pack's typo is an error. Plays through the `sfx` SoundGroup (decision X5: no new volume slider).
+ */
+export const AMBIENCE: SlotContract = {
+	slot: "ambience",
+	prefix: "amb.",
+	kinds: AUDIO,
+	facings: [],
+	soundGroup: "sfx",
+};
+
+/**
  * Roblox port (docs/DECOR.md R2): room decoration, the web build's DECOR slot. Free-size world art (`image` or
  * `sprites`), all of it OPTIONAL: an ID a pack leaves out is simply not drawn, so there is no placeholder kind. IDs
  * follow `decor.<group>.<...>` (DECOR section below); every asset also carries the decor fields (`layer`, `pivot`,
@@ -144,6 +162,23 @@ export const BREAKABLE: SlotContract = {
 	baseAnimations: ["idle"],
 };
 
+/** The one animation a sprite effect (fx.*) defines: its flipbook (`fps`, `loop` and `frames` live on it). */
+export const FX_ANIMATION = "play";
+
+/**
+ * Roblox port (docs/FX_AUDIO.md F1): sprite effects, a one-shot flipbook at a world spot (a hit mark, a puff, a ring).
+ * OPTIONAL like decor: an FX_IDS entry a pack leaves out draws nothing, so there is no placeholder kind. Each entry is
+ * a v2 `sprites` set with ONE facing and a `play` animation, plus the fx fields (`sizeTiles`, `tint`, `additive`,
+ * `meanColor`) that `validate.ts` checks.
+ */
+export const FX: SlotContract = {
+	slot: "fx",
+	prefix: "fx.",
+	kinds: ["sprites"],
+	facings: [],
+	baseAnimations: [FX_ANIMATION],
+};
+
 export const SLOTS: ReadonlyArray<SlotContract> = [
 	CHARACTER,
 	ENEMY,
@@ -156,6 +191,8 @@ export const SLOTS: ReadonlyArray<SlotContract> = [
 	MUSIC,
 	DECOR,
 	BREAKABLE,
+	AMBIENCE,
+	FX,
 ];
 
 /** Slots whose images are free-size world art drawn at `pixelsPerTile` (decor pieces, breakables). */
@@ -208,8 +245,8 @@ export function requiredAnimations(slot: SlotContract): Record<string, number> {
 
 /**
  * Base animation names (no facing suffix) a `sprites` asset in this slot must define, in contract order:
- * class: idle, run, roll, hit, death; enemy and boss: idle, move, attack, hit, death; decor and breakable: idle
- * (`baseAnimations`). Each needs >= 1 frame; the
+ * class: idle, run, roll, hit, death; enemy and boss: idle, move, attack, hit, death; decor and breakable: idle; fx:
+ * play (`baseAnimations`). Each needs >= 1 frame; the
  * contract's exact frame counts, cells, pivots and facings apply to the 16 px `spritesheet` kind only. Empty for a
  * slot without animations.
  */
@@ -410,6 +447,43 @@ export const BREAKABLE_AUDIO_EVENTS = ["sfx.breakable.hit", "sfx.breakable.break
 /** Sprite-set animation a breakable plays once when it breaks (optional; `idle` is required). */
 export const BREAKABLE_SHATTER_ANIMATION = "shatter";
 
+/**
+ * Roblox port (docs/FX_AUDIO.md A2): every other audio ID the port plays, required in every pack (silent in the
+ * placeholder pack). Kept apart from AUDIO_EVENTS, which stays the web build's list, like BREAKABLE_AUDIO_EVENTS.
+ * First the IDs the audio layer already played before A2 (shared/view/audio PORT_SFX, which only the placeholder pack
+ * listed), then the A2 additions: menu back / focus move, the sword finisher, the bow's full charge, room clear, relic
+ * and shrine, stairwell, new floor, depth up, the run-over jingle, and the tutorial / lobby tracks.
+ */
+export const PORT_AUDIO_EVENTS = [
+	"sfx.player.swing",
+	"sfx.player.flask",
+	"sfx.player.swap",
+	"sfx.player.deflect",
+	"sfx.enemy.telegraph",
+	"sfx.boss.death",
+	"sfx.victory",
+	"sfx.ui.back",
+	"sfx.ui.move",
+	"sfx.player.finisher",
+	"sfx.player.charged",
+	"sfx.room.clear",
+	"sfx.relic.take",
+	"sfx.shrine.use",
+	"sfx.stairwell.open",
+	"sfx.floor.enter",
+	"sfx.depth.up",
+	"sfx.jingle.gameover",
+	"music.tutorial",
+	"music.lobby",
+] as const;
+
+/**
+ * Roblox port (docs/FX_AUDIO.md A2): one ambience loop per biome, `amb.b<n>` (b1..b5 = biome.1..5, the decor biome
+ * keys). Required, sound or silent (AMBIENCE slot); any other `amb.` ID is an error.
+ */
+export const AMBIENCE_IDS = ["amb.b1", "amb.b2", "amb.b3", "amb.b4", "amb.b5"] as const;
+export type AmbienceId = (typeof AMBIENCE_IDS)[number];
+
 /** Every asset ID a pack must define (biome tile IDs are required through the biome entries). */
 export const REQUIRED_ASSET_IDS: ReadonlyArray<string> = [
 	...CLASS_IDS.map((c) => `class.${c}`),
@@ -421,6 +495,8 @@ export const REQUIRED_ASSET_IDS: ReadonlyArray<string> = [
 	...AUDIO_EVENTS,
 	...BREAKABLE_KINDS.map((k) => breakableId(k)),
 	...BREAKABLE_AUDIO_EVENTS,
+	...PORT_AUDIO_EVENTS,
+	...AMBIENCE_IDS,
 ];
 
 /** Every string key a pack must define. Code may rely on these existing. */
@@ -654,6 +730,14 @@ export const DECOR_PARTICLE = {
 	defaultTransparency: 0.6,
 } as const;
 
+/**
+ * Roblox port (docs/FX_AUDIO.md F6): an ambient particle texture may be a ParticleEmitter flipbook (DecorParticle
+ * `flipbook`): a square texture of `grid` x `grid` cells, grid one of these (FlipbookLayout Grid2x2 / Grid4x4 /
+ * Grid8x8), played in one of PARTICLE_FLIPBOOK_MODES.
+ */
+export const PARTICLE_FLIPBOOK_GRIDS: ReadonlyArray<number> = [2, 4, 8];
+export const PARTICLE_FLIPBOOK_MODES: ReadonlyArray<ParticleFlipbookMode> = ["Loop", "OneShot", "PingPong", "Random"];
+
 /** What a decor ID names (`parseDecorId`). */
 export type DecorIdInfo =
 	| {
@@ -746,6 +830,74 @@ export const DECOR_ID_FORMS =
 	`decor.delve.b<1..${DECOR_BIOME_KEYS.size()}>.<kind>[.<1..${DECOR_MAX_VARIANTS}>], ` +
 	`decor.fx.<${DECOR_FX_NAMES.join("|")}>, decor.fx.ambient.b<1..${DECOR_BIOME_KEYS.size()}>`;
 
+// ---------------------------------------------------------------------------------------------
+// Effects and audio (Roblox port, docs/FX_AUDIO.md A2, F1)
+
+/** Biome `biome`'s ambience loop: ambienceId("biome.2") = "amb.b2". */
+export function ambienceId(biome: BiomeId): AmbienceId {
+	return `amb.${decorBiomeKey(biome)}` as AmbienceId;
+}
+
+/** Is `id` one of AMBIENCE_IDS? */
+export function isAmbienceId(id: string): id is AmbienceId {
+	return (AMBIENCE_IDS as ReadonlyArray<string>).includes(id);
+}
+
+/**
+ * The PlaybackSpeed range a sound's `pitch` jitter may span (SoundAsset.pitch): half to double speed. Beyond it a clip
+ * stops sounding like itself. Renderers clamp to it too (ThemeCore.sound).
+ */
+export const SOUND_PITCH_LIMITS = { min: 0.5, max: 2 } as const;
+
+/**
+ * The sprite effects (fx.*), each optional. Hit marks (`hit.light` / `hit.heavy`), the sword's swing trails (`swing.1`
+ * .. `swing.3`, the 3rd is the finisher), the kill puff, roll dust, the guard shield, the Ember ring, the flask, the
+ * boss's phase change / slam / death, relic and shrine, the open-stairwell loop and a breakable's splinters.
+ */
+export const FX_IDS = [
+	"fx.hit.light",
+	"fx.hit.heavy",
+	"fx.swing.1",
+	"fx.swing.2",
+	"fx.swing.3",
+	"fx.death.puff",
+	"fx.roll.dust",
+	"fx.guard.shield",
+	"fx.ember.ring",
+	"fx.flask",
+	"fx.boss.phase",
+	"fx.boss.slam",
+	"fx.boss.death",
+	"fx.relic.take",
+	"fx.shrine.use",
+	"fx.stairwell",
+	"fx.breakable.splinter",
+] as const;
+export type FxId = (typeof FX_IDS)[number];
+
+/** Is `id` one of FX_IDS? */
+export function isFxId(id: string): id is FxId {
+	return (FX_IDS as ReadonlyArray<string>).includes(id);
+}
+
+/**
+ * Largest drawn sprite effect, world tiles on the cell's longer side (SpriteSetAsset.sizeTiles, or the cell's own
+ * size / pixelsPerTile). Readability: effects stay small next to bullets and telegraphs. ThemeCore.fx clamps to it.
+ */
+export const FX_SPRITE_MAX_TILES = 3;
+
+/**
+ * The port's effect colour roles with no other use (`fx.heal` for `fx.flask`, `fx.curse` for the shrine). Required in
+ * every pack like every role; held to MIN_FX_BULLET_DIFFERENCE from every ENEMY_BULLET_ROLES colour.
+ */
+export const FX_ROLES: ReadonlyArray<ColorRole> = ["fx.heal", "fx.curse"];
+
+/**
+ * Minimum CIE76 difference between an effect colour and every enemy-bullet colour: FX_ROLES, every fx entry's `tint`
+ * role, and an untinted entry's `meanColor`. The decor fx rule (MIN_DECOR_FX_BULLET_DIFFERENCE), applied to effects.
+ */
+export const MIN_FX_BULLET_DIFFERENCE = MIN_DECOR_FX_BULLET_DIFFERENCE;
+
 /** Manifest keys that smell like gameplay data. Packs carry art, never numbers that change difficulty. */
 export const GAMEPLAY_KEY_WORDS = [
 	"hitbox",
@@ -775,3 +927,10 @@ export const GAMEPLAY_KEY_WORDS = [
 	"invulnerable",
 	"stats",
 ] as const;
+
+/**
+ * Sound-asset keys that contain a gameplay word but are presentation (docs/FX_AUDIO.md A2): `minInterval` throttles
+ * how often a clip may restart, it changes no difficulty. The gameplay-key scan skips exactly these keys on a
+ * `sound` asset; anywhere else they are still flagged.
+ */
+export const SOUND_PRESENTATION_KEYS: ReadonlyArray<string> = ["minInterval"];

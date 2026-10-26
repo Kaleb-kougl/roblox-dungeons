@@ -14,6 +14,10 @@
  * (vanguard-attack1..3.png) join when their IDs are added. An enemy sheet's outline (swarmer-move-outline.png,
  * swarmer-death-outline.png) adds the baked rim once its ID is here; without it the set still switches, rimless.
  * An image switches once its file has one. Re-upload (and paste the new ID) whenever `art:build` changes a PNG.
+ *
+ * Audio (art/README.md, "Audio"): `npm run audio:build` writes art/build/audio/*.ogg; paste each file's ID here the same
+ * way ("sfx-player-hurt.ogg": "rbxassetid://<digits>"). A sound ID switches on once ALL of its files (its variants)
+ * have IDs (audioLayout.ts lists them).
  */
 import type { RobloxAssetId } from "../../types";
 

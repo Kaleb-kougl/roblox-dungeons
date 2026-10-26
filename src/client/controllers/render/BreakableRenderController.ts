@@ -44,6 +44,7 @@ import { burstSeed, motionScale } from "shared/view/fx";
 import { SimController, type RunContext } from "../game/SimController";
 import { ThemeController } from "../game/ThemeController";
 import { FxTrackerController } from "../fx/FxTrackerController";
+import { FxSpriteController } from "../fx/FxSpriteController";
 import { ParticleController } from "../fx/ParticleController";
 import {
 	buildPlaceholder,
@@ -124,10 +125,11 @@ interface PieceView {
  *                screen's x axis, x the juice motionScale (none under reduced motion), on sim time; plus the juice
  *                layer's hit sparks at the piece (ParticleController.breakableHitSparks), which is also what a bullet
  *                stopped by the piece ends in.
- *   break        chips (ParticleController.breakableChips), then the sprite set's one-shot `shatter` if it has one,
- *                then the body goes back to its pool and the flat debris decal is laid: the biome's decor
- *                brokenBarrel / brokenCrate (a variant by cell hash; nothing when the pack has none). Sounds are not
- *                played here: AudioController maps the frame's summed breakableHits / breakablesBroken to
+ *   break        chips (ParticleController.breakableChips) and the splinter sprite effect
+ *                (FxSpriteController.breakableSplinter; nothing without fx art), then the sprite set's one-shot
+ *                `shatter` if it has one, then the body goes back to its pool and the flat debris decal is laid: the
+ *                biome's decor brokenBarrel / brokenCrate (a variant by cell hash; nothing when the pack has none).
+ *                Sounds are not played here: AudioController maps the frame's summed breakableHits / breakablesBroken to
  *                sfx.breakable.hit / .break (shared/view/audio cues.ts).
  *
  * Bodies are pooled per kind and reused across floors (parked far below when unused); debris decals belong to the
@@ -168,6 +170,7 @@ export class BreakableRenderController implements OnStart {
 		private readonly theme: ThemeController,
 		private readonly fx: FxTrackerController,
 		private readonly particles: ParticleController,
+		private readonly sprites: FxSpriteController,
 	) {
 		const r = this.basis.right;
 		this.right = new Vector3(r[0], r[1], r[2]);
@@ -355,6 +358,7 @@ export class BreakableRenderController implements OnStart {
 			view.kind,
 			burstSeed(slot, tick, BREAKABLE_VIEW.chipSeedSalt),
 		);
+		this.sprites.breakableSplinter(gridToWorld(view.cellX), gridToWorld(view.cellY));
 		view.hitSec = NEVER;
 		const look = this.looks[view.kind];
 		const sprite = view.body?.sprite;
