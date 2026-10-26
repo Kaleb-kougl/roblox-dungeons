@@ -10,6 +10,9 @@
  *
  * Roblox port (docs/DECOR.md): decor lookups (`decor`, `decorVariants`, `ambient`) are optional art and never warn for
  * an ID the pack leaves out; `breakable` is required art (art, or its placeholder box).
+ *
+ * Roblox port (docs/FX_AUDIO.md A2, F1): `sound` resolves variants, pitch jitter and minimum intervals (cached);
+ * `fx` resolves an optional sprite effect (never warns for an ID the pack leaves out).
  */
 
 import { isHexColor } from "./color";
@@ -21,9 +24,12 @@ import {
 	DECOR_MAX_VARIANTS,
 	DECOR_PARTICLE,
 	DEFAULT_BIOME_MATERIAL,
+	FX_ANIMATION,
+	FX_SPRITE_MAX_TILES,
 	MAX_ANIMATION_FPS,
 	MAX_IMAGE_SIDE,
 	SPRITE_FACING_COUNTS,
+	SOUND_PITCH_LIMITS,
 	SPRITE_RESAMPLE_MODES,
 	breakableId,
 	decorAmbientId,
@@ -40,6 +46,7 @@ import {
 	type DecorKind,
 	type DecorLayer,
 	type ForgeTheme,
+	type FxId,
 	type SoundGroupName,
 } from "./contract";
 import { missingVisual, placeholderVisualFor, type PlaceholderColor, type PlaceholderVisual } from "./placeholders";
@@ -50,6 +57,7 @@ import {
 	type AssetDef,
 	type ColorRole,
 	type HexColor,
+	type PitchRange,
 	type Pivot,
 	type SpriteAnimationDef,
 	type SpriteFacings,
@@ -390,7 +398,38 @@ export interface SoundRef {
 	readonly volume: number;
 	/** The SoundGroup to play it through. */
 	readonly group: SoundGroupName;
+	/** Extra clips of the event: the clip pool is `[assetId, ...variants]` (round-robin). Empty when none or silent. */
+	readonly variants: ReadonlyArray<string>;
+	/** PlaybackSpeed jitter `[min, max]`, inside SOUND_PITCH_LIMITS; undefined: none (play at 1). */
+	readonly pitch: Readonly<PitchRange> | undefined;
+	/** Shortest gap between two starts, seconds, overriding the audio layer's default; undefined: the default. */
+	readonly minInterval: number | undefined;
 }
+
+/**
+ * A sprite effect (fx.*, docs/FX_AUDIO.md F1) a pack has art for: a one-facing sprite set and how to draw it. Size:
+ * the cell's longer side is drawn `sizeTiles` tiles (the other side keeps the cell's aspect: widthTiles x heightTiles).
+ */
+export interface FxArt {
+	readonly id: FxId;
+	/** The set (one facing); its FX_ANIMATION (`play`) animation is the flipbook. */
+	readonly set: SpriteSetLayout;
+	/** The flipbook's frame count, presentation frame rate and loop flag (one-shots hold the last frame). */
+	readonly frames: number;
+	readonly fps: number;
+	readonly loop: boolean;
+	/** Drawn size of the longer cell side, tiles: `sizeTiles`, or that side / pixelsPerTile; at most FX_SPRITE_MAX_TILES. */
+	readonly sizeTiles: number;
+	readonly widthTiles: number;
+	readonly heightTiles: number;
+	/** The colour role multiplied in (ImageColor3), or undefined: the sheet's own colours. */
+	readonly tint: ColorRole | undefined;
+	/** A brighter, self-lit blend (LightInfluence 0). */
+	readonly additive: boolean;
+}
+
+const NO_VARIANTS: ReadonlyArray<string> = [];
+const COLOR_ROLE_SET: ReadonlySet<string> = new Set<string>(COLOR_ROLES);
 
 export interface ThemeCoreOptions {
 	/** Active locale; strings fall back to the default table. */
@@ -418,6 +457,9 @@ export class ThemeCore {
 	private readonly spriteSets = new Map<string, SpriteSetLayout>();
 	/** Decor lookups, misses included (`false`). */
 	private readonly decorArt = new Map<string, DecorArt | false>();
+	/** Sprite-effect lookups, misses included (`false`). */
+	private readonly fxArt = new Map<string, FxArt | false>();
+	private readonly soundRefs = new Map<string, SoundRef>();
 	private readonly warned = new Set<string>();
 	private readonly warnSink: (message: string) => void;
 
@@ -841,22 +883,160 @@ export class ThemeCore {
 		return v;
 	}
 
-	/** Audio event -> uploaded sound (assetId undefined when silent or missing) and its SoundGroup. */
+	/**
+	 * Audio event -> uploaded sound (assetId undefined when silent or missing), its SoundGroup and its extras
+	 * (variants, pitch jitter, minimum interval). Cached. A malformed extra (a variant that is not a string, a bad
+	 * pitch or minInterval) warns once and is left out; a pitch is clamped to SOUND_PITCH_LIMITS.
+	 */
 	sound(id: string): SoundRef {
+		const cached = this.soundRefs.get(id);
+		if (cached !== undefined) {
+			return cached;
+		}
+		const ref = this.createSound(id);
+		this.soundRefs.set(id, ref);
+		return ref;
+	}
+
+	private createSound(id: string): SoundRef {
 		const group: SoundGroupName = slotFor(id)?.soundGroup ?? "sfx";
+		const silent: SoundRef = {
+			assetId: undefined,
+			volume: 0,
+			group,
+			variants: NO_VARIANTS,
+			pitch: undefined,
+			minInterval: undefined,
+		};
 		const def = this.asset(id);
 		if (def === undefined) {
 			this.warnOnce(`asset:${id}`, `missing audio event "${id}", staying silent`);
-			return { assetId: undefined, volume: 0, group };
+			return silent;
 		}
 		if (def.kind === "silent") {
-			return { assetId: undefined, volume: 0, group };
+			return silent;
 		}
 		if (def.kind !== "sound") {
 			this.warnOnce(`kind:${id}`, `asset "${id}" is a ${def.kind}, not a sound`);
-			return { assetId: undefined, volume: 0, group };
+			return silent;
 		}
-		return { assetId: def.assetId, volume: def.volume ?? 1, group };
+		const d = def as unknown as Obj;
+		const variants = new Array<string>();
+		if (isArrayLike(d.variants)) {
+			for (const v of d.variants) {
+				if (typeIs(v, "string") && v !== "") {
+					variants.push(v);
+				} else {
+					this.warnOnce(`variant:${id}`, `sound "${id}" drops a variant that is not an asset ID`);
+				}
+			}
+		}
+		let pitch: PitchRange | undefined;
+		const p = d.pitch;
+		if (p !== undefined) {
+			const lo: unknown = isArrayLike(p) ? p[0] : undefined;
+			const hi: unknown = isArrayLike(p) ? p[1] : undefined;
+			if (isFiniteNum(lo) && isFiniteNum(hi) && lo <= hi) {
+				pitch = [
+					math.clamp(lo, SOUND_PITCH_LIMITS.min, SOUND_PITCH_LIMITS.max),
+					math.clamp(hi, SOUND_PITCH_LIMITS.min, SOUND_PITCH_LIMITS.max),
+				];
+			} else {
+				this.warnOnce(`pitch:${id}`, `sound "${id}" has pitch ${describeValue(p)}, playing without jitter`);
+			}
+		}
+		let minInterval: number | undefined;
+		const gap = d.minInterval;
+		if (gap !== undefined) {
+			if (isFiniteNum(gap) && gap >= 0) {
+				minInterval = gap;
+			} else {
+				this.warnOnce(
+					`interval:${id}`,
+					`sound "${id}" has minInterval ${describeValue(gap)}, using the default`,
+				);
+			}
+		}
+		return {
+			assetId: def.assetId,
+			volume: def.volume ?? 1,
+			group,
+			variants: variants.size() > 0 ? variants : NO_VARIANTS,
+			pitch,
+			minInterval,
+		};
+	}
+
+	// --- sprite effects (Roblox port, docs/FX_AUDIO.md F1) ------------------------------------------
+
+	/**
+	 * A sprite effect, or undefined: fx is optional, so an ID the pack does not define is undefined WITHOUT a warning
+	 * (nothing is drawn). Cached, misses too. A set too malformed to draw (not `sprites`, rejected by `sprites(id)`,
+	 * more than one facing) warns once and is undefined; a bad `sizeTiles` falls back to the cell size and a `tint`
+	 * that is not a colour role is dropped (warned once). The size is clamped to FX_SPRITE_MAX_TILES.
+	 */
+	fx(id: FxId): FxArt | undefined {
+		const cached = this.fxArt.get(id);
+		if (cached !== undefined) {
+			return cached === false ? undefined : cached;
+		}
+		const art = this.createFx(id);
+		this.fxArt.set(id, art ?? false);
+		return art;
+	}
+
+	private createFx(id: FxId): FxArt | undefined {
+		const def = this.asset(id);
+		if (def === undefined) {
+			return undefined;
+		}
+		if (def.kind !== "sprites") {
+			this.warnOnce(`fx:${id}`, `effect "${id}" is a ${def.kind}, not sprites; not drawn`);
+			return undefined;
+		}
+		const set = this.sprites(id); // warns once when malformed
+		if (set === undefined) {
+			return undefined;
+		}
+		if (set.facings.count !== 1) {
+			this.warnOnce(`fx:${id}`, `effect "${id}" has ${set.facings.count} facings, effects have 1; not drawn`);
+			return undefined;
+		}
+		const play = set.animation(FX_ANIMATION) as SpriteAnimationDef; // required: sprites() rejects a set without it
+		const d = def as unknown as Obj;
+		const longSide = math.max(set.frameW, set.frameH);
+		let declared: number | undefined;
+		if (d.sizeTiles !== undefined) {
+			if (isFiniteNum(d.sizeTiles) && d.sizeTiles > 0) {
+				declared = d.sizeTiles;
+			} else {
+				this.warnOnce(
+					`fx:${id}:size`,
+					`effect "${id}" has sizeTiles ${describeValue(d.sizeTiles)}, using its cell size`,
+				);
+			}
+		}
+		const sizeTiles = math.min(declared ?? longSide / set.pixelsPerTile, FX_SPRITE_MAX_TILES);
+		let tint: ColorRole | undefined;
+		if (d.tint !== undefined) {
+			if (typeIs(d.tint, "string") && COLOR_ROLE_SET.has(d.tint)) {
+				tint = d.tint as ColorRole;
+			} else {
+				this.warnOnce(`fx:${id}:tint`, `effect "${id}" has tint ${describeValue(d.tint)}, drawing it untinted`);
+			}
+		}
+		return {
+			id,
+			set,
+			frames: play.frames,
+			fps: play.fps,
+			loop: play.loop,
+			sizeTiles,
+			widthTiles: (sizeTiles * set.frameW) / longSide,
+			heightTiles: (sizeTiles * set.frameH) / longSide,
+			tint,
+			additive: d.additive === true,
+		};
 	}
 
 	// --- colors --------------------------------------------------------------------------------

@@ -762,7 +762,7 @@ describe("ThemeCore / ThemePack: breakables", () => {
 		}
 		expect(pack.str("breakable.crate.name")).toBe("Crate");
 		for (const id of BREAKABLE_AUDIO_EVENTS) {
-			expect(pack.sound(id)).toEqual({ assetId: undefined, volume: 0, group: "sfx" });
+			expect(pack.sound(id)).toEqual({ assetId: undefined, volume: 0, group: "sfx", variants: [] });
 		}
 		expect(w.messages).toEqual([]);
 	});

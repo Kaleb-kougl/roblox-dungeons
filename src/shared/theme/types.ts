@@ -96,6 +96,10 @@ export const COLOR_ROLES = [
 	// MIN_ENEMY_BULLET_CONTRAST against enemyBullet like the walls
 	"breakable.barrel",
 	"breakable.crate",
+	// Roblox port (docs/FX_AUDIO.md F1): sprite-effect tints with no existing role (contract.ts FX_ROLES): the flask's
+	// heal and the curse shrine. Held to MIN_FX_BULLET_DIFFERENCE (CIE76) from the enemy-bullet roles like decor.fx.*.
+	"fx.heal",
+	"fx.curse",
 ] as const;
 
 export type ColorRole = (typeof COLOR_ROLES)[number];
@@ -190,7 +194,25 @@ export interface SoundAsset {
 	assetId: RobloxAssetId;
 	/** 0..1 mix level. */
 	volume?: number;
+	/**
+	 * Roblox port (docs/FX_AUDIO.md A2): more uploaded clips of the same event (Hit1..Hit9). The player picks among
+	 * `[assetId, ...variants]` (round-robin, so specs stay deterministic). Absent or empty: `assetId` only.
+	 */
+	variants?: Array<RobloxAssetId>;
+	/**
+	 * PlaybackSpeed jitter per start, `[min, max]` with SOUND_PITCH_LIMITS.min <= min <= max <= SOUND_PITCH_LIMITS.max
+	 * (contract.ts). Absent: no jitter (1).
+	 */
+	pitch?: PitchRange;
+	/**
+	 * Shortest gap between two starts of this sound, seconds (>= 0), tuned per clip; overrides the audio layer's
+	 * default (shared/view/audio SFX_MIN_INTERVAL). Presentation only: exempt from the gameplay-key scan on sounds.
+	 */
+	minInterval?: number;
 }
+
+/** A PlaybackSpeed range: each start plays at a speed in [min, max]. */
+export type PitchRange = [min: number, max: number];
 
 /** An audio event the pack leaves silent (the placeholder pack ships no audio). */
 export interface SilentAsset {
@@ -228,8 +250,8 @@ export interface SpriteSetAsset {
 	facings: SpriteFacings;
 	sheets: Array<SpriteSheetImage>;
 	/** Base animation names (no facing suffix): the slot's contract names (class: idle, run, roll, hit, death; enemy and
-	 * boss: idle, move, attack, hit, death; decor and breakable: idle) are required with >= 1 frame; extra names
-	 * (attack.1, run.back, lit, shatter, ...) allowed. */
+	 * boss: idle, move, attack, hit, death; decor and breakable: idle; fx: play) are required with >= 1 frame; extra
+	 * names (attack.1, run.back, lit, shatter, ...) allowed. */
 	animations: Record<string, SpriteAnimationDef>;
 	/** decor.delve.* only, required: see ImageAsset.layer. */
 	layer?: DecorLayer;
@@ -239,6 +261,21 @@ export interface SpriteSetAsset {
 	glowAt?: Pivot;
 	/** decor.* only: see ImageAsset.emissive. */
 	emissive?: boolean;
+	// --- fx.* only (Roblox port, docs/FX_AUDIO.md F1): a one-facing flipbook drawn once at a world spot ------------
+	/**
+	 * Drawn size of the cell's longer side, world tiles, in (0, FX_SPRITE_MAX_TILES] (contract.ts). Absent: that side
+	 * / pixelsPerTile (the sprite-set default), held to the same cap.
+	 */
+	sizeTiles?: number;
+	/** The colour role multiplied in (ImageLabel.ImageColor3; the pipeline greys the sheet first). Absent: own colours. */
+	tint?: ColorRole;
+	/** A brighter, self-lit blend (LightInfluence 0) for glows, rings and sparks. */
+	additive?: boolean;
+	/**
+	 * The untinted sheet's mean colour (written by the FX pipeline): an untinted effect is held to the enemy-bullet
+	 * rule by it. Ignored (not checked) when `tint` is set: the tint is checked instead.
+	 */
+	meanColor?: HexColor;
 }
 
 export interface SpriteFacings {

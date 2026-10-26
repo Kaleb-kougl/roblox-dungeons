@@ -13,10 +13,16 @@
  * Roblox port (docs/DECOR.md R2, D4): the decor slot (`decor.*`: ID grammar, layers per kind, world-art fields,
  * ambient particle caps), the breakable slot (`breakable.*`), decor fx colour roles kept away from the enemy-bullet
  * roles (CIE76 colour difference) and enemy bullets readable on breakables (WCAG contrast).
+ *
+ * Roblox port (docs/FX_AUDIO.md A2, F1): sound `variants` / `pitch` / `minInterval`, the ambience slot (`amb.b<n>`),
+ * the fx slot (`fx.*`: one-facing sprite sets, `sizeTiles` cap, `tint` roles) and effect colours (FX_ROLES, tints and
+ * untinted `meanColor`s) kept away from the enemy-bullet roles (`fxColorReport`).
  */
 
 import { colorDifference, contrastRatio, isHexColor } from "./color";
 import {
+	AMBIENCE,
+	AMBIENCE_IDS,
 	BIOMES,
 	BIOME_MATERIALS,
 	BIOME_MATERIAL_SURFACES,
@@ -31,6 +37,10 @@ import {
 	ENEMY_BULLET_ROLES,
 	DEFAULT_BIOME_MATERIAL,
 	DIGIT_FONT,
+	FX,
+	FX_IDS,
+	FX_ROLES,
+	FX_SPRITE_MAX_TILES,
 	GAMEPLAY_KEY_WORDS,
 	HEALTH_BAR_FILL_ROLES,
 	MAX_ANIMATION_FPS,
@@ -38,14 +48,19 @@ import {
 	MIN_DAMAGE_NUMBER_CONTRAST,
 	MIN_DECOR_FX_BULLET_DIFFERENCE,
 	MIN_ENEMY_BULLET_CONTRAST,
+	MIN_FX_BULLET_DIFFERENCE,
 	MIN_HEALTH_BAR_CONTRAST,
 	REQUIRED_ASSET_IDS,
 	REQUIRED_STRING_KEYS,
+	SOUND_PITCH_LIMITS,
+	SOUND_PRESENTATION_KEYS,
 	SPRITE_FACING_COUNTS,
 	SPRITE_RESAMPLE_MODES,
 	TILE,
 	UI,
 	WORLD_ART_SLOTS,
+	isAmbienceId,
+	isFxId,
 	parseDecorId,
 	requiredAnimationList,
 	requiredBaseAnimations,
@@ -318,6 +333,78 @@ export function decorFxReport(manifest: unknown): Array<DecorFxEntry> {
 	return out;
 }
 
+/**
+ * Effect colours vs enemy bullets (docs/FX_AUDIO.md F1): the CIE76 difference from each ENEMY_BULLET_ROLES colour of
+ * each FX_ROLES colour (`source` "role", `subject` the role), of each fx entry's `tint` role ("tint", the fx ID) and,
+ * for an untinted entry, of its sheet's `meanColor` ("meanColor", the fx ID); >= MIN_FX_BULLET_DIFFERENCE, so no
+ * effect can be mistaken for an enemy bullet. An untinted entry without a meanColor has nothing to check. A tint that
+ * is not a colour role is a validator error of its own, not an entry here.
+ */
+export interface FxColorEntry {
+	source: "role" | "tint" | "meanColor";
+	/** The colour role (source "role") or the fx asset ID. */
+	subject: string;
+	/** The colour checked: the role's, the tint role's, or the meanColor. */
+	color: string;
+	/** The tint role (source "tint"), else undefined. */
+	tint: string | undefined;
+	/** The enemy-bullet role it was compared with. */
+	against: string;
+	againstColor: string;
+	difference: number;
+	min: number;
+	ok: boolean;
+}
+
+export function fxColorReport(manifest: unknown): Array<FxColorEntry> {
+	const out = new Array<FxColorEntry>();
+	if (!isObj(manifest) || !isObj(manifest.colors)) {
+		return out;
+	}
+	const colors = manifest.colors;
+	const push = (source: FxColorEntry["source"], subject: string, color: unknown, tint: string | undefined) => {
+		if (!isHexColor(color)) {
+			return;
+		}
+		for (const against of ENEMY_BULLET_ROLES) {
+			const againstColor = colors[against];
+			if (!isHexColor(againstColor)) {
+				continue;
+			}
+			const difference = colorDifference(color, againstColor);
+			out.push({
+				source,
+				subject,
+				color,
+				tint,
+				against,
+				againstColor,
+				difference,
+				min: MIN_FX_BULLET_DIFFERENCE,
+				ok: difference >= MIN_FX_BULLET_DIFFERENCE,
+			});
+		}
+	};
+	for (const role of FX_ROLES) {
+		push("role", role, colors[role], undefined);
+	}
+	const assets: Obj = isObj(manifest.assets) ? manifest.assets : {};
+	for (const [id, def] of sortedEntries(assets)) {
+		if (!isFxId(id) || !isObj(def)) {
+			continue;
+		}
+		const tint = def.tint;
+		if (tint !== undefined) {
+			if (typeIs(tint, "string") && COLOR_ROLE_SET.has(tint)) {
+				push("tint", id, colors[tint], tint);
+			}
+		} else {
+			push("meanColor", id, def.meanColor, undefined);
+		}
+	}
+	return out;
+}
+
 /** WCAG contrast of enemyBullet on each breakable colour role (BREAKABLE_ROLES), >= MIN_ENEMY_BULLET_CONTRAST. */
 export interface BreakableContrastEntry {
 	role: string;
@@ -347,7 +434,9 @@ type Err = (path: ReadonlyArray<string>, msg: string) => void;
 type UnknownKeys = (obj: Obj, path: ReadonlyArray<string>, allowed: ReadonlyArray<string>) => void;
 
 const TOP_LEVEL_KEYS = ["format", "id", "name", "version", "colors", "biomes", "assets", "strings", "locales"];
-const SLOT_PREFIXES = "class., enemy., boss., bullet., tile., item., ui., sfx., music., decor., breakable.";
+const SLOT_PREFIXES = "class., enemy., boss., bullet., tile., item., ui., sfx., music., decor., breakable., amb., fx.";
+const AMBIENCE_ID_LIST = AMBIENCE_IDS.join(", ");
+const FX_ID_LIST = FX_IDS.join(", ");
 
 function forgeSuffix(biome: string): string {
 	const forge = BIOMES.find((b) => b.id === biome)?.forgeTheme;
@@ -486,6 +575,14 @@ export function validateManifest(manifest: unknown, opts: ValidateOptions = {}):
 			err(path, `unknown decor ID (use ${DECOR_ID_FORMS}; kinds: contract.ts DECOR_KINDS, lowercase)`);
 			continue;
 		}
+		if (slot === AMBIENCE && !isAmbienceId(assetId)) {
+			err(path, `unknown ambience ID (known: ${AMBIENCE_ID_LIST})`);
+			continue;
+		}
+		if (slot === FX && !isFxId(assetId)) {
+			err(path, `unknown fx ID (known: ${FX_ID_LIST})`);
+			continue;
+		}
 		validateAsset(def, path, slot, err, unknownKeys);
 	}
 
@@ -549,8 +646,10 @@ export function validateManifest(manifest: unknown, opts: ValidateOptions = {}):
 			return;
 		}
 		const ids = keysAreIds(path);
+		// A sound asset's presentation keys (minInterval) contain a gameplay word but are exempt (contract.ts).
+		const sound = path.size() === 2 && path[0] === "assets" && node.kind === "sound";
 		for (const [k, v] of sortedEntries(node)) {
-			if (!ids && isGameplayKey(k)) {
+			if (!ids && isGameplayKey(k) && !(sound && SOUND_PRESENTATION_KEYS.includes(k))) {
 				err(
 					append(path, k),
 					"looks like gameplay data; hitboxes, radii, speeds, damage and timings belong in gameplay data, not the theme pack",
@@ -584,6 +683,23 @@ export function validateManifest(manifest: unknown, opts: ValidateOptions = {}):
 				)} (CIE76), needs >= ${fixed1(c.min)}: decor fx must never read as an enemy bullet`,
 			);
 		}
+	}
+	for (const c of fxColorReport(manifest)) {
+		if (c.ok) {
+			continue;
+		}
+		const what =
+			c.source === "role"
+				? `${c.subject} ${c.color}`
+				: c.source === "tint"
+				? `tint ${c.tint} ${c.color}`
+				: `meanColor ${c.color}`;
+		err(
+			c.source === "role" ? ["colors", c.subject] : ["assets", c.subject, c.source],
+			`colour difference: ${what} vs ${c.against} ${c.againstColor} is ${fixed1(
+				c.difference,
+			)} (CIE76), needs >= ${fixed1(c.min)}: effects must never read as an enemy bullet`,
+		);
 	}
 	for (const c of breakableContrastReport(manifest)) {
 		if (!c.ok) {
@@ -851,18 +967,56 @@ function validateAsset(def: unknown, path: Array<string>, slot: SlotContract, er
 			break;
 		}
 		case "sound": {
-			unknownKeys(def, path, ["kind", "assetId", "volume"]);
+			unknownKeys(def, path, ["kind", "assetId", "volume", "variants", "pitch", "minInterval"]);
 			checkAssetId();
 			const volume = def.volume;
 			if (volume !== undefined && (!typeIs(volume, "number") || volume < 0 || volume > 1)) {
 				err(append(path, "volume"), "must be a number in [0, 1]");
 			}
+			validateSoundExtras(def, path, err);
 			break;
 		}
 		case "silent": {
 			unknownKeys(def, path, ["kind"]);
 			break;
 		}
+	}
+}
+
+const PITCH_MSG = `must be [min, max] with ${SOUND_PITCH_LIMITS.min} <= min <= max <= ${SOUND_PITCH_LIMITS.max} (PlaybackSpeed)`;
+
+/**
+ * A sound's optional extras (docs/FX_AUDIO.md A2): `variants` an array of uploaded asset IDs (empty is fine),
+ * `pitch` a [min, max] PlaybackSpeed range inside SOUND_PITCH_LIMITS with min <= max, `minInterval` seconds >= 0.
+ */
+function validateSoundExtras(def: Obj, path: Array<string>, err: Err) {
+	const variants = def.variants;
+	if (variants !== undefined) {
+		const vp = append(path, "variants");
+		if (isArrayLike(variants)) {
+			for (let i = 0; i < variants.size(); i++) {
+				checkAssetIdAt(variants[i], append(vp, tostring(i)), err);
+			}
+		} else if (!isObj(variants) || sortedEntries(variants).size() > 0) {
+			err(vp, `must be an array of "rbxassetid://<digits>" (extra clips), got ${describeValue(variants)}`);
+		}
+	}
+	const pitch = def.pitch;
+	if (pitch !== undefined) {
+		const pp = append(path, "pitch");
+		if (!isArrayLike(pitch) || pitch.size() !== 2 || !isFiniteNumber(pitch[0]) || !isFiniteNumber(pitch[1])) {
+			err(pp, `${PITCH_MSG}, got ${describeValue(pitch)}`);
+		} else {
+			const lo = pitch[0] as number;
+			const hi = pitch[1] as number;
+			if (lo < SOUND_PITCH_LIMITS.min || hi > SOUND_PITCH_LIMITS.max || lo > hi) {
+				err(pp, `${PITCH_MSG}, got [${lo}, ${hi}]`);
+			}
+		}
+	}
+	const minInterval = def.minInterval;
+	if (minInterval !== undefined && (!isFiniteNumber(minInterval) || minInterval < 0)) {
+		err(append(path, "minInterval"), `must be a number of seconds >= 0, got ${describeValue(minInterval)}`);
 	}
 }
 
@@ -1042,6 +1196,8 @@ const SPRITE_SET_KEYS = [
 	"animations",
 ];
 const SPRITE_ANIMATION_KEYS = ["sheet", "start", "frames", "stride", "fps", "loop"];
+/** Keys an fx.* sprite set adds (types.ts SpriteSetAsset, fx fields). */
+const FX_ART_KEYS = ["sizeTiles", "tint", "additive", "meanColor"];
 const FACING_COUNT_LIST = (SPRITE_FACING_COUNTS as ReadonlyArray<number>).map((n) => tostring(n)).join(" | ");
 const RESAMPLE_LIST = SPRITE_RESAMPLE_MODES.map((m) => q(m)).join(" | ");
 
@@ -1055,7 +1211,9 @@ function validateSpriteSet(def: Obj, path: Array<string>, slot: SlotContract, er
 		err(append(path, "kind"), 'decor.fx.ambient.* is a particle texture: kind "image", got "sprites"');
 		return;
 	}
-	unknownKeys(def, path, decor !== undefined ? [...SPRITE_SET_KEYS, ...decorArtKeys(decor)] : SPRITE_SET_KEYS);
+	const fx = slot === FX;
+	const extraKeys = decor !== undefined ? decorArtKeys(decor) : fx ? FX_ART_KEYS : [];
+	unknownKeys(def, path, [...SPRITE_SET_KEYS, ...extraKeys]);
 
 	// --- cell, pivot, density, resample -----------------------------------------------------------
 	const frameW = def.frameW;
@@ -1106,6 +1264,12 @@ function validateSpriteSet(def: Obj, path: Array<string>, slot: SlotContract, er
 		if (!typeIs(facings.ccw, "boolean")) {
 			err(append(fp, "ccw"), "must be true or false");
 		}
+		if (fx && facingCount !== undefined && facingCount !== 1) {
+			err(append(fp, "count"), `an effect is drawn in one facing: must be 1, got ${facingCount}`);
+		}
+	}
+	if (fx) {
+		validateFxFields(def, path, cellOk ? math.max(frameW as number, frameH as number) : undefined, err);
 	}
 
 	// --- sheets -----------------------------------------------------------------------------------
@@ -1233,5 +1397,47 @@ function validateSpriteSet(def: Obj, path: Array<string>, slot: SlotContract, er
 			);
 			break;
 		}
+	}
+}
+
+// ---------------------------------------------------------------------------------------------
+// Sprite effects (Roblox port, docs/FX_AUDIO.md F1): fx.* fields
+
+/**
+ * An fx.* set's fields: `sizeTiles` in (0, FX_SPRITE_MAX_TILES] (absent: the longer cell side / pixelsPerTile, held
+ * to the same cap), `tint` a known colour role, `additive` a boolean, `meanColor` "#rrggbb". The colour rule
+ * (tint and meanColor vs the enemy-bullet roles) is fxColorReport's.
+ */
+function validateFxFields(def: Obj, path: Array<string>, longSide: number | undefined, err: Err) {
+	const sizeTiles = def.sizeTiles;
+	if (sizeTiles !== undefined) {
+		if (!isFiniteNumber(sizeTiles) || !(sizeTiles > 0) || sizeTiles > FX_SPRITE_MAX_TILES) {
+			err(
+				append(path, "sizeTiles"),
+				`must be a number in (0, ${FX_SPRITE_MAX_TILES}] (tiles: effects stay small), got ${describeValue(
+					sizeTiles,
+				)}`,
+			);
+		}
+	} else if (longSide !== undefined && isFiniteNumber(def.pixelsPerTile) && def.pixelsPerTile > 0) {
+		const drawn = longSide / def.pixelsPerTile;
+		if (drawn > FX_SPRITE_MAX_TILES) {
+			err(
+				path,
+				`drawn ${fixed2(drawn)} tiles (cell ${longSide} px / pixelsPerTile ${
+					def.pixelsPerTile
+				}), more than ${FX_SPRITE_MAX_TILES}: set sizeTiles or raise pixelsPerTile`,
+			);
+		}
+	}
+	const tint = def.tint;
+	if (tint !== undefined && (!typeIs(tint, "string") || !COLOR_ROLE_SET.has(tint))) {
+		err(append(path, "tint"), `must be a colour role (COLOR_ROLES), got ${describeValue(tint)}`);
+	}
+	if (def.additive !== undefined && !typeIs(def.additive, "boolean")) {
+		err(append(path, "additive"), "must be true or false");
+	}
+	if (def.meanColor !== undefined && !isHexColor(def.meanColor)) {
+		err(append(path, "meanColor"), `must be "#rrggbb", got ${describeValue(def.meanColor)}`);
 	}
 }

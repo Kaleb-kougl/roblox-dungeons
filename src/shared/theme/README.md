@@ -9,7 +9,10 @@ pivots, facings, colour roles, string keys, contrast thresholds, gameplay key wo
 for the web build fits here. Contract v2 only adds to it: the `sprites` kind for actors and `tilesPerImage` for
 tile images (docs/ART.md task S2). The port also adds two slots (docs/DECOR.md): optional room decoration
 (`decor.*`, [below](#decor-decor-docsdecormd-r2)) and required breakable clutter (`breakable.*`,
-[below](#breakables-breakable-docsdecormd-d4)), plus the `decor.fx.*` and `breakable.*` colour roles.
+[below](#breakables-breakable-docsdecormd-d4)), plus the `decor.fx.*` and `breakable.*` colour roles. For effects
+and audio (docs/FX_AUDIO.md A2, F1) it adds sound variants / pitch jitter / per-clip intervals, the port's audio IDs
+(`PORT_AUDIO_EVENTS`), biome ambience (`amb.b<n>`), optional sprite effects (`fx.*`) and the `fx.heal` / `fx.curse`
+roles ([below](#effects-and-audio-docsfx_audiomd-a2-f1)).
 
 ## Rules
 
@@ -46,7 +49,8 @@ pack.str("hud.gold", { amount: 120 });               // "120 gold"
 pack.color("enemyBullet");                           // Color3 (cached; Color3 is immutable)
 pack.hex("enemyBullet");                             // "#ff3fa4"
 pack.biome("biome.3");                               // { forgeTheme: "frost", floor, wall, floorColor, wallColor, tiles, materials, nameKey }
-pack.sound("sfx.ember");                             // { assetId: undefined, volume: 0, group: "sfx" } while silent
+pack.sound("sfx.ember");                             // { assetId: undefined, volume: 0, group: "sfx", variants: [] } while silent
+pack.fx("fx.hit.light");                             // FxSprite, or undefined (no warning) while the pack has no effect art
 
 const set = pack.sprites("class.vanguard");          // a `sprites` asset (contract v2), or undefined
 const sheet = pack.spriteSheet("class.vanguard");
@@ -80,7 +84,8 @@ if (set !== undefined) {
 | `str(key, vars?)` | text with `{name}` filled (active locale, then default table) | warns once, returns the key |
 | `has(id)` / `hasString(key)` | boolean | |
 | `biome(id)` | `{ id, forgeTheme, nameKey, floor, wall, floorColor, wallColor, tiles, materials }` (`materials`: `{ floor, wall, pool }` material names, every surface filled) | warns once, magenta floor/wall, SmoothPlastic materials; a bad material name warns once and uses SmoothPlastic |
-| `sound(id)` | `{ assetId \| undefined, volume, group: "sfx" \| "music" }` | warns once, silent |
+| `sound(id)` | `SoundRef` `{ assetId \| undefined, volume, group: "sfx" \| "music", variants, pitch?, minInterval? }`, cached ([sound extras](#sound-extras-variants-pitch-mininterval)) | warns once, silent |
+| `fx(id)` | `FxSprite` (one-facing `set`, `frames` / `fps` / `loop`, `sizeTiles` / `widthTiles` / `heightTiles`, `tint`, `color`, `additive`, `frame(i)`), cached ([sprite effects](#sprite-effects-fx)) | `undefined`, **no warning** (effects are optional); malformed art warns once, `undefined` |
 | `texture(id)` | uploaded image `assetId`, or `undefined` while a placeholder (and for a `sprites` asset) | warns once, `undefined` |
 | `image(id)` | `{ assetId, w, h, tilesPerImage, pivot }` of an uploaded `image` asset (floor textures, the co-op ring, the pedestal beam) | `undefined` for any other kind or a missing ID, no warning (optional art) |
 | `spriteSheet(id)` | `{ assetId \| undefined, frameW, frameH, pivot, animations, animationNames, frame(anim, i) }`; a `sprites` asset gets the placeholder layout | placeholder layout; unknown animation warns once and uses the first |
@@ -109,8 +114,8 @@ lists `THEME_PACKS` (`packs/index.ts`).
 
 Everything that does not need a Roblox datatype is plain Luau-safe TS, tested under Lune: `color.ts` (hex, WCAG
 contrast, CIE76 `colorDifference`), `strings.ts` (`interpolate`, `placeholders`, `templateProblem`), `validate.ts`
-(`validateManifest`, `contrastReport`, `juiceContrastReport`, `decorFxReport`, `breakableContrastReport`,
-`isGameplayKey`), `core.ts` (`ThemeCore` lookups and fallbacks, `decor` / `decorVariants` / `ambient` / `breakable`, `sprites` ->
+(`validateManifest`, `contrastReport`, `juiceContrastReport`, `decorFxReport`, `fxColorReport`, `breakableContrastReport`,
+`isGameplayKey`), `core.ts` (`ThemeCore` lookups and fallbacks, `decor` / `decorVariants` / `ambient` / `breakable` / `fx`, `sound`, `sprites` ->
 `SpriteSetLayout`, `frameRect`,
 `frameUV`, `uvToPixelRect`, `frameIndex`), `placeholders.ts`, `contract.ts`. `pack.ts` only converts to `Color3` /
 `Vector2`. Warnings go to Roblox `warn` unless a `warn` sink is passed (the specs pass one to assert warn-once).
@@ -165,12 +170,14 @@ Asset IDs are lowercase, dot-separated, at least two segments; the first segment
 | `item.*` | loot icons | image, placeholder | 16x16 |
 | `ui.*` | cursor, panel, icons | image, placeholder | free size |
 | `ui.font.digits` | pixel digit font | image, placeholder | `DIGIT_FONT`: glyphs `0123456789+-CAP!`, 5x7 cells; strip 80x7 |
-| `sfx.*`, `music.*` | audio events | sound, silent | play through SoundGroup `sfx` / `music` |
+| `sfx.*`, `music.*` | audio events (`AUDIO_EVENTS`, `BREAKABLE_AUDIO_EVENTS`, `PORT_AUDIO_EVENTS`), **required** | sound, silent | play through SoundGroup `sfx` / `music` |
+| `amb.b<n>` | biome ambience loops (`AMBIENCE_IDS`, b1..b5), **required** | sound, silent | play through SoundGroup `sfx` |
 | `decor.*` | room decoration, **optional** ([Decor](#decor-decor-docsdecormd-r2)) | image, sprites | free size; `pixelsPerTile`; ID grammar, `layer` per kind |
 | `breakable.<barrel\|crate>` | breakable clutter, **required** ([Breakables](#breakables-breakable-docsdecormd-d4)) | image, sprites, placeholder | free size; `pixelsPerTile`; `sprites`: `idle` (+ `shatter`) |
+| `fx.*` | sprite effects (`FX_IDS`), **optional** ([Sprite effects](#sprite-effects-fx)) | sprites | one facing, `play`; drawn <= `FX_SPRITE_MAX_TILES` (3) tiles |
 
 Directional animations are named `<anim>.<facing>` and take one sheet row each. Full required lists:
-`REQUIRED_ASSET_IDS`, `REQUIRED_STRING_KEYS`, `AUDIO_EVENTS` in `contract.ts`.
+`REQUIRED_ASSET_IDS`, `REQUIRED_STRING_KEYS`, `AUDIO_EVENTS`, `PORT_AUDIO_EVENTS`, `AMBIENCE_IDS` in `contract.ts`.
 
 ## Manifest format (`packs/<id>/manifest.ts`)
 
@@ -199,7 +206,8 @@ export const MY_MANIFEST: ThemeManifest = {
 ```
 
 Kinds: `image` (assetId, w, h, tile-only `tilesPerImage`, ui-only `pivot` inside the image), `spritesheet` (assetId, frameW, frameH, pivot,
-animations `{ row, frames, fps, loop }`), `sprites` (below), `sound` (assetId, volume 0..1), `silent`,
+animations `{ row, frames, fps, loop }`), `sprites` (below), `sound` (assetId, volume 0..1, optional `variants`,
+`pitch`, `minInterval`: [below](#sound-extras-variants-pitch-mininterval)), `silent`,
 `placeholder`. `assetId` must be `rbxassetid://<digits>` (local `rbxasset://` content and bare numbers are
 rejected). `fps` is presentation only. Unknown keys are rejected in every kind.
 
@@ -430,6 +438,99 @@ breakable `kind`) the asset `breakable.<kind>`, the colour role `breakable.<kind
   `art` is undefined. The flat decal a broken one leaves is decor (`decor.delve.b<n>.brokenbarrel` /
   `brokencrate`), optional.
 
+## Effects and audio (docs/FX_AUDIO.md A2, F1)
+
+Additive like contract v2: `MANIFEST_FORMAT` stays 1 and every existing pack and kind keeps its exact checks.
+
+### Sound extras (`variants`, `pitch`, `minInterval`)
+
+```ts
+"sfx.enemy.hurt": { kind: "sound", assetId: "rbxassetid://<n>", volume: 0.7,
+                    variants: ["rbxassetid://<n>", "rbxassetid://<n>"],   // Hit3, Hit6: more clips of the event
+                    pitch: [0.92, 1.08],                                  // PlaybackSpeed jitter per start
+                    minInterval: 0.05 },                                  // seconds; overrides SFX_MIN_INTERVAL
+```
+
+| Field | Rule | Resolved (`sound(id)`) |
+| --- | --- | --- |
+| `variants` | array of `rbxassetid://<digits>` (empty is fine) | `variants`: the extra clips, `[]` when none; the clip pool is `[assetId, ...variants]`, played round-robin |
+| `pitch` | `[min, max]`, `SOUND_PITCH_LIMITS.min` (0.5) <= min <= max <= `SOUND_PITCH_LIMITS.max` (2) | `pitch`, clamped to the limits; `undefined`: no jitter (1) |
+| `minInterval` | seconds >= 0 | `minInterval`; `undefined`: the audio layer's default (`SFX_MIN_INTERVAL`) |
+
+`minInterval` contains the gameplay word `interval`; it is presentation (how often a clip may restart), so the
+gameplay-key scan skips it on a `sound` asset only (`SOUND_PRESENTATION_KEYS`) and still flags it anywhere else.
+`ThemeCore.sound` caches each ref and re-checks the extras (a pack that failed validation still loads): a variant that
+is not a string, a reversed or malformed `pitch` and a negative `minInterval` are left out, each warned once.
+
+### Port audio IDs and ambience
+
+- **`PORT_AUDIO_EVENTS`** (required, silent in the placeholder pack; kept apart from the web build's `AUDIO_EVENTS`
+  like `BREAKABLE_AUDIO_EVENTS`): the IDs the audio layer already played (`shared/view/audio` `PORT_SFX`: swing,
+  flask, swap, deflect, telegraph, boss death, victory) and the A2 additions `sfx.ui.back`, `sfx.ui.move`,
+  `sfx.player.finisher`, `sfx.player.charged`, `sfx.room.clear`, `sfx.relic.take`, `sfx.shrine.use`,
+  `sfx.stairwell.open`, `sfx.floor.enter`, `sfx.depth.up`, `sfx.jingle.gameover`, `music.tutorial`, `music.lobby`.
+  `audio.spec.ts` checks every `allAudioIds()` entry is required.
+- **Ambience** (`AMBIENCE` slot, prefix `amb.`): one loop per biome, `amb.b1`..`amb.b5` (`AMBIENCE_IDS`,
+  `ambienceId(biome)`; b<n> = `biome.<n>`, the decor biome keys), `sound` or `silent`, through the `sfx` SoundGroup
+  (decision X5: no new slider). **Required and silent**, not optional like decor: every audio ID is required in this
+  contract (the `silent` kind exists for exactly this), so the contract knows every ID the game plays, a pack's typo is
+  an error, and the AudioController reads it through `sound(id)` like music. Any other `amb.` ID is rejected.
+
+### Sprite effects (`fx.*`)
+
+One-shot flipbooks at a world spot (a hit mark, a puff, a ring). **Every fx ID is optional**: `pack.fx(id)` is
+`undefined`, without a warning, for an ID the pack leaves out (nothing is drawn); the placeholder pack ships none.
+IDs (`FX_IDS`, `isFxId`; anything else under `fx.` is an error): `fx.hit.light`, `fx.hit.heavy`, `fx.swing.1`..`3`,
+`fx.death.puff`, `fx.roll.dust`, `fx.guard.shield`, `fx.ember.ring`, `fx.flask`, `fx.boss.phase`, `fx.boss.slam`,
+`fx.boss.death`, `fx.relic.take`, `fx.shrine.use`, `fx.stairwell`, `fx.breakable.splinter`.
+
+An entry is a v2 `sprites` set with **one facing** (`facings.count` 1) and the animation **`play`** (`FX_ANIMATION`),
+whose `frames`, `fps` and `loop` are the flipbook's (`loop: true` for `fx.stairwell`); `resample` is `"Pixelated"` for
+the pack's pixel art. Fx fields on top (rejected on every other set):
+
+| Field | Rule | What |
+| --- | --- | --- |
+| `sizeTiles` | optional, in (0, `FX_SPRITE_MAX_TILES` = 3] | drawn size of the cell's longer side, tiles. Absent: that side / `pixelsPerTile`, held to the same cap |
+| `tint` | optional, a colour role | multiplied in (`ImageLabel.ImageColor3`; the pipeline greys the sheet first). Absent: the sheet's own colours |
+| `additive` | optional boolean | a brighter, self-lit blend (LightInfluence 0) |
+| `meanColor` | optional `"#rrggbb"` | the untinted sheet's mean colour (the FX pipeline writes it); checked only when there is no `tint` |
+
+```ts
+"fx.hit.light": { kind: "sprites", frameW: 32, frameH: 32, pivot: { x: 16, y: 16 }, pixelsPerTile: 32,
+                  resample: "Pixelated", facings: { count: 1, zeroDeg: 0, ccw: true },
+                  sheets: [{ assetId: "rbxassetid://<n>", w: 128, h: 32 }],
+                  animations: { play: { sheet: 0, start: 0, frames: 4, fps: 12, loop: false } },
+                  sizeTiles: 0.75, tint: "damageNumber", additive: true },
+```
+
+**Colour rule** (`fxColorReport`): every `FX_ROLES` colour, every entry's `tint` role and every untinted entry's
+`meanColor` is at least `MIN_FX_BULLET_DIFFERENCE` (= `MIN_DECOR_FX_BULLET_DIFFERENCE`, 40 CIE76) from `enemyBullet`
+and `enemyBulletOutline`, like the decor fx roles: no effect may read as an enemy bullet. An untinted entry with no
+`meanColor` has nothing to check.
+
+**Effect colour roles** (`FX_ROLES`, required in every pack): `fx.heal` (the flask; placeholder `#6ee08a`, 137 from
+the bullet pink) and `fx.curse` (the shrine; `#8a6ad8`, 59).
+
+**Runtime:**
+
+```ts
+const fx = pack.fx("fx.hit.light");                   // undefined: draw nothing
+if (fx !== undefined) {
+	const f = fx.frame(math.floor(elapsed * fx.fps));  // { image, offset, size }; one-shots hold the last frame
+	label.Image = f.image;
+	label.ImageRectOffset = f.offset;
+	label.ImageRectSize = f.size;
+	label.ImageColor3 = fx.color;                     // the tint role, white when untinted
+	label.ResampleMode = Enum.ResamplerMode[fx.set.resample];
+	// billboard: fx.widthTiles x fx.heightTiles tiles; fx.additive -> LightInfluence 0; done after fx.frames / fx.fps s
+}
+```
+
+`ThemeCore.fx` re-checks what the renderer relies on: a non-`sprites` entry, a set `ThemeCore.sprites` rejects (no
+`play`, bad cells) or one with more than one facing is not drawn and warns once; a bad `sizeTiles` falls back to the
+cell size and a `tint` that is not a role is dropped (warned once); the size is clamped to `FX_SPRITE_MAX_TILES`.
+Lookups are cached, misses too.
+
 ## Replacing assets later
 
 1. **Make the art to the contract.** Sprite sheets: a grid of equal cells at the slot's cell size (16x24 classes,
@@ -457,12 +558,12 @@ readable on every biome.
 | File | What |
 | --- | --- |
 | `types.ts` | manifest and asset types (incl. `SpriteSetAsset`), `COLOR_ROLES` |
-| `contract.ts` | sprite contract (v2: `requiredBaseAnimations`, `MAX_IMAGE_SIDE`, `SPRITE_FACING_COUNTS`, `SPRITE_RESAMPLE_MODES`), decor (`DECOR`, `DECOR_KIND_LAYERS`, `parseDecorId`, `decorId`, `DECOR_FX_ROLES`, `DECOR_PARTICLE`), breakables (`BREAKABLE`, `BREAKABLE_KINDS`), biome materials (`BIOME_MATERIALS`, `BIOME_MATERIAL_SURFACES`, `DEFAULT_BIOME_MATERIAL`), slots, SoundGroups, required IDs/strings, contrast thresholds, gameplay key words |
+| `contract.ts` | sprite contract (v2: `requiredBaseAnimations`, `MAX_IMAGE_SIDE`, `SPRITE_FACING_COUNTS`, `SPRITE_RESAMPLE_MODES`), decor (`DECOR`, `DECOR_KIND_LAYERS`, `parseDecorId`, `decorId`, `DECOR_FX_ROLES`, `DECOR_PARTICLE`), breakables (`BREAKABLE`, `BREAKABLE_KINDS`), effects and audio (`FX`, `FX_IDS`, `FX_ROLES`, `FX_SPRITE_MAX_TILES`, `AMBIENCE`, `AMBIENCE_IDS`, `PORT_AUDIO_EVENTS`, `SOUND_PITCH_LIMITS`), biome materials (`BIOME_MATERIALS`, `BIOME_MATERIAL_SURFACES`, `DEFAULT_BIOME_MATERIAL`), slots, SoundGroups, required IDs/strings, contrast thresholds, gameplay key words |
 | `color.ts`, `strings.ts` | WCAG contrast, CIE76 `colorDifference` and hex parsing; `{name}` interpolation |
-| `validate.ts` | `validateManifest`, `contrastReport`, `juiceContrastReport`, `decorFxReport`, `breakableContrastReport`, `isGameplayKey` |
+| `validate.ts` | `validateManifest`, `contrastReport`, `juiceContrastReport`, `decorFxReport`, `fxColorReport`, `breakableContrastReport`, `isGameplayKey` |
 | `placeholders.ts` | `PLACEHOLDER_VISUALS`, `TELEGRAPH_VISUAL`, `PLACEHOLDER_PROPORTIONS`, `missingVisual` |
 | `core.ts` | `ThemeCore` (pure lookups and fallbacks), frame math, `SpriteSetLayout` |
 | `pack.ts` | `ThemePack` (Color3 / Vector2, `SpriteSet`), `loadThemePack`, the active pack |
 | `packs/` | `THEME_PACKS`; `placeholder/manifest.ts` (every visual a placeholder, every sound silent) |
 | `util.ts` | Luau stand-ins for JSON / ordered keys (sorted iteration keeps messages deterministic) |
-| `*.spec.ts` | headless specs; `requested-ids.spec.ts` lists every ID the web build's code (and the port's decor / breakable renderers) requests; `decor.spec.ts` covers the decor and breakable contract, validator and lookups |
+| `*.spec.ts` | headless specs; `requested-ids.spec.ts` lists every ID the web build's code (and the port's decor / breakable renderers) requests; `decor.spec.ts` covers the decor and breakable contract, validator and lookups; `audio.spec.ts` the sound extras, port audio IDs and ambience; `fx.spec.ts` the sprite effects |
