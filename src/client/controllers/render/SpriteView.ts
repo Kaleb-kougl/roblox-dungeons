@@ -7,6 +7,7 @@ import {
 	type IsoBasis,
 	type SpriteAnimChoice,
 	type SpriteClock,
+	type SpriteLayout,
 } from "shared/view";
 import { renderPart } from "./placeholders";
 
@@ -21,7 +22,8 @@ const HIDDEN = 1;
  *
  * The anchor is its own Part, not the placeholder model: placeholder pieces sit at shape offsets and turn with the
  * facing (and tumble while rolling), which would drag the billboard. The billboard's StudsOffset (camera space) puts
- * the set's pivot pixel on the feet.
+ * the set's pivot pixel on the feet. `layout` sizes the billboard (default: the set's own frame size, pivot and
+ * pixelsPerTile); breakables pass one scaled down to their height cap (shared/view breakableArtLayout).
  */
 export class SpriteView {
 	readonly anchor: Part;
@@ -37,14 +39,14 @@ export class SpriteView {
 	private transparency = 0;
 	private visible = true;
 
-	constructor(readonly set: SpriteSet, parent: Instance) {
+	constructor(readonly set: SpriteSet, parent: Instance, layout: SpriteLayout = set) {
 		const anchor = renderPart("Part", false);
 		anchor.Name = `${set.id}.anchor`;
 		anchor.Transparency = HIDDEN;
 		anchor.Size = new Vector3(SPRITE_VIEW.anchorStuds, SPRITE_VIEW.anchorStuds, SPRITE_VIEW.anchorStuds);
 		this.anchor = anchor;
 
-		const b = spriteBillboard(set);
+		const b = spriteBillboard(layout);
 		const gui = new Instance("BillboardGui");
 		gui.Name = set.id;
 		gui.Size = new UDim2(b.w, 0, b.h, 0);

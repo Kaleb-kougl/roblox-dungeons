@@ -10,6 +10,8 @@
  *   party.ts      co-op presentation rules (teammates' bullets faded in large parties)
  *   floorTexture.ts  world-anchored Texture offsets so merged floor slabs show one continuous pattern
  *   sprites.ts    sprite renderer logic: world facing -> screen facing, animation + frame from sim state, billboard
+ *   breakables.ts breakable barrels / crates on screen: the frame diff, hit blink / shake, placement, debris, aim clip
+ *                 (tunables: BREAKABLE_VIEW in breakablesConfig.ts)
  *
  * Sub-barrels (import from the folder): `shared/view/fx` (the juice layer: hit tracker, hitstop, bars, numbers,
  * particles), `shared/view/audio` (sim events -> theme sound IDs, music), `shared/view/hud` (HUD font token, layout,
@@ -23,3 +25,5 @@ export * from "./markings";
 export * from "./party";
 export * from "./sprites";
 export * from "./floorTexture";
+export * from "./breakablesConfig";
+export * from "./breakables";

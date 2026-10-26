@@ -5,6 +5,7 @@ import {
 	NO_KIND,
 	archetypeAt,
 	roomAt,
+	solidCells,
 	type ActorState,
 	type EncounterConfig,
 	type EncounterRoom,
@@ -15,12 +16,14 @@ import {
 	RENDER_ORDER,
 	actorFxMarkings,
 	bossTelegraphMarkings,
+	clipToSolidCells,
 	genericWindupMarkings,
 	lerp,
 	rect,
 	roarMarkings,
 	slamMarkings,
 	type ActorFxHintsView,
+	type AimClip,
 } from "shared/view";
 import { SimController } from "../game/SimController";
 import { ThemeController } from "../game/ThemeController";
@@ -46,7 +49,9 @@ function arenaOf(enc: EncounterConfig, a: Readonly<ActorState>): EncounterRoom |
  * `telegraph` role; the seal and the roar in the `boss` role). From sim state only (web ActorsView ActorFx +
  * BossView):
  *   - room enemies with data.fx: the sniper's aim line while it winds up (bold once the aim locks), the bruiser's
- *     expanding shockwave ring with its gap
+ *     expanding shockwave ring with its gap. The aim line stops where it first enters an intact breakable's cell
+ *     (shared/view clipToSolidCells over shared/sim solidCells): a crate stops the shot, though not the sniper's sight
+ *     (docs/DECOR.md B2)
  *   - any other actor winding up (aiState TELEGRAPH) without a preview: a ring around it
  *   - Mother Bramble (boss.act1) while winding up: exactly where the attack's bullets will go (fan lanes, ring arcs
  *     with gaps, spiral arms, the slam lane + impact + shockwave), dim early, bright late, blinking at the end; the
@@ -103,6 +108,9 @@ export class TelegraphController implements OnStart {
 		const s = ctx.run.state;
 		const alpha = this.sim.getAlpha();
 		const actors = s.combat.actors;
+		const solid = solidCells(s);
+		const clip: AimClip | undefined =
+			solid !== undefined ? (x, z, dx, dz, len) => clipToSolidCells(solid, x, z, dx, dz, len) : undefined;
 		for (let i = 0; i < actors.size(); i++) {
 			const a = actors[i];
 			if (a.kind === NO_KIND || a.alive === 0) continue;
@@ -114,7 +122,7 @@ export class TelegraphController implements OnStart {
 				continue;
 			}
 			const fx = (def.data as { fx?: ActorFxHintsView }).fx;
-			const drew = fx !== undefined && actorFxMarkings(bright, dim, a, fx, x, z, alpha);
+			const drew = fx !== undefined && actorFxMarkings(bright, dim, a, fx, x, z, alpha, clip);
 			if (!drew && a.aiState === AiState.TELEGRAPH) genericWindupMarkings(dim, x, z, a.radius);
 		}
 	}

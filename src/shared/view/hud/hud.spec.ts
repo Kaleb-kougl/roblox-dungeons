@@ -11,7 +11,7 @@ import {
 	inputLabel,
 } from "shared/play";
 import { HEALTH_BARS_MODES, HUD_SCALE_PERCENTS, PARTICLES_LEVELS, defaultAudioSettings } from "shared/settings";
-import { SIM_EVENT_FIELDS, eventDefault, type SimEvents } from "shared/sim";
+import { ALL_EVENT_FIELDS, eventDefault, type SimEvents } from "shared/sim";
 import { AUDIO_EVENTS, PLACEHOLDER_MANIFEST, ThemePack, slotFor } from "shared/theme";
 import { tutorialStringKeys } from "shared/tutorial";
 import {
@@ -243,7 +243,7 @@ describe("menu and lobby strings (L3 / L5 / L6)", () => {
 
 function noEvents(): SimEvents {
 	const e = {} as SimEvents;
-	for (const f of SIM_EVENT_FIELDS) e[f] = eventDefault(f);
+	for (const f of ALL_EVENT_FIELDS) e[f] = eventDefault(f);
 	return e;
 }
 
@@ -289,6 +289,21 @@ describe("audio: sim events -> sound IDs", () => {
 		e.emberUsed = 1;
 		expect(m.frame(0.07, e, NO_FX, 0, [])).toEqual([SFX.ember]);
 		expect(m.frame(0.071, e, NO_FX, 0, [])).toEqual([SFX.ember]); // no interval: every frame it happens
+	});
+
+	it("breakables: a break plays sfx.breakable.break, hits that did not break sfx.breakable.hit", () => {
+		const e = noEvents();
+		e.breakableHits = 3;
+		expect(new AudioCueMapper().frame(0, e, NO_FX, 0, [])).toEqual([SFX.breakableHit]);
+		e.breakablesBroken = 3; // every hit broke a piece: only the break
+		expect(new AudioCueMapper().frame(0, e, NO_FX, 0, [])).toEqual([SFX.breakableBreak]);
+		e.breakableHits = 5;
+		expect(new AudioCueMapper().frame(0, e, NO_FX, 0, [])).toEqual([SFX.breakableBreak, SFX.breakableHit]);
+		const m = new AudioCueMapper();
+		const hit = noEvents();
+		hit.breakableHits = 1;
+		expect(m.frame(0, hit, NO_FX, 0, [])).toEqual([SFX.breakableHit]);
+		expect(m.frame(0.03, hit, NO_FX, 0, [])).toEqual([]); // inside its minimum interval
 	});
 
 	it("enemy shots come from the spawn counter's growth (never on the first frame or after a reset)", () => {

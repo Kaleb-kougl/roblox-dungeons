@@ -182,8 +182,15 @@ export interface ActorFxHintsView {
 }
 
 /**
+ * Cuts an aim line from (x, z) along (dx, dz) x len to the length kept (the client passes the intact breakables:
+ * shared/view clipToSolidCells, so the line ends where the bullet will stop).
+ */
+export type AimClip = (x: number, z: number, dx: number, dz: number, len: number) => number;
+
+/**
  * The aim line (while winding up) and the expanding shockwave of one actor at its drawn position (x, z). Bold / young
- * markings go to `bright`, the rest to `dim`. Returns true when it drew anything.
+ * markings go to `bright`, the rest to `dim`; `clip` (optional) shortens the aim line. Returns true when it drew
+ * anything.
  */
 export function actorFxMarkings(
 	bright: SegmentSink,
@@ -193,13 +200,15 @@ export function actorFxMarkings(
 	x: number,
 	z: number,
 	alpha: number,
+	clip?: AimClip,
 ): boolean {
 	let drew = false;
 	const aim = fx.aimLine;
 	if (aim !== undefined && a.aiState === AiState.TELEGRAPH) {
 		const dx = a.v[aim.dirX];
 		const dz = a.v[aim.dirZ];
-		const len = aim.lenSlot !== undefined ? a.v[aim.lenSlot] : aim.length ?? 1;
+		const full = aim.lenSlot !== undefined ? a.v[aim.lenSlot] : aim.length ?? 1;
+		const len = clip !== undefined ? clip(x, z, dx, dz, full) : full;
 		const sink = a.aiTicks < aim.boldTicks ? bright : dim;
 		sink.seg(x, z, x + dx * len, z + dz * len);
 		drew = true;
