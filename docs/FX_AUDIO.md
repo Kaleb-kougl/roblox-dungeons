@@ -5,12 +5,50 @@ music), into the game. Work it task by task, like `PLAN.md`, `docs/ART.md` and `
 **Verify**. Everything here is **presentation only**: nothing touches `src/shared/sim/**` or `src/shared/dungeon/**`,
 every fixture and replay hash stays the same, and every asset goes through logical IDs in `shared/theme`.
 
-## Status (2026-10-26)
+## Status (2026-10-26, branch `fx-audio`)
 
-In progress on branch `fx-audio`. The owner said to proceed with the recommended defaults for X1-X7. X0 is done
-apart from confirming the source: the packs are in `art/vendor/ninja-adventure/`, with a THIRD_PARTY_NOTICES entry
-and an `art/README.md` row. The Studio-only and by-ear steps (F0, A0's listening, A4 / F5 uploads, A5, W2) are the
-owner's. The code is built so nothing changes on screen or in the mix until ids are pasted.
+Every code task is **done and verified headlessly only**: X0, F1-F4, F6, A1-A3 and W1 (`npm run verify`: 1717 of 1718
+tests; the one failure is the known x86 `forge.spec.ts` seedToState vector). **Nothing has run in Studio and nothing is
+uploaded**, so `VALE_ASSET_IDS` has no audio or fx ids, the game is still silent and no sprite effect is drawn. The
+owner accepted the recommended defaults for X1-X7. What's left is the owner's: confirm the pack's source (X0), F0
+(the style go/no-go), A0 by ear (`art/audio-audition.html`), uploading (A4, F5), the mix pass (A5) and the playtest (W2).
+
+As built, differing from the text below:
+
+- **Theme.** Sound assets take `variants` / `pitch` / `minInterval`, resolved by `pack.sound(id)` into a `SoundRef`
+  (`variants` = the extra clips). Looped slots (`music.*`, `amb.*`) reject `variants` and `pitch`. `PORT_AUDIO_EVENTS`
+  (20 IDs: the 7 old `PORT_SFX` plus the 13 new ones) and `amb.b1`..`b5` are **required** and SILENT in the placeholder,
+  not optional; no `MANIFEST_FORMAT` bump, so a pack from outside the repo must add them. `fx.*` is an optional
+  one-facing `"sprites"` set with animation `play` (`fps` / `loop` live on it), `sizeTiles` (the longer side, capped at
+  `FX_SPRITE_MAX_TILES` 3), `tint`, `additive`, `meanColor` (required when untinted). New roles `fx.heal` `#6ee08a`,
+  `fx.curse` `#8a6ad8`; `fxColorReport` holds every tint and mean colour >= 40 CIE76 from the enemy-bullet roles.
+  Read with `pack.fx(id)` -> `FxSprite`. Ambient particle textures may be flipbooks (`flipbook: { grid, fps, mode }`).
+- **Audio pipeline** (`scripts/audio/build-audio.js`, `art/audio.json`, its own `art/audio.lock.json`): 54 OGGs,
+  10.4 MiB, 43 IDs on, 4 silent (`amb.b2`: no fire bed; `music.lobby`: falls back to `music.menu`; `sfx.loot.*`: no
+  caller). Every pick is the plan's first candidate, `"confirmed": false`. Sound effects mono and peak-normalised to
+  -1 dBFS (a clip that decodes above -0.3 dBFS is re-encoded quieter); music and ambience two-pass loudnorm to -18 LUFS.
+  Wind is trimmed to 0.917-20.273 s (listen to the loop seam); Storm is low-passed at 3 kHz; the boss roar
+  (`Strange`) is mostly silence, trimmed to 0.8 s. Byte-identical rebuilds on one ffmpeg build (bytes differ between
+  builds, so the Mac's output is what gets uploaded). `npm run audio:audition` writes the listening page.
+- **Audio playback.** `AudioCueMapper` takes a `playable(id)` predicate (silent IDs use no cap slot), per-frame
+  priority and cap (`AUDIO_VIEW.maxStartsPerFrame` 6), **one jingle per frame** (`JINGLE_SFX`; on an endless boss kill
+  depth.up wins over victory), fallbacks (`finisher` -> swing, `ui.back` -> click; `ui.move` has none). Co-op split
+  (`AudioStateWatch`, state diffs): the local player's hurt / death / roll / flask / swing play at 1, teammates' at
+  `teammateVolume` 0.4, teammates' shots and swaps not at all; deflects are attributed to whoever could have made them.
+  Solo plays the same cues as before, plus the new rows. Ducking on the music SoundGroup, an ambience channel, music
+  by place (menu, lobby, tutorial, biome, boss, silence on death), preload per run and floor.
+- **Effects.** One atlas, `fx-effects.png` (290x928, 17 sets); the ID / sheet / tint / size table is in
+  `packs/vale/fx.ts`. The slashes are cyan and white, not yellow-orange (they are greyed anyway). Frame-grid mismatches
+  against the Preview.gifs are recorded as `previewNote`s in `art/atlases.json`. **Effects are drawn flat on the floor**
+  (a SurfaceGui on a thin Part at 0.06 studs, under the markings and bullets), not as billboards: a depth-tested
+  billboard can't lose every overlap with floor markings. The cost: standing bodies draw over hit marks.
+  `FX_SPRITE_VIEW.placement: "billboard"` keeps the billboard version for comparison in F0. The death puff and
+  splinters use one grey (`uiTextDim`): per-archetype tints can't be validated, and `breakable.crate` is too close to
+  the bullet outline. Tunables in `FX_SPRITE_VIEW` (not `FX_VIEW`). Check in Studio: `swingArtHeadingDeg` 270 and
+  `guardArtHeadingDeg` 90 were read off the sheets by eye. Ambient: ancient Clouds (one frame), molten Fire (4x4),
+  frost Snow (2x2), verdant Leaf (4x4), grim unchanged.
+- **Known edge:** a relic or shrine taken in the same rendered frame as a floor change makes no sound (one sample per
+  frame). A bot at 3 ticks per frame hits it; a player can't.
 
 ## What arrived (measured)
 
@@ -278,38 +316,38 @@ Ambient textures for the existing `decor.fx.ambient.b<n>` emitters: frost `Parti
   which groups fit (X2), the drawn sizes, and whether any effect is ever mistaken for a bullet. Also note the fps cost of
   48 live effects on the phone emulator.
   → Verify: the owner signs off on a group list; if none fits, take the X2 fallback and skip F1-F5.
-- [ ] **F1. FX contract slot.** `fx.*` (optional), its fields, the validator's colour and size rules, the placeholder
+- [x] **F1. FX contract slot.** `fx.*` (optional), its fields, the validator's colour and size rules, the placeholder
   pack untouched, and `vale` mapping the F0-approved IDs.
   → Verify: new `contract.spec` / `validate.spec` cases; placeholder and `vale` validate clean.
-- [ ] **F2. Pipeline: strips and grey.** Strip sources and `grey` in `scripts/art/build-atlases.js`, the FX atlas,
+- [x] **F2. Pipeline: strips and grey.** Strip sources and `grey` in `scripts/art/build-atlases.js`, the FX atlas,
   contact sheets with each strip's frames labelled, frame counts and timings checked against each `Preview.gif`.
   → Verify: deterministic (byte-identical rebuild); existing atlases unchanged; contact sheets by eye.
-- [ ] **F3. `FxCueMapper`.** The cue table above, budgets, Juice / Reduced motion scaling, positions.
+- [x] **F3. `FxCueMapper`.** The cue table above, budgets, Juice / Reduced motion scaling, positions.
   → Verify: headless specs over a recorded endless run and a boss floor (cues per event, caps hold, nothing on a
   telegraph tick at the telegraph's position, reset clears).
-- [ ] **F4. `FxSpriteController`.** Pool, flipbook, hitstop clock, rotation, render order, cleanup.
+- [x] **F4. `FxSpriteController`.** *(code done; the Studio half of its Verify is open)* Pool, flipbook, hitstop clock, rotation, render order, cleanup.
   → Verify: in Studio a full endless floor and a boss floor, solo and 2-player, Juice low / high, Reduced motion on:
   no effect hides a bullet or a telegraph; fps and live-sprite counts written down on PC and the phone emulator.
 - [ ] **F5. Upload and fill `vale`.** Upload the FX atlas, paste its id, and turn the `fx.*` IDs on.
   → Verify: `npm run verify` (validator, `check-asset-ids`); in Studio every cue fires once where it should.
-- [ ] **F6. Ambient particle textures (optional).** The `Particle/*` strips above for `decor.fx.ambient.b<n>`
+- [x] **F6. Ambient particle textures (optional).** The `Particle/*` strips above for `decor.fx.ambient.b<n>`
   (ParticleEmitter flipbooks need a square 2x2 / 4x4 / 8x8 grid: pad the strips or use one frame), sized and faded
   under the existing `DECOR_FX` caps.
   → Verify: the validator's decor.fx rules pass; in Studio every biome at every depth band.
 
 ### Audio
 
-- [ ] **A0. Audition and pick (owner, by ear).** Listen to every candidate in the tables above (a quick listening
+- [ ] **A0. Audition and pick (owner, by ear).** *(starting picks and the listening page done; listening open)* Listen to every candidate in the tables above (a quick listening
   page with each ID's options next to each other helps) and fill `art/audio.json`: clip per ID, variants, gain, trim. Also
   list the gaps that need another source (boss roar, wood break, a molten fire bed) or a stand-in.
   → Verify: every ID in `allAudioIds()` plus the new ones has a pick or an explicit "silent for now".
-- [ ] **A1. Audio pipeline.** `npm run audio:build`: trim, normalise, mono, OGG, `audioLayout.ts`, sources locked.
+- [x] **A1. Audio pipeline.** `npm run audio:build`: trim, normalise, mono, OGG, `audioLayout.ts`, sources locked.
   → Verify: deterministic rebuild; a spec that every built file is under 20 MB, under 7 minutes and <= 48 kHz; loudness
   of each category within its target window (an ffmpeg `ebur128` report in the build log).
-- [ ] **A2. Contract.** `variants`, `pitch`, `minInterval`, `PORT_AUDIO_EVENTS`, the `amb.` slot, `music.tutorial`
+- [x] **A2. Contract.** `variants`, `pitch`, `minInterval`, `PORT_AUDIO_EVENTS`, the `amb.` slot, `music.tutorial`
   (and `music.lobby` if wanted); placeholder pack fills each new ID with `SILENT`.
   → Verify: validator and contract specs; `allAudioIds()` spec updated; placeholder validates clean.
-- [ ] **A3. Mapper and controller.** New cue rows, priorities and voice cap, co-op split (X4), variants and pitch,
+- [x] **A3. Mapper and controller.** New cue rows, priorities and voice cap, co-op split (X4), variants and pitch,
   ducking, ambience bed, death jingle, preload on floor change; `sfx.ui.back` / `sfx.ui.move` from the menu and HUD
   actions.
   → Verify: headless mapper specs (each new event, priority under a busy frame, co-op: a teammate's hit is quiet or
@@ -326,7 +364,7 @@ Ambient textures for the existing `decor.fx.ambient.b<n>` emitters: frost `Parti
 
 ### Wrap-up
 
-- [ ] **W1. Docs.** `docs/CLIENT.md` (FxSpriteController, AudioController changes), `src/shared/theme/README.md`
+- [x] **W1. Docs.** `docs/CLIENT.md` (FxSpriteController, AudioController changes), `src/shared/theme/README.md`
   (`fx.*`, `amb.*`, sound variants), the `CLAUDE.md` decision log (the new slots and port IDs, X2 / X3), `art/README.md`
   (`audio:build`, uploading audio).
 - [ ] **W2. Playtest.** Every biome, solo and co-op, with effects and audio together: readability under fire, effect
