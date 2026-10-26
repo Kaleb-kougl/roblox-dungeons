@@ -50,16 +50,17 @@ token, layout sizes, UIScale rule, HUD helpers, every HUD string key).
 ## Sprites replace placeholders (docs/ART.md S4)
 
 Per logical ID, at the time a view is built: if `pack.sprites(id)` returns a set (and, for actors, the archetype is in
-`shared/view` `ACTOR_SPRITE_INPUTS`: the swarmer today), `ActorRenderController` draws a `SpriteView`; otherwise the
-placeholder model, exactly as before. With the placeholder pack every ID takes the placeholder path. Sniper, bruiser,
-turrets and the bosses stay placeholders until they get an input builder.
+`shared/view` `ACTOR_SPRITE_INPUTS`: the swarmer, the sniper and the tutorial's `turret.sniper`), `ActorRenderController` draws a
+`SpriteView`; otherwise the placeholder model, exactly as before. With the placeholder pack every ID takes the
+placeholder path. The bruiser, the other turrets and the bosses stay placeholders until they get an input builder.
 
 All sprite logic is pure and specced in `src/shared/view/sprites.ts`:
 
 - **Facing:** `spriteFacing` projects the sim's ground facing (the roll direction while rolling) through the camera
   basis (yaw 45, pitch 55) to the true on-screen angle and picks the nearest of the set's 4 / 8 / 16 facings.
 - **Animation:** `choosePlayerAnim` (death > roll > attack.1/2/3 > hit > run > idle) and `chooseActorAnim` (death >
-  attack > hit > move > idle) from sim fields (`playerSpriteInput`, `swarmerSpriteInput`). One-shots are stretched over
+  attack > hit > move > idle) from sim fields (`playerSpriteInput`, `swarmerSpriteInput`, `sniperSpriteInput`: the line telegraph is its attack;
+  `turretSpriteInputOf`: never attacks or moves, a respawned turret is live again). One-shots are stretched over
   the gameplay timers (roll, sword recovery / finisher wind-up, hurt, hit flash, corpse); loops run on a per-view
   `SpriteClock` at the set's fps, run / move scaled by speed / walk speed. The clock steps by sim time (`animDtSec`),
   so it stops while paused and follows hitstop. The bow and the guard have no knight animation (idle / run).

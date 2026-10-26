@@ -22,7 +22,11 @@
  * World art (decor props, effects, breakables; docs/DECOR.md R5) has its own section below ("World art").
  *
  * Every sprite set has one cell size and one pivot (SpriteSetAsset): each frame of the set is cropped to the union
- * bounding box (alpha > noiseAlpha) over all its animations and facings, plus `pad`. Facings are written in the
+ * bounding box (alpha > noiseAlpha) over all its animations and facings, plus `pad`. Its texel density comes from
+ * exactly one of `bodyTiles` (the measured body height / bodyTiles) or `pixelsPerTileFrom` (another sprite set's id:
+ * that set's pixelsPerTile, exactly, for art of one pack drawn at one scale); sets build in dependency order, and a
+ * missing or cyclic reference fails the build. `lockAlso` (optional, `frames` sources): extra animations
+ * ({ folder, frames }) the lock covers and the build checks, but no sheet reads (art kept for a later phase). Facings are written in the
  * SpriteSetAsset convention (zeroDeg 0, ccw true; facing d at d * 360 / count degrees from screen right). Every
  * output is alpha-bled: transparent pixels take the colour of the nearest opaque ones (alpha unchanged), so Roblox's
  * bilinear filter does not pull a white or black halo in from under the transparent pixels.
@@ -334,6 +338,11 @@ function sourceFiles(config) {
 			if (set.source.type === "grid") files.add(`${set.source.dir}/${anim.file}`);
 			else for (let d = 0; d < set.facingCount; d++) for (const f of anim.frames) files.add(frameFileName(set, anim, d)(f));
 		}
+		for (const name of Object.keys(set.lockAlso || {}).sort()) {
+			const anim = set.lockAlso[name];
+			if (set.source.type !== "frames" || !anim.folder || !Array.isArray(anim.frames)) throw new Error(`${id}: lockAlso.${name} needs a frames source, a folder and frames`);
+			for (let d = 0; d < set.facingCount; d++) for (const f of anim.frames) files.add(frameFileName(set, anim, d)(f));
+		}
 	}
 	for (const id of Object.keys(config.images).sort()) files.add(config.images[id].file);
 	for (const f of worldSourceFiles(config.worldArt)) files.add(f);
@@ -418,7 +427,54 @@ function realAnimation(set, name) {
 	return anim.cellsOf ? { name: anim.cellsOf, anim: set.animations[anim.cellsOf] } : { name, anim };
 }
 
-function buildSpriteSet(id, set) {
+/**
+ * A set's texel density: body height / bodyTiles (rounded to 0.1), or exactly the pixelsPerTile of the already built
+ * set its `pixelsPerTileFrom` names (`built`: id -> buildSpriteSet result). Exactly one of the two must be given.
+ */
+function setPixelsPerTile(id, set, bodyHeight, built) {
+	const hasFrom = set.pixelsPerTileFrom !== undefined;
+	const hasTiles = set.bodyTiles !== undefined;
+	if (hasFrom === hasTiles) throw new Error(`${id}: give exactly one of bodyTiles and pixelsPerTileFrom`);
+	if (hasTiles) {
+		if (typeof set.bodyTiles !== "number" || !(set.bodyTiles > 0)) throw new Error(`${id}: bodyTiles must be a positive number`);
+		return Math.round((bodyHeight / set.bodyTiles) * 10) / 10;
+	}
+	const from = built ? built.get(set.pixelsPerTileFrom) : undefined;
+	if (!from) throw new Error(`${id}: pixelsPerTileFrom ${set.pixelsPerTileFrom} is not a built sprite set (build with buildSpriteSets)`);
+	return from.layout.pixelsPerTile;
+}
+
+/** Sprite-set ids in build order: by id, each preceded by the set its `pixelsPerTileFrom` names (depth first). */
+function spriteSetOrder(spriteSets) {
+	const order = [];
+	const state = new Map(); // 1 = on the current chain, 2 = placed
+	const visit = (id, chain) => {
+		if (state.get(id) === 2) return;
+		if (state.get(id) === 1) throw new Error(`pixelsPerTileFrom cycle: ${[...chain, id].join(" -> ")}`);
+		state.set(id, 1);
+		const from = spriteSets[id].pixelsPerTileFrom;
+		if (from !== undefined) {
+			if (!Object.prototype.hasOwnProperty.call(spriteSets, from)) throw new Error(`${id}: pixelsPerTileFrom names no sprite set ${from}`);
+			visit(from, [...chain, id]);
+		}
+		state.set(id, 2);
+		order.push(id);
+	};
+	for (const id of Object.keys(spriteSets).sort()) visit(id, []);
+	return order;
+}
+
+/** Builds every sprite set in dependency order; returns the results sorted by id (the output order). */
+function buildSpriteSets(spriteSets) {
+	const built = new Map();
+	for (const id of spriteSetOrder(spriteSets)) built.set(id, buildSpriteSet(id, spriteSets[id], built));
+	return Object.keys(spriteSets)
+		.sort()
+		.map((id) => built.get(id));
+}
+
+/** `built` (id -> result) is only read when the set has `pixelsPerTileFrom`; buildSpriteSets passes it. */
+function buildSpriteSet(id, set, built) {
 	const count = set.facingCount;
 	if (![1, 4, 8, 16].includes(count)) throw new Error(`${id}: facingCount ${count}`);
 	const order = set.source.type === "grid" ? set.rowForFacing : set.facingDirs;
@@ -473,7 +529,7 @@ function buildSpriteSet(id, set) {
 	const m = set.pivot.measure;
 	const body = measureBody(m.animation, m.facing, m.frame);
 	const pivot = { x: Math.round(body.feetX) - originX, y: body.feetY - originY };
-	const pixelsPerTile = Math.round((body.height / set.bodyTiles) * 10) / 10;
+	const pixelsPerTile = setPixelsPerTile(id, set, body.height, built);
 	const sanity = [];
 	for (let d = 0; d < count; d++) {
 		const s = measureBody(m.animation, d, m.frame);
@@ -541,7 +597,7 @@ function buildSpriteSet(id, set) {
 		animations: sortedObject(animations),
 	};
 	selfCheck(id, layout);
-	return { id, layout, sheets, sanity, bodyHeight: body.height, box, outline };
+	return { id, layout, sheets, sanity, bodyHeight: body.height, box, outline, pixelsPerTileFrom: set.pixelsPerTileFrom };
 }
 
 /** Columns x rows of frameW x frameH cells for `cells` cells, within MAX_ATLAS, smallest area (then narrowest). */
@@ -1944,9 +2000,7 @@ function main() {
 	}
 	checkLock(config);
 
-	const sets = Object.keys(config.spriteSets)
-		.sort()
-		.map((id) => buildSpriteSet(id, config.spriteSets[id]));
+	const sets = buildSpriteSets(config.spriteSets);
 	const images = Object.keys(config.images)
 		.sort()
 		.map((id) => buildImage(id, config.images[id]));
@@ -1989,7 +2043,7 @@ function main() {
 
 	for (const s of sets) {
 		const l = s.layout;
-		console.log(`${s.id}: cell ${l.frameW}x${l.frameH} (source box ${s.box.join(",")}), pivot (${l.pivot.x}, ${l.pivot.y}), body ${s.bodyHeight} px -> ${l.pixelsPerTile} px/tile`);
+		console.log(`${s.id}: cell ${l.frameW}x${l.frameH} (source box ${s.box.join(",")}), pivot (${l.pivot.x}, ${l.pivot.y}), body ${s.bodyHeight} px -> ${l.pixelsPerTile} px/tile${s.pixelsPerTileFrom ? ` (from ${s.pixelsPerTileFrom})` : ""}`);
 		console.log(`  pivot per facing (cell coords) on the measured frame: ${s.sanity.join(" ")}`);
 		for (const sh of s.sheets) {
 			console.log(`  ${sh.file}: ${sh.img.w}x${sh.img.h}, ${sh.cells} cells${sh.outlineFile ? ` + ${sh.outlineFile} (outline ${s.outline.widthPx} px)` : ""}`);
@@ -2031,6 +2085,7 @@ module.exports = {
 	bodyMask,
 	buildOutputs,
 	buildSpriteSet,
+	buildSpriteSets,
 	chooseGrid,
 	contactSheet,
 	dilateCells,
@@ -2042,6 +2097,8 @@ module.exports = {
 	outlineSheet,
 	raster,
 	removeStale,
+	sourceFiles,
+	spriteSetOrder,
 	/** Decoded sources by art/vendor-relative path; the tests put synthetic rasters here instead of files. */
 	sourceCache: pngCache,
 };

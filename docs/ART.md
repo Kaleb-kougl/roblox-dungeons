@@ -17,7 +17,8 @@ six bullet IDs, the biome tiles, `ui.cursor` (the facing pip) and the pedestal /
 | `tile.biome.1.floor` | **`ground_stone1`**, tiled | Lords of Pain demo |
 | co-op player marker / under-player ring | **`highlight_yellow`**, tinted per player | Lords of Pain demo |
 | relic pedestal marker (`RunMarkerController`) | **`loot_indicator_yellow`** beam (+ `glint`, stretch) | Lords of Pain demo |
-| `enemy.sniper`, `enemy.bruiser`, `boss.act1`, walls, the shrine | placeholder primitives (unchanged) | none |
+| `enemy.sniper` (+ the tutorial's `turret.sniper`) | **Subservient** (worship; every other animation a stand-in, docs/SNIPER_ART.md) | Lords of Pain (full pack) |
+| `enemy.bruiser`, `boss.act1`, walls, the shrine | placeholder primitives (unchanged) | none |
 | every `bullet.*` | neon placeholders (unchanged: they keep the GDD bullet-readability rule) | none |
 | audio | silent (unchanged) | none |
 
@@ -69,6 +70,11 @@ As built, differing from the text below: the new asset kind is `"sprites"` (addi
 one cell size and pivot per set, so the knight keeps its full 128x128 cell (8 frames per facing, one 1024 atlas per
 animation) and the skeleton is 94x70 in two 940x910 atlases; the floor mean is `#1a1619`; the knight's rows run
 clockwise from screen right (`art/atlases.json` `rowOrderEvidence`); no Asphalt (ids are pasted by hand).
+
+Sniper (docs/SNIPER_ART.md SN1-SN5, 2026-10-26): `enemy.sniper` is the Lords of Pain subservient, one 1008x744
+atlas `sniper-idle.png` (16 facings x 4 worship frames, 126x93 cells) + its outline sheet, drawn at the skeleton's
+exact 29.6 px/tile through the new sprite-set key `pixelsPerTileFrom`. Both sheets uploaded 2026-10-26
+(`assetIds.ts`); the Studio check is open (SN7).
 
 Enemy outlines (docs/OUTLINE.md O3, 2026-10-26): a set with `"outline": { "widthPx": n }` also gets
 `<sheet>-outline.png` per sheet (same size and cells: the body mask dilated by a disc of radius n, white, alpha

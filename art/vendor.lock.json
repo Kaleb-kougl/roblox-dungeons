@@ -1297,6 +1297,1286 @@
 			"bytes": 16191
 		},
 		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_working/E/subservient_special_working_E_0.0_0.png",
+			"sha256": "7e339e6422ff372634eb1832904a27523f977f0f11e654f7d803049ec3535717",
+			"bytes": 27030
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_working/E/subservient_special_working_E_0.0_1.png",
+			"sha256": "52d4bf11ad538ec8491f67405ba117234003546816fbcedc7065ad664eb84ac2",
+			"bytes": 26678
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_working/E/subservient_special_working_E_0.0_2.png",
+			"sha256": "93c98c4fd86482d1b54adc6486884da058af0ff9cfc26765f67d7b2bf4029d63",
+			"bytes": 26289
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_working/E/subservient_special_working_E_0.0_3.png",
+			"sha256": "f523a2126a765b5a41df2dafcee5d8a8fafbcab0f498a2613f05291963584de6",
+			"bytes": 25505
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_working/E/subservient_special_working_E_0.0_4.png",
+			"sha256": "906b1ead15e8ce159040d5156858f865dec6ebb264ee3f61db9b5ce2fe13608a",
+			"bytes": 25011
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_working/E/subservient_special_working_E_0.0_5.png",
+			"sha256": "0dac6a1321cce92049dd04ffba15d344c1671f5967e69c07594c6ac5cafa6b9f",
+			"bytes": 25189
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_working/E/subservient_special_working_E_0.0_6.png",
+			"sha256": "6a43cb9924f1d770478baf162b9738298d71dcfa21c993717c2e84f1fdd2c99a",
+			"bytes": 25606
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_working/E/subservient_special_working_E_0.0_7.png",
+			"sha256": "2281386e4426560fd4656611a90e701006e297781ccd1d3899dc71ac212b9b66",
+			"bytes": 25953
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_working/N/subservient_special_working_N_90.0_0.png",
+			"sha256": "e06da443ffedf0dbe3a9509b3bb3f42f13617bcdaf0a35f106d5819273d7a805",
+			"bytes": 27881
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_working/N/subservient_special_working_N_90.0_1.png",
+			"sha256": "46b314564cc8dc322107c647510c664813584051c0f2a541e2a4cf065e1e1107",
+			"bytes": 27638
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_working/N/subservient_special_working_N_90.0_2.png",
+			"sha256": "a6427546a7debfe4ea062433381fdafe191b30c7b1c8b8290e461b40ecf66843",
+			"bytes": 27272
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_working/N/subservient_special_working_N_90.0_3.png",
+			"sha256": "7a9aa2dc00e703f3c012bf6d3decbb9ad4d378279562be315d55e165d3076226",
+			"bytes": 26489
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_working/N/subservient_special_working_N_90.0_4.png",
+			"sha256": "67c76ed070e5346d687b92c720c40e699f71a1863e72cd55c9809795322add16",
+			"bytes": 25771
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_working/N/subservient_special_working_N_90.0_5.png",
+			"sha256": "ef7f70907f13a97b559f40f4d305e110a7fb362da11e33d1720d936e72291c5a",
+			"bytes": 25783
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_working/N/subservient_special_working_N_90.0_6.png",
+			"sha256": "6ba71010e264ee3d8a34ff282eb74f71274493c3ecb2b0eb5f7aa291e805c294",
+			"bytes": 26405
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_working/N/subservient_special_working_N_90.0_7.png",
+			"sha256": "71b6de38ea02885261eda561e40cacb69178566abe5378660356804490f1cc11",
+			"bytes": 26818
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_working/NE/subservient_special_working_NE_45.0_0.png",
+			"sha256": "1722894396a7360f78fa9a7919ad93b0025b676d77adea4adf38a8e5d7970ec0",
+			"bytes": 27471
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_working/NE/subservient_special_working_NE_45.0_1.png",
+			"sha256": "f8d6a9ff280e74f846681e06ddda9b88877c0be5bf4e035605d4c7d7a1ac8bfb",
+			"bytes": 27249
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_working/NE/subservient_special_working_NE_45.0_2.png",
+			"sha256": "d7d2e4eac72e797dd91e2664a79b38280d15b08999477c47d6e1b19ffeca6ed0",
+			"bytes": 26889
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_working/NE/subservient_special_working_NE_45.0_3.png",
+			"sha256": "83e880ac5e233526547e6530b19492a61016bd4a50e2889cf1da3ddd22800042",
+			"bytes": 26077
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_working/NE/subservient_special_working_NE_45.0_4.png",
+			"sha256": "04335bc1dc39bf664c9f86225029963938c9fb7e3ac940838691915ed243b17e",
+			"bytes": 25219
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_working/NE/subservient_special_working_NE_45.0_5.png",
+			"sha256": "386cd86f605ad8ab2c3d1f8dcf7ed2f4fd906ce0fc5857fc31484726569f4a7f",
+			"bytes": 25519
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_working/NE/subservient_special_working_NE_45.0_6.png",
+			"sha256": "defff60a68d5fad36fdda3543b199815a1da69966844f88da1fa1e51c3d4f194",
+			"bytes": 25816
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_working/NE/subservient_special_working_NE_45.0_7.png",
+			"sha256": "c0e46af04746ec658ca75b007b3f5f29342eb9496ed400d8125d90ed9a2bd322",
+			"bytes": 26423
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_working/NEE/subservient_special_working_NEE_22.5_0.png",
+			"sha256": "474fd30ecd1daec50e2288aa4d2d0f15cd8d40e15d6690030aefd0903d208f3e",
+			"bytes": 27070
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_working/NEE/subservient_special_working_NEE_22.5_1.png",
+			"sha256": "1e99d834ee4e2bd7aa17211baaa694520b8f22b17da9c00fa0a1c84d27c4b85f",
+			"bytes": 27092
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_working/NEE/subservient_special_working_NEE_22.5_2.png",
+			"sha256": "b1fc2442c19d6f8b50561690b0ac9917ce072c432df51863e888c699b72bccea",
+			"bytes": 26580
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_working/NEE/subservient_special_working_NEE_22.5_3.png",
+			"sha256": "4f2b41b5850dd8cd543072473508526581c571782d479445d4d84f7f09fedcbc",
+			"bytes": 25751
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_working/NEE/subservient_special_working_NEE_22.5_4.png",
+			"sha256": "06410dd808fb22755eff452eda412c173ded8665d3af570a44f07f126f1da6d3",
+			"bytes": 24785
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_working/NEE/subservient_special_working_NEE_22.5_5.png",
+			"sha256": "71494f15eac637120717d44883669db5069fc3ca75a79deb3b1ba9ba459b4928",
+			"bytes": 25205
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_working/NEE/subservient_special_working_NEE_22.5_6.png",
+			"sha256": "6b9268879ceff718a01e0096c675e44cfc4b409dac220af0866d41ac9a925e81",
+			"bytes": 25583
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_working/NEE/subservient_special_working_NEE_22.5_7.png",
+			"sha256": "cfbe254f6fa5f5ba104b4ac76eba30c4dce260ab0f5c237758399c38d01ac846",
+			"bytes": 26271
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_working/NNE/subservient_special_working_NNE_67.5_0.png",
+			"sha256": "f4cf2c7dd829f51727b3314b3077fd154508469efc9ef1d7b72a9513b9bde056",
+			"bytes": 27797
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_working/NNE/subservient_special_working_NNE_67.5_1.png",
+			"sha256": "c57f053558c97b6af72d32e8ee4a7116a469376dfc51c75fb8cd5ab7a4dc1d69",
+			"bytes": 27810
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_working/NNE/subservient_special_working_NNE_67.5_2.png",
+			"sha256": "28b6b6103095ad446e47551a1851b54713238d8e93e3921200fe91ecff9f958c",
+			"bytes": 27274
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_working/NNE/subservient_special_working_NNE_67.5_3.png",
+			"sha256": "05d128508776cde6ee736a3fceffbdc875debf2ff369a32ef8b21fcf92291991",
+			"bytes": 26234
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_working/NNE/subservient_special_working_NNE_67.5_4.png",
+			"sha256": "b2152e8304b59c214a82864a4927164d7ce634f131ebe11b4fd35fec999e69e5",
+			"bytes": 25548
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_working/NNE/subservient_special_working_NNE_67.5_5.png",
+			"sha256": "9812a8bbd823b05c183d3aeb3a8eded090e6f1fd8b53e9a1fe5f62872ebbada2",
+			"bytes": 25651
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_working/NNE/subservient_special_working_NNE_67.5_6.png",
+			"sha256": "2fac1b43043ab33f295625db5e4bce26d5286b20196ff294a3fe419cfab9d38a",
+			"bytes": 25886
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_working/NNE/subservient_special_working_NNE_67.5_7.png",
+			"sha256": "97c7a6999ab1558ec0197dcd1b093125fbf29cd20a9434837b3270a1881cdd25",
+			"bytes": 27050
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_working/NNW/subservient_special_working_NNW_112.5_0.png",
+			"sha256": "f00af21134c3e6c792ec311d528d0ca8754e4612da496641cbdda45e04d67529",
+			"bytes": 27985
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_working/NNW/subservient_special_working_NNW_112.5_1.png",
+			"sha256": "7ed6a27fff04ae296db6d27a23196b34e893b7c63ebd88074c767bb2f54d4dd5",
+			"bytes": 27812
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_working/NNW/subservient_special_working_NNW_112.5_2.png",
+			"sha256": "6eb69437dd1ef9d45b289358b82aa3d15acc6d61174653a0e481f16c39cb2b0c",
+			"bytes": 27288
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_working/NNW/subservient_special_working_NNW_112.5_3.png",
+			"sha256": "a98b0adc00d6ed699d79ff67023054dfa10a45a91360651195874ab815a9db40",
+			"bytes": 26266
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_working/NNW/subservient_special_working_NNW_112.5_4.png",
+			"sha256": "bfc4fdf6ab59fafbf0ea3cfce9c18db288d2405e23983aea70d510cae6ec75ae",
+			"bytes": 25516
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_working/NNW/subservient_special_working_NNW_112.5_5.png",
+			"sha256": "ed1b6df09edc1920dce1100aaabbe9e4371bab3048ecfa4e0a8f10d2bd0e72c4",
+			"bytes": 26042
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_working/NNW/subservient_special_working_NNW_112.5_6.png",
+			"sha256": "ad14406fbfe22dc73464d09c2e66c813994a1db16ce9ce3006cb377b527034a0",
+			"bytes": 26546
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_working/NNW/subservient_special_working_NNW_112.5_7.png",
+			"sha256": "0bd52df0f1ea4a178df7ecc8db4cf05381443f0173ec0e188eae3a3af32c2fab",
+			"bytes": 27229
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_working/NW/subservient_special_working_NW_135.0_0.png",
+			"sha256": "b133cb5b3287f343885eed2d3ffc53981c0d4130db8096c27c0a92758a11c6fc",
+			"bytes": 27877
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_working/NW/subservient_special_working_NW_135.0_1.png",
+			"sha256": "7953412ff416ab8e00c6c80e7ac5e21c324972ebeedeed14ca998c2d5eef97c2",
+			"bytes": 27911
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_working/NW/subservient_special_working_NW_135.0_2.png",
+			"sha256": "9753b49e1abbb3583d7f878e444c5f78ef31b9e4083ef7f4099a9b42c65b79ba",
+			"bytes": 27454
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_working/NW/subservient_special_working_NW_135.0_3.png",
+			"sha256": "4e212bc8434b8c42f771715fea40701bda2d772c011345f3c6384cf58f5d84cc",
+			"bytes": 26589
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_working/NW/subservient_special_working_NW_135.0_4.png",
+			"sha256": "3417a5347f2fa22883f08df119820fc8cf0c002bc59bf71e9aaf1ad8b8efc183",
+			"bytes": 25883
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_working/NW/subservient_special_working_NW_135.0_5.png",
+			"sha256": "d9ba49a4ac8b61a296e0100bd767216a952b6cb409720b123cc568d7c6d9651a",
+			"bytes": 26146
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_working/NW/subservient_special_working_NW_135.0_6.png",
+			"sha256": "2d008e54be768034dc64eb14abcafb19481ae5bb92faa746ee082691987f1e43",
+			"bytes": 26570
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_working/NW/subservient_special_working_NW_135.0_7.png",
+			"sha256": "fa55254d0538c17ef96f4c82c3150c03fe545a698e4ae0853e78f5a2b7cbe4fc",
+			"bytes": 27097
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_working/NWW/subservient_special_working_NWW_157.5_0.png",
+			"sha256": "82391e06e749a6e57e27203670b0964da80e4a38dc6bc0dee42f8787d3777ac3",
+			"bytes": 27465
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_working/NWW/subservient_special_working_NWW_157.5_1.png",
+			"sha256": "f3baf03cc426d40953c803c63441c154a8c0ad5079b82c84b6f7da5a1101e8a8",
+			"bytes": 27519
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_working/NWW/subservient_special_working_NWW_157.5_2.png",
+			"sha256": "000f5d1a8659aac87cf6e4e6cd06af1eaf118fa2afb2e26831188ed71f96b245",
+			"bytes": 27182
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_working/NWW/subservient_special_working_NWW_157.5_3.png",
+			"sha256": "eee0e7f4bb913cf266bc7989eee959285e6150a08c4547cbb3da3c94166c6b51",
+			"bytes": 26456
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_working/NWW/subservient_special_working_NWW_157.5_4.png",
+			"sha256": "d1c7f4dd4c79c1b35c4be3f2636543bf37ebfb9e1b49d8b5214c282a61723208",
+			"bytes": 25748
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_working/NWW/subservient_special_working_NWW_157.5_5.png",
+			"sha256": "d226838abca879b9e16f98bbc5813014876f8376b99c81d908b37fa22626ff75",
+			"bytes": 26143
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_working/NWW/subservient_special_working_NWW_157.5_6.png",
+			"sha256": "baf974b46b7391dc07286ceb1c5238f0f2f9a581a2029d9b2ef1221f9e6979f3",
+			"bytes": 26550
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_working/NWW/subservient_special_working_NWW_157.5_7.png",
+			"sha256": "33b89fd7762917083b4ab585f958e0ddb869316a049ac8524930c9ed66121df7",
+			"bytes": 26884
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_working/S/subservient_special_working_S_270.0_0.png",
+			"sha256": "91e1c7314d76f73cd1a55f44b591e75b31b72a14c18dd7e8d9b2341be5969c6f",
+			"bytes": 27356
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_working/S/subservient_special_working_S_270.0_1.png",
+			"sha256": "d4294cdc92ae11f3ab8cabaf3392b22c65deb954c561013aca92c8099c776db3",
+			"bytes": 27447
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_working/S/subservient_special_working_S_270.0_2.png",
+			"sha256": "4228531526b8608b0e62448b2817ec75d4c4369077e86a8fa82295168a59777e",
+			"bytes": 26902
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_working/S/subservient_special_working_S_270.0_3.png",
+			"sha256": "edce1a79883288f0ffc4d30cbf3c18d0f7fabf1f36f0f4b03661a391998b1adf",
+			"bytes": 26108
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_working/S/subservient_special_working_S_270.0_4.png",
+			"sha256": "3cca43b63b6ab3c3a6f6e076b400a9baf7b97ec0264acc94b6313913c300dce7",
+			"bytes": 25396
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_working/S/subservient_special_working_S_270.0_5.png",
+			"sha256": "24873ed8f77c6cb874a84436548c3e839b17cf1c30ce0505e36be1e78f78aa43",
+			"bytes": 25864
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_working/S/subservient_special_working_S_270.0_6.png",
+			"sha256": "f02b80f87bf8b240b90ef945b776c30b848f2aabc0c31eb418e6a5a96484486e",
+			"bytes": 26366
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_working/S/subservient_special_working_S_270.0_7.png",
+			"sha256": "e26d115899dcc67b794bef081761758d41906540d9562819e9afdfc4640a7c0b",
+			"bytes": 27071
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_working/SE/subservient_special_working_SE_315.0_0.png",
+			"sha256": "d84cfacb46fb60eea67c41e3896c39efedf9ad9eb20304e0413f3108a442972e",
+			"bytes": 26990
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_working/SE/subservient_special_working_SE_315.0_1.png",
+			"sha256": "70057694c5f9445d3473138ed795aa37e60f94a76c6c57b4beb84121f555e6c9",
+			"bytes": 26913
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_working/SE/subservient_special_working_SE_315.0_2.png",
+			"sha256": "1ffff6e6a849bc63cbaa5e7a5d68aa2585b969b3cb1a1b073c26232f94fbf61c",
+			"bytes": 26813
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_working/SE/subservient_special_working_SE_315.0_3.png",
+			"sha256": "72caa7619fbb48348765c8c66af5abe905282c6b95e27755daabec8f57dbfef8",
+			"bytes": 25837
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_working/SE/subservient_special_working_SE_315.0_4.png",
+			"sha256": "cf2c8bbb3d9e186d3f5e8af6f03757dfb10a9cfe3e69c707a6cf6c6ea7dba2ab",
+			"bytes": 25268
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_working/SE/subservient_special_working_SE_315.0_5.png",
+			"sha256": "69e353e08b491aedda5455ed24a8d3f90b652f583c5ab5487f41a38578504827",
+			"bytes": 25723
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_working/SE/subservient_special_working_SE_315.0_6.png",
+			"sha256": "3bad5bc711d2258878e550ad09c9a9d445748785fa0cf8a0657fb08264155d91",
+			"bytes": 26307
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_working/SE/subservient_special_working_SE_315.0_7.png",
+			"sha256": "d3f13157530001ff7a5d3423f71d96760c44275fefcfe0f5b66ad8714943b807",
+			"bytes": 26522
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_working/SEE/subservient_special_working_SEE_337.5_0.png",
+			"sha256": "8ef44ff92cb084ebabb8ece0efdf853db099e9cdb42f3aa2d4f89b70cb881a7d",
+			"bytes": 26944
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_working/SEE/subservient_special_working_SEE_337.5_1.png",
+			"sha256": "109eb1f46278309cacf97cd55c1fdadbd1e384068fc6f3c043b13fb54e85aa6e",
+			"bytes": 26818
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_working/SEE/subservient_special_working_SEE_337.5_2.png",
+			"sha256": "464363a4d7b12a0d18b23c341b948894bf953ade3b80ed02aeb60ef4f5ef2d79",
+			"bytes": 26509
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_working/SEE/subservient_special_working_SEE_337.5_3.png",
+			"sha256": "77ef0ba8a310f8fa0745ad33a8582096f06f8d2a0ed136a526f6dfbf377f2328",
+			"bytes": 25808
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_working/SEE/subservient_special_working_SEE_337.5_4.png",
+			"sha256": "47cfb3606d935a5037e16c8b7c9b988e63838fca69f68f6cee5c714438bcbeb3",
+			"bytes": 25220
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_working/SEE/subservient_special_working_SEE_337.5_5.png",
+			"sha256": "7d1acd9d0273c27e5871f085be5c34e5e7adf105e3efca1a9d1861bb64c18785",
+			"bytes": 25675
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_working/SEE/subservient_special_working_SEE_337.5_6.png",
+			"sha256": "15c1032a6be2f197b7b830521c56f9ac39e5c192734ba6fa21c73c69a69773ee",
+			"bytes": 26061
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_working/SEE/subservient_special_working_SEE_337.5_7.png",
+			"sha256": "36d6affe8519731729a830c5ee82a30939185f3fd38518784013021b7cdebc36",
+			"bytes": 26216
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_working/SSE/subservient_special_working_SSE_292.5_0.png",
+			"sha256": "f1785841cbb57b3abfa60bff400fcbdf8e9fbc0aa7bb010d2fe9633cecea1d7f",
+			"bytes": 27291
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_working/SSE/subservient_special_working_SSE_292.5_1.png",
+			"sha256": "89cb67afa3402be9aa13c655d2cc7fffe56d3204da57693793d1839f57543939",
+			"bytes": 27186
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_working/SSE/subservient_special_working_SSE_292.5_2.png",
+			"sha256": "44a06bb506d4e449bc3c07a919c452868fe4c3b9037f601ee142b1402045e509",
+			"bytes": 26774
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_working/SSE/subservient_special_working_SSE_292.5_3.png",
+			"sha256": "d299248ce8a1439357b65860482ca8e80925508a699ba4104a3cad2aa6080bf5",
+			"bytes": 25796
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_working/SSE/subservient_special_working_SSE_292.5_4.png",
+			"sha256": "1efc3dd01b27e1982193721752d4c4b00272b0125e732da786766746edb309f1",
+			"bytes": 25174
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_working/SSE/subservient_special_working_SSE_292.5_5.png",
+			"sha256": "a9fe2d96d9363b7ebd2025fb0b5d541fe0498c93ee8ae07bcf8f07cf5f2fcb22",
+			"bytes": 25581
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_working/SSE/subservient_special_working_SSE_292.5_6.png",
+			"sha256": "08a1eebac48d2640746aa1c9031843926ae86d144d5d8aff949748ebb8f4df47",
+			"bytes": 26357
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_working/SSE/subservient_special_working_SSE_292.5_7.png",
+			"sha256": "2bf3ca4da3c85160bf96a10d45d9e8930e86458d129e0c237352d6f41d92bd00",
+			"bytes": 26970
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_working/SSW/subservient_special_working_SSW_247.5_0.png",
+			"sha256": "7c71fc7afd04ba6b319926ecb3f781923a6e7770169a53a822833736a4be18c6",
+			"bytes": 27791
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_working/SSW/subservient_special_working_SSW_247.5_1.png",
+			"sha256": "d50d470ecbf06c70714b60281e989f91d1c439c7a9d8eee952fe1f7139d0166b",
+			"bytes": 27647
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_working/SSW/subservient_special_working_SSW_247.5_2.png",
+			"sha256": "9727e05d82c2e97e904e365fd4154010073f18a391c73ebb0aee7a65ca22a759",
+			"bytes": 26948
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_working/SSW/subservient_special_working_SSW_247.5_3.png",
+			"sha256": "30d81ab7b9103df974d13cc135ffb422d2f3258fb5395ee198aa0429e60cc6b1",
+			"bytes": 26135
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_working/SSW/subservient_special_working_SSW_247.5_4.png",
+			"sha256": "b9f3ebeae35c34ba0091b3719c9540d787af76c1a132df4abe06419d7133813b",
+			"bytes": 25453
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_working/SSW/subservient_special_working_SSW_247.5_5.png",
+			"sha256": "fe9a171e69b953568e833328a20bca4f23be84a43bf4b12124434d20c47a6389",
+			"bytes": 25884
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_working/SSW/subservient_special_working_SSW_247.5_6.png",
+			"sha256": "44ebf8c782b373280db50ffd1bd0f23aa3564a932ac8b2f14fa152851e2d074b",
+			"bytes": 26498
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_working/SSW/subservient_special_working_SSW_247.5_7.png",
+			"sha256": "b6afd3115ff34a0edbc6347e5fb01538434638cd3c315c1379e04bd3a4cbca8f",
+			"bytes": 27027
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_working/SW/subservient_special_working_SW_225.0_0.png",
+			"sha256": "8fa26199d86016eda7726d564c572f4c654926090ce2ecf389231f3bd05c308f",
+			"bytes": 27572
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_working/SW/subservient_special_working_SW_225.0_1.png",
+			"sha256": "613622699154686e468e9744016e0af67e613635877d1f499bad319b3053ec5e",
+			"bytes": 27325
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_working/SW/subservient_special_working_SW_225.0_2.png",
+			"sha256": "dd5af18ef4a19c60ca9daba74fee56cefbdb45039418a0882705336b81e47148",
+			"bytes": 26663
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_working/SW/subservient_special_working_SW_225.0_3.png",
+			"sha256": "140f8c611cfe9a8376d9a31b5314b9163eedc8e1a070b2179ee1fe8a8e735992",
+			"bytes": 26050
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_working/SW/subservient_special_working_SW_225.0_4.png",
+			"sha256": "336bc357cdff44c67f4e1e7e568c4dea4a06aafe1f2aae7542db6fbb7449abc3",
+			"bytes": 25454
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_working/SW/subservient_special_working_SW_225.0_5.png",
+			"sha256": "c9d4e59e72341449bb4222646fa4fd9c8f1051cdd593bb5facb068bbfd12b3d1",
+			"bytes": 25852
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_working/SW/subservient_special_working_SW_225.0_6.png",
+			"sha256": "6edd49a17eff60098e14cfb26217deeab0fc072fe74152a08d28852d24e7a6e2",
+			"bytes": 26402
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_working/SW/subservient_special_working_SW_225.0_7.png",
+			"sha256": "90e4e701744de974a8ac3a9b6d97373a7544f1390b9c7c9f573e1b9a60c97d7e",
+			"bytes": 26848
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_working/SWW/subservient_special_working_SWW_202.5_0.png",
+			"sha256": "980e7b331ec741fe77dd378d3c958df8d97002fd974fcb871bad3fdda217c89f",
+			"bytes": 27268
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_working/SWW/subservient_special_working_SWW_202.5_1.png",
+			"sha256": "98041e6fb89dfc343f9623fd3706b24999a68ee60acab22dd09991c8602f3388",
+			"bytes": 27114
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_working/SWW/subservient_special_working_SWW_202.5_2.png",
+			"sha256": "b5e732316bbbdcf9ac8410e1af80bebc7668e0a423b7752f444365e794cc36ce",
+			"bytes": 26977
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_working/SWW/subservient_special_working_SWW_202.5_3.png",
+			"sha256": "db7615a7e1c435016d2c254079b851f8cce4331bdbed8833bee8b998dd907906",
+			"bytes": 26008
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_working/SWW/subservient_special_working_SWW_202.5_4.png",
+			"sha256": "96c4277a6efc90e43ab011bbda3a78bc3d8e32fd0d06f9e6afc463d4b246a228",
+			"bytes": 25412
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_working/SWW/subservient_special_working_SWW_202.5_5.png",
+			"sha256": "016e923ae0657363a719ea072b872a198f073a7e9b2ac420ae59a7d86263f37e",
+			"bytes": 25820
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_working/SWW/subservient_special_working_SWW_202.5_6.png",
+			"sha256": "415b1900518ede9e6afbb7549ee06ec1320cbcfc073d6eeecc310e6548f7b0aa",
+			"bytes": 26236
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_working/SWW/subservient_special_working_SWW_202.5_7.png",
+			"sha256": "67563011469f69bbec03663a6d55e8dcad6dbe29539ac53e4731c7fe56b39f62",
+			"bytes": 26574
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_working/W/subservient_special_working_W_180.0_0.png",
+			"sha256": "a38592eb5e6f4d59dd8648092baf73fdb32943fc738a1075debccb5f58ab7b86",
+			"bytes": 27195
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_working/W/subservient_special_working_W_180.0_1.png",
+			"sha256": "3c33ebd28370844a7c2195ad25318312793d24919322491e45a3df772a64e16e",
+			"bytes": 26999
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_working/W/subservient_special_working_W_180.0_2.png",
+			"sha256": "dea12247e90a60dd673ea15d2fbdccd3dad796daacff73ad6a3022b2276f1037",
+			"bytes": 26957
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_working/W/subservient_special_working_W_180.0_3.png",
+			"sha256": "875dee2d59ed344f0b6172a2a29a2d402d21abdd85790dc6f8d5d4aa31663417",
+			"bytes": 26277
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_working/W/subservient_special_working_W_180.0_4.png",
+			"sha256": "56be812f59e036283046c31e3476f0c63fabe7b36a16847a91ea860e0b2c754d",
+			"bytes": 25483
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_working/W/subservient_special_working_W_180.0_5.png",
+			"sha256": "ede91d4c793b5ea6a03f626386a1008eaa4f4c7d32e38dcea3237d53eac9a810",
+			"bytes": 25760
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_working/W/subservient_special_working_W_180.0_6.png",
+			"sha256": "5dff6d1e9b017a4b69ab27795323b49631687f67b6804703545fc6e8c0ea46c1",
+			"bytes": 26303
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_working/W/subservient_special_working_W_180.0_7.png",
+			"sha256": "755f7476a30a1a4e6c6db0fce9a3e4b31676793e3900c37b5c80a88e884886a7",
+			"bytes": 26788
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_worship/E/subservient_special_worship_E_0.0_0.png",
+			"sha256": "696c639bd9842577dc194953549a340e86b9825fab09ccab1eaf555da172fc11",
+			"bytes": 28151
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_worship/E/subservient_special_worship_E_0.0_1.png",
+			"sha256": "7afce2a56e8a22c268e70d0c0e6a6669442930ca03548178d191449cc7ef0a8a",
+			"bytes": 28136
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_worship/E/subservient_special_worship_E_0.0_2.png",
+			"sha256": "2d893e3e5d18dec5f7f006941251b4554a21b4f6fae61e97d03ddc2907ff38c1",
+			"bytes": 28260
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_worship/E/subservient_special_worship_E_0.0_3.png",
+			"sha256": "3eb73a9e109a2908d3caf8d90a6a2c244ef9bdc08210646841defe71166f8b73",
+			"bytes": 28164
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_worship/E/subservient_special_worship_E_0.0_4.png",
+			"sha256": "6b19e44e4b189117c55d94eb0d1f5bea71056d3536e7ba4dd14451736f5f7f58",
+			"bytes": 28163
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_worship/E/subservient_special_worship_E_0.0_5.png",
+			"sha256": "73a15b2928edc2523ce4536ade9ac064526786e6ea92c788cab2cf866a6b8dd8",
+			"bytes": 28163
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_worship/E/subservient_special_worship_E_0.0_6.png",
+			"sha256": "0f76b472b706e340f52884e9c8df8ea30a1951136848ac44da664018df16f651",
+			"bytes": 28257
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_worship/E/subservient_special_worship_E_0.0_7.png",
+			"sha256": "e99685e1298b1292a4e7dbdd96a4aa74c9561787adc633a43048d4bfade448db",
+			"bytes": 28135
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_worship/N/subservient_special_worship_N_90.0_0.png",
+			"sha256": "ad5283523076c007dccc40e9f1d8c380aa05709ea3a8d1586117441a850c6089",
+			"bytes": 29557
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_worship/N/subservient_special_worship_N_90.0_1.png",
+			"sha256": "c322240f2a8b326f8e166dfebeaca89b363973383221a9f029f6f8065a1990db",
+			"bytes": 29522
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_worship/N/subservient_special_worship_N_90.0_2.png",
+			"sha256": "0364d5151d826e4870cfbffe8037e3f4c6c4d9ed52d55dcc4ee5507305e7cf03",
+			"bytes": 29645
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_worship/N/subservient_special_worship_N_90.0_3.png",
+			"sha256": "02d6758e33968f90f6e413ab33d3a88604e28d7afd76c1eb8e58f6d5a83385d8",
+			"bytes": 29515
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_worship/N/subservient_special_worship_N_90.0_4.png",
+			"sha256": "1e26c5ef827e958494be34d7dc213809ed4699f5fc822b6435291957c8166d5f",
+			"bytes": 29528
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_worship/N/subservient_special_worship_N_90.0_5.png",
+			"sha256": "4949fbed60d9eb1932412ac4f941319a6051b5bf081e5aba693adbab2dcc005e",
+			"bytes": 29513
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_worship/N/subservient_special_worship_N_90.0_6.png",
+			"sha256": "14a71596744f6f3cc3e13fa15843ec2875de6d2058076598804d8e6f0929b52b",
+			"bytes": 29664
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_worship/N/subservient_special_worship_N_90.0_7.png",
+			"sha256": "7637f01599d275798761689fd35fb576884d7470bdd7a78e909a194aae7713a3",
+			"bytes": 29502
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_worship/NE/subservient_special_worship_NE_45.0_0.png",
+			"sha256": "a9190f7ea194a6d62d26615d8a40c826c1fbec953bb63fef397ecae6388c7b30",
+			"bytes": 28916
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_worship/NE/subservient_special_worship_NE_45.0_1.png",
+			"sha256": "d98e540c79fd94abec0e6572282fa407accbbe2c417b233087f0bae2a71541d7",
+			"bytes": 28943
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_worship/NE/subservient_special_worship_NE_45.0_2.png",
+			"sha256": "35b8fb8a6f71c6c1ddac39a9314c500ea8a20fa3a4bcd814c8d0f883d82de747",
+			"bytes": 28986
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_worship/NE/subservient_special_worship_NE_45.0_3.png",
+			"sha256": "7a230405e0fe022f1bfa4d8e2ad3237ed3e02c5fc3c2e01d0db80cb9e2c77a01",
+			"bytes": 28907
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_worship/NE/subservient_special_worship_NE_45.0_4.png",
+			"sha256": "13aae3a83a736cb10a38fc700c77d6b22917d33dff10d544fe8c6469b2640eb0",
+			"bytes": 28973
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_worship/NE/subservient_special_worship_NE_45.0_5.png",
+			"sha256": "ebd86b0692690b74bdd2c32e366a4ee3b01167e5ca1d075de0bdabe45ee3163a",
+			"bytes": 28913
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_worship/NE/subservient_special_worship_NE_45.0_6.png",
+			"sha256": "8aeaa6382d6b7efaab213913e161cb306bbacb71acb4a7a1671b0be681d30925",
+			"bytes": 28986
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_worship/NE/subservient_special_worship_NE_45.0_7.png",
+			"sha256": "1660638a8d8c0afda390ea3e5d4d510e2e6a957e8b25a18bbc0ee2d3f0f265e9",
+			"bytes": 28944
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_worship/NEE/subservient_special_worship_NEE_22.5_0.png",
+			"sha256": "4dd78b21c8de28b0b9c17f299b0d093b08a787600c4ad31f79d9c3ec4881a01a",
+			"bytes": 28545
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_worship/NEE/subservient_special_worship_NEE_22.5_1.png",
+			"sha256": "d8120305fb086bf616c2133c75f03bf0c8f7892df9d51b9428802d6a9b0b7ef2",
+			"bytes": 28328
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_worship/NEE/subservient_special_worship_NEE_22.5_2.png",
+			"sha256": "2273cadf347e2e0c1e4ebab1a96fbb450c755c48dbb97cfc506d8c427049c395",
+			"bytes": 28385
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_worship/NEE/subservient_special_worship_NEE_22.5_3.png",
+			"sha256": "f3f15720c0bfbee6d6367a9733c2ebe3f4f089e199fe1c536aa2605bb6adb388",
+			"bytes": 28343
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_worship/NEE/subservient_special_worship_NEE_22.5_4.png",
+			"sha256": "937dfa51ebc4947cfb632eccbc83caffb088bf06964d768855814ebb8f09a5f5",
+			"bytes": 28270
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_worship/NEE/subservient_special_worship_NEE_22.5_5.png",
+			"sha256": "066f1816a557b6b19b430f70d5c78416209fa873e5bc0580819e3c990dcfec3b",
+			"bytes": 28333
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_worship/NEE/subservient_special_worship_NEE_22.5_6.png",
+			"sha256": "fce468b96ca1f6158e6967ee65504285af1176f7938066459803fdc6700aef67",
+			"bytes": 28385
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_worship/NEE/subservient_special_worship_NEE_22.5_7.png",
+			"sha256": "6a8e7dbc80320c590ec15bdb59bebe143d1d5fc044cb9112b13487b32e54208f",
+			"bytes": 28328
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_worship/NNE/subservient_special_worship_NNE_67.5_0.png",
+			"sha256": "423145a1c42c06167e7efaf9a5b3e5262482595aed172fc6fbaf10faac4a627f",
+			"bytes": 29598
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_worship/NNE/subservient_special_worship_NNE_67.5_1.png",
+			"sha256": "d67450f67c4043cec31d8e1e541bb1b32b70aca9cead087aac0c859988368866",
+			"bytes": 29519
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_worship/NNE/subservient_special_worship_NNE_67.5_2.png",
+			"sha256": "020215c47d8885603979f9b7105593283cc4f1355c7515020259adf451668cf4",
+			"bytes": 29465
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_worship/NNE/subservient_special_worship_NNE_67.5_3.png",
+			"sha256": "66368c8fae49b243920e61107e1e4e9b308628aa1de28a854db5d104d8725b3d",
+			"bytes": 29414
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_worship/NNE/subservient_special_worship_NNE_67.5_4.png",
+			"sha256": "3760dfac9eb21999a625b84e20e336a39d8a01ecdbb11a7e9a79d9b195750884",
+			"bytes": 29395
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_worship/NNE/subservient_special_worship_NNE_67.5_5.png",
+			"sha256": "7b9961e3391694d6503e86c9dfe40fd1d3eb500371f8c497d937ee56028a621f",
+			"bytes": 29412
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_worship/NNE/subservient_special_worship_NNE_67.5_6.png",
+			"sha256": "8f67925affbc5c960471c8101b4aecab2f9b73bea7865d18e753a1152101c798",
+			"bytes": 29457
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_worship/NNE/subservient_special_worship_NNE_67.5_7.png",
+			"sha256": "c682d53784ed9a464bb92756ed121cf0337f134d343d8de8739764c8a6ea66f3",
+			"bytes": 29531
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_worship/NNW/subservient_special_worship_NNW_112.5_0.png",
+			"sha256": "ca5ba764ea511d47a43f757f6a84ef04798b93c04209238e90a6a3188ebe3949",
+			"bytes": 29698
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_worship/NNW/subservient_special_worship_NNW_112.5_1.png",
+			"sha256": "36346380ff90cc8e9bd3aec2bf1a21d45d3217b647045ad093db306010235ac6",
+			"bytes": 29577
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_worship/NNW/subservient_special_worship_NNW_112.5_2.png",
+			"sha256": "33fd88fd8cedec05382454a91e8fb7b659c13a605115142ba5e3a056b998ee03",
+			"bytes": 29611
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_worship/NNW/subservient_special_worship_NNW_112.5_3.png",
+			"sha256": "03dfcb7fbfccacd5c2b47dc2869448099a304fea8a8debfd64a7a5bdbeb650b8",
+			"bytes": 29491
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_worship/NNW/subservient_special_worship_NNW_112.5_4.png",
+			"sha256": "8f89091b879a504a94a8f647502d4a41a1f758855e63c5bf331aefe1697a52c6",
+			"bytes": 29497
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_worship/NNW/subservient_special_worship_NNW_112.5_5.png",
+			"sha256": "75e15e6c19829f943cf42a3bbbf8a592785846641a016dc7d34e2d8e8805c463",
+			"bytes": 29489
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_worship/NNW/subservient_special_worship_NNW_112.5_6.png",
+			"sha256": "b6fc7f2306bec484a57553cdca915b5db18225e9d19ed041bf1b98044d122fe4",
+			"bytes": 29611
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_worship/NNW/subservient_special_worship_NNW_112.5_7.png",
+			"sha256": "f5966faa71836d855947221439c990cb109c58da1c75d35852c0c11a7d19e4e1",
+			"bytes": 29575
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_worship/NW/subservient_special_worship_NW_135.0_0.png",
+			"sha256": "ac37c767ca03bbeadad169efe2ec7a29e2ab4e74e4c677268b5698d58f1ea772",
+			"bytes": 29174
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_worship/NW/subservient_special_worship_NW_135.0_1.png",
+			"sha256": "e03e03a3f9b4c3efe9b778cc7ff25466a6887642aa947a4d9b38169a16327029",
+			"bytes": 29260
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_worship/NW/subservient_special_worship_NW_135.0_2.png",
+			"sha256": "955d03ad09da317d67564ba44c2967a428d97529239f2d0fe0c460b05adf5082",
+			"bytes": 29229
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_worship/NW/subservient_special_worship_NW_135.0_3.png",
+			"sha256": "4523be0072208f9e54f6ff2b211197c1504839743da036f0d954aea001cca83b",
+			"bytes": 29308
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_worship/NW/subservient_special_worship_NW_135.0_4.png",
+			"sha256": "e6a25c901cbb5158fcae02d9bbe5a41734ae0d74871231f460a0bdbf221fad36",
+			"bytes": 29221
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_worship/NW/subservient_special_worship_NW_135.0_5.png",
+			"sha256": "e2e235c6382b6acd28323368849a742909995c7568808530d991ea8c9c8600e6",
+			"bytes": 29309
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_worship/NW/subservient_special_worship_NW_135.0_6.png",
+			"sha256": "87439286dadc92a7af35a1bac2a76b64d15fdffeafb71bc80e946d5cea4931ee",
+			"bytes": 29230
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_worship/NW/subservient_special_worship_NW_135.0_7.png",
+			"sha256": "5c4302737ad20989a5e526b42385a93c521473c4719525ce2cf6c77911a45288",
+			"bytes": 29260
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_worship/NWW/subservient_special_worship_NWW_157.5_0.png",
+			"sha256": "69a22e1f4eca4501ab093918d76cdf6bdacd7b00062648dc7f5d4477b2ff91f3",
+			"bytes": 28755
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_worship/NWW/subservient_special_worship_NWW_157.5_1.png",
+			"sha256": "a59ebc6038ffc91efe7a4dbc2448e0176b53fa54e5341224f48067f7405d9229",
+			"bytes": 28766
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_worship/NWW/subservient_special_worship_NWW_157.5_2.png",
+			"sha256": "a636b73dec9c45b62ae8eb6bfcf09ddef920e29148bf26894e84a009f1f2ba1e",
+			"bytes": 28720
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_worship/NWW/subservient_special_worship_NWW_157.5_3.png",
+			"sha256": "95ede9c51ef145cbfe7080a0a1dc2ba6e0a3f57510a064d75c451e78f70728a1",
+			"bytes": 28603
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_worship/NWW/subservient_special_worship_NWW_157.5_4.png",
+			"sha256": "8f4819ae3952e9e335c98bc962dbd2fc8e0085654c6589ebd8f509a7371d9c75",
+			"bytes": 28457
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_worship/NWW/subservient_special_worship_NWW_157.5_5.png",
+			"sha256": "b7f414ea80b3db957c1cda6ef60f41c5604609778be04ed212a3b7815c282d1d",
+			"bytes": 28600
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_worship/NWW/subservient_special_worship_NWW_157.5_6.png",
+			"sha256": "4277f591fb36f9ba061fbffc5c46b5431b3649bba593ead6f7f5dd752559c8ee",
+			"bytes": 28719
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_worship/NWW/subservient_special_worship_NWW_157.5_7.png",
+			"sha256": "53465e9dd84047dd8556c7097a58665f711810b2694a3b9059bec2f1b5526429",
+			"bytes": 28766
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_worship/S/subservient_special_worship_S_270.0_0.png",
+			"sha256": "e835c0ce84f32b430c711ec3c9dd45afc240da44e4bbdfa7a31517598b686475",
+			"bytes": 29732
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_worship/S/subservient_special_worship_S_270.0_1.png",
+			"sha256": "a1c9ed0f89629dbfaffccdfdd1221689ca3e0d282e728ffcabc37f914353ece7",
+			"bytes": 29761
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_worship/S/subservient_special_worship_S_270.0_2.png",
+			"sha256": "76c3beeada5f4a03d504b1036f7e1ad0d9d0ed28f6aadf611dd5738f746d0d17",
+			"bytes": 29576
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_worship/S/subservient_special_worship_S_270.0_3.png",
+			"sha256": "79e3de39a01195c40b4b55071a21140cde42fd392e208175e3dba8c74efbbc15",
+			"bytes": 29587
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_worship/S/subservient_special_worship_S_270.0_4.png",
+			"sha256": "b72f2755d3bd684e616d479fb053f23d38f75039ba0f2d55450479dfdf63881c",
+			"bytes": 29655
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_worship/S/subservient_special_worship_S_270.0_5.png",
+			"sha256": "eb005649b315c6dc319e098bdc85026041bfbf0bbb1774ee966ee3dfc9e9690f",
+			"bytes": 29587
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_worship/S/subservient_special_worship_S_270.0_6.png",
+			"sha256": "f5fa9be1460648ac9647714e7992f9dd49ac4920034c0383a385721120925810",
+			"bytes": 29578
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_worship/S/subservient_special_worship_S_270.0_7.png",
+			"sha256": "6b5240dd2a4ed664dd3c343716658b46032c7b6bde2ae20be1e8f6016e51975f",
+			"bytes": 29761
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_worship/SE/subservient_special_worship_SE_315.0_0.png",
+			"sha256": "9f69b750c066882e8b28a1740f6d9c8cb8b2d4023c0336f4534f279c6111d68d",
+			"bytes": 28580
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_worship/SE/subservient_special_worship_SE_315.0_1.png",
+			"sha256": "dd022585fca7bde16a68a21a5e950d76acaec0eeba05135f3cc419ccf0219d5c",
+			"bytes": 28576
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_worship/SE/subservient_special_worship_SE_315.0_2.png",
+			"sha256": "0c70b2042844d9ec3957596ce97c387a6628c6ef9a35a959162fb601277af36d",
+			"bytes": 28442
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_worship/SE/subservient_special_worship_SE_315.0_3.png",
+			"sha256": "914d9e1e0d847772e67819953d766770c080491af0bab68560562f824aed8f6e",
+			"bytes": 28584
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_worship/SE/subservient_special_worship_SE_315.0_4.png",
+			"sha256": "75bfe38aa4f0727bba64cc6d524c8f42e803aa340849cd8469cdb7cb5b7e1642",
+			"bytes": 28412
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_worship/SE/subservient_special_worship_SE_315.0_5.png",
+			"sha256": "6fc4e6ea09b2d0d1cae5eb7d2c643170f9bf0210f4d9a31e2cbe29018717b77b",
+			"bytes": 28578
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_worship/SE/subservient_special_worship_SE_315.0_6.png",
+			"sha256": "c00ce4828bd290a0446a7fe00081c4f5ff476ea18dac70dfa5aaabb380c93217",
+			"bytes": 28452
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_worship/SE/subservient_special_worship_SE_315.0_7.png",
+			"sha256": "85a2a0b823f3b9901d68d5338777cec1a81924988f0185d37881bbbd82ece946",
+			"bytes": 28570
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_worship/SEE/subservient_special_worship_SEE_337.5_0.png",
+			"sha256": "151b4a960673b3cd3d1f154d9517bdef5c03538445f943fbcecd5eab1cb5c250",
+			"bytes": 28386
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_worship/SEE/subservient_special_worship_SEE_337.5_1.png",
+			"sha256": "54e3e4469fe57505612839c2f6b1bd980d6f2fb21af217928ac1641d6b48b972",
+			"bytes": 28340
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_worship/SEE/subservient_special_worship_SEE_337.5_2.png",
+			"sha256": "e48095273e4fa01a174358083057c7468929ebcf0dc15b1eba88160e758d03a9",
+			"bytes": 28394
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_worship/SEE/subservient_special_worship_SEE_337.5_3.png",
+			"sha256": "d05d3eb413bf126e239315a48d562a0a2ca7642f375e42cd1e1dff37f1831408",
+			"bytes": 28355
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_worship/SEE/subservient_special_worship_SEE_337.5_4.png",
+			"sha256": "7ef67b7422ea97f12772709d3bbaa8616df6749d8305ac706cb415b5979120f1",
+			"bytes": 28311
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_worship/SEE/subservient_special_worship_SEE_337.5_5.png",
+			"sha256": "cd943af7cac2c41dd33759fcbf4fa6ab8d35e98e3dbd711383720872d326e19b",
+			"bytes": 28346
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_worship/SEE/subservient_special_worship_SEE_337.5_6.png",
+			"sha256": "64193040946fafd8e399f1fbcb981a26fe55db2fb6684aa0f197f12f9b7a2092",
+			"bytes": 28397
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_worship/SEE/subservient_special_worship_SEE_337.5_7.png",
+			"sha256": "84d8f9294cb40e264a7abb5e8780bbb5170912522584840cd8fb34027dc8c7ce",
+			"bytes": 28335
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_worship/SSE/subservient_special_worship_SSE_292.5_0.png",
+			"sha256": "69969fb5dd6a6ff9cc7d0d80df32653b7ad36861774b3bea6d7cc338ece0b84d",
+			"bytes": 29179
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_worship/SSE/subservient_special_worship_SSE_292.5_1.png",
+			"sha256": "975f06c7355a75fbbba0727cb6b5b06e77bc765bb3208411417eb3c658b2febf",
+			"bytes": 29145
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_worship/SSE/subservient_special_worship_SSE_292.5_2.png",
+			"sha256": "811802240295abd800f5ef28e749e252d6695a631f7a76c347bfa53e0acd759f",
+			"bytes": 29105
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_worship/SSE/subservient_special_worship_SSE_292.5_3.png",
+			"sha256": "16421f976545cd55d120c1debef5db1423b519c10be85749c5359df9d2e197d3",
+			"bytes": 29173
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_worship/SSE/subservient_special_worship_SSE_292.5_4.png",
+			"sha256": "34364a724422064ce8b0b0a09023b0d108a89e2e78c043d18a033c7a0df7b284",
+			"bytes": 29173
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_worship/SSE/subservient_special_worship_SSE_292.5_5.png",
+			"sha256": "a308d8c8b5ac72c3e7e2ad36c0d0caff0867dfd42b7c321cc73158e33d6e1183",
+			"bytes": 29169
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_worship/SSE/subservient_special_worship_SSE_292.5_6.png",
+			"sha256": "479684a5a6970ee8638525db4d5da748523de890f94125df33ec9335931de616",
+			"bytes": 29107
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_worship/SSE/subservient_special_worship_SSE_292.5_7.png",
+			"sha256": "a28197c081b471b67612345e7b217aab4226590659e4305783d2254f19017e5c",
+			"bytes": 29144
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_worship/SSW/subservient_special_worship_SSW_247.5_0.png",
+			"sha256": "2c4794eae862ee8b468dde3f4e20d640034792a61d795a3f41690ee77b8b0c36",
+			"bytes": 29559
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_worship/SSW/subservient_special_worship_SSW_247.5_1.png",
+			"sha256": "25aaf2157f96ee2ada0a8fc95c1baf16886bceaa8958d5a0ddf7db555b99d878",
+			"bytes": 29525
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_worship/SSW/subservient_special_worship_SSW_247.5_2.png",
+			"sha256": "be289c253a9f4bbdab3add49d41ce3bfa8c4bc03ebfd96924452d05a0aef31cc",
+			"bytes": 29490
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_worship/SSW/subservient_special_worship_SSW_247.5_3.png",
+			"sha256": "ea5d90c6a301623167257f3812b6d7118df452443e8557667880602a301f1c94",
+			"bytes": 29488
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_worship/SSW/subservient_special_worship_SSW_247.5_4.png",
+			"sha256": "cac355bb69549c3092038b45f8046d2fec0ad06946a72931461486994eb9d6f0",
+			"bytes": 29398
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_worship/SSW/subservient_special_worship_SSW_247.5_5.png",
+			"sha256": "5b0f2bfc9369f0516c9025ede2b2232dd8a4f1c4c54b77e01778b2e0155b41ed",
+			"bytes": 29489
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_worship/SSW/subservient_special_worship_SSW_247.5_6.png",
+			"sha256": "1ed81cb4dfea457761d376e42b30e35cac4a9330478cfaab33a52c7ca08b06a0",
+			"bytes": 29491
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_worship/SSW/subservient_special_worship_SSW_247.5_7.png",
+			"sha256": "00a1fa93873f94853cb0fa6cde055170fda0d8d8f621d230ff0a8867a453fd69",
+			"bytes": 29521
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_worship/SW/subservient_special_worship_SW_225.0_0.png",
+			"sha256": "e4e238aaefebc5fe6224c92140ff587988154c363aef52c6b7d8fc096e9bdce2",
+			"bytes": 28907
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_worship/SW/subservient_special_worship_SW_225.0_1.png",
+			"sha256": "8729333126cc1b8d243c6f77b2bbdca2b372b9c8c2aa0887fcf8f53be46878e5",
+			"bytes": 28964
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_worship/SW/subservient_special_worship_SW_225.0_2.png",
+			"sha256": "edc7b77c5db76f3e5f03767ecf6f608c571090bfc84b87abdfd16f15cb03d633",
+			"bytes": 28933
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_worship/SW/subservient_special_worship_SW_225.0_3.png",
+			"sha256": "052048c8fde0cc5e8016c49324985ab8468ffec77353a455a9646d4ee4ee42e7",
+			"bytes": 28921
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_worship/SW/subservient_special_worship_SW_225.0_4.png",
+			"sha256": "2538919f67f81ec17ea912f7744bb4ca2d3bcf869ab787de18ac0e57d7192000",
+			"bytes": 28880
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_worship/SW/subservient_special_worship_SW_225.0_5.png",
+			"sha256": "1d2bc5cc24771c1a09f8daca21bf9cc9ca81a19f1b26b596b103235189832b02",
+			"bytes": 28922
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_worship/SW/subservient_special_worship_SW_225.0_6.png",
+			"sha256": "82307a7077dccb8a6d3181b8f83eb14d109432d2d0f554c8829da8ab2849e4bf",
+			"bytes": 28932
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_worship/SW/subservient_special_worship_SW_225.0_7.png",
+			"sha256": "38f2c53c885bf80eaf2ea2db3eb0bd6e0782ebe4813209275e6959effab51bd6",
+			"bytes": 28962
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_worship/SWW/subservient_special_worship_SWW_202.5_0.png",
+			"sha256": "a88ba59866267e517157d53b265d7db9b280911c45890b013b836bdeb0053ff6",
+			"bytes": 28573
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_worship/SWW/subservient_special_worship_SWW_202.5_1.png",
+			"sha256": "4a886cf54dc6b42e53e62c4d274aa813b4ed43a3af54ecffb09c7c28bcc350fb",
+			"bytes": 28568
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_worship/SWW/subservient_special_worship_SWW_202.5_2.png",
+			"sha256": "c6899eb73e4ec19875f29e8ae900d4a3db28a4d94e7a2962f5ae56991de4ea75",
+			"bytes": 28546
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_worship/SWW/subservient_special_worship_SWW_202.5_3.png",
+			"sha256": "60c90c5149da542b832535e72a8698cb23b67c97b4c1bec159d06fb502874319",
+			"bytes": 28489
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_worship/SWW/subservient_special_worship_SWW_202.5_4.png",
+			"sha256": "420b612f935915a37d6a0e0fec5c665375a89f6396ff10c5e9a2c93b5ea396aa",
+			"bytes": 28531
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_worship/SWW/subservient_special_worship_SWW_202.5_5.png",
+			"sha256": "0e0ebfdb635fd470deffba11b8402a066d48f9da49a6608eccbb15875365ec57",
+			"bytes": 28489
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_worship/SWW/subservient_special_worship_SWW_202.5_6.png",
+			"sha256": "98efac8c3c99b65f26082e9affd29754e57c17fe3ae78fe4acf4c29ed39fc5f8",
+			"bytes": 28547
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_worship/SWW/subservient_special_worship_SWW_202.5_7.png",
+			"sha256": "b074236b3ddf158884e1aa3d60f6a75de65b642404abe379822aa7924a0fb4d1",
+			"bytes": 28568
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_worship/W/subservient_special_worship_W_180.0_0.png",
+			"sha256": "fb6e1b393e859571c2b8ac2e2b9ec9f11085e5f9bf9159084cec054e639dddf0",
+			"bytes": 28205
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_worship/W/subservient_special_worship_W_180.0_1.png",
+			"sha256": "0e3d31e71599ca9c381a6656b1b7c76f02ec1c145d778511d020fb51ae2dc45f",
+			"bytes": 28206
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_worship/W/subservient_special_worship_W_180.0_2.png",
+			"sha256": "50e16e8d3c86b2c54b77b9b7ac128b2395f0a26dbf195a802c4bbfe12328933f",
+			"bytes": 28284
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_worship/W/subservient_special_worship_W_180.0_3.png",
+			"sha256": "665af3a95c25e93d31927cfd0c4fb3fa1df32a57a6bbb6e95ff1354e217f2aaa",
+			"bytes": 28291
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_worship/W/subservient_special_worship_W_180.0_4.png",
+			"sha256": "83f27be5e767bbbf439381c858534dd992b1c824bb382cf888fde8366ce7e3ae",
+			"bytes": 28273
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_worship/W/subservient_special_worship_W_180.0_5.png",
+			"sha256": "6fd97b7ad9197e7d0702010f87d4116b51b8dc06c17ae36e0d3f92d02ae0ee62",
+			"bytes": 28305
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_worship/W/subservient_special_worship_W_180.0_6.png",
+			"sha256": "cfea025255e1ab23c1c828df1c1c9c7e46ae7401eb2f42b26ebe51c2d26c3d18",
+			"bytes": 28284
+		},
+		{
+			"path": "lords-of-pain/none-playable character/subservient/subservient_special_worship/W/subservient_special_worship_W_180.0_7.png",
+			"sha256": "0217a2b7a84483d82215afbbdf282ce7d6e9e2a4ec0f1a70abed14fda8525789",
+			"bytes": 28205
+		},
+		{
 			"path": "lords-of-pain/prop/barrel/NE/barrel_NE_45.0_0.png",
 			"sha256": "37cb1d1af42181a21824d29206f5b565f293d7c72a6a169f60df8f980e58cdbe",
 			"bytes": 14897

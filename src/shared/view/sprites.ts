@@ -17,6 +17,9 @@
  * Animation. Choices follow a fixed priority, each rule skipped when the set lacks its animation (ending at idle):
  *   player: death > roll > attack (sword swings attack.1/2/3, else attack) > hit > run > idle
  *   actor:  death > attack > hit (multi-frame only; a 1-frame stand-in leaves it to the tint) > move > idle
+ * An actor's attack comes from its archetype's own states (ACTOR_SPRITE_INPUTS): the swarmer's wind-up + lunge, the
+ * sniper's line telegraph; a turret (turret.sniper) never attacks or moves (idle loop), and its corpse is the one dead
+ * spell before it respawns alive (turretShared.ts).
  * Death beats everything; the roll beats attacks because the sim cancels a wind-up and pauses the combo while rolling;
  * attacks beat the hit flinch because a hit never interrupts a swing or a lunge in the sim (the tint / blink shows the
  * hit instead). One-shots driven by a gameplay timer (roll, swing, hit, corpse) are STRETCHED over that timer:
@@ -31,6 +34,7 @@ import {
 	HURT_INVULN_TICKS,
 	ROLL_TICKS,
 	SIM_HZ,
+	SNIPER,
 	SWARMER,
 	SWARMER_LUNGE,
 	SWORD_DATA,
@@ -39,8 +43,10 @@ import {
 	SWORD_V_BUSY,
 	SWORD_V_LAST,
 	SWORD_V_STEP,
+	TURRET_SNIPER,
 	attackTicks,
 	type ActorState,
+	type ArchetypeData,
 	type PlayerState,
 	type SimState,
 	type WeaponsState,
@@ -329,7 +335,7 @@ export interface ActorAttack {
 	readonly total: number;
 }
 
-/** What an actor's sprite needs from sim state (swarmerSpriteInput fills it for the swarmer). */
+/** What an actor's sprite needs from sim state (the ACTOR_SPRITE_INPUTS builders fill it). */
 export interface ActorSpriteInput {
 	/** ActorState.alive !== 0. */
 	readonly alive: boolean;
@@ -378,6 +384,56 @@ export function swarmerSpriteInput(a: Readonly<ActorState>, alpha: number): Acto
 		alpha,
 	};
 }
+
+/**
+ * The sniper's attack timeline: the line's telegraph (AiState.TELEGRAPH, telegraphTicks; the aim tracks, then locks
+ * for the last lockTicks), aiTicks counting it down. It fires on the telegraph's last tick and goes straight back to
+ * repositioning, so there is no strike phase after it (no lunge).
+ */
+export function sniperAttack(aiState: number, aiTicks: number, alpha: number): ActorAttack | undefined {
+	if (aiState !== AiState.TELEGRAPH) return undefined;
+	const total = SNIPER.data.telegraphTicks;
+	return { elapsed: math.max(0, elapsedOf(total, aiTicks, alpha)), total };
+}
+
+/** ActorSpriteInput for a sniper (it strafes: the move loop scales by SPRITE_VIEW.sniperMoveRefSpeed). */
+export function sniperSpriteInput(a: Readonly<ActorState>, alpha: number): ActorSpriteInput {
+	return {
+		alive: a.alive !== 0,
+		deadTicks: a.deadTicks,
+		corpseTicks: SNIPER.data.corpseTicks ?? CORPSE_TICKS,
+		flashTicks: a.flashTicks,
+		attack: a.alive !== 0 ? sniperAttack(a.aiState, a.aiTicks, alpha) : undefined,
+		speed: tickSpeed(a.prevX, a.prevZ, a.x, a.z),
+		refSpeed: SPRITE_VIEW.sniperMoveRefSpeed,
+		alpha,
+	};
+}
+
+/**
+ * An ActorSpriteInput builder for a stationary turret with archetype data `data` (turretShared.ts): never attacks
+ * (its bursts have no wind-up) and never moves (speed and reference speed 0: the idle loop). Dead, it is a corpse for
+ * data.corpseTicks ?? CORPSE_TICKS (death, then the fade); it then stays hidden until it respawns, and reviveActor
+ * sets alive = 1 and deadTicks = 0, so a respawned turret is a live idle body again, never a fading corpse.
+ */
+export function turretSpriteInputOf(
+	data: Readonly<ArchetypeData>,
+): (a: Readonly<ActorState>, alpha: number) => ActorSpriteInput {
+	const corpseTicks = data.corpseTicks ?? CORPSE_TICKS;
+	return (a, alpha) => ({
+		alive: a.alive !== 0,
+		deadTicks: a.deadTicks,
+		corpseTicks,
+		flashTicks: a.flashTicks,
+		attack: undefined,
+		speed: 0,
+		refSpeed: 0,
+		alpha,
+	});
+}
+
+/** ActorSpriteInput for the tutorial's turret.sniper (decision D3 of docs/SNIPER_ART.md: it wears the sniper's set). */
+export const turretSniperSpriteInput = turretSpriteInputOf(TURRET_SNIPER.data);
 
 /** An actor's animation: death > attack > hit > move > idle (file comment), skipping absent animations. */
 export function chooseActorAnim(input: ActorSpriteInput, anims: SpriteAnimSource): SpriteAnimChoice {
@@ -602,6 +658,14 @@ export function corpseTransparency(alive: number, deadTicks: number, corpseTicks
 	return corpseTicks > 0 ? math.clamp(deadTicks / corpseTicks, 0, 1) : 1;
 }
 
-/** Archetypes drawn as sprites when the pack has a sprite set for their spriteId: archetype ID -> input builder. */
+/**
+ * Archetypes drawn as sprites when the pack has a sprite set for their spriteId: archetype ID -> input builder. The
+ * swarmer, the sniper and the tutorial's turret.sniper (same spriteId "enemy.sniper", D3); every other archetype stays
+ * a placeholder.
+ */
 export const ACTOR_SPRITE_INPUTS: ReadonlyMap<string, (a: Readonly<ActorState>, alpha: number) => ActorSpriteInput> =
-	new Map([[SWARMER.id, swarmerSpriteInput]]);
+	new Map([
+		[SWARMER.id, swarmerSpriteInput],
+		[SNIPER.id, sniperSpriteInput],
+		[TURRET_SNIPER.id, turretSniperSpriteInput],
+	]);

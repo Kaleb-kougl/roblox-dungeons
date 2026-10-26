@@ -29,6 +29,8 @@ import type { RobloxAssetId } from "../../types";
  * swarmer-move.png / swarmer-death.png re-uploaded 2026-10-26 9:25 after the enemy-outline pad change (docs/OUTLINE.md
  * O3: 98x74 cells, 980x962 atlases), with swarmer-move-outline.png / swarmer-death-outline.png (O5). The two outline
  * names were truncated in Asset Manager ("swarmer-deat...", "swarmer-mov..."); each is the only file left with that prefix.
+ * sniper-idle.png / sniper-idle-outline.png uploaded 2026-10-26 1:16 PM by k9kbdev (docs/SNIPER_ART.md SN6: 126x93
+ * cells, 1008x744 atlas), transcribed from an Asset Manager screenshot.
  * Audio: 38 of the 54 art/build/audio/*.ogg files uploaded 2026-10-26 11:08 by k9kbdev (Asset Manager Bulk Import,
  * built by audio:build with ffmpeg 6.1.1), transcribed from Asset Manager screenshots. Not yet here: amb-b1, the nine
  * music-*.ogg, sfx-depth-up, sfx-enemy-hurt-3 / -4 / -6, sfx-enemy-telegraph, sfx-player-shoot, sfx-stairwell-open.
@@ -74,6 +76,8 @@ export const VALE_ASSET_IDS: Readonly<Record<string, RobloxAssetId>> = {
 	"sfx-ui-confirm.ogg": "rbxassetid://129583273016065",
 	"sfx-ui-move.ogg": "rbxassetid://98968775960499",
 	"sfx-victory.ogg": "rbxassetid://138562382025197",
+	"sniper-idle-outline.png": "rbxassetid://72531972026139",
+	"sniper-idle.png": "rbxassetid://136813347348140",
 	"swarmer-death-outline.png": "rbxassetid://72521271467524",
 	"swarmer-death.png": "rbxassetid://101974921579587",
 	"swarmer-move-outline.png": "rbxassetid://71928565662655",

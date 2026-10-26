@@ -1,4 +1,4 @@
-import { HURT_INVULN_TICKS, PLAYER_SPEED, SWARMER } from "shared/sim";
+import { HURT_INVULN_TICKS, PLAYER_SPEED, SNIPER, SWARMER } from "shared/sim";
 import type { ColorRole } from "shared/theme";
 import type { TopFaceUV } from "./floorTexture";
 
@@ -213,6 +213,8 @@ export const SPRITE_VIEW = {
 	playerRunRefSpeed: PLAYER_SPEED,
 	/** The swarmer's move loop plays at its authored fps at this ground speed, world units / s (its walk speed). */
 	swarmerMoveRefSpeed: SWARMER.data.speed,
+	/** The sniper's move loop plays at its authored fps at this ground speed, world units / s (its walk speed). */
+	sniperMoveRefSpeed: SNIPER.data.speed,
 	/** Below this fraction of the reference speed a body counts as standing (idle): wall slides, separation nudges. */
 	moveMinFraction: 0.1,
 	/** Run / move loop rate (speed / reference speed) is clamped to this range (flask walk 0.5, pushes, teleports). */

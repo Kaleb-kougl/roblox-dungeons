@@ -10,6 +10,9 @@ import {
 	NO_WEAPON,
 	PLAYER_SPEED,
 	ROLL_TICKS,
+	SIM_HZ,
+	SNIPER,
+	SNIPER_REPOSITION,
 	SQRT1_2,
 	SWARMER,
 	SWARMER_LUNGE,
@@ -19,6 +22,8 @@ import {
 	SWORD_V_BUSY,
 	SWORD_V_LAST,
 	SWORD_V_STEP,
+	TURRET_RESPAWN_TICKS,
+	TURRET_SNIPER,
 	WEAPON_SCRATCH_SLOTS,
 	newPlayerState,
 	ATTACK_TICKS_BOON_PERCENT,
@@ -50,6 +55,10 @@ import {
 	isoBasis,
 	playerSpriteInput,
 	screenAngleDeg,
+	sniperAttack,
+	sniperSpriteInput,
+	turretSniperSpriteInput,
+	turretSpriteInputOf,
 	screenAngleFromBasis,
 	spriteBillboard,
 	spriteFacing,
@@ -521,6 +530,129 @@ describe("chooseActorAnim (swarmer)", () => {
 	});
 });
 
+/** A live ActorState at rest (fields overridden per case). */
+function actorState(over: Partial<ActorState>): ActorState {
+	return {
+		id: 1,
+		kind: 0,
+		spawnTick: -1,
+		x: 0,
+		z: 0,
+		prevX: 0,
+		prevZ: 0,
+		faceX: 1,
+		faceZ: 0,
+		hp: 4,
+		hpMax: 4,
+		radius: SNIPER.data.radius,
+		alive: 1,
+		deadTicks: 0,
+		aiState: SNIPER_REPOSITION,
+		aiTicks: 0,
+		attack: 0,
+		cooldown: 0,
+		flashTicks: 0,
+		emitterId: 0,
+		phase: 0,
+		capBucket: -1,
+		capWindow: table.create(DAMAGE_CAP_BUCKETS, 0),
+		v: table.create(ACTOR_SCRATCH_SLOTS, 0),
+		...over,
+	};
+}
+
+describe("chooseActorAnim (sniper)", () => {
+	const d = SNIPER.data;
+	const total = d.telegraphTicks;
+
+	it("times the attack over the line's telegraph (aiTicks counting down, no lunge)", () => {
+		// ctx.telegraph sets aiTicks = telegraphTicks; telegraphing() decrements it and fires at 0.
+		expect(sniperAttack(AiState.TELEGRAPH, total, 0)).toEqual({ elapsed: 0, total });
+		expect(sniperAttack(AiState.TELEGRAPH, d.lockTicks, 0)).toEqual({ elapsed: total - d.lockTicks, total });
+		expect(sniperAttack(AiState.TELEGRAPH, 1, 1)).toEqual({ elapsed: total, total });
+		expect(sniperAttack(AiState.TELEGRAPH, total, 0.5)).toEqual({ elapsed: 0.5, total });
+	});
+
+	it("is not attacking while repositioning, calm or leashing", () => {
+		expect(sniperAttack(SNIPER_REPOSITION, 20, 0.5)).toBe(undefined);
+		expect(sniperAttack(AiState.IDLE, 0, 0)).toBe(undefined);
+		const dead = actorState({ alive: 0, deadTicks: 4, aiState: AiState.TELEGRAPH, aiTicks: 10 });
+		expect(sniperSpriteInput(dead, 0).attack).toBe(undefined);
+	});
+
+	it("fills its input from an ActorState", () => {
+		const a = actorState({ x: 1.04, prevX: 1, aiState: AiState.TELEGRAPH, aiTicks: 20, flashTicks: 2 });
+		expect(SPRITE_VIEW.sniperMoveRefSpeed).toBe(d.speed);
+		expect(sniperSpriteInput(a, 0.5)).toEqual({
+			alive: true,
+			deadTicks: 0,
+			corpseTicks: d.corpseTicks ?? CORPSE_TICKS,
+			flashTicks: 2,
+			attack: sniperAttack(AiState.TELEGRAPH, 20, 0.5),
+			speed: tickSpeed(1, 0, 1.04, 0),
+			refSpeed: d.speed,
+			alpha: 0.5,
+		});
+	});
+
+	it("plays attack while telegraphing, move while strafing, idle calm, death dead", () => {
+		const strafeStep = d.speed / SIM_HZ;
+		const telegraphing = actorState({ aiState: AiState.TELEGRAPH, aiTicks: d.lockTicks });
+		expect(chooseActorAnim(sniperSpriteInput(telegraphing, 0), SKELETON)).toEqual({
+			anim: "attack",
+			progress: (total - d.lockTicks) / total,
+			rate: 1,
+		});
+		const strafing = actorState({ aiState: SNIPER_REPOSITION, aiTicks: 30, prevX: 0, x: strafeStep });
+		const move = chooseActorAnim(sniperSpriteInput(strafing, 0), SKELETON);
+		expect(move.anim).toBe("move");
+		expect(move.progress).toBe(undefined);
+		expect(move.rate).toBeCloseTo(1, 9);
+		expect(chooseActorAnim(sniperSpriteInput(actorState({ aiState: AiState.IDLE }), 0), SKELETON)).toEqual({
+			anim: "idle",
+			rate: 1,
+		});
+		const dead = actorState({ alive: 0, deadTicks: 6, aiState: AiState.TELEGRAPH, aiTicks: 10 });
+		expect(chooseActorAnim(sniperSpriteInput(dead, 0), SKELETON)).toEqual({
+			anim: "death",
+			progress: 6 / ((d.corpseTicks ?? CORPSE_TICKS) * SPRITE_VIEW.deathCorpseFraction),
+			rate: 1,
+		});
+	});
+});
+
+describe("chooseActorAnim (turret)", () => {
+	const corpseTicks = TURRET_SNIPER.data.corpseTicks ?? CORPSE_TICKS;
+
+	it("never attacks or moves, even mid-burst or when displaced", () => {
+		const a = actorState({ aiState: AiState.TELEGRAPH, aiTicks: 5, cooldown: 1, prevX: 0, x: 1 });
+		const input = turretSniperSpriteInput(a, 0.5);
+		expect(input.attack).toBe(undefined);
+		expect(input.speed).toBe(0);
+		expect(input.refSpeed).toBe(0);
+		expect(chooseActorAnim(input, SKELETON)).toEqual({ anim: "idle", rate: 1 });
+	});
+
+	it("is a corpse while dead and a live idle body once respawned", () => {
+		const dead = actorState({ alive: 0, deadTicks: 3 });
+		const deadInput = turretSniperSpriteInput(dead, 0);
+		expect(deadInput.corpseTicks).toBe(corpseTicks);
+		expect(chooseActorAnim(deadInput, SKELETON).anim).toBe("death");
+		// turretStepDead revives at TURRET_RESPAWN_TICKS: reviveActor sets alive = 1, deadTicks = 0.
+		expect(TURRET_RESPAWN_TICKS).toBeGreaterThan(corpseTicks);
+		const respawned = actorState({ alive: 1, deadTicks: 0, hp: TURRET_SNIPER.data.hp });
+		const input = turretSniperSpriteInput(respawned, 0);
+		expect(input.alive).toBe(true);
+		expect(chooseActorAnim(input, SKELETON)).toEqual({ anim: "idle", rate: 1 });
+		expect(corpseTransparency(respawned.alive, respawned.deadTicks, input.corpseTicks)).toBe(0);
+	});
+
+	it("builds from any turret's data (the corpse time it carries)", () => {
+		const build = turretSpriteInputOf({ ...TURRET_SNIPER.data, corpseTicks: 12 });
+		expect(build(actorState({ alive: 0, deadTicks: 1 }), 0).corpseTicks).toBe(12);
+	});
+});
+
 describe("tickSpeed", () => {
 	it("is one tick's displacement times SIM_HZ", () => {
 		expect(tickSpeed(0, 0, 0.3, 0.4)).toBe(math.sqrt(0.3 * 0.3 + 0.4 * 0.4) * 60);
@@ -730,8 +862,14 @@ describe("looks", () => {
 });
 
 describe("ACTOR_SPRITE_INPUTS", () => {
-	it("draws only the swarmer as a sprite (other archetypes stay placeholders)", () => {
-		expect(ACTOR_SPRITE_INPUTS.size()).toBe(1);
+	it("draws the swarmer, the sniper and turret.sniper as sprites (other archetypes stay placeholders)", () => {
+		expect(ACTOR_SPRITE_INPUTS.size()).toBe(3);
 		expect(ACTOR_SPRITE_INPUTS.get(SWARMER.id)).toBe(swarmerSpriteInput);
+		expect(ACTOR_SPRITE_INPUTS.get(SNIPER.id)).toBe(sniperSpriteInput);
+		expect(ACTOR_SPRITE_INPUTS.get(TURRET_SNIPER.id)).toBe(turretSniperSpriteInput);
+	});
+
+	it("gives turret.sniper the sniper's sprite set (decision D3)", () => {
+		expect(TURRET_SNIPER.data.spriteId).toBe(SNIPER.data.spriteId);
 	});
 });
