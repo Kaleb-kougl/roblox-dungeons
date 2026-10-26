@@ -606,8 +606,10 @@ Funnel (`LogFunnelStepEvent`, funnel session id = the run's server-generated `ru
 
 Roblox treats skipped intermediate steps as completed (a run that reaches the boss without a kill counts `FirstKill`).
 
-Progression (`LogProgressionEvent`): path `ActI`, level 1 `MotherBramble`: `Start` on the first boss engage, `Complete`
-on the boss kill, `Fail` (field 1 = death cause) when the player died after engaging.
+Progression (`LogProgressionEvent`): path `ActI`, the level of the run's first boss (`RunTelemetryRecord.bossId`,
+`BOSS_PROGRESSION_LEVELS`): level 1 `MotherBramble` (M1's boss, also any record without a boss id), level 2
+`DemonLord` (endless floors only; docs/BOSS_DEMONLORD.md D6; the number names the boss, it is no order): `Start` on the
+first boss engage, `Complete` on the boss kill, `Fail` (field 1 = death cause) when the player died after engaging.
 
 Custom events (`LogCustomEvent`; fields are `CustomField01..03`):
 

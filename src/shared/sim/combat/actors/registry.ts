@@ -11,8 +11,9 @@
  * Bands (Roblox port): band 0 (the default) is the web build's table, `boss.act1, bruiser, sniper, swarmer,
  * turret.caster, turret.sniper, turret.sprayer` (indices 0..6; ActorState.kind is hashed, so the golden runs pin it).
  * The port's own archetypes take a higher band so they number AFTER every web id instead of sorting in between and
- * shifting them: `dummy` (the tutorial's training dummy) is band PORT_BAND_TUTORIAL = 1, index 7. A later addition
- * takes the next band, so no index that a recording or fixture already holds ever moves. Specs may add test archetypes
+ * shifting them: `dummy` (the tutorial's training dummy) is band PORT_BAND_TUTORIAL = 1, index 7; `boss.demonlord`
+ * (the second endless boss, docs/BOSS_DEMONLORD.md) is band PORT_BAND_BOSSES = 2, index 8. A later addition takes the
+ * next band, so no index that a recording or fixture already holds ever moves. Specs may add test archetypes
  * (shared/sim/testing, band 0) in their own module world.
  */
 
@@ -25,6 +26,8 @@ import type { ArchetypeData, ArchetypeDef } from "./types";
 export const WEB_ARCHETYPE_BAND = 0;
 /** ArchetypeDef.band of the tutorial's archetypes (`dummy`): numbered after the whole web table. */
 export const PORT_BAND_TUTORIAL = 1;
+/** ArchetypeDef.band of the port's own bosses (`boss.demonlord`): numbered after the tutorial's. */
+export const PORT_BAND_BOSSES = 2;
 
 const byId = new Map<string, ArchetypeDef>();
 let sorted: ArchetypeDef[] | undefined;

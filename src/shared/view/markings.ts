@@ -1,15 +1,25 @@
 /**
  * Floor markings as line segments, in sim world units: telegraph previews (enemy aim lines and shockwaves, the Act I
- * boss's fans / rings / spiral / slam, the arena seal, the roar) and weapon arcs. Pure geometry: each builder writes
+ * boss's fans / rings / spiral / slam, the Demon Lord's cleaves / hellfire ring / charge / summon spots, the arena
+ * seal, the roar) and weapon arcs. Pure geometry: each builder writes
  * segments into a SegmentSink; the client's dash layers turn segments into fixed-size dash Parts (`dashLayout`).
  *
  * Ported from project-kaleb-vale @ 42897e2: src/boss/BossView.tsx (LineBatch.ray / arc / rect, fanLanes, ringArcs,
  * shockArc, drawTelegraph, drawSlam), src/bullets/ActorsView.tsx (ActorFx aim line and shockwave), and
- * src/bullets/WeaponView.tsx (fans). Presentation only: trig is fine here, nothing feeds back into the sim.
+ * src/bullets/WeaponView.tsx (fans). The Demon Lord's previews are the Roblox port's (docs/BOSS_DEMONLORD.md D6, no web
+ * source). Presentation only: trig is fine here, nothing feeds back into the sim.
  *
  * Headings follow the sim's patterns.ts: heading h <-> unit direction (sin h, cos h); h = 0 is +Z.
  */
-import { AiState, SIM_HZ, type ActorState } from "shared/sim";
+import {
+	AiState,
+	SIM_HZ,
+	scaledEnemyBulletSpeedMultiplier,
+	teamEnemyBulletSpeedMultiplier,
+	tutorialScalingFloor,
+	type ActorState,
+	type SimState,
+} from "shared/sim";
 import { MARKING_VIEW, TELEGRAPH_VIEW } from "./config";
 
 const TAU = 2 * math.pi;
@@ -271,6 +281,47 @@ export interface BossAct1Consts {
 	};
 }
 
+/**
+ * A charge to (tx, tz) along the unit (dx, dz) by a body of `radius` from (x, z): the body-wide lane, the impact circle
+ * and the impact shockwave's arc (centred on the charge heading, so its gap points back), `shockOffset` past the body.
+ */
+export function chargeLaneMarkings(
+	sink: SegmentSink,
+	x: number,
+	z: number,
+	radius: number,
+	tx: number,
+	tz: number,
+	dx: number,
+	dz: number,
+	shockSpread: number,
+	shockOffset: number,
+): void {
+	const r = radius;
+	sink.seg(x - dz * r, z + dx * r, tx - dz * r, tz + dx * r);
+	sink.seg(x + dz * r, z - dx * r, tx + dz * r, tz - dx * r);
+	arc(sink, tx, tz, r, 0, TAU);
+	shockArc(sink, tx, tz, heading(dx, dz), shockSpread, r + shockOffset);
+}
+
+/**
+ * Which layer a boss wind-up's primary marking goes to: `bright` once the wind-up is past TELEGRAPH_VIEW.brightFrom,
+ * blinking between the layers in its last blinkTicks; `dim` before. `total` = the attack's telegraph length, `left` =
+ * the ticks left (aiTicks).
+ */
+export function telegraphMainSink(
+	bright: SegmentSink,
+	dim: SegmentSink,
+	total: number,
+	left: number,
+	tick: number,
+): SegmentSink {
+	const progress = total > 0 ? 1 - left / total : 1;
+	const blinking = left <= TELEGRAPH_VIEW.blinkTicks;
+	const blinkOn = math.floor(tick / TELEGRAPH_VIEW.blinkPeriodTicks) % 2 === 0;
+	return blinking ? (blinkOn ? bright : dim) : progress >= TELEGRAPH_VIEW.brightFrom ? bright : dim;
+}
+
 /** The slam preview: the body-wide charge lane to the target, the impact circle and its shockwave arc(s). */
 export function slamMarkings(main: SegmentSink, second: SegmentSink, a: Readonly<ActorState>, c: BossAct1Consts): void {
 	const v = a.v;
@@ -279,11 +330,8 @@ export function slamMarkings(main: SegmentSink, second: SegmentSink, a: Readonly
 	const dx = v[c.slots.dirX];
 	const dz = v[c.slots.dirZ];
 	const r = a.radius;
-	main.seg(a.x - dz * r, a.z + dx * r, tx - dz * r, tz + dx * r);
-	main.seg(a.x + dz * r, a.z - dx * r, tx + dz * r, tz - dx * r);
-	arc(main, tx, tz, r, 0, TAU);
+	chargeLaneMarkings(main, a.x, a.z, r, tx, tz, dx, dz, c.shockwave.spread, TELEGRAPH_VIEW.slamOffset);
 	const h = heading(dx, dz);
-	shockArc(main, tx, tz, h, c.shockwave.spread, r + TELEGRAPH_VIEW.slamOffset);
 	if (v[c.slots.sign] !== 1) {
 		shockArc(
 			second,
@@ -308,12 +356,7 @@ export function bossTelegraphMarkings(
 	c: BossAct1Consts,
 	tick: number,
 ): void {
-	const total = c.telegraphTicks[a.attack] ?? 0;
-	const left = a.aiTicks;
-	const progress = total > 0 ? 1 - left / total : 1;
-	const blinking = left <= TELEGRAPH_VIEW.blinkTicks;
-	const blinkOn = math.floor(tick / TELEGRAPH_VIEW.blinkPeriodTicks) % 2 === 0;
-	const main = blinking ? (blinkOn ? bright : dim) : progress >= TELEGRAPH_VIEW.brightFrom ? bright : dim;
+	const main = telegraphMainSink(bright, dim, c.telegraphTicks[a.attack] ?? 0, a.aiTicks, tick);
 	const v = a.v;
 	const s = c.slots;
 	const h = heading(v[s.dirX], v[s.dirZ]);
@@ -362,6 +405,253 @@ export function bossTelegraphMarkings(
 			slamMarkings(main, dim, a, c);
 			break;
 	}
+}
+
+// ---------------------------------------------------------------------------------------------
+// The Demon Lord (boss.demonlord; docs/BOSS_DEMONLORD.md D6, Roblox port)
+
+/** A burst whose reach the preview draws: shape, speed (world units / s), life (s) and spawn radius. */
+export interface BurstReach extends BurstShape {
+	readonly speed: number;
+	readonly life: number;
+	readonly radius?: number;
+}
+
+/**
+ * What the Demon Lord's previews need from the boss.demonlord archetype module (its exported constants), passed in
+ * like BossAct1Consts. The client resolves it from shared/sim (client/controllers/render/demonlord.ts).
+ */
+export interface DemonlordConsts {
+	readonly attack: {
+		readonly CLEAVE: number;
+		readonly HELLFIRE: number;
+		readonly DOUBLE_CLEAVE: number;
+		readonly CHARGE: number;
+		readonly SUMMON: number;
+	};
+	readonly state: { readonly ACTIVE: number };
+	readonly telegraphTicks: ReadonlyArray<number>;
+	readonly cleave: BurstReach;
+	readonly hellfireArc: BurstShape;
+	readonly shockwave: BurstShape;
+	/** DOUBLE_CLEAVE: ACTIVE ticks between the two arcs (the lunge) and the lunge's length, world units. */
+	readonly doubleCleaveDelayTicks: number;
+	readonly doubleCleaveStep: number;
+	/** SUMMON: adds per summon and how far from his centre they land, world units. */
+	readonly summon: { readonly count: number; readonly radius: number };
+	/** ActorState.v slots (DEMONLORD_V_*). */
+	readonly slots: {
+		readonly dirX: number;
+		readonly dirZ: number;
+		readonly auxX: number;
+		readonly auxZ: number;
+		readonly sign: number;
+		readonly mark: number;
+	};
+}
+
+/**
+ * Enemy bullet speed scale of the state (endless Depth scaling and the team's run mods), the factor ctx.fireEnemy
+ * applies: 1 outside endless. The cleave preview's reach uses it.
+ */
+export function enemyBulletSpeedScale(state: Readonly<SimState>): number {
+	const endless = state.endless;
+	if (endless === undefined) return 1;
+	return scaledEnemyBulletSpeedMultiplier(
+		tutorialScalingFloor(state, endless.floor),
+		teamEnemyBulletSpeedMultiplier(state),
+	);
+}
+
+/** How far a burst's bullets fly from the shooter's centre: spawn radius + speed x speedScale x life, world units. */
+export function burstReach(b: BurstReach, speedScale = 1): number {
+	return (b.radius ?? 0) + b.speed * speedScale * b.life;
+}
+
+/**
+ * A cleave preview: one lane per bullet of `cleave` around heading h, from the body (r0) to the bullets' reach, and
+ * the reach's arc joining the lane ends.
+ */
+export function cleaveMarkings(
+	sink: SegmentSink,
+	x: number,
+	z: number,
+	h: number,
+	cleave: BurstReach,
+	r0: number,
+	speedScale = 1,
+): void {
+	const reach = math.max(r0, burstReach(cleave, speedScale));
+	fanLanes(sink, x, z, h, cleave.count, cleave.spread, r0, reach);
+	arc(sink, x, z, reach, h - cleave.spread / 2, h + cleave.spread / 2);
+}
+
+/** Headings of the hellfire ring's three arc centres around heading h (60, 180 and 300 degrees off it). */
+export function hellfireArcCentres(h: number): [number, number, number] {
+	return [h + math.pi / 3, h + math.pi, h - math.pi / 3];
+}
+
+/**
+ * The hellfire ring preview: its three arcs (each `arcSpread` wide, centred 60 / 180 / 300 degrees off heading h, so
+ * the gaps sit on h and +-120 degrees), gap edges ticked, at `radius`.
+ */
+export function hellfireMarkings(
+	sink: SegmentSink,
+	x: number,
+	z: number,
+	h: number,
+	arcSpread: number,
+	radius: number,
+): void {
+	const t = TELEGRAPH_VIEW.tickHalf;
+	for (const c of hellfireArcCentres(h)) {
+		arc(sink, x, z, radius, c - arcSpread / 2, c + arcSpread / 2);
+		ray(sink, x, z, c - arcSpread / 2, radius - t, radius + t);
+		ray(sink, x, z, c + arcSpread / 2, radius - t, radius + t);
+	}
+}
+
+/**
+ * Where the summoned adds land: `count` spots `radius` from (x, z), the first along the unit (dx, dz), then every 120
+ * degrees (the sim's summonAdds order; walls may stop an add short).
+ */
+export function summonSpots(
+	x: number,
+	z: number,
+	dx: number,
+	dz: number,
+	count: number,
+	radius: number,
+): Array<[number, number]> {
+	const out: Array<[number, number]> = [];
+	const h = heading(dx, dz);
+	for (let i = 0; i < count; i++) {
+		const hi = h + (i * TAU) / 3;
+		out.push([x + math.sin(hi) * radius, z + math.cos(hi) * radius]);
+	}
+	return out;
+}
+
+/** The summon preview: a ring on each add's landing spot and a short ray from the body toward it. */
+export function summonMarkings(
+	sink: SegmentSink,
+	x: number,
+	z: number,
+	dx: number,
+	dz: number,
+	count: number,
+	radius: number,
+	bodyRadius: number,
+): void {
+	const spot = TELEGRAPH_VIEW.summonSpotRadius;
+	for (const [sx, sz] of summonSpots(x, z, dx, dz, count, radius)) {
+		arc(sink, sx, sz, spot, 0, TAU);
+		const h = heading(sx - x, sz - z);
+		ray(sink, x, z, h, bodyRadius, math.max(bodyRadius, radius - spot));
+	}
+}
+
+/**
+ * The Demon Lord's wind-up preview (aiState === TELEGRAPH; every direction is locked in v[] when it starts): exactly
+ * where the attack's bullets will go. Primary markings as telegraphMainSink picks; secondary ones (the double
+ * cleave's second arc) on `dim`. `speedScale` = enemyBulletSpeedScale(state) (the cleave's reach).
+ *   CLEAVE         the arc's lanes along v[DIR] to the bullets' reach
+ *   DOUBLE_CLEAVE  that, plus the second arc along v[AUX] from the lunge's end (v[DIR] x doubleCleaveStep ahead)
+ *   HELLFIRE       the three arcs, gaps on v[DIR] and +-120 degrees
+ *   CHARGE         the lane to the target v[AUX], the impact circle, the shockwave arc (gap pointing back)
+ *   SUMMON         v[SIGN] 1: the adds' landing spots; 0: the hellfire ring it fires instead
+ */
+export function demonlordTelegraphMarkings(
+	bright: SegmentSink,
+	dim: SegmentSink,
+	a: Readonly<ActorState>,
+	c: DemonlordConsts,
+	tick: number,
+	speedScale = 1,
+): void {
+	const main = telegraphMainSink(bright, dim, c.telegraphTicks[a.attack] ?? 0, a.aiTicks, tick);
+	const v = a.v;
+	const s = c.slots;
+	const dx = v[s.dirX];
+	const dz = v[s.dirZ];
+	const h = heading(dx, dz);
+	const ringRadius = a.radius + TELEGRAPH_VIEW.ringOffset;
+	switch (a.attack) {
+		case c.attack.CLEAVE:
+			cleaveMarkings(main, a.x, a.z, h, c.cleave, a.radius, speedScale);
+			break;
+		case c.attack.DOUBLE_CLEAVE: {
+			cleaveMarkings(main, a.x, a.z, h, c.cleave, a.radius, speedScale);
+			const step = c.doubleCleaveStep;
+			const h2 = heading(v[s.auxX], v[s.auxZ]);
+			cleaveMarkings(dim, a.x + dx * step, a.z + dz * step, h2, c.cleave, a.radius, speedScale);
+			break;
+		}
+		case c.attack.HELLFIRE:
+			hellfireMarkings(main, a.x, a.z, h, c.hellfireArc.spread, ringRadius);
+			break;
+		case c.attack.CHARGE:
+			chargeLaneMarkings(
+				main,
+				a.x,
+				a.z,
+				a.radius,
+				v[s.auxX],
+				v[s.auxZ],
+				dx,
+				dz,
+				c.shockwave.spread,
+				TELEGRAPH_VIEW.slamOffset,
+			);
+			break;
+		case c.attack.SUMMON:
+			if (v[s.sign] === 1) summonMarkings(main, a.x, a.z, dx, dz, c.summon.count, c.summon.radius, a.radius);
+			else hellfireMarkings(main, a.x, a.z, h, c.hellfireArc.spread, ringRadius);
+			break;
+	}
+}
+
+/**
+ * While a Demon Lord attack runs (aiState === ACTIVE): the charge's lane, impact circle and shockwave until the impact
+ * (v[MARK] 0), on `dim` (as Mother Bramble's slam); the double cleave's second arc from its first arc to the lunge's
+ * end (ACTIVE ticks 0..doubleCleaveDelayTicks - 1), from where the lunge will stop, on `bright`. Returns true when it
+ * drew anything.
+ */
+export function demonlordActiveMarkings(
+	bright: SegmentSink,
+	dim: SegmentSink,
+	a: Readonly<ActorState>,
+	c: DemonlordConsts,
+	speedScale = 1,
+): boolean {
+	const v = a.v;
+	const s = c.slots;
+	const dx = v[s.dirX];
+	const dz = v[s.dirZ];
+	if (a.attack === c.attack.CHARGE && v[s.mark] === 0) {
+		chargeLaneMarkings(
+			dim,
+			a.x,
+			a.z,
+			a.radius,
+			v[s.auxX],
+			v[s.auxZ],
+			dx,
+			dz,
+			c.shockwave.spread,
+			TELEGRAPH_VIEW.slamOffset,
+		);
+		return true;
+	}
+	const delay = c.doubleCleaveDelayTicks;
+	if (a.attack === c.attack.DOUBLE_CLEAVE && a.aiTicks >= 0 && a.aiTicks < delay) {
+		// The lunge goes doubleCleaveStep / delay per tick on ticks 1..delay: what is left of it after this tick.
+		const left = (c.doubleCleaveStep * (delay - a.aiTicks)) / delay;
+		const h2 = heading(v[s.auxX], v[s.auxZ]);
+		cleaveMarkings(bright, a.x + dx * left, a.z + dz * left, h2, c.cleave, a.radius, speedScale);
+		return true;
+	}
+	return false;
 }
 
 /** The roar (intro / phase transition): two expanding rings around the boss. `t` in [0, 1] is the roar's progress. */

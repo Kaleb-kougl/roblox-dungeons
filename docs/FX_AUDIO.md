@@ -183,6 +183,7 @@ Clip names are file names under `Sounds/` unless noted. "A / B" means "audition 
 | `sfx.enemy.hurt` | enemy hit | `Hit & Impact/Hit1`, `Hit3`, `Hit6`-`Hit9` (variants) | |
 | `sfx.enemy.death` | enemy killed | `Hit & Impact/Impact2`-`Impact4` (variants) / `Elemental/Explosion3` | |
 | `sfx.boss.roar` | boss engaged, phase 2 / 3 | `Magic & Skill/Strange` / `Spirit` | **gap**: no real roar in the pack |
+| `sfx.boss.taunt` | the Demon Lord's phase 2 / 3 (docs/BOSS_DEMONLORD.md D6), instead of the roar | silent; D7 picks a laugh from `Voice/` | port ID; falls back to the roar while silent |
 | `sfx.boss.death` | boss killed | `Elemental/Explosion6` / `Explosion4` | |
 | `sfx.victory` | boss defeated | `Jingles/Success3` / `LevelUp2` | a jingle: ducks the music |
 | `sfx.breakable.hit` | crate / barrel hit | `Hit & Impact/Impact4` | **gap**: no wood sounds |

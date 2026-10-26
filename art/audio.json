@@ -263,6 +263,11 @@
 			],
 			"confirmed": false
 		},
+		"sfx.boss.taunt": {
+			"silent": true,
+			"notes": "The Demon Lord's phase-change laugh (docs/BOSS_DEMONLORD.md D6; the roar plays while this is silent). D7: audition a laugh from ninja-adventure/Audio/Voice/ (not in the D6 sandbox) and set clips.",
+			"confirmed": false
+		},
 		"sfx.victory": {
 			"category": "jingle",
 			"clips": [

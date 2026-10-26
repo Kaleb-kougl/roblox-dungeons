@@ -46,6 +46,8 @@ export const SNIPER_KIND = "sniper";
 export const BRUISER_KIND = "bruiser";
 /** The Act I boss archetype id. */
 export const BOSS_ACT1_KIND = "boss.act1";
+/** The second endless boss (docs/BOSS_DEMONLORD.md); endless boss floors pick it or Mother Bramble (bossKindFor). */
+export const BOSS_DEMONLORD_KIND = "boss.demonlord";
 
 export type EnemyGroupKind = "swarm" | "snipers" | "bruiser";
 

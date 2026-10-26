@@ -34,6 +34,13 @@
  * light the anti-aliased bones from behind. Every pixel is white, so it needs no bleed. The set's pad must be at
  * least widthPx + 1, so the rim is never clipped and keeps a transparent border for the bilinear filter.
  *
+ * Downscale (set `downscale: k`, an integer; docs/BOSS_DEMONLORD.md D1): every kept frame is noise-cut at full
+ * resolution, then box-filtered by k (the world-art `downscale`, premultiplied alpha). The union box is measured at
+ * full resolution and grown to whole k-blocks, then / k; `pad`, the cell, the outline (and its pad rule) are in
+ * downscaled (atlas) pixels. The pivot and body height are measured at full resolution (the body cuts are tuned
+ * there) and / k: pivot x rounded, y the bottom edge of the downscaled row holding the lowest body row (ceil), so
+ * pixelsPerTile = height / k / bodyTiles. Absent or 1: exactly the full-resolution path.
+ *
  * Deterministic: same inputs -> byte-identical outputs (sorted iteration, integer maths on pixels, fixed deflate
  * options, no timestamps). Stale files in art/build are removed.
  *
@@ -411,6 +418,26 @@ function sourceRegion(set, anim, d, frame) {
 	throw new Error(`unknown source type ${source.type}`);
 }
 
+/** A sprite set's `downscale` factor: 1 when absent, else an integer >= 1 (throws otherwise). */
+function spriteDownscale(id, set) {
+	const k = set.downscale === undefined ? 1 : set.downscale;
+	if (!Number.isInteger(k) || k < 1) throw new Error(`${id}: downscale must be an integer >= 1, got ${JSON.stringify(set.downscale)}`);
+	return k;
+}
+
+/**
+ * A region of a downscaled set as its own raster: the source region with alpha <= noiseAlpha cleared (at full
+ * resolution, before anything else, as for every set), then box-filtered by k (`downscale`, premultiplied). The
+ * frame's k-blocks start at the region's top-left, so a crop aligned to whole blocks in source pixels is the same
+ * crop / k here.
+ */
+function scaledRegion(set, r, k) {
+	const clean = raster(r.w, r.h);
+	blit(r.img, r.x, r.y, r.w, r.h, clean, 0, 0, set.noiseAlpha);
+	const img = downscale(clean, k);
+	return { img, x: 0, y: 0, w: img.w, h: img.h };
+}
+
 /** Resolves a stand-in to the animation whose cells it reuses. */
 function realAnimation(set, name) {
 	const anim = set.animations[name];
@@ -428,6 +455,7 @@ function buildSpriteSet(id, set) {
 	}
 	const realNames = Object.keys(set.animations).filter((n) => !set.animations[n].cellsOf);
 	const outline = outlineConfig(id, set);
+	const k = spriteDownscale(id, set);
 
 	// 1. union crop box (source-frame coordinates) over every kept frame of every real animation and facing
 	let box = null;
@@ -441,23 +469,31 @@ function buildSpriteSet(id, set) {
 		}
 	}
 	if (!box) throw new Error(`${id}: no visible pixels`);
+	// downscale k: the box grows to whole k-blocks (every downscaled pixel with any kept source pixel is inside it),
+	// then everything below is in downscaled pixels: the box / k, the origin, the cell, the pad, the outline.
+	const cropBox = k === 1 ? box : [Math.floor(box[0] / k), Math.floor(box[1] / k), Math.floor(box[2] / k), Math.floor(box[3] / k)];
 	const pad = set.pad;
-	const originX = box[0] - pad;
-	const originY = box[1] - pad;
-	const frameW = box[2] - box[0] + 1 + 2 * pad;
-	const frameH = box[3] - box[1] + 1 + 2 * pad;
+	const originX = cropBox[0] - pad;
+	const originY = cropBox[1] - pad;
+	const frameW = cropBox[2] - cropBox[0] + 1 + 2 * pad;
+	const frameH = cropBox[3] - cropBox[1] + 1 + 2 * pad;
+	/** A kept frame's pixels in the set's (downscaled) pixel space, and the noise cut still to apply when blitting. */
+	const cellSource = (anim, d, f) => {
+		const r = sourceRegion(set, anim, d, f);
+		return k === 1 ? { r, noise: set.noiseAlpha } : { r: scaledRegion(set, r, k), noise: 0 };
+	};
 
 	// 2. pivot (feet) and texel density, measured on one frame; the other facings are printed as a sanity check
-	const measureBody = (animName, d, k) => {
+	const measureBody = (animName, d, kept) => {
 		const { anim } = realAnimation(set, animName);
-		const r = sourceRegion(set, anim, d, anim.frames[k]);
+		const r = sourceRegion(set, anim, d, anim.frames[kept]);
 		const { bodyAlpha, bodyMinRgb } = set.pivot;
 		const isBody = (x, y) => {
 			return isBodyAt(r.img.data, ((r.y + y) * r.img.w + r.x + x) * 4, bodyAlpha, bodyMinRgb);
 		};
 		let b = null;
 		for (let y = 0; y < r.h; y++) for (let x = 0; x < r.w; x++) if (isBody(x, y)) b = unionBox(b, [x, y, x, y]);
-		if (!b) throw new Error(`${id}: no body pixels in ${animName} facing ${d} frame ${k}`);
+		if (!b) throw new Error(`${id}: no body pixels in ${animName} facing ${d} frame ${kept}`);
 		let fx0 = Infinity;
 		let fx1 = -1;
 		for (let y = b[3] - set.pivot.footBand + 1; y <= b[3]; y++) {
@@ -472,12 +508,14 @@ function buildSpriteSet(id, set) {
 	};
 	const m = set.pivot.measure;
 	const body = measureBody(m.animation, m.facing, m.frame);
-	const pivot = { x: Math.round(body.feetX) - originX, y: body.feetY - originY };
-	const pixelsPerTile = Math.round((body.height / set.bodyTiles) * 10) / 10;
+	// Measured on the full-resolution source (the body cuts are tuned there), then / k: x rounded, y the bottom edge
+	// of the downscaled pixel row holding the lowest body row (ceil), height and pixelsPerTile in downscaled pixels.
+	const pivot = k === 1 ? { x: Math.round(body.feetX) - originX, y: body.feetY - originY } : { x: Math.round(body.feetX / k) - originX, y: Math.ceil(body.feetY / k) - originY };
+	const pixelsPerTile = Math.round((body.height / k / set.bodyTiles) * 10) / 10;
 	const sanity = [];
 	for (let d = 0; d < count; d++) {
 		const s = measureBody(m.animation, d, m.frame);
-		sanity.push(`${d}:(${s.feetX - originX},${s.feetY - originY})h${s.height}`);
+		sanity.push(`${d}:(${s.feetX / k - originX},${s.feetY / k - originY})h${s.height / k}`);
 	}
 
 	// 3. sheets: each sheet holds its animations back to back, facing-major
@@ -498,10 +536,10 @@ function buildSpriteSet(id, set) {
 		const img = raster(cols * frameW, rows * frameH);
 		for (const p of placed) {
 			for (let d = 0; d < count; d++) {
-				p.anim.frames.forEach((f, k) => {
-					const cell = p.start + d * p.anim.frames.length + k;
-					const r = sourceRegion(set, p.anim, d, f);
-					blit(r.img, r.x + originX, r.y + originY, frameW, frameH, img, (cell % cols) * frameW, Math.floor(cell / cols) * frameH, set.noiseAlpha);
+				p.anim.frames.forEach((f, fi) => {
+					const cell = p.start + d * p.anim.frames.length + fi;
+					const { r, noise } = cellSource(p.anim, d, f);
+					blit(r.img, r.x + originX, r.y + originY, frameW, frameH, img, (cell % cols) * frameW, Math.floor(cell / cols) * frameH, noise);
 				});
 			}
 		}
@@ -541,7 +579,7 @@ function buildSpriteSet(id, set) {
 		animations: sortedObject(animations),
 	};
 	selfCheck(id, layout);
-	return { id, layout, sheets, sanity, bodyHeight: body.height, box, outline };
+	return { id, layout, sheets, sanity, bodyHeight: body.height / k, box, downscale: k, outline };
 }
 
 /** Columns x rows of frameW x frameH cells for `cells` cells, within MAX_ATLAS, smallest area (then narrowest). */
@@ -1989,7 +2027,7 @@ function main() {
 
 	for (const s of sets) {
 		const l = s.layout;
-		console.log(`${s.id}: cell ${l.frameW}x${l.frameH} (source box ${s.box.join(",")}), pivot (${l.pivot.x}, ${l.pivot.y}), body ${s.bodyHeight} px -> ${l.pixelsPerTile} px/tile`);
+		console.log(`${s.id}: cell ${l.frameW}x${l.frameH} (source box ${s.box.join(",")}${s.downscale > 1 ? `, downscale ${s.downscale}` : ""}), pivot (${l.pivot.x}, ${l.pivot.y}), body ${s.bodyHeight} px -> ${l.pixelsPerTile} px/tile`);
 		console.log(`  pivot per facing (cell coords) on the measured frame: ${s.sanity.join(" ")}`);
 		for (const sh of s.sheets) {
 			console.log(`  ${sh.file}: ${sh.img.w}x${sh.img.h}, ${sh.cells} cells${sh.outlineFile ? ` + ${sh.outlineFile} (outline ${s.outline.widthPx} px)` : ""}`);

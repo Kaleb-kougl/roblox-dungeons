@@ -141,6 +141,7 @@ its cell by `PLACEHOLDER_PROPORTIONS`. Size is `[x width, y height, z depth alon
 | `enemy.caster` | Capsule | 2.5 x 4 x 2.5 | `enemy.caster` | SmoothPlastic, outline `enemyOutline` | slim capsule |
 | `enemy.summoner` | Cylinder | 3 x 4 x 3 | `enemy.summoner` | SmoothPlastic, outline `enemyOutline` | tall drum |
 | `boss.1`..`boss.5`, `boss.act1` | Block | 12 x 9 x 12 | `boss` | SmoothPlastic, outline `enemyOutline` | large block |
+| `boss.demonlord` | Block | 9 x 12 x 9 | `boss` | SmoothPlastic, outline `enemyOutline` | tall block (the Demon Lord, docs/BOSS_DEMONLORD.md) |
 | `bullet.enemy.small/medium/large` | Ball | 2 x 2 x 2 | `enemyBullet` | **Neon**, outline `enemyBulletOutline` | centred; scaled to the gameplay radius |
 | `bullet.enemy.needle` | Block | 0.5 x 0.5 x 2 | `enemyBullet` | **Neon**, outline `enemyBulletOutline` | along the velocity |
 | `bullet.player.basic` | Block | 0.5 x 0.5 x 2 | `playerBullet` | **Neon**, outline `playerBulletOutline` | thin bolt along the velocity |
@@ -168,7 +169,7 @@ Asset IDs are lowercase, dot-separated, at least two segments; the first segment
 | --- | --- | --- | --- |
 | `class.<class>` | vanguard, ranger, pyromancer, tinkerer, hexblade | spritesheet, sprites, placeholder | 16x24 cells, pivot (8, 23); idle 4, run 6, roll 4, hit 2, death 6; facings down/up/left/right (`sprites`: idle, run, roll, hit, death, >= 1 frame each) |
 | `enemy.<archetype>` | swarmer, sprayer, sniper, bruiser, caster, summoner | spritesheet, sprites, placeholder | 16x16, pivot (8, 15); idle 4, move 4, attack 4, hit 2, death 4; 4 facings (`sprites`: idle, move, attack, hit, death) |
-| `boss.<n>` | boss.1 .. boss.5 (+ `boss.act1`) | spritesheet, sprites, placeholder | 48x48, pivot (24, 47); idle 4, move 4, attack 6, hit 2, death 8; no facings (`sprites`: as enemies) |
+| `boss.<n>` | boss.1 .. boss.5 (+ the endless bosses `boss.act1`, `boss.demonlord`: `ENDLESS_BOSS_IDS`, not required but in every bundled pack with `<id>.name`) | spritesheet, sprites, placeholder | 48x48, pivot (24, 47); idle 4, move 4, attack 6, hit 2, death 8; no facings (`sprites`: as enemies, + optional `attack.2`, `intro`, `taunt`) |
 | `bullet.enemy.*`, `bullet.player.*` | small, medium, large, needle / basic, heavy | spritesheet, placeholder | 8x8, pivot (4, 4); fly 2 |
 | `tile.biome.<n>.<floor\|wall>` | biome tiles | image, placeholder | 16x16; with `tilesPerImage` any size up to 1024x1024 |
 | `item.*` | loot icons | image, placeholder | 16x16 |
@@ -236,6 +237,7 @@ its exact checks. Atlases are normally written by the atlas pipeline (S3), not b
 		{ assetId: "rbxassetid://<n>", w: 256, h: 112, outlineAssetId: "rbxassetid://<n>" },  // + baked rim
 	],
 	animations: {                     // base names; the slot's names are required, extras ("attack.1") allowed
+		                              // (optionalBaseAnimations: class attack.1..3, boss attack.2 / intro / taunt)
 		move:  { sheet: 0, start: 0,  frames: 8, fps: 10, loop: true },
 		death: { sheet: 0, start: 64, frames: 8, fps: 10, loop: false },
 		idle:  { sheet: 0, start: 0,  frames: 1, stride: 8, fps: 1, loop: true },  // move's frame 0, held

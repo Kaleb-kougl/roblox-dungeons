@@ -30,6 +30,7 @@ import {
 	actorLook,
 	actorOutlined,
 	animDtSec,
+	bossSpriteLayout,
 	chooseActorAnim,
 	choosePlayerAnim,
 	corpseTransparency,
@@ -106,6 +107,8 @@ interface ActorView {
 	look: ActorLook;
 	transparency: number;
 	corpseTicks: number;
+	/** corpseTransparency's fadeFrom: SPRITE_VIEW.bossCorpseFadeFrom for a boss sprite (its death plays first), else 0. */
+	fadeFrom: number;
 	/** The placeholder visual has an outline role (enemies and bosses; shared/view actorGroup). Sprite views: the
 	 * SpriteView was built with the rim (plan O4). */
 	hasOutline: boolean;
@@ -117,11 +120,14 @@ interface ActorView {
  * Every actor and the player, drawn from sim state (web ActorsView + PlayerView). Per ID, one of two paths:
  *
  * Sprites (docs/ART.md S4): when the pack has a `sprites` set for the ID (`pack.sprites(id)`) and, for actors, the
- * archetype has a sprite input builder (shared/view ACTOR_SPRITE_INPUTS: the swarmer today), a pooled SpriteView
- * (BillboardGui on a feet anchor) shows the animation chosen from sim state (shared/view sprites.ts) in the facing
- * nearest the sim's facing on screen; juice through the label: hit flash / telegraph pulse / i-frame tints
- * (ImageColor3), corpse fade (ImageTransparency), the post-hit blink (Visible). The player's ring (`ui.ring.player`,
- * tinted uiAccent for the local player, uiTextDim for teammates) replaces the facing pip when the pack has it.
+ * archetype has a sprite input builder (shared/view ACTOR_SPRITE_INPUTS: the swarmer and the Demon Lord), a pooled
+ * SpriteView (BillboardGui on a feet anchor) shows the animation chosen from sim state (shared/view sprites.ts) in the
+ * facing nearest the sim's facing on screen; juice through the label: hit flash / telegraph pulse / i-frame tints
+ * (ImageColor3), corpse fade (ImageTransparency), the post-hit blink (Visible). A boss sprite (data.boss, the Demon
+ * Lord) is drawn at least ACTOR_VIEW.bossMinDrawPx wide (shared/view bossSpriteLayout, the placeholder bosses' rule)
+ * and its corpse fades only after its death animation (SPRITE_VIEW.bossCorpseFadeFrom); its baked rim follows the
+ * placeholder's outline role like every enemy's. The player's ring (`ui.ring.player`, tinted uiAccent for the local
+ * player, uiTextDim for teammates) replaces the facing pip when the pack has it.
  *
  * Placeholders (every other ID; every ID with the placeholder pack): one model per occupied pool slot, by archetype
  * (registry index -> ArchetypeDef -> data.spriteId -> PLACEHOLDER_VISUALS: swarmer ball, sniper wedge facing its aim,
@@ -285,10 +291,17 @@ export class ActorRenderController implements OnStart {
 			// The baked rim (plan O4) follows the placeholder visual's outline role, like the Highlight (O2). It depends
 			// on the ID alone, so the pool key needs nothing more.
 			const hasOutline = pack.placeholder(id).outline !== undefined;
+			const boss = def.data.boss === true;
 			const key = SPRITE_KEY + id;
 			const sprite =
 				this.freeSprites.get(key)?.pop() ??
-				new SpriteView(set, this.folder!, set, 0, hasOutline ? pack.color(ACTOR_OUTLINE.role) : undefined);
+				new SpriteView(
+					set,
+					this.folder!,
+					boss ? bossSpriteLayout(set, ACTOR_VIEW.bossMinDrawPx) : set,
+					0,
+					hasOutline ? pack.color(ACTOR_OUTLINE.role) : undefined,
+				);
 			this.spriteParking.delete(sprite);
 			sprite.reset();
 			view = {
@@ -300,6 +313,7 @@ export class ActorRenderController implements OnStart {
 				look: "normal",
 				transparency: 0,
 				corpseTicks,
+				fadeFrom: boss ? SPRITE_VIEW.bossCorpseFadeFrom : 0,
 				hasOutline,
 				outlined: false,
 			};
@@ -328,6 +342,7 @@ export class ActorRenderController implements OnStart {
 				look: "normal",
 				transparency: 0,
 				corpseTicks,
+				fadeFrom: 0,
 				hasOutline,
 				outlined: group === "enemies",
 			};
@@ -358,7 +373,7 @@ export class ActorRenderController implements OnStart {
 		const z = studsZ(lerp(a.prevZ, a.z, alpha));
 		const at = new Vector3(x, floorStudsY() + ACTOR_VIEW.liftStuds, z);
 		const look = actorLook(a.alive, a.flashTicks, a.aiState, tick);
-		const transparency = corpseTransparency(a.alive, a.deadTicks, view.corpseTicks);
+		const transparency = corpseTransparency(a.alive, a.deadTicks, view.corpseTicks, view.fadeFrom);
 
 		const sprite = view.sprite;
 		if (sprite !== undefined) {

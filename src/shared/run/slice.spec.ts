@@ -353,7 +353,7 @@ describe("the endless run, segmented per floor, validates on the server", () => 
 		expect(() => run.submission()).toThrow();
 	});
 
-	it("an edited frame in a later segment rejects the run at that segment", () => {
+	it("edited frames in a later segment reject the run at that segment", () => {
 		// The floor-6 walk (the segment ending at the floor-7 change).
 		const k = sent.findIndex((s) => segmentEnd(s) === drv.floorTicks[5]);
 		expect(k).toBeGreaterThan(3);
@@ -364,11 +364,16 @@ describe("the endless run, segmented per floor, validates on the server", () => 
 		});
 		if (!decoded.ok) error(decoded.reason);
 		const frames = [...decoded.recording.frames];
-		// The segment opens with floor 5's boon draft (the stick centred, then a FIRE press): edit the first walking
-		// frame after it.
+		// The segment opens with floor 5's boon draft (the stick centred, then a FIRE press): edit the walking frames
+		// right after it, stick reversed for EDITED_FRAMES ticks. (D5: since floor 5 holds the Demon Lord the recorded run
+		// differs from floor 5 on, and reversing only the first walking frame of floor 6 is absorbed: the player creeps
+		// along at 2 u/s from the spawn and the segment still ends on the same hash.)
 		const at = frames.findIndex((f, i) => i > DRAFT_MIN_OPEN_TICKS && (f.moveX !== 0 || f.moveZ !== 0));
 		expect(at).toBeGreaterThan(DRAFT_MIN_OPEN_TICKS);
-		frames[at] = { ...frames[at], moveX: -frames[at].moveX, moveZ: -frames[at].moveZ };
+		const EDITED_FRAMES = 30;
+		for (let i = at; i < at + EDITED_FRAMES && i < frames.size(); i++) {
+			frames[i] = { ...frames[i], moveX: -frames[i].moveX, moveZ: -frames[i].moveZ };
+		}
 		expect(frames[at]).never.toEqual(decoded.recording.frames[at]);
 		const edited: RunSegment = { ...seg, recording: encodeRecording({ ...decoded.recording, frames }) };
 

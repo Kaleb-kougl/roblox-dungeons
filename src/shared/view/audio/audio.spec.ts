@@ -7,6 +7,8 @@ import { recordEndlessRun } from "shared/run/testing";
 import { defaultAudioSettings } from "shared/settings";
 import {
 	ALL_EVENT_FIELDS,
+	BOSS_ACT1_ID,
+	BOSS_DEMONLORD_ID,
 	BOW,
 	BOW_DATA,
 	BOW_V_CHARGE,
@@ -16,6 +18,7 @@ import {
 	SWORD_FINISHER,
 	SWORD_V_GUARD,
 	SWORD_V_LAST,
+	archetypeIndex,
 	createSimState,
 	eventDefault,
 	playerAt,
@@ -33,6 +36,7 @@ import { FxEventBuffer, type FxEventType } from "../fx/events";
 import {
 	ALL_SFX,
 	AUDIO_VIEW,
+	BOSS_TAUNT_IDS,
 	AudioCueList,
 	AudioCueMapper,
 	DUCKING_SFX,
@@ -142,6 +146,32 @@ describe("audio: sim events -> sound IDs", () => {
 		expect(ids(new AudioCueMapper(), 0, noEvents(), fxOf([["bossPhase", true, 2]]), solo())).toEqual([
 			SFX.bossRoar,
 		]);
+	});
+
+	it("a taunting boss's phase change plays the taunt (the Demon Lord), Mother Bramble's the roar", () => {
+		expect([...BOSS_TAUNT_IDS]).toEqual([BOSS_DEMONLORD_ID]);
+		const phase = (bossId: string, p: number) => {
+			const buf = new FxEventBuffer(4);
+			const e = buf.emit("bossPhase", 0)!;
+			e.boss = true;
+			e.phase = p;
+			e.kind = archetypeIndex(bossId);
+			return buf;
+		};
+		expect(ids(new AudioCueMapper(), 0, noEvents(), phase(BOSS_DEMONLORD_ID, 2), solo())).toEqual([SFX.bossTaunt]);
+		expect(ids(new AudioCueMapper(), 0, noEvents(), phase(BOSS_DEMONLORD_ID, 3), solo())).toEqual([SFX.bossTaunt]);
+		expect(ids(new AudioCueMapper(), 0, noEvents(), phase(BOSS_ACT1_ID, 2), solo())).toEqual([SFX.bossRoar]);
+		// the fight's start is the engage roar (SIM_EVENT_SOUNDS bossEngaged), for any boss
+		expect(ids(new AudioCueMapper(), 0, noEvents(), phase(BOSS_DEMONLORD_ID, 1), solo())).toEqual([]);
+		const engaged = noEvents();
+		engaged.bossEngaged = 1;
+		expect(ids(new AudioCueMapper(), 0, engaged, NO_FX, solo())).toEqual([SFX.bossRoar]);
+		// a silent taunt (every bundled pack until D7 picks a clip) is the roar
+		const m = new AudioCueMapper((id) => id !== SFX.bossTaunt);
+		expect(ids(m, 0, noEvents(), phase(BOSS_DEMONLORD_ID, 2), solo())).toEqual([SFX.bossRoar]);
+		expect(SFX_FALLBACK[SFX.bossTaunt]).toBe(SFX.bossRoar);
+		expect(SFX_PRIORITY[SFX.bossTaunt]).toBe(SFX_PRIORITY[SFX.bossRoar]);
+		expect(PORT_SFX).toContain(SFX.bossTaunt);
 	});
 
 	it("plays each sound once per frame and respects its minimum interval", () => {

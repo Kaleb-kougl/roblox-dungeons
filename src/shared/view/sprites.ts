@@ -16,17 +16,31 @@
  *
  * Animation. Choices follow a fixed priority, each rule skipped when the set lacks its animation (ending at idle):
  *   player: death > roll > attack (sword swings attack.1/2/3, else attack) > hit > run > idle
- *   actor:  death > attack > hit (multi-frame only; a 1-frame stand-in leaves it to the tint) > move > idle
+ *   actor:  death > special (a boss's intro / taunt / summon) > attack (a named one, else `attack`) > hit
+ *           (multi-frame only; a 1-frame stand-in leaves it to the tint) > move > idle
  * Death beats everything; the roll beats attacks because the sim cancels a wind-up and pauses the combo while rolling;
  * attacks beat the hit flinch because a hit never interrupts a swing or a lunge in the sim (the tint / blink shows the
- * hit instead). One-shots driven by a gameplay timer (roll, swing, hit, corpse) are STRETCHED over that timer:
+ * hit instead). A special is a one-shot that is no attack (the boss is immune or summoning): a set without it plays
+ * what would play without it (move / idle), never an attack swing. One-shots driven by a gameplay timer (roll, swing,
+ * hit, corpse, a boss's roar and attacks) are STRETCHED over that timer:
  * frame = floor(progress * frames), clamped (last frame held). Loops (idle, run / move) and one-shots without a timer
  * (the player's death) advance a per-view clock at the animation's fps; run / move scale it by speed / reference speed.
  */
-import { CAMERA_PITCH_DEG, STUDS_PER_TILE } from "shared/config";
+import { CAMERA_PITCH_DEG, PIXELS_PER_TILE, STUDS_PER_TILE } from "shared/config";
 import {
 	AiState,
+	BOSS_DEMONLORD_ID,
+	CHARGE_IMPACT_HOLD_TICKS,
+	CLEAVE_HOLD_TICKS,
 	CORPSE_TICKS,
+	DEMONLORD_DATA,
+	DEMONLORD_TELEGRAPH_TICKS,
+	DEMONLORD_V_MARK,
+	DOUBLE_CLEAVE_DELAY_TICKS,
+	DemonlordAttack,
+	DemonlordState,
+	HELLFIRE_HOLD_TICKS,
+	SUMMON_HOLD_TICKS,
 	HIT_FLASH_TICKS,
 	HURT_INVULN_TICKS,
 	ROLL_TICKS,
@@ -323,8 +337,22 @@ export function choosePlayerAnim(input: PlayerSpriteInput, anims: SpriteAnimSour
 	return IDLE;
 }
 
-/** An actor's attack as one timeline: elapsed ticks (render-interpolated) of `total`. */
+/**
+ * An actor's attack as one timeline: elapsed ticks (render-interpolated) of `total`. `anim`: the set's animation to
+ * play (default `attack`); a named one the set lacks falls back to `attack`.
+ */
 export interface ActorAttack {
+	readonly elapsed: number;
+	readonly total: number;
+	readonly anim?: string;
+}
+
+/**
+ * A one-shot that is not an attack (a boss's intro / taunt roar, the Demon Lord's summon), stretched over the
+ * gameplay timer that drives it: elapsed ticks (render-interpolated) of `total`. Skipped when the set lacks `anim`.
+ */
+export interface ActorSpecial {
+	readonly anim: string;
 	readonly elapsed: number;
 	readonly total: number;
 }
@@ -341,6 +369,10 @@ export interface ActorSpriteInput {
 	readonly flashTicks: number;
 	/** The attack in progress (wind-up included), from the archetype's own states; undefined when not attacking. */
 	readonly attack: ActorAttack | undefined;
+	/** A special one-shot in progress (bosses: intro, taunt, summon); absent / undefined for none. */
+	readonly special?: ActorSpecial;
+	/** Ticks the death animation is stretched over (default: corpseTicks x SPRITE_VIEW.deathCorpseFraction). */
+	readonly deathTicks?: number;
 	/** Ground speed, world units / s (tickSpeed of prevX, prevZ, x, z). */
 	readonly speed: number;
 	/** Speed at which the move loop plays at its authored fps. */
@@ -379,18 +411,125 @@ export function swarmerSpriteInput(a: Readonly<ActorState>, alpha: number): Acto
 	};
 }
 
-/** An actor's animation: death > attack > hit > move > idle (file comment), skipping absent animations. */
+// ---------------------------------------------------------------------------------------------
+// The Demon Lord (boss.demonlord; docs/BOSS_DEMONLORD.md D6)
+
+const DL = DemonlordAttack;
+
+/** Ticks a Demon Lord attack stays ACTIVE (its hold; the double cleave's lunge and hold), by attack id. */
+function demonlordActiveTicks(attack: number): number {
+	if (attack === DL.CLEAVE) return CLEAVE_HOLD_TICKS;
+	if (attack === DL.DOUBLE_CLEAVE) return DOUBLE_CLEAVE_DELAY_TICKS + CLEAVE_HOLD_TICKS;
+	if (attack === DL.HELLFIRE) return HELLFIRE_HOLD_TICKS;
+	if (attack === DL.SUMMON) return SUMMON_HOLD_TICKS;
+	return 0;
+}
+
+/**
+ * The elapsed / total ticks of a Demon Lord attack's wind-up + active span (TELEGRAPH aiTicks counts down from its
+ * telegraph length, ACTIVE aiTicks up from 0), or undefined outside both.
+ */
+function demonlordSwing(aiState: number, attack: number, aiTicks: number, alpha: number): [number, number] | undefined {
+	const windup = DEMONLORD_TELEGRAPH_TICKS[attack] ?? 0;
+	const total = windup + demonlordActiveTicks(attack);
+	if (aiState === AiState.TELEGRAPH) return [math.max(0, elapsedOf(windup, aiTicks, alpha)), total];
+	if (aiState === DemonlordState.ACTIVE) return [windup + aiTicks + alpha, total];
+	return undefined;
+}
+
+/**
+ * The Demon Lord's attack timeline (SPRITE_VIEW.demonlordAnims names the animations):
+ *   CLEAVE / DOUBLE_CLEAVE  `cleave` over the telegraph + the active span (the double cleave's lunge and both arcs)
+ *   HELLFIRE                `hellfire` over the telegraph + the hold
+ *   CHARGE                  nothing through the wind-up (idle) and the run (move, by speed); `impact` from the impact
+ *                           tick (v[MARK] = impact ACTIVE tick + 1) over CHARGE_IMPACT_HOLD_TICKS
+ * SUMMON is a special (demonlordSpecial). Undefined between attacks (CHASE, RECOVER, REPOSITION, DORMANT, TRANSITION).
+ */
+export function demonlordAttack(
+	aiState: number,
+	attack: number,
+	aiTicks: number,
+	mark: number,
+	alpha: number,
+): ActorAttack | undefined {
+	const names = SPRITE_VIEW.demonlordAnims;
+	if (attack === DL.CHARGE) {
+		if (aiState !== DemonlordState.ACTIVE || mark <= 0) return undefined;
+		return { elapsed: aiTicks - (mark - 1) + alpha, total: CHARGE_IMPACT_HOLD_TICKS, anim: names.impact };
+	}
+	if (attack !== DL.CLEAVE && attack !== DL.DOUBLE_CLEAVE && attack !== DL.HELLFIRE) return undefined;
+	const swing = demonlordSwing(aiState, attack, aiTicks, alpha);
+	if (swing === undefined) return undefined;
+	return { elapsed: swing[0], total: swing[1], anim: attack === DL.HELLFIRE ? names.hellfire : names.cleave };
+}
+
+/**
+ * The Demon Lord's specials: TRANSITION (attack ROAR, immune) plays `intro` in phase 1 (over introTicks) and `taunt`
+ * in phases 2-3 (over transitionTicks), aiTicks counting down; SUMMON plays `summon` over its telegraph + hold.
+ */
+export function demonlordSpecial(
+	aiState: number,
+	attack: number,
+	phase: number,
+	aiTicks: number,
+	alpha: number,
+): ActorSpecial | undefined {
+	const names = SPRITE_VIEW.demonlordAnims;
+	if (aiState === DemonlordState.TRANSITION) {
+		const total = phase <= 1 ? DEMONLORD_DATA.introTicks : DEMONLORD_DATA.transitionTicks;
+		return {
+			anim: phase <= 1 ? names.intro : names.taunt,
+			elapsed: math.max(0, elapsedOf(total, aiTicks, alpha)),
+			total,
+		};
+	}
+	if (attack !== DL.SUMMON) return undefined;
+	const swing = demonlordSwing(aiState, attack, aiTicks, alpha);
+	return swing !== undefined ? { anim: names.summon, elapsed: swing[0], total: swing[1] } : undefined;
+}
+
+/** ActorSpriteInput for the Demon Lord (move: CHASE, REPOSITION and the charge's run, by speed; RECOVER idle). */
+export function demonlordSpriteInput(a: Readonly<ActorState>, alpha: number): ActorSpriteInput {
+	const alive = a.alive !== 0;
+	const corpseTicks = DEMONLORD_DATA.corpseTicks ?? CORPSE_TICKS;
+	return {
+		alive,
+		deadTicks: a.deadTicks,
+		corpseTicks,
+		flashTicks: a.flashTicks,
+		attack: alive ? demonlordAttack(a.aiState, a.attack, a.aiTicks, a.v[DEMONLORD_V_MARK], alpha) : undefined,
+		special: alive ? demonlordSpecial(a.aiState, a.attack, a.phase, a.aiTicks, alpha) : undefined,
+		deathTicks: corpseTicks * SPRITE_VIEW.bossDeathCorpseFraction,
+		speed: tickSpeed(a.prevX, a.prevZ, a.x, a.z),
+		refSpeed: SPRITE_VIEW.demonlordMoveRefSpeed,
+		alpha,
+	};
+}
+
+/** The animation an attack plays: its named one when the set has it, else `attack`, else undefined. */
+function actorAttackAnim(anims: SpriteAnimSource, attack: ActorAttack): string | undefined {
+	const named = attack.anim;
+	if (named !== undefined && anims.animation(named) !== undefined) return named;
+	return anims.animation("attack") !== undefined ? "attack" : undefined;
+}
+
+/**
+ * An actor's animation: death > special > attack > hit > move > idle (file comment), skipping absent animations.
+ */
 export function chooseActorAnim(input: ActorSpriteInput, anims: SpriteAnimSource): SpriteAnimChoice {
 	if (!input.alive) {
 		if (anims.animation("death") !== undefined) {
-			const span = input.corpseTicks * SPRITE_VIEW.deathCorpseFraction;
+			const span = input.deathTicks ?? input.corpseTicks * SPRITE_VIEW.deathCorpseFraction;
 			return span > 0 ? stretched("death", input.deadTicks + input.alpha, span) : clocked("death", 1);
 		}
 		return IDLE;
 	}
+	const special = input.special;
+	if (special !== undefined && anims.animation(special.anim) !== undefined)
+		return stretched(special.anim, special.elapsed, special.total);
 	const attack = input.attack;
-	if (attack !== undefined && anims.animation("attack") !== undefined)
-		return stretched("attack", attack.elapsed, attack.total);
+	const attackAnim = attack !== undefined ? actorAttackAnim(anims, attack) : undefined;
+	if (attack !== undefined && attackAnim !== undefined) return stretched(attackAnim, attack.elapsed, attack.total);
 	// A 1-frame `hit` is a stand-in (S5's skeleton: "hit = blink"): it would freeze the walk, so the tint shows the hit
 	// and move / idle keep playing. A real (multi-frame) hit animation plays over the flash.
 	const hit = anims.animation("hit");
@@ -596,12 +735,41 @@ export function playerBlinkVisible(dead: number, hurtTicks: number): boolean {
 	return dead !== 0 || hurtTicks === 0 || math.floor(hurtTicks / ACTOR_VIEW.blinkTicks) % 2 === 0;
 }
 
-/** Corpse fade: 0 alive, deadTicks / corpseTicks while dead (1 at once without a corpse time). */
-export function corpseTransparency(alive: number, deadTicks: number, corpseTicks: number): number {
+/**
+ * Corpse fade: 0 alive, deadTicks / corpseTicks while dead (1 at once without a corpse time). `fadeFrom` (default 0)
+ * holds it at 0 for that fraction of the corpse time and fades over the rest (boss sprites: their death plays first).
+ */
+export function corpseTransparency(alive: number, deadTicks: number, corpseTicks: number, fadeFrom = 0): number {
 	if (alive !== 0) return 0;
-	return corpseTicks > 0 ? math.clamp(deadTicks / corpseTicks, 0, 1) : 1;
+	if (!(corpseTicks > 0)) return 1;
+	const t = deadTicks / corpseTicks;
+	if (fadeFrom <= 0) return math.clamp(t, 0, 1);
+	if (fadeFrom >= 1) return t >= 1 ? 1 : 0;
+	return math.clamp((t - fadeFrom) / (1 - fadeFrom), 0, 1);
 }
 
-/** Archetypes drawn as sprites when the pack has a sprite set for their spriteId: archetype ID -> input builder. */
+/**
+ * A boss sprite's layout, drawn at least `minDrawPx` web pixels wide (ACTOR_VIEW.bossMinDrawPx, the placeholder
+ * bosses' rule, at PIXELS_PER_TILE pixels per tile): the layout itself when it already is, else a copy with a smaller
+ * pixelsPerTile (the billboard grows, the pivot stays on the feet).
+ */
+export function bossSpriteLayout(layout: SpriteLayout, minDrawPx: number): SpriteLayout {
+	if (!(layout.frameW > 0) || !(layout.pixelsPerTile > 0)) return layout;
+	if ((layout.frameW / layout.pixelsPerTile) * PIXELS_PER_TILE >= minDrawPx) return layout;
+	return {
+		frameW: layout.frameW,
+		frameH: layout.frameH,
+		pivot: layout.pivot,
+		pixelsPerTile: (layout.frameW * PIXELS_PER_TILE) / minDrawPx,
+	};
+}
+
+/**
+ * Archetypes drawn as sprites when the pack has a sprite set for their spriteId: archetype ID -> input builder. The
+ * swarmer and the Demon Lord; Mother Bramble has no art (her placeholder block draws).
+ */
 export const ACTOR_SPRITE_INPUTS: ReadonlyMap<string, (a: Readonly<ActorState>, alpha: number) => ActorSpriteInput> =
-	new Map([[SWARMER.id, swarmerSpriteInput]]);
+	new Map([
+		[SWARMER.id, swarmerSpriteInput],
+		[BOSS_DEMONLORD_ID, demonlordSpriteInput],
+	]);

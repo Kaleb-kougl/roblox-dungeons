@@ -61,6 +61,12 @@ export interface SlotContract {
 	 * `animationOrder`; set for slots without a 16 px spritesheet contract (decor, breakables: `idle`).
 	 */
 	readonly baseAnimations?: ReadonlyArray<string>;
+	/**
+	 * v2 `sprites` kind: named OPTIONAL animations the game plays when a set defines them and falls back from when it
+	 * does not (a class's sword swings attack.1..3 -> attack; a boss's attack.2 -> attack, intro / taunt -> none). Like
+	 * any other extra name they are never required; listing them documents what the renderers ask for.
+	 */
+	readonly optionalAnimations?: ReadonlyArray<string>;
 }
 
 const SPRITE: ReadonlyArray<AssetKind> = ["spritesheet", "placeholder"];
@@ -68,6 +74,20 @@ const SPRITE: ReadonlyArray<AssetKind> = ["spritesheet", "placeholder"];
 const ACTOR: ReadonlyArray<AssetKind> = ["spritesheet", "sprites", "placeholder"];
 const STILL: ReadonlyArray<AssetKind> = ["image", "placeholder"];
 const AUDIO: ReadonlyArray<AssetKind> = ["sound", "silent"];
+
+/**
+ * Optional `sprites` animations of the class slot: the sword's three swings (shared/view choosePlayerAnim falls back
+ * to `attack`, then the base animations).
+ */
+export const CLASS_OPTIONAL_ANIMATIONS = ["attack.1", "attack.2", "attack.3"] as const;
+
+/**
+ * Roblox port (docs/BOSS_DEMONLORD.md D2): optional `sprites` animations of the boss slot. `attack.2` is a second
+ * named attack (falls back to `attack`); `intro` (the engage roar) and `taunt` (a phase transition) are one-shot
+ * specials the renderer stretches over the gameplay timer, skipped when a set lacks them. The required five
+ * (idle, move, attack, hit, death) are unchanged.
+ */
+export const BOSS_OPTIONAL_ANIMATIONS = ["attack.2", "intro", "taunt"] as const;
 
 export const CHARACTER: SlotContract = {
 	slot: "class",
@@ -78,6 +98,7 @@ export const CHARACTER: SlotContract = {
 	animations: { idle: 4, run: 6, roll: 4, hit: 2, death: 6 },
 	animationOrder: ["idle", "run", "roll", "hit", "death"],
 	facings: FACINGS,
+	optionalAnimations: CLASS_OPTIONAL_ANIMATIONS,
 };
 
 export const ENEMY: SlotContract = {
@@ -100,6 +121,7 @@ export const BOSS: SlotContract = {
 	animations: { idle: 4, move: 4, attack: 6, hit: 2, death: 8 },
 	animationOrder: ["idle", "move", "attack", "hit", "death"],
 	facings: [],
+	optionalAnimations: BOSS_OPTIONAL_ANIMATIONS,
 };
 
 /** Bullets are drawn at one cell size; the renderer scales them to the gameplay radius. */
@@ -258,6 +280,19 @@ export function requiredBaseAnimations(slot: SlotContract): Array<string> {
 	return out;
 }
 
+/**
+ * Named optional animations a `sprites` asset in this slot may define (`optionalAnimations`, in contract order): class
+ * attack.1..3, boss attack.2 / intro / taunt; empty for the other slots. Never required (requiredBaseAnimations is the
+ * required list); any other extra name stays allowed, as before.
+ */
+export function optionalBaseAnimations(slot: SlotContract): Array<string> {
+	const out = new Array<string>();
+	for (const anim of slot.optionalAnimations ?? []) {
+		out.push(anim);
+	}
+	return out;
+}
+
 /** Roblox stores uploaded images at most this many pixels on a side (sheets, cells and free-size tile images). */
 export const MAX_IMAGE_SIDE = 1024;
 /** Highest presentation frame rate an animation may ask for (spritesheet and sprites kinds). */
@@ -340,6 +375,15 @@ export type BiomeMaterialSurface = (typeof BIOME_MATERIAL_SURFACES)[number];
 export const DEFAULT_BIOME_MATERIAL: BiomeMaterial = "SmoothPlastic";
 
 export const BOSS_IDS = ["boss.1", "boss.2", "boss.3", "boss.4", "boss.5"] as const;
+
+/**
+ * Roblox port: the endless bosses' sprite IDs (the sim archetype ids). `boss.act1` is Mother Bramble (the web build's
+ * M1 boss); `boss.demonlord` the Demon Lord (docs/BOSS_DEMONLORD.md). Not in REQUIRED_ASSET_IDS (the web contract's
+ * list stays as ported, and BOSS_IDS stays the GDD's five): every bundled pack fills both, with `<id>.name`, and
+ * placeholder visuals exist for both (theme specs check it).
+ */
+export const ENDLESS_BOSS_IDS = ["boss.act1", "boss.demonlord"] as const;
+export type EndlessBossId = (typeof ENDLESS_BOSS_IDS)[number];
 
 export const BULLET_IDS = [
 	"bullet.enemy.small",
@@ -452,7 +496,9 @@ export const BREAKABLE_SHATTER_ANIMATION = "shatter";
  * placeholder pack). Kept apart from AUDIO_EVENTS, which stays the web build's list, like BREAKABLE_AUDIO_EVENTS.
  * First the IDs the audio layer already played before A2 (shared/view/audio PORT_SFX, which only the placeholder pack
  * listed), then the A2 additions: menu back / focus move, the sword finisher, the bow's full charge, room clear, relic
- * and shrine, stairwell, new floor, depth up, the run-over jingle, and the tutorial / lobby tracks.
+ * and shrine, stairwell, new floor, depth up, the run-over jingle, and the tutorial / lobby tracks. Then the Demon
+ * Lord's (docs/BOSS_DEMONLORD.md D6): sfx.boss.taunt, a taunting boss's phase change (the roar plays while it is
+ * silent).
  */
 export const PORT_AUDIO_EVENTS = [
 	"sfx.player.swing",
@@ -475,6 +521,7 @@ export const PORT_AUDIO_EVENTS = [
 	"sfx.jingle.gameover",
 	"music.tutorial",
 	"music.lobby",
+	"sfx.boss.taunt",
 ] as const;
 
 /**

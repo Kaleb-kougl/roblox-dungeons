@@ -17,22 +17,43 @@
  *
  * Deterministic: all state is in ActorState (fields + v[]), randomness via ctx.random*, directions are unit vectors
  * turned by exact (cos, sin) pairs (TURN_COS / TURN_SIN and their sqrt half-angles), no trig.
+ *
+ * Roblox port (docs/BOSS_DEMONLORD.md D3): the fight skeleton (wake / seal, phase floor, transitions, recover,
+ * reposition, summons, DEBUG_BOSS, the damage filter, the adds withering) lives in ./shared.ts, shared with
+ * 'boss.demonlord'; this file keeps Mother Bramble's attacks and every export it had. Same code, same order: the
+ * golden boss runs match bit for bit.
  */
 
 import { SIM_DT } from "../../../../units";
 import { TURN_COS, TURN_SIN } from "../../../combatData";
 import type { SimCtx } from "../../../ctx";
-import { Button } from "../../../../input";
 import { BulletKind, FULL_RING, aimAt, halfRotation, rotateDir, type BurstSpec, type Dir } from "../../../patterns";
-import { HIT_HEAVY, HIT_NORMAL, PLAYER_RADIUS, secondsToTicks } from "../../../../playerData";
+import { HIT_HEAVY, HIT_NORMAL, secondsToTicks } from "../../../../playerData";
 import type { EncounterRoom } from "../../encounter";
-import { partySize, playerAt } from "../../../../party";
-import type { PlayerState } from "../../../../state";
-import { faceToward, moveActor, toPlayer, walkToward } from "../../helpers";
-import { archetypeAt, hasArchetype, registerArchetype } from "../../registry";
-import { AiState, NO_KIND, type ActorState, type ArchetypeData } from "../../types";
-import { V_HOME_X, V_HOME_Z, engage, isRoomEnemyData } from "../enemyShared";
+import { faceToward, toPlayer, walkToward } from "../../helpers";
+import { hasArchetype, registerArchetype } from "../../registry";
+import type { ActorState } from "../../types";
 import { slamBreakables } from "../../../../breakables/breakables";
+import {
+	BOSS_ENGAGE_RANGE_NO_ROOM,
+	BOSS_MAX_REPEAT,
+	BOSS_V_LAST,
+	BOSS_V_MARK,
+	BOSS_V_REPEAT,
+	BossFightState,
+	filterBossDamage,
+	initBossFight,
+	noteBossAttack,
+	onBossDeath,
+	onBossHit,
+	pickBossAttack,
+	stepBossFight,
+	summonAdds,
+	type BossFightData,
+	type BossFightHooks,
+	type BossFightSpec,
+	type BossSummonSpec,
+} from "./shared";
 
 export const BOSS_ACT1_ID = "boss.act1";
 
@@ -40,14 +61,7 @@ export const BOSS_ACT1_ID = "boss.act1";
 // States, attacks, scratch slots
 
 /** aiState values (AiState.TELEGRAPH = 1 is the shared wind-up state; the rest are this boss's own). */
-export const BossState = {
-	TELEGRAPH: AiState.TELEGRAPH,
-	DORMANT: AiState.CUSTOM,
-	ACTIVE: AiState.CUSTOM + 1,
-	RECOVER: AiState.CUSTOM + 2,
-	TRANSITION: AiState.CUSTOM + 3,
-	REPOSITION: AiState.CUSTOM + 4,
-} as const;
+export const BossState = BossFightState;
 
 /** ActorState.attack values (render, audio and telemetry read them). */
 export const BossAttack = {
@@ -102,18 +116,18 @@ export const PHASE_ATTACKS: ReadonlyArray<ReadonlyArray<number>> = [
 /** The first attack of each phase (after the intro / transition roar): the phase's new pattern. */
 export const PHASE_FIRST_ATTACK: ReadonlyArray<number> = [0, BossAttack.FAN, BossAttack.SPIRAL, BossAttack.SLAM];
 /** Never the same attack more than this many times in a row. */
-export const MAX_REPEAT = 2;
+export const MAX_REPEAT = BOSS_MAX_REPEAT;
 
 /** v[] slots. DIR = the attack's locked heading; AUX = second heading (double ring, spiral) or slam target point. */
 export const V_DIR_X = 0;
 export const V_DIR_Z = 1;
 export const V_AUX_X = 2;
 export const V_AUX_Z = 3;
-/** Slam: tick of impact + 1 (0 while charging). */
-export const V_MARK = 4;
-/** Last attack started, and how many times in a row. */
-export const V_LAST = 5;
-export const V_REPEAT = 6;
+/** Slam: tick of impact + 1 (0 while charging). The skeleton zeroes it when a transition starts. */
+export const V_MARK = BOSS_V_MARK;
+/** Last attack started, and how many times in a row (the skeleton's repeat rule). */
+export const V_LAST = BOSS_V_LAST;
+export const V_REPEAT = BOSS_V_REPEAT;
 /** Fast fan / spiral: turn sign (+1 / -1). Slam: 1 = summons after impact, 0 = a second shockwave instead. */
 export const V_SIGN = 7;
 // ActorState.cooldown holds the attack forced next (the phase's first attack after a roar), 0 = pick one.
@@ -214,12 +228,13 @@ export const SUMMON_MAX_ALIVE = 3;
 export const SUMMON_RADIUS = 2.2;
 
 /** Without encounter rooms (unit tests), the boss wakes when the player comes this close. */
-export const ENGAGE_RANGE_NO_ROOM = 10;
-const REPOSITION_MAX_TICKS = 120;
-/** REPOSITION ends when the room center is this close (world units). */
-const REPOSITION_DONE = 0.5;
-/** While the player is dead the boss waits this long between checks (RECOVER). */
-const PLAYER_DEAD_WAIT_TICKS = 30;
+export const ENGAGE_RANGE_NO_ROOM = BOSS_ENGAGE_RANGE_NO_ROOM;
+const SUMMON: BossSummonSpec = {
+	kind: SUMMON_KIND,
+	count: SUMMON_COUNT,
+	maxAlive: SUMMON_MAX_ALIVE,
+	radius: SUMMON_RADIUS,
+};
 /** The slam target is kept this far (plus the boss radius) inside the arena's bounds. */
 const SLAM_TARGET_MARGIN = 0.4;
 /** Slam impact: within one step (plus this slack) of the target. */
@@ -228,7 +243,6 @@ const SLAM_ARRIVE_EPS = 1e-9;
 const SLAM_STUCK2 = 1e-8;
 /** Coin flip for turn signs. */
 const COIN = 0.5;
-const HP_EPS = 1e-6;
 
 // Exact rotations (no trig): half a TURN (~7.1 degrees: spiral step and fast-fan lane offset), 60 and 120 degrees.
 const HALF_TURN = halfRotation(TURN_COS, { x: 0, z: 0 });
@@ -236,25 +250,11 @@ export const HALF_TURN_COS = HALF_TURN.x;
 export const HALF_TURN_SIN = HALF_TURN.z;
 const COS60 = 0.5;
 const SIN60 = math.sqrt(3) / 2;
-const COS120 = -0.5;
 
-export interface BossAct1Data extends ArchetypeData {
-	/** Phase 2 starts at hp <= phaseHp[0] * hpMax, phase 3 at hp <= phaseHp[1] * hpMax. */
-	phaseHp: ReadonlyArray<number>;
-	/** Intro roar after engaging, ticks (immune). */
-	introTicks: number;
-	/** Phase transition roar, ticks (immune; own bullets cleared). */
-	transitionTicks: number;
-	/** Vulnerable stand-still after an attack, ticks, per phase (index = phase). */
-	recoverTicks: ReadonlyArray<number>;
+/** The skeleton's data (phases, roars, recover, engage inset, home radius, debug damage; ./shared.ts) plus: */
+export interface BossAct1Data extends BossFightData {
 	/** Vulnerable stand-still after a slam, ticks. */
 	slamRecoverTicks: number;
-	/** The fight starts when the player is this far inside the boss room's bounds, world units. */
-	engageInset: number;
-	/** Walk back toward the room center between attacks when farther from it than this, world units. */
-	homeRadius: number;
-	/** DEBUG_BOSS (J, debug builds only): fraction of hpMax taken off per press. */
-	debugDamage: number;
 }
 
 export const BOSS_ACT1_DATA: BossAct1Data = {
@@ -297,90 +297,9 @@ function turnSteps(x: number, z: number, steps: number, out: Dir): Dir {
 	return out;
 }
 
-function inRoom(room: EncounterRoom, x: number, z: number, inset: number): boolean {
-	return x >= room.minX + inset && x <= room.maxX - inset && z >= room.minZ + inset && z <= room.maxZ - inset;
-}
-
-/** The boss's arena: the boss room when the boss stands in it, else whatever room it stands in (undefined: none). */
-export function bossArena(ctx: SimCtx, a: Readonly<ActorState>): EncounterRoom | undefined {
-	const r = ctx.bossRoom();
-	if (r !== undefined && inRoom(r, a.x, a.z, 0)) return r;
-	return ctx.roomAt(a.x, a.z);
-}
-
-/** hp the current phase may not go below (the next phase's threshold; 0 in the last phase). */
-export function phaseFloor(d: BossAct1Data, a: Readonly<ActorState>): number {
-	if (a.phase <= 1) return a.hpMax * d.phaseHp[0];
-	if (a.phase === 2) return a.hpMax * d.phaseHp[1];
-	return 0;
-}
-
-function engaged(a: Readonly<ActorState>): boolean {
-	return a.aiState !== BossState.DORMANT && a.aiState !== AiState.IDLE;
-}
-
-function beginTransition(ctx: SimCtx, a: ActorState, d: BossAct1Data): void {
-	ctx.setPhase(a, a.phase + 1);
-	a.aiState = BossState.TRANSITION;
-	a.aiTicks = d.transitionTicks;
-	a.attack = BossAttack.ROAR;
-	a.cooldown = PHASE_FIRST_ATTACK[a.phase] ?? 0;
-	a.v[V_MARK] = 0;
-	// Pillar 2: the slate is wiped while it roars, so the new phase starts readable.
-	ctx.combat.enemyBullets.clear(a.emitterId);
-}
-
-/** After hp changed: at the phase floor, start the transition (hp snapped onto the threshold). */
-function checkPhase(ctx: SimCtx, a: ActorState, d: BossAct1Data): void {
-	if (a.alive === 0 || a.phase >= 3 || a.aiState === BossState.TRANSITION || !engaged(a)) return;
-	const floor = phaseFloor(d, a);
-	if (a.hp <= floor + HP_EPS) {
-		a.hp = floor;
-		beginTransition(ctx, a, d);
-	}
-}
-
-/**
- * The room seal: while the fight is on, the player cannot leave the arena's bounds (clamped back inside them, minus
- * the player's radius, every tick). Corridors only meet a room at its edge, so a clamped player always stands on the
- * room's floor (or in the corridor mouth inside the bounds). Pure sim, no collision or config changes.
- */
-function sealArena(ctx: SimCtx, room: EncounterRoom | undefined): void {
-	if (room === undefined) return;
-	// Co-op (M4): every player is sealed in, in index order (a straggler is pulled onto the arena floor).
-	const n = partySize(ctx.state);
-	for (let i = 0; i < n; i++) sealPlayer(playerAt(ctx.state, i), room);
-}
-
-function sealPlayer(p: PlayerState, room: EncounterRoom): void {
-	const r = PLAYER_RADIUS;
-	p.x = clamp(p.x, room.minX + r, room.maxX - r);
-	p.z = clamp(p.z, room.minZ + r, room.maxZ - r);
-}
-
-function playerEngages(ctx: SimCtx, a: ActorState, d: BossAct1Data, room: EncounterRoom | undefined): boolean {
-	const p = ctx.player;
-	if (p.dead !== 0) return false;
-	if (room !== undefined) return inRoom(room, p.x, p.z, d.engageInset);
-	return toPlayer(ctx, a).dist <= ENGAGE_RANGE_NO_ROOM;
-}
-
 /** The next attack: deterministic rng over the phase's table, never a third repeat in a row. */
 function pickAttack(ctx: SimCtx, a: ActorState): number {
-	const forced = a.cooldown;
-	a.cooldown = 0;
-	if (forced > 0) return forced;
-	const attacks = PHASE_ATTACKS[a.phase] ?? PHASE_ATTACKS[1];
-	const banned = a.v[V_REPEAT] >= MAX_REPEAT ? a.v[V_LAST] : -1;
-	let n = 0;
-	for (let i = 0; i < attacks.size(); i++) if (attacks[i] !== banned) n++;
-	let k = ctx.randomInt(0, n - 1);
-	for (let i = 0; i < attacks.size(); i++) {
-		if (attacks[i] === banned) continue;
-		if (k === 0) return attacks[i];
-		k--;
-	}
-	return attacks[0];
+	return pickBossAttack(ctx, a, PHASE_ATTACKS[a.phase] ?? PHASE_ATTACKS[1]);
 }
 
 /** Locks the attack's directions into v[] and starts its telegraph. */
@@ -442,11 +361,7 @@ function startAttack(ctx: SimCtx, a: ActorState, room: EncounterRoom | undefined
 	a.v[V_DIR_X] = dx;
 	a.v[V_DIR_Z] = dz;
 	faceToward(a, dx, dz);
-	if (a.v[V_LAST] === attack) a.v[V_REPEAT] += 1;
-	else {
-		a.v[V_LAST] = attack;
-		a.v[V_REPEAT] = 1;
-	}
+	noteBossAttack(a, attack);
 	ctx.telegraph(a, BOSS_TELEGRAPH_TICKS[attack], attack);
 }
 
@@ -478,44 +393,9 @@ function volleys(
 	return t >= (n - 1) * every;
 }
 
-/**
- * Up to SUMMON_COUNT swarmers around the boss, never more than SUMMON_MAX_ALIVE of them alive in the arena (room
- * swarmers elsewhere on the floor do not count), and never past MAX_ACTORS (spawnActor drops the rest). Each one
- * spawns on the boss's center (always floor) and is pushed SUMMON_RADIUS out through the world (moveActor: walls and
- * pits stop it, so it never lands in one), 120 degrees apart starting along the charge direction. Room enemies
- * (data.roomEnemy) come out engaged, homed where they land.
- */
+/** Up to SUMMON_COUNT swarmers, at most SUMMON_MAX_ALIVE alive in the arena (./shared.ts summonAdds). */
 function summon(ctx: SimCtx, a: ActorState): void {
-	const kind = ctx.kindOf(SUMMON_KIND);
-	const room = bossArena(ctx, a);
-	let alive = 0;
-	const actors = ctx.actors;
-	const r2 = ENGAGE_RANGE_NO_ROOM * ENGAGE_RANGE_NO_ROOM;
-	for (let i = 0; i < actors.size(); i++) {
-		const o = actors[i];
-		if (o.kind !== kind || o.alive === 0) continue;
-		const near =
-			room !== undefined
-				? inRoom(room, o.x, o.z, 0)
-				: (o.x - a.x) * (o.x - a.x) + (o.z - a.z) * (o.z - a.z) <= r2;
-		if (near) alive++;
-	}
-	const n = math.min(SUMMON_COUNT, SUMMON_MAX_ALIVE - alive);
-	let x = a.v[V_DIR_X];
-	let z = a.v[V_DIR_Z];
-	for (let i = 0; i < n; i++) {
-		const s = ctx.spawnActor(SUMMON_KIND, a.x, a.z);
-		if (s === undefined) return; // the actor pool is full
-		moveActor(ctx, s, x * SUMMON_RADIUS, z * SUMMON_RADIUS); // prevX / prevZ stay on the boss: drawn bursting out
-		if (isRoomEnemyData(ctx.data(s))) {
-			s.v[V_HOME_X] = s.x;
-			s.v[V_HOME_Z] = s.z;
-			engage(s);
-		}
-		rotateDir(x, z, COS120, SIN60, dirScratch); // 120 degrees
-		x = dirScratch.x;
-		z = dirScratch.z;
-	}
+	summonAdds(ctx, a, SUMMON, a.v[V_DIR_X], a.v[V_DIR_Z]);
 }
 
 /** One tick of the running attack; `t` = ticks since its first bullet tick. Returns true when it is over. */
@@ -574,145 +454,49 @@ function runAttack(ctx: SimCtx, a: ActorState, t: number): boolean {
 	}
 }
 
-function recover(a: ActorState, d: BossAct1Data, ticks?: number): void {
-	a.aiState = BossState.RECOVER;
-	a.aiTicks = ticks ?? d.recoverTicks[a.phase] ?? d.recoverTicks[1];
-	a.attack = BossAttack.NONE;
-}
-
-/** Starts the next telegraph (or keeps waiting while the player is dead). The source's `next`. */
-function nextAttack(ctx: SimCtx, a: ActorState, d: BossAct1Data, room: EncounterRoom | undefined): void {
-	if (ctx.player.dead !== 0) {
-		recover(a, d, PLAYER_DEAD_WAIT_TICKS);
-		return;
-	}
-	startAttack(ctx, a, room, pickAttack(ctx, a));
-}
-
-/** J (DEBUG_BOSS, debug builds only): 10% of max hp off, bypassing the cap, never past a phase threshold. */
-function debugHit(ctx: SimCtx, a: ActorState, d: BossAct1Data): void {
-	if (!engaged(a) || a.aiState === BossState.TRANSITION) return;
-	const floor = phaseFloor(d, a);
-	const hp = a.hp - a.hpMax * d.debugDamage;
-	a.hp = floor > hp ? floor : hp;
-	if (a.hp > floor + HP_EPS) return;
-	if (floor <= 0) ctx.killActor(a);
-	else checkPhase(ctx, a, d);
-}
-
 // ---------------------------------------------------------------------------------------------
 // The archetype
+
+const SPEC: BossFightSpec = { phaseFirstAttack: PHASE_FIRST_ATTACK, roarAttack: BossAttack.ROAR };
+
+const HOOKS: BossFightHooks<BossAct1Data> = {
+	spec: SPEC,
+	startNext(ctx, a, _d, room) {
+		startAttack(ctx, a, room, pickAttack(ctx, a));
+	},
+	runAttack(ctx, a, _d, t) {
+		return runAttack(ctx, a, t);
+	},
+	recoverAfter(d, attack) {
+		return attack === BossAttack.SLAM ? d.slamRecoverTicks : undefined;
+	},
+	stepOwnState() {
+		return false;
+	},
+};
 
 export const BOSS_ACT1 = registerArchetype<BossAct1Data>({
 	id: BOSS_ACT1_ID,
 	data: BOSS_ACT1_DATA,
 
 	init(_ctx, a) {
-		a.aiState = BossState.DORMANT;
+		initBossFight(a);
 	},
 
 	step(ctx, a) {
-		const d = ctx.data<BossAct1Data>(a);
-		const room = bossArena(ctx, a);
-
-		// Debug cheat (an input bit, so replays reproduce it). Edge against last tick's buttons (weapons update them later).
-		const b = ctx.input.buttons;
-		if (
-			bit32.band(b, Button.DEBUG_BOSS) !== 0 &&
-			bit32.band(ctx.combat.weapons.prevButtons, Button.DEBUG_BOSS) === 0
-		) {
-			debugHit(ctx, a, d);
-			if (a.alive === 0) return;
-		}
-
-		if (!engaged(a)) {
-			a.aiState = BossState.DORMANT;
-			if (!playerEngages(ctx, a, d, room)) return;
-			ctx.events.bossEngaged = 1;
-			ctx.setPhase(a, 1);
-			a.aiState = BossState.TRANSITION;
-			a.aiTicks = d.introTicks;
-			a.attack = BossAttack.ROAR;
-			a.cooldown = PHASE_FIRST_ATTACK[1];
-		}
-
-		sealArena(ctx, room);
-
-		switch (a.aiState) {
-			case BossState.TRANSITION:
-				a.aiTicks -= 1;
-				if (a.aiTicks <= 0) nextAttack(ctx, a, d, room);
-				return;
-			case BossState.RECOVER: {
-				const tp = toPlayer(ctx, a);
-				faceToward(a, tp.dx, tp.dz);
-				a.aiTicks -= 1;
-				if (a.aiTicks > 0) return;
-				if (room !== undefined && ctx.player.dead === 0) {
-					const hx = room.cx - a.x;
-					const hz = room.cz - a.z;
-					if (hx * hx + hz * hz > d.homeRadius * d.homeRadius) {
-						a.aiState = BossState.REPOSITION;
-						a.aiTicks = REPOSITION_MAX_TICKS;
-						return;
-					}
-				}
-				nextAttack(ctx, a, d, room);
-				return;
-			}
-			case BossState.REPOSITION: {
-				// The plain mover (no steering), like the charge.
-				const left = room !== undefined ? walkToward(ctx, a, room.cx, room.cz, d.speed * SIM_DT, false) : 0;
-				if (left <= REPOSITION_DONE) {
-					nextAttack(ctx, a, d, room);
-					return;
-				}
-				a.aiTicks -= 1;
-				if (a.aiTicks <= 0) nextAttack(ctx, a, d, room);
-				return;
-			}
-			case BossState.TELEGRAPH:
-				a.aiTicks -= 1;
-				if (a.aiTicks > 0) return;
-				a.aiState = BossState.ACTIVE;
-				a.aiTicks = 0;
-				if (runAttack(ctx, a, 0)) recover(a, d, a.attack === BossAttack.SLAM ? d.slamRecoverTicks : undefined);
-				return;
-			case BossState.ACTIVE: {
-				a.aiTicks += 1;
-				const attack = a.attack;
-				if (runAttack(ctx, a, a.aiTicks)) {
-					recover(a, d, attack === BossAttack.SLAM ? d.slamRecoverTicks : undefined);
-				}
-				return;
-			}
-			default:
-				recover(a, d);
-		}
+		stepBossFight(ctx, a, HOOKS);
 	},
 
 	filterDamage(ctx, a, damage) {
-		if (!engaged(a) || a.aiState === BossState.TRANSITION) return 0;
-		const floor = phaseFloor(ctx.data<BossAct1Data>(a), a);
-		return a.hp - damage < floor ? a.hp - floor : damage;
+		return filterBossDamage(ctx, a, damage);
 	},
 
 	onHit(ctx, a) {
-		checkPhase(ctx, a, ctx.data<BossAct1Data>(a));
+		onBossHit(ctx, a, SPEC);
 	},
 
 	onDeath(ctx, a) {
-		ctx.events.bossDefeated = 1;
-		a.attack = BossAttack.NONE;
-		ctx.combat.enemyBullets.clear(a.emitterId);
 		// The brambles wither: adds still alive in the arena die with her.
-		const room = bossArena(ctx, a);
-		if (room === undefined) return;
-		const actors = ctx.actors;
-		for (let i = 0; i < actors.size(); i++) {
-			const o = actors[i];
-			if (o === a || o.kind === NO_KIND || o.alive === 0 || archetypeAt(o.kind).data.boss === true) continue;
-			if (inRoom(room, o.x, o.z, 0)) ctx.killActor(o);
-		}
+		onBossDeath(ctx, a);
 	},
 });

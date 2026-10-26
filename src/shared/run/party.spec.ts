@@ -4,7 +4,6 @@
 // the same final hash and score, and a tampered frame rejects at its segment.
 import { describe, expect, it } from "@rbxts/jest-globals";
 import {
-	BOSS_ACT1_ID,
 	Button,
 	COMBO_MIN,
 	DEBUG_FLOOR_BUTTON,
@@ -34,7 +33,9 @@ import {
 	ENDLESS_ROOM_ACTOR_CAP,
 	ELITE_BUDGET_MULTIPLIER,
 	PARTY_BUDGET_MULTIPLIERS,
+	bossKindFor,
 	endlessRoomSpawns,
+	floorSeed,
 	roomEncounterBudget,
 } from "shared/dungeon";
 import {
@@ -257,7 +258,9 @@ describe("party size scaling", () => {
 				dismissDraft(s); // M2: every floor change opens the party's boon drafts (frozen world)
 				stepParty(s, idle(n), setup.config);
 			}
-			const boss = s.combat.actors.find((a) => a.kind !== NO_KIND && archetypeAt(a.kind).id === BOSS_ACT1_ID)!;
+			// Floor 5's boss is the seeded pick (docs/BOSS_DEMONLORD.md D5): the Demon Lord on run 1337.
+			const boss = s.combat.actors.find((a) => a.kind !== NO_KIND && archetypeAt(a.kind).data.boss === true)!;
+			expect(archetypeAt(boss.kind).id).toBe(bossKindFor(floorSeed(1337, 5)));
 			const bd = archetypeAt(boss.kind).data;
 			expect(boss.hpMax).toBe(endlessActorHp(bd.hp, true, 5, 1) * PARTY_HP_MULTIPLIERS[n - 1]);
 		}

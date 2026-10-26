@@ -3,6 +3,7 @@ import { RunService, Workspace } from "@rbxts/services";
 import type { SolidCells } from "shared/dungeon";
 import {
 	AiState,
+	BossFightState,
 	NO_KIND,
 	archetypeAt,
 	roomAt,
@@ -10,6 +11,7 @@ import {
 	type ActorState,
 	type EncounterConfig,
 	type EncounterRoom,
+	type SimState,
 } from "shared/sim";
 import { TELEGRAPH_VISUAL } from "shared/theme";
 import {
@@ -18,6 +20,9 @@ import {
 	actorFxMarkings,
 	bossTelegraphMarkings,
 	clipToSolidCells,
+	demonlordActiveMarkings,
+	demonlordTelegraphMarkings,
+	enemyBulletSpeedScale,
 	genericWindupMarkings,
 	lerp,
 	rect,
@@ -30,6 +35,7 @@ import { SimController } from "../game/SimController";
 import { ThemeController } from "../game/ThemeController";
 import { bossAct1 } from "./bossAct1";
 import { DashLayer } from "./DashLayer";
+import { demonlordView } from "./demonlord";
 
 const RENDER_STEP = "KV_Telegraphs";
 
@@ -56,8 +62,13 @@ function arenaOf(enc: EncounterConfig, a: Readonly<ActorState>): EncounterRoom |
  *   - any other actor winding up (aiState TELEGRAPH) without a preview: a ring around it
  *   - Mother Bramble (boss.act1) while winding up: exactly where the attack's bullets will go (fan lanes, ring arcs
  *     with gaps, spiral arms, the slam lane + impact + shockwave), dim early, bright late, blinking at the end; the
- *     slam lane while charging; the roar rings during intro / phase transitions
- *   - the arena seal: while a boss fight is on, a translucent dashed fence around the boss's room
+ *     slam lane while charging
+ *   - the Demon Lord (boss.demonlord; docs/BOSS_DEMONLORD.md D6) the same way: the cleave lanes to their reach (and
+ *     the double cleave's second arc from the lunge's end), the 3-gap hellfire ring, the charge lane + impact +
+ *     shockwave, the adds' landing spots; the charge lane while charging, the second cleave arc during the lunge.
+ *     Nothing while he chases (no direction is locked yet)
+ *   - any boss (data.boss): the roar rings during the intro / phase transitions, a generic ring while an unknown
+ *     boss winds up, and the arena seal: while its fight is on, a translucent dashed fence around its room
  */
 @Controller({})
 export class TelegraphController implements OnStart {
@@ -123,7 +134,7 @@ export class TelegraphController implements OnStart {
 			const x = lerp(a.prevX, a.x, alpha);
 			const z = lerp(a.prevZ, a.z, alpha);
 			if (def.data.boss === true) {
-				this.drawBoss(def.id, def.data as RoarData, a, ctx.config.encounter, s.tick, bright, dim, roar, seal);
+				this.drawBoss(def.id, def.data as RoarData, a, ctx.config.encounter, s, bright, dim, roar, seal);
 				continue;
 			}
 			const fx = (def.data as { fx?: ActorFxHintsView }).fx;
@@ -137,7 +148,7 @@ export class TelegraphController implements OnStart {
 		data: RoarData,
 		a: Readonly<ActorState>,
 		enc: EncounterConfig | undefined,
-		tick: number,
+		s: SimState,
 		bright: DashLayer,
 		dim: DashLayer,
 		roar: DashLayer,
@@ -146,20 +157,33 @@ export class TelegraphController implements OnStart {
 		if (a.phase <= 0) return; // dormant: no fight yet
 		const room = enc !== undefined ? arenaOf(enc, a) : undefined;
 		if (room !== undefined) rect(seal, room.minX, room.minZ, room.maxX, room.maxZ);
-		const act1 = bossAct1();
-		if (act1 === undefined || act1.id !== id) {
-			if (a.aiState === AiState.TELEGRAPH) genericWindupMarkings(dim, a.x, a.z, a.radius);
-			return;
-		}
-		const c = act1.consts;
-		if (a.aiState === AiState.TELEGRAPH) {
-			bossTelegraphMarkings(bright, dim, a, c, tick);
-		} else if (a.aiState === c.state.ACTIVE && a.attack === c.attack.SLAM && a.v[c.slots.mark] === 0) {
-			slamMarkings(dim, dim, a, c); // the charge in progress
-		} else if (a.aiState === c.state.TRANSITION) {
+		// The roar: every boss on the fight skeleton (boss/shared.ts) roars in its TRANSITION state.
+		if (a.aiState === BossFightState.TRANSITION) {
 			const total = (a.phase <= 1 ? data.introTicks : data.transitionTicks) ?? 0;
 			const t = total > 0 ? 1 - a.aiTicks / total : 1;
 			roarMarkings(roar, a.x, a.z, t);
+			return;
 		}
+		const act1 = bossAct1();
+		if (act1 !== undefined && act1.id === id) {
+			const c = act1.consts;
+			if (a.aiState === AiState.TELEGRAPH) {
+				bossTelegraphMarkings(bright, dim, a, c, s.tick);
+			} else if (a.aiState === c.state.ACTIVE && a.attack === c.attack.SLAM && a.v[c.slots.mark] === 0) {
+				slamMarkings(dim, dim, a, c); // the charge in progress
+			}
+			return;
+		}
+		const demon = demonlordView();
+		if (demon.id === id) {
+			const c = demon.consts;
+			if (a.aiState === AiState.TELEGRAPH) {
+				demonlordTelegraphMarkings(bright, dim, a, c, s.tick, enemyBulletSpeedScale(s));
+			} else if (a.aiState === c.state.ACTIVE) {
+				demonlordActiveMarkings(bright, dim, a, c, enemyBulletSpeedScale(s));
+			}
+			return;
+		}
+		if (a.aiState === AiState.TELEGRAPH) genericWindupMarkings(dim, a.x, a.z, a.radius);
 	}
 }

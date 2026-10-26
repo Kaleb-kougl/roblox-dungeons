@@ -1,7 +1,8 @@
 /**
  * Test support for specs (never imported by the game): the endless-mode walking bot (moved here from
  * run/endless.spec.ts so several specs can share the recorded run) and `recordEndlessRun`, the recorded seed-1337
- * descent: floors 1-4 by the debug skip, floor 5 walked into Mother Bramble's arena, the boss killed (J presses), the
+ * descent: floors 1-4 by the debug skip, floor 5 walked into the boss's arena (Mother Bramble or the Demon Lord: the
+ * floor's seeded pick, shared/dungeon bossKindFor), the boss killed (J presses), the
  * stairwell walked, floor 6 walked to its stairwell, floor 7 skipped, ending on floor 8 at Depth 2. M2: every floor
  * change opens a boon draft, which the bot resolves (resolveDraft: the stick on a card for DRAFT_MIN_OPEN_TICKS, then
  * a FIRE press); before skipping the first floor with both a TREASURE and a SHRINE room it walks onto the relic
@@ -11,7 +12,6 @@
  */
 import {
 	AXIS_MAX,
-	BOSS_ACT1_ID,
 	Button,
 	DEBUG_FLOOR_BUTTON,
 	DRAFT_COLUMN_CENTRE,
@@ -29,7 +29,7 @@ import {
 	draftCardFor,
 	isDraftOpen,
 	Recorder,
-	archetypeIndex,
+	archetypeAt,
 	createSimState,
 	hashState,
 	step,
@@ -275,9 +275,9 @@ export class Driver {
 	}
 }
 
-/** Mother Bramble, if present. */
+/** The floor's live boss (any `data.boss` archetype: Mother Bramble or the Demon Lord), if present. */
 export function bossOf(s: SimState) {
-	return s.combat.actors.find((a) => a.kind === archetypeIndex(BOSS_ACT1_ID) && a.alive !== 0);
+	return s.combat.actors.find((a) => a.kind !== NO_KIND && a.alive !== 0 && archetypeAt(a.kind).data.boss === true);
 }
 
 /**
@@ -380,7 +380,7 @@ export function recordEndlessRun(seed = 1337): RecordedEndlessRun {
 		}
 		drv.skipFloor();
 	}
-	// Floor 5: walk into Mother Bramble's arena (rooms on the way spawn their enemies as the bot passes), kill her
+	// Floor 5: walk into the boss's arena (rooms on the way spawn their enemies as the bot passes), kill the boss
 	// (J), then walk onto the stairwell where she stood.
 	const w5 = drv.world();
 	drv.walkTo(w5.stairX, w5.stairZ, () => drv.state.combat.actors.some((a) => a.phase > 0), 3000);

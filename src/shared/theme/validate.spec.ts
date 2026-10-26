@@ -478,6 +478,44 @@ describe("validateManifest: sprite sets (contract v2)", () => {
 		]);
 	});
 
+	it("boss sets: attack.2, intro and taunt are optional; the required five still are (docs/BOSS_DEMONLORD.md D2)", () => {
+		const bossErrors = (edit: (anims: Obj) => void): Array<string> => {
+			const m = clone();
+			const boss = spriteSet();
+			const anims = at(boss, "animations");
+			anims["attack.1"] = undefined;
+			edit(anims);
+			at(m, "assets")["boss.demonlord"] = boss;
+			return validateManifest(m);
+		};
+		// without the optional ones, and with all three (sheet 1 has 8 cells: 8 facings x 1 frame each)
+		expect(bossErrors(() => undefined)).toEqual([]);
+		const specials = (anims: Obj) => {
+			anims["attack.2"] = { sheet: 1, start: 0, frames: 1, fps: 12, loop: false };
+			anims.intro = { sheet: 1, start: 0, frames: 1, fps: 8, loop: false };
+			anims.taunt = { sheet: 1, start: 0, frames: 1, fps: 10, loop: false };
+		};
+		expect(bossErrors(specials)).toEqual([]);
+		// an optional animation never stands in for a required one
+		expect(
+			bossErrors((anims) => {
+				specials(anims);
+				anims.attack = undefined;
+			}),
+		).toEqual(['assets["boss.demonlord"].animations: sprite contract: missing animation "attack" (>= 1 frame)']);
+		// and is checked like any other once present
+		expect(
+			bossErrors((anims) => {
+				specials(anims);
+				at(anims, "taunt").sheet = 2;
+				at(anims, "intro").loop = "no";
+			}),
+		).toEqual([
+			'assets["boss.demonlord"].animations.intro.loop: must be true or false',
+			'assets["boss.demonlord"].animations.taunt.sheet: must be a sheet index in [0, 1], got 2',
+		]);
+	});
+
 	it("rejects unknown keys on the set, its facings, sheets and animations", () => {
 		expect(
 			spriteErrors((s) => {

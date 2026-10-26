@@ -1,9 +1,11 @@
 // Sprite-effect cues (docs/FX_AUDIO.md F3) over the recorded seed-1337 endless descent (shared/run/testing
-// recordEndlessRun: a relic and a curse on the way, Mother Bramble fought with the sword and killed on floor 5, floor 6
-// walked to its stairwell): one cue per event where it should be, the budget and the hit-mark rate limit hold, nothing
-// lands on a telegraph's first frame, the slam effect only on its impact, the stairwell loop follows the open
-// stairwell, the same state-derived cues at 1-5 ticks per frame; plus synthetic frames for the budget levels, reduced
-// motion, swings and the guard, splinters, resets and a pack without effect art.
+// recordEndlessRun: a relic and a curse on the way, the boss of floor 5 fought with the sword and killed (since the
+// seeded boss pick, docs/BOSS_DEMONLORD.md D5, run 1337's floor 5 holds the Demon Lord), floor 6 walked to its
+// stairwell): one cue per event where it should be, the budget and the hit-mark rate limit hold, nothing lands on a
+// telegraph's first frame, the slam effect only on a charge's impact (his brimstone charge here), the stairwell loop
+// follows the open stairwell, the same state-derived cues at 1-5 ticks per frame; plus synthetic frames for the budget
+// levels, reduced motion, swings and the guard, splinters, resets, a pack without effect art, and the impact cue of
+// each boss (Mother Bramble's slam, the Demon Lord's charge) on a boss spawned into a fresh state.
 import { describe, expect, it } from "@rbxts/jest-globals";
 import { CAMERA_YAW_DEG, STUDS_PER_TILE } from "shared/config";
 import { accumulateEvents, newFrameEvents, resetFrameEvents, type FrameEvents } from "shared/play";
@@ -12,10 +14,19 @@ import { recordEndlessRun, type RecordedEndlessRun } from "shared/run/testing";
 import {
 	AiState,
 	BOSS_ACT1_ID,
+	BOSS_DEMONLORD_ID,
 	BULLET_Y,
 	BossAttack,
 	BossState,
+	DEFAULT_SIM_CONFIG,
+	DEMONLORD_V_AUX_X,
+	DEMONLORD_V_AUX_Z,
+	DEMONLORD_V_MARK,
+	DemonlordAttack,
+	DemonlordState,
+	EMPTY_INPUT,
 	NO_KIND,
+	SimCtx,
 	SIM_DT,
 	SWORD,
 	SWORD_V_GUARD,
@@ -36,7 +47,7 @@ import { BULLET_VIEW, MARKING_VIEW } from "../config";
 import { DECOR_VIEW, decorInputOfLayout, decorScene, planDecor, type DecorScene } from "../decor";
 import { FX_SPRITE_VIEW } from "./config";
 import type { FxEvent } from "./events";
-import { FxCueMapper, type FxCueEventSource } from "./fxCues";
+import { BOSS_IMPACTS, FxCueMapper, type FxCueEventSource } from "./fxCues";
 import { HitTracker } from "./tracker";
 
 const SEED = 1337;
@@ -81,9 +92,13 @@ interface ReplayResult {
 	maxPerFrame: number;
 	/** Cues landing within telegraphClearTiles of an actor whose telegraph started that frame (must stay 0). */
 	onTelegraph: number;
-	/** fx.boss.slam cues not on a slam impact (must stay 0), and slam impacts seen by the spec itself. */
+	/**
+	 * fx.boss.slam cues not on a charge impact (must stay 0), and the impacts seen by the spec itself: Mother Bramble's
+	 * slam and the Demon Lord's charge.
+	 */
 	slamOff: number;
 	slamImpacts: number;
+	chargeImpacts: number;
 	/** Frames the stairwell loop was active with the stairwell closed, or inactive with it open. */
 	loopWrong: number;
 	loopFrames: number;
@@ -101,7 +116,8 @@ function replay(
 	const tracker = new HitTracker();
 	const mapper = new FxCueMapper(everyArt);
 	const events: FrameEvents = newFrameEvents();
-	const bossKind = archetypeIndex(BOSS_ACT1_ID);
+	const bramble = archetypeIndex(BOSS_ACT1_ID);
+	const demon = archetypeIndex(BOSS_DEMONLORD_ID);
 	const prevAi: number[] = [];
 	const prevMark: number[] = [];
 	const res: ReplayResult = {
@@ -112,6 +128,7 @@ function replay(
 		onTelegraph: 0,
 		slamOff: 0,
 		slamImpacts: 0,
+		chargeImpacts: 0,
 		loopWrong: 0,
 		loopFrames: 0,
 		mapper,
@@ -142,10 +159,14 @@ function replay(
 			if (alive && a.aiState === AiState.TELEGRAPH && prevAi[i] !== AiState.TELEGRAPH) {
 				starts.push([a.x, a.z, a.radius + FX_SPRITE_VIEW.telegraphClearTiles]);
 			}
-			const mark = alive && a.kind === bossKind && a.attack === BossAttack.SLAM ? a.v[V_MARK] : 0;
-			if (mark > 0 && (prevMark[i] ?? 0) === 0 && a.aiState === BossState.ACTIVE) {
+			const slam = alive && a.kind === bramble && a.attack === BossAttack.SLAM;
+			const charge = alive && a.kind === demon && a.attack === DemonlordAttack.CHARGE;
+			const mark = slam ? a.v[V_MARK] : charge ? a.v[DEMONLORD_V_MARK] : 0;
+			const active = slam ? a.aiState === BossState.ACTIVE : a.aiState === DemonlordState.ACTIVE;
+			if (mark > 0 && (prevMark[i] ?? 0) === 0 && active) {
 				impactThisFrame = true;
-				res.slamImpacts++;
+				if (slam) res.slamImpacts++;
+				else res.chargeImpacts++;
 			}
 			prevAi[i] = alive ? a.aiState : AiState.IDLE;
 			prevMark[i] = mark;
@@ -186,7 +207,10 @@ describe("FxCueMapper over the recorded endless run", () => {
 	it("cues the run's events", () => {
 		const c = census();
 		const count = (id: FxId) => c.counts.get(id) ?? 0;
-		print(`fx cues: ${FX_IDS.map((id) => `${id}=${count(id)}`).join(" ")}; slam impacts ${c.slamImpacts}`);
+		print(
+			`fx cues: ${FX_IDS.map((id) => `${id}=${count(id)}`).join(" ")}; slam impacts ${c.slamImpacts}, charge ` +
+				`impacts ${c.chargeImpacts}`,
+		);
 		// one kill: three staggered explosions
 		expect(count("fx.boss.death")).toBe(FX_SPRITE_VIEW.bossDeathBursts.size());
 		// the relic and the curse of the relic floor
@@ -217,10 +241,12 @@ describe("FxCueMapper over the recorded endless run", () => {
 		expect(c.onTelegraph).toBe(0);
 	});
 
-	it("shows the slam only on its impact, never during its telegraph", () => {
+	it("shows the slam only on a charge's impact, never during its telegraph", () => {
 		const c = census();
 		expect(c.slamOff).toBe(0);
-		expect(c.counts.get("fx.boss.slam") ?? 0).toBe(c.slamImpacts);
+		// (the recorded bot ends floor 5's fight with debug presses: his phase-2 charge never lands in this run, so
+		// the impact cue itself is checked on spawned bosses below)
+		expect(c.counts.get("fx.boss.slam") ?? 0).toBe(c.slamImpacts + c.chargeImpacts);
 	});
 
 	it("loops the stairwell exactly while it is open", () => {
@@ -422,39 +448,86 @@ describe("FxCueMapper sources (synthetic)", () => {
 		expect(math.min(r, 360 - r)).toBeLessThan(1e-6);
 	});
 
-	it("the slam: nothing during its telegraph or charge, one cue on the impact at the boss", () => {
-		const r = run();
-		const state = createSimState(r.seed, r.setup.spawn!.x, r.setup.spawn!.z, r.setup.config);
-		const bossKind = archetypeIndex(BOSS_ACT1_ID);
-		let t = 0;
-		const bossSlot = () => state.combat.actors.findIndex((x) => x.kind === bossKind && x.alive !== 0);
-		while (bossSlot() < 0) stepRecorded(state, r.recording, t++, r.setup.config);
-		const boss = state.combat.actors[bossSlot()];
+	/**
+	 * A boss spawned into a fresh state (no recording: any boss, whatever a seed's floors pick), its impact attack run
+	 * by hand: nothing while it winds up (a splinter on its target is dropped that frame) or charges, one fx.boss.slam
+	 * on the impact tick at the boss, nothing after.
+	 */
+	function impactCue(
+		bossId: string,
+		attack: number,
+		active: number,
+		markSlot: number,
+		auxX: number,
+		auxZ: number,
+	): void {
+		const state = createSimState(1, 0, 0);
+		const ctx = new SimCtx().bind(state, DEFAULT_SIM_CONFIG, EMPTY_INPUT);
+		const boss = ctx.spawnActor(bossId, 2, 3)!;
+		expect(boss).never.toBe(undefined);
 		const mapper = new FxCueMapper(everyArt);
-		const frameAt = (now: number) =>
-			mapper.frame({ now, state, alpha: 1, events: NO_EVENTS, fx: new Events(), settings });
+		let tick = state.tick;
+		const frameAt = (now: number) => {
+			state.tick = ++tick;
+			return mapper.frame({ now, state, alpha: 1, events: NO_EVENTS, fx: new Events(), settings });
+		};
 		boss.aiState = AiState.IDLE;
-		boss.attack = BossAttack.NONE;
+		boss.attack = 0;
 		frameAt(1);
-		// the slam's telegraph starts: its target is locked in v[V_AUX]; a splinter there is dropped this frame
+		// the telegraph starts: its target is locked in v[AUX]; a splinter there is dropped this frame
 		boss.aiState = AiState.TELEGRAPH;
-		boss.attack = BossAttack.SLAM;
-		boss.v[V_MARK] = 0;
-		boss.v[V_AUX_X] = boss.x + 6;
-		boss.v[V_AUX_Z] = boss.z;
+		boss.attack = attack;
+		boss.v[markSlot] = 0;
+		boss.v[auxX] = boss.x + 6;
+		boss.v[auxZ] = boss.z;
 		mapper.breakableSplinter(boss.x + 6, boss.z);
 		expect(frameAt(2)).toBe(0);
 		expect(mapper.stats.telegraph).toBe(1);
 		// the charge (ACTIVE, no impact yet): nothing
-		boss.aiState = BossState.ACTIVE;
+		boss.aiState = active;
 		expect(frameAt(3)).toBe(0);
 		// the impact
-		boss.v[V_MARK] = 7;
+		boss.v[markSlot] = 7;
 		expect(frameAt(4)).toBe(1);
 		const c = mapper.cues.at(0);
 		expect([c.id, c.x, c.z]).toEqual(["fx.boss.slam", boss.x, boss.z]);
-		// after it: nothing more for this slam
+		// after it: nothing more for this charge
 		expect(frameAt(5)).toBe(0);
+	}
+
+	it("Mother Bramble's slam: nothing during its telegraph or charge, one cue on the impact at the boss", () => {
+		impactCue(BOSS_ACT1_ID, BossAttack.SLAM, BossState.ACTIVE, V_MARK, V_AUX_X, V_AUX_Z);
+	});
+
+	it("the Demon Lord's charge: nothing during its telegraph or run, one cue on the impact at the boss", () => {
+		impactCue(
+			BOSS_DEMONLORD_ID,
+			DemonlordAttack.CHARGE,
+			DemonlordState.ACTIVE,
+			DEMONLORD_V_MARK,
+			DEMONLORD_V_AUX_X,
+			DEMONLORD_V_AUX_Z,
+		);
+	});
+
+	it("BOSS_IMPACTS names both bosses' charge attacks by the sim's own constants", () => {
+		expect(BOSS_IMPACTS.map((r) => [r.bossId, r.attack, r.markSlot, r.targetXSlot, r.targetZSlot])).toEqual([
+			[BOSS_ACT1_ID, BossAttack.SLAM, V_MARK, V_AUX_X, V_AUX_Z],
+			[BOSS_DEMONLORD_ID, DemonlordAttack.CHARGE, DEMONLORD_V_MARK, DEMONLORD_V_AUX_X, DEMONLORD_V_AUX_Z],
+		]);
+	});
+
+	it("a boss's other attacks cue nothing on their v[MARK] slot (the Demon Lord's hellfire)", () => {
+		const state = createSimState(1, 0, 0);
+		const ctx = new SimCtx().bind(state, DEFAULT_SIM_CONFIG, EMPTY_INPUT);
+		const boss = ctx.spawnActor(BOSS_DEMONLORD_ID, 2, 3)!;
+		const mapper = new FxCueMapper(everyArt);
+		mapper.frame({ now: 1, state, alpha: 1, events: NO_EVENTS, fx: new Events(), settings });
+		state.tick += 1;
+		boss.aiState = DemonlordState.ACTIVE;
+		boss.attack = DemonlordAttack.HELLFIRE;
+		boss.v[DEMONLORD_V_MARK] = 3;
+		expect(mapper.frame({ now: 2, state, alpha: 1, events: NO_EVENTS, fx: new Events(), settings })).toBe(0);
 	});
 
 	it("guard: once when it goes up, again on a deflect (rate-limited), never while down", () => {

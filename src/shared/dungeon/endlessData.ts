@@ -32,8 +32,38 @@ export const ENDLESS_FLOORS_PER_EXTRA_ROOM = 5;
 /** The room count stops growing here. */
 export const ENDLESS_MAX_ROOM_COUNT = 16;
 
-/** Every this-many-th floor (5, 10, 15, ...) is a boss floor: Mother Bramble waits in the boss room. */
+/**
+ * Every this-many-th floor (5, 10, 15, ...) is a boss floor: a boss picked from ENDLESS_BOSSES waits in the boss room.
+ */
 export const BOSS_FLOOR_EVERY = 5;
+
+/** A boss an endless boss floor may hold (archetype id) and its draw weight. */
+export interface EndlessBossKind {
+	readonly kind: string;
+	readonly weight: number;
+}
+
+/**
+ * The endless bosses, in draw order (docs/BOSS_DEMONLORD.md D5): each boss floor draws one by weight (./endless.ts
+ * bossKindFor). Owner defaults: 50 / 50, any boss floor (floor 5 included) can be either, every floor an independent
+ * draw (no no-repeat rule). M1 and the tutorial place Mother Bramble themselves and never read this.
+ */
+export const ENDLESS_BOSSES: ReadonlyArray<EndlessBossKind> = [
+	{ kind: "boss.act1", weight: 1 },
+	{ kind: "boss.demonlord", weight: 1 },
+];
+
+/** Tunables of the per-floor boss pick. */
+export interface BossPickTunables {
+	/**
+	 * The pick's own rng stream: mulberry32 from (floor seed ^ salt), one draw. Like the breakables' (salt 0x5bd1e995,
+	 * ./breakablesData.ts) it never touches the Forge's or a room encounter's stream, so the layout, its digest, the
+	 * props, the room spawns and the breakables are the same whichever boss is picked. xxHash32's PRIME32_4.
+	 */
+	readonly salt: number;
+}
+
+export const BOSS_PICK: BossPickTunables = table.freeze({ salt: 0x27d4eb2f });
 
 /** Encounter budget per combat room: ENCOUNTER_BUDGET_BASE + ENCOUNTER_BUDGET_PER_FLOOR x (floor - 1). */
 export const ENCOUNTER_BUDGET_BASE = 6;

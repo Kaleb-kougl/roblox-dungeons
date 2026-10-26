@@ -70,7 +70,9 @@ The bullet library (`@k9kbdev/r3f-projectiles` 0.6.0, MIT) is ported in `combat/
 `gen.arc` never calls `math.sin` / `math.cos`: it reads V8's values for the burst shape from `combat/arcTable.ts`,
 GENERATED from `fixtures/arc-table.json` (generator in its header; `bullets.spec.ts` checks it bit for bit). A new
 burst shape (an archetype with a new count / spread) errors with `arc table miss ...` until the web build's exporter
-lists it and the table is regenerated.
+lists it and the table is regenerated. Roblox port: shapes only the port's own archetypes fire (the Demon Lord's cleave
+and hellfire arcs) are rows in `combat/arcTablePort.ts` (sin / cos from shared/dungeon's deterministic `dsin` / `dcos`,
+merged into the same lookup, never shadowing a web shape; `arcTablePort.spec.ts`).
 
 | Path | Status | Owner |
 | --- | --- | --- |
@@ -86,7 +88,7 @@ lists it and the table is regenerated.
 | `combat/actors/encounter.ts` | re-exports the canonical `EncounterConfig` / `ActorSpawn` / `EncounterRoom` / `EMPTY_ENCOUNTER` / `roomAt` from `shared/dungeon` (encounterTypes.ts), so `placeEncounter(d, DEFAULT_ENCOUNTER)` IS a `SimConfig.encounter` | done |
 | `combat/actors/actors.ts` | ported: pool (lowest free slot, MAX_ACTORS, actorsDropped), `spawnActor`, `damageActor` (filterDamage -> sliding 2 s damage cap over 12 buckets of 10 ticks -> hp -> flash -> onHit -> death), `killActor`, `reviveActor`, `freeActor`, `stepActors` (slot order, `while` loop: runtime spawns append slots), `stepContactDamage`, hash writers | done |
 | `combat/actors/helpers.ts` | ported: `toPlayer`, `faceToward`, `moveActor` (actorMover sub-steps / bounds clamp / free), `walkToward`; re-exports `lineOfSight` from `shared/dungeon`. Roblox addition: `walkToward(..., steer)` moves with `SimConfig.actorSteerMover` when set (endless floors: `actorSteerMover(dungeon)`, which rounds solid pillars); only the room enemies' walks pass `STEER` (enemyShared.ts), the boss's charge / reposition stay plain; absent (M1, every fixture) it is the web build's | done |
-| `combat/actors/archetypes/*` | ported: `enemyShared` (aggro, pack alerts, leash), `swarmer`, `sniper`, `bruiser`, `turretShared` + `turret.{caster,sniper,sprayer}`, `boss/act1` (Mother Bramble: wake / seal, 3 phases at 66 % / 33 %, fans, gapped rings, spiral, phase-3 slam with swarmer summons, DEBUG_BOSS). The index re-exports every archetype's states, slots and data | done |
+| `combat/actors/archetypes/*` | ported: `enemyShared` (aggro, pack alerts, leash), `swarmer`, `sniper`, `bruiser`, `turretShared` + `turret.{caster,sniper,sprayer}`, `boss/act1` (Mother Bramble: wake / seal, 3 phases at 66 % / 33 %, fans, gapped rings, spiral, phase-3 slam with swarmer summons, DEBUG_BOSS). Roblox port: the fight skeleton is `boss/shared.ts` (moved out of act1, bit for bit), shared with `boss/demonlord` (the Demon Lord, band 2, index 8; docs/BOSS_DEMONLORD.md). The index re-exports every archetype's states, slots and data | done |
 | `combat/weapons/*` | ported: types, registry, loadout, `stepWeapons`, `writeWeaponsHash`, `sweepArc`, defs `weapon.sword` / `weapon.bow` / `weapon.test` / `weapon.test.melee` (index table = the web build's) | done |
 
 Test-only archetypes (`test.dummy`, `test.chaser`, `test.boss`) live in `testing/` (import `shared/sim/testing` from a

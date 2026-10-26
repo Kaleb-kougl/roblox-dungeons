@@ -30,7 +30,7 @@ import {
 	writeHashFields,
 	NO_KIND,
 } from "shared/sim";
-import { floorSeed, isBossFloor } from "shared/dungeon";
+import { BOSS_DEMONLORD_KIND, bossKindFor, floorSeed, isBossFloor } from "shared/dungeon";
 import {
 	DEFAULT_RUN_LIMITS,
 	ENDLESS_DUNGEON_CACHE_SIZE,
@@ -228,6 +228,12 @@ describe("a recorded endless run", () => {
 		expect(drv.depthTicks.size()).toBe(1);
 		expect(drv.stairwellEntries).toEqual([5, 6]);
 		expect(drv.maxActors <= 64).toBe(true);
+	});
+
+	it("fights the Demon Lord on floor 5 (the seeded pick, docs/BOSS_DEMONLORD.md D5)", () => {
+		expect(bossKindFor(floorSeed(seed, 5))).toBe(BOSS_DEMONLORD_KIND);
+		expect(setup.endlessFloor(5).layout.bossKind).toBe(BOSS_DEMONLORD_KIND);
+		expect(setup.endlessFloor(5).layout.encounter.spawns.map((sp) => sp.kind)).toEqual([BOSS_DEMONLORD_KIND]);
 	});
 
 	it("replays to the identical hash, tick by tick", () => {

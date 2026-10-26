@@ -22,6 +22,7 @@ Record every ported module in `PROVENANCE.md` (ported module, source path, sourc
 | `docs/TUTORIAL.md` | First-run tutorial ("Practice Descent"): plan, as-built notes, tasks T1-T8, owner decisions |
 | `docs/OUTLINE.md` | Enemy outlines: plan, as-built notes, tasks O1-O7, decisions E1-E6 |
 | `docs/FX_AUDIO.md` | Sprite effects and audio (Ninja Adventure FX / Audio): slots, pipelines, cue mappers, tasks X0 / F0-F6 / A0-A5 |
+| `docs/BOSS_DEMONLORD.md` | Demon Lord boss variant (`boss.demonlord`, seeded pick per endless boss floor, Lords of Pain Demonlord art): plan, tasks D0-D8, decisions |
 
 Decision log (deviations from `PLAN.md`):
 - **Art (docs/ART.md).** The theme contract gained a `"sprites"` kind (large pre-rendered cells, 1/4/8/16 screen-space
@@ -100,6 +101,20 @@ Decision log (deviations from `PLAN.md`):
   neon placeholders. `decor.fx.ambient.b<n>`: main's R5 mote (`decor-mote.png`) wins once uploaded; the Ninja
   Adventure flipbooks (`fx-ambient-b<n>.png`) only fill a biome it leaves empty. Presentation only: no sim, dungeon or
   hash change.
+- **Second endless boss (docs/BOSS_DEMONLORD.md D3-D5).** `boss.demonlord` (the Demon Lord, a hunter: chase +
+  cleave, 3-gap hellfire ring, double cleave, brimstone charge, swarmer summons) is band 2 (`PORT_BAND_BOSSES`, index
+  8; no web or dummy index moves), on the fight skeleton moved out of act1 into `boss/shared.ts` (a pure move: the
+  golden boss runs match bit for bit). His two new burst shapes are port shapes (`combat/arcTablePort.ts`: sin / cos
+  from the Forge's deterministic `dsin` / `dcos`, merged into the arc lookup; `fixtures/arc-table.json` and
+  `arcTable.ts` stay the web build's). Each endless boss floor picks its boss with `bossKindFor(floorSeed)`: one draw
+  from its own stream `mulberry32(floorSeed ^ BOSS_PICK.salt)` (salt `0x27d4eb2f`), weighted by `ENDLESS_BOSSES` (50 /
+  50; `shared/dungeon` endlessData.ts), stored as `EndlessFloorLayout.bossKind`; layouts, digests, props, room spawns
+  and breakables are unchanged. Score tables give him Mother Bramble's 5000 points and final phase 3. M1
+  (`KALEB_VALE_MVP_PARAMS`), every fixture and the tutorial keep Mother Bramble and replay exactly as before; endless
+  replays and scores changed on every floor that picks the Demon Lord (run 1337's floor 5 among them).
+  `node scripts/find-boss-seed.js` lists run seeds per boss. D6 added one port audio ID, `sfx.boss.taunt` (required in
+  every pack via `PORT_AUDIO_EVENTS`, SILENT in the placeholder): a taunting boss's phase change (the Demon Lord's,
+  `BOSS_TAUNT_IDS`) plays it instead of the roar, which it falls back to while silent.
 
 ## Commands
 
@@ -160,7 +175,8 @@ split-16-bit `imul`, no getters in sim state.
 - Hooks on def objects (`ArchetypeDef`, `WeaponDef`) are called with `:`; write every hook as a method
   (`onHit(ctx, a) { engageOnHit(ctx, a); }`), never `onHit: engageOnHit`.
 - A new bullet burst shape needs an entry in `combat/arcTable.ts` (regenerate with `scripts/gen-arc-table.js`);
-  until then it fails with "arc table miss".
+  until then it fails with "arc table miss". A shape only the port's own archetypes fire (no web source) is a row in
+  `combat/arcTablePort.ts` instead (never edit the web fixture).
 - `throw` compiles to `error(x)`, which prefixes `file:line:`; use `error(msg, 0)` where the message is compared.
 - Interface methods compile to `:` calls: implement them with method syntax; type arrow-function properties as
   `f: (a) => T`. `**` compiles to `^` (pow): use plain multiplication on the sim path.

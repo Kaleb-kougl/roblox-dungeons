@@ -6,10 +6,12 @@
  * the controller draws the cues with the theme's `fx.*` art (a pack without that art gets no cue: `durationOf`).
  *
  * Cue sources (state wherever it keeps the fact, so a frame of 0..5 ticks loses nothing; snapshots per player / slot):
- *   fx.boss.death    FxEvent bossDefeated: FX_SPRITE_VIEW.bossDeathBursts, staggered on the effect clock
- *   fx.boss.phase    FxEvent bossPhase with phase >= 2 (not the fight's start)
- *   fx.boss.slam     Mother Bramble's slam LANDS: attack SLAM, ACTIVE, v[V_MARK] 0 -> > 0 (the impact tick, after its
- *                    telegraph; never during it), at the boss
+ *   fx.boss.death    FxEvent bossDefeated (any data.boss): FX_SPRITE_VIEW.bossDeathBursts, staggered on the effect
+ *                    clock
+ *   fx.boss.phase    FxEvent bossPhase (any data.boss) with phase >= 2 (not the fight's start)
+ *   fx.boss.slam     a boss's charge LANDS (BOSS_IMPACTS): Mother Bramble's SLAM and the Demon Lord's CHARGE, each
+ *                    ACTIVE with its impact mark v[MARK] 0 -> > 0 (the impact tick, after its telegraph; never during
+ *                    it), at the boss
  *   fx.ember.ring    a player's Ember count dropped, at the player
  *   fx.flask         a player's flask count dropped, at the player
  *   fx.guard.shield  a player's sword guard went up (swordGuard > 0 from 0), or deleted bullets while up
@@ -29,9 +31,10 @@
  *   fx.stairwell     loop (`loop`): while state.endless.stairsOpen and the spots' floor is the state's floor
  * Sources are taken in that order (most important first) against the budget: at most FX_SPRITE_VIEW.maxSprites live
  * effects for the effective particle level (24 / 48 / 64; one level lower under reduced motion; none when off). A cue
- * that would land within telegraphClearTiles of an actor on the frame its telegraph starts (or of the boss's slam target)
- * is dropped: an effect never sits on a telegraph's first frame. A new run (state identity, the tick going back, the
- * tracker's reset) or a new floor drops everything (`dropAll` is set for that frame).
+ * that would land within telegraphClearTiles of an actor on the frame its telegraph starts (or of a boss's charge
+ * target: the slam's, the Demon Lord's charge's) is dropped: an effect never sits on a telegraph's first frame. A new
+ * run (state identity, the tick going back, the tracker's reset) or a new floor drops everything (`dropAll` is set for
+ * that frame).
  *
  * No allocation per frame: cues come from a fixed pool (FxCueBuffer, like FxEventBuffer), scratch arrays are reused.
  * Read-only on the sim. No Roblox API: tested headlessly (fxCues.spec.ts).
@@ -40,8 +43,14 @@ import { CAMERA_PITCH_DEG, CAMERA_YAW_DEG } from "shared/config";
 import {
 	AiState,
 	BOSS_ACT1_ID,
+	BOSS_DEMONLORD_ID,
 	BossAttack,
 	BossState,
+	DEMONLORD_V_AUX_X,
+	DEMONLORD_V_AUX_Z,
+	DEMONLORD_V_MARK,
+	DemonlordAttack,
+	DemonlordState,
 	MAX_ACTORS,
 	NO_KIND,
 	NO_WEAPON,
@@ -161,6 +170,39 @@ export class FxCueBuffer {
 	}
 }
 
+/**
+ * A boss attack that charges to a locked target point and lands with an impact (the fx.boss.slam cue): the attack id,
+ * the ACTIVE state, the impact mark slot (0 until the impact tick) and the target point's slots.
+ */
+export interface BossImpactRule {
+	readonly bossId: string;
+	readonly attack: number;
+	readonly activeState: number;
+	readonly markSlot: number;
+	readonly targetXSlot: number;
+	readonly targetZSlot: number;
+}
+
+/** The charge impacts that cue fx.boss.slam: Mother Bramble's slam and the Demon Lord's brimstone charge. */
+export const BOSS_IMPACTS: ReadonlyArray<BossImpactRule> = [
+	{
+		bossId: BOSS_ACT1_ID,
+		attack: BossAttack.SLAM,
+		activeState: BossState.ACTIVE,
+		markSlot: V_MARK,
+		targetXSlot: V_AUX_X,
+		targetZSlot: V_AUX_Z,
+	},
+	{
+		bossId: BOSS_DEMONLORD_ID,
+		attack: DemonlordAttack.CHARGE,
+		activeState: DemonlordState.ACTIVE,
+		markSlot: DEMONLORD_V_MARK,
+		targetXSlot: DEMONLORD_V_AUX_X,
+		targetZSlot: DEMONLORD_V_AUX_Z,
+	},
+];
+
 const FULL_TURN = 360;
 /** Effect-clock time that has not come. */
 const NEVER = math.huge;
@@ -200,7 +242,8 @@ export class FxCueMapper {
 
 	private readonly basis: IsoBasis;
 	private readonly swordIndex: number;
-	private readonly bossKind: number;
+	/** BOSS_IMPACTS with their archetype index (-1: not registered), parallel. */
+	private readonly impactKinds: number[] = [];
 	private lastState: Readonly<SimState> | undefined;
 	private lastTick = -1;
 	private lastFloor = -1;
@@ -241,7 +284,7 @@ export class FxCueMapper {
 		this.cues = new FxCueBuffer(options.capacity ?? FX_SPRITE_VIEW.cueCapacity);
 		this.basis = options.basis ?? isoBasis(degToRad(CAMERA_YAW_DEG), degToRad(CAMERA_PITCH_DEG));
 		this.swordIndex = indexOr(() => weaponIndex(SWORD.id));
-		this.bossKind = indexOr(() => archetypeIndex(BOSS_ACT1_ID));
+		for (const rule of BOSS_IMPACTS) this.impactKinds.push(indexOr(() => archetypeIndex(rule.bossId)));
 		grow(this.aState, MAX_ACTORS, AiState.IDLE);
 		grow(this.aMark, MAX_ACTORS, 0);
 		grow(this.aHitId, MAX_ACTORS, 0);
@@ -377,7 +420,16 @@ export class FxCueMapper {
 		return wrapDeg(artDeg - screenAngleFromBasis(dirX, dirZ, this.basis));
 	}
 
-	/** Actors whose telegraph starts this frame (aiState became TELEGRAPH), and the boss's slam target. */
+	/** The impact rule of actor `a`'s running attack, or undefined (not a charging boss). */
+	private impactOf(a: Readonly<{ kind: number; attack: number }>): BossImpactRule | undefined {
+		for (let k = 0; k < this.impactKinds.size(); k++) {
+			const rule = BOSS_IMPACTS[k];
+			if (this.impactKinds[k] >= 0 && a.kind === this.impactKinds[k] && a.attack === rule.attack) return rule;
+		}
+		return undefined;
+	}
+
+	/** Actors whose telegraph starts this frame (aiState became TELEGRAPH), and a charging boss's target. */
 	private telegraphSpots(state: Readonly<SimState>, adopt: boolean): void {
 		this.tgX.clear();
 		this.tgZ.clear();
@@ -393,9 +445,10 @@ export class FxCueMapper {
 			this.tgX.push(a.x);
 			this.tgZ.push(a.z);
 			this.tgR.push(a.radius + clear);
-			if (a.kind === this.bossKind && a.attack === BossAttack.SLAM) {
-				this.tgX.push(a.v[V_AUX_X]);
-				this.tgZ.push(a.v[V_AUX_Z]);
+			const impact = this.impactOf(a);
+			if (impact !== undefined) {
+				this.tgX.push(a.v[impact.targetXSlot]);
+				this.tgZ.push(a.v[impact.targetZSlot]);
 				this.tgR.push(a.radius + clear);
 			}
 		}
@@ -436,16 +489,16 @@ export class FxCueMapper {
 				}
 			} else if (e.type === "bossPhase" && e.phase >= 2) this.emit("fx.boss.phase", e.x, e.z, 0, 1);
 		}
-		if (this.bossKind < 0) return;
 		const actors = f.state.combat.actors;
 		const n = math.min(actors.size(), MAX_ACTORS);
 		for (let i = 0; i < n; i++) {
 			const a = actors[i];
-			if (a.kind !== this.bossKind || a.alive === 0) continue;
+			if (a.kind === NO_KIND || a.alive === 0) continue;
+			const impact = this.impactOf(a);
 			if (
-				a.attack === BossAttack.SLAM &&
-				a.aiState === BossState.ACTIVE &&
-				a.v[V_MARK] > 0 &&
+				impact !== undefined &&
+				a.aiState === impact.activeState &&
+				a.v[impact.markSlot] > 0 &&
 				this.aMark[i] === 0
 			) {
 				const x = a.prevX + (a.x - a.prevX) * f.alpha;
@@ -601,7 +654,8 @@ export class FxCueMapper {
 			const a = i < m ? actors[i] : undefined;
 			const present = a !== undefined && a.kind !== NO_KIND && a.alive !== 0;
 			this.aState[i] = present ? a.aiState : AiState.IDLE;
-			this.aMark[i] = present && a.kind === this.bossKind && a.attack === BossAttack.SLAM ? a.v[V_MARK] : 0;
+			const impact = present ? this.impactOf(a) : undefined;
+			this.aMark[i] = present && impact !== undefined ? a.v[impact.markSlot] : 0;
 		}
 		const run = state.run;
 		this.shrineUsed = run !== undefined ? run.shrineUsed : 0;

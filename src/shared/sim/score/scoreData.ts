@@ -22,13 +22,18 @@ export const KILL_POINTS: ReadonlyMap<string, number> = new Map<string, number>(
 	["turret.sniper", 150],
 	["turret.sprayer", 150],
 	["boss.act1", 5000],
+	// Roblox port: the second endless boss (docs/BOSS_DEMONLORD.md), Mother Bramble's budget and points.
+	["boss.demonlord", 5000],
 ]);
 /** Kill points of an archetype id not in the table (test archetypes). */
 export const DEFAULT_KILL_POINTS = 50;
 /** Extra boss points when the player took no landed hit during the boss's final phase. */
 export const BOSS_NO_HIT_BONUS = 2500;
 /** A boss's final phase (ActorState.phase), per archetype id: the no-hit bonus window. */
-export const BOSS_FINAL_PHASE: ReadonlyMap<string, number> = new Map<string, number>([["boss.act1", 3]]);
+export const BOSS_FINAL_PHASE: ReadonlyMap<string, number> = new Map<string, number>([
+	["boss.act1", 3],
+	["boss.demonlord", 3],
+]);
 
 /** Non-boss kill floor scaling: x (1 + FLOOR_SCALE_PERCENT_PER_FLOOR / 100 x (floor - 1)) = 1 + 0.08 (floor - 1). */
 export const FLOOR_SCALE_PERCENT_PER_FLOOR = 8;

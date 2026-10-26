@@ -6,7 +6,9 @@
  *   layout        generateDungeon({ ...KALEB_VALE_MVP_PARAMS, seed: floorSeed, roomCount: floorRoomCount(floor),
  *                 solidPillars: true, roomScale: 2 }): pillars are real 1-tile walls (cover), and every room is
  *                 twice as wide and tall as M1's (ENDLESS_ROOM_SCALE); endless floors only, never in M1
- *   boss floors   every BOSS_FLOOR_EVERY-th floor: Mother Bramble in the boss room (the floor's only initial spawn)
+ *   boss floors   every BOSS_FLOOR_EVERY-th floor: a boss in the boss room (the floor's only initial spawn), picked by
+ *                 bossKindFor(floor seed) from ENDLESS_BOSSES (Mother Bramble or the Demon Lord) on its own stream
+ *                 hash(floor seed, BOSS_PICK.salt), one draw, so nothing else on the floor depends on the pick
  *   stairwell     the boss room's center floor tile; on other floors the boss room is empty and holds it from the start
  *   room enemies  per combat / elite room: ENCOUNTER_BUDGET spent by ENCOUNTER_COST from the room's own encounter rng
  *                 (encounterRoomSeed(dungeon seed, room id), as placeEncounter does), placed on the M1 populator's
@@ -32,16 +34,18 @@ import {
 	type RoomTools,
 	type TileXZ,
 } from "./encounter";
-import { BOSS_ACT1_KIND, SPREAD_TRIES, SWARMER_KIND, nearestFree, roomSpawnTiles, spreadTile } from "./enemyRooms";
+import { SPREAD_TRIES, SWARMER_KIND, nearestFree, roomSpawnTiles, spreadTile } from "./enemyRooms";
 import { encounterCost } from "./encounterCost";
 import { placeBreakables, withoutBreakableCells, type BreakablePlacement } from "./breakables";
 import type { ActorSpawn, EncounterConfig, EncounterRoom, EncounterRoomType } from "./encounterTypes";
 import {
 	BOSS_FLOOR_EVERY,
+	BOSS_PICK,
 	ELITE_BUDGET_MULTIPLIER,
 	ENCOUNTER_BUDGET_BASE,
 	ENCOUNTER_BUDGET_PER_FLOOR,
 	ENDLESS_BASE_ROOM_COUNT,
+	ENDLESS_BOSSES,
 	ENDLESS_FLOORS_PER_EXTRA_ROOM,
 	ENDLESS_MAX_ROOM_COUNT,
 	ENDLESS_PACK_SIZE,
@@ -70,6 +74,26 @@ export function floorRoomCount(floor: number): number {
 /** Floors 5, 10, 15, ... */
 export function isBossFloor(floor: number): boolean {
 	return floor >= BOSS_FLOOR_EVERY && floor % BOSS_FLOOR_EVERY === 0;
+}
+
+/** Seed of the boss pick's stream: the floor seed with BOSS_PICK.salt mixed in (uint32). */
+export function bossPickSeed(floorSeed: number): number {
+	return bit32.bxor(u32(floorSeed), BOSS_PICK.salt);
+}
+
+/**
+ * The boss of a boss floor whose floor seed is `floorSeed`: one draw from new EncounterRng(bossPickSeed(floorSeed)),
+ * weighted by ENDLESS_BOSSES. Pure; reads no other stream.
+ */
+export function bossKindFor(floorSeed: number): string {
+	let total = 0;
+	for (const b of ENDLESS_BOSSES) total += b.weight;
+	let r = new EncounterRng(bossPickSeed(floorSeed)).next() * total;
+	for (const b of ENDLESS_BOSSES) {
+		if (r < b.weight) return b.kind;
+		r -= b.weight;
+	}
+	return ENDLESS_BOSSES[ENDLESS_BOSSES.size() - 1].kind;
 }
 
 /**
@@ -256,6 +280,11 @@ export interface EndlessFloorLayout {
 	readonly roomCount: number;
 	readonly dungeon: Dungeon;
 	readonly bossFloor: boolean;
+	/**
+	 * The boss archetype id in the boss room (bossKindFor(seed) on an endless boss floor; the tutorial's last floor:
+	 * Mother Bramble); undefined: no boss.
+	 */
+	readonly bossKind?: string;
 	/** SimConfig.encounter of the floor: rooms, entrance / boss room, and the initial spawns (only the boss, if any). */
 	readonly encounter: EncounterConfig;
 	/** Deferred enemies per room id (see the file comment). */
@@ -286,7 +315,8 @@ export function buildEndlessFloor(
 	const params = endlessFloorParams(runSeed, floor);
 	const d = dungeonFor(params);
 	const bossFloor = isBossFloor(floor);
-	const encounter = placeEncounter(d, { boss: bossFloor ? BOSS_ACT1_KIND : undefined });
+	const bossKind = bossFloor ? bossKindFor(params.seed) : undefined;
+	const encounter = placeEncounter(d, { boss: bossKind });
 	const bossRoom = encounter.rooms[d.boss];
 	if (bossRoom === undefined) error(`buildEndlessFloor: floor ${floor} (seed ${params.seed}) has no boss room`, 0);
 	const spawn = entranceSpawn(d);
@@ -303,6 +333,7 @@ export function buildEndlessFloor(
 		roomCount: params.roomCount,
 		dungeon: d,
 		bossFloor,
+		bossKind,
 		encounter,
 		roomSpawns,
 		roomSpawnTiles: withoutBreakableCells(endlessRoomSpawnTiles(d, roomSpawns), breakables),

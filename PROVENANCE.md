@@ -65,6 +65,7 @@ Every module ported from the web build. Source repo: `/Users/kalebmon/Documents/
 | `src/shared/sim/combat/actors/encounter.ts` (re-export of shared/dungeon encounterTypes) | `src/sim/actors/encounter.ts` | `42897e2` |
 | `src/shared/sim/combat/actors/archetypes/{index,enemyShared,swarmer,sniper,bruiser,turretShared,turretCaster,turretSniper,turretSprayer}.ts` | `src/sim/actors/archetypes/{same}.ts` | `42897e2` |
 | `src/shared/sim/combat/actors/archetypes/boss/act1.ts` | `src/sim/actors/archetypes/boss/act1.ts` | `42897e2` |
+| `src/shared/sim/combat/actors/archetypes/boss/shared.ts` (the fight skeleton moved out of act1.ts, docs/BOSS_DEMONLORD.md D3) | `src/sim/actors/archetypes/boss/act1.ts` | `42897e2` |
 | `src/shared/sim/combat/ctx.ts` (lineOfSight), `combat/combat.ts` (archetype registration) | `src/sim/ctx.ts`, `src/sim/combat.ts` | `42897e2` |
 | `src/shared/sim/testing/testArchetypes.ts` (test.boss ring 16 instead of 12: arc table) | `src/sim/actors/__test__/testArchetypes.ts` | `42897e2` |
 | `src/shared/sim/{actors,enemies,enemies.determinism}.spec.ts` | `src/sim/actors/actors.test.ts`, `src/sim/actors/archetypes/enemies{,.determinism}.test.ts`, `docs/M1.md` Tuning notes | `42897e2` |

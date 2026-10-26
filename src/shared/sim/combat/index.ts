@@ -8,6 +8,7 @@ export * from "./patterns";
 export * from "./bullets";
 export { arcTrig, compose, definePayload, gen, mod, type PayloadLayout } from "./projectilePatterns";
 export { ARC_SHAPES, type ArcShape } from "./arcTable";
+export { PORT_ARC_SHAPES, PORT_ARC_SOURCES, arcAngle, type PortArcSource } from "./arcTablePort";
 export * from "./stress";
 export * from "./payload";
 export { SimCtx } from "./ctx";

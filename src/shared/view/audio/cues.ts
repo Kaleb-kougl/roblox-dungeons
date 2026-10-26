@@ -25,7 +25,7 @@
  *
  * Presentation only: reads sim state, never writes it.
  */
-import { partySize, type SimEvents, type SimState } from "shared/sim";
+import { BOSS_DEMONLORD_ID, archetypeIndex, partySize, type SimEvents, type SimState } from "shared/sim";
 import { AMBIENCE_IDS } from "shared/theme";
 import type { FxEvent } from "../fx/events";
 import { AUDIO_VIEW } from "./config";
@@ -51,6 +51,11 @@ export const SFX = {
 	enemyHurt: "sfx.enemy.hurt",
 	enemyDeath: "sfx.enemy.death",
 	bossRoar: "sfx.boss.roar",
+	/**
+	 * A taunting boss's phase change (BOSS_TAUNT_IDS: the Demon Lord's laugh), instead of the roar; a silent taunt
+	 * falls back to the roar (SFX_FALLBACK).
+	 */
+	bossTaunt: "sfx.boss.taunt",
 	bossDeath: "sfx.boss.death",
 	victory: "sfx.victory",
 	/** Breakable barrels / crates (docs/DECOR.md D4; the theme's BREAKABLE_AUDIO_EVENTS, required in every pack). */
@@ -92,6 +97,7 @@ export const ALL_SFX: ReadonlyArray<SfxId> = [
 	SFX.enemyHurt,
 	SFX.enemyDeath,
 	SFX.bossRoar,
+	SFX.bossTaunt,
 	SFX.bossDeath,
 	SFX.victory,
 	SFX.breakableHit,
@@ -129,7 +135,14 @@ export const PORT_SFX: ReadonlyArray<SfxId> = [
 	SFX.floorEnter,
 	SFX.depthUp,
 	SFX.gameOver,
+	SFX.bossTaunt,
 ];
+
+/**
+ * Bosses whose phase changes (FxEvent bossPhase, phase >= 2) play sfx.boss.taunt instead of the roar: the Demon Lord
+ * (his phase change is a laugh, the `taunt` animation). Mother Bramble keeps the roar.
+ */
+export const BOSS_TAUNT_IDS: ReadonlyArray<string> = [BOSS_DEMONLORD_ID];
 
 /** Music tracks by logical ID. */
 export const MUSIC = {
@@ -232,6 +245,8 @@ export const SFX_PRIORITY: Readonly<Record<SfxId, number>> = {
 	[SFX.victory]: 85,
 	[SFX.bossDeath]: 84,
 	[SFX.bossRoar]: 80,
+	/** The roar's slot: it plays in the roar's place. */
+	[SFX.bossTaunt]: 80,
 	[SFX.stairwellOpen]: 75,
 	[SFX.roomClear]: 72,
 	[SFX.relicTake]: 70,
@@ -279,12 +294,13 @@ export const JINGLE_SFX: ReadonlyArray<SfxId> = [SFX.gameOver, SFX.depthUp, SFX.
 
 /**
  * A silent sound falls back to another ID: a pack without a finisher clip plays the plain swing there, one without a
- * back clip the click. sfx.ui.move has none on purpose (a click on every gamepad focus move would buzz): it stays
- * silent until it has its own clip.
+ * back clip the click, one without a taunt the roar. sfx.ui.move has none on purpose (a click on every gamepad focus
+ * move would buzz): it stays silent until it has its own clip.
  */
 export const SFX_FALLBACK: Readonly<Partial<Record<SfxId, SfxId>>> = {
 	[SFX.playerFinisher]: SFX.playerSwing,
 	[SFX.uiBack]: SFX.uiClick,
+	[SFX.bossTaunt]: SFX.bossRoar,
 };
 
 /** Whether a sound ID has a clip in the theme pack (the controller passes `pack.sound(id).assetId !== undefined`). */
@@ -296,7 +312,8 @@ export const EVERY_ID: Playable = () => true;
 /** The FX events the mapper reads (the tracker's pooled buffer satisfies it). */
 export interface FxEventSource {
 	count(): number;
-	at(i: number): Pick<FxEvent, "type" | "boss" | "phase">;
+	/** `kind` (the archetype index; -1 / absent: unknown) picks a boss's taunt over the roar. */
+	at(i: number): Pick<FxEvent, "type" | "boss" | "phase"> & Partial<Pick<FxEvent, "kind">>;
 }
 
 /** One frame's cues: parallel id / volume-scale lists, reused frame after frame (no allocation once grown). */
@@ -344,6 +361,16 @@ function isJingle(id: string): boolean {
 	return (JINGLE_SFX as ReadonlyArray<string>).includes(id);
 }
 
+/** Archetype indices of BOSS_TAUNT_IDS (an unregistered id is left out). */
+function tauntKinds(): number[] {
+	const out: number[] = [];
+	for (const id of BOSS_TAUNT_IDS) {
+		const [ok, index] = pcall(() => archetypeIndex(id));
+		if (ok) out.push(index as number);
+	}
+	return out;
+}
+
 /**
  * Turns one frame's events and state into the cues to start. Keeps per-ID cooldowns, the enemy-shot counter and the
  * state watch.
@@ -359,6 +386,7 @@ export class AudioCueMapper {
 	private readonly pendingRanks = new Array<number>();
 	private pending = 0;
 	private now = 0;
+	private readonly tauntKinds = tauntKinds();
 
 	/** `playable`: whether an ID has a clip (silent IDs and their fallbacks; default: every ID plays). */
 	constructor(private readonly playable: Playable = EVERY_ID) {}
@@ -538,8 +566,10 @@ export class AudioCueMapper {
 			const e = fx.at(i);
 			if (e.type === "hit") this.cue(SFX.enemyHurt, 1);
 			else if (e.type === "killed" && !e.boss) this.cue(SFX.enemyDeath, 1);
-			else if (e.type === "bossPhase" && e.phase >= 2) this.cue(SFX.bossRoar, 1);
-			else if (e.type === "bossDefeated") this.cue(SFX.bossDeath, 1);
+			else if (e.type === "bossPhase" && e.phase >= 2) {
+				const kind = e.kind;
+				this.cue(kind !== undefined && this.tauntKinds.includes(kind) ? SFX.bossTaunt : SFX.bossRoar, 1);
+			} else if (e.type === "bossDefeated") this.cue(SFX.bossDeath, 1);
 		}
 		// Breakables (summed over the frame's ticks): a break plays its own sound; the hit sound only for hits that
 		// did not break (breakableHits counts the breaking hit too).

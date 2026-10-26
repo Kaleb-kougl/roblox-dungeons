@@ -17,13 +17,16 @@ import {
 	DECOR_FX_NAMES,
 	DECOR_FX_ROLES,
 	DECOR_KINDS,
+	ENDLESS_BOSS_IDS,
 	breakableId,
 	decorFxId,
 } from "./contract";
 import { ThemePack } from "./pack";
+import { THEME_PACKS } from "./packs";
 import { PLACEHOLDER_MANIFEST } from "./packs/placeholder";
 import { PLACEHOLDER_VISUALS } from "./placeholders";
 import { COLOR_ROLES, type ColorRole } from "./types";
+import { sortedKeys } from "./util";
 
 const REQUESTED_ASSET_IDS = [
 	"class.vanguard",
@@ -33,6 +36,7 @@ const REQUESTED_ASSET_IDS = [
 	"enemy.sprayer",
 	"enemy.caster",
 	"boss.act1",
+	"boss.demonlord",
 	"item.weapon",
 	"item.weapon.sword",
 	"item.weapon.bow",
@@ -84,6 +88,7 @@ const REQUESTED_STRING_KEYS = [
 	"weapon.sword.name",
 	"weapon.bow.name",
 	"boss.act1.name",
+	"boss.demonlord.name",
 	"boss.hud.phase",
 	"fx.settings.title",
 	"fx.settings.healthBars",
@@ -165,6 +170,25 @@ describe("IDs the web build's code requests", () => {
 			]).toEqual([b.id, true, true, true]);
 		}
 		expect(warnings).toEqual([]);
+	});
+});
+
+// Roblox port (docs/BOSS_DEMONLORD.md D2): the endless bosses' sprite and name (boss bar, run-over panel) resolve in
+// every bundled pack, without a warning. The Demon Lord's display name is fixed by the plan's decisions.
+describe("IDs of the port's endless bosses", () => {
+	it("every bundled pack has each boss's asset and name", () => {
+		for (const packId of sortedKeys(THEME_PACKS)) {
+			const warnings = new Array<string>();
+			const pack = new ThemePack(THEME_PACKS[packId], { warn: (m) => warnings.push(m) });
+			for (const id of ENDLESS_BOSS_IDS) {
+				expect([packId, id, pack.has(id), pack.hasString(`${id}.name`)]).toEqual([packId, id, true, true]);
+				pack.placeholder(id);
+				pack.str(`${id}.name`);
+			}
+			expect([packId, pack.str("boss.demonlord.name")]).toEqual([packId, "The Demon Lord"]);
+			expect([packId, pack.str("boss.act1.name")]).toEqual([packId, "Mother Bramble"]);
+			expect([packId, warnings]).toEqual([packId, []]);
+		}
 	});
 });
 
