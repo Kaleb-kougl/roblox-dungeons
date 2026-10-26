@@ -4,7 +4,8 @@
  * entry switches to its art only when every file it needs has an ID, so with no IDs this pack draws exactly what the
  * placeholder pack draws:
  *   - class.vanguard, enemy.swarmer: `sprites` once the sheets of every REQUIRED animation are uploaded, else
- *     placeholder; an optional animation (attack.1..3) is left out until its sheet is uploaded;
+ *     placeholder; an optional animation (attack.1..3) is left out until its sheet is uploaded; a sheet's outline
+ *     (layout `outlineFile`, enemy sets) becomes its `outlineAssetId` once uploaded, and never holds the set back;
  *   - tile.biome.1.floor (with tilesPerImage), ui.ring.player, ui.marker.pedestal: `image` once uploaded, else
  *     placeholder (the ui IDs exist either way);
  *   - the floor colour of every biome tiled with tile.biome.1.floor becomes VALE_FLOOR_HEX (the texture's mean colour)
@@ -111,7 +112,17 @@ function spriteAsset(id: string, layout: ValeSpriteLayout, ids: AssetIds): Sprit
 		}
 		const sheet = layout.sheets[i];
 		remap.set(i, sheets.size());
-		sheets.push({ assetId: ids[sheet.file] as SpriteSheetImage["assetId"], w: sheet.w, h: sheet.h });
+		const image: SpriteSheetImage = {
+			assetId: ids[sheet.file] as SpriteSheetImage["assetId"],
+			w: sheet.w,
+			h: sheet.h,
+		};
+		// The baked rim (enemy outline plan O4) joins only once uploaded; until then the set draws without it.
+		const outlineId = sheet.outlineFile !== undefined ? ids[sheet.outlineFile] : undefined;
+		if (outlineId !== undefined) {
+			image.outlineAssetId = outlineId as SpriteSheetImage["assetId"];
+		}
+		sheets.push(image);
 	}
 	const animations: Record<string, SpriteAnimationDef> = {};
 	for (const name of kept) {

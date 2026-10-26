@@ -30,6 +30,10 @@ tile images (docs/ART.md task S2). The port also adds two slots (docs/DECOR.md):
    (>= 4.5:1), each per biome. Port additions: `enemyBullet` against every breakable role (>= 3.0:1, bullets fly
    over crates as over walls) and every `decor.fx.*` role at least 40 (CIE76 colour difference) away from
    `enemyBullet` and `enemyBulletOutline` ([decor fx colours](#decor-fx-colour-roles)).
+   Enemy outline (enemy outline plan O1, `enemyOutlineReport`): `enemyOutline` against every biome's floor and wall
+   (>= `MIN_ENEMY_OUTLINE_CONTRAST` = 3.0:1; at the darkest decor band too, `shared/view` `decorBandContrastReport`,
+   checked by its spec for every bundled pack) and at least `MIN_ENEMY_OUTLINE_BULLET_DIFFERENCE` = 40 (CIE76) from
+   `enemyBullet` and `enemyBulletOutline`.
 5. **Names come from the string table** (with `{var}` interpolation and optional `locales`).
 6. **One pack at a time.** Switching packs is a restart.
 
@@ -110,8 +114,8 @@ lists `THEME_PACKS` (`packs/index.ts`).
 Everything that does not need a Roblox datatype is plain Luau-safe TS, tested under Lune: `color.ts` (hex, WCAG
 contrast, CIE76 `colorDifference`), `strings.ts` (`interpolate`, `placeholders`, `templateProblem`), `validate.ts`
 (`validateManifest`, `contrastReport`, `juiceContrastReport`, `decorFxReport`, `breakableContrastReport`,
-`isGameplayKey`), `core.ts` (`ThemeCore` lookups and fallbacks, `decor` / `decorVariants` / `ambient` / `breakable`, `sprites` ->
-`SpriteSetLayout`, `frameRect`,
+`enemyOutlineReport`, `isGameplayKey`), `core.ts` (`ThemeCore` lookups and fallbacks, `decor` / `decorVariants` / `ambient` / `breakable`, `sprites` ->
+`SpriteSetLayout`, `spriteSheetOutline`, `frameRect`,
 `frameUV`, `uvToPixelRect`, `frameIndex`), `placeholders.ts`, `contract.ts`. `pack.ts` only converts to `Color3` /
 `Vector2`. Warnings go to Roblox `warn` unless a `warn` sink is passed (the specs pass one to assert warn-once).
 
@@ -125,13 +129,13 @@ its cell by `PLACEHOLDER_PROPORTIONS`. Size is `[x width, y height, z depth alon
 | ID | Shape | Size (studs) | Colour | Material / outline | Notes |
 | --- | --- | --- | --- | --- | --- |
 | `class.*` | Capsule | 3 x 6 x 3 | `class.<id>` (vanguard = tan `#c9b37e`) | SmoothPlastic | faces, base on floor |
-| `enemy.swarmer` | Ball | 2 x 2 x 2 | `enemy.swarmer` | SmoothPlastic | small ball |
-| `enemy.sniper` | Wedge | 3 x 3 x 4 | `enemy.sniper` | SmoothPlastic | points along its facing |
-| `enemy.bruiser` | Block | 4 x 4 x 4 | `enemy.bruiser` | SmoothPlastic | heavy block |
-| `enemy.sprayer` | Cylinder | 3 x 2.5 x 3 | `enemy.sprayer` | SmoothPlastic | squat drum |
-| `enemy.caster` | Capsule | 2.5 x 4 x 2.5 | `enemy.caster` | SmoothPlastic | slim capsule |
-| `enemy.summoner` | Cylinder | 3 x 4 x 3 | `enemy.summoner` | SmoothPlastic | tall drum |
-| `boss.1`..`boss.5`, `boss.act1` | Block | 12 x 9 x 12 | `boss` | SmoothPlastic | large block |
+| `enemy.swarmer` | Ball | 2 x 2 x 2 | `enemy.swarmer` | SmoothPlastic, outline `enemyOutline` | small ball |
+| `enemy.sniper` | Wedge | 3 x 3 x 4 | `enemy.sniper` | SmoothPlastic, outline `enemyOutline` | points along its facing |
+| `enemy.bruiser` | Block | 4 x 4 x 4 | `enemy.bruiser` | SmoothPlastic, outline `enemyOutline` | heavy block |
+| `enemy.sprayer` | Cylinder | 3 x 2.5 x 3 | `enemy.sprayer` | SmoothPlastic, outline `enemyOutline` | squat drum |
+| `enemy.caster` | Capsule | 2.5 x 4 x 2.5 | `enemy.caster` | SmoothPlastic, outline `enemyOutline` | slim capsule |
+| `enemy.summoner` | Cylinder | 3 x 4 x 3 | `enemy.summoner` | SmoothPlastic, outline `enemyOutline` | tall drum |
+| `boss.1`..`boss.5`, `boss.act1` | Block | 12 x 9 x 12 | `boss` | SmoothPlastic, outline `enemyOutline` | large block |
 | `bullet.enemy.small/medium/large` | Ball | 2 x 2 x 2 | `enemyBullet` | **Neon**, outline `enemyBulletOutline` | centred; scaled to the gameplay radius |
 | `bullet.enemy.needle` | Block | 0.5 x 0.5 x 2 | `enemyBullet` | **Neon**, outline `enemyBulletOutline` | along the velocity |
 | `bullet.player.basic` | Block | 0.5 x 0.5 x 2 | `playerBullet` | **Neon**, outline `playerBulletOutline` | thin bolt along the velocity |
@@ -221,7 +225,7 @@ its exact checks. Atlases are normally written by the atlas pipeline (S3), not b
 	facings: { count: 8, zeroDeg: 0, ccw: true },
 	sheets: [                         // the atlases, each <= 1024x1024 and at least one cell
 		{ assetId: "rbxassetid://<n>", w: 1024, h: 448 },
-		{ assetId: "rbxassetid://<n>", w: 256, h: 112 },
+		{ assetId: "rbxassetid://<n>", w: 256, h: 112, outlineAssetId: "rbxassetid://<n>" },  // + baked rim
 	],
 	animations: {                     // base names; the slot's names are required, extras ("attack.1") allowed
 		move:  { sheet: 0, start: 0,  frames: 8, fps: 10, loop: true },
@@ -242,13 +246,21 @@ so by default an animation is `count` runs of `frames` cells, one run per facing
 stand-in reuse frame 0 of every facing of a longer animation (`idle` above). The validator checks every referenced
 cell, all facings and all frames, against the sheet's capacity.
 
+**Outline sheets** (enemy outline plan O4). A sheet may carry `outlineAssetId`: the atlas pipeline's
+`<sheet>-outline.png` (O3), same size and cell grid as the sheet, white, alpha only where the rim goes. Every frame
+from that sheet then has an outline image (`SpriteFrameRect.outlineAssetId`, `SpriteFrame.outlineImage`) with the
+frame's own rect; the renderer (client SpriteView, opt-in) draws it in a second ImageLabel under the frame, tinted the
+`enemyOutline` role, while the actor is alive and the `KV_EnemyOutline` switch is on (shared/view actorOutlined,
+spriteOutlineVisible). Optional per sheet: a sheet without one draws rimless, and a set without any still draws.
+
 **Facings** are in screen space: facing `d` points at `zeroDeg + d * 360 / count` degrees, counter-clockwise when
 `ccw`, where 0 = screen right and 90 = screen up. `count` is 1 (not directional), 4, 8 or 16. The atlas pipeline
 always writes `zeroDeg: 0, ccw: true`.
 
 **Checks** (`validate.ts`): `frameW` / `frameH` integers in [1, 1024]; `pivot` inside the cell; `pixelsPerTile` > 0;
 `resample` "Default" | "Pixelated"; `facings.count` 1 | 4 | 8 | 16, `zeroDeg` finite, `ccw` boolean; `sheets`
-non-empty, each `rbxassetid://<digits>`, `w` / `h` integers in [1, 1024] and at least the cell; the slot's base
+non-empty, each `rbxassetid://<digits>`, `w` / `h` integers in [1, 1024] and at least the cell, an optional
+`outlineAssetId` also `rbxassetid://<digits>` and not the sheet's own `assetId`; the slot's base
 animations present; every animation's `sheet` a valid index, `start` >= 0, `frames` >= 1, `stride` >= 1 (optional),
 `fps` in (0, 60], `loop` boolean, and every cell inside its sheet. Animation names are IDs (exempt from the
 gameplay-key scan); a gameplay key anywhere else in the set (`hitbox`, `duration`, ...) is still rejected. Timings
@@ -257,7 +269,8 @@ that drive one-shots (roll, hit, death) stay in gameplay data; the renderer stre
 **Runtime guard.** A pack that fails validation still loads, so `ThemeCore.sprites` re-checks what the renderer
 relies on: a bad cell, pivot, `pixelsPerTile`, `resample`, facings or sheet rejects the set (warned once with the
 reason; the placeholder is drawn); a bad optional animation (fields, fps, `stride < frames`, cells outside the sheet)
-is dropped and warned once; a bad or missing required animation rejects the set. The validator also rejects a
+is dropped and warned once; a bad or missing required animation rejects the set; a non-string `outlineAssetId` is
+ignored (warned once): that sheet draws without a rim. The validator also rejects a
 `stride` smaller than `frames` when there are several facings (they would share cells).
 
 **Runtime.** `pack.sprites(id)` (cached) returns a `SpriteSet`, or `undefined` for any other kind (no warning; draw

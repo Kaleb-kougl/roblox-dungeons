@@ -457,6 +457,13 @@ export const REQUIRED_STRING_KEYS: ReadonlyArray<string> = [
  */
 export const MIN_ENEMY_BULLET_CONTRAST = 3.0;
 
+/**
+ * Roblox port (enemy outline plan O1): minimum WCAG contrast ratio between `enemyOutline` and every biome floor and
+ * wall, at full light and (shared/view decorBandContrastReport, run by its spec for every bundled pack) at the darkest
+ * decor band. The rim is what makes an enemy read on a floor of its own colour, so it takes the bullets' graphics bar.
+ */
+export const MIN_ENEMY_OUTLINE_CONTRAST = 3.0;
+
 /** Juice: enemy health bar fill (enemyHealth, enemyHealthElite) vs its back plate, WCAG graphics bar. */
 export const MIN_HEALTH_BAR_CONTRAST = 3.0;
 /** Juice: every damage-number colour vs every biome floor (WCAG AA text; the digits are tiny). */
@@ -621,6 +628,13 @@ export const ENEMY_BULLET_ROLES: ReadonlyArray<ColorRole> = ["enemyBullet", "ene
  * zone and biome particle colour the Forge themes use sits at 77 or more.
  */
 export const MIN_DECOR_FX_BULLET_DIFFERENCE = 40;
+
+/**
+ * Roblox port (enemy outline plan O1): minimum CIE76 colour difference between `enemyOutline` and every
+ * ENEMY_BULLET_ROLES colour, so the rim around an enemy never reads as a bullet. The same bar as decor fx
+ * (MIN_DECOR_FX_BULLET_DIFFERENCE, for the same reason); the placeholder rim #ff3b30 is 63 from enemyBullet #ff3fa4.
+ */
+export const MIN_ENEMY_OUTLINE_BULLET_DIFFERENCE = 40;
 
 /**
  * Readability caps for ambient particles (docs/DECOR.md Phase 2 part 2), owned by the theme because a pack's ambient

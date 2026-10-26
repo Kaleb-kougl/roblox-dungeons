@@ -69,6 +69,10 @@ export const COLOR_ROLES = [
 	"boss",
 	// Enemy attack warnings (telegraph lines, slam shockwaves): hot like enemy bullets, but not a bullet
 	"telegraph",
+	// Roblox port (enemy outline plan O1): the rim drawn around every living enemy and the boss (the placeholders'
+	// shared Highlight; later the sprites' baked outline). The validator holds it to MIN_ENEMY_OUTLINE_CONTRAST against
+	// every biome floor and wall and MIN_ENEMY_OUTLINE_BULLET_DIFFERENCE (CIE76) from enemyBullet / enemyBulletOutline.
+	"enemyOutline",
 	// Juice (src/fx in the web build): enemy health bars, damage numbers, death particles. The validator checks
 	// enemyHealth (and enemyHealthElite) against enemyHealthBack (>= 3:1) and every damage-number role against
 	// every biome floor (>= 4.5:1).
@@ -262,6 +266,12 @@ export interface SpriteSheetImage {
 	assetId: RobloxAssetId;
 	w: number;
 	h: number;
+	/**
+	 * Optional baked outline of this sheet (enemy outline plan O4; the atlas pipeline's `<sheet>-outline.png`): same
+	 * size and cell grid, white, alpha only where the rim goes. The renderer draws it under each frame with the same
+	 * rect, tinted the `enemyOutline` role. Absent: the sheet's frames draw without a rim.
+	 */
+	outlineAssetId?: RobloxAssetId;
 }
 
 export interface SpriteAnimationDef {

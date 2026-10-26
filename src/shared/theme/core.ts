@@ -132,6 +132,8 @@ export interface SpriteFrameRect {
 	readonly sheet: number;
 	/** That sheet's uploaded image. */
 	readonly assetId: string;
+	/** That sheet's outline image (spriteSheetOutline), drawn under the frame with the same rect; undefined: no rim. */
+	readonly outlineAssetId?: string;
 	readonly x: number;
 	readonly y: number;
 	readonly w: number;
@@ -168,6 +170,15 @@ export interface SpriteSetLayout {
 	 * `idle` if the set has it, else the first name.
 	 */
 	frame(anim: string, facing: number, index: number): SpriteFrameRect;
+}
+
+/**
+ * A sprite sheet's outline image (SpriteSheetImage.outlineAssetId), or undefined when it has none or the field is not a
+ * string (a pack that failed validation still loads: its frames then draw without a rim, never with a bad Image).
+ */
+export function spriteSheetOutline(sheet: Readonly<SpriteSheetImage>): string | undefined {
+	const id: unknown = sheet.outlineAssetId;
+	return typeIs(id, "string") ? id : undefined;
 }
 
 /** Fallback for an unknown animation name in a sprite set (when it has one). */
@@ -288,6 +299,7 @@ class SpriteSetLayoutImpl implements SpriteSetLayout {
 		return {
 			sheet: a.sheet,
 			assetId: sheet.assetId,
+			outlineAssetId: spriteSheetOutline(sheet),
 			x: (cell % perRow) * this.frameW,
 			y: math.floor(cell / perRow) * this.frameH,
 			w: this.frameW,
@@ -639,6 +651,14 @@ export class ThemeCore {
 		const frameH = def.frameH as number;
 		const facings = def.facings as unknown as SpriteFacings;
 		const sheets = def.sheets as unknown as ReadonlyArray<Readonly<SpriteSheetImage>>;
+		sheets.forEach((sheet, i) => {
+			if (sheet.outlineAssetId !== undefined && spriteSheetOutline(sheet) === undefined) {
+				this.warnOnce(
+					`sprites:${id}:outline:${i}`,
+					`sprite set "${id}" sheet ${i} has a bad outlineAssetId, drawing it without a rim`,
+				);
+			}
+		});
 		const animations: Record<string, SpriteAnimationDef> = {};
 		const slot = slotFor(id);
 		const required = slot !== undefined ? requiredBaseAnimations(slot) : [];

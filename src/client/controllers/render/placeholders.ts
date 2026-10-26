@@ -117,6 +117,11 @@ export function setModelTransparency(model: PlaceholderModel, transparency: numb
 	for (const piece of model.pieces) piece.part.Transparency = transparency;
 }
 
+/** Reparents every piece of `model` to `parent` (a piece already there is not written). */
+export function setModelParent(model: PlaceholderModel, parent: Instance): void {
+	for (const piece of model.pieces) if (piece.part.Parent !== parent) piece.part.Parent = parent;
+}
+
 export function destroyModel(model: PlaceholderModel): void {
 	for (const piece of model.pieces) piece.part.Destroy();
 }

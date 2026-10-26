@@ -16,9 +16,18 @@ export interface ValeSheetFile {
 	h: number;
 }
 
+/**
+ * A sprite atlas. `outlineFile`, present exactly on sets with an outline (art/atlases.json `outline`), names
+ * its outline sheet: same size and cell grid, white, alpha = the body mask dilated by `widthPx` minus the
+ * sprite's own alpha. Drawn under the frame with the same rect and tinted, it is the enemy contrast rim.
+ */
+export interface ValeSpriteSheetFile extends ValeSheetFile {
+	outlineFile?: string;
+}
+
 /** SpriteSetAsset without `kind`, with sheets named by file instead of asset ID. */
 export interface ValeSpriteLayout extends Omit<SpriteSetAsset, "kind" | "sheets"> {
-	sheets: Array<ValeSheetFile>;
+	sheets: Array<ValeSpriteSheetFile>;
 }
 
 /** A single image in art/build/. `pivot` (pixels from the top-left) is where it is anchored, when it matters. */
@@ -57,15 +66,15 @@ export const VALE_SPRITE_LAYOUTS: Record<string, ValeSpriteLayout> = {
 		},
 	},
 	"enemy.swarmer": {
-		frameW: 94,
-		frameH: 70,
-		pivot: { x: 40, y: 49 },
+		frameW: 98,
+		frameH: 74,
+		pivot: { x: 42, y: 51 },
 		pixelsPerTile: 29.6,
 		resample: "Default",
 		facings: { count: 16, zeroDeg: 0, ccw: true },
 		sheets: [
-			{ file: "swarmer-move.png", w: 940, h: 910 },
-			{ file: "swarmer-death.png", w: 940, h: 910 },
+			{ file: "swarmer-move.png", w: 980, h: 962, outlineFile: "swarmer-move-outline.png" },
+			{ file: "swarmer-death.png", w: 980, h: 962, outlineFile: "swarmer-death-outline.png" },
 		],
 		animations: {
 			attack: { sheet: 0, start: 0, frames: 8, fps: 14, loop: true },

@@ -613,10 +613,10 @@ describe("spriteBillboard", () => {
 	it("keeps the whole cell above the floor and the pivot on the feet, seen through the real camera", () => {
 		const basis = isoBasis(degToRad(CAMERA_YAW_DEG), degToRad(CAMERA_PITCH_DEG));
 		const { right, up, forward } = basis;
-		// The vale layouts (knight 128 px at 38 px per tile, pivot (67, 105); skeleton 94x70 at 29.6, pivot (40, 49)).
+		// The vale layouts (knight 128 px at 38 px per tile, pivot (67, 105); skeleton 98x74 at 29.6, pivot (42, 51)).
 		for (const layout of [
 			{ frameW: 128, frameH: 128, pivot: { x: 67, y: 105 }, pixelsPerTile: 38 },
-			{ frameW: 94, frameH: 70, pivot: { x: 40, y: 49 }, pixelsPerTile: 29.6 },
+			{ frameW: 98, frameH: 74, pivot: { x: 42, y: 51 }, pixelsPerTile: 29.6 },
 		]) {
 			const bb = spriteBillboard(layout, 4);
 			const s = 4 / layout.pixelsPerTile;

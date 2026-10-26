@@ -14,12 +14,15 @@ import { VALE_BIOME_MATERIALS, VALE_MANIFEST, buildValeManifest } from "./manife
 
 const quiet = () => undefined;
 
-/** Every art/build file the layout names, sorted. */
+/** Every art/build file the layout names (outline sheets included), sorted. */
 function allFiles(): Array<string> {
 	const files = new Array<string>();
 	for (const id of sortedKeys(VALE_SPRITE_LAYOUTS)) {
 		for (const sheet of VALE_SPRITE_LAYOUTS[id].sheets) {
 			files.push(sheet.file);
+			if (sheet.outlineFile !== undefined) {
+				files.push(sheet.outlineFile);
+			}
 		}
 	}
 	for (const id of sortedKeys(VALE_IMAGE_LAYOUTS)) {
@@ -79,8 +82,98 @@ describe("vale pack", () => {
 		}
 	});
 
+	it("every enemy sprite set has an outline sheet per sheet; the player's sets have none", () => {
+		// art/atlases.json: each enemy set needs `outline` (enemy outline plan O3), or its sprites draw without a rim
+		let enemies = 0;
+		for (const id of sortedKeys(VALE_SPRITE_LAYOUTS)) {
+			const enemy = id.sub(1, 6) === "enemy.";
+			if (enemy) {
+				enemies += 1;
+			}
+			for (const sheet of VALE_SPRITE_LAYOUTS[id].sheets) {
+				const expected = enemy ? `${sheet.file.sub(1, -5)}-outline.png` : undefined;
+				expect([id, sheet.file, sheet.outlineFile]).toEqual([id, sheet.file, expected]);
+			}
+		}
+		expect(enemies).toBeGreaterThan(0);
+		expect(VALE_SPRITE_LAYOUTS["enemy.swarmer"].sheets[0].outlineFile).toBe("swarmer-move-outline.png");
+		expect(VALE_SPRITE_LAYOUTS["enemy.swarmer"].sheets[1].outlineFile).toBe("swarmer-death-outline.png");
+	});
+
 	it("the bundled pack is built from assetIds.ts", () => {
 		expect(VALE_MANIFEST).toEqual(buildValeManifest(VALE_ASSET_IDS));
+	});
+
+	it("as bundled, enemy.swarmer is its placeholder: its pre-O3 (94x70) IDs were removed until re-uploaded", () => {
+		// The uploaded swarmer atlases had the old cell grid; the pad change (O3) moved every cell. Until the four
+		// swarmer files (two atlases, two outline sheets) are re-uploaded, the swarmer draws its outlined ball.
+		for (const file of ["swarmer-move.png", "swarmer-death.png"]) {
+			expect([file, VALE_ASSET_IDS[file]]).toEqual([file, undefined]);
+		}
+		expect(VALE_MANIFEST.assets["enemy.swarmer"]).toEqual({ kind: "placeholder" });
+		const pack = new ThemePack(VALE_MANIFEST, { warn: quiet });
+		expect(pack.sprites("enemy.swarmer")).toBe(undefined);
+		expect(pack.placeholder("enemy.swarmer").outline).toBe("enemyOutline");
+		// the player's set is unaffected
+		expect(VALE_MANIFEST.assets["class.vanguard"].kind).toBe("sprites");
+	});
+
+	it("maps each sheet's outline file to outlineAssetId when uploaded", () => {
+		const ids = fakeIds();
+		const set = buildValeManifest(ids).assets["enemy.swarmer"] as SpriteSetAsset;
+		expect(set.kind).toBe("sprites");
+		expect(set.sheets).toEqual([
+			{
+				assetId: ids["swarmer-move.png"],
+				w: 980,
+				h: 962,
+				outlineAssetId: ids["swarmer-move-outline.png"],
+			},
+			{
+				assetId: ids["swarmer-death.png"],
+				w: 980,
+				h: 962,
+				outlineAssetId: ids["swarmer-death-outline.png"],
+			},
+		]);
+		// every frame carries its own sheet's outline
+		const pack = new ThemePack(buildValeManifest(ids), { warn: quiet });
+		const sprites = pack.sprites("enemy.swarmer")!;
+		expect(sprites.frame("move", 3, 2).outlineImage).toBe(ids["swarmer-move-outline.png"]);
+		expect(sprites.frame("death", 3, 2).outlineImage).toBe(ids["swarmer-death-outline.png"]);
+		// the player's sheets have no outline file, so no outline
+		const vanguard = buildValeManifest(ids).assets["class.vanguard"] as SpriteSetAsset;
+		for (const sheet of vanguard.sheets) {
+			expect(sheet.outlineAssetId).toBe(undefined);
+		}
+		expect(pack.sprites("class.vanguard")!.frame("run", 0, 0).outlineImage).toBe(undefined);
+	});
+
+	it("a set whose outline sheets are not uploaded still switches on, rimless", () => {
+		const m = buildValeManifest(fakeIds("swarmer-move-outline.png", "swarmer-death-outline.png"));
+		expect(validateManifest(m, { packId: "vale" })).toEqual([]);
+		const set = m.assets["enemy.swarmer"] as SpriteSetAsset;
+		expect(set.kind).toBe("sprites");
+		expect(set.sheets.size()).toBe(2);
+		for (const sheet of set.sheets) {
+			expect(sheet.outlineAssetId).toBe(undefined);
+		}
+		const sprites = new ThemePack(m, { warn: quiet }).sprites("enemy.swarmer")!;
+		expect(sprites).never.toBe(undefined);
+		expect(sprites.frame("move", 0, 0).outlineImage).toBe(undefined);
+		expect(sprites.frame("death", 0, 0).outlineImage).toBe(undefined);
+		// one outline uploaded: only its sheet has a rim
+		const half = buildValeManifest(fakeIds("swarmer-death-outline.png"));
+		expect(validateManifest(half, { packId: "vale" })).toEqual([]);
+		const halfSet = new ThemePack(half, { warn: quiet }).sprites("enemy.swarmer")!;
+		expect(halfSet.frame("move", 0, 0).outlineImage).toBe(fakeIds()["swarmer-move-outline.png"]);
+		expect(halfSet.frame("death", 0, 0).outlineImage).toBe(undefined);
+		// outline sheets alone never switch a set on: both outlines uploaded, neither atlas
+		const outlinesOnlyIds = fakeIds("swarmer-move.png", "swarmer-death.png");
+		expect(outlinesOnlyIds["swarmer-move-outline.png"]).never.toBe(undefined);
+		expect(outlinesOnlyIds["swarmer-death-outline.png"]).never.toBe(undefined);
+		const outlinesOnly = buildValeManifest(outlinesOnlyIds);
+		expect(outlinesOnly.assets["enemy.swarmer"]).toEqual({ kind: "placeholder" });
 	});
 
 	it("with every file uploaded validates with zero problems (layout fits the contract v2 validator)", () => {
@@ -220,24 +313,37 @@ describe("vale sprite cells (hand-computed from the generated layout)", () => {
 		expect(set!.facings).toEqual({ count: 8, zeroDeg: 0, ccw: true });
 	});
 
-	it("enemy.swarmer: 94x70 cells, 10 per row, move and death on two atlases", () => {
+	it("enemy.swarmer: 98x74 cells (pad 3 for the outline), 10 per row, move and death on two atlases", () => {
 		const set = core.sprites("enemy.swarmer");
 		expect(set).never.toBe(undefined);
+		expect(VALE_SPRITE_LAYOUTS["enemy.swarmer"].sheets.map((s) => [s.w, s.h])).toEqual([
+			[980, 962],
+			[980, 962],
+		]);
 		// move: facing 5, frame 6 -> cell 46 -> column 6, row 4
 		expect(set!.frame("move", 5, 6)).toEqual({
 			sheet: 0,
 			assetId: ids["swarmer-move.png"],
-			x: 564,
-			y: 280,
-			w: 94,
-			h: 70,
+			outlineAssetId: ids["swarmer-move-outline.png"],
+			x: 588,
+			y: 296,
+			w: 98,
+			h: 74,
 		});
 		// idle = move frame 0 held (stride 8): facing 3 -> cell 24 -> column 4, row 2, every index
 		const idle = set!.frame("idle", 3, 5);
-		expect([idle.sheet, idle.x, idle.y]).toEqual([0, 376, 140]);
+		expect([idle.sheet, idle.x, idle.y]).toEqual([0, 392, 148]);
 		// death: facing 15, frame 7 -> cell 127 -> column 7, row 12 of the second atlas
 		const death = set!.frame("death", 15, 7);
-		expect([death.sheet, death.assetId, death.x, death.y]).toEqual([1, ids["swarmer-death.png"], 658, 840]);
+		expect([death.sheet, death.assetId, death.outlineAssetId, death.x, death.y]).toEqual([
+			1,
+			ids["swarmer-death.png"],
+			ids["swarmer-death-outline.png"],
+			686,
+			888,
+		]);
+		// the pad grew by 2 on each side, so the feet moved by (2, 2) in the cell (was (40, 49) at pad 1)
+		expect(set!.pivot).toEqual({ x: 42, y: 51 });
 		// facings wrap: 16 is 0, -1 is 15
 		expect(set!.frame("move", 16, 0)).toEqual(set!.frame("move", 0, 0));
 		expect(set!.frame("move", -1, 2)).toEqual(set!.frame("move", 15, 2));
@@ -248,7 +354,8 @@ describe("vale sprite cells (hand-computed from the generated layout)", () => {
 		expect(set).never.toBe(undefined);
 		const f = set!.frame("move", 5, 6);
 		expect(f.image).toBe(ids["swarmer-move.png"]);
-		expect([f.offset.X, f.offset.Y, f.size.X, f.size.Y]).toEqual([564, 280, 94, 70]);
+		expect(f.outlineImage).toBe(ids["swarmer-move-outline.png"]);
+		expect([f.offset.X, f.offset.Y, f.size.X, f.size.Y]).toEqual([588, 296, 98, 74]);
 		expect(set!.resample).toBe("Default");
 		expect(pack.texture("tile.biome.1.floor")).toBe(ids["tile-biome1-floor.png"]);
 	});

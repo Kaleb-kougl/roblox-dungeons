@@ -12,6 +12,9 @@
  *   sprites.ts    sprite renderer logic: world facing -> screen facing, animation + frame from sim state, billboard
  *   breakables.ts breakable barrels / crates on screen: the frame diff, hit blink / shake, placement, debris, aim clip
  *                 (tunables: BREAKABLE_VIEW in breakablesConfig.ts)
+ *   outline.ts    enemy outlines (enemy outline plan O2 / O4): who gets the rim (actorOutlined), the actor folder's
+ *                 groups, the shared Highlight's look, the KV_EnemyOutline switch (ACTOR_OUTLINE) and when a sprite's
+ *                 baked rim draws (spriteOutlineVisible)
  *   decor/        the decor plan (docs/DECOR.md R3 / R6 / R8): planDecor, decorProfile, fade selection, glow points
  *
  * Sub-barrels (import from the folder): `shared/view/fx` (the juice layer: hit tracker, hitstop, bars, numbers,
@@ -28,4 +31,5 @@ export * from "./sprites";
 export * from "./floorTexture";
 export * from "./breakablesConfig";
 export * from "./breakables";
+export * from "./outline";
 export * from "./decor";

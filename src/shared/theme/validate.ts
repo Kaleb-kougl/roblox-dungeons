@@ -13,6 +13,9 @@
  * Roblox port (docs/DECOR.md R2, D4): the decor slot (`decor.*`: ID grammar, layers per kind, world-art fields,
  * ambient particle caps), the breakable slot (`breakable.*`), decor fx colour roles kept away from the enemy-bullet
  * roles (CIE76 colour difference) and enemy bullets readable on breakables (WCAG contrast).
+ *
+ * Roblox port (enemy outline plan O1): the `enemyOutline` rim readable on every biome floor and wall (WCAG contrast)
+ * and kept away from the enemy-bullet roles (CIE76), `enemyOutlineReport`.
  */
 
 import { colorDifference, contrastRatio, isHexColor } from "./color";
@@ -39,6 +42,8 @@ import {
 	MIN_DAMAGE_NUMBER_CONTRAST,
 	MIN_DECOR_FX_BULLET_DIFFERENCE,
 	MIN_ENEMY_BULLET_CONTRAST,
+	MIN_ENEMY_OUTLINE_BULLET_DIFFERENCE,
+	MIN_ENEMY_OUTLINE_CONTRAST,
 	MIN_HEALTH_BAR_CONTRAST,
 	REQUIRED_ASSET_IDS,
 	REQUIRED_STRING_KEYS,
@@ -344,6 +349,78 @@ export function breakableContrastReport(manifest: unknown): Array<BreakableContr
 	return out;
 }
 
+/**
+ * The enemy outline (enemy outline plan O1): `enemyOutline` vs every biome's floor and wall (WCAG contrast,
+ * >= MIN_ENEMY_OUTLINE_CONTRAST; check "surface", `against` = the biome ID, `surface` set) and vs every
+ * ENEMY_BULLET_ROLES colour (CIE76 colour difference, >= MIN_ENEMY_OUTLINE_BULLET_DIFFERENCE; check "bullet",
+ * `against` = the role). `value` is the ratio or the difference. Full light only: the darkest decor band is checked by
+ * shared/view decorBandContrastReport (the depth bands live there).
+ */
+export interface EnemyOutlineEntry {
+	check: "surface" | "bullet";
+	color: string;
+	against: string;
+	/** The biome surface (check "surface" only). */
+	surface?: "floor" | "wall";
+	againstColor: string;
+	value: number;
+	min: number;
+	ok: boolean;
+}
+
+export function enemyOutlineReport(manifest: unknown): Array<EnemyOutlineEntry> {
+	const out = new Array<EnemyOutlineEntry>();
+	if (!isObj(manifest) || !isObj(manifest.colors)) {
+		return out;
+	}
+	const colors = manifest.colors;
+	const color = colors.enemyOutline;
+	if (!isHexColor(color)) {
+		return out;
+	}
+	if (isObj(manifest.biomes)) {
+		for (const [biome, def] of sortedEntries(manifest.biomes)) {
+			if (!isObj(def)) {
+				continue;
+			}
+			for (const surface of SURFACES) {
+				const againstColor = def[surface];
+				if (!isHexColor(againstColor)) {
+					continue;
+				}
+				const value = contrastRatio(color, againstColor);
+				out.push({
+					check: "surface",
+					color,
+					against: biome,
+					surface,
+					againstColor,
+					value,
+					min: MIN_ENEMY_OUTLINE_CONTRAST,
+					ok: value >= MIN_ENEMY_OUTLINE_CONTRAST,
+				});
+			}
+		}
+	}
+	for (const against of ENEMY_BULLET_ROLES) {
+		const againstColor = colors[against];
+		if (!isHexColor(againstColor)) {
+			continue;
+		}
+		const value = colorDifference(color, againstColor);
+		out.push({
+			check: "bullet",
+			color,
+			against,
+			againstColor,
+			value,
+			min: MIN_ENEMY_OUTLINE_BULLET_DIFFERENCE,
+			ok: value >= MIN_ENEMY_OUTLINE_BULLET_DIFFERENCE,
+		});
+	}
+	return out;
+}
+
 type Err = (path: ReadonlyArray<string>, msg: string) => void;
 type UnknownKeys = (obj: Obj, path: ReadonlyArray<string>, allowed: ReadonlyArray<string>) => void;
 
@@ -593,6 +670,28 @@ export function validateManifest(manifest: unknown, opts: ValidateOptions = {}):
 				`contrast: enemyBullet ${tostring(colors.enemyBullet)} on ${c.role} ${c.color} is ${fixed2(
 					c.ratio,
 				)}:1, needs >= ${fixed1(MIN_ENEMY_BULLET_CONTRAST)}:1`,
+			);
+		}
+	}
+
+	// --- the enemy outline reads on every biome and never as an enemy bullet -----------------------
+	for (const c of enemyOutlineReport(manifest)) {
+		if (c.ok) {
+			continue;
+		}
+		if (c.check === "surface") {
+			err(
+				["colors", "enemyOutline"],
+				`contrast: enemyOutline ${c.color} on ${c.against}${forgeSuffix(c.against)} ${tostring(c.surface)} ${
+					c.againstColor
+				} is ${fixed2(c.value)}:1, needs >= ${fixed1(c.min)}:1`,
+			);
+		} else {
+			err(
+				["colors", "enemyOutline"],
+				`colour difference: enemyOutline ${c.color} vs ${c.against} ${c.againstColor} is ${fixed1(
+					c.value,
+				)} (CIE76), needs >= ${fixed1(c.min)}: an enemy outline must never read as an enemy bullet`,
 			);
 		}
 	}
@@ -1161,18 +1260,25 @@ function validateSpriteSet(def: Obj, path: Array<string>, slot: SlotContract, er
 	let sheetCount: number | undefined;
 	const sheets = def.sheets;
 	if (!isArrayLike(sheets)) {
-		err(append(path, "sheets"), "must be a non-empty array of { assetId, w, h }");
+		err(append(path, "sheets"), "must be a non-empty array of { assetId, w, h, outlineAssetId? }");
 	} else {
 		sheetCount = sheets.size();
 		for (let i = 0; i < sheets.size(); i++) {
 			const sp = append(path, "sheets", tostring(i));
 			const sheet = sheets[i];
 			if (!isObj(sheet)) {
-				err(sp, "must be { assetId, w, h }");
+				err(sp, "must be { assetId, w, h, outlineAssetId? }");
 				continue;
 			}
-			unknownKeys(sheet, sp, ["assetId", "w", "h"]);
+			unknownKeys(sheet, sp, ["assetId", "w", "h", "outlineAssetId"]);
 			checkAssetIdAt(sheet.assetId, append(sp, "assetId"), err);
+			if (sheet.outlineAssetId !== undefined) {
+				// The baked rim (enemy outline plan O4): its own upload, same size and cells as the sheet.
+				checkAssetIdAt(sheet.outlineAssetId, append(sp, "outlineAssetId"), err);
+				if (sheet.outlineAssetId === sheet.assetId) {
+					err(append(sp, "outlineAssetId"), "is the sheet's own assetId (upload the <sheet>-outline.png)");
+				}
+			}
 			const w = sheet.w;
 			const h = sheet.h;
 			if (!isImageSide(w)) {

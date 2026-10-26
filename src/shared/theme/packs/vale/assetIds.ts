@@ -11,7 +11,9 @@
  *
  * A sprite set switches from its placeholder to the art once the sheets of its REQUIRED animations have IDs
  * (class.vanguard: idle, run, roll, hit, death; enemy.swarmer: swarmer-move.png and swarmer-death.png); optional ones
- * (vanguard-attack1..3.png) join when their IDs are added. An image switches once its file has one. Re-upload (and paste the new ID) whenever `art:build` changes a PNG.
+ * (vanguard-attack1..3.png) join when their IDs are added. An enemy sheet's outline (swarmer-move-outline.png,
+ * swarmer-death-outline.png) adds the baked rim once its ID is here; without it the set still switches, rimless.
+ * An image switches once its file has one. Re-upload (and paste the new ID) whenever `art:build` changes a PNG.
  */
 import type { RobloxAssetId } from "../../types";
 
@@ -20,8 +22,10 @@ import type { RobloxAssetId } from "../../types";
  * vanguard-attack3.png's ID is by elimination: it was the only remaining truncated "vanguard-atta..." row.
  */
 export const VALE_ASSET_IDS: Readonly<Record<string, RobloxAssetId>> = {
-	"swarmer-death.png": "rbxassetid://123002556658284",
-	"swarmer-move.png": "rbxassetid://125033662723807",
+	// swarmer-move.png / swarmer-death.png: the 2026-10-25 IDs were removed. They hold the old 940x910 atlases (94x70
+	// cells); the outline pad change (plan O3: 98x74 cells, 980x962) would cut them at the wrong cells. Re-upload both
+	// from art/build/ together with swarmer-move-outline.png and swarmer-death-outline.png and paste all four here
+	// (plan O5); until then enemy.swarmer draws its placeholder ball (outlined by the shared Highlight).
 	"tile-biome1-floor.png": "rbxassetid://98164459682194",
 	"ui-marker-pedestal.png": "rbxassetid://126528421886645",
 	"ui-ring-player.png": "rbxassetid://111980900819302",

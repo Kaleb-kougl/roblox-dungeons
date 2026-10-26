@@ -10,16 +10,19 @@
  * Contrast (the darkest-band check): enemy bullets are self-lit Neon, so a band's lower ambient light darkens the floor
  * and walls they fly over, never the bullet. `decorBandContrastReport` checks the enemy bullet against every biome's
  * floor and wall at a band's light multiplier (the validator's 3:1 rule, MIN_ENEMY_BULLET_CONTRAST); the spec runs it
- * for every bundled pack at every band.
+ * for every bundled pack at every band. The enemy outline (enemy outline plan O1) is self-lit too (a Highlight rim, a
+ * baked sprite rim drawn unlit), so the same report checks `enemyOutline` (DECOR_BAND_CONTRAST_CHECKS).
  */
 import {
 	BIOMES,
 	MIN_ENEMY_BULLET_CONTRAST,
+	MIN_ENEMY_OUTLINE_CONTRAST,
 	contrastRatio,
 	isHexColor,
 	parseHex,
 	toHex,
 	type BiomeId,
+	type ColorRole,
 } from "shared/theme";
 import type { ThemeKey } from "shared/dungeon";
 import { DECOR_DEPTH, type DecorDepthBand } from "./config";
@@ -129,8 +132,35 @@ export function dimHex(hex: string, light: number): string {
 	});
 }
 
+/** A self-lit colour role drawn over the floors and walls, and the WCAG ratio it must keep against them. */
+export interface DecorBandContrastCheck {
+	readonly role: ColorRole;
+	readonly min: number;
+}
+
+/** The enemy bullet (MIN_ENEMY_BULLET_CONTRAST): decorBandContrastReport's default check. */
+export const ENEMY_BULLET_BAND_CHECK: DecorBandContrastCheck = {
+	role: "enemyBullet",
+	min: MIN_ENEMY_BULLET_CONTRAST,
+};
+
+/** The enemy outline (enemy outline plan O1, MIN_ENEMY_OUTLINE_CONTRAST). */
+export const ENEMY_OUTLINE_BAND_CHECK: DecorBandContrastCheck = {
+	role: "enemyOutline",
+	min: MIN_ENEMY_OUTLINE_CONTRAST,
+};
+
+/** Every self-lit role the darkest-band check covers (the spec runs each for every bundled pack at every band). */
+export const DECOR_BAND_CONTRAST_CHECKS: ReadonlyArray<DecorBandContrastCheck> = [
+	ENEMY_BULLET_BAND_CHECK,
+	ENEMY_OUTLINE_BAND_CHECK,
+];
+
 /** One row of decorBandContrastReport. */
 export interface DecorBandContrastEntry {
+	/** The checked role and its minimum ratio. */
+	readonly role: ColorRole;
+	readonly min: number;
 	readonly band: string;
 	readonly light: number;
 	readonly biome: string;
@@ -144,21 +174,22 @@ export interface DecorBandContrastEntry {
 const SURFACES = ["floor", "wall"] as const;
 
 /**
- * Enemy bullet vs every biome's floor and wall of `manifest`, at band `band`'s light multiplier (default: the darkest
- * band), >= MIN_ENEMY_BULLET_CONTRAST. Reads `colors.enemyBullet` and `biomes.<id>.floor` / `.wall` (hex); a manifest
- * without them gives no rows.
+ * `check.role` (default: the enemy bullet) vs every biome's floor and wall of `manifest`, at band `band`'s light
+ * multiplier (default: the darkest band), >= `check.min`. Reads `colors.<role>` and `biomes.<id>.floor` / `.wall` (hex);
+ * a manifest without them gives no rows. The role's own colour is never dimmed (it is self-lit).
  */
 export function decorBandContrastReport(
 	manifest: unknown,
 	band: number = darkestDecorBand(),
+	check: DecorBandContrastCheck = ENEMY_BULLET_BAND_CHECK,
 ): DecorBandContrastEntry[] {
 	const out: DecorBandContrastEntry[] = [];
 	const b = DECOR_DEPTH.bands[band];
 	if (b === undefined || !typeIs(manifest, "table")) return out;
 	const m = manifest as { colors?: unknown; biomes?: unknown };
 	if (!typeIs(m.colors, "table") || !typeIs(m.biomes, "table")) return out;
-	const bullet = (m.colors as { enemyBullet?: unknown }).enemyBullet;
-	if (!isHexColor(bullet)) return out;
+	const lit = (m.colors as Record<string, unknown>)[check.role];
+	if (!isHexColor(lit)) return out;
 	const biomes = m.biomes as Record<string, unknown>;
 	for (const bd of BIOMES) {
 		const def = biomes[bd.id];
@@ -167,15 +198,17 @@ export function decorBandContrastReport(
 			const hex = (def as Record<string, unknown>)[surface];
 			if (!isHexColor(hex)) continue;
 			const color = dimHex(hex, b.light);
-			const ratio = contrastRatio(bullet, color);
+			const ratio = contrastRatio(lit, color);
 			out.push({
+				role: check.role,
+				min: check.min,
 				band: b.name,
 				light: b.light,
 				biome: bd.id,
 				surface,
 				color,
 				ratio,
-				ok: ratio >= MIN_ENEMY_BULLET_CONTRAST,
+				ok: ratio >= check.min,
 			});
 		}
 	}

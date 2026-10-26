@@ -18,8 +18,8 @@ rebinding, audio, display). Everything presentation-side reads the sim and never
 | `WorldController` | `.../game/WorldController.ts` | Builds the floor: greedy-merged floor / wall / pool Parts (`shared/view/tileMerge.ts`) in the biome's `tile.biome.N.*` placeholder colours, plus one backdrop slab (`background` role). Rebuilds only when the floor changes. When the pack has the biome floor tile as an image with `tilesPerImage`, each floor slab gets a top-face `Texture` repeating every `tilesPerImage * STUDS_PER_TILE` studs (colour stays the biome's). Each Part takes the biome's `materials` (`ThemePack.biome(id).materials.floor / wall / pool`, `Enum.Material[name]`, SmoothPlastic by default); a textured floor is always SmoothPlastic. Solid pillars are WALL tiles and merge into the wall Parts. |
 | `CharacterController` | `.../game/CharacterController.ts` | Makes a spawned default character inert (root anchored locally); see "The default character". |
 | `BulletRenderController` | `.../render/BulletRenderController.ts` | Both bullet simulations: one pooled Part per bullet slot, interpolated with `previousPositionAt`, ONE `workspace:BulkMoveTo` per pool per frame (spike A), parked far below when unused, pool grows lazily to the high-water mark. |
-| `ActorRenderController` | `.../render/ActorRenderController.ts` | One placeholder model per occupied actor slot (archetype index -> `archetypeAt(kind).data.spriteId` -> placeholder), facing, hit flash, telegraph pulse, corpse fade, removal; the player capsule with facing pip, roll tumble, i-frame tint, hurt blink, death pose. One BulkMoveTo per frame. Sprite-backed IDs draw a `SpriteView` instead (see "Sprites replace placeholders"). |
-| `SpriteView` | `.../render/SpriteView.ts` | One pooled sprite for a theme `sprites` set: a BillboardGui + ImageLabel on an invisible feet-anchor Part (moved in the actors' BulkMoveTo). Size / StudsOffset from `spriteBillboard` (pivot pixel on the feet), `ResampleMode` from the set, `LightInfluence` 0, not AlwaysOnTop; writes Image / ImageRect only when the frame, facing or sheet changes; tint (ImageColor3), fade (ImageTransparency) and blink (Visible) only on change. |
+| `ActorRenderController` | `.../render/ActorRenderController.ts` | One placeholder model per occupied actor slot (archetype index -> `archetypeAt(kind).data.spriteId` -> placeholder), facing, hit flash, telegraph pulse, corpse fade, removal; the player capsule with facing pip, roll tumble, i-frame tint, hurt blink, death pose. One BulkMoveTo per frame. Sprite-backed IDs draw a `SpriteView` instead (see "Sprites replace placeholders"). Children `Enemies` (Model, one outline `Highlight`), `Corpses`, `Players` (see "Enemy outlines"). |
+| `SpriteView` | `.../render/SpriteView.ts` | One pooled sprite for a theme `sprites` set: a BillboardGui + ImageLabel on an invisible feet-anchor Part (moved in the actors' BulkMoveTo). Size / StudsOffset from `spriteBillboard` (pivot pixel on the feet), `ResampleMode` from the set, `LightInfluence` 0, not AlwaysOnTop; writes Image / ImageRect only when the frame, facing or sheet changes; tint (ImageColor3), fade (ImageTransparency) and blink (Visible) only on change. Opt-in rim: a second `Outline` ImageLabel behind the frame (ZIndex 1 vs 2, `ZIndexBehavior` Sibling), written with the frame from the sheet's `outlineAssetId`; `setOutlineShown`. |
 | `WeaponViewController` | `.../render/WeaponViewController.ts` | Sword swing fans + sweeping blade, finisher wind-up, guard fan, bow charge ring + aim line, heavy-arrow release ring (dashed floor markings). |
 | `RunMarkerController` | `.../render/RunMarkerController.ts` | M2 (endless runs): a relic pedestal (Cylinder, `uiAccent`) on each TREASURE room's centre tile and the curse shrine's zone (flat disc, `uiMana`) in the SHRINE room; a taken pedestal / used shrine dims (`uiTextDim`). Rebuilt per floor. With the `ui.marker.pedestal` image, a camera-facing beam stands on each live pedestal (hidden once taken). |
 | `BreakableRenderController` | `.../render/BreakableRenderController.ts` | Endless runs: barrels and crates from `state.breakables` (placeholder box, sprite set or image), hit blink + shake, chips and debris on break. See "Breakables". |
@@ -79,6 +79,24 @@ All sprite logic is pure and specced in `src/shared/view/sprites.ts`:
   the pattern is continuous; only on a floor whose biome matched (the greybox keeps the plain `floor` role).
 - Tunables: `SPRITE_VIEW` (depth bias, reference speeds, loop rate clamp, hit / death stretch, anchor and ring sizes),
   `PROGRESSION_VIEW.pedestalBeamHeightTiles`.
+
+## Enemy outlines (docs/OUTLINE.md)
+
+Every live enemy and boss gets a rim in the theme's `enemyOutline` colour; the player, corpses, decor and breakables
+never do. The rule is `shared/view` `actorOutlined(hasOutline, alive, enabled)` (`hasOutline` = the actor's
+placeholder visual has an `outline` role); names and Highlight settings are `ACTOR_OUTLINE` (`shared/view/outline.ts`).
+
+- **Placeholders:** `KV_Actors` holds `Enemies` (a Model), `Corpses` and `Players` (Folders). One `Highlight`
+  (`EnemyOutline`: fill transparency 1, outline transparency 0, DepthMode Occluded) adorns `Enemies`, so it outlines
+  every live placeholder enemy at the cost of one Highlight. A model is reparented only when its group changes: to
+  `Corpses` at death and on release (pooled models wait there), back to `Enemies` when reused. Overlapping enemies
+  share one silhouette.
+- **Sprites:** sheets built with an `outline` entry in `art/atlases.json` have a `<sheet>-outline.png` (white rim,
+  same cell grid); `vale/manifest.ts` maps it to the sheet's `outlineAssetId` when its id is uploaded, and frames
+  carry `outlineImage`. Enemy `SpriteView`s draw it tinted `enemyOutline` behind the frame; the rim hides at death
+  (the corpse fades without it). A sheet without an uploaded outline draws rimless. Sprite anchors stay directly in
+  `KV_Actors`, outside the Highlight.
+- **Switch:** Workspace `KV_EnemyOutline` (see the attribute table) toggles the Highlight and every sprite rim at once.
 
 ## Breakables (docs/DECOR.md D4, R13)
 
@@ -453,6 +471,7 @@ is open, and only one of the Options screen / leaderboard panel is open at a tim
 | `KV_SkipMenu` | boolean | Dev only (read once, on join): no main menu; a solo run starts at once, as before the menu existed. Off by default. Co-op runs start from a lobby (Lobbies in the main menu): see "Main menu, lobbies and Leave run". |
 | `KV_ResetBindings` | boolean | Dev only, read ONCE when the client starts (not on R): when the server's settings arrive, the saved key bindings (`controls` group) are cleared and saved that way; the other groups are kept. Off by default (shared/settings `SETTINGS_ATTRIBUTES`). |
 | `KV_DecorBand` | number | Forces the decor depth band (0 kept, 1 worn, 2 ruined, 3 abyss; clamped) for every floor; changing it rebuilds the current floor's decoration at once. Unset: the floor's own band. Presentation only. |
+| `KV_EnemyOutline` | boolean | Enemy outlines (docs/OUTLINE.md): `false` hides the Highlight and every sprite rim at once (toggles live, no reparenting). Unset or `true`: on. Presentation only. |
 | `KV_DecorDebug` | boolean | Draws the decor debug overlay: fade boxes, footprint stencils, breakable cells (toggles at once). Off by default. |
 | `KV_Tutorial` | boolean | Read once on join (not on R). `true`: the join starts the tutorial whatever the server says (the server is not asked; no main menu first); `false`: never (the normal join flow at once: the main menu, or `KV_SkipMenu`'s solo run). Unset: the server's `onboardingStatus` decides. Server side, `KV_ResetOnboarding` (docs/SERVER.md) resets the stored flag instead. |
 
@@ -762,6 +781,17 @@ With the actors merged the default `game` world has enemies; without them see "f
     snow / wisps / spores drift around the camera (none under Reduced motion), and no piece ever hides a bullet. Write
     down fps, instance counts and texture memory on PC and the phone emulator.
 31. **Co-op (2 players)**: both clients light the same rooms; the cold fade only when both are down.
+
+### Enemy outlines (docs/OUTLINE.md O6; not run in Studio yet)
+
+- **Placeholders:** every archetype, the dummy and Mother Bramble show a red rim on every biome and at every
+  `KV_DecorBand`; Explorer shows them under `KV_Actors/Enemies` with one `EnemyOutline` Highlight; a kill moves the
+  body to `Corpses` and the rim goes at once, with no flicker; a crowded room (or the boss summoning swarmers) keeps fps.
+- **Switch:** `Workspace:SetAttribute("KV_EnemyOutline", false)` hides every rim at once; `true` brings them back.
+- **Sprites (after the skeleton re-upload):** the skeleton stands where it did (pivot moved with the pad), the rim
+  sits behind the body and follows every facing and frame, it goes at death, comes back on pooled reuse; the player
+  has none. Compare the sprite rim's width with the Highlight's on PC and the phone emulator (tune `widthPx`).
+- **Readability:** the rim never reads as an enemy bullet or a telegraph; write down fps and texture memory.
 
 ### Tutorial (docs/TUTORIAL.md "Studio smoke test")
 

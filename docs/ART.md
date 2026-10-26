@@ -70,6 +70,13 @@ one cell size and pivot per set, so the knight keeps its full 128x128 cell (8 fr
 animation) and the skeleton is 94x70 in two 940x910 atlases; the floor mean is `#1a1619`; the knight's rows run
 clockwise from screen right (`art/atlases.json` `rowOrderEvidence`); no Asphalt (ids are pasted by hand).
 
+Enemy outlines (docs/OUTLINE.md O3, 2026-10-26): a set with `"outline": { "widthPx": n }` also gets
+`<sheet>-outline.png` per sheet (same size and cells: the body mask dilated by a disc of radius n, white, alpha
+`255 - spriteAlpha` inside it), listed as `outlineFile` in `layout.ts` and tinted red in the contact sheet. It needs
+`pad >= widthPx + 1`, so the skeleton's pad is 3: cells 98x74, atlases 980x962, pivot +2. Its old ids were removed
+from `assetIds.ts`; re-upload `swarmer-move.png`, `swarmer-death.png` and both outline sheets. `npm run test:art`
+covers the pipeline's pure parts.
+
 ## Tasks
 
 - [ ] **S0. Spike C: sprite billboards in Studio (go/no-go).** Upload one repacked knight atlas (Run) and the skeleton

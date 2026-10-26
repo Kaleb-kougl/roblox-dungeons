@@ -67,7 +67,10 @@ export interface PlaceholderVisual {
 	readonly cellPx: { readonly w: number; readonly h: number };
 	readonly color: PlaceholderColor;
 	readonly material: PlaceholderMaterial;
-	/** Optional outline colour role (a Highlight / SelectionBox; bullets: the dark ring that makes them read). */
+	/**
+	 * Optional outline colour role (bullets: the dark ring that makes them read; enemies and bosses: `enemyOutline`,
+	 * the rim of the actor renderer's shared Highlight, enemy outline plan O2). Classes have none (the player has a ring).
+	 */
 	readonly outline?: ColorRole;
 	/** Turn the part to face the actor's facing / the bullet's velocity. */
 	readonly faces: boolean;
@@ -206,11 +209,18 @@ const enemyVisual = (archetype: EnemyArchetype): PlaceholderVisual =>
 		cell: ENEMY_CELL,
 		proportions: ENEMY_SHAPES[archetype].proportions,
 		color: role(`enemy.${archetype}`),
+		outline: "enemyOutline",
 		faces: true,
 	});
 
 const bossVisual = (): PlaceholderVisual =>
-	visual({ shape: "Block", cell: BOSS_CELL, proportions: PLACEHOLDER_PROPORTIONS.boss, color: role("boss") });
+	visual({
+		shape: "Block",
+		cell: BOSS_CELL,
+		proportions: PLACEHOLDER_PROPORTIONS.boss,
+		color: role("boss"),
+		outline: "enemyOutline",
+	});
 
 const enemyBulletVisual = (shape: PlaceholderShape, proportions: Proportions): PlaceholderVisual =>
 	visual({

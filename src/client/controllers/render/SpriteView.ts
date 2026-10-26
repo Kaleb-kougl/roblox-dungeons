@@ -1,9 +1,11 @@
 import type { SpriteSet } from "shared/theme";
 import {
+	ACTOR_OUTLINE,
 	SPRITE_VIEW,
 	spriteBillboard,
 	spriteFacing,
 	spriteFrame,
+	spriteOutlineVisible,
 	type IsoBasis,
 	type SpriteAnimChoice,
 	type SpriteClock,
@@ -25,11 +27,25 @@ const HIDDEN = 1;
  * the set's pivot pixel on the feet. `layout` sizes the billboard (default: the set's own frame size, pivot and
  * pixelsPerTile); breakables pass one scaled down to their height cap (shared/view breakableArtLayout).
  * `extraDepthStuds` pushes the billboard further toward the camera (decor wall pieces: off their wall face).
+ *
+ * Baked rim (enemy outline plan O4), opt in with `outline` (the rim colour): a second ImageLabel "Outline" under the
+ * frame (ZIndex, Sibling behaviour) showing the frame's outline sheet (SpriteFrame.outlineImage) with the frame's rect,
+ * written in the same branch as the frame. It draws while spriteOutlineVisible: the view is visible (setVisible hides
+ * both labels), the rim is shown (setOutlineShown: the owner hides it at death while the corpse fades through
+ * setTransparency, which touches the frame only) and the frame's sheet has an outline. Without `outline` nothing of
+ * this runs.
  */
 export class SpriteView {
 	readonly anchor: Part;
 	private readonly gui: BillboardGui;
 	private readonly label: ImageLabel;
+	/** The rim label, only when built with `outline`. */
+	private readonly outline: ImageLabel | undefined;
+	/** The current frame's outline image (undefined: its sheet has none). */
+	private outlineImage: string | undefined;
+	private outlineShown = true;
+	/** The rim label's Visible as last written. */
+	private outlineDrawn = false;
 	private clock: SpriteClock | undefined;
 	private facing = 0;
 	private shownAnim = "";
@@ -40,7 +56,13 @@ export class SpriteView {
 	private transparency = 0;
 	private visible = true;
 
-	constructor(readonly set: SpriteSet, parent: Instance, layout: SpriteLayout = set, extraDepthStuds = 0) {
+	constructor(
+		readonly set: SpriteSet,
+		parent: Instance,
+		layout: SpriteLayout = set,
+		extraDepthStuds = 0,
+		outline?: Color3,
+	) {
 		const anchor = renderPart("Part", false);
 		anchor.Name = `${set.id}.anchor`;
 		anchor.Transparency = HIDDEN;
@@ -56,6 +78,7 @@ export class SpriteView {
 		gui.AlwaysOnTop = false;
 		gui.ResetOnSpawn = false;
 		gui.Adornee = anchor;
+		gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling;
 		this.gui = gui;
 
 		const label = new Instance("ImageLabel");
@@ -65,8 +88,23 @@ export class SpriteView {
 		label.Size = UDim2.fromScale(1, 1);
 		label.ResampleMode = Enum.ResamplerMode[set.resample];
 		label.ImageColor3 = WHITE;
+		label.ZIndex = ACTOR_OUTLINE.spriteZIndex.frame;
 		label.Parent = gui;
 		this.label = label;
+
+		if (outline !== undefined) {
+			const rim = new Instance("ImageLabel");
+			rim.Name = ACTOR_OUTLINE.spriteLabelName;
+			rim.BackgroundTransparency = HIDDEN;
+			rim.BorderSizePixel = 0;
+			rim.Size = UDim2.fromScale(1, 1);
+			rim.ResampleMode = label.ResampleMode;
+			rim.ImageColor3 = outline;
+			rim.ZIndex = ACTOR_OUTLINE.spriteZIndex.outline;
+			rim.Visible = false; // until a frame with an outline image
+			rim.Parent = gui;
+			this.outline = rim;
+		}
 
 		gui.Parent = anchor;
 		anchor.Parent = parent;
@@ -79,6 +117,7 @@ export class SpriteView {
 		this.setTint(WHITE);
 		this.setTransparency(0);
 		this.setVisible(true);
+		this.setOutlineShown(true);
 		this.gui.Enabled = true;
 	}
 
@@ -105,6 +144,19 @@ export class SpriteView {
 		}
 		this.label.ImageRectOffset = f.offset;
 		this.label.ImageRectSize = f.size;
+		const rim = this.outline;
+		if (rim !== undefined) {
+			const image = f.outlineImage;
+			if (image !== this.outlineImage) {
+				this.outlineImage = image;
+				if (image !== undefined) rim.Image = image;
+				this.syncOutline();
+			}
+			if (image !== undefined) {
+				rim.ImageRectOffset = f.offset;
+				rim.ImageRectSize = f.size;
+			}
+		}
 	}
 
 	/** ImageColor3 (multiplies the art: a tint, never a white flash). */
@@ -124,6 +176,24 @@ export class SpriteView {
 		if (v === this.visible) return;
 		this.visible = v;
 		this.label.Visible = v;
+		this.syncOutline();
+	}
+
+	/** Shows or hides the rim (no-op without `outline`); the frame is untouched. The owner passes actorOutlined. */
+	setOutlineShown(shown: boolean): void {
+		if (shown === this.outlineShown) return;
+		this.outlineShown = shown;
+		this.syncOutline();
+	}
+
+	/** Writes the rim label's Visible when spriteOutlineVisible changes. */
+	private syncOutline(): void {
+		const rim = this.outline;
+		if (rim === undefined) return;
+		const drawn = spriteOutlineVisible(this.visible, this.outlineShown, this.outlineImage);
+		if (drawn === this.outlineDrawn) return;
+		this.outlineDrawn = drawn;
+		rim.Visible = drawn;
 	}
 
 	destroy(): void {

@@ -1,11 +1,12 @@
 // Depth profile (docs/DECOR.md Phase 2 part 1, task R8): band boundaries, forced bands, the plan never goes over the
 // R3 caps in any band, the band's swaps and torch share show up in the plan, and the darkest-band contrast check
-// passes for every bundled pack at every band.
+// passes for every bundled pack at every band, for the enemy bullet and the enemy outline (enemy outline plan O1).
 import { describe, expect, it } from "@rbxts/jest-globals";
 import { TileType, buildEndlessFloor, generateDungeon, type Dungeon, type ForgeParams } from "shared/dungeon";
 import {
 	BIOMES,
 	MIN_ENEMY_BULLET_CONTRAST,
+	MIN_ENEMY_OUTLINE_CONTRAST,
 	THEME_PACKS,
 	contrastRatio,
 	listThemePacks,
@@ -13,7 +14,9 @@ import {
 	relativeLuminance,
 } from "shared/theme";
 import {
+	DECOR_BAND_CONTRAST_CHECKS,
 	DECOR_DEPTH,
+	ENEMY_OUTLINE_BAND_CHECK,
 	MAX_DECOR_SHARE,
 	MAX_TALL_PER_ROOM,
 	biomeOfTheme,
@@ -191,5 +194,47 @@ describe("decor profile: darkest-band contrast", () => {
 				}
 			}
 		}
+	});
+
+	it("keeps every self-lit role (bullet, outline) at its minimum in every band, for every bundled pack", () => {
+		expect(DECOR_BAND_CONTRAST_CHECKS.map((c) => c.role)).toEqual(["enemyBullet", "enemyOutline"]);
+		expect(ENEMY_OUTLINE_BAND_CHECK.min).toBe(MIN_ENEMY_OUTLINE_CONTRAST);
+		for (const id of listThemePacks()) {
+			const manifest = THEME_PACKS[id];
+			for (const check of DECOR_BAND_CONTRAST_CHECKS) {
+				for (let band = 0; band < DECOR_DEPTH.bands.size(); band++) {
+					const rows = decorBandContrastReport(manifest, band, check);
+					expect([id, check.role, rows.size()]).toEqual([id, check.role, BIOMES.size() * 2]);
+					for (const r of rows) {
+						if (!r.ok) print(`[decor] ${id} ${check.role} ${r.band} ${r.biome} ${r.surface}: ${r.ratio}`);
+						expect(r.ok).toBe(true);
+						expect(r.role).toBe(check.role);
+						expect(r.min).toBe(check.min);
+						expect(r.ratio).toBe(contrastRatio(manifest.colors[check.role], r.color));
+					}
+				}
+			}
+		}
+	});
+
+	it("fails an outline that only reads at full light (darker than the floor, which the darkest band dims to it)", () => {
+		// #616161 has luminance ~0.12: black is 3.39:1 on it at full light, but the floor dims toward black.
+		const manifest = {
+			colors: { enemyOutline: "#000000" },
+			biomes: { "biome.1": { floor: "#616161", wall: "#616161" } },
+		};
+		const full = decorBandContrastReport(manifest, 0, ENEMY_OUTLINE_BAND_CHECK);
+		expect(DECOR_DEPTH.bands[0].light).toBe(1);
+		expect(full.size()).toBe(2);
+		for (const r of full) expect(r.ok).toBe(true);
+		const dark = decorBandContrastReport(manifest, darkestDecorBand(), ENEMY_OUTLINE_BAND_CHECK);
+		expect(dark.size()).toBe(2);
+		for (const r of dark) {
+			expect(r.ok).toBe(false);
+			expect(r.ratio < MIN_ENEMY_OUTLINE_CONTRAST).toBe(true);
+			expect(r.role).toBe("enemyOutline");
+		}
+		// The default check is still the enemy bullet: this manifest has none, so no rows.
+		expect(decorBandContrastReport(manifest)).toEqual([]);
 	});
 });
