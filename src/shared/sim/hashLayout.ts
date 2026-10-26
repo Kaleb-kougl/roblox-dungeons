@@ -21,6 +21,7 @@ import { endlessHashNames, writeEndlessHash } from "./endless";
 import { runHashNames, writeRunHash } from "./progression/progression";
 import { partyHashNames, writePartyHash } from "./party";
 import { tutorialHashNames, writeTutorialHash } from "./tutorial/tutorial";
+import { breakablesHashNames, writeBreakablesHash } from "./breakables/breakables";
 
 /** The fixtures' subsystem groups, in hash order. */
 export const HASH_SUBSYSTEMS = ["core", "combatHeader", "actors", "weapons", "enemyBullets", "playerBullets"] as const;
@@ -32,13 +33,16 @@ export type HashSubsystem = (typeof HASH_SUBSYSTEMS)[number];
  *   score    M2 scoring, when state.score exists
  *   run      M2 in-run progression (boons, relics, curses, the draft, pedestals, shrine), when state.run exists
  *   party    M4 co-op (players 1..n-1, their weapons, who left), when state.party exists
- *   tutorial first-run tutorial (harmless flag, harmless hits), when state.tutorial exists; always the LAST group
+ *   tutorial first-run tutorial (harmless flag, harmless hits), when state.tutorial exists
+ *   breakables  breakable barrels and crates (docs/DECOR.md D4: per piece kind, cell, hp, broken tick), when
+ *            state.breakables exists; the LAST group
  */
 export const ENDLESS_HASH_SUBSYSTEM = "endless";
 export const SCORE_SUBSYSTEM = "score";
 export const RUN_SUBSYSTEM = "run";
 export const PARTY_SUBSYSTEM = "party";
 export const TUTORIAL_SUBSYSTEM = "tutorial";
+export const BREAKABLES_SUBSYSTEM = "breakables";
 /** Every group name a layout can have. */
 export type HashGroupName =
 	| HashSubsystem
@@ -46,7 +50,8 @@ export type HashGroupName =
 	| typeof SCORE_SUBSYSTEM
 	| typeof RUN_SUBSYSTEM
 	| typeof PARTY_SUBSYSTEM
-	| typeof TUTORIAL_SUBSYSTEM;
+	| typeof TUTORIAL_SUBSYSTEM
+	| typeof BREAKABLES_SUBSYSTEM;
 
 export interface HashGroup {
 	readonly name: HashGroupName;
@@ -143,6 +148,13 @@ export function hashLayout(state: Readonly<SimState>, withNames = false): HashLa
 		writeTutorialHash(tutorial, values);
 		if (withNames) tutorialHashNames(names);
 		close(TUTORIAL_SUBSYSTEM);
+	}
+
+	const breakables = state.breakables;
+	if (breakables !== undefined) {
+		writeBreakablesHash(breakables, values);
+		if (withNames) breakablesHashNames(breakables, names);
+		close(BREAKABLES_SUBSYSTEM);
 	}
 
 	return { values, names, groups };

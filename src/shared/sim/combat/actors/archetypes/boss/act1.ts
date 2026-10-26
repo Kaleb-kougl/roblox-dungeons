@@ -32,6 +32,7 @@ import { faceToward, moveActor, toPlayer, walkToward } from "../../helpers";
 import { archetypeAt, hasArchetype, registerArchetype } from "../../registry";
 import { AiState, NO_KIND, type ActorState, type ArchetypeData } from "../../types";
 import { V_HOME_X, V_HOME_Z, engage, isRoomEnemyData } from "../enemyShared";
+import { slamBreakables } from "../../../../breakables/breakables";
 
 export const BOSS_ACT1_ID = "boss.act1";
 
@@ -553,6 +554,8 @@ function runAttack(ctx: SimCtx, a: ActorState, t: number): boolean {
 					a.v[V_MARK] = t + 1;
 					// Impact: a shockwave whose gap points back the way the boss came (arc centered on the charge direction).
 					ctx.fireEnemy(a, a.v[V_DIR_X], a.v[V_DIR_Z], SHOCKWAVE);
+					// Breakables (docs/DECOR.md D4): the slam breaks every piece in its radius (none without them).
+					if (ctx.state.breakables !== undefined) slamBreakables(ctx.state, a.x, a.z);
 				}
 				return false;
 			}

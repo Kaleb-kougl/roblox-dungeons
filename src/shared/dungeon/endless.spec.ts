@@ -11,6 +11,7 @@ import {
 	encounterCost,
 	endlessFloorParams,
 	endlessRoomSpawnTiles,
+	withoutBreakableCells,
 	endlessRoomSpawns,
 	floorRoomCount,
 	floorSeed,
@@ -215,14 +216,22 @@ describe("endlessRoomSpawnTiles (where a too-close spawn may move to)", () => {
 		expect(again.roomSpawnTiles).toEqual(fl.roomSpawnTiles);
 		// Computing the tiles draws from no rng: the spawns are what endlessRoomSpawns gives on its own.
 		expect(fl.roomSpawns).toEqual(endlessRoomSpawns(fl.dungeon, fl.floor));
-		expect(endlessRoomSpawnTiles(fl.dungeon, fl.roomSpawns)).toEqual(fl.roomSpawnTiles);
+		// The floor's spawn tiles are these minus the cells its breakables stand on (docs/DECOR.md D4).
+		expect(withoutBreakableCells(endlessRoomSpawnTiles(fl.dungeon, fl.roomSpawns), fl.breakables ?? [])).toEqual(
+			fl.roomSpawnTiles,
+		);
 	});
 
 	it("a bigger party gets the same candidate tiles for the same rooms (only budgets scale)", () => {
 		const solo = buildEndlessFloor(42, 2, dungeonFor);
 		const eight = buildEndlessFloor(42, 2, dungeonFor, 8);
+		const soloTiles = endlessRoomSpawnTiles(solo.dungeon, solo.roomSpawns);
+		const eightTiles = endlessRoomSpawnTiles(eight.dungeon, eight.roomSpawns);
 		for (let id = 0; id < solo.roomSpawns.size(); id++)
 			if (solo.roomSpawns[id].size() > 0 && eight.roomSpawns[id].size() > 0)
-				expect(eight.roomSpawnTiles[id]).toEqual(solo.roomSpawnTiles[id]);
+				expect(eightTiles[id]).toEqual(soloTiles[id]);
+		// Breakables keep clear of the party's own spawns, so each floor drops its own pieces' cells from them.
+		expect(eight.roomSpawnTiles).toEqual(withoutBreakableCells(eightTiles, eight.breakables ?? []));
+		expect(solo.roomSpawnTiles).toEqual(withoutBreakableCells(soloTiles, solo.breakables ?? []));
 	});
 });

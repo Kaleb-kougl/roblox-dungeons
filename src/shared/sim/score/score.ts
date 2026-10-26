@@ -18,6 +18,8 @@
  *            spawns, attached by attachScoreRoomMembers when the player first enters the room) are all down.
  *   perfect  ... and no hit landed from the room's engagement to its clear.
  *   fast     ... + (par - clear time) ticks, par = 6 s + 1.5 s x the room's encounter cost.
+ *   breakables  a player breaks a barrel / crate (docs/DECOR.md D4; scoreBreakable from breakables/breakables.ts):
+ *            BREAKABLE_POINTS[kind] x floor; never feeds the combo, never touches a room record.
  *   floors   awardFloorClear(state, floor, ...), called by the floor transition (endless mode): 1000 x floor x (rooms
  *            cleared / rooms with enemies on that floor; a boss floor's boss is one more room), rounded down before
  *            the multipliers (floorClearBase); a floor without enemy rooms pays the full 1000 x floor.
@@ -66,6 +68,7 @@ import { runMods, teamComboCutDivisorMultiplier, teamComboWindowTicks } from "..
 import {
 	BOSS_FINAL_PHASE,
 	BOSS_NO_HIT_BONUS,
+	BREAKABLE_POINTS,
 	COMBO_CUT_MIN_DIVISOR,
 	COMBO_DENOMINATOR,
 	COMBO_MAX,
@@ -526,6 +529,19 @@ export function scoreKill(state: SimState, a: Readonly<ActorState>, killer = 0):
 	e.popZ.push(a.z);
 	e.popPoints.push(pts);
 	feedCombo(state, s);
+}
+
+/**
+ * Breakables hook (docs/DECOR.md D4, breakables/breakables.ts): a player broke a piece of `kind` (BreakableKind).
+ * BREAKABLE_POINTS[kind] x the floor, through the usual multipliers; the combo is NOT fed (no farming) and no room
+ * record is touched. Returns the points.
+ */
+export function scoreBreakable(state: SimState, kind: number): number {
+	const s = state.score;
+	if (s === undefined) return 0;
+	const base = BREAKABLE_POINTS[kind];
+	if (base === undefined) return 0;
+	return award(state, s, ScoreSource.BREAKABLES, base * scoreFloor(state));
 }
 
 /** Sword guard hook: `n` enemy bullets erased by this tick's guard sweep. One award per bullet. */

@@ -8,6 +8,7 @@ import type { Vec3 } from "../bullets";
 import { NO_KIND, type ActorState } from "../actors/types";
 import { BulletKind, fireBurstRaw, packPayload } from "../patterns";
 import { MIRROR_BULLET_DAMAGE, MIRROR_BULLET_LIFE } from "../../progression/progressionData";
+import { meleeHitBreakables } from "../../breakables/breakables";
 
 /** Called for each live actor inside the arc (slot order). Usually: ctx.damageActor(actor, damage). */
 export type ArcActorHit = (ctx: SimCtx, actor: ActorState) => void;
@@ -64,6 +65,9 @@ function bulletInArc(i: number, pos: Readonly<Vec3>): boolean {
  *  - With `reflectSource` (M2 Mirror Cloak: the payload source, weapon index + 1), every erased enemy bullet comes back
  *    as a player bullet (one bullet, count 1 / spread 0, at its own speed, the opposite way, MIRROR_BULLET_DAMAGE).
  *  - events.meleeSwings += 1 and the swing is recorded in the acting player's weapons (ctx.weapons), unless `record` is false.
+ *  - With `breakableDamage` (the sword's swings; docs/DECOR.md D4) and a run with breakables, a pass AFTER the actors:
+ *    every intact piece the arc reaches takes that damage (meleeHitBreakables: the actors' arc test on the piece's
+ *    circle). Not an enemy hit (no events.enemyHits, no damageDealt, no combo) and not counted in the result.
  * Returns the number of actors hit.
  */
 export function sweepArc(
@@ -78,6 +82,7 @@ export function sweepArc(
 	deleteEnemyBullets: boolean,
 	record = true,
 	reflectSource?: number,
+	breakableDamage?: number,
 ): number {
 	arc.x = x;
 	arc.z = z;
@@ -103,6 +108,9 @@ export function sweepArc(
 			onActor(ctx, a);
 			hits++;
 		}
+	}
+	if (breakableDamage !== undefined && ctx.state.breakables !== undefined) {
+		meleeHitBreakables(ctx.state, x, z, dirX, dirZ, radius, halfAngleCos, breakableDamage);
 	}
 	if (deleteEnemyBullets) {
 		arcCtx = ctx;

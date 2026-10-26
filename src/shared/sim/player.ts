@@ -17,6 +17,7 @@
 import { jsMax, jsMin } from "shared/jsmath";
 import { SQRT1_2 } from "./jsnum";
 import { SIM_DT } from "./units";
+import { solidCells } from "./breakables/cells";
 import { AXIS_MAX, Button, type InputFrame } from "./input";
 import {
 	EMBERS_PER_AREA,
@@ -115,8 +116,9 @@ export function movePlayer(
 		const n = len <= STEP_TOLERANCE ? 1 : math.ceil(len / MAX_MOVE_STEP);
 		const sx = dx / n;
 		const sz = dz / n;
+		const solid = solidCells(state); // intact breakables (docs/DECOR.md D4); undefined: the grid-only path
 		for (let i = 0; i < n; i++) {
-			const r = resolver(p.x, p.z, sx, sz);
+			const r = resolver(p.x, p.z, sx, sz, solid);
 			p.x = r.x;
 			p.z = r.z;
 		}

@@ -19,7 +19,9 @@ import from inside would create require cycles).
   by `bind()`, bullet pool `activeCount` -> a plain field. `null` -> `undefined` (empty loadout slots, `roomAt`).
 - Hooks on defs (`WeaponDef`, `ArchetypeDef`) are METHODS: implement them with method syntax (roblox-ts calls them with
   `:`). Config callbacks (`moveResolver`, `isBulletBlocked`, `actorMover`, `actorSteerMover`) are callback properties
-  (arrow functions).
+  (arrow functions). Each takes an optional trailing `solid` (shared/dungeon `SolidCells`: the intact breakables'
+  cells, `breakables/cells.ts` `solidCells(state)`), which the sim passes at its call sites (movePlayer, moveActor);
+  undefined (no breakables state) is exactly the grid-only path. Line of sight calls the blocker with (x, z) only.
 
 ## Modules
 
@@ -38,7 +40,7 @@ import from inside would create require cycles).
 | `replay.ts` | `src/sim/replay.ts` | `Recorder`, `runReplay`, `writeHashFields`, `hashNumbers` (FNV-1a over `buffer.writef64` bytes), `hashState`, `serializeRecording` / `deserializeRecording` (same messages), `float64Hex` / `float64FromHex` |
 | `recordingCodec.ts` | (Roblox only) | `encodeRecording` / `decodeRecording`: the compact binary recording (`buffer`) the `submitRun` remote carries; hostile-input-safe decode (docs/SERVER.md "The wire format") |
 | `observer.ts` | `src/sim/observer.ts` | `SimObserver` / `SimControls` types |
-| `hashLayout.ts` | (port helper) | the hash split into the fixtures' six subsystems, with dump names (plus `endless`, then `score`, then `run`, then `party`, then `tutorial`, each appended only when present) |
+| `hashLayout.ts` | (port helper) | the hash split into the fixtures' six subsystems, with dump names (plus `endless`, then `score`, then `run`, then `party`, then `tutorial`, then `breakables`, each appended only when present) |
 | `endless.ts` | (Roblox only) | endless mode: `SimConfig.endless` (`worldForFloor`), `SimState.endless` (floor, Depth, stairwell, rooms entered), `stepEndless` (Depth on a boss kill, floor clear points + stairwell / `DEBUG_FLOOR_BUTTON` -> next floor, deferred room spawns attached to score rooms), `writeEndlessHash` |
 | `endlessData.ts` | (Roblox only) | endless tunables: hp scaling by floor / Depth, enemy bullet speed scaling (speed only, never the burst shape), stairwell radius, the debug floor-skip bit |
 | `parity.ts` | (port helper) | `firstFieldMismatch`, `subsystemHashes`, `checkRunFixture` (whole-run parity), `replaySummary` (totals / firstTick / hitsBySource), `fixtureNumber` |
@@ -48,6 +50,7 @@ import from inside would create require cycles).
 | `partyData.ts` | (Roblox only) | M4 co-op tunables: MAX_PARTY_SIZE 8, enemy hp x [1, 1.6, ... 4.4] by party size, the revive hearts, the server's `PARTY_LEFT_BUTTON` bit (= `FORFEIT_BUTTON`, the solo "Leave run"; see "Solo forfeit") |
 | `party.ts` | (Roblox only) | M4 co-op: `SimConfig.party`, `SimState.party` (players by index, [0] aliasing `state.player`), `playerAt` / `weaponsAt` / `partySize`, nearest-living targeting, leave / revive, `writePartyHash` (the "party" group); see "Co-op" below |
 | `tutorial/` | (Roblox only) | first-run tutorial (docs/TUTORIAL.md): `tutorialData.ts` tunables (`TUTORIAL_START_HALF_HEARTS`, the start clamp), `tutorial.ts` `SimConfig.tutorial` (`TutorialSimConfig`: `harmless`, `startHalfHearts`), `SimState.tutorial` (`TutorialState`: `harmless`, `harmlessHits`), `isTutorialHarmless`, `writeTutorialHash` (the "tutorial" group, last); see "Tutorial" below |
+| `breakables/` | (Roblox only) | breakable barrels and crates (docs/DECOR.md D4): `breakablesData.ts` tunables (B4 toughness as hp = arrow hits x the bow's damage, the enemy bullet's share, hit / slam radii, `BreakableKind`, `BreakableSource`), `breakables.ts` `SimConfig.breakables` (`BreakablesConfig`, the game's `BREAKABLES_CONFIG`), `SimState.breakables` (pieces: kind, cell, hp, brokenTick; the derived cell -> slot lookup and intact count, never hashed), `damageBreakable`, the melee pass, the slam, `writeBreakablesHash` (the "breakables" group, last); `cells.ts` the leaf lookups (`solidCells`, `breakableSlotAt`) the movement code reads; see "Breakables" below |
 | `testing/` | `src/sim/actors/__test__/testArchetypes.ts` | test-only archetypes for specs (never imported by the game) |
 
 `SimConfig.moveResolver` has the source's signature and call contract (sub-steps of at most `MAX_MOVE_STEP`, one call
@@ -121,6 +124,8 @@ source: 12) because gen.arc's sin / cos come from the arc table, which only hold
 | `tutorial/tutorial.spec.ts` | tutorial harmless mode: bullets, contact and DEBUG_HIT land without armor / hearts / death, playerHits / hurtTicks / lastHitSource / combo cut / Hourglass as in a real hit, no Second Wind, startHalfHearts (solo, a party, the clamp), the flask heals back up, floor changes keep hearts, the appended "tutorial" group, clone, replay |
 | `../run/slice.spec.ts` | the slice: the recorded endless run scored (replays twice to hash and score, floor clears by rooms cleared at the Depth in force, the boss at Depth 1), segmented per floor through `SegmentedValidator`, an edited later segment rejected |
 | `../run/replay.bench.spec.ts` | server replay cost per tick on endless floor 15 at Depth 3 in combat, solo and 8 players, one room / the whole floor (docs/SERVER.md "Replay capacity") |
+| `breakables/breakables.spec.ts` | breakables: opt-in state, the appended group and its dump names, clone; B4 hit counts vs SWORD_DATA / BOW_DATA; players, plain and steered enemy walks and bullets blocked (LOS not); every damage source (bow, sword, guard none, heavy arrow pierce on a break only, enemy bullets, the slam in a real fight); scoring without the combo; an endless run's floor rebuild; co-op; a replay |
+| `../dungeon/breakables.spec.ts` | breakable placement (R11): determinism, its own stream, every placement rule, BFS reachability and counts per band over the census floors; the collision functions with and without `solid` |
 
 ## Co-op (M4, Roblox port)
 
@@ -129,7 +134,7 @@ Opt-in through `SimConfig.party` with `size` 2..8 (shared/run `buildEndlessRunCo
 and nothing extra is hashed, so every fixture, every solo endless hash and score is unchanged. With it every tick takes
 one InputFrame per player: `stepParty(state, inputs, config)` (step() refuses a party state). Player 0 is
 `state.player` with `state.combat.weapons` (hashed where they always were); players 1..n-1 live in `state.party` and
-are hashed in the **party** group, appended after `score` and `run` (only `tutorial` comes after it).
+are hashed in the **party** group, appended after `score` and `run` (only `tutorial` and `breakables` come after it).
 
 Every per-player loop runs in player index order; ties go to the lower index:
 
@@ -181,10 +186,10 @@ the party's leave bits handled right after the event clears):
 | # | Phase | Only when |
 | --- | --- | --- |
 | 1 | `clearEvents` | |
-| 2 | `clearScoreEvents`; then (solo) `FORFEIT_BUTTON` -> `forfeitSoloRun` | `state.score` (the forfeit: always) |
+| 2 | `clearScoreEvents`, `clearBreakableEvents`; then (solo) `FORFEIT_BUTTON` -> `forfeitSoloRun` | `state.score` / `state.breakables` (the forfeit: always) |
 | 3 | `stepPlayer` (current floor's config in endless) | |
-| 4 | `stepCombat` (kills score here: `scoreKill` in killActor, grazes, guard cancels) | |
-| 5 | `stepEndless`: boss kill -> Depth + 1; dead -> stop; stairwell / debug skip -> `awardFloorClear(floor, bossFloor, bossDead)` (floor(1000 x floor x rooms cleared / enemy rooms), the boss one more room on a boss floor, the full 1000 x floor without enemy rooms; then the multipliers), next floor, `rebuildScoreRooms`; first room entry -> deferred spawns -> `attachScoreRoomMembers` | `state.endless` |
+| 4 | `stepCombat` (kills score here: `scoreKill` in killActor, grazes, guard cancels; breakables: movers get `solidCells`, the sword's melee pass, the slam, bullets vs pieces after the wall test) | |
+| 5 | `stepEndless`: boss kill -> Depth + 1; dead -> stop; stairwell / debug skip -> `awardFloorClear(floor, bossFloor, bossDead)` (floor(1000 x floor x rooms cleared / enemy rooms), the boss one more room on a boss floor, the full 1000 x floor without enemy rooms; then the multipliers), next floor, `resetBreakables` (the new floor's pieces), `rebuildScoreRooms`; first room entry -> deferred spawns -> `attachScoreRoomMembers` | `state.endless` |
 | 6 | `stepRun` (M2): a floor change -> the new floor's pedestals / shrine, Second Wind re-armed, a boon draft opens for every present player (offers from the sim rng, player index order); nobody alive -> stop; a room's spawns -> Warding refills each living owner's armor; pedestals (first living player on one, relic from the sim rng); the shrine (first living player in the zone with a SKILL1 edge -> their curse from the sim rng + `addCurse`) | `state.run` |
 | 7 | `stepScore`: final-phase window, hit cuts, combo timer, room engagement / clears | `state.score` |
 | 8 | `tick += 1` | |
@@ -210,10 +215,13 @@ uses the new Depth. Hash order: `core`, `combatHeader`, `actors`, `weapons`, `en
 draftOpen, draftTicks, draftSelected, hourglassTicks, fangKills, secondWindUsed; then pedestals.length, (room, taken)
 per pedestal, shrineRoom, shrineUsed; dump names `run.players[0].boons[1]`, `run.pedestals[0].taken`, ...), then
 `party` (co-op only: size, left[0..n-1], then per player 1..n-1 the player fields and their weapons), then `tutorial`
-(tutorial runs only, always last: harmless, harmlessHits; dump names `tutorial.harmless`, `tutorial.harmlessHits`). The
+(tutorial runs only: harmless, harmlessHits; dump names `tutorial.harmless`, `tutorial.harmlessHits`), then
+`breakables` (runs with SimConfig.breakables, i.e. every endless run; always last: pieces.length, then per piece kind,
+x, y, hp, brokenTick; dump names `breakables.length`, `breakables[0].hp`, ...). The
 per-tick `SimState.run.events` (draftOpened, draftChosen, relicCollected, curseAccepted, secondWind, fangHealed) and
 each player's `run.players[i].events` are presentation only and not hashed. New per-tick events (not in `SIM_EVENT_FIELDS`, which stays the web build's list; see
-`ENDLESS_EVENT_FIELDS` / `ALL_EVENT_FIELDS`): `floorChanged`, `depthChanged`, `stairwellOpened`, `roomEntered`.
+`ENDLESS_EVENT_FIELDS` / `BREAKABLE_EVENT_FIELDS` / `ALL_EVENT_FIELDS`): `floorChanged`, `depthChanged`,
+`stairwellOpened`, `roomEntered`, `breakableHits`, `breakablesBroken`.
 `DEBUG_FLOOR_BUTTON` (8192) is a port bit outside `ALL_BUTTONS` (pinned by fixtures/input.json): `SIM_BUTTONS` /
 `isValidSimInput` accept it, and the binary recording codec does too; the JSON recordings keep the web build's rules.
 
@@ -241,7 +249,7 @@ validators accept it with died = true).
 Opt-in through `SimConfig.tutorial` (`TutorialSimConfig`, tutorial/tutorial.ts; docs/TUTORIAL.md "Architecture §1").
 Without it there is no `state.tutorial`, nothing extra runs and nothing extra is hashed, so every fixture and every
 solo, endless and party hash is unchanged. With it createSimState creates `state.tutorial` (`harmless` 0/1,
-`harmlessHits`), hashed as the **tutorial** group, appended after `party` (always the last group).
+`harmlessHits`), hashed as the **tutorial** group, appended after `party` (only `breakables` comes after it, and a tutorial run has none).
 
 | Rule | Where |
 | --- | --- |
@@ -253,3 +261,24 @@ solo, endless and party hash is unchanged. With it createSimState creates `state
 the tutorial's): RunTelemetry's baseline on the client, the server and in lockstep, so a wounded start is not logged
 as hearts lost. The tutorial world itself is shared/run `tutorial.ts`. The tutorial script (prompts, step completion)
 lives outside the sim. Spec: `tutorial/tutorial.spec.ts`.
+
+## Breakables (Roblox port, docs/DECOR.md D4)
+
+Opt-in through `SimConfig.breakables` (`BreakablesConfig`; every endless run sets `BREAKABLES_CONFIG` in shared/run
+`buildEndlessRunConfig`; the tutorial does not, docs/DECOR.md B7). Without it there is no `state.breakables`, no code
+path below runs, every mover / blocker gets no `solid` argument and nothing extra is hashed, so every fixture, M1 and the
+tutorial replay exactly as before. With it createSimState builds `state.breakables` from floor 1's pieces
+(`EndlessFloorWorld.breakables`, placed by shared/dungeon `placeBreakables`; without endless mode from
+`breakables.pieces`), and every endless floor change replaces them (`resetBreakables` in stepEndless).
+
+| Rule | Where |
+| --- | --- |
+| Block movement: players and actors, plain and steered walks (a lone crate is rounded like a pillar) | movePlayer, moveActor: `solidCells(state)` as the movers' trailing argument |
+| Block every bullet, after the wall test and before graze / players / actors (a crate shields what is behind it) | combat.ts enemyBulletHit(Party) / playerBulletHit |
+| Not line of sight (low cover: a sniper still sees you and shoots the crate) | ctx.lineOfSight passes no `solid` |
+| Damage: player bullets their payload damage (plain: consumed; piercing: flies on, no pierce spent, only if it broke the piece), enemy bullets `enemyBulletDamage` (consumed), the sword's swings their BASE damage (sweepArc's pass after the actors: no enemyHits, no combo; the guard none), Mother Bramble's slam breaks everything within `slamRadius` at impact | `damageBreakable`, melee.ts, act1.ts |
+| Score: a piece a player breaks scores ScoreSource.BREAKABLES (appended: index 8), BREAKABLE_POINTS[kind] x floor; never feeds the combo, no room record | score.ts `scoreBreakable` |
+| Events: `breakableHits`, `breakablesBroken`; per tick `state.breakables.hitSlots` / `brokenSlots` (presentation, cleared each tick, not hashed) | state.ts, breakables.ts |
+
+Co-op needs nothing extra (every rule is per bullet / swing; the team score gets the points). Spec:
+`breakables/breakables.spec.ts`, placement `../dungeon/breakables.spec.ts`.

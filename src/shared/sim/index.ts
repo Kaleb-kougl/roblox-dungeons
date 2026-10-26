@@ -57,3 +57,4 @@ export * from "./progression";
 export * from "./partyData";
 export * from "./party";
 export * from "./tutorial";
+export * from "./breakables";

@@ -375,6 +375,7 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		"score.source.fast": "Fast clears",
 		"score.source.floors": "Floors",
 		"score.source.boss": "Boss",
+		"score.source.breakables": "Breakables",
 		// M5: leaderboards.
 		"hud.pause.leaderboard": "Leaderboards",
 		"hud.leaderboard.title": "Leaderboards",

@@ -4,7 +4,8 @@
  * buildEndlessRunConfig, and the seed it is given is ignored: every tutorial run is the same world.
  *
  *   config   { endless: { runSeed: TUTORIAL.runSeed, worldForFloor }, scoring: ENDLESS_SCORING,
- *              tutorial: { harmless: true, startHalfHearts: TUTORIAL.startHalfHearts } }
+ *              tutorial: { harmless: true, startHalfHearts: TUTORIAL.startHalfHearts } }; no `breakables` (docs/DECOR.md
+ *            B7: no barrels or crates in the tutorial, and its hand-built layouts carry none)
  *   layouts  tutorialForgeParams: an endless floor's Forge params (endlessFloorParams: solid pillars, double-size
  *            rooms, ...) with a fixed seed and room count; every floor's world is endlessFloorWorld (the endless
  *            floor's movers, bullet blocker and the enemies' steering round pillars), so it plays like a real floor

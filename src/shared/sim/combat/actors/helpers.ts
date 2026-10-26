@@ -8,6 +8,7 @@
  */
 
 import { MAX_MOVE_STEP } from "../../playerData";
+import { solidCells } from "../../breakables/cells";
 import type { SimCtx } from "../ctx";
 import type { ActorState } from "./types";
 
@@ -76,8 +77,9 @@ export function moveActor(ctx: SimCtx, actor: ActorState, dx: number, dz: number
 		const n = len <= STEP_TOLERANCE ? 1 : math.ceil(len / MAX_MOVE_STEP);
 		const sx = dx / n;
 		const sz = dz / n;
+		const solid = solidCells(ctx.state); // intact breakables (docs/DECOR.md D4); undefined: the grid-only path
 		for (let i = 0; i < n; i++) {
-			const r = mover(actor.x, actor.z, sx, sz, actor.radius);
+			const r = mover(actor.x, actor.z, sx, sz, actor.radius, solid);
 			actor.x = r.x;
 			actor.z = r.z;
 		}

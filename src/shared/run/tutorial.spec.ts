@@ -124,11 +124,14 @@ describe("tutorial world: the lock", () => {
 			expect([f, configKeys(setup.endlessFloor(f).config)]).toEqual([f, configKeys(endless.config)]);
 		}
 		expect(setup.endlessFloor(1).config.actorSteerMover).never.toBe(undefined);
-		// And the run config the same top-level fields as an endless run's, plus the tutorial's own.
-		const keys = configKeys(buildEndlessRunConfig(1).config);
+		// And the run config the same top-level fields as an endless run's, plus the tutorial's own, minus breakables
+		// (docs/DECOR.md B7: the tutorial's lessons are tuned to rooms without barrels and crates).
+		const keys = configKeys(buildEndlessRunConfig(1).config).filter((k) => k !== "breakables");
 		keys.push("tutorial");
 		keys.sort();
 		expect(configKeys(setup.config)).toEqual(keys);
+		expect(setup.config.breakables).toBe(undefined);
+		for (const f of [1, 2, 3]) expect(setup.endlessFloor(f).breakables).toBe(undefined);
 	});
 
 	it("floor layouts are the chosen Forge seeds, byte for byte (layout digest)", () => {

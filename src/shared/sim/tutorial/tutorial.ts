@@ -1,8 +1,8 @@
 /**
  * The first-run tutorial's sim side (docs/TUTORIAL.md "Architecture §1"; a Roblox-port feature, no web source).
  * Opt-in: only a SimConfig with `tutorial` creates `SimState.tutorial`, and only then does the hash grow the appended
- * "tutorial" group (after "party", the LAST group). Without it nothing changes: every golden fixture, every solo,
- * endless and party hash is byte-identical.
+ * "tutorial" group (after "party"; only "breakables", which a tutorial run never has, comes after it). Without it
+ * nothing changes: every golden fixture, every solo, endless and party hash is byte-identical.
  *
  * What it does (createSimState, player.ts damagePlayer):
  *   start hearts  with `startHalfHearts`, every player (solo, and every party member) starts with that many half

@@ -24,6 +24,7 @@ import {
 	tutorialStartHalfHearts,
 	type TutorialState,
 } from "./tutorial/tutorial";
+import { cloneBreakablesState, createBreakablesState, type BreakablesState } from "./breakables/breakables";
 
 export interface PlayerState {
 	x: number;
@@ -127,6 +128,13 @@ export interface SimEvents {
 	stairwellOpened: number;
 	/** Room id + 1 of the room the player entered for the first time this floor (its enemies spawned), else 0. */
 	roomEntered: number;
+
+	// --- Breakables (docs/DECOR.md D4; breakables/breakables.ts, always 0 without SimConfig.breakables). Not in
+	// SIM_EVENT_FIELDS.
+	/** Hits that landed on breakable pieces this tick (the breaking hit included). */
+	breakableHits: number;
+	/** Breakable pieces broken this tick. */
+	breakablesBroken: number;
 }
 
 /**
@@ -159,8 +167,15 @@ export const SIM_EVENT_FIELDS = [
 /** The endless-mode event fields (Roblox port), in declaration order. All default to 0. */
 export const ENDLESS_EVENT_FIELDS = ["floorChanged", "depthChanged", "stairwellOpened", "roomEntered"] as const;
 
-/** Every SimEvents field: SIM_EVENT_FIELDS, then ENDLESS_EVENT_FIELDS. */
-export const ALL_EVENT_FIELDS: ReadonlyArray<keyof SimEvents> = [...SIM_EVENT_FIELDS, ...ENDLESS_EVENT_FIELDS];
+/** The breakables event fields (Roblox port, docs/DECOR.md D4), in declaration order. All default to 0. */
+export const BREAKABLE_EVENT_FIELDS = ["breakableHits", "breakablesBroken"] as const;
+
+/** Every SimEvents field: SIM_EVENT_FIELDS, then ENDLESS_EVENT_FIELDS, then BREAKABLE_EVENT_FIELDS. */
+export const ALL_EVENT_FIELDS: ReadonlyArray<keyof SimEvents> = [
+	...SIM_EVENT_FIELDS,
+	...ENDLESS_EVENT_FIELDS,
+	...BREAKABLE_EVENT_FIELDS,
+];
 
 /** Default value of an event field: 0, except lastHitSource (-1). */
 export function eventDefault(field: keyof SimEvents): number {
@@ -197,6 +212,8 @@ function emptyEvents(): SimEvents {
 		depthChanged: 0,
 		stairwellOpened: 0,
 		roomEntered: 0,
+		breakableHits: 0,
+		breakablesBroken: 0,
 	};
 }
 
@@ -225,9 +242,16 @@ export interface SimState {
 	party?: PartyState;
 	/**
 	 * First-run tutorial (docs/TUTORIAL.md), only when SimConfig.tutorial is set: the harmless flag and the harmless
-	 * hit count. Hashed as the "tutorial" subsystem, appended after "party" (the last group). See tutorial/tutorial.ts.
+	 * hit count. Hashed as the "tutorial" subsystem, appended after "party" (only "breakables" comes after it). See
+	 * tutorial/tutorial.ts.
 	 */
 	tutorial?: TutorialState;
+	/**
+	 * Breakable barrels and crates (docs/DECOR.md D4), only when SimConfig.breakables is set: the current floor's pieces
+	 * (kind, cell, hp, broken tick). Hashed as the "breakables" subsystem, appended after every other group (after
+	 * "tutorial"). See breakables/breakables.ts.
+	 */
+	breakables?: BreakablesState;
 }
 
 /**
@@ -237,6 +261,7 @@ export interface SimState {
  * built from floor 1's world (`worldForFloor(ENDLESS_FIRST_FLOOR).config`) and `endless` state is created.
  * With `config.party` (size > 1) every party member starts at the spawn too (party.ts), before the encounter spawns.
  * With `config.tutorial`, `tutorial` state is created and every player starts with its `startHalfHearts` (if set).
+ * With `config.breakables`, `breakables` state is created (floor 1's pieces in endless mode, else its `pieces`).
  */
 export function createSimState(
 	seed: number,
@@ -266,6 +291,12 @@ export function createSimState(
 			const p = playerAt(state, i);
 			p.hearts = tutorialStartHalfHearts(tutorial, p.heartsMax);
 		}
+	}
+	// Breakables (endless: floor 1's pieces; else config.breakables.pieces). No rng.
+	const breakables = config.breakables;
+	if (breakables !== undefined) {
+		const list = firstFloor !== undefined ? firstFloor.breakables : breakables.pieces;
+		state.breakables = createBreakablesState(breakables, list ?? []);
 	}
 	// Spawns the encounter (archetype init hooks may draw from the sim rng) and the stress emitter.
 	startCombat(state, world);
@@ -299,6 +330,7 @@ export function cloneSimState(s: Readonly<SimState>): SimState {
 		score: s.score !== undefined ? cloneScoreState(s.score) : undefined,
 		run: s.run !== undefined ? cloneRun(s.run) : undefined,
 		tutorial: s.tutorial !== undefined ? cloneTutorialState(s.tutorial) : undefined,
+		breakables: s.breakables !== undefined ? cloneBreakablesState(s.breakables) : undefined,
 	};
 	if (s.party !== undefined) clone.party = cloneParty(s.party, clone);
 	return clone;

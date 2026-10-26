@@ -60,6 +60,16 @@ Decision log (deviations from `PLAN.md`):
   A first join (onboarding loaded and not done, or `KV_Tutorial`) starts it before, instead of, the main menu; Skip
   leaves like Leave run (back to the menu), the outro's Start my first run is Play solo, and the main menu has the
   replay. A player in it is busy for lobbies (`RunSessionService.busyReason`), so no lobby start takes it over.
+- **Breakable clutter on endless floors (docs/DECOR.md D4).** Endless floors get barrels and crates
+  (`shared/dungeon` `placeBreakables`, on `EndlessFloorLayout` / `EndlessFloorWorld.breakables`): placed after the
+  Forge from their own stream (`floorSeed ^ BREAKABLE.salt`), so layouts, digests, props and room spawns stay put; they
+  keep clear of the party's own spawns (so pieces depend on the party size) and their cells leave `roomSpawnTiles`.
+  Endless runs set `SimConfig.breakables` (`BREAKABLES_CONFIG`): `state.breakables` (per piece kind, cell, hp, broken
+  tick) with its own `breakables` hash group appended last; the movers and the bullet blocker take an optional trailing
+  `solid` (`SolidCells`) the sim passes from state (absent: exactly the grid-only path); they block bodies and every
+  bullet but not sight, break under player bullets / sword swings / enemy bullets / the boss's slam, and a player's
+  break scores the appended source `BREAKABLES` (no combo). M1 (`KALEB_VALE_MVP_PARAMS`), every fixture and the
+  tutorial (no `breakables`, B7) replay exactly as before; endless replays and scores changed.
 
 ## Commands
 

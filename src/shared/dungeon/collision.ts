@@ -20,12 +20,27 @@ export interface WorldXZ {
 	z: number;
 }
 
-/** `SimConfig.moveResolver`: moves the player circle, sliding along walls. */
-export type MoveResolver = (x: number, z: number, dx: number, dz: number) => WorldXZ;
+/**
+ * Extra solid cells over the tile grid (docs/DECOR.md D4: the intact breakables), keyed by `cellKey(gx, gy)`; only
+ * `has` is read. The sim passes its own (state.breakables.slotByCell) as the movers' and blockers' optional trailing
+ * argument; absent, every function here takes exactly its grid-only path.
+ */
+export type SolidCells = ReadonlyMap<number, number>;
+
+/** Row stride of cellKey (grids are far narrower). */
+export const CELL_KEY_STRIDE = 65536;
+
+/** The SolidCells key of grid cell (gx, gy) (any cell inside the grid). */
+export function cellKey(gx: number, gy: number): number {
+	return gy * CELL_KEY_STRIDE + gx;
+}
+
+/** `SimConfig.moveResolver`: moves the player circle, sliding along walls (and `solid` cells). */
+export type MoveResolver = (x: number, z: number, dx: number, dz: number, solid?: SolidCells) => WorldXZ;
 /** `SimConfig.actorMover`: moves a circle of any radius (enemies, bosses). */
-export type ActorMover = (x: number, z: number, dx: number, dz: number, radius: number) => WorldXZ;
-/** `SimConfig.isBulletBlocked`: true when a bullet at world (x, z) hits a wall. */
-export type BulletBlocker = (x: number, z: number) => boolean;
+export type ActorMover = (x: number, z: number, dx: number, dz: number, radius: number, solid?: SolidCells) => WorldXZ;
+/** `SimConfig.isBulletBlocked`: true when a bullet at world (x, z) hits a wall (or a `solid` cell). */
+export type BulletBlocker = (x: number, z: number, solid?: SolidCells) => boolean;
 
 /** Tile at integer grid coords; VOID outside the grid. */
 export function tileAt(d: Dungeon, gx: number, gy: number): TileType {
@@ -53,8 +68,10 @@ export function isWalkable(d: Dungeon, x: number, z: number): boolean {
 	return isWalkableTile(tileAt(d, worldToGrid(x), worldToGrid(z)));
 }
 
-function blocks(d: Dungeon, gx: number, gy: number): boolean {
-	return !isWalkableTile(tileAt(d, gx, gy));
+/** A non-walkable tile, or (only when `solid` is given) a walkable one listed in it. */
+function blocks(d: Dungeon, gx: number, gy: number, solid?: SolidCells): boolean {
+	if (!isWalkableTile(tileAt(d, gx, gy))) return true;
+	return solid !== undefined && solid.has(cellKey(gx, gy));
 }
 
 /** Touching within this distance is not penetration (absorbs float rounding at rest). */
@@ -67,7 +84,15 @@ const EPS = 1e-9;
  * stops where it first touches the tile (u = edge -/+ sqrt(r^2 - gap^2)), so it cannot skip
  * over a tile regardless of step length.
  */
-function sweepAxis(d: Dungeon, u: number, v: number, du: number, r: number, alongX: boolean): number {
+function sweepAxis(
+	d: Dungeon,
+	u: number,
+	v: number,
+	du: number,
+	r: number,
+	alongX: boolean,
+	solid?: SolidCells,
+): number {
 	if (du === 0) return u;
 	const half = TILE_SIZE / 2;
 	let nu = u + du;
@@ -84,7 +109,7 @@ function sweepAxis(d: Dungeon, u: number, v: number, du: number, r: number, alon
 		if (rem <= 0) continue; // this row/column is out of the circle's reach
 		const reach = math.sqrt(rem);
 		for (let gu = gu0; gu <= gu1; gu++) {
-			if (!(alongX ? blocks(d, gu, gv) : blocks(d, gv, gu))) continue;
+			if (!(alongX ? blocks(d, gu, gv, solid) : blocks(d, gv, gu, solid))) continue;
 			if (du > 0) {
 				const stop = gu * TILE_SIZE - half - reach;
 				// stop < u - EPS means we already overlap this tile (spawned inside it): let it go.
@@ -106,16 +131,25 @@ function sweepAxis(d: Dungeon, u: number, v: number, du: number, r: number, alon
  * Contract: no tunnelling for |dx|, |dz| <= 0.5 world units per call. Convex wall corners stop the axis that hits
  * them (no tangential deflection); the other axis still slides. If the circle starts overlapping a tile (e.g.
  * spawned inside a wall), that tile does not block it, so the entity can walk out.
+ * `solid` (optional): extra blocking cells (the sim's intact breakables); absent, the grid alone.
  */
-export function moveCircle(d: Dungeon, x: number, z: number, dx: number, dz: number, radius: number): WorldXZ {
-	const nx = sweepAxis(d, x, z, dx, radius, true);
-	const nz = sweepAxis(d, z, nx, dz, radius, false);
+export function moveCircle(
+	d: Dungeon,
+	x: number,
+	z: number,
+	dx: number,
+	dz: number,
+	radius: number,
+	solid?: SolidCells,
+): WorldXZ {
+	const nx = sweepAxis(d, x, z, dx, radius, true, solid);
+	const nz = sweepAxis(d, z, nx, dz, radius, false, solid);
 	return { x: nx, z: nz };
 }
 
 /** blocks() at primary-axis cell `gu` and lateral cell `gv`. */
-function blocksAcross(d: Dungeon, gu: number, gv: number, alongX: boolean): boolean {
-	return alongX ? blocks(d, gu, gv) : blocks(d, gv, gu);
+function blocksAcross(d: Dungeon, gu: number, gv: number, alongX: boolean, solid?: SolidCells): boolean {
+	return alongX ? blocks(d, gu, gv, solid) : blocks(d, gv, gu, solid);
 }
 
 /** A blocked remainder below this is no block (float noise of a slide). */
@@ -159,6 +193,7 @@ function cornerNudge(
 	budget: number,
 	r: number,
 	alongX: boolean,
+	solid?: SolidCells,
 ): void {
 	nudged.ok = false;
 	const half = TILE_SIZE / 2;
@@ -171,16 +206,16 @@ function cornerNudge(
 		const v0 = gv * TILE_SIZE - half,
 			v1 = gv * TILE_SIZE + half;
 		const gap = v < v0 ? v0 - v : v > v1 ? v - v1 : 0;
-		if (r2 - gap * gap <= 0 || !blocksAcross(d, gu, gv, alongX)) continue;
+		if (r2 - gap * gap <= 0 || !blocksAcross(d, gu, gv, alongX, solid)) continue;
 		if (hi < lo) lo = gv;
 		hi = gv;
 	}
 	if (hi < lo) return;
-	const downOpen = !blocksAcross(d, gu, lo - 1, alongX);
-	const upOpen = !blocksAcross(d, gu, hi + 1, alongX);
+	const downOpen = !blocksAcross(d, gu, lo - 1, alongX, solid);
+	const upOpen = !blocksAcross(d, gu, hi + 1, alongX, solid);
 	if (!downOpen && !upOpen) return;
 	let behind = false;
-	for (let gv = lo; gv <= hi; gv++) if (blocksAcross(d, gu + s, gv, alongX)) behind = true;
+	for (let gv = lo; gv <= hi; gv++) if (blocksAcross(d, gu + s, gv, alongX, solid)) behind = true;
 	const pillar = downOpen && upOpen && !behind;
 	const vLo = lo * TILE_SIZE - half,
 		vHi = hi * TILE_SIZE + half;
@@ -209,11 +244,11 @@ function cornerNudge(
 		const dist = dir < 0 ? v - (vLo - r) : vHi + r - v;
 		const m = budget < dist ? budget : dist;
 		if (m <= NUDGE_EPS) return;
-		const nv = sweepAxis(d, v, u, dir * m, r, !alongX);
+		const nv = sweepAxis(d, v, u, dir * m, r, !alongX, solid);
 		if (math.abs(nv - v) < m - REACH_EPS) return;
 		const rest = budget - m;
 		nudged.v = nv;
-		nudged.u = rest > NUDGE_EPS ? sweepAxis(d, u, nv, s * rest, r, alongX) : u;
+		nudged.u = rest > NUDGE_EPS ? sweepAxis(d, u, nv, s * rest, r, alongX, solid) : u;
 		nudged.ok = true;
 		return;
 	}
@@ -239,11 +274,11 @@ function cornerNudge(
 	let u1 = u,
 		v1 = v;
 	if (nv0 * tv >= 0) {
-		v1 = sweepAxis(d, v, u, tv, r, !alongX);
-		u1 = sweepAxis(d, u, v1, tu, r, alongX);
+		v1 = sweepAxis(d, v, u, tv, r, !alongX, solid);
+		u1 = sweepAxis(d, u, v1, tu, r, alongX, solid);
 	} else {
-		u1 = sweepAxis(d, u, v, tu, r, alongX);
-		v1 = sweepAxis(d, v, u1, tv, r, !alongX);
+		u1 = sweepAxis(d, u, v, tu, r, alongX, solid);
+		v1 = sweepAxis(d, v, u1, tv, r, !alongX, solid);
 	}
 	if (math.abs(u1 - u) < math.abs(tu) - REACH_EPS || math.abs(v1 - v) < math.abs(tv) - REACH_EPS) return;
 	nudged.u = u1;
@@ -268,7 +303,8 @@ const CORNER_PROBE = 1e-6;
  * pressing on its face (plain moveCircle stops the blocked axis and only slides the other, so a head-on approach
  * stalls). Everywhere else (open floor, a long wall head-on, a concave corner, a staircase wall) it IS moveCircle, so
  * it rests where moveCircle rests and never flips between two positions. Same contract as moveCircle (pure, every
- * move an exact sweep); the result is never farther from (x, z) than the step's length |(dx, dz)|.
+ * move an exact sweep); the result is never farther from (x, z) than the step's length |(dx, dz)|. `solid` cells
+ * (a breakable) are obstacles like any wall tile: a lone crate is rounded like a pillar.
  */
 export function moveCircleAroundCorners(
 	d: Dungeon,
@@ -277,8 +313,9 @@ export function moveCircleAroundCorners(
 	dx: number,
 	dz: number,
 	radius: number,
+	solid?: SolidCells,
 ): WorldXZ {
-	const res = moveCircle(d, x, z, dx, dz, radius);
+	const res = moveCircle(d, x, z, dx, dz, radius, solid);
 	const adx = math.abs(dx),
 		adz = math.abs(dz);
 	if (adx === 0 && adz === 0) return res;
@@ -290,8 +327,8 @@ export function moveCircleAroundCorners(
 		oz = res.z - z;
 	const budget = math.sqrt(dx * dx + dz * dz) - math.sqrt(ox * ox + oz * oz);
 	if (budget <= NUDGE_EPS) return res;
-	if (alongX) cornerNudge(d, res.x, res.z, dx, dz, budget < lost ? budget : lost, radius, true);
-	else cornerNudge(d, res.z, res.x, dz, dx, budget < lost ? budget : lost, radius, false);
+	if (alongX) cornerNudge(d, res.x, res.z, dx, dz, budget < lost ? budget : lost, radius, true, solid);
+	else cornerNudge(d, res.z, res.x, dz, dx, budget < lost ? budget : lost, radius, false, solid);
 	if (!nudged.ok) return res;
 	const nx = alongX ? nudged.u : nudged.v,
 		nz = alongX ? nudged.v : nudged.u;
@@ -300,14 +337,14 @@ export function moveCircleAroundCorners(
 	return { x: nx, z: nz };
 }
 
-/** `SimConfig.moveResolver` for the player: `(x, z, dx, dz) => moveCircle(d, x, z, dx, dz, radius)`. */
+/** `SimConfig.moveResolver` for the player: `(x, z, dx, dz, solid) => moveCircle(d, x, z, dx, dz, radius, solid)`. */
 export function circleMover(d: Dungeon, radius: number): MoveResolver {
-	return (x, z, dx, dz) => moveCircle(d, x, z, dx, dz, radius);
+	return (x, z, dx, dz, solid) => moveCircle(d, x, z, dx, dz, radius, solid);
 }
 
-/** `SimConfig.actorMover`: `(x, z, dx, dz, radius) => moveCircle(d, x, z, dx, dz, radius)`. */
+/** `SimConfig.actorMover`: `(x, z, dx, dz, radius, solid) => moveCircle(d, x, z, dx, dz, radius, solid)`. */
 export function actorMover(d: Dungeon): ActorMover {
-	return (x, z, dx, dz, radius) => moveCircle(d, x, z, dx, dz, radius);
+	return (x, z, dx, dz, radius, solid) => moveCircle(d, x, z, dx, dz, radius, solid);
 }
 
 /**
@@ -315,7 +352,7 @@ export function actorMover(d: Dungeon): ActorMover {
  * walking enemies round solid pillars and wall ends instead of snagging on them.
  */
 export function actorSteerMover(d: Dungeon): ActorMover {
-	return (x, z, dx, dz, radius) => moveCircleAroundCorners(d, x, z, dx, dz, radius);
+	return (x, z, dx, dz, radius, solid) => moveCircleAroundCorners(d, x, z, dx, dz, radius, solid);
 }
 
 /** A tile stops a bullet when it is WALL or VOID (outside the grid reads as VOID). FLOOR and POOL let it through. */
@@ -323,32 +360,42 @@ export function isBulletBlockingTile(t: TileType): boolean {
 	return t === TileType.WALL || t === TileType.VOID;
 }
 
-/** True when a bullet whose center is at world (x, z) is inside a WALL or VOID tile and must be consumed. */
-export function isBulletBlocked(d: Dungeon, x: number, z: number): boolean {
-	return isBulletBlockingTile(tileAt(d, worldToGrid(x), worldToGrid(z)));
+/**
+ * True when a bullet whose center is at world (x, z) is inside a WALL or VOID tile (or, when given, a `solid` cell)
+ * and must be consumed.
+ */
+export function isBulletBlocked(d: Dungeon, x: number, z: number, solid?: SolidCells): boolean {
+	const gx = worldToGrid(x);
+	const gy = worldToGrid(z);
+	if (isBulletBlockingTile(tileAt(d, gx, gy))) return true;
+	return solid !== undefined && solid.has(cellKey(gx, gy));
 }
 
-/** `SimConfig.isBulletBlocked`: `(x, z) => isBulletBlocked(d, x, z)`. */
+/**
+ * `SimConfig.isBulletBlocked`: `(x, z, solid) => isBulletBlocked(d, x, z, solid)`. Line of sight calls it with
+ * (x, z) only, so sight never sees `solid` cells (docs/DECOR.md B2: breakables are low cover).
+ */
 export function bulletBlocker(d: Dungeon): BulletBlocker {
-	return (x, z) => isBulletBlocked(d, x, z);
+	return (x, z, solid) => isBulletBlocked(d, x, z, solid);
 }
 
 /** Default tolerance of circleOverlapsWall. */
 const OVERLAP_TOLERANCE = 1e-6;
 
-/** True when the circle overlaps any non-walkable tile by more than `tolerance`. */
+/** True when the circle overlaps any non-walkable tile (or `solid` cell) by more than `tolerance`. */
 export function circleOverlapsWall(
 	d: Dungeon,
 	x: number,
 	z: number,
 	radius: number,
 	tolerance = OVERLAP_TOLERANCE,
+	solid?: SolidCells,
 ): boolean {
 	const half = TILE_SIZE / 2;
 	const r2 = (radius - tolerance) * (radius - tolerance);
 	for (let gy = worldToGrid(z - radius); gy <= worldToGrid(z + radius); gy++)
 		for (let gx = worldToGrid(x - radius); gx <= worldToGrid(x + radius); gx++) {
-			if (!blocks(d, gx, gy)) continue;
+			if (!blocks(d, gx, gy, solid)) continue;
 			const cx = math.min(math.max(x, gx * TILE_SIZE - half), gx * TILE_SIZE + half);
 			const cz = math.min(math.max(z, gy * TILE_SIZE - half), gy * TILE_SIZE + half);
 			if ((x - cx) * (x - cx) + (z - cz) * (z - cz) < r2) return true;

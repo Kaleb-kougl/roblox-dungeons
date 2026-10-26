@@ -13,3 +13,5 @@ export * from "./enemyRooms";
 export * from "./encounterCost";
 export * from "./endlessData";
 export * from "./endless";
+export * from "./breakablesData";
+export * from "./breakables";
