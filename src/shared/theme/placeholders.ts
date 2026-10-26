@@ -14,7 +14,8 @@
  * as the web build scales sprites, so nothing here can change difficulty.
  *
  * Decor (`decor.*`, docs/DECOR.md R2) has no placeholders: decor is optional, and an ID with no art is not drawn.
- * Breakables (`breakable.*`) do: they are gameplay objects, drawn as low boxes until art exists.
+ * Breakables (`breakable.*`) do: they are gameplay objects, drawn as low boxes until art exists. So do boost drops
+ * (`boost.*`, docs/BOOSTS.md B5): a small gem (a Diamond) per kind in its identity colour.
  */
 
 import { PIXELS_PER_TILE, STUDS_PER_TILE } from "shared/config";
@@ -22,6 +23,7 @@ import {
 	BIOMES,
 	BOSS,
 	BOSS_IDS,
+	BOOST_KINDS,
 	BREAKABLE_KINDS,
 	BULLET,
 	CHARACTER,
@@ -31,16 +33,22 @@ import {
 	ENEMY_ARCHETYPES,
 	ITEM,
 	TILE,
+	boostId,
 	breakableId,
 	slotFor,
+	type BoostKind,
 	type BreakableKind,
 	type EnemyArchetype,
 } from "./contract";
 import type { BiomeTileKey, ColorRole } from "./types";
 import { startsWith } from "./util";
 
-/** Part shapes. Ball/Block/Cylinder/Wedge are Enum.PartType names; Capsule = a Cylinder capped by two Balls. */
-export const PLACEHOLDER_SHAPES = ["Ball", "Block", "Cylinder", "Wedge", "Capsule"] as const;
+/**
+ * Part shapes. Ball/Block/Cylinder/Wedge are Enum.PartType names; Capsule = a Cylinder capped by two Balls;
+ * Diamond (a boost drop's gem, docs/BOOSTS.md B5) = a Block stood on a corner (turned 45 degrees about two axes; a
+ * renderer with no Diamond case draws the plain Block).
+ */
+export const PLACEHOLDER_SHAPES = ["Ball", "Block", "Cylinder", "Wedge", "Capsule", "Diamond"] as const;
 export type PlaceholderShape = (typeof PLACEHOLDER_SHAPES)[number];
 
 /** Enum.Material names: Neon for bullets (they must glow on every floor), SmoothPlastic for everything else. */
@@ -134,6 +142,11 @@ export const PLACEHOLDER_PROPORTIONS = {
 	crate: [1, 0.5, 1],
 	/** Barrel: a little narrower and taller than a crate (3.5 x 2.5 x 3.5 studs). */
 	barrel: [0.875, 0.625, 0.875],
+	/**
+	 * Boost drops (docs/BOOSTS.md B5): a small gem, half a tile across and a little taller (2 x 2.5 x 2 studs), no
+	 * taller than a barrel (5/8 of a tile), so it never hides a bullet.
+	 */
+	boost: [0.5, 0.625, 0.5],
 	/** UI: flat, as big as its pixel size. */
 	ui: [1, 1, 0],
 	/** Missing IDs: a block filling the cell. */
@@ -181,6 +194,8 @@ const TILE_CELL = TILE.cell as Cell;
 const ITEM_CELL = ITEM.cell as Cell;
 /** Breakables are free-size art; their placeholder stands on one tile. */
 const BREAKABLE_CELL = TILE_CELL;
+/** Boost drops are free-size art; their placeholder gem is sized from one tile. */
+const BOOST_CELL = TILE_CELL;
 /** Free-size UI cells: the web placeholder pack's sizes, in pixels. */
 const UI_CELLS = {
 	cursor: { w: 9, h: 9 },
@@ -270,6 +285,14 @@ const breakableVisual = (kind: BreakableKind): PlaceholderVisual =>
 		color: role(breakableId(kind)),
 	});
 
+const boostVisual = (kind: BoostKind): PlaceholderVisual =>
+	visual({
+		shape: "Diamond",
+		cell: BOOST_CELL,
+		proportions: PLACEHOLDER_PROPORTIONS.boost,
+		color: role(boostId(kind)),
+	});
+
 const uiVisual = (cell: Cell, color: ColorRole, outline?: ColorRole): PlaceholderVisual =>
 	visual({
 		shape: "Block",
@@ -335,6 +358,10 @@ function buildTable(): Record<string, PlaceholderVisual> {
 	// Breakables (Roblox port, docs/DECOR.md D4): a low box per kind in its identity colour, standing on its tile.
 	for (const kind of BREAKABLE_KINDS) {
 		t[breakableId(kind)] = breakableVisual(kind);
+	}
+	// Boost drops (Roblox port, docs/BOOSTS.md B5): a small gem per kind in its identity colour.
+	for (const kind of BOOST_KINDS) {
+		t[boostId(kind)] = boostVisual(kind);
 	}
 	return t;
 }

@@ -27,6 +27,7 @@
  *   fx.shrine.use    RunState.shrineUsed 0 -> 1, at the shrine (spots.shrine)
  *   fx.death.puff    FxEvent killed (not a boss: bossDefeated owns it)
  *   fx.breakable.splinter  `breakableSplinter(x, z)` (called by the breakable renderer when a piece breaks)
+ *   fx.boost.collect `boostCollect(x, z)` (called by the boost drop renderer on a pickup, docs/BOOSTS.md B6)
  *   fx.hit.light / fx.hit.heavy  FxEvent hit (heavy: the tracker's `heavy`), at most every hitMarkMinSec per actor
  *   fx.stairwell     loop (`loop`): while state.endless.stairsOpen and the spots' floor is the state's floor
  * Sources are taken in that order (most important first) against the budget: at most FX_SPRITE_VIEW.maxSprites live
@@ -275,6 +276,9 @@ export class FxCueMapper {
 	// splinters queued by the breakable renderer
 	private readonly splX: number[] = [];
 	private readonly splZ: number[] = [];
+	// boost pickups queued by the boost drop renderer
+	private readonly boostX: number[] = [];
+	private readonly boostZ: number[] = [];
 	// this frame's telegraph spots: x, z, radius
 	private readonly tgX: number[] = [];
 	private readonly tgZ: number[] = [];
@@ -303,6 +307,13 @@ export class FxCueMapper {
 		this.splZ.push(z);
 	}
 
+	/** A boost drop was picked up at sim (x, z): its burst on the next frame (dropped past boostCollectQueue). */
+	boostCollect(x: number, z: number): void {
+		if (this.boostX.size() >= FX_SPRITE_VIEW.boostCollectQueue) return;
+		this.boostX.push(x);
+		this.boostZ.push(z);
+	}
+
 	/** Forget everything (live effects, pending bursts, snapshots): the next frame adopts the state silently. */
 	reset(): void {
 		this.liveEnds.clear();
@@ -312,6 +323,8 @@ export class FxCueMapper {
 		this.pendScale.clear();
 		this.splX.clear();
 		this.splZ.clear();
+		this.boostX.clear();
+		this.boostZ.clear();
 		this.lastState = undefined;
 		this.lastTick = -1;
 		this.lastFloor = -1;
@@ -357,10 +370,14 @@ export class FxCueMapper {
 			}
 			for (let i = 0; i < this.splX.size(); i++)
 				this.emit("fx.breakable.splinter", this.splX[i], this.splZ[i], 0, 1);
+			for (let i = 0; i < this.boostX.size(); i++)
+				this.emit("fx.boost.collect", this.boostX[i], this.boostZ[i], 0, 1);
 			this.hitCues(f);
 		}
 		this.splX.clear();
 		this.splZ.clear();
+		this.boostX.clear();
+		this.boostZ.clear();
 		this.snapshot(f);
 		this.updateLoop(f);
 		return out.count();
@@ -376,6 +393,8 @@ export class FxCueMapper {
 		this.pendScale.clear();
 		this.splX.clear();
 		this.splZ.clear();
+		this.boostX.clear();
+		this.boostZ.clear();
 	}
 
 	private expire(): void {

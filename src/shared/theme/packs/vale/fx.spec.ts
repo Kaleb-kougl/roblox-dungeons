@@ -7,7 +7,7 @@ import { ThemePack } from "../../pack";
 import type { SpriteSetAsset } from "../../types";
 import { sortedKeys } from "../../util";
 import { fxColorReport, validateManifest } from "../../validate";
-import { VALE_AMBIENT_EMISSIVE, VALE_FX } from "./fx";
+import { VALE_AMBIENT_EMISSIVE, VALE_FX, VALE_FX_IDS, VALE_FX_PENDING } from "./fx";
 import { VALE_AMBIENT_LAYOUTS, VALE_FX_LAYOUTS, VALE_FX_SHEET } from "./fxLayout";
 import { VALE_ASSET_IDS } from "./assetIds";
 import { VALE_WORLD_LAYOUTS } from "./layout";
@@ -31,8 +31,13 @@ function isFxOrAmbient(id: string): boolean {
 }
 
 describe("vale effects (fx.*)", () => {
-	it("maps every fx ID to a generated sheet and a look within the size cap", () => {
+	it("maps every fx ID it draws to a generated sheet and a look within the size cap", () => {
+		// every fx ID is either drawn or pending (no art yet: the boost drops' effects, docs/BOOSTS.md B8)
 		for (const id of FX_IDS) {
+			const drawn = (VALE_FX_IDS as ReadonlyArray<FxId>).includes(id);
+			expect([id, drawn !== VALE_FX_PENDING.includes(id)]).toEqual([id, true]);
+		}
+		for (const id of VALE_FX_IDS) {
 			const l = VALE_FX_LAYOUTS[id];
 			const look = VALE_FX[id];
 			expect([id, l !== undefined, look !== undefined]).toEqual([id, true, true]);
@@ -41,7 +46,7 @@ describe("vale effects (fx.*)", () => {
 			expect([id, l.grey, look.tint !== undefined]).toEqual([id, look.tint !== undefined, l.grey]);
 			expect([id, l.grey || l.meanColor !== undefined]).toEqual([id, true]);
 		}
-		expect(sortedKeys(VALE_FX_LAYOUTS)).toEqual([...FX_IDS].sort());
+		expect(sortedKeys(VALE_FX_LAYOUTS)).toEqual([...VALE_FX_IDS].sort());
 	});
 
 	it("as bundled (no effect PNG uploaded) has no fx entry, and no Ninja Adventure ambient texture", () => {
@@ -69,7 +74,8 @@ describe("vale effects (fx.*)", () => {
 		const m = buildValeManifest(ids);
 		expect(validateManifest(m, { packId: "vale" })).toEqual([]);
 		const pack = new ThemePack(m, { warn: quiet });
-		for (const id of FX_IDS) {
+		for (const id of VALE_FX_PENDING) expect([id, pack.fx(id)]).toEqual([id, undefined]);
+		for (const id of VALE_FX_IDS) {
 			const fx = pack.fx(id);
 			const l = VALE_FX_LAYOUTS[id];
 			const look = VALE_FX[id];
@@ -114,7 +120,7 @@ describe("vale effects (fx.*)", () => {
 			subjects.add(e.subject);
 			expect([e.subject, e.source, e.against, e.ok]).toEqual([e.subject, e.source, e.against, true]);
 		}
-		for (const id of FX_IDS) expect([id, subjects.has(id)]).toEqual([id, true]);
+		for (const id of VALE_FX_IDS) expect([id, subjects.has(id)]).toEqual([id, true]);
 		const slam = m.assets["fx.boss.slam"] as SpriteSetAsset;
 		expect(slam.tint).toBe(undefined);
 		expect(slam.meanColor).toBe(VALE_FX_LAYOUTS["fx.boss.slam"].meanColor);
@@ -122,7 +128,7 @@ describe("vale effects (fx.*)", () => {
 
 	it("a set's play animation is the contract's", () => {
 		const m = buildValeManifest(fxIds());
-		for (const id of FX_IDS) {
+		for (const id of VALE_FX_IDS) {
 			const set = m.assets[id] as SpriteSetAsset;
 			expect([id, sortedKeys(set.animations)]).toEqual([id, [FX_ANIMATION]]);
 			expect([id, set.facings.count]).toEqual([id, 1]);

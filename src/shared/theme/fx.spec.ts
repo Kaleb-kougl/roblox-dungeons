@@ -107,6 +107,11 @@ describe("fx contract", () => {
 			"fx.shrine.use",
 			"fx.stairwell",
 			"fx.breakable.splinter",
+			"fx.boost.collect",
+			"fx.boost.aura.fury",
+			"fx.boost.aura.quickstep",
+			"fx.boost.aura.frenzy",
+			"fx.boost.aura.aegis",
 		]);
 		expect(new Set<string>(FX_IDS).size()).toBe(FX_IDS.size());
 		for (const id of FX_IDS) {

@@ -10,7 +10,7 @@
  * brighter self-lit blend. Two sheets keep their own colours (Mother Bramble's rock spikes and the explosion): they
  * carry the pipeline's meanColor, which the validator holds to the enemy-bullet rule like every tint.
  */
-import type { FxId } from "../../contract";
+import { BOOST_FX_IDS, FX_IDS, type BoostFxId, type FxId } from "../../contract";
 import type { ColorRole, ImageAsset, SpriteSetAsset } from "../../types";
 import { sortedKeys } from "../../util";
 import { VALE_AMBIENT_LAYOUTS, VALE_FX_LAYOUTS, VALE_FX_SHEET } from "./fxLayout";
@@ -27,8 +27,19 @@ export interface ValeFxLook {
 /** Neutral grey for dust, smoke and splinters (breakable.crate is too dark for the enemy-bullet rule). */
 const DUST: ColorRole = "uiTextDim";
 
-/** Every fx ID vale draws (all of FX_IDS), and how. */
-export const VALE_FX: Readonly<Record<FxId, ValeFxLook>> = {
+/** The fx IDs vale draws: every FX_IDS entry but the boost drops' effects (no art yet: docs/BOOSTS.md B8). */
+export type ValeFxId = Exclude<FxId, BoostFxId>;
+
+/** FX_IDS that vale has no art for yet (absent from the pack: not drawn). docs/BOOSTS.md B8 vendors and maps them. */
+export const VALE_FX_PENDING: ReadonlyArray<FxId> = BOOST_FX_IDS;
+
+/** VALE_FX's IDs in FX_IDS order (FX_IDS without VALE_FX_PENDING). */
+export const VALE_FX_IDS: ReadonlyArray<ValeFxId> = FX_IDS.filter(
+	(id) => !VALE_FX_PENDING.includes(id),
+) as Array<ValeFxId>;
+
+/** Every fx ID vale draws (VALE_FX_IDS), and how. */
+export const VALE_FX: Readonly<Record<ValeFxId, ValeFxLook>> = {
 	"fx.hit.light": { sizeTiles: 0.75, tint: "damageNumber", additive: true },
 	"fx.hit.heavy": { sizeTiles: 1, tint: "uiAccent", additive: true },
 	"fx.swing.1": { sizeTiles: 1.5, tint: "playerBullet", additive: true },
@@ -63,7 +74,7 @@ export function valeFxAssets(ids: AssetIds): Record<string, SpriteSetAsset> {
 	}
 	for (const id of sortedKeys(VALE_FX_LAYOUTS)) {
 		const l = VALE_FX_LAYOUTS[id];
-		const look = VALE_FX[id as FxId];
+		const look = VALE_FX[id as ValeFxId];
 		if (look === undefined) {
 			continue;
 		}

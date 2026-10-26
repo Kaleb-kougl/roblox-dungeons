@@ -1,7 +1,7 @@
 // Key rebinding (task L4b): the default layout reproduces the pre-rebinding tables, the rebind / swap rules, the
 // overrides sanitizer, labels, and that a rebound layout gives the same sim bits as the default one.
 import { describe, expect, it } from "@rbxts/jest-globals";
-import { Button, DEBUG_FLOOR_BUTTON } from "shared/sim";
+import { Button, DEBUG_DROP_BUTTON, DEBUG_FLOOR_BUTTON } from "shared/sim";
 import { LEADERBOARD_KEY, PAUSE_HINT, SETTINGS_HINT, SETTINGS_KEY, SETTINGS_PAD_CLOSE_KEY } from "shared/view/hud";
 import {
 	DEFAULT_BINDINGS,
@@ -67,6 +67,8 @@ const OLD_KEY_BINDINGS = new Map<string, number>([
 	["K", Button.DEBUG_HIT],
 	["J", Button.DEBUG_BOSS],
 	["N", DEBUG_FLOOR_BUTTON],
+	// docs/BOOSTS.md B6: the debug boost drop (a port bit, KV_Debug only), added after rebinding
+	["M", DEBUG_DROP_BUTTON],
 ]);
 const OLD_MOVE_KEYS = { up: ["W", "Up"], down: ["S", "Down"], left: ["A", "Left"], right: ["D", "Right"] };
 const OLD_MOUSE_BINDINGS = new Map<string, number>([
@@ -173,7 +175,8 @@ describe("DEFAULT_BINDINGS", () => {
 		expect(FIXED_INPUTS.padMenuClose).toBe(SETTINGS_PAD_CLOSE_KEY);
 		expect(DEFAULT_BINDINGS.kbm.leaderboard).toEqual([LEADERBOARD_KEY]);
 		const fixedKeys = [FIXED_INPUTS.pause, FIXED_INPUTS.settings, FIXED_INPUTS.debugHit, FIXED_INPUTS.debugBoss];
-		for (const k of [...fixedKeys, FIXED_INPUTS.debugFloor, ...REPLAY_CHECK_KEYS, "Escape", "Tab", "Slash", "F9"]) {
+		const debugKeys = [FIXED_INPUTS.debugFloor, FIXED_INPUTS.debugDrop];
+		for (const k of [...fixedKeys, ...debugKeys, ...REPLAY_CHECK_KEYS, "Escape", "Tab", "Slash", "F9"]) {
 			expect([k, RESERVED_KBM_INPUTS.includes(k)]).toEqual([k, true]);
 		}
 		for (const k of [FIXED_INPUTS.padPause, "ButtonSelect", "Thumbstick1", "Thumbstick2"]) {
@@ -252,7 +255,7 @@ describe("rebind", () => {
 	});
 
 	it("refuses reserved, unknown and non-rebindable targets", () => {
-		for (const k of ["Escape", "Tab", "Slash", "F9", "P", "O", "K", "J", "N", "F8", "L"]) {
+		for (const k of ["Escape", "Tab", "Slash", "F9", "P", "O", "K", "J", "N", "M", "F8", "L"]) {
 			expect([k, refusal(rebind(DEFAULT_BINDINGS, "kbm", "fire", 0, k))]).toEqual([k, "reserved"]);
 		}
 		for (const k of ["ButtonStart", "ButtonSelect", "Thumbstick1", "Thumbstick2"]) {
@@ -471,7 +474,7 @@ describe("mapping a rebound layout", () => {
 		["kbm", "moveUp", 0, "I"],
 		["kbm", "moveDown", 0, "G"],
 		["kbm", "moveLeft", 0, "H"],
-		["kbm", "moveRight", 0, "M"],
+		["kbm", "moveRight", 0, "U"], // not M: M is the debug boost drop (reserved)
 		["kbm", "moveUp", 1, "Y"],
 		["kbm", "fire", 0, "Q"], // ember takes MouseButton1
 		["kbm", "roll", 0, "MouseButton3"],
@@ -488,12 +491,12 @@ describe("mapping a rebound layout", () => {
 	/** The same presses on both layouts: [default inputs, custom inputs]. */
 	const presses: Array<[DeviceSnapshot, DeviceSnapshot]> = [
 		[snap(["W"]), snap(["I"])],
-		[snap(["Up", "D"]), snap(["Y", "M"])],
+		[snap(["Up", "D"]), snap(["Y", "U"])],
 		[snap(["S", "A"]), snap(["G", "H"])],
 		[snap(["Space", "Q", "F", "E"], ["MouseButton1"]), snap(["C", "Two", "Q"], ["MouseButton1", "MouseButton3"])],
 		[snap([], ["MouseButton1", "MouseButton2"]), snap(["Q", "LeftShift"])],
 		[snap(["One", "Two", "Three", "Four", "P"]), snap(["One", "F", "Three", "Four", "P"])],
-		[snap(["K", "J", "N"]), snap(["K", "J", "N"])],
+		[snap(["K", "J", "N", "M"]), snap(["K", "J", "N", "M"])],
 		// pad: RT analog fire -> A; A skill1 -> RT analog; LB roll -> RB; RB ember -> LB
 		[snap([], [], pad([], [0, 0.8])), snap([], [], pad(["ButtonA"]))],
 		[snap([], [], pad(["ButtonA"])), snap([], [], pad([], [0, 0.8]))],
@@ -503,7 +506,7 @@ describe("mapping a rebound layout", () => {
 			snap([], [], pad(["ButtonR1", "ButtonStart"], [0.9, 0], 0.7)),
 		],
 		[snap([], [], pad(["ButtonR1"])), snap([], [], pad(["ButtonL1"]))],
-		[snap(["W", "D"], [], pad([], [0, 0.3], -0.5)), snap(["I", "M"], [], pad([], [0, 0.3], -0.5))],
+		[snap(["W", "D"], [], pad([], [0, 0.3], -0.5)), snap(["I", "U"], [], pad([], [0, 0.3], -0.5))],
 	];
 
 	it("the custom layout is valid", () => {
@@ -536,7 +539,23 @@ describe("mapping a rebound layout", () => {
 		expect(driverKeyAction("L", true, false, custom)).toBe("replayCheck");
 
 		const keys = boundKeyNames(custom);
-		for (const k of ["I", "Y", "G", "H", "M", "Q", "LeftShift", "Two", "F", "C", "Backspace", "P", "K", "F8"]) {
+		for (const k of [
+			"I",
+			"Y",
+			"G",
+			"H",
+			"U",
+			"M",
+			"Q",
+			"LeftShift",
+			"Two",
+			"F",
+			"C",
+			"Backspace",
+			"P",
+			"K",
+			"F8",
+		]) {
 			expect([k, keys.includes(k)]).toEqual([k, true]);
 		}
 		for (const k of ["W", "Space", "E", "R", "B", "MouseButton3"])

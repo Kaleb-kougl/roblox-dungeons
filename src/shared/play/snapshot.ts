@@ -22,10 +22,12 @@ import {
 	teammatesDrafting,
 	weaponAt,
 	weaponsAt,
+	aegisPips,
 	type ActorState,
 	type SimConfig,
 	type SimState,
 } from "shared/sim";
+import { boostEntriesEqual, boostHudEntries, type BoostHudEntry } from "shared/view/boosts";
 import type { RunOutcome } from "./liveRun";
 
 export interface GameSnapshot {
@@ -102,6 +104,13 @@ export interface GameSnapshot {
 	/** 1-based position of the watched teammate among the living ones, and their count ("2 / 3"); 0 / 0 when not. */
 	readonly spectatePosition: number;
 	readonly spectateCount: number;
+	/**
+	 * Boost drops (docs/BOOSTS.md B7): the shown player's running boosts in Boost order (`secondsLeft` in tenths,
+	 * rounded up, and the bar's `fraction` in the same steps, so the HUD does not re-render every frame), and their
+	 * Aegis pips (the extra armor pip). Empty / 0 without drops.
+	 */
+	readonly boosts: ReadonlyArray<BoostHudEntry>;
+	readonly aegisPips: number;
 }
 
 export const EMPTY_SNAPSHOT: GameSnapshot = table.freeze({
@@ -153,6 +162,8 @@ export const EMPTY_SNAPSHOT: GameSnapshot = table.freeze({
 	spectateName: "",
 	spectatePosition: 0,
 	spectateCount: 0,
+	boosts: table.freeze([]) as ReadonlyArray<BoostHudEntry>,
+	aegisPips: 0,
 });
 
 const NO_MARKS: ReadonlyArray<number> = EMPTY_SNAPSHOT.bossPhaseMarks;
@@ -272,6 +283,9 @@ export function takeSnapshot(state: Readonly<SimState>, extras: SnapshotExtras):
 		spectateName: spectate !== undefined ? spectate.name : "",
 		spectatePosition: spectate !== undefined ? spectate.position : 0,
 		spectateCount: spectate !== undefined ? spectate.count : 0,
+		// docs/BOOSTS.md B7: the vitals' player (the watched teammate while spectating).
+		boosts: boostHudEntries(state, vitals),
+		aegisPips: aegisPips(state, vitals),
 	};
 }
 
@@ -289,6 +303,7 @@ export function snapshotsEqual(a: GameSnapshot, b: GameSnapshot): boolean {
 	for (let i = 0; i < a.weapons.size(); i++) if (a.weapons[i] !== b.weapons[i]) return false;
 	if (a.scorePoints.size() !== b.scorePoints.size()) return false;
 	for (let i = 0; i < a.scorePoints.size(); i++) if (a.scorePoints[i] !== b.scorePoints[i]) return false;
+	if (!boostEntriesEqual(a.boosts, b.boosts)) return false;
 	if (a.bossPhaseMarks.size() !== b.bossPhaseMarks.size()) return false;
 	for (let i = 0; i < a.bossPhaseMarks.size(); i++) if (a.bossPhaseMarks[i] !== b.bossPhaseMarks[i]) return false;
 	return (
@@ -332,6 +347,7 @@ export function snapshotsEqual(a: GameSnapshot, b: GameSnapshot): boolean {
 		a.spectating === b.spectating &&
 		a.spectateName === b.spectateName &&
 		a.spectatePosition === b.spectatePosition &&
-		a.spectateCount === b.spectateCount
+		a.spectateCount === b.spectateCount &&
+		a.aegisPips === b.aegisPips
 	);
 }

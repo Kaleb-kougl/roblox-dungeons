@@ -25,6 +25,7 @@ import {
 	type TutorialState,
 } from "./tutorial/tutorial";
 import { cloneBreakablesState, createBreakablesState, type BreakablesState } from "./breakables/breakables";
+import { cloneDropsState, createDropsState, type DropsState } from "./drops/drops";
 
 export interface PlayerState {
 	x: number;
@@ -242,16 +243,22 @@ export interface SimState {
 	party?: PartyState;
 	/**
 	 * First-run tutorial (docs/TUTORIAL.md), only when SimConfig.tutorial is set: the harmless flag and the harmless
-	 * hit count. Hashed as the "tutorial" subsystem, appended after "party" (only "breakables" comes after it). See
-	 * tutorial/tutorial.ts.
+	 * hit count. Hashed as the "tutorial" subsystem, appended after "party" (only "breakables" and "drops" come after
+	 * it). See tutorial/tutorial.ts.
 	 */
 	tutorial?: TutorialState;
 	/**
 	 * Breakable barrels and crates (docs/DECOR.md D4), only when SimConfig.breakables is set: the current floor's pieces
-	 * (kind, cell, hp, broken tick). Hashed as the "breakables" subsystem, appended after every other group (after
-	 * "tutorial"). See breakables/breakables.ts.
+	 * (kind, cell, hp, broken tick). Hashed as the "breakables" subsystem, appended after "tutorial" (only "drops"
+	 * comes after it). See breakables/breakables.ts.
 	 */
 	breakables?: BreakablesState;
+	/**
+	 * Boost drops (docs/BOOSTS.md), only when SimConfig.drops is set: the drop stream, pity, ground slots, guards and
+	 * every player's boost timers / Aegis pips. Hashed as the "drops" subsystem, appended after every other group (after
+	 * "breakables"). See drops/drops.ts.
+	 */
+	drops?: DropsState;
 }
 
 /**
@@ -262,6 +269,7 @@ export interface SimState {
  * With `config.party` (size > 1) every party member starts at the spawn too (party.ts), before the encounter spawns.
  * With `config.tutorial`, `tutorial` state is created and every player starts with its `startHalfHearts` (if set).
  * With `config.breakables`, `breakables` state is created (floor 1's pieces in endless mode, else its `pieces`).
+ * With `config.drops`, `drops` state is created (its own rng stream from `seed`, one boost entry per player).
  */
 export function createSimState(
 	seed: number,
@@ -298,6 +306,8 @@ export function createSimState(
 		const list = firstFloor !== undefined ? firstFloor.breakables : breakables.pieces;
 		state.breakables = createBreakablesState(breakables, list ?? []);
 	}
+	// Boost drops: their own rng stream (seed ^ DROPS.salt), never state.rngState. No sim rng.
+	if (config.drops !== undefined) state.drops = createDropsState(config.drops, seed, partySize(state));
 	// Spawns the encounter (archetype init hooks may draw from the sim rng) and the stress emitter.
 	startCombat(state, world);
 	// After the spawns (scoring's room records read them; endless floors: the floor's deferred room spawns). No rng.
@@ -331,6 +341,7 @@ export function cloneSimState(s: Readonly<SimState>): SimState {
 		run: s.run !== undefined ? cloneRun(s.run) : undefined,
 		tutorial: s.tutorial !== undefined ? cloneTutorialState(s.tutorial) : undefined,
 		breakables: s.breakables !== undefined ? cloneBreakablesState(s.breakables) : undefined,
+		drops: s.drops !== undefined ? cloneDropsState(s.drops) : undefined,
 	};
 	if (s.party !== undefined) clone.party = cloneParty(s.party, clone);
 	return clone;

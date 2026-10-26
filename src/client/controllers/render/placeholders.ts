@@ -1,8 +1,10 @@
 import type { PlaceholderVisual, ThemePack } from "shared/theme";
 
 /**
- * Builds the Parts for a theme placeholder (shared/theme PLACEHOLDER_VISUALS): Ball / Block / Cylinder / Wedge, or a
- * Capsule (a Cylinder capped by two Balls). Shape, size, material and colour all come from the visual and the pack;
+ * Builds the Parts for a theme placeholder (shared/theme PLACEHOLDER_VISUALS): Ball / Block / Cylinder / Wedge, a
+ * Capsule (a Cylinder capped by two Balls), or a Diamond (a boost drop's gem: a cube stood on a corner, turned 45
+ * degrees about the vertical and then about its own depth axis, as wide and tall as the smaller of the visual's width
+ * and height, so it never stands taller than the visual). Shape, size, material and colour all come from the visual and the pack;
  * nothing here names a colour or an asset.
  *
  * The model's origin is its anchor point: the floor point under it for anchor "base", its centre for "center". Each
@@ -39,6 +41,11 @@ export function renderPart<T extends "Part" | "WedgePart">(className: T, castSha
 }
 
 const UPRIGHT = CFrame.Angles(0, 0, math.pi / 2); // a Cylinder's axis is X: turn it to Y
+/** The Diamond: a cube turned an eighth of a turn about Y, then about its own Z (it stands on a corner). */
+const EIGHTH_TURN = math.pi / 4;
+const DIAMOND_TURN = CFrame.Angles(0, EIGHTH_TURN, 0).mul(CFrame.Angles(0, 0, EIGHTH_TURN));
+/** A cube of side s turned about Z by 45 degrees spans s x sqrt(2) across and up. */
+const SQRT2 = math.sqrt(2);
 
 /**
  * The parts of `visual` scaled by `scale`, parented to `parent`. `castShadow` for bodies; markings and bullets pass
@@ -99,6 +106,17 @@ export function buildPlaceholder(
 			const bottom = renderPart("Part", castShadow);
 			bottom.Shape = Enum.PartType.Ball;
 			add(bottom, new Vector3(w, w, w), new CFrame(0, baseY - length / 2, 0));
+			break;
+		}
+		case "Diamond": {
+			const span = math.min(w, h);
+			const side = span / SQRT2;
+			const centreY = visual.anchor === "base" ? span / 2 : 0;
+			add(
+				renderPart("Part", castShadow),
+				new Vector3(side, side, side),
+				new CFrame(0, centreY, 0).mul(DIAMOND_TURN),
+			);
 			break;
 		}
 		default: {

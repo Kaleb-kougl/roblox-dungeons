@@ -2,7 +2,9 @@ import React from "@rbxts/react";
 import { useSelector } from "@rbxts/react-reflex";
 import { selectSnapshot } from "client/store";
 import { role, str } from "client/ui/theme";
+import { BOOST_VIEW } from "shared/view/boosts";
 import { HUD_STRINGS, HUD_VIEW, heartFills } from "shared/view/hud";
+import { BoostRow } from "./BoostRow";
 import { Panel, Pip, Row, Text } from "./primitives";
 import { RunItems } from "./RunItems";
 import { GhostHeart, HighlightRing } from "./TutorialFx";
@@ -43,18 +45,32 @@ function pips(count: number, max: number, color: "uiMana" | "uiAccent" | "ember"
 	return out;
 }
 
+/** The Aegis pips (docs/BOOSTS.md B7): filled diamonds in their own colour after the `after` armor pips. */
+function aegisPips(count: number, after: number) {
+	const out = new Array<React.Element>();
+	for (let i = 0; i < count; i++) {
+		out.push(
+			<Pip key={`a${i}`} order={after + i + 1} filled={true} color={BOOST_VIEW.aegisPipRole} diamond={true} />,
+		);
+	}
+	return out;
+}
+
 export interface StatusPanelProps {
 	/** The tutorial rings the hearts row or the flask row (TutorialView.highlight). */
 	readonly highlight?: "hearts" | "flask";
 	/** The tutorial's ghost half heart: a new token flashes it once more (0 = never). */
 	readonly ghostHeart?: number;
+	/** The tutorial rings the boost row (highlight id `boosts`, shared/view/boosts isBoostsHighlight). */
+	readonly boostsHighlight?: boolean;
 }
 
 /**
  * Top left (web PlayerHud): hearts (full / half / empty) with armor pips, flask charges and Ember pips, each row
- * labelled from the theme string table; in endless runs a line with the floor and Depth and the owned boons, relics
- * and curses (M2, RunItems). Reads only the ~10 Hz snapshot. In the tutorial: the highlight ring on the hearts or the
- * flask row, and the ghost half heart after a harmless hit.
+ * labelled from the theme string table; with boost drops (docs/BOOSTS.md B7) the Aegis pip after the armor pips (its
+ * own colour, BOOST_VIEW.aegisPipRole) and the running boosts (BoostRow); in endless runs a line with the floor and
+ * Depth and the owned boons, relics and curses (M2, RunItems). Reads only the ~10 Hz snapshot. In the tutorial: the
+ * highlight ring on the hearts or the flask row or the boost row, and the ghost half heart after a harmless hit.
  */
 export function StatusPanel(props: StatusPanelProps) {
 	const s = useSelector(selectSnapshot);
@@ -69,8 +85,11 @@ export function StatusPanel(props: StatusPanelProps) {
 				<Text order={0} width={LABEL_WIDTH} color="uiTextDim" text={str(HUD_STRINGS.health)} />
 				{hearts}
 				{ghost > 0 ? <GhostHeart key={`ghost${ghost}`} order={hearts.size() + 1} /> : undefined}
-				{armorMax > 0 ? (
-					<Row order={hearts.size() + 2}>{pips(s.armor, armorMax, "uiMana", true)}</Row>
+				{armorMax > 0 || s.aegisPips > 0 ? (
+					<Row order={hearts.size() + 2}>
+						{pips(s.armor, armorMax, "uiMana", true)}
+						{aegisPips(s.aegisPips, armorMax)}
+					</Row>
 				) : undefined}
 				{props.highlight === "hearts" ? <HighlightRing /> : undefined}
 			</Row>
@@ -83,10 +102,11 @@ export function StatusPanel(props: StatusPanelProps) {
 				<Text order={0} width={LABEL_WIDTH} color="uiTextDim" text={str(HUD_STRINGS.ember)} />
 				{pips(s.embers, s.emberMax, "ember", true)}
 			</Row>
+			<BoostRow order={4} boosts={s.boosts} highlight={props.boostsHighlight} />
 			{s.floor > 0 ? (
-				<Text order={4} color="uiText" text={str(HUD_STRINGS.floor, { floor: s.floor, depth: s.depth })} />
+				<Text order={5} color="uiText" text={str(HUD_STRINGS.floor, { floor: s.floor, depth: s.depth })} />
 			) : undefined}
-			<RunItems order={5} boons={s.boons} relics={s.relics} curses={s.curses} />
+			<RunItems order={6} boons={s.boons} relics={s.relics} curses={s.curses} />
 		</Panel>
 	);
 }

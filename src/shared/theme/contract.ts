@@ -24,6 +24,9 @@
  * and FX (`fx.*`, optional one-shot sprite effects: one-facing `sprites` sets); the port's audio IDs
  * (PORT_AUDIO_EVENTS); sound variants, pitch jitter and per-clip minimum intervals. See the Effects and audio section
  * at the end of this file.
+ *
+ * Roblox-port slot (docs/BOOSTS.md B5): BOOST (`boost.<kind>`, required: a boost drop is a gameplay object), free-size
+ * world art like BREAKABLE; its colour roles, strings, sounds and optional effects: the Boosts section below.
  */
 
 import type { AssetKind, ColorRole, ParticleFlipbookMode, Pivot } from "./types";
@@ -184,6 +187,20 @@ export const BREAKABLE: SlotContract = {
 	baseAnimations: ["idle"],
 };
 
+/**
+ * Roblox port (docs/BOOSTS.md B5): a boost drop, the pickup a killed enemy may leave (BOOST_KINDS). A gameplay object,
+ * so every pack must draw it: `boost.<kind>` is required for every kind, with a placeholder primitive (a small gem)
+ * until art exists. Free-size world art like BREAKABLE: `image` (with `pixelsPerTile`) or `sprites` (`idle`). Any other
+ * `boost.` ID is an error.
+ */
+export const BOOST: SlotContract = {
+	slot: "boost",
+	prefix: "boost.",
+	kinds: ["image", "sprites", "placeholder"],
+	facings: [],
+	baseAnimations: ["idle"],
+};
+
 /** The one animation a sprite effect (fx.*) defines: its flipbook (`fps`, `loop` and `frames` live on it). */
 export const FX_ANIMATION = "play";
 
@@ -215,10 +232,11 @@ export const SLOTS: ReadonlyArray<SlotContract> = [
 	BREAKABLE,
 	AMBIENCE,
 	FX,
+	BOOST,
 ];
 
-/** Slots whose images are free-size world art drawn at `pixelsPerTile` (decor pieces, breakables). */
-export const WORLD_ART_SLOTS: ReadonlyArray<SlotContract> = [DECOR, BREAKABLE];
+/** Slots whose images are free-size world art drawn at `pixelsPerTile` (decor pieces, breakables, boost drops). */
+export const WORLD_ART_SLOTS: ReadonlyArray<SlotContract> = [DECOR, BREAKABLE, BOOST];
 
 /** The slot an asset ID belongs to, by prefix. */
 export function slotFor(id: string): SlotContract | undefined {
@@ -491,6 +509,78 @@ export const BREAKABLE_AUDIO_EVENTS = ["sfx.breakable.hit", "sfx.breakable.break
 /** Sprite-set animation a breakable plays once when it breaks (optional; `idle` is required). */
 export const BREAKABLE_SHATTER_ANIMATION = "shatter";
 
+// ---------------------------------------------------------------------------------------------
+// Boosts (Roblox port, docs/BOOSTS.md B5): the pickups killed enemies sometimes drop
+
+/**
+ * The boost kinds, in the sim's Boost index order (shared/sim drops: the kind index is the position here; a cross-check
+ * spec asserts both lists are identical, like BREAKABLE_KINDS). Every pack fills, per kind: the asset `boost.<kind>`
+ * (BOOST slot, a placeholder gem until art exists), the colour role `boost.<kind>` (BOOST_ROLES) and the strings
+ * `boost.<kind>.name` / `.desc` / `.icon` (BOOST_STRING_FIELDS); plus `hud.toast.boost` and the four `sfx.boost.*`
+ * IDs in PORT_AUDIO_EVENTS.
+ */
+export const BOOST_KINDS = ["fury", "quickstep", "frenzy", "aegis"] as const;
+export type BoostKind = (typeof BOOST_KINDS)[number];
+
+/** Asset (and colour role) ID of a boost kind: `boost.fury`. */
+export function boostId(kind: BoostKind): `boost.${BoostKind}` {
+	return `boost.${kind}`;
+}
+
+/** Is `id` a boost drop's asset ID (`boost.<kind>` for a BOOST_KINDS entry)? */
+export function isBoostId(id: string): id is `boost.${BoostKind}` {
+	return BOOST_KINDS.some((k) => boostId(k) === id);
+}
+
+/**
+ * The strings every boost kind has: `name` ("Fury"), `desc` (what it does, e.g. "+50% damage for 10 s") and `icon`
+ * (a short label the HUD's boost row draws until it has icon art, like the boons' `.icon`).
+ */
+export const BOOST_STRING_FIELDS = ["name", "desc", "icon"] as const;
+export type BoostStringField = (typeof BOOST_STRING_FIELDS)[number];
+
+/** String-table key of a boost kind's field: boostStringKey("fury", "desc") = "boost.fury.desc". */
+export function boostStringKey(kind: BoostKind, field: BoostStringField): string {
+	return `${boostId(kind)}.${field}`;
+}
+
+/** The toast shown when the local player picks a boost up: `{name}` and `{desc}` are the kind's strings. */
+export const BOOST_TOAST_KEY = "hud.toast.boost";
+
+/** Every boost string key a pack must define: each kind's BOOST_STRING_FIELDS (kind order), then BOOST_TOAST_KEY. */
+function boostStringKeys(): Array<string> {
+	const out = new Array<string>();
+	for (const k of BOOST_KINDS) {
+		for (const f of BOOST_STRING_FIELDS) {
+			out.push(boostStringKey(k, f));
+		}
+	}
+	out.push(BOOST_TOAST_KEY);
+	return out;
+}
+export const BOOST_STRING_KEYS: ReadonlyArray<string> = boostStringKeys();
+
+/**
+ * The boost drops' optional sprite effects (fx.* rules: one-facing `sprites`, `play`, at most FX_SPRITE_MAX_TILES):
+ * the pickup burst, then one aura per kind in BOOST_KINDS order (boostAuraFxId).
+ */
+export const BOOST_FX_IDS = [
+	"fx.boost.collect",
+	"fx.boost.aura.fury",
+	"fx.boost.aura.quickstep",
+	"fx.boost.aura.frenzy",
+	"fx.boost.aura.aegis",
+] as const;
+export type BoostFxId = (typeof BOOST_FX_IDS)[number];
+
+/** The pickup burst effect (optional). */
+export const BOOST_COLLECT_FX_ID: BoostFxId = "fx.boost.collect";
+
+/** A boost kind's aura effect (optional): boostAuraFxId("aegis") = "fx.boost.aura.aegis". */
+export function boostAuraFxId(kind: BoostKind): BoostFxId {
+	return `fx.boost.aura.${kind}` as BoostFxId;
+}
+
 /**
  * Roblox port (docs/FX_AUDIO.md A2): every other audio ID the port plays, required in every pack (silent in the
  * placeholder pack). Kept apart from AUDIO_EVENTS, which stays the web build's list, like BREAKABLE_AUDIO_EVENTS.
@@ -498,7 +588,7 @@ export const BREAKABLE_SHATTER_ANIMATION = "shatter";
  * listed), then the A2 additions: menu back / focus move, the sword finisher, the bow's full charge, room clear, relic
  * and shrine, stairwell, new floor, depth up, the run-over jingle, and the tutorial / lobby tracks. Then the Demon
  * Lord's (docs/BOSS_DEMONLORD.md D6): sfx.boss.taunt, a taunting boss's phase change (the roar plays while it is
- * silent).
+ * silent). Then the boost drops' four (docs/BOOSTS.md B5).
  */
 export const PORT_AUDIO_EVENTS = [
 	"sfx.player.swing",
@@ -522,6 +612,12 @@ export const PORT_AUDIO_EVENTS = [
 	"music.tutorial",
 	"music.lobby",
 	"sfx.boss.taunt",
+	// docs/BOOSTS.md B5: a boost drop lands, is collected, runs out; an Aegis pip absorbs a hit (the plan's
+	// `sfx.boost.aegisBreak`: asset ID segments are lowercase, as decor kinds are)
+	"sfx.boost.drop",
+	"sfx.boost.collect",
+	"sfx.boost.expire",
+	"sfx.boost.aegisbreak",
 ] as const;
 
 /**
@@ -544,6 +640,7 @@ export const REQUIRED_ASSET_IDS: ReadonlyArray<string> = [
 	...BREAKABLE_AUDIO_EVENTS,
 	...PORT_AUDIO_EVENTS,
 	...AMBIENCE_IDS,
+	...BOOST_KINDS.map((k) => boostId(k)),
 ];
 
 /** Every string key a pack must define. Code may rely on these existing. */
@@ -572,6 +669,7 @@ export const REQUIRED_STRING_KEYS: ReadonlyArray<string> = [
 	"menu.options",
 	"menu.quit",
 	...BREAKABLE_KINDS.map((k) => `${breakableId(k)}.name`),
+	...BOOST_STRING_KEYS,
 ];
 
 /**
@@ -601,6 +699,17 @@ export const DAMAGE_NUMBER_ROLES = ["damageNumber", "damageHeavy", "damageCapped
  * colour role is held to MIN_ENEMY_BULLET_CONTRAST against `enemyBullet` too.
  */
 export const BREAKABLE_ROLES: ReadonlyArray<ColorRole> = ["breakable.barrel", "breakable.crate"];
+
+/**
+ * Roblox port (docs/BOOSTS.md B5): one identity colour per boost kind (BOOST_KINDS order), the placeholder gem's tint
+ * and the HUD row's / aura's colour. A pickup lies on the floor among bullets, so the validator holds every one to
+ * MIN_BOOST_CONTRAST against every biome floor and wall and to MIN_BOOST_BULLET_DIFFERENCE (CIE76) from every
+ * ENEMY_BULLET_ROLES colour (`boostColorReport`), exactly as it holds `enemyOutline`.
+ */
+export const BOOST_ROLES: ReadonlyArray<ColorRole> = BOOST_KINDS.map((k) => boostId(k));
+
+/** Minimum WCAG contrast of every BOOST_ROLES colour on every biome floor and wall (enemyOutline's bar). */
+export const MIN_BOOST_CONTRAST = 3.0;
 
 // ---------------------------------------------------------------------------------------------
 // Decor (Roblox port, docs/DECOR.md R2 and Phase 2 part 2): the web build's DECOR slot
@@ -760,6 +869,12 @@ export const MIN_DECOR_FX_BULLET_DIFFERENCE = 40;
 export const MIN_ENEMY_OUTLINE_BULLET_DIFFERENCE = 40;
 
 /**
+ * Roblox port (docs/BOOSTS.md B5): minimum CIE76 colour difference between every BOOST_ROLES colour and every
+ * ENEMY_BULLET_ROLES colour, so a pickup never reads as a bullet: the decor fx / enemy outline bar.
+ */
+export const MIN_BOOST_BULLET_DIFFERENCE = MIN_DECOR_FX_BULLET_DIFFERENCE;
+
+/**
  * Readability caps for ambient particles (docs/DECOR.md Phase 2 part 2), owned by the theme because a pack's ambient
  * texture may set its own look (`particle` on `decor.fx.ambient.*`) and the validator holds it to them: smaller and
  * more transparent than any bullet. Enemy bullets are drawn opaque (Neon) and 2 * BULLET_VIEW.enemyDrawRadius
@@ -899,7 +1014,8 @@ export const SOUND_PITCH_LIMITS = { min: 0.5, max: 2 } as const;
 /**
  * The sprite effects (fx.*), each optional. Hit marks (`hit.light` / `hit.heavy`), the sword's swing trails (`swing.1`
  * .. `swing.3`, the 3rd is the finisher), the kill puff, roll dust, the guard shield, the Ember ring, the flask, the
- * boss's phase change / slam / death, relic and shrine, the open-stairwell loop and a breakable's splinters.
+ * boss's phase change / slam / death, relic and shrine, the open-stairwell loop and a breakable's splinters; then the
+ * boost drops' pickup burst and per-kind aura (BOOST_FX_IDS, docs/BOOSTS.md B5).
  */
 export const FX_IDS = [
 	"fx.hit.light",
@@ -919,6 +1035,7 @@ export const FX_IDS = [
 	"fx.shrine.use",
 	"fx.stairwell",
 	"fx.breakable.splinter",
+	...BOOST_FX_IDS,
 ] as const;
 export type FxId = (typeof FX_IDS)[number];
 

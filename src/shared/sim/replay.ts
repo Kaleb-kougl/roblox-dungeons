@@ -20,6 +20,7 @@ import { writeRunHash } from "./progression/progression";
 import { writePartyHash } from "./party";
 import { writeTutorialHash } from "./tutorial/tutorial";
 import { writeBreakablesHash } from "./breakables/breakables";
+import { writeDropsHash } from "./drops/drops";
 import { isFiniteNumber, isIntegerNumber, numberToJsString } from "./jsnum";
 import { isJsonArray, isJsonObject, jsonToJsString, parseJson, type JsonValue } from "./json";
 import { jsMin } from "shared/jsmath";
@@ -178,6 +179,8 @@ export function writeHashFields(state: Readonly<SimState>, out: number[]): numbe
 	if (state.tutorial !== undefined) writeTutorialHash(state.tutorial, out);
 	// Breakable barrels and crates (docs/DECOR.md D4), only when the run has them, appended after every other group.
 	if (state.breakables !== undefined) writeBreakablesHash(state.breakables, out);
+	// Boost drops (docs/BOOSTS.md), only when the run has them, appended after every other group (after breakables).
+	if (state.drops !== undefined) writeDropsHash(state.drops, out);
 	return out;
 }
 

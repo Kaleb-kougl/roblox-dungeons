@@ -176,7 +176,7 @@ The client side is `src/client/network.ts` (`GlobalEvents.createClient`); `SimCo
 | `SETTINGS_REQUEST_RATE` | 20 per 10 s per player | Settings remotes. |
 | `ONBOARDING_REQUEST_RATE` / `TUTORIAL_STEP_RATE` | 10 / 30 per 10 s per player | Onboarding remotes (`shared/onboarding/config.ts`). |
 | Seeds | integers in [0, 2^32) | What the web build's `seedFromQuery` produces. |
-| Debug input (`DEBUG_HIT`, `DEBUG_BOSS` bits) | rejected (`debug_input`) | K / J are debug keys. |
+| Debug input (`DEBUG_HIT`, `DEBUG_BOSS` bits) | rejected (`debug_input`) | K / J are debug keys. The boost debug drop (M, `DEBUG_DROP_BUTTON`, docs/BOOSTS.md) is a `PORT_BUTTONS` bit and is rejected the same way. |
 | Boss-door start | rejected (`debug_spawn`) | The web build's `?spawn=boss` is debug only. |
 | Stress mode | never accepted | `buildRunConfig` never sets `stress`, so a stress recording fails the hash. |
 
@@ -567,6 +567,11 @@ hearts topped up), headless under Lune (a pessimistic host: no Luau fast paths o
 | 8 players, whole floor entered | 64 | 111 | 0.98-1.17 (0.12-0.15 per player) | ~65 per party (~8 per player) |
 
 `hashState` itself costs 2-8 ms per checkpoint (amortized ~0.01 ms per tick).
+
+Boost drops (docs/BOOSTS.md B4, measured on a slower host than the table above, with / without drops): solo one room
+0.28-0.33 / 0.27-0.30, 8 players one room 0.59-0.74 / 0.60-0.76, solo whole floor 0.37-0.41 / 0.39-0.41, 8 players
+whole floor 1.06-1.14 / 1.08-1.20 ms per tick: no measurable cost (the bench kills nothing, so it covers the per-tick
+step and the hash group; a kill adds at most two rng draws).
 
 **Capacity estimate.** Replays share ONE queue (`REPLAY_CONCURRENCY` = 1) whose holder yields after every 4 ms of work
 (`REPLAY_BUDGET_SECONDS`), i.e. at most ~4 ms per 60 Hz frame = ~240 ms of replay per second of wall time. With the

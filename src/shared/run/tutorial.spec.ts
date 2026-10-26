@@ -8,6 +8,7 @@ import {
 	ENDLESS_FIRST_FLOOR,
 	ENDLESS_ROOM_SCALE,
 	ENDLESS_SOLID_PILLARS,
+	SWARMER_KIND,
 	bulletBlocker,
 	endlessFloorParams,
 	generateDungeon,
@@ -21,7 +22,9 @@ import {
 import { LEADERBOARD_ELIGIBLE_WORLDS } from "shared/leaderboard";
 import { dismissDraft } from "shared/run/testing";
 import {
+	Boost,
 	DEBUG_FLOOR_BUTTON,
+	DROPS_CONFIG,
 	DUMMY_KIND,
 	EMPTY_INPUT,
 	START_HALF_HEARTS,
@@ -29,6 +32,7 @@ import {
 	archetypeAt,
 	archetypeIndex,
 	createSimState,
+	guaranteedDropsConfig,
 	hashNumbers,
 	hashState,
 	isDraftOpen,
@@ -40,6 +44,10 @@ import {
 import {
 	RunTelemetry,
 	SERVER_REFUSED_WORLDS,
+	TUTORIAL_BOOST_KIND,
+	TUTORIAL_BOOST_LESSON,
+	TUTORIAL_BOOST_ROOM,
+	TUTORIAL_DROPS_CONFIG,
 	TUTORIAL_ENTRANCE_ROOM,
 	TUTORIAL_ROOMS,
 	TUTORIAL_SHRINE_ROOM,
@@ -134,12 +142,15 @@ describe("tutorial world: the lock", () => {
 		}
 		expect(setup.endlessFloor(1).config.actorSteerMover).never.toBe(undefined);
 		// And the run config the same top-level fields as an endless run's, plus the tutorial's own, minus breakables
-		// (docs/DECOR.md B7: the tutorial's lessons are tuned to rooms without barrels and crates).
+		// (docs/DECOR.md B7: the tutorial's lessons are tuned to rooms without barrels and crates). Drops are set, but not
+		// the endless defaults: only combat B's guaranteed Fury (docs/BOOSTS.md B9).
 		const keys = configKeys(buildEndlessRunConfig(1).config).filter((k) => k !== "breakables");
 		keys.push("tutorial");
 		keys.sort();
 		expect(configKeys(setup.config)).toEqual(keys);
 		expect(setup.config.breakables).toBe(undefined);
+		expect(setup.config.drops).toBe(TUTORIAL_DROPS_CONFIG);
+		expect(setup.config.drops).never.toBe(DROPS_CONFIG);
 		for (const f of [1, 2, 3]) expect(setup.endlessFloor(f).breakables).toBe(undefined);
 	});
 
@@ -157,6 +168,36 @@ describe("tutorial world: the lock", () => {
 		// A fresh generation matches the cached one.
 		expect(layoutDigest(generateDungeon(tutorialFloorParams(1)))).toBe(FLOOR1_DIGEST);
 		expect(tutorialDungeon(3)).toBe(d2);
+	});
+
+	it("drops: only the guaranteed Fury from combat B (floor 1, room 2: three swarmers); no random drops, no pity", () => {
+		expect(TUTORIAL_BOOST_LESSON).toBe("combatB");
+		expect(TUTORIAL_BOOST_ROOM).toBe(2);
+		expect(TUTORIAL_BOOST_KIND).toBe(Boost.FURY);
+		const room = TUTORIAL_ROOMS.find((r) => r.roomId === TUTORIAL_BOOST_ROOM)!;
+		expect([room.lesson, room.roomType, room.kinds]).toEqual([
+			"combatB",
+			"combat",
+			[SWARMER_KIND, SWARMER_KIND, SWARMER_KIND],
+		]);
+		const d = tutorialDungeon(ENDLESS_FIRST_FLOOR);
+		expect(d.rooms[TUTORIAL_BOOST_ROOM].type).toBe("combat");
+		expect(TUTORIAL_DROPS_CONFIG).toEqual(
+			guaranteedDropsConfig([{ floor: ENDLESS_FIRST_FLOOR, room: TUTORIAL_BOOST_ROOM, kind: Boost.FURY }]),
+		);
+		expect([TUTORIAL_DROPS_CONFIG.chancePercent, TUTORIAL_DROPS_CONFIG.pityKills]).toEqual([0, 0]);
+		expect(TUTORIAL_DROPS_CONFIG.chanceByArchetype.size()).toBe(0);
+		// The ground tunables are the game's.
+		expect([
+			TUTORIAL_DROPS_CONFIG.groundTicks,
+			TUTORIAL_DROPS_CONFIG.pickupRadius,
+			TUTORIAL_DROPS_CONFIG.maxOnGround,
+		]).toEqual([DROPS_CONFIG.groundTicks, DROPS_CONFIG.pickupRadius, DROPS_CONFIG.maxOnGround]);
+		// The run's state carries the drops group (hashed last); floor-1 spawns put combat B's three swarmers in it.
+		const setup = buildTutorialRunConfig();
+		const st = createSimState(TUTORIAL.runSeed, setup.spawn!.x, setup.spawn!.z, setup.config);
+		expect(st.drops !== undefined).toBe(true);
+		expect(setup.endlessFloor(1).roomSpawns[TUTORIAL_BOOST_ROOM].size()).toBe(3);
 	});
 
 	it("the lesson table: rooms, types and order", () => {

@@ -258,7 +258,7 @@ export function slamBreakables(state: SimState, x: number, z: number): number {
 }
 
 // ---------------------------------------------------------------------------------------------
-// Hash: the "breakables" group, appended after every other group only when state.breakables exists.
+// Hash: the "breakables" group, appended after every other group but "drops" only when state.breakables exists.
 
 /** Per piece, in this order (dump names `breakables[<slot>].<name>`). */
 export const BREAKABLE_HASH_FIELDS = ["kind", "x", "y", "hp", "brokenTick"] as const;

@@ -172,7 +172,15 @@ export class AudioController implements OnStart {
 			this.cues.clear();
 			// The per-player split follows the view index: while spectating, the watched teammate's sounds are loud.
 			const viewIndex = this.sim.getViewPlayerIndex();
-			this.mapper.frame(os.clock(), ctx.run.frameEvents, events, ctx.run.state, viewIndex, this.cues);
+			this.mapper.frame(
+				os.clock(),
+				ctx.run.frameEvents,
+				events,
+				ctx.run.state,
+				viewIndex,
+				this.cues,
+				ctx.run.boostEvents,
+			);
 			for (let i = 0; i < this.cues.size(); i++) this.play(this.cues.id(i), this.cues.volume(i));
 		});
 

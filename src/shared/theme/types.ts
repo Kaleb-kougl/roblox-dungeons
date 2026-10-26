@@ -104,6 +104,13 @@ export const COLOR_ROLES = [
 	// heal and the curse shrine. Held to MIN_FX_BULLET_DIFFERENCE (CIE76) from the enemy-bullet roles like decor.fx.*.
 	"fx.heal",
 	"fx.curse",
+	// Roblox port (docs/BOOSTS.md B5): one identity colour per boost kind (contract.ts BOOST_KINDS / BOOST_ROLES), held
+	// to MIN_BOOST_CONTRAST on every biome floor and wall and MIN_BOOST_BULLET_DIFFERENCE (CIE76) from the enemy-bullet
+	// roles, like enemyOutline.
+	"boost.fury",
+	"boost.quickstep",
+	"boost.frenzy",
+	"boost.aegis",
 ] as const;
 
 export type ColorRole = (typeof COLOR_ROLES)[number];

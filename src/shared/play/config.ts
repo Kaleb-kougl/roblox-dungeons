@@ -103,10 +103,14 @@ export const FIXED_INPUTS = {
 	settings: "O",
 	/** Closes the settings / leaderboard panels on a pad (shared/view/hud SETTINGS_PAD_CLOSE_KEY; GUI "back"). */
 	padMenuClose: "ButtonB",
-	/** Debug (KV_Debug only): one hit on the player, 10% off an engaged boss, end the endless floor. */
+	/**
+	 * Debug (KV_Debug only): one hit on the player, 10% off an engaged boss, end the endless floor, drop the next boost
+	 * kind 1.5 tiles ahead of the player (runs with drops; docs/BOOSTS.md B6).
+	 */
 	debugHit: "K",
 	debugBoss: "J",
 	debugFloor: "N",
+	debugDrop: "M",
 } as const;
 
 /** The debug replay check (KV_Debug only): F8 as in the web build, L because Studio can take F8 for itself. */
@@ -114,7 +118,7 @@ export const DEBUG_REPLAY_CHECK_KEYS: ReadonlyArray<string> = ["F8", "L"];
 
 /**
  * Keyboard / mouse names a binding may never take. Roblox: Escape (game menu), Tab (player list), Slash (chat),
- * F9 (developer console), F11 (fullscreen). The game's fixed keys: P (pause), O (settings). Debug: K, J, N, F8, L.
+ * F9 (developer console), F11 (fullscreen). The game's fixed keys: P (pause), O (settings). Debug: K, J, N, M, F8, L.
  */
 export const RESERVED_KBM_INPUTS: ReadonlyArray<string> = [
 	"Escape",
@@ -127,6 +131,7 @@ export const RESERVED_KBM_INPUTS: ReadonlyArray<string> = [
 	"K",
 	"J",
 	"N",
+	"M",
 	"F8",
 	"L",
 ];

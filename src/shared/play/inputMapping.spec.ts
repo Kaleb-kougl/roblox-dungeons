@@ -4,6 +4,7 @@ import { describe, expect, it } from "@rbxts/jest-globals";
 import {
 	AXIS_MAX,
 	Button,
+	DEBUG_DROP_BUTTON,
 	DEBUG_FLOOR_BUTTON,
 	DRAFT_COLUMN_CENTRE,
 	DRAFT_COLUMN_LEFT,
@@ -16,6 +17,7 @@ import {
 } from "shared/sim";
 import { LEADERBOARD_KEY, SETTINGS_KEY } from "shared/view/hud";
 import {
+	ALL_DEBUG_BUTTONS,
 	DEBUG_BUTTONS,
 	KEY_BINDINGS,
 	MOVE_KEYS,
@@ -260,6 +262,13 @@ describe("debug gating and driver keys", () => {
 		expect(f.buttons).toBe(DEBUG_BUTTONS);
 	});
 
+	it("strips the port's debug bits too: the floor skip (N) and the boost drop (M, docs/BOOSTS.md B6)", () => {
+		const f = mapDevicesToInput(snap({ keys: ["N", "M"] }));
+		expect(f.buttons).toBe(bit32.bor(DEBUG_FLOOR_BUTTON, DEBUG_DROP_BUTTON));
+		expect(maskDebugButtons(bit32.bor(Button.FIRE, f.buttons), false)).toBe(Button.FIRE);
+		expect(bit32.band(ALL_DEBUG_BUTTONS, DEBUG_DROP_BUTTON)).toBe(DEBUG_DROP_BUTTON);
+	});
+
 	it("R restarts any time; the pad restart only when the run is over or paused; F8 only with debug keys", () => {
 		expect(driverKeyAction("R", false, false)).toBe("reset");
 		expect(driverKeyAction("DPadDown", false, false)).toBe(undefined);
@@ -281,8 +290,9 @@ describe("debug gating and driver keys", () => {
 });
 
 describe("menu keys vs game bindings (slice)", () => {
-	it("N is the endless debug floor skip; the leaderboard panel's key clashes with no other binding", () => {
+	it("N is the endless debug floor skip, M the debug boost drop; the leaderboard key clashes with no other binding", () => {
 		expect(KEY_BINDINGS.get("N")).toBe(DEBUG_FLOOR_BUTTON);
+		expect(KEY_BINDINGS.get("M")).toBe(DEBUG_DROP_BUTTON);
 		const taken = new Set<string>([RESTART_KEY, SETTINGS_KEY, ...REPLAY_CHECK_KEYS]);
 		for (const [name] of KEY_BINDINGS) taken.add(name);
 		for (const keys of [MOVE_KEYS.up, MOVE_KEYS.down, MOVE_KEYS.left, MOVE_KEYS.right]) {

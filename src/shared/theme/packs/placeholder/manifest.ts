@@ -7,7 +7,8 @@
  * colour now live in PLACEHOLDER_VISUALS) and every `silent` one stayed silent. Roblox-port additions are marked
  * (enemy.dummy, the port sfx, breakables and the decor fx colour roles; no decor art: decor is optional; the port
  * audio IDs, ambience beds and fx colour roles of docs/FX_AUDIO.md; no fx art: sprite effects are optional; the
- * Demon Lord, boss.demonlord, of docs/BOSS_DEMONLORD.md).
+ * Demon Lord, boss.demonlord, of docs/BOSS_DEMONLORD.md; the boost drops of docs/BOOSTS.md B5: gems, colour roles,
+ * strings and silent sounds).
  *
  * To replace art or audio later, change an entry's kind and paste the uploaded asset ID, e.g.
  *   "enemy.sniper": { kind: "spritesheet", assetId: "rbxassetid://<n>", frameW: 16, frameH: 16, pivot: { x: 8, y: 15 }, animations: { ... } },
@@ -86,6 +87,13 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		// Roblox port (docs/FX_AUDIO.md F1): effect tints, far from the pink enemy bullets (CIE76 137 / 59).
 		"fx.heal": "#6ee08a",
 		"fx.curse": "#8a6ad8",
+		// Roblox port (docs/BOOSTS.md B5): boost drops, one identity colour per kind, apart from each other (CIE76 >= 55)
+		// and from the pink enemy bullets (CIE76 >= 59), >= 5.8:1 on every biome floor and wall. Gold, aqua, lime,
+		// lavender: not the telegraph orange or the outline red, so a pickup never reads as a threat.
+		"boost.fury": "#ffc83d",
+		"boost.quickstep": "#3ff0d8",
+		"boost.frenzy": "#a8f03c",
+		"boost.aegis": "#c3a6ff",
 	},
 	biomes: {
 		"biome.1": {
@@ -179,6 +187,12 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		// is optional and this pack draws none.
 		"breakable.barrel": PLACEHOLDER,
 		"breakable.crate": PLACEHOLDER,
+		// Roblox port (docs/BOOSTS.md B5): boost drops, a small gem each until art exists. No fx.boost.* entries: the
+		// effects are optional.
+		"boost.fury": PLACEHOLDER,
+		"boost.quickstep": PLACEHOLDER,
+		"boost.frenzy": PLACEHOLDER,
+		"boost.aegis": PLACEHOLDER,
 		"sfx.player.shoot": SILENT,
 		"sfx.player.roll": SILENT,
 		"sfx.player.hurt": SILENT,
@@ -215,6 +229,10 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		"sfx.boss.taunt": SILENT,
 		"sfx.breakable.hit": SILENT,
 		"sfx.breakable.break": SILENT,
+		"sfx.boost.drop": SILENT,
+		"sfx.boost.collect": SILENT,
+		"sfx.boost.expire": SILENT,
+		"sfx.boost.aegisbreak": SILENT,
 		"music.menu": SILENT,
 		"music.biome.1": SILENT,
 		"music.biome.2": SILENT,
@@ -559,6 +577,20 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		"hud.spectate.watchingName": "Spectating {name}",
 		"hud.spectate.hint": "{next} next · {previous} previous",
 		"hud.spectate.back": "You're back on the next floor",
+		// Roblox port (docs/BOOSTS.md B5): boost drops (contract.ts BOOST_KINDS) and their pickup toast.
+		"hud.toast.boost": "{name}: {desc}",
+		"boost.fury.name": "Fury",
+		"boost.fury.desc": "+50% damage for 10 s",
+		"boost.fury.icon": "FRY",
+		"boost.quickstep.name": "Quickstep",
+		"boost.quickstep.desc": "+30% walk speed for 10 s",
+		"boost.quickstep.icon": "QST",
+		"boost.frenzy.name": "Frenzy",
+		"boost.frenzy.desc": "30% faster attacks for 10 s",
+		"boost.frenzy.icon": "FRZ",
+		"boost.aegis.name": "Aegis",
+		"boost.aegis.desc": "+1 armor pip for 15 s or one hit",
+		"boost.aegis.icon": "AEG",
 		"boon.rarity.common": "Common",
 		"boon.rarity.rare": "Rare",
 		"boon.rarity.legendary": "Legendary",
@@ -698,6 +730,8 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		"tutorial.callout.graze": "Graze! Bullets that skim past you score too.",
 		"tutorial.callout.bossPhase2": "Phase II: new patterns.",
 		"tutorial.callout.bossPhase3": "Phase III: her fiercest patterns.",
+		// docs/BOOSTS.md B9 (the callout itself lands with B9; the string is ready).
+		"tutorial.callout.boost": "Enemies sometimes drop a boost. Walk over it before it fades.",
 		"tutorial.objective.title": "Practice Descent",
 		"tutorial.objective.body":
 			"Descend as deep as you can. Each floor is harder; the run ends when your hearts run out.",

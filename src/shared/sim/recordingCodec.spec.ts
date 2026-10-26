@@ -237,9 +237,9 @@ describe("recording codec: hostile input is rejected, never thrown", () => {
 		// aimZ = 1000, then -1000 - 1 (delta -2001, zigzag 4001).
 		const twoStep = new Bytes().header().varint(2).u8(tag(8, 0)).varint(2000).u8(tag(8, 0)).varint(4001).build();
 		expect(rejectOf(twoStep)[1]).toBe("malformed recording: axis out of range at frame 1");
-		// Buttons XOR 32768 (no such button; 8192 is the port's DEBUG_FLOOR_BUTTON, SIM_BUTTONS; 16384 the leave /
-		// forfeit bit, RECORDED_BUTTONS).
-		expect(rejectOf(new Bytes().header().varint(1).u8(tag(16, 0)).varint(32768).build())[1]).toBe(
+		// Buttons XOR 65536 (no such button; 8192 and 32768 are the port's DEBUG_FLOOR_BUTTON / DEBUG_DROP_BUTTON,
+		// SIM_BUTTONS; 16384 the leave / forfeit bit, RECORDED_BUTTONS).
+		expect(rejectOf(new Bytes().header().varint(1).u8(tag(16, 0)).varint(65536).build())[1]).toBe(
 			"malformed recording: unknown button bits at frame 0",
 		);
 		expect(rejectOf(new Bytes().header().varint(1).u8(tag(16, 0)).varint(0).build())[1]).toBe(

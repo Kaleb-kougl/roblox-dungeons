@@ -7,6 +7,7 @@ import { BULLET_VIEW } from "shared/view";
 import { colorDifference, contrastRatio } from "./color";
 import {
 	BIOMES,
+	BOOST,
 	BREAKABLE,
 	BREAKABLE_AUDIO_EVENTS,
 	BREAKABLE_KINDS,
@@ -146,7 +147,8 @@ describe("decor contract", () => {
 			["image", "sprites", "placeholder"],
 			undefined,
 		]);
-		expect(WORLD_ART_SLOTS).toEqual([DECOR, BREAKABLE]);
+		// (and the boost drops' slot, docs/BOOSTS.md B5: boosts.spec.ts)
+		expect(WORLD_ART_SLOTS).toEqual([DECOR, BREAKABLE, BOOST]);
 		expect(slotFor("decor.delve.b1.pillar")).toBe(DECOR);
 		expect(slotFor("decor.fx.torch")).toBe(DECOR);
 		expect(slotFor("breakable.crate")).toBe(BREAKABLE);

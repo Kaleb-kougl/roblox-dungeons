@@ -57,6 +57,7 @@ import {
 	Relic,
 	SECOND_WIND_HALF_HEARTS,
 } from "./progressionData";
+import { boostAttackTicksPercent, boostDamagePercent } from "../drops/boostMods";
 
 /** The player index of a solo run (player 0, state.player). */
 export const SOLO_PLAYER = 0;
@@ -265,14 +266,27 @@ export function scaleTicks(ticks: number, percent: number): number {
 // ---------------------------------------------------------------------------------------------
 // Gameplay reads (each takes the player index)
 
-/** Damage a player's bullet / swing deals when it hits (Sharpened). */
+/**
+ * Damage a player's bullet / swing deals when it hits: Sharpened, then (boost drops, docs/BOOSTS.md) Fury, each its
+ * own scalePercent (integer payload damage x 125 / 100 x 150 / 100: a multiple of 1/8, exact).
+ */
 export function playerHitDamage(state: Readonly<SimState>, playerIndex: number, amount: number): number {
-	return scalePercent(amount, runMods(state, playerIndex).damagePercent);
+	const sharpened = scalePercent(amount, runMods(state, playerIndex).damagePercent);
+	return scalePercent(sharpened, boostDamagePercent(state, playerIndex));
 }
 
-/** Attack recovery / cooldown ticks (Swift Strikes). */
+/**
+ * One integer percent for two percents applied together: boon x boost / 100 (80 x 70 / 100 = 56; `boon` itself when
+ * `boost` is 100). Every combination the game has is an integer (a spec checks it), so scaleTicks stays exact.
+ */
+export function combinedPercent(boon: number, boost: number): number {
+	return boost === PERCENT ? boon : (boon * boost) / PERCENT;
+}
+
+/** Attack recovery / cooldown ticks: Swift Strikes and (boost drops) Frenzy, as one combined integer percent. */
 export function attackTicks(state: Readonly<SimState>, playerIndex: number, ticks: number): number {
-	return scaleTicks(ticks, runMods(state, playerIndex).attackTicksPercent);
+	const boon = runMods(state, playerIndex).attackTicksPercent;
+	return scaleTicks(ticks, combinedPercent(boon, boostAttackTicksPercent(state, playerIndex)));
 }
 
 /** Roll i-frame ticks (Slippery). */

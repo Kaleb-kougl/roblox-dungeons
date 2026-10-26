@@ -3,7 +3,8 @@ import { Janitor } from "@rbxts/janitor";
 import { RunService, Workspace } from "@rbxts/services";
 import { CAMERA_PITCH_DEG } from "shared/config";
 import { archetypeAt, archetypeIds } from "shared/sim";
-import { BREAKABLE_KINDS, type ColorRole } from "shared/theme";
+import { BOOST_KINDS, BREAKABLE_KINDS, type ColorRole } from "shared/theme";
+import { BOOST_VIEW, type BoostBurstView } from "shared/view/boosts";
 import { BREAKABLE_VIEW, RENDER_ORDER, degToRad, floorStudsY, studsX, studsZ } from "shared/view";
 import {
 	DeathParticleSystem,
@@ -53,6 +54,9 @@ interface ParticlePart {
  * Breakables (docs/DECOR.md D4; called by BreakableRenderController, not tracker events): `breakableChips` (a piece
  * broke: chips in its `breakable.<kind>` role, appended to the palette after the archetypes, + sparks;
  * BREAKABLE_VIEW.chips) and `breakableHitSparks` (a piece was hit: the same tiny sparks as an actor hit).
+ * Boost drops (docs/BOOSTS.md B6; called by BoostDropRenderController): `boostBurst` (a pickup without
+ * `fx.boost.collect` art: BOOST_VIEW.collectBurst; a drop fading: BOOST_VIEW.poofBurst), in the kind's `boost.<kind>`
+ * role, appended to the palette after the breakables.
  *
  * Budget: at most particleBudget(settings) live particles (128 / 320 / 512; one level lower under reducedMotion) plus
  * the ring dots, PARTICLE_QUAD_CAPACITY parts at most; the pool grows lazily and never shrinks (unused parts parked).
@@ -69,6 +73,10 @@ export class ParticleController implements OnStart, ParticleWriter {
 	/** Palette index of BREAKABLE_KINDS[0]'s colour; chip bursts per kind (BREAKABLE_VIEW.chips). */
 	private breakableBase = PAL_SPARK;
 	private readonly chipBursts = new Array<ChipBurst>();
+	/** Palette index of BOOST_KINDS[0]'s colour; the pickup and fade bursts (BOOST_VIEW). */
+	private boostBase = PAL_SPARK;
+	private collectBurst: ChipBurst | undefined;
+	private poofBurst: ChipBurst | undefined;
 	private readonly moveParts = new Array<BasePart>();
 	private readonly moveCFrames = new Array<CFrame>();
 	private folder: Folder | undefined;
@@ -108,6 +116,10 @@ export class ParticleController implements OnStart, ParticleWriter {
 				speed: v.chipSpeed,
 			});
 		}
+		this.boostBase = this.palette.size();
+		for (const k of BOOST_KINDS) this.palette.push(pack.boost(k).color);
+		this.collectBurst = chipBurstOf(BOOST_VIEW.collectBurst);
+		this.poofBurst = chipBurstOf(BOOST_VIEW.poofBurst);
 
 		this.fx.onEvent((e, settings) => {
 			switch (e.type) {
@@ -161,6 +173,16 @@ export class ParticleController implements OnStart, ParticleWriter {
 	/** A breakable piece was hit at sim (x, z) (a stopped bullet, a swing): the hit sparks. */
 	breakableHitSparks(x: number, z: number, seed: number): void {
 		this.system.hit(x, z, false, seed, this.fx.settings());
+	}
+
+	/**
+	 * A boost drop of `kind` (Boost index) at sim (x, z): its pickup burst, or with `fade` the poof of a drop that faded
+	 * on the floor.
+	 */
+	boostBurst(x: number, z: number, kind: number, fade: boolean, seed: number): void {
+		const burst = fade ? this.poofBurst : this.collectBurst;
+		if (burst === undefined || kind < 0 || kind >= BOOST_KINDS.size()) return;
+		this.system.chips(x, z, this.boostBase + kind, burst, seed, this.fx.settings());
 	}
 
 	private frame(rawDt: number): void {
@@ -225,4 +247,16 @@ export class ParticleController implements OnStart, ParticleWriter {
 		}
 		return p;
 	}
+}
+
+/** A BOOST_VIEW burst as the particle system's chip burst. */
+function chipBurstOf(b: BoostBurstView): ChipBurst {
+	return {
+		chunks: b.chunks,
+		bits: b.bits,
+		sparks: b.sparks,
+		startPx: b.startPx,
+		radius: b.radiusTiles,
+		speed: b.speed,
+	};
 }

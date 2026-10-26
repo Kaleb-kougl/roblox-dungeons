@@ -11,6 +11,8 @@
  * Roblox port (docs/DECOR.md): decor lookups (`decor`, `decorVariants`, `ambient`) are optional art and never warn for
  * an ID the pack leaves out; `breakable` is required art (art, or its placeholder box).
  *
+ * Roblox port (docs/BOOSTS.md B5): `boost` is required art too (art, or its placeholder gem), with its strings.
+ *
  * Roblox port (docs/FX_AUDIO.md A2, F1): `sound` resolves variants, pitch jitter and minimum intervals (cached);
  * `fx` resolves an optional sprite effect (never warns for an ID the pack leaves out).
  */
@@ -34,6 +36,8 @@ import {
 	SPRITE_FACING_COUNTS,
 	SOUND_PITCH_LIMITS,
 	SPRITE_RESAMPLE_MODES,
+	boostId,
+	boostStringKey,
 	breakableId,
 	decorAmbientId,
 	decorAmbientRole,
@@ -45,6 +49,7 @@ import {
 	type BiomeId,
 	type BiomeMaterial,
 	type BiomeMaterialSurface,
+	type BoostKind,
 	type BreakableKind,
 	type DecorKind,
 	type DecorLayer,
@@ -404,6 +409,22 @@ export interface BreakableTheme {
 	/** Uploaded art, or undefined: draw `placeholder`. */
 	readonly art: WorldArt | undefined;
 	/** The placeholder primitive (a low box; magenta when the pack lacks the ID). */
+	readonly placeholder: PlaceholderVisual;
+}
+
+/** A boost kind's theme (docs/BOOSTS.md B5): always drawable, art or placeholder, plus its strings. */
+export interface BoostTheme {
+	readonly kind: BoostKind;
+	/** Asset ID, also the colour role: `boost.fury`. */
+	readonly id: string;
+	readonly role: ColorRole;
+	/** String-table keys: `boost.fury.name`, `.desc`, `.icon`. */
+	readonly nameKey: string;
+	readonly descKey: string;
+	readonly iconKey: string;
+	/** Uploaded art, or undefined: draw `placeholder`. */
+	readonly art: WorldArt | undefined;
+	/** The placeholder primitive (a small gem; magenta when the pack lacks the ID). */
 	readonly placeholder: PlaceholderVisual;
 }
 
@@ -948,6 +969,26 @@ export class ThemeCore {
 			id,
 			role: id,
 			nameKey: `${id}.name`,
+			art,
+			placeholder: this.placeholder(id),
+		};
+	}
+
+	/**
+	 * A boost kind (docs/BOOSTS.md B5): its uploaded art (an image with pixelsPerTile, or a sprite set with `idle`),
+	 * else its placeholder gem. Missing ID (required in every pack): warn once, the magenta block.
+	 */
+	boost(kind: BoostKind): BoostTheme {
+		const id = boostId(kind);
+		const def = this.asset(id);
+		const art = def !== undefined ? this.worldArt(id, def, false) : undefined;
+		return {
+			kind,
+			id,
+			role: id,
+			nameKey: boostStringKey(kind, "name"),
+			descKey: boostStringKey(kind, "desc"),
+			iconKey: boostStringKey(kind, "icon"),
 			art,
 			placeholder: this.placeholder(id),
 		};

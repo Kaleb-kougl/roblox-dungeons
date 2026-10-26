@@ -618,6 +618,22 @@ describe("FxCueMapper sources (synthetic)", () => {
 		expect(mapper.frame({ now: 1.1, state, alpha: 1, events: NO_EVENTS, fx: new Events(), settings })).toBe(0);
 	});
 
+	it("boost pickups from the boost drop renderer, on the next frame, at most boostCollectQueue (docs/BOOSTS.md B6)", () => {
+		const { state, mapper } = fresh();
+		mapper.boostCollect(2, 3);
+		state.tick += 1;
+		expect(mapper.frame({ now: 1, state, alpha: 1, events: NO_EVENTS, fx: new Events(), settings })).toBe(1);
+		const c = mapper.cues.at(0);
+		expect([c.id, c.x, c.z]).toEqual(["fx.boost.collect", 2, 3]);
+		state.tick += 1;
+		expect(mapper.frame({ now: 1.1, state, alpha: 1, events: NO_EVENTS, fx: new Events(), settings })).toBe(0);
+		for (let i = 0; i < FX_SPRITE_VIEW.boostCollectQueue + 3; i++) mapper.boostCollect(i * 3, 0);
+		state.tick += 1;
+		expect(mapper.frame({ now: 5, state, alpha: 1, events: NO_EVENTS, fx: new Events(), settings })).toBe(
+			FX_SPRITE_VIEW.boostCollectQueue,
+		);
+	});
+
 	it("staggers the boss death and drops what is pending on a reset", () => {
 		const { state, mapper } = fresh();
 		const ev = new Events();

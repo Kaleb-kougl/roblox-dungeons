@@ -30,6 +30,7 @@ import { cloneWeaponsState, createWeaponsState, weaponsHashNames, writeWeaponsHa
 import type { WeaponsState } from "./combat/weapons/types";
 import { DEFAULT_LOADOUT } from "./combat/weapons/loadout";
 import { MAX_PARTY_SIZE, PARTY_LEFT_BUTTON, SOLO_PARTY_SIZE, isValidPartySize } from "./partyData";
+import { boostsOnPlayerDied } from "./drops/boostMods";
 
 /** SimConfig.party. */
 export interface PartyConfig {
@@ -204,6 +205,7 @@ export function markPlayerLeft(state: SimState, i: number): void {
 	if (party === undefined || party.left[i] !== 0) return;
 	party.left[i] = 1;
 	killPlayerState(playerAt(state, i));
+	boostsOnPlayerDied(state, i); // boost drops (docs/BOOSTS.md): the leaver's boosts end
 }
 
 /**

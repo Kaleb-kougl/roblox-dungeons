@@ -27,6 +27,7 @@ import type { SimCtx } from "../ctx";
 import { archetypeAt } from "./registry";
 import { scoreKill } from "../../score/score";
 import { runOnKill } from "../../progression/runMods";
+import { dropsOnKill } from "../../drops/drops";
 import { ACTOR_HASH_FIELDS, ACTOR_SCRATCH_SLOTS, AiState, NO_KIND, type ActorState } from "./types";
 
 function zeros(n: number): number[] {
@@ -216,6 +217,8 @@ export function killActor(ctx: SimCtx, a: ActorState): void {
 	const def = archetypeAt(a.kind);
 	// M2 Vampire Fang (endless runs): reviving archetypes (turrets) never count.
 	if (ctx.state.run !== undefined) runOnKill(ctx.state, ctx.playerIndex, def.stepDead !== undefined);
+	// Boost drops (docs/BOOSTS.md, opt-in): the kill may drop a boost (its own rng stream), before onDeath's own kills.
+	if (ctx.state.drops !== undefined) dropsOnKill(ctx, a, def.stepDead !== undefined);
 	if (def.onDeath !== undefined) def.onDeath(ctx, a);
 }
 

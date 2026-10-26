@@ -39,6 +39,7 @@ import {
 	SOLO_PLAYER,
 	copyInput,
 	createSimState,
+	dropsEvents,
 	encodeRecording,
 	eventDefault,
 	hashState,
@@ -60,6 +61,7 @@ import {
 	type RunSubmission,
 	type RunSummary,
 } from "shared/run";
+import { BoostFrameEvents, type BoostEventSource } from "shared/view/boosts";
 import { newFrameAdvance, type FrameAdvance, type FramePacer } from "shared/view/fx";
 
 export interface LiveRunSetup {
@@ -83,27 +85,35 @@ export interface LiveRunSetup {
 
 export type RunOutcome = "playing" | "dead" | "victory";
 
-/** M2 in-run progression events (endless runs) a frame's ticks produced, for toasts / audio. Presentation only. */
-export type RunEventKind = "boon" | "relic" | "curse" | "secondWind" | "fang";
+/**
+ * M2 in-run progression events (endless runs) a frame's ticks produced, for toasts / audio, and the boost pickups
+ * (docs/BOOSTS.md B7). Presentation only.
+ */
+export type RunEventKind = "boon" | "relic" | "curse" | "secondWind" | "fang" | "boost";
 
 export interface RunEventRecord {
 	readonly kind: RunEventKind;
-	/** The boon / relic / curse index; 1 for secondWind; half hearts healed for fang. */
+	/** The boon / relic / curse index; 1 for secondWind; half hearts healed for fang; the Boost index for boost. */
 	readonly index: number;
 }
 
 /**
  * Appends player `playerIndex`'s progression events of the tick just stepped to `out` (a solo run: player 0; co-op:
- * the local player's, so the toasts are about what THIS player took). No-op outside endless runs.
+ * the local player's, so the toasts are about what THIS player took), then that player's boost pickups (runs with
+ * drops, shared/sim dropsEvents). No-op outside endless runs without drops.
  */
 export function collectRunEvents(state: Readonly<SimState>, playerIndex: number, out: RunEventRecord[]): void {
 	const re = state.run?.players[playerIndex]?.events;
-	if (re === undefined) return;
-	if (re.draftChosen !== 0) out.push({ kind: "boon", index: re.draftChosen - 1 });
-	if (re.relicCollected !== 0) out.push({ kind: "relic", index: re.relicCollected - 1 });
-	if (re.curseAccepted !== 0) out.push({ kind: "curse", index: re.curseAccepted - 1 });
-	if (re.secondWind !== 0) out.push({ kind: "secondWind", index: re.secondWind });
-	if (re.fangHealed !== 0) out.push({ kind: "fang", index: re.fangHealed });
+	if (re !== undefined) {
+		if (re.draftChosen !== 0) out.push({ kind: "boon", index: re.draftChosen - 1 });
+		if (re.relicCollected !== 0) out.push({ kind: "relic", index: re.relicCollected - 1 });
+		if (re.curseAccepted !== 0) out.push({ kind: "curse", index: re.curseAccepted - 1 });
+		if (re.secondWind !== 0) out.push({ kind: "secondWind", index: re.secondWind });
+		if (re.fangHealed !== 0) out.push({ kind: "fang", index: re.fangHealed });
+	}
+	const de = dropsEvents(state);
+	if (de === undefined) return;
+	for (const c of de.collected) if (c.player === playerIndex) out.push({ kind: "boost", index: c.kind });
 }
 
 /**
@@ -116,6 +126,8 @@ export interface RunView {
 	readonly scorePops: ReadonlyArray<ScorePop>;
 	/** The local player's M2 progression events of the last frame (toasts). */
 	readonly runEvents: ReadonlyArray<RunEventRecord>;
+	/** The boost-drop events of the last frame's ticks, every player's (docs/BOOSTS.md B6 / B7). */
+	readonly boostEvents: BoostEventSource;
 	getAlpha(): number;
 }
 
@@ -255,6 +267,8 @@ export class LiveRun implements RunView {
 	readonly scorePops: ScorePop[] = [];
 	/** Endless runs: the progression events (boon taken, relic, curse, Second Wind, Fang heal) of the last frame(). */
 	readonly runEvents: RunEventRecord[] = [];
+	/** Runs with drops: the boost-drop events of the ticks run by the last frame() (docs/BOOSTS.md B6 / B7). */
+	readonly boostEvents = new BoostFrameEvents();
 	/** What the pacer made of the last unpaused frame (frozen, time scale); a plain pass-through without a pacer. */
 	readonly lastAdvance: FrameAdvance = newFrameAdvance();
 	/** Run totals for the HUD's post-run panel (the telemetry's kill / hit counts, read without finishing it). */
@@ -302,6 +316,7 @@ export class LiveRun implements RunView {
 		resetFrameEvents(this.frameEvents);
 		this.scorePops.clear();
 		this.runEvents.clear();
+		this.boostEvents.reset();
 		this.ticksThisFrame = 0;
 		if (this.forfeitPending) {
 			this.forfeitPending = false;
@@ -379,6 +394,7 @@ export class LiveRun implements RunView {
 			}
 		}
 		collectRunEvents(state, SOLO_PLAYER, this.runEvents);
+		this.boostEvents.collect(state);
 		if (this.victoryTick === undefined && e.bossDefeated !== 0) this.victoryTick = state.tick;
 		if (this.deathTick === undefined && (e.playerDied !== 0 || state.player.dead !== 0)) {
 			this.deathTick = state.tick;

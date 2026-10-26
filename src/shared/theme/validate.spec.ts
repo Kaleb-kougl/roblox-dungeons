@@ -182,11 +182,25 @@ describe("validateManifest: rejects bad manifests", () => {
 	it("checks contrast against walls too", () => {
 		const m = clone();
 		at(m, "biomes", "biome.5").wall = "#ff3fa4";
-		// A bullet-pink wall fails the enemy outline's rule too (red rim on pink, enemy outline plan O1).
+		// A bullet-pink wall fails the enemy outline's rule too (red rim on pink, enemy outline plan O1), and the boost
+		// drops' (every BOOST_ROLES colour on every wall, docs/BOOSTS.md B5).
+		const ratio = (hex: string) => "%.2f".format(contrastRatio(hex, "#ff3fa4"));
 		expect(validateManifest(m)).toEqual([
 			'biomes["biome.5"].wall: contrast: enemyBullet #ff3fa4 on biome.5 (verdant) wall #ff3fa4 is 1.00:1, needs >= 3.0:1',
-			`colors.enemyOutline: contrast: enemyOutline #ff3b30 on biome.5 (verdant) wall #ff3fa4 is ${"%.2f".format(
-				contrastRatio("#ff3b30", "#ff3fa4"),
+			`colors.enemyOutline: contrast: enemyOutline #ff3b30 on biome.5 (verdant) wall #ff3fa4 is ${ratio(
+				"#ff3b30",
+			)}:1, needs >= 3.0:1`,
+			`colors["boost.fury"]: contrast: boost.fury #ffc83d on biome.5 (verdant) wall #ff3fa4 is ${ratio(
+				"#ffc83d",
+			)}:1, needs >= 3.0:1`,
+			`colors["boost.quickstep"]: contrast: boost.quickstep #3ff0d8 on biome.5 (verdant) wall #ff3fa4 is ${ratio(
+				"#3ff0d8",
+			)}:1, needs >= 3.0:1`,
+			`colors["boost.frenzy"]: contrast: boost.frenzy #a8f03c on biome.5 (verdant) wall #ff3fa4 is ${ratio(
+				"#a8f03c",
+			)}:1, needs >= 3.0:1`,
+			`colors["boost.aegis"]: contrast: boost.aegis #c3a6ff on biome.5 (verdant) wall #ff3fa4 is ${ratio(
+				"#c3a6ff",
 			)}:1, needs >= 3.0:1`,
 		]);
 	});
@@ -766,7 +780,7 @@ describe("validateManifest: image pivots", () => {
 				pivot: { x: 8, y: 8 },
 			}),
 		).toEqual([
-			'assets["item.gold"].pivot: only ui.*, decor.* and breakable.* images have a pivot; slot "item" has none',
+			'assets["item.gold"].pivot: only ui.*, decor.*, breakable.* and boost.* images have a pivot; slot "item" has none',
 		]);
 	});
 });

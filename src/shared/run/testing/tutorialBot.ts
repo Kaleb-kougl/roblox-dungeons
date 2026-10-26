@@ -5,7 +5,8 @@
  *
  * The route: Continue on the objective card (a FIRE press once the card has been up long enough), walk, drink the
  * flask, then each floor-1 lesson room in `order` (default: the tour, TUTORIAL_ROOMS): attack the dummies / swarmers
- * with the sword, roll once for the sniper, guard the bruiser's ring (ALT when a bullet comes close), swap to the bow
+ * with the sword (and after each fight walk over any boost drop lying on the floor: combat B's guaranteed Fury,
+ * docs/BOOSTS.md B9), roll once for the sniper, guard the bruiser's ring (ALT when a bullet comes close), swap to the bow
  * and release a heavy arrow at the turret sniper, burn an Ember in the sprayer storm, take the relic, accept the curse
  * (SHRINE_BUTTON), take the stairwell, confirm the centre draft card, then melee Mother Bramble on floor 2 (the player
  * is harmless, so it tanks; optionally with the debug boss damage, J) and take the stairwell she opens. It records the
@@ -24,10 +25,12 @@ import { TUTORIAL } from "shared/config";
 import { bulletBlocker, clearWalk, gridToWorld, lineOfSight, worldToGrid } from "shared/dungeon";
 import { LiveRun, findBoss, takeSnapshot } from "shared/play";
 import {
+	BOOST_COUNT,
 	BOW,
 	Button,
 	DRAFT_CONFIRM_BUTTON,
 	DRAFT_MIN_OPEN_TICKS,
+	NO_BOOST,
 	NO_KIND,
 	PLAYER_RADIUS,
 	SHRINE_BUTTON,
@@ -37,6 +40,9 @@ import {
 	ScoreSource,
 	archetypeAt,
 	atShrine,
+	boostTicksLeft,
+	dropsEvents,
+	dropsGround,
 	isDraftOpen,
 	weaponIndex,
 	type ActorState,
@@ -75,8 +81,9 @@ export interface TutorialBotResult {
 	readonly stepDoneTicks: ReadonlyArray<number>;
 	/** Every TutorialView.newFunnelSteps entry, in the order reported. */
 	readonly funnelSteps: ReadonlyArray<number>;
-	/** Every callout key fired, in order. */
+	/** Every callout key fired, in order, and the tick each fired on. */
 	readonly callouts: ReadonlyArray<string>;
+	readonly calloutTicks: ReadonlyArray<number>;
 	/** Distinct prompt ids shown, in first-shown order. */
 	readonly prompts: ReadonlyArray<string>;
 	/** Broken harmless-rule checks (empty = hearts behaved). */
@@ -103,6 +110,20 @@ export interface TutorialBotResult {
 	/** steer "guide": walkTo ticks steered by the arrow's heading, and ticks its target was unreachable (0 = none). */
 	readonly guidedTicks: number;
 	readonly guideUnreachableTicks: number;
+	/** The first tick a boost drop lay on the floor (-1 never). */
+	readonly dropLandedTick: number;
+	/** The first tick a boost ran on the player (its pickup; -1 never). */
+	readonly boostTakenTick: number;
+	/** Distinct TutorialView marker kinds seen, in first-seen order. */
+	readonly markerKinds: ReadonlyArray<string>;
+	/** Distinct TutorialView highlights seen, in first-seen order. */
+	readonly highlights: ReadonlyArray<string>;
+	/** Boost drops that landed, and drops picked up (the sim's per-tick drop events; the bot runs one tick per frame). */
+	readonly dropsLanded: number;
+	readonly dropsTaken: number;
+	/** Frames whose marker pointed at a ground drop, and how many of them matched a lying drop's position. */
+	readonly dropMarkerFrames: number;
+	readonly dropMarkerOnDrop: number;
 }
 
 const DEFAULT_MAX_TICKS = 20 * 60 * SIM_HZ;
@@ -145,6 +166,7 @@ class TutorialBot {
 	readonly stepDoneTicks: number[] = [];
 	readonly funnelSteps: number[] = [];
 	readonly callouts: string[] = [];
+	readonly calloutTicks: number[] = [];
 	readonly prompts: string[] = [];
 	readonly heartProblems: string[] = [];
 	readonly log: string[] = [];
@@ -154,6 +176,14 @@ class TutorialBot {
 	bossHpMax = 0;
 	readonly bossPhaseTicks: number[] = [-1, -1, -1, -1];
 	readonly bossPhaseFill: number[] = [-1, -1, -1, -1];
+	dropLandedTick = -1;
+	boostTakenTick = -1;
+	readonly markerKinds: string[] = [];
+	readonly highlights: string[] = [];
+	dropMarkerFrames = 0;
+	dropMarkerOnDrop = 0;
+	dropsLanded = 0;
+	dropsTaken = 0;
 	private prevHearts: number;
 	private prevMax: number;
 	private readonly fields = new Map<string, Field>();
@@ -216,7 +246,10 @@ class TutorialBot {
 		const t = this.state.tick;
 		for (let i = 0; i < v.done.size(); i++) if (v.done[i] && this.stepDoneTicks[i] < 0) this.stepDoneTicks[i] = t;
 		for (const n of v.newFunnelSteps) this.funnelSteps.push(n);
-		for (const c of v.callouts) this.callouts.push(c);
+		for (const c of v.callouts) {
+			this.callouts.push(c);
+			this.calloutTicks.push(t);
+		}
 		if (v.prompt !== "" && !this.prompts.includes(v.prompt)) this.prompts.push(v.prompt);
 		const p = this.state.player;
 		if (p.hearts < this.startHearts)
@@ -239,6 +272,68 @@ class TutorialBot {
 			});
 			if (g.unreachable) this.guideUnreachableTicks++;
 		}
+		this.watchDrops();
+	}
+
+	/** True while a boost drop lies on the floor. */
+	dropLying(): boolean {
+		for (const g of dropsGround(this.state)) if (g.kind !== NO_BOOST) return true;
+		return false;
+	}
+
+	/** The drop landing, the pickup, and what the director's marker / highlight did meanwhile. */
+	private watchDrops(): void {
+		const t = this.state.tick;
+		const v = this.view;
+		const ev = dropsEvents(this.state);
+		if (ev !== undefined) {
+			this.dropsLanded += ev.dropped.size();
+			this.dropsTaken += ev.collected.size();
+		}
+		if (this.dropLandedTick < 0 && (this.dropLying() || this.dropsTaken > 0)) this.dropLandedTick = t;
+		if (this.boostTakenTick < 0) {
+			for (let k = 0; k < BOOST_COUNT; k++)
+				if (boostTicksLeft(this.state, SOLO_PLAYER, k) > 0) this.boostTakenTick = t;
+		}
+		const kind = v.marker?.kind;
+		if (kind !== undefined && !this.markerKinds.includes(kind)) this.markerKinds.push(kind);
+		if (v.highlight !== undefined && !this.highlights.includes(v.highlight)) this.highlights.push(v.highlight);
+		if (kind === "drop") {
+			this.dropMarkerFrames++;
+			for (const g of dropsGround(this.state)) {
+				if (g.kind !== NO_BOOST && g.x === v.marker!.x && g.z === v.marker!.z) {
+					this.dropMarkerOnDrop++;
+					break;
+				}
+			}
+		}
+	}
+
+	/** Walks over every boost drop lying on the floor (nearest first) until none is left or the walk budget runs out. */
+	collectDrops(): void {
+		while (this.dropLying() && !this.out() && this.floor() === 1) {
+			const p = this.state.player;
+			let tx = 0;
+			let tz = 0;
+			let best = math.huge;
+			for (const g of dropsGround(this.state)) {
+				if (g.kind === NO_BOOST) continue;
+				const d = dist2(g.x, g.z, p.x, p.z);
+				if (d < best) {
+					best = d;
+					tx = g.x;
+					tz = g.z;
+				}
+			}
+			const before = this.state.tick;
+			this.walkTo(
+				tx,
+				tz,
+				() => !this.dropLying() || dist2(tx, tz, this.state.player.x, this.state.player.z) < 1e-4,
+			);
+			if (this.state.tick === before) break;
+		}
+		if (this.boostTakenTick >= 0) this.note("boost taken");
 	}
 
 	/** The boss fight's milestones (engaged, each phase with the HUD bar's fill, dead). */
@@ -499,6 +594,7 @@ class TutorialBot {
 		if (lesson === "combatA" || lesson === "combatB") {
 			this.wield(false);
 			this.fight(lesson);
+			this.collectDrops();
 		} else if (lesson === "combatC") {
 			this.wield(false);
 			const p = this.state.player;
@@ -623,6 +719,7 @@ export function playTutorial(options: TutorialBotOptions = {}): TutorialBotResul
 		stepDoneTicks: bot.stepDoneTicks,
 		funnelSteps: bot.funnelSteps,
 		callouts: bot.callouts,
+		calloutTicks: bot.calloutTicks,
 		prompts: bot.prompts,
 		heartProblems: bot.heartProblems,
 		startHearts: bot.startHearts,
@@ -636,5 +733,13 @@ export function playTutorial(options: TutorialBotOptions = {}): TutorialBotResul
 		walkTicks: bot.walkTicks,
 		guidedTicks: bot.guidedTicks,
 		guideUnreachableTicks: bot.guideUnreachableTicks,
+		dropLandedTick: bot.dropLandedTick,
+		boostTakenTick: bot.boostTakenTick,
+		markerKinds: bot.markerKinds,
+		highlights: bot.highlights,
+		dropsLanded: bot.dropsLanded,
+		dropsTaken: bot.dropsTaken,
+		dropMarkerFrames: bot.dropMarkerFrames,
+		dropMarkerOnDrop: bot.dropMarkerOnDrop,
 	};
 }

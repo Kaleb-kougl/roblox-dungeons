@@ -67,6 +67,8 @@ export const FX_SPRITE_VIEW = {
 	telegraphClearTiles: 0.75,
 	/** Breakable splinters queued by the breakable renderer between two frames. */
 	splinterQueue: 8,
+	/** Boost pickup bursts (fx.boost.collect) queued by the boost drop renderer between two frames (docs/BOOSTS.md B6). */
+	boostCollectQueue: 4,
 	/**
 	 * Where effects are drawn. "floor": flat on the floor (a SurfaceGui on a thin Part at liftStuds, under every floor
 	 * marking at MARKING_VIEW.liftTiles and every bullet at BULLET_Y), so an effect loses every overlap with a bullet,

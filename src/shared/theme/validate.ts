@@ -20,6 +20,10 @@
  * Roblox port (docs/FX_AUDIO.md A2, F1): sound `variants` / `pitch` / `minInterval`, the ambience slot (`amb.b<n>`),
  * the fx slot (`fx.*`: one-facing sprite sets, `sizeTiles` cap, `tint` roles) and effect colours (FX_ROLES, tints and
  * untinted `meanColor`s) kept away from the enemy-bullet roles (`fxColorReport`).
+ *
+ * Roblox port (docs/BOOSTS.md B5): the boost slot (`boost.<kind>`, free-size world art; any other `boost.` ID is an
+ * error) and the boost colour roles readable on every biome floor and wall and kept away from the enemy-bullet roles,
+ * `boostColorReport` (the enemy outline's rules, per BOOST_ROLES colour).
  */
 
 import { colorDifference, contrastRatio, isHexColor } from "./color";
@@ -29,6 +33,9 @@ import {
 	BIOMES,
 	BIOME_MATERIALS,
 	BIOME_MATERIAL_SURFACES,
+	BOOST,
+	BOOST_KINDS,
+	BOOST_ROLES,
 	BREAKABLE_ROLES,
 	DAMAGE_NUMBER_ROLES,
 	DECOR,
@@ -49,6 +56,8 @@ import {
 	HEALTH_BAR_FILL_ROLES,
 	MAX_ANIMATION_FPS,
 	MAX_IMAGE_SIDE,
+	MIN_BOOST_BULLET_DIFFERENCE,
+	MIN_BOOST_CONTRAST,
 	PARTICLE_FLIPBOOK_GRIDS,
 	PARTICLE_FLIPBOOK_MODES,
 	MIN_DAMAGE_NUMBER_CONTRAST,
@@ -68,7 +77,9 @@ import {
 	TILE,
 	UI,
 	WORLD_ART_SLOTS,
+	boostId,
 	isAmbienceId,
+	isBoostId,
 	isFxId,
 	parseDecorId,
 	requiredAnimationList,
@@ -512,13 +523,90 @@ export function enemyOutlineReport(manifest: unknown): Array<EnemyOutlineEntry> 
 	return out;
 }
 
+/**
+ * Boost drop colours (docs/BOOSTS.md B5), the enemy outline's rules for each BOOST_ROLES colour: vs every biome's floor
+ * and wall (WCAG contrast, >= MIN_BOOST_CONTRAST; check "surface", `against` = the biome ID, `surface` set) and vs
+ * every ENEMY_BULLET_ROLES colour (CIE76 colour difference, >= MIN_BOOST_BULLET_DIFFERENCE; check "bullet", `against` =
+ * the role). `value` is the ratio or the difference. Roles in BOOST_ROLES order, biomes in sorted order.
+ */
+export interface BoostColorEntry {
+	role: string;
+	check: "surface" | "bullet";
+	color: string;
+	against: string;
+	/** The biome surface (check "surface" only). */
+	surface?: "floor" | "wall";
+	againstColor: string;
+	value: number;
+	min: number;
+	ok: boolean;
+}
+
+export function boostColorReport(manifest: unknown): Array<BoostColorEntry> {
+	const out = new Array<BoostColorEntry>();
+	if (!isObj(manifest) || !isObj(manifest.colors)) {
+		return out;
+	}
+	const colors = manifest.colors;
+	const biomes = isObj(manifest.biomes) ? sortedEntries(manifest.biomes) : [];
+	for (const role of BOOST_ROLES) {
+		const color = colors[role];
+		if (!isHexColor(color)) {
+			continue;
+		}
+		for (const [biome, def] of biomes) {
+			if (!isObj(def)) {
+				continue;
+			}
+			for (const surface of SURFACES) {
+				const againstColor = def[surface];
+				if (!isHexColor(againstColor)) {
+					continue;
+				}
+				const value = contrastRatio(color, againstColor);
+				out.push({
+					role,
+					check: "surface",
+					color,
+					against: biome,
+					surface,
+					againstColor,
+					value,
+					min: MIN_BOOST_CONTRAST,
+					ok: value >= MIN_BOOST_CONTRAST,
+				});
+			}
+		}
+		for (const against of ENEMY_BULLET_ROLES) {
+			const againstColor = colors[against];
+			if (!isHexColor(againstColor)) {
+				continue;
+			}
+			const value = colorDifference(color, againstColor);
+			out.push({
+				role,
+				check: "bullet",
+				color,
+				against,
+				againstColor,
+				value,
+				min: MIN_BOOST_BULLET_DIFFERENCE,
+				ok: value >= MIN_BOOST_BULLET_DIFFERENCE,
+			});
+		}
+	}
+	return out;
+}
+
 type Err = (path: ReadonlyArray<string>, msg: string) => void;
 type UnknownKeys = (obj: Obj, path: ReadonlyArray<string>, allowed: ReadonlyArray<string>) => void;
 
 const TOP_LEVEL_KEYS = ["format", "id", "name", "version", "colors", "biomes", "assets", "strings", "locales"];
-const SLOT_PREFIXES = "class., enemy., boss., bullet., tile., item., ui., sfx., music., decor., breakable., amb., fx.";
+const SLOT_PREFIXES =
+	"class., enemy., boss., bullet., tile., item., ui., sfx., music., decor., breakable., amb., fx., boost.";
 const AMBIENCE_ID_LIST = AMBIENCE_IDS.join(", ");
 const FX_ID_LIST = FX_IDS.join(", ");
+const BOOST_ID_LIST = BOOST_KINDS.map((k) => boostId(k)).join(", ");
 
 function forgeSuffix(biome: string): string {
 	const forge = BIOMES.find((b) => b.id === biome)?.forgeTheme;
@@ -663,6 +751,10 @@ export function validateManifest(manifest: unknown, opts: ValidateOptions = {}):
 		}
 		if (slot === FX && !isFxId(assetId)) {
 			err(path, `unknown fx ID (known: ${FX_ID_LIST})`);
+			continue;
+		}
+		if (slot === BOOST && !isBoostId(assetId)) {
+			err(path, `unknown boost ID (known: ${BOOST_ID_LIST})`);
 			continue;
 		}
 		validateAsset(def, path, slot, err, unknownKeys);
@@ -816,6 +908,28 @@ export function validateManifest(manifest: unknown, opts: ValidateOptions = {}):
 		}
 	}
 
+	// --- boost drops read on every biome and never as an enemy bullet ------------------------------
+	for (const c of boostColorReport(manifest)) {
+		if (c.ok) {
+			continue;
+		}
+		if (c.check === "surface") {
+			err(
+				["colors", c.role],
+				`contrast: ${c.role} ${c.color} on ${c.against}${forgeSuffix(c.against)} ${tostring(c.surface)} ${
+					c.againstColor
+				} is ${fixed2(c.value)}:1, needs >= ${fixed1(c.min)}:1`,
+			);
+		} else {
+			err(
+				["colors", c.role],
+				`colour difference: ${c.role} ${c.color} vs ${c.against} ${c.againstColor} is ${fixed1(
+					c.value,
+				)} (CIE76), needs >= ${fixed1(c.min)}: a boost drop must never read as an enemy bullet`,
+			);
+		}
+	}
+
 	// --- contrast: juice (health bars on their back plate, damage numbers on every biome floor) ---
 	for (const c of juiceContrastReport(manifest)) {
 		if (c.ok) {
@@ -943,7 +1057,10 @@ function validateAsset(def: unknown, path: Array<string>, slot: SlotContract, er
 			if (imagePivot !== undefined) {
 				const pp = append(path, "pivot");
 				if (slot !== UI) {
-					err(pp, `only ui.*, decor.* and breakable.* images have a pivot; slot "${slot.slot}" has none`);
+					err(
+						pp,
+						`only ui.*, decor.*, breakable.* and boost.* images have a pivot; slot "${slot.slot}" has none`,
+					);
 				} else if (!isObj(imagePivot) || !isFiniteNumber(imagePivot.x) || !isFiniteNumber(imagePivot.y)) {
 					err(pp, 'must be { "x": number, "y": number } in pixels from the image top-left');
 				} else {
@@ -1139,7 +1256,7 @@ function validateSoundExtras(def: Obj, path: Array<string>, slot: SlotContract, 
 // ---------------------------------------------------------------------------------------------
 // World art (Roblox port, docs/DECOR.md R2 / R13): decor.* and breakable.* images and sprite sets
 
-/** Keys of a decor.* / breakable.* image (decor pieces and effects add DECOR_ART_KEYS). */
+/** Keys of a decor.* / breakable.* / boost.* image (decor pieces and effects add DECOR_ART_KEYS). */
 const WORLD_IMAGE_KEYS = ["kind", "assetId", "w", "h", "rect", "pivot", "pixelsPerTile"];
 /** Keys of an ambient particle texture (decor.fx.ambient.*): a ParticleEmitter texture, no placement. */
 const AMBIENT_IMAGE_KEYS = ["kind", "assetId", "w", "h", "particle", "emissive"];
@@ -1182,9 +1299,9 @@ function checkPoint(
 }
 
 /**
- * A decor.* / breakable.* image: an uploaded image up to MAX_IMAGE_SIDE, an optional `rect` inside it (the region
- * drawn), an optional `pivot` inside the drawn region, `pixelsPerTile` > 0; decor IDs add their decor fields. An
- * ambient particle texture (decor.fx.ambient.*) is only a texture plus its `particle` look.
+ * A world-art image (decor.*, breakable.*, boost.*): an uploaded image up to MAX_IMAGE_SIDE, an optional `rect`
+ * inside it (the region drawn), an optional `pivot` inside the drawn region, `pixelsPerTile` > 0; decor IDs add their
+ * decor fields. An ambient particle texture (decor.fx.ambient.*) is only a texture plus its `particle` look.
  */
 function validateWorldImage(def: Obj, path: Array<string>, slot: SlotContract, err: Err, unknownKeys: UnknownKeys) {
 	const info = slot === DECOR ? parseDecorId(path[1]) : undefined;

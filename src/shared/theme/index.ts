@@ -20,6 +20,7 @@ export {
 export { interpolate, placeholders, templateProblem, type StringVars } from "./strings";
 export {
 	ASSET_ID_PATTERN,
+	boostColorReport,
 	breakableContrastReport,
 	contrastReport,
 	decorFxReport,
@@ -30,6 +31,7 @@ export {
 	isStringKey,
 	juiceContrastReport,
 	validateManifest,
+	type BoostColorEntry,
 	type BreakableContrastEntry,
 	type ContrastEntry,
 	type DecorFxEntry,
@@ -50,6 +52,7 @@ export {
 	uvToPixelRect,
 	type AmbientParticleArt,
 	type BiomeTheme,
+	type BoostTheme,
 	type BreakableTheme,
 	type DecorArt,
 	type FrameUV,
@@ -74,6 +77,7 @@ export {
 	setActiveThemePack,
 	type AmbientParticles,
 	type BiomeColors,
+	type Boost,
 	type Breakable,
 	type DecorPiece,
 	type FrameRect,

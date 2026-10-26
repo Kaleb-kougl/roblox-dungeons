@@ -9,6 +9,7 @@
 import { jsRound, u32 } from "shared/jsmath";
 import { isIntegerNumber } from "./jsnum";
 import { DEBUG_FLOOR_BUTTON } from "./endlessData";
+import { DEBUG_DROP_BUTTON } from "./drops/dropsData";
 
 export const AXIS_MAX = 1000;
 
@@ -65,11 +66,13 @@ export const ALL_BUTTONS = allButtons();
 
 /**
  * Roblox-port button bits beyond the web build's table (which fixtures/input.json pins: ALL_BUTTONS, isValidInput,
- * quantizeButtons and the JSON recordings keep rejecting / stripping them). Only endless mode reads them.
+ * quantizeButtons and the JSON recordings keep rejecting / stripping them): the endless debug floor skip (8192) and
+ * the debug boost drop (32768, docs/BOOSTS.md; only a run with SimConfig.drops reads it). 16384 is the leave / forfeit
+ * bit (partyData.ts), deliberately outside SIM_BUTTONS.
  */
-export const PORT_BUTTONS = DEBUG_FLOOR_BUTTON;
+export const PORT_BUTTONS = bit32.bor(DEBUG_FLOOR_BUTTON, DEBUG_DROP_BUTTON);
 
-/** Every bit the sim reads: ALL_BUTTONS plus PORT_BUTTONS (16383). The binary recording codec accepts these. */
+/** Every bit the sim reads: ALL_BUTTONS plus PORT_BUTTONS (49151). The binary recording codec accepts these. */
 export const SIM_BUTTONS = bit32.bor(ALL_BUTTONS, PORT_BUTTONS);
 
 export interface InputFrame {

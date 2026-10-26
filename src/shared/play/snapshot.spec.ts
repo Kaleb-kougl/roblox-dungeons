@@ -3,6 +3,10 @@ import { describe, expect, it } from "@rbxts/jest-globals";
 import {
 	BOSS_ACT1_ID,
 	Boon,
+	Boost,
+	DROPS_CONFIG,
+	SIM_HZ,
+	boostTicks,
 	COMBO_WINDOW_TICKS,
 	DEBUG_FLOOR_BUTTON,
 	DEFAULT_SIM_CONFIG,
@@ -86,6 +90,51 @@ describe("takeSnapshot: M2 progression (endless runs)", () => {
 	});
 });
 
+describe("takeSnapshot: boost drops (docs/BOOSTS.md B7)", () => {
+	const config = { ...DEFAULT_SIM_CONFIG, drops: DROPS_CONFIG };
+
+	it("none without drops: empty boosts, no Aegis pips", () => {
+		const s = takeSnapshot(createSimState(1, 0, 0, DEFAULT_SIM_CONFIG), EXTRAS);
+		expect([s.boosts.size(), s.aegisPips]).toEqual([0, 0]);
+	});
+
+	it("the running boosts in Boost order, seconds in tenths (rounded up), the bar's fraction, the Aegis pips", () => {
+		const st = createSimState(1, 0, 0, config);
+		const bp = st.drops!.players[0];
+		bp.ticks[Boost.AEGIS] = boostTicks(Boost.AEGIS);
+		bp.aegisPips = 1;
+		bp.ticks[Boost.FURY] = 3 * SIM_HZ + 1; // 3.0167 s -> 3.1
+		const s = takeSnapshot(st, EXTRAS);
+		expect(s.boosts).toEqual([
+			{ kind: Boost.FURY, secondsLeft: 3.1, fraction: 31 / 100 },
+			{ kind: Boost.AEGIS, secondsLeft: 15, fraction: 1 },
+		]);
+		expect(s.aegisPips).toBe(1);
+	});
+
+	it("quantised: a tick inside the same tenth changes nothing the HUD shows; the next tenth does", () => {
+		const st = createSimState(1, 0, 0, config);
+		const bp = st.drops!.players[0];
+		bp.ticks[Boost.FRENZY] = 5 * SIM_HZ;
+		const a = takeSnapshot(st, EXTRAS);
+		bp.ticks[Boost.FRENZY] -= 1;
+		expect(snapshotsEqual(a, takeSnapshot(st, EXTRAS))).toBe(true);
+		bp.ticks[Boost.FRENZY] -= SIM_HZ / 10;
+		expect(snapshotsEqual(a, takeSnapshot(st, EXTRAS))).toBe(false);
+		bp.ticks[Boost.FRENZY] = 0;
+		expect(takeSnapshot(st, EXTRAS).boosts.size()).toBe(0);
+	});
+
+	it("co-op: the shown player's boosts (SnapshotExtras.playerIndex; no vitalsIndex exists yet)", () => {
+		const st = createSimState(1, 0, 0, { ...config, party: { size: 2 } });
+		st.drops!.players[1].ticks[Boost.QUICKSTEP] = SIM_HZ;
+		st.drops!.players[1].aegisPips = 1;
+		expect(takeSnapshot(st, EXTRAS).boosts.size()).toBe(0);
+		const mine = takeSnapshot(st, { ...EXTRAS, playerIndex: 1 });
+		expect([mine.boosts.map((b) => b.kind), mine.aegisPips]).toEqual([[Boost.QUICKSTEP], 1]);
+	});
+});
+
 describe("snapshotsEqual", () => {
 	const base = takeSnapshot(createSimState(1, 0, 0, DEFAULT_SIM_CONFIG), EXTRAS);
 
@@ -102,6 +151,9 @@ describe("snapshotsEqual", () => {
 		expect(snapshotsEqual(base, EMPTY_SNAPSHOT)).toBe(false);
 		expect(snapshotsEqual(base, { ...base, kills: 1 })).toBe(false);
 		expect(snapshotsEqual(base, { ...base, bossPhaseMarks: [0.5] })).toBe(false);
+		expect(snapshotsEqual(base, { ...base, aegisPips: 1 })).toBe(false);
+		expect(snapshotsEqual(base, { ...base, boosts: [{ kind: 0, secondsLeft: 1, fraction: 0.1 }] })).toBe(false);
+		expect(snapshotsEqual(base, { ...base, boosts: [] })).toBe(true);
 	});
 });
 

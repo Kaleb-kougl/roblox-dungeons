@@ -58,6 +58,8 @@ export interface ToastView {
 	/** Theme string key of the line and its vars (`name` is looked up as a theme string key itself). */
 	readonly key: string;
 	readonly nameKey?: string;
+	/** `{desc}`, looked up as a theme string key (boost pickups). */
+	readonly descKey?: string;
 	readonly amount?: number;
 	/** os.clock() at which it disappears. */
 	readonly until: number;

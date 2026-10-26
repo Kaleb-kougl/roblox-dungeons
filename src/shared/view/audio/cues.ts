@@ -23,10 +23,17 @@
  * AudioStateWatch.mayDeflect), else a teammate's. A solo run reads the summed events exactly as before (the watch only
  * picks swing vs finisher).
  *
+ * Boost drops (docs/BOOSTS.md B7) come from the frame's collected drop events (shared/view/boosts BoostEventSource,
+ * the run view's `boostEvents`, every tick of the frame): a landing plays sfx.boost.drop; a pickup sfx.boost.collect
+ * (the local player's at full volume, a teammate's at AUDIO_VIEW.teammateVolume); a boost of the LOCAL player running
+ * out sfx.boost.expire (a teammate's is silent); an Aegis pip absorbing a hit sfx.boost.aegisbreak (split like the
+ * pickup).
+ *
  * Presentation only: reads sim state, never writes it.
  */
 import { BOSS_DEMONLORD_ID, archetypeIndex, partySize, type SimEvents, type SimState } from "shared/sim";
 import { AMBIENCE_IDS } from "shared/theme";
+import { NO_BOOST_EVENTS, type BoostEventSource } from "../boosts";
 import type { FxEvent } from "../fx/events";
 import { AUDIO_VIEW } from "./config";
 import { AudioStateWatch, SwingEdge } from "./watch";
@@ -76,6 +83,14 @@ export const SFX = {
 	/** Menu back / cancel, and a gamepad focus move (quiet, rate-limited). */
 	uiBack: "sfx.ui.back",
 	uiMove: "sfx.ui.move",
+	/**
+	 * Boost drops (docs/BOOSTS.md B7; the theme's PORT_AUDIO_EVENTS): a drop lands, is picked up, a boost's timer runs
+	 * out, an Aegis pip absorbs a hit (`aegisbreak`: asset ID segments are lowercase).
+	 */
+	boostDrop: "sfx.boost.drop",
+	boostCollect: "sfx.boost.collect",
+	boostExpire: "sfx.boost.expire",
+	boostAegisBreak: "sfx.boost.aegisbreak",
 } as const;
 export type SfxId = (typeof SFX)[keyof typeof SFX];
 
@@ -113,6 +128,10 @@ export const ALL_SFX: ReadonlyArray<SfxId> = [
 	SFX.uiConfirm,
 	SFX.uiBack,
 	SFX.uiMove,
+	SFX.boostDrop,
+	SFX.boostCollect,
+	SFX.boostExpire,
+	SFX.boostAegisBreak,
 ];
 
 /** IDs this port added to the placeholder pack (not in the web contract's AUDIO_EVENTS; theme PORT_AUDIO_EVENTS). */
@@ -136,6 +155,10 @@ export const PORT_SFX: ReadonlyArray<SfxId> = [
 	SFX.depthUp,
 	SFX.gameOver,
 	SFX.bossTaunt,
+	SFX.boostDrop,
+	SFX.boostCollect,
+	SFX.boostExpire,
+	SFX.boostAegisBreak,
 ];
 
 /**
@@ -228,6 +251,8 @@ export const SFX_MIN_INTERVAL: Readonly<Partial<Record<SfxId, number>>> = {
 	[SFX.breakableHit]: 0.06,
 	[SFX.breakableBreak]: 0.05,
 	[SFX.uiMove]: 0.08,
+	[SFX.boostDrop]: 0.1,
+	[SFX.boostCollect]: 0.05,
 };
 
 /**
@@ -252,6 +277,10 @@ export const SFX_PRIORITY: Readonly<Record<SfxId, number>> = {
 	[SFX.relicTake]: 70,
 	[SFX.shrineUse]: 70,
 	[SFX.floorEnter]: 68,
+	/** An Aegis pip took the hit (the hurt sound plays too: it still counts as a hit). */
+	[SFX.boostAegisBreak]: 66,
+	[SFX.boostCollect]: 64,
+	[SFX.boostDrop]: 62,
 	[SFX.playerFlask]: 60,
 	[SFX.playerRoll]: 58,
 	[SFX.playerFinisher]: 56,
@@ -260,6 +289,7 @@ export const SFX_PRIORITY: Readonly<Record<SfxId, number>> = {
 	[SFX.playerShoot]: 52,
 	[SFX.playerSwap]: 50,
 	[SFX.playerDeflect]: 50,
+	[SFX.boostExpire]: 48,
 	[SFX.uiConfirm]: 45,
 	[SFX.uiBack]: 45,
 	[SFX.uiClick]: 44,
@@ -503,7 +533,8 @@ export class AudioCueMapper {
 	/**
 	 * One rendered frame at real time `now` (seconds): `events` are the frame's summed SimEvents, `fx` the tracker's
 	 * events of the frame, `state` the run's state after the frame, `localIndex` this client's player (0 solo; the
-	 * watched teammate while spectating, docs/SPECTATE.md: its sounds play at full volume). Appends the cues to start
+	 * watched teammate while spectating, docs/SPECTATE.md: its sounds play at full volume), `boosts` the frame's
+	 * boost-drop events (the run view's `boostEvents`; none by default). Appends the cues to start
 	 * to `out` (in table order) and returns it.
 	 */
 	frame(
@@ -513,6 +544,7 @@ export class AudioCueMapper {
 		state: Readonly<SimState>,
 		localIndex: number,
 		out: AudioCueList,
+		boosts: BoostEventSource = NO_BOOST_EVENTS,
 	): AudioCueList {
 		this.now = now;
 		this.pending = 0;
@@ -576,6 +608,11 @@ export class AudioCueMapper {
 		// did not break (breakableHits counts the breaking hit too).
 		if (events.breakablesBroken > 0) this.cue(SFX.breakableBreak, 1);
 		if (events.breakableHits > events.breakablesBroken) this.cue(SFX.breakableHit, 1);
+		// Boost drops (every tick of the frame): landings, pickups and Aegis breaks by player, the local player's ends.
+		if (boosts.dropped.size() > 0) this.cue(SFX.boostDrop, 1);
+		for (const c of boosts.collected) this.playerCue(SFX.boostCollect, c.player, localIndex);
+		for (const p of boosts.aegisBroke) this.playerCue(SFX.boostAegisBreak, p, localIndex);
+		for (const e of boosts.ended) if (e.player === localIndex) this.cue(SFX.boostExpire, 1);
 		const enemySpawned = state.combat.enemySpawned;
 		if (this.lastEnemySpawned >= 0 && enemySpawned > this.lastEnemySpawned) this.cue(SFX.enemyShoot, 1);
 		this.lastEnemySpawned = enemySpawned;

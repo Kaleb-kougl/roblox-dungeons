@@ -40,7 +40,7 @@ import from inside would create require cycles).
 | `replay.ts` | `src/sim/replay.ts` | `Recorder`, `runReplay`, `writeHashFields`, `hashNumbers` (FNV-1a over `buffer.writef64` bytes), `hashState`, `serializeRecording` / `deserializeRecording` (same messages), `float64Hex` / `float64FromHex` |
 | `recordingCodec.ts` | (Roblox only) | `encodeRecording` / `decodeRecording`: the compact binary recording (`buffer`) the `submitRun` remote carries; hostile-input-safe decode (docs/SERVER.md "The wire format") |
 | `observer.ts` | `src/sim/observer.ts` | `SimObserver` / `SimControls` types |
-| `hashLayout.ts` | (port helper) | the hash split into the fixtures' six subsystems, with dump names (plus `endless`, then `score`, then `run`, then `party`, then `tutorial`, then `breakables`, each appended only when present) |
+| `hashLayout.ts` | (port helper) | the hash split into the fixtures' six subsystems, with dump names (plus `endless`, then `score`, then `run`, then `party`, then `tutorial`, then `breakables`, then `drops`, each appended only when present) |
 | `endless.ts` | (Roblox only) | endless mode: `SimConfig.endless` (`worldForFloor`), `SimState.endless` (floor, Depth, stairwell, rooms entered), `stepEndless` (Depth on a boss kill, floor clear points + stairwell / `DEBUG_FLOOR_BUTTON` -> next floor, deferred room spawns attached to score rooms), `writeEndlessHash` |
 | `endlessData.ts` | (Roblox only) | endless tunables: hp scaling by floor / Depth, enemy bullet speed scaling (speed only, never the burst shape), stairwell radius, the debug floor-skip bit |
 | `parity.ts` | (port helper) | `firstFieldMismatch`, `subsystemHashes`, `checkRunFixture` (whole-run parity), `replaySummary` (totals / firstTick / hitsBySource), `fixtureNumber` |
@@ -51,6 +51,7 @@ import from inside would create require cycles).
 | `party.ts` | (Roblox only) | M4 co-op: `SimConfig.party`, `SimState.party` (players by index, [0] aliasing `state.player`), `playerAt` / `weaponsAt` / `partySize`, nearest-living targeting, leave / revive, `writePartyHash` (the "party" group); see "Co-op" below |
 | `tutorial/` | (Roblox only) | first-run tutorial (docs/TUTORIAL.md): `tutorialData.ts` tunables (`TUTORIAL_START_HALF_HEARTS`, the start clamp), `tutorial.ts` `SimConfig.tutorial` (`TutorialSimConfig`: `harmless`, `startHalfHearts`, `bossHpPercent`), `SimState.tutorial` (`TutorialState`: `harmless`, `harmlessHits`, `bossHpPercent`), `tutorialBossHp`, `isTutorialHarmless`, `writeTutorialHash` (the "tutorial" group, last); see "Tutorial" below |
 | `breakables/` | (Roblox only) | breakable barrels and crates (docs/DECOR.md D4): `breakablesData.ts` tunables (B4 toughness as hp = arrow hits x the bow's damage, the enemy bullet's share, hit / slam radii, `BreakableKind`, `BreakableSource`), `breakables.ts` `SimConfig.breakables` (`BreakablesConfig`, the game's `BREAKABLES_CONFIG`), `SimState.breakables` (pieces: kind, cell, hp, brokenTick; the derived cell -> slot lookup and intact count, never hashed), `damageBreakable`, the melee pass, the slam, `writeBreakablesHash` (the "breakables" group, last); `cells.ts` the leaf lookups (`solidCells`, `breakableSlotAt`) the movement code reads; see "Breakables" below |
+| `drops/` | (Roblox only) | boost drops (docs/BOOSTS.md B1-B3): `dropsData.ts` tunables (a leaf: `Boost` / `BOOSTS` Fury / Quickstep / Frenzy / Aegis, the percents, `DROPS` chance / pity / ground life / pickup radius / slots, `DEBUG_DROP_BUTTON`), `drops.ts` `SimConfig.drops` (`DropsConfig`, the game's `DROPS_CONFIG`, the tutorial's `guaranteedDropsConfig`), `SimState.drops` (`DropsState`: its own rng word, pity, ground slots, guards, per-player timers and Aegis pips; presentation `events`), `dropsOnKill` (killActor), `dropsOnRoomSpawned` (enterRoom), `stepDrops`, the client's read helpers, `writeDropsHash` (the "drops" group, last); `boostMods.ts` the effect reads (a leaf: Fury / Frenzy percents for runMods, Quickstep's walk percent, `absorbWithAegis`, `boostsOnPlayerDied`); see "Boost drops" below |
 | `testing/` | `src/sim/actors/__test__/testArchetypes.ts` | test-only archetypes for specs (never imported by the game) |
 
 `SimConfig.moveResolver` has the source's signature and call contract (sub-steps of at most `MAX_MOVE_STEP`, one call
@@ -128,6 +129,8 @@ source: 12) because gen.arc's sin / cos come from the arc table, which only hold
 | `../run/replay.bench.spec.ts` | server replay cost per tick on endless floor 15 at Depth 3 in combat, solo and 8 players, one room / the whole floor (docs/SERVER.md "Replay capacity") |
 | `breakables/breakables.spec.ts` | breakables: opt-in state, the appended group and its dump names, clone; B4 hit counts vs SWORD_DATA / BOW_DATA; players, plain and steered enemy walks and bullets blocked (LOS not); every damage source (bow, sword, guard none, heavy arrow pierce on a break only, enemy bullets, the slam in a real fight); scoring without the combo; an endless run's floor rebuild; co-op; a replay |
 | `../dungeon/breakables.spec.ts` | breakable placement (R11): determinism, its own stream, every placement rule, BFS reachability and counts per band over the census floors; the collision functions with and without `solid` |
+| `drops/drops.spec.ts` | boost drops: opt-in state, the appended group (names, guards, clone, party size), the own stream (state.rngState and boon offers unchanged), draws per case, eligibility (turrets, the dummy, bosses, the boss room), pity at exactly pityKills, the cap, kind weights, pickups (slot then player index, landing tick, never the dead), expiry, refresh, timers, draft freeze, floor change, death / forfeit / leave clears, DEBUG_DROP_BUTTON, the tutorial guarantee, a replay |
+| `drops/boosts.spec.ts` | boost effects: neutral paths (===), Fury exact for every damage number with / without Sharpened and the boss cap still binding, Frenzy's integer combined percents (sword, bow), Quickstep's two sub-steps / roll unchanged / no wall or crate tunnelling, Aegis before armor, never refilled by Warding, before Second Wind, untouched by harmless mode |
 
 ## Co-op (M4, Roblox port)
 
@@ -188,13 +191,14 @@ the party's leave bits handled right after the event clears):
 | # | Phase | Only when |
 | --- | --- | --- |
 | 1 | `clearEvents` | |
-| 2 | `clearScoreEvents`, `clearBreakableEvents`; then (solo) `FORFEIT_BUTTON` -> `forfeitSoloRun` | `state.score` / `state.breakables` (the forfeit: always) |
+| 2 | `clearScoreEvents`, `clearBreakableEvents`, `clearDropsEvents`; then (solo) `FORFEIT_BUTTON` -> `forfeitSoloRun` | `state.score` / `state.breakables` / `state.drops` (the forfeit: always) |
 | 3 | `stepPlayer` (current floor's config in endless) | |
-| 4 | `stepCombat` (kills score here: `scoreKill` in killActor, grazes, guard cancels; breakables: movers get `solidCells`, the sword's melee pass, the slam, bullets vs pieces after the wall test) | |
+| 4 | `stepCombat` (kills score here: `scoreKill` in killActor, grazes, guard cancels; breakables: movers get `solidCells`, the sword's melee pass, the slam, bullets vs pieces after the wall test; drops: `dropsOnKill` in killActor, before onDeath) | |
 | 5 | `stepEndless`: boss kill -> Depth + 1; dead -> stop; stairwell / debug skip -> `awardFloorClear(floor, bossFloor, bossDead)` (floor(1000 x floor x rooms cleared / enemy rooms), the boss one more room on a boss floor, the full 1000 x floor without enemy rooms; then the multipliers), next floor, `resetBreakables` (the new floor's pieces), `rebuildScoreRooms`; first room entry -> deferred spawns -> `attachScoreRoomMembers` | `state.endless` |
 | 6 | `stepRun` (M2): a floor change -> the new floor's pedestals / shrine, Second Wind re-armed, a boon draft opens for every present player (offers from the sim rng, player index order); nobody alive -> stop; a room's spawns -> Warding refills each living owner's armor; pedestals (first living player on one, relic from the sim rng); the shrine (first living player in the zone with a SKILL1 edge -> their curse from the sim rng + `addCurse`) | `state.run` |
-| 7 | `stepScore`: final-phase window, hit cuts, combo timer, room engagement / clears | `state.score` |
-| 8 | `tick += 1` | |
+| 7 | `stepDrops`: a floor change frees every ground slot and guard; DEBUG_DROP_BUTTON drops; boost timers (player, kind order); ground life (slot order); pickups (per slot the first living player in reach) | `state.drops` |
+| 8 | `stepScore`: final-phase window, hit cuts, combo timer, room engagement / clears | `state.score` |
+| 9 | `tick += 1` | |
 
 While a boon draft is open (`isDraftOpen`: ANY player's) a tick is only: `clearEvents`, `clearScoreEvents`,
 `clearRunEvents` (co-op: then the leave bits), `stepDraft` (per player with an open draft: the stick's
@@ -219,8 +223,11 @@ per pedestal, shrineRoom, shrineUsed; dump names `run.players[0].boons[1]`, `run
 `party` (co-op only: size, left[0..n-1], then per player 1..n-1 the player fields and their weapons), then `tutorial`
 (tutorial runs only: harmless, harmlessHits, bossHpPercent; dump names `tutorial.harmless`, `tutorial.harmlessHits`,
 `tutorial.bossHpPercent`), then
-`breakables` (runs with SimConfig.breakables, i.e. every endless run; always last: pieces.length, then per piece kind,
-x, y, hp, brokenTick; dump names `breakables.length`, `breakables[0].hp`, ...). The
+`breakables` (runs with SimConfig.breakables, i.e. every endless run: pieces.length, then per piece kind,
+x, y, hp, brokenTick; dump names `breakables.length`, `breakables[0].hp`, ...), then `drops` (runs with SimConfig.drops;
+always last: rngState, killsSinceDrop, debugNextKind, ground.length, per slot kind / x / z / spawnTick / ticksLeft,
+guards.length, per guard kind / ids.length / ids, players.length, per player ticks.length / ticks / aegisPips; dump names
+`drops.rngState`, `drops.ground[0].kind`, `drops.players[0].ticks[1]`, ...). The
 per-tick `SimState.run.events` (draftOpened, draftChosen, relicCollected, curseAccepted, secondWind, fangHealed) and
 each player's `run.players[i].events` are presentation only and not hashed. New per-tick events (not in `SIM_EVENT_FIELDS`, which stays the web build's list; see
 `ENDLESS_EVENT_FIELDS` / `BREAKABLE_EVENT_FIELDS` / `ALL_EVENT_FIELDS`): `floorChanged`, `depthChanged`,
@@ -244,15 +251,16 @@ validators accept it with died = true).
 | Bit | Name | Where |
 | --- | --- | --- |
 | 1 .. 4096 | `Button.*` (`ALL_BUTTONS` 8191) | the web build's, fixtures/input.json |
-| 8192 | `DEBUG_FLOOR_BUTTON` (`PORT_BUTTONS`; `SIM_BUTTONS` 16383) | endless debug floor skip (a debug bit) |
-| 16384 | `PARTY_LEFT_BUTTON` = `FORFEIT_BUTTON` (`RECORDED_BUTTONS` 32767) | co-op leave (relay only) / solo "Leave run" |
+| 8192 | `DEBUG_FLOOR_BUTTON` (`PORT_BUTTONS`) | endless debug floor skip (a debug bit) |
+| 16384 | `PARTY_LEFT_BUTTON` = `FORFEIT_BUTTON` (outside `SIM_BUTTONS`; in `RECORDED_BUTTONS` 65535) | co-op leave (relay only) / solo "Leave run" |
+| 32768 | `DEBUG_DROP_BUTTON` (`PORT_BUTTONS`; `SIM_BUTTONS` 49151) | boost drops: drop the next boost kind in front of the player (a debug bit) |
 
 ## Tutorial (Roblox port)
 
 Opt-in through `SimConfig.tutorial` (`TutorialSimConfig`, tutorial/tutorial.ts; docs/TUTORIAL.md "Architecture §1").
 Without it there is no `state.tutorial`, nothing extra runs and nothing extra is hashed, so every fixture and every
 solo, endless and party hash is unchanged. With it createSimState creates `state.tutorial` (`harmless` 0/1,
-`harmlessHits`, `bossHpPercent`), hashed as the **tutorial** group, appended after `party` (only `breakables` comes after it, and a tutorial run has none).
+`harmlessHits`, `bossHpPercent`), hashed as the **tutorial** group, appended after `party` (only `breakables` and `drops` come after it, and a tutorial run has no breakables).
 
 | Rule | Where |
 | --- | --- |
@@ -289,3 +297,26 @@ fixture is scored). With it createSimState builds `state.breakables` from floor 
 
 Co-op needs nothing extra (every rule is per bullet / swing; the team score gets the points). Spec:
 `breakables/breakables.spec.ts`, placement `../dungeon/breakables.spec.ts`.
+
+## Boost drops (Roblox port, docs/BOOSTS.md)
+
+Opt-in through `SimConfig.drops` (`DropsConfig`; `DROPS_CONFIG` is the game's, `guaranteedDropsConfig(list)` the
+tutorial's). No world sets it yet (B4 / B9). Without it there is no `state.drops`, `dropsOnKill` / `stepDrops` never run,
+every boost read is neutral (the callers' `scalePercent` / `scaleTicks` return their input unchanged) and no `drops`
+group is hashed, so every fixture, M1 and every endless / tutorial replay is unchanged. With it createSimState builds
+`state.drops` (after the party; no sim rng) with its OWN mulberry32 word, `seedToState(seed) ^ DROPS.salt`: drops never
+draw from `state.rngState`, so no boon offer, relic, curse or archetype roll moves.
+
+| Rule | Where |
+| --- | --- |
+| A kill rolls (rules and draw counts in the drops.ts header): a guaranteed room's last member drops its kind; reviving archetypes, bosses, the training dummy and kills in the boss room never roll; a full ground skips without a draw; pity, else one `rngInt(0, 99)` against the archetype's percent; one weighted kind draw | `dropsOnKill` (killActor, before onDeath) |
+| A guaranteed room's deferred spawns become a guard (their actor ids, hashed) | `dropsOnRoomSpawned` (endless.ts enterRoom) |
+| Floor change frees every slot and guard; debug drops; timers; ground life; pickups by slot, first living player in reach | `stepDrops` (after stepRun, before stepScore; frozen draft ticks skip it) |
+| Fury x 150 % after Sharpened (two scalePercents); Frenzy one combined integer percent with Swift Strikes (`combinedPercent`) | runMods.ts `playerHitDamage` / `attackTicks` |
+| Quickstep walk x 130 % (movePlayer's equal sub-steps of at most MAX_MOVE_STEP); the roll is untouched | player.ts stepPlayer |
+| Aegis: after the harmless branch, before armor, a pip absorbs the whole hit (`events.aegisBroke`); Warding never refills it | player.ts damagePlayer (`absorbWithAegis`) |
+| Death, forfeit, leave: the player's boosts and pips end | `boostsOnPlayerDied` (damagePlayer, forfeitSoloRun, markPlayerLeft) |
+
+Client reads (shared/sim barrel): `dropsGround(state)`, `dropGroundTicks(state)`, `dropsEvents(state)`,
+`activeBoosts(state, i)`, `boostTicksLeft(state, i, kind)`, `aegisPips(state, i)`, `isBoostActive`. Specs:
+`drops/drops.spec.ts`, `drops/boosts.spec.ts`.

@@ -10,11 +10,21 @@
  */
 import type { TutorialLessonId } from "shared/run";
 
-/** The HUD element a step (or a callout) rings with the pulsing `uiAccent` highlight. */
-export type TutorialHighlight = "flask" | "weapons" | "score" | "bossBar" | "hearts";
+/**
+ * The HUD element a step (or a callout) rings with the pulsing `uiAccent` highlight. `boosts` is the boost row
+ * (docs/BOOSTS.md B9): rung when the tutorial's guaranteed boost is picked up (TUTORIAL_BOOST_HIGHLIGHT).
+ */
+export type TutorialHighlight = "flask" | "weapons" | "score" | "bossBar" | "hearts" | "boosts";
 
 /** Every highlight target (the client's ring wiring covers each). */
-export const TUTORIAL_HIGHLIGHTS: ReadonlyArray<TutorialHighlight> = ["flask", "weapons", "score", "bossBar", "hearts"];
+export const TUTORIAL_HIGHLIGHTS: ReadonlyArray<TutorialHighlight> = [
+	"flask",
+	"weapons",
+	"score",
+	"bossBar",
+	"hearts",
+	"boosts",
+];
 
 /**
  * What the world marker points at while the step is current (TutorialDirector resolves it to world XZ):
@@ -25,8 +35,11 @@ export const TUTORIAL_HIGHLIGHTS: ReadonlyArray<TutorialHighlight> = ["flask", "
  *   stairwell  floor 1: the stairwell room's door until entered, then the stairwell; later floors: the stairwell
  *   boss       the living boss (the floor's stairwell, the arena centre, when there is none)
  *   none       no marker
+ *   drop       never a step's: the director's override while a boost drop lies on the floor (docs/BOOSTS.md B9), the
+ *              ground drop nearest the player, unless the player stands in an entered, unfinished lesson room (a fight
+ *              in progress keeps its own marker: none inside the room)
  */
-export type TutorialMarkerKind = "door" | "pedestal" | "shrine" | "stairwell" | "boss" | "none";
+export type TutorialMarkerKind = "door" | "pedestal" | "shrine" | "stairwell" | "boss" | "none" | "drop";
 
 export interface TutorialMarkerTarget {
 	readonly kind: TutorialMarkerKind;
@@ -246,12 +259,15 @@ export function tutorialStepIndex(id: string): number {
  *   harmlessHit   the first hit that landed harmlessly ("in a real run that costs half a heart")
  *   graze         the first graze (praise)
  *   bossPhase     the boss entered phase `phase`
+ *   boostDrop     the first boost drop landed (combat B's guaranteed Fury, docs/BOOSTS.md B9): a drop lies on the
+ *                 floor, or a boost already runs on the player (taken on the frame it landed)
  */
 export type TutorialCalloutTrigger =
 	| { readonly kind: "firstKill" }
 	| { readonly kind: "harmlessHit" }
 	| { readonly kind: "graze" }
-	| { readonly kind: "bossPhase"; readonly phase: number };
+	| { readonly kind: "bossPhase"; readonly phase: number }
+	| { readonly kind: "boostDrop" };
 
 export interface TutorialCallout {
 	readonly id: string;
@@ -273,4 +289,12 @@ export const TUTORIAL_CALLOUTS: ReadonlyArray<TutorialCallout> = table.freeze([
 	callout("graze", { kind: "graze" }),
 	callout("bossPhase2", { kind: "bossPhase", phase: 2 }, "bossBar"),
 	callout("bossPhase3", { kind: "bossPhase", phase: 3 }, "bossBar"),
+	callout("boost", { kind: "boostDrop" }),
 ]);
+
+/**
+ * Rung for TUTORIAL.calloutHighlightSeconds on the first frame a boost runs on the player (the pickup of combat B's
+ * Fury, docs/BOOSTS.md B9). Not a callout (no toast of its own: the HUD's `hud.toast.boost` says what the boost does)
+ * and never a funnel step (P8).
+ */
+export const TUTORIAL_BOOST_HIGHLIGHT: TutorialHighlight = "boosts";

@@ -9,6 +9,8 @@ import {
 	DEBUG_FLOOR_BUTTON,
 	EMPTY_INPUT,
 	BREAKABLES_SUBSYSTEM,
+	DROPS_CONFIG,
+	DROPS_SUBSYSTEM,
 	ENDLESS_HASH_SUBSYSTEM,
 	RUN_SUBSYSTEM,
 	SCORE_SUBSYSTEM,
@@ -69,14 +71,18 @@ describe("buildEndlessRunConfig", () => {
 		expect(DEFAULT_RUN_LIMITS.world).toBe("game");
 	});
 
-	it("hashes appended `endless`, `score` (endless runs are scored), `run` and `breakables` groups only in endless runs", () => {
+	it("hashes appended `endless`, `score` (endless runs are scored), `run`, `breakables` and `drops` groups only in endless runs", () => {
 		const f1 = setup.endlessFloor(1);
 		const s = createSimState(1337, f1.spawnX, f1.spawnZ, setup.config);
 		const layout = hashLayout(s, true);
-		expect(layout.groups.size()).toBe(10);
+		expect(layout.groups.size()).toBe(11);
 		expect(layout.groups[9].name).toBe(BREAKABLES_SUBSYSTEM);
 		expect(layout.names[layout.groups[9].start]).toBe("breakables.length");
 		expect(layout.values[layout.groups[9].start]).toBe(f1.breakables!.size());
+		// docs/BOOSTS.md B4: endless runs drop boosts (the game's DROPS_CONFIG), hashed last.
+		expect(setup.config.drops).toBe(DROPS_CONFIG);
+		expect(layout.groups[10].name).toBe(DROPS_SUBSYSTEM);
+		expect(layout.names[layout.groups[10].start]).toBe("drops.rngState");
 		const g = layout.groups[6];
 		expect(g.name).toBe(ENDLESS_HASH_SUBSYSTEM);
 		expect(layout.groups[7].name).toBe(SCORE_SUBSYSTEM);
@@ -94,6 +100,7 @@ describe("buildEndlessRunConfig", () => {
 		expect(plain.endless).toBe(undefined);
 		expect(plain.run).toBe(undefined);
 		expect(plain.breakables).toBe(undefined);
+		expect(plain.drops).toBe(undefined);
 		expect(subsystemHashes(plain).endless).toBe(undefined);
 		expect(subsystemHashes(plain).run).toBe(undefined);
 	});
