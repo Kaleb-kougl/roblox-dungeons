@@ -133,7 +133,7 @@ describe("HUD helpers", () => {
 		expect(pack.str(VERDICT_KEYS[1], { run: 2, ending: "victory", hash: "abcd1234" })).toBe(
 			"Run 2 (victory): verified by the server (abcd1234)",
 		);
-		expect(SCORE_SOURCE_KEYS.size()).toBe(8);
+		expect(SCORE_SOURCE_KEYS.size()).toBe(9); // ... breakables (docs/DECOR.md D4) appended last
 		expect(pack.str(HUD_STRINGS.combo, { combo: "1.3" })).toBe("x1.3");
 		expect(warnings).toEqual([]);
 	});

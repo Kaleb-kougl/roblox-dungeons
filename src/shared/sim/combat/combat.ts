@@ -11,11 +11,12 @@
  *   5. step both simulations by SIM_DT (./bullets.ts, the ported r3f-projectiles pool); M2 Hourglass (endless runs):
  *      enemy bullets step by SIM_DT x HOURGLASS_TIME_SCALE for 1 s after a hit landed on a player holding it
  *   6. collisions, one forEachActive walk per simulation:
- *        enemy bullets:  wall (consume) -> [scoring: graze flags] -> player circle -> ctx.hurtPlayer; consumed ONLY
- *                        if the hit landed
- *        player bullets: wall (consume) -> first live actor in range, slot order (ctx.damageActor, consume);
- *                        piercing ones pass through actors (piercingBulletHit). M2 Sharpened (endless runs): the
- *                        payload damage x 1.25 when it hits (playerHitDamage)
+ *        enemy bullets:  wall (consume) -> [breakables: an intact piece's cell (consume, damage it)] -> [scoring:
+ *                        graze flags] -> player circle -> ctx.hurtPlayer; consumed ONLY if the hit landed
+ *        player bullets: wall (consume) -> [breakables: an intact piece's cell: its payload damage; consumed unless
+ *                        piercing AND it broke the piece] -> first live actor in range, slot order (ctx.damageActor,
+ *                        consume); piercing ones pass through actors (piercingBulletHit). M2 Sharpened (endless
+ *                        runs): the payload damage x 1.25 when it hits (playerHitDamage)
  *   7. contact damage: the first live actor with data.contactDamage > 0 touching the player (stepContactDamage)
  *
  * Exact against every golden run, with and without actors (run-full-1337 / run-boss-1337 included).
@@ -52,6 +53,9 @@ import { BulletKind, BulletPayload, FULL_RING, fireBurstRaw, packPayload, turnDi
 import { SimCtx } from "./ctx";
 import { nearestLivingPlayer, partySize, playerAt, playerBulletOwner } from "../party";
 import { scoreBulletVisit } from "../score/score";
+import { damageBreakable, enemyBulletHitsBreakable, type BreakablesState } from "../breakables/breakables";
+import { breakableSlotAt } from "../breakables/cells";
+import { BreakableSource } from "../breakables/breakablesData";
 import { SOLO_PLAYER, consumeEnemyBulletTimeScale, playerHitDamage, runMods } from "../progression/runMods";
 import {
 	actorHashNames,
@@ -268,6 +272,8 @@ const ENEMY_HIT_R = PLAYER_RADIUS + ENEMY_BULLET_RADIUS;
 export const ENEMY_HIT_R2 = ENEMY_HIT_R * ENEMY_HIT_R;
 
 let hitBlocked: BulletBlocker | undefined;
+/** This tick's breakables with an intact piece (docs/DECOR.md D4), else undefined: no lookup per bullet. */
+let hitPieces: BreakablesState | undefined;
 /** M2 scoring is on for this tick's state (graze tracking in the enemy bullet walk). */
 let grazeOn = false;
 /** The squared graze radius of this tick's solo player (M2 Daredevil widens it; co-op reads the grazing player's). */
@@ -275,6 +281,7 @@ let grazeR2 = 0;
 
 function enemyBulletHit(i: number, pos: Readonly<Vec3>, payload: number): boolean {
 	if (hitBlocked !== undefined && hitBlocked(pos.x, pos.z)) return true;
+	if (hitPieces !== undefined && enemyBulletHitsBreakable(ctx.state, hitPieces, pos.x, pos.z)) return true;
 	const p = ctx.state.player;
 	const dx = pos.x - p.x;
 	const dz = pos.z - p.z;
@@ -292,6 +299,7 @@ function enemyBulletHit(i: number, pos: Readonly<Vec3>, payload: number): boolea
  */
 function enemyBulletHitParty(i: number, pos: Readonly<Vec3>, payload: number): boolean {
 	if (hitBlocked !== undefined && hitBlocked(pos.x, pos.z)) return true;
+	if (hitPieces !== undefined && enemyBulletHitsBreakable(ctx.state, hitPieces, pos.x, pos.z)) return true;
 	const state = ctx.state;
 	const n = partySize(state);
 	if (grazeOn) {
@@ -368,7 +376,22 @@ function piercingBulletHit(i: number, pos: Readonly<Vec3>, payload: number): boo
 
 function playerBulletHit(i: number, pos: Readonly<Vec3>, payload: number): boolean {
 	if (hitBlocked !== undefined && hitBlocked(pos.x, pos.z)) return true;
-	if (bit32.band(payload, PIERCE_BITS) !== 0) return piercingBulletHit(i, pos, payload);
+	const piercing = bit32.band(payload, PIERCE_BITS) !== 0;
+	if (hitPieces !== undefined) {
+		// A piece (docs/DECOR.md D4): it takes the payload damage; a plain bullet stops there, a piercing one flies on
+		// (to the actors below, no pierce spent) only when it broke the piece.
+		const slot = breakableSlotAt(hitPieces, pos.x, pos.z);
+		if (slot >= 0) {
+			const broke = damageBreakable(
+				ctx.state,
+				slot,
+				BulletPayload.get(payload, "damage"),
+				BreakableSource.PLAYER_BULLET,
+			);
+			if (!broke || !piercing) return true;
+		}
+	}
+	if (piercing) return piercingBulletHit(i, pos, payload);
 	for (const a of ctx.state.combat.actors) {
 		if (a.kind === NO_KIND || a.alive === 0) continue;
 		const r = a.radius + PLAYER_BULLET_RADIUS;
@@ -431,6 +454,7 @@ export function stepCombat(
 
 	// 6. Collide.
 	hitBlocked = config.isBulletBlocked;
+	hitPieces = state.breakables !== undefined && state.breakables.intact > 0 ? state.breakables : undefined;
 	grazeOn = state.score !== undefined;
 	grazeR2 = runMods(state, SOLO_PLAYER).grazeR2;
 	if (party) {
@@ -442,6 +466,7 @@ export function stepCombat(
 		c.playerBullets.forEachActive(playerBulletHit);
 	}
 	hitBlocked = undefined;
+	hitPieces = undefined;
 	grazeOn = false;
 
 	// 7. Bodies.

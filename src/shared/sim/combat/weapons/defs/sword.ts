@@ -9,6 +9,8 @@
  *   ALT press  guard: for guardTicks a wide frontal arc deletes enemy bullets every tick (no damage), walking at
  *              guardMoveMultiplier; guardCooldownTicks from the guard's start (slot.cooldown).
  *   A roll cancels a wind-up or a guard and pauses the combo; a SWAP (in) resets the combo and the guard.
+ *   Breakables (docs/DECOR.md D4): swings and the finisher hit the pieces in their arc for the BASE damage; the guard
+ *   does not hurt them.
  *   M2 (endless runs): Sharpened scales the damage when it hits, Swift Strikes the swing / finisher recovery; with
  *   the Mirror Cloak relic every bullet the guard erases comes back as a player bullet (sweepArc reflectSource).
  *   Co-op: always the swinging player's own modifiers (ctx.playerIndex, bound for the weapons phase).
@@ -113,11 +115,27 @@ function swing(ctx: SimCtx, v: number[], n: number): void {
 			SWORD_DATA.finisherHalfAngleCos,
 			hitFinisher,
 			true,
+			true,
+			undefined,
+			SWORD_DATA.finisherDamage, // breakables take the base damage (docs/DECOR.md D4)
 		);
 		v[SWORD_V_STEP] = 0;
 		v[SWORD_V_BUSY] = attackTicks(ctx.state, ctx.playerIndex, SWORD_DATA.finisherRecoveryTicks);
 	} else {
-		sweepArc(ctx, p.x, p.z, p.faceX, p.faceZ, SWORD_DATA.reach, SWORD_DATA.halfAngleCos, hitSwing, true);
+		sweepArc(
+			ctx,
+			p.x,
+			p.z,
+			p.faceX,
+			p.faceZ,
+			SWORD_DATA.reach,
+			SWORD_DATA.halfAngleCos,
+			hitSwing,
+			true,
+			true,
+			undefined,
+			SWORD_DATA.damage, // breakables take the base damage (docs/DECOR.md D4)
+		);
 		v[SWORD_V_STEP] = n; // the next one
 		v[SWORD_V_BUSY] = attackTicks(ctx.state, ctx.playerIndex, SWORD_DATA.swingRecoveryTicks);
 	}

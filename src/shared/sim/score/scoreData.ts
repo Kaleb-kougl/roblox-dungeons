@@ -59,6 +59,15 @@ export const ROOM_PAR_TICKS_PER_COST = secondsToTicks(ROOM_PAR_SECONDS_PER_COST)
 /** Floor clear: FLOOR_CLEAR_POINTS x floor (awardFloorClear). */
 export const FLOOR_CLEAR_POINTS = 1000;
 
+// --- Breakables (docs/DECOR.md D4, B5) ------------------------------------------------------------------
+
+/**
+ * Points per breakable a PLAYER breaks (sword or player bullet; enemy bullets and the boss's slam score nothing), by
+ * kind (shared/sim BreakableKind order: barrel, crate), x the floor. Through the usual multipliers (combo, Depth,
+ * curses) but it never feeds the combo and has nothing to do with rooms (clear, perfect, fast).
+ */
+export const BREAKABLE_POINTS: ReadonlyArray<number> = [10, 20];
+
 // --- Multipliers -----------------------------------------------------------------------------------------
 
 /** The combo is an integer of tenths: 10 = x1.0 .. 50 = x5.0. */
@@ -99,8 +108,20 @@ export const ScoreSource = {
 	FAST: 5,
 	FLOORS: 6,
 	BOSS: 7,
+	/** Breakables broken by a player (docs/DECOR.md D4): appended, so every earlier index stays put. */
+	BREAKABLES: 8,
 } as const;
 export type ScoreSourceId = (typeof ScoreSource)[keyof typeof ScoreSource];
 /** Source names in index order (dump names, results screen string keys `score.source.<name>`). */
-export const SCORE_SOURCE_NAMES = ["kills", "grazes", "guard", "rooms", "perfect", "fast", "floors", "boss"] as const;
+export const SCORE_SOURCE_NAMES = [
+	"kills",
+	"grazes",
+	"guard",
+	"rooms",
+	"perfect",
+	"fast",
+	"floors",
+	"boss",
+	"breakables",
+] as const;
 export const SCORE_SOURCE_COUNT = SCORE_SOURCE_NAMES.size();

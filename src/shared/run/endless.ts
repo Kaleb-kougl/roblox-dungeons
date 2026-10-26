@@ -3,9 +3,10 @@
  * Roblox-API-free: the client builds its live run with buildEndlessRunConfig and the server's replay
  * (validateRun with world "endless") calls the same function, so both get identical floors from the run seed alone.
  *
- *   config   { endless: { runSeed, worldForFloor }, scoring: ENDLESS_SCORING }  (shared/sim endless.ts: every tick runs
- *            with the current floor; endless runs are ALWAYS scored, on client and server alike)
- *   floor f  buildEndlessFloor(runSeed, f) (shared/dungeon endless.ts: solid pillars) + circleMover / bulletBlocker /
+ *   config   { endless: { runSeed, worldForFloor }, scoring: ENDLESS_SCORING, breakables: BREAKABLES_CONFIG }
+ *            (shared/sim endless.ts: every tick runs with the current floor; endless runs are ALWAYS scored, on client
+ *            and server alike, and always have breakable barrels and crates: docs/DECOR.md D4)
+ *   floor f  buildEndlessFloor(runSeed, f) (shared/dungeon endless.ts: solid pillars, breakables) + circleMover / bulletBlocker /
  *            actorMover / actorSteerMover (enemies walk around pillars) on its dungeon; built on first use, kept in a
  *            per-config LRU (ENDLESS_FLOOR_CACHE_SIZE), the dungeons in a server-wide LRU (ENDLESS_DUNGEON_CACHE_SIZE)
  *            keyed by seed and room count
@@ -31,6 +32,7 @@ import {
 	type ForgeParams,
 } from "shared/dungeon";
 import {
+	BREAKABLES_CONFIG,
 	DEFAULT_PARTY_SIZE,
 	MAX_PARTY_SIZE,
 	PLAYER_RADIUS,
@@ -185,8 +187,13 @@ export function buildEndlessRunConfig(runSeed: number, partySize: number = DEFAU
 	const first = worldForFloor(ENDLESS_FIRST_FLOOR);
 	const config: SimConfig =
 		partySize === DEFAULT_PARTY_SIZE
-			? { endless: { runSeed, worldForFloor }, scoring: ENDLESS_SCORING }
-			: { endless: { runSeed, worldForFloor }, scoring: { partySize }, party: { size: partySize } };
+			? { endless: { runSeed, worldForFloor }, scoring: ENDLESS_SCORING, breakables: BREAKABLES_CONFIG }
+			: {
+					endless: { runSeed, worldForFloor },
+					scoring: { partySize },
+					party: { size: partySize },
+					breakables: BREAKABLES_CONFIG,
+			  };
 	return {
 		config,
 		spawn: { x: first.spawnX, z: first.spawnZ },

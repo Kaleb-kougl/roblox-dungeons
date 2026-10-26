@@ -20,6 +20,8 @@ import { SOLO_PLAYER, isDraftOpen } from "./progression/runMods";
 import { hasLeftBit, markPlayerLeft, partySize, playerAt, weaponsAt, type PartyConfig } from "./party";
 import { FORFEIT_BUTTON } from "./partyData";
 import type { TutorialSimConfig } from "./tutorial/tutorial";
+import { clearBreakableEvents, type BreakablesConfig } from "./breakables/breakables";
+import type { SolidCells } from "shared/dungeon";
 
 export { PLAYER_RADIUS, PLAYER_SPEED } from "./playerData";
 
@@ -36,20 +38,36 @@ export interface SimBounds {
  * The sim calls it with moves of length <= MAX_MOVE_STEP (0.1 world units): once per walking tick, and in equal
  * sub-steps when the player moves faster (the dodge roll covers ~0.18 per tick, so two calls).
  * Example: `(x, z, dx, dz) => moveCircle(dungeon, x, z, dx, dz, PLAYER_RADIUS)` (shared/dungeon, `circleMover`).
+ * `solid` (docs/DECOR.md D4): the sim passes the intact breakables' cells (breakables/breakables.ts `solidCells`) when
+ * the run has any, and they block like wall tiles; undefined otherwise (every fixture, M1, the tutorial), so the
+ * resolver takes exactly its grid-only path. Same for ActorMover and BulletBlocker.
  */
-export type MoveResolver = (x: number, z: number, dx: number, dz: number) => { x: number; z: number };
+export type MoveResolver = (
+	x: number,
+	z: number,
+	dx: number,
+	dz: number,
+	solid?: SolidCells,
+) => { x: number; z: number };
 
 /**
  * Bullet vs world (E1.6): true when a bullet whose center is at world (x, z) has hit something solid and must be
  * consumed. Same purity rules as MoveResolver. Example: `bulletBlocker(dungeon)` (WALL or VOID tile).
  */
-export type BulletBlocker = (x: number, z: number) => boolean;
+export type BulletBlocker = (x: number, z: number, solid?: SolidCells) => boolean;
 
 /**
  * Moves a circle of `radius` (an actor's body) from (x, z) by (dx, dz) through the world (E1.8). Same purity rules and
  * call contract as MoveResolver, but radius-aware. Example: `actorMover(dungeon)`.
  */
-export type ActorMover = (x: number, z: number, dx: number, dz: number, radius: number) => { x: number; z: number };
+export type ActorMover = (
+	x: number,
+	z: number,
+	dx: number,
+	dz: number,
+	radius: number,
+	solid?: SolidCells,
+) => { x: number; z: number };
 
 /** Stress mode (E1.6, `?stress=N`): keep about `bullets` enemy bullets alive, in rings from (x, z). */
 export interface StressConfig {
@@ -112,6 +130,14 @@ export interface SimConfig {
 	 * state.tutorial is created and hashed as the "tutorial" subsystem, after "party".
 	 */
 	tutorial?: TutorialSimConfig;
+	/**
+	 * Breakable barrels and crates (docs/DECOR.md D4, breakables/breakables.ts): the tunables (toughness, damage, the
+	 * slam radius); the pieces come from each endless floor's world (EndlessFloorWorld.breakables), or from
+	 * `breakables.pieces` without endless mode. Absent: no breakables state, nothing extra hashed, every mover and
+	 * blocker takes its grid-only path (every fixture, M1, the tutorial). Present: state.breakables is created and
+	 * hashed as the "breakables" subsystem, appended after every other group.
+	 */
+	breakables?: BreakablesConfig;
 }
 
 /** Matches the 16x16 greybox room: inner wall faces at +/-7.75, minus the 0.4 player half-width (rounded). */
@@ -136,7 +162,8 @@ const partyPrev: number[] = [];
  * Advances `state` by exactly one tick of SIM_DT, in place. Solo runs only (a party state needs stepParty).
  *
  * Tick order (fixed; part of the determinism contract):
- *   1. clear per-tick events; then FORFEIT_BUTTON ("Leave run") -> forfeitSoloRun: the player dies at this tick
+ *   1. clear per-tick events (and the score's, the breakables'); then FORFEIT_BUTTON ("Leave run") -> forfeitSoloRun:
+ *      the player dies at this tick
  *   2. stepPlayer  (movement, facing, roll, hearts, flask, Ember)
  *   3. stepCombat   (Ember clear, actors act, the player's weapons, bullets step, hits, contact damage)
  *   4. stepEndless  (endless mode only: Depth, floor clear points + stairwell / next floor, deferred room spawns)
@@ -161,6 +188,7 @@ export function step(
 	clearEvents(state.events);
 	const score = state.score;
 	if (score !== undefined) clearScoreEvents(score);
+	if (state.breakables !== undefined) clearBreakableEvents(state.breakables);
 	const run = state.run;
 	// Read before the forfeit, which closes an open draft: that tick stays a frozen draft tick.
 	const frozen = run !== undefined && isDraftOpen(state);
@@ -231,6 +259,7 @@ export function stepParty(
 	clearEvents(state.events);
 	const score = state.score;
 	if (score !== undefined) clearScoreEvents(score);
+	if (state.breakables !== undefined) clearBreakableEvents(state.breakables);
 	for (let i = 0; i < n; i++) if (hasLeftBit(inputs[i].buttons)) markPlayerLeft(state, i);
 	const run = state.run;
 	if (run !== undefined) {

@@ -18,7 +18,8 @@
  *      share of its enemy rooms cleared, the boss counting as one room on a boss floor; at the current Depth, the
  *      debug skip included: debug runs never post), enemy and player bullets cleared, every actor freed (no
  *      onDeath), the next floor's world, the player at its entrance (hearts kept; armor, flask and Embers refilled: refillAtCheckpoint),
- *      the floor's initial spawns (the boss on boss floors), scoring's room records rebuilt for the new floor
+ *      the new floor's breakables (state.breakables, when the run has them), the floor's initial spawns (the boss on
+ *      boss floors), scoring's room records rebuilt for the new floor
  *      (rebuildScoreRooms, deferred), events.floorChanged = the new floor. Stop.
  *   4. the player stands on a room's floor for the first time this floor: events.roomEntered = id + 1, and that room's
  *      deferred enemies spawn (EndlessFloorWorld.roomSpawns, in order, each at least SPAWN_SAFE_RADIUS from every
@@ -50,6 +51,7 @@ import type { ActorSpawn } from "./combat/actors/encounter";
 import { attachScoreRoomMembers, awardFloorClear, rebuildScoreRooms } from "./score/score";
 import { hasLeft, isPartyWiped, partySize, playerAt, revivePartyMember } from "./party";
 import { PARTY_REVIVE_HALF_HEARTS } from "./partyData";
+import { resetBreakables } from "./breakables/breakables";
 
 /** A candidate spawn position (structurally shared/dungeon's TileXZ). */
 export interface SpawnTile {
@@ -194,6 +196,9 @@ function nextFloor(state: SimState, input: Readonly<InputFrame>, endless: Endles
 		if (p.dead !== 0 && !hasLeft(state, i)) revivePartyMember(p, PARTY_REVIVE_HALF_HEARTS);
 		refillAtCheckpoint(state, p);
 	}
+
+	// Breakables (docs/DECOR.md D4): the new floor's pieces, all intact.
+	if (state.breakables !== undefined) resetBreakables(state.breakables, world.breakables ?? []);
 
 	ctx.bind(state, world.config, input);
 	spawnAll(world.config.encounter?.spawns ?? []);

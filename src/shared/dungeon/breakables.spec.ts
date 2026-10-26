@@ -5,6 +5,15 @@
 import { describe, expect, it } from "@rbxts/jest-globals";
 import {
 	BREAKABLE,
+	actorSteerMover,
+	bulletBlocker,
+	cellKey,
+	circleMover,
+	circleOverlapsWall,
+	isBulletBlocked,
+	lineOfSight,
+	moveCircle,
+	moveCircleAroundCorners,
 	BREAKABLE_KINDS,
 	TileType,
 	breakableBand,
@@ -407,5 +416,48 @@ describe("breakable placement: counts per depth band", () => {
 		expect(worn).toBeGreaterThan(kept);
 		expect(ruined).toBeGreaterThan(worn);
 		expect(abyss).toBeGreaterThan(ruined);
+	});
+});
+
+describe("collision with solid cells (the sim's intact breakables)", () => {
+	const l = CENSUS[0];
+	const d = l.dungeon;
+	const b = pieces(l)[0];
+	const solid = new Map<number, number>([[cellKey(b.x, b.y), 0]]);
+	const bx = gridToWorld(b.x);
+	const bz = gridToWorld(b.y);
+
+	it("absent, every function is exactly the grid-only one; present, the cell blocks circles and bullets", () => {
+		const mover = circleMover(d, 0.35);
+		const steer = actorSteerMover(d);
+		let same = 0;
+		let total = 0;
+		for (let k = 0; k < 64; k++) {
+			const ox = ((k % 8) - 3.5) * 0.4;
+			const oz = (math.floor(k / 8) - 3.5) * 0.4;
+			const dx = -ox * 0.05;
+			const dz = -oz * 0.05;
+			const a = moveCircle(d, bx + ox, bz + oz, dx, dz, 0.35);
+			const p = mover(bx + ox, bz + oz, dx, dz, undefined);
+			const q = moveCircleAroundCorners(d, bx + ox, bz + oz, dx, dz, 0.35);
+			const r = steer(bx + ox, bz + oz, dx, dz, 0.35, undefined);
+			total++;
+			if (a.x === p.x && a.z === p.z && q.x === r.x && q.z === r.z) same++;
+		}
+		expect(same).toBe(total);
+		expect(isBulletBlocked(d, bx, bz)).toBe(false);
+		expect(isBulletBlocked(d, bx, bz, solid)).toBe(true);
+		expect(bulletBlocker(d)(bx + 0.4, bz - 0.4, solid)).toBe(true);
+		expect(circleOverlapsWall(d, bx, bz, 0.3, undefined, solid)).toBe(true);
+		// A circle walking at the cell stops at its face.
+		const hit = moveCircle(d, bx - 1.2, bz, 0.1, 0, 0.35, solid);
+		expect(moveCircle(d, hit.x, bz, 0.5, 0, 0.35, solid).x).toBeCloseTo(bx - 0.5 - 0.35, 9);
+	});
+
+	it("line of sight never sees them (B2: low cover)", () => {
+		const blocker = bulletBlocker(d);
+		expect(lineOfSight(blocker, bx - 2, bz, bx + 2, bz)).toBe(
+			lineOfSight((x, z) => isBulletBlocked(d, x, z), bx - 2, bz, bx + 2, bz),
+		);
 	});
 });

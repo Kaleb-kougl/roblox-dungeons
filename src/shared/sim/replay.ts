@@ -19,6 +19,7 @@ import { writeScoreHash } from "./score/score";
 import { writeRunHash } from "./progression/progression";
 import { writePartyHash } from "./party";
 import { writeTutorialHash } from "./tutorial/tutorial";
+import { writeBreakablesHash } from "./breakables/breakables";
 import { isFiniteNumber, isIntegerNumber, numberToJsString } from "./jsnum";
 import { isJsonArray, isJsonObject, jsonToJsString, parseJson, type JsonValue } from "./json";
 import { jsMin } from "shared/jsmath";
@@ -175,6 +176,8 @@ export function writeHashFields(state: Readonly<SimState>, out: number[]): numbe
 	if (state.party !== undefined) writePartyHash(state.party, out);
 	// First-run tutorial, only in tutorial runs (harmless flag, harmless hits), appended after party.
 	if (state.tutorial !== undefined) writeTutorialHash(state.tutorial, out);
+	// Breakable barrels and crates (docs/DECOR.md D4), only when the run has them, appended after every other group.
+	if (state.breakables !== undefined) writeBreakablesHash(state.breakables, out);
 	return out;
 }
 
