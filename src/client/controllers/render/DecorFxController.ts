@@ -51,6 +51,14 @@ import { renderPart } from "./placeholders";
 const PARKED = new CFrame(BULLET_VIEW.parkedStuds[0], BULLET_VIEW.parkedStuds[1], BULLET_VIEW.parkedStuds[2]);
 const S = STUDS_PER_TILE;
 const HIDDEN = 1;
+/** ParticleEmitter.FlipbookLayout by the theme flipbook's cells per side (shared/theme PARTICLE_FLIPBOOK_GRIDS). */
+const FLIPBOOK_LAYOUTS: ReadonlyMap<number, Enum.ParticleFlipbookLayout> = new Map<number, Enum.ParticleFlipbookLayout>(
+	[
+		[2, Enum.ParticleFlipbookLayout.Grid2x2],
+		[4, Enum.ParticleFlipbookLayout.Grid4x4],
+		[8, Enum.ParticleFlipbookLayout.Grid8x8],
+	],
+);
 
 /** A looping effect billboard (flame, glow, glint) and how it animates. */
 interface FxBillboard {
@@ -110,7 +118,8 @@ interface FixedLight extends DecorLight {
  *   glint       decor.fx.glint over each live relic pedestal until it is taken.
  *   ambient     one ParticleEmitter volume around the camera focus with the biome's texture (pack.ambient(biome); none
  *               without it), rate from ambientEmitterSpec (Forge count x band light x juice particle level, zero under
- *               reduced motion, capped at DECOR_FX.maxParticles); TimeScale 0 while the decoration is frozen.
+ *               reduced motion, capped at DECOR_FX.maxParticles); TimeScale 0 while the decoration is frozen. A
+ *               texture with a theme `flipbook` (docs/FX_AUDIO.md F6) plays it (FlipbookLayout / Mode / Framerate).
  *
  * Everything per floor belongs to the floor's Janitor (rebuilt when DecorController's scene revision moves); the pool
  * lights and the emitter live as long as the controller. Read-only on the sim.
@@ -498,6 +507,15 @@ export class DecorFxController implements OnStart {
 		emitter.Color = new ColorSequence(art.color);
 		emitter.LightEmission = art.emissive ? 1 : 0;
 		emitter.LightInfluence = art.emissive ? 0 : 1;
+		// A flipbook texture (docs/FX_AUDIO.md F6): a square grid of cells the emitter plays per particle.
+		const fb = art.flipbook;
+		const layout = fb !== undefined ? FLIPBOOK_LAYOUTS.get(fb.grid) : undefined;
+		emitter.FlipbookLayout = layout ?? Enum.ParticleFlipbookLayout.None;
+		if (fb !== undefined && layout !== undefined) {
+			emitter.FlipbookMode = Enum.ParticleFlipbookMode[fb.mode];
+			emitter.FlipbookFramerate = new NumberRange(fb.fps);
+			emitter.FlipbookStartRandom = fb.mode !== "OneShot";
+		}
 	}
 
 	private updateAmbient(scene: DecorScene, frozen: boolean): void {
