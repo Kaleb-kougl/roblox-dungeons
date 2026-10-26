@@ -9,6 +9,7 @@ import { deepClone, sortedKeys } from "../../util";
 import { contrastReport, juiceContrastReport, validateManifest } from "../../validate";
 import { PLACEHOLDER_MANIFEST } from "../placeholder";
 import { VALE_ASSET_IDS } from "./assetIds";
+import { VALE_AUDIO_FILES } from "./audioLayout";
 import { VALE_FLOOR_HEX, VALE_IMAGE_LAYOUTS, VALE_SPRITE_LAYOUTS } from "./layout";
 import { VALE_BIOME_MATERIALS, VALE_MANIFEST, buildValeManifest } from "./manifest";
 
@@ -24,6 +25,9 @@ function allFiles(): Array<string> {
 	}
 	for (const id of sortedKeys(VALE_IMAGE_LAYOUTS)) {
 		files.push(VALE_IMAGE_LAYOUTS[id].file);
+	}
+	for (const file of sortedKeys(VALE_AUDIO_FILES)) {
+		files.push(file);
 	}
 	files.sort();
 	return files;

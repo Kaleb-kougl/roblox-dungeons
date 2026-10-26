@@ -32,3 +32,36 @@ upload) and `art/build/contact/*.png` (to check by eye), and regenerates the lay
 4. `npm run verify` (validator, contrast checks, `check-asset-ids`).
 
 Re-upload a PNG and paste its new ID whenever `art:build` changes it (the layout module changes with it).
+
+## Audio
+
+The sounds come from the Ninja Adventure pack's `Audio/` folder (`art/vendor/ninja-adventure/Audio/`, CC0).
+`art/audio.json` maps every logical sound ID (`sfx.*`, `music.*`, `amb.*`) to its source clip(s), variants, volume,
+pitch jitter, minimum interval, gain and trim; `"silent": true` leaves an ID silent. `art/audio.lock.json` lists every
+clip it builds, with its sha256 (a separate lock from `vendor.lock.json`, so neither pipeline rewrites the other's).
+ffmpeg and ffprobe must be on the PATH (`brew install ffmpeg`).
+
+1. `npm run audio:audition` writes `art/audio-audition.html`: open it from `art/` and listen to each ID's pick(s) next
+   to the plan's alternates (docs/FX_AUDIO.md), with each raw clip's length and loudness. Change the picks in
+   `art/audio.json` and set `"confirmed": true` on each one you have settled.
+2. `npm run audio:lock` after changing which clips `art/audio.json` reads (the build refuses sources that are missing
+   or differ from the lock).
+3. `npm run audio:build`: trims silence (sound effects and jingles), normalises loudness per category (peak for sound
+   effects and jingles, two-pass LUFS for music and ambience), downmixes sound effects to mono, and writes
+   `art/build/audio/*.ogg` plus `src/shared/theme/packs/vale/audioLayout.ts`. It fails if a file breaks a Roblox
+   limit (20 MB, 7 minutes, 48 kHz) and ends with a loudness summary per category.
+
+### Uploading audio
+
+1. Upload every `art/build/audio/*.ogg` **as the experience's owner** (the user or group that owns the place), in
+   Studio's Asset Manager (Bulk Import) or the Creator Hub. Audio uploads are **private**: only the uploader's
+   experiences can play them, so uploading as someone else means granting the experience permission to each asset
+   (Creator Hub > the asset > Permissions). Then wait for moderation.
+2. Mind the limit: 100 audio uploads per 30 days on an unverified account, 2,000 with a verified ID. One build is
+   about 55 files, so settle the picks (step 1 above) before uploading, and upload in one session.
+3. Paste each ID into `src/shared/theme/packs/vale/assetIds.ts`, keyed by built file name
+   (`"sfx-player-hurt.ogg": "rbxassetid://<digits>"`). A sound ID switches on only once every one of its files
+   (all its variants) has an ID; until then it stays silent.
+4. `npm run verify`, then check in a published test place (not just Studio) that every ID plays.
+
+Re-upload a file and paste its new ID whenever `audio:build` changes it.
