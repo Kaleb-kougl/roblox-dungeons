@@ -52,6 +52,7 @@ import {
 	MIN_ENEMY_BULLET_CONTRAST,
 	MIN_FX_BULLET_DIFFERENCE,
 	MIN_HEALTH_BAR_CONTRAST,
+	MUSIC,
 	REQUIRED_ASSET_IDS,
 	REQUIRED_STRING_KEYS,
 	SOUND_PITCH_LIMITS,
@@ -339,8 +340,9 @@ export function decorFxReport(manifest: unknown): Array<DecorFxEntry> {
  * Effect colours vs enemy bullets (docs/FX_AUDIO.md F1): the CIE76 difference from each ENEMY_BULLET_ROLES colour of
  * each FX_ROLES colour (`source` "role", `subject` the role), of each fx entry's `tint` role ("tint", the fx ID) and,
  * for an untinted entry, of its sheet's `meanColor` ("meanColor", the fx ID); >= MIN_FX_BULLET_DIFFERENCE, so no
- * effect can be mistaken for an enemy bullet. An untinted entry without a meanColor has nothing to check. A tint that
- * is not a colour role is a validator error of its own, not an entry here.
+ * effect can be mistaken for an enemy bullet. An untinted entry without a meanColor (or with a malformed one) has
+ * nothing to check here: the validator rejects it on its own (validateFxFields), as it does a tint that is not a
+ * colour role.
  */
 export interface FxColorEntry {
 	source: "role" | "tint" | "meanColor";
@@ -975,7 +977,7 @@ function validateAsset(def: unknown, path: Array<string>, slot: SlotContract, er
 			if (volume !== undefined && (!typeIs(volume, "number") || volume < 0 || volume > 1)) {
 				err(append(path, "volume"), "must be a number in [0, 1]");
 			}
-			validateSoundExtras(def, path, err);
+			validateSoundExtras(def, path, slot, err);
 			break;
 		}
 		case "silent": {
@@ -987,13 +989,26 @@ function validateAsset(def: unknown, path: Array<string>, slot: SlotContract, er
 
 const PITCH_MSG = `must be [min, max] with ${SOUND_PITCH_LIMITS.min} <= min <= max <= ${SOUND_PITCH_LIMITS.max} (PlaybackSpeed)`;
 
+/** Slots whose sounds the client loops as one bed (music, ambience): one clip at PlaybackSpeed 1. */
+const LOOPED_SOUND_SLOTS: ReadonlyArray<SlotContract> = [MUSIC, AMBIENCE];
+
 /**
  * A sound's optional extras (docs/FX_AUDIO.md A2): `variants` an array of uploaded asset IDs (empty is fine),
  * `pitch` a [min, max] PlaybackSpeed range inside SOUND_PITCH_LIMITS with min <= max, `minInterval` seconds >= 0.
+ * A looped slot (music.*, amb.*) takes neither `variants` nor `pitch`: its channel plays the one clip at speed 1.
  */
-function validateSoundExtras(def: Obj, path: Array<string>, err: Err) {
+function validateSoundExtras(def: Obj, path: Array<string>, slot: SlotContract, err: Err) {
 	const variants = def.variants;
-	if (variants !== undefined) {
+	const pitch = def.pitch;
+	if (LOOPED_SOUND_SLOTS.includes(slot)) {
+		const what = `${slot.prefix}* is looped (one clip at PlaybackSpeed 1)`;
+		if (variants !== undefined) {
+			err(append(path, "variants"), `${what}: no variants, put the one clip in assetId`);
+		}
+		if (pitch !== undefined) {
+			err(append(path, "pitch"), `${what}: no pitch jitter`);
+		}
+	} else if (variants !== undefined) {
 		const vp = append(path, "variants");
 		if (isArrayLike(variants)) {
 			for (let i = 0; i < variants.size(); i++) {
@@ -1003,8 +1018,7 @@ function validateSoundExtras(def: Obj, path: Array<string>, err: Err) {
 			err(vp, `must be an array of "rbxassetid://<digits>" (extra clips), got ${describeValue(variants)}`);
 		}
 	}
-	const pitch = def.pitch;
-	if (pitch !== undefined) {
+	if (pitch !== undefined && !LOOPED_SOUND_SLOTS.includes(slot)) {
 		const pp = append(path, "pitch");
 		if (!isArrayLike(pitch) || pitch.size() !== 2 || !isFiniteNumber(pitch[0]) || !isFiniteNumber(pitch[1])) {
 			err(pp, `${PITCH_MSG}, got ${describeValue(pitch)}`);
@@ -1434,7 +1448,8 @@ function validateSpriteSet(def: Obj, path: Array<string>, slot: SlotContract, er
 
 /**
  * An fx.* set's fields: `sizeTiles` in (0, FX_SPRITE_MAX_TILES] (absent: the longer cell side / pixelsPerTile, held
- * to the same cap), `tint` a known colour role, `additive` a boolean, `meanColor` "#rrggbb". The colour rule
+ * to the same cap), `tint` a known colour role, `additive` a boolean, `meanColor` "#rrggbb", required without a
+ * `tint` (the pipeline always writes it; without it the colour rule would have nothing to check). The colour rule
  * (tint and meanColor vs the enemy-bullet roles) is fxColorReport's.
  */
 function validateFxFields(def: Obj, path: Array<string>, longSide: number | undefined, err: Err) {
@@ -1468,5 +1483,10 @@ function validateFxFields(def: Obj, path: Array<string>, longSide: number | unde
 	}
 	if (def.meanColor !== undefined && !isHexColor(def.meanColor)) {
 		err(append(path, "meanColor"), `must be "#rrggbb", got ${describeValue(def.meanColor)}`);
+	} else if (tint === undefined && def.meanColor === undefined) {
+		err(
+			path,
+			"an untinted effect needs its sheet's meanColor (art:build writes it) for the enemy-bullet colour rule; or set a tint",
+		);
 	}
 }

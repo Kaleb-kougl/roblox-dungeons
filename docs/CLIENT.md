@@ -22,9 +22,9 @@ rebinding, audio, display). Everything presentation-side reads the sim and never
 | `SpriteView` | `.../render/SpriteView.ts` | One pooled sprite for a theme `sprites` set: a BillboardGui + ImageLabel on an invisible feet-anchor Part (moved in the actors' BulkMoveTo). Size / StudsOffset from `spriteBillboard` (pivot pixel on the feet), `ResampleMode` from the set, `LightInfluence` 0, not AlwaysOnTop; writes Image / ImageRect only when the frame, facing or sheet changes; tint (ImageColor3), fade (ImageTransparency) and blink (Visible) only on change. |
 | `WeaponViewController` | `.../render/WeaponViewController.ts` | Sword swing fans + sweeping blade, finisher wind-up, guard fan, bow charge ring + aim line, heavy-arrow release ring (dashed floor markings). |
 | `RunMarkerController` | `.../render/RunMarkerController.ts` | M2 (endless runs): a relic pedestal (Cylinder, `uiAccent`) on each TREASURE room's centre tile and the curse shrine's zone (flat disc, `uiMana`) in the SHRINE room; a taken pedestal / used shrine dims (`uiTextDim`). Rebuilt per floor. With the `ui.marker.pedestal` image, a camera-facing beam stands on each live pedestal (hidden once taken). |
-| `BreakableRenderController` | `.../render/BreakableRenderController.ts` | Endless runs: barrels and crates from `state.breakables` (placeholder box, sprite set or image), hit blink + shake, chips and debris on break. See "Breakables". |
+| `BreakableRenderController` | `.../render/BreakableRenderController.ts` | Endless runs: barrels and crates from `state.breakables` (placeholder box, sprite set or image), hit blink + shake, chips, the splinter sprite effect and debris on break. See "Breakables". |
 | `DecorController` | `.../render/DecorController.ts` | Room decoration (docs/DECOR.md R4, R10): per floor the decor plan (`planDecor` + `decorScene`, `KV_DecorBand` forces a band), drawn from the pack's `decor.*` art (pooled upright billboards on wall tops and faces, flat SurfaceGuis on the floor), tall pieces fading when a player or the boss is behind them, and the `DecorDirector` updated once per frame. See "Room decoration". |
-| `DecorFxController` | `.../render/DecorFxController.ts` | Ambient life (docs/DECOR.md R9): flame loops and glows on lit torches / braziers, the 6-light pool, the fixed boss / shrine room lights, the flat boss ring and stairwell zone, the pedestal glint, the biome's ambient particle volume. See "Room decoration". |
+| `DecorFxController` | `.../render/DecorFxController.ts` | Ambient life (docs/DECOR.md R9): flame loops and glows on lit torches / braziers, the 6-light pool, the fixed boss / shrine room lights, the flat boss ring and stairwell zone, the pedestal glint, the biome's ambient particle volume (a flipbook when its texture has one). See "Room decoration". |
 | `TutorialMarkerController` | `.../render/TutorialMarkerController.ts` | Tutorial runs only: one upright beam (a Neon Cylinder in `uiAccent`; plus a camera-facing `ui.marker.tutorial` billboard if the pack has that image) on the director's marker target (next lesson door, pedestal, shrine, stairwell, the live boss), bobbing / breathing by the juice `motionScale` (still under reduced motion), hidden without a target and once the tutorial ended. Built per tutorial run (Janitor). |
 | `TelegraphController` | `.../render/TelegraphController.ts` | Sniper aim lines (cut at the first intact breakable), bruiser shockwave rings (archetype `data.fx`), a ring for any other wind-up, Mother Bramble's attack previews, slam lane, roar rings and the arena seal fence. |
 | `FxTrackerController` | `.../fx/FxTrackerController.ts` | Right after the sim (render step 102): the pure `HitTracker` diffs the live actors and dispatches the frame's FX events (hit, killed, spawned, capped, bossPhase, bossDefeated, reset) to the juice views and audio, with the effective juice settings. |
@@ -33,7 +33,8 @@ rebinding, audio, display). Everything presentation-side reads the sim and never
 | `DamageNumberController` | `.../fx/DamageNumberController.ts` | Damage numbers: 48 pooled BillboardGuis, merge window, heavy / capped colours, "CAP" tag, rise + fade. |
 | `ScorePopController` | `.../fx/ScorePopController.ts` | Scored runs (M2): a rising, fading `+points` BillboardGui per kill (`LiveRun.scorePops`, pooled `ScorePopPool`). |
 | `ParticleController` | `.../fx/ParticleController.ts` | Death bursts, boss waves, roar sparks, hit sparks: pooled 1-3 px Parts, one BulkMoveTo per frame, particle budget. |
-| `AudioController` | `.../audio/AudioController.ts` | Theme sounds for sim events and music through the `sfx` / `music` SoundGroups (all silent today); the player's volumes scale the groups. |
+| `FxSpriteController` | `.../fx/FxSpriteController.ts` | Sprite effects (docs/FX_AUDIO.md F3 / F4): the pure `FxCueMapper` turns each frame's FX events, summed sim events and state into one-shot cues (hit marks, swing trails, the guard shield, roll dust, flask, Ember ring, boss phase / slam / death, relic, shrine, death puffs, breakable splinters) and the stairwell loop; pooled floor-flat SurfaceGuis (or billboards) flip through the theme's `fx.*` flipbooks on the hitstop clock, budgeted by the particle level. Builds nothing without `fx.*` art (today). See "Sprite effects". |
+| `AudioController` | `.../audio/AudioController.ts` | Theme sounds for sim events, music and ambience through the `sfx` / `music` SoundGroups (all silent today): per-frame cue mapping with a priority cap and one jingle per frame, co-op split, variants and pitch jitter, music ducking, the ambience bed, menu / lobby / tutorial music, preload, menu sounds; the player's volumes scale the groups. See "Audio". |
 | `SettingsController` | `.../ui/SettingsController.ts` | The player's settings (juice, controls, audio, display): server sync (request / update / reset / settingsChanged), the system Reduce Motion flag, `KV_ResetBindings`, O toggles the Options screen, B closes a prompt on it or the screen, the screen pauses the run. |
 | `RebindController` | `.../ui/RebindController.ts` | The Options screen's rebinding: capture (countdown, cancel, owns the input), swap prompt, refusal notes, Clear, Reset device, the input test strip. |
 | `HudController` | `.../ui/HudController.tsx` | Mounts `GameHud` (React + Reflex; two ScreenGuis through a portal) and the menu shell `MenuLayer` (client/ui/menu, its own ScreenGui) with the HUD and menu actions, switches gamepad navigation on while a menu is open (menu screens, pause / party overlay, run-over panel, panels), hides the stock Health / Backpack CoreGui. |
@@ -101,7 +102,9 @@ endless floors' barrels and crates. Pure logic and tunables: `src/shared/view/br
   layer's hit sparks at the piece (`ParticleController.breakableHitSparks`), which is the spark a bullet stopped by a
   crate ends in (at the piece's centre: the sim does not say which bullet stopped where).
 - **Break:** chips (`ParticleController.breakableChips` -> `DeathParticleSystem.chips`, `chips` per kind, in the
-  `breakable.<kind>` role, scaled by the particle level), the set's one-shot `shatter` if it has one, then the flat
+  `breakable.<kind>` role, scaled by the particle level), the splinter sprite effect
+  (`FxSpriteController.breakableSplinter(x, z)`: `fx.breakable.splinter` on the next frame, at most
+  `FX_SPRITE_VIEW.splinterQueue` queued; nothing without fx art), the set's one-shot `shatter` if it has one, then the flat
   debris decal: the floor biome's decor `brokenBarrel` / `brokenCrate`, a variant by cell hash (`debrisVariant`), laid
   as a top-face SurfaceGui on a thin invisible Part turned by the camera yaw (nothing when the pack has none).
 - **Sounds:** `AudioController` maps the frame's summed `breakablesBroken` / `breakableHits` (table under "Audio").
@@ -156,7 +159,10 @@ nothing here writes the sim.
 - **Ambient particles**: one ParticleEmitter volume (30 x 3 x 30 tiles) following the camera focus, the biome's
   `pack.ambient(biome)` texture / size / transparency / colour; rate from `ambientEmitterSpec` (the Forge theme's
   particle count x the band's light x the juice particle level share, 0 under reduced motion, at most
-  `DECOR_FX.maxParticles` = 150 alive); TimeScale 0 while paused.
+  `DECOR_FX.maxParticles` = 150 alive); TimeScale 0 while paused. A texture with a theme `flipbook` (`particle.flipbook`
+  `{ grid, fps, mode }`, docs/FX_AUDIO.md F6; vale's `decor.fx.ambient.b<n>` from `art:build`) plays it per particle:
+  `FlipbookLayout` Grid2x2 / Grid4x4 / Grid8x8 by `grid` (another grid: no flipbook), `FlipbookMode` = `mode`,
+  `FlipbookFramerate` = `fps`, a random start frame unless `OneShot`.
 - **What draws today**: the placeholder and `vale` packs have no `decor.*` art and no ambient textures, so no piece,
   flame, glow, zone, glint or particle is drawn; the **PointLights do** (they need no art): pool lights on lit torches
   (sweeping on as rooms are entered), the boss ring / stairwell / shrine lights. Under Studio's default bright
@@ -188,7 +194,8 @@ BindToRenderStep priorities (`shared/view` `RENDER_ORDER`):
    `tutorialStep` per new funnel step, callout toasts, the ghost heart.
 3. **Camera + 1 (201) `KV_GameCamera`**: follows the interpolated player (+ the freeze-frame nudge).
 4. **Camera + 2 (202)** `KV_Bullets`, `KV_Actors`, `KV_Weapons`, `KV_Telegraphs`, `KV_HealthBars`,
-   `KV_DamageNumbers`, `KV_Particles`, `KV_Breakables`, `KV_Decor` (DecorController: the DecorDirector update, then
+   `KV_DamageNumbers`, `KV_Particles`, `KV_FxSprites` (FxSpriteController: the cue mapper, then the pooled effects),
+   `KV_Breakables`, `KV_Decor` (DecorController: the DecorDirector update, then
    the pieces and fades; `DECOR_RENDER_ORDER.decorAfterCamera`): read `getState()` / `getAlpha()`, move pooled Parts /
    BillboardGuis. They never write the sim.
    **Camera + 3 (203) `KV_DecorFx`** (DecorFxController, `DECOR_RENDER_ORDER.decorFxAfterDecor`): flames, the light
@@ -305,6 +312,7 @@ freeze frame's pacing (below).
 | Freeze frame | `hitstop.ts`, `freeze/*` | `SimController.hitstop` paces `LiveRun` | `freezeFrame`; off under reduced motion |
 | Camera nudge (the only screen shake) | `freeze/rules.ts` nudge | CameraController adds 1 render px (0.25 studs) on boss phase 2/3 (80 ms) and boss death (240 ms) | off under reduced motion |
 | Particles | `particles/*` | pooled Parts (1-3 px cubes) in the palette `uiText`, `particleSpark`, `enemyHealthElite`, `boss`, then each archetype's `enemy.<id>` role; hops lift the part (h px / cos(pitch)) | `particles` off / low / normal / high = budget 0 / 128 / 320 / 512 live (one level lower under reduced motion; slower, shorter, no hop, rings in place) |
+| Sprite effects (port) | none (docs/FX_AUDIO.md F3 / F4) | `FxSpriteController`: theme `fx.*` flipbooks on pooled floor-flat SurfaceGuis ("Sprite effects" below) | `particles` off / low / normal / high = 0 / 24 / 48 / 64 live effects (one level lower under reduced motion) |
 
 Settings resolve as the web build's (`shared/settings` resolveJuiceSettings): the player's overrides on top of the
 defaults (bars when hit, numbers on, freeze on, particles normal), and **reduced motion defaults to the Roblox "Reduce
@@ -315,6 +323,41 @@ features read it.
 Time bases (as the web): bars and numbers age on sim time ((tick + alpha) / 60), so they hold during pause and
 hitstop; particles run on real time x the hitstop clock's time scale (0 during a freeze, the ramp in slow motion), 0
 while paused.
+
+### Sprite effects (docs/FX_AUDIO.md F3 / F4; Roblox port, no web source)
+
+`FxSpriteController` (render step `KV_FxSprites` at Camera + 2) draws the cues of the pure `FxCueMapper`
+(`shared/view/fx` `fxCues.ts`, `fxCues.spec.ts`; tunables `FX_SPRITE_VIEW` in `shared/view/fx/config.ts`) with the
+theme's `fx.*` sprite sets (`ThemePack.fx(id)`: a one-facing flipbook, drawn size `sizeTiles` <= `FX_SPRITE_MAX_TILES`
+(3), `tint` role or the sheet's own colours (`meanColor`), `additive`).
+
+- **Cues**, once per frame after the sim, from state wherever it keeps the fact (so a frame of 0..5 ticks loses
+  nothing): hit marks (`fx.hit.light` / `.heavy`, at most every `hitMarkMinSec` per actor, turned by
+  `hitRotationsDeg`), swing trails (`fx.swing.1..3` by the sword's last swing, `swingAheadFraction` ahead, turned to
+  the swing), the guard shield (`fx.guard.shield` when the guard goes up, re-shown on a deflect at most every
+  `guardMinSec`; the sim sums `bulletsDeleted` over the party and swings delete bullets too, so in co-op the re-flash
+  goes only to the one player who could have made the deletes: no other guard up this frame or the last, no other
+  swing), roll dust, flask, Ember ring, boss phase 2+ / slam impact / death (three staggered `bossDeathBursts`), relic
+  and shrine at their spots (DecorController's scene), death puffs, breakable splinters (`breakableSplinter`), and the
+  `fx.stairwell` loop while the stairwell is open. A cue within `telegraphClearTiles` of an actor on its telegraph's
+  first frame (or the slam target) is dropped. A new run, a floor change or the tracker's reset parks everything.
+- **Placement** (`FX_SPRITE_VIEW.placement`): `"floor"` (default) lays each effect flat on the floor like the decor
+  flats: a top-face SurfaceGui on a thin invisible Part (`thicknessStuds`) at `liftStuds` plus a per-slot layer step
+  (`layers` x `layerStepStuds`, no z-fighting), sized by `floorImageSize` and turned by the camera yaw. That is under
+  every floor marking and every bullet, so an effect never covers one; standing bodies draw over it. `"billboard"` is
+  the alternative for comparing in Studio: SpriteView's camera-facing BillboardGui with its floor clearance. The canvas
+  is a square of the cell's diagonal so a rotated label never clips; `additive` sets LightInfluence 0 and
+  `additiveBrightness`.
+- **Budgets:** at most `maxSprites[effectiveParticles]` live one-shots (0 / 24 / 48 / 64 by the particle level, one
+  level lower under reduced motion; cues past it are dropped and counted in `stats.overBudget`), `cueCapacity` (64)
+  cues per frame. Slots (anchor Part + Gui + ImageLabel) are pooled and only grow; finished ones are parked, moves go
+  in one BulkMoveTo. The mapper allocates nothing per frame, nor does the controller (its `FxCueFrame` is one reused
+  object).
+- **Clock:** the effect clock advances by the real frame time (clamped to `maxFrameDt`) x the hitstop clock's time
+  scale (`SimController.hitstop`), and not at all while paused or frozen, so effects hold in a freeze frame and slow
+  down in slow motion like the particles.
+- **Today:** no bundled pack has `fx.*` art (vale's switch on once `fx-effects.png` has an ID in `assetIds.ts`), so
+  the controller builds nothing.
 
 ### Freeze frame and replays
 
@@ -332,27 +375,70 @@ checkpoint; with the setting off nothing freezes.
 
 ## Audio (`src/shared/view/audio/` mapping, `AudioController`)
 
-Every sound is a logical ID resolved by `ThemePack.sound(id)` -> `{ assetId | undefined, volume, group }`. The
-placeholder pack has every `sfx.*` / `music.*` ID `silent`, so today nothing is created or played; put
-`{ kind: "sound", assetId: "rbxassetid://<n>", volume: 0.8 }` on an ID in `packs/placeholder/manifest.ts` and it plays,
-no code change. Sounds play through SoundService SoundGroups `sfx` and `music` (created if missing; volume =
-`AUDIO_VIEW.groupVolume[group]` x `AUDIO_VIEW.masterVolume`), each Sound at the manifest's per-ID volume, 4 pooled
-voices per sfx ID. Music loops and cross-fades (0.75 s).
+Every sound is a logical ID resolved by `ThemePack.sound(id)` -> `{ assetId | undefined, variants, volume, pitch,
+minInterval, group }`. The placeholder pack has every `sfx.*` / `music.*` / `amb.*` ID `silent`, and vale's sounds
+switch on only once every one of their built files has an ID (`packs/vale/audioLayout.ts`, `npm run audio:build`), so
+today nothing is created or played; put `{ kind: "sound", assetId: "rbxassetid://<n>", volume: 0.8 }` on an ID in
+`packs/placeholder/manifest.ts` and it plays, no code change. Sounds play through SoundService SoundGroups `sfx` and
+`music` (created if missing; volume = `AUDIO_VIEW.groupVolume[group]` x `AUDIO_VIEW.masterVolume` x the player's
+master and group volume, live), each Sound at the manifest's per-ID volume x the cue's volume scale.
+
+- **Cues** (`AudioCueMapper`, once per frame from `LiveRun.frameEvents`, the tracker's FX events and the state through
+  `AudioStateWatch`): each ID at most once per frame and once per its minimum interval (the pack's `minInterval`
+  overrides `SFX_MIN_INTERVAL`); at most one jingle per frame (`JINGLE_SFX`: game over, depth up, victory, room clear,
+  shrine; the highest `SFX_PRIORITY` wins, and depth up ranks above victory, so an endless boss kill plays the depth
+  jingle and M1's plays the victory); then at most `AUDIO_VIEW.maxStartsPerFrame` (6), the highest `SFX_PRIORITY`
+  kept (the player's hurt and death, the run-over jingle, the telegraph and the Ember first; enemy hits and shots
+  last). A dropped cue starts no cooldown.
+- **Silent IDs:** the mapper gets the controller's `playable(id)` (an assetId in the pack; `musicFor` gets the same):
+  a silent ID cues its `SFX_FALLBACK` when that one plays (no finisher clip: the swing; no back clip: the click), else
+  nothing, so it never takes a cap slot, the jingle slot or a cooldown. `sfx.ui.move` has no fallback on purpose (a
+  click on every focus move would buzz).
+- **Co-op** (X4): in a party run the player sounds come from the watch's per-player edges: the local player's at full
+  volume, a teammate's at `AUDIO_VIEW.teammateVolume` (0.4) and `TEAMMATE_PRIORITY_DROP` lower; shots, swaps and the
+  bow's full charge are the local player's only. The deflect (summed `bulletsDeleted`; the sim keeps no per-player
+  count) is full volume when the local player could have made it (guard up this frame or the last, or a swing:
+  `AudioStateWatch.mayDeflect`), else a teammate's. A solo run reads the summed events as before.
+- **Per start:** one clip of the ID's pool (assetId + `variants`, round-robin per ID: `VariantPicker`; a pool of
+  `AUDIO_VIEW.voicesPerSfx` Sounds per ID split over the clips, a busy clip restarts its oldest voice) at a jittered
+  PlaybackSpeed inside the pack's `pitch` range (`PitchJitter`, seeded `AUDIO_VIEW.pitchSeed`; 1 without a range).
+- **Ducking:** a `DUCKING_SFX` sound (every jingle and the Ember) dips the music SoundGroup to `AUDIO_VIEW.duck.level`
+  for the clip's length (`holdSec` while the length is not known yet), in `attackSec`, back in `releaseSec`
+  (`MusicDuck`, every Heartbeat).
+- **Music** (`musicFor`, a Reflex selector over the HUD snapshot, the run info and the menu screen): `music.menu` in
+  the main menu and lobby browser, `music.lobby` in the lobby room (`music.menu` while silent), the floor's
+  `music.biome.<n>` in a run (`music.tutorial` in the tutorial, its biome track while silent), `music.boss` while a
+  boss is engaged, silence after a death (the run-over jingle `sfx.jingle.gameover` plays, X7) and while no run or
+  menu is up. Looped, cross-faded over `AUDIO_VIEW.musicFadeSec` (0.75 s).
+- **Ambience** (`ambienceFor`): the floor's `amb.b<n>` bed during a run, under the music through the `sfx` group (X5:
+  no new slider), x `AUDIO_VIEW.ambientVolume`, cross-faded over `ambientFadeSec`; none in menus or after a death.
+  Music and ambience loop ONE clip at speed 1, so the validator rejects `variants` / `pitch` on `music.*` / `amb.*`.
+- **Preload:** `ContentProvider:PreloadAsync` (in a task) on every run start (every sound effect's clips, the floor's
+  music and ambience, the boss track, the tutorial's) and on every floor change (that floor's beds and the boss
+  track); nothing when all of it is silent.
+- **Menu sounds:** `playUi(id)` (the HUD's and menus' buttons, MenuController's B / Backspace back: `sfx.ui.back` when
+  back changes something) goes through the same fallback; a gamepad focus move (`GuiService.SelectedObject` changing
+  while the device is a gamepad) plays `sfx.ui.move`, rate-limited by `mapper.uiCue` (`SFX_MIN_INTERVAL` 0.08 s).
 
 | Event (per rendered frame) | Sound ID | Min gap |
 | --- | --- | --- |
 | `playerDied` | `sfx.player.death` | |
 | `playerHits` | `sfx.player.hurt` | 0.1 s |
-| `emberUsed` | `sfx.ember` | |
+| `emberUsed` | `sfx.ember` (ducks) | |
 | `rollStarted` | `sfx.player.roll` | |
 | `flaskUsed` | `sfx.player.flask` * | |
 | `weaponSwapped` | `sfx.player.swap` * | |
 | `shotsFired` | `sfx.player.shoot` | 0.06 s |
-| `meleeSwings` | `sfx.player.swing` * | 0.05 s |
+| `meleeSwings` | `sfx.player.swing` *, `sfx.player.finisher` * for the sword's finisher | 0.05 s |
+| bow charge reaches full (local player) | `sfx.player.charged` * | |
 | `bulletsDeleted` (sword / guard deletes bullets) | `sfx.player.deflect` * | 0.08 s |
 | `telegraphs` | `sfx.enemy.telegraph` * | 0.15 s |
 | `bossEngaged` | `sfx.boss.roar` | |
-| `bossDefeated` (sim event) | `sfx.victory` * | |
+| `bossDefeated` (sim event) | `sfx.victory` * (jingle) | |
+| `stairwellOpened` / `floorChanged` | `sfx.stairwell.open` * / `sfx.floor.enter` * | |
+| `depthChanged` | `sfx.depth.up` * (jingle) | |
+| a combat room cleared / a relic taken / the shrine used (state) | `sfx.room.clear` * (jingle) / `sfx.relic.take` * / `sfx.shrine.use` * (jingle) | |
+| every player dead (state) | `sfx.jingle.gameover` * (jingle) | |
 | enemy bullet spawn counter grew | `sfx.enemy.shoot` | 0.08 s |
 | FX `hit` (any actor) | `sfx.enemy.hurt` | 0.05 s |
 | FX `killed` (not a boss) | `sfx.enemy.death` | 0.04 s |
@@ -360,13 +446,16 @@ voices per sfx ID. Music loops and cross-fades (0.75 s).
 | FX `bossDefeated` | `sfx.boss.death` * | |
 | `breakablesBroken` | `sfx.breakable.break` | 0.05 s |
 | `breakableHits` > `breakablesBroken` (hits that did not break) | `sfx.breakable.hit` | 0.06 s |
-| pause overlay / settings buttons | `sfx.ui.confirm` (resume, restart, reset) / `sfx.ui.click` (options, settings, close) | |
-| music | `music.biome.<1..5>` (the floor's biome), `music.boss` while a boss is engaged, none after a death | cross-fade |
+| menu buttons | `sfx.ui.confirm` (resume, restart, reset) / `sfx.ui.click` (options, settings, close) / `sfx.ui.back` * (back, cancel) | |
+| gamepad focus move | `sfx.ui.move` * | 0.08 s |
+| music | `music.menu`, `music.lobby`, `music.biome.<1..5>`, `music.tutorial`, `music.boss`, none after a death | cross-fade |
+| ambience | `amb.b<1..5>` (the floor's biome, in a run) | cross-fade |
 
-\* Roblox-port additions to the placeholder pack (`PORT_SFX`; the web contract has no ID for these events; extra IDs
-under a known prefix validate). Each sound starts at most once per frame. `sfx.loot.*` and `music.menu` are unused
-in M1. `hud.spec.ts` checks the mapping table and that every ID it can play exists in the placeholder pack, in the
-right SoundGroup.
+\* Roblox-port additions to the placeholder pack (`PORT_SFX` / the theme's `PORT_AUDIO_EVENTS`; the web contract has
+no ID for these events). `sfx.loot.*` are unused. `shared/view/audio/audio.spec.ts` checks the mapping, cooldowns,
+cap and priorities, the one-jingle rule, silent IDs and fallbacks, the co-op split (deflects too), variants, pitch,
+the duck, the music and ambience choice and the volume rule, over synthetic frames and the recorded seed-1337 endless
+run, and that every ID it can play exists in the placeholder pack, in the right SoundGroup.
 
 ## Options screen and persistence (task L4 / L4b client)
 
@@ -575,6 +664,7 @@ character's root is anchored locally so it never falls and respawns in a loop.
 | Weapon arcs | ~20-60 | 0.5-stud dashes |
 | Particles | up to 512 live particles + 16 rings x 32 dots (1,024 Parts at most; budget 128 / 320 / 512 by setting) | grows lazily to the high-water mark, parked when unused |
 | Breakables | 1 Part per intact piece (placeholder) or an anchor + BillboardGui (art), + 1 Part per debris decal | pooled per kind; endless floors only |
+| Sprite effects | up to 64 live effects + the stairwell loop, each an anchor Part + SurfaceGui (or BillboardGui) + ImageLabel (budget 24 / 48 / 64 by the particle level) | pooled, grows to the high-water mark, parked when unused; none without `fx.*` art |
 | Decor | per drawn piece 3 instances (pooled standing bodies; flat Parts per floor); with art ~1,050 per floor; 6 pool + <= 6 fixed PointLights, 1 emitter (<= 150 particles) | nothing but the PointLights with the placeholder pack ("Room decoration") |
 | Health bars / damage numbers | 64 / 48 BillboardGuis (built at start, disabled when unused) | Attachments on one anchored holder Part each |
 

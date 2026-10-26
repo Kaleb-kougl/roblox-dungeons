@@ -457,6 +457,9 @@ Additive like contract v2: `MANIFEST_FORMAT` stays 1 and every existing pack and
 | `pitch` | `[min, max]`, `SOUND_PITCH_LIMITS.min` (0.5) <= min <= max <= `SOUND_PITCH_LIMITS.max` (2) | `pitch`, clamped to the limits; `undefined`: no jitter (1) |
 | `minInterval` | seconds >= 0 | `minInterval`; `undefined`: the audio layer's default (`SFX_MIN_INTERVAL`) |
 
+`music.*` and `amb.*` are looped beds: the client's loop channel plays the one `assetId` at PlaybackSpeed 1, so the
+validator rejects `variants` and `pitch` there (even an empty `variants`).
+
 `minInterval` contains the gameplay word `interval`; it is presentation (how often a clip may restart), so the
 gameplay-key scan skips it on a `sound` asset only (`SOUND_PRESENTATION_KEYS`) and still flags it anywhere else.
 `ThemeCore.sound` caches each ref and re-checks the extras (a pack that failed validation still loads): a variant that
@@ -493,7 +496,7 @@ the pack's pixel art. Fx fields on top (rejected on every other set):
 | `sizeTiles` | optional, in (0, `FX_SPRITE_MAX_TILES` = 3] | drawn size of the cell's longer side, tiles. Absent: that side / `pixelsPerTile`, held to the same cap |
 | `tint` | optional, a colour role | multiplied in (`ImageLabel.ImageColor3`; the pipeline greys the sheet first). Absent: the sheet's own colours |
 | `additive` | optional boolean | a brighter, self-lit blend (LightInfluence 0) |
-| `meanColor` | optional `"#rrggbb"` | the untinted sheet's mean colour (the FX pipeline writes it); checked only when there is no `tint` |
+| `meanColor` | `"#rrggbb"`, required without a `tint` | the untinted sheet's mean colour (the FX pipeline writes it); checked only when there is no `tint` |
 
 ```ts
 "fx.hit.light": { kind: "sprites", frameW: 32, frameH: 32, pivot: { x: 16, y: 16 }, pixelsPerTile: 32,
@@ -506,7 +509,7 @@ the pack's pixel art. Fx fields on top (rejected on every other set):
 **Colour rule** (`fxColorReport`): every `FX_ROLES` colour, every entry's `tint` role and every untinted entry's
 `meanColor` is at least `MIN_FX_BULLET_DIFFERENCE` (= `MIN_DECOR_FX_BULLET_DIFFERENCE`, 40 CIE76) from `enemyBullet`
 and `enemyBulletOutline`, like the decor fx roles: no effect may read as an enemy bullet. An untinted entry with no
-`meanColor` has nothing to check.
+`meanColor` is an error of its own (the rule would have nothing to check).
 
 **Effect colour roles** (`FX_ROLES`, required in every pack): `fx.heal` (the flask; placeholder `#6ee08a`, 137 from
 the bullet pink) and `fx.curse` (the shrine; `#8a6ad8`, 59).

@@ -153,10 +153,29 @@ describe("validateManifest: sound extras and ambience", () => {
 				"sfx.enemy.hurt": hitSound(),
 				"sfx.player.shoot": { kind: "sound", assetId: "rbxassetid://6004", variants: [] },
 				"sfx.ui.move": { kind: "sound", assetId: "rbxassetid://6005", pitch: [0.5, 2], minInterval: 0 },
-				"music.tutorial": { kind: "sound", assetId: "rbxassetid://6006", pitch: [1, 1] },
+				"music.tutorial": { kind: "sound", assetId: "rbxassetid://6006", minInterval: 0 },
 				"amb.b3": { kind: "sound", assetId: "rbxassetid://6007", volume: 0.3 },
 			}),
 		).toEqual([]);
+	});
+
+	it("rejects variants and pitch on looped slots (music.*, amb.*): their channel plays one clip at speed 1", () => {
+		expect(
+			withAssets({
+				"music.boss": { kind: "sound", assetId: "rbxassetid://6006", variants: ["rbxassetid://6009"] },
+				"music.tutorial": { kind: "sound", assetId: "rbxassetid://6006", pitch: [1, 1] },
+				"amb.b3": { kind: "sound", assetId: "rbxassetid://6007", variants: [], pitch: [0.9, 1.1] },
+			}),
+		).toEqual([
+			'assets["amb.b3"].variants: amb.* is looped (one clip at PlaybackSpeed 1): no variants, put the one clip in assetId',
+			'assets["amb.b3"].pitch: amb.* is looped (one clip at PlaybackSpeed 1): no pitch jitter',
+			'assets["music.boss"].variants: music.* is looped (one clip at PlaybackSpeed 1): no variants, put the one clip in assetId',
+			'assets["music.tutorial"].pitch: music.* is looped (one clip at PlaybackSpeed 1): no pitch jitter',
+		]);
+		// a malformed pitch on a looped slot is one error, not two
+		expect(withAssets({ "music.menu": { kind: "sound", assetId: "rbxassetid://6006", pitch: 3 } })).toEqual([
+			'assets["music.menu"].pitch: music.* is looped (one clip at PlaybackSpeed 1): no pitch jitter',
+		]);
 	});
 
 	it("rejects variants that are not uploaded asset IDs", () => {

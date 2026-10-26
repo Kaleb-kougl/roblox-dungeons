@@ -9,7 +9,7 @@
  *
  * The ambience bed follows the floor's biome (amb.b<n>) during a run only, and stops after a death.
  */
-import { BIOME_MUSIC_COUNT, MUSIC, biomeAmbience, biomeMusic } from "./cues";
+import { BIOME_MUSIC_COUNT, EVERY_ID, MUSIC, biomeAmbience, biomeMusic, type Playable } from "./cues";
 
 /** Where the player is, for the music choice. */
 export type MusicPlace = "run" | "menu" | "lobby" | "none";
@@ -26,11 +26,6 @@ export interface MusicView {
 	/** The run is the first-run tutorial (RunInfo.world is the tutorial world). */
 	readonly tutorial?: boolean;
 }
-
-/** Whether a sound ID has a clip in the theme pack (the controller passes `pack.sound(id).assetId !== undefined`). */
-export type Playable = (id: string) => boolean;
-
-const EVERY_ID: Playable = () => true;
 
 /** Where the player is, from the store's facts: a run is active, else the menu screen (lobby room, other, none). */
 export function musicPlace(runActive: boolean, menuScreen: string): MusicPlace {

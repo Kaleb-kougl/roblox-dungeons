@@ -152,7 +152,7 @@ describe("validateManifest: fx entries", () => {
 		expect(
 			withAssets({
 				"fx.hit.light": hitMark(),
-				"fx.roll.dust": hitMark({}, "sizeTiles", "tint", "additive"),
+				"fx.roll.dust": hitMark({}, "sizeTiles", "additive"),
 				"fx.boss.slam": hitMark({ meanColor: "#7a5a3a", sizeTiles: FX_SPRITE_MAX_TILES }, "tint"),
 				"fx.stairwell": hitMark({
 					tint: "decor.fx.zone",
@@ -222,6 +222,20 @@ describe("validateManifest: fx entries", () => {
 			'assets["fx.flask"].additive: must be true or false',
 			'assets["fx.flask"].meanColor: must be "#rrggbb", got "green"',
 		]);
+	});
+
+	it("needs a meanColor on an untinted entry (else the enemy-bullet rule would check nothing)", () => {
+		const msg =
+			"an untinted effect needs its sheet's meanColor (art:build writes it) for the enemy-bullet colour rule; or set a tint";
+		expect(withAssets({ "fx.boss.slam": hitMark({}, "tint") })).toEqual([`assets["fx.boss.slam"]: ${msg}`]);
+		expect(withAssets({ "fx.roll.dust": hitMark({}, "sizeTiles", "tint", "additive") })).toEqual([
+			`assets["fx.roll.dust"]: ${msg}`,
+		]);
+		// a malformed meanColor is its own error, once
+		expect(withAssets({ "fx.boss.slam": hitMark({ meanColor: "brown" }, "tint") })).toEqual([
+			'assets["fx.boss.slam"].meanColor: must be "#rrggbb", got "brown"',
+		]);
+		expect(withAssets({ "fx.boss.slam": hitMark({ meanColor: "#7a5a3a" }, "tint") })).toEqual([]);
 	});
 
 	it("rejects the fx fields on other sprite sets", () => {

@@ -25,7 +25,6 @@ import {
 	MusicDuck,
 	PitchJitter,
 	SFX,
-	SFX_FALLBACK,
 	VariantPicker,
 	ambienceFor,
 	biomeAmbience,
@@ -34,7 +33,7 @@ import {
 	musicPlace,
 	soundGroupVolume,
 	type MusicView,
-	type SfxId,
+	type Playable,
 } from "shared/view/audio";
 import { SimController, type RunContext } from "../game/SimController";
 import { ThemeController } from "../game/ThemeController";
@@ -104,10 +103,12 @@ class LoopChannel {
  *                times the duck. Each Sound's own Volume is the manifest's, times the cue's volume scale.
  *   sfx          the pure mapper (shared/view/audio AudioCueMapper) turns each frame's summed sim events, the hit
  *                tracker's events and the sim state into cues (once per frame, per-ID cooldowns with the pack's
- *                minInterval, at most AUDIO_VIEW.maxStartsPerFrame by priority, teammates' sounds quieter in co-op);
- *                each cue plays one clip of the ID's pool (round-robin, VariantPicker) at a jittered PlaybackSpeed
- *                (PitchJitter, the pack's pitch range) on a small pool of Sounds (AUDIO_VIEW.voicesPerSfx per ID).
- *                A silent ID with an SFX_FALLBACK plays that instead (no finisher clip: the swing).
+ *                minInterval, one jingle, at most AUDIO_VIEW.maxStartsPerFrame by priority, teammates' sounds
+ *                quieter in co-op); each cue plays one clip of the ID's pool (round-robin, VariantPicker) at a
+ *                jittered PlaybackSpeed (PitchJitter, the pack's pitch range) on a small pool of Sounds
+ *                (AUDIO_VIEW.voicesPerSfx per ID). The mapper is given `playable` (the ID has an assetId): a silent
+ *                ID with an SFX_FALLBACK cues that instead (no finisher clip: the swing), one without never becomes a
+ *                cue (no cap slot, no cooldown).
  *   duck         a DUCKING_SFX sound (jingles, the Ember) dips the music group to AUDIO_VIEW.duck.level for the
  *                clip's length (MusicDuck, every Heartbeat).
  *   music        musicFor(menu screen, outcome, boss engaged, tutorial, biome): music.menu in the menus, music.lobby
@@ -119,15 +120,20 @@ class LoopChannel {
  *   preload      ContentProvider:PreloadAsync on every run start (every sound effect, the floor's music and
  *                ambience) and floor change (that floor's music, ambience and the boss track); nothing when all
  *                of it is silent.
- *   ui           playUi(id): sfx.ui.click / confirm / back from the HUD's and menus' buttons; a gamepad focus move
- *                (GuiService.SelectedObject) plays sfx.ui.move, rate-limited by the mapper.
+ *   ui           playUi(id): sfx.ui.click / confirm / back from the HUD's and menus' buttons (MenuController's B /
+ *                Backspace back too), through the same fallback (no back clip: the click); a gamepad focus move
+ *                (GuiService.SelectedObject) plays sfx.ui.move, rate-limited by the mapper (silent while it has no
+ *                clip: no fallback).
  *
  * Presentation only: reads the run, never writes it.
  */
 @Controller({})
 export class AudioController implements OnStart {
 	private readonly janitor = new Janitor();
-	private readonly mapper = new AudioCueMapper();
+	private pack: ThemePack | undefined;
+	/** The ID has a clip in the pack (nothing does before onStart). */
+	private readonly playable: Playable = (id) => this.pack !== undefined && this.pack.sound(id).assetId !== undefined;
+	private readonly mapper = new AudioCueMapper(this.playable);
 	private readonly picker = new VariantPicker();
 	private readonly jitter = new PitchJitter();
 	private readonly duck = new MusicDuck();
@@ -135,7 +141,6 @@ export class AudioController implements OnStart {
 	private readonly groups = new Map<SoundGroupName, SoundGroup>();
 	private readonly cues = new AudioCueList();
 	private folder: Folder | undefined;
-	private pack: ThemePack | undefined;
 	private audio: AudioSettings | undefined;
 	private duckLevel = 1;
 	private music: LoopChannel | undefined;
@@ -180,7 +185,7 @@ export class AudioController implements OnStart {
 			this.music?.destroy();
 			this.ambience?.destroy();
 		});
-		const playable = (id: string) => pack.sound(id).assetId !== undefined;
+		const playable = this.playable;
 		const selectView = createSelector(
 			[selectSnapshot, selectRunInfo, selectGameActive, selectMenuScreen] as const,
 			(snapshot, run, active, screen): MusicView => ({
@@ -225,18 +230,13 @@ export class AudioController implements OnStart {
 
 	/**
 	 * Plays one sound effect by logical ID at `scale` x its volume: the next clip of its pool, a jittered speed.
-	 * A silent / missing ID plays its SFX_FALLBACK, else nothing.
+	 * A silent / missing ID plays its SFX_FALLBACK (mapper.resolve), else nothing.
 	 */
 	play(id: string, scale: number): void {
-		let playId = id;
-		let v = this.voicesFor(id);
-		if (v === undefined) {
-			const fallback = (SFX_FALLBACK as Readonly<Record<string, SfxId>>)[id];
-			if (fallback === undefined) return;
-			playId = fallback;
-			v = this.voicesFor(fallback);
-			if (v === undefined) return;
-		}
+		const playId = this.mapper.resolve(id);
+		if (playId === undefined) return;
+		const v = this.voicesFor(playId);
+		if (v === undefined) return;
 		const clip = v.clips[this.picker.pick(playId, v.clips.size())];
 		const sound = clip.sounds[clip.next];
 		clip.next = (clip.next + 1) % clip.sounds.size();
@@ -244,7 +244,7 @@ export class AudioController implements OnStart {
 		sound.PlaybackSpeed = this.jitter.speed(v.pitch);
 		sound.TimePosition = 0;
 		sound.Play();
-		if ((DUCKING_SFX as ReadonlyArray<string>).includes(id)) {
+		if ((DUCKING_SFX as ReadonlyArray<string>).includes(playId)) {
 			const length = sound.TimeLength > 0 ? sound.TimeLength / sound.PlaybackSpeed : AUDIO_VIEW.duck.holdSec;
 			this.duck.trigger(os.clock(), length);
 		}

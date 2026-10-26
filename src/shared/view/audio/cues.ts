@@ -8,13 +8,20 @@
  * is lost on multi-tick frames), the hit tracker's FX events (per-actor hits / kills / boss phases), and the sim state
  * (the enemy-bullet spawn counter; per-player and per-floor edges through AudioStateWatch). Output: the cues to start
  * this frame (sound ID + volume scale), each ID at most once per frame and once per its minimum interval (a bow stream
- * or a bullet ring is one sound, not fifty), at most AUDIO_VIEW.maxStartsPerFrame of them, the highest SFX_PRIORITY
- * kept (the player's hurt and the telegraph over enemy shots and hits).
+ * or a bullet ring is one sound, not fifty), at most one jingle (JINGLE_SFX), at most AUDIO_VIEW.maxStartsPerFrame of
+ * them, the highest SFX_PRIORITY kept (the player's hurt and the telegraph over enemy shots and hits).
+ *
+ * Silent IDs: the mapper's `playable` predicate (the controller passes `pack.sound(id).assetId !== undefined`) turns a
+ * silent ID into its SFX_FALLBACK when that one plays, else drops it before it is a candidate: a silent sound never
+ * takes a per-frame cap slot, the one jingle slot or a cooldown (`resolve`, also used for the menu sounds).
  *
  * Co-op (docs/FX_AUDIO.md X4): the summed events count the whole party, so in a party run the player sounds (hurt,
  * death, roll, flask, swing, finisher) come from the watch's per-player edges instead: the local player's at full
  * volume, a teammate's at AUDIO_VIEW.teammateVolume; shots, swaps and the bow's full charge are the local player's
- * only. A solo run reads the summed events exactly as before (the watch only picks swing vs finisher).
+ * only. The deflect (summed bulletsDeleted: the sim keeps no per-player count) is the local player's at full volume
+ * when the local player could have deleted them this frame (guard up, this frame or the last, or a swing:
+ * AudioStateWatch.mayDeflect), else a teammate's. A solo run reads the summed events exactly as before (the watch only
+ * picks swing vs finisher).
  *
  * Presentation only: reads sim state, never writes it.
  */
@@ -191,6 +198,7 @@ export const PLAYER_EVENT_FIELDS: ReadonlyArray<keyof SimEvents> = [
 	"weaponSwapped",
 	"shotsFired",
 	"meleeSwings",
+	"bulletsDeleted",
 ];
 
 /** Shortest gap between two starts of the same sound, seconds (0 = once per frame at most). A pack's minInterval wins. */
@@ -219,9 +227,10 @@ export const SFX_PRIORITY: Readonly<Record<SfxId, number>> = {
 	[SFX.gameOver]: 92,
 	[SFX.enemyTelegraph]: 90,
 	[SFX.ember]: 88,
+	/** Above the victory: an endless boss kill plays the depth jingle, not both (JINGLE_SFX). */
+	[SFX.depthUp]: 86,
 	[SFX.victory]: 85,
 	[SFX.bossDeath]: 84,
-	[SFX.depthUp]: 82,
 	[SFX.bossRoar]: 80,
 	[SFX.stairwellOpen]: 75,
 	[SFX.roomClear]: 72,
@@ -260,10 +269,29 @@ export const DUCKING_SFX: ReadonlyArray<SfxId> = [
 	SFX.ember,
 ];
 
-/** A silent sound falls back to another ID (a pack without a finisher clip plays the plain swing there). */
+/**
+ * Jingles (art/audio.json category "jingle"): at most one starts per frame, the highest SFX_PRIORITY (the others are
+ * dropped before the cap and start no cooldown). An endless boss kill raises bossDefeated, depthChanged and
+ * stairwellOpened on one tick: the depth jingle plays, not the victory over it (depth.up ranks above victory; M1 has
+ * no depth, so its boss kill keeps the victory). sfx.relic.take is a short power-up sound, not a jingle.
+ */
+export const JINGLE_SFX: ReadonlyArray<SfxId> = [SFX.gameOver, SFX.depthUp, SFX.victory, SFX.roomClear, SFX.shrineUse];
+
+/**
+ * A silent sound falls back to another ID: a pack without a finisher clip plays the plain swing there, one without a
+ * back clip the click. sfx.ui.move has none on purpose (a click on every gamepad focus move would buzz): it stays
+ * silent until it has its own clip.
+ */
 export const SFX_FALLBACK: Readonly<Partial<Record<SfxId, SfxId>>> = {
 	[SFX.playerFinisher]: SFX.playerSwing,
+	[SFX.uiBack]: SFX.uiClick,
 };
+
+/** Whether a sound ID has a clip in the theme pack (the controller passes `pack.sound(id).assetId !== undefined`). */
+export type Playable = (id: string) => boolean;
+
+/** Every ID plays (the specs' default, and musicFor's). */
+export const EVERY_ID: Playable = () => true;
 
 /** The FX events the mapper reads (the tracker's pooled buffer satisfies it). */
 export interface FxEventSource {
@@ -312,6 +340,10 @@ function priorityOf(id: string): number {
 	return (SFX_PRIORITY as Readonly<Record<string, number>>)[id] ?? 0;
 }
 
+function isJingle(id: string): boolean {
+	return (JINGLE_SFX as ReadonlyArray<string>).includes(id);
+}
+
 /**
  * Turns one frame's events and state into the cues to start. Keeps per-ID cooldowns, the enemy-shot counter and the
  * state watch.
@@ -327,6 +359,19 @@ export class AudioCueMapper {
 	private readonly pendingRanks = new Array<number>();
 	private pending = 0;
 	private now = 0;
+
+	/** `playable`: whether an ID has a clip (silent IDs and their fallbacks; default: every ID plays). */
+	constructor(private readonly playable: Playable = EVERY_ID) {}
+
+	/**
+	 * The ID that starts for `id`: itself when playable, else its SFX_FALLBACK when that one is, else undefined (silent:
+	 * no cue, no cap slot, no cooldown).
+	 */
+	resolve(id: string): string | undefined {
+		if (this.playable(id)) return id;
+		const fallback = (SFX_FALLBACK as Readonly<Record<string, string>>)[id];
+		return fallback !== undefined && this.playable(fallback) ? fallback : undefined;
+	}
 
 	/** A new run: forget the enemy-shot counter and the watched state (cooldowns keep running on real time). */
 	reset(): void {
@@ -352,17 +397,23 @@ export class AudioCueMapper {
 	}
 
 	/**
-	 * A menu sound outside the frame (sfx.ui.*): true when it may start now (its minimum interval has passed); a true
-	 * answer counts as a start. A gamepad's focus moves go through here so holding the stick does not buzz.
+	 * A menu sound outside the frame (sfx.ui.*): true when it may start now (it, or its fallback, is playable and its
+	 * minimum interval has passed); a true answer counts as a start. A gamepad's focus moves go through here so holding
+	 * the stick does not buzz.
 	 */
 	uiCue(now: number, id: string): boolean {
-		if (this.coolingDown(id, now)) return false;
+		if (this.resolve(id) === undefined || this.coolingDown(id, now)) return false;
 		this.lastStart.set(id, now);
 		return true;
 	}
 
-	/** A candidate for this frame: once per ID (the louder volume and higher rank win), never inside its interval. */
-	private cue(id: SfxId, volume: number, rank: number = priorityOf(id)): void {
+	/**
+	 * A candidate for this frame (`id` resolved: a silent ID is its fallback or nothing): once per ID (the louder volume
+	 * and higher rank win), never inside its interval.
+	 */
+	private cue(soundId: SfxId, volume: number, rank: number = priorityOf(soundId)): void {
+		const id = this.resolve(soundId);
+		if (id === undefined) return;
 		for (let i = 0; i < this.pending; i++) {
 			if (this.pendingIds[i] === id) {
 				if (volume > this.pendingVolumes[i]) this.pendingVolumes[i] = volume;
@@ -383,6 +434,32 @@ export class AudioCueMapper {
 		else this.cue(id, AUDIO_VIEW.teammateVolume, priorityOf(id) - TEAMMATE_PRIORITY_DROP);
 	}
 
+	/** Removes candidate `at`, keeping the order of the rest. */
+	private dropPending(at: number): void {
+		for (let i = at; i < this.pending - 1; i++) {
+			this.pendingIds[i] = this.pendingIds[i + 1];
+			this.pendingVolumes[i] = this.pendingVolumes[i + 1];
+			this.pendingRanks[i] = this.pendingRanks[i + 1];
+		}
+		this.pending--;
+	}
+
+	/** Keeps one jingle (JINGLE_SFX): the highest-ranked (the earlier one on a tie); drops the others. */
+	private keepOneJingle(): void {
+		let best = -1;
+		for (let i = 0; i < this.pending; i++) {
+			if (isJingle(this.pendingIds[i]) && (best < 0 || this.pendingRanks[i] > this.pendingRanks[best])) best = i;
+		}
+		if (best < 0) return;
+		let i = 0;
+		while (i < this.pending) {
+			if (i !== best && isJingle(this.pendingIds[i])) {
+				this.dropPending(i);
+				if (i < best) best--;
+			} else i++;
+		}
+	}
+
 	/** Drops the lowest-ranked candidates (the later one on a tie) down to the per-frame cap. */
 	private applyCap(): void {
 		const cap = AUDIO_VIEW.maxStartsPerFrame;
@@ -391,12 +468,7 @@ export class AudioCueMapper {
 			for (let i = 1; i < this.pending; i++) {
 				if (this.pendingRanks[i] <= this.pendingRanks[worst]) worst = i;
 			}
-			for (let i = worst; i < this.pending - 1; i++) {
-				this.pendingIds[i] = this.pendingIds[i + 1];
-				this.pendingVolumes[i] = this.pendingVolumes[i + 1];
-				this.pendingRanks[i] = this.pendingRanks[i + 1];
-			}
-			this.pending--;
+			this.dropPending(worst);
 		}
 	}
 
@@ -445,6 +517,16 @@ export class AudioCueMapper {
 			}
 			if (w.swapEdge[localIndex]) this.cue(SFX.playerSwap, 1);
 			if (events.shotsFired > 0 && w.localShot) this.cue(SFX.playerShoot, 1);
+			// Deflects: the local player's when they could have made them, else a teammate's (quiet).
+			if (events.bulletsDeleted > 0) {
+				if (w.mayDeflect[localIndex]) this.cue(SFX.playerDeflect, 1);
+				else
+					this.cue(
+						SFX.playerDeflect,
+						AUDIO_VIEW.teammateVolume,
+						priorityOf(SFX.playerDeflect) - TEAMMATE_PRIORITY_DROP,
+					);
+			}
 		}
 		if (w.localCharged) this.cue(SFX.playerCharged, 1);
 		if (w.roomCleared) this.cue(SFX.roomClear, 1);
@@ -467,6 +549,7 @@ export class AudioCueMapper {
 		if (this.lastEnemySpawned >= 0 && enemySpawned > this.lastEnemySpawned) this.cue(SFX.enemyShoot, 1);
 		this.lastEnemySpawned = enemySpawned;
 
+		this.keepOneJingle();
 		this.applyCap();
 		for (let i = 0; i < this.pending; i++) {
 			const id = this.pendingIds[i];

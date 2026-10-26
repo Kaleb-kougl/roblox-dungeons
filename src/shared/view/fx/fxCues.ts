@@ -14,7 +14,10 @@
  *   fx.flask         a player's flask count dropped, at the player
  *   fx.guard.shield  a player's sword guard went up (swordGuard > 0 from 0), or deleted bullets while up
  *                    (SimEvents.bulletsDeleted, at most every guardMinSec per player), ahead of the player, turned to
- *                    the facing
+ *                    the facing. bulletsDeleted is the party's sum (the sim keeps no per-player count, and swings
+ *                    delete bullets too), so the re-flash goes to the guarding player only when no one else could
+ *                    have made the deletes: no other player's guard up (this frame or the last) and no other swing
+ *                    this frame. Solo: always the player.
  *   fx.roll.dust     a player's rollTicks grew (a roll started), at the player
  *   fx.swing.<n>     a player's WeaponsState.swingTick moved: n = the sword slot's v[SWORD_V_LAST] (1, 2, 3 = finisher),
  *                    swingAheadFraction of the swing radius ahead of its origin, turned to the swing direction
@@ -469,10 +472,28 @@ export class FxCueMapper {
 		return swordGuard(active);
 	}
 
+	/**
+	 * The one player who could have deleted this frame's enemy bullets (guard up now or last frame, or a swing this
+	 * frame), or -1 when none or several could: a re-flash needs an unambiguous deleter.
+	 */
+	private soleDeflector(state: Readonly<SimState>, n: number): number {
+		let sole = -1;
+		for (let i = 0; i < n; i++) {
+			if (hasLeft(state, i) || i >= this.pEmbers.size()) continue;
+			const w = weaponsAt(state, i);
+			const swung = w.swingTick >= 0 && w.swingTick !== this.pSwingTick[i];
+			if (this.guardOf(w) <= 0 && this.pGuard[i] <= 0 && !swung) continue;
+			if (sole >= 0) return -1;
+			sole = i;
+		}
+		return sole;
+	}
+
 	private playerCues(f: FxCueFrame): void {
 		const state = f.state;
 		const n = partySize(state);
 		const V = FX_SPRITE_VIEW;
+		const deflector = f.events.bulletsDeleted > 0 ? this.soleDeflector(state, n) : -1;
 		for (let i = 0; i < n; i++) {
 			if (hasLeft(state, i) || i >= this.pEmbers.size()) continue;
 			const p = playerAt(state, i);
@@ -484,7 +505,7 @@ export class FxCueMapper {
 			const g = this.guardOf(w);
 			if (g > 0 && p.dead === 0) {
 				const fresh = this.pGuard[i] <= 0;
-				const deflect = f.events.bulletsDeleted > 0 && this.now - this.pGuardAt[i] >= V.guardMinSec;
+				const deflect = deflector === i && this.now - this.pGuardAt[i] >= V.guardMinSec;
 				if (fresh || deflect) {
 					this.pGuardAt[i] = this.now;
 					this.emit(

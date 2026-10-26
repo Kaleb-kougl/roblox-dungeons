@@ -10,6 +10,9 @@
  *   swing      WeaponsState.swingTick changed (sweepArc records every counted melee swing); a finisher when the sword
  *              slot's SWORD_V_LAST is SWORD_FINISHER
  *   swap       WeaponsState.activeSet changed
+ *   mayDeflect the player could have deleted enemy bullets this frame: the sword guard of the active set is up now or
+ *              was last frame (it sweeps every tick while up), or a swing landed (swings delete bullets too). The sim
+ *              sums bulletsDeleted over the party and keeps no per-player count, so this is who MAY have made them
  *   shot       (local player only) a ranged weapon slot's cooldown rose (fire() or a heavy arrow sets it)
  *   charged    (local player only) the bow slot's charge reached BOW_DATA.chargeTicks
  *   room clear state.score room records: the count of cleared rooms rose on the same floor
@@ -29,6 +32,7 @@ import {
 	SWORD_FINISHER,
 	SWORD_V_LAST,
 	isPartyWiped,
+	swordGuard,
 	partySize,
 	playerAt,
 	weaponAt,
@@ -69,6 +73,12 @@ function weaponId(index: number): string {
 	return index === NO_WEAPON ? "" : weaponAt(index).id;
 }
 
+/** The sword guard of the active weapon set is up. */
+function guardUp(w: Readonly<WeaponsState>): boolean {
+	const active = w.sets[w.activeSet];
+	return active !== undefined && weaponId(active.weapon) === SWORD.id && swordGuard(active) > 0;
+}
+
 export class AudioStateWatch {
 	private seen: Readonly<SimState> | undefined;
 	private fresh = true;
@@ -79,6 +89,7 @@ export class AudioStateWatch {
 	private readonly dead = new Array<number>();
 	private readonly swingTick = new Array<number>();
 	private readonly activeSet = new Array<number>();
+	private readonly guard = new Array<boolean>();
 	private readonly localCooldown = new Array<number>();
 	private localCharge = 0;
 	private floor = 0;
@@ -94,6 +105,8 @@ export class AudioStateWatch {
 	readonly flaskEdge = new Array<boolean>();
 	readonly swingEdge = new Array<number>();
 	readonly swapEdge = new Array<boolean>();
+	/** The player could have deleted this frame's enemy bullets (guard up now or last frame, or a swing). */
+	readonly mayDeflect = new Array<boolean>();
 	/** The local player fired a ranged weapon / its bow charge became full. */
 	localShot = false;
 	localCharged = false;
@@ -134,6 +147,9 @@ export class AudioStateWatch {
 			this.swapEdge[i] = known && !left && w.activeSet !== this.activeSet[i];
 			const swung = known && !left && w.swingTick !== NO_SWING && w.swingTick !== this.swingTick[i];
 			this.swingEdge[i] = !swung ? SwingEdge.none : this.isFinisher(w) ? SwingEdge.finisher : SwingEdge.swing;
+			const guard = guardUp(w);
+			this.mayDeflect[i] = known && !left && (guard || this.guard[i] || swung);
+			this.guard[i] = guard;
 			this.hurt[i] = p.hurtTicks;
 			this.dead[i] = p.dead;
 			this.roll[i] = p.rollTicks;

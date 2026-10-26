@@ -14,6 +14,7 @@ import {
 	EMPTY_INPUT,
 	SWORD,
 	SWORD_FINISHER,
+	SWORD_V_GUARD,
 	SWORD_V_LAST,
 	createSimState,
 	eventDefault,
@@ -35,6 +36,7 @@ import {
 	AudioCueList,
 	AudioCueMapper,
 	DUCKING_SFX,
+	JINGLE_SFX,
 	MUSIC,
 	MusicDuck,
 	PitchJitter,
@@ -359,6 +361,8 @@ interface ReplayCounts {
 	readonly dead: boolean;
 	readonly overCap: number;
 	readonly quiet: number;
+	/** Frames that started more than one JINGLE_SFX cue (must stay 0). */
+	readonly jingleFrames: number;
 	readonly count: (id: string) => number;
 }
 
@@ -381,6 +385,7 @@ function replayRecorded(ticks: number): ReplayCounts {
 	let depth = 0;
 	let overCap = 0;
 	let quiet = 0;
+	let jingleFrames = 0;
 	let t = 0;
 	let frame = 0;
 	while (t < total) {
@@ -397,6 +402,9 @@ function replayRecorded(ticks: number): ReplayCounts {
 		// frames 1 s apart: no cooldown hides a once-per-floor cue
 		m.frame(frame, events, NO_FX, state, 0, out);
 		if (out.size() > AUDIO_VIEW.maxStartsPerFrame) overCap++;
+		let jingles = 0;
+		for (let i = 0; i < out.size(); i++) if ((JINGLE_SFX as ReadonlyArray<string>).includes(out.id(i))) jingles++;
+		if (jingles > 1) jingleFrames++;
 		for (let i = 0; i < out.size(); i++) {
 			counts.set(out.id(i), (counts.get(out.id(i)) ?? 0) + 1);
 			if (out.volume(i) !== 1) quiet++;
@@ -411,6 +419,7 @@ function replayRecorded(ticks: number): ReplayCounts {
 		dead: state.player.dead !== 0,
 		overCap,
 		quiet,
+		jingleFrames,
 		count: (id) => counts.get(id) ?? 0,
 	};
 	replays.set(ticks, result);
@@ -516,10 +525,158 @@ describe("audio: co-op split (X4)", () => {
 		e.bossEngaged = 1;
 		e.bossDefeated = 1;
 		e.stairwellOpened = 1;
+		slotOf(s, 0, SWORD.id).v[SWORD_V_GUARD] = 10; // the deflect is the local player's
 		playerAt(s, 1).hurtTicks = 45;
 		const out = cues(m, 1, e, s).map(([id]) => id);
 		expect(out.size()).toBe(AUDIO_VIEW.maxStartsPerFrame);
 		expect(out).never.toContain(SFX.playerHurt);
+	});
+});
+
+describe("audio: co-op deflects", () => {
+	it("the summed deflect is loud when the local player's guard is (or was) up or they swung, else a teammate's", () => {
+		const s = party(2);
+		const m = primed(s, 0);
+		const e = noEvents();
+		e.bulletsDeleted = 2;
+		// nobody local could have: a teammate's deflect (quiet)
+		slotOf(s, 1, SWORD.id).v[SWORD_V_GUARD] = 10;
+		expect(cues(m, 1, e, s)).toEqual([[SFX.playerDeflect, AUDIO_VIEW.teammateVolume]]);
+		// the local guard is up
+		slotOf(s, 0, SWORD.id).v[SWORD_V_GUARD] = 10;
+		expect(cues(m, 2, e, s)).toEqual([[SFX.playerDeflect, 1]]);
+		// it dropped this frame (it swept until then): still the local player's
+		slotOf(s, 0, SWORD.id).v[SWORD_V_GUARD] = 0;
+		expect(cues(m, 3, e, s)).toEqual([[SFX.playerDeflect, 1]]);
+		expect(cues(m, 4, e, s)).toEqual([[SFX.playerDeflect, AUDIO_VIEW.teammateVolume]]);
+		// a local swing deletes bullets too (the swing plays as well)
+		weaponsAt(s, 0).swingTick = 40;
+		e.meleeSwings = 1;
+		expect(cues(m, 5, e, s)).toEqual([
+			[SFX.playerSwing, 1],
+			[SFX.playerDeflect, 1],
+		]);
+		expect(m.watch.mayDeflect[0]).toBe(true);
+	});
+
+	it("solo is unchanged: every deflect is the player's", () => {
+		const s = solo();
+		const m = primed(s);
+		const e = noEvents();
+		e.bulletsDeleted = 1;
+		expect(cues(m, 1, e, s)).toEqual([[SFX.playerDeflect, 1]]);
+	});
+});
+
+describe("audio: one jingle per frame", () => {
+	it("an endless boss kill plays the depth jingle, not the victory over it; M1's boss kill keeps the victory", () => {
+		const e = noEvents();
+		e.bossDefeated = 1;
+		e.stairwellOpened = 1;
+		e.depthChanged = 1;
+		expect(ids(new AudioCueMapper(), 0, e, NO_FX, solo())).toEqual([SFX.stairwellOpen, SFX.depthUp]);
+		const m1 = noEvents();
+		m1.bossDefeated = 1;
+		expect(ids(new AudioCueMapper(), 0, m1, NO_FX, solo())).toEqual([SFX.victory]);
+		// a pack without the depth jingle plays the victory there
+		const noDepth = new AudioCueMapper((id) => id !== SFX.depthUp);
+		expect(ids(noDepth, 0, e, NO_FX, solo())).toEqual([SFX.victory, SFX.stairwellOpen]);
+	});
+
+	it("keeps the highest-priority jingle of the frame (the run over, then depth, victory, room, shrine)", () => {
+		const s = solo();
+		const fake = s as unknown as {
+			endless?: { floor: number };
+			score?: { rooms: Array<{ cleared: number }> };
+			run?: { pedestalTaken: number[]; shrineUsed: number };
+		};
+		fake.endless = { floor: 3 };
+		fake.score = { rooms: [{ cleared: 0 }] };
+		fake.run = { pedestalTaken: [0], shrineUsed: 0 };
+		const m = primed(s);
+		fake.score.rooms[0].cleared = 1;
+		fake.run.shrineUsed = 1;
+		fake.run.pedestalTaken[0] = 1;
+		// room clear and shrine are both jingles: the room's; the relic is no jingle and plays too
+		expect(ids(m, 1, noEvents(), NO_FX, s)).toEqual([SFX.roomClear, SFX.relicTake]);
+		const order = [SFX.gameOver, SFX.depthUp, SFX.victory, SFX.roomClear, SFX.shrineUse];
+		expect(JINGLE_SFX).toEqual(order);
+		for (let i = 1; i < order.size(); i++) {
+			expect([order[i], SFX_PRIORITY[order[i - 1]] >= SFX_PRIORITY[order[i]]]).toEqual([order[i], true]);
+		}
+		expect(JINGLE_SFX).never.toContain(SFX.relicTake);
+		// every jingle ducks the music
+		for (const id of JINGLE_SFX) expect(DUCKING_SFX).toContain(id);
+	});
+
+	it("never starts two jingles in a frame over the recorded endless run", () => {
+		const r = replayRecorded(1);
+		expect(r.jingleFrames).toBe(0);
+		expect(r.count(SFX.depthUp)).toBe(r.depth);
+	});
+});
+
+describe("audio: silent IDs (playable)", () => {
+	it("a silent ID never takes a cap slot or a cooldown; its fallback plays when that one can", () => {
+		const silent = new Set<string>([SFX.playerHurt, SFX.enemyTelegraph, SFX.ember, SFX.enemyHurt]);
+		const s = solo();
+		const m = new AudioCueMapper((id) => !silent.has(id));
+		m.frame(0, noEvents(), NO_FX, s, 0, new AudioCueList());
+		s.combat.enemySpawned = 0;
+		m.frame(0.5, noEvents(), NO_FX, s, 0, new AudioCueList());
+		const e = noEvents();
+		e.playerHits = 1;
+		e.telegraphs = 1;
+		e.emberUsed = 1;
+		e.shotsFired = 1;
+		e.meleeSwings = 1;
+		e.rollStarted = 1;
+		e.breakableHits = 1;
+		s.combat.enemySpawned = 12;
+		const out = ids(m, 1, e, fxOf([["hit"], ["killed"]]), s);
+		// 4 of the 10 candidates are silent: the other 6 fit the cap, the enemy shot among them
+		expect(out).toEqual([
+			SFX.playerRoll,
+			SFX.playerShoot,
+			SFX.playerSwing,
+			SFX.enemyDeath,
+			SFX.breakableHit,
+			SFX.enemyShoot,
+		]);
+		// the silent hit started no cooldown: once it has a clip it plays inside its interval
+		silent.delete(SFX.enemyHurt);
+		expect(ids(m, 1.01, noEvents(), fxOf([["hit"]]), s)).toEqual([SFX.enemyHurt]);
+	});
+
+	it("falls back: a silent finisher is the swing, a silent back the click; a silent focus move stays silent", () => {
+		expect(SFX_FALLBACK[SFX.playerFinisher]).toBe(SFX.playerSwing);
+		expect(SFX_FALLBACK[SFX.uiBack]).toBe(SFX.uiClick);
+		expect(SFX_FALLBACK[SFX.uiMove]).toBe(undefined);
+		const m = new AudioCueMapper((id) => id !== SFX.playerFinisher && id !== SFX.uiBack && id !== SFX.uiMove);
+		expect([m.resolve(SFX.playerFinisher), m.resolve(SFX.uiBack), m.resolve(SFX.uiMove)]).toEqual([
+			SFX.playerSwing,
+			SFX.uiClick,
+			undefined,
+		]);
+		expect(m.resolve(SFX.uiConfirm)).toBe(SFX.uiConfirm);
+		// the menu path: a silent focus move is never a start (no cooldown either)
+		expect(m.uiCue(0, SFX.uiMove)).toBe(false);
+		expect(m.uiCue(0, SFX.uiBack)).toBe(true);
+		// the frame path: the finisher swing cues the plain swing
+		const s = solo();
+		const fm = new AudioCueMapper((id) => id !== SFX.playerFinisher);
+		fm.frame(0, noEvents(), NO_FX, s, 0, new AudioCueList());
+		const e = noEvents();
+		e.meleeSwings = 1;
+		weaponsAt(s, 0).swingTick = 30;
+		slotOf(s, 0, SWORD.id).v[SWORD_V_LAST] = SWORD_FINISHER;
+		expect(ids(fm, 1, e, NO_FX, s)).toEqual([SFX.playerSwing]);
+		// no clip at all: nothing
+		const none = new AudioCueMapper(() => false);
+		none.frame(0, noEvents(), NO_FX, s, 0, new AudioCueList());
+		weaponsAt(s, 0).swingTick = 60;
+		expect(ids(none, 1, e, NO_FX, s)).toEqual([]);
+		expect(none.resolve(SFX.uiBack)).toBe(undefined);
 	});
 });
 

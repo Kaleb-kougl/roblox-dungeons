@@ -1048,14 +1048,17 @@ function fxLayoutModule(atlas, fxLayouts, ambientLayouts) {
 /** Builds the effects atlas and the ambient textures; emits their PNGs and contact sheets. Returns what main prints. */
 function buildEffects(config, emit, builtFiles, contactFiles) {
 	if (!config.fx && !config.ambient) return undefined;
+	// A config with ambient textures but no `fx` section has no effects atlas: an empty file name (no ID ever pairs
+	// with it, so the pack has no fx entries).
 	const pad = config.fx ? config.fx.pad : 0;
+	const atlasFile = config.fx ? `${config.fx.atlas}.png` : "";
 	const sets = fxIds(config).map((id) => buildFxSet(id, config.fx.sets[id], pad));
 	const fxLayouts = {};
-	let atlas = { file: `${config.fx.atlas}.png`, w: 0, h: 0 };
+	let atlas = { file: atlasFile, w: 0, h: 0 };
 	let packed;
 	if (sets.length > 0) {
 		packed = packFx(sets);
-		atlas = { file: `${config.fx.atlas}.png`, w: packed.w, h: packed.h };
+		atlas = { file: atlasFile, w: packed.w, h: packed.h };
 		emit(BUILD, atlas.file, packed.img, builtFiles);
 		for (const p of [...packed.placed].sort((a, b) => (a.s.id < b.s.id ? -1 : 1))) {
 			const l = fxLayoutOf(p);

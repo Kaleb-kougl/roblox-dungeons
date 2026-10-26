@@ -4,7 +4,7 @@ import { RunService, Workspace } from "@rbxts/services";
 import { CAMERA_YAW_DEG, STUDS_PER_TILE } from "shared/config";
 import { FX_IDS, type FxId, type FxSprite, type ThemePack } from "shared/theme";
 import { RENDER_ORDER, degToRad, floorImageSize, floorStudsY, spriteBillboard, studsX, studsZ } from "shared/view";
-import { FX_SPRITE_MAX_TILES, FX_SPRITE_VIEW, FX_VIEW, FxCueMapper } from "shared/view/fx";
+import { FX_SPRITE_MAX_TILES, FX_SPRITE_VIEW, FX_VIEW, FxCueMapper, type FxCueFrame } from "shared/view/fx";
 import { SimController } from "../game/SimController";
 import { ThemeController } from "../game/ThemeController";
 import { DecorController } from "../render/DecorController";
@@ -19,6 +19,8 @@ const HIDDEN = 1;
 const CENTRE = new Vector2(0.5, 0.5);
 const LIT = 1;
 const SELF_LIT = 0;
+
+type Mutable<T> = { -readonly [K in keyof T]: T[K] };
 
 /**
  * One pooled effect: an invisible anchor Part carrying a floor SurfaceGui (FX_SPRITE_VIEW.placement "floor") or a
@@ -75,6 +77,8 @@ export class FxSpriteController implements OnStart {
 	private readonly moveParts = new Array<BasePart>();
 	private readonly moveCFrames = new Array<CFrame>();
 	private clock = 0;
+	/** The mapper's frame input, refilled every frame (no allocation per frame). */
+	private cueFrame: Mutable<FxCueFrame> | undefined;
 
 	constructor(
 		private readonly sim: SimController,
@@ -123,15 +127,28 @@ export class FxSpriteController implements OnStart {
 		const paused = ctx.live?.isPaused() === true || this.sim.isFrozen();
 		const dt = paused ? 0 : math.min(math.max(rawDt, 0), V.maxFrameDt) * this.sim.hitstop.timeScale();
 		this.clock += dt;
-		const n = mapper.frame({
-			now: this.clock,
-			state: ctx.run.state,
-			alpha: ctx.run.getAlpha(),
-			events: ctx.run.frameEvents,
-			fx: this.fx.tracker.events,
-			settings: this.fx.settings(),
-			spots: this.decor.getScene(),
-		});
+		let f = this.cueFrame;
+		if (f === undefined) {
+			f = {
+				now: this.clock,
+				state: ctx.run.state,
+				alpha: ctx.run.getAlpha(),
+				events: ctx.run.frameEvents,
+				fx: this.fx.tracker.events,
+				settings: this.fx.settings(),
+				spots: this.decor.getScene(),
+			};
+			this.cueFrame = f;
+		} else {
+			f.now = this.clock;
+			f.state = ctx.run.state;
+			f.alpha = ctx.run.getAlpha();
+			f.events = ctx.run.frameEvents;
+			f.fx = this.fx.tracker.events;
+			f.settings = this.fx.settings();
+			f.spots = this.decor.getScene();
+		}
+		const n = mapper.frame(f);
 		if (mapper.dropAll) this.parkAll();
 		for (let i = 0; i < n; i++) {
 			const c = mapper.cues.at(i);

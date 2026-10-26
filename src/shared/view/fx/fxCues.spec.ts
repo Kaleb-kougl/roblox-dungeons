@@ -27,6 +27,7 @@ import {
 	createSimState,
 	stepRecorded,
 	weaponIndex,
+	weaponsAt,
 	type SimState,
 } from "shared/sim";
 import { defaultJuiceSettings, type JuiceSettings } from "shared/settings";
@@ -477,6 +478,43 @@ describe("FxCueMapper sources (synthetic)", () => {
 		expect(step(8, 3, 1.02)).toBe(0); // deflect inside guardMinSec of the raise
 		expect(step(7, 3, 1 + 2 * FX_SPRITE_VIEW.guardMinSec)).toBe(1);
 		expect(step(0, 3, 2)).toBe(0);
+	});
+
+	it("co-op: a deflect re-flashes the shield only on the one player who could have made it", () => {
+		const state = createSimState(1, 0, 0, { party: { size: 2 } });
+		const mapper = new FxCueMapper(everyArt);
+		mapper.frame({ now: 0, state, alpha: 1, events: NO_EVENTS, fx: new Events(), settings });
+		const guard0 = weaponsAt(state, 0).sets[0];
+		const guard1 = weaponsAt(state, 1).sets[0];
+		const shields = (now: number, deleted: number): number => {
+			state.tick += 1;
+			mapper.frame({ now, state, alpha: 1, events: { bulletsDeleted: deleted }, fx: new Events(), settings });
+			let n = 0;
+			for (let i = 0; i < mapper.cues.count(); i++) if (mapper.cues.at(i).id === "fx.guard.shield") n++;
+			return n;
+		};
+		const gap = 2 * FX_SPRITE_VIEW.guardMinSec;
+		// both raise their guards: one shield each
+		guard0.v[SWORD_V_GUARD] = 10;
+		guard1.v[SWORD_V_GUARD] = 10;
+		expect(shields(1, 0)).toBe(2);
+		// both up: the summed deletes could be either player's, so neither re-flashes
+		expect(shields(1 + gap, 3)).toBe(0);
+		// player 1's guard just dropped: it was up last frame, still ambiguous
+		guard1.v[SWORD_V_GUARD] = 0;
+		expect(shields(1 + 2 * gap, 3)).toBe(0);
+		// now only player 0 could have deleted them
+		expect(shields(1 + 3 * gap, 3)).toBe(1);
+		// player 1 swings (swings delete bullets too): ambiguous again; the swing has its own effect
+		weaponsAt(state, 1).swingTick = state.tick + 1;
+		expect(shields(1 + 4 * gap, 3)).toBe(0);
+		expect(mapper.cues.count()).toBe(1);
+		expect(shields(1 + 5 * gap, 3)).toBe(1);
+		// a teammate alone behind a guard gets the re-flash too (no one else could have)
+		guard0.v[SWORD_V_GUARD] = 0;
+		guard1.v[SWORD_V_GUARD] = 10;
+		expect(shields(1 + 6 * gap, 0)).toBe(1); // the raise
+		expect(shields(1 + 7 * gap, 3)).toBe(1);
 	});
 
 	it("flask, Ember and roll from the player's counters", () => {
