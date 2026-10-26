@@ -24,6 +24,7 @@ const HIDDEN = 1;
  * facing (and tumble while rolling), which would drag the billboard. The billboard's StudsOffset (camera space) puts
  * the set's pivot pixel on the feet. `layout` sizes the billboard (default: the set's own frame size, pivot and
  * pixelsPerTile); breakables pass one scaled down to their height cap (shared/view breakableArtLayout).
+ * `extraDepthStuds` pushes the billboard further toward the camera (decor wall pieces: off their wall face).
  */
 export class SpriteView {
 	readonly anchor: Part;
@@ -39,7 +40,7 @@ export class SpriteView {
 	private transparency = 0;
 	private visible = true;
 
-	constructor(readonly set: SpriteSet, parent: Instance, layout: SpriteLayout = set) {
+	constructor(readonly set: SpriteSet, parent: Instance, layout: SpriteLayout = set, extraDepthStuds = 0) {
 		const anchor = renderPart("Part", false);
 		anchor.Name = `${set.id}.anchor`;
 		anchor.Transparency = HIDDEN;
@@ -50,7 +51,7 @@ export class SpriteView {
 		const gui = new Instance("BillboardGui");
 		gui.Name = set.id;
 		gui.Size = new UDim2(b.w, 0, b.h, 0);
-		gui.StudsOffset = new Vector3(b.offsetX, b.offsetY, b.offsetZ);
+		gui.StudsOffset = new Vector3(b.offsetX, b.offsetY, b.offsetZ + extraDepthStuds);
 		gui.LightInfluence = 0;
 		gui.AlwaysOnTop = false;
 		gui.ResetOnSpawn = false;
