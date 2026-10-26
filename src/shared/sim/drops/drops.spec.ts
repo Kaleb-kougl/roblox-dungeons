@@ -1,10 +1,11 @@
 // Boost drops in the sim (docs/BOOSTS.md B1 / B2): the opt-in state and its "drops" hash group (appended last, dump
 // names, clone, party size), the drop stream (its own: state.rngState and boon offers untouched), the draws per case,
-// eligibility (turrets, the training dummy, bosses and the boss room never roll), pity at exactly pityKills, the
-// ground cap, the kind weights, stepDrops (pickups by slot then player index, on the landing tick, never by the dead;
-// expiry at groundTicks; refresh; timers; a draft freezes everything; floor change; death / forfeit / leave clears),
-// DEBUG_DROP_BUTTON, the tutorial's guarantee, co-op picker only, and a replay. Measured in an open endless ARENA (a
-// hand-made EndlessFloorWorld like progression.spec.ts's: the greybox bounds, a combat room and a boss room).
+// eligibility (turrets, the training dummy, bosses, the boss room and any kill during a boss fight never roll), pity at
+// exactly pityKills, the ground cap, the kind weights, stepDrops (pickups by slot then player index, on the landing
+// tick, never by the dead; expiry at groundTicks; refresh; timers; a draft freezes everything; floor change; death /
+// forfeit / leave clears), DEBUG_DROP_BUTTON, the tutorial's guarantee, co-op picker only, and a replay. Measured in an
+// open endless ARENA (a hand-made EndlessFloorWorld like progression.spec.ts's: the greybox bounds, a combat room and a
+// boss room).
 import { describe, expect, it } from "@rbxts/jest-globals";
 import "shared/sim/testing";
 import {
@@ -14,7 +15,9 @@ import {
 	BOOST_COUNT,
 	BOOST_TOTAL_WEIGHT,
 	BOSS_ACT1_ID,
+	BOSS_DEMONLORD_ID,
 	BREAKABLES_CONFIG,
+	BossFightState,
 	BREAKABLES_SUBSYSTEM,
 	Boost,
 	Button,
@@ -42,6 +45,7 @@ import {
 	SimCtx,
 	activeBoosts,
 	aegisPips,
+	archetypeIndex,
 	boostTicks,
 	boostTicksLeft,
 	cloneSimState,
@@ -124,10 +128,14 @@ function arenaWorld(floor: number): EndlessFloorWorld {
 	return w;
 }
 
-/** The same arena as a boss floor: Mother Bramble spawns in the boss room (never stepped by killAt). */
-const bossArenaWorlds = new Map<number, EndlessFloorWorld>();
-function bossArenaWorld(floor: number): EndlessFloorWorld {
-	let w = bossArenaWorlds.get(floor);
+/**
+ * The same arena as a boss floor: `bossKind` (Mother Bramble unless given) spawns in the boss room (never stepped by
+ * killAt).
+ */
+const bossArenaWorlds = new Map<string, EndlessFloorWorld>();
+function bossArenaWorld(floor: number, bossKind: string = BOSS_ACT1_ID): EndlessFloorWorld {
+	const key = `${bossKind}@${floor}`;
+	let w = bossArenaWorlds.get(key);
 	if (w === undefined) {
 		const base = arenaWorld(floor);
 		w = {
@@ -136,18 +144,18 @@ function bossArenaWorld(floor: number): EndlessFloorWorld {
 				...base.config,
 				encounter: {
 					...base.config.encounter!,
-					spawns: [{ kind: BOSS_ACT1_ID, x: BOSS_ROOM.cx, z: BOSS_ROOM.cz }],
+					spawns: [{ kind: bossKind, x: BOSS_ROOM.cx, z: BOSS_ROOM.cz }],
 				},
 			},
 			bossFloor: true,
 		};
-		bossArenaWorlds.set(floor, w);
+		bossArenaWorlds.set(key, w);
 	}
 	return w;
 }
 
-function bossArena(drops: DropsConfig): SimConfig {
-	return { endless: { runSeed: SEED, worldForFloor: bossArenaWorld }, drops };
+function bossArena(drops: DropsConfig, bossKind: string = BOSS_ACT1_ID): SimConfig {
+	return { endless: { runSeed: SEED, worldForFloor: (floor) => bossArenaWorld(floor, bossKind) }, drops };
 }
 
 function arena(drops: DropsConfig | undefined, extra: Partial<SimConfig> = {}): SimConfig {
@@ -416,6 +424,36 @@ describe("drops: eligibility, pity, the cap", () => {
 		expect([d.rngState, d.killsSinceDrop, occupied(s)]).toEqual([dropsSeedState(SEED), 0, 0]);
 		killAt(s, config, TEST_DUMMY, BOSS_ROOM.maxX + 0.5, BOSS_ROOM.cz); // just outside: rolls
 		expect(occupied(s)).toBe(1);
+	});
+
+	it("while the boss fight is on no kill rolls, even outside the boss room (an add pushed out through a doorway)", () => {
+		// The Demon Lord summons wherever his hunt took him (DEMONLORD_SUMMON.arenaMargin): an add can land outside the
+		// boss room's bounds. Every player is sealed in the arena while the fight is on, so no kill then rolls.
+		for (const bossKind of [BOSS_ACT1_ID, BOSS_DEMONLORD_ID]) {
+			const config = bossArena({ ...ALWAYS, pityKills: 1 }, bossKind);
+			const s = fresh(config);
+			const d = s.drops!;
+			const boss = s.combat.actors.find((a) => a.kind === archetypeIndex(bossKind) && a.alive !== 0)!;
+			expect([bossKind, boss !== undefined]).toEqual([bossKind, true]);
+			boss.aiState = BossFightState.ACTIVE;
+			killAt(s, config, "swarmer", BOSS_ROOM.maxX + 0.5, BOSS_ROOM.cz);
+			killAt(s, config, TEST_DUMMY, 4, 4);
+			expect([bossKind, d.rngState, d.killsSinceDrop, occupied(s)]).toEqual([
+				bossKind,
+				dropsSeedState(SEED),
+				0,
+				0,
+			]);
+			// Dormant (not engaged yet): kills outside the boss room roll again.
+			boss.aiState = BossFightState.DORMANT;
+			killAt(s, config, "swarmer", BOSS_ROOM.maxX + 0.5, BOSS_ROOM.cz);
+			expect([bossKind, occupied(s)]).toEqual([bossKind, 1]);
+			// Engaged but dead (the fight is over): they roll too.
+			boss.aiState = BossFightState.ACTIVE;
+			boss.alive = 0;
+			killAt(s, config, "swarmer", BOSS_ROOM.maxX + 0.5, BOSS_ROOM.cz);
+			expect([bossKind, occupied(s)]).toEqual([bossKind, 2]);
+		}
 	});
 
 	it("on a floor without a boss the boss-type room is just the stairwell room: kills there roll", () => {

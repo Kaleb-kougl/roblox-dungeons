@@ -137,7 +137,8 @@ Decision log (deviations from `PLAN.md`):
 - **Boost drops (docs/BOOSTS.md).** `SimConfig.drops` (endless: `DROPS_CONFIG`; tutorial: `guaranteedDropsConfig`,
   a Fury on combat B's last kill) adds `state.drops` with its own `drops` hash group appended after `breakables`
   (last) and its OWN rng stream (`seed ^ DROPS.salt`), so no main-stream draw moves. Kills roll in `killActor`
-  (never turrets, the dummy, the boss, or a boss floor's boss room); pickups are the first living player (index order)
+  (never turrets, the dummy, the boss, a boss floor's boss room, or any kill while a boss fight is on: the Demon Lord's
+  adds can land outside the room's bounds); pickups are the first living player (index order)
   in range; Fury / Frenzy go through `playerHitDamage` / `attackTicks` (Frenzy as one integer percent with Swift
   Strikes), Quickstep scales the walk, Aegis is a pip in `state.drops` taken before armor. A port input bit
   `DEBUG_DROP_BUTTON` (32768, key M, KV_Debug only) joins `PORT_BUTTONS`. Theme: `boost.<kind>` (required, placeholder

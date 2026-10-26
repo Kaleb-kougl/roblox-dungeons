@@ -326,7 +326,11 @@ read helpers, hash), `boostMods.ts` (the effect reads, a leaf), specs `drops.spe
 - **P4. Floor change clears ground drops, keeps running boosts; death clears boosts** [B2].
 - **P5. No drops in boss rooms on boss floors** (no summon farming, the fight is about patterns) [B2]. As built: the
   rule applies only when the floor's encounter spawns a boss; on other floors the "boss"-type room is just the
-  stairwell room, and kills there roll like anywhere else.
+  stairwell room, and kills there roll like anywhere else. Merged with the Demon Lord (docs/BOSS_DEMONLORD.md): on a
+  boss floor no kill rolls while the boss fight is on (a live `data.boss` actor engaged, `bossEngaged`), wherever the
+  victim stood. The Demon Lord summons where his hunt took him (`DEMONLORD_SUMMON.arenaMargin`), so an add can land
+  outside the boss room's bounds, in a doorway's corridor, where the room rule alone would let it roll. Every player is
+  sealed in the arena during the fight, so this only removes kills the room rule was meant to cover.
 - **P6. Pickups score nothing and do not feed the combo** [B2].
 - **P7. Quickstep walk only; the roll is unchanged** [B3].
 - **P8. Tutorial: a guaranteed Fury in combat B and a callout, not a new funnel step.** A real step would renumber
