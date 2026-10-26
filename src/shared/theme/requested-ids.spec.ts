@@ -9,7 +9,17 @@
 // (weapon.sword, weapon.bow, boss.act1), particleColorRole(spriteId) (enemy roles), and biome.nameKey
 // for BIOMES. The source never calls theme.sound(); the audio events are covered by REQUIRED_ASSET_IDS.
 import { describe, expect, it } from "@rbxts/jest-globals";
-import { BIOMES } from "./contract";
+import {
+	BIOMES,
+	BREAKABLE_AUDIO_EVENTS,
+	BREAKABLE_KINDS,
+	BREAKABLE_ROLES,
+	DECOR_FX_NAMES,
+	DECOR_FX_ROLES,
+	DECOR_KINDS,
+	breakableId,
+	decorFxId,
+} from "./contract";
 import { ThemePack } from "./pack";
 import { PLACEHOLDER_MANIFEST } from "./packs/placeholder";
 import { PLACEHOLDER_VISUALS } from "./placeholders";
@@ -153,6 +163,49 @@ describe("IDs the web build's code requests", () => {
 				pack.has(biome.tiles.floor),
 				pack.has(biome.tiles.wall),
 			]).toEqual([b.id, true, true, true]);
+		}
+		expect(warnings).toEqual([]);
+	});
+});
+
+// Roblox port (docs/DECOR.md R2, R9, R13): what the decor and breakable renderers will ask for. Breakables are required
+// (asset, role, name, sounds); decor is optional, so asking for any decor piece, effect or ambient texture the pack
+// lacks must never warn.
+describe("IDs the port's decor and breakable renderers request", () => {
+	const warnings = new Array<string>();
+	const pack = new ThemePack(PLACEHOLDER_MANIFEST, { warn: (m) => warnings.push(m) });
+
+	it("every breakable kind resolves: placeholder art, colour role, name and silent sounds", () => {
+		for (const kind of BREAKABLE_KINDS) {
+			const id = breakableId(kind);
+			expect([id, pack.has(id), PLACEHOLDER_VISUALS[id] !== undefined]).toEqual([id, true, true]);
+			pack.breakable(kind);
+			pack.placeholder(id);
+			expect([id, pack.hasString(`${id}.name`)]).toEqual([id, true]);
+		}
+		for (const id of BREAKABLE_AUDIO_EVENTS) {
+			expect([id, pack.has(id)]).toEqual([id, true]);
+			pack.sound(id);
+		}
+		expect(warnings).toEqual([]);
+	});
+
+	it("every decor fx and breakable colour role is filled", () => {
+		for (const r of [...DECOR_FX_ROLES, ...BREAKABLE_ROLES]) {
+			pack.color(r);
+		}
+		expect(warnings).toEqual([]);
+	});
+
+	it("asking for decor the pack has no art for draws nothing and never warns", () => {
+		for (const b of BIOMES) {
+			for (const kind of DECOR_KINDS) {
+				expect(pack.decorVariants(b.id, kind).size()).toBe(0);
+			}
+			expect(pack.ambient(b.id)).toBe(undefined);
+		}
+		for (const name of DECOR_FX_NAMES) {
+			expect(pack.decor(decorFxId(name))).toBe(undefined);
 		}
 		expect(warnings).toEqual([]);
 	});

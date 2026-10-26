@@ -129,6 +129,25 @@ describe("PLACEHOLDER_VISUALS", () => {
 		expect(v["tile.biome.3.wall"].color).toEqual({ kind: "biome", biome: "biome.3", surface: "wall" });
 		expect(v["tile.biome.3.wall"].size).toEqual([s(16), s(16), s(16)]);
 		expect(v["tile.biome.3.floor"].size[1]).toBeLessThan(v["tile.biome.3.floor"].size[0]);
+		// breakables (the port's barrel / crate) = low boxes on their tile in their own roles, under a wall's height
+		expect(v["breakable.crate"]).toMatchObject({
+			shape: "Block",
+			color: { kind: "role", role: "breakable.crate" },
+			anchor: "base",
+			faces: false,
+		});
+		expect(v["breakable.crate"].size).toEqual([s(16), s(8), s(16)]);
+		expect(v["breakable.barrel"]).toMatchObject({
+			shape: "Block",
+			color: { kind: "role", role: "breakable.barrel" },
+		});
+		expect(v["breakable.barrel"].size).toEqual([s(14), s(10), s(14)]);
+		for (const id of ["breakable.crate", "breakable.barrel"]) {
+			expect([id, v[id].size[1] < v["tile.biome.1.wall"].size[1]]).toEqual([id, true]);
+			expect([id, v[id].size[1] < v[id].size[0]]).toEqual([id, true]);
+		}
+		expect(PLACEHOLDER_MANIFEST.strings["breakable.barrel.name"]).toBe("Barrel");
+		expect(PLACEHOLDER_MANIFEST.strings["breakable.crate.name"]).toBe("Crate");
 		// telegraph = dashed line in the telegraph role
 		expect(TELEGRAPH_VISUAL.color).toEqual({ kind: "role", role: "telegraph" });
 		expect(TELEGRAPH_VISUAL.dash).toBeDefined();
@@ -139,6 +158,9 @@ describe("PLACEHOLDER_VISUALS", () => {
 		expect(placeholderVisualFor("bullet.player.pierce")?.color).toEqual({ kind: "role", role: "playerBullet" });
 		expect(placeholderVisualFor("item.weapon.axe")?.shape).toBe("Block");
 		expect(placeholderVisualFor("weapon.sword")).toBeUndefined();
+		expect(placeholderVisualFor("breakable.urn")).toEqual(PLACEHOLDER_VISUALS["breakable.crate"]);
+		// decor is optional art: no placeholder, nothing is drawn
+		expect(placeholderVisualFor("decor.delve.b1.pillar")).toBeUndefined();
 	});
 
 	it("resolves every placeholder colour in the placeholder pack without a warning", () => {

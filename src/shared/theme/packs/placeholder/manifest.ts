@@ -4,7 +4,8 @@
  *
  * Ported from project-kaleb-vale `src/theme/packs/placeholder/manifest.json` @ 42897e2: same colors,
  * biomes, strings and asset IDs; every `generated` asset became `{ kind: "placeholder" }` (its shape and
- * colour now live in PLACEHOLDER_VISUALS) and every `silent` one stayed silent.
+ * colour now live in PLACEHOLDER_VISUALS) and every `silent` one stayed silent. Roblox-port additions are marked
+ * (enemy.dummy, the port sfx, breakables and the decor fx colour roles; no decor art: decor is optional).
  *
  * To replace art or audio later, change an entry's kind and paste the uploaded asset ID, e.g.
  *   "enemy.sniper": { kind: "spritesheet", assetId: "rbxassetid://<n>", frameW: 16, frameH: 16, pivot: { x: 8, y: 15 }, animations: { ... } },
@@ -65,6 +66,18 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		damageHeavy: "#ffd23f",
 		damageCapped: "#a9b4c8",
 		particleSpark: "#ffb347",
+		// Roblox port (docs/DECOR.md): decor fx tints (the Forge themes' flame / particle colours) and breakables.
+		"decor.fx.flame": "#ffa640",
+		"decor.fx.glow": "#ffd9a0",
+		"decor.fx.glint": "#e8f6ff",
+		"decor.fx.zone": "#7fd6ff",
+		"decor.fx.ambient.b1": "#aab4cc",
+		"decor.fx.ambient.b2": "#ffa050",
+		"decor.fx.ambient.b3": "#dff0ff",
+		"decor.fx.ambient.b4": "#9fe66a",
+		"decor.fx.ambient.b5": "#8fe6b8",
+		"breakable.barrel": "#5a3a1e",
+		"breakable.crate": "#533d1e",
 	},
 	biomes: {
 		"biome.1": {
@@ -153,6 +166,10 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		"ui.icon.mana": PLACEHOLDER,
 		"ui.icon.ember": PLACEHOLDER,
 		"ui.font.digits": PLACEHOLDER,
+		// Roblox port (docs/DECOR.md D4): breakable clutter, a low box each until art exists. No decor.* entries: decor
+		// is optional and this pack draws none.
+		"breakable.barrel": PLACEHOLDER,
+		"breakable.crate": PLACEHOLDER,
 		"sfx.player.shoot": SILENT,
 		"sfx.player.roll": SILENT,
 		"sfx.player.hurt": SILENT,
@@ -174,6 +191,8 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		"sfx.enemy.telegraph": SILENT,
 		"sfx.boss.death": SILENT,
 		"sfx.victory": SILENT,
+		"sfx.breakable.hit": SILENT,
+		"sfx.breakable.break": SILENT,
 		"music.menu": SILENT,
 		"music.biome.1": SILENT,
 		"music.biome.2": SILENT,
@@ -197,6 +216,8 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		"enemy.caster.name": "Caster",
 		"enemy.summoner.name": "Summoner",
 		"enemy.dummy.name": "Training Dummy",
+		"breakable.barrel.name": "Barrel",
+		"breakable.crate.name": "Crate",
 		"boss.1.name": "Act I Boss",
 		"boss.2.name": "Act II Boss",
 		"boss.3.name": "Act III Boss",

@@ -50,6 +50,12 @@ Decision log (deviations from `PLAN.md`):
   index 7 (`shared/sim/combat/actors/registry.ts`).
 - **`enemy.dummy`.** The theme contract's `ENEMY_ARCHETYPES` gained `dummy` after the web build's six: every pack
   must fill `enemy.dummy` (asset and colour role) and `enemy.dummy.name` (placeholder: a post).
+- **Decor and breakables in the theme (docs/DECOR.md R2, R13).** Two port slots. `decor.*` is optional (no
+  placeholder kind; `decor.delve.b<n>.<kind>[.<v>]` with a lowercase kind segment, `decor.fx.<name>`,
+  `decor.fx.ambient.b<n>`; free-size art with `layer` / `pivot` / `glow` / `emissive`), rebuilt from the plan since the
+  web DECOR source was not at hand. `breakable.*` is required: every pack fills `breakable.barrel` / `breakable.crate`
+  (asset, colour role, `.name`; placeholder: low boxes), `sfx.breakable.hit` / `sfx.breakable.break`, and the
+  `decor.fx.*` colour roles, which the validator keeps >= 40 CIE76 Delta E from the enemy-bullet roles.
 - **Tutorial (docs/TUTORIAL.md).** `SimConfig.tutorial` is an opt-in harmless mode (hits land but never cost hearts or
   armor, optional wounded start) with its own `tutorial` hash group appended after `party`; without it nothing
   changes and every fixture matches. The `tutorial` world is registered for the client's local build only: the server

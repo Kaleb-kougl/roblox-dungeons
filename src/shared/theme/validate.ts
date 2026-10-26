@@ -9,14 +9,26 @@
  * (`assetId` must be "rbxassetid://<digits>"), and the `generated` kind's shape/colour/facing
  * checks are gone with the kind (`placeholder` carries no data). Keys are visited in sorted order,
  * so messages come out in a stable order.
+ *
+ * Roblox port (docs/DECOR.md R2, D4): the decor slot (`decor.*`: ID grammar, layers per kind, world-art fields,
+ * ambient particle caps), the breakable slot (`breakable.*`), decor fx colour roles kept away from the enemy-bullet
+ * roles (CIE76 colour difference) and enemy bullets readable on breakables (WCAG contrast).
  */
 
-import { contrastRatio, isHexColor } from "./color";
+import { colorDifference, contrastRatio, isHexColor } from "./color";
 import {
 	BIOMES,
 	BIOME_MATERIALS,
 	BIOME_MATERIAL_SURFACES,
+	BREAKABLE_ROLES,
 	DAMAGE_NUMBER_ROLES,
+	DECOR,
+	DECOR_FX_ROLES,
+	DECOR_ID_FORMS,
+	DECOR_KIND_LAYERS,
+	DECOR_LAYERS,
+	DECOR_PARTICLE,
+	ENEMY_BULLET_ROLES,
 	DEFAULT_BIOME_MATERIAL,
 	DIGIT_FONT,
 	GAMEPLAY_KEY_WORDS,
@@ -24,6 +36,7 @@ import {
 	MAX_ANIMATION_FPS,
 	MAX_IMAGE_SIDE,
 	MIN_DAMAGE_NUMBER_CONTRAST,
+	MIN_DECOR_FX_BULLET_DIFFERENCE,
 	MIN_ENEMY_BULLET_CONTRAST,
 	MIN_HEALTH_BAR_CONTRAST,
 	REQUIRED_ASSET_IDS,
@@ -32,9 +45,12 @@ import {
 	SPRITE_RESAMPLE_MODES,
 	TILE,
 	UI,
+	WORLD_ART_SLOTS,
+	parseDecorId,
 	requiredAnimationList,
 	requiredBaseAnimations,
 	slotFor,
+	type DecorIdInfo,
 	type SlotContract,
 } from "./contract";
 import { templateProblem } from "./strings";
@@ -255,11 +271,83 @@ export function juiceContrastReport(manifest: unknown): Array<JuiceContrastEntry
 	return out;
 }
 
+/**
+ * Decor fx colours vs enemy bullets (docs/DECOR.md Phase 2 part 2): the CIE76 difference (`colorDifference`) of each
+ * DECOR_FX_ROLES colour from each ENEMY_BULLET_ROLES colour, >= MIN_DECOR_FX_BULLET_DIFFERENCE, so no flame, glow,
+ * glint, stairwell ring or ambient particle can be mistaken for an enemy bullet.
+ */
+export interface DecorFxEntry {
+	role: string;
+	color: string;
+	/** The enemy-bullet role it was compared with. */
+	against: string;
+	againstColor: string;
+	difference: number;
+	min: number;
+	ok: boolean;
+}
+
+export function decorFxReport(manifest: unknown): Array<DecorFxEntry> {
+	const out = new Array<DecorFxEntry>();
+	if (!isObj(manifest) || !isObj(manifest.colors)) {
+		return out;
+	}
+	const colors = manifest.colors;
+	for (const role of DECOR_FX_ROLES) {
+		const color = colors[role];
+		if (!isHexColor(color)) {
+			continue;
+		}
+		for (const against of ENEMY_BULLET_ROLES) {
+			const againstColor = colors[against];
+			if (!isHexColor(againstColor)) {
+				continue;
+			}
+			const difference = colorDifference(color, againstColor);
+			out.push({
+				role,
+				color,
+				against,
+				againstColor,
+				difference,
+				min: MIN_DECOR_FX_BULLET_DIFFERENCE,
+				ok: difference >= MIN_DECOR_FX_BULLET_DIFFERENCE,
+			});
+		}
+	}
+	return out;
+}
+
+/** WCAG contrast of enemyBullet on each breakable colour role (BREAKABLE_ROLES), >= MIN_ENEMY_BULLET_CONTRAST. */
+export interface BreakableContrastEntry {
+	role: string;
+	color: string;
+	ratio: number;
+	ok: boolean;
+}
+
+export function breakableContrastReport(manifest: unknown): Array<BreakableContrastEntry> {
+	const out = new Array<BreakableContrastEntry>();
+	if (!isObj(manifest) || !isObj(manifest.colors) || !isHexColor(manifest.colors.enemyBullet)) {
+		return out;
+	}
+	const bullet = manifest.colors.enemyBullet;
+	for (const role of BREAKABLE_ROLES) {
+		const color = manifest.colors[role];
+		if (!isHexColor(color)) {
+			continue;
+		}
+		const ratio = contrastRatio(bullet, color);
+		out.push({ role, color, ratio, ok: ratio >= MIN_ENEMY_BULLET_CONTRAST });
+	}
+	return out;
+}
+
 type Err = (path: ReadonlyArray<string>, msg: string) => void;
 type UnknownKeys = (obj: Obj, path: ReadonlyArray<string>, allowed: ReadonlyArray<string>) => void;
 
 const TOP_LEVEL_KEYS = ["format", "id", "name", "version", "colors", "biomes", "assets", "strings", "locales"];
-const SLOT_PREFIXES = "class., enemy., boss., bullet., tile., item., ui., sfx., music.";
+const SLOT_PREFIXES = "class., enemy., boss., bullet., tile., item., ui., sfx., music., decor., breakable.";
 
 function forgeSuffix(biome: string): string {
 	const forge = BIOMES.find((b) => b.id === biome)?.forgeTheme;
@@ -394,6 +482,10 @@ export function validateManifest(manifest: unknown, opts: ValidateOptions = {}):
 			err(path, `ID matches no slot (prefixes: ${SLOT_PREFIXES})`);
 			continue;
 		}
+		if (slot === DECOR && parseDecorId(assetId) === undefined) {
+			err(path, `unknown decor ID (use ${DECOR_ID_FORMS}; kinds: contract.ts DECOR_KINDS, lowercase)`);
+			continue;
+		}
 		validateAsset(def, path, slot, err, unknownKeys);
 	}
 
@@ -480,6 +572,28 @@ export function validateManifest(manifest: unknown, opts: ValidateOptions = {}):
 				c.color
 			} is ${fixed2(c.ratio)}:1, needs >= ${fixed1(MIN_ENEMY_BULLET_CONTRAST)}:1`,
 		);
+	}
+
+	// --- decor fx colours never read as enemy bullets; enemy bullets read on breakables ----------
+	for (const c of decorFxReport(manifest)) {
+		if (!c.ok) {
+			err(
+				["colors", c.role],
+				`colour difference: ${c.role} ${c.color} vs ${c.against} ${c.againstColor} is ${fixed1(
+					c.difference,
+				)} (CIE76), needs >= ${fixed1(c.min)}: decor fx must never read as an enemy bullet`,
+			);
+		}
+	}
+	for (const c of breakableContrastReport(manifest)) {
+		if (!c.ok) {
+			err(
+				["colors", c.role],
+				`contrast: enemyBullet ${tostring(colors.enemyBullet)} on ${c.role} ${c.color} is ${fixed2(
+					c.ratio,
+				)}:1, needs >= ${fixed1(MIN_ENEMY_BULLET_CONTRAST)}:1`,
+			);
+		}
 	}
 
 	// --- contrast: juice (health bars on their back plate, damage numbers on every biome floor) ---
@@ -599,13 +713,17 @@ function validateAsset(def: unknown, path: Array<string>, slot: SlotContract, er
 			break;
 		}
 		case "image": {
+			if (WORLD_ART_SLOTS.includes(slot)) {
+				validateWorldImage(def, path, slot, err, unknownKeys);
+				break;
+			}
 			unknownKeys(def, path, ["kind", "assetId", "w", "h", "tilesPerImage", "pivot"]);
 			checkAssetId();
 			const imagePivot = def.pivot;
 			if (imagePivot !== undefined) {
 				const pp = append(path, "pivot");
 				if (slot !== UI) {
-					err(pp, `only ui.* images have a pivot; slot "${slot.slot}" has none`);
+					err(pp, `only ui.*, decor.* and breakable.* images have a pivot; slot "${slot.slot}" has none`);
 				} else if (!isObj(imagePivot) || !isFiniteNumber(imagePivot.x) || !isFiniteNumber(imagePivot.y)) {
 					err(pp, 'must be { "x": number, "y": number } in pixels from the image top-left');
 				} else {
@@ -748,6 +866,170 @@ function validateAsset(def: unknown, path: Array<string>, slot: SlotContract, er
 	}
 }
 
+// ---------------------------------------------------------------------------------------------
+// World art (Roblox port, docs/DECOR.md R2 / R13): decor.* and breakable.* images and sprite sets
+
+/** Keys of a decor.* / breakable.* image (decor pieces and effects add DECOR_ART_KEYS). */
+const WORLD_IMAGE_KEYS = ["kind", "assetId", "w", "h", "rect", "pivot", "pixelsPerTile"];
+/** Keys of an ambient particle texture (decor.fx.ambient.*): a ParticleEmitter texture, no placement. */
+const AMBIENT_IMAGE_KEYS = ["kind", "assetId", "w", "h", "particle", "emissive"];
+const DECOR_LAYER_LIST = DECOR_LAYERS.map((l) => q(l)).join(" | ");
+
+/** The decor fields a decor asset may carry on top of its kind's keys: pieces have a layer, effects do not. */
+function decorArtKeys(info: DecorIdInfo): Array<string> {
+	switch (info.type) {
+		case "piece":
+			return ["layer", "glow", "glowAt", "emissive"];
+		case "fx":
+			return ["glow", "glowAt", "emissive"];
+		default:
+			return [];
+	}
+}
+
+type Box = { readonly w: number; readonly h: number };
+
+/** A point `{ x, y }` in pixels, inside `box` (`what`: "image", "rect" or "cell") when the box is known. */
+function checkPoint(
+	p: unknown,
+	pp: ReadonlyArray<string>,
+	box: Box | undefined,
+	what: string,
+	err: Err,
+	unknownKeys: UnknownKeys,
+) {
+	if (!isObj(p) || !isFiniteNumber(p.x) || !isFiniteNumber(p.y)) {
+		err(pp, `must be { "x": number, "y": number } in pixels from the ${what} top-left`);
+		return;
+	}
+	unknownKeys(p, pp, ["x", "y"]);
+	if (box !== undefined && (p.x < 0 || p.x > box.w || p.y < 0 || p.y > box.h)) {
+		err(pp, `(${p.x}, ${p.y}) is outside the ${box.w}x${box.h} ${what}`);
+	}
+}
+
+/**
+ * A decor.* / breakable.* image: an uploaded image up to MAX_IMAGE_SIDE, an optional `rect` inside it (the region
+ * drawn), an optional `pivot` inside the drawn region, `pixelsPerTile` > 0; decor IDs add their decor fields. An
+ * ambient particle texture (decor.fx.ambient.*) is only a texture plus its `particle` look.
+ */
+function validateWorldImage(def: Obj, path: Array<string>, slot: SlotContract, err: Err, unknownKeys: UnknownKeys) {
+	const info = slot === DECOR ? parseDecorId(path[1]) : undefined;
+	const ambient = info !== undefined && info.type === "ambient";
+	const keys = ambient
+		? AMBIENT_IMAGE_KEYS
+		: [...WORLD_IMAGE_KEYS, ...(info !== undefined ? decorArtKeys(info) : [])];
+	unknownKeys(def, path, keys);
+	checkAssetIdAt(def.assetId, append(path, "assetId"), err);
+	for (const k of ["w", "h"]) {
+		if (!isImageSide(def[k])) {
+			err(append(path, k), IMAGE_SIDE_MSG);
+		}
+	}
+	const sizeOk = isImageSide(def.w) && isImageSide(def.h);
+	if (ambient) {
+		validateParticle(def.particle, append(path, "particle"), err, unknownKeys);
+		if (def.emissive !== undefined && !typeIs(def.emissive, "boolean")) {
+			err(append(path, "emissive"), "must be true or false");
+		}
+		return;
+	}
+	let box: Box | undefined = sizeOk ? { w: def.w as number, h: def.h as number } : undefined;
+	let what = "image";
+	const rect = def.rect;
+	if (rect !== undefined) {
+		const rp = append(path, "rect");
+		what = "rect";
+		if (!isObj(rect) || !isNonNegInt(rect.x) || !isNonNegInt(rect.y) || !isPosInt(rect.w) || !isPosInt(rect.h)) {
+			err(rp, 'must be { "x": int >= 0, "y": int >= 0, "w": int >= 1, "h": int >= 1 } in pixels of the image');
+			box = undefined;
+		} else {
+			unknownKeys(rect, rp, ["x", "y", "w", "h"]);
+			if (sizeOk && (rect.x + rect.w > (def.w as number) || rect.y + rect.h > (def.h as number))) {
+				err(rp, `(${rect.x}, ${rect.y}) ${rect.w}x${rect.h} reaches outside the ${def.w}x${def.h} image`);
+				box = undefined;
+			} else {
+				box = { w: rect.w, h: rect.h };
+			}
+		}
+	}
+	if (def.pivot !== undefined) {
+		checkPoint(def.pivot, append(path, "pivot"), box, what, err, unknownKeys);
+	}
+	if (!isFiniteNumber(def.pixelsPerTile) || !(def.pixelsPerTile > 0)) {
+		err(append(path, "pixelsPerTile"), "must be a number > 0 (art pixels per world tile)");
+	}
+	if (info !== undefined) {
+		validateDecorFields(def, path, info, box, what, err, unknownKeys);
+	}
+}
+
+/**
+ * The decor fields of a decor piece or effect (image or sprite set): a piece's `layer` (required, one of the layers
+ * its kind allows: DECOR_KIND_LAYERS), `glow` / `emissive` booleans, `glowAt` only with `glow: true` and inside the
+ * drawn box.
+ */
+function validateDecorFields(
+	def: Obj,
+	path: Array<string>,
+	info: DecorIdInfo,
+	box: Box | undefined,
+	what: string,
+	err: Err,
+	unknownKeys: UnknownKeys,
+) {
+	if (info.type === "piece") {
+		const allowed = DECOR_KIND_LAYERS[info.kind] as ReadonlyArray<string>;
+		const lp = append(path, "layer");
+		const layer = def.layer;
+		if (layer === undefined) {
+			err(lp, `missing: a decor piece needs a layer (${q(info.kind)}: ${allowed.map((l) => q(l)).join(" | ")})`);
+		} else if (!typeIs(layer, "string") || !(DECOR_LAYERS as ReadonlyArray<string>).includes(layer)) {
+			err(lp, `must be ${DECOR_LAYER_LIST}, got ${describeValue(layer)}`);
+		} else if (!allowed.includes(layer)) {
+			err(lp, `${q(layer)} is not allowed for ${q(info.kind)} (allowed: ${allowed.join(", ")})`);
+		}
+	}
+	for (const k of ["glow", "emissive"]) {
+		if (def[k] !== undefined && !typeIs(def[k], "boolean")) {
+			err(append(path, k), "must be true or false");
+		}
+	}
+	if (def.glowAt !== undefined) {
+		const gp = append(path, "glowAt");
+		if (def.glow !== true) {
+			err(gp, "only a glowing piece (glow: true) has a glowAt");
+		}
+		checkPoint(def.glowAt, gp, box, what, err, unknownKeys);
+	}
+}
+
+/** An ambient particle's optional look: `sizeStuds` in (0, max], `transparency` in [min, 1] (DECOR_PARTICLE). */
+function validateParticle(p: unknown, pp: Array<string>, err: Err, unknownKeys: UnknownKeys) {
+	if (p === undefined) {
+		return;
+	}
+	if (!isObj(p)) {
+		err(pp, 'must be { "sizeStuds"?: number, "transparency"?: number }');
+		return;
+	}
+	unknownKeys(p, pp, ["sizeStuds", "transparency"]);
+	const size = p.sizeStuds;
+	if (size !== undefined && (!isFiniteNumber(size) || !(size > 0) || size > DECOR_PARTICLE.maxSizeStuds)) {
+		err(
+			append(pp, "sizeStuds"),
+			`must be a number in (0, ${DECOR_PARTICLE.maxSizeStuds}] (studs: ambient particles stay smaller than bullets)`,
+		);
+	}
+	const t = p.transparency;
+	if (t !== undefined && (!isFiniteNumber(t) || t < DECOR_PARTICLE.minTransparency || t > 1)) {
+		err(
+			append(pp, "transparency"),
+			`must be a number in [${DECOR_PARTICLE.minTransparency}, 1] (ambient particles stay fainter than bullets)`,
+		);
+	}
+}
+
 const SPRITE_SET_KEYS = [
 	"kind",
 	"frameW",
@@ -768,7 +1050,12 @@ const RESAMPLE_LIST = SPRITE_RESAMPLE_MODES.map((m) => q(m)).join(" | ");
  * animation references (all facings, all frames: `start + d * (stride ?? frames) + f`) must lie inside its sheet.
  */
 function validateSpriteSet(def: Obj, path: Array<string>, slot: SlotContract, err: Err, unknownKeys: UnknownKeys) {
-	unknownKeys(def, path, SPRITE_SET_KEYS);
+	const decor = slot === DECOR ? parseDecorId(path[1]) : undefined;
+	if (decor !== undefined && decor.type === "ambient") {
+		err(append(path, "kind"), 'decor.fx.ambient.* is a particle texture: kind "image", got "sprites"');
+		return;
+	}
+	unknownKeys(def, path, decor !== undefined ? [...SPRITE_SET_KEYS, ...decorArtKeys(decor)] : SPRITE_SET_KEYS);
 
 	// --- cell, pivot, density, resample -----------------------------------------------------------
 	const frameW = def.frameW;
@@ -794,6 +1081,10 @@ function validateSpriteSet(def: Obj, path: Array<string>, slot: SlotContract, er
 	}
 	if (!SPRITE_RESAMPLE_MODES.some((m) => m === def.resample)) {
 		err(append(path, "resample"), `must be ${RESAMPLE_LIST}, got ${describeValue(def.resample)}`);
+	}
+	if (decor !== undefined) {
+		const cell = cellOk ? { w: frameW as number, h: frameH as number } : undefined;
+		validateDecorFields(def, path, decor, cell, "cell", err, unknownKeys);
 	}
 
 	// --- facings ----------------------------------------------------------------------------------

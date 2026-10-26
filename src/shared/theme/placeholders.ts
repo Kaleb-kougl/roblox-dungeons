@@ -12,6 +12,9 @@
  * Colours are ROLES (or a biome surface), never literals, so a pack recolours placeholders too.
  * Sizes are presentation only: bullet and actor renderers scale to the gameplay radius, exactly
  * as the web build scales sprites, so nothing here can change difficulty.
+ *
+ * Decor (`decor.*`, docs/DECOR.md R2) has no placeholders: decor is optional, and an ID with no art is not drawn.
+ * Breakables (`breakable.*`) do: they are gameplay objects, drawn as low boxes until art exists.
  */
 
 import { PIXELS_PER_TILE, STUDS_PER_TILE } from "shared/config";
@@ -19,6 +22,7 @@ import {
 	BIOMES,
 	BOSS,
 	BOSS_IDS,
+	BREAKABLE_KINDS,
 	BULLET,
 	CHARACTER,
 	CLASS_IDS,
@@ -27,7 +31,9 @@ import {
 	ENEMY_ARCHETYPES,
 	ITEM,
 	TILE,
+	breakableId,
 	slotFor,
+	type BreakableKind,
 	type EnemyArchetype,
 } from "./contract";
 import type { BiomeTileKey, ColorRole } from "./types";
@@ -113,6 +119,13 @@ export const PLACEHOLDER_PROPORTIONS = {
 	wallTile: [1, 1, 1],
 	/** Loot on the floor: half the cell. */
 	item: [0.5, 0.5, 0.5],
+	/**
+	 * Breakables (docs/DECOR.md D4), on a 16 px tile footprint: low boxes, never taller than 5/8 of a tile, so nothing
+	 * hides behind one. Crate: fills its cell, half a tile tall (4 x 2 x 4 studs).
+	 */
+	crate: [1, 0.5, 1],
+	/** Barrel: a little narrower and taller than a crate (3.5 x 2.5 x 3.5 studs). */
+	barrel: [0.875, 0.625, 0.875],
 	/** UI: flat, as big as its pixel size. */
 	ui: [1, 1, 0],
 	/** Missing IDs: a block filling the cell. */
@@ -158,6 +171,8 @@ const BOSS_CELL = BOSS.cell as Cell;
 const BULLET_CELL = BULLET.cell as Cell;
 const TILE_CELL = TILE.cell as Cell;
 const ITEM_CELL = ITEM.cell as Cell;
+/** Breakables are free-size art; their placeholder stands on one tile. */
+const BREAKABLE_CELL = TILE_CELL;
 /** Free-size UI cells: the web placeholder pack's sizes, in pixels. */
 const UI_CELLS = {
 	cursor: { w: 9, h: 9 },
@@ -232,6 +247,14 @@ const tileVisual = (biome: string, surface: BiomeTileKey): PlaceholderVisual =>
 const itemVisual = (shape: PlaceholderShape, color: ColorRole): PlaceholderVisual =>
 	visual({ shape, cell: ITEM_CELL, proportions: PLACEHOLDER_PROPORTIONS.item, color: role(color) });
 
+const breakableVisual = (kind: BreakableKind): PlaceholderVisual =>
+	visual({
+		shape: "Block",
+		cell: BREAKABLE_CELL,
+		proportions: PLACEHOLDER_PROPORTIONS[kind],
+		color: role(breakableId(kind)),
+	});
+
 const uiVisual = (cell: Cell, color: ColorRole, outline?: ColorRole): PlaceholderVisual =>
 	visual({
 		shape: "Block",
@@ -292,6 +315,10 @@ function buildTable(): Record<string, PlaceholderVisual> {
 	t["ui.icon.ember"] = uiVisual(UI_CELLS.icon, "ember");
 	// The digit font: until a strip is uploaded the HUD draws numbers as text in the damage-number roles.
 	t["ui.font.digits"] = uiVisual(UI_CELLS.digits, "damageNumber");
+	// Breakables (Roblox port, docs/DECOR.md D4): a low box per kind in its identity colour, standing on its tile.
+	for (const kind of BREAKABLE_KINDS) {
+		t[breakableId(kind)] = breakableVisual(kind);
+	}
 	return t;
 }
 
@@ -319,6 +346,7 @@ export const PLACEHOLDER_PREFIX_DEFAULTS: ReadonlyArray<readonly [string, Placeh
 	],
 	["item.", itemVisual("Block", "rarity.normal")],
 	["ui.", uiVisual(UI_CELLS.icon, "uiText")],
+	["breakable.", breakableVisual("crate")],
 ];
 
 /** Telegraph lines (enemy attack warnings): a dashed line in the telegraph role, flat on the floor. */
