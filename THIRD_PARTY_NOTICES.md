@@ -53,3 +53,15 @@ SOFTWARE.
 - Raw files: `art/vendor/lords-of-pain-demo/` (gitignored, not redistributed)
 - License (`Licence.txt` in the pack): "This asset pack can be used in both free and commercial projects. You can
   modify it to suit your own needs. You may not redistribute or resell it." The store page adds "even if modified".
+
+## Ninja Adventure Asset Pack (FX and Audio folders)
+
+- Authors: Pixel-boy (art) and AAA (audio). Source: https://pixel-boy.itch.io/ninja-adventure-asset-pack
+- Used for: sprite effects (`fx.*`, decor ambient particle textures) and audio (`sfx.*`, `music.*`, `amb.*`), built
+  by `scripts/art/build-atlases.js` and `scripts/audio/build-audio.js`, uploaded to Roblox (docs/FX_AUDIO.md)
+- Raw files: `art/vendor/ninja-adventure/FX/` and `art/vendor/ninja-adventure/Audio/` (gitignored, like the other
+  packs; the licence would allow committing them, but they are 96 MB)
+- License: Creative Commons Zero (CC0 1.0, public domain dedication), per the store page (read 2026-10-26).
+  Attribution is not required but appreciated: "Ninja Adventure by Pixel-boy and AAA". The copy in this repo came
+  without a licence file and holds 41 music tracks where the store page lists 25 (a newer version): confirm the
+  download it came from before release (docs/FX_AUDIO.md X0).

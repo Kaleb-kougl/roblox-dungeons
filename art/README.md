@@ -9,6 +9,7 @@ licences forbid redistributing the raw files. See `THIRD_PARTY_NOTICES.md` and `
 |---|---|---|
 | `art/vendor/smallscale-knight/` | HD 8-Directional Top-Down Character Pack 1, free edition (Knight). Keep the download's layout: `Spritesheets/With shadows/*.png` | https://smallscaleint.itch.io/hd-8-directional-top-down-character-pack-1 |
 | `art/vendor/lords-of-pain-demo/` | Lords Of Pain - Old School Isometric Assets (DEMO). Unzip the contents (`enemy/`, `environment/`, ...) into the folder | https://trevor-pupkin.itch.io/lords-of-pain |
+| `art/vendor/ninja-adventure/` | Ninja Adventure Asset Pack (CC0): only its `FX/` and `Audio/` folders, with their original layout and casing (`FX/Attack/...`, `Audio/Sounds/...`, `Audio/Musics/...`, `Audio/Jingles/...`) | https://pixel-boy.itch.io/ninja-adventure-asset-pack |
 
 `art/vendor.lock.json` lists every source file the atlas pipeline reads, with its sha256; the pipeline refuses to
 run when a file is missing or different.
