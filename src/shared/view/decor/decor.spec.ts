@@ -1,11 +1,19 @@
-// The decor renderer's pure parts (docs/DECOR.md R3): screen helpers, decorHash, fade selection, glow points.
+// The decor renderer's pure parts (docs/DECOR.md R3): screen helpers, decorHash, fade selection, glow points, and the
+// drawn layouts held inside the footprint rule's boxes.
 import { describe, expect, it } from "@rbxts/jest-globals";
 import { buildEndlessFloor, generateDungeon, type Dungeon, type ForgeParams } from "shared/dungeon";
 import type { DecorArt } from "shared/theme";
 import {
+	DECOR_BOX,
 	DECOR_CAMERA,
+	DECOR_FX,
+	DECOR_REACT,
 	clipConvex,
 	convexHull,
+	decorFlameMaxGrow,
+	decorFxLayout,
+	decorPieceLayout,
+	fitArtLayout,
 	decorGlowOffset,
 	decorGlowPoint,
 	decorGlowPoints,
@@ -15,13 +23,18 @@ import {
 	groundAt,
 	insideBy,
 	planDecor,
+	rectFitScale,
 	rectOverlapsPolygon,
 	screenDepth,
 	screenX,
 	screenY,
 	selectDecorFades,
 	type DecorEntry,
+	type DecorPlan,
+	type ScreenPolygon,
+	type StandingKind,
 } from ".";
+import type { SpriteLayout } from "shared/view";
 
 describe("decor screen helpers", () => {
 	it("projects with the game camera: -X / -Z is farther and higher on screen", () => {
@@ -51,6 +64,19 @@ describe("decor screen helpers", () => {
 		const diamond = convexHull([0, 1, 1, 0, 2, 1, 1, 2]);
 		expect(rectOverlapsPolygon(diamond, 1.7, 1.7, 2, 2)).toBe(false); // bounds overlap, an edge separates
 	});
+
+	it("fits a rectangle around a point inside a convex polygon", () => {
+		const sq = convexHull([0, 0, 2, 0, 2, 2, 0, 2]);
+		// bottom centre, nothing below: fits whole, or scaled to the top edge
+		expect(rectFitScale(sq, 1, 0, 1, 1, 0, 2)).toBe(1);
+		expect(rectFitScale(sq, 1, 0, 1, 1, 0, 4)).toBe(0.5);
+		expect(rectFitScale(sq, 1, 0, 4, 1, 0, 1)).toBe(0.25);
+		// on the bottom edge, any reach below leaves no room; outside: none
+		expect(rectFitScale(sq, 1, 0, 1, 1, 0.1, 1)).toBe(0);
+		expect(rectFitScale(sq, 3, 1, 0.1, 0.1, 0.1, 0.1)).toBe(0);
+		// a diamond: the corners bind, not the bounds
+		expect(rectFitScale(diamondOf(), 1, 1, 1, 1, 1, 1)).toBeCloseTo(0.5, 12);
+	});
 });
 
 describe("decorHash", () => {
@@ -66,6 +92,10 @@ describe("decorHash", () => {
 		expect(math.abs(sum / 2000 - 0.5) < 0.05).toBe(true);
 	});
 });
+
+function diamondOf(): number[] {
+	return convexHull([0, 1, 1, 0, 2, 1, 1, 2]);
+}
 
 const dungeons = new Map<string, Dungeon>();
 function dungeonFor(params: ForgeParams): Dungeon {
@@ -137,5 +167,132 @@ describe("decor glow points", () => {
 			expect(p.roomId).toBe(plan.entries[p.entry].roomId);
 		}
 		expect(decorGlowPoints(plan, () => ({ ...art, glow: false })).size()).toBe(0);
+	});
+});
+
+/** True when `layout` drawn at `grow` with its pivot on screen (x, y) lies inside `poly` (a float hair of slack). */
+function drawnInside(poly: ScreenPolygon, x: number, y: number, layout: SpriteLayout, grow: number): boolean {
+	const s = grow / layout.pixelsPerTile;
+	const x0 = x - layout.pivot.x * s;
+	const x1 = x + (layout.frameW - layout.pivot.x) * s;
+	const y0 = y - (layout.frameH - layout.pivot.y) * s;
+	const y1 = y + layout.pivot.y * s;
+	const slack = -1e-9;
+	return (
+		insideBy(poly, x0, y0, slack) &&
+		insideBy(poly, x1, y0, slack) &&
+		insideBy(poly, x0, y1, slack) &&
+		insideBy(poly, x1, y1, slack)
+	);
+}
+
+describe("decor art held to DECOR_BOX", () => {
+	// Oversized art: 4 tiles wide, 8 tall at its own scale, a baked shadow hanging 8 px under the pivot.
+	const huge: SpriteLayout = { frameW: 64, frameH: 128, pivot: { x: 32, y: 120 }, pixelsPerTile: 16 };
+	// Small art standing on its bottom centre: fits every box as drawn.
+	const small: SpriteLayout = { frameW: 4, frameH: 6, pivot: { x: 2, y: 6 }, pixelsPerTile: 16 };
+	const plans: DecorPlan[] = [];
+	for (const [runSeed, floor] of [
+		[1, 2],
+		[3, 2],
+		[5, 5],
+		[7, 11],
+		[12, 3],
+	])
+		plans.push(planDecor(decorInputOfLayout(buildEndlessFloor(runSeed, floor, dungeonFor))));
+
+	it("keeps art that already fits, and scales / lifts art that does not", () => {
+		const box = convexHull([-1, 0, 1, 0, 1, 2, -1, 2]);
+		expect(fitArtLayout(small, box, 0, 0)).toBe(small);
+		const fit = fitArtLayout(huge, box, 0, 0)!;
+		expect(fit.pivot.y).toBe(huge.frameH); // lifted: nothing may hang under the pivot
+		expect(fit.pivot.x).toBe(huge.pivot.x);
+		expect(fit.frameW).toBe(huge.frameW);
+		expect(fit.pixelsPerTile).toBeCloseTo(64, 9); // 128 px into 2 tiles
+		expect(drawnInside(box, 0, 0, fit, 1)).toBe(true);
+		// room below the pivot: the authored pivot is kept and the art only scaled
+		const roomy = convexHull([-1, -1, 1, -1, 1, 2, -1, 2]);
+		const kept = fitArtLayout(huge, roomy, 0, 0)!;
+		expect(kept.pivot).toBe(huge.pivot);
+		expect(drawnInside(roomy, 0, 0, kept, 1)).toBe(true);
+		expect(fitArtLayout(huge, box, 5, 5)).toBeUndefined(); // the pivot outside the box
+	});
+
+	it("draws every standing piece of real floors inside its box (points and wall segments)", () => {
+		let standing = 0;
+		let segments = 0;
+		for (const plan of plans) {
+			plan.entries.forEach((e, i) => {
+				const layout = decorPieceLayout(plan, i, huge);
+				if (e.fade < 0) {
+					expect(layout).toBe(huge); // flat and wall pieces are not under the footprint rule
+					return;
+				}
+				standing++;
+				if (e.cells > 1) segments++;
+				expect(layout).toBeDefined();
+				const poly = plan.fadeBoxes[e.fade].polygon;
+				const x = screenX(DECOR_CAMERA, e.x, e.y, e.z);
+				const y = screenY(DECOR_CAMERA, e.x, e.y, e.z);
+				expect(drawnInside(poly, x, y, layout!, 1)).toBe(true);
+				if (e.cells === 1) {
+					// a point piece: within the box's own pixels (w centred, h above, nothing below)
+					const box = DECOR_BOX[e.kind as StandingKind];
+					const s = 16 / layout!.pixelsPerTile;
+					expect(layout!.frameW * s <= box.w + 1e-9).toBe(true);
+					expect(layout!.pivot.y * s <= box.h + 1e-9).toBe(true);
+					expect((layout!.frameH - layout!.pivot.y) * s <= box.below + 1e-9).toBe(true);
+				}
+				expect(decorPieceLayout(plan, i, small)).toBe(small);
+			});
+		}
+		expect(standing).toBeGreaterThan(0);
+		expect(segments).toBeGreaterThan(0);
+	});
+
+	it("holds flames at their largest growth and glows inside the piece's box", () => {
+		expect(decorFlameMaxGrow()).toBeCloseTo(DECOR_REACT.engagedFlameScale * (1 + DECOR_FX.flareGrow), 12);
+		// a centred flame bigger than any box, on a bowl 3 px under the top of the (huge) piece
+		const flame: SpriteLayout = { frameW: 48, frameH: 64, pivot: { x: 24, y: 32 }, pixelsPerTile: 16 };
+		const glowAt = { x: 32, y: 3 };
+		let checked = 0;
+		for (const plan of plans) {
+			plan.entries.forEach((e, i) => {
+				if (e.fade < 0) {
+					expect(decorFxLayout(plan, i, huge, glowAt, flame, decorFlameMaxGrow())).toBe(flame);
+					return;
+				}
+				const piece = decorPieceLayout(plan, i, huge)!;
+				const poly = plan.fadeBoxes[e.fade].polygon;
+				const art: DecorArt = {
+					id: "decor.delve.b1.brazier",
+					layer: "tall",
+					glow: true,
+					glowAt,
+					emissive: false,
+					art: {
+						kind: "image",
+						assetId: "test",
+						w: huge.frameW,
+						h: huge.frameH,
+						rect: { x: 0, y: 0, w: huge.frameW, h: huge.frameH },
+						pivot: huge.pivot,
+						pixelsPerTile: huge.pixelsPerTile,
+					},
+				};
+				// the glow point follows the drawn (fitted) piece, and lies inside its box
+				const g = decorGlowPoint(e, art, piece);
+				const gx = screenX(DECOR_CAMERA, g[0], g[1], g[2]);
+				const gy = screenY(DECOR_CAMERA, g[0], g[1], g[2]);
+				expect(insideBy(poly, gx, gy, -1e-9)).toBe(true);
+				for (const grow of [1, decorFlameMaxGrow()]) {
+					const fx = decorFxLayout(plan, i, piece, glowAt, flame, grow);
+					if (fx === undefined) continue;
+					expect(drawnInside(poly, gx, gy, fx, grow)).toBe(true);
+					checked++;
+				}
+			});
+		}
+		expect(checked).toBeGreaterThan(0);
 	});
 });

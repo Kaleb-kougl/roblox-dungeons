@@ -57,6 +57,8 @@ export const BREAKABLE_VIEW = {
 	/** The broken piece's flat decal (decor brokenBarrel / brokenCrate): a Part this thick, its top this far up, studs. */
 	debrisThicknessStuds: 0.05,
 	debrisLiftStuds: 0.03,
+	/** decorHash salt of the debris variant (no floor seed: by cell only), distinct from DECOR_SALT's. */
+	debrisSalt: 0x4cf5ad43,
 	/** Workspace folder of the pieces and decals. */
 	folderName: "KV_Breakables",
 	profileLabel: "KV Breakables",

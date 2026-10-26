@@ -14,7 +14,9 @@ import {
 	SPRITE_VIEW,
 	WALL_DEPTH_BIAS,
 	ambientEmitterSpec,
+	decorFlameMaxGrow,
 	decorFlickerScale,
+	decorFxLayout,
 	decorHash,
 	decorGlowPoint,
 	decorLoopFrame,
@@ -29,6 +31,7 @@ import {
 	type DecorEntry,
 	type DecorScene,
 	type DecorView,
+	type SpriteLayout,
 } from "shared/view";
 import { effectiveParticles, motionScale } from "shared/view/fx";
 import { FxTrackerController } from "../fx/FxTrackerController";
@@ -48,9 +51,6 @@ import { renderPart } from "./placeholders";
 const PARKED = new CFrame(BULLET_VIEW.parkedStuds[0], BULLET_VIEW.parkedStuds[1], BULLET_VIEW.parkedStuds[2]);
 const S = STUDS_PER_TILE;
 const HIDDEN = 1;
-/** Particle transparency keypoints: fade in over the first share of a life, out over the last. */
-const PARTICLE_FADE_IN = 0.2;
-const PARTICLE_FADE_OUT = 0.8;
 
 /** A looping effect billboard (flame, glow, glint) and how it animates. */
 interface FxBillboard {
@@ -72,6 +72,13 @@ interface DecorLight {
 	shown: number;
 }
 
+/** A flat effect (a boss-ring fire pit, the stairwell zone) and the ImageTransparency last written to it. */
+interface FlatFx {
+	readonly art: FloorArt;
+	/** Kept in float64: the property reads back as float32, so comparing against it would write every frame. */
+	shown: number;
+}
+
 type FixedKind = "ring" | "stair" | "shrine";
 
 interface FixedLight extends DecorLight {
@@ -89,7 +96,8 @@ interface FixedLight extends DecorLight {
  *               torches, decor.fx.flame on braziers) at its glow point, plus decor.fx.glow behind it; per-piece phase
  *               from the plan's cell hash (decorLoopFrame); taller while its room is engaged, a flare on a room clear,
  *               a gutter on an Ember, faded by the run-over cold (all from the DecorView). Animated only within
- *               DECOR_FX.flameAnimateRadiusTiles of the camera focus.
+ *               DECOR_FX.flameAnimateRadiusTiles of the camera focus. On a standing piece both are held inside its
+ *               DECOR_BOX (decorFxLayout; flames at decorFlameMaxGrow, the cap on their scale).
  *   light pool  DECOR_LIGHTS.pool PointLights shared by the lit lights nearest the camera focus (DecorLightPool;
  *               reassigned every reassignSeconds, fading), brightness x the depth band's light x seeded flicker (x the
  *               juice motionScale) x the director's lit / flare / gutter / cold; colour decor.fx.flame -> the cold role.
@@ -118,8 +126,8 @@ export class DecorFxController implements OnStart {
 	private readonly glows = new Array<FxBillboard>();
 	private readonly glints = new Array<FxBillboard>();
 	/** The boss ring's flat fire pits by ring spot (absent: no glow art). */
-	private readonly ringGlows = new Map<number, FloorArt>();
-	private zone: FloorArt | undefined;
+	private readonly ringGlows = new Map<number, FlatFx>();
+	private zone: FlatFx | undefined;
 	/** Pool candidates (parallel arrays): the plan entry, its light spot (tiles) and this frame's lit level. */
 	private readonly candEntry = new Array<number>();
 	private readonly candX = new Array<number>();
@@ -132,6 +140,11 @@ export class DecorFxController implements OnStart {
 	private emitterPart: Part | undefined;
 	private emitter: ParticleEmitter | undefined;
 	private emitterSpec: AmbientEmitterSpec | undefined;
+	/** The inputs emitterSpec was made from (recomputed only when one changes). */
+	private specTheme = "";
+	private specLight = 0;
+	private specLevel = "";
+	private specMotion = 0;
 	private hasAmbient = false;
 	private revision = -1;
 	private flameColor = new Color3(1, 1, 1);
@@ -190,10 +203,11 @@ export class DecorFxController implements OnStart {
 		const glowFx = pack.decor(decorFxId("glow"));
 		const glintFx = pack.decor(decorFxId("glint"));
 		const zoneFx = pack.decor(decorFxId("zone"));
+		const flameGrow = decorFlameMaxGrow();
 		plan.entries.forEach((e, i) => {
 			if (!e.light || !e.lit) return;
 			const piece = this.decor.getPiece(i);
-			const [x, y, z] = this.lightSpot(e, piece);
+			const [x, y, z] = this.lightSpot(e, i);
 			const fixedRoom = e.roomId >= 0 && (e.roomId === scene.bossRoom || e.roomId === scene.shrineRoom);
 			if (!fixedRoom) {
 				this.candEntry.push(i);
@@ -202,18 +216,46 @@ export class DecorFxController implements OnStart {
 				this.candZ.push(z);
 				this.candLevel.push(0);
 			}
-			if (piece === undefined || !piece.glow) return;
+			const pieceLayout = this.decor.getLayout(i);
+			if (piece === undefined || !piece.glow || pieceLayout === undefined) return;
 			const wallBias = e.layer === "wall" ? WALL_DEPTH_BIAS * S : 0;
 			const at = new CFrame(studsX(x), studsY(y), studsZ(z));
 			const flameFx = e.kind === "brazier" ? brazierFx : torchFx;
-			if (glowFx !== undefined) {
-				const glow = this.fxBillboard(folder, glowFx, i, e.hash, x, z, wallBias + DECOR_FX.glowDepthStuds);
+			// held inside the piece's box (flames at their largest growth); an effect that cannot fit is not drawn
+			const glowLayout =
+				glowFx !== undefined
+					? decorFxLayout(plan, i, pieceLayout, piece.glowAt, visualLayout(glowFx.art), 1)
+					: undefined;
+			if (glowFx !== undefined && glowLayout !== undefined) {
+				const glow = this.fxBillboard(
+					folder,
+					glowFx,
+					i,
+					e.hash,
+					x,
+					z,
+					wallBias + DECOR_FX.glowDepthStuds,
+					glowLayout,
+				);
 				glow.body.anchor.CFrame = at;
 				glow.body.setTransparency(HIDDEN);
 				this.glows.push(glow);
 			}
-			if (flameFx !== undefined) {
-				const flame = this.fxBillboard(folder, flameFx, i, e.hash, x, z, wallBias + DECOR_FX.flameDepthStuds);
+			const flameLayout =
+				flameFx !== undefined
+					? decorFxLayout(plan, i, pieceLayout, piece.glowAt, visualLayout(flameFx.art), flameGrow)
+					: undefined;
+			if (flameFx !== undefined && flameLayout !== undefined) {
+				const flame = this.fxBillboard(
+					folder,
+					flameFx,
+					i,
+					e.hash,
+					x,
+					z,
+					wallBias + DECOR_FX.flameDepthStuds,
+					flameLayout,
+				);
 				flame.body.anchor.CFrame = at;
 				flame.body.setTransparency(HIDDEN);
 				this.flames.push(flame);
@@ -226,7 +268,7 @@ export class DecorFxController implements OnStart {
 				const art = this.flatFx(folder, glowFx, spot.x, spot.z, DECOR_FX.ringGlowTiles);
 				if (art === undefined) return;
 				art.label.ImageTransparency = HIDDEN;
-				this.ringGlows.set(k, art);
+				this.ringGlows.set(k, { art, shown: HIDDEN });
 			});
 		}
 		const ringLights = math.min(DECOR_LIGHTS.bossRingLights, ring.size());
@@ -240,8 +282,11 @@ export class DecorFxController implements OnStart {
 		const stair = scene.stairwell;
 		if (stair !== undefined) {
 			if (zoneFx !== undefined) {
-				this.zone = this.flatFx(folder, zoneFx, stair.x, stair.z, DECOR_FX.zoneSizeTiles);
-				if (this.zone !== undefined) this.zone.label.ImageTransparency = HIDDEN;
+				const art = this.flatFx(folder, zoneFx, stair.x, stair.z, DECOR_FX.zoneSizeTiles);
+				if (art !== undefined) {
+					art.label.ImageTransparency = HIDDEN;
+					this.zone = { art, shown: HIDDEN };
+				}
 			}
 			if (DECOR_LIGHTS.stairwellLight)
 				this.fixed.push(this.fixedLight(folder, scene, "stair", 0, stair.x, DECOR_LIGHTS.heightTiles, stair.z));
@@ -257,7 +302,7 @@ export class DecorFxController implements OnStart {
 			for (const i of lights) {
 				const e = plan.entries[i];
 				if (!e.lit) continue;
-				const [x, , z] = this.lightSpot(e, this.decor.getPiece(i));
+				const [x, , z] = this.lightSpot(e, i);
 				xs.push(x);
 				zs.push(z);
 				lv.push(1);
@@ -271,7 +316,7 @@ export class DecorFxController implements OnStart {
 				);
 			}
 			near.forEach((k, n) => {
-				const [x, y, z] = this.lightSpot(plan.entries[ids[k]], this.decor.getPiece(ids[k]));
+				const [x, y, z] = this.lightSpot(plan.entries[ids[k]], ids[k]);
 				this.fixed.push(this.fixedLight(folder, scene, "shrine", n, x, y, z));
 			});
 		}
@@ -302,10 +347,15 @@ export class DecorFxController implements OnStart {
 		);
 	}
 
-	/** Where entry `e`'s light sits, tiles: its art's glow point, else its anchor pushed off its wall face. */
-	private lightSpot(e: DecorEntry, piece: DecorPiece | undefined): readonly [number, number, number] {
+	/**
+	 * Where plan entry `i` (`e`)'s light sits, tiles: its drawn art's glow point, else its anchor pushed off its wall
+	 * face.
+	 */
+	private lightSpot(e: DecorEntry, i: number): readonly [number, number, number] {
+		const piece: DecorPiece | undefined = this.decor.getPiece(i);
+		const layout: SpriteLayout | undefined = this.decor.getLayout(i);
 		if (piece !== undefined && piece.glow) {
-			const [x, y, z] = decorGlowPoint(e, piece.core);
+			const [x, y, z] = decorGlowPoint(e, piece.core, layout);
 			return [x, y, z];
 		}
 		if (e.layer === "wall") {
@@ -441,8 +491,8 @@ export class DecorFxController implements OnStart {
 		emitter.Size = new NumberSequence(art.sizeStuds);
 		emitter.Transparency = new NumberSequence([
 			new NumberSequenceKeypoint(0, 1),
-			new NumberSequenceKeypoint(PARTICLE_FADE_IN, art.transparency),
-			new NumberSequenceKeypoint(PARTICLE_FADE_OUT, art.transparency),
+			new NumberSequenceKeypoint(DECOR_FX.ambientFadeIn, art.transparency),
+			new NumberSequenceKeypoint(DECOR_FX.ambientFadeOut, art.transparency),
 			new NumberSequenceKeypoint(1, 1),
 		]);
 		emitter.Color = new ColorSequence(art.color);
@@ -455,13 +505,21 @@ export class DecorFxController implements OnStart {
 		const part = this.emitterPart;
 		if (emitter === undefined || part === undefined || !this.hasAmbient) return;
 		const settings = this.fx.settings();
-		const spec = ambientEmitterSpec(
-			scene.plan.profile.themeKey,
-			scene.plan.profile.light,
-			effectiveParticles(settings),
-			motionScale(settings),
-		);
+		const profile = scene.plan.profile;
+		const level = effectiveParticles(settings);
+		const motion = motionScale(settings);
 		const last = this.emitterSpec;
+		const same =
+			last !== undefined &&
+			profile.themeKey === this.specTheme &&
+			profile.light === this.specLight &&
+			level === this.specLevel &&
+			motion === this.specMotion;
+		const spec = same ? last : ambientEmitterSpec(profile.themeKey, profile.light, level, motion);
+		this.specTheme = profile.themeKey;
+		this.specLight = profile.light;
+		this.specLevel = level;
+		this.specMotion = motion;
 		if (last === undefined || last.rate !== spec.rate || last.motion !== spec.motion) {
 			this.emitterSpec = spec;
 			const m = spec.motion;
@@ -515,12 +573,17 @@ export class DecorFxController implements OnStart {
 		const r2 = DECOR_FX.flameAnimateRadiusTiles * DECOR_FX.flameAnimateRadiusTiles;
 		const gutter = view.gutter;
 		const keep = 1 - view.cold;
+		const maxGrow = decorFlameMaxGrow();
 		for (const f of this.flames) {
 			const lit = view.lit[f.entry] ?? 0;
 			const shown = lit * (1 - gutter * DECOR_FX.gutterTransparency) * keep;
 			f.body.setTransparency(1 - shown);
 			if (shown <= 0) continue;
-			const grow = (view.flame[f.entry] ?? 1) * (1 + (view.flare[f.entry] ?? 0) * DECOR_FX.flareGrow);
+			// never past decorFlameMaxGrow: the size its layout was fitted into the piece's box at
+			const grow = math.min(
+				(view.flame[f.entry] ?? 1) * (1 + (view.flare[f.entry] ?? 0) * DECOR_FX.flareGrow),
+				maxGrow,
+			);
 			f.body.setScale(grow * (1 - gutter * DECOR_FX.gutterShrink));
 			this.animate(f, t, fx, fz, r2);
 		}
@@ -641,15 +704,18 @@ export class DecorFxController implements OnStart {
 
 	private updateFlat(view: DecorView): void {
 		const keep = 1 - view.cold;
-		for (const [k, art] of this.ringGlows) {
+		for (const [k, fx] of this.ringGlows) {
 			const level = (view.ring[k] ?? 0) * keep;
-			const t = 1 - level * (1 - DECOR_FX.glowTransparency);
-			if (art.label.ImageTransparency !== t) art.label.ImageTransparency = t;
+			setFlatTransparency(fx, 1 - level * (1 - DECOR_FX.glowTransparency));
 		}
 		const zone = this.zone;
-		if (zone !== undefined) {
-			const t = 1 - view.stairGlow;
-			if (zone.label.ImageTransparency !== t) zone.label.ImageTransparency = t;
-		}
+		if (zone !== undefined) setFlatTransparency(zone, 1 - view.stairGlow);
 	}
+}
+
+/** Writes a flat effect's ImageTransparency only when it changes (against the float64 value last written). */
+function setFlatTransparency(fx: FlatFx, t: number): void {
+	if (t === fx.shown) return;
+	fx.shown = t;
+	fx.art.label.ImageTransparency = t;
 }

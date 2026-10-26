@@ -36,7 +36,12 @@ export const BREAKABLE_HP: ReadonlyArray<number> = BREAKABLE_ARROW_HITS.map((n) 
 export const BREAKABLE_ENEMY_BULLET_DAMAGE = BOW_DATA.damage / ENEMY_BULLETS_PER_ARROW;
 /** Melee: a piece is a circle of this radius round its cell centre (the half tile its square fills). */
 export const BREAKABLE_HIT_RADIUS = 0.5 * TILE_SIZE;
-/** Mother Bramble's slam breaks every piece whose cell centre lies within this of her centre at impact. */
+/**
+ * Mother Bramble's slam breaks every piece whose cell centre lies within this of her centre at impact. Nearly dormant
+ * in real play: boss rooms get no pieces (shared/dungeon BREAKABLE.roomTypes), so the radius (which ignores walls) only
+ * reaches a piece in a placed room that touches the boss room (measured: 1 of 240 boss floors, run seeds 1-60 x floors
+ * 5-20, e.g. run 36 floor 5). Kept: harmless, and the specs cover it.
+ */
 export const BREAKABLE_SLAM_RADIUS = 3 * TILE_SIZE;
 /** brokenTick of an intact piece. */
 export const NOT_BROKEN = -1;

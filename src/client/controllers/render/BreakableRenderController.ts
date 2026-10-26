@@ -2,11 +2,10 @@ import { Controller, OnStart } from "@flamework/core";
 import { Janitor } from "@rbxts/janitor";
 import { RunService, Workspace } from "@rbxts/services";
 import { CAMERA_PITCH_DEG, CAMERA_YAW_DEG } from "shared/config";
-import { gridToWorld, type Dungeon } from "shared/dungeon";
+import { BREAKABLE_KINDS, gridToWorld, type Dungeon } from "shared/dungeon";
 import { SIM_HZ } from "shared/sim";
 import {
 	BIOMES,
-	BREAKABLE_KINDS,
 	BREAKABLE_SHATTER_ANIMATION,
 	type BiomeId,
 	type Breakable,
@@ -387,8 +386,14 @@ export class BreakableRenderController implements OnStart {
 		}
 		if (view.body === undefined) this.attach(view);
 		else {
-			this.setFlash(view.body, false);
-			this.place(view.body, view.rest);
+			const body = view.body;
+			this.setFlash(body, false);
+			this.place(body, view.rest);
+			// caught mid-shatter: back to the idle loop (else it keeps the shatter frame), clocked with the idlers
+			if (body.sprite !== undefined) {
+				body.sprite.update(IDLE, 0, 0, this.basis, 0);
+				this.idling.add(view);
+			}
 		}
 	}
 

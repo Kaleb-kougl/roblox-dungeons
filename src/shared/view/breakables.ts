@@ -25,10 +25,10 @@ import {
 	type BreakableKindName,
 	type SolidCells,
 } from "shared/dungeon";
-import { imul, u32 } from "shared/jsmath";
 import { NOT_BROKEN, type BreakablesState } from "shared/sim";
 import type { DecorKind } from "shared/theme";
 import { BREAKABLE_VIEW } from "./breakablesConfig";
+import { decorHash } from "./decor";
 import { floorStudsY, studsX, studsZ } from "./space";
 import type { SpriteLayout } from "./sprites";
 
@@ -215,18 +215,12 @@ export function breakableKindName(kind: number): BreakableKindName | undefined {
 	return BREAKABLE_KINDS[kind];
 }
 
-const HASH_X = 0x9e3779b1;
-const HASH_Y = 0x85ebca6b;
-const HASH_MIX = 0xc2b2ae35;
-const HASH_SHIFT_A = 16;
-const HASH_SHIFT_B = 13;
-
-/** A well-mixed u32 of a cell (stable on every client; murmur3's finalizer over the two coordinates). */
+/**
+ * A well-mixed u32 of a cell (stable on every client): decorHash of the cell (no floor seed) with
+ * BREAKABLE_VIEW.debrisSalt.
+ */
 export function breakableCellHash(cellX: number, cellY: number): number {
-	let h = bit32.bxor(imul(cellX, HASH_X), imul(cellY, HASH_Y));
-	h = imul(bit32.bxor(h, bit32.rshift(h, HASH_SHIFT_A)), HASH_Y);
-	h = imul(bit32.bxor(h, bit32.rshift(h, HASH_SHIFT_B)), HASH_MIX);
-	return u32(bit32.bxor(h, bit32.rshift(h, HASH_SHIFT_A)));
+	return decorHash(0, cellKey(cellX, cellY), BREAKABLE_VIEW.debrisSalt);
 }
 
 /** Which of `count` debris variants a cell shows (cell hash), or -1 with none. */

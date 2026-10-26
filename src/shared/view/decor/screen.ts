@@ -180,6 +180,39 @@ export function insideBy(poly: ScreenPolygon, x: number, y: number, margin: numb
 	return true;
 }
 
+/**
+ * The largest k in [0, 1] for which the axis-aligned rectangle [x - k left, x + k right] x [y - k down, y + k up]
+ * (reaches >= 0) lies inside convex counter-clockwise `poly`: 0 when (x, y) is outside it, or on an edge the
+ * rectangle reaches across. Each edge bounds k by the room left in front of (x, y) over the rectangle's farthest
+ * corner along the edge's outward normal.
+ */
+export function rectFitScale(
+	poly: ScreenPolygon,
+	x: number,
+	y: number,
+	left: number,
+	right: number,
+	down: number,
+	up: number,
+): number {
+	const m = math.floor(poly.size() / 2);
+	if (m < 3) return 0;
+	let k = 1;
+	for (let e = 0; e < m; e++) {
+		const ax = poly[e * 2];
+		const ay = poly[e * 2 + 1];
+		const f = (e + 1) % m;
+		// outward normal of a ccw edge (unnormalised: room and reach share its length)
+		const nx = poly[f * 2 + 1] - ay;
+		const ny = ax - poly[f * 2];
+		const room = nx * (ax - x) + ny * (ay - y);
+		if (room < 0) return 0;
+		const reach = math.max(nx * right, -nx * left) + math.max(ny * up, -ny * down);
+		if (reach > 0) k = math.min(k, room / reach);
+	}
+	return k > 0 ? k : 0; // never -0 (a point on an edge)
+}
+
 /** Axis-aligned bounds of a polygon: [minX, minY, maxX, maxY]. */
 export function polygonBounds(poly: ScreenPolygon): readonly [number, number, number, number] {
 	let x0 = math.huge;

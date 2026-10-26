@@ -20,6 +20,7 @@ import {
 	decorFadeBodies,
 	decorFadeStep,
 	decorInputOfLayout,
+	decorPieceLayout,
 	decorProfile,
 	decorScene,
 	degToRad,
@@ -34,10 +35,12 @@ import {
 	studsZ,
 	type DecorBody,
 	type DecorEntry,
+	type DecorFrame,
 	type DecorPlanInput,
 	type DecorScene,
 	type DecorView,
 	type SpriteAnimChoice,
+	type SpriteLayout,
 	type StandingKind,
 } from "shared/view";
 import { motionScale } from "shared/view/fx";
@@ -52,6 +55,9 @@ const PARKED = new CFrame(BULLET_VIEW.parkedStuds[0], BULLET_VIEW.parkedStuds[1]
 const WALL_BIAS_STUDS = WALL_DEPTH_BIAS * STUDS_PER_TILE;
 const HALF = 0.5;
 const MS = 1000;
+
+type Mutable<T> = { -readonly [K in keyof T]: T[K] };
+type SpriteAnimChoiceRecord = Pick<SpriteAnimChoice, "anim" | "rate">;
 
 /** A pooled upright body: a sprite set's SpriteView or an image billboard, keyed by piece id and layer. */
 interface StandingBody {
@@ -89,7 +95,9 @@ interface PieceView {
  *                 here until R5 (the director and DecorFxController's lights still run on the plan).
  *   tall / low    pooled upright billboards on the wall top (a sprite set: SpriteView, facing from decorFacingDir; an
  *                 image: ArtBillboard), the floor clearance from spriteBillboard. A brazier sprite set with `lit` plays
- *                 it once the director lights it.
+ *                 it once the director lights it. Drawn with decorPieceLayout: held inside the piece's DECOR_BOX (the
+ *                 only box the footprint rule proved safe), scaled down / lifted when the art is larger; art that
+ *                 cannot fit at all is not drawn (logged).
  *   wall          the same, pushed WALL_DEPTH_BIAS toward the camera off the wall face.
  *   flat          a top-face SurfaceGui on a thin invisible floor Part (decorParts buildFloorArt), per floor.
  *   fade          selectDecorFades with every living player and the live boss: a hidden body fades the piece to
@@ -111,8 +119,13 @@ export class DecorController implements OnStart {
 	private readonly basis = isoBasis(degToRad(CAMERA_YAW_DEG), degToRad(CAMERA_PITCH_DEG));
 	private readonly free = new Map<string, StandingBody[]>();
 	private readonly drawn = new Array<PieceView>();
-	/** Per plan entry: the piece it is drawn with (undefined: no art). */
+	/** Per plan entry: the piece it is drawn with (undefined: no art, or art that cannot fit its box). */
 	private readonly pieces = new Map<number, DecorPiece>();
+	/** Per plan entry with a piece: the layout it is drawn with (decorPieceLayout: held inside its DECOR_BOX). */
+	private readonly layouts = new Map<number, SpriteLayout>();
+	/** Reused per frame: the standing sprites' animation choice and the director's frame. */
+	private readonly animChoice: Mutable<SpriteAnimChoiceRecord> = { anim: "", rate: 1 };
+	private directorFrame: Mutable<DecorFrame> | undefined;
 	/** Per plan fade box: its drawn view (absent: not drawn). */
 	private readonly fadeViews = new Map<number, PieceView>();
 	private readonly fades = new Array<boolean>();
@@ -178,9 +191,14 @@ export class DecorController implements OnStart {
 		return this.scene !== undefined && v.ready && v.scene === this.scene ? v : undefined;
 	}
 
-	/** The piece plan entry `i` is drawn with (undefined: the pack has no art for it). */
+	/** The piece plan entry `i` is drawn with (undefined: the pack has no art for it, or none that fits its box). */
 	getPiece(i: number): DecorPiece | undefined {
 		return this.pieces.get(i);
+	}
+
+	/** The layout plan entry `i`'s piece is drawn with (its art's own, or scaled / lifted into its DECOR_BOX). */
+	getLayout(i: number): SpriteLayout | undefined {
+		return this.layouts.get(i);
 	}
 
 	/** The decoration stands still this frame (paused, a draft, a frozen tutorial, no scene). */
@@ -227,16 +245,24 @@ export class DecorController implements OnStart {
 		this.sceneRevision++;
 		this.fadeViews.clear();
 		this.pieces.clear();
+		this.layouts.clear();
 		let instances = 0;
+		let unfit = 0;
 		plan.entries.forEach((e, i) => {
 			const list = variantsOf(e.kind);
 			const piece = list[e.variant] ?? list[0];
 			if (piece === undefined) return;
+			const layout = decorPieceLayout(plan, i, visualLayout(piece.art));
+			if (layout === undefined) {
+				unfit++;
+				return;
+			}
 			this.pieces.set(i, piece);
-			const view = this.draw(i, e, piece);
+			this.layouts.set(i, layout);
+			const view = this.draw(i, e, piece, layout);
 			if (view === undefined) return;
 			this.drawn.push(view);
-			instances += 3; // anchor / Part + Gui + ImageLabel
+			instances += DECOR_VIEW.instancesPerPiece;
 			if (e.fade >= 0) this.fadeViews.set(e.fade, view);
 		});
 		this.flushMoves();
@@ -245,12 +271,13 @@ export class DecorController implements OnStart {
 		print(
 			`[Decor] floor ${plan.floor} (${profile.bandName}, ${profile.biome}): plan ${plan.entries.size()} ` +
 				`(flat ${c.flat}, low ${c.low}, tall ${c.tall}, wall ${c.wall}), drawn ${this.drawn.size()} ` +
-				`(~${instances} instances), ${string.format("%.1f", (os.clock() - started) * MS)} ms`,
+				`(~${instances} instances${unfit > 0 ? `, ${unfit} art too large for its box` : ""}), ` +
+				`${string.format("%.1f", (os.clock() - started) * MS)} ms`,
 		);
 	}
 
-	/** One entry's instances (undefined: its art cannot be drawn). */
-	private draw(i: number, e: DecorEntry, piece: DecorPiece): PieceView | undefined {
+	/** One entry's instances, standing ones with `layout` (undefined: its art cannot be drawn). */
+	private draw(i: number, e: DecorEntry, piece: DecorPiece, layout: SpriteLayout): PieceView | undefined {
 		const [dirX, dirZ] = decorFacingDir(e);
 		if (e.layer === "flat") {
 			const facing =
@@ -269,7 +296,7 @@ export class DecorController implements OnStart {
 			this.floorJanitor.Add(flat.part);
 			return { entry: i, piece, body: undefined, flat, dirX, dirZ, anim: "", animated: false, fade: 0, dim: 0 };
 		}
-		const body = this.acquire(piece, e.layer === "wall");
+		const body = this.acquire(piece, e.layer === "wall", layout);
 		const anchorAt = new CFrame(studsX(e.x), studsY(e.y), studsZ(e.z));
 		this.moveParts.push(body.anchor);
 		this.moveCFrames.push(anchorAt);
@@ -289,8 +316,11 @@ export class DecorController implements OnStart {
 		return view;
 	}
 
-	private acquire(piece: DecorPiece, wall: boolean): StandingBody {
-		const key = `${piece.id}|${wall ? "wall" : "stand"}`;
+	private acquire(piece: DecorPiece, wall: boolean, layout: SpriteLayout): StandingBody {
+		// bodies pool by piece, layer and drawn size (one kind's box fits a point piece and a segment differently)
+		const key = `${piece.id}|${wall ? "wall" : "stand"}|${layout.pixelsPerTile}|${layout.pivot.x},${
+			layout.pivot.y
+		}`;
 		const pooled = this.free.get(key)?.pop();
 		if (pooled !== undefined) {
 			pooled.sprite?.reset();
@@ -304,10 +334,10 @@ export class DecorController implements OnStart {
 		const extra = wall ? WALL_BIAS_STUDS : 0;
 		const folder = this.folder!;
 		if (piece.art.kind === "sprites") {
-			const sprite = new SpriteView(piece.art.set, folder, piece.art.set, extra);
+			const sprite = new SpriteView(piece.art.set, folder, layout, extra);
 			return { key, sprite, image: undefined, anchor: sprite.anchor };
 		}
-		const image = new ArtBillboard(piece.art, folder, piece.id, visualLayout(piece.art), extra);
+		const image = new ArtBillboard(piece.art, folder, piece.id, layout, extra);
 		return { key, sprite: undefined, image, anchor: image.anchor };
 	}
 
@@ -333,7 +363,8 @@ export class DecorController implements OnStart {
 			const def = set.animation(name);
 			view.animated = def !== undefined && def.frames > 1;
 		}
-		const choice: SpriteAnimChoice = { anim: name, rate: 1 };
+		const choice = this.animChoice;
+		choice.anim = name;
 		sprite.update(choice, view.dirX, view.dirZ, this.basis, dt);
 	}
 
@@ -343,6 +374,7 @@ export class DecorController implements OnStart {
 		this.drawn.clear();
 		this.fadeViews.clear();
 		this.pieces.clear();
+		this.layouts.clear();
 		this.floorJanitor.Cleanup();
 		this.debugJanitor.Cleanup();
 		this.flushMoves();
@@ -379,7 +411,18 @@ export class DecorController implements OnStart {
 		const motion = motionScale(this.fx.settings());
 		let view = this.director.getView();
 		if (!paused) {
-			view = this.director.update({ state, events: ctx.run.frameEvents, scene, dt, motion });
+			let f = this.directorFrame;
+			if (f === undefined) {
+				f = { state, events: ctx.run.frameEvents, scene, dt, motion };
+				this.directorFrame = f;
+			} else {
+				f.state = state;
+				f.events = ctx.run.frameEvents;
+				f.scene = scene;
+				f.dt = dt;
+				f.motion = motion;
+			}
+			view = this.director.update(f);
 		}
 		this.frozen = paused || isDraftOpen(state) || !view.ready || view.scene !== scene;
 		this.frameDt = this.frozen ? 0 : math.min(math.max(dt, 0), DECOR_REACT.maxDtSeconds);

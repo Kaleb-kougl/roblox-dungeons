@@ -65,6 +65,8 @@ export const DECOR_VIEW = {
 	debugBreakableRole: "uiMana" as ColorRole,
 	debugTransparency: 0.55,
 	debugCellInsetTiles: 0.1,
+	/** Instances one drawn piece costs (anchor / Part + Gui + ImageLabel), for the per-floor build log's estimate. */
+	instancesPerPiece: 3,
 } as const;
 
 /** The light pool and fixed lights (R4 light rule, R9 light pool). PointLights need no art: they draw with every pack. */
@@ -144,6 +146,9 @@ export const DECOR_FX = {
 	ambientVolumeTiles: [30, 3, 30] as readonly [number, number, number],
 	/** The volume's centre height above the floor, tiles. */
 	ambientHeightTiles: 1.5,
+	/** Ambient particles fade in over the first share of their life and out from this share on (Transparency keys). */
+	ambientFadeIn: 0.2,
+	ambientFadeOut: 0.8,
 	/**
 	 * Motion per Forge particle kind (THEMES[key].particles.kind: 0 ancient dust motes, 1 molten embers rising, 2 frost
 	 * snow, 3 grim wisps, 4 verdant spores): lifetime and speed ranges, vertical acceleration (studs / s^2, + up),
