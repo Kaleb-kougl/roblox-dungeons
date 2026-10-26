@@ -141,7 +141,10 @@ describe("validateManifest: sound extras and ambience", () => {
 		for (const id of sortedKeys(THEME_PACKS)) {
 			const assets = THEME_PACKS[id].assets as unknown as Obj;
 			for (const audio of [...PORT_AUDIO_EVENTS, ...AMBIENCE_IDS]) {
-				expect([id, audio, (assets[audio] as Obj | undefined)?.kind]).toEqual([id, audio, "silent"]);
+				// the placeholder is silent everywhere; a pack with uploads (vale) may already play some
+				const kind = (assets[audio] as Obj | undefined)?.kind;
+				const ok = id === "placeholder" ? kind === "silent" : kind === "silent" || kind === "sound";
+				expect([id, audio, kind, ok]).toEqual([id, audio, kind, true]);
 			}
 			expect([id, validateManifest(THEME_PACKS[id], { packId: id })]).toEqual([id, []]);
 		}

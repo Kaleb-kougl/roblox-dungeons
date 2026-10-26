@@ -108,17 +108,24 @@ describe("vale pack", () => {
 		expect(VALE_MANIFEST).toEqual(buildValeManifest(VALE_ASSET_IDS));
 	});
 
-	it("as bundled, enemy.swarmer is its placeholder: its pre-O3 (94x70) IDs were removed until re-uploaded", () => {
-		// The uploaded swarmer atlases had the old cell grid; the pad change (O3) moved every cell. Until the four
-		// swarmer files (two atlases, two outline sheets) are re-uploaded, the swarmer draws its outlined ball.
-		for (const file of ["swarmer-move.png", "swarmer-death.png"]) {
-			expect([file, VALE_ASSET_IDS[file]]).toEqual([file, undefined]);
+	it("as bundled, enemy.swarmer is its sprite set with a rim on every sheet (re-uploaded after the O3 pad change)", () => {
+		// All four swarmer files (two atlases, two outline sheets) have IDs, so the skeleton draws with its baked rim.
+		for (const file of [
+			"swarmer-move.png",
+			"swarmer-death.png",
+			"swarmer-move-outline.png",
+			"swarmer-death-outline.png",
+		]) {
+			expect([file, VALE_ASSET_IDS[file] !== undefined]).toEqual([file, true]);
 		}
-		expect(VALE_MANIFEST.assets["enemy.swarmer"]).toEqual({ kind: "placeholder" });
-		const pack = new ThemePack(VALE_MANIFEST, { warn: quiet });
-		expect(pack.sprites("enemy.swarmer")).toBe(undefined);
-		expect(pack.placeholder("enemy.swarmer").outline).toBe("enemyOutline");
-		// the player's set is unaffected
+		expect(VALE_MANIFEST.assets["enemy.swarmer"].kind).toBe("sprites");
+		const set = new ThemePack(VALE_MANIFEST, { warn: quiet }).sprites("enemy.swarmer")!;
+		expect(set).never.toBe(undefined);
+		expect(set.frame("move", 0, 0).outlineImage).toBe(VALE_ASSET_IDS["swarmer-move-outline.png"]);
+		expect(set.frame("death", 0, 0).outlineImage).toBe(VALE_ASSET_IDS["swarmer-death-outline.png"]);
+		expect(set.frame("move", 0, 0).image).toBe(VALE_ASSET_IDS["swarmer-move.png"]);
+		expect(set.frame("death", 0, 0).image).toBe(VALE_ASSET_IDS["swarmer-death.png"]);
+		// the player's set is unaffected and has no rim
 		expect(VALE_MANIFEST.assets["class.vanguard"].kind).toBe("sprites");
 	});
 

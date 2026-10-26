@@ -57,16 +57,20 @@ export const SWORD_DATA: SwordData = {
 	damage: 3,
 	style: "melee",
 	spriteId: "item.weapon.sword",
-	reach: 1.7,
+	// Port retune (CLAUDE.md decision log): swing and finisher reach SWORD_REACH_PERCENT (15%) longer than the web
+	// build's (WEB_SWORD_TIMINGS). The swing fan and blade are drawn from these, so they grow too; the guard does not.
+	reach: 1.955, // web 1.7
 	halfAngleCos: 0.5,
 	finisherDamage: 6,
-	finisherReach: 2.2,
+	finisherReach: 2.53, // web 2.2
 	finisherHalfAngleCos: 0,
-	swingRecoveryTicks: 12, // 0.2 s
-	finisherWindupTicks: 9, // 0.15 s
+	// Port retune (CLAUDE.md decision log): every swing timer SWORD_TEMPO_PERCENT (20%) slower than the web build's
+	// (WEB_SWORD_TIMINGS), rounded to whole ticks. The knight's attack animations stretch over these, so they slow too.
+	swingRecoveryTicks: 14, // ~0.23 s (web 12)
+	finisherWindupTicks: 11, // ~0.18 s (web 9)
 	lungeDistance: 0.6,
 	windupMoveMultiplier: 0.35,
-	finisherRecoveryTicks: secondsToTicks(0.35), // 21
+	finisherRecoveryTicks: secondsToTicks(0.42), // 25 (web secondsToTicks(0.35) = 21)
 	comboWindowTicks: secondsToTicks(0.5), // 30
 	guardTicks: secondsToTicks(0.3), // 18
 	guardCooldownTicks: secondsToTicks(1), // 60
@@ -74,6 +78,53 @@ export const SWORD_DATA: SwordData = {
 	guardHalfAngleCos: -0.2, // ~203 degrees: everything in front and a little to the sides
 	guardMoveMultiplier: 0.5,
 };
+
+/** The sword values the port retuned (CLAUDE.md decision log): its timers (ticks) and its swing reach (world units). */
+export interface SwordTimings {
+	readonly swingRecoveryTicks: number;
+	readonly finisherWindupTicks: number;
+	readonly finisherRecoveryTicks: number;
+	readonly reach: number;
+	readonly finisherReach: number;
+}
+
+/**
+ * The web build's sword timers and reach (fixtures/constants.json, before the port's 20% slower / 15% longer retune).
+ * Every golden fixture was recorded with these, so the parity specs replay under them (setSwordTimings).
+ */
+export const WEB_SWORD_TIMINGS: SwordTimings = {
+	swingRecoveryTicks: 12,
+	finisherWindupTicks: 9,
+	finisherRecoveryTicks: 21,
+	reach: 1.7,
+	finisherReach: 2.2,
+};
+
+/** The port's slowdown of the web sword's timers, percent (CLAUDE.md decision log; specs pin the rounding). */
+export const SWORD_TEMPO_PERCENT = 120;
+
+/** The port's lengthening of the web sword's swing and finisher reach, percent (CLAUDE.md decision log). */
+export const SWORD_REACH_PERCENT = 115;
+
+/**
+ * Specs only: sets SWORD_DATA's timers and reach (e.g. to WEB_SWORD_TIMINGS for a golden replay) and returns the
+ * previous ones to restore. The sword reads them on every tick, so the change applies to every run stepped afterwards.
+ */
+export function setSwordTimings(t: SwordTimings): SwordTimings {
+	const previous: SwordTimings = {
+		swingRecoveryTicks: SWORD_DATA.swingRecoveryTicks,
+		finisherWindupTicks: SWORD_DATA.finisherWindupTicks,
+		finisherRecoveryTicks: SWORD_DATA.finisherRecoveryTicks,
+		reach: SWORD_DATA.reach,
+		finisherReach: SWORD_DATA.finisherReach,
+	};
+	SWORD_DATA.swingRecoveryTicks = t.swingRecoveryTicks;
+	SWORD_DATA.finisherWindupTicks = t.finisherWindupTicks;
+	SWORD_DATA.finisherRecoveryTicks = t.finisherRecoveryTicks;
+	SWORD_DATA.reach = t.reach;
+	SWORD_DATA.finisherReach = t.finisherReach;
+	return previous;
+}
 
 /** Scratch slots (slot.v). */
 export const SWORD_V_STEP = 0; // next combo swing: 0, 1 (swing 1, 2), 2 (finisher next), SWORD_STEP_WINDUP
@@ -85,8 +136,6 @@ export const SWORD_V_LAST = 4; // last swing: 0 none, 1 / 2 combo swings, 3 fini
 export const SWORD_STEP_WINDUP = 3;
 /** SWORD_V_LAST of a finisher. */
 export const SWORD_FINISHER = 3;
-
-const LUNGE_STEP = SWORD_DATA.lungeDistance / SWORD_DATA.finisherWindupTicks;
 
 // Module-level hit callbacks (no closure per swing).
 const hitSwing: ArcActorHit = (ctx, actor) => {
@@ -189,7 +238,9 @@ export const SWORD = registerWeapon<SwordData>({
 
 		// Finisher wind-up: lunge, then strike.
 		if (v[SWORD_V_STEP] === SWORD_STEP_WINDUP) {
-			movePlayer(ctx.state, p.faceX * LUNGE_STEP, p.faceZ * LUNGE_STEP, ctx.config, p);
+			// Read per tick (not at module load) so setSwordTimings applies; the same division gives the same bits.
+			const lungeStep = SWORD_DATA.lungeDistance / SWORD_DATA.finisherWindupTicks;
+			movePlayer(ctx.state, p.faceX * lungeStep, p.faceZ * lungeStep, ctx.config, p);
 			v[SWORD_V_BUSY] -= 1;
 			if (v[SWORD_V_BUSY] <= 0) swing(ctx, v, SWORD_FINISHER);
 			return;

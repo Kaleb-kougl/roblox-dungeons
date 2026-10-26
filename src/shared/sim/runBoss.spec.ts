@@ -1,7 +1,7 @@
 // Golden-fixture parity: the boss fight from the boss door on the seed-1337 floor (fixtures/run-boss-1337.json, 1800
 // ticks, the real game config): engage at tick 36, DEBUG_BOSS presses so every phase happens (phase 2 at 636, phase 3
 // at 1356), slams with swarmer summons, 67 bullets deleted by the sword; the player survives with 5 half hearts.
-import { describe, expect, it } from "@rbxts/jest-globals";
+import { afterAll, describe, expect, it } from "@rbxts/jest-globals";
 import {
 	DEFAULT_ENCOUNTER,
 	KALEB_VALE_MVP_PARAMS,
@@ -26,7 +26,18 @@ import {
 	type RunDump,
 	type RunFixture,
 	type SimConfig,
+	WEB_SWORD_TIMINGS,
+	setSwordTimings,
+	type SwordTimings,
 } from "shared/sim";
+
+// The golden runs (and the source's measured tables) were recorded with the web build's sword; the port's is 20%
+// slower (CLAUDE.md decision log), so this file replays under WEB_SWORD_TIMINGS. Set at load, not in a beforeAll:
+// describe bodies may replay while the specs are collected.
+const portSword: SwordTimings = setSwordTimings(WEB_SWORD_TIMINGS);
+afterAll(() => {
+	setSwordTimings(portSword);
+});
 
 const run = runBoss as unknown as RunFixture;
 const dumps = runBossDumps.dumps as unknown as ReadonlyArray<RunDump>;

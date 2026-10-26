@@ -2,7 +2,7 @@
 // the player's death) replayed with scoring on. The score is deterministic (same score and hash twice), scoring
 // changes no gameplay (every subsystem but the enemy bullets' payload flags matches the golden fixture on every
 // tick), and the unscored run still matches its golden hashes in the same module world.
-import { describe, expect, it } from "@rbxts/jest-globals";
+import { afterAll, describe, expect, it } from "@rbxts/jest-globals";
 import runFull from "shared/fixtures-generated/run-full-1337";
 import { buildRunConfig } from "shared/run";
 import {
@@ -17,7 +17,18 @@ import {
 	type RunFixture,
 	type SimConfig,
 	type SimState,
+	WEB_SWORD_TIMINGS,
+	setSwordTimings,
+	type SwordTimings,
 } from "shared/sim";
+
+// The golden runs (and the source's measured tables) were recorded with the web build's sword; the port's is 20%
+// slower (CLAUDE.md decision log), so this file replays under WEB_SWORD_TIMINGS. Set at load, not in a beforeAll:
+// describe bodies may replay while the specs are collected.
+const portSword: SwordTimings = setSwordTimings(WEB_SWORD_TIMINGS);
+afterAll(() => {
+	setSwordTimings(portSword);
+});
 
 const run = runFull as unknown as RunFixture;
 const UNCHANGED = ["core", "combatHeader", "actors", "weapons", "playerBullets"] as const;

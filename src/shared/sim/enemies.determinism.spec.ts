@@ -42,6 +42,7 @@ import {
 	type SimConfig,
 	SWORD_DATA,
 	type SimState,
+	WEB_SWORD_TIMINGS,
 } from "shared/sim";
 
 const TICKS = 3600;
@@ -352,9 +353,10 @@ for (const { label, loadout } of WALKERS) {
 // ---------------------------------------------------------------------------------------------
 // docs/M1.md "Tuning notes", "Room enemies vs the real weapons" (port addition: the source prints these, the doc
 // records them). The table was measured at f8db062 with the PRE-retune sword (2 / 2 / 4 damage, 14-tick swings,
-// 24-tick finisher recovery); b598156 retuned the sword and did not re-measure it. With SWORD_DATA set back to those
-// numbers every row reproduces exactly; with the current sword the bow rows still do (the bow is unchanged) and the
-// current numbers are pinned below.
+// 24-tick finisher recovery, 9-tick wind-up); b598156 retuned the sword and did not re-measure it. With SWORD_DATA set
+// back to those numbers (and the web reach) every row reproduces exactly; with the current sword (the port's 20% slower
+// timers and 15% longer swing / finisher reach, CLAUDE.md decision log) the bow rows still do (the bow is unchanged)
+// and the current numbers are pinned below.
 
 interface Outcome {
 	readonly kills: number;
@@ -384,14 +386,20 @@ function withPreRetuneSword<T>(f: () => T): T {
 	SWORD_DATA.damage = 2;
 	SWORD_DATA.finisherDamage = 4;
 	SWORD_DATA.swingRecoveryTicks = 14;
+	SWORD_DATA.finisherWindupTicks = WEB_SWORD_TIMINGS.finisherWindupTicks;
 	SWORD_DATA.finisherRecoveryTicks = 24;
+	SWORD_DATA.reach = WEB_SWORD_TIMINGS.reach;
+	SWORD_DATA.finisherReach = WEB_SWORD_TIMINGS.finisherReach;
 	try {
 		return f();
 	} finally {
 		SWORD_DATA.damage = saved.damage;
 		SWORD_DATA.finisherDamage = saved.finisherDamage;
 		SWORD_DATA.swingRecoveryTicks = saved.swingRecoveryTicks;
+		SWORD_DATA.finisherWindupTicks = saved.finisherWindupTicks;
 		SWORD_DATA.finisherRecoveryTicks = saved.finisherRecoveryTicks;
+		SWORD_DATA.reach = saved.reach;
+		SWORD_DATA.finisherReach = saved.finisherReach;
 	}
 }
 
@@ -439,7 +447,7 @@ describe("docs/M1.md tuning table (walker vs room enemies, 60 s)", () => {
 		}
 	});
 
-	it("the current sword (3 / 3 / 6, 12, 21): pinned outcomes of the same walkers", () => {
+	it("the current sword (3 / 3 / 6; 14, 11, 25 ticks; reach 1.955 / 2.53: the port's retune): pinned outcomes of the same walkers", () => {
 		const rows = [
 			outcome(runLive(1337, SWORD_ONLY)),
 			outcome(runLive(42, SWORD_ONLY)),
@@ -448,10 +456,10 @@ describe("docs/M1.md tuning table (walker vs room enemies, 60 s)", () => {
 		].map((o) => [o.kills, o.roomEnemies, o.deathTick, o.bulletsDeleted, o.bossEngaged]);
 		// [kills, room enemies, death tick, bullets deleted, boss engaged]: sword only 1337 / 42, default 1337 / 42.
 		expect(rows).toEqual([
-			[20, 24, 1652, 30, true],
-			[31, 32, 3243, 14, true],
-			[12, 24, 1438, 2, false],
-			[22, 32, 1517, 2, false],
+			[20, 24, 1767, 17, true],
+			[29, 32, 2397, 20, true],
+			[24, 24, 1503, 50, true],
+			[32, 32, 2752, 9, true],
 		]);
 	});
 });

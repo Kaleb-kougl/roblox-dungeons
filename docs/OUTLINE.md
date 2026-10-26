@@ -10,14 +10,13 @@ floor. This plan adds a theme-coloured contrast outline to every enemy and the b
 
 O1-O4 and the O7 docs are **code-complete and verified headlessly only**: typecheck, lint, `check:assets`,
 `test:art` (24 node:test specs of the atlas pipeline) and the Lune suite (1637 tests, all passing on the aarch64 VM,
-including the `forge.spec.ts` vector that fails on x86). **Nothing has run in Studio.** Open: O5 (upload) and O6 (the
-Studio check, `docs/CLIENT.md` "Enemy outlines" smoke steps).
+including the `forge.spec.ts` vector that fails on x86). **Nothing has run in Studio.** O5 is done (the four swarmer
+files re-uploaded 2026-10-26 9:25). Open: O6 (the Studio check, `docs/CLIENT.md` "Enemy outlines" smoke steps).
 
-**Until O5, the skeleton draws as its placeholder ball** (with the red Highlight rim). The O3 pad change re-cut its
-atlases (94x70 -> 98x74 cells), so the old `swarmer-move.png` / `swarmer-death.png` ids in `assetIds.ts` would have cut
-the new layout at the wrong cells; they were removed. To get the sprite back: `npm run art:build`, upload
-`art/build/swarmer-move.png`, `swarmer-death.png`, `swarmer-move-outline.png`, `swarmer-death-outline.png`, paste the
-four ids into `src/shared/theme/packs/vale/assetIds.ts`, `npm run verify`.
+The O3 pad change re-cut the skeleton's atlases (94x70 -> 98x74 cells), so its old ids were dropped and the two
+atlases were re-uploaded with both outline sheets (O5); the bundled vale pack now draws the skeleton with its rim
+(`vale.spec` checks every swarmer frame carries its sheet's outline). Whenever `art:build` changes one of these PNGs,
+re-upload it and paste the new id.
 
 As built, differing from the text below:
 
@@ -83,7 +82,7 @@ As built, differing from the text below:
 - [x] **O4. Sprite renderer.** `outlineAssetId` / `outlineImage`, the vale mapping (an outline never switches a set
   on; a missing one leaves the set rimless), the `Outline` label, rims on enemy sprites only.
   → Verify: pack, validate, vale and outline specs.
-- [ ] **O5. Upload.** See Status. → Verify: in Studio the skeleton stands where it did, with a rim.
+- [x] **O5. Upload.** See Status. → Verify: in Studio the skeleton stands where it did, with a rim.
 - [ ] **O6. Studio check and tuning.** `docs/CLIENT.md` "Enemy outlines" smoke steps: every biome and band, solo and
   co-op, PC and phone emulator, `KV_EnemyOutline` on and off; tune `widthPx` and the hex; decide E3.
 - [x] **O7. Docs.** `docs/CLIENT.md`, `docs/ART.md`, `src/shared/theme/README.md`, `CLAUDE.md` (document table and

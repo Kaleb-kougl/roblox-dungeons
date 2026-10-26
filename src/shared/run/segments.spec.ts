@@ -1,7 +1,7 @@
 // Segmented validation (M3): golden recordings split into segments at many cut points replay to the fixtures' final
 // hashes; tampering is caught in the segment it happened in (never earlier); protocol violations reject with their
 // own codes; budgeted stepping over many slices equals one pass.
-import { describe, expect, it } from "@rbxts/jest-globals";
+import { afterAll, describe, expect, it } from "@rbxts/jest-globals";
 import runBoss from "shared/fixtures-generated/run-boss-1337";
 import runFull from "shared/fixtures-generated/run-full-1337";
 import runPlayerDungeon from "shared/fixtures-generated/run-player-dungeon-1337";
@@ -16,6 +16,9 @@ import {
 	type InputFrame,
 	type Recording,
 	type SimState,
+	WEB_SWORD_TIMINGS,
+	setSwordTimings,
+	type SwordTimings,
 } from "shared/sim";
 import { SegmentCutter } from "shared/play";
 import {
@@ -35,6 +38,14 @@ import {
 	type SegmentVerdict,
 	type SegmentedRunResult,
 } from "shared/run";
+
+// The golden runs (and the source's measured tables) were recorded with the web build's sword; the port's is 20%
+// slower (CLAUDE.md decision log), so this file replays under WEB_SWORD_TIMINGS. Set at load, not in a beforeAll:
+// describe bodies may replay while the specs are collected.
+const portSword: SwordTimings = setSwordTimings(WEB_SWORD_TIMINGS);
+afterAll(() => {
+	setSwordTimings(portSword);
+});
 
 interface RunFixtureLike {
 	readonly seed: number;

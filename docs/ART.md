@@ -73,8 +73,8 @@ clockwise from screen right (`art/atlases.json` `rowOrderEvidence`); no Asphalt 
 Enemy outlines (docs/OUTLINE.md O3, 2026-10-26): a set with `"outline": { "widthPx": n }` also gets
 `<sheet>-outline.png` per sheet (same size and cells: the body mask dilated by a disc of radius n, white, alpha
 `255 - spriteAlpha` inside it), listed as `outlineFile` in `layout.ts` and tinted red in the contact sheet. It needs
-`pad >= widthPx + 1`, so the skeleton's pad is 3: cells 98x74, atlases 980x962, pivot +2. Its old ids were removed
-from `assetIds.ts`; re-upload `swarmer-move.png`, `swarmer-death.png` and both outline sheets. `npm run test:art`
+`pad >= widthPx + 1`, so the skeleton's pad is 3: cells 98x74, atlases 980x962, pivot +2. `swarmer-move.png`,
+`swarmer-death.png` and both outline sheets were re-uploaded on 2026-10-26 (`assetIds.ts`). `npm run test:art`
 covers the pipeline's pure parts.
 
 ## Tasks

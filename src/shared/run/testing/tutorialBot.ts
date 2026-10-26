@@ -95,7 +95,7 @@ const DEFAULT_MAX_TICKS = 20 * 60 * SIM_HZ;
 const WALK_BUDGET = 60 * SIM_HZ;
 const FIGHT_BUDGET = 90 * SIM_HZ;
 const BOSS_BUDGET = 8 * 60 * SIM_HZ;
-/** Sword targets within this range get swung at (SWORD_DATA.reach 1.7 minus a margin, centre to centre). */
+/** Sword targets within this range get swung at (SWORD_DATA.reach 1.955 minus a margin, centre to centre). */
 const MELEE_RANGE = 1.2;
 /** Enemies this close to the player count as the room's (a swarmer that followed it out). */
 const CHASE_RANGE = 4;

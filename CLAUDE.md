@@ -20,8 +20,13 @@ Record every ported module in `PROVENANCE.md` (ported module, source path, sourc
 | `docs/SPIKES.md` | Task 1 spikes: how to run them in Studio and the recorded results |
 | `docs/ART.md` | Vertical-slice art: packs, licences, contract v2, atlas pipeline, renderer, status |
 | `docs/TUTORIAL.md` | First-run tutorial ("Practice Descent"): plan, as-built notes, tasks T1-T8, owner decisions |
+| `docs/TUTORIAL_ARROW.md` | Tutorial guidance arrow (floor chevron pointing along the path to the objective): plan, tasks A1-A6, decisions |
 | `docs/OUTLINE.md` | Enemy outlines: plan, as-built notes, tasks O1-O7, decisions E1-E6 |
 | `docs/FX_AUDIO.md` | Sprite effects and audio (Ninja Adventure FX / Audio): slots, pipelines, cue mappers, tasks X0 / F0-F6 / A0-A5 |
+| `docs/SPECTATE.md` | Co-op spectating (watch and switch between living teammates after a death): plan, tasks S0-S6, decisions |
+| `docs/BOOSTS.md` | Temporary boosts dropped by killed enemies (Fury / Quickstep / Frenzy / Aegis): plan, tasks B0-B11, decisions |
+| `docs/SNIPER_ART.md` | Sniper art (`enemy.sniper` as the Lords of Pain subservient): mapping, budget, tasks SN1-SN8, decisions D1-D6 |
+| `docs/BOSS_DEMONLORD.md` | Demon Lord boss variant (`boss.demonlord`, seeded pick per endless boss floor, Lords of Pain Demonlord art): plan, tasks D0-D8, decisions |
 
 Decision log (deviations from `PLAN.md`):
 - **Art (docs/ART.md).** The theme contract gained a `"sprites"` kind (large pre-rendered cells, 1/4/8/16 screen-space
@@ -46,6 +51,15 @@ Decision log (deviations from `PLAN.md`):
   scatter radius are doubled (4x the floor area; corridor lengths stay about the same). No extra rng draws; 1 or
   undefined is the unscaled floor exactly, so M1 and every fixture are unchanged; endless layouts and replays changed.
   Room encounter budgets are unchanged, so the same enemies spread over more floor.
+- **Slower, longer sword (port retune).** `SWORD_DATA`'s swing recovery, finisher wind-up and finisher recovery are
+  `SWORD_TEMPO_PERCENT` = 120% of the web build's (`WEB_SWORD_TIMINGS` 12 / 9 / 21 -> 14 / 11 / 25 ticks, rounded);
+  the lunge keeps its distance over the longer wind-up. The knight's attack animations stretch over these timers, and
+  the swing fan / blade visuals (`WEAPON_VIEW` swing / finisher show, blade sweep) are 20% longer too. Swing and
+  finisher reach are `SWORD_REACH_PERCENT` = 115% of the web build's (1.7 / 2.2 -> 1.955 / 2.53; the guard keeps 1.9),
+  so the fan and blade, drawn from the swing's radius, are 15% larger. Every golden fixture was recorded with the web
+  sword, so the parity specs (golden runs, validate / segments, constants, the boss TTK table) replay under
+  `setSwordTimings(WEB_SWORD_TIMINGS)` (timers and reach) and still match bit for bit; live play (every world) and
+  live replays use the port's sword.
 - **Archetype bands.** Kinds number by (`ArchetypeDef.band`, then id order), not id order alone. The web build's
   archetypes are band 0 (indices 0..6, pinned by hashed golden runs); a port-only archetype takes a NEW band so it
   numbers after the web table and no web index ever moves. The training dummy is band 1 (`PORT_BAND_TUTORIAL`),
@@ -87,7 +101,7 @@ Decision log (deviations from `PLAN.md`):
   enemies and bosses sit under `KV_Actors/Enemies`, a Model with ONE `Highlight` (never one per actor: the engine
   draws at most 31); corpses move to `KV_Actors/Corpses`. Sprite enemies draw a baked `<sheet>-outline.png` (from
   `art/atlases.json` `outline`) in a second ImageLabel behind the frame. The skeleton's `pad` went 1 -> 3 (cells 98x74),
-  so its old upload ids were removed from `assetIds.ts`: it draws as a placeholder until re-uploaded.
+  so its atlases were re-uploaded with the two outline sheets (`assetIds.ts`).
 - **Sprite effects and audio (docs/FX_AUDIO.md).** Source: the Ninja Adventure pack's FX and Audio folders (CC0),
   in gitignored `art/vendor/ninja-adventure/`. Theme port additions: sound assets take `variants` / `pitch` /
   `minInterval` (not on looped `music.*` / `amb.*`); `PORT_AUDIO_EVENTS` (the old `PORT_SFX` plus 13 new IDs) and

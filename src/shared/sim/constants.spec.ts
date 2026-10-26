@@ -1,7 +1,8 @@
 // Every sim constant this port owns equals the web build's value bit for bit (fixtures/constants.json), including the
 // module-load computations (secondsToTicks, ROLL_DISTANCE, TURN_COS / SIN, BOW_WOBBLE_COS / SIN, derived steps).
-import { describe, expect, it } from "@rbxts/jest-globals";
+import { afterAll, beforeAll, describe, expect, it } from "@rbxts/jest-globals";
 import constants from "shared/fixtures-generated/constants";
+import { jsRound } from "shared/jsmath";
 import * as units from "./units";
 import * as playerData from "./playerData";
 import * as combatData from "./combat/combatData";
@@ -34,6 +35,12 @@ import {
 	float64Hex,
 	weaponAt,
 	weaponIds,
+	SWORD_DATA,
+	SWORD_REACH_PERCENT,
+	SWORD_TEMPO_PERCENT,
+	WEB_SWORD_TIMINGS,
+	setSwordTimings,
+	type SwordTimings,
 } from "shared/sim";
 
 /** `{ v, hex }` leaves are compared by bits; strings / booleans / plain numbers by value; tables recursively. */
@@ -86,6 +93,15 @@ const PORTED: Record<string, unknown> = {
 };
 
 describe("constants.json parity", () => {
+	// The port's sword is 20% slower (CLAUDE.md decision log); its web timers are compared here, the retune below.
+	let portSword: SwordTimings;
+	beforeAll(() => {
+		portSword = setSwordTimings(WEB_SWORD_TIMINGS);
+	});
+	afterAll(() => {
+		setSwordTimings(portSword);
+	});
+
 	it("every exported constant of the ported modules matches bit for bit", () => {
 		const problems: string[] = [];
 		let checked = 0;
@@ -165,5 +181,25 @@ describe("constants.json parity", () => {
 		expect(BulletPayload.get(BulletPayload.with(p, "lastHit", 127), "pierce")).toBe(5);
 		// Out of range: the library's dev build (the web build's tests and fixture exporter) rejects it, so does the port.
 		expect(() => BulletPayload.with(p, "damage", 64 + 7)).toThrow("holds integers 0");
+	});
+});
+
+describe("port retune: the sword (CLAUDE.md decision log)", () => {
+	it("every retuned timer is the web build's times SWORD_TEMPO_PERCENT, rounded to whole ticks", () => {
+		const timers = (t: SwordTimings) => [t.swingRecoveryTicks, t.finisherWindupTicks, t.finisherRecoveryTicks];
+		const slower = (ticks: number) => jsRound((ticks * SWORD_TEMPO_PERCENT) / 100);
+		expect(SWORD_TEMPO_PERCENT).toBe(120);
+		expect(timers(SWORD_DATA)).toEqual(timers(WEB_SWORD_TIMINGS).map(slower));
+		expect(timers(SWORD_DATA)).toEqual([14, 11, 25]);
+	});
+
+	it("swing and finisher reach are the web build's times SWORD_REACH_PERCENT; the guard keeps the web reach", () => {
+		expect(SWORD_REACH_PERCENT).toBe(115);
+		expect(SWORD_DATA.reach).toBe(1.955);
+		expect(SWORD_DATA.finisherReach).toBe(2.53);
+		// Written as literals; the product itself is a ulp or so off them in float64.
+		expect(SWORD_DATA.reach).toBeCloseTo((WEB_SWORD_TIMINGS.reach * SWORD_REACH_PERCENT) / 100, 12);
+		expect(SWORD_DATA.finisherReach).toBeCloseTo((WEB_SWORD_TIMINGS.finisherReach * SWORD_REACH_PERCENT) / 100, 12);
+		expect(SWORD_DATA.guardReach).toBe(1.9);
 	});
 });

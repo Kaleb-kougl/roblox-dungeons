@@ -442,9 +442,9 @@ describe("boons, each at its application point", () => {
 		expect([arrow([]), arrow([Boon.SHARPENED])]).toEqual([BOW_DATA.damage, 1.25]);
 	});
 
-	it("Swift Strikes: sword recovery 12 -> 10 ticks; bow stream cooldown 12 -> 10", () => {
+	it("Swift Strikes: sword recovery 14 -> 11 ticks; bow stream cooldown 12 -> 10", () => {
 		expect(swing([]).busy).toBe(SWORD_DATA.swingRecoveryTicks);
-		expect(swing([Boon.SWIFT_STRIKES]).busy).toBe(10);
+		expect(swing([Boon.SWIFT_STRIKES]).busy).toBe(11);
 		const bowCooldown = (boons: number[]) => {
 			const r = arena(boons);
 			tick(r, frame(0, 0, Button.SWAP));

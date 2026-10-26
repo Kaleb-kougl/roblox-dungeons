@@ -155,11 +155,14 @@ export const TELEGRAPH_VIEW = {
 
 /** Weapon visuals (web src/bullets/WeaponView.tsx). */
 export const WEAPON_VIEW = {
-	/** Sim ticks a combo swing / the finisher stays visible (web SWING_SHOW_TICKS, FINISHER_SHOW_TICKS). */
-	swingShowTicks: 8,
-	finisherShowTicks: 12,
-	/** Ticks the blade edge takes to cross the fan (web BLADE_SWEEP_TICKS). */
-	bladeSweepTicks: 4,
+	/**
+	 * Sim ticks a combo swing / the finisher stays visible (web SWING_SHOW_TICKS 8, FINISHER_SHOW_TICKS 12), 20%
+	 * slower like the retuned sword (SWORD_DATA), rounded to whole ticks.
+	 */
+	swingShowTicks: 10,
+	finisherShowTicks: 14,
+	/** Ticks the blade edge takes to cross the fan (web BLADE_SWEEP_TICKS 4; 20% slower like the sword). */
+	bladeSweepTicks: 5,
 	/** Ticks the heavy-arrow release ring expands (web RELEASE_SHOW_TICKS). */
 	releaseShowTicks: 8,
 	/** Inner arcs drawn inside a swing fan, as fractions of its reach (the placeholder's "fill"). */

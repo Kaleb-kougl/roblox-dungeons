@@ -27,9 +27,13 @@ export {
 	SWORD_V_LAST,
 	SWORD_V_STEP,
 	SWORD_V_WINDOW,
+	SWORD_REACH_PERCENT,
+	SWORD_TEMPO_PERCENT,
+	WEB_SWORD_TIMINGS,
+	setSwordTimings,
 	swordGuard,
 } from "./defs/sword";
-export type { SwordData } from "./defs/sword";
+export type { SwordData, SwordTimings } from "./defs/sword";
 export {
 	PLAYER_BULLET_DAMAGE,
 	PLAYER_BULLET_LIFE,

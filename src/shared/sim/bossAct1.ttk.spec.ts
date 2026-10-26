@@ -4,7 +4,7 @@
 // The harness is the same as bossAct1.spec.ts (copied: specs cannot import each other). The bots press exactly the web
 // build's inputs (hypot2 = V8's Math.hypot, jsRound = Math.round), so the measured TTKs are the web build's too: they
 // are also checked against the table in the source's boss/README.md "Time to kill" (rounded seconds).
-import { describe, expect, it } from "@rbxts/jest-globals";
+import { afterAll, describe, expect, it } from "@rbxts/jest-globals";
 import {
 	KALEB_VALE_MVP_PARAMS,
 	actorMover,
@@ -34,7 +34,18 @@ import {
 	type InputFrame,
 	type SimConfig,
 	type SimState,
+	WEB_SWORD_TIMINGS,
+	setSwordTimings,
+	type SwordTimings,
 } from "shared/sim";
+
+// The golden runs (and the source's measured tables) were recorded with the web build's sword; the port's is 20%
+// slower (CLAUDE.md decision log), so this file replays under WEB_SWORD_TIMINGS. Set at load, not in a beforeAll:
+// describe bodies may replay while the specs are collected.
+const portSword: SwordTimings = setSwordTimings(WEB_SWORD_TIMINGS);
+afterAll(() => {
+	setSwordTimings(portSword);
+});
 
 const SECONDS = (ticks: number) => ticks / SIM_HZ;
 
