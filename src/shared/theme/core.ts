@@ -7,6 +7,9 @@
  * frameIndex). Missing IDs never crash: they warn once and fall back exactly as the source does
  * (magenta MISSING_COLOR, the key for strings, silence for sounds; the source's checkerboard
  * texture becomes `assetId: undefined` plus a magenta placeholder visual).
+ *
+ * Roblox port (docs/DECOR.md): decor lookups (`decor`, `decorVariants`, `ambient`) are optional art and never warn for
+ * an ID the pack leaves out; `breakable` is required art (art, or its placeholder box).
  */
 
 import { isHexColor } from "./color";
@@ -14,16 +17,28 @@ import {
 	BIOMES,
 	BIOME_MATERIALS,
 	BIOME_MATERIAL_SURFACES,
+	DECOR_KIND_LAYERS,
+	DECOR_MAX_VARIANTS,
+	DECOR_PARTICLE,
 	DEFAULT_BIOME_MATERIAL,
 	MAX_ANIMATION_FPS,
 	MAX_IMAGE_SIDE,
 	SPRITE_FACING_COUNTS,
 	SPRITE_RESAMPLE_MODES,
+	breakableId,
+	decorAmbientId,
+	decorAmbientRole,
+	decorId,
+	parseDecorId,
 	requiredAnimationList,
 	requiredBaseAnimations,
 	slotFor,
+	type BiomeId,
 	type BiomeMaterial,
 	type BiomeMaterialSurface,
+	type BreakableKind,
+	type DecorKind,
+	type DecorLayer,
 	type ForgeTheme,
 	type SoundGroupName,
 } from "./contract";
@@ -160,6 +175,11 @@ const SPRITE_FALLBACK_ANIMATION = "idle";
 const isFiniteNum = (v: unknown): v is number => typeIs(v, "number") && v === v && v !== math.huge && v !== -math.huge;
 const isImageSidePx = (v: unknown): v is number => isInteger(v) && v >= 1 && v <= MAX_IMAGE_SIDE;
 
+/** `{ x, y }` copied from a manifest point, or `fallback` when it is not one. */
+function pointOr(p: unknown, fallback: Readonly<Pivot>): Pivot {
+	return isObj(p) && isFiniteNum(p.x) && isFiniteNum(p.y) ? { x: p.x, y: p.y } : { x: fallback.x, y: fallback.y };
+}
+
 /**
  * Why a `sprites` def cannot be drawn at all (its cell, pivot, density, resample, facings or sheets are unusable), or
  * undefined. The renderer would otherwise divide by a bad density or index a bad sheet at runtime.
@@ -275,6 +295,75 @@ export interface ImageRef {
 	readonly pivot: Readonly<Pivot> | undefined;
 }
 
+/**
+ * Free-size world art (decor pieces and effects, breakables; docs/DECOR.md): an uploaded image region or a sprite set.
+ * Billboard size in tiles = pixel size / pixelsPerTile.
+ */
+export type WorldArt = WorldImageArt | WorldSpriteArt;
+
+export interface WorldImageArt {
+	readonly kind: "image";
+	readonly assetId: string;
+	/** The whole uploaded image, pixels. */
+	readonly w: number;
+	readonly h: number;
+	/** The region drawn (ImageRectOffset / ImageRectSize), pixels, top-left origin: `rect`, or the whole image. */
+	readonly rect: Readonly<PixelRect>;
+	/** The point placed on the ground spot, pixels from the rect's top-left (default: bottom centre; centre when flat). */
+	readonly pivot: Readonly<Pivot>;
+	/** Art pixels per world tile. */
+	readonly pixelsPerTile: number;
+}
+
+export interface WorldSpriteArt {
+	readonly kind: "sprites";
+	/** The set (its own cell, pivot, pixelsPerTile, facings and animations: `idle`, plus e.g. `lit`, `shatter`). */
+	readonly set: SpriteSetLayout;
+}
+
+/** A decor piece (decor.delve.*) or effect (decor.fx.<torch|flame|glow|glint|zone>) a pack has art for. */
+export interface DecorArt {
+	readonly id: string;
+	/** Pieces: how and where it is drawn. Effects: undefined (they attach to a piece or a spot). */
+	readonly layer: DecorLayer | undefined;
+	/** A light source: flames go on it, the glow sprite under it, the light pool may pick it. */
+	readonly glow: boolean;
+	/** Where the flame / glow attaches, pixels from the rect's (image) or cell's (sprites) top-left: the pivot unless set. */
+	readonly glowAt: Readonly<Pivot>;
+	/** Self-lit: full brightness, no world lighting, no depth-band dimming. */
+	readonly emissive: boolean;
+	readonly art: WorldArt;
+}
+
+/** A biome's ambient particle (decor.fx.ambient.b<n>): texture, look (clamped to DECOR_PARTICLE) and colour role. */
+export interface AmbientParticleArt {
+	readonly id: string;
+	/** ParticleEmitter.Texture. */
+	readonly assetId: string;
+	/** ParticleEmitter.Size, studs: the pack's `particle.sizeStuds` (or the default), at most DECOR_PARTICLE.maxSizeStuds. */
+	readonly sizeStuds: number;
+	/** ParticleEmitter.Transparency: the pack's (or the default), at least DECOR_PARTICLE.minTransparency. */
+	readonly transparency: number;
+	/** LightEmission 1 when set (embers, wisps). */
+	readonly emissive: boolean;
+	/** The tint: `decor.fx.ambient.b<n>`. */
+	readonly role: ColorRole;
+}
+
+/** A breakable kind's theme (docs/DECOR.md D4): always drawable, art or placeholder. */
+export interface BreakableTheme {
+	readonly kind: BreakableKind;
+	/** Asset ID, also the colour role: `breakable.crate`. */
+	readonly id: string;
+	readonly role: ColorRole;
+	/** String-table key of its name: `breakable.crate.name`. */
+	readonly nameKey: string;
+	/** Uploaded art, or undefined: draw `placeholder`. */
+	readonly art: WorldArt | undefined;
+	/** The placeholder primitive (a low box; magenta when the pack lacks the ID). */
+	readonly placeholder: PlaceholderVisual;
+}
+
 export interface BiomeTheme {
 	readonly id: string;
 	readonly forgeTheme: ForgeTheme | undefined;
@@ -327,6 +416,8 @@ export class ThemeCore {
 	private readonly biomes: Obj;
 	private readonly sheets = new Map<string, SheetLayout>();
 	private readonly spriteSets = new Map<string, SpriteSetLayout>();
+	/** Decor lookups, misses included (`false`). */
+	private readonly decorArt = new Map<string, DecorArt | false>();
 	private readonly warned = new Set<string>();
 	private readonly warnSink: (message: string) => void;
 
@@ -562,6 +653,175 @@ export class ThemeCore {
 			animations,
 			(key, msg) => this.warnOnce(key, msg),
 		);
+	}
+
+	// --- world art: decor and breakables (Roblox port, docs/DECOR.md) ------------------------------
+
+	/**
+	 * An `image` (decor.* / breakable.*) or `sprites` asset as world art, or undefined (warned once) when it is too
+	 * malformed to draw: no assetId, a bad size, `rect` or `pixelsPerTile`, or a sprite set ThemeCore.sprites rejects.
+	 * `flatPivot`: the default pivot is the centre (flat pieces, effects) instead of the bottom centre.
+	 */
+	private worldArt(id: string, def: AssetDef, flatPivot: boolean): WorldArt | undefined {
+		if (def.kind === "sprites") {
+			const set = this.sprites(id);
+			return set !== undefined ? { kind: "sprites", set } : undefined;
+		}
+		if (def.kind !== "image") {
+			return undefined;
+		}
+		const d = def as unknown as Obj;
+		const reject = (reason: string) => {
+			this.warnOnce(`world:${id}`, `art "${id}" is malformed (${reason}), not drawn`);
+			return undefined;
+		};
+		if (!typeIs(d.assetId, "string")) return reject("no assetId");
+		if (!isImageSidePx(d.w) || !isImageSidePx(d.h)) return reject("bad w / h");
+		if (!isFiniteNum(d.pixelsPerTile) || !(d.pixelsPerTile > 0)) return reject("pixelsPerTile must be > 0");
+		let rect: PixelRect = { x: 0, y: 0, w: d.w, h: d.h };
+		if (d.rect !== undefined) {
+			const r = d.rect;
+			if (!isObj(r) || !isInteger(r.x) || !isInteger(r.y) || !isInteger(r.w) || !isInteger(r.h)) {
+				return reject("bad rect");
+			}
+			if (r.x < 0 || r.y < 0 || r.w < 1 || r.h < 1 || r.x + r.w > d.w || r.y + r.h > d.h) {
+				return reject("rect outside the image");
+			}
+			rect = { x: r.x, y: r.y, w: r.w, h: r.h };
+		}
+		const fallback = flatPivot ? { x: rect.w / 2, y: rect.h / 2 } : { x: rect.w / 2, y: rect.h };
+		return {
+			kind: "image",
+			assetId: d.assetId,
+			w: d.w,
+			h: d.h,
+			rect,
+			pivot: pointOr(d.pivot, fallback),
+			pixelsPerTile: d.pixelsPerTile,
+		};
+	}
+
+	/**
+	 * A decor piece (decor.delve.*) or effect (decor.fx.<torch|flame|glow|glint|zone>), or undefined: decor is
+	 * optional, so an ID the pack does not define is undefined WITHOUT a warning (nothing is drawn). Cached. Art too
+	 * malformed to draw (see worldArt; a piece whose layer is missing or not allowed for its kind) warns once and is
+	 * undefined. Ambient textures go through `ambient(biome)`.
+	 */
+	decor(id: string): DecorArt | undefined {
+		const cached = this.decorArt.get(id);
+		if (cached !== undefined) {
+			return cached === false ? undefined : cached;
+		}
+		const art = this.createDecor(id);
+		this.decorArt.set(id, art ?? false);
+		return art;
+	}
+
+	private createDecor(id: string): DecorArt | undefined {
+		const def = this.asset(id);
+		if (def === undefined) {
+			return undefined;
+		}
+		const info = parseDecorId(id);
+		if (info === undefined || info.type === "ambient") {
+			this.warnOnce(`decor:${id}`, `"${id}" is not a decor piece or effect ID, not drawn`);
+			return undefined;
+		}
+		if (def.kind !== "image" && def.kind !== "sprites") {
+			this.warnOnce(`decor:${id}`, `decor "${id}" is a ${def.kind}, not an image or sprites; not drawn`);
+			return undefined;
+		}
+		const d = def as unknown as Obj;
+		let layer: DecorLayer | undefined;
+		if (info.type === "piece") {
+			const allowed = DECOR_KIND_LAYERS[info.kind] as ReadonlyArray<string>;
+			if (!typeIs(d.layer, "string") || !allowed.includes(d.layer)) {
+				this.warnOnce(
+					`decor:${id}`,
+					`decor "${id}" has layer ${describeValue(d.layer)}, ${info.kind} allows ${allowed.join(
+						" | ",
+					)}; not drawn`,
+				);
+				return undefined;
+			}
+			layer = d.layer as DecorLayer;
+		}
+		const art = this.worldArt(id, def, layer === undefined || layer === "flat");
+		if (art === undefined) {
+			return undefined; // worldArt warned
+		}
+		const pivot = art.kind === "image" ? art.pivot : art.set.pivot;
+		const glow = d.glow === true;
+		return {
+			id,
+			layer,
+			glow,
+			glowAt: glow ? pointOr(d.glowAt, pivot) : pivot,
+			emissive: d.emissive === true,
+			art,
+		};
+	}
+
+	/**
+	 * Every piece of `kind` the pack has for `biome`, in ID order: the base ID `decor.delve.b<n>.<kind>`, then the
+	 * variants `.1` .. `.DECOR_MAX_VARIANTS`. Empty (no warning) when it has none: draw nothing. A renderer picks one
+	 * per cell by hash, so every client draws the same floor.
+	 */
+	decorVariants(biome: BiomeId, kind: DecorKind): Array<DecorArt> {
+		const out = new Array<DecorArt>();
+		const base = this.decor(decorId(biome, kind));
+		if (base !== undefined) out.push(base);
+		for (let v = 1; v <= DECOR_MAX_VARIANTS; v++) {
+			const art = this.decor(decorId(biome, kind, v));
+			if (art !== undefined) out.push(art);
+		}
+		return out;
+	}
+
+	/**
+	 * A biome's ambient particle (decor.fx.ambient.b<n>), or undefined (no warning) when the pack has none: no
+	 * particles. Size and transparency default to DECOR_PARTICLE and are clamped to its caps whatever the pack says.
+	 */
+	ambient(biome: BiomeId): AmbientParticleArt | undefined {
+		const id = decorAmbientId(biome);
+		const def = this.asset(id);
+		if (def === undefined) {
+			return undefined;
+		}
+		const d = def as unknown as Obj;
+		if (def.kind !== "image" || !typeIs(d.assetId, "string")) {
+			this.warnOnce(`ambient:${id}`, `ambient particle "${id}" is not an uploaded image, not drawn`);
+			return undefined;
+		}
+		const particle: Obj = isObj(d.particle) ? d.particle : {};
+		const size = isFiniteNum(particle.sizeStuds) && particle.sizeStuds > 0 ? particle.sizeStuds : undefined;
+		const t = isFiniteNum(particle.transparency) ? particle.transparency : undefined;
+		return {
+			id,
+			assetId: d.assetId,
+			sizeStuds: math.min(size ?? DECOR_PARTICLE.defaultSizeStuds, DECOR_PARTICLE.maxSizeStuds),
+			transparency: math.clamp(t ?? DECOR_PARTICLE.defaultTransparency, DECOR_PARTICLE.minTransparency, 1),
+			emissive: d.emissive === true,
+			role: decorAmbientRole(biome),
+		};
+	}
+
+	/**
+	 * A breakable kind: its uploaded art (an image with pixelsPerTile, or a sprite set with `idle` and an optional
+	 * `shatter`), else its placeholder box. Missing ID (required in every pack): warn once, the magenta block.
+	 */
+	breakable(kind: BreakableKind): BreakableTheme {
+		const id = breakableId(kind);
+		const def = this.asset(id);
+		const art = def !== undefined ? this.worldArt(id, def, false) : undefined;
+		return {
+			kind,
+			id,
+			role: id,
+			nameKey: `${id}.name`,
+			art,
+			placeholder: this.placeholder(id),
+		};
 	}
 
 	/**

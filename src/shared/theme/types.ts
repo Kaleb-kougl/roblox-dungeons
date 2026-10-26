@@ -12,7 +12,7 @@
  * in gameplay data, so swapping a pack can never change difficulty (the validator enforces it).
  */
 
-import type { BiomeMaterial, BiomeMaterialSurface } from "./contract";
+import type { BiomeMaterial, BiomeMaterialSurface, DecorLayer } from "./contract";
 
 /** Current manifest format. Bump when the shape changes incompatibly. */
 export const MANIFEST_FORMAT = 1;
@@ -80,6 +80,22 @@ export const COLOR_ROLES = [
 	"damageHeavy",
 	"damageCapped",
 	"particleSpark",
+	// Roblox port (docs/DECOR.md Phase 2 part 2): decor effect tints (contract.ts DECOR_FX_ROLES). The validator keeps
+	// each at least MIN_DECOR_FX_BULLET_DIFFERENCE (CIE76) from enemyBullet and enemyBulletOutline.
+	"decor.fx.flame",
+	"decor.fx.glow",
+	"decor.fx.glint",
+	"decor.fx.zone",
+	// One ambient particle colour per biome (b1..b5 = biome.1..5; the Forge themes' particle colours)
+	"decor.fx.ambient.b1",
+	"decor.fx.ambient.b2",
+	"decor.fx.ambient.b3",
+	"decor.fx.ambient.b4",
+	"decor.fx.ambient.b5",
+	// Roblox port (docs/DECOR.md D4): one identity colour per breakable kind (contract.ts BREAKABLE_KINDS), held to
+	// MIN_ENEMY_BULLET_CONTRAST against enemyBullet like the walls
+	"breakable.barrel",
+	"breakable.crate",
 ] as const;
 
 export type ColorRole = (typeof COLOR_ROLES)[number];
@@ -102,10 +118,42 @@ export interface ImageAsset {
 	/** Tile slot only: the image is a repeating floor/wall texture spanning this many world tiles per side (any w/h). */
 	tilesPerImage?: number;
 	/**
-	 * ui.* slot only: the point placed on the image's anchor (a beam's foot, a ring's centre), pixels from the top-left,
+	 * ui.* slot: the point placed on the image's anchor (a beam's foot, a ring's centre), pixels from the top-left,
 	 * inside the image. Presentation only. Without it the renderer uses its own default (bottom centre / centre).
+	 * decor.* / breakable.* slots: the point placed on the piece's ground spot, pixels from the top-left of `rect`
+	 * (default: bottom centre; centre for flat pieces and effects).
 	 */
 	pivot?: Pivot;
+	/** decor.* (except ambient textures) and breakable.* images, required: art pixels per world tile (sizes the art). */
+	pixelsPerTile?: number;
+	/** decor.* / breakable.* images: the region of the image to draw, pixels (default: all of it); an atlas cut. */
+	rect?: PixelBox;
+	/** decor.delve.* only, required: how and where the piece is drawn (contract.ts DECOR_KIND_LAYERS). */
+	layer?: DecorLayer;
+	/** decor.*: the piece glows (a light source: flames go on it, the glow sprite under it, the light pool may pick it). */
+	glow?: boolean;
+	/** decor.*, with `glow`: where the flame / glow attaches, pixels from the top-left of `rect` (default: the pivot). */
+	glowAt?: Pivot;
+	/** decor.*: self-lit art, drawn at full brightness (no world lighting, no depth-band dimming). */
+	emissive?: boolean;
+	/** decor.fx.ambient.* only: the particle's look, held to contract.ts DECOR_PARTICLE (smaller and fainter than bullets). */
+	particle?: DecorParticle;
+}
+
+/** A pixel rectangle inside an image, top-left origin. */
+export interface PixelBox {
+	x: number;
+	y: number;
+	w: number;
+	h: number;
+}
+
+/** An ambient particle's look (decor.fx.ambient.*); each field optional, defaults in contract.ts DECOR_PARTICLE. */
+export interface DecorParticle {
+	/** ParticleEmitter.Size, studs: in (0, DECOR_PARTICLE.maxSizeStuds]. */
+	sizeStuds?: number;
+	/** ParticleEmitter.Transparency: in [DECOR_PARTICLE.minTransparency, 1]. */
+	transparency?: number;
 }
 
 export interface AnimationDef {
@@ -180,8 +228,17 @@ export interface SpriteSetAsset {
 	facings: SpriteFacings;
 	sheets: Array<SpriteSheetImage>;
 	/** Base animation names (no facing suffix): the slot's contract names (class: idle, run, roll, hit, death; enemy and
-	 * boss: idle, move, attack, hit, death) are required with >= 1 frame; extra names (attack.1, run.back, ...) allowed. */
+	 * boss: idle, move, attack, hit, death; decor and breakable: idle) are required with >= 1 frame; extra names
+	 * (attack.1, run.back, lit, shatter, ...) allowed. */
 	animations: Record<string, SpriteAnimationDef>;
+	/** decor.delve.* only, required: see ImageAsset.layer. */
+	layer?: DecorLayer;
+	/** decor.* only: see ImageAsset.glow. */
+	glow?: boolean;
+	/** decor.* only, with `glow`: where the flame / glow attaches, pixels from the cell's top-left (default: the pivot). */
+	glowAt?: Pivot;
+	/** decor.* only: see ImageAsset.emissive. */
+	emissive?: boolean;
 }
 
 export interface SpriteFacings {
@@ -252,7 +309,7 @@ export interface ThemeManifest {
 	colors: Record<ColorRole, HexColor>;
 	/** Keyed by biome ID (biome.1 .. biome.5). */
 	biomes: Record<string, BiomeDef>;
-	/** Logical asset ID -> asset. Sprites, tiles, bullets, items, UI and audio events. */
+	/** Logical asset ID -> asset. Sprites, tiles, bullets, items, UI, decor, breakables and audio events. */
 	assets: Record<string, AssetDef>;
 	/** Default-locale string table. Values may contain {name} placeholders. */
 	strings: Record<string, string>;

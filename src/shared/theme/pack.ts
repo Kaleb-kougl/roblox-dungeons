@@ -9,14 +9,20 @@
  */
 
 import { parseHex } from "./color";
+import type { BiomeId, BreakableKind, DecorKind, DecorLayer } from "./contract";
 import {
 	DEFAULT_PACK_ID,
 	MISSING_COLOR,
 	ThemeCore,
+	type AmbientParticleArt,
 	type BiomeTheme,
+	type BreakableTheme,
+	type DecorArt,
 	type ImageRef,
 	type SoundRef,
 	type SpriteSetLayout,
+	type WorldArt,
+	type WorldImageArt,
 } from "./core";
 import { THEME_PACKS } from "./packs";
 import type { PlaceholderColor, PlaceholderVisual } from "./placeholders";
@@ -123,6 +129,54 @@ class PackSpriteSet implements SpriteSet {
 	}
 }
 
+/** World art as Roblox wants it (decor, breakables): an image region, or a sprite set. */
+export type WorldVisual = WorldImage | WorldSprites;
+
+/** An uploaded image region: ImageLabel.Image + ImageRectOffset / ImageRectSize; billboard tiles = size / pixelsPerTile. */
+export interface WorldImage {
+	readonly kind: "image";
+	readonly image: string;
+	readonly offset: Vector2;
+	readonly size: Vector2;
+	/** The point placed on the ground spot, pixels from the region's top-left. */
+	readonly pivot: Readonly<Pivot>;
+	readonly pixelsPerTile: number;
+	/** The pure layout underneath. */
+	readonly layout: WorldImageArt;
+}
+
+export interface WorldSprites {
+	readonly kind: "sprites";
+	readonly set: SpriteSet;
+}
+
+/** A decor piece or effect (ThemeCore.decor) with Roblox types. */
+export interface DecorPiece {
+	readonly id: string;
+	readonly layer: DecorLayer | undefined;
+	readonly glow: boolean;
+	readonly glowAt: Readonly<Pivot>;
+	readonly emissive: boolean;
+	readonly art: WorldVisual;
+	readonly core: DecorArt;
+}
+
+/** A biome's ambient particle (ThemeCore.ambient) with its tint as a Color3. */
+export interface AmbientParticles extends AmbientParticleArt {
+	readonly color: Color3;
+}
+
+/** A breakable kind (ThemeCore.breakable): art (or undefined: build `placeholder`) and its identity colour. */
+export interface Breakable {
+	readonly kind: BreakableKind;
+	readonly id: string;
+	readonly nameKey: string;
+	readonly color: Color3;
+	readonly art: WorldVisual | undefined;
+	readonly placeholder: PlaceholderVisual;
+	readonly core: BreakableTheme;
+}
+
 export interface BiomeColors extends BiomeTheme {
 	readonly floorColor: Color3;
 	readonly wallColor: Color3;
@@ -153,6 +207,8 @@ export class ThemePack {
 	private readonly colors = new Map<string, Color3>();
 	private readonly sheets = new Map<string, SpriteSheet>();
 	private readonly spriteSets = new Map<string, SpriteSet>();
+	private readonly decorPieces = new Map<string, DecorPiece | false>();
+	private readonly breakables = new Map<BreakableKind, Breakable>();
 
 	/** Defensive: a manifest that failed validation still loads; bad entries fall back individually. */
 	constructor(manifest: unknown, opts: ThemePackOptions = {}) {
@@ -228,6 +284,90 @@ export class ThemePack {
 		const set = new PackSpriteSet(layout);
 		this.spriteSets.set(id, set);
 		return set;
+	}
+
+	// --- world art: decor and breakables (docs/DECOR.md) ------------------------------------------
+
+	private worldVisual(art: WorldArt): WorldVisual | undefined {
+		if (art.kind === "image") {
+			return {
+				kind: "image",
+				image: art.assetId,
+				offset: new Vector2(art.rect.x, art.rect.y),
+				size: new Vector2(art.rect.w, art.rect.h),
+				pivot: art.pivot,
+				pixelsPerTile: art.pixelsPerTile,
+				layout: art,
+			};
+		}
+		const set = this.sprites(art.set.id);
+		return set !== undefined ? { kind: "sprites", set } : undefined;
+	}
+
+	/**
+	 * A decor piece (decor.delve.*) or effect (decor.fx.<torch|flame|glow|glint|zone>), cached. Undefined, without a
+	 * warning, when the pack has no art for it: draw nothing (see ThemeCore.decor).
+	 */
+	decor(id: string): DecorPiece | undefined {
+		const cached = this.decorPieces.get(id);
+		if (cached !== undefined) {
+			return cached === false ? undefined : cached;
+		}
+		const core = this.core.decor(id);
+		const art = core !== undefined ? this.worldVisual(core.art) : undefined;
+		const piece: DecorPiece | undefined =
+			core !== undefined && art !== undefined
+				? { id, layer: core.layer, glow: core.glow, glowAt: core.glowAt, emissive: core.emissive, art, core }
+				: undefined;
+		this.decorPieces.set(id, piece ?? false);
+		return piece;
+	}
+
+	/** Every piece of `kind` for `biome` (base ID, then variants .1 ..); empty when the pack has none. */
+	decorVariants(biome: BiomeId, kind: DecorKind): Array<DecorPiece> {
+		const out = new Array<DecorPiece>();
+		for (const art of this.core.decorVariants(biome, kind)) {
+			const piece = this.decor(art.id);
+			if (piece !== undefined) out.push(piece);
+		}
+		return out;
+	}
+
+	/** A biome's ambient particle, or undefined (no warning) when the pack has none. Clamped to DECOR_PARTICLE. */
+	ambient(biome: BiomeId): AmbientParticles | undefined {
+		const a = this.core.ambient(biome);
+		if (a === undefined) {
+			return undefined;
+		}
+		return {
+			id: a.id,
+			assetId: a.assetId,
+			sizeStuds: a.sizeStuds,
+			transparency: a.transparency,
+			emissive: a.emissive,
+			role: a.role,
+			color: this.color(a.role),
+		};
+	}
+
+	/** A breakable kind (required in every pack): its art, or undefined art and the placeholder box. Cached. */
+	breakable(kind: BreakableKind): Breakable {
+		const cached = this.breakables.get(kind);
+		if (cached !== undefined) {
+			return cached;
+		}
+		const core = this.core.breakable(kind);
+		const b: Breakable = {
+			kind,
+			id: core.id,
+			nameKey: core.nameKey,
+			color: this.color(core.role),
+			art: core.art !== undefined ? this.worldVisual(core.art) : undefined,
+			placeholder: core.placeholder,
+			core,
+		};
+		this.breakables.set(kind, b);
+		return b;
 	}
 
 	/** What to build while an ID has no art. Missing ID: warn once, a magenta block. */

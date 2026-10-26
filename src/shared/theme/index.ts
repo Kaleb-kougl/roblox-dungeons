@@ -6,17 +6,31 @@
  */
 export * from "./types";
 export * from "./contract";
-export { contrastRatio, isHexColor, parseHex, relativeLuminance, toHex, type Rgb } from "./color";
+export {
+	colorDifference,
+	contrastRatio,
+	isHexColor,
+	parseHex,
+	relativeLuminance,
+	toHex,
+	toLab,
+	type Lab,
+	type Rgb,
+} from "./color";
 export { interpolate, placeholders, templateProblem, type StringVars } from "./strings";
 export {
 	ASSET_ID_PATTERN,
+	breakableContrastReport,
 	contrastReport,
+	decorFxReport,
 	isAssetId,
 	isGameplayKey,
 	isStringKey,
 	juiceContrastReport,
 	validateManifest,
+	type BreakableContrastEntry,
 	type ContrastEntry,
+	type DecorFxEntry,
 	type JuiceContrastEntry,
 	type ValidateOptions,
 } from "./validate";
@@ -29,7 +43,10 @@ export {
 	frameRect,
 	frameUV,
 	uvToPixelRect,
+	type AmbientParticleArt,
 	type BiomeTheme,
+	type BreakableTheme,
+	type DecorArt,
 	type FrameUV,
 	type ImageRef,
 	type PixelRect,
@@ -38,6 +55,9 @@ export {
 	type SpriteFrameRect,
 	type SpriteSetLayout,
 	type ThemeCoreOptions,
+	type WorldArt,
+	type WorldImageArt,
+	type WorldSpriteArt,
 } from "./core";
 export {
 	ThemePack,
@@ -46,13 +66,19 @@ export {
 	listThemePacks,
 	loadThemePack,
 	setActiveThemePack,
+	type AmbientParticles,
 	type BiomeColors,
+	type Breakable,
+	type DecorPiece,
 	type FrameRect,
 	type LoadOptions,
 	type SpriteFrame,
 	type SpriteSet,
 	type SpriteSheet,
 	type ThemePackOptions,
+	type WorldImage,
+	type WorldSprites,
+	type WorldVisual,
 } from "./pack";
 export { THEME_PACKS } from "./packs";
 export { PLACEHOLDER_MANIFEST } from "./packs/placeholder";

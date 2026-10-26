@@ -7,7 +7,9 @@ and every sound is **silent**; replacing art and audio later means editing the p
 Ported from project-kaleb-vale `src/theme/` @ `42897e2`. The contract (IDs, sprite cell sizes, frame counts,
 pivots, facings, colour roles, string keys, contrast thresholds, gameplay key words) is unchanged, so art made
 for the web build fits here. Contract v2 only adds to it: the `sprites` kind for actors and `tilesPerImage` for
-tile images (docs/ART.md task S2).
+tile images (docs/ART.md task S2). The port also adds two slots (docs/DECOR.md): optional room decoration
+(`decor.*`, [below](#decor-decor-docsdecormd-r2)) and required breakable clutter (`breakable.*`,
+[below](#breakables-breakable-docsdecormd-d4)), plus the `decor.fx.*` and `breakable.*` colour roles.
 
 ## Rules
 
@@ -25,7 +27,9 @@ tile images (docs/ART.md task S2).
 4. **Colour roles, not colours.** Packs fill role tokens. The validator checks WCAG contrast of `enemyBullet`
    against every biome's floor **and** wall (>= 3.0:1), `enemyHealth` / `enemyHealthElite` against
    `enemyHealthBack` (>= 3.0:1), and `damageNumber` / `damageHeavy` / `damageCapped` against every biome floor
-   (>= 4.5:1), each per biome.
+   (>= 4.5:1), each per biome. Port additions: `enemyBullet` against every breakable role (>= 3.0:1, bullets fly
+   over crates as over walls) and every `decor.fx.*` role at least 40 (CIE76 colour difference) away from
+   `enemyBullet` and `enemyBulletOutline` ([decor fx colours](#decor-fx-colour-roles)).
 5. **Names come from the string table** (with `{var}` interpolation and optional `locales`).
 6. **One pack at a time.** Switching packs is a restart.
 
@@ -82,6 +86,10 @@ if (set !== undefined) {
 | `spriteSheet(id)` | `{ assetId \| undefined, frameW, frameH, pivot, animations, animationNames, frame(anim, i) }`; a `sprites` asset gets the placeholder layout | placeholder layout; unknown animation warns once and uses the first |
 | `sprites(id)` | `SpriteSet` for a `sprites` asset (cached), `undefined` for any other kind (no warning) | warns once, `undefined` |
 | `placeholder(id)` | `PlaceholderVisual` | warns once, a magenta block the size of the slot's cell |
+| `decor(id)` | `DecorPiece` (layer, glow, glowAt, emissive, `art`: `WorldImage` \| `WorldSprites`), cached | `undefined`, **no warning** (decor is optional); malformed art warns once, `undefined` |
+| `decorVariants(biome, kind)` | every `DecorPiece` of a kind for a biome: base ID, then `.1` .. `.4` | `[]`, no warning |
+| `ambient(biome)` | `AmbientParticles` (texture, `sizeStuds`, `transparency` clamped to `DECOR_PARTICLE`, `emissive`, `role`, `color`) | `undefined`, no warning |
+| `breakable(kind)` | `Breakable` (`id`, `nameKey`, `color`, `art`: `WorldVisual` \| undefined, `placeholder`), cached | warns once, magenta placeholder |
 | `visualColor(ref)` / `visualHex(ref)` | colour of a placeholder's `color` (a role, a biome surface, or missing) | |
 | `problems` | validator errors found at load | |
 | `core` | the pure `ThemeCore` underneath | |
@@ -100,8 +108,9 @@ lists `THEME_PACKS` (`packs/index.ts`).
 ### Pure core (headless)
 
 Everything that does not need a Roblox datatype is plain Luau-safe TS, tested under Lune: `color.ts` (hex, WCAG
-contrast), `strings.ts` (`interpolate`, `placeholders`, `templateProblem`), `validate.ts` (`validateManifest`,
-`contrastReport`, `juiceContrastReport`, `isGameplayKey`), `core.ts` (`ThemeCore` lookups and fallbacks, `sprites` ->
+contrast, CIE76 `colorDifference`), `strings.ts` (`interpolate`, `placeholders`, `templateProblem`), `validate.ts`
+(`validateManifest`, `contrastReport`, `juiceContrastReport`, `decorFxReport`, `breakableContrastReport`,
+`isGameplayKey`), `core.ts` (`ThemeCore` lookups and fallbacks, `decor` / `decorVariants` / `ambient` / `breakable`, `sprites` ->
 `SpriteSetLayout`, `frameRect`,
 `frameUV`, `uvToPixelRect`, `frameIndex`), `placeholders.ts`, `contract.ts`. `pack.ts` only converts to `Color3` /
 `Vector2`. Warnings go to Roblox `warn` unless a `warn` sink is passed (the specs pass one to assert warn-once).
@@ -132,10 +141,13 @@ its cell by `PLACEHOLDER_PROPORTIONS`. Size is `[x width, y height, z depth alon
 | `item.*` | Block / Ball | 2 x 2 x 2 | `rarity.*` / `uiHealth` (web pack's roles) | SmoothPlastic | loot on the floor |
 | `ui.cursor`, `ui.panel`, `ui.icon.*` | Block (flat) | cell px / 4 | `uiText`, `uiPanel` + `uiAccent`, `uiHealth`, `uiMana`, `ember` | SmoothPlastic | HUD draws Frames sized by `cellPx` |
 | `ui.font.digits` | Block (flat) | 1.25 x 1.75 | `damageNumber` | SmoothPlastic | HUD draws numbers as text until a strip is uploaded |
+| `breakable.crate` | Block | 4 x 2 x 4 | `breakable.crate` | SmoothPlastic | low box filling its tile, base on floor |
+| `breakable.barrel` | Block | 3.5 x 2.5 x 3.5 | `breakable.barrel` | SmoothPlastic | a little narrower and taller |
 | `TELEGRAPH_VISUAL` | Block dashes | 0.25 x 0.25 x 1 per dash, gap 0.75 | `telegraph` | SmoothPlastic | dashed line on the floor |
 | missing ID | Block | the slot's cell | magenta (`{ kind: "missing" }`) | SmoothPlastic | warn once |
 
-Extra IDs under a known prefix (`bullet.enemy.wave`, `item.weapon.axe`) use `PLACEHOLDER_PREFIX_DEFAULTS`.
+Extra IDs under a known prefix (`bullet.enemy.wave`, `item.weapon.axe`, `breakable.urn`) use
+`PLACEHOLDER_PREFIX_DEFAULTS`. `decor.*` has no placeholders: an ID without art is not drawn.
 "Capsule" is not a Roblox PartType: build a Cylinder (axis up) with a Ball at each end. Shapes and materials are
 `Enum.PartType` / `Enum.Material` names.
 
@@ -154,6 +166,8 @@ Asset IDs are lowercase, dot-separated, at least two segments; the first segment
 | `ui.*` | cursor, panel, icons | image, placeholder | free size |
 | `ui.font.digits` | pixel digit font | image, placeholder | `DIGIT_FONT`: glyphs `0123456789+-CAP!`, 5x7 cells; strip 80x7 |
 | `sfx.*`, `music.*` | audio events | sound, silent | play through SoundGroup `sfx` / `music` |
+| `decor.*` | room decoration, **optional** ([Decor](#decor-decor-docsdecormd-r2)) | image, sprites | free size; `pixelsPerTile`; ID grammar, `layer` per kind |
+| `breakable.<barrel\|crate>` | breakable clutter, **required** ([Breakables](#breakables-breakable-docsdecormd-d4)) | image, sprites, placeholder | free size; `pixelsPerTile`; `sprites`: `idle` (+ `shatter`) |
 
 Directional animations are named `<anim>.<facing>` and take one sheet row each. Full required lists:
 `REQUIRED_ASSET_IDS`, `REQUIRED_STRING_KEYS`, `AUDIO_EVENTS` in `contract.ts`.
@@ -296,6 +310,126 @@ A biome may name the Roblox built-in material of its floor slabs, wall blocks an
 - **Pools** are coloured by the Dungeon Forge theme's liquid (no colour role yet); `materials.pool` only sets their
   material.
 
+## Decor (`decor.*`, docs/DECOR.md R2)
+
+The web build's DECOR slot, rebuilt from the plan (the web source of `decorPlan.ts` was not available; names follow
+the plan so a port of it can read this contract). **Every decor ID is optional**: a pack draws exactly the pieces it
+has art for, and `ThemePack.decor*` / `ambient` return nothing, without a warning, for the rest. The placeholder
+pack (and `vale`, until R5 uploads the Lords of Pain props) ships none, so nothing is drawn.
+
+**IDs** (`parseDecorId`, `decorId`, `decorFxId`, `decorAmbientId` in `contract.ts`; anything else under `decor.` is
+an error):
+
+| ID | What |
+| --- | --- |
+| `decor.delve.b<n>.<kind>` | a piece for biome n (b1..b5 = `biome.1`..`biome.5`); the kind segment is the kind in lowercase (`shardIce` -> `shardice`; `decorId("biome.3", "shardIce")`) |
+| `decor.delve.b<n>.<kind>.<v>` | variant v (1..`DECOR_MAX_VARIANTS` = 4: `bones1`..`3`, `bricks` / `rocks` debris); renderers pick one per cell by hash among `decorVariants(biome, kind)` |
+| `decor.fx.torch` / `flame` / `glow` / `glint` / `zone` | effects: flame loop on a lit wall torch (`vfx/flame`), bigger loop on a lit brazier (`vfx/flames`), soft glow under glowing pieces (`vfx/glow`), treasure sparkle (`vfx/glint`), open-stairwell ring (`vfx/zone`) |
+| `decor.fx.ambient.b<n>` | biome n's ambient particle texture (ParticleEmitter.Texture) |
+
+**Kinds and layers** (`DECOR_KIND_LAYERS`). `layer` says how and where a piece is drawn: `flat` (a decal on the
+floor), `low` (standing, short), `tall` (standing; only on far-wall tops, under the footprint rule), `wall` (on a
+visible wall face). Each kind allows only the layers its placement can take, so no pack can stand art up on open
+floor where it could hide a bullet:
+
+| Layers allowed | Kinds |
+| --- | --- |
+| `tall`, `low` (placed on far-wall tops) | brazier, sarco, pillar, grave, candle, icicle, shardIce (the web plan's tall pieces, in its priority order); wall, wallBroken, column, columnBroken (R6 far-wall dressing) |
+| `flat` (where the Forge put them) | debris, bones, crack, moss, roots, ring, bossCrystal, shrineCrystal, gems (treasure dressing), brokenBarrel, brokenCrate (the decal a broken breakable leaves) |
+| `wall` | torch, banner |
+
+`chest` (the treasure interactable sits there) and `arch` (doorways stay clear) are never drawn and are not kinds.
+Lords of Pain covers pillar / column (`column1`), columnBroken (`column2`), wall / wallBroken (`wall2` / `wall3`),
+brazier, torch, debris (`bricks`, `rocks`), bones (`bones1`-`3`), moss / roots (`mushrooms`), gems (`gemstones_*`),
+the effects (`vfx/*`) and the breakable decals; the other kinds stay undrawn until a pack has art.
+
+**Fields** (on top of the `image` / `sprites` kind; `validate.ts` checks each):
+
+| Field | Where | What |
+| --- | --- | --- |
+| `layer` | pieces, **required** | one of the kind's layers; effects take none |
+| `pixelsPerTile` | images, **required** (not ambient) | art pixels per world tile: billboard tiles = pixels / pixelsPerTile (sprite sets carry their own) |
+| `rect` `{ x, y, w, h }` | images, optional | the region drawn (an atlas cut), inside the image; default the whole image |
+| `pivot` `{ x, y }` | images, optional (sprite sets: required, as always) | the point on the ground spot, pixels from the rect's top-left, inside it; default bottom centre (centre for flat pieces and effects) |
+| `glow` | pieces, effects | a light source: flames go on it, `decor.fx.glow` under it, the light pool may pick it |
+| `glowAt` `{ x, y }` | with `glow: true` | where the flame / glow attaches, inside the drawn box; default the pivot |
+| `emissive` | pieces, effects, ambient | self-lit: full brightness, no world lighting, no depth-band dimming |
+| `particle` `{ sizeStuds?, transparency? }` | `decor.fx.ambient.*` only | the particle's look, held to `DECOR_PARTICLE`: size in (0, 0.6] studs, transparency in [0.4, 1] |
+
+An ambient texture is an `image` with only `kind`, `assetId`, `w`, `h`, `particle`, `emissive` (a ParticleEmitter has
+no ImageRect or pivot); `sprites` is rejected there. A decor sprite set is a v2 set that must define `idle` (the
+resting look: one frame, or a loop for flames); extra states such as `lit` (a lit brazier) and `shatter` are free
+names. Images up to 1024 px a side.
+
+```ts
+"decor.delve.b1.torch": { kind: "image", assetId: "rbxassetid://<n>", w: 111, h: 81, pixelsPerTile: 32,
+                          layer: "wall", glow: true, glowAt: { x: 55, y: 10 } },
+"decor.delve.b1.bones.2": { kind: "sprites", /* SpriteSetAsset, 16 facings, animations: { idle } */ layer: "flat" },
+"decor.fx.flame": { kind: "sprites", /* 8-frame loop as idle */ emissive: true },
+"decor.fx.ambient.b2": { kind: "image", assetId: "rbxassetid://<n>", w: 32, h: 32, emissive: true,
+                         particle: { sizeStuds: 0.3, transparency: 0.5 } },
+```
+
+**Ambient particle caps** (`DECOR_PARTICLE`, contract.ts): ambient particles are smaller and fainter than any
+bullet. Enemy bullets are opaque Neon, `2 * BULLET_VIEW.enemyDrawRadius` = 1.36 studs across; a particle is at most
+`maxSizeStuds` 0.6 studs and at least `minTransparency` 0.4 transparent (defaults 0.35 studs, 0.6). The validator
+rejects a pack's `particle` outside the caps and `ThemeCore.ambient` clamps to them anyway. Rates, counts and
+lifetimes are not theme data (they would trip the gameplay-key scan); they belong to the R9 renderer's config.
+
+### Decor fx colour roles
+
+Required in every pack, like every role: `decor.fx.flame` (tints `decor.fx.torch` and `decor.fx.flame`, and their
+lights), `decor.fx.glow`, `decor.fx.glint`, `decor.fx.zone`, `decor.fx.ambient.b1`..`b5` (`DECOR_FX_ROLES`,
+`DECOR_FX_TINT`, `decorAmbientRole`). The placeholder pack uses the Forge themes' flame and particle colours.
+
+**Distinctness rule** (`decorFxReport`): every fx role must be at least `MIN_DECOR_FX_BULLET_DIFFERENCE` = 40 away
+from `enemyBullet` and from `enemyBulletOutline` (`ENEMY_BULLET_ROLES`) in CIE76 colour difference (Delta E*ab,
+CIELAB under D65: `colorDifference` / `toLab` in `color.ts`). A WCAG ratio, used everywhere else, measures lightness
+only: a flame and a bullet can share a luminance and never be confused, while a darker pink passes a ratio and still
+reads as a bullet. Delta E measures hue, chroma and lightness together; 40 rules out the bullet's hue family
+(`#ff40a0` is 2, `#e03090` 9, `#ff2a6a` 30 from the placeholder bullet `#ff3fa4`) while every Forge flame and
+particle colour is 77 or more. Message:
+`colors["decor.fx.glow"]: colour difference: decor.fx.glow #ff40a0 vs enemyBullet #ff3fa4 is 2.4 (CIE76), needs >= 40.0: ...`.
+
+### Runtime
+
+```ts
+const pieces = pack.decorVariants("biome.1", "pillar");   // [] when the pack has none: draw nothing
+const piece = pieces[hash % pieces.size()];
+// piece.layer, piece.glow, piece.glowAt, piece.emissive
+if (piece.art.kind === "image") {
+	label.Image = piece.art.image;                            // ImageRectOffset / ImageRectSize:
+	label.ImageRectOffset = piece.art.offset;                 // the rect (or the whole image)
+	label.ImageRectSize = piece.art.size;
+	// billboard size in tiles = piece.art.size / piece.art.pixelsPerTile; piece.art.pivot on the ground spot
+} else {
+	const f = piece.art.set.frame("idle", facing, frame);    // a SpriteSet, as for actors
+}
+const fx = pack.decor(decorFxId("torch"));                  // effects: layer undefined
+const motes = pack.ambient("biome.2");                      // { assetId, sizeStuds, transparency, emissive, color }
+```
+
+`ThemeCore.decor` re-checks what the renderer relies on (a pack that failed validation still loads): a piece whose
+`layer` its kind does not allow, a missing `assetId`, a bad size, `rect` or `pixelsPerTile`, or a sprite set
+`ThemeCore.sprites` rejects is not drawn and warns once. Lookups are cached, misses too.
+
+## Breakables (`breakable.*`, docs/DECOR.md D4)
+
+Barrels and crates are gameplay objects (they block movement and bullets and break), so unlike decor they are
+**required** in every pack, like `enemy.dummy`: for each `BREAKABLE_KINDS` entry (`barrel`, `crate`; the sim's
+breakable `kind`) the asset `breakable.<kind>`, the colour role `breakable.<kind>` and the string
+`breakable.<kind>.name`, plus the audio events `sfx.breakable.hit` and `sfx.breakable.break`
+(`BREAKABLE_AUDIO_EVENTS`, silent in the placeholder pack; kept apart from the web's `AUDIO_EVENTS`).
+
+- **Kinds:** `placeholder` (a low box: crate 4 x 2 x 4 studs, barrel 3.5 x 2.5 x 3.5, in the kind's role; never
+  taller than 5/8 of a tile), `image` (free size up to 1024, `pixelsPerTile` required, optional `rect` and `pivot`
+  as for decor; no decor fields), or `sprites` (`idle` required; `shatter`, `BREAKABLE_SHATTER_ANIMATION`, the
+  optional one-shot `_break` loop).
+- **Contrast:** `enemyBullet` on each breakable role >= 3.0:1 (`breakableContrastReport`), as on walls.
+- **Runtime:** `pack.breakable("crate")` -> `{ id, nameKey, color, art, placeholder }`: build `placeholder` while
+  `art` is undefined. The flat decal a broken one leaves is decor (`decor.delve.b<n>.brokenbarrel` /
+  `brokencrate`), optional.
+
 ## Replacing assets later
 
 1. **Make the art to the contract.** Sprite sheets: a grid of equal cells at the slot's cell size (16x24 classes,
@@ -323,12 +457,12 @@ readable on every biome.
 | File | What |
 | --- | --- |
 | `types.ts` | manifest and asset types (incl. `SpriteSetAsset`), `COLOR_ROLES` |
-| `contract.ts` | sprite contract (v2: `requiredBaseAnimations`, `MAX_IMAGE_SIDE`, `SPRITE_FACING_COUNTS`, `SPRITE_RESAMPLE_MODES`), biome materials (`BIOME_MATERIALS`, `BIOME_MATERIAL_SURFACES`, `DEFAULT_BIOME_MATERIAL`), slots, SoundGroups, required IDs/strings, contrast thresholds, gameplay key words |
-| `color.ts`, `strings.ts` | WCAG contrast and hex parsing; `{name}` interpolation |
-| `validate.ts` | `validateManifest`, `contrastReport`, `juiceContrastReport`, `isGameplayKey` |
+| `contract.ts` | sprite contract (v2: `requiredBaseAnimations`, `MAX_IMAGE_SIDE`, `SPRITE_FACING_COUNTS`, `SPRITE_RESAMPLE_MODES`), decor (`DECOR`, `DECOR_KIND_LAYERS`, `parseDecorId`, `decorId`, `DECOR_FX_ROLES`, `DECOR_PARTICLE`), breakables (`BREAKABLE`, `BREAKABLE_KINDS`), biome materials (`BIOME_MATERIALS`, `BIOME_MATERIAL_SURFACES`, `DEFAULT_BIOME_MATERIAL`), slots, SoundGroups, required IDs/strings, contrast thresholds, gameplay key words |
+| `color.ts`, `strings.ts` | WCAG contrast, CIE76 `colorDifference` and hex parsing; `{name}` interpolation |
+| `validate.ts` | `validateManifest`, `contrastReport`, `juiceContrastReport`, `decorFxReport`, `breakableContrastReport`, `isGameplayKey` |
 | `placeholders.ts` | `PLACEHOLDER_VISUALS`, `TELEGRAPH_VISUAL`, `PLACEHOLDER_PROPORTIONS`, `missingVisual` |
 | `core.ts` | `ThemeCore` (pure lookups and fallbacks), frame math, `SpriteSetLayout` |
 | `pack.ts` | `ThemePack` (Color3 / Vector2, `SpriteSet`), `loadThemePack`, the active pack |
 | `packs/` | `THEME_PACKS`; `placeholder/manifest.ts` (every visual a placeholder, every sound silent) |
 | `util.ts` | Luau stand-ins for JSON / ordered keys (sorted iteration keeps messages deterministic) |
-| `*.spec.ts` | headless specs; `requested-ids.spec.ts` lists every ID the web build's code requests |
+| `*.spec.ts` | headless specs; `requested-ids.spec.ts` lists every ID the web build's code (and the port's decor / breakable renderers) requests; `decor.spec.ts` covers the decor and breakable contract, validator and lookups |
