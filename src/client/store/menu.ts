@@ -4,8 +4,8 @@ import { NO_MENU, menuNavReduce, type MenuNav, type MenuNavAction } from "shared
 /**
  * Client-local Reflex slice for the menu shell (task L3) and the pause overlay's Leave run (task L6): the current
  * menu screen with its back stack (the pure reducer is shared/view/menu `menuNavReduce`), whether the Leave run
- * confirm is showing, whether the co-op (non-pausing) overlay is open, and whether the join still waits for the
- * first-run gate. MenuController dispatches; the views read.
+ * confirm is showing, whether the co-op (non-pausing) overlay is open, whether the join still waits for the
+ * first-run gate, and whether the Roblox menu is open. MenuController dispatches; the views read.
  */
 export interface MenuState {
 	readonly nav: MenuNav;
@@ -18,6 +18,11 @@ export interface MenuState {
 	 * tutorial): no menu yet, only the menu shell's backdrop. MenuController clears it once the gate decided.
 	 */
 	readonly awaitingFirstRun: boolean;
+	/**
+	 * The Roblox menu (Escape / Start) is open (SimController: GuiService.MenuOpened / MenuClosed). The pause overlay
+	 * and the pause button hide under it (shared/view/menu pause.ts).
+	 */
+	readonly robloxMenuOpen: boolean;
 }
 
 const initialState: MenuState = {
@@ -25,6 +30,7 @@ const initialState: MenuState = {
 	leaveConfirm: false,
 	coopOverlay: false,
 	awaitingFirstRun: true,
+	robloxMenuOpen: false,
 };
 
 export const menuSlice = createProducer(initialState, {
@@ -36,6 +42,8 @@ export const menuSlice = createProducer(initialState, {
 		state.leaveConfirm === leaveConfirm ? state : { ...state, leaveConfirm },
 	setAwaitingFirstRun: (state, awaitingFirstRun: boolean) =>
 		state.awaitingFirstRun === awaitingFirstRun ? state : { ...state, awaitingFirstRun },
+	setRobloxMenuOpen: (state, robloxMenuOpen: boolean) =>
+		state.robloxMenuOpen === robloxMenuOpen ? state : { ...state, robloxMenuOpen },
 	/** Closing the party overlay also drops its Leave run confirm. */
 	setCoopOverlay: (state, coopOverlay: boolean) => {
 		const leaveConfirm = coopOverlay && state.leaveConfirm;
@@ -50,3 +58,4 @@ export const selectMenuScreen = (state: { menu: MenuState }) => state.menu.nav.s
 export const selectLeaveConfirm = (state: { menu: MenuState }) => state.menu.leaveConfirm;
 export const selectCoopOverlay = (state: { menu: MenuState }) => state.menu.coopOverlay;
 export const selectAwaitingFirstRun = (state: { menu: MenuState }) => state.menu.awaitingFirstRun;
+export const selectRobloxMenuOpen = (state: { menu: MenuState }) => state.menu.robloxMenuOpen;

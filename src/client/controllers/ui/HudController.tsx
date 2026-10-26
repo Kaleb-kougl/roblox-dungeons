@@ -92,6 +92,8 @@ export class HudController implements OnStart {
 			};
 
 		const actions: HudActions = {
+			// Called on the press (PauseButton), so the click never reaches the game as a swing.
+			pause: click(() => this.menu.openPauseMenu()),
 			resume: click(() => {
 				this.menu.closeOverlays();
 				this.sim.resume();

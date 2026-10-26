@@ -251,7 +251,12 @@ Roblox remaps: Roblox reserves Escape (game menu) and Tab (player list), so Paus
 so the HUD hint is unambiguous; C is not bound). The leaderboard panel is on B ("boards"), not N: N is the endless
 debug floor skip, and `inputMapping.spec.ts` checks B against every game and driver key. The pad restart is new (the web build had none) and is limited to a
 finished / paused run so a stray press cannot end a fight. L duplicates F8 because Studio may keep F8 for itself.
-Opening the Roblox menu (Escape, or Start on some pads) also pauses the run and resumes it when the menu closes.
+Opening the Roblox menu (Escape, or Start on some pads; a game cannot take those keys) also pauses a solo run; the
+pause overlay stays hidden under it and shows once the menu closes, the run still paused, so the player resumes with
+P / Start / Resume when ready (`shared/view/menu` `pause.ts`: `pauseOverlayShown`, `afterRobloxMenuClosed`; a
+finished or frozen run resumes as before). Mouse and touch can also pause with the on-screen pause button
+(`PauseButton`, in the Roblox top bar right of its own buttons, `PAUSE_BUTTON_VIEW`): it acts on the press, so the
+click never swings, and in a co-op run it opens the party overlay instead.
 
 Rebinding (task L4b; pure half in `shared/play/bindings.ts`, lists in `shared/play/config.ts`): the table above is
 `DEFAULT_BINDINGS`. Rebindable: move (keyboard only, a primary and a secondary key each), attack, alt, roll, Ember,
@@ -765,7 +770,9 @@ With the actors merged the default `game` world has enemies; without them see "f
    the last heart turns half red and the capsule blinks for ~0.75 s.
 8. **Pause.** P: the scene dims, the overlay shows `Paused`, `Resume`, `Restart`, `Options`, `Leaderboards`, `P to resume`;
    everything freezes; P again (or Resume) resumes, and the click on Resume does not swing the sword. Restart starts
-   a new run. Escape (Roblox menu) also freezes the game, and it resumes when the menu closes.
+   a new run. Escape (Roblox menu) also freezes the game with no pause overlay under it; closing the menu shows the
+   pause overlay (the run stays paused until Resume / P). The round pause button in the top bar (right of Roblox's
+   buttons, only while playing) pauses the same way, and clicking it does not swing the sword.
 9. **Boss.** (Faster: set `KV_Debug` and `KV_SpawnBoss` true on Workspace, then R.) Enter the boss room: a large
    yellow block wakes, a translucent yellow fence of dashes outlines the room (the seal), the top centre shows
    `Mother Bramble` and `Phase I` over a yellow bar with two white notches (66 % / 33 %) that shrinks as you hit it;
@@ -929,7 +936,7 @@ server or `KV_Tutorial` = true on Workspace. Client-side checks first (this code
   is uploaded, switch DamageNumberController to ImageLabels with `ImageRectOffset` per glyph (DIGIT_FONT layout).
 - Freeze frames slow the run in wall time only: a frozen frame records nothing, so a run with many kills takes a
   little longer in real time than its tick count suggests. The server never sees it (it replays ticks).
-- The pause overlay also shows while the Roblox menu is open (it pauses the run); the Roblox menu covers it.
+- The pause overlay hides while the Roblox menu is open (the run is paused) and shows once it closes.
 - Dungeon props and torches are drawn by DecorController only where the pack has `decor.*` art (none in the
   placeholder and vale packs yet); arches and chests are never drawn (docs/DECOR.md). Pools use the Dungeon Forge theme's liquid colour (as the web build), since the theme has no pool role.
 - Every HUD text is a theme string now (`hud.verdict.*`, `hud.seed`, `hud.info`, `hud.notice.fallback`,

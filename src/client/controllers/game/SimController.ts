@@ -53,7 +53,7 @@ import { BIOMES, type ThemePack } from "shared/theme";
 import { RENDER_ORDER } from "shared/view";
 import { HitstopClock, simPacerFor, type FrameAdvance, type FramePacer } from "shared/view/fx";
 import { PROGRESSION_VIEW, toastFor } from "shared/view/hud";
-import { lobbyStartAccepted, restartForfeits } from "shared/view/menu";
+import { afterRobloxMenuClosed, lobbyStartAccepted, restartForfeits } from "shared/view/menu";
 import type { Dungeon } from "shared/dungeon";
 import { InputController } from "./InputController";
 import { ThemeController } from "./ThemeController";
@@ -288,8 +288,11 @@ export class SimController implements OnStart {
 			else this.onSegmentVerified(v);
 		});
 		Events.runFinished.connect((verdict) => this.onRunFinished(verdict));
+		// The Roblox menu (Escape / Start: a game cannot take those keys) pauses a solo run; the pause overlay hides
+		// under it and shows once it closes, the run still paused (shared/view/menu afterRobloxMenuClosed).
 		GuiService.MenuOpened.Connect(() => {
 			this.robloxMenuOpen = true;
+			clientStore.setRobloxMenuOpen(true);
 			const run = this.ctx?.live; // a co-op run never pauses (the server's clock paces it): neutral input instead
 			if (run !== undefined && !run.isPaused()) {
 				run.setPaused(true);
@@ -298,7 +301,10 @@ export class SimController implements OnStart {
 		});
 		GuiService.MenuClosed.Connect(() => {
 			this.robloxMenuOpen = false;
-			if (this.pausedByMenu) this.ctx?.live?.setPaused(false);
+			clientStore.setRobloxMenuOpen(false);
+			const run = this.ctx?.live;
+			const playing = run !== undefined && run.outcome() === "playing";
+			if (afterRobloxMenuClosed(this.pausedByMenu, playing, this.frozen) === "resume") run?.setPaused(false);
 			this.pausedByMenu = false;
 		});
 
@@ -390,6 +396,16 @@ export class SimController implements OnStart {
 		this.pausedByMenu = false;
 		this.pausedByUi = false;
 		this.ctx?.live?.setPaused(false);
+	}
+
+	/**
+	 * Pause a solo run being played (the on-screen pause button; P / Start toggle through the sim's PAUSE bit). Not
+	 * a co-op run (MenuController opens the party overlay), a finished run or the frozen tutorial.
+	 */
+	pause(): void {
+		const run = this.ctx?.live;
+		if (run === undefined || this.frozen || run.outcome() !== "playing") return;
+		run.setPaused(true);
 	}
 
 	/** Restart on the next frame (pause overlay "Restart", run-over "Again"; same as R). */

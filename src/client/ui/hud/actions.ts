@@ -10,6 +10,8 @@ import type { OptionsTab } from "shared/view/hud";
  * so components never import controllers.
  */
 export interface HudActions {
+	/** The on-screen pause button: pause a solo run / open the co-op party overlay (as P / Start). */
+	readonly pause: () => void;
 	/** Pause overlay: resume / restart the run (co-op: Resume closes the party overlay). */
 	readonly resume: () => void;
 	readonly restart: () => void;
@@ -52,6 +54,7 @@ export interface HudActions {
 }
 
 const NOOP: HudActions = {
+	pause: () => undefined,
 	resume: () => undefined,
 	restart: () => undefined,
 	setSettingsOpen: () => undefined,

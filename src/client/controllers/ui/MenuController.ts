@@ -158,6 +158,20 @@ export class MenuController implements OnStart {
 		this.sim.exitRun();
 	}
 
+	/**
+	 * The on-screen pause button: a solo run pauses (the pause overlay shows), a co-op run opens the party overlay
+	 * (it never pauses). Same rules as P / Start.
+	 */
+	openPauseMenu(): void {
+		const state = clientStore.getState();
+		if (state.game.run.coop) {
+			if (!state.menu.coopOverlay) this.toggleCoopOverlay(state);
+			return;
+		}
+		if (state.menu.nav.screen !== "none" || selectAnyPanelOpen(state)) return;
+		this.sim.pause();
+	}
+
 	/** The party overlay's Resume (and the solo overlay's: the confirm closes with it). */
 	closeOverlays(): void {
 		clientStore.setCoopOverlay(false);

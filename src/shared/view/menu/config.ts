@@ -49,3 +49,24 @@ export const MENU_VIEW = {
 	/** Display order of the menu shell: above the HUD, under the pause / settings layer (shared/view/hud HUD_VIEW). */
 	displayOrder: 15,
 } as const;
+
+/**
+ * The on-screen pause button (client/ui/hud PauseButton): a round button in the Roblox top bar, right of Roblox's own
+ * buttons (GuiService.TopbarInset), in screen pixels (the top bar is not under the HUD's UIScale). With the top bar
+ * hidden (TopbarInset empty) it sits `fallbackMargin` from the screen's top left corner.
+ */
+export const PAUSE_BUTTON_VIEW = {
+	/** Diameter; never taller than the top bar. */
+	size: 44,
+	/** Gap from the end of Roblox's buttons (TopbarInset.Min.X). */
+	gap: 8,
+	fallbackMargin: 12,
+	backgroundTransparency: 0.3,
+	/** The two bars of the pause glyph, as fractions of the button: width, height, gap between them. */
+	barWidth: 0.12,
+	barHeight: 0.42,
+	barGap: 0.12,
+	strokeThickness: 2,
+	/** Above the HUD, under the menu shell (MENU_VIEW.displayOrder) and the pause / settings layer. */
+	displayOrder: 12,
+} as const;

@@ -2,11 +2,13 @@ import React from "@rbxts/react";
 import { useSelector } from "@rbxts/react-reflex";
 import { selectGameActive, selectGhostHeart, selectTutorialHighlight } from "client/store";
 import { HUD_VIEW } from "shared/view/hud";
+import { PAUSE_BUTTON_VIEW } from "shared/view/menu";
 import { BossBar } from "./BossBar";
 import { DraftOverlay } from "./DraftOverlay";
 import { Players } from "@rbxts/services";
 import { InfoPanel } from "./InfoPanel";
 import { LeaderboardPanel } from "./LeaderboardPanel";
+import { PauseButton } from "./PauseButton";
 import { PauseOverlay } from "./PauseOverlay";
 import { RunOverPanel } from "./RunOverPanel";
 import { ScorePanel } from "./ScorePanel";
@@ -20,7 +22,7 @@ import { useHudScale } from "./useHudScale";
 import { WeaponPanel } from "./WeaponPanel";
 
 /**
- * The game HUD (task 8 part B; replaces part A's minimal text HUD), two ScreenGuis under PlayerGui:
+ * The game HUD (task 8 part B; replaces part A's minimal text HUD), three ScreenGuis under PlayerGui:
  *
  *   KV_GameHud    StatusPanel (top left: hearts, armor, flask, Embers), WeaponPanel (bottom left: weapon sets + SWAP
  *                 hint), BossBar (top centre), ScorePanel (top right, scored runs: score + combo meter),
@@ -33,9 +35,12 @@ import { WeaponPanel } from "./WeaponPanel";
  *                 run: Restart / Skip tutorial), the tutorial's outro card (TutorialOutro), the OptionsScreen (tabs:
  *                 juice, controls / rebinding, audio, display) and the LeaderboardPanel (M5), above the HUD and the
  *                 menu shell (client/ui/menu MenuLayer, mounted next to this by HudController)
+ *   KV_PauseButton  PauseButton (mouse / touch; in the Roblox top bar, right of its buttons): pauses a solo run,
+ *                 opens a co-op run's party overlay. Screen pixels and no safe-area insets: the top bar is outside
+ *                 the safe area.
  *
- * Both lay out at the 1280x720 reference size under a UIScale (useHudScale) and sit inside the device's safe area
- * (ScreenInsets = CoreUISafeInsets: notches, the Roblox top bar). Reads only Reflex (the ~10 Hz snapshot, the input
+ * The first two lay out at the 1280x720 reference size under a UIScale (useHudScale) and sit inside the device's
+ * safe area (ScreenInsets = CoreUISafeInsets: notches, the Roblox top bar). Reads only Reflex (the ~10 Hz snapshot, the input
  * device, the verdict, the settings); text from the theme string table, colours from theme roles, the font from the
  * HUD font token (shared/view/hud HUD_FONTS).
  */
@@ -85,6 +90,15 @@ export function GameHud() {
 				{active ? <TutorialOutro key="TutorialOutro" /> : undefined}
 				<OptionsScreen key="Options" />
 				<LeaderboardPanel key="Leaderboards" localUserId={Players.LocalPlayer.UserId} />
+			</screengui>
+			<screengui
+				key="KV_PauseButton"
+				ResetOnSpawn={false}
+				DisplayOrder={PAUSE_BUTTON_VIEW.displayOrder}
+				ScreenInsets={Enum.ScreenInsets.None}
+				ZIndexBehavior={Enum.ZIndexBehavior.Sibling}
+			>
+				<PauseButton key="PauseButton" />
 			</screengui>
 		</>
 	);

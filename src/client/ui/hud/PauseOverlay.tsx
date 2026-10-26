@@ -6,6 +6,7 @@ import {
 	selectCoopOverlay,
 	selectInputDevice,
 	selectLeaveConfirm,
+	selectRobloxMenuOpen,
 	selectRunInfo,
 	selectSnapshot,
 	selectTutorial,
@@ -14,7 +15,7 @@ import { role, str } from "client/ui/theme";
 import { TUTORIAL_STRINGS } from "shared/tutorial";
 import { SFX } from "shared/view/audio";
 import { HUD_STRINGS, HUD_VIEW, LEADERBOARD_STRINGS, PAUSE_HINT } from "shared/view/hud";
-import { MENU_STRINGS, pauseItems, type PauseItem } from "shared/view/menu";
+import { MENU_STRINGS, pauseItems, pauseOverlayShown, type PauseItem } from "shared/view/menu";
 import { useHudActions, type HudActions } from "./actions";
 import { MenuButton, Panel, Row, Text } from "./primitives";
 
@@ -69,7 +70,8 @@ const SKIP_CONFIRM: ConfirmSpec = {
 };
 
 /**
- * The pause overlay. Solo (P / Start; also while the Roblox menu is open): the run is paused, the scene dimmed,
+ * The pause overlay. Solo (P / Start / the on-screen pause button, and after the Roblox menu closed: the run stays
+ * paused under that menu, the overlay hidden until it closes): the run is paused, the scene dimmed,
  * "Paused" and Resume / Restart / Leave run / Options / Leaderboards. Co-op runs never pause: the same key
  * opens the party overlay (MenuController) over the running run, with Resume (closes it) / Leave run / Options /
  * Leaderboards. A first-run tutorial run (paused like solo): Resume / Restart tutorial / Skip tutorial / Options.
@@ -85,10 +87,24 @@ export function PauseOverlay() {
 	const panelOpen = useSelector(selectAnyPanelOpen);
 	const device = useSelector(selectInputDevice);
 	const tutorial = useSelector(selectTutorial);
+	const robloxMenuOpen = useSelector(selectRobloxMenuOpen);
 	const actions = useHudActions();
 	const firstRef = useRef<TextButton>();
 	const coop = info.coop;
-	const open = s.outcome === "playing" && !panelOpen && (coop ? coopOverlay : s.paused);
+	const view = {
+		active: true,
+		coop,
+		playing: s.outcome === "playing",
+		paused: s.paused,
+		coopOverlay,
+		panelOpen,
+		menuScreen: false,
+		robloxMenuOpen,
+		tutorialEnded: tutorial.ended,
+	};
+	const open = pauseOverlayShown(view);
+	// Paused under the Roblox menu, the overlay is only hidden: its skip question waits for it.
+	const pending = pauseOverlayShown({ ...view, robloxMenuOpen: false });
 	const inTutorial = !coop && tutorial.active && !tutorial.ended;
 	const skipConfirm = inTutorial && tutorial.skipConfirmOpen;
 
@@ -101,10 +117,10 @@ export function PauseOverlay() {
 		};
 	}, [open, device, confirm, skipConfirm, inTutorial]);
 
-	// The skip question does not outlive the overlay (resumed with P, or the Roblox menu closed).
+	// The skip question does not outlive the overlay (resumed with P / Resume).
 	useEffect(() => {
-		if (!open && tutorial.skipConfirmOpen) actions.setTutorialSkipConfirm(false);
-	}, [open, tutorial.skipConfirmOpen]);
+		if (!pending && tutorial.skipConfirmOpen) actions.setTutorialSkipConfirm(false);
+	}, [pending, tutorial.skipConfirmOpen]);
 
 	if (!open) return undefined;
 	const hintKey = coop ? MENU_STRINGS.coopHint : HUD_STRINGS.pauseHint;
