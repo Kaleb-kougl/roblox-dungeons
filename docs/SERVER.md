@@ -659,7 +659,7 @@ lobbies. The client side (TutorialController, T6) only talks to it through these
 | server -> client | `onboardingStatus` | `{ loaded: boolean, tutorialDone: boolean }` | sent once the join load ends (success or failure) | |
 | client -> server | `requestOnboarding` | none | loads if needed (shares the join read) | `onboardingStatus` |
 | client -> server | `tutorialStarted` | none | opens a new funnel attempt (server GUID = funnel session id); `isInTutorial` = true. Ignored from a member of an unconcluded party run (a late message) | none |
-| client -> server | `tutorialStep` | `step: number` | integer 1..`TUTORIAL_FUNNEL_MAX_STEP` (15, = shared/tutorial `TUTORIAL_STEP_COUNT`), strictly above the attempt's last. The funnel step name is the server's: that step's id in the shared step list (`tutorialStepName`), never a client string | none |
+| client -> server | `tutorialStep` | `step: number` | integer 1..`TUTORIAL_FUNNEL_MAX_STEP` (16, = shared/tutorial `TUTORIAL_STEP_COUNT`), strictly above the attempt's last. The funnel step name is the server's: that step's id in the shared step list (`tutorialStepName`), never a client string | none |
 | client -> server | `tutorialFinished` | `"completed" \| "skipped"` | closes the attempt (`isInTutorial` = false), writes the doc. The client sends `completed` the moment the run freezes (before the outro beat) | `onboardingStatus` |
 
 Every value is re-checked on the server (Flamework's guard checks only the shape), and the remotes are rate limited
@@ -682,9 +682,11 @@ rule as a settings change), after which `loaded` reads true once that save succe
 **Trust.** Completion only skips a practice mode and the tutorial is never submitted, so the server records what the
 client says; the funnel is the one piece of telemetry taken from the client (bounded as above).
 
-**Funnel** `tutorial` (`LogFunnelStepEvent`, session id = the attempt id): steps 1..15 are the lessons, named by
-their ids in `shared/tutorial` `TUTORIAL_STEPS` (objective, move, flask, attack, hits, roll, guard, bow, ember, relic,
-curse, stairwell, draft, boss, finish; the client sends only the number), step 16 is `completed`. Each `tutorialStarted` (first run, Restart tutorial, a replay) is a new attempt
+**Funnel** `tutorial` (`LogFunnelStepEvent`, session id = the attempt id): steps 1..16 are the lessons, named by
+their ids in `shared/tutorial` `TUTORIAL_STEPS` (objective, move, flask, attack, hits, boost, roll, guard, bow, ember,
+relic, curse, stairwell, draft, boss, finish; the client sends only the number), step 17 is `completed`. **Renumbered
+2026-10-26**: the `boost` step was inserted as step 6 (docs/BOOSTS.md B9), so roll..finish moved from 6..15 to 7..16 and
+`completed` from 16 to 17; funnel data recorded before that is not comparable past step 5 (docs/TUTORIAL.md §6). Each `tutorialStarted` (first run, Restart tutorial, a replay) is a new attempt
 counting from 1, so a restart never repeats steps inside one funnel session; steps outside an attempt are dropped. A
 **skip is not a funnel step** (Roblox counts every lower step number as reached, which would credit a skipper with
 every lesson): it logs the custom event `TutorialSkipped` (value = last lesson step reached in the attempt) and the
@@ -692,7 +694,7 @@ funnel shows the drop-off where they stopped. The client reports only leading le
 `funnelStepReached`: done and not skipped), so a lesson left behind (its floor left early) stops the attempt's funnel
 there for good; only `completed` (logged on a completed finish) then counts the rest. `TUTORIAL_FUNNEL_MAX_STEP` is the tutorial's step count
 (`TUTORIAL_STEP_COUNT`), so a new step moves `completed` with it; never rename or reorder shipped step ids, or the
-dashboard funnel splits.
+dashboard funnel splits (inserting a step, as `boost` was, shifts every later number: note the date).
 
 **Lobbies busy.** While `isInTutorial`, the player is busy for lobbies: `RunSessionService.busyReason` (what
 LobbyService passes to `Lobbies` as `busyReason`) adds `tutorialBusyReason` to the registry's (an unconcluded party

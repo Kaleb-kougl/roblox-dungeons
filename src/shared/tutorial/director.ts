@@ -12,9 +12,9 @@
  *   state.run         relics, curses and boons owned; the shrine zone (atShrine)
  *   state.tutorial    harmlessHits (the harmless-hit callout and the ghost half heart)
  *   state.combat      the weapon set in hand (the bow), the bow slot's heavy-arrow tick, the boss actor
- *   state.drops       the ground drops and the player's running boosts (docs/BOOSTS.md B9: the `boost` callout when
- *                     combat B's guaranteed Fury lands, the marker on it while it lies there, the boost row's ring on
- *                     the pickup; none of it is a step, so the funnel numbers never move: P8)
+ *   state.drops       the ground drops and the player's running boosts (docs/BOOSTS.md B9: the `boost` step, done
+ *                     when combat B's guaranteed Fury is picked up or waived when it fades, its `drop` marker, and the
+ *                     boost row's ring on the pickup)
  *   events            flaskUsed, rollStarted, emberUsed
  *   buttons           the FIRE press edge (the objective card's Continue), like the draft's confirm
  *
@@ -23,9 +23,11 @@
  * unfinished one: the marker points at it and the progress dots count up to it; the funnel counts the leading steps
  * practised (done, not skipped), so it stops at the first skipped step. The PROMPT is the current
  * step's, except inside an entered, unfinished lesson room (that lesson's: lessons hold up out of order) and before a
- * lesson room is entered (the follow-the-marker prompt). A step still unfinished when the run leaves its floor is
- * marked skipped. The tutorial is finished on the floor TUTORIAL.lastFloor -> lastFloor + 1 change (step `finish`);
- * anything still open then is skipped too.
+ * lesson room is entered (the follow-the-marker prompt). The `boost` step also holds up out of order: while a drop
+ * lies and it is open but not current, its prompt and `drop` marker show (outside an entered, unfinished lesson room;
+ * never under the objective card). A step still unfinished when the run leaves its floor is marked skipped. The
+ * tutorial is finished on the floor TUTORIAL.lastFloor -> lastFloor + 1 change (step `finish`); anything still open
+ * then is skipped too.
  *
  * The view object is reused: update() mutates and returns the same TutorialView (and its arrays) every frame. Copy
  * what you keep; `revision` grows whenever anything but the marker's position changed (push to Reflex on change).
@@ -99,7 +101,7 @@ export interface TutorialView {
 	stepCount: number;
 	/** The current step's id ("" once finished). */
 	stepId: string;
-	/** The step whose prompt shows (stepIndex, or an out-of-order lesson room's step); -1 for none. */
+	/** The step whose prompt shows (stepIndex, an out-of-order lesson room's step, or the waiting `boost` step); -1 none. */
 	promptStepIndex: number;
 	/** The prompt id to show ("" none): theme key tutorialPromptKey(prompt, device). */
 	prompt: string;
@@ -107,7 +109,7 @@ export interface TutorialView {
 	card: "objective" | undefined;
 	/** The HUD element to ring now (a fresh callout's, else the prompt step's), or undefined. */
 	highlight: TutorialHighlight | undefined;
-	/** Where the world marker points (the current step's target), or undefined for none. */
+	/** Where the world marker points (the current step's target; the out-of-order `boost` step's drop), or undefined. */
 	marker: TutorialMarker | undefined;
 	/** Per step (TUTORIAL_STEPS order): done (practised or skipped), and skipped (left behind unfinished). */
 	readonly done: boolean[];
@@ -142,6 +144,8 @@ interface StepProgress {
 	relicsBase: number;
 	cursesBase: number;
 	sawShrine: boolean;
+	/** Rule `boost`: a drop has been seen lying on the step's floor. */
+	sawDrop: boolean;
 }
 
 function newProgress(): StepProgress {
@@ -157,6 +161,7 @@ function newProgress(): StepProgress {
 		relicsBase: 0,
 		cursesBase: 0,
 		sawShrine: false,
+		sawDrop: false,
 	};
 }
 
@@ -413,6 +418,13 @@ export class TutorialDirector {
 				return floor >= step.floor && me !== undefined && me.boons.size() > 0 && me.draftOpen === 0;
 			case "boss":
 				return floor >= step.floor && (state.endless?.depth ?? ENDLESS_FIRST_DEPTH) > ENDLESS_FIRST_DEPTH;
+			case "boost": {
+				if (boostRunning(state)) return true; // picked up (on its landing frame too)
+				if (floor !== step.floor) return false; // a floor change clears the ground: left behind, not faded
+				const lying = nearestDrop(state) !== undefined;
+				if (lying) pr.sawDrop = true;
+				return pr.sawDrop && !lying; // faded untaken: waived
+			}
 		}
 	}
 
@@ -443,8 +455,6 @@ export class TutorialDirector {
 				const boss = bossOf(state);
 				return boss !== undefined && boss.phase >= t.phase;
 			}
-			case "boostDrop":
-				return nearestDrop(state) !== undefined || boostRunning(state);
 		}
 	}
 
@@ -463,7 +473,7 @@ export class TutorialDirector {
 				this.highlightSeconds = TUTORIAL.calloutHighlightSeconds;
 			}
 		}
-		// The pickup: ring the boost row (after the callouts, so a drop taken on the frame it landed rings the row).
+		// The pickup (the `boost` step done): ring the boost row, over any callout fired on the same frame.
 		if (!this.boostRung && boostRunning(state)) {
 			this.boostRung = true;
 			this.calloutHighlight = TUTORIAL_BOOST_HIGHLIGHT;
@@ -486,6 +496,16 @@ export class TutorialDirector {
 		for (let i = 0; i < TUTORIAL_STEPS.size(); i++) {
 			const room = this.rooms.get(i);
 			if (!v.done[i] && room !== undefined && room.roomId === id && this.progress[i].entered) return i;
+		}
+		return -1;
+	}
+
+	/** An open `drop`-marker step after `current` while a drop lies (it holds up out of order), or -1. */
+	private dropStepWaiting(current: number, state: Readonly<SimState>): number {
+		const v = this.view;
+		for (let i = current + 1; i < TUTORIAL_STEPS.size(); i++) {
+			if (!v.done[i] && TUTORIAL_STEPS[i].marker.kind === "drop")
+				return nearestDrop(state) !== undefined ? i : -1;
 		}
 		return -1;
 	}
@@ -520,12 +540,20 @@ export class TutorialDirector {
 			v.stepId = step.id;
 			v.card = step.card;
 			let shown = current;
+			let marked = current;
 			let prompt = step.prompt;
-			const here = step.card === undefined ? this.lessonHere(frame, floor, world) : -1;
 			if (step.card === undefined) {
+				const here = this.lessonHere(frame, floor, world);
+				const waiting = here < 0 ? this.dropStepWaiting(current, frame.state) : -1;
 				if (here >= 0) {
 					shown = here;
 					prompt = TUTORIAL_STEPS[here].prompt;
+				} else if (waiting >= 0) {
+					// The boost step out of order (an earlier step still open when combat B's Fury landed): its prompt
+					// and its marker on the drop until it is taken or fades. Mid-lesson the fight keeps its own.
+					shown = waiting;
+					marked = waiting;
+					prompt = TUTORIAL_STEPS[waiting].prompt;
 				} else if (step.lesson !== undefined && !this.progress[current].entered && !step.promptBeforeEntry) {
 					prompt = TUTORIAL_FOLLOW_PROMPT;
 				}
@@ -535,13 +563,7 @@ export class TutorialDirector {
 			v.highlight =
 				this.calloutHighlight ??
 				(prompt !== TUTORIAL_FOLLOW_PROMPT ? TUTORIAL_STEPS[shown].highlight : undefined);
-			v.marker = this.markerFor(current, frame, floor, world);
-			// A boost on the floor (docs/BOOSTS.md B9): the marker points at it before it fades, except mid-lesson (inside
-			// an entered, unfinished lesson room the fight keeps its own marker) and while the objective card is up.
-			if (step.card === undefined && here < 0) {
-				const drop = nearestDrop(frame.state);
-				if (drop !== undefined) v.marker = { kind: "drop", x: drop.x, z: drop.z };
-			}
+			v.marker = this.markerFor(marked, frame, floor, world);
 		}
 		const sig = `${v.stepIndex}|${v.promptStepIndex}|${v.prompt}|${v.card}|${v.highlight}|${v.marker?.kind}|${v.stepsDone}|${v.finished}`;
 		if (sig !== this.sig || v.callouts.size() > 0 || v.newFunnelSteps.size() > 0 || v.ghostHeart) {
@@ -559,6 +581,10 @@ export class TutorialDirector {
 		const step = TUTORIAL_STEPS[i];
 		const kind = step.marker.kind;
 		if (kind === "none") return undefined;
+		if (kind === "drop") {
+			const drop = nearestDrop(frame.state);
+			return drop !== undefined ? { kind, x: drop.x, z: drop.z } : undefined;
+		}
 		const room = this.rooms.get(i);
 		const entered = this.progress[i].entered;
 		if (room !== undefined && floor === FLOOR_1) {

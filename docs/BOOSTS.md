@@ -16,7 +16,8 @@ Code-complete except art: B0-B5, B9 and B10 built and headless-tested; B6 / B7 (
 typechecked and linted, but their Verify needs Studio (smoke list in docs/CLIENT.md). Open: B8 (vale art and audio:
 the Ninja Adventure Items folder is not vendored yet; everything draws as placeholders and the four sounds are silent)
 and B11 (playtest). See "As built (B0-B3)", "As built (B4, B9)" and "As built (B5-B7, review)". Owner decisions are
-under "Decisions"; P1-P8 were accepted as recommended, P5 narrowed (below).
+under "Decisions"; P1-P8 were accepted as recommended, P5 narrowed (below); P8 was reversed on 2026-10-26 (the
+tutorial's boost pickup is now funnel step 6).
 
 ## What the code gives us (checked against `main` @ `8327a27`; B0 re-checked on `boosts`, notes in the last column)
 
@@ -31,7 +32,7 @@ under "Decisions"; P1-P8 were accepted as recommended, P5 narrowed (below).
 | `step` / `stepParty` return early while a boon draft is open (the world is frozen) | `step.ts` | Boost and ground timers freeze during drafts for free, if `stepDrops` sits inside the normal tick. **B0:** `state.tick` still advances on frozen ticks, so a ground drop's life is a hashed countdown (`ticksLeft`), not `tick - spawnTick` (`spawnTick` stays, for the landing pop) |
 | `ctx.roomAt(x, z)` gives the encounter room; boss rooms are tagged; Mother Bramble's slam summons swarmers with `ctx.spawnActor` inside the boss room | `combat/ctx.ts`, `boss/act1.ts` | "No drops from kills in the boss room" excludes summons and the boss in one rule, with no new actor field (which would change the combat hash). **B0:** confirmed: `EncounterRoom.type === "boss"` and `encounter.bossRoom`; `summon` spawns each swarmer on the boss's centre and pushes it `SUMMON_RADIUS` out through `moveActor` (walls stop it), and the fight seals every player in, so summons die inside the room. The rule also checks `data.boss` (a boss outside its room) |
 | Turrets revive (`stepDead`); Vampire Fang already refuses to count them | `runOnKill` | The same rule: reviving archetypes never roll |
-| The tutorial's floors are endless floors with fixed seeds and a scripted room chain; its world has a lock spec; its funnel steps are numbered 1..15 for telemetry | `shared/run/tutorial.ts`, `shared/tutorial/steps.ts`, docs/TUTORIAL.md | The tutorial gets `SimConfig.drops` with a guaranteed drop in one room (no randomness in a lesson) and a callout, not a new funnel step (P8). **B0:** confirmed: the tutorial config has `endless`, so `state.run` exists; combat B is room id 2 on floor 1 (`TUTORIAL_ROOMS`, three swarmers, deferred). "The last kill in that room" needs membership (swarmers chase into corridors, so position is not enough): `dropsOnRoomSpawned` in `enterRoom` records the spawned actor ids as a hashed guard |
+| The tutorial's floors are endless floors with fixed seeds and a scripted room chain; its world has a lock spec; its funnel steps were numbered 1..15 for telemetry | `shared/run/tutorial.ts`, `shared/tutorial/steps.ts`, docs/TUTORIAL.md | The tutorial gets `SimConfig.drops` with a guaranteed drop in one room (no randomness in a lesson) and a callout, not a new funnel step (P8; reversed 2026-10-26: it is step 6 `boost`, 16 steps). **B0:** confirmed: the tutorial config has `endless`, so `state.run` exists; combat B is room id 2 on floor 1 (`TUTORIAL_ROOMS`, three swarmers, deferred). "The last kill in that room" needs membership (swarmers chase into corridors, so position is not enough): `dropsOnRoomSpawned` in `enterRoom` records the spawned actor ids as a hashed guard |
 | Debug actions that change the sim are port input bits (`DEBUG_FLOOR_BUTTON`, key N under `KV_Debug`), so they replay | `endlessData.ts`, docs/CLIENT.md controls | A `DEBUG_DROP_BUTTON` bit (KV_Debug only) spawns a chosen boost at the player for Studio testing. **B0:** taken bits: 1..4096 (web), 8192 `DEBUG_FLOOR_BUTTON`, 16384 `PARTY_LEFT_BUTTON` = `FORFEIT_BUTTON`. `DEBUG_DROP_BUTTON` = **32768**, in `PORT_BUTTONS` (`SIM_BUTTONS` 49151, `RECORDED_BUTTONS` 65535; the lockstep wire's raw u16 holds it; the relay strips it and `validate.ts` flags it with the other debug bits). Free key: **M** (not bound or reserved; B6 adds it to `FIXED_INPUTS` / `RESERVED_KBM_INPUTS`) |
 | Pickups by position already exist: the relic pedestal, first living player in index order within `PEDESTAL_RADIUS` | `progression.ts` `stepRun` step 4 | Same rule and the same `within` helper for drops. **B0:** `within` is private to progression.ts; drops.ts has its own copy |
 | (B0) A player dies through `killPlayerState` in three places: `damagePlayer`, `forfeitSoloRun`, `markPlayerLeft` | `player.ts`, `step.ts`, `party.ts` | Each calls `boostsOnPlayerDied` (boostMods.ts, a leaf) |
@@ -205,11 +206,12 @@ docs/DECOR.md applies: before launch no reset; after launch bump `LB_Solo_v1` / 
 - [ ] **B7. HUD and audio.** (code-complete; headless specs pass; Studio check pending) Snapshot fields, `BoostRow`, the Aegis pip, the toast, the cue mapper. → Verify:
   `snapshot.spec.ts` (quantised fields, vitals index), audio cue spec; Studio: row drains and blinks, refresh resets
   it, Aegis pip breaks on a K hit.
-- [ ] **B8. Vale art and audio.** Vendor Items, atlas and audio entries, upload, paste IDs. → Verify: `art:build`,
+- [ ] **B8. Vale art and audio.** (Art: now planned in docs/BOOST_ART.md with the Lords of Pain props; this task keeps the audio.) Vendor Items, atlas and audio entries, upload, paste IDs. → Verify: `art:build`,
   `audio:build`, `test:art`; vale pack validator passes.
 - [x] **B9. Tutorial.** The tutorial world's drops config (guaranteed Fury on combat B's last kill), a `boost`
   callout when it lands (`tutorial.callout.boost`: "Enemies sometimes drop a boost. Walk over it before it fades."),
-  the marker on the drop while it lies there, a ring on the boost row on pickup. → Verify: the tutorial lock spec
+  the marker on the drop while it lies there, a ring on the boost row on pickup. (Superseded 2026-10-26: the callout
+  became the `boost` step, "As built (B4, B9)".) → Verify: the tutorial lock spec
   passes except for the drops field; `flow.spec.ts` / director spec: the callout fires once, the funnel numbers are
   unchanged; the bot's tutorial run picks the drop up and still finishes in budget.
 - [x] **B10. Docs.** `CLAUDE.md` decision log line and docs-table row, `src/shared/sim/README.md` (module row, tick
@@ -272,11 +274,24 @@ read helpers, hash), `boostMods.ts` (the effect reads, a leaf), specs `drops.spe
   frame a boost runs, for `TUTORIAL.calloutHighlightSeconds`). Funnel: 15 steps, unchanged. The bot walks over drops
   after combat A / B; it takes the Fury 6 ticks after it lands; bot time 4283 -> 4246 ticks (Fury shortens combat C).
   The client marker controller only reads x / z (no kind switch); the HUD agent renders the `boosts` ring.
+- **Tutorial: the pickup is a step (2026-10-26, owner; P8 reversed).** `shared/tutorial` step `boost`, number 6 (right
+  after `hits`; `roll` .. `finish` moved from 6..15 to 7..16, `TUTORIAL_STEP_COUNT` 16, `completed` 17): floor 1, no
+  lesson room (the Fury lands wherever combat B's last swarmer died), prompt `boost` (`tutorial.prompt.boost.<device>`:
+  "A boost! Walk over it before it fades: it powers you up for a few seconds."), no highlight of its own (the
+  `boosts` ring on the pickup stays), marker kind `drop` (now a normal step marker: the ground drop nearest the
+  player, lowest slot on a tie, nothing when none lies). Rule kind `boost`: done when a boost runs on the player (the
+  landing-frame pickup too); waived (done, not skipped) once a drop was seen on floor 1 and none lies any more with no
+  boost run (it faded); skipped when floor 1 is left first. The `boost` callout, its `boostDrop` trigger and
+  `tutorial.callout.boost` are gone. The marker override is gone except for the case it still covered: a drop lying
+  while `boost` is open but not current (an earlier step open when combat B clears) shows the `boost` step out of
+  order (its prompt and drop marker; not inside an entered, unfinished lesson room, not under the objective card).
+  Presentation only: no sim, hash, replay or world change; bot times unchanged (4246 / 4690 ticks). Funnel data from
+  before the change is not comparable past step 5 (docs/TUTORIAL.md §6).
 
 ## As built (B5-B7, review)
 
 - **Theme (B5).** `BOOST_KINDS` (same order as `Boost`), `boost.<kind>` assets / roles / strings, `hud.toast.boost`,
-  `tutorial.callout.boost`, optional `fx.boost.collect` / `fx.boost.aura.<kind>`. The Aegis sound is
+  `tutorial.callout.boost` (since replaced by `tutorial.prompt.boost.<device>`), optional `fx.boost.collect` / `fx.boost.aura.<kind>`. The Aegis sound is
   `sfx.boost.aegisbreak` (lowercase: the validator rejects uppercase IDs). Placeholder colours: Fury `#ffc83d`,
   Quickstep `#3ff0d8`, Frenzy `#a8f03c`, Aegis `#c3a6ff` (>= 59 Delta E from the bullet roles, >= 5.86:1 on every
   biome floor and wall). Placeholder shape `"Diamond"` (a cube on its corner). Not checked in the darkest decor band
@@ -330,7 +345,9 @@ read helpers, hash), `boostMods.ts` (the effect reads, a leaf), specs `drops.spe
 - **P6. Pickups score nothing and do not feed the combo** [B2].
 - **P7. Quickstep walk only; the roll is unchanged** [B3].
 - **P8. Tutorial: a guaranteed Fury in combat B and a callout, not a new funnel step.** A real step would renumber
-  funnel steps 5-15 and break telemetry comparisons with existing data [B9].
+  funnel steps 5-15 and break telemetry comparisons with existing data [B9]. **Reversed by the owner (2026-10-26):**
+  the pickup is step 6 `boost` (steps 6..15 became 7..16; data from before is not comparable past step 5). See "As
+  built (B4, B9)".
 - **P9. Leaderboards**: if they have shipped by B4, bump `LB_Solo_v1` / `LB_Coop_v1` (endless scores change) [B4].
 
 ## Risks

@@ -5,8 +5,8 @@
  *
  * The route: Continue on the objective card (a FIRE press once the card has been up long enough), walk, drink the
  * flask, then each floor-1 lesson room in `order` (default: the tour, TUTORIAL_ROOMS): attack the dummies / swarmers
- * with the sword (and after each fight walk over any boost drop lying on the floor: combat B's guaranteed Fury,
- * docs/BOOSTS.md B9), roll once for the sniper, guard the bruiser's ring (ALT when a bullet comes close), swap to the bow
+ * with the sword (and after each fight walk over any boost drop lying on the floor: combat B's guaranteed Fury, the
+ * `boost` step, docs/BOOSTS.md B9), roll once for the sniper, guard the bruiser's ring (ALT when a bullet comes close), swap to the bow
  * and release a heavy arrow at the turret sniper, burn an Ember in the sprayer storm, take the relic, accept the curse
  * (SHRINE_BUTTON), take the stairwell, confirm the centre draft card, then melee Mother Bramble on floor 2 (the player
  * is harmless, so it tanks; optionally with the debug boss damage, J) and take the stairwell she opens. It records the
@@ -124,6 +124,9 @@ export interface TutorialBotResult {
 	/** Frames whose marker pointed at a ground drop, and how many of them matched a lying drop's position. */
 	readonly dropMarkerFrames: number;
 	readonly dropMarkerOnDrop: number;
+	/** Frames the `boost` step was current, and how many of them had the marker on a lying drop. */
+	readonly boostCurrentFrames: number;
+	readonly boostCurrentOnDrop: number;
 }
 
 const DEFAULT_MAX_TICKS = 20 * 60 * SIM_HZ;
@@ -182,6 +185,8 @@ class TutorialBot {
 	readonly highlights: string[] = [];
 	dropMarkerFrames = 0;
 	dropMarkerOnDrop = 0;
+	boostCurrentFrames = 0;
+	boostCurrentOnDrop = 0;
 	dropsLanded = 0;
 	dropsTaken = 0;
 	private prevHearts: number;
@@ -298,14 +303,20 @@ class TutorialBot {
 		const kind = v.marker?.kind;
 		if (kind !== undefined && !this.markerKinds.includes(kind)) this.markerKinds.push(kind);
 		if (v.highlight !== undefined && !this.highlights.includes(v.highlight)) this.highlights.push(v.highlight);
+		let onDrop = false;
 		if (kind === "drop") {
 			this.dropMarkerFrames++;
 			for (const g of dropsGround(this.state)) {
 				if (g.kind !== NO_BOOST && g.x === v.marker!.x && g.z === v.marker!.z) {
+					onDrop = true;
 					this.dropMarkerOnDrop++;
 					break;
 				}
 			}
+		}
+		if (v.stepId === "boost") {
+			this.boostCurrentFrames++;
+			if (onDrop) this.boostCurrentOnDrop++;
 		}
 	}
 
@@ -741,5 +752,7 @@ export function playTutorial(options: TutorialBotOptions = {}): TutorialBotResul
 		dropsTaken: bot.dropsTaken,
 		dropMarkerFrames: bot.dropMarkerFrames,
 		dropMarkerOnDrop: bot.dropMarkerOnDrop,
+		boostCurrentFrames: bot.boostCurrentFrames,
+		boostCurrentOnDrop: bot.boostCurrentOnDrop,
 	};
 }

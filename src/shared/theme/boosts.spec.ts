@@ -214,7 +214,13 @@ describe("boosts: placeholder pack (and every bundled pack)", () => {
 		expect(pack.str(BOOST_TOAST_KEY, { name: pack.str(fury.nameKey), desc: pack.str(fury.descKey) })).toBe(
 			"Fury: +50% damage for 10 s",
 		);
-		expect(s["tutorial.callout.boost"]).toBe("Enemies sometimes drop a boost. Walk over it before it fades.");
+		// The tutorial's boost lesson is a step (docs/BOOSTS.md B9): a prompt per device, no callout any more.
+		for (const d of ["keyboard", "gamepad", "touch"]) {
+			expect(s[`tutorial.prompt.boost.${d}`]).toBe(
+				"A boost! Walk over it before it fades: it powers you up for a few seconds.",
+			);
+		}
+		expect(s["tutorial.callout.boost"]).toBe(undefined);
 	});
 
 	it("keeps the four boost sounds silent", () => {
