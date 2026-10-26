@@ -14,7 +14,8 @@
  * Contract v2 (docs/ART.md task S2, a deviation from the web build): the class / enemy / boss slots also accept the
  * additive `sprites` kind (`SpriteSetAsset`), which carries its own cell size, pivot, facings and frame counts and
  * only has to define the slot's base animation names (`requiredBaseAnimations`). The 16 px `spritesheet` rules
- * below are unchanged.
+ * below are unchanged. Per-sheet cells (docs/DEMON_ART.md DD4: a sheet with its own `frameW` / `frameH` / `pivot`) are
+ * accepted in those three slots only (`perSheetCells`).
  *
  * Roblox-port slots (docs/DECOR.md): DECOR (`decor.*`, optional room decoration: the web build's DECOR slot, rebuilt
  * from the plan) and BREAKABLE (`breakable.*`, required: breakable clutter is a gameplay object). Both take free-size
@@ -64,6 +65,18 @@ export interface SlotContract {
 	 * `animationOrder`; set for slots without a 16 px spritesheet contract (decor, breakables: `idle`).
 	 */
 	readonly baseAnimations?: ReadonlyArray<string>;
+	/**
+	 * v2 `sprites` kind: a set in this slot may give a sheet its own cell (SpriteSheetImage `frameW` / `frameH` /
+	 * `pivot`, docs/DEMON_ART.md DD4), because its renderer (the actor SpriteView) re-sizes the billboard per sheet.
+	 * Absent: the slot's renderers size every frame from the set-level cell, so the validator refuses per-sheet cells
+	 * and ThemeCore.sprites rejects a set that has them.
+	 */
+	readonly perSheetCells?: boolean;
+	/**
+	 * v2 `sprites` kind: base animation names a set in this slot MAY add, which the renderer asks for and falls back
+	 * from when absent (shared/view sprites.ts). Validated like every animation when present; never required.
+	 */
+	readonly optionalAnimations?: ReadonlyArray<string>;
 }
 
 const SPRITE: ReadonlyArray<AssetKind> = ["spritesheet", "placeholder"];
@@ -81,6 +94,7 @@ export const CHARACTER: SlotContract = {
 	animations: { idle: 4, run: 6, roll: 4, hit: 2, death: 6 },
 	animationOrder: ["idle", "run", "roll", "hit", "death"],
 	facings: FACINGS,
+	perSheetCells: true,
 };
 
 export const ENEMY: SlotContract = {
@@ -92,6 +106,7 @@ export const ENEMY: SlotContract = {
 	animations: { idle: 4, move: 4, attack: 4, hit: 2, death: 4 },
 	animationOrder: ["idle", "move", "attack", "hit", "death"],
 	facings: FACINGS,
+	perSheetCells: true,
 };
 
 export const BOSS: SlotContract = {
@@ -103,6 +118,10 @@ export const BOSS: SlotContract = {
 	animations: { idle: 4, move: 4, attack: 6, hit: 2, death: 8 },
 	animationOrder: ["idle", "move", "attack", "hit", "death"],
 	facings: [],
+	perSheetCells: true,
+	// docs/BRAMBLE_ART.md BR2 / BOSS_DEMONLORD.md D2: named attacks (absent: `attack`) and the roars (`intro` falls back
+	// to `taunt`, `taunt` to `idle`). Mother Bramble: FAN `attack`, RINGs `attack.2`, SPIRAL `attack.3`, SLAM `attack.4`.
+	optionalAnimations: ["attack.2", "attack.3", "attack.4", "intro", "taunt"],
 };
 
 /** Bullets are drawn at one cell size; the renderer scales them to the gameplay radius. */
@@ -271,6 +290,19 @@ export function requiredAnimations(slot: SlotContract): Record<string, number> {
 export function requiredBaseAnimations(slot: SlotContract): Array<string> {
 	const out = new Array<string>();
 	for (const anim of slot.baseAnimations ?? slot.animationOrder ?? []) {
+		out.push(anim);
+	}
+	return out;
+}
+
+/**
+ * Base animation names a `sprites` asset in this slot may add on top of requiredBaseAnimations and the renderer falls
+ * back from (`optionalAnimations`; boss: attack.2, attack.3, attack.4, intro, taunt). A copy; empty for most slots.
+ * Other extra names stay allowed (the validator checks every animation a set defines, required or not).
+ */
+export function optionalBaseAnimations(slot: SlotContract): Array<string> {
+	const out = new Array<string>();
+	for (const anim of slot.optionalAnimations ?? []) {
 		out.push(anim);
 	}
 	return out;

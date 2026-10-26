@@ -18,8 +18,14 @@ import { contrastReport, juiceContrastReport, validateManifest } from "../../val
 import { PLACEHOLDER_MANIFEST } from "../placeholder";
 import { VALE_ASSET_IDS } from "./assetIds";
 import { VALE_AUDIO_FILES } from "./audioLayout";
-import { VALE_FLOOR_HEX, VALE_IMAGE_LAYOUTS, VALE_SPRITE_LAYOUTS, VALE_WORLD_LAYOUTS } from "./layout";
-import { VALE_BIOME_MATERIALS, VALE_MANIFEST, buildValeManifest } from "./manifest";
+import {
+	VALE_FLOOR_HEX,
+	VALE_IMAGE_LAYOUTS,
+	VALE_SPRITE_LAYOUTS,
+	VALE_WORLD_LAYOUTS,
+	type ValeSpriteLayout,
+} from "./layout";
+import { VALE_BIOME_MATERIALS, VALE_MANIFEST, buildValeManifest, valeSpriteAsset } from "./manifest";
 
 const quiet = () => undefined;
 
@@ -94,11 +100,12 @@ describe("vale pack", () => {
 		}
 	});
 
-	it("every enemy sprite set has an outline sheet per sheet; the player's sets have none", () => {
-		// art/atlases.json: each enemy set needs `outline` (enemy outline plan O3), or its sprites draw without a rim
+	it("every enemy and boss sprite set has an outline sheet per sheet; the player's sets have none", () => {
+		// art/atlases.json: each enemy / boss set needs `outline` (enemy outline plan O3), or its sprites draw without a
+		// rim (bosses take the enemy rim too: their placeholder has the outline role)
 		let enemies = 0;
 		for (const id of sortedKeys(VALE_SPRITE_LAYOUTS)) {
-			const enemy = id.sub(1, 6) === "enemy.";
+			const enemy = id.sub(1, 6) === "enemy." || id.sub(1, 5) === "boss.";
 			if (enemy) {
 				enemies += 1;
 			}
@@ -503,5 +510,371 @@ describe("vale enemy.sniper (docs/SNIPER_ART.md SN5: the Lords of Pain subservie
 			expect(sprites.frame("attack", 9, f)).toEqual(sprites.frame("idle", 9, f));
 		}
 		expect(sprites.pivot).toEqual({ x: 56, y: 57 });
+	});
+});
+
+describe("vale per-sheet cells (docs/DEMON_ART.md DA2 / DD4)", () => {
+	/**
+	 * A layout as art:build writes it for a `cells: "perSheet"` set: idle trimmed to 44x78 (pivot 24, 67), move and
+	 * death in the set's 99x113 cell (pivot 51, 89) but stated per sheet too. The layout.ts type declares the per-sheet
+	 * fields only once a real set uses them, so this one is built as a wider object.
+	 */
+	const layout = {
+		frameW: 99,
+		frameH: 113,
+		pivot: { x: 51, y: 89 },
+		pixelsPerTile: 38,
+		resample: "Default",
+		facings: { count: 8, zeroDeg: 0, ccw: true },
+		sheets: [
+			{
+				file: "b-idle.png",
+				w: 176,
+				h: 624,
+				frameW: 44,
+				frameH: 78,
+				pivot: { x: 24, y: 67 },
+				outlineFile: "b-idle-outline.png",
+			},
+			{ file: "b-move.png", w: 792, h: 904, frameW: 99, frameH: 113, pivot: { x: 51, y: 89 } },
+		],
+		animations: {
+			idle: { sheet: 0, start: 0, frames: 4, fps: 6, loop: true },
+			move: { sheet: 1, start: 0, frames: 8, fps: 10, loop: true },
+			attack: { sheet: 1, start: 0, frames: 8, fps: 12, loop: false },
+			hit: { sheet: 0, start: 0, frames: 1, stride: 4, fps: 1, loop: false },
+			death: { sheet: 1, start: 0, frames: 8, fps: 10, loop: false },
+		},
+	} as unknown as ValeSpriteLayout;
+	const ids = {
+		"b-idle.png": "rbxassetid://9101",
+		"b-idle-outline.png": "rbxassetid://9102",
+		"b-move.png": "rbxassetid://9103",
+	};
+
+	it("copies each sheet's own frameW / frameH / pivot into the manifest; the set-level cell stays the union", () => {
+		const set = valeSpriteAsset("enemy.bruiser", layout, ids)!;
+		expect(set).never.toBe(undefined);
+		expect([set.frameW, set.frameH, set.pivot, set.pixelsPerTile]).toEqual([99, 113, { x: 51, y: 89 }, 38]);
+		expect(set.sheets).toEqual([
+			{
+				assetId: "rbxassetid://9101",
+				w: 176,
+				h: 624,
+				frameW: 44,
+				frameH: 78,
+				pivot: { x: 24, y: 67 },
+				outlineAssetId: "rbxassetid://9102",
+			},
+			{ assetId: "rbxassetid://9103", w: 792, h: 904, frameW: 99, frameH: 113, pivot: { x: 51, y: 89 } },
+		]);
+		// a copy: the manifest never aliases the layout's pivot
+		expect(set.sheets[0].pivot).never.toBe((layout.sheets[0] as unknown as { pivot: unknown }).pivot);
+	});
+
+	it("validates and draws through the theme: idle frames in the idle cell with its pivot", () => {
+		const m = buildValeManifest(fakeIds());
+		m.assets["enemy.bruiser"] = valeSpriteAsset("enemy.bruiser", layout, ids)!;
+		expect(validateManifest(m, { packId: "vale" })).toEqual([]);
+		const set = new ThemePack(m, { warn: quiet }).sprites("enemy.bruiser")!;
+		expect(set).never.toBe(undefined);
+		// idle facing 5 frame 2: cell 22 of 4 per row -> column 2, row 5 of 44x78
+		const f = set.frame("idle", 5, 2);
+		expect([f.image, f.outlineImage, f.offset.X, f.offset.Y, f.size.X, f.size.Y]).toEqual([
+			"rbxassetid://9101",
+			"rbxassetid://9102",
+			88,
+			390,
+			44,
+			78,
+		]);
+		expect(f.pivot).toEqual({ x: 24, y: 67 });
+		const g = set.frame("move", 7, 7);
+		expect([g.offset.X, g.offset.Y, g.size.X, g.size.Y, g.pivot]).toEqual([693, 791, 99, 113, { x: 51, y: 89 }]);
+	});
+
+	it('only the `cells: "perSheet"` sets (enemy.bruiser, boss.act1) give their sheets their own cells', () => {
+		const perSheet = ["boss.act1", "enemy.bruiser"];
+		for (const id of sortedKeys(VALE_SPRITE_LAYOUTS)) {
+			const own = perSheet.includes(id);
+			for (const sheet of VALE_SPRITE_LAYOUTS[id].sheets) {
+				const cells = sheet as unknown as { frameW?: number; frameH?: number; pivot?: unknown };
+				const has = [cells.frameW !== undefined, cells.frameH !== undefined, cells.pivot !== undefined];
+				expect([id, sheet.file, ...has]).toEqual([id, sheet.file, own, own, own]);
+			}
+		}
+		const assets = buildValeManifest(fakeIds()).assets;
+		for (const id of sortedKeys(assets)) {
+			const asset = assets[id];
+			if (asset.kind === "sprites") {
+				const own = perSheet.includes(id);
+				for (const sheet of (asset as SpriteSetAsset).sheets) {
+					expect([id, sheet.frameW !== undefined, sheet.pivot !== undefined]).toEqual([id, own, own]);
+				}
+			}
+		}
+	});
+});
+
+/**
+ * The 2D Demons sets (docs/DEMON_ART.md DA5, docs/BRAMBLE_ART.md BR6): enemy.bruiser (Demon Beast 3) and boss.act1
+ * (Mother Bramble, Demon Elite 3), per-sheet cells, a rim on every sheet. All 20 files were uploaded 2026-10-26
+ * (assetIds.ts), so the bundled pack draws both as sprite sets with their rims.
+ */
+describe("vale enemy.bruiser and boss.act1 (2D Demons, per-sheet cells)", () => {
+	const BRUISER_SHEETS = ["bruiser-attack.png", "bruiser-body.png", "bruiser-death.png"];
+	const BRAMBLE_REQUIRED = ["bramble-idle.png", "bramble-move.png", "bramble-attack1.png", "bramble-death.png"];
+	const BRAMBLE_OPTIONAL = ["bramble-taunt.png", "bramble-attack2.png", "bramble-attack4.png"];
+	const outlineOf = (file: string) => `${file.sub(1, -5)}-outline.png`;
+	const filesOf = (id: string) => {
+		const files = new Array<string>();
+		for (const sheet of VALE_SPRITE_LAYOUTS[id].sheets) {
+			files.push(sheet.file);
+			files.push(outlineOf(sheet.file));
+		}
+		return files;
+	};
+	const cellOf = (id: string, i: number) =>
+		VALE_SPRITE_LAYOUTS[id].sheets[i] as unknown as {
+			frameW: number;
+			frameH: number;
+			pivot: { x: number; y: number };
+		};
+
+	it("the layouts: 8 facings; the bruiser at the knight's density, Mother Bramble at bodyTiles 2.5; every sheet <= 1024", () => {
+		const b = VALE_SPRITE_LAYOUTS["enemy.bruiser"];
+		expect([b.frameW, b.frameH, b.pivot, b.pixelsPerTile]).toEqual([99, 118, { x: 51, y: 89 }, 38]);
+		expect(b.pixelsPerTile).toBe(VALE_SPRITE_LAYOUTS["class.vanguard"].pixelsPerTile);
+		expect(b.facings).toEqual({ count: 8, zeroDeg: 0, ccw: true });
+		expect(b.sheets).toEqual([
+			{
+				file: "bruiser-attack.png",
+				w: 624,
+				h: 944,
+				frameW: 78,
+				frameH: 118,
+				pivot: { x: 41, y: 89 },
+				outlineFile: "bruiser-attack-outline.png",
+			},
+			{
+				file: "bruiser-body.png",
+				w: 910,
+				h: 810,
+				frameW: 70,
+				frameH: 81,
+				pivot: { x: 37, y: 67 },
+				outlineFile: "bruiser-body-outline.png",
+			},
+			{
+				file: "bruiser-death.png",
+				w: 594,
+				h: 712,
+				frameW: 99,
+				frameH: 89,
+				pivot: { x: 51, y: 65 },
+				outlineFile: "bruiser-death-outline.png",
+			},
+		]);
+		const e = VALE_SPRITE_LAYOUTS["boss.act1"];
+		expect([e.frameW, e.frameH, e.pivot, e.pixelsPerTile]).toEqual([124, 134, { x: 63, y: 88 }, 24.4]);
+		expect(e.facings).toEqual({ count: 8, zeroDeg: 0, ccw: true });
+		expect(e.sheets.map((sheet) => sheet.file)).toEqual([
+			"bramble-idle.png",
+			"bramble-move.png",
+			"bramble-taunt.png",
+			"bramble-attack1.png",
+			"bramble-attack2.png",
+			"bramble-attack4.png",
+			"bramble-death.png",
+		]);
+		for (const id of ["enemy.bruiser", "boss.act1"]) {
+			const l = VALE_SPRITE_LAYOUTS[id];
+			for (let i = 0; i < l.sheets.size(); i++) {
+				const sheet = l.sheets[i];
+				const c = cellOf(id, i);
+				expect([sheet.file, sheet.w <= 1024, sheet.h <= 1024, sheet.w % c.frameW, sheet.h % c.frameH]).toEqual([
+					sheet.file,
+					true,
+					true,
+					0,
+					0,
+				]);
+				// the set's pivot point, the same source pixel in every sheet: the sheet's pivot minus the set's is the
+				// same offset as its cell's origin minus the set's (so the feet stay planted when the animation changes)
+				expect([
+					sheet.file,
+					c.pivot.x > 0 && c.pivot.x < c.frameW,
+					c.pivot.y > 0 && c.pivot.y < c.frameH,
+				]).toEqual([sheet.file, true, true]);
+				expect(sheet.outlineFile).toBe(outlineOf(sheet.file));
+			}
+		}
+		// idle and attack.3 share Mother Bramble's first sheet; hit is idle's cell held (BD3: the boss never flinches)
+		expect(e.animations["attack.3"]).toEqual({ sheet: 0, start: 32, frames: 6, fps: 10, loop: false });
+		expect(e.animations.hit).toEqual({ sheet: 0, start: 0, frames: 1, stride: 4, fps: 1, loop: false });
+	});
+
+	it("as bundled both are their sprite sets, every sheet with its rim (uploaded 2026-10-26)", () => {
+		for (const id of ["enemy.bruiser", "boss.act1"]) {
+			for (const file of filesOf(id)) {
+				expect([file, VALE_ASSET_IDS[file] !== undefined]).toEqual([file, true]);
+			}
+			expect([id, VALE_MANIFEST.assets[id].kind]).toEqual([id, "sprites"]);
+			const set = new ThemePack(VALE_MANIFEST, { warn: quiet }).sprites(id)!;
+			expect(set).never.toBe(undefined);
+			const sheets = (VALE_MANIFEST.assets[id] as SpriteSetAsset).sheets;
+			const layout = VALE_SPRITE_LAYOUTS[id].sheets;
+			expect(sheets.size()).toBe(layout.size());
+			for (let i = 0; i < layout.size(); i++) {
+				expect([layout[i].file, sheets[i].assetId]).toEqual([layout[i].file, VALE_ASSET_IDS[layout[i].file]]);
+				expect([layout[i].file, sheets[i].outlineAssetId]).toEqual([
+					layout[i].file,
+					VALE_ASSET_IDS[outlineOf(layout[i].file)],
+				]);
+			}
+			// without the IDs (a fresh pack) both are still the placeholder
+			expect([id, buildValeManifest({}).assets[id]]).toEqual([id, { kind: "placeholder" }]);
+		}
+	});
+
+	it("each switches to sprites with every required sheet; any required sheet missing keeps it a placeholder", () => {
+		const cases: Array<[string, Array<string>]> = [
+			["enemy.bruiser", BRUISER_SHEETS],
+			["boss.act1", BRAMBLE_REQUIRED],
+		];
+		for (const [id, required] of cases) {
+			const m = buildValeManifest(fakeIds());
+			expect(validateManifest(m, { packId: "vale" })).toEqual([]);
+			expect([id, m.assets[id].kind]).toEqual([id, "sprites"]);
+			for (const file of required) {
+				const without = buildValeManifest(fakeIds(file));
+				expect(validateManifest(without, { packId: "vale" })).toEqual([]);
+				expect([id, file, without.assets[id]]).toEqual([id, file, { kind: "placeholder" }]);
+			}
+			// outline sheets alone never switch a set on
+			const outlinesOnly = buildValeManifest(fakeIds(...required));
+			expect([id, outlinesOnly.assets[id]]).toEqual([id, { kind: "placeholder" }]);
+		}
+		// only those sheets: the bruiser has no optional animation, so all three sheets are required
+		expect(BRUISER_SHEETS).toEqual(VALE_SPRITE_LAYOUTS["enemy.bruiser"].sheets.map((sheet) => sheet.file));
+		const theme = new ThemeCore(buildValeManifest(fakeIds()), { warn: quiet });
+		expect(theme.sprites("enemy.bruiser")!.animationNames).toEqual(["attack", "death", "hit", "idle", "move"]);
+		expect(theme.sprites("boss.act1")!.animationNames).toEqual([
+			"attack",
+			"attack.2",
+			"attack.3",
+			"attack.4",
+			"death",
+			"hit",
+			"idle",
+			"move",
+			"taunt",
+		]);
+	});
+
+	it("Mother Bramble's optional sheets join when uploaded and never hold the set back", () => {
+		const m = buildValeManifest(fakeIds(...BRAMBLE_OPTIONAL));
+		expect(validateManifest(m, { packId: "vale" })).toEqual([]);
+		const set = m.assets["boss.act1"] as SpriteSetAsset;
+		expect(set.kind).toBe("sprites");
+		expect(set.sheets.size()).toBe(4);
+		// attack.3 rides on idle's sheet, so it stays
+		expect(sortedKeys(set.animations)).toEqual(["attack", "attack.3", "death", "hit", "idle", "move"]);
+		const ids = fakeIds(...BRAMBLE_OPTIONAL);
+		for (const name of sortedKeys(set.animations)) {
+			const layoutSheet = VALE_SPRITE_LAYOUTS["boss.act1"].animations[name].sheet;
+			const file = VALE_SPRITE_LAYOUTS["boss.act1"].sheets[layoutSheet].file;
+			expect([name, set.sheets[set.animations[name].sheet].assetId]).toEqual([name, ids[file]]);
+		}
+	});
+
+	it("the rims join only with their outline sheets and never hold a set back", () => {
+		for (const id of ["enemy.bruiser", "boss.act1"]) {
+			const outlines = VALE_SPRITE_LAYOUTS[id].sheets.map((sheet) => outlineOf(sheet.file));
+			const rimless = buildValeManifest(fakeIds(...outlines));
+			expect(validateManifest(rimless, { packId: "vale" })).toEqual([]);
+			const set = rimless.assets[id] as SpriteSetAsset;
+			expect([id, set.kind, set.sheets.size()]).toEqual([id, "sprites", outlines.size()]);
+			for (const sheet of set.sheets) expect([id, sheet.outlineAssetId]).toEqual([id, undefined]);
+			// with every file each sheet carries its own outline, on every frame
+			const ids = fakeIds();
+			const sprites = new ThemeCore(buildValeManifest(ids), { warn: quiet }).sprites(id)!;
+			for (const name of sprites.animationNames) {
+				const count = sprites.animation(name)!.frames;
+				for (let d = 0; d < 8; d++) {
+					for (let f = 0; f < count; f++) {
+						const r = sprites.frame(name, d, f);
+						const file = VALE_SPRITE_LAYOUTS[id].sheets[r.sheet].file;
+						expect([name, d, f, r.assetId, r.outlineAssetId]).toEqual([
+							name,
+							d,
+							f,
+							ids[file],
+							ids[outlineOf(file)],
+						]);
+					}
+				}
+			}
+		}
+	});
+
+	it("copies each sheet's own cell into the manifest and draws every frame in it (hand-computed rects)", () => {
+		const ids = fakeIds();
+		const m = buildValeManifest(ids);
+		for (const id of ["enemy.bruiser", "boss.act1"]) {
+			const set = m.assets[id] as SpriteSetAsset;
+			const l = VALE_SPRITE_LAYOUTS[id];
+			expect([set.frameW, set.frameH, set.pivot]).toEqual([l.frameW, l.frameH, l.pivot]);
+			for (let i = 0; i < l.sheets.size(); i++) {
+				const c = cellOf(id, i);
+				expect([id, set.sheets[i].frameW, set.sheets[i].frameH, set.sheets[i].pivot]).toEqual([
+					id,
+					c.frameW,
+					c.frameH,
+					c.pivot,
+				]);
+			}
+		}
+		const pack = new ThemePack(m, { warn: quiet });
+		const bruiser = pack.sprites("enemy.bruiser")!;
+		// idle facing 5 frame 2: cell 22 of bruiser-body (13 per row of 70x81) -> column 9, row 1
+		const idle = bruiser.frame("idle", 5, 2);
+		expect([
+			idle.image,
+			idle.outlineImage,
+			idle.offset.X,
+			idle.offset.Y,
+			idle.size.X,
+			idle.size.Y,
+			idle.pivot,
+		]).toEqual([ids["bruiser-body.png"], ids["bruiser-body-outline.png"], 630, 81, 70, 81, { x: 37, y: 67 }]);
+		// hit facing 7 frame 3: cell 96 + 28 + 3 = 127, the sheet's last -> column 10, row 9 (bottom edge 810)
+		const hit = bruiser.frame("hit", 7, 3);
+		expect([hit.offset.X, hit.offset.Y, hit.offset.Y + hit.size.Y]).toEqual([700, 729, 810]);
+		// attack facing 0 frame 6 (the impact): bruiser-attack, 8 per row of 78x118 -> column 6, row 0
+		const slam = bruiser.frame("attack", 0, 6);
+		expect([slam.image, slam.offset.X, slam.offset.Y, slam.size.X, slam.size.Y, slam.pivot]).toEqual([
+			ids["bruiser-attack.png"],
+			468,
+			0,
+			78,
+			118,
+			{ x: 41, y: 89 },
+		]);
+		const bramble = pack.sprites("boss.act1")!;
+		// attack.3 facing 7 frame 5: cell 32 + 42 + 5 = 79 of bramble-idle (9 per row of 107x113) -> column 7, row 8
+		const spin = bramble.frame("attack.3", 7, 5);
+		expect([spin.image, spin.offset.X, spin.offset.Y, spin.size.X, spin.size.Y, spin.pivot]).toEqual([
+			ids["bramble-idle.png"],
+			749,
+			904,
+			107,
+			113,
+			{ x: 54, y: 78 },
+		]);
+		// hit = idle frame 0 held: facing 3 -> cell 12 -> column 3, row 1, every frame index
+		const held = bramble.frame("hit", 3, 0);
+		expect([held.offset.X, held.offset.Y]).toEqual([321, 113]);
+		expect(held).toEqual(bramble.frame("idle", 3, 0));
 	});
 });

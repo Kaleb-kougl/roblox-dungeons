@@ -3,7 +3,15 @@
 // the frame math adds the web's bottom-left UV -> Roblox's top-left pixel rect flip.
 import { describe, expect, it } from "@rbxts/jest-globals";
 import { BIOMES, CHARACTER, DEFAULT_BIOME_MATERIAL, requiredAnimationList } from "./contract";
-import { MISSING_COLOR, frameIndex, frameRect, frameUV, spriteSheetOutline, uvToPixelRect } from "./core";
+import {
+	MISSING_COLOR,
+	frameIndex,
+	frameRect,
+	frameUV,
+	spriteSheetCell,
+	spriteSheetOutline,
+	uvToPixelRect,
+} from "./core";
 import { ThemePack, listThemePacks, loadThemePack } from "./pack";
 import { THEME_PACKS } from "./packs";
 import { PLACEHOLDER_MANIFEST } from "./packs/placeholder";
@@ -646,6 +654,131 @@ describe("sprite sets: outline sheets (enemy outline plan O4)", () => {
 		expect(
 			spriteSheetOutline({ assetId: A, w: 64, h: 56, outlineAssetId: true as unknown as typeof OA }),
 		).toBeUndefined();
+	});
+});
+
+describe("sprite sets: per-sheet cells (docs/DEMON_ART.md DD4)", () => {
+	const sheetAt = (set: Obj, i: number): Obj => (set.sheets as Array<Obj>)[i];
+	/** Sheet 1 trimmed to its own 32x40 cell (256x80: 8 x 2 cells), pivot (16, 36), as in validate.spec. */
+	const trim = (set: Obj) => {
+		const sheet = sheetAt(set, 1);
+		sheet.h = 80;
+		sheet.frameW = 32;
+		sheet.frameH = 40;
+		sheet.pivot = { x: 16, y: 36 };
+	};
+
+	it("lays a trimmed sheet's frames out in its own cell, with its own pivot; other sheets keep the set's", () => {
+		const m = withSwarmerSet(trim);
+		expect(validateManifest(m)).toEqual([]);
+		const w = sink();
+		const p = pack(w, m);
+		const s = p.core.sprites(SWARMER)!;
+		expect(s).toBeDefined();
+		// hit: sheet 1, 1 frame, facing 5 = cell 5 of 8 per row
+		expect(s.frame("hit", 5, 0)).toEqual({
+			sheet: 1,
+			assetId: "rbxassetid://3002",
+			x: 160,
+			y: 0,
+			w: 32,
+			h: 40,
+		});
+		expect([s.cell(1), s.cell(0)]).toEqual([
+			{ frameW: 32, frameH: 40, pivot: { x: 16, y: 36 } },
+			{ frameW: 64, frameH: 56, pivot: { x: 32, y: 48 } },
+		]);
+		// facing 7 of attack.1 (cell 7) is still inside the 16-cell sheet; facing 7 of move on sheet 0 is unchanged
+		expect([s.frame("attack.1", 7, 0).x, s.frame("attack.1", 7, 0).y]).toEqual([224, 0]);
+		const move = s.frame("move", 2, 9);
+		expect([move.x, move.y, move.w, move.h]).toEqual([64, 56, 64, 56]);
+		// the set-level cell stays the set's
+		expect([s.frameW, s.frameH, s.pivot]).toEqual([64, 56, { x: 32, y: 48 }]);
+		// ThemePack: size and pivot of the frame's own cell
+		const f = p.sprites(SWARMER)!.frame("hit", -1, 0);
+		expect([f.offset.X, f.offset.Y, f.size.X, f.size.Y, f.pivot]).toEqual([224, 0, 32, 40, { x: 16, y: 36 }]);
+		const g = p.sprites(SWARMER)!.frame("idle", 0, 0);
+		expect([g.size.X, g.size.Y, g.pivot]).toEqual([64, 56, { x: 32, y: 48 }]);
+		expect(w.messages).toEqual([]);
+	});
+
+	it("spriteSheetCell defaults each field to the set's, and is the set's own cell without any", () => {
+		const set = { frameW: 64, frameH: 56, pivot: { x: 32, y: 48 } };
+		expect(spriteSheetCell(set, { assetId: "rbxassetid://3001", w: 64, h: 56 })).toBe(set);
+		expect(spriteSheetCell(set, { assetId: "rbxassetid://3001", w: 64, h: 56, frameH: 40 })).toEqual({
+			frameW: 64,
+			frameH: 40,
+			pivot: { x: 32, y: 48 },
+		});
+		expect(spriteSheetCell(set, { assetId: "rbxassetid://3001", w: 64, h: 56, pivot: { x: 1, y: 2 } })).toEqual({
+			frameW: 64,
+			frameH: 56,
+			pivot: { x: 1, y: 2 },
+		});
+	});
+
+	it("rejects a set whose sheet cell cannot be drawn (failed validation), warning once", () => {
+		for (const [edit, reason] of [
+			[(sheet: Obj) => (sheet.pivot = { x: 40, y: 36 }), "sheet pivot outside its cell"],
+			[(sheet: Obj) => (sheet.frameW = 0), "bad sheet frameW / frameH"],
+			[(sheet: Obj) => (sheet.pivot = "feet"), "bad sheet pivot"],
+			[(sheet: Obj) => (sheet.frameW = 512), "bad sheet size"],
+		] as Array<[(sheet: Obj) => void, string]>) {
+			const w = sink();
+			const core = pack(
+				w,
+				withSwarmerSet((set) => {
+					trim(set);
+					edit(sheetAt(set, 1));
+				}),
+			).core;
+			expect(core.sprites(SWARMER)).toBeUndefined();
+			expect(core.sprites(SWARMER)).toBeUndefined();
+			expect(w.messages).toEqual([
+				`[theme:placeholder] sprite set "enemy.swarmer" is malformed (${reason}), using the placeholder`,
+			]);
+		}
+	});
+
+	it("counts an animation's cells in its sheet's own cell", () => {
+		// hit with 3 frames reaches cell 7 * 3 + 2 = 23; the trimmed sheet holds 8 x 2 = 16, and hit is required, so
+		// the set falls back to the placeholder
+		const w = sink();
+		const core = pack(
+			w,
+			withSwarmerSet((set) => {
+				trim(set);
+				((set.animations as Obj).hit as Obj).frames = 3;
+			}),
+		).core;
+		expect(core.sprites(SWARMER)).toBeUndefined();
+		expect(w.messages).toEqual([
+			'[theme:placeholder] sprite set "enemy.swarmer" is malformed (animation "hit": cell 23 is outside sheet 1 (16 cells)), using the placeholder',
+		]);
+	});
+
+	it("refuses per-sheet cells outside the actor slots (their renderers size frames from the set's cell)", () => {
+		const m = clone();
+		at(m, "assets")["fx.hit.light"] = {
+			kind: "sprites",
+			frameW: 32,
+			frameH: 32,
+			pivot: { x: 16, y: 16 },
+			pixelsPerTile: 32,
+			resample: "Pixelated",
+			facings: { count: 1, zeroDeg: 0, ccw: true },
+			sheets: [{ assetId: "rbxassetid://7001", w: 128, h: 32, frameW: 16 }],
+			animations: { play: { sheet: 0, start: 0, frames: 4, fps: 12, loop: false } },
+			sizeTiles: 0.75,
+			tint: "damageNumber",
+			additive: true,
+		};
+		const w = sink();
+		const core = pack(w, m).core;
+		expect(core.sprites("fx.hit.light")).toBeUndefined();
+		expect(w.messages).toEqual([
+			'[theme:placeholder] sprite set "fx.hit.light" is malformed (per-sheet cells (sheets[i].frameW / frameH / pivot) outside an actor slot), using the placeholder',
+		]);
 	});
 });
 

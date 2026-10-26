@@ -117,11 +117,12 @@ interface ActorView {
  * Every actor and the player, drawn from sim state (web ActorsView + PlayerView). Per ID, one of two paths:
  *
  * Sprites (docs/ART.md S4): when the pack has a `sprites` set for the ID (`pack.sprites(id)`) and, for actors, the
- * archetype has a sprite input builder (shared/view ACTOR_SPRITE_INPUTS: the swarmer, the sniper and the tutorial's turret.sniper), a pooled SpriteView
- * (BillboardGui on a feet anchor) shows the animation chosen from sim state (shared/view sprites.ts) in the facing
- * nearest the sim's facing on screen; juice through the label: hit flash / telegraph pulse / i-frame tints
- * (ImageColor3), corpse fade (ImageTransparency), the post-hit blink (Visible). The player's ring (`ui.ring.player`,
- * tinted uiAccent for the local player, uiTextDim for teammates) replaces the facing pip when the pack has it.
+ * archetype has a sprite input builder (shared/view ACTOR_SPRITE_INPUTS: the swarmer, the sniper, the tutorial's
+ * turret.sniper, the bruiser and Mother Bramble), a pooled SpriteView (BillboardGui on a feet anchor) shows the
+ * animation chosen from sim state (shared/view sprites.ts) in the facing nearest the sim's facing on screen; juice
+ * through the label: hit flash / telegraph pulse / i-frame tints (ImageColor3), corpse fade (ImageTransparency), the
+ * post-hit blink (Visible). The player's ring (`ui.ring.player`, tinted uiAccent for the local player, uiTextDim for
+ * teammates) replaces the facing pip when the pack has it.
  *
  * Placeholders (every other ID; every ID with the placeholder pack): one model per occupied pool slot, by archetype
  * (registry index -> ArchetypeDef -> data.spriteId -> PLACEHOLDER_VISUALS: swarmer ball, sniper wedge facing its aim,

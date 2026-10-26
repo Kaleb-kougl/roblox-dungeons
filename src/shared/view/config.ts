@@ -1,4 +1,4 @@
-import { HURT_INVULN_TICKS, PLAYER_SPEED, SNIPER, SWARMER } from "shared/sim";
+import { BOSS_ACT1_DATA, BRUISER, HURT_INVULN_TICKS, PLAYER_SPEED, SNIPER, SWARMER } from "shared/sim";
 import type { ColorRole } from "shared/theme";
 import type { TopFaceUV } from "./floorTexture";
 
@@ -215,6 +215,10 @@ export const SPRITE_VIEW = {
 	swarmerMoveRefSpeed: SWARMER.data.speed,
 	/** The sniper's move loop plays at its authored fps at this ground speed, world units / s (its walk speed). */
 	sniperMoveRefSpeed: SNIPER.data.speed,
+	/** The bruiser's move loop plays at its authored fps at this ground speed, world units / s (its plod). */
+	bruiserMoveRefSpeed: BRUISER.data.speed,
+	/** Mother Bramble's (boss.act1) move loop (REPOSITION, the walk back to the centre) plays at its fps at this speed. */
+	bossAct1MoveRefSpeed: BOSS_ACT1_DATA.speed,
 	/** Below this fraction of the reference speed a body counts as standing (idle): wall slides, separation nudges. */
 	moveMinFraction: 0.1,
 	/** Run / move loop rate (speed / reference speed) is clamped to this range (flask walk 0.5, pushes, teleports). */
@@ -236,4 +240,56 @@ export const SPRITE_VIEW = {
 	/** Ring tint (ImageColor3-style multiply on a Decal): the local player, and teammates in co-op. */
 	ringLocalRole: "uiAccent" as ColorRole,
 	ringTeammateRole: "uiTextDim" as ColorRole,
+} as const;
+
+/**
+ * Frame marks inside the phased attack animations (docs/BRAMBLE_ART.md BR4, docs/DEMON_ART.md DA4; logic in sprites.ts):
+ * where a wind-up ends and its release (the strike, the take-off, the landing, the impact) begins, so the release frame
+ * shows on the tick the sim fires. A mark is a FRACTION of the animation's frame count, resolved per set as frame
+ * round(mark * frames) clamped to the animation (sprites.ts segmentStart / segmentLength), so it works for any frame
+ * count and survives a re-cut; to pin frame k of an n-frame animation, write k / n. A segment always keeps >= 1 frame.
+ *
+ * Measured on the 2D Demons art (docs/DEMON_ART.md DA1 / DA3, docs/BRAMBLE_ART.md BR1 / BR3): the k / n below are
+ * kept-frame indices of the sets in art/atlases.json (the source frame in brackets). Gameplay timings are NOT here
+ * (they are read from the sim's data).
+ */
+export const SPRITE_ANIM_MARKS = {
+	/** Mother Bramble (boss.act1, Demon Elite 3): wind-up = frames [0, release), played over the attack's telegraph. */
+	bossAct1: {
+		/**
+		 * `attack` (Attack 1, the horizontal sweep, 6 frames; FAN, FAST_FAN): the release, index 3 [f5] (wind-up 0-2,
+		 * contact 4, follow-through 5). The release replays once per volley.
+		 */
+		fanRelease: 3 / 6,
+		/** `attack.2` (Attack 2, the overhead strike, 6 frames; RING, DOUBLE_RING): release index 3 [f5], on each ring's tick. */
+		ringRelease: 3 / 6,
+		/**
+		 * `attack.3` (Attack 3, a 360 spin, 6 frames; SPIRAL): indices 0-1 over the telegraph; [this, end) = indices 2-5,
+		 * one revolution, loop at the animation's fps through the channel.
+		 */
+		spiralRelease: 2 / 6,
+		/** `attack.4` (Attack 4, the leap, 8 frames; SLAM): take-off index 3 [f4]; the crouch 0-2 plays over the telegraph. */
+		slamTakeoff: 3 / 8,
+		/** `attack.4`: the landing, index 6 [f8], shown on the impact tick (V_MARK); airborne = indices 4-5 before it. */
+		slamLanding: 6 / 8,
+		/**
+		 * A ring's release (rings have no volley period) plays over this many ticks, then idle (DOUBLE_RING: then the
+		 * wind-up again up to the second ring). Keep it under the boss's shortest recover minus its 30-tick wait while
+		 * the player is dead (act1's PLAYER_DEAD_WAIT_TICKS, not exported), 48 - 30 = 18: the follow-through is read
+		 * from the RECOVER timer, so a longer one could replay a stale strike after that wait.
+		 */
+		ringReleaseTicks: 12,
+	},
+	/** The bruiser (enemy.bruiser, Demon Beast 3; its `attack` is Attack 4, a leap and ground slam, 8 frames). */
+	bruiser: {
+		/** The impact, index 6 [f8], shown on the slam tick: the leap [0, impact) (indices 0-5) plays over the telegraph. */
+		impact: 6 / 8,
+		/** The crouched follow-through, index 7 [f10]: [followThrough, end) is held over the rest of the recover. */
+		followThrough: 7 / 8,
+		/**
+		 * The impact frames [impact, followThrough) play over this many ticks from the slam tick (BRUISER_RECOVER's first),
+		 * then the follow-through holds for the rest of recoverTicks. Keep it under recoverTicks (sprites.spec checks it).
+		 */
+		impactTicks: 10,
+	},
 } as const;

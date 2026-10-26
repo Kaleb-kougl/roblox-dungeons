@@ -1,9 +1,47 @@
 import { describe, expect, it } from "@rbxts/jest-globals";
 import { CAMERA_PITCH_DEG, CAMERA_YAW_DEG } from "shared/config";
 import {
+	KALEB_VALE_MVP_PARAMS,
+	actorMover,
+	bossDoorSpawn,
+	bulletBlocker,
+	circleMover,
+	generateDungeon,
+	placeEncounter,
+} from "shared/dungeon";
+import {
 	ACTOR_SCRATCH_SLOTS,
 	AiState,
+	BOSS_ACT1_DATA,
+	BOSS_ACT1_ID,
+	BOSS_TELEGRAPH_TICKS,
+	BRUISER,
+	BRUISER_CHASE,
+	BRUISER_RECOVER,
+	BossAttack,
+	BossState,
+	Button,
 	CORPSE_TICKS,
+	DOUBLE_RING_DELAY_TICKS,
+	EMPTY_INPUT,
+	FAN_VOLLEYS,
+	FAN_VOLLEY_TICKS,
+	FAST_FAN_VOLLEYS,
+	FAST_FAN_VOLLEY_TICKS,
+	PLAYER_RADIUS,
+	SHOCK2_DELAY_TICKS,
+	SIM_DT,
+	SLAM_MAX_TICKS,
+	SLAM_SPEED,
+	SPIRAL_BURST_TICKS,
+	SPIRAL_TICKS,
+	V_AUX_X,
+	V_AUX_Z,
+	V_LAST,
+	V_MARK,
+	createSimState,
+	step,
+	type SimConfig,
 	DAMAGE_CAP_BUCKETS,
 	HIT_FLASH_TICKS,
 	HURT_INVULN_TICKS,
@@ -32,11 +70,33 @@ import {
 	type SimState,
 	type WeaponsState,
 } from "shared/sim";
-import type { SpriteAnimationDef, SpriteFacings } from "shared/theme";
+import {
+	BOSS,
+	PLACEHOLDER_MANIFEST,
+	THEME_PACKS,
+	listThemePacks,
+	loadThemePack,
+	optionalBaseAnimations,
+	requiredBaseAnimations,
+	type SpriteAnimationDef,
+	type SpriteFacings,
+	type ThemeManifest,
+} from "shared/theme";
+import { VALE_SPRITE_LAYOUTS, buildValeManifest } from "shared/theme/packs/vale";
 import {
 	ACTOR_SPRITE_INPUTS,
 	ACTOR_VIEW,
+	SPRITE_ANIM_MARKS,
 	SPRITE_VIEW,
+	bossAct1Attack,
+	bossAct1AttackAnim,
+	bossAct1Special,
+	bossAct1SpriteInput,
+	bruiserAttack,
+	bruiserSpriteInput,
+	segmentFrame,
+	segmentLength,
+	segmentStart,
 	actorLook,
 	animDtSec,
 	corpseTransparency,
@@ -72,6 +132,7 @@ import {
 	tickSpeed,
 	type ActorSpriteInput,
 	type PlayerSpriteInput,
+	type SpriteAnimChoice,
 	type SpriteAnimSource,
 } from "shared/view";
 
@@ -861,15 +922,721 @@ describe("looks", () => {
 	});
 });
 
+// ---------------------------------------------------------------------------------------------
+// Segments (docs/BRAMBLE_ART.md BR4: wind-up / release parts of one animation)
+
+describe("animation segments", () => {
+	it("resolve fractions to frames for any frame count, at least one frame, clamped to the animation", () => {
+		const half = { from: 0.5, to: 1 };
+		expect([segmentStart(half, 6), segmentLength(half, 6)]).toEqual([3, 3]);
+		expect([segmentStart(half, 8), segmentLength(half, 8)]).toEqual([4, 4]);
+		expect([segmentStart({ from: 0, to: 0.5 }, 6), segmentLength({ from: 0, to: 0.5 }, 6)]).toEqual([0, 3]);
+		expect([segmentStart({ from: 1, to: 1 }, 6), segmentLength({ from: 1, to: 1 }, 6)]).toEqual([5, 1]);
+		expect([segmentStart({ from: 0.5, to: 0.5 }, 6), segmentLength({ from: 0.5, to: 0.5 }, 6)]).toEqual([3, 1]);
+		expect([segmentStart({ from: -1, to: 2 }, 4), segmentLength({ from: -1, to: 2 }, 4)]).toEqual([0, 4]);
+		expect([segmentStart({ from: 0 / 0, to: 0 / 0 }, 4), segmentLength({ from: 0 / 0, to: 0 / 0 }, 4)]).toEqual([
+			0, 4,
+		]);
+		expect([segmentStart(half, 1), segmentLength(half, 1)]).toEqual([0, 1]);
+	});
+
+	it("stretch the progress over the segment's frames only; no segment is the whole animation", () => {
+		const release = { from: 0.5, to: 1 };
+		expect([0, 0.34, 0.67, 0.99, 1, 2].map((p) => segmentFrame(p, 6, release))).toEqual([3, 4, 5, 5, 5, 5]);
+		const windup = { from: 0, to: 0.5 };
+		expect([0, 0.34, 0.67, 1].map((p) => segmentFrame(p, 6, windup))).toEqual([0, 1, 2, 2]);
+		expect([0, 0.5, 1].map((p) => segmentFrame(p, 6))).toEqual([0, 3, 5]);
+		const set = source({ a: anim(6, 10, false) });
+		const choice: SpriteAnimChoice = { anim: "a", progress: 0, rate: 1, segment: release };
+		expect(spriteFrame(set, choice, undefined, 0).frame).toBe(3);
+	});
+});
+
+// ---------------------------------------------------------------------------------------------
+// Bruiser (docs/DEMON_ART.md DA4)
+
+/** Demon Beast 3's slots (art/atlases.json enemy.bruiser): idle 4, walk 8, Attack 4 (leap and slam) 8, TakeDamage 4, Die 6. */
+const BEAST_ANIMS: Record<string, SpriteAnimationDef> = {
+	idle: anim(4, 6, true),
+	move: anim(8, 10, true),
+	attack: anim(8, 12, false),
+	hit: anim(4, 12, false),
+	death: anim(6, 10, false),
+};
+const BEAST = source(BEAST_ANIMS);
+
+describe("chooseActorAnim (bruiser)", () => {
+	const d = BRUISER.data;
+	const M = SPRITE_ANIM_MARKS.bruiser;
+	const frames = BEAST_ANIMS.attack.frames;
+	const impact = math.round(M.impact * frames);
+	const follow = math.round(M.followThrough * frames);
+	const pick = (a: ActorState, alpha = 0) => {
+		const p = spriteFrame(BEAST, chooseActorAnim(bruiserSpriteInput(a, alpha), BEAST), undefined, 0);
+		return [p.anim, p.frame];
+	};
+
+	it("splits the slam into a leap, an impact and a follow-through, each non-empty, the impact inside the recover", () => {
+		expect(impact).toBeGreaterThan(0);
+		expect(follow).toBeGreaterThan(impact);
+		expect(follow).toBe(frames - 1); // one frame: held
+		expect(M.impactTicks).toBeGreaterThan(0);
+		expect(M.impactTicks).toBeLessThan(d.recoverTicks);
+	});
+
+	it("leaps over the telegraph, shows the impact frame on the slam tick and holds the follow-through over the recover", () => {
+		// ctx.telegraph sets aiTicks = telegraphTicks; the telegraph's last tick is aiTicks 1. slam() fires and enters
+		// BRUISER_RECOVER with aiTicks = recoverTicks on the tick the telegraph runs out; its last tick is aiTicks 1.
+		const T = d.telegraphTicks;
+		const R = d.recoverTicks;
+		const I = M.impactTicks;
+		expect(bruiserAttack(AiState.TELEGRAPH, T, 0)).toEqual({
+			segment: { from: 0, to: M.impact },
+			elapsed: 0,
+			total: T,
+		});
+		expect(pick(actorState({ aiState: AiState.TELEGRAPH, aiTicks: T }))).toEqual(["attack", 0]);
+		expect(pick(actorState({ aiState: AiState.TELEGRAPH, aiTicks: 1 }))).toEqual(["attack", impact - 1]);
+		expect(pick(actorState({ aiState: AiState.TELEGRAPH, aiTicks: 1 }), 0.99)).toEqual(["attack", impact - 1]);
+		// the slam tick and the impact ticks after it
+		expect(bruiserAttack(BRUISER_RECOVER, R, 0)).toEqual({
+			segment: { from: M.impact, to: M.followThrough },
+			elapsed: 0,
+			total: I,
+		});
+		expect(pick(actorState({ aiState: BRUISER_RECOVER, aiTicks: R }))).toEqual(["attack", impact]);
+		expect(pick(actorState({ aiState: BRUISER_RECOVER, aiTicks: R }), 0.5)).toEqual(["attack", impact]);
+		expect(pick(actorState({ aiState: BRUISER_RECOVER, aiTicks: R - (I - 1) }), 0.99)).toEqual([
+			"attack",
+			follow - 1,
+		]);
+		// then the follow-through, held to the recover's last tick
+		expect(pick(actorState({ aiState: BRUISER_RECOVER, aiTicks: R - I }))).toEqual(["attack", follow]);
+		for (let left = R - I; left >= 1; left--) {
+			expect([left, ...pick(actorState({ aiState: BRUISER_RECOVER, aiTicks: left }), 0.5)]).toEqual([
+				left,
+				"attack",
+				follow,
+			]);
+		}
+		expect(bruiserAttack(BRUISER_RECOVER, 1, 1)).toEqual({
+			segment: { from: M.followThrough, to: 1 },
+			elapsed: R - I,
+			total: R - I,
+		});
+	});
+
+	it("is not attacking while walking, calm or dead", () => {
+		expect(bruiserAttack(BRUISER_CHASE, 0, 0.5)).toBe(undefined);
+		expect(bruiserAttack(AiState.IDLE, 0, 0)).toBe(undefined);
+		const dead = actorState({ alive: 0, deadTicks: 3, aiState: AiState.TELEGRAPH, aiTicks: 10 });
+		expect(bruiserSpriteInput(dead, 0).attack).toBe(undefined);
+	});
+
+	it("plays attack while telegraphing / recovering, move while walking, idle calm, death dead; hit never beats an attack", () => {
+		expect(SPRITE_VIEW.bruiserMoveRefSpeed).toBe(d.speed);
+		const plod = d.speed / SIM_HZ;
+		const walking = actorState({ aiState: BRUISER_CHASE, prevX: 0, x: plod });
+		const move = chooseActorAnim(bruiserSpriteInput(walking, 0), BEAST);
+		expect([move.anim, move.progress]).toEqual(["move", undefined]);
+		expect(move.rate).toBeCloseTo(1, 9);
+		expect(chooseActorAnim(bruiserSpriteInput(actorState({ aiState: AiState.IDLE }), 0), BEAST)).toEqual({
+			anim: "idle",
+			rate: 1,
+		});
+		const flash = HIT_FLASH_TICKS;
+		for (const st of [AiState.TELEGRAPH, BRUISER_RECOVER]) {
+			const hitWhileAttacking = actorState({ aiState: st, aiTicks: 5, flashTicks: flash });
+			expect(chooseActorAnim(bruiserSpriteInput(hitWhileAttacking, 0), BEAST).anim).toBe("attack");
+		}
+		const hitWalking = actorState({ aiState: BRUISER_CHASE, prevX: 0, x: plod, flashTicks: flash });
+		expect(chooseActorAnim(bruiserSpriteInput(hitWalking, 0), BEAST).anim).toBe("hit");
+		const dead = actorState({ alive: 0, deadTicks: 6, aiState: AiState.TELEGRAPH, aiTicks: 10 });
+		expect(chooseActorAnim(bruiserSpriteInput(dead, 0), BEAST)).toEqual({
+			anim: "death",
+			progress: 6 / ((d.corpseTicks ?? CORPSE_TICKS) * SPRITE_VIEW.deathCorpseFraction),
+			rate: 1,
+		});
+	});
+});
+
+// ---------------------------------------------------------------------------------------------
+// Mother Bramble (boss.act1, docs/BRAMBLE_ART.md BR4)
+
+/** A Demon Elite set per the BRAMBLE_ART mapping (hit = idle's cell, BD3; no `intro`: the roars play taunt). */
+const ELITE_ANIMS: Record<string, SpriteAnimationDef> = {
+	idle: anim(4, 8, true),
+	move: anim(8, 10, true),
+	attack: anim(6, 12, false),
+	"attack.2": anim(6, 12, false),
+	"attack.3": anim(6, 12, false),
+	"attack.4": anim(8, 12, false),
+	taunt: anim(6, 10, false),
+	hit: anim(1, 1, false),
+	death: anim(8, 10, false),
+};
+const ELITE = source(ELITE_ANIMS);
+/** Only the boss slot's required animations. */
+const BARE_BOSS = source({
+	idle: ELITE_ANIMS.idle,
+	move: ELITE_ANIMS.move,
+	attack: ELITE_ANIMS.attack,
+	hit: ELITE_ANIMS.hit,
+	death: ELITE_ANIMS.death,
+});
+
+/** A live, engaged boss.act1 at rest on the origin (fields and v[] slots overridden per case). */
+function bossState(over: Partial<ActorState>, slots: ReadonlyArray<readonly [number, number]> = []): ActorState {
+	const v = table.create(ACTOR_SCRATCH_SLOTS, 0);
+	for (const [slot, value] of slots) v[slot] = value;
+	return actorState({
+		radius: BOSS_ACT1_DATA.radius,
+		hp: BOSS_ACT1_DATA.hp,
+		hpMax: BOSS_ACT1_DATA.hp,
+		phase: 1,
+		aiState: BossState.DORMANT,
+		v,
+		...over,
+	});
+}
+
+/** [animation, frame] the boss shows for `a` with `set`. */
+function bossPick(a: ActorState, alpha = 0, set: SpriteAnimSource = ELITE): [string, number] {
+	const p = spriteFrame(set, chooseActorAnim(bossAct1SpriteInput(a, alpha), set), undefined, 0);
+	return [p.anim, p.frame];
+}
+
+const BOSS_D = BOSS_ACT1_DATA;
+const BOSS_M = SPRITE_ANIM_MARKS.bossAct1;
+const ATTACKS = [
+	BossAttack.FAN,
+	BossAttack.RING,
+	BossAttack.DOUBLE_RING,
+	BossAttack.SPIRAL,
+	BossAttack.SLAM,
+	BossAttack.FAST_FAN,
+];
+/** Each attack's first release frame in the Elite set (the slam: its first airborne frame). */
+function releaseFrame(attack: number, set: Readonly<Record<string, SpriteAnimationDef>> = ELITE_ANIMS): number {
+	const animName = bossAct1AttackAnim(attack)!;
+	const frames = (set[animName] ?? set.attack).frames;
+	const mark =
+		attack === BossAttack.SLAM
+			? BOSS_M.slamTakeoff
+			: attack === BossAttack.SPIRAL
+			? BOSS_M.spiralRelease
+			: attack === BossAttack.RING || attack === BossAttack.DOUBLE_RING
+			? BOSS_M.ringRelease
+			: BOSS_M.fanRelease;
+	return math.round(mark * frames);
+}
+const LANDING = math.round(BOSS_M.slamLanding * ELITE_ANIMS["attack.4"].frames);
+/** The recover length act1's recover() gives an attack in `phase`. */
+const recoverOf = (phase: number) => BOSS_D.recoverTicks[phase];
+
+describe("chooseActorAnim (boss.act1)", () => {
+	it("maps each attack to its animation, every one a boss slot name, with non-empty wind-up and release parts", () => {
+		expect(ATTACKS.map((k) => bossAct1AttackAnim(k))).toEqual([
+			"attack",
+			"attack.2",
+			"attack.2",
+			"attack.3",
+			"attack.4",
+			"attack",
+		]);
+		expect([bossAct1AttackAnim(BossAttack.NONE), bossAct1AttackAnim(BossAttack.ROAR)]).toEqual([
+			undefined,
+			undefined,
+		]);
+		const names = [...requiredBaseAnimations(BOSS), ...optionalBaseAnimations(BOSS)];
+		for (const k of ATTACKS) expect(names.includes(bossAct1AttackAnim(k)!)).toBe(true);
+		for (const special of ["intro", "taunt"]) expect(names.includes(special)).toBe(true);
+		for (const k of ATTACKS) {
+			const f = releaseFrame(k);
+			expect([k, f > 0 && f < ELITE_ANIMS[bossAct1AttackAnim(k)!].frames]).toEqual([k, true]);
+		}
+		expect(LANDING).toBeGreaterThan(releaseFrame(BossAttack.SLAM));
+		expect(LANDING).toBeLessThan(ELITE_ANIMS["attack.4"].frames);
+	});
+
+	it("shows every state per the BRAMBLE_ART mapping", () => {
+		expect(bossPick(bossState({ aiState: BossState.DORMANT, phase: 0 }))).toEqual(["idle", 0]);
+		expect(bossPick(bossState({ aiState: BossState.TRANSITION, attack: BossAttack.ROAR, aiTicks: 30 }))[0]).toBe(
+			"taunt",
+		);
+		for (const k of ATTACKS) {
+			const T = BOSS_TELEGRAPH_TICKS[k];
+			expect(bossPick(bossState({ aiState: BossState.TELEGRAPH, attack: k, aiTicks: T }))[0]).toBe(
+				bossAct1AttackAnim(k),
+			);
+			expect(bossPick(bossState({ aiState: BossState.ACTIVE, attack: k, aiTicks: 0 }))[0]).toBe(
+				bossAct1AttackAnim(k),
+			);
+		}
+		expect(bossPick(bossState({ aiState: BossState.RECOVER, aiTicks: 1 }, [[V_LAST, BossAttack.FAN]]))).toEqual([
+			"idle",
+			0,
+		]);
+		const walk = BOSS_D.speed / SIM_HZ;
+		const repositioning = chooseActorAnim(
+			bossAct1SpriteInput(bossState({ aiState: BossState.REPOSITION, aiTicks: 100, prevX: 0, x: walk }), 0),
+			ELITE,
+		);
+		expect([repositioning.anim, repositioning.progress]).toEqual(["move", undefined]);
+		expect(repositioning.rate).toBeCloseTo(1, 9);
+		expect(SPRITE_VIEW.bossAct1MoveRefSpeed).toBe(BOSS_D.speed);
+		const dead = bossState({ alive: 0, deadTicks: 9, aiState: BossState.ACTIVE, attack: BossAttack.SPIRAL });
+		expect(chooseActorAnim(bossAct1SpriteInput(dead, 0), ELITE)).toEqual({
+			anim: "death",
+			progress: 9 / ((BOSS_D.corpseTicks ?? CORPSE_TICKS) * SPRITE_VIEW.deathCorpseFraction),
+			rate: 1,
+		});
+		const corpseEnd = bossState({ alive: 0, deadTicks: BOSS_D.corpseTicks ?? CORPSE_TICKS });
+		expect(bossPick(corpseEnd)).toEqual(["death", ELITE_ANIMS.death.frames - 1]);
+	});
+
+	it("plays the intro roar over introTicks and each phase roar over transitionTicks, start to end", () => {
+		const frames = ELITE_ANIMS.taunt.frames;
+		const cases: Array<[number, number]> = [
+			[1, BOSS_D.introTicks],
+			[2, BOSS_D.transitionTicks],
+			[3, BOSS_D.transitionTicks],
+		];
+		for (const [phase, total] of cases) {
+			const roar = (aiTicks: number) =>
+				bossState({ aiState: BossState.TRANSITION, attack: BossAttack.ROAR, phase, aiTicks });
+			expect(bossAct1Special(roar(total), 0)).toEqual({
+				anim: phase === 1 ? "intro" : "taunt",
+				elapsed: 0,
+				total,
+			});
+			expect(bossPick(roar(total))).toEqual(["taunt", 0]);
+			expect(bossPick(roar(total / 2))).toEqual(["taunt", frames / 2]);
+			expect(bossPick(roar(1))).toEqual(["taunt", frames - 1]);
+			expect(bossPick(roar(1), 0.99)).toEqual(["taunt", frames - 1]);
+		}
+		// With an `intro`, the first roar plays it and the phase roars keep taunt.
+		const withIntro = source({ ...ELITE_ANIMS, intro: anim(5, 10, false) });
+		const intro = bossState({ aiState: BossState.TRANSITION, attack: BossAttack.ROAR, phase: 1, aiTicks: 1 });
+		expect(bossPick(intro, 0, withIntro)).toEqual(["intro", 4]);
+		expect(bossPick({ ...intro, phase: 2 }, 0, withIntro)).toEqual(["taunt", frames - 1]);
+	});
+
+	it("puts each attack's last wind-up frame on its last telegraph tick (aiTicks 1)", () => {
+		for (const k of ATTACKS) {
+			const T = BOSS_TELEGRAPH_TICKS[k];
+			const tg = (aiTicks: number) => bossState({ aiState: BossState.TELEGRAPH, attack: k, aiTicks });
+			const name = bossAct1AttackAnim(k)!;
+			expect([k, ...bossPick(tg(T))]).toEqual([k, name, 0]);
+			expect([k, ...bossPick(tg(1))]).toEqual([k, name, releaseFrame(k) - 1]);
+			expect([k, ...bossPick(tg(1), 0.99)]).toEqual([k, name, releaseFrame(k) - 1]);
+		}
+	});
+
+	it("replays the fan's release on every volley tick, the last one on the tick that enters RECOVER", () => {
+		const fans: Array<[number, number, number, number]> = [
+			[BossAttack.FAN, FAN_VOLLEYS, FAN_VOLLEY_TICKS, 1],
+			[BossAttack.FAN, FAN_VOLLEYS, FAN_VOLLEY_TICKS, 2],
+			[BossAttack.FAST_FAN, FAST_FAN_VOLLEYS, FAST_FAN_VOLLEY_TICKS, 3],
+		];
+		const last = ELITE_ANIMS.attack.frames - 1;
+		for (const [k, volleys, every, phase] of fans) {
+			const rel = releaseFrame(k);
+			const active = (t: number) => bossState({ aiState: BossState.ACTIVE, attack: k, aiTicks: t, phase });
+			// runAttack fires volley v on t = v * every; the attack ends (RECOVER) on the last volley's tick.
+			for (let v = 0; v < volleys - 1; v++) {
+				expect([k, v, ...bossPick(active(v * every))]).toEqual([k, v, "attack", rel]);
+				expect([k, v, ...bossPick(active(v * every + every - 1))]).toEqual([k, v, "attack", last]);
+			}
+			const R = recoverOf(phase);
+			const rec = (since: number) =>
+				bossState({ aiState: BossState.RECOVER, aiTicks: R - since, phase }, [[V_LAST, k]]);
+			expect([k, ...bossPick(rec(0))]).toEqual([k, "attack", rel]);
+			expect([k, ...bossPick(rec(every - 1))]).toEqual([k, "attack", last]);
+			expect([k, ...bossPick(rec(every))]).toEqual([k, "idle", 0]);
+		}
+	});
+
+	it("releases on each ring: the ring's own tick (RECOVER's first), DOUBLE_RING's t = 0 and its second ring", () => {
+		const rel = releaseFrame(BossAttack.RING);
+		const span = BOSS_M.ringReleaseTicks;
+		// RING fires on t = 0 and recovers on that same tick.
+		const ring = (since: number) =>
+			bossState({ aiState: BossState.RECOVER, aiTicks: recoverOf(1) - since, phase: 1 }, [
+				[V_LAST, BossAttack.RING],
+			]);
+		expect(bossPick(ring(0))).toEqual(["attack.2", rel]);
+		expect(bossPick(ring(span - 1))).toEqual(["attack.2", ELITE_ANIMS["attack.2"].frames - 1]);
+		expect(bossPick(ring(span))).toEqual(["idle", 0]);
+		const dr = (t: number) =>
+			bossState({ aiState: BossState.ACTIVE, attack: BossAttack.DOUBLE_RING, aiTicks: t, phase: 2 });
+		expect(bossPick(dr(0))).toEqual(["attack.2", rel]);
+		expect(bossPick(dr(span - 1))).toEqual(["attack.2", ELITE_ANIMS["attack.2"].frames - 1]);
+		expect(bossPick(dr(span))).toEqual(["attack.2", 0]);
+		expect(bossPick(dr(DOUBLE_RING_DELAY_TICKS - 1))).toEqual(["attack.2", rel - 1]);
+		const second = bossState({ aiState: BossState.RECOVER, aiTicks: recoverOf(2), phase: 2 }, [
+			[V_LAST, BossAttack.DOUBLE_RING],
+		]);
+		expect(bossPick(second)).toEqual(["attack.2", rel]);
+	});
+
+	it("loops the spiral's release at its fps for the whole SPIRAL_TICKS", () => {
+		const rel = releaseFrame(BossAttack.SPIRAL);
+		const def = ELITE_ANIMS["attack.3"];
+		const len = def.frames - rel;
+		const ticksPerFrame = SIM_HZ / def.fps;
+		const at = (t: number) =>
+			bossPick(bossState({ aiState: BossState.ACTIVE, attack: BossAttack.SPIRAL, aiTicks: t, phase: 2 }));
+		expect(at(0)).toEqual(["attack.3", rel]);
+		expect(at(ticksPerFrame)).toEqual(["attack.3", rel + 1]);
+		expect(at(ticksPerFrame * len)).toEqual(["attack.3", rel]);
+		for (let t = 0; t < SPIRAL_TICKS; t++) {
+			const [name, frame] = at(t);
+			expect([t, name, frame >= rel && frame < def.frames]).toEqual([t, "attack.3", true]);
+		}
+		expect(
+			bossAct1Attack(bossState({ aiState: BossState.ACTIVE, attack: BossAttack.SPIRAL, aiTicks: 7 }), 0)?.loop,
+		).toBe(true);
+	});
+
+	it("crouches over the slam's telegraph, is airborne over the charge and lands on the impact tick (V_MARK)", () => {
+		const takeoff = releaseFrame(BossAttack.SLAM);
+		const step1 = SLAM_SPEED * SIM_DT;
+		const charging = (t: number, stepsLeft: number) =>
+			bossState({ aiState: BossState.ACTIVE, attack: BossAttack.SLAM, aiTicks: t, phase: 3 }, [
+				[V_MARK, 0],
+				[V_AUX_X, stepsLeft * step1],
+				[V_AUX_Z, 0],
+			]);
+		expect(bossPick(charging(0, 10))).toEqual(["attack.4", takeoff]);
+		// One step from the target: the next tick is the impact, so this one is the last airborne frame.
+		expect(bossPick(charging(9, 1))).toEqual(["attack.4", LANDING - 1]);
+		for (let t = 0; t < SLAM_MAX_TICKS; t++) {
+			const [name, frame] = bossPick(charging(t, 100), 0.99);
+			expect([t, name, frame >= takeoff && frame < LANDING]).toEqual([t, "attack.4", true]);
+		}
+		const impactAt = 12;
+		const landed = (t: number) =>
+			bossState({ aiState: BossState.ACTIVE, attack: BossAttack.SLAM, aiTicks: t, phase: 3 }, [
+				[V_MARK, impactAt + 1],
+			]);
+		expect(bossPick(landed(impactAt))).toEqual(["attack.4", LANDING]);
+		expect(bossPick(landed(impactAt), 0.99)).toEqual(["attack.4", LANDING]);
+		expect(bossPick(landed(impactAt + SHOCK2_DELAY_TICKS - 1))).toEqual([
+			"attack.4",
+			ELITE_ANIMS["attack.4"].frames - 1,
+		]);
+		const after = bossState({ aiState: BossState.RECOVER, aiTicks: BOSS_D.slamRecoverTicks, phase: 3 }, [
+			[V_LAST, BossAttack.SLAM],
+		]);
+		expect(bossPick(after)).toEqual(["idle", 0]);
+	});
+
+	it("stands idle in RECOVER once the release is over (also after the dead-player wait) and never flinches", () => {
+		/** act1's PLAYER_DEAD_WAIT_TICKS (not exported): RECOVER for this long while the player is dead. */
+		const DEAD_WAIT = 30;
+		for (const k of ATTACKS) {
+			for (const phase of [1, 2, 3]) {
+				const wait = bossState({ aiState: BossState.RECOVER, aiTicks: DEAD_WAIT, phase }, [[V_LAST, k]]);
+				expect([k, phase, ...bossPick(wait)]).toEqual([k, phase, "idle", 0]);
+			}
+		}
+		const realHit = source({ ...ELITE_ANIMS, hit: anim(4, 12, false) });
+		const hitRecovering = bossState({ aiState: BossState.RECOVER, aiTicks: 3, flashTicks: HIT_FLASH_TICKS });
+		expect(bossPick(hitRecovering, 0, realHit)).toEqual(["idle", 0]);
+		const hitDormant = bossState({ aiState: BossState.DORMANT, flashTicks: HIT_FLASH_TICKS });
+		expect(bossPick(hitDormant, 0, realHit)).toEqual(["idle", 0]);
+		expect(bossAct1SpriteInput(hitRecovering, 0).flinch).toBe(false);
+	});
+
+	it("falls back to `attack` for a missing named attack and from intro to taunt to idle for a missing roar", () => {
+		const rel6 = math.round(BOSS_M.ringRelease * ELITE_ANIMS.attack.frames);
+		const ringTg = bossState({ aiState: BossState.TELEGRAPH, attack: BossAttack.RING, aiTicks: 1 });
+		expect(bossPick(ringTg, 0, BARE_BOSS)).toEqual(["attack", rel6 - 1]);
+		const slamLanded = bossState({ aiState: BossState.ACTIVE, attack: BossAttack.SLAM, aiTicks: 3 }, [[V_MARK, 4]]);
+		expect(bossPick(slamLanded, 0, BARE_BOSS)).toEqual([
+			"attack",
+			segmentStart({ from: BOSS_M.slamLanding, to: 1 }, ELITE_ANIMS.attack.frames),
+		]);
+		const roar = bossState({ aiState: BossState.TRANSITION, attack: BossAttack.ROAR, phase: 1, aiTicks: 10 });
+		expect(bossPick(roar, 0, BARE_BOSS)).toEqual(["idle", 0]);
+		expect(bossPick({ ...roar, phase: 2 }, 0, BARE_BOSS)).toEqual(["idle", 0]);
+		const introOnly = source({ ...BARE_BOSS.anims, intro: anim(4, 10, false) });
+		expect(bossPick(roar, 0, introOnly)[0]).toBe("intro");
+		expect(bossPick({ ...roar, phase: 2 }, 0, introOnly)).toEqual(["idle", 0]);
+		const noAttack = source({ idle: ELITE_ANIMS.idle });
+		expect(bossPick(ringTg, 0, noAttack)).toEqual(["idle", 0]);
+	});
+
+	it("fills its input from an ActorState; dead, no attack or roar", () => {
+		const a = bossState({
+			aiState: BossState.TELEGRAPH,
+			attack: BossAttack.FAN,
+			aiTicks: 20,
+			flashTicks: 2,
+			x: 0.05,
+		});
+		expect(bossAct1SpriteInput(a, 0.5)).toEqual({
+			alive: true,
+			deadTicks: 0,
+			corpseTicks: BOSS_D.corpseTicks ?? CORPSE_TICKS,
+			flashTicks: 2,
+			attack: bossAct1Attack(a, 0.5),
+			special: undefined,
+			flinch: false,
+			speed: tickSpeed(0, 0, 0.05, 0),
+			refSpeed: BOSS_D.speed,
+			alpha: 0.5,
+		});
+		const dead = bossState({
+			alive: 0,
+			deadTicks: 2,
+			aiState: BossState.TRANSITION,
+			attack: BossAttack.ROAR,
+			aiTicks: 5,
+		});
+		expect([bossAct1SpriteInput(dead, 0).attack, bossAct1SpriteInput(dead, 0).special]).toEqual([
+			undefined,
+			undefined,
+		]);
+	});
+});
+
+describe("boss.act1 sprite timeline on a real fight (seed 1337)", () => {
+	// The full sim (the bossAct1 spec's setup: MVP dungeon, boss-only encounter, a god-mode player standing in the arena,
+	// DEBUG_BOSS presses to walk through the phases). Every tick is drawn at alpha 0 with the Elite set.
+	const d = generateDungeon({ ...KALEB_VALE_MVP_PARAMS, seed: 1337 });
+	const config: SimConfig = {
+		moveResolver: circleMover(d, PLAYER_RADIUS),
+		isBulletBlocked: bulletBlocker(d),
+		actorMover: actorMover(d),
+		encounter: placeEncounter(d, { boss: BOSS_ACT1_ID }),
+	};
+	const spawn = bossDoorSpawn(d)!;
+	const state = createSimState(1337, spawn.x, spawn.z, config);
+	const boss = state.combat.actors[0];
+	state.player.x = boss.x + 3;
+	state.player.z = boss.z;
+	/** One J press every this many ticks until phase 3, then the fight runs on in phase 3. */
+	const PRESS_EVERY = 240;
+	const TICKS = 4800;
+	interface Tick {
+		aiState: number;
+		attack: number;
+		phase: number;
+		fired: boolean;
+		anim: string;
+		frame: number;
+	}
+	const ticks: Tick[] = [];
+	for (let i = 0; i < TICKS && boss.alive !== 0; i++) {
+		const press = boss.phase < 3 && i % PRESS_EVERY === PRESS_EVERY - 1;
+		const spawned = state.combat.enemySpawned;
+		step(state, { ...EMPTY_INPUT, buttons: press ? Button.DEBUG_BOSS : 0 }, config);
+		state.player.hearts = state.player.heartsMax;
+		const [animName, frame] = bossPick(boss);
+		ticks.push({
+			aiState: boss.aiState,
+			attack: boss.attack,
+			phase: boss.phase,
+			fired: state.combat.enemySpawned > spawned, // only the boss fires bullets in this encounter
+			anim: animName,
+			frame,
+		});
+	}
+
+	it("reaches every attack, both phase roars, a slam and a walk back", () => {
+		const seen = new Set<number>();
+		for (const t of ticks) if (t.aiState === BossState.TELEGRAPH) seen.add(t.attack);
+		for (const k of ATTACKS) expect([k, seen.has(k)]).toEqual([k, true]);
+		expect(ticks.some((t) => t.aiState === BossState.REPOSITION && t.anim === "move")).toBe(true);
+		expect(ticks.some((t) => t.aiState === BossState.TRANSITION && t.phase === 3)).toBe(true);
+	});
+
+	it("roars intro then taunt, and never shows hit", () => {
+		let roars = 0;
+		for (let i = 0; i < ticks.size(); i++) {
+			const t = ticks[i];
+			expect(t.anim).never.toBe("hit");
+			if (t.aiState !== BossState.TRANSITION) continue;
+			expect(t.anim).toBe("taunt");
+			if (i === 0 || ticks[i - 1].aiState !== BossState.TRANSITION) {
+				roars++;
+				expect([roars, t.phase]).toEqual([roars, roars]); // intro in phase 1, then the phase 2 and 3 roars
+			}
+		}
+		expect(roars).toBe(3);
+	});
+
+	it("shows the last wind-up frame on each telegraph's last tick and a release frame on every bullet tick", () => {
+		let checked = 0;
+		for (let i = 1; i < ticks.size(); i++) {
+			const t = ticks[i];
+			const prev = ticks[i - 1];
+			if (
+				prev.aiState === BossState.TELEGRAPH &&
+				t.aiState !== BossState.TELEGRAPH &&
+				t.aiState !== BossState.TRANSITION
+			) {
+				expect([i, prev.anim, prev.frame]).toEqual([
+					i,
+					bossAct1AttackAnim(prev.attack),
+					releaseFrame(prev.attack) - 1,
+				]);
+			}
+			if (!t.fired) continue;
+			checked++;
+			// The attack that fired: ACTIVE's, or (on the tick the last burst enters RECOVER) the one just before.
+			const k = t.aiState === BossState.ACTIVE ? t.attack : prev.attack;
+			const name = bossAct1AttackAnim(k)!;
+			if (k === BossAttack.SPIRAL) {
+				const inLoop = t.anim === name && t.frame >= releaseFrame(k);
+				// The last burst (t = SPIRAL_TICKS - SPIRAL_BURST_TICKS) ends the attack: RECOVER, idle.
+				expect([i, inLoop || (t.aiState === BossState.RECOVER && t.anim === "idle")]).toEqual([i, true]);
+			} else if (k === BossAttack.SLAM) {
+				expect([i, t.anim, t.frame]).toEqual([i, name, LANDING]); // the shockwave on impact
+			} else {
+				expect([i, k, t.anim, t.frame]).toEqual([i, k, name, releaseFrame(k)]);
+			}
+		}
+		expect(checked).toBeGreaterThan(50);
+	});
+});
+
 describe("ACTOR_SPRITE_INPUTS", () => {
-	it("draws the swarmer, the sniper and turret.sniper as sprites (other archetypes stay placeholders)", () => {
-		expect(ACTOR_SPRITE_INPUTS.size()).toBe(3);
+	it("has builders for the swarmer, the sniper, turret.sniper, the bruiser and boss.act1 (other archetypes: none)", () => {
+		expect(ACTOR_SPRITE_INPUTS.size()).toBe(5);
 		expect(ACTOR_SPRITE_INPUTS.get(SWARMER.id)).toBe(swarmerSpriteInput);
 		expect(ACTOR_SPRITE_INPUTS.get(SNIPER.id)).toBe(sniperSpriteInput);
 		expect(ACTOR_SPRITE_INPUTS.get(TURRET_SNIPER.id)).toBe(turretSniperSpriteInput);
+		expect(ACTOR_SPRITE_INPUTS.get(BRUISER.id)).toBe(bruiserSpriteInput);
+		expect(ACTOR_SPRITE_INPUTS.get(BOSS_ACT1_ID)).toBe(bossAct1SpriteInput);
+	});
+
+	it("still draws the bruiser and boss.act1 as placeholders until the pack has a sprite set for them", () => {
+		// ActorRenderController takes the sprite path only with a builder AND pack.sprites(spriteId) (a `sprites` asset).
+		const quiet = () => undefined;
+		const ids = [BRUISER.data.spriteId, BOSS_ACT1_DATA.spriteId];
+		for (const packId of listThemePacks()) {
+			const pack = loadThemePack(packId, { warn: quiet });
+			for (const id of ids) {
+				const isSet = THEME_PACKS[packId].assets[id]?.kind === "sprites";
+				expect([packId, id, pack.sprites(id) !== undefined]).toEqual([packId, id, isSet]);
+			}
+		}
+		const noIds = loadThemePack("vale", { packs: { vale: buildValeManifest({}) }, warn: quiet });
+		const placeholder = loadThemePack("placeholder", { warn: quiet });
+		for (const id of ids) {
+			expect([id, noIds.sprites(id), placeholder.sprites(id)]).toEqual([id, undefined, undefined]);
+			expect(placeholder.placeholder(id).shape).toBe(noIds.placeholder(id).shape);
+		}
+	});
+
+	it("plays a boss set's named attacks and roar against the set's real animation list", () => {
+		const quiet = () => undefined;
+		// The vale pack's uploaded swarmer set (asset IDs only live in shared/theme), re-labelled as a boss set with an
+		// `attack.2` and a `taunt` and nothing else optional.
+		const base = THEME_PACKS.vale.assets["enemy.swarmer"] as unknown as Record<string, unknown>;
+		expect(base.kind).toBe("sprites");
+		const baseAnims = base.animations as Record<string, unknown>;
+		const set = { ...base, animations: { ...baseAnims, "attack.2": baseAnims.attack, taunt: baseAnims.death } };
+		const manifest = {
+			...PLACEHOLDER_MANIFEST,
+			id: "test",
+			assets: { ...PLACEHOLDER_MANIFEST.assets, [BOSS_ACT1_ID]: set },
+		} as unknown as ThemeManifest;
+		const pack = loadThemePack("test", { packs: { test: manifest }, warn: quiet });
+		expect(pack.problems).toEqual([]);
+		const sprites = pack.sprites(BOSS_ACT1_ID)!;
+		expect(sprites).never.toBe(undefined);
+		const choose = (over: Partial<ActorState>) => chooseActorAnim(bossAct1SpriteInput(bossState(over), 0), sprites);
+		const ring = BOSS_TELEGRAPH_TICKS[BossAttack.RING];
+		expect(choose({ aiState: BossState.TELEGRAPH, attack: BossAttack.RING, aiTicks: ring }).anim).toBe("attack.2");
+		// No attack.3 in this set: the spiral falls back to attack; no intro: the intro roar plays taunt.
+		const spiral = BOSS_TELEGRAPH_TICKS[BossAttack.SPIRAL];
+		expect(choose({ aiState: BossState.TELEGRAPH, attack: BossAttack.SPIRAL, aiTicks: spiral }).anim).toBe(
+			"attack",
+		);
+		expect(choose({ aiState: BossState.TRANSITION, attack: BossAttack.ROAR, aiTicks: 5 }).anim).toBe("taunt");
 	});
 
 	it("gives turret.sniper the sniper's sprite set (decision D3)", () => {
 		expect(TURRET_SNIPER.data.spriteId).toBe(SNIPER.data.spriteId);
+	});
+});
+
+// ---------------------------------------------------------------------------------------------
+// The marks on the built 2D Demons sets (docs/DEMON_ART.md DA3, docs/BRAMBLE_ART.md BR3)
+
+describe("SPRITE_ANIM_MARKS on the built enemy.bruiser and boss.act1 sets (art/atlases.json via layout.ts)", () => {
+	// The kept-frame indices below are the art measurement (DEMON_ART DA1, BRAMBLE_ART BR1), not the table: this pins
+	// that the table, read through segmentStart / segmentLength, lands on them with the frame counts art:build wrote.
+	const beast = VALE_SPRITE_LAYOUTS["enemy.bruiser"];
+	const elite = VALE_SPRITE_LAYOUTS["boss.act1"];
+	/** [first frame, frame count] of `[from, to)` in an n-frame animation. */
+	const part = (from: number, to: number, n: number) => [
+		segmentStart({ from, to }, n),
+		segmentLength({ from, to }, n),
+	];
+
+	it("bruiser Attack 4: leap 0-5 over the telegraph, impact 6 on the slam tick, follow-through 7 held", () => {
+		const M = SPRITE_ANIM_MARKS.bruiser;
+		const n = beast.animations.attack.frames;
+		expect(n).toBe(8);
+		expect(part(0, M.impact, n)).toEqual([0, 6]);
+		expect(part(M.impact, M.followThrough, n)).toEqual([6, 1]);
+		expect(part(M.followThrough, 1, n)).toEqual([7, 1]);
+		// drawn through the renderer with the built set's animation list
+		const set = source(beast.animations);
+		const pick = (aiState: number, aiTicks: number, alpha = 0) =>
+			spriteFrame(
+				set,
+				chooseActorAnim(bruiserSpriteInput(actorState({ aiState, aiTicks }), alpha), set),
+				undefined,
+				0,
+			).frame;
+		const d = BRUISER.data;
+		expect(pick(AiState.TELEGRAPH, d.telegraphTicks)).toBe(0);
+		expect(pick(AiState.TELEGRAPH, 1, 0.99)).toBe(5);
+		expect(pick(BRUISER_RECOVER, d.recoverTicks)).toBe(6);
+		expect(pick(BRUISER_RECOVER, d.recoverTicks - M.impactTicks)).toBe(7);
+		expect(pick(BRUISER_RECOVER, 1, 0.99)).toBe(7);
+	});
+
+	it("Mother Bramble: sweep / strike release 3 of 6, spin telegraph 0-1 and loop 2-5, leap 0-2 / 3-5 / landing 6-7", () => {
+		const M = SPRITE_ANIM_MARKS.bossAct1;
+		const a = elite.animations;
+		expect([a.attack.frames, a["attack.2"].frames, a["attack.3"].frames, a["attack.4"].frames]).toEqual([
+			6, 6, 6, 8,
+		]);
+		expect(part(0, M.fanRelease, a.attack.frames)).toEqual([0, 3]);
+		expect(part(M.fanRelease, 1, a.attack.frames)).toEqual([3, 3]);
+		expect(part(M.ringRelease, 1, a["attack.2"].frames)).toEqual([3, 3]);
+		expect(part(0, M.spiralRelease, a["attack.3"].frames)).toEqual([0, 2]);
+		expect(part(M.spiralRelease, 1, a["attack.3"].frames)).toEqual([2, 4]);
+		expect(part(0, M.slamTakeoff, a["attack.4"].frames)).toEqual([0, 3]);
+		expect(part(M.slamTakeoff, M.slamLanding, a["attack.4"].frames)).toEqual([3, 3]);
+		expect(part(M.slamLanding, 1, a["attack.4"].frames)).toEqual([6, 2]);
+		// The spiral channel loops 2-5 with the built set's fps: one frame per burst (SPIRAL_BURST_TICKS).
+		const set = source(a);
+		const spin = (t: number) =>
+			bossPick(bossState({ aiState: BossState.ACTIVE, attack: BossAttack.SPIRAL, aiTicks: t, phase: 2 }), 0, set);
+		const ticksPerFrame = SIM_HZ / a["attack.3"].fps;
+		expect(ticksPerFrame).toBe(SPIRAL_BURST_TICKS);
+		const seen = new Array<number>();
+		for (let k = 0; k < 5; k++) seen.push(spin(k * ticksPerFrame)[1]);
+		expect(seen).toEqual([2, 3, 4, 5, 2]);
+	});
+
+	it("Mother Bramble's set has every animation the renderer asks for: the roars play taunt, hit is idle's cell", () => {
+		const a = elite.animations;
+		for (const name of ["idle", "move", "attack", "attack.2", "attack.3", "attack.4", "taunt", "hit", "death"]) {
+			expect([name, a[name] !== undefined]).toEqual([name, true]);
+		}
+		expect(a.intro).toBe(undefined);
+		expect([a.hit.sheet, a.hit.start, a.hit.frames]).toEqual([a.idle.sheet, a.idle.start, 1]);
+		const set = source(a);
+		const roar = bossState({ aiState: BossState.TRANSITION, attack: BossAttack.ROAR, phase: 1, aiTicks: 1 });
+		expect(bossPick(roar, 0, set)).toEqual(["taunt", a.taunt.frames - 1]);
 	});
 });

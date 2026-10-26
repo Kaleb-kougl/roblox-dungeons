@@ -267,7 +267,9 @@ export interface PlaceholderAsset {
  * size, pivot, frame counts and facings do NOT apply (each set carries its own). Presentation only.
  *
  * Cells: in sheet `sheets[a.sheet]`, cells are laid row-major, `floor(sheet.w / frameW)` per row, from the top-left.
- * Frame `f` of facing `d` of animation `a` is cell `a.start + d * (a.stride ?? a.frames) + f`.
+ * Frame `f` of facing `d` of animation `a` is cell `a.start + d * (a.stride ?? a.frames) + f`. A sheet may carry its
+ * own cell (`SpriteSheetImage.frameW` / `frameH` / `pivot`, per-sheet cells; actor slots only, `perSheetCells` in
+ * contract.ts): its cells, rects and pivot then use those, and the set-level fields are the defaults.
  * Facings are in SCREEN space: facing `d` points at `zeroDeg + d * 360 / count` degrees, counter-clockwise when `ccw`,
  * where 0 = screen right and 90 = screen up. The atlas pipeline always writes zeroDeg 0, ccw true.
  */
@@ -277,7 +279,7 @@ export interface SpriteSetAsset {
 	frameH: number;
 	/** The feet: pixels from the cell's top-left. Placed on the actor's ground position. */
 	pivot: Pivot;
-	/** Texel density: cell pixels per world tile (sizes the billboard: frameW / pixelsPerTile tiles wide). */
+	/** Texel density: cell pixels per world tile (sizes the billboard: frameW / pixelsPerTile tiles wide). Per set. */
 	pixelsPerTile: number;
 	/** ImageLabel ResampleMode name. */
 	resample: "Default" | "Pixelated";
@@ -333,6 +335,16 @@ export interface SpriteSheetImage {
 	 * rect, tinted the `enemyOutline` role. Absent: the sheet's frames draw without a rim.
 	 */
 	outlineAssetId?: RobloxAssetId;
+	/**
+	 * Per-sheet cells (docs/DEMON_ART.md DD4; the atlas pipeline's `cells: "perSheet"`): this sheet's own cell width,
+	 * height and pivot (pixels from its cell's top-left), each defaulting to the set's `frameW` / `frameH` / `pivot`.
+	 * The pivot marks the same point of the art as the set's, so the feet stay planted when the drawn sheet changes;
+	 * the renderer sizes and offsets the billboard per sheet at the set's `pixelsPerTile`. Actor slots only
+	 * (SlotContract.perSheetCells): decor, breakable and fx sets are drawn from the set-level cell.
+	 */
+	frameW?: number;
+	frameH?: number;
+	pivot?: Pivot;
 }
 
 export interface SpriteAnimationDef {

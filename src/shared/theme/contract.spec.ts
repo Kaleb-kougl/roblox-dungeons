@@ -27,6 +27,7 @@ import {
 	UI,
 	requiredAnimationList,
 	requiredAnimations,
+	optionalBaseAnimations,
 	requiredBaseAnimations,
 	slotFor,
 } from "./contract";
@@ -122,6 +123,29 @@ describe("sprite contract", () => {
 		expect(MAX_IMAGE_SIDE).toBe(1024);
 		expect(SPRITE_FACING_COUNTS).toEqual([1, 4, 8, 16]);
 		expect(SPRITE_RESAMPLE_MODES).toEqual(["Default", "Pixelated"]);
+	});
+
+	it("v2: per-sheet cells (docs/DEMON_ART.md DD4) are accepted in the actor slots only", () => {
+		const accepting = SLOTS.filter((slot) => slot.perSheetCells === true).map((slot) => slot.slot);
+		expect(accepting).toEqual(["class", "enemy", "boss"]);
+		for (const slot of SLOTS) {
+			if (slot.perSheetCells === true) {
+				expect([slot.slot, slot.kinds.includes("sprites")]).toEqual([slot.slot, true]);
+			}
+		}
+	});
+
+	it("lists the boss's optional sprite animations (BRAMBLE_ART BR2, BOSS_DEMONLORD D2); none is required", () => {
+		expect(optionalBaseAnimations(BOSS)).toEqual(["attack.2", "attack.3", "attack.4", "intro", "taunt"]);
+		for (const name of optionalBaseAnimations(BOSS)) {
+			expect([name, requiredBaseAnimations(BOSS).includes(name)]).toEqual([name, false]);
+		}
+		for (const slot of [CHARACTER, ENEMY, TILE]) {
+			expect([slot.slot, optionalBaseAnimations(slot)]).toEqual([slot.slot, []]);
+		}
+		// A copy, like requiredBaseAnimations.
+		optionalBaseAnimations(BOSS).push("dance");
+		expect(BOSS.optionalAnimations).toEqual(["attack.2", "attack.3", "attack.4", "intro", "taunt"]);
 	});
 
 	it("keeps the digit font layout consistent", () => {

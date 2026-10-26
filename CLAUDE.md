@@ -28,6 +28,8 @@ Record every ported module in `PROVENANCE.md` (ported module, source path, sourc
 | `docs/BOOST_ART.md` | Boost drop art (Lords of Pain gold coins and gemstones, tinted halo and beam, gems out of decor): plan, tasks BA0-BA7, decisions |
 | `docs/SNIPER_ART.md` | Sniper art (`enemy.sniper` as the Lords of Pain subservient): mapping, budget, tasks SN1-SN8, decisions D1-D6 |
 | `docs/BOSS_DEMONLORD.md` | Demon Lord boss variant (`boss.demonlord`, seeded pick per endless boss floor, Lords of Pain Demonlord art): plan, tasks D0-D8, decisions |
+| `docs/DEMON_ART.md` | Placeholder enemies as 2D Demons (bruiser = Demon Beast 3; turrets later; Lords of Pain art unchanged): plan, tasks DA0-DA8, decisions DD1-DD6 |
+| `docs/BRAMBLE_ART.md` | Mother Bramble (`boss.act1`) as a 2D Demons Elite: state-to-animation mapping, size and budget, tasks BR0-BR7, decisions BD1-BD7 |
 
 Decision log (deviations from `PLAN.md`):
 - **Art (docs/ART.md).** The theme contract gained a `"sprites"` kind (large pre-rendered cells, 1/4/8/16 screen-space
@@ -130,6 +132,18 @@ Decision log (deviations from `PLAN.md`):
   `DEBUG_DROP_BUTTON` (32768, key M, KV_Debug only) joins `PORT_BUTTONS`. Theme: `boost.<kind>` (required, placeholder
   `"Diamond"`), `sfx.boost.*` in `PORT_AUDIO_EVENTS`. M1 and every fixture are unchanged; endless and tutorial
   replays changed.
+- **Demon art (docs/DEMON_ART.md, docs/BRAMBLE_ART.md).** Presentation only (no sim, dungeon, hash, replay or
+  fixture change). Source: the 2D Demons - TopDown asset pack v1.1 by SmallScaleInt (Standard Commercial License,
+  `THIRD_PARTY_NOTICES.md`) in gitignored `art/vendor/demons-topdown/`.
+  Pipeline: a grid source may list `source.layers` (sub-folders, bottom to top: `["Shadows", ""]` = the body over its
+  shadow; `Effects/` is dropped, its swipes read as bullets), and a set may say `"cells": "perSheet"`: each sheet
+  trims to its own animations and carries its own `frameW` / `frameH` / `pivot` (theme `SpriteSheetImage`, accepted in
+  the actor slots only, `SlotContract.perSheetCells`; `SpriteView` re-places the billboard per sheet). The boss
+  contract gained optional `attack.2` / `attack.3` / `attack.4` / `intro` / `taunt`; an actor attack in `shared/view`
+  names its animation and plays segments of it (`ActorAttack.anim` / `segment` / `loop`, `ActorSpecial`, `flinch`),
+  split at `SPRITE_ANIM_MARKS` (fractions of the frame count, measured on the art). Two sets: `enemy.bruiser` = Demon
+  Beast 3 (the knight's density, 3 sheets + rims) and `boss.act1` = Demon Elite 3 (`bodyTiles` 2.5, 7 sheets + rims);
+  both uploaded 2026-10-26 (ids in `assetIds.ts`), so the bundled vale pack draws them.
 
 ## Commands
 

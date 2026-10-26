@@ -12,6 +12,7 @@
  *                 switch command, SpectateTracker (tunables: SPECTATE in spectateConfig.ts)
  *   floorTexture.ts  world-anchored Texture offsets so merged floor slabs show one continuous pattern
  *   sprites.ts    sprite renderer logic: world facing -> screen facing, animation + frame from sim state, billboard
+ *   spriteCell.ts per-sheet cells (docs/DEMON_ART.md DD4): the billboard layout of one sheet's own cell and pivot
  *   breakables.ts breakable barrels / crates on screen: the frame diff, hit blink / shake, placement, debris, aim clip
  *                 (tunables: BREAKABLE_VIEW in breakablesConfig.ts)
  *   outline.ts    enemy outlines (enemy outline plan O2 / O4): who gets the rim (actorOutlined), the actor folder's
@@ -32,6 +33,7 @@ export * from "./party";
 export * from "./spectateConfig";
 export * from "./spectate";
 export * from "./sprites";
+export * from "./spriteCell";
 export * from "./floorTexture";
 export * from "./breakablesConfig";
 export * from "./breakables";
