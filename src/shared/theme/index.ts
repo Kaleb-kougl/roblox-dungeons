@@ -23,6 +23,7 @@ export {
 	breakableContrastReport,
 	contrastReport,
 	decorFxReport,
+	enemyOutlineReport,
 	isAssetId,
 	isGameplayKey,
 	isStringKey,
@@ -31,6 +32,7 @@ export {
 	type BreakableContrastEntry,
 	type ContrastEntry,
 	type DecorFxEntry,
+	type EnemyOutlineEntry,
 	type JuiceContrastEntry,
 	type ValidateOptions,
 } from "./validate";

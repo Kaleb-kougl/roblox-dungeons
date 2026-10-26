@@ -1,4 +1,5 @@
 import { Controller, OnStart } from "@flamework/core";
+import { Janitor } from "@rbxts/janitor";
 import { RunService, Workspace } from "@rbxts/services";
 import { CAMERA_PITCH_DEG, CAMERA_YAW_DEG, STUDS_PER_TILE } from "shared/config";
 import {
@@ -19,11 +20,13 @@ import {
 } from "shared/sim";
 import type { SpriteSet, ThemePack } from "shared/theme";
 import {
+	ACTOR_OUTLINE,
 	ACTOR_SPRITE_INPUTS,
 	ACTOR_VIEW,
 	BULLET_VIEW,
 	RENDER_ORDER,
 	SPRITE_VIEW,
+	actorGroup,
 	actorLook,
 	animDtSec,
 	chooseActorAnim,
@@ -35,12 +38,14 @@ import {
 	floorStudsY,
 	isoBasis,
 	lerp,
+	outlineSwitchOn,
 	playerBlinkVisible,
 	playerLook,
 	playerSpriteInput,
 	studsX,
 	studsZ,
 	swordTimingOf,
+	type ActorGroup,
 	type ActorLook,
 	type ActorSpriteInput,
 	type IsoBasis,
@@ -52,6 +57,7 @@ import {
 	destroyModel,
 	renderPart,
 	setModelColor,
+	setModelParent,
 	setModelTransparency,
 	type PlaceholderModel,
 } from "./placeholders";
@@ -99,6 +105,10 @@ interface ActorView {
 	look: ActorLook;
 	transparency: number;
 	corpseTicks: number;
+	/** The placeholder visual has an outline role (enemies and bosses; shared/view actorGroup). */
+	hasOutline: boolean;
+	/** The model's pieces are under the enemies Model (the shared Highlight), not corpses. Sprite views: false. */
+	outlined: boolean;
 }
 
 /**
@@ -122,10 +132,20 @@ interface ActorView {
  * Looks and fades come from the same pure rules on both paths (shared/view actorLook, playerLook, playerBlinkVisible,
  * corpseTransparency; roles in ACTOR_VIEW.lookRoles). Every part moves in ONE workspace:BulkMoveTo per frame.
  * Co-op (M4): every party member is drawn the same way (one view each, index order); unused ones are parked.
+ *
+ * Enemy outlines (enemy outline plan O2, shared/view outline.ts): the folder has three children (ACTOR_OUTLINE.groups).
+ * `Enemies` is a Model with ONE Highlight (rim only, `enemyOutline`, Occluded) holding the pieces of every living
+ * placeholder enemy / boss whose visual has an outline role; `Corpses` takes them the first frame the actor is dead
+ * (shared/view actorGroup; once, tracked in ActorView.outlined) and holds every released, pooled model; `Players` holds
+ * the party's views. Enemy sprite anchors stay in the folder itself (a later task bakes the sprites' rim). Workspace
+ * KV_EnemyOutline = false turns the Highlight off (read on change, never per frame).
  */
 @Controller({})
 export class ActorRenderController implements OnStart {
 	private folder: Folder | undefined;
+	/** The folder's children: the outlined enemies Model, corpses and players (ACTOR_OUTLINE.groups). */
+	private groups: Readonly<Record<ActorGroup, Instance>> | undefined;
+	private readonly janitor = new Janitor();
 	private pack: ThemePack | undefined;
 	private readonly views = new Array<ActorView | undefined>();
 	private readonly free = new Map<string, PlaceholderModel[]>();
@@ -159,7 +179,23 @@ export class ActorRenderController implements OnStart {
 		folder.Name = ACTOR_VIEW.folderName;
 		folder.Parent = Workspace;
 		this.folder = folder;
-		this.players.push(this.buildPlayerView(pack, folder));
+		const enemies = new Instance("Model");
+		enemies.Name = ACTOR_OUTLINE.groups.enemies;
+		enemies.Parent = folder;
+		const corpses = new Instance("Folder");
+		corpses.Name = ACTOR_OUTLINE.groups.corpses;
+		corpses.Parent = folder;
+		const players = new Instance("Folder");
+		players.Name = ACTOR_OUTLINE.groups.players;
+		players.Parent = folder;
+		this.groups = { enemies, corpses, players };
+		const highlight = buildOutline(pack, enemies);
+		const syncSwitch = () => {
+			highlight.Enabled = outlineSwitchOn(Workspace.GetAttribute(ACTOR_OUTLINE.enabledAttribute));
+		};
+		syncSwitch();
+		this.janitor.Add(Workspace.GetAttributeChangedSignal(ACTOR_OUTLINE.enabledAttribute).Connect(syncSwitch));
+		this.players.push(this.buildPlayerView(pack, players));
 
 		RunService.BindToRenderStep(RENDER_STEP, Enum.RenderPriority.Camera.Value + RENDER_ORDER.viewsAfterCamera, () =>
 			this.frame(),
@@ -253,6 +289,8 @@ export class ActorRenderController implements OnStart {
 				look: "normal",
 				transparency: 0,
 				corpseTicks,
+				hasOutline: false,
+				outlined: false,
 			};
 		} else {
 			const visual = pack.placeholder(id);
@@ -261,7 +299,12 @@ export class ActorRenderController implements OnStart {
 				scale = ACTOR_VIEW.bossMinDrawPx / visual.cellPx.w;
 			}
 			const key = `${id}@${scale}`;
-			const model = this.free.get(key)?.pop() ?? buildPlaceholder(pack, key, visual, scale, this.folder!, true);
+			const hasOutline = visual.outline !== undefined;
+			const group = actorGroup(hasOutline, a.alive !== 0);
+			const parent = this.groups![group];
+			const model = this.free.get(key)?.pop() ?? buildPlaceholder(pack, key, visual, scale, parent, true);
+			// Pooled models wait under corpses; an outlined actor's go under the shared Highlight.
+			setModelParent(model, parent);
 			this.parking.delete(model);
 			setModelColor(model, model.baseColor);
 			setModelTransparency(model, 0);
@@ -274,6 +317,8 @@ export class ActorRenderController implements OnStart {
 				look: "normal",
 				transparency: 0,
 				corpseTicks,
+				hasOutline,
+				outlined: group === "enemies",
 			};
 		}
 		this.views[slot] = view;
@@ -290,6 +335,8 @@ export class ActorRenderController implements OnStart {
 			return;
 		}
 		const model = view.model!;
+		// Off the Highlight while pooled (a slot freed alive, e.g. on a floor change): the next acquire puts it back.
+		if (view.outlined) setModelParent(model, this.groups!.corpses);
 		this.parking.add(model);
 		pushFree(this.free, model.visualId, model);
 	}
@@ -317,6 +364,12 @@ export class ActorRenderController implements OnStart {
 		}
 
 		const model = view.model!;
+		// A corpse drops the outline the first frame it is dead (once: only a change of group reparents).
+		const outlined = actorGroup(view.hasOutline, a.alive !== 0) === "enemies";
+		if (outlined !== view.outlined) {
+			view.outlined = outlined;
+			setModelParent(model, this.groups![outlined ? "enemies" : "corpses"]);
+		}
 		const origin =
 			model.faces && (a.faceX !== 0 || a.faceZ !== 0)
 				? CFrame.lookAlong(at, new Vector3(a.faceX, 0, a.faceZ))
@@ -332,7 +385,7 @@ export class ActorRenderController implements OnStart {
 		}
 	}
 
-	private buildPlayerView(pack: ThemePack, folder: Folder): PlayerView {
+	private buildPlayerView(pack: ThemePack, folder: Instance): PlayerView {
 		const set = this.spriteSet(ACTOR_VIEW.playerVisualId);
 		const sprite = set !== undefined ? new SpriteView(set, folder) : undefined;
 		const model =
@@ -366,7 +419,7 @@ export class ActorRenderController implements OnStart {
 	/** Every player (co-op: each party member, index order); views beyond the party are parked. */
 	private drawPlayers(state: SimState, alpha: number): void {
 		const pack = this.pack;
-		const folder = this.folder;
+		const folder = this.groups?.players;
 		if (pack === undefined || folder === undefined) return;
 		const n = partySize(state);
 		while (this.players.size() < n) this.players.push(this.buildPlayerView(pack, folder));
@@ -525,6 +578,7 @@ export class ActorRenderController implements OnStart {
 		this.free.clear();
 		for (const [, list] of this.freeSprites) for (const s of list) s.destroy();
 		this.freeSprites.clear();
+		this.janitor.Cleanup();
 	}
 }
 
@@ -538,7 +592,7 @@ function pushFree<T extends defined>(free: Map<string, T[]>, key: string, item: 
  * The `ui.ring.player` image as a Decal on a flat, invisible floor Part, sized from the player set's texel density
  * (shared/view floorImageSize), or undefined when the pack has no such image.
  */
-function buildRing(pack: ThemePack, set: SpriteSet, folder: Folder): Ring | undefined {
+function buildRing(pack: ThemePack, set: SpriteSet, folder: Instance): Ring | undefined {
 	const image = pack.image(ACTOR_VIEW.ringVisualId);
 	if (image === undefined) return undefined;
 	const [w, d] = floorImageSize(image.w, image.h, set.pixelsPerTile);
@@ -554,4 +608,20 @@ function buildRing(pack: ThemePack, set: SpriteSet, folder: Folder): Ring | unde
 	decal.Parent = part;
 	part.Parent = folder;
 	return { part, decal, offset: new CFrame(ox, 0, oz), color: undefined };
+}
+
+/**
+ * The shared enemy outline (shared/view ACTOR_OUTLINE): one Highlight on the enemies Model, rim only, in the pack's
+ * outline role, hidden behind walls like the bodies.
+ */
+function buildOutline(pack: ThemePack, enemies: Model): Highlight {
+	const highlight = new Instance("Highlight");
+	highlight.Name = ACTOR_OUTLINE.highlightName;
+	highlight.FillTransparency = ACTOR_OUTLINE.fillTransparency;
+	highlight.OutlineTransparency = ACTOR_OUTLINE.outlineTransparency;
+	highlight.OutlineColor = pack.color(ACTOR_OUTLINE.role);
+	highlight.DepthMode = Enum.HighlightDepthMode[ACTOR_OUTLINE.depthMode];
+	highlight.Adornee = enemies;
+	highlight.Parent = enemies;
+	return highlight;
 }

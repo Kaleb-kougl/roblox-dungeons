@@ -30,6 +30,10 @@ tile images (docs/ART.md task S2). The port also adds two slots (docs/DECOR.md):
    (>= 4.5:1), each per biome. Port additions: `enemyBullet` against every breakable role (>= 3.0:1, bullets fly
    over crates as over walls) and every `decor.fx.*` role at least 40 (CIE76 colour difference) away from
    `enemyBullet` and `enemyBulletOutline` ([decor fx colours](#decor-fx-colour-roles)).
+   Enemy outline (enemy outline plan O1, `enemyOutlineReport`): `enemyOutline` against every biome's floor and wall
+   (>= `MIN_ENEMY_OUTLINE_CONTRAST` = 3.0:1; at the darkest decor band too, `shared/view` `decorBandContrastReport`,
+   checked by its spec for every bundled pack) and at least `MIN_ENEMY_OUTLINE_BULLET_DIFFERENCE` = 40 (CIE76) from
+   `enemyBullet` and `enemyBulletOutline`.
 5. **Names come from the string table** (with `{var}` interpolation and optional `locales`).
 6. **One pack at a time.** Switching packs is a restart.
 
@@ -110,7 +114,7 @@ lists `THEME_PACKS` (`packs/index.ts`).
 Everything that does not need a Roblox datatype is plain Luau-safe TS, tested under Lune: `color.ts` (hex, WCAG
 contrast, CIE76 `colorDifference`), `strings.ts` (`interpolate`, `placeholders`, `templateProblem`), `validate.ts`
 (`validateManifest`, `contrastReport`, `juiceContrastReport`, `decorFxReport`, `breakableContrastReport`,
-`isGameplayKey`), `core.ts` (`ThemeCore` lookups and fallbacks, `decor` / `decorVariants` / `ambient` / `breakable`, `sprites` ->
+`enemyOutlineReport`, `isGameplayKey`), `core.ts` (`ThemeCore` lookups and fallbacks, `decor` / `decorVariants` / `ambient` / `breakable`, `sprites` ->
 `SpriteSetLayout`, `frameRect`,
 `frameUV`, `uvToPixelRect`, `frameIndex`), `placeholders.ts`, `contract.ts`. `pack.ts` only converts to `Color3` /
 `Vector2`. Warnings go to Roblox `warn` unless a `warn` sink is passed (the specs pass one to assert warn-once).
@@ -125,13 +129,13 @@ its cell by `PLACEHOLDER_PROPORTIONS`. Size is `[x width, y height, z depth alon
 | ID | Shape | Size (studs) | Colour | Material / outline | Notes |
 | --- | --- | --- | --- | --- | --- |
 | `class.*` | Capsule | 3 x 6 x 3 | `class.<id>` (vanguard = tan `#c9b37e`) | SmoothPlastic | faces, base on floor |
-| `enemy.swarmer` | Ball | 2 x 2 x 2 | `enemy.swarmer` | SmoothPlastic | small ball |
-| `enemy.sniper` | Wedge | 3 x 3 x 4 | `enemy.sniper` | SmoothPlastic | points along its facing |
-| `enemy.bruiser` | Block | 4 x 4 x 4 | `enemy.bruiser` | SmoothPlastic | heavy block |
-| `enemy.sprayer` | Cylinder | 3 x 2.5 x 3 | `enemy.sprayer` | SmoothPlastic | squat drum |
-| `enemy.caster` | Capsule | 2.5 x 4 x 2.5 | `enemy.caster` | SmoothPlastic | slim capsule |
-| `enemy.summoner` | Cylinder | 3 x 4 x 3 | `enemy.summoner` | SmoothPlastic | tall drum |
-| `boss.1`..`boss.5`, `boss.act1` | Block | 12 x 9 x 12 | `boss` | SmoothPlastic | large block |
+| `enemy.swarmer` | Ball | 2 x 2 x 2 | `enemy.swarmer` | SmoothPlastic, outline `enemyOutline` | small ball |
+| `enemy.sniper` | Wedge | 3 x 3 x 4 | `enemy.sniper` | SmoothPlastic, outline `enemyOutline` | points along its facing |
+| `enemy.bruiser` | Block | 4 x 4 x 4 | `enemy.bruiser` | SmoothPlastic, outline `enemyOutline` | heavy block |
+| `enemy.sprayer` | Cylinder | 3 x 2.5 x 3 | `enemy.sprayer` | SmoothPlastic, outline `enemyOutline` | squat drum |
+| `enemy.caster` | Capsule | 2.5 x 4 x 2.5 | `enemy.caster` | SmoothPlastic, outline `enemyOutline` | slim capsule |
+| `enemy.summoner` | Cylinder | 3 x 4 x 3 | `enemy.summoner` | SmoothPlastic, outline `enemyOutline` | tall drum |
+| `boss.1`..`boss.5`, `boss.act1` | Block | 12 x 9 x 12 | `boss` | SmoothPlastic, outline `enemyOutline` | large block |
 | `bullet.enemy.small/medium/large` | Ball | 2 x 2 x 2 | `enemyBullet` | **Neon**, outline `enemyBulletOutline` | centred; scaled to the gameplay radius |
 | `bullet.enemy.needle` | Block | 0.5 x 0.5 x 2 | `enemyBullet` | **Neon**, outline `enemyBulletOutline` | along the velocity |
 | `bullet.player.basic` | Block | 0.5 x 0.5 x 2 | `playerBullet` | **Neon**, outline `playerBulletOutline` | thin bolt along the velocity |

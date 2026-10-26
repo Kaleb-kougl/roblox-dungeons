@@ -58,6 +58,9 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		"enemy.dummy": "#9a7b4f",
 		boss: "#d9c24a",
 		telegraph: "#ff8a3d",
+		// Roblox port (enemy outline plan E1): hostile red, >= 3.4:1 on every biome floor and wall, CIE76 63 from
+		// enemyBullet.
+		enemyOutline: "#ff3b30",
 		enemyHealth: "#e8473f",
 		enemyHealthChip: "#ffe6c2",
 		enemyHealthBack: "#1a0d10",

@@ -182,8 +182,12 @@ describe("validateManifest: rejects bad manifests", () => {
 	it("checks contrast against walls too", () => {
 		const m = clone();
 		at(m, "biomes", "biome.5").wall = "#ff3fa4";
+		// A bullet-pink wall fails the enemy outline's rule too (red rim on pink, enemy outline plan O1).
 		expect(validateManifest(m)).toEqual([
 			'biomes["biome.5"].wall: contrast: enemyBullet #ff3fa4 on biome.5 (verdant) wall #ff3fa4 is 1.00:1, needs >= 3.0:1',
+			`colors.enemyOutline: contrast: enemyOutline #ff3b30 on biome.5 (verdant) wall #ff3fa4 is ${"%.2f".format(
+				contrastRatio("#ff3b30", "#ff3fa4"),
+			)}:1, needs >= 3.0:1`,
 		]);
 	});
 
