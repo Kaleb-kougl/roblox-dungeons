@@ -1,0 +1,550 @@
+// The decor plan (docs/DECOR.md R3 / R6, written from the plan: the web source was not available). Deterministic;
+// the slice's interactables, doorways and breakables stay clear; no standing piece can hide a bullet (an independent
+// ray check, not the plan's own polygon clipping); every cap holds over the census (runs 1-20 x floors 1-5 through
+// buildEndlessFloor, solid pillars and breakables on) and on M1 floors (walk-through pillars).
+import { describe, expect, it } from "@rbxts/jest-globals";
+import {
+	KALEB_VALE_MVP_PARAMS,
+	TileType,
+	buildEndlessFloor,
+	encounterRooms,
+	entranceSpawn,
+	generateDungeon,
+	isBulletBlockingTile,
+	tileAt,
+	type Dungeon,
+	type EndlessFloorLayout,
+	type ForgeParams,
+} from "shared/dungeon";
+import { PEDESTAL_RADIUS, SHRINE_RADIUS, STAIRWELL_RADIUS } from "shared/sim";
+import { DECOR_KIND_LAYERS, decorId } from "shared/theme";
+import {
+	BULLET_PAD_PX,
+	BULLET_Y,
+	DECOR_BOX,
+	DECOR_CAMERA,
+	DECOR_CLEAR,
+	DECOR_DROP_REASONS,
+	MAX_DECOR_SHARE,
+	MAX_TALL_PER_ROOM,
+	TALL_MIN_SPACING,
+	decorInputOfLayout,
+	footprintClear,
+	footprintStencil,
+	planDecor,
+	type DecorFootprint,
+	screenDepth,
+	screenX,
+	screenY,
+	type DecorEntry,
+	type DecorPlan,
+} from ".";
+import { PIXELS_PER_TILE } from "shared/config";
+
+const dungeons = new Map<string, Dungeon>();
+function dungeonFor(params: ForgeParams): Dungeon {
+	const key = `${params.seed}/${params.roomCount}`;
+	let d = dungeons.get(key);
+	if (d === undefined) {
+		d = generateDungeon(params);
+		dungeons.set(key, d);
+	}
+	return d;
+}
+
+interface Floor {
+	readonly layout: EndlessFloorLayout;
+	readonly plan: DecorPlan;
+}
+
+const CENSUS: Floor[] = [];
+let planSeconds = 0;
+for (let run = 1; run <= 20; run++)
+	for (let floor = 1; floor <= 5; floor++) {
+		const layout = buildEndlessFloor(run, floor, dungeonFor);
+		const t0 = os.clock();
+		const plan = planDecor(decorInputOfLayout(layout));
+		planSeconds += os.clock() - t0;
+		CENSUS.push({ layout, plan });
+	}
+
+/** M1 floors (walk-through pillars: the Forge's pillars are tall pieces to move onto far walls). */
+const M1: Array<{ d: Dungeon; plan: DecorPlan }> = [];
+for (const seed of [1, 7, 42, 1337, 2024]) {
+	const d = generateDungeon({ ...KALEB_VALE_MVP_PARAMS, seed });
+	M1.push({ d, plan: planDecor({ dungeon: d }) });
+}
+
+const ALL: Array<{ d: Dungeon; plan: DecorPlan }> = [
+	...CENSUS.map((f) => ({ d: f.layout.dungeon, plan: f.plan })),
+	...M1,
+];
+
+function cellsOf(e: DecorEntry): Array<readonly [number, number]> {
+	const out: Array<readonly [number, number]> = [];
+	for (let i = 0; i < e.cells; i++) out.push([e.cellX + i * e.runX, e.cellY + i * e.runZ]);
+	return out;
+}
+
+const standing = (e: DecorEntry) => e.layer === "tall" || e.layer === "low";
+
+function serialize(p: DecorPlan): string {
+	const parts: string[] = [];
+	for (const e of p.entries)
+		parts.push(
+			`${e.kind}|${e.layer}|${e.x}|${e.y}|${e.z}|${e.cellX},${e.cellY}|${e.cells}|${e.roomId}|${e.hash}|${e.lit}|${e.fade}|${e.forgeIndex}`,
+		);
+	for (const r of DECOR_DROP_REASONS) parts.push(`${r}=${p.dropped.get(r)}`);
+	return parts.join(";");
+}
+
+/** Collects rule violations (one expect per test: Jest's expect is slow under Lune over ~25k entries). */
+class Problems {
+	readonly list: string[] = [];
+	check(ok: boolean, what: () => string): void {
+		if (!ok && this.list.size() < 10) this.list.push(what());
+	}
+}
+
+const at = (plan: DecorPlan, e: DecorEntry) => `floor seed ${plan.floorSeed}: ${e.kind} at ${e.cellX},${e.cellY}`;
+
+describe("decor plan: determinism", () => {
+	it("gives the same plan for the same Dungeon, also regenerated from its params", () => {
+		for (let i = 0; i < CENSUS.size(); i += 9) {
+			const f = CENSUS[i];
+			const again = planDecor(decorInputOfLayout(f.layout));
+			expect(serialize(again)).toBe(serialize(f.plan));
+			const fresh = generateDungeon(f.layout.dungeon.params);
+			const third = planDecor({ ...decorInputOfLayout(f.layout), dungeon: fresh });
+			expect(serialize(third)).toBe(serialize(f.plan));
+		}
+	});
+
+	it("names every entry decorId(biome, kind) with a layer its kind allows", () => {
+		const p = new Problems();
+		for (const { plan } of ALL)
+			for (const e of plan.entries) {
+				p.check(e.id === decorId(plan.biome, e.kind), () => `${at(plan, e)}: id ${e.id}`);
+				p.check((DECOR_KIND_LAYERS[e.kind] as ReadonlyArray<string>).includes(e.layer), () => at(plan, e));
+			}
+		expect(p.list).toEqual([]);
+	});
+});
+
+describe("decor plan: keep-out", () => {
+	it("draws nothing on or next to a doorway (jamb columns only beside one), a breakable or an interactable", () => {
+		const p = new Problems();
+		for (const f of CENSUS) {
+			const d = f.layout.dungeon;
+			const plan = f.plan;
+			const rooms = encounterRooms(d);
+			const breakables = new Set<number>();
+			for (const b of f.layout.breakables ?? []) breakables.add(b.y * d.W + b.x);
+			const zones: Array<[number, number, number]> = [];
+			for (const r of rooms) {
+				if (r.type === "treasure") zones.push([r.cx, r.cz, PEDESTAL_RADIUS]);
+				if (r.type === "shrine") zones.push([r.cx, r.cz, SHRINE_RADIUS]);
+			}
+			zones.push([f.layout.stairwell.x, f.layout.stairwell.z, STAIRWELL_RADIUS]);
+			const spawn = entranceSpawn(d);
+			const dr = DECOR_CLEAR.doorTiles;
+			for (const e of plan.entries) {
+				const column = e.kind === "column" || e.kind === "columnBroken";
+				for (const [x, y] of cellsOf(e)) {
+					p.check(d.doorway[y * d.W + x] === 0, () => `${at(plan, e)}: on a doorway`);
+					p.check(!breakables.has(y * d.W + x), () => `${at(plan, e)}: on a breakable`);
+					if (!column)
+						for (let oy = -dr; oy <= dr; oy++)
+							for (let ox = -dr; ox <= dr; ox++)
+								if (tileAt(d, x + ox, y + oy) !== TileType.VOID)
+									p.check(
+										d.doorway[(y + oy) * d.W + x + ox] === 0,
+										() => `${at(plan, e)}: by a door`,
+									);
+					for (const [zx, zz, r] of zones)
+						p.check((x - zx) * (x - zx) + (y - zz) * (y - zz) >= r * r, () => `${at(plan, e)}: in a zone`);
+					if (e.kind !== "ring")
+						p.check(
+							(x - spawn.x) ** 2 + (y - spawn.z) ** 2 >= DECOR_CLEAR.entranceTiles ** 2,
+							() => `${at(plan, e)}: on the entrance spawn`,
+						);
+				}
+			}
+		}
+		expect(p.list).toEqual([]);
+	});
+
+	it("never draws a chest, and drops the shrine crystal under the shrine", () => {
+		let shrines = 0;
+		let drawn = 0;
+		for (const { d, plan } of ALL) {
+			for (const e of plan.entries) if (e.kind === ("chest" as string) || e.kind === "shrineCrystal") drawn++;
+			for (const pr of d.props) if (pr.kind === "shrineCrystal") shrines++;
+			expect(plan.dropped.get("chest")).toBe(d.props.filter((pr) => pr.kind === "chest").size());
+		}
+		expect(drawn).toBe(0);
+		expect(shrines).toBeGreaterThan(0);
+	});
+});
+
+describe("decor plan: placement", () => {
+	it("stands tall and low pieces only on wall tops: far walls of their room, or a solid pillar's own top", () => {
+		const p = new Problems();
+		for (const { d, plan } of ALL) {
+			const solid = new Set<number>();
+			for (const pr of d.props)
+				if (pr.kind === "pillar" && tileAt(d, pr.x, pr.y) === TileType.WALL) solid.add(pr.y * d.W + pr.x);
+			for (const e of plan.entries) {
+				if (!standing(e)) continue;
+				p.check(e.y === 1, () => `${at(plan, e)}: y ${e.y}`);
+				for (const [x, y] of cellsOf(e)) {
+					const c = y * d.W + x;
+					p.check(tileAt(d, x, y) === TileType.WALL, () => `${at(plan, e)}: not on a wall`);
+					if (e.source === "pillar") {
+						p.check(e.kind === "columnBroken" && solid.has(c), () => `${at(plan, e)}: stump`);
+						continue;
+					}
+					p.check(!solid.has(c) && d.roomId[c] < 0, () => `${at(plan, e)}: on an interior wall`);
+					// the room is in front: +X, +Z, or (a back corner) the +X+Z diagonal
+					const front = [
+						[1, 0],
+						[0, 1],
+						[1, 1],
+					].some(
+						([fx, fy]) =>
+							tileAt(d, x + fx, y + fy) === TileType.FLOOR &&
+							d.roomId[(y + fy) * d.W + x + fx] === e.roomId,
+					);
+					p.check(front, () => `${at(plan, e)}: not a far wall of room ${e.roomId}`);
+				}
+			}
+		}
+		expect(p.list).toEqual([]);
+	});
+
+	it("never places a pillar prop of a solid pillar anywhere but its own cell", () => {
+		const p = new Problems();
+		let stumps = 0;
+		for (const f of CENSUS) {
+			const d = f.layout.dungeon;
+			for (const e of f.plan.entries) {
+				if (e.forgeIndex < 0 || e.source === "torch") continue;
+				const pr = d.props[e.forgeIndex];
+				if (pr.kind !== "pillar") continue;
+				stumps++;
+				p.check(
+					tileAt(d, pr.x, pr.y) === TileType.WALL &&
+						e.source === "pillar" &&
+						e.cellX === pr.x &&
+						e.cellY === pr.y,
+					() => at(f.plan, e),
+				);
+			}
+		}
+		expect(p.list).toEqual([]);
+		// Every census solid pillar is interior (floor right behind it), so even the stump would hide bullets: they
+		// keep the wall material only (D2's expectation). Each one is accounted for.
+		let solid = 0;
+		let dropped = 0;
+		for (const f of CENSUS) {
+			for (const pr of f.layout.dungeon.props) if (pr.kind === "pillar") solid++;
+			dropped += f.plan.dropped.get("solidPillar") ?? 0;
+		}
+		expect(stumps + dropped <= solid).toBe(true);
+		expect(solid).toBeGreaterThan(0);
+	});
+
+	it("allows a stump on a solid pillar with nothing open behind it, and refuses one with floor behind it", () => {
+		// a 7x7 grid: VOID everywhere, a 3x3 floor patch in front (+X +Z) of the centre wall cell (3, 3)
+		const W = 7;
+		const grid = new Array<number>(W * W, TileType.VOID);
+		grid[3 * W + 3] = TileType.WALL;
+		for (let y = 3; y <= 5; y++)
+			for (let x = 3; x <= 5; x++) if (x !== 3 || y !== 3) grid[y * W + x] = TileType.FLOOR;
+		const d = { W, H: W, grid } as unknown as Dungeon;
+		const at33: DecorFootprint = { x0: 3, y0: 3, x1: 3, y1: 3, runX: 0, runZ: 0 };
+		expect(footprintClear(d, at33, DECOR_BOX.columnBroken)).toBe(true);
+		expect(footprintClear(d, at33, DECOR_BOX.column)).toBe(true);
+		grid[2 * W + 2] = TileType.FLOOR; // diagonally behind: hidden by a tall column
+		expect(footprintClear(d, at33, DECOR_BOX.column)).toBe(false);
+		grid[2 * W + 2] = TileType.POOL; // bullets fly over pools too
+		expect(footprintClear(d, at33, DECOR_BOX.column)).toBe(false);
+		grid[2 * W + 2] = TileType.VOID;
+		grid[3 * W + 2] = TileType.FLOOR; // right behind (-X)
+		expect(footprintClear(d, at33, DECOR_BOX.columnBroken)).toBe(false);
+		// the stencil does not depend on where the footprint stands
+		const moved = footprintStencil({ ...at33, x0: 40, y0: 9, x1: 40, y1: 9 }, DECOR_BOX.column);
+		expect(moved).toEqual(footprintStencil(at33, DECOR_BOX.column));
+	});
+
+	it("caps tall pieces per room and keeps them TALL_MIN_SPACING apart", () => {
+		const p = new Problems();
+		for (const { plan } of ALL) {
+			const perRoom = new Map<number, number>();
+			const tall = plan.entries.filter((e) => standing(e) && e.source !== "pillar");
+			for (const e of tall) perRoom.set(e.roomId, (perRoom.get(e.roomId) ?? 0) + 1);
+			for (const [r, k] of perRoom)
+				p.check(k <= MAX_TALL_PER_ROOM, () => `seed ${plan.floorSeed} room ${r}: ${k}`);
+			for (let i = 0; i < tall.size(); i++)
+				for (let j = i + 1; j < tall.size(); j++) {
+					let best = math.huge;
+					for (const [ax, ay] of cellsOf(tall[i]))
+						for (const [bx, by] of cellsOf(tall[j])) best = math.min(best, (ax - bx) ** 2 + (ay - by) ** 2);
+					p.check(best >= TALL_MIN_SPACING * TALL_MIN_SPACING, () => `${at(plan, tall[i])}: too close`);
+				}
+		}
+		expect(p.list).toEqual([]);
+	});
+
+	it("caps flat pieces at the band's share (<= MAX_DECOR_SHARE) of each room's floor, one per FLOOR cell", () => {
+		const p = new Problems();
+		for (const { d, plan } of ALL) {
+			const floorTiles = new Map<number, number>();
+			for (let c = 0; c < d.W * d.H; c++)
+				if (d.grid[c] === TileType.FLOOR) {
+					const r = d.roomId[c] >= 0 ? d.roomId[c] : -1;
+					floorTiles.set(r, (floorTiles.get(r) ?? 0) + 1);
+				}
+			const per = new Map<number, number>();
+			const cells = new Set<number>();
+			for (const e of plan.entries) {
+				if (e.layer !== "flat") continue;
+				const c = e.cellY * d.W + e.cellX;
+				p.check(tileAt(d, e.cellX, e.cellY) === TileType.FLOOR && !cells.has(c), () => at(plan, e));
+				cells.add(c);
+				per.set(e.roomId, (per.get(e.roomId) ?? 0) + 1);
+			}
+			const share = math.min(plan.profile.flatShare, MAX_DECOR_SHARE);
+			for (const [r, k] of per)
+				p.check(
+					k <= math.floor(share * (floorTiles.get(r) ?? 0)),
+					() => `seed ${plan.floorSeed} room ${r}: ${k}`,
+				);
+		}
+		expect(p.list).toEqual([]);
+	});
+
+	it("hangs wall pieces on faces the camera sees, one per cell, never under a tall piece", () => {
+		const p = new Problems();
+		for (const { d, plan } of ALL) {
+			const tallCells = new Set<number>();
+			for (const e of plan.entries) if (standing(e)) for (const [x, y] of cellsOf(e)) tallCells.add(y * d.W + x);
+			const seen = new Set<number>();
+			for (const e of plan.entries) {
+				if (e.layer !== "wall") continue;
+				const c = e.cellY * d.W + e.cellX;
+				const visible = (e.faceX === 1 && e.faceZ === 0) || (e.faceX === 0 && e.faceZ === 1);
+				p.check(
+					visible &&
+						tileAt(d, e.cellX, e.cellY) === TileType.WALL &&
+						tileAt(d, e.cellX + e.faceX, e.cellY + e.faceZ) === TileType.FLOOR &&
+						!seen.has(c) &&
+						!tallCells.has(c),
+					() => at(plan, e),
+				);
+				seen.add(c);
+			}
+		}
+		expect(p.list).toEqual([]);
+	});
+
+	it("lists every torch and brazier as a light of its room", () => {
+		const p = new Problems();
+		for (const { plan } of ALL) {
+			let lights = 0;
+			plan.entries.forEach((e, i) => {
+				p.check(e.light === (e.kind === "torch" || e.kind === "brazier"), () => at(plan, e));
+				if (!e.light) return;
+				lights++;
+				const list = e.roomId >= 0 ? plan.lightsByRoom[e.roomId] : plan.corridorLights;
+				p.check(list.includes(i), () => `${at(plan, e)}: not listed`);
+			});
+			let listed = plan.corridorLights.size();
+			for (const l of plan.lightsByRoom) listed += l.size();
+			p.check(listed === lights, () => `seed ${plan.floorSeed}: ${listed} listed, ${lights} lights`);
+		}
+		expect(p.list).toEqual([]);
+	});
+
+	it("keeps every broken variant's box inside its whole kind's", () => {
+		for (const [broken, whole] of [
+			["columnBroken", "column"],
+			["columnBroken", "pillar"],
+			["wallBroken", "wall"],
+		] as Array<[keyof typeof DECOR_BOX, keyof typeof DECOR_BOX]>) {
+			const a = DECOR_BOX[broken];
+			const b = DECOR_BOX[whole];
+			expect(a.w <= b.w && a.h <= b.h && a.below <= b.below && (a.x ?? 0) === (b.x ?? 0)).toBe(true);
+		}
+	});
+});
+
+// ---------------------------------------------------------------------------------------------
+// The footprint rule, checked independently: sample bullet centres over every bullet-open cell near each standing
+// piece; a bullet (disc of BULLET_PAD_PX) whose screen disc touches the piece's box and that is deeper than the
+// piece's plane must be hidden by the wall block under the piece anyway: the view ray from its centre and from four
+// disc rim points (offset in the camera plane) must all pass through that block (a ray / box slab test in the world).
+
+const LAYERS = ["tall", "low", "flat", "wall"] as const;
+
+const PAD = BULLET_PAD_PX / PIXELS_PER_TILE;
+const STEP = 0.125;
+
+function distToPolygon(poly: ReadonlyArray<number>, x: number, y: number): number {
+	const m = poly.size() / 2;
+	let inside = true;
+	let best = math.huge;
+	for (let e = 0; e < m; e++) {
+		const ax = poly[e * 2];
+		const ay = poly[e * 2 + 1];
+		const bx = poly[((e + 1) % m) * 2];
+		const by = poly[((e + 1) % m) * 2 + 1];
+		const ex = bx - ax;
+		const ey = by - ay;
+		if (ex * (y - ay) - ey * (x - ax) < 0) inside = false;
+		const len2 = ex * ex + ey * ey;
+		const t = len2 > 0 ? math.clamp(((x - ax) * ex + (y - ay) * ey) / len2, 0, 1) : 0;
+		const dx = ax + ex * t - x;
+		const dy = ay + ey * t - y;
+		best = math.min(best, math.sqrt(dx * dx + dy * dy));
+	}
+	return inside ? 0 : best;
+}
+
+/** Does the ray from p toward the camera pass through box [x0,x1] x [0,1] x [z0,z1]? */
+function rayHitsBlock(px: number, py: number, pz: number, x0: number, x1: number, z0: number, z1: number): boolean {
+	const f = DECOR_CAMERA.forward;
+	const dir = [-f[0], -f[1], -f[2]];
+	let t0 = 0;
+	let t1 = math.huge;
+	const o = [px, py, pz];
+	const lo = [x0, 0, z0];
+	const hi = [x1, 1, z1];
+	for (let k = 0; k < 3; k++) {
+		if (math.abs(dir[k]) < 1e-12) {
+			if (o[k] < lo[k] || o[k] > hi[k]) return false;
+			continue;
+		}
+		let a = (lo[k] - o[k]) / dir[k];
+		let b = (hi[k] - o[k]) / dir[k];
+		if (a > b) [a, b] = [b, a];
+		t0 = math.max(t0, a);
+		t1 = math.min(t1, b);
+		if (t0 > t1) return false;
+	}
+	return true;
+}
+
+function hiddenBullets(d: Dungeon, plan: DecorPlan): number {
+	const right = DECOR_CAMERA.right;
+	const up = DECOR_CAMERA.up;
+	let bad = 0;
+	for (const box of plan.fadeBoxes) {
+		const e = plan.entries[box.entry];
+		const cells = cellsOf(e);
+		let bx0 = math.huge;
+		let bx1 = -math.huge;
+		let bz0 = math.huge;
+		let bz1 = -math.huge;
+		for (const [x, y] of cells) {
+			bx0 = math.min(bx0, x - 0.5);
+			bx1 = math.max(bx1, x + 0.5);
+			bz0 = math.min(bz0, y - 0.5);
+			bz1 = math.max(bz1, y + 0.5);
+		}
+		const [cx, cy] = cells[0];
+		for (let gy = cy - 12; gy <= cy + 6; gy++)
+			for (let gx = cx - 12; gx <= cx + 6; gx++) {
+				if (isBulletBlockingTile(tileAt(d, gx, gy))) continue;
+				for (let sz = -0.5; sz <= 0.5 + 1e-9; sz += STEP)
+					for (let sx = -0.5; sx <= 0.5 + 1e-9; sx += STEP) {
+						const px = gx + sx;
+						const pz = gy + sz;
+						if (screenDepth(DECOR_CAMERA, px, BULLET_Y, pz) <= box.depth) continue;
+						const qx = screenX(DECOR_CAMERA, px, BULLET_Y, pz);
+						const qy = screenY(DECOR_CAMERA, px, BULLET_Y, pz);
+						if (distToPolygon(box.polygon, qx, qy) > PAD) continue;
+						let hidden = rayHitsBlock(px, BULLET_Y, pz, bx0, bx1, bz0, bz1);
+						for (const [ox, oy] of [
+							[PAD, 0],
+							[-PAD, 0],
+							[0, PAD],
+							[0, -PAD],
+						])
+							hidden =
+								hidden &&
+								rayHitsBlock(
+									px + right[0] * ox + up[0] * oy,
+									BULLET_Y + right[1] * ox + up[1] * oy,
+									pz + right[2] * ox + up[2] * oy,
+									bx0,
+									bx1,
+									bz0,
+									bz1,
+								);
+						if (!hidden) bad++;
+					}
+			}
+	}
+	return bad;
+}
+
+describe("decor plan: the footprint rule", () => {
+	it("leaves no bullet-open cell where a standing piece could hide a bullet (independent ray check)", () => {
+		let checked = 0;
+		for (let i = 0; i < ALL.size(); i += 4) {
+			const { d, plan } = ALL[i];
+			expect(hiddenBullets(d, plan)).toBe(0);
+			checked += plan.fadeBoxes.size();
+		}
+		expect(checked).toBeGreaterThan(50);
+	});
+});
+
+describe("decor plan: census (runs 1-20 x floors 1-5)", () => {
+	it("draws pieces in every layer and reports per-floor counts", () => {
+		const totals = new Map<string, number>();
+		const kinds = new Map<string, number>();
+		const drops = new Map<string, number>();
+		for (const { plan } of CENSUS) {
+			for (const layer of LAYERS) totals.set(layer, (totals.get(layer) ?? 0) + plan.counts[layer]);
+			for (const e of plan.entries) kinds.set(e.kind, (kinds.get(e.kind) ?? 0) + 1);
+			for (const r of DECOR_DROP_REASONS) drops.set(r, (drops.get(r) ?? 0) + (plan.dropped.get(r) ?? 0));
+		}
+		const n = CENSUS.size();
+		const fmt = (m: Map<string, number>, order?: ReadonlyArray<string>) => {
+			const keys: string[] = [];
+			if (order !== undefined) for (const k of order) keys.push(k);
+			else for (const [k] of m) keys.push(k);
+			if (order === undefined) keys.sort();
+			return keys.map((k) => `${k} ${string.format("%.2f", (m.get(k) ?? 0) / n)}`).join(", ");
+		};
+		print(`[decor] census per floor: ${fmt(totals, LAYERS)}`);
+		print(`[decor] kinds per floor: ${fmt(kinds)}`);
+		print(`[decor] dropped per floor: ${fmt(drops, DECOR_DROP_REASONS)}`);
+		print(`[decor] planDecor ${string.format("%.2f", (planSeconds / n) * 1000)} ms per floor (${n} floors)`);
+		expect(totals.get("tall") ?? 0).toBeGreaterThan(0);
+		expect(totals.get("flat") ?? 0).toBeGreaterThan(0);
+		expect(totals.get("wall") ?? 0).toBeGreaterThan(0);
+		expect(kinds.get("wall") ?? 0).toBeGreaterThan(0);
+		expect(kinds.get("column") ?? 0).toBeGreaterThan(0);
+		expect(kinds.get("brazier") ?? 0).toBeGreaterThan(0);
+		expect(kinds.get("torch") ?? 0).toBeGreaterThan(0);
+	});
+
+	it("moves M1's walk-through pillars onto far walls (or drops them), never leaving one on the floor", () => {
+		let pillars = 0;
+		let bad = 0;
+		for (const { d, plan } of M1)
+			for (const e of plan.entries) {
+				if (e.forgeIndex < 0 || e.source !== "forge") continue;
+				const p = d.props[e.forgeIndex];
+				if (p.kind !== "pillar") continue;
+				pillars++;
+				if (tileAt(d, e.cellX, e.cellY) !== TileType.WALL || (e.kind !== "pillar" && e.kind !== "columnBroken"))
+					bad++;
+			}
+		expect(bad).toBe(0);
+		expect(pillars).toBeGreaterThan(0);
+	});
+});

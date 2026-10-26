@@ -12,6 +12,7 @@
  *   sprites.ts    sprite renderer logic: world facing -> screen facing, animation + frame from sim state, billboard
  *   breakables.ts breakable barrels / crates on screen: the frame diff, hit blink / shake, placement, debris, aim clip
  *                 (tunables: BREAKABLE_VIEW in breakablesConfig.ts)
+ *   decor/        the decor plan (docs/DECOR.md R3 / R6 / R8): planDecor, decorProfile, fade selection, glow points
  *
  * Sub-barrels (import from the folder): `shared/view/fx` (the juice layer: hit tracker, hitstop, bars, numbers,
  * particles), `shared/view/audio` (sim events -> theme sound IDs, music), `shared/view/hud` (HUD font token, layout,
@@ -27,3 +28,4 @@ export * from "./sprites";
 export * from "./floorTexture";
 export * from "./breakablesConfig";
 export * from "./breakables";
+export * from "./decor";
