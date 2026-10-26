@@ -14,7 +14,11 @@
 		"body; the alpha cut is per pack, see each set); pivot.y = the edge below the lowest body row; pivot.x = the",
 		"midpoint of the body pixels in the lowest footBand rows (between the outer edges of the feet), rounded. The",
 		"same frame's body height / bodyTiles gives pixelsPerTile (rounded to 0.1). Measured facing towards the camera",
-		"(the feet are side by side there, level with the root); the build prints the same measure for every facing."
+		"(the feet are side by side there, level with the root); the build prints the same measure for every facing.",
+		"outline (optional, enemies): { widthPx } writes <sheet>-outline.png beside each sheet, same size and cells: the",
+		"body mask above (so not the baked shadow) dilated per cell by a disc of radius widthPx (integer 1-4), white,",
+		"alpha = 255 - the sprite's alpha inside it. Drawn under the sprite and tinted, it is the contrast rim. Needs",
+		"pad >= widthPx + 1, so the rim is not clipped and keeps a transparent border for the bilinear filter."
 	],
 	"spriteSets": {
 		"class.vanguard": {
@@ -80,17 +84,19 @@
 				"the script rebuilds each file name from d * 22.5 and fails if it does not exist, so the order below is checked.",
 				"By eye: E/W stride right/left, N shows the back (spine and pelvis, skull clear above the shoulders),",
 				"S the front (ribcage, skull bowed over the chest towards the camera).",
-				"Union box (alpha > noiseAlpha) is 92x68 + 1 px pad = 94x70: 10 per row, so walk + death (256 cells) need",
-				"two atlases (one 1024 atlas holds 140), not one. Stand-ins (docs/ART.md S5): idle and hit = walk frame 0",
-				"held (frames 1, stride 8), attack = the walk's cells."
+				"Union box (alpha > noiseAlpha) is 92x68 + 3 px pad = 98x74: 10 per row, 13 rows, so walk and death get",
+				"one 980x962 atlas each (one 1024 atlas holds 130 cells; the two need 256). Stand-ins (docs/ART.md S5): idle",
+				"and hit = walk frame 0 held (frames 1, stride 8), attack = the walk's cells."
 			],
 			"source": { "type": "frames", "dir": "lords-of-pain-demo/enemy/skeleton", "frameW": 256, "frameH": 256 },
 			"facingCount": 16,
 			"facingDirs": ["E", "NEE", "NE", "NNE", "N", "NNW", "NW", "NWW", "W", "SWW", "SW", "SSW", "S", "SSE", "SE", "SEE"],
 			"noiseAlpha": 2,
-			"pad": 1,
+			"pad": 3,
 			"pivot": { "measure": { "animation": "idle", "facing": 12, "frame": 0 }, "bodyAlpha": 64, "bodyMinRgb": 8, "footBand": 3 },
 			"pivotNote": "The skeleton's shadow is black at alpha <= ~140; its thin bones are anti-aliased (only ~20 pixels per frame reach 255), so alpha > 200 would drop the shins: the body cut is lit pixels at alpha > 64.",
+			"outline": { "widthPx": 2 },
+			"outlineNote": "Enemy contrast rim (enemy outline plan O3, decision E4: 2 art px, tunable 1-3 in Studio). pad 3 = widthPx + 1; it was 1, so the cells grew from 94x70 and the pivot moved by (2, 2) with them.",
 			"bodyTiles": 1.25,
 			"resample": "Default",
 			"animations": {

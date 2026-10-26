@@ -14,12 +14,15 @@ import { VALE_BIOME_MATERIALS, VALE_MANIFEST, buildValeManifest } from "./manife
 
 const quiet = () => undefined;
 
-/** Every art/build file the layout names, sorted. */
+/** Every art/build file the layout names (outline sheets included), sorted. */
 function allFiles(): Array<string> {
 	const files = new Array<string>();
 	for (const id of sortedKeys(VALE_SPRITE_LAYOUTS)) {
 		for (const sheet of VALE_SPRITE_LAYOUTS[id].sheets) {
 			files.push(sheet.file);
+			if (sheet.outlineFile !== undefined) {
+				files.push(sheet.outlineFile);
+			}
 		}
 	}
 	for (const id of sortedKeys(VALE_IMAGE_LAYOUTS)) {
@@ -70,6 +73,24 @@ describe("vale pack", () => {
 		for (const file of sortedKeys(VALE_ASSET_IDS)) {
 			expect([file, files.includes(file)]).toEqual([file, true]);
 		}
+	});
+
+	it("every enemy sprite set has an outline sheet per sheet; the player's sets have none", () => {
+		// art/atlases.json: each enemy set needs `outline` (enemy outline plan O3), or its sprites draw without a rim
+		let enemies = 0;
+		for (const id of sortedKeys(VALE_SPRITE_LAYOUTS)) {
+			const enemy = id.sub(1, 6) === "enemy.";
+			if (enemy) {
+				enemies += 1;
+			}
+			for (const sheet of VALE_SPRITE_LAYOUTS[id].sheets) {
+				const expected = enemy ? `${sheet.file.sub(1, -5)}-outline.png` : undefined;
+				expect([id, sheet.file, sheet.outlineFile]).toEqual([id, sheet.file, expected]);
+			}
+		}
+		expect(enemies).toBeGreaterThan(0);
+		expect(VALE_SPRITE_LAYOUTS["enemy.swarmer"].sheets[0].outlineFile).toBe("swarmer-move-outline.png");
+		expect(VALE_SPRITE_LAYOUTS["enemy.swarmer"].sheets[1].outlineFile).toBe("swarmer-death-outline.png");
 	});
 
 	it("the bundled pack is built from assetIds.ts", () => {
@@ -213,24 +234,30 @@ describe("vale sprite cells (hand-computed from the generated layout)", () => {
 		expect(set!.facings).toEqual({ count: 8, zeroDeg: 0, ccw: true });
 	});
 
-	it("enemy.swarmer: 94x70 cells, 10 per row, move and death on two atlases", () => {
+	it("enemy.swarmer: 98x74 cells (pad 3 for the outline), 10 per row, move and death on two atlases", () => {
 		const set = core.sprites("enemy.swarmer");
 		expect(set).never.toBe(undefined);
+		expect(VALE_SPRITE_LAYOUTS["enemy.swarmer"].sheets.map((s) => [s.w, s.h])).toEqual([
+			[980, 962],
+			[980, 962],
+		]);
 		// move: facing 5, frame 6 -> cell 46 -> column 6, row 4
 		expect(set!.frame("move", 5, 6)).toEqual({
 			sheet: 0,
 			assetId: ids["swarmer-move.png"],
-			x: 564,
-			y: 280,
-			w: 94,
-			h: 70,
+			x: 588,
+			y: 296,
+			w: 98,
+			h: 74,
 		});
 		// idle = move frame 0 held (stride 8): facing 3 -> cell 24 -> column 4, row 2, every index
 		const idle = set!.frame("idle", 3, 5);
-		expect([idle.sheet, idle.x, idle.y]).toEqual([0, 376, 140]);
+		expect([idle.sheet, idle.x, idle.y]).toEqual([0, 392, 148]);
 		// death: facing 15, frame 7 -> cell 127 -> column 7, row 12 of the second atlas
 		const death = set!.frame("death", 15, 7);
-		expect([death.sheet, death.assetId, death.x, death.y]).toEqual([1, ids["swarmer-death.png"], 658, 840]);
+		expect([death.sheet, death.assetId, death.x, death.y]).toEqual([1, ids["swarmer-death.png"], 686, 888]);
+		// the pad grew by 2 on each side, so the feet moved by (2, 2) in the cell (was (40, 49) at pad 1)
+		expect(set!.pivot).toEqual({ x: 42, y: 51 });
 		// facings wrap: 16 is 0, -1 is 15
 		expect(set!.frame("move", 16, 0)).toEqual(set!.frame("move", 0, 0));
 		expect(set!.frame("move", -1, 2)).toEqual(set!.frame("move", 15, 2));
@@ -241,7 +268,7 @@ describe("vale sprite cells (hand-computed from the generated layout)", () => {
 		expect(set).never.toBe(undefined);
 		const f = set!.frame("move", 5, 6);
 		expect(f.image).toBe(ids["swarmer-move.png"]);
-		expect([f.offset.X, f.offset.Y, f.size.X, f.size.Y]).toEqual([564, 280, 94, 70]);
+		expect([f.offset.X, f.offset.Y, f.size.X, f.size.Y]).toEqual([588, 296, 98, 74]);
 		expect(set!.resample).toBe("Default");
 		expect(pack.texture("tile.biome.1.floor")).toBe(ids["tile-biome1-floor.png"]);
 	});
