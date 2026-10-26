@@ -158,8 +158,15 @@ export interface ForgeParams {
 	/** Theme; 'auto' (default) picks from the seed exactly like the demo's AUTO chip. */
 	themeKey?: ThemeKey | "auto";
 
-	/** Kaleb-Vale: grow combat and elite rooms to at least this many tiles on each side. */
+	/** Kaleb-Vale: grow combat and elite rooms to at least this many tiles on each side (x `roomScale`). */
 	minCombatRoomSize?: number;
+	/**
+	 * Kaleb-Vale: room size multiplier (integer >= 1). Every room's rolled width and height, `minCombatRoomSize` and
+	 * the scatter radius are multiplied by it, so a floor keeps the same draws and roughly the same shape, just with
+	 * rooms `roomScale` times as wide and tall. Draws nothing extra; 1 or undefined is the unscaled floor exactly.
+	 * Endless floors only (`endlessFloorParams`, ENDLESS_ROOM_SCALE); M1 and the fixtures leave it off.
+	 */
+	roomScale?: number;
 	/** Kaleb-Vale: every corridor this many tiles wide (1..7), instead of 3 critical / 2 or 1 other. Also keeps interior liquid pits 3+ tiles from corridor cells so they cannot pinch a corridor mouth. */
 	corridorWidth?: number;
 	/** Kaleb-Vale: at most this many treasure rooms (original: 4). */

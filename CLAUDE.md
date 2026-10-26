@@ -38,6 +38,11 @@ Decision log (deviations from `PLAN.md`):
   sight), and the room enemies' walks (`walkToward(..., STEER)`, never the boss) use `SimConfig.actorSteerMover`
   (`actorSteerMover`) to round them; it only differs from `moveCircle` at pillars and clipped wall ends. M1
   (`KALEB_VALE_MVP_PARAMS`) and every fixture leave both off and replay exactly as before; endless replays changed.
+- **Double-size rooms on endless floors.** Endless floors set the Kaleb-Vale Forge option `roomScale` to
+  `ENDLESS_ROOM_SCALE` = 2 (`endlessFloorParams`): every rolled room width and height, `minCombatRoomSize` and the
+  scatter radius are doubled (4x the floor area; corridor lengths stay about the same). No extra rng draws; 1 or
+  undefined is the unscaled floor exactly, so M1 and every fixture are unchanged; endless layouts and replays changed.
+  Room encounter budgets are unchanged, so the same enemies spread over more floor.
 
 ## Commands
 

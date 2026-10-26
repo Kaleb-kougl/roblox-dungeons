@@ -493,16 +493,19 @@ describe("moveCircleAroundCorners is never worse than moveCircle", () => {
 		const moved = math.sqrt((res.x - 9.2) * (res.x - 9.2) + (res.z - 9.75) * (res.z - 9.75));
 		expect(moved).toBeLessThanOrEqual(len * (1 + 1e-12));
 		expect(moved).toBeGreaterThan(0.099); // more than moveCircle's slide alone: the nudge still helps
-		// and everywhere on real floors: random moves from every room centre, every enemy radius
+		// and everywhere on real floors: random moves from every room centre and from beside the first few pillars
+		// (endless rooms are large, so a walk from a centre alone rarely reaches anything to steer round), every radius
 		const rng = makeRng(5);
 		let worst = 0;
 		for (let i = 0; i < 6; i++) {
 			const fl = floorPairs[i].on;
-			for (const room of fl.rooms)
+			const starts: [number, number][] = fl.rooms.map((room) => [room.cx, room.cy]);
+			for (const pr of pillarsOf(fl).filter((_, k) => k < 8)) starts.push([pr.x + 1, pr.y]);
+			for (const [sx, sy] of starts)
 				for (const r of RADII) {
-					let x = gridToWorld(room.cx),
-						z = gridToWorld(room.cy);
-					if (tileAt(fl, room.cx, room.cy) !== TileType.FLOOR) continue;
+					let x = gridToWorld(sx),
+						z = gridToWorld(sy);
+					if (tileAt(fl, sx, sy) !== TileType.FLOOR) continue;
 					for (let k = 0; k < 120; k++) {
 						const dx = (rng.raw() - 0.5) * 0.2,
 							dz = (rng.raw() - 0.5) * 0.2;

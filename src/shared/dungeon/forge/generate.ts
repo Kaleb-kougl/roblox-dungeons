@@ -95,7 +95,7 @@ function isInteger(v: number): boolean {
 
 /** Fill in defaults (AUTO theme from the seed, like the demo) and validate. Draws no randomness. */
 export function resolveParams(params: ForgeParams): ResolvedForgeParams {
-	const { roomCount, corridorWidth, minCombatRoomSize, treasureCap, shrineCap } = params;
+	const { roomCount, corridorWidth, minCombatRoomSize, roomScale, treasureCap, shrineCap } = params;
 	if (!isInteger(roomCount) || roomCount < 2 || roomCount > MAX_ROOM_COUNT) {
 		error(`RangeError: roomCount must be an integer in 2..${MAX_ROOM_COUNT} (demo: 12..80), got ${roomCount}`);
 	}
@@ -107,6 +107,9 @@ export function resolveParams(params: ForgeParams): ResolvedForgeParams {
 	}
 	if (minCombatRoomSize !== undefined && (!isInteger(minCombatRoomSize) || minCombatRoomSize < 1)) {
 		error(`RangeError: minCombatRoomSize must be a positive integer, got ${minCombatRoomSize}`);
+	}
+	if (roomScale !== undefined && (!isInteger(roomScale) || roomScale < 1)) {
+		error(`RangeError: roomScale must be a positive integer, got ${roomScale}`);
 	}
 	if (treasureCap !== undefined && (!isInteger(treasureCap) || treasureCap < 0)) {
 		error(`RangeError: treasureCap must be an integer >= 0, got ${treasureCap}`);
@@ -310,8 +313,9 @@ export function tryGenerate(seed: number, params: ForgeParams): Dungeon | undefi
 	const N = p.roomCount;
 	const TH = THEMES[p.themeKey];
 
-	/* -- 1. scatter -- */
-	const R = math.sqrt(N) * 4.6;
+	/* -- 1. scatter -- (Kaleb-Vale roomScale S multiplies every rolled size and the radius; S = 1 is the original) */
+	const S = p.roomScale ?? 1;
+	const R = math.sqrt(N) * 4.6 * S;
 	const rooms: Room[] = [];
 	const large: number[] = [];
 	for (let i = 0; i < N; i++) {
@@ -319,16 +323,16 @@ export function tryGenerate(seed: number, params: ForgeParams): Dungeon | undefi
 		let w: number, h: number, arch: RoomArch;
 		if (t < 0.45) {
 			arch = "s";
-			w = rng.i(5, 7);
-			h = rng.i(5, 7);
+			w = rng.i(5, 7) * S;
+			h = rng.i(5, 7) * S;
 		} else if (t < 0.85) {
 			arch = "m";
-			w = rng.i(8, 12);
-			h = rng.i(8, 12);
+			w = rng.i(8, 12) * S;
+			h = rng.i(8, 12) * S;
 		} else {
 			arch = "l";
-			w = rng.i(13, 18);
-			h = rng.i(13, 18);
+			w = rng.i(13, 18) * S;
+			h = rng.i(13, 18) * S;
 			large.push(i);
 		}
 		const st = rng.raw();
@@ -357,8 +361,8 @@ export function tryGenerate(seed: number, params: ForgeParams): Dungeon | undefi
 		const j = rng.i(0, N - 1);
 		if (rooms[j].arch !== "l") {
 			rooms[j].arch = "l";
-			rooms[j].w = rng.i(13, 18);
-			rooms[j].h = rng.i(13, 18);
+			rooms[j].w = rng.i(13, 18) * S;
+			rooms[j].h = rng.i(13, 18) * S;
 			rooms[j].shape = "rect";
 			large.push(j);
 		}
@@ -570,7 +574,7 @@ export function tryGenerate(seed: number, params: ForgeParams): Dungeon | undefi
 	   Grow undersized combat/elite rooms to the minimum, then re-run the (RNG-free) separation
 	   so grown rooms do not swallow their neighbours. */
 	if (p.minCombatRoomSize !== undefined) {
-		const m = p.minCombatRoomSize;
+		const m = p.minCombatRoomSize * S;
 		let grew = false;
 		for (const r of rooms) {
 			if ((r.type === TYPE.COMBAT || r.type === TYPE.ELITE) && (r.w < m || r.h < m)) {

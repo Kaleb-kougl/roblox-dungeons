@@ -4,7 +4,8 @@
  *
  *   floor seed    floorSeed(runSeed, floor) = ((runSeed >>> 0) ^ Math.imul(floor, 0x85ebca6b)) >>> 0
  *   layout        generateDungeon({ ...KALEB_VALE_MVP_PARAMS, seed: floorSeed, roomCount: floorRoomCount(floor),
- *                 solidPillars: true }): pillars are real 1-tile walls (cover) on endless floors only, never in M1
+ *                 solidPillars: true, roomScale: 2 }): pillars are real 1-tile walls (cover), and every room is
+ *                 twice as wide and tall as M1's (ENDLESS_ROOM_SCALE); endless floors only, never in M1
  *   boss floors   every BOSS_FLOOR_EVERY-th floor: Mother Bramble in the boss room (the floor's only initial spawn)
  *   stairwell     the boss room's center floor tile; on other floors the boss room is empty and holds it from the start
  *   room enemies  per combat / elite room: ENCOUNTER_BUDGET spent by ENCOUNTER_COST from the room's own encounter rng
@@ -42,6 +43,7 @@ import {
 	ENDLESS_PACK_SIZE,
 	ENDLESS_ROOM_ACTOR_CAP,
 	ENDLESS_ROOM_KINDS,
+	ENDLESS_ROOM_SCALE,
 	ENDLESS_SOLID_PILLARS,
 	FLOOR_SEED_MUL,
 	PARTY_BUDGET_MULTIPLIERS,
@@ -66,13 +68,17 @@ export function isBossFloor(floor: number): boolean {
 	return floor >= BOSS_FLOOR_EVERY && floor % BOSS_FLOOR_EVERY === 0;
 }
 
-/** The Forge params of `floor` of the run `runSeed`: the M1 preset plus solid pillars (ENDLESS_SOLID_PILLARS). */
+/**
+ * The Forge params of `floor` of the run `runSeed`: the M1 preset plus solid pillars (ENDLESS_SOLID_PILLARS) and
+ * rooms ENDLESS_ROOM_SCALE times as large.
+ */
 export function endlessFloorParams(runSeed: number, floor: number): ForgeParams {
 	return {
 		...KALEB_VALE_MVP_PARAMS,
 		seed: floorSeed(runSeed, floor),
 		roomCount: floorRoomCount(floor),
 		solidPillars: ENDLESS_SOLID_PILLARS,
+		roomScale: ENDLESS_ROOM_SCALE,
 	};
 }
 

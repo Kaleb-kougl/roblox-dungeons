@@ -426,7 +426,8 @@ describe("a walked-in endless run (no debug input)", () => {
 	 * enters had a planned spawn within SPAWN_SAFE_RADIUS of where it stepped in, i.e. a run where the rule fired.
 	 */
 	function walkedEntry() {
-		for (const seed of [42, 1337, 7, 99, 2024]) {
+		// Endless rooms are large (ENDLESS_ROOM_SCALE), so a spawn near the door is rare: 17 is the first seed that has one.
+		for (const seed of [17, 42, 1337, 7, 99, 2024]) {
 			const setup = buildEndlessRunConfig(seed);
 			for (const target of roomsBySize(setup.endlessFloor(1))) {
 				const drv = new Driver(setup, seed);

@@ -19,6 +19,12 @@ export const FLOOR_SEED_MUL = 0x85ebca6b;
  */
 export const ENDLESS_SOLID_PILLARS = true;
 
+/**
+ * Endless floors' room size multiplier (ForgeParams.roomScale): every room is this many times as wide and as tall as
+ * the M1 floor's (2 = four times the floor area). M1 floors and the golden fixtures stay at 1.
+ */
+export const ENDLESS_ROOM_SCALE = 2;
+
 /** Rooms on floor 1 (the MVP floor's 12). */
 export const ENDLESS_BASE_ROOM_COUNT = 12;
 /** One more room every this many floors: roomCount = 12 + floor((floor - 1) / 5). */
