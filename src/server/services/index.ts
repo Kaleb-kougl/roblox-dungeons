@@ -8,5 +8,6 @@ export * from "./LeaderboardService";
 export * from "./TelemetryService";
 export * from "./SettingsService";
 export * from "./LobbyService";
+export * from "./OnboardingService";
 export * from "./data/DataStoreKeyValue";
 export * from "./data/OrderedDataStoreScores";

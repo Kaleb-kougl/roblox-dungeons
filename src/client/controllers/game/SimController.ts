@@ -17,6 +17,7 @@ import {
 	shouldRequestServerRun,
 	shouldSubmitRun,
 	takeSnapshot,
+	unsubmittedReason,
 	type FrameEvents,
 	type LiveRunSetup,
 	type RunEnding,
@@ -24,6 +25,7 @@ import {
 } from "shared/play";
 import {
 	LIVE_RUN_WORLD,
+	TUTORIAL_WORLD_KIND,
 	buildWorldSetup,
 	errorMessage,
 	isValidRunSeed,
@@ -46,9 +48,10 @@ import {
 	type SimConfig,
 	type SimState,
 } from "shared/sim";
+import { TUTORIAL } from "shared/config";
 import { BIOMES, type ThemePack } from "shared/theme";
 import { RENDER_ORDER } from "shared/view";
-import { HitstopClock, simPacerFor } from "shared/view/fx";
+import { HitstopClock, simPacerFor, type FrameAdvance, type FramePacer } from "shared/view/fx";
 import { PROGRESSION_VIEW, toastFor } from "shared/view/hud";
 import { lobbyStartAccepted, restartForfeits } from "shared/view/menu";
 import type { Dungeon } from "shared/dungeon";
@@ -57,6 +60,20 @@ import { ThemeController } from "./ThemeController";
 
 const RENDER_STEP = "KV_Sim";
 const WORLDS: ReadonlyArray<RunWorld> = ["game", "endless", "dungeonNoEncounter", "greybox"];
+
+/**
+ * Paces a finished tutorial run: every frame frozen, so the run stays on screen (its last state, alpha unchanged) but
+ * runs no tick, records nothing and reports no events (LiveRun.frame still resets the frame's events).
+ */
+const FROZEN_PACER: FramePacer = {
+	frame(_realDeltaSeconds: number, out: FrameAdvance): FrameAdvance {
+		out.simDelta = 0;
+		out.frozen = true;
+		out.timeScale = 0;
+		out.frozenMs = 0;
+		return out;
+	},
+};
 
 /** Everything fixed for one run, as the views see it. */
 export interface RunContext {
@@ -93,6 +110,11 @@ export interface RunContext {
 	readonly endlessFloor: ((floor: number) => EndlessRunFloor) | undefined;
 	/** The lobby whose start began this run (a party run, or a one-player lobby's solo run); "" otherwise. */
 	readonly lobbyId: string;
+	/**
+	 * A first-run tutorial run (world `tutorial`, docs/TUTORIAL.md): local, never submitted (verdict `tutorial`), no
+	 * segments, no R / pad restart (the pause overlay has Restart tutorial and Skip tutorial).
+	 */
+	readonly tutorial: boolean;
 }
 
 export type RunListener = (ctx: RunContext) => void;
@@ -156,6 +178,11 @@ function biomeIndexFor(dungeon: Dungeon | undefined): number {
  * stops (no context, the HUD inactive) and the exit listener (MenuController) opens the menu. R / Restart mid-run
  * forfeits a ranked solo run too and starts the next one once that death was submitted (restartForfeits); in a party
  * run R only works once the party is down, and then goes back to the lobby.
+ *
+ * Tutorial (docs/TUTORIAL.md, TutorialController): `startTutorial()` plays world `tutorial` locally (never asks
+ * `startRun`, never submitted: verdict `tutorial`; RunContext.tutorial). R / pad restart do nothing in it; Leave run
+ * (the pause overlay's Skip tutorial) just stops it for the menu; `freezeTutorialRun()` holds the finished run on
+ * screen under the outro; a party run start is ignored while it is being played (`inRunningTutorial`).
  *
  * Hitstop: the run's HitstopClock (`hitstop`, fed by the FreezeFrameController's rules) paces the loop exactly as the
  * web SimDriver's computeFrameAdvance: a frozen frame runs no tick and records nothing, slow motion feeds less time.
@@ -223,6 +250,8 @@ export class SimController implements OnStart {
 	private readonly coopMenuGate = new CoopMenuInputGate();
 	/** The Roblox menu is open (GuiService.MenuOpened / MenuClosed). */
 	private robloxMenuOpen = false;
+	/** The finished tutorial run is frozen on screen (no ticks) until the next run starts. */
+	private frozen = false;
 
 	/** The freeze frame / slow motion clock (presentation pacing only; cleared at every run start). */
 	readonly hitstop = new HitstopClock();
@@ -231,6 +260,7 @@ export class SimController implements OnStart {
 
 	onStart(): void {
 		this.inputController.onDriverAction((action) => {
+			// R / pad restart: handleReset (nothing in a tutorial run: its pause overlay has Restart tutorial).
 			if (action === "reset") this.pendingReset = true;
 			else this.pendingReplayCheck = true;
 		});
@@ -272,7 +302,8 @@ export class SimController implements OnStart {
 			this.pausedByMenu = false;
 		});
 
-		// No run yet: MenuController starts one (Play solo, a lobby, or at once with KV_SkipMenu).
+		// No run yet: MenuController starts one (Play solo, a lobby, or at once with KV_SkipMenu), or the
+		// TutorialController's first-run gate starts the tutorial (a first join).
 		RunService.BindToRenderStep(RENDER_STEP, Enum.RenderPriority.Input.Value + RENDER_ORDER.simAfterInput, (dt) =>
 			this.frame(dt),
 		);
@@ -300,6 +331,56 @@ export class SimController implements OnStart {
 	/** This client's player index in the run (co-op: its place in the party; 0 solo). */
 	getLocalPlayerIndex(): number {
 		return this.ctx?.localIndex ?? 0;
+	}
+
+	/** The buttons of the input sampled for the last frame (the tutorial director's FIRE edge). */
+	getFrameButtons(): number {
+		return this.input.buttons;
+	}
+
+	/** The current run is a tutorial run. */
+	isTutorialRun(): boolean {
+		return this.ctx?.tutorial === true;
+	}
+
+	/** The finished tutorial run is frozen (freezeTutorialRun). */
+	isFrozen(): boolean {
+		return this.frozen;
+	}
+
+	// --- tutorial (TutorialController) ---------------------------------------------------------
+
+	/**
+	 * Starts a first-run tutorial run now (local, world `tutorial`): the first-run gate on a first join, the main menu's
+	 * Tutorial, the pause overlay's Restart tutorial and the outro's Play the tutorial again. The current solo run is
+	 * left as by Play solo (submitted as abandoned when it qualifies; a tutorial run never is). Ignored while a party
+	 * run is on.
+	 */
+	startTutorial(): void {
+		if (this.ctx?.coop !== undefined && !this.ctx.coop.isOver()) return;
+		this.clearExits();
+		if (this.ctx?.live !== undefined) this.submit("abandoned");
+		this.nextRunLobbyId = "";
+		this.beginTutorial();
+	}
+
+	/**
+	 * The tutorial finished (the floor 2 -> 3 change): the run freezes on screen, no tick more (the floor 3 draft never
+	 * opens a step further), and the verdict line reads the tutorial's own "not submitted". Until the next run starts.
+	 */
+	freezeTutorialRun(): void {
+		const ctx = this.ctx;
+		if (ctx === undefined || !ctx.tutorial || this.frozen) return;
+		this.frozen = true;
+		this.submitted = true;
+		this.hitstop.clear(); // a boss-kill freeze / slow motion would otherwise hold the particles still
+		clientStore.setVerdict({ status: "skipped", run: ctx.counter, ending: "abandoned", code: "tutorial" });
+		print(`[Sim] tutorial run ${ctx.counter} finished at tick ${ctx.run.state.tick}`);
+	}
+
+	/** A tutorial run is being played (not yet finished): lobby run starts must not take it over. */
+	inRunningTutorial(): boolean {
+		return this.ctx?.tutorial === true && !this.frozen;
 	}
 
 	// --- menu actions (pause overlay, settings panel) -------------------------------------------
@@ -331,8 +412,9 @@ export class SimController implements OnStart {
 	/**
 	 * Leave run (pause overlay / party overlay, after the confirm). Solo: the run is forfeited (the next frame steps
 	 * the forfeit tick: a death, submitted like any death), then left. Party: `lockstepLeave` (the server plays this
-	 * player as disconnected; the others play on) and the run is left at once. A finished run is just left; a ranked
-	 * start still waiting for the server is dropped (the server abandons that session at the next startRun).
+	 * player as disconnected; the others play on) and the run is left at once. A tutorial run (Skip tutorial) is left
+	 * at once, unsubmitted. A finished run is just left; a ranked start still waiting for the server is dropped (the
+	 * server abandons that session at the next startRun).
 	 */
 	leaveRun(): void {
 		const ctx = this.ctx;
@@ -347,6 +429,12 @@ export class SimController implements OnStart {
 				print(`[Sim] left co-op run ${ctx.counter} (${coop.runId})`);
 			}
 			coop.stop();
+			this.stopRun("left");
+			return;
+		}
+		if (ctx.tutorial) {
+			// Skip tutorial: a practice run is never submitted (submit records the "tutorial" verdict) or forfeited.
+			this.submit("abandoned");
 			this.stopRun("left");
 			return;
 		}
@@ -438,6 +526,7 @@ export class SimController implements OnStart {
 	 * with a debug seed / world / stress attribute, an unranked one on the local seed at once.
 	 */
 	private beginRun(): void {
+		this.frozen = false;
 		this.debug = Workspace.GetAttribute(RUN_ATTRIBUTES.debug) === true;
 		this.inputController.setDebug(this.debug);
 		const seed = readSeed();
@@ -452,7 +541,7 @@ export class SimController implements OnStart {
 			stress,
 		});
 		if (!ranked) {
-			this.startRun(seed, atBossDoor, stress, world, undefined, "");
+			this.startRun(seed, atBossDoor, stress, world, undefined, "", false);
 			return;
 		}
 		// The old run stops here; views see no run until the server answers (or the timeout falls back).
@@ -489,6 +578,7 @@ export class SimController implements OnStart {
 	private stopRun(how: "left" | "exited"): void {
 		this.clearExits();
 		this.ctx = undefined;
+		this.frozen = false;
 		this.awaitingStart = undefined;
 		this.startReply = undefined;
 		this.pausedByMenu = false;
@@ -496,6 +586,19 @@ export class SimController implements OnStart {
 		this.hitstop.clear();
 		clientStore.endRun();
 		for (const listener of this.exitListeners) listener(how);
+	}
+
+	/**
+	 * Starts a first-run tutorial run at once, locally (docs/TUTORIAL.md): world `tutorial` on TUTORIAL.runSeed (the
+	 * layouts are fixed whatever the seed), never asking `startRun`, never submitted. If the world cannot be built, the
+	 * run stops for the menu (as after Leave run).
+	 */
+	private beginTutorial(): void {
+		this.debug = Workspace.GetAttribute(RUN_ATTRIBUTES.debug) === true;
+		this.inputController.setDebug(this.debug);
+		this.awaitingStart = undefined; // a ranked start still waiting is dropped (the server replaces that session)
+		this.startReply = undefined;
+		this.startRun(TUTORIAL.runSeed, false, 0, TUTORIAL_WORLD_KIND, undefined, "", true);
 	}
 
 	// --- co-op (M4, shared/lockstep) ------------------------------------------------------------
@@ -507,6 +610,12 @@ export class SimController implements OnStart {
 	private startCoop(start: PartyRunStart): void {
 		const localIndex = start.members.indexOf(Players.LocalPlayer.UserId);
 		if (localIndex < 0 || !isValidRunSeed(start.seed)) return;
+		// Never pulled out of a running tutorial (the server refuses lobby starts while the player is in it too; this
+		// is a late or stray start). A finished tutorial (frozen on its outro) is over: a lobby run may take over.
+		if (this.inRunningTutorial()) {
+			warn(`[Sim] ignored party run ${start.runId}: in the tutorial`);
+			return;
+		}
 		// Consent: only the party run of the lobby this client is in (its Start began it).
 		const myLobby = clientStore.getState().lobby.mine?.lobbyId;
 		if (!lobbyStartAccepted(start.lobbyId, myLobby)) {
@@ -556,7 +665,9 @@ export class SimController implements OnStart {
 			floor,
 			endlessFloor: setup.endlessFloor,
 			lobbyId: start.lobbyId,
+			tutorial: false,
 		};
+		this.frozen = false;
 		this.ctx = ctx;
 		this.rankedRuns.set(start.runId, { run: this.counter, decided: false });
 		clientStore.startRun(this.runInfo(this.theme.getPack(), ctx, ""), this.coopSnapshot(client));
@@ -652,17 +763,17 @@ export class SimController implements OnStart {
 			this.startReply = undefined;
 			if (reply.ok && reply.runId !== undefined && reply.seed !== undefined && isValidRunSeed(reply.seed)) {
 				const world = reply.worldKind ?? RANKED_WORLD_KIND;
-				this.startRun(reply.seed, reply.atBossDoor === true, 0, world, reply.runId, "");
+				this.startRun(reply.seed, reply.atBossDoor === true, 0, world, reply.runId, "", false);
 			} else {
 				warn(`[Sim] ranked run refused (${reply.code ?? "?"}: ${reply.reason ?? ""}); playing unranked`);
-				this.startRun(waiting.seed, waiting.atBossDoor, 0, waiting.world, undefined, "");
+				this.startRun(waiting.seed, waiting.atBossDoor, 0, waiting.world, undefined, "", false);
 			}
 			return false;
 		}
 		if (os.clock() - waiting.sentAt < RUN_START_TIMEOUT_SECONDS) return true;
 		this.awaitingStart = undefined;
 		warn(`[Sim] no answer to startRun after ${RUN_START_TIMEOUT_SECONDS} s; playing unranked`);
-		this.startRun(waiting.seed, waiting.atBossDoor, 0, waiting.world, undefined, "");
+		this.startRun(waiting.seed, waiting.atBossDoor, 0, waiting.world, undefined, "", false);
 		return false;
 	}
 
@@ -673,14 +784,19 @@ export class SimController implements OnStart {
 		requestedWorld: RunWorldKind,
 		requestedRunId: string | undefined,
 		startNotice: string,
+		tutorial: boolean,
 	): void {
 		const pack = this.theme.getPack();
 		let world = requestedWorld;
 		let runId = requestedRunId;
 		let notice = startNotice;
-		// Endless is always scored by its own config; KV_Scoring opts an unranked run of another world in.
+		// Endless is always scored by its own config; KV_Scoring opts an unranked run of another world in. (The
+		// tutorial world is scored by its own config too.)
 		const scoring =
-			world !== "endless" && runId === undefined && Workspace.GetAttribute(RUN_ATTRIBUTES.scoring) === true;
+			!tutorial &&
+			world !== "endless" &&
+			runId === undefined &&
+			Workspace.GetAttribute(RUN_ATTRIBUTES.scoring) === true;
 
 		let made = this.makeRun(seed, atBossDoor, stress, world, runId, scoring);
 		if (typeIs(made, "string") && runId !== undefined) {
@@ -696,6 +812,12 @@ export class SimController implements OnStart {
 			made = this.makeRun(seed, atBossDoor, stress, world, undefined, scoring);
 			runId = undefined;
 		}
+		if (typeIs(made, "string") && tutorial) {
+			// The menu takes over, as after Leave run (the normal flow: the main menu, or the lobby room in a lobby).
+			warn(`[Sim] the tutorial could not start (${made}); back to the menu`);
+			this.stopRun("left");
+			return;
+		}
 		if (typeIs(made, "string")) {
 			error(`[Sim] could not start a run: ${made}`);
 		}
@@ -705,6 +827,7 @@ export class SimController implements OnStart {
 		this.hudTimer = 0;
 		this.pausedByMenu = false;
 		this.pausedByUi = false;
+		this.frozen = false;
 		this.hitstop.clear(); // a pending freeze / slow motion belongs to the old run
 		const floor = run.state.endless?.floor ?? 0;
 		const ctx: RunContext = {
@@ -723,7 +846,8 @@ export class SimController implements OnStart {
 			counter: this.counter,
 			floor,
 			endlessFloor,
-			lobbyId: this.nextRunLobbyId,
+			lobbyId: tutorial ? "" : this.nextRunLobbyId,
+			tutorial,
 		};
 		this.nextRunLobbyId = ""; // a restart (R) is a plain solo run
 		this.ctx = ctx;
@@ -733,7 +857,8 @@ export class SimController implements OnStart {
 		clientStore.startRun(info, this.snapshot(run));
 		print(
 			`[Sim] run ${this.counter} started: seed ${seed}, world ${world}${atBossDoor ? ", boss door" : ""}` +
-				(runId !== undefined ? `, ranked run ${runId}` : ""),
+				(runId !== undefined ? `, ranked run ${runId}` : "") +
+				(tutorial ? " (tutorial: local, not submitted)" : ""),
 		);
 		for (const listener of this.listeners) listener(ctx);
 	}
@@ -819,6 +944,11 @@ export class SimController implements OnStart {
 		}
 		const run = ctx.live;
 		if (run === undefined) return;
+		if (this.frozen) {
+			// The finished tutorial stays on screen: no input, no tick, the frame's events reset (no repeated sounds).
+			run.frame(dt, EMPTY_INPUT, FROZEN_PACER);
+			return;
+		}
 		if (this.pendingReplayCheck) {
 			this.pendingReplayCheck = false;
 			this.replayCheck(run);
@@ -887,6 +1017,7 @@ export class SimController implements OnStart {
 		}
 		const live = ctx.live;
 		if (live === undefined || this.restartAfterForfeit || this.leaveAfterForfeit) return;
+		if (ctx.tutorial) return; // no R / pad restart in the tutorial (the pause overlay has Restart tutorial)
 		if (restartForfeits(ctx.runId !== undefined, live.outcome() === "playing") && live.requestForfeit()) {
 			this.restartAfterForfeit = true;
 			print(`[Sim] run ${ctx.counter}: restarting (forfeit; counts as a death)`);
@@ -946,13 +1077,11 @@ export class SimController implements OnStart {
 		const run = ctx.live;
 		if (run === undefined) return; // co-op runs end through lockstepFinal (coopFrame)
 		if (run.ticks() === 0) return;
-		if (ctx.stress > 0) {
-			clientStore.setVerdict({ status: "skipped", run: ctx.counter, ending, code: "stress" });
-			return;
-		}
-		if (ctx.scoring) {
-			// The server replays the unscored M1 config; a scored run's hash would never match it.
-			clientStore.setVerdict({ status: "skipped", run: ctx.counter, ending, code: "scored" });
+		// Tutorial runs are local practice; stress configs are never built by the server; a KV_Scoring run on an M1
+		// world would never match the server's unscored replay.
+		const never = unsubmittedReason(ctx);
+		if (never !== undefined) {
+			clientStore.setVerdict({ status: "skipped", run: ctx.counter, ending, code: never });
 			return;
 		}
 		if (!shouldSubmitRun(ending, run.ticks(), this.lastSubmittedDied)) {

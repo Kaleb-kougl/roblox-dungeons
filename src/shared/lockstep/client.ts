@@ -19,7 +19,6 @@
  * predicted (presentation only); nothing predicted ever reaches the sim.
  */
 import {
-	START_HALF_HEARTS,
 	SIM_DT,
 	copyInput,
 	createSimState,
@@ -30,6 +29,7 @@ import {
 	type InputFrame,
 	type SimConfig,
 	type SimState,
+	runStartHalfHearts,
 } from "shared/sim";
 import { RunTelemetry, readRunScore, summarizeRun, type RunFinal } from "shared/run";
 import {
@@ -93,7 +93,7 @@ export class LockstepClient implements RunView {
 	readonly config: Readonly<SimConfig>;
 	private readonly tunables: LockstepTunables;
 	private readonly decoder: MergedDecoder;
-	private readonly telemetry = new RunTelemetry(START_HALF_HEARTS);
+	private readonly telemetry: RunTelemetry;
 	private readonly queue: InputFrame[][] = [];
 	private queueHead = 0;
 	private received = 0;
@@ -125,6 +125,7 @@ export class LockstepClient implements RunView {
 		this.lead = this.tunables.inputDelay;
 		this.decoder = new MergedDecoder(params.players);
 		this.state = createSimState(params.seed, params.spawn.x, params.spawn.z, params.config);
+		this.telemetry = new RunTelemetry(runStartHalfHearts(params.config));
 	}
 
 	/** Ticks received from the server so far. */

@@ -8,8 +8,10 @@ import {
 	selectLeaveConfirm,
 	selectRunInfo,
 	selectSnapshot,
+	selectTutorial,
 } from "client/store";
 import { role, str } from "client/ui/theme";
+import { TUTORIAL_STRINGS } from "shared/tutorial";
 import { SFX } from "shared/view/audio";
 import { HUD_STRINGS, HUD_VIEW, LEADERBOARD_STRINGS, PAUSE_HINT } from "shared/view/hud";
 import { MENU_STRINGS, pauseItems, type PauseItem } from "shared/view/menu";
@@ -31,15 +33,49 @@ const ITEMS: Record<PauseItem, ItemSpec> = {
 	leave: { text: MENU_STRINGS.leaveRun, sound: SFX.uiClick, run: (a) => a.setLeaveConfirm(true) },
 	settings: { text: HUD_STRINGS.settings, sound: SFX.uiClick, run: (a) => a.setSettingsOpen(true) },
 	leaderboards: { text: LEADERBOARD_STRINGS.open, sound: SFX.uiClick, run: (a) => a.setLeaderboardOpen(true) },
+	restartTutorial: { text: TUTORIAL_STRINGS.pauseRestart, sound: SFX.uiConfirm, run: (a) => a.playTutorial() },
+	skipTutorial: { text: TUTORIAL_STRINGS.pauseSkip, sound: SFX.uiClick, run: (a) => a.setTutorialSkipConfirm(true) },
+};
+
+/** A confirm in place of the buttons: its question, then Yes / No (No is selected first with a pad). */
+interface ConfirmSpec {
+	readonly message: string;
+	readonly yes: string;
+	readonly no: string;
+	readonly yesName: string;
+	readonly noName: string;
+	readonly onYes: (a: HudActions) => void;
+	readonly onNo: (a: HudActions) => void;
+}
+
+const LEAVE_CONFIRM: ConfirmSpec = {
+	message: MENU_STRINGS.leaveConfirm,
+	yes: MENU_STRINGS.leaveYes,
+	no: MENU_STRINGS.leaveNo,
+	yesName: "LeaveYes",
+	noName: "LeaveNo",
+	onYes: (a) => a.leaveRun(),
+	onNo: (a) => a.setLeaveConfirm(false),
+};
+const LEAVE_CONFIRM_COOP: ConfirmSpec = { ...LEAVE_CONFIRM, message: MENU_STRINGS.leaveConfirmCoop };
+const SKIP_CONFIRM: ConfirmSpec = {
+	message: TUTORIAL_STRINGS.pauseSkipConfirm,
+	yes: TUTORIAL_STRINGS.pauseSkipYes,
+	no: TUTORIAL_STRINGS.pauseSkipNo,
+	yesName: "SkipYes",
+	noName: "SkipNo",
+	onYes: (a) => a.skipTutorial(),
+	onNo: (a) => a.setTutorialSkipConfirm(false),
 };
 
 /**
  * The pause overlay. Solo (P / Start; also while the Roblox menu is open): the run is paused, the scene dimmed,
  * "Paused" and Resume / Restart / Leave run / Options / Leaderboards. Co-op runs never pause: the same key
  * opens the party overlay (MenuController) over the running run, with Resume (closes it) / Leave run / Options /
- * Leaderboards. Leave run first shows the confirm ("Leaving ends your run..."; Leave / Cancel). With a
- * gamepad the selection starts on the first button (Cancel in the confirm). Hidden while a panel is open and once
- * the run is over (the run-over panel has the exits).
+ * Leaderboards. A first-run tutorial run (paused like solo): Resume / Restart tutorial / Skip tutorial / Options.
+ * Leave run first shows the confirm ("Leaving ends your run..."; Leave / Cancel), Skip tutorial its own ("Skip the
+ * tutorial?"; Skip / Keep playing). With a gamepad the selection starts on the first button (Cancel / Keep playing
+ * in a confirm). Hidden while a panel is open and once the run is over (the run-over panel has the exits).
  */
 export function PauseOverlay() {
 	const s = useSelector(selectSnapshot);
@@ -48,10 +84,13 @@ export function PauseOverlay() {
 	const confirm = useSelector(selectLeaveConfirm);
 	const panelOpen = useSelector(selectAnyPanelOpen);
 	const device = useSelector(selectInputDevice);
+	const tutorial = useSelector(selectTutorial);
 	const actions = useHudActions();
 	const firstRef = useRef<TextButton>();
 	const coop = info.coop;
 	const open = s.outcome === "playing" && !panelOpen && (coop ? coopOverlay : s.paused);
+	const inTutorial = !coop && tutorial.active && !tutorial.ended;
+	const skipConfirm = inTutorial && tutorial.skipConfirmOpen;
 
 	useEffect(() => {
 		if (!open || device !== "gamepad") return;
@@ -60,47 +99,48 @@ export function PauseOverlay() {
 		return () => {
 			if (GuiService.SelectedObject === button) GuiService.SelectedObject = undefined;
 		};
-	}, [open, device, confirm]);
+	}, [open, device, confirm, skipConfirm, inTutorial]);
+
+	// The skip question does not outlive the overlay (resumed with P, or the Roblox menu closed).
+	useEffect(() => {
+		if (!open && tutorial.skipConfirmOpen) actions.setTutorialSkipConfirm(false);
+	}, [open, tutorial.skipConfirmOpen]);
 
 	if (!open) return undefined;
 	const hintKey = coop ? MENU_STRINGS.coopHint : HUD_STRINGS.pauseHint;
 	let body: React.Element;
-	if (confirm) {
+	if ((confirm && !inTutorial) || skipConfirm) {
+		const spec = skipConfirm ? SKIP_CONFIRM : coop ? LEAVE_CONFIRM_COOP : LEAVE_CONFIRM;
 		body = (
 			<>
-				<Text
-					order={2}
-					align={Enum.TextXAlignment.Center}
-					wrap={true}
-					text={str(coop ? MENU_STRINGS.leaveConfirmCoop : MENU_STRINGS.leaveConfirm)}
-				/>
+				<Text order={2} align={Enum.TextXAlignment.Center} wrap={true} text={str(spec.message)} />
 				<Row order={3} align={Enum.HorizontalAlignment.Center}>
 					<MenuButton
 						order={1}
-						name="LeaveYes"
+						name={spec.yesName}
 						size={CONFIRM_BUTTON}
-						text={str(MENU_STRINGS.leaveYes)}
+						text={str(spec.yes)}
 						onActivated={() => {
 							actions.playUi(SFX.uiConfirm);
-							actions.leaveRun();
+							spec.onYes(actions);
 						}}
 					/>
 					<MenuButton
 						ref={firstRef}
 						order={2}
-						name="LeaveNo"
+						name={spec.noName}
 						size={CONFIRM_BUTTON}
-						text={str(MENU_STRINGS.leaveNo)}
+						text={str(spec.no)}
 						onActivated={() => {
 							actions.playUi(SFX.uiClick);
-							actions.setLeaveConfirm(false);
+							spec.onNo(actions);
 						}}
 					/>
 				</Row>
 			</>
 		);
 	} else {
-		const buttons = pauseItems(coop).map((item, i) => {
+		const buttons = pauseItems(coop, inTutorial).map((item, i) => {
 			const spec = ITEMS[item];
 			return (
 				<MenuButton

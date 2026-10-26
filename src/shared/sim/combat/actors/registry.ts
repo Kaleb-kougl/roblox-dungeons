@@ -4,18 +4,27 @@
  * is registered before a run starts.
  *
  * Kinds in sim state are NUMBERS: an archetype's index is its position in the list of registered ids sorted by
- * code-unit order (compareIds). The index depends only on WHICH archetypes are registered, never on import order.
- * The table is sealed when the first run's combat state is created: registering a NEW id after that throws;
- * re-registering an existing id replaces its def and keeps its index.
+ * (def.band, then code-unit order of the id: compareIds). The index depends only on WHICH archetypes are registered,
+ * never on import order. The table is sealed when the first run's combat state is created: registering a NEW id after
+ * that throws; re-registering an existing id replaces its def and keeps its index.
  *
- * The game registers `boss.act1, bruiser, sniper, swarmer, turret.caster, turret.sniper, turret.sprayer` (indices 0..6,
- * the web build's table); specs may add test archetypes (shared/sim/testing) in their own module world.
+ * Bands (Roblox port): band 0 (the default) is the web build's table, `boss.act1, bruiser, sniper, swarmer,
+ * turret.caster, turret.sniper, turret.sprayer` (indices 0..6; ActorState.kind is hashed, so the golden runs pin it).
+ * The port's own archetypes take a higher band so they number AFTER every web id instead of sorting in between and
+ * shifting them: `dummy` (the tutorial's training dummy) is band PORT_BAND_TUTORIAL = 1, index 7. A later addition
+ * takes the next band, so no index that a recording or fixture already holds ever moves. Specs may add test archetypes
+ * (shared/sim/testing, band 0) in their own module world.
  */
 
 import { stableSort } from "shared/jsmath";
 import { isFiniteNumber, isIntegerNumber } from "../../jsnum";
 import { compareIds, isValidRegistryId } from "../registryIds";
 import type { ArchetypeData, ArchetypeDef } from "./types";
+
+/** ArchetypeDef.band of the web build's archetypes (the default). */
+export const WEB_ARCHETYPE_BAND = 0;
+/** ArchetypeDef.band of the tutorial's archetypes (`dummy`): numbered after the whole web table. */
+export const PORT_BAND_TUTORIAL = 1;
 
 const byId = new Map<string, ArchetypeDef>();
 let sorted: ArchetypeDef[] | undefined;
@@ -45,6 +54,11 @@ export function registerArchetype<D extends ArchetypeData>(def: ArchetypeDef<D>)
 		"data.damageCapPerSecond must be > 0 when set",
 	);
 	check(typeIs(def.step, "function"), id, "step(ctx, actor) is required");
+	check(
+		def.band === undefined || (isIntegerNumber(def.band) && def.band >= WEB_ARCHETYPE_BAND),
+		id,
+		"band must be a whole number >= 0 when set",
+	);
 	if (sealed && !byId.has(id)) {
 		error(
 			`registerArchetype('${id}'): the archetype table is sealed (a run already started). Register archetypes at ` +
@@ -52,16 +66,28 @@ export function registerArchetype<D extends ArchetypeData>(def: ArchetypeDef<D>)
 			0,
 		);
 	}
+	const prev = byId.get(id);
+	if (sealed && prev !== undefined && bandOf(prev) !== bandOf(def as unknown as ArchetypeDef)) {
+		error(`registerArchetype('${id}'): the archetype table is sealed; a re-registration can't change its band`, 0);
+	}
 	byId.set(id, def as unknown as ArchetypeDef);
 	sorted = undefined;
 	return def;
+}
+
+function bandOf(def: ArchetypeDef): number {
+	return def.band ?? WEB_ARCHETYPE_BAND;
 }
 
 function sortedTable(): ArchetypeDef[] {
 	if (sorted === undefined) {
 		const defs: ArchetypeDef[] = [];
 		for (const [, def] of byId) defs.push(def);
-		sorted = stableSort(defs, (a, b) => compareIds(a.id, b.id));
+		sorted = stableSort(defs, (a, b) => {
+			const ba = bandOf(a);
+			const bb = bandOf(b);
+			return ba !== bb ? (ba < bb ? -1 : 1) : compareIds(a.id, b.id);
+		});
 	}
 	return sorted;
 }
@@ -94,4 +120,11 @@ export function hasArchetype(id: string): boolean {
 /** Every registered id, in index order. */
 export function archetypeIds(): ReadonlyArray<string> {
 	return sortedTable().map((d) => d.id);
+}
+
+/** The band-0 ids (the web build's table, plus test archetypes in a spec's world), in index order: indices 0..n-1. */
+export function webArchetypeIds(): ReadonlyArray<string> {
+	const out: string[] = [];
+	for (const d of sortedTable()) if (bandOf(d) === WEB_ARCHETYPE_BAND) out.push(d.id);
+	return out;
 }

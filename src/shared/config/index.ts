@@ -8,3 +8,4 @@ export * from "./spikes";
 export * from "./view";
 export * from "./mode";
 export * from "./theme";
+export * from "./tutorial";

@@ -13,6 +13,7 @@ rebinding, audio, display). Everything presentation-side reads the sim and never
 | `ThemeController` | `src/client/controllers/game/ThemeController.ts` | Loads the theme pack in `onInit`; every visual comes from it (placeholder shapes + colour roles). |
 | `InputController` | `.../game/InputController.ts` | Polls keyboard, mouse and the gamepad once per frame into an `InputFrame` (pure mapping: `shared/play/inputMapping.ts`). Sinks every bound key and both sticks in ContextActionService (High priority) so stock controls never act. Mouse aim: camera ray through the pointer onto the floor plane. Tracks the last-used device for the HUD hint (`game.inputDevice` in Reflex). Reports driver keys (R, F8 / L, D-pad down). Reads the player's bindings from the store (`selectBindings`) and re-binds the sink when they change (see "Options screen"). |
 | `SimController` | `.../game/SimController.ts` | Owns the live run: `buildWorldSetup(world, seed, { atBossDoor })` (the server's own world registry; `endless` by default), a `LiveRun` (`shared/play/liveRun.ts`), pause, restart, F8 replay check, the ranked start (`startRun`), per-floor segments (`submitSegment`, cut on `floorChanged`) and `finishRun`, the unranked `submitRun`, verdicts, the ~10 Hz HUD snapshot. Read-only accessors for views: `getContext()` (the current floor's config / dungeon in endless runs), `getState()`, `getAlpha()`, `getFrameEvents()`, `onRunStarted(cb)`, `onFloorChanged(cb)` (endless: WorldController rebuilds, CameraController snaps). |
+| `TutorialController` | `.../game/TutorialController.ts` | The first-run tutorial (docs/TUTORIAL.md; "The tutorial run" below): the first-run gate (`requestOnboarding` / `onboardingStatus`, `TUTORIAL.statusTimeoutSeconds`, `KV_Tutorial`), then per tutorial run a `TutorialDirector` updated each frame at render step 103 (`KV_Tutorial`), its view in the Reflex `tutorial` slice, `tutorialStarted` / `tutorialStep` / `tutorialFinished`, callout toasts, the ghost half heart, the end (freeze, outro beat, outro) and the pause / outro / main menu actions (Restart tutorial, Skip, replay). `onFirstRunDecided(cb)` (MenuController's join flow waits for it), `getMarker()` for the world marker. |
 | `CameraController` | `.../game/CameraController.ts` | Spike B's iso rig on the live run: Scriptable, FOV 7, yaw 45 / pitch 55, distance for 16.875 tiles of view height, damped follow (tau 1/6 s) of the interpolated player, 1-texel snap. Snaps to the player at every run start. Stands down while `KV_SpikeCamera` is on. |
 | `WorldController` | `.../game/WorldController.ts` | Builds the floor: greedy-merged floor / wall / pool Parts (`shared/view/tileMerge.ts`) in the biome's `tile.biome.N.*` placeholder colours, plus one backdrop slab (`background` role). Rebuilds only when the floor changes. When the pack has the biome floor tile as an image with `tilesPerImage`, each floor slab gets a top-face `Texture` repeating every `tilesPerImage * STUDS_PER_TILE` studs (colour stays the biome's). Each Part takes the biome's `materials` (`ThemePack.biome(id).materials.floor / wall / pool`, `Enum.Material[name]`, SmoothPlastic by default); a textured floor is always SmoothPlastic. Solid pillars are WALL tiles and merge into the wall Parts. |
 | `CharacterController` | `.../game/CharacterController.ts` | Makes a spawned default character inert (root anchored locally); see "The default character". |
@@ -21,6 +22,7 @@ rebinding, audio, display). Everything presentation-side reads the sim and never
 | `SpriteView` | `.../render/SpriteView.ts` | One pooled sprite for a theme `sprites` set: a BillboardGui + ImageLabel on an invisible feet-anchor Part (moved in the actors' BulkMoveTo). Size / StudsOffset from `spriteBillboard` (pivot pixel on the feet), `ResampleMode` from the set, `LightInfluence` 0, not AlwaysOnTop; writes Image / ImageRect only when the frame, facing or sheet changes; tint (ImageColor3), fade (ImageTransparency) and blink (Visible) only on change. |
 | `WeaponViewController` | `.../render/WeaponViewController.ts` | Sword swing fans + sweeping blade, finisher wind-up, guard fan, bow charge ring + aim line, heavy-arrow release ring (dashed floor markings). |
 | `RunMarkerController` | `.../render/RunMarkerController.ts` | M2 (endless runs): a relic pedestal (Cylinder, `uiAccent`) on each TREASURE room's centre tile and the curse shrine's zone (flat disc, `uiMana`) in the SHRINE room; a taken pedestal / used shrine dims (`uiTextDim`). Rebuilt per floor. With the `ui.marker.pedestal` image, a camera-facing beam stands on each live pedestal (hidden once taken). |
+| `TutorialMarkerController` | `.../render/TutorialMarkerController.ts` | Tutorial runs only: one upright beam (a Neon Cylinder in `uiAccent`; plus a camera-facing `ui.marker.tutorial` billboard if the pack has that image) on the director's marker target (next lesson door, pedestal, shrine, stairwell, the live boss), bobbing / breathing by the juice `motionScale` (still under reduced motion), hidden without a target and once the tutorial ended. Built per tutorial run (Janitor). |
 | `TelegraphController` | `.../render/TelegraphController.ts` | Sniper aim lines, bruiser shockwave rings (archetype `data.fx`), a ring for any other wind-up, Mother Bramble's attack previews, slam lane, roar rings and the arena seal fence. |
 | `FxTrackerController` | `.../fx/FxTrackerController.ts` | Right after the sim (render step 102): the pure `HitTracker` diffs the live actors and dispatches the frame's FX events (hit, killed, spawned, capped, bossPhase, bossDefeated, reset) to the juice views and audio, with the effective juice settings. |
 | `FreezeFrameController` | `.../fx/FreezeFrameController.ts` | FX events -> hitstop requests on `SimController.hitstop` (kill 50 ms, heavy / elite 80 ms, boss phase 120 ms, boss death 250 ms + slow-mo); clears it when the setting goes off; the 1-render-pixel camera nudge (`getNudge()`, read by CameraController). |
@@ -32,7 +34,7 @@ rebinding, audio, display). Everything presentation-side reads the sim and never
 | `SettingsController` | `.../ui/SettingsController.ts` | The player's settings (juice, controls, audio, display): server sync (request / update / reset / settingsChanged), the system Reduce Motion flag, `KV_ResetBindings`, O toggles the Options screen, B closes a prompt on it or the screen, the screen pauses the run. |
 | `RebindController` | `.../ui/RebindController.ts` | The Options screen's rebinding: capture (countdown, cancel, owns the input), swap prompt, refusal notes, Clear, Reset device, the input test strip. |
 | `HudController` | `.../ui/HudController.tsx` | Mounts `GameHud` (React + Reflex; two ScreenGuis through a portal) and the menu shell `MenuLayer` (client/ui/menu, its own ScreenGui) with the HUD and menu actions, switches gamepad navigation on while a menu is open (menu screens, pause / party overlay, run-over panel, panels), hides the stock Health / Backpack CoreGui. |
-| `MenuController` | `.../ui/MenuController.ts` | L3 / L6: the main menu on join (no run starts on its own; `KV_SkipMenu` starts one at once), the screen + back stack (Reflex `menu`; pad B / Backspace go back), Play solo / Lobbies / Options / Leaderboard, the menu after a run (the lobby room while in a lobby, else the main menu), the co-op party overlay (the pause key in a party run) and Leave run. See "Main menu, lobbies and Leave run". |
+| `MenuController` | `.../ui/MenuController.ts` | L3 / L6: the main menu on join, once the first-run gate decided against the tutorial (a first-time player goes straight into it instead; no run starts on its own; `KV_SkipMenu` starts one at once), the screen + back stack (Reflex `menu`; pad B / Backspace go back), Play solo / Lobbies / Tutorial / Options / Leaderboard, the menu after a run (the lobby room while in a lobby, else the main menu), the co-op party overlay (the pause key in a party run) and Leave run. See "Main menu, lobbies and Leave run". |
 | `LobbyController` | `.../ui/LobbyController.ts` | L5: the lobby remotes into the Reflex `lobby` slice (list, my lobby, invites, notice toasts, the players in this server), the lobby requests, and `lobbyRunStart` (a one-player lobby's ranked solo run). |
 
 Pure, headlessly tested logic: `src/shared/play/` (input mapping, live loop, HUD snapshot), `src/shared/view/`
@@ -88,6 +90,10 @@ BindToRenderStep priorities (`shared/view` `RENDER_ORDER`):
 2. **Input + 2 (102) `KV_FxTracker`** (FxTrackerController): the hit tracker diffs the actors -> FX events -> the
    freeze rules (hitstop requests for the NEXT frame), bars, numbers, particles; then audio maps the frame's events to
    sounds.
+   **Input + 3 (103) `KV_Tutorial`** (TutorialController, `RENDER_ORDER.tutorialAfterFx`): on join, until it decided,
+   the first-run gate; in a tutorial run (not paused, not frozen) `TutorialDirector.update` with the state, the run's
+   config, `LiveRun.frameEvents`, the frame's sampled buttons and dt -> the `tutorial` slice (on a revision change),
+   `tutorialStep` per new funnel step, callout toasts, the ghost heart.
 3. **Camera + 1 (201) `KV_GameCamera`**: follows the interpolated player (+ the freeze-frame nudge).
 4. **Camera + 2 (202)** `KV_Bullets`, `KV_Actors`, `KV_Weapons`, `KV_Telegraphs`, `KV_HealthBars`,
    `KV_DamageNumbers`, `KV_Particles`: read `getState()` / `getAlpha()`, move pooled Parts / BillboardGuis. They never
@@ -108,9 +114,9 @@ Mouse aim uses the previous frame's camera (the web build does the same).
 | Dodge roll | Space | LB | same |
 | Flask | F | D-pad up | same |
 | Ember (bullet clear) | Q | RB | same |
-| Pause (overlay: Resume / Restart / Leave run / Options / Leaderboards; co-op: the non-pausing party overlay) | **P** | Start | **Escape** / Start |
+| Pause (overlay: Resume / Restart / Leave run / Options / Leaderboards; co-op: the non-pausing party overlay; a tutorial run: Resume / Restart tutorial / Skip tutorial / Options) | **P** | Start | **Escape** / Start |
 | Options screen (juice settings, controls, audio, display) | **O** (B or Close closes it) | pause overlay -> Options; B closes | O (juice panel) |
-| Restart (same seed) | R (any time; a ranked run still being played is forfeited first: a death) | the pause overlay's Restart; after a death / victory **A** on the selected Again (menus and the run-over panel take the pad, so the D-pad-down restart binding never fires there) | R |
+| Restart (same seed) | R (any time but in a tutorial run; a ranked run still being played is forfeited first: a death) | the pause overlay's Restart; after a death / victory **A** on the selected Again (menus and the run-over panel take the pad, so the D-pad-down restart binding never fires there) | R |
 | Menu back (main menu, lobby screens, the Leave run confirm, the party overlay) | Backspace | B | (none) |
 | Debug: one hit on the player | K (KV_Debug only) | | K |
 | Debug: 10 % off an engaged boss | J (KV_Debug only) | | J |
@@ -177,7 +183,11 @@ player's bound key for the last-used device (`selectBindings` + shared/play `swa
 | top centre (endless) | `ToastPanel` | M2: `Boon: <name>` / `Relic found: <name>` / `Cursed: <name>` / `Second Wind!` / Vampire Fang heals for 3 s (store `game.toasts`, from the run view's `runEvents`: the local player's own events, solo or co-op), and the `1: accept a curse` hint while the player stands in an unused shrine's zone |
 | top centre | `BossBar` | while a boss is engaged: `<boss id>.name`, `Phase I / II / III`, an hp bar (`boss` role) with notches at the phase marks (66 % / 33 %, from the archetype's `phaseHp`) |
 | centre | `RunOverPanel` | after a death / victory: `Run over` / `Victory`, `You died — press R to retry` / `Mother Bramble defeated — press R to play again` (R, or A with a pad: the selection starts on Again) + `or <other key>`, time, hits taken, kills; in scored runs the score, best combo and the points per source (kills, grazes, guard, rooms, perfect, fast, floors, boss); then **Again** (solo) and **Main menu**, or **Back to lobby** while in a lobby. A party run: `The party is down — press R to return` (or `The server ended the run (<reason>) — press R to return` once the server rejected it, also before the wipe), Back to lobby only. Endless runs have no victory: only death ends them. |
-| centre (menu) | `PauseOverlay` | solo, while paused and playing: dimmed scene, `Paused`, Resume / Restart / Leave run / Options / Leaderboards, `P to resume` / `Start to resume`. Co-op (the pause key; the run goes on, no dimming): `Party run`, Resume / Leave run / Options / Leaderboards, `P to close · the run does not pause`. Leave run shows the confirm first (`Leaving ends your run. It counts as a death and your score is submitted.`, Leave / Cancel; Cancel selected with a pad) |
+| centre (menu) | `PauseOverlay` | solo, while paused and playing: dimmed scene, `Paused`, Resume / Restart / Leave run / Options / Leaderboards, `P to resume` / `Start to resume`. Co-op (the pause key; the run goes on, no dimming): `Party run`, Resume / Leave run / Options / Leaderboards, `P to close · the run does not pause`. Leave run shows the confirm first (`Leaving ends your run. It counts as a death and your score is submitted.`, Leave / Cancel; Cancel selected with a pad). In a tutorial run: Resume / Restart tutorial / Skip tutorial / Options; Skip asks `Skip the tutorial?` (Skip / Keep playing; Keep playing selected with a pad). Buttons: `shared/view/menu` `pauseItems(coop, tutorial)` |
+| lower centre (tutorial) | `TutorialPanel` | the step's prompt in the last-used device's words (`tutorial.prompt.<id>.<keyboard\|gamepad>`, a template naming the player's BOUND keys: `{flask}`, `{roll}`, ... from `shared/view/hud` `tutorialPromptVars(device, bindings)`), progress `{step} / {count}` (steps done), `P: pause / skip` / `Start: pause / skip`; hidden while the objective card is up and once the tutorial ended |
+| centre (tutorial) | `ObjectiveCard` | the first step: `Practice Descent`, the objective in two lines, `Click: Continue` / `RT: Continue` (the bound attack input; FIRE, after 0.75 s) |
+| centre (menu, tutorial) | `TutorialOutro` | 1.5 s after the tutorial's end: `That's the descent.`, what a real run is (the bound leaderboard key, default `B`; `Start` on a pad: `tutorialLeaderboardHint`), Start my first run / Play the tutorial again; gamepad selection on the first button |
+| on the taught element (tutorial) | `HighlightRing` (`TutorialFx.tsx`) | a pulsing `uiAccent` UIStroke on the hearts row / flask row (StatusPanel `highlight`), WeaponPanel, ScorePanel or BossBar (`highlight` props, from the slice); static under reduced motion. StatusPanel's `ghostHeart` token flashes a fading half heart (`uiHealth`) after the first harmless hits |
 | centre (menu) | `OptionsScreen` | the Options screen: Juice / Controls / Audio / Display tabs (below) |
 | bottom right | `InfoPanel` | `Project Kaleb-Vale · <biome> · seed N · <dungeon>`, the fallback notice, the verdict line (`Run 2 (death): verified by the server (ab12cd34)` / `submitted, checking...` / `rejected (code) reason` / `not submitted (stress)`), and with KV_Debug the debug line (tick, recorded ticks, enemies, bullets, replay check) |
 
@@ -345,6 +355,7 @@ is open, and only one of the Options screen / leaderboard panel is open at a tim
 | `KV_Scoring` | boolean | M2 scoring on an M1 world (`game` etc.; endless is always scored). Such runs are not submitted (`not submitted (scored)`): the server replays M1 unscored. |
 | `KV_SkipMenu` | boolean | Dev only (read once, on join): no main menu; a solo run starts at once, as before the menu existed. Off by default. Co-op runs start from a lobby (Lobbies in the main menu): see "Main menu, lobbies and Leave run". |
 | `KV_ResetBindings` | boolean | Dev only, read ONCE when the client starts (not on R): when the server's settings arrive, the saved key bindings (`controls` group) are cleared and saved that way; the other groups are kept. Off by default (shared/settings `SETTINGS_ATTRIBUTES`). |
+| `KV_Tutorial` | boolean | Read once on join (not on R). `true`: the join starts the tutorial whatever the server says (the server is not asked; no main menu first); `false`: never (the normal join flow at once: the main menu, or `KV_SkipMenu`'s solo run). Unset: the server's `onboardingStatus` decides. Server side, `KV_ResetOnboarding` (docs/SERVER.md) resets the stored flag instead. |
 
 If the `game` world cannot start (e.g. a build without the actor archetypes: "Unknown archetype"), the client falls
 back to `dungeonNoEncounter` and says so in the HUD's info line.
@@ -359,9 +370,11 @@ rules `lobbyStartAccepted` / `afterRunPath` / `runOverExits` / `pauseItems` / `r
 settings layer). Reflex: `menu` (screen, back stack, Leave run confirm, party overlay) and `lobby` (list, my lobby with
 its arrival time, received invites, notices, the players in this server).
 
-- **Join**: the main menu over a dark backdrop (no world yet): the title, **Play solo** (a ranked solo run; "Starting
-  run..." while the server answers), **Lobbies** ("Your lobby" while in one: straight to the room), **Options** (the
-  juice settings panel for now) and **Leaderboard** (the leaderboard panel). Pad: the selection starts on Play solo;
+- **Join**: once the first-run gate decided (a first-time player goes straight into the tutorial instead: "The
+  tutorial run" below; until then only the dark backdrop), the main menu over a dark backdrop (no world yet): the
+  title, **Play solo** (a ranked solo run; "Starting run..." while the server answers), **Lobbies** ("Your lobby"
+  while in one: straight to the room), **Tutorial** (the Practice Descent again), **Options** (the Options screen)
+  and **Leaderboard** (the leaderboard panel). Pad: the selection starts on Play solo;
   B / Backspace go back a screen (not while a panel is open: B closes the panel). Escape stays Roblox's menu key.
 - **Lobby browser**: one row per lobby the server lists for this player (never closed ones): the preset name
   (`lobby.name.*`; "{host}'s descent" with the host's DisplayName from the Player in this server), count / max,
@@ -405,6 +418,42 @@ its arrival time, received invites, notices, the players in this server).
 
 The old M4 invite flow is gone (task L7): `KV_Party`, `KV_PartyAutoAccept`, `PartyInvitePanel`, the
 `partyInvite*` remotes, `shared/run/partyInvites.ts` and the `hud.party.*` strings.
+
+## The tutorial run (first-run flow, docs/TUTORIAL.md)
+
+1. **Join.** Nothing starts until the TutorialController's first-run gate decides (`shared/tutorial`
+   `FirstRunGate` / `firstRunChoice`, specced in `flow.spec.ts`): the menu shell shows only its backdrop
+   (`menu.awaitingFirstRun`; no menu, no invite toasts). The client sends `requestOnboarding` (the server also sends
+   `onboardingStatus` after its join load) and waits up to `TUTORIAL.statusTimeoutSeconds` (6 s).
+   `loaded && !tutorialDone` -> **straight into the tutorial** (no main menu first); done, a failed load
+   (`loaded: false`) or no answer -> the normal join flow, exactly as without the tutorial (MenuController: the main
+   menu, or a solo run with `KV_SkipMenu`). `KV_Tutorial` overrides it without asking. MenuController waits for
+   `TutorialController.onFirstRunDecided`.
+2. **Tutorial run.** `SimController.startTutorial()` (the gate, the main menu's **Tutorial**, Restart tutorial, Play
+   the tutorial again): the old solo run is left as by Play solo (submitted as abandoned when it qualifies) and world
+   `tutorial` (`buildWorldSetup`, `TUTORIAL.runSeed`) starts **locally**: no `startRun`, no segments, never submitted
+   (`unsubmittedReason` = `tutorial`; verdict line `Practice: not submitted (tutorial)`). `RunContext.tutorial` is
+   true, `lobbyId` "". Every tutorial start fires `tutorialStarted` and gets a fresh `TutorialDirector`. R / D-pad
+   down do nothing (`handleReset`).
+3. **Lobbies during it.** The server treats a player in the tutorial as busy (docs/SERVER.md "Onboarding"): no lobby
+   create / join / invite, and a lobby Start or countdown with them in it is refused / cancelled. Client side nothing
+   can take a running tutorial over: `partyRunStarted` and a solo `lobbyRunStart` are ignored while
+   `SimController.inRunningTutorial()` (a finished tutorial on its outro is over: a lobby start may take it), the
+   in-run `Lobby invites: N` badge is hidden, and invite toasts only ever show on menu screens.
+4. **End.** The director's `finished` (the floor 2 -> 3 change): `SimController.freezeTutorialRun` freezes the run on
+   screen at once (a pacer that freezes every frame: no tick, no recording, no events; the floor 3 draft never shows:
+   DraftOverlay is hidden while the slice says `ended`), the verdict line shows the tutorial's and
+   `tutorialFinished("completed")` goes out in the same frame; `TUTORIAL.outroDelaySeconds` (1.5 s) later the outro
+   card opens (only the card waits for the beat).
+5. **Outro.** Start my first run = the main menu's **Play solo** (`MenuController.playSolo` -> `startSolo`: a ranked
+   run unless KV_Seed / KV_World / stress). Play the tutorial again -> a new tutorial run.
+6. **Pause.** Resume / Restart tutorial / Skip tutorial / Options (`pauseItems(false, true)`; no Leave run and no
+   Leaderboards). Skip tutorial -> `Skip the tutorial?` -> Skip -> `tutorialFinished("skipped")`, then the run is
+   left like Leave run (`SimController.leaveRun`: a tutorial run is stopped at once, unsubmitted, no forfeit) and
+   MenuController opens the menu after a run: the lobby room while in a lobby, else the main menu. The replay lives
+   in the main menu (Tutorial), not in the pause overlay.
+
+Leaving mid-tutorial marks nothing: the next join offers it again.
 
 ## The default character
 
@@ -450,6 +499,11 @@ Headless (L3 / L5 / L6): the menu back stack, the lobby browser / room / invite 
 handoff gate and the exit rules (`shared/view/menu/menu.spec.ts`), every `menu.*` / `lobby.*` string
 (`hud.spec.ts`), the solo forfeit (`shared/play/liveRun.forfeit.spec.ts`).
 
+Headless (tutorial client): the first-run gate, the view -> slice copy and the outro beat (`shared/tutorial`
+`flow.spec.ts`), the ring / marker pulses, ghost heart fade, the bound-key prompt templates (`tutorialPromptVars`,
+every prompt filled on every device) and the tutorial verdict line (`shared/view/hud` `tutorialHud.spec.ts`), the
+tutorial pause items (`menu.spec.ts`), and `unsubmittedReason` (`submitPolicy.spec.ts`).
+
 Studio only: every controller (input polling and sinking, camera, Parts, BulkMoveTo, BillboardGuis, the React HUD,
 the menu shell and lobby screens, GUI selection, SoundGroups / Sounds, remotes), the Options screen and the rebinding
 capture.
@@ -460,8 +514,9 @@ Setup: `npm run build`, `rojo serve`, open a **Baseplate** place, connect Rojo. 
 (its haze washes out a scene seen from ~550 studs). Game Settings > Security: enable Studio Access to API Services.
 With the actors merged the default `game` world has enemies; without them see "fallback" below.
 
-0. **Main menu (F5).** The main menu shows (title, Play solo, Lobbies, Options, Leaderboard) over a dark backdrop;
-   no run starts. Play solo starts the run below (with `KV_SkipMenu` on Workspace the menu is skipped). For lobbies
+0. **Main menu (F5).** With a played tutorial (or `KV_Tutorial` = false on Workspace; a fresh player goes straight
+   into the tutorial instead: "Tutorial" below), the main menu shows (title, Play solo, Lobbies, Tutorial, Options,
+   Leaderboard) over a dark backdrop; no run starts. Play solo starts the run below (with `KV_SkipMenu` on Workspace the menu is skipped). For lobbies
    use Studio's Test > Clients and Servers (3 players): Lobbies > Create lobby (Open) on Player1 -> its room;
    Player2 / Player3 see it in their browser (`Player1's descent 1/8 Open`) and Join; Ready on all three; Player1's
    Start counts down (`Starting in 3...`) and every client switches to the party run. In the run, P opens `Party run`
@@ -578,6 +633,34 @@ With the actors merged the default `game` world has enemies; without them see "f
 24. **Audio / Display tabs.** Audio: `-` / `+` steps Master / Music / Sound effects by 10 % (0..100 %); SoundService's
     `sfx` / `music` SoundGroup Volume follows (Explorer; music = 0.6 x master x music). Display: HUD scale 80 % shrinks
     every panel, 125 % grows it, at once; it survives a rejoin. Each tab's Reset to defaults resets only that tab.
+
+### Tutorial (docs/TUTORIAL.md "Studio smoke test")
+
+Run the tutorial checklist in docs/TUTORIAL.md ("Studio smoke test", steps 1-8) with `KV_ResetOnboarding` on the
+server or `KV_Tutorial` = true on Workspace. Client-side checks first (this code has not run in Studio yet):
+
+- F5 with `KV_Tutorial` = true: Output `[Tutorial] KV_Tutorial = true ...`, `[Tutorial] first run: tutorial`,
+  `[Sim] run 1 started: seed 4242, world tutorial (tutorial: local, not submitted)`, no `startRun` line and **no main
+  menu** (not even for a frame: only the dark backdrop before the run); the objective card at the centre, 2 of 3
+  hearts. A click within 0.75 s does nothing, after it the card goes.
+- The TutorialPanel (lower centre) reads the device's words; switch to a gamepad: the text and `Start: pause / skip`
+  follow. Rebind Flask to G (Options > Controls): the flask prompt says `G`. The flask row pulses (gold ring);
+  Options > Juice > Reduced motion On: the ring stops pulsing (static).
+- A gold beam stands on the next room's door, bobbing; it moves on as lessons finish; none inside a lesson room.
+- First harmless hit: a toast, a fading half heart after the hearts, the hearts row ringed for 4 s.
+- P: Resume / Restart tutorial / Skip tutorial / Options (gamepad: the first is selected; no Leave run, no
+  Leaderboards). Skip tutorial -> `Skip the tutorial?` Skip / Keep playing (Keep playing selected on a pad); Keep
+  playing returns; P closes it. R and D-pad down do nothing. Skip: `[Tutorial] skipped`, `[Menu] run left: back to
+  the main menu`, the main menu shows; rejoin: the main menu (the skip counted as done).
+- KV_Debug: N (floor 2; pick a boon), N again (floor 3): the run freezes (no draft cards), the verdict line `Practice:
+  not submitted (tutorial)`, ~1.5 s later the outro (dimmed; gamepad: Start my first run selected). Start my first
+  run: what Play solo does (a ranked `startRun`, "Starting run..."); Play the tutorial again: a fresh tutorial
+  (`tutorialStarted` again on the server log).
+- Main menu -> Tutorial: a fresh tutorial run (`[Sim] run N started: ... world tutorial`).
+- `KV_Tutorial` unset, no API access: `[Tutorial] first run: normal` within a second (the server answers
+  `loaded: false`) or after 6 s, then the main menu; its Tutorial entry starts it.
+- Lobbies (2 players, one fresh): the fresh player's tutorial is never replaced by a lobby run; inviting them answers
+  `Finish your current run first`; no `Lobby invites: N` badge shows during their tutorial.
 
 ## Gotchas
 

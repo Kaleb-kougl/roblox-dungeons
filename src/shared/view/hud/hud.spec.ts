@@ -1,5 +1,5 @@
-// HUD helpers, every HUD / settings string key in the placeholder pack, and the audio mapping (sim events -> theme
-// sound IDs, cooldowns, music choice; every ID it can play exists in the placeholder pack).
+// HUD helpers, every HUD / settings / tutorial string key in the placeholder pack, and the audio mapping (sim events ->
+// theme sound IDs, cooldowns, music choice; every ID it can play exists in the placeholder pack).
 import { describe, expect, it } from "@rbxts/jest-globals";
 import {
 	KBM_ACTIONS,
@@ -13,6 +13,7 @@ import {
 import { HEALTH_BARS_MODES, HUD_SCALE_PERCENTS, PARTICLES_LEVELS, defaultAudioSettings } from "shared/settings";
 import { SIM_EVENT_FIELDS, eventDefault, type SimEvents } from "shared/sim";
 import { AUDIO_EVENTS, PLACEHOLDER_MANIFEST, ThemePack, slotFor } from "shared/theme";
+import { tutorialStringKeys } from "shared/tutorial";
 import {
 	ALL_SFX,
 	AUDIO_VIEW,
@@ -125,6 +126,8 @@ describe("HUD helpers", () => {
 		}
 		for (const m of HEALTH_BARS_MODES) keys.push(`${SETTINGS_STRINGS.healthBarsPrefix}${m}`);
 		for (const l of PARTICLES_LEVELS) keys.push(`${SETTINGS_STRINGS.particlesPrefix}${l}`);
+		// The tutorial's prompts (every device), callouts and panels (shared/tutorial TUTORIAL_STRINGS).
+		for (const key of tutorialStringKeys()) keys.push(key);
 		for (const key of keys) expect([key, pack.hasString(key)]).toEqual([key, true]);
 		expect(pack.str(HUD_STRINGS.seed, { seed: 1337 })).toBe("seed 1337");
 		expect(pack.str(VERDICT_KEYS[1], { run: 2, ending: "victory", hash: "abcd1234" })).toBe(

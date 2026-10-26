@@ -26,6 +26,7 @@ import type { SimConfig } from "../step";
 import type { CombatState } from "./combat";
 import { fireBurst, type BurstSpec } from "./patterns";
 import { scaledEnemyBulletSpeedMultiplier } from "../endlessData";
+import { tutorialScalingFloor } from "../tutorial/tutorial";
 import { archetypeAt, archetypeIndex } from "./actors/registry";
 import { AiState, type ActorState, type ArchetypeData, type ArchetypeDef } from "./actors/types";
 import { EMPTY_ENCOUNTER, roomAt, type EncounterConfig, type EncounterRoom } from "./actors/encounter";
@@ -184,7 +185,10 @@ export class SimCtx {
 		const endless = this.state.endless;
 		const speedScale =
 			endless !== undefined
-				? scaledEnemyBulletSpeedMultiplier(endless.floor, teamEnemyBulletSpeedMultiplier(this.state))
+				? scaledEnemyBulletSpeedMultiplier(
+						tutorialScalingFloor(this.state, endless.floor),
+						teamEnemyBulletSpeedMultiplier(this.state),
+				  )
 				: 1;
 		const n = fireBurst(c.enemyBullets, actor.emitterId, x, z, dirX, dirZ, spec, actor.kind + 1, speedScale);
 		c.enemySpawned += n;

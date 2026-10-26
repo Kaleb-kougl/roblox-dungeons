@@ -4,6 +4,7 @@ import { selectSnapshot } from "client/store";
 import { role, str } from "client/ui/theme";
 import { HUD_STRINGS, HUD_VIEW, bossFraction, romanPhase } from "shared/view/hud";
 import { Panel, Row, Text } from "./primitives";
+import { HighlightRing } from "./TutorialFx";
 
 const HALF = 0.5;
 const STROKE = 1;
@@ -13,8 +14,9 @@ const NAME_WIDTH_SHARE = 0.7;
  * Top centre (web BossHud): while a live boss is engaged, its name (theme string `<boss id>.name`) and phase (Roman
  * numerals, `boss.hud.phase`), and an hp bar in the `boss` role with a notch at every phase threshold (boss.act1:
  * 66 % / 33 %, from the archetype's phaseHp). Hidden otherwise; the victory line is the run-over panel's.
+ * `highlight`: the tutorial's ring (the boss lesson, the phase callouts).
  */
-export function BossBar() {
+export function BossBar(props: { readonly highlight?: boolean }) {
 	const s = useSelector(selectSnapshot);
 	if (!s.bossVisible) return undefined;
 	const frac = bossFraction(s.bossHp, s.bossHpMax);
@@ -60,6 +62,7 @@ export function BossBar() {
 				<frame Size={UDim2.fromScale(frac, 1)} BackgroundColor3={role("boss")} BorderSizePixel={0} ZIndex={2} />
 				{notches}
 			</frame>
+			{props.highlight === true ? <HighlightRing /> : undefined}
 		</Panel>
 	);
 }

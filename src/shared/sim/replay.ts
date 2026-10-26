@@ -18,6 +18,7 @@ import { writeEndlessHash } from "./endless";
 import { writeScoreHash } from "./score/score";
 import { writeRunHash } from "./progression/progression";
 import { writePartyHash } from "./party";
+import { writeTutorialHash } from "./tutorial/tutorial";
 import { isFiniteNumber, isIntegerNumber, numberToJsString } from "./jsnum";
 import { isJsonArray, isJsonObject, jsonToJsString, parseJson, type JsonValue } from "./json";
 import { jsMin } from "shared/jsmath";
@@ -170,8 +171,10 @@ export function writeHashFields(state: Readonly<SimState>, out: number[]): numbe
 	if (state.score !== undefined) writeScoreHash(state.score, out);
 	// M2 in-run progression (boons, relics, curses), endless runs only.
 	if (state.run !== undefined) writeRunHash(state.run, out);
-	// M4 co-op, only in party runs (players 1..n-1, their weapons, who left), appended last.
+	// M4 co-op, only in party runs (players 1..n-1, their weapons, who left).
 	if (state.party !== undefined) writePartyHash(state.party, out);
+	// First-run tutorial, only in tutorial runs (harmless flag, harmless hits), appended after party.
+	if (state.tutorial !== undefined) writeTutorialHash(state.tutorial, out);
 	return out;
 }
 

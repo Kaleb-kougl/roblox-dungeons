@@ -4,15 +4,16 @@ import { selectSnapshot } from "client/store";
 import { role, str } from "client/ui/theme";
 import { HUD_STRINGS, HUD_VIEW, comboFraction, formatCombo } from "shared/view/hud";
 import { Panel, Text } from "./primitives";
+import { HighlightRing } from "./TutorialFx";
 
 const STROKE = 1;
 
 /**
  * Top right, scored runs only (M2): the live score, the combo multiplier and its decay meter (the time left before
  * the combo resets, as a bar that drains over the combo window: COMBO_WINDOW_TICKS, or what M2 boons / curses make of
- * it). Reads only the ~10 Hz snapshot.
+ * it). Reads only the ~10 Hz snapshot. `highlight`: the tutorial's ring (the score callout, the curse lesson).
  */
-export function ScorePanel() {
+export function ScorePanel(props: { readonly highlight?: boolean }) {
 	const s = useSelector(selectSnapshot);
 	if (!s.scoring) return undefined;
 	const width = HUD_VIEW.scoreWidth;
@@ -56,6 +57,7 @@ export function ScorePanel() {
 					BorderSizePixel={0}
 				/>
 			</frame>
+			{props.highlight === true ? <HighlightRing /> : undefined}
 		</Panel>
 	);
 }

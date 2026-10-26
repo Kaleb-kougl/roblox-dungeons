@@ -7,8 +7,10 @@
 import {
 	ENDLESS_HASH_SUBSYSTEM,
 	HASH_SUBSYSTEMS,
+	PARTY_SUBSYSTEM,
 	RUN_SUBSYSTEM,
 	SCORE_SUBSYSTEM,
+	TUTORIAL_SUBSYSTEM,
 	groupValues,
 	hashLayout,
 	type HashGroupName,
@@ -77,12 +79,14 @@ export function describeMismatch(m: FieldMismatch): string {
 
 /**
  * Per-subsystem hashes of a state (fixtures' `subsystems`; plus `endless` and `run` in endless mode, `score` in
- * scored runs).
+ * scored runs, `party` in co-op runs, `tutorial` in tutorial runs).
  */
 export function subsystemHashes(state: Readonly<SimState>): Record<HashSubsystem, string> & {
 	[ENDLESS_HASH_SUBSYSTEM]?: string;
 	[SCORE_SUBSYSTEM]?: string;
 	[RUN_SUBSYSTEM]?: string;
+	[PARTY_SUBSYSTEM]?: string;
+	[TUTORIAL_SUBSYSTEM]?: string;
 } {
 	const layout = hashLayout(state);
 	const out = {} as Record<HashGroupName, string>;

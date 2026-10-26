@@ -18,6 +18,7 @@ import {
 	Button,
 	CORPSE_TICKS,
 	DAMAGE_CAP_BUCKET_TICKS,
+	DUMMY_KIND,
 	DAMAGE_CAP_WINDOW_SECONDS,
 	EMPTY_INPUT,
 	FULL_RING,
@@ -28,6 +29,7 @@ import {
 	MAX_ACTORS,
 	NO_KIND,
 	PLAYER_RADIUS,
+	PORT_BAND_TUTORIAL,
 	Rng,
 	SIM_DT,
 	SQRT1_2,
@@ -50,6 +52,8 @@ import {
 	toPlayer,
 	turnDir,
 	walkToward,
+	webArchetypeIds,
+	WEB_ARCHETYPE_BAND,
 	type ActorSpawn,
 	type ActorState,
 	type ArchetypeData,
@@ -72,12 +76,19 @@ const thrown = (f: () => void): string => {
 const has = (text: string, part: string): boolean => string.find(text, part, 1, true)[0] !== undefined;
 
 describe("archetype registry", () => {
-	it("numbers kinds by sorted id, independent of registration order", () => {
+	it("numbers kinds by (band, sorted id), independent of registration order", () => {
 		const ids = archetypeIds();
-		const sorted = stableSort([...ids], (a, b) => (a < b ? -1 : a > b ? 1 : 0));
+		const band = (id: string): number => archetypeAt(archetypeIndex(id)).band ?? WEB_ARCHETYPE_BAND;
+		const sorted = stableSort([...ids], (a, b) =>
+			band(a) !== band(b) ? band(a) - band(b) : a < b ? -1 : a > b ? 1 : 0,
+		);
 		expect([...ids]).toEqual(sorted);
 		expect(ids).toContain("turret.sprayer");
 		expect(ids).toContain("test.boss");
+		// The port's dummy (band 1) numbers after every band-0 id, test archetypes included.
+		const web = webArchetypeIds();
+		expect([...ids]).toEqual([...web, DUMMY_KIND]);
+		expect(band(DUMMY_KIND)).toBe(PORT_BAND_TUTORIAL);
 		for (let i = 0; i < ids.size(); i++) {
 			expect(archetypeIndex(ids[i])).toBe(i);
 			expect(archetypeAt(i).id).toBe(ids[i]);
@@ -101,6 +112,12 @@ describe("archetype registry", () => {
 			has(
 				thrown(() => registerArchetype({ id: "test.bad", data: { ...data, hp: 0 }, step() {} })),
 				"hp",
+			),
+		).toBe(true);
+		expect(
+			has(
+				thrown(() => registerArchetype({ id: "test.bad", band: 0.5, data, step() {} })),
+				"band",
 			),
 		).toBe(true);
 		createSimState(1, 0, 0); // seals

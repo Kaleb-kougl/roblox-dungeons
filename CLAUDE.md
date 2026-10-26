@@ -19,6 +19,7 @@ Record every ported module in `PROVENANCE.md` (ported module, source path, sourc
 | `PROVENANCE.md` | One row per ported module: source path + source commit |
 | `docs/SPIKES.md` | Task 1 spikes: how to run them in Studio and the recorded results |
 | `docs/ART.md` | Vertical-slice art: packs, licences, contract v2, atlas pipeline, renderer, status |
+| `docs/TUTORIAL.md` | First-run tutorial ("Practice Descent"): plan, as-built notes, tasks T1-T8, owner decisions |
 
 Decision log (deviations from `PLAN.md`):
 - **Art (docs/ART.md).** The theme contract gained a `"sprites"` kind (large pre-rendered cells, 1/4/8/16 screen-space
@@ -43,6 +44,22 @@ Decision log (deviations from `PLAN.md`):
   scatter radius are doubled (4x the floor area; corridor lengths stay about the same). No extra rng draws; 1 or
   undefined is the unscaled floor exactly, so M1 and every fixture are unchanged; endless layouts and replays changed.
   Room encounter budgets are unchanged, so the same enemies spread over more floor.
+- **Archetype bands.** Kinds number by (`ArchetypeDef.band`, then id order), not id order alone. The web build's
+  archetypes are band 0 (indices 0..6, pinned by hashed golden runs); a port-only archetype takes a NEW band so it
+  numbers after the web table and no web index ever moves. The training dummy is band 1 (`PORT_BAND_TUTORIAL`),
+  index 7 (`shared/sim/combat/actors/registry.ts`).
+- **`enemy.dummy`.** The theme contract's `ENEMY_ARCHETYPES` gained `dummy` after the web build's six: every pack
+  must fill `enemy.dummy` (asset and colour role) and `enemy.dummy.name` (placeholder: a post).
+- **Tutorial (docs/TUTORIAL.md).** `SimConfig.tutorial` is an opt-in harmless mode (hits land but never cost hearts or
+  armor, optional wounded start) with its own `tutorial` hash group appended after `party`; without it nothing
+  changes and every fixture matches. The `tutorial` world is registered for the client's local build only: the server
+  refuses it (`shared/run` `SERVER_REFUSED_WORLDS`) and it is never submitted or posted. "Has played the tutorial" is
+  a per-player doc in DataStore `KV_Onboarding_v1` (`OnboardingService`, codec in `shared/onboarding`). Its floors are
+  endless floors with fixed seeds (`tutorialForgeParams` = `endlessFloorParams` + seed / room count, world from
+  `endlessFloorWorld`), so endless Forge options (solid pillars, `roomScale`) apply; a layout change fails its lock spec.
+  A first join (onboarding loaded and not done, or `KV_Tutorial`) starts it before, instead of, the main menu; Skip
+  leaves like Leave run (back to the menu), the outro's Start my first run is Play solo, and the main menu has the
+  replay. A player in it is busy for lobbies (`RunSessionService.busyReason`), so no lobby start takes it over.
 
 ## Commands
 

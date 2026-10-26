@@ -18,6 +18,27 @@ export function shouldSubmitRun(ending: RunEnding, ticks: number, firstRunAfterD
 	return firstRunAfterDeath || ticks >= MIN_ABANDONED_SUBMIT_TICKS;
 }
 
+/** Why a run is never sent, whatever its length (the verdict line's `skipped` code). */
+export type UnsubmittedReason = "tutorial" | "stress" | "scored";
+
+/** What decides whether a run can be submitted at all (the SimController's RunContext). */
+export interface SubmitEligibility {
+	/** A first-run tutorial run (world `tutorial`): played locally, never submitted, no segments. */
+	readonly tutorial: boolean;
+	/** Stress target (0 = off): the server never builds a stress config. */
+	readonly stress: number;
+	/** KV_Scoring on an M1 world: the server replays the unscored config, so the hash would never match. */
+	readonly scoring: boolean;
+}
+
+/** The reason a run is never submitted, or undefined when it may be (then shouldSubmitRun decides). */
+export function unsubmittedReason(run: Readonly<SubmitEligibility>): UnsubmittedReason | undefined {
+	if (run.tutorial) return "tutorial";
+	if (run.stress > 0) return "stress";
+	if (run.scoring) return "scored";
+	return undefined;
+}
+
 /** A submission the server would reject unread, so the client keeps it (code + reason for the verdict line). */
 export interface LocalRejection {
 	readonly code: "too_large" | "too_long";

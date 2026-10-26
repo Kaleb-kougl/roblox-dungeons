@@ -37,7 +37,6 @@ import {
 	FixedStepLoop,
 	Recorder,
 	SOLO_PLAYER,
-	START_HALF_HEARTS,
 	copyInput,
 	createSimState,
 	encodeRecording,
@@ -49,6 +48,7 @@ import {
 	type SimConfig,
 	type SimEvents,
 	type SimState,
+	runStartHalfHearts,
 } from "shared/sim";
 import {
 	RunTelemetry,
@@ -283,7 +283,7 @@ export class LiveRun implements RunView {
 		this.setup = setup;
 		this.state = createSimState(setup.seed, setup.spawnX, setup.spawnZ, setup.config);
 		this.recorder = new Recorder(setup.seed, setup.spawnX, setup.spawnZ);
-		this.telemetry = new RunTelemetry(START_HALF_HEARTS);
+		this.telemetry = new RunTelemetry(runStartHalfHearts(setup.config));
 		this.cutter = setup.runId !== undefined ? new SegmentCutter(setup.runId) : undefined;
 		this.fallbackTicks = setup.segmentFallbackTicks ?? SEGMENT_FALLBACK_TICKS;
 	}

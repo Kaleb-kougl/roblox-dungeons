@@ -1,6 +1,6 @@
 import React from "@rbxts/react";
 import { useSelector } from "@rbxts/react-reflex";
-import { selectBindings, selectInputDevice, selectSnapshot } from "client/store";
+import { selectBindings, selectInputDevice, selectSnapshot, selectTutorialEnded } from "client/store";
 import { draftHint } from "shared/play";
 import { HUD_FONT, role, str } from "client/ui/theme";
 import { BOONS, DRAFT_OFFER_COUNT } from "shared/sim";
@@ -103,12 +103,14 @@ function WaitingLine(props: { order: number; count: number }) {
  * snapshot reads the client's player index), the one under the stick highlighted (the snapshot follows the live input
  * every frame while a draft is open), and the device-aware hint; until the draft accepts a confirm
  * (DRAFT_MIN_OPEN_TICKS) the hint reads "wait". Co-op: a "waiting for N teammates" line while others still choose,
- * alone once the local player has confirmed.
+ * alone once the local player has confirmed. Hidden once the tutorial ended (its floor 3 draft is never played).
  */
 export function DraftOverlay() {
 	const s = useSelector(selectSnapshot);
 	const device = useSelector(selectInputDevice);
 	const bindings = useSelector(selectBindings);
+	const tutorialEnded = useSelector(selectTutorialEnded);
+	if (tutorialEnded) return undefined;
 	if (!s.draftOpen) {
 		if (s.draftWaiting <= 0) return undefined;
 		return (

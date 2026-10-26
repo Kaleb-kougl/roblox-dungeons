@@ -3,7 +3,8 @@ import type { LobbyVisibility } from "shared/lobby";
 
 /**
  * What the menu shell and the lobby screens can do (tasks L3 / L5). HudController builds it from MenuController and
- * LobbyController and provides it to the tree, so components never import controllers.
+ * LobbyController (and the Tutorial entry from TutorialController) and provides it to the tree, so components never
+ * import controllers.
  */
 export interface MenuActions {
 	/** Main menu. */
@@ -11,6 +12,8 @@ export interface MenuActions {
 	/** Lobbies: the browser, or straight to the lobby room while in a lobby. */
 	readonly openLobbies: () => void;
 	readonly openLobbyRoom: () => void;
+	/** The first-run tutorial again (a practice run; docs/TUTORIAL.md). */
+	readonly playTutorial: () => void;
 	readonly openOptions: () => void;
 	readonly openLeaderboard: () => void;
 	/** One screen back (also pad B / Backspace). */
@@ -41,6 +44,7 @@ const NOOP: MenuActions = {
 	playSolo: nothing,
 	openLobbies: nothing,
 	openLobbyRoom: nothing,
+	playTutorial: nothing,
 	openOptions: nothing,
 	openLeaderboard: nothing,
 	back: nothing,

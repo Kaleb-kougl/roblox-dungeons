@@ -25,6 +25,7 @@ export {
 	newPlayerState,
 	refillAtCheckpoint,
 	respawnPlayer,
+	runStartHalfHearts,
 	stepPlayer,
 	writePlayerHash,
 	writePlayerStateHash,
@@ -55,3 +56,4 @@ export * from "./score";
 export * from "./progression";
 export * from "./partyData";
 export * from "./party";
+export * from "./tutorial";

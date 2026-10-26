@@ -28,7 +28,6 @@
  */
 import {
 	SIM_HZ,
-	START_HALF_HEARTS,
 	configPartySize,
 	createSimState,
 	decodeRecording,
@@ -37,6 +36,7 @@ import {
 	stepRecorded,
 	type Recording,
 	type SimState,
+	runStartHalfHearts,
 } from "shared/sim";
 import type { RunSetup } from "./config";
 import { DEFAULT_SEGMENT_LIMITS, MAX_RUN_ID_CHARS, type SegmentLimits } from "./limits";
@@ -546,7 +546,7 @@ export class SegmentedValidator {
 			const spawn = this.spawn ?? { x: 0, z: 0 };
 			const [ok, err] = pcall(() => {
 				this.state = createSimState(this.seed, spawn.x, spawn.z, this.setup.config);
-				this.telemetry = new RunTelemetry(START_HALF_HEARTS, this.archetypeNames);
+				this.telemetry = new RunTelemetry(runStartHalfHearts(this.setup.config), this.archetypeNames);
 			});
 			if (!ok) {
 				const result = this.rejectSegment(seg, "replay_error", `replay error: ${errorMessage(err)}`, verdicts);

@@ -102,6 +102,11 @@ describe("PLACEHOLDER_VISUALS", () => {
 		// bruiser = heavy block filling the cell
 		expect(v["enemy.bruiser"].shape).toBe("Block");
 		expect(v["enemy.bruiser"].size).toEqual([s(16), s(16), s(16)]);
+		// dummy (the port's tutorial target) = a thin upright post in its own colour, named "Training Dummy"
+		expect(v["enemy.dummy"]).toMatchObject({ shape: "Cylinder", color: { kind: "role", role: "enemy.dummy" } });
+		expect(v["enemy.dummy"].size).toEqual([s(6), s(16), s(6)]);
+		expect(PLACEHOLDER_MANIFEST.colors["enemy.dummy"]).toBe("#9a7b4f");
+		expect(PLACEHOLDER_MANIFEST.strings["enemy.dummy.name"]).toBe("Training Dummy");
 		// boss = large block (48 px cell)
 		for (const id of ["boss.1", "boss.act1"]) {
 			expect(v[id]).toMatchObject({ shape: "Block", color: { kind: "role", role: "boss" } });

@@ -10,7 +10,7 @@ const INFO_WIDTH = 600;
 
 /** The server's verdict on this run's submission as one status line ("" when there is none). */
 function verdictLine(v: VerdictView): string {
-	const key = verdictKey(v.status);
+	const key = verdictKey(v.status, v.code); // a tutorial run: "Practice: not submitted (tutorial)"
 	if (key === "") return "";
 	const line = str(key, {
 		run: v.run ?? 0,

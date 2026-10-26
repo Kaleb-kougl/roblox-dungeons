@@ -6,6 +6,7 @@
  * (src/playtest/PlaytestOverlay.tsx), the boss phase in Roman numerals (src/boss/BossHud.tsx). The rest is new.
  */
 import { COMBO_DENOMINATOR } from "shared/sim";
+import { TUTORIAL_STRINGS } from "shared/tutorial";
 
 /**
  * The HUD font token: ONE place picks the font every HUD text uses, by Enum.Font name (headless-safe strings; the
@@ -129,8 +130,15 @@ export function romanPhase(phase: number): string {
 	return phase >= 1 && phase < ROMAN.size() && phase === math.floor(phase) ? ROMAN[phase] : tostring(phase);
 }
 
-/** The string key of a verdict status line ("" for none). */
-export function verdictKey(status: string): string {
+/** The `skipped` code of a tutorial run (shared/play UnsubmittedReason "tutorial"): its own verdict line. */
+export const TUTORIAL_VERDICT_CODE = "tutorial";
+
+/**
+ * The string key of a verdict status line ("" for none). A tutorial run's line (skipped, code `tutorial`) is the
+ * tutorial's own "Practice: not submitted (tutorial)".
+ */
+export function verdictKey(status: string, code?: string): string {
+	if (status === "skipped" && code === TUTORIAL_VERDICT_CODE) return TUTORIAL_STRINGS.verdict;
 	switch (status) {
 		case "pending":
 		case "accepted":

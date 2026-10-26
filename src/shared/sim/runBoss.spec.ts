@@ -17,7 +17,7 @@ import {
 	DEFAULT_SIM_CONFIG,
 	PLAYER_RADIUS,
 	archetypeAt,
-	archetypeIds,
+	webArchetypeIds,
 	checkRunFixture,
 	countActors,
 	hashState,
@@ -43,7 +43,7 @@ describe("run-boss-1337.json parity", () => {
 	const report = checkRunFixture(run, config, dumps);
 
 	it("uses the web build's archetype and weapon index tables", () => {
-		expect([...archetypeIds()]).toEqual([...runBoss.archetypeIds]);
+		expect([...webArchetypeIds()]).toEqual([...runBoss.archetypeIds]);
 		expect([...weaponIds()]).toEqual([...runBoss.weaponIds]);
 	});
 

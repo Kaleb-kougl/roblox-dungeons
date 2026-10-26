@@ -24,3 +24,5 @@ export * from "./worlds";
 export * from "./score";
 export * from "./segments";
 export * from "./runSessions";
+export * from "./tutorialLayout";
+export * from "./tutorial";

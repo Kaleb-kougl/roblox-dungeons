@@ -20,6 +20,7 @@ import {
 import { PLAYER_RADIUS } from "../../playerData";
 import { SQRT1_2 } from "../../jsnum";
 import { endlessActorHp } from "../../endlessData";
+import { tutorialScalingFloor } from "../../tutorial/tutorial";
 import { partyHpMultiplier } from "../../partyData";
 import { partySize, playerAt } from "../../party";
 import type { SimCtx } from "../ctx";
@@ -139,7 +140,10 @@ export function spawnActor(ctx: SimCtx, kind: number, x: number, z: number): Act
 	// Endless mode (Roblox port): hp scaled by the floor and Depth at the moment of the spawn (bosses: Depth only),
 	// then (co-op, M4) by the party size (bosses too).
 	const endless = ctx.state.endless;
-	let hp = endless !== undefined ? endlessActorHp(d.hp, d.boss === true, endless.floor, endless.depth) : d.hp;
+	let hp =
+		endless !== undefined
+			? endlessActorHp(d.hp, d.boss === true, tutorialScalingFloor(ctx.state, endless.floor), endless.depth)
+			: d.hp;
 	if (endless !== undefined && ctx.state.party !== undefined) hp *= partyHpMultiplier(ctx.state.party.size);
 	a.hp = hp;
 	a.hpMax = hp;

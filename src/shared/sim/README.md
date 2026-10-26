@@ -38,7 +38,7 @@ import from inside would create require cycles).
 | `replay.ts` | `src/sim/replay.ts` | `Recorder`, `runReplay`, `writeHashFields`, `hashNumbers` (FNV-1a over `buffer.writef64` bytes), `hashState`, `serializeRecording` / `deserializeRecording` (same messages), `float64Hex` / `float64FromHex` |
 | `recordingCodec.ts` | (Roblox only) | `encodeRecording` / `decodeRecording`: the compact binary recording (`buffer`) the `submitRun` remote carries; hostile-input-safe decode (docs/SERVER.md "The wire format") |
 | `observer.ts` | `src/sim/observer.ts` | `SimObserver` / `SimControls` types |
-| `hashLayout.ts` | (port helper) | the hash split into the fixtures' six subsystems, with dump names (plus `endless`, then `score`, then `run`, then `party`, each appended only when present) |
+| `hashLayout.ts` | (port helper) | the hash split into the fixtures' six subsystems, with dump names (plus `endless`, then `score`, then `run`, then `party`, then `tutorial`, each appended only when present) |
 | `endless.ts` | (Roblox only) | endless mode: `SimConfig.endless` (`worldForFloor`), `SimState.endless` (floor, Depth, stairwell, rooms entered), `stepEndless` (Depth on a boss kill, floor clear points + stairwell / `DEBUG_FLOOR_BUTTON` -> next floor, deferred room spawns attached to score rooms), `writeEndlessHash` |
 | `endlessData.ts` | (Roblox only) | endless tunables: hp scaling by floor / Depth, enemy bullet speed scaling (speed only, never the burst shape), stairwell radius, the debug floor-skip bit |
 | `parity.ts` | (port helper) | `firstFieldMismatch`, `subsystemHashes`, `checkRunFixture` (whole-run parity), `replaySummary` (totals / firstTick / hitsBySource), `fixtureNumber` |
@@ -47,6 +47,7 @@ import from inside would create require cycles).
 | `progression/` | (M2, new) | in-run progression, endless runs only (`SimState.run`, hashed as the "run" group after `score`): `progressionData.ts` tunables and the BOONS (12) / RELICS (4) / CURSES (4) tables; `runMods.ts` the per-player state (`run.players[i]`), THE accessor `runMods(state, playerIndex)` + helpers (`playerHitDamage`, `attackTicks`, `rollIframeTicks`) and gameplay hooks (`runOnPlayerHit`, `runSecondWind`, `runOnKill`, `consumeEnemyBulletTimeScale`), a leaf module; `progression.ts` the draft (`drawBoonOffers`, `openDraft`, `stepDraft`, `draftColumn`), `grantBoon` / `grantRelic` / `acceptCurse`, `stepRun` (pedestals, shrine, Warding), `writeRunHash`; see the file comments |
 | `partyData.ts` | (Roblox only) | M4 co-op tunables: MAX_PARTY_SIZE 8, enemy hp x [1, 1.6, ... 4.4] by party size, the revive hearts, the server's `PARTY_LEFT_BUTTON` bit (= `FORFEIT_BUTTON`, the solo "Leave run"; see "Solo forfeit") |
 | `party.ts` | (Roblox only) | M4 co-op: `SimConfig.party`, `SimState.party` (players by index, [0] aliasing `state.player`), `playerAt` / `weaponsAt` / `partySize`, nearest-living targeting, leave / revive, `writePartyHash` (the "party" group); see "Co-op" below |
+| `tutorial/` | (Roblox only) | first-run tutorial (docs/TUTORIAL.md): `tutorialData.ts` tunables (`TUTORIAL_START_HALF_HEARTS`, the start clamp), `tutorial.ts` `SimConfig.tutorial` (`TutorialSimConfig`: `harmless`, `startHalfHearts`), `SimState.tutorial` (`TutorialState`: `harmless`, `harmlessHits`), `isTutorialHarmless`, `writeTutorialHash` (the "tutorial" group, last); see "Tutorial" below |
 | `testing/` | `src/sim/actors/__test__/testArchetypes.ts` | test-only archetypes for specs (never imported by the game) |
 
 `SimConfig.moveResolver` has the source's signature and call contract (sub-steps of at most `MAX_MOVE_STEP`, one call
@@ -78,7 +79,7 @@ lists it and the table is regenerated.
 | `combat/projectilePatterns.ts`, `combat/arcTable.ts` | ported `gen.arc` (table trig), `mod.payload` / `color` / `scale`, `compose`, `definePayload`; generated V8 sin / cos table | done |
 | `combat/stress.ts` | `MAX_STRESS_BULLETS`, `stressTargetFrom` (the source's `stressFromQuery` for a debug attribute), `stressConfig` | done (task 8 reads the attribute) |
 | `combat/ctx.ts` | `SimCtx` ported (`lineOfSight` = the tile DDA in `shared/dungeon`) | done |
-| `combat/actors/types.ts`, `registry.ts` | ported (registry sorts ids by code unit; index table `boss.act1, bruiser, sniper, swarmer, turret.caster, turret.sniper, turret.sprayer`, checked against every run fixture and constants.json) | done |
+| `combat/actors/types.ts`, `registry.ts` | ported (registry sorts ids by code unit; index table `boss.act1, bruiser, sniper, swarmer, turret.caster, turret.sniper, turret.sprayer`, checked against every run fixture and constants.json; Roblox port: `def.band` numbers the port's own archetypes after that table, e.g. the tutorial's `dummy` = 7) | done |
 | `combat/actors/encounter.ts` | re-exports the canonical `EncounterConfig` / `ActorSpawn` / `EncounterRoom` / `EMPTY_ENCOUNTER` / `roomAt` from `shared/dungeon` (encounterTypes.ts), so `placeEncounter(d, DEFAULT_ENCOUNTER)` IS a `SimConfig.encounter` | done |
 | `combat/actors/actors.ts` | ported: pool (lowest free slot, MAX_ACTORS, actorsDropped), `spawnActor`, `damageActor` (filterDamage -> sliding 2 s damage cap over 12 buckets of 10 ticks -> hp -> flash -> onHit -> death), `killActor`, `reviveActor`, `freeActor`, `stepActors` (slot order, `while` loop: runtime spawns append slots), `stepContactDamage`, hash writers | done |
 | `combat/actors/helpers.ts` | ported: `toPlayer`, `faceToward`, `moveActor` (actorMover sub-steps / bounds clamp / free), `walkToward`; re-exports `lineOfSight` from `shared/dungeon`. Roblox addition: `walkToward(..., steer)` moves with `SimConfig.actorSteerMover` when set (endless floors: `actorSteerMover(dungeon)`, which rounds solid pillars); only the room enemies' walks pass `STEER` (enemyShared.ts), the boss's charge / reposition stay plain; absent (M1, every fixture) it is the web build's | done |
@@ -117,6 +118,7 @@ source: 12) because gen.arc's sin / cos come from the arc table, which only hold
 | `score/score.spec.ts`, `score/score.replay.spec.ts` | M2 scoring: points per event, combo (the co-op cut by the players present), grazes, guard, rooms, floors (the rooms-cleared ratio and its rounding), hash; run-full-1337 replayed scored (deterministic, gameplay subsystems identical to the fixture) |
 | `score/score.endless.spec.ts` | scoring on endless floors: one room record per room with deferred spawns (par from their encounter cost), members attached and the room engaged on the entry tick, clear / perfect / fast and floor-scaled kills, records rebuilt on a floor change after the floor clear |
 | `progression/progression.spec.ts` | M2 progression: offers (distinct, unowned, rarity weights incl. the per-floor legendary ramp and cap, a hand-made twin of the draw, 20,000-draft frequencies, exhausted rarities), the draft (opens on a floor change, freezes every world group, early confirms ignored, stick + FIRE, held buttons quiet after it, replays identically), each boon / relic / curse at its application point (an open endless arena), the shrine once per floor, the "run" hash group and clone |
+| `tutorial/tutorial.spec.ts` | tutorial harmless mode: bullets, contact and DEBUG_HIT land without armor / hearts / death, playerHits / hurtTicks / lastHitSource / combo cut / Hourglass as in a real hit, no Second Wind, startHalfHearts (solo, a party, the clamp), the flask heals back up, floor changes keep hearts, the appended "tutorial" group, clone, replay |
 | `../run/slice.spec.ts` | the slice: the recorded endless run scored (replays twice to hash and score, floor clears by rooms cleared at the Depth in force, the boss at Depth 1), segmented per floor through `SegmentedValidator`, an edited later segment rejected |
 | `../run/replay.bench.spec.ts` | server replay cost per tick on endless floor 15 at Depth 3 in combat, solo and 8 players, one room / the whole floor (docs/SERVER.md "Replay capacity") |
 
@@ -127,7 +129,7 @@ Opt-in through `SimConfig.party` with `size` 2..8 (shared/run `buildEndlessRunCo
 and nothing extra is hashed, so every fixture, every solo endless hash and score is unchanged. With it every tick takes
 one InputFrame per player: `stepParty(state, inputs, config)` (step() refuses a party state). Player 0 is
 `state.player` with `state.combat.weapons` (hashed where they always were); players 1..n-1 live in `state.party` and
-are hashed in the **party** group, appended LAST (after `score` and `run`).
+are hashed in the **party** group, appended after `score` and `run` (only `tutorial` comes after it).
 
 Every per-player loop runs in player index order; ties go to the lower index:
 
@@ -207,7 +209,8 @@ uses the new Depth. Hash order: `core`, `combatHeader`, `actors`, `weapons`, `en
 `endless`, then `score`, then `run` (players.length = the party size; per player boons, relics, curses, draftOffers (length + values),
 draftOpen, draftTicks, draftSelected, hourglassTicks, fangKills, secondWindUsed; then pedestals.length, (room, taken)
 per pedestal, shrineRoom, shrineUsed; dump names `run.players[0].boons[1]`, `run.pedestals[0].taken`, ...), then
-`party` (co-op only, always last: size, left[0..n-1], then per player 1..n-1 the player fields and their weapons). The
+`party` (co-op only: size, left[0..n-1], then per player 1..n-1 the player fields and their weapons), then `tutorial`
+(tutorial runs only, always last: harmless, harmlessHits; dump names `tutorial.harmless`, `tutorial.harmlessHits`). The
 per-tick `SimState.run.events` (draftOpened, draftChosen, relicCollected, curseAccepted, secondWind, fangHealed) and
 each player's `run.players[i].events` are presentation only and not hashed. New per-tick events (not in `SIM_EVENT_FIELDS`, which stays the web build's list; see
 `ENDLESS_EVENT_FIELDS` / `ALL_EVENT_FIELDS`): `floorChanged`, `depthChanged`, `stairwellOpened`, `roomEntered`.
@@ -232,3 +235,21 @@ validators accept it with died = true).
 | 1 .. 4096 | `Button.*` (`ALL_BUTTONS` 8191) | the web build's, fixtures/input.json |
 | 8192 | `DEBUG_FLOOR_BUTTON` (`PORT_BUTTONS`; `SIM_BUTTONS` 16383) | endless debug floor skip (a debug bit) |
 | 16384 | `PARTY_LEFT_BUTTON` = `FORFEIT_BUTTON` (`RECORDED_BUTTONS` 32767) | co-op leave (relay only) / solo "Leave run" |
+
+## Tutorial (Roblox port)
+
+Opt-in through `SimConfig.tutorial` (`TutorialSimConfig`, tutorial/tutorial.ts; docs/TUTORIAL.md "Architecture §1").
+Without it there is no `state.tutorial`, nothing extra runs and nothing extra is hashed, so every fixture and every
+solo, endless and party hash is unchanged. With it createSimState creates `state.tutorial` (`harmless` 0/1,
+`harmlessHits`), hashed as the **tutorial** group, appended after `party` (always the last group).
+
+| Rule | Where |
+| --- | --- |
+| `startHalfHearts`: every player (solo, every party member) starts with it, clamped to [TUTORIAL_MIN_START_HALF_HEARTS, heartsMax]; heartsMax is unchanged, so the flask heals back up; floor changes keep hearts (`refillAtCheckpoint` never heals) | createSimState (after the party exists, before the encounter spawns; no rng) |
+| Scaling: endless enemy hp and enemy bullet speed scale as on floor `TUTORIAL_SCALING_FLOOR` (1) on every floor (`tutorialScalingFloor`), so the tutorial's floor-2 boss is the Depth 1 / floor 1 fight | spawnActor (actors.ts), SimCtx.fireEnemy (ctx.ts) |
+| `harmless`: a hit that lands (a positive amount, `isPlayerInvulnerable` false) does `events.playerHits += 1`, `hurtTicks = HURT_INVULN_TICKS`, `runOnPlayerHit` (Hourglass) and `tutorial.harmlessHits += 1`, then returns true (the bullet is consumed, `lastHitSource` is set, the score's combo cut runs from `playerHits`). Armor, hearts, Second Wind and death are skipped | damagePlayer (player.ts) |
+
+`runStartHalfHearts(config)` (player.ts) is the start hearts createSimState gives a fresh player (START_HALF_HEARTS, or
+the tutorial's): RunTelemetry's baseline on the client, the server and in lockstep, so a wounded start is not logged
+as hearts lost. The tutorial world itself is shared/run `tutorial.ts`. The tutorial script (prompts, step completion)
+lives outside the sim. Spec: `tutorial/tutorial.spec.ts`.

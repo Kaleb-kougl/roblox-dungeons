@@ -22,7 +22,7 @@ import {
 import type { RunScoreReader } from "./score";
 import { SegmentedValidator, type SegmentRejectCode, type SegmentedRunResult } from "./segments";
 import { errorMessage, isFiniteValue, truncateReason } from "./validate";
-import { buildWorldSetup, isRunWorldKind, type RunWorldKind } from "./worlds";
+import { buildWorldSetup, isRunWorldKind, isServerRunWorld, type RunWorldKind } from "./worlds";
 
 /** `startRun` (shared/network). */
 export interface StartRunRequest {
@@ -185,15 +185,19 @@ export class RunSessionRegistry {
 	}
 
 	/**
-	 * Creates a session for `ownerId`: request shape, world kind, debug spawn, party, `busy`, then the world (built
-	 * from a server-picked seed). Replaces (and returns) the owner's open solo session, which is aborted as
-	 * `abandoned`; an unconcluded party run the owner was released from is detached instead (not returned).
+	 * Creates a session for `ownerId`: request shape, world kind (registered, not SERVER_REFUSED_WORLDS), debug
+	 * spawn, party, `busy`, then the world (built from a server-picked seed). Replaces (and returns) the owner's open
+	 * solo session, which is aborted as `abandoned`; an unconcluded party run the owner was released from is detached
+	 * instead (not returned).
 	 */
 	start(ownerId: number, request: StartRunRequest, ctx: StartContext): StartRunResult {
 		const shape = requestShape(request);
 		if (shape !== undefined) return { ok: false, code: "bad_request", reason: `bad request: ${shape}` };
 		if (!isRunWorldKind(request.worldKind)) {
 			return { ok: false, code: "unknown_world", reason: `unknown world kind ${request.worldKind}` };
+		}
+		if (!isServerRunWorld(request.worldKind)) {
+			return { ok: false, code: "unknown_world", reason: `world ${request.worldKind} is played locally only` };
 		}
 		const atBossDoor = request.atBossDoor === true;
 		if (atBossDoor && !ctx.allowBossDoorSpawn) {

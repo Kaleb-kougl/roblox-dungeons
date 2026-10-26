@@ -5,6 +5,7 @@ import { MenuButton, Panel, Text } from "client/ui/hud";
 import { str } from "client/ui/theme";
 import { SFX } from "shared/view/audio";
 import { HUD_STRINGS, HUD_VIEW } from "shared/view/hud";
+import { TUTORIAL_STRINGS } from "shared/tutorial";
 import { MENU_STRINGS, MENU_VIEW, mainMenuLobbyKey } from "shared/view/menu";
 import { useMenuActions } from "./actions";
 import { useGamepadFocus } from "./hooks";
@@ -13,8 +14,9 @@ const HALF = 0.5;
 
 /**
  * The main menu (task L3), shown on join instead of a run: the game title, Play solo (a ranked solo run), Lobbies
- * (the browser; "Your lobby" goes straight to the room while in one), Options (the juice settings panel for now) and
- * Leaderboard (the leaderboard panel). With a gamepad the selection starts on Play solo.
+ * (the browser; "Your lobby" goes straight to the room while in one), Tutorial (the first-run Practice Descent again,
+ * docs/TUTORIAL.md), Options (the Options screen) and Leaderboard (the leaderboard panel). With a gamepad the
+ * selection starts on Play solo.
  */
 export function MainMenu() {
 	const actions = useMenuActions();
@@ -60,6 +62,15 @@ export function MainMenu() {
 			/>
 			<MenuButton
 				order={4}
+				name="Tutorial"
+				text={str(TUTORIAL_STRINGS.menuOpen)}
+				onActivated={() => {
+					actions.playUi(SFX.uiConfirm);
+					actions.playTutorial();
+				}}
+			/>
+			<MenuButton
+				order={5}
 				name="Options"
 				text={str(MENU_STRINGS.options)}
 				onActivated={() => {
@@ -68,7 +79,7 @@ export function MainMenu() {
 				}}
 			/>
 			<MenuButton
-				order={5}
+				order={6}
 				name="Leaderboard"
 				text={str(MENU_STRINGS.leaderboard)}
 				onActivated={() => {

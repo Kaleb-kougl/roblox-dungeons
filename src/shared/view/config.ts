@@ -183,6 +183,11 @@ export const RENDER_ORDER = {
 	simAfterInput: 1,
 	/** Right after the sim: the FX hit tracker diffs the new state and dispatches juice / audio events. */
 	fxAfterSim: 2,
+	/**
+	 * After the FX tracker: the tutorial director (TutorialController) reads the frame's state, events and raw
+	 * buttons, pushes the tutorial HUD state and fires the funnel steps (tutorial runs only).
+	 */
+	tutorialAfterFx: 3,
 	/** After the default camera (Camera = 200), so the scriptable rig wins (same as spike B). */
 	cameraAfterCamera: 1,
 	/** Renderers run after the camera so every view uses the same frame's alpha. */

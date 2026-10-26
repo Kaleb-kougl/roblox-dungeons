@@ -300,13 +300,25 @@ export function partyRunOverLine(
 	return { key: MENU_STRINGS.partyEnded, reason: verdict.reason ?? verdict.code ?? "" };
 }
 
-export type PauseItem = "resume" | "restart" | "leave" | "settings" | "leaderboards";
+export type PauseItem =
+	| "resume"
+	| "restart"
+	| "leave"
+	| "settings"
+	| "leaderboards"
+	/** A first-run tutorial run (docs/TUTORIAL.md): a fresh tutorial run, and the skip (asks first). */
+	| "restartTutorial"
+	| "skipTutorial";
 
-/** The pause overlay's buttons: solo (the run is paused) or the co-op overlay (the run goes on; no restart). */
-export function pauseItems(coop: boolean): ReadonlyArray<PauseItem> {
-	return coop
-		? ["resume", "leave", "settings", "leaderboards"]
-		: ["resume", "restart", "leave", "settings", "leaderboards"];
+/**
+ * The pause overlay's buttons: solo (the run is paused), the co-op overlay (the run goes on; no restart), or a
+ * tutorial run (paused; Restart tutorial / Skip tutorial take Restart's and Leave run's places, no leaderboards: the
+ * outro points there). The tutorial replay lives in the main menu, not here.
+ */
+export function pauseItems(coop: boolean, tutorial = false): ReadonlyArray<PauseItem> {
+	if (coop) return ["resume", "leave", "settings", "leaderboards"];
+	if (tutorial) return ["resume", "restartTutorial", "skipTutorial", "settings"];
+	return ["resume", "restart", "leave", "settings", "leaderboards"];
 }
 
 /**

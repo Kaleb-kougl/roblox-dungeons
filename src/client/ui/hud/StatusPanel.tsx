@@ -5,6 +5,7 @@ import { role, str } from "client/ui/theme";
 import { HUD_STRINGS, HUD_VIEW, heartFills } from "shared/view/hud";
 import { Panel, Pip, Row, Text } from "./primitives";
 import { RunItems } from "./RunItems";
+import { GhostHeart, HighlightRing } from "./TutorialFx";
 
 const HIDDEN = 1;
 const STROKE = 1;
@@ -42,29 +43,41 @@ function pips(count: number, max: number, color: "uiMana" | "uiAccent" | "ember"
 	return out;
 }
 
+export interface StatusPanelProps {
+	/** The tutorial rings the hearts row or the flask row (TutorialView.highlight). */
+	readonly highlight?: "hearts" | "flask";
+	/** The tutorial's ghost half heart: a new token flashes it once more (0 = never). */
+	readonly ghostHeart?: number;
+}
+
 /**
  * Top left (web PlayerHud): hearts (full / half / empty) with armor pips, flask charges and Ember pips, each row
  * labelled from the theme string table; in endless runs a line with the floor and Depth and the owned boons, relics
- * and curses (M2, RunItems). Reads only the ~10 Hz snapshot.
+ * and curses (M2, RunItems). Reads only the ~10 Hz snapshot. In the tutorial: the highlight ring on the hearts or the
+ * flask row, and the ghost half heart after a harmless hit.
  */
-export function StatusPanel() {
+export function StatusPanel(props: StatusPanelProps) {
 	const s = useSelector(selectSnapshot);
 	const hearts = heartFills(s.hearts, s.heartsMax).map((fill, i) => (
 		<Heart key={`h${i}`} order={i + 1} fill={fill} />
 	));
 	const armorMax = math.max(s.armorMax, s.armor);
+	const ghost = props.ghostHeart ?? 0;
 	return (
 		<Panel position={new UDim2(0, HUD_VIEW.margin, 0, HUD_VIEW.margin)} anchor={new Vector2(0, 0)} name="Status">
 			<Row order={1}>
 				<Text order={0} width={LABEL_WIDTH} color="uiTextDim" text={str(HUD_STRINGS.health)} />
 				{hearts}
+				{ghost > 0 ? <GhostHeart key={`ghost${ghost}`} order={hearts.size() + 1} /> : undefined}
 				{armorMax > 0 ? (
-					<Row order={hearts.size() + 1}>{pips(s.armor, armorMax, "uiMana", true)}</Row>
+					<Row order={hearts.size() + 2}>{pips(s.armor, armorMax, "uiMana", true)}</Row>
 				) : undefined}
+				{props.highlight === "hearts" ? <HighlightRing /> : undefined}
 			</Row>
 			<Row order={2}>
 				<Text order={0} width={LABEL_WIDTH} color="uiTextDim" text={str(HUD_STRINGS.flask)} />
 				{pips(s.flask, s.flaskMax, "uiAccent", false)}
+				{props.highlight === "flask" ? <HighlightRing /> : undefined}
 			</Row>
 			<Row order={3}>
 				<Text order={0} width={LABEL_WIDTH} color="uiTextDim" text={str(HUD_STRINGS.ember)} />

@@ -109,6 +109,9 @@ describe("RunSessionRegistry", () => {
 		expect(code({ requestId: 1, worldKind: "" })).toBe("bad_request");
 		expect(code({ requestId: 1, worldKind: "game", classId: string.rep("a", 100) })).toBe("bad_request");
 		expect(code({ requestId: 1, worldKind: "nowhere" })).toBe("unknown_world");
+		// The tutorial world is registered (the client builds it) but played locally only: never a server session.
+		expect(code({ requestId: 1, worldKind: "tutorial" })).toBe("unknown_world");
+		expect(reg.size()).toBe(0);
 		expect(code({ ...REQUEST, atBossDoor: true })).toBe("debug_spawn");
 		expect(code({ ...REQUEST, atBossDoor: true }, ctx(0, { allowBossDoorSpawn: true }))).toBe("ok");
 		expect(code({ ...REQUEST, party: [STRANGER] })).toBe("bad_party");

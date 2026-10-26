@@ -24,6 +24,7 @@ import {
 	CLASS_IDS,
 	DIGIT_FONT,
 	ENEMY,
+	ENEMY_ARCHETYPES,
 	ITEM,
 	TILE,
 	slotFor,
@@ -94,6 +95,8 @@ export const PLACEHOLDER_PROPORTIONS = {
 	caster: [0.625, 1, 0.625],
 	/** Summoner: a tall drum. */
 	summoner: [0.75, 1, 0.75],
+	/** Training dummy (tutorial): a thin upright post, as tall as the cell. */
+	dummy: [0.375, 1, 0.375],
 	/** Bosses: a large block, the full 48 x 48 cell wide, 3/4 tall. */
 	boss: [1, 0.75, 1],
 	/** Enemy bullets: a ball filling the 8 px cell (the renderer scales it to the gameplay radius). */
@@ -179,6 +182,7 @@ const ENEMY_SHAPES: Record<EnemyArchetype, { shape: PlaceholderShape; proportion
 	bruiser: { shape: "Block", proportions: PLACEHOLDER_PROPORTIONS.bruiser },
 	caster: { shape: "Capsule", proportions: PLACEHOLDER_PROPORTIONS.caster },
 	summoner: { shape: "Cylinder", proportions: PLACEHOLDER_PROPORTIONS.summoner },
+	dummy: { shape: "Cylinder", proportions: PLACEHOLDER_PROPORTIONS.dummy },
 };
 
 const enemyVisual = (archetype: EnemyArchetype): PlaceholderVisual =>
@@ -244,8 +248,8 @@ function buildTable(): Record<string, PlaceholderVisual> {
 	for (const c of CLASS_IDS) {
 		t[`class.${c}`] = classVisual(`class.${c}`);
 	}
-	// Enemies: one silhouette per archetype (swarmer ball, sniper wedge, bruiser block, ...).
-	for (const archetype of ["swarmer", "sprayer", "sniper", "bruiser", "caster", "summoner"] as const) {
+	// Enemies: one silhouette per archetype (swarmer ball, sniper wedge, bruiser block, ..., dummy post).
+	for (const archetype of ENEMY_ARCHETYPES) {
 		t[`enemy.${archetype}`] = enemyVisual(archetype);
 	}
 	// Bosses: a large block in the shared boss accent. boss.act1 is Mother Bramble (M1).

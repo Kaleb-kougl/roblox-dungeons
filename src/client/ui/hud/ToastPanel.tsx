@@ -10,7 +10,7 @@ const HALF = 0.5;
 
 /**
  * Top centre, M2 progression: the toasts of the last few seconds (boon taken, relic found, curse accepted, Second
- * Wind, Vampire Fang) and, while the player stands in an unused curse shrine's zone, the accept hint. Item names are
+ * Wind, Vampire Fang; the tutorial's callouts) and, while the player stands in an unused curse shrine's zone, the accept hint. Item names are
  * theme strings themselves (`<id>.name`).
  */
 export function ToastPanel() {
@@ -25,6 +25,7 @@ export function ToastPanel() {
 			order={i + 1}
 			color="uiAccent"
 			align={Enum.TextXAlignment.Center}
+			wrap={true}
 			text={str(t.key, {
 				name: t.nameKey !== undefined ? str(t.nameKey) : "",
 				amount: t.amount ?? 0,

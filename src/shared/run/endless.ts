@@ -99,7 +99,15 @@ export function endlessRunFloor(
 	floor: number,
 	partySize: number = DEFAULT_PARTY_SIZE,
 ): EndlessRunFloor {
-	const layout = buildEndlessFloor(runSeed, floor, endlessDungeon, partySize);
+	return endlessFloorWorld(buildEndlessFloor(runSeed, floor, endlessDungeon, partySize));
+}
+
+/**
+ * The sim's world for a built floor layout: circleMover / bulletBlocker / actorMover / actorSteerMover on its dungeon
+ * and its encounter, its spawns and stairwell. What every endless floor steps with; the tutorial (tutorial.ts) builds
+ * its hand-scripted floors through it too, so they move, block and steer exactly like an endless floor. Pure.
+ */
+export function endlessFloorWorld(layout: EndlessFloorLayout): EndlessRunFloor {
 	const d = layout.dungeon;
 	const config: SimConfig = {
 		moveResolver: circleMover(d, PLAYER_RADIUS),
@@ -109,7 +117,7 @@ export function endlessRunFloor(
 		encounter: layout.encounter,
 	};
 	return {
-		floor,
+		floor: layout.floor,
 		config,
 		bossFloor: layout.bossFloor,
 		spawnX: layout.spawn.x,

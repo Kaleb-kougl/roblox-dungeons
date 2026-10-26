@@ -1,6 +1,6 @@
 import React from "@rbxts/react";
 import { useSelector } from "@rbxts/react-reflex";
-import { selectGameActive } from "client/store";
+import { selectGameActive, selectGhostHeart, selectTutorialHighlight } from "client/store";
 import { HUD_VIEW } from "shared/view/hud";
 import { BossBar } from "./BossBar";
 import { DraftOverlay } from "./DraftOverlay";
@@ -13,6 +13,9 @@ import { ScorePanel } from "./ScorePanel";
 import { OptionsScreen } from "./OptionsScreen";
 import { StatusPanel } from "./StatusPanel";
 import { ToastPanel } from "./ToastPanel";
+import { ObjectiveCard } from "./ObjectiveCard";
+import { TutorialOutro } from "./TutorialOutro";
+import { TutorialPanel } from "./TutorialPanel";
 import { useHudScale } from "./useHudScale";
 import { WeaponPanel } from "./WeaponPanel";
 
@@ -23,10 +26,13 @@ import { WeaponPanel } from "./WeaponPanel";
  *                 hint), BossBar (top centre), ScorePanel (top right, scored runs: score + combo meter),
  *                 RunOverPanel (centre: death / victory + stats, the score breakdown in scored runs), InfoPanel
  *                 (bottom right: info, verdict, debug line), ToastPanel (top centre: M2 progression toasts and the
- *                 curse shrine hint), DraftOverlay (centre: the M2 boon draft's cards)
- *   KV_GameMenu   PauseOverlay (solo: paused; co-op: the non-pausing party overlay; both with Leave run), the
- *                 OptionsScreen (tabs: juice, controls / rebinding, audio, display) and the LeaderboardPanel (M5),
- *                 above the HUD and the menu shell (client/ui/menu MenuLayer, mounted next to this by HudController)
+ *                 curse shrine hint), DraftOverlay (centre: the M2 boon draft's cards); the first-run tutorial's
+ *                 TutorialPanel (lower centre: prompt, progress, pause hint) and ObjectiveCard (centre), and its
+ *                 highlight ring on the taught element (tutorial slice `highlight`) and the ghost half heart
+ *   KV_GameMenu   PauseOverlay (solo: paused; co-op: the non-pausing party overlay; both with Leave run; a tutorial
+ *                 run: Restart / Skip tutorial), the tutorial's outro card (TutorialOutro), the OptionsScreen (tabs:
+ *                 juice, controls / rebinding, audio, display) and the LeaderboardPanel (M5), above the HUD and the
+ *                 menu shell (client/ui/menu MenuLayer, mounted next to this by HudController)
  *
  * Both lay out at the 1280x720 reference size under a UIScale (useHudScale) and sit inside the device's safe area
  * (ScreenInsets = CoreUISafeInsets: notches, the Roblox top bar). Reads only Reflex (the ~10 Hz snapshot, the input
@@ -35,6 +41,8 @@ import { WeaponPanel } from "./WeaponPanel";
  */
 export function GameHud() {
 	const active = useSelector(selectGameActive);
+	const highlight = useSelector(selectTutorialHighlight);
+	const ghostHeart = useSelector(selectGhostHeart);
 	const scale = useHudScale();
 	return (
 		<>
@@ -48,14 +56,20 @@ export function GameHud() {
 				<uiscale Scale={scale} />
 				{active ? (
 					<>
-						<StatusPanel key="Status" />
-						<WeaponPanel key="Weapons" />
-						<BossBar key="Boss" />
-						<ScorePanel key="Score" />
+						<StatusPanel
+							key="Status"
+							highlight={highlight === "flask" || highlight === "hearts" ? highlight : undefined}
+							ghostHeart={ghostHeart}
+						/>
+						<WeaponPanel key="Weapons" highlight={highlight === "weapons"} />
+						<BossBar key="Boss" highlight={highlight === "bossBar"} />
+						<ScorePanel key="Score" highlight={highlight === "score"} />
 						<RunOverPanel key="RunOver" />
 						<InfoPanel key="Info" />
 						<ToastPanel key="Toasts" />
 						<DraftOverlay key="Draft" />
+						<TutorialPanel key="TutorialPanel" />
+						<ObjectiveCard key="ObjectiveCard" />
 					</>
 				) : undefined}
 			</screengui>
@@ -68,6 +82,7 @@ export function GameHud() {
 			>
 				<uiscale Scale={scale} />
 				{active ? <PauseOverlay key="Pause" /> : undefined}
+				{active ? <TutorialOutro key="TutorialOutro" /> : undefined}
 				<OptionsScreen key="Options" />
 				<LeaderboardPanel key="Leaderboards" localUserId={Players.LocalPlayer.UserId} />
 			</screengui>

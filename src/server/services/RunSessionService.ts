@@ -42,6 +42,7 @@ import {
 	type LockstepStepResult,
 } from "shared/lockstep";
 import { LeaderboardService } from "./LeaderboardService";
+import { OnboardingService } from "./OnboardingService";
 import { RunValidationService } from "./RunValidationService";
 
 const log = serverLogger("RunSession");
@@ -98,6 +99,14 @@ export type LobbyRunStartResult = { readonly ok: true } | { readonly ok: false; 
  * Lobby runs (shared/lobby LobbyRunTracker): a one-member lobby's run is the next ranked session its player starts
  * after `lobbyRunStart`. Whenever a lobby's run ends (its session concluded with any outcome, its solo player left,
  * or no solo start came in time) the `onLobbyRunEnded` listeners hear the lobbyId (LobbyService -> `runEnded`).
+ *
+ * A player playing the first-run tutorial (OnboardingService `isInTutorial`) is busy for lobbies too
+ * (`busyReason` adds `tutorialBusyReason`): they cannot create or join a lobby or be invited, a lobby Start or a due
+ * countdown with them in it is refused / cancelled (`busy`), and `startLobbyRun` re-checks every member, so a lobby
+ * never pulls anyone out of the tutorial. Once a party run starts, its members are out of the tutorial
+ * (OnboardingService `leaveTutorial`), and a late `tutorialStarted` from a member of an unconcluded party run is
+ * ignored (`setPartyRunCheck`). The tutorial world itself is never a server run (shared/run SERVER_REFUSED_WORLDS:
+ * every session start, lobby starts included, answers `unknown_world`).
  */
 @Service({})
 export class RunSessionService implements OnStart {
@@ -138,11 +147,17 @@ export class RunSessionService implements OnStart {
 	private readonly lobbyRuns = new LobbyRunTracker();
 	private readonly lobbyRunEndedListeners = new Set<LobbyRunEndedListener>();
 
-	constructor(private readonly runs: RunValidationService, private readonly leaderboards: LeaderboardService) {}
+	constructor(
+		private readonly runs: RunValidationService,
+		private readonly leaderboards: LeaderboardService,
+		private readonly onboarding: OnboardingService,
+	) {}
 
 	onStart(): void {
 		// BindToClose: the leaderboard flush waits for runs that may still post.
 		this.leaderboards.setPendingPosts(() => this.pendingPosts());
+		// A late `tutorialStarted` from a member of a party run must not mark them in the tutorial.
+		this.onboarding.setPartyRunCheck((p) => this.registry.busyReason(p.UserId) !== undefined);
 		this.janitor.Add(
 			Events.startRun.connect((player, request) => {
 				if (player.Parent === undefined) return;
@@ -299,9 +314,18 @@ export class RunSessionService implements OnStart {
 
 	// --- lobbies (LobbyService) -----------------------------------------------------------------
 
-	/** Why the player cannot group up now (in an unconcluded party run), or undefined. Solo runs are not busy. */
+	/**
+	 * Why the player cannot group up now, or undefined: a member of an unconcluded party run, or playing the
+	 * tutorial (`tutorialBusyReason`). Solo runs are not busy.
+	 */
 	busyReason(userId: number): string | undefined {
-		return this.registry.busyReason(userId);
+		return this.registry.busyReason(userId) ?? this.tutorialBusyReason(userId);
+	}
+
+	/** Why `userId` cannot join a lobby run because of the tutorial (they are playing it), or undefined. */
+	private tutorialBusyReason(userId: number): string | undefined {
+		const p = Players.GetPlayerByUserId(userId);
+		return p !== undefined && this.onboarding.isInTutorial(p) ? `player ${userId} is in the tutorial` : undefined;
 	}
 
 	/** Calls `listener` whenever a lobby's run is over (see the class comment). Returns the unsubscribe. */
@@ -317,6 +341,12 @@ export class RunSessionService implements OnStart {
 	 * member's client is told to start a ranked run (`lobbyRunStart`); that start is bound to the lobby.
 	 */
 	startLobbyRun(start: LobbyRunStart): LobbyRunStartResult {
+		// A member who readied and then started the tutorial is not pulled out of it (Lobbies.tick checks busyReason
+		// too; this guards the handoff itself).
+		for (const id of start.kind === "solo" ? [start.userId] : start.members) {
+			const busy = this.tutorialBusyReason(id);
+			if (busy !== undefined) return { ok: false, reason: `could not start: ${busy}` };
+		}
 		if (start.kind === "solo") {
 			const player = Players.GetPlayerByUserId(start.userId);
 			if (player === undefined) return { ok: false, reason: "the player left" };
@@ -335,6 +365,8 @@ export class RunSessionService implements OnStart {
 		if (!r.ok) return { ok: false, reason: `could not start: ${r.reason}` };
 		const s = r.session;
 		this.lobbyRuns.party(s.runId, start.lobbyId);
+		// Every member's client switches to the party run: none of them is in the tutorial any more.
+		for (const p of this.memberPlayers(s)) this.onboarding.leaveTutorial(p);
 		for (const id of others) {
 			const open = this.registry.openSession(id);
 			if (open === undefined || open.members.size() > 1) continue;

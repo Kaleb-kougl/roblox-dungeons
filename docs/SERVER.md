@@ -22,8 +22,9 @@ checks **finished** runs by replaying them, derives telemetry from its own repla
 | Client segment cutting | `src/shared/play/liveRun.ts` `SegmentCutter`, `LiveRun.cutSegment` | headless |
 | Leaderboards: ordered value, PB rules, write queue, read cache, view (M5) | `src/shared/leaderboard/` | headless |
 | Same-server lobbies: model, who-hears-what outbox, friend cache, lobby run tracker, analytics (L2) | `src/shared/lobby/` | headless |
+| Onboarding doc codec, done rule, tutorial funnel filter | `src/shared/onboarding/` | headless |
 | Remotes | `src/shared/network.ts`, `src/server/network.ts` | Studio |
-| Services | `src/server/services/{RunValidation,RunSession,Leaderboard,Telemetry,Settings,Lobby}Service.ts`, `data/` | Studio |
+| Services | `src/server/services/{RunValidation,RunSession,Leaderboard,Telemetry,Settings,Lobby,Onboarding}Service.ts`, `data/` | Studio |
 
 M3 / M5 (sections "Segmented runs" and "Leaderboards" below) add the ranked path: the server picks the seed, the
 client uploads its recording in segments while it plays, and the server keeps its own SimState per run and replays
@@ -153,6 +154,8 @@ Event pairs, like the user's other Flamework project. Flamework generates a runt
 | server -> client | `partyRunStarted` | `PartyRunStart { runId, seed, worldKind, members, lobbyId }` | |
 | client -> server | `lockstepInput` / `lockstepHash` / `lockstepFinal` | inputs; `runId, ticks[], hashes[]` (batched, resent until acknowledged); `RunFinal` | `lockstepFrames(runId, firstTick, data, hashAck)` |
 | client -> server | `lockstepLeave` | `runId` | none (the leaver's frames carry the leave bit from the next tick; `runFinished` still comes) |
+| client -> server | `requestOnboarding` / `tutorialStarted` / `tutorialStep` / `tutorialFinished` | see "Onboarding (tutorial)" | `onboardingStatus` (request, finished) |
+| server -> client | `onboardingStatus` | `OnboardingStatus { loaded, tutorialDone }` (sent once after join too) | |
 
 The M4 invite flow (`partyInvite` / `partyRespond` / `partyInviteUpdate`, `shared/run` `PartyInvites`) was removed in
 task L7: lobbies replace it.
@@ -171,6 +174,7 @@ The client side is `src/client/network.ts` (`GlobalEvents.createClient`); `SimCo
 | `REPLAY_BUDGET_SECONDS` | 4 ms | The replay yields (`task.wait()`) whenever 4 ms of `os.clock()` work piled up since the last yield (was: every 2,000 ticks, ~160 ms blocks). The check runs in the replay's `onCheckpoint` hook (`ReplayBudget`, clock injected), so validate.ts and the sim never read a clock. At ~80 us per tick (an M1 floor) a 20-minute run takes ~25 s of wall time; deep endless floors cost far more per tick ("Replay capacity" below). Segmented replays check it every `SEGMENT_BUDGET_CHECK_TICKS` = 4 ticks (was 16: at ~1.1 ms per tick a check could overshoot by ~18 ms). |
 | `REPLAY_CONCURRENCY` | 1 | Server-wide replay queue (`WorkQueue`, FIFO): concurrent players' replays run one after another instead of stacking CPU time on the same frames. The log line shows the queue wait. |
 | `SETTINGS_REQUEST_RATE` | 20 per 10 s per player | Settings remotes. |
+| `ONBOARDING_REQUEST_RATE` / `TUTORIAL_STEP_RATE` | 10 / 30 per 10 s per player | Onboarding remotes (`shared/onboarding/config.ts`). |
 | Seeds | integers in [0, 2^32) | What the web build's `seedFromQuery` produces. |
 | Debug input (`DEBUG_HIT`, `DEBUG_BOSS` bits) | rejected (`debug_input`) | K / J are debug keys. |
 | Boss-door start | rejected (`debug_spawn`) | The web build's `?spawn=boss` is debug only. |
@@ -284,7 +288,9 @@ client                                                server (RunSessionService)
 - **Session**: `unknown_run` (no such run for this player), `expired` (no segment for RUN_SESSION_IDLE_SECONDS or older
   than RUN_SESSION_MAX_AGE_SECONDS), `abandoned` (a new start replaced it, or the player left; not reported to
   analytics), `rate_limited`.
-- **Start codes** (`runStarted.code`): `bad_request`, `unknown_world`, `debug_spawn`, `bad_party` (also: a party
+- **Start codes** (`runStarted.code`): `bad_request`, `unknown_world` (also: a registered world the server never runs,
+  `SERVER_REFUSED_WORLDS` in `shared/run/worlds.ts`: the local-only `tutorial`; party invites refuse it the same
+  way), `debug_spawn`, `bad_party` (also: a party
   without every member's accepted invite, see "Co-op lockstep"), `busy` (the player already has RUN_PENDING_PER_PLAYER
   finished runs still validating, or a member - the owner included - is in a party run that is not concluded yet:
   `RunSessionRegistry.busyReason`), `config_error`, `rate_limited`. The client retries `busy` a few times
@@ -469,7 +475,8 @@ invites, host-only kick / visibility / name / transfer / start, ready + countdow
   background (pcall; at most `FRIEND_CACHE.maxConcurrentFetches` at once; a failure counts as not friends and is
   retried after `retrySeconds`; a known answer is refreshed after `refreshSeconds`). A landed answer that changed marks
   the lists dirty. Pairs with a new player are prefetched on PlayerAdded and forgotten on PlayerRemoving.
-- **Busy** = `RunSessionService.busyReason` (a member of an unconcluded party run). A player in a solo run is NOT busy:
+- **Busy** = `RunSessionService.busyReason` (a member of an unconcluded party run, or playing the first-run tutorial:
+  "Onboarding (tutorial)" below). A player in a solo run is NOT busy:
   they can be invited and join (their client shows a badge); a party start abandons their solo run.
 - **Run handoff.** A due countdown hands the run to `RunSessionService.startLobbyRun(start)`. Party: the run is created
   and announced (`partyRunStarted` with `lobbyId`, "Co-op lockstep" above). Solo (one member): the client gets
@@ -636,11 +643,75 @@ The web build's per-run markers (`boss.phase`, `boss.engaged`, `boss.defeated`, 
 Not ported (no Roblox counterpart): the post-run screen, the "Fight it again?" answer, retry delay (wall clock), the
 JSON session files and F9 export.
 
+## Onboarding (tutorial)
+
+`OnboardingService` (pure parts in `src/shared/onboarding/`; plan in `docs/TUTORIAL.md` §5-6) remembers whether a
+player has done the first-run tutorial ("Practice Descent"), logs its funnel, and marks players in it as busy for
+lobbies. The client side (TutorialController, T6) only talks to it through these remotes:
+
+| Direction | Event | Payload | Server does | Reply |
+| --- | --- | --- | --- | --- |
+| server -> client | `onboardingStatus` | `{ loaded: boolean, tutorialDone: boolean }` | sent once the join load ends (success or failure) | |
+| client -> server | `requestOnboarding` | none | loads if needed (shares the join read) | `onboardingStatus` |
+| client -> server | `tutorialStarted` | none | opens a new funnel attempt (server GUID = funnel session id); `isInTutorial` = true. Ignored from a member of an unconcluded party run (a late message) | none |
+| client -> server | `tutorialStep` | `step: number` | integer 1..`TUTORIAL_FUNNEL_MAX_STEP` (15, = shared/tutorial `TUTORIAL_STEP_COUNT`), strictly above the attempt's last. The funnel step name is the server's: that step's id in the shared step list (`tutorialStepName`), never a client string | none |
+| client -> server | `tutorialFinished` | `"completed" \| "skipped"` | closes the attempt (`isInTutorial` = false), writes the doc. The client sends `completed` the moment the run freezes (before the outro beat) | `onboardingStatus` |
+
+Every value is re-checked on the server (Flamework's guard checks only the shape), and the remotes are rate limited
+per player: `ONBOARDING_REQUEST_RATE` (10 per 10 s for request / started together), `TUTORIAL_FINISH_RATE` (10 per
+10 s, its own budget so other traffic never drops the finish) and `TUTORIAL_STEP_RATE` (30 per 10 s). A dropped
+request or finish still answers with the cached status; a dropped finish still closes the attempt (not recorded).
+
+**Doc** (DataStore `KV_Onboarding_v1`, key `u_<UserId>`, `PlayerDocCache` like settings: load on join with 3 retries,
+save when dirty on leave / `BindToClose` / every 120 s, writes tagged with the UserId):
+`{ v: 1, tutorialVersion, outcome, at }`. `tutorialDone = tutorialVersion >= ONBOARDING_TUTORIAL_VERSION` (1; bump it
+to offer a rewritten tutorial again). `tutorialFinished` writes `{ tutorialVersion: ONBOARDING_TUTORIAL_VERSION,
+outcome, at: os.time() }` (a replay overwrites outcome and time). Anything missing or malformed decodes as the empty
+doc (`tutorialVersion: 0`: never played); a bad `at` alone decodes as 0.
+
+**Failure rule.** A failed join load sends `{ loaded: false, tutorialDone: false }`: the client then plays a normal run
+and keeps the Tutorial button in the pause menu (a DataStore outage never forces a veteran through the tutorial). The
+stored value is never overwritten because of the failure; only a `tutorialFinished` in that session writes (the same
+rule as a settings change), after which `loaded` reads true once that save succeeded.
+
+**Trust.** Completion only skips a practice mode and the tutorial is never submitted, so the server records what the
+client says; the funnel is the one piece of telemetry taken from the client (bounded as above).
+
+**Funnel** `tutorial` (`LogFunnelStepEvent`, session id = the attempt id): steps 1..15 are the lessons, named by
+their ids in `shared/tutorial` `TUTORIAL_STEPS` (objective, move, flask, attack, hits, roll, guard, bow, ember, relic,
+curse, stairwell, draft, boss, finish; the client sends only the number), step 16 is `completed`. Each `tutorialStarted` (first run, Restart tutorial, a replay) is a new attempt
+counting from 1, so a restart never repeats steps inside one funnel session; steps outside an attempt are dropped. A
+**skip is not a funnel step** (Roblox counts every lower step number as reached, which would credit a skipper with
+every lesson): it logs the custom event `TutorialSkipped` (value = last lesson step reached in the attempt) and the
+funnel shows the drop-off where they stopped. The client reports only leading lessons it PRACTISED (`TutorialDirector`
+`funnelStepReached`: done and not skipped), so a lesson left behind (its floor left early) stops the attempt's funnel
+there for good; only `completed` (logged on a completed finish) then counts the rest. `TUTORIAL_FUNNEL_MAX_STEP` is the tutorial's step count
+(`TUTORIAL_STEP_COUNT`), so a new step moves `completed` with it; never rename or reorder shipped step ids, or the
+dashboard funnel splits.
+
+**Lobbies busy.** While `isInTutorial`, the player is busy for lobbies: `RunSessionService.busyReason` (what
+LobbyService passes to `Lobbies` as `busyReason`) adds `tutorialBusyReason` to the registry's (an unconcluded party
+run), so the same `busy` refusals apply as for a party member: they cannot create or join a lobby or be invited
+(`lobby.err.busy`), the host's Start is refused while they are in its lobby, and a countdown whose member started
+the tutorial since is cancelled when it ends (`Lobbies.tick`; countdownCancelled notice with the reason).
+`startLobbyRun` re-checks every member for the tutorial before the handoff (party and solo), so a lobby never pulls a
+player out of it. A player already in a lobby who starts the tutorial (main menu -> Tutorial) stays a member; the
+lobby just cannot start until they finished or skipped. A party run that does start ends every member's tutorial
+attempt (`leaveTutorial`, unlogged: their clients switched runs), and a late `tutorialStarted` from a member of an
+unconcluded party run is ignored (`setPartyRunCheck`), so nobody stays busy by mistake. The tutorial world itself is
+in `SERVER_REFUSED_WORLDS`: every `RunSessionRegistry.start` (ranked `startRun`, lobby party and solo starts) answers
+`unknown_world` for it.
+
+**Studio only:** the Workspace attribute `KV_ResetOnboarding = true` resets each joining player's loaded doc to empty
+(logged `[Onboarding] RESET`; saved like any change, never after a failed load), so every Studio join is a first join.
+Without API access the load fails (`[Onboarding] LOAD_FAILED`) and the tutorial is not forced.
+
 ## DataStores
 
 | DataStore | Key | Value | Written |
 | --- | --- | --- | --- |
 | `PlayerSettings` | `u_<UserId>` | settings document v2 `{ v: 2, juice, controls, audio, display }` (only what the player changed; v1 `{ v: 1, juice }` migrates on read) | when dirty: on leave, on `BindToClose` (parallel, 25 s budget), every 120 s |
+| `KV_Onboarding_v1` | `u_<UserId>` | `{ v: 1, tutorialVersion, outcome: "completed" \| "skipped", at }` (see "Onboarding (tutorial)") | when dirty: on leave, on `BindToClose`, every 120 s |
 | `Runs` (off: `RUNS_DATASTORE_ENABLED = false`) | `u_<UserId>` | the last 50 accepted runs `{ id, seed, hash, ticks, kills, boss, died, at }` (UpdateAsync) | on each accepted run |
 
 Every write is tagged with the owner's UserId (`SetAsync`'s `userIds`, UpdateAsync's second return value), for

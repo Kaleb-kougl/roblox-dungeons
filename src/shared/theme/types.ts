@@ -63,6 +63,8 @@ export const COLOR_ROLES = [
 	"enemy.bruiser",
 	"enemy.caster",
 	"enemy.summoner",
+	// Roblox port: the tutorial's Training Dummy (contract.ts ENEMY_ARCHETYPES)
+	"enemy.dummy",
 	// Bosses share one accent
 	"boss",
 	// Enemy attack warnings (telegraph lines, slam shockwaves): hot like enemy bullets, but not a bullet

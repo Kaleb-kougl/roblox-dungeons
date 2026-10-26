@@ -134,6 +134,11 @@ export interface ArchetypeDef<D extends ArchetypeData = ArchetypeData> {
 	/** Unique id, lowercase dot-separated, e.g. 'swarmer', 'turret.sniper', 'boss.warden'. */
 	readonly id: string;
 	readonly data: D;
+	/**
+	 * Index band (registry.ts): kinds number by (band, id). Omit (0) for the web build's archetypes; the Roblox port's
+	 * own take a higher band (PORT_BAND_TUTORIAL, ...) so they append after the web table without shifting it.
+	 */
+	readonly band?: number;
 	/** After the generic fields are set (hp, radius, position, emitter, v all 0). Optional. */
 	init?(ctx: SimCtx, actor: ActorState): void;
 	/** Once per tick while alive (slot order). AI, movement, firing, spawning. */

@@ -3,9 +3,9 @@
  *
  * Ported from project-kaleb-vale `src/theme/contract.ts` @ 42897e2. IDs, cell sizes, frame counts,
  * pivots, facings, the digit font, required IDs/strings, contrast thresholds and gameplay key words
- * are UNCHANGED, so art made for either build fits both. Roblox changes: visual slots accept
- * `placeholder` where the web accepted `generated`, and audio slots name the SoundGroup they play
- * through (SOUND_GROUPS).
+ * are UNCHANGED (plus the port's `enemy.dummy`, see ENEMY_ARCHETYPES), so art made for either build
+ * fits both. Roblox changes: visual slots accept `placeholder` where the web accepted `generated`, and
+ * audio slots name the SoundGroup they play through (SOUND_GROUPS).
  *
  * Cell sizes, frame counts per animation, pivots and facings live here (not in packs), so code
  * can rely on them and a new pack can't change how anything lines up. The validator checks every
@@ -183,7 +183,11 @@ export const SPRITE_RESAMPLE_MODES = ["Default", "Pixelated"] as const;
 export const CLASS_IDS = ["vanguard", "ranger", "pyromancer", "tinkerer", "hexblade"] as const;
 export type ClassId = (typeof CLASS_IDS)[number];
 
-export const ENEMY_ARCHETYPES = ["swarmer", "sprayer", "sniper", "bruiser", "caster", "summoner"] as const;
+/**
+ * The web build's six, then the Roblox port's `dummy` (the tutorial's Training Dummy, sim archetype 'dummy'): every
+ * pack fills `enemy.dummy` (asset and colour role) and `enemy.dummy.name` like the others.
+ */
+export const ENEMY_ARCHETYPES = ["swarmer", "sprayer", "sniper", "bruiser", "caster", "summoner", "dummy"] as const;
 export type EnemyArchetype = (typeof ENEMY_ARCHETYPES)[number];
 
 export const RARITIES = ["normal", "magic", "rare", "unique", "set", "glyphword"] as const;

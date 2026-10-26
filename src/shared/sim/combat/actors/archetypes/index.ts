@@ -19,3 +19,6 @@ export * from "./bruiser";
 
 // --- E1.8 bosses
 export * from "./boss/act1";
+
+// --- Roblox port: the tutorial (band PORT_BAND_TUTORIAL: numbered after every archetype above)
+export * from "./dummy";

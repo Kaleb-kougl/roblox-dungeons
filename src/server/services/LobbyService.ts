@@ -74,7 +74,8 @@ function isFriendsWith(a: number, b: number): boolean {
  *
  * The current state (list, state, invites) goes to a player on PlayerAdded and on `lobbyRequestList`. Friendship comes
  * from a FriendCache (Player:IsFriendsWith in the background; a landed answer marks the lists dirty). Busy =
- * RunSessionService.busyReason (an unconcluded party run; solo runs are not busy). A due countdown hands the run to
+ * RunSessionService.busyReason (an unconcluded party run, or playing the first-run tutorial; solo runs are not
+ * busy). A due countdown hands the run to
  * RunSessionService.startLobbyRun; the lobby returns to `forming` on its `onLobbyRunEnded` (or at once when the start
  * is refused, with a countdownCancelled notice carrying the reason).
  */

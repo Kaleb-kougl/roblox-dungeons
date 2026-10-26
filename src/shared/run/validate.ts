@@ -11,12 +11,12 @@
 import {
 	Button,
 	PORT_BUTTONS,
-	START_HALF_HEARTS,
 	decodeRecording,
 	hashState,
 	isPartyWiped,
 	type Recording,
 	type SimState,
+	runStartHalfHearts,
 } from "shared/sim";
 import { buildRunConfig, isValidRunSeed, type RunSetup } from "./config";
 import { DEFAULT_RUN_LIMITS, MAX_REJECT_REASON_CHARS, type RunLimits } from "./limits";
@@ -244,7 +244,7 @@ export function validateRun(
 	if (badSpawn !== undefined) return reject("spawn_mismatch", `spawn mismatch: ${badSpawn}`);
 
 	const [replayOk, replayed] = pcall(() => {
-		const telemetry = new RunTelemetry(START_HALF_HEARTS, options.archetypeNames);
+		const telemetry = new RunTelemetry(runStartHalfHearts(setup.config), options.archetypeNames);
 		const state = replayObserved(recording, setup.config, (s) => telemetry.observe(s), options.hooks);
 		return { state, telemetry: telemetry.finish() };
 	});

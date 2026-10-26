@@ -10,9 +10,11 @@ import {
 	type ClientState,
 } from "client/store";
 import type { LobbyVisibility } from "shared/lobby";
+import type { FirstRunDecision } from "shared/tutorial";
 import { FIXED_INPUTS, RUN_ATTRIBUTES } from "shared/play";
 import { LOBBY_ROOM_PATH, MAIN_MENU_PATH, MENU_BACK_KEYS, afterRunPath } from "shared/view/menu";
 import { SimController } from "../game/SimController";
+import { TutorialController } from "../game/TutorialController";
 import { LeaderboardController } from "./LeaderboardController";
 import { LobbyController } from "./LobbyController";
 import { SettingsController } from "./SettingsController";
@@ -30,7 +32,9 @@ const BROWSER_PATH = ["main", "lobbies"] as const;
 /**
  * The menu shell (task L3) and the client half of Leave run (task L6).
  *
- *   join       the MAIN MENU shows instead of a run (KV_SkipMenu = true: a solo run starts at once, as before)
+ *   join       once the first-run gate decided (TutorialController.onFirstRunDecided; nothing shows but the backdrop
+ *              until then): a first-time player goes straight into the tutorial (no menu); everyone else gets the
+ *              MAIN MENU instead of a run (KV_SkipMenu = true: a solo run starts at once, as before)
  *   screens    main / lobbies / lobby with a back stack (Reflex `menu`, shared/view/menu menuNavReduce); pad B and
  *              Backspace go back (not while a juice settings / leaderboard panel is open: B closes those)
  *   runs       any run start closes the menu; leaving a run (Leave run, run-over Main menu / Back to lobby)
@@ -51,6 +55,7 @@ export class MenuController implements OnStart {
 		private readonly lobby: LobbyController,
 		private readonly settings: SettingsController,
 		private readonly leaderboard: LeaderboardController,
+		private readonly tutorial: TutorialController,
 	) {}
 
 	onStart(): void {
@@ -86,6 +91,13 @@ export class MenuController implements OnStart {
 		);
 		this.janitor.Add(UserInputService.InputBegan.Connect((input) => this.onInput(input)));
 
+		this.tutorial.onFirstRunDecided((choice) => this.onFirstRunDecided(choice));
+	}
+
+	/** The join flow, once the first-run gate decided: the tutorial (started by TutorialController), else the menu. */
+	private onFirstRunDecided(choice: FirstRunDecision): void {
+		clientStore.setAwaitingFirstRun(false);
+		if (choice === "tutorial") return; // straight into the tutorial: no main menu first
 		if (Workspace.GetAttribute(RUN_ATTRIBUTES.skipMenu) === true) {
 			print(`[Menu] ${RUN_ATTRIBUTES.skipMenu}: no main menu, starting a solo run`);
 			this.sim.startSolo();

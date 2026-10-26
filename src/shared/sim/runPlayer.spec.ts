@@ -11,7 +11,7 @@ import {
 	hashState,
 	runReplay,
 	weaponIds,
-	archetypeIds,
+	webArchetypeIds,
 	type RunDump,
 	type RunFixture,
 } from "shared/sim";
@@ -70,7 +70,7 @@ describe("run-player.json parity", () => {
 
 	it("uses the web build's weapon and archetype index tables", () => {
 		expect([...weaponIds()]).toEqual([...runPlayer.weaponIds]);
-		expect([...archetypeIds()]).toEqual([...runPlayer.archetypeIds]);
+		expect([...webArchetypeIds()]).toEqual([...runPlayer.archetypeIds]);
 	});
 
 	it("the checker reports a divergence (no bounds clamp: the run leaves the room)", () => {

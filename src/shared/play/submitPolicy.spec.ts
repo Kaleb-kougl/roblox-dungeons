@@ -1,7 +1,7 @@
 // Which finished runs the client submits (R-spam must not burn the server's rate budget, a quick retry after a death
 // still counts), and the server's caps checked before anything is sent.
 import { describe, expect, it } from "@rbxts/jest-globals";
-import { MIN_ABANDONED_SUBMIT_TICKS, oversizeSubmission, shouldSubmitRun } from "shared/play";
+import { MIN_ABANDONED_SUBMIT_TICKS, oversizeSubmission, shouldSubmitRun, unsubmittedReason } from "shared/play";
 import {
 	DEFAULT_RUN_LIMITS,
 	MAX_RECORDING_BYTES,
@@ -56,5 +56,18 @@ describe("oversizeSubmission", () => {
 		expect(oversizeSubmission(submission(200, 10), { ...DEFAULT_RUN_LIMITS, maxRecordingBytes: 100 })?.code).toBe(
 			"too_large",
 		);
+	});
+});
+
+describe("unsubmittedReason", () => {
+	it("a tutorial run is never submitted, before any other reason", () => {
+		expect(unsubmittedReason({ tutorial: true, stress: 0, scoring: false })).toBe("tutorial");
+		expect(unsubmittedReason({ tutorial: true, stress: 100, scoring: true })).toBe("tutorial");
+	});
+
+	it("stress, then KV_Scoring on an M1 world; otherwise the run may be submitted", () => {
+		expect(unsubmittedReason({ tutorial: false, stress: 100, scoring: true })).toBe("stress");
+		expect(unsubmittedReason({ tutorial: false, stress: 0, scoring: true })).toBe("scored");
+		expect(unsubmittedReason({ tutorial: false, stress: 0, scoring: false })).toBe(undefined);
 	});
 });

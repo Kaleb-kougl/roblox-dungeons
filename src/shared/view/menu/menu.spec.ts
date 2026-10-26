@@ -278,6 +278,9 @@ describe("notices, handoff and exits", () => {
 		expect(partyRunOverLine({ status: "rejected", run: 3, code: "expired" }, 3).reason).toBe("expired");
 		expect(pauseItems(false)).toEqual(["resume", "restart", "leave", "settings", "leaderboards"]);
 		expect(pauseItems(true)).toEqual(["resume", "leave", "settings", "leaderboards"]);
+		expect(pauseItems(false, true)).toEqual(["resume", "restartTutorial", "skipTutorial", "settings"]);
+		expect(pauseItems(false, false)).toEqual(pauseItems(false));
+		expect(pauseItems(true, true)).toEqual(pauseItems(true)); // a party run is never a tutorial run
 		expect([restartForfeits(true, true), restartForfeits(true, false), restartForfeits(false, true)]).toEqual([
 			true,
 			false,

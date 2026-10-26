@@ -10,6 +10,7 @@ import {
 	selectGameActive,
 	selectMenuScreen,
 	selectSnapshot,
+	selectTutorialOutroOpen,
 } from "client/store";
 import {
 	GameHud,
@@ -24,6 +25,7 @@ import type { LobbyVisibility } from "shared/lobby";
 import { AudioController } from "../audio/AudioController";
 import { InputController } from "../game/InputController";
 import { SimController } from "../game/SimController";
+import { TutorialController } from "../game/TutorialController";
 import { LeaderboardController } from "./LeaderboardController";
 import { LobbyController } from "./LobbyController";
 import { MenuController } from "./MenuController";
@@ -36,24 +38,33 @@ const ROOT_NAME = "KV_HudRoot";
 
 /**
  * A menu that takes the gamepad is open: a menu screen (main menu, lobbies), the pause overlay (paused, run on),
- * the co-op party overlay, the run-over panel (its Again / Main menu buttons), juice settings or leaderboards.
+ * the co-op party overlay, the run-over panel (its Again / Main menu buttons), juice settings, leaderboards or the
+ * tutorial's outro card.
  */
 const selectMenuOpen = createSelector(
-	[selectSnapshot, selectAnyPanelOpen, selectMenuScreen, selectCoopOverlay, selectGameActive] as const,
-	(snapshot, panelOpen, screen, coopOverlay, active) =>
+	[
+		selectSnapshot,
+		selectAnyPanelOpen,
+		selectMenuScreen,
+		selectCoopOverlay,
+		selectGameActive,
+		selectTutorialOutroOpen,
+	] as const,
+	(snapshot, panelOpen, screen, coopOverlay, active, outroOpen) =>
 		panelOpen ||
 		screen !== "none" ||
 		coopOverlay ||
-		(active && (snapshot.outcome !== "playing" || snapshot.paused)),
+		(active && (outroOpen || snapshot.outcome !== "playing" || snapshot.paused)),
 );
 
 /**
  * Mounts the game HUD (React + Reflex, client/ui/hud) and the menu shell (client/ui/menu MenuLayer) into PlayerGui
  * through a portal (three ScreenGuis: the HUD, the menu shell and the menu layer), after every other controller
  * started (loadOrder), so the first frame already shows the run's snapshot. Hands the menus their actions (resume /
- * restart / leave run / settings / UI sounds; the main menu and lobby requests) through HudActionsContext and
- * MenuActionsContext, lets gamepad navigation reach the GUI while a menu is open (InputController.setUiNavigation),
- * and hides the stock Health / Backpack CoreGui (pcall: SetCoreGuiEnabled can throw before the CoreGui scripts exist).
+ * restart / leave run / settings / UI sounds / the tutorial's; the main menu and lobby requests) through
+ * HudActionsContext and MenuActionsContext, lets gamepad navigation reach the GUI while a menu is open
+ * (InputController.setUiNavigation), and hides the stock Health / Backpack CoreGui (pcall: SetCoreGuiEnabled can
+ * throw before the CoreGui scripts exist).
  */
 @Controller({ loadOrder: 1000 })
 export class HudController implements OnStart {
@@ -66,6 +77,7 @@ export class HudController implements OnStart {
 		private readonly menu: MenuController,
 		private readonly lobby: LobbyController,
 		private readonly rebind: RebindController,
+		private readonly tutorial: TutorialController,
 	) {}
 
 	onStart(): void {
@@ -109,6 +121,14 @@ export class HudController implements OnStart {
 			setLeaveConfirm: click((open: boolean) => this.menu.setLeaveConfirm(open)),
 			leaveRun: click(() => this.menu.leaveRun()),
 			exitRun: click(() => this.menu.exitRun()),
+			playTutorial: click(() => this.tutorial.playTutorial()),
+			// The outro's "Start my first run" is the main menu's Play solo.
+			startFirstRun: click(() => {
+				this.tutorial.closeOutro();
+				this.menu.playSolo();
+			}),
+			setTutorialSkipConfirm: click((open: boolean) => this.tutorial.setSkipConfirm(open)),
+			skipTutorial: click(() => this.tutorial.skipTutorial()),
 		};
 
 		const menuActions: MenuActions = {
@@ -117,6 +137,7 @@ export class HudController implements OnStart {
 			openLobbyRoom: click(() => this.menu.openLobbyRoom()),
 			openOptions: click(() => this.menu.openOptions()),
 			openLeaderboard: click(() => this.menu.openLeaderboard()),
+			playTutorial: click(() => this.tutorial.playTutorial()),
 			back: click(() => this.menu.back()),
 			refreshLobbies: click(() => this.lobby.requestList()),
 			createLobby: click((v: LobbyVisibility) => this.menu.createLobby(v)),

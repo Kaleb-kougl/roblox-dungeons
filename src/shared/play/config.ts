@@ -33,6 +33,12 @@ export const RUN_ATTRIBUTES = {
 	 * existed. Off by default. Co-op runs start from a lobby (the menu's Lobbies screen).
 	 */
 	skipMenu: "KV_SkipMenu",
+	/**
+	 * Boolean (Studio), read once on join: true starts the first-run tutorial whatever the server says (no main menu
+	 * first), false never starts it (the normal flow at once). Unset: the server's `onboardingStatus` decides
+	 * (docs/TUTORIAL.md).
+	 */
+	tutorial: "KV_Tutorial",
 } as const;
 
 /** The web build's DEFAULT_SEED (`?seed=` absent). */

@@ -20,6 +20,7 @@ import type { SimState } from "./state";
 import { endlessHashNames, writeEndlessHash } from "./endless";
 import { runHashNames, writeRunHash } from "./progression/progression";
 import { partyHashNames, writePartyHash } from "./party";
+import { tutorialHashNames, writeTutorialHash } from "./tutorial/tutorial";
 
 /** The fixtures' subsystem groups, in hash order. */
 export const HASH_SUBSYSTEMS = ["core", "combatHeader", "actors", "weapons", "enemyBullets", "playerBullets"] as const;
@@ -30,19 +31,22 @@ export type HashSubsystem = (typeof HASH_SUBSYSTEMS)[number];
  *   endless  endless mode (floor, Depth, stairwell, rooms entered), when state.endless exists
  *   score    M2 scoring, when state.score exists
  *   run      M2 in-run progression (boons, relics, curses, the draft, pedestals, shrine), when state.run exists
- *   party    M4 co-op (players 1..n-1, their weapons, who left), when state.party exists; always the LAST group
+ *   party    M4 co-op (players 1..n-1, their weapons, who left), when state.party exists
+ *   tutorial first-run tutorial (harmless flag, harmless hits), when state.tutorial exists; always the LAST group
  */
 export const ENDLESS_HASH_SUBSYSTEM = "endless";
 export const SCORE_SUBSYSTEM = "score";
 export const RUN_SUBSYSTEM = "run";
 export const PARTY_SUBSYSTEM = "party";
+export const TUTORIAL_SUBSYSTEM = "tutorial";
 /** Every group name a layout can have. */
 export type HashGroupName =
 	| HashSubsystem
 	| typeof ENDLESS_HASH_SUBSYSTEM
 	| typeof SCORE_SUBSYSTEM
 	| typeof RUN_SUBSYSTEM
-	| typeof PARTY_SUBSYSTEM;
+	| typeof PARTY_SUBSYSTEM
+	| typeof TUTORIAL_SUBSYSTEM;
 
 export interface HashGroup {
 	readonly name: HashGroupName;
@@ -132,6 +136,13 @@ export function hashLayout(state: Readonly<SimState>, withNames = false): HashLa
 		writePartyHash(party, values);
 		if (withNames) partyHashNames(party, names);
 		close(PARTY_SUBSYSTEM);
+	}
+
+	const tutorial = state.tutorial;
+	if (tutorial !== undefined) {
+		writeTutorialHash(tutorial, values);
+		if (withNames) tutorialHashNames(names);
+		close(TUTORIAL_SUBSYSTEM);
 	}
 
 	return { values, names, groups };

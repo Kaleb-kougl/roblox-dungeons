@@ -5,6 +5,7 @@ import { HUD_FONT, role, str, themePack } from "client/ui/theme";
 import { swapHint } from "shared/play";
 import { HUD_STRINGS, HUD_VIEW } from "shared/view/hud";
 import { Panel, Row, Text } from "./primitives";
+import { HighlightRing } from "./TutorialFx";
 
 const STROKE = 1;
 const ACTIVE_STROKE = 2;
@@ -58,9 +59,9 @@ function WeaponSlot(props: { order: number; index: number; id: string; active: b
 
 /**
  * Bottom left (web WeaponHud): the two weapon sets, the set in hand highlighted, and the device-aware SWAP hint
- * ("E swap" on keyboard, "Y swap" on a gamepad: game.inputDevice).
+ * ("E swap" on keyboard, "Y swap" on a gamepad: game.inputDevice). `highlight`: the tutorial's ring (the bow lesson).
  */
-export function WeaponPanel() {
+export function WeaponPanel(props: { readonly highlight?: boolean }) {
 	const s = useSelector(selectSnapshot);
 	const device = useSelector(selectInputDevice);
 	const bindings = useSelector(selectBindings);
@@ -77,6 +78,7 @@ export function WeaponPanel() {
 				color="uiTextDim"
 				text={str(HUD_STRINGS.weaponSwap, { key: swapHint(bindings)[device] })}
 			/>
+			{props.highlight === true ? <HighlightRing /> : undefined}
 		</Panel>
 	);
 }

@@ -43,6 +43,7 @@ import type { SimConfig } from "./step";
 import { weaponMoveMultiplier } from "./combat/weapons/weapons";
 import { SOLO_PLAYER, rollIframeTicks, runOnPlayerHit, runSecondWind } from "./progression/runMods";
 import type { WeaponsState } from "./combat/weapons/types";
+import { tutorialStartHalfHearts } from "./tutorial/tutorial";
 
 export { PLAYER_SPEED } from "./playerData";
 
@@ -247,9 +248,9 @@ export function isPlayerInvulnerable(state: Readonly<SimState>, p: Readonly<Play
  *  - at 0 hearts the player dies: dead = 1, roll/flask/i-frames end, events.playerDied = 1 (M2 Second Wind, endless
  *    runs: once per floor the player keeps SECOND_WIND_HALF_HEARTS instead),
  *  - M2 Hourglass (endless runs): the landed hit starts the enemy bullet slow.
- *  - at 0 hearts the player dies: dead = 1, roll/flask/i-frames end, events.playerDied = 1 (M2 Second Wind, endless
- *    runs: once per floor the player keeps SECOND_WIND_HALF_HEARTS instead),
- *  - M2 Hourglass (endless runs): the landed hit starts the enemy bullet slow.
+ * Tutorial harmless mode (SimConfig.tutorial.harmless, tutorial/tutorial.ts): a landed hit still counts in
+ * events.playerHits, starts the post-hit invulnerability and runs the on-hit hooks (Hourglass; the score's combo cut
+ * reads playerHits), and tutorial.harmlessHits += 1; armor, hearts, Second Wind and death are skipped. Returns true.
  * `p` defaults to player 0 (state.player). Co-op: every party member's hits come through here with their own state
  * (per-player armor, hearts, i-frames, post-hit invulnerability) and `playerIndex` (= p's index: whose Second Wind /
  * Hourglass); events count hits / deaths of the whole party.
@@ -262,6 +263,15 @@ export function damagePlayer(
 ): boolean {
 	if (!(halfHearts > 0)) return false;
 	if (isPlayerInvulnerable(state, p)) return false;
+
+	const tutorial = state.tutorial;
+	if (tutorial !== undefined && tutorial.harmless !== 0) {
+		state.events.playerHits += 1;
+		p.hurtTicks = HURT_INVULN_TICKS;
+		runOnPlayerHit(state, playerIndex);
+		tutorial.harmlessHits += 1;
+		return true;
+	}
 
 	if (p.armor > 0) p.armor--;
 	else p.hearts = jsMax(0, p.hearts - halfHearts);
@@ -381,3 +391,13 @@ export const PLAYER_HASH_FIELDS = [
 	"prevButtons",
 	"dead",
 ] as const;
+
+/**
+ * The half hearts every player starts a run of `config` with (what createSimState gives a fresh player):
+ * START_HALF_HEARTS, or the tutorial's start (tutorialStartHalfHearts). RunTelemetry's baseline, so a wounded tutorial
+ * start is not logged as hearts lost on tick 1.
+ */
+export function runStartHalfHearts(config: Readonly<SimConfig>): number {
+	const t = config.tutorial;
+	return t !== undefined ? tutorialStartHalfHearts(t, START_HALF_HEARTS) : START_HALF_HEARTS;
+}

@@ -1,5 +1,6 @@
 import { Networking } from "@flamework/networking";
 import type { LeaderboardBoard, LeaderboardView } from "shared/leaderboard";
+import type { OnboardingStatus, TutorialOutcome } from "shared/onboarding";
 import type {
 	LobbyCreateRequest,
 	LobbyNameId,
@@ -32,7 +33,8 @@ import type { SettingsOverrides } from "shared/settings";
  *
  * Request / reply as an event pair (the pattern of the user's other Flamework project): the client fires a request,
  * the server answers with its own event. Every client -> server event is rate limited per player in its service
- * (limits in shared/run `RUN_SUBMIT_RATE` and shared/settings `SETTINGS_REQUEST_RATE`).
+ * (limits in shared/run `RUN_SUBMIT_RATE`, shared/settings `SETTINGS_REQUEST_RATE` and shared/onboarding
+ * `ONBOARDING_REQUEST_RATE` / `TUTORIAL_FINISH_RATE` / `TUTORIAL_STEP_RATE`).
  *
  * Bind side-specific handlers with `GlobalEvents.createServer` (src/server/network.ts) and `GlobalEvents.createClient`
  * (the client's network module, task 8), never here.
@@ -226,6 +228,22 @@ export interface ClientToServerEvents {
 	lobbyStart(): void;
 	/** Asks for `lobbyList` now (the browser opened); the server also pushes it while lobbies change. */
 	lobbyRequestList(): void;
+	/** Onboarding: asks whether this player has done the tutorial; answered with `onboardingStatus`. */
+	requestOnboarding(): void;
+	/**
+	 * Onboarding: the client started a Practice Descent (first run, Restart tutorial, or a replay). Begins a new
+	 * funnel attempt and marks the player in-tutorial (busy for lobby run starts) until `tutorialFinished` or leave.
+	 * No reply.
+	 */
+	tutorialStarted(): void;
+	/**
+	 * Onboarding telemetry: lesson `step` (an integer 1..TUTORIAL_FUNNEL_MAX_STEP, the shared/tutorial step number:
+	 * TutorialView.newFunnelSteps) has been reached. The server names it from the shared step list (the step's id).
+	 * Only strictly increasing steps within the current attempt are logged. No reply.
+	 */
+	tutorialStep(step: number): void;
+	/** Onboarding: the tutorial was completed or skipped. Recorded as done; answered with `onboardingStatus`. */
+	tutorialFinished(outcome: TutorialOutcome): void;
 }
 
 export interface ServerToClientEvents {
@@ -245,6 +263,12 @@ export interface ServerToClientEvents {
 	 * ...). Also sent once after join.
 	 */
 	settingsChanged(overrides: SettingsOverrides): void;
+	/**
+	 * Onboarding: whether this player has done the current tutorial. Sent once after the join load (`loaded: false`,
+	 * `tutorialDone: false` when that load failed: the client must then NOT force the tutorial), and in answer to
+	 * `requestOnboarding` and `tutorialFinished`.
+	 */
+	onboardingStatus(status: OnboardingStatus): void;
 	/** Co-op (M4): a party run starts (every member gets it, only after every member accepted the invite). */
 	partyRunStarted(start: PartyRunStart): void;
 	/** Lobbies: the lobbies this player may see and join (never closed ones), sorted. Throttled. */

@@ -10,12 +10,14 @@
  *   registerRunWorld("endless", (seed, o) => buildEndlessRunConfig(seed, o.partySize));
  *
  * Which worlds may post to the leaderboards is separate data (shared/leaderboard LEADERBOARD_ELIGIBLE_WORLDS).
+ * Which registered worlds the SERVER refuses to run (session starts, including lobby starts) is SERVER_REFUSED_WORLDS.
  */
 import { buildRunConfig, type RunSetup } from "./config";
 import { buildEndlessRunConfig } from "./endless";
+import { TUTORIAL_WORLD_KIND, buildTutorialRunConfig } from "./tutorial";
 import type { RunWorld } from "./limits";
 
-/** A registered world's name ("game", "dungeonNoEncounter", "greybox", "endless"). */
+/** A registered world's name ("game", "dungeonNoEncounter", "greybox", "endless", "tutorial"). */
 export type RunWorldKind = string;
 
 export interface WorldBuildOptions {
@@ -46,6 +48,19 @@ export function isRunWorldKind(kind: unknown): kind is RunWorldKind {
 	return typeIs(kind, "string") && builders.has(kind);
 }
 
+/**
+ * Registered worlds the server never runs: they are played only locally on the client (the first-run tutorial,
+ * docs/TUTORIAL.md). They stay registered so the client's buildWorldSetup builds them; run session starts
+ * (runSessions.ts: ranked, party and lobby starts alike) refuse them (`unknown_world`), so no run in them is ever
+ * submitted, validated or posted.
+ */
+export const SERVER_REFUSED_WORLDS: ReadonlySet<RunWorldKind> = new ReadonlySet([TUTORIAL_WORLD_KIND]);
+
+/** A registered world the server may run (session starts, including lobby starts): not in SERVER_REFUSED_WORLDS. */
+export function isServerRunWorld(kind: unknown): kind is RunWorldKind {
+	return isRunWorldKind(kind) && !SERVER_REFUSED_WORLDS.has(kind);
+}
+
 /** The world's RunSetup for `seed`. Throws on an unknown kind or whatever the builder throws. */
 export function buildWorldSetup(kind: RunWorldKind, seed: number, options: WorldBuildOptions): RunSetup {
 	const builder = builders.get(kind);
@@ -63,6 +78,9 @@ function registerBuiltinWorlds(): void {
 	registerRunWorld("greybox", legacyWorld("greybox"));
 	// Endless mode (always scored; the boss door has no meaning there). One line per new world.
 	registerRunWorld("endless", (seed, o) => buildEndlessRunConfig(seed, o.partySize));
+	// The first-run tutorial (docs/TUTORIAL.md): a fixed world whatever the seed, solo only, never leaderboard-eligible
+	// (shared/leaderboard LEADERBOARD_ELIGIBLE_WORLDS), played locally and refused by the server (SERVER_REFUSED_WORLDS).
+	registerRunWorld(TUTORIAL_WORLD_KIND, (_seed, o) => buildTutorialRunConfig(o.partySize));
 }
 
 registerBuiltinWorlds();

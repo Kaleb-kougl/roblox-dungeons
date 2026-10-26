@@ -222,7 +222,7 @@ export function revivePartyMember(p: PlayerState, halfHearts: number): void {
 }
 
 // ---------------------------------------------------------------------------------------------
-// Hash: the "party" group, appended LAST (after score) only when state.party exists.
+// Hash: the "party" group, appended after score and run (only "tutorial" follows it) only when state.party exists.
 //   size, left[0 .. size-1], then per player 1 .. size-1: PLAYER_HASH_FIELDS, then writeWeaponsHash
 
 export function writePartyHash(party: Readonly<PartyState>, out: number[]): void {

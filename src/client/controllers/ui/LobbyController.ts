@@ -17,7 +17,8 @@ import { SimController } from "../game/SimController";
  * menu screens.
  *
  * Run handoff (L6): `lobbyRunStart` (a one-player lobby's countdown ended) starts a ranked solo run for the lobby this
- * client is in; `partyRunStarted` is taken by SimController under the same rule (lobbyStartAccepted).
+ * client is in; `partyRunStarted` is taken by SimController under the same rule (lobbyStartAccepted). Neither takes
+ * over a tutorial run being played (SimController.inRunningTutorial).
  */
 @Controller({})
 export class LobbyController implements OnStart {
@@ -37,6 +38,12 @@ export class LobbyController implements OnStart {
 				const mine = clientStore.getState().lobby.mine?.lobbyId;
 				if (!lobbyStartAccepted(start.lobbyId, mine)) {
 					warn(`[Lobby] ignored the solo start of lobby ${start.lobbyId}: not this client's lobby`);
+					return;
+				}
+				if (this.sim.inRunningTutorial()) {
+					// The server refuses lobby starts while this player is in the tutorial; a late one never takes it over
+					// (the lobby goes back to forming when no ranked start comes).
+					warn(`[Lobby] ignored the solo start of lobby ${start.lobbyId}: in the tutorial`);
 					return;
 				}
 				print(`[Lobby] lobby ${start.lobbyId}: starting a ranked solo run`);

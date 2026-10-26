@@ -30,7 +30,7 @@ import {
 	WEAPON_SCRATCH_SLOTS,
 	WEAPON_SETS,
 	archetypeAt,
-	archetypeIds,
+	webArchetypeIds,
 	float64Hex,
 	weaponAt,
 	weaponIds,
@@ -133,7 +133,8 @@ describe("constants.json parity", () => {
 
 	it("archetype registry: same index order and data (hooks are code, not compared)", () => {
 		const problems: string[] = [];
-		expect(archetypeIds().size()).toBe(constants.archetypes.size());
+		// The web table is band 0; the port's own archetypes (dummy) number after it.
+		expect(webArchetypeIds().size()).toBe(constants.archetypes.size());
 		for (const a of constants.archetypes) {
 			const def = archetypeAt(a.index);
 			if (def.id !== a.id) problems.push(`archetypes[${a.index}]: ${def.id} != ${a.id}`);

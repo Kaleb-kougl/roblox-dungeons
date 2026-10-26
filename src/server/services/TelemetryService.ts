@@ -2,6 +2,7 @@ import { OnStart, Service } from "@flamework/core";
 import { Janitor } from "@rbxts/janitor";
 import { AnalyticsService, Players } from "@rbxts/services";
 import { serverLogger } from "server/log";
+import { TUTORIAL_FUNNEL } from "shared/onboarding";
 import {
 	RUN_FUNNEL,
 	analyticsForRejection,
@@ -26,6 +27,10 @@ const log = serverLogger("Telemetry");
  * signal) when the player leaves. A run still validating when its player leaves belongs to that session: the summary
  * waits for it (RunValidationService `waitUntilIdle`), then the player's entry is dropped; nothing is kept for a
  * departed player after that.
+ *
+ * The one exception to "server-derived only": the first-run tutorial funnel (`logTutorial`, fed by
+ * OnboardingService from the client's `tutorialStep` / `tutorialFinished`, filtered by shared/onboarding
+ * TutorialFunnelTracker). It is drop-off data for a practice mode with nothing to win, so it is taken as reported.
  */
 @Service({})
 export class TelemetryService implements OnStart {
@@ -75,6 +80,14 @@ export class TelemetryService implements OnStart {
 		if (list) this.logAll(player, analyticsForSession(summarizeRunSession(list)), undefined);
 	}
 
+	/**
+	 * First-run tutorial telemetry (shared/onboarding funnel.ts specs), funnel session id = the tutorial attempt id.
+	 * Callers pass only what TutorialFunnelTracker accepted.
+	 */
+	logTutorial(player: Player, specs: ReadonlyArray<AnalyticsEventSpec>, attemptId: string): void {
+		this.logAll(player, specs, attemptId);
+	}
+
 	/** Logs specs in order; one failing call (bad field, throttling) never stops the rest. */
 	protected logAll(player: Player, specs: ReadonlyArray<AnalyticsEventSpec>, funnelSessionId: string | undefined) {
 		for (const spec of specs) {
@@ -88,7 +101,8 @@ export class TelemetryService implements OnStart {
 		if (spec.kind === "custom") {
 			AnalyticsService.LogCustomEvent(player, spec.name, spec.value, fields);
 		} else if (spec.kind === "funnel") {
-			const sessionId = spec.funnel === RUN_FUNNEL ? funnelSessionId : undefined;
+			const sessionId =
+				spec.funnel === RUN_FUNNEL || spec.funnel === TUTORIAL_FUNNEL ? funnelSessionId : undefined;
 			AnalyticsService.LogFunnelStepEvent(player, spec.funnel, sessionId, spec.step, spec.stepName, fields);
 		} else {
 			const status =

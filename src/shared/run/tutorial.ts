@@ -1,0 +1,372 @@
+/**
+ * The tutorial world ("Practice Descent", docs/TUTORIAL.md "Architecture §2"; a Roblox-port feature, no web source):
+ * an endless run with two hand-scripted floors, harmless hits and a wounded start. Pure and Roblox-API-free, like
+ * buildEndlessRunConfig, and the seed it is given is ignored: every tutorial run is the same world.
+ *
+ *   config   { endless: { runSeed: TUTORIAL.runSeed, worldForFloor }, scoring: ENDLESS_SCORING,
+ *              tutorial: { harmless: true, startHalfHearts: TUTORIAL.startHalfHearts } }
+ *   layouts  tutorialForgeParams: an endless floor's Forge params (endlessFloorParams: solid pillars, double-size
+ *            rooms, ...) with a fixed seed and room count; every floor's world is endlessFloorWorld (the endless
+ *            floor's movers, bullet blocker and the enemies' steering round pillars), so it plays like a real floor
+ *   floor 1  "The Training Halls": the TUTORIAL.floor1 Forge layout (fixed seed and room count), NOT a boss floor
+ *            (the stairwell is open from the start, in the boss room). Its deferred room spawns come from
+ *            TUTORIAL_ROOMS (one lesson per room, explicit kinds), not the encounter budget; the treasure and shrine
+ *            rooms keep their M2 pedestal and curse shrine (progression keys off the room types); the entrance and
+ *            the stairwell room are empty.
+ *   floor 2  "Mother Bramble": the TUTORIAL.floor2 layout as a boss floor (the boss is its only spawn; the stairwell
+ *            opens on her death). Stepping into it ends the tutorial (the client stops the run on the 2 -> 3 change).
+ *   floor 3+ never played (the client stops first), but the sim always asks for the next floor: floor 2's layout,
+ *            empty and with an open stairwell, so the change (and a debug skip past it) never throws.
+ *
+ * Enemy hp and bullet speed scale as on endless floor 1 / Depth 1 on every floor (shared/sim tutorialScalingFloor),
+ * so the training dummy has its 8 hp and Mother Bramble is the real Depth 1 fight. Solo only: a party throws.
+ */
+import { TUTORIAL } from "shared/config";
+import { stableSort } from "shared/jsmath";
+import {
+	BOSS_ACT1_KIND,
+	BRUISER_KIND,
+	ENDLESS_FIRST_FLOOR,
+	SNIPER_KIND,
+	SWARMER_KIND,
+	encounterRooms,
+	endlessFloorParams,
+	entranceSpawn,
+	generateDungeon,
+	placeEncounter,
+	roomSpawnTiles,
+	type ActorSpawn,
+	type Dungeon,
+	type EncounterRoom,
+	type EncounterRoomType,
+	type EndlessFloorLayout,
+	type ForgeParams,
+	type TileXZ,
+	type WorldXZ,
+} from "shared/dungeon";
+import { DEFAULT_PARTY_SIZE, DUMMY_KIND, type SimConfig } from "shared/sim";
+import { ENDLESS_SCORING, endlessFloorWorld, type EndlessRunFloor, type EndlessRunSetup } from "./endless";
+import { coverTiles, tutorialRoomTools, tutorialTour } from "./tutorialLayout";
+
+/** The tutorial's world kind in the run world registry (worlds.ts). Never leaderboard-eligible. */
+export const TUTORIAL_WORLD_KIND = "tutorial";
+
+/** Turret archetype ids (the sim's registry; no populator places them, so there is no shared constant). */
+export const TURRET_SNIPER_KIND = "turret.sniper";
+export const TURRET_SPRAYER_KIND = "turret.sprayer";
+
+/** Floor 1's rooms in lesson order (docs/TUTORIAL.md "Floor 1" table: combat A-F are lessons 3-8). */
+export type TutorialLessonId =
+	| "entrance"
+	| "combatA"
+	| "combatB"
+	| "combatC"
+	| "combatD"
+	| "combatE"
+	| "combatF"
+	| "treasure"
+	| "shrine"
+	| "stairwell";
+
+/**
+ * Where a lesson room's spawns stand (on the room's spawn tiles, enemyRooms roomSpawnTiles):
+ *   cluster  around the tile nearest the room centre, each at least TUTORIAL.clusterSpacingTiles from the others
+ *   far      each on the tile farthest from the door the player comes in by and from the spawns placed before it
+ *   cover    "far" among the tiles behind a solid pillar as seen from that door (tutorialLayout coverTiles); "far"
+ *            over every spawn tile when the room has none
+ */
+export type TutorialPlacement = "cluster" | "far" | "cover";
+
+/** One floor-1 room of the tutorial, as data (TUTORIAL_ROOMS). */
+export interface TutorialRoomPlan {
+	readonly lesson: TutorialLessonId;
+	/** Room id in the TUTORIAL.floor1 layout (the lock spec pins it with the room type). */
+	readonly roomId: number;
+	/** The Forge room type the lesson needs (locked by tutorial.spec.ts). */
+	readonly roomType: EncounterRoomType;
+	/** Archetype ids spawned when the player first walks in (deferred), in spawn order. */
+	readonly kinds: ReadonlyArray<string>;
+	readonly placement: TutorialPlacement;
+}
+
+/**
+ * Floor 1's rooms in tour order: the entrance, combat A-F, the treasure room, the shrine and the boss room (the open
+ * stairwell). The order is the walk analyzeTutorialLayout found for TUTORIAL.floor1 (no leg walks through a later
+ * room); the seed's comment in shared/config tutorial.ts says why this layout.
+ */
+export const TUTORIAL_ROOMS: ReadonlyArray<TutorialRoomPlan> = table.freeze([
+	{ lesson: "entrance", roomId: 4, roomType: "entrance", kinds: [], placement: "far" },
+	{ lesson: "combatA", roomId: 0, roomType: "combat", kinds: [DUMMY_KIND, DUMMY_KIND], placement: "cluster" },
+	{
+		lesson: "combatB",
+		roomId: 7,
+		roomType: "combat",
+		kinds: [SWARMER_KIND, SWARMER_KIND, SWARMER_KIND],
+		placement: "cluster",
+	},
+	{ lesson: "combatC", roomId: 5, roomType: "combat", kinds: [SNIPER_KIND], placement: "far" },
+	{ lesson: "combatD", roomId: 1, roomType: "elite", kinds: [BRUISER_KIND], placement: "far" },
+	{ lesson: "combatE", roomId: 6, roomType: "combat", kinds: [TURRET_SNIPER_KIND], placement: "cover" },
+	{
+		lesson: "combatF",
+		roomId: 8,
+		roomType: "combat",
+		kinds: [TURRET_SPRAYER_KIND, TURRET_SPRAYER_KIND],
+		placement: "far",
+	},
+	{ lesson: "treasure", roomId: 3, roomType: "treasure", kinds: [], placement: "far" },
+	{ lesson: "shrine", roomId: 9, roomType: "shrine", kinds: [], placement: "far" },
+	{ lesson: "stairwell", roomId: 2, roomType: "boss", kinds: [], placement: "far" },
+]);
+
+function planOf(lesson: TutorialLessonId): TutorialRoomPlan {
+	for (const p of TUTORIAL_ROOMS) if (p.lesson === lesson) return p;
+	error(`tutorial: no room for lesson ${lesson}`, 0);
+}
+
+/** Floor 1's special room ids (from TUTORIAL_ROOMS). */
+export const TUTORIAL_ENTRANCE_ROOM = planOf("entrance").roomId;
+export const TUTORIAL_TREASURE_ROOM = planOf("treasure").roomId;
+export const TUTORIAL_SHRINE_ROOM = planOf("shrine").roomId;
+export const TUTORIAL_STAIRWELL_ROOM = planOf("stairwell").roomId;
+
+/** A floor-1 room with its geometry: what the director (T4) and the world marker (T6) read. */
+export interface TutorialRoom extends TutorialRoomPlan {
+	/** The room's centre floor tile (world): the pedestal, the shrine and the stairwell stand here. */
+	readonly center: WorldXZ;
+	/**
+	 * Where the walk from the previous tour room enters this room (world: the last corridor tile before its floor),
+	 * the marker's target. The entrance's is its centre (the spawn).
+	 */
+	readonly door: WorldXZ;
+	/** The room's deferred spawns (world positions on its floor tiles), in spawn order. */
+	readonly spawns: ReadonlyArray<ActorSpawn>;
+}
+
+// ---------------------------------------------------------------------------------------------
+// Layouts
+
+/**
+ * A tutorial floor's Forge params for a hand-picked (seed, room count): an endless floor's params
+ * (`endlessFloorParams`: the M1 preset plus every endless option, e.g. solid pillars and the room scale) with that seed
+ * and room count. Derived, so a change to endless floors reaches the tutorial too (the lock spec's digests flag it).
+ * The seed search (scripts/lune/find-tutorial-seed.luau) scores layouts through this.
+ */
+export function tutorialForgeParams(seed: number, roomCount: number): ForgeParams {
+	return { ...endlessFloorParams(TUTORIAL.runSeed, ENDLESS_FIRST_FLOOR), seed, roomCount };
+}
+
+/** The Forge params of tutorial floor `floor` (the first: TUTORIAL.floor1, every later one: TUTORIAL.floor2). */
+export function tutorialFloorParams(floor: number): ForgeParams {
+	const layout = floor === ENDLESS_FIRST_FLOOR ? TUTORIAL.floor1 : TUTORIAL.floor2;
+	return tutorialForgeParams(layout.seed, layout.roomCount);
+}
+
+const dungeons = new Map<number, Dungeon>();
+
+/** Tutorial floor `floor`'s dungeon (every floor after the first shares TUTORIAL.floor2's). Generated once, never mutated. */
+export function tutorialDungeon(floor: number): Dungeon {
+	const key = floor === ENDLESS_FIRST_FLOOR ? ENDLESS_FIRST_FLOOR : TUTORIAL.lastFloor;
+	let d = dungeons.get(key);
+	if (d === undefined) {
+		d = generateDungeon(tutorialFloorParams(key));
+		dungeons.set(key, d);
+	}
+	return d;
+}
+
+function dist2(ax: number, az: number, bx: number, bz: number): number {
+	const dx = ax - bx;
+	const dz = az - bz;
+	return dx * dx + dz * dz;
+}
+
+/** `plan`'s spawns on `open` (row order; see TutorialPlacement). Ties go to the earlier tile. Pure. */
+function placeLesson(
+	plan: TutorialRoomPlan,
+	room: EncounterRoom,
+	open: ReadonlyArray<TileXZ>,
+	door: WorldXZ,
+): ActorSpawn[] {
+	const out: ActorSpawn[] = [];
+	const used = new Set<TileXZ>();
+	if (plan.placement === "cluster") {
+		let anchor: TileXZ | undefined;
+		for (const t of open)
+			if (anchor === undefined || dist2(t.x, t.z, room.cx, room.cz) < dist2(anchor.x, anchor.z, room.cx, room.cz))
+				anchor = t;
+		if (anchor === undefined) return out;
+		const a = anchor;
+		const byAnchor = stableSort(
+			open.map((t, i) => ({ t, i, d: dist2(t.x, t.z, a.x, a.z) })),
+			(p, q) => (p.d !== q.d ? p.d - q.d : p.i - q.i),
+		);
+		const minD2 = TUTORIAL.clusterSpacingTiles * TUTORIAL.clusterSpacingTiles;
+		for (const kind of plan.kinds) {
+			let pick: TileXZ | undefined;
+			for (const c of byAnchor) {
+				if (used.has(c.t)) continue;
+				let apart = true;
+				for (const s of out) if (dist2(c.t.x, c.t.z, s.x, s.z) < minD2) apart = false;
+				if (apart) {
+					pick = c.t;
+					break;
+				}
+			}
+			if (pick === undefined) break;
+			used.add(pick);
+			out.push({ kind, x: pick.x, z: pick.z });
+		}
+		return out;
+	}
+	for (const kind of plan.kinds) {
+		let pick: TileXZ | undefined;
+		let best = -1;
+		for (const t of open) {
+			if (used.has(t)) continue;
+			let m = dist2(t.x, t.z, door.x, door.z);
+			for (const s of out) m = math.min(m, dist2(t.x, t.z, s.x, s.z));
+			if (m > best) {
+				best = m;
+				pick = t;
+			}
+		}
+		if (pick === undefined) break;
+		used.add(pick);
+		out.push({ kind, x: pick.x, z: pick.z });
+	}
+	return out;
+}
+
+interface Floor1Plan {
+	readonly rooms: ReadonlyArray<TutorialRoom>;
+	readonly roomSpawns: ReadonlyArray<ReadonlyArray<ActorSpawn>>;
+	readonly roomSpawnTiles: ReadonlyArray<ReadonlyArray<TileXZ>>;
+}
+
+let floor1Plan: Floor1Plan | undefined;
+
+function buildFloor1Plan(): Floor1Plan {
+	const d = tutorialDungeon(ENDLESS_FIRST_FLOOR);
+	const rooms = encounterRooms(d);
+	const order = TUTORIAL_ROOMS.map((p) => p.roomId);
+	const tour = tutorialTour(d, order);
+	const roomSpawns: ActorSpawn[][] = [];
+	const spawnTiles: TileXZ[][] = [];
+	for (let i = 0; i < rooms.size(); i++) {
+		roomSpawns.push([]);
+		spawnTiles.push([]);
+	}
+	const out: TutorialRoom[] = [];
+	for (let i = 0; i < TUTORIAL_ROOMS.size(); i++) {
+		const plan = TUTORIAL_ROOMS[i];
+		const room = rooms[plan.roomId];
+		if (room === undefined || room.type !== plan.roomType) {
+			error(`tutorial: floor 1 room ${plan.roomId} (${plan.lesson}) is not a ${plan.roomType} room`, 0);
+		}
+		const center = { x: room.cx, z: room.cz };
+		const door = i === 0 ? center : tour.legs[i - 1].door;
+		let spawns: ActorSpawn[] = [];
+		if (plan.kinds.size() > 0) {
+			const open = roomSpawnTiles(d, room, tutorialRoomTools(d, room));
+			// "cover": the far rule over the tiles behind a pillar from the door (all spawn tiles when there are none).
+			const cover = plan.placement === "cover" ? coverTiles(d, plan.roomId, door) : [];
+			spawns = placeLesson(plan, room, cover.size() > 0 ? cover : open, door);
+			if (spawns.size() !== plan.kinds.size()) error(`tutorial: room ${plan.roomId} has too few spawn tiles`, 0);
+			roomSpawns[plan.roomId] = spawns;
+			spawnTiles[plan.roomId] = open;
+		}
+		out.push({ ...plan, center, door: { x: door.x, z: door.z }, spawns });
+	}
+	return { rooms: out, roomSpawns, roomSpawnTiles: spawnTiles };
+}
+
+function plan1(): Floor1Plan {
+	if (floor1Plan === undefined) floor1Plan = buildFloor1Plan();
+	return floor1Plan;
+}
+
+/** Floor 1's rooms in tour order, with their geometry and spawns (generated once). */
+export function tutorialRooms(): ReadonlyArray<TutorialRoom> {
+	return plan1().rooms;
+}
+
+/** The floor-1 room of `lesson`. */
+export function tutorialRoom(lesson: TutorialLessonId): TutorialRoom {
+	for (const r of tutorialRooms()) if (r.lesson === lesson) return r;
+	error(`tutorial: no room for lesson ${lesson}`, 0);
+}
+
+function emptyPerRoom<T>(n: number): T[][] {
+	const out: T[][] = [];
+	for (let i = 0; i < n; i++) out.push([]);
+	return out;
+}
+
+/** Builds tutorial floor `floor` (uncached). */
+function buildTutorialFloor(floor: number): EndlessRunFloor {
+	const d = tutorialDungeon(floor);
+	const bossFloor = floor === TUTORIAL.lastFloor;
+	const encounter = placeEncounter(d, { boss: bossFloor ? BOSS_ACT1_KIND : undefined });
+	const bossRoom = encounter.rooms[d.boss];
+	if (bossRoom === undefined) error(`tutorial: floor ${floor} has no boss room`, 0);
+	const plan = floor === ENDLESS_FIRST_FLOOR ? plan1() : undefined;
+	const n = encounter.rooms.size();
+	const roomSpawns = plan !== undefined ? plan.roomSpawns : emptyPerRoom<ActorSpawn>(n);
+	const spawnTiles = plan !== undefined ? plan.roomSpawnTiles : emptyPerRoom<TileXZ>(n);
+	const spawn = entranceSpawn(d);
+	const params = tutorialFloorParams(floor);
+	const layout: EndlessFloorLayout = {
+		floor,
+		seed: params.seed,
+		roomCount: params.roomCount,
+		dungeon: d,
+		bossFloor,
+		encounter,
+		roomSpawns,
+		roomSpawnTiles: spawnTiles,
+		spawn: { x: spawn.x, z: spawn.z },
+		stairwell: { x: bossRoom.cx, z: bossRoom.cz },
+	};
+	// The endless floor's world (movers, bullet blocker, the enemies' steering mover, ...) on the tutorial layout.
+	return endlessFloorWorld(layout);
+}
+
+/** Floors 1 and 2 are kept; past the last floor only the floor asked for last (a debug skip may keep going). */
+function tutorialFloorCache(): (floor: number) => EndlessRunFloor {
+	const kept = new Map<number, EndlessRunFloor>();
+	let last: EndlessRunFloor | undefined;
+	return (floor) => {
+		if (last !== undefined && last.floor === floor) return last;
+		let w = kept.get(floor);
+		if (w === undefined) {
+			w = buildTutorialFloor(floor);
+			if (floor <= TUTORIAL.lastFloor) kept.set(floor, w);
+		}
+		last = w;
+		return w;
+	};
+}
+
+/**
+ * The tutorial run's SimConfig and spawn (see the file comment); hands out each floor like an endless setup. Pure:
+ * every call builds an identical world (the dungeons are shared, the floor cache is per setup). Throws for a party.
+ */
+export function buildTutorialRunConfig(partySize: number = DEFAULT_PARTY_SIZE): EndlessRunSetup {
+	if (partySize !== DEFAULT_PARTY_SIZE) {
+		error(`buildTutorialRunConfig: the tutorial is solo only, got party size ${tostring(partySize)}`, 0);
+	}
+	const worldForFloor = tutorialFloorCache();
+	const first = worldForFloor(ENDLESS_FIRST_FLOOR);
+	const config: SimConfig = {
+		endless: { runSeed: TUTORIAL.runSeed, worldForFloor },
+		scoring: ENDLESS_SCORING,
+		tutorial: { harmless: true, startHalfHearts: TUTORIAL.startHalfHearts },
+	};
+	return {
+		config,
+		spawn: { x: first.spawnX, z: first.spawnZ },
+		dungeon: first.dungeon,
+		endlessFloor: worldForFloor,
+	};
+}

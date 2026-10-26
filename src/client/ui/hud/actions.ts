@@ -6,8 +6,8 @@ import type { OptionsTab } from "shared/view/hud";
 
 /**
  * What the HUD's menus can do. HudController builds it from the controllers (SimController, SettingsController,
- * RebindController, InputController, AudioController, MenuController) and provides it to the tree, so components never import
- * controllers.
+ * RebindController, InputController, AudioController, MenuController, TutorialController) and provides it to the tree,
+ * so components never import controllers.
  */
 export interface HudActions {
 	/** Pause overlay: resume / restart the run (co-op: Resume closes the party overlay). */
@@ -40,6 +40,15 @@ export interface HudActions {
 	readonly leaveRun: () => void;
 	/** Run-over "Main menu" / "Back to lobby": leave the finished run for the menu. */
 	readonly exitRun: () => void;
+	/**
+	 * First-run tutorial (TutorialController): a new tutorial run (pause Restart tutorial, outro Play the tutorial
+	 * again), the outro's Start my first run (the main menu's Play solo), the pause overlay's skip question and the
+	 * skip itself (back to the menu, like Leave run).
+	 */
+	readonly playTutorial: () => void;
+	readonly startFirstRun: () => void;
+	readonly setTutorialSkipConfirm: (open: boolean) => void;
+	readonly skipTutorial: () => void;
 }
 
 const NOOP: HudActions = {
@@ -63,6 +72,10 @@ const NOOP: HudActions = {
 	setLeaveConfirm: () => undefined,
 	leaveRun: () => undefined,
 	exitRun: () => undefined,
+	playTutorial: () => undefined,
+	startFirstRun: () => undefined,
+	setTutorialSkipConfirm: () => undefined,
+	skipTutorial: () => undefined,
 };
 
 export const HudActionsContext = React.createContext<HudActions>(NOOP);

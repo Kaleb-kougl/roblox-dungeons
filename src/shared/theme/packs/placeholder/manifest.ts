@@ -54,6 +54,7 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		"enemy.bruiser": "#a8584a",
 		"enemy.caster": "#a05ab8",
 		"enemy.summoner": "#5a8a4a",
+		"enemy.dummy": "#9a7b4f",
 		boss: "#d9c24a",
 		telegraph: "#ff8a3d",
 		enemyHealth: "#e8473f",
@@ -109,6 +110,7 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		"enemy.bruiser": PLACEHOLDER,
 		"enemy.caster": PLACEHOLDER,
 		"enemy.summoner": PLACEHOLDER,
+		"enemy.dummy": PLACEHOLDER,
 		"boss.1": PLACEHOLDER,
 		"boss.2": PLACEHOLDER,
 		"boss.3": PLACEHOLDER,
@@ -194,6 +196,7 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		"enemy.bruiser.name": "Bruiser",
 		"enemy.caster.name": "Caster",
 		"enemy.summoner.name": "Summoner",
+		"enemy.dummy.name": "Training Dummy",
 		"boss.1.name": "Act I Boss",
 		"boss.2.name": "Act II Boss",
 		"boss.3.name": "Act III Boss",
@@ -560,5 +563,98 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		"curse.thirst.name": "Thirst",
 		"curse.thirst.desc": "-1 flask charge",
 		"curse.thirst.icon": "THR",
+		// First-run tutorial (docs/TUTORIAL.md; keys: shared/tutorial strings.ts). Touch = keyboard text for now. The
+		// prompts name keys through {move} / {fire} / {alt} / ... (the bound keys: shared/view/hud tutorialPromptVars).
+		"tutorial.prompt.follow.keyboard": "Follow the marker to the next room.",
+		"tutorial.prompt.follow.gamepad": "Follow the marker to the next room.",
+		"tutorial.prompt.follow.touch": "Follow the marker to the next room.",
+		"tutorial.prompt.objective.keyboard": "{fire}: Continue",
+		"tutorial.prompt.objective.gamepad": "{fire}: Continue",
+		"tutorial.prompt.objective.touch": "{fire}: Continue",
+		"tutorial.prompt.move.keyboard": "Move: {move}",
+		"tutorial.prompt.move.gamepad": "Move: {move}",
+		"tutorial.prompt.move.touch": "Move: {move}",
+		"tutorial.prompt.flask.keyboard":
+			"You're wounded. Drink your flask: {flask}. You get 3 per floor, refilled on every new floor.",
+		"tutorial.prompt.flask.gamepad":
+			"You're wounded. Drink your flask: {flask}. You get 3 per floor, refilled on every new floor.",
+		"tutorial.prompt.flask.touch":
+			"You're wounded. Drink your flask: {flask}. You get 3 per floor, refilled on every new floor.",
+		"tutorial.prompt.attack.keyboard": "Aim with the mouse. Attack: hold {fire}. The third swing is a finisher.",
+		"tutorial.prompt.attack.gamepad":
+			"Aim with the right stick. Attack: hold {fire}. The third swing is a finisher.",
+		"tutorial.prompt.attack.touch": "Aim with the mouse. Attack: hold {fire}. The third swing is a finisher.",
+		"tutorial.prompt.hits.keyboard":
+			"They rush you. Getting hit flashes you red. In a real run that costs half a heart.",
+		"tutorial.prompt.hits.gamepad":
+			"They rush you. Getting hit flashes you red. In a real run that costs half a heart.",
+		"tutorial.prompt.hits.touch":
+			"They rush you. Getting hit flashes you red. In a real run that costs half a heart.",
+		"tutorial.prompt.roll.keyboard":
+			"The orange line is its aim. Roll through the shot: {roll}. You can't be hit mid-roll.",
+		"tutorial.prompt.roll.gamepad":
+			"The orange line is its aim. Roll through the shot: {roll}. You can't be hit mid-roll.",
+		"tutorial.prompt.roll.touch":
+			"The orange line is its aim. Roll through the shot: {roll}. You can't be hit mid-roll.",
+		"tutorial.prompt.guard.keyboard": "{alt} with the sword to guard: it deletes bullets, and shockwaves too.",
+		"tutorial.prompt.guard.gamepad": "{alt} with the sword to guard: it deletes bullets, and shockwaves too.",
+		"tutorial.prompt.guard.touch": "{alt} with the sword to guard: it deletes bullets, and shockwaves too.",
+		"tutorial.prompt.bow.keyboard": "Swap to the bow: {swap}. Hold {alt} to charge a heavy arrow, then release.",
+		"tutorial.prompt.bow.gamepad": "Swap to the bow: {swap}. Hold {alt} to charge a heavy arrow, then release.",
+		"tutorial.prompt.bow.touch": "Swap to the bow: {swap}. Hold {alt} to charge a heavy arrow, then release.",
+		"tutorial.prompt.ember.keyboard":
+			"Too many bullets? {ember} burns an Ember and clears every enemy bullet. 2 per floor.",
+		"tutorial.prompt.ember.gamepad":
+			"Too many bullets? {ember} burns an Ember and clears every enemy bullet. 2 per floor.",
+		"tutorial.prompt.ember.touch":
+			"Too many bullets? {ember} burns an Ember and clears every enemy bullet. 2 per floor.",
+		"tutorial.prompt.relic.keyboard": "Relics are permanent for the run. Walk onto the pedestal.",
+		"tutorial.prompt.relic.gamepad": "Relics are permanent for the run. Walk onto the pedestal.",
+		"tutorial.prompt.relic.touch": "Relics are permanent for the run. Walk onto the pedestal.",
+		"tutorial.prompt.curse.keyboard":
+			"Curses make the run harder and your score multiplier bigger. {skill1} to accept, or walk away.",
+		"tutorial.prompt.curse.gamepad":
+			"Curses make the run harder and your score multiplier bigger. {skill1} to accept, or walk away.",
+		"tutorial.prompt.curse.touch":
+			"Curses make the run harder and your score multiplier bigger. {skill1} to accept, or walk away.",
+		"tutorial.prompt.stairwell.keyboard":
+			"The stairwell takes you down. Every floor is more dangerous than the last.",
+		"tutorial.prompt.stairwell.gamepad":
+			"The stairwell takes you down. Every floor is more dangerous than the last.",
+		"tutorial.prompt.stairwell.touch": "The stairwell takes you down. Every floor is more dangerous than the last.",
+		"tutorial.prompt.draft.keyboard": "Pick a boon: {left} / {right}, then {fire}.",
+		"tutorial.prompt.draft.gamepad": "Pick a boon: {move}, then {fire}.",
+		"tutorial.prompt.draft.touch": "Pick a boon: {left} / {right}, then {fire}.",
+		"tutorial.prompt.boss.keyboard":
+			"Every 5th floor ends with a boss. Orange previews show exactly where her bullets will go.",
+		"tutorial.prompt.boss.gamepad":
+			"Every 5th floor ends with a boss. Orange previews show exactly where her bullets will go.",
+		"tutorial.prompt.boss.touch":
+			"Every 5th floor ends with a boss. Orange previews show exactly where her bullets will go.",
+		"tutorial.prompt.finish.keyboard": "Take the stairwell to finish.",
+		"tutorial.prompt.finish.gamepad": "Take the stairwell to finish.",
+		"tutorial.prompt.finish.touch": "Take the stairwell to finish.",
+		"tutorial.callout.score": "Kills, grazes and guard cancels score. Chain them for combo.",
+		"tutorial.callout.harmlessHit": "Ouch! In a real run that hit costs half a heart.",
+		"tutorial.callout.graze": "Graze! Bullets that skim past you score too.",
+		"tutorial.callout.bossPhase2": "Phase II: new patterns.",
+		"tutorial.callout.bossPhase3": "Phase III: her fiercest patterns.",
+		"tutorial.objective.title": "Practice Descent",
+		"tutorial.objective.body":
+			"Descend as deep as you can. Each floor is harder; the run ends when your hearts run out.",
+		"tutorial.panel.progress": "{step} / {count}",
+		"tutorial.panel.hint": "{key}: pause / skip",
+		"tutorial.outro.title": "That's the descent.",
+		"tutorial.outro.body":
+			"In a real run: no respawns, the floors keep getting harder, and your score goes to the leaderboard ({key}).",
+		"tutorial.outro.start": "Start my first run",
+		"tutorial.outro.replay": "Play the tutorial again",
+		"tutorial.pause.restart": "Restart tutorial",
+		"tutorial.pause.skip": "Skip tutorial",
+		"tutorial.pause.skipConfirm": "Skip the tutorial?",
+		"tutorial.pause.skipYes": "Skip",
+		"tutorial.pause.skipNo": "Keep playing",
+		"tutorial.menu.open": "Tutorial",
+		"tutorial.verdict": "Practice: not submitted (tutorial)",
 	},
 };

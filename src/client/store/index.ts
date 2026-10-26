@@ -6,6 +6,7 @@ import { menuSlice } from "./menu";
 import { optionsSlice } from "./options";
 import { settingsSlice } from "./settings";
 import { spikesSlice } from "./spikes";
+import { tutorialSlice } from "./tutorial";
 
 /**
  * Barrel for the client's Reflex store. Client-local state only (HUD, settings, spikes); the
@@ -14,7 +15,8 @@ import { spikesSlice } from "./spikes";
  * player's settings (overrides of every group, the system Reduce Motion flag) and whether the Options screen is open;
  * the `options` slice the Options screen's tab and rebinding flow; the `leaderboard` slice the leaderboard panel (M5);
  * the `menu` slice the menu shell's screen + back stack and the Leave run confirm (L3 / L6); the `lobby` slice the
- * lobby list, this player's lobby, invites and notices (L5).
+ * lobby list, this player's lobby, invites and notices (L5); the `tutorial` slice the first-run tutorial's
+ * HUD state (prompt, highlight, outro) and whether the first-run gate is still deciding.
  *
  * Import through the directory (`client/store`), never the file.
  */
@@ -25,6 +27,7 @@ export * from "./menu";
 export * from "./options";
 export * from "./settings";
 export * from "./spikes";
+export * from "./tutorial";
 
 export const clientStore = combineProducers({
 	game: gameSlice,
@@ -34,6 +37,7 @@ export const clientStore = combineProducers({
 	leaderboard: leaderboardSlice,
 	menu: menuSlice,
 	lobby: lobbySlice,
+	tutorial: tutorialSlice,
 });
 
 export type ClientStore = typeof clientStore;

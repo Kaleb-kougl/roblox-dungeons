@@ -68,6 +68,16 @@ ranked runs, co-op), `src/shared/sim/README.md` (tick order, hash group order `c
 `src/shared/run/slice.spec.ts` (solo), `src/shared/run/partyProgression.spec.ts` and
 `src/shared/sim/progression/progression.party.spec.ts` (Phase B: progression in co-op).
 
+## First-run tutorial (2026-10-25, branch `tutorial`)
+A guided "Practice Descent" on the first join (before the main menu; replayable from it; a player in it is busy for
+lobbies), built on the slice: the real sim in a harmless mode
+(`SimConfig.tutorial`, its own appended hash group), a fixed two-floor `tutorial` world (lesson rooms, then Mother
+Bramble) played locally and refused by the server, a pure `TutorialDirector` (15 funnel steps), a training dummy
+archetype, onboarding persistence (`KV_Onboarding_v1`) and a tutorial funnel. T1-T7 are **code-complete and verified
+headlessly only** (`npm run verify`: 108 suites, 1458 of 1459 tests pass; the one failure is the known `forge.spec.ts`
+NaN sign-bit vector on x86); none of it has run in Studio yet, and the T8 playtest is pending. Plan, as-built notes,
+owner decisions and the Studio smoke test: `docs/TUTORIAL.md`.
+
 ## Tasks
 - [ ] 1. **Scaffold and spikes:** run `npx create-roblox-ts`, then add Flamework, Rojo and jest+Lune. Spike A:
   1,000 pooled bullet Parts moved with `workspace:BulkMoveTo`. Spike B: iso camera (low FOV, far distance, follow

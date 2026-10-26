@@ -19,6 +19,7 @@ import { clearRunEvents, closeDraft, stepDraft, stepRun } from "./progression/pr
 import { SOLO_PLAYER, isDraftOpen } from "./progression/runMods";
 import { hasLeftBit, markPlayerLeft, partySize, playerAt, weaponsAt, type PartyConfig } from "./party";
 import { FORFEIT_BUTTON } from "./partyData";
+import type { TutorialSimConfig } from "./tutorial/tutorial";
 
 export { PLAYER_RADIUS, PLAYER_SPEED } from "./playerData";
 
@@ -104,6 +105,13 @@ export interface SimConfig {
 	 * (stepParty). Absent or size 1: a solo run, exactly as before (no party state, nothing extra hashed).
 	 */
 	party?: PartyConfig;
+	/**
+	 * First-run tutorial (docs/TUTORIAL.md, tutorial/tutorial.ts): `harmless` hits land (events, post-hit
+	 * invulnerability, combo cut, on-hit hooks) but never take armor or hearts or kill; `startHalfHearts` sets every
+	 * player's start hearts. Absent: no tutorial state, nothing extra hashed (every fixture and run unchanged). Present:
+	 * state.tutorial is created and hashed as the "tutorial" subsystem, after "party".
+	 */
+	tutorial?: TutorialSimConfig;
 }
 
 /** Matches the 16x16 greybox room: inner wall faces at +/-7.75, minus the 0.4 player half-width (rounded). */

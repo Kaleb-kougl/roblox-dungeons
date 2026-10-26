@@ -17,7 +17,13 @@ import { ENDLESS_FIRST_FLOOR } from "shared/dungeon";
 import { cloneScoreState, createScoreState, type ScoreState } from "./score/score";
 import { cloneRunState, createRunState } from "./progression/progression";
 import { refreshRunMods, type RunState } from "./progression/runMods";
-import { cloneParty, createPartyState, partySize, type PartyState } from "./party";
+import { cloneParty, createPartyState, partySize, playerAt, type PartyState } from "./party";
+import {
+	cloneTutorialState,
+	createTutorialState,
+	tutorialStartHalfHearts,
+	type TutorialState,
+} from "./tutorial/tutorial";
 
 export interface PlayerState {
 	x: number;
@@ -214,9 +220,14 @@ export interface SimState {
 	run?: RunState;
 	/**
 	 * Co-op (M4), only when SimConfig.party.size > 1: every player by index ([0] is `player`), their weapons, who left.
-	 * Hashed as the "party" subsystem, after every other group. See party.ts.
+	 * Hashed as the "party" subsystem, after every other group but "tutorial". See party.ts.
 	 */
 	party?: PartyState;
+	/**
+	 * First-run tutorial (docs/TUTORIAL.md), only when SimConfig.tutorial is set: the harmless flag and the harmless
+	 * hit count. Hashed as the "tutorial" subsystem, appended after "party" (the last group). See tutorial/tutorial.ts.
+	 */
+	tutorial?: TutorialState;
 }
 
 /**
@@ -225,6 +236,7 @@ export interface SimState {
  * Omitted: an empty config (no actors, default loadout, bounds-culled bullets). With `config.endless`, combat state is
  * built from floor 1's world (`worldForFloor(ENDLESS_FIRST_FLOOR).config`) and `endless` state is created.
  * With `config.party` (size > 1) every party member starts at the spawn too (party.ts), before the encounter spawns.
+ * With `config.tutorial`, `tutorial` state is created and every player starts with its `startHalfHearts` (if set).
  */
 export function createSimState(
 	seed: number,
@@ -245,6 +257,16 @@ export function createSimState(
 	};
 	// Co-op: the other players (and their player bullet emitter ids) exist before anything spawns. No rng.
 	state.party = createPartyState(state, config.party, world.loadout, spawnX, spawnZ);
+	// Tutorial: harmless hits and the wounded start (every player, max hearts unchanged). No rng.
+	const tutorial = config.tutorial;
+	if (tutorial !== undefined) {
+		state.tutorial = createTutorialState(tutorial);
+		const n = partySize(state);
+		for (let i = 0; i < n; i++) {
+			const p = playerAt(state, i);
+			p.hearts = tutorialStartHalfHearts(tutorial, p.heartsMax);
+		}
+	}
 	// Spawns the encounter (archetype init hooks may draw from the sim rng) and the stress emitter.
 	startCombat(state, world);
 	// After the spawns (scoring's room records read them; endless floors: the floor's deferred room spawns). No rng.
@@ -276,6 +298,7 @@ export function cloneSimState(s: Readonly<SimState>): SimState {
 		endless: s.endless !== undefined ? cloneEndlessState(s.endless) : undefined,
 		score: s.score !== undefined ? cloneScoreState(s.score) : undefined,
 		run: s.run !== undefined ? cloneRun(s.run) : undefined,
+		tutorial: s.tutorial !== undefined ? cloneTutorialState(s.tutorial) : undefined,
 	};
 	if (s.party !== undefined) clone.party = cloneParty(s.party, clone);
 	return clone;
