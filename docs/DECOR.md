@@ -3,7 +3,8 @@
 How to dress the vertical slice's endless floors with props: textured walls, columns, torches, braziers, floor
 clutter. Work it task by task, like `PLAN.md` and `docs/ART.md`; each task ends with a **Verify**. Decoration is
 **presentation only**: nothing here changes `src/shared/sim/**`, collision, or a replay hash (D2 below, now taken, was
-the one exception, and it is done: endless pillars are solid walls).
+the one exception, and it is done: endless pillars are solid walls). Phase 2 (below) makes the decoration dynamic and
+adds the second exception, D4: breakable barrels and crates are sim objects.
 
 ## What already exists
 
@@ -125,6 +126,9 @@ others. Biome-specific kinds (icicle, moss, grave) have no art and stay undrawn 
   from `35307022` and record that commit in `PROVENANCE.md` (logged as a deviation in `CLAUDE.md`). It references the
   web's Delve floor (interactables, shop, breakable walls); the port swaps those for the slice's interactables (relic
   pedestals, shrine zone, stairwell, entrance spawn, boss arena centre).
+- **D4. Breakable clutter is gameplay: decided, yes (2026-10-25).** Barrels and crates block movement and bullets
+  and break under attacks, so they live in the sim (Phase 2, part 4): their own hash group, endless replays and
+  scores change, M1, the fixtures and the tutorial do not. The rest of Phase 2 stays presentation only.
 
 ## Tasks
 
@@ -159,7 +163,7 @@ others. Biome-specific kinds (icicle, moss, grave) have no art and stay undrawn 
   - **wall pieces:** billboards pushed toward the camera off the wall face (the web's `WALL_DEPTH_BIAS`);
   - **fade:** tall pieces fade out (`ImageTransparency` over ~0.15 s) when a player or the boss is behind them;
   - **light:** torches and braziers animate their flame loop; `PointLight`s only in the boss and shrine rooms,
-    2-4 of them (the web's D4 rule).
+    2-4 of them (the web build's own D4 light rule, not this plan's D4).
   Budget: ~150 pieces per floor before caps; measure.
   → Verify: in Studio, a full endless run through every biome: no bullet is ever hidden, fps and texture memory
   written down on PC and the phone emulator.
@@ -197,3 +201,203 @@ candidate for `boss.act1`), and Knight / Fighter / Warrior player characters.
 - **Near-side walls** (between the camera and the room) already hide a strip of floor; don't make them taller or busier.
 - **Performance.** About 150 billboards per floor on top of the actors. They are static, so cost should be low, but
   measure on the phone emulator.
+
+## Phase 2: dynamic decoration (planned 2026-10-25)
+
+Phase 1 (R1-R7) dresses each floor once, from the Forge's data. Phase 2 makes the dressing change: with depth, over
+time, with what happens in the run, and (the one gameplay part) breakable clutter. Owner choices (2026-10-25): extend
+this plan rather than start a new one; all four parts below; breakables are **gameplay objects in the sim** (D4).
+
+| Part | Lives in | Changes the sim, collision or a hash? |
+|---|---|---|
+| 1. Depth variation | `shared/view/decor` (pure) | no |
+| 2. Ambient life | client (`DecorController`, `DecorFxController`) | no |
+| 3. Reacting to the run | `shared/view/decor` `DecorDirector` (reads state) + client | no |
+| 4. Breakable clutter | `shared/dungeon/breakables.ts` (placement) + `shared/sim/breakables/` | **yes**: endless replays and scores change, as with D2. M1, every fixture and the tutorial do not |
+
+Parts 1-3 sit on top of R2-R4 (they pick, swap and animate what the decor plan placed). Part 4 does not need R2-R6:
+it ships with placeholder Parts first and picks up the R5 art later.
+
+### 1. Depth variation (presentation, deterministic from the floor)
+
+- `decorProfile(floor, depth, themeKey)` in `shared/view/decor/profile.ts`; the table `DECOR_DEPTH` in `shared/config`.
+  Bands by floor: **kept** (1-4), **worn** (5-9), **ruined** (10-14), **abyss** (15+). The boss floors (every 5th)
+  sit on the boundaries, so each boss kill opens on a new look.
+- Per band:
+
+  | Knob | kept | worn | ruined | abyss |
+  |---|---|---|---|---|
+  | flat clutter share of a room's floor (R3 cap stays the ceiling, 40 %) | 20 % | 28 % | 34 % | 40 % |
+  | `column1` vs broken `column2` on legal spots | 100 / 0 | 70 / 30 | 40 / 60 | 15 / 85 |
+  | far-wall `wall2` (whole) vs `wall3` (broken) | 100 / 0 | 60 / 40 | 30 / 70 | 0 / 100 |
+  | bones / rocks / bricks weight (x the Forge's) | 1 | 1.3 | 1.7 | 2 |
+  | lit torches | 100 % | 85 % | 65 % | 45 % |
+  | ambient light and particle rate | 1 | 0.9 | 0.8 | 0.7 |
+
+  Starting values; R15 tunes them.
+- Choices inside a band come from a cell hash `decorHash(floorSeed, cell, salt)` (no `math.random`), so every co-op
+  client and every replay viewer draws the same floor.
+- **Never touches `decorDensity` or any Forge param**: that would move the Forge rng stream and every endless layout.
+  The Forge's props are the candidate set; the profile only thins, swaps and re-weights them under the R3 rules.
+- Darker bands still pass the contrast rule: the validator checks enemy bullets against the floor at the darkest
+  band's light level, not the default.
+
+### 2. Ambient life (client only)
+
+- **Flames.** Every lit torch and brazier plays `vfx/flame` / `vfx/flames` with `vfx/glow.png`, phase offset by cell
+  hash so they don't pulse in step.
+- **Light pool** instead of a light per torch (63 per floor): `DECOR_LIGHTS.pool` (6) PointLights reassigned to the
+  lit torches nearest the camera focus, at most every `DECOR_LIGHTS.reassignSeconds` (0.25), fading in and out. The
+  boss and shrine rooms keep their fixed 2-4 lights (R4, the web build's light rule). Flicker is brightness noise from a
+  per-light seeded curve, scaled by `motionScale`.
+- **Biome atmosphere.** The Forge themes already carry `particles` (kind, colour, count) as reference data; use it:
+  one emitter volume that follows the camera focus. Ancient dust motes, molten embers rising, frost snow, grim green
+  wisps, verdant spores. Rate x the depth band, x Juice settings; Reduced motion scales it to zero.
+- **Treasure glint**: `vfx/glint` on the gemstones until the pedestal is taken.
+- **Readability rules**: ambient particles are smaller and more transparent than any bullet (`DECOR_FX.maxSizeStuds`,
+  `minTransparency`) and take colours from new `decor.fx.*` roles the validator keeps away from the enemy-bullet
+  roles; `DECOR_FX.maxParticles` caps the total.
+
+### 3. Reacting to the run (presentation, a pure director)
+
+`DecorDirector` (`shared/view/decor/director.ts`) is built like `TutorialDirector`: `update({ state, config, events,
+dt })` once per rendered frame, reading state and `LiveRun.frameEvents`, never writing the sim, returning a reused
+`DecorView` (per piece: `lit`, `flare`, `dim`, `broken`; per room: `entered`, `engaged`, `cleared`). Headless specs
+drive it over recorded endless runs. `DecorController` (R4) applies the view; the director is not updated while the
+run is paused or a draft is open.
+
+| Trigger (where the director reads it) | Reaction |
+|---|---|
+| room not yet entered (`state.endless` rooms entered) | its torches are out, braziers dark |
+| first entry (`events.roomEntered`) | torches light in a sweep from the door, `DECOR_REACT.igniteStepSeconds` (0.08) apart |
+| combat room engaged, then cleared (score room records) | engaged: flames burn taller; cleared: the room's braziers light (`brazier` -> `brazier_lit`) with a short warm flare |
+| boss floor (the Forge's brazier ring) | dark until `bossEngaged`; one more third of the ring lights on each `bossPhase`; steady after the kill |
+| stairwell opens (`state.endless`) | glow plus a `vfx/zone` ring on the stairwell |
+| shrine used / pedestal taken (`state.run`) | the shrine crystal dims; the gemstones stop glinting |
+| Ember (`events.emberUsed`) | every flame on screen gutters for `DECOR_REACT.emberGutterSeconds` (0.3) |
+| run over (`playerDied`, all players in co-op) | lights fade to a cold palette behind the results panel |
+
+Rules: no reaction lifts the floor above the contrast ceiling, none draws over a telegraph or the sniper's aim line,
+all of them scale by `motionScale`. In co-op the director reads the shared state, so every client shows the same room
+as lit.
+
+### 4. Breakable clutter (gameplay)
+
+Barrels and crates (the pack's `barrel`, `crate` and their 8-frame `_break` loops) stand in rooms. They block
+movement and bullets and break under attacks: short-lived cover, and something to smash. Before R11, read how the web
+build's Delve floor handles breakable walls at `35307022` (D3) and reuse what fits.
+
+**Decisions, with the recommended default (confirm or change before R12):**
+
+- **B1. Placement**: pure, in `shared/dungeon`, from its own stream `hash(floorSeed, BREAKABLE_SALT)` run after the
+  Forge, so Forge layouts, digests and every other prop stay put.
+- **B2. What they block**: players' and enemies' movement, and every bullet. **Not** line of sight: they are low cover,
+  so a sniper still sees you and shoots the crate.
+- **B3. What breaks them**: player melee, player bullets (a heavy arrow that breaks one keeps piercing; one that
+  doesn't, stops), enemy bullets (cover erodes under fire), Mother Bramble's slam (breaks everything in its radius).
+  Not the Ember, not bodies.
+- **B4. Toughness** (in hits, tunables in the data module): barrel 1 sword hit / 2 arrows / 4 enemy bullets; crate 2
+  sword hits / 4 arrows / 8 enemy bullets.
+- **B5. Reward**: score only. A new score source `BREAKABLES`, small points x floor; it does **not** feed the combo
+  (no farming) and does not count toward room clear / perfect / fast. Drops (a heart or Ember) are out of v1.
+- **B6. Where**: combat, elite and treasure rooms only (never entrance, shrine, boss, corridors). Per room by band:
+  kept 0-2, worn 1-3, ruined 2-4, abyss 3-6 (x room area, capped). Mostly clusters of 2-4 hugging a wall, plus at
+  most one lone piece as mid-room cover in combat rooms >= 10 tiles.
+- **B7. Off** in the tutorial (its lessons are tuned to the current rooms), M1 and every fixture.
+- **B8. Leaderboards**: nothing has shipped, so landing this before launch needs no board reset. If it lands after
+  launch, bump `LB_Solo_v1` / `LB_Coop_v1`, since endless scores change.
+
+**Placement rules** (`placeBreakables(dungeon, floorWorld, floor)`, deterministic candidate order):
+
+- Room FLOOR cells only: not `corridor`, not `doorway`, not within `BREAKABLE.doorClearTiles` (3) of a doorway.
+- Clear of every deferred spawn (`BREAKABLE.spawnClearTiles`, 1.5), the entrance spawn, the stairwell radius + 1, the
+  pedestal, the shrine zone and pools. Cells taken are removed from the floor's `roomSpawnTiles`, so a spawn moved by
+  the safe-spawn rule never lands inside a crate.
+- No new pinch points: two solids (wall, solid pillar, breakable) either touch or leave at least
+  `BREAKABLE.minGapTiles` (2) between them, so the largest enemy radius always fits round them.
+- Reachability: a BFS over FLOOR minus the placed cells must reach every cell the floor's BFS reached. A candidate that
+  breaks it is skipped.
+- Output: `EndlessFloorWorld.breakables: ReadonlyArray<{ x, y, kind }>` (tile coordinates).
+
+**Sim** (`shared/sim/breakables/`, opt-in like `endless`):
+
+- `SimConfig.breakables` (tunables) plus the floor world's list -> `SimState.breakables` (per piece: kind, cell, hp,
+  broken tick), rebuilt on every floor change in `stepEndless`. A cell -> slot lookup is derived from it, rebuilt on
+  clone, and never hashed.
+- **Hash**: a new `breakables` group appended after `tutorial`, only when present (`hashLayout.ts`, the README's group
+  list). The score group gains the `BREAKABLES` source.
+- **Collision without impure callbacks**: `MoveResolver`, `ActorMover`, `actorSteerMover` and `BulletBlocker` stay
+  pure closures over the Dungeon and each gains an optional trailing `blocked` argument (the intact cells) that the sim
+  passes from state at its call sites (`movePlayer`, `moveActor` / `walkToward`, the bullet steps). Absent, the code
+  path is exactly today's. Line of sight is unchanged (B2). Steering rounds a crate the same way it rounds a pillar.
+- **Damage**: `damageBreakable(state, slot, amount, source)`. `sweepArc` runs a breakables pass after actors (not an
+  `enemyHit`, no combo). A bullet tests world blocking (walls, then breakables) before actors, so a crate shields the
+  enemy behind it. The slam breaks by radius.
+- **Events**: `breakableHits`, `breakablesBroken` and this tick's broken slots (for FX), following the existing
+  events pattern.
+- **Co-op and server**: deterministic, so lockstep and `SegmentedValidator` need nothing new; points go to the team
+  score. Each bullet now does one extra cell lookup: re-run `replay.bench.spec.ts` against docs/SERVER.md's budget.
+
+**Client:**
+
+- `BreakableRenderController` (pooled, Janitor): placeholder first, a low box Part per piece (theme IDs
+  `breakable.barrel` / `breakable.crate`, a colour role each, required in every pack like `enemy.dummy`, because a
+  gameplay object must always be drawn). With art: the intact frame; on hit a blink and a small shake (`motionScale`);
+  on break the `_break` loop once, a wood-chip burst (ParticleController), then a flat debris decal (`bricks` /
+  `rocks`, cell-hashed) left on the floor.
+- Audio: `sfx.breakable.hit`, `sfx.breakable.break` (silent placeholders).
+- Readability: drawn no taller than `BREAKABLE_VIEW.maxHeightTiles`, so nothing hides behind one; a bullet stopped by
+  a crate ends in a visible spark.
+
+### Tasks
+
+- [ ] **R8. Depth profile.** (needs R3) `decorProfile`, `DECOR_DEPTH`, band swaps and thinning inside the R3 plan, the
+  darkest-band contrast check, `KV_DecorBand` (force a band in Studio).
+  → Verify: specs: the same floor gives the same plan; band boundaries; never over the R3 caps; the validator passes
+  for every band. In Studio, `N` through floors 1-16 shows the four looks.
+- [ ] **R9. Ambient life.** (needs R4, R5 for the flame art) flame loops, the light pool and flicker, the biome
+  emitters, treasure glint, `decor.fx.*` roles.
+  → Verify: validator spec for the fx roles; in Studio every biome at every band, Reduced motion on and off; fps and
+  particle counts on PC and the phone emulator written down.
+- [ ] **R10. Decor director.** (needs R4) `DecorDirector`, `DecorView`, the trigger table above, wired into
+  `DecorController`.
+  → Verify: headless specs over a recorded endless run (torches out until entry, braziers on clear, the boss ring by
+  phase, stairwell glow, pause and draft freeze it); in Studio a full floor and a boss floor, solo and 2-player.
+- [ ] **R11. Breakable placement.** (independent; can start now) `shared/dungeon/breakables.ts`, `BREAKABLE`
+  tunables, the floor world's `breakables`, the `roomSpawnTiles` filter.
+  → Verify: specs: deterministic; every placement rule; reachability over the 100 census floors; counts per band;
+  every Forge digest and layout fixture unchanged.
+- [ ] **R12. Breakables in the sim.** (needs R11) state, hash group, the `blocked` argument, damage from each source,
+  events, the score source, floor rebuilds.
+  → Verify: every golden fixture and M1 hash unchanged; new specs: players, enemies (steering) and bullets blocked;
+  each damage source and hit count from B4; heavy-arrow pierce; slam radius; no combo, no room-clear effect; clone and
+  hash; party. Re-record the endless runs (`run/slice.spec.ts`, `run/endless.spec.ts`, `run/party.spec.ts`) and check
+  they replay and validate segmented. Replay bench within budget.
+- [ ] **R13. Breakables on screen.** (needs R12; art after R5) `BreakableRenderController`, contract IDs and
+  placeholders, the sfx IDs, chips and sparks; barrel / crate and `_break` added to `art/atlases.json`.
+  → Verify: validator and contract specs; in Studio crates block, take hits and break from every source on keyboard
+  and gamepad; nothing hides a bullet.
+- [ ] **R14. Tutorial, docs.** The tutorial world passes no breakables (its lock spec allows that one field);
+  `CLAUDE.md` decision log (D4), `src/shared/sim/README.md` (module row, tick order, hash group), docs/SERVER.md
+  (replay cost), docs/CLIENT.md (DecorDirector, BreakableRenderController, `KV_DecorBand`, `KV_DecorDebug`: draws
+  breakable cells and decor footprint boxes).
+  → Verify: `npm run verify`; the tutorial lock spec passes unchanged except for that field.
+- [ ] **R15. Playtest.** Every biome at every band, solo and co-op, PC and phone emulator: readability with bullets,
+  crate cheese against snipers, enemies never stuck on crates, the run's feel deeper down. Tune `DECOR_DEPTH`,
+  `BREAKABLE` counts and toughness, light pool size.
+
+Order: R11 -> R12 -> R13 can start now, alongside R2-R4 (placeholders need nothing from the decor system). R8 and R10
+follow R3 / R4; R9 follows R4 and R5. R14 lands with R12; R15 last.
+
+### Phase 2 risks
+
+- **Replays and scores change** (R12), as with D2. Land it before launch (B8) and before recording any new golden
+  endless runs.
+- **Cover cheese.** A wall of crates against snipers. B3 (enemy bullets erode them) and B6 (clusters on walls, at most
+  one mid-room) are the answer; check it in R15.
+- **Pathing.** Enemies could snag on crates. Steering already rounds 1-tile solids (D2); the `minGapTiles` rule keeps
+  gaps wide enough. The boss's charge walks plain, which is why boss rooms get none.
+- **Busy screens.** Flames, particles, flares and chips all compete with bullets. The fx roles, size and transparency
+  caps, and `motionScale` keep them below the bullets; judge it at the abyss band, the busiest.
+- **Performance.** The light pool, emitters and per-bullet cell lookups: measure on the phone emulator (R9, R13) and
+  with the server replay bench (R12).
