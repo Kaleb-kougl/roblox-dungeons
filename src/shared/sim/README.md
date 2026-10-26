@@ -266,8 +266,11 @@ lives outside the sim. Spec: `tutorial/tutorial.spec.ts`.
 
 Opt-in through `SimConfig.breakables` (`BreakablesConfig`; every endless run sets `BREAKABLES_CONFIG` in shared/run
 `buildEndlessRunConfig`; the tutorial does not, docs/DECOR.md B7). Without it there is no `state.breakables`, no code
-path below runs, every mover / blocker gets no `solid` argument and nothing extra is hashed, so every fixture, M1 and the
-tutorial replay exactly as before. With it createSimState builds `state.breakables` from floor 1's pieces
+path below runs, every mover / blocker gets no `solid` argument and no `breakables` group is hashed, so every fixture,
+M1 and the tutorial play exactly as before. One hashed difference remains: the appended score source BREAKABLES
+widens the `score` group of every scored run by `score.points.breakables` / `score.counts.breakables` (always 0
+without breakables), so the tutorial's and a `KV_Scoring` M1 run's state hashes differ from builds before it (no
+fixture is scored). With it createSimState builds `state.breakables` from floor 1's pieces
 (`EndlessFloorWorld.breakables`, placed by shared/dungeon `placeBreakables`; without endless mode from
 `breakables.pieces`), and every endless floor change replaces them (`resetBreakables` in stepEndless).
 
@@ -276,7 +279,7 @@ tutorial replay exactly as before. With it createSimState builds `state.breakabl
 | Block movement: players and actors, plain and steered walks (a lone crate is rounded like a pillar) | movePlayer, moveActor: `solidCells(state)` as the movers' trailing argument |
 | Block every bullet, after the wall test and before graze / players / actors (a crate shields what is behind it) | combat.ts enemyBulletHit(Party) / playerBulletHit |
 | Not line of sight (low cover: a sniper still sees you and shoots the crate) | ctx.lineOfSight passes no `solid` |
-| Damage: player bullets their payload damage (plain: consumed; piercing: flies on, no pierce spent, only if it broke the piece), enemy bullets `enemyBulletDamage` (consumed), the sword's swings their BASE damage (sweepArc's pass after the actors: no enemyHits, no combo; the guard none), Mother Bramble's slam breaks everything within `slamRadius` at impact | `damageBreakable`, melee.ts, act1.ts |
+| Damage: player bullets their payload damage (plain: consumed; piercing: flies on, no pierce spent, only if it broke the piece), enemy bullets `enemyBulletDamage` (consumed), the sword's swings their BASE damage (sweepArc's pass after the actors: no enemyHits, no combo; the guard none), Mother Bramble's slam breaks everything within `slamRadius` at impact (nearly dormant: boss rooms get no pieces, `BREAKABLE.roomTypes`, and the radius ignores walls, so it only reaches a piece in a room that touches the boss room: 1 of 240 boss floors, run seeds 1-60 x floors 5-20; kept for that and covered by specs) | `damageBreakable`, melee.ts, act1.ts |
 | Score: a piece a player breaks scores ScoreSource.BREAKABLES (appended: index 8), BREAKABLE_POINTS[kind] x floor; never feeds the combo, no room record | score.ts `scoreBreakable` |
 | Events: `breakableHits`, `breakablesBroken`; per tick `state.breakables.hitSlots` / `brokenSlots` (presentation, cleared each tick, not hashed) | state.ts, breakables.ts |
 

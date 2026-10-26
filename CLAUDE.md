@@ -75,7 +75,11 @@ Decision log (deviations from `PLAN.md`):
   `solid` (`SolidCells`) the sim passes from state (absent: exactly the grid-only path); they block bodies and every
   bullet but not sight, break under player bullets / sword swings / enemy bullets / the boss's slam, and a player's
   break scores the appended source `BREAKABLES` (no combo). M1 (`KALEB_VALE_MVP_PARAMS`), every fixture and the
-  tutorial (no `breakables`, B7) replay exactly as before; endless replays and scores changed.
+  tutorial (no `breakables`, B7) play exactly as before, but the appended source widens every scored run's `score`
+  hash group by `score.points.breakables` / `score.counts.breakables` (always 0 there), so the tutorial's and a
+  `KV_Scoring` M1 run's state hashes differ from older builds (no fixture is scored); endless replays and scores
+  changed. Mother Bramble's slam rule is nearly dormant: boss rooms get no pieces, so it only reaches one in a room
+  that touches the boss room (1 of 240 boss floors, run seeds 1-60 x floors 5-20).
 
 ## Commands
 
