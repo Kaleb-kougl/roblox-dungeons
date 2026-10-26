@@ -315,7 +315,8 @@ A biome may name the Roblox built-in material of its floor slabs, wall blocks an
 The web build's DECOR slot, rebuilt from the plan (the web source of `decorPlan.ts` was not available; names follow
 the plan so a port of it can read this contract). **Every decor ID is optional**: a pack draws exactly the pieces it
 has art for, and `ThemePack.decor*` / `ambient` return nothing, without a warning, for the rest. The placeholder
-pack (and `vale`, until R5 uploads the Lords of Pain props) ships none, so nothing is drawn.
+pack ships none, so nothing is drawn; `vale` maps the Lords of Pain props, effects and breakables (docs/DECOR.md R5,
+`packs/vale/manifest.ts` `VALE_DECOR_PIECES`), each appearing once its atlas file has an ID in `assetIds.ts`.
 
 **IDs** (`parseDecorId`, `decorId`, `decorFxId`, `decorAmbientId` in `contract.ts`; anything else under `decor.` is
 an error):
@@ -355,6 +356,7 @@ the effects (`vfx/*`) and the breakable decals; the other kinds stay undrawn unt
 | `glowAt` `{ x, y }` | with `glow: true` | where the flame / glow attaches, inside the drawn box; default the pivot |
 | `emissive` | pieces, effects, ambient | self-lit: full brightness, no world lighting, no depth-band dimming |
 | `particle` `{ sizeStuds?, transparency? }` | `decor.fx.ambient.*` only | the particle's look, held to `DECOR_PARTICLE`: size in (0, 0.6] studs, transparency in [0.4, 1] |
+| `outline` `[{ x, y }, ...]` (images) / `outlines` (sprite sets, one per facing) | pieces, optional | >= 3 points inside the rect / cell whose convex hull holds every visible pixel; a standing piece is then held inside its footprint box by this shape instead of its rectangle (a diagonal wall segment's rectangle is mostly empty corners) |
 
 An ambient texture is an `image` with only `kind`, `assetId`, `w`, `h`, `particle`, `emissive` (a ParticleEmitter has
 no ImageRect or pivot); `sprites` is rejected there. A decor sprite set is a v2 set that must define `idle` (the

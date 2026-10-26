@@ -138,6 +138,12 @@ export interface ImageAsset {
 	emissive?: boolean;
 	/** decor.fx.ambient.* only: the particle's look, held to contract.ts DECOR_PARTICLE (smaller and fainter than bullets). */
 	particle?: DecorParticle;
+	/**
+	 * decor.delve.* only, optional: points (pixels from the top-left of `rect`, inside it) whose convex hull holds every
+	 * visible pixel. A standing piece is then held inside its footprint box by this shape instead of its rectangle (a
+	 * diagonal wall segment's rectangle is mostly empty corners). Presentation only.
+	 */
+	outline?: Array<Pivot>;
 }
 
 /** A pixel rectangle inside an image, top-left origin. */
@@ -239,6 +245,11 @@ export interface SpriteSetAsset {
 	glowAt?: Pivot;
 	/** decor.* only: see ImageAsset.emissive. */
 	emissive?: boolean;
+	/**
+	 * decor.delve.* only, optional: one outline per facing (`facings.count` of them; see ImageAsset.outline), pixels
+	 * from the cell's top-left, holding every visible pixel of every frame drawn in that facing.
+	 */
+	outlines?: Array<Array<Pivot>>;
 }
 
 export interface SpriteFacings {

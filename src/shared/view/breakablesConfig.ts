@@ -17,8 +17,9 @@ export interface ChipBurstView {
 
 export const BREAKABLE_VIEW = {
 	/**
-	 * Readability: nothing a piece draws stands taller than this, tiles (5/8, the theme placeholders' cap), so no piece
-	 * hides a bullet or an enemy behind it. Taller art is scaled down to fit (sprite and image paths alike).
+	 * Readability: nothing a piece draws stands taller than this above its base (its pivot), tiles (5/8, the theme
+	 * placeholders' cap), so no piece hides a bullet or an enemy behind it. Taller art is scaled down to fit (sprite and
+	 * image paths alike).
 	 */
 	maxHeightTiles: 5 / 8,
 	/** Pieces stand this far above the floor, studs (keeps bases off the floor slab; ACTOR_VIEW.liftStuds' value). */

@@ -27,6 +27,7 @@ import {
 	DECOR_ID_FORMS,
 	DECOR_KIND_LAYERS,
 	DECOR_LAYERS,
+	DECOR_MIN_OUTLINE_POINTS,
 	DECOR_PARTICLE,
 	ENEMY_BULLET_ROLES,
 	DEFAULT_BIOME_MATERIAL,
@@ -875,11 +876,14 @@ const WORLD_IMAGE_KEYS = ["kind", "assetId", "w", "h", "rect", "pivot", "pixelsP
 const AMBIENT_IMAGE_KEYS = ["kind", "assetId", "w", "h", "particle", "emissive"];
 const DECOR_LAYER_LIST = DECOR_LAYERS.map((l) => q(l)).join(" | ");
 
-/** The decor fields a decor asset may carry on top of its kind's keys: pieces have a layer, effects do not. */
-function decorArtKeys(info: DecorIdInfo): Array<string> {
+/**
+ * The decor fields a decor asset may carry on top of its kind's keys: pieces have a layer (and an image an `outline`, a
+ * sprite set per-facing `outlines`), effects do not.
+ */
+function decorArtKeys(info: DecorIdInfo, kind: "image" | "sprites"): Array<string> {
 	switch (info.type) {
 		case "piece":
-			return ["layer", "glow", "glowAt", "emissive"];
+			return ["layer", "glow", "glowAt", "emissive", kind === "image" ? "outline" : "outlines"];
 		case "fx":
 			return ["glow", "glowAt", "emissive"];
 		default:
@@ -918,7 +922,7 @@ function validateWorldImage(def: Obj, path: Array<string>, slot: SlotContract, e
 	const ambient = info !== undefined && info.type === "ambient";
 	const keys = ambient
 		? AMBIENT_IMAGE_KEYS
-		: [...WORLD_IMAGE_KEYS, ...(info !== undefined ? decorArtKeys(info) : [])];
+		: [...WORLD_IMAGE_KEYS, ...(info !== undefined ? decorArtKeys(info, "image") : [])];
 	unknownKeys(def, path, keys);
 	checkAssetIdAt(def.assetId, append(path, "assetId"), err);
 	for (const k of ["w", "h"]) {
@@ -961,6 +965,30 @@ function validateWorldImage(def: Obj, path: Array<string>, slot: SlotContract, e
 	}
 	if (info !== undefined) {
 		validateDecorFields(def, path, info, box, what, err, unknownKeys);
+		if (def.outline !== undefined) {
+			validateOutline(def.outline, append(path, "outline"), box, what, err, unknownKeys);
+		}
+	}
+}
+
+/** A decor outline: at least 3 points `{ x, y }`, each inside `box` (the rect or cell) when it is known. */
+function validateOutline(
+	o: unknown,
+	op: Array<string>,
+	box: Box | undefined,
+	what: string,
+	err: Err,
+	unknownKeys: UnknownKeys,
+) {
+	if (!isArrayLike(o) || o.size() < DECOR_MIN_OUTLINE_POINTS) {
+		err(
+			op,
+			`must be an array of at least ${DECOR_MIN_OUTLINE_POINTS} points { "x", "y" } in pixels of the ${what}`,
+		);
+		return;
+	}
+	for (let i = 0; i < o.size(); i++) {
+		checkPoint(o[i], append(op, tostring(i)), box, what, err, unknownKeys);
 	}
 }
 
@@ -1055,7 +1083,11 @@ function validateSpriteSet(def: Obj, path: Array<string>, slot: SlotContract, er
 		err(append(path, "kind"), 'decor.fx.ambient.* is a particle texture: kind "image", got "sprites"');
 		return;
 	}
-	unknownKeys(def, path, decor !== undefined ? [...SPRITE_SET_KEYS, ...decorArtKeys(decor)] : SPRITE_SET_KEYS);
+	unknownKeys(
+		def,
+		path,
+		decor !== undefined ? [...SPRITE_SET_KEYS, ...decorArtKeys(decor, "sprites")] : SPRITE_SET_KEYS,
+	);
 
 	// --- cell, pivot, density, resample -----------------------------------------------------------
 	const frameW = def.frameW;
@@ -1105,6 +1137,19 @@ function validateSpriteSet(def: Obj, path: Array<string>, slot: SlotContract, er
 		}
 		if (!typeIs(facings.ccw, "boolean")) {
 			err(append(fp, "ccw"), "must be true or false");
+		}
+	}
+
+	if (decor !== undefined && def.outlines !== undefined) {
+		const op = append(path, "outlines");
+		const outlines = def.outlines;
+		const cell = cellOk ? { w: frameW as number, h: frameH as number } : undefined;
+		if (!isArrayLike(outlines) || (facingCount !== undefined && outlines.size() !== facingCount)) {
+			err(op, `must be an array of one outline per facing (${facingCount ?? "facings.count"})`);
+		} else {
+			for (let i = 0; i < outlines.size(); i++) {
+				validateOutline(outlines[i], append(op, tostring(i)), cell, "cell", err, unknownKeys);
+			}
 		}
 	}
 

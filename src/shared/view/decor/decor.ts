@@ -14,6 +14,7 @@ import { DECOR_FX } from "./fxConfig";
 import { DECOR_REACT } from "./reactConfig";
 import {
 	DECOR_CAMERA,
+	pointsFitScale,
 	rectFitScale,
 	rectOverlapsPolygon,
 	screenDepth,
@@ -116,7 +117,10 @@ export function decorGlowPoints(plan: DecorPlan, artFor: (e: DecorEntry) => Deco
 // ---------------------------------------------------------------------------------------------
 // Drawn sizes held to the footprint rule's boxes
 
-/** rectFitScale of art drawn with `layout` (its pivot row moved to `pivotY`) at `grow` times its size, pivot on (x, y). */
+/**
+ * The fit scale (rectFitScale / pointsFitScale) of art drawn with `layout` (its pivot row moved to `pivotY`) at `grow`
+ * times its size, pivot on (x, y): its whole cell, or only `outline` (cell pixels whose hull holds every visible pixel).
+ */
 function fitScale(
 	layout: SpriteLayout,
 	pivotY: number,
@@ -124,10 +128,16 @@ function fitScale(
 	x: number,
 	y: number,
 	grow: number,
+	outline: ReadonlyArray<Readonly<Pivot>> | undefined,
 ): number {
 	const s = grow / layout.pixelsPerTile;
 	const p = layout.pivot;
-	return rectFitScale(poly, x, y, p.x * s, (layout.frameW - p.x) * s, (layout.frameH - pivotY) * s, pivotY * s);
+	if (outline === undefined) {
+		return rectFitScale(poly, x, y, p.x * s, (layout.frameW - p.x) * s, (layout.frameH - pivotY) * s, pivotY * s);
+	}
+	const pts = new Array<number>();
+	for (const q of outline) pts.push((q.x - p.x) * s, (pivotY - q.y) * s);
+	return pointsFitScale(poly, x, y, pts);
 }
 
 /**
@@ -135,7 +145,9 @@ function fitScale(
  * `poly` (tiles): unchanged when it fits; else scaled down uniformly (pixelsPerTile raised, like breakableArtLayout) and,
  * when that fits better, lifted so nothing hangs below its pivot (pivot moved to the bottom row: a box with nothing
  * `below` a wall-top pivot leaves no room under it at any scale). Undefined when no scale fits (the point lies outside
- * `poly`). Pure; the result's billboard at scale `grow` lies inside `poly`.
+ * `poly`). `outline` (the art's DecorArt outline for the facing drawn, cell pixels): only that shape is held inside
+ * `poly`, not the whole cell (the cell's empty corners may stick out). Pure; the result's billboard at scale `grow`
+ * (its visible pixels, with an outline) lies inside `poly`.
  */
 export function fitArtLayout(
 	layout: SpriteLayout,
@@ -143,11 +155,12 @@ export function fitArtLayout(
 	x: number,
 	y: number,
 	grow = 1,
+	outline?: ReadonlyArray<Readonly<Pivot>>,
 ): SpriteLayout | undefined {
 	if (!(layout.pixelsPerTile > 0) || !(grow > 0)) return undefined;
-	const kept = fitScale(layout, layout.pivot.y, poly, x, y, grow);
+	const kept = fitScale(layout, layout.pivot.y, poly, x, y, grow, outline);
 	if (kept >= 1) return layout;
-	const lifted = layout.pivot.y < layout.frameH ? fitScale(layout, layout.frameH, poly, x, y, grow) : -1;
+	const lifted = layout.pivot.y < layout.frameH ? fitScale(layout, layout.frameH, poly, x, y, grow, outline) : -1;
 	const k = math.max(kept, lifted);
 	if (!(k > 0)) return undefined;
 	const pivot: Readonly<Pivot> = lifted > kept ? { x: layout.pivot.x, y: layout.frameH } : layout.pivot;
@@ -158,14 +171,32 @@ export function fitArtLayout(
  * The layout plan entry `entry` is drawn with, given its art's own `layout`: a standing piece (tall / low, the ones
  * with a fade box) is held inside its DECOR_BOX screen box (the fade box polygon: the unpadded box the footprint rule
  * pads), so the art never covers more than the rule proved safe; flat and wall pieces are not under the footprint rule
- * and keep `layout`. Undefined: the art cannot be drawn inside its box.
+ * and keep `layout`. `outline`: the art's outline in the facing drawn (decorOutline), held instead of the whole cell.
+ * Undefined: the art cannot be drawn inside its box.
  */
-export function decorPieceLayout(plan: DecorPlan, entry: number, layout: SpriteLayout): SpriteLayout | undefined {
+export function decorPieceLayout(
+	plan: DecorPlan,
+	entry: number,
+	layout: SpriteLayout,
+	outline?: ReadonlyArray<Readonly<Pivot>>,
+): SpriteLayout | undefined {
 	const e = plan.entries[entry];
 	if (e === undefined || e.fade < 0) return layout;
 	const box = plan.fadeBoxes[e.fade];
 	const cam = DECOR_CAMERA;
-	return fitArtLayout(layout, box.polygon, screenX(cam, e.x, e.y, e.z), screenY(cam, e.x, e.y, e.z));
+	return fitArtLayout(layout, box.polygon, screenX(cam, e.x, e.y, e.z), screenY(cam, e.x, e.y, e.z), 1, outline);
+}
+
+/**
+ * A piece's outline in facing `facing` (DecorArt.outlines; an image's one outline serves every facing), or undefined
+ * when it has none (the fit then holds the whole cell).
+ */
+export function decorOutline(art: DecorArt, facing: number): ReadonlyArray<Readonly<Pivot>> | undefined {
+	const o = art.outlines;
+	if (o === undefined || o.size() === 0) return undefined;
+	if (o.size() === 1) return o[0];
+	const n = o.size();
+	return o[((math.floor(facing) % n) + n) % n];
 }
 
 /**

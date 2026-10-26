@@ -61,8 +61,9 @@ Slice frames used:
 Code-complete and verified **headlessly only** (`npm run verify`: 89 suites, 1165 of 1166 tests; the one failure is the
 known x86 `forge.spec.ts` seedToState vector). Nothing has run in Studio and **nothing is uploaded**, so
 `VALE_ASSET_IDS` is empty and the default `vale` pack draws exactly the placeholders it drew before. To switch the art
-on: `npm run art:build`, upload `art/build/*.png`, paste the ids into `src/shared/theme/packs/vale/assetIds.ts`, run
-`npm run verify`, then do S0 and the S5 Studio checks (`docs/CLIENT.md` "Sprites replace placeholders" lists them).
+on: `npm run art:build`, upload `art/upload/*.png` (every PNG to upload; decor props: docs/DECOR.md R5), paste the
+ids into `src/shared/theme/packs/vale/assetIds.ts`, run `npm run verify`, then do S0 and the S5 Studio checks
+(`docs/CLIENT.md` "Sprites replace placeholders" lists them).
 
 As built, differing from the text below: the new asset kind is `"sprites"` (additive; `MANIFEST_FORMAT` stays 1);
 one cell size and pivot per set, so the knight keeps its full 128x128 cell (8 frames per facing, one 1024 atlas per

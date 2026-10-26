@@ -201,6 +201,13 @@ describe("placement and the height cap", () => {
 		const fit = breakableArtLayout(tall);
 		expect(fit.frameH / fit.pixelsPerTile).toBeCloseTo(cap, 12);
 		expect([fit.frameW, fit.frameH, fit.pivot]).toEqual([32, 64, tall.pivot]);
+		// only the part above the pivot counts: what hangs below it (a shatter's planks) lies on the floor
+		const planks = { frameW: 32, frameH: 64, pivot: { x: 16, y: 16 }, pixelsPerTile: 32 };
+		expect(breakableArtLayout(planks)).toBe(planks);
+		const high = { frameW: 32, frameH: 64, pivot: { x: 16, y: 40 }, pixelsPerTile: 32 };
+		const lowered = breakableArtLayout(high);
+		expect(lowered.pivot.y / lowered.pixelsPerTile).toBeCloseTo(cap, 12);
+		expect(lowered.frameH / lowered.pixelsPerTile > cap).toBe(true);
 	});
 
 	it("one-shot length", () => {

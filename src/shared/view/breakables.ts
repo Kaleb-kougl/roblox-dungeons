@@ -184,14 +184,16 @@ export function breakableBoxStuds(
 }
 
 /**
- * Art drawn no taller than maxHeightTiles: the layout with pixelsPerTile raised to frameH / maxHeightTiles when the
- * cell would stand taller (scaled down uniformly), else unchanged.
+ * Art standing no taller than maxHeightTiles: the layout with pixelsPerTile raised to (the cell's height above its
+ * pivot) / maxHeightTiles when it would stand taller (scaled down uniformly), else unchanged. The part below the pivot
+ * (a shatter's planks landing in front of the base) lies on the floor, so it is not height (docs/DECOR.md R5: the
+ * Lords of Pain barrel's cell is 2.3 times its intact height because of them; capping the whole cell drew it at 38 %).
  */
 export function breakableArtLayout(
 	layout: SpriteLayout,
 	maxHeightTiles: number = BREAKABLE_VIEW.maxHeightTiles,
 ): SpriteLayout {
-	const minPixelsPerTile = layout.frameH / maxHeightTiles;
+	const minPixelsPerTile = math.min(layout.frameH, math.max(0, layout.pivot.y)) / maxHeightTiles;
 	if (!(layout.pixelsPerTile < minPixelsPerTile)) return layout;
 	return { frameW: layout.frameW, frameH: layout.frameH, pivot: layout.pivot, pixelsPerTile: minPixelsPerTile };
 }

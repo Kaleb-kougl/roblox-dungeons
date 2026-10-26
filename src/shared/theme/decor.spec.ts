@@ -467,7 +467,54 @@ describe("validateManifest: decor pieces and effects", () => {
 		]);
 		expect(withAssets({ "decor.delve.b4.bones": rockSprites({ particle: {} }) })).toEqual([
 			'assets["decor.delve.b4.bones"].particle: unknown key (allowed: kind, frameW, frameH, pivot, pixelsPerTile, ' +
-				"resample, facings, sheets, animations, layer, glow, glowAt, emissive)",
+				"resample, facings, sheets, animations, layer, glow, glowAt, emissive, outlines)",
+		]);
+	});
+
+	it("checks piece outlines: >= 3 points inside the rect / cell, one per facing for sprite sets", () => {
+		const P = 'assets["decor.delve.b1.torch"]';
+		const tri = [
+			{ x: 0, y: 81 },
+			{ x: 111, y: 81 },
+			{ x: 55, y: 0 },
+		];
+		expect(withAssets({ "decor.delve.b1.torch": torchImage({ outline: tri }) })).toEqual([]);
+		expect(withAssets({ "decor.delve.b1.torch": torchImage({ outline: [tri[0], tri[1]] }) })).toEqual([
+			`${P}.outline: must be an array of at least 3 points { "x", "y" } in pixels of the image`,
+		]);
+		expect(
+			withAssets({
+				"decor.delve.b1.torch": torchImage({
+					rect: { x: 0, y: 0, w: 60, h: 81 },
+					glowAt: { x: 30, y: 10 },
+					outline: tri,
+				}),
+			}),
+		).toEqual([`${P}.outline[1]: (111, 81) is outside the 60x81 rect`]);
+		expect(withAssets({ "decor.fx.glow": torchImage({ outline: tri }, "layer") })).toEqual([
+			'assets["decor.fx.glow"].outline: unknown key (allowed: kind, assetId, w, h, rect, pivot, pixelsPerTile, glow, glowAt, emissive)',
+		]);
+		const B = 'assets["decor.delve.b4.bones"]';
+		const square = [
+			{ x: 0, y: 0 },
+			{ x: 64, y: 0 },
+			{ x: 64, y: 64 },
+			{ x: 0, y: 64 },
+		];
+		const perFacing = new Array<typeof square>();
+		for (let d = 0; d < 16; d++) perFacing.push(square);
+		expect(withAssets({ "decor.delve.b4.bones": rockSprites({ outlines: perFacing }) })).toEqual([]);
+		expect(withAssets({ "decor.delve.b4.bones": rockSprites({ outlines: [square] }) })).toEqual([
+			`${B}.outlines: must be an array of one outline per facing (16)`,
+		]);
+		const bad = [...perFacing];
+		bad[3] = [square[0], square[1], { x: 65, y: 1 }];
+		expect(withAssets({ "decor.delve.b4.bones": rockSprites({ outlines: bad }) })).toEqual([
+			`${B}.outlines[3][2]: (65, 1) is outside the 64x64 cell`,
+		]);
+		expect(withAssets({ "decor.delve.b4.bones": rockSprites({ outline: square }) })).toEqual([
+			`${B}.outline: unknown key (allowed: kind, frameW, frameH, pivot, pixelsPerTile, resample, facings, sheets, ` +
+				"animations, layer, glow, glowAt, emissive, outlines)",
 		]);
 	});
 
@@ -681,6 +728,31 @@ describe("ThemeCore / ThemePack: decor lookups", () => {
 			true,
 			true,
 			{ x: 32, y: 40 },
+		]);
+	});
+
+	it("resolves outlines per facing (an image's one serves all); a malformed one falls back to the rectangle", () => {
+		const m = decorManifest();
+		const tri = [
+			{ x: 0, y: 81 },
+			{ x: 111, y: 81 },
+			{ x: 55, y: 0 },
+		];
+		assetsOf(m)["decor.delve.b1.torch"] = torchImage({ outline: tri });
+		const facings = new Array<typeof tri>();
+		for (let d = 0; d < 16; d++) facings.push(d === 5 ? [tri[2], tri[1], tri[0]] : tri);
+		assetsOf(m)["decor.delve.b1.debris.1"] = rockSprites({ outlines: facings });
+		assetsOf(m)["decor.delve.b1.debris.3"] = rockSprites({ outlines: [tri] });
+		const w = sink();
+		const core = new ThemeCore(m, { warn: w.warn });
+		expect(core.decor("decor.delve.b1.torch")!.outlines).toEqual([tri]);
+		const rock = core.decor("decor.delve.b1.debris.1")!;
+		expect(rock.outlines!.size()).toBe(16);
+		expect(rock.outlines![5]).toEqual([tri[2], tri[1], tri[0]]);
+		expect(core.decor("decor.delve.b1.debris.3")!.outlines).toBe(undefined);
+		expect(core.decor("decor.delve.b1.pillar")!.outlines).toBe(undefined);
+		expect(w.messages).toEqual([
+			'[theme:placeholder] decor "decor.delve.b1.debris.3" has a malformed outline, held by its rectangle instead',
 		]);
 	});
 

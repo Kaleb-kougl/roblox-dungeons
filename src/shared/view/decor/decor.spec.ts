@@ -218,6 +218,27 @@ describe("decor art held to DECOR_BOX", () => {
 		expect(fitArtLayout(huge, box, 5, 5)).toBeUndefined(); // the pivot outside the box
 	});
 
+	it("holds only the outline when the art gives one: a diagonal fits a slanted box its rectangle cannot", () => {
+		// a band rising at 45 degrees round the line y = x .. x + 1 (tiles), with a quarter tile to spare
+		const band = convexHull([-2.5, -2.75, 2.5, 2.25, 2.5, 3.75, -2.5, -1.25]);
+		// art: 64x80 px at 16 px / tile, pivot (32, 48); its pixels a diagonal from (-2, -2)..(-2, -1) to (2, 2)..(2, 3)
+		const diag: SpriteLayout = { frameW: 64, frameH: 80, pivot: { x: 32, y: 48 }, pixelsPerTile: 16 };
+		const outline = [
+			{ x: 0, y: 80 },
+			{ x: 64, y: 16 },
+			{ x: 64, y: 0 },
+			{ x: 0, y: 64 },
+		];
+		const rect = fitArtLayout(diag, band, 0, 0);
+		expect(rect === undefined || diag.pixelsPerTile / rect.pixelsPerTile < 0.5).toBe(true);
+		expect(fitArtLayout(diag, band, 0, 0, 1, outline)).toBe(diag); // the outline fits as drawn
+		// and it is still held: in a band half a tile thick it is drawn at half size
+		const thin = convexHull([-2, -2, 2, 2, 2, 2.5, -2, -1.5]);
+		const held = fitArtLayout(diag, thin, 0, 0, 1, outline)!;
+		expect(diag.pixelsPerTile / held.pixelsPerTile).toBeCloseTo(0.5, 9);
+		expect(held.pivot).toBe(diag.pivot);
+	});
+
 	it("draws every standing piece of real floors inside its box (points and wall segments)", () => {
 		let standing = 0;
 		let segments = 0;

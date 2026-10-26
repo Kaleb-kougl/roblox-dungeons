@@ -20,6 +20,7 @@ import {
 	decorFadeBodies,
 	decorFadeStep,
 	decorInputOfLayout,
+	decorOutline,
 	decorPieceLayout,
 	decorProfile,
 	decorScene,
@@ -91,13 +92,13 @@ interface PieceView {
  *   per floor     on run start and every floor change: decorInputOfLayout (endless floors; M1 the bare dungeon) +
  *                 decorProfile (Workspace KV_DecorBand forces a band) + planDecor with the pack's variant counts ->
  *                 decorScene. An entry is drawn only when the pack has art for its kind (pack.decorVariants; the
- *                 variant by the plan's cell hash); the placeholder and vale packs have none yet, so nothing is drawn
- *                 here until R5 (the director and DecorFxController's lights still run on the plan).
+ *                 variant by the plan's cell hash); the vale pack's Lords of Pain art (R5) draws once its atlas is
+ *                 uploaded, the placeholder pack has none (the director and DecorFxController's lights still run).
  *   tall / low    pooled upright billboards on the wall top (a sprite set: SpriteView, facing from decorFacingDir; an
  *                 image: ArtBillboard), the floor clearance from spriteBillboard. A brazier sprite set with `lit` plays
  *                 it once the director lights it. Drawn with decorPieceLayout: held inside the piece's DECOR_BOX (the
- *                 only box the footprint rule proved safe), scaled down / lifted when the art is larger; art that
- *                 cannot fit at all is not drawn (logged).
+ *                 only box the footprint rule proved safe; by the art's outline in its facing when the pack gives one),
+ *                 scaled down / lifted when the art is larger; art that cannot fit at all is not drawn (logged).
  *   wall          the same, pushed WALL_DEPTH_BIAS toward the camera off the wall face.
  *   flat          a top-face SurfaceGui on a thin invisible floor Part (decorParts buildFloorArt), per floor.
  *   fade          selectDecorFades with every living player and the live boss: a hidden body fades the piece to
@@ -252,7 +253,11 @@ export class DecorController implements OnStart {
 			const list = variantsOf(e.kind);
 			const piece = list[e.variant] ?? list[0];
 			if (piece === undefined) return;
-			const layout = decorPieceLayout(plan, i, visualLayout(piece.art));
+			// held inside its box by its outline in the facing it is drawn in (a diagonal wall's cell is mostly corners)
+			const [dirX, dirZ] = decorFacingDir(e);
+			const facing =
+				piece.art.kind === "sprites" ? spriteFacing(dirX, dirZ, piece.art.set.facings, this.basis, 0) : 0;
+			const layout = decorPieceLayout(plan, i, visualLayout(piece.art), decorOutline(piece.core, facing));
 			if (layout === undefined) {
 				unfit++;
 				return;

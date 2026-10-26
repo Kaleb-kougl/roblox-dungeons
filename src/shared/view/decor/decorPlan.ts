@@ -120,23 +120,26 @@ export interface DecorBoxPx {
 }
 
 /**
- * Standing pieces' boxes (the opaque body, not the baked shadow). Measured from the Lords of Pain pack (docs/DECOR.md,
- * at its 29.6 px per tile: column1's body ~30x95 px, brazier ~78x54 with shadow) where it has art, generous guesses
- * elsewhere; R4 / R5 re-measure. Nothing hangs below a wall-top pivot (it would cover bullets hugging the wall's
- * face). Broken variants must fit inside their whole kind's box (a swap keeps a legal spot legal; the spec checks).
+ * Standing pieces' boxes (the opaque body, not the baked shadow). Measured (R5) on the vale pack's Lords of Pain art as
+ * drawn, at the pack's 29.6 px per tile (the outlines in art/build/contact/decor.*.png): column1 (pillar, column) 20 x
+ * 54.6 render px, column2 (columnBroken) 18.9 x 21.6, standing on their front corner; the brazier's body is 15.1 x 17.8
+ * and its box keeps room above the bowl for the flame (vfx/flames, held inside it at decorFlameMaxGrow); wall2 / wall3
+ * segments fit their run's hull at 0.96-0.99 by their outline. Generous guesses where the pack has no art. Nothing
+ * hangs below a wall-top pivot (it would cover bullets hugging the wall's face). Broken variants must fit inside their
+ * whole kind's box (a swap keeps a legal spot legal; the spec checks).
  */
 export const DECOR_BOX: Readonly<Record<StandingKind, DecorBoxPx>> = {
 	brazier: { w: 26, h: 30, below: 0 },
 	sarco: { w: 34, h: 22, below: 0 },
-	pillar: { w: 18, h: 52, below: 0 },
+	pillar: { w: 20, h: 55, below: 0 },
 	grave: { w: 18, h: 26, below: 0 },
 	candle: { w: 10, h: 18, below: 0 },
 	icicle: { w: 12, h: 22, below: 0 },
 	shardIce: { w: 16, h: 24, below: 0 },
 	wall: { w: 8, h: 28, below: 0 },
 	wallBroken: { w: 8, h: 22, below: 0 },
-	column: { w: 18, h: 52, below: 0 },
-	columnBroken: { w: 18, h: 26, below: 0 },
+	column: { w: 20, h: 55, below: 0 },
+	columnBroken: { w: 19, h: 22, below: 0 },
 };
 
 /** Tall Forge pieces in placement priority (highest first). */

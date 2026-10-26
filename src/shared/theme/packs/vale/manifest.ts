@@ -15,8 +15,28 @@
  * Biome materials (docs/DECOR.md R1) need no upload, so they apply whatever is in assetIds.ts: VALE_BIOME_MATERIALS,
  * except that a biome whose floor tile is a repeating texture keeps its floor SmoothPlastic (the default, so the
  * floor entry is dropped): a patterned material under the image would fight it.
+ *
+ * World art (docs/DECOR.md R5): the Lords of Pain props, effects and breakables (VALE_WORLD_LAYOUTS, one shared atlas
+ * plus the ambient particle texture). VALE_DECOR_PIECES / VALE_DECOR_FX / VALE_AMBIENT_ART / VALE_BREAKABLE_ART say
+ * which art each ID draws; the same piece serves all five biomes (the pack has no per-biome art). An ID appears only
+ * once its file has an ID (decor is optional: absent = not drawn); a breakable stays its placeholder box until then.
  */
-import { requiredBaseAnimations, slotFor, type BiomeId } from "../../contract";
+import {
+	BIOMES,
+	BREAKABLE_KINDS,
+	DECOR_FX_NAMES,
+	breakableId,
+	decorAmbientId,
+	decorFxId,
+	decorId,
+	requiredBaseAnimations,
+	slotFor,
+	type BiomeId,
+	type BreakableKind,
+	type DecorFxName,
+	type DecorKind,
+	type DecorLayer,
+} from "../../contract";
 import type {
 	BiomeMaterials,
 	ImageAsset,
@@ -28,7 +48,14 @@ import type {
 import { deepClone, sortedKeys } from "../../util";
 import { PLACEHOLDER_MANIFEST } from "../placeholder";
 import { VALE_ASSET_IDS } from "./assetIds";
-import { VALE_FLOOR_HEX, VALE_IMAGE_LAYOUTS, VALE_SPRITE_LAYOUTS, type ValeSpriteLayout } from "./layout";
+import {
+	VALE_FLOOR_HEX,
+	VALE_IMAGE_LAYOUTS,
+	VALE_SPRITE_LAYOUTS,
+	VALE_WORLD_LAYOUTS,
+	type ValeSpriteLayout,
+	type ValeWorldLayout,
+} from "./layout";
 
 /** The image whose mean colour VALE_FLOOR_HEX is. */
 const VALE_FLOOR_TEXTURE_ID = "tile.biome.1.floor";
@@ -105,6 +132,177 @@ function spriteAsset(id: string, layout: ValeSpriteLayout, ids: AssetIds): Sprit
 	};
 }
 
+/** One decor piece of the pack: the art a decor kind (and variant) draws, and how. */
+export interface ValeDecorPiece {
+	readonly kind: DecorKind;
+	/** 1..DECOR_MAX_VARIANTS (picked per cell by hash), or undefined for the base ID. */
+	readonly variant?: number;
+	/** A VALE_WORLD_LAYOUTS name. */
+	readonly art: string;
+	readonly layer: DecorLayer;
+	/** A light source (torch, brazier): flames at its glowAt, the glow under them, the light pool. */
+	readonly glow?: boolean;
+}
+
+/**
+ * The decor pieces (decor.delve.b<n>.<kind>[.<v>], every biome alike). Kinds without Lords of Pain art (sarco, grave,
+ * candle, icicle, shardIce, crack, ring, bossCrystal, shrineCrystal, banner) stay undrawn. Round flat pieces take a few
+ * of the pack's facings as variants, picked by cell hash.
+ */
+export const VALE_DECOR_PIECES: ReadonlyArray<ValeDecorPiece> = [
+	{ kind: "brazier", art: "brazier", layer: "tall", glow: true },
+	{ kind: "pillar", art: "column1", layer: "tall" },
+	{ kind: "column", art: "column1", layer: "tall" },
+	{ kind: "columnBroken", art: "column2", layer: "low" },
+	{ kind: "wall", art: "wall2", layer: "tall" },
+	{ kind: "wallBroken", art: "wall3", layer: "tall" },
+	{ kind: "torch", art: "torch", layer: "wall", glow: true },
+	{ kind: "debris", variant: 1, art: "bricks-e", layer: "flat" },
+	{ kind: "debris", variant: 2, art: "rocks-e", layer: "flat" },
+	{ kind: "debris", variant: 3, art: "bricks-sw", layer: "flat" },
+	{ kind: "debris", variant: 4, art: "rocks-nw", layer: "flat" },
+	{ kind: "bones", variant: 1, art: "bones1-e", layer: "flat" },
+	{ kind: "bones", variant: 2, art: "bones2-e", layer: "flat" },
+	{ kind: "bones", variant: 3, art: "bones3-e", layer: "flat" },
+	{ kind: "bones", variant: 4, art: "bones1-sw", layer: "flat" },
+	{ kind: "moss", variant: 1, art: "mushrooms-e", layer: "flat" },
+	{ kind: "moss", variant: 2, art: "mushrooms-nnw", layer: "flat" },
+	{ kind: "moss", variant: 3, art: "mushrooms-sw", layer: "flat" },
+	{ kind: "moss", variant: 4, art: "mushrooms-sse", layer: "flat" },
+	{ kind: "roots", variant: 1, art: "mushrooms-e", layer: "flat" },
+	{ kind: "roots", variant: 2, art: "mushrooms-nnw", layer: "flat" },
+	{ kind: "roots", variant: 3, art: "mushrooms-sw", layer: "flat" },
+	{ kind: "roots", variant: 4, art: "mushrooms-sse", layer: "flat" },
+	{ kind: "gems", variant: 1, art: "gems-blue", layer: "flat" },
+	{ kind: "gems", variant: 2, art: "gems-green", layer: "flat" },
+	{ kind: "gems", variant: 3, art: "gems-red", layer: "flat" },
+	{ kind: "gems", variant: 4, art: "gems-white", layer: "flat" },
+	{ kind: "brokenBarrel", art: "barrel-broken", layer: "flat" },
+	{ kind: "brokenCrate", art: "crate-broken", layer: "flat" },
+];
+
+/** The decor effects (decor.fx.*): Lords of Pain vfx, all self-lit. */
+export const VALE_DECOR_FX: Readonly<Record<DecorFxName, string>> = {
+	torch: "flame",
+	flame: "flames",
+	glow: "glow",
+	glint: "glint",
+	zone: "zone",
+};
+
+/**
+ * Every biome's ambient particle texture (decor.fx.ambient.b<n>): one soft white dot, tinted per biome by its colour
+ * role; `emissive` (LightEmission 1) where the Forge theme's particles glow: molten embers, grim wisps.
+ */
+export const VALE_AMBIENT_ART = {
+	art: "mote",
+	emissive: { "biome.1": false, "biome.2": true, "biome.3": false, "biome.4": true, "biome.5": false },
+} as const satisfies { art: string; emissive: Readonly<Record<BiomeId, boolean>> };
+
+/** The breakables (breakable.<kind>): `idle` plus the one-shot `shatter` (the pack's 8-frame _break loop). */
+export const VALE_BREAKABLE_ART: Readonly<Record<BreakableKind, string>> = { barrel: "barrel", crate: "crate" };
+
+/** Decor fields of a world asset (none for breakables). */
+interface WorldFields {
+	readonly layer?: DecorLayer;
+	readonly glow?: boolean;
+	readonly emissive?: boolean;
+	/** Copy the art's outline(s) (decor pieces). */
+	readonly outline?: boolean;
+}
+
+/** A world art asset from its layout, or undefined while its file has no ID. */
+function worldAsset(
+	layout: ValeWorldLayout,
+	ids: AssetIds,
+	fields: WorldFields,
+): ImageAsset | SpriteSetAsset | undefined {
+	if (layout.kind === "image") {
+		const assetId = ids[layout.file];
+		if (assetId === undefined) return undefined;
+		const image: ImageAsset = {
+			kind: "image",
+			assetId: assetId as ImageAsset["assetId"],
+			w: layout.w,
+			h: layout.h,
+			pivot: { x: layout.pivot.x, y: layout.pivot.y },
+			pixelsPerTile: layout.pixelsPerTile,
+		};
+		if (layout.rect !== undefined) image.rect = deepClone(layout.rect);
+		if (fields.outline === true && layout.outline !== undefined) image.outline = deepClone(layout.outline);
+		if (fields.layer !== undefined) image.layer = fields.layer;
+		if (fields.glow === true) image.glow = true;
+		if (fields.emissive === true) image.emissive = true;
+		return image;
+	}
+	const sheets = new Array<SpriteSheetImage>();
+	for (const sheet of layout.sheets) {
+		const assetId = ids[sheet.file];
+		if (assetId === undefined) return undefined;
+		sheets.push({ assetId: assetId as SpriteSheetImage["assetId"], w: sheet.w, h: sheet.h });
+	}
+	const set: SpriteSetAsset = {
+		kind: "sprites",
+		frameW: layout.frameW,
+		frameH: layout.frameH,
+		pivot: { x: layout.pivot.x, y: layout.pivot.y },
+		pixelsPerTile: layout.pixelsPerTile,
+		resample: layout.resample,
+		facings: { count: layout.facings.count, zeroDeg: layout.facings.zeroDeg, ccw: layout.facings.ccw },
+		sheets,
+		animations: deepClone(layout.animations),
+	};
+	if (fields.outline === true && layout.outlines !== undefined) set.outlines = deepClone(layout.outlines);
+	if (fields.layer !== undefined) set.layer = fields.layer;
+	if (fields.glow === true) {
+		set.glow = true;
+		if (layout.glowAt !== undefined) set.glowAt = { x: layout.glowAt.x, y: layout.glowAt.y };
+	}
+	if (fields.emissive === true) set.emissive = true;
+	return set;
+}
+
+/** The world art layout named `art` (a programming error, not a missing upload, when absent). */
+function worldLayout(art: string): ValeWorldLayout {
+	const layout = VALE_WORLD_LAYOUTS[art];
+	if (layout === undefined) error(`vale: no world art "${art}" in layout.ts (art/atlases.json worldArt.pieces)`, 0);
+	return layout;
+}
+
+/** Decor pieces and effects, ambient textures and breakables onto `manifest` (see the file comment). */
+function addWorldArt(manifest: ThemeManifest, ids: AssetIds): void {
+	for (const b of BIOMES) {
+		for (const piece of VALE_DECOR_PIECES) {
+			const asset = worldAsset(worldLayout(piece.art), ids, {
+				layer: piece.layer,
+				glow: piece.glow,
+				outline: piece.layer === "tall" || piece.layer === "low",
+			});
+			if (asset !== undefined) manifest.assets[decorId(b.id, piece.kind, piece.variant)] = asset;
+		}
+		const mote = worldLayout(VALE_AMBIENT_ART.art);
+		const assetId = mote.kind === "image" ? ids[mote.file] : undefined;
+		if (mote.kind === "image" && assetId !== undefined) {
+			const ambient: ImageAsset = {
+				kind: "image",
+				assetId: assetId as ImageAsset["assetId"],
+				w: mote.w,
+				h: mote.h,
+			};
+			if (VALE_AMBIENT_ART.emissive[b.id]) ambient.emissive = true;
+			manifest.assets[decorAmbientId(b.id)] = ambient;
+		}
+	}
+	for (const name of DECOR_FX_NAMES) {
+		const asset = worldAsset(worldLayout(VALE_DECOR_FX[name]), ids, { emissive: true });
+		if (asset !== undefined) manifest.assets[decorFxId(name)] = asset;
+	}
+	for (const kind of BREAKABLE_KINDS) {
+		const asset = worldAsset(worldLayout(VALE_BREAKABLE_ART[kind]), ids, {});
+		if (asset !== undefined) manifest.assets[breakableId(kind)] = asset;
+	}
+}
+
 /**
  * The vale manifest for a map of uploaded IDs (art/build file name -> `rbxassetid://<digits>`). Pure and
  * deterministic: a fresh copy of the placeholder manifest every call, never mutating it.
@@ -139,6 +337,7 @@ export function buildValeManifest(ids: AssetIds = VALE_ASSET_IDS): ThemeManifest
 		}
 		manifest.assets[id] = image;
 	}
+	addWorldArt(manifest, ids);
 
 	for (const biomeId of sortedKeys(manifest.biomes)) {
 		const materials = VALE_BIOME_MATERIALS[biomeId as BiomeId];

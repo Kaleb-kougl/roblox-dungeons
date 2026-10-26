@@ -9,7 +9,7 @@ import { deepClone, sortedKeys } from "../../util";
 import { contrastReport, juiceContrastReport, validateManifest } from "../../validate";
 import { PLACEHOLDER_MANIFEST } from "../placeholder";
 import { VALE_ASSET_IDS } from "./assetIds";
-import { VALE_FLOOR_HEX, VALE_IMAGE_LAYOUTS, VALE_SPRITE_LAYOUTS } from "./layout";
+import { VALE_FLOOR_HEX, VALE_IMAGE_LAYOUTS, VALE_SPRITE_LAYOUTS, VALE_WORLD_LAYOUTS } from "./layout";
 import { VALE_BIOME_MATERIALS, VALE_MANIFEST, buildValeManifest } from "./manifest";
 
 const quiet = () => undefined;
@@ -24,6 +24,13 @@ function allFiles(): Array<string> {
 	}
 	for (const id of sortedKeys(VALE_IMAGE_LAYOUTS)) {
 		files.push(VALE_IMAGE_LAYOUTS[id].file);
+	}
+	// world art (docs/DECOR.md R5): pieces share their atlas, so each file once
+	for (const name of sortedKeys(VALE_WORLD_LAYOUTS)) {
+		const l = VALE_WORLD_LAYOUTS[name];
+		for (const file of l.kind === "image" ? [l.file] : l.sheets.map((sheet) => sheet.file)) {
+			if (!files.includes(file)) files.push(file);
+		}
 	}
 	files.sort();
 	return files;

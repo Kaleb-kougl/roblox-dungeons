@@ -19,6 +19,7 @@ import {
 	BIOME_MATERIAL_SURFACES,
 	DECOR_KIND_LAYERS,
 	DECOR_MAX_VARIANTS,
+	DECOR_MIN_OUTLINE_POINTS,
 	DECOR_PARTICLE,
 	DEFAULT_BIOME_MATERIAL,
 	MAX_ANIMATION_FPS,
@@ -180,6 +181,17 @@ function pointOr(p: unknown, fallback: Readonly<Pivot>): Pivot {
 	return isObj(p) && isFiniteNum(p.x) && isFiniteNum(p.y) ? { x: p.x, y: p.y } : { x: fallback.x, y: fallback.y };
 }
 
+/** A decor outline's points (ImageAsset.outline), or undefined when it is not >= 3 finite `{ x, y }` points. */
+function outlineOf(o: unknown): Array<Pivot> | undefined {
+	if (!isArrayLike(o) || o.size() < DECOR_MIN_OUTLINE_POINTS) return undefined;
+	const out = new Array<Pivot>();
+	for (const p of o) {
+		if (!isObj(p) || !isFiniteNum(p.x) || !isFiniteNum(p.y)) return undefined;
+		out.push({ x: p.x, y: p.y });
+	}
+	return out;
+}
+
 /**
  * Why a `sprites` def cannot be drawn at all (its cell, pivot, density, resample, facings or sheets are unusable), or
  * undefined. The renderer would otherwise divide by a bad density or index a bad sheet at runtime.
@@ -333,6 +345,11 @@ export interface DecorArt {
 	/** Self-lit: full brightness, no world lighting, no depth-band dimming. */
 	readonly emissive: boolean;
 	readonly art: WorldArt;
+	/**
+	 * Pieces: the outline per facing (an image's one outline serves every facing), pixels of the rect / cell, or
+	 * undefined when the pack gives none (or a malformed one): the footprint fit then holds the whole rect / cell.
+	 */
+	readonly outlines?: ReadonlyArray<ReadonlyArray<Readonly<Pivot>>>;
 }
 
 /** A biome's ambient particle (decor.fx.ambient.b<n>): texture, look (clamped to DECOR_PARTICLE) and colour role. */
@@ -759,7 +776,30 @@ export class ThemeCore {
 			glowAt: glow ? pointOr(d.glowAt, pivot) : pivot,
 			emissive: d.emissive === true,
 			art,
+			outlines: layer !== undefined ? this.decorOutlines(id, d, art) : undefined,
 		};
+	}
+
+	/** A piece's outlines (DecorArt.outlines): an image's `outline`, a sprite set's per-facing `outlines`. */
+	private decorOutlines(id: string, d: Obj, art: WorldArt): Array<Array<Pivot>> | undefined {
+		const raw = art.kind === "image" ? d.outline : d.outlines;
+		if (raw === undefined) return undefined;
+		const out = new Array<Array<Pivot>>();
+		if (art.kind === "image") {
+			const o = outlineOf(raw);
+			if (o !== undefined) out.push(o);
+		} else if (isArrayLike(raw) && raw.size() === art.set.facings.count) {
+			for (const facing of raw) {
+				const o = outlineOf(facing);
+				if (o === undefined) break;
+				out.push(o);
+			}
+		}
+		if (out.size() === 0 || (art.kind === "sprites" && out.size() !== art.set.facings.count)) {
+			this.warnOnce(`outline:${id}`, `decor "${id}" has a malformed outline, held by its rectangle instead`);
+			return undefined;
+		}
+		return out;
 	}
 
 	/**

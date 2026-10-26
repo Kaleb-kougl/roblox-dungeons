@@ -564,6 +564,9 @@ export const DECOR_KINDS: ReadonlyArray<DecorKind> = [
 /** A piece may have numbered variants `decor.delve.b<n>.<kind>.<v>`, v in 1..DECOR_MAX_VARIANTS (bones1..3, ...). */
 export const DECOR_MAX_VARIANTS = 4;
 
+/** A piece's outline (ImageAsset.outline, SpriteSetAsset.outlines) is a polygon: at least this many points. */
+export const DECOR_MIN_OUTLINE_POINTS = 3;
+
 /** The biome segment of decor IDs: b1..b5 = biome.1..biome.5 (BIOMES order). */
 export const DECOR_BIOME_KEYS = ["b1", "b2", "b3", "b4", "b5"] as const;
 export type DecorBiomeKey = (typeof DECOR_BIOME_KEYS)[number];

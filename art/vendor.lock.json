@@ -1297,6 +1297,421 @@
 			"bytes": 16191
 		},
 		{
+			"path": "lords-of-pain/prop/barrel/NE/barrel_NE_45.0_0.png",
+			"sha256": "37cb1d1af42181a21824d29206f5b565f293d7c72a6a169f60df8f980e58cdbe",
+			"bytes": 14897
+		},
+		{
+			"path": "lords-of-pain/prop/barrel_break/NE/barrel_break_NE_45.0_0.png",
+			"sha256": "4d1e5567c5f21130e46d168fbd6340fb2a3991cf416af39010e00a8ff2b1c60c",
+			"bytes": 16007
+		},
+		{
+			"path": "lords-of-pain/prop/barrel_break/NE/barrel_break_NE_45.0_1.png",
+			"sha256": "9b6f318cb0f5aecc9baddb354605f48d4d3a177858c7ff1a6c052614b3f9d9e2",
+			"bytes": 17973
+		},
+		{
+			"path": "lords-of-pain/prop/barrel_break/NE/barrel_break_NE_45.0_2.png",
+			"sha256": "3a6db0690a5f54c1031c6f518fa55041b299f41d88e1a67a003ead07ae228705",
+			"bytes": 17703
+		},
+		{
+			"path": "lords-of-pain/prop/barrel_break/NE/barrel_break_NE_45.0_3.png",
+			"sha256": "449776261c947963ee9920e4da2fd4204b7e365b96ae53cd18a4b691d3cc133b",
+			"bytes": 14805
+		},
+		{
+			"path": "lords-of-pain/prop/barrel_break/NE/barrel_break_NE_45.0_4.png",
+			"sha256": "c8936d8d16032fd780ab389e08df6f7be841fc907f845014e1ef63cd221c4ca9",
+			"bytes": 11862
+		},
+		{
+			"path": "lords-of-pain/prop/barrel_break/NE/barrel_break_NE_45.0_5.png",
+			"sha256": "82fb5cdd34d505e6ac12af6f8d5a08e530cd3aaf6b989c9b21734e8bf828a27a",
+			"bytes": 11983
+		},
+		{
+			"path": "lords-of-pain/prop/barrel_break/NE/barrel_break_NE_45.0_6.png",
+			"sha256": "e919a79d47697226572c0c37f46a0a00d18ae17955fcf4ac9656832861fc3ad6",
+			"bytes": 11167
+		},
+		{
+			"path": "lords-of-pain/prop/barrel_break/NE/barrel_break_NE_45.0_7.png",
+			"sha256": "ce26f57c8ca288cdfcff730ed2a5ec58fea87f0608f65f93e674c73014a8843f",
+			"bytes": 11200
+		},
+		{
+			"path": "lords-of-pain/prop/bones1/E/bones1_E_0.0_0.png",
+			"sha256": "fa97d66828cbb86a4b4a987391c3999ca783f9fa0815437bfb6af8a28d8d9aef",
+			"bytes": 7931
+		},
+		{
+			"path": "lords-of-pain/prop/bones1/SW/bones1_SW_225.0_0.png",
+			"sha256": "00ed48dd883e38247e5b6949513c6b57e6815de6867f4a91145799b22ad6900a",
+			"bytes": 8153
+		},
+		{
+			"path": "lords-of-pain/prop/bones2/E/bones2_E_0.0_0.png",
+			"sha256": "5bbef047ccd72cfe5940836d076d44179175b27b0a99e7d848f88a311a378718",
+			"bytes": 5997
+		},
+		{
+			"path": "lords-of-pain/prop/bones3/E/bones3_E_0.0_0.png",
+			"sha256": "5ce49dada67daf79c1735127391fb763905f0d3ddd86e77ace548c305972c79e",
+			"bytes": 4739
+		},
+		{
+			"path": "lords-of-pain/prop/brazier/NE/brazier_NE_45.0_0.png",
+			"sha256": "cb8a58757204fb81a3e93881d7cb682b68f01bd08dc37fbd75171b24c48a31f6",
+			"bytes": 18255
+		},
+		{
+			"path": "lords-of-pain/prop/brazier_lit/NE/brazier_lit_NE_45.0_0.png",
+			"sha256": "0d29b44e625ef4be082d0ccbf345d968b40b553411d8b4e42796a6c7f823ef4e",
+			"bytes": 17551
+		},
+		{
+			"path": "lords-of-pain/prop/brazier_lit/NE/brazier_lit_NE_45.0_1.png",
+			"sha256": "c452c74ee61640ee9823bf78000bddb592b88b7777498608ddd89b417f8b7f85",
+			"bytes": 17554
+		},
+		{
+			"path": "lords-of-pain/prop/brazier_lit/NE/brazier_lit_NE_45.0_2.png",
+			"sha256": "7b01d13f6bb4d55ac8bcc821a030928800947b835b194f509ad430c584d15c2a",
+			"bytes": 17715
+		},
+		{
+			"path": "lords-of-pain/prop/brazier_lit/NE/brazier_lit_NE_45.0_3.png",
+			"sha256": "d322420376ebc5d0bfca0c10a19b55f5a9932b5efe6f331e7499b494f14b29ce",
+			"bytes": 17614
+		},
+		{
+			"path": "lords-of-pain/prop/brazier_lit/NE/brazier_lit_NE_45.0_4.png",
+			"sha256": "d1cdf5cd4efc38f0fbc4c870755868e0de89d108d4e59743ddb6d062dcd6b1b0",
+			"bytes": 17598
+		},
+		{
+			"path": "lords-of-pain/prop/brazier_lit/NE/brazier_lit_NE_45.0_5.png",
+			"sha256": "1b9811189019221b6be29ad9517c4a142c30369408d1ae05f8cdd5313fe5da8d",
+			"bytes": 17553
+		},
+		{
+			"path": "lords-of-pain/prop/brazier_lit/NE/brazier_lit_NE_45.0_6.png",
+			"sha256": "55f73f6ae92cde9340362caacd88b5875b75d8c907360804240bf4d6dad17c22",
+			"bytes": 17457
+		},
+		{
+			"path": "lords-of-pain/prop/brazier_lit/NE/brazier_lit_NE_45.0_7.png",
+			"sha256": "74677f93287fa35333ee00647bf34e2a99bc848eb0c08ffd2aacbdeb3c26c4d9",
+			"bytes": 17412
+		},
+		{
+			"path": "lords-of-pain/prop/bricks/E/bricks_E_0.0_0.png",
+			"sha256": "27e087166ba9e5bcc819e4070757a2f6ce4b744e4dcd7347babe8060a41dcf3c",
+			"bytes": 20232
+		},
+		{
+			"path": "lords-of-pain/prop/bricks/SW/bricks_SW_225.0_0.png",
+			"sha256": "99bdbed2d67390329556fbc18ef7655ac3dc14d2c7817d9dbb3c1a6c92c2998b",
+			"bytes": 20296
+		},
+		{
+			"path": "lords-of-pain/prop/column1/NE/column1_NE_45.0_0.png",
+			"sha256": "dc87ed04b5fdf81bb0685c4628f677c5588b4ff4853fa4bd37e7714a6b6ede71",
+			"bytes": 47035
+		},
+		{
+			"path": "lords-of-pain/prop/column2/NE/column2_NE_45.0_0.png",
+			"sha256": "61db6e5e4002143ecd46c88bb4ad78377e2071cbae32aed5fa83831e1b5e74d0",
+			"bytes": 27377
+		},
+		{
+			"path": "lords-of-pain/prop/crate/NE/crate_NE_45.0_0.png",
+			"sha256": "c0ae09d7491e4d1f43d913c8f3d67ec8296720208fe240056afadc04905e5fb2",
+			"bytes": 7922
+		},
+		{
+			"path": "lords-of-pain/prop/crate_break/NE/crate_break_NE_45.0_0.png",
+			"sha256": "d6583371ef6c76ddfd077381ad431c12ede60f7ac640112d3fef661c1f43d5db",
+			"bytes": 7881
+		},
+		{
+			"path": "lords-of-pain/prop/crate_break/NE/crate_break_NE_45.0_1.png",
+			"sha256": "41b323cf97cde94de28c225d860b3e6c231293d4ca445d2d6c133977deb30a2a",
+			"bytes": 6759
+		},
+		{
+			"path": "lords-of-pain/prop/crate_break/NE/crate_break_NE_45.0_2.png",
+			"sha256": "ee1c857ed45804eafc38c6cb786a555c7f48bace38eaf93cbb7679965e08ecd7",
+			"bytes": 4785
+		},
+		{
+			"path": "lords-of-pain/prop/crate_break/NE/crate_break_NE_45.0_3.png",
+			"sha256": "5f06484a0d2294aea8ce34aca5449095b16cc41b025b1c83c69b6622bd86a454",
+			"bytes": 4540
+		},
+		{
+			"path": "lords-of-pain/prop/crate_break/NE/crate_break_NE_45.0_4.png",
+			"sha256": "1814097d3a8c0e515032eb57152734fe9eccc1d80883f8d3ecfa6add791aceaa",
+			"bytes": 4519
+		},
+		{
+			"path": "lords-of-pain/prop/crate_break/NE/crate_break_NE_45.0_5.png",
+			"sha256": "596ef3daf3f15b2df651cf0992cd8be773a62d4c21ee542845cc2b170f1d722c",
+			"bytes": 4583
+		},
+		{
+			"path": "lords-of-pain/prop/crate_break/NE/crate_break_NE_45.0_6.png",
+			"sha256": "a997e87632a23b74bb34a4156b2338ee4c969c6c0927fb6e35d06c047182f668",
+			"bytes": 4551
+		},
+		{
+			"path": "lords-of-pain/prop/crate_break/NE/crate_break_NE_45.0_7.png",
+			"sha256": "4af9e3077262f0b3ed0e25daf9f52425e6ff8a2da4f0a30a97503c35487e72d9",
+			"bytes": 4537
+		},
+		{
+			"path": "lords-of-pain/prop/gemstones_blue/E/gemstones_blue_E_0.0_0.png",
+			"sha256": "99cad763ffdb5fd4ceb03c2e84c434d9b6848ebbd0a006bac5487b9c728833bf",
+			"bytes": 2152
+		},
+		{
+			"path": "lords-of-pain/prop/gemstones_green/E/gemstones_green_E_0.0_0.png",
+			"sha256": "90dafd6b92dc34a274d21bbc92fd17cf298c84794318082b89a2023d6294674f",
+			"bytes": 2162
+		},
+		{
+			"path": "lords-of-pain/prop/gemstones_red/E/gemstones_red_E_0.0_0.png",
+			"sha256": "4635566964fe20f1239d43ee23ab3f52dc986bb644f5e8534393063dae95720d",
+			"bytes": 2136
+		},
+		{
+			"path": "lords-of-pain/prop/gemstones_white/E/gemstones_white_E_0.0_0.png",
+			"sha256": "7cee7424d4d78ba167d7969e5345b7c8f9e6f71eddb261a4e1522aba9bf4ac66",
+			"bytes": 2160
+		},
+		{
+			"path": "lords-of-pain/prop/mushrooms/E/mushrooms_E_0.0_0.png",
+			"sha256": "aecf21ebf625accf8fbed448c6eebdca95384f30f15cfbb5556635495667283c",
+			"bytes": 8321
+		},
+		{
+			"path": "lords-of-pain/prop/mushrooms/NNW/mushrooms_NNW_112.5_0.png",
+			"sha256": "12eecd99e66e4cfd3c4027f512d430abb44e80c14a858b88ecdf5ce706b120b7",
+			"bytes": 8168
+		},
+		{
+			"path": "lords-of-pain/prop/mushrooms/SSE/mushrooms_SSE_292.5_0.png",
+			"sha256": "310b4f0bf2ff1978924bba70089094a5dfc1766ddbf2069310aa729dce78b0eb",
+			"bytes": 8025
+		},
+		{
+			"path": "lords-of-pain/prop/mushrooms/SW/mushrooms_SW_225.0_0.png",
+			"sha256": "f0b6f823882e41ff4d74e8bede2da5ba27d7820646ec8a2626b7eaf791e1cdbe",
+			"bytes": 8322
+		},
+		{
+			"path": "lords-of-pain/prop/rocks/E/rocks_E_0.0_0.png",
+			"sha256": "b440bea2157fb358af28cfbd975cd6c2d4864aea190bfe008a2341ed91eb4a3a",
+			"bytes": 16800
+		},
+		{
+			"path": "lords-of-pain/prop/rocks/NW/rocks_NW_135.0_0.png",
+			"sha256": "fe16d62183bb295d7133c557e88d0997936235f96594caf1059e88b58647f6bb",
+			"bytes": 16889
+		},
+		{
+			"path": "lords-of-pain/prop/torch/NE/torch_NE_45.0_0.png",
+			"sha256": "5f1cb524a40f930b9774e1ffb60c110f4df14360ef30fa3cee3f8ecb3f7a0903",
+			"bytes": 12542
+		},
+		{
+			"path": "lords-of-pain/prop/torch/NW/torch_NW_135.0_0.png",
+			"sha256": "199472a49514e96abd008ada78c773be3dfbc2c2c32750e3019fbac59e2cea55",
+			"bytes": 12439
+		},
+		{
+			"path": "lords-of-pain/prop/torch/SE/torch_SE_315.0_0.png",
+			"sha256": "5dc7bf35d3c6f30cd71a6ce950dce2c1a95cf9d643a69c129a9307b88e5b80a9",
+			"bytes": 12387
+		},
+		{
+			"path": "lords-of-pain/prop/torch/SW/torch_SW_225.0_0.png",
+			"sha256": "b20548b0af765899f4e78ad097c8698a87b381701f1107317bf70c02c89fcf2f",
+			"bytes": 12664
+		},
+		{
+			"path": "lords-of-pain/prop/wall2/NE/wall2_NE_45.0_0.png",
+			"sha256": "6db4d8dd05864e27fb253a7bbc8967cab280dc5e49ed756f21a201b2cd300a22",
+			"bytes": 42918
+		},
+		{
+			"path": "lords-of-pain/prop/wall2/NW/wall2_NW_135.0_0.png",
+			"sha256": "caa87ec69e65d1829853c128c832af3076ac68dc6a60b516c101c3d2491d9849",
+			"bytes": 42198
+		},
+		{
+			"path": "lords-of-pain/prop/wall2/SE/wall2_SE_315.0_0.png",
+			"sha256": "8212da107a5afd748c9a8e3ff9c5d0f8415709f64121e6b78c2453bcb1cf2799",
+			"bytes": 42391
+		},
+		{
+			"path": "lords-of-pain/prop/wall2/SW/wall2_SW_225.0_0.png",
+			"sha256": "5081152110144b06f2b9bde60576c2e5535d30c9308921a7ad1b64f70c64cfe5",
+			"bytes": 43038
+		},
+		{
+			"path": "lords-of-pain/prop/wall3/NE/wall3_NE_45.0_0.png",
+			"sha256": "13d3a886c45d64fcf4f905d7fe1b9b8d4f4c2c2efafa33e0ad22f478250646c4",
+			"bytes": 40379
+		},
+		{
+			"path": "lords-of-pain/prop/wall3/NW/wall3_NW_135.0_0.png",
+			"sha256": "eeda873be1ecefb8578dd96d4e4a236946177a6b0c1f7fb0cc61945795138c5c",
+			"bytes": 39541
+		},
+		{
+			"path": "lords-of-pain/prop/wall3/SE/wall3_SE_315.0_0.png",
+			"sha256": "ace352ff4f28a42772e4ee1e441b27e0e5df2c0b5450edc690681f0b9284dd79",
+			"bytes": 39522
+		},
+		{
+			"path": "lords-of-pain/prop/wall3/SW/wall3_SW_225.0_0.png",
+			"sha256": "59261ae4651ea829095e2d91fcbdcca13ecafd1509af1ccae7ab5b43752b1f28",
+			"bytes": 40349
+		},
+		{
+			"path": "lords-of-pain/vfx/flame/flame_0.png",
+			"sha256": "7767b3bb0091e3eafc8bafac5b06179a44c6eb0c8aceb9607c24e13c52070e4c",
+			"bytes": 2375
+		},
+		{
+			"path": "lords-of-pain/vfx/flame/flame_1.png",
+			"sha256": "151995956fc584f96f91a0834e6e016af65ffb8fb416b57d4dfa0d99f588e8a1",
+			"bytes": 2393
+		},
+		{
+			"path": "lords-of-pain/vfx/flame/flame_2.png",
+			"sha256": "90075a929bef9cab8e6d51bfff3cb179583484b9a85c8fd9e945509b4b46ba5f",
+			"bytes": 2696
+		},
+		{
+			"path": "lords-of-pain/vfx/flame/flame_3.png",
+			"sha256": "228f553a58c27569ff7e80d166f8a7c66976e4d04efa02318c4ad55dfd7f8d98",
+			"bytes": 2809
+		},
+		{
+			"path": "lords-of-pain/vfx/flame/flame_4.png",
+			"sha256": "6cea68b1e857a429f341bf24c4d839632c16d9ee79400d40105665e21604ace5",
+			"bytes": 2719
+		},
+		{
+			"path": "lords-of-pain/vfx/flame/flame_5.png",
+			"sha256": "7be9db84e9c9b37ca642aff8bf7ffbc9228505c325944532cc4697b32ae84763",
+			"bytes": 2536
+		},
+		{
+			"path": "lords-of-pain/vfx/flame/flame_6.png",
+			"sha256": "d7a160dee5fbb01f2ed3a2a267b6f798bb08add8c2dc214af5ab82e0810dd6e2",
+			"bytes": 2317
+		},
+		{
+			"path": "lords-of-pain/vfx/flame/flame_7.png",
+			"sha256": "fa8bab9bba563505bcddd16ef041d2ae1e50c0c8522f3089eafefaebbb2b2e20",
+			"bytes": 2064
+		},
+		{
+			"path": "lords-of-pain/vfx/flames/flames_0.png",
+			"sha256": "b0cb5ae674d0c580f56e4518d20618f2ea04e50a2bcd3d3921609c91125d0adf",
+			"bytes": 25727
+		},
+		{
+			"path": "lords-of-pain/vfx/flames/flames_1.png",
+			"sha256": "4a4107ab129070f7f1140995b13e46c1134219ef1c130152caa7a55c194fbab2",
+			"bytes": 25903
+		},
+		{
+			"path": "lords-of-pain/vfx/flames/flames_2.png",
+			"sha256": "a8591d568bd321395f23f4eaaea02406c8ae3d86c5f48e3203a6f0a79105aa37",
+			"bytes": 25409
+		},
+		{
+			"path": "lords-of-pain/vfx/flames/flames_3.png",
+			"sha256": "15845beccf2431cdf5d59a4bcd2377510ba0e1c752dc815f50c4da661c2455a1",
+			"bytes": 25020
+		},
+		{
+			"path": "lords-of-pain/vfx/flames/flames_4.png",
+			"sha256": "dec1141f2b944cd687ba9638cf142a9a63ebc1b1e9bbaa603698a2ab6e44365a",
+			"bytes": 24975
+		},
+		{
+			"path": "lords-of-pain/vfx/flames/flames_5.png",
+			"sha256": "d28c8b130e1164f4080024bdef84b873c00b258cc22b6a0d4125af5f0f5dcb3f",
+			"bytes": 25300
+		},
+		{
+			"path": "lords-of-pain/vfx/flames/flames_6.png",
+			"sha256": "b405989dad248e0eca85a94b9c1b30c23dca6e7cc2ee6ecfc78768e3e1e159ad",
+			"bytes": 25674
+		},
+		{
+			"path": "lords-of-pain/vfx/flames/flames_7.png",
+			"sha256": "dd99a6b6d873ea46d74669fc32a21265723a48871d4681b0a83573c9d27f1fda",
+			"bytes": 24644
+		},
+		{
+			"path": "lords-of-pain/vfx/glint/glint_0.png",
+			"sha256": "97f97b041a5eb4088ffdb2e496bcc88d3423a241b4d8519ee13119c99dd7faec",
+			"bytes": 669
+		},
+		{
+			"path": "lords-of-pain/vfx/glint/glint_1.png",
+			"sha256": "97f97b041a5eb4088ffdb2e496bcc88d3423a241b4d8519ee13119c99dd7faec",
+			"bytes": 669
+		},
+		{
+			"path": "lords-of-pain/vfx/glint/glint_2.png",
+			"sha256": "97f97b041a5eb4088ffdb2e496bcc88d3423a241b4d8519ee13119c99dd7faec",
+			"bytes": 669
+		},
+		{
+			"path": "lords-of-pain/vfx/glint/glint_3.png",
+			"sha256": "518da4d9dad064adc289a19de7c60545798af9032eec292af72d35f4198bb96a",
+			"bytes": 858
+		},
+		{
+			"path": "lords-of-pain/vfx/glint/glint_4.png",
+			"sha256": "68676b01526f5f2339844770a195517a8e4e7f8362665e1916e1fd0ede492ba7",
+			"bytes": 892
+		},
+		{
+			"path": "lords-of-pain/vfx/glint/glint_5.png",
+			"sha256": "e6c98894de3fe8e4b6fef56a509a77a2ef1a53930a32584e865c8fc3e357ac38",
+			"bytes": 915
+		},
+		{
+			"path": "lords-of-pain/vfx/glint/glint_6.png",
+			"sha256": "e9646ede4ccedfbfd1739f227484a5cbbc04b953995508db8602ffd1433374e0",
+			"bytes": 1102
+		},
+		{
+			"path": "lords-of-pain/vfx/glint/glint_7.png",
+			"sha256": "e6681b8f7f3e6fe183b51a9393d7af23b9cf8f2476e0ca70a43f2c90762cd768",
+			"bytes": 1089
+		},
+		{
+			"path": "lords-of-pain/vfx/glow.png",
+			"sha256": "9feb468a56e5d7b4ddf61e56f8125fb3dbf31a402abd8cf1731a49ee1f5d5567",
+			"bytes": 29878
+		},
+		{
+			"path": "lords-of-pain/vfx/zone.png",
+			"sha256": "37390634a512fb585c711c19505e1c772c7374688c785dda7c48710fd1ff56eb",
+			"bytes": 43097
+		},
+		{
 			"path": "smallscale-knight/Spritesheets/With shadows/Die.png",
 			"sha256": "21d6c27199e3573abafa15acc83b165abef057cf36807f50cd726b0f67902751",
 			"bytes": 492341

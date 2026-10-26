@@ -28,5 +28,7 @@ Thumbs.db
 build/
 
 # Third-party art packs (licences forbid redistributing the raw files; see art/README.md) and pipeline output
+# (art/build: atlases + contact sheets; art/upload: the flat folder of PNGs to upload)
 /art/vendor
 /art/build
+/art/upload

@@ -213,6 +213,31 @@ export function rectFitScale(
 	return k > 0 ? k : 0; // never -0 (a point on an edge)
 }
 
+/**
+ * rectFitScale for any shape: the largest k in [0, 1] such that every point of `pts` (flat [dx0, dy0, ...], offsets
+ * from the anchor, tiles) scaled by k about the anchor (x, y) lies inside convex polygon `poly` (so their convex hull
+ * does too). 0 when the anchor itself is outside.
+ */
+export function pointsFitScale(poly: ScreenPolygon, x: number, y: number, pts: ReadonlyArray<number>): number {
+	const m = math.floor(poly.size() / 2);
+	if (m < 3) return 0;
+	const n = math.floor(pts.size() / 2);
+	let k = 1;
+	for (let e = 0; e < m; e++) {
+		const ax = poly[e * 2];
+		const ay = poly[e * 2 + 1];
+		const f = (e + 1) % m;
+		const nx = poly[f * 2 + 1] - ay;
+		const ny = ax - poly[f * 2];
+		const room = nx * (ax - x) + ny * (ay - y);
+		if (room < 0) return 0;
+		let reach = 0;
+		for (let i = 0; i < n; i++) reach = math.max(reach, nx * pts[i * 2] + ny * pts[i * 2 + 1]);
+		if (reach > 0) k = math.min(k, room / reach);
+	}
+	return k > 0 ? k : 0;
+}
+
 /** Axis-aligned bounds of a polygon: [minX, minY, maxX, maxY]. */
 export function polygonBounds(poly: ScreenPolygon): readonly [number, number, number, number] {
 	let x0 = math.huge;

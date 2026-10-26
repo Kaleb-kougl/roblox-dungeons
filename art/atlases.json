@@ -133,5 +133,234 @@
 			"pad": 3,
 			"pivot": "bottom"
 		}
+	},
+	"worldArt": {
+		"$comment": [
+			"World art (docs/DECOR.md R5), the Lords of Pain props, effects and breakables: scripts/art/build-atlases.js",
+			"'World art' explains every field. Output: <atlas.name>.png (+ -2, ... if it overflows), the `own` files, contact",
+			"sheets art/build/contact/decor.<piece>.png and VALE_WORLD_LAYOUTS in layout.ts. Drawn at the skeleton's scale",
+			"(pixelsPerTileFrom): the pack renders every prop at the same scale as its characters.",
+			"noiseAlpha: the pack's dithered shadow noise (alpha 1-2), cleared. shadowRgb: the baked shadow is pure black (max",
+			"RGB <= 4 over thousands of pixels; bodies have almost none: column1 has 0 opaque body pixels at <= 4), so",
+			"`shadow: false` clears max(R, G, B) <= 4. flames: clearRgbBelow 80 drops the grey smoke column (max RGB <= 72)",
+			"above the fire (>= ~95), which would otherwise make the cell 158 px tall. pad: transparent pixels round every",
+			"cell / rect (bilinear filtering never reaches a neighbour). footBand: rows for the bottom / top pivot midpoints.",
+			"mote: the ambient particle texture of every biome, zone.png (a soft white disc) at 1/16, alpha stretched to 255",
+			"(the emitter's Transparency sets the look), RGB white (the emitter's Color tints it); its own file, since a",
+			"ParticleEmitter.Texture takes no ImageRect. zone: the stairwell disc at 1/4 (676 px of soft disc is far more",
+			"than the 2.6 tiles it is drawn at)."
+		],
+		"pixelsPerTileFrom": "enemy.swarmer",
+		"noiseAlpha": 2,
+		"shadowRgb": 4,
+		"pad": 2,
+		"footBand": 3,
+		"atlas": { "name": "decor-atlas", "maxSize": 1024 },
+		"pieces": {
+			"$comment": [
+				"Names are art names; packs/vale/manifest.ts maps decor / breakable IDs onto them (the same art for all five biomes).",
+				"Standing pieces (tall / low on far-wall tops, the wall torch, breakables) drop the baked shadow (`shadow: false`):",
+				"their billboards are held to a small box (DECOR_BOX, BREAKABLE_VIEW.maxHeightTiles) and a shadow there only shrinks",
+				"the body. Flat pieces keep it (it lies on the floor, where they are drawn).",
+				"Facings (docs/DECOR.md 'Facings'): the camera's world axes land at 39.3 / 140.7 degrees on screen and the wall",
+				"normals the plan uses, (1, 0) and (0, 1), at 320.7 / 219.3, so grid pieces use the pack's diagonal renders (NE,",
+				"NW, SW, SE: edges at ~34 degrees). `facings: { count: 4, zeroDeg: 45 }` puts the output facings on exactly those",
+				"(facing 2 = 225, 3 = 315: the normals land 39 degrees inside their bins). DecorController picks a grid piece's",
+				"facing from its wall normal (decorFacingDir), so: the torch points along the normal (artOffsetDeg 0: normal SW ->",
+				"the SW render, the cup sticking out of the wall towards the room); a wall segment RUNS perpendicular to it (the",
+				"pack's wall renders run along their own facing, so artOffsetDeg 90: normal SW (run along the other axis, 140.7) ->",
+				"the SE render). Square / round single pieces (columns, brazier, barrel, crate) need one facing: NE (grid-aligned).",
+				"Round flat pieces take a few facings as variants (.1..), picked by cell hash.",
+				"Picked by eye from per-facing montages: wall2/wall3 E renders run horizontally, N vertically, NE at ~34 degrees;",
+				"the torch's E render leans its cup to the right of its bracket (it sticks out along its facing)."
+			],
+			"column1": {
+				"file": "lords-of-pain/prop/column1/NE/column1_NE_45.0_0.png",
+				"shadow": false,
+				"pivot": "bottom",
+				"outline": true
+			},
+			"column2": {
+				"file": "lords-of-pain/prop/column2/NE/column2_NE_45.0_0.png",
+				"shadow": false,
+				"pivot": "bottom",
+				"outline": true
+			},
+			"wall2": {
+				"facings": { "count": 4, "zeroDeg": 45, "artOffsetDeg": 90 },
+				"animations": {
+					"idle": {
+						"file": "lords-of-pain/prop/wall2/{dir}/wall2_{dir}_{angle}_{f}.png",
+						"frames": [0],
+						"fps": 1,
+						"loop": true
+					}
+				},
+				"shadow": false,
+				"pivot": "run",
+				"outline": true
+			},
+			"wall3": {
+				"facings": { "count": 4, "zeroDeg": 45, "artOffsetDeg": 90 },
+				"animations": {
+					"idle": {
+						"file": "lords-of-pain/prop/wall3/{dir}/wall3_{dir}_{angle}_{f}.png",
+						"frames": [0],
+						"fps": 1,
+						"loop": true
+					}
+				},
+				"shadow": false,
+				"pivot": "run",
+				"outline": true
+			},
+			"brazier": {
+				"facings": { "count": 1, "zeroDeg": 45 },
+				"animations": {
+					"idle": {
+						"file": "lords-of-pain/prop/brazier/{dir}/brazier_{dir}_{angle}_{f}.png",
+						"frames": [0],
+						"fps": 1,
+						"loop": true
+					},
+					"lit": {
+						"file": "lords-of-pain/prop/brazier_lit/{dir}/brazier_lit_{dir}_{angle}_{f}.png",
+						"frames": [0, 1, 2, 3, 4, 5, 6, 7],
+						"fps": 10,
+						"loop": true
+					}
+				},
+				"shadow": false,
+				"pivot": "bottom",
+				"pivotFrom": { "animation": "idle", "frame": 0 },
+				"glowAt": { "animation": "lit", "bright": 200 },
+				"outline": true
+			},
+			"torch": {
+				"facings": { "count": 4, "zeroDeg": 45 },
+				"animations": {
+					"idle": {
+						"file": "lords-of-pain/prop/torch/{dir}/torch_{dir}_{angle}_{f}.png",
+						"frames": [0],
+						"fps": 1,
+						"loop": true
+					}
+				},
+				"shadow": false,
+				"pivot": "hang",
+				"glowAt": { "top": 2 }
+			},
+			"bricks-e": { "file": "lords-of-pain/prop/bricks/E/bricks_E_0.0_0.png", "pivot": "center" },
+			"bricks-sw": { "file": "lords-of-pain/prop/bricks/SW/bricks_SW_225.0_0.png", "pivot": "center" },
+			"rocks-e": { "file": "lords-of-pain/prop/rocks/E/rocks_E_0.0_0.png", "pivot": "center" },
+			"rocks-nw": { "file": "lords-of-pain/prop/rocks/NW/rocks_NW_135.0_0.png", "pivot": "center" },
+			"bones1-e": { "file": "lords-of-pain/prop/bones1/E/bones1_E_0.0_0.png", "pivot": "center" },
+			"bones2-e": { "file": "lords-of-pain/prop/bones2/E/bones2_E_0.0_0.png", "pivot": "center" },
+			"bones3-e": { "file": "lords-of-pain/prop/bones3/E/bones3_E_0.0_0.png", "pivot": "center" },
+			"bones1-sw": { "file": "lords-of-pain/prop/bones1/SW/bones1_SW_225.0_0.png", "pivot": "center" },
+			"mushrooms-e": { "file": "lords-of-pain/prop/mushrooms/E/mushrooms_E_0.0_0.png", "pivot": "center" },
+			"mushrooms-nnw": { "file": "lords-of-pain/prop/mushrooms/NNW/mushrooms_NNW_112.5_0.png", "pivot": "center" },
+			"mushrooms-sw": { "file": "lords-of-pain/prop/mushrooms/SW/mushrooms_SW_225.0_0.png", "pivot": "center" },
+			"mushrooms-sse": { "file": "lords-of-pain/prop/mushrooms/SSE/mushrooms_SSE_292.5_0.png", "pivot": "center" },
+			"gems-blue": { "file": "lords-of-pain/prop/gemstones_blue/E/gemstones_blue_E_0.0_0.png", "pivot": "center" },
+			"gems-green": {
+				"file": "lords-of-pain/prop/gemstones_green/E/gemstones_green_E_0.0_0.png",
+				"pivot": "center"
+			},
+			"gems-red": { "file": "lords-of-pain/prop/gemstones_red/E/gemstones_red_E_0.0_0.png", "pivot": "center" },
+			"gems-white": {
+				"file": "lords-of-pain/prop/gemstones_white/E/gemstones_white_E_0.0_0.png",
+				"pivot": "center"
+			},
+			"barrel-broken": {
+				"file": "lords-of-pain/prop/barrel_break/NE/barrel_break_NE_45.0_7.png",
+				"pivot": "center"
+			},
+			"crate-broken": { "file": "lords-of-pain/prop/crate_break/NE/crate_break_NE_45.0_7.png", "pivot": "center" },
+			"barrel": {
+				"facings": { "count": 1, "zeroDeg": 45 },
+				"animations": {
+					"idle": {
+						"file": "lords-of-pain/prop/barrel/{dir}/barrel_{dir}_{angle}_{f}.png",
+						"frames": [0],
+						"fps": 1,
+						"loop": true
+					},
+					"shatter": {
+						"file": "lords-of-pain/prop/barrel_break/{dir}/barrel_break_{dir}_{angle}_{f}.png",
+						"frames": [0, 1, 2, 3, 4, 5, 6, 7],
+						"fps": 16,
+						"loop": false
+					}
+				},
+				"shadow": false,
+				"pivot": "bottom",
+				"pivotFrom": { "animation": "idle", "frame": 0 }
+			},
+			"crate": {
+				"facings": { "count": 1, "zeroDeg": 45 },
+				"animations": {
+					"idle": {
+						"file": "lords-of-pain/prop/crate/{dir}/crate_{dir}_{angle}_{f}.png",
+						"frames": [0],
+						"fps": 1,
+						"loop": true
+					},
+					"shatter": {
+						"file": "lords-of-pain/prop/crate_break/{dir}/crate_break_{dir}_{angle}_{f}.png",
+						"frames": [0, 1, 2, 3, 4, 5, 6, 7],
+						"fps": 16,
+						"loop": false
+					}
+				},
+				"shadow": false,
+				"pivot": "bottom",
+				"pivotFrom": { "animation": "idle", "frame": 0 }
+			},
+			"flame": {
+				"animations": {
+					"idle": {
+						"file": "lords-of-pain/vfx/flame/flame_{f}.png",
+						"frames": [0, 1, 2, 3, 4, 5, 6, 7],
+						"fps": 12,
+						"loop": true
+					}
+				},
+				"pivot": "root"
+			},
+			"flames": {
+				"animations": {
+					"idle": {
+						"file": "lords-of-pain/vfx/flames/flames_{f}.png",
+						"frames": [0, 1, 2, 3, 4, 5, 6, 7],
+						"fps": 12,
+						"loop": true
+					}
+				},
+				"pivot": "root",
+				"clearRgbBelow": 80
+			},
+			"glint": {
+				"animations": {
+					"idle": {
+						"file": "lords-of-pain/vfx/glint/glint_{f}.png",
+						"frames": [0, 1, 2, 3, 4, 5, 6, 7],
+						"fps": 12,
+						"loop": true
+					}
+				},
+				"pivot": "union"
+			},
+			"glow": { "file": "lords-of-pain/vfx/glow.png", "pivot": "center" },
+			"zone": { "file": "lords-of-pain/vfx/zone.png", "pivot": "center", "downscale": 4 },
+			"mote": {
+				"file": "lords-of-pain/vfx/zone.png",
+				"pivot": "center",
+				"downscale": 16,
+				"alpha": "normalize",
+				"rgb": "white",
+				"own": "decor-mote"
+			}
+		}
 	}
 }

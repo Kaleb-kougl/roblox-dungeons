@@ -9,11 +9,12 @@ adds the second exception, D4: breakable barrels and crates are sim objects.
 ## Status (2026-10-26, branch `decor-dynamic`)
 
 R2-R4, R6 and R8-R13 are **code-complete and verified headlessly only** (`npm run verify`: 117 suites, 1611 of 1612
-tests; the one failure is the known x86 `forge.spec.ts` seedToState vector). **Nothing has run in Studio**, and no
-decor art is uploaded, so with the placeholder / `vale` packs only the breakable placeholder blocks and the decor
-PointLights draw. Open: R5 (atlases, upload, ids), R7 / R14 docs leftovers (PROVENANCE, THIRD_PARTY_NOTICES,
-art/README, docs/SERVER.md replay cost), R15 playtest, and every Studio check (`docs/CLIENT.md` steps 25-31 and the
-"Breakables" section).
+tests; the one failure is the known x86 `forge.spec.ts` seedToState vector). **Nothing has run in Studio**. R5's
+pipeline and pack mapping are done (branch `art-r5`, below): `npm run art:build` writes the two new uploads
+`decor-atlas.png` and `decor-mote.png` into `art/upload/`, but they are **not uploaded yet**, so with the `vale` pack
+only the breakable placeholder blocks and the decor PointLights draw until their IDs are in `assetIds.ts`. Open: the
+R5 upload and Studio checks, R7 / R14 docs leftovers (PROVENANCE, docs/SERVER.md replay cost), R15 playtest, and
+every Studio check (`docs/CLIENT.md` steps 25-31 and the "Breakables" section).
 
 As built, differing from the text below:
 
@@ -215,6 +216,48 @@ others. Biome-specific kinds (icicle, moss, grave) have no art and stay undrawn 
   `assetIds.ts`, map them to `decor.*` IDs in the `vale` manifest. Drop `art/vendor/lords-of-pain-demo/` once nothing
   reads it.
   → Verify: contact sheets by eye; `npm run verify`.
+  As built (everything but the upload, the IDs and the Studio look):
+  - **Pipeline.** `art/atlases.json` `worldArt` + the "World art" section of `scripts/art/build-atlases.js`: 32 pieces
+    from the full pack's `prop/` and `vfx/` in **one shared atlas**, `decor-atlas.png` (1024x609: 9 sprite sets in
+    bands of whole cell rows, 23 images as `rect` cuts, MaxRects-packed), plus `decor-mote.png` (47x47, the ambient
+    particle texture: a ParticleEmitter takes no ImageRect). Alpha-bled like the rest, pad 2, at the skeleton's 29.6
+    px per tile (the pack's own scale). The 13 existing outputs and their `layout.ts` entries are byte-identical; the
+    existing sets still read `lords-of-pain-demo/` (this checkout's copy of the full pack has only `prop/`, `vfx/`,
+    `environment/`: no `enemy/` or `user interface/`), so the demo folder stays. The lock keeps its 267 entries and
+    adds 83. `art:build` also fills `art/upload/` (every PNG to upload, flat, nothing else) and lists the files
+    `assetIds.ts` lacks. Contact sheets: `art/build/contact/decor.<piece>.png` (outline cyan, glowAt yellow).
+  - **Shadows.** Standing pieces (columns, walls, brazier, torch, barrel, crate) drop the baked shadow (pure black,
+    max RGB <= 4): held to small boxes, a shadow would only shrink the body. Flat pieces keep it. `vfx/flames` drops
+    its grey smoke column (max RGB < 80).
+  - **Facings.** Measured on the renders, the pack's diagonals put grid edges at ~34 degrees (not ~37); this camera's
+    axes are at 39.3 / 140.7, so segments drift ~0.25 tile off the grid at their ends (check in Studio). Walls and the
+    torch are 4-facing sets with `zeroDeg` 45 (the pack's NE, NW, SW, SE renders); DecorController picks the facing
+    from the wall normal (normals (1, 0) / (0, 1) land at 320.7 / 219.3: facings 3 / 2, 39 degrees inside their
+    bins), so the torch's render points along the normal and a wall segment's render is the one at +90 degrees (the
+    pack's walls run along their own facing). Columns, brazier, barrel and crate are single NE images / 1-facing sets.
+  - **Outlines (theme contract).** A wall segment's cell rectangle is mostly empty corners, and the DECOR_BOX fit
+    held the rectangle: segments would have drawn at 14 % of their size. New optional decor-piece fields
+    `ImageAsset.outline` / `SpriteSetAsset.outlines` (per facing): the convex hull of the visible pixels, which
+    `fitArtLayout` / `decorPieceLayout` now hold inside the box instead (`pointsFitScale`; DecorController passes the
+    outline of the facing it draws). Walls now draw at 96-99 %, columns and the brazier whole. Validator, ThemeCore
+    (`DecorArt.outlines`) and specs cover it.
+  - **DECOR_BOX** (measured on the art as drawn, render px): `pillar` / `column` 18 x 52 -> **20 x 55** (column1's body
+    20.0 x 54.6), `columnBroken` 18 x 26 -> **19 x 22** (column2 18.9 x 21.6). Unchanged: `brazier` 26 x 30 (body 15.1
+    x 17.8; the rest is the flame's room: vfx/flames is held inside at 34 % of its size at decorFlameMaxGrow, the glow
+    at 64 %), `wall` 8 x 28 and `wallBroken` 8 x 22 (fit at 0.985 / 0.96). The footprint specs pass unchanged.
+  - **Breakables.** `breakableArtLayout` caps the height above the pivot, not the whole cell: the barrel's shatter
+    planks land below its base and made the cell 2.3x its height (it would have drawn at 38 %).
+  - **Mapping** (`packs/vale/manifest.ts`, the same art in b1..b5): pillar / column = column1, columnBroken = column2,
+    wall = wall2, wallBroken = wall3, brazier = brazier (+ `lit` = brazier_lit, 8 frames; glowAt on its embers),
+    torch = torch (glowAt = its cup, hung centred on the face), debris .1-.4 = bricks / rocks (2 facings each), bones
+    .1-.4 = bones1-3 (+ bones1 in a second facing), moss and roots .1-.4 = mushrooms (4 facings), gems .1-.4 = the four
+    gemstones, brokenBarrel / brokenCrate = the last `_break` frame; fx torch = vfx/flame, flame = vfx/flames, glow,
+    glint (8 frames), zone (at 1/4); ambient b1-b5 = zone at 1/16, alpha stretched, white (emissive for molten and
+    grim); breakable.barrel / .crate = idle + `shatter` (16 fps one-shot). `valeWorld.spec.ts` validates it with fake
+    IDs (and without), `valeArt.spec.ts` fits it on real floors.
+  - **Still drawn as nothing after the upload:** sarco, grave, candle, icicle, shardIce, crack, ring, bossCrystal,
+    shrineCrystal and banner (no art in the pack); `gems` (mapped, but no plan source places gems: the treasure glint
+    sits on the pedestal); `tiles` and `wall1` are not used (no decor kind for floor patches or curbs).
 
 - [x] **R6. Far-wall dressing.** `wall2` / `wall3` segments on the far-wall runs and `column1` on corners and doorway
   jambs (layer 2 under "Walls"): a segment needs a straight run of wall tops about 4 tiles long; shorter runs get a
@@ -225,6 +268,9 @@ others. Biome-specific kinds (icicle, moss, grave) have no art and stay undrawn 
 - [ ] **R7. Docs.** `THIRD_PARTY_NOTICES.md` (the full pack replaces the demo entry; same licence), `art/README.md`
   (download and folder), `PROVENANCE.md` rows (web `35307022`), the `CLAUDE.md` decision log (D3; D2 is logged),
   `docs/CLIENT.md` (DecorController), `src/shared/theme/README.md` (decor slot).
+  Done with R5: `THIRD_PARTY_NOTICES.md` (full pack and demo, one entry), `art/README.md` (both folders, the
+  `art/upload/` step), the theme README's `outline` field. Still open: PROVENANCE, the CLAUDE.md log (D3, and R5's
+  decor `outline` / `outlines` contract fields), docs/CLIENT.md.
 
 Order: R1 needs nothing and gives the biggest visual change on its own. R2 → R3 → R4 build the system; R5 and R6
 fill it with the pack's pieces.
