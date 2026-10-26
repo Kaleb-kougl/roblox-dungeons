@@ -1,6 +1,7 @@
 /**
- * Barrel for the Dungeon Forge generator, tile collision and encounter placement (PLAN.md task 5). Deterministic
- * like the sim: plain TypeScript, no Roblox APIs, because the sim's move resolver calls into it.
+ * Barrel for the Dungeon Forge generator, tile collision and encounter placement (PLAN.md task 5), and BFS path
+ * fields (pathField.ts, docs/TUTORIAL_ARROW.md). Deterministic like the sim: plain TypeScript, no Roblox APIs,
+ * because the sim's move resolver calls into it.
  *
  * Dungeon Forge is MIT (c) 2026 Majid Manzarpour; see THIRD_PARTY_NOTICES.md.
  */
@@ -15,3 +16,4 @@ export * from "./endlessData";
 export * from "./endless";
 export * from "./breakablesData";
 export * from "./breakables";
+export * from "./pathField";

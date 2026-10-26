@@ -1,7 +1,8 @@
 // The tutorial's HUD / marker presentation (docs/TUTORIAL.md §4): the highlight ring and marker pulses (static under
 // reduced motion), the ghost half heart's fade and the tutorial verdict line (the pause overlay's tutorial buttons:
-// shared/view/menu menu.spec.ts).
+// shared/view/menu menu.spec.ts), and the guidance arrow's look, chevron geometry, image size and on-screen test.
 import { describe, expect, it } from "@rbxts/jest-globals";
+import { STUDS_PER_TILE } from "shared/config";
 import {
 	DEFAULT_BINDINGS,
 	rebind,
@@ -12,6 +13,7 @@ import {
 } from "shared/play";
 import { PLACEHOLDER_MANIFEST, ThemePack } from "shared/theme";
 import { TUTORIAL_DEVICES, TUTORIAL_STRINGS, tutorialPromptIds, tutorialPromptKey } from "shared/tutorial";
+import { MARKING_VIEW } from "shared/view";
 import {
 	PAUSE_HINT,
 	TUTORIAL_VERDICT_CODE,
@@ -20,6 +22,10 @@ import {
 	highlightRingLook,
 	tutorialLeaderboardHint,
 	tutorialPromptVars,
+	tutorialArrowArm,
+	tutorialArrowImageSize,
+	tutorialArrowLook,
+	tutorialArrowOnScreen,
 	tutorialMarkerLook,
 	verdictKey,
 } from "shared/view/hud";
@@ -74,6 +80,105 @@ describe("tutorialMarkerLook", () => {
 			expect(l.liftTiles).toBe(V.markerLiftTiles);
 			expect(l.transparency).toBe(V.markerTransparency);
 		}
+	});
+});
+
+describe("tutorialArrowLook", () => {
+	const HALF_ARROW = V.arrowPeriodSeconds / 2;
+
+	it("slides forward by arrowSlideTiles and back once per period; fully shown it is arrowTransparency", () => {
+		expect(tutorialArrowLook(0, 1).slideTiles).toBeCloseTo(0, 9);
+		expect(tutorialArrowLook(HALF_ARROW, 1).slideTiles).toBeCloseTo(V.arrowSlideTiles, 9);
+		expect(tutorialArrowLook(V.arrowPeriodSeconds, 1).slideTiles).toBeCloseTo(0, 9);
+		for (let t = 0; t <= 3; t += 0.05) {
+			const l = tutorialArrowLook(t, 1);
+			expect(l.slideTiles >= -1e-9 && l.slideTiles <= V.arrowSlideTiles + 1e-9).toBe(true);
+			expect(l.transparency).toBe(V.arrowTransparency);
+		}
+	});
+
+	it("stands still under reduced motion (motionScale 0); motion and alpha clamp to 0..1", () => {
+		for (const t of [0, 0.4, HALF_ARROW, 5]) expect(tutorialArrowLook(t, 0).slideTiles).toBe(0);
+		expect(tutorialArrowLook(HALF_ARROW, 3).slideTiles).toBeCloseTo(V.arrowSlideTiles, 9);
+		expect(tutorialArrowLook(HALF_ARROW, -1).slideTiles).toBe(0);
+		expect(tutorialArrowLook(HALF_ARROW, 0.5).slideTiles).toBeCloseTo(V.arrowSlideTiles / 2, 9);
+	});
+
+	it("fades with alpha: invisible (1) at alpha 0, arrowTransparency at alpha 1, clamped outside", () => {
+		expect(tutorialArrowLook(0, 1, 0).transparency).toBe(1);
+		expect(tutorialArrowLook(0, 1, 1).transparency).toBe(V.arrowTransparency);
+		expect(tutorialArrowLook(0, 1, 0.5).transparency).toBeCloseTo(1 - (1 - V.arrowTransparency) / 2, 9);
+		expect(tutorialArrowLook(0, 1, -2).transparency).toBe(1);
+		expect(tutorialArrowLook(0, 1, 4).transparency).toBe(V.arrowTransparency);
+		// Reduced motion keeps the fade.
+		expect(tutorialArrowLook(0, 0, 0.5).transparency).toBeCloseTo(1 - (1 - V.arrowTransparency) / 2, 9);
+	});
+
+	it("tunables: the uiAccent role, an optional ui.* image, a positive size, and a hold longer than the fade", () => {
+		expect(V.arrowRole).toBe("uiAccent");
+		expect(V.arrowImageId).toBe("ui.arrow.tutorial");
+		expect(V.arrowOrbitTiles > V.arrowLengthTiles / 2).toBe(true);
+		expect(V.arrowWidthTiles > V.arrowBarTiles && V.arrowBarTiles > 0).toBe(true);
+		expect(V.arrowHoldSeconds >= V.arrowFadeSeconds).toBe(true);
+		expect(V.arrowScreenInset > 0 && V.arrowScreenInset < 0.5).toBe(true);
+		// The placeholder pack has no arrow image: the client draws the Part chevron.
+		const pack = new ThemePack(PLACEHOLDER_MANIFEST, { warn: () => undefined });
+		expect(pack.image(V.arrowImageId)).toBe(undefined);
+	});
+});
+
+describe("the guidance arrow's chevron, image and on-screen test", () => {
+	it("each arm runs from its tail corner to the tip", () => {
+		const L = V.arrowLengthTiles;
+		const W = V.arrowWidthTiles;
+		const arm = tutorialArrowArm();
+		const half = arm.lengthTiles / 2;
+		const sx = math.sin(arm.yaw) * half;
+		const sz = math.cos(arm.yaw) * half;
+		// +x arm: tail (W / 2, -L / 2), tip (0, L / 2).
+		expect(arm.centreAcrossTiles - sx).toBeCloseTo(W / 2, 9);
+		expect(-sz).toBeCloseTo(-L / 2, 9);
+		expect(arm.centreAcrossTiles + sx).toBeCloseTo(0, 9);
+		expect(sz).toBeCloseTo(L / 2, 9);
+		expect(arm.yaw < 0 && arm.yaw > -math.pi / 2).toBe(true);
+		const flat = tutorialArrowArm(1, 0);
+		expect(flat.lengthTiles).toBe(1);
+		expect(flat.centreAcrossTiles).toBeCloseTo(0, 12);
+		expect(flat.yaw).toBeCloseTo(0, 12);
+	});
+
+	it("lies under the markings and off the floor", () => {
+		const S = STUDS_PER_TILE;
+		const centre = MARKING_VIEW.liftTiles * S * V.arrowLiftFraction;
+		expect(centre + V.arrowThicknessStuds / 2 < MARKING_VIEW.liftTiles * S).toBe(true);
+		expect(centre - V.arrowThicknessStuds / 2 > 0).toBe(true);
+	});
+
+	it("the image keeps its aspect inside the chevron's box", () => {
+		const [a, b] = tutorialArrowImageSize(64, 64);
+		expect(a).toBeCloseTo(math.min(V.arrowWidthTiles, V.arrowLengthTiles), 9);
+		expect(b).toBeCloseTo(a, 9);
+		const [w, h] = tutorialArrowImageSize(32, 128);
+		expect(h).toBeCloseTo(V.arrowLengthTiles, 9);
+		expect(w).toBeCloseTo(V.arrowLengthTiles / 4, 9);
+		expect(tutorialArrowImageSize(0, 10)).toEqual([V.arrowWidthTiles, V.arrowLengthTiles]);
+	});
+
+	it("on screen: in front of the camera and inside the inset viewport", () => {
+		const w = 1000;
+		const h = 500;
+		const i = V.arrowScreenInset;
+		expect(tutorialArrowOnScreen(500, 250, 10, w, h)).toBe(true);
+		expect(tutorialArrowOnScreen(500, 250, -10, w, h)).toBe(false); // behind the camera
+		expect(tutorialArrowOnScreen(500, 250, 0, w, h)).toBe(false);
+		expect(tutorialArrowOnScreen(w * i, h * i, 1, w, h)).toBe(true); // on the inset edge
+		expect(tutorialArrowOnScreen(w * i - 1, 250, 1, w, h)).toBe(false);
+		expect(tutorialArrowOnScreen(w * (1 - i) + 1, 250, 1, w, h)).toBe(false);
+		expect(tutorialArrowOnScreen(500, h * i - 1, 1, w, h)).toBe(false);
+		expect(tutorialArrowOnScreen(500, h * (1 - i) + 1, 1, w, h)).toBe(false);
+		expect(tutorialArrowOnScreen(0 / 0, 250, 1, w, h)).toBe(false);
+		expect(tutorialArrowOnScreen(500, 250, 1, 0, h)).toBe(false);
+		expect(tutorialArrowOnScreen(5, 5, 1, w, h, 0)).toBe(true);
 	});
 });
 
