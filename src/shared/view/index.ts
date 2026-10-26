@@ -10,6 +10,7 @@
  *   party.ts      co-op presentation rules (teammates' bullets faded in large parties)
  *   floorTexture.ts  world-anchored Texture offsets so merged floor slabs show one continuous pattern
  *   sprites.ts    sprite renderer logic: world facing -> screen facing, animation + frame from sim state, billboard
+ *   decor/        the decor plan (docs/DECOR.md R3 / R6 / R8): planDecor, decorProfile, fade selection, glow points
  *
  * Sub-barrels (import from the folder): `shared/view/fx` (the juice layer: hit tracker, hitstop, bars, numbers,
  * particles), `shared/view/audio` (sim events -> theme sound IDs, music), `shared/view/hud` (HUD font token, layout,
@@ -23,3 +24,4 @@ export * from "./markings";
 export * from "./party";
 export * from "./sprites";
 export * from "./floorTexture";
+export * from "./decor";
