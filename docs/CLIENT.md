@@ -23,6 +23,8 @@ rebinding, audio, display). Everything presentation-side reads the sim and never
 | `WeaponViewController` | `.../render/WeaponViewController.ts` | Sword swing fans + sweeping blade, finisher wind-up, guard fan, bow charge ring + aim line, heavy-arrow release ring (dashed floor markings). |
 | `RunMarkerController` | `.../render/RunMarkerController.ts` | M2 (endless runs): a relic pedestal (Cylinder, `uiAccent`) on each TREASURE room's centre tile and the curse shrine's zone (flat disc, `uiMana`) in the SHRINE room; a taken pedestal / used shrine dims (`uiTextDim`). Rebuilt per floor. With the `ui.marker.pedestal` image, a camera-facing beam stands on each live pedestal (hidden once taken). |
 | `BreakableRenderController` | `.../render/BreakableRenderController.ts` | Endless runs: barrels and crates from `state.breakables` (placeholder box, sprite set or image), hit blink + shake, chips and debris on break. See "Breakables". |
+| `DecorController` | `.../render/DecorController.ts` | Room decoration (docs/DECOR.md R4, R10): per floor the decor plan (`planDecor` + `decorScene`, `KV_DecorBand` forces a band), drawn from the pack's `decor.*` art (pooled upright billboards on wall tops and faces, flat SurfaceGuis on the floor), tall pieces fading when a player or the boss is behind them, and the `DecorDirector` updated once per frame. See "Room decoration". |
+| `DecorFxController` | `.../render/DecorFxController.ts` | Ambient life (docs/DECOR.md R9): flame loops and glows on lit torches / braziers, the 6-light pool, the fixed boss / shrine room lights, the flat boss ring and stairwell zone, the pedestal glint, the biome's ambient particle volume. See "Room decoration". |
 | `TutorialMarkerController` | `.../render/TutorialMarkerController.ts` | Tutorial runs only: one upright beam (a Neon Cylinder in `uiAccent`; plus a camera-facing `ui.marker.tutorial` billboard if the pack has that image) on the director's marker target (next lesson door, pedestal, shrine, stairwell, the live boss), bobbing / breathing by the juice `motionScale` (still under reduced motion), hidden without a target and once the tutorial ended. Built per tutorial run (Janitor). |
 | `TelegraphController` | `.../render/TelegraphController.ts` | Sniper aim lines (cut at the first intact breakable), bruiser shockwave rings (archetype `data.fx`), a ring for any other wind-up, Mother Bramble's attack previews, slam lane, roar rings and the arena seal fence. |
 | `FxTrackerController` | `.../fx/FxTrackerController.ts` | Right after the sim (render step 102): the pure `HitTracker` diffs the live actors and dispatches the frame's FX events (hit, killed, spawned, capped, bossPhase, bossDefeated, reset) to the juice views and audio, with the effective juice settings. |
@@ -106,6 +108,67 @@ endless floors' barrels and crates. Pure logic and tunables: `src/shared/view/br
 - **Sniper aim line:** `TelegraphController` cuts it where it first enters an intact piece's cell
   (`clipToSolidCells` over `solidCells(state)`), where its bullet will stop; sight is not blocked (B2).
 
+## Room decoration (docs/DECOR.md R4, R9, R10)
+
+Pure logic in `src/shared/view/decor/` (specs next to it): the plan (`decorPlan.ts`, R3 / R6 / R8), the floor's scene
+(`scene.ts`: plan + boss ring + stairwell + shrine + pedestals), the director (`director.ts`), the light pool and
+flicker (`lights.ts`) and renderer helpers (`render.ts`). Tunables: `DECOR_REACT` (`reactConfig.ts`, the director),
+`DECOR_VIEW` / `DECOR_LIGHTS` / `DECOR_FX` / `DECOR_RENDER_ORDER` (`fxConfig.ts`, the client). Presentation only:
+nothing here writes the sim.
+
+- **Per floor** (`DecorController`, on run start and every floor change, and when `KV_DecorBand` changes):
+  `decorInputOfLayout(layout, depth)` (M1: the bare dungeon) + `decorProfile` (`KV_DecorBand` forces a band) +
+  `planDecor` with the pack's variant counts -> `decorScene`. Output: `[Decor] floor N (band, biome): plan E (flat,
+  low, tall, wall), drawn D (~I instances), T ms`. An entry is drawn only when the pack has art for its kind
+  (`pack.decorVariants(biome, kind)`, the variant by the plan's cell hash).
+- **Pieces**: tall / low on the wall top and wall pieces as pooled upright billboards (a sprite set: `SpriteView`,
+  facing from `decorFacingDir`, grid pieces along their wall's normal, round ones by hash; an image: `ArtBillboard`),
+  the floor clearance from `spriteBillboard`; wall pieces pushed `WALL_DEPTH_BIAS` (0.6 tiles) toward the camera off
+  the face. Flat pieces: a top-face SurfaceGui on a thin invisible floor Part (`buildFloorArt`). A brazier sprite set
+  with `lit` plays it once lit; the used shrine's crystal dims (`DECOR_VIEW.dimBrightness`).
+- **Fade**: `selectDecorFades` with every living player and the live boss (`decorFadeBodies`): a tall piece hiding
+  one fades to `DECOR_VIEW.fadeTransparency` (0.75) over `fadeSeconds` (0.15 s).
+- **Director** (`DecorDirector.update`, in `KV_Decor` before the pieces; not while paused, in a frozen tutorial, or
+  with a draft open, which it also checks itself): reads `state.endless` (roomsEntered, stairsOpen), `state.score`
+  rooms (engaged / cleared), the live boss (phase), `state.run` (shrine, pedestals), every player (sweep origin,
+  Embers, all down) and `frameEvents.emberUsed`; returns the reused `DecorView` (per entry lit / flare / flame / dim,
+  per room entered / engaged / cleared, ring, stairGlow, shrineDim, glint, gutter, cold). Trigger table: rooms not
+  entered dark; first entry lights the room's torches in a sweep from the entering player (`igniteStepSeconds` 0.08
+  apart); engaged rooms' flames x1.35; a clear lights the room's braziers with a flare; a boss floor's boss room stays
+  dark until the boss is engaged and its **flat boss ring** lights a third per phase, all after the kill (steady);
+  the open stairwell glows; a taken pedestal's glint and the used shrine dim; an Ember gutters every flame (0.3 s); a
+  wiped run fades to the cold palette (`DECOR_LIGHTS.coldRole`). Reduced motion: no sweep (all at once), no flare,
+  no gutter, no taller flames, no flicker. Robust to multi-tick frames (state diffs), floor changes, restarts and
+  co-op (it reads the shared state).
+- **The boss ring** is flat by design: the decor plan moves the Forge's ring braziers onto far walls under the
+  footprint rule and most lose their spot, so the ring is drawn as floor-level fire pits at the Forge's brazier spots
+  (`decorBossRing`): `decor.fx.glow` laid flat (`ringGlowTiles`) plus a PointLight, never a standing sprite, so nothing
+  in the arena can hide a bullet.
+- **Lights** (`DecorFxController`, `KV_DecorFx` right after): `DECOR_LIGHTS.pool` (6) PointLights shared by the lit
+  torches / braziers nearest the camera focus (`DecorLightPool`, reassigned every 0.25 s with 0.3 s fades), seeded
+  flicker (`decorFlicker`, x motionScale), x the band's light, flare / gutter / cold; no shadows, brightness capped
+  (`maxBrightness`). Fixed lights outside the pool: up to 3 over the boss ring + 1 on the open stairwell, and 2 in the
+  shrine room (nearest the shrine, dimmed once used). Colour `decor.fx.flame`.
+- **Flames and fx**: `decor.fx.torch` (wall torches) / `decor.fx.flame` (braziers) loops at each lit piece's glow point
+  when its art has `glow`, with `decor.fx.glow` behind, a per-piece phase (`decorLoopFrame`), animated within
+  `flameAnimateRadiusTiles` (24) of the focus; `decor.fx.zone` flat on the open stairwell; `decor.fx.glint` over live
+  pedestals.
+- **Ambient particles**: one ParticleEmitter volume (30 x 3 x 30 tiles) following the camera focus, the biome's
+  `pack.ambient(biome)` texture / size / transparency / colour; rate from `ambientEmitterSpec` (the Forge theme's
+  particle count x the band's light x the juice particle level share, 0 under reduced motion, at most
+  `DECOR_FX.maxParticles` = 150 alive); TimeScale 0 while paused.
+- **What draws today**: the placeholder and `vale` packs have no `decor.*` art and no ambient textures, so no piece,
+  flame, glow, zone, glint or particle is drawn; the **PointLights do** (they need no art): pool lights on lit torches
+  (sweeping on as rooms are entered), the boss ring / stairwell / shrine lights. Under Studio's default bright
+  Lighting they are faint. Everything else appears as R5 pastes the Lords of Pain ids.
+- **Budgets** (seed 1337, floors 1-10, `decorFx.spec.ts` prints them): ~233 plan entries per floor (151-337; ~60 %
+  flat, ~28 % wall, ~11 % tall / low), ~58 lit lights, 6 ring pits. Every drawn piece is 3 instances (anchor or floor
+  Part + Gui + ImageLabel), a lit light with flame and glow art 6 more: ~1,050 instances per floor if every kind had
+  art (Lords of Pain covers about half the kinds), plus 6 pool + at most 6 fixed PointLights and 1 emitter. Standing
+  bodies are pooled across floors; flat parts and fx are rebuilt per floor (Janitor).
+- **Debug** (`KV_DecorDebug`): the fade boxes (neon outlines in their billboard planes), each standing piece's
+  footprint stencil (cells at bullet height its art could hide: all must be walls) and the breakable cells.
+
 ## Data flow per rendered frame
 
 BindToRenderStep priorities (`shared/view` `RENDER_ORDER`):
@@ -125,8 +188,11 @@ BindToRenderStep priorities (`shared/view` `RENDER_ORDER`):
    `tutorialStep` per new funnel step, callout toasts, the ghost heart.
 3. **Camera + 1 (201) `KV_GameCamera`**: follows the interpolated player (+ the freeze-frame nudge).
 4. **Camera + 2 (202)** `KV_Bullets`, `KV_Actors`, `KV_Weapons`, `KV_Telegraphs`, `KV_HealthBars`,
-   `KV_DamageNumbers`, `KV_Particles`, `KV_Breakables`: read `getState()` / `getAlpha()`, move pooled Parts /
+   `KV_DamageNumbers`, `KV_Particles`, `KV_Breakables`, `KV_Decor` (DecorController: the DecorDirector update, then
+   the pieces and fades; `DECOR_RENDER_ORDER.decorAfterCamera`): read `getState()` / `getAlpha()`, move pooled Parts /
    BillboardGuis. They never write the sim.
+   **Camera + 3 (203) `KV_DecorFx`** (DecorFxController, `DECOR_RENDER_ORDER.decorFxAfterDecor`): flames, the light
+   pool, fixed lights and particles from this frame's DecorView.
 5. React re-renders the HUD from Reflex when the snapshot changed (at most ~10 Hz).
 
 Mouse aim uses the previous frame's camera (the web build does the same).
@@ -386,6 +452,8 @@ is open, and only one of the Options screen / leaderboard panel is open at a tim
 | `KV_Scoring` | boolean | M2 scoring on an M1 world (`game` etc.; endless is always scored). Such runs are not submitted (`not submitted (scored)`): the server replays M1 unscored. |
 | `KV_SkipMenu` | boolean | Dev only (read once, on join): no main menu; a solo run starts at once, as before the menu existed. Off by default. Co-op runs start from a lobby (Lobbies in the main menu): see "Main menu, lobbies and Leave run". |
 | `KV_ResetBindings` | boolean | Dev only, read ONCE when the client starts (not on R): when the server's settings arrive, the saved key bindings (`controls` group) are cleared and saved that way; the other groups are kept. Off by default (shared/settings `SETTINGS_ATTRIBUTES`). |
+| `KV_DecorBand` | number | Forces the decor depth band (0 kept, 1 worn, 2 ruined, 3 abyss; clamped) for every floor; changing it rebuilds the current floor's decoration at once. Unset: the floor's own band. Presentation only. |
+| `KV_DecorDebug` | boolean | Draws the decor debug overlay: fade boxes, footprint stencils, breakable cells (toggles at once). Off by default. |
 | `KV_Tutorial` | boolean | Read once on join (not on R). `true`: the join starts the tutorial whatever the server says (the server is not asked; no main menu first); `false`: never (the normal join flow at once: the main menu, or `KV_SkipMenu`'s solo run). Unset: the server's `onboardingStatus` decides. Server side, `KV_ResetOnboarding` (docs/SERVER.md) resets the stored flag instead. |
 
 If the `game` world cannot start (e.g. a build without the actor archetypes: "Unknown archetype"), the client falls
@@ -507,6 +575,7 @@ character's root is anchored locally so it never falls and respawns in a loop.
 | Weapon arcs | ~20-60 | 0.5-stud dashes |
 | Particles | up to 512 live particles + 16 rings x 32 dots (1,024 Parts at most; budget 128 / 320 / 512 by setting) | grows lazily to the high-water mark, parked when unused |
 | Breakables | 1 Part per intact piece (placeholder) or an anchor + BillboardGui (art), + 1 Part per debris decal | pooled per kind; endless floors only |
+| Decor | per drawn piece 3 instances (pooled standing bodies; flat Parts per floor); with art ~1,050 per floor; 6 pool + <= 6 fixed PointLights, 1 emitter (<= 150 particles) | nothing but the PointLights with the placeholder pack ("Room decoration") |
 | Health bars / damage numbers | 64 / 48 BillboardGuis (built at start, disabled when unused) | Attachments on one anchored holder Part each |
 
 Pools only grow; parked parts sit at y = -10,000. Bullets and markings cast no shadows.
@@ -535,6 +604,13 @@ Headless (tutorial client): the first-run gate, the view -> slice copy and the o
 `flow.spec.ts`), the ring / marker pulses, ghost heart fade, the bound-key prompt templates (`tutorialPromptVars`,
 every prompt filled on every device) and the tutorial verdict line (`shared/view/hud` `tutorialHud.spec.ts`), the
 tutorial pause items (`menu.spec.ts`), and `unsubmittedReason` (`submitPolicy.spec.ts`).
+
+Headless (decor, docs/DECOR.md R4 / R9 / R10): the DecorDirector over the recorded seed-1337 endless run (rooms dark
+until entered, the sweep from the entering player, braziers on the clear, the flat boss ring per phase, stairwell
+glow, glint and shrine dim, frozen during drafts, the same room facts at 1-5 ticks per frame, reduced motion, resets,
+scene mismatches, the Ember gutter, the run-over fade solo and in a party; `director.spec.ts`), the light pool,
+flicker, loop frames, facings, fade bodies, footprints, the ambient emitter counts, the scene and the budgets
+(`decorFx.spec.ts`).
 
 Studio only: every controller (input polling and sinking, camera, Parts, BulkMoveTo, BillboardGuis, the React HUD,
 the menu shell and lobby screens, GUI selection, SoundGroups / Sounds, remotes), the Options screen and the rebinding
@@ -666,6 +742,27 @@ With the actors merged the default `game` world has enemies; without them see "f
     `sfx` / `music` SoundGroup Volume follows (Explorer; music = 0.6 x master x music). Display: HUD scale 80 % shrinks
     every panel, 125 % grows it, at once; it survives a rejoin. Each tab's Reset to defaults resets only that tab.
 
+### Room decoration (docs/DECOR.md R4 / R9 / R10; not run in Studio yet)
+
+25. **Placeholder pack.** Output `[Decor] floor 1 (kept, biome.N): plan E (...), drawn 0 (~0 instances), T ms` and
+    `[DecorFx] P pool candidates, 0 flames, 0 glows, F fixed lights, 6 ring pits, 0 glints, ambient none`. Darken
+    Lighting (e.g. ClockTime 0, Ambient / OutdoorAmbient black, Brightness 0) to see the lights: walking into a room
+    turns its torch lights on one after another from the door; corridor torches are on from the start; never more
+    than 6 pool lights at once (Explorer: `KV_DecorFx`), handed over with fades as you walk. Note `T` (plan time) on
+    PC and the phone emulator.
+26. **Boss floor** (`KV_Debug`, N to floor 5): the boss room is dark until Mother Bramble wakes; the ring lights come on
+    a third per phase (J), all steady after the kill; the stairwell light comes on with the stairwell.
+27. **Shrine / pedestal**: the shrine room's 2 lights dim once the curse is taken.
+28. **Ember / death / pause / draft**: Q flickers the lights down for 0.3 s; dying fades them to blue; P and a boon
+    draft freeze the flicker and the sweep; Reduced motion: rooms light all at once, no flicker.
+29. **Bands and debug**: `KV_DecorBand` 0..3 rebuilds the floor at once (fewer lit torches deeper: `litTorchShare`);
+    `KV_DecorDebug` true draws the fade boxes, footprint cells (each must sit on a wall) and breakable cells.
+30. **With art (after R5)**: pieces on far-wall tops line up with the walls, wall torches sit on the faces the camera
+    sees, a pillar or column fades when you walk behind it, flames loop out of step, the ambient motes / embers /
+    snow / wisps / spores drift around the camera (none under Reduced motion), and no piece ever hides a bullet. Write
+    down fps, instance counts and texture memory on PC and the phone emulator.
+31. **Co-op (2 players)**: both clients light the same rooms; the cold fade only when both are down.
+
 ### Tutorial (docs/TUTORIAL.md "Studio smoke test")
 
 Run the tutorial checklist in docs/TUTORIAL.md ("Studio smoke test", steps 1-8) with `KV_ResetOnboarding` on the
@@ -713,8 +810,8 @@ server or `KV_Tutorial` = true on Workspace. Client-side checks first (this code
 - Freeze frames slow the run in wall time only: a frozen frame records nothing, so a run with many kills takes a
   little longer in real time than its tick count suggests. The server never sees it (it replays ticks).
 - The pause overlay also shows while the Roblox menu is open (it pauses the run); the Roblox menu covers it.
-- Dungeon props, torches and arches are not drawn: the web build does not draw them either and the theme has no IDs
-  for them. Pools use the Dungeon Forge theme's liquid colour (as the web build), since the theme has no pool role.
+- Dungeon props and torches are drawn by DecorController only where the pack has `decor.*` art (none in the
+  placeholder and vale packs yet); arches and chests are never drawn (docs/DECOR.md). Pools use the Dungeon Forge theme's liquid colour (as the web build), since the theme has no pool role.
 - Every HUD text is a theme string now (`hud.verdict.*`, `hud.seed`, `hud.info`, `hud.notice.fallback`,
   `hud.debug*`, `hud.pause.*`, `hud.ending.*`, `hud.restartAlt`, `fx.settings.reset / close / system / offline`,
   `fx.cap` were added to the placeholder pack). Keys, IDs and enum names stay in code.
