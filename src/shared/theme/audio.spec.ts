@@ -82,6 +82,10 @@ describe("audio contract: port IDs and ambience", () => {
 			"sfx.jingle.gameover",
 			"music.tutorial",
 			"music.lobby",
+			"sfx.boost.drop",
+			"sfx.boost.collect",
+			"sfx.boost.expire",
+			"sfx.boost.aegisbreak",
 		]);
 		const web = new Set<string>([...AUDIO_EVENTS, ...BREAKABLE_AUDIO_EVENTS]);
 		for (const id of PORT_AUDIO_EVENTS) {

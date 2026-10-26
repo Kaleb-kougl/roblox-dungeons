@@ -9,13 +9,22 @@
  */
 
 import { parseHex } from "./color";
-import { FX_ANIMATION, type BiomeId, type BreakableKind, type DecorKind, type DecorLayer, type FxId } from "./contract";
+import {
+	FX_ANIMATION,
+	type BiomeId,
+	type BoostKind,
+	type BreakableKind,
+	type DecorKind,
+	type DecorLayer,
+	type FxId,
+} from "./contract";
 import {
 	DEFAULT_PACK_ID,
 	MISSING_COLOR,
 	ThemeCore,
 	type AmbientParticleArt,
 	type BiomeTheme,
+	type BoostTheme,
 	type BreakableTheme,
 	type DecorArt,
 	type FxArt,
@@ -188,6 +197,19 @@ export interface Breakable {
 	readonly core: BreakableTheme;
 }
 
+/** A boost kind (ThemeCore.boost): art (or undefined: build `placeholder`), its identity colour and string keys. */
+export interface Boost {
+	readonly kind: BoostKind;
+	readonly id: string;
+	readonly nameKey: string;
+	readonly descKey: string;
+	readonly iconKey: string;
+	readonly color: Color3;
+	readonly art: WorldVisual | undefined;
+	readonly placeholder: PlaceholderVisual;
+	readonly core: BoostTheme;
+}
+
 /**
  * A sprite effect (ThemeCore.fx) with Roblox types: a one-facing SpriteSet, its flipbook and how to draw it. Drawn
  * widthTiles x heightTiles; `ImageColor3 = color`; `additive`: LightInfluence 0.
@@ -244,6 +266,7 @@ export class ThemePack {
 	private readonly spriteSets = new Map<string, SpriteSet>();
 	private readonly decorPieces = new Map<string, DecorPiece | false>();
 	private readonly breakables = new Map<BreakableKind, Breakable>();
+	private readonly boosts = new Map<BoostKind, Boost>();
 	private readonly fxSprites = new Map<string, FxSprite | false>();
 
 	/** Defensive: a manifest that failed validation still loads; bad entries fall back individually. */
@@ -404,6 +427,28 @@ export class ThemePack {
 			core,
 		};
 		this.breakables.set(kind, b);
+		return b;
+	}
+
+	/** A boost kind (required in every pack, docs/BOOSTS.md B5): its art, or no art and the placeholder gem. Cached. */
+	boost(kind: BoostKind): Boost {
+		const cached = this.boosts.get(kind);
+		if (cached !== undefined) {
+			return cached;
+		}
+		const core = this.core.boost(kind);
+		const b: Boost = {
+			kind,
+			id: core.id,
+			nameKey: core.nameKey,
+			descKey: core.descKey,
+			iconKey: core.iconKey,
+			color: this.color(core.role),
+			art: core.art !== undefined ? this.worldVisual(core.art) : undefined,
+			placeholder: core.placeholder,
+			core,
+		};
+		this.boosts.set(kind, b);
 		return b;
 	}
 

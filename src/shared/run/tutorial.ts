@@ -5,8 +5,9 @@
  *
  *   config   { endless: { runSeed: TUTORIAL.runSeed, worldForFloor }, scoring: ENDLESS_SCORING,
  *              tutorial: { harmless: true, startHalfHearts: TUTORIAL.startHalfHearts,
- *              bossHpPercent: TUTORIAL.bossHpPercent } }; no `breakables` (docs/DECOR.md
- *            B7: no barrels or crates in the tutorial, and its hand-built layouts carry none)
+ *              bossHpPercent: TUTORIAL.bossHpPercent }, drops: TUTORIAL_DROPS_CONFIG }; no `breakables`
+ *            (docs/DECOR.md B7: no barrels or crates in the tutorial, and its hand-built layouts carry none); drops
+ *            only as the one guaranteed Fury from combat B's last swarmer (docs/BOOSTS.md B9)
  *   layouts  tutorialForgeParams: an endless floor's Forge params (endlessFloorParams: solid pillars, double-size
  *            rooms, ...) with a fixed seed (floor 1: and the lesson chain); every floor's world is endlessFloorWorld
  *            (the endless floor's movers, bullet blocker and the enemies' steering round pillars), so it plays like a
@@ -53,7 +54,14 @@ import {
 	type TileXZ,
 	type WorldXZ,
 } from "shared/dungeon";
-import { DEFAULT_PARTY_SIZE, DUMMY_KIND, type SimConfig } from "shared/sim";
+import {
+	Boost,
+	DEFAULT_PARTY_SIZE,
+	DUMMY_KIND,
+	guaranteedDropsConfig,
+	type DropsConfig,
+	type SimConfig,
+} from "shared/sim";
 import { ENDLESS_SCORING, endlessFloorWorld, type EndlessRunFloor, type EndlessRunSetup } from "./endless";
 import { coverTiles, tutorialRoomTools, tutorialTour } from "./tutorialLayout";
 
@@ -229,6 +237,19 @@ export const TUTORIAL_ENTRANCE_ROOM = planOf("entrance").roomId;
 export const TUTORIAL_TREASURE_ROOM = planOf("treasure").roomId;
 export const TUTORIAL_SHRINE_ROOM = planOf("shrine").roomId;
 export const TUTORIAL_STAIRWELL_ROOM = planOf("stairwell").roomId;
+
+/**
+ * The tutorial's one boost (docs/BOOSTS.md B9, P8): the last of combat B's swarmers always drops a Fury, and nothing
+ * else ever drops (guaranteedDropsConfig: no random drops, no pity). The director's `boost` callout teaches it.
+ */
+export const TUTORIAL_BOOST_LESSON: TutorialLessonId = "combatB";
+export const TUTORIAL_BOOST_ROOM = planOf(TUTORIAL_BOOST_LESSON).roomId;
+export const TUTORIAL_BOOST_KIND: number = Boost.FURY;
+
+/** SimConfig.drops of every tutorial run: only the guaranteed Fury on floor 1's combat B. */
+export const TUTORIAL_DROPS_CONFIG: DropsConfig = guaranteedDropsConfig([
+	{ floor: ENDLESS_FIRST_FLOOR, room: TUTORIAL_BOOST_ROOM, kind: TUTORIAL_BOOST_KIND },
+]);
 
 /** A floor-1 room with its geometry: what the director (T4) and the world marker (T6) read. */
 export interface TutorialRoom extends TutorialRoomPlan {
@@ -497,6 +518,7 @@ export function buildTutorialRunConfig(partySize: number = DEFAULT_PARTY_SIZE): 
 			startHalfHearts: TUTORIAL.startHalfHearts,
 			bossHpPercent: TUTORIAL.bossHpPercent,
 		},
+		drops: TUTORIAL_DROPS_CONFIG,
 	};
 	return {
 		config,

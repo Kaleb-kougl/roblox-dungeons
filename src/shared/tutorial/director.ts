@@ -12,6 +12,9 @@
  *   state.run         relics, curses and boons owned; the shrine zone (atShrine)
  *   state.tutorial    harmlessHits (the harmless-hit callout and the ghost half heart)
  *   state.combat      the weapon set in hand (the bow), the bow slot's heavy-arrow tick, the boss actor
+ *   state.drops       the ground drops and the player's running boosts (docs/BOOSTS.md B9: the `boost` callout when
+ *                     combat B's guaranteed Fury lands, the marker on it while it lies there, the boost row's ring on
+ *                     the pickup; none of it is a step, so the funnel numbers never move: P8)
  *   events            flaskUsed, rollStarted, emberUsed
  *   buttons           the FIRE press edge (the objective card's Continue), like the draft's confirm
  *
@@ -30,15 +33,19 @@
 import { TUTORIAL } from "shared/config";
 import { tutorialRoom, type TutorialRoom } from "shared/run";
 import {
+	BOOST_COUNT,
 	BOW,
 	BOW_V_HEAVY_TICK,
 	Button,
 	ENDLESS_FIRST_DEPTH,
+	NO_BOOST,
 	NO_KIND,
 	SOLO_PLAYER,
 	ScoreSource,
 	archetypeAt,
 	atShrine,
+	boostTicksLeft,
+	dropsGround,
 	weaponIndex,
 	weaponsAt,
 	type ActorState,
@@ -48,6 +55,7 @@ import {
 	type SimState,
 } from "shared/sim";
 import {
+	TUTORIAL_BOOST_HIGHLIGHT,
 	TUTORIAL_CALLOUTS,
 	TUTORIAL_FOLLOW_PROMPT,
 	TUTORIAL_STEPS,
@@ -164,6 +172,30 @@ function bossOf(state: Readonly<SimState>): ActorState | undefined {
 	return undefined;
 }
 
+/** True while any boost runs on the (solo) player. */
+function boostRunning(state: Readonly<SimState>): boolean {
+	for (let k = 0; k < BOOST_COUNT; k++) if (boostTicksLeft(state, SOLO_PLAYER, k) > 0) return true;
+	return false;
+}
+
+/** The ground drop nearest the player (lowest slot on a tie), or undefined when none lies on the floor. */
+function nearestDrop(state: Readonly<SimState>): { x: number; z: number } | undefined {
+	const p = state.player;
+	let best: { x: number; z: number } | undefined;
+	let bestD = math.huge;
+	for (const g of dropsGround(state)) {
+		if (g.kind === NO_BOOST) continue;
+		const dx = g.x - p.x;
+		const dz = g.z - p.z;
+		const d = dx * dx + dz * dz;
+		if (d < bestD) {
+			bestD = d;
+			best = g;
+		}
+	}
+	return best;
+}
+
 export class TutorialDirector {
 	private readonly view: TutorialView;
 	private readonly progress: StepProgress[] = [];
@@ -180,6 +212,8 @@ export class TutorialDirector {
 	private lastHarmless = 0;
 	private highlightSeconds = 0;
 	private calloutHighlight: TutorialHighlight | undefined;
+	/** The boost row's pickup ring (TUTORIAL_BOOST_HIGHLIGHT) has been rung (once per tutorial). */
+	private boostRung = false;
 	private sig = "";
 
 	constructor() {
@@ -409,6 +443,8 @@ export class TutorialDirector {
 				const boss = bossOf(state);
 				return boss !== undefined && boss.phase >= t.phase;
 			}
+			case "boostDrop":
+				return nearestDrop(state) !== undefined || boostRunning(state);
 		}
 	}
 
@@ -426,6 +462,12 @@ export class TutorialDirector {
 				this.calloutHighlight = c.highlight;
 				this.highlightSeconds = TUTORIAL.calloutHighlightSeconds;
 			}
+		}
+		// The pickup: ring the boost row (after the callouts, so a drop taken on the frame it landed rings the row).
+		if (!this.boostRung && boostRunning(state)) {
+			this.boostRung = true;
+			this.calloutHighlight = TUTORIAL_BOOST_HIGHLIGHT;
+			this.highlightSeconds = TUTORIAL.calloutHighlightSeconds;
 		}
 		const harmless = state.tutorial?.harmlessHits ?? 0;
 		if (harmless > this.lastHarmless && this.lastHarmless < TUTORIAL.ghostHeartHits) v.ghostHeart = true;
@@ -479,8 +521,8 @@ export class TutorialDirector {
 			v.card = step.card;
 			let shown = current;
 			let prompt = step.prompt;
+			const here = step.card === undefined ? this.lessonHere(frame, floor, world) : -1;
 			if (step.card === undefined) {
-				const here = this.lessonHere(frame, floor, world);
 				if (here >= 0) {
 					shown = here;
 					prompt = TUTORIAL_STEPS[here].prompt;
@@ -494,6 +536,12 @@ export class TutorialDirector {
 				this.calloutHighlight ??
 				(prompt !== TUTORIAL_FOLLOW_PROMPT ? TUTORIAL_STEPS[shown].highlight : undefined);
 			v.marker = this.markerFor(current, frame, floor, world);
+			// A boost on the floor (docs/BOOSTS.md B9): the marker points at it before it fades, except mid-lesson (inside
+			// an entered, unfinished lesson room the fight keeps its own marker) and while the objective card is up.
+			if (step.card === undefined && here < 0) {
+				const drop = nearestDrop(frame.state);
+				if (drop !== undefined) v.marker = { kind: "drop", x: drop.x, z: drop.z };
+			}
 		}
 		const sig = `${v.stepIndex}|${v.promptStepIndex}|${v.prompt}|${v.card}|${v.highlight}|${v.marker?.kind}|${v.stepsDone}|${v.finished}`;
 		if (sig !== this.sig || v.callouts.size() > 0 || v.newFunnelSteps.size() > 0 || v.ghostHeart) {

@@ -22,6 +22,7 @@ import { runHashNames, writeRunHash } from "./progression/progression";
 import { partyHashNames, writePartyHash } from "./party";
 import { tutorialHashNames, writeTutorialHash } from "./tutorial/tutorial";
 import { breakablesHashNames, writeBreakablesHash } from "./breakables/breakables";
+import { dropsHashNames, writeDropsHash } from "./drops/drops";
 
 /** The fixtures' subsystem groups, in hash order. */
 export const HASH_SUBSYSTEMS = ["core", "combatHeader", "actors", "weapons", "enemyBullets", "playerBullets"] as const;
@@ -35,7 +36,9 @@ export type HashSubsystem = (typeof HASH_SUBSYSTEMS)[number];
  *   party    M4 co-op (players 1..n-1, their weapons, who left), when state.party exists
  *   tutorial first-run tutorial (harmless flag, harmless hits), when state.tutorial exists
  *   breakables  breakable barrels and crates (docs/DECOR.md D4: per piece kind, cell, hp, broken tick), when
- *            state.breakables exists; the LAST group
+ *            state.breakables exists
+ *   drops    boost drops (docs/BOOSTS.md: the drop stream, pity, ground slots, guards, boost timers, Aegis pips), when
+ *            state.drops exists; the LAST group
  */
 export const ENDLESS_HASH_SUBSYSTEM = "endless";
 export const SCORE_SUBSYSTEM = "score";
@@ -43,6 +46,7 @@ export const RUN_SUBSYSTEM = "run";
 export const PARTY_SUBSYSTEM = "party";
 export const TUTORIAL_SUBSYSTEM = "tutorial";
 export const BREAKABLES_SUBSYSTEM = "breakables";
+export const DROPS_SUBSYSTEM = "drops";
 /** Every group name a layout can have. */
 export type HashGroupName =
 	| HashSubsystem
@@ -51,7 +55,8 @@ export type HashGroupName =
 	| typeof RUN_SUBSYSTEM
 	| typeof PARTY_SUBSYSTEM
 	| typeof TUTORIAL_SUBSYSTEM
-	| typeof BREAKABLES_SUBSYSTEM;
+	| typeof BREAKABLES_SUBSYSTEM
+	| typeof DROPS_SUBSYSTEM;
 
 export interface HashGroup {
 	readonly name: HashGroupName;
@@ -155,6 +160,13 @@ export function hashLayout(state: Readonly<SimState>, withNames = false): HashLa
 		writeBreakablesHash(breakables, values);
 		if (withNames) breakablesHashNames(breakables, names);
 		close(BREAKABLES_SUBSYSTEM);
+	}
+
+	const drops = state.drops;
+	if (drops !== undefined) {
+		writeDropsHash(drops, values);
+		if (withNames) dropsHashNames(drops, names);
+		close(DROPS_SUBSYSTEM);
 	}
 
 	return { values, names, groups };

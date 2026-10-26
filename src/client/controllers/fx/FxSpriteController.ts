@@ -111,6 +111,11 @@ export class FxSpriteController implements OnStart {
 		this.mapper?.breakableSplinter(x, z);
 	}
 
+	/** A boost drop was picked up at sim (x, z) (BoostDropRenderController): fx.boost.collect, on the next frame. */
+	boostCollect(x: number, z: number): void {
+		this.mapper?.boostCollect(x, z);
+	}
+
 	private frame(rawDt: number): void {
 		const mapper = this.mapper;
 		const ctx = this.sim.getContext();

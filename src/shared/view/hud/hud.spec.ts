@@ -32,6 +32,8 @@ import {
 	VERDICT_KEYS,
 	bossFraction,
 	progressionStringKeys,
+	PROGRESSION_STRINGS,
+	toastFor,
 	comboFraction,
 	computeHudScale,
 	endingKey,
@@ -120,6 +122,23 @@ describe("HUD helpers", () => {
 		);
 		expect(SCORE_SOURCE_KEYS.size()).toBe(9); // ... breakables (docs/DECOR.md D4) appended last
 		expect(pack.str(HUD_STRINGS.combo, { combo: "1.3" })).toBe("x1.3");
+		expect(warnings).toEqual([]);
+	});
+
+	it("a boost pickup's toast is `{name}: {desc}` of its kind (docs/BOOSTS.md B7), its keys in the pack", () => {
+		const warnings: string[] = [];
+		const pack = quietPack(warnings);
+		const keys = progressionStringKeys();
+		for (const key of ["hud.toast.boost", "boost.fury.name", "boost.aegis.desc", "boost.frenzy.icon"]) {
+			expect([key, keys.includes(key)]).toEqual([key, true]);
+		}
+		expect(PROGRESSION_STRINGS.toastBoost).toBe("hud.toast.boost");
+		const t = toastFor("boost", 3);
+		expect(t).toEqual({ key: "hud.toast.boost", nameKey: "boost.aegis.name", descKey: "boost.aegis.desc" });
+		expect(pack.str(t.key, { name: pack.str(t.nameKey!), desc: pack.str(t.descKey!) })).toBe(
+			"Aegis: +1 armor pip for 15 s or one hit",
+		);
+		expect(toastFor("boost", 0).nameKey).toBe("boost.fury.name");
 		expect(warnings).toEqual([]);
 	});
 

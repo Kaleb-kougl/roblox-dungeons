@@ -14,6 +14,7 @@
 import { CAMERA_YAW_DEG } from "shared/config";
 import {
 	Button,
+	DEBUG_DROP_BUTTON,
 	DEBUG_FLOOR_BUTTON,
 	EMPTY_INPUT,
 	PORT_BUTTONS,
@@ -67,6 +68,7 @@ function compile(b: Bindings): CompiledBindings {
 	orInto(keyBits, FIXED_INPUTS.debugHit, Button.DEBUG_HIT); // debug: one normal hit on the player
 	orInto(keyBits, FIXED_INPUTS.debugBoss, Button.DEBUG_BOSS); // debug: 10% of max hp off an engaged boss
 	orInto(keyBits, FIXED_INPUTS.debugFloor, DEBUG_FLOOR_BUTTON); // debug (endless): end the floor now (Roblox port)
+	orInto(keyBits, FIXED_INPUTS.debugDrop, DEBUG_DROP_BUTTON); // debug (drops): the next boost kind ahead (Roblox port)
 	orInto(padBits, FIXED_INPUTS.padPause, Button.PAUSE);
 	for (const action of KBM_ACTIONS) {
 		const bit = ACTION_BUTTONS.get(action);
@@ -127,8 +129,8 @@ export const PAD_RESTART_KEY = DEFAULT_BINDINGS.pad.restart;
 
 /** Button bits that only exist for debugging: stripped unless debug keys are on (web DEBUG_BUTTONS). */
 export const DEBUG_BUTTONS = bit32.bor(Button.DEBUG_HIT, Button.DEBUG_BOSS);
-/** Every debug bit maskDebugButtons strips: DEBUG_BUTTONS plus the port's endless floor skip (N). */
-export const ALL_DEBUG_BUTTONS = bit32.bor(DEBUG_BUTTONS, DEBUG_FLOOR_BUTTON);
+/** Every debug bit maskDebugButtons strips: DEBUG_BUTTONS plus the port's endless floor skip (N) and boost drop (M). */
+export const ALL_DEBUG_BUTTONS = bit32.bor(DEBUG_BUTTONS, DEBUG_FLOOR_BUTTON, DEBUG_DROP_BUTTON);
 
 // ---------------------------------------------------------------------------------------------
 // Device snapshots
@@ -391,7 +393,13 @@ export function boundKeyNames(bindings: Bindings = DEFAULT_BINDINGS): ReadonlyAr
 		if (action === "leaderboard") continue;
 		for (const name of bindings.kbm[action]) if (!isMouseButtonName(name)) out.push(name);
 	}
-	out.push(FIXED_INPUTS.pause, FIXED_INPUTS.debugHit, FIXED_INPUTS.debugBoss, FIXED_INPUTS.debugFloor);
+	out.push(
+		FIXED_INPUTS.pause,
+		FIXED_INPUTS.debugHit,
+		FIXED_INPUTS.debugBoss,
+		FIXED_INPUTS.debugFloor,
+		FIXED_INPUTS.debugDrop,
+	);
 	for (const k of REPLAY_CHECK_KEYS) out.push(k);
 	return out;
 }

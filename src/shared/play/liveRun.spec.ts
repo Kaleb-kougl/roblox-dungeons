@@ -3,8 +3,11 @@
 import { describe, expect, it } from "@rbxts/jest-globals";
 import { DEFAULT_RUN_LIMITS, buildRunConfig, validateRun, type RunLimits } from "shared/run";
 import {
+	Boost,
 	Button,
+	DEBUG_DROP_BUTTON,
 	DEFAULT_SIM_CONFIG,
+	DROPS_CONFIG,
 	EMPTY_INPUT,
 	MAX_TICKS_PER_FRAME,
 	SIM_DT,
@@ -150,5 +153,26 @@ describe("LiveRun: sample once per frame, record per tick", () => {
 		expect(second.ticks()).toBe(0);
 		expect(second.state.player.x).toBe(setup.spawnX);
 		expect(hashState(second.state)).toBe(hashState(new LiveRun(setup).state));
+	});
+});
+
+describe("LiveRun: boost-drop events (docs/BOOSTS.md B6 / B7)", () => {
+	const config = { ...DEFAULT_SIM_CONFIG, drops: DROPS_CONFIG };
+	const setup: LiveRunSetup = { seed: 1, spawnX: 0, spawnZ: 0, config, atBossDoor: false };
+
+	it("collects every tick's drop events into the frame (reset per frame) and toasts the local player's pickup", () => {
+		const run = new LiveRun(setup);
+		run.frame(SIM_DT * 1.5, { ...EMPTY_INPUT, buttons: DEBUG_DROP_BUTTON });
+		expect([run.ticksThisFrame, run.boostEvents.dropped.size(), run.runEvents.size()]).toEqual([1, 1, 0]);
+		const g = run.state.drops!.ground[0];
+		const p = run.state.player;
+		p.x = g.x;
+		p.z = g.z;
+		run.frame(SIM_DT * 3.5, EMPTY_INPUT); // several ticks: the pickup is on the first
+		expect(run.ticksThisFrame > 1).toBe(true);
+		expect([run.boostEvents.dropped.size(), run.boostEvents.collected.size()]).toEqual([0, 1]);
+		expect(run.runEvents).toEqual([{ kind: "boost", index: Boost.FURY }]);
+		run.frame(SIM_DT * 1.5, EMPTY_INPUT);
+		expect([run.boostEvents.count(), run.runEvents.size()]).toEqual([0, 0]);
 	});
 });

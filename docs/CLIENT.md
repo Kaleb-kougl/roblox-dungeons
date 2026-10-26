@@ -23,6 +23,8 @@ rebinding, audio, display). Everything presentation-side reads the sim and never
 | `WeaponViewController` | `.../render/WeaponViewController.ts` | Sword swing fans + sweeping blade, finisher wind-up, guard fan, bow charge ring + aim line, heavy-arrow release ring (dashed floor markings). |
 | `RunMarkerController` | `.../render/RunMarkerController.ts` | M2 (endless runs): a relic pedestal (Cylinder, `uiAccent`) on each TREASURE room's centre tile and the curse shrine's zone (flat disc, `uiMana`) in the SHRINE room; a taken pedestal / used shrine dims (`uiTextDim`). Rebuilt per floor. With the `ui.marker.pedestal` image, a camera-facing beam stands on each live pedestal (hidden once taken). |
 | `BreakableRenderController` | `.../render/BreakableRenderController.ts` | Endless runs: barrels and crates from `state.breakables` (placeholder box, sprite set or image), hit blink + shake, chips, the splinter sprite effect and debris on break. See "Breakables". |
+| `BoostDropRenderController` | `.../render/BoostDropRenderController.ts` | Runs with drops (docs/BOOSTS.md B6): one pooled view per ground slot under `KV_Drops` (placeholder Diamond gem in the kind's `boost.<kind>` role, a sprite set's `idle`, or an upright image billboard), bob, landing pop, fade blink; the pickup burst (`fx.boost.collect` or particles) and the fade's poof from the run view's `boostEvents`. See "Boost drops". |
+| `BoostAuraController` | `.../render/BoostAuraController.ts` | Runs with drops: a flat tinted disc per running boost under every party member (`KV_BoostAuras`), concentric, under `BOOST_VIEW.auraMaxHeightTiles`, pulsing by motionScale. See "Boost drops". |
 | `DecorController` | `.../render/DecorController.ts` | Room decoration (docs/DECOR.md R4, R10): per floor the decor plan (`planDecor` + `decorScene`, `KV_DecorBand` forces a band), drawn from the pack's `decor.*` art (pooled upright billboards on wall tops and faces, flat SurfaceGuis on the floor), tall pieces fading when a player or the boss is behind them, and the `DecorDirector` updated once per frame. See "Room decoration". |
 | `DecorFxController` | `.../render/DecorFxController.ts` | Ambient life (docs/DECOR.md R9): flame loops and glows on lit torches / braziers, the 6-light pool, the fixed boss / shrine room lights, the flat boss ring and stairwell zone, the pedestal glint, the biome's ambient particle volume (a flipbook when its texture has one). See "Room decoration". |
 | `TutorialMarkerController` | `.../render/TutorialMarkerController.ts` | Tutorial runs only: one upright beam (a Neon Cylinder in `uiAccent`; plus a camera-facing `ui.marker.tutorial` billboard if the pack has that image) on the director's marker target (next lesson door, pedestal, shrine, stairwell, the live boss), bobbing / breathing by the juice `motionScale` (still under reduced motion), hidden without a target and once the tutorial ended. Built per tutorial run (Janitor). |
@@ -33,8 +35,8 @@ rebinding, audio, display). Everything presentation-side reads the sim and never
 | `HealthBarController` | `.../fx/HealthBarController.ts` | Enemy health bars: one pooled BillboardGui per actor slot (64), plate / chip / fill or pips, elite outline. |
 | `DamageNumberController` | `.../fx/DamageNumberController.ts` | Damage numbers: 48 pooled BillboardGuis, merge window, heavy / capped colours, "CAP" tag, rise + fade. |
 | `ScorePopController` | `.../fx/ScorePopController.ts` | Scored runs (M2): a rising, fading `+points` BillboardGui per kill (`LiveRun.scorePops`, pooled `ScorePopPool`). |
-| `ParticleController` | `.../fx/ParticleController.ts` | Death bursts, boss waves, roar sparks, hit sparks: pooled 1-3 px Parts, one BulkMoveTo per frame, particle budget. |
-| `FxSpriteController` | `.../fx/FxSpriteController.ts` | Sprite effects (docs/FX_AUDIO.md F3 / F4): the pure `FxCueMapper` turns each frame's FX events, summed sim events and state into one-shot cues (hit marks, swing trails, the guard shield, roll dust, flask, Ember ring, boss phase / slam / death, relic, shrine, death puffs, breakable splinters) and the stairwell loop; pooled floor-flat SurfaceGuis (or billboards) flip through the theme's `fx.*` flipbooks on the hitstop clock, budgeted by the particle level. Builds nothing without `fx.*` art (today). See "Sprite effects". |
+| `ParticleController` | `.../fx/ParticleController.ts` | Death bursts, boss waves, roar sparks, hit sparks, breakable chips, boost pickup / fade bursts: pooled 1-3 px Parts, one BulkMoveTo per frame, particle budget. |
+| `FxSpriteController` | `.../fx/FxSpriteController.ts` | Sprite effects (docs/FX_AUDIO.md F3 / F4): the pure `FxCueMapper` turns each frame's FX events, summed sim events and state into one-shot cues (hit marks, swing trails, the guard shield, roll dust, flask, Ember ring, boss phase / slam / death, relic, shrine, death puffs, breakable splinters, boost pickups) and the stairwell loop; pooled floor-flat SurfaceGuis (or billboards) flip through the theme's `fx.*` flipbooks on the hitstop clock, budgeted by the particle level. Builds nothing without `fx.*` art (today). See "Sprite effects". |
 | `AudioController` | `.../audio/AudioController.ts` | Theme sounds for sim events, music and ambience through the `sfx` / `music` SoundGroups (all silent today): per-frame cue mapping with a priority cap and one jingle per frame, co-op split, variants and pitch jitter, music ducking, the ambience bed, menu / lobby / tutorial music, preload, menu sounds; the player's volumes scale the groups. See "Audio". |
 | `SettingsController` | `.../ui/SettingsController.ts` | The player's settings (juice, controls, audio, display): server sync (request / update / reset / settingsChanged), the system Reduce Motion flag, `KV_ResetBindings`, O toggles the Options screen, B closes a prompt on it or the screen, the screen pauses the run. |
 | `RebindController` | `.../ui/RebindController.ts` | The Options screen's rebinding: capture (countdown, cancel, owns the input), swap prompt, refusal notes, Clear, Reset device, the input test strip. |
@@ -45,7 +47,8 @@ rebinding, audio, display). Everything presentation-side reads the sim and never
 Pure, headlessly tested logic: `src/shared/play/` (input mapping, live loop, HUD snapshot), `src/shared/view/`
 (iso camera, studs <-> sim units, aim ray, greedy tile merge, marking geometry, dash layout, presentation tunables),
 `src/shared/view/fx/` (hit tracker, juice rules, hitstop clock, freeze rules, bar layout / state, damage number pool,
-particle system), `src/shared/view/audio/` (event -> sound mapping, music choice) and `src/shared/view/hud/` (font
+particle system), `src/shared/view/audio/` (event -> sound mapping, music choice), `src/shared/view/boosts/` (boost
+drops: the frame's drop events, slot diff, bob / pop / blink, aura discs, HUD entries) and `src/shared/view/hud/` (font
 token, layout sizes, UIScale rule, HUD helpers, every HUD string key).
 
 ## Sprites replace placeholders (docs/ART.md S4)
@@ -131,6 +134,33 @@ endless floors' barrels and crates. Pure logic and tunables: `src/shared/view/br
 - **Sniper aim line:** `TelegraphController` cuts it where it first enters an intact piece's cell
   (`clipToSolidCells` over `solidCells(state)`), where its bullet will stop; sight is not blocked (B2).
 
+## Boost drops (docs/BOOSTS.md B6 / B7)
+
+Runs with `SimConfig.drops` (none set it until B4 / B9; `KV_Debug` + M drops one anywhere drops are on). Pure half in
+`src/shared/view/boosts/` (tunables `BOOST_VIEW`), headless spec `boosts.spec.ts`; nothing here writes the sim.
+
+- **Events:** the sim's `DropsEvents` are per tick and cleared every tick, so `LiveRun` / `LockstepClient` collect
+  them after every tick into `boostEvents` (`BoostFrameEvents`: `dropped` with kind and position, `collected`,
+  `expired`, `ended`, `aegisBroke`), reset at the start of every frame, like `frameEvents`. `collectRunEvents` adds
+  the local player's pickups to `runEvents` (`kind: "boost"`), which SimController turns into toasts
+  (`toastFor("boost", kind)`: `hud.toast.boost` with `{name}` / `{desc}` from `boost.<kind>.name` / `.desc`).
+- **Drops** (`BoostDropRenderController`, render step `KV_Drops` at Camera + 2, folder `KV_Drops`): `DropSlotTracker`
+  diffs the ground slots (kind + landing tick) every frame; a new drop gets a pooled body per kind: the placeholder
+  gem (the new `Diamond` case of `buildPlaceholder`, placeholders.ts: a cube stood on a corner, as wide and tall as the
+  smaller of the visual's width and height), a sprite set's `idle`, or an upright image billboard, art capped at
+  `BOOST_VIEW.maxHeightTiles` (5/8 tile). Each frame from state: bob (`dropBobStuds`, x motionScale), the landing pop
+  (`dropPopScale`, placeholder and image paths), the fade blink in the last 2 s of `ticksLeft`
+  (`boostBlinkTransparency`; steady dim under reduced motion). Pickups: `fx.boost.collect` when the pack has it
+  (FxSpriteController), else `ParticleController.boostBurst` in the kind's colour; a fade: a small poof.
+- **Aura** (`BoostAuraController`, `KV_BoostAuras`): per party member, one Neon disc per running boost in its colour,
+  the first running kind innermost and on top (`auraDisc`), the stack under `auraMaxHeightTiles` (0.1 tile, under the
+  bullets' plane), transparency pulsing by motionScale. The optional `fx.boost.aura.<kind>` effects are not drawn yet
+  (no pack has them).
+- **HUD:** `BoostRow` in the StatusPanel (above the floor line) and the Aegis pip in the armor row; see the HUD table.
+  The tutorial's ring: GameHud passes `boostsHighlight={isBoostsHighlight(highlight)}` (shared/view/boosts, id
+  `BOOST_VIEW.hudHighlight` = `"boosts"`), so the tutorial only has to emit that highlight id.
+- **Audio:** the cue table under "Audio" (`AudioCueMapper.frame(..., boostEvents)`).
+
 ## Room decoration (docs/DECOR.md R4, R9, R10)
 
 Pure logic in `src/shared/view/decor/` (specs next to it): the plan (`decorPlan.ts`, R3 / R6 / R8), the floor's scene
@@ -215,7 +245,7 @@ BindToRenderStep priorities (`shared/view` `RENDER_ORDER`):
 3. **Camera + 1 (201) `KV_GameCamera`**: follows the interpolated player (+ the freeze-frame nudge).
 4. **Camera + 2 (202)** `KV_Bullets`, `KV_Actors`, `KV_Weapons`, `KV_Telegraphs`, `KV_HealthBars`,
    `KV_DamageNumbers`, `KV_Particles`, `KV_FxSprites` (FxSpriteController: the cue mapper, then the pooled effects),
-   `KV_Breakables`, `KV_Decor` (DecorController: the DecorDirector update, then
+   `KV_Breakables`, `KV_Drops`, `KV_BoostAuras`, `KV_Decor` (DecorController: the DecorDirector update, then
    the pieces and fades; `DECOR_RENDER_ORDER.decorAfterCamera`): read `getState()` / `getAlpha()`, move pooled Parts /
    BillboardGuis. They never write the sim.
    **Camera + 3 (203) `KV_DecorFx`** (DecorFxController, `DECOR_RENDER_ORDER.decorFxAfterDecor`): flames, the light
@@ -244,6 +274,7 @@ Mouse aim uses the previous frame's camera (the web build does the same).
 | Debug: 10 % off an engaged boss | J (KV_Debug only) | | J |
 | Debug: replay check | F8 or **L** (KV_Debug only) | | F8 |
 | Debug (endless): end the floor now | **N** (KV_Debug only; `DEBUG_FLOOR_BUTTON`, a port bit) | | (none) |
+| Debug (runs with drops): drop the next boost kind (Fury, Quickstep, Frenzy, Aegis, ...) 1.5 tiles ahead | **M** (KV_Debug only; `DEBUG_DROP_BUTTON`, a port bit) | | (none) |
 | Leaderboard panel | **B** (B again, pad B or Close closes it) | pause overlay -> Leaderboards; B closes | (none) |
 | Boon draft (M2): pick a card | A / D (screen left / right; neither = centre card) | left stick left / right | (none) |
 | Boon draft: take the card | Left click (after 0.5 s) | RT | (none) |
@@ -265,7 +296,7 @@ Rebinding (task L4b; pure half in `shared/play/bindings.ts`, lists in `shared/pl
 flask, swap, skills 1-4 (skill 1 is also the shrine accept), restart and the leaderboard key (keyboard only); a
 keyboard slot also takes MouseButton1-3, a pad action one button (a trigger keeps its analog threshold wherever bound).
 Fixed: pause (P / Start), settings (O; pad B closes panels), aim, the pad's sticks, UI navigation and the debug keys.
-Refused: Escape, Tab, Slash, F9, F11 and every fixed key. `rebind` swaps with the action that held the input, so no
+Refused: Escape, Tab, Slash, F9, F11 and every fixed key (P, O, K, J, N, M, F8, L). `rebind` swaps with the action that held the input, so no
 input is ever bound twice on a device and every action keeps a primary; the stored form is `ControlsOverrides` (the
 actions that differ), cleaned by `sanitizeControlsOverrides`. The sim only sees the resulting bits: a rebound layout
 pressed the same way gives the same InputFrame (`bindings.spec.ts`). The client half (Options > Controls, stored in
@@ -301,13 +332,14 @@ player's bound key for the last-used device (`selectBindings` + shared/play `swa
 
 | Where | Component | Shows |
 | --- | --- | --- |
-| top left | `StatusPanel` | `HP` + one heart per 2 half hearts (full / half / empty, `uiHealth`), armor pips (diamonds, `uiMana`), `Flask` pips (`uiAccent`), `Ember` pips (diamonds, `ember`) |
+| top left | `StatusPanel` | `HP` + one heart per 2 half hearts (full / half / empty, `uiHealth`), armor pips (diamonds, `uiMana`) and, with a running Aegis, its pip after them (a diamond in `boost.aegis`), `Flask` pips (`uiAccent`), `Ember` pips (diamonds, `ember`) |
+| top left (drops) | `StatusPanel` / `BoostRow` | docs/BOOSTS.md B7: one entry per running boost of the shown player (snapshot `boosts`, Boost order): an icon square in `boost.<kind>` with its `boost.<kind>.icon` label and a bar beside it draining with `fraction` (the snapshot's tenths); both blink in the last `BOOST_VIEW.blinkSeconds` (2 s; a steady dim under reduced motion); the tutorial's highlight ring when its highlight is `boosts` |
 | bottom left | `WeaponPanel` | both weapon sets (number + `<weapon id>.name`), the set in hand opaque with a `uiAccent` ring; `E swap` / `Y swap` by `game.inputDevice` |
 | top left (endless) | `StatusPanel` | a `Floor N · Depth D` line under the pips (snapshot `floor` / `depth`, 0 outside endless runs) |
 | top right | `ScorePanel` | scored runs (every endless run; M1 with `KV_Scoring`): the score, `x1.3` combo and its decay meter (snapshot `comboWindowTicks`: `COMBO_WINDOW_TICKS` or what boons / curses make of it) |
 | top left (endless) | `StatusPanel` / `RunItems` | M2 (co-op: the local player's): a row of icons for the owned boons (rarity colour: `rarity.normal` / `rarity.rare` / `rarity.unique`), relics (`uiAccent`) and curses (`uiHealth`), each labelled with its `<id>.icon` string |
 | centre (endless) | `DraftOverlay` | M2 boon draft: `Choose a boon`, up to 3 cards (`<id>.name` in the rarity colour, `boon.rarity.<r>`, `<id>.desc`), the card under the stick highlighted (`uiAccent` ring, scaled up; the snapshot is taken every frame while the draft is open), the device's hint (`A / D to choose · Click to take`) once a confirm counts. Co-op: the LOCAL player's offers and selection, plus `Waiting for N teammate(s) to choose` (`hud.draft.waiting`) while others still choose (alone once this player confirmed) |
-| top centre (endless) | `ToastPanel` | M2: `Boon: <name>` / `Relic found: <name>` / `Cursed: <name>` / `Second Wind!` / Vampire Fang heals for 3 s (store `game.toasts`, from the run view's `runEvents`: the local player's own events, solo or co-op), and the `1: accept a curse` hint while the player stands in an unused shrine's zone |
+| top centre (endless) | `ToastPanel` | M2: `Boon: <name>` / `Relic found: <name>` / `Cursed: <name>` / `Second Wind!` / Vampire Fang heals / a boost pickup (`hud.toast.boost`: `Fury: +50% damage for 10 s`, the local player's only) for 3 s (store `game.toasts`, from the run view's `runEvents`: the local player's own events, solo or co-op), and the `1: accept a curse` hint while the player stands in an unused shrine's zone |
 | top centre | `BossBar` | while a boss is engaged: `<boss id>.name`, `Phase I / II / III`, an hp bar (`boss` role) with notches at the phase marks (66 % / 33 %, from the archetype's `phaseHp`) |
 | centre | `RunOverPanel` | after a death / victory: `Run over` / `Victory`, `You died — press R to retry` / `Mother Bramble defeated — press R to play again` (R, or A with a pad: the selection starts on Again) + `or <other key>`, time, hits taken, kills; in scored runs the score, best combo and the points per source (kills, grazes, guard, rooms, perfect, fast, floors, boss); then **Again** (solo) and **Main menu**, or **Back to lobby** while in a lobby. A party run: `The party is down — press R to return` (or `The server ended the run (<reason>) — press R to return` once the server rejected it, also before the wipe), Back to lobby only. Endless runs have no victory: only death ends them. |
 | centre (menu) | `PauseOverlay` | solo, while paused and playing: dimmed scene, `Paused`, Resume / Restart / Leave run / Options / Leaderboards, `P to resume` / `Start to resume`. Co-op (the pause key; the run goes on, no dimming): `Party run`, Resume / Leave run / Options / Leaderboards, `P to close · the run does not pause`. Leave run shows the confirm first (`Leaving ends your run. It counts as a death and your score is submitted.`, Leave / Cancel; Cancel selected with a pad). In a tutorial run: Resume / Restart tutorial / Skip tutorial / Options; Skip asks `Skip the tutorial?` (Skip / Keep playing; Keep playing selected with a pad). Buttons: `shared/view/menu` `pauseItems(coop, tutorial)` |
@@ -322,7 +354,10 @@ The snapshot (`shared/play` `GameSnapshot`) gained `bossPhaseMarks`, `kills`, `h
 run ended on, for the post-run time), and for M2 progression `comboWindowTicks`, `draftOpen` / `draftOffers` /
 `draftSelected` / `draftReady`, `boons` / `relics` / `curses` and `atShrine` (SnapshotExtras.config). Co-op
 (SnapshotExtras.playerIndex = the client's `localIndex`): hearts, weapons, the draft, the run items and the shrine hint
-are the local player's, `draftWaiting` counts teammates still choosing, and `comboWindowTicks` is the team's.
+are the local player's, `draftWaiting` counts teammates still choosing, and `comboWindowTicks` is the team's. Boost
+drops (docs/BOOSTS.md B7) added `boosts` (`{ kind, secondsLeft, fraction }` per running boost, seconds rounded up to
+tenths and the fraction in the same steps, so the row changes at most 10 times a second) and `aegisPips`, read for
+`playerIndex` (they move to the vitals index once docs/SPECTATE.md S2 adds `SnapshotExtras.vitalsIndex`).
 
 ## Juice (`src/shared/view/fx/` logic, `src/client/controllers/fx/` drawing)
 
@@ -471,6 +506,10 @@ master and group volume, live), each Sound at the manifest's per-ID volume x the
 | FX `bossDefeated` | `sfx.boss.death` * | |
 | `breakablesBroken` | `sfx.breakable.break` | 0.05 s |
 | `breakableHits` > `breakablesBroken` (hits that did not break) | `sfx.breakable.hit` | 0.06 s |
+| a boost drop landed (`boostEvents.dropped`) | `sfx.boost.drop` * | 0.1 s |
+| a boost picked up (`boostEvents.collected`; a teammate's quiet) | `sfx.boost.collect` * | 0.05 s |
+| the local player's boost ran out (`boostEvents.ended`) | `sfx.boost.expire` * | |
+| an Aegis pip absorbed a hit (`boostEvents.aegisBroke`; a teammate's quiet) | `sfx.boost.aegisbreak` * | |
 | menu buttons | `sfx.ui.confirm` (resume, restart, reset) / `sfx.ui.click` (options, settings, close) / `sfx.ui.back` * (back, cancel) | |
 | gamepad focus move | `sfx.ui.move` * | 0.08 s |
 | music | `music.menu`, `music.lobby`, `music.biome.<1..5>`, `music.tutorial`, `music.boss`, none after a death | cross-fade |
@@ -559,7 +598,7 @@ is open, and only one of the Options screen / leaderboard panel is open at a tim
 | Attribute | Type | Effect |
 |---|---|---|
 | `KV_Seed` | number | Run seed (default 1337). Changing it and pressing R rebuilds the floor. Set: the run is unranked (the server picks ranked seeds). |
-| `KV_Debug` | boolean | K / J / F8 / L and the debug HUD line. Off by default. |
+| `KV_Debug` | boolean | K / J / N / M / F8 / L and the debug HUD line. Off by default. |
 | `KV_SpawnBoss` | boolean | With KV_Debug: start outside the boss room's door. The server rejects such runs unless `KV_AllowDebugRuns`. |
 | `KV_Stress` | number | The web build's `?stress=N`: rings keep ~N enemy bullets alive. Stress runs are never submitted. |
 | `KV_World` | string | `endless` (default: shared/config `PLAY_MODE`), `game` (the M1 run), `dungeonNoEncounter`, `greybox`. Set: the run is unranked. Pair with the server's `KV_RunValidationWorld` (Studio). |
@@ -908,6 +947,26 @@ With the actors merged the default `game` world has enemies; without them see "f
   sits behind the body and follows every facing and frame, it goes at death, comes back on pooled reuse; the player
   has none. Compare the sprite rim's width with the Highlight's on PC and the phone emulator (tune `widthPx`).
 - **Readability:** the rim never reads as an enemy bullet or a telegraph; write down fps and texture memory.
+
+### Boost drops (docs/BOOSTS.md B6 / B7; not run in Studio yet)
+
+Needs a run with `SimConfig.drops` (endless after B4; before that, set `drops: DROPS_CONFIG` on the endless config
+locally) and `KV_Debug` = true.
+
+- **Each kind:** M drops Fury, M again Quickstep, then Frenzy, Aegis (cycling), 1.5 tiles ahead of the facing: a small
+  gem in gold / aqua / lime / lavender pops in, bobs, sits under `KV_Drops`. Visible on every biome floor (N through
+  floors 1-20 and drop one on each), never hiding a bullet or an enemy behind it.
+- **Fade:** leave one: it blinks for its last 2 s and vanishes at 10 s with a small poof. Options > Juice > Reduced
+  motion On: no bob, no pop, a steady dim instead of the blink (HUD row too).
+- **Pickup:** walk over it: a burst in its colour, the toast `Fury: +50% damage for 10 s`, a coloured disc under the
+  player, the boost row's icon + bar appear and drain; under 2 s it blinks; at 0 the disc and entry go. Pick up two
+  kinds: two concentric discs, two entries. Pick the same kind again mid-way: its bar resets to full.
+- **Aegis:** pick it up: a lavender diamond after the armor pips; K (one hit): the pip goes (no heart or armor lost),
+  the aura and entry go.
+- **Readability:** in a bullet storm (`KV_Stress`), the discs never cover a bullet; fps unchanged with 4 drops and
+  4 boosts.
+- **Co-op (2 players):** player A picks a drop: B sees the burst and A's disc; only A gets the toast and the row.
+- **Debug key gating:** without `KV_Debug`, M does nothing; Options > Controls refuses M for any action.
 
 ### Tutorial (docs/TUTORIAL.md "Studio smoke test")
 

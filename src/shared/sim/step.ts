@@ -21,6 +21,8 @@ import { hasLeftBit, markPlayerLeft, partySize, playerAt, weaponsAt, type PartyC
 import { FORFEIT_BUTTON } from "./partyData";
 import type { TutorialSimConfig } from "./tutorial/tutorial";
 import { clearBreakableEvents, type BreakablesConfig } from "./breakables/breakables";
+import { clearDropsEvents, stepDrops, type DropsConfig } from "./drops/drops";
+import { boostsOnPlayerDied } from "./drops/boostMods";
 import type { SolidCells } from "shared/dungeon";
 
 export { PLAYER_RADIUS, PLAYER_SPEED } from "./playerData";
@@ -135,9 +137,16 @@ export interface SimConfig {
 	 * slam radius); the pieces come from each endless floor's world (EndlessFloorWorld.breakables), or from
 	 * `breakables.pieces` without endless mode. Absent: no breakables state, nothing extra hashed, every mover and
 	 * blocker takes its grid-only path (every fixture, M1, the tutorial). Present: state.breakables is created and
-	 * hashed as the "breakables" subsystem, appended after every other group.
+	 * hashed as the "breakables" subsystem, appended after every other group but "drops".
 	 */
 	breakables?: BreakablesConfig;
+	/**
+	 * Boost drops (docs/BOOSTS.md, drops/drops.ts): kills sometimes drop a boost pickup (Fury, Quickstep, Frenzy,
+	 * Aegis) from their own rng stream; walking over one boosts that player for a few seconds. Absent: no drops state,
+	 * every boost read neutral, nothing extra hashed (every fixture, M1). Present: state.drops is created, stepped
+	 * (stepDrops) and hashed as the "drops" subsystem, appended after every other group.
+	 */
+	drops?: DropsConfig;
 }
 
 /** Matches the 16x16 greybox room: inner wall faces at +/-7.75, minus the 0.4 player half-width (rounded). */
@@ -162,14 +171,16 @@ const partyPrev: number[] = [];
  * Advances `state` by exactly one tick of SIM_DT, in place. Solo runs only (a party state needs stepParty).
  *
  * Tick order (fixed; part of the determinism contract):
- *   1. clear per-tick events (and the score's, the breakables'); then FORFEIT_BUTTON ("Leave run") -> forfeitSoloRun:
+ *   1. clear per-tick events (and the score's, the breakables', the drops'); then FORFEIT_BUTTON ("Leave run") -> forfeitSoloRun:
  *      the player dies at this tick
  *   2. stepPlayer  (movement, facing, roll, hearts, flask, Ember)
  *   3. stepCombat   (Ember clear, actors act, the player's weapons, bullets step, hits, contact damage)
  *   4. stepEndless  (endless mode only: Depth, floor clear points + stairwell / next floor, deferred room spawns)
  *   5. stepRun      (endless mode only: a new floor opens the boon draft; Warding, relic pedestals, the curse shrine)
- *   6. stepScore    (only with config.scoring: hit cuts, combo timer, rooms; kills / grazes / guard score inside 3)
- *   7. tick += 1
+ *   6. stepDrops    (only with config.drops: floor clear, debug drops, boost timers, ground life, pickups; kills
+ *                    drop inside 3)
+ *   7. stepScore    (only with config.scoring: hit cuts, combo timer, rooms; kills / grazes / guard score inside 3)
+ *   8. tick += 1
  * While a boon draft is open (endless mode, progression/progression.ts) the world is frozen: after the event clears
  * only stepDraft runs (the stick selects, a FIRE press confirms), then tick += 1 (a forfeit on such a tick closes the
  * draft without a pick and the tick stays frozen, like a co-op leaver's).
@@ -189,6 +200,8 @@ export function step(
 	const score = state.score;
 	if (score !== undefined) clearScoreEvents(score);
 	if (state.breakables !== undefined) clearBreakableEvents(state.breakables);
+	const drops = state.drops;
+	if (drops !== undefined) clearDropsEvents(drops);
 	const run = state.run;
 	// Read before the forfeit, which closes an open draft: that tick stays a frozen draft tick.
 	const frozen = run !== undefined && isDraftOpen(state);
@@ -205,6 +218,7 @@ export function step(
 	stepCombat(state, input, world);
 	if (state.endless !== undefined) stepEndless(state, soloInputs, config, soloPrev);
 	if (run !== undefined) stepRun(state, soloInputs, config, soloPrev);
+	if (drops !== undefined) stepDrops(state, soloInputs, soloPrev);
 	if (score !== undefined) stepScore(state);
 	state.tick += 1;
 }
@@ -223,6 +237,7 @@ export function forfeitSoloRun(state: SimState): boolean {
 	if (p.dead !== 0) return false;
 	killPlayerState(p);
 	state.events.playerDied = 1;
+	boostsOnPlayerDied(state, SOLO_PLAYER);
 	const me = state.run?.players[SOLO_PLAYER];
 	if (me !== undefined && me.draftOpen !== 0) closeDraft(me);
 	return true;
@@ -239,8 +254,9 @@ export function forfeitSoloRun(state: SimState): boolean {
  *   4. stepCombat (actors target the nearest living player; each player's weapons; hits on any player)
  *   5. stepEndless (every living player in the stairwell; any player's debug skip; revive the dead on a new floor)
  *   6. stepRun (endless: a new floor opens every present player's draft; Warding, pedestals, the shrine per player)
- *   7. stepScore
- *   8. tick += 1
+ *   7. stepDrops (drops: per slot the first living player in reach takes it; timers per player)
+ *   8. stepScore
+ *   9. tick += 1
  * A solo state (no party) is stepped exactly as step(state, inputs[0], config) would.
  */
 export function stepParty(
@@ -260,6 +276,8 @@ export function stepParty(
 	const score = state.score;
 	if (score !== undefined) clearScoreEvents(score);
 	if (state.breakables !== undefined) clearBreakableEvents(state.breakables);
+	const drops = state.drops;
+	if (drops !== undefined) clearDropsEvents(drops);
 	for (let i = 0; i < n; i++) if (hasLeftBit(inputs[i].buttons)) markPlayerLeft(state, i);
 	const run = state.run;
 	if (run !== undefined) {
@@ -274,6 +292,7 @@ export function stepParty(
 	stepCombat(state, inputs[0], world, inputs);
 	if (state.endless !== undefined) stepEndless(state, inputs, config, partyPrev);
 	if (run !== undefined) stepRun(state, inputs, config, partyPrev);
+	if (drops !== undefined) stepDrops(state, inputs, partyPrev);
 	if (score !== undefined) stepScore(state);
 	state.tick += 1;
 }

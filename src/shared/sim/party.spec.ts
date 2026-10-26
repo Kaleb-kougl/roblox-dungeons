@@ -375,10 +375,11 @@ describe("party recordings", () => {
 	});
 
 	it("binary codec: the leave bit is the solo forfeit bit too; unknown bits and stream shapes are checked", () => {
-		// L6a: a solo stream may carry it (FORFEIT_BUTTON, the same bit); a bit nobody defines still throws.
+		// L6a: a solo stream may carry it (FORFEIT_BUTTON, the same bit); a bit nobody defines still throws (x 2 is
+		// DEBUG_DROP_BUTTON, docs/BOOSTS.md; x 4 is free).
 		const solo: Recording = { seed: 1, spawn: { x: 0, z: 0 }, frames: [frame(0, 0, PARTY_LEFT_BUTTON)] };
 		expect(() => encodeRecording(solo)).never.toThrow();
-		const unknown: Recording = { seed: 1, spawn: { x: 0, z: 0 }, frames: [frame(0, 0, PARTY_LEFT_BUTTON * 2)] };
+		const unknown: Recording = { seed: 1, spawn: { x: 0, z: 0 }, frames: [frame(0, 0, PARTY_LEFT_BUTTON * 4)] };
 		expect(() => encodeRecording(unknown)).toThrow();
 		const uneven: Recording = { seed: 1, spawn: { x: 0, z: 0 }, frames: [EMPTY_INPUT], others: [[]] };
 		expect(() => encodeRecording(uneven)).toThrow();

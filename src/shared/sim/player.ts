@@ -42,7 +42,8 @@ import {
 import type { PlayerState, SimState } from "./state";
 import type { SimConfig } from "./step";
 import { weaponMoveMultiplier } from "./combat/weapons/weapons";
-import { SOLO_PLAYER, rollIframeTicks, runOnPlayerHit, runSecondWind } from "./progression/runMods";
+import { SOLO_PLAYER, rollIframeTicks, runOnPlayerHit, runSecondWind, scalePercent } from "./progression/runMods";
+import { absorbWithAegis, boostWalkPercent, boostsOnPlayerDied } from "./drops/boostMods";
 import type { WeaponsState } from "./combat/weapons/types";
 import { tutorialStartHalfHearts } from "./tutorial/tutorial";
 
@@ -209,7 +210,10 @@ export function stepPlayer(
 		movePlayer(state, p.rollDirX * dist, p.rollDirZ * dist, config, p);
 	} else {
 		// E1.8: the weapon in hand may slow walking (e.g. a bow while charging); 1 otherwise.
-		const walk = (p.flaskTicks > 0 ? WALK_STEP * FLASK_MOVE_MULTIPLIER : WALK_STEP) * weaponMoveMultiplier(weapons);
+		const base = (p.flaskTicks > 0 ? WALK_STEP * FLASK_MOVE_MULTIPLIER : WALK_STEP) * weaponMoveMultiplier(weapons);
+		// Quickstep (docs/BOOSTS.md): x 130 % (exactly `base` without it); movePlayer splits a longer walk tick into
+		// equal sub-steps of at most MAX_MOVE_STEP.
+		const walk = scalePercent(base, boostWalkPercent(state, playerIndex));
 		movePlayer(state, mx * walk, mz * walk, config, p);
 	}
 
@@ -244,11 +248,12 @@ export function isPlayerInvulnerable(state: Readonly<SimState>, p: Readonly<Play
  *
  * Ignored (returns false, changes nothing) while dead, during dodge i-frames (roll, Ember), during post-hit
  * invulnerability, or for a non-positive / NaN amount. Otherwise the hit lands (returns true):
- *  - one armor pip absorbs the whole hit if any are left, else `halfHearts` come off hearts (floored at 0),
+ *  - an Aegis pip (boost drops, docs/BOOSTS.md), else one armor pip absorbs the whole hit if any are left, else
+ *    `halfHearts` come off hearts (floored at 0),
  *  - events.playerHits += 1,
  *  - post-hit invulnerability starts (HURT_INVULN_TICKS),
- *  - at 0 hearts the player dies: dead = 1, roll/flask/i-frames end, events.playerDied = 1 (M2 Second Wind, endless
- *    runs: once per floor the player keeps SECOND_WIND_HALF_HEARTS instead),
+ *  - at 0 hearts the player dies: dead = 1, roll/flask/i-frames end, events.playerDied = 1, their boosts end (M2
+ *    Second Wind, endless runs: once per floor the player keeps SECOND_WIND_HALF_HEARTS instead),
  *  - M2 Hourglass (endless runs): the landed hit starts the enemy bullet slow.
  * Tutorial harmless mode (SimConfig.tutorial.harmless, tutorial/tutorial.ts): a landed hit still counts in
  * events.playerHits, starts the post-hit invulnerability and runs the on-hit hooks (Hourglass; the score's combo cut
@@ -275,8 +280,11 @@ export function damagePlayer(
 		return true;
 	}
 
-	if (p.armor > 0) p.armor--;
-	else p.hearts = jsMax(0, p.hearts - halfHearts);
+	// Aegis (docs/BOOSTS.md): its pip absorbs the whole hit before armor and hearts.
+	if (!absorbWithAegis(state, playerIndex)) {
+		if (p.armor > 0) p.armor--;
+		else p.hearts = jsMax(0, p.hearts - halfHearts);
+	}
 	state.events.playerHits += 1;
 	p.hurtTicks = HURT_INVULN_TICKS;
 	runOnPlayerHit(state, playerIndex);
@@ -289,6 +297,7 @@ export function damagePlayer(
 		}
 		killPlayerState(p);
 		state.events.playerDied = 1;
+		boostsOnPlayerDied(state, playerIndex);
 	}
 	return true;
 }

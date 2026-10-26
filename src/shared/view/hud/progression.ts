@@ -4,7 +4,7 @@
  * and helpers, checked headlessly (hud.spec.ts: every key exists in the placeholder pack).
  */
 import { BOONS, CURSES, RARITY_NAMES, RELICS } from "shared/sim";
-import type { ColorRole } from "shared/theme";
+import { BOOST_KINDS, BOOST_STRING_FIELDS, BOOST_TOAST_KEY, boostStringKey, type ColorRole } from "shared/theme";
 
 /** Fixed HUD strings of the draft, the toasts, the shrine hint and the owned-items panel. */
 export const PROGRESSION_STRINGS = {
@@ -19,6 +19,8 @@ export const PROGRESSION_STRINGS = {
 	toastCurse: "hud.toast.curse",
 	toastSecondWind: "hud.toast.secondWind",
 	toastFang: "hud.toast.fang",
+	/** A boost pickup (docs/BOOSTS.md B7): `{name}: {desc}` of the kind (theme BOOST_TOAST_KEY). */
+	toastBoost: BOOST_TOAST_KEY,
 } as const;
 
 /** Theme string keys of a boon / relic / curse id ("boon.sharpened"): its name, one-line effect, short icon label. */
@@ -45,6 +47,8 @@ export function progressionStringKeys(): string[] {
 	for (const defs of [BOONS, RELICS, CURSES] as ReadonlyArray<ReadonlyArray<{ readonly id: string }>>) {
 		for (const d of defs) out.push(itemNameKey(d.id), itemDescKey(d.id), itemIconKey(d.id));
 	}
+	// Boost drops (docs/BOOSTS.md B7): every kind's name / desc / icon (the toast and the HUD's boost row).
+	for (const k of BOOST_KINDS) for (const f of BOOST_STRING_FIELDS) out.push(boostStringKey(k, f));
 	return out;
 }
 
@@ -95,16 +99,29 @@ export const PROGRESSION_VIEW = {
 	pedestalBeamHeightTiles: 3,
 } as const;
 
-/** A toast line: its string key and vars (the client looks the names up in the theme). */
+/** A toast line: its string key and vars (the client looks the names / descriptions up in the theme). */
 export interface ToastSpec {
 	readonly key: string;
 	readonly nameKey?: string;
+	/** `{desc}`: a theme string key itself (boost pickups). */
+	readonly descKey?: string;
 	readonly amount?: number;
 }
 
-/** What a run event shows as a toast (kinds: shared/play RunEventKind; for "fang" `index` is the half hearts healed). */
-export function toastFor(kind: "boon" | "relic" | "curse" | "secondWind" | "fang", index: number): ToastSpec {
+/**
+ * What a run event shows as a toast (kinds: shared/play RunEventKind; for "fang" `index` is the half hearts healed,
+ * for "boost" the Boost index).
+ */
+export function toastFor(kind: "boon" | "relic" | "curse" | "secondWind" | "fang" | "boost", index: number): ToastSpec {
 	switch (kind) {
+		case "boost": {
+			const k = BOOST_KINDS[index] ?? BOOST_KINDS[0];
+			return {
+				key: PROGRESSION_STRINGS.toastBoost,
+				nameKey: boostStringKey(k, "name"),
+				descKey: boostStringKey(k, "desc"),
+			};
+		}
 		case "boon":
 			return { key: PROGRESSION_STRINGS.toastBoon, nameKey: itemNameKey(BOONS[index]?.id ?? "") };
 		case "relic":

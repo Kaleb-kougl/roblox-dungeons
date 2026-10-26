@@ -65,6 +65,7 @@ up even if the player wanders off. A world marker (beam or arrow) always points 
 | 9 | Treasure | pedestal (existing M2 logic) | "Relics are permanent for the run. Walk onto the pedestal." | Pedestal taken |
 | 10 | Shrine | curse shrine | "Curses make the run harder and your **score multiplier** bigger. **1** / A to accept, or walk away." | Accepted, or left the zone after seeing it |
 | 11 | (any time, first kill) | | Callout on ScorePanel: "Kills, grazes and guard cancels score. Chain them for combo." | Shown once |
+| (B) | Combat B, its last kill | the guaranteed Fury (docs/BOOSTS.md B9) | Callout: "Enemies sometimes drop a boost. Walk over it before it fades." The marker points at the drop while it lies there; the pickup rings the boost row. Not a funnel step (BOOSTS.md P8) | Shown once |
 | 12 | Boss room (stairwell, open) | none | "The **stairwell** takes you down. Every floor is more dangerous than the last." (shown on the way there; marker on the stairwell. Depth only grows per boss kill, so the plan's "raises the Depth" was dropped) | Floor changes |
 
 Then the real **boon draft** opens. Prompt: "Pick a boon: **A / D** / stick, then click / RT." It is done when a boon
@@ -124,7 +125,10 @@ export interface TutorialState { harmlessHits: number } // hashed as the appende
 registerRunWorld("tutorial", (_seed, o) => buildTutorialRunConfig(o.partySize)); // seed ignored; party > 1 throws
 ```
 
-- `config = { endless: { runSeed: TUTORIAL.runSeed, worldForFloor }, scoring: ENDLESS_SCORING, tutorial: { harmless: true, startHalfHearts: TUTORIAL.startHalfHearts, bossHpPercent: TUTORIAL.bossHpPercent } }`.
+- `config = { endless: { runSeed: TUTORIAL.runSeed, worldForFloor }, scoring: ENDLESS_SCORING, tutorial: { harmless: true, startHalfHearts: TUTORIAL.startHalfHearts, bossHpPercent: TUTORIAL.bossHpPercent }, drops: TUTORIAL_DROPS_CONFIG }`.
+  Drops (docs/BOOSTS.md B9): `TUTORIAL_DROPS_CONFIG` = `guaranteedDropsConfig([{ floor: 1, room: TUTORIAL_BOOST_ROOM,
+  kind: TUTORIAL_BOOST_KIND }])`: the last of combat B's three swarmers (room id 2, `TUTORIAL_BOOST_LESSON`) always
+  drops a Fury; no random drops, no pity. The lock spec pins it; nothing else in the world changed.
   The setup is an `EndlessRunSetup` (it hands out `endlessFloor(floor)` like an endless run, so the client renders it
   the same way). Tunables: `TUTORIAL` in `shared/config/tutorial.ts` (`runSeed`, `floor1` / `floor2` Forge seed + room
   count, `lastFloor = 2`, `startHalfHearts`, `moveTiles`, `clusterSpacingTiles`).
@@ -247,8 +251,16 @@ registerRunWorld("tutorial", (_seed, o) => buildTutorialRunConfig(o.partySize));
 
   Callouts (`TUTORIAL_CALLOUTS`, one-shot toasts `tutorial.callout.<id>`, not funnel steps): `score` on the first kill
   (rings the score panel for `TUTORIAL.calloutHighlightSeconds`; this is lesson 11), `harmlessHit` on the first harmless
-  hit (rings the hearts), `graze` on the first graze, `bossPhase2` / `bossPhase3`. The first `TUTORIAL.ghostHeartHits`
-  (3) harmless hits set `ghostHeart`.
+  hit (rings the hearts), `graze` on the first graze, `bossPhase2` / `bossPhase3`, `boost` when combat B's guaranteed
+  Fury lands (trigger `boostDrop`: a drop on the floor, or a boost already running when it was taken on its landing
+  frame; docs/BOOSTS.md B9). The first `TUTORIAL.ghostHeartHits` (3) harmless hits set `ghostHeart`.
+- Boosts (docs/BOOSTS.md B9, all outside the step list so the funnel numbers never move, P8): while a boost drop lies
+  on the floor the marker becomes `{ kind: "drop", x, z }` (the drop nearest the player), except inside an entered,
+  unfinished lesson room (a fight in progress keeps its own marker: none inside the room) and under the objective card;
+  in the tour it lands as combat B clears, so the player is between lessons and the marker leads to it before combat
+  C's door. The first frame a boost runs on the player (the pickup) rings `TUTORIAL_BOOST_HIGHLIGHT` = `boosts` (the
+  HUD's boost row) for `TUTORIAL.calloutHighlightSeconds`; no toast of the tutorial's own (the HUD's `hud.toast.boost`
+  names the boost). The marker controller only reads x / z, so the client needed no change for `drop`.
 - `director.ts` `TutorialDirector`: `new TutorialDirector()`, then `update({ state, config, events, buttons, dt })`
   once per rendered frame (state read only, `LiveRun.frameEvents`, the frame's raw InputFrame buttons, real dt) ->
   `TutorialView` (reused object: `active`, `finished`, `stepIndex` / `stepCount` / `stepId`, `promptStepIndex`,
@@ -272,8 +284,11 @@ registerRunWorld("tutorial", (_seed, o) => buildTutorialRunConfig(o.partySize));
 - Bot: `shared/run/testing` `playTutorial(options)` plays the world through `LiveRun` and the director (in tour order,
   or `order` / `flaskAfter` for an out-of-order run; `bossDebugEvery` presses J, unused by the spec). It walks straight
   only along a clear line in the same room (three parallel lines of sight a player radius apart), else the tile-grid
-  BFS field (round solid pillars, through corridors), and shoots the bow only with a line of sight. Bot time (on
-  `tutorial-linear`): **69.8 s** of sim (4187 ticks; was 151 s): floor 1 ~45 s on the chain, the Mother Bramble fight
+  BFS field (round solid pillars, through corridors), and shoots the bow only with a line of sight. After combat A / B
+  it walks over any boost drop lying on the floor (docs/BOOSTS.md B9: it takes combat B's Fury 6 ticks after it lands;
+  with Fury the sniper lesson is shorter). Bot time with boosts: **70.8 s** (4246 ticks; 71.4 s / 4283 ticks before
+  B9 on the same build), out of order 78.2 s (78.0 s). Bot time (on `tutorial-linear`): **69.8 s** of sim (4187 ticks;
+  was 151 s): floor 1 ~45 s on the chain, the Mother Bramble fight
   **21.3 s** from engage to death at 20 % hp (was ~100 s); the out-of-order run (combat C before B, walking through B)
   76.4 s. It records the boss milestones (engage, each phase with the HUD bar's fill, death), and the director spec
   asserts the fight is <= 30 s with phases II and III. A human reads prompts and fights at well under full uptime, so

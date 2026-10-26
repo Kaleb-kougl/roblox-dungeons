@@ -10,7 +10,7 @@ import { TileType, pathField, worldToGrid, type Dungeon, type WorldXZ } from "sh
 import { TUTORIAL_ROOMS, type TutorialLessonId } from "shared/run";
 import { dismissDraft, distanceField, frame, playTutorial, walkDir, type TutorialBotResult } from "shared/run/testing";
 import { LiveRun } from "shared/play";
-import { buildTutorialRunConfig, tutorialRoom } from "shared/run";
+import { TUTORIAL_BOOST_KIND, TUTORIAL_BOOST_LESSON, buildTutorialRunConfig, tutorialRoom } from "shared/run";
 import {
 	BOSS_ACT1_ID,
 	Button,
@@ -19,15 +19,20 @@ import {
 	SIM_DT,
 	SIM_HZ,
 	ScoreSource,
+	NO_BOOST,
 	archetypeAt,
 	archetypeIndex,
+	boostTicks,
+	dropsGround,
 	type BossAct1Data,
 	type InputFrame,
 } from "shared/sim";
 import { PLACEHOLDER_MANIFEST, ThemePack } from "shared/theme";
 import {
 	MAX_TUTORIAL_STEP_ID_CHARS,
+	TUTORIAL_BOOST_HIGHLIGHT,
 	TUTORIAL_CALLOUTS,
+	TUTORIAL_HIGHLIGHTS,
 	TUTORIAL_DEVICES,
 	TUTORIAL_STEPS,
 	TUTORIAL_STEP_COUNT,
@@ -105,6 +110,34 @@ function describeRun(name: string, r: TutorialBotResult): void {
 				.join(",")}`,
 	);
 	for (const line of r.log) print(`  ${line}`);
+	print(
+		`  boost: ${r.dropsLanded} landed (first @${r.dropLandedTick}), ${r.dropsTaken} taken (first @${r.boostTakenTick}), drop marker ${r.dropMarkerFrames} frames ` +
+			`(${r.dropMarkerOnDrop} on the drop); markers ${r.markerKinds.join(",")}; highlights ${r.highlights.join(
+				",",
+			)}`,
+	);
+}
+
+const BOOST_CALLOUT_KEY = "tutorial.callout.boost";
+
+/** Opens a harness past the objective card (step `move` current, no lesson room entered). */
+function pastTheCard(): ReturnType<typeof harness> {
+	const h = harness();
+	h.step(0);
+	for (let i = 0; i < math.ceil(TUTORIAL.objectiveCardMinSeconds * SIM_HZ); i++) h.step(0);
+	h.step(Button.FIRE);
+	h.step(0);
+	return h;
+}
+
+/** Test-only surgery: a Fury lying in ground slot 0 at (x, z), as if a kill had dropped it this tick. */
+function lay(h: ReturnType<typeof harness>, x: number, z: number): void {
+	const g = h.run.state.drops!.ground[0];
+	g.kind = TUTORIAL_BOOST_KIND;
+	g.x = x;
+	g.z = z;
+	g.spawnTick = h.run.state.tick;
+	g.ticksLeft = h.run.state.drops!.config.groundTicks;
 }
 
 let inOrder: TutorialBotResult | undefined;
@@ -177,6 +210,11 @@ describe("tutorial steps and strings", () => {
 			expect(pack.str(tutorialPromptKey(s, "touch"))).toBe(pack.str(tutorialPromptKey(s, "keyboard")));
 		}
 		for (const c of TUTORIAL_CALLOUTS) expect(pack.hasString(c.key)).toBe(true);
+		// docs/BOOSTS.md B9 (P8): the boost lesson is a callout and a ring, not a step.
+		expect(TUTORIAL_CALLOUTS.map((c) => c.key).includes(BOOST_CALLOUT_KEY)).toBe(true);
+		expect(TUTORIAL_STEPS.some((st) => st.id === "boost" || st.prompt === "boost")).toBe(false);
+		expect(TUTORIAL_HIGHLIGHTS.includes(TUTORIAL_BOOST_HIGHLIGHT)).toBe(true);
+		expect(TUTORIAL_BOOST_HIGHLIGHT).toBe("boosts");
 		expect(tutorialPromptKey("move", "gamepad")).toBe("tutorial.prompt.move.gamepad");
 		// Prompts name keys through templates (the bound keys: shared/view/hud tutorialPromptVars, tutorialHud.spec).
 		expect(pack.str(tutorialPromptKey("move", "keyboard"), { move: "WASD" })).toBe("Move: WASD");
@@ -275,6 +313,63 @@ describe("tutorial director", () => {
 		expect(v.funnelStepReached).toBe(1);
 	});
 
+	it("a boost on the floor: the callout once, the marker on it (not mid-lesson), the boost row rung on the pickup", () => {
+		const h = pastTheCard();
+		let v = h.director.getView();
+		expect(v.stepId).toBe("move");
+		const p = h.run.state.player;
+		// Far enough from the player that it is not taken: the callout fires, the marker points at the drop.
+		const [dx, dz] = [p.x + 3, p.z];
+		lay(h, dx, dz);
+		v = h.step(0);
+		expect([...v.callouts]).toEqual([BOOST_CALLOUT_KEY]);
+		expect(v.marker).toEqual({ kind: "drop", x: dx, z: dz });
+		expect([...v.newFunnelSteps]).toEqual([]);
+		expect(v.highlight).toBe(undefined); // the landing rings nothing (no boost yet)
+		const revision = v.revision;
+		v = h.step(0);
+		expect([...v.callouts]).toEqual([]); // once
+		expect(v.marker?.kind).toBe("drop");
+		expect(v.revision).toBe(revision);
+		// Mid-lesson (combat A entered, its dummies standing): the fight keeps its own marker (none inside the room).
+		const a = tutorialRoom("combatA");
+		p.x = a.center.x;
+		p.z = a.center.z;
+		p.prevX = p.x;
+		p.prevZ = p.z;
+		v = h.step(0);
+		expect(h.run.state.endless!.roomsEntered[a.roomId]).toBe(1);
+		expect(v.done[tutorialStepIndex("attack")]).toBe(false);
+		expect(dropsGround(h.run.state)[0].kind).toBe(TUTORIAL_BOOST_KIND);
+		expect(v.marker).toBe(undefined);
+		// Walk onto it (test-only: the drop moves under the player): taken, the boost row rings, no second callout.
+		lay(h, p.x, p.z);
+		v = h.step(0);
+		expect(dropsGround(h.run.state)[0].kind).toBe(NO_BOOST);
+		expect(h.run.state.drops!.players[0].ticks[TUTORIAL_BOOST_KIND]).toBe(boostTicks(TUTORIAL_BOOST_KIND));
+		expect([...v.callouts]).toEqual([]);
+		expect(v.highlight).toBe(TUTORIAL_BOOST_HIGHLIGHT);
+		expect(v.marker).toBe(undefined);
+		for (let i = 0; i < math.ceil(TUTORIAL.calloutHighlightSeconds * SIM_HZ) + 1; i++) v = h.step(0);
+		expect(v.highlight === TUTORIAL_BOOST_HIGHLIGHT).toBe(false);
+		// A second drop later: no second callout, no second ring.
+		lay(h, p.x + 3, p.z);
+		v = h.step(0);
+		expect([...v.callouts]).toEqual([]);
+		expect(v.funnelStepReached).toBe(tutorialStepIndex("move") + 1);
+	});
+
+	it("a boost taken on the frame it lands still fires the callout, and rings the boost row", () => {
+		const h = pastTheCard();
+		const p = h.run.state.player;
+		lay(h, p.x, p.z);
+		const v = h.step(0);
+		expect(dropsGround(h.run.state)[0].kind).toBe(NO_BOOST);
+		expect([...v.callouts]).toEqual([BOOST_CALLOUT_KEY]);
+		expect(v.highlight).toBe(TUTORIAL_BOOST_HIGHLIGHT);
+		expect(v.marker?.kind === "drop").toBe(false);
+	});
+
 	it("is deterministic: the same frames give the same views", () => {
 		const a = harness();
 		const b = harness();
@@ -331,6 +426,7 @@ describe("tutorial bot", () => {
 			expect([key, r.callouts.includes(key)]).toEqual([key, true]);
 		}
 		expect(new Set(r.callouts).size()).toBe(r.callouts.size());
+		expect(r.callouts.filter((c) => c === BOOST_CALLOUT_KEY).size()).toBe(1);
 		// Every step's own prompt was shown at some point, but `finish`: the bot melees Mother Bramble on the arena
 		// centre, so the stairwell that opens there under it on her death takes it down on that same tick.
 		for (const s of TUTORIAL_STEPS) {
@@ -359,6 +455,25 @@ describe("tutorial bot", () => {
 			expect(math.abs(r.bossPhaseFill[k + 2] - boss.phaseHp[k]) < 0.01).toBe(true);
 		}
 		expect(r.callouts.includes("tutorial.callout.bossPhase3")).toBe(true);
+	});
+
+	it("combat B's last swarmer drops the Fury: the callout on that tick, the marker on it, the bot takes it", () => {
+		const r = inOrderRun();
+		const hits = r.stepDoneTicks[tutorialStepIndex("hits")];
+		expect(TUTORIAL_BOOST_LESSON).toBe("combatB");
+		// The guarantee: the kill that clears combat B (the `hits` lesson) drops it, and nothing else ever drops.
+		expect(r.dropLandedTick).toBe(hits);
+		expect(r.calloutTicks[r.callouts.indexOf(BOOST_CALLOUT_KEY)]).toBe(hits);
+		expect(r.boostTakenTick >= r.dropLandedTick).toBe(true);
+		expect(r.boostTakenTick - r.dropLandedTick < r.run.state.drops!.config.groundTicks).toBe(true);
+		expect([r.dropsLanded, r.dropsTaken]).toEqual([1, 1]);
+		// The marker pointed at the drop while it lay there (unless it was taken on its landing tick).
+		if (r.boostTakenTick > r.dropLandedTick) {
+			expect(r.markerKinds.includes("drop")).toBe(true);
+			expect(r.dropMarkerFrames > 0).toBe(true);
+		}
+		expect(r.dropMarkerOnDrop).toBe(r.dropMarkerFrames);
+		expect(r.highlights.includes(TUTORIAL_BOOST_HIGHLIGHT)).toBe(true);
 	});
 
 	it("a later lesson room visited first still completes (out of order)", () => {

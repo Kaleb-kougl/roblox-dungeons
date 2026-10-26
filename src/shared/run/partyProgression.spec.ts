@@ -6,6 +6,7 @@
 import { describe, expect, it } from "@rbxts/jest-globals";
 import {
 	BREAKABLES_SUBSYSTEM,
+	DROPS_SUBSYSTEM,
 	ENDLESS_HASH_SUBSYSTEM,
 	HASH_SUBSYSTEMS,
 	PARTY_SUBSYSTEM,
@@ -209,7 +210,7 @@ describe("a 2-player endless run with per-player progression", () => {
 		for (let i = 0; i < N; i++) expect(runMods(live, i)).toEqual(computeRunMods(rp[i]));
 	});
 
-	it("hashes run (two players) after score, then party, then breakables last", () => {
+	it("hashes run (two players) after score, then party, breakables, then drops last", () => {
 		const layout = hashLayout(live, true);
 		const names = layout.groups.map((g) => g.name);
 		expect(names).toEqual([
@@ -219,9 +220,14 @@ describe("a 2-player endless run with per-player progression", () => {
 			RUN_SUBSYSTEM,
 			PARTY_SUBSYSTEM,
 			BREAKABLES_SUBSYSTEM,
+			DROPS_SUBSYSTEM,
 		]);
 		const runGroup = layout.groups[names.indexOf(RUN_SUBSYSTEM)];
 		expect([layout.names[runGroup.start], layout.values[runGroup.start]]).toEqual(["run.players.length", N]);
+		// One boost entry per party member (docs/BOOSTS.md: co-op drops are per picker).
+		const dropsGroup = layout.groups[names.indexOf(DROPS_SUBSYSTEM)];
+		const at = layout.names.indexOf("drops.players.length", dropsGroup.start);
+		expect([layout.names[at], layout.values[at]]).toEqual(["drops.players.length", N]);
 	});
 
 	it("replays twice to the live hash and score", () => {

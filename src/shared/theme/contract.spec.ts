@@ -132,16 +132,17 @@ describe("sprite contract", () => {
 });
 
 describe("required IDs and strings", () => {
-	it("has the web build's roster (plus the port's enemy.dummy and breakables), every ID unique and in a slot", () => {
+	it("has the web build's roster (plus the port's dummy, breakables and boosts), every ID unique and in a slot", () => {
 		// 5 classes + 6 enemies (+ the port's dummy) + 5 bosses + 6 bullets + 12 items + 6 ui + 20 audio events
-		// (+ the port's 2 breakables and their 2 audio events, 20 port audio events and 5 ambience beds).
-		expect(REQUIRED_ASSET_IDS.size()).toBe(60 + 1 + 2 + 2 + 20 + 5);
+		// (+ the port's 2 breakables and their 2 audio events, 24 port audio events, 5 ambience beds and 4 boost drops).
+		expect(REQUIRED_ASSET_IDS.size()).toBe(60 + 1 + 2 + 2 + 24 + 5 + 4);
 		expect(AUDIO_EVENTS.size()).toBe(20);
 		expect(new Set(REQUIRED_ASSET_IDS).size()).toBe(REQUIRED_ASSET_IDS.size());
 		for (const id of REQUIRED_ASSET_IDS) {
 			expect([id, slotFor(id) !== undefined]).toEqual([id, true]);
 		}
-		expect(REQUIRED_STRING_KEYS.size()).toBe(41 + 1 + 2); // + enemy.dummy.name, breakable.<kind>.name
+		// + enemy.dummy.name, breakable.<kind>.name, boost.<kind>.name / .desc / .icon and hud.toast.boost
+		expect(REQUIRED_STRING_KEYS.size()).toBe(41 + 1 + 2 + 4 * 3 + 1);
 		expect(new Set(REQUIRED_STRING_KEYS).size()).toBe(REQUIRED_STRING_KEYS.size());
 		expect(BIOMES.map((b) => b.forgeTheme)).toEqual(["ancient", "molten", "frost", "grim", "verdant"]);
 	});

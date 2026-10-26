@@ -1,6 +1,7 @@
 import React from "@rbxts/react";
 import { useSelector } from "@rbxts/react-reflex";
 import { selectGameActive, selectGhostHeart, selectTutorialHighlight } from "client/store";
+import { isBoostsHighlight } from "shared/view/boosts";
 import { HUD_VIEW } from "shared/view/hud";
 import { PAUSE_BUTTON_VIEW } from "shared/view/menu";
 import { BossBar } from "./BossBar";
@@ -25,7 +26,7 @@ import { WeaponPanel } from "./WeaponPanel";
 /**
  * The game HUD (task 8 part B; replaces part A's minimal text HUD), three ScreenGuis under PlayerGui:
  *
- *   KV_GameHud    StatusPanel (top left: hearts, armor, flask, Embers), WeaponPanel (bottom left: weapon sets + SWAP
+ *   KV_GameHud    StatusPanel (top left: hearts, armor + Aegis pips, flask, Embers, the boost row), WeaponPanel (bottom left: weapon sets + SWAP
  *                 hint), BossBar (top centre), ScorePanel (top right, scored runs: score + combo meter),
  *                 RunOverPanel (centre: death / victory + stats, the score breakdown in scored runs), InfoPanel
  *                 (bottom right: info, verdict, debug line), ToastPanel (top centre: M2 progression toasts and the
@@ -67,6 +68,7 @@ export function GameHud() {
 							key="Status"
 							highlight={highlight === "flask" || highlight === "hearts" ? highlight : undefined}
 							ghostHeart={ghostHeart}
+							boostsHighlight={isBoostsHighlight(highlight)}
 						/>
 						<WeaponPanel key="Weapons" highlight={highlight === "weapons"} />
 						<BossBar key="Boss" highlight={highlight === "bossBar"} />

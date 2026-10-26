@@ -29,6 +29,7 @@ import {
 	type WeaponSlotState,
 } from "shared/sim";
 import { AMBIENCE_IDS, AUDIO_EVENTS, PLACEHOLDER_MANIFEST, ThemePack, slotFor } from "shared/theme";
+import { BoostFrameEvents } from "../boosts";
 import { FxEventBuffer, type FxEventType } from "../fx/events";
 import {
 	ALL_SFX,
@@ -291,6 +292,66 @@ describe("audio: sim events -> sound IDs", () => {
 		expect(m.watch.hurtEdge[0]).toBe(false);
 		m.frame(1, noEvents(), NO_FX, b, 0, new AudioCueList());
 		expect([m.watch.hurtEdge[0], m.watch.rollEdge[0], m.watch.swingEdge[0]]).toEqual([false, false, 0]);
+	});
+});
+
+describe("audio: boost drops (docs/BOOSTS.md B7)", () => {
+	/** One mapper frame with `b` as the frame's boost events: [id, volume] pairs. */
+	function boostCues(m: AudioCueMapper, now: number, s: SimState, b: BoostFrameEvents, me = 0) {
+		const out = m.frame(now, noEvents(), NO_FX, s, me, new AudioCueList(), b);
+		const list: Array<[string, number]> = [];
+		for (let i = 0; i < out.size(); i++) list.push([out.id(i), out.volume(i)]);
+		return list;
+	}
+
+	it("solo: a landing, a pickup, the boost running out and an Aegis break each play their sound", () => {
+		const s = solo();
+		const b = new BoostFrameEvents();
+		b.dropped.push({ slot: 0, kind: 0, x: 1, z: 2 }, { slot: 1, kind: 2, x: 3, z: 4 });
+		expect(boostCues(new AudioCueMapper(), 0, s, b)).toEqual([[SFX.boostDrop, 1]]);
+		b.reset();
+		b.collected.push({ player: 0, kind: 1, slot: 0, x: 1, z: 2 });
+		b.ended.push({ player: 0, kind: 3 });
+		b.aegisBroke.push(0);
+		expect(boostCues(new AudioCueMapper(), 0, s, b)).toEqual([
+			[SFX.boostCollect, 1],
+			[SFX.boostAegisBreak, 1],
+			[SFX.boostExpire, 1],
+		]);
+		// no events (the default): nothing
+		expect(ids(new AudioCueMapper(), 0, noEvents(), NO_FX, s)).toEqual([]);
+	});
+
+	it("co-op: a teammate's pickup and Aegis break are quiet; only the local player's boost running out plays", () => {
+		const s = party(2);
+		const m = primed(s, 0);
+		const b = new BoostFrameEvents();
+		b.collected.push({ player: 1, kind: 0, slot: 0, x: 1, z: 2 });
+		b.aegisBroke.push(1);
+		b.ended.push({ player: 1, kind: 0 });
+		expect(boostCues(m, 1, s, b)).toEqual([
+			[SFX.boostCollect, AUDIO_VIEW.teammateVolume],
+			[SFX.boostAegisBreak, AUDIO_VIEW.teammateVolume],
+		]);
+		// as player 1 the same frame is loud, and the end is theirs
+		expect(boostCues(primed(s, 1), 1, s, b, 1)).toEqual([
+			[SFX.boostCollect, 1],
+			[SFX.boostAegisBreak, 1],
+			[SFX.boostExpire, 1],
+		]);
+	});
+
+	it("the boost IDs are the theme's port audio events (lowercase aegisbreak), ranked, in ALL_SFX and PORT_SFX", () => {
+		const ids4 = [SFX.boostDrop, SFX.boostCollect, SFX.boostExpire, SFX.boostAegisBreak];
+		expect(ids4).toEqual(["sfx.boost.drop", "sfx.boost.collect", "sfx.boost.expire", "sfx.boost.aegisbreak"]);
+		for (const id of ids4) {
+			expect([id, ALL_SFX.includes(id), PORT_SFX.includes(id), SFX_PRIORITY[id] > 0]).toEqual([
+				id,
+				true,
+				true,
+				true,
+			]);
+		}
 	});
 });
 
