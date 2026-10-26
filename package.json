@@ -24,7 +24,8 @@
 		"check:assets": "node scripts/check-asset-ids.js",
 		"art:build": "node scripts/art/build-atlases.js",
 		"art:lock": "node scripts/art/build-atlases.js --lock",
-		"verify": "npm run typecheck && npm run lint && npm run check:assets && npm run build && npm run test:only",
+		"test:art": "node --test \"scripts/art/*.test.js\"",
+		"verify": "npm run typecheck && npm run lint && npm run check:assets && npm run test:art && npm run build && npm run test:only",
 		"build:place": "npm run build && node -e \"require('fs').mkdirSync('build',{recursive:true})\" && rojo build publish.project.json -o build/kaleb-vale.rbxl"
 	},
 	"keywords": [],

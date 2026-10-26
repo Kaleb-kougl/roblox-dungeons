@@ -7,9 +7,11 @@
  *   art/vendor/**           (gitignored)          the raw packs (art/README.md says where to get them)
  *
  *   -> art/build/<sheet>.png             atlases and images to upload (<= 1024 px a side)
+ *   -> art/build/<sheet>-outline.png     outline sheets, for sets with `outline` (same size and cell grid as <sheet>)
  *   -> art/build/contact/<id>.png        contact sheets: every animation x facing x frame on mid-grey, read back
  *                                        from the built atlases through the layout's cell formula; a white arrow
- *                                        in the margin shows each row's facing, a red cross the pivot
+ *                                        in the margin shows each row's facing, a red cross the pivot; sets with an
+ *                                        outline draw it in OUTLINE_PREVIEW_RGB under each frame
  *   -> src/shared/theme/packs/vale/layout.ts   generated (committed): frame sizes, pivots, cells, sheets by file name
  *
  * Every sprite set has one cell size and one pivot (SpriteSetAsset): each frame of the set is cropped to the union
@@ -18,12 +20,19 @@
  * output is alpha-bled: transparent pixels take the colour of the nearest opaque ones (alpha unchanged), so Roblox's
  * bilinear filter does not pull a white or black halo in from under the transparent pixels.
  *
+ * Outline sheets (set `outline: { widthPx }`, enemy contrast rim): per cell (never across a cell edge), the body mask
+ * (the pivot's: alpha > pivot.bodyAlpha and max(R, G, B) > pivot.bodyMinRgb, so the baked black shadow is left out)
+ * dilated by a disc of radius widthPx (dx * dx + dy * dy <= widthPx * widthPx); white, alpha = 255 - the sprite's
+ * alpha inside the dilated mask, 0 outside. Drawn under the sprite and tinted, it composites to a rim that does not
+ * light the anti-aliased bones from behind. Every pixel is white, so it needs no bleed. The set's pad must be at
+ * least widthPx + 1, so the rim is never clipped and keeps a transparent border for the bilinear filter.
+ *
  * Deterministic: same inputs -> byte-identical outputs (sorted iteration, integer maths on pixels, fixed deflate
  * options, no timestamps). Stale files in art/build are removed.
  *
  * Usage: node scripts/art/build-atlases.js          build (refuses if a source is missing or differs from the lock)
  *        node scripts/art/build-atlases.js --lock   rewrite art/vendor.lock.json from the files on disk
- * Plain Node plus pngjs.
+ * Plain Node plus pngjs. The pure helpers are exported for scripts/art/build-atlases.test.js (npm run test:art).
  */
 "use strict";
 
@@ -52,6 +61,10 @@ const CONTACT_GUTTER = 4;
 const CONTACT_MARGIN = 48;
 const CONTACT_SEPARATOR = 8;
 const PRINT_WIDTH = 120;
+/** Outline sheets: allowed widthPx, and the role-like red the contact sheets preview the rim in (#ff3b30). */
+const OUTLINE_MIN_WIDTH = 1;
+const OUTLINE_MAX_WIDTH = 4;
+const OUTLINE_PREVIEW_RGB = [0xff, 0x3b, 0x30];
 
 function fail(message) {
 	console.error(`art:build: ${message}`);
@@ -209,6 +222,89 @@ function encodePng(img) {
 }
 
 // ---------------------------------------------------------------------------------------------
+// Outline sheets
+
+/** The set's outline config ({ widthPx }), or null when it has none. Throws on a bad config or a pad too small for it. */
+function outlineConfig(id, set) {
+	const o = set.outline;
+	if (o === undefined) return null;
+	if (o === null || typeof o !== "object" || Array.isArray(o)) throw new Error(`${id}: outline must be an object { widthPx }`);
+	for (const k of Object.keys(o)) if (k !== "widthPx" && !k.startsWith("$")) throw new Error(`${id}: outline.${k}: unknown key (allowed: widthPx)`);
+	const r = o.widthPx;
+	if (!Number.isInteger(r) || r < OUTLINE_MIN_WIDTH || r > OUTLINE_MAX_WIDTH) {
+		throw new Error(`${id}: outline.widthPx must be an integer in [${OUTLINE_MIN_WIDTH}, ${OUTLINE_MAX_WIDTH}], got ${JSON.stringify(r)}`);
+	}
+	if (!Number.isInteger(set.pad) || set.pad < r + 1) {
+		throw new Error(`${id}: pad ${set.pad} is too small for outline.widthPx ${r}: pad must be >= widthPx + 1 = ${r + 1} (so the rim is not clipped)`);
+	}
+	if (!set.pivot || !Number.isInteger(set.pivot.bodyAlpha) || !Number.isInteger(set.pivot.bodyMinRgb)) {
+		throw new Error(`${id}: outline needs pivot.bodyAlpha and pivot.bodyMinRgb (integers), its body mask`);
+	}
+	return { widthPx: r };
+}
+
+/** Body pixel test (the pivot's mask): alpha > bodyAlpha and max(R, G, B) > bodyMinRgb. `i` is the byte index. */
+function isBodyAt(data, i, bodyAlpha, bodyMinRgb) {
+	return data[i + 3] > bodyAlpha && Math.max(data[i], data[i + 1], data[i + 2]) > bodyMinRgb;
+}
+
+/** Body mask of a whole raster: Uint8Array w * h of 0 / 1. */
+function bodyMask(img, bodyAlpha, bodyMinRgb) {
+	const n = img.w * img.h;
+	const mask = new Uint8Array(n);
+	for (let i = 0; i < n; i++) if (isBodyAt(img.data, i * 4, bodyAlpha, bodyMinRgb)) mask[i] = 1;
+	return mask;
+}
+
+/** Offsets [dx, dy] of the integer disc of radius r (dx * dx + dy * dy <= r * r), row-major. */
+function discOffsets(r) {
+	const out = [];
+	for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) if (dx * dx + dy * dy <= r * r) out.push([dx, dy]);
+	return out;
+}
+
+/**
+ * Disc dilation of a w x h mask by radius r, per cellW x cellH cell: a pixel is set when a mask pixel of the SAME cell
+ * lies within the disc, so nothing bleeds across a cell edge (or past the raster's edge).
+ */
+function dilateCells(mask, w, h, cellW, cellH, r) {
+	const out = new Uint8Array(w * h);
+	const disc = discOffsets(r);
+	for (let y = 0; y < h; y++) {
+		const cy0 = y - (y % cellH);
+		const cy1 = Math.min(h, cy0 + cellH);
+		for (let x = 0; x < w; x++) {
+			if (!mask[y * w + x]) continue;
+			const cx0 = x - (x % cellW);
+			const cx1 = Math.min(w, cx0 + cellW);
+			for (const [dx, dy] of disc) {
+				const nx = x + dx;
+				const ny = y + dy;
+				if (nx >= cx0 && nx < cx1 && ny >= cy0 && ny < cy1) out[ny * w + nx] = 1;
+			}
+		}
+	}
+	return out;
+}
+
+/**
+ * The outline sheet of a built atlas: same size; white everywhere; alpha = round(255 * dilated * (1 - a / 255)) =
+ * dilated ? 255 - a : 0, with a the atlas pixel's alpha and `dilated` the per-cell disc dilation of its body mask.
+ */
+function outlineSheet(img, frameW, frameH, widthPx, bodyAlpha, bodyMinRgb) {
+	const { w, h } = img;
+	const dilated = dilateCells(bodyMask(img, bodyAlpha, bodyMinRgb), w, h, frameW, frameH, widthPx);
+	const out = raster(w, h);
+	for (let i = 0; i < w * h; i++) {
+		out.data[i * 4] = 255;
+		out.data[i * 4 + 1] = 255;
+		out.data[i * 4 + 2] = 255;
+		out.data[i * 4 + 3] = dilated[i] ? 255 - img.data[i * 4 + 3] : 0;
+	}
+	return out;
+}
+
+// ---------------------------------------------------------------------------------------------
 // Sources and the lock
 
 function frameFileName(set, anim, d) {
@@ -319,6 +415,7 @@ function buildSpriteSet(id, set) {
 		throw new Error(`${id}: rowForFacing must be a permutation of 0..${count - 1}`);
 	}
 	const realNames = Object.keys(set.animations).filter((n) => !set.animations[n].cellsOf);
+	const outline = outlineConfig(id, set);
 
 	// 1. union crop box (source-frame coordinates) over every kept frame of every real animation and facing
 	let box = null;
@@ -344,9 +441,7 @@ function buildSpriteSet(id, set) {
 		const r = sourceRegion(set, anim, d, anim.frames[k]);
 		const { bodyAlpha, bodyMinRgb } = set.pivot;
 		const isBody = (x, y) => {
-			const i = ((r.y + y) * r.img.w + r.x + x) * 4;
-			const data = r.img.data;
-			return data[i + 3] > bodyAlpha && Math.max(data[i], data[i + 1], data[i + 2]) > bodyMinRgb;
+			return isBodyAt(r.img.data, ((r.y + y) * r.img.w + r.x + x) * 4, bodyAlpha, bodyMinRgb);
 		};
 		let b = null;
 		for (let y = 0; y < r.h; y++) for (let x = 0; x < r.w; x++) if (isBody(x, y)) b = unionBox(b, [x, y, x, y]);
@@ -399,7 +494,12 @@ function buildSpriteSet(id, set) {
 			}
 		}
 		alphaBleed(img);
-		sheets.push({ name: sheetDef.name, file: `${sheetDef.name}.png`, img, cells });
+		const sheet = { name: sheetDef.name, file: `${sheetDef.name}.png`, img, cells };
+		if (outline) {
+			sheet.outlineFile = `${sheetDef.name}-outline.png`;
+			sheet.outlineImg = outlineSheet(img, frameW, frameH, outline.widthPx, set.pivot.bodyAlpha, set.pivot.bodyMinRgb);
+		}
+		sheets.push(sheet);
 	});
 	for (const name of realNames) if (!animations[name]) throw new Error(`${id}: ${name} is in no sheet`);
 	for (const name of Object.keys(set.animations)) {
@@ -421,11 +521,15 @@ function buildSpriteSet(id, set) {
 		pixelsPerTile,
 		resample: set.resample,
 		facings: { count, zeroDeg: 0, ccw: true },
-		sheets: sheets.map((s) => ({ file: s.file, w: s.img.w, h: s.img.h })),
+		sheets: sheets.map((s) => {
+			const sheet = { file: s.file, w: s.img.w, h: s.img.h };
+			if (s.outlineFile) sheet.outlineFile = s.outlineFile;
+			return sheet;
+		}),
 		animations: sortedObject(animations),
 	};
 	selfCheck(id, layout);
-	return { id, layout, sheets, sanity, bodyHeight: body.height, box };
+	return { id, layout, sheets, sanity, bodyHeight: body.height, box, outline };
 }
 
 /** Columns x rows of frameW x frameH cells for `cells` cells, within MAX_ATLAS, smallest area (then narrowest). */
@@ -450,6 +554,7 @@ function selfCheck(id, layout) {
 	for (const s of layout.sheets) {
 		if (s.w > MAX_ATLAS || s.h > MAX_ATLAS) throw new Error(`${id}: ${s.file} is ${s.w}x${s.h} (> ${MAX_ATLAS})`);
 		if (s.w % layout.frameW !== 0 || s.h % layout.frameH !== 0) throw new Error(`${id}: ${s.file} is not a whole number of cells`);
+		if (s.outlineFile !== undefined && s.outlineFile !== s.file.replace(/\.png$/, "-outline.png")) throw new Error(`${id}: outline of ${s.file} is ${s.outlineFile}`);
 	}
 	for (const name of Object.keys(layout.animations)) {
 		const a = layout.animations[name];
@@ -487,14 +592,17 @@ function fillRect(img, x, y, w, h, rgb) {
 	}
 }
 
-/** Composites src (straight alpha) over an opaque dst at (dx, dy). */
-function over(src, sx, sy, w, h, dst, dx, dy) {
+/** Composites src (straight alpha) over an opaque dst at (dx, dy); with `tint`, src's RGB is replaced by it. */
+function over(src, sx, sy, w, h, dst, dx, dy, tint) {
 	for (let y = 0; y < h; y++) {
 		for (let x = 0; x < w; x++) {
 			const si = ((sy + y) * src.w + sx + x) * 4;
 			const di = ((dy + y) * dst.w + dx + x) * 4;
 			const a = src.data[si + 3];
-			for (let k = 0; k < 3; k++) dst.data[di + k] = Math.floor((src.data[si + k] * a + dst.data[di + k] * (255 - a) + 127) / 255);
+			for (let k = 0; k < 3; k++) {
+				const c = tint ? tint[k] : src.data[si + k];
+				dst.data[di + k] = Math.floor((c * a + dst.data[di + k] * (255 - a) + 127) / 255);
+			}
 		}
 	}
 }
@@ -538,7 +646,11 @@ function contactSheet(result) {
 				const dy = y + CONTACT_GUTTER / 2;
 				fillRect(img, dx - 1, dy - 1, layout.frameW + 2, layout.frameH + 2, [96, 96, 96]);
 				fillRect(img, dx, dy, layout.frameW, layout.frameH, [CONTACT_BG, CONTACT_BG, CONTACT_BG]);
-				over(sheetImgs[a.sheet], (cell % perRow) * layout.frameW, Math.floor(cell / perRow) * layout.frameH, layout.frameW, layout.frameH, img, dx, dy);
+				const sx = (cell % perRow) * layout.frameW;
+				const sy = Math.floor(cell / perRow) * layout.frameH;
+				const outlineImg = result.sheets[a.sheet].outlineImg;
+				if (outlineImg) over(outlineImg, sx, sy, layout.frameW, layout.frameH, img, dx, dy, OUTLINE_PREVIEW_RGB);
+				over(sheetImgs[a.sheet], sx, sy, layout.frameW, layout.frameH, img, dx, dy);
 				fillRect(img, dx + layout.pivot.x - 3, dy + layout.pivot.y, 7, 1, [230, 30, 30]);
 				fillRect(img, dx + layout.pivot.x, dy + layout.pivot.y - 3, 1, 7, [230, 30, 30]);
 			}
@@ -676,9 +788,20 @@ function layoutModule(sets, images, floorHex) {
 		"\th: number;",
 		"}",
 		"",
+		"/**",
+		comment([
+			"A sprite atlas. `outlineFile`, present exactly on sets with an outline (art/atlases.json `outline`), names",
+			"its outline sheet: same size and cell grid, white, alpha = the body mask dilated by `widthPx` minus the",
+			"sprite's own alpha. Drawn under the frame with the same rect and tinted, it is the enemy contrast rim.",
+		]),
+		" */",
+		"export interface ValeSpriteSheetFile extends ValeSheetFile {",
+		"\toutlineFile?: string;",
+		"}",
+		"",
 		"/** SpriteSetAsset without `kind`, with sheets named by file instead of asset ID. */",
 		'export interface ValeSpriteLayout extends Omit<SpriteSetAsset, "kind" | "sheets"> {',
-		"\tsheets: Array<ValeSheetFile>;",
+		"\tsheets: Array<ValeSpriteSheetFile>;",
 		"}",
 		"",
 		"/** A single image in art/build/. `pivot` (pixels from the top-left) is where it is anchored, when it matters. */",
@@ -713,6 +836,7 @@ function writeIfChanged(file, content) {
 	return true;
 }
 
+/** Removes every .png directly in `dir` whose name is not in `keep` (a Set of file names). */
 function removeStale(dir, keep) {
 	if (!fs.existsSync(dir)) return;
 	for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
@@ -721,6 +845,23 @@ function removeStale(dir, keep) {
 			console.log(`art:build: removed stale ${path.relative(ROOT, path.join(dir, entry.name))}`);
 		}
 	}
+}
+
+/**
+ * Every PNG the build writes, in write order: { dir: "build" | "contact", name, img }. Sheets (each followed by its
+ * outline sheet, if any) and a contact sheet per set, then the images. Everything else in art/build is stale.
+ */
+function buildOutputs(sets, images) {
+	const out = [];
+	for (const s of sets) {
+		for (const sheet of s.sheets) {
+			out.push({ dir: "build", name: sheet.file, img: sheet.img });
+			if (sheet.outlineImg) out.push({ dir: "build", name: sheet.outlineFile, img: sheet.outlineImg });
+		}
+		out.push({ dir: "contact", name: `${s.id}.png`, img: contactSheet(s) });
+	}
+	for (const i of images) out.push({ dir: "build", name: i.layout.file, img: i.img });
+	return out;
 }
 
 function main() {
@@ -748,11 +889,10 @@ function main() {
 		set.add(name);
 		if (writeIfChanged(path.join(dir, name), encodePng(img))) changed++;
 	};
-	for (const s of sets) {
-		for (const sheet of s.sheets) emit(BUILD, sheet.file, sheet.img, builtFiles);
-		emit(CONTACT, `${s.id}.png`, contactSheet(s), contactFiles);
+	for (const o of buildOutputs(sets, images)) {
+		if (o.dir === "build") emit(BUILD, o.name, o.img, builtFiles);
+		else emit(CONTACT, o.name, o.img, contactFiles);
 	}
-	for (const i of images) emit(BUILD, i.layout.file, i.img, builtFiles);
 	removeStale(BUILD, builtFiles);
 	removeStale(CONTACT, contactFiles);
 
@@ -762,10 +902,36 @@ function main() {
 		const l = s.layout;
 		console.log(`${s.id}: cell ${l.frameW}x${l.frameH} (source box ${s.box.join(",")}), pivot (${l.pivot.x}, ${l.pivot.y}), body ${s.bodyHeight} px -> ${l.pixelsPerTile} px/tile`);
 		console.log(`  pivot per facing (cell coords) on the measured frame: ${s.sanity.join(" ")}`);
-		for (const sh of s.sheets) console.log(`  ${sh.file}: ${sh.img.w}x${sh.img.h}, ${sh.cells} cells`);
+		for (const sh of s.sheets) {
+			console.log(`  ${sh.file}: ${sh.img.w}x${sh.img.h}, ${sh.cells} cells${sh.outlineFile ? ` + ${sh.outlineFile} (outline ${s.outline.widthPx} px)` : ""}`);
+		}
 	}
 	for (const i of images) console.log(`${i.id}: ${i.layout.file} ${i.layout.w}x${i.layout.h}${i.meanHex ? ` mean ${i.meanHex}` : ""}`);
 	console.log(`art:build: ${builtFiles.size} atlas/image file(s), ${contactFiles.size} contact sheet(s), ${changed} file(s) updated`);
 }
 
-main();
+module.exports = {
+	MAX_ATLAS,
+	OUTLINE_PREVIEW_RGB,
+	alphaBleed,
+	alphaBounds,
+	blit,
+	bodyMask,
+	buildOutputs,
+	buildSpriteSet,
+	chooseGrid,
+	contactSheet,
+	dilateCells,
+	discOffsets,
+	encodePng,
+	isBodyAt,
+	layoutModule,
+	outlineConfig,
+	outlineSheet,
+	raster,
+	removeStale,
+	/** Decoded sources by art/vendor-relative path; the tests put synthetic rasters here instead of files. */
+	sourceCache: pngCache,
+};
+
+if (require.main === module) main();
