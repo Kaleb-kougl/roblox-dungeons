@@ -388,6 +388,10 @@ export const AUDIO_EVENTS = [
  * Roblox port (docs/DECOR.md D4): the breakable clutter kinds (the sim's breakable `kind`). Every pack fills
  * `breakable.<kind>` (asset, a placeholder until art exists), the colour role `breakable.<kind>` and the string
  * `breakable.<kind>.name`, like `enemy.dummy`: a gameplay object must always be drawn.
+ *
+ * A mirror of shared/dungeon BREAKABLE_KINDS, the source of truth (the sim's kind index is its order; renderers index
+ * that list, not this one). The theme imports nothing outside shared/theme, so the list is repeated here and
+ * decor.spec.ts asserts both are identical, in order.
  */
 export const BREAKABLE_KINDS = ["barrel", "crate"] as const;
 export type BreakableKind = (typeof BREAKABLE_KINDS)[number];

@@ -2,6 +2,7 @@
 // colour roles. Contract helpers, the validator's decor / breakable checks and the runtime lookups.
 import { describe, expect, it } from "@rbxts/jest-globals";
 import { STUDS_PER_TILE } from "shared/config";
+import { BREAKABLE_KINDS as SIM_BREAKABLE_KINDS } from "shared/dungeon";
 import { BULLET_VIEW } from "shared/view";
 import { colorDifference, contrastRatio } from "./color";
 import {
@@ -285,6 +286,12 @@ describe("decor contract", () => {
 		expect(DECOR_PARTICLE.defaultSizeStuds).toBeLessThanOrEqual(DECOR_PARTICLE.maxSizeStuds);
 		expect(DECOR_PARTICLE.defaultTransparency).toBeGreaterThanOrEqual(DECOR_PARTICLE.minTransparency);
 		expect(DECOR_PARTICLE.defaultTransparency).toBeLessThan(1);
+	});
+
+	it("mirrors the sim's breakable kinds exactly, in kind index order (shared/dungeon is the source of truth)", () => {
+		expect(BREAKABLE_KINDS.size()).toBe(SIM_BREAKABLE_KINDS.size());
+		for (let i = 0; i < SIM_BREAKABLE_KINDS.size(); i++)
+			expect([i, BREAKABLE_KINDS[i]]).toEqual([i, SIM_BREAKABLE_KINDS[i]]);
 	});
 
 	it("requires both breakables (asset, colour role, name) and their audio events, like enemy.dummy", () => {
