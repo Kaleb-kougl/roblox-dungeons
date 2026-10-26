@@ -28,6 +28,7 @@ import {
 	SPRITE_VIEW,
 	actorGroup,
 	actorLook,
+	actorOutlined,
 	animDtSec,
 	chooseActorAnim,
 	choosePlayerAnim,
@@ -105,7 +106,8 @@ interface ActorView {
 	look: ActorLook;
 	transparency: number;
 	corpseTicks: number;
-	/** The placeholder visual has an outline role (enemies and bosses; shared/view actorGroup). */
+	/** The placeholder visual has an outline role (enemies and bosses; shared/view actorGroup). Sprite views: the
+	 * SpriteView was built with the rim (plan O4). */
 	hasOutline: boolean;
 	/** The model's pieces are under the enemies Model (the shared Highlight), not corpses. Sprite views: false. */
 	outlined: boolean;
@@ -137,8 +139,9 @@ interface ActorView {
  * `Enemies` is a Model with ONE Highlight (rim only, `enemyOutline`, Occluded) holding the pieces of every living
  * placeholder enemy / boss whose visual has an outline role; `Corpses` takes them the first frame the actor is dead
  * (shared/view actorGroup; once, tracked in ActorView.outlined) and holds every released, pooled model; `Players` holds
- * the party's views. Enemy sprite anchors stay in the folder itself (a later task bakes the sprites' rim). Workspace
- * KV_EnemyOutline = false turns the Highlight off (read on change, never per frame).
+ * the party's views. Enemy sprite anchors stay in the folder itself: their rim is baked (plan O4), the outline sheet in
+ * the SpriteView's "Outline" label, tinted the same role, shown while shared/view actorOutlined. Workspace
+ * KV_EnemyOutline = false turns the Highlight and the sprite rims off (read on change, never per frame).
  */
 @Controller({})
 export class ActorRenderController implements OnStart {
@@ -169,6 +172,8 @@ export class ActorRenderController implements OnStart {
 	private lastState: SimState | undefined;
 	private dtSec = 0;
 	private swordIndex: number | undefined;
+	/** The KV_EnemyOutline debug switch (outlineSwitchOn), read on change: the Highlight's Enabled and sprite rims. */
+	private outlineOn = true;
 
 	constructor(private readonly sim: SimController, private readonly theme: ThemeController) {}
 
@@ -191,7 +196,8 @@ export class ActorRenderController implements OnStart {
 		this.groups = { enemies, corpses, players };
 		const highlight = buildOutline(pack, enemies);
 		const syncSwitch = () => {
-			highlight.Enabled = outlineSwitchOn(Workspace.GetAttribute(ACTOR_OUTLINE.enabledAttribute));
+			this.outlineOn = outlineSwitchOn(Workspace.GetAttribute(ACTOR_OUTLINE.enabledAttribute));
+			highlight.Enabled = this.outlineOn;
 		};
 		syncSwitch();
 		this.janitor.Add(Workspace.GetAttributeChangedSignal(ACTOR_OUTLINE.enabledAttribute).Connect(syncSwitch));
@@ -276,8 +282,13 @@ export class ActorRenderController implements OnStart {
 		const set = spriteInput !== undefined ? this.spriteSet(id) : undefined;
 		let view: ActorView;
 		if (set !== undefined) {
+			// The baked rim (plan O4) follows the placeholder visual's outline role, like the Highlight (O2). It depends
+			// on the ID alone, so the pool key needs nothing more.
+			const hasOutline = pack.placeholder(id).outline !== undefined;
 			const key = SPRITE_KEY + id;
-			const sprite = this.freeSprites.get(key)?.pop() ?? new SpriteView(set, this.folder!);
+			const sprite =
+				this.freeSprites.get(key)?.pop() ??
+				new SpriteView(set, this.folder!, set, 0, hasOutline ? pack.color(ACTOR_OUTLINE.role) : undefined);
 			this.spriteParking.delete(sprite);
 			sprite.reset();
 			view = {
@@ -289,7 +300,7 @@ export class ActorRenderController implements OnStart {
 				look: "normal",
 				transparency: 0,
 				corpseTicks,
-				hasOutline: false,
+				hasOutline,
 				outlined: false,
 			};
 		} else {
@@ -360,6 +371,8 @@ export class ActorRenderController implements OnStart {
 				sprite.setTint(this.lookColor(pack, look) ?? SPRITE_TINT_NONE);
 			}
 			sprite.setTransparency(transparency);
+			// The rim goes the frame the actor dies (the corpse fades without it) and with KV_EnemyOutline = false.
+			sprite.setOutlineShown(actorOutlined(view.hasOutline, a.alive !== 0, this.outlineOn));
 			return;
 		}
 

@@ -489,7 +489,7 @@ describe("validateManifest: sprite sets (contract v2)", () => {
 		).toEqual([
 			`${SET}.assetId: unknown key (allowed: kind, frameW, frameH, pivot, pixelsPerTile, resample, facings, sheets, animations)`,
 			`${SET}.facings.mirror: unknown key (allowed: count, zeroDeg, ccw)`,
-			`${SET}.sheets[0].name: unknown key (allowed: assetId, w, h)`,
+			`${SET}.sheets[0].name: unknown key (allowed: assetId, w, h, outlineAssetId)`,
 			`${SET}.animations.move.row: unknown key (allowed: sheet, start, frames, stride, fps, loop)`,
 		]);
 	});
@@ -538,7 +538,7 @@ describe("validateManifest: sprite sets (contract v2)", () => {
 
 	it("checks the sheets: non-empty, uploaded IDs, sizes up to 1024 and at least one cell", () => {
 		expect(spriteErrors((s) => (s.sheets = []))).toEqual([
-			`${SET}.sheets: must be a non-empty array of { assetId, w, h }`,
+			`${SET}.sheets: must be a non-empty array of { assetId, w, h, outlineAssetId? }`,
 		]);
 		expect(spriteErrors((s) => (sheetAt(s, 0).assetId = "rbxasset://textures/skeleton.png"))).toEqual([
 			`${SET}.sheets[0].assetId: "rbxasset://textures/skeleton.png" must be "rbxassetid://<digits>" (upload with Asphalt or the Studio Asset Manager)`,
@@ -551,6 +551,30 @@ describe("validateManifest: sprite sets (contract v2)", () => {
 		]);
 		expect(spriteErrors((s) => (sheetAt(s, 1).w = 32))).toEqual([
 			`${SET}.sheets[1]: sheet is 32x112, smaller than the 64x56 cell`,
+		]);
+	});
+
+	it("accepts optional outline sheets (enemy outline plan O4) and checks their IDs", () => {
+		expect(
+			spriteErrors((s) => {
+				sheetAt(s, 0).outlineAssetId = "rbxassetid://4001";
+				sheetAt(s, 1).outlineAssetId = "rbxassetid://4002";
+			}),
+		).toEqual([]);
+		// on one sheet only: the other draws rimless
+		expect(spriteErrors((s) => (sheetAt(s, 1).outlineAssetId = "rbxassetid://4002"))).toEqual([]);
+		expect(spriteErrors((s) => (sheetAt(s, 0).outlineAssetId = "rbxasset://textures/rim.png"))).toEqual([
+			`${SET}.sheets[0].outlineAssetId: "rbxasset://textures/rim.png" must be "rbxassetid://<digits>" (upload with Asphalt or the Studio Asset Manager)`,
+		]);
+		expect(spriteErrors((s) => (sheetAt(s, 1).outlineAssetId = 4002))).toEqual([
+			`${SET}.sheets[1].outlineAssetId: must be an uploaded Roblox asset, "rbxassetid://<digits>"`,
+		]);
+		expect(spriteErrors((s) => (sheetAt(s, 0).outlineAssetId = sheetAt(s, 0).assetId))).toEqual([
+			`${SET}.sheets[0].outlineAssetId: is the sheet's own assetId (upload the <sheet>-outline.png)`,
+		]);
+		// any other spelling is still an unknown key
+		expect(spriteErrors((s) => (sheetAt(s, 0).outline = "rbxassetid://4001"))).toEqual([
+			`${SET}.sheets[0].outline: unknown key (allowed: assetId, w, h, outlineAssetId)`,
 		]);
 	});
 

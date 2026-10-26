@@ -1215,18 +1215,25 @@ function validateSpriteSet(def: Obj, path: Array<string>, slot: SlotContract, er
 	let sheetCount: number | undefined;
 	const sheets = def.sheets;
 	if (!isArrayLike(sheets)) {
-		err(append(path, "sheets"), "must be a non-empty array of { assetId, w, h }");
+		err(append(path, "sheets"), "must be a non-empty array of { assetId, w, h, outlineAssetId? }");
 	} else {
 		sheetCount = sheets.size();
 		for (let i = 0; i < sheets.size(); i++) {
 			const sp = append(path, "sheets", tostring(i));
 			const sheet = sheets[i];
 			if (!isObj(sheet)) {
-				err(sp, "must be { assetId, w, h }");
+				err(sp, "must be { assetId, w, h, outlineAssetId? }");
 				continue;
 			}
-			unknownKeys(sheet, sp, ["assetId", "w", "h"]);
+			unknownKeys(sheet, sp, ["assetId", "w", "h", "outlineAssetId"]);
 			checkAssetIdAt(sheet.assetId, append(sp, "assetId"), err);
+			if (sheet.outlineAssetId !== undefined) {
+				// The baked rim (enemy outline plan O4): its own upload, same size and cells as the sheet.
+				checkAssetIdAt(sheet.outlineAssetId, append(sp, "outlineAssetId"), err);
+				if (sheet.outlineAssetId === sheet.assetId) {
+					err(append(sp, "outlineAssetId"), "is the sheet's own assetId (upload the <sheet>-outline.png)");
+				}
+			}
 			const w = sheet.w;
 			const h = sheet.h;
 			if (!isImageSide(w)) {

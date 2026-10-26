@@ -3,7 +3,7 @@
 // the frame math adds the web's bottom-left UV -> Roblox's top-left pixel rect flip.
 import { describe, expect, it } from "@rbxts/jest-globals";
 import { BIOMES, CHARACTER, DEFAULT_BIOME_MATERIAL, requiredAnimationList } from "./contract";
-import { MISSING_COLOR, frameIndex, frameRect, frameUV, uvToPixelRect } from "./core";
+import { MISSING_COLOR, frameIndex, frameRect, frameUV, spriteSheetOutline, uvToPixelRect } from "./core";
 import { ThemePack, listThemePacks, loadThemePack } from "./pack";
 import { THEME_PACKS } from "./packs";
 import { PLACEHOLDER_MANIFEST } from "./packs/placeholder";
@@ -577,6 +577,75 @@ describe("sprite sets: ThemePack.sprites", () => {
 		expect(p.sprites("boss.act1")).toBeUndefined();
 		expect(p.placeholder(SWARMER).shape).toBe("Ball");
 		expect(w.messages).toEqual([]);
+	});
+});
+
+describe("sprite sets: outline sheets (enemy outline plan O4)", () => {
+	const A = "rbxassetid://3001";
+	const B = "rbxassetid://3002";
+	const OA = "rbxassetid://4001";
+	const OB = "rbxassetid://4002";
+	const sheetAt = (set: Obj, i: number): Obj => (set.sheets as Array<Obj>)[i];
+	const withOutlines = (set: Obj) => {
+		sheetAt(set, 0).outlineAssetId = OA;
+		sheetAt(set, 1).outlineAssetId = OB;
+	};
+
+	it("gives every frame its own sheet's outline, with the frame's rect", () => {
+		const m = withSwarmerSet(withOutlines);
+		expect(validateManifest(m)).toEqual([]);
+		const w = sink();
+		const p = pack(w, m);
+		const s = p.core.sprites(SWARMER)!;
+		// move and death on sheet 0, hit and attack.1 on sheet 1
+		expect(s.frame("move", 2, 9)).toEqual({ sheet: 0, assetId: A, outlineAssetId: OA, x: 64, y: 56, w: 64, h: 56 });
+		expect(s.frame("death", 7, 3).outlineAssetId).toBe(OA);
+		expect(s.frame("hit", 5, 0)).toEqual({ sheet: 1, assetId: B, outlineAssetId: OB, x: 64, y: 56, w: 64, h: 56 });
+		expect(s.frame("attack.1", 0, 0).outlineAssetId).toBe(OB);
+		// ThemePack: outlineImage next to image, same offset and size
+		const set = p.sprites(SWARMER)!;
+		const f = set.frame("hit", -1, 0);
+		expect([f.image, f.outlineImage, f.offset.X, f.offset.Y, f.size.X, f.size.Y]).toEqual([B, OB, 192, 56, 64, 56]);
+		const g = set.frame("move", 0, 0);
+		expect([g.image, g.outlineImage]).toEqual([A, OA]);
+		expect(w.messages).toEqual([]);
+	});
+
+	it("has no outline without outline IDs, and only on the sheets that carry one", () => {
+		const plain = pack(sink(), withSwarmerSet()).sprites(SWARMER)!;
+		expect(plain.frame("move", 0, 0).outlineImage).toBeUndefined();
+		expect(plain.frame("hit", 0, 0).outlineImage).toBeUndefined();
+		expect(plain.layout.frame("move", 0, 0).outlineAssetId).toBeUndefined();
+		// only sheet 1 outlined: hit has a rim, move draws without one
+		const m = withSwarmerSet((set) => (sheetAt(set, 1).outlineAssetId = OB));
+		expect(validateManifest(m)).toEqual([]);
+		const half = pack(sink(), m).sprites(SWARMER)!;
+		expect(half.frame("move", 3, 2).outlineImage).toBeUndefined();
+		expect(half.frame("hit", 3, 0).outlineImage).toBe(OB);
+	});
+
+	it("draws a set with a malformed outline (failed validation) rimless, warning once", () => {
+		const w = sink();
+		const core = pack(
+			w,
+			withSwarmerSet((set) => (sheetAt(set, 0).outlineAssetId = 42 as unknown as string)),
+		).core;
+		const s = core.sprites(SWARMER)!;
+		expect(s).toBeDefined();
+		expect(s.frame("move", 0, 0).outlineAssetId).toBeUndefined();
+		expect(s.frame("move", 0, 0).assetId).toBe(A);
+		expect(core.sprites(SWARMER)).toBe(s);
+		expect(w.messages).toEqual([
+			'[theme:placeholder] sprite set "enemy.swarmer" sheet 0 has a bad outlineAssetId, drawing it without a rim',
+		]);
+	});
+
+	it("spriteSheetOutline reads a string outline and nothing else", () => {
+		expect(spriteSheetOutline({ assetId: A, w: 64, h: 56, outlineAssetId: OA })).toBe(OA);
+		expect(spriteSheetOutline({ assetId: A, w: 64, h: 56 })).toBeUndefined();
+		expect(
+			spriteSheetOutline({ assetId: A, w: 64, h: 56, outlineAssetId: true as unknown as typeof OA }),
+		).toBeUndefined();
 	});
 });
 

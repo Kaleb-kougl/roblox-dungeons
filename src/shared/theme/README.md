@@ -115,7 +115,7 @@ Everything that does not need a Roblox datatype is plain Luau-safe TS, tested un
 contrast, CIE76 `colorDifference`), `strings.ts` (`interpolate`, `placeholders`, `templateProblem`), `validate.ts`
 (`validateManifest`, `contrastReport`, `juiceContrastReport`, `decorFxReport`, `breakableContrastReport`,
 `enemyOutlineReport`, `isGameplayKey`), `core.ts` (`ThemeCore` lookups and fallbacks, `decor` / `decorVariants` / `ambient` / `breakable`, `sprites` ->
-`SpriteSetLayout`, `frameRect`,
+`SpriteSetLayout`, `spriteSheetOutline`, `frameRect`,
 `frameUV`, `uvToPixelRect`, `frameIndex`), `placeholders.ts`, `contract.ts`. `pack.ts` only converts to `Color3` /
 `Vector2`. Warnings go to Roblox `warn` unless a `warn` sink is passed (the specs pass one to assert warn-once).
 
@@ -225,7 +225,7 @@ its exact checks. Atlases are normally written by the atlas pipeline (S3), not b
 	facings: { count: 8, zeroDeg: 0, ccw: true },
 	sheets: [                         // the atlases, each <= 1024x1024 and at least one cell
 		{ assetId: "rbxassetid://<n>", w: 1024, h: 448 },
-		{ assetId: "rbxassetid://<n>", w: 256, h: 112 },
+		{ assetId: "rbxassetid://<n>", w: 256, h: 112, outlineAssetId: "rbxassetid://<n>" },  // + baked rim
 	],
 	animations: {                     // base names; the slot's names are required, extras ("attack.1") allowed
 		move:  { sheet: 0, start: 0,  frames: 8, fps: 10, loop: true },
@@ -246,13 +246,21 @@ so by default an animation is `count` runs of `frames` cells, one run per facing
 stand-in reuse frame 0 of every facing of a longer animation (`idle` above). The validator checks every referenced
 cell, all facings and all frames, against the sheet's capacity.
 
+**Outline sheets** (enemy outline plan O4). A sheet may carry `outlineAssetId`: the atlas pipeline's
+`<sheet>-outline.png` (O3), same size and cell grid as the sheet, white, alpha only where the rim goes. Every frame
+from that sheet then has an outline image (`SpriteFrameRect.outlineAssetId`, `SpriteFrame.outlineImage`) with the
+frame's own rect; the renderer (client SpriteView, opt-in) draws it in a second ImageLabel under the frame, tinted the
+`enemyOutline` role, while the actor is alive and the `KV_EnemyOutline` switch is on (shared/view actorOutlined,
+spriteOutlineVisible). Optional per sheet: a sheet without one draws rimless, and a set without any still draws.
+
 **Facings** are in screen space: facing `d` points at `zeroDeg + d * 360 / count` degrees, counter-clockwise when
 `ccw`, where 0 = screen right and 90 = screen up. `count` is 1 (not directional), 4, 8 or 16. The atlas pipeline
 always writes `zeroDeg: 0, ccw: true`.
 
 **Checks** (`validate.ts`): `frameW` / `frameH` integers in [1, 1024]; `pivot` inside the cell; `pixelsPerTile` > 0;
 `resample` "Default" | "Pixelated"; `facings.count` 1 | 4 | 8 | 16, `zeroDeg` finite, `ccw` boolean; `sheets`
-non-empty, each `rbxassetid://<digits>`, `w` / `h` integers in [1, 1024] and at least the cell; the slot's base
+non-empty, each `rbxassetid://<digits>`, `w` / `h` integers in [1, 1024] and at least the cell, an optional
+`outlineAssetId` also `rbxassetid://<digits>` and not the sheet's own `assetId`; the slot's base
 animations present; every animation's `sheet` a valid index, `start` >= 0, `frames` >= 1, `stride` >= 1 (optional),
 `fps` in (0, 60], `loop` boolean, and every cell inside its sheet. Animation names are IDs (exempt from the
 gameplay-key scan); a gameplay key anywhere else in the set (`hitbox`, `duration`, ...) is still rejected. Timings
@@ -261,7 +269,8 @@ that drive one-shots (roll, hit, death) stay in gameplay data; the renderer stre
 **Runtime guard.** A pack that fails validation still loads, so `ThemeCore.sprites` re-checks what the renderer
 relies on: a bad cell, pivot, `pixelsPerTile`, `resample`, facings or sheet rejects the set (warned once with the
 reason; the placeholder is drawn); a bad optional animation (fields, fps, `stride < frames`, cells outside the sheet)
-is dropped and warned once; a bad or missing required animation rejects the set. The validator also rejects a
+is dropped and warned once; a bad or missing required animation rejects the set; a non-string `outlineAssetId` is
+ignored (warned once): that sheet draws without a rim. The validator also rejects a
 `stride` smaller than `frames` when there are several facings (they would share cells).
 
 **Runtime.** `pack.sprites(id)` (cached) returns a `SpriteSet`, or `undefined` for any other kind (no warning; draw

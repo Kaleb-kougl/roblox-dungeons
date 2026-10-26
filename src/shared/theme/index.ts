@@ -44,6 +44,7 @@ export {
 	frameIndex,
 	frameRect,
 	frameUV,
+	spriteSheetOutline,
 	uvToPixelRect,
 	type AmbientParticleArt,
 	type BiomeTheme,

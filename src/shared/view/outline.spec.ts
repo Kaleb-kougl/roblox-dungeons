@@ -1,8 +1,9 @@
-// Enemy outlines (enemy outline plan O2): who gets the rim (living enemies and bosses with an outline role, while the
-// debug switch is on), which group a placeholder body is parented to, and how the Workspace switch reads.
+// Enemy outlines (enemy outline plan O2 / O4): who gets the rim (living enemies and bosses with an outline role, while
+// the debug switch is on), which group a placeholder body is parented to, how the Workspace switch reads, and when a
+// sprite's baked rim label draws.
 import { describe, expect, it } from "@rbxts/jest-globals";
 import { PLACEHOLDER_MANIFEST } from "shared/theme";
-import { ACTOR_OUTLINE, actorGroup, actorOutlined, outlineSwitchOn } from "shared/view";
+import { ACTOR_OUTLINE, actorGroup, actorOutlined, outlineSwitchOn, spriteOutlineVisible } from "shared/view";
 
 describe("actorOutlined", () => {
 	it("outlines a living enemy with an outline role while the switch is on, and nothing else", () => {
@@ -44,5 +45,29 @@ describe("ACTOR_OUTLINE", () => {
 		expect(ACTOR_OUTLINE.fillTransparency).toBe(1);
 		expect(ACTOR_OUTLINE.outlineTransparency).toBe(0);
 		expect(ACTOR_OUTLINE.depthMode).toBe("Occluded");
+	});
+});
+
+describe("spriteOutlineVisible (plan O4)", () => {
+	/** Any outline image (only its presence matters; asset IDs live in src/shared/theme). */
+	const RIM = "outline-sheet";
+	it("draws the rim only while visible, shown and the frame's sheet has an outline", () => {
+		expect(spriteOutlineVisible(true, true, RIM)).toBe(true);
+		expect(spriteOutlineVisible(false, true, RIM)).toBe(false); // the post-hit blink hides both labels
+		expect(spriteOutlineVisible(true, false, RIM)).toBe(false); // dead, or KV_EnemyOutline = false
+		expect(spriteOutlineVisible(true, true, undefined)).toBe(false); // that sheet's outline is not uploaded
+		expect(spriteOutlineVisible(false, false, undefined)).toBe(false);
+	});
+
+	it("follows actorOutlined for the shown flag", () => {
+		expect(spriteOutlineVisible(true, actorOutlined(true, true, true), RIM)).toBe(true);
+		expect(spriteOutlineVisible(true, actorOutlined(true, false, true), RIM)).toBe(false);
+		expect(spriteOutlineVisible(true, actorOutlined(true, true, false), RIM)).toBe(false);
+		expect(spriteOutlineVisible(true, actorOutlined(false, true, true), RIM)).toBe(false);
+	});
+
+	it("puts the rim label under the frame", () => {
+		expect(ACTOR_OUTLINE.spriteZIndex.outline < ACTOR_OUTLINE.spriteZIndex.frame).toBe(true);
+		expect(ACTOR_OUTLINE.spriteLabelName).toBe("Outline");
 	});
 });

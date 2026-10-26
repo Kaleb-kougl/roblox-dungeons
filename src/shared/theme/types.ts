@@ -255,6 +255,12 @@ export interface SpriteSheetImage {
 	assetId: RobloxAssetId;
 	w: number;
 	h: number;
+	/**
+	 * Optional baked outline of this sheet (enemy outline plan O4; the atlas pipeline's `<sheet>-outline.png`): same
+	 * size and cell grid, white, alpha only where the rim goes. The renderer draws it under each frame with the same
+	 * rect, tinted the `enemyOutline` role. Absent: the sheet's frames draw without a rim.
+	 */
+	outlineAssetId?: RobloxAssetId;
 }
 
 export interface SpriteAnimationDef {

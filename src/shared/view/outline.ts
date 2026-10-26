@@ -6,8 +6,10 @@
  * (ACTOR_VIEW.folderName) into ACTOR_OUTLINE.groups: `enemies` (a Model, which a Highlight can adorn) holds the pieces
  * of every outlined actor, `corpses` every other actor's (dead, or a visual with no `outline` role), `players` the
  * party's views. A body moves between `enemies` and `corpses` only when actorGroup changes (its death), so the outline
- * costs one Highlight and no per-frame work. Sprite bodies (billboards; a Highlight cannot outline GUI) get a baked rim
- * later (plan O4) from the same rule, actorOutlined.
+ * costs one Highlight and no per-frame work. Sprite bodies (billboards; a Highlight cannot outline GUI) get the baked
+ * rim instead (plan O4): the frame's outline sheet (SpriteFrame.outlineImage) in an "Outline" ImageLabel under the
+ * frame (ACTOR_OUTLINE.spriteZIndex), tinted the same role, shown by the same rule (actorOutlined) and drawn only while
+ * spriteOutlineVisible.
  *
  * Debug switch: Workspace attribute ACTOR_OUTLINE.enabledAttribute (boolean; absent = on, outlineSwitchOn) turns the
  * Highlight off and on at runtime for A/B in Studio.
@@ -31,8 +33,12 @@ export const ACTOR_OUTLINE = {
 	outlineTransparency: 0,
 	/** Enum.HighlightDepthMode name: walls hide the rim exactly as they hide the body (plan E3). */
 	depthMode: "Occluded" as "Occluded" | "AlwaysOnTop",
-	/** Workspace attribute (boolean): false turns every enemy outline off; absent or true = on. */
+	/** Workspace attribute (boolean): false turns every enemy outline off (Highlight and sprite rims); absent = on. */
 	enabledAttribute: "KV_EnemyOutline",
+	/** Sprite rims (plan O4): the outline ImageLabel's name in a SpriteView's BillboardGui. */
+	spriteLabelName: "Outline",
+	/** ZIndex of a SpriteView's labels (the gui's ZIndexBehavior is Sibling): the rim draws under the frame. */
+	spriteZIndex: { outline: 1, frame: 2 },
 } as const;
 
 /** Which child of the actors folder a placeholder body is parented to (ACTOR_OUTLINE.groups). */
@@ -58,4 +64,13 @@ export function actorOutlined(hasOutline: boolean, alive: boolean, enabled: bool
  */
 export function actorGroup(hasOutline: boolean, alive: boolean): ActorGroup {
 	return actorOutlined(hasOutline, alive, true) ? "enemies" : "corpses";
+}
+
+/**
+ * Whether a sprite's outline label draws (plan O4): the sprite is visible (the post-hit blink hides both labels), its
+ * rim is shown (`shown`: actorOutlined, so a corpse or the debug switch hides it while the body stays) and the current
+ * frame's sheet has an outline image (a sheet whose outline is not uploaded draws rimless).
+ */
+export function spriteOutlineVisible(visible: boolean, shown: boolean, outlineImage: string | undefined): boolean {
+	return visible && shown && outlineImage !== undefined;
 }

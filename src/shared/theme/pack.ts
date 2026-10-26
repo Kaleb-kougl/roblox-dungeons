@@ -64,6 +64,11 @@ export interface SpriteSheet {
 export interface SpriteFrame {
 	/** The sheet's uploaded image (ImageLabel.Image). */
 	readonly image: string;
+	/**
+	 * The sheet's outline image (SpriteSheetImage.outlineAssetId), or undefined when that sheet has none. Same
+	 * offset and size as the frame: an outline sheet has the atlas's size and cell grid (enemy outline plan O4).
+	 */
+	readonly outlineImage?: string;
 	readonly offset: Vector2;
 	readonly size: Vector2;
 }
@@ -125,7 +130,12 @@ class PackSpriteSet implements SpriteSet {
 
 	frame(anim: string, facing: number, index: number): SpriteFrame {
 		const r = this.layout.frame(anim, facing, index);
-		return { image: r.assetId, offset: new Vector2(r.x, r.y), size: new Vector2(r.w, r.h) };
+		return {
+			image: r.assetId,
+			outlineImage: r.outlineAssetId,
+			offset: new Vector2(r.x, r.y),
+			size: new Vector2(r.w, r.h),
+		};
 	}
 }
 
