@@ -42,28 +42,36 @@ export function decorFadeStep(current: number, target: number, dt: number, secon
  * written into `out` (its objects reused). Returns `out`.
  */
 export function decorFadeBodies(state: Readonly<SimState>, out: DecorBody[]): DecorBody[] {
-	const pool = out as Array<{ x: number; z: number; radius: number; height: number }>;
+	const pool = out as MutableBody[];
 	let n = 0;
-	const put = (x: number, z: number, radius: number, height: number) => {
-		const b = pool[n];
-		if (b === undefined) pool[n] = { x, z, radius, height };
-		else {
-			b.x = x;
-			b.z = z;
-			b.radius = radius;
-			b.height = height;
-		}
-		n++;
-	};
 	const players = partySize(state);
 	for (let i = 0; i < players; i++) {
 		const p = playerAt(state, i);
-		if (p.dead === 0) put(p.x, p.z, PLAYER_RADIUS, DECOR_VIEW.playerBodyHeightTiles);
+		if (p.dead !== 0) continue;
+		putBody(pool, n, p.x, p.z, PLAYER_RADIUS, DECOR_VIEW.playerBodyHeightTiles);
+		n++;
 	}
 	const boss = decorLiveBoss(state);
-	if (boss !== undefined) put(boss.x, boss.z, boss.radius, DECOR_VIEW.bossBodyHeightTiles);
+	if (boss !== undefined) {
+		putBody(pool, n, boss.x, boss.z, boss.radius, DECOR_VIEW.bossBodyHeightTiles);
+		n++;
+	}
 	for (let i = pool.size() - 1; i >= n; i--) pool.pop();
 	return out;
+}
+
+type MutableBody = { x: number; z: number; radius: number; height: number };
+
+/** Writes body `n` of `pool` (reusing its object; a new one only past the end). No closure: called every frame. */
+function putBody(pool: MutableBody[], n: number, x: number, z: number, radius: number, height: number): void {
+	const b = pool[n];
+	if (b === undefined) pool[n] = { x, z, radius, height };
+	else {
+		b.x = x;
+		b.z = z;
+		b.radius = radius;
+		b.height = height;
+	}
 }
 
 /** A standing entry's footprint (its first cell, its last along the run), for footprintStencil. */

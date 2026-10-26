@@ -1,5 +1,6 @@
 import { Controller, OnStart } from "@flamework/core";
 import { RunService, Workspace } from "@rbxts/services";
+import type { SolidCells } from "shared/dungeon";
 import {
 	AiState,
 	NO_KIND,
@@ -60,6 +61,10 @@ function arenaOf(enc: EncounterConfig, a: Readonly<ActorState>): EncounterRoom |
  */
 @Controller({})
 export class TelegraphController implements OnStart {
+	/** This frame's intact breakable cells, read by `clip` (one closure for the controller's life, not one per frame). */
+	private clipSolid: SolidCells | undefined;
+	private readonly clip: AimClip = (x, z, dx, dz, len) => clipToSolidCells(this.clipSolid, x, z, dx, dz, len);
+
 	constructor(private readonly sim: SimController, private readonly theme: ThemeController) {}
 
 	onStart(): void {
@@ -109,8 +114,8 @@ export class TelegraphController implements OnStart {
 		const alpha = this.sim.getAlpha();
 		const actors = s.combat.actors;
 		const solid = solidCells(s);
-		const clip: AimClip | undefined =
-			solid !== undefined ? (x, z, dx, dz, len) => clipToSolidCells(solid, x, z, dx, dz, len) : undefined;
+		this.clipSolid = solid;
+		const clip = solid !== undefined ? this.clip : undefined;
 		for (let i = 0; i < actors.size(); i++) {
 			const a = actors[i];
 			if (a.kind === NO_KIND || a.alive === 0) continue;
