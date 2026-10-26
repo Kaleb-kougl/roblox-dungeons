@@ -1,5 +1,5 @@
-// HUD helpers, every HUD / settings / tutorial string key in the placeholder pack, and the audio mapping (sim events ->
-// theme sound IDs, cooldowns, music choice; every ID it can play exists in the placeholder pack).
+// HUD helpers, and every HUD / settings / tutorial string key in the placeholder pack. (The audio mapping's specs live in
+// shared/view/audio/audio.spec.ts.)
 import { describe, expect, it } from "@rbxts/jest-globals";
 import {
 	KBM_ACTIONS,
@@ -10,24 +10,9 @@ import {
 	REBIND,
 	inputLabel,
 } from "shared/play";
-import { HEALTH_BARS_MODES, HUD_SCALE_PERCENTS, PARTICLES_LEVELS, defaultAudioSettings } from "shared/settings";
-import { ALL_EVENT_FIELDS, eventDefault, type SimEvents } from "shared/sim";
-import { AUDIO_EVENTS, PLACEHOLDER_MANIFEST, ThemePack, slotFor } from "shared/theme";
+import { HEALTH_BARS_MODES, HUD_SCALE_PERCENTS, PARTICLES_LEVELS } from "shared/settings";
+import { PLACEHOLDER_MANIFEST, ThemePack } from "shared/theme";
 import { tutorialStringKeys } from "shared/tutorial";
-import {
-	ALL_SFX,
-	AUDIO_VIEW,
-	AudioCueMapper,
-	MUSIC,
-	PORT_SFX,
-	SFX,
-	SIM_EVENT_SOUNDS,
-	allAudioIds,
-	musicFor,
-	soundGroupVolume,
-	type FxEventSource,
-} from "../audio";
-import { FxEventBuffer, type FxEventType } from "../fx/events";
 import {
 	BINDING_REFUSALS,
 	ENDING_KEYS,
@@ -237,121 +222,6 @@ describe("menu and lobby strings (L3 / L5 / L6)", () => {
 			"Leaving ends your run. It counts as a death and your score is submitted.",
 		);
 		expect(pack.hasString("hud.party.invited")).toBe(false); // the old invite prompt is gone (L7 client)
-		expect(warnings).toEqual([]);
-	});
-});
-
-function noEvents(): SimEvents {
-	const e = {} as SimEvents;
-	for (const f of ALL_EVENT_FIELDS) e[f] = eventDefault(f);
-	return e;
-}
-
-function fxOf(types: Array<[FxEventType, boolean?, number?]>): FxEventSource {
-	const buf = new FxEventBuffer(16);
-	for (const [t, boss, phase] of types) {
-		const e = buf.emit(t, 0)!;
-		e.boss = boss === true;
-		e.phase = phase ?? 0;
-	}
-	return buf;
-}
-
-const NO_FX = fxOf([]);
-
-describe("audio: sim events -> sound IDs", () => {
-	it("maps every sim event in the table when its frame total is > 0", () => {
-		for (const [field, id] of SIM_EVENT_SOUNDS) {
-			const m = new AudioCueMapper();
-			const e = noEvents();
-			e[field] = 2;
-			expect([field, m.frame(0, e, NO_FX, 0, [])]).toEqual([field, [id]]);
-		}
-		expect(new AudioCueMapper().frame(0, noEvents(), NO_FX, 0, [])).toEqual([]);
-	});
-
-	it("maps tracker events: hits, non-boss kills, boss phases 2+, the boss death", () => {
-		const m = new AudioCueMapper();
-		const fx = fxOf([["hit"], ["killed"], ["killed", true], ["bossPhase", true, 1], ["bossDefeated", true]]);
-		expect(m.frame(0, noEvents(), fx, 0, [])).toEqual([SFX.enemyHurt, SFX.enemyDeath, SFX.bossDeath]);
-		expect(new AudioCueMapper().frame(0, noEvents(), fxOf([["bossPhase", true, 2]]), 0, [])).toEqual([
-			SFX.bossRoar,
-		]);
-	});
-
-	it("plays each sound once per frame and respects its minimum interval", () => {
-		const m = new AudioCueMapper();
-		const fx = fxOf([["hit"], ["hit"], ["hit"]]);
-		expect(m.frame(0, noEvents(), fx, 0, [])).toEqual([SFX.enemyHurt]);
-		expect(m.frame(0.02, noEvents(), fx, 0, [])).toEqual([]); // inside the 0.05 s gap
-		expect(m.frame(0.06, noEvents(), fx, 0, [])).toEqual([SFX.enemyHurt]);
-		const e = noEvents();
-		e.emberUsed = 1;
-		expect(m.frame(0.07, e, NO_FX, 0, [])).toEqual([SFX.ember]);
-		expect(m.frame(0.071, e, NO_FX, 0, [])).toEqual([SFX.ember]); // no interval: every frame it happens
-	});
-
-	it("breakables: a break plays sfx.breakable.break, hits that did not break sfx.breakable.hit", () => {
-		const e = noEvents();
-		e.breakableHits = 3;
-		expect(new AudioCueMapper().frame(0, e, NO_FX, 0, [])).toEqual([SFX.breakableHit]);
-		e.breakablesBroken = 3; // every hit broke a piece: only the break
-		expect(new AudioCueMapper().frame(0, e, NO_FX, 0, [])).toEqual([SFX.breakableBreak]);
-		e.breakableHits = 5;
-		expect(new AudioCueMapper().frame(0, e, NO_FX, 0, [])).toEqual([SFX.breakableBreak, SFX.breakableHit]);
-		const m = new AudioCueMapper();
-		const hit = noEvents();
-		hit.breakableHits = 1;
-		expect(m.frame(0, hit, NO_FX, 0, [])).toEqual([SFX.breakableHit]);
-		expect(m.frame(0.03, hit, NO_FX, 0, [])).toEqual([]); // inside its minimum interval
-	});
-
-	it("enemy shots come from the spawn counter's growth (never on the first frame or after a reset)", () => {
-		const m = new AudioCueMapper();
-		expect(m.frame(0, noEvents(), NO_FX, 40, [])).toEqual([]);
-		expect(m.frame(1, noEvents(), NO_FX, 40, [])).toEqual([]);
-		expect(m.frame(2, noEvents(), NO_FX, 52, [])).toEqual([SFX.enemyShoot]);
-		expect(m.frame(3, noEvents(), fxOf([["reset"]]), 0, [])).toEqual([]);
-		expect(m.frame(4, noEvents(), NO_FX, 3, [])).toEqual([SFX.enemyShoot]);
-	});
-
-	it("the audio settings scale the SoundGroups (master x group, whole percents)", () => {
-		const full = defaultAudioSettings();
-		expect(soundGroupVolume("sfx", full)).toBe(AUDIO_VIEW.groupVolume.sfx * AUDIO_VIEW.masterVolume);
-		expect(soundGroupVolume("music", full)).toBe(AUDIO_VIEW.groupVolume.music * AUDIO_VIEW.masterVolume);
-		expect(soundGroupVolume("music", { master: 50, music: 50, sfx: 100 })).toBe(
-			(AUDIO_VIEW.groupVolume.music * AUDIO_VIEW.masterVolume * 50 * 50) / 10000,
-		);
-		expect(soundGroupVolume("sfx", { master: 100, music: 0, sfx: 30 })).toBe(
-			(AUDIO_VIEW.groupVolume.sfx * AUDIO_VIEW.masterVolume * 30) / 100,
-		);
-		expect(soundGroupVolume("sfx", { master: 0, music: 100, sfx: 100 })).toBe(0);
-	});
-
-	it("music: the floor's biome, the boss track during the fight, silence after a death", () => {
-		expect(musicFor({ outcome: "playing", bossVisible: false, biome: 1 })).toBe("music.biome.1");
-		expect(musicFor({ outcome: "playing", bossVisible: true, biome: 1 })).toBe(MUSIC.boss);
-		expect(musicFor({ outcome: "victory", bossVisible: false, biome: 3 })).toBe("music.biome.3");
-		expect(musicFor({ outcome: "dead", bossVisible: true, biome: 1 })).toBe(undefined);
-		expect(musicFor({ outcome: "playing", bossVisible: false, biome: 0 })).toBe(undefined);
-	});
-
-	it("every sound ID the audio layer uses exists in the placeholder pack, in the right SoundGroup, silent today", () => {
-		const warnings: string[] = [];
-		const pack = quietPack(warnings);
-		const ids = allAudioIds();
-		expect(ids.size()).toBe(ALL_SFX.size() + 2 + 5);
-		for (const id of ids) {
-			expect([id, pack.has(id)]).toEqual([id, true]);
-			const ref = pack.sound(id);
-			expect([id, ref.group]).toEqual([id, slotFor(id)!.soundGroup]);
-			expect([id, ref.assetId]).toEqual([id, undefined]);
-		}
-		// The contract's own audio events are all played except loot (no loot in M1).
-		const contract = new Set<string>(AUDIO_EVENTS);
-		for (const id of PORT_SFX) expect([id, contract.has(id)]).toEqual([id, false]);
-		const unused = AUDIO_EVENTS.filter((id) => !ids.includes(id));
-		expect(unused).toEqual(["sfx.loot.drop", "sfx.loot.rare"]);
 		expect(warnings).toEqual([]);
 	});
 });

@@ -13,6 +13,8 @@ import type { LobbyVisibility } from "shared/lobby";
 import type { FirstRunDecision } from "shared/tutorial";
 import { FIXED_INPUTS, RUN_ATTRIBUTES } from "shared/play";
 import { LOBBY_ROOM_PATH, MAIN_MENU_PATH, MENU_BACK_KEYS, afterRunPath } from "shared/view/menu";
+import { SFX } from "shared/view/audio";
+import { AudioController } from "../audio/AudioController";
 import { SimController } from "../game/SimController";
 import { TutorialController } from "../game/TutorialController";
 import { LeaderboardController } from "./LeaderboardController";
@@ -56,6 +58,7 @@ export class MenuController implements OnStart {
 		private readonly settings: SettingsController,
 		private readonly leaderboard: LeaderboardController,
 		private readonly tutorial: TutorialController,
+		private readonly audio: AudioController,
 	) {}
 
 	onStart(): void {
@@ -187,14 +190,20 @@ export class MenuController implements OnStart {
 		if (!MENU_BACK_KEYS.includes(name)) return;
 		if (this.panelOpenLastFrame || selectAnyPanelOpen(state)) return; // B closed that panel
 		if (state.menu.leaveConfirm) {
+			this.audio.playUi(SFX.uiBack);
 			clientStore.setLeaveConfirm(false);
 			return;
 		}
 		if (state.menu.coopOverlay) {
+			this.audio.playUi(SFX.uiBack);
 			clientStore.setCoopOverlay(false);
 			return;
 		}
-		if (state.menu.nav.screen !== "none") this.back();
+		if (state.menu.nav.screen !== "none") {
+			// At the root back changes nothing, so it makes no sound either.
+			if (state.menu.nav.stack.size() > 0) this.audio.playUi(SFX.uiBack);
+			this.back();
+		}
 	}
 
 	/** Co-op only (a solo run pauses through the sim's PAUSE bit): the pause key toggles the party overlay. */
