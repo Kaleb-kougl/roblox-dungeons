@@ -239,8 +239,9 @@ export const TUTORIAL_SHRINE_ROOM = planOf("shrine").roomId;
 export const TUTORIAL_STAIRWELL_ROOM = planOf("stairwell").roomId;
 
 /**
- * The tutorial's one boost (docs/BOOSTS.md B9, P8): the last of combat B's swarmers always drops a Fury, and nothing
- * else ever drops (guaranteedDropsConfig: no random drops, no pity). The director's `boost` callout teaches it.
+ * The tutorial's one boost (docs/BOOSTS.md B9): the last of combat B's swarmers always drops a Fury, and nothing
+ * else ever drops (guaranteedDropsConfig: no random drops, no pity). The director's `boost` step (funnel step 6)
+ * teaches it.
  */
 export const TUTORIAL_BOOST_LESSON: TutorialLessonId = "combatB";
 export const TUTORIAL_BOOST_ROOM = planOf(TUTORIAL_BOOST_LESSON).roomId;

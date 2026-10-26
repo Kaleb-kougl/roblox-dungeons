@@ -8,7 +8,8 @@ ported onto `main`'s main menu / Options with rebinding / same-server lobbies / 
 flow it first hooked into is gone; §4 / §5 say how it fits the new flow); the sections below are the plan with "as
 built" notes where the build differs. Branch `tutorial-linear` (2026-10-26, headless only) made floor 1 a strict
 linear chain of the lesson rooms (a new opt-in Forge option, `chain`) and the floor-2 boss fast
-(`TUTORIAL.bossHpPercent` = 20); see "Decisions" 6-7.
+(`TUTORIAL.bossHpPercent` = 20); see "Decisions" 6-7. 2026-10-26 (headless only): combat B's boost drop became a
+real step, `boost` (funnel step 6 of 16; the funnel was renumbered, §6); see "Decisions" 8.
 
 ## Goal
 
@@ -65,7 +66,7 @@ up even if the player wanders off. A world marker (beam or arrow) always points 
 | 9 | Treasure | pedestal (existing M2 logic) | "Relics are permanent for the run. Walk onto the pedestal." | Pedestal taken |
 | 10 | Shrine | curse shrine | "Curses make the run harder and your **score multiplier** bigger. **1** / A to accept, or walk away." | Accepted, or left the zone after seeing it |
 | 11 | (any time, first kill) | | Callout on ScorePanel: "Kills, grazes and guard cancels score. Chain them for combo." | Shown once |
-| (B) | Combat B, its last kill | the guaranteed Fury (docs/BOOSTS.md B9) | Callout: "Enemies sometimes drop a boost. Walk over it before it fades." The marker points at the drop while it lies there; the pickup rings the boost row. Not a funnel step (BOOSTS.md P8) | Shown once |
+| (B) | Combat B, its last kill (wherever that swarmer died) | the guaranteed Fury (docs/BOOSTS.md B9) | Step `boost` (funnel step 6): "A boost! Walk over it before it fades: it powers you up for a few seconds." The marker points at the drop while it lies there; the pickup rings the boost row | Picked up (on its landing frame too); waived (done, not skipped) when it fades untaken |
 | 12 | Boss room (stairwell, open) | none | "The **stairwell** takes you down. Every floor is more dangerous than the last." (shown on the way there; marker on the stairwell. Depth only grows per boss kill, so the plan's "raises the Depth" was dropped) | Floor changes |
 
 Then the real **boon draft** opens. Prompt: "Pick a boon: **A / D** / stick, then click / RT." It is done when a boon
@@ -225,10 +226,10 @@ registerRunWorld("tutorial", (_seed, o) => buildTutorialRunConfig(o.partySize));
 
 ### 3. Tutorial script: `shared/tutorial/` (pure, headless-tested) (built, T4)
 
-- `steps.ts` `TUTORIAL_STEPS` (15 steps, funnel numbers 1..15; `TUTORIAL_STEP_COUNT`, `tutorialStepName(n)`): per step
+- `steps.ts` `TUTORIAL_STEPS` (16 steps, funnel numbers 1..16; `TUTORIAL_STEP_COUNT`, `tutorialStepName(n)`): per step
   a stable `id` (= funnel step name), `number`, `floor`, the floor-1 `lesson` room, a `prompt` id (theme keys
   `tutorial.prompt.<prompt>.<keyboard|gamepad|touch>`, `tutorialPromptKey(step | promptId, device)`; touch holds the
-  keyboard text for now), an optional `highlight` (`flask | weapons | score | bossBar | hearts`), the `marker` target
+  keyboard text for now), an optional `highlight` (`flask | weapons | score | bossBar | hearts | boosts`), the `marker` target
   and the completion `rule`:
 
   | # | id | Room / floor | Done when |
@@ -238,29 +239,41 @@ registerRunWorld("tutorial", (_seed, o) => buildTutorialRunConfig(o.partySize));
   | 3 | `flask` | entrance (highlight: flask) | `events.flaskUsed` |
   | 4 | `attack` | combatA | room cleared (both dummies) |
   | 5 | `hits` | combatB (highlight: hearts) | room cleared |
-  | 6 | `roll` | combatC | room cleared and >= 1 roll since entering |
-  | 7 | `guard` | combatD | room cleared and >= 1 guard cancel since entering (waived when cleared first) |
-  | 8 | `bow` | combatE (highlight: weapons) | room cleared, the bow in hand and a heavy arrow released since entering |
-  | 9 | `ember` | combatF | room cleared and an Ember burnt since entering (waived when cleared with none left) |
-  | 10 | `relic` | treasure | a relic taken |
-  | 11 | `curse` | shrine (highlight: score) | a curse accepted, or the shrine zone left after standing in it |
-  | 12 | `stairwell` | stairwell room (prompt shown on the way) | floor >= 2 |
-  | 13 | `draft` | floor 2 | a boon confirmed |
-  | 14 | `boss` | floor 2 (highlight: boss bar; marker: the boss) | Mother Bramble dead (Depth grew) |
-  | 15 | `finish` | floor 2 (marker: its stairwell) | floor >= 3: `finished` |
+  | 6 | `boost` | floor 1, no room (marker: the drop; no highlight) | a boost runs on the player (combat B's Fury taken, on its landing frame too); waived when a drop was seen on floor 1 and none lies any more with no boost run (it faded) |
+  | 7 | `roll` | combatC | room cleared and >= 1 roll since entering |
+  | 8 | `guard` | combatD | room cleared and >= 1 guard cancel since entering (waived when cleared first) |
+  | 9 | `bow` | combatE (highlight: weapons) | room cleared, the bow in hand and a heavy arrow released since entering |
+  | 10 | `ember` | combatF | room cleared and an Ember burnt since entering (waived when cleared with none left) |
+  | 11 | `relic` | treasure | a relic taken |
+  | 12 | `curse` | shrine (highlight: score) | a curse accepted, or the shrine zone left after standing in it |
+  | 13 | `stairwell` | stairwell room (prompt shown on the way) | floor >= 2 |
+  | 14 | `draft` | floor 2 | a boon confirmed |
+  | 15 | `boss` | floor 2 (highlight: boss bar; marker: the boss) | Mother Bramble dead (Depth grew) |
+  | 16 | `finish` | floor 2 (marker: its stairwell) | floor >= 3: `finished` |
 
   Callouts (`TUTORIAL_CALLOUTS`, one-shot toasts `tutorial.callout.<id>`, not funnel steps): `score` on the first kill
   (rings the score panel for `TUTORIAL.calloutHighlightSeconds`; this is lesson 11), `harmlessHit` on the first harmless
-  hit (rings the hearts), `graze` on the first graze, `bossPhase2` / `bossPhase3`, `boost` when combat B's guaranteed
-  Fury lands (trigger `boostDrop`: a drop on the floor, or a boost already running when it was taken on its landing
-  frame; docs/BOOSTS.md B9). The first `TUTORIAL.ghostHeartHits` (3) harmless hits set `ghostHeart`.
-- Boosts (docs/BOOSTS.md B9, all outside the step list so the funnel numbers never move, P8): while a boost drop lies
-  on the floor the marker becomes `{ kind: "drop", x, z }` (the drop nearest the player), except inside an entered,
-  unfinished lesson room (a fight in progress keeps its own marker: none inside the room) and under the objective card;
-  in the tour it lands as combat B clears, so the player is between lessons and the marker leads to it before combat
-  C's door. The first frame a boost runs on the player (the pickup) rings `TUTORIAL_BOOST_HIGHLIGHT` = `boosts` (the
-  HUD's boost row) for `TUTORIAL.calloutHighlightSeconds`; no toast of the tutorial's own (the HUD's `hud.toast.boost`
-  names the boost). The marker controller only reads x / z, so the client needed no change for `drop`.
+  hit (rings the hearts), `graze` on the first graze, `bossPhase2` / `bossPhase3`. (The `boost` callout and its
+  `boostDrop` trigger are gone: the `boost` step's prompt replaced them, and `tutorial.callout.boost` left the
+  placeholder pack.) The first `TUTORIAL.ghostHeartHits` (3) harmless hits set `ghostHeart`.
+- Boosts (docs/BOOSTS.md B9; P8 reversed 2026-10-26): the `boost` step (6, rule kind `boost`, marker kind `drop`,
+  prompt `boost`: "A boost! Walk over it before it fades: it powers you up for a few seconds.", the same text on every
+  device). Combat B's last kill drops the Fury as the room clears, so in the tour `hits` and the landing share a frame
+  and `boost` is current at once, wherever the last swarmer died; its marker is `{ kind: "drop", x, z }`, the ground
+  drop nearest the player (lowest slot on a tie), nothing when none lies. Done on the pickup (a boost runs on the
+  player, the landing frame included); waived, done not skipped, when the drop was seen on floor 1 and none lies any
+  more with no boost run (it faded); skipped when floor 1 is left first (the floor change clears the ground, which is
+  not a fade). The first frame a boost runs (the pickup) rings `TUTORIAL_BOOST_HIGHLIGHT` = `boosts` (the HUD's boost
+  row) for `TUTORIAL.calloutHighlightSeconds`; the step has no highlight of its own (the row is empty until then), and
+  no toast of the tutorial's own (the HUD's `hud.toast.boost` names the boost).
+  **Out of order**: the old "drop override" of the marker (a drop on the floor pointed the marker at it whatever the
+  step) is gone, but one case it covered is kept: a drop lying while the `boost` step is open but NOT current (an
+  earlier step still open when combat B clears: the flask never drunk, or combat A skipped past). Then the director
+  shows the `boost` step out of order, its prompt and its drop marker (like a lesson room's prompt holds up out of
+  order), except inside an entered, unfinished lesson room (the fight keeps its own prompt and marker) and under the
+  objective card. While `boost` is current its marker shows wherever the player stands (a current step's marker is
+  never hidden by an out-of-order room). The marker controller only reads x / z, so the client needed no change.
+  A KV_Debug drop (key M) also counts: taken, it completes the step; left to fade, it waives it (debug only).
 - `director.ts` `TutorialDirector`: `new TutorialDirector()`, then `update({ state, config, events, buttons, dt })`
   once per rendered frame (state read only, `LiveRun.frameEvents`, the frame's raw InputFrame buttons, real dt) ->
   `TutorialView` (reused object: `active`, `finished`, `stepIndex` / `stepCount` / `stepId`, `promptStepIndex`,
@@ -287,7 +300,10 @@ registerRunWorld("tutorial", (_seed, o) => buildTutorialRunConfig(o.partySize));
   BFS field (round solid pillars, through corridors), and shoots the bow only with a line of sight. After combat A / B
   it walks over any boost drop lying on the floor (docs/BOOSTS.md B9: it takes combat B's Fury 6 ticks after it lands;
   with Fury the sniper lesson is shorter). Bot time with boosts: **70.8 s** (4246 ticks; 71.4 s / 4283 ticks before
-  B9 on the same build), out of order 78.2 s (78.0 s). Bot time (on `tutorial-linear`): **69.8 s** of sim (4187 ticks;
+  B9 on the same build), out of order 78.2 s (78.0 s). With `boost` as a step (2026-10-26) the bot times are
+  unchanged (the director never drives the sim, and the route is the same): in order 4246 ticks (70.8 s; `boost` done
+  @491, current 6 frames, marker on the drop every one), out of order 4690 ticks (78.2 s; `boost` @1084, 7 frames),
+  guide-steered 4292 ticks (71.5 s; 8 frames); both bot runs report the funnel 1..16 in order. Bot time (on `tutorial-linear`): **69.8 s** of sim (4187 ticks;
   was 151 s): floor 1 ~45 s on the chain, the Mother Bramble fight
   **21.3 s** from engage to death at 20 % hp (was ~100 s); the out-of-order run (combat C before B, walking through B)
   76.4 s. It records the boss milestones (engage, each phase with the HUD bar's fill, death), and the director spec
@@ -383,7 +399,10 @@ As built (T6; code-complete, Studio check pending; ported onto the main menu / l
 ### 6. Telemetry
 
 `tutorialStep(step)` -> `TelemetryService` -> `AnalyticsService.LogFunnelStepEvent(player, "tutorial", sessionId, step,
-stepName)`, `stepName` = the step's id in `shared/tutorial` `TUTORIAL_STEPS` (1..15; `completed` is 16).
+stepName)`, `stepName` = the step's id in `shared/tutorial` `TUTORIAL_STEPS` (1..16; `completed` is 17).
+**Renumbered on 2026-10-26**: the `boost` step was inserted as step 6, so `roll` .. `finish` moved from 6..15 to 7..16
+and `completed` from 16 to 17 (step ids unchanged). Funnel data recorded before that date is **not comparable past
+step 5** (`hits`): compare by step name, not number, or start a fresh dashboard window from the change.
 It logs only increasing steps per attempt (each `tutorialStarted` is a new funnel session), plus `completed` as the
 last step. The client reports only the leading lessons practised (§3: the funnel stops at the first skipped one), so a
 player who took the stairwell early drops off at the first lesson they left behind. As built (T7), a skip is the custom event `TutorialSkipped` instead of a funnel step, because Roblox counts
@@ -487,3 +506,6 @@ Critical path: T1 -> T2 -> T4 -> T6. T5 can run alongside T2-T4.
    is gone, `checkTutorialChain` replaced it.
 7. **The tutorial boss dies fast** (owner, 2026-10-26): `TUTORIAL.bossHpPercent` = 20 through the hashed
    `TutorialSimConfig` / `TutorialState.bossHpPercent` (§2 "Scaling"); no change to her cap or timers.
+8. **The boost pickup is a step** (owner, 2026-10-26; reverses docs/BOOSTS.md P8): `boost`, step 6 of 16, after
+   `hits` (§3). It replaces the `boost` callout; the funnel was renumbered (§6). Presentation only: no sim, hash,
+   replay or world change.

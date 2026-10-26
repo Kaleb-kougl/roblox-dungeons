@@ -112,13 +112,17 @@ function describeRun(name: string, r: TutorialBotResult): void {
 	for (const line of r.log) print(`  ${line}`);
 	print(
 		`  boost: ${r.dropsLanded} landed (first @${r.dropLandedTick}), ${r.dropsTaken} taken (first @${r.boostTakenTick}), drop marker ${r.dropMarkerFrames} frames ` +
-			`(${r.dropMarkerOnDrop} on the drop); markers ${r.markerKinds.join(",")}; highlights ${r.highlights.join(
-				",",
-			)}`,
+			`(${r.dropMarkerOnDrop} on the drop), boost step current ${
+				r.boostCurrentFrames
+			} frames; markers ${r.markerKinds.join(",")}; highlights ${r.highlights.join(",")}`,
 	);
 }
 
-const BOOST_CALLOUT_KEY = "tutorial.callout.boost";
+/** The boost step's index (funnel number 6: docs/BOOSTS.md B9, after `hits`). */
+const BOOST = tutorialStepIndex("boost");
+
+/** The callout key the boost lesson used before it became a step: gone from the callouts and the pack. */
+const OLD_BOOST_CALLOUT_KEY = "tutorial.callout.boost";
 
 /** Opens a harness past the objective card (step `move` current, no lesson room entered). */
 function pastTheCard(): ReturnType<typeof harness> {
@@ -163,7 +167,7 @@ describe("tutorial steps and strings", () => {
 			expect(tutorialStepName(s.number)).toBe(s.id);
 			expect(tutorialStepIndex(s.id)).toBe(i);
 		}
-		expect(TUTORIAL_STEP_COUNT).toBe(15);
+		expect(TUTORIAL_STEP_COUNT).toBe(16);
 		expect(TUTORIAL_FUNNEL_MAX_STEP).toBe(TUTORIAL_STEP_COUNT);
 		expect(MAX_TUTORIAL_STEP_ID_CHARS).toBe(MAX_TUTORIAL_STEP_NAME_CHARS);
 		expect([tutorialStepName(0), tutorialStepName(TUTORIAL_STEP_COUNT + 1), tutorialStepName(1.5)]).toEqual([
@@ -184,6 +188,7 @@ describe("tutorial steps and strings", () => {
 			"flask",
 			"attack",
 			"hits",
+			"boost",
 			"roll",
 			"guard",
 			"bow",
@@ -195,6 +200,30 @@ describe("tutorial steps and strings", () => {
 			"boss",
 			"finish",
 		]);
+	});
+
+	it("the boost step (docs/BOOSTS.md B9): number 6, right after hits, floor 1, no room, no highlight, the drop marker", () => {
+		const s = TUTORIAL_STEPS[BOOST];
+		expect([s.number, TUTORIAL_STEPS[BOOST - 1].id, s.floor, s.lesson, s.prompt, s.highlight, s.card]).toEqual([
+			6,
+			"hits",
+			1,
+			undefined,
+			"boost",
+			undefined,
+			undefined,
+		]);
+		expect(s.marker).toEqual({ kind: "drop" });
+		expect(s.rule).toEqual({ kind: "boost" });
+		// The funnel numbers before it are the old ones; everything after moved up by one (6..15 -> 7..16).
+		expect([1, 2, 3, 4, 5].map((n) => tutorialStepName(n))).toEqual([
+			"objective",
+			"move",
+			"flask",
+			"attack",
+			"hits",
+		]);
+		expect([7, 16].map((n) => tutorialStepName(n))).toEqual(["roll", "finish"]);
 	});
 
 	it("every prompt (each device), callout and UI string key exists in the placeholder pack", () => {
@@ -210,9 +239,10 @@ describe("tutorial steps and strings", () => {
 			expect(pack.str(tutorialPromptKey(s, "touch"))).toBe(pack.str(tutorialPromptKey(s, "keyboard")));
 		}
 		for (const c of TUTORIAL_CALLOUTS) expect(pack.hasString(c.key)).toBe(true);
-		// docs/BOOSTS.md B9 (P8): the boost lesson is a callout and a ring, not a step.
-		expect(TUTORIAL_CALLOUTS.map((c) => c.key).includes(BOOST_CALLOUT_KEY)).toBe(true);
-		expect(TUTORIAL_STEPS.some((st) => st.id === "boost" || st.prompt === "boost")).toBe(false);
+		// docs/BOOSTS.md B9 (P8 reversed): the boost lesson is a step and the pickup's ring, no callout any more.
+		expect(TUTORIAL_CALLOUTS.map((c) => c.key).includes(OLD_BOOST_CALLOUT_KEY)).toBe(false);
+		expect(pack.hasString(OLD_BOOST_CALLOUT_KEY)).toBe(false);
+		expect(tutorialStringKeys().includes(tutorialPromptKey("boost", "gamepad"))).toBe(true);
 		expect(TUTORIAL_HIGHLIGHTS.includes(TUTORIAL_BOOST_HIGHLIGHT)).toBe(true);
 		expect(TUTORIAL_BOOST_HIGHLIGHT).toBe("boosts");
 		expect(tutorialPromptKey("move", "gamepad")).toBe("tutorial.prompt.move.gamepad");
@@ -282,7 +312,19 @@ describe("tutorial director", () => {
 		expect(h.run.state.endless!.floor).toBe(2);
 		expect(v.stepId).toBe("draft");
 		const skipped = TUTORIAL_STEPS.filter((_s, i) => v.skipped[i]).map((s) => s.id);
-		expect(skipped).toEqual(["move", "flask", "attack", "hits", "roll", "guard", "bow", "ember", "relic", "curse"]);
+		expect(skipped).toEqual([
+			"move",
+			"flask",
+			"attack",
+			"hits",
+			"boost",
+			"roll",
+			"guard",
+			"bow",
+			"ember",
+			"relic",
+			"curse",
+		]);
 		expect(v.done[tutorialStepIndex("stairwell")]).toBe(true);
 		expect(v.skipped[tutorialStepIndex("stairwell")]).toBe(false);
 		// Skipped lessons are never credited, and the stairwell done after them does not jump past them.
@@ -313,25 +355,25 @@ describe("tutorial director", () => {
 		expect(v.funnelStepReached).toBe(1);
 	});
 
-	it("a boost on the floor: the callout once, the marker on it (not mid-lesson), the boost row rung on the pickup", () => {
+	it("a boost out of order (move still current): its prompt and the drop marker (not mid-lesson); done on the pickup", () => {
 		const h = pastTheCard();
 		let v = h.director.getView();
 		expect(v.stepId).toBe("move");
 		const p = h.run.state.player;
-		// Far enough from the player that it is not taken: the callout fires, the marker points at the drop.
+		// Far enough from the player that it is not taken: the boost step holds up out of order, no callout.
 		const [dx, dz] = [p.x + 3, p.z];
 		lay(h, dx, dz);
 		v = h.step(0);
-		expect([...v.callouts]).toEqual([BOOST_CALLOUT_KEY]);
+		expect([...v.callouts]).toEqual([]);
+		expect([v.stepId, v.promptStepIndex, v.prompt]).toEqual(["move", BOOST, "boost"]);
 		expect(v.marker).toEqual({ kind: "drop", x: dx, z: dz });
-		expect([...v.newFunnelSteps]).toEqual([]);
-		expect(v.highlight).toBe(undefined); // the landing rings nothing (no boost yet)
+		expect([v.done[BOOST], ...v.newFunnelSteps]).toEqual([false]);
+		expect(v.highlight).toBe(undefined); // the landing rings nothing (no boost yet; the step has no highlight)
 		const revision = v.revision;
 		v = h.step(0);
-		expect([...v.callouts]).toEqual([]); // once
 		expect(v.marker?.kind).toBe("drop");
 		expect(v.revision).toBe(revision);
-		// Mid-lesson (combat A entered, its dummies standing): the fight keeps its own marker (none inside the room).
+		// Mid-lesson (combat A entered, its dummies standing): the fight keeps its prompt and marker (none inside).
 		const a = tutorialRoom("combatA");
 		p.x = a.center.x;
 		p.z = a.center.z;
@@ -341,33 +383,72 @@ describe("tutorial director", () => {
 		expect(h.run.state.endless!.roomsEntered[a.roomId]).toBe(1);
 		expect(v.done[tutorialStepIndex("attack")]).toBe(false);
 		expect(dropsGround(h.run.state)[0].kind).toBe(TUTORIAL_BOOST_KIND);
-		expect(v.marker).toBe(undefined);
-		// Walk onto it (test-only: the drop moves under the player): taken, the boost row rings, no second callout.
+		expect([v.prompt, v.marker]).toEqual(["attack", undefined]);
+		// Walk onto it (test-only: the drop moves under the player): taken, the step done (not skipped), the row rings.
 		lay(h, p.x, p.z);
 		v = h.step(0);
 		expect(dropsGround(h.run.state)[0].kind).toBe(NO_BOOST);
 		expect(h.run.state.drops!.players[0].ticks[TUTORIAL_BOOST_KIND]).toBe(boostTicks(TUTORIAL_BOOST_KIND));
+		expect([v.done[BOOST], v.skipped[BOOST]]).toEqual([true, false]);
 		expect([...v.callouts]).toEqual([]);
 		expect(v.highlight).toBe(TUTORIAL_BOOST_HIGHLIGHT);
 		expect(v.marker).toBe(undefined);
 		for (let i = 0; i < math.ceil(TUTORIAL.calloutHighlightSeconds * SIM_HZ) + 1; i++) v = h.step(0);
 		expect(v.highlight === TUTORIAL_BOOST_HIGHLIGHT).toBe(false);
-		// A second drop later: no second callout, no second ring.
+		// A second drop later, back in the entrance (the step done): the current step's prompt (the teleports counted
+		// as walking, so the flask is current), no drop marker, no second ring; the funnel did not move past `move`.
+		p.x = h.setup.spawn!.x;
+		p.z = h.setup.spawn!.z;
+		p.prevX = p.x;
+		p.prevZ = p.z;
 		lay(h, p.x + 3, p.z);
 		v = h.step(0);
-		expect([...v.callouts]).toEqual([]);
+		expect([v.stepId, v.prompt, v.marker, v.highlight]).toEqual(["flask", "flask", undefined, "flask"]);
 		expect(v.funnelStepReached).toBe(tutorialStepIndex("move") + 1);
 	});
 
-	it("a boost taken on the frame it lands still fires the callout, and rings the boost row", () => {
+	it("a boost taken on the frame it lands: the step done on that frame, the boost row rung", () => {
 		const h = pastTheCard();
 		const p = h.run.state.player;
 		lay(h, p.x, p.z);
 		const v = h.step(0);
 		expect(dropsGround(h.run.state)[0].kind).toBe(NO_BOOST);
-		expect([...v.callouts]).toEqual([BOOST_CALLOUT_KEY]);
+		expect([v.done[BOOST], v.skipped[BOOST]]).toEqual([true, false]);
+		expect([...v.callouts]).toEqual([]);
 		expect(v.highlight).toBe(TUTORIAL_BOOST_HIGHLIGHT);
 		expect(v.marker?.kind === "drop").toBe(false);
+	});
+
+	it("a boost that fades untaken waives the step (done, not skipped)", () => {
+		const h = pastTheCard();
+		const p = h.run.state.player;
+		lay(h, p.x + 3, p.z);
+		let v = h.step(0);
+		expect(v.done[BOOST]).toBe(false);
+		h.run.state.drops!.ground[0].ticksLeft = 3; // test-only: fade soon
+		let n = 0;
+		while (dropsGround(h.run.state)[0].kind !== NO_BOOST && n < 10) {
+			expect(v.done[BOOST]).toBe(false);
+			v = h.step(0);
+			n++;
+		}
+		expect(dropsGround(h.run.state)[0].kind).toBe(NO_BOOST);
+		expect(h.run.state.drops!.players[0].ticks[TUTORIAL_BOOST_KIND]).toBe(0);
+		expect([v.done[BOOST], v.skipped[BOOST]]).toEqual([true, false]);
+		expect([v.prompt, v.marker, v.highlight]).toEqual(["move", undefined, undefined]);
+	});
+
+	it("floor 1 left before the boost was taken or faded: the step is skipped", () => {
+		const h = pastTheCard();
+		const p = h.run.state.player;
+		lay(h, p.x + 3, p.z);
+		let v = h.step(0);
+		expect(v.done[BOOST]).toBe(false);
+		v = h.step(DEBUG_FLOOR_BUTTON);
+		expect(h.run.state.endless!.floor).toBe(2);
+		expect(dropsGround(h.run.state)[0].kind).toBe(NO_BOOST); // the floor change cleared the ground
+		expect([v.done[BOOST], v.skipped[BOOST]]).toEqual([true, true]);
+		expect(v.stepId).toBe("draft");
 	});
 
 	it("is deterministic: the same frames give the same views", () => {
@@ -426,7 +507,9 @@ describe("tutorial bot", () => {
 			expect([key, r.callouts.includes(key)]).toEqual([key, true]);
 		}
 		expect(new Set(r.callouts).size()).toBe(r.callouts.size());
-		expect(r.callouts.filter((c) => c === BOOST_CALLOUT_KEY).size()).toBe(1);
+		expect(r.callouts.includes(OLD_BOOST_CALLOUT_KEY)).toBe(false);
+		// The funnel names (the server's tutorialStepName): unchanged before the boost step, then continuous.
+		expect(r.funnelSteps.map((n) => tutorialStepName(n))).toEqual(TUTORIAL_STEPS.map((s) => s.id));
 		// Every step's own prompt was shown at some point, but `finish`: the bot melees Mother Bramble on the arena
 		// centre, so the stairwell that opens there under it on her death takes it down on that same tick.
 		for (const s of TUTORIAL_STEPS) {
@@ -457,20 +540,23 @@ describe("tutorial bot", () => {
 		expect(r.callouts.includes("tutorial.callout.bossPhase3")).toBe(true);
 	});
 
-	it("combat B's last swarmer drops the Fury: the callout on that tick, the marker on it, the bot takes it", () => {
+	it("combat B's last swarmer drops the Fury: the boost step current on that tick, the marker on it, done on the pickup", () => {
 		const r = inOrderRun();
 		const hits = r.stepDoneTicks[tutorialStepIndex("hits")];
 		expect(TUTORIAL_BOOST_LESSON).toBe("combatB");
 		// The guarantee: the kill that clears combat B (the `hits` lesson) drops it, and nothing else ever drops.
 		expect(r.dropLandedTick).toBe(hits);
-		expect(r.calloutTicks[r.callouts.indexOf(BOOST_CALLOUT_KEY)]).toBe(hits);
 		expect(r.boostTakenTick >= r.dropLandedTick).toBe(true);
 		expect(r.boostTakenTick - r.dropLandedTick < r.run.state.drops!.config.groundTicks).toBe(true);
 		expect([r.dropsLanded, r.dropsTaken]).toEqual([1, 1]);
-		// The marker pointed at the drop while it lay there (unless it was taken on its landing tick).
+		// The step: practised (taken, not waived) on the pickup's tick; current from the drop's landing until then.
+		expect([r.stepDoneTicks[BOOST], r.view.skipped[BOOST]]).toEqual([r.boostTakenTick, false]);
+		expect(r.boostCurrentFrames).toBe(r.boostTakenTick - r.dropLandedTick);
+		// Its marker pointed at the drop on every frame it was current (unless it was taken on its landing tick).
 		if (r.boostTakenTick > r.dropLandedTick) {
 			expect(r.markerKinds.includes("drop")).toBe(true);
-			expect(r.dropMarkerFrames > 0).toBe(true);
+			expect(r.boostCurrentOnDrop).toBe(r.boostCurrentFrames);
+			expect(r.prompts.includes("boost")).toBe(true);
 		}
 		expect(r.dropMarkerOnDrop).toBe(r.dropMarkerFrames);
 		expect(r.highlights.includes(TUTORIAL_BOOST_HIGHLIGHT)).toBe(true);
@@ -496,8 +582,11 @@ describe("tutorial bot", () => {
 		const at = (id: string) => r.stepDoneTicks[tutorialStepIndex(id)];
 		expect(at("attack") < at("flask")).toBe(true);
 		expect(at("roll") < at("hits")).toBe(true);
-		// The funnel still only counts up, one step at a time.
+		// The Fury lands as combat B clears (after C here): the boost step is current then, and the bot takes it.
+		expect([r.dropLandedTick, at("boost"), r.view.skipped[BOOST]]).toEqual([at("hits"), r.boostTakenTick, false]);
+		// The funnel still only counts up, one step at a time, to the last step (1..N: the boost step included).
 		for (let i = 0; i < r.funnelSteps.size(); i++) expect(r.funnelSteps[i]).toBe(i + 1);
+		expect(r.funnelSteps.size()).toBe(TUTORIAL_STEP_COUNT);
 		expect(r.heartProblems).toEqual([]);
 	});
 });

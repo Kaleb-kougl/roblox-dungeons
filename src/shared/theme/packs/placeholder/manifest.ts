@@ -681,6 +681,10 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 			"They rush you. Getting hit flashes you red. In a real run that costs half a heart.",
 		"tutorial.prompt.hits.touch":
 			"They rush you. Getting hit flashes you red. In a real run that costs half a heart.",
+		// The `boost` step (docs/BOOSTS.md B9): combat B's guaranteed Fury.
+		"tutorial.prompt.boost.keyboard": "A boost! Walk over it before it fades: it powers you up for a few seconds.",
+		"tutorial.prompt.boost.gamepad": "A boost! Walk over it before it fades: it powers you up for a few seconds.",
+		"tutorial.prompt.boost.touch": "A boost! Walk over it before it fades: it powers you up for a few seconds.",
 		"tutorial.prompt.roll.keyboard":
 			"The orange line is its aim. Roll through the shot: {roll}. You can't be hit mid-roll.",
 		"tutorial.prompt.roll.gamepad":
@@ -730,8 +734,6 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		"tutorial.callout.graze": "Graze! Bullets that skim past you score too.",
 		"tutorial.callout.bossPhase2": "Phase II: new patterns.",
 		"tutorial.callout.bossPhase3": "Phase III: her fiercest patterns.",
-		// docs/BOOSTS.md B9 (the callout itself lands with B9; the string is ready).
-		"tutorial.callout.boost": "Enemies sometimes drop a boost. Walk over it before it fades.",
 		"tutorial.objective.title": "Practice Descent",
 		"tutorial.objective.body":
 			"Descend as deep as you can. Each floor is harder; the run ends when your hearts run out.",

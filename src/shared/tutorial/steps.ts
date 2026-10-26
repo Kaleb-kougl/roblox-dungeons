@@ -7,12 +7,17 @@
  * room, or a floor), its prompt (theme string keys per device: tutorialPromptKey), an optional HUD highlight, the
  * world marker's target and its completion rule. Lessons tied to rooms may finish out of order; the director's
  * current step is the lowest unfinished one.
+ *
+ * Funnel numbering: the `boost` step (6, docs/BOOSTS.md B9, reversing P8) was inserted on 2026-10-26, so `roll` ..
+ * `finish` moved from 6..15 to 7..16 (docs/TUTORIAL.md §6). Never insert or reorder steps lightly: every number after
+ * the change point moves, and the dashboard funnel is not comparable across the change.
  */
 import type { TutorialLessonId } from "shared/run";
 
 /**
  * The HUD element a step (or a callout) rings with the pulsing `uiAccent` highlight. `boosts` is the boost row
- * (docs/BOOSTS.md B9): rung when the tutorial's guaranteed boost is picked up (TUTORIAL_BOOST_HIGHLIGHT).
+ * (docs/BOOSTS.md B9): rung when the tutorial's guaranteed boost is picked up (TUTORIAL_BOOST_HIGHLIGHT; not the
+ * `boost` step's own highlight: the row is empty until the pickup).
  */
 export type TutorialHighlight = "flask" | "weapons" | "score" | "bossBar" | "hearts" | "boosts";
 
@@ -35,9 +40,10 @@ export const TUTORIAL_HIGHLIGHTS: ReadonlyArray<TutorialHighlight> = [
  *   stairwell  floor 1: the stairwell room's door until entered, then the stairwell; later floors: the stairwell
  *   boss       the living boss (the floor's stairwell, the arena centre, when there is none)
  *   none       no marker
- *   drop       never a step's: the director's override while a boost drop lies on the floor (docs/BOOSTS.md B9), the
- *              ground drop nearest the player, unless the player stands in an entered, unfinished lesson room (a fight
- *              in progress keeps its own marker: none inside the room)
+ *   drop       the ground boost drop nearest the player (lowest ground slot on a tie); nothing while none lies on the
+ *              floor (the `boost` step, docs/BOOSTS.md B9). While a drop lies and the `boost` step is still open but
+ *              not current (an earlier step unfinished), the director shows it out of order too: its prompt and this
+ *              marker, except inside an entered, unfinished lesson room and under the objective card
  */
 export type TutorialMarkerKind = "door" | "pedestal" | "shrine" | "stairwell" | "boss" | "none" | "drop";
 
@@ -76,6 +82,9 @@ export type TutorialSkill =
  *   floor      the floor reached >= `floor` (the stairwell)
  *   boon       a boon confirmed in the draft
  *   boss       the boss defeated (Depth grew)
+ *   boost      a boost runs on the player (the drop picked up, on its landing frame too); waived (done, not skipped)
+ *              once a drop has been seen on the step's floor and none lies there any more while no boost ran (it
+ *              faded untaken)
  *
  * Any step still unfinished when the run leaves its floor (`floor` below) is marked skipped (done, never practised):
  * a player who takes the stairwell early is not stuck behind a lesson they can no longer reach.
@@ -89,7 +98,8 @@ export type TutorialRule =
 	| { readonly kind: "curse" }
 	| { readonly kind: "floor"; readonly floor: number }
 	| { readonly kind: "boon" }
-	| { readonly kind: "boss" };
+	| { readonly kind: "boss" }
+	| { readonly kind: "boost" };
 
 export interface TutorialStep {
 	/** Stable id and funnel step name (`[A-Za-z0-9_]`, <= MAX_TUTORIAL_STEP_ID_CHARS). */
@@ -136,7 +146,7 @@ const STEP_DEFS: ReadonlyArray<StepDef> = [
 	},
 	{ id: "move", floor: 1, prompt: "move", marker: NO_MARKER, rule: { kind: "move" } },
 	{ id: "flask", floor: 1, prompt: "flask", highlight: "flask", marker: NO_MARKER, rule: { kind: "flask" } },
-	// --- Floor 1, combat A-F (lessons 3-8)
+	// --- Floor 1, combat A-F (lessons 3-8), and the boost combat B drops
 	{
 		id: "attack",
 		floor: 1,
@@ -154,6 +164,10 @@ const STEP_DEFS: ReadonlyArray<StepDef> = [
 		marker: { kind: "door", lesson: "combatB" },
 		rule: { kind: "clear", skills: [] },
 	},
+	// Combat B's last kill drops the guaranteed Fury (shared/run TUTORIAL_DROPS_CONFIG, docs/BOOSTS.md B9) wherever
+	// that swarmer died: no lesson room. No highlight (the boost row is empty until the pickup, which rings it once:
+	// TUTORIAL_BOOST_HIGHLIGHT).
+	{ id: "boost", floor: 1, prompt: "boost", marker: { kind: "drop" }, rule: { kind: "boost" } },
 	{
 		id: "roll",
 		floor: 1,
@@ -259,15 +273,13 @@ export function tutorialStepIndex(id: string): number {
  *   harmlessHit   the first hit that landed harmlessly ("in a real run that costs half a heart")
  *   graze         the first graze (praise)
  *   bossPhase     the boss entered phase `phase`
- *   boostDrop     the first boost drop landed (combat B's guaranteed Fury, docs/BOOSTS.md B9): a drop lies on the
- *                 floor, or a boost already runs on the player (taken on the frame it landed)
+ * (The boost drop is a step, `boost`, not a callout: docs/BOOSTS.md B9.)
  */
 export type TutorialCalloutTrigger =
 	| { readonly kind: "firstKill" }
 	| { readonly kind: "harmlessHit" }
 	| { readonly kind: "graze" }
-	| { readonly kind: "bossPhase"; readonly phase: number }
-	| { readonly kind: "boostDrop" };
+	| { readonly kind: "bossPhase"; readonly phase: number };
 
 export interface TutorialCallout {
 	readonly id: string;
@@ -289,12 +301,11 @@ export const TUTORIAL_CALLOUTS: ReadonlyArray<TutorialCallout> = table.freeze([
 	callout("graze", { kind: "graze" }),
 	callout("bossPhase2", { kind: "bossPhase", phase: 2 }, "bossBar"),
 	callout("bossPhase3", { kind: "bossPhase", phase: 3 }, "bossBar"),
-	callout("boost", { kind: "boostDrop" }),
 ]);
 
 /**
  * Rung for TUTORIAL.calloutHighlightSeconds on the first frame a boost runs on the player (the pickup of combat B's
- * Fury, docs/BOOSTS.md B9). Not a callout (no toast of its own: the HUD's `hud.toast.boost` says what the boost does)
- * and never a funnel step (P8).
+ * Fury, docs/BOOSTS.md B9: the moment the `boost` step completes). Not a callout (no toast of its own: the HUD's
+ * `hud.toast.boost` says what the boost does), and not the step's highlight (the row is empty before the pickup).
  */
 export const TUTORIAL_BOOST_HIGHLIGHT: TutorialHighlight = "boosts";
