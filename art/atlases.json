@@ -185,6 +185,51 @@
 			"noiseAlpha": 2,
 			"pad": 3,
 			"pivot": "bottom"
+		},
+		"boost.fury": {
+			"$comment": "docs/BOOST_ART.md: Fury's drop, the gold coin scatter (S facing, arrangement 0); cropped to alpha. Pivot = centre (the drop bobs about its middle).",
+			"file": "lords-of-pain/prop/gold_drop/S/gold_drop_S_270.0_0.png",
+			"name": "boost-fury",
+			"crop": "alpha",
+			"noiseAlpha": 2,
+			"pad": 3,
+			"pivot": "center"
+		},
+		"boost.quickstep": {
+			"$comment": "docs/BOOST_ART.md: Quickstep's drop, the blue gemstone cluster (S facing, arrangement 0).",
+			"file": "lords-of-pain/prop/gemstones_blue/S/gemstones_blue_S_270.0_0.png",
+			"name": "boost-quickstep",
+			"crop": "alpha",
+			"noiseAlpha": 2,
+			"pad": 3,
+			"pivot": "center"
+		},
+		"boost.frenzy": {
+			"$comment": "docs/BOOST_ART.md: Frenzy's drop, the green gemstone cluster (S facing, arrangement 0).",
+			"file": "lords-of-pain/prop/gemstones_green/S/gemstones_green_S_270.0_0.png",
+			"name": "boost-frenzy",
+			"crop": "alpha",
+			"noiseAlpha": 2,
+			"pad": 3,
+			"pivot": "center"
+		},
+		"boost.aegis": {
+			"$comment": "docs/BOOST_ART.md: Aegis's drop, the white gemstone cluster (S facing, arrangement 0).",
+			"file": "lords-of-pain/prop/gemstones_white/S/gemstones_white_S_270.0_0.png",
+			"name": "boost-aegis",
+			"crop": "alpha",
+			"noiseAlpha": 2,
+			"pad": 3,
+			"pivot": "center"
+		},
+		"ui.marker.boost": {
+			"$comment": "docs/BOOST_ART.md BA-P1: the drops' beam, the WHITE loot indicator (tinted per boost by its colour role; the pedestal keeps the yellow one). 2 px vertical beam, cropped like ui.marker.pedestal. Pivot = bottom centre.",
+			"file": "lords-of-pain/user interface/loot-indicator/loot_indicator_white.png",
+			"name": "ui-marker-boost",
+			"crop": "alpha",
+			"noiseAlpha": 2,
+			"pad": 3,
+			"pivot": "bottom"
 		}
 	},
 	"worldArt": {

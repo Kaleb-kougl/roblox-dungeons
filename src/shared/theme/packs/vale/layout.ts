@@ -103,7 +103,37 @@ export const VALE_SPRITE_LAYOUTS: Record<string, ValeSpriteLayout> = {
 };
 
 export const VALE_IMAGE_LAYOUTS: Record<string, ValeImageLayout> = {
+	"boost.aegis": {
+		file: "boost-aegis.png",
+		w: 17,
+		h: 14,
+		pivot: { x: 8.5, y: 7 },
+	},
+	"boost.frenzy": {
+		file: "boost-frenzy.png",
+		w: 17,
+		h: 15,
+		pivot: { x: 8.5, y: 7.5 },
+	},
+	"boost.fury": {
+		file: "boost-fury.png",
+		w: 31,
+		h: 25,
+		pivot: { x: 15.5, y: 12.5 },
+	},
+	"boost.quickstep": {
+		file: "boost-quickstep.png",
+		w: 17,
+		h: 15,
+		pivot: { x: 8.5, y: 7.5 },
+	},
 	"tile.biome.1.floor": { file: "tile-biome1-floor.png", w: 256, h: 256, tilesPerImage: 4 },
+	"ui.marker.boost": {
+		file: "ui-marker-boost.png",
+		w: 8,
+		h: 103,
+		pivot: { x: 4, y: 100 },
+	},
 	"ui.marker.pedestal": {
 		file: "ui-marker-pedestal.png",
 		w: 8,
