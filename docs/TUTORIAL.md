@@ -289,6 +289,7 @@ registerRunWorld("tutorial", (_seed, o) => buildTutorialRunConfig(o.partySize));
 | `ui/hud/TutorialPanel.tsx`, `ObjectiveCard.tsx`, `TutorialOutro.tsx` | Prompt card, objective card, outro. Theme strings and roles only, scaled by `useHudScale` |
 | Highlight ring | A `highlight` prop on `StatusPanel` (flask pips), `WeaponPanel`, `ScorePanel`, `BossBar` |
 | `TutorialMarkerController` (`controllers/render/`) | One beam/arrow on the next target, built like `RunMarkerController`. Uses theme ID `ui.marker.tutorial` (placeholder: a `uiAccent` cylinder). Its pulse follows `motionScale` |
+| `TutorialArrowController` (`controllers/render/`) | The guidance arrow (docs/TUTORIAL_ARROW.md): a flat chevron beside the player pointing along the walkable path to the marker's target (shared/tutorial `TutorialGuide`), hidden in lesson rooms, near the target and when the target is on screen with a clear way. Optional theme ID `ui.arrow.tutorial` (placeholder: two `uiAccent` Neon bars). Its slide follows `motionScale` |
 | `PauseOverlay` | During the tutorial: Resume / Restart tutorial / Skip tutorial (confirm) / Options. Otherwise unchanged |
 | `MainMenu` | Gains a **Tutorial** entry for replays (after Lobbies) |
 
@@ -410,7 +411,8 @@ Critical path: T1 -> T2 -> T4 -> T6. T5 can run alongside T2-T4.
    objective card on a wounded player (2 of 3 hearts). No ranked `startRun` goes out (Output).
 2. Walk each room: every prompt appears on entry with the right glyphs (repeat on a gamepad; rebind e.g. Flask to G
    in Options > Controls first: the flask prompt says G), the marker leads on, and harmless hits blink and play the
-   hurt sound but hearts stay put.
+   hurt sound but hearts stay put. Between rooms the floor chevron beside the player points along the corridor (round
+   the snake's turns) and fades out inside a lesson room (docs/TUTORIAL_ARROW.md, Studio check).
 3. Flask: F fills the hearts. Ember, guard, bow charge, roll: each one ticks its step.
 4. Pedestal and shrine work as in a real run. The stairwell leads to the draft, then the floor 2 boss with
    previews and phase callouts.

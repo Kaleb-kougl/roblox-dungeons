@@ -16,9 +16,12 @@
  * (endlessBot's, which walks round pillars), avoiding the open floor-1 stairwell until it is the target. The bow
  * only shoots with a line of sight (else it walks the field round the pillar). Every tick checks the harmless rule: hearts never fall below the start, and never fall at
  * all except when the max falls (a curse).
+ *
+ * `steer: "guide"` (docs/TUTORIAL_ARROW.md A3) walks by the guidance arrow's heading (shared/tutorial TutorialGuide)
+ * instead, while the arrow shows: the proof that the arrow never sends a player into a wall.
  */
 import { TUTORIAL } from "shared/config";
-import { bulletBlocker, gridToWorld, lineOfSight, worldToGrid } from "shared/dungeon";
+import { bulletBlocker, clearWalk, gridToWorld, lineOfSight, worldToGrid } from "shared/dungeon";
 import { LiveRun, findBoss, takeSnapshot } from "shared/play";
 import {
 	BOW,
@@ -40,7 +43,8 @@ import {
 	type InputFrame,
 	type SimState,
 } from "shared/sim";
-import { TUTORIAL_STEPS, TutorialDirector, type TutorialView } from "shared/tutorial";
+import { TUTORIAL_STEPS, TutorialDirector, TutorialGuide, type TutorialView } from "shared/tutorial";
+import { TUTORIAL_VIEW } from "shared/view/hud";
 import { TUTORIAL_ROOMS, buildTutorialRunConfig, tutorialRoom, type TutorialLessonId } from "../tutorial";
 import type { EndlessRunSetup } from "../endless";
 import { distanceField, frame, walkDir, type Field } from "./endlessBot";
@@ -54,6 +58,12 @@ export interface TutorialBotOptions {
 	readonly bossDebugEvery?: number;
 	/** Give up after this many ticks in total (default 20 minutes of sim time). */
 	readonly maxTicks?: number;
+	/**
+	 * How walkTo steers (docs/TUTORIAL_ARROW.md A3): "bot" (default) its own straight line / distance field; "guide" the
+	 * guidance arrow's heading (a TutorialGuide fed the director's marker every tick, target never on screen) while
+	 * the arrow shows, and its own steering only while it is hidden (no marker, or within arrowHideTiles of it).
+	 */
+	readonly steer?: "bot" | "guide";
 }
 
 export interface TutorialBotResult {
@@ -88,6 +98,11 @@ export interface TutorialBotResult {
 	 * Phases 2 and 3 start on the phase marks (the bar's notches), so these are the notch fractions.
 	 */
 	readonly bossPhaseFill: ReadonlyArray<number>;
+	/** Ticks spent in walkTo (the walks between and into lesson rooms, to the stairwells), either steer. */
+	readonly walkTicks: number;
+	/** steer "guide": walkTo ticks steered by the arrow's heading, and ticks its target was unreachable (0 = none). */
+	readonly guidedTicks: number;
+	readonly guideUnreachableTicks: number;
 }
 
 const DEFAULT_MAX_TICKS = 20 * 60 * SIM_HZ;
@@ -95,7 +110,7 @@ const DEFAULT_MAX_TICKS = 20 * 60 * SIM_HZ;
 const WALK_BUDGET = 60 * SIM_HZ;
 const FIGHT_BUDGET = 90 * SIM_HZ;
 const BOSS_BUDGET = 8 * 60 * SIM_HZ;
-/** Sword targets within this range get swung at (SWORD_DATA.reach 1.7 minus a margin, centre to centre). */
+/** Sword targets within this range get swung at (SWORD_DATA.reach 1.955 minus a margin, centre to centre). */
 const MELEE_RANGE = 1.2;
 /** Enemies this close to the player count as the room's (a swarmer that followed it out). */
 const CHASE_RANGE = 4;
@@ -143,8 +158,13 @@ class TutorialBot {
 	private prevMax: number;
 	private readonly fields = new Map<string, Field>();
 	private readonly bowIndex = weaponIndex(BOW.id);
+	walkTicks = 0;
+	guidedTicks = 0;
+	guideUnreachableTicks = 0;
+	private readonly guide: TutorialGuide | undefined;
 
-	constructor(readonly maxTicks: number) {
+	constructor(readonly maxTicks: number, steer: "bot" | "guide" = "bot") {
+		this.guide = steer === "guide" ? new TutorialGuide(TUTORIAL_VIEW) : undefined;
 		const spawn = this.setup.spawn!;
 		this.run = new LiveRun({
 			seed: TUTORIAL.runSeed,
@@ -208,6 +228,17 @@ class TutorialBot {
 		this.prevHearts = p.hearts;
 		this.prevMax = p.heartsMax;
 		this.watchBoss();
+		if (this.guide !== undefined) {
+			const g = this.guide.update({
+				dungeon: this.world().dungeon,
+				target: v.marker,
+				px: p.x,
+				pz: p.z,
+				targetOnScreen: false,
+				dt: SIM_DT,
+			});
+			if (g.unreachable) this.guideUnreachableTicks++;
+		}
 	}
 
 	/** The boss fight's milestones (engaged, each phase with the HUD bar's fill, dead). */
@@ -276,15 +307,7 @@ class TutorialBot {
 	/** The player's body fits along the straight line to (tx, tz): the centre line and both sides are clear. */
 	private clearPath(tx: number, tz: number): boolean {
 		const p = this.state.player;
-		const [ux, uz] = unit(tx - p.x, tz - p.z);
-		const ox = -uz * PLAYER_RADIUS;
-		const oz = ux * PLAYER_RADIUS;
-		const blocked = bulletBlocker(this.world().dungeon);
-		return (
-			lineOfSight(blocked, p.x, p.z, tx, tz) &&
-			lineOfSight(blocked, p.x + ox, p.z + oz, tx + ox, tz + oz) &&
-			lineOfSight(blocked, p.x - ox, p.z - oz, tx - ox, tz - oz)
-		);
+		return clearWalk(bulletBlocker(this.world().dungeon), p.x, p.z, tx, tz, PLAYER_RADIUS);
 	}
 
 	/**
@@ -306,10 +329,19 @@ class TutorialBot {
 		while (n < WALK_BUDGET && !this.out() && this.floor() === startFloor) {
 			if (done !== undefined ? done() : dist2(this.state.player.x, this.state.player.z, tx, tz) < ARRIVE * ARRIVE)
 				return;
-			const [mx, mz] = this.dirTo(tx, tz, avoidStairs);
+			const [mx, mz] = this.steerTo(tx, tz, avoidStairs);
 			this.tick(frame(mx, mz, buttons));
 			n++;
+			this.walkTicks++;
 		}
+	}
+
+	/** walkTo's move: dirTo, or (steer "guide") the arrow's heading while it shows. */
+	private steerTo(tx: number, tz: number, avoidStairs: boolean): [number, number] {
+		const g = this.guide?.getView();
+		if (g === undefined || !g.visible) return this.dirTo(tx, tz, avoidStairs);
+		this.guidedTicks++;
+		return [math.sin(g.heading), math.cos(g.heading)];
 	}
 
 	roomEntered(lesson: TutorialLessonId): boolean {
@@ -571,7 +603,7 @@ class TutorialBot {
 
 /** Plays the tutorial with the bot (see the file comment) and returns what the director reported. */
 export function playTutorial(options: TutorialBotOptions = {}): TutorialBotResult {
-	const bot = new TutorialBot(options.maxTicks ?? DEFAULT_MAX_TICKS);
+	const bot = new TutorialBot(options.maxTicks ?? DEFAULT_MAX_TICKS, options.steer);
 	const order = options.order ?? TUTORIAL_ROOMS.map((r) => r.lesson);
 	bot.objective();
 	bot.walkABit();
@@ -601,5 +633,8 @@ export function playTutorial(options: TutorialBotOptions = {}): TutorialBotResul
 		bossHpMax: bot.bossHpMax,
 		bossPhaseTicks: bot.bossPhaseTicks,
 		bossPhaseFill: bot.bossPhaseFill,
+		walkTicks: bot.walkTicks,
+		guidedTicks: bot.guidedTicks,
+		guideUnreachableTicks: bot.guideUnreachableTicks,
 	};
 }

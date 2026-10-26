@@ -44,12 +44,24 @@ describe("vale effects (fx.*)", () => {
 		expect(sortedKeys(VALE_FX_LAYOUTS)).toEqual([...FX_IDS].sort());
 	});
 
-	it("as bundled (no effect PNG uploaded) has no fx or ambient entry: nothing changes on screen", () => {
+	it("as bundled (no effect PNG uploaded) has no fx entry, and no Ninja Adventure ambient texture", () => {
 		expect(VALE_ASSET_IDS[VALE_FX_SHEET.file]).toBe(undefined);
-		for (const id of sortedKeys(VALE_MANIFEST.assets)) expect([id, isFxOrAmbient(id)]).toEqual([id, false]);
+		for (const id of sortedKeys(VALE_MANIFEST.assets)) {
+			expect([id, isFxOrAmbient(id) && id.sub(1, 3) === "fx."]).toEqual([id, false]);
+		}
 		const pack = new ThemePack(VALE_MANIFEST, { warn: quiet });
 		for (const id of FX_IDS) expect([id, pack.fx(id)]).toEqual([id, undefined]);
-		for (const b of BIOMES) expect([b.id, pack.ambient(b.id)]).toEqual([b.id, undefined]);
+		// a biome's ambient texture, if any, is the R5 mote (decor-mote.png, uploaded), never an fx-ambient flipbook
+		const mote = VALE_WORLD_LAYOUTS["mote"];
+		const moteId = mote.kind === "image" ? VALE_ASSET_IDS[mote.file] : undefined;
+		for (const b of BIOMES) {
+			const a = VALE_MANIFEST.assets[decorAmbientId(b.id)] as unknown as { assetId: string } | undefined;
+			const fromMote = a === undefined || (moteId !== undefined && a.assetId === moteId);
+			expect([b.id, fromMote]).toEqual([b.id, true]);
+		}
+		for (const id of sortedKeys(VALE_AMBIENT_LAYOUTS)) {
+			expect([id, VALE_ASSET_IDS[VALE_AMBIENT_LAYOUTS[id].file]]).toEqual([id, undefined]);
+		}
 	});
 
 	it("with the atlas uploaded validates with zero problems and draws every effect", () => {

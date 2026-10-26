@@ -554,6 +554,11 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		"hud.toast.curse": "Cursed: {name}",
 		"hud.toast.secondWind": "Second Wind!",
 		"hud.toast.fang": "Vampire Fang: +{amount} half heart",
+		// Co-op spectating (docs/SPECTATE.md; keys: shared/view/hud SPECTATE_HUD_STRINGS).
+		"hud.spectate.watching": "Spectating {name}  ·  {pos} / {count}",
+		"hud.spectate.watchingName": "Spectating {name}",
+		"hud.spectate.hint": "{next} next · {previous} previous",
+		"hud.spectate.back": "You're back on the next floor",
 		"boon.rarity.common": "Common",
 		"boon.rarity.rare": "Rare",
 		"boon.rarity.legendary": "Legendary",

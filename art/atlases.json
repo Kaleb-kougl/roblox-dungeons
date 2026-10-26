@@ -13,7 +13,9 @@
 		"bodyAlpha and max(R, G, B) > bodyMinRgb (both packs bake a pure-black shadow, so 'lit' separates it from the",
 		"body; the alpha cut is per pack, see each set); pivot.y = the edge below the lowest body row; pivot.x = the",
 		"midpoint of the body pixels in the lowest footBand rows (between the outer edges of the feet), rounded. The",
-		"same frame's body height / bodyTiles gives pixelsPerTile (rounded to 0.1). Measured facing towards the camera",
+		"same frame's body height / bodyTiles gives pixelsPerTile (rounded to 0.1); a set may instead name another set in",
+		"pixelsPerTileFrom and take its pixelsPerTile exactly (same pack, same render scale; sets build in dependency",
+		"order, a missing or cyclic reference fails the build). Measured facing towards the camera",
 		"(the feet are side by side there, level with the root); the build prints the same measure for every facing.",
 		"outline (optional, enemies): { widthPx } writes <sheet>-outline.png beside each sheet, same size and cells: the",
 		"body mask above (so not the baked shadow) dilated per cell by a disc of radius widthPx (integer 1-4), white,",
@@ -21,7 +23,9 @@
 		"pad >= widthPx + 1, so the rim is not clipped and keeps a transparent border for the bilinear filter.",
 		"downscale (optional, integer k): each frame is noise-cut, then box-filtered by k (premultiplied alpha); the crop",
 		"box grows to whole k-blocks, and pad, cells and the outline are in downscaled pixels; the pivot and body height",
-		"are measured at full resolution and divided by k (so pixelsPerTile is too)."
+		"are measured at full resolution and divided by k (so pixelsPerTile is too).",
+		"lockAlso (optional, frames sources): { <name>: { folder, frames } } source files the lock covers and art:build",
+		"checks, but no sheet reads (art kept for a later phase)."
 	],
 	"spriteSets": {
 		"class.vanguard": {
@@ -113,6 +117,49 @@
 				{ "name": "swarmer-move", "animations": ["move"] },
 				{ "name": "swarmer-death", "animations": ["death"] }
 			]
+		},
+		"enemy.sniper": {
+			"$comment": [
+				"Lords of Pain subservient (docs/SNIPER_ART.md): a chained thrall, standing bowed, hands pressed to its head.",
+				"Same file layout and angles as the skeleton: <folder>/<facing>/<folder>_<facing>_<angle>_<frame>.png, folder",
+				"angles are screen angles (E = 0, N = 90, counter-clockwise), the output convention already; the script rebuilds",
+				"each file name from d * 22.5 and fails if it does not exist, so the facing order below is checked.",
+				"By eye (contact sheet, 2026-10-26): E/W the profile, elbows raised to the right/left; N shows the back (elbows",
+				"out both sides, head between the hands); S the bowed front (crown of the head and the clasped hands towards the",
+				"camera); the 16 facings turn smoothly counter-clockwise between them. The ankle chain trails a different way per",
+				"facing.",
+				"The pack has only worship and working (Animation Index.txt), so idle is the one real animation: worship frames",
+				"0, 2, 4, 6 (16 facings x 4 = 64 cells, D5). Stand-ins (the mapping table): move = idle frame 0 held (D2, a",
+				"glide: frames 1, stride 4); attack = idle's 4 cells, stretched over the telegraph by the renderer; hit and death",
+				"= idle frame 0 (the tint shows the hit; fx.death.puff plays on every kill). Union box (alpha > noiseAlpha) is",
+				"120x87 + 3 px pad = 126x93: the 64 cells fit one atlas. Drawn at the skeleton's exact scale",
+				"(pixelsPerTileFrom, D6), so the two Lords of Pain enemies keep their relative heights.",
+				"lockAlso: all 8 x 16 worship frames (so D5 can go back to 8 frames) and the working animation (8 x 16, Phase 2,",
+				"D1) are locked, though no sheet reads the odd worship frames or working."
+			],
+			"source": { "type": "frames", "dir": "lords-of-pain/none-playable character/subservient", "frameW": 256, "frameH": 256 },
+			"facingCount": 16,
+			"facingDirs": ["E", "NEE", "NE", "NNE", "N", "NNW", "NW", "NWW", "W", "SWW", "SW", "SSW", "S", "SSE", "SE", "SEE"],
+			"noiseAlpha": 2,
+			"pad": 3,
+			"pivot": { "measure": { "animation": "idle", "facing": 12, "frame": 0 }, "bodyAlpha": 64, "bodyMinRgb": 8, "footBand": 3 },
+			"pivotNote": "Body cut as the skeleton's (same pack, black baked shadow): lit pixels at alpha > 64. The lit ankle chain counts as body, so the build's per-facing feet line runs from y 57 to 70: that is the chain trailing towards the camera (facings 3-7, around N), not the feet; on the contact sheet the pivot (measured S, where the chain lies beside the feet) sits on the feet in all 16 facings.",
+			"outline": { "widthPx": 2 },
+			"outlineNote": "The body (#201a1f mean) is 1.05:1 on the biome 1 floor, so the enemy rim carries it (D4: rim only, no brightening). pad 3 = widthPx + 1.",
+			"pixelsPerTileFrom": "enemy.swarmer",
+			"resample": "Default",
+			"animations": {
+				"idle": { "folder": "subservient_special_worship", "frames": [0, 2, 4, 6], "fps": 6, "loop": true },
+				"move": { "cellsOf": "idle", "frames": 1, "fps": 1, "loop": true },
+				"attack": { "cellsOf": "idle", "fps": 6, "loop": true },
+				"hit": { "cellsOf": "idle", "frames": 1, "fps": 1, "loop": false },
+				"death": { "cellsOf": "idle", "frames": 1, "fps": 1, "loop": false }
+			},
+			"lockAlso": {
+				"worship": { "folder": "subservient_special_worship", "frames": [0, 1, 2, 3, 4, 5, 6, 7] },
+				"working": { "folder": "subservient_special_working", "frames": [0, 1, 2, 3, 4, 5, 6, 7] }
+			},
+			"sheets": [{ "name": "sniper-idle", "animations": ["idle"] }]
 		},
 		"boss.demonlord": {
 			"$comment": [

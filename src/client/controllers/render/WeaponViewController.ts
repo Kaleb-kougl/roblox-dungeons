@@ -114,8 +114,8 @@ export class WeaponViewController implements OnStart {
 		idx: { bow: number; sword: number },
 		L: Record<"swing" | "finisher" | "blade" | "windup" | "guard" | "flash" | "charge" | "full", DashLayer>,
 	): void {
-		// Co-op (M4): this client's own player's weapons.
-		const me = this.sim.getLocalPlayerIndex();
+		// Co-op (M4): this client's own player's weapons, or the watched teammate's while spectating (docs/SPECTATE.md).
+		const me = this.sim.getViewPlayerIndex();
 		const w = weaponsAt(s, me);
 		const p = playerAt(s, me);
 		const px = lerp(p.prevX, p.x, alpha);

@@ -2,7 +2,7 @@
 // step one tick with FORFEIT_BUTTON (paused or not), so the run ends as a death in the recording itself; the server's
 // validators (whole-run validateRun and the ranked SegmentedValidator) replay it and report died = true, and the
 // endless board's death-only rule then posts it.
-import { describe, expect, it } from "@rbxts/jest-globals";
+import { afterAll, describe, expect, it } from "@rbxts/jest-globals";
 import runFull from "shared/fixtures-generated/run-full-1337";
 import {
 	DEFAULT_RUN_LIMITS,
@@ -26,9 +26,20 @@ import {
 	quantizeInput,
 	type InputFrame,
 	type RunFixture,
+	WEB_SWORD_TIMINGS,
+	setSwordTimings,
+	type SwordTimings,
 } from "shared/sim";
 import { leaderboardEligibility } from "shared/leaderboard";
 import { LiveRun, RANKED_WORLD_KIND } from "shared/play";
+
+// The golden runs (and the source's measured tables) were recorded with the web build's sword; the port's is 20%
+// slower (CLAUDE.md decision log), so this file replays under WEB_SWORD_TIMINGS. Set at load, not in a beforeAll:
+// describe bodies may replay while the specs are collected.
+const portSword: SwordTimings = setSwordTimings(WEB_SWORD_TIMINGS);
+afterAll(() => {
+	setSwordTimings(portSword);
+});
 
 const LATE = 1e9;
 

@@ -15,6 +15,9 @@
  *              sums bulletsDeleted over the party and keeps no per-player count, so this is who MAY have made them
  *   shot       (local player only) a ranged weapon slot's cooldown rose (fire() or a heavy arrow sets it)
  *   charged    (local player only) the bow slot's charge reached BOW_DATA.chargeTicks
+ *              ("local" is the index update() is given: the view index, the watched teammate while spectating,
+ *              docs/SPECTATE.md; a frame whose index differs from the last one is a fresh baseline for these two
+ *              only, so a switch never plays the new player's earlier shot or full charge)
  *   room clear state.score room records: the count of cleared rooms rose on the same floor
  *   relic      state.run.pedestalTaken: the count of taken pedestals rose on the same floor
  *   shrine     state.run.shrineUsed went 0 -> 1 on the same floor
@@ -92,6 +95,8 @@ export class AudioStateWatch {
 	private readonly guard = new Array<boolean>();
 	private readonly localCooldown = new Array<number>();
 	private localCharge = 0;
+	/** The index the local reads (localCooldown, localCharge) were taken for; -1 before any. */
+	private localSeen = -1;
 	private floor = 0;
 	private cleared = 0;
 	private taken = 0;
@@ -157,7 +162,9 @@ export class AudioStateWatch {
 			this.swingTick[i] = w.swingTick;
 			this.activeSet[i] = w.activeSet;
 		}
-		this.readLocal(state, localIndex, baseline);
+		// Another local index (spectating switched players): its shot / charge edges start from a fresh baseline.
+		this.readLocal(state, localIndex, baseline || localIndex !== this.localSeen);
+		this.localSeen = localIndex;
 
 		const cleared = countCleared(state);
 		const taken = countTaken(state);

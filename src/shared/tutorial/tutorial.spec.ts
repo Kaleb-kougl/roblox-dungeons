@@ -1,10 +1,12 @@
 // The tutorial director (docs/TUTORIAL.md T4): the step data, every prompt / callout / UI string in the placeholder
 // pack, and the tutorial bot (shared/run/testing tutorialBot.ts) playing the tutorial world headlessly through LiveRun:
 // every step completes in order, hearts never drop (harmless), the funnel counts 1..N, the floor 2 -> 3 change
-// finishes it, and an out-of-order visit still completes.
+// finishes it, and an out-of-order visit still completes. The guidance arrow on the real floors (docs/TUTORIAL_ARROW.md
+// A3): every marker target is reachable, and a run steered by the arrow finishes within GUIDE_SLACK of the bot's walk.
 import { describe, expect, it } from "@rbxts/jest-globals";
 import { TUTORIAL } from "shared/config";
 import { MAX_TUTORIAL_STEP_NAME_CHARS, TUTORIAL_FUNNEL_MAX_STEP } from "shared/onboarding";
+import { TileType, pathField, worldToGrid, type Dungeon, type WorldXZ } from "shared/dungeon";
 import { TUTORIAL_ROOMS, type TutorialLessonId } from "shared/run";
 import { dismissDraft, distanceField, frame, playTutorial, walkDir, type TutorialBotResult } from "shared/run/testing";
 import { LiveRun } from "shared/play";
@@ -88,6 +90,9 @@ const BOSS_DEBUG_EVERY = 0;
 
 /** The tutorial boss fight's longest acceptable length (the owner's "the boss should die fast"), sim seconds. */
 const BOSS_FIGHT_MAX_SECONDS = 30;
+
+/** A run steered by the guidance arrow may walk at most this much longer than the bot's own (walkTo ticks). */
+const GUIDE_SLACK = 1.15;
 
 function describeRun(name: string, r: TutorialBotResult): void {
 	const steps = TUTORIAL_STEPS.map((s, i) => `${s.id}@${r.stepDoneTicks[i]}`).join(" ");
@@ -379,5 +384,90 @@ describe("tutorial bot", () => {
 		// The funnel still only counts up, one step at a time.
 		for (let i = 0; i < r.funnelSteps.size(); i++) expect(r.funnelSteps[i]).toBe(i + 1);
 		expect(r.heartProblems).toEqual([]);
+	});
+});
+
+describe("guidance arrow on the tutorial floors (docs/TUTORIAL_ARROW.md A3)", () => {
+	/**
+	 * pathField to `target` over `d`: the FLOOR tiles of rooms `rooms` it does not reach ("x,z"), how many it checked,
+	 * and whether the target had to snap (its own tile is not FLOOR).
+	 */
+	function unreachableFrom(
+		d: Dungeon,
+		target: WorldXZ,
+		rooms: ReadonlySet<number>,
+	): { tiles: number; bad: string[]; snapped: boolean } {
+		const f = pathField(d, target.x, target.z);
+		const bad: string[] = [];
+		let tiles = 0;
+		for (let i = 0; i < d.W * d.H; i++) {
+			if (d.grid[i] !== TileType.FLOOR || !rooms.has(d.roomId[i])) continue;
+			tiles++;
+			if (f.dist[i] === math.huge) bad.push(`${i % d.W},${math.floor(i / d.W)}`);
+		}
+		const snapped = f.gx !== worldToGrid(target.x) || f.gy !== worldToGrid(target.z);
+		return { tiles, bad, snapped };
+	}
+
+	it("every floor-1 target the director names is reachable from every FLOOR tile of its room and every room before it", () => {
+		const setup = buildTutorialRunConfig();
+		const w = setup.endlessFloor(1);
+		const d = w.dungeon;
+		const tour = TUTORIAL_ROOMS.map((r) => r.lesson);
+		let checked = 0;
+		for (const s of TUTORIAL_STEPS) {
+			const lesson = s.marker.lesson;
+			if (s.floor !== 1 || s.marker.kind === "none" || lesson === undefined) continue;
+			const room = tutorialRoom(lesson);
+			// Its door (until entered), its centre (wandered out / the pedestal / the shrine), the stairwell.
+			const targets: Array<[string, WorldXZ]> = [
+				["door", room.door],
+				["centre", room.center],
+			];
+			if (s.marker.kind === "stairwell") targets.push(["stairwell", { x: w.stairX, z: w.stairZ }]);
+			const rooms = new Set<number>();
+			for (let k = 0; k <= tour.indexOf(lesson); k++) rooms.add(tutorialRoom(tour[k]).roomId);
+			for (const [what, t] of targets) {
+				const r = unreachableFrom(d, t, rooms);
+				expect([s.id, what, r.snapped, r.tiles > 0, r.bad]).toEqual([s.id, what, false, true, []]);
+				checked++;
+			}
+		}
+		expect(checked).toBe(2 * 9 + 1); // nine lesson steps (combat A-F, relic, curse, stairwell) + the stairwell
+	});
+
+	it("floor 2's stairwell (the boss step's fallback, the finish) is reachable from every FLOOR tile of every room", () => {
+		const setup = buildTutorialRunConfig();
+		const w = setup.endlessFloor(TUTORIAL.lastFloor);
+		const d = w.dungeon;
+		const rooms = new Set<number>();
+		for (let i = 0; i < d.rooms.size(); i++) rooms.add(i);
+		const r = unreachableFrom(d, { x: w.stairX, z: w.stairZ }, rooms);
+		expect([r.snapped, r.tiles > 0, r.bad]).toEqual([false, true, []]);
+	});
+
+	it("a run steered by the arrow finishes every step, within GUIDE_SLACK of the bot's own walking time", () => {
+		const bot = inOrderRun();
+		const r = playTutorial({ bossDebugEvery: BOSS_DEBUG_EVERY, steer: "guide" });
+		describeRun("guide-steered", r);
+		const ratio = r.walkTicks / bot.walkTicks;
+		print(
+			`[tutorial bot] guide-steered walking ${r.walkTicks} ticks (${r.guidedTicks} by the arrow) vs the bot's ` +
+				`${bot.walkTicks}: ${string.format("%.3f", ratio)}x (slack ${GUIDE_SLACK}x)`,
+		);
+		expect(r.view.finished).toBe(true);
+		for (let i = 0; i < TUTORIAL_STEPS.size(); i++) {
+			expect([TUTORIAL_STEPS[i].id, r.view.done[i], r.view.skipped[i]]).toEqual([
+				TUTORIAL_STEPS[i].id,
+				true,
+				false,
+			]);
+		}
+		expect(r.heartProblems).toEqual([]);
+		// The arrow did the steering (most of every walk), and its target was never unreachable.
+		expect(r.guidedTicks * 2 > r.walkTicks).toBe(true);
+		expect(r.guideUnreachableTicks).toBe(0);
+		expect(bot.guidedTicks).toBe(0);
+		expect(ratio <= GUIDE_SLACK).toBe(true);
 	});
 });

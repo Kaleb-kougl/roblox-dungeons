@@ -1,6 +1,6 @@
 // Server-side run validation by replay (task 9): honest golden-fixture runs pass (submitted in the binary form the
 // remote carries), every tamper case is rejected with its reason.
-import { describe, expect, it } from "@rbxts/jest-globals";
+import { afterAll, describe, expect, it } from "@rbxts/jest-globals";
 import runBoss from "shared/fixtures-generated/run-boss-1337";
 import runFull from "shared/fixtures-generated/run-full-1337";
 import runPlayer from "shared/fixtures-generated/run-player";
@@ -15,6 +15,9 @@ import {
 	runReplay,
 	type InputFrame,
 	type Recording,
+	WEB_SWORD_TIMINGS,
+	setSwordTimings,
+	type SwordTimings,
 } from "shared/sim";
 import {
 	DEFAULT_RUN_LIMITS,
@@ -31,6 +34,14 @@ import {
 	type RunLimits,
 	type RunSubmission,
 } from "shared/run";
+
+// The golden runs (and the source's measured tables) were recorded with the web build's sword; the port's is 20%
+// slower (CLAUDE.md decision log), so this file replays under WEB_SWORD_TIMINGS. Set at load, not in a beforeAll:
+// describe bodies may replay while the specs are collected.
+const portSword: SwordTimings = setSwordTimings(WEB_SWORD_TIMINGS);
+afterAll(() => {
+	setSwordTimings(portSword);
+});
 
 interface RunFixtureLike {
 	readonly seed: number;

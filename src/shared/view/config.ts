@@ -1,4 +1,4 @@
-import { DEMONLORD_DATA, HURT_INVULN_TICKS, PLAYER_SPEED, SWARMER } from "shared/sim";
+import { DEMONLORD_DATA, HURT_INVULN_TICKS, PLAYER_SPEED, SNIPER, SWARMER } from "shared/sim";
 import type { ColorRole } from "shared/theme";
 import type { TopFaceUV } from "./floorTexture";
 
@@ -157,11 +157,14 @@ export const TELEGRAPH_VIEW = {
 
 /** Weapon visuals (web src/bullets/WeaponView.tsx). */
 export const WEAPON_VIEW = {
-	/** Sim ticks a combo swing / the finisher stays visible (web SWING_SHOW_TICKS, FINISHER_SHOW_TICKS). */
-	swingShowTicks: 8,
-	finisherShowTicks: 12,
-	/** Ticks the blade edge takes to cross the fan (web BLADE_SWEEP_TICKS). */
-	bladeSweepTicks: 4,
+	/**
+	 * Sim ticks a combo swing / the finisher stays visible (web SWING_SHOW_TICKS 8, FINISHER_SHOW_TICKS 12), 20%
+	 * slower like the retuned sword (SWORD_DATA), rounded to whole ticks.
+	 */
+	swingShowTicks: 10,
+	finisherShowTicks: 14,
+	/** Ticks the blade edge takes to cross the fan (web BLADE_SWEEP_TICKS 4; 20% slower like the sword). */
+	bladeSweepTicks: 5,
 	/** Ticks the heavy-arrow release ring expands (web RELEASE_SHOW_TICKS). */
 	releaseShowTicks: 8,
 	/** Inner arcs drawn inside a swing fan, as fractions of its reach (the placeholder's "fill"). */
@@ -212,6 +215,8 @@ export const SPRITE_VIEW = {
 	playerRunRefSpeed: PLAYER_SPEED,
 	/** The swarmer's move loop plays at its authored fps at this ground speed, world units / s (its walk speed). */
 	swarmerMoveRefSpeed: SWARMER.data.speed,
+	/** The sniper's move loop plays at its authored fps at this ground speed, world units / s (its walk speed). */
+	sniperMoveRefSpeed: SNIPER.data.speed,
 	/**
 	 * The Demon Lord's move loop (chase, walk home, the charge) plays at its authored fps at this ground speed, world
 	 * units / s: his chase speed (the walk home at data.speed plays slower, the charge at loopRateMax).

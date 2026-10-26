@@ -166,13 +166,13 @@ describe("sword: FIRE combo", () => {
 			}
 			expect(s.events.meleeSwings).toBeLessThanOrEqual(1);
 		}
-		expect(COMBO).toEqual([0, 12, 33]);
+		expect(COMBO).toEqual([0, 14, 39]);
 		expect(swings).toEqual([
 			{ t: 0, radius: D.reach, halfCos: D.halfAngleCos, last: 1 },
-			{ t: 12, radius: D.reach, halfCos: D.halfAngleCos, last: 2 },
-			{ t: 33, radius: D.finisherReach, halfCos: D.finisherHalfAngleCos, last: SWORD_FINISHER },
+			{ t: 14, radius: D.reach, halfCos: D.halfAngleCos, last: 2 },
+			{ t: 39, radius: D.finisherReach, halfCos: D.finisherHalfAngleCos, last: SWORD_FINISHER },
 			{ t: CYCLE, radius: D.reach, halfCos: D.halfAngleCos, last: 1 },
-			{ t: CYCLE + 12, radius: D.reach, halfCos: D.halfAngleCos, last: 2 },
+			{ t: CYCLE + 14, radius: D.reach, halfCos: D.halfAngleCos, last: 2 },
 		]);
 		expect(s.combat.playerSpawned).toBe(0); // melee: no bullets
 	});
@@ -446,7 +446,7 @@ describe("sword: enemy bullets", () => {
 		enemyBullet(s, -1.0, -0.3); // behind the side: out for every swing
 		step(s, S_FIRE, SWORD);
 		expect(s.events.bulletsDeleted).toBe(3);
-		const spots = ["-1.00,-0.30", "0.00,-0.80", "0.00,1.90", "1.50,0.70"];
+		const spots = ["-1.00,-0.30", "0.00,-0.80", string.format("%.2f,%.2f", 0, D.reach + 0.2), "1.50,0.70"];
 		spots.sort();
 		expect(bulletSpots(s)).toEqual(spots);
 		// Swing 2: nothing new inside its arc.

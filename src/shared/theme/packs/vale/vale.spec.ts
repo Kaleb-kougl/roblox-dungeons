@@ -1,7 +1,15 @@
 // The vale pack (docs/ART.md S5): the generated atlas layout must satisfy the contract v2 validator once uploaded, the
 // runtime must address the cells the pipeline wrote, and entries without uploaded art must stay placeholders.
 import { describe, expect, it } from "@rbxts/jest-globals";
-import { BIOMES, BIOME_MATERIALS, BIOME_MATERIAL_SURFACES, DEFAULT_BIOME_MATERIAL, type BiomeId } from "../../contract";
+import {
+	BIOMES,
+	BIOME_MATERIALS,
+	BIOME_MATERIAL_SURFACES,
+	DEFAULT_BIOME_MATERIAL,
+	ENEMY,
+	requiredBaseAnimations,
+	type BiomeId,
+} from "../../contract";
 import { ThemeCore } from "../../core";
 import type { SpriteSetAsset } from "../../types";
 import { ThemePack } from "../../pack";
@@ -122,17 +130,24 @@ describe("vale pack", () => {
 		expect(VALE_MANIFEST).toEqual(buildValeManifest(VALE_ASSET_IDS));
 	});
 
-	it("as bundled, enemy.swarmer is its placeholder: its pre-O3 (94x70) IDs were removed until re-uploaded", () => {
-		// The uploaded swarmer atlases had the old cell grid; the pad change (O3) moved every cell. Until the four
-		// swarmer files (two atlases, two outline sheets) are re-uploaded, the swarmer draws its outlined ball.
-		for (const file of ["swarmer-move.png", "swarmer-death.png"]) {
-			expect([file, VALE_ASSET_IDS[file]]).toEqual([file, undefined]);
+	it("as bundled, enemy.swarmer is its sprite set with a rim on every sheet (re-uploaded after the O3 pad change)", () => {
+		// All four swarmer files (two atlases, two outline sheets) have IDs, so the skeleton draws with its baked rim.
+		for (const file of [
+			"swarmer-move.png",
+			"swarmer-death.png",
+			"swarmer-move-outline.png",
+			"swarmer-death-outline.png",
+		]) {
+			expect([file, VALE_ASSET_IDS[file] !== undefined]).toEqual([file, true]);
 		}
-		expect(VALE_MANIFEST.assets["enemy.swarmer"]).toEqual({ kind: "placeholder" });
-		const pack = new ThemePack(VALE_MANIFEST, { warn: quiet });
-		expect(pack.sprites("enemy.swarmer")).toBe(undefined);
-		expect(pack.placeholder("enemy.swarmer").outline).toBe("enemyOutline");
-		// the player's set is unaffected
+		expect(VALE_MANIFEST.assets["enemy.swarmer"].kind).toBe("sprites");
+		const set = new ThemePack(VALE_MANIFEST, { warn: quiet }).sprites("enemy.swarmer")!;
+		expect(set).never.toBe(undefined);
+		expect(set.frame("move", 0, 0).outlineImage).toBe(VALE_ASSET_IDS["swarmer-move-outline.png"]);
+		expect(set.frame("death", 0, 0).outlineImage).toBe(VALE_ASSET_IDS["swarmer-death-outline.png"]);
+		expect(set.frame("move", 0, 0).image).toBe(VALE_ASSET_IDS["swarmer-move.png"]);
+		expect(set.frame("death", 0, 0).image).toBe(VALE_ASSET_IDS["swarmer-death.png"]);
+		// the player's set is unaffected and has no rim
 		expect(VALE_MANIFEST.assets["class.vanguard"].kind).toBe("sprites");
 	});
 
@@ -479,5 +494,131 @@ describe("vale sprite cells (hand-computed from the generated layout)", () => {
 		expect([f.offset.X, f.offset.Y, f.size.X, f.size.Y]).toEqual([588, 296, 98, 74]);
 		expect(set!.resample).toBe("Default");
 		expect(pack.texture("tile.biome.1.floor")).toBe(ids["tile-biome1-floor.png"]);
+	});
+});
+
+describe("vale enemy.sniper (docs/SNIPER_ART.md SN5: the Lords of Pain subservient)", () => {
+	const SHEET = "sniper-idle.png";
+	const OUTLINE = "sniper-idle-outline.png";
+	const layout = VALE_SPRITE_LAYOUTS["enemy.sniper"];
+
+	it("the layout: one 1008x744 atlas of 126x93 cells, 16 facings, the skeleton's exact scale, an outline sheet", () => {
+		expect(layout).never.toBe(undefined);
+		expect([layout.frameW, layout.frameH]).toEqual([126, 93]);
+		expect(layout.sheets).toEqual([{ file: SHEET, w: 1008, h: 744, outlineFile: OUTLINE }]);
+		expect(layout.facings).toEqual({ count: 16, zeroDeg: 0, ccw: true });
+		// pixelsPerTileFrom "enemy.swarmer" (D6): the two Lords of Pain enemies share one texel density
+		expect(layout.pixelsPerTile).toBe(29.6);
+		expect(layout.pixelsPerTile).toBe(VALE_SPRITE_LAYOUTS["enemy.swarmer"].pixelsPerTile);
+		expect(layout.pivot).toEqual({ x: 56, y: 57 });
+		// one real animation (worship 0, 2, 4, 6); every other one reuses its cells
+		expect(layout.animations.idle).toEqual({ sheet: 0, start: 0, frames: 4, fps: 6, loop: true });
+		expect(layout.animations.attack).toEqual({ sheet: 0, start: 0, frames: 4, fps: 6, loop: true });
+		for (const name of ["move", "hit", "death"]) {
+			const a = layout.animations[name];
+			expect([name, a.sheet, a.start, a.frames, a.stride]).toEqual([name, 0, 0, 1, 4]);
+		}
+	});
+
+	it("with no IDs it is the placeholder; an outline alone, or any other file, never switches it on", () => {
+		expect(buildValeManifest({}).assets["enemy.sniper"]).toEqual({ kind: "placeholder" });
+		expect(buildValeManifest({}).assets["enemy.sniper"]).toEqual(PLACEHOLDER_MANIFEST.assets["enemy.sniper"]);
+		const noAtlas = buildValeManifest(fakeIds(SHEET));
+		expect(validateManifest(noAtlas, { packId: "vale" })).toEqual([]);
+		expect(noAtlas.assets["enemy.sniper"]).toEqual({ kind: "placeholder" });
+		expect(fakeIds(SHEET)[OUTLINE]).never.toBe(undefined);
+		// the other sets are unaffected
+		expect(noAtlas.assets["enemy.swarmer"].kind).toBe("sprites");
+		expect(new ThemePack(noAtlas, { warn: quiet }).sprites("enemy.sniper")).toBe(undefined);
+	});
+
+	it("with sniper-idle.png it switches to sprites: 16 facings, 29.6 px/tile, every required animation", () => {
+		const ids = fakeIds();
+		const m = buildValeManifest(ids);
+		expect(validateManifest(m, { packId: "vale" })).toEqual([]);
+		const set = m.assets["enemy.sniper"] as SpriteSetAsset;
+		expect(set.kind).toBe("sprites");
+		expect(set.pixelsPerTile).toBe(29.6);
+		expect(set.facings.count).toBe(16);
+		expect(set.sheets).toEqual([{ assetId: ids[SHEET], w: 1008, h: 744, outlineAssetId: ids[OUTLINE] }]);
+		const sprites = new ThemeCore(m, { warn: quiet }).sprites("enemy.sniper");
+		expect(sprites).never.toBe(undefined);
+		const required = requiredBaseAnimations(ENEMY);
+		expect(required).toEqual(["idle", "move", "attack", "hit", "death"]);
+		for (const name of required) {
+			expect([name, sprites!.has(name)]).toEqual([name, true]);
+		}
+		expect(sprites!.animationNames).toEqual(["attack", "death", "hit", "idle", "move"]);
+	});
+
+	it("the rim joins only with sniper-idle-outline.png and never holds the set back", () => {
+		const m = buildValeManifest(fakeIds(OUTLINE));
+		expect(validateManifest(m, { packId: "vale" })).toEqual([]);
+		const set = m.assets["enemy.sniper"] as SpriteSetAsset;
+		expect(set.kind).toBe("sprites");
+		expect(set.sheets.size()).toBe(1);
+		expect(set.sheets[0].outlineAssetId).toBe(undefined);
+		const sprites = new ThemePack(m, { warn: quiet }).sprites("enemy.sniper")!;
+		expect(sprites).never.toBe(undefined);
+		expect(sprites.frame("idle", 0, 0).outlineImage).toBe(undefined);
+		expect(sprites.frame("attack", 12, 3).outlineImage).toBe(undefined);
+		// with the outline uploaded the same frames carry it
+		const ids = fakeIds();
+		const rimmed = new ThemePack(buildValeManifest(ids), { warn: quiet }).sprites("enemy.sniper")!;
+		expect(rimmed.frame("idle", 0, 0).outlineImage).toBe(ids[OUTLINE]);
+	});
+
+	it("every sniper frame (every animation, facing and frame) carries its sheet's outline", () => {
+		const ids = fakeIds();
+		const sprites = new ThemeCore(buildValeManifest(ids), { warn: quiet }).sprites("enemy.sniper")!;
+		expect(sprites).never.toBe(undefined);
+		let frames = 0;
+		for (const name of sprites.animationNames) {
+			const count = sprites.animation(name)!.frames;
+			for (let d = 0; d < 16; d++) {
+				for (let f = 0; f < count; f++) {
+					const r = sprites.frame(name, d, f);
+					expect([name, d, f, r.sheet, r.assetId, r.outlineAssetId]).toEqual([
+						name,
+						d,
+						f,
+						0,
+						ids[SHEET],
+						ids[OUTLINE],
+					]);
+					frames += 1;
+				}
+			}
+		}
+		// idle and attack 4 frames, move / hit / death 1, over 16 facings
+		expect(frames).toBe(16 * (4 + 4 + 1 + 1 + 1));
+	});
+
+	it("cells (hand-computed): 8 per row; the stand-ins address idle's cells", () => {
+		const ids = fakeIds();
+		const sprites = new ThemeCore(buildValeManifest(ids), { warn: quiet }).sprites("enemy.sniper")!;
+		// idle: facing 5, frame 3 -> cell 23 -> column 7, row 2
+		expect(sprites.frame("idle", 5, 3)).toEqual({
+			sheet: 0,
+			assetId: ids[SHEET],
+			outlineAssetId: ids[OUTLINE],
+			x: 882,
+			y: 186,
+			w: 126,
+			h: 93,
+		});
+		// the last cell: facing 15, frame 3 -> cell 63 -> column 7, row 7 (the atlas's bottom-right corner)
+		const last = sprites.frame("idle", 15, 3);
+		expect([last.x, last.y, last.x + last.w, last.y + last.h]).toEqual([882, 651, 1008, 744]);
+		// move / hit / death = idle frame 0 held (stride 4): facing 3 -> cell 12 -> column 4, row 1, every index
+		for (const name of ["move", "hit", "death"]) {
+			const r = sprites.frame(name, 3, 2);
+			expect([name, r.x, r.y]).toEqual([name, 504, 93]);
+		}
+		// attack plays idle's four cells
+		for (let f = 0; f < 4; f++) {
+			expect(sprites.frame("attack", 9, f)).toEqual(sprites.frame("idle", 9, f));
+		}
+		expect(sprites.pivot).toEqual({ x: 56, y: 57 });
 	});
 });

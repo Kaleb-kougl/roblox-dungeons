@@ -1,7 +1,7 @@
 // Golden-fixture parity: the real M1 game on the seed-1337 floor (fixtures/run-full-1337.json, 3600 ticks): the
 // path-walker bot fights its way along the BFS path (21 kills), engages the boss at tick 1330 and dies to it at 1784;
 // the boss and 3 room enemies keep acting until tick 3600. Every actor archetype but the turrets is on the path.
-import { describe, expect, it } from "@rbxts/jest-globals";
+import { afterAll, describe, expect, it } from "@rbxts/jest-globals";
 import {
 	DEFAULT_ENCOUNTER,
 	KALEB_VALE_MVP_PARAMS,
@@ -26,7 +26,18 @@ import {
 	type RunDump,
 	type RunFixture,
 	type SimConfig,
+	WEB_SWORD_TIMINGS,
+	setSwordTimings,
+	type SwordTimings,
 } from "shared/sim";
+
+// The golden runs (and the source's measured tables) were recorded with the web build's sword; the port's is 20%
+// slower (CLAUDE.md decision log), so this file replays under WEB_SWORD_TIMINGS. Set at load, not in a beforeAll:
+// describe bodies may replay while the specs are collected.
+const portSword: SwordTimings = setSwordTimings(WEB_SWORD_TIMINGS);
+afterAll(() => {
+	setSwordTimings(portSword);
+});
 
 const run = runFull as unknown as RunFixture;
 const dumps = runFullDumps.dumps as unknown as ReadonlyArray<RunDump>;

@@ -479,3 +479,107 @@ describe("chooseGrid: the Demon Lord's cells (docs/BOSS_DEMONLORD.md D1)", () =>
 		assert.throws(() => A.chooseGrid(128, 98, 79, "boss"), /128 cells of 98x79 do not fit one 1024x1024 atlas \(max 120\)/);
 	});
 });
+
+describe("pixelsPerTileFrom (sprite sets drawn at another set's scale)", () => {
+	// The synthetic body is 9 px tall (y 3..11): bodyTiles 7 -> 9 / 7 = 1.2857.. -> 1.3 px/tile.
+	const base = () => syntheticSet("ppt-base", { bodyTiles: 7 });
+	// sorts BEFORE its source, so the build must reorder; a different pad moves its own pivot
+	const user = () => syntheticSet("ppt-user", { bodyTiles: undefined, pixelsPerTileFrom: "z.base", pad: 5 });
+
+	it("takes the named set's pixelsPerTile exactly; the pivot is still measured on its own frame", () => {
+		const sets = A.buildSpriteSets({ "a.user": user(), "z.base": base() });
+		assert.deepEqual(
+			sets.map((s) => s.id),
+			["a.user", "z.base"],
+		);
+		const [u, b] = sets;
+		assert.equal(b.layout.pixelsPerTile, 1.3);
+		assert.equal(u.layout.pixelsPerTile, b.layout.pixelsPerTile);
+		assert.equal(u.pixelsPerTileFrom, "z.base");
+		assert.equal(b.pixelsPerTileFrom, undefined);
+		// pad 5 vs 3: the same feet sit 2 px further into the cell on each axis
+		assert.deepEqual(u.layout.pivot, { x: b.layout.pivot.x + 2, y: b.layout.pivot.y + 2 });
+	});
+
+	it("builds each set's source just before it, otherwise in id order", () => {
+		assert.deepEqual(A.spriteSetOrder({ "a.user": user(), "z.base": base(), "m.other": base() }), ["z.base", "a.user", "m.other"]);
+		assert.deepEqual(
+			A.spriteSetOrder({
+				"a.top": { pixelsPerTileFrom: "b.mid" },
+				"b.mid": { pixelsPerTileFrom: "c.root" },
+				"c.root": { bodyTiles: 1 },
+			}),
+			["c.root", "b.mid", "a.top"],
+		);
+	});
+
+	it("a set that others take their scale from builds exactly as it does alone", () => {
+		const alone = A.buildSpriteSets({ "z.base": base() })[0];
+		const shared = A.buildSpriteSets({ "a.user": user(), "z.base": base() })[1];
+		assert.equal(A.layoutModule([alone], [], "#000000"), A.layoutModule([shared], [], "#000000"));
+		assert.equal(Buffer.compare(A.encodePng(alone.sheets[0].img), A.encodePng(shared.sheets[0].img)), 0);
+	});
+
+	it("fails on a missing reference, a cycle, or a set with both or neither density source", () => {
+		assert.throws(() => A.buildSpriteSets({ "a.user": user() }), /a\.user: pixelsPerTileFrom names no sprite set z\.base/);
+		assert.throws(
+			() => A.spriteSetOrder({ "a.x": { pixelsPerTileFrom: "b.y" }, "b.y": { pixelsPerTileFrom: "a.x" } }),
+			/pixelsPerTileFrom cycle: a\.x -> b\.y -> a\.x/,
+		);
+		assert.throws(() => A.spriteSetOrder({ "a.self": { pixelsPerTileFrom: "a.self" } }), /cycle: a\.self -> a\.self/);
+		assert.throws(
+			() => A.buildSpriteSets({ "a.both": syntheticSet("ppt-both", { pixelsPerTileFrom: "z.base" }), "z.base": base() }),
+			/a\.both: give exactly one of bodyTiles and pixelsPerTileFrom/,
+		);
+		assert.throws(() => A.buildSpriteSets({ "a.none": syntheticSet("ppt-none", { bodyTiles: undefined }) }), /a\.none: give exactly one/);
+		// buildSpriteSet alone has no built sets to read from
+		assert.throws(() => A.buildSpriteSet("a.user", user()), /a\.user: pixelsPerTileFrom z\.base is not a built sprite set/);
+	});
+
+	it("is only defined between two full-resolution sets (no downscale on either side)", () => {
+		const downUser = syntheticSet("ppt-down-user", { bodyTiles: undefined, pixelsPerTileFrom: "z.base", downscale: 2 });
+		assert.throws(() => A.buildSpriteSets({ "a.user": downUser, "z.base": base() }), /a\.user: pixelsPerTileFrom z\.base needs two sets without downscale/);
+		const downBase = syntheticSet("ppt-down-base", { bodyTiles: 7, downscale: 2 });
+		assert.throws(() => A.buildSpriteSets({ "a.user": user(), "z.base": downBase }), /a\.user: pixelsPerTileFrom z\.base needs two sets without downscale/);
+		// downscale 1 is the full-resolution path
+		const oneUser = syntheticSet("ppt-one-user", { bodyTiles: undefined, pixelsPerTileFrom: "z.base", pad: 5, downscale: 1 });
+		assert.equal(A.buildSpriteSets({ "a.user": oneUser, "z.base": base() })[0].layout.pixelsPerTile, 1.3);
+	});
+});
+
+describe("sourceFiles and lockAlso", () => {
+	const frames = (extra) => ({
+		spriteSets: {
+			"enemy.x": {
+				source: { type: "frames", dir: "pack/x", frameW: 8, frameH: 8 },
+				facingCount: 4,
+				facingDirs: ["E", "N", "W", "S"],
+				animations: {
+					idle: { folder: "x_a", frames: [0, 2] },
+					move: { cellsOf: "idle", frames: 1 },
+				},
+				...extra,
+			},
+		},
+		images: {},
+	});
+
+	it("lists every facing x kept frame of the real animations, and nothing for a stand-in", () => {
+		const files = A.sourceFiles(frames({}));
+		assert.equal(files.length, 8);
+		assert.ok(files.includes("pack/x/x_a/N/x_a_N_90.0_2.png"));
+		assert.ok(files.includes("pack/x/x_a/S/x_a_S_270.0_0.png"));
+		assert.equal(files.includes("pack/x/x_a/E/x_a_E_0.0_1.png"), false);
+	});
+
+	it("lockAlso adds its frames to the lock (deduplicated), though no sheet reads them", () => {
+		const files = A.sourceFiles(
+			frames({ lockAlso: { all: { folder: "x_a", frames: [0, 1, 2, 3] }, later: { folder: "x_b", frames: [0] } } }),
+		);
+		assert.equal(files.length, 4 * 4 + 4);
+		assert.ok(files.includes("pack/x/x_a/E/x_a_E_0.0_1.png"));
+		assert.ok(files.includes("pack/x/x_b/W/x_b_W_180.0_0.png"));
+		assert.deepEqual(files, [...files].sort());
+		assert.throws(() => A.sourceFiles(frames({ lockAlso: { bad: { frames: [0] } } })), /enemy\.x: lockAlso\.bad needs a frames source, a folder and frames/);
+	});
+});

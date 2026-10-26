@@ -502,8 +502,9 @@ export class AudioCueMapper {
 
 	/**
 	 * One rendered frame at real time `now` (seconds): `events` are the frame's summed SimEvents, `fx` the tracker's
-	 * events of the frame, `state` the run's state after the frame, `localIndex` this client's player (0 solo).
-	 * Appends the cues to start to `out` (in table order) and returns it.
+	 * events of the frame, `state` the run's state after the frame, `localIndex` this client's player (0 solo; the
+	 * watched teammate while spectating, docs/SPECTATE.md: its sounds play at full volume). Appends the cues to start
+	 * to `out` (in table order) and returns it.
 	 */
 	frame(
 		now: number,

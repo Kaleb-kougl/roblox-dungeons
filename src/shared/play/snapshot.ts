@@ -2,6 +2,11 @@
  * The HUD snapshot: the few numbers the HUD shows, copied out of the live sim at ~10 Hz (web SimDriver's store
  * snapshot + playerSnapshot, BossView's syncHud, WeaponView's publishWeaponHud). The sim state itself never goes into
  * UI state; only this flat copy does, and only when it changed (snapshotsEqual).
+ *
+ * Co-op spectating (docs/SPECTATE.md S2): the vitals (hearts, armor, flask, Embers, weapons, the set in hand) come from
+ * SnapshotExtras.vitalsIndex, the watched player while the local player spectates; everything that is the local
+ * player's own (the draft, boons / relics / curses, the waiting count, the shrine hint) keeps `playerIndex`. The
+ * spectate bar's fields come from SnapshotExtras.spectate.
  */
 import {
 	COMBO_WINDOW_TICKS,
@@ -90,6 +95,13 @@ export interface GameSnapshot {
 	readonly curses: ReadonlyArray<number>;
 	/** The player stands in an unused curse shrine's zone (the HUD shows the accept hint). */
 	readonly atShrine: boolean;
+	/** Co-op spectating (docs/SPECTATE.md): the local player is dead and watches a teammate (the spectate bar shows). */
+	readonly spectating: boolean;
+	/** The watched teammate's display name; "" when not spectating. */
+	readonly spectateName: string;
+	/** 1-based position of the watched teammate among the living ones, and their count ("2 / 3"); 0 / 0 when not. */
+	readonly spectatePosition: number;
+	readonly spectateCount: number;
 }
 
 export const EMPTY_SNAPSHOT: GameSnapshot = table.freeze({
@@ -137,6 +149,10 @@ export const EMPTY_SNAPSHOT: GameSnapshot = table.freeze({
 	relics: table.freeze([]) as ReadonlyArray<number>,
 	curses: table.freeze([]) as ReadonlyArray<number>,
 	atShrine: false,
+	spectating: false,
+	spectateName: "",
+	spectatePosition: 0,
+	spectateCount: 0,
 });
 
 const NO_MARKS: ReadonlyArray<number> = EMPTY_SNAPSHOT.bossPhaseMarks;
@@ -171,15 +187,33 @@ export interface SnapshotExtras {
 	readonly endTick?: number;
 	/** The run's SimConfig (the shrine hint needs the floor's rooms); without it atShrine is false. */
 	readonly config?: Readonly<SimConfig>;
-	/** Co-op (M4): whose hearts / flask / weapons the HUD shows (this client's player index). Default 0. */
+	/**
+	 * Co-op (M4): this client's player index: whose draft, boons / relics / curses, waiting count and shrine hint the
+	 * HUD shows (and, without `vitalsIndex`, whose vitals). Default 0.
+	 */
 	readonly playerIndex?: number;
+	/**
+	 * Co-op spectating: whose hearts, armor, flask, Embers and weapon sets the HUD shows (the watched teammate while
+	 * the local player spectates). Default `playerIndex`.
+	 */
+	readonly vitalsIndex?: number;
+	/** Co-op spectating: the spectate bar's watched name and "position / count"; absent when not spectating. */
+	readonly spectate?: SnapshotSpectate;
+}
+
+/** SnapshotExtras.spectate: who the local player watches (SimController's SpectateView + the member's name). */
+export interface SnapshotSpectate {
+	readonly name: string;
+	readonly position: number;
+	readonly count: number;
 }
 
 export function takeSnapshot(state: Readonly<SimState>, extras: SnapshotExtras): GameSnapshot {
 	const me = extras.playerIndex ?? 0;
-	const p = playerAt(state, me);
+	const vitals = extras.vitalsIndex ?? me;
+	const p = playerAt(state, vitals);
 	const c = state.combat;
-	const w = weaponsAt(state, me);
+	const w = weaponsAt(state, vitals);
 	const weapons = new Array<string>();
 	for (const set of w.sets) weapons.push(set.weapon === NO_WEAPON ? "" : weaponAt(set.weapon).id);
 	const boss = findBoss(state);
@@ -188,6 +222,7 @@ export function takeSnapshot(state: Readonly<SimState>, extras: SnapshotExtras):
 	const score = state.score;
 	const mine = state.run?.players[me];
 	const drafting = mine !== undefined && mine.draftOpen !== 0;
+	const spectate = extras.spectate;
 	return {
 		tick: state.tick,
 		recordedTicks: extras.recordedTicks,
@@ -233,6 +268,10 @@ export function takeSnapshot(state: Readonly<SimState>, extras: SnapshotExtras):
 		relics: mine !== undefined ? [...mine.relics] : NONE,
 		curses: mine !== undefined ? [...mine.curses] : NONE,
 		atShrine: extras.config !== undefined && atShrine(state, extras.config, me),
+		spectating: spectate !== undefined,
+		spectateName: spectate !== undefined ? spectate.name : "",
+		spectatePosition: spectate !== undefined ? spectate.position : 0,
+		spectateCount: spectate !== undefined ? spectate.count : 0,
 	};
 }
 
@@ -289,6 +328,10 @@ export function snapshotsEqual(a: GameSnapshot, b: GameSnapshot): boolean {
 		a.draftSelected === b.draftSelected &&
 		a.draftReady === b.draftReady &&
 		a.draftWaiting === b.draftWaiting &&
-		a.atShrine === b.atShrine
+		a.atShrine === b.atShrine &&
+		a.spectating === b.spectating &&
+		a.spectateName === b.spectateName &&
+		a.spectatePosition === b.spectatePosition &&
+		a.spectateCount === b.spectateCount
 	);
 }

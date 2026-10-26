@@ -26,6 +26,7 @@ rebinding, audio, display). Everything presentation-side reads the sim and never
 | `DecorController` | `.../render/DecorController.ts` | Room decoration (docs/DECOR.md R4, R10): per floor the decor plan (`planDecor` + `decorScene`, `KV_DecorBand` forces a band), drawn from the pack's `decor.*` art (pooled upright billboards on wall tops and faces, flat SurfaceGuis on the floor), tall pieces fading when a player or the boss is behind them, and the `DecorDirector` updated once per frame. See "Room decoration". |
 | `DecorFxController` | `.../render/DecorFxController.ts` | Ambient life (docs/DECOR.md R9): flame loops and glows on lit torches / braziers, the 6-light pool, the fixed boss / shrine room lights, the flat boss ring and stairwell zone, the pedestal glint, the biome's ambient particle volume (a flipbook when its texture has one). See "Room decoration". |
 | `TutorialMarkerController` | `.../render/TutorialMarkerController.ts` | Tutorial runs only: one upright beam (a Neon Cylinder in `uiAccent`; plus a camera-facing `ui.marker.tutorial` billboard if the pack has that image) on the director's marker target (next lesson door, pedestal, shrine, stairwell, the live boss), bobbing / breathing by the juice `motionScale` (still under reduced motion), hidden without a target and once the tutorial ended. Built per tutorial run (Janitor). |
+| `TutorialArrowController` | `.../render/TutorialArrowController.ts` | Tutorial runs only: the guidance arrow (docs/TUTORIAL_ARROW.md), a flat chevron on the floor `arrowOrbitTiles` from the player pointing along the walkable path to the director's marker target. shared/tutorial `TutorialGuide` decides the heading, the show rule (hidden without a target, near it, and with the target on screen (`WorldToViewportPoint`, inset `arrowScreenInset`) and a clear walk to it) and the fade; two thin Neon Parts in `uiAccent` (or a `ui.arrow.tutorial` Decal on a flat invisible Part if the pack has that image) under the markings and bullets, sliding by the juice `motionScale`. Warns once per run if the target has no path. Built per tutorial run (Janitor). |
 | `TelegraphController` | `.../render/TelegraphController.ts` | Sniper aim lines (cut at the first intact breakable), bruiser shockwave rings (archetype `data.fx`), a ring for any other wind-up, Mother Bramble's attack previews, slam lane, roar rings and the arena seal fence. |
 | `FxTrackerController` | `.../fx/FxTrackerController.ts` | Right after the sim (render step 102): the pure `HitTracker` diffs the live actors and dispatches the frame's FX events (hit, killed, spawned, capped, bossPhase, bossDefeated, reset) to the juice views and audio, with the effective juice settings. |
 | `FreezeFrameController` | `.../fx/FreezeFrameController.ts` | FX events -> hitstop requests on `SimController.hitstop` (kill 50 ms, heavy / elite 80 ms, boss phase 120 ms, boss death 250 ms + slow-mo); clears it when the setting goes off; the 1-render-pixel camera nudge (`getNudge()`, read by CameraController). |
@@ -50,16 +51,18 @@ token, layout sizes, UIScale rule, HUD helpers, every HUD string key).
 ## Sprites replace placeholders (docs/ART.md S4)
 
 Per logical ID, at the time a view is built: if `pack.sprites(id)` returns a set (and, for actors, the archetype is in
-`shared/view` `ACTOR_SPRITE_INPUTS`: the swarmer and the Demon Lord), `ActorRenderController` draws a `SpriteView`;
-otherwise the placeholder model, exactly as before. With the placeholder pack every ID takes the placeholder path.
-Sniper, bruiser, turrets and Mother Bramble stay placeholders until they get art and an input builder.
+`shared/view` `ACTOR_SPRITE_INPUTS`: the swarmer, the sniper, the tutorial's `turret.sniper` and the Demon Lord),
+`ActorRenderController` draws a `SpriteView`; otherwise the placeholder model, exactly as before. With the placeholder
+pack every ID takes the placeholder path. The bruiser, the other turrets and Mother Bramble stay placeholders until they
+get art and an input builder.
 
 All sprite logic is pure and specced in `src/shared/view/sprites.ts`:
 
 - **Facing:** `spriteFacing` projects the sim's ground facing (the roll direction while rolling) through the camera
   basis (yaw 45, pitch 55) to the true on-screen angle and picks the nearest of the set's 4 / 8 / 16 facings.
 - **Animation:** `choosePlayerAnim` (death > roll > attack.1/2/3 > hit > run > idle) and `chooseActorAnim` (death >
-  attack > hit > move > idle) from sim fields (`playerSpriteInput`, `swarmerSpriteInput`). One-shots are stretched over
+  attack > hit > move > idle) from sim fields (`playerSpriteInput`, `swarmerSpriteInput`, `sniperSpriteInput`: the line telegraph is its attack;
+  `turretSpriteInputOf`: never attacks or moves, a respawned turret is live again). One-shots are stretched over
   the gameplay timers (roll, sword recovery / finisher wind-up, hurt, hit flash, corpse); loops run on a per-view
   `SpriteClock` at the set's fps, run / move scaled by speed / walk speed. The clock steps by sim time (`animDtSec`),
   so it stops while paused and follows hitstop. The bow and the guard have no knight animation (idle / run).
@@ -645,6 +648,23 @@ its arrival time, received invites, notices, the players in this server).
 
 The old M4 invite flow is gone (task L7): `KV_Party`, `KV_PartyAutoAccept`, `PartyInvitePanel`, the
 `partyInvite*` remotes, `shared/run/partyInvites.ts` and the `hud.party.*` strings.
+
+## Co-op spectating (docs/SPECTATE.md; not run in Studio yet)
+
+Presentation only (no sim, lockstep, server or hash change). In a party run a dead player watches a living teammate:
+after `SPECTATE.holdOnDeathSec` (1.5 s) on their own corpse the view moves to the living teammate nearest to it;
+Attack / Alt (left / right click, RT / LT; the player's own bindings) cycle to the next / previous living teammate in
+party order, skipping the dead and the left. The watched player's death holds 1.5 s, then moves to the one nearest to
+them; the floor change revives everyone and the view snaps back; a wipe keeps the last view under the run-over panel.
+`SimController` owns the `SpectateTracker` (shared/view/spectate.ts) and exposes `getViewPlayerIndex()`, which the
+camera, weapon view, bullet transparency, actor ring colour and audio read instead of the local index. The HUD's
+vitals (hearts, armor, flask, Embers, weapons) follow the watched player (`SnapshotExtras.vitalsIndex`); boons,
+toasts, drafts and the shrine hint stay the local player's. `SpectateBar` (bottom centre): `Spectating <name> · 2 / 3`,
+the next / previous hint, `You're back on the next floor`. While dead the co-op frames carry EMPTY_INPUT (plus debug
+bits under KV_Debug); buttons held at the revive stay masked until released; a press that began over a GUI button
+never switches.
+
+**Studio smoke test**: docs/SPECTATE.md "Studio smoke test" (3 clients, `KV_Debug`).
 
 ## The tutorial run (first-run flow, docs/TUTORIAL.md)
 

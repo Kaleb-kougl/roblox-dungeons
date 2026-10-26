@@ -1,7 +1,7 @@
 // Golden-fixture parity: the web build's bullet run (fixtures/run-bullets.json, 499 ticks, greybox + ?stress=200):
 // stress rings, bow stream, heavy piercing arrow, half charge, Ember clear of 240 bullets, sword combo / finisher /
 // guard deleting 14 bullets, roll, SWAP back, then bullets ageing out.
-import { describe, expect, it } from "@rbxts/jest-globals";
+import { afterAll, describe, expect, it } from "@rbxts/jest-globals";
 import runBullets from "shared/fixtures-generated/run-bullets";
 import {
 	DEFAULT_BOUNDS,
@@ -18,7 +18,18 @@ import {
 	type RunFixture,
 	type SimConfig,
 	type SimEvents,
+	WEB_SWORD_TIMINGS,
+	setSwordTimings,
+	type SwordTimings,
 } from "shared/sim";
+
+// The golden runs (and the source's measured tables) were recorded with the web build's sword; the port's is 20%
+// slower (CLAUDE.md decision log), so this file replays under WEB_SWORD_TIMINGS. Set at load, not in a beforeAll:
+// describe bodies may replay while the specs are collected.
+const portSword: SwordTimings = setSwordTimings(WEB_SWORD_TIMINGS);
+afterAll(() => {
+	setSwordTimings(portSword);
+});
 
 const run = runBullets as unknown as RunFixture;
 const dumps = runBullets.dumps as unknown as ReadonlyArray<RunDump>;

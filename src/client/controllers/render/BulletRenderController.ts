@@ -215,7 +215,7 @@ export class BulletRenderController implements OnStart {
 				const alpha = this.sim.getAlpha();
 				enemy.frame(state.combat.enemyBullets, alpha);
 				const n = partySize(state);
-				const me = this.sim.getLocalPlayerIndex();
+				const me = this.sim.getViewPlayerIndex(); // spectating: the watched teammate's bullets stay opaque
 				player.frame(
 					state.combat.playerBullets,
 					alpha,

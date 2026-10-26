@@ -92,6 +92,22 @@ export const VALE_SPRITE_LAYOUTS: Record<string, ValeSpriteLayout> = {
 			run: { sheet: 1, start: 0, frames: 8, fps: 12, loop: true },
 		},
 	},
+	"enemy.sniper": {
+		frameW: 126,
+		frameH: 93,
+		pivot: { x: 56, y: 57 },
+		pixelsPerTile: 29.6,
+		resample: "Default",
+		facings: { count: 16, zeroDeg: 0, ccw: true },
+		sheets: [{ file: "sniper-idle.png", w: 1008, h: 744, outlineFile: "sniper-idle-outline.png" }],
+		animations: {
+			attack: { sheet: 0, start: 0, frames: 4, fps: 6, loop: true },
+			death: { sheet: 0, start: 0, frames: 1, fps: 1, loop: false, stride: 4 },
+			hit: { sheet: 0, start: 0, frames: 1, fps: 1, loop: false, stride: 4 },
+			idle: { sheet: 0, start: 0, frames: 4, fps: 6, loop: true },
+			move: { sheet: 0, start: 0, frames: 1, fps: 1, loop: true, stride: 4 },
+		},
+	},
 	"enemy.swarmer": {
 		frameW: 98,
 		frameH: 74,

@@ -38,90 +38,21 @@ import {
 	type SimConfig,
 	type SimState,
 } from "shared/sim";
-import { TileType, gridToWorld, worldToGrid, type Dungeon } from "shared/dungeon";
+import { gridToWorld, pathField, pathStep, worldToGrid, type PathField } from "shared/dungeon";
 import { jsRound } from "shared/jsmath";
 import { buildEndlessRunConfig, type EndlessRunSetup } from "../endless";
 
-/** A BFS distance field to a target (exported for the party bot). */
-export interface Field {
-	readonly d: Dungeon;
-	readonly dist: number[];
-	readonly tx: number;
-	readonly tz: number;
-}
+/** A BFS distance field to a target (exported for the party bot): shared/dungeon pathField's. */
+export type Field = PathField;
 
-const NEIGHBOURS: ReadonlyArray<readonly [number, number]> = [
-	[1, 0],
-	[-1, 0],
-	[0, 1],
-	[0, -1],
-	[1, 1],
-	[1, -1],
-	[-1, 1],
-	[-1, -1],
-];
-
-function isFloor(d: Dungeon, gx: number, gy: number): boolean {
-	return gx >= 0 && gy >= 0 && gx < d.W && gy < d.H && d.grid[gy * d.W + gx] === TileType.FLOOR;
-}
-
-/** Tiles this close (world units) to an avoided point are left out of a distance field (the open stairwell). */
-const AVOID_RADIUS = 2.5;
-
-export function distanceField(d: Dungeon, tx: number, tz: number, avoid?: readonly [number, number]): Field {
-	const dist = new Array<number>(d.W * d.H, math.huge);
-	const avoided = (gx: number, gy: number) => {
-		if (avoid === undefined) return false;
-		const dx = gridToWorld(gx) - avoid[0];
-		const dz = gridToWorld(gy) - avoid[1];
-		return dx * dx + dz * dz <= AVOID_RADIUS * AVOID_RADIUS;
-	};
-	const gx0 = worldToGrid(tx);
-	const gy0 = worldToGrid(tz);
-	const queue: number[] = [gy0 * d.W + gx0];
-	dist[gy0 * d.W + gx0] = 0;
-	let head = 0;
-	while (head < queue.size()) {
-		const i = queue[head++];
-		const gx = i % d.W;
-		const gy = math.floor(i / d.W);
-		for (let k = 0; k < 4; k++) {
-			const [ox, oy] = NEIGHBOURS[k];
-			const nx = gx + ox;
-			const ny = gy + oy;
-			if (!isFloor(d, nx, ny) || avoided(nx, ny)) continue;
-			const j = ny * d.W + nx;
-			if (dist[j] <= dist[i] + 1) continue;
-			dist[j] = dist[i] + 1;
-			queue.push(j);
-		}
-	}
-	return { d, dist, tx, tz };
-}
+/** The bots' distance field: shared/dungeon pathField (lifted from here, docs/TUTORIAL_ARROW.md A1). */
+export const distanceField = pathField;
 
 /** Unit move (dx, dz) toward the field's target from (x, z). */
 export function walkDir(f: Field, x: number, z: number): [number, number] {
-	const d = f.d;
-	const gx = worldToGrid(x);
-	const gy = worldToGrid(z);
-	let best = f.dist[gy * d.W + gx] ?? math.huge;
-	let tx = f.tx;
-	let tz = f.tz;
-	if (best > 0) {
-		for (const [ox, oy] of NEIGHBOURS) {
-			const nx = gx + ox;
-			const ny = gy + oy;
-			if (!isFloor(d, nx, ny)) continue;
-			// Diagonals only past open corners.
-			if (ox !== 0 && oy !== 0 && (!isFloor(d, gx + ox, gy) || !isFloor(d, gx, gy + oy))) continue;
-			const v = f.dist[ny * d.W + nx];
-			if (v < best) {
-				best = v;
-				tx = gridToWorld(nx);
-				tz = gridToWorld(ny);
-			}
-		}
-	}
+	const nextCell = pathStep(f, worldToGrid(x), worldToGrid(z));
+	const tx = nextCell >= 0 ? gridToWorld(nextCell % f.d.W) : f.tx;
+	const tz = nextCell >= 0 ? gridToWorld(math.floor(nextCell / f.d.W)) : f.tz;
 	const dx = tx - x;
 	const dz = tz - z;
 	const len = math.sqrt(dx * dx + dz * dz);

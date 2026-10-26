@@ -1,7 +1,7 @@
 // The binary recording codec (recordingCodec.ts): every golden recording round-trips exactly, the encoding is
 // canonical, and hostile buffers (truncated, overlong, out of range, bombs, random bytes) come back as a reject code,
 // never an error.
-import { describe, expect, it } from "@rbxts/jest-globals";
+import { afterAll, describe, expect, it } from "@rbxts/jest-globals";
 import runBoss from "shared/fixtures-generated/run-boss-1337";
 import runBullets from "shared/fixtures-generated/run-bullets";
 import runFull from "shared/fixtures-generated/run-full-1337";
@@ -24,7 +24,18 @@ import {
 	type RecordingDecodeLimits,
 	type RecordingDecodeResult,
 	type SimConfig,
+	WEB_SWORD_TIMINGS,
+	setSwordTimings,
+	type SwordTimings,
 } from "shared/sim";
+
+// The golden runs (and the source's measured tables) were recorded with the web build's sword; the port's is 20%
+// slower (CLAUDE.md decision log), so this file replays under WEB_SWORD_TIMINGS. Set at load, not in a beforeAll:
+// describe bodies may replay while the specs are collected.
+const portSword: SwordTimings = setSwordTimings(WEB_SWORD_TIMINGS);
+afterAll(() => {
+	setSwordTimings(portSword);
+});
 
 const FIXTURES: ReadonlyArray<{ readonly name: string; readonly recording: string }> = [
 	{ name: "run-player", recording: runPlayer.recording },

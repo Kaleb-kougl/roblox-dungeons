@@ -545,6 +545,28 @@ describe("audio: co-op split (X4)", () => {
 		expect(cues(m2, 1, s2.events, s2)).toEqual([[SFX.playerRoll, 1]]);
 	});
 
+	it("a new local index (spectating) rebaselines only its shot / charge reads, not the frame's other cues", () => {
+		const s = party(2);
+		const m = primed(s, 0);
+		// Player 1 fired and fully charged the bow before the switch; player 0's slots are idle.
+		const bow = slotOf(s, 1, BOW.id);
+		bow.cooldown = BOW_DATA.cooldownTicks;
+		bow.v[BOW_V_CHARGE] = BOW_DATA.chargeTicks;
+		playerAt(s, 1).rollTicks = 21;
+		const e = noEvents();
+		e.shotsFired = 1;
+		e.rollStarted = 1;
+		// The switch frame: no stale shot or charge, but the watched player's roll still plays (loud).
+		expect(cues(m, 1, e, s, 1)).toEqual([[SFX.playerRoll, 1]]);
+		// The next frame on the same index: a new shot is an edge again.
+		bow.cooldown = 0;
+		cues(m, 2, noEvents(), s, 1);
+		bow.cooldown = BOW_DATA.cooldownTicks;
+		const shot = noEvents();
+		shot.shotsFired = 1;
+		expect(cues(m, 3, shot, s, 1)).toEqual([[SFX.playerShoot, 1]]);
+	});
+
 	it("a teammate's cue ranks below the local player's same sound in a busy frame", () => {
 		const s = party(2);
 		const m = primed(s, 0);
