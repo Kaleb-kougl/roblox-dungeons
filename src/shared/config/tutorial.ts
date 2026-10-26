@@ -16,6 +16,16 @@ export interface TutorialForgeLayout {
 	readonly roomCount: number;
 }
 
+/**
+ * Floor 1: a Forge chain floor (shared/run tutorialChain: the TUTORIAL_ROOMS rooms in lesson order). The seed picks
+ * only the theme (AUTO) and the decoration draws; the rooms and corridors are the chain's.
+ */
+export interface TutorialChainLayout {
+	readonly seed: number;
+	/** Corridor tiles between one lesson room's floor and the next one's (ForgeChainRoom.gap). */
+	readonly corridorTiles: number;
+}
+
 export interface TutorialTunables {
 	/**
 	 * The run's seed (the sim rng and EndlessConfig.runSeed). The layouts below do not depend on it; the client
@@ -23,16 +33,15 @@ export interface TutorialTunables {
 	 */
 	readonly runSeed: number;
 	/**
-	 * Floor 1, "The Training Halls" (the lesson rooms). Chosen by `node scripts/find-tutorial-seed.js --floor 1
-	 * --rooms 10 --from 0 --to 7999` (analyzeTutorialLayout, shared/run tutorialLayout.ts, on the endless Forge
-	 * options): of 798 layouts meeting the hard criteria (6 combat / elite rooms, a treasure room, a shrine, no leg of
-	 * the tour walking through a later room) seed 7513 scored best (307). Its tour is 277 tiles (the entrance -> boss
-	 * walk is 105), every one of its 10 rooms is a lesson (no side room to wander into), legs of 19-30 tiles between
-	 * the combat rooms, one loop corridor, and lesson E's room has 34 spawn tiles behind a solid pillar (coverTiles).
-	 * Route: entrance 4 -> combat 0, 7, 5 -> elite 1 -> combat 6, 8 -> treasure 3 -> shrine 9 -> boss 2 (the
-	 * stairwell). Treasure comes before the shrine, as the lesson table teaches them.
+	 * Floor 1, "The Training Halls" (the lesson rooms): a strict chain, entrance -> combat A-F -> treasure -> shrine ->
+	 * boss room (the open stairwell), each joined to the next by one short straight corridor and to nothing else
+	 * (shared/run TUTORIAL_ROOMS has the rooms; tutorial.spec.ts checks the chain with checkTutorialChain). The seed
+	 * only picks the theme and the decoration: 7500 is frost (the floor-1 biome of the old seed-searched layout) with
+	 * its two frozen lakes in rooms 4 and 6 (combat D and F), so lesson E keeps its solid pillars (`node
+	 * scripts/find-tutorial-seed.js --floor 1 --from 7500 --to 7700` lists the seeds that work: 40 of the first 48).
+	 * Corridors are corridorTiles long (5 by the ellipse treasure room's rim); the tour is 198 tiles.
 	 */
-	readonly floor1: TutorialForgeLayout;
+	readonly floor1: TutorialChainLayout;
 	/**
 	 * Floor 2, "Mother Bramble": a small boss floor (`--floor 2 --rooms 2,3,4 --to 3000`: the shortest entrance ->
 	 * boss walk, fewest other rooms). Seed 905 at 2 rooms: the entrance and a 34x26 boss room (the larger arena of the
@@ -41,6 +50,11 @@ export interface TutorialTunables {
 	readonly floor2: TutorialForgeLayout;
 	/** The tutorial's last floor: stepping into its stairwell (the floor `lastFloor` -> `lastFloor + 1` change) ends it. */
 	readonly lastFloor: number;
+	/**
+	 * Mother Bramble's hp on floor 2, percent of her Depth 1 hp (TutorialSimConfig.bossHpPercent; her phase marks
+	 * are fractions of it, so phases II and III still play). Tuned so a practice fight is ~20-30 s (docs/TUTORIAL.md).
+	 */
+	readonly bossHpPercent: number;
 	/** Hearts at the start (half hearts): wounded, so the flask lesson can heal (TUTORIAL_START_HALF_HEARTS). */
 	readonly startHalfHearts: number;
 	/** The move lesson is done after walking this many tiles (docs/TUTORIAL.md lesson 1). */
@@ -74,9 +88,10 @@ export interface TutorialTunables {
 
 export const TUTORIAL: TutorialTunables = table.freeze({
 	runSeed: 4242,
-	floor1: table.freeze({ seed: 7513, roomCount: 10 }),
+	floor1: table.freeze({ seed: 7500, corridorTiles: 4 }),
 	floor2: table.freeze({ seed: 905, roomCount: 2 }),
 	lastFloor: 2,
+	bossHpPercent: 20,
 	startHalfHearts: TUTORIAL_START_HALF_HEARTS,
 	moveTiles: 3,
 	clusterSpacingTiles: 2,

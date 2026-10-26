@@ -8,7 +8,8 @@
  * with the sword, roll once for the sniper, guard the bruiser's ring (ALT when a bullet comes close), swap to the bow
  * and release a heavy arrow at the turret sniper, burn an Ember in the sprayer storm, take the relic, accept the curse
  * (SHRINE_BUTTON), take the stairwell, confirm the centre draft card, then melee Mother Bramble on floor 2 (the player
- * is harmless, so it tanks; optionally with the debug boss damage, J) and take the stairwell she opens.
+ * is harmless, so it tanks; optionally with the debug boss damage, J) and take the stairwell she opens. It records the
+ * boss fight's milestones (engaged, phases with the HUD bar's fill, dead) for the fast-boss spec.
  *
  * Walking: straight at the target when it is in the same room with a clear line (three parallel lines of sight, a
  * player radius apart: tutorial floors have solid pillars), else a BFS distance field over FLOOR tiles to the target
@@ -18,7 +19,7 @@
  */
 import { TUTORIAL } from "shared/config";
 import { bulletBlocker, gridToWorld, lineOfSight, worldToGrid } from "shared/dungeon";
-import { LiveRun } from "shared/play";
+import { LiveRun, findBoss, takeSnapshot } from "shared/play";
 import {
 	BOW,
 	Button,
@@ -75,6 +76,18 @@ export interface TutorialBotResult {
 	readonly ticks: number;
 	/** Milestones (tick, floor, hearts) for the spec log. */
 	readonly log: ReadonlyArray<string>;
+	/** The Mother Bramble fight: engaged (events.bossEngaged) to dead (events.bossDefeated), ticks; -1 when unfinished. */
+	readonly bossEngagedTick: number;
+	readonly bossDefeatedTick: number;
+	/** Her hpMax at the engage (the tutorial's bossHpPercent of her Depth 1 hp). */
+	readonly bossHpMax: number;
+	/** Per phase number (index; 0 unused): the tick it started (events.bossPhase), -1 never. */
+	readonly bossPhaseTicks: ReadonlyArray<number>;
+	/**
+	 * Per phase number: the HUD boss bar's fill (takeSnapshot bossHp / bossHpMax) on the tick it started, -1 never.
+	 * Phases 2 and 3 start on the phase marks (the bar's notches), so these are the notch fractions.
+	 */
+	readonly bossPhaseFill: ReadonlyArray<number>;
 }
 
 const DEFAULT_MAX_TICKS = 20 * 60 * SIM_HZ;
@@ -121,6 +134,11 @@ class TutorialBot {
 	readonly heartProblems: string[] = [];
 	readonly log: string[] = [];
 	readonly startHearts: number;
+	bossEngagedTick = -1;
+	bossDefeatedTick = -1;
+	bossHpMax = 0;
+	readonly bossPhaseTicks: number[] = [-1, -1, -1, -1];
+	readonly bossPhaseFill: number[] = [-1, -1, -1, -1];
 	private prevHearts: number;
 	private prevMax: number;
 	private readonly fields = new Map<string, Field>();
@@ -189,6 +207,25 @@ class TutorialBot {
 		if (p.dead !== 0) this.heartProblems.push(`tick ${t}: dead`);
 		this.prevHearts = p.hearts;
 		this.prevMax = p.heartsMax;
+		this.watchBoss();
+	}
+
+	/** The boss fight's milestones (engaged, each phase with the HUD bar's fill, dead). */
+	private watchBoss(): void {
+		const ev = this.run.frameEvents;
+		const t = this.state.tick;
+		const boss = findBoss(this.state);
+		if (ev.bossEngaged !== 0 && this.bossEngagedTick < 0) {
+			this.bossEngagedTick = t;
+			this.bossHpMax = boss?.hpMax ?? 0;
+		}
+		const phase = ev.bossPhase;
+		if (phase > 0 && phase < this.bossPhaseTicks.size() && this.bossPhaseTicks[phase] < 0) {
+			this.bossPhaseTicks[phase] = t;
+			const snap = takeSnapshot(this.state, { paused: false, outcome: "playing", recordedTicks: t });
+			this.bossPhaseFill[phase] = snap.bossHp / snap.bossHpMax;
+		}
+		if (ev.bossDefeated !== 0 && this.bossDefeatedTick < 0) this.bossDefeatedTick = t;
 	}
 
 	idle(ticks: number): void {
@@ -559,5 +596,10 @@ export function playTutorial(options: TutorialBotOptions = {}): TutorialBotResul
 		startHearts: bot.startHearts,
 		ticks: bot.state.tick,
 		log: bot.log,
+		bossEngagedTick: bot.bossEngagedTick,
+		bossDefeatedTick: bot.bossDefeatedTick,
+		bossHpMax: bot.bossHpMax,
+		bossPhaseTicks: bot.bossPhaseTicks,
+		bossPhaseFill: bot.bossPhaseFill,
 	};
 }

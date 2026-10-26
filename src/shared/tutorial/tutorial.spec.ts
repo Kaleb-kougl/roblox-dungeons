@@ -9,7 +9,19 @@ import { TUTORIAL_ROOMS, type TutorialLessonId } from "shared/run";
 import { dismissDraft, distanceField, frame, playTutorial, walkDir, type TutorialBotResult } from "shared/run/testing";
 import { LiveRun } from "shared/play";
 import { buildTutorialRunConfig, tutorialRoom } from "shared/run";
-import { Button, DEBUG_FLOOR_BUTTON, EMPTY_INPUT, SIM_DT, SIM_HZ, ScoreSource, type InputFrame } from "shared/sim";
+import {
+	BOSS_ACT1_ID,
+	Button,
+	DEBUG_FLOOR_BUTTON,
+	EMPTY_INPUT,
+	SIM_DT,
+	SIM_HZ,
+	ScoreSource,
+	archetypeAt,
+	archetypeIndex,
+	type BossAct1Data,
+	type InputFrame,
+} from "shared/sim";
 import { PLACEHOLDER_MANIFEST, ThemePack } from "shared/theme";
 import {
 	MAX_TUTORIAL_STEP_ID_CHARS,
@@ -70,13 +82,23 @@ function harness() {
 
 /**
  * The debug boss damage (J) every this many ticks of the Mother Bramble fight; 0 = never. Not needed: the whole
- * bot run (a ~100 s melee boss fight included) takes about 1.5 s of spec time.
+ * bot run (a ~20 s melee boss fight at TUTORIAL.bossHpPercent included) takes about 1 s of spec time.
  */
 const BOSS_DEBUG_EVERY = 0;
+
+/** The tutorial boss fight's longest acceptable length (the owner's "the boss should die fast"), sim seconds. */
+const BOSS_FIGHT_MAX_SECONDS = 30;
 
 function describeRun(name: string, r: TutorialBotResult): void {
 	const steps = TUTORIAL_STEPS.map((s, i) => `${s.id}@${r.stepDoneTicks[i]}`).join(" ");
 	print(`[tutorial bot] ${name}: ${r.ticks} ticks = ${string.format("%.1f", r.ticks / SIM_HZ)} s sim; ${steps}`);
+	const fight = r.bossDefeatedTick - r.bossEngagedTick;
+	print(
+		`  boss fight: ${fight} ticks = ${string.format("%.1f", fight / SIM_HZ)} s sim (hpMax ${r.bossHpMax}); ` +
+			`phases at ${r.bossPhaseTicks.join(",")}, bar fill ${r.bossPhaseFill
+				.map((f) => string.format("%.3f", f))
+				.join(",")}`,
+	);
 	for (const line of r.log) print(`  ${line}`);
 }
 
@@ -311,6 +333,27 @@ describe("tutorial bot", () => {
 			expect([s.prompt, r.prompts.includes(s.prompt)]).toEqual([s.prompt, true]);
 		}
 		expect(r.prompts.includes("follow")).toBe(true);
+	});
+
+	it("Mother Bramble falls fast (TUTORIAL.bossHpPercent): <= 30 s of melee, phases II and III still play", () => {
+		const r = inOrderRun();
+		const boss = archetypeAt(archetypeIndex(BOSS_ACT1_ID)).data as BossAct1Data;
+		expect(r.bossHpMax).toBe((boss.hp * TUTORIAL.bossHpPercent) / 100);
+		expect(r.bossEngagedTick > 0).toBe(true);
+		expect(r.bossDefeatedTick > r.bossEngagedTick).toBe(true);
+		const seconds = (r.bossDefeatedTick - r.bossEngagedTick) / SIM_HZ;
+		print(`[tutorial bot] boss fight ${string.format("%.1f", seconds)} s at ${TUTORIAL.bossHpPercent}% hp`);
+		expect(seconds <= BOSS_FIGHT_MAX_SECONDS).toBe(true);
+		// Every phase started, in order, before she died.
+		for (const phase of [1, 2, 3]) expect([phase, r.bossPhaseTicks[phase] > 0]).toEqual([phase, true]);
+		expect(r.bossPhaseTicks[1] < r.bossPhaseTicks[2] && r.bossPhaseTicks[2] < r.bossPhaseTicks[3]).toBe(true);
+		expect(r.bossPhaseTicks[3] < r.bossDefeatedTick).toBe(true);
+		// The HUD boss bar (takeSnapshot: hp / hpMax) stands on its notches (phaseHp) when phases II and III start.
+		expect(boss.phaseHp.size()).toBe(2);
+		for (let k = 0; k < boss.phaseHp.size(); k++) {
+			expect(math.abs(r.bossPhaseFill[k + 2] - boss.phaseHp[k]) < 0.01).toBe(true);
+		}
+		expect(r.callouts.includes("tutorial.callout.bossPhase3")).toBe(true);
 	});
 
 	it("a later lesson room visited first still completes (out of order)", () => {

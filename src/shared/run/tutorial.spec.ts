@@ -47,13 +47,14 @@ import {
 	TUTORIAL_TREASURE_ROOM,
 	TUTORIAL_WORLD_KIND,
 	COVER_PILLAR_TILES,
-	analyzeTutorialLayout,
 	buildEndlessRunConfig,
 	buildTutorialRunConfig,
 	buildWorldSetup,
 	isRunWorldKind,
 	isServerRunWorld,
 	runWorldKinds,
+	checkTutorialChain,
+	tutorialChain,
 	tutorialDungeon,
 	tutorialFloorParams,
 	tutorialForgeParams,
@@ -61,6 +62,7 @@ import {
 	tutorialRooms,
 	type EndlessRunSetup,
 } from "shared/run";
+import { decorInputOfLayout, planDecor } from "shared/view/decor";
 
 /** Layout digest: grid, room ids, corridors, doorways, then every room's geometry, type and depth, then the graph. */
 function layoutDigest(d: Dungeon): string {
@@ -72,7 +74,9 @@ function layoutDigest(d: Dungeon): string {
 	return hashNumbers(v);
 }
 
-const FLOOR1_DIGEST = "0f6e8049";
+const FLOOR1_DIGEST = "5bc337a0";
+/** Floor 1's tour (tutorialTour over TUTORIAL_ROOMS: centre to centre, round the solid pillars), in tiles. */
+const FLOOR1_TOUR_TILES = 198;
 const FLOOR2_DIGEST = "c0fd5b19";
 
 const press = (buttons: number): InputFrame => ({ ...EMPTY_INPUT, buttons });
@@ -104,12 +108,17 @@ describe("tutorial world: the lock", () => {
 		// Every Forge param but seed / room count is the endless floor's (solid pillars, the room scale, ...).
 		for (const f of [1, 2, 3]) {
 			const p = tutorialFloorParams(f);
-			expect({ ...p, seed: 0, roomCount: 0 }).toEqual({
+			expect({ ...p, seed: 0, roomCount: 0, chain: undefined }).toEqual({
 				...endlessFloorParams(TUTORIAL.runSeed, f),
 				seed: 0,
 				roomCount: 0,
 			});
 		}
+		// Floor 1 is the lesson chain; floor 2 (and every later floor) a rolled Forge floor.
+		expect(tutorialFloorParams(1).chain).toBe(tutorialChain());
+		expect(tutorialFloorParams(2).chain).toBe(undefined);
+		expect(tutorialFloorParams(3).chain).toBe(undefined);
+		expect(endlessFloorParams(TUTORIAL.runSeed, 1).chain).toBe(undefined);
 		expect(tutorialForgeParams(7, 9)).toEqual({
 			...endlessFloorParams(TUTORIAL.runSeed, 1),
 			seed: 7,
@@ -136,7 +145,7 @@ describe("tutorial world: the lock", () => {
 
 	it("floor layouts are the chosen Forge seeds, byte for byte (layout digest)", () => {
 		expect(tutorialFloorParams(1).seed).toBe(TUTORIAL.floor1.seed);
-		expect(tutorialFloorParams(1).roomCount).toBe(TUTORIAL.floor1.roomCount);
+		expect(tutorialFloorParams(1).roomCount).toBe(TUTORIAL_ROOMS.size());
 		expect(tutorialFloorParams(2).seed).toBe(TUTORIAL.floor2.seed);
 		expect(tutorialFloorParams(3).seed).toBe(TUTORIAL.floor2.seed);
 		const d1 = tutorialDungeon(1);
@@ -167,17 +176,32 @@ describe("tutorial world: the lock", () => {
 		]);
 		for (const r of TUTORIAL_ROOMS) expect([r.lesson, d.rooms[r.roomId].type]).toEqual([r.lesson, r.roomType]);
 		expect(TUTORIAL_ROOMS.map((r) => `${r.roomId}:${r.roomType}`)).toEqual([
-			"4:entrance",
-			"0:combat",
-			"7:combat",
+			"0:entrance",
+			"1:combat",
+			"2:combat",
+			"3:combat",
+			"4:elite",
 			"5:combat",
-			"1:elite",
 			"6:combat",
-			"8:combat",
-			"3:treasure",
-			"9:shrine",
-			"2:boss",
+			"7:treasure",
+			"8:shrine",
+			"9:boss",
 		]);
+		// The chain is the table: room id = place in the chain, its type, size, shape and side.
+		const chain = tutorialChain();
+		expect(chain.size()).toBe(TUTORIAL_ROOMS.size());
+		for (let i = 0; i < TUTORIAL_ROOMS.size(); i++) {
+			const r = TUTORIAL_ROOMS[i];
+			expect([r.lesson, r.roomId]).toEqual([r.lesson, i]);
+			expect(chain[i]).toEqual({
+				type: r.roomType,
+				w: r.w,
+				h: r.h,
+				shape: r.shape,
+				next: r.next,
+				gap: i < TUTORIAL_ROOMS.size() - 1 ? TUTORIAL.floor1.corridorTiles : undefined,
+			});
+		}
 		expect(TUTORIAL_ENTRANCE_ROOM).toBe(d.entrance);
 		expect(TUTORIAL_STAIRWELL_ROOM).toBe(d.boss);
 		expect(d.rooms[TUTORIAL_TREASURE_ROOM].type).toBe("treasure");
@@ -190,13 +214,71 @@ describe("tutorial world: the lock", () => {
 		}
 	});
 
-	it("the table is the analysis's best tour, and no leg walks through a later room", () => {
-		const report = analyzeTutorialLayout(tutorialDungeon(1));
+	it("floor 1 is a strict chain: one corridor from each lesson room to the next, nothing else, every room one floor", () => {
+		const d = tutorialDungeon(1);
+		const order = TUTORIAL_ROOMS.map((r) => r.roomId);
+		const report = checkTutorialChain(d, order);
+		const legs = report.tour.legs.map((l) => l.tiles);
+		print(
+			`[tutorial floor 1] ${d.params.themeKey} ${d.W}x${d.H}: tour ${report.tour.tiles} tiles, legs ${legs.join(
+				",",
+			)}; ` + `corridors ${report.legCorridors.join(",")}`,
+		);
 		expect(report.problems).toEqual([]);
-		expect(report.ok).toBe(true);
-		expect(report.tour!.rooms).toEqual(TUTORIAL_ROOMS.map((r) => r.roomId));
-		expect(report.tour!.earlyRooms).toBe(0);
-		expect(report.coverTiles > 0).toBe(true);
+		// Nine corridors, one per pair, each TUTORIAL.floor1.corridorTiles long (one more where it meets the ellipse
+		// treasure room's rim off its centre row); no loop edge, no extra room.
+		expect(report.corridors.size()).toBe(TUTORIAL_ROOMS.size() - 1);
+		for (const c of report.corridors) expect(c.rooms.size()).toBe(2);
+		for (const len of report.legCorridors) {
+			expect(len >= TUTORIAL.floor1.corridorTiles && len <= TUTORIAL.floor1.corridorTiles + 1).toBe(true);
+		}
+		expect(d.edges.size()).toBe(TUTORIAL_ROOMS.size() - 1);
+		for (const e of d.edges) expect([e.a, e.b, e.isLoop]).toEqual([e.a, e.a + 1, false]);
+		expect(d.rooms.size()).toBe(TUTORIAL_ROOMS.size());
+		expect(report.tour.earlyRooms).toBe(0);
+		expect(report.tour.tiles).toBe(FLOOR1_TOUR_TILES);
+		// The doors the lessons use are the tour's (the marker's targets).
+		for (let i = 1; i < TUTORIAL_ROOMS.size(); i++) {
+			expect(tutorialRooms()[i].door).toEqual(report.tour.legs[i - 1].door);
+		}
+	});
+
+	it("the chain check catches a floor that is not a chain (a rolled endless floor: loops, side rooms)", () => {
+		const rolled = generateDungeon(tutorialForgeParams(TUTORIAL.floor1.seed, TUTORIAL_ROOMS.size()));
+		const order: number[] = [];
+		for (let i = 0; i < rolled.rooms.size(); i++) order.push(i);
+		expect(checkTutorialChain(rolled, order).problems.size() > 0).toBe(true);
+		// And the right floor in the wrong order.
+		const d = tutorialDungeon(1);
+		const swapped = TUTORIAL_ROOMS.map((r) => r.roomId);
+		swapped[1] = 2;
+		swapped[2] = 1;
+		expect(checkTutorialChain(d, swapped).problems.size() > 0).toBe(true);
+	});
+
+	it("floor 1 looks like a real floor: the theme's solid pillars stand in its combat rooms, and it gets decor", () => {
+		const d = tutorialDungeon(1);
+		let solid = 0;
+		const pillarRooms = new Set<number>();
+		for (const pr of d.props) {
+			if (pr.kind !== "pillar" || tileAt(d, pr.x, pr.y) !== TileType.WALL) continue;
+			solid++;
+			pillarRooms.add(d.roomId[pr.y * d.W + pr.x]);
+		}
+		expect(solid > 0).toBe(true);
+		expect(pillarRooms.has(tutorialRoom("combatE").roomId)).toBe(true);
+		expect(d.torches.size() > 0).toBe(true);
+		expect(d.arches.size() >= TUTORIAL_ROOMS.size() - 1).toBe(true);
+		// The client's decor plan (DecorController: decorInputOfLayout on the floor's layout) has every layer.
+		const plan = planDecor(decorInputOfLayout(buildTutorialRunConfig().endlessFloor(1).layout));
+		print(
+			`[tutorial floor 1] decor: ${plan.entries.size()} pieces (flat ${plan.counts.flat}, low ${
+				plan.counts.low
+			}, ` + `tall ${plan.counts.tall}, wall ${plan.counts.wall})`,
+		);
+		expect(plan.counts.flat > 0).toBe(true);
+		expect(plan.counts.wall > 0).toBe(true);
+		expect(plan.counts.tall + plan.counts.low > 0).toBe(true);
 	});
 
 	it("lesson E: the turret sniper stands behind a solid pillar, out of sight of the door the player comes in by", () => {
@@ -304,7 +386,11 @@ describe("tutorial world: determinism and runs", () => {
 			expect(a.endlessFloor!(f)).toBe(wa); // cached per setup
 		}
 		expect(a.config.endless!.runSeed).toBe(TUTORIAL.runSeed);
-		expect(a.config.tutorial).toEqual({ harmless: true, startHalfHearts: TUTORIAL_START_HALF_HEARTS });
+		expect(a.config.tutorial).toEqual({
+			harmless: true,
+			startHalfHearts: TUTORIAL_START_HALF_HEARTS,
+			bossHpPercent: TUTORIAL.bossHpPercent,
+		});
 		expect(TUTORIAL.startHalfHearts).toBe(TUTORIAL_START_HALF_HEARTS);
 		expect(a.config.scoring).never.toBe(undefined);
 		expect(a.config.party).toBe(undefined);
@@ -339,7 +425,7 @@ describe("tutorial world: determinism and runs", () => {
 		expect(archetypeAt(dummy).data.hp).toBe(8);
 	});
 
-	it("debug floor skip: floor 1 -> 2 (the boss, unscaled hp) -> 3 without throwing", () => {
+	it("debug floor skip: floor 1 -> 2 (the boss at TUTORIAL.bossHpPercent of her Depth 1 hp) -> 3 without throwing", () => {
 		const setup = buildTutorialRunConfig();
 		const s = runOf(setup);
 		const config = setup.config;
@@ -351,7 +437,11 @@ describe("tutorial world: determinism and runs", () => {
 		expect(s.endless!.stairsOpen).toBe(0);
 		const bosses = s.combat.actors.filter((x) => x.kind === boss);
 		expect(bosses.size()).toBe(1);
-		expect(bosses[0].hp).toBe(archetypeAt(boss).data.hp);
+		// Depth 1 / floor 1 scaling leaves her base hp; the tutorial takes bossHpPercent of it (540 x 20 % = 108).
+		expect(bosses[0].hp).toBe((archetypeAt(boss).data.hp * TUTORIAL.bossHpPercent) / 100);
+		expect(bosses[0].hpMax).toBe(bosses[0].hp);
+		expect(TUTORIAL.bossHpPercent < 100).toBe(true);
+		expect(s.tutorial!.bossHpPercent).toBe(TUTORIAL.bossHpPercent);
 		expect(s.player.hearts).toBe(TUTORIAL_START_HALF_HEARTS);
 		// The real boon draft opens (and freezes the world until resolved).
 		expect(isDraftOpen(s)).toBe(true);

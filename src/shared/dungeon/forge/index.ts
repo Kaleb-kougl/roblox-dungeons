@@ -11,6 +11,7 @@ export {
 	forgeRerollSeed,
 	FORGE_DEMO_MAX_ATTEMPTS,
 } from "./generate";
+export { CHAIN_CLEARANCE, chainGraph, validateChain, type ForgeGraph } from "./chain";
 export { delaunay, type Point2 } from "./delaunay";
 export { mulberry32, mulberry32Step, makeRng, type Rng, type RandomFn } from "./rng";
 export { THEMES, THEME_KEYS, ROOM_TINT, resolveAutoTheme, type ForgeTheme, type ForgePoolSpec } from "./themes";

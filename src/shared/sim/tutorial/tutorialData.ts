@@ -17,3 +17,6 @@ export const TUTORIAL_MIN_START_HALF_HEARTS = 1;
  * are on: the floor-2 boss fight is the real Depth 1 / floor 1 fight.
  */
 export const TUTORIAL_SCALING_FLOOR = 1;
+
+/** TutorialSimConfig.bossHpPercent when absent: bosses keep their full hp. */
+export const TUTORIAL_FULL_BOSS_HP_PERCENT = 100;

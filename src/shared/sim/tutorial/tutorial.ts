@@ -14,6 +14,9 @@
  *                 damagePlayer still returns true, so bullets are consumed exactly as in a real run.
  *   scaling       endless enemy hp and bullet speed scale as on floor TUTORIAL_SCALING_FLOOR whatever the floor
  *                 (tutorialScalingFloor: spawnActor, SimCtx.fireEnemy), so the floor-2 boss is Depth 1 / floor 1's.
+ *   boss hp       with `bossHpPercent`, a boss archetype (data.boss) spawns with that percent of the hp it would
+ *                 have (tutorialBossHp: spawnActor, after the endless and party scaling), so the practice boss falls
+ *                 fast. Phase marks are fractions of hpMax, so every phase still plays. Absent: 100 (no change).
  *
  * A leaf module: it imports only types and its data, so player.ts and state.ts can import it without a require cycle.
  * The tutorial SCRIPT (prompts, step completion) lives outside the sim, so rewording it never touches replays.
@@ -21,7 +24,7 @@
 import { jsMax, jsMin } from "shared/jsmath";
 import { isIntegerNumber } from "../jsnum";
 import type { SimState } from "../state";
-import { TUTORIAL_MIN_START_HALF_HEARTS, TUTORIAL_SCALING_FLOOR } from "./tutorialData";
+import { TUTORIAL_FULL_BOSS_HP_PERCENT, TUTORIAL_MIN_START_HALF_HEARTS, TUTORIAL_SCALING_FLOOR } from "./tutorialData";
 
 /** SimConfig.tutorial. */
 export interface TutorialSimConfig {
@@ -32,6 +35,11 @@ export interface TutorialSimConfig {
 	 * absent: START_HALF_HEARTS (full). Lets the flask lesson work (TUTORIAL_START_HALF_HEARTS). An integer.
 	 */
 	readonly startHalfHearts?: number;
+	/**
+	 * A boss's hp at spawn, percent of what it would have (TUTORIAL_FULL_BOSS_HP_PERCENT = 100 when absent); an integer
+	 * >= 1. Only bosses (ArchetypeData.boss); every other actor is unchanged.
+	 */
+	readonly bossHpPercent?: number;
 }
 
 /** SimState.tutorial (only with SimConfig.tutorial). Plain numbers; hashed as the "tutorial" group. */
@@ -40,15 +48,21 @@ export interface TutorialState {
 	harmless: number;
 	/** Hits that landed harmlessly so far (any player). */
 	harmlessHits: number;
+	/** TutorialSimConfig.bossHpPercent (TUTORIAL_FULL_BOSS_HP_PERCENT when absent). Fixed for the run. */
+	bossHpPercent: number;
 }
 
-/** Tutorial state at run start. Throws on a non-integer startHalfHearts. */
+/** Tutorial state at run start. Throws on a non-integer startHalfHearts or a bossHpPercent that is not an integer >= 1. */
 export function createTutorialState(config: Readonly<TutorialSimConfig>): TutorialState {
 	const start = config.startHalfHearts;
 	if (start !== undefined && !isIntegerNumber(start)) {
 		error(`tutorial: startHalfHearts must be an integer, got ${tostring(start)}`, 0);
 	}
-	return { harmless: config.harmless ? 1 : 0, harmlessHits: 0 };
+	const bossHpPercent = config.bossHpPercent ?? TUTORIAL_FULL_BOSS_HP_PERCENT;
+	if (!isIntegerNumber(bossHpPercent) || bossHpPercent < 1) {
+		error(`tutorial: bossHpPercent must be an integer >= 1, got ${tostring(bossHpPercent)}`, 0);
+	}
+	return { harmless: config.harmless ? 1 : 0, harmlessHits: 0, bossHpPercent };
 }
 
 export function cloneTutorialState(t: Readonly<TutorialState>): TutorialState {
@@ -73,6 +87,16 @@ export function tutorialScalingFloor(state: Readonly<SimState>, floor: number): 
 	return state.tutorial !== undefined ? TUTORIAL_SCALING_FLOOR : floor;
 }
 
+/**
+ * A boss's spawn hp `hp` in this run: hp x bossHpPercent / 100 in a tutorial run with a bossHpPercent other than 100,
+ * else `hp` exactly. Reads only hashed state.
+ */
+export function tutorialBossHp(state: Readonly<SimState>, hp: number): number {
+	const t = state.tutorial;
+	if (t === undefined || t.bossHpPercent === TUTORIAL_FULL_BOSS_HP_PERCENT) return hp;
+	return (hp * t.bossHpPercent) / TUTORIAL_FULL_BOSS_HP_PERCENT;
+}
+
 /** True when the run is a tutorial with harmless hits (damagePlayer's branch). */
 export function isTutorialHarmless(state: Readonly<SimState>): boolean {
 	const t = state.tutorial;
@@ -83,13 +107,13 @@ export function isTutorialHarmless(state: Readonly<SimState>): boolean {
 // Hash: the "tutorial" group, appended LAST (after party) only when state.tutorial exists.
 
 /** writeTutorialHash order (dump names `tutorial.<name>`). Append only. */
-export const TUTORIAL_HASH_FIELDS = ["harmless", "harmlessHits"] as const;
+export const TUTORIAL_HASH_FIELDS = ["harmless", "harmlessHits", "bossHpPercent"] as const;
 
 export function writeTutorialHash(t: Readonly<TutorialState>, out: number[]): void {
 	for (const f of TUTORIAL_HASH_FIELDS) out.push(t[f]);
 }
 
-/** Dump names for writeTutorialHash (`tutorial.harmless`, `tutorial.harmlessHits`). */
+/** Dump names for writeTutorialHash (`tutorial.harmless`, `tutorial.harmlessHits`, `tutorial.bossHpPercent`). */
 export function tutorialHashNames(out: string[]): void {
 	for (const f of TUTORIAL_HASH_FIELDS) out.push(`tutorial.${f}`);
 }

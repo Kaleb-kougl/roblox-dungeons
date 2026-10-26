@@ -4,13 +4,17 @@
  * buildEndlessRunConfig, and the seed it is given is ignored: every tutorial run is the same world.
  *
  *   config   { endless: { runSeed: TUTORIAL.runSeed, worldForFloor }, scoring: ENDLESS_SCORING,
- *              tutorial: { harmless: true, startHalfHearts: TUTORIAL.startHalfHearts } }; no `breakables` (docs/DECOR.md
+ *              tutorial: { harmless: true, startHalfHearts: TUTORIAL.startHalfHearts,
+ *              bossHpPercent: TUTORIAL.bossHpPercent } }; no `breakables` (docs/DECOR.md
  *            B7: no barrels or crates in the tutorial, and its hand-built layouts carry none)
  *   layouts  tutorialForgeParams: an endless floor's Forge params (endlessFloorParams: solid pillars, double-size
- *            rooms, ...) with a fixed seed and room count; every floor's world is endlessFloorWorld (the endless
- *            floor's movers, bullet blocker and the enemies' steering round pillars), so it plays like a real floor
- *   floor 1  "The Training Halls": the TUTORIAL.floor1 Forge layout (fixed seed and room count), NOT a boss floor
- *            (the stairwell is open from the start, in the boss room). Its deferred room spawns come from
+ *            rooms, ...) with a fixed seed (floor 1: and the lesson chain); every floor's world is endlessFloorWorld
+ *            (the endless floor's movers, bullet blocker and the enemies' steering round pillars), so it plays like a
+ *            real floor
+ *   floor 1  "The Training Halls": a Forge chain floor (ForgeParams.chain: TUTORIAL_ROOMS in lesson order, one short
+ *            corridor from each room to the next and no other way, the TUTORIAL.floor1 seed for the theme and the
+ *            decoration), NOT a boss floor (the stairwell is open from the start, in the boss room, the last one).
+ *            Its deferred room spawns come from
  *            TUTORIAL_ROOMS (one lesson per room, explicit kinds), not the encounter budget; the treasure and shrine
  *            rooms keep their M2 pedestal and curse shrine (progression keys off the room types); the entrance and
  *            the stairwell room are empty.
@@ -20,7 +24,8 @@
  *            empty and with an open stairwell, so the change (and a debug skip past it) never throws.
  *
  * Enemy hp and bullet speed scale as on endless floor 1 / Depth 1 on every floor (shared/sim tutorialScalingFloor),
- * so the training dummy has its 8 hp and Mother Bramble is the real Depth 1 fight. Solo only: a party throws.
+ * so the training dummy has its 8 hp; Mother Bramble is the Depth 1 fight at TUTORIAL.bossHpPercent of her hp (the
+ * sim's TutorialSimConfig.bossHpPercent), so the practice boss falls fast. Solo only: a party throws.
  */
 import { TUTORIAL } from "shared/config";
 import { stableSort } from "shared/jsmath";
@@ -41,7 +46,10 @@ import {
 	type EncounterRoom,
 	type EncounterRoomType,
 	type EndlessFloorLayout,
+	type ForgeChainDir,
+	type ForgeChainRoom,
 	type ForgeParams,
+	type RoomShape,
 	type TileXZ,
 	type WorldXZ,
 } from "shared/dungeon";
@@ -78,13 +86,25 @@ export type TutorialLessonId =
  */
 export type TutorialPlacement = "cluster" | "far" | "cover";
 
-/** One floor-1 room of the tutorial, as data (TUTORIAL_ROOMS). */
+/** One floor-1 room of the tutorial, as data (TUTORIAL_ROOMS): a room of the floor's chain and its lesson. */
 export interface TutorialRoomPlan {
 	readonly lesson: TutorialLessonId;
-	/** Room id in the TUTORIAL.floor1 layout (the lock spec pins it with the room type). */
+	/** Room id on floor 1: the room's place in the chain (the lock spec pins it). */
 	readonly roomId: number;
-	/** The Forge room type the lesson needs (locked by tutorial.spec.ts). */
+	/**
+	 * The Forge room type the lesson needs: the run's pedestals stand in its treasure rooms, its shrine in the first
+	 * shrine room, its stairwell in the boss room (shared/sim progression, endless).
+	 */
 	readonly roomType: EncounterRoomType;
+	/**
+	 * The room's footprint and shape (ForgeChainRoom: tiles before the endless room scale; combat and elite rooms grow
+	 * to the endless minimum, like a rolled room).
+	 */
+	readonly w: number;
+	readonly h: number;
+	readonly shape: RoomShape;
+	/** Which side of this room the next lesson's room lies on (TUTORIAL.floor1.corridorTiles away); none on the last. */
+	readonly next?: ForgeChainDir;
 	/** Archetype ids spawned when the player first walks in (deferred), in spawn order. */
 	readonly kinds: ReadonlyArray<string>;
 	readonly placement: TutorialPlacement;
@@ -92,32 +112,111 @@ export interface TutorialRoomPlan {
 
 /**
  * Floor 1's rooms in tour order: the entrance, combat A-F, the treasure room, the shrine and the boss room (the open
- * stairwell). The order is the walk analyzeTutorialLayout found for TUTORIAL.floor1 (no leg walks through a later
- * room); the seed's comment in shared/config tutorial.ts says why this layout.
+ * stairwell). Floor 1 IS this list: a Forge chain floor (ForgeParams.chain, tutorialChain) with one short corridor
+ * from each room to the next and nothing else, laid out as a snake of three rows (entrance -> A -> B east, down to C,
+ * C -> D -> E west, down to F, F -> treasure -> shrine -> boss east).
  */
 export const TUTORIAL_ROOMS: ReadonlyArray<TutorialRoomPlan> = table.freeze([
-	{ lesson: "entrance", roomId: 4, roomType: "entrance", kinds: [], placement: "far" },
-	{ lesson: "combatA", roomId: 0, roomType: "combat", kinds: [DUMMY_KIND, DUMMY_KIND], placement: "cluster" },
+	{
+		lesson: "entrance",
+		roomId: 0,
+		roomType: "entrance",
+		w: 6,
+		h: 6,
+		shape: "rect",
+		next: "e",
+		kinds: [],
+		placement: "far",
+	},
+	{
+		lesson: "combatA",
+		roomId: 1,
+		roomType: "combat",
+		w: 8,
+		h: 8,
+		shape: "rect",
+		next: "e",
+		kinds: [DUMMY_KIND, DUMMY_KIND],
+		placement: "cluster",
+	},
 	{
 		lesson: "combatB",
-		roomId: 7,
+		roomId: 2,
 		roomType: "combat",
+		w: 8,
+		h: 8,
+		shape: "oct",
+		next: "s",
 		kinds: [SWARMER_KIND, SWARMER_KIND, SWARMER_KIND],
 		placement: "cluster",
 	},
-	{ lesson: "combatC", roomId: 5, roomType: "combat", kinds: [SNIPER_KIND], placement: "far" },
-	{ lesson: "combatD", roomId: 1, roomType: "elite", kinds: [BRUISER_KIND], placement: "far" },
-	{ lesson: "combatE", roomId: 6, roomType: "combat", kinds: [TURRET_SNIPER_KIND], placement: "cover" },
+	{
+		lesson: "combatC",
+		roomId: 3,
+		roomType: "combat",
+		w: 9,
+		h: 8,
+		shape: "rect",
+		next: "w",
+		kinds: [SNIPER_KIND],
+		placement: "far",
+	},
+	{
+		lesson: "combatD",
+		roomId: 4,
+		roomType: "elite",
+		w: 9,
+		h: 9,
+		shape: "oct",
+		next: "w",
+		kinds: [BRUISER_KIND],
+		placement: "far",
+	},
+	{
+		lesson: "combatE",
+		roomId: 5,
+		roomType: "combat",
+		w: 9,
+		h: 9,
+		shape: "rect",
+		next: "s",
+		kinds: [TURRET_SNIPER_KIND],
+		placement: "cover",
+	},
 	{
 		lesson: "combatF",
-		roomId: 8,
+		roomId: 6,
 		roomType: "combat",
+		w: 9,
+		h: 8,
+		shape: "rect",
+		next: "e",
 		kinds: [TURRET_SPRAYER_KIND, TURRET_SPRAYER_KIND],
 		placement: "far",
 	},
-	{ lesson: "treasure", roomId: 3, roomType: "treasure", kinds: [], placement: "far" },
-	{ lesson: "shrine", roomId: 9, roomType: "shrine", kinds: [], placement: "far" },
-	{ lesson: "stairwell", roomId: 2, roomType: "boss", kinds: [], placement: "far" },
+	{
+		lesson: "treasure",
+		roomId: 7,
+		roomType: "treasure",
+		w: 6,
+		h: 6,
+		shape: "ellipse",
+		next: "e",
+		kinds: [],
+		placement: "far",
+	},
+	{
+		lesson: "shrine",
+		roomId: 8,
+		roomType: "shrine",
+		w: 6,
+		h: 6,
+		shape: "oct",
+		next: "e",
+		kinds: [],
+		placement: "far",
+	},
+	{ lesson: "stairwell", roomId: 9, roomType: "boss", w: 9, h: 9, shape: "rect", kinds: [], placement: "far" },
 ]);
 
 function planOf(lesson: TutorialLessonId): TutorialRoomPlan {
@@ -150,17 +249,48 @@ export interface TutorialRoom extends TutorialRoomPlan {
 /**
  * A tutorial floor's Forge params for a hand-picked (seed, room count): an endless floor's params
  * (`endlessFloorParams`: the M1 preset plus every endless option, e.g. solid pillars and the room scale) with that seed
- * and room count. Derived, so a change to endless floors reaches the tutorial too (the lock spec's digests flag it).
- * The seed search (scripts/lune/find-tutorial-seed.luau) scores layouts through this.
+ * and room count, and on floor 1 the lesson chain (`chain`, then roomCount is its size). Derived, so a change to
+ * endless floors reaches the tutorial too (the lock spec's digests flag it). The seed search
+ * (scripts/lune/find-tutorial-seed.luau) builds its candidates through this.
  */
-export function tutorialForgeParams(seed: number, roomCount: number): ForgeParams {
-	return { ...endlessFloorParams(TUTORIAL.runSeed, ENDLESS_FIRST_FLOOR), seed, roomCount };
+export function tutorialForgeParams(
+	seed: number,
+	roomCount: number,
+	chain?: ReadonlyArray<ForgeChainRoom>,
+): ForgeParams {
+	const params: ForgeParams = { ...endlessFloorParams(TUTORIAL.runSeed, ENDLESS_FIRST_FLOOR), seed, roomCount };
+	if (chain !== undefined) params.chain = chain;
+	return params;
 }
 
-/** The Forge params of tutorial floor `floor` (the first: TUTORIAL.floor1, every later one: TUTORIAL.floor2). */
+let chain: ReadonlyArray<ForgeChainRoom> | undefined;
+
+/** Floor 1's Forge chain (ForgeParams.chain): TUTORIAL_ROOMS in order, TUTORIAL.floor1.corridorTiles apart. */
+export function tutorialChain(): ReadonlyArray<ForgeChainRoom> {
+	if (chain === undefined) {
+		chain = table.freeze(
+			TUTORIAL_ROOMS.map(
+				(p): ForgeChainRoom => ({
+					type: p.roomType,
+					w: p.w,
+					h: p.h,
+					shape: p.shape,
+					next: p.next,
+					gap: p.next !== undefined ? TUTORIAL.floor1.corridorTiles : undefined,
+				}),
+			),
+		);
+	}
+	return chain;
+}
+
+/** The Forge params of tutorial floor `floor` (the first: TUTORIAL.floor1's chain, every later one: TUTORIAL.floor2). */
 export function tutorialFloorParams(floor: number): ForgeParams {
-	const layout = floor === ENDLESS_FIRST_FLOOR ? TUTORIAL.floor1 : TUTORIAL.floor2;
-	return tutorialForgeParams(layout.seed, layout.roomCount);
+	if (floor === ENDLESS_FIRST_FLOOR) {
+		const c = tutorialChain();
+		return tutorialForgeParams(TUTORIAL.floor1.seed, c.size(), c);
+	}
+	return tutorialForgeParams(TUTORIAL.floor2.seed, TUTORIAL.floor2.roomCount);
 }
 
 const dungeons = new Map<number, Dungeon>();
@@ -362,7 +492,11 @@ export function buildTutorialRunConfig(partySize: number = DEFAULT_PARTY_SIZE): 
 	const config: SimConfig = {
 		endless: { runSeed: TUTORIAL.runSeed, worldForFloor },
 		scoring: ENDLESS_SCORING,
-		tutorial: { harmless: true, startHalfHearts: TUTORIAL.startHalfHearts },
+		tutorial: {
+			harmless: true,
+			startHalfHearts: TUTORIAL.startHalfHearts,
+			bossHpPercent: TUTORIAL.bossHpPercent,
+		},
 	};
 	return {
 		config,

@@ -182,6 +182,34 @@ export interface ForgeParams {
 	 * walled grid. Endless floors only (`endlessFloorParams`); M1 (`KALEB_VALE_MVP_PARAMS`) and the fixtures leave it off.
 	 */
 	solidPillars?: boolean;
+	/**
+	 * Kaleb-Vale: a fixed linear floor (the tutorial's floor 1, docs/TUTORIAL.md). The rooms are these, in walk order
+	 * (room id = index; the first is the entrance, the last the boss room), laid out by ./chain.ts with exactly one
+	 * straight corridor between each room and the next and nothing else: no scatter, separation, Delaunay graph, MST,
+	 * loops or room-type draws. Everything after the graph (theme mutations, carving, pits, arches, BFS, decoration,
+	 * solid pillars) runs exactly as for a rolled floor, from the seed's stream. `roomCount` must equal its size.
+	 * Off (undefined) on every other floor; M1, endless floors and the fixtures never set it.
+	 */
+	chain?: ReadonlyArray<ForgeChainRoom>;
+}
+
+/** Where the next room of a chain (ForgeParams.chain) lies: +x, -x, +y or -y in grid space. */
+export type ForgeChainDir = "e" | "w" | "s" | "n";
+
+/** One room of a chain floor (ForgeParams.chain). */
+export interface ForgeChainRoom {
+	readonly type: RoomType;
+	/**
+	 * Footprint in tiles before `roomScale` (like a rolled size: x roomScale, then combat and elite rooms grow to
+	 * `minCombatRoomSize` x roomScale). Positive integers.
+	 */
+	readonly w: number;
+	readonly h: number;
+	readonly shape: RoomShape;
+	/** The next room's side of this one (absent on the last room only). */
+	readonly next?: ForgeChainDir;
+	/** Corridor tiles between this room's floor and the next room's (an integer >= 1; not scaled). */
+	readonly gap?: number;
 }
 
 /** ForgeParams after defaults: themeKey resolved to a concrete theme. */

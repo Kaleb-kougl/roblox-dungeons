@@ -20,7 +20,7 @@ import {
 import { PLAYER_RADIUS } from "../../playerData";
 import { SQRT1_2 } from "../../jsnum";
 import { endlessActorHp } from "../../endlessData";
-import { tutorialScalingFloor } from "../../tutorial/tutorial";
+import { tutorialBossHp, tutorialScalingFloor } from "../../tutorial/tutorial";
 import { partyHpMultiplier } from "../../partyData";
 import { partySize, playerAt } from "../../party";
 import type { SimCtx } from "../ctx";
@@ -138,13 +138,15 @@ export function spawnActor(ctx: SimCtx, kind: number, x: number, z: number): Act
 	a.faceX = SQRT1_2;
 	a.faceZ = SQRT1_2;
 	// Endless mode (Roblox port): hp scaled by the floor and Depth at the moment of the spawn (bosses: Depth only),
-	// then (co-op, M4) by the party size (bosses too).
+	// then (co-op, M4) by the party size (bosses too), then (a tutorial boss) by the tutorial's boss hp percent.
 	const endless = ctx.state.endless;
 	let hp =
 		endless !== undefined
 			? endlessActorHp(d.hp, d.boss === true, tutorialScalingFloor(ctx.state, endless.floor), endless.depth)
 			: d.hp;
 	if (endless !== undefined && ctx.state.party !== undefined) hp *= partyHpMultiplier(ctx.state.party.size);
+	// The tutorial's practice boss (docs/TUTORIAL.md): bossHpPercent of that (exactly hp outside a tutorial run).
+	if (d.boss === true) hp = tutorialBossHp(ctx.state, hp);
 	a.hp = hp;
 	a.hpMax = hp;
 	a.radius = d.radius;

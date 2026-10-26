@@ -64,14 +64,6 @@ local function params(seed: number, roomCount: number)
 	return p
 end
 
-local function ids(list): string
-	local out = {}
-	for _, v in list do
-		table.insert(out, tostring(v))
-	end
-	return table.concat(out, " ")
-end
-
 local function typed(d, list): string
 	local out = {}
 	for _, id in list do
@@ -82,23 +74,65 @@ end
 
 local results = {}
 local scanned = 0
+if args.floor == 1 then
+	local chain = run.tutorialChain()
+	local order = {}
+	for i = 0, #chain - 1 do
+		table.insert(order, i)
+	end
+	local coverRoom
+	for _, plan in run.TUTORIAL_ROOMS do
+		if plan.lesson == "combatE" then
+			coverRoom = plan.roomId
+		end
+	end
+	local shown = 0
+	for seed = args.from, args.to do
+		local ok, d = pcall(dungeon.generateDungeon, run.tutorialForgeParams(seed, #chain, chain))
+		scanned += 1
+		if ok and d.valid then
+			local report = run.checkTutorialChain(d, order)
+			local cover = run.coverTiles(d, coverRoom, report.tour.legs[coverRoom].door)
+			if #report.problems == 0 and #cover > 0 then
+				local marked = {}
+				for _, r in d.rooms do
+					if r.lake then
+						table.insert(marked, string.format("lake %d", r.id))
+					elseif r.grave then
+						table.insert(marked, string.format("grave %d", r.id))
+					end
+				end
+				shown += 1
+				print(
+					string.format(
+						"#%d seed %d | %s | tour %d tiles | cover %d | %s",
+						shown,
+						seed,
+						d.params.themeKey,
+						report.tour.tiles,
+						#cover,
+						table.concat(marked, ", ")
+					)
+				)
+				if shown >= args.top then
+					break
+				end
+			end
+		end
+	end
+	print(string.format("floor 1: %d seeds scanned, %d shown", scanned, shown))
+	return
+end
 for _, roomCount in args.rooms do
 	for seed = args.from, args.to do
 		local ok, d = pcall(dungeon.generateDungeon, params(seed, roomCount))
 		scanned += 1
 		if ok and d.valid then
-			if args.floor == 1 then
-				local r = run.analyzeTutorialLayout(d)
-				if r.ok then
-					table.insert(results, { seed = seed, roomCount = roomCount, score = r.score, d = d, r = r })
-				end
-			else
-				local tour = run.tutorialTour(d, { d.entrance, d.boss })
-				local extra = #d.rooms - 2
-				if tour.tiles >= 0 then
-					local score = tour.tiles + FLOOR2_EXTRA_ROOM_PENALTY * extra
-					table.insert(results, { seed = seed, roomCount = roomCount, score = score, d = d, tour = tour })
-				end
+			local tour = run.tutorialTour(d, { d.entrance, d.boss })
+			local extra = #d.rooms - 2
+			if tour.tiles >= 0 then
+				local score = tour.tiles + FLOOR2_EXTRA_ROOM_PENALTY * extra
+				table.insert(results, { seed = seed, roomCount = roomCount, score = score, d = d, tour = tour })
 			end
 		end
 	end
@@ -114,54 +148,29 @@ table.sort(results, function(a, b)
 	return a.seed < b.seed
 end)
 
-print(string.format("floor %d: %d layouts scanned, %d usable", args.floor, scanned, #results))
+print(string.format("floor 2: %d layouts scanned, %d usable", scanned, #results))
 for i = 1, math.min(args.top, #results) do
 	local x = results[i]
 	local d = x.d
-	if args.floor == 1 then
-		local r = x.r
-		local legs = {}
-		for _, leg in r.tour.legs do
-			table.insert(legs, tostring(leg.tiles))
-		end
-		print(
-			string.format(
-				"#%d seed %d rooms %d score %.0f | tour %d tiles (direct %d), extra rooms %d, loops %d, cover %d | %s | legs %s | crit %s",
-				i,
-				x.seed,
-				x.roomCount,
-				x.score,
-				r.tour.tiles,
-				r.directTiles,
-				r.extraRooms,
-				r.loops,
-				r.coverTiles,
-				typed(d, r.tour.rooms),
-				table.concat(legs, ","),
-				ids(r.criticalPath)
-			)
+	print(
+		string.format(
+			"#%d seed %d rooms %d score %.0f | entrance %d -> boss %d: %d tiles | boss room %dx%d | %s",
+			i,
+			x.seed,
+			x.roomCount,
+			x.score,
+			d.entrance,
+			d.boss,
+			x.tour.tiles,
+			d.rooms[d.boss + 1].w,
+			d.rooms[d.boss + 1].h,
+			typed(d, (function()
+				local all = {}
+				for k = 0, #d.rooms - 1 do
+					table.insert(all, k)
+				end
+				return all
+			end)())
 		)
-	else
-		print(
-			string.format(
-				"#%d seed %d rooms %d score %.0f | entrance %d -> boss %d: %d tiles | boss room %dx%d | %s",
-				i,
-				x.seed,
-				x.roomCount,
-				x.score,
-				d.entrance,
-				d.boss,
-				x.tour.tiles,
-				d.rooms[d.boss + 1].w,
-				d.rooms[d.boss + 1].h,
-				typed(d, (function()
-					local all = {}
-					for k = 0, #d.rooms - 1 do
-						table.insert(all, k)
-					end
-					return all
-				end)())
-			)
-		)
-	end
+	)
 end

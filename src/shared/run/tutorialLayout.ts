@@ -1,23 +1,24 @@
 /**
- * Floor-1 layout analysis for the tutorial world (docs/TUTORIAL.md "Architecture §2"; a Roblox-port feature, no web
- * source). Pure graph and tile walks over a Dungeon Forge floor, used three ways:
+ * Floor-1 layout walks for the tutorial world (docs/TUTORIAL.md "Architecture §2"; a Roblox-port feature, no web
+ * source). Pure graph and tile walks over a Dungeon Forge floor:
  *
- *   - scripts/find-tutorial-seed.js (via scripts/lune/find-tutorial-seed.luau) scores candidate seeds with
- *     analyzeTutorialLayout and prints the best ones;
- *   - shared/run tutorial.ts walks the chosen room order with tutorialTour, which gives every lesson room the door
- *     the player arrives through (the world marker's target, and what the spawns are placed away from);
- *   - tutorial.spec.ts re-runs the analysis on the locked seed, so a Forge change that breaks the lessons fails loudly.
+ *   - shared/run tutorial.ts walks the lesson order with tutorialTour, which gives every lesson room the door the
+ *     player arrives through (the world marker's target, and what the spawns are placed away from), and places
+ *     lesson E's turret on coverTiles;
+ *   - checkTutorialChain proves the chain floor is what the lessons need: one corridor between each lesson room and
+ *     the next and nothing else, every room's floor one region with its door, centre and spawn tiles on it. The lock
+ *     spec (tutorial.spec.ts) asserts it finds no problem, so a Forge change that breaks the lessons fails loudly;
+ *   - scripts/find-tutorial-seed.js (via scripts/lune/find-tutorial-seed.luau) lists the seeds (theme and
+ *     decoration) the chain works with, and scores small floor-2 boss floors with tutorialTour.
  *
  * The tour is the order the player is led through: the entrance, the six combat lessons, the treasure room, the
  * shrine, then the boss room (which holds the open stairwell on a non-boss floor). Each leg is the shortest walk over
  * FLOOR tiles (4-neighbour BFS) from one room's centre floor tile to the next; a leg that walks through a later tour
- * room would spawn that room's enemies (and show its prompt) early, so a good layout has none ("early" rooms).
+ * room would spawn that room's enemies (and show its prompt) early ("early" rooms; a chain floor has none).
  *
- * Tutorial floors are endless floors (tutorialForgeParams): pillars are solid WALL cells, so the BFS walks round them,
- * and lesson E's turret sniper stands behind one when the room allows it (coverTiles; the analysis prefers layouts
- * where it does).
+ * Tutorial floors are endless floors (tutorialForgeParams): pillars are solid WALL cells, so the walks go round them,
+ * and lesson E's turret sniper stands behind one (coverTiles).
  */
-import { stableSort } from "shared/jsmath";
 import {
 	EncounterRng,
 	TileType,
@@ -36,21 +37,6 @@ import {
 	type TileXZ,
 } from "shared/dungeon";
 
-/** Combat lessons on floor 1 (docs/TUTORIAL.md lessons 3-8: combat A-F). */
-export const TUTORIAL_COMBAT_LESSONS = 6;
-
-/** Score penalty (in walked tiles) per room the tour never visits (a side room to wander into). */
-export const LAYOUT_EXTRA_ROOM_PENALTY = 40;
-/** Score penalty per loop corridor (more ways round = more ways to skip a lesson room). */
-export const LAYOUT_LOOP_PENALTY = 30;
-/** Score penalty per tour room a leg walks through before its turn. */
-export const LAYOUT_EARLY_ROOM_PENALTY = 200;
-/** Score penalty when the shrine comes before the treasure room (the lesson table teaches the pedestal first). */
-export const LAYOUT_SHRINE_FIRST_PENALTY = 25;
-/** Score penalty when lesson E's room has no cover tile (coverTiles) seen from its door. */
-export const LAYOUT_NO_COVER_PENALTY = 60;
-/** Lesson E (the turret sniper "behind cover", docs/TUTORIAL.md lesson 7): its index among the combat lessons. */
-export const TUTORIAL_COVER_LESSON = 4;
 /**
  * A cover tile has a solid pillar at most this many tiles away (Chebyshev). Spawn tiles keep 8 FLOOR neighbours
  * (roomSpawnTiles), so the nearest a spawn can stand to a pillar is 2: one free tile between them.
@@ -124,31 +110,6 @@ export function coverTiles(d: Dungeon, roomId: number, door: TileXZ): TileXZ[] {
 			if (math.max(math.abs(px - gx), math.abs(py - gy)) <= COVER_PILLAR_TILES) near = true;
 		return near && !lineOfSight(blocked, door.x, door.z, t.x, t.z);
 	});
-}
-
-export interface TutorialLayoutReport {
-	/** Meets the hard criteria: 6 combat lessons, a treasure room, a shrine, and no leg walks through a later room. */
-	readonly ok: boolean;
-	/** Why not (empty when ok). */
-	readonly problems: ReadonlyArray<string>;
-	/** The entrance -> boss route (critical-path room ids, in walk order). */
-	readonly criticalPath: ReadonlyArray<number>;
-	/** The six lesson rooms (combat / elite), in tour order. */
-	readonly lessons: ReadonlyArray<number>;
-	readonly treasure: number;
-	readonly shrine: number;
-	/** The best tour found (entrance, lessons, treasure / shrine in the better order, boss). */
-	readonly tour: TutorialTour | undefined;
-	/** Rooms the tour never visits. */
-	readonly extraRooms: number;
-	/** Loop corridors. */
-	readonly loops: number;
-	/** Lesson E's cover tiles (coverTiles from the tour's door into it); 0 costs LAYOUT_NO_COVER_PENALTY. */
-	readonly coverTiles: number;
-	/** BFS tiles straight from the entrance to the boss room. */
-	readonly directTiles: number;
-	/** Lower is better: tour tiles + the penalties above. math.huge when there is no tour. */
-	readonly score: number;
 }
 
 interface Bfs {
@@ -233,112 +194,217 @@ export function tutorialTour(d: Dungeon, order: ReadonlyArray<number>): Tutorial
 	return { rooms: [...order], legs, tiles: total, earlyRooms: early };
 }
 
-/** The critical path's rooms, entrance first (Forge edges with isCritical). */
-function criticalPathOf(d: Dungeon): number[] {
-	const out = [d.entrance];
-	const used = new Set<number>([d.entrance]);
-	let at = d.entrance;
-	while (at !== d.boss) {
-		let nextRoom = -1;
-		for (const e of d.edges) {
-			if (!e.isCritical) continue;
-			const other = e.a === at ? e.b : e.b === at ? e.a : -1;
-			if (other >= 0 && !used.has(other)) {
-				nextRoom = other;
-				break;
+// ---------------------------------------------------------------------------------------------
+// The chain check
+
+/** One corridor of the floor: a 4-connected region of corridor floor (FLOOR cells outside every room). */
+export interface TutorialCorridor {
+	/** Room ids whose floor it touches (4-neighbours), ascending. */
+	readonly rooms: ReadonlyArray<number>;
+	/** Its FLOOR cells. */
+	readonly cells: number;
+	/** Its length: the longer side of its bounding box, in tiles. */
+	readonly length: number;
+}
+
+export interface TutorialChainReport {
+	/** Empty when the floor is a strict chain in `order` (see checkTutorialChain). */
+	readonly problems: ReadonlyArray<string>;
+	/** Every corridor region, in grid row order of its first cell. */
+	readonly corridors: ReadonlyArray<TutorialCorridor>;
+	/** Per tour leg (order[i] -> order[i + 1]): the length of the one corridor between them (-1 when not exactly one). */
+	readonly legCorridors: ReadonlyArray<number>;
+	/** The tour over `order` (tutorialTour). */
+	readonly tour: TutorialTour;
+}
+
+const NEIGHBOURS: ReadonlyArray<readonly [number, number]> = [
+	[1, 0],
+	[-1, 0],
+	[0, 1],
+	[0, -1],
+];
+
+function isFloor(d: Dungeon, gx: number, gy: number): boolean {
+	return tileAt(d, gx, gy) === TileType.FLOOR;
+}
+
+/** The 4-connected regions of the cells `inside(gx, gy)` accepts (each region a list of cell indices). */
+function regions(d: Dungeon, inside: (gx: number, gy: number) => boolean): number[][] {
+	const seen = new Array<boolean>(d.W * d.H, false);
+	const out: number[][] = [];
+	for (let gy = 0; gy < d.H; gy++)
+		for (let gx = 0; gx < d.W; gx++) {
+			const c0 = gy * d.W + gx;
+			if (seen[c0] || !inside(gx, gy)) continue;
+			seen[c0] = true;
+			const cells = [c0];
+			let head = 0;
+			while (head < cells.size()) {
+				const c = cells[head++];
+				const cx = c % d.W;
+				const cy = (c - cx) / d.W;
+				for (const [ox, oy] of NEIGHBOURS) {
+					const nx = cx + ox;
+					const ny = cy + oy;
+					if (nx < 0 || ny < 0 || nx >= d.W || ny >= d.H) continue;
+					const n = ny * d.W + nx;
+					if (seen[n] || !inside(nx, ny)) continue;
+					seen[n] = true;
+					cells.push(n);
+				}
 			}
+			out.push(cells);
 		}
-		if (nextRoom < 0) break;
-		out.push(nextRoom);
-		used.add(nextRoom);
-		at = nextRoom;
-	}
 	return out;
 }
 
 /**
- * Scores `d` as the tutorial's floor 1 (see the file comment): lessons = the six shallowest combat / elite rooms
- * (depth, then BFS tiles from the entrance, then id), then every (treasure, shrine) pair in both orders; the
- * lowest-scoring tour wins. Pure.
+ * Checks that `d` is a strict chain of lesson rooms in `order` (room ids), the tutorial's floor-1 contract:
+ *
+ *   rooms      exactly `order` (every room once, no other room) and no FLOOR cell of a room 4-touches another room's;
+ *   corridors  exactly one corridor region per consecutive pair (order[i], order[i + 1]), touching those two rooms
+ *              and no other (so no loop, no side corridor or dead end, and room i's exits lead only to i - 1 and
+ *              i + 1); the Forge graph agrees (one non-loop edge per pair, no other edge);
+ *   floor      each room's walkable floor (FLOOR cells of the room: solid pillars and pits are not) is ONE 4-connected
+ *              region, its centre tile on it, and it holds every spawn tile (roomSpawnTiles), reached from the door
+ *              the tour comes in by (every room but the first) and from the door it leaves by (every room but the last).
+ *
+ * Pure; `problems` is empty when all of it holds.
  */
-export function analyzeTutorialLayout(d: Dungeon): TutorialLayoutReport {
+export function checkTutorialChain(d: Dungeon, order: ReadonlyArray<number>): TutorialChainReport {
 	const problems: string[] = [];
+	const n = order.size();
 	const rooms = encounterRooms(d);
-	const cells = roomCells(d);
-	const fromEntrance = floorBfs(d, cells[d.entrance]);
-	const candidates: number[] = [];
-	const treasures: number[] = [];
-	const shrines: number[] = [];
-	for (const r of rooms) {
-		if (r.type === "combat" || r.type === "elite") candidates.push(r.id);
-		else if (r.type === "treasure") treasures.push(r.id);
-		else if (r.type === "shrine") shrines.push(r.id);
+	if (rooms.size() !== n) problems.push(`${rooms.size()} rooms, the chain has ${n}`);
+	const pos = new Map<number, number>();
+	for (let i = 0; i < n; i++) {
+		if (pos.has(order[i]) || rooms[order[i]] === undefined)
+			problems.push(`order: bad or repeated room ${order[i]}`);
+		pos.set(order[i], i);
 	}
-	stableSort(candidates, (a, b) => {
-		const byDepth = rooms[a].depth - rooms[b].depth;
-		if (byDepth !== 0) return byDepth;
-		const byWalk = fromEntrance.dist[cells[a]] - fromEntrance.dist[cells[b]];
-		return byWalk !== 0 ? byWalk : a - b;
-	});
-	const lessons: number[] = [];
-	for (let i = 0; i < math.min(TUTORIAL_COMBAT_LESSONS, candidates.size()); i++) lessons.push(candidates[i]);
-	if (lessons.size() < TUTORIAL_COMBAT_LESSONS) problems.push(`only ${lessons.size()} combat / elite rooms`);
-	if (treasures.size() === 0) problems.push("no treasure room");
-	if (shrines.size() === 0) problems.push("no shrine room");
 
-	let loops = 0;
-	for (const e of d.edges) if (e.isLoop) loops++;
-	const directTiles = fromEntrance.dist[cells[d.boss]];
+	// Rooms never touch each other directly.
+	for (let gy = 0; gy < d.H; gy++)
+		for (let gx = 0; gx < d.W; gx++) {
+			const id = d.roomId[gy * d.W + gx];
+			if (id < 0 || !isFloor(d, gx, gy)) continue;
+			for (const [ox, oy] of NEIGHBOURS) {
+				const nx = gx + ox;
+				const ny = gy + oy;
+				if (!isFloor(d, nx, ny)) continue;
+				const other = d.roomId[ny * d.W + nx];
+				if (other >= 0 && other !== id) problems.push(`room ${id} touches room ${other} at (${gx}, ${gy})`);
+			}
+		}
 
-	let best: TutorialTour | undefined;
-	let bestScore = math.huge;
-	let bestTreasure = treasures.size() > 0 ? treasures[0] : -1;
-	let bestShrine = shrines.size() > 0 ? shrines[0] : -1;
-	if (problems.size() === 0) {
-		for (const t of treasures)
-			for (const s of shrines)
-				for (const shrineFirst of [false, true]) {
-					const order = [d.entrance, ...lessons];
-					if (shrineFirst) order.push(s, t);
-					else order.push(t, s);
-					order.push(d.boss);
-					const tour = tutorialTour(d, order);
-					if (tour.tiles < 0) continue;
-					const extra = rooms.size() - order.size();
-					const score =
-						tour.tiles +
-						LAYOUT_EXTRA_ROOM_PENALTY * extra +
-						LAYOUT_LOOP_PENALTY * loops +
-						LAYOUT_EARLY_ROOM_PENALTY * tour.earlyRooms +
-						(shrineFirst ? LAYOUT_SHRINE_FIRST_PENALTY : 0);
-					if (score < bestScore) {
-						bestScore = score;
-						best = tour;
-						bestTreasure = t;
-						bestShrine = s;
-					}
-				}
-		if (best === undefined) problems.push("no reachable tour");
-		else if (best.earlyRooms > 0) problems.push(`${best.earlyRooms} tour room(s) walked through early`);
+	// Corridor regions and the rooms each one touches.
+	const corridors: TutorialCorridor[] = [];
+	const legCorridors: number[] = [];
+	const perLeg: number[] = [];
+	for (let i = 0; i < n - 1; i++) {
+		legCorridors.push(-1);
+		perLeg.push(0);
 	}
-	// Lesson E's cover (the lessons come before the treasure / shrine pair, so every tour has the same door into it).
-	let cover = 0;
-	if (best !== undefined) {
-		cover = coverTiles(d, best.rooms[1 + TUTORIAL_COVER_LESSON], best.legs[TUTORIAL_COVER_LESSON].door).size();
-		if (cover === 0) bestScore += LAYOUT_NO_COVER_PENALTY;
+	const corridorCell = (gx: number, gy: number) => d.roomId[gy * d.W + gx] < 0 && isFloor(d, gx, gy);
+	for (const cells of regions(d, corridorCell)) {
+		const touched: number[] = [];
+		let x0 = math.huge;
+		let x1 = -math.huge;
+		let y0 = math.huge;
+		let y1 = -math.huge;
+		for (const c of cells) {
+			const gx = c % d.W;
+			const gy = (c - gx) / d.W;
+			x0 = math.min(x0, gx);
+			x1 = math.max(x1, gx);
+			y0 = math.min(y0, gy);
+			y1 = math.max(y1, gy);
+			for (const [ox, oy] of NEIGHBOURS) {
+				if (!isFloor(d, gx + ox, gy + oy)) continue;
+				const id = d.roomId[(gy + oy) * d.W + gx + ox];
+				if (id >= 0 && !touched.includes(id)) touched.push(id);
+			}
+		}
+		touched.sort();
+		const length = math.max(x1 - x0, y1 - y0) + 1;
+		corridors.push({ rooms: touched, cells: cells.size(), length });
+		const a = touched.size() === 2 ? pos.get(touched[0]) : undefined;
+		const b = touched.size() === 2 ? pos.get(touched[1]) : undefined;
+		if (a === undefined || b === undefined || math.abs(a - b) !== 1) {
+			problems.push(`a corridor joins rooms [${touched.join(", ")}], not two neighbours of the chain`);
+			continue;
+		}
+		const leg = math.min(a, b);
+		perLeg[leg] += 1;
+		legCorridors[leg] = length;
 	}
-	return {
-		ok: problems.size() === 0,
-		problems,
-		criticalPath: criticalPathOf(d),
-		lessons,
-		treasure: bestTreasure,
-		shrine: bestShrine,
-		tour: best,
-		extraRooms: best !== undefined ? rooms.size() - best.rooms.size() : rooms.size(),
-		loops,
-		coverTiles: cover,
-		directTiles,
-		score: bestScore,
-	};
+	for (let i = 0; i < n - 1; i++) {
+		if (perLeg[i] !== 1) {
+			problems.push(`${perLeg[i]} corridors between rooms ${order[i]} and ${order[i + 1]}`);
+			legCorridors[i] = -1;
+		}
+	}
+	// The Forge's own graph says the same: one edge per neighbour pair, nothing else.
+	if (d.edges.size() !== n - 1) problems.push(`${d.edges.size()} Forge edges, the chain has ${n - 1}`);
+	for (const e of d.edges) {
+		const a = pos.get(e.a);
+		const b = pos.get(e.b);
+		if (e.isLoop || a === undefined || b === undefined || math.abs(a - b) !== 1) {
+			problems.push(`Forge edge ${e.a}-${e.b} is not a chain link`);
+		}
+	}
+
+	// Every room's floor: one region holding its centre, its spawn tiles and both doors.
+	const tour = tutorialTour(d, order);
+	for (let i = 0; i < n; i++) {
+		const room = rooms[order[i]];
+		if (room === undefined) continue;
+		const id = room.id;
+		const floorRegions = regions(d, (gx, gy) => d.roomId[gy * d.W + gx] === id && isFloor(d, gx, gy));
+		if (floorRegions.size() !== 1) {
+			problems.push(`room ${id}: its floor is ${floorRegions.size()} regions`);
+			continue;
+		}
+		const region = new Set<number>(floorRegions[0]);
+		const onFloor = (x: number, z: number) => region.has(worldToGrid(z) * d.W + worldToGrid(x));
+		if (!onFloor(room.cx, room.cz)) problems.push(`room ${id}: the centre tile is not on its floor`);
+		for (const t of roomSpawnTiles(d, room, tutorialRoomTools(d, room)))
+			if (!onFloor(t.x, t.z)) problems.push(`room ${id}: spawn tile (${t.x}, ${t.z}) is off its floor`);
+		// The doors: the tour's corridor tile into this room, and the next leg's last tile in it (its way out).
+		const doors: TileXZ[] = [];
+		if (i > 0) doors.push(tour.legs[i - 1].door);
+		if (i < n - 1) doors.push(exitDoor(d, tour.legs[i].door, id) ?? { x: room.cx, z: room.cz });
+		for (const door of doors) {
+			const gx = worldToGrid(door.x);
+			const gy = worldToGrid(door.z);
+			let touches = region.has(gy * d.W + gx);
+			for (const [ox, oy] of NEIGHBOURS) if (region.has((gy + oy) * d.W + gx + ox)) touches = true;
+			if (!touches) problems.push(`room ${id}: the door at (${door.x}, ${door.z}) does not reach its floor`);
+		}
+	}
+	for (const leg of tour.legs) if (leg.tiles < 0) problems.push(`no walk from room ${leg.from} to ${leg.to}`);
+	if (tour.earlyRooms > 0) problems.push(`${tour.earlyRooms} tour room(s) walked through early`);
+	return { problems, corridors, legCorridors, tour };
+}
+
+/**
+ * The corridor tile next to room `roomId` on the corridor that holds `door` (the next room's way in), or undefined:
+ * a corridor cell of door's corridor region that 4-touches roomId's floor.
+ */
+function exitDoor(d: Dungeon, door: TileXZ, roomId: number): TileXZ | undefined {
+	const start = worldToGrid(door.z) * d.W + worldToGrid(door.x);
+	const corridorCell = (gx: number, gy: number) => d.roomId[gy * d.W + gx] < 0 && isFloor(d, gx, gy);
+	for (const cells of regions(d, corridorCell)) {
+		if (!cells.includes(start)) continue;
+		for (const c of cells) {
+			const gx = c % d.W;
+			const gy = (c - gx) / d.W;
+			for (const [ox, oy] of NEIGHBOURS) {
+				if (!isFloor(d, gx + ox, gy + oy)) continue;
+				if (d.roomId[(gy + oy) * d.W + gx + ox] === roomId) return { x: gridToWorld(gx), z: gridToWorld(gy) };
+			}
+		}
+	}
+	return undefined;
 }

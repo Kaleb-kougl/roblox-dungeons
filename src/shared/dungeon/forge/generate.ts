@@ -6,7 +6,8 @@
  * Roblox port of project-kaleb-vale src/dungeon/forge/generate.ts @ 42897e2.
  *
  * Pipeline: scatter -> separate -> Delaunay -> MST + loops -> semantics -> carve ->
- * rasterize + BFS -> decorate. One mulberry32 stream drives every stage.
+ * rasterize + BFS -> decorate. One mulberry32 stream drives every stage. (Kaleb-Vale `chain`: ./chain.ts gives the
+ * room graph instead of the first five stages, drawing nothing; carve onwards is the same code.)
  *
  * SEED PARITY: every RNG draw happens in the same order with the same arithmetic as the web build. JS-isms ported
  * deliberately (fixtures/README.md "Porting notes"): Math.round -> jsRound (halves toward +Infinity), Math.hypot ->
@@ -15,6 +16,7 @@
  * Never add, remove or reorder an rng call.
  */
 import { hypot2, jsRound, stableSort, u32, imul, jsRem } from "shared/jsmath";
+import { chainGraph, validateChain, type ForgeGraph } from "./chain";
 import { delaunay } from "./delaunay";
 import { makeRng, type Rng } from "./rng";
 import { THEMES, resolveAutoTheme, type ForgeTheme } from "./themes";
@@ -117,6 +119,7 @@ export function resolveParams(params: ForgeParams): ResolvedForgeParams {
 	if (shrineCap !== undefined && (!isInteger(shrineCap) || shrineCap < 0)) {
 		error(`RangeError: shrineCap must be an integer >= 0, got ${shrineCap}`);
 	}
+	if (params.chain !== undefined) validateChain(params.chain, roomCount);
 	const themeKey =
 		params.themeKey === undefined || params.themeKey === "auto"
 			? resolveAutoTheme(u32(params.seed))
@@ -304,15 +307,12 @@ function floodFloor(grid: number[], W: number, ei: number, bfs: number[]): Flood
 }
 
 /**
- * One attempt with a fixed seed. Returns undefined where the original returned
- * { valid: false, stats: {} } (the Delaunay graph was disconnected, so no MST).
+ * Stages 1-4.2 of a rolled floor (every floor but a Kaleb-Vale chain): scatter, separate, Delaunay -> MST + loops,
+ * semantics, minCombatRoomSize. Moved out of tryGenerate unchanged (same draws, same order). Undefined where the
+ * original gave up (the Delaunay graph was disconnected).
  */
-export function tryGenerate(seed: number, params: ForgeParams): Dungeon | undefined {
-	const p = resolveParams(params);
-	const rng = makeRng(seed);
+function rolledGraph(rng: Rng, p: ResolvedForgeParams): ForgeGraph | undefined {
 	const N = p.roomCount;
-	const TH = THEMES[p.themeKey];
-
 	/* -- 1. scatter -- (Kaleb-Vale roomScale S multiplies every rolled size and the radius; S = 1 is the original) */
 	const S = p.roomScale ?? 1;
 	const R = math.sqrt(N) * 4.6 * S;
@@ -585,6 +585,25 @@ export function tryGenerate(seed: number, params: ForgeParams): Dungeon | undefi
 		}
 		if (grew) separate(rooms, PAD);
 	}
+	return { rooms, edges, entrance, boss, maxDepth, critLen };
+}
+
+/**
+ * One attempt with a fixed seed. Returns undefined where the original returned
+ * { valid: false, stats: {} } (the Delaunay graph was disconnected, so no MST).
+ */
+export function tryGenerate(seed: number, params: ForgeParams): Dungeon | undefined {
+	const p = resolveParams(params);
+	const rng = makeRng(seed);
+	const N = p.roomCount;
+	const TH = THEMES[p.themeKey];
+
+	/* -- 1-4.2: the room graph. Rolled (scatter ... minCombatRoomSize), or a Kaleb-Vale chain laid out as given. -- */
+	const S = p.roomScale ?? 1;
+	const graph =
+		p.chain !== undefined ? chainGraph(p.chain, S, p.minCombatRoomSize, p.corridorWidth) : rolledGraph(rng, p);
+	if (graph === undefined) return undefined;
+	const { rooms, edges, entrance, boss, maxDepth, critLen } = graph;
 
 	/* -- 4.5 theme room mutations (generation-aware) -- */
 	if (TH.lakes) {

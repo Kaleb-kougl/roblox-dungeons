@@ -26,6 +26,10 @@ import {
 	TUTORIAL_MIN_START_HALF_HEARTS,
 	TUTORIAL_START_HALF_HEARTS,
 	TUTORIAL_SUBSYSTEM,
+	BOSS_ACT1_DATA,
+	BOSS_ACT1_ID,
+	TUTORIAL_FULL_BOSS_HP_PERCENT,
+	TUTORIAL_HASH_FIELDS,
 	archetypeIndex,
 	cloneSimState,
 	compose,
@@ -41,6 +45,7 @@ import {
 	step,
 	stepParty,
 	subsystemHashes,
+	tutorialBossHp,
 	tutorialStartHalfHearts,
 	writeHashFields,
 	type ActorSpawn,
@@ -94,7 +99,7 @@ describe("tutorial state and hash", () => {
 
 	it("with it: state.tutorial, hashed as the last group; layout values are writeHashFields, names cover them", () => {
 		const s = createSimState(1, 0, 0, HARMLESS);
-		expect(s.tutorial).toEqual({ harmless: 1, harmlessHits: 0 });
+		expect(s.tutorial).toEqual({ harmless: 1, harmlessHits: 0, bossHpPercent: TUTORIAL_FULL_BOSS_HP_PERCENT });
 		expect(isTutorialHarmless(s)).toBe(true);
 		step(s, HIT, HARMLESS);
 		const layout = hashLayout(s, true);
@@ -103,7 +108,13 @@ describe("tutorial state and hash", () => {
 		expect(layout.names.size()).toBe(layout.values.size());
 		expect(layout.names[last.start]).toBe("tutorial.harmless");
 		expect(layout.names[last.start + 1]).toBe("tutorial.harmlessHits");
-		expect([layout.values[last.start], layout.values[last.start + 1]]).toEqual([1, 1]);
+		expect(layout.names[last.start + 2]).toBe("tutorial.bossHpPercent");
+		expect([layout.values[last.start], layout.values[last.start + 1], layout.values[last.start + 2]]).toEqual([
+			1,
+			1,
+			TUTORIAL_FULL_BOSS_HP_PERCENT,
+		]);
+		expect(last.finish - last.start).toBe(TUTORIAL_HASH_FIELDS.size());
 		expect(last.finish).toBe(layout.values.size());
 		const plain = writeHashFields(s, []);
 		expect(plain.size()).toBe(layout.values.size());
@@ -115,6 +126,10 @@ describe("tutorial state and hash", () => {
 		expect(hashState(s)).never.toBe(before);
 		s.tutorial!.harmlessHits -= 1;
 		s.tutorial!.harmless = 0;
+		expect(hashState(s)).never.toBe(before);
+		s.tutorial!.harmless = 1;
+		expect(hashState(s)).toBe(before);
+		s.tutorial!.bossHpPercent = 20;
 		expect(hashState(s)).never.toBe(before);
 	});
 
@@ -234,7 +249,7 @@ describe("harmless hits", () => {
 		// The same hit without harmless kills.
 		const lethal: SimConfig = { tutorial: { harmless: false, startHalfHearts: 1 } };
 		const d = createSimState(1, 0, 0, lethal);
-		expect(d.tutorial).toEqual({ harmless: 0, harmlessHits: 0 });
+		expect(d.tutorial).toEqual({ harmless: 0, harmlessHits: 0, bossHpPercent: TUTORIAL_FULL_BOSS_HP_PERCENT });
 		step(d, HIT, lethal);
 		expect([d.player.hearts, d.player.dead, d.events.playerDied, d.tutorial!.harmlessHits]).toEqual([0, 1, 1, 0]);
 	});
@@ -360,6 +375,70 @@ describe("startHalfHearts", () => {
 		for (let t = 0; t < FLASK_USE_TICKS; t++) step(l, IDLE, low);
 		step(l, flask, low);
 		expect(l.player.hearts).toBe(1 + 2 * FLASK_HEAL_HALF_HEARTS);
+	});
+});
+
+describe("bossHpPercent", () => {
+	const BOSS = BOSS_ACT1_DATA;
+	const bossAt = (config: SimConfig) => {
+		const s = createSimState(1, 0, 0, config);
+		const kind = archetypeIndex(BOSS_ACT1_ID);
+		return s.combat.actors.filter((a) => a.kind === kind)[0];
+	};
+	const withBoss = (tutorial?: SimConfig["tutorial"]): SimConfig => ({
+		encounter: enc([
+			{ kind: BOSS_ACT1_ID, x: 6, z: 6 },
+			{ kind: TEST_CHASER.id, x: -6, z: -6 },
+		]),
+		tutorial,
+	});
+
+	it("a boss spawns with base hp x percent / 100 (hp and hpMax); other actors and other runs are unchanged", () => {
+		const percent = 20;
+		const b = bossAt(withBoss({ harmless: true, bossHpPercent: percent }));
+		expect(b.hp).toBe((BOSS.hp * percent) / 100);
+		expect(b.hp).toBe(108);
+		expect(b.hpMax).toBe(b.hp);
+		// Without the field, at 100, and outside the tutorial: her full hp, exactly.
+		expect(bossAt(withBoss({ harmless: true })).hp).toBe(BOSS.hp);
+		expect(bossAt(withBoss({ harmless: true, bossHpPercent: 100 })).hp).toBe(BOSS.hp);
+		expect(bossAt(withBoss()).hp).toBe(BOSS.hp);
+		// Not a boss: untouched.
+		const s = createSimState(1, 0, 0, withBoss({ harmless: true, bossHpPercent: percent }));
+		const chaser = s.combat.actors.filter((a) => a.kind === archetypeIndex(TEST_CHASER.id))[0];
+		expect(chaser.hp).toBe(TEST_CHASER.data.hp);
+		expect(s.tutorial!.bossHpPercent).toBe(percent);
+		// tutorialBossHp is the identity outside a tutorial run and at 100.
+		expect(tutorialBossHp(createSimState(1, 0, 0, {}), 540)).toBe(540);
+		expect(tutorialBossHp(createSimState(1, 0, 0, HARMLESS), 540)).toBe(540);
+	});
+
+	it("must be an integer >= 1", () => {
+		for (const bad of [0, -5, 12.5, 0 / 0]) {
+			expect(() => createSimState(1, 0, 0, { tutorial: { harmless: true, bossHpPercent: bad } })).toThrow(
+				"bossHpPercent",
+			);
+		}
+		expect(
+			createSimState(1, 0, 0, { tutorial: { harmless: true, bossHpPercent: 1 } }).tutorial!.bossHpPercent,
+		).toBe(1);
+	});
+
+	it("the phase marks are fractions of the reduced hpMax: phase II at 66 %, phase III at 33 % (debug hits, J)", () => {
+		const config = withBoss({ harmless: true, bossHpPercent: 20 });
+		const s = createSimState(1, 6, 6, config);
+		const kind = archetypeIndex(BOSS_ACT1_ID);
+		const b = s.combat.actors.filter((a) => a.kind === kind)[0];
+		const J = frame(0, 0, Button.DEBUG_BOSS);
+		const phaseAt: number[] = [];
+		for (let t = 0; t < 2000 && b.alive !== 0; t++) {
+			step(s, t % 10 === 5 ? J : IDLE, config);
+			if (s.events.bossPhase > 0) phaseAt[s.events.bossPhase] = b.hp / b.hpMax;
+		}
+		expect(b.alive).toBe(0);
+		expect(phaseAt[1]).toBe(1);
+		expect(phaseAt[2]).toBeCloseTo(BOSS.phaseHp[0], 9);
+		expect(phaseAt[3]).toBeCloseTo(BOSS.phaseHp[1], 9);
 	});
 });
 

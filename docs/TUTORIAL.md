@@ -6,7 +6,9 @@ yet**: the client (T6), the OnboardingService DataStore and remotes (T5) and the
 runtime. **T8 (playtest) is pending.** Planned against the `slice` vertical slice (M1-M5 code-complete headless), then
 ported onto `main`'s main menu / Options with rebinding / same-server lobbies / Leave run (the M4 `KV_Party` invite
 flow it first hooked into is gone; §4 / §5 say how it fits the new flow); the sections below are the plan with "as
-built" notes where the build differs.
+built" notes where the build differs. Branch `tutorial-linear` (2026-10-26, headless only) made floor 1 a strict
+linear chain of the lesson rooms (a new opt-in Forge option, `chain`) and the floor-2 boss fast
+(`TUTORIAL.bossHpPercent` = 20); see "Decisions" 6-7.
 
 ## Goal
 
@@ -72,7 +74,8 @@ is confirmed.
 
 - On entry: "Every 5th floor ends with a boss. **Orange previews show exactly where her bullets will go.**"
 - Boss phase callouts on `bossPhase` events: "Phase II: new patterns." The boss bar is highlighted the first time.
-- Optional `TUTORIAL.bossHpPercent` (default 100; drop it to ~60 if playtests run long).
+- `TUTORIAL.bossHpPercent` = **20** (built on `tutorial-linear`, §2 "Scaling"): she has 108 of her 540 hp, so the
+  practice fight is ~20-30 s and still plays phases II and III.
 - The boss dies, the stairwell opens, and the prompt reads "Take the stairwell to finish." Stepping in (the floor 2 -> 3
   change) **ends the tutorial**. The client stops the run before the floor 3 draft is shown.
 
@@ -121,41 +124,60 @@ export interface TutorialState { harmlessHits: number } // hashed as the appende
 registerRunWorld("tutorial", (_seed, o) => buildTutorialRunConfig(o.partySize)); // seed ignored; party > 1 throws
 ```
 
-- `config = { endless: { runSeed: TUTORIAL.runSeed, worldForFloor }, scoring: ENDLESS_SCORING, tutorial: { harmless: true, startHalfHearts: TUTORIAL.startHalfHearts } }`.
+- `config = { endless: { runSeed: TUTORIAL.runSeed, worldForFloor }, scoring: ENDLESS_SCORING, tutorial: { harmless: true, startHalfHearts: TUTORIAL.startHalfHearts, bossHpPercent: TUTORIAL.bossHpPercent } }`.
   The setup is an `EndlessRunSetup` (it hands out `endlessFloor(floor)` like an endless run, so the client renders it
   the same way). Tunables: `TUTORIAL` in `shared/config/tutorial.ts` (`runSeed`, `floor1` / `floor2` Forge seed + room
   count, `lastFloor = 2`, `startHalfHearts`, `moveTiles`, `clusterSpacingTiles`).
-- **Tutorial floors are endless floors.** Every floor's Forge params are `tutorialForgeParams(seed, roomCount)` =
-  `{ ...endlessFloorParams(TUTORIAL.runSeed, 1), seed, roomCount }`: the M1 preset plus every endless option
+- **Tutorial floors are endless floors.** Every floor's Forge params are `tutorialForgeParams(seed, roomCount, chain?)`
+  = `{ ...endlessFloorParams(TUTORIAL.runSeed, 1), seed, roomCount }` (floor 1 adds `chain`): the M1 preset plus every endless option
   (`solidPillars`: pillars are 1-tile WALL cells, cover against bullets and sight; `roomScale` = `ENDLESS_ROOM_SCALE`
   = 2: double-size rooms). Every floor's sim world is `endlessFloorWorld(layout)` (`shared/run/endless.ts`, the same
   builder `endlessRunFloor` uses): `circleMover`, `bulletBlocker`, `actorMover` and `actorSteerMover` (room enemies
   steer round pillars) on its dungeon. Only the seed, the room count and the room spawns are the tutorial's, so the
   practice run plays like a real endless floor, and a later endless change reaches the tutorial by itself: the lock
-  spec checks the params and the world's SimConfig fields against an endless floor's, and its layout digests (and the
-  lesson table check) fail when a Forge or endless change moves the layout, which then needs a new seed search.
-- **Floor 1**: Forge seed **7513**, 10 rooms, chosen by `node scripts/find-tutorial-seed.js --floor 1 --rooms 10
-  --from 0 --to 7999` (it runs `scripts/lune/find-tutorial-seed.luau` over the compiled `analyzeTutorialLayout`,
-  `shared/run/tutorialLayout.ts`, on `tutorialForgeParams`): best (score 307) of 798 qualifying layouts in seeds
-  0-7999. Every room is a lesson room; the tour is 277 tiles (the entrance -> boss walk is 105; legs of 19-30 tiles
-  between the combat rooms), one loop corridor; no leg of it walks through a later lesson room (which would spawn it
-  early). The analysis also counts lesson E's cover tiles (`coverTiles`, 34 here) and adds
-  `LAYOUT_NO_COVER_PENALTY` when there are none. `bossFloor: false`, so the stairwell is open from the start.
-  Room order (`TUTORIAL_ROOMS`, lesson -> room id / type -> deferred spawns):
+  spec checks the params (all but seed / room count / chain) and the world's SimConfig fields against an endless
+  floor's, and its layout digests (and the chain check) fail when a Forge or endless change moves the layout.
+- **Floor 1** (rebuilt on `tutorial-linear`; before it was the seed-searched Forge seed 7513: a 277-tile tour, one
+  loop corridor, legs through branching corridors): a **Forge chain floor**. The Kaleb-Vale Forge option `chain`
+  (`ForgeParams.chain`, `shared/dungeon/forge/chain.ts`; opt-in, off on every other floor) takes the rooms in walk
+  order and replaces the rolled stages 1-4.2 (scatter, separation, Delaunay, MST + loops, room-type draws): room i + 1
+  is placed on the given side of room i, centres on one row (column), `gap` tiles of corridor between their floors,
+  and the only Forge edges are the chain's neighbours, so the carve stage stamps ONE straight 3-wide corridor per pair
+  (no L bend, no rng draw). `chainGraph` throws if any two pieces (rooms, corridors) that are not joined come within
+  `CHAIN_CLEARANCE` (2) tiles. Everything after the graph (theme mutations: frozen lakes, graveyards; carving, pits,
+  arches, BFS, decoration, solid pillars, torches, banners, the name) is the unchanged Forge code on the seed's stream,
+  so the floor has the real look and every Dungeon consumer (WorldController, DecorController / `planDecor`: 131
+  pieces, `encounterRooms`, the populator tiles, the boss seal) reads it like any floor. The chain is `tutorialChain()`:
+  `TUTORIAL_ROOMS` (each row now carries the room's `w` / `h` before the endless room scale, `shape` and `next` side)
+  with `TUTORIAL.floor1.corridorTiles` = 4 tiles between neighbours, laid out as a three-row snake (entrance -> A -> B
+  east, down to C, C -> D -> E west, down to F, F -> treasure -> shrine -> boss east). The seed (`TUTORIAL.floor1.seed`
+  = **7500**) only picks the theme (frost, as before) and the decoration: its frozen lakes are rooms 4 and 6, so lesson
+  E keeps its solid pillars (`node scripts/find-tutorial-seed.js --floor 1 --from 7500 --to 7700` lists working seeds:
+  40 of the first 48; a lake or graveyard on room 5 is what rules a seed out). Room id = place in the chain. The
+  **tour is 198 tiles** (legs 21, 23, 23, 25, 25, 24, 20, 17, 20, centre to centre round the pillars), corridors 4 tiles
+  (5 where they meet the ellipse treasure room's rim). `bossFloor: false`, so the stairwell is open from the start.
+  Room order (`TUTORIAL_ROOMS`, lesson -> room id / type / size x2 / shape -> deferred spawns):
 
   | Lesson | Room | Spawns |
   |---|---|---|
-  | entrance | 4 entrance | none |
-  | combatA | 0 combat | 2 `dummy` (cluster at the centre) |
-  | combatB | 7 combat | 3 `swarmer` (cluster) |
-  | combatC | 5 combat | 1 `sniper` (far from the door) |
-  | combatD | 1 elite | 1 `bruiser` (far) |
-  | combatE | 6 combat | 1 `turret.sniper` (`cover`: behind a solid pillar, out of sight of the door the player comes in by; the farthest such tile) |
-  | combatF | 8 combat | 2 `turret.sprayer` (far, spread) |
-  | treasure | 3 treasure | the normal relic pedestal |
-  | shrine | 9 shrine | the normal curse shrine |
-  | stairwell | 2 boss | none (the open stairwell at its centre) |
+  | entrance | 0 entrance, 12x12 rect | none |
+  | combatA | 1 combat, 16x16 rect | 2 `dummy` (cluster at the centre) |
+  | combatB | 2 combat, 16x16 oct | 3 `swarmer` (cluster) |
+  | combatC | 3 combat, 18x16 rect | 1 `sniper` (far from the door) |
+  | combatD | 4 elite, 18x18 oct (frozen lake) | 1 `bruiser` (far) |
+  | combatE | 5 combat, 18x18 rect | 1 `turret.sniper` (`cover`: behind a solid pillar, out of sight of the door the player comes in by; the farthest such tile) |
+  | combatF | 6 combat, 18x16 rect (frozen lake) | 2 `turret.sprayer` (far, spread) |
+  | treasure | 7 treasure, 12x12 ellipse | the normal relic pedestal |
+  | shrine | 8 shrine, 12x12 oct | the normal curse shrine |
+  | stairwell | 9 boss, 18x18 rect | none (the open stairwell at its centre) |
 
+  **Contiguity** is guaranteed by construction and checked: solid pillars (and lava pits) are each placed with all 8
+  neighbours FLOOR, so none touches another or a wall and none can split a room (a path through one goes round its
+  ring), and the chain's pieces keep apart. `checkTutorialChain(d, order)` (`tutorialLayout.ts`, run by the lock spec)
+  proves it on the built floor: exactly the 10 rooms, no room's floor 4-touching another's, exactly one corridor region
+  per consecutive pair and none touching a third room (no loops, side corridors or dead ends; the Forge edges agree),
+  every room's walkable floor ONE 4-connected region holding its centre, every spawn tile (`roomSpawnTiles`) and both
+  doors (in from the previous room, out to the next), and no leg walking through a later room.
   Placement `cover` (lesson E, "behind cover"): `coverTiles(d, room, door)` are the room's spawn tiles with no line of
   sight from the door and a solid pillar within `COVER_PILLAR_TILES` (2: spawn tiles keep 8 floor neighbours, so one
   free tile separates it from the pillar); the farthest of them from the door. With none it falls back to `far`.
@@ -169,14 +191,25 @@ registerRunWorld("tutorial", (_seed, o) => buildTutorialRunConfig(o.partySize));
   Mother Bramble is the only spawn. **Floor 3+** (reached only by the floor 2 -> 3 change that ends the tutorial, or a
   debug skip) reuses floor 2's layout, empty, with the stairwell open, so the sim never throws.
 - **Scaling**: in a tutorial run enemy hp and bullet speed scale as endless floor 1 on every floor (sim
-  `tutorialScalingFloor`), and Depth is 1 until the boss dies: the dummy has its 8 hp and Mother Bramble her base hp.
-  `TUTORIAL.bossHpPercent` is **not built**: no existing hook scales one archetype's hp per config without a new hashed
-  field (T8 can add one to `TutorialSimConfig` if playtests run long).
-- **Lock spec** (`tutorial.spec.ts`): the Forge params and floor-world SimConfig fields are an endless floor's, both
-  layout digests (floor 1 `0f6e8049`, floor 2 `c0fd5b19`), the lesson table's room ids / types / order, the analysis's
-  tour equals the table with no early rooms, lesson E's turret behind a pillar out of the door's sight, every spawn on
-  a floor tile of its room, pedestal / shrine / stairwell rooms, determinism, a harmless smoke run, the debug floor skip 1 -> 2 (boss, draft) -> 3, the dummy's 8 hp, the
-  registry, solo only.
+  `tutorialScalingFloor`), and Depth is 1 until the boss dies: the dummy has its 8 hp. **Boss hp** (built on
+  `tutorial-linear`): `TutorialSimConfig.bossHpPercent` (an integer >= 1; absent = 100) is carried into
+  `TutorialState.bossHpPercent`, a new hashed field appended to the `tutorial` group (`TUTORIAL_HASH_FIELDS` =
+  harmless, harmlessHits, bossHpPercent), and spawnActor gives a boss archetype `hp x percent / 100`
+  (`tutorialBossHp`, after the endless and party scaling; outside a tutorial run, and at 100, the hp is untouched, so
+  every fixture and normal run hashes as before; every tutorial run's state hash changed by the appended field). The
+  tutorial passes `TUTORIAL.bossHpPercent` = **20**: Mother Bramble has 108 hp. Her phase marks (`phaseHp` 0.66 /
+  0.33) are fractions of hpMax, so phases II and III start at 71.28 and 35.64 hp, and the HUD boss bar (snapshot
+  `bossHp / bossHpMax`, notches at `phaseHp`) stands on its notches then (0.660 / 0.331 measured). The damage cap
+  (`damageCapPerSecond` 6) and the roars (intro 1 s, transitions 1.5 s x2, immune) were **left alone**: the bot fight
+  is 21.3 s of sim (phase II at 7.8 s, III at 14.6 s), of which the roars are 4 s, and the cap only binds at the
+  bot's full melee uptime (~6 dps), which a human rarely beats, so a human fight lands at ~20-30 s without them.
+- **Lock spec** (`tutorial.spec.ts`): the Forge params and floor-world SimConfig fields are an endless floor's (floor 1
+  `chain` = `tutorialChain()`), both layout digests (floor 1 `5bc337a0`, floor 2 `c0fd5b19`), the lesson table's room
+  ids / types / order and the chain built from it, `checkTutorialChain` with no problem (9 corridors of 4-5 tiles, the
+  198-tile tour, the lesson doors are the tour's) and that it does catch a rolled floor and a wrong order, solid
+  pillars in lesson E's room and decor on every layer (`planDecor`), lesson E's turret behind a pillar out of the
+  door's sight, every spawn on a floor tile of its room, pedestal / shrine / stairwell rooms, determinism, a harmless
+  smoke run, the debug floor skip 1 -> 2 (boss at 20 % hp, draft) -> 3, the dummy's 8 hp, the registry, solo only.
 - Server: `tutorial` is not in `LEADERBOARD_ELIGIBLE_WORLDS`, and the server never runs it: it is in
   `SERVER_REFUSED_WORLDS` (`shared/run/worlds.ts`, `isServerRunWorld`), so `RunSessionRegistry.start` (every session
   start: the ranked `startRun` and a lobby's party / solo start, hence every segment and final) answers `unknown_world`
@@ -239,10 +272,12 @@ registerRunWorld("tutorial", (_seed, o) => buildTutorialRunConfig(o.partySize));
 - Bot: `shared/run/testing` `playTutorial(options)` plays the world through `LiveRun` and the director (in tour order,
   or `order` / `flaskAfter` for an out-of-order run; `bossDebugEvery` presses J, unused by the spec). It walks straight
   only along a clear line in the same room (three parallel lines of sight a player radius apart), else the tile-grid
-  BFS field (round solid pillars, through corridors), and shoots the bow only with a line of sight. Bot time: about
-  151 s of sim (9052 ticks: floor 1 ~50 s in the double-size rooms, a ~100 s full-uptime melee Mother Bramble; the
-  out-of-order run 158 s). A human reads prompts and fights at well
-  under full uptime, so 4-6 min looks right; T8 times it for real.
+  BFS field (round solid pillars, through corridors), and shoots the bow only with a line of sight. Bot time (on
+  `tutorial-linear`): **69.8 s** of sim (4187 ticks; was 151 s): floor 1 ~45 s on the chain, the Mother Bramble fight
+  **21.3 s** from engage to death at 20 % hp (was ~100 s); the out-of-order run (combat C before B, walking through B)
+  76.4 s. It records the boss milestones (engage, each phase with the HUD bar's fill, death), and the director spec
+  asserts the fight is <= 30 s with phases II and III. A human reads prompts and fights at well under full uptime, so
+  the 4-6 min target needs T8's real timing (the walk and the boss are now much shorter).
 
 ### 4. Client (`src/client`)
 
@@ -423,3 +458,15 @@ Critical path: T1 -> T2 -> T4 -> T6. T5 can run alongside T2-T4.
 4. **Curse shrine**: yes, it is taught (lesson 10, the shrine room).
 5. **Forced vs offered**: offered on the first join (before the main menu), and **Skip is available from the pause
    menu at any time** (not hidden until the first room is done).
+6. **Floor 1 is linear** (owner, 2026-10-26: "each room is contiguous and has the next step in the tutorial").
+   Decision log (deviation from the plan's seed-searched Forge floor; recorded here, not in CLAUDE.md): the Forge gained
+   the opt-in Kaleb-Vale option `chain` (§2 "Floor 1"), chosen over a constrained seed search because a rolled Forge
+   floor cannot be a chain that still has a treasure room and a shrine (treasure rooms are leaves off the critical
+   path and shrines are non-critical rooms, so a path-shaped graph has neither), and over a hand-built `Dungeon`
+   because the option reuses every later Forge stage, so the floor keeps the real look and every consumer works
+   unchanged. With `chain` unset `tryGenerate` runs the same code in the same order (stages 1-4.2 moved into
+   `rolledGraph` verbatim), so M1, endless floors and every fixture and digest are byte-identical. The seed search
+   script's floor-1 mode now lists the seeds the chain works with; the old layout analysis (`analyzeTutorialLayout`)
+   is gone, `checkTutorialChain` replaced it.
+7. **The tutorial boss dies fast** (owner, 2026-10-26): `TUTORIAL.bossHpPercent` = 20 through the hashed
+   `TutorialSimConfig` / `TutorialState.bossHpPercent` (§2 "Scaling"); no change to her cap or timers.
