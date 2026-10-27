@@ -187,12 +187,12 @@
 			"pivot": "bottom"
 		},
 		"boost.fury": {
-			"$comment": "docs/BOOST_ART.md: Fury's drop, the gold coin scatter (S facing, arrangement 0); cropped to alpha. Pivot = centre (the drop bobs about its middle). pixelsPerTileFrom: world art at the skeleton's scale, like the decor props (the boost slot needs pixelsPerTile); the build copies that set's pixelsPerTile exactly.",
+			"$comment": "docs/BOOST_ART.md: Fury's drop, the gold coin scatter (S facing, arrangement 0); cropped to alpha with a 1 px pad (the drop is sized from the image, so a wide pad would shrink the visible prop). Pivot = centre (the drop bobs about its middle). pixelsPerTileFrom: world art at the skeleton's scale, like the decor props (the boost slot needs pixelsPerTile); the build copies that set's pixelsPerTile exactly.",
 			"file": "lords-of-pain/prop/gold_drop/S/gold_drop_S_270.0_0.png",
 			"name": "boost-fury",
 			"crop": "alpha",
 			"noiseAlpha": 2,
-			"pad": 3,
+			"pad": 1,
 			"pivot": "center",
 			"pixelsPerTileFrom": "enemy.swarmer"
 		},
@@ -202,7 +202,7 @@
 			"name": "boost-quickstep",
 			"crop": "alpha",
 			"noiseAlpha": 2,
-			"pad": 3,
+			"pad": 1,
 			"pivot": "center",
 			"pixelsPerTileFrom": "enemy.swarmer"
 		},
@@ -212,7 +212,7 @@
 			"name": "boost-frenzy",
 			"crop": "alpha",
 			"noiseAlpha": 2,
-			"pad": 3,
+			"pad": 1,
 			"pivot": "center",
 			"pixelsPerTileFrom": "enemy.swarmer"
 		},
@@ -222,7 +222,7 @@
 			"name": "boost-aegis",
 			"crop": "alpha",
 			"noiseAlpha": 2,
-			"pad": 3,
+			"pad": 1,
 			"pivot": "center",
 			"pixelsPerTileFrom": "enemy.swarmer"
 		},

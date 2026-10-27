@@ -2,9 +2,12 @@ import { Controller, OnStart } from "@flamework/core";
 import { Janitor } from "@rbxts/janitor";
 import { RunService, Workspace } from "@rbxts/services";
 import { CAMERA_PITCH_DEG, CAMERA_YAW_DEG, STUDS_PER_TILE } from "shared/config";
-import { SIM_HZ, dropsGround, type GroundDrop } from "shared/sim";
+import { SIM_DT, SIM_HZ, dropsGround, type GroundDrop } from "shared/sim";
 import {
+	BOOST_BEAM_IMAGE_ID,
 	BOOST_COLLECT_FX_ID,
+	BOOST_GLINT_FX,
+	BOOST_HALO_FX,
 	BOOST_KINDS,
 	decorFxId,
 	type Boost,
@@ -176,8 +179,8 @@ interface Flash {
  * frames, floor changes and restarts are handled from state:
  *
  *   landed   a body per occupied slot, by what the pack has for `boost.<kind>` (ThemePack.boost): a sprite set's
- *            `idle` (SpriteView), an upright image billboard (boostImageLayout: the Lords of Pain scale,
- *            BOOST_VIEW.artPixelsPerTile, never taller than maxHeightTiles), or the placeholder gem (`Diamond`, the
+ *            `idle` (SpriteView), an upright image billboard (boostImageLayout: the art's own pixelsPerTile,
+ *            vale 29.6 from the swarmer set, BOOST_VIEW.artPixelsPerTile as the fallback; never taller than maxHeightTiles), or the placeholder gem (`Diamond`, the
  *            kind's colour role). A body with art also gets its layers, bottom to top:
  *              halo   `decor.fx.glow` (ThemePack.decor) flat on the floor, tinted by the kind's role, haloTiles across,
  *                     over the decor flats and floor effects, under markings and bullets; a Neon disc without it
@@ -238,9 +241,9 @@ export class BoostDropRenderController implements OnStart {
 		const pack = this.theme.getPack();
 		this.pack = pack;
 		this.collectFx = pack.fx(BOOST_COLLECT_FX_ID) !== undefined;
-		this.glow = pack.decor(decorFxId("glow"));
-		this.glint = pack.decor(decorFxId("glint"));
-		this.beam = pack.image(BOOST_VIEW.beamVisualId);
+		this.glow = pack.decor(decorFxId(BOOST_HALO_FX));
+		this.glint = pack.decor(decorFxId(BOOST_GLINT_FX));
+		this.beam = pack.image(BOOST_BEAM_IMAGE_ID);
 		const folder = new Instance("Folder");
 		folder.Name = BOOST_VIEW.folderName;
 		folder.Parent = Workspace;
@@ -619,7 +622,9 @@ export class BoostDropRenderController implements OnStart {
 		while (i < list.size()) {
 			const f = list[i];
 			const age = simSec - f.startSec;
-			if (age < 0 || simSec >= f.endSec) {
+			// A sim clock gone back by more than one tick (a restart); within a tick it is the resume after a pause
+			// (the loop's accumulator cleared, alpha back to ~0), which keeps the flash.
+			if (age < -SIM_DT || simSec >= f.endSec) {
 				this.parkFlash(f);
 				list[i] = list[list.size() - 1];
 				list.pop();
@@ -693,7 +698,7 @@ function lookFor(theme: Boost): KindLook {
 		return { theme, set: art.set, image: undefined, layout, board: spriteBillboard(layout) };
 	}
 	if (art !== undefined && art.kind === "image") {
-		const layout = boostImageLayout(art.size.X, art.size.Y, art.pivot);
+		const layout = boostImageLayout(art.size.X, art.size.Y, art.pivot, art.pixelsPerTile);
 		return { theme, set: undefined, image: art, layout, board: spriteBillboard(layout) };
 	}
 	return { theme, set: undefined, image: undefined, layout: undefined, board: undefined };

@@ -27,10 +27,16 @@ import { BOOST_VIEW } from "./config";
  * and the gem clusters read at about the same size). Stricter than breakableArtLayout (which only caps the part above
  * the pivot): a centred pivot puts half the art under the drop's point.
  */
-export function boostImageLayout(wPx: number, hPx: number, pivot: Readonly<Pivot>): SpriteLayout {
+export function boostImageLayout(
+	wPx: number,
+	hPx: number,
+	pivot: Readonly<Pivot>,
+	artPixelsPerTile: number = BOOST_VIEW.artPixelsPerTile,
+): SpriteLayout {
 	const v = BOOST_VIEW;
+	const scale = artPixelsPerTile > 0 ? artPixelsPerTile : v.artPixelsPerTile;
 	const capped = hPx > 0 ? hPx / v.maxHeightTiles : 0;
-	return { frameW: wPx, frameH: hPx, pivot, pixelsPerTile: math.max(v.artPixelsPerTile, capped) };
+	return { frameW: wPx, frameH: hPx, pivot, pixelsPerTile: math.max(scale, capped) };
 }
 
 /** A layout's drawn size, tiles: [width, height]. */

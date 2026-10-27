@@ -56,6 +56,13 @@ describe("boost art: the prop", () => {
 		expect(w / h).toBeCloseTo(COINS.w / COINS.h, 9);
 	});
 
+	it("uses the art's own pixelsPerTile when given (> 0), else the fallback", () => {
+		const own = boostImageLayout(GEM.w, GEM.h, centre(GEM.w, GEM.h), 40);
+		expect(own.pixelsPerTile).toBe(40);
+		const bad = boostImageLayout(GEM.w, GEM.h, centre(GEM.w, GEM.h), 0);
+		expect(bad.pixelsPerTile).toBe(V.artPixelsPerTile);
+	});
+
 	it("keeps the pivot and never draws art larger than the Lords of Pain scale", () => {
 		for (const [ww, hh] of [
 			[4, 4],

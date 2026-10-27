@@ -56,10 +56,9 @@ export const BOOST_VIEW = {
 
 	// --- the drop's art layers (docs/BOOST_ART.md BA3; only when the pack has art for `boost.<kind>`) ---------------
 	/**
-	 * Image art is drawn at the Lords of Pain props' scale, art pixels per tile (the vale world art's pixelsPerTile,
-	 * packs/vale/layout.ts: a 17 px gem is ~0.57 tiles wide), and never taller than maxHeightTiles in all (taller art
-	 * draws at frameH / maxHeightTiles px per tile: the 25 px coin scatter is 0.625 tiles tall). The pack's own
-	 * pixelsPerTile on a `boost.<kind>` image is not used (the BOOST image layouts carry none).
+	 * Image art is drawn at the art's own pixelsPerTile (vale: the Lords of Pain props' 29.6, from the swarmer set via
+	 * `pixelsPerTileFrom`), this one when the art gives none (> 0), and never taller than maxHeightTiles in all (taller
+	 * art draws at frameH / maxHeightTiles px per tile: the coin scatter is maxHeightTiles tall).
 	 */
 	artPixelsPerTile: 29.6,
 	/**
@@ -86,7 +85,6 @@ export const BOOST_VIEW = {
 	 * PROGRESSION_VIEW.pedestalBeamHeightTiles, so a relic reads as the bigger prize), at beamTransparency. It does not
 	 * bob (it marks the spot). No image: no beam.
 	 */
-	beamVisualId: "ui.marker.boost",
 	beamHeightTiles: 1.4,
 	beamTransparency: 0.3,
 	/**

@@ -120,14 +120,14 @@ only, BA-P4); the particle burst stays as the fallback.
 **As built (BA3, 2026-10-26; code-complete, Studio pending).** Owner call for BA3: the halo reuses the existing
 `decor.fx.glow` and the sparkle reuses `decor.fx.glint` (both already in the vale decor atlas), so `fx.boost.halo` is
 not needed by the renderer; the beam is `ui.marker.boost`. Accessors: `ThemePack.decor(decorFxId("glow"))`,
-`ThemePack.decor(decorFxId("glint"))`, `ThemePack.image(BOOST_VIEW.beamVisualId)` (= `"ui.marker.boost"`, the
+`ThemePack.decor(decorFxId(BOOST_GLINT_FX))`, `ThemePack.image(BOOST_BEAM_IMAGE_ID)` (= `"ui.marker.boost"`, the
 RunMarkerController pedestal-beam path), `ThemePack.boost(kind).color` for every tint, `ThemePack.fx(BOOST_COLLECT_FX_ID)`
 to decide the pickup effect. Only a kind with art (`boost.<kind>` image or sprites) gets layers; the placeholder gem is
 unchanged.
 
 | Layer | As built |
 |---|---|
-| Prop size | `boostImageLayout`: image art at `BOOST_VIEW.artPixelsPerTile` = 29.6 (the pack's own `pixelsPerTile` on a boost image is not used; the BOOST image layouts carry none), and at `frameH / maxHeightTiles` when that would be taller than `maxHeightTiles` (5/8) in all. Gems 17 x 15 px -> 0.57 x 0.51 tiles; coins 31 x 25 px -> 0.78 x 0.625 tiles. Stricter than `breakableArtLayout` (which caps only the part above the pivot; a centred pivot would have let the coins draw 0.84 tall). Sprite sets keep `breakableArtLayout` |
+| Prop size | `boostImageLayout`: image art at the art's own `pixelsPerTile` (vale: 29.6 via `pixelsPerTileFrom: "enemy.swarmer"`; `BOOST_VIEW.artPixelsPerTile` = 29.6 is the fallback), and at `frameH / maxHeightTiles` when that would be taller than `maxHeightTiles` (5/8) in all. Gems 17 x 15 px -> 0.57 x 0.51 tiles; coins 31 x 25 px -> 0.78 x 0.625 tiles. Stricter than `breakableArtLayout` (which caps only the part above the pivot; a centred pivot would have let the coins draw 0.84 tall). Sprite sets keep `breakableArtLayout` |
 | Halo | `decor.fx.glow` via decorParts `buildFloorArt` (top-face SurfaceGui on a thin Part, LightInfluence 0, built at the origin so its frame there is its offset from the floor point), tinted by the role, `haloTiles` 1.2 across, `haloTransparency` 0.35 + `haloPulse` 0.2 x `dropBobPhase` (dimmest at the bob's top; none under reduced motion). Top at `haloLiftStuds` 0.08 (`haloThicknessStuds` 0.02): over decor flats and floor effects, under markings and bullets (spec). No glow art: a Neon Cylinder disc (`haloMaterial`), `haloFallbackTransparency` 0.55. Does not bob or pop |
 | Beam | `ui.marker.boost` on its own anchor at the drop's base, `uprightImageBillboard` (its pivot, else bottom centre), tinted, `beamHeightTiles` **1.4** (not the plan's 1.5: the spec asserts strictly under half the pedestal's 3), `beamTransparency` 0.3. Not bobbing. No image -> no beam |
 | Glint | `decor.fx.glint` as a second BillboardGui on the prop's anchor (bobs with it), centred on the prop's centre, `glintScale` 0.7 x its own size, `glintDepthStuds` 0.1 in front, scaled with the pop (image props); frame `boostGlintFrame` = `decorLoopFrame(age, fps, frames, slot x glintSlotPhaseFrames 3)`; `glintStillFrame` 2 under reduced motion. Untinted |

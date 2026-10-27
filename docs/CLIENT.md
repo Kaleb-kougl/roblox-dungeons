@@ -166,7 +166,7 @@ writes the sim.
     (0.06-0.076), under every marking (0.16) and bullet. No glow art: a Neon Cylinder disc in the role
     (`haloFallbackTransparency` 0.55), the aura's look. It does not bob.
   - **prop**: the billboard (bob, pop, blink as before).
-  - **beam**: `ThemePack.image(BOOST_VIEW.beamVisualId)` (`ui.marker.boost`, the white loot indicator) built like the
+  - **beam**: `ThemePack.image(BOOST_BEAM_IMAGE_ID)` (`ui.marker.boost`, the white loot indicator) built like the
     pedestal beam (RunMarkerController: `uprightImageBillboard`, own anchor on the drop's base), tinted by the role,
     `beamHeightTiles` (1.4; the spec keeps it under half `PROGRESSION_VIEW.pedestalBeamHeightTiles`),
     `beamTransparency` (0.3). Not bobbing. No image (not uploaded / placeholder): no beam.
