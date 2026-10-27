@@ -200,6 +200,18 @@ Decision log (deviations from `PLAN.md`):
   / `assetIdList` / `biomeContentIds` on `ThemeCore` / `ThemePack`; three required strings `loading.title` /
   `.progress` / `.skip`. Entries are never-parented ImageLabels / Sounds (D4) until the P0 spike says strings work.
   `KV_SkipLoading` skips the screen.
+- **Roblox invites and parties (docs/INVITES.md).** No sim, dungeon, lockstep, hash, replay or fixture change. Lobby
+  invites gain `source` (`server` / `platform` / `party`): `Lobbies.platformInvites` records the friends picked in
+  Roblox's invite prompt (absent players only, 15 min, cap 20 per member, apart from the in-server 60 s / 4) and
+  `partyInvite` (no cap) serves Roblox Party grouping. `InviteService` opens `SocialService:PromptGameInvite` with
+  LaunchData from `shared/invite` (`kv1|l|<lobbyId>|<userId>` / `kv1|g|<userId>`, never trusted: Closed entry needs an
+  invite record) and resolves every arrival with the pure `resolveArrival` (invite > LaunchData lobby by `canAccess` >
+  `followed` > party mate's lobby / a new Closed party lobby > `inviteArrived`); `joinIntent` (may upgrade none ->
+  lobby / party) lets invited and party arrivals skip the automatic first-run tutorial (`FirstJoinGate`).
+  `INVITE.promptSide` ("server", falls back to the client) and every API fact wait for spike I0 (`KV_InviteSpike`,
+  docs/SPIKES.md) in a published place: none of these APIs work in Studio, which uses `KV_FakeLaunchData` /
+  `KV_FakePartyId` / `KV_FakeInviteEligible` / `KV_FakeInviteRecipients` (Studio only). Ambient types for the party API
+  in `src/types/roblox-social.d.ts`. Notification String ids (I8) go in `INVITE.notificationStringIds`.
 
 ## Commands
 
