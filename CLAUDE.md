@@ -32,6 +32,7 @@ Record every ported module in `PROVENANCE.md` (ported module, source path, sourc
 | `docs/DEMON_ART.md` | Placeholder enemies as 2D Demons (bruiser = Demon Beast 3; turrets later; Lords of Pain art unchanged): plan, tasks DA0-DA8, decisions DD1-DD6 |
 | `docs/BRAMBLE_ART.md` | Mother Bramble (`boss.act1`) as a 2D Demons Elite: state-to-animation mapping, size and budget, tasks BR0-BR7, decisions BD1-BD7 |
 | `docs/ROOM_EDGES.md` | Room edges (dashed floor line where every corridor meets a room, tinted safe / waiting / live): plan, tasks RE1-RE8, decisions RD1-RD9 |
+| `docs/HUD_LAYOUT.md` | In-run HUD footprint (corner panels, full-width band fix, info line to the pause menu, occlusion fade): plan, tasks H1-H9, decisions HD1-HD8 |
 
 Decision log (deviations from `PLAN.md`):
 - **Art (docs/ART.md).** The theme contract gained a `"sprites"` kind (large pre-rendered cells, 1/4/8/16 screen-space
