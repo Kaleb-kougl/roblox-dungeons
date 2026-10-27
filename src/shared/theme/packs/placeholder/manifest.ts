@@ -519,6 +519,7 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		"menu.partyDown": "The party is down — press {key} to return",
 		"menu.partyEnded": "The server ended the run ({reason}) — press {key} to return",
 		"menu.invitesBadge": "Lobby invites: {count}",
+		"menu.inviteFriends": "Invite friends",
 		// --- lobby.* (task L5: lobby browser, lobby room, invites, notices) --------------------------
 		"lobby.name.hostDescent": "{host}'s descent",
 		"lobby.name.chill": "Chill run",
@@ -567,12 +568,19 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		"lobby.invite.received": "{from} invites you to {lobby}",
 		"lobby.invite.accept": "Join",
 		"lobby.invite.decline": "Decline",
+		// Roblox invites (docs/INVITES.md I5).
+		"lobby.invite.platform": "Invite friends (Roblox)",
+		"lobby.invite.platformUnavailable": "Invites aren't available on this account or device",
+		"lobby.invite.invitedPlatform": "Invited (Roblox)",
 		"lobby.notice.kicked": "You were removed from the lobby",
 		"lobby.notice.hostChanged": "You are now the host",
 		"lobby.notice.countdownCancelled": "Start cancelled: {reason}",
 		"lobby.notice.inviteExpired": "A lobby invite expired",
 		"lobby.notice.inviteDropped": "A lobby invite was withdrawn",
 		"lobby.notice.followed": "{name} followed you here, but your lobby is closed",
+		"lobby.notice.inviteArrived": "{name} joined from your invite",
+		"lobby.notice.partyLobby": "Your Roblox party is together in {lobby}",
+		"lobby.notice.partyLobbyAny": "Your Roblox party is together in a lobby",
 		"lobby.err.generic": "That did not work",
 		"lobby.err.badRequest": "That request was not valid",
 		"lobby.err.unknownLobby": "That lobby is gone",
@@ -591,6 +599,8 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		"lobby.err.badName": "That name is not available",
 		"lobby.err.notReady": "Not everyone is ready",
 		"lobby.err.notInRun": "You are not in that run",
+		"lobby.err.inviteGone": "That lobby has closed",
+		"lobby.err.partyFull": "Your party's lobby is full",
 		// --- end of menu.* / lobby.* --------------------------------------------------------------
 		// M2 in-run progression: the boon draft, relics, curse shrines (placeholder text).
 		"hud.draft.title": "Choose a boon",

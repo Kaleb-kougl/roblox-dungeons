@@ -13,9 +13,11 @@ import {
 	MENU_STRINGS,
 	MENU_VIEW,
 	countdownLeft,
+	inviteCandidateKey,
 	inviteCandidates,
 	lobbyRoomModel,
 	lobbyVisibilityKey,
+	platformInviteButton,
 } from "shared/view/menu";
 import { useMenuActions } from "./actions";
 import { spec, useClock, useGamepadFocus, useNameOf } from "./hooks";
@@ -31,6 +33,10 @@ const WIDE = new Vector2(MENU_VIEW.wideButton.x, MENU_VIEW.wideButton.y);
  * rows), the host's controls (visibility Open / Friends / Closed, Rename through the preset names, Start: "Start solo
  * run" when alone, enabled once everyone is ready), and for everyone Ready, Invite (the players in this server outside
  * the lobby; "Invited" while an invite is live) and Leave lobby. Host-only controls are hidden for the others.
+ * The invite panel's top row is "Invite friends (Roblox)" (Roblox's invite prompt with this lobby attached,
+ * docs/INVITES.md I5; disabled with the reason when the server says this player cannot send invites, and while the
+ * lobby cannot take an invite); friends invited that way read "Invited (Roblox)", with their own rows while they are
+ * not in this server yet.
  */
 export function LobbyRoom() {
 	const actions = useMenuActions();
@@ -130,21 +136,44 @@ export function LobbyRoom() {
 		</Row>
 	) : undefined;
 
-	const candidates = inviting ? inviteCandidates(lobby.players, view, me, m.canInvite) : [];
+	const candidates = inviting ? inviteCandidates(lobby.players, view, me, m.canInvite, nameOf) : [];
+	const platform = platformInviteButton(lobby.inviteEligible, m.canInvite);
 	const invitePanel = inviting ? (
 		<Panel position={new UDim2()} anchor={new Vector2()} order={7} width={MENU_VIEW.screenWidth - HUD_VIEW.pad * 4}>
 			<Text fill={true} order={1} color="uiAccent" text={str(LOBBY_STRINGS.inviteTitle)} />
-			<ScrollList order={2} height={MENU_VIEW.inviteListHeight}>
+			<Row order={2}>
+				<MenuButton
+					order={1}
+					name="InvitePlatform"
+					size={WIDE}
+					textSize={HUD_VIEW.smallText}
+					text={str(LOBBY_STRINGS.invitePlatform)}
+					disabled={!platform.enabled}
+					onActivated={() => {
+						actions.playUi(SFX.uiConfirm);
+						actions.inviteFriendsToLobby();
+					}}
+				/>
+				{platform.reasonKey !== undefined ? (
+					<Text order={2} size={HUD_VIEW.smallText} color="uiTextDim" text={str(platform.reasonKey)} />
+				) : undefined}
+			</Row>
+			<ScrollList order={3} height={MENU_VIEW.inviteListHeight}>
 				{candidates.size() > 0 ? (
 					candidates.map((c, i) => (
 						<ListRow key={`c${c.userId}`} order={i + 1}>
-							<Cell order={1} width={MENU_VIEW.nameWidth} text={c.name} />
+							<Cell
+								order={1}
+								width={MENU_VIEW.nameWidth}
+								color={c.here ? "uiText" : "uiTextDim"}
+								text={c.name}
+							/>
 							<MenuButton
 								order={2}
 								name={`Invite_${c.userId}`}
-								size={SMALL}
+								size={c.platform ? WIDE : SMALL}
 								textSize={HUD_VIEW.smallText}
-								text={str(c.invited ? LOBBY_STRINGS.invited : LOBBY_STRINGS.inviteSend)}
+								text={str(inviteCandidateKey(c))}
 								disabled={!c.canInvite}
 								onActivated={() => {
 									actions.playUi(SFX.uiConfirm);

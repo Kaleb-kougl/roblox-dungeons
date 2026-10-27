@@ -46,6 +46,7 @@ import {
 	shortHash,
 	verdictKey,
 } from ".";
+import { ARRIVAL_TOAST } from "shared/invite";
 import { LOBBY_NAMES, LOBBY_VISIBILITIES } from "shared/lobby";
 import { LOBBY_REFUSALS, LOBBY_STRINGS, MENU_STRINGS, lobbyNameKey, menuStringKeys } from "../menu";
 
@@ -242,6 +243,15 @@ describe("menu and lobby strings (L3 / L5 / L6)", () => {
 		for (const id of LOBBY_NAMES) expect(keys.includes(lobbyNameKey(id))).toBe(true);
 		for (const v of LOBBY_VISIBILITIES) expect(keys.includes(`lobby.visibility.${v}`)).toBe(true);
 		for (const c of LOBBY_REFUSALS) expect(keys.includes(`lobby.err.${c}`)).toBe(true);
+		// Roblox invites (docs/INVITES.md I5): every arrival toast the server may send, and the new lines.
+		for (const [, k] of pairs(ARRIVAL_TOAST as unknown as Map<string, string>)) expect(keys.includes(k)).toBe(true);
+		for (const k of ["lobby.err.inviteGone", "lobby.err.partyFull", "lobby.notice.inviteArrived"]) {
+			expect(keys.includes(k)).toBe(true);
+		}
+		expect(pack.str("lobby.notice.inviteArrived", { name: "Ann" })).toBe("Ann joined from your invite");
+		expect(pack.str("lobby.notice.partyLobby", { lobby: "Chill run" })).toBe(
+			"Your Roblox party is together in Chill run",
+		);
 		for (const key of keys) expect([key, pack.hasString(key)]).toEqual([key, true]);
 		expect(pack.str(lobbyNameKey("hostDescent"), { host: "Ann" })).toBe("Ann's descent");
 		expect(pack.str(LOBBY_STRINGS.count, { count: 2, max: 8 })).toBe("2/8");

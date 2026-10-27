@@ -9,5 +9,7 @@ export * from "./TelemetryService";
 export * from "./SettingsService";
 export * from "./LobbyService";
 export * from "./OnboardingService";
+export * from "./InviteService";
 export * from "./data/DataStoreKeyValue";
 export * from "./data/OrderedDataStoreScores";
+export * from "./spikes";

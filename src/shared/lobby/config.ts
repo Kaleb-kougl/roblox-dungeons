@@ -2,15 +2,23 @@
  * Lobby tunables and the preset vocabularies (visibility, phase, name ids). Data only: lobbies.ts and the server
  * service read these (CLAUDE.md "No magic numbers"). Display strings for the name ids come from shared/theme later.
  */
-import { MAX_PARTY_SIZE } from "shared/run";
+import { MAX_PARTY_SIZE, isFiniteValue } from "shared/run";
 
 export interface LobbyConfig {
 	/** Most members in one lobby: the largest party a run accepts (shared/run limits.ts, the sim's partyData.ts). */
 	readonly maxSize: number;
-	/** Pending (live) invites one player may have sent at once, across lobbies. */
+	/** Pending (live) in-server invites one player may have sent at once, across lobbies (`invite`, source "server"). */
 	readonly maxInvitesPerMember: number;
-	/** An invite expires this long after it was sent. */
+	/** An in-server invite expires this long after it was sent. */
 	readonly inviteTimeoutSeconds: number;
+	/**
+	 * Pending (live) platform invites (Roblox's invite prompt, `platformInvites`, source "platform") one player may
+	 * have sent at once, counted apart from `maxInvitesPerMember`; also the longest recipient list one call takes
+	 * (docs/INVITES.md ID3).
+	 */
+	readonly maxPlatformInvitesPerMember: number;
+	/** A platform or party invite expires this long after it was sent (Roblox notifications are read late). */
+	readonly platformInviteTimeoutSeconds: number;
 	/** After a kick, no member may re-invite the kicked player (and they may not rejoin) for this long. */
 	readonly kickCooldownSeconds: number;
 	/** The host's start begins a countdown of this long before the run starts. */
@@ -29,6 +37,15 @@ export interface LobbyConfig {
  */
 export type LobbyVisibility = "open" | "friends" | "closed";
 export const LOBBY_VISIBILITIES: ReadonlyArray<LobbyVisibility> = ["open", "friends", "closed"];
+
+/**
+ * Where a lobby invite came from (docs/INVITES.md):
+ *   server    `invite`: a member picked a player in this server (the lobby's invite list)
+ *   platform  `platformInvites`: a member sent it through Roblox's invite prompt; the player may not be here yet
+ *   party     `partyInvite`: the server made it for a Roblox Party mate (shared/invite arrival.ts)
+ */
+export type LobbyInviteSource = "server" | "platform" | "party";
+export const LOBBY_INVITE_SOURCES: ReadonlyArray<LobbyInviteSource> = ["server", "platform", "party"];
 
 /** forming: members join, ready up and leave. countdown: the host started. inRun: the members are in the run. */
 export type LobbyPhase = "forming" | "countdown" | "inRun";
@@ -53,6 +70,8 @@ export const LOBBY: LobbyConfig = table.freeze({
 	maxSize: MAX_PARTY_SIZE,
 	maxInvitesPerMember: 4,
 	inviteTimeoutSeconds: 60,
+	maxPlatformInvitesPerMember: 20,
+	platformInviteTimeoutSeconds: 900,
 	kickCooldownSeconds: 60,
 	countdownSeconds: 3,
 	defaultVisibility: "open" as LobbyVisibility,
@@ -100,6 +119,17 @@ export const FRIEND_CACHE: FriendCacheConfig = table.freeze({
 	retrySeconds: 30,
 	maxConcurrentFetches: 4,
 });
+
+/**
+ * Largest |UserId| accepted from the wire or a report (2^53 - 1: every integer up to it is exact in a float64), so a
+ * forged 1e300 never reaches `Players:GetPlayerByUserId` in a flush. Negative ids stay valid (Studio test players).
+ */
+export const MAX_USER_ID_MAGNITUDE = 2 ** 53 - 1;
+
+/** A UserId as the wire carries it: a nonzero integer of magnitude at most MAX_USER_ID_MAGNITUDE. */
+export function isWireUserId(v: unknown): v is number {
+	return isFiniteValue(v) && v % 1 === 0 && v !== 0 && math.abs(v) <= MAX_USER_ID_MAGNITUDE;
+}
 
 export function isLobbyNameId(v: unknown): v is LobbyNameId {
 	if (!typeIs(v, "string")) return false;

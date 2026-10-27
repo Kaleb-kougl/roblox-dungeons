@@ -1,8 +1,10 @@
 import { Networking } from "@flamework/networking";
 import type { LeaderboardBoard, LeaderboardView } from "shared/leaderboard";
+import type { ArrivalJoinIntent, ArrivalToastKey } from "shared/invite";
 import type { OnboardingStatus, TutorialOutcome } from "shared/onboarding";
 import type {
 	LobbyCreateRequest,
+	LobbyInviteSource,
 	LobbyNameId,
 	LobbyPhase,
 	LobbyRefusal,
@@ -89,6 +91,11 @@ export interface LobbyView {
 	countdownIn?: number;
 	/** Players with a live invite to this lobby (shown as "Invited"; no duplicate invites). */
 	invited: number[];
+	/**
+	 * Where each `invited` entry's invite came from, same index (shared/lobby LobbyInviteSource): "platform" (Roblox's
+	 * invite prompt; the player may not be in this server yet) reads "Invited (Roblox)".
+	 */
+	invitedSources: LobbyInviteSource[];
 }
 
 /** `lobbyState`: the lobby this player is in, or none. */
@@ -117,6 +124,8 @@ export interface LobbyInviteView {
 	fromUserId: number;
 	/** Seconds until it expires. */
 	expiresIn: number;
+	/** How it was sent (shared/lobby LobbyInviteSource). */
+	source: LobbyInviteSource;
 }
 
 /**
@@ -127,14 +136,64 @@ export interface LobbyInviteView {
  *   countdownCancelled  a start countdown stopped (`reason`)
  *   inviteExpired / inviteDropped   an invite they received is gone (`lobbyId`)
  *   followed            a friend followed them into this server but cannot join their (closed) lobby (`userId`)
+ *   inviteArrived       a friend they invited through Roblox arrived (`userId`; docs/INVITES.md)
+ *   partyLobby          their Roblox Party was grouped into a lobby on arrival: they were moved into it (`lobbyId`,
+ *                       `userId` = a party mate there; docs/INVITES.md "Roblox Party"). Mid-session grouping is no
+ *                       notice: it is a party invite (`lobbyInvites`, source "party")
+ *   arrival             an arrival could not be placed: `key` is the theme string id of the toast
  */
 export interface LobbyNotice {
-	kind: "refused" | "kicked" | "hostChanged" | "countdownCancelled" | "inviteExpired" | "inviteDropped" | "followed";
+	kind:
+		| "refused"
+		| "kicked"
+		| "hostChanged"
+		| "countdownCancelled"
+		| "inviteExpired"
+		| "inviteDropped"
+		| "followed"
+		| "inviteArrived"
+		| "partyLobby"
+		| "arrival";
 	requestKind?: string;
 	code?: LobbyRefusal;
 	reason?: string;
 	lobbyId?: string;
 	userId?: number;
+	/** `arrival` only: the toast's theme string id. */
+	key?: ArrivalToastKey;
+}
+
+/** `invitePrompt`: open Roblox's invite prompt; `withLobby` attaches the sender's lobby (they must be a member). */
+export interface InvitePromptRequest {
+	withLobby: boolean;
+}
+
+/**
+ * `invitePromptOnClient`: the server built the options but the prompt must be opened on the client (INVITE.promptSide
+ * "client", decided by spike I0). The client creates an ExperienceInviteOptions with exactly these and calls
+ * PromptGameInvite for the local player.
+ */
+export interface InvitePromptOptions {
+	launchData: string;
+	inviteMessageId?: string;
+}
+
+/** `inviteEligible`: whether this player may send Roblox invites (CanSendGameInviteAsync; false when it failed). */
+export interface InviteEligibility {
+	canSend: boolean;
+}
+
+/**
+ * `joinIntent`: what the server did with this player's arrival (docs/INVITES.md §4), from the state after applying
+ * it. Sent soon after join (after the first resolve), again with every `inviteEligible` answer (the last value), and
+ * again when an arrival or party action places the player later while the first one said `none` (within
+ * INVITE.launchDataWaitSeconds + intentUpgradeMarginSeconds of join): it may arrive more than once and can upgrade
+ * none -> lobby / party, never downgrade. The client's first-join choice waits for it (at most
+ * INVITE.intentWaitSeconds) and re-checks the latest value when it dispatches: `lobby` / `party` skip the automatic
+ * first-run tutorial (ID6).
+ */
+export interface JoinIntent {
+	kind: ArrivalJoinIntent;
 }
 
 /** Where a validated segmented run went on the leaderboards: "posted", "ineligible:<reason>", "failed". */
@@ -228,6 +287,20 @@ export interface ClientToServerEvents {
 	lobbyStart(): void;
 	/** Asks for `lobbyList` now (the browser opened); the server also pushes it while lobbies change. */
 	lobbyRequestList(): void;
+	/**
+	 * Roblox invites (docs/INVITES.md): open Roblox's invite prompt, with the sender's lobby attached or not. Rate
+	 * limited (INVITE_PROMPT_RATE); a refusal is a `lobbyNotice` "refused" with requestKind "invitePrompt". Depending
+	 * on INVITE.promptSide the server prompts itself or answers with `invitePromptOnClient`.
+	 */
+	invitePrompt(request: InvitePromptRequest): void;
+	/**
+	 * Roblox invites: the friends picked in a prompt the client opened or saw close (SocialService
+	 * .GameInvitePromptClosed on the client). Recorded as platform invites to the sender's lobby; the server ignores
+	 * ids it already recorded from its own GameInvitePromptClosed. No reply beyond the lobby pushes.
+	 */
+	inviteRecipients(userIds: number[]): void;
+	/** Roblox invites: may this player send invites? Answered with `inviteEligible` (cached per player). */
+	inviteEligibility(): void;
 	/** Onboarding: asks whether this player has done the tutorial; answered with `onboardingStatus`. */
 	requestOnboarding(): void;
 	/**
@@ -278,6 +351,12 @@ export interface ServerToClientEvents {
 	/** Lobbies: every live invite this player has received. */
 	lobbyInvites(invites: LobbyInviteView[]): void;
 	lobbyNotice(notice: LobbyNotice): void;
+	/** Roblox invites: the answer to `inviteEligibility`. */
+	inviteEligible(eligibility: InviteEligibility): void;
+	/** Roblox invites: open the invite prompt on the client with these options (INVITE.promptSide "client"). */
+	invitePromptOnClient(options: InvitePromptOptions): void;
+	/** Roblox invites and parties: how this player's arrival was handled (see JoinIntent; may come more than once). */
+	joinIntent(intent: JoinIntent): void;
 	/** Lobbies: a one-member lobby's run starts; the client starts a ranked solo run (see LobbySoloRunStart). */
 	lobbyRunStart(start: LobbySoloRunStart): void;
 	/**

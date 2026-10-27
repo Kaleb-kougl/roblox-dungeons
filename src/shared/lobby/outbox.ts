@@ -15,18 +15,24 @@
  * Users are flushed in ascending UserId order (deterministic, and each hears one update however many changes).
  */
 import type { LobbyInviteView, LobbyNotice, LobbyView } from "shared/network";
+import type { LobbyInviteSource } from "./config";
 import type { Lobby, LobbyDeparture, LobbyInvite, LobbyRefused, LobbyTickResult } from "./lobbies";
 
 /** Countdown-cancel reason when a member left or un-readied. */
 export const COUNTDOWN_CANCELLED_MEMBER_LEFT = "a member left";
 export const COUNTDOWN_CANCELLED_UNREADY = "a member is not ready";
 
-/** A member's view of their lobby. `invites`: the live invites to it (`Lobbies.invitesTo`). */
+/**
+ * A member's view of their lobby. `invites`: the live invites to it (`Lobbies.invitesTo`); `invitedSources[i]` is
+ * the source of `invited[i]` (the first invite's, if a player somehow has two).
+ */
 export function lobbyViewOf(lobby: Lobby, invites: ReadonlyArray<LobbyInvite>, now: number): LobbyView {
 	const invited: number[] = [];
+	const invitedSources: LobbyInviteSource[] = [];
 	for (const inv of invites)
 		if (inv.lobbyId === lobby.lobbyId && !invited.includes(inv.toUserId)) {
 			invited.push(inv.toUserId);
+			invitedSources.push(inv.source);
 		}
 	return {
 		lobbyId: lobby.lobbyId,
@@ -41,6 +47,7 @@ export function lobbyViewOf(lobby: Lobby, invites: ReadonlyArray<LobbyInvite>, n
 				? math.max(0, lobby.countdownEndsAt - now)
 				: undefined,
 		invited,
+		invitedSources,
 	};
 }
 
@@ -61,6 +68,7 @@ export function inviteViewsOf(
 			hostId: lobby.hostId,
 			fromUserId: inv.fromUserId,
 			expiresIn: math.max(0, inv.expiresAt - now),
+			source: inv.source,
 		});
 	}
 	return out;

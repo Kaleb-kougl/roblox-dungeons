@@ -16,6 +16,8 @@ export interface MenuActions {
 	readonly playTutorial: () => void;
 	readonly openOptions: () => void;
 	readonly openLeaderboard: () => void;
+	/** Roblox's invite prompt without a lobby (docs/INVITES.md ID7). */
+	readonly inviteFriends: () => void;
 	/** One screen back (also pad B / Backspace). */
 	readonly back: () => void;
 	/** Lobby browser. */
@@ -32,6 +34,8 @@ export interface MenuActions {
 	/** Host: the next preset name. */
 	readonly rename: () => void;
 	readonly invite: (userId: number) => void;
+	/** Roblox's invite prompt with this player's lobby attached. */
+	readonly inviteFriendsToLobby: () => void;
 	/** Invite toasts. */
 	readonly answerInvite: (inviteId: string, accept: boolean) => void;
 	/** A menu sound by theme ID (sfx.ui.click / sfx.ui.confirm). */
@@ -47,6 +51,7 @@ const NOOP: MenuActions = {
 	playTutorial: nothing,
 	openOptions: nothing,
 	openLeaderboard: nothing,
+	inviteFriends: nothing,
 	back: nothing,
 	refreshLobbies: nothing,
 	createLobby: nothing,
@@ -59,6 +64,7 @@ const NOOP: MenuActions = {
 	setVisibility: nothing,
 	rename: nothing,
 	invite: nothing,
+	inviteFriendsToLobby: nothing,
 	answerInvite: nothing,
 	playUi: nothing,
 };

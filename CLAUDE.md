@@ -37,6 +37,7 @@ Record every ported module in `PROVENANCE.md` (ported module, source path, sourc
 | `docs/MINIMAP.md` | Minimap with fog of war (corner map + full-map toggle, sight + whole-room reveal, shared party map): plan, tasks M0-M12, decisions MD1-MD14 |
 | `docs/PRELOAD.md` | Asset preloading (join loading screen for the core tier, background queue for bosses / later music): plan, tasks P0-P7, decisions D1-D6 |
 | `docs/STAGE_LOADER.md` | Stage loader (cover while a floor generates and loads: run start, stairwell card, pre-generation during the boon draft, deferred view rebuilds): plan, tasks SL0-SL8, decisions SD1-SD6 |
+| `docs/INVITES.md` | Roblox friend invites (`PromptGameInvite` + LaunchData into a lobby) and Roblox Party grouping: plan, tasks I0-I9, decisions ID1-ID7 |
 
 Decision log (deviations from `PLAN.md`):
 - **Art (docs/ART.md).** The theme contract gained a `"sprites"` kind (large pre-rendered cells, 1/4/8/16 screen-space
@@ -218,6 +219,18 @@ Decision log (deviations from `PLAN.md`):
   n's boon draft (floors are pure in the run seed, so the cached world is the one the sim would build). Co-op is never
   held and its client is still built in the `partyRunStarted` frame. Input is neutral under the cover and through the
   fade. Five required strings `stage.*`; the MenuLayer "Starting run..." panel and `game.starting` are gone.
+- **Roblox invites and parties (docs/INVITES.md).** No sim, dungeon, lockstep, hash, replay or fixture change. Lobby
+  invites gain `source` (`server` / `platform` / `party`): `Lobbies.platformInvites` records the friends picked in
+  Roblox's invite prompt (absent players only, 15 min, cap 20 per member, apart from the in-server 60 s / 4) and
+  `partyInvite` (no cap) serves Roblox Party grouping. `InviteService` opens `SocialService:PromptGameInvite` with
+  LaunchData from `shared/invite` (`kv1|l|<lobbyId>|<userId>` / `kv1|g|<userId>`, never trusted: Closed entry needs an
+  invite record) and resolves every arrival with the pure `resolveArrival` (invite > LaunchData lobby by `canAccess` >
+  `followed` > party mate's lobby / a new Closed party lobby > `inviteArrived`); `joinIntent` (may upgrade none ->
+  lobby / party) lets invited and party arrivals skip the automatic first-run tutorial (`FirstJoinGate`).
+  `INVITE.promptSide` ("server", falls back to the client) and every API fact wait for spike I0 (`KV_InviteSpike`,
+  docs/SPIKES.md) in a published place: none of these APIs work in Studio, which uses `KV_FakeLaunchData` /
+  `KV_FakePartyId` / `KV_FakeInviteEligible` / `KV_FakeInviteRecipients` (Studio only). Ambient types for the party API
+  in `src/types/roblox-social.d.ts`. Notification String ids (I8) go in `INVITE.notificationStringIds`.
 
 ## Commands
 

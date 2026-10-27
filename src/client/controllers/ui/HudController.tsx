@@ -109,6 +109,7 @@ export class HudController implements OnStart {
 			openLobbyRoom: click(() => this.menu.openLobbyRoom()),
 			openOptions: click(() => this.menu.openOptions()),
 			openLeaderboard: click(() => this.menu.openLeaderboard()),
+			inviteFriends: click(() => this.menu.inviteFriends()),
 			playTutorial: click(() => this.tutorial.playTutorial()),
 			back: click(() => this.menu.back()),
 			refreshLobbies: click(() => this.lobby.requestList()),
@@ -122,6 +123,7 @@ export class HudController implements OnStart {
 			setVisibility: click((v: LobbyVisibility) => this.lobby.setVisibility(v)),
 			rename: click(() => this.lobby.rename()),
 			invite: click((id: number) => this.lobby.invite(id)),
+			inviteFriendsToLobby: click(() => this.menu.inviteFriendsToLobby()),
 			answerInvite: click((inviteId: string, accept: boolean) => this.lobby.answerInvite(inviteId, accept)),
 			playUi: (id) => this.audio.playUi(id),
 		};

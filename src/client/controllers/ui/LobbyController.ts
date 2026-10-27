@@ -1,11 +1,19 @@
 import { Controller, OnStart } from "@flamework/core";
 import { Janitor } from "@rbxts/janitor";
-import { Players, RunService } from "@rbxts/services";
+import { Players, RunService, SocialService } from "@rbxts/services";
 import { Events } from "client/network";
 import { clientStore } from "client/store";
-import type { LobbyVisibility } from "shared/lobby";
-import type { LobbyNotice } from "shared/network";
-import { MENU_VIEW, lobbyStartAccepted, nextLobbyName, noticeSpec } from "shared/view/menu";
+import { INVITE } from "shared/invite";
+import { LOBBY, type LobbyVisibility } from "shared/lobby";
+import type { InvitePromptOptions, LobbyNotice } from "shared/network";
+import {
+	MENU_VIEW,
+	eligibilityDue,
+	knownLobbyTitle,
+	lobbyStartAccepted,
+	nextLobbyName,
+	noticeSpec,
+} from "shared/view/menu";
 import { SimController } from "../game/SimController";
 
 /**
@@ -19,11 +27,25 @@ import { SimController } from "../game/SimController";
  * Run handoff (L6): `lobbyRunStart` (a one-player lobby's countdown ended) starts a ranked solo run for the lobby this
  * client is in; `partyRunStarted` is taken by SimController under the same rule (lobbyStartAccepted). Neither takes
  * over a tutorial run being played (SimController.inRunningTutorial).
+ *
+ * Roblox invites (docs/INVITES.md I5): `invitePrompt` for the lobby room's "Invite friends (Roblox)" and the main
+ * menu's "Invite friends"; `inviteEligibility` once at start (the server also answers it with `joinIntent` when this
+ * player's arrival is already resolved, so it doubles as the join-intent request) and again when a menu opens and the
+ * last ask is INVITE.eligibilityCacheSeconds old; `inviteEligible` and `joinIntent` into the slice (TutorialController's
+ * first-join gate reads the intent). INVITE.promptSide "client": `invitePromptOnClient` opens the prompt here
+ * (ExperienceInviteOptions with the server's LaunchData / InviteMessageId, pcall; kept until the local
+ * GameInvitePromptClosed or INVITE.promptOptionsSeconds, then destroyed). The local player's
+ * `SocialService.GameInvitePromptClosed` recipients always go back as `inviteRecipients` (the server dedupes), at
+ * most LOBBY.maxPlatformInvitesPerMember of them.
  */
 @Controller({})
 export class LobbyController implements OnStart {
 	private readonly janitor = new Janitor();
 	private noticeSerial = 0;
+	/** The client-side prompt's options, kept until the prompt closes (or INVITE.promptOptionsSeconds). */
+	private promptOptions: ExperienceInviteOptions | undefined;
+	/** os.clock() of the last `inviteEligibility` sent (undefined: never). */
+	private eligibilityAskedAt: number | undefined;
 
 	constructor(private readonly sim: SimController) {}
 
@@ -32,6 +54,28 @@ export class LobbyController implements OnStart {
 		this.janitor.Add(Events.lobbyState.connect((u) => clientStore.setMyLobby(u.lobby, os.clock())));
 		this.janitor.Add(Events.lobbyInvites.connect((list) => clientStore.setLobbyInvites(list, os.clock())));
 		this.janitor.Add(Events.lobbyNotice.connect((notice) => this.showNotice(notice)));
+		this.janitor.Add(Events.inviteEligible.connect((e) => clientStore.setInviteEligible(e.canSend === true)));
+		this.janitor.Add(
+			Events.joinIntent.connect((intent) => {
+				// Sent after the first resolve, again with every inviteEligibility answer, and once more when the
+				// server placed this player later (none -> lobby / party).
+				const before = clientStore.getState().lobby.joinIntent;
+				if (before !== intent.kind) print(`[Invite] join intent: ${before ?? "(none yet)"} -> ${intent.kind}`);
+				clientStore.setJoinIntent(intent.kind);
+			}),
+		);
+		this.janitor.Add(Events.invitePromptOnClient.connect((options) => this.promptOnClient(options)));
+		const [okClosed, closedErr] = pcall(() =>
+			this.janitor.Add(
+				SocialService.GameInvitePromptClosed.Connect((sender, recipientIds) => {
+					if (sender !== Players.LocalPlayer) return;
+					this.dropPromptOptions();
+					this.relayRecipients(recipientIds);
+				}),
+			),
+		);
+		if (!okClosed) warn(`[Invite] GameInvitePromptClosed is not available here: ${tostring(closedErr)}`);
+		this.refreshEligibility();
 		this.janitor.Add(
 			Events.lobbyRunStart.connect((start) => {
 				if (start.kind !== "solo") return;
@@ -64,17 +108,80 @@ export class LobbyController implements OnStart {
 	}
 
 	private showNotice(notice: LobbyNotice): void {
-		const players = clientStore.getState().lobby.players;
+		const state = clientStore.getState().lobby;
+		const players = state.players;
 		const nameOf = (id: number) => players.find((p) => p.userId === id)?.name ?? `#${id}`;
-		const s = noticeSpec(notice, nameOf);
+		const s = noticeSpec(notice, nameOf, (id) => knownLobbyTitle(id, state.mine, state.list, nameOf));
+		const seconds = s.inviteUserId !== undefined ? MENU_VIEW.actionNoticeSeconds : MENU_VIEW.noticeSeconds;
 		this.noticeSerial++;
 		clientStore.pushLobbyNotice(
-			{ id: this.noticeSerial, key: s.key, vars: s.vars, until: os.clock() + MENU_VIEW.noticeSeconds },
+			{
+				id: this.noticeSerial,
+				key: s.key,
+				vars: s.vars,
+				lobby: s.lobby,
+				inviteUserId: s.inviteUserId,
+				until: os.clock() + seconds,
+			},
 			MENU_VIEW.maxNotices,
 		);
 		if (notice.kind === "refused") {
 			warn(`[Lobby] ${notice.requestKind ?? "request"} refused (${notice.code ?? "?"}): ${notice.reason ?? ""}`);
 		}
+	}
+
+	// --- Roblox invites (docs/INVITES.md I5) -----------------------------------------------------
+
+	/** Asks the server for `inviteEligible` (and the join intent) unless the last ask is still fresh. */
+	refreshEligibility(): void {
+		const now = os.clock();
+		if (!eligibilityDue(this.eligibilityAskedAt, now, INVITE.eligibilityCacheSeconds)) return;
+		this.eligibilityAskedAt = now;
+		Events.inviteEligibility.fire();
+	}
+
+	/** Roblox's invite prompt: with this player's lobby attached (the lobby room) or not (the main menu). */
+	invitePrompt(withLobby: boolean): void {
+		Events.invitePrompt.fire({ withLobby });
+	}
+
+	/** INVITE.promptSide "client": the server built the options, the prompt opens for the local player here. */
+	private promptOnClient(options: InvitePromptOptions): void {
+		const launchData = options.launchData;
+		if (!typeIs(launchData, "string")) return;
+		this.dropPromptOptions();
+		const opts = new Instance("ExperienceInviteOptions");
+		opts.LaunchData = launchData;
+		const messageId = options.inviteMessageId;
+		if (typeIs(messageId, "string") && messageId !== "") opts.InviteMessageId = messageId;
+		this.promptOptions = opts;
+		task.delay(INVITE.promptOptionsSeconds, () => {
+			if (this.promptOptions === opts) this.promptOptions = undefined;
+			opts.Destroy();
+		});
+		const [ok, err] = pcall(() => SocialService.PromptGameInvite(Players.LocalPlayer, opts));
+		if (!ok) {
+			warn(`[Invite] PromptGameInvite failed: ${tostring(err)}`);
+			this.dropPromptOptions();
+		}
+	}
+
+	private dropPromptOptions(): void {
+		this.promptOptions?.Destroy();
+		this.promptOptions = undefined;
+	}
+
+	/** The local player's prompt closed: its recipients (integers only, at most the platform cap) to the server. */
+	private relayRecipients(recipientIds: unknown): void {
+		if (!typeIs(recipientIds, "table")) return;
+		const ids: number[] = [];
+		for (const id of recipientIds as unknown[]) {
+			if (ids.size() >= LOBBY.maxPlatformInvitesPerMember) break;
+			if (typeIs(id, "number") && id % 1 === 0 && !ids.includes(id)) ids.push(id);
+		}
+		if (ids.size() === 0) return;
+		print(`[Invite] prompt closed: ${ids.size()} recipient(s)`);
+		Events.inviteRecipients.fire(ids);
 	}
 
 	// --- requests (the menu screens) ------------------------------------------------------------

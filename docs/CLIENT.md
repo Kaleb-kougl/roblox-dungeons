@@ -49,7 +49,7 @@ rebinding, audio, display). Everything presentation-side reads the sim and never
 | `StageController` | `.../game/StageController.tsx` | docs/STAGE_LOADER.md (loadOrder 2, `sim.setStageDriver`): the stage loader. Covers run starts and floor changes (`StageCard`, bindings so the cover draws in the event frame), drives SimController's deferred work one item per frame (forge, listeners, floor pre-gen), holds a solo run start, waits for the floor's assets (`PreloadController.whenLoaded`, 3 s cap), pre-generates floor n + 1 during floor n's draft. See "Stage loader". |
 | `MinimapController` | `.../ui/MinimapController.ts` | docs/MINIMAP.md M8 / M9, every dungeon floor (not the greybox): per floor `minimapTiles` (endless stairwell), a fresh `FogOfWar` (`seedFromState` at tick > 0), `RoomEdgeStates`, a painted RGBA8 buffer and ONE `EditableImage` (`AssetService:CreateEditableImage`, pcall; failure warns once, no map), destroyed with the floor. Render step `KV_Minimap` after the camera: fog from the living players' interpolated positions, room tints (`roomEdge.*`), dirty cells repainted and uploaded (`WritePixelsBuffer`, at most `MINIMAP_VIEW.writeHz`). Draws a map layer (ImageLabel on the shared image, `Pixelated`, turned by the camera yaw, plus pooled upright Frame markers: self arrow, teammates by index in `class.*`, enemies / bosses / boost drops in sight, the stairwell once seen, treasure / shrine marks) into each mounted host of `client/ui/hud/minimapHosts` (the corner `MinimapPanel`, whose CanvasGroup clips it; `FullMapOverlay`; the solo `PauseMap`). `InputController.onMapAction` toggles Reflex `game.map.open`; closes on floor change and run over. Prints `[Minimap] W x H map` per floor. |
 | `MenuController` | `.../ui/MenuController.ts` | L3 / L6: the main menu on join, once the first-run gate decided against the tutorial (a first-time player goes straight into it instead; no run starts on its own; `KV_SkipMenu` starts one at once), the screen + back stack (Reflex `menu`; pad B / Backspace go back), Play solo / Lobbies / Tutorial / Options / Leaderboard, the menu after a run (the lobby room while in a lobby, else the main menu), the co-op party overlay (the pause key in a party run) and Leave run. See "Main menu, lobbies and Leave run". |
-| `LobbyController` | `.../ui/LobbyController.ts` | L5: the lobby remotes into the Reflex `lobby` slice (list, my lobby, invites, notice toasts, the players in this server), the lobby requests, and `lobbyRunStart` (a one-player lobby's ranked solo run). |
+| `LobbyController` | `.../ui/LobbyController.ts` | L5: the lobby remotes into the Reflex `lobby` slice (list, my lobby, invites, notice toasts, the players in this server), the lobby requests, and `lobbyRunStart` (a one-player lobby's ranked solo run). I5 (docs/INVITES.md): `invitePrompt`, `inviteEligibility` (start + menu open when stale) -> `inviteEligible`, `joinIntent` into the slice, `invitePromptOnClient` (the client prompt path; the options kept until the local prompt closes or `INVITE.promptOptionsSeconds`) and the local `GameInvitePromptClosed` relayed as `inviteRecipients`. |
 
 Pure, headlessly tested logic: `src/shared/play/` (input mapping, live loop, HUD snapshot), `src/shared/view/`
 (iso camera, studs <-> sim units, aim ray, greedy tile merge, marking geometry, dash layout, presentation tunables),
@@ -750,7 +750,22 @@ its arrival time, received invites, notices, the players in this server).
   when alone, enabled once everyone is ready), Leave lobby, Back.
 - **Invites**: top-right toasts on menu screens (`{from} invites you to {lobby}`, Join / Decline; gone when expired,
   counted from the list's arrival); during a run a `Lobby invites: N` badge (bottom centre). **Notices**
-  (`lobbyNotice`) are top-centre toasts for 4 s: refusals read `lobby.err.<code>`, the rest `lobby.notice.<kind>`.
+  (`lobbyNotice`) are top-centre toasts for 4 s: refusals read `lobby.err.<code>`, arrivals their `key`, the rest
+  `lobby.notice.<kind>`.
+- **Roblox invites (docs/INVITES.md I5)**: the lobby room's invite panel starts with **Invite friends (Roblox)**
+  (`invitePrompt({ withLobby: true })`; off while the lobby is in a run or full) and the main menu has **Invite
+  friends** under Lobbies (`withLobby: false`). Both are disabled with `Invites aren't available on this account or
+  device` once the server's `inviteEligible` says `canSend: false` (unknown: enabled). LobbyController sends
+  `inviteEligibility` at start and again when a menu screen opens and the last ask is
+  `INVITE.eligibilityCacheSeconds` (300 s) old. Friends invited through Roblox (or a party invite) read
+  `Invited (Roblox)`; those not in this server yet get their own dim rows (`#<UserId>`: no web name lookups). With
+  `INVITE.promptSide` "client" the server's `invitePromptOnClient` opens the prompt here; the local
+  `GameInvitePromptClosed` recipients always go back as `inviteRecipients`. Toasts: `{name} joined from your invite`
+  (10 s, with **Invite** = the in-server `lobbyInvite` while you are in a lobby with room and they are here, outside it
+  and not invited), `Your Roblox party is together in {lobby}`, and the arrival toasts (`That lobby has closed`,
+  `Your party's lobby is full`, `That lobby is full`, ...). An arrival the server put into a lobby lands in its room
+  (on join, or at once if a menu screen is up; never during a run, the tutorial or the first-run wait; Options /
+  Leaderboard stay open over it): shared/view/menu `lobbyChangePath`, `afterRunPath`.
 - **Run handoff**: `partyRunStarted` is taken only when its `lobbyId` is the lobby this client is in (replaces the
   old invite consent); `lobbyRunStart` (`kind: "solo"`) starts a ranked solo run the same way. Any run start closes
   the menu. After a run that came from a lobby (while still in it) the run-over panel offers Back to lobby.
@@ -806,7 +821,18 @@ never switches.
    `loaded && !tutorialDone` -> **straight into the tutorial** (no main menu first); done, a failed load
    (`loaded: false`) or no answer -> the normal join flow, exactly as without the tutorial (MenuController: the main
    menu, or a solo run with `KV_SkipMenu`). `KV_Tutorial` overrides it without asking. MenuController waits for
-   `TutorialController.onFirstRunDecided`.
+   `TutorialController.onFirstRunDecided`. **Join intent (docs/INVITES.md ID6):** the gate is shared/view/menu
+   `FirstJoinGate` / `firstJoinChoice` (`firstJoin.spec.ts`): a choice that would start the tutorial also waits for
+   the server's `joinIntent` (the `lobby` slice), at most `INVITE.intentWaitSeconds` (2 s) from join. `lobby` /
+   `party` (an invite or party arrival the server already put in a lobby) -> the normal flow, which opens the lobby
+   room; `none` or no intent in time -> the tutorial exactly as before. Done / failed load / no status never waits for
+   the intent. The log line reads `[Tutorial] first run: <choice> (after t s, join intent <kind | not received>)`.
+   The latched choice is provisional until it is dispatched (when the loading screen released): `joinIntent` may come
+   more than once (the server upgrades none -> lobby / party when it places the player later, within
+   `INVITE.launchDataWaitSeconds` + `intentUpgradeMarginSeconds` of join), so the dispatch re-checks
+   (`firstJoinDispatchChoice`): a latched tutorial becomes the normal flow when the player is in a lobby by now or the
+   latest intent is lobby / party, unless `KV_Tutorial` is true (log `[Tutorial] first run: tutorial -> normal
+   (placed in a lobby, ...)`).
 2. **Tutorial run.** `SimController.startTutorial()` (the gate, the main menu's **Tutorial**, Restart tutorial, Play
    the tutorial again): the old solo run is left as by Play solo (submitted as abandoned when it qualifies) and world
    `tutorial` (`buildWorldSetup`, `TUTORIAL.runSeed`) starts **locally**: no `startRun`, no segments, never submitted
@@ -876,8 +902,9 @@ patches; `settings.spec.ts`), the rebinding flow (`rebindFlow.spec.ts`: bind / s
 events, countdown, test strip, held-input gate), every `options.*` string and action name, the input label tables, the
 HUD scale setting and the SoundGroup volume rule (`hud.spec.ts`).
 
-Headless (L3 / L5 / L6): the menu back stack, the lobby browser / room / invite / notice view models, the run
-handoff gate and the exit rules (`shared/view/menu/menu.spec.ts`), every `menu.*` / `lobby.*` string
+Headless (L3 / L5 / L6, I5): the menu back stack, the lobby browser / room / invite / notice view models (Roblox
+invitees, the invite buttons, the arrival toasts, the lobby-change path), the run handoff gate and the exit rules
+(`shared/view/menu/menu.spec.ts`), the first-join choice with the join intent (`firstJoin.spec.ts`), every `menu.*` / `lobby.*` string
 (`hud.spec.ts`), the solo forfeit (`shared/play/liveRun.forfeit.spec.ts`).
 
 Headless (tutorial client): the first-run gate, the view -> slice copy and the outro beat (`shared/tutorial`
@@ -925,6 +952,15 @@ With the actors merged the default `game` world has enemies; without them see "f
    play on. Solo: P -> Leave run -> Leave: the run ends as a death (verdict submitted) and the main menu shows.
    Invite (from the room) shows a Join / Decline toast on the invited player's menu; Kick sends the `You were
    removed from the lobby` toast and puts them back in the browser; a closed lobby never lists.
+   **Roblox invites (I5; needs the server half, I4):** the main menu shows Invite friends, the room's Invite panel
+   Invite friends (Roblox) (Studio cannot open the real prompt: expect the server's failure warning or nothing).
+   `KV_FakeInviteEligible` = false (docs/SERVER.md for where the server reads it): both buttons grey with `Invites
+   aren't available on this account or device`. Fresh profile (a never-saved Studio test user, or the onboarding doc cleared) with
+   `KV_FakeLaunchData` naming Player1's lobby: Output `[Invite] join intent: lobby`, `[Tutorial] first run: normal
+   (... join intent lobby)` and the client opens the lobby room, not the tutorial; Player1 sees the joiner in the room.
+   The same fresh profile without the attribute: `join intent none` and the tutorial within 2 s (6 s at most with no
+   status). A launch naming a deleted lobby: the main menu with `That lobby has closed`. A `kv1|g|<Player1 id>`
+   launch: Player1 gets `<Name> joined from your invite` with Invite while Player1 is in a lobby.
 1. **Start (Play solo).** Output: `[Sim] run 1 started: seed 1337, world game` and `[World] built 134 parts (...)`.
    The view is an angled top-down dungeon (dark floor, lighter walls one tile tall), the tan capsule (the player)
    centred, a small light diamond on the floor in front of it. No Roblox character, health bar or backpack is

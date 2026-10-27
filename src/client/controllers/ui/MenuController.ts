@@ -13,7 +13,7 @@ import {
 import type { LobbyVisibility } from "shared/lobby";
 import type { FirstRunDecision } from "shared/tutorial";
 import { FIXED_INPUTS, RUN_ATTRIBUTES } from "shared/play";
-import { LOBBY_ROOM_PATH, MAIN_MENU_PATH, MENU_BACK_KEYS, afterRunPath } from "shared/view/menu";
+import { LOBBY_ROOM_PATH, MENU_BACK_KEYS, afterRunPath, lobbyChangePath } from "shared/view/menu";
 import { SFX } from "shared/view/audio";
 import { AudioController } from "../audio/AudioController";
 import { SimController } from "../game/SimController";
@@ -29,20 +29,22 @@ function typing(): boolean {
 	return bar !== undefined && bar.IsFocused;
 }
 
-/** The path to the lobby browser (back goes to the main menu). */
-const BROWSER_PATH = ["main", "lobbies"] as const;
-
 /**
  * The menu shell (task L3) and the client half of Leave run (task L6).
  *
  *   join       once the first-run gate decided (TutorialController.onFirstRunDecided; nothing shows but the backdrop
  *              until then): a first-time player goes straight into the tutorial (no menu); everyone else gets the
- *              MAIN MENU instead of a run (KV_SkipMenu = true: a solo run starts at once, as before)
+ *              MAIN MENU instead of a run, or the lobby room when an invite / party arrival already put them in a
+ *              lobby (docs/INVITES.md ID1 / ID6) (KV_SkipMenu = true: a solo run starts at once, as before)
  *   screens    main / lobbies / lobby with a back stack (Reflex `menu`, shared/view/menu menuNavReduce); pad B and
  *              Backspace go back (not while a juice settings / leaderboard panel is open: B closes those)
  *   runs       any run start closes the menu; leaving a run (Leave run, run-over Main menu / Back to lobby)
  *              opens the lobby room while in a lobby, else the main menu (SimController.onRunExited)
- *   lobby      joining or creating a lobby opens its room; leaving it (or being kicked) goes back to the browser
+ *   lobby      joining or creating a lobby opens its room, and so does a lobby the server put this player in (an
+ *              invite / party arrival) while a menu screen is up; leaving it (or being kicked) goes back to the
+ *              browser (shared/view/menu lobbyChangePath). Never during a run, the tutorial or the first-run wait.
+ *   invites    a menu screen opening (from none) asks for Roblox invite eligibility again when the cached answer
+ *              is old (LobbyController.refreshEligibility)
  *   co-op      party runs never pause, so the pause key (P / Start) opens the non-pausing party overlay instead
  *              (Resume / Leave run / settings / leaderboards; Leave run -> lockstepLeave, then the lobby room, which
  *              shows "Run in progress" until the lobby is back to forming)
@@ -76,8 +78,9 @@ export class MenuController implements OnStart {
 		});
 		this.janitor.Add(clientStore.subscribe(selectMyLobbyId, (id, prev) => this.onLobbyChanged(id, prev)));
 		this.janitor.Add(
-			clientStore.subscribe(selectMenuScreen, (screen) => {
+			clientStore.subscribe(selectMenuScreen, (screen, prev) => {
 				if (screen === "lobbies") this.lobby.requestList();
+				if (prev === "none" && screen !== "none") this.lobby.refreshEligibility();
 			}),
 		);
 		this.janitor.Add(
@@ -106,8 +109,19 @@ export class MenuController implements OnStart {
 			print(`[Menu] ${RUN_ATTRIBUTES.skipMenu}: no main menu, starting a solo run`);
 			this.sim.startSolo();
 		} else {
-			clientStore.menuNav({ kind: "reset", path: MAIN_MENU_PATH });
+			// An invite / party arrival may already have put them in a lobby: its room (else the main menu).
+			clientStore.menuNav({ kind: "reset", path: afterRunPath(this.inLobby()) });
 		}
+	}
+
+	/** The main menu's "Invite friends": Roblox's invite prompt without a lobby (docs/INVITES.md ID7). */
+	inviteFriends(): void {
+		this.lobby.invitePrompt(false);
+	}
+
+	/** The lobby room's "Invite friends (Roblox)": the prompt with this player's lobby attached. */
+	inviteFriendsToLobby(): void {
+		this.lobby.invitePrompt(true);
 	}
 
 	// --- actions (client/ui/menu MenuActions, the pause overlay, the run-over panel) -------------
@@ -185,12 +199,15 @@ export class MenuController implements OnStart {
 		return clientStore.getState().lobby.mine !== undefined;
 	}
 
-	/** Joined / created a lobby: its room. Left or kicked: back to the browser. Only while a menu screen is up. */
+	/**
+	 * Joined / created a lobby, or put in one by an arrival: its room. Left or kicked: back to the browser. Only while
+	 * a menu screen is up (lobbyChangePath); a panel over it (Options, Leaderboard) stays open.
+	 */
 	private onLobbyChanged(id: string | undefined, prev: string | undefined): void {
-		const screen = clientStore.getState().menu.nav.screen;
-		if (screen === "none" || id === prev) return;
-		if (id !== undefined) clientStore.menuNav({ kind: "reset", path: LOBBY_ROOM_PATH });
-		else if (screen === "lobby") clientStore.menuNav({ kind: "reset", path: BROWSER_PATH });
+		const path = lobbyChangePath(clientStore.getState().menu.nav.screen, id, prev);
+		if (path === undefined) return;
+		if (id !== undefined) print(`[Menu] in lobby ${id}: its room`);
+		clientStore.menuNav({ kind: "reset", path });
 	}
 
 	private onInput(input: InputObject): void {
