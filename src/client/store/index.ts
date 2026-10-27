@@ -28,6 +28,7 @@ export * from "./loading";
 export * from "./lobby";
 export * from "./menu";
 export * from "./options";
+export * from "./selectors";
 export * from "./settings";
 export * from "./spikes";
 export * from "./tutorial";

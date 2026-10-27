@@ -6,6 +6,8 @@ import { HUD_VIEW } from "shared/view/hud";
 import { PAUSE_BUTTON_VIEW } from "shared/view/menu";
 import { BossBar } from "./BossBar";
 import { DraftOverlay } from "./DraftOverlay";
+import { FullMapOverlay } from "./FullMapOverlay";
+import { MinimapPanel } from "./MinimapPanel";
 import { Players } from "@rbxts/services";
 import { InfoPanel } from "./InfoPanel";
 import { LeaderboardPanel } from "./LeaderboardPanel";
@@ -28,8 +30,9 @@ import { WeaponPanel } from "./WeaponPanel";
  *
  *   KV_GameHud    StatusPanel (top left: hearts, armor + Aegis pips, flask, Embers, the boost row), WeaponPanel (bottom left: weapon sets + SWAP
  *                 hint), BossBar (top centre), ScorePanel (top right, scored runs: score + combo meter),
- *                 RunOverPanel (centre: death / victory + stats, the score breakdown in scored runs), InfoPanel
- *                 (bottom right: info, verdict, debug line), ToastPanel (top centre: M2 progression toasts and the
+ *                 RunOverPanel (centre: death / victory + stats, the score breakdown in scored runs), MinimapPanel
+ *                 (bottom right: the corner map, docs/MINIMAP.md M8), FullMapOverlay (centre: the full map toggle, M9),
+ *                 InfoPanel (bottom right, above the minimap: notice, verdict, debug line), ToastPanel (top centre: M2 progression toasts and the
  *                 curse shrine hint), DraftOverlay (centre: the M2 boon draft's cards), SpectateBar (bottom centre,
  *                 co-op: who a dead player watches, the switch hint); the first-run tutorial's
  *                 TutorialPanel (lower centre: prompt, progress, pause hint) and ObjectiveCard (centre), and its
@@ -74,6 +77,8 @@ export function GameHud() {
 						<BossBar key="Boss" highlight={highlight === "bossBar"} />
 						<ScorePanel key="Score" highlight={highlight === "score"} />
 						<RunOverPanel key="RunOver" />
+						<MinimapPanel key="Minimap" />
+						<FullMapOverlay key="FullMap" />
 						<InfoPanel key="Info" />
 						<ToastPanel key="Toasts" />
 						<DraftOverlay key="Draft" />

@@ -514,6 +514,21 @@ function DisplayTab(props: { order: number; actions: HudActions; selectable: boo
 					props.actions.updateDisplay({ hudFade: v });
 				}}
 			/>
+			<SettingRow
+				order={4}
+				name="minimap"
+				selectable={props.selectable}
+				label={str(OPTIONS_STRINGS.minimap)}
+				value={display.minimap}
+				options={[
+					{ value: true, label: str(SETTINGS_STRINGS.on) },
+					{ value: false, label: str(SETTINGS_STRINGS.off) },
+				]}
+				onPick={(v) => {
+					props.actions.playUi(SFX.uiClick);
+					props.actions.updateDisplay({ minimap: v });
+				}}
+			/>
 		</Panel>
 	);
 }

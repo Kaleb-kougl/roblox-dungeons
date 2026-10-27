@@ -2,11 +2,16 @@
 import { describe, expect, it } from "@rbxts/jest-globals";
 import { DEFAULT_HUD_SCALE_PERCENT, HUD_SCALE_PERCENTS } from "shared/settings";
 import { BOOST_VIEW } from "shared/view/boosts";
+import { MINIMAP_VIEW } from "shared/view/minimap";
 import {
 	ALWAYS_ON_PANELS,
 	HUD_FOOTPRINT,
 	HUD_FOOTPRINT_LIMITS,
 	HUD_TEST_VIEWPORTS,
+	HUD_TRANSIENT,
+	HUD_VIEW,
+	MINIMAP_PANEL,
+	VERDICT_BOX,
 	clearZoneRect,
 	cornerRect,
 	footprintRects,
@@ -184,6 +189,64 @@ describe("HUD footprint budget", () => {
 	});
 
 	it("lists every always-on panel once", () => {
-		expect(ALWAYS_ON_PANELS.size()).toBe(3);
+		expect(ALWAYS_ON_PANELS.size()).toBe(4); // + minimap (docs/MINIMAP.md M7)
+		expect(new Set(ALWAYS_ON_PANELS).size()).toBe(ALWAYS_ON_PANELS.size());
+	});
+
+	it("the corner minimap (docs/MINIMAP.md M7) is bottom right, MINIMAP_PANEL sized, the verdict line above it", () => {
+		expect(HUD_FOOTPRINT.minimap).toEqual({ corner: "bottomRight", maxW: MINIMAP_PANEL.w, maxH: MINIMAP_PANEL.h });
+		expect(MINIMAP_PANEL).toEqual({ w: 140, h: 140 });
+		expect(VERDICT_BOX.edge).toBe(HUD_VIEW.margin + MINIMAP_PANEL.h + HUD_VIEW.gap);
+		expect(HUD_TRANSIENT.verdict.edge).toBe(VERDICT_BOX.edge);
+		// The verdict box's bottom edge clears the minimap's top by one HUD gap on every viewport, ten-foot on and off.
+		for (const v of HUD_TEST_VIEWPORTS) {
+			for (const tenFoot of TEN_FOOT) {
+				const map = footprintRects(v.x, v.y, tenFoot, DEFAULT_HUD_SCALE_PERCENT).find(
+					(p) => p.panel === "minimap",
+				)!;
+				const verdict = transientRects(v.x, v.y, tenFoot, DEFAULT_HUD_SCALE_PERCENT).find(
+					(p) => p.panel === "verdict",
+				)!;
+				const gap = map.rect.y - (verdict.rect.y + verdict.rect.h);
+				expect([label(v.x, v.y, tenFoot, PERCENT), gap > 0]).toEqual([label(v.x, v.y, tenFoot, PERCENT), true]);
+			}
+		}
+	});
+
+	// Ten-foot is informational like the cover table's: its 1.25 boost already put the three older boxes over the cap
+	// (16.5 % at 1280 x 720 TV under the bar before the minimap), so the cap holds the 100 % desktop / phone cases.
+	it("the 140 x 140 minimap (MD7) fits the raised cover cap on every viewport, with and without the top bar", () => {
+		expect(MINIMAP_PANEL).toEqual({ w: MINIMAP_VIEW.panel.width, h: MINIMAP_VIEW.panel.height });
+		expect(HUD_FOOTPRINT_LIMITS.maxCoverShare).toBe(0.145);
+		let worst = 0;
+		let worstAt = "";
+		let worstTv = 0;
+		let worstTvAt = "";
+		for (const v of HUD_TEST_VIEWPORTS) {
+			for (const inset of INSETS) {
+				for (const tenFoot of TEN_FOOT) {
+					const share = footprintReport(v.x, v.y, tenFoot, DEFAULT_HUD_SCALE_PERCENT, inset).totalShare;
+					const at = label(v.x, v.y, tenFoot, DEFAULT_HUD_SCALE_PERCENT, inset);
+					if (tenFoot && share > worstTv) {
+						worstTv = share;
+						worstTvAt = at;
+					} else if (!tenFoot && share > worst) {
+						worst = share;
+						worstAt = at;
+					}
+				}
+			}
+		}
+		print(
+			string.format(
+				"[footprint] 140x140 minimap: worst cover %.2f%% (%s); ten-foot worst %.2f%% (%s); cap %.1f%%",
+				worst * PERCENT,
+				worstAt,
+				worstTv * PERCENT,
+				worstTvAt,
+				HUD_FOOTPRINT_LIMITS.maxCoverShare * PERCENT,
+			),
+		);
+		expect(worst).toBeLessThanOrEqual(HUD_FOOTPRINT_LIMITS.maxCoverShare);
 	});
 });

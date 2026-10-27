@@ -57,6 +57,8 @@ export const OPTIONS_STRINGS = {
 	roomEdges: "options.display.roomEdges",
 	/** Corner HUD panels fade under the action, On / Off (docs/HUD_LAYOUT.md H7; labels as roomEdges). */
 	hudFade: "options.display.hudFade",
+	/** The corner minimap On / Off (docs/MINIMAP.md M10; labels as roomEdges). */
+	minimap: "options.display.minimap",
 	/** Prefixes: `options.tab.<tab>`, `options.device.<kbm|pad>`, `options.action.<action>`, `options.refused.<reason>`. */
 	tabPrefix: "options.tab.",
 	devicePrefix: "options.device.",

@@ -17,6 +17,7 @@ import {
 	PAD_BINDINGS,
 	PAD_BUTTON_NAMES,
 	PAD_RESTART_KEY,
+	ACTION_BUTTONS,
 	REBIND,
 	REPLAY_CHECK_KEYS,
 	RESERVED_KBM_INPUTS,
@@ -33,10 +34,12 @@ import {
 	driverKeyAction,
 	inputLabel,
 	inputsFor,
+	isMapInput,
 	isPadActive,
 	isValidBindings,
 	leaderboardHint,
 	mapDevicesToInput,
+	mapHint,
 	rebind,
 	resetDevice,
 	restartHint,
@@ -67,8 +70,9 @@ const OLD_KEY_BINDINGS = new Map<string, number>([
 	["K", Button.DEBUG_HIT],
 	["J", Button.DEBUG_BOSS],
 	["N", DEBUG_FLOOR_BUTTON],
-	// docs/BOOSTS.md B6: the debug boost drop (a port bit, KV_Debug only), added after rebinding
-	["M", DEBUG_DROP_BUTTON],
+	// docs/BOOSTS.md B6: the debug boost drop (a port bit, KV_Debug only), added after rebinding; M until the full map
+	// took M (docs/MINIMAP.md MD11), Semicolon since
+	["Semicolon", DEBUG_DROP_BUTTON],
 ]);
 const OLD_MOVE_KEYS = { up: ["W", "Up"], down: ["S", "Down"], left: ["A", "Left"], right: ["D", "Right"] };
 const OLD_MOUSE_BINDINGS = new Map<string, number>([
@@ -136,11 +140,11 @@ describe("DEFAULT_BINDINGS", () => {
 		for (const names of [OLD_MOVE_KEYS.up, OLD_MOVE_KEYS.down, OLD_MOVE_KEYS.left, OLD_MOVE_KEYS.right]) {
 			for (const n of names) oldKeys.push(n);
 		}
-		oldKeys.push("R", "F8", "L");
+		oldKeys.push("R", "F8", "L", "M"); // M: the full map toggle (docs/MINIMAP.md M9), no sim bits
 		expect(sorted(boundKeyNames())).toEqual(sorted(oldKeys));
 		const oldPad = new Array<string>();
 		for (const [name] of OLD_PAD_BINDINGS) oldPad.push(name);
-		oldPad.push("DPadDown");
+		oldPad.push("DPadDown", "DPadLeft"); // D-pad left: the full map toggle (docs/MINIMAP.md M9)
 		expect(sorted(boundPadButtonNames())).toEqual(sorted(oldPad));
 		expect(sorted(boundMouseButtonNames())).toEqual(["MouseButton1", "MouseButton2"]);
 	});
@@ -255,7 +259,7 @@ describe("rebind", () => {
 	});
 
 	it("refuses reserved, unknown and non-rebindable targets", () => {
-		for (const k of ["Escape", "Tab", "Slash", "F9", "P", "O", "K", "J", "N", "M", "F8", "L"]) {
+		for (const k of ["Escape", "Tab", "Slash", "F9", "P", "O", "K", "J", "N", "Semicolon", "F8", "L"]) {
 			expect([k, refusal(rebind(DEFAULT_BINDINGS, "kbm", "fire", 0, k))]).toEqual([k, "reserved"]);
 		}
 		for (const k of ["ButtonStart", "ButtonSelect", "Thumbstick1", "Thumbstick2"]) {
@@ -355,10 +359,10 @@ describe("controls overrides", () => {
 				skill2: [7], // not a name
 				skill3: ["Three"], // the default
 			},
-			pad: { fire: "ButtonStart", alt: "W", roll: 3, moveUp: "DPadLeft", skill4: "DPadLeft" },
+			pad: { fire: "ButtonStart", alt: "W", roll: 3, moveUp: "ButtonL3", skill4: "ButtonL3" },
 			junk: true,
 		});
-		expect(o).toEqual({ kbm: { fire: ["G"] }, pad: { skill4: "DPadLeft" } });
+		expect(o).toEqual({ kbm: { fire: ["G"] }, pad: { skill4: "ButtonL3" } });
 		for (const raw of [undefined, 5, "x", [], { kbm: 1, pad: "y" }])
 			expect(sanitizeControlsOverrides(raw)).toEqual({});
 	});
@@ -474,7 +478,7 @@ describe("mapping a rebound layout", () => {
 		["kbm", "moveUp", 0, "I"],
 		["kbm", "moveDown", 0, "G"],
 		["kbm", "moveLeft", 0, "H"],
-		["kbm", "moveRight", 0, "U"], // not M: M is the debug boost drop (reserved)
+		["kbm", "moveRight", 0, "U"], // not M: M is the map (taking it would swap it)
 		["kbm", "moveUp", 1, "Y"],
 		["kbm", "fire", 0, "Q"], // ember takes MouseButton1
 		["kbm", "roll", 0, "MouseButton3"],
@@ -484,7 +488,7 @@ describe("mapping a rebound layout", () => {
 		["kbm", "restart", 0, "Backspace"],
 		["pad", "skill1", 0, "ButtonR2"], // fire takes ButtonA
 		["pad", "roll", 0, "ButtonR1"], // ember takes ButtonL1
-		["pad", "restart", 0, "DPadLeft"],
+		["pad", "restart", 0, "ButtonL3"], // a free button (D-pad left is the map)
 	];
 	for (const [device, action, slot, input] of steps) custom = ok(rebind(custom, device, action, slot, input));
 
@@ -496,7 +500,7 @@ describe("mapping a rebound layout", () => {
 		[snap(["Space", "Q", "F", "E"], ["MouseButton1"]), snap(["C", "Two", "Q"], ["MouseButton1", "MouseButton3"])],
 		[snap([], ["MouseButton1", "MouseButton2"]), snap(["Q", "LeftShift"])],
 		[snap(["One", "Two", "Three", "Four", "P"]), snap(["One", "F", "Three", "Four", "P"])],
-		[snap(["K", "J", "N", "M"]), snap(["K", "J", "N", "M"])],
+		[snap(["K", "J", "N", "Semicolon"]), snap(["K", "J", "N", "Semicolon"])],
 		// pad: RT analog fire -> A; A skill1 -> RT analog; LB roll -> RB; RB ember -> LB
 		[snap([], [], pad([], [0, 0.8])), snap([], [], pad(["ButtonA"]))],
 		[snap([], [], pad(["ButtonA"])), snap([], [], pad([], [0, 0.8]))],
@@ -533,8 +537,8 @@ describe("mapping a rebound layout", () => {
 	it("driver keys, bound names and the pad tracker follow the layout", () => {
 		expect(driverKeyAction("Backspace", false, false, custom)).toBe("reset");
 		expect(driverKeyAction("R", false, false, custom)).toBe(undefined);
-		expect(driverKeyAction("DPadLeft", false, false, custom)).toBe(undefined);
-		expect(driverKeyAction("DPadLeft", false, true, custom)).toBe("reset");
+		expect(driverKeyAction("ButtonL3", false, false, custom)).toBe(undefined);
+		expect(driverKeyAction("ButtonL3", false, true, custom)).toBe("reset");
 		expect(driverKeyAction("DPadDown", false, true, custom)).toBe(undefined);
 		expect(driverKeyAction("L", true, false, custom)).toBe("replayCheck");
 
@@ -546,6 +550,7 @@ describe("mapping a rebound layout", () => {
 			"H",
 			"U",
 			"M",
+			"Semicolon",
 			"Q",
 			"LeftShift",
 			"Two",
@@ -561,18 +566,159 @@ describe("mapping a rebound layout", () => {
 		for (const k of ["W", "Space", "E", "R", "B", "MouseButton3"])
 			expect([k, keys.includes(k)]).toEqual([k, false]);
 		expect(sorted(boundMouseButtonNames(custom))).toEqual(["MouseButton1", "MouseButton2", "MouseButton3"]);
-		expect(boundPadButtonNames(custom).includes("DPadLeft")).toBe(true);
+		expect(boundPadButtonNames(custom).includes("ButtonL3")).toBe(true);
 		expect(boundPadButtonNames(custom).includes("DPadDown")).toBe(false);
 
-		// flask moves from D-pad up to the free D-pad left: D-pad up no longer counts as using the pad
-		const flaskLeft = ok(rebind(DEFAULT_BINDINGS, "pad", "flask", 0, "DPadLeft"));
+		// flask moves from D-pad up to the free left stick click: D-pad up no longer counts as using the pad
+		const flaskLeft = ok(rebind(DEFAULT_BINDINGS, "pad", "flask", 0, "ButtonL3"));
 		const t = new InputDeviceTracker();
 		t.bindings = flaskLeft;
 		t.padSampled(pad(["DPadUp"]));
 		expect(t.device).toBe("keyboard");
-		t.padSampled(pad(["DPadLeft"]));
+		t.padSampled(pad(["ButtonL3"]));
 		expect(t.device).toBe("gamepad");
 		expect(isPadActive(pad(["DPadUp"]))).toBe(true);
 		expect(isPadActive(pad(["DPadUp"]), undefined, flaskLeft)).toBe(false);
+	});
+});
+
+// ---------------------------------------------------------------------------------------------
+// The full map toggle (docs/MINIMAP.md M9)
+
+describe("the map action (docs/MINIMAP.md M9)", () => {
+	it("is on both devices after leaderboard / restart, defaults M / D-pad left, and the defaults stay duplicate-free", () => {
+		expect(KBM_ACTIONS[KBM_ACTIONS.size() - 1]).toBe("map");
+		expect(KBM_ACTIONS.indexOf("map")).toBe(KBM_ACTIONS.indexOf("leaderboard") + 1);
+		expect(PAD_ACTIONS[PAD_ACTIONS.size() - 1]).toBe("map");
+		expect(PAD_ACTIONS.indexOf("map")).toBe(PAD_ACTIONS.indexOf("restart") + 1);
+		expect(DEFAULT_BINDINGS.kbm.map).toEqual(["M"]);
+		expect(DEFAULT_BINDINGS.pad.map).toBe("DPadLeft");
+		expect(PAD_BUTTON_NAMES.includes("DPadLeft")).toBe(true);
+		expect(KBM_KEY_NAMES.includes("M")).toBe(true);
+		for (const device of ["kbm", "pad"] as const) {
+			const seen = new Set<string>();
+			const actions: ReadonlyArray<GameAction> = device === "kbm" ? KBM_ACTIONS : PAD_ACTIONS;
+			for (const action of actions) {
+				for (const input of inputsFor(DEFAULT_BINDINGS, device, action)) {
+					expect([device, input, seen.has(input)]).toEqual([device, input, false]);
+					seen.add(input);
+				}
+			}
+		}
+		expect(isValidBindings(DEFAULT_BINDINGS)).toBe(true);
+		expect(mapHint()).toEqual({ keyboard: "M", gamepad: "D-pad left" });
+	});
+
+	it("presses no sim button: not in ACTION_BUTTONS, and M / D-pad left map to an empty frame", () => {
+		expect(ACTION_BUTTONS.has("map")).toBe(false);
+		expect(KEY_BINDINGS.has("M")).toBe(false);
+		expect(PAD_BINDINGS.has("DPadLeft")).toBe(false);
+		const keys = mapDevicesToInput(snap(["M"]));
+		expect([keys.buttons, keys.moveX, keys.moveZ]).toEqual([0, 0, 0]);
+		expect(mapDevicesToInput(snap([], [], pad(["DPadLeft"]))).buttons).toBe(0);
+		// Not a driver key either (no restart, no replay check), with or without debug keys or a paused run.
+		expect(driverKeyAction("M", true, true)).toBe(undefined);
+		expect(driverKeyAction("DPadLeft", true, true)).toBe(undefined);
+	});
+
+	it("isMapInput follows the layout; the map keys are polled and sunk like the other game keys", () => {
+		expect([isMapInput("M"), isMapInput("DPadLeft"), isMapInput("B"), isMapInput("Semicolon")]).toEqual([
+			true,
+			true,
+			false,
+			false,
+		]);
+		let b = ok(rebind(DEFAULT_BINDINGS, "kbm", "map", 0, "G"));
+		b = ok(rebind(b, "kbm", "map", 1, "MouseButton3"));
+		b = ok(rebind(b, "pad", "map", 0, "ButtonL3"));
+		expect([isMapInput("M", b), isMapInput("G", b), isMapInput("MouseButton3", b)]).toEqual([false, true, true]);
+		expect([isMapInput("DPadLeft", b), isMapInput("ButtonL3", b)]).toEqual([false, true]);
+		expect(mapHint(b)).toEqual({ keyboard: "G", gamepad: "LS" });
+		expect(boundKeyNames().includes("M")).toBe(true);
+		expect(boundPadButtonNames().includes("DPadLeft")).toBe(true);
+		expect(boundKeyNames(b).includes("G")).toBe(true);
+		expect(boundMouseButtonNames(b).includes("MouseButton3")).toBe(true);
+	});
+
+	it("an old stored override set without `map` reads the defaults M / D-pad left", () => {
+		const old = { kbm: { fire: ["G"], swap: ["C"] }, pad: { swap: "ButtonX", skill3: "ButtonY" } };
+		const b = applyControlsOverrides(DEFAULT_BINDINGS, old);
+		expect(inputsFor(b, "kbm", "map")).toEqual(["M"]);
+		expect(inputsFor(b, "pad", "map")).toEqual(["DPadLeft"]);
+		expect(isValidBindings(b)).toBe(true);
+		expect(sanitizeControlsOverrides(old)).toEqual(old);
+		// An old override that took D-pad left (free before the map) keeps it: the new map yields and takes the input
+		// the overriding action vacated (flask's D-pad up).
+		const tookLeft = applyControlsOverrides(DEFAULT_BINDINGS, { pad: { flask: "DPadLeft" } });
+		expect([tookLeft.pad.flask, tookLeft.pad.map]).toEqual(["DPadLeft", "DPadUp"]);
+		expect(sanitizeControlsOverrides({ pad: { flask: "DPadLeft" } })).toEqual({
+			pad: { flask: "DPadLeft", map: "DPadUp" },
+		});
+		expect(isValidBindings(tookLeft)).toBe(true);
+	});
+
+	it("migration: an old D-pad left override never cascades (the map yields; vacated input taken -> L3)", () => {
+		// skill4 took D-pad left and skill3 took skill4's D-pad right: before the yield rule skill4 fell back to D-pad
+		// right and knocked skill3 out too. Now both keep theirs; the vacated D-pad right is taken, so the map goes to
+		// the first free fallback, the left stick click.
+		const old = { pad: { skill4: "DPadLeft", skill3: "DPadRight" } };
+		const b = applyControlsOverrides(DEFAULT_BINDINGS, old);
+		expect([b.pad.skill4, b.pad.skill3, b.pad.map]).toEqual(["DPadLeft", "DPadRight", "ButtonL3"]);
+		expect(isValidBindings(b)).toBe(true);
+		expect(sanitizeControlsOverrides(old)).toEqual({
+			pad: { skill3: "DPadRight", skill4: "DPadLeft", map: "ButtonL3" },
+		});
+		// Both stick clicks taken too: R3.
+		const busy = { pad: { skill4: "DPadLeft", skill3: "DPadRight", skill2: "ButtonL3" } };
+		expect(applyControlsOverrides(DEFAULT_BINDINGS, busy).pad.map).toBe("ButtonR3");
+		// The rule is idempotent: the sanitized doc sanitizes to itself.
+		const clean = sanitizeControlsOverrides(old);
+		expect(sanitizeControlsOverrides(clean)).toEqual(clean);
+		// A stored map override is the player's choice: no yield (D-pad left is free then, so skill4 keeps it).
+		expect(sanitizeControlsOverrides({ pad: { map: "ButtonL3", skill4: "DPadLeft" } })).toEqual({
+			pad: { skill4: "DPadLeft", map: "ButtonL3" },
+		});
+		// Valid current bindings are untouched (a rebind onto D-pad left swaps, so the map has an override then).
+		const swapped = ok(rebind(DEFAULT_BINDINGS, "pad", "skill4", 0, "DPadLeft"));
+		expect(sanitizeControlsOverrides({ kbm: swapped.kbm, pad: swapped.pad })).toEqual({
+			pad: { skill4: "DPadLeft", map: "DPadRight" },
+		});
+	});
+
+	it("migration: a stored Semicolon (reserved since MD11) is dropped without cascading", () => {
+		// Only slot Semicolon: skill1 yields. Its default One is skill2's stored override, so skill1 takes skill2's
+		// vacated Two instead of knocking skill2 out (before: skill1 fell back to One and skill2 was dropped too).
+		const old = { kbm: { skill1: ["Semicolon"], skill2: ["One"] } };
+		const b = applyControlsOverrides(DEFAULT_BINDINGS, old);
+		expect([b.kbm.skill1, b.kbm.skill2]).toEqual([["Two"], ["One"]]);
+		expect(isValidBindings(b)).toBe(true);
+		expect(sanitizeControlsOverrides(old)).toEqual({ kbm: { skill1: ["Two"], skill2: ["One"] } });
+		// Alone it just falls back to the default (nothing clashes).
+		expect(sanitizeControlsOverrides({ kbm: { skill1: ["Semicolon"] } })).toEqual({});
+		// Semicolon in one slot of two: the other slot is kept (moved up to primary).
+		expect(sanitizeControlsOverrides({ kbm: { skill1: ["Semicolon", "Five"] } })).toEqual({
+			kbm: { skill1: ["Five"] },
+		});
+		expect(sanitizeControlsOverrides({ kbm: { skill1: ["Five", "Semicolon"] } })).toEqual({
+			kbm: { skill1: ["Five"] },
+		});
+		// The vacated input taken as well: the first free fallback letter.
+		const busy = { kbm: { skill1: ["Semicolon"], skill2: ["One"], skill3: ["Two"] } };
+		expect(applyControlsOverrides(DEFAULT_BINDINGS, busy).kbm.skill1).toEqual(["G"]);
+		// A new binding onto Semicolon is still refused.
+		expect(refusal(rebind(DEFAULT_BINDINGS, "kbm", "skill1", 0, "Semicolon"))).toBe("reserved");
+	});
+
+	it("the debug boost drop moved off M to Semicolon, which is reserved; M is bindable again", () => {
+		expect(FIXED_INPUTS.debugDrop).toBe("Semicolon");
+		expect(RESERVED_KBM_INPUTS.includes("Semicolon")).toBe(true);
+		expect(RESERVED_KBM_INPUTS.includes("M")).toBe(false);
+		expect(KEY_BINDINGS.get("Semicolon")).toBe(DEBUG_DROP_BUTTON);
+		expect(refusal(rebind(DEFAULT_BINDINGS, "kbm", "fire", 0, "Semicolon"))).toBe("reserved");
+		expect(refusal(rebind(DEFAULT_BINDINGS, "kbm", "map", 0, "Semicolon"))).toBe("reserved");
+		// M taken by another action swaps with the map.
+		const r = rebind(DEFAULT_BINDINGS, "kbm", "flask", 0, "M");
+		expect(r.ok && r.swappedWith).toEqual({ action: "map", slot: 0, input: "F" });
+		expect(inputLabel("Semicolon")).toBe(";");
 	});
 });
