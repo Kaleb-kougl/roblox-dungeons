@@ -6,6 +6,9 @@ import {
 	BIOMES,
 	BIOME_MATERIALS,
 	BIOME_MATERIAL_SURFACES,
+	BOOST_BEAM_IMAGE_ID,
+	BOOST_GLINT_FX,
+	BOOST_HALO_FX,
 	BOSS,
 	CHARACTER,
 	DAMAGE_NUMBER_ROLES,
@@ -13,6 +16,7 @@ import {
 	MIN_DAMAGE_NUMBER_CONTRAST,
 	MIN_ENEMY_BULLET_CONTRAST,
 	MIN_HEALTH_BAR_CONTRAST,
+	decorFxId,
 	optionalBaseAnimations,
 	requiredAnimationList,
 } from "./contract";
@@ -1004,6 +1008,78 @@ describe("validateManifest: biome materials (docs/DECOR.md R1)", () => {
 		// a plain 16x16 tile image is not a repeating texture: any floor material
 		at(m, "assets")["tile.biome.1.floor"] = { kind: "image", assetId: "rbxassetid://1002", w: 16, h: 16 };
 		at(m, "biomes", "biome.1").materials = { floor: "Slate" };
+		expect(validateManifest(m)).toEqual([]);
+	});
+});
+
+describe("validateManifest: boost art needs its halo (docs/BOOST_ART.md BA-P2)", () => {
+	const HALO = decorFxId(BOOST_HALO_FX);
+	const drop = (): Obj => ({ kind: "image", assetId: "rbxassetid://8101", w: 17, h: 15, pixelsPerTile: 29.6 });
+	const glow = (): Obj => ({ kind: "image", assetId: "rbxassetid://8102", w: 72, h: 72, pixelsPerTile: 29.6 });
+	const haloError = (id: string) =>
+		`assets["${id}"]: boost art needs "decor.fx.glow" art too (the drop's halo, tinted by "${id}"): the art alone ` +
+		"fails the 3.0:1 floor contrast (docs/BOOST_ART.md BA-P2)";
+
+	it("reuses the decor glow for the halo and the decor glint for the sparkle (no boost-specific IDs)", () => {
+		expect(HALO).toBe("decor.fx.glow");
+		expect(decorFxId(BOOST_GLINT_FX)).toBe("decor.fx.glint");
+		expect(BOOST_BEAM_IMAGE_ID).toBe("ui.marker.boost");
+	});
+
+	it("placeholder gems need no halo", () => {
+		const m = clone();
+		expect(at(m, "assets")[HALO]).toBe(undefined);
+		expect(validateManifest(m)).toEqual([]);
+	});
+
+	it("rejects boost art without decor.fx.glow, naming each boost with art (kind order)", () => {
+		const m = clone();
+		at(m, "assets")["boost.aegis"] = drop();
+		at(m, "assets")["boost.fury"] = {
+			kind: "sprites",
+			frameW: 16,
+			frameH: 16,
+			pivot: { x: 8, y: 8 },
+			pixelsPerTile: 29.6,
+			resample: "Default",
+			facings: { count: 1, zeroDeg: 0, ccw: true },
+			sheets: [{ assetId: "rbxassetid://8103", w: 64, h: 16 }],
+			animations: { idle: { sheet: 0, start: 0, frames: 4, fps: 8, loop: true } },
+		};
+		expect(validateManifest(m)).toEqual([haloError("boost.fury"), haloError("boost.aegis")]);
+		// one boost with art is enough to need it; the others stay placeholders
+		const one = clone();
+		at(one, "assets")["boost.frenzy"] = drop();
+		expect(validateManifest(one)).toEqual([haloError("boost.frenzy")]);
+	});
+
+	it("accepts boost art with decor.fx.glow art (image or sprites); the glint and the beam stay optional", () => {
+		const m = clone();
+		for (const k of ["boost.fury", "boost.quickstep", "boost.frenzy", "boost.aegis"]) at(m, "assets")[k] = drop();
+		at(m, "assets")[HALO] = glow();
+		expect(validateManifest(m)).toEqual([]);
+		expect(at(m, "assets")["decor.fx.glint"]).toBe(undefined);
+		expect(at(m, "assets")["ui.marker.boost"]).toBe(undefined);
+		at(m, "assets")[HALO] = {
+			kind: "sprites",
+			frameW: 16,
+			frameH: 16,
+			pivot: { x: 8, y: 8 },
+			pixelsPerTile: 29.6,
+			resample: "Default",
+			facings: { count: 1, zeroDeg: 0, ccw: true },
+			sheets: [{ assetId: "rbxassetid://8104", w: 64, h: 16 }],
+			animations: { idle: { sheet: 0, start: 0, frames: 4, fps: 8, loop: true } },
+		};
+		expect(validateManifest(m)).toEqual([]);
+		// the beam is a free-form ui image with a pivot, like ui.marker.pedestal
+		at(m, "assets")[BOOST_BEAM_IMAGE_ID] = {
+			kind: "image",
+			assetId: "rbxassetid://8105",
+			w: 8,
+			h: 103,
+			pivot: { x: 4, y: 100 },
+		};
 		expect(validateManifest(m)).toEqual([]);
 	});
 });

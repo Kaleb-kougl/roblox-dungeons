@@ -20,12 +20,14 @@ six bullet IDs, the biome tiles, `ui.cursor` (the facing pip) and the pedestal /
 | `enemy.sniper` (+ the tutorial's `turret.sniper`) | **Subservient** (worship; every other animation a stand-in, docs/SNIPER_ART.md) | Lords of Pain (full pack) |
 | `enemy.bruiser` | **Demon Beast 3** (idle, walk, Attack 4 leap and slam, TakeDamage 1, Die 1; docs/DEMON_ART.md): art staged (set built, 3 sheets + rims), **not yet uploaded** (licence not recorded, DD6), so still the placeholder | 2D Demons - TopDown asset pack v1.1 |
 | `boss.act1` (Mother Bramble) | **Demon Elite 3** (idle, walk, taunt, Attack 1-4, Die 1; docs/BRAMBLE_ART.md): art staged (set built, 7 sheets + rims), **not yet uploaded** (same licence gap), so still the placeholder | 2D Demons - TopDown asset pack v1.1 |
+| boost drops `boost.fury` / `.quickstep` / `.frenzy` / `.aegis` (docs/BOOST_ART.md) | **`gold_drop`** (Fury) and **`gemstones_blue` / `_green` / `_white`**, S facing frame 0, 29.6 px/tile; halo `decor.fx.glow` and sparkle `decor.fx.glint` (the decor atlas), beam **`loot_indicator_white`** (`ui.marker.boost`), all tinted by the kind's role | Lords of Pain (full pack) |
 | walls, the shrine | placeholder primitives (unchanged) | none |
 | every `bullet.*` | neon placeholders (unchanged: they keep the GDD bullet-readability rule) | none |
 | audio | silent (unchanged) | none |
 
-**Not in the slice:** the other four classes and the paid SmallScaleInt edition, the LoP warrior, `gold_drop` (the
-slice has no gold), other biomes' tiles, the full LoP pack. Nothing needs to be bought for this plan.
+**Not in the slice:** the other four classes and the paid SmallScaleInt edition, the LoP warrior, other biomes'
+tiles. (`gold_drop` and the full LoP pack joined later: the boost drops above and the sniper.) Nothing needs to be
+bought for this plan.
 
 ## The packs
 

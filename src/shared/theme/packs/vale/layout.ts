@@ -37,10 +37,14 @@ export interface ValeSpriteLayout extends Omit<SpriteSetAsset, "kind" | "sheets"
 	sheets: Array<ValeSpriteSheetFile>;
 }
 
-/** A single image in art/build/. `pivot` (pixels from the top-left) is where it is anchored, when it matters. */
+/**
+ * A single image in art/build/. `pivot` (pixels from the top-left) is where it is anchored, when it matters;
+ * `pixelsPerTile`, on world art drawn at a sprite set's scale (art/atlases.json `pixelsPerTileFrom`), sizes it.
+ */
 export interface ValeImageLayout extends ValeSheetFile {
 	tilesPerImage?: number;
 	pivot?: Pivot;
+	pixelsPerTile?: number;
 }
 
 export const VALE_SPRITE_LAYOUTS: Record<string, ValeSpriteLayout> = {
@@ -265,7 +269,41 @@ export const VALE_SPRITE_LAYOUTS: Record<string, ValeSpriteLayout> = {
 };
 
 export const VALE_IMAGE_LAYOUTS: Record<string, ValeImageLayout> = {
+	"boost.aegis": {
+		file: "boost-aegis.png",
+		w: 13,
+		h: 10,
+		pivot: { x: 6.5, y: 5 },
+		pixelsPerTile: 29.6,
+	},
+	"boost.frenzy": {
+		file: "boost-frenzy.png",
+		w: 13,
+		h: 11,
+		pivot: { x: 6.5, y: 5.5 },
+		pixelsPerTile: 29.6,
+	},
+	"boost.fury": {
+		file: "boost-fury.png",
+		w: 27,
+		h: 21,
+		pivot: { x: 13.5, y: 10.5 },
+		pixelsPerTile: 29.6,
+	},
+	"boost.quickstep": {
+		file: "boost-quickstep.png",
+		w: 13,
+		h: 11,
+		pivot: { x: 6.5, y: 5.5 },
+		pixelsPerTile: 29.6,
+	},
 	"tile.biome.1.floor": { file: "tile-biome1-floor.png", w: 256, h: 256, tilesPerImage: 4 },
+	"ui.marker.boost": {
+		file: "ui-marker-boost.png",
+		w: 8,
+		h: 103,
+		pivot: { x: 4, y: 100 },
+	},
 	"ui.marker.pedestal": {
 		file: "ui-marker-pedestal.png",
 		w: 8,

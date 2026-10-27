@@ -917,7 +917,18 @@ function contactSheet(result) {
 // ---------------------------------------------------------------------------------------------
 // Images
 
-function buildImage(id, def) {
+/**
+ * One `images` entry. `pixelsPerTileFrom` (optional, a sprite set id): the image is world art drawn at that set's scale
+ * (the boost drops, docs/BOOST_ART.md: the Lords of Pain props at the skeleton's), so its layout gets that set's
+ * `pixelsPerTile` exactly. `built` (id -> buildSpriteSet result) is only read when it is given; buildImages passes it.
+ */
+function buildImage(id, def, built) {
+	let pixelsPerTile;
+	if (def.pixelsPerTileFrom !== undefined) {
+		const from = built ? built.get(def.pixelsPerTileFrom) : undefined;
+		if (!from) throw new Error(`${id}: pixelsPerTileFrom ${def.pixelsPerTileFrom} is not a built sprite set`);
+		pixelsPerTile = from.layout.pixelsPerTile;
+	}
 	const src = readPng(def.file);
 	let img;
 	let pivot;
@@ -948,7 +959,16 @@ function buildImage(id, def) {
 	const layout = { file: `${def.name}.png`, w: img.w, h: img.h };
 	if (def.tilesPerImage !== undefined) layout.tilesPerImage = def.tilesPerImage;
 	if (pivot) layout.pivot = pivot;
+	if (pixelsPerTile !== undefined) layout.pixelsPerTile = pixelsPerTile;
 	return { id, name: def.name, img, layout, meanHex };
+}
+
+/** Every `images` entry in id order; `sets` (buildSpriteSets' result) feeds `pixelsPerTileFrom`. */
+function buildImages(images, sets) {
+	const built = new Map(sets.map((s) => [s.id, s]));
+	return Object.keys(images)
+		.sort()
+		.map((id) => buildImage(id, images[id], built));
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -1711,10 +1731,16 @@ function layoutModule(sets, images, floorHex, world) {
 		"\tsheets: Array<ValeSpriteSheetFile>;",
 		"}",
 		"",
-		"/** A single image in art/build/. `pivot` (pixels from the top-left) is where it is anchored, when it matters. */",
+		"/**",
+		comment([
+			"A single image in art/build/. `pivot` (pixels from the top-left) is where it is anchored, when it matters;",
+			"`pixelsPerTile`, on world art drawn at a sprite set's scale (art/atlases.json `pixelsPerTileFrom`), sizes it.",
+		]),
+		" */",
 		"export interface ValeImageLayout extends ValeSheetFile {",
 		"\ttilesPerImage?: number;",
 		"\tpivot?: Pivot;",
+		"\tpixelsPerTile?: number;",
 		"}",
 		"",
 		`export const VALE_SPRITE_LAYOUTS: Record<string, ValeSpriteLayout> = ${tsValue(spriteLayouts, 0, PRINT_WIDTH)};`,
@@ -2200,9 +2226,7 @@ function main() {
 	checkLock(config);
 
 	const sets = buildSpriteSets(config.spriteSets);
-	const images = Object.keys(config.images)
-		.sort()
-		.map((id) => buildImage(id, config.images[id]));
+	const images = buildImages(config.images, sets);
 	const floor = images.find((i) => i.meanHex);
 	if (!floor) throw new Error("no image has meanHex (the floor colour)");
 
@@ -2283,6 +2307,7 @@ module.exports = {
 	alphaBounds,
 	blit,
 	bodyMask,
+	buildImages,
 	buildOutputs,
 	buildSpriteSet,
 	buildSpriteSets,

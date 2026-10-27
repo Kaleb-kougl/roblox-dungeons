@@ -352,6 +352,55 @@
 			"noiseAlpha": 2,
 			"pad": 3,
 			"pivot": "bottom"
+		},
+		"boost.fury": {
+			"$comment": "docs/BOOST_ART.md: Fury's drop, the gold coin scatter (S facing, arrangement 0); cropped to alpha with a 1 px pad (the drop is sized from the image, so a wide pad would shrink the visible prop). Pivot = centre (the drop bobs about its middle). pixelsPerTileFrom: world art at the skeleton's scale, like the decor props (the boost slot needs pixelsPerTile); the build copies that set's pixelsPerTile exactly.",
+			"file": "lords-of-pain/prop/gold_drop/S/gold_drop_S_270.0_0.png",
+			"name": "boost-fury",
+			"crop": "alpha",
+			"noiseAlpha": 2,
+			"pad": 1,
+			"pivot": "center",
+			"pixelsPerTileFrom": "enemy.swarmer"
+		},
+		"boost.quickstep": {
+			"$comment": "docs/BOOST_ART.md: Quickstep's drop, the blue gemstone cluster (S facing, arrangement 0).",
+			"file": "lords-of-pain/prop/gemstones_blue/S/gemstones_blue_S_270.0_0.png",
+			"name": "boost-quickstep",
+			"crop": "alpha",
+			"noiseAlpha": 2,
+			"pad": 1,
+			"pivot": "center",
+			"pixelsPerTileFrom": "enemy.swarmer"
+		},
+		"boost.frenzy": {
+			"$comment": "docs/BOOST_ART.md: Frenzy's drop, the green gemstone cluster (S facing, arrangement 0).",
+			"file": "lords-of-pain/prop/gemstones_green/S/gemstones_green_S_270.0_0.png",
+			"name": "boost-frenzy",
+			"crop": "alpha",
+			"noiseAlpha": 2,
+			"pad": 1,
+			"pivot": "center",
+			"pixelsPerTileFrom": "enemy.swarmer"
+		},
+		"boost.aegis": {
+			"$comment": "docs/BOOST_ART.md: Aegis's drop, the white gemstone cluster (S facing, arrangement 0).",
+			"file": "lords-of-pain/prop/gemstones_white/S/gemstones_white_S_270.0_0.png",
+			"name": "boost-aegis",
+			"crop": "alpha",
+			"noiseAlpha": 2,
+			"pad": 1,
+			"pivot": "center",
+			"pixelsPerTileFrom": "enemy.swarmer"
+		},
+		"ui.marker.boost": {
+			"$comment": "docs/BOOST_ART.md BA-P1: the drops' beam, the WHITE loot indicator (tinted per boost by its colour role; the pedestal keeps the yellow one). 2 px vertical beam, cropped like ui.marker.pedestal. Pivot = bottom centre.",
+			"file": "lords-of-pain/user interface/loot-indicator/loot_indicator_white.png",
+			"name": "ui-marker-boost",
+			"crop": "alpha",
+			"noiseAlpha": 2,
+			"pad": 3,
+			"pivot": "bottom"
 		}
 	},
 	"worldArt": {
@@ -482,6 +531,7 @@
 			"mushrooms-nnw": { "file": "lords-of-pain/prop/mushrooms/NNW/mushrooms_NNW_112.5_0.png", "pivot": "center" },
 			"mushrooms-sw": { "file": "lords-of-pain/prop/mushrooms/SW/mushrooms_SW_225.0_0.png", "pivot": "center" },
 			"mushrooms-sse": { "file": "lords-of-pain/prop/mushrooms/SSE/mushrooms_SSE_292.5_0.png", "pivot": "center" },
+			"$comment-gems": "gems-blue / -green / -red / -white are UNUSED since docs/BOOST_ART.md decision 2 (gems leave the floor decor: a gem cluster on the floor always means a boost pickup; packs/vale/manifest.ts maps no decor ID onto them). Kept only so the uploaded decor-atlas.png does not repack and need a re-upload; delete them at the next decor atlas rebuild.",
 			"gems-blue": { "file": "lords-of-pain/prop/gemstones_blue/E/gemstones_blue_E_0.0_0.png", "pivot": "center" },
 			"gems-green": {
 				"file": "lords-of-pain/prop/gemstones_green/E/gemstones_green_E_0.0_0.png",

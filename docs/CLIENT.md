@@ -23,7 +23,7 @@ rebinding, audio, display). Everything presentation-side reads the sim and never
 | `WeaponViewController` | `.../render/WeaponViewController.ts` | Sword swing fans + sweeping blade, finisher wind-up, guard fan, bow charge ring + aim line, heavy-arrow release ring (dashed floor markings). |
 | `RunMarkerController` | `.../render/RunMarkerController.ts` | M2 (endless runs): a relic pedestal (Cylinder, `uiAccent`) on each TREASURE room's centre tile and the curse shrine's zone (flat disc, `uiMana`) in the SHRINE room; a taken pedestal / used shrine dims (`uiTextDim`). Rebuilt per floor. With the `ui.marker.pedestal` image, a camera-facing beam stands on each live pedestal (hidden once taken). |
 | `BreakableRenderController` | `.../render/BreakableRenderController.ts` | Endless runs: barrels and crates from `state.breakables` (placeholder box, sprite set or image), hit blink + shake, chips, the splinter sprite effect and debris on break. See "Breakables". |
-| `BoostDropRenderController` | `.../render/BoostDropRenderController.ts` | Runs with drops (docs/BOOSTS.md B6): one pooled view per ground slot under `KV_Drops` (placeholder Diamond gem in the kind's `boost.<kind>` role, a sprite set's `idle`, or an upright image billboard), bob, landing pop, fade blink; the pickup burst (`fx.boost.collect` or particles) and the fade's poof from the run view's `boostEvents`. See "Boost drops". |
+| `BoostDropRenderController` | `.../render/BoostDropRenderController.ts` | Runs with drops (docs/BOOSTS.md B6): one pooled view per ground slot under `KV_Drops` (placeholder Diamond gem in the kind's `boost.<kind>` role, a sprite set's `idle`, or an upright image billboard at the Lords of Pain scale; art bodies add a tinted floor halo, beam and glint, docs/BOOST_ART.md BA3), bob, landing pop, fade blink over the whole stack; the pickup effect (`fx.boost.collect`, else the art's glint + halo flash, else particles) and the fade's poof from the run view's `boostEvents`. See "Boost drops". |
 | `BoostAuraController` | `.../render/BoostAuraController.ts` | Runs with drops: a flat tinted disc per running boost under every party member (`KV_BoostAuras`), concentric, under `BOOST_VIEW.auraMaxHeightTiles`, pulsing by motionScale. See "Boost drops". |
 | `DecorController` | `.../render/DecorController.ts` | Room decoration (docs/DECOR.md R4, R10): per floor the decor plan (`planDecor` + `decorScene`, `KV_DecorBand` forces a band), drawn from the pack's `decor.*` art (pooled upright billboards on wall tops and faces, flat SurfaceGuis on the floor), tall pieces fading when a player or the boss is behind them, and the `DecorDirector` updated once per frame. See "Room decoration". |
 | `DecorFxController` | `.../render/DecorFxController.ts` | Ambient life (docs/DECOR.md R9): flame loops and glows on lit torches / braziers, the 6-light pool, the fixed boss / shrine room lights, the flat boss ring and stairwell zone, the pedestal glint, the biome's ambient particle volume (a flipbook when its texture has one). See "Room decoration". |
@@ -154,7 +154,8 @@ endless floors' barrels and crates. Pure logic and tunables: `src/shared/view/br
 ## Boost drops (docs/BOOSTS.md B6 / B7)
 
 Runs with `SimConfig.drops` (none set it until B4 / B9; `KV_Debug` + M drops one anywhere drops are on). Pure half in
-`src/shared/view/boosts/` (tunables `BOOST_VIEW`), headless spec `boosts.spec.ts`; nothing here writes the sim.
+`src/shared/view/boosts/` (tunables `BOOST_VIEW`), headless specs `boosts.spec.ts` and `art.spec.ts`; nothing here
+writes the sim.
 
 - **Events:** the sim's `DropsEvents` are per tick and cleared every tick, so `LiveRun` / `LockstepClient` collect
   them after every tick into `boostEvents` (`BoostFrameEvents`: `dropped` with kind and position, `collected`,
@@ -168,7 +169,35 @@ Runs with `SimConfig.drops` (none set it until B4 / B9; `KV_Debug` + M drops one
   `BOOST_VIEW.maxHeightTiles` (5/8 tile). Each frame from state: bob (`dropBobStuds`, x motionScale), the landing pop
   (`dropPopScale`, placeholder and image paths), the fade blink in the last 2 s of `ticksLeft`
   (`boostBlinkTransparency`; steady dim under reduced motion). Pickups: `fx.boost.collect` when the pack has it
-  (FxSpriteController), else `ParticleController.boostBurst` in the kind's colour; a fade: a small poof.
+  (FxSpriteController), else the art's pickup flash (below) for a kind with art, else `ParticleController.boostBurst`
+  in the kind's colour; a fade: a small poof.
+- **Drop art layers** (docs/BOOST_ART.md BA3; pure half `shared/view/boosts/art.ts`, spec `art.spec.ts`). Only for a
+  kind whose `boost.<kind>` is art (image or sprites); the placeholder gem is unchanged. An image prop is drawn at
+  `BOOST_VIEW.artPixelsPerTile` (29.6, the Lords of Pain scale: a 13 px gem ~0.44 tiles wide) and never taller than
+  `maxHeightTiles` in all (`boostImageLayout`: the 25 px coin scatter draws 0.625 tiles tall). Bottom to top, pooled,
+  parked and released with the body:
+  - **halo**: `ThemePack.decor(decorFxId("glow"))` (`decor.fx.glow`) laid flat (decorParts `buildFloorArt`, a top-face
+    SurfaceGui, LightInfluence 0) under the drop, `ImageColor3` = the kind's role (`ThemePack.boost(kind).color`),
+    `haloTiles` (1.2) across, `haloTransparency` (0.35) + `haloPulse` (0.2) x the bob's phase (`dropBobPhase`; none
+    under reduced motion). Its top at `haloLiftStuds` (0.08): over the decor flats (0.06) and floor effects
+    (0.06-0.076), under every marking (0.16) and bullet. No glow art: a Neon Cylinder disc in the role
+    (`haloFallbackTransparency` 0.55), the aura's look. It does not bob.
+  - **prop**: the billboard (bob, pop, blink as before).
+  - **beam**: `ThemePack.image(BOOST_BEAM_IMAGE_ID)` (`ui.marker.boost`, the white loot indicator) built like the
+    pedestal beam (RunMarkerController: `uprightImageBillboard`, own anchor on the drop's base), tinted by the role,
+    `beamHeightTiles` (1.4; the spec keeps it under half `PROGRESSION_VIEW.pedestalBeamHeightTiles`),
+    `beamTransparency` (0.3). Not bobbing. No image (not uploaded / placeholder): no beam.
+  - **glint**: `ThemePack.decor(decorFxId("glint"))` (`decor.fx.glint`) as a second BillboardGui on the prop's anchor,
+    centred on the prop's centre, `glintScale` (0.7) x its own size, `glintDepthStuds` (0.1) in front of it, scaled
+    with the pop; its loop on drop age with a phase per slot (`boostGlintFrame`: slot x `glintSlotPhaseFrames`);
+    `glintStillFrame` under reduced motion. Untinted.
+  - **blink**: every layer's own transparency is combined with the drop's blink (`boostLayerTransparency`: the
+    opacities multiply), so the stack blinks and dims together.
+  - **pickup flash** (BA-P4, when the pack has no `fx.boost.collect`): at the pickup point, the halo in the kind's
+    role from `pickupHaloFromTransparency` (0.1) to gone over `pickupFlashSeconds` (0.35), growing to
+    `pickupHaloGrow` (1.8x; no growth under reduced motion), and the glint played once from frame 0 at
+    `pickupGlintScale` (2x the drop's glint; reduced motion: the still frame, fading with the halo). On sim time
+    (holds in pause); pooled; a new run / floor / exit parks every flash.
 - **Aura** (`BoostAuraController`, `KV_BoostAuras`): per party member, one Neon disc per running boost in its colour,
   the first running kind innermost and on top (`auraDisc`), the stack under `auraMaxHeightTiles` (0.1 tile, under the
   bullets' plane), transparency pulsing by motionScale. The optional `fx.boost.aura.<kind>` effects are not drawn yet
@@ -1007,6 +1036,27 @@ locally) and `KV_Debug` = true.
   4 boosts.
 - **Co-op (2 players):** player A picks a drop: B sees the burst and A's disc; only A gets the toast and the row.
 - **Debug key gating:** without `KV_Debug`, M does nothing; Options > Controls refuses M for any action.
+
+### Boost drop art (docs/BOOST_ART.md BA3 / BA5; not run in Studio yet)
+
+Needs the vale pack with the boost images, `decor.fx.glow` / `decor.fx.glint` (decor atlas) and `ui.marker.boost`
+uploaded (`assetIds.ts`), a run with drops and `KV_Debug` = true.
+
+- **Each biome (floors 1-5 of the five biomes):** M four times: gold coins, blue / green / white gems, each on a halo in
+  gold / aqua / lime / lavender (never the pedestal's yellow), a thin beam in the same colour rising from it, a glint
+  twinkling on the prop. Each reads at a glance next to bullets, decor (no gems left in the decor) and a relic
+  pedestal (its beam clearly taller). The halo lies under telegraphs, the aim line and every bullet, over decor flats.
+- **Sizes:** the gems ~half a tile wide, the coins no taller than the placeholder gem was; phone emulator size too.
+- **Stack:** the four glints are out of step; the prop and glint bob, the halo breathes with the bob, the beam stays
+  put. In the last 2 s the whole stack blinks together and goes at 10 s (poof); nothing is left behind on the floor
+  (`KV_Drops` holds only parked parts far below).
+- **Pickup:** walk over one: the glint plays once at double size over a growing, fading halo in the kind's colour
+  (no particle burst unless the pack has no boost art).
+- **Reduced motion** (Options > Juice): no bob, no halo pulse, every glint frozen on one frame, a steady dim instead of
+  the blink; the pickup glint holds one frame and fades, the halo flash fades without growing.
+- **Without the beam image** (blank `ui-marker-boost.png` id): drops draw halo, prop and glint, no beam, no errors.
+- **Co-op (4 players), four drops at once:** fps unchanged (16 small instances), no overlap mess where drops lie close;
+  each client sees the same drops and pickup flashes.
 
 ### Tutorial (docs/TUTORIAL.md "Studio smoke test")
 

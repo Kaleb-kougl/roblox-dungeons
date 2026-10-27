@@ -23,7 +23,8 @@
  *
  * Roblox port (docs/BOOSTS.md B5): the boost slot (`boost.<kind>`, free-size world art; any other `boost.` ID is an
  * error) and the boost colour roles readable on every biome floor and wall and kept away from the enemy-bullet roles,
- * `boostColorReport` (the enemy outline's rules, per BOOST_ROLES colour).
+ * `boostColorReport` (the enemy outline's rules, per BOOST_ROLES colour). docs/BOOST_ART.md BA-P2: a pack whose
+ * `boost.<kind>` is art (image / sprites) must also have `decor.fx.glow` art, the drop's halo (BOOST_HALO_FX).
  *
  * Roblox port (docs/ROOM_EDGES.md RE4): the room-edge colour roles, waiting and live readable on every biome floor
  * (WCAG contrast) and all three kept away from the enemy-bullet roles and telegraph (CIE76), `roomEdgeReport`.
@@ -37,6 +38,7 @@ import {
 	BIOME_MATERIALS,
 	BIOME_MATERIAL_SURFACES,
 	BOOST,
+	BOOST_HALO_FX,
 	BOOST_KINDS,
 	BOOST_ROLES,
 	BREAKABLE_ROLES,
@@ -87,6 +89,7 @@ import {
 	UI,
 	WORLD_ART_SLOTS,
 	boostId,
+	decorFxId,
 	isAmbienceId,
 	isBoostId,
 	isFxId,
@@ -680,6 +683,37 @@ export function roomEdgeReport(manifest: unknown): Array<RoomEdgeEntry> {
 	return out;
 }
 
+/** Is `def` drawn art (an `image` or `sprites` asset), not a placeholder, silent or missing entry? */
+function isArtAsset(def: unknown): boolean {
+	return isObj(def) && (def.kind === "image" || def.kind === "sprites");
+}
+
+/**
+ * BA-P2 (docs/BOOST_ART.md): a `boost.<kind>` with art (image / sprites, not its placeholder gem) needs the halo art
+ * `decor.fx.<BOOST_HALO_FX>` in the same pack: the drop props alone are 1.7-3.6:1 on the floor (under
+ * MIN_BOOST_CONTRAST), and the halo, tinted by the kind's role, is what makes the drop read. One problem per boost
+ * with art, in BOOST_KINDS order.
+ */
+function boostHaloProblems(assets: Obj): Array<{ path: Array<string>; msg: string }> {
+	const out = new Array<{ path: Array<string>; msg: string }>();
+	const halo = decorFxId(BOOST_HALO_FX);
+	if (isArtAsset(assets[halo])) {
+		return out;
+	}
+	for (const kind of BOOST_KINDS) {
+		const id = boostId(kind);
+		if (isArtAsset(assets[id])) {
+			out.push({
+				path: ["assets", id],
+				msg: `boost art needs ${q(halo)} art too (the drop's halo, tinted by ${q(
+					id,
+				)}): the art alone fails the ${fixed1(MIN_BOOST_CONTRAST)}:1 floor contrast (docs/BOOST_ART.md BA-P2)`,
+			});
+		}
+	}
+	return out;
+}
+
 type Err = (path: ReadonlyArray<string>, msg: string) => void;
 type UnknownKeys = (obj: Obj, path: ReadonlyArray<string>, allowed: ReadonlyArray<string>) => void;
 
@@ -1031,6 +1065,11 @@ export function validateManifest(manifest: unknown, opts: ValidateOptions = {}):
 				)} (CIE76), needs >= ${fixed1(c.min)}: a room edge must never read as an enemy bullet or a telegraph`,
 			);
 		}
+	}
+
+	// --- boost art needs its halo (docs/BOOST_ART.md BA-P2) ---------------------------------------
+	for (const message of boostHaloProblems(assets)) {
+		err(message.path, message.msg);
 	}
 
 	// --- contrast: juice (health bars on their back plate, damage numbers on every biome floor) ---

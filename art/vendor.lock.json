@@ -7367,9 +7367,19 @@
 			"bytes": 2152
 		},
 		{
+			"path": "lords-of-pain/prop/gemstones_blue/S/gemstones_blue_S_270.0_0.png",
+			"sha256": "d8ac65d089a38b72ae8368ae9f43b8ff4b813efc108556c32ea7966b7565edb9",
+			"bytes": 2187
+		},
+		{
 			"path": "lords-of-pain/prop/gemstones_green/E/gemstones_green_E_0.0_0.png",
 			"sha256": "90dafd6b92dc34a274d21bbc92fd17cf298c84794318082b89a2023d6294674f",
 			"bytes": 2162
+		},
+		{
+			"path": "lords-of-pain/prop/gemstones_green/S/gemstones_green_S_270.0_0.png",
+			"sha256": "4dcf5e86ed4ff999da6ebde931789c9c1f6a5827ddf6ee3430dbf14516fa0be0",
+			"bytes": 2185
 		},
 		{
 			"path": "lords-of-pain/prop/gemstones_red/E/gemstones_red_E_0.0_0.png",
@@ -7380,6 +7390,16 @@
 			"path": "lords-of-pain/prop/gemstones_white/E/gemstones_white_E_0.0_0.png",
 			"sha256": "7cee7424d4d78ba167d7969e5345b7c8f9e6f71eddb261a4e1522aba9bf4ac66",
 			"bytes": 2160
+		},
+		{
+			"path": "lords-of-pain/prop/gemstones_white/S/gemstones_white_S_270.0_0.png",
+			"sha256": "915ba2ed12c46814e5d68928b01ff8a7bb846063dd4d72d222d151b2f0abf6e8",
+			"bytes": 2166
+		},
+		{
+			"path": "lords-of-pain/prop/gold_drop/S/gold_drop_S_270.0_0.png",
+			"sha256": "b17701fe2c92684c1f3f94f5882dd68764d6f3fb8572c85880f7d7bbf924e502",
+			"bytes": 3103
 		},
 		{
 			"path": "lords-of-pain/prop/mushrooms/E/mushrooms_E_0.0_0.png",
@@ -7470,6 +7490,11 @@
 			"path": "lords-of-pain/prop/wall3/SW/wall3_SW_225.0_0.png",
 			"sha256": "59261ae4651ea829095e2d91fcbdcca13ecafd1509af1ccae7ab5b43752b1f28",
 			"bytes": 40349
+		},
+		{
+			"path": "lords-of-pain/user interface/loot-indicator/loot_indicator_white.png",
+			"sha256": "f8a49a7b264ecfb6bf281c72767d774c65042b7a132d0d0a17481bc4fdb0e38f",
+			"bytes": 19045
 		},
 		{
 			"path": "lords-of-pain/vfx/flame/flame_0.png",

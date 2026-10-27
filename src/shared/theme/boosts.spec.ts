@@ -334,7 +334,10 @@ describe("boosts: validator", () => {
 			for (const k of sortedKeys(extra)) out[k] = extra[k];
 			return out;
 		};
+		// boost art needs the halo (docs/BOOST_ART.md BA-P2; validate.spec covers the rule)
+		const halo: Obj = { kind: "image", assetId: "rbxassetid://8003", w: 72, h: 72, pixelsPerTile: 32 };
 		const ok = clone();
+		assetsOf(ok)["decor.fx.glow"] = halo;
 		assetsOf(ok)["boost.fury"] = gem({ rect: { x: 16, y: 0, w: 16, h: 16 }, pivot: { x: 8, y: 16 } });
 		assetsOf(ok)["boost.aegis"] = {
 			kind: "sprites",
@@ -349,6 +352,7 @@ describe("boosts: validator", () => {
 		};
 		expect(validateManifest(ok)).toEqual([]);
 		const bad = clone();
+		assetsOf(bad)["decor.fx.glow"] = halo;
 		assetsOf(bad)["boost.fury"] = gem({ layer: "low", pixelsPerTile: 0 });
 		expect(validateManifest(bad)).toEqual([
 			'assets["boost.fury"].layer: unknown key (allowed: kind, assetId, w, h, rect, pivot, pixelsPerTile)',

@@ -597,6 +597,19 @@ export function boostAuraFxId(kind: BoostKind): BoostFxId {
 }
 
 /**
+ * Boost drop art (docs/BOOST_ART.md BA2): the layers drawn with a boost's `image` / `sprites` art. They reuse the decor
+ * effects rather than adding boost IDs: the halo under the drop is `decor.fx.<BOOST_HALO_FX>` (the soft glow disc),
+ * the sparkle over it `decor.fx.<BOOST_GLINT_FX>` (the treasure glint), both tinted by the kind's colour role
+ * `boost.<kind>`. The validator requires the halo whenever a pack gives any `boost.<kind>` art (BA-P2: the Lords of Pain
+ * props alone are 1.7-3.6:1 on the floor, under MIN_BOOST_CONTRAST; the tinted halo carries the role). The glint is
+ * optional. The beam is BOOST_BEAM_IMAGE_ID, an optional free-form ui image like `ui.marker.pedestal` (white, tinted
+ * by the role; its `pivot` is its foot). The placeholder gem draws none of them.
+ */
+export const BOOST_HALO_FX: DecorFxName = "glow";
+export const BOOST_GLINT_FX: DecorFxName = "glint";
+export const BOOST_BEAM_IMAGE_ID = "ui.marker.boost";
+
+/**
  * Roblox port (docs/FX_AUDIO.md A2): every other audio ID the port plays, required in every pack (silent in the
  * placeholder pack). Kept apart from AUDIO_EVENTS, which stays the web build's list, like BREAKABLE_AUDIO_EVENTS.
  * First the IDs the audio layer already played before A2 (shared/view/audio PORT_SFX, which only the placeholder pack
@@ -750,8 +763,9 @@ const WALL_SPOT = ["wall"] as const;
 /**
  * Decor piece kinds and the layers a pack may draw each in. The kinds are the Dungeon Forge pieces the web build's
  * decor plan draws (`PropKind`, plus `torch` from `Dungeon.torches`; `chest` and `arch` are never drawn), the far-wall
- * dressing (R6: `wall` / `wallBroken` segments, `column` / `columnBroken`), the treasure-room `gems` and the flat
- * decals a broken barrel / crate leaves (`brokenBarrel`, `brokenCrate`). Readability: a kind the plan places as a
+ * dressing (R6: `wall` / `wallBroken` segments, `column` / `columnBroken`) and the flat decals a broken barrel / crate
+ * leaves (`brokenBarrel`, `brokenCrate`). No `gems` kind (docs/BOOST_ART.md decision 2: a gem cluster on the floor
+ * always means a boost drop; no plan source ever placed one). Readability: a kind the plan places as a
  * tall piece (on far-wall tops) may be drawn tall or low; a flat kind (where the Forge put it, on open floor) only
  * flat, so no pack can stand art up where it could hide a bullet; torches and banners hang on walls.
  */
@@ -778,7 +792,6 @@ export const DECOR_KIND_LAYERS = {
 	ring: FLAT_SPOT,
 	bossCrystal: FLAT_SPOT,
 	shrineCrystal: FLAT_SPOT,
-	gems: FLAT_SPOT,
 	brokenBarrel: FLAT_SPOT,
 	brokenCrate: FLAT_SPOT,
 	// wall pieces
@@ -808,7 +821,6 @@ export const DECOR_KINDS: ReadonlyArray<DecorKind> = [
 	"ring",
 	"bossCrystal",
 	"shrineCrystal",
-	"gems",
 	"brokenBarrel",
 	"brokenCrate",
 	"torch",

@@ -206,7 +206,6 @@ describe("decor contract", () => {
 			"ring",
 			"bossCrystal",
 			"shrineCrystal",
-			"gems",
 			"brokenBarrel",
 			"brokenCrate",
 		] as const) {
@@ -262,6 +261,9 @@ describe("decor contract", () => {
 			"decor.delve.b1.shardIce",
 			"decor.delve.b1.chest",
 			"decor.delve.b1.arch",
+			// docs/BOOST_ART.md decision 2: gems are boost drops, never decor
+			"decor.delve.b1.gems",
+			"decor.delve.b3.gems.2",
 			"decor.delve.b1.pillar.0",
 			"decor.delve.b1.pillar.5",
 			"decor.delve.b1.pillar.01",

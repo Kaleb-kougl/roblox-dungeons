@@ -5,15 +5,22 @@ import {
 	BIOMES,
 	BIOME_MATERIALS,
 	BIOME_MATERIAL_SURFACES,
+	BOOST_BEAM_IMAGE_ID,
+	BOOST_GLINT_FX,
+	BOOST_HALO_FX,
+	BOOST_KINDS,
 	DEFAULT_BIOME_MATERIAL,
 	ENEMY,
+	boostId,
+	decorFxId,
+	parseDecorId,
 	requiredBaseAnimations,
 	type BiomeId,
 } from "../../contract";
 import { ThemeCore } from "../../core";
 import type { SpriteSetAsset } from "../../types";
-import { ThemePack } from "../../pack";
-import { deepClone, sortedKeys } from "../../util";
+import { ThemePack, hexToColor3 } from "../../pack";
+import { contains, deepClone, sortedKeys, startsWith } from "../../util";
 import { contrastReport, juiceContrastReport, validateManifest } from "../../validate";
 import { PLACEHOLDER_MANIFEST } from "../placeholder";
 import { VALE_ASSET_IDS } from "./assetIds";
@@ -25,7 +32,14 @@ import {
 	VALE_WORLD_LAYOUTS,
 	type ValeSpriteLayout,
 } from "./layout";
-import { VALE_BIOME_MATERIALS, VALE_MANIFEST, buildValeManifest, valeSpriteAsset } from "./manifest";
+import {
+	VALE_BIOME_MATERIALS,
+	VALE_DECOR_PIECES,
+	VALE_MANIFEST,
+	VALE_RETIRED_WORLD_ART,
+	buildValeManifest,
+	valeSpriteAsset,
+} from "./manifest";
 
 const quiet = () => undefined;
 
@@ -993,5 +1007,123 @@ describe("vale enemy.bruiser and boss.act1 (2D Demons, per-sheet cells)", () => 
 		const held = bramble.frame("hit", 3, 0);
 		expect([held.offset.X, held.offset.Y]).toEqual([321, 113]);
 		expect(held).toEqual(bramble.frame("idle", 3, 0));
+	});
+});
+
+describe("vale boost drops (docs/BOOST_ART.md BA2: Lords of Pain gold coins and gemstones, the white beam)", () => {
+	/** The decor atlas holds decor.fx.glow (the drops' halo) and decor.fx.glint. */
+	const DECOR_ATLAS = "decor-atlas.png";
+	const BEAM_FILE = "ui-marker-boost.png";
+	const fileOf = (kind: (typeof BOOST_KINDS)[number]) => VALE_IMAGE_LAYOUTS[boostId(kind)].file;
+
+	it("has an image layout for every boost kind (and no other boost.* image), at the props' scale", () => {
+		for (const kind of BOOST_KINDS) {
+			const layout = VALE_IMAGE_LAYOUTS[boostId(kind)];
+			expect([kind, layout !== undefined]).toEqual([kind, true]);
+			expect([kind, layout.file]).toEqual([kind, `boost-${kind}.png`]);
+			// art/atlases.json pixelsPerTileFrom "enemy.swarmer": the decor props' and skeleton's texel density
+			expect([kind, layout.pixelsPerTile]).toEqual([kind, VALE_SPRITE_LAYOUTS["enemy.swarmer"].pixelsPerTile]);
+			expect([kind, layout.pivot]).toEqual([kind, { x: layout.w / 2, y: layout.h / 2 }]);
+		}
+		const boostLayouts = sortedKeys(VALE_IMAGE_LAYOUTS).filter((id) => id.sub(1, 6) === "boost.");
+		expect(boostLayouts).toEqual(BOOST_KINDS.map((k) => boostId(k)).sort());
+		expect(VALE_IMAGE_LAYOUTS[BOOST_BEAM_IMAGE_ID]).toEqual({
+			file: BEAM_FILE,
+			w: 8,
+			h: 103,
+			pivot: { x: 4, y: 100 },
+		});
+	});
+
+	it("before their files have IDs: the placeholder gem and no beam, as in the placeholder pack", () => {
+		const m = buildValeManifest(fakeIds(BEAM_FILE, ...BOOST_KINDS.map(fileOf)));
+		expect(validateManifest(m, { packId: "vale" })).toEqual([]);
+		for (const kind of BOOST_KINDS) {
+			expect([kind, m.assets[boostId(kind)]]).toEqual([kind, PLACEHOLDER_MANIFEST.assets[boostId(kind)]]);
+			expect([kind, m.assets[boostId(kind)]]).toEqual([kind, { kind: "placeholder" }]);
+		}
+		expect(m.assets[BOOST_BEAM_IMAGE_ID]).toEqual({ kind: "placeholder" });
+		const pack = new ThemePack(m, { warn: quiet });
+		expect(pack.image(BOOST_BEAM_IMAGE_ID)).toBe(undefined);
+		for (const kind of BOOST_KINDS) expect([kind, pack.boost(kind).art]).toEqual([kind, undefined]);
+		expect(buildValeManifest({}).assets[BOOST_BEAM_IMAGE_ID]).toEqual({ kind: "placeholder" });
+	});
+
+	it("with their files uploaded: an image per kind that keeps its colour role, the halo and glint, the beam", () => {
+		const ids = fakeIds();
+		const m = buildValeManifest(ids);
+		expect(validateManifest(m, { packId: "vale" })).toEqual([]);
+		const pack = new ThemePack(m, { warn: quiet });
+		for (const kind of BOOST_KINDS) {
+			const id = boostId(kind);
+			const layout = VALE_IMAGE_LAYOUTS[id];
+			expect([kind, m.assets[id]]).toEqual([
+				kind,
+				{
+					kind: "image",
+					assetId: ids[layout.file],
+					w: layout.w,
+					h: layout.h,
+					pivot: { x: layout.pivot!.x, y: layout.pivot!.y },
+					pixelsPerTile: 29.6,
+				},
+			]);
+			const b = pack.boost(kind);
+			expect([kind, b.art?.kind]).toEqual([kind, "image"]);
+			expect(b.art).toMatchObject({ image: ids[layout.file], pixelsPerTile: 29.6, pivot: layout.pivot });
+			// the colour role is the kind's own (HUD row, aura, halo / beam tint), unchanged by the art
+			expect([kind, b.core.role]).toEqual([kind, id]);
+			expect([kind, m.colors[id]]).toEqual([kind, PLACEHOLDER_MANIFEST.colors[id]]);
+			expect(b.color).toEqual(hexToColor3(PLACEHOLDER_MANIFEST.colors[id]));
+		}
+		// the halo and the sparkle are the decor effects (BOOST_HALO_FX / BOOST_GLINT_FX), already in the decor atlas
+		expect(pack.decor(decorFxId(BOOST_HALO_FX))).never.toBe(undefined);
+		expect(pack.decor(decorFxId(BOOST_GLINT_FX))).never.toBe(undefined);
+		const beam = pack.image(BOOST_BEAM_IMAGE_ID)!;
+		expect([beam.assetId, beam.w, beam.h, beam.pivot]).toEqual([ids[BEAM_FILE], 8, 103, { x: 4, y: 100 }]);
+	});
+
+	it("boost art without the decor atlas (no halo) fails BA-P2, naming every boost", () => {
+		const m = buildValeManifest(fakeIds(DECOR_ATLAS));
+		expect(m.assets[decorFxId(BOOST_HALO_FX)]).toBe(undefined);
+		const errors = validateManifest(m, { packId: "vale" });
+		expect(errors.size()).toBe(BOOST_KINDS.size());
+		BOOST_KINDS.forEach((kind, i) => {
+			const prefix = `assets["${boostId(kind)}"]: boost art needs "decor.fx.glow" art too`;
+			expect([kind, startsWith(errors[i], prefix)]).toEqual([kind, true]);
+		});
+	});
+
+	it("as bundled, each boost kind is art exactly when its file has an ID in assetIds.ts", () => {
+		for (const kind of BOOST_KINDS) {
+			const uploaded = VALE_ASSET_IDS[fileOf(kind)] !== undefined;
+			expect([kind, VALE_MANIFEST.assets[boostId(kind)].kind]).toEqual([
+				kind,
+				uploaded ? "image" : "placeholder",
+			]);
+		}
+		// the halo is already uploaded (the decor atlas), so uploading the drops is enough
+		expect(VALE_ASSET_IDS[DECOR_ATLAS]).never.toBe(undefined);
+	});
+});
+
+describe("vale decor has no gemstones (docs/BOOST_ART.md decision 2)", () => {
+	it("maps no decor ID onto gem art, in any biome, with every file uploaded", () => {
+		for (const p of VALE_DECOR_PIECES) {
+			expect([p.kind, p.art, p.art.sub(1, 5) === "gems-"]).toEqual([p.kind, p.art, false]);
+		}
+		const m = buildValeManifest(fakeIds());
+		for (const id of sortedKeys(m.assets)) {
+			const info = parseDecorId(id);
+			if (info === undefined) continue;
+			expect([id, contains(id, "gems")]).toEqual([id, false]);
+		}
+	});
+
+	it("keeps the four gems-* pieces in the uploaded decor atlas until its next rebuild (unused)", () => {
+		expect([...VALE_RETIRED_WORLD_ART]).toEqual(["gems-blue", "gems-green", "gems-red", "gems-white"]);
+		for (const name of VALE_RETIRED_WORLD_ART) {
+			expect([name, VALE_WORLD_LAYOUTS[name] !== undefined]).toEqual([name, true]);
+		}
 	});
 });
