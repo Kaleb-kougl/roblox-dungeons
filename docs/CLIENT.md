@@ -156,7 +156,7 @@ writes the sim.
   in the kind's colour; a fade: a small poof.
 - **Drop art layers** (docs/BOOST_ART.md BA3; pure half `shared/view/boosts/art.ts`, spec `art.spec.ts`). Only for a
   kind whose `boost.<kind>` is art (image or sprites); the placeholder gem is unchanged. An image prop is drawn at
-  `BOOST_VIEW.artPixelsPerTile` (29.6, the Lords of Pain scale: a 17 px gem ~0.57 tiles wide) and never taller than
+  `BOOST_VIEW.artPixelsPerTile` (29.6, the Lords of Pain scale: a 13 px gem ~0.44 tiles wide) and never taller than
   `maxHeightTiles` in all (`boostImageLayout`: the 25 px coin scatter draws 0.625 tiles tall). Bottom to top, pooled,
   parked and released with the body:
   - **halo**: `ThemePack.decor(decorFxId("glow"))` (`decor.fx.glow`) laid flat (decorParts `buildFloorArt`, a top-face

@@ -35,16 +35,16 @@ const GLINT: SpriteLayout = { frameW: 26, frameH: 21, pivot: { x: 13, y: 11 }, p
 const GLINT_FRAMES = 8;
 const GLINT_FPS = 12;
 /** The vale boost images (packs/vale/layout.ts): a gem cluster and the coin scatter, centre pivots. */
-const GEM = { w: 17, h: 15 };
-const COINS = { w: 31, h: 25 };
+const GEM = { w: 13, h: 11 };
+const COINS = { w: 27, h: 21 };
 const centre = (w: number, h: number) => ({ x: w / 2, y: h / 2 });
 const HALF_BOB = 1 / (2 * V.bobHz);
 
 describe("boost art: the prop", () => {
-	it("draws a gem cluster at the Lords of Pain scale (~0.57 tiles wide)", () => {
+	it("draws a gem cluster at the Lords of Pain scale (~0.44 tiles wide)", () => {
 		const [w, h] = layoutTiles(boostImageLayout(GEM.w, GEM.h, centre(GEM.w, GEM.h)));
 		expect(w).toBeCloseTo(GEM.w / V.artPixelsPerTile, 6);
-		expect(w).toBeCloseTo(0.574, 2);
+		expect(w).toBeCloseTo(0.439, 2);
 		expect(h <= V.maxHeightTiles).toBe(true);
 	});
 

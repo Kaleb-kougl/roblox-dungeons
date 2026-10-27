@@ -21,7 +21,7 @@ rest are recommended defaults (BA-P1..P6). See "As built (BA1, BA2)" for what di
 
 - **No new atlas, no re-upload of the decor atlas.** The five pieces are standalone `images` entries in
   `art/atlases.json` (`boost.fury` / `.quickstep` / `.frenzy` / `.aegis`, `ui.marker.boost`), so `art:build` writes five
-  new files: `boost-fury.png` (31x25), `boost-quickstep.png` / `boost-frenzy.png` (17x15), `boost-aegis.png` (17x14),
+  new files: `boost-fury.png` (27x21), `boost-quickstep.png` / `boost-frenzy.png` (13x11), `boost-aegis.png` (13x10),
   `ui-marker-boost.png` (8x103, pivot (4, 100), like the pedestal's). The decor `gems-*` world art entries were NOT
   removed: that would repack and re-upload `decor-atlas.png`. They carry a `$comment` (unused since decision 2) and
   `VALE_RETIRED_WORLD_ART` in `packs/vale/manifest.ts` names them; drop both at the next decor atlas rebuild.
@@ -127,7 +127,7 @@ unchanged.
 
 | Layer | As built |
 |---|---|
-| Prop size | `boostImageLayout`: image art at the art's own `pixelsPerTile` (vale: 29.6 via `pixelsPerTileFrom: "enemy.swarmer"`; `BOOST_VIEW.artPixelsPerTile` = 29.6 is the fallback), and at `frameH / maxHeightTiles` when that would be taller than `maxHeightTiles` (5/8) in all. Gems 17 x 15 px -> 0.57 x 0.51 tiles; coins 31 x 25 px -> 0.78 x 0.625 tiles. Stricter than `breakableArtLayout` (which caps only the part above the pivot; a centred pivot would have let the coins draw 0.84 tall). Sprite sets keep `breakableArtLayout` |
+| Prop size | `boostImageLayout`: image art at the art's own `pixelsPerTile` (vale: 29.6 via `pixelsPerTileFrom: "enemy.swarmer"`; `BOOST_VIEW.artPixelsPerTile` = 29.6 is the fallback), and at `frameH / maxHeightTiles` when that would be taller than `maxHeightTiles` (5/8) in all. Gems 13 x 11 px (1 px pad: the review found the 3 px pad shrank the visible prop) -> 0.44 x 0.37 tiles; coins 27 x 21 px -> 0.80 x 0.625 tiles. Stricter than `breakableArtLayout` (which caps only the part above the pivot; a centred pivot would have let the coins draw 0.84 tall). Sprite sets keep `breakableArtLayout` |
 | Halo | `decor.fx.glow` via decorParts `buildFloorArt` (top-face SurfaceGui on a thin Part, LightInfluence 0, built at the origin so its frame there is its offset from the floor point), tinted by the role, `haloTiles` 1.2 across, `haloTransparency` 0.35 + `haloPulse` 0.2 x `dropBobPhase` (dimmest at the bob's top; none under reduced motion). Top at `haloLiftStuds` 0.08 (`haloThicknessStuds` 0.02): over decor flats and floor effects, under markings and bullets (spec). No glow art: a Neon Cylinder disc (`haloMaterial`), `haloFallbackTransparency` 0.55. Does not bob or pop |
 | Beam | `ui.marker.boost` on its own anchor at the drop's base, `uprightImageBillboard` (its pivot, else bottom centre), tinted, `beamHeightTiles` **1.4** (not the plan's 1.5: the spec asserts strictly under half the pedestal's 3), `beamTransparency` 0.3. Not bobbing. No image -> no beam |
 | Glint | `decor.fx.glint` as a second BillboardGui on the prop's anchor (bobs with it), centred on the prop's centre, `glintScale` 0.7 x its own size, `glintDepthStuds` 0.1 in front, scaled with the pop (image props); frame `boostGlintFrame` = `decorLoopFrame(age, fps, frames, slot x glintSlotPhaseFrames 3)`; `glintStillFrame` 2 under reduced motion. Untinted |
