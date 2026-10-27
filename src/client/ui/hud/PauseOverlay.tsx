@@ -18,6 +18,7 @@ import { HUD_STRINGS, HUD_VIEW, LEADERBOARD_STRINGS, PAUSE_HINT } from "shared/v
 import { MENU_STRINGS, pauseItems, pauseOverlayShown, type PauseItem } from "shared/view/menu";
 import { useHudActions, type HudActions } from "./actions";
 import { MenuButton, Panel, Row, Text } from "./primitives";
+import { RunInfoLine } from "./RunInfoLine";
 
 const HALF = 0.5;
 const CONFIRM_BUTTON = new Vector2(HUD_VIEW.buttonSize.x / 2, HUD_VIEW.buttonSize.y);
@@ -77,7 +78,9 @@ const SKIP_CONFIRM: ConfirmSpec = {
  * Leaderboards. A first-run tutorial run (paused like solo): Resume / Restart tutorial / Skip tutorial / Options.
  * Leave run first shows the confirm ("Leaving ends your run..."; Leave / Cancel), Skip tutorial its own ("Skip the
  * tutorial?"; Skip / Keep playing). With a gamepad the selection starts on the first button (Cancel / Keep playing
- * in a confirm). Hidden while a panel is open and once the run is over (the run-over panel has the exits).
+ * in a confirm). Under the buttons, the run's info line and any fallback notice (RunInfoLine: docs/HUD_LAYOUT.md H6,
+ * the only place they show while a run is on). Hidden while a panel is open and once the run is over (the run-over
+ * panel has the exits).
  */
 export function PauseOverlay() {
 	const s = useSelector(selectSnapshot);
@@ -198,6 +201,7 @@ export function PauseOverlay() {
 					text={str(coop ? MENU_STRINGS.coopTitle : HUD_STRINGS.paused)}
 				/>
 				{body}
+				<RunInfoLine order={19} />
 				<Text
 					fill={true}
 					order={20}

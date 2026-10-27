@@ -1,83 +1,57 @@
 import React from "@rbxts/react";
 import { useSelector } from "@rbxts/react-reflex";
-import { selectReplayCheck, selectRunInfo, selectSnapshot, selectVerdict, type VerdictView } from "client/store";
+import { selectReplayCheck, selectRunInfo, selectSnapshot, selectVerdict } from "client/store";
 import { str } from "client/ui/theme";
 import { REPLAY_CHECK_KEYS } from "shared/play";
-import { HUD_STRINGS, HUD_VIEW, endingKey, leaderboardPostKey, shortHash, verdictKey } from "shared/view/hud";
+import { HUD_HINTS, HUD_STRINGS, HUD_TRANSIENT, HUD_VIEW } from "shared/view/hud";
 import { Panel, Text } from "./primitives";
-
-const INFO_WIDTH = 600;
-
-/** The server's verdict on this run's submission as one status line ("" when there is none). */
-function verdictLine(v: VerdictView): string {
-	const key = verdictKey(v.status, v.code); // a tutorial run: "Practice: not submitted (tutorial)"
-	if (key === "") return "";
-	const line = str(key, {
-		run: v.run ?? 0,
-		ending: str(endingKey(v.ending)),
-		hash: shortHash(v.serverHash),
-		code: v.code ?? "?",
-		reason: v.reason ?? "",
-	});
-	// Ranked runs: where the run went on the leaderboards.
-	const posted = leaderboardPostKey(v.leaderboard);
-	return posted !== undefined ? `${line} · ${str(posted)}` : line;
-}
+import { noticeText, verdictColor, verdictLine } from "./RunInfoLine";
+import { useTimedHint } from "./useTimedHint";
 
 /**
- * Bottom right: the run's info line (title, biome, seed, dungeon name), the fallback notice when the requested world
- * could not start, the server's verdict as a small status line, and (KV_Debug only) the debug line with the replay
- * check. Every text from the theme string table.
+ * Bottom right, transient (docs/HUD_LAYOUT.md H6): the fallback notice when the requested world could not start and
+ * the server's verdict as a small status line, each shown for HUD_HINTS.verdictSeconds after its text changes and then
+ * faded out (useTimedHint), and (KV_Debug only) the debug line with the replay check, which never fades. The run's
+ * info line (title, biome, seed, dungeon) is not here: it lives in the PauseOverlay and the RunOverPanel (RunInfoLine,
+ * HD6). Nothing at all, not even the panel, when no line shows. Width: the footprint's verdict box (HUD_TRANSIENT).
  */
 export function InfoPanel() {
 	const info = useSelector(selectRunInfo);
 	const verdict = useSelector(selectVerdict);
 	const replay = useSelector(selectReplayCheck);
 	const s = useSelector(selectSnapshot);
-	const place = info.placeKey !== "" ? str(info.placeKey) : info.world;
+	const notice = noticeText(info);
 	const verdictText = verdictLine(verdict);
+	const noticeHint = useTimedHint(HUD_HINTS.verdictSeconds, [notice]);
+	const verdictHint = useTimedHint(HUD_HINTS.verdictSeconds, [verdictText]);
+	const showNotice = notice !== "" && !noticeHint.hidden;
+	const showVerdict = verdictText !== "" && !verdictHint.hidden;
+	if (!showNotice && !showVerdict && !info.debug) return undefined;
 	let replayText = str(HUD_STRINGS.replayHint, { key: REPLAY_CHECK_KEYS.join(" / ") });
 	if (replay !== undefined) {
 		replayText = str(replay.match ? HUD_STRINGS.replayMatch : HUD_STRINGS.replayMismatch, { ticks: replay.ticks });
 	}
 	return (
-		<Panel corner="bottomRight" width={INFO_WIDTH} name="Info">
-			<Text
-				fill={true}
-				order={1}
-				size={HUD_VIEW.smallText}
-				color="uiTextDim"
-				align={Enum.TextXAlignment.Right}
-				text={str(HUD_STRINGS.info, {
-					title: str(HUD_STRINGS.title),
-					place,
-					seed: str(HUD_STRINGS.seed, { seed: info.seed }),
-					dungeon: info.dungeonName,
-				})}
-			/>
-			{info.notice !== "" ? (
+		<Panel corner="bottomRight" width={HUD_TRANSIENT.verdict.width} name="Info">
+			{showNotice ? (
 				<Text
 					order={2}
 					size={HUD_VIEW.smallText}
 					color="telegraph"
 					align={Enum.TextXAlignment.Right}
 					wrap={true}
-					text={str(HUD_STRINGS.noticeFallback, { reason: info.notice })}
+					transparency={noticeHint.fade}
+					text={notice}
 				/>
 			) : undefined}
-			{verdictText !== "" ? (
+			{showVerdict ? (
 				<Text
 					order={3}
 					size={HUD_VIEW.smallText}
-					color={
-						verdict.status === "rejected"
-							? "uiHealth"
-							: verdict.status === "accepted"
-							? "uiText"
-							: "uiTextDim"
-					}
+					color={verdictColor(verdict)}
 					align={Enum.TextXAlignment.Right}
 					wrap={true}
+					transparency={verdictHint.fade}
 					text={verdictText}
 				/>
 			) : undefined}
