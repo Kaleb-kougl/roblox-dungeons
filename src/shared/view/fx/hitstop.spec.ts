@@ -9,14 +9,21 @@ import {
 	BOSS_DEATH_SLOWMO_MS,
 	BOSS_DEATH_SLOWMO_SCALE,
 	BOSS_PHASE_FREEZE_MS,
+	HEAVY_HIT_FREEZE_MS,
 	HEAVY_KILL_FREEZE_MS,
 	KILL_FREEZE_MS,
 	NUDGE_MS,
 	applyFreezeEvent,
+	applyHurtFreeze,
 	freezeMsFor,
+	hurtFreezeMsFor,
+	hurtNudgeFor,
 	nudgeFor,
 	nudgeOffset,
+	nudgeReplaces,
+	simPacerFor,
 	type FreezeEvent,
+	type NudgeKind,
 } from "./freezeRules";
 import {
 	BOSS_DEATH_HITSTOP_MS,
@@ -27,10 +34,12 @@ import {
 	newFrameAdvance,
 	slowMoScaleAt,
 } from "./hitstop";
+import { FEEL_HURT } from "./hurtConfig";
 
 const on = defaultJuiceSettings(false);
 const off: JuiceSettings = { ...on, freezeFrame: false };
 const reduced: JuiceSettings = { ...on, reducedMotion: true };
+const noShake: JuiceSettings = { ...on, screenShake: false };
 
 /** Spend `ms` of real time in frames of `frameMs`; returns the total sim ms. */
 function spend(c: HitstopClock, ms: number, frameMs = 1): number {
@@ -50,6 +59,8 @@ const ev = (eventType: FreezeEvent["type"], f: Partial<FreezeEvent> = {}): Freez
 	elite: false,
 	hpMax: 2,
 	phase: 0,
+	heavy: false,
+	capped: false,
 	...f,
 });
 
@@ -330,5 +341,101 @@ describe("freeze-frame event rules", () => {
 		expect(xs.includes(1)).toBe(true);
 		expect(xs.includes(-1)).toBe(true);
 		expect(xs[xs.size() - 1]).toBe(0);
+	});
+});
+
+describe("freeze-frame rules: port additions (docs/FEEL.md J3)", () => {
+	it("a heavy landed hit freezes HEAVY_HIT_FREEZE_MS; a capped or light hit does not", () => {
+		expect(HEAVY_HIT_FREEZE_MS).toBe(40);
+		expect(freezeMsFor(ev("hit", { heavy: true }))).toBe(HEAVY_HIT_FREEZE_MS);
+		expect(freezeMsFor(ev("hit", { heavy: true, boss: true, hpMax: 400 }))).toBe(HEAVY_HIT_FREEZE_MS);
+		expect(freezeMsFor(ev("hit", { heavy: true, capped: true }))).toBe(0);
+		expect(freezeMsFor(ev("hit", { capped: true }))).toBe(0);
+		expect(freezeMsFor(ev("capped", { capped: true, heavy: true }))).toBe(0);
+		// a heavy killing blow: its hit and its kill in one frame -> the longer kill freeze (longest wins)
+		const c = new HitstopClock();
+		applyFreezeEvent(ev("hit", { heavy: true, hpMax: 10 }), c, on);
+		expect(c.remainingMs).toBe(HEAVY_HIT_FREEZE_MS);
+		applyFreezeEvent(ev("killed", { hpMax: 10 }), c, on);
+		expect(c.remainingMs).toBe(HEAVY_KILL_FREEZE_MS);
+	});
+
+	it("hurt freeze: heart and lethal ask FEEL_HURT.freezeMs, armor and harmless nothing; settings off ignore it", () => {
+		expect(FEEL_HURT.freezeMs).toBe(40);
+		expect([hurtFreezeMsFor("none"), hurtFreezeMsFor("harmless"), hurtFreezeMsFor("armor")]).toEqual([0, 0, 0]);
+		expect([hurtFreezeMsFor("heart"), hurtFreezeMsFor("lethal")]).toEqual([FEEL_HURT.freezeMs, FEEL_HURT.freezeMs]);
+		const c = new HitstopClock();
+		expect(applyHurtFreeze("armor", c, on)).toBe(0);
+		expect(c.isActive()).toBe(false);
+		expect(applyHurtFreeze("heart", c, on)).toBe(FEEL_HURT.freezeMs);
+		expect(c.remainingMs).toBe(FEEL_HURT.freezeMs);
+		const d = new HitstopClock();
+		applyHurtFreeze("lethal", d, off);
+		applyHurtFreeze("lethal", d, reduced);
+		expect(d.isActive()).toBe(false);
+		expect(d.stats.ignored).toBe(2);
+	});
+
+	it("the rate cap still holds through a finisher combo, a hurt and kills (150 ms per rolling second)", () => {
+		const c = new HitstopClock();
+		const o = newFrameAdvance();
+		let granted = 0;
+		// one second of 60 Hz frames: a heavy hit, a heavy kill and a hurt every 4 frames
+		for (let f = 0; f < 60; f++) {
+			if (f % 4 === 0) {
+				applyFreezeEvent(ev("hit", { heavy: true, hpMax: 10 }), c, on);
+				applyFreezeEvent(ev("killed", { hpMax: 10 }), c, on);
+				applyHurtFreeze("heart", c, on);
+			}
+			c.frame(1 / 60, o);
+			granted = c.stats.grantedMs;
+		}
+		expect(granted).toBeLessThanOrEqual(HITSTOP_WINDOW_BUDGET_MS);
+		expect(c.stats.throttled).toBeGreaterThan(0);
+	});
+
+	it("co-op: the clock never paces a party's sim (simPacerFor), so these freezes are solo only", () => {
+		const c = new HitstopClock();
+		expect(simPacerFor(1, c)).toBe(c);
+		expect(simPacerFor(2, c)).toBe(undefined);
+		expect(simPacerFor(4, c)).toBe(undefined);
+	});
+
+	it("nudges: heavy kick 1 texel down, hurt jolt 2 texels right / left / right; shake off or reduced motion: none", () => {
+		expect(nudgeFor(ev("hit", { heavy: true }), on)).toBe("heavy");
+		expect(nudgeFor(ev("hit", { heavy: true, capped: true }), on)).toBe("none");
+		expect(nudgeFor(ev("hit"), on)).toBe("none");
+		expect(nudgeFor(ev("hit", { heavy: true }), noShake)).toBe("none");
+		expect(nudgeFor(ev("bossDefeated"), noShake)).toBe("none");
+		expect(nudgeFor(ev("bossPhase", { phase: 2 }), noShake)).toBe("none");
+		for (const k of ["harmless", "armor", "heart", "lethal"] as const) {
+			expect(hurtNudgeFor(k, on)).toBe("hurt");
+			expect(hurtNudgeFor(k, noShake)).toBe("none");
+			expect(hurtNudgeFor(k, reduced)).toBe("none");
+		}
+		expect(hurtNudgeFor("none", on)).toBe("none");
+		const o = { x: 0, y: 0 };
+		expect(nudgeOffset("heavy", 0, o)).toEqual({ x: 0, y: -1 });
+		expect(nudgeOffset("heavy", NUDGE_MS.heavy - 1, o)).toEqual({ x: 0, y: -1 });
+		expect(nudgeOffset("heavy", NUDGE_MS.heavy, o)).toEqual({ x: 0, y: 0 });
+		expect(NUDGE_MS.hurt).toBe(FEEL_HURT.nudgeSteps * FEEL_HURT.nudgeStepMs);
+		const xs: number[] = [];
+		for (let t = 0; t < NUDGE_MS.hurt + FEEL_HURT.nudgeStepMs; t += FEEL_HURT.nudgeStepMs) {
+			xs.push(nudgeOffset("hurt", t, o).x);
+			expect(o.y).toBe(0);
+		}
+		const n = FEEL_HURT.nudgeTexels;
+		expect(xs).toEqual([n, -n, n, 0]);
+	});
+
+	it("nudge priority: death > hurt > phase > heavy; a weaker nudge never cuts a stronger one short", () => {
+		const order: NudgeKind[] = ["heavy", "phase", "hurt", "death"];
+		for (let a = 0; a < order.size(); a++) {
+			for (let b = 0; b < order.size(); b++) {
+				expect(nudgeReplaces(order[a], order[b])).toBe(b >= a);
+			}
+			expect(nudgeReplaces("none", order[a])).toBe(true);
+			expect(nudgeReplaces(order[a], "none")).toBe(false);
+		}
 	});
 });

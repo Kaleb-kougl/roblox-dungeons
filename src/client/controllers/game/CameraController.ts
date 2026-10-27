@@ -31,7 +31,8 @@ const RENDER_STEP = "KV_GameCamera";
  * pitch with a narrow FOV (GAME_CAMERA.fovDeg) placed far enough away to show VIEW_TILES_HIGH tiles top to bottom,
  * following the player's INTERPOLATED sim position with exponential damping and snapping to the render-texel grid
  * (web IsoCamera). Snaps straight to the player at every run start. Stands down while spike B runs (KV_SpikeCamera).
- * The freeze frame's 1-render-pixel nudge (boss phase / death; off under reduced motion) is added after the snap.
+ * The freeze frame's whole-render-pixel nudge (boss phase / death, player hurt, heavy hits; off when screenShakeOn is
+ * false: the Screen shake setting or reduced motion) is added after the snap.
  *
  * Co-op spectating (docs/SPECTATE.md): it follows SimController.getViewPlayerIndex(). When that index changes the
  * camera snaps to the new player if they are farther than SPECTATE.snapBeyondTiles from the focus or under reduced

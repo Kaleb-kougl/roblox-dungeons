@@ -33,6 +33,7 @@ Record every ported module in `PROVENANCE.md` (ported module, source path, sourc
 | `docs/BRAMBLE_ART.md` | Mother Bramble (`boss.act1`) as a 2D Demons Elite: state-to-animation mapping, size and budget, tasks BR0-BR7, decisions BD1-BD7 |
 | `docs/ROOM_EDGES.md` | Room edges (dashed floor line where every corridor meets a room, tinted safe / waiting / live): plan, tasks RE1-RE8, decisions RD1-RD9 |
 | `docs/HUD_LAYOUT.md` | In-run HUD footprint (corner panels, full-width band fix, info line to the pause menu, occlusion fade): plan, tasks H1-H9, decisions HD1-HD8 |
+| `docs/FEEL.md` | Game feel pass (hurt flash and jolt, hit flash / hold / push, squash & stretch, roll afterimages, low-health pulse, screen shake setting): plan, tasks J1-J12, decisions JD1-JD13 |
 
 Decision log (deviations from `PLAN.md`):
 - **Art (docs/ART.md).** The theme contract gained a `"sprites"` kind (large pre-rendered cells, 1/4/8/16 screen-space
@@ -179,6 +180,15 @@ Decision log (deviations from `PLAN.md`):
   fade under the action (`HudOcclusionController`, CanvasGroup + bindings). Settings: `DisplaySettings.hudFade`
   (default On, only Off stored, document stays v2) and a 70 % step in `HUD_SCALE_PERCENTS`; one new theme string
   `hud.items.more` and `options.display.hudFade`.
+- **Game feel pass (docs/FEEL.md).** Presentation only (no sim, dungeon, hash, replay or fixture change; lockstep
+  behaviour unchanged). Hurt feedback on the view player (`StateWatch.hurtKind`, moved from the audio watch to
+  `shared/view/watch.ts`): red screen edges in `uiHealth` (`HurtFlashController`, <= 1.33 Hz by `HURT_INVULN_TICKS`), a
+  2-texel `hurt` nudge, a 40 ms solo freeze; a 1 Hz low-health edge pulse while one more hit kills. Heavy hits: 40 ms solo
+  freeze + `heavy` nudge. Enemy hits: rim flash in `uiText`, a sprite hold, a 1-2 texel push (`hitReact.ts`;
+  placeholders flash under ONE more Highlight, `KV_Actors/Flashing`); squash & stretch (sprite views, whole art pixels)
+  and roll / brimstone-charge afterimages (`KV_Actors/Ghosts`). Juice setting `screenShake` (default On, overrides-only;
+  `screenShakeOn` = it and not reduced motion), string `fx.settings.screenShake`. Co-op now drains the hitstop clock
+  every frame (it was never drained, freezing particles after the first kill). No theme contract change.
 
 ## Commands
 

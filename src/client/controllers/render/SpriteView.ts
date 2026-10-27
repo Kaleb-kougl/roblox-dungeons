@@ -9,9 +9,17 @@ import {
 	spriteOutlineVisible,
 	type IsoBasis,
 	type SpriteAnimChoice,
+	type SpriteBillboard,
 	type SpriteClock,
 	type SpriteLayout,
 } from "shared/view";
+import {
+	pushOffsetStuds,
+	roundToArtPixels,
+	spriteRimShown,
+	squashedBillboard,
+	type GhostSnapshot,
+} from "shared/view/fx";
 import { renderPart } from "./placeholders";
 
 const WHITE = new Color3(1, 1, 1);
@@ -40,6 +48,13 @@ const HIDDEN = 1;
  * both labels), the rim is shown (setOutlineShown: the owner hides it at death while the corpse fades through
  * setTransparency, which touches the frame only) and the frame's sheet has an outline. Without `outline` nothing of
  * this runs.
+ *
+ * Squash & stretch (docs/FEEL.md J6): `setScale(sx, sy)` resizes the billboard around the pivot pixel (shared/view/fx
+ * squashedBillboard), each axis snapped to whole art pixels of the drawn cell (roundToArtPixels), written only when the
+ * snapped scale or the cell changes. The billboard is kept as `base` (the current cell's spriteBillboard, recomputed by
+ * placeBillboard) and every Size / StudsOffset write goes through writeBillboard (base x scale + extraDepthStuds): a
+ * hit push (setPushTexels) writes StudsOffsetWorldSpace instead, a separate property, so the two compose.
+ * `snapshot` copies the drawn frame for an afterimage (J7).
  */
 export class SpriteView {
 	readonly anchor: Part;
@@ -66,6 +81,23 @@ export class SpriteView {
 	private tint = WHITE;
 	private transparency = 0;
 	private visible = true;
+	/** Hit reaction (docs/FEEL.md J4): the rim's own colour, the flash colour drawn instead, hold and push. */
+	private rimColor: Color3 | undefined;
+	private rimFlash: Color3 | undefined;
+	private held = false;
+	private pushX = 0;
+	private pushY = 0;
+	private readonly pushStuds = [0, 0, 0];
+	/** Squash (J6): the billboard of the current cell at 1 x 1, the scale asked for and the snapped scale drawn. */
+	private base: SpriteBillboard | undefined;
+	private scaleX = 1;
+	private scaleY = 1;
+	private drawnScaleX = 1;
+	private drawnScaleY = 1;
+	/** The billboard as last written (base x the drawn scale), and the frame's rect, for snapshot (J7). */
+	private drawn: SpriteBillboard | undefined;
+	private rectOffset = Vector2.zero;
+	private rectSize = Vector2.zero;
 
 	constructor(
 		readonly set: SpriteSet,
@@ -113,6 +145,7 @@ export class SpriteView {
 			rim.Size = UDim2.fromScale(1, 1);
 			rim.ResampleMode = label.ResampleMode;
 			rim.ImageColor3 = outline;
+			this.rimColor = outline;
 			rim.ZIndex = ACTOR_OUTLINE.spriteZIndex.outline;
 			rim.Visible = false; // until a frame with an outline image
 			rim.Parent = gui;
@@ -131,6 +164,11 @@ export class SpriteView {
 		this.setTransparency(0);
 		this.setVisible(true);
 		this.setOutlineShown(true);
+		this.setScale(1, 1);
+		this.held = false;
+		this.shownAnim = "";
+		this.shownFrame = -1;
+		this.shownFacing = -1;
 		this.gui.Enabled = true;
 	}
 
@@ -141,6 +179,9 @@ export class SpriteView {
 
 	/** Shows `choice` facing the sim direction (dirX, dirZ) under the camera `basis`; `dtSec` steps the clock. */
 	update(choice: SpriteAnimChoice, dirX: number, dirZ: number, basis: IsoBasis, dtSec: number): void {
+		// Hit hold (setHold): frame, facing and clock stay; only once a frame was drawn since reset (a pooled view must
+		// not hold the previous actor's last frame).
+		if (this.held && this.shownFrame >= 0) return;
 		const set = this.set;
 		const facing = spriteFacing(dirX, dirZ, set.facings, basis, this.facing);
 		this.facing = facing;
@@ -158,6 +199,8 @@ export class SpriteView {
 		}
 		this.label.ImageRectOffset = f.offset;
 		this.label.ImageRectSize = f.size;
+		this.rectOffset = f.offset;
+		this.rectSize = f.size;
 		const rim = this.outline;
 		if (rim !== undefined) {
 			const image = f.outlineImage;
@@ -175,9 +218,8 @@ export class SpriteView {
 
 	/** Billboard Size / StudsOffset for `layout` (the pivot pixel on the anchor). */
 	private placeBillboard(layout: SpriteLayout): void {
-		const b = spriteBillboard(layout);
-		this.gui.Size = new UDim2(b.w, 0, b.h, 0);
-		this.gui.StudsOffset = new Vector3(b.offsetX, b.offsetY, b.offsetZ + this.extraDepthStuds);
+		this.base = spriteBillboard(layout);
+		this.writeBillboard();
 	}
 
 	/** Per-sheet cells: re-places the billboard when the drawn frame's cell differs from the one it is sized for. */
@@ -197,10 +239,95 @@ export class SpriteView {
 		this.label.ImageColor3 = color;
 	}
 
+	/**
+	 * Hit flash (docs/FEEL.md J4): the rim label shows `color` instead of the outline colour, drawn even where the rim
+	 * is hidden (setOutlineShown false: a corpse's killing blow, KV_EnemyOutline off); undefined ends it. No-op without
+	 * `outline` or on a sheet with no outline image.
+	 */
+	setRimFlash(color: Color3 | undefined): void {
+		if (color === this.rimFlash) return;
+		this.rimFlash = color;
+		const rim = this.outline;
+		if (rim === undefined) return;
+		const shown = color ?? this.rimColor;
+		if (shown !== undefined) rim.ImageColor3 = shown;
+		this.syncOutline();
+	}
+
+	/** Hit hold (docs/FEEL.md J4): while true, update() leaves the frame, facing and sprite clock as they are. */
+	setHold(hold: boolean): void {
+		this.held = hold;
+	}
+
+	/**
+	 * Hit push (docs/FEEL.md J4): (x, y) whole render texels along `basis`'s right / up, as the billboard's
+	 * StudsOffsetWorldSpace (the anchor is never rotated, so that is world space; StudsOffset keeps the pivot). Written
+	 * only on change.
+	 */
+	setPushTexels(x: number, y: number, basis: IsoBasis): void {
+		if (x === this.pushX && y === this.pushY) return;
+		this.pushX = x;
+		this.pushY = y;
+		const o = pushOffsetStuds(x, y, basis, this.pushStuds);
+		this.gui.StudsOffsetWorldSpace = new Vector3(o[0], o[1], o[2]);
+	}
+
 	setTransparency(t: number): void {
 		if (t === this.transparency) return;
 		this.transparency = t;
 		this.label.ImageTransparency = t;
+	}
+
+	/**
+	 * Squash & stretch (J6): draws the billboard `sx` x `sy` times its size around the pivot (1 x 1: as placed), each
+	 * axis snapped to whole art pixels of the drawn cell. Written only when the snapped scale changes.
+	 */
+	setScale(sx: number, sy: number): void {
+		if (sx === this.scaleX && sy === this.scaleY) return;
+		this.scaleX = sx;
+		this.scaleY = sy;
+		if (
+			roundToArtPixels(sx, this.cellW) === this.drawnScaleX &&
+			roundToArtPixels(sy, this.cellH) === this.drawnScaleY
+		) {
+			return;
+		}
+		this.writeBillboard();
+	}
+
+	/** Size / StudsOffset: the current cell's billboard x the snapped scale, plus extraDepthStuds (see the class doc). */
+	private writeBillboard(): void {
+		const base = this.base;
+		if (base === undefined) return;
+		const sx = roundToArtPixels(this.scaleX, this.cellW);
+		const sy = roundToArtPixels(this.scaleY, this.cellH);
+		this.drawnScaleX = sx;
+		this.drawnScaleY = sy;
+		const b = squashedBillboard(base, sx, sy);
+		this.drawn = b;
+		this.gui.Size = new UDim2(b.w, 0, b.h, 0);
+		this.gui.StudsOffset = new Vector3(b.offsetX, b.offsetY, b.offsetZ + this.extraDepthStuds);
+	}
+
+	/**
+	 * Afterimage (J7): the frame as drawn now (image, rect, billboard size and offset with the squash) into `out`;
+	 * false (out untouched) before the first frame and while hidden (setVisible false: a blink leaves no ghost).
+	 */
+	snapshot(out: GhostSnapshot): boolean {
+		const b = this.drawn;
+		if (b === undefined || this.image === "" || !this.visible) return false;
+		out.image = this.image;
+		out.rectX = this.rectOffset.X;
+		out.rectY = this.rectOffset.Y;
+		out.rectW = this.rectSize.X;
+		out.rectH = this.rectSize.Y;
+		out.w = b.w;
+		out.h = b.h;
+		out.offsetX = b.offsetX;
+		out.offsetY = b.offsetY;
+		out.offsetZ = b.offsetZ + this.extraDepthStuds;
+		out.resample = this.set.resample;
+		return true;
 	}
 
 	setVisible(v: boolean): void {
@@ -221,7 +348,11 @@ export class SpriteView {
 	private syncOutline(): void {
 		const rim = this.outline;
 		if (rim === undefined) return;
-		const drawn = spriteOutlineVisible(this.visible, this.outlineShown, this.outlineImage);
+		const drawn = spriteOutlineVisible(
+			this.visible,
+			spriteRimShown(this.outlineShown, this.rimFlash !== undefined),
+			this.outlineImage,
+		);
 		if (drawn === this.outlineDrawn) return;
 		this.outlineDrawn = drawn;
 		rim.Visible = drawn;

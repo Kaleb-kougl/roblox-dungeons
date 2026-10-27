@@ -149,6 +149,15 @@ function JuiceTab(props: { order: number; actions: HudActions; selectable: boole
 			/>
 			<SettingRow
 				order={4}
+				name="screenShake"
+				selectable={sel}
+				label={str(SETTINGS_STRINGS.screenShake)}
+				value={s.screenShake}
+				options={onOff}
+				onPick={(v) => pick({ screenShake: v })}
+			/>
+			<SettingRow
+				order={5}
 				name="particles"
 				selectable={sel}
 				label={str(SETTINGS_STRINGS.particles)}
@@ -160,7 +169,7 @@ function JuiceTab(props: { order: number; actions: HudActions; selectable: boole
 				onPick={(v) => pick({ particles: v })}
 			/>
 			<SettingRow
-				order={5}
+				order={6}
 				name="reducedMotion"
 				selectable={sel}
 				label={str(SETTINGS_STRINGS.reducedMotion)}
@@ -170,7 +179,7 @@ function JuiceTab(props: { order: number; actions: HudActions; selectable: boole
 			/>
 			<Text
 				fill={true}
-				order={6}
+				order={7}
 				size={HUD_VIEW.smallText}
 				color="uiTextDim"
 				text={str(SETTINGS_STRINGS.system, { value: system ? on : off })}

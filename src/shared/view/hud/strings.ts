@@ -38,6 +38,8 @@ export const HUD_STRINGS = {
 	replayHint: "hud.debug.replayHint",
 	replayMatch: "hud.debug.replayMatch",
 	replayMismatch: "hud.debug.replayMismatch",
+	/** Co-op, KV_Debug: the input lead and press -> stepped latency (docs/FEEL.md J9, shared/view latencyProbe.ts). */
+	netProbe: "hud.debug.net",
 	cap: "fx.cap",
 	score: "hud.score",
 	combo: "hud.score.combo",
@@ -64,6 +66,8 @@ export const SETTINGS_STRINGS = {
 	healthBars: "fx.settings.healthBars",
 	damageNumbers: "fx.settings.damageNumbers",
 	freezeFrame: "fx.settings.freezeFrame",
+	/** Port (docs/FEEL.md J8): the Screen shake row. */
+	screenShake: "fx.settings.screenShake",
 	particles: "fx.settings.particles",
 	reducedMotion: "fx.settings.reducedMotion",
 	on: "fx.settings.on",

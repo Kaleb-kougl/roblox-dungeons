@@ -358,6 +358,7 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		// Roblox-port additions (task 8 part B: HUD, juice panel, verdict and debug lines).
 		"fx.settings.reset": "Reset to defaults",
 		"fx.settings.close": "Close",
+		"fx.settings.screenShake": "Screen shake",
 		"fx.settings.system": "(system: {value})",
 		"fx.settings.offline": "Not saved yet: the server has not answered",
 		"fx.cap": "CAP",
@@ -442,6 +443,8 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		"hud.debug.replayHint": "{key}: replay check",
 		"hud.debug.replayMatch": "replay match @ {ticks}",
 		"hud.debug.replayMismatch": "replay MISMATCH @ {ticks}",
+		"hud.debug.net":
+			"co-op lead {lead}t {leadMs}ms · press->step {last}ms avg {mean} max {max} n{count} · late {late} miss {misses}",
 		// M2 scoring (score panel, combo meter, score pops, the results breakdown).
 		"hud.score": "Score",
 		"hud.score.combo": "x{combo}",

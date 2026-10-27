@@ -146,6 +146,14 @@ export class LockstepClient implements RunView {
 		return this.lead;
 	}
 
+	/**
+	 * The tick the next sampled input goes out for: (the tick just stepped) + lead, monotonic. Inside pump's `sample()`
+	 * it is the tick that input is sent for (the KV_Debug latency probe, shared/view latencyProbe.ts).
+	 */
+	nextInputTick(): number {
+		return math.max(this.lastSentTick + 1, this.state.tick + this.lead);
+	}
+
 	/** Why the stream broke (a gap or a malformed batch), if it did. */
 	brokenReason(): string | undefined {
 		return this.broken;
@@ -272,7 +280,7 @@ export class LockstepClient implements RunView {
 				break;
 			}
 			// The local input for tick (next tick + lead), monotonic.
-			const target = math.max(this.lastSentTick + 1, state.tick + this.lead);
+			const target = this.nextInputTick();
 			if (outgoing.size() > 0 && target !== outgoingFirst + outgoing.size()) flushInputs();
 			if (outgoing.size() === 0) outgoingFirst = target;
 			const f = copyInput(sample());
