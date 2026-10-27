@@ -193,6 +193,27 @@ describe("hit reaction", () => {
 		expect(s.look(3, 4, BOSS_DEATH_FREEZE_MS / MS - D, 1).hold).toBe(true);
 	});
 
+	it("a hit hold starts only when none runs: a hit stream never keeps the sprite held", () => {
+		const s = new HitReactSlots(BASIS);
+		s.onEvent(ev(), 0, undefined);
+		// A second hit inside the first hold does not extend it.
+		s.onEvent(ev(), FEEL_HIT.holdSec / 2, undefined);
+		expect(s.look(0, 1, FEEL_HIT.holdSec + D, 1).hold).toBe(false);
+		// After it ends, the next hit holds again.
+		s.onEvent(ev(), FEEL_HIT.holdSec + 2 * D, undefined);
+		expect(s.look(0, 1, FEEL_HIT.holdSec + 3 * D, 1).hold).toBe(true);
+	});
+
+	it("killHolds false (Freeze frame off) drops the kill and boss-death holds, keeps the hit's", () => {
+		const s = new HitReactSlots(BASIS);
+		s.onEvent(ev(), 0, undefined, false);
+		s.onEvent(ev({ type: "killed" }), 0, undefined, false);
+		expect(s.look(0, 1, FEEL_HIT.holdSec - D, 1).hold).toBe(true);
+		expect(s.look(0, 1, FEEL_HIT.holdSec + D, 1).hold).toBe(false);
+		s.onEvent(ev({ type: "bossDefeated", slot: 3, actorId: 4, boss: true }), 0, undefined, false);
+		expect(s.look(3, 4, 0, 1).hold).toBe(false);
+	});
+
 	it("reduced motion (motion 0) shows the flash only", () => {
 		const s = new HitReactSlots(BASIS);
 		s.onEvent(ev({ heavy: true }), 0, point(-1, 0));

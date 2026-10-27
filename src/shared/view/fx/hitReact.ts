@@ -175,9 +175,10 @@ export class HitReactSlots {
 	/**
 	 * One tracker event at `now`. `toward` is the nearest living player's position (nearestLivingPlayer), undefined
 	 * when there is none (no push). 'reset' clears every slot; a non-revived 'spawned' starts its slot fresh; 'hit',
-	 * 'capped', 'killed' and 'bossDefeated' react. Other events are ignored.
+	 * 'capped', 'killed' and 'bossDefeated' react. Other events are ignored. `killHolds` false (the Freeze frame setting
+	 * off: freezeFrameOn) drops the kill / boss-death holds; hit holds, flashes and pushes stay.
 	 */
-	onEvent(e: HitReactEvent, now: number, toward: HitReactPoint | undefined): void {
+	onEvent(e: HitReactEvent, now: number, toward: HitReactPoint | undefined, killHolds = true): void {
 		if (e.type === "reset") {
 			this.clear();
 			return;
@@ -197,9 +198,10 @@ export class HitReactSlots {
 		if (isHit || isCapped) {
 			if (now - this.flashAt[i] >= FEEL_HIT.minSec - EPS) this.flashAt[i] = now;
 		}
-		if (holdMs > 0) this.extendHold(i, now + holdMs / MS);
+		if (holdMs > 0 && killHolds) this.extendHold(i, now + holdMs / MS);
 		if (!isHit || isCapped) return;
-		this.extendHold(i, now + FEEL_HIT.holdSec);
+		// A hit hold starts only when none runs (a focused target under a hit stream would otherwise never animate).
+		if (this.holdUntil[i] <= now) this.extendHold(i, now + FEEL_HIT.holdSec);
 		if (e.boss || toward === undefined) return;
 		const texels = e.heavy ? FEEL_HIT.heavyPushTexels : FEEL_HIT.pushTexels;
 		this.startPush(i, e.x - toward.x, e.z - toward.z, texels, now);

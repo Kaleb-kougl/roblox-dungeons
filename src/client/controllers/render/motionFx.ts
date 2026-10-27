@@ -94,7 +94,7 @@ export class MotionFx {
 				this.clear();
 				return;
 			case "hit":
-				if (!e.boss || FEEL_SQUASH.bossHits) this.actorSquash.start(e.slot, e.actorId, "hit");
+				if (!e.capped && (!e.boss || FEEL_SQUASH.bossHits)) this.actorSquash.start(e.slot, e.actorId, "hit");
 				return;
 			case "spawned":
 				this.actorSquash.start(e.slot, e.actorId, "spawn");

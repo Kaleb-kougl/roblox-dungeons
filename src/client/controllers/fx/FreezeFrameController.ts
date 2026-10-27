@@ -70,7 +70,8 @@ export class FreezeFrameController implements OnStart {
 			const clock = this.sim.hitstop;
 			this.hurtFrame(settings);
 			if (clock.isActive() && !freezeFrameOn(settings)) clock.clear();
-			if (clock.isActive() && !this.solo()) clock.frame(dt, this.coopAdvance);
+			// Co-op: drained every frame (not only while active): frame() also advances the rate cap's time base.
+			if (!this.solo()) clock.frame(dt, this.coopAdvance);
 			this.advanceNudge(dt, settings);
 		});
 	}

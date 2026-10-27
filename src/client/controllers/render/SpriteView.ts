@@ -53,7 +53,7 @@ const HIDDEN = 1;
  * squashedBillboard), each axis snapped to whole art pixels of the drawn cell (roundToArtPixels), written only when the
  * snapped scale or the cell changes. The billboard is kept as `base` (the current cell's spriteBillboard, recomputed by
  * placeBillboard) and every Size / StudsOffset write goes through writeBillboard (base x scale + extraDepthStuds): a
- * later additive offset (e.g. a hit push) should be added there, on top of the squashed offset, so the two compose.
+ * hit push (setPushTexels) writes StudsOffsetWorldSpace instead, a separate property, so the two compose.
  * `snapshot` copies the drawn frame for an afterimage (J7).
  */
 export class SpriteView {
@@ -165,6 +165,10 @@ export class SpriteView {
 		this.setVisible(true);
 		this.setOutlineShown(true);
 		this.setScale(1, 1);
+		this.held = false;
+		this.shownAnim = "";
+		this.shownFrame = -1;
+		this.shownFacing = -1;
 		this.gui.Enabled = true;
 	}
 
@@ -175,7 +179,9 @@ export class SpriteView {
 
 	/** Shows `choice` facing the sim direction (dirX, dirZ) under the camera `basis`; `dtSec` steps the clock. */
 	update(choice: SpriteAnimChoice, dirX: number, dirZ: number, basis: IsoBasis, dtSec: number): void {
-		if (this.held) return; // hit hold (setHold): frame, facing and clock stay
+		// Hit hold (setHold): frame, facing and clock stay; only once a frame was drawn since reset (a pooled view must
+		// not hold the previous actor's last frame).
+		if (this.held && this.shownFrame >= 0) return;
 		const set = this.set;
 		const facing = spriteFacing(dirX, dirZ, set.facings, basis, this.facing);
 		this.facing = facing;

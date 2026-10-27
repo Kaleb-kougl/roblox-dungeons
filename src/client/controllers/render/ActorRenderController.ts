@@ -55,6 +55,7 @@ import {
 import {
 	FEEL_HIT,
 	HitReactSlots,
+	freezeFrameOn,
 	motionScale,
 	nearestLivingPlayer,
 	pushOffsetStuds,
@@ -705,13 +706,14 @@ export class ActorRenderController implements OnStart {
 		const state = this.sim.getState();
 		const alpha = this.sim.getAlpha();
 		const now = this.hitNow;
+		const killHolds = freezeFrameOn(settings);
 		for (let i = 0; i < events.count(); i++) {
 			const e = events.at(i);
 			const toward =
 				e.type === "hit" && state !== undefined && nearestLivingPlayer(state, alpha, e.x, e.z, this.hitToward)
 					? this.hitToward
 					: undefined;
-			this.hitReact.onEvent(e, now, toward);
+			this.hitReact.onEvent(e, now, toward, killHolds);
 		}
 	}
 
