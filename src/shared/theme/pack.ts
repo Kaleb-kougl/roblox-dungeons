@@ -80,7 +80,13 @@ export interface SpriteFrame {
 	 */
 	readonly outlineImage?: string;
 	readonly offset: Vector2;
+	/** The cell size (ImageRectSize): the frame's sheet's own with per-sheet cells, else the set's frameW x frameH. */
 	readonly size: Vector2;
+	/**
+	 * The feet in this cell, pixels from its top-left (SpriteFrameRect.pivot): the sheet's own with per-sheet cells,
+	 * else the set's pivot. The renderer re-sizes the billboard when size or pivot changes (SpriteView).
+	 */
+	readonly pivot: Readonly<Pivot>;
 }
 
 /**
@@ -145,6 +151,7 @@ class PackSpriteSet implements SpriteSet {
 			outlineImage: r.outlineAssetId,
 			offset: new Vector2(r.x, r.y),
 			size: new Vector2(r.w, r.h),
+			pivot: this.layout.cell(r.sheet).pivot,
 		};
 	}
 }

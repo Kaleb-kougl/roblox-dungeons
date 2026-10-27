@@ -33,6 +33,15 @@ import type { RobloxAssetId } from "../../types";
  * names were truncated in Asset Manager ("swarmer-deat...", "swarmer-mov..."); each is the only file left with that prefix.
  * sniper-idle.png / sniper-idle-outline.png uploaded 2026-10-26 1:16 PM by k9kbdev (docs/SNIPER_ART.md SN6: 126x93
  * cells, 1008x744 atlas), transcribed from an Asset Manager screenshot.
+ * bruiser-*.png (3 sheets + 3 outlines, docs/DEMON_ART.md DA6) and bramble-*.png (7 sheets + 7 outlines,
+ * docs/BRAMBLE_ART.md BR6) uploaded 2026-10-26 3:48 PM by k9kbdev, transcribed from Asset Manager screenshots (the
+ * SmallScaleInt "Top-down Demons" pack; licence in THIRD_PARTY_NOTICES.md).
+ * The same batch uploaded the 14 demonlord-*.png sheets (Lords of Pain Demonlord, docs/BOSS_DEMONLORD.md); no sprite
+ * set reads them yet, so they are not listed above (vale.spec: every ID must name an art/build file). Their IDs, for
+ * when `boss.demonlord` lands: idle 88764271765384, idle-outline 103849445891803, move 70775680415093, move-outline
+ * 110100254787435, attack 71694718471521, attack-outline 102763949876820, attack2 110239070941569, attack2-outline
+ * 82560650525332, intro 117876056911897, intro-outline 86257913427010, taunt 140374029101007, taunt-outline
+ * 81556574053660, death 73191082516513, death-outline 89185443391803.
  * Audio: 38 of the 54 art/build/audio/*.ogg files uploaded 2026-10-26 11:08 by k9kbdev (Asset Manager Bulk Import,
  * built by audio:build with ffmpeg 6.1.1), transcribed from Asset Manager screenshots. Not yet here: amb-b1, the nine
  * music-*.ogg, sfx-depth-up, sfx-enemy-hurt-3 / -4 / -6, sfx-enemy-telegraph, sfx-player-shoot, sfx-stairwell-open.
@@ -41,6 +50,26 @@ export const VALE_ASSET_IDS: Readonly<Record<string, RobloxAssetId>> = {
 	"amb-b3.ogg": "rbxassetid://123793639672129",
 	"amb-b4.ogg": "rbxassetid://106702179717675",
 	"amb-b5.ogg": "rbxassetid://113010219687537",
+	"bramble-attack1-outline.png": "rbxassetid://107870513920568",
+	"bramble-attack1.png": "rbxassetid://108836550185712",
+	"bramble-attack2-outline.png": "rbxassetid://139984831911345",
+	"bramble-attack2.png": "rbxassetid://91867315426425",
+	"bramble-attack4-outline.png": "rbxassetid://106157127639141",
+	"bramble-attack4.png": "rbxassetid://104705525907752",
+	"bramble-death-outline.png": "rbxassetid://127959662776491",
+	"bramble-death.png": "rbxassetid://137116588640646",
+	"bramble-idle-outline.png": "rbxassetid://115426512435787",
+	"bramble-idle.png": "rbxassetid://135664136659822",
+	"bramble-move-outline.png": "rbxassetid://95133127071099",
+	"bramble-move.png": "rbxassetid://102200134129141",
+	"bramble-taunt-outline.png": "rbxassetid://92323505688562",
+	"bramble-taunt.png": "rbxassetid://86735316800266",
+	"bruiser-attack-outline.png": "rbxassetid://76264421691475",
+	"bruiser-attack.png": "rbxassetid://104607301796555",
+	"bruiser-body-outline.png": "rbxassetid://80696842916743",
+	"bruiser-body.png": "rbxassetid://139345385245627",
+	"bruiser-death-outline.png": "rbxassetid://96190576749559",
+	"bruiser-death.png": "rbxassetid://110099154312685",
 	"decor-atlas.png": "rbxassetid://107968620179940",
 	"decor-mote.png": "rbxassetid://108281638823690",
 	"sfx-boss-death.ogg": "rbxassetid://98231076745245",

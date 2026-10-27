@@ -21,8 +21,9 @@
  *
  * World art (decor props, effects, breakables; docs/DECOR.md R5) has its own section below ("World art").
  *
- * Every sprite set has one cell size and one pivot (SpriteSetAsset): each frame of the set is cropped to the union
- * bounding box (alpha > noiseAlpha) over all its animations and facings, plus `pad`. Its texel density comes from
+ * Every sprite set has one cell size and one pivot (SpriteSetAsset; but see per-sheet cells below): each frame of the
+ * set is cropped to the union bounding box (alpha > noiseAlpha) over all its animations and facings, plus `pad`. Its
+ * texel density comes from
  * exactly one of `bodyTiles` (the measured body height / bodyTiles) or `pixelsPerTileFrom` (another sprite set's id:
  * that set's pixelsPerTile, exactly, for art of one pack drawn at one scale); sets build in dependency order, and a
  * missing or cyclic reference fails the build. `lockAlso` (optional, `frames` sources): extra animations
@@ -30,6 +31,21 @@
  * SpriteSetAsset convention (zeroDeg 0, ccw true; facing d at d * 360 / count degrees from screen right). Every
  * output is alpha-bled: transparent pixels take the colour of the nearest opaque ones (alpha unchanged), so Roblox's
  * bilinear filter does not pull a white or black halo in from under the transparent pixels.
+ *
+ * Per-sheet cells (set `cells: "perSheet"`; sprite contract v2 SpriteSheetImage.frameW / frameH / pivot, docs/DEMON_ART.md
+ * DD4): each sheet is instead cropped to the union box of ITS OWN animations (every kept frame and facing, alpha >
+ * noiseAlpha, plus the pixel up-left of the set's pivot point, so the pivot always lies inside the cell), plus `pad`,
+ * and layout.ts gives that sheet its own frameW / frameH / pivot. The pivot is measured once for the set (as above) and
+ * is the same source point in every cell (the set's pivot translated by the sheet's crop offset), so the feet stay
+ * planted when the animation changes. The set-level frameW / frameH / pivot stay the whole set's union cell, exactly as
+ * without the option; pixelsPerTile stays per set. Absent: one cell for every sheet of the set.
+ *
+ * Layered grid sources (`source.layers`, docs/DEMON_ART.md DD3): a list of sub-folders of `source.dir`, BOTTOM TO TOP,
+ * "" = `source.dir` itself; e.g. ["Shadows", ""] draws the body sheet over the same-named sheet in Shadows/. Each
+ * animation's sheet is the composite of `file` from every layer (straight-alpha "over" with premultiplied integer
+ * maths: compositeOver), made before anything else reads it (noiseAlpha, crop boxes, pivot, outline). Every layer file
+ * must exist and have the first layer's size; sourceFiles (so the lock and its check) lists every one. Absent: the one
+ * sheet `source.dir/file`, read as it is.
  *
  * Outline sheets (set `outline: { widthPx }`, enemy contrast rim): per cell (never across a cell edge), the body mask
  * (the pivot's: alpha > pivot.bodyAlpha and max(R, G, B) > pivot.bodyMinRgb, so the baked black shadow is left out)
@@ -43,7 +59,8 @@
  * full resolution and grown to whole k-blocks, then / k; `pad`, the cell, the outline (and its pad rule) are in
  * downscaled (atlas) pixels. The pivot and body height are measured at full resolution (the body cuts are tuned
  * there) and / k: pivot x rounded, y the bottom edge of the downscaled row holding the lowest body row (ceil), so
- * pixelsPerTile = height / k / bodyTiles. Absent or 1: exactly the full-resolution path.
+ * pixelsPerTile = height / k / bodyTiles. With per-sheet cells, each sheet's own box is grown and / k the same way
+ * (and the pivot point is the downscaled one). Absent or 1: exactly the full-resolution path.
  *
  * Deterministic: same inputs -> byte-identical outputs (sorted iteration, integer maths on pixels, fixed deflate
  * options, no timestamps). Stale files in art/build are removed.
@@ -334,6 +351,70 @@ function frameFileName(set, anim, d) {
 	return (frame) => `${set.source.dir}/${anim.folder}/${dir}/${anim.folder}_${dir}_${angle}_${frame}.png`;
 }
 
+/**
+ * A grid source's `layers` (sub-folders of `dir`, bottom to top; "" = `dir` itself; see the header), or null when it
+ * has none. Throws on a malformed list or on `layers` outside a grid source.
+ */
+function gridLayers(what, source) {
+	const layers = source.layers;
+	if (layers === undefined) return null;
+	if (source.type !== "grid") throw new Error(`${what}: source.layers needs a grid source, not ${source.type}`);
+	if (!Array.isArray(layers) || layers.length === 0) {
+		throw new Error(`${what}: source.layers must be a non-empty array of sub-folders of source.dir, bottom to top ("" = source.dir itself)`);
+	}
+	const seen = new Set();
+	for (const l of layers) {
+		const bad =
+			typeof l !== "string" || l.includes("\\") || (l !== "" && l.split("/").some((part) => part === "" || part === "." || part === ".."));
+		if (bad) throw new Error(`${what}: source.layers entry ${JSON.stringify(l)} must be "" or a relative sub-folder of source.dir`);
+		if (seen.has(l)) throw new Error(`${what}: source.layers lists ${JSON.stringify(l)} twice`);
+		seen.add(l);
+	}
+	return layers;
+}
+
+/** The art/vendor-relative files of a grid animation's sheet, bottom layer first (one file without `layers`). */
+function gridFiles(what, source, file) {
+	const layers = gridLayers(what, source);
+	if (!layers) return [`${source.dir}/${file}`];
+	return layers.map((l) => (l === "" ? `${source.dir}/${file}` : `${source.dir}/${l}/${file}`));
+}
+
+/** Composited layered sheets by their file list (see gridSheet). Shared rasters: never mutate. */
+const layeredCache = new Map();
+
+/**
+ * A grid animation's sheet: the file as it is without `layers`; with them, the layers composited bottom to top over a
+ * transparent raster (compositeOver at full opacity). A missing layer or one of another size fails.
+ */
+function gridSheet(what, source, file) {
+	const files = gridFiles(what, source, file);
+	if (source.layers === undefined) return readPng(files[0]);
+	const key = files.join("\n");
+	let img = layeredCache.get(key);
+	if (img) return img;
+	for (const rel of files) {
+		if (!pngCache.has(rel) && !fs.existsSync(path.join(VENDOR, rel))) throw new Error(`${what}: layer file ${rel} is missing. ${missingHint(rel)}`);
+	}
+	for (const rel of files) {
+		const layer = readPng(rel);
+		if (!img) img = raster(layer.w, layer.h);
+		else if (layer.w !== img.w || layer.h !== img.h) {
+			throw new Error(`${what}: layer ${rel} is ${layer.w}x${layer.h}, but ${files[0]} is ${img.w}x${img.h} (layers must be the same size)`);
+		}
+		compositeOver(layer, img, 0, 0, MILLE);
+	}
+	layeredCache.set(key, img);
+	return img;
+}
+
+/** A set's `cells` option: "set" (absent: one cell for the set) or "perSheet" (each sheet its own; see the header). */
+function cellsMode(id, set) {
+	if (set.cells === undefined) return "set";
+	if (set.cells === "perSheet") return "perSheet";
+	throw new Error(`${id}: cells must be "perSheet" (each sheet trimmed to its own animations) or absent (one cell for the set), got ${JSON.stringify(set.cells)}`);
+}
+
 /** Every source file the config reads, sorted. */
 function sourceFiles(config) {
 	const files = new Set();
@@ -342,7 +423,7 @@ function sourceFiles(config) {
 		for (const name of Object.keys(set.animations).sort()) {
 			const anim = set.animations[name];
 			if (anim.cellsOf) continue;
-			if (set.source.type === "grid") files.add(`${set.source.dir}/${anim.file}`);
+			if (set.source.type === "grid") for (const f of gridFiles(id, set.source, anim.file)) files.add(f);
 			else for (let d = 0; d < set.facingCount; d++) for (const f of anim.frames) files.add(frameFileName(set, anim, d)(f));
 		}
 		for (const name of Object.keys(set.lockAlso || {}).sort()) {
@@ -410,7 +491,7 @@ function checkLock(config) {
 function sourceRegion(set, anim, d, frame) {
 	const { source } = set;
 	if (source.type === "grid") {
-		const img = readPng(`${source.dir}/${anim.file}`);
+		const img = gridSheet(anim.file, source, anim.file);
 		const cols = Math.floor(img.w / source.frameW);
 		const rows = Math.floor(img.h / source.frameH);
 		const row = set.rowForFacing[d];
@@ -515,22 +596,30 @@ function buildSpriteSet(id, set, built) {
 	const realNames = Object.keys(set.animations).filter((n) => !set.animations[n].cellsOf);
 	const outline = outlineConfig(id, set);
 	const k = spriteDownscale(id, set);
+	const perSheet = cellsMode(id, set) === "perSheet";
+	gridLayers(id, set.source); // a malformed `layers` fails here, before any file is read
 
-	// 1. union crop box (source-frame coordinates) over every kept frame of every real animation and facing
+	// 1. union crop box (source-frame coordinates) over every kept frame of every real animation and facing; with
+	// per-sheet cells, each animation's own box is kept for its sheet's crop
 	let box = null;
+	const animBoxes = new Map();
 	for (const name of realNames) {
 		const anim = set.animations[name];
+		let animBox = null;
 		for (let d = 0; d < count; d++) {
 			for (const f of anim.frames) {
 				const r = sourceRegion(set, anim, d, f);
-				box = unionBox(box, alphaBounds(r.img, r.x, r.y, r.w, r.h, set.noiseAlpha));
+				animBox = unionBox(animBox, alphaBounds(r.img, r.x, r.y, r.w, r.h, set.noiseAlpha));
 			}
 		}
+		animBoxes.set(name, animBox);
+		box = unionBox(box, animBox);
 	}
 	if (!box) throw new Error(`${id}: no visible pixels`);
 	// downscale k: the box grows to whole k-blocks (every downscaled pixel with any kept source pixel is inside it),
 	// then everything below is in downscaled pixels: the box / k, the origin, the cell, the pad, the outline.
-	const cropBox = k === 1 ? box : [Math.floor(box[0] / k), Math.floor(box[1] / k), Math.floor(box[2] / k), Math.floor(box[3] / k)];
+	const blocks = (b) => (k === 1 ? b : [Math.floor(b[0] / k), Math.floor(b[1] / k), Math.floor(b[2] / k), Math.floor(b[3] / k)]);
+	const cropBox = blocks(box);
 	const pad = set.pad;
 	const originX = cropBox[0] - pad;
 	const originY = cropBox[1] - pad;
@@ -569,7 +658,9 @@ function buildSpriteSet(id, set, built) {
 	const body = measureBody(m.animation, m.facing, m.frame);
 	// Measured on the full-resolution source (the body cuts are tuned there), then / k: x rounded, y the bottom edge
 	// of the downscaled pixel row holding the lowest body row (ceil), height and pixelsPerTile in downscaled pixels.
-	const pivot = k === 1 ? { x: Math.round(body.feetX) - originX, y: body.feetY - originY } : { x: Math.round(body.feetX / k) - originX, y: Math.ceil(body.feetY / k) - originY };
+	/** The pivot point in source-frame coordinates (/ k when downscaled): the same point in every cell of the set. */
+	const pivotAt = k === 1 ? { x: Math.round(body.feetX), y: body.feetY } : { x: Math.round(body.feetX / k), y: Math.ceil(body.feetY / k) };
+	const pivot = { x: pivotAt.x - originX, y: pivotAt.y - originY };
 	const pixelsPerTile = setPixelsPerTile(id, set, body.height / k, built, k);
 	const sanity = [];
 	for (let d = 0; d < count; d++) {
@@ -577,12 +668,14 @@ function buildSpriteSet(id, set, built) {
 		sanity.push(`${d}:(${s.feetX / k - originX},${s.feetY / k - originY})h${s.height / k}`);
 	}
 
-	// 3. sheets: each sheet holds its animations back to back, facing-major
+	// 3. sheets: each sheet holds its animations back to back, facing-major, in the set's cell or (per-sheet cells)
+	// in the union box of its own animations plus the pixel up-left of the pivot point, so the pivot stays inside
 	const sheets = [];
 	const animations = {};
 	set.sheets.forEach((sheetDef, sheetIndex) => {
 		let cells = 0;
 		const placed = [];
+		let sheetBox = null;
 		for (const name of sheetDef.animations) {
 			const anim = set.animations[name];
 			if (!anim || anim.cellsOf) throw new Error(`${id}: sheet ${sheetDef.name} lists ${name}, which is not a real animation`);
@@ -590,23 +683,34 @@ function buildSpriteSet(id, set, built) {
 			animations[name] = { sheet: sheetIndex, start: cells, frames: anim.frames.length, fps: anim.fps, loop: anim.loop };
 			placed.push({ name, anim, start: cells });
 			cells += anim.frames.length * count;
+			sheetBox = unionBox(sheetBox, animBoxes.get(name));
 		}
-		const { cols, rows } = chooseGrid(cells, frameW, frameH, `${id} sheet ${sheetDef.name}`);
-		const img = raster(cols * frameW, rows * frameH);
+		let cell = { originX, originY, frameW, frameH, pivot };
+		if (perSheet) {
+			const b = unionBox(blocks(sheetBox), [pivotAt.x - 1, pivotAt.y - 1, pivotAt.x - 1, pivotAt.y - 1]);
+			const ox = b[0] - pad;
+			const oy = b[1] - pad;
+			cell = { originX: ox, originY: oy, frameW: b[2] - b[0] + 1 + 2 * pad, frameH: b[3] - b[1] + 1 + 2 * pad, pivot: { x: pivotAt.x - ox, y: pivotAt.y - oy } };
+		}
+		const cw = cell.frameW;
+		const ch = cell.frameH;
+		const { cols, rows } = chooseGrid(cells, cw, ch, `${id} sheet ${sheetDef.name}`);
+		const img = raster(cols * cw, rows * ch);
 		for (const p of placed) {
 			for (let d = 0; d < count; d++) {
 				p.anim.frames.forEach((f, fi) => {
-					const cell = p.start + d * p.anim.frames.length + fi;
+					const c = p.start + d * p.anim.frames.length + fi;
 					const { r, noise } = cellSource(p.anim, d, f);
-					blit(r.img, r.x + originX, r.y + originY, frameW, frameH, img, (cell % cols) * frameW, Math.floor(cell / cols) * frameH, noise);
+					blit(r.img, r.x + cell.originX, r.y + cell.originY, cw, ch, img, (c % cols) * cw, Math.floor(c / cols) * ch, noise);
 				});
 			}
 		}
 		alphaBleed(img);
 		const sheet = { name: sheetDef.name, file: `${sheetDef.name}.png`, img, cells };
+		if (perSheet) sheet.cell = cell;
 		if (outline) {
 			sheet.outlineFile = `${sheetDef.name}-outline.png`;
-			sheet.outlineImg = outlineSheet(img, frameW, frameH, outline.widthPx, set.pivot.bodyAlpha, set.pivot.bodyMinRgb);
+			sheet.outlineImg = outlineSheet(img, cw, ch, outline.widthPx, set.pivot.bodyAlpha, set.pivot.bodyMinRgb);
 		}
 		sheets.push(sheet);
 	});
@@ -632,13 +736,27 @@ function buildSpriteSet(id, set, built) {
 		facings: { count, zeroDeg: 0, ccw: true },
 		sheets: sheets.map((s) => {
 			const sheet = { file: s.file, w: s.img.w, h: s.img.h };
+			if (s.cell) {
+				sheet.frameW = s.cell.frameW;
+				sheet.frameH = s.cell.frameH;
+				sheet.pivot = { x: s.cell.pivot.x, y: s.cell.pivot.y };
+			}
 			if (s.outlineFile) sheet.outlineFile = s.outlineFile;
 			return sheet;
 		}),
 		animations: sortedObject(animations),
 	};
 	selfCheck(id, layout);
-	return { id, layout, sheets, sanity, bodyHeight: body.height / k, box, downscale: k, outline, pixelsPerTileFrom: set.pixelsPerTileFrom };
+	return { id, layout, sheets, sanity, bodyHeight: body.height / k, box, downscale: k, outline, pixelsPerTileFrom: set.pixelsPerTileFrom, perSheet };
+}
+
+/** The cell of layout sheet `s`: its own frameW / frameH / pivot (per-sheet cells) or the set's. */
+function sheetCell(layout, s) {
+	return {
+		w: s.frameW !== undefined ? s.frameW : layout.frameW,
+		h: s.frameH !== undefined ? s.frameH : layout.frameH,
+		pivot: s.pivot !== undefined ? s.pivot : layout.pivot,
+	};
 }
 
 /** Columns x rows of frameW x frameH cells for `cells` cells, within MAX_ATLAS, smallest area (then narrowest). */
@@ -661,21 +779,26 @@ function chooseGrid(cells, frameW, frameH, what) {
 /** Every referenced cell lies inside its sheet, which is within MAX_ATLAS (the SpriteSetAsset cell formula). */
 function selfCheck(id, layout) {
 	for (const s of layout.sheets) {
+		const c = sheetCell(layout, s);
 		if (s.w > MAX_ATLAS || s.h > MAX_ATLAS) throw new Error(`${id}: ${s.file} is ${s.w}x${s.h} (> ${MAX_ATLAS})`);
-		if (s.w % layout.frameW !== 0 || s.h % layout.frameH !== 0) throw new Error(`${id}: ${s.file} is not a whole number of cells`);
+		if (s.w % c.w !== 0 || s.h % c.h !== 0) throw new Error(`${id}: ${s.file} is not a whole number of cells`);
 		if (s.outlineFile !== undefined && s.outlineFile !== s.file.replace(/\.png$/, "-outline.png")) throw new Error(`${id}: outline of ${s.file} is ${s.outlineFile}`);
+		if (c.pivot.x < 0 || c.pivot.y < 0 || c.pivot.x > c.w || c.pivot.y > c.h) {
+			throw new Error(`${id}: ${s.file} pivot (${c.pivot.x}, ${c.pivot.y}) outside its ${c.w}x${c.h} cell`);
+		}
 	}
 	for (const name of Object.keys(layout.animations)) {
 		const a = layout.animations[name];
 		const sheet = layout.sheets[a.sheet];
 		if (!sheet) throw new Error(`${id}.${name}: sheet ${a.sheet} missing`);
-		const perRow = Math.floor(sheet.w / layout.frameW);
+		const c = sheetCell(layout, sheet);
+		const perRow = Math.floor(sheet.w / c.w);
 		for (let d = 0; d < layout.facings.count; d++) {
 			for (let f = 0; f < a.frames; f++) {
 				const cell = a.start + d * (a.stride === undefined ? a.frames : a.stride) + f;
-				const x = (cell % perRow) * layout.frameW;
-				const y = Math.floor(cell / perRow) * layout.frameH;
-				if (x + layout.frameW > sheet.w || y + layout.frameH > sheet.h) {
+				const x = (cell % perRow) * c.w;
+				const y = Math.floor(cell / perRow) * c.h;
+				if (x + c.w > sheet.w || y + c.h > sheet.h) {
 					throw new Error(`${id}.${name}: facing ${d} frame ${f} -> cell ${cell} at (${x}, ${y}) outside ${sheet.file} ${sheet.w}x${sheet.h}`);
 				}
 			}
@@ -731,12 +854,31 @@ function arrow(img, cx, cy, deg, len) {
 	fillRect(img, cx - 2, cy - 2, 5, 5, [40, 40, 40]);
 }
 
+/**
+ * Contact sheet of a sprite set. Each frame slot spans the set's cell; with per-sheet cells, it spans the union of the
+ * set's cell and every sheet's cell placed so all pivots coincide (a sheet's cell sits at the set pivot minus its own),
+ * so the feet line up across animations and the grey border shows each sheet's own trim.
+ */
 function contactSheet(result) {
 	const { layout } = result;
 	const names = Object.keys(layout.animations);
 	const maxFrames = Math.max(...names.map((n) => layout.animations[n].frames));
-	const cellW = layout.frameW + CONTACT_GUTTER;
-	const cellH = layout.frameH + CONTACT_GUTTER;
+	const cells = layout.sheets.map((s) => {
+		const c = sheetCell(layout, s);
+		return { ...c, offX: layout.pivot.x - c.pivot.x, offY: layout.pivot.y - c.pivot.y };
+	});
+	let x0 = 0;
+	let y0 = 0;
+	let x1 = layout.frameW;
+	let y1 = layout.frameH;
+	for (const c of cells) {
+		x0 = Math.min(x0, c.offX);
+		y0 = Math.min(y0, c.offY);
+		x1 = Math.max(x1, c.offX + c.w);
+		y1 = Math.max(y1, c.offY + c.h);
+	}
+	const cellW = x1 - x0 + CONTACT_GUTTER;
+	const cellH = y1 - y0 + CONTACT_GUTTER;
 	const w = CONTACT_MARGIN + maxFrames * cellW;
 	const h = names.length * (layout.facings.count * cellH + CONTACT_SEPARATOR);
 	const img = raster(w, h);
@@ -746,22 +888,23 @@ function contactSheet(result) {
 	for (const name of names) {
 		const a = layout.animations[name];
 		const sheet = layout.sheets[a.sheet];
-		const perRow = Math.floor(sheet.w / layout.frameW);
+		const c = cells[a.sheet];
+		const perRow = Math.floor(sheet.w / c.w);
 		for (let d = 0; d < layout.facings.count; d++) {
 			arrow(img, CONTACT_MARGIN / 2, y + Math.floor(cellH / 2), (d * 360) / layout.facings.count, Math.floor(CONTACT_MARGIN / 2) - 6);
 			for (let f = 0; f < a.frames; f++) {
 				const cell = a.start + d * (a.stride === undefined ? a.frames : a.stride) + f;
-				const dx = CONTACT_MARGIN + f * cellW + CONTACT_GUTTER / 2;
-				const dy = y + CONTACT_GUTTER / 2;
-				fillRect(img, dx - 1, dy - 1, layout.frameW + 2, layout.frameH + 2, [96, 96, 96]);
-				fillRect(img, dx, dy, layout.frameW, layout.frameH, [CONTACT_BG, CONTACT_BG, CONTACT_BG]);
-				const sx = (cell % perRow) * layout.frameW;
-				const sy = Math.floor(cell / perRow) * layout.frameH;
+				const dx = CONTACT_MARGIN + f * cellW + CONTACT_GUTTER / 2 + c.offX - x0;
+				const dy = y + CONTACT_GUTTER / 2 + c.offY - y0;
+				fillRect(img, dx - 1, dy - 1, c.w + 2, c.h + 2, [96, 96, 96]);
+				fillRect(img, dx, dy, c.w, c.h, [CONTACT_BG, CONTACT_BG, CONTACT_BG]);
+				const sx = (cell % perRow) * c.w;
+				const sy = Math.floor(cell / perRow) * c.h;
 				const outlineImg = result.sheets[a.sheet].outlineImg;
-				if (outlineImg) over(outlineImg, sx, sy, layout.frameW, layout.frameH, img, dx, dy, OUTLINE_PREVIEW_RGB);
-				over(sheetImgs[a.sheet], sx, sy, layout.frameW, layout.frameH, img, dx, dy);
-				fillRect(img, dx + layout.pivot.x - 3, dy + layout.pivot.y, 7, 1, [230, 30, 30]);
-				fillRect(img, dx + layout.pivot.x, dy + layout.pivot.y - 3, 1, 7, [230, 30, 30]);
+				if (outlineImg) over(outlineImg, sx, sy, c.w, c.h, img, dx, dy, OUTLINE_PREVIEW_RGB);
+				over(sheetImgs[a.sheet], sx, sy, c.w, c.h, img, dx, dy);
+				fillRect(img, dx + c.pivot.x - 3, dy + c.pivot.y, 7, 1, [230, 30, 30]);
+				fillRect(img, dx + c.pivot.x, dy + c.pivot.y - 3, 1, 7, [230, 30, 30]);
 			}
 			y += cellH;
 		}
@@ -1514,6 +1657,8 @@ function comment(lines) {
 function layoutModule(sets, images, floorHex, world) {
 	const spriteLayouts = {};
 	for (const s of sets) spriteLayouts[s.id] = s.layout;
+	// the per-sheet cell fields are declared only once a set uses them, so layout.ts is unchanged without one
+	const perSheet = sets.some((s) => s.layout.sheets.some((sh) => sh.frameW !== undefined));
 	const imageLayouts = {};
 	for (const i of images) imageLayouts[i.id] = i.layout;
 	const out = [
@@ -1546,6 +1691,19 @@ function layoutModule(sets, images, floorHex, world) {
 		" */",
 		"export interface ValeSpriteSheetFile extends ValeSheetFile {",
 		"\toutlineFile?: string;",
+		...(perSheet
+			? [
+					"\t/**",
+					comment([
+						'Per-sheet cell (art/atlases.json `cells: "perSheet"`; SpriteSheetImage): this sheet\'s own cell size and',
+						"pivot (the set's pivot point, in this sheet's crop). Absent: the set's frameW / frameH / pivot.",
+					]).replace(/^/gm, "\t"),
+					"\t */",
+					"\tframeW?: number;",
+					"\tframeH?: number;",
+					"\tpivot?: Pivot;",
+				]
+			: []),
 		"}",
 		"",
 		"/** SpriteSetAsset without `kind`, with sheets named by file instead of asset ID. */",
@@ -2087,7 +2245,8 @@ function main() {
 		console.log(`${s.id}: cell ${l.frameW}x${l.frameH} (source box ${s.box.join(",")}${s.downscale > 1 ? `, downscale ${s.downscale}` : ""}), pivot (${l.pivot.x}, ${l.pivot.y}), body ${s.bodyHeight} px -> ${l.pixelsPerTile} px/tile${s.pixelsPerTileFrom ? ` (from ${s.pixelsPerTileFrom})` : ""}`);
 		console.log(`  pivot per facing (cell coords) on the measured frame: ${s.sanity.join(" ")}`);
 		for (const sh of s.sheets) {
-			console.log(`  ${sh.file}: ${sh.img.w}x${sh.img.h}, ${sh.cells} cells${sh.outlineFile ? ` + ${sh.outlineFile} (outline ${s.outline.widthPx} px)` : ""}`);
+			const own = sh.cell ? `, cell ${sh.cell.frameW}x${sh.cell.frameH} pivot (${sh.cell.pivot.x}, ${sh.cell.pivot.y})` : "";
+			console.log(`  ${sh.file}: ${sh.img.w}x${sh.img.h}, ${sh.cells} cells${own}${sh.outlineFile ? ` + ${sh.outlineFile} (outline ${s.outline.widthPx} px)` : ""}`);
 		}
 	}
 	for (const i of images) console.log(`${i.id}: ${i.layout.file} ${i.layout.w}x${i.layout.h}${i.meanHex ? ` mean ${i.meanHex}` : ""}`);
@@ -2137,9 +2296,17 @@ module.exports = {
 	outlineConfig,
 	outlineSheet,
 	raster,
+	cellsMode,
+	compositeOver,
+	gridFiles,
+	gridLayers,
+	gridSheet,
 	removeStale,
+	sheetCell,
 	sourceFiles,
 	spriteSetOrder,
+	/** Composited layered sheets (gridSheet); tests clear it with the source cache. */
+	layeredCache,
 	/** Decoded sources by art/vendor-relative path; the tests put synthetic rasters here instead of files. */
 	sourceCache: pngCache,
 };

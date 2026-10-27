@@ -128,9 +128,19 @@ describe("sprite contract", () => {
 		expect(SPRITE_RESAMPLE_MODES).toEqual(["Default", "Pixelated"]);
 	});
 
-	it("v2: names the optional sprite-set animations: class attack.1..3, boss attack.2 / intro / taunt", () => {
+	it("v2: per-sheet cells (docs/DEMON_ART.md DD4) are accepted in the actor slots only", () => {
+		const accepting = SLOTS.filter((slot) => slot.perSheetCells === true).map((slot) => slot.slot);
+		expect(accepting).toEqual(["class", "enemy", "boss"]);
+		for (const slot of SLOTS) {
+			if (slot.perSheetCells === true) {
+				expect([slot.slot, slot.kinds.includes("sprites")]).toEqual([slot.slot, true]);
+			}
+		}
+	});
+
+	it("v2: names the optional sprite-set animations: class attack.1..3; boss attack.2..4 / intro / taunt (BRAMBLE_ART BR2, BOSS_DEMONLORD D2)", () => {
 		expect(optionalBaseAnimations(CHARACTER)).toEqual(["attack.1", "attack.2", "attack.3"]);
-		expect(optionalBaseAnimations(BOSS)).toEqual(["attack.2", "intro", "taunt"]);
+		expect(optionalBaseAnimations(BOSS)).toEqual(["attack.2", "attack.3", "attack.4", "intro", "taunt"]);
 		expect([CHARACTER.optionalAnimations, BOSS.optionalAnimations]).toEqual([
 			CLASS_OPTIONAL_ANIMATIONS,
 			BOSS_OPTIONAL_ANIMATIONS,
@@ -147,7 +157,7 @@ describe("sprite contract", () => {
 		}
 		// A copy: callers may not edit the contract through it.
 		optionalBaseAnimations(BOSS).push("dance");
-		expect(BOSS.optionalAnimations).toEqual(["attack.2", "intro", "taunt"]);
+		expect(BOSS.optionalAnimations).toEqual(["attack.2", "attack.3", "attack.4", "intro", "taunt"]);
 	});
 
 	it("keeps the digit font layout consistent", () => {

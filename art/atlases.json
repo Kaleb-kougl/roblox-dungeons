@@ -25,7 +25,16 @@
 		"box grows to whole k-blocks, and pad, cells and the outline are in downscaled pixels; the pivot and body height",
 		"are measured at full resolution and divided by k (so pixelsPerTile is too).",
 		"lockAlso (optional, frames sources): { <name>: { folder, frames } } source files the lock covers and art:build",
-		"checks, but no sheet reads (art kept for a later phase)."
+		"checks, but no sheet reads (art kept for a later phase).",
+		"source.layers (optional, grid sources; docs/DEMON_ART.md DD3): sub-folders of source.dir listed BOTTOM TO TOP,",
+		"\"\" = source.dir itself, e.g. [\"Shadows\", \"\"] = the body sheet drawn over the same-named sheet in Shadows/. Each",
+		"animation's sheet is the composite (premultiplied 'over') of its `file` from every layer, made before noiseAlpha,",
+		"the crop, the pivot and the outline read it. Every layer file must exist at the same size; the lock lists each one.",
+		"cells (optional; docs/DEMON_ART.md DD4): \"perSheet\" crops each sheet to the union box of its own animations (+ pad,",
+		"and always covering the pivot) and writes that sheet's frameW / frameH / pivot into layout.ts; the pivot is the",
+		"set's (measured once), translated into each sheet's crop, so the feet stay put when the animation changes. The",
+		"set-level frameW / frameH / pivot stay the union cell, pixelsPerTile stays per set. Absent: one cell for the set.",
+		"Per-sheet cells are drawn on actor sets only (class.*, enemy.*, boss.*; the theme validator refuses them elsewhere)."
 	],
 	"spriteSets": {
 		"class.vanguard": {
@@ -219,6 +228,101 @@
 				{ "name": "demonlord-intro", "animations": ["intro"] },
 				{ "name": "demonlord-taunt", "animations": ["taunt"] },
 				{ "name": "demonlord-death", "animations": ["death"] }
+			]
+		},
+		"enemy.bruiser": {
+			"$comment": [
+				"Demon Beast 3 (docs/DEMON_ART.md DA3, decision DD2), 2D Demons - TopDown asset pack v1.1, the separated sheets: 1920x1024 = 15 frames x 8 rows of 128x128,",
+				"the knight's format. layers [\"Shadows\", \"\"]: the body drawn over its Shadows/ sheet (bottom to top); Effects/ is skipped (DD3: its magenta swipes read as bullets).",
+				"Idle frame 14 duplicates frame 0, so the idle loop picks from 0-13. attack = Attack 4, a leap and ground slam: kept indices 0-5 play over the 42-tick telegraph,",
+				"index 6 (source f8) is the impact, shown on the slam tick, index 7 (f10) the crouched follow-through held over the recover (SPRITE_ANIM_MARKS.bruiser).",
+				"cells \"perSheet\" (DD4): three sheets, fewest textures, each trimmed to its own animations: attack 78x118, body (idle + move + hit) 70x81,",
+				"death 99x89 (set union 93x112 + pad 3 = 99x118; one cell for the set would need 4 atlases). Pivot = source (66, 90).",
+				"Drawn at the knight's exact density (pixelsPerTileFrom, DD5): the same render scale, so the brute's height against the player is the artist's."
+			],
+			"source": { "type": "grid", "dir": "demons-topdown/Spritesheets with seperated shadows and effects/Demon Beast 3", "frameW": 128, "frameH": 128, "layers": ["Shadows", ""] },
+			"facingCount": 8,
+			"rowForFacing": [0, 7, 6, 5, 4, 3, 2, 1],
+			"rowOrderEvidence": [
+				"Determined by eye from Spawn 10 Attack 1, Beast 3 Walk / Attack 4 / Idle, Elite 3 / Elite 1 Idle and Walk (3x-4x crops, mid-grey). Rows go CLOCKWISE from screen right: output facing d = row (8 - d) % 8, the knight's order.",
+				"Spawn 10 Attack 1 f10 aims the bow: row 0 right, 1 down-right, 2 at the camera (bow foreshortened), 3 down-left, 4 left, 5 up-left, 6 up (from behind), 7 up-right.",
+				"Beast 3 Walk f4: row 0 strides right; row 4 strides left. Attack 4 f1: claws reach right in row 0, left in row 4.",
+				"row 2 = towards the camera: Elite 3 shows its white-horned face mask, wings behind the shoulders; Beast 3 its red face and fanged chest. row 6 = away: Elite 3's wing membranes overlap its arms; Beast 3 shows its striped spine.",
+				"Consistency: the front shows on rows 1-3 and the back on rows 5-7; counter-clockwise would put the front on rows 5-7."
+			],
+			"noiseAlpha": 2,
+			"pad": 3,
+			"pivot": { "measure": { "animation": "idle", "facing": 6, "frame": 0 }, "bodyAlpha": 250, "bodyMinRgb": 0, "footBand": 6 },
+			"pivotNote": "Body sheets are alpha 0/255 only; the Shadows layer is flat alpha 191, RGB (2, 4, 5), drawn under the body (layers bottom to top). alpha > 250 is exactly the body, so the pivot, the body height and the outline mask leave the shadow out (bodyMinRgb 0: no RGB cut needed). Measured on idle facing 6 (output facing 6 = source row rowForFacing[6] = 2, towards the camera, as the knight's), frame 0.",
+			"outline": { "widthPx": 2 },
+			"outlineNote": "Enemy contrast rim (docs/OUTLINE.md, decision E4: 2 art px). pad 3 = widthPx + 1.",
+			"pixelsPerTileFrom": "class.vanguard",
+			"resample": "Default",
+			"cells": "perSheet",
+			"animations": {
+				"idle": { "file": "Idle.png", "frames": [0, 3, 7, 10], "fps": 6, "loop": true },
+				"move": { "file": "Walk.png", "frames": [0, 2, 4, 5, 7, 9, 11, 12], "fps": 10, "loop": true },
+				"attack": { "file": "Attack 4.png", "frames": [0, 2, 3, 4, 5, 6, 8, 10], "fps": 12, "loop": false },
+				"hit": { "file": "TakeDamage 1.png", "frames": [1, 3, 5, 8], "fps": 12, "loop": false },
+				"death": { "file": "Die 1.png", "frames": [0, 2, 4, 6, 9, 14], "fps": 10, "loop": false }
+			},
+			"sheets": [
+				{ "name": "bruiser-attack", "animations": ["attack"] },
+				{ "name": "bruiser-body", "animations": ["idle", "move", "hit"] },
+				{ "name": "bruiser-death", "animations": ["death"] }
+			]
+		},
+		"boss.act1": {
+			"$comment": [
+				"Mother Bramble as Demon Elite 3 (docs/BRAMBLE_ART.md BR3, decision BD1), same pack and format as enemy.bruiser: body over Shadows/, no Effects/ (DD3).",
+				"Idle frame 14 duplicates frame 0 (loops pick from 0-13). taunt plays the roars (intro falls back to it: no separate intro animation).",
+				"attack = Attack 1 (horizontal sweep: wind-up 0-2, release index 3, contact 4, follow-through 5); attack.2 = Attack 2 (overhead strike, same indices);",
+				"attack.3 = Attack 3, a 360 spin: indices 0-1 over the telegraph, 2-5 (one revolution) looped through the spiral at fps 10 (one frame per 6-tick burst);",
+				"attack.4 = Attack 4, the leap: telegraph 0-2, take-off index 3, airborne 4-5 over the charge, landing index 6 on the impact tick, 7 after (SPRITE_ANIM_MARKS.bossAct1).",
+				"hit = idle frame 0 held (cellsOf, 1 frame): the boss never flinches (BD3). Die 1 is clipped by the 128 cell's bottom edge in rows 1-3, frames 5/6-14",
+				"(a 9-11 px flat edge on the wing tips; open decision BD8).",
+				"bodyTiles 2.5 (BD2): the idle body is 59x61 px, so 61 / 2.5 = 24.4 px per tile and its 59 px width spans ~2.4 tiles, the r 1.2 hitbox.",
+				"cells \"perSheet\" (DD4): seven sheets (idle shares with attack.3), each in one 1024 atlas: idle 107x113, move 102x112, taunt 99x106,",
+				"attack1 102x112, attack2 99x118, attack4 104x126, death 124x116 (set union 124x134). Pivot = source (65, 85)."
+			],
+			"source": { "type": "grid", "dir": "demons-topdown/Spritesheets with seperated shadows and effects/Demon Elite 3", "frameW": 128, "frameH": 128, "layers": ["Shadows", ""] },
+			"facingCount": 8,
+			"rowForFacing": [0, 7, 6, 5, 4, 3, 2, 1],
+			"rowOrderEvidence": [
+				"Determined by eye from Spawn 10 Attack 1, Beast 3 Walk / Attack 4 / Idle, Elite 3 / Elite 1 Idle and Walk (3x-4x crops, mid-grey). Rows go CLOCKWISE from screen right: output facing d = row (8 - d) % 8, the knight's order.",
+				"Spawn 10 Attack 1 f10 aims the bow: row 0 right, 1 down-right, 2 at the camera (bow foreshortened), 3 down-left, 4 left, 5 up-left, 6 up (from behind), 7 up-right.",
+				"Beast 3 Walk f4: row 0 strides right; row 4 strides left. Attack 4 f1: claws reach right in row 0, left in row 4.",
+				"row 2 = towards the camera: Elite 3 shows its white-horned face mask, wings behind the shoulders; Beast 3 its red face and fanged chest. row 6 = away: Elite 3's wing membranes overlap its arms; Beast 3 shows its striped spine.",
+				"Consistency: the front shows on rows 1-3 and the back on rows 5-7; counter-clockwise would put the front on rows 5-7."
+			],
+			"noiseAlpha": 2,
+			"pad": 3,
+			"pivot": { "measure": { "animation": "idle", "facing": 6, "frame": 0 }, "bodyAlpha": 250, "bodyMinRgb": 0, "footBand": 6 },
+			"pivotNote": "Body sheets are alpha 0/255 only; the Shadows layer is flat alpha 191, RGB (2, 4, 5), drawn under the body (layers bottom to top). alpha > 250 is exactly the body, so the pivot, the body height and the outline mask leave the shadow out (bodyMinRgb 0: no RGB cut needed). Measured on idle facing 6 (output facing 6 = source row rowForFacing[6] = 2, towards the camera, as the knight's), frame 0.",
+			"outline": { "widthPx": 2 },
+			"outlineNote": "Enemy contrast rim (docs/OUTLINE.md, decision E4: 2 art px). pad 3 = widthPx + 1.",
+			"bodyTiles": 2.5,
+			"resample": "Default",
+			"cells": "perSheet",
+			"animations": {
+				"idle": { "file": "Idle.png", "frames": [0, 3, 7, 10], "fps": 6, "loop": true },
+				"move": { "file": "Walk.png", "frames": [0, 2, 4, 5, 7, 9, 11, 12], "fps": 10, "loop": true },
+				"taunt": { "file": "Taunt.png", "frames": [0, 3, 5, 7, 9, 12], "fps": 10, "loop": false },
+				"attack": { "file": "Attack 1.png", "frames": [0, 2, 4, 5, 6, 8], "fps": 12, "loop": false },
+				"attack.2": { "file": "Attack 2.png", "frames": [0, 2, 4, 5, 6, 8], "fps": 12, "loop": false },
+				"attack.3": { "file": "Attack 3.png", "frames": [0, 1, 2, 3, 4, 5], "fps": 10, "loop": false },
+				"attack.4": { "file": "Attack 4.png", "frames": [0, 2, 3, 4, 5, 6, 8, 10], "fps": 12, "loop": false },
+				"hit": { "cellsOf": "idle", "frames": 1, "fps": 1, "loop": false },
+				"death": { "file": "Die 1.png", "frames": [0, 2, 4, 5, 6, 8, 11, 14], "fps": 10, "loop": false }
+			},
+			"sheets": [
+				{ "name": "bramble-idle", "animations": ["idle", "attack.3"] },
+				{ "name": "bramble-move", "animations": ["move"] },
+				{ "name": "bramble-taunt", "animations": ["taunt"] },
+				{ "name": "bramble-attack1", "animations": ["attack"] },
+				{ "name": "bramble-attack2", "animations": ["attack.2"] },
+				{ "name": "bramble-attack4", "animations": ["attack.4"] },
+				{ "name": "bramble-death", "animations": ["death"] }
 			]
 		}
 	},

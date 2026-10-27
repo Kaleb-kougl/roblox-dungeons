@@ -70,6 +70,7 @@ import {
 	MUSIC,
 	REQUIRED_ASSET_IDS,
 	REQUIRED_STRING_KEYS,
+	SLOTS,
 	SOUND_PITCH_LIMITS,
 	SOUND_PRESENTATION_KEYS,
 	SPRITE_FACING_COUNTS,
@@ -1483,6 +1484,80 @@ const SPRITE_SET_KEYS = [
 	"animations",
 ];
 const SPRITE_ANIMATION_KEYS = ["sheet", "start", "frames", "stride", "fps", "loop"];
+/** A sheet's keys: its image, size, optional rim, and the optional per-sheet cell (actor slots only). */
+const SPRITE_SHEET_KEYS = ["assetId", "w", "h", "outlineAssetId", "frameW", "frameH", "pivot"];
+const SHEET_SHAPE = "{ assetId, w, h, outlineAssetId?, frameW?, frameH?, pivot? }";
+/** The slots whose sets may give a sheet its own cell, for messages. */
+const PER_SHEET_SLOTS = SLOTS.filter((s) => s.perSheetCells === true)
+	.map((s) => `${s.prefix}*`)
+	.join(" / ");
+
+/**
+ * A sheet's cell: the set's (`setCell`, undefined when the set's is invalid), or with per-sheet cells (docs/DEMON_ART.md
+ * DD4) its own `frameW` / `frameH` / `pivot`, each defaulting to the set's. Accepted only in slots with
+ * `perSheetCells` (the actor renderer re-sizes the billboard per sheet); the effective pivot must lie inside the
+ * effective cell. Returns the cell size, or undefined when it is not valid (so the sheet's size is not checked).
+ */
+function validateSheetCell(
+	sheet: Obj,
+	sp: Array<string>,
+	slot: SlotContract,
+	setCell: { w: number; h: number } | undefined,
+	setPivot: unknown,
+	err: Err,
+	unknownKeys: UnknownKeys,
+): { w: number; h: number } | undefined {
+	if (sheet.frameW === undefined && sheet.frameH === undefined && sheet.pivot === undefined) {
+		return setCell;
+	}
+	if (slot.perSheetCells !== true) {
+		err(
+			sp,
+			`per-sheet cells (frameW / frameH / pivot) are drawn on ${PER_SHEET_SLOTS} sets only: the ${slot.slot} renderer sizes every frame from the set's cell`,
+		);
+	}
+	let w = setCell?.w;
+	let h = setCell?.h;
+	if (sheet.frameW !== undefined) {
+		if (isImageSide(sheet.frameW)) {
+			w = sheet.frameW;
+		} else {
+			err(append(sp, "frameW"), `${IMAGE_SIDE_MSG} (this sheet's cell width; absent: the set's frameW)`);
+			w = undefined;
+		}
+	}
+	if (sheet.frameH !== undefined) {
+		if (isImageSide(sheet.frameH)) {
+			h = sheet.frameH;
+		} else {
+			err(append(sp, "frameH"), `${IMAGE_SIDE_MSG} (this sheet's cell height; absent: the set's frameH)`);
+			h = undefined;
+		}
+	}
+	const cell = w !== undefined && h !== undefined ? { w, h } : undefined;
+	const p = sheet.pivot;
+	if (p !== undefined) {
+		if (!isObj(p) || !isFiniteNumber(p.x) || !isFiniteNumber(p.y)) {
+			err(
+				append(sp, "pivot"),
+				'must be { "x": number, "y": number } in pixels from the sheet cell top-left (absent: the set pivot)',
+			);
+			return cell;
+		}
+		unknownKeys(p, append(sp, "pivot"), ["x", "y"]);
+		if (cell !== undefined && (p.x < 0 || p.x > cell.w || p.y < 0 || p.y > cell.h)) {
+			err(append(sp, "pivot"), `(${p.x}, ${p.y}) is outside the sheet's ${cell.w}x${cell.h} cell`);
+		}
+	} else if (cell !== undefined && isObj(setPivot) && isFiniteNumber(setPivot.x) && isFiniteNumber(setPivot.y)) {
+		if (setPivot.x < 0 || setPivot.x > cell.w || setPivot.y < 0 || setPivot.y > cell.h) {
+			err(
+				sp,
+				`the set pivot (${setPivot.x}, ${setPivot.y}) is outside this sheet's ${cell.w}x${cell.h} cell: give the sheet its own pivot`,
+			);
+		}
+	}
+	return cell;
+}
 /** Keys an fx.* sprite set adds (types.ts SpriteSetAsset, fx fields). */
 const FX_ART_KEYS = ["sizeTiles", "tint", "additive", "meanColor"];
 const FACING_COUNT_LIST = (SPRITE_FACING_COUNTS as ReadonlyArray<number>).map((n) => tostring(n)).join(" | ");
@@ -1577,20 +1652,22 @@ function validateSpriteSet(def: Obj, path: Array<string>, slot: SlotContract, er
 	const capacity = new Map<number, number>();
 	/** Sheet index -> "WxH", for messages. */
 	const sheetSize = new Map<number, string>();
+	/** Sheet index -> its cell "WxH" (the set's, or its own with per-sheet cells), for messages. */
+	const sheetCellSize = new Map<number, string>();
 	let sheetCount: number | undefined;
 	const sheets = def.sheets;
 	if (!isArrayLike(sheets)) {
-		err(append(path, "sheets"), "must be a non-empty array of { assetId, w, h, outlineAssetId? }");
+		err(append(path, "sheets"), `must be a non-empty array of ${SHEET_SHAPE}`);
 	} else {
 		sheetCount = sheets.size();
 		for (let i = 0; i < sheets.size(); i++) {
 			const sp = append(path, "sheets", tostring(i));
 			const sheet = sheets[i];
 			if (!isObj(sheet)) {
-				err(sp, "must be { assetId, w, h, outlineAssetId? }");
+				err(sp, `must be ${SHEET_SHAPE}`);
 				continue;
 			}
-			unknownKeys(sheet, sp, ["assetId", "w", "h", "outlineAssetId"]);
+			unknownKeys(sheet, sp, SPRITE_SHEET_KEYS);
 			checkAssetIdAt(sheet.assetId, append(sp, "assetId"), err);
 			if (sheet.outlineAssetId !== undefined) {
 				// The baked rim (enemy outline plan O4): its own upload, same size and cells as the sheet.
@@ -1599,6 +1676,15 @@ function validateSpriteSet(def: Obj, path: Array<string>, slot: SlotContract, er
 					err(append(sp, "outlineAssetId"), "is the sheet's own assetId (upload the <sheet>-outline.png)");
 				}
 			}
+			const cell = validateSheetCell(
+				sheet,
+				sp,
+				slot,
+				cellOk ? { w: frameW, h: frameH } : undefined,
+				pivot,
+				err,
+				unknownKeys,
+			);
 			const w = sheet.w;
 			const h = sheet.h;
 			if (!isImageSide(w)) {
@@ -1607,15 +1693,16 @@ function validateSpriteSet(def: Obj, path: Array<string>, slot: SlotContract, er
 			if (!isImageSide(h)) {
 				err(append(sp, "h"), IMAGE_SIDE_MSG);
 			}
-			if (!isImageSide(w) || !isImageSide(h) || !cellOk) {
+			if (!isImageSide(w) || !isImageSide(h) || cell === undefined) {
 				continue;
 			}
-			if (w < frameW || h < frameH) {
-				err(sp, `sheet is ${w}x${h}, smaller than the ${frameW}x${frameH} cell`);
+			if (w < cell.w || h < cell.h) {
+				err(sp, `sheet is ${w}x${h}, smaller than the ${cell.w}x${cell.h} cell`);
 				continue;
 			}
-			capacity.set(i, math.floor(w / frameW) * math.floor(h / frameH));
+			capacity.set(i, math.floor(w / cell.w) * math.floor(h / cell.h));
 			sheetSize.set(i, `${w}x${h}`);
+			sheetCellSize.set(i, `${cell.w}x${cell.h}`);
 		}
 	}
 
@@ -1700,7 +1787,7 @@ function validateSpriteSet(def: Obj, path: Array<string>, slot: SlotContract, er
 				ap,
 				`facing ${d} frame ${f} is cell ${first + f}, but sheet ${sheetIndex} (${sheetSize.get(
 					sheetIndex,
-				)}) holds ${cap} cells of ${frameW}x${frameH}`,
+				)}) holds ${cap} cells of ${sheetCellSize.get(sheetIndex)}`,
 			);
 			break;
 		}

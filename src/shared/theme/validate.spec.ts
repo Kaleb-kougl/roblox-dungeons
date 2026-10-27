@@ -6,12 +6,14 @@ import {
 	BIOMES,
 	BIOME_MATERIALS,
 	BIOME_MATERIAL_SURFACES,
+	BOSS,
 	CHARACTER,
 	DAMAGE_NUMBER_ROLES,
 	HEALTH_BAR_FILL_ROLES,
 	MIN_DAMAGE_NUMBER_CONTRAST,
 	MIN_ENEMY_BULLET_CONTRAST,
 	MIN_HEALTH_BAR_CONTRAST,
+	optionalBaseAnimations,
 	requiredAnimationList,
 } from "./contract";
 import { PLACEHOLDER_MANIFEST } from "./packs/placeholder";
@@ -444,6 +446,18 @@ function spriteSet(): Obj {
 /** Sheet `i` of a sprite set (an array: string keys do not reach Luau array slots). */
 const sheetAt = (set: Obj, i: number): Obj => (set.sheets as Array<Obj>)[i];
 
+/**
+ * Per-sheet cells (docs/DEMON_ART.md DD4): sheet 1 trimmed to its own 32x40 cell (256x80 = 8 x 2 = 16 cells), pivot
+ * (16, 36): the set's pivot point (32, 48) in a crop that starts 16 px right and 12 px down.
+ */
+function trimSheet1(set: Obj): void {
+	const sheet = sheetAt(set, 1);
+	sheet.h = 80;
+	sheet.frameW = 32;
+	sheet.frameH = 40;
+	sheet.pivot = { x: 16, y: 36 };
+}
+
 /** Validator errors for the placeholder pack with `enemy.swarmer` = spriteSet() after `edit`. */
 function spriteErrors(edit: (set: Obj) => void): Array<string> {
 	const m = clone();
@@ -470,6 +484,26 @@ describe("validateManifest: sprite sets (contract v2)", () => {
 		knight.pivot = { x: 64, y: 56 }; // the cell's bottom-right corner is still inside
 		at(m, "assets")["class.vanguard"] = knight;
 		expect(validateManifest(m)).toEqual([]);
+	});
+
+	it("accepts the boss's optional animations (BRAMBLE_ART BR2) with or without them, checked like any other", () => {
+		const withAll = clone();
+		const boss = spriteSet();
+		const anims = at(boss, "animations");
+		for (const name of optionalBaseAnimations(BOSS)) {
+			anims[name] = { sheet: 0, start: 64, frames: 8, fps: 10, loop: false };
+		}
+		at(withAll, "assets")["boss.act1"] = boss;
+		expect(validateManifest(withAll)).toEqual([]);
+		const bare = clone();
+		at(bare, "assets")["boss.act1"] = spriteSet();
+		expect(validateManifest(bare)).toEqual([]);
+		// A present optional animation gets every animation check: here frames and loop.
+		anims.taunt = { sheet: 0, start: 0, frames: 0, fps: 10, loop: "once" };
+		expect(validateManifest(withAll)).toEqual([
+			'assets["boss.act1"].animations.taunt.frames: must be an integer >= 1',
+			'assets["boss.act1"].animations.taunt.loop: must be true or false',
+		]);
 	});
 
 	it("is not accepted outside the actor slots", () => {
@@ -541,7 +575,7 @@ describe("validateManifest: sprite sets (contract v2)", () => {
 		).toEqual([
 			`${SET}.assetId: unknown key (allowed: kind, frameW, frameH, pivot, pixelsPerTile, resample, facings, sheets, animations)`,
 			`${SET}.facings.mirror: unknown key (allowed: count, zeroDeg, ccw)`,
-			`${SET}.sheets[0].name: unknown key (allowed: assetId, w, h, outlineAssetId)`,
+			`${SET}.sheets[0].name: unknown key (allowed: assetId, w, h, outlineAssetId, frameW, frameH, pivot)`,
 			`${SET}.animations.move.row: unknown key (allowed: sheet, start, frames, stride, fps, loop)`,
 		]);
 	});
@@ -590,7 +624,7 @@ describe("validateManifest: sprite sets (contract v2)", () => {
 
 	it("checks the sheets: non-empty, uploaded IDs, sizes up to 1024 and at least one cell", () => {
 		expect(spriteErrors((s) => (s.sheets = []))).toEqual([
-			`${SET}.sheets: must be a non-empty array of { assetId, w, h, outlineAssetId? }`,
+			`${SET}.sheets: must be a non-empty array of { assetId, w, h, outlineAssetId?, frameW?, frameH?, pivot? }`,
 		]);
 		expect(spriteErrors((s) => (sheetAt(s, 0).assetId = "rbxasset://textures/skeleton.png"))).toEqual([
 			`${SET}.sheets[0].assetId: "rbxasset://textures/skeleton.png" must be "rbxassetid://<digits>" (upload with Asphalt or the Studio Asset Manager)`,
@@ -626,7 +660,7 @@ describe("validateManifest: sprite sets (contract v2)", () => {
 		]);
 		// any other spelling is still an unknown key
 		expect(spriteErrors((s) => (sheetAt(s, 0).outline = "rbxassetid://4001"))).toEqual([
-			`${SET}.sheets[0].outline: unknown key (allowed: assetId, w, h, outlineAssetId)`,
+			`${SET}.sheets[0].outline: unknown key (allowed: assetId, w, h, outlineAssetId, frameW, frameH, pivot)`,
 		]);
 	});
 
@@ -666,6 +700,122 @@ describe("validateManifest: sprite sets (contract v2)", () => {
 		// hit on the 8-cell sheet 1 with 2 frames: facing 4 starts at cell 8.
 		expect(spriteErrors((s) => (at(s, "animations", "hit").frames = 2))).toEqual([
 			`${SET}.animations.hit: facing 4 frame 0 is cell 8, but sheet 1 (256x112) holds 8 cells of 64x56`,
+		]);
+	});
+
+	it("accepts per-sheet cells (docs/DEMON_ART.md DD4) in the actor slots, each field defaulting to the set's", () => {
+		expect(spriteErrors(trimSheet1)).toEqual([]);
+		// a pivot alone (the set's 64x56 cell), or a size alone that still holds the set's pivot
+		expect(spriteErrors((s) => (sheetAt(s, 1).pivot = { x: 10, y: 50 }))).toEqual([]);
+		expect(spriteErrors((s) => (sheetAt(s, 1).frameW = 32))).toEqual([]);
+		const m = clone();
+		const boss = spriteSet();
+		boss.facings = { count: 1, zeroDeg: 0, ccw: true };
+		trimSheet1(boss);
+		at(m, "assets")["boss.act1"] = boss;
+		const knight = spriteSet();
+		const anims = at(knight, "animations");
+		anims.run = anims.move;
+		anims.roll = anims.attack;
+		anims.move = undefined;
+		anims.attack = undefined;
+		trimSheet1(knight);
+		at(m, "assets")["class.vanguard"] = knight;
+		expect(validateManifest(m)).toEqual([]);
+	});
+
+	it("counts a sheet's cells in its own cell", () => {
+		// sheet 1 trimmed to 32x40 holds 8 x 2 = 16 cells: hit with 3 frames needs cells up to 7 * 3 + 2 = 23
+		expect(
+			spriteErrors((s) => {
+				trimSheet1(s);
+				at(s, "animations", "hit").frames = 3;
+			}),
+		).toEqual([`${SET}.animations.hit: facing 5 frame 1 is cell 16, but sheet 1 (256x80) holds 16 cells of 32x40`]);
+		// the untrimmed sheet 0 still counts in the set's 64x56 cell
+		expect(
+			spriteErrors((s) => {
+				trimSheet1(s);
+				at(s, "animations", "death").start = 65;
+			}),
+		).toEqual([
+			`${SET}.animations.death: facing 7 frame 7 is cell 128, but sheet 0 (1024x448) holds 128 cells of 64x56`,
+		]);
+	});
+
+	it("checks the per-sheet fields: cell sides, the pivot inside the sheet's cell, the sheet at least one cell", () => {
+		expect(
+			spriteErrors((s) => {
+				trimSheet1(s);
+				sheetAt(s, 1).frameW = 0;
+			}),
+		).toEqual([
+			`${SET}.sheets[1].frameW: must be an integer in [1, 1024] (this sheet's cell width; absent: the set's frameW)`,
+		]);
+		expect(
+			spriteErrors((s) => {
+				trimSheet1(s);
+				sheetAt(s, 1).frameH = 40.5;
+			}),
+		).toEqual([
+			`${SET}.sheets[1].frameH: must be an integer in [1, 1024] (this sheet's cell height; absent: the set's frameH)`,
+		]);
+		expect(
+			spriteErrors((s) => {
+				trimSheet1(s);
+				sheetAt(s, 1).pivot = { x: 33, y: 36 };
+			}),
+		).toEqual([`${SET}.sheets[1].pivot: (33, 36) is outside the sheet's 32x40 cell`]);
+		expect(
+			spriteErrors((s) => {
+				trimSheet1(s);
+				sheetAt(s, 1).pivot = { x: "feet", y: 36 };
+			}),
+		).toEqual([
+			`${SET}.sheets[1].pivot: must be { "x": number, "y": number } in pixels from the sheet cell top-left (absent: the set pivot)`,
+		]);
+		expect(
+			spriteErrors((s) => {
+				trimSheet1(s);
+				sheetAt(s, 1).pivot = { x: 16, y: 36, z: 0 };
+			}),
+		).toEqual([`${SET}.sheets[1].pivot.z: unknown key (allowed: x, y)`]);
+		expect(
+			spriteErrors((s) => {
+				trimSheet1(s);
+				sheetAt(s, 1).frameW = 300;
+				sheetAt(s, 1).pivot = { x: 16, y: 36 };
+			}),
+		).toEqual([`${SET}.sheets[1]: sheet is 256x80, smaller than the 300x40 cell`]);
+		// a smaller cell without its own pivot: the set's (32, 48) falls below the 40 px cell
+		expect(
+			spriteErrors((s) => {
+				trimSheet1(s);
+				sheetAt(s, 1).pivot = undefined;
+			}),
+		).toEqual([
+			`${SET}.sheets[1]: the set pivot (32, 48) is outside this sheet's 32x40 cell: give the sheet its own pivot`,
+		]);
+	});
+
+	it("refuses per-sheet cells outside the actor slots (their renderers size frames from the set's cell)", () => {
+		const m = clone();
+		at(m, "assets")["fx.hit.light"] = {
+			kind: "sprites",
+			frameW: 32,
+			frameH: 32,
+			pivot: { x: 16, y: 16 },
+			pixelsPerTile: 32,
+			resample: "Pixelated",
+			facings: { count: 1, zeroDeg: 0, ccw: true },
+			sheets: [{ assetId: "rbxassetid://7001", w: 128, h: 32, frameW: 16, frameH: 32, pivot: { x: 8, y: 16 } }],
+			animations: { play: { sheet: 0, start: 0, frames: 4, fps: 12, loop: false } },
+			sizeTiles: 0.75,
+			tint: "damageNumber",
+			additive: true,
+		};
+		expect(validateManifest(m)).toEqual([
+			`assets["fx.hit.light"].sheets[0]: per-sheet cells (frameW / frameH / pivot) are drawn on class.* / enemy.* / boss.* sets only: the fx renderer sizes every frame from the set's cell`,
 		]);
 	});
 

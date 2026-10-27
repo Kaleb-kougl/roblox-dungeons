@@ -23,6 +23,13 @@ export interface ValeSheetFile {
  */
 export interface ValeSpriteSheetFile extends ValeSheetFile {
 	outlineFile?: string;
+	/**
+	 * Per-sheet cell (art/atlases.json `cells: "perSheet"`; SpriteSheetImage): this sheet's own cell size and
+	 * pivot (the set's pivot point, in this sheet's crop). Absent: the set's frameW / frameH / pivot.
+	 */
+	frameW?: number;
+	frameH?: number;
+	pivot?: Pivot;
 }
 
 /** SpriteSetAsset without `kind`, with sheets named by file instead of asset ID. */
@@ -37,6 +44,90 @@ export interface ValeImageLayout extends ValeSheetFile {
 }
 
 export const VALE_SPRITE_LAYOUTS: Record<string, ValeSpriteLayout> = {
+	"boss.act1": {
+		frameW: 124,
+		frameH: 134,
+		pivot: { x: 63, y: 88 },
+		pixelsPerTile: 24.4,
+		resample: "Default",
+		facings: { count: 8, zeroDeg: 0, ccw: true },
+		sheets: [
+			{
+				file: "bramble-idle.png",
+				w: 963,
+				h: 1017,
+				frameW: 107,
+				frameH: 113,
+				pivot: { x: 54, y: 78 },
+				outlineFile: "bramble-idle-outline.png",
+			},
+			{
+				file: "bramble-move.png",
+				w: 816,
+				h: 896,
+				frameW: 102,
+				frameH: 112,
+				pivot: { x: 52, y: 79 },
+				outlineFile: "bramble-move-outline.png",
+			},
+			{
+				file: "bramble-taunt.png",
+				w: 594,
+				h: 848,
+				frameW: 99,
+				frameH: 106,
+				pivot: { x: 51, y: 74 },
+				outlineFile: "bramble-taunt-outline.png",
+			},
+			{
+				file: "bramble-attack1.png",
+				w: 612,
+				h: 896,
+				frameW: 102,
+				frameH: 112,
+				pivot: { x: 52, y: 79 },
+				outlineFile: "bramble-attack1-outline.png",
+			},
+			{
+				file: "bramble-attack2.png",
+				w: 594,
+				h: 944,
+				frameW: 99,
+				frameH: 118,
+				pivot: { x: 51, y: 85 },
+				outlineFile: "bramble-attack2-outline.png",
+			},
+			{
+				file: "bramble-attack4.png",
+				w: 832,
+				h: 1008,
+				frameW: 104,
+				frameH: 126,
+				pivot: { x: 53, y: 88 },
+				outlineFile: "bramble-attack4-outline.png",
+			},
+			{
+				file: "bramble-death.png",
+				w: 992,
+				h: 928,
+				frameW: 124,
+				frameH: 116,
+				pivot: { x: 63, y: 70 },
+				outlineFile: "bramble-death-outline.png",
+			},
+		],
+		animations: {
+			attack: { sheet: 3, start: 0, frames: 6, fps: 12, loop: false },
+			"attack.2": { sheet: 4, start: 0, frames: 6, fps: 12, loop: false },
+			"attack.3": { sheet: 0, start: 32, frames: 6, fps: 10, loop: false },
+			"attack.4": { sheet: 5, start: 0, frames: 8, fps: 12, loop: false },
+			death: { sheet: 6, start: 0, frames: 8, fps: 10, loop: false },
+			hit: { sheet: 0, start: 0, frames: 1, fps: 1, loop: false, stride: 4 },
+			idle: { sheet: 0, start: 0, frames: 4, fps: 6, loop: true },
+			move: { sheet: 1, start: 0, frames: 8, fps: 10, loop: true },
+			taunt: { sheet: 2, start: 0, frames: 6, fps: 10, loop: false },
+		},
+	},
 	"boss.demonlord": {
 		frameW: 98,
 		frameH: 78,
@@ -90,6 +181,50 @@ export const VALE_SPRITE_LAYOUTS: Record<string, ValeSpriteLayout> = {
 			idle: { sheet: 0, start: 0, frames: 8, fps: 7, loop: true },
 			roll: { sheet: 2, start: 0, frames: 8, fps: 14, loop: false },
 			run: { sheet: 1, start: 0, frames: 8, fps: 12, loop: true },
+		},
+	},
+	"enemy.bruiser": {
+		frameW: 99,
+		frameH: 118,
+		pivot: { x: 51, y: 89 },
+		pixelsPerTile: 38,
+		resample: "Default",
+		facings: { count: 8, zeroDeg: 0, ccw: true },
+		sheets: [
+			{
+				file: "bruiser-attack.png",
+				w: 624,
+				h: 944,
+				frameW: 78,
+				frameH: 118,
+				pivot: { x: 41, y: 89 },
+				outlineFile: "bruiser-attack-outline.png",
+			},
+			{
+				file: "bruiser-body.png",
+				w: 910,
+				h: 810,
+				frameW: 70,
+				frameH: 81,
+				pivot: { x: 37, y: 67 },
+				outlineFile: "bruiser-body-outline.png",
+			},
+			{
+				file: "bruiser-death.png",
+				w: 594,
+				h: 712,
+				frameW: 99,
+				frameH: 89,
+				pivot: { x: 51, y: 65 },
+				outlineFile: "bruiser-death-outline.png",
+			},
+		],
+		animations: {
+			attack: { sheet: 0, start: 0, frames: 8, fps: 12, loop: false },
+			death: { sheet: 2, start: 0, frames: 6, fps: 10, loop: false },
+			hit: { sheet: 1, start: 96, frames: 4, fps: 12, loop: false },
+			idle: { sheet: 1, start: 0, frames: 4, fps: 6, loop: true },
+			move: { sheet: 1, start: 32, frames: 8, fps: 10, loop: true },
 		},
 	},
 	"enemy.sniper": {

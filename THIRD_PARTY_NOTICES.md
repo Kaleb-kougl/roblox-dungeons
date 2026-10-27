@@ -75,3 +75,18 @@ SOFTWARE.
   Attribution is not required but appreciated: "Ninja Adventure by Pixel-boy and AAA". The copy in this repo came
   without a licence file and holds 41 music tracks where the store page lists 25 (a newer version): confirm the
   download it came from before release (docs/FX_AUDIO.md X0).
+
+## 2D Demons - TopDown asset pack v1.1 ("Top-down Demons", 2D Demons - 8-Directional Character Sprite Pack)
+
+- Author: SmallScaleInt. Source: https://smallscaleint.itch.io/top-down-demons (paid pack; download
+  `2D Demons - TopDown assetpack v1.1.zip`). 34 characters (13 Demon Spawns, 10 Imps, 6 Demon Elites, 5 Demon
+  Beasts), 8 directions, 128x128 cells, separate shadow and effect sheets.
+- Used for: `enemy.bruiser` (Demon Beast 3, docs/DEMON_ART.md) and `boss.act1` (Mother Bramble as Demon Elite 3,
+  docs/BRAMBLE_ART.md): the body sheets over their `Shadows/` sheets (`Effects/` not used), cropped and repacked into
+  atlases with a baked outline by `scripts/art/build-atlases.js`, and uploaded to Roblox (2026-10-26, ids in
+  `src/shared/theme/packs/vale/assetIds.ts`).
+- Raw files: `art/vendor/demons-topdown/` (gitignored, not redistributed).
+- License (store page, "Standard Commercial License", recorded 2026-10-26): "Use in unlimited commercial or personal
+  game projects"; "No attribution or credit required"; "Modify, recolor, and re-export freely for your own project";
+  "Cannot resell, redistribute, or sublicense the raw asset files themselves"; "Not for use in stock-asset or
+  asset-pack resale platforms". The downloaded copy has no licence file of its own.

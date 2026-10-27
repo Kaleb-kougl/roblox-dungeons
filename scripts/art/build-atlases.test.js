@@ -583,3 +583,270 @@ describe("sourceFiles and lockAlso", () => {
 		assert.throws(() => A.sourceFiles(frames({ lockAlso: { bad: { frames: [0] } } })), /enemy\.x: lockAlso\.bad needs a frames source, a folder and frames/);
 	});
 });
+
+// ---------------------------------------------------------------------------------------------
+// Layered grid sources (docs/DEMON_ART.md DA2 / DD3): `source.layers`, bottom to top, "" = source.dir itself
+
+const px = (img, x, y) => [...img.data.subarray((y * img.w + x) * 4, (y * img.w + x) * 4 + 4)];
+
+describe("layered grid sources", () => {
+	const BLUE = [0, 0, 255, 255];
+	const HALF_RED = [255, 0, 0, 128];
+	/** Two 4 x 1 layers under layer/<sub>/: (0) both set, (1) bottom only, (2) top only, (3) neither. */
+	const prime = (dir, file) => {
+		const bottom = A.raster(4, 1);
+		const top = A.raster(4, 1);
+		put(bottom, 0, 0, BLUE);
+		put(bottom, 1, 0, BLUE);
+		put(top, 0, 0, HALF_RED);
+		put(top, 2, 0, HALF_RED);
+		A.sourceCache.set(`${dir}/Shadows/${file}`, bottom);
+		A.sourceCache.set(`${dir}/${file}`, top);
+	};
+
+	it("composites bottom to top with premultiplied integer 'over' (the first entry is the bottom)", () => {
+		prime("layer/order", "a.png");
+		const src = { type: "grid", dir: "layer/order", frameW: 4, frameH: 1 };
+		const up = A.gridSheet("t", { ...src, layers: ["Shadows", ""] }, "a.png");
+		// half red over opaque blue: a = 128 + round(255 * 127 / 255) = 255; r = 255 * 128 / 255 = 128; b = 255 * 127 / 255
+		assert.deepEqual(px(up, 0, 0), [128, 0, 127, 255]);
+		assert.deepEqual(px(up, 1, 0), BLUE); // bottom only
+		assert.deepEqual(px(up, 2, 0), HALF_RED); // top only, over nothing: unchanged
+		assert.deepEqual(px(up, 3, 0), [0, 0, 0, 0]);
+		const down = A.gridSheet("t", { ...src, layers: ["", "Shadows"] }, "a.png");
+		assert.deepEqual(px(down, 0, 0), BLUE); // opaque blue on top hides the red
+		assert.deepEqual(px(down, 2, 0), HALF_RED);
+		// equals compositeOver applied by hand, and never touches the cached source rasters
+		const hand = A.raster(4, 1);
+		A.compositeOver(A.sourceCache.get("layer/order/Shadows/a.png"), hand, 0, 0, 1000);
+		A.compositeOver(A.sourceCache.get("layer/order/a.png"), hand, 0, 0, 1000);
+		assert.deepEqual([...up.data], [...hand.data]);
+		assert.deepEqual(px(A.sourceCache.get("layer/order/a.png"), 0, 0), HALF_RED);
+	});
+
+	it("without layers the sheet is the source file itself", () => {
+		prime("layer/none", "a.png");
+		const img = A.gridSheet("t", { type: "grid", dir: "layer/none", frameW: 4, frameH: 1 }, "a.png");
+		assert.equal(img, A.sourceCache.get("layer/none/a.png"));
+	});
+
+	it("lists every layer file for the lock (sourceFiles), sorted, and one file without layers", () => {
+		const config = (layers) => ({
+			spriteSets: {
+				"enemy.l": {
+					source: { type: "grid", dir: "pack/Beast", frameW: 4, frameH: 1, ...(layers ? { layers } : {}) },
+					facingCount: 1,
+					animations: { idle: { file: "Idle 16.png", frames: [0] }, hit: { cellsOf: "idle" } },
+				},
+			},
+			images: {},
+		});
+		assert.deepEqual(A.sourceFiles(config(undefined)), ["pack/Beast/Idle 16.png"]);
+		assert.deepEqual(A.sourceFiles(config(["Shadows", ""])), ["pack/Beast/Idle 16.png", "pack/Beast/Shadows/Idle 16.png"]);
+		assert.deepEqual(A.sourceFiles(config(["Shadows", "", "Effects/Glow"])), [
+			"pack/Beast/Effects/Glow/Idle 16.png",
+			"pack/Beast/Idle 16.png",
+			"pack/Beast/Shadows/Idle 16.png",
+		]);
+		assert.deepEqual(A.gridFiles("t", { dir: "d", type: "grid", layers: ["Shadows", ""] }, "x.png"), ["d/Shadows/x.png", "d/x.png"]);
+	});
+
+	it("fails loudly on a missing layer file or layers of different sizes", () => {
+		A.sourceCache.set("layer/miss/a.png", A.raster(4, 1));
+		assert.throws(
+			() => A.gridSheet("Idle.png", { type: "grid", dir: "layer/miss", frameW: 4, frameH: 1, layers: ["NoSuchLayer", ""] }, "a.png"),
+			/Idle\.png: layer file layer\/miss\/NoSuchLayer\/a\.png is missing/,
+		);
+		A.sourceCache.set("layer/size/S/a.png", A.raster(4, 2));
+		A.sourceCache.set("layer/size/a.png", A.raster(4, 1));
+		assert.throws(
+			() => A.gridSheet("t", { type: "grid", dir: "layer/size", frameW: 4, frameH: 1, layers: ["S", ""] }, "a.png"),
+			/layer layer\/size\/a\.png is 4x1, but layer\/size\/S\/a\.png is 4x2/,
+		);
+	});
+
+	it("rejects a malformed layers list, and layers on a frames source", () => {
+		const grid = (layers) => ({ type: "grid", dir: "d", layers });
+		for (const bad of [[], "Shadows", [3], ["../up"], ["/abs"], ["a//b"], ["a/"], ["./a"], ["a\\b"]]) {
+			assert.throws(() => A.gridLayers("enemy.b", grid(bad)), /enemy\.b: source\.layers/, JSON.stringify(bad));
+		}
+		assert.throws(() => A.gridLayers("enemy.b", grid(["Shadows", "Shadows"])), /lists "Shadows" twice/);
+		assert.throws(() => A.gridLayers("enemy.b", { type: "frames", dir: "d", layers: [""] }), /needs a grid source/);
+		assert.deepEqual(A.gridLayers("ok", grid(["Shadows", "", "Effects/Glow"])), ["Shadows", "", "Effects/Glow"]);
+		assert.equal(A.gridLayers("ok", { type: "grid", dir: "d" }), null);
+	});
+
+	it("composites before the crop and the pivot: a shadow layer below the body grows the cell, the feet stay", () => {
+		const plain = syntheticSet("layered", {});
+		A.sourceCache.set("synthetic/Shadows/layered.png", A.raster(32, 16));
+		const shadow = A.sourceCache.get("synthetic/Shadows/layered.png");
+		for (let f = 0; f < 2; f++) for (let x = 5; x <= 10; x++) put(shadow, f * 16 + x, 14, SHADOW); // one row below the baked one
+		const without = A.buildSpriteSet("enemy.lw", plain);
+		const withLayers = A.buildSpriteSet("enemy.ly", { ...plain, source: { ...plain.source, layers: ["Shadows", ""] } });
+		assert.equal(withLayers.layout.frameH, without.layout.frameH + 1);
+		assert.equal(withLayers.layout.frameW, without.layout.frameW);
+		assert.deepEqual(withLayers.layout.pivot, without.layout.pivot); // the shadow is not body (bodyMinRgb)
+		const { img } = withLayers.sheets[0];
+		assert.deepEqual(px(img, 7, 14), SHADOW); // the layer's pixel is in the sheet (cell origin is (0, 0) here)
+		assert.equal(alphaAt(without.sheets[0].img, 7, 14), 0);
+		// a set that names the body sheet alone as its one layer builds the same pixels as no layers
+		const one = A.buildSpriteSet("enemy.l1", { ...plain, source: { ...plain.source, layers: [""] } });
+		assert.equal(Buffer.compare(A.encodePng(one.sheets[0].img), A.encodePng(without.sheets[0].img)), 0);
+	});
+});
+
+// ---------------------------------------------------------------------------------------------
+// Per-sheet cells (docs/DEMON_ART.md DA2 / DD4): `cells: "perSheet"`
+
+/** A 2-frame 32 x 16 grid source: a lit 4 x 8 body (feet at y 11), plus extra lit pixels at `extra` [x, y]. */
+function primeShape(rel, extra) {
+	const img = A.raster(32, 16);
+	for (let f = 0; f < 2; f++) {
+		const ox = f * 16;
+		for (let y = 4; y <= 11; y++) for (let x = 6; x <= 9; x++) put(img, ox + x, y, LIT);
+		for (const [x, y] of extra) put(img, ox + x, y, LIT);
+	}
+	A.sourceCache.set(rel, img);
+}
+
+/** Three animations in two sheets: idle (the body), lunge (reaches right to x 14), wave (reaches up to y 0). */
+function cellSet(extra) {
+	primeShape("cells/idle.png", []);
+	primeShape("cells/lunge.png", [[14, 8]]);
+	primeShape("cells/wave.png", [[7, 0]]);
+	return {
+		source: { type: "grid", dir: "cells", frameW: 16, frameH: 16 },
+		facingCount: 1,
+		rowForFacing: [0],
+		noiseAlpha: 2,
+		pad: 3,
+		pivot: { measure: { animation: "idle", facing: 0, frame: 0 }, bodyAlpha: 64, bodyMinRgb: 8, footBand: 2 },
+		bodyTiles: 1,
+		resample: "Default",
+		outline: { widthPx: 2 },
+		animations: {
+			idle: { file: "idle.png", frames: [0, 1], fps: 6, loop: true },
+			lunge: { file: "lunge.png", frames: [0, 1], fps: 12, loop: false },
+			wave: { file: "wave.png", frames: [0], fps: 12, loop: false },
+			hit: { cellsOf: "lunge", frames: 1, fps: 1, loop: false },
+		},
+		sheets: [
+			{ name: "c-idle", animations: ["idle"] },
+			{ name: "c-act", animations: ["lunge", "wave"] },
+		],
+		...extra,
+	};
+}
+
+describe("per-sheet cells", () => {
+	const one = A.buildSpriteSet("enemy.one", cellSet({}));
+	const per = A.buildSpriteSet("enemy.per", cellSet({ cells: "perSheet" }));
+
+	it("keeps the set-level cell and pivot exactly as with one cell", () => {
+		// union box x 6..14, y 0..11 -> 9 x 12, + 2 * 3 pad
+		assert.equal(one.layout.frameW, 15);
+		assert.equal(one.layout.frameH, 18);
+		assert.deepEqual(one.layout.pivot, { x: 8 - 3, y: 12 + 3 });
+		for (const k of ["frameW", "frameH", "pivot", "pixelsPerTile", "facings", "animations"]) assert.deepEqual(per.layout[k], one.layout[k], k);
+		assert.equal(per.perSheet, true);
+		assert.equal(one.perSheet, false);
+	});
+
+	it("trims each sheet to the union box of its own animations, plus pad", () => {
+		const [idle, act] = per.layout.sheets;
+		// idle: body x 6..9, y 4..11 -> 4 x 8 + 6
+		assert.deepEqual([idle.frameW, idle.frameH], [10, 14]);
+		// lunge + wave: x 6..14, y 0..11 -> the set's cell
+		assert.deepEqual([act.frameW, act.frameH], [15, 18]);
+		assert.equal(idle.w % idle.frameW, 0);
+		assert.equal(idle.h % idle.frameH, 0);
+		assert.equal(per.sheets[0].img.w, idle.w);
+		assert.equal(per.sheets[0].outlineImg.w, idle.w);
+		assert.equal(per.sheets[0].outlineImg.h, idle.h);
+		assert.equal(idle.outlineFile, "c-idle-outline.png");
+		// one cell: every sheet uses the set's cell and carries no cell fields
+		assert.deepEqual(Object.keys(one.layout.sheets[0]), ["file", "w", "h", "outlineFile"]);
+	});
+
+	it("puts the pivot on the same source point in every sheet (translated by the sheet's crop offset)", () => {
+		const [idle, act] = per.layout.sheets;
+		// idle's crop starts at source (3, 1); the set's at (3, -3): the pivot moves up 4 px in the idle cell
+		assert.deepEqual(idle.pivot, { x: 8 - 3, y: 12 - 1 });
+		assert.deepEqual(act.pivot, per.layout.pivot);
+		// every visible pixel of an idle cell sits at the same offset from its pivot as in the one-cell build
+		const a = per.layout.animations.idle;
+		for (let f = 0; f < a.frames; f++) {
+			const cs = A.sheetCell(per.layout, idle);
+			const co = A.sheetCell(one.layout, one.layout.sheets[0]);
+			const pi = per.sheets[0].img;
+			const oi = one.sheets[0].img;
+			const pPer = Math.floor(idle.w / cs.w);
+			const oPer = Math.floor(one.layout.sheets[0].w / co.w);
+			const px0 = ((a.start + f) % pPer) * cs.w;
+			const py0 = Math.floor((a.start + f) / pPer) * cs.h;
+			const ox0 = ((a.start + f) % oPer) * co.w;
+			const oy0 = Math.floor((a.start + f) / oPer) * co.h;
+			let visible = 0;
+			for (let y = 0; y < co.h; y++) {
+				for (let x = 0; x < co.w; x++) {
+					const o = px(oi, ox0 + x, oy0 + y);
+					if (o[3] === 0) continue;
+					visible++;
+					const qx = x - co.pivot.x + cs.pivot.x;
+					const qy = y - co.pivot.y + cs.pivot.y;
+					assert.ok(qx >= 0 && qy >= 0 && qx < cs.w && qy < cs.h, `${x},${y} inside the trimmed cell`);
+					assert.deepEqual(px(pi, px0 + qx, py0 + qy), o);
+				}
+			}
+			assert.ok(visible > 0);
+		}
+	});
+
+	it("keeps the pivot inside a sheet whose animations never reach the feet", () => {
+		primeShape("cells/high.png", []);
+		const high = A.raster(32, 16);
+		for (let f = 0; f < 2; f++) put(high, f * 16 + 12, 1, LIT); // a lone pixel up-right, far from the feet
+		A.sourceCache.set("cells/spark.png", high);
+		const set = cellSet({ cells: "perSheet" });
+		set.animations.spark = { file: "spark.png", frames: [0], fps: 12, loop: false };
+		set.sheets.push({ name: "c-spark", animations: ["spark"] });
+		const r = A.buildSpriteSet("enemy.spark", set);
+		const s = r.layout.sheets[2];
+		// box: the spark (12, 1) and the pixel up-left of the pivot (7, 11) -> x 7..12, y 1..11
+		assert.deepEqual([s.frameW, s.frameH], [12, 17]);
+		assert.deepEqual(s.pivot, { x: 8 - 4, y: 12 + 2 });
+		assert.ok(s.pivot.x > 0 && s.pivot.x < s.frameW && s.pivot.y > 0 && s.pivot.y < s.frameH);
+	});
+
+	it("emits per-sheet frameW / frameH / pivot in layout.ts, and declares them only when a set uses them", () => {
+		const text = A.layoutModule([per], [], "#000000");
+		assert.match(text, /\tframeW\?: number;\n\tframeH\?: number;\n\tpivot\?: Pivot;\n\}/);
+		assert.match(
+			text,
+			/\{\n\t\t\t\tfile: "c-idle\.png",\n\t\t\t\tw: \d+,\n\t\t\t\th: \d+,\n\t\t\t\tframeW: 10,\n\t\t\t\tframeH: 14,\n\t\t\t\tpivot: \{ x: 5, y: 11 \},\n\t\t\t\toutlineFile: "c-idle-outline\.png",\n\t\t\t\},/,
+		);
+		const plain = A.layoutModule([one], [], "#000000");
+		assert.equal(plain.includes("frameW?: number"), false);
+		assert.match(plain, /export interface ValeSpriteSheetFile extends ValeSheetFile \{\n\toutlineFile\?: string;\n\}/);
+		// the interface depends on every set: one per-sheet set declares the fields for all
+		assert.match(A.layoutModule([one, per], [], "#000000"), /pivot\?: Pivot;/);
+	});
+
+	it("draws contact sheets with every pivot on one spot, and builds deterministically", () => {
+		const c = A.contactSheet(per);
+		assert.equal(c.w, A.contactSheet(one).w);
+		assert.equal(c.h, A.contactSheet(one).h);
+		const again = A.buildSpriteSet("enemy.per", cellSet({ cells: "perSheet" }));
+		for (let i = 0; i < per.sheets.length; i++) {
+			assert.equal(Buffer.compare(A.encodePng(per.sheets[i].img), A.encodePng(again.sheets[i].img)), 0);
+			assert.equal(Buffer.compare(A.encodePng(per.sheets[i].outlineImg), A.encodePng(again.sheets[i].outlineImg)), 0);
+		}
+		assert.equal(Buffer.compare(A.encodePng(c), A.encodePng(A.contactSheet(again))), 0);
+		assert.equal(A.layoutModule([per], [], "#000000"), A.layoutModule([again], [], "#000000"));
+	});
+
+	it("rejects an unknown cells value", () => {
+		assert.throws(() => A.buildSpriteSet("enemy.bad", cellSet({ cells: "sheet" })), /enemy\.bad: cells must be "perSheet" .* got "sheet"/);
+		assert.equal(A.cellsMode("x", {}), "set");
+	});
+});

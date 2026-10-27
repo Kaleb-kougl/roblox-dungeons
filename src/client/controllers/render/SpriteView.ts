@@ -1,7 +1,8 @@
-import type { SpriteSet } from "shared/theme";
+import type { Pivot, SpriteSet } from "shared/theme";
 import {
 	ACTOR_OUTLINE,
 	SPRITE_VIEW,
+	sheetSpriteLayout,
 	spriteBillboard,
 	spriteFacing,
 	spriteFrame,
@@ -28,6 +29,11 @@ const HIDDEN = 1;
  * pixelsPerTile); breakables pass one scaled down to their height cap (shared/view breakableArtLayout).
  * `extraDepthStuds` pushes the billboard further toward the camera (decor wall pieces: off their wall face).
  *
+ * Per-sheet cells (docs/DEMON_ART.md DD4): a frame whose sheet has its own cell (SpriteFrame.size / pivot differ from
+ * the set's) re-sizes and re-offsets the billboard for that cell (sheetSpriteLayout over `layout`), written only when
+ * the drawn cell changes; every sheet's pivot is the same point of the art, so the feet stay on the anchor. A set
+ * without per-sheet cells never writes them again after the constructor.
+ *
  * Baked rim (enemy outline plan O4), opt in with `outline` (the rim colour): a second ImageLabel "Outline" under the
  * frame (ZIndex, Sibling behaviour) showing the frame's outline sheet (SpriteFrame.outlineImage) with the frame's rect,
  * written in the same branch as the frame. It draws while spriteOutlineVisible: the view is visible (setVisible hides
@@ -52,6 +58,11 @@ export class SpriteView {
 	private shownFacing = -1;
 	private shownFrame = -1;
 	private image = "";
+	/** The cell the billboard is sized for (initially the set's): width, height, pivot x / y in pixels. */
+	private cellW: number;
+	private cellH: number;
+	private cellPivotX: number;
+	private cellPivotY: number;
 	private tint = WHITE;
 	private transparency = 0;
 	private visible = true;
@@ -59,8 +70,8 @@ export class SpriteView {
 	constructor(
 		readonly set: SpriteSet,
 		parent: Instance,
-		layout: SpriteLayout = set,
-		extraDepthStuds = 0,
+		private readonly layout: SpriteLayout = set,
+		private readonly extraDepthStuds = 0,
 		outline?: Color3,
 	) {
 		const anchor = renderPart("Part", false);
@@ -69,17 +80,19 @@ export class SpriteView {
 		anchor.Size = new Vector3(SPRITE_VIEW.anchorStuds, SPRITE_VIEW.anchorStuds, SPRITE_VIEW.anchorStuds);
 		this.anchor = anchor;
 
-		const b = spriteBillboard(layout);
 		const gui = new Instance("BillboardGui");
 		gui.Name = set.id;
-		gui.Size = new UDim2(b.w, 0, b.h, 0);
-		gui.StudsOffset = new Vector3(b.offsetX, b.offsetY, b.offsetZ + extraDepthStuds);
+		this.gui = gui;
+		this.cellW = set.frameW;
+		this.cellH = set.frameH;
+		this.cellPivotX = set.pivot.x;
+		this.cellPivotY = set.pivot.y;
+		this.placeBillboard(layout);
 		gui.LightInfluence = 0;
 		gui.AlwaysOnTop = false;
 		gui.ResetOnSpawn = false;
 		gui.Adornee = anchor;
 		gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling;
-		this.gui = gui;
 
 		const label = new Instance("ImageLabel");
 		label.Name = "Frame";
@@ -138,6 +151,7 @@ export class SpriteView {
 		this.shownFrame = pick.frame;
 		this.shownFacing = facing;
 		const f = set.frame(pick.anim, facing, pick.frame);
+		this.syncCell(f.size.X, f.size.Y, f.pivot);
 		if (f.image !== this.image) {
 			this.image = f.image;
 			this.label.Image = f.image;
@@ -157,6 +171,23 @@ export class SpriteView {
 				rim.ImageRectSize = f.size;
 			}
 		}
+	}
+
+	/** Billboard Size / StudsOffset for `layout` (the pivot pixel on the anchor). */
+	private placeBillboard(layout: SpriteLayout): void {
+		const b = spriteBillboard(layout);
+		this.gui.Size = new UDim2(b.w, 0, b.h, 0);
+		this.gui.StudsOffset = new Vector3(b.offsetX, b.offsetY, b.offsetZ + this.extraDepthStuds);
+	}
+
+	/** Per-sheet cells: re-places the billboard when the drawn frame's cell differs from the one it is sized for. */
+	private syncCell(w: number, h: number, pivot: Readonly<Pivot>): void {
+		if (w === this.cellW && h === this.cellH && pivot.x === this.cellPivotX && pivot.y === this.cellPivotY) return;
+		this.cellW = w;
+		this.cellH = h;
+		this.cellPivotX = pivot.x;
+		this.cellPivotY = pivot.y;
+		this.placeBillboard(sheetSpriteLayout(this.layout, this.set, w, h, pivot));
 	}
 
 	/** ImageColor3 (multiplies the art: a tint, never a white flash). */

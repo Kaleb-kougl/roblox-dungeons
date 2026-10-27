@@ -153,8 +153,36 @@ export interface SpriteFrameRect {
 	readonly outlineAssetId?: string;
 	readonly x: number;
 	readonly y: number;
+	/** The cell size: the sheet's own with per-sheet cells (SpriteSheetImage.frameW / frameH), else the set's. */
 	readonly w: number;
 	readonly h: number;
+}
+
+/** One sheet's cell (sprite contract v2 per-sheet cells): its size and pivot, the set's where the sheet gives none. */
+export interface SpriteCell {
+	readonly frameW: number;
+	readonly frameH: number;
+	readonly pivot: Readonly<Pivot>;
+}
+
+/**
+ * The cell of `sheet` in a set whose own cell is `set` (SpriteSheetImage.frameW / frameH / pivot, each defaulting to
+ * the set's). Returns `set` itself when the sheet gives none of them.
+ */
+export function spriteSheetCell(set: SpriteCell, sheet: Readonly<SpriteSheetImage>): SpriteCell {
+	if (sheet.frameW === undefined && sheet.frameH === undefined && sheet.pivot === undefined) return set;
+	return { frameW: sheet.frameW ?? set.frameW, frameH: sheet.frameH ?? set.frameH, pivot: sheet.pivot ?? set.pivot };
+}
+
+/** Does any sheet of a manifest `sprites` def give its own cell (frameW / frameH / pivot)? */
+function hasPerSheetCells(sheets: unknown): boolean {
+	if (!isArrayLike(sheets)) return false;
+	for (const sheet of sheets) {
+		if (isObj(sheet) && (sheet.frameW !== undefined || sheet.frameH !== undefined || sheet.pivot !== undefined)) {
+			return true;
+		}
+	}
+	return false;
 }
 
 /**
@@ -187,6 +215,11 @@ export interface SpriteSetLayout {
 	 * `idle` if the set has it, else the first name.
 	 */
 	frame(anim: string, facing: number, index: number): SpriteFrameRect;
+	/**
+	 * Sheet `sheet`'s cell (per-sheet cells, spriteSheetCell): its frameW / frameH / pivot, the set's where it gives
+	 * none. The pivot of the cell `frame` returns is `cell(frame.sheet).pivot`.
+	 */
+	cell(sheet: number): SpriteCell;
 }
 
 /**
@@ -236,7 +269,14 @@ function spriteSetProblem(def: Obj): string | undefined {
 	if (!isArrayLike(sheets) || sheets.size() === 0) return "no sheets";
 	for (const sheet of sheets) {
 		if (!isObj(sheet) || !typeIs(sheet.assetId, "string")) return "bad sheet";
-		if (!isImageSidePx(sheet.w) || !isImageSidePx(sheet.h) || sheet.w < frameW || sheet.h < frameH) {
+		// per-sheet cells: each field optional, defaulting to the set's
+		const cw = sheet.frameW ?? frameW;
+		const ch = sheet.frameH ?? frameH;
+		if (!isImageSidePx(cw) || !isImageSidePx(ch)) return "bad sheet frameW / frameH";
+		const p = sheet.pivot ?? pivot;
+		if (!isObj(p) || !isFiniteNum(p.x) || !isFiniteNum(p.y)) return "bad sheet pivot";
+		if (p.x < 0 || p.x > cw || p.y < 0 || p.y > ch) return "sheet pivot outside its cell";
+		if (!isImageSidePx(sheet.w) || !isImageSidePx(sheet.h) || sheet.w < cw || sheet.h < ch) {
 			return "bad sheet size";
 		}
 	}
@@ -251,8 +291,7 @@ function spriteSetProblem(def: Obj): string | undefined {
 function spriteAnimationProblem(
 	a: unknown,
 	sheets: ReadonlyArray<Readonly<SpriteSheetImage>>,
-	frameW: number,
-	frameH: number,
+	cell: SpriteCell,
 	facingCount: number,
 ): string | undefined {
 	if (!isObj(a)) return "not an object";
@@ -264,7 +303,8 @@ function spriteAnimationProblem(
 	if (!isFiniteNum(a.fps) || !(a.fps > 0) || a.fps > MAX_ANIMATION_FPS) return "bad fps";
 	if (!typeIs(a.loop, "boolean")) return "bad loop";
 	const sheet = sheets[a.sheet];
-	const capacity = math.floor(sheet.w / frameW) * math.floor(sheet.h / frameH);
+	const c = spriteSheetCell(cell, sheet);
+	const capacity = math.floor(sheet.w / c.frameW) * math.floor(sheet.h / c.frameH);
 	const lastCell = a.start + (facingCount - 1) * stride + a.frames - 1;
 	if (lastCell >= capacity) return `cell ${lastCell} is outside sheet ${a.sheet} (${capacity} cells)`;
 	return undefined;
@@ -273,6 +313,8 @@ function spriteAnimationProblem(
 class SpriteSetLayoutImpl implements SpriteSetLayout {
 	readonly animationNames: ReadonlyArray<string>;
 	private readonly fallback: string;
+	/** The set's own cell, the default of every sheet's (spriteSheetCell). */
+	private readonly ownCell: SpriteCell;
 
 	constructor(
 		readonly id: string,
@@ -289,6 +331,7 @@ class SpriteSetLayoutImpl implements SpriteSetLayout {
 		const names = sortedKeys(animations);
 		this.animationNames = names;
 		this.fallback = animations[SPRITE_FALLBACK_ANIMATION] !== undefined ? SPRITE_FALLBACK_ANIMATION : names[0];
+		this.ownCell = { frameW, frameH, pivot };
 	}
 
 	has(anim: string): boolean {
@@ -297,6 +340,10 @@ class SpriteSetLayoutImpl implements SpriteSetLayout {
 
 	animation(anim: string): SpriteAnimationDef | undefined {
 		return this.animations[anim];
+	}
+
+	cell(sheet: number): SpriteCell {
+		return spriteSheetCell(this.ownCell, this.sheets[sheet]);
 	}
 
 	frame(anim: string, facing: number, index: number): SpriteFrameRect {
@@ -312,15 +359,16 @@ class SpriteSetLayoutImpl implements SpriteSetLayout {
 		const d = ((math.floor(facing) % count) + count) % count;
 		const cell = a.start + d * (a.stride ?? a.frames) + frameIndex(a, index);
 		const sheet = this.sheets[a.sheet];
-		const perRow = math.floor(sheet.w / this.frameW);
+		const c = spriteSheetCell(this.ownCell, sheet);
+		const perRow = math.floor(sheet.w / c.frameW);
 		return {
 			sheet: a.sheet,
 			assetId: sheet.assetId,
 			outlineAssetId: spriteSheetOutline(sheet),
-			x: (cell % perRow) * this.frameW,
-			y: math.floor(cell / perRow) * this.frameH,
-			w: this.frameW,
-			h: this.frameH,
+			x: (cell % perRow) * c.frameW,
+			y: math.floor(cell / perRow) * c.frameH,
+			w: c.frameW,
+			h: c.frameH,
 		};
 	}
 }
@@ -716,8 +764,13 @@ export class ThemeCore {
 		};
 		const problem = spriteSetProblem(def);
 		if (problem !== undefined) return reject(problem);
+		const slot = slotFor(id);
+		if (hasPerSheetCells(def.sheets) && slot?.perSheetCells !== true) {
+			return reject("per-sheet cells (sheets[i].frameW / frameH / pivot) outside an actor slot");
+		}
 		const frameW = def.frameW as number;
 		const frameH = def.frameH as number;
+		const setCell: SpriteCell = { frameW, frameH, pivot: def.pivot as unknown as Pivot };
 		const facings = def.facings as unknown as SpriteFacings;
 		const sheets = def.sheets as unknown as ReadonlyArray<Readonly<SpriteSheetImage>>;
 		sheets.forEach((sheet, i) => {
@@ -729,11 +782,10 @@ export class ThemeCore {
 			}
 		});
 		const animations: Record<string, SpriteAnimationDef> = {};
-		const slot = slotFor(id);
 		const required = slot !== undefined ? requiredBaseAnimations(slot) : [];
 		if (isObj(def.animations)) {
 			for (const [name, a] of sortedEntries(def.animations)) {
-				const bad = spriteAnimationProblem(a, sheets, frameW, frameH, facings.count);
+				const bad = spriteAnimationProblem(a, sheets, setCell, facings.count);
 				if (bad === undefined) {
 					animations[name] = a as unknown as SpriteAnimationDef;
 				} else if (required.includes(name)) {

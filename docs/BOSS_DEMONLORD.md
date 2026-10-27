@@ -232,7 +232,8 @@ RECOVER plays `idle` (the melee opening), REPOSITION and the chase play `move`, 
 - [x] **D6. Views, audio, bots.**
   - `shared/view/sprites.ts`: `ActorAttack.anim` (named attack, falls back to `attack`) and an optional `special`
     (one-shot `intro` / `taunt`, stretched over the gameplay timer); priority death > special > attack > hit > move >
-    idle; `demonlordSpriteInput`; `ACTOR_SPRITE_INPUTS` gets the demon (Bramble stays a placeholder).
+    idle; `demonlordSpriteInput`; `ACTOR_SPRITE_INPUTS` gets the demon (Bramble had no art yet; main's BRAMBLE_ART
+    gave her a set).
   - Telegraph previews: `TelegraphController.drawBoss` dispatches by id; `render/demonlord.ts` (consts imported by
     name, like `bossAct1.ts`) and demon markings in `shared/view/markings.ts` showing exactly where the bullets go.
   - FX: `fxCues` treats any `data.boss` as the boss for death / phase; `fx.boss.slam` on the charge's impact.
@@ -272,6 +273,17 @@ RECOVER plays `idle` (the melee opening), REPOSITION and the chase play `move`, 
     bosses' rule; the demon's 98 px cell at 10.5 px / tile is 149 web px, so it is unchanged) and its corpse holds
     until `SPRITE_VIEW.bossCorpseFadeFrom` (0.6) of the corpse time, then fades (the death darkens and holds, so a fade
     from the first frame would hide it); the baked rim is the generic enemy path (the placeholder's `enemyOutline`).
+  - **Merged with main's demon art (docs/BRAMBLE_ART.md BR2 / BR4, BD7; 2026-10-26).** Main built the same boss
+    machinery for Mother Bramble; the merge keeps one of each: `BOSS_OPTIONAL_ANIMATIONS` is the union (`attack.2`,
+    `attack.3`, `attack.4`, `intro`, `taunt`); `ActorAttack` has `anim` plus main's `segment` / `loop`;
+    `ActorSpriteInput` has `special`, `deathTicks` and main's `flinch`; `chooseActorAnim` is death > special > attack >
+    hit > move > idle for both. A special the set lacks plays its `ActorSpecial.fallback` (Mother Bramble's intro:
+    `taunt`; the Demon Lord's specials name none), else is skipped as here. The corpse fade-from moved from "any boss
+    sprite" in `ActorRenderController` to the input (`ActorSpriteInput.corpseFadeFrom`: the Demon Lord's
+    `bossCorpseFadeFrom`; Mother Bramble fades over the whole corpse, as main built her). `bossSpriteLayout` applies to
+    both bosses; both built sets are already wider than `bossMinDrawPx`, so neither changes. `ACTOR_SPRITE_INPUTS` holds
+    the swarmer, sniper, turret.sniper, bruiser, Mother Bramble and the Demon Lord. Sprite-set `downscale` and main's
+    per-sheet cells compose in `build-atlases.js` (each sheet's box is grown to k-blocks and / k).
   - **Previews** (`shared/view/markings.ts`, `render/demonlord.ts`, `TelegraphController`). `drawBoss` draws the seal
     and the roar rings for ANY boss (`BossFightState.TRANSITION`), then dispatches by id: Mother Bramble's previews
     as before, the Demon Lord's (`DemonlordConsts`, every constant imported by name), else a generic ring. Shapes:
