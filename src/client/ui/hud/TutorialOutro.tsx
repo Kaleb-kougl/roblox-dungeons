@@ -51,6 +51,7 @@ export function TutorialOutro() {
 				padding={HUD_VIEW.pad * 2}
 			>
 				<Text
+					fill={true}
 					order={1}
 					size={HUD_VIEW.bigText}
 					color="uiAccent"

@@ -42,6 +42,7 @@ rebinding, audio, display). Everything presentation-side reads the sim and never
 | `SettingsController` | `.../ui/SettingsController.ts` | The player's settings (juice, controls, audio, display): server sync (request / update / reset / settingsChanged), the system Reduce Motion flag, `KV_ResetBindings`, O toggles the Options screen, B closes a prompt on it or the screen, the screen pauses the run. |
 | `RebindController` | `.../ui/RebindController.ts` | The Options screen's rebinding: capture (countdown, cancel, owns the input), swap prompt, refusal notes, Clear, Reset device, the input test strip. |
 | `HudController` | `.../ui/HudController.tsx` | Mounts `GameHud` (React + Reflex; two ScreenGuis through a portal) and the menu shell `MenuLayer` (client/ui/menu, its own ScreenGui) with the HUD and menu actions, switches gamepad navigation on while a menu is open (menu screens, pause / party overlay, run-over panel, panels), hides the stock Health / Backpack CoreGui. |
+| `HudOcclusionController` | `.../ui/HudOcclusionController.ts` | docs/HUD_LAYOUT.md H7: render step after the camera; every `HUD_OCCLUSION.everyFrames` frames projects the watched player, living actors and up to `maxBullets` enemy bullets with `Camera:WorldToScreenPoint` (GUI space, the same space as `AbsolutePosition`) and tests them against the mounted corner panels (client/ui/hud `cornerFade` registry); one `OcclusionFader` per corner writes the corner's `GroupTransparency` binding (the corner `Panel` is a CanvasGroup inside a transparent placed frame; no React re-render). Options > Display > HUD fade Off or no run: opaque, no work. Under `KV_Debug` it also warns once per panel per run when an always-on panel outgrows its `HUD_FOOTPRINT` box (H1). Read only on the sim. |
 | `MenuController` | `.../ui/MenuController.ts` | L3 / L6: the main menu on join, once the first-run gate decided against the tutorial (a first-time player goes straight into it instead; no run starts on its own; `KV_SkipMenu` starts one at once), the screen + back stack (Reflex `menu`; pad B / Backspace go back), Play solo / Lobbies / Tutorial / Options / Leaderboard, the menu after a run (the lobby room while in a lobby, else the main menu), the co-op party overlay (the pause key in a party run) and Leave run. See "Main menu, lobbies and Leave run". |
 | `LobbyController` | `.../ui/LobbyController.ts` | L5: the lobby remotes into the Reflex `lobby` slice (list, my lobby, invites, notice toasts, the players in this server), the lobby requests, and `lobbyRunStart` (a one-player lobby's ranked solo run). |
 
@@ -368,7 +369,7 @@ swing on Resume).
 
 Two ScreenGuis (`KV_GameHud` display order 10, `KV_GameMenu` 20), laid out at a 1280x720 reference under a UIScale
 (`useHudScale`: min(w / 1280, h / 720) clamped to 0.6..1.75, x1.25 on a ten-foot console screen, then x the player's
-HUD scale, Options > Display, 80-125 %; `computeHudScale`) inside the safe area (`ScreenInsets =
+HUD scale, Options > Display, 70-125 %; `computeHudScale`) inside the safe area (`ScreenInsets =
 CoreUISafeInsets`). Every text is a theme string (`shared/view/hud` HUD_STRINGS / SETTINGS_STRINGS / OPTIONS_STRINGS,
 all checked to exist by `hud.spec.ts`), every colour a theme role, the font the token `HUD_FONTS.text` (Roblox's pixel
 font **Arcade**; `HUD_FONTS.mono` = Code for the debug line), resolved once in `client/ui/theme`. Change the font there
@@ -376,14 +377,23 @@ and only there. Every key prompt (swap, restart, the shrine accept, the boon dra
 player's bound key for the last-used device (`selectBindings` + shared/play `swapHint` / `restartHint` / `shrineHint` /
 `draftHint` / `leaderboardHint`); pause (P / Start) and Options (O / B) are fixed.
 
+Footprint (docs/HUD_LAYOUT.md): the always-on panels (StatusPanel, ScorePanel, WeaponPanel) are corner `Panel`s
+(`corner` prop) that hug their content: a `Text` with no `width` sizes to its text, and `fill` / `wrap` opt into the
+parent's width (a scale-width Text inside an auto-sized Panel stretched it to the whole screen, the bug H1 fixed).
+Each stays inside its `HUD_FOOTPRINT` box (shared/view/hud footprint.ts, status 240x160, score 200x160, weapons
+240x80 reference px) and out of `HUD_CLEAR_ZONE` (the middle 50 % x 56 % of the screen) at HUD scale <= 100 % on every
+`HUD_TEST_VIEWPORTS` entry (footprint.spec.ts); transient panels (boss bar, toasts, tutorial, spectate, verdict) use
+the centre bands. Corner panels fade when the watched player, an enemy or an enemy bullet is under them
+(`HudOcclusionController`, Options > Display > HUD fade).
+
 | Where | Component | Shows |
 | --- | --- | --- |
 | top left | `StatusPanel` | `HP` + one heart per 2 half hearts (full / half / empty, `uiHealth`), armor pips (diamonds, `uiMana`) and, with a running Aegis, its pip after them (a diamond in `boost.aegis`), `Flask` pips (`uiAccent`), `Ember` pips (diamonds, `ember`) |
 | top left (drops) | `StatusPanel` / `BoostRow` | docs/BOOSTS.md B7: one entry per running boost of the shown player (snapshot `boosts`, Boost order): an icon square in `boost.<kind>` with its `boost.<kind>.icon` label and a bar beside it draining with `fraction` (the snapshot's tenths); both blink in the last `BOOST_VIEW.blinkSeconds` (2 s; a steady dim under reduced motion); the tutorial's highlight ring when its highlight is `boosts` |
-| bottom left | `WeaponPanel` | both weapon sets (number + `<weapon id>.name`), the set in hand opaque with a `uiAccent` ring; `E swap` / `Y swap` by `game.inputDevice` |
-| top left (endless) | `StatusPanel` | a `Floor N · Depth D` line under the pips (snapshot `floor` / `depth`, 0 outside endless runs) |
+| bottom left | `WeaponPanel` | both weapon sets (number + `<weapon id>.name`, 108x30 slots), the set in hand opaque with a `uiAccent` ring; above them `E swap` / `Y swap` by `game.inputDevice`, shown for `HUD_HINTS.swapHintSeconds` after a run start or device change and while the tutorial teaches weapons (`useTimedHint`), then fading; always in the pause overlay |
+| top right (endless) | `ScorePanel` | a `Floor N · Depth D` line under the combo meter (snapshot `floor` / `depth`, 0 outside endless runs; an unscored run keeps it under the StatusPanel's pips) |
 | top right | `ScorePanel` | scored runs (every endless run; M1 with `KV_Scoring`): the score, `x1.3` combo and its decay meter (snapshot `comboWindowTicks`: `COMBO_WINDOW_TICKS` or what boons / curses make of it) |
-| top left (endless) | `StatusPanel` / `RunItems` | M2 (co-op: the local player's): a row of icons for the owned boons (rarity colour: `rarity.normal` / `rarity.rare` / `rarity.unique`), relics (`uiAccent`) and curses (`uiHealth`), each labelled with its `<id>.icon` string |
+| top left (endless) | `StatusPanel` / `RunItems` | M2 (co-op: the local player's): a row of icons for the owned boons (rarity colour: `rarity.normal` / `rarity.rare` / `rarity.unique`), relics (`uiAccent`) and curses (`uiHealth`), each labelled with its `<id>.icon` string; one row at most (`capOneRow`: the newest that fit after a `+N` cell, `hud.items.more`) |
 | centre (endless) | `DraftOverlay` | M2 boon draft: `Choose a boon`, up to 3 cards (`<id>.name` in the rarity colour, `boon.rarity.<r>`, `<id>.desc`), the card under the stick highlighted (`uiAccent` ring, scaled up; the snapshot is taken every frame while the draft is open), the device's hint (`A / D to choose · Click to take`) once a confirm counts. Co-op: the LOCAL player's offers and selection, plus `Waiting for N teammate(s) to choose` (`hud.draft.waiting`) while others still choose (alone once this player confirmed) |
 | top centre (endless) | `ToastPanel` | M2: `Boon: <name>` / `Relic found: <name>` / `Cursed: <name>` / `Second Wind!` / Vampire Fang heals / a boost pickup (`hud.toast.boost`: `Fury: +50% damage for 10 s`, the local player's only) for 3 s (store `game.toasts`, from the run view's `runEvents`: the local player's own events, solo or co-op), and the `1: accept a curse` hint while the player stands in an unused shrine's zone |
 | top centre | `BossBar` | while a boss is engaged: `<boss id>.name`, `Phase I / II / III`, an hp bar (`boss` role) with notches at the phase marks (66 % / 33 %, from the archetype's `phaseHp`) |
@@ -394,7 +404,7 @@ player's bound key for the last-used device (`selectBindings` + shared/play `swa
 | centre (menu, tutorial) | `TutorialOutro` | 1.5 s after the tutorial's end: `That's the descent.`, what a real run is (the bound leaderboard key, default `B`; `Start` on a pad: `tutorialLeaderboardHint`), Start my first run / Play the tutorial again; gamepad selection on the first button |
 | on the taught element (tutorial) | `HighlightRing` (`TutorialFx.tsx`) | a pulsing `uiAccent` UIStroke on the hearts row / flask row (StatusPanel `highlight`), WeaponPanel, ScorePanel or BossBar (`highlight` props, from the slice); static under reduced motion. StatusPanel's `ghostHeart` token flashes a fading half heart (`uiHealth`) after the first harmless hits |
 | centre (menu) | `OptionsScreen` | the Options screen: Juice / Controls / Audio / Display tabs (below) |
-| bottom right | `InfoPanel` | `Project Kaleb-Vale · <biome> · seed N · <dungeon>`, the fallback notice, the verdict line (`Run 2 (death): verified by the server (ab12cd34)` / `submitted, checking...` / `rejected (code) reason` / `not submitted (stress)`), and with KV_Debug the debug line (tick, recorded ticks, enemies, bullets, replay check) |
+| bottom right | `InfoPanel` | (docs/HUD_LAYOUT.md H6) the fallback notice and, while the run is playing, the verdict line, each for `HUD_HINTS.verdictSeconds` after it changes, then fading (the info line `Project Kaleb-Vale · <biome> · seed N · <dungeon>` is `RunInfoLine`, in the pause overlay and the run-over panel only); the verdict line (`Run 2 (death): verified by the server (ab12cd34)` / `submitted, checking...` / `rejected (code) reason` / `not submitted (stress)`), and with KV_Debug the debug line (tick, recorded ticks, enemies, bullets, replay check) |
 
 The snapshot (`shared/play` `GameSnapshot`) gained `bossPhaseMarks`, `kills`, `hitsTaken` and `endTick` (the tick the
 run ended on, for the post-run time), and for M2 progression `comboWindowTicks`, `draftOpen` / `draftOffers` /

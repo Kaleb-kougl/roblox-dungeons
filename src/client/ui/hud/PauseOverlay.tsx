@@ -3,6 +3,7 @@ import { useSelector } from "@rbxts/react-reflex";
 import { GuiService } from "@rbxts/services";
 import {
 	selectAnyPanelOpen,
+	selectBindings,
 	selectCoopOverlay,
 	selectInputDevice,
 	selectLeaveConfirm,
@@ -12,12 +13,14 @@ import {
 	selectTutorial,
 } from "client/store";
 import { role, str } from "client/ui/theme";
+import { swapHint } from "shared/play";
 import { TUTORIAL_STRINGS } from "shared/tutorial";
 import { SFX } from "shared/view/audio";
 import { HUD_STRINGS, HUD_VIEW, LEADERBOARD_STRINGS, PAUSE_HINT } from "shared/view/hud";
 import { MENU_STRINGS, pauseItems, pauseOverlayShown, type PauseItem } from "shared/view/menu";
 import { useHudActions, type HudActions } from "./actions";
 import { MenuButton, Panel, Row, Text } from "./primitives";
+import { RunInfoLine } from "./RunInfoLine";
 
 const HALF = 0.5;
 const CONFIRM_BUTTON = new Vector2(HUD_VIEW.buttonSize.x / 2, HUD_VIEW.buttonSize.y);
@@ -77,7 +80,10 @@ const SKIP_CONFIRM: ConfirmSpec = {
  * Leaderboards. A first-run tutorial run (paused like solo): Resume / Restart tutorial / Skip tutorial / Options.
  * Leave run first shows the confirm ("Leaving ends your run..."; Leave / Cancel), Skip tutorial its own ("Skip the
  * tutorial?"; Skip / Keep playing). With a gamepad the selection starts on the first button (Cancel / Keep playing
- * in a confirm). Hidden while a panel is open and once the run is over (the run-over panel has the exits).
+ * in a confirm). Under the buttons, the weapon-swap key (the HUD's swap hint hides after a few seconds,
+ * docs/HUD_LAYOUT.md H5), the run's info line and any fallback notice (RunInfoLine: docs/HUD_LAYOUT.md H6,
+ * the only place they show while a run is on). Hidden while a panel is open and once the run is over (the run-over
+ * panel has the exits).
  */
 export function PauseOverlay() {
 	const s = useSelector(selectSnapshot);
@@ -86,6 +92,7 @@ export function PauseOverlay() {
 	const confirm = useSelector(selectLeaveConfirm);
 	const panelOpen = useSelector(selectAnyPanelOpen);
 	const device = useSelector(selectInputDevice);
+	const bindings = useSelector(selectBindings);
 	const tutorial = useSelector(selectTutorial);
 	const robloxMenuOpen = useSelector(selectRobloxMenuOpen);
 	const actions = useHudActions();
@@ -190,6 +197,7 @@ export function PauseOverlay() {
 				padding={HUD_VIEW.pad * 2}
 			>
 				<Text
+					fill={true}
 					order={1}
 					size={HUD_VIEW.bigText}
 					color="uiAccent"
@@ -197,7 +205,19 @@ export function PauseOverlay() {
 					text={str(coop ? MENU_STRINGS.coopTitle : HUD_STRINGS.paused)}
 				/>
 				{body}
+				{s.weapons.size() > 0 ? (
+					<Text
+						fill={true}
+						order={18}
+						size={HUD_VIEW.smallText}
+						color="uiTextDim"
+						align={Enum.TextXAlignment.Center}
+						text={str(HUD_STRINGS.weaponSwap, { key: swapHint(bindings)[device] })}
+					/>
+				) : undefined}
+				<RunInfoLine order={19} />
 				<Text
+					fill={true}
 					order={20}
 					size={HUD_VIEW.smallText}
 					color="uiTextDim"

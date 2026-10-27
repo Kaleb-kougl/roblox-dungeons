@@ -10,7 +10,8 @@ import {
 	type BoostHudEntry,
 } from "shared/view/boosts";
 import { motionScale } from "shared/view/fx";
-import { Row } from "./primitives";
+import { statusRowMaxWidth } from "shared/view/hud";
+import { GridRow } from "./GridRow";
 import { HighlightRing } from "./TutorialFx";
 
 const STROKE = 1;
@@ -30,8 +31,7 @@ function BoostEntry(props: { order: number; entry: BoostHudEntry; motion: number
 	return (
 		<frame
 			LayoutOrder={props.order}
-			Size={new UDim2(0, 0, 0, 0)}
-			AutomaticSize={Enum.AutomaticSize.XY}
+			Size={new UDim2(0, v.iconSize + v.iconBarGap + v.barWidth, 0, v.iconSize)}
 			BackgroundTransparency={HIDDEN}
 		>
 			<uilistlayout
@@ -78,7 +78,8 @@ function BoostEntry(props: { order: number; entry: BoostHudEntry; motion: number
 
 /**
  * The running boosts of the shown player (docs/BOOSTS.md B7; snapshot `boosts`, Boost order), one icon + draining bar
- * each, as a row of the StatusPanel (laid out at the HUD's reference size under GameHud's UIScale, `useHudScale`).
+ * each, as a row of the StatusPanel that wraps at its footprint width (GridRow, docs/HUD_LAYOUT.md; laid out at the
+ * HUD's reference size under GameHud's UIScale, `useHudScale`).
  * `highlight`: the tutorial's pulsing ring on the row (TutorialView.highlight === "boosts"). Nothing when no boost runs.
  */
 export function BoostRow(props: { order: number; boosts: ReadonlyArray<BoostHudEntry>; highlight?: boolean }) {
@@ -88,9 +89,15 @@ export function BoostRow(props: { order: number; boosts: ReadonlyArray<BoostHudE
 		<BoostEntry key={`boost${e.kind}`} order={i + 1} entry={e} motion={motion} />
 	));
 	return (
-		<Row order={props.order}>
+		<GridRow
+			order={props.order}
+			count={entries.size()}
+			cellW={BOOST_VIEW.iconSize + BOOST_VIEW.iconBarGap + BOOST_VIEW.barWidth}
+			cellH={BOOST_VIEW.iconSize}
+			maxWidth={statusRowMaxWidth()}
+		>
 			{entries}
 			{props.highlight === true ? <HighlightRing /> : undefined}
-		</Row>
+		</GridRow>
 	);
 }

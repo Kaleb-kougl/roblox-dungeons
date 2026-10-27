@@ -35,6 +35,7 @@ export function TutorialPanel() {
 				text={str(promptKey, tutorialPromptVars(tutorialDeviceFor(device), bindings))}
 			/>
 			<Text
+				fill={true}
 				order={2}
 				size={HUD_VIEW.smallText}
 				color="uiAccent"
@@ -45,6 +46,7 @@ export function TutorialPanel() {
 				})}
 			/>
 			<Text
+				fill={true}
 				order={3}
 				size={HUD_VIEW.smallText}
 				color="uiTextDim"

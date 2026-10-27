@@ -44,6 +44,7 @@ export function ToastPanel() {
 			{lines}
 			{s.atShrine ? (
 				<Text
+					fill={true}
 					order={toasts.size() + 1}
 					size={HUD_VIEW.smallText}
 					color="uiMana"

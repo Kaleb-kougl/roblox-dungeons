@@ -19,6 +19,7 @@ import { HUD_STRINGS, HUD_VIEW, SCORE_SOURCE_KEYS, formatClock, formatCombo } fr
 import { MENU_STRINGS, PAD_CONFIRM_LABEL, partyRunOverLine, runOverExits } from "shared/view/menu";
 import { useHudActions } from "./actions";
 import { MenuButton, Panel, Row, Text } from "./primitives";
+import { RunInfoLine, verdictColor, verdictLine } from "./RunInfoLine";
 
 const HALF = 0.5;
 const STAT_WIDTH = 150;
@@ -27,13 +28,20 @@ function Stat(props: { order: number; label: string; value: string }) {
 	return (
 		<Panel position={new UDim2()} anchor={new Vector2()} order={props.order} width={STAT_WIDTH} transparency={1}>
 			<Text
+				fill={true}
 				order={1}
 				size={HUD_VIEW.smallText}
 				color="uiTextDim"
 				align={Enum.TextXAlignment.Center}
 				text={props.label}
 			/>
-			<Text order={2} size={HUD_VIEW.titleText} align={Enum.TextXAlignment.Center} text={props.value} />
+			<Text
+				fill={true}
+				order={2}
+				size={HUD_VIEW.titleText}
+				align={Enum.TextXAlignment.Center}
+				text={props.value}
+			/>
 		</Panel>
 	);
 }
@@ -85,7 +93,8 @@ function ScoreBreakdown(props: { order: number; score: number; points: ReadonlyA
  * Centre, after the run ends (web PlayerHud death line, BossHud victory banner and the playtest post-run panel's
  * stats): "Run over" / "Victory", "You died — press R to retry" or "<boss name> defeated — press R to play again"
  * with the restart key of the device used last (R / D-pad down) and the other one below, then the run's time, hits
- * taken and kills; in a scored run (M2) the score and its breakdown by source.
+ * taken and kills; in a scored run (M2) the score and its breakdown by source; under the exits, the server's verdict
+ * line and the run's info line (RunInfoLine; docs/HUD_LAYOUT.md H6: the in-run InfoPanel only flashes the verdict).
  *
  * Exits (L3 / L6): "Again" (solo runs; R) and "Main menu", or "Back to lobby" while in a lobby. A party run has no
  * Again: R / the button go back to the lobby (once the party's verdict is in). A party run the server ended before the
@@ -124,6 +133,7 @@ export function RunOverPanel() {
 	const bossName = lastBoss !== "" ? str(`${lastBoss}.name`) : "";
 	const exits = runOverExits(info.coop, myLobby !== undefined);
 	const party = partyRunOverLine(verdict, info.run);
+	const verdictText = verdictLine(verdict);
 	const main = info.coop
 		? str(party.key, { key, reason: party.reason })
 		: victory
@@ -138,6 +148,7 @@ export function RunOverPanel() {
 			name="RunOver"
 		>
 			<Text
+				fill={true}
 				order={1}
 				size={HUD_VIEW.bigText}
 				color={victory ? "uiAccent" : "uiHealth"}
@@ -146,6 +157,7 @@ export function RunOverPanel() {
 			/>
 			<Text order={2} size={HUD_VIEW.titleText} align={Enum.TextXAlignment.Center} wrap={true} text={main} />
 			<Text
+				fill={true}
 				order={3}
 				size={HUD_VIEW.smallText}
 				color="uiTextDim"
@@ -164,6 +176,17 @@ export function RunOverPanel() {
 			{s.scoring ? (
 				<ScoreBreakdown order={5} score={s.score} points={s.scorePoints} maxCombo={s.maxCombo} />
 			) : undefined}
+			{verdictText !== "" ? (
+				<Text
+					order={7}
+					size={HUD_VIEW.smallText}
+					color={verdictColor(verdict)}
+					align={Enum.TextXAlignment.Center}
+					wrap={true}
+					text={verdictText}
+				/>
+			) : undefined}
+			<RunInfoLine order={8} />
 			<Row order={6} align={Enum.HorizontalAlignment.Center}>
 				{exits.again ? (
 					<MenuButton

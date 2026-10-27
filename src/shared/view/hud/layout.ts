@@ -47,10 +47,15 @@ export const HUD_VIEW = {
 	smallText: 16,
 	bigText: 36,
 	titleText: 24,
-	/** Hearts, pips, weapon slots. */
+	/** Hearts, pips, weapon slots (docs/HUD_LAYOUT.md H5: compact slots, 132 x 40 / text 20 before). */
 	heartSize: 22,
 	pipSize: 12,
-	weaponSlotSize: { x: 132, y: 40 },
+	weaponSlotSize: { x: 108, y: 30 },
+	weaponTextSize: 16,
+	/** The inactive weapon slot's background transparency (the slot in hand is opaque). */
+	weaponInactiveTransparency: 0.7,
+	/** StatusPanel: the HP / Flask / Ember labels' column width (docs/HUD_LAYOUT.md H4, HD8: the words stay). */
+	statusLabelWidth: 86,
 	/** Boss bar. */
 	bossWidth: 520,
 	bossBarHeight: 12,
@@ -62,6 +67,8 @@ export const HUD_VIEW = {
 	buttonSize: { x: 260, y: 40 },
 	/** Settings option buttons. */
 	optionSize: { x: 92, y: 30 },
+	/** The HUD scale row's narrower buttons: six percent steps (70-125, docs/HUD_LAYOUT.md H8) fit OPTIONS_VIEW.width. */
+	scaleOptionWidth: 76,
 	settingsLabelWidth: 210,
 	/** Characters of a server hash shown in the verdict line. */
 	hashChars: 8,

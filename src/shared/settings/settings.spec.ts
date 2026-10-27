@@ -5,6 +5,7 @@ import { describe, expect, it } from "@rbxts/jest-globals";
 import {
 	DEFAULT_HUD_SCALE_PERCENT,
 	DEFAULT_ROOM_EDGES,
+	DEFAULT_HUD_FADE,
 	HUD_SCALE_PERCENTS,
 	PlayerDocCache,
 	SETTINGS_DOC_V1,
@@ -206,6 +207,7 @@ describe("display: room edges (docs/ROOM_EDGES.md RE6)", () => {
 		expect(resolveDisplaySettings({ roomEdges: false })).toEqual({
 			hudScale: DEFAULT_HUD_SCALE_PERCENT,
 			roomEdges: false,
+			hudFade: DEFAULT_HUD_FADE,
 		});
 	});
 
@@ -236,11 +238,58 @@ describe("display: room edges (docs/ROOM_EDGES.md RE6)", () => {
 
 	it("an older v2 document without the field reads On", () => {
 		const old = { v: 2, juice: {}, controls: {}, audio: {}, display: { hudScale: 125 } };
-		expect(resolveDisplaySettings(decodeSettingsDoc(old).display)).toEqual({ hudScale: 125, roomEdges: true });
+		expect(resolveDisplaySettings(decodeSettingsDoc(old).display)).toEqual({
+			hudScale: 125,
+			roomEdges: true,
+			hudFade: true,
+		});
 		expect(resolveDisplaySettings(decodeSettingsDoc({ v: 2 }).display).roomEdges).toBe(true);
 		expect(resolveDisplaySettings(decodeSettingsDoc({ v: SETTINGS_DOC_V1, juice: {} }).display).roomEdges).toBe(
 			true,
 		);
+	});
+});
+
+describe("display: HUD fade and the 70 % HUD scale (docs/HUD_LAYOUT.md H7, H8)", () => {
+	it("HUD fade defaults to On; only Off is stored", () => {
+		expect(DEFAULT_HUD_FADE).toBe(true);
+		expect(defaultDisplaySettings().hudFade).toBe(true);
+		expect(resolveDisplaySettings(undefined).hudFade).toBe(true);
+		expect(sanitizeDisplayOverrides({ hudFade: false })).toEqual({ hudFade: false });
+		expect(sanitizeDisplayOverrides({ hudFade: true })).toEqual({});
+	});
+
+	it("round-trips Off through the stored document (still v2)", () => {
+		const overrides: SettingsOverrides = { display: { hudFade: false } };
+		const doc = encodeSettingsDoc(overrides);
+		expect(doc).toEqual({ ...EMPTY_DOC, display: { hudFade: false } });
+		expect(doc.v).toBe(2);
+		expect(decodeSettingsDoc(doc)).toEqual(overrides);
+		const all = decodeSettingsDoc(
+			encodeSettingsDoc({ display: { hudScale: 70, roomEdges: false, hudFade: false } }),
+		);
+		expect(all).toEqual({ display: { hudScale: 70, roomEdges: false, hudFade: false } });
+		expect(applySettingsPatch(overrides, { display: { hudFade: true } })).toEqual({});
+		expect(sameSettingsOverrides(overrides, { display: { hudFade: false } })).toBe(true);
+		expect(sameSettingsOverrides(overrides, { display: { roomEdges: false } })).toBe(false);
+	});
+
+	it("ignores junk", () => {
+		for (const junk of [0, 1, "false", "off", {}, [false]] as ReadonlyArray<unknown>) {
+			expect(sanitizeDisplayOverrides({ hudFade: junk })).toEqual({});
+		}
+	});
+
+	it("an older v2 document without the field reads On", () => {
+		const old = { v: 2, juice: {}, controls: {}, audio: {}, display: { roomEdges: false } };
+		expect(resolveDisplaySettings(decodeSettingsDoc(old).display).hudFade).toBe(true);
+		expect(resolveDisplaySettings(decodeSettingsDoc({ v: SETTINGS_DOC_V1, juice: {} }).display).hudFade).toBe(true);
+	});
+
+	it("accepts the 70 % HUD scale step, still rejects values off the list", () => {
+		expect(HUD_SCALE_PERCENTS.includes(70)).toBe(true);
+		expect(resolveDisplaySettings({ hudScale: 70 }).hudScale).toBe(70);
+		expect(sanitizeDisplayOverrides({ hudScale: 75 })).toEqual({});
 	});
 });
 

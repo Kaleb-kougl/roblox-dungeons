@@ -74,6 +74,8 @@ function SettingRow<T extends string | boolean | number>(props: {
 	options: ReadonlyArray<Option<T>>;
 	onPick: (v: T) => void;
 	selectable: boolean;
+	/** Button width (reference px); default HUD_VIEW.optionSize.x. */
+	optionWidth?: number;
 }) {
 	const buttons = props.options.map((o, i) => (
 		<MenuButton
@@ -83,7 +85,7 @@ function SettingRow<T extends string | boolean | number>(props: {
 			text={o.label}
 			active={o.value === props.value}
 			selectable={props.selectable}
-			size={new Vector2(HUD_VIEW.optionSize.x, HUD_VIEW.optionSize.y)}
+			size={new Vector2(props.optionWidth ?? HUD_VIEW.optionSize.x, HUD_VIEW.optionSize.y)}
 			textSize={HUD_VIEW.smallText}
 			onActivated={() => props.onPick(o.value)}
 		/>
@@ -167,6 +169,7 @@ function JuiceTab(props: { order: number; actions: HudActions; selectable: boole
 				onPick={(v) => pick({ reducedMotion: v })}
 			/>
 			<Text
+				fill={true}
 				order={6}
 				size={HUD_VIEW.smallText}
 				color="uiTextDim"
@@ -368,7 +371,7 @@ function ControlsTab(props: {
 				<uilistlayout SortOrder={Enum.SortOrder.LayoutOrder} Padding={new UDim(0, HUD_VIEW.gap)} />
 				{rows}
 			</scrollingframe>
-			<Text order={4} size={HUD_VIEW.smallText} color="uiTextDim" text={str(OPTIONS_STRINGS.test)} />
+			<Text fill={true} order={4} size={HUD_VIEW.smallText} color="uiTextDim" text={str(OPTIONS_STRINGS.test)} />
 			<TestStrip order={5} device={device} pressed={options.pressed} />
 			{notice !== undefined ? (
 				<Text
@@ -462,6 +465,7 @@ function DisplayTab(props: { order: number; actions: HudActions; selectable: boo
 				selectable={props.selectable}
 				label={str(OPTIONS_STRINGS.hudScale)}
 				value={display.hudScale}
+				optionWidth={HUD_VIEW.scaleOptionWidth}
 				options={HUD_SCALE_PERCENTS.map((p) => ({
 					value: p,
 					label: str(OPTIONS_STRINGS.percent, { value: p }),
@@ -484,6 +488,21 @@ function DisplayTab(props: { order: number; actions: HudActions; selectable: boo
 				onPick={(v) => {
 					props.actions.playUi(SFX.uiClick);
 					props.actions.updateDisplay({ roomEdges: v });
+				}}
+			/>
+			<SettingRow
+				order={3}
+				name="hudFade"
+				selectable={props.selectable}
+				label={str(OPTIONS_STRINGS.hudFade)}
+				value={display.hudFade}
+				options={[
+					{ value: true, label: str(SETTINGS_STRINGS.on) },
+					{ value: false, label: str(SETTINGS_STRINGS.off) },
+				]}
+				onPick={(v) => {
+					props.actions.playUi(SFX.uiClick);
+					props.actions.updateDisplay({ hudFade: v });
 				}}
 			/>
 		</Panel>
@@ -727,7 +746,13 @@ export function OptionsScreen() {
 				name="Options"
 			>
 				<uistroke Thickness={1} Color={role("uiAccent")} />
-				<Text order={1} size={HUD_VIEW.titleText} color="uiAccent" text={str(OPTIONS_STRINGS.title)} />
+				<Text
+					fill={true}
+					order={1}
+					size={HUD_VIEW.titleText}
+					color="uiAccent"
+					text={str(OPTIONS_STRINGS.title)}
+				/>
 				<Row order={2}>{tabs}</Row>
 				{body}
 				<Row order={4}>
@@ -755,9 +780,16 @@ export function OptionsScreen() {
 					/>
 				</Row>
 				{!synced ? (
-					<Text order={5} size={HUD_VIEW.smallText} color="telegraph" text={str(SETTINGS_STRINGS.offline)} />
+					<Text
+						fill={true}
+						order={5}
+						size={HUD_VIEW.smallText}
+						color="telegraph"
+						text={str(SETTINGS_STRINGS.offline)}
+					/>
 				) : undefined}
 				<Text
+					fill={true}
 					order={6}
 					size={HUD_VIEW.smallText}
 					color="uiTextDim"

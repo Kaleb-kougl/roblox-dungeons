@@ -124,13 +124,20 @@ export function LobbyBrowser() {
 			padding={HUD_VIEW.pad * 2}
 			name="LobbyBrowser"
 		>
-			<Text order={1} size={HUD_VIEW.titleText} color="uiAccent" text={str(LOBBY_STRINGS.browserTitle)} />
+			<Text
+				fill={true}
+				order={1}
+				size={HUD_VIEW.titleText}
+				color="uiAccent"
+				text={str(LOBBY_STRINGS.browserTitle)}
+			/>
 			{top}
 			<ScrollList order={3} height={MENU_VIEW.listHeight}>
 				{items.size() > 0 ? (
 					items
 				) : (
 					<Text
+						fill={true}
 						key="Empty"
 						order={1}
 						color="uiTextDim"
@@ -164,6 +171,7 @@ export function LobbyBrowser() {
 				/>
 			</Row>
 			<Text
+				fill={true}
 				order={5}
 				size={HUD_VIEW.smallText}
 				color="uiTextDim"

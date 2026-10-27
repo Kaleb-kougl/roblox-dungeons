@@ -11,7 +11,9 @@ const STROKE = 1;
 /**
  * Top right, scored runs only (M2): the live score, the combo multiplier and its decay meter (the time left before
  * the combo resets, as a bar that drains over the combo window: COMBO_WINDOW_TICKS, or what M2 boons / curses make of
- * it). Reads only the ~10 Hz snapshot. `highlight`: the tutorial's ring (the score callout, the curse lesson).
+ * it), and on endless floors the floor and Depth line under the meter (docs/HUD_LAYOUT.md H4; an unscored run keeps
+ * it in the StatusPanel). Reads only the ~10 Hz snapshot. `highlight`: the tutorial's ring (the score callout, the
+ * curse lesson).
  */
 export function ScorePanel(props: { readonly highlight?: boolean }) {
 	const s = useSelector(selectSnapshot);
@@ -21,21 +23,29 @@ export function ScorePanel(props: { readonly highlight?: boolean }) {
 	const frac = comboFraction(s.comboTicks, s.comboWindowTicks);
 	return (
 		<Panel
-			position={new UDim2(1, -HUD_VIEW.margin, 0, HUD_VIEW.margin)}
-			anchor={new Vector2(1, 0)}
+			corner="topRight"
 			width={width}
 			align={Enum.HorizontalAlignment.Right}
 			name="Score"
+			overlay={props.highlight === true ? <HighlightRing /> : undefined}
 		>
 			<Text
+				fill={true}
 				order={1}
 				size={HUD_VIEW.smallText}
 				color="uiTextDim"
 				align={Enum.TextXAlignment.Right}
 				text={str(HUD_STRINGS.score)}
 			/>
-			<Text order={2} size={HUD_VIEW.bigText} align={Enum.TextXAlignment.Right} text={tostring(s.score)} />
 			<Text
+				fill={true}
+				order={2}
+				size={HUD_VIEW.bigText}
+				align={Enum.TextXAlignment.Right}
+				text={tostring(s.score)}
+			/>
+			<Text
+				fill={true}
 				order={3}
 				size={HUD_VIEW.titleText}
 				color="ember"
@@ -57,7 +67,15 @@ export function ScorePanel(props: { readonly highlight?: boolean }) {
 					BorderSizePixel={0}
 				/>
 			</frame>
-			{props.highlight === true ? <HighlightRing /> : undefined}
+			{s.floor > 0 ? (
+				<Text
+					order={5}
+					fill={true}
+					size={HUD_VIEW.smallText}
+					align={Enum.TextXAlignment.Right}
+					text={str(HUD_STRINGS.floor, { floor: s.floor, depth: s.depth })}
+				/>
+			) : undefined}
 		</Panel>
 	);
 }

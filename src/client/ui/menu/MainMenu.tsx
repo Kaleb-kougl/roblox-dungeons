@@ -34,6 +34,7 @@ export function MainMenu() {
 			name="MainMenu"
 		>
 			<Text
+				fill={true}
 				order={1}
 				size={HUD_VIEW.bigText}
 				color="uiAccent"

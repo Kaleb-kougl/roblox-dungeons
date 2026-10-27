@@ -1,7 +1,8 @@
-import React, { useState } from "@rbxts/react";
+import React, { useMemo, useState } from "@rbxts/react";
 import { HUD_FONT, MONO_FONT, role } from "client/ui/theme";
 import type { ColorRole } from "shared/theme";
-import { HUD_VIEW } from "shared/view/hud";
+import { HUD_VIEW, cornerAnchor, type HudCorner } from "shared/view/hud";
+import { cornerFadeBinding, cornerRef } from "./cornerFade";
 
 /**
  * The HUD's building blocks: text in the HUD font token, panels in theme roles, pips, and the one interactive
@@ -28,30 +29,58 @@ export interface TextProps {
 	size?: number;
 	align?: Enum.TextXAlignment;
 	mono?: boolean;
-	/** Width (reference px); default: the parent's width. */
+	/**
+	 * Width (reference px). Without it the text sizes to its content (AutomaticSize X), unless `fill` (or `wrap`) asks
+	 * for the parent's width. Never fill inside an automatically sized panel: a scale width there resolves against the
+	 * panel's parent and stretches the panel across the screen (docs/HUD_LAYOUT.md H1).
+	 */
 	width?: number;
+	/** Take the parent's width (fixed-width panels). Implied by `wrap` when no width is given. */
+	fill?: boolean;
 	wrap?: boolean;
+	/** Text transparency (a binding for a fading hint); the stroke fades with it. Default 0. */
+	transparency?: number | React.Binding<number>;
+}
+
+/** The dark stroke never shows through more than the text it outlines. */
+function strokeTransparency(t: number): number {
+	return math.max(HUD_VIEW.panelTransparency, t);
 }
 
 /** One line (or a wrapped paragraph) of HUD text with a dark stroke for contrast over the dungeon. */
 export function Text(props: TextProps) {
 	const size = props.size ?? HUD_VIEW.textSize;
+	const fade = props.transparency;
+	// One mapped binding per source binding, not one per render (the snapshot re-renders panels ~10 Hz).
+	const stroke = useMemo(
+		() =>
+			fade === undefined
+				? HUD_VIEW.panelTransparency
+				: typeIs(fade, "number")
+				? strokeTransparency(fade)
+				: fade.map(strokeTransparency),
+		[fade],
+	);
+	const wrap = props.wrap === true;
+	const fill = props.width === undefined && (props.fill === true || wrap);
+	const hug = props.width === undefined && !fill;
 	return (
 		<textlabel
 			LayoutOrder={props.order ?? 0}
 			Size={
 				props.width !== undefined
 					? new UDim2(0, props.width, 0, size + LINE_SLACK)
-					: new UDim2(1, 0, 0, size + LINE_SLACK)
+					: new UDim2(fill ? 1 : 0, 0, 0, size + LINE_SLACK)
 			}
-			AutomaticSize={props.wrap === true ? Enum.AutomaticSize.Y : Enum.AutomaticSize.None}
+			AutomaticSize={wrap ? Enum.AutomaticSize.Y : hug ? Enum.AutomaticSize.X : Enum.AutomaticSize.None}
 			BackgroundTransparency={HIDDEN}
 			Font={props.mono === true ? MONO_FONT : HUD_FONT}
 			TextSize={size}
-			TextWrapped={props.wrap === true}
+			TextWrapped={wrap}
 			TextColor3={role(props.color ?? "uiText")}
 			TextStrokeColor3={role("background")}
-			TextStrokeTransparency={HUD_VIEW.panelTransparency}
+			TextTransparency={props.transparency ?? 0}
+			TextStrokeTransparency={stroke}
 			TextXAlignment={props.align ?? Enum.TextXAlignment.Left}
 			Text={props.text}
 		/>
@@ -59,8 +88,11 @@ export function Text(props: TextProps) {
 }
 
 export interface PanelProps {
-	position: UDim2;
-	anchor: Vector2;
+	/** Explicit placement; ignored when `corner` is given. Default: the parent's top left. */
+	position?: UDim2;
+	anchor?: Vector2;
+	/** An always-on corner panel (docs/HUD_LAYOUT.md H3): placed in that corner, HUD_VIEW.margin from both edges. */
+	corner?: HudCorner;
 	width?: number;
 	order?: number;
 	padding?: number;
@@ -69,23 +101,30 @@ export interface PanelProps {
 	transparency?: number;
 	name?: string;
 	children?: React.ReactNode;
+	/**
+	 * Corner panels only: drawn on the outer frame, outside the CanvasGroup (a UIStroke such as the tutorial's
+	 * HighlightRing, which the group would clip at its edge).
+	 */
+	overlay?: React.ReactNode;
+}
+
+/** A corner's position and anchor, HUD_VIEW.margin in from both edges. */
+function cornerPlacement(corner: HudCorner): [UDim2, Vector2] {
+	const a = cornerAnchor(corner);
+	const m = HUD_VIEW.margin;
+	return [new UDim2(a.ax, a.ax === 1 ? -m : m, a.ay, a.ay === 1 ? -m : m), new Vector2(a.ax, a.ay)];
 }
 
 /** A uiPanel-coloured box that grows with its children (vertical list by default). */
 export function Panel(props: PanelProps) {
 	const pad = props.padding ?? HUD_VIEW.pad;
-	return (
-		<frame
-			key={props.name}
-			LayoutOrder={props.order ?? 0}
-			Position={props.position}
-			AnchorPoint={props.anchor}
-			Size={new UDim2(0, props.width ?? 0, 0, 0)}
-			AutomaticSize={props.width !== undefined ? Enum.AutomaticSize.Y : Enum.AutomaticSize.XY}
-			BackgroundColor3={role("uiPanel")}
-			BackgroundTransparency={props.transparency ?? HUD_VIEW.panelTransparency}
-			BorderSizePixel={0}
-		>
+	const corner = props.corner;
+	const [position, anchor] =
+		corner !== undefined ? cornerPlacement(corner) : [props.position ?? new UDim2(), props.anchor ?? new Vector2()];
+	const size = new UDim2(0, props.width ?? 0, 0, 0);
+	const autoSize = props.width !== undefined ? Enum.AutomaticSize.Y : Enum.AutomaticSize.XY;
+	const layout = (
+		<>
 			<uipadding
 				PaddingLeft={new UDim(0, pad)}
 				PaddingRight={new UDim(0, pad)}
@@ -99,7 +138,54 @@ export function Panel(props: PanelProps) {
 				SortOrder={Enum.SortOrder.LayoutOrder}
 				Padding={new UDim(0, HUD_VIEW.gap)}
 			/>
+		</>
+	);
+	if (corner !== undefined) {
+		// docs/HUD_LAYOUT.md H7: a transparent root (placed, registered for HudOcclusionController) holding the panel
+		// as a CanvasGroup whose GroupTransparency is the corner's fade binding. Every size is offset (a scale child of
+		// an automatically sized frame resolves against the ScreenGui: the H1 bug).
+		return (
+			<frame
+				key={props.name}
+				ref={cornerRef(corner)}
+				LayoutOrder={props.order ?? 0}
+				Position={position}
+				AnchorPoint={anchor}
+				Size={new UDim2()}
+				AutomaticSize={Enum.AutomaticSize.XY}
+				BackgroundTransparency={HIDDEN}
+			>
+				<canvasgroup
+					key="Group"
+					Size={size}
+					AutomaticSize={autoSize}
+					BackgroundColor3={role("uiPanel")}
+					BackgroundTransparency={props.transparency ?? HUD_VIEW.panelTransparency}
+					BorderSizePixel={0}
+					GroupTransparency={cornerFadeBinding(corner)}
+				>
+					{layout}
+					{props.children}
+				</canvasgroup>
+				{props.overlay}
+			</frame>
+		);
+	}
+	return (
+		<frame
+			key={props.name}
+			LayoutOrder={props.order ?? 0}
+			Position={position}
+			AnchorPoint={anchor}
+			Size={size}
+			AutomaticSize={autoSize}
+			BackgroundColor3={role("uiPanel")}
+			BackgroundTransparency={props.transparency ?? HUD_VIEW.panelTransparency}
+			BorderSizePixel={0}
+		>
+			{layout}
 			{props.children}
+			{props.overlay}
 		</frame>
 	);
 }
