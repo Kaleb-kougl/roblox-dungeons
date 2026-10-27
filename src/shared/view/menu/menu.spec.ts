@@ -2,17 +2,25 @@
 import { describe, expect, it } from "@rbxts/jest-globals";
 import { LOBBY, LOBBY_NAMES, type LobbySummary } from "shared/lobby";
 import type { LobbyInviteView, LobbyView } from "shared/network";
+import { ARRIVAL_TOAST, type ArrivalToastKey } from "shared/invite";
 import {
+	LOBBY_BROWSER_PATH,
 	LOBBY_REFUSALS,
 	LOBBY_ROOM_PATH,
 	LOBBY_STRINGS,
 	MENU_STRINGS,
 	NO_MENU,
 	afterRunPath,
+	arrivalToastKey,
+	arrivedInviteShown,
 	browserRows,
 	canGoBack,
 	countdownLeft,
+	eligibilityDue,
+	inviteCandidateKey,
 	inviteCandidates,
+	knownLobbyTitle,
+	lobbyChangePath,
 	lobbyErrorKey,
 	lobbyRoomModel,
 	lobbyStartAccepted,
@@ -22,6 +30,7 @@ import {
 	nextLobbyName,
 	noticeSpec,
 	pauseItems,
+	platformInviteButton,
 	receivedInvites,
 	restartForfeits,
 	partyRunOverLine,
@@ -204,8 +213,8 @@ describe("invites", () => {
 		];
 		const v = view({ members: [1, 4], invited: [2] });
 		expect(inviteCandidates(players, v, 1, true)).toEqual([
-			{ userId: 3, name: "Amy", invited: false, canInvite: true },
-			{ userId: 2, name: "zed", invited: true, canInvite: false },
+			{ userId: 3, name: "Amy", invited: false, platform: false, here: true, canInvite: true },
+			{ userId: 2, name: "zed", invited: true, platform: false, here: true, canInvite: false },
 		]);
 		expect(inviteCandidates(players, v, 1, false).some((c) => c.canInvite)).toBe(false);
 		const full = lobbyRoomModel(
@@ -215,6 +224,80 @@ describe("invites", () => {
 			0,
 		);
 		expect(full.canInvite).toBe(false);
+	});
+
+	it("Roblox invitees read Invited (Roblox); those not in the server yet get their own invited rows", () => {
+		const players = [
+			{ userId: 1, name: "Me" },
+			{ userId: 2, name: "Bea" },
+			{ userId: 3, name: "Cal" },
+			{ userId: 4, name: "Dee" },
+		];
+		// 2: server invite, 3: platform (here), 50: platform (not here), 4 party (here), 60 party (not here), 7 member.
+		const v = view({
+			members: [1, 7],
+			invited: [2, 3, 50, 4, 60, 7],
+			invitedSources: ["server", "platform", "platform", "party", "party", "platform"],
+		});
+		const rows = inviteCandidates(players, v, 1, true, nameOf);
+		expect(rows).toEqual([
+			{ userId: 2, name: "Bea", invited: true, platform: false, here: true, canInvite: false },
+			{ userId: 3, name: "Cal", invited: true, platform: true, here: true, canInvite: false },
+			{ userId: 4, name: "Dee", invited: true, platform: true, here: true, canInvite: false },
+			{ userId: 50, name: "P50", invited: true, platform: true, here: false, canInvite: false },
+			{ userId: 60, name: "P60", invited: true, platform: true, here: false, canInvite: false },
+		]);
+		expect(rows.map(inviteCandidateKey)).toEqual([
+			LOBBY_STRINGS.invited,
+			LOBBY_STRINGS.invitedPlatform,
+			LOBBY_STRINGS.invitedPlatform,
+			LOBBY_STRINGS.invitedPlatform,
+			LOBBY_STRINGS.invitedPlatform,
+		]);
+		// Without a nameOf an absent invitee reads #<UserId>; a missing source counts as a server invite.
+		expect(inviteCandidates([], view({ invited: [50], invitedSources: ["platform"] }), 1, true)[0].name).toBe(
+			"#50",
+		);
+		expect(inviteCandidates([], view({ invited: [50], invitedSources: [] }), 1, true)).toEqual([]);
+		expect(
+			inviteCandidateKey({ userId: 9, name: "x", invited: false, platform: false, here: true, canInvite: true }),
+		).toBe(LOBBY_STRINGS.inviteSend);
+	});
+
+	it("the Roblox invite buttons: disabled with the reason only when the server said no", () => {
+		expect(platformInviteButton(undefined)).toEqual({ enabled: true });
+		expect(platformInviteButton(true)).toEqual({ enabled: true });
+		expect(platformInviteButton(false)).toEqual({
+			enabled: false,
+			reasonKey: LOBBY_STRINGS.invitePlatformUnavailable,
+		});
+		expect(platformInviteButton(true, false)).toEqual({ enabled: false });
+		expect(platformInviteButton(undefined, false)).toEqual({ enabled: false });
+		expect(platformInviteButton(false, false).reasonKey).toBe(LOBBY_STRINGS.invitePlatformUnavailable);
+	});
+
+	it("asks for eligibility at startup, then again only once the cached answer is old", () => {
+		expect(eligibilityDue(undefined, 0, 300)).toBe(true);
+		expect(eligibilityDue(10, 309, 300)).toBe(false);
+		expect(eligibilityDue(10, 310, 300)).toBe(true);
+	});
+
+	it("the inviteArrived toast's Invite: in a lobby with room, the friend here, outside it and not invited", () => {
+		const here = [
+			{ userId: 1, name: "Me" },
+			{ userId: 2, name: "Friend" },
+		];
+		const mine = view({ members: [1] });
+		expect(arrivedInviteShown(2, mine, here, 1)).toBe(true);
+		expect(arrivedInviteShown(2, undefined, here, 1)).toBe(false);
+		expect(arrivedInviteShown(2, mine, [{ userId: 1, name: "Me" }], 1)).toBe(false); // left again
+		expect(arrivedInviteShown(2, view({ members: [1, 2] }), here, 1)).toBe(false);
+		expect(arrivedInviteShown(2, view({ invited: [2], invitedSources: ["server"] }), here, 1)).toBe(false);
+		expect(arrivedInviteShown(2, view({ phase: "inRun" }), here, 1)).toBe(false);
+		const full: number[] = [];
+		for (let i = 0; i < LOBBY.maxSize; i++) full.push(100 + i);
+		expect(arrivedInviteShown(2, view({ members: full }), here, 100)).toBe(false);
+		expect(arrivedInviteShown(1, mine, here, 1)).toBe(false);
 	});
 
 	it("received invites drop when expired (counted from arrival) and cap at max", () => {
@@ -253,6 +336,64 @@ describe("notices, handoff and exits", () => {
 		});
 		for (const c of LOBBY_REFUSALS) expect(lobbyErrorKey(c)).toBe(`lobby.err.${c}`);
 		expect(lobbyErrorKey("nonsense")).toBe("lobby.err.generic");
+	});
+
+	it("maps the Roblox invite notices (inviteArrived, partyLobby, arrival)", () => {
+		expect(noticeSpec({ kind: "inviteArrived", userId: 9 }, nameOf)).toEqual({
+			key: "lobby.notice.inviteArrived",
+			vars: { name: "P9" },
+			inviteUserId: 9,
+		});
+		expect(noticeSpec({ kind: "inviteArrived" }, nameOf)).toEqual({
+			key: "lobby.notice.inviteArrived",
+			vars: { name: "" },
+		});
+		const mine = view({ lobbyId: "L1", nameId: "chill", hostId: 5 });
+		const list = [summary({ lobbyId: "L2", nameId: "quickRun", hostId: 6 })];
+		const titleOf = (id: string | undefined) => knownLobbyTitle(id, mine, list, nameOf);
+		expect(noticeSpec({ kind: "partyLobby", lobbyId: "L1", userId: 5 }, nameOf, titleOf)).toEqual({
+			key: "lobby.notice.partyLobby",
+			lobby: { key: "lobby.name.chill", vars: { host: "P5" } },
+		});
+		expect(noticeSpec({ kind: "partyLobby", lobbyId: "L2" }, nameOf, titleOf).lobby).toEqual({
+			key: "lobby.name.quickRun",
+			vars: { host: "P6" },
+		});
+		expect(noticeSpec({ kind: "partyLobby", lobbyId: "L9" }, nameOf, titleOf)).toEqual({
+			key: LOBBY_STRINGS.noticePartyLobbyAny,
+		});
+		expect(noticeSpec({ kind: "partyLobby", lobbyId: "L1" }, nameOf)).toEqual({
+			key: LOBBY_STRINGS.noticePartyLobbyAny,
+		});
+		expect(knownLobbyTitle(undefined, mine, list, nameOf)).toBe(undefined);
+		for (const [, key] of pairs(ARRIVAL_TOAST as unknown as Map<string, string>)) {
+			expect(noticeSpec({ kind: "arrival", key: key as ArrivalToastKey }, nameOf)).toEqual({ key });
+			expect(arrivalToastKey(key)).toBe(key);
+		}
+		expect(noticeSpec({ kind: "arrival", key: ARRIVAL_TOAST.gone }, nameOf)).toEqual({
+			key: "lobby.err.inviteGone",
+		});
+		expect(
+			noticeSpec({ kind: "arrival", key: "lobby.err.nonsense" as unknown as ArrivalToastKey }, nameOf),
+		).toEqual({
+			key: "lobby.err.generic",
+		});
+		expect(noticeSpec({ kind: "arrival" }, nameOf)).toEqual({ key: "lobby.err.generic" });
+	});
+
+	it("moves the menu to the lobby room when a lobby appears, never off a no-menu state", () => {
+		// Created / joined / put there by an invite or party arrival while on a menu screen: the room.
+		for (const screen of ["main", "lobbies", "lobby"] as const) {
+			expect(lobbyChangePath(screen, "L1", undefined)).toEqual(LOBBY_ROOM_PATH);
+		}
+		expect(lobbyChangePath("lobby", "L2", "L1")).toEqual(LOBBY_ROOM_PATH);
+		// A run, the tutorial, the first-run wait: nothing moves (the menu after it opens the room).
+		expect(lobbyChangePath("none", "L1", undefined)).toBe(undefined);
+		expect(lobbyChangePath("none", undefined, "L1")).toBe(undefined);
+		// Left / kicked: the browser from the room, nothing elsewhere.
+		expect(lobbyChangePath("lobby", undefined, "L1")).toEqual(LOBBY_BROWSER_PATH);
+		expect(lobbyChangePath("main", undefined, "L1")).toBe(undefined);
+		expect(lobbyChangePath("lobbies", "L1", "L1")).toBe(undefined);
 	});
 
 	it("takes a run start only for my lobby", () => {

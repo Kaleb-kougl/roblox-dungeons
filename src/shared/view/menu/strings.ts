@@ -3,6 +3,7 @@
  * L5, L6). The React components (client/ui/menu) take their keys from here; hud.spec.ts checks each one exists in the
  * placeholder pack (`menuStringKeys`), so a missing key fails the build instead of showing the raw key in game.
  */
+import { ARRIVAL_TOAST } from "shared/invite";
 import {
 	LOBBY_NAMES,
 	LOBBY_VISIBILITIES,
@@ -34,6 +35,8 @@ export const MENU_STRINGS = {
 	partyDown: "menu.partyDown",
 	partyEnded: "menu.partyEnded",
 	invitesBadge: "menu.invitesBadge",
+	/** Roblox's invite prompt without a lobby (docs/INVITES.md ID7). */
+	inviteFriends: "menu.inviteFriends",
 } as const;
 
 /** The lobby browser, the lobby room, the invite list and the invite toasts. */
@@ -74,6 +77,12 @@ export const LOBBY_STRINGS = {
 	inviteReceived: "lobby.invite.received",
 	inviteAccept: "lobby.invite.accept",
 	inviteDecline: "lobby.invite.decline",
+	/** Roblox invites (docs/INVITES.md I5): the invite panel's top row, its disabled reason, a platform invitee. */
+	invitePlatform: "lobby.invite.platform",
+	invitePlatformUnavailable: "lobby.invite.platformUnavailable",
+	invitedPlatform: "lobby.invite.invitedPlatform",
+	/** The partyLobby notice before this client knows the lobby's name. */
+	noticePartyLobbyAny: "lobby.notice.partyLobbyAny",
 } as const;
 
 /** `lobby.notice.<kind>` for every LobbyNotice kind but "refused" (that one reads `lobby.err.<code>`). */
@@ -84,6 +93,8 @@ export const LOBBY_NOTICE_KINDS = [
 	"inviteExpired",
 	"inviteDropped",
 	"followed",
+	"inviteArrived",
+	"partyLobby",
 ] as const;
 export type LobbyNoticeToastKind = (typeof LOBBY_NOTICE_KINDS)[number];
 
@@ -134,6 +145,16 @@ export function lobbyErrorKey(code: string | undefined): string {
 	return LOBBY_ERR_GENERIC;
 }
 
+/**
+ * The `arrival` notice's key (shared/invite ARRIVAL_TOAST, a `lobby.err.*` id) when it is one the server may send,
+ * else LOBBY_ERR_GENERIC.
+ */
+export function arrivalToastKey(key: string | undefined): string {
+	if (key === undefined) return LOBBY_ERR_GENERIC;
+	for (const [, k] of pairs(ARRIVAL_TOAST as unknown as Map<string, string>)) if (k === key) return k;
+	return LOBBY_ERR_GENERIC;
+}
+
 /** Every menu / lobby string key the UI can ask for (hud.spec.ts checks them all). */
 export function menuStringKeys(): string[] {
 	const keys: string[] = [LOBBY_ERR_GENERIC];
@@ -143,5 +164,7 @@ export function menuStringKeys(): string[] {
 	for (const v of LOBBY_VISIBILITIES) keys.push(lobbyVisibilityKey(v));
 	for (const k of LOBBY_NOTICE_KINDS) keys.push(lobbyNoticeKey(k));
 	for (const c of LOBBY_REFUSALS) keys.push(lobbyErrorKey(c));
+	// Arrival toasts: most are refusal strings already (full, inRun, ...); inviteGone / partyFull are their own.
+	for (const [, k] of pairs(ARRIVAL_TOAST as unknown as Map<string, string>)) if (!keys.includes(k)) keys.push(k);
 	return keys;
 }
