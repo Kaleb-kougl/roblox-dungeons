@@ -8,6 +8,7 @@ import {
 	selectAnyPanelOpen,
 	selectCoopOverlay,
 	selectGameActive,
+	selectLoadingReleased,
 	selectMenuScreen,
 	selectSnapshot,
 	selectTutorialOutroOpen,
@@ -38,8 +39,8 @@ const ROOT_NAME = "KV_HudRoot";
 
 /**
  * A menu that takes the gamepad is open: a menu screen (main menu, lobbies), the pause overlay (paused, run on),
- * the co-op party overlay, the run-over panel (its Again / Main menu buttons), juice settings, leaderboards or the
- * tutorial's outro card.
+ * the co-op party overlay, the run-over panel (its Again / Main menu buttons), juice settings, leaderboards, the
+ * tutorial's outro card or the join loading screen (its Skip button, docs/PRELOAD.md P4).
  */
 const selectMenuOpen = createSelector(
 	[
@@ -49,8 +50,10 @@ const selectMenuOpen = createSelector(
 		selectCoopOverlay,
 		selectGameActive,
 		selectTutorialOutroOpen,
+		selectLoadingReleased,
 	] as const,
-	(snapshot, panelOpen, screen, coopOverlay, active, outroOpen) =>
+	(snapshot, panelOpen, screen, coopOverlay, active, outroOpen, loadingReleased) =>
+		!loadingReleased ||
 		panelOpen ||
 		screen !== "none" ||
 		coopOverlay ||

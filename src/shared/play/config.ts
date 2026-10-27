@@ -39,6 +39,11 @@ export const RUN_ATTRIBUTES = {
 	 * (docs/TUTORIAL.md).
 	 */
 	tutorial: "KV_Tutorial",
+	/**
+	 * Boolean (Studio), read once on join: true releases the join loading screen at once (docs/PRELOAD.md P3), so it
+	 * never shows; the download queue still runs behind the menu. Off by default.
+	 */
+	skipLoading: "KV_SkipLoading",
 } as const;
 
 /** The web build's DEFAULT_SEED (`?seed=` absent). */

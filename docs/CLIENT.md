@@ -14,6 +14,7 @@ rebinding, audio, display). Everything presentation-side reads the sim and never
 | `InputController` | `.../game/InputController.ts` | Polls keyboard, mouse and the gamepad once per frame into an `InputFrame` (pure mapping: `shared/play/inputMapping.ts`). Sinks every bound key and both sticks in ContextActionService (High priority) so stock controls never act. Mouse aim: camera ray through the pointer onto the floor plane. Tracks the last-used device for the HUD hint (`game.inputDevice` in Reflex). Reports driver keys (R, F8 / L, D-pad down). Reads the player's bindings from the store (`selectBindings`) and re-binds the sink when they change (see "Options screen"). |
 | `SimController` | `.../game/SimController.ts` | Owns the live run: `buildWorldSetup(world, seed, { atBossDoor })` (the server's own world registry; `endless` by default), a `LiveRun` (`shared/play/liveRun.ts`), pause, restart, F8 replay check, the ranked start (`startRun`), per-floor segments (`submitSegment`, cut on `floorChanged`) and `finishRun`, the unranked `submitRun`, verdicts, the ~10 Hz HUD snapshot. Read-only accessors for views: `getContext()` (the current floor's config / dungeon in endless runs), `getState()`, `getAlpha()`, `getFrameEvents()`, `onRunStarted(cb)`, `onFloorChanged(cb)` (endless: WorldController rebuilds, CameraController snaps). |
 | `TutorialController` | `.../game/TutorialController.ts` | The first-run tutorial (docs/TUTORIAL.md; "The tutorial run" below): the first-run gate (`requestOnboarding` / `onboardingStatus`, `TUTORIAL.statusTimeoutSeconds`, `KV_Tutorial`), then per tutorial run a `TutorialDirector` updated each frame at render step 103 (`KV_Tutorial`), its view in the Reflex `tutorial` slice, `tutorialStarted` / `tutorialStep` / `tutorialFinished`, callout toasts, the ghost half heart, the end (freeze, outro beat, outro) and the pause / outro / main menu actions (Restart tutorial, Skip, replay). `onFirstRunDecided(cb)` (MenuController's join flow waits for it), `getMarker()` for the world marker. |
+| `PreloadController` | `.../game/PreloadController.ts` | docs/PRELOAD.md (loadOrder 1): the session's asset queue. On init `preloadPlan(pack)` (shared/view) queues the core tier, then the later tier; one worker runs `ContentProvider:PreloadAsync` in chunks (front lane first, each content id once per session); core progress to the Reflex `loading` slice; releases the loading screen on core done / Skip / timeout / `KV_SkipLoading`; `whenReleased(cb)`, `request(refs, lane)` (AudioController's run / floor audio, the boss floor's sheets). See "Preloading and the loading screen". |
 | `CameraController` | `.../game/CameraController.ts` | Spike B's iso rig on the live run: Scriptable, FOV 7, yaw 45 / pitch 55, distance for 16.875 tiles of view height, damped follow (tau 1/6 s) of the interpolated player, 1-texel snap. Snaps to the player at every run start. Stands down while `KV_SpikeCamera` is on. |
 | `WorldController` | `.../game/WorldController.ts` | Builds the floor: greedy-merged floor / wall / pool Parts (`shared/view/tileMerge.ts`) in the biome's `tile.biome.N.*` placeholder colours, plus one backdrop slab (`background` role). Rebuilds only when the floor changes. When the pack has the biome floor tile as an image with `tilesPerImage`, each floor slab gets a top-face `Texture` repeating every `tilesPerImage * STUDS_PER_TILE` studs (colour stays the biome's). Each Part takes the biome's `materials` (`ThemePack.biome(id).materials.floor / wall / pool`, `Enum.Material[name]`, SmoothPlastic by default); a textured floor is always SmoothPlastic. Solid pillars are WALL tiles and merge into the wall Parts. |
 | `CharacterController` | `.../game/CharacterController.ts` | Makes a spawned default character inert (root anchored locally); see "The default character". |
@@ -44,6 +45,7 @@ rebinding, audio, display). Everything presentation-side reads the sim and never
 | `RebindController` | `.../ui/RebindController.ts` | The Options screen's rebinding: capture (countdown, cancel, owns the input), swap prompt, refusal notes, Clear, Reset device, the input test strip. |
 | `HudController` | `.../ui/HudController.tsx` | Mounts `GameHud` (React + Reflex; two ScreenGuis through a portal) and the menu shell `MenuLayer` (client/ui/menu, its own ScreenGui) with the HUD and menu actions, switches gamepad navigation on while a menu is open (menu screens, pause / party overlay, run-over panel, panels), hides the stock Health / Backpack CoreGui. |
 | `HudOcclusionController` | `.../ui/HudOcclusionController.ts` | docs/HUD_LAYOUT.md H7: render step after the camera; every `HUD_OCCLUSION.everyFrames` frames projects the watched player, living actors and up to `maxBullets` enemy bullets with `Camera:WorldToScreenPoint` (GUI space, the same space as `AbsolutePosition`) and tests them against the mounted corner panels (client/ui/hud `cornerFade` registry); one `OcclusionFader` per corner writes the corner's `GroupTransparency` binding (the corner `Panel` is a CanvasGroup inside a transparent placed frame; no React re-render). Options > Display > HUD fade Off or no run: opaque, no work. Under `KV_Debug` it also warns once per panel per run when an always-on panel outgrows its `HUD_FOOTPRINT` box (H1). Read only on the sim. |
+| `LoadingController` | `.../ui/LoadingController.tsx` | Mounts `LoadingScreen` (client/ui/loading, its own ScreenGui, display order 30) on join until PreloadController releases; Skip plays `sfx.ui.click`. See "Preloading and the loading screen". |
 | `MenuController` | `.../ui/MenuController.ts` | L3 / L6: the main menu on join, once the first-run gate decided against the tutorial (a first-time player goes straight into it instead; no run starts on its own; `KV_SkipMenu` starts one at once), the screen + back stack (Reflex `menu`; pad B / Backspace go back), Play solo / Lobbies / Tutorial / Options / Leaderboard, the menu after a run (the lobby room while in a lobby, else the main menu), the co-op party overlay (the pause key in a party run) and Leave run. See "Main menu, lobbies and Leave run". |
 | `LobbyController` | `.../ui/LobbyController.ts` | L5: the lobby remotes into the Reflex `lobby` slice (list, my lobby, invites, notice toasts, the players in this server), the lobby requests, and `lobbyRunStart` (a one-player lobby's ranked solo run). |
 
@@ -533,9 +535,10 @@ master and group volume, live), each Sound at the manifest's per-ID volume x the
 - **Ambience** (`ambienceFor`): the floor's `amb.b<n>` bed during a run, under the music through the `sfx` group (X5:
   no new slider), x `AUDIO_VIEW.ambientVolume`, cross-faded over `ambientFadeSec`; none in menus or after a death.
   Music and ambience loop ONE clip at speed 1, so the validator rejects `variants` / `pitch` on `music.*` / `amb.*`.
-- **Preload:** `ContentProvider:PreloadAsync` (in a task) on every run start (every sound effect's clips, the floor's
-  music and ambience, the boss track, the tutorial's) and on every floor change (that floor's beds and the boss
-  track); nothing when all of it is silent.
+- **Preload:** requests to PreloadController's queue (docs/PRELOAD.md): on every run start every sound effect's clips,
+  the floor's music and ambience and the tutorial's track (front lane), on every floor change that floor's beds (front),
+  and the boss track (back lane); the queue skips what the join's core tier already fetched. Nothing when all of it is
+  silent.
 - **Menu sounds:** `playUi(id)` (the HUD's and menus' buttons, MenuController's B / Backspace back: `sfx.ui.back` when
   back changes something) goes through the same fallback; a gamepad focus move (`GuiService.SelectedObject` changing
   while the device is a gamepad) plays `sfx.ui.move`, rate-limited by `mapper.uiCue` (`SFX_MIN_INTERVAL` 0.08 s).
@@ -672,6 +675,26 @@ is open, and only one of the Options screen / leaderboard panel is open at a tim
 
 If the `game` world cannot start (e.g. a build without the actor archetypes: "Unknown archetype"), the client falls
 back to `dungeonNoEncounter` and says so in the HUD's info line.
+
+## Preloading and the loading screen (docs/PRELOAD.md; not run in Studio yet)
+
+Pure half: `shared/theme` `contentIds` / `assetIdList` / `biomeContentIds` (every `rbxassetid://` of a logical id or
+biome, deep walk), `shared/view/preload.ts` (`preloadPlan` tiers by longest prefix, `PreloadQueue`, `PreloadProgress`,
+`JoinGate`, `loadingReleased`, `skipVisible`, `bossContentIds`), tunables `PRELOAD` / `LOADING_VIEW`
+(`shared/view/preloadConfig.ts`), strings `LOADING_STRINGS`. Specced in `preload.spec.ts`, `contentIds.spec.ts`.
+
+- **Tiers:** core = what the menu, the tutorial and floor 1 can show or play (UI, the knight, regular enemies, every
+  sfx, breakables, boosts, fx, decor, biome 1, then the menu / lobby / floor 1 / tutorial music); later = bosses, other
+  music, ambience, biomes 2-5.
+- **Join:** the loading screen (opaque `background`, title, bar, `Loading n / m`, Skip after `PRELOAD.skipAfterSec`)
+  covers the join until the core tier resolved, Skip, or `PRELOAD.timeoutSec`; it fades out over `fadeSec` (instant
+  under reduced motion). The first-run gate still decides meanwhile, but its decision (the tutorial, the main menu,
+  `KV_SkipMenu`'s solo run) fires only once the screen released (`JoinGate`).
+- **After:** the later tier keeps loading; a run start's / floor change's audio and a boss floor's sheets go to the
+  front lane. A failed id warns once (`[Preload] image rbxassetid://...: Failure (not retried)`) and never holds the
+  screen.
+- `KV_SkipLoading` (Workspace, boolean): no screen; the queue still runs. `KV_SpikePreload`: the P0 spike
+  (docs/SPIKES.md).
 
 ## Main menu, lobbies and Leave run (L3 / L5 / L6, client half)
 
@@ -854,6 +877,12 @@ Setup: `npm run build`, `rojo serve`, open a **Baseplate** place, connect Rojo. 
 (its haze washes out a scene seen from ~550 studs). Game Settings > Security: enable Studio Access to API Services.
 With the actors merged the default `game` world has enemies; without them see "fallback" below.
 
+00. **Loading screen (F5; docs/PRELOAD.md).** Output: `[Preload] core N entries, later M (instance entries, chunks of
+   4)`, then `[Preload] core N / N in t s (0 failed)` and `[Preload] screen released at t s: core done`; the screen
+   (title, bar, `Loading n / N`) fades into the menu or the tutorial. Studio's cache makes it brief. With a slow load,
+   Skip appears at 3 s (mouse, Enter, pad A). `KV_SkipLoading` = true: `[Preload] KV_SkipLoading: no loading screen`.
+   Later: `[Preload] later done: ...`; a boss floor: `[Preload] front: boss.<kind> ...` (only when it queued
+   something new).
 0. **Main menu (F5).** With a played tutorial (or `KV_Tutorial` = false on Workspace; a fresh player goes straight
    into the tutorial instead: "Tutorial" below), the main menu shows (title, Play solo, Lobbies, Tutorial, Options,
    Leaderboard) over a dark backdrop; no run starts. Play solo starts the run below (with `KV_SkipMenu` on Workspace the menu is skipped). For lobbies

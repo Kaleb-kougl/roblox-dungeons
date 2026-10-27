@@ -1,11 +1,12 @@
 /**
- * Task 1 go/no-go spikes (docs/SPIKES.md). Both are OFF unless enabled here or by a Workspace
- * attribute, so a normal play session never runs them.
+ * Task 1 go/no-go spikes and the preload spike P0 (docs/SPIKES.md). All are OFF unless enabled here or by a
+ * Workspace attribute, so a normal play session never runs them.
  *
  * Enable at runtime from the Studio command bar (client context while playing, or on the server
  * so it replicates):
  *   workspace:SetAttribute("KV_SpikeBullets", true)
  *   workspace:SetAttribute("KV_SpikeCamera", true)
+ *   workspace:SetAttribute("KV_SpikePreload", true)   (best set before Play: it measures the join)
  * An attribute, when present, overrides the default below; setting it to false stops the spike
  * and cleans up everything it made.
  */
@@ -14,12 +15,14 @@
 export const SPIKE_DEFAULTS = {
 	bullets: false,
 	camera: false,
+	preload: false,
 } as const;
 
 /** Workspace attribute names that override SPIKE_DEFAULTS. */
 export const SPIKE_ATTRIBUTES = {
 	bullets: "KV_SpikeBullets",
 	camera: "KV_SpikeCamera",
+	preload: "KV_SpikePreload",
 } as const;
 
 export type SpikeName = keyof typeof SPIKE_DEFAULTS;
@@ -90,4 +93,28 @@ export const CAMERA_SPIKE = {
 	folderName: "KV_SpikeCamera",
 	/** RenderStep priority: after the default camera (Camera = 200), so ours wins. */
 	renderPriorityOffset: 1,
+} as const;
+
+/**
+ * Spike P0 (docs/PRELOAD.md, docs/SPIKES.md "Spike P0"): PreloadAsync of content id strings vs never-parented
+ * instances, for images and sounds, then a first-draw probe of one sheet. Runs once per enable, at join.
+ */
+export const PRELOAD_SPIKE = {
+	/** Boolean Workspace attribute: true runs the instance batches before the string ones (the cache favours second). */
+	instancesFirstAttribute: "KV_SpikePreloadInstancesFirst",
+	/** The logical id whose sheets are the image batches (the knight). */
+	imageAssetId: "class.vanguard",
+	/** Logical-id prefix of the sound batches' ids, and how many content ids at most. */
+	soundPrefix: "sfx.",
+	soundCount: 5,
+	/** Frames timed before the probe sheet is shown (the baseline). */
+	baselineFrames: 30,
+	/** Frames the probe sheet stays on screen (each one's os.clock delta is printed), then it is removed. */
+	holdFrames: 10,
+	/** The probe ImageLabel's size, screen pixels. */
+	probeSizePx: 1,
+	/** The probe's ScreenGui DisplayOrder: above the loading screen (shared/view LOADING_VIEW.displayOrder 30). */
+	displayOrder: 101,
+	/** Milliseconds per second (for the printed timings). */
+	msPerSec: 1000,
 } as const;

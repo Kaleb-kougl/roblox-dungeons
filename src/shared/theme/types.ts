@@ -130,6 +130,15 @@ export type HexColor = `#${string}`;
 /** Roblox content IDs for uploaded images and sounds. Only `src/shared/theme/**` may contain one. */
 export type RobloxAssetId = `rbxassetid://${string}`;
 
+/** How a content id is fetched ahead of use (docs/PRELOAD.md): an image (ImageLabel) or a sound (Sound). */
+export type PreloadMedia = "image" | "sound";
+
+/** One uploaded content id a logical id (or a biome) draws or plays, for preloading (ThemeCore.contentIds). */
+export interface ContentRef {
+	readonly contentId: RobloxAssetId;
+	readonly media: PreloadMedia;
+}
+
 /** A single uploaded image. w/h are declared so the contract can be checked. */
 export interface ImageAsset {
 	kind: "image";

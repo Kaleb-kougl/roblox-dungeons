@@ -12,8 +12,9 @@ import {
 	type FirstRunDecision,
 	type TutorialMarker,
 } from "shared/tutorial";
-import { RENDER_ORDER } from "shared/view";
+import { JoinGate, RENDER_ORDER } from "shared/view";
 import { PROGRESSION_VIEW, TUTORIAL_VIEW } from "shared/view/hud";
+import { PreloadController } from "./PreloadController";
 import { SimController, type RunContext } from "./SimController";
 
 const RENDER_STEP = "KV_Tutorial";
@@ -26,6 +27,10 @@ const RENDER_STEP = "KV_Tutorial";
  *   that is not done starts the tutorial at once (no main menu first); done, a failed load or no answer is the normal
  *   flow (MenuController: the main menu, or a solo run with KV_SkipMenu). Workspace `KV_Tutorial` (boolean, read once
  *   on join) forces it on or off. MenuController shows nothing until the gate decided (`onFirstRunDecided`).
+ *   **Join gate (docs/PRELOAD.md P5):** the decision is only DISPATCHED (the tutorial start, the `onFirstRunDecided`
+ *   listeners) once the join loading screen released too (PreloadController.whenReleased), whichever comes last
+ *   (shared/view JoinGate), so the tutorial, the main menu or KV_SkipMenu's solo run start under no cover; until
+ *   then `menu.awaitingFirstRun` stays true (the backdrop alone under the loading screen).
  * - **Each tutorial run** (first join, Restart tutorial, a replay): a fresh TutorialDirector and `tutorialStarted`.
  *   Once per rendered frame, right after the FX tracker (RENDER_ORDER.tutorialAfterFx), the director reads the
  *   frame's state, events and raw buttons (not while paused); its view goes to the Reflex `tutorial` slice when its
@@ -54,14 +59,17 @@ export class TutorialController implements OnStart {
 	/** Tutorial callout toasts use negative ids (the SimController's progression toasts count up from 1). */
 	private calloutSerial = 0;
 	private readonly decidedListeners = new Array<(choice: FirstRunDecision) => void>();
+	/** Dispatches the gate's decision once the loading screen released too (docs/PRELOAD.md P5). */
+	private readonly join = new JoinGate<FirstRunDecision>();
 
-	constructor(private readonly sim: SimController) {}
+	constructor(private readonly sim: SimController, private readonly preload: PreloadController) {}
 
 	onStart(): void {
 		this.forced = tutorialAttribute(Workspace.GetAttribute(RUN_ATTRIBUTES.tutorial));
 		Events.onboardingStatus.connect((status) => this.gate?.receive(status));
 		if (this.forced === undefined) Events.requestOnboarding.fire();
 		else print(`[Tutorial] ${RUN_ATTRIBUTES.tutorial} = ${tostring(this.forced)}: the server is not asked`);
+		this.preload.whenReleased(() => this.dispatch(this.join.release(), true));
 		this.sim.onRunStarted((ctx) => this.onRunStarted(ctx));
 		this.sim.onRunExited(() => this.onRunExited());
 		RunService.BindToRenderStep(RENDER_STEP, Enum.RenderPriority.Input.Value + RENDER_ORDER.tutorialAfterFx, (dt) =>
@@ -150,17 +158,29 @@ export class TutorialController implements OnStart {
 		clientStore.clearTutorial();
 	}
 
+	/**
+	 * The join flow, once the gate decided and the loading screen released (JoinGate; undefined: not yet, or already
+	 * dispatched): the tutorial starts here, the listeners (MenuController) take "normal".
+	 */
+	private dispatch(choice: FirstRunDecision | undefined, onRelease: boolean): void {
+		if (choice === undefined) return;
+		this.decided = choice;
+		if (onRelease) print(`[Tutorial] first run: ${choice} (dispatched as the loading screen released)`);
+		if (choice === "tutorial") this.sim.startTutorial();
+		for (const listener of this.decidedListeners) listener(choice);
+		this.decidedListeners.clear();
+	}
+
 	private frame(dt: number): void {
 		const gate = this.gate;
 		if (gate !== undefined) {
 			const choice = gate.poll(dt, this.forced);
 			if (choice === "wait") return;
 			this.gate = undefined;
-			this.decided = choice;
 			print(`[Tutorial] first run: ${choice} (after ${string.format("%.1f", gate.waitedSeconds())} s)`);
-			if (choice === "tutorial") this.sim.startTutorial();
-			for (const listener of this.decidedListeners) listener(choice);
-			this.decidedListeners.clear();
+			const fire = this.join.decide(choice);
+			if (fire === undefined) print(`[Tutorial] first run: ${choice} waits for the loading screen`);
+			this.dispatch(fire, false);
 			return;
 		}
 		const director = this.director;

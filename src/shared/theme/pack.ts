@@ -40,6 +40,7 @@ import type { StringVars } from "./strings";
 import type {
 	AnimationDef,
 	ColorRole,
+	ContentRef,
 	HexColor,
 	Pivot,
 	SpriteAnimationDef,
@@ -550,6 +551,28 @@ export class ThemePack {
 			floorColor: this.cachedColor(b.floor),
 			wallColor: this.cachedColor(b.wall),
 		};
+	}
+
+	// --- content ids (docs/PRELOAD.md P1) ------------------------------------------------------
+
+	/** Every uploaded content id of a logical id, deterministic order, each once (ThemeCore.contentIds). Cached. */
+	contentIds(id: string): ReadonlyArray<ContentRef> {
+		return this.core.contentIds(id);
+	}
+
+	/** The logical ids with at least one content id, sorted. */
+	assetIdList(): ReadonlyArray<string> {
+		return this.core.assetIdList();
+	}
+
+	/** The pack's biome keys, sorted. */
+	biomeKeys(): ReadonlyArray<string> {
+		return this.core.biomeKeys();
+	}
+
+	/** Every content id a biome draws (its table and its floor / wall tiles), media "image". Cached. */
+	biomeContentIds(biome: string): ReadonlyArray<ContentRef> {
+		return this.core.biomeContentIds(biome);
 	}
 
 	// --- strings -------------------------------------------------------------------------------
