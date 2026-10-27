@@ -7,11 +7,51 @@ docs/BOOSTS.md **B8** (which had planned the Ninja Adventure Items folder). Work
 a **Verify**.
 
 **Presentation only.** No sim, dungeon, lockstep, server, hash or replay change. The drop's position, timers, pickup
-and every rule stay as built; only what `boost.<kind>` (and three optional FX ids) resolve to in the vale pack changes.
+and every rule stay as built; only what `boost.<kind>` (plus the optional beam image `ui.marker.boost` and the reused
+decor effects `decor.fx.glow` / `decor.fx.glint`) resolve to in the vale pack changes.
 
 ## Status (2026-10-26)
 
-Plan only. Nothing is built. Owner decisions are under "Decisions"; the rest are recommended defaults (BA-P1..P6).
+BA1 and BA2 are done (atlas entries, theme, validator, vale pack, gems out of decor; headless specs only). Open: BA3
+(renderer layers), BA4 (upload the five new PNGs), BA5 (Studio), BA6, BA7. Owner decisions are under "Decisions"; the
+rest are recommended defaults (BA-P1..P6). See "As built (BA1, BA2)" for what differs from the plan text.
+
+## As built (BA1, BA2)
+
+- **No new atlas, no re-upload of the decor atlas.** The five pieces are standalone `images` entries in
+  `art/atlases.json` (`boost.fury` / `.quickstep` / `.frenzy` / `.aegis`, `ui.marker.boost`), so `art:build` writes five
+  new files: `boost-fury.png` (31x25), `boost-quickstep.png` / `boost-frenzy.png` (17x15), `boost-aegis.png` (17x14),
+  `ui-marker-boost.png` (8x103, pivot (4, 100), like the pedestal's). The decor `gems-*` world art entries were NOT
+  removed: that would repack and re-upload `decor-atlas.png`. They carry a `$comment` (unused since decision 2) and
+  `VALE_RETIRED_WORLD_ART` in `packs/vale/manifest.ts` names them; drop both at the next decor atlas rebuild.
+- **Halo and glint reuse the decor effects** (`decor.fx.glow`, `decor.fx.glint`, already in the uploaded decor atlas),
+  not new `fx.boost.halo` / glint IDs: `BOOST_HALO_FX` = `"glow"`, `BOOST_GLINT_FX` = `"glint"` (contract.ts). No new
+  halo or glint upload is needed. `BOOST_BEAM_IMAGE_ID` = `"ui.marker.boost"`, a free-form optional ui image (ui IDs are
+  not listed in the contract; `ui.marker.pedestal` is the same).
+- **pixelsPerTile.** The boost slot's image art needs `pixelsPerTile`, which standalone images had no way to carry, so
+  BA1's commit broke vale.spec (8 failures: with fake IDs every `boost.<kind>` became an image without it). The
+  pipeline's `images` entries take `pixelsPerTileFrom` (a sprite set id, like the sprite sets' and `worldArt`'s; here
+  `enemy.swarmer`, so 29.6 exactly), `ValeImageLayout` gained `pixelsPerTile?`, and the manifest copies it. `layout.ts`
+  was updated by hand to the generator's exact output (`layoutModule`), since `art/vendor/` was not on the build machine;
+  the PNGs are unchanged by it.
+- **Vale manifest.** `boost.<kind>` and `ui.marker.boost` follow the `ui.marker.pedestal` pattern (image once the file
+  has an ID in `assetIds.ts`, else the placeholder, which for a boost is the placeholder gem). The colour role stays
+  `boost.<kind>` (`ThemePack.boost(kind).color`, `.core.role`).
+- **Validator (BA-P2).** A pack whose `boost.<kind>` is `image` / `sprites` art must have `decor.fx.glow` art; the
+  error is on `assets["boost.<kind>"]`, one per boost with art. The glint and the beam stay optional.
+- **Gems out of decor (decision 2).** The four `gems` entries left `VALE_DECOR_PIECES`, and the `gems` kind left the
+  contract (`DECOR_KIND_LAYERS` / `DECOR_KINDS`), so no pack can map a decor gem. No floor changed: no plan source ever
+  placed `gems` (it is not a Forge `PropKind`; the treasure glint sits on the pedestal), so the decor plan, its census
+  and the budget specs are untouched.
+
+### Theme API for the renderer (BA3)
+
+| Layer | Call | Returns |
+|---|---|---|
+| the drop (coins / gems) | `pack.boost(kind)` (`ThemePack`) | `Boost`: `.art: WorldVisual \| undefined` (`{ kind: "image", image, offset, size, pivot, pixelsPerTile }`; undefined = draw `.placeholder`), `.color: Color3` (the role) |
+| the beam | `pack.image(BOOST_BEAM_IMAGE_ID)` | `ImageRef \| undefined` (`assetId`, `w`, `h`, `pivot`: the beam's foot) |
+| the halo | `pack.decor(decorFxId(BOOST_HALO_FX))` | `DecorPiece \| undefined` (vale: `.art.kind === "image"`, the 72 px soft disc in the decor atlas), tinted with `pack.boost(kind).color` |
+| the glint | `pack.decor(decorFxId(BOOST_GLINT_FX))` | `DecorPiece \| undefined` (vale: `.art` = `{ kind: "sprites", set: SpriteSet }`, the 8-frame loop) |
 
 ## What the art and the code give us (checked against `main` @ `d4e4dd7`)
 
@@ -56,13 +96,15 @@ only, BA-P4); the particle burst stays as the fallback.
 - `boost-beam`: `loot_indicator_white.png`, cropped like `ui.marker.pedestal`, pivot bottom.
 - Halo and sparkle reuse the built `glow` and `glint` entries (no new files).
 - The decor `gems-*` entries go (decision 2); the atlas is rebuilt and re-uploaded either way, so their space is freed.
+  **As built:** standalone images (no boost atlas); the `gems-*` entries stay until the next decor atlas rebuild, so
+  the decor atlas is not re-uploaded (see "As built").
 
 ### 2. Theme (`shared/theme`, `packs/vale`)
 
 | Piece | Change |
 |---|---|
-| Contract | `BOOST` slot unchanged (image art). Three optional ids under the existing `fx.*` / `ui.*` rules: `ui.marker.boost` (the beam image), `fx.boost.halo` (image), and the existing `fx.boost.collect` (sprite, `play`). Validator: when a pack gives `boost.<kind>` art, it must also give `fx.boost.halo` (the art fails the floor contrast alone; the halo carries the role) |
-| Vale manifest | `boost.<kind>` = the four images (`layout.ts` entries from art:build), `ui.marker.boost`, `fx.boost.halo` (the `glow` image), `fx.boost.collect` (the `glint` set, played once); `assetIds.ts` gets the atlas id after upload. Remove the four `gems` decor entries |
+| Contract | `BOOST` slot unchanged (image art). The beam is the optional free-form ui image `ui.marker.boost` (`BOOST_BEAM_IMAGE_ID`). The halo and the sparkle REUSE the decor effects `decor.fx.glow` / `decor.fx.glint` (`BOOST_HALO_FX` / `BOOST_GLINT_FX`), already in the uploaded decor atlas: no `fx.boost.halo`, no new upload. Validator: when a pack gives `boost.<kind>` art, it must also give `decor.fx.glow` art (the art fails the floor contrast alone; the halo carries the role). `gems` leaves the decor kinds |
+| Vale manifest | `boost.<kind>` = the four images (`layout.ts` entries from art:build, with `pixelsPerTile`), `ui.marker.boost`; the halo / glint come from the decor fx it already maps; `assetIds.ts` gets the five file ids after upload. Remove the four `gems` decor entries |
 | Specs | vale.spec: every boost kind resolves to art once the atlas has an id, and to the placeholder before; the halo rule; the decor list has no `gems` kind |
 
 ### 3. Client
@@ -79,21 +121,26 @@ only, BA-P4); the particle burst stays as the fallback.
 The decor plan (`shared/view/decor`, `packs/vale/manifest.ts`) loses the `gems` kind: its four variants are removed
 from the vale list. The plan's densities are per kind, so the other kinds keep their counts; check the decor budget
 spec and the treasure-room glint rule (it may have used gems as treasure dressing: keep the glint, swap the prop for
-`bones` / `rocks` or nothing).
+`bones` / `rocks` or nothing). **As built:** nothing placed gems (not a Forge prop kind; the glint is on the pedestal),
+so nothing was swapped; the kind left the contract too.
 
 ## Tasks
 
 - [ ] **BA0. Confirm.** Every row of the facts table: the frame indices chosen per kind look right in game scale
   (contact sheet at 29.6 px/tile on the five biome floors), the decor's use of gems (density, treasure dressing), that
   the image body path takes extra layers without breaking the pool. → Verify: each row confirmed or this plan edited.
-- [ ] **BA1. Atlas.** The `boost-*` and `boost-beam` entries, decor `gems-*` removed, `art:build`, `test:art`,
+- [x] **BA1. Atlas.** The `boost-*` and `boost-beam` entries, decor `gems-*` removed, `art:build`, `test:art`,
   `art:lock`. → Verify: `npm run test:art`; the built atlas and `layout.ts` show the five new entries and no `gems-*`.
-- [ ] **BA2. Theme.** Contract ids (`ui.marker.boost`, `fx.boost.halo`), the halo rule, vale manifest entries, decor
-  `gems` removed. → Verify: theme / vale / decor specs; the vale pack validates with and without the atlas id.
+  **Done** as five standalone images; `gems-*` kept (no decor atlas repack). BA2 added `pixelsPerTileFrom` on images.
+- [x] **BA2. Theme.** Contract ids (`ui.marker.boost`; the halo is the reused `decor.fx.glow`), the halo rule, vale
+  manifest entries, decor `gems` removed. → Verify: theme / vale / decor specs; the vale pack validates with and
+  without the file ids. **Done** (see "As built").
 - [ ] **BA3. Renderer.** Halo, beam and glint layers in `BoostDropRenderController`, `BOOST_VIEW` tunables, reduced
   motion. Pure helpers (halo pulse, beam alpha, glint phase per slot) in `shared/view/boosts` with specs.
   → Verify: `npm run verify`; `test:only -- view`.
-- [ ] **BA4. Upload.** Upload the rebuilt atlas(es), paste the ids into `packs/vale/assetIds.ts`.
+- [ ] **BA4. Upload.** Upload the five new PNGs (`boost-fury.png`, `boost-quickstep.png`, `boost-frenzy.png`,
+  `boost-aegis.png`, `ui-marker-boost.png`; the decor atlas is unchanged and its halo / glint are already uploaded),
+  paste the ids into `packs/vale/assetIds.ts`.
   → Verify: `check:assets`; vale.spec sees every boost kind with art.
 - [ ] **BA5. Studio check.** `KV_Debug`, M four times on each biome floor (1-5): each drop reads at a glance next to
   bullets, decor and the pedestal; the stack blinks and fades together; pickup glint; reduced motion still; phone
@@ -114,9 +161,12 @@ Critical path: BA0 -> BA1 -> BA2 -> BA3 -> BA4 -> BA5. BA6 any time after BA3.
 
 - **BA-P1. Beam: the white loot indicator tinted by the role**, ~1.5 tiles tall (under half the pedestal's) [BA1].
 - **BA-P2. A halo is mandatory with art** (validator rule), because the props alone are 1.7-3.6:1 on the floor [BA2].
+  Built: the halo is `decor.fx.glow` (reused, not a new `fx.boost.halo`).
 - **BA-P3. One fixed frame per kind** (S facing, frame 0). Variety (frame = slot or landing tick mod 8) is a later
   option; it is presentation only [BA1].
-- **BA-P4. Pickup FX: the glint once at 2x plus a halo flash**; the particle burst stays the fallback [BA3].
+- **BA-P4. Pickup FX: the glint once at 2x plus a halo flash**; the particle burst stays the fallback [BA3]. The glint
+  and the halo are `decor.fx.glint` / `decor.fx.glow` (BOOST_GLINT_FX / BOOST_HALO_FX), played by the renderer; no new
+  `fx.boost.collect` art is needed for it.
 - **BA-P5. Aura rings from `highlight_white`**: optional, after the drops are done [BA6].
 - **BA-P6. HUD icons from the prop images**: optional; the three-letter labels stay the fallback [BA6].
 
@@ -128,8 +178,8 @@ Critical path: BA0 -> BA1 -> BA2 -> BA3 -> BA4 -> BA5. BA6 any time after BA3.
   (`Fury: +50% damage for 10 s`) and the gold aura say what it is; revisit in the B11 playtest.
 - **Draw count**: four layers per drop (halo, prop, beam, glint), at most `DROPS.maxOnGround` = 4 drops: 16 small
   instances. Negligible, but BA5 records fps with four drops in co-op.
-- **Re-upload**: removing decor gems and adding boost art changes the decor atlas; its asset id changes
-  (`assetIds.ts`), as for the skeleton outline re-upload.
+- **Re-upload**: ~~removing decor gems and adding boost art changes the decor atlas~~. Avoided: the boost art is five
+  standalone PNGs and the `gems-*` pieces stay in the decor atlas until its next rebuild.
 
 ## Out of scope
 

@@ -357,13 +357,14 @@ floor where it could hide a bullet:
 | Layers allowed | Kinds |
 | --- | --- |
 | `tall`, `low` (placed on far-wall tops) | brazier, sarco, pillar, grave, candle, icicle, shardIce (the web plan's tall pieces, in its priority order); wall, wallBroken, column, columnBroken (R6 far-wall dressing) |
-| `flat` (where the Forge put them) | debris, bones, crack, moss, roots, ring, bossCrystal, shrineCrystal, gems (treasure dressing), brokenBarrel, brokenCrate (the decal a broken breakable leaves) |
+| `flat` (where the Forge put them) | debris, bones, crack, moss, roots, ring, bossCrystal, shrineCrystal, brokenBarrel, brokenCrate (the decal a broken breakable leaves) |
 | `wall` | torch, banner |
 
-`chest` (the treasure interactable sits there) and `arch` (doorways stay clear) are never drawn and are not kinds.
+`chest` (the treasure interactable sits there) and `arch` (doorways stay clear) are never drawn and are not kinds;
+nor is `gems` (docs/BOOST_ART.md decision 2: a gem cluster on the floor always means a boost drop).
 Lords of Pain covers pillar / column (`column1`), columnBroken (`column2`), wall / wallBroken (`wall2` / `wall3`),
-brazier, torch, debris (`bricks`, `rocks`), bones (`bones1`-`3`), moss / roots (`mushrooms`), gems (`gemstones_*`),
-the effects (`vfx/*`) and the breakable decals; the other kinds stay undrawn until a pack has art.
+brazier, torch, debris (`bricks`, `rocks`), bones (`bones1`-`3`), moss / roots (`mushrooms`), the effects (`vfx/*`)
+and the breakable decals; the other kinds stay undrawn until a pack has art.
 
 **Fields** (on top of the `image` / `sprites` kind; `validate.ts` checks each):
 

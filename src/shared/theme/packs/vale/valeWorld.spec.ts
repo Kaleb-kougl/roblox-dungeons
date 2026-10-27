@@ -21,7 +21,14 @@ import { sortedKeys } from "../../util";
 import { breakableContrastReport, decorFxReport, validateManifest } from "../../validate";
 import { PLACEHOLDER_MANIFEST } from "../placeholder";
 import { VALE_WORLD_LAYOUTS } from "./layout";
-import { VALE_AMBIENT_ART, VALE_BREAKABLE_ART, VALE_DECOR_FX, VALE_DECOR_PIECES, buildValeManifest } from "./manifest";
+import {
+	VALE_AMBIENT_ART,
+	VALE_BREAKABLE_ART,
+	VALE_DECOR_FX,
+	VALE_DECOR_PIECES,
+	VALE_RETIRED_WORLD_ART,
+	buildValeManifest,
+} from "./manifest";
 
 const quiet = () => undefined;
 
@@ -66,7 +73,10 @@ describe("vale world art (docs/DECOR.md R5)", () => {
 		for (const name of DECOR_FX_NAMES) used.add(VALE_DECOR_FX[name]);
 		for (const kind of BREAKABLE_KINDS) used.add(VALE_BREAKABLE_ART[kind]);
 		for (const art of used) expect([art, VALE_WORLD_LAYOUTS[art] !== undefined]).toEqual([art, true]);
-		for (const name of sortedKeys(VALE_WORLD_LAYOUTS)) expect([name, used.has(name)]).toEqual([name, true]);
+		// every layout is used, except the retired gems (docs/BOOST_ART.md decision 2), which nothing may use
+		for (const name of sortedKeys(VALE_WORLD_LAYOUTS)) {
+			expect([name, used.has(name)]).toEqual([name, !VALE_RETIRED_WORLD_ART.includes(name)]);
+		}
 		// decor pieces: a kind's layer is one it allows, its variant in range, no ID twice
 		const seen = new Set<string>();
 		for (const p of VALE_DECOR_PIECES) {
@@ -129,8 +139,8 @@ describe("vale world art (docs/DECOR.md R5)", () => {
 				]);
 			}
 		}
-		// variants by cell hash: debris (bricks, rocks), bones1-3, mushrooms for moss and roots, four gem colours
-		for (const kind of ["debris", "bones", "moss", "roots", "gems"] as const) {
+		// variants by cell hash: debris (bricks, rocks), bones1-3, mushrooms for moss and roots
+		for (const kind of ["debris", "bones", "moss", "roots"] as const) {
 			expect([kind, core.decorVariants("biome.3", kind).size()]).toEqual([kind, 4]);
 		}
 		expect(core.decorVariants("biome.4", "grave").size()).toBe(0); // no Lords of Pain art: not drawn

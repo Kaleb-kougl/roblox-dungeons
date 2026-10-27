@@ -7,8 +7,11 @@
  *     uploaded, else placeholder; an optional animation (attack.1..3) is left out until its sheet is uploaded; a
  *     sheet's outline (layout `outlineFile`, enemy sets) becomes its `outlineAssetId` once uploaded, and never holds
  *     the set back;
- *   - tile.biome.1.floor (with tilesPerImage), ui.ring.player, ui.marker.pedestal: `image` once uploaded, else
- *     placeholder (the ui IDs exist either way);
+ *   - tile.biome.1.floor (with tilesPerImage), ui.ring.player, ui.marker.pedestal, ui.marker.boost (the boost drops'
+ *     white beam, docs/BOOST_ART.md) and boost.<kind> (the Lords of Pain gold coins / gemstones, with the layout's
+ *     pixelsPerTile; their colour role stays manifest.colors[boost.<kind>]): `image` once uploaded, else placeholder
+ *     (the ui IDs exist either way; a boost kind keeps its placeholder gem). A boost image needs decor.fx.glow (its halo,
+ *     validator rule BA-P2), which comes with decor-atlas.png;
  *   - the floor colour of every biome tiled with tile.biome.1.floor becomes VALE_FLOOR_HEX (the texture's mean colour)
  *     once the texture is uploaded, so the contrast checks describe what is drawn.
  * Image pivots (VALE_IMAGE_LAYOUTS) go into the ui images' `pivot`; the renderer reads them through
@@ -171,7 +174,9 @@ export interface ValeDecorPiece {
 /**
  * The decor pieces (decor.delve.b<n>.<kind>[.<v>], every biome alike). Kinds without Lords of Pain art (sarco, grave,
  * candle, icicle, shardIce, crack, ring, bossCrystal, shrineCrystal, banner) stay undrawn. Round flat pieces take a few
- * of the pack's facings as variants, picked by cell hash.
+ * of the pack's facings as variants, picked by cell hash. No gemstones (docs/BOOST_ART.md decision 2): a gem cluster on
+ * the floor always means a boost drop, so the four `gems-*` world art pieces in layout.ts are unused (they stay in the
+ * uploaded decor atlas until its next rebuild).
  */
 export const VALE_DECOR_PIECES: ReadonlyArray<ValeDecorPiece> = [
 	{ kind: "brazier", art: "brazier", layer: "tall", glow: true },
@@ -197,13 +202,16 @@ export const VALE_DECOR_PIECES: ReadonlyArray<ValeDecorPiece> = [
 	{ kind: "roots", variant: 2, art: "mushrooms-nnw", layer: "flat" },
 	{ kind: "roots", variant: 3, art: "mushrooms-sw", layer: "flat" },
 	{ kind: "roots", variant: 4, art: "mushrooms-sse", layer: "flat" },
-	{ kind: "gems", variant: 1, art: "gems-blue", layer: "flat" },
-	{ kind: "gems", variant: 2, art: "gems-green", layer: "flat" },
-	{ kind: "gems", variant: 3, art: "gems-red", layer: "flat" },
-	{ kind: "gems", variant: 4, art: "gems-white", layer: "flat" },
 	{ kind: "brokenBarrel", art: "barrel-broken", layer: "flat" },
 	{ kind: "brokenCrate", art: "crate-broken", layer: "flat" },
 ];
+
+/**
+ * World art pieces in layout.ts that no ID maps onto: the four gemstone clusters, decor until docs/BOOST_ART.md
+ * decision 2 (gems are boost drops now). They stay in art/atlases.json and the uploaded decor-atlas.png only so that
+ * atlas does not repack and need a re-upload; remove them (here and in atlases.json) at the next decor atlas rebuild.
+ */
+export const VALE_RETIRED_WORLD_ART: ReadonlyArray<string> = ["gems-blue", "gems-green", "gems-red", "gems-white"];
 
 /** The decor effects (decor.fx.*): Lords of Pain vfx, all self-lit. */
 export const VALE_DECOR_FX: Readonly<Record<DecorFxName, string>> = {
@@ -388,6 +396,9 @@ export function buildValeManifest(ids: AssetIds = VALE_ASSET_IDS): ThemeManifest
 		}
 		if (layout.pivot !== undefined) {
 			image.pivot = { x: layout.pivot.x, y: layout.pivot.y };
+		}
+		if (layout.pixelsPerTile !== undefined) {
+			image.pixelsPerTile = layout.pixelsPerTile;
 		}
 		manifest.assets[id] = image;
 	}

@@ -391,6 +391,34 @@ describe("pixelsPerTileFrom (sprite sets drawn at another set's scale)", () => {
 	});
 });
 
+describe("images with pixelsPerTileFrom (world art drawn at a sprite set's scale, docs/BOOST_ART.md)", () => {
+	// A 6 x 4 visible blob in a 20 x 20 source: crop alpha + pad 3 -> 12 x 10, pivot centre (6, 5).
+	const blob = () => {
+		const img = A.raster(20, 20);
+		for (let y = 8; y < 12; y++) for (let x = 7; x < 13; x++) put(img, x, y, LIT);
+		A.sourceCache.set("synthetic/blob.png", img);
+		return { file: "synthetic/blob.png", name: "blob", crop: "alpha", noiseAlpha: 2, pad: 3, pivot: "center" };
+	};
+	const base = () => syntheticSet("img-base", { bodyTiles: 7 });
+
+	it("copies the named set's pixelsPerTile exactly into the layout; the pixels and pivot are unchanged", () => {
+		const sets = A.buildSpriteSets({ "z.base": base() });
+		const [drop, plain] = A.buildImages({ "boost.test": { ...blob(), pixelsPerTileFrom: "z.base" }, "ui.test": blob() }, sets);
+		assert.equal(drop.id, "boost.test");
+		assert.deepEqual(drop.layout, { file: "blob.png", w: 12, h: 10, pivot: { x: 6, y: 5 }, pixelsPerTile: sets[0].layout.pixelsPerTile });
+		assert.equal(sets[0].layout.pixelsPerTile, 1.3);
+		// without it the layout has no pixelsPerTile key (ui images, the floor texture)
+		assert.deepEqual(plain.layout, { file: "blob.png", w: 12, h: 10, pivot: { x: 6, y: 5 } });
+		assert.equal(Buffer.compare(A.encodePng(drop.img), A.encodePng(plain.img)), 0);
+		assert.match(A.layoutModule(sets, [drop], "#000000"), /"boost\.test": \{[^}]*\}[^}]*pixelsPerTile: 1\.3,/);
+		assert.match(A.layoutModule(sets, [drop], "#000000"), /\tpixelsPerTile\?: number;/);
+	});
+
+	it("fails when the named sprite set was not built", () => {
+		assert.throws(() => A.buildImages({ "boost.test": { ...blob(), pixelsPerTileFrom: "z.none" } }, []), /boost\.test: pixelsPerTileFrom z\.none is not a built sprite set/);
+	});
+});
+
 describe("sourceFiles and lockAlso", () => {
 	const frames = (extra) => ({
 		spriteSets: {

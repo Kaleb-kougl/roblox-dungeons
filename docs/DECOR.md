@@ -31,7 +31,8 @@ As built, differing from the text below:
   boss-room brazier spots (floor glow + PointLight), lit 2 / 4 / 6 by phase. The depth band's flat thinning rarely
   bites (Forge clutter is under 20 % of a room already).
 - **R2 contract**: kind segments are lowercase in ids (`decor.delve.b3.shardice`; code uses `decorId()`); added
-  `pixelsPerTile`, `rect`, `glowAt`, variants `.1`..`.4`, kinds `gems` / `brokenBarrel` / `brokenCrate`; one
+  `pixelsPerTile`, `rect`, `glowAt`, variants `.1`..`.4`, kinds `gems` (removed again by docs/BOOST_ART.md BA2) /
+  `brokenBarrel` / `brokenCrate`; one
   `decor.fx.flame` role (not per biome). `decor.fx.*` roles must differ from the enemy-bullet roles by >= 40 CIE76.
   Breakables: required `breakable.barrel` / `.crate` (asset, role, name), `sfx.breakable.hit` / `.break`.
 - **R9 / R10**: director `{ state, events, scene, dt, motion }` (no config: boss floors come from the scene); light
@@ -47,6 +48,12 @@ As built, differing from the text below:
   endless runs is unchanged.
 - **R13**: placeholder blocks (crate 4x2x4, barrel 3.5x2.5x3.5 studs), blink / shake / chips / sparks (sparks at the
   piece centre, not the contact point), the sniper aim line clipped at intact pieces; art capped at 5/8 tile tall.
+- **Gems are not decor (docs/BOOST_ART.md BA2, decision 2).** A gem cluster on the floor always means a boost drop,
+  so the contract has no `gems` decor kind any more (`decor.delve.*.gems` is an unknown decor ID) and the vale pack
+  maps nothing onto the four `gems-*` world art pieces (`VALE_RETIRED_WORLD_ART`). No floor changed: the decor plan
+  never placed a `gems` piece (it is not a Forge prop kind; `FLAT_FORGE_KINDS` never listed it), so the plan, its
+  census and the budget specs are unchanged. The `gems-*` entries stay in `art/atlases.json` (with a `$comment`) and in
+  the uploaded `decor-atlas.png` only so that atlas does not repack and need a re-upload; drop them at its next rebuild.
 
 ## What already exists
 
@@ -127,7 +134,7 @@ shadow included):
 | `bones1`-`3` | 1 | 43-69 wide | | bones (flat) |
 | `mushrooms` | 1 | 48x36 | | moss, roots (verdant) |
 | `barrel`, `crate` (+ `_break`, 8 frames) | 1 | 59x45 / 41x28 | | room clutter (low) |
-| `gemstones_*` (4 colours) | 8 | 21x15 | | treasure-room dressing |
+| `gemstones_*` (4 colours) | 8 | 21x15 | | ~~treasure-room dressing~~: boost drops since docs/BOOST_ART.md (decision 2), not decor |
 | `vfx/flame`, `vfx/flames` (+ glow) | 8 | 60x61 / 60x157 | flame loops | on torches and braziers |
 | `environment/ground_variation1/2`, `ground_darken` | 1 | 256x256 | floor textures next to `ground_stone1` | floor variants (R1) |
 
@@ -250,14 +257,14 @@ others. Biome-specific kinds (icicle, moss, grave) have no art and stay undrawn 
   - **Mapping** (`packs/vale/manifest.ts`, the same art in b1..b5): pillar / column = column1, columnBroken = column2,
     wall = wall2, wallBroken = wall3, brazier = brazier (+ `lit` = brazier_lit, 8 frames; glowAt on its embers),
     torch = torch (glowAt = its cup, hung centred on the face), debris .1-.4 = bricks / rocks (2 facings each), bones
-    .1-.4 = bones1-3 (+ bones1 in a second facing), moss and roots .1-.4 = mushrooms (4 facings), gems .1-.4 = the four
-    gemstones, brokenBarrel / brokenCrate = the last `_break` frame; fx torch = vfx/flame, flame = vfx/flames, glow,
+    .1-.4 = bones1-3 (+ bones1 in a second facing), moss and roots .1-.4 = mushrooms (4 facings), (gems .1-.4 = the
+    four gemstones, until docs/BOOST_ART.md BA2 removed them), brokenBarrel / brokenCrate = the last `_break` frame; fx torch = vfx/flame, flame = vfx/flames, glow,
     glint (8 frames), zone (at 1/4); ambient b1-b5 = zone at 1/16, alpha stretched, white (emissive for molten and
     grim); breakable.barrel / .crate = idle + `shatter` (16 fps one-shot). `valeWorld.spec.ts` validates it with fake
     IDs (and without), `valeArt.spec.ts` fits it on real floors.
   - **Still drawn as nothing after the upload:** sarco, grave, candle, icicle, shardIce, crack, ring, bossCrystal,
-    shrineCrystal and banner (no art in the pack); `gems` (mapped, but no plan source places gems: the treasure glint
-    sits on the pedestal); `tiles` and `wall1` are not used (no decor kind for floor patches or curbs).
+    shrineCrystal and banner (no art in the pack); `gems` was mapped, but no plan source ever placed gems (the
+    treasure glint sits on the pedestal), and BA2 removed the kind; `tiles` and `wall1` are not used (no decor kind for floor patches or curbs).
 
 - [x] **R6. Far-wall dressing.** `wall2` / `wall3` segments on the far-wall runs and `column1` on corners and doorway
   jambs (layer 2 under "Walls"): a segment needs a straight run of wall tops about 4 tiles long; shorter runs get a
@@ -340,7 +347,7 @@ it ships with placeholder Parts first and picks up the R5 art later.
 - **Biome atmosphere.** The Forge themes already carry `particles` (kind, colour, count) as reference data; use it:
   one emitter volume that follows the camera focus. Ancient dust motes, molten embers rising, frost snow, grim green
   wisps, verdant spores. Rate x the depth band, x Juice settings; Reduced motion scales it to zero.
-- **Treasure glint**: `vfx/glint` on the gemstones until the pedestal is taken.
+- **Treasure glint**: `vfx/glint` on the pedestal until it is taken (as built; no gemstones: they are boost drops).
 - **Readability rules**: ambient particles are smaller and more transparent than any bullet (`DECOR_FX.maxSizeStuds`,
   `minTransparency`) and take colours from new `decor.fx.*` roles the validator keeps away from the enemy-bullet
   roles; `DECOR_FX.maxParticles` caps the total.
@@ -360,7 +367,7 @@ run is paused or a draft is open.
 | combat room engaged, then cleared (score room records) | engaged: flames burn taller; cleared: the room's braziers light (`brazier` -> `brazier_lit`) with a short warm flare |
 | boss floor (the Forge's brazier ring) | dark until `bossEngaged`; one more third of the ring lights on each `bossPhase`; steady after the kill |
 | stairwell opens (`state.endless`) | glow plus a `vfx/zone` ring on the stairwell |
-| shrine used / pedestal taken (`state.run`) | the shrine crystal dims; the gemstones stop glinting |
+| shrine used / pedestal taken (`state.run`) | the shrine crystal dims; the pedestal stops glinting |
 | Ember (`events.emberUsed`) | every flame on screen gutters for `DECOR_REACT.emberGutterSeconds` (0.3) |
 | run over (`playerDied`, all players in co-op) | lights fade to a cold palette behind the results panel |
 

@@ -30,10 +30,14 @@ export interface ValeSpriteLayout extends Omit<SpriteSetAsset, "kind" | "sheets"
 	sheets: Array<ValeSpriteSheetFile>;
 }
 
-/** A single image in art/build/. `pivot` (pixels from the top-left) is where it is anchored, when it matters. */
+/**
+ * A single image in art/build/. `pivot` (pixels from the top-left) is where it is anchored, when it matters;
+ * `pixelsPerTile`, on world art drawn at a sprite set's scale (art/atlases.json `pixelsPerTileFrom`), sizes it.
+ */
 export interface ValeImageLayout extends ValeSheetFile {
 	tilesPerImage?: number;
 	pivot?: Pivot;
+	pixelsPerTile?: number;
 }
 
 export const VALE_SPRITE_LAYOUTS: Record<string, ValeSpriteLayout> = {
@@ -108,24 +112,28 @@ export const VALE_IMAGE_LAYOUTS: Record<string, ValeImageLayout> = {
 		w: 17,
 		h: 14,
 		pivot: { x: 8.5, y: 7 },
+		pixelsPerTile: 29.6,
 	},
 	"boost.frenzy": {
 		file: "boost-frenzy.png",
 		w: 17,
 		h: 15,
 		pivot: { x: 8.5, y: 7.5 },
+		pixelsPerTile: 29.6,
 	},
 	"boost.fury": {
 		file: "boost-fury.png",
 		w: 31,
 		h: 25,
 		pivot: { x: 15.5, y: 12.5 },
+		pixelsPerTile: 29.6,
 	},
 	"boost.quickstep": {
 		file: "boost-quickstep.png",
 		w: 17,
 		h: 15,
 		pivot: { x: 8.5, y: 7.5 },
+		pixelsPerTile: 29.6,
 	},
 	"tile.biome.1.floor": { file: "tile-biome1-floor.png", w: 256, h: 256, tilesPerImage: 4 },
 	"ui.marker.boost": {

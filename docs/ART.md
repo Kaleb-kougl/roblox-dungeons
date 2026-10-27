@@ -18,12 +18,14 @@ six bullet IDs, the biome tiles, `ui.cursor` (the facing pip) and the pedestal /
 | co-op player marker / under-player ring | **`highlight_yellow`**, tinted per player | Lords of Pain demo |
 | relic pedestal marker (`RunMarkerController`) | **`loot_indicator_yellow`** beam (+ `glint`, stretch) | Lords of Pain demo |
 | `enemy.sniper` (+ the tutorial's `turret.sniper`) | **Subservient** (worship; every other animation a stand-in, docs/SNIPER_ART.md) | Lords of Pain (full pack) |
+| boost drops `boost.fury` / `.quickstep` / `.frenzy` / `.aegis` (docs/BOOST_ART.md) | **`gold_drop`** (Fury) and **`gemstones_blue` / `_green` / `_white`**, S facing frame 0, 29.6 px/tile; halo `decor.fx.glow` and sparkle `decor.fx.glint` (the decor atlas), beam **`loot_indicator_white`** (`ui.marker.boost`), all tinted by the kind's role | Lords of Pain (full pack) |
 | `enemy.bruiser`, `boss.act1`, walls, the shrine | placeholder primitives (unchanged) | none |
 | every `bullet.*` | neon placeholders (unchanged: they keep the GDD bullet-readability rule) | none |
 | audio | silent (unchanged) | none |
 
-**Not in the slice:** the other four classes and the paid SmallScaleInt edition, the LoP warrior, `gold_drop` (the
-slice has no gold), other biomes' tiles, the full LoP pack. Nothing needs to be bought for this plan.
+**Not in the slice:** the other four classes and the paid SmallScaleInt edition, the LoP warrior, other biomes'
+tiles. (`gold_drop` and the full LoP pack joined later: the boost drops above and the sniper.) Nothing needs to be
+bought for this plan.
 
 ## The packs
 
