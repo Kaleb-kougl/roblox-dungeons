@@ -1,11 +1,12 @@
 import React from "@rbxts/react";
 import { useSelector } from "@rbxts/react-reflex";
-import { selectLobby, selectLobbyNotices } from "client/store";
+import { Players } from "@rbxts/services";
+import { selectLobby, selectLobbyNotices, type LobbyNoticeToast } from "client/store";
 import { MenuButton, Panel, Row, Text } from "client/ui/hud";
 import { role, str } from "client/ui/theme";
 import { SFX } from "shared/view/audio";
 import { HUD_VIEW } from "shared/view/hud";
-import { LOBBY_STRINGS, MENU_STRINGS, MENU_VIEW, receivedInvites } from "shared/view/menu";
+import { LOBBY_STRINGS, MENU_STRINGS, MENU_VIEW, arrivedInviteShown, receivedInvites } from "shared/view/menu";
 import { useMenuActions } from "./actions";
 import { spec, useClock, useNameOf } from "./hooks";
 
@@ -102,10 +103,23 @@ export function InviteBadge() {
 	);
 }
 
-/** Lobby notices (refusals, kicked, new host, countdown cancelled, ...), top centre, a few seconds each. */
+/** A notice's line: its vars, plus the partyLobby notice's lobby title as `{lobby}`. */
+function noticeText(n: LobbyNoticeToast): string {
+	const lobby = n.lobby;
+	return lobby !== undefined ? str(n.key, { ...(n.vars ?? {}), lobby: spec(lobby) }) : str(n.key, n.vars);
+}
+
+/**
+ * Lobby notices (refusals, kicked, new host, countdown cancelled, Roblox invite arrivals, ...), top centre, a few
+ * seconds each. "{name} joined from your invite" carries an Invite button (the normal in-server `lobbyInvite`) while
+ * this player is in a lobby that can take them and the friend is here, outside it and not invited yet.
+ */
 export function NoticeToasts() {
 	const notices = useSelector(selectLobbyNotices);
+	const lobby = useSelector(selectLobby);
+	const actions = useMenuActions();
 	if (notices.size() === 0) return undefined;
+	const me = Players.LocalPlayer.UserId;
 	return (
 		<Panel
 			position={new UDim2(HALF, 0, 0, MENU_VIEW.noticeTop)}
@@ -114,16 +128,37 @@ export function NoticeToasts() {
 			align={Enum.HorizontalAlignment.Center}
 			name="LobbyNotices"
 		>
-			{notices.map((n, i) => (
-				<Text
-					key={`n${n.id}`}
-					order={i + 1}
-					color="uiAccent"
-					align={Enum.TextXAlignment.Center}
-					wrap={true}
-					text={str(n.key, n.vars)}
-				/>
-			))}
+			{notices.map((n, i) => {
+				const inviteId = n.inviteUserId;
+				if (inviteId === undefined || !arrivedInviteShown(inviteId, lobby.mine, lobby.players, me)) {
+					return (
+						<Text
+							key={`n${n.id}`}
+							order={i + 1}
+							color="uiAccent"
+							align={Enum.TextXAlignment.Center}
+							wrap={true}
+							text={noticeText(n)}
+						/>
+					);
+				}
+				return (
+					<Row key={`n${n.id}`} order={i + 1} align={Enum.HorizontalAlignment.Center}>
+						<Text order={1} color="uiAccent" text={noticeText(n)} />
+						<MenuButton
+							order={2}
+							name={`InviteArrived_${inviteId}`}
+							size={SMALL}
+							textSize={HUD_VIEW.smallText}
+							text={str(LOBBY_STRINGS.inviteSend)}
+							onActivated={() => {
+								actions.playUi(SFX.uiConfirm);
+								actions.invite(inviteId);
+							}}
+						/>
+					</Row>
+				);
+			})}
 		</Panel>
 	);
 }

@@ -7,6 +7,7 @@
 import {
 	LOBBY,
 	LOBBY_NAMES,
+	type LobbyInviteSource,
 	type LobbyNameId,
 	type LobbyPhase,
 	type LobbySummary,
@@ -14,10 +15,11 @@ import {
 } from "shared/lobby";
 import type { LobbyInviteView, LobbyNotice, LobbyView } from "shared/network";
 import type { StringVars } from "shared/theme";
-import { LOBBY_ROOM_PATH, MAIN_MENU_PATH, type MenuScreen } from "./nav";
+import { LOBBY_BROWSER_PATH, LOBBY_ROOM_PATH, MAIN_MENU_PATH, type MenuScreen } from "./nav";
 import {
 	LOBBY_STRINGS,
 	MENU_STRINGS,
+	arrivalToastKey,
 	lobbyErrorKey,
 	lobbyNameKey,
 	lobbyNoticeKey,
@@ -182,28 +184,106 @@ export interface InviteCandidate {
 	readonly name: string;
 	/** A live invite to this lobby exists ("Invited"; no duplicate invites). */
 	readonly invited: boolean;
+	/** That invite came through Roblox (a platform or party invite): "Invited (Roblox)". */
+	readonly platform: boolean;
+	/** In this server (false: a platform / party invitee who has not arrived yet). */
+	readonly here: boolean;
 	readonly canInvite: boolean;
 }
 
-/** The players in this server who are not in this lobby, by name (then UserId), with their invite state. */
+/** Where `userId`'s live invite to `view` came from (undefined: none). `invitedSources` is parallel to `invited`. */
+function inviteSourceOf(view: LobbyView, userId: number): LobbyInviteSource | undefined {
+	const i = view.invited.indexOf(userId);
+	if (i < 0) return undefined;
+	return view.invitedSources[i] ?? "server";
+}
+
+/**
+ * The invite list: the players in this server who are not in this lobby, by name (then UserId), with their invite
+ * state; then the Roblox (platform / party) invitees who are not in this server yet, in invite order, always in the
+ * invited state (named by `nameOf`: "#<UserId>" until they arrive, as no web lookups are made).
+ */
 export function inviteCandidates(
 	players: ReadonlyArray<ServerPlayer>,
 	view: LobbyView,
 	me: number,
 	canInviteNow: boolean,
+	nameOf: NameOf = (id) => `#${id}`,
 ): InviteCandidate[] {
 	const out: InviteCandidate[] = [];
 	for (const p of players) {
 		if (p.userId === me || view.members.includes(p.userId)) continue;
-		const invited = view.invited.includes(p.userId);
-		out.push({ userId: p.userId, name: p.name, invited, canInvite: canInviteNow && !invited });
+		const source = inviteSourceOf(view, p.userId);
+		const invited = source !== undefined;
+		out.push({
+			userId: p.userId,
+			name: p.name,
+			invited,
+			platform: invited && source !== "server",
+			here: true,
+			canInvite: canInviteNow && !invited,
+		});
 	}
 	out.sort((a, b) => {
 		const an = a.name.lower();
 		const bn = b.name.lower();
 		return an !== bn ? an < bn : a.userId < b.userId;
 	});
+	for (let i = 0; i < view.invited.size(); i++) {
+		const id = view.invited[i];
+		const source = view.invitedSources[i] ?? "server";
+		if (source === "server" || id === me || view.members.includes(id)) continue;
+		if (players.some((p) => p.userId === id)) continue;
+		out.push({ userId: id, name: nameOf(id), invited: true, platform: true, here: false, canInvite: false });
+	}
 	return out;
+}
+
+/** An invite list row's button: "Invite", "Invited" or "Invited (Roblox)". */
+export function inviteCandidateKey(c: InviteCandidate): string {
+	if (!c.invited) return LOBBY_STRINGS.inviteSend;
+	return c.platform ? LOBBY_STRINGS.invitedPlatform : LOBBY_STRINGS.invited;
+}
+
+/**
+ * A Roblox invite button (the lobby room's "Invite friends (Roblox)", the main menu's "Invite friends"): disabled
+ * with the reason line when the server said this player cannot send invites (`canSend` false; undefined, not asked or
+ * not answered yet, stays enabled: the server checks again), or when `allowed` is false (the lobby is in a run or full:
+ * no reason line, the room's status says why).
+ */
+export interface PlatformInviteButton {
+	readonly enabled: boolean;
+	/** The reason line under the button, or undefined. */
+	readonly reasonKey?: string;
+}
+
+export function platformInviteButton(canSend: boolean | undefined, allowed = true): PlatformInviteButton {
+	if (canSend === false) return { enabled: false, reasonKey: LOBBY_STRINGS.invitePlatformUnavailable };
+	return { enabled: allowed };
+}
+
+/**
+ * Ask the server for `inviteEligible` again? Once at startup (`askedAt` undefined), then when a menu opens and the
+ * last ask is at least `cacheSeconds` (INVITE.eligibilityCacheSeconds) old.
+ */
+export function eligibilityDue(askedAt: number | undefined, now: number, cacheSeconds: number): boolean {
+	return askedAt === undefined || now - askedAt >= cacheSeconds;
+}
+
+/**
+ * The `inviteArrived` toast's Invite button: shown while this player is in a lobby that can take an invite (not in a
+ * run, not full), and the friend who arrived is in this server, outside the lobby and not invited to it yet.
+ */
+export function arrivedInviteShown(
+	userId: number,
+	mine: LobbyView | undefined,
+	players: ReadonlyArray<ServerPlayer>,
+	me: number,
+): boolean {
+	if (mine === undefined || userId === me) return false;
+	if (mine.phase === "inRun" || mine.members.size() >= LOBBY.maxSize) return false;
+	if (mine.members.includes(userId) || mine.invited.includes(userId)) return false;
+	return players.some((p) => p.userId === userId);
 }
 
 export interface ReceivedInvite {
@@ -235,8 +315,38 @@ export function receivedInvites(
 	return out;
 }
 
-/** A lobby notice as a toast line: refusals read `lobby.err.<code>`, the rest `lobby.notice.<kind>`. */
-export function noticeSpec(notice: LobbyNotice, nameOf: NameOf): StringSpec {
+/**
+ * A notice toast: its line, plus (partyLobby) the lobby's title for the `{lobby}` var, resolved by the component like
+ * the invite toasts' titles, and (inviteArrived) the friend the toast's Invite button invites (arrivedInviteShown).
+ */
+export interface NoticeSpec extends StringSpec {
+	readonly lobby?: StringSpec;
+	readonly inviteUserId?: number;
+}
+
+/** The title of a lobby this client knows (its own, or one in the browse list), or undefined. */
+export function knownLobbyTitle(
+	lobbyId: string | undefined,
+	mine: LobbyView | undefined,
+	list: ReadonlyArray<LobbySummary>,
+	nameOf: NameOf,
+): StringSpec | undefined {
+	if (lobbyId === undefined) return undefined;
+	if (mine !== undefined && mine.lobbyId === lobbyId) return lobbyTitle(mine.nameId, mine.hostId, nameOf);
+	const s = list.find((l) => l.lobbyId === lobbyId);
+	return s !== undefined ? lobbyTitle(s.nameId, s.hostId, nameOf) : undefined;
+}
+
+/**
+ * A lobby notice as a toast line: refusals read `lobby.err.<code>`, arrivals their `key` (a `lobby.err.*` id), the
+ * rest `lobby.notice.<kind>`. `lobbyTitleOf` names the partyLobby notice's lobby (knownLobbyTitle); without a title
+ * it reads "Your Roblox party is together in a lobby".
+ */
+export function noticeSpec(
+	notice: LobbyNotice,
+	nameOf: NameOf,
+	lobbyTitleOf: (lobbyId: string | undefined) => StringSpec | undefined = () => undefined,
+): NoticeSpec {
 	switch (notice.kind) {
 		case "refused":
 			return { key: lobbyErrorKey(notice.code) };
@@ -247,11 +357,20 @@ export function noticeSpec(notice: LobbyNotice, nameOf: NameOf): StringSpec {
 				key: lobbyNoticeKey("followed"),
 				vars: { name: notice.userId !== undefined ? nameOf(notice.userId) : "" },
 			};
-		case "inviteArrived":
-		case "partyLobby":
+		case "inviteArrived": {
+			const id = notice.userId;
+			return id !== undefined
+				? { key: lobbyNoticeKey("inviteArrived"), vars: { name: nameOf(id) }, inviteUserId: id }
+				: { key: lobbyNoticeKey("inviteArrived"), vars: { name: "" } };
+		}
+		case "partyLobby": {
+			const lobby = lobbyTitleOf(notice.lobbyId);
+			return lobby !== undefined
+				? { key: lobbyNoticeKey("partyLobby"), lobby }
+				: { key: LOBBY_STRINGS.noticePartyLobbyAny };
+		}
 		case "arrival":
-			// Stub until task I5 adds their strings (docs/INVITES.md); the client agent replaces this.
-			return { key: notice.key ?? lobbyErrorKey(notice.code) };
+			return { key: arrivalToastKey(notice.key) };
 		default:
 			return { key: lobbyNoticeKey(notice.kind) };
 	}
@@ -264,7 +383,24 @@ export function lobbyStartAccepted(startLobbyId: string, myLobbyId: string | und
 	return myLobbyId !== undefined && startLobbyId !== "" && startLobbyId === myLobbyId;
 }
 
-/** Where the menu opens after a run: the lobby room while in a lobby, else the main menu. */
+/**
+ * This player's lobby changed (`lobbyState`) while the menu shows `screen`: the path to reset the menu to, or
+ * undefined to leave it. In a lobby now (created, joined, or put there by an invite / party arrival they did not ask
+ * for, docs/INVITES.md): its room. Out of it (left, kicked) while in its room: the browser. With no menu screen up (a
+ * run, the tutorial, the first-run wait, "Starting run...") nothing moves; the menu after a run / the join opens the
+ * room then (afterRunPath). A panel over the menu (Options, Leaderboard) stays open: only the screen under it changes.
+ */
+export function lobbyChangePath(
+	screen: MenuScreen,
+	lobbyId: string | undefined,
+	prevLobbyId: string | undefined,
+): ReadonlyArray<MenuScreen> | undefined {
+	if (screen === "none" || lobbyId === prevLobbyId) return undefined;
+	if (lobbyId !== undefined) return LOBBY_ROOM_PATH;
+	return screen === "lobby" ? LOBBY_BROWSER_PATH : undefined;
+}
+
+/** Where the menu opens after a run (and on join): the lobby room while in a lobby, else the main menu. */
 export function afterRunPath(inLobby: boolean): ReadonlyArray<MenuScreen> {
 	return inLobby ? LOBBY_ROOM_PATH : MAIN_MENU_PATH;
 }

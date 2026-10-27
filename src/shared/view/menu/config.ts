@@ -41,6 +41,8 @@ export const MENU_VIEW = {
 	noticeTop: 120,
 	noticeWidth: 520,
 	noticeSeconds: 4,
+	/** A notice with a button (inviteArrived's Invite) stays this long instead. */
+	actionNoticeSeconds: 10,
 	maxNotices: 3,
 	/** Most invite toasts shown at once (the rest wait). */
 	maxInviteToasts: 3,

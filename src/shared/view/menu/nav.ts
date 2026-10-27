@@ -29,6 +29,8 @@ export const NO_MENU: MenuNav = { screen: "none", stack: [] };
 /** The path to the lobby room (back goes to the browser, then the main menu). */
 export const LOBBY_ROOM_PATH: ReadonlyArray<MenuScreen> = ["main", "lobbies", "lobby"];
 export const MAIN_MENU_PATH: ReadonlyArray<MenuScreen> = ["main"];
+/** The path to the lobby browser (back goes to the main menu). */
+export const LOBBY_BROWSER_PATH: ReadonlyArray<MenuScreen> = ["main", "lobbies"];
 
 function fromPath(path: ReadonlyArray<MenuScreen>): MenuNav {
 	const stack: MenuScreen[] = [];

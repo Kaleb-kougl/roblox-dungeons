@@ -179,6 +179,45 @@ Keeps `LobbyService` a thin wrapper of `Lobbies`; InviteService calls new public
 and `PartyGrouped` (value = size, field01: `joined` / `created` / `offered`). The ratio of `InviteArrival` to platform
 `LobbyInviteSent` recipients is the invite conversion rate.
 
+As built (I5 client):
+
+- **Sending.** `LobbyRoom`'s invite panel: top row **Invite friends (Roblox)** (`invitePrompt({ withLobby: true })`;
+  disabled while the lobby is in a run or full); `MainMenu`: **Invite friends** under Lobbies (`withLobby: false`,
+  also while in a lobby, as specced). Both read the `lobby` slice's `inviteEligible` (shared/view/menu
+  `platformInviteButton`): `false` disables them with `lobby.invite.platformUnavailable` under / beside the button;
+  unknown stays enabled. The client sends `inviteEligibility()` once at start (LobbyController; it doubles as the
+  join-intent request) and again when a menu screen opens from none and the last ask is
+  `INVITE.eligibilityCacheSeconds` old (`eligibilityDue`).
+- **Invite list.** `inviteCandidates` reads `invitedSources`: a platform / party invitee reads
+  `lobby.invite.invitedPlatform` ("Invited (Roblox)"). Chosen: invitees not in this server get their own rows after
+  the in-server players (invite order, dim name, always invited, no button). Their name is `#<UserId>` until they arrive (the client
+  makes no web name lookups, as everywhere else in the lobby UI; a UserService lookup is a possible I9 follow-up).
+- **Client prompt path.** `invitePromptOnClient`: `ExperienceInviteOptions` with `LaunchData` and the optional
+  `InviteMessageId`, `PromptGameInvite(LocalPlayer, options)` in pcall, the options destroyed right after.
+  `SocialService.GameInvitePromptClosed` is connected on the client whatever `INVITE.promptSide` says (pcall'd
+  connect, Janitor); the local player's `recipientIds` (integers, deduped, at most `maxPlatformInvitesPerMember`, so
+  the server never refuses the whole call as over the cap) go out as `inviteRecipients`; an empty list sends nothing.
+- **Join intent (ID6).** `joinIntent` goes into the `lobby` slice. The first-join gate is now shared/view/menu
+  `FirstJoinGate` / `firstJoinChoice` (TutorialController; shared/tutorial `FirstRunGate` stays, unused by the
+  client): KV_Tutorial wins; otherwise the tutorial's rule, and only a choice that would START the tutorial waits for
+  the intent, at most `INVITE.intentWaitSeconds` from join (same clock as the status wait). `lobby` / `party` -> the
+  normal flow (menu); `none` or no intent in time -> the tutorial. A veteran / failed load never waits for the intent.
+  Specs: `firstJoin.spec.ts` (status x intent x timeout, KV_Tutorial).
+- **Arrival into a lobby.** `lobbyChangePath` (pure, from MenuController's old rule): a lobby appearing while a menu
+  screen is up opens its room, requested or not; with no screen (run, tutorial, first-run wait, "Starting run...")
+  nothing moves. The join flow opens `afterRunPath(inLobby)`, so an arrival already in a lobby lands in its room. A
+  panel over the menu (Options, Leaderboard) stays open; only the screen under it changes.
+- **Toasts.** `noticeSpec` (stub replaced): `inviteArrived` -> `lobby.notice.inviteArrived` with an **Invite** button
+  (`lobbyInvite(userId)`, shown while `arrivedInviteShown`: in a lobby with room, not in a run, the friend here,
+  outside it and not invited; such a toast lasts `MENU_VIEW.actionNoticeSeconds` = 10 s); `partyLobby` ->
+  `lobby.notice.partyLobby` with the lobby's title (`knownLobbyTitle`: my lobby or the browse list; unknown ->
+  `lobby.notice.partyLobbyAny`); `arrival` -> its `key` when it is an `ARRIVAL_TOAST` value, else `lobby.err.generic`.
+- **Strings** (placeholder pack; vale inherits it; `menuStringKeys` / hud.spec.ts): `menu.inviteFriends`,
+  `lobby.invite.platform`, `lobby.invite.platformUnavailable`, `lobby.invite.invitedPlatform`,
+  `lobby.notice.inviteArrived`, `lobby.notice.partyLobby`, `lobby.notice.partyLobbyAny`, `lobby.err.inviteGone`,
+  `lobby.err.partyFull`. Not added: `lobby.feed.invitedFriends` (the lobby room has no activity feed yet).
+- **Telemetry (I7, client half).** None: the client logs no menu events anywhere; the server logs the invite events.
+
 ## Tasks
 
 - [ ] **I0. Verify the API in a published test place.** A spike behind `KV_InviteSpike` (docs/SPIKES.md): server-side
@@ -198,7 +237,7 @@ and `PartyGrouped` (value = size, field01: `joined` / `created` / `offered`). Th
 - [ ] **I4. InviteService.** Remotes, prompt, recipients, eligibility cache, arrival with LaunchData polling,
   `joinIntent`, party index, Studio fake attributes, rate limits. → Verify: Studio "Clients and Servers" with
   `KV_FakeLaunchData` / `KV_FakePartyId`: each I3 case driven end to end.
-- [ ] **I5. Client.** Buttons, eligibility state, toasts, first-join wait and tutorial skip, strings in every pack.
+- [x] **I5. Client.** Buttons, eligibility state, toasts, first-join wait and tutorial skip, strings in every pack.
   → Verify: `npm run verify`; Studio: an invited fake arrival on a fresh profile goes to the lobby, not the tutorial;
   a normal fresh join still gets the tutorial within `intentWaitSeconds`.
 - [ ] **I6. Party grouping.** Wire the party cases of I3 into InviteService (arrival auto, mid-session toast).

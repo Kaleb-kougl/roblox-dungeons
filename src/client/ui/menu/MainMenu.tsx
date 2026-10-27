@@ -1,12 +1,12 @@
 import React, { useRef } from "@rbxts/react";
 import { useSelector } from "@rbxts/react-reflex";
-import { selectMyLobbyId } from "client/store";
+import { selectInviteEligible, selectMyLobbyId } from "client/store";
 import { MenuButton, Panel, Text } from "client/ui/hud";
 import { str } from "client/ui/theme";
 import { SFX } from "shared/view/audio";
 import { HUD_STRINGS, HUD_VIEW } from "shared/view/hud";
 import { TUTORIAL_STRINGS } from "shared/tutorial";
-import { MENU_STRINGS, MENU_VIEW, mainMenuLobbyKey } from "shared/view/menu";
+import { MENU_STRINGS, MENU_VIEW, mainMenuLobbyKey, platformInviteButton } from "shared/view/menu";
 import { useMenuActions } from "./actions";
 import { useGamepadFocus } from "./hooks";
 
@@ -14,13 +14,16 @@ const HALF = 0.5;
 
 /**
  * The main menu (task L3), shown on join instead of a run: the game title, Play solo (a ranked solo run), Lobbies
- * (the browser; "Your lobby" goes straight to the room while in one), Tutorial (the first-run Practice Descent again,
+ * (the browser; "Your lobby" goes straight to the room while in one), Invite friends (Roblox's invite prompt, no
+ * lobby attached: docs/INVITES.md ID7; disabled with the reason when the server says this player cannot), Tutorial (the first-run Practice Descent again,
  * docs/TUTORIAL.md), Options (the Options screen) and Leaderboard (the leaderboard panel). With a gamepad the
  * selection starts on Play solo.
  */
 export function MainMenu() {
 	const actions = useMenuActions();
 	const myLobby = useSelector(selectMyLobbyId);
+	const eligible = useSelector(selectInviteEligible);
+	const invite = platformInviteButton(eligible);
 	const playRef = useRef<TextButton>();
 	useGamepadFocus(playRef, "main");
 	const inLobby = myLobby !== undefined;
@@ -63,6 +66,26 @@ export function MainMenu() {
 			/>
 			<MenuButton
 				order={4}
+				name="InviteFriends"
+				text={str(MENU_STRINGS.inviteFriends)}
+				disabled={!invite.enabled}
+				onActivated={() => {
+					actions.playUi(SFX.uiConfirm);
+					actions.inviteFriends();
+				}}
+			/>
+			{invite.reasonKey !== undefined ? (
+				<Text
+					order={5}
+					size={HUD_VIEW.smallText}
+					color="uiTextDim"
+					align={Enum.TextXAlignment.Center}
+					wrap={true}
+					text={str(invite.reasonKey)}
+				/>
+			) : undefined}
+			<MenuButton
+				order={6}
 				name="Tutorial"
 				text={str(TUTORIAL_STRINGS.menuOpen)}
 				onActivated={() => {
@@ -71,7 +94,7 @@ export function MainMenu() {
 				}}
 			/>
 			<MenuButton
-				order={5}
+				order={7}
 				name="Options"
 				text={str(MENU_STRINGS.options)}
 				onActivated={() => {
@@ -80,7 +103,7 @@ export function MainMenu() {
 				}}
 			/>
 			<MenuButton
-				order={6}
+				order={8}
 				name="Leaderboard"
 				text={str(MENU_STRINGS.leaderboard)}
 				onActivated={() => {

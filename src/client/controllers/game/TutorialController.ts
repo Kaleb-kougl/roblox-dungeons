@@ -4,7 +4,6 @@ import { Events } from "client/network";
 import { clientStore } from "client/store";
 import { RUN_ATTRIBUTES } from "shared/play";
 import {
-	FirstRunGate,
 	TutorialDirector,
 	TutorialOutroBeat,
 	tutorialAttribute,
@@ -14,6 +13,7 @@ import {
 } from "shared/tutorial";
 import { JoinGate, RENDER_ORDER } from "shared/view";
 import { PROGRESSION_VIEW, TUTORIAL_VIEW } from "shared/view/hud";
+import { FirstJoinGate } from "shared/view/menu";
 import { PreloadController } from "./PreloadController";
 import { SimController, type RunContext } from "./SimController";
 
@@ -27,6 +27,10 @@ const RENDER_STEP = "KV_Tutorial";
  *   that is not done starts the tutorial at once (no main menu first); done, a failed load or no answer is the normal
  *   flow (MenuController: the main menu, or a solo run with KV_SkipMenu). Workspace `KV_Tutorial` (boolean, read once
  *   on join) forces it on or off. MenuController shows nothing until the gate decided (`onFirstRunDecided`).
+ *   **Join intent (docs/INVITES.md ID6):** the gate is shared/view/menu FirstJoinGate: a choice that would start the
+ *   tutorial also waits for the server's `joinIntent` (LobbyController keeps it in the `lobby` slice), at most
+ *   INVITE.intentWaitSeconds from join; `lobby` / `party` (an invite or party arrival already in a lobby) get the
+ *   normal flow instead (the main menu's Tutorial still plays it); `none` or no intent in time: the tutorial as before.
  *   **Join gate (docs/PRELOAD.md P5):** the decision is only DISPATCHED (the tutorial start, the `onFirstRunDecided`
  *   listeners) once the join loading screen released too (PreloadController.whenReleased), whichever comes last
  *   (shared/view JoinGate), so the tutorial, the main menu or KV_SkipMenu's solo run start under no cover; until
@@ -46,7 +50,7 @@ const RENDER_STEP = "KV_Tutorial";
  */
 @Controller({})
 export class TutorialController implements OnStart {
-	private gate: FirstRunGate | undefined = new FirstRunGate();
+	private gate: FirstJoinGate | undefined = new FirstJoinGate();
 	/** What the first-run gate decided (undefined while it waits). */
 	private decided: FirstRunDecision | undefined;
 	private forced: boolean | undefined;
@@ -174,10 +178,16 @@ export class TutorialController implements OnStart {
 	private frame(dt: number): void {
 		const gate = this.gate;
 		if (gate !== undefined) {
+			const intent = clientStore.getState().lobby.joinIntent;
+			if (intent !== undefined) gate.receiveIntent(intent);
 			const choice = gate.poll(dt, this.forced);
 			if (choice === "wait") return;
 			this.gate = undefined;
-			print(`[Tutorial] first run: ${choice} (after ${string.format("%.1f", gate.waitedSeconds())} s)`);
+			print(
+				`[Tutorial] first run: ${choice} (after ${string.format("%.1f", gate.waitedSeconds())} s, join intent ${
+					gate.seenIntent() ?? "not received"
+				})`,
+			);
 			const fire = this.join.decide(choice);
 			if (fire === undefined) print(`[Tutorial] first run: ${choice} waits for the loading screen`);
 			this.dispatch(fire, false);
