@@ -9,6 +9,7 @@ import {
 	selectMyLobbyId,
 	selectRunInfo,
 	selectSnapshot,
+	selectStageCovered,
 	selectVerdict,
 } from "client/store";
 import { str } from "client/ui/theme";
@@ -110,19 +111,21 @@ export function RunOverPanel() {
 	const bindings = useSelector(selectBindings);
 	const myLobby = useSelector(selectMyLobbyId);
 	const panelOpen = useSelector(selectAnyPanelOpen);
+	// The stage loader's cover (a run that ends under a floor card): no selection on the hidden buttons until it goes.
+	const covered = useSelector(selectStageCovered);
 	const verdict = useSelector(selectVerdict);
 	const actions = useHudActions();
 	const firstRef = useRef<TextButton>();
 	const over = s.outcome !== "playing";
 
 	useEffect(() => {
-		if (!over || panelOpen || device !== "gamepad") return;
+		if (!over || panelOpen || covered || device !== "gamepad") return;
 		const button = firstRef.current;
 		if (button !== undefined) GuiService.SelectedObject = button;
 		return () => {
 			if (GuiService.SelectedObject === button) GuiService.SelectedObject = undefined;
 		};
-	}, [over, panelOpen, device]);
+	}, [over, panelOpen, covered, device]);
 
 	if (!over) return undefined;
 	const victory = s.outcome === "victory";

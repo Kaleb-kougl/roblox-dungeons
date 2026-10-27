@@ -1,7 +1,8 @@
 /**
  * Asset preloading, the pure half (docs/PRELOAD.md P2): which content ids download before the join loading screen
  * lifts (core) and which load behind it (later), the screen's release and Skip rules, a progress counter, and a boss
- * floor's push. No Roblox APIs: the client's PreloadController runs the queue. Tunables: PRELOAD in preloadConfig.ts.
+ * floor's push, and the waits on resolved ids (LoadWaiters, the stage loader's assets wait: docs/STAGE_LOADER.md SL6).
+ * No Roblox APIs: the client's PreloadController runs the queue. Tunables: PRELOAD in preloadConfig.ts.
  */
 import type { ContentRef } from "shared/theme";
 import { PRELOAD, PRELOAD_BIOME_PREFIX, PRELOAD_BOSS_IDS, type PreloadConfig } from "./preloadConfig";
@@ -236,6 +237,53 @@ export class PreloadQueue {
 			}
 			i += 1;
 		}
+	}
+}
+
+/**
+ * Who waits for which content ids (docs/STAGE_LOADER.md SL6; PreloadController.whenLoaded runs it): the session's set
+ * of resolved ids (ok or failed: both count, a failed id is never retried) and the open waits, each a set of ids still
+ * unresolved and its payload (the callback). `wait` returns true when every id already resolved (the caller fires at
+ * once; nothing is stored); `resolve` returns the payloads whose last id that was, in the order they waited.
+ */
+export class LoadWaiters<T extends defined> {
+	private readonly resolvedIds = new Set<string>();
+	private readonly waits = new Array<{ left: Set<string>; payload: T }>();
+
+	/** `ids` resolved already: true (fire now). Else the wait is stored until its last id resolves. */
+	wait(ids: ReadonlyArray<string>, payload: T): boolean {
+		const left = new Set<string>();
+		for (const id of ids) if (!this.resolvedIds.has(id)) left.add(id);
+		if (left.size() === 0) return true;
+		this.waits.push({ left, payload });
+		return false;
+	}
+
+	/** `contentId` resolved: the payloads whose waits completed with it, in wait order. */
+	resolve(contentId: string): Array<T> {
+		this.resolvedIds.add(contentId);
+		const out = new Array<T>();
+		let i = 0;
+		while (i < this.waits.size()) {
+			const w = this.waits[i];
+			w.left.delete(contentId);
+			if (w.left.size() === 0) {
+				out.push(w.payload);
+				this.waits.remove(i);
+			} else {
+				i += 1;
+			}
+		}
+		return out;
+	}
+
+	isResolved(contentId: string): boolean {
+		return this.resolvedIds.has(contentId);
+	}
+
+	/** Waits still open. */
+	open(): number {
+		return this.waits.size();
 	}
 }
 

@@ -56,18 +56,26 @@ import {
 	LatencyProbe,
 	RENDER_ORDER,
 	SpectateTracker,
+	floorChangeStaged,
+	formatListenerTimes,
 	latencyProbeView,
+	listenerLabel,
 	spectateCommand,
+	type ListenerTime,
 	type SpectateView,
+	type StageKind,
 } from "shared/view";
 import { HitstopClock, simPacerFor, type FrameAdvance, type FramePacer } from "shared/view/fx";
 import { PROGRESSION_VIEW, toastFor } from "shared/view/hud";
 import { afterRobloxMenuClosed, lobbyStartAccepted, restartForfeits } from "shared/view/menu";
-import type { Dungeon } from "shared/dungeon";
+import { ENDLESS_FIRST_FLOOR, type Dungeon } from "shared/dungeon";
 import { InputController } from "./InputController";
 import { ThemeController } from "./ThemeController";
 
 const RENDER_STEP = "KV_Sim";
+const MS_PER_SECOND = 1000;
+/** The KV_Debug stage timing lines' millisecond format (SL0). */
+const MS_FORMAT = "%.1f";
 const WORLDS: ReadonlyArray<RunWorld> = ["game", "endless", "dungeonNoEncounter", "greybox"];
 
 /**
@@ -139,6 +147,38 @@ export interface RunContext {
 }
 
 export type RunListener = (ctx: RunContext) => void;
+
+/**
+ * What a run start or floor change hands the stage loader (docs/STAGE_LOADER.md SL3; StageController): the work it
+ * runs under its cover on later frames, one item per frame, once the cover is on screen.
+ */
+export interface StageWork {
+	/** Solo run start only: builds the run (makeRun: floor 1 generated) and its context; prints `[Sim] run N started`. */
+	readonly forge?: () => void;
+	/** Runs the run-start / floor-change listeners with the context current at that moment (views rebuild). */
+	readonly notify: () => void;
+	/** The floor the cover loads (the label's `{floor}`; 0 for none, e.g. the greybox). */
+	readonly floor: number;
+}
+
+/**
+ * The stage loader as SimController sees it (StageController implements it and registers with `setStageDriver`; one
+ * direction only, so SimController never injects it). Without a driver every StageWork runs at once, as before.
+ */
+export interface StageDriver {
+	/** A ranked run start asked the server: the cover ("Starting run...") goes up now; `stage` brings the work. */
+	awaitServer(): void;
+	/** Cover now (this frame); the work runs on later frames under it (stageMerge decides against a current load). */
+	stage(kind: StageKind, work: StageWork): void;
+	/** The run stopped (left / exited): any cover ends now, its pending work is dropped. */
+	cancel(): void;
+	/** Once per SimController frame, before anything else: the cover's clock and the work due. */
+	frame(dt: number): void;
+	/** A solo run start is under its cover: no tick, no pause menu, no restart. */
+	holdsSim(): boolean;
+	/** The cover owns the input until its reveal (neutral input reaches the sim, solo and co-op). */
+	blocksInput(): boolean;
+}
 /** The run was left for the menu: "left" (Leave run, mid-run) or "exited" (Main menu / Back to lobby after it). */
 export type RunExitListener = (how: "left" | "exited") => void;
 
@@ -224,6 +264,18 @@ function biomeIndexFor(dungeon: Dungeon | undefined): number {
  * answer within RUN_START_TIMEOUT_SECONDS (or a refusal): an unranked run on the local seed, submitted the old way.
  * Each segment the server verified releases its recorded frames (LiveRun.releaseVerifiedFrames), except with
  * KV_Debug (F8's replay check replays the whole recording).
+ *
+ * Stage loader (docs/STAGE_LOADER.md SL3, StageController via `setStageDriver`): run starts and floor changes no longer
+ * call their listeners inline. A solo start (Play solo, R, the tutorial) clears the context and hands the driver a
+ * `forge` (makeRun and the context: frame 1 the cover goes up, later frames build the run, then run the listeners, then
+ * pre-generate floor 2) and holds the run (`isHeldByLoader`: no tick, no pause, R ignored) until the reveal; a ranked
+ * start shows the cover from the request on (`awaitServer`). A co-op start builds its LockstepClient at once (merged
+ * frames for the run must never be dropped) and only defers the listeners; the lockstep is never held. A floor change
+ * switches the context at once (renderers read the state) and defers its listeners under the card, except the
+ * tutorial's ending change (shared/view floorChangeStaged). While the cover owns the input, the solo sim and the
+ * co-op wire get neutral input (`coverGate` / the co-op menu gate), so a draft is never confirmed blind. KV_Debug
+ * (SL0): every listener call is timed (`[Stage] listeners (...): World 38.0 ms, ...`, labelled by its script) and the
+ * sim step of a frame that changed the floor (`[Stage] floor step T ms`).
  */
 @Controller({})
 export class SimController implements OnStart {
@@ -289,6 +341,12 @@ export class SimController implements OnStart {
 	private robloxMenuOpen = false;
 	/** The finished tutorial run is frozen on screen (no ticks) until the next run starts. */
 	private frozen = false;
+	/** The stage loader (StageController), once registered. */
+	private stage: StageDriver | undefined;
+	/** Solo: neutral input while the stage cover owns the input; buttons held through its end stay masked. */
+	private readonly coverGate = new CoopMenuInputGate();
+	/** A tutorial run start is waiting for its forge under the stage cover (inRunningTutorial). */
+	private startingTutorial = false;
 
 	/** The freeze frame / slow motion clock (presentation pacing only; cleared at every run start). */
 	readonly hitstop = new HitstopClock();
@@ -406,6 +464,16 @@ export class SimController implements OnStart {
 		return this.frozen;
 	}
 
+	/** A solo run start is under the stage loader's cover: the run is held (no tick), as if paused without the menu. */
+	isHeldByLoader(): boolean {
+		return this.stage?.holdsSim() === true;
+	}
+
+	/** The stage loader registers itself (StageController.onStart). */
+	setStageDriver(driver: StageDriver): void {
+		this.stage = driver;
+	}
+
 	// --- tutorial (TutorialController) ---------------------------------------------------------
 
 	/**
@@ -436,9 +504,12 @@ export class SimController implements OnStart {
 		print(`[Sim] tutorial run ${ctx.counter} finished at tick ${ctx.run.state.tick}`);
 	}
 
-	/** A tutorial run is being played (not yet finished): lobby run starts must not take it over. */
+	/**
+	 * A tutorial run is being played (not yet finished), or is being built under the stage loader's cover: lobby run
+	 * starts must not take it over.
+	 */
 	inRunningTutorial(): boolean {
-		return this.ctx?.tutorial === true && !this.frozen;
+		return (this.ctx?.tutorial === true && !this.frozen) || this.startingTutorial;
 	}
 
 	// --- menu actions (pause overlay, settings panel) -------------------------------------------
@@ -457,6 +528,7 @@ export class SimController implements OnStart {
 	pause(): void {
 		const run = this.ctx?.live;
 		if (run === undefined || this.frozen || run.outcome() !== "playing") return;
+		if (this.stage?.blocksInput() === true) return; // nothing pauses under the stage cover
 		run.setPaused(true);
 	}
 
@@ -595,6 +667,7 @@ export class SimController implements OnStart {
 	 */
 	private beginRun(): void {
 		this.frozen = false;
+		this.startingTutorial = false;
 		this.debug = Workspace.GetAttribute(RUN_ATTRIBUTES.debug) === true;
 		this.inputController.setDebug(this.debug);
 		const seed = readSeed();
@@ -612,9 +685,10 @@ export class SimController implements OnStart {
 			this.startRun(seed, atBossDoor, stress, world, undefined, "", false);
 			return;
 		}
-		// The old run stops here; views see no run until the server answers (or the timeout falls back).
+		// The old run stops here; views see no run until the server answers (or the timeout falls back). The stage
+		// loader's cover ("Starting run...") goes up now.
 		this.ctx = undefined;
-		clientStore.setRunStarting(true);
+		this.stage?.awaitServer();
 		this.startRequests++;
 		this.startReply = undefined;
 		const request: StartRunRequest = {
@@ -652,6 +726,8 @@ export class SimController implements OnStart {
 		this.pausedByMenu = false;
 		this.pausedByUi = false;
 		this.hitstop.clear();
+		this.startingTutorial = false;
+		this.stage?.cancel();
 		clientStore.endRun();
 		for (const listener of this.exitListeners) listener(how);
 	}
@@ -750,7 +826,8 @@ export class SimController implements OnStart {
 			`[Sim] co-op run ${this.counter} started: ${start.runId} seed ${start.seed}, player ${localIndex + 1} of ` +
 				`${start.members.size()}`,
 		);
-		for (const listener of this.listeners) listener(ctx);
+		// The views rebuild under the stage cover; the lockstep keeps stepping meanwhile (never held).
+		this.stageOrNow("coopStart", { notify: () => this.notifyRunStarted(), floor });
 	}
 
 	/** One rendered frame of a co-op run: step the merged frames that arrived, send inputs / hashes / the final. */
@@ -758,7 +835,8 @@ export class SimController implements OnStart {
 		const me = playerAt(coop.state, ctx.localIndex);
 		// A menu over the run (party overlay, Options, a rebind capture, leaderboards, the Roblox menu): the pad and
 		// keys drive the menu, never the character (solo pauses instead).
-		const menuOpen = this.inputController.menuOwnsInput() || this.robloxMenuOpen;
+		const covered = this.stage?.blocksInput() === true; // the stage loader's cover (docs/STAGE_LOADER.md SL7)
+		const menuOpen = this.inputController.menuOwnsInput() || this.robloxMenuOpen || covered;
 		const sampled = this.inputController.sample(me.x, me.z, this.input);
 		// Co-op spectating (docs/SPECTATE.md): the switch press comes from the raw buttons (the gate below rewrites the
 		// sampled frame in place), never while a menu owns the controls or from a click that began on a HUD button
@@ -774,7 +852,8 @@ export class SimController implements OnStart {
 		// player can skip the floor in a KV_Debug session.
 		const dead = me.dead !== 0;
 		const input = this.coopMenuGate.apply(sampled, menuOpen || dead);
-		if (dead && !menuOpen) input.buttons = bit32.band(raw.buttons, ALL_DEBUG_BUTTONS);
+		// Under the stage cover only the debug bits go through (KV_Debug: the floor skip still works while covered).
+		if (covered || (dead && !menuOpen)) input.buttons = bit32.band(raw.buttons, ALL_DEBUG_BUTTONS);
 		// KV_Debug latency probe (docs/FEEL.md J9): watches the frame's input and the ticks it goes out for; the
 		// input handed to the pump is the same either way.
 		const probe = ctx.latencyProbe;
@@ -787,7 +866,9 @@ export class SimController implements OnStart {
 				return input;
 			};
 		}
+		const stepStart = this.debug ? os.clock() : 0;
 		const res = coop.pump(dt, sample);
+		const stepMs = this.debug ? (os.clock() - stepStart) * MS_PER_SECOND : 0;
 		probe?.stepped(coop.state.tick, os.clock(), coop.misses > missesBefore);
 		const runId = coop.runId;
 		for (const b of res.inputs) Events.lockstepInput.fire(runId, b.firstTick, b.data);
@@ -812,7 +893,10 @@ export class SimController implements OnStart {
 			print(`[Sim] co-op run ${ctx.counter} over at tick ${res.final.finalTick}, hash ${res.final.claimedHash}`);
 		}
 		const floor = coop.state.endless?.floor;
-		if (floor !== undefined && floor !== ctx.floor) this.changeFloor(ctx, floor);
+		if (floor !== undefined && floor !== ctx.floor) {
+			if (this.debug) print(`[Stage] floor step ${string.format(MS_FORMAT, stepMs)} ms (to floor ${floor})`);
+			this.changeFloor(ctx, floor);
+		}
 		// After the step (and the floor change's reset): whose player the views follow this frame.
 		const viewBefore = this.spectateView?.viewIndex;
 		const activeBefore = this.spectateView?.active === true;
@@ -905,7 +989,40 @@ export class SimController implements OnStart {
 		return false;
 	}
 
+	/**
+	 * Starts a solo run (ranked answer, unranked fallback, debug world, the tutorial). With the stage loader the context
+	 * is cleared now (views see no run) and the run is built under its cover on a later frame (`forgeRun`), its
+	 * listeners on the frame after (`notifyRunStarted`); without one, both at once.
+	 */
 	private startRun(
+		seed: number,
+		atBossDoor: boolean,
+		stress: number,
+		requestedWorld: RunWorldKind,
+		requestedRunId: string | undefined,
+		startNotice: string,
+		tutorial: boolean,
+	): void {
+		const floor = requestedWorld === "endless" || requestedWorld === TUTORIAL_WORLD_KIND ? ENDLESS_FIRST_FLOOR : 0;
+		if (this.stage !== undefined) {
+			this.ctx = undefined; // the old run stops here; the new one is built under the cover
+			this.startingTutorial = tutorial;
+		}
+		const forge = () => {
+			this.startingTutorial = false;
+			const [ok, err] = pcall(() =>
+				this.forgeRun(seed, atBossDoor, stress, requestedWorld, requestedRunId, startNotice, tutorial),
+			);
+			if (ok) return;
+			// No run: back to the menu (or the lobby room), as after Leave run, instead of a stranded empty screen.
+			warn(`[Sim] the run could not start (${errorMessage(err)}); back to the menu`);
+			this.stopRun("left");
+		};
+		this.stageOrNow("runStart", { forge, notify: () => this.notifyRunStarted(), floor });
+	}
+
+	/** startRun's build: the world (makeRun, with its fallbacks), the context, the store's run, `[Sim] run N started`. */
+	private forgeRun(
 		seed: number,
 		atBossDoor: boolean,
 		stress: number,
@@ -990,7 +1107,50 @@ export class SimController implements OnStart {
 				(runId !== undefined ? `, ranked run ${runId}` : "") +
 				(tutorial ? " (tutorial: local, not submitted)" : ""),
 		);
-		for (const listener of this.listeners) listener(ctx);
+	}
+
+	/** Hands a run start / floor change to the stage loader, or (none registered) runs its work at once. */
+	private stageOrNow(kind: StageKind, work: StageWork): void {
+		if (this.stage !== undefined) {
+			this.stage.stage(kind, work);
+			return;
+		}
+		work.forge?.();
+		work.notify();
+	}
+
+	/** The run-start listeners, with the context current now (a floor change since the cut is in it). */
+	private notifyRunStarted(): void {
+		const ctx = this.ctx;
+		if (ctx !== undefined) this.callListeners(this.listeners, ctx, `run ${ctx.counter} start`);
+	}
+
+	/** The floor-change listeners, with the context current now. */
+	private notifyFloorChanged(): void {
+		const ctx = this.ctx;
+		if (ctx !== undefined) this.callListeners(this.floorListeners, ctx, `floor ${ctx.floor}`);
+	}
+
+	/**
+	 * Calls `list` in order with `ctx`. KV_Debug (docs/STAGE_LOADER.md SL0): each call timed with os.clock and printed
+	 * in one line, labelled by the listener's script (`debug.info(f, "s")`: "World" for WorldController); nothing extra
+	 * otherwise.
+	 */
+	private callListeners(list: ReadonlyArray<RunListener>, ctx: RunContext, what: string): void {
+		if (!this.debug) {
+			for (const listener of list) listener(ctx);
+			return;
+		}
+		const times = new Array<ListenerTime>();
+		const start = os.clock();
+		for (const listener of list) {
+			const t0 = os.clock();
+			listener(ctx);
+			const [source] = debug.info(listener, "s");
+			times.push({ label: listenerLabel(source ?? "?"), ms: (os.clock() - t0) * MS_PER_SECOND });
+		}
+		const total = string.format(MS_FORMAT, (os.clock() - start) * MS_PER_SECOND);
+		print(`[Stage] listeners (${what}, ${total} ms): ${formatListenerTimes(times)}`);
 	}
 
 	private runInfo(pack: ThemePack, ctx: RunContext, notice: string): RunInfo {
@@ -1008,7 +1168,10 @@ export class SimController implements OnStart {
 		};
 	}
 
-	/** Endless mode: the run is on another floor than the context says; switch the context and tell the views. */
+	/**
+	 * Endless mode: the run is on another floor than the context says; switch the context now (renderers read the state)
+	 * and tell the views under the stage loader's card (StageWork.notify, a frame or two later).
+	 */
 	private changeFloor(ctx: RunContext, floor: number): void {
 		const endlessFloor = ctx.endlessFloor;
 		if (endlessFloor === undefined) return;
@@ -1018,7 +1181,14 @@ export class SimController implements OnStart {
 		this.ctx = moved;
 		clientStore.changeFloor(this.runInfo(this.theme.getPack(), moved, clientStore.getState().game.run.notice));
 		print(`[Sim] run ${moved.counter}: floor ${floor} (${w.dungeon.name}${w.bossFloor ? ", boss floor" : ""})`);
-		for (const listener of this.floorListeners) listener(moved);
+		// The views rebuild under the stage loader's card (a frame later), except the tutorial's ending change.
+		const work: StageWork = { notify: () => this.notifyFloorChanged(), floor };
+		if (floorChangeStaged(floor, moved.tutorial, TUTORIAL.lastFloor)) {
+			this.stageOrNow("floorChange", work);
+		} else {
+			this.stage?.cancel(); // an earlier card's pending rebuild is this one now (it reads the newest context)
+			work.notify();
+		}
 	}
 
 	/**
@@ -1062,9 +1232,11 @@ export class SimController implements OnStart {
 	}
 
 	private frame(dt: number): void {
+		// The stage loader first: its covered work (forge, listeners, pre-generation) and its clock.
+		this.stage?.frame(dt);
 		if (this.pendingReset) {
 			this.pendingReset = false;
-			this.handleReset();
+			if (!this.isHeldByLoader()) this.handleReset(); // R under a run start's cover does nothing
 		}
 		if (this.pollRunStart()) return;
 		const ctx = this.ctx;
@@ -1080,16 +1252,34 @@ export class SimController implements OnStart {
 			run.frame(dt, EMPTY_INPUT, FROZEN_PACER);
 			return;
 		}
+		if (this.isHeldByLoader()) {
+			// A run start under the stage cover: on screen, no tick, nothing recorded (like the frozen tutorial).
+			run.frame(dt, EMPTY_INPUT, FROZEN_PACER);
+			return;
+		}
 		if (this.pendingReplayCheck) {
 			this.pendingReplayCheck = false;
 			this.replayCheck(run);
 		}
 
 		const p = run.state.player;
-		const input = this.inputController.sample(p.x, p.z, this.input);
+		// Under the stage cover (a floor change's card) the sim gets neutral input: no blind draft confirm, no pause.
+		// The debug bits (K / J / the floor skip, present only with KV_Debug) still go through, so a floor skip works.
+		const sampled = this.inputController.sample(p.x, p.z, this.input);
+		const covered = this.stage?.blocksInput() === true;
+		const debugButtons = bit32.band(sampled.buttons, ALL_DEBUG_BUTTONS);
+		const input = this.coverGate.apply(sampled, covered);
+		if (covered) input.buttons = debugButtons;
+		const stepStart = this.debug ? os.clock() : 0;
 		run.frame(dt, input, simPacerFor(partySize(run.state), this.hitstop)); // solo: the hitstop clock paces
 		const floor = run.state.endless?.floor;
-		if (floor !== undefined && floor !== ctx.floor) this.changeFloor(ctx, floor);
+		if (floor !== undefined && floor !== ctx.floor) {
+			if (this.debug) {
+				const ms = string.format(MS_FORMAT, (os.clock() - stepStart) * MS_PER_SECOND);
+				print(`[Stage] floor step ${ms} ms (to floor ${floor})`);
+			}
+			this.changeFloor(ctx, floor);
+		}
 		this.uploadSegments(this.ctx ?? ctx);
 		// P / Start inside the settings panel: the run resumes when the panel closes, not under it.
 		if (this.uiPauseOpen && !run.isPaused()) {

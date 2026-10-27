@@ -677,6 +677,19 @@ export const REQUIRED_ASSET_IDS: ReadonlyArray<string> = [
  */
 export const LOADING_STRING_KEYS = ["loading.title", "loading.progress", "loading.skip"] as const;
 
+/**
+ * Roblox port (docs/STAGE_LOADER.md SL2): the stage loader's cover strings (shared/view STAGE_STRINGS): a ranked run
+ * start waiting for the server, floor `{floor}` being generated, the views being rebuilt, the floor-change card's title
+ * (`{floor}`) and its boss-floor line. The card's biome line is the pack's `biome.<n>.name`.
+ */
+export const STAGE_STRING_KEYS = [
+	"stage.starting",
+	"stage.forging",
+	"stage.building",
+	"stage.floorCard",
+	"stage.bossFloor",
+] as const;
+
 /** Every string key a pack must define. Code may rely on these existing. */
 export const REQUIRED_STRING_KEYS: ReadonlyArray<string> = [
 	"game.title",
@@ -705,6 +718,7 @@ export const REQUIRED_STRING_KEYS: ReadonlyArray<string> = [
 	...BREAKABLE_KINDS.map((k) => `${breakableId(k)}.name`),
 	...BOOST_STRING_KEYS,
 	...LOADING_STRING_KEYS,
+	...STAGE_STRING_KEYS,
 ];
 
 /**

@@ -27,6 +27,10 @@
  *                 preloadConfig.ts), PreloadQueue (the client's two-lane download queue) and JoinGate (the join
  *                 flow fires once the first-run gate decided and the screen released); preloadStrings.ts: the
  *                 loading screen's string keys (LOADING_STRINGS; its layout: LOADING_VIEW in preloadConfig.ts)
+ *   stageLoader.ts  the stage loader (docs/STAGE_LOADER.md): StageLoad (one cover's phases: server wait, forge, view
+ *                 rebuild, assets, settle, reveal), stageMerge, floorChangeStaged, pregenTarget / PregenTracker (floor
+ *                 n + 1 during floor n's draft), the KV_Debug listener timing line (tunables: STAGE_LOADER and the
+ *                 cover's layout STAGE_VIEW in stageLoaderConfig.ts; string keys: STAGE_STRINGS in stageStrings.ts)
  *   decor/        the decor plan (docs/DECOR.md R3 / R6 / R8): planDecor, decorProfile, fade selection, glow points
  *   minimap/      the minimap with fog of war (docs/MINIMAP.md M1-M5): map tiles, sight, FogOfWar, the turned map
  *                 transform, the RGBA8 painter (tunables: MINIMAP_VIEW in minimap/config.ts)
@@ -60,3 +64,6 @@ export * from "./latencyProbe";
 export * from "./preloadConfig";
 export * from "./preload";
 export * from "./preloadStrings";
+export * from "./stageLoaderConfig";
+export * from "./stageStrings";
+export * from "./stageLoader";

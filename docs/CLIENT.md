@@ -46,6 +46,7 @@ rebinding, audio, display). Everything presentation-side reads the sim and never
 | `HudController` | `.../ui/HudController.tsx` | Mounts `GameHud` (React + Reflex; two ScreenGuis through a portal) and the menu shell `MenuLayer` (client/ui/menu, its own ScreenGui) with the HUD and menu actions, switches gamepad navigation on while a menu is open (menu screens, pause / party overlay, run-over panel, panels), hides the stock Health / Backpack CoreGui. |
 | `HudOcclusionController` | `.../ui/HudOcclusionController.ts` | docs/HUD_LAYOUT.md H7: render step after the camera; every `HUD_OCCLUSION.everyFrames` frames projects the watched player, living actors and up to `maxBullets` enemy bullets with `Camera:WorldToScreenPoint` (GUI space, the same space as `AbsolutePosition`) and tests them against the mounted corner panels (client/ui/hud `cornerFade` registry); one `OcclusionFader` per corner writes the corner's `GroupTransparency` binding (the corner `Panel` is a CanvasGroup inside a transparent placed frame; no React re-render). Options > Display > HUD fade Off or no run: opaque, no work. Under `KV_Debug` it also warns once per panel per run when an always-on panel outgrows its `HUD_FOOTPRINT` box (H1). Read only on the sim. |
 | `LoadingController` | `.../ui/LoadingController.tsx` | Mounts `LoadingScreen` (client/ui/loading, its own ScreenGui, display order 30) on join until PreloadController releases; Skip plays `sfx.ui.click`. See "Preloading and the loading screen". |
+| `StageController` | `.../game/StageController.tsx` | docs/STAGE_LOADER.md (loadOrder 2, `sim.setStageDriver`): the stage loader. Covers run starts and floor changes (`StageCard`, bindings so the cover draws in the event frame), drives SimController's deferred work one item per frame (forge, listeners, floor pre-gen), holds a solo run start, waits for the floor's assets (`PreloadController.whenLoaded`, 3 s cap), pre-generates floor n + 1 during floor n's draft. See "Stage loader". |
 | `MinimapController` | `.../ui/MinimapController.ts` | docs/MINIMAP.md M8 / M9, every dungeon floor (not the greybox): per floor `minimapTiles` (endless stairwell), a fresh `FogOfWar` (`seedFromState` at tick > 0), `RoomEdgeStates`, a painted RGBA8 buffer and ONE `EditableImage` (`AssetService:CreateEditableImage`, pcall; failure warns once, no map), destroyed with the floor. Render step `KV_Minimap` after the camera: fog from the living players' interpolated positions, room tints (`roomEdge.*`), dirty cells repainted and uploaded (`WritePixelsBuffer`, at most `MINIMAP_VIEW.writeHz`). Draws a map layer (ImageLabel on the shared image, `Pixelated`, turned by the camera yaw, plus pooled upright Frame markers: self arrow, teammates by index in `class.*`, enemies / bosses / boost drops in sight, the stairwell once seen, treasure / shrine marks) into each mounted host of `client/ui/hud/minimapHosts` (the corner `MinimapPanel`, whose CanvasGroup clips it; `FullMapOverlay`; the solo `PauseMap`). `InputController.onMapAction` toggles Reflex `game.map.open`; closes on floor change and run over. Prints `[Minimap] W x H map` per floor. |
 | `MenuController` | `.../ui/MenuController.ts` | L3 / L6: the main menu on join, once the first-run gate decided against the tutorial (a first-time player goes straight into it instead; no run starts on its own; `KV_SkipMenu` starts one at once), the screen + back stack (Reflex `menu`; pad B / Backspace go back), Play solo / Lobbies / Tutorial / Options / Leaderboard, the menu after a run (the lobby room while in a lobby, else the main menu), the co-op party overlay (the pause key in a party run) and Leave run. See "Main menu, lobbies and Leave run". |
 | `LobbyController` | `.../ui/LobbyController.ts` | L5: the lobby remotes into the Reflex `lobby` slice (list, my lobby, invites, notice toasts, the players in this server), the lobby requests, and `lobbyRunStart` (a one-player lobby's ranked solo run). |
@@ -699,6 +700,27 @@ biome, deep walk), `shared/view/preload.ts` (`preloadPlan` tiers by longest pref
 - `KV_SkipLoading` (Workspace, boolean): no screen; the queue still runs. `KV_SpikePreload`: the P0 spike
   (docs/SPIKES.md).
 
+## Stage loader (docs/STAGE_LOADER.md; not run in Studio yet)
+
+Pure half: `shared/view/stageLoader.ts` (`StageLoad`, `stageMerge`, `floorChangeStaged`, `PregenTracker`), tunables
+`STAGE_LOADER` / `STAGE_VIEW`, strings `STAGE_STRINGS` (`stage.starting` / `.forging` / `.building` / `.floorCard` /
+`.bossFloor`, biome line from `biome.<n>.name`); specced in `stageLoader.spec.ts`. Drawing: `client/ui/loading/StageCard`
+(shares `Cover` / `ProgressBar` with `LoadingScreen`, display order `LOADING_VIEW.displayOrder`), Reflex `stage`.
+
+- **Run start** (Play solo, R, Again, the tutorial): the cover at once ("Starting run..." during a ranked start's server
+  wait, then "Forging floor 1..."), the run held (no tick, nothing recorded); then, one per frame: build the run,
+  the `onRunStarted` listeners, floor 2 pre-generated; the floor's assets (cap 3 s), two settle frames, the reveal.
+- **Floor change:** the card "Floor N" + the biome name (+ "Boss floor") cuts in the frame the floor changes; the
+  `onFloorChanged` listeners run the next frame; it lifts after the assets (cap 3 s), the settle frames and 0.6 s, on
+  the open draft. No draft open: only the rebuild and settle frames. The tutorial's ending change is not covered.
+- **Pre-generation:** floor n + 1 is built (`ctx.endlessFloor`) once floor n's draft has been up a frame, so the
+  stairwell tick finds it cached; missed ones are built mid-tick by the sim, as before.
+- **Co-op:** the client is built in the `partyRunStarted` frame (not covered); listeners deferred; never held; no
+  pre-gen; covered frames send neutral input through the menu gate.
+- **Input** is neutral while covered and through the fade (held buttons stay masked), pause and the party overlay are
+  ignored, no gamepad selection under the cover. KV_Debug bits pass.
+- `KV_Debug` adds `[Stage] listeners (...)` per-listener times and `[Stage] floor step T ms` (SL0).
+
 ## Main menu, lobbies and Leave run (L3 / L5 / L6, client half)
 
 Pure half: `src/shared/view/menu/` (the screen + back stack reducer `menuNavReduce`, the lobby view models
@@ -880,6 +902,13 @@ Setup: `npm run build`, `rojo serve`, open a **Baseplate** place, connect Rojo. 
 (its haze washes out a scene seen from ~550 studs). Game Settings > Security: enable Studio Access to API Services.
 With the actors merged the default `game` world has enemies; without them see "fallback" below.
 
+000. **Stage loader (docs/STAGE_LOADER.md).** Play solo: the cover at once, `[Stage] run 1: forged in t ms, built in
+   t ms, revealed at t s` and `[Stage] floor 2 pre-generated in t ms (run start)`; the reveal lands on the knight with
+   the camera already there. Stairwell: the card `Floor 2` / `Ancient Halls` cuts in with no stutter, then the draft;
+   `[Stage] floor 3 pre-generated ... (during floor 2's draft)` while it is up; pressing confirm under the card does
+   nothing. With KV_Debug, spam the floor skip: every change covered, some `built mid-tick (not pre-generated)`, and the
+   `[Stage] listeners` / `floor step` timings print (record them in docs/STAGE_LOADER.md). R and Again: covered
+   restarts. Party run (3 clients): card on each descent, no desync.
 00. **Loading screen (F5; docs/PRELOAD.md).** Output: `[Preload] core N entries, later M (instance entries, chunks of
    4)`, then `[Preload] core N / N in t s (0 failed)` and `[Preload] screen released at t s: core done`; the screen
    (title, bar, `Loading n / N`) fades into the menu or the tutorial. Studio's cache makes it brief. With a slow load,

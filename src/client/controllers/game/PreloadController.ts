@@ -5,6 +5,7 @@ import { clientStore } from "client/store";
 import { RUN_ATTRIBUTES } from "shared/play";
 import type { ContentRef, ThemePack } from "shared/theme";
 import {
+	LoadWaiters,
 	PRELOAD,
 	PRELOAD_BOSS_IDS,
 	PreloadProgress,
@@ -72,6 +73,11 @@ function seconds(t: number): string {
  *              `KV_SkipLoading` (RUN_ATTRIBUTES.skipLoading, read once) releases at once; an empty core tier (the
  *              placeholder pack) releases in onInit. `whenReleased(cb)` runs cb once released (at once if it is;
  *              each in its own thread), `isReleased()`.
+ *   loaded     `whenLoaded(refs, cb, label?)` (docs/STAGE_LOADER.md SL6, the stage loader's assets wait): cb once every
+ *              one of `refs` resolved (ok or failed), synchronously at once if they all have, else in its own thread
+ *              when the last one does; refs not yet resolved go through `request(refs, "front", label)` (never
+ *              requested: queued on the front lane; waiting in the back lane: moved up). shared/view LoadWaiters keeps
+ *              the session's resolved ids and the open waits.
  *   spike      with the P0 spike on at join (KV_SpikePreload, docs/SPIKES.md) the worker waits until the spike's
  *              timed batches ran (`releaseSpikeHold`), so its download times are not cache hits of this queue.
  *   P6         PRELOAD.warmCoreImages (the warm draw) is not implemented: it waits for the P0 spike's verdict.
@@ -104,6 +110,8 @@ export class PreloadController implements OnInit, OnStart {
 	private skipped = false;
 	private released = false;
 	private readonly releaseListeners = new Array<() => void>();
+	/** Resolved content ids and the open whenLoaded waits. */
+	private readonly waiters = new LoadWaiters<() => void>();
 	/** The last progress pushed to the store (-1: none yet). */
 	private lastDone = -1;
 	private lastSkipVisible = false;
@@ -180,6 +188,20 @@ export class PreloadController implements OnInit, OnStart {
 		return this.released;
 	}
 
+	/**
+	 * Calls `listener` once every one of `refs` resolved (ok or failed): synchronously now if they all have, else in its
+	 * own thread when the last one does. Refs not resolved yet are requested on the front lane (`label` in the log; an
+	 * id already queued or in flight is not queued again, one waiting in the back lane moves up).
+	 */
+	whenLoaded(refs: ReadonlyArray<ContentRef>, listener: () => void, label?: string): void {
+		const ids = refs.map((ref) => ref.contentId);
+		if (this.waiters.wait(ids, listener)) {
+			listener();
+			return;
+		}
+		this.request(refs, "front", label);
+	}
+
 	/** The P0 spike (PreloadSpikeController) ran its timed batches: the queue may start. */
 	releaseSpikeHold(): void {
 		if (!this.spikeHold) return;
@@ -230,6 +252,7 @@ export class PreloadController implements OnInit, OnStart {
 	private resolved(ref: ContentRef, ok: boolean): void {
 		if (!ok) this.failedCount += 1;
 		const id = ref.contentId;
+		for (const listener of this.waiters.resolve(id)) task.spawn(listener);
 		if (this.coreIds.has(id)) {
 			this.coreIds.delete(id);
 			this.core.resolve(ok);
