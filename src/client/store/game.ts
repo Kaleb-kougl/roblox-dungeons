@@ -1,5 +1,6 @@
 import { createProducer } from "@rbxts/reflex";
 import { EMPTY_SNAPSHOT, snapshotsEqual, type GameSnapshot, type InputDeviceKind } from "shared/play";
+import { latencyProbeViewsEqual, type LatencyProbeView } from "shared/view";
 
 /**
  * Client-local Reflex slice for the game HUD (task 8). Fed by the SimController's ~10 Hz snapshot (only when it
@@ -72,6 +73,8 @@ export interface GameState {
 	readonly inputDevice: InputDeviceKind;
 	readonly verdict: VerdictView;
 	readonly replayCheck: ReplayCheckView | undefined;
+	/** KV_Debug co-op runs only: the latency probe (docs/FEEL.md J9); undefined otherwise. */
+	readonly latencyProbe: LatencyProbeView | undefined;
 	readonly run: RunInfo;
 	readonly active: boolean;
 	/** Newest last; at most PROGRESSION_VIEW.maxToasts. */
@@ -88,6 +91,7 @@ const initialState: GameState = {
 	inputDevice: "keyboard",
 	verdict: NO_VERDICT,
 	replayCheck: undefined,
+	latencyProbe: undefined,
 	run: {
 		seed: 0,
 		world: "game",
@@ -114,6 +118,8 @@ export const gameSlice = createProducer(initialState, {
 		state.inputDevice === inputDevice ? state : { ...state, inputDevice },
 	setVerdict: (state, verdict: VerdictView) => ({ ...state, verdict }),
 	setReplayCheck: (state, replayCheck: ReplayCheckView | undefined) => ({ ...state, replayCheck }),
+	setLatencyProbe: (state, latencyProbe: LatencyProbeView | undefined) =>
+		latencyProbeViewsEqual(state.latencyProbe, latencyProbe) ? state : { ...state, latencyProbe },
 	/** The run moved to another floor (endless mode): the floor's info (dungeon name, biome); the rest stays. */
 	changeFloor: (state, run: RunInfo) => ({ ...state, run }),
 	/** A new run started (mount or restart): new info, verdict, replay check and toasts cleared. */
@@ -124,6 +130,7 @@ export const gameSlice = createProducer(initialState, {
 		lastBossId: snapshot.bossId,
 		verdict: NO_VERDICT,
 		replayCheck: undefined,
+		latencyProbe: undefined,
 		active: true,
 		toasts: [],
 		starting: false,
@@ -134,6 +141,7 @@ export const gameSlice = createProducer(initialState, {
 		snapshot: EMPTY_SNAPSHOT,
 		lastBossId: "",
 		replayCheck: undefined,
+		latencyProbe: undefined,
 		active: false,
 		toasts: [],
 		starting: false,
@@ -158,6 +166,7 @@ export const selectLastBossId = (state: { game: GameState }) => state.game.lastB
 export const selectInputDevice = (state: { game: GameState }) => state.game.inputDevice;
 export const selectVerdict = (state: { game: GameState }) => state.game.verdict;
 export const selectReplayCheck = (state: { game: GameState }) => state.game.replayCheck;
+export const selectLatencyProbe = (state: { game: GameState }) => state.game.latencyProbe;
 export const selectRunInfo = (state: { game: GameState }) => state.game.run;
 export const selectGameActive = (state: { game: GameState }) => state.game.active;
 export const selectToasts = (state: { game: GameState }) => state.game.toasts;

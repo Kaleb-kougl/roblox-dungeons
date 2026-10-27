@@ -52,7 +52,14 @@ import {
 } from "shared/sim";
 import { TUTORIAL } from "shared/config";
 import { BIOMES, type ThemePack } from "shared/theme";
-import { RENDER_ORDER, SpectateTracker, spectateCommand, type SpectateView } from "shared/view";
+import {
+	LatencyProbe,
+	RENDER_ORDER,
+	SpectateTracker,
+	latencyProbeView,
+	spectateCommand,
+	type SpectateView,
+} from "shared/view";
 import { HitstopClock, simPacerFor, type FrameAdvance, type FramePacer } from "shared/view/fx";
 import { PROGRESSION_VIEW, toastFor } from "shared/view/hud";
 import { afterRobloxMenuClosed, lobbyStartAccepted, restartForfeits } from "shared/view/menu";
@@ -124,6 +131,11 @@ export interface RunContext {
 	 * segments, no R / pad restart (the pause overlay has Restart tutorial and Skip tutorial).
 	 */
 	readonly tutorial: boolean;
+	/**
+	 * KV_Debug co-op runs only (docs/FEEL.md J9): the latency probe behind the debug line's lead and press -> stepped
+	 * tick numbers. Measurement only: nothing it does reaches what is sent, stepped, hashed or recorded.
+	 */
+	readonly latencyProbe?: LatencyProbe;
 }
 
 export type RunListener = (ctx: RunContext) => void;
@@ -727,11 +739,13 @@ export class SimController implements OnStart {
 			endlessFloor: setup.endlessFloor,
 			lobbyId: start.lobbyId,
 			tutorial: false,
+			latencyProbe: this.debug ? new LatencyProbe() : undefined,
 		};
 		this.frozen = false;
 		this.ctx = ctx;
 		this.rankedRuns.set(start.runId, { run: this.counter, decided: false });
 		clientStore.startRun(this.runInfo(this.theme.getPack(), ctx, ""), this.coopSnapshot(client));
+		this.publishLatencyProbe(ctx, client);
 		print(
 			`[Sim] co-op run ${this.counter} started: ${start.runId} seed ${start.seed}, player ${localIndex + 1} of ` +
 				`${start.members.size()}`,
@@ -761,7 +775,20 @@ export class SimController implements OnStart {
 		const dead = me.dead !== 0;
 		const input = this.coopMenuGate.apply(sampled, menuOpen || dead);
 		if (dead && !menuOpen) input.buttons = bit32.band(raw.buttons, ALL_DEBUG_BUTTONS);
-		const res = coop.pump(dt, () => input);
+		// KV_Debug latency probe (docs/FEEL.md J9): watches the frame's input and the ticks it goes out for; the
+		// input handed to the pump is the same either way.
+		const probe = ctx.latencyProbe;
+		const missesBefore = coop.misses;
+		let sample = () => input;
+		if (probe !== undefined) {
+			probe.frame(input.buttons, os.clock());
+			sample = () => {
+				probe.sent(input.buttons, coop.nextInputTick());
+				return input;
+			};
+		}
+		const res = coop.pump(dt, sample);
+		probe?.stepped(coop.state.tick, os.clock(), coop.misses > missesBefore);
 		const runId = coop.runId;
 		for (const b of res.inputs) Events.lockstepInput.fire(runId, b.firstTick, b.data);
 		// One call with every report due (new ones and unacknowledged resends; LockstepClient throttles it).
@@ -802,7 +829,15 @@ export class SimController implements OnStart {
 		if (this.hudTimer >= HUD_SNAPSHOT_INTERVAL_SEC) {
 			this.hudTimer = 0;
 			clientStore.setSnapshot(this.coopSnapshot(coop));
+			this.publishLatencyProbe(ctx, coop);
 		}
+	}
+
+	/** KV_Debug co-op: the latency probe's numbers to the debug line (with the HUD snapshot); nothing otherwise. */
+	private publishLatencyProbe(ctx: RunContext, coop: LockstepClient): void {
+		const probe = ctx.latencyProbe;
+		if (probe === undefined) return;
+		clientStore.setLatencyProbe(latencyProbeView(probe, coop.inputLead(), coop.misses));
 	}
 
 	/** The co-op HUD snapshot: this client's own items, the vitals and spectate bar of the player the views follow. */
