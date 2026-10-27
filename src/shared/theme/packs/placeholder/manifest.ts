@@ -6,9 +6,9 @@
  * biomes, strings and asset IDs; every `generated` asset became `{ kind: "placeholder" }` (its shape and
  * colour now live in PLACEHOLDER_VISUALS) and every `silent` one stayed silent. Roblox-port additions are marked
  * (enemy.dummy, the port sfx, breakables and the decor fx colour roles; no decor art: decor is optional; the port
- * audio IDs, ambience beds and fx colour roles of docs/FX_AUDIO.md; no fx art: sprite effects are optional; the boost
- * drops of docs/BOOSTS.md B5: gems, colour roles, strings and silent sounds; the room-edge colour roles of
- * docs/ROOM_EDGES.md RE4).
+ * audio IDs, ambience beds and fx colour roles of docs/FX_AUDIO.md; no fx art: sprite effects are optional; the
+ * Demon Lord, boss.demonlord, of docs/BOSS_DEMONLORD.md; the boost drops of docs/BOOSTS.md B5: gems, colour roles,
+ * strings and silent sounds; the room-edge colour roles of docs/ROOM_EDGES.md RE4).
  *
  * To replace art or audio later, change an entry's kind and paste the uploaded asset ID, e.g.
  *   "enemy.sniper": { kind: "spritesheet", assetId: "rbxassetid://<n>", frameW: 16, frameH: 16, pivot: { x: 8, y: 15 }, animations: { ... } },
@@ -152,6 +152,7 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		"boss.4": PLACEHOLDER,
 		"boss.5": PLACEHOLDER,
 		"boss.act1": PLACEHOLDER,
+		"boss.demonlord": PLACEHOLDER,
 		"bullet.enemy.small": PLACEHOLDER,
 		"bullet.enemy.medium": PLACEHOLDER,
 		"bullet.enemy.large": PLACEHOLDER,
@@ -230,6 +231,8 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		"sfx.floor.enter": SILENT,
 		"sfx.depth.up": SILENT,
 		"sfx.jingle.gameover": SILENT,
+		// docs/BOSS_DEMONLORD.md D6: a taunting boss's phase change (falls back to the roar while silent).
+		"sfx.boss.taunt": SILENT,
 		"sfx.breakable.hit": SILENT,
 		"sfx.breakable.break": SILENT,
 		"sfx.boost.drop": SILENT,
@@ -276,6 +279,7 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		"boss.4.name": "Act IV Boss",
 		"boss.5.name": "Endgame Boss",
 		"boss.act1.name": "Mother Bramble",
+		"boss.demonlord.name": "The Demon Lord",
 		"boss.hud.phase": "Phase {phase}",
 		"rarity.normal.name": "Normal",
 		"rarity.magic.name": "Magic",

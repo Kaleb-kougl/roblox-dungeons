@@ -73,8 +73,10 @@ export interface SlotContract {
 	 */
 	readonly perSheetCells?: boolean;
 	/**
-	 * v2 `sprites` kind: base animation names a set in this slot MAY add, which the renderer asks for and falls back
-	 * from when absent (shared/view sprites.ts). Validated like every animation when present; never required.
+	 * v2 `sprites` kind: named OPTIONAL animations the game plays when a set defines them and falls back from when it
+	 * does not (shared/view sprites.ts: a class's sword swings attack.1..3 -> attack; a boss's named attacks
+	 * attack.2..4 -> attack, its specials intro / taunt -> the builder's fallback, else what plays without them).
+	 * Validated like every animation when present; never required; listing them documents what the renderers ask for.
 	 */
 	readonly optionalAnimations?: ReadonlyArray<string>;
 }
@@ -85,6 +87,22 @@ const ACTOR: ReadonlyArray<AssetKind> = ["spritesheet", "sprites", "placeholder"
 const STILL: ReadonlyArray<AssetKind> = ["image", "placeholder"];
 const AUDIO: ReadonlyArray<AssetKind> = ["sound", "silent"];
 
+/**
+ * Optional `sprites` animations of the class slot: the sword's three swings (shared/view choosePlayerAnim falls back
+ * to `attack`, then the base animations).
+ */
+export const CLASS_OPTIONAL_ANIMATIONS = ["attack.1", "attack.2", "attack.3"] as const;
+
+/**
+ * Roblox port (docs/BOSS_DEMONLORD.md D2, docs/BRAMBLE_ART.md BR2, one list for both bosses): optional `sprites`
+ * animations of the boss slot. `attack.2` / `attack.3` / `attack.4` are named attacks (each falls back to `attack`);
+ * `intro` (the engage roar) and `taunt` (a phase transition) are one-shot specials the renderer stretches over the
+ * gameplay timer (absent: the builder's fallback, Mother Bramble's intro -> taunt, else what plays without them). The
+ * Demon Lord uses attack.2 / intro / taunt; Mother Bramble FAN `attack`, RINGs `attack.2`, SPIRAL `attack.3`, SLAM
+ * `attack.4`, intro / taunt. The required five (idle, move, attack, hit, death) are unchanged.
+ */
+export const BOSS_OPTIONAL_ANIMATIONS = ["attack.2", "attack.3", "attack.4", "intro", "taunt"] as const;
+
 export const CHARACTER: SlotContract = {
 	slot: "class",
 	prefix: "class.",
@@ -94,6 +112,7 @@ export const CHARACTER: SlotContract = {
 	animations: { idle: 4, run: 6, roll: 4, hit: 2, death: 6 },
 	animationOrder: ["idle", "run", "roll", "hit", "death"],
 	facings: FACINGS,
+	optionalAnimations: CLASS_OPTIONAL_ANIMATIONS,
 	perSheetCells: true,
 };
 
@@ -119,9 +138,7 @@ export const BOSS: SlotContract = {
 	animationOrder: ["idle", "move", "attack", "hit", "death"],
 	facings: [],
 	perSheetCells: true,
-	// docs/BRAMBLE_ART.md BR2 / BOSS_DEMONLORD.md D2: named attacks (absent: `attack`) and the roars (`intro` falls back
-	// to `taunt`, `taunt` to `idle`). Mother Bramble: FAN `attack`, RINGs `attack.2`, SPIRAL `attack.3`, SLAM `attack.4`.
-	optionalAnimations: ["attack.2", "attack.3", "attack.4", "intro", "taunt"],
+	optionalAnimations: BOSS_OPTIONAL_ANIMATIONS,
 };
 
 /** Bullets are drawn at one cell size; the renderer scales them to the gameplay radius. */
@@ -296,9 +313,10 @@ export function requiredBaseAnimations(slot: SlotContract): Array<string> {
 }
 
 /**
- * Base animation names a `sprites` asset in this slot may add on top of requiredBaseAnimations and the renderer falls
- * back from (`optionalAnimations`; boss: attack.2, attack.3, attack.4, intro, taunt). A copy; empty for most slots.
- * Other extra names stay allowed (the validator checks every animation a set defines, required or not).
+ * Named optional animations a `sprites` asset in this slot may define (`optionalAnimations`, in contract order): class
+ * attack.1..3, boss attack.2 / attack.3 / attack.4 / intro / taunt; empty for the other slots. A copy. Never required
+ * (requiredBaseAnimations is the required list); any other extra name stays allowed (the validator checks every
+ * animation a set defines, required or not).
  */
 export function optionalBaseAnimations(slot: SlotContract): Array<string> {
 	const out = new Array<string>();
@@ -390,6 +408,15 @@ export type BiomeMaterialSurface = (typeof BIOME_MATERIAL_SURFACES)[number];
 export const DEFAULT_BIOME_MATERIAL: BiomeMaterial = "SmoothPlastic";
 
 export const BOSS_IDS = ["boss.1", "boss.2", "boss.3", "boss.4", "boss.5"] as const;
+
+/**
+ * Roblox port: the endless bosses' sprite IDs (the sim archetype ids). `boss.act1` is Mother Bramble (the web build's
+ * M1 boss); `boss.demonlord` the Demon Lord (docs/BOSS_DEMONLORD.md). Not in REQUIRED_ASSET_IDS (the web contract's
+ * list stays as ported, and BOSS_IDS stays the GDD's five): every bundled pack fills both, with `<id>.name`, and
+ * placeholder visuals exist for both (theme specs check it).
+ */
+export const ENDLESS_BOSS_IDS = ["boss.act1", "boss.demonlord"] as const;
+export type EndlessBossId = (typeof ENDLESS_BOSS_IDS)[number];
 
 export const BULLET_IDS = [
 	"bullet.enemy.small",
@@ -574,8 +601,9 @@ export function boostAuraFxId(kind: BoostKind): BoostFxId {
  * placeholder pack). Kept apart from AUDIO_EVENTS, which stays the web build's list, like BREAKABLE_AUDIO_EVENTS.
  * First the IDs the audio layer already played before A2 (shared/view/audio PORT_SFX, which only the placeholder pack
  * listed), then the A2 additions: menu back / focus move, the sword finisher, the bow's full charge, room clear, relic
- * and shrine, stairwell, new floor, depth up, the run-over jingle, and the tutorial / lobby tracks. Then the boost
- * drops' four (docs/BOOSTS.md B5).
+ * and shrine, stairwell, new floor, depth up, the run-over jingle, and the tutorial / lobby tracks. Then the Demon
+ * Lord's (docs/BOSS_DEMONLORD.md D6): sfx.boss.taunt, a taunting boss's phase change (the roar plays while it is
+ * silent). Then the boost drops' four (docs/BOOSTS.md B5).
  */
 export const PORT_AUDIO_EVENTS = [
 	"sfx.player.swing",
@@ -598,6 +626,7 @@ export const PORT_AUDIO_EVENTS = [
 	"sfx.jingle.gameover",
 	"music.tutorial",
 	"music.lobby",
+	"sfx.boss.taunt",
 	// docs/BOOSTS.md B5: a boost drop lands, is collected, runs out; an Aegis pip absorbs a hit (the plan's
 	// `sfx.boost.aegisBreak`: asset ID segments are lowercase, as decor kinds are)
 	"sfx.boost.drop",

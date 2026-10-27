@@ -334,6 +334,152 @@ describe("determinism", () => {
 	});
 });
 
+// ---------------------------------------------------------------------------------------------
+// Sprite-set downscale (docs/BOSS_DEMONLORD.md D1): the world-art box filter applied to a whole set
+
+/**
+ * A 2-frame 64 x 32 grid source (32 px frames): a lit 8 x 16 body at x 9..16, y 5..20 with a soft lit pixel (alpha
+ * 100) at (8, 12), a black soft shadow at y 21..22, x 6..19, and a noise pixel (alpha 2) at (18, 6), alone in its
+ * 2 x 2 block. Frame 1 adds a pixel on the head, so the frames differ.
+ */
+function primeScaledSource(rel) {
+	const img = A.raster(64, 32);
+	for (let f = 0; f < 2; f++) {
+		const ox = f * 32;
+		for (let y = 5; y <= 20; y++) for (let x = 9; x <= 16; x++) put(img, ox + x, y, LIT);
+		put(img, ox + 8, 12, [LIT[0], LIT[1], LIT[2], 100]);
+		for (let y = 21; y <= 22; y++) for (let x = 6; x <= 19; x++) put(img, ox + x, y, SHADOW);
+		put(img, ox + 18, 6, [255, 255, 255, 2]);
+	}
+	put(img, 32 + 12, 5, [10, 200, 10, 255]);
+	A.sourceCache.set(rel, img);
+}
+
+function scaledSet(name, extra) {
+	primeScaledSource(`synthetic/${name}.png`);
+	return {
+		source: { type: "grid", dir: "synthetic", frameW: 32, frameH: 32 },
+		facingCount: 1,
+		rowForFacing: [0],
+		noiseAlpha: 2,
+		pad: 3,
+		pivot: { measure: { animation: "move", facing: 0, frame: 0 }, bodyAlpha: 64, bodyMinRgb: 8, footBand: 2 },
+		bodyTiles: 1,
+		resample: "Default",
+		outline: { widthPx: 2 },
+		animations: {
+			move: { file: `${name}.png`, frames: [0, 1], fps: 10, loop: true },
+			hit: { cellsOf: "move", frames: 1, fps: 1, loop: false },
+		},
+		sheets: [{ name: `${name}-move`, animations: ["move"] }],
+		...extra,
+	};
+}
+
+/** RGBA of pixel (x, y). */
+const rgbaAt = (img, x, y) => [...img.data.subarray((y * img.w + x) * 4, (y * img.w + x) * 4 + 4)];
+
+describe("buildSpriteSet with downscale", () => {
+	// Full resolution: union box (alpha > 2) x 6..19, y 5..22, + pad 3 -> 20 x 24; origin (3, 2). Body (lit, alpha >
+	// 64) x 8..16, y 5..20; feet (rows 19..20) x 9..16 -> feet x 13, bottom edge 21; height 16.
+	const full = A.buildSpriteSet("enemy.full", scaledSet("full", {}));
+	// downscale 2: the box grows to whole 2 x 2 blocks, x 6..19 -> blocks 3..9, y 5..22 -> blocks 2..11: 7 x 10,
+	// + pad 3 (atlas pixels) -> 13 x 16; origin (3 - 3, 2 - 3) = (0, -1) in downscaled pixels.
+	const half = A.buildSpriteSet("enemy.half", scaledSet("half", { downscale: 2 }));
+
+	it("an absent downscale and downscale 1 build the same set (the old path)", () => {
+		const one = A.buildSpriteSet("enemy.full", scaledSet("full", { downscale: 1 }));
+		assert.deepEqual(one.layout, full.layout);
+		assert.equal(Buffer.compare(A.encodePng(one.sheets[0].img), A.encodePng(full.sheets[0].img)), 0);
+		assert.equal(Buffer.compare(A.encodePng(one.sheets[0].outlineImg), A.encodePng(full.sheets[0].outlineImg)), 0);
+		assert.equal(full.downscale, 1);
+		assert.deepEqual([full.layout.frameW, full.layout.frameH, full.layout.pivot, full.layout.pixelsPerTile], [20, 24, { x: 10, y: 19 }, 16]);
+	});
+
+	it("crops to the block-aligned box / k plus the pad (in atlas pixels)", () => {
+		assert.equal(half.downscale, 2);
+		assert.deepEqual(half.box, [6, 5, 19, 22]); // the source box, for the build log
+		assert.equal(half.layout.frameW, 13);
+		assert.equal(half.layout.frameH, 16);
+		const [sheet] = half.sheets;
+		assert.equal(sheet.img.w % 13, 0);
+		assert.equal(sheet.img.h % 16, 0);
+		assert.equal(sheet.cells, 2);
+		assert.deepEqual(half.layout.animations.hit, { sheet: 0, start: 0, frames: 1, fps: 1, loop: false, stride: 2 });
+	});
+
+	it("keeps the feet pivot: full-res (13, 21) / 2 -> x round(6.5) = 7, y ceil(10.5) = 11, minus the origin (0, -1)", () => {
+		assert.deepEqual(half.layout.pivot, { x: 7, y: 12 });
+		// the pivot's row is the bottom edge of the downscaled row holding the lowest body row (full-res row 20)
+		const cellRowOfFeet = Math.floor(20 / 2) - -1;
+		assert.equal(half.layout.pivot.y, cellRowOfFeet + 1);
+		// the full-res and half-res pivots name the same source point
+		assert.deepEqual([(full.layout.pivot.x + 3) / 2, (full.layout.pivot.y + 2) / 2], [6.5, 10.5]);
+		assert.deepEqual([half.layout.pivot.x + 0, half.layout.pivot.y - 1], [7, 11]);
+	});
+
+	it("divides pixelsPerTile by k (body height in atlas pixels / bodyTiles)", () => {
+		assert.equal(half.bodyHeight, 8);
+		assert.equal(half.layout.pixelsPerTile, 8);
+		const tiles = A.buildSpriteSet("enemy.tiles", scaledSet("tiles", { downscale: 2, bodyTiles: 3 }));
+		assert.equal(tiles.layout.pixelsPerTile, 2.7); // 16 / 2 / 3, rounded to 0.1
+	});
+
+	it("box-filters each 2 x 2 block with premultiplied alpha, after the noise cut", () => {
+		const { img } = half.sheets[0];
+		// cell (x, y) = downscaled source pixel (x + 0, y - 1) of frame 0 (cell 0 at the sheet's top-left)
+		assert.deepEqual(rgbaAt(img, 6, 7), LIT); // block x 12..13, y 12..13: all body
+		// block x 8..9, y 12..13: alpha 100, 255, 0, 255 -> mean 152.5, rounded half up; colour all LIT
+		assert.deepEqual(rgbaAt(img, 4, 7), [LIT[0], LIT[1], LIT[2], 153]);
+		// block x 18..19, y 6..7 holds only the alpha-2 noise pixel: cleared before the filter, so 0 (not round(2 / 4) = 1)
+		assert.equal(alphaAt(img, 9, 4), 0);
+		// block x 14..15, y 20..21: two body pixels over two shadow pixels -> alpha (255 + 255 + 120 + 120) / 4,
+		// colour the alpha-weighted mean of LIT and black
+		const mixed = rgbaAt(img, 7, 11);
+		assert.equal(mixed[3], Math.floor((2 * 750 + 4) / 8));
+		assert.equal(mixed[0], Math.floor((2 * (LIT[0] * 510) + 750) / (2 * 750)));
+		// frame 1's extra head pixel at (12, 5) lands in its own cell only
+		const perRow = img.w / 13;
+		const cell1 = { x: (1 % perRow) * 13, y: Math.floor(1 / perRow) * 16 };
+		assert.equal(rgbaAt(img, cell1.x + 6, cell1.y + 3)[1] > rgbaAt(img, 6, 3)[1], true);
+	});
+
+	it("writes the outline sheet at the downscaled size; the pad rule is in atlas pixels", () => {
+		const [sheet] = half.sheets;
+		assert.equal(sheet.outlineImg.w, sheet.img.w);
+		assert.equal(sheet.outlineImg.h, sheet.img.h);
+		assert.equal(alphaAt(sheet.outlineImg, 6, 7), 0); // inside the opaque body
+		assert.equal(alphaAt(sheet.outlineImg, 3, 7), 255 - alphaAt(sheet.img, 3, 7)); // 1 px left of the soft edge
+		for (let y = 0; y < 16; y++) for (let x = 0; x < 13; x++) if (x === 0 || y === 0 || x === 12 || y === 15) assert.equal(alphaAt(sheet.outlineImg, x, y), 0);
+		assert.throws(() => A.buildSpriteSet("enemy.tight", scaledSet("tight", { downscale: 2, pad: 2 })), /pad 2 is too small/);
+	});
+
+	it("rejects a downscale that is not an integer >= 1", () => {
+		for (const bad of [0, -2, 1.5, "2", null]) {
+			assert.throws(() => A.buildSpriteSet("enemy.bad", scaledSet("bad", { downscale: bad })), /enemy\.bad: downscale must be an integer >= 1/, String(bad));
+		}
+	});
+
+	it("is deterministic", () => {
+		const again = A.buildSpriteSet("enemy.half", scaledSet("half", { downscale: 2 }));
+		assert.equal(Buffer.compare(A.encodePng(again.sheets[0].img), A.encodePng(half.sheets[0].img)), 0);
+		assert.equal(Buffer.compare(A.encodePng(again.sheets[0].outlineImg), A.encodePng(half.sheets[0].outlineImg)), 0);
+		assert.equal(A.layoutModule([again], [], "#000000"), A.layoutModule([half], [], "#000000"));
+	});
+});
+
+describe("chooseGrid: the Demon Lord's cells (docs/BOSS_DEMONLORD.md D1)", () => {
+	it("128 cells (16 facings x 8 frames) of 98 x 78 fit one atlas: 10 x 13 = 130, 980 x 1014", () => {
+		const g = A.chooseGrid(128, 98, 78, "boss");
+		assert.deepEqual([g.cols, g.rows], [10, 13]);
+		assert.ok(g.cols * 98 <= A.MAX_ATLAS && g.rows * 78 <= A.MAX_ATLAS);
+	});
+
+	it("one more pixel of cell height (79) leaves 10 x 12 = 120 cells and refuses", () => {
+		assert.throws(() => A.chooseGrid(128, 98, 79, "boss"), /128 cells of 98x79 do not fit one 1024x1024 atlas \(max 120\)/);
+	});
+});
+
 describe("pixelsPerTileFrom (sprite sets drawn at another set's scale)", () => {
 	// The synthetic body is 9 px tall (y 3..11): bodyTiles 7 -> 9 / 7 = 1.2857.. -> 1.3 px/tile.
 	const base = () => syntheticSet("ppt-base", { bodyTiles: 7 });
@@ -388,6 +534,16 @@ describe("pixelsPerTileFrom (sprite sets drawn at another set's scale)", () => {
 		assert.throws(() => A.buildSpriteSets({ "a.none": syntheticSet("ppt-none", { bodyTiles: undefined }) }), /a\.none: give exactly one/);
 		// buildSpriteSet alone has no built sets to read from
 		assert.throws(() => A.buildSpriteSet("a.user", user()), /a\.user: pixelsPerTileFrom z\.base is not a built sprite set/);
+	});
+
+	it("is only defined between two full-resolution sets (no downscale on either side)", () => {
+		const downUser = syntheticSet("ppt-down-user", { bodyTiles: undefined, pixelsPerTileFrom: "z.base", downscale: 2 });
+		assert.throws(() => A.buildSpriteSets({ "a.user": downUser, "z.base": base() }), /a\.user: pixelsPerTileFrom z\.base needs two sets without downscale/);
+		const downBase = syntheticSet("ppt-down-base", { bodyTiles: 7, downscale: 2 });
+		assert.throws(() => A.buildSpriteSets({ "a.user": user(), "z.base": downBase }), /a\.user: pixelsPerTileFrom z\.base needs two sets without downscale/);
+		// downscale 1 is the full-resolution path
+		const oneUser = syntheticSet("ppt-one-user", { bodyTiles: undefined, pixelsPerTileFrom: "z.base", pad: 5, downscale: 1 });
+		assert.equal(A.buildSpriteSets({ "a.user": oneUser, "z.base": base() })[0].layout.pixelsPerTile, 1.3);
 	});
 });
 

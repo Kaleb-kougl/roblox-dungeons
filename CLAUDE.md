@@ -121,6 +121,20 @@ Decision log (deviations from `PLAN.md`):
   neon placeholders. `decor.fx.ambient.b<n>`: main's R5 mote (`decor-mote.png`) wins once uploaded; the Ninja
   Adventure flipbooks (`fx-ambient-b<n>.png`) only fill a biome it leaves empty. Presentation only: no sim, dungeon or
   hash change.
+- **Second endless boss (docs/BOSS_DEMONLORD.md D3-D5).** `boss.demonlord` (the Demon Lord, a hunter: chase +
+  cleave, 3-gap hellfire ring, double cleave, brimstone charge, swarmer summons) is band 2 (`PORT_BAND_BOSSES`, index
+  8; no web or dummy index moves), on the fight skeleton moved out of act1 into `boss/shared.ts` (a pure move: the
+  golden boss runs match bit for bit). His two new burst shapes are port shapes (`combat/arcTablePort.ts`: sin / cos
+  from the Forge's deterministic `dsin` / `dcos`, merged into the arc lookup; `fixtures/arc-table.json` and
+  `arcTable.ts` stay the web build's). Each endless boss floor picks its boss with `bossKindFor(floorSeed)`: one draw
+  from its own stream `mulberry32(floorSeed ^ BOSS_PICK.salt)` (salt `0x27d4eb2f`), weighted by `ENDLESS_BOSSES` (50 /
+  50; `shared/dungeon` endlessData.ts), stored as `EndlessFloorLayout.bossKind`; layouts, digests, props, room spawns
+  and breakables are unchanged. Score tables give him Mother Bramble's 5000 points and final phase 3. M1
+  (`KALEB_VALE_MVP_PARAMS`), every fixture and the tutorial keep Mother Bramble and replay exactly as before; endless
+  replays and scores changed on every floor that picks the Demon Lord (run 1337's floor 5 among them).
+  `node scripts/find-boss-seed.js` lists run seeds per boss. D6 added one port audio ID, `sfx.boss.taunt` (required in
+  every pack via `PORT_AUDIO_EVENTS`, SILENT in the placeholder): a taunting boss's phase change (the Demon Lord's,
+  `BOSS_TAUNT_IDS`) plays it instead of the roar, which it falls back to while silent.
 - **Co-op spectating (docs/SPECTATE.md).** Presentation only (no sim, lockstep, server, hash or replay change). A dead
   party member watches a living teammate and cycles with Attack / Alt; `SimController.getViewPlayerIndex()` replaces
   the local index in the camera, weapon view, bullet transparency, actor ring and audio, and `SnapshotExtras.vitalsIndex`
@@ -130,7 +144,8 @@ Decision log (deviations from `PLAN.md`):
 - **Boost drops (docs/BOOSTS.md).** `SimConfig.drops` (endless: `DROPS_CONFIG`; tutorial: `guaranteedDropsConfig`,
   a Fury on combat B's last kill) adds `state.drops` with its own `drops` hash group appended after `breakables`
   (last) and its OWN rng stream (`seed ^ DROPS.salt`), so no main-stream draw moves. Kills roll in `killActor`
-  (never turrets, the dummy, the boss, or a boss floor's boss room); pickups are the first living player (index order)
+  (never turrets, the dummy, the boss, a boss floor's boss room, or any kill while a boss fight is on: the Demon Lord's
+  adds can land outside the room's bounds); pickups are the first living player (index order)
   in range; Fury / Frenzy go through `playerHitDamage` / `attackTicks` (Frenzy as one integer percent with Swift
   Strikes), Quickstep scales the walk, Aegis is a pip in `state.drops` taken before armor. A port input bit
   `DEBUG_DROP_BUTTON` (32768, key M, KV_Debug only) joins `PORT_BUTTONS`. Theme: `boost.<kind>` (required, placeholder
@@ -214,7 +229,8 @@ split-16-bit `imul`, no getters in sim state.
 - Hooks on def objects (`ArchetypeDef`, `WeaponDef`) are called with `:`; write every hook as a method
   (`onHit(ctx, a) { engageOnHit(ctx, a); }`), never `onHit: engageOnHit`.
 - A new bullet burst shape needs an entry in `combat/arcTable.ts` (regenerate with `scripts/gen-arc-table.js`);
-  until then it fails with "arc table miss".
+  until then it fails with "arc table miss". A shape only the port's own archetypes fire (no web source) is a row in
+  `combat/arcTablePort.ts` instead (never edit the web fixture).
 - `throw` compiles to `error(x)`, which prefixes `file:line:`; use `error(msg, 0)` where the message is compared.
 - Interface methods compile to `:` calls: implement them with method syntax; type arrow-function properties as
   `f: (a) => T`. `**` compiles to `^` (pow): use plain multiplication on the sim path.

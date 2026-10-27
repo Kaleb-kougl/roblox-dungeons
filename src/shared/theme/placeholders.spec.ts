@@ -112,6 +112,15 @@ describe("PLACEHOLDER_VISUALS", () => {
 			expect(v[id]).toMatchObject({ shape: "Block", color: { kind: "role", role: "boss" } });
 			expect(v[id].size[0]).toBe(s(48));
 		}
+		// the Demon Lord (docs/BOSS_DEMONLORD.md): the boss block, taller and narrower than Mother Bramble's
+		expect(v["boss.demonlord"]).toMatchObject({
+			shape: "Block",
+			color: { kind: "role", role: "boss" },
+			outline: "enemyOutline",
+		});
+		expect(v["boss.act1"].size).toEqual([s(48), s(36), s(48)]);
+		expect(v["boss.demonlord"].size).toEqual([s(36), s(48), s(36)]);
+		expect(PLACEHOLDER_MANIFEST.strings["boss.demonlord.name"]).toBe("The Demon Lord");
 		// enemy bullet = neon ball with a dark outline role; centred on the bullet
 		expect(v["bullet.enemy.small"]).toMatchObject({
 			shape: "Ball",

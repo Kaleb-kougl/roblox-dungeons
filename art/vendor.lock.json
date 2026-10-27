@@ -1427,6 +1427,4486 @@
 			"bytes": 16191
 		},
 		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack1/E/demonlord_default_attack1_E_0.0_0.png",
+			"sha256": "86f9d155a9c11256a6d1a70e737546f60da067f98c2d81e290f476b0bb3355f5",
+			"bytes": 42927
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack1/E/demonlord_default_attack1_E_0.0_1.png",
+			"sha256": "95febc1a4f2b956bf6e5329145b48f612abb454e1c74978f2aefc91f15e8ffe3",
+			"bytes": 44531
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack1/E/demonlord_default_attack1_E_0.0_2.png",
+			"sha256": "eb94cf158084751307a89fb9bf4d84f66a54df1bde3f6b3acd6843aa87c83d56",
+			"bytes": 43877
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack1/E/demonlord_default_attack1_E_0.0_3.png",
+			"sha256": "470ca21d11a8cce56d4366a03527d1f1781cc44e8d410919385711cfe60ec991",
+			"bytes": 43760
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack1/E/demonlord_default_attack1_E_0.0_4.png",
+			"sha256": "94f2b8547ff8489a2316e20e992b09621e77713ff9a2b537e6fdc229cd9e91f8",
+			"bytes": 40145
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack1/E/demonlord_default_attack1_E_0.0_5.png",
+			"sha256": "5623a8a016313d11d119abe958218d6ced3c6a6d62aff3028ffce6d677016b15",
+			"bytes": 39218
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack1/E/demonlord_default_attack1_E_0.0_6.png",
+			"sha256": "6396edff48f40653610f60892bbaa3025384f9d6c970088a1d800eae3e43ff0d",
+			"bytes": 41134
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack1/E/demonlord_default_attack1_E_0.0_7.png",
+			"sha256": "d1bab207a38cd60ac996698f638ef25257b2b1578ad984a708d9e482c8121b2b",
+			"bytes": 42498
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack1/N/demonlord_default_attack1_N_90.0_0.png",
+			"sha256": "c845981560aa4136359e204ed69fb72215c45c6a523f766dc7cfc3564443dabf",
+			"bytes": 44505
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack1/N/demonlord_default_attack1_N_90.0_1.png",
+			"sha256": "be66bc02e7e6081e0dc7aa48786754320f5d5509fc7b5887bd6633e499bd5d9e",
+			"bytes": 43682
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack1/N/demonlord_default_attack1_N_90.0_2.png",
+			"sha256": "3fda371a526ef05585d2a52126a117acdf8a7ee34f7de0ea3db7d7fa81cd0ef3",
+			"bytes": 43202
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack1/N/demonlord_default_attack1_N_90.0_3.png",
+			"sha256": "b9c06f653dd654a15da8af98740770db3bf71be4c40baa95cfb8f8d78a511d70",
+			"bytes": 42782
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack1/N/demonlord_default_attack1_N_90.0_4.png",
+			"sha256": "ee7c6703910e279689c18719334716c4cebb83de1494ad26e7fd42f21a9c6a5d",
+			"bytes": 39312
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack1/N/demonlord_default_attack1_N_90.0_5.png",
+			"sha256": "6a4af0f7d9c5c21be11a9a77eca3f489e67418819b9668f0f9cb2d6e9e11bf04",
+			"bytes": 38107
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack1/N/demonlord_default_attack1_N_90.0_6.png",
+			"sha256": "548281f15bf86a5a2d0460747a34c207f04781a40a1d24e567c21338e3b7c50c",
+			"bytes": 40137
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack1/N/demonlord_default_attack1_N_90.0_7.png",
+			"sha256": "7a253df435c3ac356efc4d4e3929110aa606a7df2d91707c00277a385aae4a4c",
+			"bytes": 42688
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack1/NE/demonlord_default_attack1_NE_45.0_0.png",
+			"sha256": "97bec1423772e92b66805249f278eaafc2685d42321f9416f8c09a1a4f54f27c",
+			"bytes": 44660
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack1/NE/demonlord_default_attack1_NE_45.0_1.png",
+			"sha256": "2599f8cc7d91fc89ae28aa18d95c156d70b33de5ede4fcb7501f027fb7727858",
+			"bytes": 44891
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack1/NE/demonlord_default_attack1_NE_45.0_2.png",
+			"sha256": "d88e73ef3987a41dfdc997804cff1d242e72dbfafc7d73bf5f9b6188f1e1ec0b",
+			"bytes": 43726
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack1/NE/demonlord_default_attack1_NE_45.0_3.png",
+			"sha256": "781c8d9a5b5cfa57168ae78298659fcd50d39450f110915444ca3dcaaf9814e1",
+			"bytes": 44219
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack1/NE/demonlord_default_attack1_NE_45.0_4.png",
+			"sha256": "7a61533b0b62f15671939c9347b97846e1f099529c51855bef388b1acecf1d71",
+			"bytes": 40322
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack1/NE/demonlord_default_attack1_NE_45.0_5.png",
+			"sha256": "3b183cb5bcc98e66979c6e42dbb42e4b562d14b3464fc475e665acfb9cbbee15",
+			"bytes": 39677
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack1/NE/demonlord_default_attack1_NE_45.0_6.png",
+			"sha256": "17bbacb3650ce385070a91943285f11be45db599ad7071b721d9ed02f5362881",
+			"bytes": 41568
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack1/NE/demonlord_default_attack1_NE_45.0_7.png",
+			"sha256": "8b08017e274aee9098985f24bce2313f219a1a470ab06d660a269d0c25169e52",
+			"bytes": 43241
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack1/NEE/demonlord_default_attack1_NEE_22.5_0.png",
+			"sha256": "9e9f775d8e75168ca7a44daae2fe542bc607c82bacb319cdfab57d870d0154f4",
+			"bytes": 43712
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack1/NEE/demonlord_default_attack1_NEE_22.5_1.png",
+			"sha256": "18d140cb0b2cd47cca8e5409c8ffccd2a8cf709c243fa232c28d20f9e18c911d",
+			"bytes": 44573
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack1/NEE/demonlord_default_attack1_NEE_22.5_2.png",
+			"sha256": "9cd6d5dd4b59cebaa0406b8d4f106f312c3c8bb5b5fcada12e3f5dfe4df87312",
+			"bytes": 43698
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack1/NEE/demonlord_default_attack1_NEE_22.5_3.png",
+			"sha256": "b6015283df6b06fbca90b8ec81f48d2c51493b3d059f9d1a6d543c176dcd893a",
+			"bytes": 44243
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack1/NEE/demonlord_default_attack1_NEE_22.5_4.png",
+			"sha256": "b9e22957d53ff03b990d711ec5605ae493816ae164aec2c4b62eea8a29165044",
+			"bytes": 40389
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack1/NEE/demonlord_default_attack1_NEE_22.5_5.png",
+			"sha256": "1cc5179bc35b4de8e1f0c51089155ce0365f957231c6a844836188d0ed6cf4ca",
+			"bytes": 39584
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack1/NEE/demonlord_default_attack1_NEE_22.5_6.png",
+			"sha256": "0f2eeed6f129af407ad45ff42000d27370f3d35f22fcc1b17b3b5ffb0c61e0ef",
+			"bytes": 41449
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack1/NEE/demonlord_default_attack1_NEE_22.5_7.png",
+			"sha256": "9aad0ed5e903cbc4a23575e9801e1b2599af0a471644aa16aece4da6a3253f7b",
+			"bytes": 42722
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack1/NNE/demonlord_default_attack1_NNE_67.5_0.png",
+			"sha256": "4c58640aad40012e5dd0b42fb34cc2018e8c28e3cd2ab9755d8b0e10d4f82a16",
+			"bytes": 44804
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack1/NNE/demonlord_default_attack1_NNE_67.5_1.png",
+			"sha256": "fb072831b1bfc9067ef270d861a0a9fd29905dac3d253b3c39c3b4135ca72ff0",
+			"bytes": 44462
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack1/NNE/demonlord_default_attack1_NNE_67.5_2.png",
+			"sha256": "9bbcf62f6a9bc8dbaebef6794555f63dc05cee85e3315567da5198d9f5f4f856",
+			"bytes": 43408
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack1/NNE/demonlord_default_attack1_NNE_67.5_3.png",
+			"sha256": "75c520e8dfe258bb92e0e01884ee9c031a7816e98658693ae7d445b1d80ee242",
+			"bytes": 43540
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack1/NNE/demonlord_default_attack1_NNE_67.5_4.png",
+			"sha256": "2a0d67f171b4fddfc89a3d84c1a896052a32b29df8b46082d2b398a5338f485d",
+			"bytes": 39848
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack1/NNE/demonlord_default_attack1_NNE_67.5_5.png",
+			"sha256": "f5eda9ef8f43377a0320c717b5006036e127b843f3f8903a4508d31d63ad84a8",
+			"bytes": 39033
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack1/NNE/demonlord_default_attack1_NNE_67.5_6.png",
+			"sha256": "ae57c16d91cff0b1690579764a23301b277eba1cff4e30a9845b3d6bd72774eb",
+			"bytes": 40657
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack1/NNE/demonlord_default_attack1_NNE_67.5_7.png",
+			"sha256": "2f123f9ecea39b5bfe99f7e5d2777b515595083c5bc30c4a0ad9ed0f8fb8f824",
+			"bytes": 42847
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack1/NNW/demonlord_default_attack1_NNW_112.5_0.png",
+			"sha256": "95a35068883be7209a5fef2d938ec47e19bbe95dff3580ae3f4dc673687d20ee",
+			"bytes": 43817
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack1/NNW/demonlord_default_attack1_NNW_112.5_1.png",
+			"sha256": "6215a6fbc6e15aaf43d5a7fd78951f0bc74797d420255c2c9ca7b90f99cd561e",
+			"bytes": 43703
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack1/NNW/demonlord_default_attack1_NNW_112.5_2.png",
+			"sha256": "3a0a860e94588ab0d89a1b71491a493ae9f7d39a286d920c8479bb5636da286b",
+			"bytes": 43422
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack1/NNW/demonlord_default_attack1_NNW_112.5_3.png",
+			"sha256": "6bcc5ce006e7ece4db7c8c65dfa7c5e779348b0959e09ce18144a96214918751",
+			"bytes": 42839
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack1/NNW/demonlord_default_attack1_NNW_112.5_4.png",
+			"sha256": "416e7d53b287ef9e2d39af140d5f8a4404cc610ac58b5f06c2a9c40355d5956a",
+			"bytes": 38938
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack1/NNW/demonlord_default_attack1_NNW_112.5_5.png",
+			"sha256": "b16292a35e5e3c0f5530bcec2b34c4d9cfdff1ede07178f6131af422b6ef8756",
+			"bytes": 38461
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack1/NNW/demonlord_default_attack1_NNW_112.5_6.png",
+			"sha256": "f5a8c1f9307607112954afe52846965c5365eabce891048071722195cacf4ee4",
+			"bytes": 39835
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack1/NNW/demonlord_default_attack1_NNW_112.5_7.png",
+			"sha256": "d2a0a48bdc86bb77f216b1f1938bdbdf01104b19b9a2310ecf684a6c95634f58",
+			"bytes": 42092
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack1/NW/demonlord_default_attack1_NW_135.0_0.png",
+			"sha256": "596f653b6fb9c548dd4d90f98373e7120de5b43309111f8d8777e560a94920f0",
+			"bytes": 42676
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack1/NW/demonlord_default_attack1_NW_135.0_1.png",
+			"sha256": "4533cea4f70185d80c85410a1d2695cb8d16d7c75acca0269a184282df9d9cab",
+			"bytes": 43433
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack1/NW/demonlord_default_attack1_NW_135.0_2.png",
+			"sha256": "be36fdd49d538fdea4b98e6d32fd6431cb81b27cd03cfaac15a67d0e486b6b60",
+			"bytes": 43114
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack1/NW/demonlord_default_attack1_NW_135.0_3.png",
+			"sha256": "0202ca3f1380f085229a2515f24d0a5c5e88f2f57f80adc3195a089e0a7575be",
+			"bytes": 43239
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack1/NW/demonlord_default_attack1_NW_135.0_4.png",
+			"sha256": "f22d0b9d0dad629297e35c7772632ef660ef0f5046e813c8c3bab12682e6e219",
+			"bytes": 39626
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack1/NW/demonlord_default_attack1_NW_135.0_5.png",
+			"sha256": "356fa60256a1a8f7444d20ed22c4f1d79a577a6415872ab70e793e2b45e0b7ca",
+			"bytes": 38998
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack1/NW/demonlord_default_attack1_NW_135.0_6.png",
+			"sha256": "dcfe0ffe1a349550bf652bdc9caee18ccc3b484a2bcdc331a5f16a8a9b50b332",
+			"bytes": 40496
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack1/NW/demonlord_default_attack1_NW_135.0_7.png",
+			"sha256": "9a5f411cc7ea499eb79a02e3acac652175a5ca70f0cafead68a31d11294d3f33",
+			"bytes": 42050
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack1/NWW/demonlord_default_attack1_NWW_157.5_0.png",
+			"sha256": "56684b5fca5f4a6d3d9f3f4d6b513fbae6baa3c1db81bb74032a03e412dac047",
+			"bytes": 41711
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack1/NWW/demonlord_default_attack1_NWW_157.5_1.png",
+			"sha256": "713c0b36a043eaf26097236838acd4bd94df2d56309320d208f24bdc99cc4fe8",
+			"bytes": 43169
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack1/NWW/demonlord_default_attack1_NWW_157.5_2.png",
+			"sha256": "f77710362c6cdd4380786e4e9db1865d1c8664de8290cc27d0e0575d60623ded",
+			"bytes": 42861
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack1/NWW/demonlord_default_attack1_NWW_157.5_3.png",
+			"sha256": "3b73ab7a1032a0b0e9ea720e62455fe86e1f4c292715294e71cdbff838bdadf5",
+			"bytes": 43897
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack1/NWW/demonlord_default_attack1_NWW_157.5_4.png",
+			"sha256": "4b00adb79b48fa7905a44407172400e5f2d2c93606e2302aa2c9f489222f17a2",
+			"bytes": 40323
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack1/NWW/demonlord_default_attack1_NWW_157.5_5.png",
+			"sha256": "cfeb391aa1a4de8f6850084c935010f39a04482fcaa131f62f461f7f8ad813d1",
+			"bytes": 39547
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack1/NWW/demonlord_default_attack1_NWW_157.5_6.png",
+			"sha256": "6ad13207a55902294bc49732c72c794c64d16048bbd3c6ea3654afcd84890e83",
+			"bytes": 41264
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack1/NWW/demonlord_default_attack1_NWW_157.5_7.png",
+			"sha256": "83d76d2b7702df03a38849a3a45f01172841bfbfa84be4314ef229f8fa8e4957",
+			"bytes": 41925
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack1/S/demonlord_default_attack1_S_270.0_0.png",
+			"sha256": "4d09b97167d2558bc97ccd73fbd62467341b00d13d0d7a8a3a550abe7c3ec004",
+			"bytes": 43460
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack1/S/demonlord_default_attack1_S_270.0_1.png",
+			"sha256": "ccb9374c3aac50225d5ed700d377102267224aa6683838849989d380d70f91a7",
+			"bytes": 42980
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack1/S/demonlord_default_attack1_S_270.0_2.png",
+			"sha256": "a161309c21ac0c76868705027e98f2d6ceb55bf817b8dc3b178c6885464ba273",
+			"bytes": 43062
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack1/S/demonlord_default_attack1_S_270.0_3.png",
+			"sha256": "8c0ea485fdc2413a0d6a64511986570ac048c188059e43f76de35da458d0c7eb",
+			"bytes": 42137
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack1/S/demonlord_default_attack1_S_270.0_4.png",
+			"sha256": "556b6971ac904b8779e2231df2b1227463ade80f9c8efa46da1fad0897d70eca",
+			"bytes": 39467
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack1/S/demonlord_default_attack1_S_270.0_5.png",
+			"sha256": "520266bb58520397a7e39e1691f88e61aeb72a5bdb77a37eeec144ff7e376620",
+			"bytes": 38848
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack1/S/demonlord_default_attack1_S_270.0_6.png",
+			"sha256": "d89207c87c0b68b6798b07c19fa018449bf4849efd9214ed202df19ff8bbe487",
+			"bytes": 40833
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack1/S/demonlord_default_attack1_S_270.0_7.png",
+			"sha256": "a6ee3a9751e50448849e265e92c93dc6fedd77d5724d03fd63a31930a033eb91",
+			"bytes": 42114
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack1/SE/demonlord_default_attack1_SE_315.0_0.png",
+			"sha256": "456b933eef6e30842e2ddfa0f769eb715317d4e72f910bd7939656ef795c6c3f",
+			"bytes": 42349
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack1/SE/demonlord_default_attack1_SE_315.0_1.png",
+			"sha256": "a7c75d588b9dc5f35be089b242db74d2eccde583eb527280aab896327e6fba30",
+			"bytes": 43469
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack1/SE/demonlord_default_attack1_SE_315.0_2.png",
+			"sha256": "cf7c13c35fc8114e41b447f231bc416dacd8296f28bdf8a546a4e02adf556c01",
+			"bytes": 43796
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack1/SE/demonlord_default_attack1_SE_315.0_3.png",
+			"sha256": "3cc7b253f79bc86fc3317e1c510a14e81f8a95d435765f33122a838e71a97445",
+			"bytes": 42530
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack1/SE/demonlord_default_attack1_SE_315.0_4.png",
+			"sha256": "917070c06b3adeff60f00a5bc4253a73e11a9d2d60d62c2840bb4e7e0fe3bb9f",
+			"bytes": 40199
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack1/SE/demonlord_default_attack1_SE_315.0_5.png",
+			"sha256": "e03443e9e199f2d361064948daae38a4f4e438e14ac3bcd0a2097d065db36e3d",
+			"bytes": 39499
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack1/SE/demonlord_default_attack1_SE_315.0_6.png",
+			"sha256": "9bf4f27b909cf21c4bec10f5719598bdd3e563aa24febad7f0a902e35cb382bb",
+			"bytes": 40942
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack1/SE/demonlord_default_attack1_SE_315.0_7.png",
+			"sha256": "7393ff02a6e16cc3433e0d519d837f8d2a33951cd20ba053bc106a50f36b8a67",
+			"bytes": 42394
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack1/SEE/demonlord_default_attack1_SEE_337.5_0.png",
+			"sha256": "643a52a4973488d68b67473efdeabc5f24ecbdf1956eafd13ada4813e13edcd4",
+			"bytes": 42578
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack1/SEE/demonlord_default_attack1_SEE_337.5_1.png",
+			"sha256": "c085700cd32bf0596a188a70af8cea339df02df33bb573296ffcd38246ea66e5",
+			"bytes": 44304
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack1/SEE/demonlord_default_attack1_SEE_337.5_2.png",
+			"sha256": "f8f74c735842ff2d0b6fae9fb925f7659a0e513a4eacd1b0db339eaa531e279b",
+			"bytes": 43901
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack1/SEE/demonlord_default_attack1_SEE_337.5_3.png",
+			"sha256": "ea561466489149770169bb2c5f84cd2f16f827aea255f35258bd75e576462c8b",
+			"bytes": 43182
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack1/SEE/demonlord_default_attack1_SEE_337.5_4.png",
+			"sha256": "4adb9ff952104ac5a65cb697578b73623af880b62221e71664ff44815be14eda",
+			"bytes": 40163
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack1/SEE/demonlord_default_attack1_SEE_337.5_5.png",
+			"sha256": "4c7ddeb0e4927932bf710e0d568898b57d5563a2525393d4ab67e915a1480d40",
+			"bytes": 39063
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack1/SEE/demonlord_default_attack1_SEE_337.5_6.png",
+			"sha256": "0ed522a0fa395bcac6491878ebb7e2bcef3335a8c8e1c3cb4017ff314bdc3d11",
+			"bytes": 41063
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack1/SEE/demonlord_default_attack1_SEE_337.5_7.png",
+			"sha256": "14bc56da79060712d28410c4b065b11824f29f8a48f5beaa00281205393c2316",
+			"bytes": 42378
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack1/SSE/demonlord_default_attack1_SSE_292.5_0.png",
+			"sha256": "1e433690920f4389051a7bac35003c99717b854227bb20ad8a9cc7ca0d6f2b32",
+			"bytes": 43201
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack1/SSE/demonlord_default_attack1_SSE_292.5_1.png",
+			"sha256": "0dcce2085a59b7a119dad62f1a6d80f979b8a95452177936bf1e847161713a77",
+			"bytes": 43196
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack1/SSE/demonlord_default_attack1_SSE_292.5_2.png",
+			"sha256": "6a01fea20afb7436d650a43844ffb0b3873f550d122b4445fb8051e80be7f3d2",
+			"bytes": 43632
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack1/SSE/demonlord_default_attack1_SSE_292.5_3.png",
+			"sha256": "96f603eff31e3f71653888ae0be7342f6032d0533acf81e777b6a1beee8c4795",
+			"bytes": 42182
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack1/SSE/demonlord_default_attack1_SSE_292.5_4.png",
+			"sha256": "397ebbb6bd1fb9a9ccbd8ee5f34692401307401d3af15fb4e6cc18c940b1a094",
+			"bytes": 39396
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack1/SSE/demonlord_default_attack1_SSE_292.5_5.png",
+			"sha256": "61595a493f63c5a1a30acae9cc302cabe1001dc469db0dfc17f2ecd9a1543683",
+			"bytes": 39103
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack1/SSE/demonlord_default_attack1_SSE_292.5_6.png",
+			"sha256": "a0962a52bafb97a5e38e0038ab6c1b5d9bd4b832b153af76835d634b43c93b40",
+			"bytes": 40931
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack1/SSE/demonlord_default_attack1_SSE_292.5_7.png",
+			"sha256": "b03979e03bc8de3045a9cbb44f99a66d4709793e773aaa28a8d524faa53e1e5f",
+			"bytes": 42381
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack1/SSW/demonlord_default_attack1_SSW_247.5_0.png",
+			"sha256": "7f913fd387ff0fa515ac320295bc28895a0ad604b99266868f1bbf183fab2add",
+			"bytes": 43550
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack1/SSW/demonlord_default_attack1_SSW_247.5_1.png",
+			"sha256": "18fad5e4edbb81ca8dd23f2a7b4fcaa75ac42e6782a67d408227b856efe3144d",
+			"bytes": 43221
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack1/SSW/demonlord_default_attack1_SSW_247.5_2.png",
+			"sha256": "bf66b95878181f639be380a55401dc71e23c2ce2cbdb731637ade40d08b582e0",
+			"bytes": 42974
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack1/SSW/demonlord_default_attack1_SSW_247.5_3.png",
+			"sha256": "1e0fd73ad607c16ea916d5fcf9c69c9e2bbbf73a28e0ea1bf77d34440aa726ae",
+			"bytes": 42931
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack1/SSW/demonlord_default_attack1_SSW_247.5_4.png",
+			"sha256": "aa8810516fb51545eb9e4cc7eef506f50fc46ecff3732e23cf61a569e35a9766",
+			"bytes": 40043
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack1/SSW/demonlord_default_attack1_SSW_247.5_5.png",
+			"sha256": "0ddcca6b9de09b94522988b98b7f722e2d0060333e5315e3034b13353a09bc25",
+			"bytes": 39480
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack1/SSW/demonlord_default_attack1_SSW_247.5_6.png",
+			"sha256": "292a25c3592b608aab8051b285a879f690c862882324d6362d9fb429b336ee42",
+			"bytes": 41166
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack1/SSW/demonlord_default_attack1_SSW_247.5_7.png",
+			"sha256": "a7459c2484ef7596f5768b203bf872eef44c48a289ae6eeb34788cb5ed2eb9d8",
+			"bytes": 42303
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack1/SW/demonlord_default_attack1_SW_225.0_0.png",
+			"sha256": "2c9765e165870fcac9593b5ec394837ca8de4277e483a5eca31b3290edb2a582",
+			"bytes": 43665
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack1/SW/demonlord_default_attack1_SW_225.0_1.png",
+			"sha256": "bb4ffbc9907f3ad16b6132353014b96c41a5a0c5c112a609550a2a6f6d57115b",
+			"bytes": 43459
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack1/SW/demonlord_default_attack1_SW_225.0_2.png",
+			"sha256": "c6f820f7ce28bec5d6d602443c8af2567f9758a9d41a7b83dee4bfd7ea706366",
+			"bytes": 42980
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack1/SW/demonlord_default_attack1_SW_225.0_3.png",
+			"sha256": "e3cac59855c3d59c2404583f0990d123609321c63eeda281098e632584cffce8",
+			"bytes": 44126
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack1/SW/demonlord_default_attack1_SW_225.0_4.png",
+			"sha256": "ebf0d9f2f1d7d0daad2b50bf431aa901475ca0501bcb931eaa77709a88ce5aca",
+			"bytes": 40611
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack1/SW/demonlord_default_attack1_SW_225.0_5.png",
+			"sha256": "4fb4d3f7025862cc8555e25d912b0528e52bde2e2f5658aaed5c374d1ada4902",
+			"bytes": 40212
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack1/SW/demonlord_default_attack1_SW_225.0_6.png",
+			"sha256": "133bd58a5ef6c2a3b2c3659549dac580e5b86095bfff313cfa51d4d0e04a9de6",
+			"bytes": 42060
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack1/SW/demonlord_default_attack1_SW_225.0_7.png",
+			"sha256": "006230ad9e170764c694a76170c269cf30fa19a1c8810561a95936072612b12e",
+			"bytes": 42455
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack1/SWW/demonlord_default_attack1_SWW_202.5_0.png",
+			"sha256": "361f6f03ff531349a0fe68e60f4feac6dd605f643b3807726485974b076539f0",
+			"bytes": 42825
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack1/SWW/demonlord_default_attack1_SWW_202.5_1.png",
+			"sha256": "f961f1b90ee70e03c8527534d92c166601528a808a8760c1409f6afc84c756ca",
+			"bytes": 43550
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack1/SWW/demonlord_default_attack1_SWW_202.5_2.png",
+			"sha256": "a9762968c9a2492471142ed5c3752c5be9be1c66da763f31567c8b42b9f82438",
+			"bytes": 42835
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack1/SWW/demonlord_default_attack1_SWW_202.5_3.png",
+			"sha256": "7b51582f88017ce7ee4bcff36e000ebf391a1f505755878aafcb52dbf41013ec",
+			"bytes": 44641
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack1/SWW/demonlord_default_attack1_SWW_202.5_4.png",
+			"sha256": "684db2347e04ed144b92105ed1bae910593ed24b79ba8d12cd543e6c8c4d3105",
+			"bytes": 40532
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack1/SWW/demonlord_default_attack1_SWW_202.5_5.png",
+			"sha256": "de3b1a2a10c8c3751dd69877adcc1bfa53e8e01a5393c3b1adc0575b9dffd439",
+			"bytes": 39782
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack1/SWW/demonlord_default_attack1_SWW_202.5_6.png",
+			"sha256": "5b7dc17da8f03fee92fc28aad77a7fe2847b6db6d172655247b8ef77dfa672f5",
+			"bytes": 41901
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack1/SWW/demonlord_default_attack1_SWW_202.5_7.png",
+			"sha256": "684365b52dc8d96553cdd1ccb88280a3db6b629882b20d294952a3c619f1b452",
+			"bytes": 42439
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack1/W/demonlord_default_attack1_W_180.0_0.png",
+			"sha256": "90bc59877309f63a08ecbc7fef9cbf30bdd357ee07b84cbf714c70388c18da05",
+			"bytes": 42417
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack1/W/demonlord_default_attack1_W_180.0_1.png",
+			"sha256": "80fc2214591d25ec1ee826c9c337468f0a2bb7a2b0668099cd282ad6f1a06236",
+			"bytes": 43462
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack1/W/demonlord_default_attack1_W_180.0_2.png",
+			"sha256": "1fdfd37440665af1626a6b27ae7768b536e948f41a871dd1abc0779cc1f25822",
+			"bytes": 42720
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack1/W/demonlord_default_attack1_W_180.0_3.png",
+			"sha256": "9392e94ee1cfbfd2c9552db169dfa3f49875fa15c43887500ecaa248f599d887",
+			"bytes": 44641
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack1/W/demonlord_default_attack1_W_180.0_4.png",
+			"sha256": "d90468729d240451c0af8d1ad54c2b6e48e9a5abcb23236c2c97fc6385e3295d",
+			"bytes": 40604
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack1/W/demonlord_default_attack1_W_180.0_5.png",
+			"sha256": "90040e00ef8e48a69bb97ce04fb3b3899c76daed32b5c8c44b2be85ab0af565e",
+			"bytes": 39856
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack1/W/demonlord_default_attack1_W_180.0_6.png",
+			"sha256": "90858648903dc6090bcc5ba0cbcb4af2bec98a7acffffb09b7d80d5a9430db89",
+			"bytes": 41829
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack1/W/demonlord_default_attack1_W_180.0_7.png",
+			"sha256": "0b0280bc1ea8a4f1b88cb4dff60a4a2def1bc34bb65cf0730ec64cddb6f2a27c",
+			"bytes": 41945
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack2/E/demonlord_default_attack2_E_0.0_0.png",
+			"sha256": "3c5ad55542b1cba3a7906c1f49fbd272057a8208f83656885a2bfd717c0389ca",
+			"bytes": 42927
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack2/E/demonlord_default_attack2_E_0.0_1.png",
+			"sha256": "170d80f54b7f8517ac49f3e212efec2a18d68aff28969074f75beb468fd9c996",
+			"bytes": 43814
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack2/E/demonlord_default_attack2_E_0.0_2.png",
+			"sha256": "fbd7fcd8571cf0fc53759e2961df979d3ba7da3f9633a8b2916c1e063587e5ef",
+			"bytes": 46040
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack2/E/demonlord_default_attack2_E_0.0_3.png",
+			"sha256": "ea63f775ee18c774355ce51f8289567f5b81a26efd6ec1ca0d913fd3c2ff8bc5",
+			"bytes": 47130
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack2/E/demonlord_default_attack2_E_0.0_4.png",
+			"sha256": "f769732c4d675a56bbb266fe03c74067b499d4048649d884f21f7689da3cc8d3",
+			"bytes": 46958
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack2/E/demonlord_default_attack2_E_0.0_5.png",
+			"sha256": "ef820f7af30e6a95f4b9c76c46412a93900a56146121f654585ade4d9bb57320",
+			"bytes": 46138
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack2/E/demonlord_default_attack2_E_0.0_6.png",
+			"sha256": "ab895a86b1b6212e46c7b8d90cf03fe9077de68211da7660c4cfa8fe92bb5f7f",
+			"bytes": 43840
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack2/E/demonlord_default_attack2_E_0.0_7.png",
+			"sha256": "cff27cd4dba838c8a2648e77852efe03b2fa4d3a9b8b32a9092de31ad3ad7d48",
+			"bytes": 42691
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack2/N/demonlord_default_attack2_N_90.0_0.png",
+			"sha256": "2940ac54fcd6fa6ea4dcc6269fedc1d43ba41c5f92b3c2451a48b0b9172b3e59",
+			"bytes": 44505
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack2/N/demonlord_default_attack2_N_90.0_1.png",
+			"sha256": "9d94388423296d3dd816c769a2003ff510525a4316a0e5377b45b126064d9050",
+			"bytes": 43264
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack2/N/demonlord_default_attack2_N_90.0_2.png",
+			"sha256": "73bac10cafc23440062f8536c90c7de41af787645e22b50b71c416bbab204d3a",
+			"bytes": 45546
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack2/N/demonlord_default_attack2_N_90.0_3.png",
+			"sha256": "a430480df8c00c7130016be08cd2b48688c612a1d324fbc73fd91a87c73de871",
+			"bytes": 47384
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack2/N/demonlord_default_attack2_N_90.0_4.png",
+			"sha256": "af9fb4c35407ee0dd86bf2adeee80726ccd6b4918ce268314f2df7f31c16d949",
+			"bytes": 46923
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack2/N/demonlord_default_attack2_N_90.0_5.png",
+			"sha256": "525da88c5b6629f7ddc30cc44ba929bfeec5c1a50c02a77ffd4c4c0fb0bcc68a",
+			"bytes": 45606
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack2/N/demonlord_default_attack2_N_90.0_6.png",
+			"sha256": "5cffafbaaaa034fe9d7211a870fba357d6c3e49cf43a40d163e5238d2fac8df8",
+			"bytes": 43374
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack2/N/demonlord_default_attack2_N_90.0_7.png",
+			"sha256": "9e202e8967dd8cf24f1bc762f4396a9c97c91b98f30189d7fee064429eef154e",
+			"bytes": 43899
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack2/NE/demonlord_default_attack2_NE_45.0_0.png",
+			"sha256": "0b0a79941e3cf5b796d8ff296ca21c224f11633aa9db1375af48d4f9c527ff4a",
+			"bytes": 44660
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack2/NE/demonlord_default_attack2_NE_45.0_1.png",
+			"sha256": "f8647a5c7d79f6ecddeffb107095fc67e7397e345920c7c3c9e185206338b06b",
+			"bytes": 44833
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack2/NE/demonlord_default_attack2_NE_45.0_2.png",
+			"sha256": "b6411ff1307252e789fe5b4cbacdd48368dd7e08179d825f46af052324316f4e",
+			"bytes": 47209
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack2/NE/demonlord_default_attack2_NE_45.0_3.png",
+			"sha256": "5146487981f7a340f5e8d3bfa74396e7951bae6b687807447fee2fb743b802c7",
+			"bytes": 48360
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack2/NE/demonlord_default_attack2_NE_45.0_4.png",
+			"sha256": "e20225fe154250f3c8cee55e7626cc298711e6a6aa0e40cfc6faf9eaa0a6d448",
+			"bytes": 48060
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack2/NE/demonlord_default_attack2_NE_45.0_5.png",
+			"sha256": "53e1991e0c7726ffe7bef7ee1c0f178a2bc14f7017d3a96c402ef37e7d316bcf",
+			"bytes": 47129
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack2/NE/demonlord_default_attack2_NE_45.0_6.png",
+			"sha256": "67223790fe97fd1b7590250565f0196e4315f3c161cdc07aa096b57f85569cdd",
+			"bytes": 44892
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack2/NE/demonlord_default_attack2_NE_45.0_7.png",
+			"sha256": "e1588a0a90d7882a455d49856fc37380082a3dc49d2f459d614a97df54613faf",
+			"bytes": 44329
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack2/NEE/demonlord_default_attack2_NEE_22.5_0.png",
+			"sha256": "aa7356c52e46583d27ce95011e2a5585302bdce8445ca563fd3e0f122e8dde11",
+			"bytes": 43712
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack2/NEE/demonlord_default_attack2_NEE_22.5_1.png",
+			"sha256": "e3b2ab21ed07db909e117d27198cf7a8aadb39915088506842a7e29ab0e09e53",
+			"bytes": 44683
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack2/NEE/demonlord_default_attack2_NEE_22.5_2.png",
+			"sha256": "96eed2307365a1504540e37996c6e05a0b7ce5d0c94e5c085601aad280e311b1",
+			"bytes": 47039
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack2/NEE/demonlord_default_attack2_NEE_22.5_3.png",
+			"sha256": "837eac27d7a046bd4fe2f4c862a3801fbfac7b39193bc937b2ef12709d89ac16",
+			"bytes": 48101
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack2/NEE/demonlord_default_attack2_NEE_22.5_4.png",
+			"sha256": "26efd6db81e5685a6e0c1361af6ccd3dd5917a76a8978acca634fff5ceb03126",
+			"bytes": 47952
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack2/NEE/demonlord_default_attack2_NEE_22.5_5.png",
+			"sha256": "c974f32491185de2924f74683c82dd1681eeaa567d8d9293f25326b23e33d59d",
+			"bytes": 47029
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack2/NEE/demonlord_default_attack2_NEE_22.5_6.png",
+			"sha256": "4aeac828552bd7541830f1e2f5d3590e52b09e2252f160b5acd85088926133ad",
+			"bytes": 44780
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack2/NEE/demonlord_default_attack2_NEE_22.5_7.png",
+			"sha256": "cf51505a9b0f79fa54722be20c6e19aec678d51d984ef06d5c5e4adf5349cc64",
+			"bytes": 43745
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack2/NNE/demonlord_default_attack2_NNE_67.5_0.png",
+			"sha256": "0a565a04977ec786b53d4c4365c642caedc4e109bd753a51d3f4fdb7e937af02",
+			"bytes": 44804
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack2/NNE/demonlord_default_attack2_NNE_67.5_1.png",
+			"sha256": "fc65dd5f9d149e144c1720a3395f4730ecdd0274677e6ea9e367129e4623b202",
+			"bytes": 44330
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack2/NNE/demonlord_default_attack2_NNE_67.5_2.png",
+			"sha256": "9f4c39760e1cca265cafb6d6af64614b2ae32e5e0427b26348b11292cdf1c099",
+			"bytes": 46645
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack2/NNE/demonlord_default_attack2_NNE_67.5_3.png",
+			"sha256": "044cbf10221ef887df58ab8a53f009f0875c31fc07df1d649d3a5f2c84613184",
+			"bytes": 48359
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack2/NNE/demonlord_default_attack2_NNE_67.5_4.png",
+			"sha256": "12fe0cb0bb20eb0c3ef329c7137f8680b8ff2aad20d18048e07c928d1cd69fdd",
+			"bytes": 47803
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack2/NNE/demonlord_default_attack2_NNE_67.5_5.png",
+			"sha256": "6173dcff79c62e2bea5424e6ed299796d6e3cf616e3ee8cba696bcd3c01419ea",
+			"bytes": 46516
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack2/NNE/demonlord_default_attack2_NNE_67.5_6.png",
+			"sha256": "16ee2c800238d8da445e912c2aa5eec5b352b5fd5754edba18f2287381f9cc3f",
+			"bytes": 44339
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack2/NNE/demonlord_default_attack2_NNE_67.5_7.png",
+			"sha256": "922cbfd2bd03ba5b15b46190b33888c4f52f7b19b0f2d08fc178a30c4db05c8f",
+			"bytes": 44616
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack2/NNW/demonlord_default_attack2_NNW_112.5_0.png",
+			"sha256": "3a53c54011fb685f2bda158ab874ac7760f780a18bff6406beb7b3d003cca8eb",
+			"bytes": 43817
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack2/NNW/demonlord_default_attack2_NNW_112.5_1.png",
+			"sha256": "5fb64fdf93b15ae9bf3a44439bae0ead33b07d6e95fc348cd31c5760ac3e3989",
+			"bytes": 42953
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack2/NNW/demonlord_default_attack2_NNW_112.5_2.png",
+			"sha256": "5054ef1a5aa01a62a914f061dd2c752cf04a1aaa667309f87f12a3c00893311d",
+			"bytes": 44554
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack2/NNW/demonlord_default_attack2_NNW_112.5_3.png",
+			"sha256": "508ca5466ef6e5f3da9f9e88c54250bce510f574f7f9d62c80f609905ba49035",
+			"bytes": 46437
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack2/NNW/demonlord_default_attack2_NNW_112.5_4.png",
+			"sha256": "c54bf2ad89f38497cf0088fbf7ae5fb95dca5a0f9a6e336ef84dfec830132e0c",
+			"bytes": 46186
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack2/NNW/demonlord_default_attack2_NNW_112.5_5.png",
+			"sha256": "ed1ada5dd93c2e1442b950474a532acacbcf98d76cfdfcec09ca69f5dbf71703",
+			"bytes": 44461
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack2/NNW/demonlord_default_attack2_NNW_112.5_6.png",
+			"sha256": "9c4da1d194f5c5714bf129238b8c462c9cf40a250ece2143a4bac1e54feb27db",
+			"bytes": 42871
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack2/NNW/demonlord_default_attack2_NNW_112.5_7.png",
+			"sha256": "51b1e72da050a25fdb3d8aafa5346f2d97dfbcc46a28d54bdf9fe58309c3ac7c",
+			"bytes": 42973
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack2/NW/demonlord_default_attack2_NW_135.0_0.png",
+			"sha256": "c3c2837aa0802f793de0fdcbca789436b3c7532fadbc22b3f4a4385f1a5bd848",
+			"bytes": 42676
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack2/NW/demonlord_default_attack2_NW_135.0_1.png",
+			"sha256": "d2ab5c54bae845214b417a17a2e9f4fa89d0ad2cad9a5742a3f10353eef3f081",
+			"bytes": 42089
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack2/NW/demonlord_default_attack2_NW_135.0_2.png",
+			"sha256": "53f01e629e01b069ffcf291a04b48341b1ebd2d0a0d7800d6f69e14047d50d84",
+			"bytes": 43563
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack2/NW/demonlord_default_attack2_NW_135.0_3.png",
+			"sha256": "8c2cfc030b7eaf7325e281c5cb0952395fe5098ccf4941bc31f8efe7f6b2acee",
+			"bytes": 45662
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack2/NW/demonlord_default_attack2_NW_135.0_4.png",
+			"sha256": "a837a1a7fe062d10fd2c7b0d8f5c1d0712be48ee8b62a3409609cde82031751f",
+			"bytes": 45386
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack2/NW/demonlord_default_attack2_NW_135.0_5.png",
+			"sha256": "01c54969a82393bda8e64ada73727989139ea7ef10d3dfa9b26fcff515c56f55",
+			"bytes": 43689
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack2/NW/demonlord_default_attack2_NW_135.0_6.png",
+			"sha256": "915d2470ad50e2618d0f0ece3c338a569af3ccd4efe1df1b06c0ab75637bdb38",
+			"bytes": 42182
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack2/NW/demonlord_default_attack2_NW_135.0_7.png",
+			"sha256": "272b3e03751e636e0ab200cd1821d127a1c2e71413521c9897115f7d690b4f4c",
+			"bytes": 42030
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack2/NWW/demonlord_default_attack2_NWW_157.5_0.png",
+			"sha256": "658b01b6e0b1533e1a38356d8ce837d7a5df85c8496ed0f8bfbe80c19be88104",
+			"bytes": 41711
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack2/NWW/demonlord_default_attack2_NWW_157.5_1.png",
+			"sha256": "f6c4f46663d3ffa83ffffbebaaeb6dab82d95eda9d49a1f6da259c8f23aa4b1d",
+			"bytes": 42105
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack2/NWW/demonlord_default_attack2_NWW_157.5_2.png",
+			"sha256": "4af053fb8f9704a02e1c05b56eac5fa767bb06d7414fc24f7b2a115135bb8f41",
+			"bytes": 43488
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack2/NWW/demonlord_default_attack2_NWW_157.5_3.png",
+			"sha256": "412bb6400b9ce51ad567dc5d3563dc753a735f38f9447e6206157d716dadd682",
+			"bytes": 45068
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack2/NWW/demonlord_default_attack2_NWW_157.5_4.png",
+			"sha256": "2fb91271208dbbd5e6bd148e692abf2c75e97ec934c8f23d3eab94c0e465f0e6",
+			"bytes": 44882
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack2/NWW/demonlord_default_attack2_NWW_157.5_5.png",
+			"sha256": "af7b51a742771df4a9597c89ac239077a269ec4b2a9c2006c1d2dffcc9911fc2",
+			"bytes": 43290
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack2/NWW/demonlord_default_attack2_NWW_157.5_6.png",
+			"sha256": "98f9cd0ff877540b9977a08f45dee331bafed386101989bf23144122a93c18ab",
+			"bytes": 42067
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack2/NWW/demonlord_default_attack2_NWW_157.5_7.png",
+			"sha256": "0965041d42895a65c3412d222b316c355fd83f81dfb2d152b6b4e7c81909018e",
+			"bytes": 41716
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack2/S/demonlord_default_attack2_S_270.0_0.png",
+			"sha256": "635bbfaf81a9aa62af627ba9231854995d3be9737130a11a6238f89b23c7cdd5",
+			"bytes": 43460
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack2/S/demonlord_default_attack2_S_270.0_1.png",
+			"sha256": "e3c4ef6d3589770770c916a689fa5315bb6ff555a07d33b6d381034b3b4902fe",
+			"bytes": 43195
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack2/S/demonlord_default_attack2_S_270.0_2.png",
+			"sha256": "9d9290dc287d6e62504b2e142669e05676e1f35ae8e744dc286fc69c669826f8",
+			"bytes": 44669
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack2/S/demonlord_default_attack2_S_270.0_3.png",
+			"sha256": "e8eb82f10560388b6f71e033156bb1fda405483e945e72618822d2a81dc49b01",
+			"bytes": 45233
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack2/S/demonlord_default_attack2_S_270.0_4.png",
+			"sha256": "a908252dde29ad9682553b308b8492a6707e1ce03e5729aa609f3fbc5f269828",
+			"bytes": 45267
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack2/S/demonlord_default_attack2_S_270.0_5.png",
+			"sha256": "a8f1f126b54e48d8f5bf471c505b53d5c3a1906d0e538fdfcf135a230251def3",
+			"bytes": 44897
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack2/S/demonlord_default_attack2_S_270.0_6.png",
+			"sha256": "48de11ceba24341476e5e3ce639b12465366e4a8ac76f378cb4fbc211ba1f70e",
+			"bytes": 43035
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack2/S/demonlord_default_attack2_S_270.0_7.png",
+			"sha256": "f8e3ad7e2897e5ef3ab7590fee68a9eb814d5575b8c62d99cad3e4222c3652f2",
+			"bytes": 43068
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack2/SE/demonlord_default_attack2_SE_315.0_0.png",
+			"sha256": "a9f159e14ba2b1e065a4aef09421e6adefef0d8ae673539d62a0a852e15a2bea",
+			"bytes": 42349
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack2/SE/demonlord_default_attack2_SE_315.0_1.png",
+			"sha256": "6d97a2b2b381c7f88aba9430013342c9b1f90fc0c282ee4eee6e9d62bdaf1a36",
+			"bytes": 42630
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack2/SE/demonlord_default_attack2_SE_315.0_2.png",
+			"sha256": "f5012d6f96fb0f919c48c56973bddd6f4a8b78d25b3ee05ba299ca7195b4446d",
+			"bytes": 44483
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack2/SE/demonlord_default_attack2_SE_315.0_3.png",
+			"sha256": "b97ef200a1c2dd66958905482f2a75c6cbcb8c81dba5a5f287a56a7644f80160",
+			"bytes": 45402
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack2/SE/demonlord_default_attack2_SE_315.0_4.png",
+			"sha256": "d4b6068143f5c9c2c1250358200156b3e7e7b3a0bcaa4c42023d2c34c622dc3f",
+			"bytes": 45100
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack2/SE/demonlord_default_attack2_SE_315.0_5.png",
+			"sha256": "89faace22a4cf635f9d5da500844f0102329e7f5f98bc66d87d90c53a95d079d",
+			"bytes": 44551
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack2/SE/demonlord_default_attack2_SE_315.0_6.png",
+			"sha256": "ffba66f6b43112ef05b3114e5cad73bfa495d984969eb5a7d82086564c96fbea",
+			"bytes": 42722
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack2/SE/demonlord_default_attack2_SE_315.0_7.png",
+			"sha256": "a310b905e6bf5180503efde3b730c45031666b7abc5ad703aa13e0a553f57d21",
+			"bytes": 42321
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack2/SEE/demonlord_default_attack2_SEE_337.5_0.png",
+			"sha256": "076c9caec53848f459d9dd4427dac83cf2ea523e35eabaa466f003373011016f",
+			"bytes": 42578
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack2/SEE/demonlord_default_attack2_SEE_337.5_1.png",
+			"sha256": "738ac355997080fbbced8f85662cd71c7606ad75f7a157d82c8c2d247245aa0d",
+			"bytes": 43231
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack2/SEE/demonlord_default_attack2_SEE_337.5_2.png",
+			"sha256": "64e02f9741bf886133c44e35b834ae588305429415aa0c03a6576a51c9dca2a1",
+			"bytes": 45532
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack2/SEE/demonlord_default_attack2_SEE_337.5_3.png",
+			"sha256": "6fa768493dcc887394e521fc7e8adc849ecd80f1e4a88babfa97f7c9d66c251e",
+			"bytes": 46006
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack2/SEE/demonlord_default_attack2_SEE_337.5_4.png",
+			"sha256": "2df68e02b469e7dc12828c2e34836f183101e96035b63ba85c7f6a1f584bdb48",
+			"bytes": 45840
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack2/SEE/demonlord_default_attack2_SEE_337.5_5.png",
+			"sha256": "f421bec424f4e4fd86530b9502f8646b5965c7c88c55f6142638b5fd0e6f2c68",
+			"bytes": 45608
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack2/SEE/demonlord_default_attack2_SEE_337.5_6.png",
+			"sha256": "53e1110cd3d34ebf76b85dd9c2c8d01e48f60aff574ceb94098e0a849bf1aa39",
+			"bytes": 43086
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack2/SEE/demonlord_default_attack2_SEE_337.5_7.png",
+			"sha256": "830b2d8cd7130ba97a98027dcb5c980fc3ebf41131675e16ddb4216b523cb134",
+			"bytes": 42446
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack2/SSE/demonlord_default_attack2_SSE_292.5_0.png",
+			"sha256": "fbd8dd5addb49283e8a33d4a706d1aad4dd22cc3a8eb972b17d64da580a1595d",
+			"bytes": 43201
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack2/SSE/demonlord_default_attack2_SSE_292.5_1.png",
+			"sha256": "af66c66f6bafd32a7ab64c8561d3c459d8b9f74c8327968ca341c96f1321ae8e",
+			"bytes": 42754
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack2/SSE/demonlord_default_attack2_SSE_292.5_2.png",
+			"sha256": "630f03654b9bf6d2486958c6f91915a7eba9913c7928ce8875ca8756d2e24619",
+			"bytes": 44101
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack2/SSE/demonlord_default_attack2_SSE_292.5_3.png",
+			"sha256": "add7449a03458812e136dec835670dddf53f9da09e41f2d134be8ce64089c1f8",
+			"bytes": 44845
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack2/SSE/demonlord_default_attack2_SSE_292.5_4.png",
+			"sha256": "21188ce3d3c3b4f6b0a92146411d0cd3da0a2e301184d6af2318e73ffb5c1b50",
+			"bytes": 44725
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack2/SSE/demonlord_default_attack2_SSE_292.5_5.png",
+			"sha256": "1c473e712b8e0d89c05ef282159193bec2eb9e623b2581aac274e9586500acd9",
+			"bytes": 44250
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack2/SSE/demonlord_default_attack2_SSE_292.5_6.png",
+			"sha256": "29b75b00df0b2e39bf12f30efdaf63f2be16cec8800d10dbc90fff77d7265092",
+			"bytes": 42688
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack2/SSE/demonlord_default_attack2_SSE_292.5_7.png",
+			"sha256": "638f52d34068d4eac0c1c8224af5a06b3f67fbd91a6ea58a18e437bba912ce95",
+			"bytes": 42403
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack2/SSW/demonlord_default_attack2_SSW_247.5_0.png",
+			"sha256": "25ae01ad4e0d120dfd8733420e256771398336c148952849f040e4ac17a0b787",
+			"bytes": 43550
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack2/SSW/demonlord_default_attack2_SSW_247.5_1.png",
+			"sha256": "c3828b6d23912c79164ca0f44e5faea74fcaef55820207014d63d4e20d902532",
+			"bytes": 43462
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack2/SSW/demonlord_default_attack2_SSW_247.5_2.png",
+			"sha256": "063727fef7a31445a32e4cc68998c417158402d5676134ef2eb339105b51bcf4",
+			"bytes": 44951
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack2/SSW/demonlord_default_attack2_SSW_247.5_3.png",
+			"sha256": "5d62313483925976a3a7db83ebb06ae7cd7ca141142f7aabe6b73d69f85f0f3a",
+			"bytes": 45301
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack2/SSW/demonlord_default_attack2_SSW_247.5_4.png",
+			"sha256": "03e238efe4253efab016254b7b393cbb1490a41535c7c4b8a0ed2af723a3fdf8",
+			"bytes": 45412
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack2/SSW/demonlord_default_attack2_SSW_247.5_5.png",
+			"sha256": "ee121eae8bfa8e5af596f1d6581ea88945136cbac75b4caea904143fc11ed5e1",
+			"bytes": 45019
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack2/SSW/demonlord_default_attack2_SSW_247.5_6.png",
+			"sha256": "616621b0d258dae2cc4d5f0149d2d5a87fd9a1497fad24b7689dac2d15d3f09d",
+			"bytes": 43407
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack2/SSW/demonlord_default_attack2_SSW_247.5_7.png",
+			"sha256": "c2ee07b837e113737ffca432f45743dfa78b6000ff50ab5efd897aaa4255d87b",
+			"bytes": 43197
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack2/SW/demonlord_default_attack2_SW_225.0_0.png",
+			"sha256": "0af7bbedb17f7d04afb1274c155bf67a5b978fc4c95fae035490d9adc0ee3029",
+			"bytes": 43665
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack2/SW/demonlord_default_attack2_SW_225.0_1.png",
+			"sha256": "a550dec2bcad989e2a52cd0b491310d85f2471e597249acd45b917ce100d5bf4",
+			"bytes": 43121
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack2/SW/demonlord_default_attack2_SW_225.0_2.png",
+			"sha256": "0e85d473e976932344e90a7de315fb79a626ebc0cfe22d8f4b0ca7100bf98585",
+			"bytes": 44956
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack2/SW/demonlord_default_attack2_SW_225.0_3.png",
+			"sha256": "fb8a2e21f2e4ddf2db5b243c837b815da46ca6049472e9289891de23aaa6c4e7",
+			"bytes": 45584
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack2/SW/demonlord_default_attack2_SW_225.0_4.png",
+			"sha256": "6a8a53935608fbd4e29ba336ba912827a89f1bd7fc829c4b2458bc0b4b496f6a",
+			"bytes": 45317
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack2/SW/demonlord_default_attack2_SW_225.0_5.png",
+			"sha256": "aa557e2cb8f430f20344fb9f73d2fddf674407c1ed0fb765d4617b8649cd6c2b",
+			"bytes": 45083
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack2/SW/demonlord_default_attack2_SW_225.0_6.png",
+			"sha256": "22a9a409a17aace487d7aaae7b81008803160c65c119278f3cf039c66a1b9516",
+			"bytes": 43140
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack2/SW/demonlord_default_attack2_SW_225.0_7.png",
+			"sha256": "81e382bbfe134d2f7b302fd1e10be9b4008765e12dd28c04e2dcfebfe9c97fd2",
+			"bytes": 43341
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack2/SWW/demonlord_default_attack2_SWW_202.5_0.png",
+			"sha256": "c0df14ddb07c74d5457cceb2604d16f6379dd337d843e8956befdca9ad1d7686",
+			"bytes": 42825
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack2/SWW/demonlord_default_attack2_SWW_202.5_1.png",
+			"sha256": "a5c6db5ea550968151752f45943d6846686ddcd90f4b9b62f65dd472f9aa0e7a",
+			"bytes": 43074
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack2/SWW/demonlord_default_attack2_SWW_202.5_2.png",
+			"sha256": "e3761125c1e793681d7d04144d5abfb5c58bd9eea488bfbd30454f4a921c820b",
+			"bytes": 44374
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack2/SWW/demonlord_default_attack2_SWW_202.5_3.png",
+			"sha256": "e13f197ddf739ae01e851835c97dd7bd872329386fd8a76a9e633fe2aaa6ff50",
+			"bytes": 45298
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack2/SWW/demonlord_default_attack2_SWW_202.5_4.png",
+			"sha256": "bdc4dac04bfa68d649b99cb7b8977f1a8443285f0726753df2c80ecce15754bb",
+			"bytes": 45056
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack2/SWW/demonlord_default_attack2_SWW_202.5_5.png",
+			"sha256": "217be9291cb8c994392bfe7c8ad89fbe427044cb75dab5f063c3770fd7459cce",
+			"bytes": 44343
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack2/SWW/demonlord_default_attack2_SWW_202.5_6.png",
+			"sha256": "b0c7977f82285fd6d0859f40e7754a6083a6a0eceae6c73a1660f911ff82db6a",
+			"bytes": 43221
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack2/SWW/demonlord_default_attack2_SWW_202.5_7.png",
+			"sha256": "2d9e3b0733d9a802730422f054ed02f23cf45341c8b762fec813290cf1910c39",
+			"bytes": 42663
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack2/W/demonlord_default_attack2_W_180.0_0.png",
+			"sha256": "af626fc2a120a65d1f5554bb177f03646e73aa9b1067da1e86529168007a1a2d",
+			"bytes": 42417
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack2/W/demonlord_default_attack2_W_180.0_1.png",
+			"sha256": "a6d323af15cbd9314f5444cb02fc89eb1b1da2c6cd3fa10dac90c0e7ea6f9931",
+			"bytes": 42751
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack2/W/demonlord_default_attack2_W_180.0_2.png",
+			"sha256": "c471caf2f0751efbdf29f53fcc54423f45586b91060fce87c88e46d5baf452c7",
+			"bytes": 43371
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack2/W/demonlord_default_attack2_W_180.0_3.png",
+			"sha256": "aae54c2714ea14e748f2d795c7654e1a726f354e4807b727a772c3d4925b97a2",
+			"bytes": 45120
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack2/W/demonlord_default_attack2_W_180.0_4.png",
+			"sha256": "af290a8765dda209b8b86fa4b5e144f3704ce1c578f14372db10714d9e625c86",
+			"bytes": 44829
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack2/W/demonlord_default_attack2_W_180.0_5.png",
+			"sha256": "3bd228c3616fd2126bbad0c66cd90eae87256165ccc360519c534e54a8af60a4",
+			"bytes": 43415
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack2/W/demonlord_default_attack2_W_180.0_6.png",
+			"sha256": "680e77e86ab1278a2678adaf4228e7d932e22e9c978065f52de40379654a2a71",
+			"bytes": 42780
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack2/W/demonlord_default_attack2_W_180.0_7.png",
+			"sha256": "1d0bfeaf7a395c9739daeb720f2b3f34958b91d9a8f70c63e3c29bbc3f506232",
+			"bytes": 42291
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_idle/E/demonlord_default_idle_E_0.0_0.png",
+			"sha256": "b72592ff3416f068ffe65212b6214b2b9f3a7c33c0625e3e7ee8c56e91c26ba5",
+			"bytes": 42927
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_idle/E/demonlord_default_idle_E_0.0_1.png",
+			"sha256": "1c20e505f17e44557cf4dced2a8859709869fac202fc91818abf48e400fd3ea0",
+			"bytes": 43015
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_idle/E/demonlord_default_idle_E_0.0_2.png",
+			"sha256": "977a0ede16643870b51594b58c66c38c4eb7f81dba389afa4c299a07e75a7f3b",
+			"bytes": 42777
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_idle/E/demonlord_default_idle_E_0.0_3.png",
+			"sha256": "a54f95d9fee59d6e98603ededf6808fe0550d281156d103a72cdec9f472081aa",
+			"bytes": 42665
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_idle/E/demonlord_default_idle_E_0.0_4.png",
+			"sha256": "175799670bc1f99e053d403841d139ff17ec79db037ff75d02d365f1cfce8a7d",
+			"bytes": 42621
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_idle/E/demonlord_default_idle_E_0.0_5.png",
+			"sha256": "4934dcd71ff9ff2a68d30a2f240b558d08b886aea4213197b6d211e0cc0f9bb3",
+			"bytes": 42662
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_idle/E/demonlord_default_idle_E_0.0_6.png",
+			"sha256": "4d6fa3dad7906f8f00fd91a70d622631ffd62d0c796f3d6ecfd68e3c90107195",
+			"bytes": 42778
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_idle/E/demonlord_default_idle_E_0.0_7.png",
+			"sha256": "df4252c996d8b5b849acb179ed74547f80b064184d98764f67b95ccd73c6cdc4",
+			"bytes": 43016
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_idle/N/demonlord_default_idle_N_90.0_0.png",
+			"sha256": "05ca0fd061d9a6ae1607fc22e7f4b3793aafe9139fe9f64ee0144fdb13c28b7e",
+			"bytes": 44505
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_idle/N/demonlord_default_idle_N_90.0_1.png",
+			"sha256": "7877fff68c939d032a0d23584765a0769db20ed06b3537ad0c05416dcfecb92c",
+			"bytes": 44236
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_idle/N/demonlord_default_idle_N_90.0_2.png",
+			"sha256": "34811184d3170f31954da23eb6943f413b98dbc43ce749c59395e3bd93785275",
+			"bytes": 44192
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_idle/N/demonlord_default_idle_N_90.0_3.png",
+			"sha256": "fc4a5b30eb8d295da9ad496308dde80680b827b44b94b8b2e5b59cdf7bef462e",
+			"bytes": 44360
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_idle/N/demonlord_default_idle_N_90.0_4.png",
+			"sha256": "3808b6a2c2dddd710df2483405423a8ecb02e7b39ac1ef760a103548f53c6407",
+			"bytes": 44327
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_idle/N/demonlord_default_idle_N_90.0_5.png",
+			"sha256": "e5b81260cbb565c87811e8f221661fb68319a5658e521f71d1580f2537da5b45",
+			"bytes": 44370
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_idle/N/demonlord_default_idle_N_90.0_6.png",
+			"sha256": "6696d2c8c78e4da6852cf86dd85aa065a999800e5f601ca67afb9cf05c14203e",
+			"bytes": 44186
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_idle/N/demonlord_default_idle_N_90.0_7.png",
+			"sha256": "a57312a50b7721ffc5ec1bad445770cd30bded50b4bdf95f5a70589976a6a76d",
+			"bytes": 44231
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_idle/NE/demonlord_default_idle_NE_45.0_0.png",
+			"sha256": "791d4938d0fe149e34734387bb9c3bb3e9899baec905fddb17695b1757b45823",
+			"bytes": 44660
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_idle/NE/demonlord_default_idle_NE_45.0_1.png",
+			"sha256": "11c342b1ee318cda140cfa9ededf79c13f8e31a1b8ee5a706f129c4771ea1207",
+			"bytes": 44419
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_idle/NE/demonlord_default_idle_NE_45.0_2.png",
+			"sha256": "15aacb0578fbd1786de51b23c42e2794c8574d66b0b99e9438e7f99b1d587752",
+			"bytes": 44287
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_idle/NE/demonlord_default_idle_NE_45.0_3.png",
+			"sha256": "7704c842e39db928a8a3d93f48be751ab7245732eaee2be5f7f716590ce114af",
+			"bytes": 44238
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_idle/NE/demonlord_default_idle_NE_45.0_4.png",
+			"sha256": "025443c16efda3a42355effc951db354ba36f51cdd3b9de335309ce4bc543f8d",
+			"bytes": 44111
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_idle/NE/demonlord_default_idle_NE_45.0_5.png",
+			"sha256": "219339a168c61e6bcce31093ff87e257407f30cb5b97a2c919814295bb9b06ba",
+			"bytes": 44240
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_idle/NE/demonlord_default_idle_NE_45.0_6.png",
+			"sha256": "28fdee03c166c7ada9c9ba1477b169f1a5cf92f37a3285431d840a169f31d826",
+			"bytes": 44288
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_idle/NE/demonlord_default_idle_NE_45.0_7.png",
+			"sha256": "b463f3ce6e5276410dbf736678ea6a276d28d4288ae48afb3fb15af1d4df19b1",
+			"bytes": 44420
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_idle/NEE/demonlord_default_idle_NEE_22.5_0.png",
+			"sha256": "5b2084d4da72244db111d066c2c82bef54dd3b5a9f884631d5b91e23b8319b6e",
+			"bytes": 43712
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_idle/NEE/demonlord_default_idle_NEE_22.5_1.png",
+			"sha256": "f50708cff164fbfedeae01902dfba94f9cacb29b69ab285e121d9607bd08ad69",
+			"bytes": 43529
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_idle/NEE/demonlord_default_idle_NEE_22.5_2.png",
+			"sha256": "b5be616f664d6b2c5d5789cae4d97299aead71530313bdca0155dfc49b77d86f",
+			"bytes": 43380
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_idle/NEE/demonlord_default_idle_NEE_22.5_3.png",
+			"sha256": "9c485f0ce92020d4d4e789da9fa6e504f283b075d933d4ad68faade831bba22b",
+			"bytes": 43392
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_idle/NEE/demonlord_default_idle_NEE_22.5_4.png",
+			"sha256": "f3d54f1b3717dab30a198217c97a99f9a31a9f99b8bfda2c36186c73366f10a5",
+			"bytes": 43323
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_idle/NEE/demonlord_default_idle_NEE_22.5_5.png",
+			"sha256": "b974d86f2f328c04d3d239cd963409bcd16753ff36db924631bf1cd4df9e55eb",
+			"bytes": 43405
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_idle/NEE/demonlord_default_idle_NEE_22.5_6.png",
+			"sha256": "b8b7b18489df336ec954d723339f6575fe0d485ba98c58254b94d748d7592f3b",
+			"bytes": 43380
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_idle/NEE/demonlord_default_idle_NEE_22.5_7.png",
+			"sha256": "65f5860d3d13e786f0771636f796eefb53088b238ec39154b7a9fd25d3f1b8f3",
+			"bytes": 43528
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_idle/NNE/demonlord_default_idle_NNE_67.5_0.png",
+			"sha256": "16667c91b7e9ad6a1d4235419686e742cfd7d26483b2b0c6da6d1e4d1be18e1b",
+			"bytes": 44804
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_idle/NNE/demonlord_default_idle_NNE_67.5_1.png",
+			"sha256": "5fc19f1e9f8af4189dacbb6b8ab22a98bc86e6b488277052df71436bf109ca8e",
+			"bytes": 44920
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_idle/NNE/demonlord_default_idle_NNE_67.5_2.png",
+			"sha256": "3648fea9c54f9244263736e2564ebe7028bf5f7c144ec2b4bd662923a2f4fda3",
+			"bytes": 44750
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_idle/NNE/demonlord_default_idle_NNE_67.5_3.png",
+			"sha256": "5ae4d69d4cb2005e1eb05676736a862ce8cdc1b84ccdb3d8614a974107cf1400",
+			"bytes": 44662
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_idle/NNE/demonlord_default_idle_NNE_67.5_4.png",
+			"sha256": "a3126aee11d4c8a14635329fb8ef982ae516da938a051865f52ec170498b439d",
+			"bytes": 44424
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_idle/NNE/demonlord_default_idle_NNE_67.5_5.png",
+			"sha256": "0e1bd4b8615c4e941f6b1161e89315407458d3cc116f747dcbfd930dbb6bfba6",
+			"bytes": 44662
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_idle/NNE/demonlord_default_idle_NNE_67.5_6.png",
+			"sha256": "d75319a078ca8d564169abd98faf4a8a556670c3cc94f035a0fb76781e4ee901",
+			"bytes": 44749
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_idle/NNE/demonlord_default_idle_NNE_67.5_7.png",
+			"sha256": "7ed269c42ee30d741852f70e75099a16222ca500ce0db2308e4cf40b026f3b67",
+			"bytes": 44921
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_idle/NNW/demonlord_default_idle_NNW_112.5_0.png",
+			"sha256": "ef73fd48d66f47cf88c8d7faaeb2e9743cb4cabe7d18f83298b0f79b4ad4d3b6",
+			"bytes": 43817
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_idle/NNW/demonlord_default_idle_NNW_112.5_1.png",
+			"sha256": "6dd5af301b276ab705a9acf4b63929558348b01aa78b7ad9eb41f47644a6365f",
+			"bytes": 43792
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_idle/NNW/demonlord_default_idle_NNW_112.5_2.png",
+			"sha256": "dd5e2bf309e5014cc7ab5027c5ff869f7fee58ae96f97e0f01614a40860822c3",
+			"bytes": 43602
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_idle/NNW/demonlord_default_idle_NNW_112.5_3.png",
+			"sha256": "287c28fa013f8a1fcaa2fc9480b82857c45190b54adac95ff23e52c64e53d7d0",
+			"bytes": 43501
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_idle/NNW/demonlord_default_idle_NNW_112.5_4.png",
+			"sha256": "04df4218e270904e76dea7b4adf6166994032c7805e63ad0ea79db0293a78fc4",
+			"bytes": 43519
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_idle/NNW/demonlord_default_idle_NNW_112.5_5.png",
+			"sha256": "0751fff20fce1fdd559c14c2add6a9041dcbd36b297582999fd0ade9fc91890f",
+			"bytes": 43507
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_idle/NNW/demonlord_default_idle_NNW_112.5_6.png",
+			"sha256": "0353f51768db9ce263ff2cfdbb1895cc48404acba923ab08f6632864d635f738",
+			"bytes": 43601
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_idle/NNW/demonlord_default_idle_NNW_112.5_7.png",
+			"sha256": "a0e9ff4c0d87fcc175183a904580118b862d51d8b2bef252ab0362c535ca2b3b",
+			"bytes": 43795
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_idle/NW/demonlord_default_idle_NW_135.0_0.png",
+			"sha256": "6e116aeec20608a6a680fa9ff6ae6ba70a065ddde88623a8e66e26c4ec49c7f7",
+			"bytes": 42676
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_idle/NW/demonlord_default_idle_NW_135.0_1.png",
+			"sha256": "8dccf920be242faab42df6ee0f09d8885d6c0bc67ca91b25c1d57756c113b600",
+			"bytes": 42448
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_idle/NW/demonlord_default_idle_NW_135.0_2.png",
+			"sha256": "3208d2b6837366b9e98cc398290f50574d5acd6d78dfb4f4841fd07e8f3fc2cb",
+			"bytes": 42218
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_idle/NW/demonlord_default_idle_NW_135.0_3.png",
+			"sha256": "48b67bf52006f65b8a5cdfe041bc9436e3431ae0b65841665ad8273167cb750c",
+			"bytes": 42216
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_idle/NW/demonlord_default_idle_NW_135.0_4.png",
+			"sha256": "6fde180a5f5434b185e95c9b04c79d940b526b59703463f57127dd0c66fc4dbf",
+			"bytes": 42099
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_idle/NW/demonlord_default_idle_NW_135.0_5.png",
+			"sha256": "cbb6a0f82d686f8854809ec6cac72a7b8bb5fbb11d2483f615007ee6aeae3e43",
+			"bytes": 42225
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_idle/NW/demonlord_default_idle_NW_135.0_6.png",
+			"sha256": "b6e59b18d95bc72de9778fdcdd95c2370427c6e66d21baa785e4e102b93ec9d0",
+			"bytes": 42218
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_idle/NW/demonlord_default_idle_NW_135.0_7.png",
+			"sha256": "0525e020b1a3789f30de37d6df2b956fc9e4afeb75a0b6a9fcbf0ff7343d1547",
+			"bytes": 42448
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_idle/NWW/demonlord_default_idle_NWW_157.5_0.png",
+			"sha256": "ef22fafe89cc2923f65de1c1e8f8ae422f30431cea9b6ac1b36d551dfe1adb17",
+			"bytes": 41711
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_idle/NWW/demonlord_default_idle_NWW_157.5_1.png",
+			"sha256": "8897251114f44244efb28f42f80eb56e5cec2cdf1ab2af4c82206d48a8a18c92",
+			"bytes": 41751
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_idle/NWW/demonlord_default_idle_NWW_157.5_2.png",
+			"sha256": "4ac232f76ed785543469c1b2af257f8b1e3d9f4ebd600d48aabdebd6c36221e1",
+			"bytes": 41636
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_idle/NWW/demonlord_default_idle_NWW_157.5_3.png",
+			"sha256": "54bbb57938d4ec72aeb92d4efcd019fed63def6f5a9438f955c78b3c518aac79",
+			"bytes": 41350
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_idle/NWW/demonlord_default_idle_NWW_157.5_4.png",
+			"sha256": "b04089a4b6ad78da7b7681f061b2cbbab354aacb6a5a7166193cad64abf914a8",
+			"bytes": 41270
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_idle/NWW/demonlord_default_idle_NWW_157.5_5.png",
+			"sha256": "9496070dc701588c59233b54365ebfdfd6eeca052376fe473c09b2bb1fafade1",
+			"bytes": 41354
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_idle/NWW/demonlord_default_idle_NWW_157.5_6.png",
+			"sha256": "62b0786ec1001e533a0e2a4abf40e895bed544d7c4ca4b550de1801ab537febd",
+			"bytes": 41635
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_idle/NWW/demonlord_default_idle_NWW_157.5_7.png",
+			"sha256": "3ee47a83d603ac9ecebdef1159caaee2bc76f646711864e152970872869d3ac9",
+			"bytes": 41749
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_idle/S/demonlord_default_idle_S_270.0_0.png",
+			"sha256": "af790eaab5ec8c9f41ac97e63116d1ded90e9d8d3438feb792007a374f486335",
+			"bytes": 43460
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_idle/S/demonlord_default_idle_S_270.0_1.png",
+			"sha256": "b2438c8cbf65172395cc30754ed0b4399551964e7a23a8405228442644df9725",
+			"bytes": 43353
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_idle/S/demonlord_default_idle_S_270.0_2.png",
+			"sha256": "7c0488dd0830863f1263852108334d5a25e8ae1734abf261e0df61a4a2660b0a",
+			"bytes": 43329
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_idle/S/demonlord_default_idle_S_270.0_3.png",
+			"sha256": "54ee3abdd98bbf802d2cdac51aac78486ec358896c3cf985dcfb1f8ceae7a7bf",
+			"bytes": 43361
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_idle/S/demonlord_default_idle_S_270.0_4.png",
+			"sha256": "e2b9626d1921192676db5d6b95eb55d3d23fc390a41c90dca9a4f0ecf935cf29",
+			"bytes": 43183
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_idle/S/demonlord_default_idle_S_270.0_5.png",
+			"sha256": "d7e04a3de927889824144d7a9edf7b648894106b8bc4b944237ac7dd79a01e2f",
+			"bytes": 43362
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_idle/S/demonlord_default_idle_S_270.0_6.png",
+			"sha256": "4d1b915703796416e59aeec378e93331ffab9283fa1803b3facb2272822d9b64",
+			"bytes": 43331
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_idle/S/demonlord_default_idle_S_270.0_7.png",
+			"sha256": "2b60f533ddf602ee914637f9355d2ccffc6502ad2a8a69efa14d92be5b76524a",
+			"bytes": 43349
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_idle/SE/demonlord_default_idle_SE_315.0_0.png",
+			"sha256": "66a6a2aa37d6a1b493aabf7f145a64aa6ba787b8d2ab82c086b325479f9c6f45",
+			"bytes": 42349
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_idle/SE/demonlord_default_idle_SE_315.0_1.png",
+			"sha256": "df89b291092ba97965ee54711bfb64ccc9a460439754069abbe544d5d14089cd",
+			"bytes": 42266
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_idle/SE/demonlord_default_idle_SE_315.0_2.png",
+			"sha256": "9dde80755194aa812533e607e7b4dbfdc032d70ac0a5ac8d6bcbcc54e6daa05a",
+			"bytes": 42377
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_idle/SE/demonlord_default_idle_SE_315.0_3.png",
+			"sha256": "351774bd9e535c70c806ec88a0fa6570e4b49ac883748413454e778a6a85da18",
+			"bytes": 42103
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_idle/SE/demonlord_default_idle_SE_315.0_4.png",
+			"sha256": "c16c7264b51d6f4d2889d7d1a29c0547005f88fbcb1f3809e8200bed51588360",
+			"bytes": 42037
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_idle/SE/demonlord_default_idle_SE_315.0_5.png",
+			"sha256": "8a4fed8b17faf7ef6f561f973c9df8249904ba45e192de96161562274e795e8b",
+			"bytes": 42104
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_idle/SE/demonlord_default_idle_SE_315.0_6.png",
+			"sha256": "d6bd996ac3df4c953e7d74148abf80fe92f1cf3f391a62c515290d5c7c40db44",
+			"bytes": 42376
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_idle/SE/demonlord_default_idle_SE_315.0_7.png",
+			"sha256": "f75202ff65be867fd2c6121145f69ca18cca62346d6c3d307e0bd0c8c5715f08",
+			"bytes": 42263
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_idle/SEE/demonlord_default_idle_SEE_337.5_0.png",
+			"sha256": "9aea8d0eff99800f1bf98de59aa9814957ab9f2f31e6dfb930065168de280beb",
+			"bytes": 42578
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_idle/SEE/demonlord_default_idle_SEE_337.5_1.png",
+			"sha256": "b1ab61f7f50295e0d24248d0c88f708fafabace354608fa528342323e846eb7e",
+			"bytes": 42282
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_idle/SEE/demonlord_default_idle_SEE_337.5_2.png",
+			"sha256": "24326d0180e3d9c517446c8ffa9fac6cec0c06178809bb36e368df9bd8037bf3",
+			"bytes": 42307
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_idle/SEE/demonlord_default_idle_SEE_337.5_3.png",
+			"sha256": "03335f2d95970689c0825be534b32e51340c4b11db67329c9aaf9640290823b5",
+			"bytes": 42302
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_idle/SEE/demonlord_default_idle_SEE_337.5_4.png",
+			"sha256": "84e341678e1380cc625fb253be380023cbbe7bdceb2e02bb286db9da9fabef92",
+			"bytes": 42113
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_idle/SEE/demonlord_default_idle_SEE_337.5_5.png",
+			"sha256": "a624a3ab5e9cd096b6829448f38db27b2e1d504682850234fdcdd6af2f05fd3b",
+			"bytes": 42306
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_idle/SEE/demonlord_default_idle_SEE_337.5_6.png",
+			"sha256": "bf410443f3fa23adfc71751f336bdfaf65e15d59d128406a62b912e5780f4cfd",
+			"bytes": 42310
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_idle/SEE/demonlord_default_idle_SEE_337.5_7.png",
+			"sha256": "f3f63ff84c42a5cd117c07b89ea15c52eab312e5e80c01b990f4c31318ef81ac",
+			"bytes": 42282
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_idle/SSE/demonlord_default_idle_SSE_292.5_0.png",
+			"sha256": "e0e15b1d786c4424c6c6ad008e93b3276971ac19dae23d630a8061b5816245e8",
+			"bytes": 43201
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_idle/SSE/demonlord_default_idle_SSE_292.5_1.png",
+			"sha256": "7068296a8fa26f17258347d4f3e17ccd9445503908652d6e4e8f0792a206b3ca",
+			"bytes": 43136
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_idle/SSE/demonlord_default_idle_SSE_292.5_2.png",
+			"sha256": "789c6080fee0fae0c31802b698442798dc574e8185e9352396692e730ef69103",
+			"bytes": 43107
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_idle/SSE/demonlord_default_idle_SSE_292.5_3.png",
+			"sha256": "1931b5b8b14edf27f0eb5871b7d5f8993cc46a544e23a5eb6fd0af55a9241904",
+			"bytes": 42919
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_idle/SSE/demonlord_default_idle_SSE_292.5_4.png",
+			"sha256": "8051da77b24c8a6284721ec5de6ea51cd5dbb4b7f86a5353c7d8abf91b0e2788",
+			"bytes": 42845
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_idle/SSE/demonlord_default_idle_SSE_292.5_5.png",
+			"sha256": "ca5ff095e51bf16bc39e7adfd6fc5b5ebd28e421d25585e6be223c31ad1869c6",
+			"bytes": 42916
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_idle/SSE/demonlord_default_idle_SSE_292.5_6.png",
+			"sha256": "e6a676672d7cadae672deefffce3084cb63bf99e30c1c0327db5dfd4939dad8e",
+			"bytes": 43107
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_idle/SSE/demonlord_default_idle_SSE_292.5_7.png",
+			"sha256": "b2697819ae9c0e4f7f1e714d78d0f9eb85bc7a1667e99a38201a99a561a1c33f",
+			"bytes": 43137
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_idle/SSW/demonlord_default_idle_SSW_247.5_0.png",
+			"sha256": "0c2127b68e2ceffa4815ad2ae89ff790379a095777b7e076a4210ec2502085e3",
+			"bytes": 43550
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_idle/SSW/demonlord_default_idle_SSW_247.5_1.png",
+			"sha256": "f7fbe480ecc465a516829fc2c091d3a6c4f62efe60426258783a9c058b8a8c58",
+			"bytes": 43500
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_idle/SSW/demonlord_default_idle_SSW_247.5_2.png",
+			"sha256": "dcf5f09a24ffd5f92a70dac870e1a2d1e08b826600826291e67da241453e86f6",
+			"bytes": 43621
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_idle/SSW/demonlord_default_idle_SSW_247.5_3.png",
+			"sha256": "726a33300cc5e69c589a6f5bc190094e4ffab1c6b0a5423ed7052d503724e546",
+			"bytes": 43350
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_idle/SSW/demonlord_default_idle_SSW_247.5_4.png",
+			"sha256": "c6c63c7255d6597a0dde427485103e634862ddd638e0808f0bf312f1c20a602d",
+			"bytes": 43212
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_idle/SSW/demonlord_default_idle_SSW_247.5_5.png",
+			"sha256": "4022b8d2efcdbd5d1f7b9bdc23210646972ea5b8fc774779bcee671afbe05610",
+			"bytes": 43349
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_idle/SSW/demonlord_default_idle_SSW_247.5_6.png",
+			"sha256": "10b647ad1570a60d1e54dd71c7d617034893a37453cda6211d39a308e6a01fe3",
+			"bytes": 43621
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_idle/SSW/demonlord_default_idle_SSW_247.5_7.png",
+			"sha256": "68fb4a8c2712c927c0af3e52a538dce3e6c5ee9bde075871a3e14ee913e55d53",
+			"bytes": 43501
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_idle/SW/demonlord_default_idle_SW_225.0_0.png",
+			"sha256": "0cc0b583effe7ab67dc78a85cf4b31321f4c2ce327f845e8d7e4c344bea8022d",
+			"bytes": 43665
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_idle/SW/demonlord_default_idle_SW_225.0_1.png",
+			"sha256": "12ea665fccf51640500d48968c41bb07ffe7e160f92548f0b7d23418683b2168",
+			"bytes": 43614
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_idle/SW/demonlord_default_idle_SW_225.0_2.png",
+			"sha256": "6751146b1095d4091c278effaf8e8d6d62bd542627bd8f9ae83ecd3375d8be2a",
+			"bytes": 43347
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_idle/SW/demonlord_default_idle_SW_225.0_3.png",
+			"sha256": "33ef025c8f78f659788209f5e86068058a03ec4b96cd9b4d8663887df8ad94f3",
+			"bytes": 43313
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_idle/SW/demonlord_default_idle_SW_225.0_4.png",
+			"sha256": "abccbb5ee1c0df6c13636140de2f9b398c7e8d1a5998d2554812baecf4620d6f",
+			"bytes": 43381
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_idle/SW/demonlord_default_idle_SW_225.0_5.png",
+			"sha256": "fa3ed33afb0bc346691f3df665b6702223f86a4d9903880b29f3722ac9f6f451",
+			"bytes": 43309
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_idle/SW/demonlord_default_idle_SW_225.0_6.png",
+			"sha256": "0bd687f829608c00ed9f6f25b42c5adc0e6bd3a91b945d07108a9de40a12ce80",
+			"bytes": 43354
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_idle/SW/demonlord_default_idle_SW_225.0_7.png",
+			"sha256": "0d16c25859d6dc428b021d5f27d7dd411d75cd26ad520a49ed2d8c3d0b718700",
+			"bytes": 43614
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_idle/SWW/demonlord_default_idle_SWW_202.5_0.png",
+			"sha256": "55ce6711f18e5ae6802847b871483b1dd73fa80e5785bf536e82d7985ffe14d2",
+			"bytes": 42825
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_idle/SWW/demonlord_default_idle_SWW_202.5_1.png",
+			"sha256": "a3e484eff1542a7c299d84f23590a4e54426fdceca0ec18fa894e72a06170bf9",
+			"bytes": 43027
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_idle/SWW/demonlord_default_idle_SWW_202.5_2.png",
+			"sha256": "8a42148e1bca5026b4adc5d492fd1cb6ee673a330f8b6d0ad46fe0b2237658f1",
+			"bytes": 42727
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_idle/SWW/demonlord_default_idle_SWW_202.5_3.png",
+			"sha256": "2994e783b99d838d5144a874cd6996e0f6cadc10463ee152351257d9494cdf59",
+			"bytes": 42569
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_idle/SWW/demonlord_default_idle_SWW_202.5_4.png",
+			"sha256": "d733f062824af8234f3c8c78d5d5d43c61bd26e34bf7e09c5e710cc64f07ed5b",
+			"bytes": 42591
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_idle/SWW/demonlord_default_idle_SWW_202.5_5.png",
+			"sha256": "a3cded5750c4a733a52d048a89153787ed7b459fa77594442260cbf1279a1276",
+			"bytes": 42565
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_idle/SWW/demonlord_default_idle_SWW_202.5_6.png",
+			"sha256": "4e07ef23f160d0a7a0b22a665793019672a610c1a7b340e56088bcd9381da6bf",
+			"bytes": 42729
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_idle/SWW/demonlord_default_idle_SWW_202.5_7.png",
+			"sha256": "859f976f395f714c481b3f1627ee64f17cecb1ffbb13c5ef2b6a2779a96d41c3",
+			"bytes": 43026
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_idle/W/demonlord_default_idle_W_180.0_0.png",
+			"sha256": "f9a8898788ae7e225bb7ac101dabc6a322d92e21693e0608a5ef0f59fd428d7e",
+			"bytes": 42417
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_idle/W/demonlord_default_idle_W_180.0_1.png",
+			"sha256": "54a02f93b4601122e722ae531adc952a8b83638b35582f8dabcbf550534c7500",
+			"bytes": 42373
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_idle/W/demonlord_default_idle_W_180.0_2.png",
+			"sha256": "733e1925ad0b1eef7b09557ba0b07b426374e9c4fd40c0ea30dc422f758a4ffd",
+			"bytes": 41989
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_idle/W/demonlord_default_idle_W_180.0_3.png",
+			"sha256": "101b25347896d0006ef6e7511365b1c841e16495dd1f548fc898deb9aeff83e3",
+			"bytes": 41899
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_idle/W/demonlord_default_idle_W_180.0_4.png",
+			"sha256": "6cb428060e5be898befaf8ddfc528e6205868ef793a27630d7914b8013a8e5a9",
+			"bytes": 41785
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_idle/W/demonlord_default_idle_W_180.0_5.png",
+			"sha256": "9136e91b6bff9bf673a689581b2683ecece23ff8e69f9e84da49af10b8dcd77e",
+			"bytes": 41897
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_idle/W/demonlord_default_idle_W_180.0_6.png",
+			"sha256": "32a9063399a7f8bbec078017fdbfbf858de49326b67ee0d7542df8c35038c0ca",
+			"bytes": 41991
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_idle/W/demonlord_default_idle_W_180.0_7.png",
+			"sha256": "ae85b688f4fb7b837878a03de084e5e4e751f5d023643feec75de7c27841b259",
+			"bytes": 42373
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_walk/E/demonlord_default_walk_E_0.0_0.png",
+			"sha256": "bb86ebc60e8035b4042388190d8e532d048a3c9bb3a42922938bc5ecd46c89dc",
+			"bytes": 42572
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_walk/E/demonlord_default_walk_E_0.0_1.png",
+			"sha256": "779f54d927b7637ec6a96083e86deb59722a1d71883ba222ed69e332a15a9869",
+			"bytes": 42758
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_walk/E/demonlord_default_walk_E_0.0_2.png",
+			"sha256": "75cf99e681e34ce294eca3d096dce81048b433d2e123d5d580e808b79a30e707",
+			"bytes": 43501
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_walk/E/demonlord_default_walk_E_0.0_3.png",
+			"sha256": "e475ff58966bd966ee6b8927f84fcceb4b07caecf226e74029ac63c709520ccf",
+			"bytes": 42915
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_walk/E/demonlord_default_walk_E_0.0_4.png",
+			"sha256": "4279e12c74c90c3d5d6b116fc2ccfc42dedf2c470fd358cac3249a7a0003d935",
+			"bytes": 42648
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_walk/E/demonlord_default_walk_E_0.0_5.png",
+			"sha256": "e09b316c70c666cadccd2c6c67f083b7ec50bc64e1d61804bb012d9bfcb8235d",
+			"bytes": 42531
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_walk/E/demonlord_default_walk_E_0.0_6.png",
+			"sha256": "fcef78899e7ee17982bbda7b4f6f12dda7390b43f3206cf8902174bed0259592",
+			"bytes": 42923
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_walk/E/demonlord_default_walk_E_0.0_7.png",
+			"sha256": "71d1a5b3dc4ee379aa4f5b5a421781772603b6dd4b09b44cd9fe9b69ba24029b",
+			"bytes": 42885
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_walk/N/demonlord_default_walk_N_90.0_0.png",
+			"sha256": "c927e7e034329d7d199591788a11d0bfee621570cd89fa1fb874b96c9bffccce",
+			"bytes": 43666
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_walk/N/demonlord_default_walk_N_90.0_1.png",
+			"sha256": "c666b0dec2397be0b21af821ded87e8de451e9aaf5d898e204947e1abf25705e",
+			"bytes": 43903
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_walk/N/demonlord_default_walk_N_90.0_2.png",
+			"sha256": "cb166c59a7ab6e1d5f5c4d5253415d099503ee0e07a51066967abdf82b81b948",
+			"bytes": 44376
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_walk/N/demonlord_default_walk_N_90.0_3.png",
+			"sha256": "2a13c7cd5a33ddfb753ae1e39c6d8a5d8f442d2c6ae56f76f82c587833c8eaad",
+			"bytes": 44268
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_walk/N/demonlord_default_walk_N_90.0_4.png",
+			"sha256": "f916505529de3484bb976d5e41965c1d363ae79120e5a2124c913a3cc3e19fc6",
+			"bytes": 43806
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_walk/N/demonlord_default_walk_N_90.0_5.png",
+			"sha256": "ad501fe8f679f5a1f5dc4b3e95225b4a54e02d3866cb224e24eb78ff3e364af7",
+			"bytes": 44028
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_walk/N/demonlord_default_walk_N_90.0_6.png",
+			"sha256": "2227a6725f4197ab1b0b8dcafcf9a88d0f9b16cf7aa1a2057c4974a5bb3779da",
+			"bytes": 44423
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_walk/N/demonlord_default_walk_N_90.0_7.png",
+			"sha256": "91a474ffb340287e57621ca0872a774bd9257a718da6b75b8208659de1b47256",
+			"bytes": 44027
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_walk/NE/demonlord_default_walk_NE_45.0_0.png",
+			"sha256": "e0834e181258500ec95a35fbfb6691b0cfa48b6d1bc0054425de230753a3e5f2",
+			"bytes": 44249
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_walk/NE/demonlord_default_walk_NE_45.0_1.png",
+			"sha256": "4ff5f7396f738ed579c90515bd7ff64fe6453762bf2b9a23b6ed1837c8af033c",
+			"bytes": 44314
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_walk/NE/demonlord_default_walk_NE_45.0_2.png",
+			"sha256": "419f59d0b18908e81ccc06b1fb9db137ffda3d7cfcb882e53f303a6a40858a7f",
+			"bytes": 44288
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_walk/NE/demonlord_default_walk_NE_45.0_3.png",
+			"sha256": "5ab9275277a968dde79e4658b4ae8c5153d1338a320c339b19fd4790ab1e7118",
+			"bytes": 44258
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_walk/NE/demonlord_default_walk_NE_45.0_4.png",
+			"sha256": "68157c6aca1dcec25e2e478d4e1c3e703e2fb90983757c78c928a898df61cc3f",
+			"bytes": 44207
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_walk/NE/demonlord_default_walk_NE_45.0_5.png",
+			"sha256": "b85ad51027e457d1d29109cb6c8ff519634bf827d212f77b3e37befb2010e153",
+			"bytes": 43997
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_walk/NE/demonlord_default_walk_NE_45.0_6.png",
+			"sha256": "540902ccf88e5bd1c5d19ba8cb0697c8680da4fdb5114386e74286071c9bec2d",
+			"bytes": 44759
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_walk/NE/demonlord_default_walk_NE_45.0_7.png",
+			"sha256": "ed4b9b38c2a94f4cab3398d6d41a2dea54840230d7a04c79efe9bc7290c261f1",
+			"bytes": 44594
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_walk/NEE/demonlord_default_walk_NEE_22.5_0.png",
+			"sha256": "5d143d42b25b3ad8dce1bf06109d06952d3cb0823e9b05b61c67653d9a51f4b8",
+			"bytes": 43731
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_walk/NEE/demonlord_default_walk_NEE_22.5_1.png",
+			"sha256": "965c1a1af889a11ad20e76f50e74dceb8d135ae5101f2ad51e0c276860cae1ca",
+			"bytes": 43613
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_walk/NEE/demonlord_default_walk_NEE_22.5_2.png",
+			"sha256": "b20b40a17eceda350fd73d84bf56e4ae6ab927928fd9dcbef56a5e74529be68c",
+			"bytes": 44023
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_walk/NEE/demonlord_default_walk_NEE_22.5_3.png",
+			"sha256": "0ef678fe6e17f097ae5da181ae0a820c2769ca08012e848079b031fb7c000a8f",
+			"bytes": 43445
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_walk/NEE/demonlord_default_walk_NEE_22.5_4.png",
+			"sha256": "323cbf9b8c44dce1cc0c94ed39385c80a4a5fd1d4054bf00d4f3ae231c593ea8",
+			"bytes": 42990
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_walk/NEE/demonlord_default_walk_NEE_22.5_5.png",
+			"sha256": "4b9352e465d1e31f299ac64270d212ed0325fc579dc4886686ed5828e65b5f5d",
+			"bytes": 43042
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_walk/NEE/demonlord_default_walk_NEE_22.5_6.png",
+			"sha256": "b0bdaf85b30ddee9dc2fd8c95cd8077e255f1a4f98c70bfbab50f1e2ed594cea",
+			"bytes": 43919
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_walk/NEE/demonlord_default_walk_NEE_22.5_7.png",
+			"sha256": "5576676ab1ba2ba3c9638efd3b052943416b0e3fc98f8ac58f8e74d1b804f157",
+			"bytes": 43782
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_walk/NNE/demonlord_default_walk_NNE_67.5_0.png",
+			"sha256": "b6d99120d005530982468efa26b9c5b74610c790c031b0be2b1f30f2b14d38bf",
+			"bytes": 44313
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_walk/NNE/demonlord_default_walk_NNE_67.5_1.png",
+			"sha256": "b09eb5581c1824b6370684496a4bd46cecfaa7c8b6b0651dbb0a4916caef7370",
+			"bytes": 44354
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_walk/NNE/demonlord_default_walk_NNE_67.5_2.png",
+			"sha256": "963079d6a45e44d95d7825020f53bf3457dd71a16d42a73bc8d7f9deb19defca",
+			"bytes": 44826
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_walk/NNE/demonlord_default_walk_NNE_67.5_3.png",
+			"sha256": "eef53127287484457d4dde00ed5f5e509eaa738d744374970027240a37d2bfba",
+			"bytes": 44583
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_walk/NNE/demonlord_default_walk_NNE_67.5_4.png",
+			"sha256": "05c24dcd282dc2a1f1b152f6b1237f2b65d15eb9c8cedd80ce7a15c085a2f04a",
+			"bytes": 44450
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_walk/NNE/demonlord_default_walk_NNE_67.5_5.png",
+			"sha256": "cf0ab7eeb439fb335f27fb02c59d1e467e0273fd1f1a958b4581a1ee37fbcf9b",
+			"bytes": 44407
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_walk/NNE/demonlord_default_walk_NNE_67.5_6.png",
+			"sha256": "8c7dc6007c5a5d25628681524dac465f31e81159dc6399a4cd7ea351f88bb9b4",
+			"bytes": 44885
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_walk/NNE/demonlord_default_walk_NNE_67.5_7.png",
+			"sha256": "3a906248889f3a34277e75b0350285427e1769dcd5082ea4fa1de7019f970d5c",
+			"bytes": 44749
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_walk/NNW/demonlord_default_walk_NNW_112.5_0.png",
+			"sha256": "70c412c3f84c1f761974e78d02c73f393f32a688210f89decd54e74025af433e",
+			"bytes": 42763
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_walk/NNW/demonlord_default_walk_NNW_112.5_1.png",
+			"sha256": "17641f6928e76a7c6e92e6ce9d86d2123edd2584a3d7db5b26827a6bb17552f0",
+			"bytes": 43150
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_walk/NNW/demonlord_default_walk_NNW_112.5_2.png",
+			"sha256": "bf8e88c52d0e5898bafb9e8baa6dd9d215c4f7e436d696e199a922e6d9108d9d",
+			"bytes": 43770
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_walk/NNW/demonlord_default_walk_NNW_112.5_3.png",
+			"sha256": "1726e9fe7c149123c817f0f37be5a290d71181155a44dfd39ebc20220fd423c4",
+			"bytes": 43567
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_walk/NNW/demonlord_default_walk_NNW_112.5_4.png",
+			"sha256": "1a3c0c32e8587df8dcfb3ad43263db93042f08894d5cbc6482de9eab9022ce0e",
+			"bytes": 43059
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_walk/NNW/demonlord_default_walk_NNW_112.5_5.png",
+			"sha256": "14608f0fa5f61600c66eb4e7d13f56479256dafa1a2670733f968ecf83ddc9bc",
+			"bytes": 43426
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_walk/NNW/demonlord_default_walk_NNW_112.5_6.png",
+			"sha256": "90e2c4c89e25668b30b4138f17ea737a997ad4654a6927bf837ad843fd48c7e6",
+			"bytes": 43636
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_walk/NNW/demonlord_default_walk_NNW_112.5_7.png",
+			"sha256": "1abdc429b41eecb91369bbd5f99954d18e575c7c192eb26b2b129bea23ffdaf6",
+			"bytes": 43335
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_walk/NW/demonlord_default_walk_NW_135.0_0.png",
+			"sha256": "5e94b1754952226530676db4c75fbad9377988cdd0365162418413ea17f5eb9c",
+			"bytes": 41886
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_walk/NW/demonlord_default_walk_NW_135.0_1.png",
+			"sha256": "5a42d6de4068fb1aae079cbe1b6a619a53f879ded806b43a6a37295bdf41e610",
+			"bytes": 42045
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_walk/NW/demonlord_default_walk_NW_135.0_2.png",
+			"sha256": "cad9c44bee04c800e83340412e7e94c25360c643da5a520c04bae7592387fb81",
+			"bytes": 42944
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_walk/NW/demonlord_default_walk_NW_135.0_3.png",
+			"sha256": "0cb91df93ff668e60a962823d02249a143784b41fb75eab9fa2fe1f272cf92bc",
+			"bytes": 42822
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_walk/NW/demonlord_default_walk_NW_135.0_4.png",
+			"sha256": "3c5b24204cdb7487e1cdee05a89f477e6577a7af9507db7de53996483024d84a",
+			"bytes": 42585
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_walk/NW/demonlord_default_walk_NW_135.0_5.png",
+			"sha256": "594ae7c4389c2131c1bd8db91d457ea6b63f116fbe33c3dca262d04c1dd08cce",
+			"bytes": 42364
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_walk/NW/demonlord_default_walk_NW_135.0_6.png",
+			"sha256": "df5e82866a5986809f697d8de5154cceface31f1de42bff9afb8d0fbab8e417e",
+			"bytes": 42459
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_walk/NW/demonlord_default_walk_NW_135.0_7.png",
+			"sha256": "582304cec689f06d2f04c28e67b10ee4aa11e2bc9c022bbf59fb00b6b3f81bff",
+			"bytes": 42261
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_walk/NWW/demonlord_default_walk_NWW_157.5_0.png",
+			"sha256": "eb507ee94c721da6bf5f01ba13cb9edc30a1af8bdc8370874c3486c3d0123529",
+			"bytes": 41522
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_walk/NWW/demonlord_default_walk_NWW_157.5_1.png",
+			"sha256": "804f6a2a91ae25c54a6238285e99ed7781c7c6a5dd7ece4cbd620152f7a3583d",
+			"bytes": 41694
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_walk/NWW/demonlord_default_walk_NWW_157.5_2.png",
+			"sha256": "2d2f70383677b71fc453f51acd4a89ed3cc51ef1354e35be7eb8e6ccb0e178e7",
+			"bytes": 42373
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_walk/NWW/demonlord_default_walk_NWW_157.5_3.png",
+			"sha256": "dab1a1f2860f65ce04f837e68bea6d0fb2cd25fa3ddc20b31fa970536ae1502e",
+			"bytes": 42373
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_walk/NWW/demonlord_default_walk_NWW_157.5_4.png",
+			"sha256": "acddc2c1a74e9ac6dc9382d24b503f65e696bfc64edc254f994a4f5c9b3895c3",
+			"bytes": 42415
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_walk/NWW/demonlord_default_walk_NWW_157.5_5.png",
+			"sha256": "1bf894068893ea7de46b595e819068f742b9f0037573e85c3664463db354d2f6",
+			"bytes": 42035
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_walk/NWW/demonlord_default_walk_NWW_157.5_6.png",
+			"sha256": "176a9bb4822ab0326e1f79ddb433b701b2b9c91b618746a86157087c93aa1b7a",
+			"bytes": 42233
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_walk/NWW/demonlord_default_walk_NWW_157.5_7.png",
+			"sha256": "ff9dce10b0ffafc3e1d6c682bae5f730e78f495ad1a1b8e4f2289f85228c42c7",
+			"bytes": 42020
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_walk/S/demonlord_default_walk_S_270.0_0.png",
+			"sha256": "b9170a6bbbcbe012368a546333924763f55393369880a77b56a1d3b0d5e93f09",
+			"bytes": 42410
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_walk/S/demonlord_default_walk_S_270.0_1.png",
+			"sha256": "082e31c74cb97a6a2b178c4c5925e83e8993fb0af5d6ea64c37e9e77975d3279",
+			"bytes": 43055
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_walk/S/demonlord_default_walk_S_270.0_2.png",
+			"sha256": "0215fbfbf8ff4353575ce238912364115130fb8d539c6cf52ae357654b1c040a",
+			"bytes": 43440
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_walk/S/demonlord_default_walk_S_270.0_3.png",
+			"sha256": "e2a8e7e6d05fd28f13388854fcb274bb3bd95ed85e442b14869e7b49ad6ee66e",
+			"bytes": 43017
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_walk/S/demonlord_default_walk_S_270.0_4.png",
+			"sha256": "22e4bd9a0219e37162b218a5d177edd888a4c670e4b69c6c43fcb923e5ffb0aa",
+			"bytes": 42721
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_walk/S/demonlord_default_walk_S_270.0_5.png",
+			"sha256": "1594da4f4b0b3dda021d8f764a18117e89d501d927ffad60ab4a54512a2ff6b1",
+			"bytes": 43080
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_walk/S/demonlord_default_walk_S_270.0_6.png",
+			"sha256": "1a7e0095ee0261c060459a1b5fc7d885c547310500c1d6743142b2f559007c09",
+			"bytes": 43308
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_walk/S/demonlord_default_walk_S_270.0_7.png",
+			"sha256": "99a6b61e24ab62597b97b4446ce1e86fb3ea61b237700022edd8d538e09fc83d",
+			"bytes": 43131
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_walk/SE/demonlord_default_walk_SE_315.0_0.png",
+			"sha256": "7e3ed1784c06c42d3a3c4e5b2577cf28cdef81ec1e01b3ff318e1e77f1e2fcdf",
+			"bytes": 42156
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_walk/SE/demonlord_default_walk_SE_315.0_1.png",
+			"sha256": "6123d9ff29bd2cd53ef55d5c27da825a168b5d3195f786f7921a2e850e6f4de4",
+			"bytes": 42436
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_walk/SE/demonlord_default_walk_SE_315.0_2.png",
+			"sha256": "4d7987ec1d16d79012f3b0c6811abfd8ab6157b79f47601e9028d7f5341b10e5",
+			"bytes": 43046
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_walk/SE/demonlord_default_walk_SE_315.0_3.png",
+			"sha256": "7b0372b35203e90c43e54c59ac5da9bcc5a93bb93f8383303cbbfce720d55dca",
+			"bytes": 42862
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_walk/SE/demonlord_default_walk_SE_315.0_4.png",
+			"sha256": "58bdbf4cf9fc4ea7f65b6d0f434dee93c84ce0a55e5ff4ac254cfcf9418b5f58",
+			"bytes": 42337
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_walk/SE/demonlord_default_walk_SE_315.0_5.png",
+			"sha256": "cf5012a30681ac494c0b1fbb4ed1bef5f079cb25bf2a1bbf5bbc795c1ded1754",
+			"bytes": 42706
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_walk/SE/demonlord_default_walk_SE_315.0_6.png",
+			"sha256": "6b26ac69cf464224a752c191193d7ebac7a7e2c0cf4f6b54895d29bec2a92b0e",
+			"bytes": 42702
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_walk/SE/demonlord_default_walk_SE_315.0_7.png",
+			"sha256": "4f50535edc7afce4a0c13815cf5cc5c71caf6092d71ba6589be2a7661124a2f8",
+			"bytes": 42424
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_walk/SEE/demonlord_default_walk_SEE_337.5_0.png",
+			"sha256": "e94662b61ef677adde0af00961bf0e9a14873b38e2c94922acfe8bb1620af057",
+			"bytes": 41819
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_walk/SEE/demonlord_default_walk_SEE_337.5_1.png",
+			"sha256": "be14fb6dc2dac77cfed0e62f4b4a05d19fb9be945afbaa62c3cf82980ef68c44",
+			"bytes": 42394
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_walk/SEE/demonlord_default_walk_SEE_337.5_2.png",
+			"sha256": "bce8c09f6afdc52e830ec235b3f61b6eb710014437c527929b6d4152fe7148fa",
+			"bytes": 43146
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_walk/SEE/demonlord_default_walk_SEE_337.5_3.png",
+			"sha256": "f95f7d0e24dbf686f48d1afe9aec59104ea14c55a5029fd9be4ed78605b9ba83",
+			"bytes": 42718
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_walk/SEE/demonlord_default_walk_SEE_337.5_4.png",
+			"sha256": "f9ab647bf73a6fd92db7123e7b1ea797de4b98381619e5e735fe1f6d0b7032e6",
+			"bytes": 42540
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_walk/SEE/demonlord_default_walk_SEE_337.5_5.png",
+			"sha256": "78e2761b1aab595b6809cf8262b8ecc0c0273207c795d11495d011aa58c63def",
+			"bytes": 42182
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_walk/SEE/demonlord_default_walk_SEE_337.5_6.png",
+			"sha256": "e186a38afe7090957c1b61312ccb19d06bb13c6120a9f20cd40b51aa5e1dad6c",
+			"bytes": 42643
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_walk/SEE/demonlord_default_walk_SEE_337.5_7.png",
+			"sha256": "2b1e57a0bfb651448e5327816c629ef4c3caf112f93bf1d1447389e951fa0449",
+			"bytes": 42253
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_walk/SSE/demonlord_default_walk_SSE_292.5_0.png",
+			"sha256": "935805ea622c758227624011269c770a5157952306870b352ce39d62450a3ee3",
+			"bytes": 42524
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_walk/SSE/demonlord_default_walk_SSE_292.5_1.png",
+			"sha256": "4cd3f2e960eb7c7be112e755dfdfec5b6508c3168194a417ddcab7a67c64a956",
+			"bytes": 43147
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_walk/SSE/demonlord_default_walk_SSE_292.5_2.png",
+			"sha256": "a4ae234d1945ad8c46639fad791ee8d14299e882b8f7c34b56a255939d20e14e",
+			"bytes": 43726
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_walk/SSE/demonlord_default_walk_SSE_292.5_3.png",
+			"sha256": "a0ee8a0fdb8147e32f0f68d7cee36758b19f64fd5f1c1209a5703e992af19df1",
+			"bytes": 43236
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_walk/SSE/demonlord_default_walk_SSE_292.5_4.png",
+			"sha256": "fb9536c521469c2368b6da612c77c415df61191675be5cd4ddfb31e1c1e95c7b",
+			"bytes": 42678
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_walk/SSE/demonlord_default_walk_SSE_292.5_5.png",
+			"sha256": "5739f2da4a02abe5c8a7451deb37a32106c6a7c44d461391bfa5333c3c11cb33",
+			"bytes": 43164
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_walk/SSE/demonlord_default_walk_SSE_292.5_6.png",
+			"sha256": "07e0a3e7e34c79c5aa1c88d1666d239aa547d566ff4e7b97556113ccc708d6c4",
+			"bytes": 43434
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_walk/SSE/demonlord_default_walk_SSE_292.5_7.png",
+			"sha256": "40a5a0f251eeb87070f7bbcf53bfd9f14f6de4e6d24c159f9ab46343a499133f",
+			"bytes": 42958
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_walk/SSW/demonlord_default_walk_SSW_247.5_0.png",
+			"sha256": "9de1778964843721e68c347c101541f9194b1aa999171635b3794b3162109fc4",
+			"bytes": 42640
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_walk/SSW/demonlord_default_walk_SSW_247.5_1.png",
+			"sha256": "c12482fa75468e7957c0f1be668a042788c68654c54787edd1dfeecaafd5725f",
+			"bytes": 43173
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_walk/SSW/demonlord_default_walk_SSW_247.5_2.png",
+			"sha256": "75ba85d506318b05bb9ca3c3347e68a1bc9dacc52503249d0346b84548bf763c",
+			"bytes": 43712
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_walk/SSW/demonlord_default_walk_SSW_247.5_3.png",
+			"sha256": "9a211d921b779d2f3e577d9addb38beafe255ea7e6db61c2e846ea2fb4f1d7d8",
+			"bytes": 43192
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_walk/SSW/demonlord_default_walk_SSW_247.5_4.png",
+			"sha256": "9ceaa58d226099754d5d30cb0b06064ef22342cee7f4486ab245f445f6278546",
+			"bytes": 42932
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_walk/SSW/demonlord_default_walk_SSW_247.5_5.png",
+			"sha256": "3335679f1ba2d40b8a0eb9be384dc9a5855f05353b29ebd1638bbd5f0cb9ba59",
+			"bytes": 43050
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_walk/SSW/demonlord_default_walk_SSW_247.5_6.png",
+			"sha256": "1bff6e0a7c0861001aaedb78be7da5198fc5894e3c8cdad83ee97c5c0fd1bffc",
+			"bytes": 43818
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_walk/SSW/demonlord_default_walk_SSW_247.5_7.png",
+			"sha256": "a1ccd84552e34bf594fbd900f4a860e044db9bb69e07deef68e969d881a420ed",
+			"bytes": 43250
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_walk/SW/demonlord_default_walk_SW_225.0_0.png",
+			"sha256": "d6f97bdaff95077bcde57a91cbe561b424fa17a1d211465a22cdcba07743bd0d",
+			"bytes": 43264
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_walk/SW/demonlord_default_walk_SW_225.0_1.png",
+			"sha256": "c47e61e1756f41f0e735731013028e2904e921076a64dcb1f7c6cfb2f50f7dcc",
+			"bytes": 43256
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_walk/SW/demonlord_default_walk_SW_225.0_2.png",
+			"sha256": "7861a88a324182ddae21999edf6a5c1212e522a82b667665f73632e6c7d78697",
+			"bytes": 43230
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_walk/SW/demonlord_default_walk_SW_225.0_3.png",
+			"sha256": "4a39dd2b1ff26fc9d9ec2fc342185d866dde8f2dd4e0adf9a1b6b334c8d8f310",
+			"bytes": 43462
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_walk/SW/demonlord_default_walk_SW_225.0_4.png",
+			"sha256": "8da90ea86b0375dfa3ebe37eb59820976f1147e47a7b68523686222baba23cc3",
+			"bytes": 42969
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_walk/SW/demonlord_default_walk_SW_225.0_5.png",
+			"sha256": "faaca3939a8283a1874b4b9296cb9edc4ed014bef8c9cc07dc76cd94412945a5",
+			"bytes": 43321
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_walk/SW/demonlord_default_walk_SW_225.0_6.png",
+			"sha256": "bae806256bf9ce9b4afceb5547d0970502938dd587be7987f383c7dd386cf892",
+			"bytes": 43873
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_walk/SW/demonlord_default_walk_SW_225.0_7.png",
+			"sha256": "994bc2ab738cb9d2c3254536f31fa16a2602175743e32a4fab09dbfd9d53a539",
+			"bytes": 43353
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_walk/SWW/demonlord_default_walk_SWW_202.5_0.png",
+			"sha256": "a5760cb3578c4aa6bce74d6f31e0a671f9ddbb0874455cd2bb9af367f9fb3ce1",
+			"bytes": 42646
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_walk/SWW/demonlord_default_walk_SWW_202.5_1.png",
+			"sha256": "9add4d2fb3631e154698288df5ab273c6ae2d942ec850fbdff297fea1b03a235",
+			"bytes": 42863
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_walk/SWW/demonlord_default_walk_SWW_202.5_2.png",
+			"sha256": "dff470a4527adca055ae9ef437b65bbee24274fefe413c06b50980f7f0625967",
+			"bytes": 43161
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_walk/SWW/demonlord_default_walk_SWW_202.5_3.png",
+			"sha256": "d4b0ceb7c58470f1612d7fe4ded54bf68a73ee7a0e6296123189fb3aa59af61a",
+			"bytes": 42845
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_walk/SWW/demonlord_default_walk_SWW_202.5_4.png",
+			"sha256": "773d49eea3cc12dcf4d4ef72af59a5564c0f7d65fce02c68087a9f43bd2c69bd",
+			"bytes": 42477
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_walk/SWW/demonlord_default_walk_SWW_202.5_5.png",
+			"sha256": "bfbd5e7d44e050a6282d25b0ccabcd8386a6c16dc8e5c7201d482b22d2165e86",
+			"bytes": 42383
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_walk/SWW/demonlord_default_walk_SWW_202.5_6.png",
+			"sha256": "97ba7120c23bc85a836da781c96dbc2138df491585ce8bd90ef4869caaeb01fb",
+			"bytes": 43587
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_walk/SWW/demonlord_default_walk_SWW_202.5_7.png",
+			"sha256": "fb375b53b12337b20f00281723c437e6787e2fbdaeed2411c4afa4983a553a36",
+			"bytes": 43253
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_walk/W/demonlord_default_walk_W_180.0_0.png",
+			"sha256": "0b07437b17ef1689b5daf48e8b46832634514deb4161a7c57164f455c799f4d4",
+			"bytes": 42073
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_walk/W/demonlord_default_walk_W_180.0_1.png",
+			"sha256": "6976abb4528ac6af87391f32e44e47dd456f807db4adfcea3dc6c969a6601209",
+			"bytes": 42050
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_walk/W/demonlord_default_walk_W_180.0_2.png",
+			"sha256": "2c76ef95c25779f9af1c502e90ee14788773b20f0e76a5d3c775b2b537676f39",
+			"bytes": 43055
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_walk/W/demonlord_default_walk_W_180.0_3.png",
+			"sha256": "1fbdb8b896a86f08dfb7402c49c45c3800afeea842c7394eff366cd7c3ff9591",
+			"bytes": 42691
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_walk/W/demonlord_default_walk_W_180.0_4.png",
+			"sha256": "a019f22750b7ffdc3c2589f4b0a6759c1c7d738962792e93e83c09c8732add0f",
+			"bytes": 42336
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_walk/W/demonlord_default_walk_W_180.0_5.png",
+			"sha256": "7df0572a26fa0c47f0861b3641d8ebfa9a938b954ec6c72edd3e12a1b27372fb",
+			"bytes": 42458
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_walk/W/demonlord_default_walk_W_180.0_6.png",
+			"sha256": "029d8ea1660e238ef7edd5bd9431b586cc07619f5ebc13a8b1929fdf44689ffa",
+			"bytes": 43021
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_default_walk/W/demonlord_default_walk_W_180.0_7.png",
+			"sha256": "1e6258beef5e1caae20c3f76efb3463e8ca249b42a9198b73cc868228bb11a93",
+			"bytes": 42435
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_death/E/demonlord_special_death_E_0.0_0.png",
+			"sha256": "0a8dfc524219b11a856c8c89f20f83b9e48cc5e5540cee46a8d59c4aa60b51eb",
+			"bytes": 43209
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_death/E/demonlord_special_death_E_0.0_1.png",
+			"sha256": "e72da89311d51be2e0854726e7f95cd8adcb1308b8b900591ebb3a8367ebdc1a",
+			"bytes": 42794
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_death/E/demonlord_special_death_E_0.0_2.png",
+			"sha256": "63498204da4506a2f2f38ad8ce6e91ee30956325099bc33cccba8c749ebf2212",
+			"bytes": 42113
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_death/E/demonlord_special_death_E_0.0_3.png",
+			"sha256": "8a291e515895fd6f610eace23c75e3e41c1ff8c928a66e19366bb01fa097eb4d",
+			"bytes": 42083
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_death/E/demonlord_special_death_E_0.0_4.png",
+			"sha256": "a8dfa82bcdbe41f8c1740ddf80f9a34e901a87a123efbd262a83bb5a6ef7292f",
+			"bytes": 42266
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_death/E/demonlord_special_death_E_0.0_5.png",
+			"sha256": "665f00f4a908d0045a126066a60111a0017baeed62a6190fff9495791e2ace9a",
+			"bytes": 42253
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_death/E/demonlord_special_death_E_0.0_6.png",
+			"sha256": "54c0ee7a37bc97f61f811a1a6d42c166b5e228d6ac5511f7093ba490ac736532",
+			"bytes": 42253
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_death/E/demonlord_special_death_E_0.0_7.png",
+			"sha256": "71ca784dc447d70fc6f5387148f6ea9decb53d802e0818a734017ea4723b0a8e",
+			"bytes": 42253
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_death/N/demonlord_special_death_N_90.0_0.png",
+			"sha256": "3b300aa43b91ed53f9c7684148a9e7f0d01cd5ae6cae57783818c393ea6a5992",
+			"bytes": 44947
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_death/N/demonlord_special_death_N_90.0_1.png",
+			"sha256": "eb3c233836746d03d435f1f59c00e423e1e7b922f554449ed2c1a6a2a2c28a4d",
+			"bytes": 45026
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_death/N/demonlord_special_death_N_90.0_2.png",
+			"sha256": "1b37ac3097c15a14fbfd96bbd5c69742e4ef774ae13f2d13ae4b23bc3b904036",
+			"bytes": 44461
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_death/N/demonlord_special_death_N_90.0_3.png",
+			"sha256": "2cc2903b75baf11b29aa3f3af66cf92ac4097c1492d3d4583d499ca1111f496a",
+			"bytes": 44761
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_death/N/demonlord_special_death_N_90.0_4.png",
+			"sha256": "49c0075f8c21c9eeec0ba1c410b9f3595de6642295532c6a24f08e8f25063827",
+			"bytes": 44512
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_death/N/demonlord_special_death_N_90.0_5.png",
+			"sha256": "160e08b7680dd6c33b9f46d5bfafe8ae802992100827da7e793404ccc98c4686",
+			"bytes": 44628
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_death/N/demonlord_special_death_N_90.0_6.png",
+			"sha256": "5f64e74e36df331ec021c8396400c2f74dffc8fe52eaa614548ea3c52a3f7071",
+			"bytes": 44628
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_death/N/demonlord_special_death_N_90.0_7.png",
+			"sha256": "85a98f75bdeb3f41f6e26cf0ff3d1b22d59153b3b21a168e134b2eef5efdc08c",
+			"bytes": 44628
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_death/NE/demonlord_special_death_NE_45.0_0.png",
+			"sha256": "0037e82aee0f0015259184781c5882a91212efabe656e4a26a732e659ff03838",
+			"bytes": 44851
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_death/NE/demonlord_special_death_NE_45.0_1.png",
+			"sha256": "25e3eb972be65f878b7508efdd0de5bf99e5a705f7e4c8acc33db290d2e8c6be",
+			"bytes": 44765
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_death/NE/demonlord_special_death_NE_45.0_2.png",
+			"sha256": "eb6ff1797e5afecbbea21ef76246454bb8faf8969be36afade81310d6144efc1",
+			"bytes": 44078
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_death/NE/demonlord_special_death_NE_45.0_3.png",
+			"sha256": "fadfc05d733d2cb58633a42e6a7ef5b91a0bc25620becf8afe6627dddfe2d926",
+			"bytes": 44391
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_death/NE/demonlord_special_death_NE_45.0_4.png",
+			"sha256": "d813c9cbf8e73c9e882b02776e0ec24e8ffd74053e68d5be47e3209a478f148b",
+			"bytes": 44140
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_death/NE/demonlord_special_death_NE_45.0_5.png",
+			"sha256": "918d7a8a75c27bdaa2d5bf6c37250f9d8b0042029ca7c4186eb03c8cc6f21d78",
+			"bytes": 44098
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_death/NE/demonlord_special_death_NE_45.0_6.png",
+			"sha256": "a043aebbc26cc81ad6622b66f7fd7fa48d8883f0369e00de4982caa3970d1aa8",
+			"bytes": 44098
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_death/NE/demonlord_special_death_NE_45.0_7.png",
+			"sha256": "f9160e5599807ccfeab0b956aed7552daac770db59bf41294bdf6216b082749a",
+			"bytes": 44098
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_death/NEE/demonlord_special_death_NEE_22.5_0.png",
+			"sha256": "e5c20022d1a76bd701050d66753c377506306ddd4c33052bb42dc2f701ce88dd",
+			"bytes": 44254
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_death/NEE/demonlord_special_death_NEE_22.5_1.png",
+			"sha256": "e49f4eca1f1f50c7da93a9aaf17a4c57150caa865db4f1cd5effe5cd083b7cf3",
+			"bytes": 43456
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_death/NEE/demonlord_special_death_NEE_22.5_2.png",
+			"sha256": "b85c746ee3fe7fc5073b33365619e1cf955931524b7e7d7e6d18489812153aaf",
+			"bytes": 42542
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_death/NEE/demonlord_special_death_NEE_22.5_3.png",
+			"sha256": "72a58d5577dd0fa2f4e1a4ad4bd2cf0805c1490d4fefb5eca4692b752d005453",
+			"bytes": 43215
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_death/NEE/demonlord_special_death_NEE_22.5_4.png",
+			"sha256": "50392975b63e9ccd12306861ee4cae3cf41cd1abb297d5bb4677229f78c51b0e",
+			"bytes": 42774
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_death/NEE/demonlord_special_death_NEE_22.5_5.png",
+			"sha256": "1e301a68cfd3ba6eeb5608bada07d68873badf62320acf93d111313ecd830f92",
+			"bytes": 42996
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_death/NEE/demonlord_special_death_NEE_22.5_6.png",
+			"sha256": "23d745be1b0fb9cc6b4b82eacd82e9c6828735a2fee4ad0fa2a5c2dabcb13d8b",
+			"bytes": 42996
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_death/NEE/demonlord_special_death_NEE_22.5_7.png",
+			"sha256": "b8d92e54e384414ef644944112bf0bc1ffd0b2dadaca00eccf94b649805c04b2",
+			"bytes": 42996
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_death/NNE/demonlord_special_death_NNE_67.5_0.png",
+			"sha256": "9eeb89a965abb12235087d4ffe8d0245fb3e0df8698ebe54323af6ac382a5223",
+			"bytes": 45251
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_death/NNE/demonlord_special_death_NNE_67.5_1.png",
+			"sha256": "fe200064078a62586460b669a140ce4236bef03fab1d3ba7b5bae786127779b6",
+			"bytes": 45129
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_death/NNE/demonlord_special_death_NNE_67.5_2.png",
+			"sha256": "f11e1951ff58228ee2d3fb635d5c0df79be37c26c866c2d15ed5febe82238825",
+			"bytes": 44270
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_death/NNE/demonlord_special_death_NNE_67.5_3.png",
+			"sha256": "0e274f7958ebcabfdb0b8da01141ad706f7793526dfc37ff17cf4e9986a225c0",
+			"bytes": 44566
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_death/NNE/demonlord_special_death_NNE_67.5_4.png",
+			"sha256": "849dc95086230b91ec190a85a509da8a0e9cd2886a3a7fde7fbb3b6f0caf6eb3",
+			"bytes": 44596
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_death/NNE/demonlord_special_death_NNE_67.5_5.png",
+			"sha256": "a896e7eedb9b9beb04e1ed6817a039e8c0472e4e40053534f9ae008eb859af4b",
+			"bytes": 44419
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_death/NNE/demonlord_special_death_NNE_67.5_6.png",
+			"sha256": "ce25baa7a341b83eae73559c9cae8b64c6e0f10806a0149df0dce3d97a76fc3d",
+			"bytes": 44419
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_death/NNE/demonlord_special_death_NNE_67.5_7.png",
+			"sha256": "0ce60f38f20a4c95a98b21f47fe16632300421c624145085167878b852cb2af5",
+			"bytes": 44419
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_death/NNW/demonlord_special_death_NNW_112.5_0.png",
+			"sha256": "0ee4bddfbef4bd588230e56fe15aa45e28a30874c02b81ba4cf342bba2d1caeb",
+			"bytes": 44399
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_death/NNW/demonlord_special_death_NNW_112.5_1.png",
+			"sha256": "eb8980939f51514c799b3b2b4eb7ca5a3abcc8b315bb875139d432335aa5253b",
+			"bytes": 44626
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_death/NNW/demonlord_special_death_NNW_112.5_2.png",
+			"sha256": "b22442d22aa9bb2c373cb32d62b4e80160a2fa10dc949ecac1b62902af8e6a09",
+			"bytes": 44338
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_death/NNW/demonlord_special_death_NNW_112.5_3.png",
+			"sha256": "c635a9f12b029d6fa54b5ee8450bfb72c66b461df117d099b5162bdd14b04cb7",
+			"bytes": 44723
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_death/NNW/demonlord_special_death_NNW_112.5_4.png",
+			"sha256": "98e00bedd349e67c97107319fd37e54f05454d666cd43af22f7d9d56f4b15bac",
+			"bytes": 44597
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_death/NNW/demonlord_special_death_NNW_112.5_5.png",
+			"sha256": "4e87f1255813c61c01b413e8a77b9a86cf4cda0702b8c7b8c2c11cd31150393f",
+			"bytes": 44445
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_death/NNW/demonlord_special_death_NNW_112.5_6.png",
+			"sha256": "114a4b64400d719e8da2899bd52b4e457c9afcf8767effca777b32b38fb50aa8",
+			"bytes": 44445
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_death/NNW/demonlord_special_death_NNW_112.5_7.png",
+			"sha256": "ff36fdb6ecf2d50c6cdfe948683f408f3cd579ed5e7595675ea343ff1fd7829b",
+			"bytes": 44445
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_death/NW/demonlord_special_death_NW_135.0_0.png",
+			"sha256": "4cf217cf95522f01877a5cc06440648226276cea73ac0c87e9c47750a303ab00",
+			"bytes": 43073
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_death/NW/demonlord_special_death_NW_135.0_1.png",
+			"sha256": "10b4204680fb04b7bb703899541ba5edefc14c97a3692a289604a79957fdc347",
+			"bytes": 43484
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_death/NW/demonlord_special_death_NW_135.0_2.png",
+			"sha256": "b983c21e3f8c158a19772e149d0abb3dc90cc3e63d65dad6f36bc52e75ffb9e6",
+			"bytes": 43850
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_death/NW/demonlord_special_death_NW_135.0_3.png",
+			"sha256": "5e273ce78b4d877003009c2cab8c0da4ac861a5ed7f9b6fbf71049505de12608",
+			"bytes": 44131
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_death/NW/demonlord_special_death_NW_135.0_4.png",
+			"sha256": "1a201470e821666d2550dd1413bc4d8610fbcf8af38f805016206d5c3995aa32",
+			"bytes": 43980
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_death/NW/demonlord_special_death_NW_135.0_5.png",
+			"sha256": "340300873498daa043d9ea38c78ba6406db3259187ca8a94adabb2afab6b5498",
+			"bytes": 43928
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_death/NW/demonlord_special_death_NW_135.0_6.png",
+			"sha256": "26d5494834bd2b57db22c21ade42d3e3cb4ea93537c964394d31ae3bd7a03d0d",
+			"bytes": 43928
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_death/NW/demonlord_special_death_NW_135.0_7.png",
+			"sha256": "f55c1bbde56ff4f2b594c57a25f931eb42dd6c0b20ab325904f584992f8129c0",
+			"bytes": 43928
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_death/NWW/demonlord_special_death_NWW_157.5_0.png",
+			"sha256": "197ab3f9f83cabad80b989038f2bade9a6718f52e1db562008f450aef852f6d6",
+			"bytes": 42235
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_death/NWW/demonlord_special_death_NWW_157.5_1.png",
+			"sha256": "83f3c9703df3841662783aba1c0cc8ee70b82796f2af447eeebf09160dde2248",
+			"bytes": 42688
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_death/NWW/demonlord_special_death_NWW_157.5_2.png",
+			"sha256": "ea6941cebc9b282987833dcfcc4359e7262cd2abe6963cd044588510e4a68d37",
+			"bytes": 43244
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_death/NWW/demonlord_special_death_NWW_157.5_3.png",
+			"sha256": "81418fd556f4c4d651317b8897d810830fe618fb267d7047790c3eb97a588a45",
+			"bytes": 43272
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_death/NWW/demonlord_special_death_NWW_157.5_4.png",
+			"sha256": "ea7885a7d35f8b491b1fdcc5a58fc201898117281d8f274a1c6e1ebf7c50811d",
+			"bytes": 43269
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_death/NWW/demonlord_special_death_NWW_157.5_5.png",
+			"sha256": "1a8dad8c9cc73c4dbdd8a4eff199ea2d6553b888ffb338d6f6299a34b224346b",
+			"bytes": 43441
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_death/NWW/demonlord_special_death_NWW_157.5_6.png",
+			"sha256": "e00a12ded576ad78042f71de441091aae8244df1043ca0e97d5cea37393c1c97",
+			"bytes": 43441
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_death/NWW/demonlord_special_death_NWW_157.5_7.png",
+			"sha256": "0bd6ef734eb9ce893a21257e3c61773e6ba92a7a71ba9b8ddb29e891ee95f85e",
+			"bytes": 43441
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_death/S/demonlord_special_death_S_270.0_0.png",
+			"sha256": "fb456daffaac755d6b9183e4eec312beffa87603f79b8644379dd1aee4ba4509",
+			"bytes": 43612
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_death/S/demonlord_special_death_S_270.0_1.png",
+			"sha256": "a6f4c03a25bdc415adc66654b99fce41f51c866a728bbcbbb89ef75f70e6de6d",
+			"bytes": 44840
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_death/S/demonlord_special_death_S_270.0_2.png",
+			"sha256": "f7d21d5bbc2f5825f6df9f2b1558ede9ca044cf58e2ed19b6ee9b9b7c47382c9",
+			"bytes": 45390
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_death/S/demonlord_special_death_S_270.0_3.png",
+			"sha256": "534977c240359101b699331234e577a4c8e3f6620515e0ac9c9fbb879b5fff98",
+			"bytes": 45540
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_death/S/demonlord_special_death_S_270.0_4.png",
+			"sha256": "ff9d2526e3e887e6374235fe11dd49a4a0b4be619124b9263074db42d4dcbd29",
+			"bytes": 45532
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_death/S/demonlord_special_death_S_270.0_5.png",
+			"sha256": "c6bdbb5a5089650a548980a52f3180e1fd623bd05fd9fef01609da5cc1dcaf5c",
+			"bytes": 45678
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_death/S/demonlord_special_death_S_270.0_6.png",
+			"sha256": "84cbbfdebefdfcb92cb4ac41d21c76eb8837e4105854f2257df00aea73780c29",
+			"bytes": 45678
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_death/S/demonlord_special_death_S_270.0_7.png",
+			"sha256": "440bba50429d63d075e8d59185ad56b3926e8aba7f784fe726b910ac1716473b",
+			"bytes": 45678
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_death/SE/demonlord_special_death_SE_315.0_0.png",
+			"sha256": "be60ab5ff874365d1526a7e1e1a6395e54507553bf8cea919b115ac9d029cb6e",
+			"bytes": 42549
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_death/SE/demonlord_special_death_SE_315.0_1.png",
+			"sha256": "294a853edad730424254626fb20843b6e54ecc565a24a13cf52b0985d03f302c",
+			"bytes": 43104
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_death/SE/demonlord_special_death_SE_315.0_2.png",
+			"sha256": "509c49b472399da4eba7e1c40cc4e19d16f119c95bbc981bdd92d1701e6520b8",
+			"bytes": 43528
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_death/SE/demonlord_special_death_SE_315.0_3.png",
+			"sha256": "78d1fe1d66460cbc0d3d39ca9d3107c198760d59072978215998ee6b9f59b1e6",
+			"bytes": 43648
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_death/SE/demonlord_special_death_SE_315.0_4.png",
+			"sha256": "d2f5b9af7fa2869fa5446eaf0d8cb2e95fbc952f2054d9a151d6f058e7dba0cd",
+			"bytes": 43621
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_death/SE/demonlord_special_death_SE_315.0_5.png",
+			"sha256": "6972e341be6a8a7d7c05a0a41490873a4ed459b3ed809e47d6e2bb533c587f49",
+			"bytes": 43751
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_death/SE/demonlord_special_death_SE_315.0_6.png",
+			"sha256": "e0d0c8009126d4bdc4b87111d4d9d931204ea80ecb3b3d233a682d0d7d672339",
+			"bytes": 43751
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_death/SE/demonlord_special_death_SE_315.0_7.png",
+			"sha256": "0af29d59a46e22727f2b71449f426e4db55a4d484216dad40b4b5f7cdaccaa03",
+			"bytes": 43751
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_death/SEE/demonlord_special_death_SEE_337.5_0.png",
+			"sha256": "e4f5baaa32416179efe114a9215b7613f35c4c5c0f381483a0d364a62a31aebe",
+			"bytes": 42674
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_death/SEE/demonlord_special_death_SEE_337.5_1.png",
+			"sha256": "eab98181db88ad801b5b0ea4c5df4d144c23efeaa6c05597e4ddb699b09db468",
+			"bytes": 42281
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_death/SEE/demonlord_special_death_SEE_337.5_2.png",
+			"sha256": "7ed896104be1c9c178d8069e37656408896c3042e5c0303b2800b4dad2d25b3f",
+			"bytes": 42292
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_death/SEE/demonlord_special_death_SEE_337.5_3.png",
+			"sha256": "1efb6648fad6546a2c09af9b5f7baa2043c663eb5025598c31e3c820a510931f",
+			"bytes": 42550
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_death/SEE/demonlord_special_death_SEE_337.5_4.png",
+			"sha256": "2320a03f0a1f3457fcb54830e30e39f26da8d25a1f6b707d72dbc554b5910890",
+			"bytes": 42290
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_death/SEE/demonlord_special_death_SEE_337.5_5.png",
+			"sha256": "f4d00801efecb27be76a83b31286a334a32861a274de3495c847ccb0b47e8e15",
+			"bytes": 42633
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_death/SEE/demonlord_special_death_SEE_337.5_6.png",
+			"sha256": "085761f513f01d40aae40342a168212e49a5aa6dbeb0c4201bae7f36f3e3b0ed",
+			"bytes": 42633
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_death/SEE/demonlord_special_death_SEE_337.5_7.png",
+			"sha256": "eb9169a1e5c418d9d42c2cf845025d53a7446e63d2664bb4eb883a77cb56100f",
+			"bytes": 42633
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_death/SSE/demonlord_special_death_SSE_292.5_0.png",
+			"sha256": "ce2aaa6fa2bcd0eae08b9625ca870d9005fa03d3be47cfbc5019fa7c5f1a7efb",
+			"bytes": 43409
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_death/SSE/demonlord_special_death_SSE_292.5_1.png",
+			"sha256": "56ee9f9a3f6bbda92bee164e9ee5ff84543c1984affd50124cbaf44e16b0afbb",
+			"bytes": 44081
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_death/SSE/demonlord_special_death_SSE_292.5_2.png",
+			"sha256": "c274e889032bba693b9e996a367549f78fedb0acea76e456f2b31ba81c099a5e",
+			"bytes": 44767
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_death/SSE/demonlord_special_death_SSE_292.5_3.png",
+			"sha256": "40d5ad24bb7cfcce16e246321fda4716d717f609ccbf54f7f763f6bab9e663ad",
+			"bytes": 44867
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_death/SSE/demonlord_special_death_SSE_292.5_4.png",
+			"sha256": "6f510adf6bfe7ba95732cf2cd4c1401b5cf0fe1b071ce90b98663f6a7e1501ea",
+			"bytes": 44930
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_death/SSE/demonlord_special_death_SSE_292.5_5.png",
+			"sha256": "4f3324179faabe6276ccdeb6784f63993a1c39265c074ea59b6a0f2ff1b6771f",
+			"bytes": 44850
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_death/SSE/demonlord_special_death_SSE_292.5_6.png",
+			"sha256": "243fe36522b5de4fb023560e9d8ac105e3a8de7a339d49b30b4d6d605a0d25f0",
+			"bytes": 44850
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_death/SSE/demonlord_special_death_SSE_292.5_7.png",
+			"sha256": "6644581df152c79b922810f1ea1319c455ad33c5b27d5cff06d8aaee93c72901",
+			"bytes": 44850
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_death/SSW/demonlord_special_death_SSW_247.5_0.png",
+			"sha256": "1a1e8f3d3c0758ab268963e94e637f8de2138499afad42212e618b8cdb65a06a",
+			"bytes": 43784
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_death/SSW/demonlord_special_death_SSW_247.5_1.png",
+			"sha256": "612c04a91099d115ea176d732ed9b2d441efa2a9eb681dfb09403e98249ee44f",
+			"bytes": 44975
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_death/SSW/demonlord_special_death_SSW_247.5_2.png",
+			"sha256": "c60eefde7ce7b79b7288aa58cb833acb575d221fc916c3ac86766cde1f800e8e",
+			"bytes": 45775
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_death/SSW/demonlord_special_death_SSW_247.5_3.png",
+			"sha256": "b0db267544afdbe5d978677ac219a686fec9c6db87370f0fb3d1527ed93c2724",
+			"bytes": 46176
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_death/SSW/demonlord_special_death_SSW_247.5_4.png",
+			"sha256": "17c5683c58e35040b40885c45dae405381f3b977967e86c235bd686a92ed8c62",
+			"bytes": 46158
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_death/SSW/demonlord_special_death_SSW_247.5_5.png",
+			"sha256": "669e898670487548d498cf138a72f79639df16b28689b6b200ab516b7fb099d6",
+			"bytes": 46037
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_death/SSW/demonlord_special_death_SSW_247.5_6.png",
+			"sha256": "0ddb7d5d2f672de87d5c66246a22fa96905d2f4d878a18c00c201fecaebfd64d",
+			"bytes": 46037
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_death/SSW/demonlord_special_death_SSW_247.5_7.png",
+			"sha256": "525f4208c83fe691ca76944c1073aec688fc8798aa534084844c9ff5d291f7d0",
+			"bytes": 46037
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_death/SW/demonlord_special_death_SW_225.0_0.png",
+			"sha256": "e16c361e215902a39d737d505ecaaa02ffe8f405925774bd5aad37f0ba1ff706",
+			"bytes": 43757
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_death/SW/demonlord_special_death_SW_225.0_1.png",
+			"sha256": "07c4c8ef582444af5fcdf17aaabb9731a0d1271ed98fa210d39714d78ea798a9",
+			"bytes": 44993
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_death/SW/demonlord_special_death_SW_225.0_2.png",
+			"sha256": "1a5a4cba5966b1eb3dd0c8dc1fa022430230dca731e1452a2f9b4d07c6f425ef",
+			"bytes": 45684
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_death/SW/demonlord_special_death_SW_225.0_3.png",
+			"sha256": "a70a98c312dff321a1c5214e87953a1b956b433c5a90994baa2657be6ffafe76",
+			"bytes": 46134
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_death/SW/demonlord_special_death_SW_225.0_4.png",
+			"sha256": "401ad843464c68cae8f3409e92eee74305e23fc3ba4d90932534a60ed7b67117",
+			"bytes": 45989
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_death/SW/demonlord_special_death_SW_225.0_5.png",
+			"sha256": "2b60b548d2d698b88abe3eac24027ac65b47495b5ab11df644549a24dd344feb",
+			"bytes": 45894
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_death/SW/demonlord_special_death_SW_225.0_6.png",
+			"sha256": "74c42ff9c534097acefbfb2996e4463d84cc9e546b365a955fee1a34a9a1e1e8",
+			"bytes": 45894
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_death/SW/demonlord_special_death_SW_225.0_7.png",
+			"sha256": "e915dd41f942bb0f782003cecd89b6bbaca0b533e1550f090d5dc9e7a72650e3",
+			"bytes": 45894
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_death/SWW/demonlord_special_death_SWW_202.5_0.png",
+			"sha256": "be9e6085cc12e2e99f7636058f7a2c24c6a91e6df78dd292eb2bb6828e3e3f54",
+			"bytes": 43305
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_death/SWW/demonlord_special_death_SWW_202.5_1.png",
+			"sha256": "7b47749a834a696d96682bb35adbca7fce1e726fe8a546ce77e2bcee6efe97ab",
+			"bytes": 44193
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_death/SWW/demonlord_special_death_SWW_202.5_2.png",
+			"sha256": "fc8b52f89617e57d300fe5384ce2a1df5838be8d30414824200a4d1d5c73f0ac",
+			"bytes": 45059
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_death/SWW/demonlord_special_death_SWW_202.5_3.png",
+			"sha256": "880de23483581426b71f111377d3a5c074919c22c59217d67de0504f2ce96679",
+			"bytes": 45227
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_death/SWW/demonlord_special_death_SWW_202.5_4.png",
+			"sha256": "6f3ff12ba70dfa7267a7eba666546592f7aec6e90480c72685cebb478c9b4a3a",
+			"bytes": 45264
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_death/SWW/demonlord_special_death_SWW_202.5_5.png",
+			"sha256": "a88c97f8ab9eab983bd7a497524ca1b701678bc58850747f3d1afab3bfc8d7c3",
+			"bytes": 45187
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_death/SWW/demonlord_special_death_SWW_202.5_6.png",
+			"sha256": "790971fc23cfdac672053dc2b6a2a3b3e8bbdfb7348af0e334e72feb2fae1431",
+			"bytes": 45187
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_death/SWW/demonlord_special_death_SWW_202.5_7.png",
+			"sha256": "c31ef87351c6dbfa59819e32aebde4048960c9815eb7ff2013791c072e28430a",
+			"bytes": 45187
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_death/W/demonlord_special_death_W_180.0_0.png",
+			"sha256": "4cf5c1158b106e021d38eab25a6c4664668cec365726f7c18c3799753646fb1a",
+			"bytes": 42726
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_death/W/demonlord_special_death_W_180.0_1.png",
+			"sha256": "0a32c9a56b93e14bc1e92a0bb20b9d3c0eece06da8d655e623ebd2a02e9b199d",
+			"bytes": 43126
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_death/W/demonlord_special_death_W_180.0_2.png",
+			"sha256": "26c90aadda12f3ee78c7d700e3b8ff18115413f04b73ab67cc4dcba55144aa0d",
+			"bytes": 43973
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_death/W/demonlord_special_death_W_180.0_3.png",
+			"sha256": "ff0c7a6230a8c21ac94ddc72132065d1d37640359213a1619684378b4622a02d",
+			"bytes": 43848
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_death/W/demonlord_special_death_W_180.0_4.png",
+			"sha256": "a3251167154842056050aba1a962d8db787826e00ceea9f6f18298444a3f1ee2",
+			"bytes": 44102
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_death/W/demonlord_special_death_W_180.0_5.png",
+			"sha256": "78a9770728162673fa71b7957ae6b19bf64bac8a9a7483f9ca7cf44a4aae26fd",
+			"bytes": 43946
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_death/W/demonlord_special_death_W_180.0_6.png",
+			"sha256": "77c265b62622275ef4fda07a5f219e6e97cd8fff1c71798a66d799b7b7e15f99",
+			"bytes": 43946
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_death/W/demonlord_special_death_W_180.0_7.png",
+			"sha256": "7e136cf434324d8eb965a0de57d88c7fa5418914d2c7db5699bfc045d69e2cfe",
+			"bytes": 43946
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_intro/E/demonlord_special_intro_E_0.0_0.png",
+			"sha256": "0d0c058fabd2ade407c340250a81f90b1cb057840ad64ad811e6636d4fa734f8",
+			"bytes": 38749
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_intro/E/demonlord_special_intro_E_0.0_1.png",
+			"sha256": "1ee1078595a1add0f591ff773913f3e0d13f831eb6600391ef73812069326595",
+			"bytes": 39496
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_intro/E/demonlord_special_intro_E_0.0_2.png",
+			"sha256": "ef7a6ab4484b1e2d4727b1e5b62da6b789650d02d3c76f89f78c2c5d79439092",
+			"bytes": 40821
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_intro/E/demonlord_special_intro_E_0.0_3.png",
+			"sha256": "feb39df62b8895af7b1f2755162771b76f26970b45f5172fabddeb58d0ba9ee1",
+			"bytes": 41515
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_intro/E/demonlord_special_intro_E_0.0_4.png",
+			"sha256": "0949c4f6b1de65d56bc058444a8a7f2f90a1d604dd4c26c53310886bbbc1d24e",
+			"bytes": 42166
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_intro/E/demonlord_special_intro_E_0.0_5.png",
+			"sha256": "84c72d93c5b12ae2888865a8ef89e15664bec7e849294e4fa983008e835ac921",
+			"bytes": 42700
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_intro/E/demonlord_special_intro_E_0.0_6.png",
+			"sha256": "3ead17dd5b6bc0bea31f8f48631185c25e1e9510ba1176fc98484a119dc87054",
+			"bytes": 42661
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_intro/E/demonlord_special_intro_E_0.0_7.png",
+			"sha256": "8d816d52c087900568011bbf6d7d0fe8032454b35a6dedff482939ab45631c4a",
+			"bytes": 42807
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_intro/N/demonlord_special_intro_N_90.0_0.png",
+			"sha256": "f4d712caa37d7b710ad490be33b37f1c680cae22723b38e91d3cf616dbbcd560",
+			"bytes": 38894
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_intro/N/demonlord_special_intro_N_90.0_1.png",
+			"sha256": "5a1b40c45636db48d9f718e3b5ef68b60f0f8ae112272c68843fdf4728b0c3f2",
+			"bytes": 39803
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_intro/N/demonlord_special_intro_N_90.0_2.png",
+			"sha256": "9816926cf781c06f03d966ea001306714762d565fda30be7b15b262e7179f140",
+			"bytes": 40903
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_intro/N/demonlord_special_intro_N_90.0_3.png",
+			"sha256": "3b0bdd4bcf7b89e95772162332872615244c299b4735bc8cfc7f92baf04373fd",
+			"bytes": 41379
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_intro/N/demonlord_special_intro_N_90.0_4.png",
+			"sha256": "7c08d444bf19fa9dec849fe8572e7687400c9b1e34ad3876f448bc53b177f3c7",
+			"bytes": 42179
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_intro/N/demonlord_special_intro_N_90.0_5.png",
+			"sha256": "381c8374ac77e032009330032f4299b252285ed230e33aff75cd9ef08013e7ea",
+			"bytes": 43209
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_intro/N/demonlord_special_intro_N_90.0_6.png",
+			"sha256": "7873e7d4bcf67311af0d73ef9e0e991c1def4e8e49c33567ffebea5c3a037f08",
+			"bytes": 43915
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_intro/N/demonlord_special_intro_N_90.0_7.png",
+			"sha256": "416a823ea2dbb07e7cfbd1f61c44baa0c81917b12ccaecbf30ab9bdbd62b330d",
+			"bytes": 44034
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_intro/NE/demonlord_special_intro_NE_45.0_0.png",
+			"sha256": "37f5998828bd14999270ff96d20a91bd45b1a5561875a28284791947f5127087",
+			"bytes": 39663
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_intro/NE/demonlord_special_intro_NE_45.0_1.png",
+			"sha256": "3daf9c03815d1a7a42cdd03c8f5126440940255a6edd4713f6f4665b146e7a0a",
+			"bytes": 40713
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_intro/NE/demonlord_special_intro_NE_45.0_2.png",
+			"sha256": "31483d19952d02e9694be00ba8617933c08e6b58684d65a355cf66543b4b4a2e",
+			"bytes": 41632
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_intro/NE/demonlord_special_intro_NE_45.0_3.png",
+			"sha256": "d6d4edc94aee45089021d9e11f93380446b70e0abf28a74af17e1392002a0f2a",
+			"bytes": 42481
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_intro/NE/demonlord_special_intro_NE_45.0_4.png",
+			"sha256": "44e31d5d2d8dd0753d2c158beeeb5a0a52785ce9556bd1a5a27307db21a25d69",
+			"bytes": 43078
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_intro/NE/demonlord_special_intro_NE_45.0_5.png",
+			"sha256": "cc8f3c44e4af0cc395b04f4a3f333bac55fbe3954247523854428f29cffc0a87",
+			"bytes": 43677
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_intro/NE/demonlord_special_intro_NE_45.0_6.png",
+			"sha256": "3abe5a2811a5bc12b7337f9ec8905793e0458ef8c2c6fd1eeeaf5c2b8c7ac471",
+			"bytes": 44373
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_intro/NE/demonlord_special_intro_NE_45.0_7.png",
+			"sha256": "703c5963604220b9c80870a141be4be25950a0bf4778b7e710d0ecf0a192b703",
+			"bytes": 44547
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_intro/NEE/demonlord_special_intro_NEE_22.5_0.png",
+			"sha256": "617ab7f59d3ab2e7fb118d160450976f8941a172948b0dfc02b8a7a6cbfee901",
+			"bytes": 39307
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_intro/NEE/demonlord_special_intro_NEE_22.5_1.png",
+			"sha256": "8c71b178a0b5baf42fea96cc06437a27b38a2662c99750ed30190564094a2637",
+			"bytes": 40307
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_intro/NEE/demonlord_special_intro_NEE_22.5_2.png",
+			"sha256": "432d56b91c80564a3ccae8e6b46d7508ffbc9fecc7db3c1814e3713be3067f91",
+			"bytes": 41191
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_intro/NEE/demonlord_special_intro_NEE_22.5_3.png",
+			"sha256": "6a775f783bec380643cfa5b4fa038890f053a42986060cf7a95b4c89f95cdab9",
+			"bytes": 42171
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_intro/NEE/demonlord_special_intro_NEE_22.5_4.png",
+			"sha256": "b8331d7788cffb02665aa6af7cb6d6d84bf5f3eca5a4c8710b2fa823c7cf3ae3",
+			"bytes": 43095
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_intro/NEE/demonlord_special_intro_NEE_22.5_5.png",
+			"sha256": "816dd337337a0a642e7d1d4d33aaf8e349b59496f08dcaec29e1bbb97baf8191",
+			"bytes": 43476
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_intro/NEE/demonlord_special_intro_NEE_22.5_6.png",
+			"sha256": "91bee96b88f4fa2e4938434132c721dc6a163d2faab01a7c5b7e1802a0d3cb18",
+			"bytes": 43381
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_intro/NEE/demonlord_special_intro_NEE_22.5_7.png",
+			"sha256": "42fe8d32f485fc3b82cd97d349cec7a326a0114db0ff0f741edc9cdf16f41f2d",
+			"bytes": 43771
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_intro/NNE/demonlord_special_intro_NNE_67.5_0.png",
+			"sha256": "7bccb6ca74c5b16420263b7c7da86ef313cc5bc46d0d34d7cf571293a2eac6d7",
+			"bytes": 39637
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_intro/NNE/demonlord_special_intro_NNE_67.5_1.png",
+			"sha256": "062e79866f3f10b24b13b1a275730e38da5a4c00a86199f04d5b45e199e5f09b",
+			"bytes": 40403
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_intro/NNE/demonlord_special_intro_NNE_67.5_2.png",
+			"sha256": "f6127de9e90f5483eaa930859c5adae2b9838fa7b9fd722394364265bf9cc616",
+			"bytes": 41273
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_intro/NNE/demonlord_special_intro_NNE_67.5_3.png",
+			"sha256": "f128e95160a3c826ad7364f8d289f41ecaad23262b52e88b53461a92ff5eaac6",
+			"bytes": 42007
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_intro/NNE/demonlord_special_intro_NNE_67.5_4.png",
+			"sha256": "818f43bf8b6c959825061076ad492ec1749c2b5387a21e9b5c07f2fd8f5b3b8d",
+			"bytes": 42990
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_intro/NNE/demonlord_special_intro_NNE_67.5_5.png",
+			"sha256": "733afd175dda32879ed446582dbca0030831176003a159f5e51403fde1731c7f",
+			"bytes": 43751
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_intro/NNE/demonlord_special_intro_NNE_67.5_6.png",
+			"sha256": "60b879a6021bbca2c28ad630e151fc211b35001b088721dcf996edfe0e3e9bd6",
+			"bytes": 44743
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_intro/NNE/demonlord_special_intro_NNE_67.5_7.png",
+			"sha256": "6b7ead86272743178e483d70aa9673f2578dea034a0233706e2b46786d50ca34",
+			"bytes": 45006
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_intro/NNW/demonlord_special_intro_NNW_112.5_0.png",
+			"sha256": "47c88bf45829a8377a276218f8901becd8a6628a6403d121094d10e308a8775c",
+			"bytes": 39224
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_intro/NNW/demonlord_special_intro_NNW_112.5_1.png",
+			"sha256": "b61b8b931ebf9ac4c330c08eefec92dd28c6f3433128f89f22a11f5a21857b30",
+			"bytes": 40458
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_intro/NNW/demonlord_special_intro_NNW_112.5_2.png",
+			"sha256": "70fdbba988a26190caa9b58e3cba2077abaddcbb49121764ad4fa99ab0b1276f",
+			"bytes": 41307
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_intro/NNW/demonlord_special_intro_NNW_112.5_3.png",
+			"sha256": "591cb111c85e63d7c37fa38b3f6d08db32336127ab70009cbb493d7cb607789b",
+			"bytes": 41692
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_intro/NNW/demonlord_special_intro_NNW_112.5_4.png",
+			"sha256": "c38292773f4743bf37a1234edc43f7273db9be8376933510722d971f6d8fbe25",
+			"bytes": 42155
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_intro/NNW/demonlord_special_intro_NNW_112.5_5.png",
+			"sha256": "dafbb56e6228154396adb44617ac9e55876465efd0550b941a79d05d42b6a005",
+			"bytes": 42713
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_intro/NNW/demonlord_special_intro_NNW_112.5_6.png",
+			"sha256": "9f6dae049f271e67818c9e78e7fdae2d4e4859821a0d9f683fca2ab42f99b3bc",
+			"bytes": 43354
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_intro/NNW/demonlord_special_intro_NNW_112.5_7.png",
+			"sha256": "8eac97a956c2c31222ddc9c9778e74e5e624d03c5ac1652219f4455e7540ceee",
+			"bytes": 43693
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_intro/NW/demonlord_special_intro_NW_135.0_0.png",
+			"sha256": "2e491d4a237e24b3f1066ab780aa031d60a96299da3a7f7e732cc29dd26d86b5",
+			"bytes": 39221
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_intro/NW/demonlord_special_intro_NW_135.0_1.png",
+			"sha256": "ce94f5f0c30201b977c481c4155f2eec20647e043ec8d43db7c7ec22d2c941c4",
+			"bytes": 40550
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_intro/NW/demonlord_special_intro_NW_135.0_2.png",
+			"sha256": "6f0f26a517315887b0cd11ca6f391a3adaa7c89ae97faa3633123247a63fd843",
+			"bytes": 41703
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_intro/NW/demonlord_special_intro_NW_135.0_3.png",
+			"sha256": "f2c179727cbeb63b0f0787c547ffae708aedbbbe893f82425ae33a9600efbf20",
+			"bytes": 42111
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_intro/NW/demonlord_special_intro_NW_135.0_4.png",
+			"sha256": "ec3391a2f86d144ad4611b7978672f9ad030b15dcad583933bcd036619c72a06",
+			"bytes": 42431
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_intro/NW/demonlord_special_intro_NW_135.0_5.png",
+			"sha256": "e073f82dae494c2cb7267972ad76a1ca86a3c9dfef73cf2d80b7e2b4cd5be597",
+			"bytes": 42520
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_intro/NW/demonlord_special_intro_NW_135.0_6.png",
+			"sha256": "9a1760542031850e8b7bef629378ecac225736a738bd82116e67e703a78dd43a",
+			"bytes": 42920
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_intro/NW/demonlord_special_intro_NW_135.0_7.png",
+			"sha256": "404c8494ba12479542ad4486cd3b2f48b086d3dcb8a97915442d5258f4b454dc",
+			"bytes": 42788
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_intro/NWW/demonlord_special_intro_NWW_157.5_0.png",
+			"sha256": "353e6a404f37560e6a1805a023005c1311c03e89dcb73190733ca4993451833d",
+			"bytes": 39298
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_intro/NWW/demonlord_special_intro_NWW_157.5_1.png",
+			"sha256": "d4ff4f9f0d737ac1b584a80ad476a7350359af198f2cda8c84b8413413926252",
+			"bytes": 40406
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_intro/NWW/demonlord_special_intro_NWW_157.5_2.png",
+			"sha256": "43135ff71ff4576e9e13463aea2c404350e457216acba6ca3fe350e0f16c87bd",
+			"bytes": 41738
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_intro/NWW/demonlord_special_intro_NWW_157.5_3.png",
+			"sha256": "d0526a4548609349c1c573aa59c1ca5baa25b961f4482398c132839e5fdef07a",
+			"bytes": 42203
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_intro/NWW/demonlord_special_intro_NWW_157.5_4.png",
+			"sha256": "5c44b59401d129ebafb16467a9696a684f691ae5d9a6f61244d71d9da0a83372",
+			"bytes": 42345
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_intro/NWW/demonlord_special_intro_NWW_157.5_5.png",
+			"sha256": "75945f10c6cf7243b4cb5de0640b812002993bc4233ddf7763a1fbba5f117710",
+			"bytes": 42017
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_intro/NWW/demonlord_special_intro_NWW_157.5_6.png",
+			"sha256": "6c1d70d2933c180a1ce3b78b23742fab0eedff3edff160309d2e4b8c6355931e",
+			"bytes": 42322
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_intro/NWW/demonlord_special_intro_NWW_157.5_7.png",
+			"sha256": "b202aaeb49d494d3280fc6e02097c8c1c2bbdfceeeb28634a8fdef841f7cabba",
+			"bytes": 42086
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_intro/S/demonlord_special_intro_S_270.0_0.png",
+			"sha256": "0e8c1c673a546f5a12fb91c460a5be786a085e2b6fcf61f2c1068642ad51658f",
+			"bytes": 38304
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_intro/S/demonlord_special_intro_S_270.0_1.png",
+			"sha256": "f038e11f73d2de7b88cfb8426ebf8d6112257d7db7b0d1b6f2e422a2fe277a51",
+			"bytes": 38999
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_intro/S/demonlord_special_intro_S_270.0_2.png",
+			"sha256": "66cdfb776c71ab836a736f6d92f9a82a299f7128654293d3a08c6a5ed463418f",
+			"bytes": 39933
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_intro/S/demonlord_special_intro_S_270.0_3.png",
+			"sha256": "5553fda5f86497ef41bde667d11a97cb177432b31651c73ef06edd9d750187af",
+			"bytes": 41093
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_intro/S/demonlord_special_intro_S_270.0_4.png",
+			"sha256": "fb67d984e6a1f156378b62db54b68b84cdb1c035c31b7658946d6381b2b106cc",
+			"bytes": 41711
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_intro/S/demonlord_special_intro_S_270.0_5.png",
+			"sha256": "279cc8ba5fb7eb4e701d598792576616c791eda89a6d349102da4acf52a623d1",
+			"bytes": 42252
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_intro/S/demonlord_special_intro_S_270.0_6.png",
+			"sha256": "6968a8fa2af995ac0357611b274f1060a60ee23730a970b49db2e6213f666fdb",
+			"bytes": 42626
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_intro/S/demonlord_special_intro_S_270.0_7.png",
+			"sha256": "20d8ab235463631f93b596de1ee6f069c10925b32a5f919e939c8de1617444b7",
+			"bytes": 42963
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_intro/SE/demonlord_special_intro_SE_315.0_0.png",
+			"sha256": "32a4d2fae2ee19fce854b51fa49bfb3a633b900d246f8857da2dac7fc6b4e5ec",
+			"bytes": 37825
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_intro/SE/demonlord_special_intro_SE_315.0_1.png",
+			"sha256": "eff494a8cebd62219762336ff2181e3f91f9910c3767a59711b40aa545be7702",
+			"bytes": 38877
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_intro/SE/demonlord_special_intro_SE_315.0_2.png",
+			"sha256": "0c07fa97ce6e101547c9d66b61c68f2588f881299185b128992881e26fb64731",
+			"bytes": 39728
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_intro/SE/demonlord_special_intro_SE_315.0_3.png",
+			"sha256": "bba0cbbfcb6d656d957d9f764953d9282380ea31e17cf0a9c610e9f290abfa45",
+			"bytes": 40604
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_intro/SE/demonlord_special_intro_SE_315.0_4.png",
+			"sha256": "02d73a8171581891436c728fd955a2e903ae6d72172f03c757047a3c78e929f7",
+			"bytes": 41143
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_intro/SE/demonlord_special_intro_SE_315.0_5.png",
+			"sha256": "2e1ff6e74650c6cc2f8623b76a33f147559562d0f3f436a362899fd1cb57f67b",
+			"bytes": 41325
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_intro/SE/demonlord_special_intro_SE_315.0_6.png",
+			"sha256": "ba1d1a4063b03d76b1d9abc8e129d0e61dc5d1ade254a51696560027d30874bc",
+			"bytes": 42053
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_intro/SE/demonlord_special_intro_SE_315.0_7.png",
+			"sha256": "4f0f264eec786b7c84dd3c95af4fd82de2d3faecba5b32f066d3229910959ef1",
+			"bytes": 42373
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_intro/SEE/demonlord_special_intro_SEE_337.5_0.png",
+			"sha256": "b3a698776432de516097e4c18297235164a6066fa03018cd7ba14ece492096de",
+			"bytes": 38301
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_intro/SEE/demonlord_special_intro_SEE_337.5_1.png",
+			"sha256": "91a377700a3f24d92142b7b909d4a759f8d6c9c14353da36a9b539486f5099fe",
+			"bytes": 39345
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_intro/SEE/demonlord_special_intro_SEE_337.5_2.png",
+			"sha256": "a5a0e26399373ff7b88aae6a4f803499c0277738229e86a29121679bce354204",
+			"bytes": 40089
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_intro/SEE/demonlord_special_intro_SEE_337.5_3.png",
+			"sha256": "5aa95cd6106db8843f8c49bbbb6883e7c82f1d7b4fcb7d864f70c269b8cd46e3",
+			"bytes": 40728
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_intro/SEE/demonlord_special_intro_SEE_337.5_4.png",
+			"sha256": "8797605ee7ba6c9a01ca69df43fee0474a2a275f79bf67cdb0b73ab988dc62c8",
+			"bytes": 41258
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_intro/SEE/demonlord_special_intro_SEE_337.5_5.png",
+			"sha256": "0eea4dce7062b5edc80402e047987d86f416211f37ea15ecf509a94e115d2c9d",
+			"bytes": 41645
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_intro/SEE/demonlord_special_intro_SEE_337.5_6.png",
+			"sha256": "2cbb74a0449b03071a5b99184ff87bcc6fab71ed34b362b5d9bb7e10d1c6141b",
+			"bytes": 41955
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_intro/SEE/demonlord_special_intro_SEE_337.5_7.png",
+			"sha256": "9776b85258656962b51f64eaf6e3ab3b07ff45aee11efd182ed33004559958fb",
+			"bytes": 42471
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_intro/SSE/demonlord_special_intro_SSE_292.5_0.png",
+			"sha256": "456f72e54ecf1a8bf46bd599fe62c86051ab5430f2b34f3723a05e32737b6d10",
+			"bytes": 37679
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_intro/SSE/demonlord_special_intro_SSE_292.5_1.png",
+			"sha256": "034ce254c9df68502e6d309ae0f2d789a3245a604ba07d54d45fd4b9c4eee0ab",
+			"bytes": 38535
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_intro/SSE/demonlord_special_intro_SSE_292.5_2.png",
+			"sha256": "11afd3f3d30c6556e31ff017546bd0ba7c05d8a0d54836e41bb23ccdd02d94e2",
+			"bytes": 39805
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_intro/SSE/demonlord_special_intro_SSE_292.5_3.png",
+			"sha256": "5c74e3ffb242a85d2e4eb262ece6c12bebffe01ef0e4b53cb016718beb68f300",
+			"bytes": 40758
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_intro/SSE/demonlord_special_intro_SSE_292.5_4.png",
+			"sha256": "a3be25788102f42b0454aa5974bb3fbd6791c17b26c7721961fd8c87a500aff7",
+			"bytes": 41307
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_intro/SSE/demonlord_special_intro_SSE_292.5_5.png",
+			"sha256": "d8894a21a3e8efe6e6f05920647cf83745323fd99b4e6caf2518281ac19cd773",
+			"bytes": 41668
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_intro/SSE/demonlord_special_intro_SSE_292.5_6.png",
+			"sha256": "6c492448764d2fdb0fb66a8db9078a47db4a9b1a8b8f4af278acd91b9372478b",
+			"bytes": 42348
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_intro/SSE/demonlord_special_intro_SSE_292.5_7.png",
+			"sha256": "c189166c3fa5e1123b17a3f1dea9690cd42faa367c4469eb878a284465984834",
+			"bytes": 42976
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_intro/SSW/demonlord_special_intro_SSW_247.5_0.png",
+			"sha256": "7e1030ce54f9f5a96889a9af221a4bb415b4a4acf81e0288d6132a05728ab23e",
+			"bytes": 38689
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_intro/SSW/demonlord_special_intro_SSW_247.5_1.png",
+			"sha256": "73d8c28768fc88e7c3edad1b3d3e1aa67cc7ea1be44bc87942d105889b9a7905",
+			"bytes": 39606
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_intro/SSW/demonlord_special_intro_SSW_247.5_2.png",
+			"sha256": "880b96d968683fd9775cf4552b4e6233ed2d018b441cacf3925ad8965cb1b48a",
+			"bytes": 40675
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_intro/SSW/demonlord_special_intro_SSW_247.5_3.png",
+			"sha256": "ea9f42e8852757bc313996458c6360a0f59a394f079063d82d663392f4317bfc",
+			"bytes": 41567
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_intro/SSW/demonlord_special_intro_SSW_247.5_4.png",
+			"sha256": "1f6768fc0cd0d85880b5bc24c9df6be69923ae751fb38670a300be76b31f45a6",
+			"bytes": 42478
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_intro/SSW/demonlord_special_intro_SSW_247.5_5.png",
+			"sha256": "94967901348038a98f5af4dcf75721b08b6d0a02a698b812456acbbf3b19506f",
+			"bytes": 42727
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_intro/SSW/demonlord_special_intro_SSW_247.5_6.png",
+			"sha256": "a42cd443280a971f8c8816608c3af8814da265d04a2de033560a5c32f79ad29a",
+			"bytes": 43381
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_intro/SSW/demonlord_special_intro_SSW_247.5_7.png",
+			"sha256": "bf375522b48825e8aedbe87d760df7dac1cd1cfa665fe740a64fb2365561f8b0",
+			"bytes": 43517
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_intro/SW/demonlord_special_intro_SW_225.0_0.png",
+			"sha256": "04bdfd6654e3cfc0d75488186b917b75cbcfdb9d814f5913090ae5e1ff2ae37b",
+			"bytes": 38920
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_intro/SW/demonlord_special_intro_SW_225.0_1.png",
+			"sha256": "74ee3a05e2251312a62e7d21ea9e4bc0a1950bb18c814650964539e87703ec82",
+			"bytes": 40077
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_intro/SW/demonlord_special_intro_SW_225.0_2.png",
+			"sha256": "f2b400b232b906b1091d5170aec5a3c67c86f11c683985a7dab74ffd92e43250",
+			"bytes": 41330
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_intro/SW/demonlord_special_intro_SW_225.0_3.png",
+			"sha256": "0148d30b18ecf89605073db78251fd463b884243046d677d2015a331550d47db",
+			"bytes": 42227
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_intro/SW/demonlord_special_intro_SW_225.0_4.png",
+			"sha256": "06790897c07560ca41ac957b54708505fe8bd37c46fb256ab1826aa7ffbd9380",
+			"bytes": 42862
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_intro/SW/demonlord_special_intro_SW_225.0_5.png",
+			"sha256": "daedfc9adb04ae50759b2ce49601811543ebe3fff763b08cb617c268ba84c6a1",
+			"bytes": 42915
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_intro/SW/demonlord_special_intro_SW_225.0_6.png",
+			"sha256": "6dc25c5ff8f69c6c9ef6b33ef41bb011960b4b63578bcedc3a8ba4e49bd2217c",
+			"bytes": 43376
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_intro/SW/demonlord_special_intro_SW_225.0_7.png",
+			"sha256": "899947e3888bc6395768b3eea6c8b82b6430805e1cb9f4fbce3c2b4f93b50f5a",
+			"bytes": 43602
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_intro/SWW/demonlord_special_intro_SWW_202.5_0.png",
+			"sha256": "e5ee1717d522a3966fe6a0a1e0bfd950fe597096bbe5461a2509fd13aebaf44c",
+			"bytes": 39311
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_intro/SWW/demonlord_special_intro_SWW_202.5_1.png",
+			"sha256": "24dc678a1115b9c8c6fb4aa018c0020f07d528b543fddecc11f855e91f864b86",
+			"bytes": 40294
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_intro/SWW/demonlord_special_intro_SWW_202.5_2.png",
+			"sha256": "6c701b082815fd1cc8a63b13c3a79775ef05e6e91cf151bab648cdfdc8e0ded2",
+			"bytes": 41948
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_intro/SWW/demonlord_special_intro_SWW_202.5_3.png",
+			"sha256": "f2f316d708b77622bf311feb1299954f3357b68a5a19a31e8f1cf2a91102564d",
+			"bytes": 42272
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_intro/SWW/demonlord_special_intro_SWW_202.5_4.png",
+			"sha256": "cc611a19b92c1142bd75e70eff7210fbb671355dd5cb51367bae3e83f96f3b57",
+			"bytes": 42903
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_intro/SWW/demonlord_special_intro_SWW_202.5_5.png",
+			"sha256": "b62111225e5f85392c7c313cd503100ebd3b8307b69bff5544207bebe10906bc",
+			"bytes": 42958
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_intro/SWW/demonlord_special_intro_SWW_202.5_6.png",
+			"sha256": "afce11189e811eb78c76269e066287e6000dbfd6572e2fcbdcf0d8844bc993c2",
+			"bytes": 42710
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_intro/SWW/demonlord_special_intro_SWW_202.5_7.png",
+			"sha256": "f93b9786610e5fb195a5cf514d6a20b453dc17757de8f51bc8ac42edece3e5d5",
+			"bytes": 42791
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_intro/W/demonlord_special_intro_W_180.0_0.png",
+			"sha256": "021b3e814bdc7940660fb714b8f8c84d81209c1cb5d3c07927e35f353bffd789",
+			"bytes": 39403
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_intro/W/demonlord_special_intro_W_180.0_1.png",
+			"sha256": "045532d3a44dff7b2fe525d99d67ab3a56af0b663c8e536684d9a8846a0b0bc6",
+			"bytes": 40325
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_intro/W/demonlord_special_intro_W_180.0_2.png",
+			"sha256": "af39840a69819eea67a2bcc4aef78f7e78522f95c7bdb63f0850748c826699f7",
+			"bytes": 41379
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_intro/W/demonlord_special_intro_W_180.0_3.png",
+			"sha256": "d143e957e9b3a2b6264d36eaa274cd331116cc434bcdddbc703b28c0465e9bbb",
+			"bytes": 42341
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_intro/W/demonlord_special_intro_W_180.0_4.png",
+			"sha256": "3968a24a982a9e6d70691c041f13a84ebb6b08c2b2d383c1e23246b13588d595",
+			"bytes": 42670
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_intro/W/demonlord_special_intro_W_180.0_5.png",
+			"sha256": "69984d1f1e769c74fd0091d76553081bef564dfaca0c8c9e15fbd529a9a77f3a",
+			"bytes": 42508
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_intro/W/demonlord_special_intro_W_180.0_6.png",
+			"sha256": "57e2bc147d76ad510794260e9adbb5297e87c74651c4fa8474867f66e9b82d26",
+			"bytes": 42285
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_intro/W/demonlord_special_intro_W_180.0_7.png",
+			"sha256": "1d19de72f68c73fd27020b843096c77362bedfc716443a7dc07e648e7fdcbd5e",
+			"bytes": 42350
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_laugh/E/demonlord_special_laugh_E_0.0_0.png",
+			"sha256": "ef61b1fff440a5d6e985322c34d2561f042f139b4dfdf0d6947780588625d6af",
+			"bytes": 42218
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_laugh/E/demonlord_special_laugh_E_0.0_1.png",
+			"sha256": "e325a97769cff6466c9cfbd14e95e336108de7babee709d431e1c2d78114e50f",
+			"bytes": 42077
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_laugh/E/demonlord_special_laugh_E_0.0_2.png",
+			"sha256": "1ad3358117220b14ea552aeee225f02874d7e70daff7cdb434b302b57f6f2d13",
+			"bytes": 41976
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_laugh/E/demonlord_special_laugh_E_0.0_3.png",
+			"sha256": "df695c113bcee9760efa5b543b7fb9470c356815f09fa59ff529d506d658887c",
+			"bytes": 42066
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_laugh/E/demonlord_special_laugh_E_0.0_4.png",
+			"sha256": "2d2e66229129d599bf5a9ce5ecbe03192f5e59303953cd9ca95497a894d5ac86",
+			"bytes": 42218
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_laugh/E/demonlord_special_laugh_E_0.0_5.png",
+			"sha256": "680cbca02f4762be5b215fc5a26ccf03d63de69a5a2db6c752b8c1b9330f640b",
+			"bytes": 42077
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_laugh/E/demonlord_special_laugh_E_0.0_6.png",
+			"sha256": "38888239ab7cdf84773b8ca678334191e841d283cf694e7a37fb4df4eb9f74a3",
+			"bytes": 41976
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_laugh/E/demonlord_special_laugh_E_0.0_7.png",
+			"sha256": "2eb6a104d8e49bcfb0f3696071ecb113c10cfce54319f37ef5cab117b7e323fc",
+			"bytes": 42066
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_laugh/N/demonlord_special_laugh_N_90.0_0.png",
+			"sha256": "5a2fc30e24e55d8ee82146d1df1dd75e703cdbea8e491b85c43405544d9f1ae8",
+			"bytes": 43759
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_laugh/N/demonlord_special_laugh_N_90.0_1.png",
+			"sha256": "d6a9774f19b49b48e94b7148b0f8c2c8914c5677c3885af341f07fd35f086b12",
+			"bytes": 43334
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_laugh/N/demonlord_special_laugh_N_90.0_2.png",
+			"sha256": "762bbb72db9d3257b67aee085a2854ed45509961a13d8e0b3ddf4f695113a4c7",
+			"bytes": 42992
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_laugh/N/demonlord_special_laugh_N_90.0_3.png",
+			"sha256": "d89f177a8aefbc0548ed0e2e0903d2ff0d7a4a5e8b35bd940510ec92031baa5b",
+			"bytes": 43336
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_laugh/N/demonlord_special_laugh_N_90.0_4.png",
+			"sha256": "a0f3415a599eda89be0d1c8bed632c0bb59a00e7b4656de8d71098887e3b23f7",
+			"bytes": 43759
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_laugh/N/demonlord_special_laugh_N_90.0_5.png",
+			"sha256": "f69f9f1ee083b09b2221557264f0c56faeb9fdba81cb7e56ec5b536a97d5ba14",
+			"bytes": 43334
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_laugh/N/demonlord_special_laugh_N_90.0_6.png",
+			"sha256": "a69fd6e0edffe72e59bd65e6127218f2877cadfa449b47d880028320aa79dd68",
+			"bytes": 42992
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_laugh/N/demonlord_special_laugh_N_90.0_7.png",
+			"sha256": "600f3c2b73ca6b8d3b4be4b961e27cffe0b03333c8551d2282b26c73aaeb850a",
+			"bytes": 43336
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_laugh/NE/demonlord_special_laugh_NE_45.0_0.png",
+			"sha256": "80ddf0b7d6a7e4ee382691376f6eeb45ee2f34beff75db3bae54d5db1095a139",
+			"bytes": 43676
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_laugh/NE/demonlord_special_laugh_NE_45.0_1.png",
+			"sha256": "a4e9862a4eb6070021de562dba8729538bda042878140c20949c5bc11280c13f",
+			"bytes": 43397
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_laugh/NE/demonlord_special_laugh_NE_45.0_2.png",
+			"sha256": "202df8bff7e8145e9dc45bfa949231753eb69128750848c8608726969f384388",
+			"bytes": 43217
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_laugh/NE/demonlord_special_laugh_NE_45.0_3.png",
+			"sha256": "31f4cd2bfc81747b5f21f17cb31daeec39b99bc9ff50b39eb2bf5b04ec1f65ab",
+			"bytes": 43395
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_laugh/NE/demonlord_special_laugh_NE_45.0_4.png",
+			"sha256": "5f5e62f38c87cbb39db35f5bfc6f8c5c9617c8c4407928c7030296df8e9c3b90",
+			"bytes": 43676
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_laugh/NE/demonlord_special_laugh_NE_45.0_5.png",
+			"sha256": "535a1f13907f85c929d98776c1eb03e17cd3a1be03777fbc906c5ae38490f9c1",
+			"bytes": 43397
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_laugh/NE/demonlord_special_laugh_NE_45.0_6.png",
+			"sha256": "da7ffae09952d9f8f12577b46483db1d18e688b8269c30424284f3acf9e430ab",
+			"bytes": 43217
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_laugh/NE/demonlord_special_laugh_NE_45.0_7.png",
+			"sha256": "e96033f53a564efe069d3834f70621ce341546b3eca0b3055161b1c16e41f9e2",
+			"bytes": 43395
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_laugh/NEE/demonlord_special_laugh_NEE_22.5_0.png",
+			"sha256": "82bb06b9af417a13736bf6eba7ff39ae8be84c3694b4386c6c38bb3b5f0f6323",
+			"bytes": 42936
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_laugh/NEE/demonlord_special_laugh_NEE_22.5_1.png",
+			"sha256": "bee6edf9926e05a4e12f7bc4e7b449a3f420d1329a2579c65ca2c4800f34cf54",
+			"bytes": 42821
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_laugh/NEE/demonlord_special_laugh_NEE_22.5_2.png",
+			"sha256": "a83a9001f9b9e65b02aa4da91f75a9ee015ac51211ef7b428870116d1e156dce",
+			"bytes": 42388
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_laugh/NEE/demonlord_special_laugh_NEE_22.5_3.png",
+			"sha256": "7d90c77630085065d2ac2f026a90ed4f667aba3fbc7fb06576fa5547f41917b3",
+			"bytes": 42823
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_laugh/NEE/demonlord_special_laugh_NEE_22.5_4.png",
+			"sha256": "844130c7931341beadf5c367776e009a5d491801d56bb5c2c3f34e994df842f6",
+			"bytes": 42936
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_laugh/NEE/demonlord_special_laugh_NEE_22.5_5.png",
+			"sha256": "6d9d7dcdb288bce00dd5f6c02dfc4342caa05ffc48c6f5b9a5d77d7fde137077",
+			"bytes": 42821
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_laugh/NEE/demonlord_special_laugh_NEE_22.5_6.png",
+			"sha256": "63438452a5fa510608cdf27967ef351de6af82c54965e717961e1156083a01cf",
+			"bytes": 42388
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_laugh/NEE/demonlord_special_laugh_NEE_22.5_7.png",
+			"sha256": "e591fe489fe2bf7036ba1edd28b1380cbfda38ad1c3da3f120dd7b0079047063",
+			"bytes": 42823
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_laugh/NNE/demonlord_special_laugh_NNE_67.5_0.png",
+			"sha256": "ef7ef2ac34ea0c78293f780564d0199442f389c1f52e15849e54bcf179c6c61e",
+			"bytes": 43790
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_laugh/NNE/demonlord_special_laugh_NNE_67.5_1.png",
+			"sha256": "dc39f75e72d7f8cd9b4e3f7c36d04f2533ca7b6086911727cd5f0af5d7fdb821",
+			"bytes": 43559
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_laugh/NNE/demonlord_special_laugh_NNE_67.5_2.png",
+			"sha256": "41c4d986e2698feb61c88855f8f80654e4f96d3c12204f81a1519645a2eadc85",
+			"bytes": 43213
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_laugh/NNE/demonlord_special_laugh_NNE_67.5_3.png",
+			"sha256": "4513636fc829327eb3952c16867b351cf9bb1591138e179554ec7d18c765122c",
+			"bytes": 43560
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_laugh/NNE/demonlord_special_laugh_NNE_67.5_4.png",
+			"sha256": "2601aba773577f6f64f1d7a6d352d030c7b0a8495a64325e362f192431d0683f",
+			"bytes": 43790
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_laugh/NNE/demonlord_special_laugh_NNE_67.5_5.png",
+			"sha256": "62232a131bda6382d389fc98e0be326b4e97b19fc7388b2cc374962d43db19a4",
+			"bytes": 43559
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_laugh/NNE/demonlord_special_laugh_NNE_67.5_6.png",
+			"sha256": "4e57d4b2950c42a72a6ee7022efbbd607a36c4c83a01965670cc42dc7abedf31",
+			"bytes": 43213
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_laugh/NNE/demonlord_special_laugh_NNE_67.5_7.png",
+			"sha256": "a4a9592a418c2f48b1cddbef4527c7c27cdb484fd09784da2efbece8eaba877d",
+			"bytes": 43560
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_laugh/NNW/demonlord_special_laugh_NNW_112.5_0.png",
+			"sha256": "9164aa11a957bd62a6980ec7d38742d4b18d83549e8346c0f05239c473865c32",
+			"bytes": 44169
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_laugh/NNW/demonlord_special_laugh_NNW_112.5_1.png",
+			"sha256": "a082274a65fa47402d63be1afd54d18da90eae66c1ef20c3e930936737b86a93",
+			"bytes": 43984
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_laugh/NNW/demonlord_special_laugh_NNW_112.5_2.png",
+			"sha256": "4eb6753c060ebcb8172f28dc5a61783a2ea901021908a245e3d91536c0c75074",
+			"bytes": 43525
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_laugh/NNW/demonlord_special_laugh_NNW_112.5_3.png",
+			"sha256": "69ac6fef2cdedd407d4239a21f0769d8f4d48203b561f7adfedd77855d55e449",
+			"bytes": 43984
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_laugh/NNW/demonlord_special_laugh_NNW_112.5_4.png",
+			"sha256": "3743341815fea3599afb4d6c76f783b623737969e75b4d995edef3f3c2ea5df9",
+			"bytes": 44169
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_laugh/NNW/demonlord_special_laugh_NNW_112.5_5.png",
+			"sha256": "fde7b5abb809cf180359ae5e02493558b6b7823f456ee9692a36c8c81e3f2c3e",
+			"bytes": 43984
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_laugh/NNW/demonlord_special_laugh_NNW_112.5_6.png",
+			"sha256": "3bf0fa36a00e4566f9e9bdb141fcc69f2999f8f7e2730a64d8cfdfa3c325ba93",
+			"bytes": 43525
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_laugh/NNW/demonlord_special_laugh_NNW_112.5_7.png",
+			"sha256": "17f29593cb86747f1173ac0a54712852c2b31f2ad93c2be717a1c932c61c9b0b",
+			"bytes": 43984
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_laugh/NW/demonlord_special_laugh_NW_135.0_0.png",
+			"sha256": "a1516d89a636a9db0d704ac83b1afd2d4aef2f536f6c5854dd0b98ac4e9b3833",
+			"bytes": 43270
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_laugh/NW/demonlord_special_laugh_NW_135.0_1.png",
+			"sha256": "a64dbd9d9b882a41109ddcced7f44fd536660433770fb24baaa9d415b5f93c54",
+			"bytes": 43389
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_laugh/NW/demonlord_special_laugh_NW_135.0_2.png",
+			"sha256": "c59266d2f58be1f8dbba5b98342c82905556e1024302386e77bcdf7a6ce0ee27",
+			"bytes": 43226
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_laugh/NW/demonlord_special_laugh_NW_135.0_3.png",
+			"sha256": "ced480f2c32b3d165d19919ab16eaef2700df1de1bdcf0dfdbe6eb01ff7ec0e1",
+			"bytes": 43386
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_laugh/NW/demonlord_special_laugh_NW_135.0_4.png",
+			"sha256": "052011bc4ba60ef070a7128f5bf21a92396a09b84f2d1f334debed835eec4aa2",
+			"bytes": 43270
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_laugh/NW/demonlord_special_laugh_NW_135.0_5.png",
+			"sha256": "89cd8d4a4cd51560c8ad14e87f5efe2aa31bc774d36017e154ed1638b40efd24",
+			"bytes": 43389
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_laugh/NW/demonlord_special_laugh_NW_135.0_6.png",
+			"sha256": "593e51ef7f474fcb6243c8e632e07f803fd11c7dace6a68f6b545fba04590a9e",
+			"bytes": 43226
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_laugh/NW/demonlord_special_laugh_NW_135.0_7.png",
+			"sha256": "0d069d567aab6fc58fc08d053e875d90fc7ae914d86699c65f138c2d6ed0bbb3",
+			"bytes": 43386
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_laugh/NWW/demonlord_special_laugh_NWW_157.5_0.png",
+			"sha256": "5f11ff4fd49e8f5e67066cd37bfa6caa465045c0420ed69c0c759a6c52b925fc",
+			"bytes": 42808
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_laugh/NWW/demonlord_special_laugh_NWW_157.5_1.png",
+			"sha256": "4e76714d7e749e55cf63f53951350d295057cb17b0bda1655b62d23271daa252",
+			"bytes": 43134
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_laugh/NWW/demonlord_special_laugh_NWW_157.5_2.png",
+			"sha256": "9897f007b7466d899bc3feadb624cf58f24625102ada755aa30179347988ab57",
+			"bytes": 43089
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_laugh/NWW/demonlord_special_laugh_NWW_157.5_3.png",
+			"sha256": "9ef1c728704ee3243ed2b2e18f06fe3eafd22c7e08877b94cbcf6b14a8656bdd",
+			"bytes": 43133
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_laugh/NWW/demonlord_special_laugh_NWW_157.5_4.png",
+			"sha256": "8cf012d449f34ecf0b2efc78814d13033350d6b9fab379f1c114ac4d58dfe4cf",
+			"bytes": 42808
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_laugh/NWW/demonlord_special_laugh_NWW_157.5_5.png",
+			"sha256": "1e9a1b11b55c8089d6774af9fd69c5b19addc4e745b51ca2d35e89587dec8032",
+			"bytes": 43134
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_laugh/NWW/demonlord_special_laugh_NWW_157.5_6.png",
+			"sha256": "5c89d3128075432fc027ed52ea12500e2dfb5cf79c9c1fc75596b2f0069e7e82",
+			"bytes": 43089
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_laugh/NWW/demonlord_special_laugh_NWW_157.5_7.png",
+			"sha256": "6223d5bad45e42f8da9aaa105576446475db63d9f74d9cf6233cccfccd23c439",
+			"bytes": 43133
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_laugh/S/demonlord_special_laugh_S_270.0_0.png",
+			"sha256": "50b9faf117af44e5079a9f22dacd3df6bd5df246eee5d5cb7f93c75ba6528f78",
+			"bytes": 44314
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_laugh/S/demonlord_special_laugh_S_270.0_1.png",
+			"sha256": "92d4879f158ee22bc15d3b43a7b56e09ec7ff080c88ab163ed642b2ab7e1c0a8",
+			"bytes": 44648
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_laugh/S/demonlord_special_laugh_S_270.0_2.png",
+			"sha256": "d871a605e3bafd315c0c149d25ba84e143c985f4284d1f263b7da3e2f28e4e79",
+			"bytes": 44626
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_laugh/S/demonlord_special_laugh_S_270.0_3.png",
+			"sha256": "1cdb5f4639843f7e2af0893fe7c2d15a720deb3a82e9865703b27cb33f9598ea",
+			"bytes": 44657
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_laugh/S/demonlord_special_laugh_S_270.0_4.png",
+			"sha256": "9784936d56911743ef041f8b891c00b308c6f18675dae0cbc79f5778547c4830",
+			"bytes": 44314
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_laugh/S/demonlord_special_laugh_S_270.0_5.png",
+			"sha256": "0eacf709157ae378008ab204b3482abee2915917e2f696495530a5f46cb25713",
+			"bytes": 44648
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_laugh/S/demonlord_special_laugh_S_270.0_6.png",
+			"sha256": "0e2f48868229543ca62d9393a7b585c7fa96e5175ea032725a032b8901f410ff",
+			"bytes": 44626
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_laugh/S/demonlord_special_laugh_S_270.0_7.png",
+			"sha256": "e3d8c9def758ad1781df4629b3a46e7b6526004374c541a3fad9787634efa24a",
+			"bytes": 44657
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_laugh/SE/demonlord_special_laugh_SE_315.0_0.png",
+			"sha256": "dda1f554456e39eb0df4438819ce715bdfd8cd799e9a077effc2c068ad6201ae",
+			"bytes": 42742
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_laugh/SE/demonlord_special_laugh_SE_315.0_1.png",
+			"sha256": "15babe20aef1e974a6f8456761a5d803fefb2c8b0e0b082e1f7fae2f54e85d9b",
+			"bytes": 42655
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_laugh/SE/demonlord_special_laugh_SE_315.0_2.png",
+			"sha256": "ad4cddf2fd2c904b531464c75179b6be79cbb1fc504353d776666b590e0ddfdb",
+			"bytes": 42546
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_laugh/SE/demonlord_special_laugh_SE_315.0_3.png",
+			"sha256": "b1639eddfffe2e870965507ea0fcf273191a119c0e9b6ea5539e2fb5c34b881c",
+			"bytes": 42658
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_laugh/SE/demonlord_special_laugh_SE_315.0_4.png",
+			"sha256": "7ee5a3a9334c37bfdd90f4d16a4ca0c750a186a571f3d01b5e35a77fda28796e",
+			"bytes": 42742
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_laugh/SE/demonlord_special_laugh_SE_315.0_5.png",
+			"sha256": "95f660ec633828c8a00064b923145e11a049f6f5ac3cd366d37ef794559e5cef",
+			"bytes": 42655
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_laugh/SE/demonlord_special_laugh_SE_315.0_6.png",
+			"sha256": "1716492fabb5f92a6805363f2eb1d9958973821c33231a229b8c1eee503bb1f6",
+			"bytes": 42546
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_laugh/SE/demonlord_special_laugh_SE_315.0_7.png",
+			"sha256": "959a083418b46fe8744b4a72f5cf44a442a98def01f314080812168b4b59f7e8",
+			"bytes": 42658
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_laugh/SEE/demonlord_special_laugh_SEE_337.5_0.png",
+			"sha256": "927a2f3b405cbb709998351a8d2048084d3054cecde7ef8588a156e8ea23a0b3",
+			"bytes": 42053
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_laugh/SEE/demonlord_special_laugh_SEE_337.5_1.png",
+			"sha256": "1e286ad262e08c2780d42b39e635e6c0cd59458f131961aa107b2ebd58e63ba6",
+			"bytes": 42190
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_laugh/SEE/demonlord_special_laugh_SEE_337.5_2.png",
+			"sha256": "8338c6ac588698188a310a8dd75120a6a26ba5ad0f60b1ac710498eefdb357bc",
+			"bytes": 42058
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_laugh/SEE/demonlord_special_laugh_SEE_337.5_3.png",
+			"sha256": "22d5b80325a3fc90aaa12fef9a72e9c6f9747d30da749ce6f60a87a9d4753242",
+			"bytes": 42191
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_laugh/SEE/demonlord_special_laugh_SEE_337.5_4.png",
+			"sha256": "f2294ca603697f59893ef60bbb5ebd9b6345a8363da27cefb4e128a29dcb0ecc",
+			"bytes": 42053
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_laugh/SEE/demonlord_special_laugh_SEE_337.5_5.png",
+			"sha256": "b69c721ea3e3303720af09c19f6abe4aecef0c81268d62ca6f730c47bf33a770",
+			"bytes": 42190
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_laugh/SEE/demonlord_special_laugh_SEE_337.5_6.png",
+			"sha256": "401325db913894c4b9fcdf1d9e131a00078f4afdc3992e1050762b1df6b5d26c",
+			"bytes": 42058
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_laugh/SEE/demonlord_special_laugh_SEE_337.5_7.png",
+			"sha256": "079474beaf697b7be1565381dad42673bd04d68ae533dbcbe087273e5e2322db",
+			"bytes": 42191
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_laugh/SSE/demonlord_special_laugh_SSE_292.5_0.png",
+			"sha256": "80c72b823ae4db214799495e08036b83e5d378a6e69301ffd296a5453d621bbf",
+			"bytes": 43861
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_laugh/SSE/demonlord_special_laugh_SSE_292.5_1.png",
+			"sha256": "084cdd0d8de1a4ee918e78590730262f7d446c80cdb378b54678944274f158aa",
+			"bytes": 43782
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_laugh/SSE/demonlord_special_laugh_SSE_292.5_2.png",
+			"sha256": "2c38d6198e65c691b3d318d7dd50cc0caea193405de3110ce8ae5b2f28c153c6",
+			"bytes": 43615
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_laugh/SSE/demonlord_special_laugh_SSE_292.5_3.png",
+			"sha256": "5cff0cfb8f06ab16ca1c0c20bfd3e6758821cb4f9942821bcc445dc9fa7912e5",
+			"bytes": 43774
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_laugh/SSE/demonlord_special_laugh_SSE_292.5_4.png",
+			"sha256": "61debd8b71f3691b6b98265c9faac81598e97c4cb85b05fd3884c8197f620fa5",
+			"bytes": 43861
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_laugh/SSE/demonlord_special_laugh_SSE_292.5_5.png",
+			"sha256": "bd4b92c941e624b376b7fc9ed4e9575860ccbb49e1103e929d588b66483cd65e",
+			"bytes": 43782
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_laugh/SSE/demonlord_special_laugh_SSE_292.5_6.png",
+			"sha256": "b4718d6540bf6790260255c9cc3f618aeb739290678736a812f128b7853e1992",
+			"bytes": 43615
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_laugh/SSE/demonlord_special_laugh_SSE_292.5_7.png",
+			"sha256": "0b6dd9e59820b339dec279895852d563d3be996bbdf73c19767d7c57372f9ac2",
+			"bytes": 43774
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_laugh/SSW/demonlord_special_laugh_SSW_247.5_0.png",
+			"sha256": "3ae460f027f5d04279dd3b828e97efe191856252dad2492c67af0f43b8c7741f",
+			"bytes": 44659
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_laugh/SSW/demonlord_special_laugh_SSW_247.5_1.png",
+			"sha256": "d484a44ab69fd4922cc28851fc92ea2187c142be3725856cfe374c69013e16f6",
+			"bytes": 44603
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_laugh/SSW/demonlord_special_laugh_SSW_247.5_2.png",
+			"sha256": "67948d18078a71806e92a04bd01aa4de112c14ebb8371c57a969f66a9552c127",
+			"bytes": 44872
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_laugh/SSW/demonlord_special_laugh_SSW_247.5_3.png",
+			"sha256": "d264844025452f41c6aaa5e20b6f745ff19430989c37aa7938185f67d44573e8",
+			"bytes": 44607
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_laugh/SSW/demonlord_special_laugh_SSW_247.5_4.png",
+			"sha256": "1a5149fa65f29eed1daeaa5e25fd141f88b5561283cf220df45556411905ccfc",
+			"bytes": 44659
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_laugh/SSW/demonlord_special_laugh_SSW_247.5_5.png",
+			"sha256": "d71b92df5fe8b00c7b564e75d1a0ceef01beac7e8d09989dcf84add8492ab76d",
+			"bytes": 44603
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_laugh/SSW/demonlord_special_laugh_SSW_247.5_6.png",
+			"sha256": "4f75a27765d9f24fd2287690b3726ef9ddaea2bf2257efe153bfc5b18695c345",
+			"bytes": 44872
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_laugh/SSW/demonlord_special_laugh_SSW_247.5_7.png",
+			"sha256": "b3ebfefed8298cae36226fd44f67dfb4223ab8a7a49a401ef760ab0f2a0e1008",
+			"bytes": 44607
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_laugh/SW/demonlord_special_laugh_SW_225.0_0.png",
+			"sha256": "32d349828e5fc11693968ac6ab1350ce9253fca482c5c2427aefcdf49ce970ac",
+			"bytes": 44931
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_laugh/SW/demonlord_special_laugh_SW_225.0_1.png",
+			"sha256": "de267a921ae481cb56b9e6e70f4d8387cb48d48ab6fd6d923fd00ed060c12e07",
+			"bytes": 44996
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_laugh/SW/demonlord_special_laugh_SW_225.0_2.png",
+			"sha256": "b127d707c0ac6ce775d7594076dfab0b2a1af1fe932b024a14d145f6b88dcf47",
+			"bytes": 44809
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_laugh/SW/demonlord_special_laugh_SW_225.0_3.png",
+			"sha256": "9385f4dfb702bbfcaa7127a400ba9d6d67b4629ee9525c276ca8c62f7d0a9a47",
+			"bytes": 45007
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_laugh/SW/demonlord_special_laugh_SW_225.0_4.png",
+			"sha256": "d77dfff0af8b34cbf6a3639268d760cf12be7aa88f2945650077fdcdebd07d6c",
+			"bytes": 44931
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_laugh/SW/demonlord_special_laugh_SW_225.0_5.png",
+			"sha256": "8ec34237929fa5849ec99d2c74bb61cbf779fb53fa5af865389f74ceb1d683b0",
+			"bytes": 44996
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_laugh/SW/demonlord_special_laugh_SW_225.0_6.png",
+			"sha256": "9078caeb99eb131e1baa9cecb98644d10f935c5d764c35cc1b45893c682bff68",
+			"bytes": 44809
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_laugh/SW/demonlord_special_laugh_SW_225.0_7.png",
+			"sha256": "d1d3cbf5781ecc5764ac8cae7800bc8dd7463514a84368bfb1c28506de5f5c38",
+			"bytes": 45007
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_laugh/SWW/demonlord_special_laugh_SWW_202.5_0.png",
+			"sha256": "595eabce16682e00b3bdd108f756c9a968ce46129e1c16f720501b9fcade9607",
+			"bytes": 44587
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_laugh/SWW/demonlord_special_laugh_SWW_202.5_1.png",
+			"sha256": "4a4c524d078143219fd7f7169047f3fd48f035246dc41d85007adbc71c4bf8b5",
+			"bytes": 44670
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_laugh/SWW/demonlord_special_laugh_SWW_202.5_2.png",
+			"sha256": "949954b3ab72773968f482194999d04b746391889f71a16d18ff9bc47662841e",
+			"bytes": 44510
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_laugh/SWW/demonlord_special_laugh_SWW_202.5_3.png",
+			"sha256": "4d5cf944937ed9c5aba9c8129bdbc63e02a176b283f938a54235986f9080e37d",
+			"bytes": 44671
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_laugh/SWW/demonlord_special_laugh_SWW_202.5_4.png",
+			"sha256": "b5129d3b1ad5d0d38e880f341baeb0f461717412cd64855052714de72530891a",
+			"bytes": 44587
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_laugh/SWW/demonlord_special_laugh_SWW_202.5_5.png",
+			"sha256": "b59bf6480bb52daee2641a55c7adc355ebc0143263f6aa350814c568012f97dc",
+			"bytes": 44670
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_laugh/SWW/demonlord_special_laugh_SWW_202.5_6.png",
+			"sha256": "c19fd7f17f7be6679295de6c36dfed572cb9cd227c4e5e379660de84c4c85aec",
+			"bytes": 44510
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_laugh/SWW/demonlord_special_laugh_SWW_202.5_7.png",
+			"sha256": "cccdf59ba551597b45e5a39cb30c9d5aa456cf53ddcd0e23c3f35062529b7cac",
+			"bytes": 44671
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_laugh/W/demonlord_special_laugh_W_180.0_0.png",
+			"sha256": "3fe26d09e7749580650bd67e5f4f0bfecec3bec832e697364590de6cc3ae5893",
+			"bytes": 43635
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_laugh/W/demonlord_special_laugh_W_180.0_1.png",
+			"sha256": "d6b39bb4de019d2b18792630f374ad15b69fd2542ef44d10a1aac513c3c0d320",
+			"bytes": 43628
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_laugh/W/demonlord_special_laugh_W_180.0_2.png",
+			"sha256": "56039d883fc4bf42aa4552eee372c0affcfb509d4a3bdaaaa8884be6792965da",
+			"bytes": 43515
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_laugh/W/demonlord_special_laugh_W_180.0_3.png",
+			"sha256": "ab0e5ca07c2cba73b0b32e0f582de3d686436509dd328981959f384f067a11a7",
+			"bytes": 43623
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_laugh/W/demonlord_special_laugh_W_180.0_4.png",
+			"sha256": "194dff6816b40ea2531d48547c2476cf30cf24a79380d30c3126d0610442338e",
+			"bytes": 43635
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_laugh/W/demonlord_special_laugh_W_180.0_5.png",
+			"sha256": "98937c6860121942381ebe46e08547ceebac0655935beee1b4e6cacb1781e703",
+			"bytes": 43628
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_laugh/W/demonlord_special_laugh_W_180.0_6.png",
+			"sha256": "6ee54405c96d5884573d828857aa76a9c9d5cac48a56116fe0f36e8db4d153f6",
+			"bytes": 43515
+		},
+		{
+			"path": "lords-of-pain/boss/demonlord/demonlord_special_laugh/W/demonlord_special_laugh_W_180.0_7.png",
+			"sha256": "c12ee9f5cfaddb6ede3a47ab06103b7a40f0b3e255c966503831c9988db92beb",
+			"bytes": 43623
+		},
+		{
 			"path": "lords-of-pain/none-playable character/subservient/subservient_special_working/E/subservient_special_working_E_0.0_0.png",
 			"sha256": "7e339e6422ff372634eb1832904a27523f977f0f11e654f7d803049ec3535717",
 			"bytes": 27030

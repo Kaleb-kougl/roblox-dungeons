@@ -15,6 +15,7 @@ import {
 } from "shared/dungeon";
 import {
 	AiState,
+	BOSS_DEMONLORD_ID,
 	Button,
 	CORPSE_TICKS,
 	DAMAGE_CAP_BUCKET_TICKS,
@@ -29,6 +30,7 @@ import {
 	MAX_ACTORS,
 	NO_KIND,
 	PLAYER_RADIUS,
+	PORT_BAND_BOSSES,
 	PORT_BAND_TUTORIAL,
 	Rng,
 	SIM_DT,
@@ -85,10 +87,11 @@ describe("archetype registry", () => {
 		expect([...ids]).toEqual(sorted);
 		expect(ids).toContain("turret.sprayer");
 		expect(ids).toContain("test.boss");
-		// The port's dummy (band 1) numbers after every band-0 id, test archetypes included.
+		// The port's dummy (band 1) and Demon Lord (band 2) number after every band-0 id, test archetypes included.
 		const web = webArchetypeIds();
-		expect([...ids]).toEqual([...web, DUMMY_KIND]);
+		expect([...ids]).toEqual([...web, DUMMY_KIND, BOSS_DEMONLORD_ID]);
 		expect(band(DUMMY_KIND)).toBe(PORT_BAND_TUTORIAL);
+		expect(band(BOSS_DEMONLORD_ID)).toBe(PORT_BAND_BOSSES);
 		for (let i = 0; i < ids.size(); i++) {
 			expect(archetypeIndex(ids[i])).toBe(i);
 			expect(archetypeAt(i).id).toBe(ids[i]);

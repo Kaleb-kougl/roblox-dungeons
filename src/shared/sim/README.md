@@ -71,7 +71,9 @@ The bullet library (`@k9kbdev/r3f-projectiles` 0.6.0, MIT) is ported in `combat/
 `gen.arc` never calls `math.sin` / `math.cos`: it reads V8's values for the burst shape from `combat/arcTable.ts`,
 GENERATED from `fixtures/arc-table.json` (generator in its header; `bullets.spec.ts` checks it bit for bit). A new
 burst shape (an archetype with a new count / spread) errors with `arc table miss ...` until the web build's exporter
-lists it and the table is regenerated.
+lists it and the table is regenerated. Roblox port: shapes only the port's own archetypes fire (the Demon Lord's cleave
+and hellfire arcs) are rows in `combat/arcTablePort.ts` (sin / cos from shared/dungeon's deterministic `dsin` / `dcos`,
+merged into the same lookup, never shadowing a web shape; `arcTablePort.spec.ts`).
 
 | Path | Status | Owner |
 | --- | --- | --- |
@@ -87,7 +89,7 @@ lists it and the table is regenerated.
 | `combat/actors/encounter.ts` | re-exports the canonical `EncounterConfig` / `ActorSpawn` / `EncounterRoom` / `EMPTY_ENCOUNTER` / `roomAt` from `shared/dungeon` (encounterTypes.ts), so `placeEncounter(d, DEFAULT_ENCOUNTER)` IS a `SimConfig.encounter` | done |
 | `combat/actors/actors.ts` | ported: pool (lowest free slot, MAX_ACTORS, actorsDropped), `spawnActor`, `damageActor` (filterDamage -> sliding 2 s damage cap over 12 buckets of 10 ticks -> hp -> flash -> onHit -> death), `killActor`, `reviveActor`, `freeActor`, `stepActors` (slot order, `while` loop: runtime spawns append slots), `stepContactDamage`, hash writers | done |
 | `combat/actors/helpers.ts` | ported: `toPlayer`, `faceToward`, `moveActor` (actorMover sub-steps / bounds clamp / free), `walkToward`; re-exports `lineOfSight` from `shared/dungeon`. Roblox addition: `walkToward(..., steer)` moves with `SimConfig.actorSteerMover` when set (endless floors: `actorSteerMover(dungeon)`, which rounds solid pillars); only the room enemies' walks pass `STEER` (enemyShared.ts), the boss's charge / reposition stay plain; absent (M1, every fixture) it is the web build's | done |
-| `combat/actors/archetypes/*` | ported: `enemyShared` (aggro, pack alerts, leash), `swarmer`, `sniper`, `bruiser`, `turretShared` + `turret.{caster,sniper,sprayer}`, `boss/act1` (Mother Bramble: wake / seal, 3 phases at 66 % / 33 %, fans, gapped rings, spiral, phase-3 slam with swarmer summons, DEBUG_BOSS). The index re-exports every archetype's states, slots and data | done |
+| `combat/actors/archetypes/*` | ported: `enemyShared` (aggro, pack alerts, leash), `swarmer`, `sniper`, `bruiser`, `turretShared` + `turret.{caster,sniper,sprayer}`, `boss/act1` (Mother Bramble: wake / seal, 3 phases at 66 % / 33 %, fans, gapped rings, spiral, phase-3 slam with swarmer summons, DEBUG_BOSS). Roblox port: the fight skeleton is `boss/shared.ts` (moved out of act1, bit for bit), shared with `boss/demonlord` (the Demon Lord, band 2, index 8; docs/BOSS_DEMONLORD.md). The index re-exports every archetype's states, slots and data | done |
 | `combat/weapons/*` | ported: types, registry, loadout, `stepWeapons`, `writeWeaponsHash`, `sweepArc`, defs `weapon.sword` / `weapon.bow` / `weapon.test` / `weapon.test.melee` (index table = the web build's) | done |
 
 Test-only archetypes (`test.dummy`, `test.chaser`, `test.boss`) live in `testing/` (import `shared/sim/testing` from a
@@ -127,7 +129,7 @@ source: 12) because gen.arc's sin / cos come from the arc table, which only hold
 | `../run/replay.bench.spec.ts` | server replay cost per tick on endless floor 15 at Depth 3 in combat, solo and 8 players, one room / the whole floor (docs/SERVER.md "Replay capacity") |
 | `breakables/breakables.spec.ts` | breakables: opt-in state, the appended group and its dump names, clone; B4 hit counts vs SWORD_DATA / BOW_DATA; players, plain and steered enemy walks and bullets blocked (LOS not); every damage source (bow, sword, guard none, heavy arrow pierce on a break only, enemy bullets, the slam in a real fight); scoring without the combo; an endless run's floor rebuild; co-op; a replay |
 | `../dungeon/breakables.spec.ts` | breakable placement (R11): determinism, its own stream, every placement rule, BFS reachability and counts per band over the census floors; the collision functions with and without `solid` |
-| `drops/drops.spec.ts` | boost drops: opt-in state, the appended group (names, guards, clone, party size), the own stream (state.rngState and boon offers unchanged), draws per case, eligibility (turrets, the dummy, bosses, the boss room), pity at exactly pityKills, the cap, kind weights, pickups (slot then player index, landing tick, never the dead), expiry, refresh, timers, draft freeze, floor change, death / forfeit / leave clears, DEBUG_DROP_BUTTON, the tutorial guarantee, a replay |
+| `drops/drops.spec.ts` | boost drops: opt-in state, the appended group (names, guards, clone, party size), the own stream (state.rngState and boon offers unchanged), draws per case, eligibility (turrets, the dummy, bosses, the boss room, any kill while a boss fight is on), pity at exactly pityKills, the cap, kind weights, pickups (slot then player index, landing tick, never the dead), expiry, refresh, timers, draft freeze, floor change, death / forfeit / leave clears, DEBUG_DROP_BUTTON, the tutorial guarantee, a replay |
 | `drops/boosts.spec.ts` | boost effects: neutral paths (===), Fury exact for every damage number with / without Sharpened and the boss cap still binding, Frenzy's integer combined percents (sword, bow), Quickstep's two sub-steps / roll unchanged / no wall or crate tunnelling, Aegis before armor, never refilled by Warding, before Second Wind, untouched by harmless mode |
 
 ## Co-op (M4, Roblox port)
@@ -309,7 +311,7 @@ draw from `state.rngState`, so no boon offer, relic, curse or archetype roll mov
 
 | Rule | Where |
 | --- | --- |
-| A kill rolls (rules and draw counts in the drops.ts header): a guaranteed room's last member drops its kind; reviving archetypes, bosses, the training dummy and kills in the boss room never roll; a full ground skips without a draw; pity, else one `rngInt(0, 99)` against the archetype's percent; one weighted kind draw | `dropsOnKill` (killActor, before onDeath) |
+| A kill rolls (rules and draw counts in the drops.ts header): a guaranteed room's last member drops its kind; reviving archetypes, bosses, the training dummy, kills in the boss room and (boss floors) any kill while the boss fight is on never roll; a full ground skips without a draw; pity, else one `rngInt(0, 99)` against the archetype's percent; one weighted kind draw | `dropsOnKill` (killActor, before onDeath) |
 | A guaranteed room's deferred spawns become a guard (their actor ids, hashed) | `dropsOnRoomSpawned` (endless.ts enterRoom) |
 | Floor change frees every slot and guard; debug drops; timers; ground life; pickups by slot, first living player in reach | `stepDrops` (after stepRun, before stepScore; frozen draft ticks skip it) |
 | Fury x 150 % after Sharpened (two scalePercents); Frenzy one combined integer percent with Swift Strikes (`combinedPercent`) | runMods.ts `playerHitDamage` / `attackTicks` |

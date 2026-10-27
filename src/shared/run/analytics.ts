@@ -7,7 +7,7 @@
  * field values per experience. Every field value here comes from a small fixed set (end reasons, phase numbers,
  * archetype ids, reject codes). The full name table is in docs/SERVER.md.
  */
-import { SIM_HZ } from "shared/sim";
+import { BOSS_ACT1_ID, BOSS_DEMONLORD_ID, SIM_HZ } from "shared/sim";
 import type { RunSessionSummary } from "./session";
 import type { RunTelemetryRecord } from "./telemetry";
 import type { RunRejectCode } from "./validate";
@@ -36,10 +36,35 @@ export type AnalyticsEventSpec =
 export const RUN_FUNNEL = "M1Run";
 export const RUN_FUNNEL_STEPS = ["RunStarted", "FirstKill", "BossEngaged", "BossPhase2", "BossPhase3", "BossDefeated"];
 
-/** The boss fight as a progression level (Start on engage, Complete on the kill, Fail on a death after engaging). */
+/**
+ * The boss fight as a progression level (Start on engage, Complete on the kill, Fail on a death after engaging), on
+ * one path. The level is the run's first boss (RunTelemetryRecord.bossId): Mother Bramble keeps level 1
+ * "MotherBramble" (M1's only boss; the event M1 has always logged), the Demon Lord (endless floors only) is level 2
+ * "DemonLord". The level number names the boss, it is no order: endless floors pick either. A record without a boss id
+ * (fixture event streams) or an unlisted boss logs Mother Bramble's level, as before.
+ */
 export const BOSS_PROGRESSION_PATH = "ActI";
 export const BOSS_PROGRESSION_LEVEL = 1;
 export const BOSS_PROGRESSION_LEVEL_NAME = "MotherBramble";
+
+export interface BossProgressionLevel {
+	readonly level: number;
+	readonly levelName: string;
+}
+
+const BRAMBLE_LEVEL: BossProgressionLevel = { level: BOSS_PROGRESSION_LEVEL, levelName: BOSS_PROGRESSION_LEVEL_NAME };
+
+/** Boss archetype id -> its progression level (BOSS_PROGRESSION_PATH). */
+export const BOSS_PROGRESSION_LEVELS: ReadonlyMap<string, BossProgressionLevel> = new Map([
+	[BOSS_ACT1_ID, BRAMBLE_LEVEL],
+	[BOSS_DEMONLORD_ID, { level: 2, levelName: "DemonLord" }],
+]);
+
+/** The progression level of boss `bossId` (Mother Bramble's for undefined or an unlisted id). */
+export function bossProgressionLevel(bossId: string | undefined): BossProgressionLevel {
+	const level = bossId !== undefined ? BOSS_PROGRESSION_LEVELS.get(bossId) : undefined;
+	return level ?? BRAMBLE_LEVEL;
+}
 
 /** Custom event names. */
 export const ANALYTICS_EVENT = {
@@ -84,11 +109,8 @@ export function analyticsForRun(r: Readonly<RunTelemetryRecord>): AnalyticsEvent
 		out.push({ kind: "funnel", funnel: RUN_FUNNEL, step: i + 1, stepName: RUN_FUNNEL_STEPS[i] });
 	}
 
-	const level = {
-		path: BOSS_PROGRESSION_PATH,
-		level: BOSS_PROGRESSION_LEVEL,
-		levelName: BOSS_PROGRESSION_LEVEL_NAME,
-	};
+	const boss = bossProgressionLevel(r.bossId);
+	const level = { path: BOSS_PROGRESSION_PATH, level: boss.level, levelName: boss.levelName };
 	if (r.bossEngagedTick !== undefined) {
 		out.push({ kind: "progression", status: "Start", ...level });
 		if (r.bossDefeated) out.push({ kind: "progression", status: "Complete", ...level });

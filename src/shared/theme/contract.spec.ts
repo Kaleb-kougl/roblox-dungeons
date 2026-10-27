@@ -5,6 +5,9 @@ import {
 	AUDIO_EVENTS,
 	BIOMES,
 	BOSS,
+	BOSS_OPTIONAL_ANIMATIONS,
+	CLASS_OPTIONAL_ANIMATIONS,
+	ENDLESS_BOSS_IDS,
 	BULLET,
 	CHARACTER,
 	DIGIT_FONT,
@@ -25,9 +28,9 @@ import {
 	SPRITE_RESAMPLE_MODES,
 	TILE,
 	UI,
+	optionalBaseAnimations,
 	requiredAnimationList,
 	requiredAnimations,
-	optionalBaseAnimations,
 	requiredBaseAnimations,
 	slotFor,
 } from "./contract";
@@ -135,15 +138,24 @@ describe("sprite contract", () => {
 		}
 	});
 
-	it("lists the boss's optional sprite animations (BRAMBLE_ART BR2, BOSS_DEMONLORD D2); none is required", () => {
+	it("v2: names the optional sprite-set animations: class attack.1..3; boss attack.2..4 / intro / taunt (BRAMBLE_ART BR2, BOSS_DEMONLORD D2)", () => {
+		expect(optionalBaseAnimations(CHARACTER)).toEqual(["attack.1", "attack.2", "attack.3"]);
 		expect(optionalBaseAnimations(BOSS)).toEqual(["attack.2", "attack.3", "attack.4", "intro", "taunt"]);
-		for (const name of optionalBaseAnimations(BOSS)) {
-			expect([name, requiredBaseAnimations(BOSS).includes(name)]).toEqual([name, false]);
+		expect([CHARACTER.optionalAnimations, BOSS.optionalAnimations]).toEqual([
+			CLASS_OPTIONAL_ANIMATIONS,
+			BOSS_OPTIONAL_ANIMATIONS,
+		]);
+		for (const slot of SLOTS) {
+			const required = requiredBaseAnimations(slot);
+			for (const name of optionalBaseAnimations(slot)) {
+				// optional means never required (the boss's required five are the web build's, unchanged)
+				expect([slot.slot, name, required.includes(name)]).toEqual([slot.slot, name, false]);
+			}
+			if (slot !== CHARACTER && slot !== BOSS) {
+				expect([slot.slot, optionalBaseAnimations(slot)]).toEqual([slot.slot, []]);
+			}
 		}
-		for (const slot of [CHARACTER, ENEMY, TILE]) {
-			expect([slot.slot, optionalBaseAnimations(slot)]).toEqual([slot.slot, []]);
-		}
-		// A copy, like requiredBaseAnimations.
+		// A copy: callers may not edit the contract through it.
 		optionalBaseAnimations(BOSS).push("dance");
 		expect(BOSS.optionalAnimations).toEqual(["attack.2", "attack.3", "attack.4", "intro", "taunt"]);
 	});
@@ -158,8 +170,9 @@ describe("sprite contract", () => {
 describe("required IDs and strings", () => {
 	it("has the web build's roster (plus the port's dummy, breakables and boosts), every ID unique and in a slot", () => {
 		// 5 classes + 6 enemies (+ the port's dummy) + 5 bosses + 6 bullets + 12 items + 6 ui + 20 audio events
-		// (+ the port's 2 breakables and their 2 audio events, 24 port audio events, 5 ambience beds and 4 boost drops).
-		expect(REQUIRED_ASSET_IDS.size()).toBe(60 + 1 + 2 + 2 + 24 + 5 + 4);
+		// (+ the port's 2 breakables and their 2 audio events, 25 port audio events (the Demon Lord's sfx.boss.taunt
+		// the 21st, the boost drops' four after it), 5 ambience beds and 4 boost drops).
+		expect(REQUIRED_ASSET_IDS.size()).toBe(60 + 1 + 2 + 2 + 25 + 5 + 4);
 		expect(AUDIO_EVENTS.size()).toBe(20);
 		expect(new Set(REQUIRED_ASSET_IDS).size()).toBe(REQUIRED_ASSET_IDS.size());
 		for (const id of REQUIRED_ASSET_IDS) {
@@ -169,6 +182,18 @@ describe("required IDs and strings", () => {
 		expect(REQUIRED_STRING_KEYS.size()).toBe(41 + 1 + 2 + 4 * 3 + 1);
 		expect(new Set(REQUIRED_STRING_KEYS).size()).toBe(REQUIRED_STRING_KEYS.size());
 		expect(BIOMES.map((b) => b.forgeTheme)).toEqual(["ancient", "molten", "frost", "grim", "verdant"]);
+	});
+
+	it("the port's endless bosses are boss-slot IDs outside the web build's required roster", () => {
+		expect(ENDLESS_BOSS_IDS).toEqual(["boss.act1", "boss.demonlord"]);
+		for (const id of ENDLESS_BOSS_IDS) {
+			expect([id, slotFor(id)]).toEqual([id, BOSS]);
+			expect([id, REQUIRED_ASSET_IDS.includes(id), REQUIRED_STRING_KEYS.includes(`${id}.name`)]).toEqual([
+				id,
+				false,
+				false,
+			]);
+		}
 	});
 
 	it("keeps the contrast thresholds and gameplay key words", () => {

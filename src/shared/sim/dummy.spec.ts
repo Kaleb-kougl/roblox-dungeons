@@ -15,6 +15,7 @@ import {
 } from "shared/dungeon";
 import {
 	AiState,
+	BOSS_DEMONLORD_ID,
 	Button,
 	CORPSE_TICKS,
 	DEFAULT_KILL_POINTS,
@@ -56,7 +57,8 @@ describe("dummy: registry", () => {
 		expect(hasArchetype(DUMMY_KIND)).toBe(true);
 		expect(DUMMY.band).toBe(PORT_BAND_TUTORIAL);
 		expect([...webArchetypeIds()]).toEqual(WEB_TABLE);
-		expect([...archetypeIds()]).toEqual([...WEB_TABLE, DUMMY_KIND]);
+		// The Demon Lord (band PORT_BAND_BOSSES) numbers after the dummy.
+		expect([...archetypeIds()]).toEqual([...WEB_TABLE, DUMMY_KIND, BOSS_DEMONLORD_ID]);
 		for (let i = 0; i < WEB_TABLE.size(); i++)
 			expect([WEB_TABLE[i], archetypeIndex(WEB_TABLE[i])]).toEqual([WEB_TABLE[i], i]);
 		expect(archetypeIndex(DUMMY_KIND)).toBe(WEB_TABLE.size());

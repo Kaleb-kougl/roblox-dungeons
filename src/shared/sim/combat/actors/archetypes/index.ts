@@ -17,8 +17,13 @@ export * from "./swarmer";
 export * from "./sniper";
 export * from "./bruiser";
 
-// --- E1.8 bosses
+// --- E1.8 bosses (the fight skeleton they share: ./boss/shared.ts, a Roblox-port module; bossArena / phaseFloor
+// used to be act1's exports and are the skeleton's now)
+export * from "./boss/shared";
 export * from "./boss/act1";
 
 // --- Roblox port: the tutorial (band PORT_BAND_TUTORIAL: numbered after every archetype above)
 export * from "./dummy";
+
+// --- Roblox port: endless bosses (band PORT_BAND_BOSSES: numbered after the tutorial's; docs/BOSS_DEMONLORD.md)
+export * from "./boss/demonlord";

@@ -16,13 +16,17 @@
  *
  * Animation. Choices follow a fixed priority, each rule skipped when the set lacks its animation (ending at idle):
  *   player: death > roll > attack (sword swings attack.1/2/3, else attack) > hit > run > idle
- *   actor:  death > special > attack > hit (multi-frame only; a 1-frame stand-in leaves it to the tint) > move > idle
+ *   actor:  death > special (a boss's intro / taunt roar, the Demon Lord's summon) > attack (a named one, else
+ *           `attack`) > hit (multi-frame only; a 1-frame stand-in leaves it to the tint) > move > idle
  * An actor's attack comes from its archetype's own states (ACTOR_SPRITE_INPUTS): the swarmer's wind-up + lunge, the
- * sniper's line telegraph, the bruiser's leap + slam, Mother Bramble's phased attacks; a turret (turret.sniper) never
- * attacks or moves (idle loop), and its corpse is the one dead spell before it respawns alive (turretShared.ts).
+ * sniper's line telegraph, the bruiser's leap + slam, Mother Bramble's phased attacks, the Demon Lord's swings
+ * (demonlordSpriteInput); a turret (turret.sniper) never attacks or moves (idle loop), and its corpse is the one dead
+ * spell before it respawns alive (turretShared.ts).
  * Death beats everything; the roll beats attacks because the sim cancels a wind-up and pauses the combo while rolling;
  * attacks beat the hit flinch because a hit never interrupts a swing or a lunge in the sim (the tint / blink shows the
- * hit instead). One-shots driven by a gameplay timer (roll, swing, hit, corpse) are STRETCHED over that timer:
+ * hit instead). A special is a one-shot that is no attack (the boss is immune or summoning): a set without it (and
+ * without the builder's `fallback`) plays what would play without it (move / idle), never an attack swing. One-shots driven by a gameplay timer (roll, swing,
+ * hit, corpse, a boss's roar and attacks) are STRETCHED over that timer:
  * frame = floor(progress * frames), clamped (last frame held). Loops (idle, run / move) and one-shots without a timer
  * (the player's death) advance a per-view clock at the animation's fps; run / move scale it by speed / reference speed.
  *
@@ -30,23 +34,36 @@
  * animation (`attack.2`; `attack` when the set lacks it) and play only a SEGMENT of it (AnimSegment, fractions of its
  * frames from SPRITE_ANIM_MARKS): the wind-up stretched over the telegraph, the release over a volley, a looped release
  * (the spiral's channel, at the animation's fps), the leap's airborne and landing parts. A `special` is a one-shot with
- * its own gameplay timer (the boss's roars: `intro`, falling back to `taunt`, then idle); it beats attacks because a
- * roar never overlaps one. `flinch: false` (bosses, BD3) never plays `hit`: the tint carries the hits.
+ * its own gameplay timer (the bosses' roars, the Demon Lord's summon; ActorSpecial.fallback names a stand-in: Mother
+ * Bramble's `intro` falls back to `taunt`); it beats attacks because a roar never overlaps one. `flinch: false`
+ * (Mother Bramble, BD3) never plays `hit`: the tint carries the hits. `deathTicks` / `corpseFadeFrom` (the Demon Lord)
+ * stretch the death over part of the corpse time and start the fade after it.
  */
-import { CAMERA_PITCH_DEG, STUDS_PER_TILE } from "shared/config";
+import { CAMERA_PITCH_DEG, PIXELS_PER_TILE, STUDS_PER_TILE } from "shared/config";
 import {
 	AiState,
 	BOSS_ACT1_DATA,
 	BOSS_ACT1_ID,
+	BOSS_DEMONLORD_ID,
 	BOSS_TELEGRAPH_TICKS,
 	BRUISER,
 	BRUISER_RECOVER,
 	BossAttack,
 	BossState,
+	CHARGE_IMPACT_HOLD_TICKS,
+	CLEAVE_HOLD_TICKS,
 	CORPSE_TICKS,
+	DEMONLORD_DATA,
+	DEMONLORD_TELEGRAPH_TICKS,
+	DEMONLORD_V_MARK,
+	DOUBLE_CLEAVE_DELAY_TICKS,
 	DOUBLE_RING_DELAY_TICKS,
+	DemonlordAttack,
+	DemonlordState,
 	FAN_VOLLEY_TICKS,
 	FAST_FAN_VOLLEY_TICKS,
+	HELLFIRE_HOLD_TICKS,
+	SUMMON_HOLD_TICKS,
 	HIT_FLASH_TICKS,
 	HURT_INVULN_TICKS,
 	ROLL_TICKS,
@@ -367,7 +384,10 @@ export function choosePlayerAnim(input: PlayerSpriteInput, anims: SpriteAnimSour
 	return IDLE;
 }
 
-/** An actor's attack as one timeline: elapsed ticks (render-interpolated) of `total`. */
+/**
+ * An actor's attack as one timeline: elapsed ticks (render-interpolated) of `total`. `anim`: the set's animation to
+ * play (default `attack`); a named one the set lacks falls back to `attack`.
+ */
 export interface ActorAttack {
 	readonly elapsed: number;
 	readonly total: number;
@@ -384,13 +404,16 @@ export const SPECIAL_INTRO = "intro";
 export const SPECIAL_TAUNT = "taunt";
 
 /**
- * A one-shot special stretched over its own gameplay timer (a boss roar): `intro` falls back to `taunt`, `taunt` to
- * idle, when the set lacks them.
+ * A one-shot that is not an attack (a boss's intro / taunt roar, the Demon Lord's summon), stretched over the
+ * gameplay timer that drives it: elapsed ticks (render-interpolated) of `total`. A set without `anim` plays `fallback`
+ * (Mother Bramble's intro: `taunt`); without either the special is skipped (what plays without it: move / idle).
  */
 export interface ActorSpecial {
 	readonly anim: string;
 	readonly elapsed: number;
 	readonly total: number;
+	/** Played instead when the set lacks `anim` (unset: none). */
+	readonly fallback?: string;
 }
 
 /** What an actor's sprite needs from sim state (the ACTOR_SPRITE_INPUTS builders fill it). */
@@ -405,10 +428,17 @@ export interface ActorSpriteInput {
 	readonly flashTicks: number;
 	/** The attack in progress (wind-up included), from the archetype's own states; undefined when not attacking. */
 	readonly attack: ActorAttack | undefined;
-	/** A special in progress (a boss roar); beats the attack. Unset: none. */
+	/** A special one-shot in progress (bosses: intro, taunt, summon); beats the attack. Absent / undefined: none. */
 	readonly special?: ActorSpecial;
-	/** false: never play `hit` (bosses, BRAMBLE_ART BD3: the tint carries the hits). Unset: true. */
+	/** false: never play `hit` (Mother Bramble, BRAMBLE_ART BD3: the tint carries the hits). Unset: true. */
 	readonly flinch?: boolean;
+	/** Ticks the death animation is stretched over (default: corpseTicks x SPRITE_VIEW.deathCorpseFraction). */
+	readonly deathTicks?: number;
+	/**
+	 * corpseTransparency's fadeFrom: the corpse stays opaque for this fraction of corpseTicks, then fades (the Demon
+	 * Lord: SPRITE_VIEW.bossCorpseFadeFrom, his death plays first). Unset: 0, the fade runs over the whole corpse time.
+	 */
+	readonly corpseFadeFrom?: number;
 	/** Ground speed, world units / s (tickSpeed of prevX, prevZ, x, z). */
 	readonly speed: number;
 	/** Speed at which the move loop plays at its authored fps. */
@@ -496,6 +526,102 @@ export function turretSpriteInputOf(
 
 /** ActorSpriteInput for the tutorial's turret.sniper (decision D3 of docs/SNIPER_ART.md: it wears the sniper's set). */
 export const turretSniperSpriteInput = turretSpriteInputOf(TURRET_SNIPER.data);
+
+// ---------------------------------------------------------------------------------------------
+// The Demon Lord (boss.demonlord; docs/BOSS_DEMONLORD.md D6)
+
+const DL = DemonlordAttack;
+
+/** Ticks a Demon Lord attack stays ACTIVE (its hold; the double cleave's lunge and hold), by attack id. */
+function demonlordActiveTicks(attack: number): number {
+	if (attack === DL.CLEAVE) return CLEAVE_HOLD_TICKS;
+	if (attack === DL.DOUBLE_CLEAVE) return DOUBLE_CLEAVE_DELAY_TICKS + CLEAVE_HOLD_TICKS;
+	if (attack === DL.HELLFIRE) return HELLFIRE_HOLD_TICKS;
+	if (attack === DL.SUMMON) return SUMMON_HOLD_TICKS;
+	return 0;
+}
+
+/**
+ * The elapsed / total ticks of a Demon Lord attack's wind-up + active span (TELEGRAPH aiTicks counts down from its
+ * telegraph length, ACTIVE aiTicks up from 0), or undefined outside both.
+ */
+function demonlordSwing(aiState: number, attack: number, aiTicks: number, alpha: number): [number, number] | undefined {
+	const windup = DEMONLORD_TELEGRAPH_TICKS[attack] ?? 0;
+	const total = windup + demonlordActiveTicks(attack);
+	if (aiState === AiState.TELEGRAPH) return [math.max(0, elapsedOf(windup, aiTicks, alpha)), total];
+	if (aiState === DemonlordState.ACTIVE) return [windup + aiTicks + alpha, total];
+	return undefined;
+}
+
+/**
+ * The Demon Lord's attack timeline (SPRITE_VIEW.demonlordAnims names the animations):
+ *   CLEAVE / DOUBLE_CLEAVE  `cleave` over the telegraph + the active span (the double cleave's lunge and both arcs)
+ *   HELLFIRE                `hellfire` over the telegraph + the hold
+ *   CHARGE                  nothing through the wind-up (idle) and the run (move, by speed); `impact` from the impact
+ *                           tick (v[MARK] = impact ACTIVE tick + 1) over CHARGE_IMPACT_HOLD_TICKS
+ * SUMMON is a special (demonlordSpecial). Undefined between attacks (CHASE, RECOVER, REPOSITION, DORMANT, TRANSITION).
+ */
+export function demonlordAttack(
+	aiState: number,
+	attack: number,
+	aiTicks: number,
+	mark: number,
+	alpha: number,
+): ActorAttack | undefined {
+	const names = SPRITE_VIEW.demonlordAnims;
+	if (attack === DL.CHARGE) {
+		if (aiState !== DemonlordState.ACTIVE || mark <= 0) return undefined;
+		return { elapsed: aiTicks - (mark - 1) + alpha, total: CHARGE_IMPACT_HOLD_TICKS, anim: names.impact };
+	}
+	if (attack !== DL.CLEAVE && attack !== DL.DOUBLE_CLEAVE && attack !== DL.HELLFIRE) return undefined;
+	const swing = demonlordSwing(aiState, attack, aiTicks, alpha);
+	if (swing === undefined) return undefined;
+	return { elapsed: swing[0], total: swing[1], anim: attack === DL.HELLFIRE ? names.hellfire : names.cleave };
+}
+
+/**
+ * The Demon Lord's specials: TRANSITION (attack ROAR, immune) plays `intro` in phase 1 (over introTicks) and `taunt`
+ * in phases 2-3 (over transitionTicks), aiTicks counting down; SUMMON plays `summon` over its telegraph + hold.
+ */
+export function demonlordSpecial(
+	aiState: number,
+	attack: number,
+	phase: number,
+	aiTicks: number,
+	alpha: number,
+): ActorSpecial | undefined {
+	const names = SPRITE_VIEW.demonlordAnims;
+	if (aiState === DemonlordState.TRANSITION) {
+		const total = phase <= 1 ? DEMONLORD_DATA.introTicks : DEMONLORD_DATA.transitionTicks;
+		return {
+			anim: phase <= 1 ? names.intro : names.taunt,
+			elapsed: math.max(0, elapsedOf(total, aiTicks, alpha)),
+			total,
+		};
+	}
+	if (attack !== DL.SUMMON) return undefined;
+	const swing = demonlordSwing(aiState, attack, aiTicks, alpha);
+	return swing !== undefined ? { anim: names.summon, elapsed: swing[0], total: swing[1] } : undefined;
+}
+
+/** ActorSpriteInput for the Demon Lord (move: CHASE, REPOSITION and the charge's run, by speed; RECOVER idle). */
+export function demonlordSpriteInput(a: Readonly<ActorState>, alpha: number): ActorSpriteInput {
+	const alive = a.alive !== 0;
+	const corpseTicks = DEMONLORD_DATA.corpseTicks ?? CORPSE_TICKS;
+	return {
+		alive,
+		deadTicks: a.deadTicks,
+		corpseTicks,
+		flashTicks: a.flashTicks,
+		attack: alive ? demonlordAttack(a.aiState, a.attack, a.aiTicks, a.v[DEMONLORD_V_MARK], alpha) : undefined,
+		special: alive ? demonlordSpecial(a.aiState, a.attack, a.phase, a.aiTicks, alpha) : undefined,
+		deathTicks: corpseTicks * SPRITE_VIEW.bossDeathCorpseFraction,
+		corpseFadeFrom: SPRITE_VIEW.bossCorpseFadeFrom,
+		speed: tickSpeed(a.prevX, a.prevZ, a.x, a.z),
+		refSpeed: SPRITE_VIEW.demonlordMoveRefSpeed,
+		alpha,
+	};
+}
 
 /** Wind-up [0, mark) and release [mark, 1] of an attack animation split at `mark` (SPRITE_ANIM_MARKS). */
 interface PhasedAnim {
@@ -700,7 +826,8 @@ export function bossAct1Attack(a: Readonly<ActorState>, alpha: number): ActorAtt
 /**
  * Mother Bramble's roar (TRANSITION, attack ROAR; aiTicks counting down): the intro roar after engaging plays `intro`
  * over introTicks, a phase change's roar `taunt` over transitionTicks. They are told apart by the phase: engaging sets
- * phase 1 and starts the intro; every later roar comes from beginTransition, which first moves to phase 2 or 3.
+ * phase 1 and starts the intro; every later roar comes from beginTransition, which first moves to phase 2 or 3. A set
+ * without `intro` plays `taunt` for it (BRAMBLE_ART: Elite 3 has no separate intro animation).
  */
 export function bossAct1Special(a: Readonly<ActorState>, alpha: number): ActorSpecial | undefined {
 	if (a.aiState !== BossState.TRANSITION) return undefined;
@@ -708,7 +835,9 @@ export function bossAct1Special(a: Readonly<ActorState>, alpha: number): ActorSp
 	const intro = a.phase <= 1;
 	const total = intro ? d.introTicks : d.transitionTicks;
 	const elapsed = math.max(0, elapsedOf(total, a.aiTicks, alpha));
-	return { anim: intro ? SPECIAL_INTRO : SPECIAL_TAUNT, elapsed, total };
+	return intro
+		? { anim: SPECIAL_INTRO, elapsed, total, fallback: SPECIAL_TAUNT }
+		: { anim: SPECIAL_TAUNT, elapsed, total };
 }
 
 /**
@@ -731,11 +860,11 @@ export function bossAct1SpriteInput(a: Readonly<ActorState>, alpha: number): Act
 	};
 }
 
-/** The special to play for `name`: itself, else `taunt` for `intro`; undefined (idle) when the set has neither. */
-function specialAnim(anims: SpriteAnimSource, name: string): string | undefined {
-	if (anims.animation(name) !== undefined) return name;
-	if (name === SPECIAL_INTRO && anims.animation(SPECIAL_TAUNT) !== undefined) return SPECIAL_TAUNT;
-	return undefined;
+/** The special to play: its own animation, else its fallback (if any); undefined when the set has neither. */
+function specialAnim(anims: SpriteAnimSource, special: ActorSpecial): string | undefined {
+	if (anims.animation(special.anim) !== undefined) return special.anim;
+	const fallback = special.fallback;
+	return fallback !== undefined && anims.animation(fallback) !== undefined ? fallback : undefined;
 }
 
 /** The attack animation to play: the named one, else `attack`; undefined when the set has neither. */
@@ -761,16 +890,16 @@ function attackChoice(anim: string, def: SpriteAnimationDef, attack: ActorAttack
 export function chooseActorAnim(input: ActorSpriteInput, anims: SpriteAnimSource): SpriteAnimChoice {
 	if (!input.alive) {
 		if (anims.animation("death") !== undefined) {
-			const span = input.corpseTicks * SPRITE_VIEW.deathCorpseFraction;
+			const span = input.deathTicks ?? input.corpseTicks * SPRITE_VIEW.deathCorpseFraction;
 			return span > 0 ? stretched("death", input.deadTicks + input.alpha, span) : clocked("death", 1);
 		}
 		return IDLE;
 	}
 	const special = input.special;
-	if (special !== undefined) {
-		const anim = specialAnim(anims, special.anim);
-		return anim !== undefined ? stretched(anim, special.elapsed, special.total) : IDLE;
-	}
+	// A special the set lacks (and its fallback) is skipped: what plays without it (it never overlaps an attack).
+	const specialName = special !== undefined ? specialAnim(anims, special) : undefined;
+	if (special !== undefined && specialName !== undefined)
+		return stretched(specialName, special.elapsed, special.total);
 	const attack = input.attack;
 	if (attack !== undefined) {
 		const anim = actorAttackAnim(anims, attack.anim);
@@ -1002,18 +1131,42 @@ export function playerBlinkVisible(dead: number, hurtTicks: number): boolean {
 	return dead !== 0 || hurtTicks === 0 || math.floor(hurtTicks / ACTOR_VIEW.blinkTicks) % 2 === 0;
 }
 
-/** Corpse fade: 0 alive, deadTicks / corpseTicks while dead (1 at once without a corpse time). */
-export function corpseTransparency(alive: number, deadTicks: number, corpseTicks: number): number {
+/**
+ * Corpse fade: 0 alive, deadTicks / corpseTicks while dead (1 at once without a corpse time). `fadeFrom` (default 0)
+ * holds it at 0 for that fraction of the corpse time and fades over the rest (boss sprites: their death plays first).
+ */
+export function corpseTransparency(alive: number, deadTicks: number, corpseTicks: number, fadeFrom = 0): number {
 	if (alive !== 0) return 0;
-	return corpseTicks > 0 ? math.clamp(deadTicks / corpseTicks, 0, 1) : 1;
+	if (!(corpseTicks > 0)) return 1;
+	const t = deadTicks / corpseTicks;
+	if (fadeFrom <= 0) return math.clamp(t, 0, 1);
+	if (fadeFrom >= 1) return t >= 1 ? 1 : 0;
+	return math.clamp((t - fadeFrom) / (1 - fadeFrom), 0, 1);
+}
+
+/**
+ * A boss sprite's layout, drawn at least `minDrawPx` web pixels wide (ACTOR_VIEW.bossMinDrawPx, the placeholder
+ * bosses' rule, at PIXELS_PER_TILE pixels per tile): the layout itself when it already is, else a copy with a smaller
+ * pixelsPerTile (the billboard grows, the pivot stays on the feet).
+ */
+export function bossSpriteLayout(layout: SpriteLayout, minDrawPx: number): SpriteLayout {
+	if (!(layout.frameW > 0) || !(layout.pixelsPerTile > 0)) return layout;
+	if ((layout.frameW / layout.pixelsPerTile) * PIXELS_PER_TILE >= minDrawPx) return layout;
+	return {
+		frameW: layout.frameW,
+		frameH: layout.frameH,
+		pivot: layout.pivot,
+		pixelsPerTile: (layout.frameW * PIXELS_PER_TILE) / minDrawPx,
+	};
 }
 
 /**
  * Archetypes drawn as sprites when the pack has a sprite set for their spriteId: archetype ID -> input builder. The
- * swarmer, the sniper, the tutorial's turret.sniper (same spriteId "enemy.sniper", D3), the bruiser and Mother Bramble
- * (boss.act1); every other archetype stays a placeholder. A builder alone draws nothing: ActorRenderController takes the
- * sprite path only when the pack's `sprites(spriteId)` is a set too, so the bruiser and the boss stay placeholders until
- * their sets land (docs/DEMON_ART.md DA5, docs/BRAMBLE_ART.md BR6).
+ * swarmer, the sniper, the tutorial's turret.sniper (same spriteId "enemy.sniper", docs/SNIPER_ART.md D3), the
+ * bruiser, Mother Bramble (boss.act1) and the Demon Lord (boss.demonlord); every other archetype stays a placeholder. A
+ * builder alone draws nothing: ActorRenderController takes the sprite path only when the pack's `sprites(spriteId)` is
+ * a set too, so each stays a placeholder until its set lands (docs/DEMON_ART.md DA5, docs/BRAMBLE_ART.md BR6,
+ * docs/BOSS_DEMONLORD.md D7).
  */
 export const ACTOR_SPRITE_INPUTS: ReadonlyMap<string, (a: Readonly<ActorState>, alpha: number) => ActorSpriteInput> =
 	new Map([
@@ -1022,4 +1175,5 @@ export const ACTOR_SPRITE_INPUTS: ReadonlyMap<string, (a: Readonly<ActorState>, 
 		[TURRET_SNIPER.id, turretSniperSpriteInput],
 		[BRUISER.id, bruiserSpriteInput],
 		[BOSS_ACT1_ID, bossAct1SpriteInput],
+		[BOSS_DEMONLORD_ID, demonlordSpriteInput],
 	]);

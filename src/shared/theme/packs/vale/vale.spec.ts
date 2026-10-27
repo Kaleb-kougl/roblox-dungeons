@@ -104,10 +104,14 @@ describe("vale pack", () => {
 		// art/atlases.json: each enemy / boss set needs `outline` (enemy outline plan O3), or its sprites draw without a
 		// rim (bosses take the enemy rim too: their placeholder has the outline role)
 		let enemies = 0;
+		let bosses = 0;
 		for (const id of sortedKeys(VALE_SPRITE_LAYOUTS)) {
 			const enemy = id.sub(1, 6) === "enemy." || id.sub(1, 5) === "boss.";
 			if (enemy) {
 				enemies += 1;
+			}
+			if (id.sub(1, 5) === "boss.") {
+				bosses += 1;
 			}
 			for (const sheet of VALE_SPRITE_LAYOUTS[id].sheets) {
 				const expected = enemy ? `${sheet.file.sub(1, -5)}-outline.png` : undefined;
@@ -115,6 +119,16 @@ describe("vale pack", () => {
 			}
 		}
 		expect(enemies).toBeGreaterThan(0);
+		expect(bosses).toBeGreaterThan(0);
+		expect(VALE_SPRITE_LAYOUTS["boss.demonlord"].sheets.map((sheet) => sheet.outlineFile)).toEqual([
+			"demonlord-idle-outline.png",
+			"demonlord-move-outline.png",
+			"demonlord-attack-outline.png",
+			"demonlord-attack2-outline.png",
+			"demonlord-intro-outline.png",
+			"demonlord-taunt-outline.png",
+			"demonlord-death-outline.png",
+		]);
 		expect(VALE_SPRITE_LAYOUTS["enemy.swarmer"].sheets[0].outlineFile).toBe("swarmer-move-outline.png");
 		expect(VALE_SPRITE_LAYOUTS["enemy.swarmer"].sheets[1].outlineFile).toBe("swarmer-death-outline.png");
 	});
@@ -142,6 +156,63 @@ describe("vale pack", () => {
 		expect(set.frame("death", 0, 0).image).toBe(VALE_ASSET_IDS["swarmer-death.png"]);
 		// the player's set is unaffected and has no rim
 		expect(VALE_MANIFEST.assets["class.vanguard"].kind).toBe("sprites");
+	});
+
+	it("as bundled, boss.demonlord is its placeholder: none of its 14 files has an ID yet", () => {
+		for (const sheet of VALE_SPRITE_LAYOUTS["boss.demonlord"].sheets) {
+			expect([sheet.file, VALE_ASSET_IDS[sheet.file]]).toEqual([sheet.file, undefined]);
+			expect([sheet.outlineFile, VALE_ASSET_IDS[sheet.outlineFile!]]).toEqual([sheet.outlineFile, undefined]);
+		}
+		expect(VALE_MANIFEST.assets["boss.demonlord"]).toEqual({ kind: "placeholder" });
+		const pack = new ThemePack(VALE_MANIFEST, { warn: quiet });
+		expect(pack.sprites("boss.demonlord")).toBe(undefined);
+		expect(pack.placeholder("boss.demonlord").outline).toBe("enemyOutline");
+		expect(pack.str("boss.demonlord.name")).toBe("The Demon Lord");
+	});
+
+	it("boss.demonlord switches on with its required sheets; optional ones join when uploaded; outlines never gate", () => {
+		const optional = ["demonlord-attack2.png", "demonlord-intro.png", "demonlord-taunt.png"];
+		const outlines = VALE_SPRITE_LAYOUTS["boss.demonlord"].sheets.map((sheet) => sheet.outlineFile!);
+		// required: idle (hit reuses its cells), move, attack, death. Without the optional sheets and every outline:
+		const skipped = [...optional];
+		for (const file of outlines) skipped.push(file);
+		const core = buildValeManifest(fakeIds(...skipped));
+		expect(validateManifest(core, { packId: "vale" })).toEqual([]);
+		const set = core.assets["boss.demonlord"] as SpriteSetAsset;
+		expect(set.kind).toBe("sprites");
+		expect(sortedKeys(set.animations)).toEqual(["attack", "death", "hit", "idle", "move"]);
+		expect(set.sheets.map((sheet) => sheet.assetId)).toEqual(
+			["demonlord-idle.png", "demonlord-move.png", "demonlord-attack.png", "demonlord-death.png"].map(
+				(file) => fakeIds()[file],
+			),
+		);
+		for (const sheet of set.sheets) {
+			expect(sheet.outlineAssetId).toBe(undefined);
+		}
+		// hit = idle frame 0 held: the idle sheet, one frame, stride 8
+		expect(set.animations.hit).toEqual({ sheet: 0, start: 0, frames: 1, fps: 1, loop: false, stride: 8 });
+		expect(set.animations.death.sheet).toBe(3);
+		// one optional sheet uploaded: only that animation joins
+		const withJab = buildValeManifest(fakeIds("demonlord-intro.png", "demonlord-taunt.png"));
+		expect(validateManifest(withJab, { packId: "vale" })).toEqual([]);
+		const jab = new ThemePack(withJab, { warn: quiet }).sprites("boss.demonlord")!;
+		expect([jab.has("attack.2"), jab.has("intro"), jab.has("taunt")]).toEqual([true, false, false]);
+		expect(jab.frame("attack.2", 0, 0).image).toBe(fakeIds()["demonlord-attack2.png"]);
+		// any required sheet missing: the placeholder, whatever else is uploaded
+		for (const file of [
+			"demonlord-idle.png",
+			"demonlord-move.png",
+			"demonlord-attack.png",
+			"demonlord-death.png",
+		]) {
+			expect([file, buildValeManifest(fakeIds(file)).assets["boss.demonlord"]]).toEqual([
+				file,
+				{ kind: "placeholder" },
+			]);
+		}
+		// outline sheets alone never switch it on
+		const sheetsOnly = VALE_SPRITE_LAYOUTS["boss.demonlord"].sheets.map((sheet) => sheet.file);
+		expect(buildValeManifest(fakeIds(...sheetsOnly)).assets["boss.demonlord"]).toEqual({ kind: "placeholder" });
 	});
 
 	it("maps each sheet's outline file to outlineAssetId when uploaded", () => {
@@ -207,6 +278,7 @@ describe("vale pack", () => {
 		expect(validateManifest(m, { packId: "vale" })).toEqual([]);
 		expect(m.assets["class.vanguard"].kind).toBe("sprites");
 		expect(m.assets["enemy.swarmer"].kind).toBe("sprites");
+		expect(m.assets["boss.demonlord"].kind).toBe("sprites");
 		expect(m.assets["tile.biome.1.floor"]).toEqual({
 			kind: "image",
 			assetId: fakeIds()["tile-biome1-floor.png"],
@@ -373,6 +445,51 @@ describe("vale sprite cells (hand-computed from the generated layout)", () => {
 		// facings wrap: 16 is 0, -1 is 15
 		expect(set!.frame("move", 16, 0)).toEqual(set!.frame("move", 0, 0));
 		expect(set!.frame("move", -1, 2)).toEqual(set!.frame("move", 15, 2));
+	});
+
+	it("boss.demonlord: 98x78 half-res cells, 10 per row, one 980x1014 atlas (+ outline) per animation", () => {
+		const set = core.sprites("boss.demonlord");
+		expect(set).never.toBe(undefined);
+		const layout = VALE_SPRITE_LAYOUTS["boss.demonlord"];
+		expect(layout.sheets.map((s) => [s.w, s.h])).toEqual([
+			[980, 1014],
+			[980, 1014],
+			[980, 1014],
+			[980, 1014],
+			[980, 1014],
+			[980, 1014],
+			[980, 1014],
+		]);
+		expect([layout.frameW, layout.frameH, layout.pixelsPerTile]).toEqual([98, 78, 10.5]);
+		expect(set!.pivot).toEqual({ x: 39, y: 56 });
+		expect(set!.facings).toEqual({ count: 16, zeroDeg: 0, ccw: true });
+		// idle: facing 12 (S, towards the camera), frame 0 -> cell 96 -> column 6, row 9
+		expect(set!.frame("idle", 12, 0)).toEqual({
+			sheet: 0,
+			assetId: ids["demonlord-idle.png"],
+			outlineAssetId: ids["demonlord-idle-outline.png"],
+			x: 588,
+			y: 702,
+			w: 98,
+			h: 78,
+		});
+		// hit is idle frame 0 held, every index
+		const hit = set!.frame("hit", 12, 5);
+		expect([hit.sheet, hit.x, hit.y]).toEqual([0, 588, 702]);
+		// attack.2: last facing, last frame -> cell 127 -> column 7, row 12 (the last row: 12 * 78 = 936, + 78 = 1014)
+		const jab = set!.frame("attack.2", 15, 7);
+		expect([jab.assetId, jab.outlineAssetId, jab.x, jab.y]).toEqual([
+			ids["demonlord-attack2.png"],
+			ids["demonlord-attack2-outline.png"],
+			686,
+			936,
+		]);
+		// the specials are one-shots that hold their last frame; idle and move loop
+		for (const name of ["attack", "attack.2", "intro", "taunt", "death"]) {
+			expect([name, set!.animation(name)!.loop]).toEqual([name, false]);
+			expect([name, set!.frame(name, 3, 99)]).toEqual([name, set!.frame(name, 3, 7)]);
+		}
+		expect([set!.animation("idle")!.loop, set!.animation("move")!.loop]).toEqual([true, true]);
 	});
 
 	it("ThemePack.sprites gives the same rects as Vector2s", () => {

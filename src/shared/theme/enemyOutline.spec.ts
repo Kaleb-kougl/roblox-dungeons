@@ -7,6 +7,7 @@ import {
 	BIOMES,
 	BOSS_IDS,
 	CLASS_IDS,
+	ENDLESS_BOSS_IDS,
 	ENEMY_ARCHETYPES,
 	ENEMY_BULLET_ROLES,
 	MIN_ENEMY_OUTLINE_BULLET_DIFFERENCE,
@@ -97,7 +98,7 @@ describe("enemyOutline: placeholder visuals", () => {
 		for (const a of ENEMY_ARCHETYPES) {
 			expect([a, PLACEHOLDER_VISUALS[`enemy.${a}`].outline]).toEqual([a, "enemyOutline"]);
 		}
-		for (const b of [...BOSS_IDS, "boss.act1"]) {
+		for (const b of [...BOSS_IDS, ...ENDLESS_BOSS_IDS]) {
 			expect([b, PLACEHOLDER_VISUALS[b].outline]).toEqual([b, "enemyOutline"]);
 		}
 		for (const [prefix, v] of PLACEHOLDER_PREFIX_DEFAULTS) {

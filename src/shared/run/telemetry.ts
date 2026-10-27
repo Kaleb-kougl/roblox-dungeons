@@ -15,7 +15,7 @@
  *  - Explicit stats the web build left in counters: weapon swaps, first kill tick, boss engage tick, highest boss
  *    phase, and the death cause (the archetype of the hit that killed the player).
  */
-import { FORFEIT_BUTTON, SIM_EVENT_FIELDS, archetypeIds, type SimEvents } from "shared/sim";
+import { FORFEIT_BUTTON, SIM_EVENT_FIELDS, archetypeAt, archetypeIds, type SimEvents } from "shared/sim";
 
 export type RunEndReason = "death" | "victory" | "abandoned";
 
@@ -51,6 +51,11 @@ export interface RunTelemetryRecord {
 	/** Times a boss fight started (`boss.attempt`). */
 	bossAttempts: number;
 	bossEngagedTick: number | undefined;
+	/**
+	 * Archetype id of the boss engaged at bossEngagedTick (the run's first boss fight; endless floors pick Mother
+	 * Bramble or the Demon Lord), or undefined (never engaged, or a view without actors: fixture event streams).
+	 */
+	bossId: string | undefined;
 	/** Highest boss phase seen (0 = never engaged). */
 	bossPhaseReached: number;
 	bossDefeated: boolean;
@@ -105,6 +110,23 @@ export interface TickView {
 	readonly events: Readonly<Partial<SimEvents>>;
 	/** `prevButtons` (the tick's input buttons once stepped): a death with FORFEIT_BUTTON there is a forfeit. */
 	readonly player: { readonly hearts: number; readonly dead: number; readonly prevButtons?: number };
+	/** The actor pool (SimState.combat): on the engage tick, the engaged boss (data.boss, phase >= 1) names bossId. */
+	readonly combat?: {
+		readonly actors: ReadonlyArray<Readonly<{ kind: number; alive: number; phase: number }>>;
+	};
+}
+
+/** Archetype id of the live, engaged (phase >= 1) boss among `actors` (data.boss), or undefined. */
+export function engagedBossId(
+	actors: ReadonlyArray<Readonly<{ kind: number; alive: number; phase: number }>>,
+): string | undefined {
+	const count = archetypeIds().size();
+	for (const a of actors) {
+		if (a.alive === 0 || a.phase < 1 || a.kind < 0 || a.kind >= count) continue;
+		const def = archetypeAt(a.kind);
+		if (def.data.boss === true) return def.id;
+	}
+	return undefined;
 }
 
 /** deathCause of a solo "Leave run" (L6a: the death tick's input carried FORFEIT_BUTTON). */
@@ -139,6 +161,7 @@ export class RunTelemetry {
 	private bulletsCleared = 0;
 	private firstKillTick: number | undefined;
 	private bossEngagedTick: number | undefined;
+	private bossId: string | undefined;
 	private bossPhaseReached = 0;
 	private bossDefeated = false;
 	/** hitBy name of the latest player hit (the death cause when the player dies). */
@@ -197,7 +220,10 @@ export class RunTelemetry {
 		if (num(e.bossEngaged) > 0) {
 			bump(this.counters, "boss.attempt", 1);
 			this.mark(tick, "boss.engaged");
-			if (this.bossEngagedTick === undefined) this.bossEngagedTick = tick;
+			if (this.bossEngagedTick === undefined) {
+				this.bossEngagedTick = tick;
+				if (view.combat !== undefined) this.bossId = engagedBossId(view.combat.actors);
+			}
 		}
 		if (num(e.bossDefeated) > 0) {
 			this.bossDefeated = true;
@@ -246,6 +272,7 @@ export class RunTelemetry {
 			firstKillTick: this.firstKillTick,
 			bossAttempts: counters.get("boss.attempt") ?? 0,
 			bossEngagedTick: this.bossEngagedTick,
+			bossId: this.bossId,
 			bossPhaseReached: this.bossPhaseReached,
 			bossDefeated: this.bossDefeated,
 			deathCause: this.deathCause,

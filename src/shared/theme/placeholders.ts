@@ -114,8 +114,13 @@ export const PLACEHOLDER_PROPORTIONS = {
 	summoner: [0.75, 1, 0.75],
 	/** Training dummy (tutorial): a thin upright post, as tall as the cell. */
 	dummy: [0.375, 1, 0.375],
-	/** Bosses: a large block, the full 48 x 48 cell wide, 3/4 tall. */
+	/** Bosses: a large block, the full 48 x 48 cell wide, 3/4 tall (Mother Bramble, boss.act1, and boss.1..5). */
 	boss: [1, 0.75, 1],
+	/**
+	 * The Demon Lord (boss.demonlord, docs/BOSS_DEMONLORD.md): a tall block, 3/4 of the cell wide and deep, the full
+	 * cell tall (9 x 12 x 9 studs against Mother Bramble's squat 12 x 9 x 12), so the hunter reads apart from the turret.
+	 */
+	demonlord: [0.75, 1, 0.75],
 	/** Enemy bullets: a ball filling the 8 px cell (the renderer scales it to the gameplay radius). */
 	enemyBullet: [1, 1, 1],
 	/** Needle bullets: a thin neon sliver along the velocity. */
@@ -228,11 +233,11 @@ const enemyVisual = (archetype: EnemyArchetype): PlaceholderVisual =>
 		faces: true,
 	});
 
-const bossVisual = (): PlaceholderVisual =>
+const bossVisual = (proportions: Proportions = PLACEHOLDER_PROPORTIONS.boss): PlaceholderVisual =>
 	visual({
 		shape: "Block",
 		cell: BOSS_CELL,
-		proportions: PLACEHOLDER_PROPORTIONS.boss,
+		proportions,
 		color: role("boss"),
 		outline: "enemyOutline",
 	});
@@ -308,11 +313,13 @@ function buildTable(): Record<string, PlaceholderVisual> {
 	for (const archetype of ENEMY_ARCHETYPES) {
 		t[`enemy.${archetype}`] = enemyVisual(archetype);
 	}
-	// Bosses: a large block in the shared boss accent. boss.act1 is Mother Bramble (M1).
+	// Bosses: a large block in the shared boss accent. boss.act1 is Mother Bramble (M1); boss.demonlord, the Demon
+	// Lord (the second endless boss), stands taller and narrower.
 	for (const b of BOSS_IDS) {
 		t[b] = bossVisual();
 	}
 	t["boss.act1"] = bossVisual();
+	t["boss.demonlord"] = bossVisual(PLACEHOLDER_PROPORTIONS.demonlord);
 	// Bullets: enemy = neon ball with a dark outline; player = thin neon bolt.
 	t["bullet.enemy.small"] = enemyBulletVisual("Ball", PLACEHOLDER_PROPORTIONS.enemyBullet);
 	t["bullet.enemy.medium"] = enemyBulletVisual("Ball", PLACEHOLDER_PROPORTIONS.enemyBullet);

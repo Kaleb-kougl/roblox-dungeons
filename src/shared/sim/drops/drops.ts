@@ -14,8 +14,11 @@
  *      A member's earlier deaths leave the guard (a reviving member counts its first death) and go on to 2 like any
  *      kill.
  *   2. not eligible (no draw, pity untouched): a reviving archetype (def.stepDead: turrets), a boss (data.boss), an
- *      archetype in DROP_INELIGIBLE_ARCHETYPES (the training dummy), or a kill inside the boss room (roomAt type
- *      "boss" or the encounter's bossRoom: the boss's summons and anything else in the arena).
+ *      archetype in DROP_INELIGIBLE_ARCHETYPES (the training dummy), or, on a floor whose encounter spawns a boss, a kill
+ *      inside the boss room (roomAt type "boss" or the encounter's bossRoom: the boss's summons and anything else in
+ *      the arena) or ANY kill while the boss fight is on (a live data.boss actor engaged: every player is sealed in
+ *      its arena, so such a kill is an add pushed out through a doorway, e.g. the Demon Lord's, whose summons start
+ *      wherever his hunt took him, or something shot from inside).
  *   3. no free ground slot: skipped without a draw; it counts as a dry kill (killsSinceDrop += 1).
  *   4. pity (pityKills > 0 and killsSinceDrop >= pityKills): drops, no roll draw.
  *      else the archetype's percent (chanceByArchetype, else chancePercent): 0 -> dry, no draw; else ONE
@@ -46,8 +49,9 @@ import { rngInt, seedToState } from "../rng";
 import type { InputFrame } from "../input";
 import type { SimState } from "../state";
 import type { SimCtx } from "../combat/ctx";
-import type { ActorState } from "../combat/actors/types";
+import { NO_KIND, type ActorState } from "../combat/actors/types";
 import { archetypeAt, archetypeIndex } from "../combat/actors/registry";
+import { bossEngaged } from "../combat/actors/archetypes/boss/shared";
 import type { EncounterConfig } from "../combat/actors/encounter";
 import { partySize, playerAt } from "../party";
 import {
@@ -352,6 +356,22 @@ function encounterHasBoss(encounter: Readonly<EncounterConfig>): boolean {
 }
 
 /**
+ * True while a live boss (archetype data.boss) is engaged (boss/shared bossEngaged: not DORMANT, not a fresh IDLE
+ * spawn). The fight seals every player into the boss's arena, so no kill made then rolls (P5), wherever the victim
+ * stood: the Demon Lord summons where his hunt took him (DEMONLORD_SUMMON.arenaMargin), so an add can land outside the
+ * boss room's bounds, in a doorway's corridor. Reads actors in slot order (no state change).
+ */
+function bossFightOn(ctx: SimCtx): boolean {
+	const actors = ctx.actors;
+	for (let i = 0; i < actors.size(); i++) {
+		const o = actors[i];
+		if (o.kind === NO_KIND || o.alive === 0) continue;
+		if (archetypeAt(o.kind).data.boss === true && bossEngaged(o)) return true;
+	}
+	return false;
+}
+
+/**
  * killActor (before onDeath): actor `a` just died. The rules and draw counts are at the top of this file. `reviving`:
  * the archetype comes back (def.stepDead). No-op without state.drops.
  */
@@ -377,9 +397,10 @@ export function dropsOnKill(ctx: SimCtx, a: Readonly<ActorState>, reviving: bool
 	if (reviving) return;
 	const def = archetypeAt(a.kind);
 	if (def.data.boss === true || DROP_INELIGIBLE_ARCHETYPES.includes(def.id)) return;
-	const room = ctx.roomAt(a.x, a.z);
-	if (room !== undefined && encounterHasBoss(ctx.encounter)) {
-		if (room.type === DROP_EXCLUDED_ROOM_TYPE || room.id === ctx.encounter.bossRoom) return;
+	if (encounterHasBoss(ctx.encounter)) {
+		const room = ctx.roomAt(a.x, a.z);
+		if (room !== undefined && (room.type === DROP_EXCLUDED_ROOM_TYPE || room.id === ctx.encounter.bossRoom)) return;
+		if (bossFightOn(ctx)) return;
 	}
 
 	// 3. A full ground: skipped, a dry kill.

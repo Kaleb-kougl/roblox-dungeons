@@ -6,17 +6,43 @@ import runBoss from "shared/fixtures-generated/run-boss-1337";
 import runFull from "shared/fixtures-generated/run-full-1337";
 import runPlayer from "shared/fixtures-generated/run-player";
 import runPlayerDungeon from "shared/fixtures-generated/run-player-dungeon-1337";
+import {
+	KALEB_VALE_MVP_PARAMS,
+	actorMover,
+	bossDoorSpawn,
+	bulletBlocker,
+	circleMover,
+	generateDungeon,
+	placeEncounter,
+} from "shared/dungeon";
 import { DEFAULT_RUN_LIMITS, RunTelemetry, validateRun, type RunTelemetryRecord } from "shared/run";
 import {
 	ANALYTICS_EVENT,
+	BOSS_PROGRESSION_LEVELS,
+	BOSS_PROGRESSION_PATH,
 	RUN_FUNNEL,
 	analyticsForRejection,
 	analyticsForRun,
 	analyticsForSession,
+	bossProgressionLevel,
+	engagedBossId,
 	hitSourceName,
 	summarizeRunSession,
 } from "shared/run";
-import { START_HALF_HEARTS, deserializeRecording, encodeRecording, type SimEvents } from "shared/sim";
+import {
+	BOSS_ACT1_ID,
+	BOSS_DEMONLORD_ID,
+	EMPTY_INPUT,
+	PLAYER_RADIUS,
+	START_HALF_HEARTS,
+	archetypeIndex,
+	createSimState,
+	deserializeRecording,
+	encodeRecording,
+	step,
+	type SimConfig,
+	type SimEvents,
+} from "shared/sim";
 
 type EventEntry = readonly [number, Partial<SimEvents>];
 
@@ -227,6 +253,87 @@ describe("AnalyticsService mapping", () => {
 		const progression = events.filter((e) => e.kind === "progression");
 		expect(progression.map((e) => (e.kind === "progression" ? e.status : ""))).toEqual(["Start", "Complete"]);
 	});
+
+	it("the boss progression level names the run's first boss; Mother Bramble's event is unchanged", () => {
+		const progression = (rec: RunTelemetryRecord) => analyticsForRun(rec).filter((e) => e.kind === "progression");
+		// fixture event streams carry no actors: Mother Bramble's level, exactly as before
+		const full = fromStream(runFull as unknown as StreamFixture);
+		expect(full.bossId).toBe(undefined);
+		expect(progression(full)[0]).toEqual({
+			kind: "progression",
+			status: "Start",
+			path: "ActI",
+			level: 1,
+			levelName: "MotherBramble",
+		});
+		expect(bossProgressionLevel(BOSS_ACT1_ID)).toEqual({ level: 1, levelName: "MotherBramble" });
+		expect(bossProgressionLevel(BOSS_DEMONLORD_ID)).toEqual({ level: 2, levelName: "DemonLord" });
+		expect(bossProgressionLevel("boss.unknown")).toEqual(bossProgressionLevel(undefined));
+		expect(BOSS_PROGRESSION_LEVELS.size()).toBe(2);
+		// the engage tick's actors name the boss (the first engaged one; later engages keep it)
+		const demon = archetypeIndex(BOSS_DEMONLORD_ID);
+		const t = new RunTelemetry(START_HALF_HEARTS);
+		const alive = { hearts: START_HALF_HEARTS, dead: 0 };
+		const actors = [
+			{ kind: 3, alive: 1, phase: 0 },
+			{ kind: demon, alive: 1, phase: 1 },
+		];
+		t.observe({ tick: 5, events: {}, player: alive, combat: { actors } });
+		t.observe({ tick: 20, events: { bossEngaged: 1, bossPhase: 1 }, player: alive, combat: { actors } });
+		const later = [{ kind: archetypeIndex(BOSS_ACT1_ID), alive: 1, phase: 1 }];
+		t.observe({ tick: 90, events: { bossEngaged: 1, bossPhase: 1 }, player: alive, combat: { actors: later } });
+		t.observe({ tick: 99, events: { playerDied: 1 }, player: { hearts: 0, dead: 1 } });
+		const rec = t.finish();
+		expect(rec.bossId).toBe(BOSS_DEMONLORD_ID);
+		expect(progression(rec)).toEqual([
+			{ kind: "progression", status: "Start", path: BOSS_PROGRESSION_PATH, level: 2, levelName: "DemonLord" },
+			{
+				kind: "progression",
+				status: "Fail",
+				path: BOSS_PROGRESSION_PATH,
+				level: 2,
+				levelName: "DemonLord",
+				fields: { field01: "unknown" },
+			},
+		]);
+		// only an engaged (phase >= 1), live boss counts
+		expect(engagedBossId([{ kind: demon, alive: 1, phase: 0 }])).toBe(undefined);
+		expect(engagedBossId([{ kind: demon, alive: 0, phase: 2 }])).toBe(undefined);
+		expect(engagedBossId([{ kind: 3, alive: 1, phase: 1 }])).toBe(undefined);
+		expect(engagedBossId([{ kind: -1, alive: 1, phase: 1 }])).toBe(undefined);
+	});
+
+	for (const bossId of [BOSS_ACT1_ID, BOSS_DEMONLORD_ID]) {
+		it(`names ${bossId} from the live sim state on its engage tick`, () => {
+			const d = generateDungeon({ ...KALEB_VALE_MVP_PARAMS, seed: 1337 });
+			const config: SimConfig = {
+				moveResolver: circleMover(d, PLAYER_RADIUS),
+				isBulletBlocked: bulletBlocker(d),
+				actorMover: actorMover(d),
+				encounter: placeEncounter(d, { boss: bossId }),
+			};
+			const spawn = bossDoorSpawn(d)!;
+			const state = createSimState(1337, spawn.x, spawn.z, config);
+			const boss = state.combat.actors[0];
+			const t = new RunTelemetry(START_HALF_HEARTS);
+			state.player.x = boss.x + 3;
+			state.player.z = boss.z;
+			for (let i = 0; i < 5; i++) {
+				step(state, EMPTY_INPUT, config);
+				t.observe(state);
+			}
+			const rec = t.finish();
+			expect(rec.bossEngagedTick).toBe(1);
+			expect(rec.bossId).toBe(bossId);
+			const start = analyticsForRun(rec).find((e) => e.kind === "progression");
+			expect(start).toEqual({
+				kind: "progression",
+				status: "Start",
+				path: "ActI",
+				...bossProgressionLevel(bossId),
+			});
+		});
+	}
 
 	it("a rejection is one bucketed event", () => {
 		expect(analyticsForRejection("hash_mismatch")).toEqual({

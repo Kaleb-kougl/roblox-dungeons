@@ -3,7 +3,8 @@
  * state with stepParty and records every merged frame (Recorder.recordParty); `recordPartyRun(seed, n)` plays:
  *   floor 1   every player walks the floor to the stairwell (BFS field), each with its own start delay, roll phase and
  *             sword swings at the nearest enemy; the floor ends once every living player stands in the stairwell
- *   floors 2+ player 0's debug skip to floor `bossFloor` (5), the party fights Mother Bramble (player 0 presses J),
+ *   floors 2+ player 0's debug skip to floor `bossFloor` (5), the party fights the floor's boss (Mother Bramble or the
+ *            Demon Lord, the seeded pick; player 0 presses J),
  *             then walks to the stairwell; one more skip
  * Players who die on the way stay dead until the next floor (and come back with 1 heart there).
  * M2 (endless runs): every floor change opens a boon draft for every present player and the world stays frozen until
@@ -12,7 +13,6 @@
  * round (so the party drafts different boons whenever it can).
  */
 import {
-	BOSS_ACT1_ID,
 	Button,
 	DEBUG_FLOOR_BUTTON,
 	DRAFT_COLUMN_LEFT,
@@ -25,7 +25,7 @@ import {
 	EMPTY_INPUT,
 	NO_KIND,
 	Recorder,
-	archetypeIndex,
+	archetypeAt,
 	createSimState,
 	hashState,
 	isDraftOpen,
@@ -254,10 +254,12 @@ export class PartyDriver {
 
 	/** The party circles the boss and swings / fires at it; player 0 presses J every 20 ticks. */
 	fightBoss(maxTicks: number): void {
-		const kind = archetypeIndex(BOSS_ACT1_ID);
 		let t = 0;
 		while (t < maxTicks && !isPartyWiped(this.state)) {
-			const boss = this.state.combat.actors.find((a) => a.kind === kind && a.alive !== 0);
+			// Any live boss (data.boss): Mother Bramble or the Demon Lord.
+			const boss = this.state.combat.actors.find(
+				(a) => a.kind !== NO_KIND && a.alive !== 0 && archetypeAt(a.kind).data.boss === true,
+			);
 			if (boss === undefined) return;
 			const f: InputFrame[] = [];
 			for (let i = 0; i < this.n; i++) {

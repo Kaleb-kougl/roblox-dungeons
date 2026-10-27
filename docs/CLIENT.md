@@ -55,9 +55,10 @@ token, layout sizes, UIScale rule, HUD helpers, every HUD string key).
 ## Sprites replace placeholders (docs/ART.md S4)
 
 Per logical ID, at the time a view is built: if `pack.sprites(id)` returns a set (and, for actors, the archetype is in
-`shared/view` `ACTOR_SPRITE_INPUTS`: the swarmer, the sniper and the tutorial's `turret.sniper`), `ActorRenderController` draws a
-`SpriteView`; otherwise the placeholder model, exactly as before. With the placeholder pack every ID takes the
-placeholder path. The bruiser, the other turrets and the bosses stay placeholders until they get an input builder.
+`shared/view` `ACTOR_SPRITE_INPUTS`: the swarmer, the sniper, the tutorial's `turret.sniper` and the Demon Lord),
+`ActorRenderController` draws a `SpriteView`; otherwise the placeholder model, exactly as before. With the placeholder
+pack every ID takes the placeholder path. The bruiser, the other turrets and Mother Bramble stay placeholders until they
+get art and an input builder.
 
 All sprite logic is pure and specced in `src/shared/view/sprites.ts`:
 
@@ -86,6 +87,21 @@ All sprite logic is pure and specced in `src/shared/view/sprites.ts`:
   the pattern is continuous; only on a floor whose biome matched (the greybox keeps the plain `floor` role).
 - Tunables: `SPRITE_VIEW` (depth bias, reference speeds, loop rate clamp, hit / death stretch, anchor and ring sizes),
   `PROGRESSION_VIEW.pedestalBeamHeightTiles`.
+
+### Boss sprites (docs/BOSS_DEMONLORD.md D6)
+
+The Demon Lord (`boss.demonlord`) is the first boss drawn as a sprite (Mother Bramble has no art). His set draws once
+the vale pack has ids for its required sheets (idle, move, attack, death; `hit` = idle frame 0); `attack.2`, `intro`
+and `taunt` join when uploaded. `chooseActorAnim` adds two choices for him: a named attack (`ActorAttack.anim`,
+falling back to `attack`) and a special (`ActorSpecial`: intro / taunt / summon, skipped when the set lacks it), in the
+order death > special > attack > hit > move > idle; `demonlordSpriteInput` maps his states (table in
+docs/BOSS_DEMONLORD.md D6, names in `SPRITE_VIEW.demonlordAnims`), every one-shot stretched over the sim timer that
+drives it. A boss sprite is drawn at least `ACTOR_VIEW.bossMinDrawPx` wide (`bossSpriteLayout`), its corpse fades
+only after its death animation (`SPRITE_VIEW.bossDeathCorpseFraction` / `bossCorpseFadeFrom`), and its outline sheet
+draws like every enemy's. Telegraph previews: `TelegraphController.drawBoss` draws the seal and the roar for any boss,
+then Mother Bramble's (`render/bossAct1.ts`) or the Demon Lord's previews (`render/demonlord.ts`, builders in
+`shared/view/markings.ts`: cleave lanes to their reach, the 3-gap hellfire ring, the charge lane + shockwave, the
+adds' landing spots).
 
 ## Enemy outlines (docs/OUTLINE.md)
 
@@ -948,6 +964,29 @@ With the actors merged the default `game` world has enemies; without them see "f
   sits behind the body and follows every facing and frame, it goes at death, comes back on pooled reuse; the player
   has none. Compare the sprite rim's width with the Highlight's on PC and the phone emulator (tune `widthPx`).
 - **Readability:** the rim never reads as an enemy bullet or a telegraph; write down fps and texture memory.
+
+### Demon Lord (docs/BOSS_DEMONLORD.md D6 / D7; not run in Studio yet)
+
+Reach a Demon Lord floor: `KV_Debug` = true, `KV_Seed` = 1 (floor 5 holds the Demon Lord; also 2, 8, 9, 13, 14, 1337;
+Mother Bramble on 3, 4, 5, 6, 7, 10: `node scripts/find-boss-seed.js`, `--floor 10` for later boss floors), endless
+world (`KV_World` unset), Play solo, then **N** on floors 1-4 (debug floor skip) and walk into floor 5's boss room.
+**J** takes 10 % of his hp per press (never past a phase threshold) to reach phases 2 and 3 fast.
+
+- **Placeholder pack / no ids yet:** a tall narrow red block (9 x 12 x 9 studs) with the red rim; HUD boss bar `The
+  Demon Lord`. Previews: while he walks at you nothing is drawn; then the cleave's 7 dashed lanes ending ~4.5 tiles
+  out with an arc across their ends, the hellfire ring with 3 gaps (one on you), the charge lane to where you stood
+  with the impact circle and the shockwave arc (gap toward him), in phase 3 the double cleave's second, offset arc
+  ahead of him and the summon rings where the swarmers land. Bullets leave exactly along the lanes / out of the gaps.
+  The roar rings on engage and on each phase change; the arena seal stays up for the whole fight.
+- **Sprites (after the D7 upload):** idle when standing, walk while chasing / walking home / charging; the overhead
+  swing over the cleave's wind-up, landing about when the arc fires; the level swing for the hellfire and from the
+  charge's impact; rising from the crouch on engage and when summoning; the laugh on phases 2 and 3; the death darkens
+  and holds, then fades over the last 40 % of the 1.5 s corpse time. 16 facings follow his heading. Check that bullets
+  and markings draw over the large sprite and the rim stays on.
+- **FX and audio:** the slam burst on his charge impact (and on Mother Bramble's slam on a Bramble seed), never during
+  a wind-up; the boss death bursts and the phase effect as for Mother Bramble; the roar on engage; on phases 2 / 3 the
+  roar until `sfx.boss.taunt` has a clip, then the taunt.
+- **Bramble regression (seed 3):** her placeholder, previews, slam cue and roars exactly as before.
 
 ### Boost drops (docs/BOOSTS.md B6 / B7; not run in Studio yet)
 

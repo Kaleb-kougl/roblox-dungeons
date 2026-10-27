@@ -21,6 +21,9 @@
 		"body mask above (so not the baked shadow) dilated per cell by a disc of radius widthPx (integer 1-4), white,",
 		"alpha = 255 - the sprite's alpha inside it. Drawn under the sprite and tinted, it is the contrast rim. Needs",
 		"pad >= widthPx + 1, so the rim is not clipped and keeps a transparent border for the bilinear filter.",
+		"downscale (optional, integer k): each frame is noise-cut, then box-filtered by k (premultiplied alpha); the crop",
+		"box grows to whole k-blocks, and pad, cells and the outline are in downscaled pixels; the pivot and body height",
+		"are measured at full resolution and divided by k (so pixelsPerTile is too).",
 		"lockAlso (optional, frames sources): { <name>: { folder, frames } } source files the lock covers and art:build",
 		"checks, but no sheet reads (art kept for a later phase).",
 		"source.layers (optional, grid sources; docs/DEMON_ART.md DD3): sub-folders of source.dir listed BOTTOM TO TOP,",
@@ -166,6 +169,66 @@
 				"working": { "folder": "subservient_special_working", "frames": [0, 1, 2, 3, 4, 5, 6, 7] }
 			},
 			"sheets": [{ "name": "sniper-idle", "animations": ["idle"] }]
+		},
+		"boss.demonlord": {
+			"$comment": [
+				"Lords of Pain Demonlord (docs/BOSS_DEMONLORD.md D1): one 256x256 PNG per frame, the skeleton's naming and",
+				"facing order (facingDirs below; the script rebuilds each file name from d * 22.5 and fails if it does not exist).",
+				"Mapping: idle -> idle, walk -> move, attack1 (overhead swing) -> attack, attack2 (forward jab) -> attack.2,",
+				"intro (mace raised) -> intro, laugh -> taunt, death -> death; hit = idle frame 0 held (a 1-frame stand-in, as",
+				"the skeleton's). attack.2, intro and taunt are optional boss animations (theme contract BOSS_OPTIONAL_ANIMATIONS).",
+				"noiseAlpha 24, not the skeleton's 2: at alpha > 2 the demon's faint shadow halo reaches the 256 px frame's edge",
+				"(union box 256x207); at alpha > 24 the union box over all 7 animations x 16 facings x 8 frames is 183x143.",
+				"downscale 2 (box filter, premultiplied alpha, after the noise cut): full resolution would need 35 atlases + 35",
+				"outline sheets (~280 MB of GPU texture); at half resolution the box is 92x72, + pad 3 = 98x78 cells: 10 x 13 =",
+				"130 per 1024 atlas, so each animation's 128 cells (16 facings x 8 frames) fit ONE 980x1014 atlas: 7 atlases +",
+				"7 outline sheets (~56 MB while loaded). pad 3 = outline widthPx 2 + 1 (the skeleton's rim width), kept: the",
+				"cell fits without falling back to pad 2 / widthPx 1. pad and widthPx are in downscaled (atlas) pixels."
+			],
+			"source": { "type": "frames", "dir": "lords-of-pain/boss/demonlord", "frameW": 256, "frameH": 256 },
+			"facingCount": 16,
+			"facingDirs": ["E", "NEE", "NE", "NNE", "N", "NNW", "NW", "NWW", "W", "SWW", "SW", "SSW", "S", "SSE", "SE", "SEE"],
+			"noiseAlpha": 24,
+			"downscale": 2,
+			"pad": 3,
+			"pivot": { "measure": { "animation": "idle", "facing": 12, "frame": 0 }, "bodyAlpha": 64, "bodyMinRgb": 8, "footBand": 8 },
+			"pivotNote": [
+				"Measured on the full-resolution source, then halved (downscale). The baked shadow is pure black (max RGB <= 8) at",
+				"alpha up to ~224; the body's darkest pixels (the robe's hem in shadow) have max RGB 9-16, so the skeleton's cut",
+				"(lit pixels at alpha > 64) separates them. footBand 8 (full-res rows): facing S stands with the left foot forward,",
+				"its sole 6 rows below the right one; a 3-row band would catch the left foot alone and put the pivot ~13 px",
+				"(full res) left of the stance's middle."
+			],
+			"outline": { "widthPx": 2 },
+			"outlineNote": "Enemy contrast rim (docs/OUTLINE.md): 2 atlas px, the skeleton's width; a boss is outlined like every enemy.",
+			"bodyTiles": 3,
+			"bodyTilesNote": [
+				"First guess, tuned in Studio (D7). The hitbox radius is 1.2 world units (2.4 across); the swarmer draws its 37 px",
+				"body 1.25 tiles tall over a 0.6-wide hitbox (~2x). Twice a 2.4 hitbox would be a 5-tile demon that hides the",
+				"arena's bullets, so the body is 3 tiles tall instead: its robe (~36 of the 63 full-res body rows wide) is ~1.7",
+				"tiles and its mace reach ~2.7, both inside the hitbox circle, so a hit on the drawn body is a hit, and it still",
+				"stands 2.4x the skeleton's drawn height."
+			],
+			"resample": "Default",
+			"animations": {
+				"idle": { "folder": "demonlord_default_idle", "frames": [0, 1, 2, 3, 4, 5, 6, 7], "fps": 8, "loop": true },
+				"move": { "folder": "demonlord_default_walk", "frames": [0, 1, 2, 3, 4, 5, 6, 7], "fps": 10, "loop": true },
+				"attack": { "folder": "demonlord_default_attack1", "frames": [0, 1, 2, 3, 4, 5, 6, 7], "fps": 12, "loop": false },
+				"attack.2": { "folder": "demonlord_default_attack2", "frames": [0, 1, 2, 3, 4, 5, 6, 7], "fps": 12, "loop": false },
+				"intro": { "folder": "demonlord_special_intro", "frames": [0, 1, 2, 3, 4, 5, 6, 7], "fps": 8, "loop": false },
+				"taunt": { "folder": "demonlord_special_laugh", "frames": [0, 1, 2, 3, 4, 5, 6, 7], "fps": 10, "loop": false },
+				"death": { "folder": "demonlord_special_death", "frames": [0, 1, 2, 3, 4, 5, 6, 7], "fps": 10, "loop": false },
+				"hit": { "cellsOf": "idle", "frames": 1, "fps": 1, "loop": false }
+			},
+			"sheets": [
+				{ "name": "demonlord-idle", "animations": ["idle"] },
+				{ "name": "demonlord-move", "animations": ["move"] },
+				{ "name": "demonlord-attack", "animations": ["attack"] },
+				{ "name": "demonlord-attack2", "animations": ["attack.2"] },
+				{ "name": "demonlord-intro", "animations": ["intro"] },
+				{ "name": "demonlord-taunt", "animations": ["taunt"] },
+				{ "name": "demonlord-death", "animations": ["death"] }
+			]
 		},
 		"enemy.bruiser": {
 			"$comment": [

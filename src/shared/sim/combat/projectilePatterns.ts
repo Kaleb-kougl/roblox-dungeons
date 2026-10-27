@@ -12,7 +12,8 @@
  * EXCEPT that sin / cos never come from Luau's libm: they are V8's values for the burst SHAPE, looked up in the
  * generated ./arcTable.ts (fixtures/arc-table.json). The sim only fires shapes at heading 0 (patterns.ts turns them
  * with multiply-adds). A shape that is not in the table, or a non-zero heading, errors loudly ("arc table miss"):
- * add the shape to the web build's exporter, regenerate the fixture and ./arcTable.ts.
+ * add the shape to the web build's exporter, regenerate the fixture and ./arcTable.ts. Roblox port: shapes only the port's
+ * own archetypes fire live in ./arcTablePort.ts (deterministic dsin / dcos, no V8 counterpart) and are merged in here.
  *
  * Generators other than arc (ring, fibonacciSphere, galaxy, ...) and the acceleration / rotate / sequence modifiers
  * are not ported: nothing in the sim uses them, and all but `sequence` need trig.
@@ -20,6 +21,7 @@
 
 import { u32 } from "shared/jsmath";
 import { ARC_SHAPES, type ArcShape } from "./arcTable";
+import { PORT_ARC_SHAPES } from "./arcTablePort";
 import { acquireSpawnData, type BulletModifier, type BulletSpawnData } from "./bullets";
 
 const TAU = math.pi * 2;
@@ -36,7 +38,14 @@ const cones = new Map<number, Map<number, ArcShape>>();
 /** count === 1 cones: one bullet at angle `heading` whatever the spread. */
 let single: ArcShape | undefined;
 
-for (const shape of ARC_SHAPES) {
+/** The shape already keyed like `shape`, if any. */
+function keyedShape(shape: ArcShape): ArcShape | undefined {
+	if (shape.full) return fullRings.get(shape.count);
+	if (shape.count === 1) return single;
+	return cones.get(shape.count)?.get(shape.spread);
+}
+
+function addShape(shape: ArcShape): void {
 	if (shape.full) {
 		fullRings.set(shape.count, shape);
 	} else if (shape.count === 1) {
@@ -51,6 +60,16 @@ for (const shape of ARC_SHAPES) {
 	}
 }
 
+for (const shape of ARC_SHAPES) addShape(shape);
+// Roblox port: the port-only shapes (./arcTablePort.ts). The web table always wins: a port row that keys like a web
+// shape is a mistake (its values would shadow V8's), so it errors at load.
+for (const shape of PORT_ARC_SHAPES) {
+	if (keyedShape(shape) !== undefined) {
+		error(`arcTablePort: gen.arc(${shape.count}, ${shape.spread}) is already in fixtures/arc-table.json`, 0);
+	}
+	addShape(shape);
+}
+
 /**
  * V8's sin / cos for every bullet of gen.arc(count, spread, ..., heading = 0): `shape.sin[i]`, `shape.cos[i]`.
  * Errors (`arc table miss ...`) for a shape the table does not hold.
@@ -63,7 +82,8 @@ export function arcTrig(count: number, spread: number): ArcShape {
 	if (shape === undefined) {
 		error(
 			`arc table miss: gen.arc(${count}, ${spread}) is not in fixtures/arc-table.json ` +
-				"(src/shared/sim/combat/arcTable.ts); export the new burst shape from the web build",
+				"(src/shared/sim/combat/arcTable.ts); export the new burst shape from the web build, or (a port-only " +
+				"archetype) add it to src/shared/sim/combat/arcTablePort.ts",
 			0,
 		);
 	}

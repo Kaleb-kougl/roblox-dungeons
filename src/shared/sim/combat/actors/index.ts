@@ -2,6 +2,7 @@
 export { ACTOR_HASH_FIELDS, ACTOR_SCRATCH_SLOTS, AiState, NO_KIND } from "./types";
 export type { ActorScalarField, ActorState, ArchetypeData, ArchetypeDef } from "./types";
 export {
+	PORT_BAND_BOSSES,
 	PORT_BAND_TUTORIAL,
 	WEB_ARCHETYPE_BAND,
 	archetypeAt,

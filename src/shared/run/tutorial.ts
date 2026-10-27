@@ -475,7 +475,9 @@ function emptyPerRoom<T>(n: number): T[][] {
 function buildTutorialFloor(floor: number): EndlessRunFloor {
 	const d = tutorialDungeon(floor);
 	const bossFloor = floor === TUTORIAL.lastFloor;
-	const encounter = placeEncounter(d, { boss: bossFloor ? BOSS_ACT1_KIND : undefined });
+	// Mother Bramble, always (the endless boss pick, bossKindFor, is not used here).
+	const bossKind = bossFloor ? BOSS_ACT1_KIND : undefined;
+	const encounter = placeEncounter(d, { boss: bossKind });
 	const bossRoom = encounter.rooms[d.boss];
 	if (bossRoom === undefined) error(`tutorial: floor ${floor} has no boss room`, 0);
 	const plan = floor === ENDLESS_FIRST_FLOOR ? plan1() : undefined;
@@ -490,6 +492,7 @@ function buildTutorialFloor(floor: number): EndlessRunFloor {
 		roomCount: params.roomCount,
 		dungeon: d,
 		bossFloor,
+		bossKind,
 		encounter,
 		roomSpawns,
 		roomSpawnTiles: spawnTiles,

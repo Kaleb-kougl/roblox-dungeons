@@ -1,4 +1,4 @@
-import { BOSS_ACT1_DATA, BRUISER, HURT_INVULN_TICKS, PLAYER_SPEED, SNIPER, SWARMER } from "shared/sim";
+import { BOSS_ACT1_DATA, BRUISER, DEMONLORD_DATA, HURT_INVULN_TICKS, PLAYER_SPEED, SNIPER, SWARMER } from "shared/sim";
 import type { ColorRole } from "shared/theme";
 import type { TopFaceUV } from "./floorTexture";
 
@@ -149,6 +149,8 @@ export const TELEGRAPH_VIEW = {
 	roarRadius: 7,
 	roarStart: 0.5,
 	roarInner: 0.7,
+	/** The Demon Lord's summon preview: a ring this big (radius, tiles) on each add's landing spot. */
+	summonSpotRadius: 0.5,
 	/** Generic wind-up ring around an actor without its own preview, tiles past its body. */
 	genericRingOffset: 0.4,
 } as const;
@@ -215,6 +217,36 @@ export const SPRITE_VIEW = {
 	swarmerMoveRefSpeed: SWARMER.data.speed,
 	/** The sniper's move loop plays at its authored fps at this ground speed, world units / s (its walk speed). */
 	sniperMoveRefSpeed: SNIPER.data.speed,
+	/**
+	 * The Demon Lord's move loop (chase, walk home, the charge) plays at its authored fps at this ground speed, world
+	 * units / s: his chase speed (the walk home at data.speed plays slower, the charge at loopRateMax).
+	 */
+	demonlordMoveRefSpeed: DEMONLORD_DATA.chaseSpeed,
+	/**
+	 * Which of the boss set's animations each Demon Lord action plays (docs/BOSS_DEMONLORD.md D6; tune by eye in D7).
+	 * Optional ones (attack.2, intro, taunt) fall back when the set lacks them: a named attack to `attack`, a special
+	 * (intro, taunt, summon) to whatever plays without it (idle).
+	 */
+	demonlordAnims: {
+		/** CLEAVE and DOUBLE_CLEAVE: the overhead swing, over the telegraph and the whole active span. */
+		cleave: "attack",
+		/** HELLFIRE: the level swing, over the telegraph and the hold. */
+		hellfire: "attack.2",
+		/** CHARGE: the level swing from the impact tick, over the impact hold (the run itself plays `move`). */
+		impact: "attack.2",
+		/** SUMMON (a special): rising from the crouch, over the telegraph and the hold. */
+		summon: "intro",
+		/** The intro roar (phase 1) and the phase-change taunt (phases 2-3), over the roar's timer. */
+		intro: "intro",
+		taunt: "taunt",
+	},
+	/**
+	 * A boss sprite's death is stretched over this fraction of its corpse time and holds its last frame while the
+	 * corpse fades over the rest (bossCorpseFadeFrom): the Demon Lord's death darkens and holds, so a fade from the
+	 * first frame would hide it. Placeholder bosses and the swarmer fade over the whole corpse time.
+	 */
+	bossDeathCorpseFraction: 0.6,
+	bossCorpseFadeFrom: 0.6,
 	/** The bruiser's move loop plays at its authored fps at this ground speed, world units / s (its plod). */
 	bruiserMoveRefSpeed: BRUISER.data.speed,
 	/** Mother Bramble's (boss.act1) move loop (REPOSITION, the walk back to the centre) plays at its fps at this speed. */

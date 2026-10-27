@@ -1,5 +1,5 @@
 import { describe, expect, it } from "@rbxts/jest-globals";
-import { CAMERA_PITCH_DEG, CAMERA_YAW_DEG } from "shared/config";
+import { CAMERA_PITCH_DEG, CAMERA_YAW_DEG, PIXELS_PER_TILE } from "shared/config";
 import {
 	KALEB_VALE_MVP_PARAMS,
 	actorMover,
@@ -14,6 +14,7 @@ import {
 	AiState,
 	BOSS_ACT1_DATA,
 	BOSS_ACT1_ID,
+	BOSS_DEMONLORD_ID,
 	BOSS_TELEGRAPH_TICKS,
 	BRUISER,
 	BRUISER_CHASE,
@@ -21,13 +22,23 @@ import {
 	BossAttack,
 	BossState,
 	Button,
+	CHARGE_IMPACT_HOLD_TICKS,
+	CHARGE_SPEED,
+	CLEAVE_HOLD_TICKS,
 	CORPSE_TICKS,
+	DEMONLORD_DATA,
+	DEMONLORD_TELEGRAPH_TICKS,
+	DEMONLORD_V_MARK,
+	DOUBLE_CLEAVE_DELAY_TICKS,
 	DOUBLE_RING_DELAY_TICKS,
+	DemonlordAttack,
+	DemonlordState,
 	EMPTY_INPUT,
 	FAN_VOLLEYS,
 	FAN_VOLLEY_TICKS,
 	FAST_FAN_VOLLEYS,
 	FAST_FAN_VOLLEY_TICKS,
+	HELLFIRE_HOLD_TICKS,
 	PLAYER_RADIUS,
 	SHOCK2_DELAY_TICKS,
 	SIM_DT,
@@ -35,6 +46,7 @@ import {
 	SLAM_SPEED,
 	SPIRAL_BURST_TICKS,
 	SPIRAL_TICKS,
+	SUMMON_HOLD_TICKS,
 	V_AUX_X,
 	V_AUX_Z,
 	V_LAST,
@@ -99,7 +111,11 @@ import {
 	segmentStart,
 	actorLook,
 	animDtSec,
+	bossSpriteLayout,
 	corpseTransparency,
+	demonlordAttack,
+	demonlordSpecial,
+	demonlordSpriteInput,
 	floorClearanceStuds,
 	floorImageOffset,
 	floorImageSize,
@@ -912,6 +928,17 @@ describe("looks", () => {
 		expect(corpseTransparency(0, 0, 0)).toBe(1);
 	});
 
+	it("a boss sprite's corpse holds until fadeFrom of the corpse time, then fades over the rest", () => {
+		expect(corpseTransparency(0, 15, 30, 0)).toBe(corpseTransparency(0, 15, 30));
+		expect(corpseTransparency(0, 18, 30, 0.6)).toBe(0);
+		expect(corpseTransparency(0, 24, 30, 0.6)).toBeCloseTo(0.5, 12);
+		expect(corpseTransparency(0, 30, 30, 0.6)).toBe(1);
+		expect(corpseTransparency(1, 30, 30, 0.6)).toBe(0);
+		expect(corpseTransparency(0, 29, 30, 1)).toBe(0);
+		expect(corpseTransparency(0, 30, 30, 1)).toBe(1);
+		expect(SPRITE_VIEW.bossCorpseFadeFrom).toBe(SPRITE_VIEW.bossDeathCorpseFraction);
+	});
+
 	it("names a colour role per non-normal look", () => {
 		expect(ACTOR_VIEW.lookRoles).toEqual({
 			flash: "damageNumber",
@@ -1205,11 +1232,12 @@ describe("chooseActorAnim (boss.act1)", () => {
 		for (const [phase, total] of cases) {
 			const roar = (aiTicks: number) =>
 				bossState({ aiState: BossState.TRANSITION, attack: BossAttack.ROAR, phase, aiTicks });
-			expect(bossAct1Special(roar(total), 0)).toEqual({
-				anim: phase === 1 ? "intro" : "taunt",
-				elapsed: 0,
-				total,
-			});
+			// The intro names taunt as its fallback (Elite 3 has no intro); the phase roars are taunt itself.
+			expect(bossAct1Special(roar(total), 0)).toEqual(
+				phase === 1
+					? { anim: "intro", elapsed: 0, total, fallback: "taunt" }
+					: { anim: "taunt", elapsed: 0, total },
+			);
 			expect(bossPick(roar(total))).toEqual(["taunt", 0]);
 			expect(bossPick(roar(total / 2))).toEqual(["taunt", frames / 2]);
 			expect(bossPick(roar(1))).toEqual(["taunt", frames - 1]);
@@ -1504,19 +1532,20 @@ describe("boss.act1 sprite timeline on a real fight (seed 1337)", () => {
 });
 
 describe("ACTOR_SPRITE_INPUTS", () => {
-	it("has builders for the swarmer, the sniper, turret.sniper, the bruiser and boss.act1 (other archetypes: none)", () => {
-		expect(ACTOR_SPRITE_INPUTS.size()).toBe(5);
+	it("has builders for the swarmer, the sniper, turret.sniper, the bruiser, boss.act1 and boss.demonlord (other archetypes: none)", () => {
+		expect(ACTOR_SPRITE_INPUTS.size()).toBe(6);
 		expect(ACTOR_SPRITE_INPUTS.get(SWARMER.id)).toBe(swarmerSpriteInput);
 		expect(ACTOR_SPRITE_INPUTS.get(SNIPER.id)).toBe(sniperSpriteInput);
 		expect(ACTOR_SPRITE_INPUTS.get(TURRET_SNIPER.id)).toBe(turretSniperSpriteInput);
 		expect(ACTOR_SPRITE_INPUTS.get(BRUISER.id)).toBe(bruiserSpriteInput);
 		expect(ACTOR_SPRITE_INPUTS.get(BOSS_ACT1_ID)).toBe(bossAct1SpriteInput);
+		expect(ACTOR_SPRITE_INPUTS.get(BOSS_DEMONLORD_ID)).toBe(demonlordSpriteInput);
 	});
 
-	it("still draws the bruiser and boss.act1 as placeholders until the pack has a sprite set for them", () => {
+	it("still draws the bruiser and both bosses as placeholders until the pack has a sprite set for them", () => {
 		// ActorRenderController takes the sprite path only with a builder AND pack.sprites(spriteId) (a `sprites` asset).
 		const quiet = () => undefined;
-		const ids = [BRUISER.data.spriteId, BOSS_ACT1_DATA.spriteId];
+		const ids = [BRUISER.data.spriteId, BOSS_ACT1_DATA.spriteId, DEMONLORD_DATA.spriteId];
 		for (const packId of listThemePacks()) {
 			const pack = loadThemePack(packId, { warn: quiet });
 			for (const id of ids) {
@@ -1562,6 +1591,262 @@ describe("ACTOR_SPRITE_INPUTS", () => {
 
 	it("gives turret.sniper the sniper's sprite set (decision D3)", () => {
 		expect(TURRET_SNIPER.data.spriteId).toBe(SNIPER.data.spriteId);
+	});
+});
+
+// ---------------------------------------------------------------------------------------------
+// The Demon Lord (docs/BOSS_DEMONLORD.md D6)
+
+/** The boss.demonlord set's animations (art/atlases.json D1): the required five plus the optional three. */
+const DEMON_ANIMS: Record<string, SpriteAnimationDef> = {
+	idle: anim(8, 8, true),
+	move: anim(8, 10, true),
+	attack: anim(8, 12, false),
+	"attack.2": anim(8, 12, false),
+	intro: anim(8, 8, false),
+	taunt: anim(8, 10, false),
+	death: anim(8, 10, false),
+	hit: anim(1, 1, false),
+};
+const DEMON = source(DEMON_ANIMS);
+/** The set before the optional sheets are uploaded (the vale pack leaves them out until then). */
+const DEMON_REQUIRED = source({
+	idle: DEMON_ANIMS.idle,
+	move: DEMON_ANIMS.move,
+	attack: DEMON_ANIMS.attack,
+	death: DEMON_ANIMS.death,
+	hit: DEMON_ANIMS.hit,
+});
+const DA = DemonlordAttack;
+const DS = DemonlordState;
+
+/** A live Demon Lord standing still in `aiState` / `attack` (everything else neutral). */
+function demon(aiState: number, attack: number, aiTicks: number, phase = 1, mark = 0): ActorState {
+	const v = table.create<number>(ACTOR_SCRATCH_SLOTS, 0);
+	v[DEMONLORD_V_MARK] = mark;
+	return {
+		id: 9,
+		kind: 8,
+		spawnTick: -1,
+		x: 4,
+		z: 5,
+		prevX: 4,
+		prevZ: 5,
+		faceX: 0,
+		faceZ: 1,
+		hp: DEMONLORD_DATA.hp,
+		hpMax: DEMONLORD_DATA.hp,
+		radius: DEMONLORD_DATA.radius,
+		alive: 1,
+		deadTicks: 0,
+		aiState,
+		aiTicks,
+		attack,
+		cooldown: 0,
+		flashTicks: 0,
+		emitterId: 3,
+		phase,
+		capBucket: -1,
+		capWindow: table.create(DAMAGE_CAP_BUCKETS, 0),
+		v,
+	};
+}
+
+function demonChoice(a: ActorState, set: SpriteAnimSource = DEMON, alpha = 0) {
+	return chooseActorAnim(demonlordSpriteInput(a, alpha), set);
+}
+
+describe("chooseActorAnim (Demon Lord)", () => {
+	it("follows death > special > attack > hit > move > idle", () => {
+		const special = { anim: "taunt", elapsed: 9, total: 90 };
+		const attack = { elapsed: 10, total: 40, anim: "attack.2" };
+		const all = actorInput({ alive: false, deadTicks: 15, special, attack, flashTicks: 3, speed: 4.2 });
+		expect(chooseActorAnim({ ...all, deathTicks: 60 }, DEMON)).toEqual({ anim: "death", progress: 0.25, rate: 1 });
+		expect(chooseActorAnim({ ...all, alive: true }, DEMON)).toEqual({ anim: "taunt", progress: 0.1, rate: 1 });
+		expect(chooseActorAnim({ ...all, alive: true, special: undefined }, DEMON)).toEqual({
+			anim: "attack.2",
+			progress: 0.25,
+			rate: 1,
+		});
+		expect(
+			chooseActorAnim({ ...all, alive: true, special: undefined, attack: undefined, flashTicks: 0 }, DEMON).anim,
+		).toBe("move");
+	});
+
+	it("falls back: a named attack the set lacks plays `attack`, a special it lacks plays what plays without it", () => {
+		const attack = { elapsed: 10, total: 40, anim: "attack.2" };
+		expect(chooseActorAnim(actorInput({ attack }), DEMON_REQUIRED)).toEqual({
+			anim: "attack",
+			progress: 0.25,
+			rate: 1,
+		});
+		const special = { anim: "intro", elapsed: 1, total: 2 };
+		expect(chooseActorAnim(actorInput({ special }), DEMON_REQUIRED)).toEqual({ anim: "idle", rate: 1 });
+		expect(chooseActorAnim(actorInput({ special, attack }), DEMON_REQUIRED).anim).toBe("attack");
+		// His specials name no fallback (Mother Bramble's intro falls back to taunt): with taunt but no intro, his
+		// intro roar and his summon stand idle, while his phase taunt plays.
+		const tauntOnly = source({
+			idle: DEMON_ANIMS.idle,
+			move: DEMON_ANIMS.move,
+			attack: DEMON_ANIMS.attack,
+			death: DEMON_ANIMS.death,
+			hit: DEMON_ANIMS.hit,
+			taunt: DEMON_ANIMS.taunt,
+		});
+		expect(demonChoice(demon(DS.TRANSITION, DA.ROAR, 10, 1), tauntOnly)).toEqual({ anim: "idle", rate: 1 });
+		expect(demonChoice(demon(DS.ACTIVE, DA.SUMMON, 10, 3), tauntOnly)).toEqual({ anim: "idle", rate: 1 });
+		expect(demonChoice(demon(DS.TRANSITION, DA.ROAR, 10, 2), tauntOnly).anim).toBe("taunt");
+		// no attack animation at all: past the attack to idle
+		expect(chooseActorAnim(actorInput({ attack }), source({ idle: DEMON_ANIMS.idle }))).toEqual({
+			anim: "idle",
+			rate: 1,
+		});
+	});
+
+	it("DORMANT and RECOVER stand idle; CHASE and REPOSITION walk, the loop scaled by his chase speed", () => {
+		expect(demonChoice(demon(DS.DORMANT, DA.NONE, 0))).toEqual({ anim: "idle", rate: 1 });
+		expect(demonChoice(demon(DS.RECOVER, DA.NONE, 20, 2))).toEqual({ anim: "idle", rate: 1 });
+		expect(SPRITE_VIEW.demonlordMoveRefSpeed).toBe(DEMONLORD_DATA.chaseSpeed);
+		const chase = demon(DS.CHASE, DA.CLEAVE, 30);
+		chase.prevX = chase.x - DEMONLORD_DATA.chaseSpeed / SIM_HZ;
+		const walking = demonChoice(chase);
+		expect(walking.anim).toBe("move");
+		expect(walking.rate).toBeCloseTo(1, 9);
+		const home = demon(DS.REPOSITION, DA.NONE, 30);
+		home.prevZ = home.z - DEMONLORD_DATA.speed / SIM_HZ;
+		const walk = demonChoice(home);
+		expect(walk.anim).toBe("move");
+		expect(walk.rate).toBeCloseTo(DEMONLORD_DATA.speed / DEMONLORD_DATA.chaseSpeed, 9);
+	});
+
+	it("TRANSITION: the intro in phase 1 over introTicks, the taunt in phases 2-3 over transitionTicks", () => {
+		const intro = DEMONLORD_DATA.introTicks;
+		const taunt = DEMONLORD_DATA.transitionTicks;
+		expect(demonChoice(demon(DS.TRANSITION, DA.ROAR, intro, 1))).toEqual({ anim: "intro", progress: 0, rate: 1 });
+		expect(demonChoice(demon(DS.TRANSITION, DA.ROAR, intro / 2, 1))).toEqual({
+			anim: "intro",
+			progress: 0.5,
+			rate: 1,
+		});
+		expect(demonChoice(demon(DS.TRANSITION, DA.ROAR, 0, 2))).toEqual({ anim: "taunt", progress: 1, rate: 1 });
+		expect(demonlordSpecial(DS.TRANSITION, DA.ROAR, 3, taunt / 3, 0.5)).toEqual({
+			anim: "taunt",
+			elapsed: taunt - taunt / 3 + 0.5,
+			total: taunt,
+		});
+		// without the optional sheets: idle (he stands immune)
+		expect(demonChoice(demon(DS.TRANSITION, DA.ROAR, intro, 1), DEMON_REQUIRED)).toEqual({ anim: "idle", rate: 1 });
+	});
+
+	it("CLEAVE / DOUBLE_CLEAVE: `attack` stretched over the telegraph + the whole active span, continuous", () => {
+		for (const [attack, active] of [
+			[DA.CLEAVE, CLEAVE_HOLD_TICKS],
+			[DA.DOUBLE_CLEAVE, DOUBLE_CLEAVE_DELAY_TICKS + CLEAVE_HOLD_TICKS],
+		]) {
+			const tele = DEMONLORD_TELEGRAPH_TICKS[attack];
+			const total = tele + active;
+			expect(demonlordAttack(AiState.TELEGRAPH, attack, tele, 0, 0)).toEqual({
+				elapsed: 0,
+				total,
+				anim: "attack",
+			});
+			// the last TELEGRAPH tick + alpha 1 meets ACTIVE tick 0 + alpha 0
+			expect(demonlordAttack(AiState.TELEGRAPH, attack, 1, 0, 1)!.elapsed).toBe(tele);
+			expect(demonlordAttack(DS.ACTIVE, attack, 0, 0, 0)!.elapsed).toBe(tele);
+			// the last ACTIVE tick (the attack ends on tick `active`) + alpha 1 ends the swing
+			expect(demonlordAttack(DS.ACTIVE, attack, active - 1, 0, 1)!.elapsed).toBe(total);
+			expect(demonChoice(demon(DS.ACTIVE, attack, 0, 3))).toEqual({
+				anim: "attack",
+				progress: tele / total,
+				rate: 1,
+			});
+		}
+		// CHASE before the cleave: no attack yet (directions are not locked; he walks)
+		expect(demonlordAttack(DS.CHASE, DA.CLEAVE, 20, 0, 0)).toBe(undefined);
+	});
+
+	it("HELLFIRE: `attack.2` over the telegraph + hold (`attack` without the sheet)", () => {
+		const tele = DEMONLORD_TELEGRAPH_TICKS[DA.HELLFIRE];
+		const total = tele + HELLFIRE_HOLD_TICKS;
+		expect(demonChoice(demon(AiState.TELEGRAPH, DA.HELLFIRE, tele / 2))).toEqual({
+			anim: "attack.2",
+			progress: tele / 2 / total,
+			rate: 1,
+		});
+		expect(demonChoice(demon(AiState.TELEGRAPH, DA.HELLFIRE, tele / 2), DEMON_REQUIRED).anim).toBe("attack");
+	});
+
+	it("CHARGE: idle through the wind-up, move while charging, `attack.2` from the impact over the impact hold", () => {
+		expect(demonChoice(demon(AiState.TELEGRAPH, DA.CHARGE, 20, 2))).toEqual({ anim: "idle", rate: 1 });
+		const run = demon(DS.ACTIVE, DA.CHARGE, 6, 2, 0);
+		run.prevX = run.x - CHARGE_SPEED / SIM_HZ;
+		expect(demonChoice(run)).toEqual({ anim: "move", rate: SPRITE_VIEW.loopRateMax });
+		// impact on ACTIVE tick 9: v[MARK] = 10; the attack ends CHARGE_IMPACT_HOLD_TICKS later
+		const mark = 10;
+		expect(demonlordAttack(DS.ACTIVE, DA.CHARGE, 9, mark, 0)).toEqual({
+			elapsed: 0,
+			total: CHARGE_IMPACT_HOLD_TICKS,
+			anim: "attack.2",
+		});
+		expect(demonlordAttack(DS.ACTIVE, DA.CHARGE, 9 + CHARGE_IMPACT_HOLD_TICKS - 1, mark, 1)!.elapsed).toBe(
+			CHARGE_IMPACT_HOLD_TICKS,
+		);
+		const impact = demon(DS.ACTIVE, DA.CHARGE, 9, 2, mark);
+		impact.prevX = impact.x - 0.2; // the last step of the run: the swing still wins
+		expect(demonChoice(impact).anim).toBe("attack.2");
+	});
+
+	it("SUMMON: `intro` (a special) over the telegraph + hold; idle without the sheet, never an attack swing", () => {
+		const tele = DEMONLORD_TELEGRAPH_TICKS[DA.SUMMON];
+		const total = tele + SUMMON_HOLD_TICKS;
+		expect(demonChoice(demon(DS.ACTIVE, DA.SUMMON, 10, 3))).toEqual({
+			anim: "intro",
+			progress: (tele + 10) / total,
+			rate: 1,
+		});
+		expect(demonlordAttack(DS.ACTIVE, DA.SUMMON, 10, 0, 0)).toBe(undefined);
+		expect(demonChoice(demon(DS.ACTIVE, DA.SUMMON, 10, 3), DEMON_REQUIRED)).toEqual({ anim: "idle", rate: 1 });
+	});
+
+	it("death: stretched over bossDeathCorpseFraction of his corpse time, then held", () => {
+		const a = demon(DS.RECOVER, DA.NONE, 0, 3);
+		a.alive = 0;
+		const span = (DEMONLORD_DATA.corpseTicks ?? CORPSE_TICKS) * SPRITE_VIEW.bossDeathCorpseFraction;
+		a.deadTicks = span / 2;
+		expect(demonChoice(a)).toEqual({ anim: "death", progress: 0.5, rate: 1 });
+		a.deadTicks = span * 1.5;
+		expect(demonChoice(a).progress).toBe(1.5); // stretchedFrame holds the last frame
+		expect(demonlordSpriteInput(a, 0).attack).toBe(undefined);
+		expect(demonlordSpriteInput(a, 0).special).toBe(undefined);
+	});
+
+	it("is drawn at least bossMinDrawPx wide (a narrower layout grows; the Demon Lord's own cell already is)", () => {
+		const big = { frameW: 98, frameH: 78, pivot: { x: 39, y: 56 }, pixelsPerTile: 10.5 };
+		expect(bossSpriteLayout(big, ACTOR_VIEW.bossMinDrawPx)).toBe(big);
+		const small = { frameW: 20, frameH: 20, pivot: { x: 10, y: 18 }, pixelsPerTile: 16 };
+		const grown = bossSpriteLayout(small, ACTOR_VIEW.bossMinDrawPx);
+		expect((grown.frameW / grown.pixelsPerTile) * PIXELS_PER_TILE).toBeCloseTo(ACTOR_VIEW.bossMinDrawPx, 12);
+		expect([grown.frameW, grown.frameH, grown.pivot]).toEqual([small.frameW, small.frameH, small.pivot]);
+		// Both bosses' built sets already are (the Demon Lord at 10.5 px / tile, Mother Bramble at bodyTiles 2.5): the
+		// rule leaves them at their own density, so per-sheet cells (sheetSpriteLayout) start from the set itself.
+		for (const id of ["boss.demonlord", "boss.act1"]) {
+			const built = VALE_SPRITE_LAYOUTS[id];
+			expect([id, bossSpriteLayout(built, ACTOR_VIEW.bossMinDrawPx) === built]).toEqual([id, true]);
+		}
+	});
+
+	it("corpse: the Demon Lord holds until bossCorpseFadeFrom, then fades; Mother Bramble fades over the whole corpse", () => {
+		const a = demon(DS.RECOVER, DA.NONE, 0, 3);
+		a.alive = 0;
+		const corpse = DEMONLORD_DATA.corpseTicks ?? CORPSE_TICKS;
+		expect(demonlordSpriteInput(a, 0).corpseFadeFrom).toBe(SPRITE_VIEW.bossCorpseFadeFrom);
+		const from = SPRITE_VIEW.bossCorpseFadeFrom;
+		expect(corpseTransparency(0, corpse * from, corpse, demonlordSpriteInput(a, 0).corpseFadeFrom)).toBe(0);
+		expect(corpseTransparency(0, corpse, corpse, demonlordSpriteInput(a, 0).corpseFadeFrom)).toBe(1);
+		const bramble = bossAct1SpriteInput(bossState({ alive: 0, deadTicks: 10 }), 0);
+		expect([bramble.corpseFadeFrom, bramble.deathTicks]).toEqual([undefined, undefined]);
+		const brambleCorpse = BOSS_ACT1_DATA.corpseTicks ?? CORPSE_TICKS;
+		expect(corpseTransparency(0, brambleCorpse / 2, brambleCorpse, bramble.corpseFadeFrom)).toBe(0.5);
 	});
 });
 

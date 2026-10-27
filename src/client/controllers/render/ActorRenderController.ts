@@ -30,6 +30,7 @@ import {
 	actorLook,
 	actorOutlined,
 	animDtSec,
+	bossSpriteLayout,
 	chooseActorAnim,
 	choosePlayerAnim,
 	corpseTransparency,
@@ -118,11 +119,15 @@ interface ActorView {
  *
  * Sprites (docs/ART.md S4): when the pack has a `sprites` set for the ID (`pack.sprites(id)`) and, for actors, the
  * archetype has a sprite input builder (shared/view ACTOR_SPRITE_INPUTS: the swarmer, the sniper, the tutorial's
- * turret.sniper, the bruiser and Mother Bramble), a pooled SpriteView (BillboardGui on a feet anchor) shows the
- * animation chosen from sim state (shared/view sprites.ts) in the facing nearest the sim's facing on screen; juice
- * through the label: hit flash / telegraph pulse / i-frame tints (ImageColor3), corpse fade (ImageTransparency), the
- * post-hit blink (Visible). The player's ring (`ui.ring.player`, tinted uiAccent for the local player, uiTextDim for
- * teammates) replaces the facing pip when the pack has it.
+ * turret.sniper, the bruiser, Mother Bramble and the Demon Lord), a pooled SpriteView (BillboardGui on a feet anchor)
+ * shows the animation chosen from sim state (shared/view sprites.ts) in the facing nearest the sim's facing on screen;
+ * juice through the label: hit flash / telegraph pulse / i-frame tints (ImageColor3), corpse fade (ImageTransparency),
+ * the post-hit blink (Visible). A boss sprite (data.boss: Mother Bramble, the Demon Lord) is drawn at least
+ * ACTOR_VIEW.bossMinDrawPx wide (shared/view bossSpriteLayout, the placeholder bosses' rule; both sets already are, so
+ * neither changes), and a sprite's corpse fade starts at its input's `corpseFadeFrom` (the Demon Lord's
+ * SPRITE_VIEW.bossCorpseFadeFrom: his death plays first; everyone else fades over the whole corpse time); its baked
+ * rim follows the placeholder's outline role like every enemy's. The player's ring (`ui.ring.player`, tinted uiAccent
+ * for the local player, uiTextDim for teammates) replaces the facing pip when the pack has it.
  *
  * Placeholders (every other ID; every ID with the placeholder pack): one model per occupied pool slot, by archetype
  * (registry index -> ArchetypeDef -> data.spriteId -> PLACEHOLDER_VISUALS: swarmer ball, sniper wedge facing its aim,
@@ -286,10 +291,17 @@ export class ActorRenderController implements OnStart {
 			// The baked rim (plan O4) follows the placeholder visual's outline role, like the Highlight (O2). It depends
 			// on the ID alone, so the pool key needs nothing more.
 			const hasOutline = pack.placeholder(id).outline !== undefined;
+			const boss = def.data.boss === true;
 			const key = SPRITE_KEY + id;
 			const sprite =
 				this.freeSprites.get(key)?.pop() ??
-				new SpriteView(set, this.folder!, set, 0, hasOutline ? pack.color(ACTOR_OUTLINE.role) : undefined);
+				new SpriteView(
+					set,
+					this.folder!,
+					boss ? bossSpriteLayout(set, ACTOR_VIEW.bossMinDrawPx) : set,
+					0,
+					hasOutline ? pack.color(ACTOR_OUTLINE.role) : undefined,
+				);
 			this.spriteParking.delete(sprite);
 			sprite.reset();
 			view = {
@@ -359,13 +371,14 @@ export class ActorRenderController implements OnStart {
 		const z = studsZ(lerp(a.prevZ, a.z, alpha));
 		const at = new Vector3(x, floorStudsY() + ACTOR_VIEW.liftStuds, z);
 		const look = actorLook(a.alive, a.flashTicks, a.aiState, tick);
-		const transparency = corpseTransparency(a.alive, a.deadTicks, view.corpseTicks);
 
 		const sprite = view.sprite;
 		if (sprite !== undefined) {
 			this.moveParts.push(sprite.anchor);
 			this.moveCFrames.push(new CFrame(at));
-			const choice = chooseActorAnim(view.spriteInput!(a, alpha), sprite.set);
+			const input = view.spriteInput!(a, alpha);
+			const choice = chooseActorAnim(input, sprite.set);
+			const transparency = corpseTransparency(a.alive, a.deadTicks, view.corpseTicks, input.corpseFadeFrom);
 			sprite.update(choice, a.faceX, a.faceZ, this.basis, this.dtSec);
 			if (look !== view.look) {
 				view.look = look;
@@ -377,6 +390,7 @@ export class ActorRenderController implements OnStart {
 			return;
 		}
 
+		const transparency = corpseTransparency(a.alive, a.deadTicks, view.corpseTicks);
 		const model = view.model!;
 		// A corpse drops the outline the first frame it is dead (once: only a change of group reparents).
 		const outlined = actorGroup(view.hasOutline, a.alive !== 0) === "enemies";

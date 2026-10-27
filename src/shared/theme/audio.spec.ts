@@ -82,6 +82,7 @@ describe("audio contract: port IDs and ambience", () => {
 			"sfx.jingle.gameover",
 			"music.tutorial",
 			"music.lobby",
+			"sfx.boss.taunt",
 			"sfx.boost.drop",
 			"sfx.boost.collect",
 			"sfx.boost.expire",

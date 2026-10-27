@@ -11,7 +11,9 @@
  *
  * A sprite set switches from its placeholder to the art once the sheets of its REQUIRED animations have IDs
  * (class.vanguard: idle, run, roll, hit, death; enemy.swarmer: swarmer-move.png and swarmer-death.png); optional ones
- * (vanguard-attack1..3.png) join when their IDs are added. An enemy sheet's outline (swarmer-move-outline.png,
+ * (vanguard-attack1..3.png) join when their IDs are added. boss.demonlord (docs/BOSS_DEMONLORD.md D7): required
+ * demonlord-idle / -move / -attack / -death.png (hit reuses idle's cells), optional demonlord-attack2 / -intro /
+ * -taunt.png, plus one -outline.png per sheet (14 files). An enemy sheet's outline (swarmer-move-outline.png,
  * swarmer-death-outline.png) adds the baked rim once its ID is here; without it the set still switches, rimless.
  * An image switches once its file has one. Re-upload (and paste the new ID) whenever `art:build` changes a PNG.
  *
