@@ -1,12 +1,13 @@
 /**
- * Task 1 go/no-go spikes and the preload spike P0 (docs/SPIKES.md). All are OFF unless enabled here or by a
- * Workspace attribute, so a normal play session never runs them.
+ * Task 1 go/no-go spikes, the preload spike P0 and the invites spike I0 (docs/SPIKES.md). All are OFF unless enabled
+ * here or by a Workspace attribute, so a normal play session never runs them.
  *
  * Enable at runtime from the Studio command bar (client context while playing, or on the server
  * so it replicates):
  *   workspace:SetAttribute("KV_SpikeBullets", true)
  *   workspace:SetAttribute("KV_SpikeCamera", true)
  *   workspace:SetAttribute("KV_SpikePreload", true)   (best set before Play: it measures the join)
+ *   workspace:SetAttribute("KV_InviteSpike", true)    (client + server; only a published place has the APIs)
  * An attribute, when present, overrides the default below; setting it to false stops the spike
  * and cleans up everything it made.
  */
@@ -16,6 +17,7 @@ export const SPIKE_DEFAULTS = {
 	bullets: false,
 	camera: false,
 	preload: false,
+	invites: false,
 } as const;
 
 /** Workspace attribute names that override SPIKE_DEFAULTS. */
@@ -23,6 +25,7 @@ export const SPIKE_ATTRIBUTES = {
 	bullets: "KV_SpikeBullets",
 	camera: "KV_SpikeCamera",
 	preload: "KV_SpikePreload",
+	invites: "KV_InviteSpike",
 } as const;
 
 export type SpikeName = keyof typeof SPIKE_DEFAULTS;
@@ -117,4 +120,67 @@ export const PRELOAD_SPIKE = {
 	displayOrder: 101,
 	/** Milliseconds per second (for the printed timings). */
 	msPerSec: 1000,
+} as const;
+
+/**
+ * Every trigger of the invites spike (HUD buttons): `promptServer` / `promptServerOne` = the server calls
+ * `SocialService:PromptGameInvite` (`promptServerOne` with `InviteUser` = the recipient), `promptClient` = the client
+ * calls it, `canSendServer` / `canSendClient` = `CanSendGameInviteAsync` without and with a recipient on that side,
+ * `dump` = both sides log the player's join data and party again, `hello` = sent by the client (not a button) once it
+ * listens, so the server replays that player's arrival lines.
+ */
+export const INVITE_SPIKE_ACTIONS = [
+	"promptServer",
+	"promptServerOne",
+	"promptClient",
+	"canSendServer",
+	"canSendClient",
+	"dump",
+	"hello",
+] as const;
+export type InviteSpikeAction = (typeof INVITE_SPIKE_ACTIONS)[number];
+
+/** The actions the client forwards to the server over the spike's RemoteEvent (the server accepts only these). */
+export const INVITE_SPIKE_SERVER_ACTIONS: ReadonlyArray<InviteSpikeAction> = [
+	"promptServer",
+	"promptServerOne",
+	"canSendServer",
+	"dump",
+	"hello",
+];
+
+/**
+ * Spike I0 (docs/INVITES.md I0, docs/SPIKES.md "Spike I0"): Roblox invites and parties. Client and server, published
+ * place only (none of these APIs work in Studio). Logs `[InviteSpike]` (server) / `[InviteSpike/client]` lines and
+ * shows the last `hudLines` of both sides on the spike HUD.
+ */
+export const INVITE_SPIKE = {
+	/** Folder the server spike makes under ReplicatedStorage while on (removed with it), holding the RemoteEvent. */
+	folderName: "KV_InviteSpike",
+	/** RemoteEvent in that folder: client -> server an InviteSpikeAction, server -> every client one log line. */
+	remoteName: "Request",
+	/** How long the client waits for the server's folder / remote before it says the server spike is off, seconds. */
+	remoteWaitSec: 15,
+	/** After PlayerAdded the server reads `GetJoinData().LaunchData` every `launchDataPollSec` for `launchDataWatchSec`. */
+	launchDataPollSec: 1,
+	launchDataWatchSec: 15,
+	/** `ExperienceInviteOptions.PromptMessage` of the spike's prompts. */
+	promptMessage: "Invite spike (I0): pick friends to invite to Kaleb-Vale",
+	/** First field of the spike's LaunchData (`kvspike|<side>|<ISO time>|<inviter UserId>`). */
+	launchDataTag: "kvspike",
+	/** LaunchData's documented maximum length, characters (the spike warns past it). */
+	launchDataMaxChars: 200,
+	/** Workspace attributes: a recipient UserId (number) for the with-recipient checks, else the first other player. */
+	recipientAttribute: "KV_InviteSpikeRecipient",
+	/** Workspace attribute: a Notification String id (string) for `InviteMessageId`; unset = Roblox's default text. */
+	messageIdAttribute: "KV_InviteSpikeMessageId",
+	/** Log lines kept on the spike HUD (newest last). */
+	hudLines: 12,
+	/** Server lines about one player's arrival kept to replay to that client when it says `hello`. */
+	replayLines: 40,
+	/** Nesting depth and string length the value dumps print before they elide (`{...}`, `...`). */
+	dumpMaxDepth: 3,
+	dumpMaxStringChars: 200,
+	/** Seconds a player must wait between two spike requests to the server. */
+	requestCooldownSec: 1,
 } as const;

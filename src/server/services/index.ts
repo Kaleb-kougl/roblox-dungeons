@@ -11,3 +11,4 @@ export * from "./LobbyService";
 export * from "./OnboardingService";
 export * from "./data/DataStoreKeyValue";
 export * from "./data/OrderedDataStoreScores";
+export * from "./spikes";

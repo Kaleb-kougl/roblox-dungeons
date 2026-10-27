@@ -1,11 +1,16 @@
 import React from "@rbxts/react";
 import { useSelector } from "@rbxts/react-reflex";
-import { clientStore, selectBulletSpike, selectCameraSpike } from "client/store";
-import { BULLET_SPIKE, CAMERA_SPIKE, STUDS_PER_TILE } from "shared/config";
+import { clientStore, selectBulletSpike, selectCameraSpike, selectInviteSpike } from "client/store";
+import { BULLET_SPIKE, CAMERA_SPIKE, InviteSpikeAction, SPIKE_ATTRIBUTES, STUDS_PER_TILE } from "shared/config";
 
 const TEXT_SIZE = 16;
 const ROW_HEIGHT = 22;
 const BUTTON_WIDTH = 72;
+/** The invites spike's buttons carry longer labels. */
+const WIDE_BUTTON_WIDTH = 120;
+/** The invites spike's log lines: smaller and wrapped, so a server dump stays readable on a phone. */
+const LOG_TEXT_SIZE = 12;
+const LOG_COLOR = Color3.fromRGB(200, 215, 235);
 const PANEL_WIDTH = 460;
 const PADDING = 8;
 const PANEL_COLOR = Color3.fromRGB(16, 18, 24);
@@ -31,11 +36,11 @@ function Label(props: { text: string; order: number }) {
 	);
 }
 
-function Button(props: { text: string; order: number; active?: boolean; onClick: () => void }) {
+function Button(props: { text: string; order: number; active?: boolean; width?: number; onClick: () => void }) {
 	return (
 		<textbutton
 			LayoutOrder={props.order}
-			Size={new UDim2(0, BUTTON_WIDTH, 0, ROW_HEIGHT)}
+			Size={new UDim2(0, props.width ?? BUTTON_WIDTH, 0, ROW_HEIGHT)}
 			BackgroundColor3={props.active ? ACTIVE_COLOR : BUTTON_COLOR}
 			Font={Enum.Font.Code}
 			TextSize={TEXT_SIZE}
@@ -125,11 +130,74 @@ function CameraPanel() {
 	);
 }
 
+function LogLine(props: { text: string; order: number }) {
+	return (
+		<textlabel
+			LayoutOrder={props.order}
+			Size={new UDim2(1, 0, 0, 0)}
+			AutomaticSize={Enum.AutomaticSize.Y}
+			BackgroundTransparency={1}
+			Font={Enum.Font.Code}
+			TextSize={LOG_TEXT_SIZE}
+			TextColor3={LOG_COLOR}
+			TextWrapped={true}
+			TextXAlignment={Enum.TextXAlignment.Left}
+			Text={props.text}
+		/>
+	);
+}
+
+/** The invites spike's buttons, two rows: [label, action]. */
+const INVITE_BUTTONS: ReadonlyArray<ReadonlyArray<readonly [string, InviteSpikeAction]>> = [
+	[
+		["prompt (server)", "promptServer"],
+		["prompt (client)", "promptClient"],
+		["prompt 1 (srv)", "promptServerOne"],
+	],
+	[
+		["can send (srv)", "canSendServer"],
+		["can send (cli)", "canSendClient"],
+		["dump both", "dump"],
+	],
+];
+
+/** First LayoutOrder of the invites panel (after the bullet and camera panels). */
+const INVITE_ORDER = 21;
+
+function InvitePanel() {
+	const spike = useSelector(selectInviteSpike);
+	return (
+		<>
+			<Label
+				order={INVITE_ORDER}
+				text={`SPIKE I0  invites  (${SPIKE_ATTRIBUTES.invites}; published place only)`}
+			/>
+			{INVITE_BUTTONS.map((row, r) => (
+				<Row key={`inviteRow${r}`} order={INVITE_ORDER + 1 + r}>
+					{row.map(([text, action], i) => (
+						<Button
+							key={action}
+							order={i}
+							text={text}
+							width={WIDE_BUTTON_WIDTH}
+							onClick={() => clientStore.requestInviteSpike(action)}
+						/>
+					))}
+				</Row>
+			))}
+			{spike.lines.map((text, i) => (
+				<LogLine key={`inviteLine${i}`} order={INVITE_ORDER + 1 + INVITE_BUTTONS.size() + i} text={text} />
+			))}
+		</>
+	);
+}
+
 /** Readouts and touch-friendly controls for whichever spikes are running (docs/SPIKES.md). */
 export function SpikeHud() {
 	const bulletsActive = useSelector((state) => selectBulletSpike(state).active);
 	const cameraActive = useSelector((state) => selectCameraSpike(state).active);
-	if (!bulletsActive && !cameraActive) {
+	const invitesActive = useSelector((state) => selectInviteSpike(state).active);
+	if (!bulletsActive && !cameraActive && !invitesActive) {
 		return undefined;
 	}
 	return (
@@ -149,6 +217,7 @@ export function SpikeHud() {
 			<uilistlayout Padding={new UDim(0, PADDING / 2)} SortOrder={Enum.SortOrder.LayoutOrder} />
 			{bulletsActive && <BulletPanel />}
 			{cameraActive && <CameraPanel />}
+			{invitesActive && <InvitePanel />}
 		</frame>
 	);
 }

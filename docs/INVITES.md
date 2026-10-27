@@ -1,6 +1,7 @@
 # Roblox invites and parties: plan
 
-Status (2026-10-27): **plan only, nothing built; decisions ID1-ID7 confirmed.** Companion to the lobby plan (project doc `claude/menu-lobby-plan.md`,
+Status (2026-10-27): **plan; decisions ID1-ID7 confirmed. I0's spike is built (`KV_InviteSpike`, docs/SPIKES.md
+"Spike I0") and waits for its published-place run.** Companion to the lobby plan (project doc `claude/menu-lobby-plan.md`,
 as built in docs/SERVER.md "Lobbies" and docs/CLIENT.md). This plan takes over L8's `PromptGameInvite` bullet; the rest
 of L8 (Friends tab, teleport follow) stays there.
 
