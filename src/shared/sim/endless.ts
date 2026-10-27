@@ -53,6 +53,7 @@ import { hasLeft, isPartyWiped, partySize, playerAt, revivePartyMember } from ".
 import { PARTY_REVIVE_HALF_HEARTS } from "./partyData";
 import { resetBreakables } from "./breakables/breakables";
 import { dropsOnRoomSpawned } from "./drops/drops";
+import { tutorialOnRoomSpawned } from "./tutorial/tutorial";
 
 /** A candidate spawn position (structurally shared/dungeon's TileXZ). */
 export interface SpawnTile {
@@ -325,6 +326,7 @@ function enterRoom(state: SimState, world: Readonly<EndlessFloorWorld>, e: Endle
 		const spawned = spawnAll(tiles !== undefined ? safeRoomSpawns(state, planned, tiles) : planned);
 		attachScoreRoomMembers(state, id, spawned); // scoring: the room engages now
 		dropsOnRoomSpawned(state, id, spawned); // boost drops: a guaranteed room's members (the tutorial)
+		tutorialOnRoomSpawned(state, e.floor, id, spawned); // the tutorial's block lesson: hold its room's enemies
 	}
 }
 

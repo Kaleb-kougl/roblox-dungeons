@@ -1,7 +1,8 @@
 // First-run tutorial in the sim (docs/TUTORIAL.md "Architecture §1", task T1): harmless hits (bullets, contact damage,
 // DEBUG_HIT) land like real hits (playerHits, hurtTicks, lastHitSource, the bullet consumed, the combo cut, Hourglass)
 // but never take armor or hearts, never trigger Second Wind and never kill; startHalfHearts (solo, a party, the clamp);
-// the flask heals back up; floor changes keep hearts; the appended "tutorial" hash group, clone and replay.
+// the flask heals back up; floor changes keep hearts; the appended "tutorial" hash group, clone and replay; the
+// block lesson's guard lock (its room's spawns held at TUTORIAL_GUARD_HOLD_HP until a block).
 import { describe, expect, it } from "@rbxts/jest-globals";
 import { TEST_CHASER } from "shared/sim/testing";
 import {
@@ -30,6 +31,17 @@ import {
 	BOSS_ACT1_ID,
 	TUTORIAL_FULL_BOSS_HP_PERCENT,
 	TUTORIAL_HASH_FIELDS,
+	GUARD_LOCK_ARMED,
+	GUARD_LOCK_RELEASED,
+	GUARD_LOCK_WAITING,
+	NO_GUARD_LOCK_FLOOR,
+	NO_GUARD_LOCK_ROOM,
+	TUTORIAL_GUARD_HOLD_HP,
+	isTutorialGuardHolding,
+	isTutorialGuardReleased,
+	tutorialHeldDamage,
+	tutorialOnGuardCancels,
+	tutorialOnRoomSpawned,
 	archetypeIndex,
 	cloneSimState,
 	compose,
@@ -57,6 +69,20 @@ import {
 } from "shared/sim";
 
 const enc = (spawns: ActorSpawn[]): EncounterConfig => ({ spawns, rooms: [], entranceRoom: -1, bossRoom: -1 });
+
+/** A fresh tutorial state without a guard lock. */
+function tutorialStateOf(harmless: number) {
+	return {
+		harmless,
+		harmlessHits: 0,
+		bossHpPercent: TUTORIAL_FULL_BOSS_HP_PERCENT,
+		guardLockFloor: NO_GUARD_LOCK_FLOOR,
+		guardLockRoom: NO_GUARD_LOCK_ROOM,
+		guardLock: GUARD_LOCK_WAITING,
+		guardLockFirstId: 0,
+		guardLockEndId: 0,
+	};
+}
 
 function frame(mx: number, mz: number, buttons = 0, ax = 0, az = 0): InputFrame {
 	return { moveX: mx * AXIS_MAX, moveZ: mz * AXIS_MAX, aimX: ax * AXIS_MAX, aimZ: az * AXIS_MAX, buttons };
@@ -99,7 +125,7 @@ describe("tutorial state and hash", () => {
 
 	it("with it: state.tutorial, hashed as the last group; layout values are writeHashFields, names cover them", () => {
 		const s = createSimState(1, 0, 0, HARMLESS);
-		expect(s.tutorial).toEqual({ harmless: 1, harmlessHits: 0, bossHpPercent: TUTORIAL_FULL_BOSS_HP_PERCENT });
+		expect(s.tutorial).toEqual(tutorialStateOf(1));
 		expect(isTutorialHarmless(s)).toBe(true);
 		step(s, HIT, HARMLESS);
 		const layout = hashLayout(s, true);
@@ -131,6 +157,17 @@ describe("tutorial state and hash", () => {
 		expect(hashState(s)).toBe(before);
 		s.tutorial!.bossHpPercent = 20;
 		expect(hashState(s)).never.toBe(before);
+		s.tutorial!.bossHpPercent = TUTORIAL_FULL_BOSS_HP_PERCENT;
+		// The guard lock's fields (appended after bossHpPercent, in TUTORIAL_HASH_FIELDS order).
+		for (let k = 3; k < TUTORIAL_HASH_FIELDS.size(); k++) {
+			const f = TUTORIAL_HASH_FIELDS[k];
+			expect(layout.names[last.start + k]).toBe(`tutorial.${f}`);
+			const t = s.tutorial! as unknown as Record<string, number>;
+			t[f] += 7;
+			expect([f, hashState(s) !== before]).toEqual([f, true]);
+			t[f] -= 7;
+		}
+		expect(hashState(s)).toBe(before);
 	});
 
 	it("the core groups match a plain run's: the tutorial only appends", () => {
@@ -249,7 +286,7 @@ describe("harmless hits", () => {
 		// The same hit without harmless kills.
 		const lethal: SimConfig = { tutorial: { harmless: false, startHalfHearts: 1 } };
 		const d = createSimState(1, 0, 0, lethal);
-		expect(d.tutorial).toEqual({ harmless: 0, harmlessHits: 0, bossHpPercent: TUTORIAL_FULL_BOSS_HP_PERCENT });
+		expect(d.tutorial).toEqual(tutorialStateOf(0));
 		step(d, HIT, lethal);
 		expect([d.player.hearts, d.player.dead, d.events.playerDied, d.tutorial!.harmlessHits]).toEqual([0, 1, 1, 0]);
 	});
@@ -439,6 +476,99 @@ describe("bossHpPercent", () => {
 		expect(phaseAt[1]).toBe(1);
 		expect(phaseAt[2]).toBeCloseTo(BOSS.phaseHp[0], 9);
 		expect(phaseAt[3]).toBeCloseTo(BOSS.phaseHp[1], 9);
+	});
+});
+
+describe("guardLock (the block lesson)", () => {
+	const LOCK: SimConfig["tutorial"] = { harmless: true, guardLock: { floor: 1, room: 4 } };
+	const twoChasers = (tutorial: SimConfig["tutorial"]): SimState =>
+		createSimState(1, 0, 0, {
+			encounter: enc([
+				{ kind: TEST_CHASER.id, x: 6, z: 6 },
+				{ kind: TEST_CHASER.id, x: -6, z: -6 },
+			]),
+			tutorial,
+		});
+	const chasers = (s: SimState) => s.combat.actors.filter((a) => a.kind === archetypeIndex(TEST_CHASER.id));
+
+	it("is stored and hashed; a bad floor or room throws", () => {
+		const s = createSimState(1, 0, 0, { tutorial: LOCK });
+		expect([s.tutorial!.guardLockFloor, s.tutorial!.guardLockRoom, s.tutorial!.guardLock]).toEqual([
+			1,
+			4,
+			GUARD_LOCK_WAITING,
+		]);
+		expect(hashState(s)).never.toBe(hashState(createSimState(1, 0, 0, HARMLESS)));
+		for (const bad of [
+			{ floor: 0, room: 4 },
+			{ floor: 1.5, room: 4 },
+			{ floor: 1, room: -1 },
+			{ floor: 1, room: 0.5 },
+		]) {
+			expect(() => createSimState(1, 0, 0, { tutorial: { harmless: true, guardLock: bad } })).toThrow(
+				"guardLock",
+			);
+		}
+	});
+
+	it("arms only on its floor and room; then its spawns keep TUTORIAL_GUARD_HOLD_HP, others take every hit", () => {
+		const s = twoChasers(LOCK);
+		const [a, b] = chasers(s);
+		tutorialOnRoomSpawned(s, 2, 4, [a]); // wrong floor
+		tutorialOnRoomSpawned(s, 1, 3, [a]); // wrong room
+		expect(s.tutorial!.guardLock).toBe(GUARD_LOCK_WAITING);
+		expect(tutorialHeldDamage(s, a, a.hp)).toBe(a.hp);
+		tutorialOnGuardCancels(s, 3); // a block before the room: does not count
+		expect(s.tutorial!.guardLock).toBe(GUARD_LOCK_WAITING);
+		tutorialOnRoomSpawned(s, 1, 4, [a]);
+		expect([s.tutorial!.guardLock, s.tutorial!.guardLockFirstId, s.tutorial!.guardLockEndId]).toEqual([
+			GUARD_LOCK_ARMED,
+			a.id,
+			a.id + 1,
+		]);
+		// A lethal hit leaves TUTORIAL_GUARD_HOLD_HP; a small one lands whole; at the hold nothing lands.
+		expect(tutorialHeldDamage(s, a, a.hp)).toBe(a.hp - TUTORIAL_GUARD_HOLD_HP);
+		expect(tutorialHeldDamage(s, a, 0.5)).toBe(0.5);
+		expect(tutorialHeldDamage(s, b, b.hp)).toBe(b.hp); // not one of the room's spawns
+		expect(isTutorialGuardHolding(s)).toBe(false);
+		a.hp = TUTORIAL_GUARD_HOLD_HP;
+		expect(tutorialHeldDamage(s, a, 1)).toBe(0);
+		expect(isTutorialGuardHolding(s)).toBe(true);
+		// Arming happens once: a later spawn in the room is not held.
+		tutorialOnRoomSpawned(s, 1, 4, [b]);
+		expect(tutorialHeldDamage(s, b, b.hp)).toBe(b.hp);
+		// No block (0 bullets erased) keeps it; a block releases it for good.
+		tutorialOnGuardCancels(s, 0);
+		expect(isTutorialGuardReleased(s)).toBe(false);
+		tutorialOnGuardCancels(s, 1);
+		expect([s.tutorial!.guardLock, isTutorialGuardReleased(s), isTutorialGuardHolding(s)]).toEqual([
+			GUARD_LOCK_RELEASED,
+			true,
+			false,
+		]);
+		expect(tutorialHeldDamage(s, a, 1)).toBe(1);
+	});
+
+	it("the held range covers every actor of the spawn; an empty spawn releases at once", () => {
+		const s = twoChasers(LOCK);
+		const [a, b] = chasers(s);
+		tutorialOnRoomSpawned(s, 1, 4, [b, a]);
+		expect([s.tutorial!.guardLockFirstId, s.tutorial!.guardLockEndId]).toEqual([a.id, b.id + 1]);
+		expect(tutorialHeldDamage(s, a, a.hp)).toBe(a.hp - TUTORIAL_GUARD_HOLD_HP);
+		expect(tutorialHeldDamage(s, b, b.hp)).toBe(b.hp - TUTORIAL_GUARD_HOLD_HP);
+		const e = twoChasers(LOCK);
+		tutorialOnRoomSpawned(e, 1, 4, []);
+		expect(e.tutorial!.guardLock).toBe(GUARD_LOCK_RELEASED);
+	});
+
+	it("without a lock (or outside the tutorial) nothing is ever held", () => {
+		for (const s of [twoChasers({ harmless: true }), twoChasers(undefined)]) {
+			const [a] = chasers(s);
+			tutorialOnRoomSpawned(s, 1, 4, [a]);
+			tutorialOnRoomSpawned(s, 1, NO_GUARD_LOCK_ROOM, [a]);
+			expect(tutorialHeldDamage(s, a, a.hp)).toBe(a.hp);
+			expect([isTutorialGuardHolding(s), isTutorialGuardReleased(s)]).toEqual([false, false]);
+		}
 	});
 });
 

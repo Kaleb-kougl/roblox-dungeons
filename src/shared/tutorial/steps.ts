@@ -62,7 +62,10 @@ export const TUTORIAL_DEVICES: ReadonlyArray<TutorialDevice> = ["keyboard", "gam
 export type TutorialSkill =
 	/** >= 1 dodge roll (events.rollStarted). */
 	| "roll"
-	/** >= 1 bullet erased by the sword guard (score source `guard`). Waived once the room is cleared without one. */
+	/**
+	 * >= 1 bullet blocked by the sword guard (score source `guard`, or the sim's guard lock released). Never waived:
+	 * the room cannot be cleared without one (the sim holds the lesson's enemies at 1 hp: TutorialSimConfig.guardLock).
+	 */
 	| "guard"
 	/** The bow in hand (the active weapon set holds weapon.bow). */
 	| "bow"
@@ -112,6 +115,11 @@ export interface TutorialStep {
 	readonly lesson?: TutorialLessonId;
 	/** Prompt id: theme keys `tutorial.prompt.<prompt>.<device>` (tutorialPromptKey). */
 	readonly prompt: string;
+	/**
+	 * Shown instead of `prompt` while the sim holds the lesson's enemies waiting for a block (shared/sim
+	 * isTutorialGuardHolding: the block lesson's bruiser at 1 hp). Theme keys as `prompt`.
+	 */
+	readonly holdPrompt?: string;
 	/**
 	 * A lesson-room step normally shows the "follow the marker" prompt until its room is entered; true shows its own
 	 * prompt on the way there too (the stairwell: the walk in IS the lesson).
@@ -181,6 +189,7 @@ const STEP_DEFS: ReadonlyArray<StepDef> = [
 		floor: 1,
 		lesson: "combatD",
 		prompt: "guard",
+		holdPrompt: "guardHold",
 		marker: { kind: "door", lesson: "combatD" },
 		rule: { kind: "clear", skills: ["guard"] },
 	},

@@ -20,7 +20,7 @@ import {
 import { PLAYER_RADIUS } from "../../playerData";
 import { SQRT1_2 } from "../../jsnum";
 import { endlessActorHp } from "../../endlessData";
-import { tutorialBossHp, tutorialScalingFloor } from "../../tutorial/tutorial";
+import { tutorialBossHp, tutorialHeldDamage, tutorialScalingFloor } from "../../tutorial/tutorial";
 import { partyHpMultiplier } from "../../partyData";
 import { partySize, playerAt } from "../../party";
 import type { SimCtx } from "../ctx";
@@ -193,6 +193,9 @@ export function damageActor(ctx: SimCtx, a: ActorState, amount: number): number 
 	if (cap !== undefined && dmg > 0) dmg = applyDamageCap(a, ctx.tick, dmg, cap);
 	if (dmg > a.hp) dmg = a.hp; // overkill does not count
 	if (dmg > 0) {
+		// The tutorial's block lesson (tutorial.ts guard lock): a held actor keeps TUTORIAL_GUARD_HOLD_HP until a block.
+		// The hit still flashes; exactly dmg in every other run.
+		if (ctx.state.tutorial !== undefined) dmg = tutorialHeldDamage(ctx.state, a, dmg);
 		a.hp -= dmg;
 		ev.damageDealt += dmg;
 		if (a.hp > 0) a.flashTicks = HIT_FLASH_TICKS;

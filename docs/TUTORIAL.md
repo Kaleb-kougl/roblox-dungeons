@@ -9,7 +9,9 @@ flow it first hooked into is gone; §4 / §5 say how it fits the new flow); the 
 built" notes where the build differs. Branch `tutorial-linear` (2026-10-26, headless only) made floor 1 a strict
 linear chain of the lesson rooms (a new opt-in Forge option, `chain`) and the floor-2 boss fast
 (`TUTORIAL.bossHpPercent` = 20); see "Decisions" 6-7. 2026-10-26 (headless only): combat B's boost drop became a
-real step, `boost` (funnel step 6 of 16; the funnel was renumbered, §6); see "Decisions" 8.
+real step, `boost` (funnel step 6 of 16; the funnel was renumbered, §6); see "Decisions" 8. 2026-10-26 (headless
+only): blocking is mandatory: the `guard` step (combat D) is never waived, because the sim holds the bruiser at 1 hp
+until a sword guard erases a bullet (`TutorialSimConfig.guardLock`), and its prompt says "block"; see "Decisions" 9.
 
 ## Goal
 
@@ -60,7 +62,7 @@ up even if the player wanders off. A world marker (beam or arrow) always points 
 | 3 | Combat A | 2 training dummies (or low-hp swarmers, see open questions) | "Aim with the mouse / right stick. Hold **Left click** / RT to attack. The third swing is a finisher." | Both killed |
 | 4 | Combat B | 3 swarmers | "They rush you. Getting hit flashes you red. **In a real run that costs half a heart.**" (first harmless hit: ghost half-heart flash + toast) | Room cleared |
 | 5 | Combat C | 1 sniper | "The orange line is its aim. **Roll through the shot**: Space / LB. You can't be hit mid-roll." | Room cleared and >= 1 roll (praise toast on a graze) |
-| 6 | Combat D | 1 bruiser | "**Right click** / LT with the sword to **guard**: it deletes bullets, and shockwaves too." (the guard is a press, 0.3 s) | >= 1 guard cancel (score `guard` source) and room cleared; waived if the room is cleared first (nothing left to guard) |
+| 6 | Combat D | 1 bruiser | "**Block** with the sword: **Right click** / LT as a shot reaches you. It deletes bullets, and shockwaves too." (the guard is a press, 0.3 s). While the bruiser waits at 1 hp: "It won't go down until you block one of its shots" | >= 1 guard cancel (score `guard` source) and room cleared. **Never waived** (Decisions 9): the sim holds the bruiser at 1 hp until the first block (`guardLock`), so the room cannot be cleared without one |
 | 7 | Combat E | 1 turretSniper behind cover | "Swap to the bow: **E** / Y. Hold Right click / LT to charge a heavy arrow, then release." (pulse on WeaponPanel) | Weapon swapped, a heavy arrow fired, room cleared |
 | 8 | Combat F | turretSprayer x2 (a bullet storm) | "Too many bullets? **Q** / RB burns an Ember and clears every enemy bullet. 2 per floor." | `emberUsed`, room cleared (the Ember waived if none is left) |
 | 9 | Treasure | pedestal (existing M2 logic) | "Relics are permanent for the run. Walk onto the pedestal." | Pedestal taken |
@@ -208,6 +210,18 @@ registerRunWorld("tutorial", (_seed, o) => buildTutorialRunConfig(o.partySize));
   (`damageCapPerSecond` 6) and the roars (intro 1 s, transitions 1.5 s x2, immune) were **left alone**: the bot fight
   is 21.3 s of sim (phase II at 7.8 s, III at 14.6 s), of which the roars are 4 s, and the cap only binds at the
   bot's full melee uptime (~6 dps), which a human rarely beats, so a human fight lands at ~20-30 s without them.
+- **Guard lock** (the block lesson, "Decisions" 9): `TutorialSimConfig.guardLock` = `TUTORIAL_GUARD_LOCK` = `{ floor:
+  1, room: TUTORIAL_GUARD_ROOM }` (combat D, room id 4, `TUTORIAL_GUARD_LESSON`). When that room is first entered
+  (endless `enterRoom`, after its deferred spawns: `tutorialOnRoomSpawned`) the lock arms on the spawned actors' ids
+  (`guardLockFirstId` .. `guardLockEndId`, one spawn's ids are consecutive). While armed, `damageActor` keeps a held
+  actor at `TUTORIAL_GUARD_HOLD_HP` = 1 (`tutorialHeldDamage`: the hit still lands, flashes, calls `onHit` and counts in
+  `enemyHits`; only the hp stops). The first sword guard sweep that erases an enemy bullet (`sword.ts` ->
+  `tutorialOnGuardCancels`, the same count the score's `guard` source gets) releases it for good; a room that spawned
+  nothing releases at once. Hashed: `TUTORIAL_HASH_FIELDS` gained `guardLockFloor`, `guardLockRoom`, `guardLock`
+  (0 waiting / 1 armed / 2 released), `guardLockFirstId`, `guardLockEndId`, appended after `bossHpPercent`. Without
+  `guardLock` (and outside a tutorial run) nothing is held, so every fixture and normal run hashes as before; every
+  tutorial run's state hash changed by the appended fields. The bot's tour run is unchanged (it guards before it
+  swings, so the lock releases before any hold); `guardLate` (swing first) shows the hold.
 - **Lock spec** (`tutorial.spec.ts`): the Forge params and floor-world SimConfig fields are an endless floor's (floor 1
   `chain` = `tutorialChain()`), both layout digests (floor 1 `5bc337a0`, floor 2 `c0fd5b19`), the lesson table's room
   ids / types / order and the chain built from it, `checkTutorialChain` with no problem (9 corridors of 4-5 tiles, the
@@ -241,7 +255,7 @@ registerRunWorld("tutorial", (_seed, o) => buildTutorialRunConfig(o.partySize));
   | 5 | `hits` | combatB (highlight: hearts) | room cleared |
   | 6 | `boost` | floor 1, no room (marker: the drop; no highlight) | a boost runs on the player (combat B's Fury taken, on its landing frame too); waived when a drop was seen on floor 1 and none lies any more with no boost run (it faded) |
   | 7 | `roll` | combatC | room cleared and >= 1 roll since entering |
-  | 8 | `guard` | combatD | room cleared and >= 1 guard cancel since entering (waived when cleared first) |
+  | 8 | `guard` | combatD (hold prompt `guardHold`) | room cleared and >= 1 guard cancel since entering (or the sim's guard lock released); never waived: the room cannot clear without a block (§2 "Guard lock") |
   | 9 | `bow` | combatE (highlight: weapons) | room cleared, the bow in hand and a heavy arrow released since entering |
   | 10 | `ember` | combatF | room cleared and an Ember burnt since entering (waived when cleared with none left) |
   | 11 | `relic` | treasure | a relic taken |
@@ -509,3 +523,10 @@ Critical path: T1 -> T2 -> T4 -> T6. T5 can run alongside T2-T4.
 8. **The boost pickup is a step** (owner, 2026-10-26; reverses docs/BOOSTS.md P8): `boost`, step 6 of 16, after
    `hits` (§3). It replaces the `boost` callout; the funnel was renumbered (§6). Presentation only: no sim, hash,
    replay or world change.
+9. **Blocking is a mandatory step** (owner, 2026-10-26: "add block as a step"; chosen over a separate `block` room /
+   funnel step and over a new block verb): the existing `guard` step (8, combat D's bruiser) stays where it is with
+   its id and funnel number, but is no longer waived when the room is cleared first. The sim makes that impossible
+   instead: the bruiser cannot drop below 1 hp until the player has blocked a bullet with the sword's guard (§2
+   "Guard lock", a hashed `TutorialSimConfig` field, so tutorial replays changed; no fixture did). While it waits at
+   1 hp the prompt switches to `guardHold` ("It won't go down until you block one of its shots"). The prompts say
+   "block"; the action name (Options "Guard / charge") and the score source ("Guard cancels") are unchanged.

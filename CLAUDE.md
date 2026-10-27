@@ -82,6 +82,8 @@ Decision log (deviations from `PLAN.md`):
   a per-player doc in DataStore `KV_Onboarding_v1` (`OnboardingService`, codec in `shared/onboarding`). Its floors are
   endless floors with fixed seeds (`tutorialForgeParams` = `endlessFloorParams` + seed / room count, world from
   `endlessFloorWorld`), so endless Forge options (solid pillars, `roomScale`) apply; a layout change fails its lock spec.
+  Blocking is mandatory (TUTORIAL.md Decisions 9): `TutorialSimConfig.guardLock` holds combat D's bruiser at 1 hp until a
+  sword guard erases a bullet (hashed fields appended to the `tutorial` group; tutorial replays changed, no fixture did).
   A first join (onboarding loaded and not done, or `KV_Tutorial`) starts it before, instead of, the main menu; Skip
   leaves like Leave run (back to the menu), the outro's Start my first run is Play solo, and the main menu has the
   replay. A player in it is busy for lobbies (`RunSessionService.busyReason`), so no lobby start takes it over.

@@ -5,6 +5,7 @@ import { describe, expect, it } from "@rbxts/jest-globals";
 import { TUTORIAL } from "shared/config";
 import {
 	BOSS_ACT1_KIND,
+	BRUISER_KIND,
 	ENDLESS_FIRST_FLOOR,
 	ENDLESS_ROOM_SCALE,
 	ENDLESS_SOLID_PILLARS,
@@ -49,6 +50,9 @@ import {
 	TUTORIAL_BOOST_ROOM,
 	TUTORIAL_DROPS_CONFIG,
 	TUTORIAL_ENTRANCE_ROOM,
+	TUTORIAL_GUARD_LESSON,
+	TUTORIAL_GUARD_LOCK,
+	TUTORIAL_GUARD_ROOM,
 	TUTORIAL_ROOMS,
 	TUTORIAL_SHRINE_ROOM,
 	TUTORIAL_STAIRWELL_ROOM,
@@ -198,6 +202,18 @@ describe("tutorial world: the lock", () => {
 		const st = createSimState(TUTORIAL.runSeed, setup.spawn!.x, setup.spawn!.z, setup.config);
 		expect(st.drops !== undefined).toBe(true);
 		expect(setup.endlessFloor(1).roomSpawns[TUTORIAL_BOOST_ROOM].size()).toBe(3);
+	});
+
+	it("guard lock: combat D (floor 1, room 4: one bruiser) is the block lesson's room", () => {
+		expect(TUTORIAL_GUARD_LESSON).toBe("combatD");
+		expect(TUTORIAL_GUARD_ROOM).toBe(4);
+		expect(TUTORIAL_GUARD_LOCK).toEqual({ floor: ENDLESS_FIRST_FLOOR, room: TUTORIAL_GUARD_ROOM });
+		const room = TUTORIAL_ROOMS.find((r) => r.roomId === TUTORIAL_GUARD_ROOM)!;
+		expect([room.lesson, room.kinds]).toEqual(["combatD", [BRUISER_KIND]]);
+		const setup = buildTutorialRunConfig();
+		expect(setup.config.tutorial!.guardLock).toBe(TUTORIAL_GUARD_LOCK);
+		const st = createSimState(TUTORIAL.runSeed, setup.spawn!.x, setup.spawn!.z, setup.config);
+		expect([st.tutorial!.guardLockFloor, st.tutorial!.guardLockRoom]).toEqual([1, 4]);
 	});
 
 	it("the lesson table: rooms, types and order", () => {
@@ -431,6 +447,7 @@ describe("tutorial world: determinism and runs", () => {
 			harmless: true,
 			startHalfHearts: TUTORIAL_START_HALF_HEARTS,
 			bossHpPercent: TUTORIAL.bossHpPercent,
+			guardLock: { floor: ENDLESS_FIRST_FLOOR, room: TUTORIAL_GUARD_ROOM },
 		});
 		expect(TUTORIAL.startHalfHearts).toBe(TUTORIAL_START_HALF_HEARTS);
 		expect(a.config.scoring).never.toBe(undefined);

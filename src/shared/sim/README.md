@@ -122,7 +122,7 @@ source: 12) because gen.arc's sin / cos come from the arc table, which only hold
 | `score/score.spec.ts`, `score/score.replay.spec.ts` | M2 scoring: points per event, combo (the co-op cut by the players present), grazes, guard, rooms, floors (the rooms-cleared ratio and its rounding), hash; run-full-1337 replayed scored (deterministic, gameplay subsystems identical to the fixture) |
 | `score/score.endless.spec.ts` | scoring on endless floors: one room record per room with deferred spawns (par from their encounter cost), members attached and the room engaged on the entry tick, clear / perfect / fast and floor-scaled kills, records rebuilt on a floor change after the floor clear |
 | `progression/progression.spec.ts` | M2 progression: offers (distinct, unowned, rarity weights incl. the per-floor legendary ramp and cap, a hand-made twin of the draw, 20,000-draft frequencies, exhausted rarities), the draft (opens on a floor change, freezes every world group, early confirms ignored, stick + FIRE, held buttons quiet after it, replays identically), each boon / relic / curse at its application point (an open endless arena), the shrine once per floor, the "run" hash group and clone |
-| `tutorial/tutorial.spec.ts` | tutorial harmless mode: bullets, contact and DEBUG_HIT land without armor / hearts / death, playerHits / hurtTicks / lastHitSource / combo cut / Hourglass as in a real hit, no Second Wind, startHalfHearts (solo, a party, the clamp), the flask heals back up, floor changes keep hearts, bossHpPercent (boss hp and hpMax x percent, other actors and runs untouched, validation, phase marks on the reduced hpMax), the appended "tutorial" group, clone, replay |
+| `tutorial/tutorial.spec.ts` | tutorial harmless mode: bullets, contact and DEBUG_HIT land without armor / hearts / death, playerHits / hurtTicks / lastHitSource / combo cut / Hourglass as in a real hit, no Second Wind, startHalfHearts (solo, a party, the clamp), the flask heals back up, floor changes keep hearts, bossHpPercent (boss hp and hpMax x percent, other actors and runs untouched, validation, phase marks on the reduced hpMax), guardLock (arming only on its floor / room, the hold at TUTORIAL_GUARD_HOLD_HP, release on a block, validation, no hold without it), the appended "tutorial" group, clone, replay |
 | `../run/slice.spec.ts` | the slice: the recorded endless run scored (replays twice to hash and score, floor clears by rooms cleared at the Depth in force, the boss at Depth 1), segmented per floor through `SegmentedValidator`, an edited later segment rejected |
 | `../run/replay.bench.spec.ts` | server replay cost per tick on endless floor 15 at Depth 3 in combat, solo and 8 players, one room / the whole floor (docs/SERVER.md "Replay capacity") |
 | `breakables/breakables.spec.ts` | breakables: opt-in state, the appended group and its dump names, clone; B4 hit counts vs SWORD_DATA / BOW_DATA; players, plain and steered enemy walks and bullets blocked (LOS not); every damage source (bow, sword, guard none, heavy arrow pierce on a break only, enemy bullets, the slam in a real fight); scoring without the combo; an endless run's floor rebuild; co-op; a replay |
@@ -219,8 +219,8 @@ uses the new Depth. Hash order: `core`, `combatHeader`, `actors`, `weapons`, `en
 draftOpen, draftTicks, draftSelected, hourglassTicks, fangKills, secondWindUsed; then pedestals.length, (room, taken)
 per pedestal, shrineRoom, shrineUsed; dump names `run.players[0].boons[1]`, `run.pedestals[0].taken`, ...), then
 `party` (co-op only: size, left[0..n-1], then per player 1..n-1 the player fields and their weapons), then `tutorial`
-(tutorial runs only: harmless, harmlessHits, bossHpPercent; dump names `tutorial.harmless`, `tutorial.harmlessHits`,
-`tutorial.bossHpPercent`), then
+(tutorial runs only: harmless, harmlessHits, bossHpPercent, guardLockFloor, guardLockRoom, guardLock, guardLockFirstId,
+guardLockEndId; dump names `tutorial.<field>`), then
 `breakables` (runs with SimConfig.breakables, i.e. every endless run: pieces.length, then per piece kind,
 x, y, hp, brokenTick; dump names `breakables.length`, `breakables[0].hp`, ...), then `drops` (runs with SimConfig.drops;
 always last: rngState, killsSinceDrop, debugNextKind, ground.length, per slot kind / x / z / spawnTick / ticksLeft,
@@ -258,13 +258,15 @@ validators accept it with died = true).
 Opt-in through `SimConfig.tutorial` (`TutorialSimConfig`, tutorial/tutorial.ts; docs/TUTORIAL.md "Architecture §1").
 Without it there is no `state.tutorial`, nothing extra runs and nothing extra is hashed, so every fixture and every
 solo, endless and party hash is unchanged. With it createSimState creates `state.tutorial` (`harmless` 0/1,
-`harmlessHits`, `bossHpPercent`), hashed as the **tutorial** group, appended after `party` (only `breakables` and `drops` come after it, and a tutorial run has no breakables).
+`harmlessHits`, `bossHpPercent`, the guard lock's `guardLockFloor` / `guardLockRoom` / `guardLock` / `guardLockFirstId`
+/ `guardLockEndId`), hashed as the **tutorial** group, appended after `party` (only `breakables` and `drops` come after it, and a tutorial run has no breakables).
 
 | Rule | Where |
 | --- | --- |
 | `startHalfHearts`: every player (solo, every party member) starts with it, clamped to [TUTORIAL_MIN_START_HALF_HEARTS, heartsMax]; heartsMax is unchanged, so the flask heals back up; floor changes keep hearts (`refillAtCheckpoint` never heals) | createSimState (after the party exists, before the encounter spawns; no rng) |
 | Scaling: endless enemy hp and enemy bullet speed scale as on floor `TUTORIAL_SCALING_FLOOR` (1) on every floor (`tutorialScalingFloor`), so the tutorial's floor-2 boss is the Depth 1 / floor 1 fight | spawnActor (actors.ts), SimCtx.fireEnemy (ctx.ts) |
 | `bossHpPercent` (an integer >= 1, 100 when absent): a boss archetype (`data.boss`) spawns with hp x bossHpPercent / 100 (`tutorialBossHp`, after the endless and party scaling; exactly the hp at 100). Its phase marks are fractions of hpMax, so every phase still plays; the damage cap and the roar timers are unchanged | spawnActor (actors.ts) |
+| `guardLock` ({ floor, room }; the block lesson, docs/TUTORIAL.md "Decisions" 9): when that room is first entered the lock arms on its deferred spawns (`tutorialOnRoomSpawned`; ids `guardLockFirstId` .. `guardLockEndId`; an empty spawn releases it). While armed a held actor never drops below `TUTORIAL_GUARD_HOLD_HP` (1): `tutorialHeldDamage` clamps the hp a hit removes (it still flashes, counts and calls onHit). The first sword guard sweep that erases an enemy bullet releases it for good (`tutorialOnGuardCancels`). Absent: nothing is held | enterRoom (endless.ts), damageActor (actors.ts), the guard (sword.ts) |
 | `harmless`: a hit that lands (a positive amount, `isPlayerInvulnerable` false) does `events.playerHits += 1`, `hurtTicks = HURT_INVULN_TICKS`, `runOnPlayerHit` (Hourglass) and `tutorial.harmlessHits += 1`, then returns true (the bullet is consumed, `lastHitSource` is set, the score's combo cut runs from `playerHits`). Armor, hearts, Second Wind and death are skipped | damagePlayer (player.ts) |
 
 `runStartHalfHearts(config)` (player.ts) is the start hearts createSimState gives a fresh player (START_HALF_HEARTS, or

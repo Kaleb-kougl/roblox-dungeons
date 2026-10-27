@@ -10,7 +10,8 @@
  *   state.endless     floor, Depth (the boss kill), roomsEntered (a lesson room entered: its prompt shows)
  *   state.score       per-room clear records (room cleared), per-source award counts (kills, grazes, guard cancels)
  *   state.run         relics, curses and boons owned; the shrine zone (atShrine)
- *   state.tutorial    harmlessHits (the harmless-hit callout and the ghost half heart)
+ *   state.tutorial    harmlessHits (the harmless-hit callout and the ghost half heart); the guard lock (the block
+ *                     lesson's hold prompt while its bruiser waits at 1 hp, and the `guard` skill once released)
  *   state.combat      the weapon set in hand (the bow), the bow slot's heavy-arrow tick, the boss actor
  *   state.drops       the ground drops and the player's running boosts (docs/BOOSTS.md B9: the `boost` step, done
  *                     when combat B's guaranteed Fury is picked up or waived when it fades, its `drop` marker, and the
@@ -48,6 +49,8 @@ import {
 	atShrine,
 	boostTicksLeft,
 	dropsGround,
+	isTutorialGuardHolding,
+	isTutorialGuardReleased,
 	weaponIndex,
 	weaponsAt,
 	type ActorState,
@@ -357,7 +360,8 @@ export class TutorialDirector {
 			case "roll":
 				return pr.rolled;
 			case "guard":
-				return pr.guarded || cleared; // nothing left to guard against once the room is clear
+				// Never waived: the sim holds the room's enemies until a block (guard lock), so it cannot clear without.
+				return pr.guarded || isTutorialGuardReleased(state);
 			case "bow":
 				return pr.sawBow;
 			case "heavyArrow":
@@ -557,6 +561,11 @@ export class TutorialDirector {
 				} else if (step.lesson !== undefined && !this.progress[current].entered && !step.promptBeforeEntry) {
 					prompt = TUTORIAL_FOLLOW_PROMPT;
 				}
+			}
+			// The block lesson's bruiser held at 1 hp, waiting for a block: say why it will not fall.
+			const hold = TUTORIAL_STEPS[shown].holdPrompt;
+			if (hold !== undefined && prompt === TUTORIAL_STEPS[shown].prompt && isTutorialGuardHolding(frame.state)) {
+				prompt = hold;
 			}
 			v.promptStepIndex = shown;
 			v.prompt = prompt;

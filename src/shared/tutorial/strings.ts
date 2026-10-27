@@ -41,10 +41,13 @@ export function tutorialPromptKey(prompt: TutorialStep | string, device: Tutoria
 	return `tutorial.prompt.${id}.${device}`;
 }
 
-/** Every prompt id the director can show: each step's, plus the follow-the-marker prompt. */
+/** Every prompt id the director can show: each step's (and its hold prompt), plus the follow-the-marker prompt. */
 export function tutorialPromptIds(): string[] {
 	const out: string[] = [TUTORIAL_FOLLOW_PROMPT];
-	for (const s of TUTORIAL_STEPS) if (!out.includes(s.prompt)) out.push(s.prompt);
+	for (const s of TUTORIAL_STEPS) {
+		if (!out.includes(s.prompt)) out.push(s.prompt);
+		if (s.holdPrompt !== undefined && !out.includes(s.holdPrompt)) out.push(s.holdPrompt);
+	}
 	return out;
 }
 

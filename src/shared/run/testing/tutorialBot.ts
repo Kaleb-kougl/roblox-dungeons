@@ -6,7 +6,8 @@
  * The route: Continue on the objective card (a FIRE press once the card has been up long enough), walk, drink the
  * flask, then each floor-1 lesson room in `order` (default: the tour, TUTORIAL_ROOMS): attack the dummies / swarmers
  * with the sword (and after each fight walk over any boost drop lying on the floor: combat B's guaranteed Fury, the
- * `boost` step, docs/BOOSTS.md B9), roll once for the sniper, guard the bruiser's ring (ALT when a bullet comes close), swap to the bow
+ * `boost` step, docs/BOOSTS.md B9), roll once for the sniper, guard the bruiser's ring (ALT when a bullet comes close; with `guardLate`
+ * only once the sim holds it at 1 hp), swap to the bow
  * and release a heavy arrow at the turret sniper, burn an Ember in the sprayer storm, take the relic, accept the curse
  * (SHRINE_BUTTON), take the stairwell, confirm the centre draft card, then melee Mother Bramble on floor 2 (the player
  * is harmless, so it tanks; optionally with the debug boss damage, J) and take the stairwell she opens. It records the
@@ -44,6 +45,7 @@ import {
 	dropsEvents,
 	dropsGround,
 	isDraftOpen,
+	isTutorialGuardHolding,
 	weaponIndex,
 	type ActorState,
 	type InputFrame,
@@ -70,6 +72,11 @@ export interface TutorialBotOptions {
 	 * the arrow shows, and its own steering only while it is hidden (no marker, or within arrowHideTiles of it).
 	 */
 	readonly steer?: "bot" | "guide";
+	/**
+	 * Combat D (the block lesson): melee the bruiser first and guard only once the sim holds it at 1 hp waiting for a
+	 * block (TutorialSimConfig.guardLock); default false: guard first, then fight.
+	 */
+	readonly guardLate?: boolean;
 }
 
 export interface TutorialBotResult {
@@ -127,6 +134,9 @@ export interface TutorialBotResult {
 	/** Frames the `boost` step was current, and how many of them had the marker on a lying drop. */
 	readonly boostCurrentFrames: number;
 	readonly boostCurrentOnDrop: number;
+	/** The first tick the block lesson's bruiser was held at 1 hp waiting for a block (-1 never), and ticks held. */
+	readonly guardHeldTick: number;
+	readonly guardHeldTicks: number;
 }
 
 const DEFAULT_MAX_TICKS = 20 * 60 * SIM_HZ;
@@ -187,6 +197,9 @@ class TutorialBot {
 	dropMarkerOnDrop = 0;
 	boostCurrentFrames = 0;
 	boostCurrentOnDrop = 0;
+	guardHeldTick = -1;
+	guardHeldTicks = 0;
+	guardLate = false;
 	dropsLanded = 0;
 	dropsTaken = 0;
 	private prevHearts: number;
@@ -266,6 +279,10 @@ class TutorialBot {
 		this.prevHearts = p.hearts;
 		this.prevMax = p.heartsMax;
 		this.watchBoss();
+		if (isTutorialGuardHolding(this.state)) {
+			if (this.guardHeldTick < 0) this.guardHeldTick = t;
+			this.guardHeldTicks++;
+		}
 		if (this.guide !== undefined) {
 			const g = this.guide.update({
 				dungeon: this.world().dungeon,
@@ -619,6 +636,8 @@ class TutorialBot {
 			let lastAlt = false;
 			this.fight(lesson, () => {
 				if (this.state.score!.counts[ScoreSource.GUARD] > guardBase) return undefined;
+				// guardLate: swing until the sim holds the bruiser at 1 hp (it cannot die before a block), then guard.
+				if (this.guardLate && !isTutorialGuardHolding(this.state)) return undefined;
 				// Guard (ALT press edge) when a bullet comes close; otherwise stand and face it (no swings yet).
 				const want = this.nearestBullet() < GUARD_TRIGGER && !lastAlt;
 				lastAlt = want;
@@ -711,6 +730,7 @@ class TutorialBot {
 /** Plays the tutorial with the bot (see the file comment) and returns what the director reported. */
 export function playTutorial(options: TutorialBotOptions = {}): TutorialBotResult {
 	const bot = new TutorialBot(options.maxTicks ?? DEFAULT_MAX_TICKS, options.steer);
+	bot.guardLate = options.guardLate === true;
 	const order = options.order ?? TUTORIAL_ROOMS.map((r) => r.lesson);
 	bot.objective();
 	bot.walkABit();
@@ -754,5 +774,7 @@ export function playTutorial(options: TutorialBotOptions = {}): TutorialBotResul
 		dropMarkerOnDrop: bot.dropMarkerOnDrop,
 		boostCurrentFrames: bot.boostCurrentFrames,
 		boostCurrentOnDrop: bot.boostCurrentOnDrop,
+		guardHeldTick: bot.guardHeldTick,
+		guardHeldTicks: bot.guardHeldTicks,
 	};
 }

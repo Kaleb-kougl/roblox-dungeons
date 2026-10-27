@@ -23,6 +23,7 @@ import { registerWeapon } from "../registry";
 import type { WeaponData, WeaponSlotState } from "../types";
 import { altPressed } from "./altButton";
 import { scoreGuardCancels } from "../../../score/score";
+import { tutorialOnGuardCancels } from "../../../tutorial/tutorial";
 import type { SimCtx } from "../../ctx";
 import { attackTicks, playerHitDamage, runMods } from "../../../progression/runMods";
 
@@ -231,8 +232,11 @@ export const SWORD = registerWeapon<SwordData>({
 				false,
 				runMods(ctx.state, ctx.playerIndex).mirror ? slot.weapon + 1 : undefined,
 			);
-			// M2 scoring (opt-in): guard cancels, told apart from swing deletes.
-			if (ctx.state.score !== undefined) scoreGuardCancels(ctx.state, ctx.events.bulletsDeleted - deletedBefore);
+			// M2 scoring (opt-in): guard cancels, told apart from swing deletes. The tutorial's block lesson: a block
+			// releases its room's held enemies (tutorial.ts guard lock).
+			const cancels = ctx.events.bulletsDeleted - deletedBefore;
+			if (ctx.state.score !== undefined) scoreGuardCancels(ctx.state, cancels);
+			if (ctx.state.tutorial !== undefined) tutorialOnGuardCancels(ctx.state, cancels);
 			return;
 		}
 

@@ -686,9 +686,18 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 			"The orange line is its aim. Roll through the shot: {roll}. You can't be hit mid-roll.",
 		"tutorial.prompt.roll.touch":
 			"The orange line is its aim. Roll through the shot: {roll}. You can't be hit mid-roll.",
-		"tutorial.prompt.guard.keyboard": "{alt} with the sword to guard: it deletes bullets, and shockwaves too.",
-		"tutorial.prompt.guard.gamepad": "{alt} with the sword to guard: it deletes bullets, and shockwaves too.",
-		"tutorial.prompt.guard.touch": "{alt} with the sword to guard: it deletes bullets, and shockwaves too.",
+		"tutorial.prompt.guard.keyboard":
+			"Block with the sword: {alt} as a shot reaches you. It deletes bullets, and shockwaves too.",
+		"tutorial.prompt.guard.gamepad":
+			"Block with the sword: {alt} as a shot reaches you. It deletes bullets, and shockwaves too.",
+		"tutorial.prompt.guard.touch":
+			"Block with the sword: {alt} as a shot reaches you. It deletes bullets, and shockwaves too.",
+		"tutorial.prompt.guardHold.keyboard":
+			"It won't go down until you block one of its shots: {alt} with the sword as a shot reaches you.",
+		"tutorial.prompt.guardHold.gamepad":
+			"It won't go down until you block one of its shots: {alt} with the sword as a shot reaches you.",
+		"tutorial.prompt.guardHold.touch":
+			"It won't go down until you block one of its shots: {alt} with the sword as a shot reaches you.",
 		"tutorial.prompt.bow.keyboard": "Swap to the bow: {swap}. Hold {alt} to charge a heavy arrow, then release.",
 		"tutorial.prompt.bow.gamepad": "Swap to the bow: {swap}. Hold {alt} to charge a heavy arrow, then release.",
 		"tutorial.prompt.bow.touch": "Swap to the bow: {swap}. Hold {alt} to charge a heavy arrow, then release.",

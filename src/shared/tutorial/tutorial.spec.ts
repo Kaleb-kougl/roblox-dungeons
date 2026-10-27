@@ -16,6 +16,7 @@ import {
 	Button,
 	DEBUG_FLOOR_BUTTON,
 	EMPTY_INPUT,
+	GUARD_LOCK_RELEASED,
 	SIM_DT,
 	SIM_HZ,
 	ScoreSource,
@@ -250,7 +251,9 @@ describe("tutorial steps and strings", () => {
 		expect(pack.str(tutorialPromptKey("move", "keyboard"), { move: "WASD" })).toBe("Move: WASD");
 		expect(pack.str(tutorialPromptKey("move", "gamepad"), { move: "Left stick" })).toBe("Move: Left stick");
 		expect(pack.str("tutorial.verdict")).toBe("Practice: not submitted (tutorial)");
-		expect(tutorialPromptIds().size()).toBe(TUTORIAL_STEP_COUNT + 1); // + follow
+		expect(tutorialPromptIds().size()).toBe(TUTORIAL_STEP_COUNT + 2); // + follow, + the block lesson's guardHold
+		expect(TUTORIAL_STEPS[tutorialStepIndex("guard")].holdPrompt).toBe("guardHold");
+		expect(tutorialStringKeys().includes(tutorialPromptKey("guardHold", "keyboard"))).toBe(true);
 		expect(warnings).toEqual([]);
 	});
 });
@@ -588,6 +591,41 @@ describe("tutorial bot", () => {
 		for (let i = 0; i < r.funnelSteps.size(); i++) expect(r.funnelSteps[i]).toBe(i + 1);
 		expect(r.funnelSteps.size()).toBe(TUTORIAL_STEP_COUNT);
 		expect(r.heartProblems).toEqual([]);
+	});
+});
+
+describe("the block lesson (combat D, the sim's guard lock)", () => {
+	const GUARD = tutorialStepIndex("guard");
+	let late: TutorialBotResult | undefined;
+	const lateRun = (): TutorialBotResult => {
+		if (late === undefined) {
+			late = playTutorial({ guardLate: true });
+			describeRun("guard late", late);
+			print(`  guard lock: held from @${late.guardHeldTick} for ${late.guardHeldTicks} ticks`);
+		}
+		return late;
+	};
+
+	it("swinging first never kills the bruiser: it waits at 1 hp under the guardHold prompt until a block", () => {
+		const r = lateRun();
+		expect(r.guardHeldTick > 0).toBe(true);
+		expect(r.guardHeldTicks > 0).toBe(true);
+		expect(r.prompts.includes("guardHold")).toBe(true);
+		// The step was practised (never waived or skipped), after the hold began, and a guard cancel scored.
+		expect([r.stepDoneTicks[GUARD] > r.guardHeldTick, r.view.skipped[GUARD]]).toEqual([true, false]);
+		expect(r.run.state.score!.counts[ScoreSource.GUARD] > 0).toBe(true);
+		expect(r.run.state.tutorial!.guardLock).toBe(GUARD_LOCK_RELEASED);
+		// The rest of the tutorial plays on as usual.
+		expect(r.view.finished).toBe(true);
+		expect(r.view.funnelStepReached).toBe(TUTORIAL_STEP_COUNT);
+		expect(r.heartProblems).toEqual([]);
+	});
+
+	it("guarding first (the tour bot) releases the lock before any hold", () => {
+		const r = inOrderRun();
+		expect([r.guardHeldTick, r.guardHeldTicks]).toEqual([-1, 0]);
+		expect(r.run.state.tutorial!.guardLock).toBe(GUARD_LOCK_RELEASED);
+		expect(r.view.skipped[GUARD]).toBe(false);
 	});
 });
 

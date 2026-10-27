@@ -5,7 +5,8 @@
  *
  *   config   { endless: { runSeed: TUTORIAL.runSeed, worldForFloor }, scoring: ENDLESS_SCORING,
  *              tutorial: { harmless: true, startHalfHearts: TUTORIAL.startHalfHearts,
- *              bossHpPercent: TUTORIAL.bossHpPercent }, drops: TUTORIAL_DROPS_CONFIG }; no `breakables`
+ *              bossHpPercent: TUTORIAL.bossHpPercent, guardLock: TUTORIAL_GUARD_LOCK }, drops: TUTORIAL_DROPS_CONFIG };
+ *            no `breakables`
  *            (docs/DECOR.md B7: no barrels or crates in the tutorial, and its hand-built layouts carry none); drops
  *            only as the one guaranteed Fury from combat B's last swarmer (docs/BOOSTS.md B9)
  *   layouts  tutorialForgeParams: an endless floor's Forge params (endlessFloorParams: solid pillars, double-size
@@ -26,7 +27,9 @@
  *
  * Enemy hp and bullet speed scale as on endless floor 1 / Depth 1 on every floor (shared/sim tutorialScalingFloor),
  * so the training dummy has its 8 hp; Mother Bramble is the Depth 1 fight at TUTORIAL.bossHpPercent of her hp (the
- * sim's TutorialSimConfig.bossHpPercent), so the practice boss falls fast. Solo only: a party throws.
+ * sim's TutorialSimConfig.bossHpPercent), so the practice boss falls fast. The block lesson's bruiser (combat D) cannot
+ * die until the player has blocked a bullet with the sword's guard (TutorialSimConfig.guardLock: TUTORIAL_GUARD_LOCK).
+ * Solo only: a party throws.
  */
 import { TUTORIAL } from "shared/config";
 import { stableSort } from "shared/jsmath";
@@ -60,6 +63,7 @@ import {
 	DUMMY_KIND,
 	guaranteedDropsConfig,
 	type DropsConfig,
+	type TutorialGuardLock,
 	type SimConfig,
 } from "shared/sim";
 import { ENDLESS_SCORING, endlessFloorWorld, type EndlessRunFloor, type EndlessRunSetup } from "./endless";
@@ -251,6 +255,17 @@ export const TUTORIAL_BOOST_KIND: number = Boost.FURY;
 export const TUTORIAL_DROPS_CONFIG: DropsConfig = guaranteedDropsConfig([
 	{ floor: ENDLESS_FIRST_FLOOR, room: TUTORIAL_BOOST_ROOM, kind: TUTORIAL_BOOST_KIND },
 ]);
+
+/**
+ * The block lesson (docs/TUTORIAL.md "Decisions" 9): combat D's bruiser is held at 1 hp until the player blocks a
+ * bullet with the sword's guard (the sim's TutorialSimConfig.guardLock), so the `guard` step is never waived.
+ */
+export const TUTORIAL_GUARD_LESSON: TutorialLessonId = "combatD";
+export const TUTORIAL_GUARD_ROOM = planOf(TUTORIAL_GUARD_LESSON).roomId;
+export const TUTORIAL_GUARD_LOCK: TutorialGuardLock = table.freeze({
+	floor: ENDLESS_FIRST_FLOOR,
+	room: TUTORIAL_GUARD_ROOM,
+});
 
 /** A floor-1 room with its geometry: what the director (T4) and the world marker (T6) read. */
 export interface TutorialRoom extends TutorialRoomPlan {
@@ -518,6 +533,7 @@ export function buildTutorialRunConfig(partySize: number = DEFAULT_PARTY_SIZE): 
 			harmless: true,
 			startHalfHearts: TUTORIAL.startHalfHearts,
 			bossHpPercent: TUTORIAL.bossHpPercent,
+			guardLock: TUTORIAL_GUARD_LOCK,
 		},
 		drops: TUTORIAL_DROPS_CONFIG,
 	};
