@@ -184,8 +184,12 @@ export interface InviteEligibility {
 }
 
 /**
- * `joinIntent`: what the server did with this player's arrival (docs/INVITES.md §4). Sent once, soon after join. The
- * client's first-join choice waits for it (at most INVITE.intentWaitSeconds): `lobby` / `party` skip the automatic
+ * `joinIntent`: what the server did with this player's arrival (docs/INVITES.md §4), from the state after applying
+ * it. Sent soon after join (after the first resolve), again with every `inviteEligible` answer (the last value), and
+ * again when an arrival or party action places the player later while the first one said `none` (within
+ * INVITE.launchDataWaitSeconds + intentUpgradeMarginSeconds of join): it may arrive more than once and can upgrade
+ * none -> lobby / party, never downgrade. The client's first-join choice waits for it (at most
+ * INVITE.intentWaitSeconds) and re-checks the latest value when it dispatches: `lobby` / `party` skip the automatic
  * first-run tutorial (ID6).
  */
 export interface JoinIntent {
@@ -351,7 +355,7 @@ export interface ServerToClientEvents {
 	inviteEligible(eligibility: InviteEligibility): void;
 	/** Roblox invites: open the invite prompt on the client with these options (INVITE.promptSide "client"). */
 	invitePromptOnClient(options: InvitePromptOptions): void;
-	/** Roblox invites and parties: how this player's arrival was handled (see JoinIntent). Sent once per join. */
+	/** Roblox invites and parties: how this player's arrival was handled (see JoinIntent; may come more than once). */
 	joinIntent(intent: JoinIntent): void;
 	/** Lobbies: a one-member lobby's run starts; the client starts a ranked solo run (see LobbySoloRunStart). */
 	lobbyRunStart(start: LobbySoloRunStart): void;

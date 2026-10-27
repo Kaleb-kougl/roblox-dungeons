@@ -33,7 +33,8 @@ import { SimController } from "../game/SimController";
  * player's arrival is already resolved, so it doubles as the join-intent request) and again when a menu opens and the
  * last ask is INVITE.eligibilityCacheSeconds old; `inviteEligible` and `joinIntent` into the slice (TutorialController's
  * first-join gate reads the intent). INVITE.promptSide "client": `invitePromptOnClient` opens the prompt here
- * (ExperienceInviteOptions with the server's LaunchData / InviteMessageId, pcall, destroyed after). The local player's
+ * (ExperienceInviteOptions with the server's LaunchData / InviteMessageId, pcall; kept until the local
+ * GameInvitePromptClosed or INVITE.promptOptionsSeconds, then destroyed). The local player's
  * `SocialService.GameInvitePromptClosed` recipients always go back as `inviteRecipients` (the server dedupes), at
  * most LOBBY.maxPlatformInvitesPerMember of them.
  */
@@ -41,6 +42,8 @@ import { SimController } from "../game/SimController";
 export class LobbyController implements OnStart {
 	private readonly janitor = new Janitor();
 	private noticeSerial = 0;
+	/** The client-side prompt's options, kept until the prompt closes (or INVITE.promptOptionsSeconds). */
+	private promptOptions: ExperienceInviteOptions | undefined;
 	/** os.clock() of the last `inviteEligibility` sent (undefined: never). */
 	private eligibilityAskedAt: number | undefined;
 
@@ -54,8 +57,10 @@ export class LobbyController implements OnStart {
 		this.janitor.Add(Events.inviteEligible.connect((e) => clientStore.setInviteEligible(e.canSend === true)));
 		this.janitor.Add(
 			Events.joinIntent.connect((intent) => {
-				if (clientStore.getState().lobby.joinIntent === undefined)
-					print(`[Invite] join intent: ${intent.kind}`);
+				// Sent after the first resolve, again with every inviteEligibility answer, and once more when the
+				// server placed this player later (none -> lobby / party).
+				const before = clientStore.getState().lobby.joinIntent;
+				if (before !== intent.kind) print(`[Invite] join intent: ${before ?? "(none yet)"} -> ${intent.kind}`);
 				clientStore.setJoinIntent(intent.kind);
 			}),
 		);
@@ -63,7 +68,9 @@ export class LobbyController implements OnStart {
 		const [okClosed, closedErr] = pcall(() =>
 			this.janitor.Add(
 				SocialService.GameInvitePromptClosed.Connect((sender, recipientIds) => {
-					if (sender === Players.LocalPlayer) this.relayRecipients(recipientIds);
+					if (sender !== Players.LocalPlayer) return;
+					this.dropPromptOptions();
+					this.relayRecipients(recipientIds);
 				}),
 			),
 		);
@@ -142,18 +149,26 @@ export class LobbyController implements OnStart {
 	private promptOnClient(options: InvitePromptOptions): void {
 		const launchData = options.launchData;
 		if (!typeIs(launchData, "string")) return;
-		const [ok, err] = pcall(() => {
-			const opts = new Instance("ExperienceInviteOptions");
-			opts.LaunchData = launchData;
-			const messageId = options.inviteMessageId;
-			if (typeIs(messageId, "string") && messageId !== "") opts.InviteMessageId = messageId;
-			try {
-				SocialService.PromptGameInvite(Players.LocalPlayer, opts);
-			} finally {
-				opts.Destroy();
-			}
+		this.dropPromptOptions();
+		const opts = new Instance("ExperienceInviteOptions");
+		opts.LaunchData = launchData;
+		const messageId = options.inviteMessageId;
+		if (typeIs(messageId, "string") && messageId !== "") opts.InviteMessageId = messageId;
+		this.promptOptions = opts;
+		task.delay(INVITE.promptOptionsSeconds, () => {
+			if (this.promptOptions === opts) this.promptOptions = undefined;
+			opts.Destroy();
 		});
-		if (!ok) warn(`[Invite] PromptGameInvite failed: ${tostring(err)}`);
+		const [ok, err] = pcall(() => SocialService.PromptGameInvite(Players.LocalPlayer, opts));
+		if (!ok) {
+			warn(`[Invite] PromptGameInvite failed: ${tostring(err)}`);
+			this.dropPromptOptions();
+		}
+	}
+
+	private dropPromptOptions(): void {
+		this.promptOptions?.Destroy();
+		this.promptOptions = undefined;
 	}
 
 	/** The local player's prompt closed: its recipients (integers only, at most the platform cap) to the server. */

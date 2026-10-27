@@ -6,6 +6,10 @@
  * plays it). Only a choice that would start the tutorial waits for the intent, at most INVITE.intentWaitSeconds from
  * join; `none` or no intent by then starts it exactly as before. KV_Tutorial still wins (a dev override). Pure, so
  * TutorialController only feeds it (firstJoin.spec.ts).
+ *
+ * The latched choice is not final: it is DISPATCHED only once the join loading screen released (up to
+ * PRELOAD's timeout later), and the server may place the player meanwhile (a late LaunchData, a party mate arriving)
+ * and upgrade its `joinIntent` from none to lobby / party. `firstJoinDispatchChoice` re-checks at dispatch.
  */
 import { INVITE, type ArrivalJoinIntent } from "shared/invite";
 import type { OnboardingStatus } from "shared/onboarding";
@@ -26,6 +30,27 @@ export function firstJoinChoice(inputs: FirstJoinInputs): FirstRunChoice {
 	if (intent !== undefined) return intent === "none" ? "tutorial" : "normal";
 	const timeout = inputs.intentTimeoutSeconds ?? INVITE.intentWaitSeconds;
 	return inputs.waitedSeconds >= timeout ? "tutorial" : "wait";
+}
+
+/** What the client knows when it dispatches the latched first-join choice. */
+export interface FirstJoinDispatchFacts {
+	/** KV_Tutorial (true / false), or undefined. */
+	readonly forced: boolean | undefined;
+	/** The player is in a lobby now (the `lobby` slice's `mine`). */
+	readonly inLobby: boolean;
+	/** The latest `joinIntent` (it may have been upgraded since the gate latched). */
+	readonly intent: ArrivalJoinIntent | undefined;
+}
+
+/**
+ * The choice to dispatch: a latched "tutorial" becomes the normal flow when the player is in a lobby by now or the
+ * latest join intent is lobby / party (ID6: never pull a grouped player into the tutorial), unless KV_Tutorial forced
+ * it. Everything else is dispatched as latched.
+ */
+export function firstJoinDispatchChoice(latched: FirstRunDecision, facts: FirstJoinDispatchFacts): FirstRunDecision {
+	if (latched !== "tutorial" || facts.forced === true) return latched;
+	if (facts.inLobby || facts.intent === "lobby" || facts.intent === "party") return "normal";
+	return latched;
 }
 
 /**

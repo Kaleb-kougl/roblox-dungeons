@@ -1,15 +1,19 @@
 // InviteService's pure decisions (docs/INVITES.md I4, I6, I7): recipient lists, Studio's fake recipients, party
 // accept order, refusal toasts, the InviteArrival outcome and mid-session party offers (against a real Lobbies).
 import { describe, expect, it } from "@rbxts/jest-globals";
-import { LOBBY, Lobbies, type Lobby, type LobbyContext } from "shared/lobby";
+import { LOBBY, Lobbies, MAX_USER_ID_MAGNITUDE, type Lobby, type LobbyContext } from "shared/lobby";
 import {
 	ARRIVAL_TOAST,
+	INVITE,
+	arrivalPlacements,
 	arrivalToastForRefusal,
 	inviteArrivalOutcome,
 	inviteRecipientList,
+	joinIntentNow,
 	parseFakeRecipients,
 	partyAcceptOrder,
 	partyOffers,
+	shouldUpgradeJoinIntent,
 	type ArrivalAction,
 } from "shared/invite";
 
@@ -61,6 +65,20 @@ describe("inviteRecipientList", () => {
 		expect(inviteRecipientList(["1"], MAX)).toBe(undefined);
 		expect(inviteRecipientList([0 / 0], MAX)).toBe(undefined);
 		expect(inviteRecipientList(new Map<string, number>([["a", 1]]), MAX)).toBe(undefined);
+	});
+
+	it("bounds the ids: nonzero, |id| at most MAX_USER_ID_MAGNITUDE", () => {
+		expect(inviteRecipientList([MAX_USER_ID_MAGNITUDE, -MAX_USER_ID_MAGNITUDE], MAX)).toEqual([
+			MAX_USER_ID_MAGNITUDE,
+			-MAX_USER_ID_MAGNITUDE,
+		]);
+		expect(inviteRecipientList([1e300], MAX)).toBe(undefined);
+		expect(inviteRecipientList([-1e300], MAX)).toBe(undefined);
+		expect(inviteRecipientList([MAX_USER_ID_MAGNITUDE + 2], MAX)).toBe(undefined);
+		expect(inviteRecipientList([0], MAX)).toBe(undefined);
+		expect(inviteRecipientList([1 / 0], MAX)).toBe(undefined);
+		expect(parseFakeRecipients("0")).toBe(undefined);
+		expect(partyAcceptOrder([{ UserId: 1e300 }])).toBe(undefined);
 	});
 });
 
@@ -200,5 +218,43 @@ describe("partyOffers", () => {
 		l.setReady(ME, true);
 		l.start(ME, ctx(0));
 		expect(partyOffers(ME, [A], facts(l))).toEqual([]);
+	});
+});
+
+describe("arrivalPlacements / joinIntentNow / shouldUpgradeJoinIntent", () => {
+	it("who an arrival moves into a lobby, and how", () => {
+		const placed = (actions: ArrivalAction[]) => {
+			const out: [number, string][] = [];
+			for (const [id, how] of arrivalPlacements(ME, actions)) out.push([id, how]);
+			out.sort((a, b) => a[0] < b[0]);
+			return out;
+		};
+		expect(placed([{ kind: "joinInvite", inviteId: "i", lobbyId: "l" }])).toEqual([[ME, "lobby"]]);
+		expect(placed([{ kind: "joinOpen", lobbyId: "l" }])).toEqual([[ME, "lobby"]]);
+		expect(placed([{ kind: "partyJoin", lobbyId: "l", fromUserId: A }])).toEqual([[ME, "party"]]);
+		expect(placed([{ kind: "makePartyLobby", hostId: A, joiners: [B, ME], invitees: [C] }])).toEqual([
+			[A, "party"],
+			[B, "party"],
+			[ME, "party"],
+		]);
+		expect(placed([{ kind: "notify", toUserId: HOST, notice: "followed" }, { kind: "none" }])).toEqual([]);
+	});
+
+	it("the intent follows the state after applying", () => {
+		expect(joinIntentNow(false, "party")).toBe("none"); // the join was refused after all
+		expect(joinIntentNow(true, "party")).toBe("party");
+		expect(joinIntentNow(true, "lobby")).toBe("lobby");
+		expect(joinIntentNow(true, undefined)).toBe("lobby");
+	});
+
+	it("upgrades none -> lobby / party within the window only, never downgrades or repeats", () => {
+		const window = INVITE.launchDataWaitSeconds + INVITE.intentUpgradeMarginSeconds;
+		expect(shouldUpgradeJoinIntent("none", "party", 1)).toBe(true);
+		expect(shouldUpgradeJoinIntent("none", "lobby", window)).toBe(true);
+		expect(shouldUpgradeJoinIntent("none", "lobby", window + 1)).toBe(false);
+		expect(shouldUpgradeJoinIntent("none", "none", 1)).toBe(false);
+		expect(shouldUpgradeJoinIntent("lobby", "party", 1)).toBe(false);
+		expect(shouldUpgradeJoinIntent("party", "none", 1)).toBe(false);
+		expect(shouldUpgradeJoinIntent(undefined, "party", 1)).toBe(false); // the first one is still to come
 	});
 });

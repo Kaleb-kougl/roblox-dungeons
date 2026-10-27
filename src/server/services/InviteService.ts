@@ -9,18 +9,20 @@ import {
 	INVITE_PROMPT_RATE,
 	INVITE_RECIPIENTS_RATE,
 	INVITE_STUDIO_ATTRIBUTES,
-	arrivalJoinIntent,
+	arrivalPlacements,
 	decodeInviteLaunch,
 	encodeInviteLaunch,
 	inviteArrivalOutcome,
 	inviteRecipientList,
+	joinIntentNow,
 	parseFakeRecipients,
 	partyAcceptOrder,
 	partyOffers,
 	resolveArrival,
-	type ArrivalAction,
+	shouldUpgradeJoinIntent,
 	type ArrivalInput,
 	type ArrivalJoinIntent,
+	type ArrivalPlacement,
 	type InviteLaunch,
 } from "shared/invite";
 import {
@@ -32,7 +34,7 @@ import {
 	type LobbyRefusal,
 	type PartyGroupedHow,
 } from "shared/lobby";
-import type { InvitePromptRequest } from "shared/network";
+import type { InvitePromptOptions, InvitePromptRequest } from "shared/network";
 import { SlidingWindowLimiter, type AnalyticsEventSpec } from "shared/run";
 import { LobbyService } from "./LobbyService";
 import { TelemetryService } from "./TelemetryService";
@@ -44,27 +46,44 @@ const NOT_MEMBER_REASON = "not in a lobby";
 const IN_RUN_REASON = "the lobby is in a run";
 const BAD_REQUEST_REASON = "request must be { withLobby: boolean }";
 
-/** The lobby (or none: a menu invite) one `invitePrompt` was for, and the recipients already recorded for it. */
+/** The lobby (or none: a menu invite) one `invitePrompt` was for, and when it was made (INVITE.promptRecordSeconds). */
 interface PromptRecord {
 	readonly lobbyId?: string;
-	readonly recorded: Set<number>;
+	readonly at: number;
 }
 
-/** InviteService's per-player state; `janitor` holds the arrival thread and the PartyId watches. */
+/** One GetPartyAsync in flight: the resolves waiting for it. */
+interface PartyFetch {
+	readonly waiters: thread[];
+}
+
+/** InviteService's per-player state; `janitor` holds the player's threads and the PartyId watches. */
 interface InviteMember {
 	readonly player: Player;
 	readonly janitor: Janitor;
 	/** Server join order (party fallback order). */
 	readonly joinSeq: number;
+	/** os.clock() at PlayerAdded (the joinIntent upgrade window). */
+	readonly addedAt: number;
 	partyId?: string;
-	/** Set once the first arrival resolve is done (then `joinIntent` has been sent). */
+	/** The latest decoded LaunchData (every resolve reads it). */
+	launch?: InviteLaunch;
+	/** A non-empty LaunchData was seen (decodable or not): no more polling. */
+	launchSeen: boolean;
+	/** The last `joinIntent` sent (undefined until the first resolve is done). */
 	intent?: ArrivalJoinIntent;
-	/** True while the arrival may still change the placement: the LaunchData wait is running. */
+	/** How an arrival (this player's or a party mate's) put them into a lobby. */
+	placement?: ArrivalPlacement;
+	/** True while the LaunchData wait is running. */
 	waitingForLaunch: boolean;
 	/** InviteArrival logged (at most once per join). */
 	arrivalLogged: boolean;
+	/** A resolve is in flight on some thread (at most one per player)... */
+	resolving: boolean;
+	/** ...and another was asked for meanwhile: the running one loops once more. */
+	resolveAgain: boolean;
 	prompt?: PromptRecord;
-	/** The server-side prompt's options, kept until the prompt closes. */
+	/** The server-side prompt's options, kept until the prompt closes (or INVITE.promptOptionsSeconds). */
 	options?: ExperienceInviteOptions;
 	eligibility?: { readonly canSend: boolean; readonly at: number };
 	eligibilityPending: boolean;
@@ -120,20 +139,26 @@ function partyIdOf(player: Player): string | undefined {
  *
  * - **Prompt** (`invitePrompt`, INVITE_PROMPT_RATE): `withLobby` needs a lobby that is not in a run; LaunchData from
  *   `encodeInviteLaunch` (`lobby` with the lobby id, or `game`), `InviteMessageId` from INVITE.notificationStringIds
- *   for this `game.GameId`. INVITE.promptSide "server": `SocialService:PromptGameInvite` here (pcall); "client":
- *   `invitePromptOnClient` with the options. The prompt is remembered per player (which lobby, or none).
+ *   for this `game.GameId`. INVITE.promptSide "server": `SocialService:PromptGameInvite` here (pcall; a failure falls
+ *   back to the client path); "client": `invitePromptOnClient` with the options. The prompt is remembered per player
+ *   (which lobby, or none) for INVITE.promptRecordSeconds or until its recipients come.
  * - **Recipients**: `SocialService.GameInvitePromptClosed` and the client relay `inviteRecipients`
- *   (INVITE_RECIPIENTS_RATE) feed one handler: a valid list (inviteRecipientList, LOBBY.maxPlatformInvitesPerMember)
- *   for a prompt whose lobby the sender is still in becomes platform invites; a menu prompt only logs
- *   `LobbyInviteSent` (platform). Ids already recorded for that prompt are skipped, so a double report is harmless.
+ *   (INVITE_RECIPIENTS_RATE) feed one handler: the first valid report for a live prompt record (inviteRecipientList,
+ *   LOBBY.maxPlatformInvitesPerMember) consumes it; a lobby prompt whose lobby the sender is still in becomes platform
+ *   invites (players already in this server are refused: they get `lobbyInvite`), a menu prompt logs one
+ *   `LobbyInviteSent` (platform). A second report of the same prompt finds no record and does nothing.
  * - **Eligibility** (`inviteEligibility`, INVITE_ELIGIBILITY_RATE): one pcall'd `CanSendGameInviteAsync` per player
- *   per INVITE.eligibilityCacheSeconds -> `inviteEligible` (false on error). It also re-sends `joinIntent` once the
- *   arrival is resolved (the client asks at startup, in case it missed the first push).
+ *   per INVITE.eligibilityCacheSeconds -> `inviteEligible` (false on error). It also re-sends the last `joinIntent`
+ *   (the client asks at startup, in case it missed the first push).
  * - **Arrival** (PlayerAdded, and players here at start): `resolveArrival` on the live invites, the LaunchData and
- *   the party mates here (accept order from one pcall'd `GetPartyAsync` per party, else join order), applied through
- *   LobbyService; `joinIntent` right after the first resolve. Nothing placed them and no LaunchData yet: it is polled
- *   every INVITE.launchDataPollSeconds for INVITE.launchDataWaitSeconds and a late one is resolved again (the resolver
- *   turns a move of a busy / placed player into a toast). Analytics: `InviteArrival` once per join, `PartyGrouped`.
+ *   the party mates here (accept order from one pcall'd `GetPartyAsync` per party on a thread of its own, else join
+ *   order), applied through LobbyService; at most one resolve per player in flight (another request makes it loop
+ *   once more). `joinIntent` after the first resolve, from the state after applying (in a lobby: how they were
+ *   placed). Nothing placed them and no LaunchData yet: it is polled every INVITE.launchDataPollSeconds for
+ *   INVITE.launchDataWaitSeconds (stopping once they are in a lobby) and a late one is resolved again. Whenever an
+ *   arrival places a player whose last `joinIntent` was "none" within launchDataWaitSeconds +
+ *   intentUpgradeMarginSeconds of their join, a fresh `joinIntent` goes out (shouldUpgradeJoinIntent).
+ *   Analytics: `InviteArrival` once per join, `PartyGrouped`.
  * - **Party index** (I6): PartyId per player and its changed signal. A change during the LaunchData wait (the id
  *   came late) re-resolves the arrival; any later change, or a mate joining the party while both are here, is only an
  *   offer (ID4, `partyOffers` -> party invites, `PartyGrouped` "offered").
@@ -160,8 +185,8 @@ export class InviteService implements OnStart {
 	);
 	/** Party id -> UserIds in accept order (successful GetPartyAsync answers only; a failure is retried next time). */
 	private readonly partyOrders = new Map<string, ReadonlyArray<number>>();
-	/** Party id -> threads waiting for the GetPartyAsync in flight. */
-	private readonly partyFetches = new Map<string, thread[]>();
+	/** Party id -> the GetPartyAsync in flight. */
+	private readonly partyFetches = new Map<string, PartyFetch>();
 	private joinSeq = 0;
 
 	constructor(private readonly lobbyService: LobbyService, private readonly telemetry: TelemetryService) {}
@@ -183,15 +208,6 @@ export class InviteService implements OnStart {
 			}),
 		);
 		this.janitor.Add(
-			SocialService.GameInvitePromptClosed.Connect((sender, recipientIds) => {
-				const m = this.members.get(sender);
-				if (m === undefined) return;
-				m.options?.Destroy();
-				m.options = undefined;
-				this.recipients(sender, recipientIds, "server");
-			}),
-		);
-		this.janitor.Add(
 			Events.inviteEligibility.connect((player) => {
 				if (player.Parent === undefined) return;
 				if (!this.eligibilityLimiter.tryAcquire(player, os.clock())) return;
@@ -208,6 +224,18 @@ export class InviteService implements OnStart {
 			}
 			this.members.clear();
 		}, true);
+		// Last, and guarded: a platform without the signal must not take the rest of the service down.
+		const [okClosed, closed] = pcall(() =>
+			SocialService.GameInvitePromptClosed.Connect((sender, recipientIds) => {
+				const m = this.members.get(sender);
+				if (m === undefined) return;
+				m.options?.Destroy();
+				m.options = undefined;
+				this.recipients(sender, recipientIds, "server");
+			}),
+		);
+		if (okClosed) this.janitor.Add(closed);
+		else log.warn("PROMPT_CLOSED_UNAVAILABLE", tostring(closed));
 	}
 
 	// ---------------------------------------------------------------------------------------------
@@ -235,62 +263,81 @@ export class InviteService implements OnStart {
 			log.warn("PROMPT_ENCODE_FAILED", `${userId}: ${tostring(launchData)}`);
 			return;
 		}
-		m.prompt = { lobbyId: launch.kind === "lobby" ? launch.lobbyId : undefined, recorded: new Set() };
-		const inviteMessageId = INVITE.notificationStringIds.get(game.GameId);
+		m.prompt = { lobbyId: launch.kind === "lobby" ? launch.lobbyId : undefined, at: os.clock() };
+		const options: InvitePromptOptions = {
+			launchData,
+			inviteMessageId: INVITE.notificationStringIds.get(game.GameId),
+		};
 		log.info("PROMPT", `${userId} (${INVITE.promptSide}) LaunchData ${launchData}`);
-		if (INVITE.promptSide === "client") {
-			Events.invitePromptOnClient.fire(player, { launchData, inviteMessageId });
-		} else {
-			m.options?.Destroy();
-			const options = new Instance("ExperienceInviteOptions");
-			options.LaunchData = launchData;
-			if (inviteMessageId !== undefined) options.InviteMessageId = inviteMessageId;
-			m.options = options;
-			// PromptGameInvite returns at once (the prompt's outcome is GameInvitePromptClosed); an error is logged.
-			const [ok, err] = pcall(() => SocialService.PromptGameInvite(player, options));
-			if (!ok) log.warn("PROMPT_FAILED", `${userId}: ${tostring(err)}`);
-		}
+		if (INVITE.promptSide === "client") Events.invitePromptOnClient.fire(player, options);
+		else this.promptOnServer(m, options);
 		if (isStudio()) {
 			const fake = parseFakeRecipients(studioAttribute(player, INVITE_STUDIO_ATTRIBUTES.fakeInviteRecipients));
 			if (fake !== undefined) this.recipients(player, fake, "studio");
 		}
 	}
 
+	/**
+	 * PromptGameInvite here, the options kept until the prompt closes (or INVITE.promptOptionsSeconds). A failure falls
+	 * back to the client path with the same options, so the button works whichever side I0 says is right.
+	 */
+	private promptOnServer(m: InviteMember, prompt: InvitePromptOptions): void {
+		const player = m.player;
+		m.options?.Destroy();
+		const options = new Instance("ExperienceInviteOptions");
+		options.LaunchData = prompt.launchData;
+		if (prompt.inviteMessageId !== undefined) options.InviteMessageId = prompt.inviteMessageId;
+		m.options = options;
+		task.delay(INVITE.promptOptionsSeconds, () => {
+			if (m.options === options) m.options = undefined;
+			options.Destroy();
+		});
+		// PromptGameInvite returns at once (the prompt's outcome is GameInvitePromptClosed).
+		const [ok, err] = pcall(() => SocialService.PromptGameInvite(player, options));
+		if (ok) return;
+		log.warn("PROMPT_FAILED", `${player.UserId}: ${tostring(err)}; falling back to the client prompt`);
+		if (m.options === options) m.options = undefined;
+		options.Destroy();
+		if (player.Parent !== undefined) Events.invitePromptOnClient.fire(player, prompt);
+	}
+
 	private refuse(userId: number, code: LobbyRefusal, reason: string): void {
 		this.lobbyService.notify(userId, { kind: "refused", requestKind: "invitePrompt", code, reason });
+	}
+
+	/** The sender's prompt record, unless it is older than INVITE.promptRecordSeconds (then it is dropped). */
+	private livePrompt(m: InviteMember): PromptRecord | undefined {
+		const prompt = m.prompt;
+		if (prompt !== undefined && os.clock() - prompt.at > INVITE.promptRecordSeconds) m.prompt = undefined;
+		return m.prompt;
 	}
 
 	/** The friends picked in the sender's last prompt (see the class comment). */
 	private recipients(player: Player, userIds: unknown, via: "server" | "client" | "studio"): void {
 		const m = this.members.get(player);
-		const prompt = m?.prompt;
-		if (m === undefined || prompt === undefined) return; // no prompt of ours (or the player left)
+		if (m === undefined) return;
+		const prompt = this.livePrompt(m);
+		if (prompt === undefined) return; // no live prompt of ours, or this one was already reported
 		const ids = inviteRecipientList(userIds, LOBBY.maxPlatformInvitesPerMember);
 		if (ids === undefined) {
 			log.warn(
 				"RECIPIENTS_BAD",
-				`${player.UserId} (${via}): not a list of at most ${LOBBY.maxPlatformInvitesPerMember} integers`,
+				`${player.UserId} (${via}): not a list of at most ${LOBBY.maxPlatformInvitesPerMember} UserIds`,
 			);
 			return;
 		}
-		const fresh: number[] = [];
-		for (const id of ids) {
-			if (!prompt.recorded.has(id)) {
-				prompt.recorded.add(id);
-				fresh.push(id);
-			}
-		}
-		if (fresh.size() === 0) return;
-		log.info("RECIPIENTS", `${player.UserId} (${via}): ${fresh.size()} for ${prompt.lobbyId ?? "the game"}`);
+		m.prompt = undefined; // one report per prompt: a second (server signal + client relay) finds nothing
+		if (ids.size() === 0) return;
+		log.info("RECIPIENTS", `${player.UserId} (${via}): ${ids.size()} for ${prompt.lobbyId ?? "the game"}`);
 		if (prompt.lobbyId === undefined) {
-			this.track(player, analyticsForInviteSent("platform", fresh.size()));
+			this.track(player, analyticsForInviteSent("platform", ids.size()));
 			return;
 		}
 		if (this.lobbyService.lobbyOf(player.UserId)?.lobbyId !== prompt.lobbyId) {
 			log.info("RECIPIENTS_STALE", `${player.UserId} is no longer in lobby ${prompt.lobbyId}`);
 			return;
 		}
-		this.lobbyService.platformInvites(player.UserId, fresh);
+		this.lobbyService.platformInvites(player.UserId, ids);
 	}
 
 	// ---------------------------------------------------------------------------------------------
@@ -334,9 +381,13 @@ export class InviteService implements OnStart {
 			player,
 			janitor: new Janitor(),
 			joinSeq: this.joinSeq,
+			addedAt: os.clock(),
 			partyId: partyIdOf(player),
+			launchSeen: false,
 			waitingForLaunch: false,
 			arrivalLogged: false,
+			resolving: false,
+			resolveAgain: false,
 			eligibilityPending: false,
 		};
 		this.members.set(player, m);
@@ -369,11 +420,16 @@ export class InviteService implements OnStart {
 		m.janitor.Destroy();
 		m.options?.Destroy();
 		const partyId = m.partyId;
-		if (partyId !== undefined) {
-			let left = false;
-			for (const [, other] of this.members) if (other.partyId === partyId) left = true;
-			if (!left) this.partyOrders.delete(partyId);
-		}
+		if (partyId !== undefined && !this.partyHere(partyId)) this.partyOrders.delete(partyId);
+	}
+
+	private partyHere(partyId: string): boolean {
+		for (const [, other] of this.members) if (other.partyId === partyId) return true;
+		return false;
+	}
+
+	private present(m: InviteMember): boolean {
+		return m.player.Parent !== undefined && this.members.get(m.player) === m;
 	}
 
 	/** Runs `job` on its own thread, cancelled when the player leaves. */
@@ -386,28 +442,33 @@ export class InviteService implements OnStart {
 
 	private arrive(m: InviteMember): void {
 		const player = m.player;
+		const userId = player.UserId;
 		const text = launchText(player);
-		const launch = this.decode(text);
-		const actions = this.resolveAndApply(m, launch);
-		if (actions === undefined) return; // left meanwhile
-		m.intent = arrivalJoinIntent(player.UserId, actions);
+		m.launchSeen = text !== "";
+		m.launch = this.decode(text);
+		this.resolve(m);
+		if (!this.present(m)) return;
+		m.intent = joinIntentNow(this.lobbyService.lobbyOf(userId) !== undefined, m.placement);
 		Events.joinIntent.fire(player, { kind: m.intent });
-		log.info("ARRIVAL", `${player.UserId}: ${m.intent} (${actions.map((a) => a.kind).join(", ")})`);
-		if (text !== "" || m.intent !== "none") return this.arrivalSettled(m);
+		log.info("ARRIVAL", `${userId}: joinIntent ${m.intent}`);
+		if (m.launchSeen || m.intent !== "none") return this.arrivalSettled(m);
 
 		m.waitingForLaunch = true;
 		const polls = math.floor(INVITE.launchDataWaitSeconds / INVITE.launchDataPollSeconds);
 		for (let i = 0; i < polls; i++) {
 			task.wait(INVITE.launchDataPollSeconds);
-			if (player.Parent === undefined || !m.waitingForLaunch) return;
+			if (!this.present(m) || !m.waitingForLaunch) break;
+			if (this.lobbyService.lobbyOf(userId) !== undefined) break; // placed meanwhile (a party arrival, ...)
 			const late = launchText(player);
 			if (late === "") continue;
+			m.launchSeen = true;
+			m.launch = this.decode(late);
 			m.waitingForLaunch = false;
-			this.resolveAndApply(m, this.decode(late));
-			return this.arrivalSettled(m);
+			this.resolve(m);
+			break;
 		}
 		m.waitingForLaunch = false;
-		this.arrivalSettled(m);
+		if (this.present(m)) this.arrivalSettled(m);
 	}
 
 	/** The arrival window closed: `noData` when Roblox says someone referred them but no invite ever showed. */
@@ -423,8 +484,10 @@ export class InviteService implements OnStart {
 	private lateLaunch(m: InviteMember): void {
 		if (m.intent === undefined) return; // the arrival's own resolve reads it
 		m.waitingForLaunch = false;
-		const launch = this.decode(launchText(m.player));
-		if (launch !== undefined) this.resolveAndApply(m, launch);
+		const text = launchText(m.player);
+		m.launchSeen = text !== "";
+		m.launch = this.decode(text);
+		if (m.launch !== undefined) this.resolve(m);
 	}
 
 	private decode(text: string): InviteLaunch | undefined {
@@ -435,15 +498,34 @@ export class InviteService implements OnStart {
 	}
 
 	/**
-	 * One resolve: gathers the facts (the yields first: party accept order, a `friends` lobby host's friendship), then
-	 * resolves and applies without yielding, and logs the analytics. Undefined when the player left meanwhile.
+	 * Resolves this player's arrival with their latest facts, at most one resolve in flight per player: a request while
+	 * one runs makes it loop once more (on its thread), and returns at once. Errors are logged, never left latched.
 	 */
-	private resolveAndApply(
-		m: InviteMember,
-		launch: InviteLaunch | undefined,
-	): ReadonlyArray<ArrivalAction> | undefined {
+	private resolve(m: InviteMember): void {
+		if (m.resolving) {
+			m.resolveAgain = true;
+			return;
+		}
+		m.resolving = true;
+		const [ok, err] = pcall(() => {
+			do {
+				m.resolveAgain = false;
+				this.resolveOnce(m);
+			} while (m.resolveAgain && this.present(m));
+		});
+		m.resolving = false;
+		if (!ok) log.warn("RESOLVE_FAILED", `${m.player.UserId}: ${tostring(err)}`);
+	}
+
+	/**
+	 * One resolve: gathers the facts (the yields first: party accept order, a `friends` lobby host's friendship), then
+	 * resolves and applies without yielding, records who was placed (and upgrades their `joinIntent`), and logs the
+	 * analytics.
+	 */
+	private resolveOnce(m: InviteMember): void {
 		const player = m.player;
 		const userId = player.UserId;
+		const launch = m.launch;
 		const mates = this.matesOf(m);
 		const acceptOrder = m.partyId !== undefined && mates.size() > 0 ? this.acceptOrder(m.partyId) : undefined;
 		const knownFriends: number[] = [];
@@ -453,7 +535,7 @@ export class InviteService implements OnStart {
 				if (this.lobbyService.fetchFriendship(lobby.hostId, userId)) knownFriends.push(lobby.hostId);
 			}
 		}
-		if (player.Parent === undefined || this.members.get(player) !== m) return undefined;
+		if (!this.present(m)) return;
 
 		const facts = this.lobbyService.arrivalFacts(userId, knownFriends);
 		const input: ArrivalInput = {
@@ -468,7 +550,17 @@ export class InviteService implements OnStart {
 			party: m.partyId !== undefined ? { mates: this.matesOf(m), acceptOrder } : undefined,
 		};
 		const actions = resolveArrival(input);
-		const result = this.lobbyService.applyArrival(userId, actions);
+		const result = this.lobbyService.applyArrival(userId, actions, knownFriends);
+		log.info("RESOLVED", `${userId}: ${actions.map((a) => a.kind).join(", ")} -> ${result.lobbyId ?? "no lobby"}`);
+
+		// Who is in a lobby now because of it, and their join intent.
+		for (const [id, how] of arrivalPlacements(userId, actions)) {
+			const target = Players.GetPlayerByUserId(id);
+			const member = target !== undefined ? this.members.get(target) : undefined;
+			if (member === undefined || this.lobbyService.lobbyOf(id) === undefined) continue;
+			member.placement = how;
+			this.upgradeIntent(member);
+		}
 
 		// InviteArrival: once per join, when a LaunchData or a platform invite was involved.
 		let platformInvite = false;
@@ -491,7 +583,17 @@ export class InviteService implements OnStart {
 				this.track(player, analyticsForPartyGrouped(this.partyInLobby(m, result.lobbyId), how));
 			}
 		}
-		return actions;
+	}
+
+	/** A fresh `joinIntent` when the one sent said "none" and the player was placed within the window (ID6). */
+	private upgradeIntent(m: InviteMember): void {
+		if (m.intent === undefined) return; // the first one is computed from the state when it goes out
+		const userId = m.player.UserId;
+		const current = joinIntentNow(this.lobbyService.lobbyOf(userId) !== undefined, m.placement);
+		if (!shouldUpgradeJoinIntent(m.intent, current, os.clock() - m.addedAt)) return;
+		m.intent = current;
+		log.info("JOIN_INTENT_UPGRADED", `${userId}: ${current}`);
+		Events.joinIntent.fire(m.player, { kind: current });
 	}
 
 	private logArrival(player: Player, outcome: InviteArrivalOutcome, kind: "lobby" | "game"): void {
@@ -526,28 +628,42 @@ export class InviteService implements OnStart {
 	}
 
 	/**
-	 * YIELDS: the party's accept order, from one pcall'd GetPartyAsync per party (concurrent callers wait for the call
-	 * in flight); undefined when it failed (then join order) and always in Studio (fake party ids).
+	 * YIELDS: the party's accept order, from one pcall'd GetPartyAsync per party. The call runs on a thread of its own
+	 * (no player's janitor can cancel it) and always ends by dropping the in-flight entry and resuming every waiter
+	 * (deferred, one after another). Undefined when it failed (then join order), and always in Studio (fake party ids).
 	 */
 	private acceptOrder(partyId: string): ReadonlyArray<number> | undefined {
 		if (isStudio()) return undefined;
 		const known = this.partyOrders.get(partyId);
 		if (known !== undefined) return known;
-		const waiting = this.partyFetches.get(partyId);
-		if (waiting !== undefined) {
-			waiting.push(coroutine.running());
-			coroutine.yield();
-			return this.partyOrders.get(partyId);
+		let fetch = this.partyFetches.get(partyId);
+		if (fetch === undefined) {
+			const created: PartyFetch = { waiters: [] };
+			fetch = created;
+			this.partyFetches.set(partyId, created);
+			task.spawn(() => this.fetchPartyOrder(partyId, created));
 		}
-		this.partyFetches.set(partyId, []);
-		const [ok, entries] = pcall(() => SocialService.GetPartyAsync(partyId));
-		const order = ok ? partyAcceptOrder(entries) : undefined;
-		if (order !== undefined) this.partyOrders.set(partyId, order);
-		else log.warn("PARTY_ORDER_FAILED", `${partyId}: ${ok ? "unexpected entries" : tostring(entries)}`);
-		const waiters = this.partyFetches.get(partyId) ?? [];
-		this.partyFetches.delete(partyId);
-		for (const t of waiters) if (coroutine.status(t) === "suspended") task.spawn(t);
-		return order;
+		// A fetch that finished without yielding has already dropped its entry: nothing to wait for.
+		if (this.partyFetches.get(partyId) === fetch) {
+			fetch.waiters.push(coroutine.running());
+			coroutine.yield();
+		}
+		return this.partyOrders.get(partyId);
+	}
+
+	private fetchPartyOrder(partyId: string, fetch: PartyFetch): void {
+		const [ok, order] = pcall(() => partyAcceptOrder(SocialService.GetPartyAsync(partyId)));
+		if (ok && order !== undefined) {
+			if (this.partyHere(partyId)) this.partyOrders.set(partyId, order);
+		} else {
+			log.warn("PARTY_ORDER_FAILED", `${partyId}: ${ok ? "unexpected entries" : tostring(order)}`);
+		}
+		if (this.partyFetches.get(partyId) === fetch) this.partyFetches.delete(partyId);
+		for (const waiter of fetch.waiters) {
+			task.defer(() => {
+				if (coroutine.status(waiter) === "suspended") task.spawn(waiter);
+			});
+		}
 	}
 
 	/** PartyId (Studio: KV_FakePartyId) changed. */
@@ -556,11 +672,11 @@ export class InviteService implements OnStart {
 		m.partyId = partyIdOf(m.player);
 		if (m.partyId === before) return;
 		log.info("PARTY_CHANGED", `${m.player.UserId}: ${before ?? "none"} -> ${m.partyId ?? "none"}`);
-		if (before !== undefined && m.partyId === undefined) return;
+		if (m.partyId === undefined) return;
 		if (m.intent === undefined) return; // the arrival's first resolve reads the new id
 		if (m.waitingForLaunch && this.lobbyService.lobbyOf(m.player.UserId) === undefined) {
 			// The id came late, while the arrival is still open: party grouping on arrival (ID4).
-			this.spawnFor(m, () => this.resolveAndApply(m, undefined));
+			this.spawnFor(m, () => this.resolve(m));
 			return;
 		}
 		this.offerParty(m);

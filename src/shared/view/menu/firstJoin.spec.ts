@@ -4,7 +4,7 @@ import { describe, expect, it } from "@rbxts/jest-globals";
 import { TUTORIAL } from "shared/config";
 import { INVITE, type ArrivalJoinIntent } from "shared/invite";
 import type { OnboardingStatus } from "shared/onboarding";
-import { FirstJoinGate, firstJoinChoice } from ".";
+import { FirstJoinGate, firstJoinChoice, firstJoinDispatchChoice } from ".";
 
 const NEW_PLAYER = { loaded: true, tutorialDone: false };
 const VETERAN = { loaded: true, tutorialDone: true };
@@ -118,5 +118,40 @@ describe("FirstJoinGate", () => {
 	it("KV_Tutorial decides on the first poll", () => {
 		expect(new FirstJoinGate().poll(0, true)).toBe("tutorial");
 		expect(new FirstJoinGate().poll(0, false)).toBe("normal");
+	});
+});
+
+describe("firstJoinDispatchChoice", () => {
+	const facts = (inLobby: boolean, intent: ArrivalJoinIntent | undefined, forced?: boolean) => ({
+		forced,
+		inLobby,
+		intent,
+	});
+
+	it("a latched tutorial becomes the normal flow once the player is in a lobby or the intent was upgraded", () => {
+		expect(firstJoinDispatchChoice("tutorial", facts(false, "none"))).toBe("tutorial");
+		expect(firstJoinDispatchChoice("tutorial", facts(false, undefined))).toBe("tutorial");
+		expect(firstJoinDispatchChoice("tutorial", facts(true, "none"))).toBe("normal"); // placed, intent not here yet
+		expect(firstJoinDispatchChoice("tutorial", facts(false, "lobby"))).toBe("normal"); // upgraded, state not yet
+		expect(firstJoinDispatchChoice("tutorial", facts(false, "party"))).toBe("normal");
+		expect(firstJoinDispatchChoice("tutorial", facts(true, "party"))).toBe("normal");
+	});
+
+	it("KV_Tutorial keeps the tutorial; a normal choice stays normal", () => {
+		expect(firstJoinDispatchChoice("tutorial", facts(true, "lobby", true))).toBe("tutorial");
+		expect(firstJoinDispatchChoice("normal", facts(true, "lobby", false))).toBe("normal");
+		for (const intent of ["lobby", "party", "none", undefined] as const) {
+			expect(firstJoinDispatchChoice("normal", facts(false, intent))).toBe("normal");
+		}
+	});
+
+	it("the staggered party case: none latches the tutorial, a later upgrade wins at dispatch", () => {
+		const gate = new FirstJoinGate(STATUS_WAIT, INTENT_WAIT);
+		gate.receive(NEW_PLAYER);
+		gate.receiveIntent("none");
+		const latched = gate.poll(0.1, undefined);
+		expect(latched).toBe("tutorial");
+		// The loading screen is still up; a party mate arrives and the server upgrades the intent.
+		expect(latched !== "wait" && firstJoinDispatchChoice(latched, facts(true, "party"))).toBe("normal");
 	});
 });

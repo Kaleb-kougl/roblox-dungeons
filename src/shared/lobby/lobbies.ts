@@ -14,8 +14,9 @@
  *   platformInvites         the same rules for the friends a member picked in Roblox's invite prompt (source
  *                           "platform", docs/INVITES.md): the invitees need not be in this server, the sender's
  *                           cap is maxPlatformInvitesPerMember (counted apart: `invite` counts server invites only),
- *                           TTL platformInviteTimeoutSeconds; one refusal per id skipped. On arrival nothing
- *                           converts: the player simply has a live invite (invitesFor / join as usual).
+ *                           TTL platformInviteTimeoutSeconds; one refusal per id skipped; a player who IS in this
+ *                           server (`inServer`) is refused: they go through `invite` and its rules. On arrival
+ *                           nothing converts: the player simply has a live invite (invitesFor / join as usual).
  *   partyInvite             the server's invite for a Roblox Party mate (source "party"): no cap, the platform
  *                           TTL, and the invitee may be busy (a mate in a run sees it afterwards).
  *   host only               kick (removes the member, drops their invites here, blocks re-invite and rejoin for
@@ -30,12 +31,12 @@
  * Pure and Roblox-API-free: ids, the clock, friendship and busy state are injected. The server passes client
  * values straight in, so every client-supplied argument is shape-checked (`badRequest`).
  */
-import { isFiniteValue } from "shared/run";
 import {
 	DEFAULT_LOBBY_NAME,
 	LOBBY,
 	isLobbyNameId,
 	isLobbyVisibility,
+	isWireUserId,
 	type LobbyConfig,
 	type LobbyInviteSource,
 	type LobbyNameId,
@@ -200,9 +201,9 @@ function refuse(code: LobbyRefusal, reason: string): LobbyRefused {
 	return { ok: false, code, reason };
 }
 
-/** A UserId as the wire carries it: an integer (Studio test players are negative). */
+/** A UserId as the wire carries it (config.ts isWireUserId: Studio test players are negative, |id| is bounded). */
 function isUserId(v: unknown): v is number {
-	return isFiniteValue(v) && v % 1 === 0;
+	return isWireUserId(v);
 }
 
 function removeValue(arr: number[], value: number): boolean {
@@ -335,7 +336,8 @@ export class Lobbies {
 	 * Invites from Roblox's invite prompt (source "platform"): `toUserIds` are the friends the member picked, as the
 	 * client or the prompt reported them, so the list is shape-checked (an array of integers, at most
 	 * maxPlatformInvitesPerMember long; a repeated id counts once). The invitees may be absent from this server. The
-	 * sender rules are `invite`'s; per id: not the sender, not busy, not in a lobby, not on the kick cooldown, not
+	 * sender rules are `invite`'s; per id: not the sender, not in this server (`inServer`: those must go through
+	 * `invite`, with its cap and short TTL; `badRequest`), not busy, not in a lobby, not on the kick cooldown, not
 	 * already invited here (by any source), and within the sender's own platform cap. Returns the invites made and a
 	 * refusal per id skipped, both in list order.
 	 */
@@ -343,6 +345,7 @@ export class Lobbies {
 		fromUserId: number,
 		toUserIds: unknown,
 		ctx: LobbyContext,
+		inServer: (userId: number) => boolean = () => false,
 	): LobbyResult<{
 		lobby: Lobby;
 		invites: ReadonlyArray<LobbyInvite>;
@@ -365,6 +368,9 @@ export class Lobbies {
 		for (const toUserId of ids) {
 			let refused: LobbyRefused | undefined;
 			if (toUserId === fromUserId) refused = refuse("badRequest", "cannot invite yourself");
+			if (refused === undefined && inServer(toUserId)) {
+				refused = refuse("badRequest", "that player is in this server: use the lobby's invite list");
+			}
 			if (refused === undefined) {
 				const busy = ctx.busyReason(toUserId);
 				if (busy !== undefined) refused = refuse("busy", busy);

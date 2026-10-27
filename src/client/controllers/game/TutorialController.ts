@@ -13,7 +13,7 @@ import {
 } from "shared/tutorial";
 import { JoinGate, RENDER_ORDER } from "shared/view";
 import { PROGRESSION_VIEW, TUTORIAL_VIEW } from "shared/view/hud";
-import { FirstJoinGate } from "shared/view/menu";
+import { FirstJoinGate, firstJoinDispatchChoice } from "shared/view/menu";
 import { PreloadController } from "./PreloadController";
 import { SimController, type RunContext } from "./SimController";
 
@@ -31,6 +31,8 @@ const RENDER_STEP = "KV_Tutorial";
  *   tutorial also waits for the server's `joinIntent` (LobbyController keeps it in the `lobby` slice), at most
  *   INVITE.intentWaitSeconds from join; `lobby` / `party` (an invite or party arrival already in a lobby) get the
  *   normal flow instead (the main menu's Tutorial still plays it); `none` or no intent in time: the tutorial as before.
+ *   The latched choice is re-checked when it is dispatched (firstJoinDispatchChoice): a player the server placed in
+ *   a lobby meanwhile (or whose `joinIntent` was upgraded to lobby / party) gets the normal flow.
  *   **Join gate (docs/PRELOAD.md P5):** the decision is only DISPATCHED (the tutorial start, the `onFirstRunDecided`
  *   listeners) once the join loading screen released too (PreloadController.whenReleased), whichever comes last
  *   (shared/view JoinGate), so the tutorial, the main menu or KV_SkipMenu's solo run start under no cover; until
@@ -166,8 +168,17 @@ export class TutorialController implements OnStart {
 	 * The join flow, once the gate decided and the loading screen released (JoinGate; undefined: not yet, or already
 	 * dispatched): the tutorial starts here, the listeners (MenuController) take "normal".
 	 */
-	private dispatch(choice: FirstRunDecision | undefined, onRelease: boolean): void {
-		if (choice === undefined) return;
+	private dispatch(latched: FirstRunDecision | undefined, onRelease: boolean): void {
+		if (latched === undefined) return;
+		const lobby = clientStore.getState().lobby;
+		const choice = firstJoinDispatchChoice(latched, {
+			forced: this.forced,
+			inLobby: lobby.mine !== undefined,
+			intent: lobby.joinIntent,
+		});
+		if (choice !== latched) {
+			print(`[Tutorial] first run: ${latched} -> ${choice} (placed in a lobby, join intent ${lobby.joinIntent})`);
+		}
 		this.decided = choice;
 		if (onRelease) print(`[Tutorial] first run: ${choice} (dispatched as the loading screen released)`);
 		if (choice === "tutorial") this.sim.startTutorial();

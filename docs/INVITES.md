@@ -193,7 +193,8 @@ As built (I5 client):
   the in-server players (invite order, dim name, always invited, no button). Their name is `#<UserId>` until they arrive (the client
   makes no web name lookups, as everywhere else in the lobby UI; a UserService lookup is a possible I9 follow-up).
 - **Client prompt path.** `invitePromptOnClient`: `ExperienceInviteOptions` with `LaunchData` and the optional
-  `InviteMessageId`, `PromptGameInvite(LocalPlayer, options)` in pcall, the options destroyed right after.
+  `InviteMessageId`, `PromptGameInvite(LocalPlayer, options)` in pcall; the options are kept until the local
+  `GameInvitePromptClosed` (or `INVITE.promptOptionsSeconds`, 300 s) and destroyed then (review fix 8a).
   `SocialService.GameInvitePromptClosed` is connected on the client whatever `INVITE.promptSide` says (pcall'd
   connect, Janitor); the local player's `recipientIds` (integers, deduped, at most `maxPlatformInvitesPerMember`, so
   the server never refuses the whole call as over the cap) go out as `inviteRecipients`; an empty list sends nothing.
@@ -202,7 +203,12 @@ As built (I5 client):
   client): KV_Tutorial wins; otherwise the tutorial's rule, and only a choice that would START the tutorial waits for
   the intent, at most `INVITE.intentWaitSeconds` from join (same clock as the status wait). `lobby` / `party` -> the
   normal flow (menu); `none` or no intent in time -> the tutorial. A veteran / failed load never waits for the intent.
-  Specs: `firstJoin.spec.ts` (status x intent x timeout, KV_Tutorial).
+  The latched choice is only provisional: TutorialController dispatches it once the loading screen released (up to
+  15 s) and re-checks then (`firstJoinDispatchChoice`, review fix 1): a latched tutorial becomes the normal flow when
+  the player is in a lobby by now (`lobby.mine`) or the latest `joinIntent` is lobby / party (the server upgrades it,
+  below); KV_Tutorial true still wins. Remaining race: a tutorial already dispatched before the server's placement
+  reached the client stays (the player is then in the tutorial and in a lobby, which a lobby shows as busy).
+  Specs: `firstJoin.spec.ts` (status x intent x timeout, KV_Tutorial, dispatch re-check).
 - **Arrival into a lobby.** `lobbyChangePath` (pure, from MenuController's old rule): a lobby appearing while a menu
   screen is up opens its room, requested or not; with no screen (run, tutorial, first-run wait, "Starting run...")
   nothing moves. The join flow opens `afterRunPath(inLobby)`, so an arrival already in a lobby lands in its room. A
@@ -291,10 +297,30 @@ As built (I4, I6, I7 server):
   from §4: `invitePrompt { withLobby }` is also refused for a lobby in a run (`inRun`); a recipient report is
   ignored unless the sender is still in the lobby of their last prompt, and ids already recorded for that prompt are
   skipped; a menu prompt's recipients log `LobbyInviteSent` (platform) though no invite record is made; no activity
-  feed line (lobbies have no feed). `inviteEligibility` re-sends `joinIntent` once resolved. A late LaunchData
-  re-resolves (busy / placed players get the resolver's toasts) and sends no second `joinIntent`. A `friends`
-  LaunchData lobby gets a fresh friendship check with its host before the resolve (the FriendCache would answer a
-  miss as "not friends"). Studio: Player attributes win over Workspace defaults (a Workspace `KV_FakePartyId` /
+  feed line (lobbies have no feed). `inviteEligibility` re-sends the last `joinIntent`. A late LaunchData
+  re-resolves (busy / placed players get the resolver's toasts). A `friends` LaunchData lobby gets a fresh
+  friendship check with its host before the resolve (the FriendCache would answer a miss as "not friends").
+  Review fixes (2026-10-27):
+  1. `joinIntent` comes from the state AFTER applying (`joinIntentNow`: in a lobby -> how an arrival placed them,
+     `arrivalPlacements`), and whenever an arrival or party action places a player whose last intent was `none`
+     within `launchDataWaitSeconds` + `INVITE.intentUpgradeMarginSeconds` (5 s) of PlayerAdded, a fresh `joinIntent`
+     goes out (`shouldUpgradeJoinIntent`; never a downgrade). The client re-checks at dispatch (I5 block).
+  2. `GetPartyAsync` runs on a thread of its own (no player's janitor cancels it); it always drops its in-flight entry
+     and resumes every waiter, with `task.defer`, one after another.
+  3. At most one resolve per player in flight (`resolving` / `resolveAgain`: a second request makes the running one
+     loop once more); every resolve reads the player's latest LaunchData; the poll stops once they are in a lobby.
+  4. The join applies the same confirmed friendships the resolve saw (`applyArrival(..., knownFriends)` -> an
+     `areFriends` override in the join's context).
+  5. `Lobbies.platformInvites(..., inServer)` refuses recipients who are in this server (`badRequest`): they go
+     through `lobbyInvite` (cap 4, 60 s).
+  6. UserIds from the wire are bounded: `isWireUserId` (shared/lobby config: nonzero integer, |id| <=
+     `MAX_USER_ID_MAGNITUDE` = 2^53 - 1), in Lobbies and serviceRules.
+  7. Prompts: `GameInvitePromptClosed` is connected last and in pcall; a prompt record lasts
+     `INVITE.promptRecordSeconds` (300 s) and the first valid recipient report consumes it (a second report, a later
+     Roblox-menu prompt, finds nothing; a menu prompt logs `LobbyInviteSent` once, at most the cap); server-side
+     options are kept until the prompt closes or `INVITE.promptOptionsSeconds`; a failed server `PromptGameInvite`
+     falls back to `invitePromptOnClient` with the same options.
+  Studio: Player attributes win over Workspace defaults (a Workspace `KV_FakePartyId` /
   `KV_FakeLaunchData` covers the join itself), a Player attribute change acts as a late LaunchData / PartyId change,
   and `KV_FakeInviteRecipients` stands in for the prompt closing.
 - **I6** Party index on `PartyId` (pcall; Studio: `KV_FakePartyId` only), accept order from one `GetPartyAsync` per
@@ -317,8 +343,10 @@ Critical path: I0 -> I1 -> I2 -> I3 -> I4 -> I5 -> I9. I6 needs I4; I8 can happe
 - **Inviter left the server** before the friend arrives: the invite belongs to the lobby and stays valid; if Roblox
   routes the friend elsewhere (I0), the lobby isn't here: "That lobby has closed" toast, menu.
 - **Lobby deleted** while invites are out: dropped with it; late arrivals get the "gone" toast.
-- **Friend already in this server** when invited from the Roblox prompt: the platform invite is a normal live invite
-  and shows as a toast at once (dedupe with a server invite).
+- **Friend already in this server** when invited from the Roblox prompt: refused as a platform invite (review fix
+  5): in-server players only get server invites (`lobbyInvite`: cap 4, 60 s), so the prompt cannot hand out 15-minute
+  invites to players who are here. Accepted residual: a friend picked while absent keeps their 15-minute platform
+  invite and, on arriving, auto-joins with it (ID1), as intended.
 - **Kicked player** re-invited through the Roblox prompt: refused by the kick cooldown like any invite.
 - **Invite spam**: per-member platform cap, the prompt rate limit, and Roblox's own prompt UI.
 - **Party bigger than the lobby** (`LOBBY.maxSize` = 8): the extras land on the menu with `lobby.err.partyFull`.

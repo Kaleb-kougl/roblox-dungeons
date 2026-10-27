@@ -47,7 +47,7 @@ rebinding, audio, display). Everything presentation-side reads the sim and never
 | `HudOcclusionController` | `.../ui/HudOcclusionController.ts` | docs/HUD_LAYOUT.md H7: render step after the camera; every `HUD_OCCLUSION.everyFrames` frames projects the watched player, living actors and up to `maxBullets` enemy bullets with `Camera:WorldToScreenPoint` (GUI space, the same space as `AbsolutePosition`) and tests them against the mounted corner panels (client/ui/hud `cornerFade` registry); one `OcclusionFader` per corner writes the corner's `GroupTransparency` binding (the corner `Panel` is a CanvasGroup inside a transparent placed frame; no React re-render). Options > Display > HUD fade Off or no run: opaque, no work. Under `KV_Debug` it also warns once per panel per run when an always-on panel outgrows its `HUD_FOOTPRINT` box (H1). Read only on the sim. |
 | `LoadingController` | `.../ui/LoadingController.tsx` | Mounts `LoadingScreen` (client/ui/loading, its own ScreenGui, display order 30) on join until PreloadController releases; Skip plays `sfx.ui.click`. See "Preloading and the loading screen". |
 | `MenuController` | `.../ui/MenuController.ts` | L3 / L6: the main menu on join, once the first-run gate decided against the tutorial (a first-time player goes straight into it instead; no run starts on its own; `KV_SkipMenu` starts one at once), the screen + back stack (Reflex `menu`; pad B / Backspace go back), Play solo / Lobbies / Tutorial / Options / Leaderboard, the menu after a run (the lobby room while in a lobby, else the main menu), the co-op party overlay (the pause key in a party run) and Leave run. See "Main menu, lobbies and Leave run". |
-| `LobbyController` | `.../ui/LobbyController.ts` | L5: the lobby remotes into the Reflex `lobby` slice (list, my lobby, invites, notice toasts, the players in this server), the lobby requests, and `lobbyRunStart` (a one-player lobby's ranked solo run). I5 (docs/INVITES.md): `invitePrompt`, `inviteEligibility` (start + menu open when stale) -> `inviteEligible`, `joinIntent` into the slice, `invitePromptOnClient` (the client prompt path) and the local `GameInvitePromptClosed` relayed as `inviteRecipients`. |
+| `LobbyController` | `.../ui/LobbyController.ts` | L5: the lobby remotes into the Reflex `lobby` slice (list, my lobby, invites, notice toasts, the players in this server), the lobby requests, and `lobbyRunStart` (a one-player lobby's ranked solo run). I5 (docs/INVITES.md): `invitePrompt`, `inviteEligibility` (start + menu open when stale) -> `inviteEligible`, `joinIntent` into the slice, `invitePromptOnClient` (the client prompt path; the options kept until the local prompt closes or `INVITE.promptOptionsSeconds`) and the local `GameInvitePromptClosed` relayed as `inviteRecipients`. |
 
 Pure, headlessly tested logic: `src/shared/play/` (input mapping, live loop, HUD snapshot), `src/shared/view/`
 (iso camera, studs <-> sim units, aim ray, greedy tile merge, marking geometry, dash layout, presentation tunables),
@@ -802,6 +802,12 @@ never switches.
    `party` (an invite or party arrival the server already put in a lobby) -> the normal flow, which opens the lobby
    room; `none` or no intent in time -> the tutorial exactly as before. Done / failed load / no status never waits for
    the intent. The log line reads `[Tutorial] first run: <choice> (after t s, join intent <kind | not received>)`.
+   The latched choice is provisional until it is dispatched (when the loading screen released): `joinIntent` may come
+   more than once (the server upgrades none -> lobby / party when it places the player later, within
+   `INVITE.launchDataWaitSeconds` + `intentUpgradeMarginSeconds` of join), so the dispatch re-checks
+   (`firstJoinDispatchChoice`): a latched tutorial becomes the normal flow when the player is in a lobby by now or the
+   latest intent is lobby / party, unless `KV_Tutorial` is true (log `[Tutorial] first run: tutorial -> normal
+   (placed in a lobby, ...)`).
 2. **Tutorial run.** `SimController.startTutorial()` (the gate, the main menu's **Tutorial**, Restart tutorial, Play
    the tutorial again): the old solo run is left as by Play solo (submitted as abandoned when it qualifies) and world
    `tutorial` (`buildWorldSetup`, `TUTORIAL.runSeed`) starts **locally**: no `startRun`, no segments, never submitted

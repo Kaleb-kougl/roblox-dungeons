@@ -22,6 +22,22 @@ export interface InviteConfig {
 	 * slow server never stalls a normal join.
 	 */
 	readonly intentWaitSeconds: number;
+	/**
+	 * The server sends a fresh `joinIntent` (none -> lobby / party) when an arrival or party action places a player
+	 * this long after their PlayerAdded at most: INVITE.launchDataWaitSeconds plus this margin, which covers the client's
+	 * join loading screen (its first-join choice is dispatched only when the screen releases, docs/PRELOAD.md).
+	 */
+	readonly intentUpgradeMarginSeconds: number;
+	/**
+	 * A prompt's record (its lobby, for crediting recipients) is dropped after this long (or once its recipients
+	 * came), so a later Roblox-menu invite is never credited to a stale lobby.
+	 */
+	readonly promptRecordSeconds: number;
+	/**
+	 * An ExperienceInviteOptions passed to PromptGameInvite is kept until the prompt closes
+	 * (GameInvitePromptClosed), or destroyed after this long if it never reports closing.
+	 */
+	readonly promptOptionsSeconds: number;
 	/** One `SocialService:CanSendGameInviteAsync` answer per player is reused for this long. */
 	readonly eligibilityCacheSeconds: number;
 	/** Visibility of a lobby made for a Roblox Party on arrival (ID5: Closed; the host can change it). */
@@ -39,6 +55,9 @@ export const INVITE: InviteConfig = table.freeze({
 	launchDataPollSeconds: 1,
 	launchDataWaitSeconds: 10,
 	intentWaitSeconds: 2,
+	intentUpgradeMarginSeconds: 5,
+	promptRecordSeconds: 300,
+	promptOptionsSeconds: 300,
 	eligibilityCacheSeconds: 300,
 	partyLobbyVisibility: "closed" as LobbyVisibility,
 	// Empty until task I8 (owner): the live and test experiences' Notification String ids go here.

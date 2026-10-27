@@ -161,7 +161,7 @@ Event pairs, like the user's other Flamework project. Flamework generates a runt
 | client -> server | `inviteEligibility` | none | `joinIntent` again (once resolved), then `inviteEligible` |
 | server -> client | `inviteEligible` | `InviteEligibility { canSend }` | |
 | server -> client | `invitePromptOnClient` | `InvitePromptOptions { launchData, inviteMessageId? }` (only with `INVITE.promptSide` "client") | |
-| server -> client | `joinIntent` | `JoinIntent { kind: "lobby" \| "party" \| "none" }` (once per join, after the first arrival resolve) | |
+| server -> client | `joinIntent` | `JoinIntent { kind: "lobby" \| "party" \| "none" }` (after the first arrival resolve; again with every `inviteEligible`; again when the player is placed later, none -> lobby / party) | |
 
 The M4 invite flow (`partyInvite` / `partyRespond` / `partyInviteUpdate`, `shared/run` `PartyInvites`) was removed in
 task L7: lobbies replace it.
@@ -512,8 +512,8 @@ use the same outbox and flush as every request:
 | `lobbyOf(userId)` | the player's lobby (read only) |
 | `arrivalFacts(userId, knownFriends?)` | the lobby half of an `ArrivalInput`, read now (FriendCache, plus friendships just confirmed) |
 | `fetchFriendship(a, b)` | yields: a fresh `IsFriendsWithAsync` (false on error), for a `friends` lobby named by a LaunchData |
-| `platformInvites(from, toUserIds)` | `Lobbies.platformInvites`; pushes, `LobbyInviteSent` (platform); a whole-call refusal is `refused` (requestKind `inviteRecipients`), skipped ids are only logged |
-| `applyArrival(userId, actions)` | applies `resolveArrival`'s actions (joins, party join / party lobby, notices, toasts) |
+| `platformInvites(from, toUserIds)` | `Lobbies.platformInvites` (players in this server refused: they get `lobbyInvite`); pushes, `LobbyInviteSent` (platform); a whole-call refusal is `refused` (requestKind `inviteRecipients`), skipped ids are only logged |
+| `applyArrival(userId, actions, knownFriends?)` | applies `resolveArrival`'s actions (joins, party join / party lobby, notices, toasts); the joins use the friendships the resolve saw |
 | `partyInviteOffer(from, to)` | a mid-session party invite (source `party`) |
 | `notify(userId, notice)` | one notice (InviteService's refusals) |
 
@@ -524,28 +524,41 @@ No lobby activity feed exists (`LobbyView` has none), so a platform invite shows
   `rateLimited`, `badRequest`, `notMember` without a lobby, `inRun`). LaunchData = `encodeInviteLaunch` (`lobby` with
   the lobby id, or `game`), `InviteMessageId` = `INVITE.notificationStringIds.get(game.GameId)` when set.
   `INVITE.promptSide` "server" (default): an `ExperienceInviteOptions` and a pcall'd `SocialService:PromptGameInvite`
-  (kept until the prompt closes); "client": `invitePromptOnClient { launchData, inviteMessageId }`. The server
-  remembers per player the lobby (or none) of their last prompt.
+  (kept until the prompt closes, at most `INVITE.promptOptionsSeconds`); if that call fails, the server falls back to
+  `invitePromptOnClient` with the same options (logged); "client": `invitePromptOnClient { launchData,
+  inviteMessageId }`. The server remembers per player the lobby (or none) of their last prompt for
+  `INVITE.promptRecordSeconds` (300 s).
 - **Recipients.** `SocialService.GameInvitePromptClosed` and the client's `inviteRecipients` relay
-  (`INVITE_RECIPIENTS_RATE`) feed one handler: a plain list of at most `LOBBY.maxPlatformInvitesPerMember` integers
-  (`inviteRecipientList`); ids already recorded for that prompt are skipped (a double report is harmless). A lobby
-  prompt whose lobby the sender is still in -> `platformInvites`; a menu prompt only logs `LobbyInviteSent`
-  (platform, value = recipients); without a prompt of ours nothing happens.
+  (`INVITE_RECIPIENTS_RATE`) feed one handler (the server signal is connected last, in pcall): a plain list of at
+  most `LOBBY.maxPlatformInvitesPerMember` UserIds (`inviteRecipientList`: nonzero integers, |id| <=
+  `MAX_USER_ID_MAGNITUDE`). The first valid report consumes the prompt record, so a double report (server signal and
+  client relay) or a later Roblox-menu invite finds nothing. A lobby prompt whose lobby the sender is still in ->
+  `platformInvites` (recipients already in this server are refused there); a menu prompt logs one `LobbyInviteSent`
+  (platform, value = recipients, at most the cap); without a live prompt record nothing happens.
 - **Eligibility.** `inviteEligibility` (`INVITE_ELIGIBILITY_RATE`) first re-sends `joinIntent` if the arrival is
   resolved (the client asks at startup, in case it missed the push), then answers `inviteEligible { canSend }` from
   one pcall'd `CanSendGameInviteAsync(player)` per player per `INVITE.eligibilityCacheSeconds` (false on error; a call
   in flight answers every request made meanwhile).
-- **Arrival.** On PlayerAdded (and for players here at start), on the player's own thread (cancelled on leave):
+- **Arrival.** On PlayerAdded (and for players here at start), on the player's own thread (cancelled on leave). At
+  most one resolve per player is in flight: a request while one runs (a late PartyId, Studio's fake LaunchData)
+  makes the running one loop once more, and every resolve reads the player's latest LaunchData.
   1. read LaunchData (`GetJoinData`, pcall) and decode it (`decodeInviteLaunch`; anything else is ignored);
-  2. gather the facts that yield: the party's accept order (one pcall'd `GetPartyAsync` per party, cached while a
-     member is here; concurrent arrivals wait for the call in flight; failure: server join order), and for a
-     LaunchData lobby with visibility `friends` a fresh friendship with its host;
+  2. gather the facts that yield: the party's accept order (one pcall'd `GetPartyAsync` per party on a thread of its
+     own, which always drops its in-flight entry and resumes every waiter with `task.defer`; cached while a member is
+     here; failure: server join order), and for a LaunchData lobby with visibility `friends` a fresh friendship with
+     its host (passed on to the join too);
   3. without yielding: `resolveArrival` with the live invites, the LaunchData and the party mates here (in join
-     order), then `applyArrival`;
-  4. `joinIntent { kind: arrivalJoinIntent(...) }` (lobby / party / none);
+     order), then `applyArrival`; every player it put into a lobby (`arrivalPlacements`, kept only if really in one)
+     records how (lobby / party);
+  4. `joinIntent { kind }` from the state after applying (`joinIntentNow`: in a lobby -> how they were placed, else
+     none);
   5. no LaunchData and nothing placed them: poll LaunchData every `INVITE.launchDataPollSeconds` (1 s) for
-     `INVITE.launchDataWaitSeconds` (10 s); a late one resolves again (steps 2-3; the resolver turns a move of a busy
-     or already placed player into a `lobby.err.busy` / `alreadyInLobby` toast). No second `joinIntent`.
+     `INVITE.launchDataWaitSeconds` (10 s), stopping once they are in a lobby; a late one resolves again (steps 2-3;
+     the resolver turns a move of a busy or already placed player into a `lobby.err.busy` / `alreadyInLobby` toast).
+  Upgrade: whenever step 3 places a player whose last `joinIntent` was `none`, within `launchDataWaitSeconds` +
+  `INVITE.intentUpgradeMarginSeconds` (5 s) of their PlayerAdded, they get a fresh `joinIntent` (lobby / party;
+  never a downgrade): the client dispatches its first-join choice only when its loading screen releases, and
+  re-checks it then (docs/CLIENT.md).
 - **What the arrival sends** (`applyArrival`):
   `joinInvite` / `joinOpen` -> the join's `lobbyState` / `lobbyInvites` pushes (no notice; a join refused after all:
   `lobbyNotice { kind: "arrival", key }`); `partyJoin` -> a party invite from the mate, the join, `lobbyNotice {
@@ -579,7 +592,9 @@ No lobby activity feed exists (`LobbyView` has none), so a platform invite shows
 Studio recipe (Test > Clients and Servers): set `KV_FakePartyId` = `"p1"` on Workspace before Start with 3 players
 -> the second arrival makes a Closed lobby hosted by the first (a first-run player in the tutorial is busy: they get
 a party invite and the second hosts), the third joins it. Invites: player 1 creates a lobby and presses Invite
-friends with `KV_FakeInviteRecipients` = `"-2"` on Player1 -> player 2 gets a platform invite; for an arrival, copy
+friends with `KV_FakeInviteRecipients` = `"-2,-9"` on Player1 -> `-9` (not in the server) shows as "Invited
+(Roblox)" in the room, `-2` is refused as a platform invite (`PLATFORM_INVITE_SKIPPED ... badRequest`: players here
+get `lobbyInvite`); for an arrival, copy
 the `[Invite] PROMPT` line's LaunchData and set it as `KV_FakeLaunchData` on Player2 (server command bar):
 `game.Players.Player2:SetAttribute("KV_FakeLaunchData", "kv1|l|<lobby id>|-1")`. `kv1|g|-1` on Workspace before
 Start: every other player's arrival sends `inviteArrived` to player 1.

@@ -8,13 +8,27 @@
  *   arrivalToastForRefusal an arrival's join Lobbies refused after all -> the arrival toast
  *   inviteArrivalOutcome   the InviteArrival analytics outcome of an arrival's actions
  *   partyOffers            mid-session party grouping (ID4: an offer, a party invite, never a move)
+ *   arrivalPlacements      who an arrival's actions mean to move into a lobby, and as what (lobby / party)
+ *   joinIntentNow / shouldUpgradeJoinIntent   the `joinIntent` from the state after applying, and its upgrade
  *
  * Roblox-API-free.
  */
-import { LOBBY, type InviteArrivalOutcome, type Lobby, type LobbyInvite, type LobbyRefusal } from "shared/lobby";
-import { isFiniteValue } from "shared/run";
-import { ARRIVAL_TOAST, type ArrivalAction, type ArrivalInput, type ArrivalToastKey } from "./arrival";
-import { INVITE_STUDIO_ATTRIBUTES } from "./config";
+import {
+	LOBBY,
+	isWireUserId,
+	type InviteArrivalOutcome,
+	type Lobby,
+	type LobbyInvite,
+	type LobbyRefusal,
+} from "shared/lobby";
+import {
+	ARRIVAL_TOAST,
+	type ArrivalAction,
+	type ArrivalInput,
+	type ArrivalJoinIntent,
+	type ArrivalToastKey,
+} from "./arrival";
+import { INVITE, INVITE_STUDIO_ATTRIBUTES } from "./config";
 
 /** What LobbyService gives InviteService to build an ArrivalInput (the lobby half of it, read now). */
 export interface ArrivalLobbyFacts {
@@ -38,8 +52,9 @@ export interface ArrivalApplyResult {
 	readonly refusal?: LobbyRefusal;
 }
 
+/** shared/lobby isWireUserId: a nonzero integer, |id| <= MAX_USER_ID_MAGNITUDE (Studio's negatives allowed). */
 function isUserId(v: unknown): v is number {
-	return isFiniteValue(v) && v % 1 === 0;
+	return isWireUserId(v);
 }
 
 /**
@@ -213,4 +228,50 @@ export function partyOffers(
 		room -= 1;
 	}
 	return out;
+}
+
+/** How a player was put into a lobby by an arrival: an invite / LaunchData join, or Roblox Party grouping. */
+export type ArrivalPlacement = "lobby" | "party";
+
+/**
+ * Every player an arrival's actions mean to move into a lobby (`arrivalId` and, for a party lobby, its host and
+ * joiners), with how. The caller keeps only those actually in a lobby after applying.
+ */
+export function arrivalPlacements(
+	arrivalId: number,
+	actions: ReadonlyArray<ArrivalAction>,
+): ReadonlyMap<number, ArrivalPlacement> {
+	const out = new Map<number, ArrivalPlacement>();
+	for (const a of actions) {
+		if (a.kind === "joinInvite" || a.kind === "joinOpen") out.set(arrivalId, "lobby");
+		else if (a.kind === "partyJoin") out.set(arrivalId, "party");
+		else if (a.kind === "makePartyLobby") {
+			out.set(a.hostId, "party");
+			for (const id of a.joiners) out.set(id, "party");
+		}
+	}
+	return out;
+}
+
+/**
+ * The `joinIntent` from the state AFTER applying: "none" unless the player is in a lobby; then how an arrival placed
+ * them (`placement`), or "lobby" when they are in one by other means.
+ */
+export function joinIntentNow(inLobby: boolean, placement: ArrivalPlacement | undefined): ArrivalJoinIntent {
+	if (!inLobby) return "none";
+	return placement ?? "lobby";
+}
+
+/**
+ * A fresh `joinIntent` is due: the one sent said "none", the player is placed now, and it is still within
+ * INVITE.launchDataWaitSeconds + intentUpgradeMarginSeconds of their PlayerAdded (the client may not have
+ * dispatched its first-join choice yet). Never a downgrade.
+ */
+export function shouldUpgradeJoinIntent(
+	sent: ArrivalJoinIntent | undefined,
+	current: ArrivalJoinIntent,
+	secondsSinceJoin: number,
+): boolean {
+	if (sent !== "none" || current === "none") return false;
+	return secondsSinceJoin <= INVITE.launchDataWaitSeconds + INVITE.intentUpgradeMarginSeconds;
 }

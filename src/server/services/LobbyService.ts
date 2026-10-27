@@ -238,12 +238,28 @@ export class LobbyService implements OnStart {
 		this.janitor.Add(RunService.Heartbeat.Connect(() => this.heartbeat()));
 	}
 
-	private context(): LobbyContext {
+	/**
+	 * The lobby context now. `confirmed`: friendships of `userId` the caller has just confirmed (fetchFriendship),
+	 * answered true even while the FriendCache does not know the pair yet.
+	 */
+	private context(confirmed?: { readonly userId: number; readonly friends: ReadonlyArray<number> }): LobbyContext {
 		return {
 			now: os.clock(),
 			busyReason: (id) => this.runSessions.busyReason(id),
-			areFriends: (a, b) => this.friends.areFriends(a, b),
+			areFriends: (a, b) => this.areFriends(a, b, confirmed),
 		};
+	}
+
+	private areFriends(
+		a: number,
+		b: number,
+		confirmed: { readonly userId: number; readonly friends: ReadonlyArray<number> } | undefined,
+	): boolean {
+		if (confirmed !== undefined) {
+			if (a === confirmed.userId && confirmed.friends.includes(b)) return true;
+			if (b === confirmed.userId && confirmed.friends.includes(a)) return true;
+		}
+		return this.friends.areFriends(a, b);
 	}
 
 	/** One client request: rate limit, the handler, then the pushes it caused. */
@@ -270,8 +286,12 @@ export class LobbyService implements OnStart {
 	}
 
 	/** A join and its pushes (no refusal notice: the caller decides how to tell the player). */
-	private joinLobby(userId: number, lobbyId: string): LobbyResult<{ lobby: Lobby }> {
-		const r = this.lobbies.join(userId, lobbyId, this.context());
+	private joinLobby(
+		userId: number,
+		lobbyId: string,
+		ctx: LobbyContext = this.context(),
+	): LobbyResult<{ lobby: Lobby }> {
+		const r = this.lobbies.join(userId, lobbyId, ctx);
 		if (!r.ok) return r;
 		const lookup = (id: string) => this.lobbies.get(id);
 		this.outbox.lobby(r.lobby);
@@ -323,10 +343,8 @@ export class LobbyService implements OnStart {
 	 */
 	arrivalFacts(userId: number, knownFriends: ReadonlyArray<number> = []): ArrivalLobbyFacts {
 		const now = os.clock();
-		const areFriends = (a: number, b: number) =>
-			(a === userId && knownFriends.includes(b)) ||
-			(b === userId && knownFriends.includes(a)) ||
-			this.friends.areFriends(a, b);
+		const confirmed = { userId, friends: knownFriends };
+		const areFriends = (a: number, b: number) => this.areFriends(a, b, confirmed);
 		return {
 			now,
 			invitesFor: (id) => this.lobbies.invitesFor(id, now),
@@ -347,13 +365,19 @@ export class LobbyService implements OnStart {
 	/**
 	 * The friends a member of a lobby picked in Roblox's invite prompt (`Lobbies.platformInvites`; the ids may be
 	 * absent from this server). Each invite made reaches its invitee's `lobbyInvites` (when here) and the lobby's
-	 * `invited`; one `LobbyInviteSent` (platform, value = invites made). A whole-call refusal (no longer a member, the
+	 * `invited`; one `LobbyInviteSent` (platform, value = invites made). Players IN this server are refused one by one
+	 * (`badRequest`): they go through `lobbyInvite` and its cap / TTL. A whole-call refusal (no longer a member, the
 	 * lobby in a run or full, a malformed list) is a `refused` notice with requestKind "inviteRecipients"; ids skipped
 	 * one by one (already invited, in a lobby, kick cooldown, cap) are only logged: a prompt reported twice (server
 	 * signal and client relay) makes nothing the second time. Returns the number of invites made.
 	 */
 	platformInvites(fromUserId: number, toUserIds: ReadonlyArray<number>): number {
-		const r = this.lobbies.platformInvites(fromUserId, toUserIds, this.context());
+		const r = this.lobbies.platformInvites(
+			fromUserId,
+			toUserIds,
+			this.context(),
+			(id) => Players.GetPlayerByUserId(id) !== undefined,
+		);
 		if (!r.ok) {
 			log.info("PLATFORM_INVITES_REFUSED", `${fromUserId}: ${r.code} (${r.reason})`);
 			this.outbox.refused(fromUserId, "inviteRecipients", r);
@@ -397,7 +421,8 @@ export class LobbyService implements OnStart {
 	}
 
 	/**
-	 * Applies `resolveArrival`'s actions for the arriving `userId`, in order, then flushes once:
+	 * Applies `resolveArrival`'s actions for the arriving `userId`, in order, then flushes once. `knownFriends`: the
+	 * friendships the caller confirmed for the resolve (`arrivalFacts`), so the join agrees with it:
 	 *
 	 *   joinInvite / joinOpen  join (the invite, if any, is consumed as usual); refused after all: an `arrival` toast
 	 *   partyJoin              a party invite from the mate (still in that lobby), then the join; `partyLobby` notice
@@ -411,11 +436,15 @@ export class LobbyService implements OnStart {
 	 *
 	 * A refused party step toasts the player it concerns (`lobby.err.partyFull` for a full lobby).
 	 */
-	applyArrival(userId: number, actions: ReadonlyArray<ArrivalAction>): ArrivalApplyResult {
+	applyArrival(
+		userId: number,
+		actions: ReadonlyArray<ArrivalAction>,
+		knownFriends: ReadonlyArray<number> = [],
+	): ArrivalApplyResult {
 		let refusal: LobbyRefusal | undefined;
 		for (const a of actions) {
 			if (a.kind === "joinInvite" || a.kind === "joinOpen") {
-				const r = this.joinLobby(userId, a.lobbyId);
+				const r = this.joinLobby(userId, a.lobbyId, this.context({ userId, friends: knownFriends }));
 				if (r.ok) {
 					log.info("ARRIVAL_JOINED", `${userId} -> lobby ${a.lobbyId} (${a.kind})`);
 				} else {

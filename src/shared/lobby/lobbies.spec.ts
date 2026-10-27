@@ -7,7 +7,9 @@ import {
 	LOBBY,
 	LOBBY_NAMES,
 	Lobbies,
+	MAX_USER_ID_MAGNITUDE,
 	canAccess,
+	isWireUserId,
 	type AreFriends,
 	type Lobby,
 	type LobbyContext,
@@ -615,6 +617,23 @@ describe("Lobbies: platform invites (Roblox's invite prompt)", () => {
 		return r;
 	}
 
+	it("refuses recipients who are in this server (they get the lobby's invite list and its rules)", () => {
+		const l = lobbies();
+		const lobby = create(l, HOST, { visibility: "closed" });
+		const here = (id: number) => id === A;
+		const r = l.platformInvites(HOST, [A, F1], ctx(), here);
+		if (!r.ok) error(r.reason);
+		expect(r.invites.size()).toBe(1);
+		expect(r.invites[0].toUserId).toBe(F1);
+		expect(r.refusals.size()).toBe(1);
+		expect([r.refusals[0].userId, r.refusals[0].code]).toEqual([A, "badRequest"]);
+		expect(l.invitesFor(A, 0)).toEqual([]);
+		expect(l.invitesTo(lobby.lobbyId, 0).size()).toBe(1);
+		// Through invite they get the server source and TTL.
+		const s = l.invite(HOST, A, ctx());
+		expect(s.ok && s.invite.source).toBe("server");
+	});
+
 	it("invites players absent from the server, with source platform and the platform TTL", () => {
 		const l = lobbies();
 		const lobby = create(l, HOST, { visibility: "closed" });
@@ -847,5 +866,28 @@ describe("Lobbies: party invites", () => {
 		l.start(C, ctx(0));
 		l.tick(ctx(LOBBY.countdownSeconds));
 		expect(code(l.partyInvite(C, D, ctx(5)))).toBe("inRun");
+	});
+});
+
+describe("UserId bounds (isWireUserId)", () => {
+	it("nonzero integers of magnitude at most 2^53 - 1; Studio's negatives allowed", () => {
+		expect(MAX_USER_ID_MAGNITUDE).toBe(9007199254740991); // check-asset-ids: allow (2^53 - 1)
+		for (const ok of [1, -1, A, -MAX_USER_ID_MAGNITUDE, MAX_USER_ID_MAGNITUDE]) expect(isWireUserId(ok)).toBe(true);
+		const bad: unknown[] = [0, 1.5, 1e300, -1e300, MAX_USER_ID_MAGNITUDE + 2, 1 / 0, 0 / 0, "1"];
+		for (const v of bad) expect(isWireUserId(v)).toBe(false);
+		expect(isWireUserId(undefined)).toBe(false);
+	});
+
+	it("every invite, kick and transfer refuses an unbounded id", () => {
+		const l = lobbies();
+		create(l, HOST);
+		for (const bad of [0, 1e300, -1e300]) {
+			expect(code(l.invite(HOST, bad, ctx()))).toBe("badRequest");
+			expect(code(l.partyInvite(HOST, bad, ctx()))).toBe("badRequest");
+			expect(code(l.platformInvites(HOST, [bad], ctx()))).toBe("badRequest");
+			expect(code(l.kick(HOST, bad, ctx()))).toBe("badRequest");
+			expect(code(l.transferHost(HOST, bad))).toBe("badRequest");
+		}
+		expect(code(l.invite(HOST, -2, ctx()))).toBe("ok"); // a Studio test player
 	});
 });
