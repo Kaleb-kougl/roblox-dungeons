@@ -402,6 +402,7 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		"options.up": "+",
 		"options.display.hudScale": "HUD scale",
 		"options.display.roomEdges": "Room edges",
+		"options.display.hudFade": "HUD fade",
 		"options.action.moveUp": "Move up",
 		"options.action.moveDown": "Move down",
 		"options.action.moveLeft": "Move left",

@@ -147,7 +147,7 @@ describe("HUD helpers", () => {
 		const pack = quietPack(warnings);
 		const keys = optionsStringKeys(KBM_ACTIONS);
 		expect(keys.size()).toBe(
-			BINDING_REFUSALS.size() + KBM_ACTIONS.size() + OPTIONS_TABS.size() + OPTIONS_DEVICES.size() + 27,
+			BINDING_REFUSALS.size() + KBM_ACTIONS.size() + OPTIONS_TABS.size() + OPTIONS_DEVICES.size() + 28,
 		);
 		for (const key of keys) expect([key, pack.hasString(key)]).toEqual([key, true]);
 		// Every pad action is a keyboard action too (one name table).
@@ -165,6 +165,7 @@ describe("HUD helpers", () => {
 		);
 		expect(pack.str(HUD_STRINGS.settings)).toBe("Options");
 		expect(pack.str(OPTIONS_STRINGS.roomEdges)).toBe("Room edges"); // docs/ROOM_EDGES.md RE6
+		expect(pack.str(OPTIONS_STRINGS.hudFade)).toBe("HUD fade"); // docs/HUD_LAYOUT.md H7
 		expect(warnings).toEqual([]);
 	});
 

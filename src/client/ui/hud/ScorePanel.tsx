@@ -22,7 +22,13 @@ export function ScorePanel(props: { readonly highlight?: boolean }) {
 	const inner = width - HUD_VIEW.pad * 2;
 	const frac = comboFraction(s.comboTicks, s.comboWindowTicks);
 	return (
-		<Panel corner="topRight" width={width} align={Enum.HorizontalAlignment.Right} name="Score">
+		<Panel
+			corner="topRight"
+			width={width}
+			align={Enum.HorizontalAlignment.Right}
+			name="Score"
+			overlay={props.highlight === true ? <HighlightRing /> : undefined}
+		>
 			<Text
 				fill={true}
 				order={1}
@@ -70,7 +76,6 @@ export function ScorePanel(props: { readonly highlight?: boolean }) {
 					text={str(HUD_STRINGS.floor, { floor: s.floor, depth: s.depth })}
 				/>
 			) : undefined}
-			{props.highlight === true ? <HighlightRing /> : undefined}
 		</Panel>
 	);
 }

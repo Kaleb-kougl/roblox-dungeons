@@ -67,6 +67,8 @@ export const HUD_VIEW = {
 	buttonSize: { x: 260, y: 40 },
 	/** Settings option buttons. */
 	optionSize: { x: 92, y: 30 },
+	/** The HUD scale row's narrower buttons: six percent steps (70-125, docs/HUD_LAYOUT.md H8) fit OPTIONS_VIEW.width. */
+	scaleOptionWidth: 76,
 	settingsLabelWidth: 210,
 	/** Characters of a server hash shown in the verdict line. */
 	hashChars: 8,

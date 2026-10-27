@@ -34,8 +34,11 @@ export const VOLUME_PERCENT = { min: 0, max: 100, step: 10, default: 100 } as co
  * The HUD scale choices (percent of the automatic scale, shared/view/hud computeHudScale). Only these are accepted
  * from a stored doc; 100 is the default.
  */
-export const HUD_SCALE_PERCENTS: ReadonlyArray<number> = [80, 90, 100, 110, 125];
+export const HUD_SCALE_PERCENTS: ReadonlyArray<number> = [70, 80, 90, 100, 110, 125];
 export const DEFAULT_HUD_SCALE_PERCENT = 100;
 
 /** Room-edge lines (docs/ROOM_EDGES.md RE6, Options > Display > Room edges): On by default. */
 export const DEFAULT_ROOM_EDGES = true;
+
+/** Corner HUD panels fade while the action is under them (docs/HUD_LAYOUT.md H7, Options > Display > HUD fade): On. */
+export const DEFAULT_HUD_FADE = true;
