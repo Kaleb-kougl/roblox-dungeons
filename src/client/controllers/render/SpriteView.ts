@@ -9,9 +9,11 @@ import {
 	spriteOutlineVisible,
 	type IsoBasis,
 	type SpriteAnimChoice,
+	type SpriteBillboard,
 	type SpriteClock,
 	type SpriteLayout,
 } from "shared/view";
+import { roundToArtPixels, squashedBillboard, type GhostSnapshot } from "shared/view/fx";
 import { renderPart } from "./placeholders";
 
 const WHITE = new Color3(1, 1, 1);
@@ -40,6 +42,13 @@ const HIDDEN = 1;
  * both labels), the rim is shown (setOutlineShown: the owner hides it at death while the corpse fades through
  * setTransparency, which touches the frame only) and the frame's sheet has an outline. Without `outline` nothing of
  * this runs.
+ *
+ * Squash & stretch (docs/FEEL.md J6): `setScale(sx, sy)` resizes the billboard around the pivot pixel (shared/view/fx
+ * squashedBillboard), each axis snapped to whole art pixels of the drawn cell (roundToArtPixels), written only when the
+ * snapped scale or the cell changes. The billboard is kept as `base` (the current cell's spriteBillboard, recomputed by
+ * placeBillboard) and every Size / StudsOffset write goes through writeBillboard (base x scale + extraDepthStuds): a
+ * later additive offset (e.g. a hit push) should be added there, on top of the squashed offset, so the two compose.
+ * `snapshot` copies the drawn frame for an afterimage (J7).
  */
 export class SpriteView {
 	readonly anchor: Part;
@@ -66,6 +75,16 @@ export class SpriteView {
 	private tint = WHITE;
 	private transparency = 0;
 	private visible = true;
+	/** Squash (J6): the billboard of the current cell at 1 x 1, the scale asked for and the snapped scale drawn. */
+	private base: SpriteBillboard | undefined;
+	private scaleX = 1;
+	private scaleY = 1;
+	private drawnScaleX = 1;
+	private drawnScaleY = 1;
+	/** The billboard as last written (base x the drawn scale), and the frame's rect, for snapshot (J7). */
+	private drawn: SpriteBillboard | undefined;
+	private rectOffset = Vector2.zero;
+	private rectSize = Vector2.zero;
 
 	constructor(
 		readonly set: SpriteSet,
@@ -131,6 +150,7 @@ export class SpriteView {
 		this.setTransparency(0);
 		this.setVisible(true);
 		this.setOutlineShown(true);
+		this.setScale(1, 1);
 		this.gui.Enabled = true;
 	}
 
@@ -158,6 +178,8 @@ export class SpriteView {
 		}
 		this.label.ImageRectOffset = f.offset;
 		this.label.ImageRectSize = f.size;
+		this.rectOffset = f.offset;
+		this.rectSize = f.size;
 		const rim = this.outline;
 		if (rim !== undefined) {
 			const image = f.outlineImage;
@@ -175,9 +197,8 @@ export class SpriteView {
 
 	/** Billboard Size / StudsOffset for `layout` (the pivot pixel on the anchor). */
 	private placeBillboard(layout: SpriteLayout): void {
-		const b = spriteBillboard(layout);
-		this.gui.Size = new UDim2(b.w, 0, b.h, 0);
-		this.gui.StudsOffset = new Vector3(b.offsetX, b.offsetY, b.offsetZ + this.extraDepthStuds);
+		this.base = spriteBillboard(layout);
+		this.writeBillboard();
 	}
 
 	/** Per-sheet cells: re-places the billboard when the drawn frame's cell differs from the one it is sized for. */
@@ -201,6 +222,58 @@ export class SpriteView {
 		if (t === this.transparency) return;
 		this.transparency = t;
 		this.label.ImageTransparency = t;
+	}
+
+	/**
+	 * Squash & stretch (J6): draws the billboard `sx` x `sy` times its size around the pivot (1 x 1: as placed), each
+	 * axis snapped to whole art pixels of the drawn cell. Written only when the snapped scale changes.
+	 */
+	setScale(sx: number, sy: number): void {
+		if (sx === this.scaleX && sy === this.scaleY) return;
+		this.scaleX = sx;
+		this.scaleY = sy;
+		if (
+			roundToArtPixels(sx, this.cellW) === this.drawnScaleX &&
+			roundToArtPixels(sy, this.cellH) === this.drawnScaleY
+		) {
+			return;
+		}
+		this.writeBillboard();
+	}
+
+	/** Size / StudsOffset: the current cell's billboard x the snapped scale, plus extraDepthStuds (see the class doc). */
+	private writeBillboard(): void {
+		const base = this.base;
+		if (base === undefined) return;
+		const sx = roundToArtPixels(this.scaleX, this.cellW);
+		const sy = roundToArtPixels(this.scaleY, this.cellH);
+		this.drawnScaleX = sx;
+		this.drawnScaleY = sy;
+		const b = squashedBillboard(base, sx, sy);
+		this.drawn = b;
+		this.gui.Size = new UDim2(b.w, 0, b.h, 0);
+		this.gui.StudsOffset = new Vector3(b.offsetX, b.offsetY, b.offsetZ + this.extraDepthStuds);
+	}
+
+	/**
+	 * Afterimage (J7): the frame as drawn now (image, rect, billboard size and offset with the squash) into `out`;
+	 * false (out untouched) before the first frame and while hidden (setVisible false: a blink leaves no ghost).
+	 */
+	snapshot(out: GhostSnapshot): boolean {
+		const b = this.drawn;
+		if (b === undefined || this.image === "" || !this.visible) return false;
+		out.image = this.image;
+		out.rectX = this.rectOffset.X;
+		out.rectY = this.rectOffset.Y;
+		out.rectW = this.rectSize.X;
+		out.rectH = this.rectSize.Y;
+		out.w = b.w;
+		out.h = b.h;
+		out.offsetX = b.offsetX;
+		out.offsetY = b.offsetY;
+		out.offsetZ = b.offsetZ + this.extraDepthStuds;
+		out.resample = this.set.resample;
+		return true;
 	}
 
 	setVisible(v: boolean): void {

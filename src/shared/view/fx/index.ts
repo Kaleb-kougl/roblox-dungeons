@@ -18,3 +18,6 @@ export * from "./rng";
 export * from "./config";
 export * from "./scorePops";
 export * from "./fxCues";
+export * from "./motionFxConfig";
+export * from "./squash";
+export * from "./afterimage";

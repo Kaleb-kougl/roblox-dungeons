@@ -52,6 +52,7 @@ import {
 	type ActorSpriteInput,
 	type IsoBasis,
 } from "shared/view";
+import { FxTrackerController } from "../fx/FxTrackerController";
 import { SimController } from "../game/SimController";
 import { ThemeController } from "../game/ThemeController";
 import {
@@ -64,6 +65,7 @@ import {
 	type PlaceholderModel,
 } from "./placeholders";
 import { SPRITE_TINT_NONE, SpriteView } from "./SpriteView";
+import { MotionFx } from "./motionFx";
 
 const RENDER_STEP = "KV_Actors";
 const PARKED = new CFrame(BULLET_VIEW.parkedStuds[0], BULLET_VIEW.parkedStuds[1], BULLET_VIEW.parkedStuds[2]);
@@ -180,8 +182,14 @@ export class ActorRenderController implements OnStart {
 	private swordIndex: number | undefined;
 	/** The KV_EnemyOutline debug switch (outlineSwitchOn), read on change: the Highlight's Enabled and sprite rims. */
 	private outlineOn = true;
+	/** Squash & stretch and afterimages (docs/FEEL.md J6 / J7; ./motionFx.ts), built in onStart. */
+	private motion: MotionFx | undefined;
 
-	constructor(private readonly sim: SimController, private readonly theme: ThemeController) {}
+	constructor(
+		private readonly sim: SimController,
+		private readonly theme: ThemeController,
+		private readonly fx: FxTrackerController,
+	) {}
 
 	onStart(): void {
 		const pack = this.theme.getPack();
@@ -208,6 +216,7 @@ export class ActorRenderController implements OnStart {
 		syncSwitch();
 		this.janitor.Add(Workspace.GetAttributeChangedSignal(ACTOR_OUTLINE.enabledAttribute).Connect(syncSwitch));
 		this.players.push(this.buildPlayerView(pack, players));
+		this.startMotion(folder);
 
 		RunService.BindToRenderStep(RENDER_STEP, Enum.RenderPriority.Camera.Value + RENDER_ORDER.viewsAfterCamera, () =>
 			this.frame(),
@@ -224,6 +233,7 @@ export class ActorRenderController implements OnStart {
 		this.lastState = state;
 		this.moveParts.clear();
 		this.moveCFrames.clear();
+		this.motion?.beginFrame(state, this.dtSec, this.fx.settings());
 		this.drawPlayers(state, alpha);
 
 		const actors = state.combat.actors;
@@ -240,6 +250,7 @@ export class ActorRenderController implements OnStart {
 				view = this.acquire(slot, a);
 			}
 			this.drawActor(view, a, state.tick, alpha);
+			this.motionActor(slot, view, a, alpha);
 		}
 		for (let slot = n; slot < this.viewSlots; slot++) {
 			const view = this.views[slot];
@@ -253,6 +264,7 @@ export class ActorRenderController implements OnStart {
 			this.moveCFrames.push(PARKED);
 		}
 		this.spriteParking.clear();
+		this.motion?.endFrame(this.moveParts, this.moveCFrames);
 		if (this.moveParts.size() > 0) {
 			Workspace.BulkMoveTo(this.moveParts, this.moveCFrames, Enum.BulkMoveMode.FireCFrameChanged);
 		}
@@ -511,6 +523,7 @@ export class ActorRenderController implements OnStart {
 				sprite.setTint(look === "dead" ? SPRITE_TINT_NONE : this.lookColor(pack, look) ?? SPRITE_TINT_NONE);
 			}
 			sprite.setVisible(visible);
+			this.motion?.player(index, sprite, p, at);
 		} else {
 			this.drawPlayerModel(view, p, at, dirX, dirZ, dead, rolling, alpha, pack, look, visible);
 		}
@@ -589,6 +602,27 @@ export class ActorRenderController implements OnStart {
 			view.transparency = transparency;
 			setModelTransparency(model, transparency);
 		}
+	}
+
+	// ---------------------------------------------------------------------------------------------
+	// Motion feel (docs/FEEL.md J6 squash & stretch, J7 afterimages): ./motionFx.ts does the work.
+
+	/** Builds the ghost pool under the actor folder and feeds it the tracker's hit / spawned / killed events. */
+	private startMotion(folder: Folder): void {
+		const motion = new MotionFx(folder);
+		this.motion = motion;
+		this.fx.onEvent((e) => motion.onFxEvent(e));
+		this.janitor.Add(() => motion.destroy(), true);
+	}
+
+	/** A sprite actor's squash (and the Demon Lord's charge ghosts), after drawActor updated its frame. */
+	private motionActor(slot: number, view: ActorView, a: Readonly<ActorState>, alpha: number): void {
+		const sprite = view.sprite;
+		const motion = this.motion;
+		if (sprite === undefined || motion === undefined) return;
+		const x = studsX(lerp(a.prevX, a.x, alpha));
+		const z = studsZ(lerp(a.prevZ, a.z, alpha));
+		motion.actor(slot, sprite, a, x, floorStudsY() + ACTOR_VIEW.liftStuds, z);
 	}
 
 	/** The sword's weapon index (resolved once; NO_WEAPON if it is not registered). */
