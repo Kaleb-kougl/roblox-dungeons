@@ -64,17 +64,20 @@ import {
 	type AnimationDef,
 	type AssetDef,
 	type ColorRole,
+	type ContentRef,
 	type HexColor,
 	type ParticleFlipbook,
 	type ParticleFlipbookMode,
 	type PitchRange,
 	type Pivot,
+	type PreloadMedia,
+	type RobloxAssetId,
 	type SpriteAnimationDef,
 	type SpriteFacings,
 	type SpriteSetAsset,
 	type SpriteSheetImage,
 } from "./types";
-import { describeValue, isArrayLike, isInteger, isObj, sortedEntries, sortedKeys, type Obj } from "./util";
+import { describeValue, isArrayLike, isInteger, isObj, sortedEntries, sortedKeys, startsWith, type Obj } from "./util";
 
 export const DEFAULT_PACK_ID = "placeholder";
 export const MISSING_COLOR: HexColor = "#ff00ff";
@@ -533,6 +536,34 @@ export interface FxArt {
 }
 
 const NO_VARIANTS: ReadonlyArray<string> = [];
+const NO_CONTENT: ReadonlyArray<ContentRef> = [];
+/** The scheme every uploaded content id starts with (types.ts RobloxAssetId). */
+const CONTENT_ID_SCHEME = "rbxassetid://";
+
+/**
+ * Every `rbxassetid://` string under `v`, depth first: object keys sorted, arrays in index order (a deterministic
+ * order on every client). Appends each id once (`seen`) to `out` as `media`.
+ */
+function collectContentIds(v: unknown, media: PreloadMedia, seen: Set<string>, out: Array<ContentRef>): void {
+	if (typeIs(v, "string")) {
+		if (startsWith(v, CONTENT_ID_SCHEME) && v.size() > CONTENT_ID_SCHEME.size() && !seen.has(v)) {
+			seen.add(v);
+			out.push({ contentId: v as RobloxAssetId, media });
+		}
+		return;
+	}
+	if (isArrayLike(v)) {
+		for (const e of v) {
+			collectContentIds(e, media, seen, out);
+		}
+		return;
+	}
+	if (typeIs(v, "table")) {
+		for (const entry of sortedEntries(v)) {
+			collectContentIds(entry[1], media, seen, out);
+		}
+	}
+}
 const COLOR_ROLE_SET: ReadonlySet<string> = new Set<string>(COLOR_ROLES);
 
 export interface ThemeCoreOptions {
@@ -564,6 +595,9 @@ export class ThemeCore {
 	/** Sprite-effect lookups, misses included (`false`). */
 	private readonly fxArt = new Map<string, FxArt | false>();
 	private readonly soundRefs = new Map<string, SoundRef>();
+	/** contentIds / biomeContentIds lookups (docs/PRELOAD.md P1), empty lists included. */
+	private readonly contentRefs = new Map<string, ReadonlyArray<ContentRef>>();
+	private readonly biomeContentRefs = new Map<string, ReadonlyArray<ContentRef>>();
 	private readonly warned = new Set<string>();
 	private readonly warnSink: (message: string) => void;
 
@@ -1313,6 +1347,71 @@ export class ThemeCore {
 			}
 		}
 		return out;
+	}
+
+	// --- content ids (docs/PRELOAD.md P1) ------------------------------------------------------
+
+	/**
+	 * Every uploaded content id a logical id draws or plays: a deep walk of `assets[id]` (sheets and their outline
+	 * sheets, sound variants, fx and decor atlases, particle flipbooks, whatever the kind holds), keys sorted and
+	 * arrays in order, each id once. `media` is "sound" for a `sound` asset, else "image". Empty for a placeholder,
+	 * a silent sound or a missing id (never warns). Cached.
+	 */
+	contentIds(id: string): ReadonlyArray<ContentRef> {
+		const cached = this.contentRefs.get(id);
+		if (cached !== undefined) {
+			return cached;
+		}
+		const def = this.assets[id];
+		let refs = NO_CONTENT;
+		if (isObj(def)) {
+			const out = new Array<ContentRef>();
+			collectContentIds(def, def.kind === "sound" ? "sound" : "image", new Set<string>(), out);
+			if (out.size() > 0) refs = out;
+		}
+		this.contentRefs.set(id, refs);
+		return refs;
+	}
+
+	/** The logical ids with at least one content id (contentIds), sorted. */
+	assetIdList(): ReadonlyArray<string> {
+		return sortedKeys(this.assets).filter((id) => this.contentIds(id).size() > 0);
+	}
+
+	/** The pack's biome keys (`biomes` table: "biome.1" .. "biome.5"), sorted. */
+	biomeKeys(): ReadonlyArray<string> {
+		return sortedKeys(this.biomes);
+	}
+
+	/**
+	 * Every content id a biome draws: the same walk over `biomes[biome]`, then its floor and wall tile ids' content
+	 * ids (tiles name logical ids, not uploads), each id once, media "image". Empty for an unknown biome (never
+	 * warns). Cached.
+	 */
+	biomeContentIds(biome: string): ReadonlyArray<ContentRef> {
+		const cached = this.biomeContentRefs.get(biome);
+		if (cached !== undefined) {
+			return cached;
+		}
+		const def = this.biomes[biome];
+		let refs = NO_CONTENT;
+		if (isObj(def)) {
+			const out = new Array<ContentRef>();
+			const seen = new Set<string>();
+			collectContentIds(def, "image", seen, out);
+			const tiles = isObj(def.tiles) ? def.tiles : {};
+			for (const tile of [tiles.floor, tiles.wall]) {
+				if (!typeIs(tile, "string")) continue;
+				for (const ref of this.contentIds(tile)) {
+					if (seen.has(ref.contentId)) continue;
+					seen.add(ref.contentId);
+					out.push({ contentId: ref.contentId, media: "image" });
+				}
+			}
+			if (out.size() > 0) refs = out;
+		}
+		this.biomeContentRefs.set(biome, refs);
+		return refs;
 	}
 
 	// --- strings -------------------------------------------------------------------------------

@@ -34,6 +34,7 @@ Record every ported module in `PROVENANCE.md` (ported module, source path, sourc
 | `docs/ROOM_EDGES.md` | Room edges (dashed floor line where every corridor meets a room, tinted safe / waiting / live): plan, tasks RE1-RE8, decisions RD1-RD9 |
 | `docs/HUD_LAYOUT.md` | In-run HUD footprint (corner panels, full-width band fix, info line to the pause menu, occlusion fade): plan, tasks H1-H9, decisions HD1-HD8 |
 | `docs/FEEL.md` | Game feel pass (hurt flash and jolt, hit flash / hold / push, squash & stretch, roll afterimages, low-health pulse, screen shake setting): plan, tasks J1-J12, decisions JD1-JD13 |
+| `docs/PRELOAD.md` | Asset preloading (join loading screen for the core tier, background queue for bosses / later music): plan, tasks P0-P7, decisions D1-D6 |
 
 Decision log (deviations from `PLAN.md`):
 - **Art (docs/ART.md).** The theme contract gained a `"sprites"` kind (large pre-rendered cells, 1/4/8/16 screen-space
@@ -189,6 +190,15 @@ Decision log (deviations from `PLAN.md`):
   and roll / brimstone-charge afterimages (`KV_Actors/Ghosts`). Juice setting `screenShake` (default On, overrides-only;
   `screenShakeOn` = it and not reduced motion), string `fx.settings.screenShake`. Co-op now drains the hitstop clock
   every frame (it was never drained, freezing particles after the first kill). No theme contract change.
+- **Asset preloading (docs/PRELOAD.md).** Presentation only (no sim, dungeon, hash, replay or fixture change). A join
+  loading screen (`LoadingController`, display order 30: the cursor must sit above it) holds until the core tier
+  (`PRELOAD.core`: UI, knight, regular enemies, every sfx, breakables, boosts, fx, decor, biome 1, menu / lobby / floor 1
+  / tutorial music) resolved, Skip (after 3 s) or 15 s; `PreloadController` (loadOrder 1) then loads the later tier
+  (bosses, other music, ambience, biomes 2-5) on one queue that AudioController and the boss floor push use (each
+  content id once per session). The first-run gate's decision fires only once the screen released. Theme: `contentIds`
+  / `assetIdList` / `biomeContentIds` on `ThemeCore` / `ThemePack`; three required strings `loading.title` /
+  `.progress` / `.skip`. Entries are never-parented ImageLabels / Sounds (D4) until the P0 spike says strings work.
+  `KV_SkipLoading` skips the screen.
 
 ## Commands
 

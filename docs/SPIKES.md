@@ -1,12 +1,14 @@
 # Task 1 spikes (go/no-go)
 
-Two throwaway experiments that decide whether the port goes ahead (PLAN.md task 1). Both are client code, **off by
-default**, and clean up everything they create (one Janitor each) when turned off.
+Two throwaway experiments that decide whether the port goes ahead (PLAN.md task 1), plus a later one for asset
+preloading (P0, docs/PRELOAD.md). All are client code, **off by default**, and clean up everything they create (one
+Janitor each) when turned off.
 
 | Spike | Question | Code |
 |---|---|---|
 | A: bullets | Can Roblox move the web build's 1,000 enemy bullets as Parts at 60 fps, on PC and on a phone? | `src/client/controllers/spikes/BulletSpikeController.ts` |
 | B: iso camera | Does a narrow-FOV perspective camera far away pass for the web build's orthographic iso view? | `src/client/controllers/spikes/CameraSpikeController.ts` |
+| P0: preload | Does `PreloadAsync` fetch images and sounds from content id strings, or only through instances? Does a sheet's first draw hitch? (docs/PRELOAD.md D4 / D5) | `src/client/controllers/spikes/PreloadSpikeController.ts` |
 
 Tunables for both: `src/shared/config/spikes.ts`. HUD: `src/client/ui/spikes/SpikeHud.tsx` (top left, with buttons
 for touch devices).
@@ -86,6 +88,31 @@ Steps and what to record:
 Go if: one FOV in the 5 to 10 range looks acceptable (no visible perspective, no artifacts) on PC and in the
 emulator.
 
+## Spike P0: asset preloading (docs/PRELOAD.md)
+
+Not a task 1 gate: it settles docs/PRELOAD.md decisions D4 (strings vs instances) and D5 (whether P6's warm draw is
+needed). Turn it on **before Play** (Workspace attribute `KV_SpikePreload`), so PreloadController's own queue waits
+for it (Output: `[Preload] KV_SpikePreload: the queue waits for the spike's batches`); otherwise its batches are cache
+hits of the core tier.
+
+What it does, once per enable, at join (Output lines start with `[PreloadSpike]`):
+
+1. Four timed `ContentProvider:PreloadAsync` batches: (a) the knight's sheets (`class.vanguard`) as content id
+   strings, (b) the same as never-parented ImageLabels, (c) up to five sfx content ids as strings, (d) as Sounds.
+   Each callback prints `<batch> <content id> <status> +<ms> ms`, each batch `<batch>: <n> entries in <ms> ms`.
+   **Cache caveat** (printed too): the second batch of each pair is usually a cache hit of the first. A second
+   Boolean attribute, `KV_SpikePreloadInstancesFirst`, runs (b) before (a) and (d) before (c): play once each way.
+2. The preload queue starts (`[Preload] spike done: the queue starts`).
+3. First-draw probe: 30 frames timed (`baseline 30 frames: mean <ms> ms, worst <ms> ms`), then the first knight
+   sheet in a 1x1 ImageLabel (above the loading screen) for 10 frames, each printed as `probe frame <n>: <ms> ms`.
+   Keep the MicroProfiler (Ctrl+F6) open and look for an upload spike on probe frame 1 or 2. Tunables:
+   `PRELOAD_SPIKE` in `src/shared/config/spikes.ts`.
+
+Setting `KV_SpikePreload` false cancels a run in progress and removes the probe's ScreenGui.
+
+Run it in Studio for the wiring, then on a **fresh device** (a phone that never joined the published place, or after
+clearing the Roblox cache): Studio's local cache hides download time.
+
 ## Results
 
 Fill these in; they decide the go/no-go gate in PLAN.md task 1.
@@ -112,6 +139,21 @@ Notes (frame cap, hardware, emulator caveat):
 | 20 | | | | |
 
 Chosen FOV, studs per tile, follow damping, snap:
+
+### Spike P0
+
+| Device / context | Order | Batch | Entries | Statuses | Wall ms |
+|---|---|---|---|---|---|
+| | strings first | images/strings | | | |
+| | strings first | images/instances | | | |
+| | strings first | sounds/strings | | | |
+| | strings first | sounds/instances | | | |
+| | instances first | images/instances | | | |
+| | instances first | images/strings | | | |
+
+First-draw probe (baseline mean / worst ms, probe frames 1-3 ms, MicroProfiler spike?):
+
+D4 (strings or instances) and D5 (warm draw needed?):
 
 ### Decision
 

@@ -671,6 +671,12 @@ export const REQUIRED_ASSET_IDS: ReadonlyArray<string> = [
 	...BOOST_KINDS.map((k) => boostId(k)),
 ];
 
+/**
+ * Roblox port (docs/PRELOAD.md P4): the join loading screen's strings (shared/view LOADING_STRINGS): its title, the
+ * count under the bar (`{done}` / `{total}`) and the Skip button.
+ */
+export const LOADING_STRING_KEYS = ["loading.title", "loading.progress", "loading.skip"] as const;
+
 /** Every string key a pack must define. Code may rely on these existing. */
 export const REQUIRED_STRING_KEYS: ReadonlyArray<string> = [
 	"game.title",
@@ -698,6 +704,7 @@ export const REQUIRED_STRING_KEYS: ReadonlyArray<string> = [
 	"menu.quit",
 	...BREAKABLE_KINDS.map((k) => `${breakableId(k)}.name`),
 	...BOOST_STRING_KEYS,
+	...LOADING_STRING_KEYS,
 ];
 
 /**

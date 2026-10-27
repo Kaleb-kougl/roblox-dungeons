@@ -1,6 +1,7 @@
 import { combineProducers, InferState } from "@rbxts/reflex";
 import { gameSlice } from "./game";
 import { leaderboardSlice } from "./leaderboard";
+import { loadingSlice } from "./loading";
 import { lobbySlice } from "./lobby";
 import { menuSlice } from "./menu";
 import { optionsSlice } from "./options";
@@ -16,12 +17,14 @@ import { tutorialSlice } from "./tutorial";
  * the `options` slice the Options screen's tab and rebinding flow; the `leaderboard` slice the leaderboard panel (M5);
  * the `menu` slice the menu shell's screen + back stack and the Leave run confirm (L3 / L6); the `lobby` slice the
  * lobby list, this player's lobby, invites and notices (L5); the `tutorial` slice the first-run tutorial's
- * HUD state (prompt, highlight, outro) and whether the first-run gate is still deciding.
+ * HUD state (prompt, highlight, outro) and whether the first-run gate is still deciding; the `loading` slice the join
+ * loading screen (released, core progress, Skip shown: docs/PRELOAD.md P4).
  *
  * Import through the directory (`client/store`), never the file.
  */
 export * from "./game";
 export * from "./leaderboard";
+export * from "./loading";
 export * from "./lobby";
 export * from "./menu";
 export * from "./options";
@@ -38,6 +41,7 @@ export const clientStore = combineProducers({
 	menu: menuSlice,
 	lobby: lobbySlice,
 	tutorial: tutorialSlice,
+	loading: loadingSlice,
 });
 
 export type ClientStore = typeof clientStore;

@@ -1,6 +1,6 @@
 import { Controller, OnStart } from "@flamework/core";
 import { Janitor } from "@rbxts/janitor";
-import { ContentProvider, GuiService, RunService, SoundService, TweenService } from "@rbxts/services";
+import { GuiService, RunService, SoundService, TweenService } from "@rbxts/services";
 import { createSelector } from "@rbxts/reflex";
 import {
 	clientStore,
@@ -13,7 +13,7 @@ import {
 } from "client/store";
 import { TUTORIAL_WORLD_KIND } from "shared/run";
 import type { AudioSettings } from "shared/settings";
-import { SOUND_GROUPS, type PitchRange, type SoundGroupName, type ThemePack } from "shared/theme";
+import { SOUND_GROUPS, type ContentRef, type PitchRange, type SoundGroupName, type ThemePack } from "shared/theme";
 import {
 	ALL_SFX,
 	AUDIO_VIEW,
@@ -35,6 +35,7 @@ import {
 	type MusicView,
 	type Playable,
 } from "shared/view/audio";
+import { PreloadController } from "../game/PreloadController";
 import { SimController, type RunContext } from "../game/SimController";
 import { ThemeController } from "../game/ThemeController";
 import { FxTrackerController } from "../fx/FxTrackerController";
@@ -117,9 +118,11 @@ class LoopChannel {
  *                jingle, X7); switching cross-fades over AUDIO_VIEW.musicFadeSec. Looped.
  *   ambience     ambienceFor: the floor's amb.b<n> under the music during a run (sfx group, X5), times
  *                AUDIO_VIEW.ambientVolume, cross-faded over AUDIO_VIEW.ambientFadeSec, silent after a death.
- *   preload      ContentProvider:PreloadAsync on every run start (every sound effect, the floor's music and
- *                ambience) and floor change (that floor's music, ambience and the boss track); nothing when all
- *                of it is silent.
+ *   preload      a front-lane request to PreloadController's queue (docs/PRELOAD.md P3) on every run start (every
+ *                sound effect, the floor's music and ambience) and floor change (that floor's music and ambience),
+ *                plus the boss track on the back lane (so it never jumps unfinished core art); the queue skips what it
+ *                already fetched, so this is usually nothing after the join's core tier. Nothing when all of it is
+ *                silent.
  *   ui           playUi(id): sfx.ui.click / confirm / back from the HUD's and menus' buttons (MenuController's B /
  *                Backspace back too), through the same fallback (no back clip: the click); a gamepad focus move
  *                (GuiService.SelectedObject) plays sfx.ui.move, rate-limited by the mapper (silent while it has no
@@ -150,6 +153,7 @@ export class AudioController implements OnStart {
 		private readonly sim: SimController,
 		private readonly theme: ThemeController,
 		private readonly fx: FxTrackerController,
+		private readonly preloader: PreloadController,
 	) {}
 
 	onStart(): void {
@@ -323,25 +327,28 @@ export class AudioController implements OnStart {
 		return clips.size() > 0 ? v : undefined;
 	}
 
-	/** Every clip of `id` (assetId + variants), appended to `out`; nothing while silent. */
-	private clipsOf(id: string | undefined, out: string[]): void {
-		if (id === undefined) return;
-		const ref = this.pack?.sound(id);
-		if (ref === undefined || ref.assetId === undefined) return;
-		out.push(ref.assetId);
-		for (const v of ref.variants) out.push(v);
+	/** Every clip of `id` (assetId + variants: ThemePack.contentIds), appended to `out`; nothing while silent. */
+	private clipsOf(id: string | undefined, out: ContentRef[]): void {
+		if (id === undefined || this.pack === undefined) return;
+		for (const ref of this.pack.contentIds(id)) out.push(ref);
 	}
 
-	/** Preloads the run's sound effects (on a run start) and the floor's music / ambience / boss track. */
+	/**
+	 * Preloads the run's sound effects (on a run start) and the floor's music / ambience (a front-lane request to
+	 * PreloadController), and the boss track (back lane). Each content id is fetched once per session.
+	 */
 	private preload(ctx: RunContext, runStart: boolean): void {
-		const ids: string[] = [];
-		if (runStart) for (const id of ALL_SFX) this.clipsOf(id, ids);
+		const refs: ContentRef[] = [];
+		if (runStart) for (const id of ALL_SFX) this.clipsOf(id, refs);
 		const biome = clientStore.getState().game.run.biome;
-		if (biome >= 1 && biome <= BIOME_MUSIC_COUNT) this.clipsOf(biomeMusic(biome), ids);
-		this.clipsOf(biomeAmbience(biome), ids);
-		this.clipsOf(MUSIC.boss, ids);
-		if (ctx.world === TUTORIAL_WORLD_KIND) this.clipsOf(MUSIC.tutorial, ids);
-		if (ids.size() === 0) return;
-		task.spawn(() => ContentProvider.PreloadAsync(ids));
+		if (biome >= 1 && biome <= BIOME_MUSIC_COUNT) this.clipsOf(biomeMusic(biome), refs);
+		this.clipsOf(biomeAmbience(biome), refs);
+		if (ctx.world === TUTORIAL_WORLD_KIND) this.clipsOf(MUSIC.tutorial, refs);
+		const label = runStart ? `run ${ctx.counter} audio` : `floor ${ctx.floor} audio`;
+		if (refs.size() > 0) this.preloader.request(refs, "front", label);
+		// The boss track is not needed until a boss floor: the back lane, so it never jumps unfinished core art.
+		const boss: ContentRef[] = [];
+		this.clipsOf(MUSIC.boss, boss);
+		if (boss.size() > 0) this.preloader.request(boss, "back", `${label} (boss track)`);
 	}
 }

@@ -22,6 +22,11 @@
  *                 ROOM_EDGE_VIEW in roomEdgesConfig.ts); roomEdgeState.ts: each room's safe / waiting / live state
  *   watch.ts      StateWatch: per-player and per-floor edges from sim state (hurt and its HurtKind, death, roll,
  *                 swing, ...) for the audio mapper and the feel controllers (docs/FEEL.md J1)
+ *   preload.ts    asset preloading (docs/PRELOAD.md): the core / later tiers of a pack's content ids, the loading
+ *                 screen's release and Skip rules, PreloadProgress, a boss floor's push (tunables: PRELOAD in
+ *                 preloadConfig.ts), PreloadQueue (the client's two-lane download queue) and JoinGate (the join
+ *                 flow fires once the first-run gate decided and the screen released); preloadStrings.ts: the
+ *                 loading screen's string keys (LOADING_STRINGS; its layout: LOADING_VIEW in preloadConfig.ts)
  *   decor/        the decor plan (docs/DECOR.md R3 / R6 / R8): planDecor, decorProfile, fade selection, glow points
  *
  * Sub-barrels (import from the folder): `shared/view/fx` (the juice layer: hit tracker, hitstop, bars, numbers,
@@ -49,3 +54,6 @@ export * from "./decor";
 export * from "./watch";
 export * from "./latencyProbeConfig";
 export * from "./latencyProbe";
+export * from "./preloadConfig";
+export * from "./preload";
+export * from "./preloadStrings";

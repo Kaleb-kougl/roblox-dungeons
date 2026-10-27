@@ -178,8 +178,9 @@ describe("required IDs and strings", () => {
 		for (const id of REQUIRED_ASSET_IDS) {
 			expect([id, slotFor(id) !== undefined]).toEqual([id, true]);
 		}
-		// + enemy.dummy.name, breakable.<kind>.name, boost.<kind>.name / .desc / .icon and hud.toast.boost
-		expect(REQUIRED_STRING_KEYS.size()).toBe(41 + 1 + 2 + 4 * 3 + 1);
+		// + enemy.dummy.name, breakable.<kind>.name, boost.<kind>.name / .desc / .icon, hud.toast.boost and the loading
+		// screen's three (docs/PRELOAD.md P4)
+		expect(REQUIRED_STRING_KEYS.size()).toBe(41 + 1 + 2 + 4 * 3 + 1 + 3);
 		expect(new Set(REQUIRED_STRING_KEYS).size()).toBe(REQUIRED_STRING_KEYS.size());
 		expect(BIOMES.map((b) => b.forgeTheme)).toEqual(["ancient", "molten", "frost", "grim", "verdant"]);
 	});

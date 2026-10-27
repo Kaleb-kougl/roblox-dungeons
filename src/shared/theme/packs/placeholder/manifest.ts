@@ -772,5 +772,9 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		"tutorial.pause.skipNo": "Keep playing",
 		"tutorial.menu.open": "Tutorial",
 		"tutorial.verdict": "Practice: not submitted (tutorial)",
+		// --- loading.* (docs/PRELOAD.md P4: the join loading screen) -----------------------------------
+		"loading.title": "Project Kaleb-Vale",
+		"loading.progress": "Loading {done} / {total}",
+		"loading.skip": "Skip",
 	},
 };
