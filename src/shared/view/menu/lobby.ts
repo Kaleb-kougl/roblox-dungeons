@@ -247,6 +247,11 @@ export function noticeSpec(notice: LobbyNotice, nameOf: NameOf): StringSpec {
 				key: lobbyNoticeKey("followed"),
 				vars: { name: notice.userId !== undefined ? nameOf(notice.userId) : "" },
 			};
+		case "inviteArrived":
+		case "partyLobby":
+		case "arrival":
+			// Stub until task I5 adds their strings (docs/INVITES.md); the client agent replaces this.
+			return { key: notice.key ?? lobbyErrorKey(notice.code) };
 		default:
 			return { key: lobbyNoticeKey(notice.kind) };
 	}

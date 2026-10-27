@@ -5,7 +5,12 @@
  */
 import type { LobbyVisibility } from "shared/lobby";
 
+/** Where `SocialService:PromptGameInvite` is called (spike I0 decides; "server" until it says otherwise). */
+export type InvitePromptSide = "server" | "client";
+
 export interface InviteConfig {
+	/** See InvitePromptSide. "client": the server sends `invitePromptOnClient` with the options it built. */
+	readonly promptSide: InvitePromptSide;
 	/** Longest `ExperienceInviteOptions.LaunchData` Roblox accepts; `encodeInviteLaunch` asserts it. */
 	readonly launchDataMaxChars: number;
 	/** `Player:GetJoinData().LaunchData` can take a few seconds to appear: it is polled this often... */
@@ -29,6 +34,7 @@ export interface InviteConfig {
 }
 
 export const INVITE: InviteConfig = table.freeze({
+	promptSide: "server" as InvitePromptSide,
 	launchDataMaxChars: 200,
 	launchDataPollSeconds: 1,
 	launchDataWaitSeconds: 10,
