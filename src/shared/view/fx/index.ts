@@ -18,3 +18,5 @@ export * from "./rng";
 export * from "./config";
 export * from "./scorePops";
 export * from "./fxCues";
+export * from "./hitReactConfig";
+export * from "./hitReact";
