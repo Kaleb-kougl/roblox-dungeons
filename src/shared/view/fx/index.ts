@@ -23,3 +23,6 @@ export * from "./hurtFlash";
 export * from "./lowHealth";
 export * from "./hitReactConfig";
 export * from "./hitReact";
+export * from "./motionFxConfig";
+export * from "./squash";
+export * from "./afterimage";

@@ -23,3 +23,4 @@ export * from "./BoostAuraController";
 export * from "./decorParts";
 export * from "./DecorController";
 export * from "./DecorFxController";
+export * from "./motionFx";
