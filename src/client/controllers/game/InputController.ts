@@ -12,6 +12,7 @@ import {
 	boundMouseButtonNames,
 	boundPadButtonNames,
 	driverKeyAction,
+	isMapInput,
 	isMouseButtonName,
 	mapDevicesToInput,
 	maskDebugButtons,
@@ -35,6 +36,7 @@ const SUNK_STICKS = ["Thumbstick1", "Thumbstick2"];
 const UI_NAV_KEYS = new Set(["ButtonA", "ButtonB", "DPadUp", "DPadDown", "DPadLeft", "DPadRight", "Thumbstick1"]);
 
 type DriverListener = (action: Exclude<DriverKeyAction, undefined>) => void;
+type MapListener = () => void;
 
 function keyCodeByName(): Map<string, Enum.KeyCode> {
 	const out = new Map<string, Enum.KeyCode>();
@@ -67,7 +69,8 @@ function activePad(pads: ReadonlyArray<Enum.UserInputType>): Enum.UserInputType 
  *
  * Every bound key / button and both thumbsticks are bound in ContextActionService at High priority and SUNK, so the
  * default PlayerModule controls never see them (the player is a sim entity, not a Humanoid). The same binding reports
- * the driver keys (R restart, F8 replay check, D-pad down pad restart) to the SimController. CAS does not fire while a
+ * the driver keys (R restart, F8 replay check, D-pad down pad restart) to the SimController and the map toggle
+ * (M / D-pad left, `onMapAction`) to whoever subscribes. CAS does not fire while a
  * TextBox (chat) has focus, and `sample` ignores the keyboard then too. The TextChatService chat bar lives in CoreGui,
  * where GetFocusedTextBox cannot see it, so its own IsFocused flag is checked as well (chatFocused).
  *
@@ -102,6 +105,7 @@ export class InputController implements OnStart {
 	private readonly mouse = new Set<string>();
 	private readonly padButtons = new Set<string>();
 	private readonly driverListeners = new Array<DriverListener>();
+	private readonly mapListeners = new Array<MapListener>();
 	private debugButtons = false;
 	private uiNavigation = false;
 	/** A rebind capture owns the input (Options screen): nothing reaches the game or the driver keys. */
@@ -196,6 +200,20 @@ export class InputController implements OnStart {
 	/** Driver key presses (restart, replay check). */
 	onDriverAction(listener: DriverListener): void {
 		this.driverListeners.push(listener);
+	}
+
+	/**
+	 * The bound `map` input was pressed (default M / D-pad left; docs/MINIMAP.md M9): the full map toggle. Reported like
+	 * the driver keys (the CAS sink for keys and pad buttons, InputBegan for a mouse button), so never while typing, during
+	 * a rebind capture or (pad) while a menu owns the D-pad; the listener decides whether the map may open. Returns a
+	 * disconnect function.
+	 */
+	onMapAction(listener: MapListener): () => void {
+		this.mapListeners.push(listener);
+		return () => {
+			const i = this.mapListeners.indexOf(listener);
+			if (i >= 0) this.mapListeners.remove(i);
+		};
 	}
 
 	/**
@@ -303,6 +321,7 @@ export class InputController implements OnStart {
 	private reportDriver(name: string): void {
 		const action = driverKeyAction(name, this.debugButtons, this.runOverOrPaused(), this.bindings);
 		if (action !== undefined) for (const listener of this.driverListeners) listener(action);
+		if (isMapInput(name, this.bindings)) for (const listener of this.mapListeners) listener();
 	}
 
 	private pollKeyboardMouse(): void {

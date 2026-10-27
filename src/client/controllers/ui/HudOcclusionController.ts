@@ -132,7 +132,8 @@ export class HudOcclusionController implements OnStart {
 		for (let i = 0; i < HUD_CORNERS.size(); i++) {
 			this.occluded[i] = false;
 			const frame = cornerFrame(HUD_CORNERS[i]);
-			if (frame === undefined) continue;
+			// A hidden corner panel (the minimap with Options > Display > Minimap Off, or under the full map) has a size.
+			if (frame === undefined || !frame.Visible) continue;
 			const size = frame.AbsoluteSize;
 			if (size.X <= 0 || size.Y <= 0) continue;
 			const r = this.rectPool[i];

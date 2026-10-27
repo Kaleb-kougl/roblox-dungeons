@@ -100,6 +100,8 @@ export interface PanelProps {
 	align?: Enum.HorizontalAlignment;
 	transparency?: number;
 	name?: string;
+	/** Visible (default true): a panel that hides without unmounting (its children keep their instances). */
+	visible?: boolean;
 	children?: React.ReactNode;
 	/**
 	 * Corner panels only: drawn on the outer frame, outside the CanvasGroup (a UIStroke such as the tutorial's
@@ -148,6 +150,7 @@ export function Panel(props: PanelProps) {
 			<frame
 				key={props.name}
 				ref={cornerRef(corner)}
+				Visible={props.visible ?? true}
 				LayoutOrder={props.order ?? 0}
 				Position={position}
 				AnchorPoint={anchor}
@@ -174,6 +177,7 @@ export function Panel(props: PanelProps) {
 	return (
 		<frame
 			key={props.name}
+			Visible={props.visible ?? true}
 			LayoutOrder={props.order ?? 0}
 			Position={position}
 			AnchorPoint={anchor}

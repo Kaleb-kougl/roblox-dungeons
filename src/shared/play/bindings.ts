@@ -11,7 +11,7 @@
  *   - every action keeps a primary input (keyboard / mouse: a primary and an optional secondary; pad: one button).
  * Not rebindable (FIXED_INPUTS, RESERVED_*_INPUTS in config.ts): pause (P / Start), the settings panel (O), the menus'
  * pad close (B, only while a panel is open), aim (mouse / right stick), pad movement (left stick), UI navigation and
- * the debug keys (K, J, N, F8, L). Roblox's own keys (Escape, Tab, Slash, F9, F11) are refused as well.
+ * the debug keys (K, J, N, Semicolon, F8, L). Roblox's own keys (Escape, Tab, Slash, F9, F11) are refused as well.
  */
 import { Button } from "shared/sim";
 import {
@@ -26,7 +26,10 @@ import {
 // ---------------------------------------------------------------------------------------------
 // Actions and the bindings shape
 
-/** Every rebindable action. The move actions and the leaderboard exist on the keyboard only. */
+/**
+ * Every rebindable action. The move actions and the leaderboard exist on the keyboard only. `map` toggles the full
+ * map (docs/MINIMAP.md M9): like restart and the leaderboard it is no sim input (not in ACTION_BUTTONS).
+ */
 export type GameAction =
 	| "moveUp"
 	| "moveDown"
@@ -43,7 +46,8 @@ export type GameAction =
 	| "skill3"
 	| "skill4"
 	| "restart"
-	| "leaderboard";
+	| "leaderboard"
+	| "map";
 
 /** Actions a gamepad binds (pad movement is the left stick, fixed; the leaderboard opens from the pause overlay). */
 export type PadAction = Exclude<GameAction, "moveUp" | "moveDown" | "moveLeft" | "moveRight" | "leaderboard">;
@@ -77,6 +81,7 @@ export const KBM_ACTIONS: ReadonlyArray<GameAction> = [
 	"skill4",
 	"restart",
 	"leaderboard",
+	"map",
 ];
 
 /** Gamepad actions, in settings-panel order. */
@@ -92,9 +97,10 @@ export const PAD_ACTIONS: ReadonlyArray<PadAction> = [
 	"skill3",
 	"skill4",
 	"restart",
+	"map",
 ];
 
-/** The sim button bit each action presses (move: the move vector; restart / leaderboard: not sim input). */
+/** The sim button bit each action presses (move: the move vector; restart / leaderboard / map: not sim input). */
 export const ACTION_BUTTONS: ReadonlyMap<GameAction, number> = new Map<GameAction, number>([
 	["fire", Button.FIRE],
 	["alt", Button.ALT],
@@ -111,8 +117,8 @@ export const ACTION_BUTTONS: ReadonlyMap<GameAction, number> = new Map<GameActio
 /**
  * Today's layout (the web build's bindings with the Roblox remaps, docs/CLIENT.md "Controls"): WASD with the arrows as
  * secondaries, click / right click, Space roll, Q Ember, F flask, E swap (web: Tab), 1-4 skills, R restart,
- * B leaderboard; pad RT / LT fire / alt, LB roll, RB Ember, Y swap, D-pad up flask, A / B / X / D-pad right skills,
- * D-pad down restart.
+ * B leaderboard, M map; pad RT / LT fire / alt, LB roll, RB Ember, Y swap, D-pad up flask, A / B / X / D-pad right
+ * skills, D-pad down restart, D-pad left map (docs/MINIMAP.md M9).
  */
 export const DEFAULT_BINDINGS: Bindings = {
 	kbm: {
@@ -132,6 +138,7 @@ export const DEFAULT_BINDINGS: Bindings = {
 		skill4: ["Four"],
 		restart: ["R"],
 		leaderboard: ["B"], // shared/view/hud LEADERBOARD_KEY
+		map: ["M"], // the full map toggle (docs/MINIMAP.md M9; the debug drop key moved to Semicolon, MD11)
 	},
 	pad: {
 		fire: "ButtonR2", // RT
@@ -145,6 +152,7 @@ export const DEFAULT_BINDINGS: Bindings = {
 		skill3: "ButtonX",
 		skill4: "DPadRight",
 		restart: "DPadDown", // only while the run is over or paused (inputMapping driverKeyAction)
+		map: "DPadLeft", // the full map toggle (inputMapping isMapInput)
 	},
 };
 
@@ -368,6 +376,24 @@ export interface ControlsOverrides {
 	readonly pad?: { readonly [A in PadAction]?: string };
 }
 
+/**
+ * A stored keyboard slot pair with MIGRATION_NEWLY_RESERVED_KBM inputs taken out (the other slot moves up), "yield"
+ * when that leaves no slot, else `raw` unchanged (readKbmSlots judges it).
+ */
+function withoutNewlyReserved(raw: unknown): unknown {
+	if (!typeIs(raw, "table")) return raw;
+	const arr = raw as Array<unknown>;
+	const dropped = (v: unknown) => typeIs(v, "string") && MIGRATION_NEWLY_RESERVED_KBM.has(v);
+	if (!dropped(arr[0]) && !dropped(arr[1])) return raw;
+	if (arr[2] !== undefined) return raw;
+	const kept = new Array<defined>();
+	const first = arr[0] as defined | undefined;
+	const second = arr[1] as defined | undefined;
+	if (first !== undefined && !dropped(first)) kept.push(first);
+	if (second !== undefined && !dropped(second)) kept.push(second);
+	return kept.size() === 0 ? "yield" : kept;
+}
+
 function readKbmSlots(raw: unknown): KbmSlots | undefined {
 	if (!typeIs(raw, "table")) return undefined;
 	const arr = raw as Array<unknown>;
@@ -379,6 +405,79 @@ function readKbmSlots(raw: unknown): KbmSlots | undefined {
 	if (!typeIs(secondary, "string") || secondary === primary) return undefined;
 	if (checkInput("kbm", secondary) !== undefined) return undefined;
 	return [primary, secondary];
+}
+
+/**
+ * Settings migration (docs/MINIMAP.md M9 review): actions added after stored controls docs existed. A stored doc
+ * never names them, so they have no override; when a stored override of another action took such an action's default
+ * input (D-pad left was free before the map), the NEW action yields instead of knocking that override out (which would
+ * send it back to its own default and could drop a second override that had taken that one: a cascade).
+ */
+const MIGRATION_NEW_ACTIONS: ReadonlySet<GameAction> = new Set<GameAction>(["map"]);
+
+/**
+ * Keyboard inputs reserved after stored docs could hold them (MD11: Semicolon, the debug drop key since the map took
+ * M). In a stored slot such an input is dropped (the other slot is kept); an action left with no slot yields like a
+ * new action (its default may be another stored override's input).
+ */
+const MIGRATION_NEWLY_RESERVED_KBM: ReadonlySet<string> = new Set<string>(["Semicolon"]);
+
+/**
+ * Where a yielding action goes when the input the overriding action vacated is not free: the first of these that no
+ * action uses (pad: the stick clicks, unused by the defaults; keyboard: letters unused by the defaults and not
+ * reserved). Every action keeps an input (pad actions have exactly one); if none is free the old rule applies (the
+ * yielding action keeps its default and the clashing override falls back).
+ */
+const MIGRATION_PAD_FALLBACKS: ReadonlyArray<string> = ["ButtonL3", "ButtonR3"];
+const MIGRATION_KBM_FALLBACKS: ReadonlyArray<string> = ["G", "H", "T"];
+/** Slots a keyboard / mouse action has (primary, secondary). */
+const KBM_SLOT_COUNT = 2;
+
+/**
+ * The yield rule (see MIGRATION_NEW_ACTIONS): each yielding action whose default input a candidate override holds
+ * takes that overriding action's vacated default input(s) when free, else the first free fallback. Runs before
+ * dropDuplicates, which then sees no clash from it. Valid current bindings never trigger it (the map's default is
+ * never another action's override there: a rebind swaps, so the map then has an override of its own).
+ */
+function yieldToOverrides<A extends GameAction>(
+	actions: ReadonlyArray<A>,
+	candidates: Map<A, ReadonlyArray<string>>,
+	defaultsOf: (action: A) => ReadonlyArray<string>,
+	yielders: ReadonlyArray<A>,
+	fallbacks: ReadonlyArray<string>,
+	maxInputs: number,
+): void {
+	for (const n of yielders) {
+		if (candidates.has(n)) continue;
+		const mine = defaultsOf(n);
+		let taker: A | undefined;
+		for (const a of actions) {
+			if (a === n) continue;
+			const list = candidates.get(a);
+			if (list !== undefined && list.some((i) => mine.includes(i))) {
+				taker = a;
+				break;
+			}
+		}
+		if (taker === undefined) continue;
+		// Every input in use once n gives up its default: the overrides, and the defaults of actions without one.
+		const used = new Set<string>();
+		for (const a of actions) {
+			if (a === n) continue;
+			for (const i of candidates.get(a) ?? defaultsOf(a)) used.add(i);
+		}
+		const vacated = new Array<string>();
+		for (const i of defaultsOf(taker)) if (!used.has(i) && vacated.size() < maxInputs) vacated.push(i);
+		if (vacated.size() === 0) {
+			for (const f of fallbacks) {
+				if (!used.has(f)) {
+					vacated.push(f);
+					break;
+				}
+			}
+		}
+		if (vacated.size() > 0) candidates.set(n, vacated);
+	}
 }
 
 /**
@@ -421,13 +520,20 @@ export function sanitizeControlsOverrides(raw: unknown, defaults: Bindings = DEF
 	const doc = raw as { kbm?: unknown; pad?: unknown };
 
 	const kbmCandidates = new Map<GameAction, KbmSlots>();
+	const kbmYielders = new Array<GameAction>();
 	if (typeIs(doc.kbm, "table")) {
 		const rawKbm = doc.kbm as Record<string, unknown>;
 		for (const action of KBM_ACTIONS) {
-			const slots = readKbmSlots(rawKbm[action]);
+			const read = withoutNewlyReserved(rawKbm[action]);
+			if (read === "yield") {
+				kbmYielders.push(action);
+				continue;
+			}
+			const slots = readKbmSlots(read);
 			if (slots !== undefined && !sameSlots(slots, defaults.kbm[action])) kbmCandidates.set(action, slots);
 		}
 	}
+	for (const action of KBM_ACTIONS) if (MIGRATION_NEW_ACTIONS.has(action)) kbmYielders.push(action);
 	const padCandidates = new Map<PadAction, string>();
 	if (typeIs(doc.pad, "table")) {
 		const rawPad = doc.pad as Record<string, unknown>;
@@ -440,25 +546,30 @@ export function sanitizeControlsOverrides(raw: unknown, defaults: Bindings = DEF
 
 	const kbmLists = new Map<GameAction, ReadonlyArray<string>>();
 	for (const [action, slots] of kbmCandidates) kbmLists.set(action, slots);
-	dropDuplicates(KBM_ACTIONS, kbmLists, (action) => defaults.kbm[action]);
+	const kbmDefaults = (action: GameAction) => defaults.kbm[action];
+	yieldToOverrides(KBM_ACTIONS, kbmLists, kbmDefaults, kbmYielders, MIGRATION_KBM_FALLBACKS, KBM_SLOT_COUNT);
+	dropDuplicates(KBM_ACTIONS, kbmLists, kbmDefaults);
 	const padLists = new Map<PadAction, ReadonlyArray<string>>();
 	for (const [action, input] of padCandidates) padLists.set(action, [input]);
-	dropDuplicates(PAD_ACTIONS, padLists, (action) => [defaults.pad[action]]);
+	const padDefaults = (action: PadAction) => [defaults.pad[action]];
+	const padYielders = PAD_ACTIONS.filter((action) => MIGRATION_NEW_ACTIONS.has(action));
+	yieldToOverrides(PAD_ACTIONS, padLists, padDefaults, padYielders, MIGRATION_PAD_FALLBACKS, 1);
+	dropDuplicates(PAD_ACTIONS, padLists, padDefaults);
 
 	const kbm: { [A in GameAction]?: KbmSlots } = {};
 	let anyKbm = false;
 	for (const action of KBM_ACTIONS) {
-		const slots = kbmCandidates.get(action);
-		if (slots === undefined || !kbmLists.has(action)) continue;
-		kbm[action] = slots;
+		const list = kbmLists.get(action);
+		if (list === undefined) continue;
+		kbm[action] = makeSlots(list[0], list[1])!;
 		anyKbm = true;
 	}
 	const pad: { [A in PadAction]?: string } = {};
 	let anyPad = false;
 	for (const action of PAD_ACTIONS) {
-		const input = padCandidates.get(action);
-		if (input === undefined || !padLists.has(action)) continue;
-		pad[action] = input;
+		const list = padLists.get(action);
+		if (list === undefined) continue;
+		pad[action] = list[0];
 		anyPad = true;
 	}
 	if (anyKbm && anyPad) return { kbm, pad };
@@ -599,6 +710,11 @@ export function restartHint(b: Bindings = DEFAULT_BINDINGS): DeviceHint {
 /** The curse shrine's accept hint: skill 1 (defaults: 1 / A; the HUD's ToastPanel). */
 export function shrineHint(b: Bindings = DEFAULT_BINDINGS): DeviceHint {
 	return actionHint(b, "skill1");
+}
+
+/** The full map's toggle hint, `hud.map.hint` (defaults: M / D-pad left; docs/MINIMAP.md M9). */
+export function mapHint(b: Bindings = DEFAULT_BINDINGS): DeviceHint {
+	return actionHint(b, "map");
 }
 
 /** The leaderboard panel's close hint (defaults: B / B; the pad's is the fixed menu close button). */

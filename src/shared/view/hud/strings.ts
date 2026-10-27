@@ -45,6 +45,9 @@ export const HUD_STRINGS = {
 	combo: "hud.score.combo",
 	scorePop: "hud.score.pop",
 	maxCombo: "hud.score.maxCombo",
+	/** The full map overlay's title and its toggle hint, "{key} map" (docs/MINIMAP.md M9; key: shared/play mapHint). */
+	mapTitle: "hud.map.title",
+	mapHint: "hud.map.hint",
 } as const;
 
 /** Results breakdown label per score source, `score.source.<name>` (shared/sim SCORE_SOURCE_NAMES order). */

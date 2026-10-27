@@ -300,15 +300,17 @@ read helpers, hash), `boostMods.ts` (the effect reads, a leaf), specs `drops.spe
   array holes), `BoostAuraController` (Neon discs, one per active boost), `ui/hud/BoostRow.tsx` inside `StatusPanel`
   (with the tutorial's `boosts` highlight ring), the Aegis pip after the armor pips, the `boost` toast, four cue-mapper
   sounds, `fx.boost.collect` or a particle burst. Pure logic in `shared/view/boosts` (headless specs). Per-tick drop
-  events are collected after every tick into `RunView.boostEvents` (`LiveRun`, `LockstepClient`). Debug key **M**
-  (`DEBUG_DROP_BUTTON` = 32768, KV_Debug only). The HUD's boost row and Aegis pip read `SnapshotExtras.vitalsIndex` (the
+  events are collected after every tick into `RunView.boostEvents` (`LiveRun`, `LockstepClient`). Debug key **M**, since docs/MINIMAP.md MD11
+  **Semicolon** (M opens the full map) (`DEBUG_DROP_BUTTON` = 32768, KV_Debug only). The HUD's boost row and Aegis pip read `SnapshotExtras.vitalsIndex` (the
   watched teammate while spectating, docs/SPECTATE.md), and the boost sounds use the spectate view index.
 - **Review fixes.** The render controller's views were a holey array (`#` unreliable after a pickup freed a middle
   slot: a gem could stop animating and survive the run's end); now a Map. The boss-room exclusion was narrowed to boss
   floors (P5).
 - **Known nit.** A debug drop on the same tick as a floor change can give two landing cues on slot 0 (KV_Debug only).
 - **Saved bindings.** M is now reserved; a player whose saved layout bound an action to M may see it refused or reset
-  (not checked).
+  (not checked). Since docs/MINIMAP.md MD11 the drop key is Semicolon (reserved) and M is the full map's default: a
+  stored binding on Semicolon is dropped (that action reads its default), and one on M clashes with the map's default
+  unless the map was moved too, so it falls back to its default (`sanitizeControlsOverrides`; `bindings.spec.ts`).
 
 ## Edge cases
 

@@ -287,7 +287,7 @@ registerRunWorld("tutorial", (_seed, o) => buildTutorialRunConfig(o.partySize));
   order), except inside an entered, unfinished lesson room (the fight keeps its own prompt and marker) and under the
   objective card. While `boost` is current its marker shows wherever the player stands (a current step's marker is
   never hidden by an out-of-order room). The marker controller only reads x / z, so the client needed no change.
-  A KV_Debug drop (key M) also counts: taken, it completes the step; left to fade, it waives it (debug only).
+  A KV_Debug drop (key Semicolon; M before docs/MINIMAP.md MD11) also counts: taken, it completes the step; left to fade, it waives it (debug only).
 - `director.ts` `TutorialDirector`: `new TutorialDirector()`, then `update({ state, config, events, buttons, dt })`
   once per rendered frame (state read only, `LiveRun.frameEvents`, the frame's raw InputFrame buttons, real dt) ->
   `TutorialView` (reused object: `active`, `finished`, `stepIndex` / `stepCount` / `stepId`, `promptStepIndex`,

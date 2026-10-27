@@ -34,6 +34,7 @@ Record every ported module in `PROVENANCE.md` (ported module, source path, sourc
 | `docs/ROOM_EDGES.md` | Room edges (dashed floor line where every corridor meets a room, tinted safe / waiting / live): plan, tasks RE1-RE8, decisions RD1-RD9 |
 | `docs/HUD_LAYOUT.md` | In-run HUD footprint (corner panels, full-width band fix, info line to the pause menu, occlusion fade): plan, tasks H1-H9, decisions HD1-HD8 |
 | `docs/FEEL.md` | Game feel pass (hurt flash and jolt, hit flash / hold / push, squash & stretch, roll afterimages, low-health pulse, screen shake setting): plan, tasks J1-J12, decisions JD1-JD13 |
+| `docs/MINIMAP.md` | Minimap with fog of war (corner map + full-map toggle, sight + whole-room reveal, shared party map): plan, tasks M0-M12, decisions MD1-MD14 |
 | `docs/PRELOAD.md` | Asset preloading (join loading screen for the core tier, background queue for bosses / later music): plan, tasks P0-P7, decisions D1-D6 |
 
 Decision log (deviations from `PLAN.md`):
@@ -151,7 +152,7 @@ Decision log (deviations from `PLAN.md`):
   adds can land outside the room's bounds); pickups are the first living player (index order)
   in range; Fury / Frenzy go through `playerHitDamage` / `attackTicks` (Frenzy as one integer percent with Swift
   Strikes), Quickstep scales the walk, Aegis is a pip in `state.drops` taken before armor. A port input bit
-  `DEBUG_DROP_BUTTON` (32768, key M, KV_Debug only) joins `PORT_BUTTONS`. Theme: `boost.<kind>` (required, placeholder
+  `DEBUG_DROP_BUTTON` (32768, key Semicolon since docs/MINIMAP.md MD11 (was M), KV_Debug only) joins `PORT_BUTTONS`. Theme: `boost.<kind>` (required, placeholder
   `"Diamond"`), `sfx.boost.*` in `PORT_AUDIO_EVENTS`. M1 and every fixture are unchanged; endless and tutorial
   replays changed.
 - **Demon art (docs/DEMON_ART.md, docs/BRAMBLE_ART.md).** Presentation only (no sim, dungeon, hash, replay or
@@ -199,6 +200,15 @@ Decision log (deviations from `PLAN.md`):
   / `assetIdList` / `biomeContentIds` on `ThemeCore` / `ThemePack`; three required strings `loading.title` /
   `.progress` / `.skip`. Entries are never-parented ImageLabels / Sounds (D4) until the P0 spike says strings work.
   `KV_SkipLoading` skips the screen.
+- **Minimap with fog of war (docs/MINIMAP.md).** Presentation only (no sim, dungeon, lockstep, hash, replay or fixture
+  change). Pure core in `shared/view/minimap` (map tiles, symmetric shadowcasting sight, `FogOfWar` with a shared party
+  map from every living player, the camera-turned map transform, RGBA painting into a `buffer`); `MinimapController`
+  shows one `EditableImage` per floor in the bottom-right corner panel (140 x 140, so the HUD cover cap
+  `maxCoverShare` went 0.12 -> 0.145, MD7), a full-map toggle and the solo pause overlay. Theme: required colour roles
+  `MINIMAP_ROLES` (`minimap.*`, validated by `minimapReport` on the plain and room-tinted map floors and `uiPanel`).
+  Settings: `DisplaySettings.minimap` (default On, only Off stored, doc stays v2). Input: a rebindable non-sim
+  `GameAction` `map` (M / D-pad left; a stored override on a new action's default makes the new action yield instead
+  of dropping overrides); the KV_Debug boost-drop key moved M -> Semicolon (MD11). Studio check and the M0 spike pending.
 
 ## Commands
 

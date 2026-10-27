@@ -46,6 +46,7 @@ rebinding, audio, display). Everything presentation-side reads the sim and never
 | `HudController` | `.../ui/HudController.tsx` | Mounts `GameHud` (React + Reflex; two ScreenGuis through a portal) and the menu shell `MenuLayer` (client/ui/menu, its own ScreenGui) with the HUD and menu actions, switches gamepad navigation on while a menu is open (menu screens, pause / party overlay, run-over panel, panels), hides the stock Health / Backpack CoreGui. |
 | `HudOcclusionController` | `.../ui/HudOcclusionController.ts` | docs/HUD_LAYOUT.md H7: render step after the camera; every `HUD_OCCLUSION.everyFrames` frames projects the watched player, living actors and up to `maxBullets` enemy bullets with `Camera:WorldToScreenPoint` (GUI space, the same space as `AbsolutePosition`) and tests them against the mounted corner panels (client/ui/hud `cornerFade` registry); one `OcclusionFader` per corner writes the corner's `GroupTransparency` binding (the corner `Panel` is a CanvasGroup inside a transparent placed frame; no React re-render). Options > Display > HUD fade Off or no run: opaque, no work. Under `KV_Debug` it also warns once per panel per run when an always-on panel outgrows its `HUD_FOOTPRINT` box (H1). Read only on the sim. |
 | `LoadingController` | `.../ui/LoadingController.tsx` | Mounts `LoadingScreen` (client/ui/loading, its own ScreenGui, display order 30) on join until PreloadController releases; Skip plays `sfx.ui.click`. See "Preloading and the loading screen". |
+| `MinimapController` | `.../ui/MinimapController.ts` | docs/MINIMAP.md M8 / M9, every dungeon floor (not the greybox): per floor `minimapTiles` (endless stairwell), a fresh `FogOfWar` (`seedFromState` at tick > 0), `RoomEdgeStates`, a painted RGBA8 buffer and ONE `EditableImage` (`AssetService:CreateEditableImage`, pcall; failure warns once, no map), destroyed with the floor. Render step `KV_Minimap` after the camera: fog from the living players' interpolated positions, room tints (`roomEdge.*`), dirty cells repainted and uploaded (`WritePixelsBuffer`, at most `MINIMAP_VIEW.writeHz`). Draws a map layer (ImageLabel on the shared image, `Pixelated`, turned by the camera yaw, plus pooled upright Frame markers: self arrow, teammates by index in `class.*`, enemies / bosses / boost drops in sight, the stairwell once seen, treasure / shrine marks) into each mounted host of `client/ui/hud/minimapHosts` (the corner `MinimapPanel`, whose CanvasGroup clips it; `FullMapOverlay`; the solo `PauseMap`). `InputController.onMapAction` toggles Reflex `game.map.open`; closes on floor change and run over. Prints `[Minimap] W x H map` per floor. |
 | `MenuController` | `.../ui/MenuController.ts` | L3 / L6: the main menu on join, once the first-run gate decided against the tutorial (a first-time player goes straight into it instead; no run starts on its own; `KV_SkipMenu` starts one at once), the screen + back stack (Reflex `menu`; pad B / Backspace go back), Play solo / Lobbies / Tutorial / Options / Leaderboard, the menu after a run (the lobby room while in a lobby, else the main menu), the co-op party overlay (the pause key in a party run) and Leave run. See "Main menu, lobbies and Leave run". |
 | `LobbyController` | `.../ui/LobbyController.ts` | L5: the lobby remotes into the Reflex `lobby` slice (list, my lobby, invites, notice toasts, the players in this server), the lobby requests, and `lobbyRunStart` (a one-player lobby's ranked solo run). |
 
@@ -157,7 +158,7 @@ endless floors' barrels and crates. Pure logic and tunables: `src/shared/view/br
 
 ## Boost drops (docs/BOOSTS.md B6 / B7)
 
-Runs with `SimConfig.drops` (none set it until B4 / B9; `KV_Debug` + M drops one anywhere drops are on). Pure half in
+Runs with `SimConfig.drops` (none set it until B4 / B9; `KV_Debug` + Semicolon drops one anywhere drops are on; M until docs/MINIMAP.md MD11). Pure half in
 `src/shared/view/boosts/` (tunables `BOOST_VIEW`), headless specs `boosts.spec.ts` and `art.spec.ts`; nothing here
 writes the sim.
 
@@ -324,8 +325,9 @@ Mouse aim uses the previous frame's camera (the web build does the same).
 | Debug: 10 % off an engaged boss | J (KV_Debug only) | | J |
 | Debug: replay check | F8 or **L** (KV_Debug only) | | F8 |
 | Debug (endless): end the floor now | **N** (KV_Debug only; `DEBUG_FLOOR_BUTTON`, a port bit) | | (none) |
-| Debug (runs with drops): drop the next boost kind (Fury, Quickstep, Frenzy, Aegis, ...) 1.5 tiles ahead | **M** (KV_Debug only; `DEBUG_DROP_BUTTON`, a port bit) | | (none) |
+| Debug (runs with drops): drop the next boost kind (Fury, Quickstep, Frenzy, Aegis, ...) 1.5 tiles ahead | **;** Semicolon (KV_Debug only; `DEBUG_DROP_BUTTON`, a port bit; M until docs/MINIMAP.md MD11) | | (none) |
 | Leaderboard panel | **B** (B again, pad B or Close closes it) | pause overlay -> Leaderboards; B closes | (none) |
+| Full map toggle (docs/MINIMAP.md M9; not sim input: `InputController.onMapAction` -> MinimapController) | **M** | D-pad left | (none) |
 | Boon draft (M2): pick a card | A / D (screen left / right; neither = centre card) | left stick left / right | (none) |
 | Boon draft: take the card | Left click (after 0.5 s) | RT | (none) |
 | Curse shrine (M2): accept | **1** (in the shrine zone) | A | (none) |
@@ -343,10 +345,11 @@ click never swings, and in a co-op run it opens the party overlay instead.
 
 Rebinding (task L4b; pure half in `shared/play/bindings.ts`, lists in `shared/play/config.ts`): the table above is
 `DEFAULT_BINDINGS`. Rebindable: move (keyboard only, a primary and a secondary key each), attack, alt, roll, Ember,
-flask, swap, skills 1-4 (skill 1 is also the shrine accept), restart and the leaderboard key (keyboard only); a
+flask, swap, skills 1-4 (skill 1 is also the shrine accept), restart, the leaderboard key (keyboard only) and the
+full map toggle (`map`, docs/MINIMAP.md M9); a
 keyboard slot also takes MouseButton1-3, a pad action one button (a trigger keeps its analog threshold wherever bound).
 Fixed: pause (P / Start), settings (O; pad B closes panels), aim, the pad's sticks, UI navigation and the debug keys.
-Refused: Escape, Tab, Slash, F9, F11 and every fixed key (P, O, K, J, N, M, F8, L). `rebind` swaps with the action that held the input, so no
+Refused: Escape, Tab, Slash, F9, F11 and every fixed key (P, O, K, J, N, Semicolon, F8, L). `rebind` swaps with the action that held the input, so no
 input is ever bound twice on a device and every action keeps a primary; the stored form is `ControlsOverrides` (the
 actions that differ), cleaned by `sanitizeControlsOverrides`. The sim only sees the resulting bits: a rebound layout
 pressed the same way gives the same InputFrame (`bindings.spec.ts`). The client half (Options > Controls, stored in
@@ -661,7 +664,7 @@ is open, and only one of the Options screen / leaderboard panel is open at a tim
 | Attribute | Type | Effect |
 |---|---|---|
 | `KV_Seed` | number | Run seed (default 1337). Changing it and pressing R rebuilds the floor. Set: the run is unranked (the server picks ranked seeds). |
-| `KV_Debug` | boolean | K / J / N / M / F8 / L and the debug HUD line. Off by default. |
+| `KV_Debug` | boolean | K / J / N / Semicolon / F8 / L and the debug HUD line. Off by default. |
 | `KV_SpawnBoss` | boolean | With KV_Debug: start outside the boss room's door. The server rejects such runs unless `KV_AllowDebugRuns`. |
 | `KV_Stress` | number | The web build's `?stress=N`: rings keep ~N enemy bullets alive. Stress runs are never submitted. |
 | `KV_World` | string | `endless` (default: shared/config `PLAY_MODE`), `game` (the M1 run), `dungeonNoEncounter`, `greybox`. Set: the run is unranked. Pair with the server's `KV_RunValidationWorld` (Studio). |
@@ -1065,7 +1068,7 @@ world (`KV_World` unset), Play solo, then **N** on floors 1-4 (debug floor skip)
 Needs a run with `SimConfig.drops` (endless after B4; before that, set `drops: DROPS_CONFIG` on the endless config
 locally) and `KV_Debug` = true.
 
-- **Each kind:** M drops Fury, M again Quickstep, then Frenzy, Aegis (cycling), 1.5 tiles ahead of the facing: a small
+- **Each kind:** Semicolon (the debug drop key; M before docs/MINIMAP.md MD11) drops Fury, again Quickstep, then Frenzy, Aegis (cycling), 1.5 tiles ahead of the facing: a small
   gem in gold / aqua / lime / lavender pops in, bobs, sits under `KV_Drops`. Visible on every biome floor (N through
   floors 1-20 and drop one on each), never hiding a bullet or an enemy behind it.
 - **Fade:** leave one: it blinks for its last 2 s and vanishes at 10 s with a small poof. Options > Juice > Reduced
@@ -1078,14 +1081,14 @@ locally) and `KV_Debug` = true.
 - **Readability:** in a bullet storm (`KV_Stress`), the discs never cover a bullet; fps unchanged with 4 drops and
   4 boosts.
 - **Co-op (2 players):** player A picks a drop: B sees the burst and A's disc; only A gets the toast and the row.
-- **Debug key gating:** without `KV_Debug`, M does nothing; Options > Controls refuses M for any action.
+- **Debug key gating:** without `KV_Debug`, Semicolon does nothing; Options > Controls refuses Semicolon for any action.
 
 ### Boost drop art (docs/BOOST_ART.md BA3 / BA5; not run in Studio yet)
 
 Needs the vale pack with the boost images, `decor.fx.glow` / `decor.fx.glint` (decor atlas) and `ui.marker.boost`
 uploaded (`assetIds.ts`), a run with drops and `KV_Debug` = true.
 
-- **Each biome (floors 1-5 of the five biomes):** M four times: gold coins, blue / green / white gems, each on a halo in
+- **Each biome (floors 1-5 of the five biomes):** the debug drop key (Semicolon) four times: gold coins, blue / green / white gems, each on a halo in
   gold / aqua / lime / lavender (never the pedestal's yellow), a thin beam in the same colour rising from it, a glint
   twinkling on the prop. Each reads at a glance next to bullets, decor (no gems left in the decor) and a relic
   pedestal (its beam clearly taller). The halo lies under telegraphs, the aim line and every bullet, over decor flats.

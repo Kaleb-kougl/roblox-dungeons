@@ -943,6 +943,72 @@ export const ROOM_EDGE_DIFFERENCE_ROLES: ReadonlyArray<ColorRole> = [...ENEMY_BU
 export const MIN_ROOM_EDGE_DIFFERENCE = MIN_DECOR_FX_BULLET_DIFFERENCE;
 
 /**
+ * Roblox port (docs/MINIMAP.md M6): the minimap's colours (shared/view/minimap paint and markers). Required in every
+ * pack like every role. UI colours, drawn over `uiPanel` (the unknown fog), never on a biome floor: the tiles (floor,
+ * wall, pool, frontier) and the markers (self, enemy, boss, stairs, boost). The validator (`minimapReport`) holds the
+ * markers to MIN_MINIMAP_MARKER_CONTRAST on `minimap.floor`, on `uiPanel` and on every tinted room floor
+ * (MINIMAP_TINT_ROLES mixed into `minimap.floor` at MINIMAP_ROOM_TINT_MIX), and `minimap.enemy` to
+ * MIN_MINIMAP_ENEMY_DIFFERENCE (CIE76) from MINIMAP_ENEMY_DIFFERENCE_ROLES.
+ */
+export const MINIMAP_ROLES: ReadonlyArray<ColorRole> = [
+	"minimap.floor",
+	"minimap.wall",
+	"minimap.pool",
+	"minimap.frontier",
+	"minimap.self",
+	"minimap.enemy",
+	"minimap.boss",
+	"minimap.stairs",
+	"minimap.boost",
+];
+
+/** The minimap markers (docs/MINIMAP.md M6): held to MIN_MINIMAP_MARKER_CONTRAST on MINIMAP_MARKER_BACKGROUNDS. */
+export const MINIMAP_MARKER_ROLES: ReadonlyArray<ColorRole> = [
+	"minimap.self",
+	"minimap.enemy",
+	"minimap.boss",
+	"minimap.stairs",
+	"minimap.boost",
+];
+
+/** What a minimap marker is drawn over: a seen floor tile and the panel itself (the unknown fog). */
+export const MINIMAP_MARKER_BACKGROUNDS: ReadonlyArray<ColorRole> = ["minimap.floor", "uiPanel"];
+
+/**
+ * Roblox port (docs/MINIMAP.md M5, review fix): how far a seen room's floor moves toward its room-edge state colour
+ * (MINIMAP_TINT_ROLES) on the map, 0..1. Owned here, not in shared/view/minimap MINIMAP_VIEW (which reads it as
+ * `roomTintMix`), because the validator checks the markers on the tinted floors it makes. 0.1 (was 0.35): the live
+ * tint is the near-white roomEdge.live, so at 0.35 the enemy dot fell to 1.2:1 on a live room's floor.
+ */
+export const MINIMAP_ROOM_TINT_MIX = 0.1;
+
+/** The colours a seen room's floor is tinted toward (one per room-edge state, docs/ROOM_EDGES.md). */
+export const MINIMAP_TINT_ROLES: ReadonlyArray<ColorRole> = ROOM_EDGE_ROLES;
+
+/**
+ * Roblox port (docs/MINIMAP.md M6): minimum WCAG contrast ratio between every MINIMAP_MARKER_ROLES colour and every
+ * MINIMAP_MARKER_BACKGROUNDS colour. WCAG's bar for graphics, like the enemy outline's and the room edges'.
+ */
+export const MIN_MINIMAP_MARKER_CONTRAST = 3.0;
+
+/**
+ * The colours an enemy dot must never be mistaken for (docs/MINIMAP.md M6): the watched player's arrow, a boost glint
+ * and every teammate dot (the `class.*` roles), so a hostile dot never reads as a friend or a pickup.
+ */
+export const MINIMAP_ENEMY_DIFFERENCE_ROLES: ReadonlyArray<ColorRole> = [
+	"minimap.self",
+	"minimap.boost",
+	...CLASS_IDS.map((c) => `class.${c}` as ColorRole),
+];
+
+/**
+ * Roblox port (docs/MINIMAP.md M6): minimum CIE76 colour difference between `minimap.enemy` and every
+ * MINIMAP_ENEMY_DIFFERENCE_ROLES colour: the decor fx / enemy outline bar. An enemy dot in `class.ranger` green fails
+ * (0), and a warm red like the outline's #ff3b30 does too (39 from the placeholder `class.pyromancer` #d9784a).
+ */
+export const MIN_MINIMAP_ENEMY_DIFFERENCE = MIN_DECOR_FX_BULLET_DIFFERENCE;
+
+/**
  * Readability caps for ambient particles (docs/DECOR.md Phase 2 part 2), owned by the theme because a pack's ambient
  * texture may set its own look (`particle` on `decor.fx.ambient.*`) and the validator holds it to them: smaller and
  * more transparent than any bullet. Enemy bullets are drawn opaque (Neon) and 2 * BULLET_VIEW.enemyDrawRadius

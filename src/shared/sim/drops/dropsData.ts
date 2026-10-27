@@ -81,8 +81,8 @@ export const DROP_INELIGIBLE_ARCHETYPES: ReadonlyArray<string> = ["dummy"];
 export const DROP_EXCLUDED_ROOM_TYPE = "boss";
 
 /**
- * Debug input bit (KV_Debug only; suggested key M): drops the next boost kind (cycling by Boost index) in front of the
- * player, DEBUG_DROP_AHEAD along their facing (so it lies on the floor instead of being collected at once; walk onto
+ * Debug input bit (KV_Debug only; key Semicolon, shared/play FIXED_INPUTS.debugDrop; M before docs/MINIMAP.md
+ * MD11): drops the next boost kind (cycling by Boost index) in front of the player, DEBUG_DROP_AHEAD along their facing (so it lies on the floor instead of being collected at once; walk onto
  * it to take it). No rng draw. A Roblox-port bit beyond the web build's table, like DEBUG_FLOOR_BUTTON: it is in
  * PORT_BUTTONS / SIM_BUTTONS (input.ts), so the relay strips it and validation flags it like the other debug bits.
  */
