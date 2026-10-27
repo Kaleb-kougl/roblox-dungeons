@@ -1,9 +1,16 @@
 /**
- * Per-player and per-floor audio edges read from sim state (docs/FX_AUDIO.md A3, X4), the way the decor director and
+ * Per-player and per-floor edges read from sim state for audio and game feel (docs/FX_AUDIO.md A3, X4; docs/FEEL.md
+ * J1: moved here from shared/view/audio as AudioStateWatch, unchanged, plus hurtKind), the way the decor director and
  * WeaponViewController read it: each frame the watch compares the state with what it saw last frame and raises edges.
- * The summed SimEvents do not say WHICH player rolled or was hit, so co-op attribution comes from here:
+ * The summed SimEvents do not say WHICH player rolled or was hit, so co-op attribution comes from here. The audio
+ * mapper (shared/view/audio cues.ts) and each feel controller own their own instance:
  *
  *   hurt       PlayerState.hurtTicks rose (a landed hit restarts the post-hit invulnerability; a lethal hit is a death)
+ *   hurtKind   what this frame's hit cost (HurtKind; "none" without a hurt or death edge): "lethal" with the death edge
+ *              (a lethal hit clears hurtTicks, so it raises no hurt edge), else on a hurt edge "heart" when hearts
+ *              dropped, "armor" when only an armor pip or the Aegis pip (state.drops, docs/BOOSTS.md) dropped,
+ *              "harmless" when nothing dropped in the tutorial's harmless mode; nothing dropped outside it is "heart"
+ *              (the hit reached the hearts and something gave them back in the same frame: M2 Second Wind)
  *   death      PlayerState.dead went 0 -> 1, unless the player left the run this frame or earlier (party.left)
  *   roll       PlayerState.rollTicks rose (a roll starts at ROLL_TICKS and can not restart while rolling)
  *   flask      PlayerState.flaskTicks rose (drinking starts at FLASK_USE_TICKS)
@@ -34,6 +41,7 @@ import {
 	SWORD,
 	SWORD_FINISHER,
 	SWORD_V_LAST,
+	aegisPips,
 	isPartyWiped,
 	swordGuard,
 	partySize,
@@ -49,6 +57,31 @@ const NO_SWING = -1;
 
 /** A player's last swing kind (swingEdge): none, a combo swing, the sword's finisher. */
 export const SwingEdge = { none: 0, swing: 1, finisher: 2 } as const;
+
+/** What a player's hit this frame cost (StateWatch.hurtKind), weakest to strongest after "none". */
+export type HurtKind = "none" | "harmless" | "armor" | "heart" | "lethal";
+
+/** Every HurtKind, weakest first (specs, tunable tables). */
+export const HURT_KINDS: ReadonlyArray<HurtKind> = ["none", "harmless", "armor", "heart", "lethal"];
+
+/** The tutorial's harmless hits are on (SimConfig.tutorial.harmless). */
+function harmlessHits(state: Readonly<SimState>): boolean {
+	const tutorial = state.tutorial;
+	return tutorial !== undefined && tutorial.harmless !== 0;
+}
+
+/** What a landed hit cost, from the player's hearts / armor / Aegis pips before and after it (see hurtKind above). */
+function costOf(
+	hearts: number,
+	heartsBefore: number,
+	absorbers: number,
+	absorbersBefore: number,
+	harmless: boolean,
+): HurtKind {
+	if (hearts < heartsBefore) return "heart";
+	if (absorbers < absorbersBefore) return "armor";
+	return harmless ? "harmless" : "heart";
+}
 
 function countCleared(state: Readonly<SimState>): number {
 	const score = state.score;
@@ -82,11 +115,14 @@ function guardUp(w: Readonly<WeaponsState>): boolean {
 	return active !== undefined && weaponId(active.weapon) === SWORD.id && swordGuard(active) > 0;
 }
 
-export class AudioStateWatch {
+export class StateWatch {
 	private seen: Readonly<SimState> | undefined;
 	private fresh = true;
 	private size = 0;
 	private readonly hurt = new Array<number>();
+	private readonly hearts = new Array<number>();
+	/** Armor pips + Aegis pips (either absorbs a whole hit before the hearts). */
+	private readonly absorbers = new Array<number>();
 	private readonly roll = new Array<number>();
 	private readonly flaskTicks = new Array<number>();
 	private readonly dead = new Array<number>();
@@ -105,6 +141,8 @@ export class AudioStateWatch {
 
 	/** Per player index (0 .. players() - 1): this frame's edges. */
 	readonly hurtEdge = new Array<boolean>();
+	/** What this frame's hit cost ("none" without a hurt or death edge). */
+	readonly hurtKind = new Array<HurtKind>();
 	readonly deathEdge = new Array<boolean>();
 	readonly rollEdge = new Array<boolean>();
 	readonly flaskEdge = new Array<boolean>();
@@ -140,6 +178,7 @@ export class AudioStateWatch {
 		this.size = n;
 		const floor = state.endless !== undefined ? state.endless.floor : 0;
 		const sameFloor = !baseline && floor === this.floor;
+		const harmless = harmlessHits(state);
 		for (let i = 0; i < n; i++) {
 			const p = playerAt(state, i);
 			const w = weaponsAt(state, i);
@@ -147,6 +186,12 @@ export class AudioStateWatch {
 			const known = !baseline && i < this.hurt.size();
 			this.hurtEdge[i] = known && !left && p.hurtTicks > this.hurt[i];
 			this.deathEdge[i] = known && !left && p.dead !== 0 && this.dead[i] === 0;
+			const absorbers = p.armor + aegisPips(state, i);
+			this.hurtKind[i] = this.deathEdge[i]
+				? "lethal"
+				: this.hurtEdge[i]
+				? costOf(p.hearts, this.hearts[i], absorbers, this.absorbers[i], harmless)
+				: "none";
 			this.rollEdge[i] = known && !left && p.rollTicks > this.roll[i];
 			this.flaskEdge[i] = known && !left && p.flaskTicks > this.flaskTicks[i];
 			this.swapEdge[i] = known && !left && w.activeSet !== this.activeSet[i];
@@ -156,6 +201,8 @@ export class AudioStateWatch {
 			this.mayDeflect[i] = known && !left && (guard || this.guard[i] || swung);
 			this.guard[i] = guard;
 			this.hurt[i] = p.hurtTicks;
+			this.hearts[i] = p.hearts;
+			this.absorbers[i] = absorbers;
 			this.dead[i] = p.dead;
 			this.roll[i] = p.rollTicks;
 			this.flaskTicks[i] = p.flaskTicks;

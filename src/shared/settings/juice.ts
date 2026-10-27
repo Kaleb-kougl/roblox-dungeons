@@ -22,6 +22,8 @@ export interface JuiceSettings {
 	damageNumbers: boolean;
 	/** A few ms of hitstop on kills. Off under reducedMotion regardless. */
 	freezeFrame: boolean;
+	/** Port: the camera nudges (hurt jolt, heavy-hit kick, boss phase / death). Off under reducedMotion regardless. */
+	screenShake: boolean;
 	/** Death particle density. reducedMotion lowers it one step. */
 	particles: ParticlesLevel;
 	/** Less motion everywhere: no shake, no freeze, fewer particles, numbers fade in place. Default: the system. */
@@ -35,6 +37,7 @@ export const JUICE_SETTING_KEYS: ReadonlyArray<keyof JuiceSettings> = [
 	"healthBars",
 	"damageNumbers",
 	"freezeFrame",
+	"screenShake",
 	"particles",
 	"reducedMotion",
 ];
@@ -44,6 +47,7 @@ export function defaultJuiceSettings(prefersReducedMotion = false): JuiceSetting
 		healthBars: "onDamage",
 		damageNumbers: true,
 		freezeFrame: true,
+		screenShake: true,
 		particles: "normal",
 		reducedMotion: prefersReducedMotion,
 	};
@@ -56,6 +60,7 @@ function readField(raw: Readonly<Record<string, unknown>>, out: JuiceOverrides):
 	if (typeIs(p, "string") && PARTICLES_LEVELS.includes(p as ParticlesLevel)) out.particles = p as ParticlesLevel;
 	if (typeIs(raw.damageNumbers, "boolean")) out.damageNumbers = raw.damageNumbers;
 	if (typeIs(raw.freezeFrame, "boolean")) out.freezeFrame = raw.freezeFrame;
+	if (typeIs(raw.screenShake, "boolean")) out.screenShake = raw.screenShake;
 	if (typeIs(raw.reducedMotion, "boolean")) out.reducedMotion = raw.reducedMotion;
 }
 

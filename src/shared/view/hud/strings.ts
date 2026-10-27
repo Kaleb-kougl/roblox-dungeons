@@ -64,6 +64,8 @@ export const SETTINGS_STRINGS = {
 	healthBars: "fx.settings.healthBars",
 	damageNumbers: "fx.settings.damageNumbers",
 	freezeFrame: "fx.settings.freezeFrame",
+	/** Port (docs/FEEL.md J8): the Screen shake row. */
+	screenShake: "fx.settings.screenShake",
 	particles: "fx.settings.particles",
 	reducedMotion: "fx.settings.reducedMotion",
 	on: "fx.settings.on",

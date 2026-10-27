@@ -11,3 +11,4 @@ export * from "./DamageNumberController";
 export * from "./ParticleController";
 export * from "./ScorePopController";
 export * from "./FxSpriteController";
+export * from "./HurtFlashController";

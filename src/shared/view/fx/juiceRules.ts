@@ -7,6 +7,8 @@
  * Reduced motion: the effective `reducedMotion` is the player's override when they set one, else the Roblox "Reduce
  * Motion" setting (GuiService.ReducedMotionEnabled), exactly as the web build defaulted it to the OS preference
  * (shared/settings resolveJuiceSettings). Every feature reads it only through these helpers.
+ *
+ * Port change (docs/FEEL.md J8): screenShakeOn also reads the port's screenShake setting.
  */
 import type { JuiceSettings, ParticlesLevel } from "shared/settings";
 
@@ -29,9 +31,12 @@ export function freezeFrameOn(s: Readonly<JuiceSettings>): boolean {
 	return s.freezeFrame && !s.reducedMotion;
 }
 
-/** Screen shake (the 1-pixel camera nudge) allowed? No setting of its own: only reducedMotion turns it off. */
+/**
+ * Screen shake (the camera nudges) allowed? Port change (docs/FEEL.md J8, JD10): the screenShake setting of its own
+ * (Options > Juice), and reducedMotion still turns it off.
+ */
 export function screenShakeOn(s: Readonly<JuiceSettings>): boolean {
-	return !s.reducedMotion;
+	return s.screenShake && !s.reducedMotion;
 }
 
 /**

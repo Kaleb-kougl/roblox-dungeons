@@ -73,6 +73,9 @@ describe("juice rules", () => {
 		expect(freezeFrameOn(settings("normal", true))).toBe(false);
 		expect(screenShakeOn(settings())).toBe(true);
 		expect(screenShakeOn(settings("normal", true))).toBe(false);
+		// port (docs/FEEL.md J8): the screenShake setting of its own; reducedMotion still wins
+		expect(screenShakeOn({ ...settings(), screenShake: false })).toBe(false);
+		expect(screenShakeOn({ ...settings("normal", true), screenShake: true })).toBe(false);
 		expect(motionScale(settings())).toBe(1);
 		expect(motionScale(settings("normal", true))).toBe(0);
 	});
