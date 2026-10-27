@@ -4,6 +4,9 @@
  */
 export type HudCorner = "topLeft" | "topRight" | "bottomLeft" | "bottomRight";
 
+/** Every corner, in a fixed order (iterate this, never a record keyed by corner). */
+export const HUD_CORNERS: ReadonlyArray<HudCorner> = ["topLeft", "topRight", "bottomLeft", "bottomRight"];
+
 /** A corner's anchor point: 0 = left / top edge, 1 = right / bottom edge. */
 export function cornerAnchor(corner: HudCorner): { readonly ax: number; readonly ay: number } {
 	switch (corner) {

@@ -131,14 +131,13 @@ export function WeaponPanel(props: { readonly highlight?: boolean }) {
 		<WeaponSlot key={`w${i}`} order={i + 1} index={i} id={id} active={i === s.activeSet} />
 	));
 	return (
-		<Panel corner="bottomLeft" name="Weapons">
+		<Panel corner="bottomLeft" name="Weapons" overlay={props.highlight === true ? <HighlightRing /> : undefined}>
 			<Row order={1}>{slots}</Row>
 			<SwapHint
 				order={2}
 				forced={props.highlight === true}
 				text={str(HUD_STRINGS.weaponSwap, { key: swapHint(bindings)[device] })}
 			/>
-			{props.highlight === true ? <HighlightRing /> : undefined}
 		</Panel>
 	);
 }

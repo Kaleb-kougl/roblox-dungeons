@@ -74,6 +74,8 @@ function SettingRow<T extends string | boolean | number>(props: {
 	options: ReadonlyArray<Option<T>>;
 	onPick: (v: T) => void;
 	selectable: boolean;
+	/** Button width (reference px); default HUD_VIEW.optionSize.x. */
+	optionWidth?: number;
 }) {
 	const buttons = props.options.map((o, i) => (
 		<MenuButton
@@ -83,7 +85,7 @@ function SettingRow<T extends string | boolean | number>(props: {
 			text={o.label}
 			active={o.value === props.value}
 			selectable={props.selectable}
-			size={new Vector2(HUD_VIEW.optionSize.x, HUD_VIEW.optionSize.y)}
+			size={new Vector2(props.optionWidth ?? HUD_VIEW.optionSize.x, HUD_VIEW.optionSize.y)}
 			textSize={HUD_VIEW.smallText}
 			onActivated={() => props.onPick(o.value)}
 		/>
@@ -463,6 +465,7 @@ function DisplayTab(props: { order: number; actions: HudActions; selectable: boo
 				selectable={props.selectable}
 				label={str(OPTIONS_STRINGS.hudScale)}
 				value={display.hudScale}
+				optionWidth={HUD_VIEW.scaleOptionWidth}
 				options={HUD_SCALE_PERCENTS.map((p) => ({
 					value: p,
 					label: str(OPTIONS_STRINGS.percent, { value: p }),
@@ -485,6 +488,21 @@ function DisplayTab(props: { order: number; actions: HudActions; selectable: boo
 				onPick={(v) => {
 					props.actions.playUi(SFX.uiClick);
 					props.actions.updateDisplay({ roomEdges: v });
+				}}
+			/>
+			<SettingRow
+				order={3}
+				name="hudFade"
+				selectable={props.selectable}
+				label={str(OPTIONS_STRINGS.hudFade)}
+				value={display.hudFade}
+				options={[
+					{ value: true, label: str(SETTINGS_STRINGS.on) },
+					{ value: false, label: str(SETTINGS_STRINGS.off) },
+				]}
+				onPick={(v) => {
+					props.actions.playUi(SFX.uiClick);
+					props.actions.updateDisplay({ hudFade: v });
 				}}
 			/>
 		</Panel>
