@@ -442,6 +442,8 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		"hud.debug.replayHint": "{key}: replay check",
 		"hud.debug.replayMatch": "replay match @ {ticks}",
 		"hud.debug.replayMismatch": "replay MISMATCH @ {ticks}",
+		"hud.debug.net":
+			"co-op lead {lead}t {leadMs}ms · press->step {last}ms avg {mean} max {max} n{count} · late {late} miss {misses}",
 		// M2 scoring (score panel, combo meter, score pops, the results breakdown).
 		"hud.score": "Score",
 		"hud.score.combo": "x{combo}",

@@ -44,3 +44,5 @@ export * from "./roomEdgesConfig";
 export * from "./roomEdges";
 export * from "./roomEdgeState";
 export * from "./decor";
+export * from "./latencyProbeConfig";
+export * from "./latencyProbe";

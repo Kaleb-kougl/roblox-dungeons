@@ -38,6 +38,8 @@ export const HUD_STRINGS = {
 	replayHint: "hud.debug.replayHint",
 	replayMatch: "hud.debug.replayMatch",
 	replayMismatch: "hud.debug.replayMismatch",
+	/** Co-op, KV_Debug: the input lead and press -> stepped latency (docs/FEEL.md J9, shared/view latencyProbe.ts). */
+	netProbe: "hud.debug.net",
 	cap: "fx.cap",
 	score: "hud.score",
 	combo: "hud.score.combo",
