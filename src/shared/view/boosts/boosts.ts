@@ -6,7 +6,8 @@
  *   kinds        a sim Boost index -> its theme kind (BOOST_KINDS, the same order: boosts.spec.ts cross-checks them),
  *                its colour role and string keys
  *   DropSlotTracker  diffs the sim's ground slots against the last frame: which slots got a new drop, which lost one
- *   drop look    age / seconds left from state, the bob (x motionScale), the landing pop, the fade blink
+ *   drop look    age / seconds left from state, the bob (its phase, x motionScale), the landing pop, the fade blink
+ *                (the art layers on top of it: art.ts)
  *   aura         the concentric discs' radii and lifts, capped under BOOST_VIEW.auraMaxHeightTiles, and their pulse
  *   HUD          the snapshot's boost entries (secondsLeft in tenths, fraction), their equality, the row's blink, the
  *                tutorial's highlight id
@@ -108,13 +109,20 @@ export function dropSecondsLeft(ticksLeft: number): number {
 }
 
 /**
- * The bob, studs above the rest height: bobStuds x motionScale x (1 - cos(2 pi bobHz t)) / 2, so it starts on the
- * floor and never dips below it; 0 under reduced motion (motionScale 0).
+ * The bob's phase `ageSec` after landing: motionScale x (1 - cos(2 pi bobHz t)) / 2, 0 on the floor, 1 at the top
+ * (the halo's pulse follows it); 0 under reduced motion (motionScale 0).
+ */
+export function dropBobPhase(ageSec: number, motion: number): number {
+	if (!(motion > 0) || !(ageSec > 0)) return 0;
+	return motion * (1 - math.cos(TAU * BOOST_VIEW.bobHz * ageSec)) * HALF;
+}
+
+/**
+ * The bob, studs above the rest height: bobStuds x dropBobPhase, so it starts on the floor and never dips below it;
+ * 0 under reduced motion (motionScale 0).
  */
 export function dropBobStuds(ageSec: number, motion: number): number {
-	const v = BOOST_VIEW;
-	if (!(motion > 0) || !(ageSec > 0)) return 0;
-	return v.bobStuds * motion * (1 - math.cos(TAU * v.bobHz * ageSec)) * HALF;
+	return BOOST_VIEW.bobStuds * dropBobPhase(ageSec, motion);
 }
 
 /**
