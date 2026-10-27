@@ -1,7 +1,8 @@
 # Roblox invites and parties: plan
 
-Status (2026-10-27): **I1-I3 built (pure cores, headless specs), with the §6 config and §7 analytics; I0, I4-I9
-open; decisions ID1-ID7 confirmed.** Companion to the lobby plan (project doc `claude/menu-lobby-plan.md`,
+Status (2026-10-27): **I1-I3 built (pure cores, headless specs), with the §6 config and §7 analytics; I0's spike is
+built (`KV_InviteSpike`, docs/SPIKES.md "Spike I0") and waits for its published-place run; I4-I9 open; decisions
+ID1-ID7 confirmed.** Companion to the lobby plan (project doc `claude/menu-lobby-plan.md`,
 as built in docs/SERVER.md "Lobbies" and docs/CLIENT.md). This plan takes over L8's `PromptGameInvite` bullet; the rest
 of L8 (Friends tab, teleport follow) stays there.
 

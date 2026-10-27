@@ -1,8 +1,8 @@
 import { createProducer } from "@rbxts/reflex";
-import { BULLET_SPIKE, CAMERA_SPIKE } from "shared/config";
+import { BULLET_SPIKE, CAMERA_SPIKE, INVITE_SPIKE, InviteSpikeAction } from "shared/config";
 
 /**
- * Client-local Reflex slice for the Task 1 spikes (docs/SPIKES.md): the settings both the
+ * Client-local Reflex slice for the Task 1 spikes and the invites spike I0 (docs/SPIKES.md): the settings both the
  * keyboard and the HUD buttons change, and the stats the spike controllers report back for the
  * HUD to show. Nothing here replicates.
  */
@@ -22,6 +22,12 @@ export interface BulletSpikeStats {
 	readonly live: number;
 }
 
+/** A HUD button press of the invites spike; `seq` grows by one per press so the controller sees repeats. */
+export interface InviteSpikeRequest {
+	readonly seq: number;
+	readonly action: InviteSpikeAction;
+}
+
 export interface SpikeState {
 	readonly bullets: {
 		readonly active: boolean;
@@ -37,6 +43,12 @@ export interface SpikeState {
 		readonly autoWalk: boolean;
 		/** Current camera distance from the focus point, studs. */
 		readonly distance: number;
+	};
+	readonly invites: {
+		readonly active: boolean;
+		/** The last INVITE_SPIKE.hudLines log lines of both sides, oldest first. */
+		readonly lines: ReadonlyArray<string>;
+		readonly request?: InviteSpikeRequest;
 	};
 }
 
@@ -56,6 +68,7 @@ const initialState: SpikeState = {
 		autoWalk: false,
 		distance: 0,
 	},
+	invites: { active: false, lines: [] },
 };
 
 export const spikesSlice = createProducer(initialState, {
@@ -99,7 +112,25 @@ export const spikesSlice = createProducer(initialState, {
 		...state,
 		camera: { ...state.camera, distance },
 	}),
+	setInviteSpikeActive: (state, active: boolean) => ({
+		...state,
+		invites: { active, lines: [] },
+	}),
+	pushInviteSpikeLine: (state, line: string) => {
+		const lines = new Array<string>();
+		const old = state.invites.lines;
+		const keep = INVITE_SPIKE.hudLines - 1;
+		for (let i = math.max(0, old.size() - keep); i < old.size(); i++) lines.push(old[i]);
+		lines.push(line);
+		return { ...state, invites: { ...state.invites, lines } };
+	},
+	requestInviteSpike: (state, action: InviteSpikeAction) => ({
+		...state,
+		invites: { ...state.invites, request: { seq: (state.invites.request?.seq ?? 0) + 1, action } },
+	}),
 });
 
 export const selectBulletSpike = (state: { spikes: SpikeState }) => state.spikes.bullets;
 export const selectCameraSpike = (state: { spikes: SpikeState }) => state.spikes.camera;
+export const selectInviteSpike = (state: { spikes: SpikeState }) => state.spikes.invites;
+export const selectInviteSpikeRequest = (state: { spikes: SpikeState }) => state.spikes.invites.request;
