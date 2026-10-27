@@ -39,7 +39,7 @@ import { DEBUG_REPLAY_CHECK_KEYS, FIXED_INPUTS, STICK_DEADZONE, TRIGGER_THRESHOL
 export const LEFT_TRIGGER = "ButtonL2";
 export const RIGHT_TRIGGER = "ButtonR2";
 
-/** One Bindings as lookup tables: input name -> button bits, the move keys, the restart inputs. */
+/** One Bindings as lookup tables: input name -> button bits, the move keys, the restart and map inputs. */
 interface CompiledBindings {
 	readonly source: Bindings;
 	/** Enum.KeyCode name -> button bits (the rebindable actions plus the fixed pause and debug keys). */
@@ -54,6 +54,8 @@ interface CompiledBindings {
 	readonly right: ReadonlyArray<string>;
 	readonly restartKbm: ReadonlyArray<string>;
 	readonly restartPad: string;
+	readonly mapKbm: ReadonlyArray<string>;
+	readonly mapPad: string;
 }
 
 function orInto(map: Map<string, number>, name: string, bit: number): void {
@@ -90,6 +92,8 @@ function compile(b: Bindings): CompiledBindings {
 		right: b.kbm.moveRight,
 		restartKbm: b.kbm.restart,
 		restartPad: b.pad.restart,
+		mapKbm: b.kbm.map,
+		mapPad: b.pad.map,
 	};
 }
 
@@ -129,7 +133,7 @@ export const PAD_RESTART_KEY = DEFAULT_BINDINGS.pad.restart;
 
 /** Button bits that only exist for debugging: stripped unless debug keys are on (web DEBUG_BUTTONS). */
 export const DEBUG_BUTTONS = bit32.bor(Button.DEBUG_HIT, Button.DEBUG_BOSS);
-/** Every debug bit maskDebugButtons strips: DEBUG_BUTTONS plus the port's endless floor skip (N) and boost drop (M). */
+/** Every debug bit maskDebugButtons strips: DEBUG_BUTTONS plus the port's endless floor skip (N) and boost drop (Semicolon, MD11). */
 export const ALL_DEBUG_BUTTONS = bit32.bor(DEBUG_BUTTONS, DEBUG_FLOOR_BUTTON, DEBUG_DROP_BUTTON);
 
 // ---------------------------------------------------------------------------------------------
@@ -383,7 +387,17 @@ export function driverKeyAction(
 }
 
 /**
- * Every Enum.KeyCode name the game reads (bindings, movement, restart, the fixed pause and debug keys): the
+ * True when `name` (an Enum.KeyCode / mouse Enum.UserInputType / gamepad Enum.KeyCode name) is bound to the `map`
+ * action, the full map toggle (docs/MINIMAP.md M9): no sim input, any time (the client decides whether the map may
+ * open). Key, mouse and pad names never collide, so one lookup covers every device.
+ */
+export function isMapInput(name: string, bindings: Bindings = DEFAULT_BINDINGS): boolean {
+	const c = compiled(bindings);
+	return name === c.mapPad || c.mapKbm.includes(name);
+}
+
+/**
+ * Every Enum.KeyCode name the game reads (bindings, movement, restart, map, the fixed pause and debug keys): the
  * InputController polls / sinks these. Not the leaderboard key (its controller reads it unsunk) nor mouse buttons
  * (boundMouseButtonNames).
  */

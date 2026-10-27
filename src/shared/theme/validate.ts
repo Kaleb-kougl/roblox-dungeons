@@ -28,9 +28,13 @@
  *
  * Roblox port (docs/ROOM_EDGES.md RE4): the room-edge colour roles, waiting and live readable on every biome floor
  * (WCAG contrast) and all three kept away from the enemy-bullet roles and telegraph (CIE76), `roomEdgeReport`.
+ *
+ * Roblox port (docs/MINIMAP.md M6): the minimap colour roles, the markers readable on `minimap.floor` and `uiPanel`
+ * (WCAG contrast) and `minimap.enemy` kept away from `minimap.self`, `minimap.boost` and every `class.*` role (CIE76),
+ * `minimapReport`.
  */
 
-import { colorDifference, contrastRatio, isHexColor } from "./color";
+import { colorDifference, contrastRatio, isHexColor, mixRgb, parseHex, toHex } from "./color";
 import {
 	AMBIENCE,
 	AMBIENCE_IDS,
@@ -74,6 +78,13 @@ import {
 	MIN_HEALTH_BAR_CONTRAST,
 	MIN_ROOM_EDGE_CONTRAST,
 	MIN_ROOM_EDGE_DIFFERENCE,
+	MIN_MINIMAP_ENEMY_DIFFERENCE,
+	MIN_MINIMAP_MARKER_CONTRAST,
+	MINIMAP_ENEMY_DIFFERENCE_ROLES,
+	MINIMAP_MARKER_BACKGROUNDS,
+	MINIMAP_MARKER_ROLES,
+	MINIMAP_ROOM_TINT_MIX,
+	MINIMAP_TINT_ROLES,
 	MUSIC,
 	REQUIRED_ASSET_IDS,
 	REQUIRED_STRING_KEYS,
@@ -683,6 +694,91 @@ export function roomEdgeReport(manifest: unknown): Array<RoomEdgeEntry> {
 	return out;
 }
 
+/**
+ * Minimap (docs/MINIMAP.md M6): every MINIMAP_MARKER_ROLES colour vs every MINIMAP_MARKER_BACKGROUNDS colour
+ * (`minimap.floor`, `uiPanel`; WCAG contrast, >= MIN_MINIMAP_MARKER_CONTRAST; check "background", `against` = the
+ * role) and `minimap.enemy` vs every MINIMAP_ENEMY_DIFFERENCE_ROLES colour (CIE76 colour difference,
+ * >= MIN_MINIMAP_ENEMY_DIFFERENCE; check "difference", `against` = the role). `value` is the ratio or the difference.
+ * Roles in MINIMAP_MARKER_ROLES order (backgrounds first, then differences, per role).
+ */
+export interface MinimapEntry {
+	role: string;
+	check: "background" | "difference";
+	color: string;
+	against: string;
+	againstColor: string;
+	value: number;
+	min: number;
+	ok: boolean;
+}
+
+const MINIMAP_ENEMY_ROLE = "minimap.enemy";
+const MINIMAP_FLOOR_ROLE = "minimap.floor";
+
+export function minimapReport(manifest: unknown): Array<MinimapEntry> {
+	const out = new Array<MinimapEntry>();
+	if (!isObj(manifest) || !isObj(manifest.colors)) {
+		return out;
+	}
+	const colors = manifest.colors;
+	for (const role of MINIMAP_MARKER_ROLES) {
+		const color = colors[role];
+		if (!isHexColor(color)) {
+			continue;
+		}
+		const push = (against: string, againstColor: string) => {
+			const value = contrastRatio(color, againstColor);
+			out.push({
+				role,
+				check: "background",
+				color,
+				against,
+				againstColor,
+				value,
+				min: MIN_MINIMAP_MARKER_CONTRAST,
+				ok: value >= MIN_MINIMAP_MARKER_CONTRAST,
+			});
+		};
+		for (const against of MINIMAP_MARKER_BACKGROUNDS) {
+			const againstColor = colors[against];
+			if (isHexColor(againstColor)) {
+				push(against, againstColor);
+			}
+		}
+		// Every seen room floor is tinted toward its room-edge state colour (shared/view/minimap paint.ts, same mix).
+		const floor = parseHex(colors[MINIMAP_FLOOR_ROLE] as string);
+		if (floor !== undefined) {
+			for (const tint of MINIMAP_TINT_ROLES) {
+				const tintColor = parseHex(colors[tint] as string);
+				if (tintColor !== undefined) {
+					push(`${MINIMAP_FLOOR_ROLE}+${tint}`, toHex(mixRgb(floor, tintColor, MINIMAP_ROOM_TINT_MIX)));
+				}
+			}
+		}
+		if (role !== MINIMAP_ENEMY_ROLE) {
+			continue;
+		}
+		for (const against of MINIMAP_ENEMY_DIFFERENCE_ROLES) {
+			const againstColor = colors[against];
+			if (!isHexColor(againstColor)) {
+				continue;
+			}
+			const value = colorDifference(color, againstColor);
+			out.push({
+				role,
+				check: "difference",
+				color,
+				against,
+				againstColor,
+				value,
+				min: MIN_MINIMAP_ENEMY_DIFFERENCE,
+				ok: value >= MIN_MINIMAP_ENEMY_DIFFERENCE,
+			});
+		}
+	}
+	return out;
+}
+
 /** Is `def` drawn art (an `image` or `sprites` asset), not a placeholder, silent or missing entry? */
 function isArtAsset(def: unknown): boolean {
 	return isObj(def) && (def.kind === "image" || def.kind === "sprites");
@@ -1063,6 +1159,28 @@ export function validateManifest(manifest: unknown, opts: ValidateOptions = {}):
 				`colour difference: ${c.role} ${c.color} vs ${c.against} ${c.againstColor} is ${fixed1(
 					c.value,
 				)} (CIE76), needs >= ${fixed1(c.min)}: a room edge must never read as an enemy bullet or a telegraph`,
+			);
+		}
+	}
+
+	// --- minimap markers read on the map and an enemy dot never as a friend or a pickup -----------
+	for (const c of minimapReport(manifest)) {
+		if (c.ok) {
+			continue;
+		}
+		if (c.check === "background") {
+			err(
+				["colors", c.role],
+				`contrast: ${c.role} ${c.color} on ${c.against} ${c.againstColor} is ${fixed2(
+					c.value,
+				)}:1, needs >= ${fixed1(c.min)}:1`,
+			);
+		} else {
+			err(
+				["colors", c.role],
+				`colour difference: ${c.role} ${c.color} vs ${c.against} ${c.againstColor} is ${fixed1(
+					c.value,
+				)} (CIE76), needs >= ${fixed1(c.min)}: an enemy dot must never read as a teammate or a pickup`,
 			);
 		}
 	}

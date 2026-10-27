@@ -3,16 +3,7 @@ import React from "@rbxts/react";
 import { ReflexProvider } from "@rbxts/react-reflex";
 import { createPortal, createRoot } from "@rbxts/react-roblox";
 import { Players, StarterGui } from "@rbxts/services";
-import {
-	clientStore,
-	selectAnyPanelOpen,
-	selectCoopOverlay,
-	selectGameActive,
-	selectLoadingReleased,
-	selectMenuScreen,
-	selectSnapshot,
-	selectTutorialOutroOpen,
-} from "client/store";
+import { clientStore, selectMenuOpen } from "client/store";
 import {
 	GameHud,
 	HudActionsContext,
@@ -21,7 +12,6 @@ import {
 	type HudActions,
 	type MenuActions,
 } from "client/ui";
-import { createSelector } from "@rbxts/reflex";
 import type { LobbyVisibility } from "shared/lobby";
 import { AudioController } from "../audio/AudioController";
 import { InputController } from "../game/InputController";
@@ -36,29 +26,6 @@ import { SettingsController } from "./SettingsController";
 /** Stock CoreGui that means nothing here (the player is a sim entity: no Humanoid health, no tools). */
 const HIDDEN_CORE_GUI = [Enum.CoreGuiType.Health, Enum.CoreGuiType.Backpack];
 const ROOT_NAME = "KV_HudRoot";
-
-/**
- * A menu that takes the gamepad is open: a menu screen (main menu, lobbies), the pause overlay (paused, run on),
- * the co-op party overlay, the run-over panel (its Again / Main menu buttons), juice settings, leaderboards, the
- * tutorial's outro card or the join loading screen (its Skip button, docs/PRELOAD.md P4).
- */
-const selectMenuOpen = createSelector(
-	[
-		selectSnapshot,
-		selectAnyPanelOpen,
-		selectMenuScreen,
-		selectCoopOverlay,
-		selectGameActive,
-		selectTutorialOutroOpen,
-		selectLoadingReleased,
-	] as const,
-	(snapshot, panelOpen, screen, coopOverlay, active, outroOpen, loadingReleased) =>
-		!loadingReleased ||
-		panelOpen ||
-		screen !== "none" ||
-		coopOverlay ||
-		(active && (outroOpen || snapshot.outcome !== "playing" || snapshot.paused)),
-);
 
 /**
  * Mounts the game HUD (React + Reflex, client/ui/hud) and the menu shell (client/ui/menu MenuLayer) into PlayerGui

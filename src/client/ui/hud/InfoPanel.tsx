@@ -4,10 +4,13 @@ import { selectLatencyProbe, selectReplayCheck, selectRunInfo, selectSnapshot, s
 import { str } from "client/ui/theme";
 import { REPLAY_CHECK_KEYS } from "shared/play";
 import { latencyProbeVars } from "shared/view";
-import { HUD_HINTS, HUD_STRINGS, HUD_TRANSIENT, HUD_VIEW } from "shared/view/hud";
+import { HUD_HINTS, HUD_STRINGS, HUD_TRANSIENT, HUD_VIEW, VERDICT_BOX } from "shared/view/hud";
 import { Panel, Text } from "./primitives";
 import { noticeText, verdictColor, verdictLine } from "./RunInfoLine";
 import { useTimedHint } from "./useTimedHint";
+
+const RIGHT = 1;
+const BOTTOM = 1;
 
 /**
  * Bottom right, transient (docs/HUD_LAYOUT.md H6): the fallback notice when the requested world could not start and
@@ -16,7 +19,9 @@ import { useTimedHint } from "./useTimedHint";
  * co-op run the latency probe's line under it (input lead, press -> stepped tick; docs/FEEL.md J9). The run's
  * info line (title, biome, seed, dungeon) is not here: it lives in the PauseOverlay and the RunOverPanel (RunInfoLine,
  * HD6). Nothing at all, not even the panel, when no line shows. Width: the footprint's verdict box (HUD_TRANSIENT).
- * Once the run is over the verdict line stays off: the RunOverPanel shows it in the centre.
+ * Once the run is over the verdict line stays off: the RunOverPanel shows it in the centre. It sits above the corner
+ * minimap (docs/MINIMAP.md M8: VERDICT_BOX.edge from the safe area's bottom, HUD_VIEW.margin from its right) and is not
+ * a corner panel (the bottom-right corner's occlusion slot belongs to the minimap).
  */
 export function InfoPanel() {
 	const info = useSelector(selectRunInfo);
@@ -36,7 +41,12 @@ export function InfoPanel() {
 		replayText = str(replay.match ? HUD_STRINGS.replayMatch : HUD_STRINGS.replayMismatch, { ticks: replay.ticks });
 	}
 	return (
-		<Panel corner="bottomRight" width={HUD_TRANSIENT.verdict.width} name="Info">
+		<Panel
+			position={new UDim2(RIGHT, -HUD_VIEW.margin, BOTTOM, -VERDICT_BOX.edge)}
+			anchor={new Vector2(RIGHT, BOTTOM)}
+			width={HUD_TRANSIENT.verdict.width}
+			name="Info"
+		>
 			{showNotice ? (
 				<Text
 					order={2}

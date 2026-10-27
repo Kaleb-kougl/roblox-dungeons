@@ -117,6 +117,18 @@ export const COLOR_ROLES = [
 	"roomEdge.safe",
 	"roomEdge.waiting",
 	"roomEdge.live",
+	// Roblox port (docs/MINIMAP.md M6): the minimap's tiles and markers (contract.ts MINIMAP_ROLES), UI colours over
+	// uiPanel. The markers are held to MIN_MINIMAP_MARKER_CONTRAST on minimap.floor and uiPanel, minimap.enemy to
+	// MIN_MINIMAP_ENEMY_DIFFERENCE (CIE76) from minimap.self, minimap.boost and every class.* role.
+	"minimap.floor",
+	"minimap.wall",
+	"minimap.pool",
+	"minimap.frontier",
+	"minimap.self",
+	"minimap.enemy",
+	"minimap.boss",
+	"minimap.stairs",
+	"minimap.boost",
 ] as const;
 
 export type ColorRole = (typeof COLOR_ROLES)[number];

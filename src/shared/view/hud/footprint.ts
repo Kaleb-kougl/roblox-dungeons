@@ -2,7 +2,7 @@
  * The in-run HUD's footprint budget (docs/HUD_LAYOUT.md H2): where the HUD may draw, so a panel change that would
  * cover the playfield fails a spec (footprint.spec.ts) instead of a playtest. Pure numbers and rects, headless.
  *
- * Always-on panels (status, score, weapons) live in the screen corners, each inside a budget box (reference px at
+ * Always-on panels (status, score, weapons, the corner minimap: docs/MINIMAP.md M7) live in the screen corners, each inside a budget box (reference px at
  * HUD_VIEW.referenceSize, scaled by computeHudScale like the HUD itself), and never enter HUD_CLEAR_ZONE, the middle of
  * the safe area. Transient panels (boss bar, toasts, tutorial prompt, spectate bar, the fading verdict line) may cross
  * the clear zone while they show; they are listed here so the spec can check they never land on an always-on panel.
@@ -14,12 +14,13 @@
 import type { HudCorner } from "./corners";
 import { PROGRESSION_VIEW } from "./progression";
 import { computeHudScale, HUD_VIEW } from "./layout";
+import { MINIMAP_PANEL } from "./minimapHud";
 import { SPECTATE_BAR_VIEW } from "./spectate";
 import { TUTORIAL_VIEW } from "./tutorial";
 
 /** The always-on in-run panels, in a fixed order (iterate ALWAYS_ON_PANELS, never the record). */
-export type AlwaysOnPanel = "status" | "score" | "weapons";
-export const ALWAYS_ON_PANELS: ReadonlyArray<AlwaysOnPanel> = ["status", "score", "weapons"];
+export type AlwaysOnPanel = "status" | "score" | "weapons" | "minimap";
+export const ALWAYS_ON_PANELS: ReadonlyArray<AlwaysOnPanel> = ["status", "score", "weapons", "minimap"];
 
 export interface FootprintBox {
 	readonly corner: HudCorner;
@@ -32,12 +33,14 @@ export interface FootprintBox {
  * Budget boxes of the always-on panels. status is 160 high (not the plan's 130): three label rows, one boost row and
  * one row of owned items (RunItems caps itself at one row) come to 160 (statusEstimate). score is 160 high (not 130):
  * with the endless floor line moved under the combo meter (H4) its estimate is ~154. weapons is 80 high (not 64): the
- * swap hint line, while it shows, puts the compact panel at ~72 (see weaponsEstimate).
+ * swap hint line, while it shows, puts the compact panel at ~72 (see weaponsEstimate). minimap is the corner map
+ * (docs/MINIMAP.md M7, MINIMAP_PANEL = MINIMAP_VIEW.panel: 140 x 140, MD7).
  */
 export const HUD_FOOTPRINT = {
 	status: { corner: "topLeft", maxW: 240, maxH: 160 },
 	score: { corner: "topRight", maxW: 200, maxH: 160 },
 	weapons: { corner: "bottomLeft", maxW: 240, maxH: 80 },
+	minimap: { corner: "bottomRight", maxW: MINIMAP_PANEL.w, maxH: MINIMAP_PANEL.h },
 } as const satisfies Readonly<Record<AlwaysOnPanel, FootprintBox>>;
 
 /** The transient panels, in a fixed order. */
@@ -100,8 +103,15 @@ function tutorialLines(): number[] {
 	return out;
 }
 
-/** Fallback-notice / verdict lines at the bottom right (H6). */
-const VERDICT_BOX = { width: 480, height: 60 } as const;
+/**
+ * Fallback-notice / verdict lines at the bottom right (H6), `edge` reference px above the safe area's bottom: above
+ * the corner minimap (docs/MINIMAP.md M7), its height plus a HUD gap over the minimap's margin.
+ */
+export const VERDICT_BOX = {
+	width: 480,
+	height: 60,
+	edge: HUD_VIEW.margin + MINIMAP_PANEL.h + HUD_VIEW.gap,
+} as const;
 
 export const HUD_TRANSIENT = {
 	bossBar: {
@@ -134,7 +144,7 @@ export const HUD_TRANSIENT = {
 	},
 	verdict: {
 		anchor: "bottomRight",
-		edge: HUD_VIEW.margin,
+		edge: VERDICT_BOX.edge,
 		width: VERDICT_BOX.width,
 		height: VERDICT_BOX.height,
 		when: "a verdict or fallback notice changed (fades after a few seconds)",
@@ -145,8 +155,11 @@ export const HUD_TRANSIENT = {
 export const HUD_CLEAR_ZONE = { x0: 0.25, x1: 0.75, y0: 0.22, y1: 0.78 } as const;
 
 export const HUD_FOOTPRINT_LIMITS = {
-	/** The always-on boxes together cover at most this share of the safe area (HUD scale 100 %). */
-	maxCoverShare: 0.12,
+	/**
+	 * The always-on boxes together cover at most this share of the safe area (HUD scale 100 %). 0.12 until the corner
+	 * minimap (docs/MINIMAP.md MD7, owner 2026-10-27: 140 x 140, cap raised 0.12 -> 0.145).
+	 */
+	maxCoverShare: 0.145,
 } as const;
 
 /**

@@ -6,6 +6,7 @@ import {
 	DEFAULT_HUD_SCALE_PERCENT,
 	DEFAULT_ROOM_EDGES,
 	DEFAULT_HUD_FADE,
+	DEFAULT_MINIMAP,
 	HUD_SCALE_PERCENTS,
 	JUICE_SETTING_KEYS,
 	PlayerDocCache,
@@ -240,6 +241,7 @@ describe("display: room edges (docs/ROOM_EDGES.md RE6)", () => {
 			hudScale: DEFAULT_HUD_SCALE_PERCENT,
 			roomEdges: false,
 			hudFade: DEFAULT_HUD_FADE,
+			minimap: DEFAULT_MINIMAP,
 		});
 	});
 
@@ -274,6 +276,7 @@ describe("display: room edges (docs/ROOM_EDGES.md RE6)", () => {
 			hudScale: 125,
 			roomEdges: true,
 			hudFade: true,
+			minimap: true,
 		});
 		expect(resolveDisplaySettings(decodeSettingsDoc({ v: 2 }).display).roomEdges).toBe(true);
 		expect(resolveDisplaySettings(decodeSettingsDoc({ v: SETTINGS_DOC_V1, juice: {} }).display).roomEdges).toBe(
@@ -322,6 +325,60 @@ describe("display: HUD fade and the 70 % HUD scale (docs/HUD_LAYOUT.md H7, H8)",
 		expect(HUD_SCALE_PERCENTS.includes(70)).toBe(true);
 		expect(resolveDisplaySettings({ hudScale: 70 }).hudScale).toBe(70);
 		expect(sanitizeDisplayOverrides({ hudScale: 75 })).toEqual({});
+	});
+});
+
+describe("display: minimap (docs/MINIMAP.md M10)", () => {
+	it("defaults to On; only Off is stored", () => {
+		expect(DEFAULT_MINIMAP).toBe(true);
+		expect(defaultDisplaySettings().minimap).toBe(true);
+		expect(resolveDisplaySettings(undefined).minimap).toBe(true);
+		expect(sanitizeDisplayOverrides({ minimap: false })).toEqual({ minimap: false });
+		expect(sanitizeDisplayOverrides({ minimap: true })).toEqual({});
+		expect(resolveDisplaySettings({ minimap: false })).toEqual({
+			hudScale: DEFAULT_HUD_SCALE_PERCENT,
+			roomEdges: DEFAULT_ROOM_EDGES,
+			hudFade: DEFAULT_HUD_FADE,
+			minimap: false,
+		});
+	});
+
+	it("round-trips Off through the stored document (still v2)", () => {
+		const overrides: SettingsOverrides = { display: { minimap: false } };
+		const doc = encodeSettingsDoc(overrides);
+		expect(doc).toEqual({ ...EMPTY_DOC, display: { minimap: false } });
+		expect(doc.v).toBe(2);
+		expect(decodeSettingsDoc(doc)).toEqual(overrides);
+		expect(resolveDisplaySettings(decodeSettingsDoc(doc).display).minimap).toBe(false);
+		const all = decodeSettingsDoc(
+			encodeSettingsDoc({ display: { hudScale: 90, roomEdges: false, hudFade: false, minimap: false } }),
+		);
+		expect(all).toEqual({ display: { hudScale: 90, roomEdges: false, hudFade: false, minimap: false } });
+		expect(applySettingsPatch(overrides, { display: { minimap: true } })).toEqual({});
+		expect(sameSettingsOverrides(overrides, { display: { minimap: false } })).toBe(true);
+		expect(sameSettingsOverrides(overrides, { display: { hudFade: false } })).toBe(false);
+	});
+
+	it("ignores junk", () => {
+		for (const junk of [0, 1, "false", "off", "no", {}, [false]] as ReadonlyArray<unknown>) {
+			expect(sanitizeDisplayOverrides({ minimap: junk })).toEqual({});
+		}
+		expect(sanitizeSettingsOverrides({ display: { minimap: "false" } })).toEqual({});
+		expect(decodeSettingsDoc({ ...EMPTY_DOC, display: { minimap: 0, hudScale: 90 } })).toEqual({
+			display: { hudScale: 90 },
+		});
+	});
+
+	it("an older v2 document without the field reads On", () => {
+		const old = { v: 2, juice: {}, controls: {}, audio: {}, display: { roomEdges: false, hudFade: false } };
+		expect(resolveDisplaySettings(decodeSettingsDoc(old).display)).toEqual({
+			hudScale: DEFAULT_HUD_SCALE_PERCENT,
+			roomEdges: false,
+			hudFade: false,
+			minimap: true,
+		});
+		expect(resolveDisplaySettings(decodeSettingsDoc({ v: 2 }).display).minimap).toBe(true);
+		expect(resolveDisplaySettings(decodeSettingsDoc({ v: SETTINGS_DOC_V1, juice: {} }).display).minimap).toBe(true);
 	});
 });
 

@@ -66,6 +66,16 @@ export interface ToastView {
 	readonly until: number;
 }
 
+/** The minimap (docs/MINIMAP.md M8 / M9): set by MinimapController, read by the corner panel and the full map. */
+export interface MapView {
+	/** This floor has a map (a dungeon floor whose map image was created; never the greybox). */
+	readonly available: boolean;
+	/** The full map overlay is open (the `map` toggle). */
+	readonly open: boolean;
+}
+
+const NO_MAP: MapView = { available: false, open: false };
+
 export interface GameState {
 	readonly snapshot: GameSnapshot;
 	/** The last boss seen this run (its corpse may be gone by the time the victory line shows). */
@@ -81,6 +91,7 @@ export interface GameState {
 	readonly toasts: ReadonlyArray<ToastView>;
 	/** A run start is on its way (the ranked `startRun` waits for the server): the menu layer shows "Starting run". */
 	readonly starting: boolean;
+	readonly map: MapView;
 }
 
 const NO_VERDICT: VerdictView = { status: "none" };
@@ -107,6 +118,7 @@ const initialState: GameState = {
 	active: false,
 	toasts: [],
 	starting: false,
+	map: NO_MAP,
 };
 
 export const gameSlice = createProducer(initialState, {
@@ -134,6 +146,7 @@ export const gameSlice = createProducer(initialState, {
 		active: true,
 		toasts: [],
 		starting: false,
+		map: NO_MAP,
 	}),
 	/** The run was left for the menu (run over, Leave run): no run, no HUD; the last verdict stays. */
 	endRun: (state) => ({
@@ -145,7 +158,11 @@ export const gameSlice = createProducer(initialState, {
 		active: false,
 		toasts: [],
 		starting: false,
+		map: NO_MAP,
 	}),
+	/** The minimap's floor state (MinimapController): whether this floor has a map, and the full map toggle. */
+	setMapView: (state, map: MapView) =>
+		state.map.available === map.available && state.map.open === map.open ? state : { ...state, map },
 	setRunStarting: (state, starting: boolean) => (state.starting === starting ? state : { ...state, starting }),
 	/** Adds a toast (the oldest drops past `max`). */
 	pushToast: (state, toast: ToastView, max: number) => {
@@ -171,3 +188,4 @@ export const selectRunInfo = (state: { game: GameState }) => state.game.run;
 export const selectGameActive = (state: { game: GameState }) => state.game.active;
 export const selectToasts = (state: { game: GameState }) => state.game.toasts;
 export const selectRunStarting = (state: { game: GameState }) => state.game.starting;
+export const selectMapView = (state: { game: GameState }) => state.game.map;

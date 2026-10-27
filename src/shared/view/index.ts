@@ -28,6 +28,8 @@
  *                 flow fires once the first-run gate decided and the screen released); preloadStrings.ts: the
  *                 loading screen's string keys (LOADING_STRINGS; its layout: LOADING_VIEW in preloadConfig.ts)
  *   decor/        the decor plan (docs/DECOR.md R3 / R6 / R8): planDecor, decorProfile, fade selection, glow points
+ *   minimap/      the minimap with fog of war (docs/MINIMAP.md M1-M5): map tiles, sight, FogOfWar, the turned map
+ *                 transform, the RGBA8 painter (tunables: MINIMAP_VIEW in minimap/config.ts)
  *
  * Sub-barrels (import from the folder): `shared/view/fx` (the juice layer: hit tracker, hitstop, bars, numbers,
  * particles), `shared/view/audio` (sim events -> theme sound IDs, music), `shared/view/hud` (HUD font token, layout,
@@ -51,6 +53,7 @@ export * from "./roomEdgesConfig";
 export * from "./roomEdges";
 export * from "./roomEdgeState";
 export * from "./decor";
+export * from "./minimap";
 export * from "./watch";
 export * from "./latencyProbeConfig";
 export * from "./latencyProbe";

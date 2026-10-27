@@ -8,7 +8,8 @@
  * (enemy.dummy, the port sfx, breakables and the decor fx colour roles; no decor art: decor is optional; the port
  * audio IDs, ambience beds and fx colour roles of docs/FX_AUDIO.md; no fx art: sprite effects are optional; the
  * Demon Lord, boss.demonlord, of docs/BOSS_DEMONLORD.md; the boost drops of docs/BOOSTS.md B5: gems, colour roles,
- * strings and silent sounds; the room-edge colour roles of docs/ROOM_EDGES.md RE4).
+ * strings and silent sounds; the room-edge colour roles of docs/ROOM_EDGES.md RE4; the minimap colour roles and
+ * strings of docs/MINIMAP.md M6).
  *
  * To replace art or audio later, change an entry's kind and paste the uploaded asset ID, e.g.
  *   "enemy.sniper": { kind: "spritesheet", assetId: "rbxassetid://<n>", frameW: 16, frameH: 16, pivot: { x: 8, y: 15 }, animations: { ... } },
@@ -100,6 +101,20 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		"roomEdge.safe": "#6a655c",
 		"roomEdge.waiting": "#a39e94",
 		"roomEdge.live": "#f4f1ea",
+		// Roblox port (docs/MINIMAP.md M6): the minimap, UI colours over uiPanel. Muted tiles (walls are the outline the map
+		// reads by, 3.6:1 on uiPanel; the floor recedes, 1.4:1), bright markers: self / enemy / boss / stairs / boost
+		// >= 3:1 on minimap.floor, on uiPanel and on every room floor tinted toward roomEdge.* (MINIMAP_ROOM_TINT_MIX). The
+		// enemy dot is a light crimson (#ff2e2e fell to 2.5:1 on a live room's floor, the tint being the near-white
+		// roomEdge.live), >= 40 CIE76 from every class colour, the arrow and the boost gold.
+		"minimap.floor": "#36342f",
+		"minimap.wall": "#7a7466",
+		"minimap.pool": "#2c4a63",
+		"minimap.frontier": "#8f8462",
+		"minimap.self": "#f4f1ea",
+		"minimap.enemy": "#ff5880",
+		"minimap.boss": "#ff9a5a",
+		"minimap.stairs": "#7fd6ff",
+		"minimap.boost": "#ffc83d",
 	},
 	biomes: {
 		"biome.1": {
@@ -404,6 +419,7 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		"options.display.hudScale": "HUD scale",
 		"options.display.roomEdges": "Room edges",
 		"options.display.hudFade": "HUD fade",
+		"options.display.minimap": "Minimap",
 		"options.action.moveUp": "Move up",
 		"options.action.moveDown": "Move down",
 		"options.action.moveLeft": "Move left",
@@ -420,11 +436,14 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		"options.action.skill4": "Skill 4",
 		"options.action.restart": "Restart",
 		"options.action.leaderboard": "Leaderboards",
+		"options.action.map": "Map",
 		// ---- end of options.*
 		"hud.seed": "seed {seed}",
 		"hud.floor": "Floor {floor} · Depth {depth}",
 		"hud.info": "{title} · {place} · {seed} · {dungeon}",
 		"hud.items.more": "+{count}",
+		"hud.map.title": "Map",
+		"hud.map.hint": "{key} map",
 		"hud.notice.fallback": "enemies unavailable ({reason}); playing the floor without enemies",
 		"hud.restartAlt": "or {key}",
 		"hud.pause.resume": "Resume",

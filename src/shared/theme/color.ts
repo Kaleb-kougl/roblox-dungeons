@@ -37,6 +37,29 @@ export function toHex(rgb: Rgb): HexColor {
 	return "#%02x%02x%02x".format(h(rgb.r), h(rgb.g), h(rgb.b)) as HexColor;
 }
 
+/**
+ * Roblox port (docs/MINIMAP.md): one channel moved `m` (0..1) of the way from `a` toward `b`, in whatever unit both are
+ * in. The minimap painter (shared/view/minimap paint.ts) mixes its 0..1 channels with it and the validator its tinted
+ * floors (mixRgb), so the two agree on every pixel.
+ */
+export function mixChannel(a: number, b: number, m: number): number {
+	return a + (b - a) * m;
+}
+
+/** A 0..1 channel to a 0..255 byte, rounded half up and clamped (the minimap painter's rule). */
+export function channelToByte(v: number): number {
+	return math.clamp(math.floor(v * CHANNEL_MAX + 0.5), 0, CHANNEL_MAX);
+}
+
+/**
+ * Roblox port (docs/MINIMAP.md): `a` mixed `m` toward `b` exactly as the minimap painter writes it (0..1 channels,
+ * mixChannel, then channelToByte), so a validated tinted floor is the pixel the map draws.
+ */
+export function mixRgb(a: Rgb, b: Rgb, m: number): Rgb {
+	const mix = (x: number, y: number) => channelToByte(mixChannel(x / CHANNEL_MAX, y / CHANNEL_MAX, m));
+	return { r: mix(a.r, b.r), g: mix(a.g, b.g), b: mix(a.b, b.b) };
+}
+
 /** WCAG 2.x relative luminance of an sRGB color, 0 (black) .. 1 (white). */
 export function relativeLuminance(rgb: Rgb): number {
 	const lin = (c: number) => {

@@ -7,9 +7,12 @@
 export * from "./types";
 export * from "./contract";
 export {
+	channelToByte,
 	colorDifference,
 	contrastRatio,
 	isHexColor,
+	mixChannel,
+	mixRgb,
 	parseHex,
 	relativeLuminance,
 	toHex,
@@ -30,6 +33,7 @@ export {
 	isGameplayKey,
 	isStringKey,
 	juiceContrastReport,
+	minimapReport,
 	roomEdgeReport,
 	validateManifest,
 	type BoostColorEntry,
@@ -39,6 +43,7 @@ export {
 	type EnemyOutlineEntry,
 	type FxColorEntry,
 	type JuiceContrastEntry,
+	type MinimapEntry,
 	type RoomEdgeEntry,
 	type ValidateOptions,
 } from "./validate";

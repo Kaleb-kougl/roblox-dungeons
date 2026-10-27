@@ -19,6 +19,7 @@ import { SFX } from "shared/view/audio";
 import { HUD_STRINGS, HUD_VIEW, LEADERBOARD_STRINGS, PAUSE_HINT } from "shared/view/hud";
 import { MENU_STRINGS, pauseItems, pauseOverlayShown, type PauseItem } from "shared/view/menu";
 import { useHudActions, type HudActions } from "./actions";
+import { PauseMap } from "./FullMapOverlay";
 import { MenuButton, Panel, Row, Text } from "./primitives";
 import { RunInfoLine } from "./RunInfoLine";
 
@@ -82,8 +83,8 @@ const SKIP_CONFIRM: ConfirmSpec = {
  * tutorial?"; Skip / Keep playing). With a gamepad the selection starts on the first button (Cancel / Keep playing
  * in a confirm). Under the buttons, the weapon-swap key (the HUD's swap hint hides after a few seconds,
  * docs/HUD_LAYOUT.md H5), the run's info line and any fallback notice (RunInfoLine: docs/HUD_LAYOUT.md H6,
- * the only place they show while a run is on). Hidden while a panel is open and once the run is over (the run-over
- * panel has the exits).
+ * the only place they show while a run is on). Solo: the full map left of the menu (PauseMap, docs/MINIMAP.md MD5).
+ * Hidden while a panel is open and once the run is over (the run-over panel has the exits).
  */
 export function PauseOverlay() {
 	const s = useSelector(selectSnapshot);
@@ -189,6 +190,7 @@ export function PauseOverlay() {
 			BackgroundTransparency={coop ? 1 : HUD_VIEW.overlayTransparency}
 			BorderSizePixel={0}
 		>
+			{coop ? undefined : <PauseMap key="Map" />}
 			<Panel
 				position={UDim2.fromScale(HALF, HALF)}
 				anchor={new Vector2(HALF, HALF)}
