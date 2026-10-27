@@ -1,5 +1,6 @@
 // Asset preloading, the pure plan (docs/PRELOAD.md P2): tiers by longest matching prefix, order, cross-tier dedupe,
-// the loading screen's release / Skip boundaries, PreloadProgress and the boss floor push.
+// the loading screen's release / Skip boundaries, PreloadProgress and the boss floor push; LoadWaiters (the stage
+// loader's assets wait, docs/STAGE_LOADER.md SL6).
 import { describe, expect, it } from "@rbxts/jest-globals";
 import { BOSS_ACT1_KIND, BOSS_DEMONLORD_KIND } from "shared/dungeon";
 import {
@@ -14,6 +15,7 @@ import { VALE_MANIFEST } from "shared/theme/packs/vale";
 import {
 	JoinGate,
 	LOADING_STRINGS,
+	LoadWaiters,
 	PRELOAD,
 	PRELOAD_BOSS_IDS,
 	PreloadProgress,
@@ -299,5 +301,29 @@ describe("the loading screen's strings", () => {
 			for (const key of keys) expect([key, pack.hasString(key)]).toEqual([key, true]);
 			expect(pack.str(LOADING_STRINGS.progress, { done: 23, total: 40 })).toBe("Loading 23 / 40");
 		}
+	});
+});
+
+describe("LoadWaiters", () => {
+	it("fires at once when every id resolved, else when the last one does, in wait order", () => {
+		const w = new LoadWaiters<string>();
+		expect(w.wait([], "empty")).toBe(true);
+		expect(w.resolve("a")).toEqual([]);
+		expect(w.wait(["a"], "a only")).toBe(true);
+		expect(w.wait(["a", "b", "c"], "first")).toBe(false);
+		expect(w.wait(["c"], "second")).toBe(false);
+		expect(w.open()).toBe(2);
+		expect(w.resolve("b")).toEqual([]);
+		expect(w.resolve("c")).toEqual(["first", "second"]);
+		expect(w.open()).toBe(0);
+		expect(w.isResolved("b")).toBe(true);
+		expect(w.isResolved("d")).toBe(false);
+		expect(w.resolve("c")).toEqual([]); // resolved twice: nothing waits any more
+	});
+
+	it("a repeated id waits once", () => {
+		const w = new LoadWaiters<number>();
+		expect(w.wait(["x", "x"], 1)).toBe(false);
+		expect(w.resolve("x")).toEqual([1]);
 	});
 });

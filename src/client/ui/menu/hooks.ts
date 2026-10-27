@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "@rbxts/react";
 import { useSelector } from "@rbxts/react-reflex";
 import { GuiService, RunService } from "@rbxts/services";
-import { selectAnyPanelOpen, selectInputDevice, selectServerPlayers } from "client/store";
+import { selectAnyPanelOpen, selectInputDevice, selectServerPlayers, selectStageCovered } from "client/store";
 import { str } from "client/ui/theme";
 import { MENU_VIEW, type NameOf, type StringSpec } from "shared/view/menu";
 
@@ -40,17 +40,20 @@ export function useClock(active: boolean): number {
 
 /**
  * With a gamepad, selects `ref`'s button whenever the screen (re)appears: on mount, when `key` changes, and when a
- * panel over it (juice settings, leaderboards) closes. Clears the selection it set on cleanup.
+ * panel over it (juice settings, leaderboards) or the stage loader's cover (docs/STAGE_LOADER.md: a lobby start's
+ * server wait, a party start's first frames) goes. Never under that cover (pad A would press a hidden button). Clears
+ * the selection it set on cleanup.
  */
 export function useGamepadFocus(ref: React.RefObject<TextButton>, key: string, enabled = true): void {
 	const device = useSelector(selectInputDevice);
 	const panelOpen = useSelector(selectAnyPanelOpen);
+	const covered = useSelector(selectStageCovered);
 	useEffect(() => {
-		if (!enabled || panelOpen || device !== "gamepad") return;
+		if (!enabled || panelOpen || covered || device !== "gamepad") return;
 		const button = ref.current;
 		if (button !== undefined) GuiService.SelectedObject = button;
 		return () => {
 			if (GuiService.SelectedObject === button) GuiService.SelectedObject = undefined;
 		};
-	}, [device, panelOpen, key, enabled]);
+	}, [device, panelOpen, covered, key, enabled]);
 }

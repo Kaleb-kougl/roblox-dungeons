@@ -7,6 +7,7 @@ import {
 	selectMenuScreen,
 	selectMyLobbyId,
 	selectSnapshot,
+	selectStageCovered,
 	type ClientState,
 } from "client/store";
 import type { LobbyVisibility } from "shared/lobby";
@@ -237,10 +238,14 @@ export class MenuController implements OnStart {
 		}
 	}
 
-	/** Co-op only (a solo run pauses through the sim's PAUSE bit): the pause key toggles the party overlay. */
+	/**
+	 * Co-op only (a solo run pauses through the sim's PAUSE bit): the pause key toggles the party overlay. Not under the
+	 * stage loader's cover (docs/STAGE_LOADER.md SL5: pause input is ignored while covered).
+	 */
 	private toggleCoopOverlay(state: ClientState): void {
 		const g = state.game;
 		if (!g.active || !g.run.coop || g.snapshot.outcome !== "playing") return;
+		if (selectStageCovered(state)) return;
 		if (state.menu.nav.screen !== "none" || selectAnyPanelOpen(state)) return;
 		clientStore.setCoopOverlay(!state.menu.coopOverlay);
 	}

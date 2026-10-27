@@ -217,8 +217,8 @@ export class TutorialController implements OnStart {
 			return;
 		}
 		// Paused (P, the Roblox menu, a panel): nothing happens in the run, and a click on a menu button must not
-		// count as the objective card's Continue.
-		if (live.isPaused() || this.sim.isFrozen()) return;
+		// count as the objective card's Continue. Held under the stage loader's run-start cover: not started yet.
+		if (live.isPaused() || this.sim.isFrozen() || this.sim.isHeldByLoader()) return;
 
 		const view = director.update({
 			state: live.state,

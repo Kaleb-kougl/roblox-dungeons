@@ -36,6 +36,7 @@ Record every ported module in `PROVENANCE.md` (ported module, source path, sourc
 | `docs/FEEL.md` | Game feel pass (hurt flash and jolt, hit flash / hold / push, squash & stretch, roll afterimages, low-health pulse, screen shake setting): plan, tasks J1-J12, decisions JD1-JD13 |
 | `docs/MINIMAP.md` | Minimap with fog of war (corner map + full-map toggle, sight + whole-room reveal, shared party map): plan, tasks M0-M12, decisions MD1-MD14 |
 | `docs/PRELOAD.md` | Asset preloading (join loading screen for the core tier, background queue for bosses / later music): plan, tasks P0-P7, decisions D1-D6 |
+| `docs/STAGE_LOADER.md` | Stage loader (cover while a floor generates and loads: run start, stairwell card, pre-generation during the boon draft, deferred view rebuilds): plan, tasks SL0-SL8, decisions SD1-SD6 |
 | `docs/INVITES.md` | Roblox friend invites (`PromptGameInvite` + LaunchData into a lobby) and Roblox Party grouping: plan, tasks I0-I9, decisions ID1-ID7 |
 
 Decision log (deviations from `PLAN.md`):
@@ -210,6 +211,14 @@ Decision log (deviations from `PLAN.md`):
   Settings: `DisplaySettings.minimap` (default On, only Off stored, doc stays v2). Input: a rebindable non-sim
   `GameAction` `map` (M / D-pad left; a stored override on a new action's default makes the new action yield instead
   of dropping overrides); the KV_Debug boost-drop key moved M -> Semicolon (MD11). Studio check and the M0 spike pending.
+- **Stage loader (docs/STAGE_LOADER.md).** Presentation only (no sim, dungeon, lockstep, hash, replay or fixture
+  change). Run starts and floor changes are covered (`StageController`, loadOrder 2, `StageCard` at the loading
+  screen's display order 30, drawn in the event frame through React bindings); SimController defers its run-start /
+  floor-change work one item per frame behind the cover (build the run, listeners, pre-gen) and holds a solo run start
+  (no tick, nothing recorded) until the reveal. Floor n + 1 is pre-generated through `ctx.endlessFloor` during floor
+  n's boon draft (floors are pure in the run seed, so the cached world is the one the sim would build). Co-op is never
+  held and its client is still built in the `partyRunStarted` frame. Input is neutral under the cover and through the
+  fade. Five required strings `stage.*`; the MenuLayer "Starting run..." panel and `game.starting` are gone.
 - **Roblox invites and parties (docs/INVITES.md).** No sim, dungeon, lockstep, hash, replay or fixture change. Lobby
   invites gain `source` (`server` / `platform` / `party`): `Lobbies.platformInvites` records the friends picked in
   Roblox's invite prompt (absent players only, 15 min, cap 20 per member, apart from the in-server 60 s / 4) and

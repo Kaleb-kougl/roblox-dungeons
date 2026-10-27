@@ -334,16 +334,26 @@ export class AudioController implements OnStart {
 	}
 
 	/**
+	 * The current floor's beds (its biome's music and ambience, the tutorial's track in a tutorial run): what `preload`
+	 * requests on the front lane at every run start and floor change, and what the stage loader waits for under its
+	 * cover (docs/STAGE_LOADER.md SL6; StageController). Appended to `out` (returned); the biome is the store's RunInfo.
+	 */
+	floorBeds(ctx: RunContext, out: ContentRef[] = []): ContentRef[] {
+		const biome = clientStore.getState().game.run.biome;
+		if (biome >= 1 && biome <= BIOME_MUSIC_COUNT) this.clipsOf(biomeMusic(biome), out);
+		this.clipsOf(biomeAmbience(biome), out);
+		if (ctx.world === TUTORIAL_WORLD_KIND) this.clipsOf(MUSIC.tutorial, out);
+		return out;
+	}
+
+	/**
 	 * Preloads the run's sound effects (on a run start) and the floor's music / ambience (a front-lane request to
 	 * PreloadController), and the boss track (back lane). Each content id is fetched once per session.
 	 */
 	private preload(ctx: RunContext, runStart: boolean): void {
 		const refs: ContentRef[] = [];
 		if (runStart) for (const id of ALL_SFX) this.clipsOf(id, refs);
-		const biome = clientStore.getState().game.run.biome;
-		if (biome >= 1 && biome <= BIOME_MUSIC_COUNT) this.clipsOf(biomeMusic(biome), refs);
-		this.clipsOf(biomeAmbience(biome), refs);
-		if (ctx.world === TUTORIAL_WORLD_KIND) this.clipsOf(MUSIC.tutorial, refs);
+		this.floorBeds(ctx, refs);
 		const label = runStart ? `run ${ctx.counter} audio` : `floor ${ctx.floor} audio`;
 		if (refs.size() > 0) this.preloader.request(refs, "front", label);
 		// The boss track is not needed until a boss floor: the back lane, so it never jumps unfinished core art.
