@@ -138,10 +138,16 @@ export function LeaderboardPanel(props: { localUserId: number }) {
 				name="Leaderboards"
 			>
 				<uistroke Thickness={1} Color={role("uiAccent")} />
-				<Text order={1} size={HUD_VIEW.titleText} color="uiAccent" text={str(LEADERBOARD_STRINGS.title)} />
+				<Text
+					fill={true}
+					order={1}
+					size={HUD_VIEW.titleText}
+					color="uiAccent"
+					text={str(LEADERBOARD_STRINGS.title)}
+				/>
 				<Row order={2}>{tabs}</Row>
 				{status !== "" ? (
-					<Text order={3} size={HUD_VIEW.smallText} color="uiTextDim" text={status} />
+					<Text fill={true} order={3} size={HUD_VIEW.smallText} color="uiTextDim" text={status} />
 				) : undefined}
 				{rows.size() > 0 ? (
 					<scrollingframe
@@ -166,7 +172,7 @@ export function LeaderboardPanel(props: { localUserId: number }) {
 						))}
 					</scrollingframe>
 				) : undefined}
-				<Text order={5} size={HUD_VIEW.smallText} color="uiText" text={mineLine(view)} />
+				<Text fill={true} order={5} size={HUD_VIEW.smallText} color="uiText" text={mineLine(view)} />
 				<MenuButton
 					order={6}
 					name="Close"
@@ -177,6 +183,7 @@ export function LeaderboardPanel(props: { localUserId: number }) {
 					}}
 				/>
 				<Text
+					fill={true}
 					order={7}
 					size={HUD_VIEW.smallText}
 					color="uiTextDim"

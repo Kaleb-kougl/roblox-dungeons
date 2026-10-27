@@ -133,7 +133,7 @@ export function LobbyRoom() {
 	const candidates = inviting ? inviteCandidates(lobby.players, view, me, m.canInvite) : [];
 	const invitePanel = inviting ? (
 		<Panel position={new UDim2()} anchor={new Vector2()} order={7} width={MENU_VIEW.screenWidth - HUD_VIEW.pad * 4}>
-			<Text order={1} color="uiAccent" text={str(LOBBY_STRINGS.inviteTitle)} />
+			<Text fill={true} order={1} color="uiAccent" text={str(LOBBY_STRINGS.inviteTitle)} />
 			<ScrollList order={2} height={MENU_VIEW.inviteListHeight}>
 				{candidates.size() > 0 ? (
 					candidates.map((c, i) => (
@@ -154,7 +154,7 @@ export function LobbyRoom() {
 						</ListRow>
 					))
 				) : (
-					<Text key="None" order={1} color="uiTextDim" text={str(LOBBY_STRINGS.inviteNone)} />
+					<Text fill={true} key="None" order={1} color="uiTextDim" text={str(LOBBY_STRINGS.inviteNone)} />
 				)}
 			</ScrollList>
 		</Panel>
@@ -168,9 +168,9 @@ export function LobbyRoom() {
 			padding={HUD_VIEW.pad * 2}
 			name="LobbyRoom"
 		>
-			<Text order={1} size={HUD_VIEW.titleText} color="uiAccent" text={spec(m.title)} />
-			<Text order={2} color={m.inRun ? "uiTextDim" : "uiText"} text={spec(m.status)} />
-			<Text order={3} size={HUD_VIEW.smallText} color="uiTextDim" text={spec(m.membersLine)} />
+			<Text fill={true} order={1} size={HUD_VIEW.titleText} color="uiAccent" text={spec(m.title)} />
+			<Text fill={true} order={2} color={m.inRun ? "uiTextDim" : "uiText"} text={spec(m.status)} />
+			<Text fill={true} order={3} size={HUD_VIEW.smallText} color="uiTextDim" text={spec(m.membersLine)} />
 			<ScrollList order={4} height={MENU_VIEW.listHeight}>
 				{memberRows}
 			</ScrollList>
@@ -241,6 +241,7 @@ export function LobbyRoom() {
 			</Row>
 			{invitePanel}
 			<Text
+				fill={true}
 				order={8}
 				size={HUD_VIEW.smallText}
 				color="uiTextDim"

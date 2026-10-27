@@ -29,6 +29,7 @@ export function ObjectiveCard() {
 			name="ObjectiveCard"
 		>
 			<Text
+				fill={true}
 				order={1}
 				size={HUD_VIEW.bigText}
 				color="uiAccent"
@@ -44,6 +45,7 @@ export function ObjectiveCard() {
 			/>
 			{promptKey !== "" ? (
 				<Text
+					fill={true}
 					order={3}
 					size={HUD_VIEW.smallText}
 					color="uiTextDim"

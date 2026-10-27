@@ -68,6 +68,7 @@ function SpectateBarBody(props: { name: string; position: number; count: number 
 				name="Spectate"
 			>
 				<Text
+					fill={true}
 					order={1}
 					color={SPECTATE_BAR_VIEW.nameRole}
 					align={Enum.TextXAlignment.Center}
@@ -79,6 +80,7 @@ function SpectateBarBody(props: { name: string; position: number; count: number 
 				/>
 				{spectateHintShown(props.position, props.count) ? (
 					<Text
+						fill={true}
 						order={2}
 						size={HUD_VIEW.smallText}
 						color={SPECTATE_BAR_VIEW.hintRole}
@@ -87,6 +89,7 @@ function SpectateBarBody(props: { name: string; position: number; count: number 
 					/>
 				) : undefined}
 				<Text
+					fill={true}
 					order={3}
 					size={HUD_VIEW.smallText}
 					color={SPECTATE_BAR_VIEW.backRole}

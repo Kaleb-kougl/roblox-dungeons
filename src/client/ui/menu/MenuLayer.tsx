@@ -60,7 +60,7 @@ export function MenuLayer() {
 			{body === undefined && active && !inTutorial ? <InviteBadge key="InviteBadge" /> : undefined}
 			{body === undefined && starting ? (
 				<Panel position={UDim2.fromScale(HALF, HALF)} anchor={new Vector2(HALF, HALF)} name="Starting">
-					<Text order={1} color="uiAccent" text={str(MENU_STRINGS.starting)} />
+					<Text fill={true} order={1} color="uiAccent" text={str(MENU_STRINGS.starting)} />
 				</Panel>
 			) : undefined}
 			<NoticeToasts key="Notices" />
