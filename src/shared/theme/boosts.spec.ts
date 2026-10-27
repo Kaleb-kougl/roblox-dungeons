@@ -36,6 +36,7 @@ import { MISSING_COLOR } from "./core";
 import { ThemePack, hexToColor3 } from "./pack";
 import { THEME_PACKS } from "./packs";
 import { PLACEHOLDER_MANIFEST } from "./packs/placeholder";
+import { VALE_ASSET_IDS } from "./packs/vale/assetIds";
 import { PLACEHOLDER_VISUALS, pxToStuds } from "./placeholders";
 import { COLOR_ROLES } from "./types";
 import { deepClone, sortedKeys, startsWith, type Obj } from "./util";
@@ -172,7 +173,7 @@ describe("boosts: placeholder pack (and every bundled pack)", () => {
 		}
 	});
 
-	it("gives distinct colours, inherited by every bundled pack", () => {
+	it("gives distinct colours, inherited by every bundled pack (vale draws its art once the file has an ID)", () => {
 		for (const k of BOOST_KINDS) {
 			expect([k, PLACEHOLDER_MANIFEST.colors[boostId(k)]]).toEqual([k, PLACEHOLDER_BOOST_HEX[k]]);
 			for (const other of BOOST_KINDS) {
@@ -184,7 +185,14 @@ describe("boosts: placeholder pack (and every bundled pack)", () => {
 		for (const id of sortedKeys(THEME_PACKS)) {
 			for (const k of BOOST_KINDS) {
 				expect([id, k, THEME_PACKS[id].colors[boostId(k)]]).toEqual([id, k, PLACEHOLDER_BOOST_HEX[k]]);
-				expect([id, k, THEME_PACKS[id].assets[boostId(k)]?.kind]).toEqual([id, k, "placeholder"]);
+				// The vale pack switches a kind to its Lords of Pain image once boost-<kind>.png has an ID (BOOST_ART.md BA4);
+				// every other bundled pack keeps the placeholder gem.
+				const uploaded = id === "vale" && VALE_ASSET_IDS[`boost-${k}.png`] !== undefined;
+				expect([id, k, THEME_PACKS[id].assets[boostId(k)]?.kind]).toEqual([
+					id,
+					k,
+					uploaded ? "image" : "placeholder",
+				]);
 			}
 		}
 	});

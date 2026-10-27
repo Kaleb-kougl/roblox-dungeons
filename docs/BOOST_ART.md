@@ -14,7 +14,7 @@ decor effects `decor.fx.glow` / `decor.fx.glint`) resolve to in the vale pack ch
 
 BA1-BA3 are done headlessly (atlas entries, theme, validator, vale pack, gems out of decor; the renderer's halo, beam,
 glint and pickup flash in `BoostDropRenderController`, pure half in `shared/view/boosts/art.ts`; see "As built" and §3).
-Open: BA4 (upload the five new PNGs), BA5 (Studio), BA6. Owner decisions are under "Decisions"; the
+BA4 done (the five PNGs uploaded 2026-10-26, IDs in `assetIds.ts`: the vale pack now draws the drops' art). Open: BA5 (Studio), BA6. Owner decisions are under "Decisions"; the
 rest are recommended defaults (BA-P1..P6). See "As built (BA1, BA2)" for what differs from the plan text.
 
 ## As built (BA1, BA2)
@@ -161,10 +161,10 @@ so nothing was swapped; the kind left the contract too.
 - [x] **BA3. Renderer.** (code-complete 2026-10-26; Studio check in BA5; as built in §3) Halo, beam and glint layers in `BoostDropRenderController`, `BOOST_VIEW` tunables, reduced
   motion. Pure helpers (halo pulse, beam alpha, glint phase per slot) in `shared/view/boosts` with specs.
   → Verify: `npm run verify`; `test:only -- view`.
-- [ ] **BA4. Upload.** Upload the five new PNGs (`boost-fury.png`, `boost-quickstep.png`, `boost-frenzy.png`,
+- [x] **BA4. Upload.** Upload the five new PNGs (`boost-fury.png`, `boost-quickstep.png`, `boost-frenzy.png`,
   `boost-aegis.png`, `ui-marker-boost.png`; the decor atlas is unchanged and its halo / glint are already uploaded),
   paste the ids into `packs/vale/assetIds.ts`.
-  → Verify: `check:assets`; vale.spec sees every boost kind with art.
+  → Verify: `check:assets`; vale.spec sees every boost kind with art. **Done** 2026-10-26: `theme/boosts.spec.ts` now expects vale to draw `image` art for each kind whose file has an ID.
 - [ ] **BA5. Studio check.** `KV_Debug`, M four times on each biome floor (1-5): each drop reads at a glance next to
   bullets, decor and the pedestal; the stack blinks and fades together; pickup glint; reduced motion still; phone
   emulator size; 4-player co-op with four drops at once (fps, no overlap mess).
