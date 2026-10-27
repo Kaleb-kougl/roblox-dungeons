@@ -137,7 +137,7 @@ describe("HUD helpers", () => {
 		const t = toastFor("boost", 3);
 		expect(t).toEqual({ key: "hud.toast.boost", nameKey: "boost.aegis.name", descKey: "boost.aegis.desc" });
 		expect(pack.str(t.key, { name: pack.str(t.nameKey!), desc: pack.str(t.descKey!) })).toBe(
-			"Aegis: +1 armor pip for 15 s or one hit",
+			"Aegis: +1 armor pip for 45 s or one hit",
 		);
 		expect(toastFor("boost", 0).nameKey).toBe("boost.fury.name");
 		expect(warnings).toEqual([]);

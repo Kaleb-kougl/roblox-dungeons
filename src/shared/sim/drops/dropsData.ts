@@ -23,10 +23,10 @@ export interface BoostDef {
 
 /** Every boost, by Boost index. APPEND ONLY. */
 export const BOOSTS: ReadonlyArray<BoostDef> = [
-	{ id: "boost.fury", weight: 3, seconds: 10 },
-	{ id: "boost.quickstep", weight: 3, seconds: 10 },
-	{ id: "boost.frenzy", weight: 3, seconds: 10 },
-	{ id: "boost.aegis", weight: 2, seconds: 15 },
+	{ id: "boost.fury", weight: 3, seconds: 30 },
+	{ id: "boost.quickstep", weight: 3, seconds: 30 },
+	{ id: "boost.frenzy", weight: 3, seconds: 30 },
+	{ id: "boost.aegis", weight: 2, seconds: 45 },
 ];
 export const BOOST_COUNT = BOOSTS.size();
 

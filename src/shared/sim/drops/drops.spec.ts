@@ -308,7 +308,7 @@ describe("drops: opt-in state and hash", () => {
 		expect(DROP_INELIGIBLE_ARCHETYPES.includes(DUMMY_KIND)).toBe(true);
 		expect(BOOST_TOTAL_WEIGHT).toBe(11);
 		expect(BOOSTS.map((b) => b.id)).toEqual(["boost.fury", "boost.quickstep", "boost.frenzy", "boost.aegis"]);
-		expect([boostTicks(Boost.FURY), boostTicks(Boost.AEGIS), DROP_GROUND_TICKS]).toEqual([600, 900, 600]);
+		expect([boostTicks(Boost.FURY), boostTicks(Boost.AEGIS), DROP_GROUND_TICKS]).toEqual([1800, 2700, 600]);
 		const t = guaranteedDropsConfig([{ floor: 1, room: 2, kind: Boost.FURY }]);
 		expect([t.chancePercent, t.pityKills, t.chanceByArchetype.size(), t.groundTicks]).toEqual([0, 0, 0, 600]);
 	});

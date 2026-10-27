@@ -201,10 +201,10 @@ describe("boosts: placeholder pack (and every bundled pack)", () => {
 		const s = PLACEHOLDER_MANIFEST.strings;
 		expect(BOOST_KINDS.map((k) => s[boostStringKey(k, "name")])).toEqual(["Fury", "Quickstep", "Frenzy", "Aegis"]);
 		expect(BOOST_KINDS.map((k) => s[boostStringKey(k, "desc")])).toEqual([
-			"+50% damage for 10 s",
-			"+30% walk speed for 10 s",
-			"30% faster attacks for 10 s",
-			"+1 armor pip for 15 s or one hit",
+			"+50% damage for 30 s",
+			"+30% walk speed for 30 s",
+			"30% faster attacks for 30 s",
+			"+1 armor pip for 45 s or one hit",
 		]);
 		// icon labels: 3 characters like the boons' / relics' / curses', none of theirs reused
 		const others = new Set<string>();
@@ -220,7 +220,7 @@ describe("boosts: placeholder pack (and every bundled pack)", () => {
 		const pack = new ThemePack(PLACEHOLDER_MANIFEST, { warn: sink().warn });
 		const fury = pack.boost("fury");
 		expect(pack.str(BOOST_TOAST_KEY, { name: pack.str(fury.nameKey), desc: pack.str(fury.descKey) })).toBe(
-			"Fury: +50% damage for 10 s",
+			"Fury: +50% damage for 30 s",
 		);
 		// The tutorial's boost lesson is a step (docs/BOOSTS.md B9): a prompt per device, no callout any more.
 		for (const d of ["keyboard", "gamepad", "touch"]) {

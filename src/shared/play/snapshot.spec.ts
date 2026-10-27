@@ -106,8 +106,8 @@ describe("takeSnapshot: boost drops (docs/BOOSTS.md B7)", () => {
 		bp.ticks[Boost.FURY] = 3 * SIM_HZ + 1; // 3.0167 s -> 3.1
 		const s = takeSnapshot(st, EXTRAS);
 		expect(s.boosts).toEqual([
-			{ kind: Boost.FURY, secondsLeft: 3.1, fraction: 31 / 100 },
-			{ kind: Boost.AEGIS, secondsLeft: 15, fraction: 1 },
+			{ kind: Boost.FURY, secondsLeft: 3.1, fraction: 31 / ((boostTicks(Boost.FURY) * 10) / SIM_HZ) },
+			{ kind: Boost.AEGIS, secondsLeft: boostTicks(Boost.AEGIS) / SIM_HZ, fraction: 1 },
 		]);
 		expect(s.aegisPips).toBe(1);
 	});

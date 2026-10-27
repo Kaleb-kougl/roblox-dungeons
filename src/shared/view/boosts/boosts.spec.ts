@@ -258,16 +258,20 @@ describe("boosts: BoostFrameEvents (every tick of a frame)", () => {
 describe("boosts: HUD entries", () => {
 	it("rounds seconds up to tenths and draws the bar in the same steps", () => {
 		const full = boostTicks(Boost.FURY);
+		const ticksPerQuantum = SIM_HZ / BOOST_VIEW.secondsQuantum;
+		const q = full / ticksPerQuantum; // tenths in a full boost (300 for Fury's 30 s)
 		expect(boostHudEntry({ kind: 0, ticksLeft: full, totalTicks: full })).toEqual({
 			kind: 0,
-			secondsLeft: 10,
+			secondsLeft: q / BOOST_VIEW.secondsQuantum,
 			fraction: 1,
 		});
-		expect(boostHudEntry({ kind: 0, ticksLeft: full - 1, totalTicks: full }).secondsLeft).toBe(10);
-		const e = boostHudEntry({ kind: 0, ticksLeft: full - 6, totalTicks: full });
-		expect([e.secondsLeft, e.fraction]).toEqual([9.9, 0.99]);
+		expect(boostHudEntry({ kind: 0, ticksLeft: full - 1, totalTicks: full }).secondsLeft).toBe(
+			q / BOOST_VIEW.secondsQuantum,
+		);
+		const e = boostHudEntry({ kind: 0, ticksLeft: full - ticksPerQuantum, totalTicks: full });
+		expect([e.secondsLeft, e.fraction]).toEqual([(q - 1) / BOOST_VIEW.secondsQuantum, (q - 1) / q]);
 		expect(boostHudEntry({ kind: 0, ticksLeft: 1, totalTicks: full }).secondsLeft).toBe(0.1);
-		// every tick of a 10 s boost: at most 100 distinct values, so the HUD re-renders at most 10 times a second
+		// every tick of a boost: one value per tenth, so the HUD re-renders at most 10 times a second
 		const seen = new Set<number>();
 		for (let t = 1; t <= full; t++)
 			seen.add(boostHudEntry({ kind: 0, ticksLeft: t, totalTicks: full }).secondsLeft);

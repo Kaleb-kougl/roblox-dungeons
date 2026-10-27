@@ -198,7 +198,7 @@ Critical path: BA0 -> BA1 -> BA2 -> BA3 -> BA4 -> BA5. BA6 any time after BA3.
 - **Readability**: the props are small (15 px) and dark. The halo and beam carry the colour; BA5 checks every biome,
   and `haloTiles` / `beamHeightTiles` are the knobs.
 - **Gold reads as currency**: there is no gold in the game, so players may expect a counter. The toast
-  (`Fury: +50% damage for 10 s`) and the gold aura say what it is; revisit in the B11 playtest.
+  (`Fury: +50% damage for 30 s`) and the gold aura say what it is; revisit in the B11 playtest.
 - **Draw count**: four layers per drop (halo, prop, beam, glint), at most `DROPS.maxOnGround` = 4 drops: 16 small
   instances. Negligible, but BA5 records fps with four drops in co-op.
 - **Re-upload**: ~~removing decor gems and adding boost art changes the decor atlas~~. Avoided: the boost art is five

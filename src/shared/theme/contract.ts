@@ -548,7 +548,7 @@ export function isBoostId(id: string): id is `boost.${BoostKind}` {
 }
 
 /**
- * The strings every boost kind has: `name` ("Fury"), `desc` (what it does, e.g. "+50% damage for 10 s") and `icon`
+ * The strings every boost kind has: `name` ("Fury"), `desc` (what it does, e.g. "+50% damage for 30 s") and `icon`
  * (a short label the HUD's boost row draws until it has icon art, like the boons' `.icon`).
  */
 export const BOOST_STRING_FIELDS = ["name", "desc", "icon"] as const;

@@ -42,7 +42,7 @@ tutorial's boost pickup is now funnel step 6).
 
 1. **A kill drops something.** Sometimes (about 1 kill in 15, P2) the enemy leaves a small glowing gem where it died,
    coloured and iconed by kind, with a pop and a sound. It bobs gently (reduced motion: still).
-2. **Walk over it** and it is yours: a burst, a sound, a toast (`Fury: +50% damage for 10 s`), a coloured aura on your
+2. **Walk over it** and it is yours: a burst, a sound, a toast (`Fury: +50% damage for 30 s`), a coloured aura on your
    character, and an icon with a draining bar in the HUD's boost row.
 3. **It fades.** A drop left on the floor blinks for its last 2 s and vanishes after 10 s (P3).
 4. **It runs out.** The icon's bar drains; at 2 s left it blinks; then it ends with a soft sound and the aura goes.
@@ -56,10 +56,10 @@ tutorial's boost pickup is now funnel step 6).
 
 | Boost | Effect | Lasts | Stacks with | Notes |
 |---|---|---|---|---|
-| **Fury** | player damage (bullets and melee) x **150 %** when it hits | 10 s | Sharpened (x 125 % then x 150 %) | Also scales Mirror Cloak and Ember Wake bullets (they go through `playerHitDamage`) |
-| **Quickstep** | walk speed x **130 %** | 10 s | flask slow, bow-charge slow (multiplied) | Roll distance and i-frames unchanged (rolls are tuned against gaps and bullets) |
-| **Frenzy** | sword swing / finisher recovery and the bow's stream cooldown x **70 %** | 10 s | Swift Strikes (one combined integer percent: 80 x 70 / 100 = 56 %) | Wind-ups and the lunge are unchanged, like Swift Strikes |
-| **Aegis** | **+1 armor pip** over your maximum, taken before armor and hearts | 15 s or until it absorbs a hit | Warding (it never refills Aegis) | Shown as a distinct pip in the armor row |
+| **Fury** | player damage (bullets and melee) x **150 %** when it hits | 30 s | Sharpened (x 125 % then x 150 %) | Also scales Mirror Cloak and Ember Wake bullets (they go through `playerHitDamage`) |
+| **Quickstep** | walk speed x **130 %** | 30 s | flask slow, bow-charge slow (multiplied) | Roll distance and i-frames unchanged (rolls are tuned against gaps and bullets) |
+| **Frenzy** | sword swing / finisher recovery and the bow's stream cooldown x **70 %** | 30 s | Swift Strikes (one combined integer percent: 80 x 70 / 100 = 56 %) | Wind-ups and the lunge are unchanged, like Swift Strikes |
+| **Aegis** | **+1 armor pip** over your maximum, taken before armor and hearts | 45 s or until it absorbs a hit | Warding (it never refills Aegis) | Shown as a distinct pip in the armor row |
 
 All magnitudes and durations are tunables in `drops/dropsData.ts`, never inline.
 
@@ -72,10 +72,10 @@ All magnitudes and durations are tunables in `drops/dropsData.ts`, never inline.
 ```ts
 export const Boost = { FURY: 0, QUICKSTEP: 1, FRENZY: 2, AEGIS: 3 } as const;
 export const BOOSTS: ReadonlyArray<BoostDef> = [
-	{ id: "boost.fury", weight: 3, seconds: 10 },
-	{ id: "boost.quickstep", weight: 3, seconds: 10 },
-	{ id: "boost.frenzy", weight: 3, seconds: 10 },
-	{ id: "boost.aegis", weight: 2, seconds: 15 },
+	{ id: "boost.fury", weight: 3, seconds: 30 },
+	{ id: "boost.quickstep", weight: 3, seconds: 30 },
+	{ id: "boost.frenzy", weight: 3, seconds: 30 },
+	{ id: "boost.aegis", weight: 2, seconds: 45 },
 ];
 export const FURY_DAMAGE_PERCENT = 150;
 export const QUICKSTEP_WALK_PERCENT = 130;
@@ -327,6 +327,9 @@ read helpers, hash), `boostMods.ts` (the effect reads, a leaf), specs `drops.spe
 - **Second Wind with Aegis up**: Aegis absorbs first, so Second Wind is only spent by a hit Aegis did not take.
 
 ## Decisions (2026-10-26, Kaleb)
+
+- **Durations tripled (2026-10-27).** Fury, Quickstep and Frenzy run 30 s (were 10 s), Aegis 45 s (was 15 s)
+  (`BOOSTS[].seconds`). The time a drop lies on the floor is unchanged (10 s, P3). Endless and tutorial replays change.
 
 - **Roster v1: Fury, Quickstep, Frenzy, Aegis.**
 - **Co-op: the picker only.** The first living player to touch a drop gets it; no party-wide boosts.
