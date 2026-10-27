@@ -1,6 +1,7 @@
 # Roblox invites and parties: plan
 
-Status (2026-10-27): **plan only, nothing built; decisions ID1-ID7 confirmed.** Companion to the lobby plan (project doc `claude/menu-lobby-plan.md`,
+Status (2026-10-27): **I1-I3 built (pure cores, headless specs), with the §6 config and §7 analytics; I0, I4-I9
+open; decisions ID1-ID7 confirmed.** Companion to the lobby plan (project doc `claude/menu-lobby-plan.md`,
 as built in docs/SERVER.md "Lobbies" and docs/CLIENT.md). This plan takes over L8's `PromptGameInvite` bullet; the rest
 of L8 (Friends tab, teleport follow) stays there.
 
@@ -185,12 +186,12 @@ and `PartyGrouped` (value = size, field01: `joined` / `created` / `offered`). Th
   `PartyId` readable on the server at `PlayerAdded` and with what delay; "join with party" lands everyone in one
   server; `CanSendGameInviteAsync` with and without a recipient; @rbxts/types coverage (add local declarations for
   anything missing). → Verify: every row of the API table is confirmed or this plan is edited.
-- [ ] **I1. Launch data codec.** → Verify: specs: round trip both kinds, the longest lobby id stays under 200 chars,
+- [x] **I1. Launch data codec.** → Verify: specs: round trip both kinds, the longest lobby id stays under 200 chars,
   garbage / wrong version / extra fields / over-long decode to `undefined`, never throws.
-- [ ] **I2. Platform invites in `Lobbies`.** `source`, `platformInvites`, own cap and TTL. → Verify: specs: absent
+- [x] **I2. Platform invites in `Lobbies`.** `source`, `platformInvites`, own cap and TTL. → Verify: specs: absent
   recipients accepted; dedupe with a live server invite; kick cooldown; separate caps; expiry at 900 s; drops on lobby
   delete / kick / join elsewhere; an arriving player joins a Closed lobby through it; existing lobby specs unchanged.
-- [ ] **I3. Arrival resolver.** → Verify: a spec per priority row, busy arrivals, a forged LaunchData lobby id (Open:
+- [x] **I3. Arrival resolver.** → Verify: a spec per priority row, busy arrivals, a forged LaunchData lobby id (Open:
   joins as the browser would; Closed without invite: `followed` only), party: mate's lobby / create / mate in a run /
   full.
 - [ ] **I4. InviteService.** Remotes, prompt, recipients, eligibility cache, arrival with LaunchData polling,
@@ -209,6 +210,33 @@ and `PartyGrouped` (value = size, field01: `joined` / `created` / `offered`). Th
   the menu, to an offline friend who opens it 5 min later, to a full lobby, after the lobby closed; a Roblox Party of
   3 joining. Record join time and failures; update docs/SERVER.md "Lobbies", docs/CLIENT.md and the CLAUDE.md
   decision log.
+
+As built (I1-I3, §6, §7):
+
+- **I1** `shared/invite/launchData.ts`: `decodeInviteLaunch(text: unknown, opts?)`; a UserId has exactly one
+  spelling (plain decimal, no sign / leading zero, at most 15 digits), so decode-encode is the identity. Option
+  `allowNegativeUserIds` (Studio test players are negative; InviteService passes it only under `RunService:IsStudio()`
+  for `KV_FakeLaunchData`); live LaunchData with a negative id is undefined. Encode errors (`error(msg, 0)`) on a
+  malformed launch or one over `INVITE.launchDataMaxChars`.
+- **I2** `LobbyInvite.source` (`LobbyInviteSource`, shared/lobby config.ts). `platformInvites(from, toUserIds:
+  unknown, ctx)`: whole-call refusals `badRequest` (not a plain array of integers, or longer than the platform cap),
+  `notMember`, `inRun`, `full`; per-id refusals `{ userId, code, reason }` with the existing codes (`badRequest` for
+  self, `busy`, `alreadyInLobby`, `kickCooldown`, `alreadyInvited`, `inviteCap`). No new `LobbyRefusal` code. `invite`'s
+  cap counts server invites only. `partyInvite(from, to, ctx)`: source "party", platform TTL, no cap, and (unlike the
+  others) the invitee may be busy. Views: `LobbyView.invitedSources` (same index as `invited`) and
+  `LobbyInviteView.source`.
+- **I3** `shared/invite/arrival.ts` `resolveArrival(input)`. Differences from the §3 sketch: a `partyJoin { lobbyId,
+  fromUserId }` action (the service makes the party invite from that mate, then joins with it) instead of a
+  pre-existing invite; toasts carry `toUserId` (partyFull goes to the extras, who may not be the arrival); `joinInvite`
+  carries its `lobbyId`. `followed` goes only to a sender who is a member of the LaunchData lobby (a forged sender id
+  notifies nobody), and only while that lobby could take the arrival (a full / in-run Closed lobby is the toast). A
+  party mate in a lobby that cannot take the arrival (full / starting / in a run) means a toast, never a second
+  lobby. A busy (or already placed) arrival's joins become `lobby.err.busy` / `lobby.err.alreadyInLobby` toasts, and
+  a starting countdown reads as `lobby.err.inRun`; a kick cooldown is `lobby.err.kickCooldown`. `arrivalJoinIntent`
+  derives the `joinIntent`. Toast ids are `ARRIVAL_TOAST`; `lobby.err.inviteGone` and `lobby.err.partyFull` are new
+  strings for I5 (every pack, and `menuStringKeys`).
+- **§7** `analyticsForInviteSent(source, recipients)`, `analyticsForInviteArrival(outcome, kind)`,
+  `analyticsForPartyGrouped(size, how)` in shared/lobby analytics.ts (names in `LOBBY_ANALYTICS_EVENT`).
 
 Critical path: I0 -> I1 -> I2 -> I3 -> I4 -> I5 -> I9. I6 needs I4; I8 can happen any time before I9.
 

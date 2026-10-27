@@ -638,8 +638,10 @@ Custom events (`LogCustomEvent`; fields are `CustomField01..03`):
 | `SessionLongestRetryStreak` | longest died -> retried streak | | | | player leaves |
 | `LobbyCreated` | 1 | visibility (`open` / `friends` / `closed`) | | | a lobby is created (host) |
 | `LobbyStarted` | lobby size | `solo` / `party` | | | a countdown ends and the run is handed off (host) |
-| `LobbyInviteSent` | 1 | | | | a lobby invite is sent (sender) |
+| `LobbyInviteSent` | recipients | `server` / `platform` | | | lobby invites are sent: one in-server invite, or one Roblox prompt's invites (sender) |
 | `LobbyInviteAnswered` | 1 | `accept` / `decline` / `expire` | | | an invite is accepted (joined), declined or expires (invitee) |
+| `InviteArrival` | 1 | `joinedInvite` / `joinedOpen` / `followedClosed` / `full` / `gone` / `inRun` / `noData` | `lobby` / `game` | | a player arrived from a Roblox invite (docs/INVITES.md I4, I7) |
+| `PartyGrouped` | party members grouped | `joined` / `created` / `offered` | | | a Roblox Party arrival was grouped (docs/INVITES.md I6, I7) |
 
 Lobby events come from `src/shared/lobby/analytics.ts`, logged through `TelemetryService.logEvents(player, specs)`.
 

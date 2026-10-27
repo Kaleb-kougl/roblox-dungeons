@@ -11,6 +11,13 @@
  *                           and not on this lobby's kick cooldown; at most maxInvitesPerMember live invites per
  *                           sender. An invite belongs to the lobby (it stays valid when its sender leaves) and
  *                           expires after inviteTimeoutSeconds.
+ *   platformInvites         the same rules for the friends a member picked in Roblox's invite prompt (source
+ *                           "platform", docs/INVITES.md): the invitees need not be in this server, the sender's
+ *                           cap is maxPlatformInvitesPerMember (counted apart: `invite` counts server invites only),
+ *                           TTL platformInviteTimeoutSeconds; one refusal per id skipped. On arrival nothing
+ *                           converts: the player simply has a live invite (invitesFor / join as usual).
+ *   partyInvite             the server's invite for a Roblox Party mate (source "party"): no cap, the platform
+ *                           TTL, and the invitee may be busy (a mate in a run sees it afterwards).
  *   host only               kick (removes the member, drops their invites here, blocks re-invite and rejoin for
  *                           kickCooldownSeconds), setVisibility, setName (preset ids), transferHost, start.
  *   ready / start / tick    start needs every member ready (one member is enough) and begins a countdown; a member
@@ -30,6 +37,7 @@ import {
 	isLobbyNameId,
 	isLobbyVisibility,
 	type LobbyConfig,
+	type LobbyInviteSource,
 	type LobbyNameId,
 	type LobbyPhase,
 	type LobbyVisibility,
@@ -78,6 +86,15 @@ export interface LobbyInvite {
 	readonly fromUserId: number;
 	readonly createdAt: number;
 	readonly expiresAt: number;
+	/** How it was sent (config.ts LobbyInviteSource); each source has its own cap and TTL. */
+	readonly source: LobbyInviteSource;
+}
+
+/** `platformInvites`: one recipient it skipped, and why. */
+export interface LobbyInviteRefusal {
+	readonly userId: number;
+	readonly code: LobbyRefusal;
+	readonly reason: string;
 }
 
 /** What the browse list shows of one lobby. */
@@ -305,26 +322,93 @@ export class Lobbies {
 		if (busy !== undefined) return refuse("busy", busy);
 		if (this.byUser.has(toUserId)) return refuse("alreadyInLobby", "that player is already in a lobby");
 		if (lobby.members.size() >= this.config.maxSize) return refuse("full", "the lobby is full");
-		if (this.onKickCooldown(lobby, toUserId, ctx.now)) {
-			return refuse("kickCooldown", "that player was kicked from this lobby");
+		const refused = this.inviteeRefusal(lobby, toUserId, ctx.now);
+		if (refused !== undefined) return refused;
+		if (this.liveSent(fromUserId, "server", ctx.now) >= this.config.maxInvitesPerMember) {
+			return refuse("inviteCap", "too many pending invites");
 		}
-		if (this.liveInvite(lobby.lobbyId, toUserId, ctx.now) !== undefined) {
-			return refuse("alreadyInvited", "that player is already invited");
+		const invite = this.addInvite(lobby, fromUserId, toUserId, "server", this.config.inviteTimeoutSeconds, ctx.now);
+		return { ok: true, invite, lobby };
+	}
+
+	/**
+	 * Invites from Roblox's invite prompt (source "platform"): `toUserIds` are the friends the member picked, as the
+	 * client or the prompt reported them, so the list is shape-checked (an array of integers, at most
+	 * maxPlatformInvitesPerMember long; a repeated id counts once). The invitees may be absent from this server. The
+	 * sender rules are `invite`'s; per id: not the sender, not busy, not in a lobby, not on the kick cooldown, not
+	 * already invited here (by any source), and within the sender's own platform cap. Returns the invites made and a
+	 * refusal per id skipped, both in list order.
+	 */
+	platformInvites(
+		fromUserId: number,
+		toUserIds: unknown,
+		ctx: LobbyContext,
+	): LobbyResult<{
+		lobby: Lobby;
+		invites: ReadonlyArray<LobbyInvite>;
+		refusals: ReadonlyArray<LobbyInviteRefusal>;
+	}> {
+		const ids = this.userIdList(toUserIds, this.config.maxPlatformInvitesPerMember);
+		if (ids === undefined) {
+			return refuse(
+				"badRequest",
+				`toUserIds must be a list of at most ${this.config.maxPlatformInvitesPerMember} integers`,
+			);
 		}
-		let sent = 0;
-		for (const inv of this.invites) if (inv.fromUserId === fromUserId && ctx.now < inv.expiresAt) sent += 1;
-		if (sent >= this.config.maxInvitesPerMember) return refuse("inviteCap", "too many pending invites");
-		// An expired invite to the same player may still be stored (tick drops it): replace it.
-		this.dropInvites((inv) => inv.lobbyId === lobby.lobbyId && inv.toUserId === toUserId);
-		const invite: LobbyInvite = {
-			inviteId: this.deps.newId(),
-			lobbyId: lobby.lobbyId,
-			toUserId,
-			fromUserId,
-			createdAt: ctx.now,
-			expiresAt: ctx.now + this.config.inviteTimeoutSeconds,
-		};
-		this.invites.push(invite);
+		const lobby = this.byUser.get(fromUserId);
+		if (lobby === undefined) return refuse("notMember", "not in a lobby");
+		if (lobby.phase === "inRun") return refuse("inRun", "the lobby is in a run");
+		if (lobby.members.size() >= this.config.maxSize) return refuse("full", "the lobby is full");
+		const invites: LobbyInvite[] = [];
+		const refusals: LobbyInviteRefusal[] = [];
+		let sent = this.liveSent(fromUserId, "platform", ctx.now);
+		for (const toUserId of ids) {
+			let refused: LobbyRefused | undefined;
+			if (toUserId === fromUserId) refused = refuse("badRequest", "cannot invite yourself");
+			if (refused === undefined) {
+				const busy = ctx.busyReason(toUserId);
+				if (busy !== undefined) refused = refuse("busy", busy);
+			}
+			if (refused === undefined && this.byUser.has(toUserId)) {
+				refused = refuse("alreadyInLobby", "that player is already in a lobby");
+			}
+			if (refused === undefined) refused = this.inviteeRefusal(lobby, toUserId, ctx.now);
+			if (refused === undefined && sent >= this.config.maxPlatformInvitesPerMember) {
+				refused = refuse("inviteCap", "too many pending invites");
+			}
+			if (refused !== undefined) {
+				refusals.push({ userId: toUserId, code: refused.code, reason: refused.reason });
+				continue;
+			}
+			const ttl = this.config.platformInviteTimeoutSeconds;
+			invites.push(this.addInvite(lobby, fromUserId, toUserId, "platform", ttl, ctx.now));
+			sent += 1;
+		}
+		return { ok: true, lobby, invites, refusals };
+	}
+
+	/**
+	 * The server's invite for a Roblox Party mate (source "party", shared/invite arrival.ts): from a member of a
+	 * forming-or-countdown lobby with room to a player who is not in a lobby, not on its kick cooldown and not
+	 * already invited here. Unlike `invite` the invitee MAY be busy (a mate in a run answers it on return) and no cap
+	 * applies; it lasts platformInviteTimeoutSeconds.
+	 */
+	partyInvite(
+		fromUserId: number,
+		toUserId: number,
+		ctx: Pick<LobbyContext, "now">,
+	): LobbyResult<{ invite: LobbyInvite; lobby: Lobby }> {
+		if (!isUserId(toUserId)) return refuse("badRequest", "toUserId must be an integer");
+		const lobby = this.byUser.get(fromUserId);
+		if (lobby === undefined) return refuse("notMember", "not in a lobby");
+		if (toUserId === fromUserId) return refuse("badRequest", "cannot invite yourself");
+		if (lobby.phase === "inRun") return refuse("inRun", "the lobby is in a run");
+		if (this.byUser.has(toUserId)) return refuse("alreadyInLobby", "that player is already in a lobby");
+		if (lobby.members.size() >= this.config.maxSize) return refuse("full", "the lobby is full");
+		const refused = this.inviteeRefusal(lobby, toUserId, ctx.now);
+		if (refused !== undefined) return refused;
+		const ttl = this.config.platformInviteTimeoutSeconds;
+		const invite = this.addInvite(lobby, fromUserId, toUserId, "party", ttl, ctx.now);
 		return { ok: true, invite, lobby };
 	}
 
@@ -558,6 +642,73 @@ export class Lobbies {
 	private onKickCooldown(lobby: MutableLobby, userId: number, now: number): boolean {
 		const untilAt = lobby.kickedUntil.get(userId);
 		return untilAt !== undefined && now < untilAt;
+	}
+
+	/** The checks every invite source shares about the invitee and this lobby: kick cooldown, already invited. */
+	private inviteeRefusal(lobby: MutableLobby, toUserId: number, now: number): LobbyRefused | undefined {
+		if (this.onKickCooldown(lobby, toUserId, now)) {
+			return refuse("kickCooldown", "that player was kicked from this lobby");
+		}
+		if (this.liveInvite(lobby.lobbyId, toUserId, now) !== undefined) {
+			return refuse("alreadyInvited", "that player is already invited");
+		}
+		return undefined;
+	}
+
+	/** Live invites of one source the player has sent (across lobbies): that source's cap. */
+	private liveSent(fromUserId: number, source: LobbyInviteSource, now: number): number {
+		let sent = 0;
+		for (const inv of this.invites) {
+			if (inv.fromUserId === fromUserId && inv.source === source && now < inv.expiresAt) sent += 1;
+		}
+		return sent;
+	}
+
+	private addInvite(
+		lobby: MutableLobby,
+		fromUserId: number,
+		toUserId: number,
+		source: LobbyInviteSource,
+		ttlSeconds: number,
+		now: number,
+	): LobbyInvite {
+		// An expired invite to the same player may still be stored (tick drops it): replace it.
+		this.dropInvites((inv) => inv.lobbyId === lobby.lobbyId && inv.toUserId === toUserId);
+		const invite: LobbyInvite = {
+			inviteId: this.deps.newId(),
+			lobbyId: lobby.lobbyId,
+			toUserId,
+			fromUserId,
+			createdAt: now,
+			expiresAt: now + ttlSeconds,
+			source,
+		};
+		this.invites.push(invite);
+		return invite;
+	}
+
+	/**
+	 * A client-supplied UserId list: a plain array (no other keys) of at most `max` integers, repeats removed (first
+	 * kept); undefined when malformed.
+	 */
+	private userIdList(v: unknown, max: number): number[] | undefined {
+		if (!typeIs(v, "table")) return undefined;
+		const arr = v as unknown[];
+		const n = arr.size();
+		if (n > max) return undefined;
+		let keys = 0;
+		for (const [key] of pairs(v as Map<unknown, unknown>)) {
+			if (!typeIs(key, "number")) return undefined;
+			keys += 1;
+		}
+		if (keys !== n) return undefined;
+		const out: number[] = [];
+		for (let i = 0; i < n; i++) {
+			const id = arr[i];
+			if (!isUserId(id)) return undefined;
+			if (!out.includes(id)) out.push(id);
+		}
+		return out;
 	}
 
 	private liveInvite(lobbyId: string, userId: number, now: number): LobbyInvite | undefined {

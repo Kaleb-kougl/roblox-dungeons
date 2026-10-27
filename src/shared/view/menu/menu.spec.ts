@@ -41,6 +41,7 @@ function view(over: Partial<LobbyView>): LobbyView {
 		members: [1],
 		ready: [],
 		invited: [],
+		invitedSources: [],
 		...over,
 	};
 }
@@ -224,6 +225,7 @@ describe("invites", () => {
 			hostId: 5,
 			fromUserId: 6,
 			expiresIn,
+			source: "server",
 		});
 		const out = receivedInvites([inv("a", 10), inv("b", 2), inv("c", 30), inv("d", 30)], 3, nameOf, 2);
 		expect(out.map((r) => r.inviteId)).toEqual(["a", "c"]);

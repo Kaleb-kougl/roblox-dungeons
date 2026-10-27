@@ -268,7 +268,7 @@ export class LobbyService implements OnStart {
 		const r = this.lobbies.invite(player.UserId, toUserId, this.context());
 		if (!r.ok) return this.outbox.refused(player.UserId, "lobbyInvite", r);
 		this.outbox.invited(r.invite, r.lobby);
-		this.track(player.UserId, analyticsForInviteSent());
+		this.track(player.UserId, analyticsForInviteSent("server", 1));
 	}
 
 	private answerInvite(player: Player, inviteId: string, accept: boolean): void {

@@ -3,6 +3,7 @@ import type { LeaderboardBoard, LeaderboardView } from "shared/leaderboard";
 import type { OnboardingStatus, TutorialOutcome } from "shared/onboarding";
 import type {
 	LobbyCreateRequest,
+	LobbyInviteSource,
 	LobbyNameId,
 	LobbyPhase,
 	LobbyRefusal,
@@ -89,6 +90,11 @@ export interface LobbyView {
 	countdownIn?: number;
 	/** Players with a live invite to this lobby (shown as "Invited"; no duplicate invites). */
 	invited: number[];
+	/**
+	 * Where each `invited` entry's invite came from, same index (shared/lobby LobbyInviteSource): "platform" (Roblox's
+	 * invite prompt; the player may not be in this server yet) reads "Invited (Roblox)".
+	 */
+	invitedSources: LobbyInviteSource[];
 }
 
 /** `lobbyState`: the lobby this player is in, or none. */
@@ -117,6 +123,8 @@ export interface LobbyInviteView {
 	fromUserId: number;
 	/** Seconds until it expires. */
 	expiresIn: number;
+	/** How it was sent (shared/lobby LobbyInviteSource). */
+	source: LobbyInviteSource;
 }
 
 /**

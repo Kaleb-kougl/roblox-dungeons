@@ -8,7 +8,10 @@ import {
 	Lobbies,
 	LobbyOutbox,
 	analyticsForInviteAnswered,
+	analyticsForInviteArrival,
+	analyticsForInviteSent,
 	analyticsForLobbyCreated,
+	analyticsForPartyGrouped,
 	analyticsForLobbyStarted,
 	inviteViewsOf,
 	lobbyViewOf,
@@ -55,6 +58,7 @@ describe("lobby views", () => {
 		const forming = lobbyViewOf(lobby, l.invitesTo(lobby.lobbyId, 1), 1);
 		expect(forming.members).toEqual([HOST, A]);
 		expect(forming.invited).toEqual([B]);
+		expect(forming.invitedSources).toEqual(["server"]);
 		expect(forming.countdownIn).toBe(undefined);
 		l.start(HOST, ctx(2));
 		const counting = lobbyViewOf(lobby, [], 2.5);
@@ -205,6 +209,23 @@ describe("LobbyOutbox", () => {
 	});
 });
 
+describe("invite sources in the views", () => {
+	it("lobbyViewOf pairs each invited player with its source; inviteViewsOf carries it", () => {
+		const { l, lookup } = setup();
+		const lobby = mustCreate(l, HOST);
+		l.invite(HOST, B, ctx(0));
+		l.platformInvites(HOST, [C, 1001], ctx(0));
+		l.partyInvite(HOST, A, ctx(0));
+		const v = lobbyViewOf(lobby, l.invitesTo(lobby.lobbyId, 0), 0);
+		expect(v.invited).toEqual([B, C, 1001, A]);
+		expect(v.invitedSources).toEqual(["server", "platform", "platform", "party"]);
+		expect(inviteViewsOf(l.invitesFor(C, 0), lookup, 0)[0].source).toBe("platform");
+		expect(inviteViewsOf(l.invitesFor(A, 0), lookup, 0)[0].source).toBe("party");
+		expect(inviteViewsOf(l.invitesFor(B, 0), lookup, 0)[0].source).toBe("server");
+		expect(inviteViewsOf(l.invitesFor(C, 0), lookup, 0)[0].expiresIn).toBe(LOBBY.platformInviteTimeoutSeconds);
+	});
+});
+
 describe("lobby analytics", () => {
 	it("event names and the fixed field values", () => {
 		expect(analyticsForLobbyCreated("friends")).toEqual({
@@ -220,5 +241,34 @@ describe("lobby analytics", () => {
 		const expired = analyticsForInviteAnswered("expire");
 		expect(expired.kind === "custom" && expired.name === LOBBY_ANALYTICS_EVENT.inviteAnswered).toBe(true);
 		expect(expired.fields?.field01).toBe("expire");
+	});
+
+	it("invite sent: source and recipient count; arrival outcome and kind; party grouped size and how", () => {
+		expect(analyticsForInviteSent("server", 1)).toEqual({
+			kind: "custom",
+			name: LOBBY_ANALYTICS_EVENT.inviteSent,
+			value: 1,
+			fields: { field01: "server" },
+		});
+		expect(analyticsForInviteSent("platform", 3)).toEqual({
+			kind: "custom",
+			name: "LobbyInviteSent",
+			value: 3,
+			fields: { field01: "platform" },
+		});
+		expect(analyticsForInviteArrival("followedClosed", "lobby")).toEqual({
+			kind: "custom",
+			name: "InviteArrival",
+			value: 1,
+			fields: { field01: "followedClosed", field02: "lobby" },
+		});
+		expect(analyticsForPartyGrouped(3, "created")).toEqual({
+			kind: "custom",
+			name: "PartyGrouped",
+			value: 3,
+			fields: { field01: "created" },
+		});
+		expect(LOBBY_ANALYTICS_EVENT.inviteArrival).toBe("InviteArrival");
+		expect(LOBBY_ANALYTICS_EVENT.partyGrouped).toBe("PartyGrouped");
 	});
 });

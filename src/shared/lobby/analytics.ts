@@ -10,9 +10,36 @@ export const LOBBY_ANALYTICS_EVENT = {
 	lobbyStarted: "LobbyStarted",
 	inviteSent: "LobbyInviteSent",
 	inviteAnswered: "LobbyInviteAnswered",
+	inviteArrival: "InviteArrival",
+	partyGrouped: "PartyGrouped",
 } as const;
 
 export type LobbyInviteAnswer = "accept" | "decline" | "expire";
+
+/** How a `LobbyInviteSent` went out: the lobby's in-server invite list, or Roblox's invite prompt. */
+export type LobbyInviteSentSource = "server" | "platform";
+
+/**
+ * What became of a player who arrived from a Roblox invite (docs/INVITES.md §7; shared/invite arrival.ts):
+ *   joinedInvite    joined a lobby through a live invite (platform or party)
+ *   joinedOpen      joined the LaunchData lobby without an invite (Open, or the host's friend)
+ *   followedClosed  the LaunchData lobby is closed to them: the sender heard `followed`
+ *   full / gone / inRun   the lobby could not take them (a toast)
+ *   noData          no LaunchData and no invite (Roblox's own menu invite, or the data never came)
+ */
+export type InviteArrivalOutcome =
+	| "joinedInvite"
+	| "joinedOpen"
+	| "followedClosed"
+	| "full"
+	| "gone"
+	| "inRun"
+	| "noData";
+/** The LaunchData kind (shared/invite InviteLaunch): a lobby invite or a menu (game) invite. */
+export type InviteArrivalKind = "lobby" | "game";
+
+/** How a Roblox Party was grouped on arrival: joined a mate's lobby, a party lobby was made, or only offered (toast). */
+export type PartyGroupedHow = "joined" | "created" | "offered";
 
 /** Logged for the host. Field 01: the visibility. */
 export function analyticsForLobbyCreated(visibility: LobbyVisibility): AnalyticsEventSpec {
@@ -29,12 +56,30 @@ export function analyticsForLobbyStarted(size: number): AnalyticsEventSpec {
 	};
 }
 
-/** Logged for the sender. */
-export function analyticsForInviteSent(): AnalyticsEventSpec {
-	return { kind: "custom", name: LOBBY_ANALYTICS_EVENT.inviteSent, value: 1 };
+/**
+ * Logged for the sender. Value: the recipients (1 for an in-server invite; the invites one prompt made). Field 01:
+ * the source. Platform recipients over `InviteArrival` is the invite conversion rate.
+ */
+export function analyticsForInviteSent(source: LobbyInviteSentSource, recipients: number): AnalyticsEventSpec {
+	return { kind: "custom", name: LOBBY_ANALYTICS_EVENT.inviteSent, value: recipients, fields: { field01: source } };
 }
 
 /** Logged for the invitee. Field 01: the answer (an expiry counts as one). */
 export function analyticsForInviteAnswered(answer: LobbyInviteAnswer): AnalyticsEventSpec {
 	return { kind: "custom", name: LOBBY_ANALYTICS_EVENT.inviteAnswered, value: 1, fields: { field01: answer } };
+}
+
+/** Logged for the arriving player. Field 01: the outcome; field 02: the LaunchData kind. */
+export function analyticsForInviteArrival(outcome: InviteArrivalOutcome, kind: InviteArrivalKind): AnalyticsEventSpec {
+	return {
+		kind: "custom",
+		name: LOBBY_ANALYTICS_EVENT.inviteArrival,
+		value: 1,
+		fields: { field01: outcome, field02: kind },
+	};
+}
+
+/** Logged for the player whose arrival grouped the party. Value: the party members grouped; field 01: how. */
+export function analyticsForPartyGrouped(size: number, how: PartyGroupedHow): AnalyticsEventSpec {
+	return { kind: "custom", name: LOBBY_ANALYTICS_EVENT.partyGrouped, value: size, fields: { field01: how } };
 }

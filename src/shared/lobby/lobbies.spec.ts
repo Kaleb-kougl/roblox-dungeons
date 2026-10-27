@@ -602,3 +602,250 @@ describe("Lobbies: summaries", () => {
 		).toBe(false);
 	});
 });
+
+describe("Lobbies: platform invites (Roblox's invite prompt)", () => {
+	/** Friends not in this server (the prompt's recipients). */
+	const F1 = 1001;
+	const F2 = 1002;
+	const F3 = 1003;
+
+	function platform(l: Lobbies, from: number, ids: unknown, c = ctx()) {
+		const r = l.platformInvites(from, ids, c);
+		if (!r.ok) error(r.reason);
+		return r;
+	}
+
+	it("invites players absent from the server, with source platform and the platform TTL", () => {
+		const l = lobbies();
+		const lobby = create(l, HOST, { visibility: "closed" });
+		const r = platform(l, HOST, [F1, F2], ctx(5));
+		expect(r.lobby).toBe(lobby);
+		expect(r.refusals).toEqual([]);
+		expect(r.invites.size()).toBe(2);
+		for (const inv of r.invites) {
+			expect([inv.source, inv.lobbyId, inv.fromUserId]).toEqual(["platform", lobby.lobbyId, HOST]);
+			expect(inv.expiresAt).toBe(5 + LOBBY.platformInviteTimeoutSeconds);
+		}
+		expect(l.invitesFor(F1, 5)).toEqual([r.invites[0]]);
+		expect(l.invitesTo(lobby.lobbyId, 5)).toEqual([r.invites[0], r.invites[1]]);
+	});
+
+	it("an arriving player joins a Closed lobby through it (nothing converts)", () => {
+		const l = lobbies();
+		const lobby = create(l, HOST, { visibility: "closed" });
+		const r = platform(l, HOST, [F1]);
+		// F1 arrives minutes later (well within the platform TTL, far past the server one).
+		const later = LOBBY.inviteTimeoutSeconds * 5;
+		expect(later < LOBBY.platformInviteTimeoutSeconds).toBe(true);
+		expect(l.invitesFor(F1, later)).toEqual([r.invites[0]]);
+		const j = l.join(F1, lobby.lobbyId, ctx(later));
+		expect(j.ok && j.usedInvite).toBe(r.invites[0]);
+		expect(lobby.members).toEqual([HOST, F1]);
+		expect(l.invitesFor(F1, later)).toEqual([]);
+	});
+
+	it("validates the list: an array of integers at most the platform cap long; repeats count once", () => {
+		const l = lobbies();
+		const lobby = create(l, HOST);
+		expect(code(l.platformInvites(HOST, F1 as never, ctx()))).toBe("badRequest");
+		expect(code(l.platformInvites(HOST, "x", ctx()))).toBe("badRequest");
+		expect(code(l.platformInvites(HOST, [F1, "x"], ctx()))).toBe("badRequest");
+		expect(code(l.platformInvites(HOST, [F1, 1.5], ctx()))).toBe("badRequest");
+		expect(code(l.platformInvites(HOST, [F1, 0 / 0], ctx()))).toBe("badRequest");
+		expect(code(l.platformInvites(HOST, { a: F1 }, ctx()))).toBe("badRequest");
+		const mixed = new Map<unknown, unknown>([
+			[1, F1],
+			["x", F2],
+		]);
+		expect(code(l.platformInvites(HOST, mixed, ctx()))).toBe("badRequest");
+		const tooMany: number[] = [];
+		for (let i = 0; i <= LOBBY.maxPlatformInvitesPerMember; i++) tooMany.push(2000 + i);
+		expect(code(l.platformInvites(HOST, tooMany, ctx()))).toBe("badRequest");
+		expect(l.invitesTo(lobby.lobbyId, 0)).toEqual([]); // nothing made by a refused call
+		const r = platform(l, HOST, [F1, F2, F1, F1]);
+		expect(r.invites.map((inv) => inv.toUserId)).toEqual([F1, F2]);
+		expect(r.refusals).toEqual([]);
+		expect(platform(l, HOST, []).invites).toEqual([]);
+	});
+
+	it("keeps the sender rules: a member, not in a run, not a full lobby", () => {
+		const l = lobbies();
+		expect(code(l.platformInvites(STRANGER, [F1], ctx()))).toBe("notMember");
+		const full = create(l, 1);
+		for (let id = 2; id <= LOBBY.maxSize; id++) join(l, id, full);
+		expect(code(l.platformInvites(1, [F1], ctx()))).toBe("full");
+		create(l, HOST);
+		l.setReady(HOST, true);
+		l.start(HOST, ctx(0));
+		l.tick(ctx(LOBBY.countdownSeconds));
+		expect(code(l.platformInvites(HOST, [F1], ctx(5)))).toBe("inRun");
+	});
+
+	it("refuses per id: self, busy, in a lobby, kick cooldown, already invited; the rest still go out", () => {
+		const l = lobbies();
+		const lobby = create(l, HOST);
+		join(l, A, lobby);
+		create(l, C);
+		join(l, B, lobby);
+		l.kick(HOST, B, ctx(0));
+		const r = platform(l, HOST, [HOST, D, A, C, B, F1], ctx(1, { busy: [D] }));
+		expect(r.invites.map((inv) => inv.toUserId)).toEqual([F1]);
+		expect(r.refusals.map((x) => [x.userId, x.code])).toEqual([
+			[HOST, "badRequest"],
+			[D, "busy"],
+			[A, "alreadyInLobby"], // in this lobby
+			[C, "alreadyInLobby"], // in another
+			[B, "kickCooldown"],
+		]);
+		for (const x of r.refusals) expect(typeIs(x.reason, "string") && x.reason.size() > 0).toBe(true);
+		// After the cooldown the kicked player may be invited again.
+		expect(platform(l, HOST, [B], ctx(1 + LOBBY.kickCooldownSeconds)).invites.size()).toBe(1);
+	});
+
+	it("dedupes against any live invite to this lobby, server ones included, both ways", () => {
+		const l = lobbies();
+		const lobby = create(l, HOST);
+		join(l, A, lobby);
+		expect(code(l.invite(HOST, B, ctx()))).toBe("ok");
+		const r = platform(l, A, [B, F1]); // another member, same lobby
+		expect(r.refusals.map((x) => [x.userId, x.code])).toEqual([[B, "alreadyInvited"]]);
+		expect(code(l.invite(HOST, F1, ctx()))).toBe("alreadyInvited"); // a platform invite blocks a server one
+		expect(platform(l, HOST, [F1]).refusals.map((x) => x.code)).toEqual(["alreadyInvited"]);
+		// Another lobby may invite the same friend.
+		create(l, C);
+		expect(platform(l, C, [F1]).invites.size()).toBe(1);
+		expect(l.invitesFor(F1, 0).size()).toBe(2);
+	});
+
+	it("has its own cap, counted apart from the server cap (both directions)", () => {
+		const l = lobbies();
+		const lobby = create(l, HOST);
+		for (let i = 1; i <= LOBBY.maxInvitesPerMember; i++) expect(code(l.invite(HOST, 100 + i, ctx()))).toBe("ok");
+		// Server cap reached: platform invites still go out, up to their own cap.
+		const ids: number[] = [];
+		for (let i = 1; i <= LOBBY.maxPlatformInvitesPerMember; i++) ids.push(2000 + i);
+		expect(platform(l, HOST, ids).invites.size()).toBe(LOBBY.maxPlatformInvitesPerMember);
+		const over = platform(l, HOST, [F1, F2]);
+		expect(over.refusals.map((x) => [x.userId, x.code])).toEqual([
+			[F1, "inviteCap"],
+			[F2, "inviteCap"],
+		]);
+		// Platform invites never count toward the server cap: once the server ones expire, invite works again
+		// while every platform invite is still live.
+		const t = LOBBY.inviteTimeoutSeconds;
+		expect(code(l.invite(HOST, 300, ctx(t)))).toBe("ok");
+		expect(l.invitesTo(lobby.lobbyId, t).size()).toBe(LOBBY.maxPlatformInvitesPerMember + 1);
+	});
+
+	it("the cap stops part way through a list and frees up as invites expire", () => {
+		const l = lobbies();
+		create(l, HOST);
+		const first: number[] = [];
+		for (let i = 1; i < LOBBY.maxPlatformInvitesPerMember; i++) first.push(2000 + i);
+		expect(platform(l, HOST, first, ctx(0)).invites.size()).toBe(LOBBY.maxPlatformInvitesPerMember - 1);
+		const r = platform(l, HOST, [F1, F2, F3], ctx(1));
+		expect(r.invites.map((inv) => inv.toUserId)).toEqual([F1]);
+		expect(r.refusals.map((x) => x.userId)).toEqual([F2, F3]);
+		// The first batch expires (at 900 s); the later one is still live and counts.
+		const t = LOBBY.platformInviteTimeoutSeconds;
+		const again = platform(l, HOST, [F2, F3], ctx(t));
+		expect(again.invites.map((inv) => inv.toUserId)).toEqual([F2, F3]);
+	});
+
+	it("expires at 900 s: tick drops and reports it; the join is refused after", () => {
+		const l = lobbies();
+		const lobby = create(l, HOST, { visibility: "closed" });
+		const inv = platform(l, HOST, [F1], ctx(10)).invites[0];
+		const deadline = 10 + LOBBY.platformInviteTimeoutSeconds;
+		expect(l.tick(ctx(10 + LOBBY.inviteTimeoutSeconds)).expiredInvites).toEqual([]); // not the server TTL
+		expect(l.tick(ctx(deadline - 1)).expiredInvites).toEqual([]);
+		expect(code(l.join(F1, lobby.lobbyId, ctx(deadline)))).toBe("noAccess");
+		expect(l.tick(ctx(deadline)).expiredInvites).toEqual([inv]);
+		expect(platform(l, HOST, [F1], ctx(deadline)).invites.size()).toBe(1); // can be re-sent
+	});
+
+	it("drops with the lobby, on a kick, and when the invitee joins elsewhere; a never-arrived leave drops nothing", () => {
+		const l = lobbies();
+		const lobby = create(l, HOST);
+		const [i1] = platform(l, HOST, [F1]).invites;
+		// Lobby deleted (last member left).
+		const dep = l.leave(HOST);
+		expect(dep.ok && dep.departure.droppedInvites).toEqual([i1]);
+		expect(l.invitesFor(F1, 0)).toEqual([]);
+		expect(lobby.members).toEqual([]);
+
+		// Kick: the arrival joins with a platform invite, is kicked; re-invite blocked by the cooldown.
+		const two = create(l, HOST);
+		platform(l, HOST, [F2]);
+		join(l, F2, two);
+		const k = l.kick(HOST, F2, ctx(0));
+		expect(k.ok).toBe(true);
+		expect(platform(l, HOST, [F2]).refusals.map((x) => x.code)).toEqual(["kickCooldown"]);
+
+		// Joined elsewhere: the other lobby's platform invite is dropped (silently, like any).
+		const other = create(l, A);
+		const [i3] = platform(l, HOST, [F3]).invites;
+		const [i4] = platform(l, A, [F3]).invites;
+		const j = l.join(F3, other.lobbyId, ctx());
+		expect(j.ok && j.usedInvite).toBe(i4);
+		expect(j.ok && j.droppedInvites).toEqual([i3]);
+
+		// A recipient who never arrived "leaving" drops nothing they did not receive; the sender's stay.
+		const [i5] = platform(l, HOST, [F1]).invites;
+		expect(l.playerRemoving(STRANGER).droppedInvites).toEqual([]);
+		expect(l.invitesTo(two.lobbyId, 0)).toEqual([i5]);
+	});
+
+	it("server invites keep source server and their own TTL", () => {
+		const l = lobbies();
+		create(l, HOST);
+		const r = l.invite(HOST, A, ctx(3));
+		expect(r.ok && [r.invite.source, r.invite.expiresAt]).toEqual(["server", 3 + LOBBY.inviteTimeoutSeconds]);
+	});
+});
+
+describe("Lobbies: party invites", () => {
+	it("source party, the platform TTL, no cap, and the invitee may be busy", () => {
+		const l = lobbies();
+		const lobby = create(l, HOST, { visibility: "closed" });
+		for (let i = 1; i <= LOBBY.maxInvitesPerMember; i++) l.invite(HOST, 100 + i, ctx());
+		const r = l.partyInvite(HOST, A, ctx(2));
+		if (!r.ok) error(r.reason);
+		expect([r.invite.source, r.invite.expiresAt, r.lobby]).toEqual([
+			"party",
+			2 + LOBBY.platformInviteTimeoutSeconds,
+			lobby,
+		]);
+		// A busy mate (in a run) gets one too; it is answered afterwards.
+		expect(code(l.partyInvite(HOST, B, ctx(2)))).toBe("ok");
+		expect(code(l.join(B, lobby.lobbyId, ctx(3, { busy: [B] })))).toBe("busy");
+		expect(code(l.join(B, lobby.lobbyId, ctx(4)))).toBe("ok");
+		// Party invites count toward neither cap.
+		const ids: number[] = [];
+		for (let i = 1; i <= LOBBY.maxPlatformInvitesPerMember; i++) ids.push(2000 + i);
+		const p = l.platformInvites(HOST, ids, ctx(4));
+		expect(p.ok && p.invites.size()).toBe(LOBBY.maxPlatformInvitesPerMember);
+	});
+
+	it("refuses bad ids, non-members, self, players in a lobby, full / in-run lobbies, kicked and duplicates", () => {
+		const l = lobbies();
+		const lobby = create(l, HOST);
+		create(l, C);
+		expect(code(l.partyInvite(HOST, 1.5, ctx()))).toBe("badRequest");
+		expect(code(l.partyInvite(STRANGER, A, ctx()))).toBe("notMember");
+		expect(code(l.partyInvite(HOST, HOST, ctx()))).toBe("badRequest");
+		expect(code(l.partyInvite(HOST, C, ctx()))).toBe("alreadyInLobby");
+		expect(code(l.invite(HOST, A, ctx()))).toBe("ok");
+		expect(code(l.partyInvite(HOST, A, ctx()))).toBe("alreadyInvited");
+		join(l, B, lobby);
+		l.kick(HOST, B, ctx(0));
+		expect(code(l.partyInvite(HOST, B, ctx(1)))).toBe("kickCooldown");
+		const full = create(l, 1);
+		for (let id = 2; id <= LOBBY.maxSize; id++) join(l, id, full);
+		expect(code(l.partyInvite(1, STRANGER, ctx()))).toBe("full");
+		l.setReady(C, true);
+		l.start(C, ctx(0));
+		l.tick(ctx(LOBBY.countdownSeconds));
+		expect(code(l.partyInvite(C, D, ctx(5)))).toBe("inRun");
+	});
+});
