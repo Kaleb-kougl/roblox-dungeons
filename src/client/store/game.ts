@@ -89,8 +89,6 @@ export interface GameState {
 	readonly active: boolean;
 	/** Newest last; at most PROGRESSION_VIEW.maxToasts. */
 	readonly toasts: ReadonlyArray<ToastView>;
-	/** A run start is on its way (the ranked `startRun` waits for the server): the menu layer shows "Starting run". */
-	readonly starting: boolean;
 	readonly map: MapView;
 }
 
@@ -117,7 +115,6 @@ const initialState: GameState = {
 	},
 	active: false,
 	toasts: [],
-	starting: false,
 	map: NO_MAP,
 };
 
@@ -145,7 +142,6 @@ export const gameSlice = createProducer(initialState, {
 		latencyProbe: undefined,
 		active: true,
 		toasts: [],
-		starting: false,
 		map: NO_MAP,
 	}),
 	/** The run was left for the menu (run over, Leave run): no run, no HUD; the last verdict stays. */
@@ -157,13 +153,11 @@ export const gameSlice = createProducer(initialState, {
 		latencyProbe: undefined,
 		active: false,
 		toasts: [],
-		starting: false,
 		map: NO_MAP,
 	}),
 	/** The minimap's floor state (MinimapController): whether this floor has a map, and the full map toggle. */
 	setMapView: (state, map: MapView) =>
 		state.map.available === map.available && state.map.open === map.open ? state : { ...state, map },
-	setRunStarting: (state, starting: boolean) => (state.starting === starting ? state : { ...state, starting }),
 	/** Adds a toast (the oldest drops past `max`). */
 	pushToast: (state, toast: ToastView, max: number) => {
 		const toasts = [...state.toasts, toast];
@@ -187,5 +181,4 @@ export const selectLatencyProbe = (state: { game: GameState }) => state.game.lat
 export const selectRunInfo = (state: { game: GameState }) => state.game.run;
 export const selectGameActive = (state: { game: GameState }) => state.game.active;
 export const selectToasts = (state: { game: GameState }) => state.game.toasts;
-export const selectRunStarting = (state: { game: GameState }) => state.game.starting;
 export const selectMapView = (state: { game: GameState }) => state.game.map;

@@ -7,6 +7,7 @@ import { menuSlice } from "./menu";
 import { optionsSlice } from "./options";
 import { settingsSlice } from "./settings";
 import { spikesSlice } from "./spikes";
+import { stageSlice } from "./stage";
 import { tutorialSlice } from "./tutorial";
 
 /**
@@ -18,7 +19,8 @@ import { tutorialSlice } from "./tutorial";
  * the `menu` slice the menu shell's screen + back stack and the Leave run confirm (L3 / L6); the `lobby` slice the
  * lobby list, this player's lobby, invites and notices (L5); the `tutorial` slice the first-run tutorial's
  * HUD state (prompt, highlight, outro) and whether the first-run gate is still deciding; the `loading` slice the join
- * loading screen (released, core progress, Skip shown: docs/PRELOAD.md P4).
+ * loading screen (released, core progress, Skip shown: docs/PRELOAD.md P4); the `stage` slice the stage loader's cover
+ * (shown / revealing, its label, the card's lines, the run-start bar: docs/STAGE_LOADER.md SL5).
  *
  * Import through the directory (`client/store`), never the file.
  */
@@ -31,6 +33,7 @@ export * from "./options";
 export * from "./selectors";
 export * from "./settings";
 export * from "./spikes";
+export * from "./stage";
 export * from "./tutorial";
 
 export const clientStore = combineProducers({
@@ -43,6 +46,7 @@ export const clientStore = combineProducers({
 	lobby: lobbySlice,
 	tutorial: tutorialSlice,
 	loading: loadingSlice,
+	stage: stageSlice,
 });
 
 export type ClientStore = typeof clientStore;

@@ -795,5 +795,11 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		"loading.title": "Project Kaleb-Vale",
 		"loading.progress": "Loading {done} / {total}",
 		"loading.skip": "Skip",
+		// --- stage.* (docs/STAGE_LOADER.md SL2: the stage loader's cover) ----------------------------------
+		"stage.starting": "Starting run...",
+		"stage.forging": "Forging floor {floor}...",
+		"stage.building": "Building...",
+		"stage.floorCard": "Floor {floor}",
+		"stage.bossFloor": "Boss floor",
 	},
 };

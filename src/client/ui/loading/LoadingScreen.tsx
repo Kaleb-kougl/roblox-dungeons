@@ -3,9 +3,10 @@ import { useSelector } from "@rbxts/react-reflex";
 import { GuiService, RunService, TextChatService, UserInputService } from "@rbxts/services";
 import { selectInputDevice, selectJuice, selectLoading } from "client/store";
 import { MenuButton, Text, useHudScale } from "client/ui/hud";
-import { role, str } from "client/ui/theme";
+import { str } from "client/ui/theme";
 import { LOADING_STRINGS, LOADING_VIEW, PRELOAD } from "shared/view";
 import { HUD_VIEW } from "shared/view/hud";
+import { Cover, ProgressBar } from "./parts";
 
 const HALF = 0.5;
 const HIDDEN = 1;
@@ -97,14 +98,7 @@ export function LoadingScreen(props: LoadingScreenProps) {
 			IgnoreGuiInset={true}
 			ZIndexBehavior={Enum.ZIndexBehavior.Sibling}
 		>
-			<frame
-				key="Cover"
-				Size={UDim2.fromScale(1, 1)}
-				BackgroundColor3={role("background")}
-				BackgroundTransparency={fade}
-				BorderSizePixel={0}
-				Active={true}
-			/>
+			<Cover transparency={fade} />
 			<frame
 				key="Column"
 				AnchorPoint={new Vector2(HALF, HALF)}
@@ -129,22 +123,13 @@ export function LoadingScreen(props: LoadingScreenProps) {
 					transparency={fade}
 					text={str(LOADING_STRINGS.title)}
 				/>
-				<frame
-					key="Bar"
-					LayoutOrder={2}
-					Size={new UDim2(0, width, 0, LOADING_VIEW.barHeight)}
-					BackgroundColor3={role("uiTextDim")}
-					BackgroundTransparency={fade}
-					BorderSizePixel={0}
-				>
-					<frame
-						key="Fill"
-						Size={UDim2.fromScale(math.clamp(loading.fraction, 0, 1), 1)}
-						BackgroundColor3={role("uiAccent")}
-						BackgroundTransparency={fade}
-						BorderSizePixel={0}
-					/>
-				</frame>
+				<ProgressBar
+					order={2}
+					width={width}
+					height={LOADING_VIEW.barHeight}
+					fraction={loading.fraction}
+					transparency={fade}
+				/>
 				<Text
 					order={3}
 					width={width}

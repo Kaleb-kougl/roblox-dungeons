@@ -5,7 +5,7 @@
  * scanning this directory tree; this barrel is how the rest of the client imports them.
  * Re-export each subfolder as it is added.
  *
- *   game/    theme, input, the live sim, camera, world, character guard (task 8)
+ *   game/    theme, preloading, input, the live sim, the stage loader, camera, world, character guard (task 8)
  *   render/  bullets, actors + player, weapon arcs, telegraphs (task 8)
  *   fx/      juice: the FX hit tracker, health bars, damage numbers, particles, freeze frame (task 8 part B)
  *   audio/   theme sounds for sim events, music (task 8 part B)
