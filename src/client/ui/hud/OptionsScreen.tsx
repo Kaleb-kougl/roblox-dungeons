@@ -167,6 +167,7 @@ function JuiceTab(props: { order: number; actions: HudActions; selectable: boole
 				onPick={(v) => pick({ reducedMotion: v })}
 			/>
 			<Text
+				fill={true}
 				order={6}
 				size={HUD_VIEW.smallText}
 				color="uiTextDim"
@@ -368,7 +369,7 @@ function ControlsTab(props: {
 				<uilistlayout SortOrder={Enum.SortOrder.LayoutOrder} Padding={new UDim(0, HUD_VIEW.gap)} />
 				{rows}
 			</scrollingframe>
-			<Text order={4} size={HUD_VIEW.smallText} color="uiTextDim" text={str(OPTIONS_STRINGS.test)} />
+			<Text fill={true} order={4} size={HUD_VIEW.smallText} color="uiTextDim" text={str(OPTIONS_STRINGS.test)} />
 			<TestStrip order={5} device={device} pressed={options.pressed} />
 			{notice !== undefined ? (
 				<Text
@@ -727,7 +728,13 @@ export function OptionsScreen() {
 				name="Options"
 			>
 				<uistroke Thickness={1} Color={role("uiAccent")} />
-				<Text order={1} size={HUD_VIEW.titleText} color="uiAccent" text={str(OPTIONS_STRINGS.title)} />
+				<Text
+					fill={true}
+					order={1}
+					size={HUD_VIEW.titleText}
+					color="uiAccent"
+					text={str(OPTIONS_STRINGS.title)}
+				/>
 				<Row order={2}>{tabs}</Row>
 				{body}
 				<Row order={4}>
@@ -755,9 +762,16 @@ export function OptionsScreen() {
 					/>
 				</Row>
 				{!synced ? (
-					<Text order={5} size={HUD_VIEW.smallText} color="telegraph" text={str(SETTINGS_STRINGS.offline)} />
+					<Text
+						fill={true}
+						order={5}
+						size={HUD_VIEW.smallText}
+						color="telegraph"
+						text={str(SETTINGS_STRINGS.offline)}
+					/>
 				) : undefined}
 				<Text
+					fill={true}
 					order={6}
 					size={HUD_VIEW.smallText}
 					color="uiTextDim"

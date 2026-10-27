@@ -13,8 +13,6 @@ const HIDDEN = 1;
 const STROKE = 1;
 /** Half hearts per heart. */
 const HALVES = 2;
-/** Labels sit in a fixed column so the rows line up. */
-const LABEL_WIDTH = 86;
 
 /** One heart: `fill` 0 (empty), 1 (half) or 2 (full) half hearts; the left half fills first (web PlayerHud Heart). */
 function Heart(props: { order: number; fill: number }) {
@@ -67,10 +65,12 @@ export interface StatusPanelProps {
 
 /**
  * Top left (web PlayerHud): hearts (full / half / empty) with armor pips, flask charges and Ember pips, each row
- * labelled from the theme string table; with boost drops (docs/BOOSTS.md B7) the Aegis pip after the armor pips (its
- * own colour, BOOST_VIEW.aegisPipRole) and the running boosts (BoostRow); in endless runs a line with the floor and
- * Depth and the owned boons, relics and curses (M2, RunItems). Reads only the ~10 Hz snapshot. In the tutorial: the
- * highlight ring on the hearts or the flask row or the boost row, and the ghost half heart after a harmless hit.
+ * labelled from the theme string table (labels in a column of HUD_VIEW.statusLabelWidth so the rows line up); with
+ * boost drops (docs/BOOSTS.md B7) the Aegis pip after the armor pips (its own colour, BOOST_VIEW.aegisPipRole) and the
+ * running boosts (BoostRow); on an unscored endless run a line with the floor and Depth (a scored run shows it under
+ * the score, docs/HUD_LAYOUT.md H4); the owned boons, relics and curses (M2, RunItems). Reads only the ~10 Hz
+ * snapshot. In the tutorial: the highlight ring on the hearts or the flask row or the boost row, and the ghost half
+ * heart after a harmless hit.
  */
 export function StatusPanel(props: StatusPanelProps) {
 	const s = useSelector(selectSnapshot);
@@ -80,9 +80,9 @@ export function StatusPanel(props: StatusPanelProps) {
 	const armorMax = math.max(s.armorMax, s.armor);
 	const ghost = props.ghostHeart ?? 0;
 	return (
-		<Panel position={new UDim2(0, HUD_VIEW.margin, 0, HUD_VIEW.margin)} anchor={new Vector2(0, 0)} name="Status">
+		<Panel corner="topLeft" name="Status">
 			<Row order={1}>
-				<Text order={0} width={LABEL_WIDTH} color="uiTextDim" text={str(HUD_STRINGS.health)} />
+				<Text order={0} width={HUD_VIEW.statusLabelWidth} color="uiTextDim" text={str(HUD_STRINGS.health)} />
 				{hearts}
 				{ghost > 0 ? <GhostHeart key={`ghost${ghost}`} order={hearts.size() + 1} /> : undefined}
 				{armorMax > 0 || s.aegisPips > 0 ? (
@@ -94,16 +94,16 @@ export function StatusPanel(props: StatusPanelProps) {
 				{props.highlight === "hearts" ? <HighlightRing /> : undefined}
 			</Row>
 			<Row order={2}>
-				<Text order={0} width={LABEL_WIDTH} color="uiTextDim" text={str(HUD_STRINGS.flask)} />
+				<Text order={0} width={HUD_VIEW.statusLabelWidth} color="uiTextDim" text={str(HUD_STRINGS.flask)} />
 				{pips(s.flask, s.flaskMax, "uiAccent", false)}
 				{props.highlight === "flask" ? <HighlightRing /> : undefined}
 			</Row>
 			<Row order={3}>
-				<Text order={0} width={LABEL_WIDTH} color="uiTextDim" text={str(HUD_STRINGS.ember)} />
+				<Text order={0} width={HUD_VIEW.statusLabelWidth} color="uiTextDim" text={str(HUD_STRINGS.ember)} />
 				{pips(s.embers, s.emberMax, "ember", true)}
 			</Row>
 			<BoostRow order={4} boosts={s.boosts} highlight={props.boostsHighlight} />
-			{s.floor > 0 ? (
+			{s.floor > 0 && !s.scoring ? (
 				<Text order={5} color="uiText" text={str(HUD_STRINGS.floor, { floor: s.floor, depth: s.depth })} />
 			) : undefined}
 			<RunItems order={6} boons={s.boons} relics={s.relics} curses={s.curses} />

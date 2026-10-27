@@ -27,13 +27,20 @@ function Stat(props: { order: number; label: string; value: string }) {
 	return (
 		<Panel position={new UDim2()} anchor={new Vector2()} order={props.order} width={STAT_WIDTH} transparency={1}>
 			<Text
+				fill={true}
 				order={1}
 				size={HUD_VIEW.smallText}
 				color="uiTextDim"
 				align={Enum.TextXAlignment.Center}
 				text={props.label}
 			/>
-			<Text order={2} size={HUD_VIEW.titleText} align={Enum.TextXAlignment.Center} text={props.value} />
+			<Text
+				fill={true}
+				order={2}
+				size={HUD_VIEW.titleText}
+				align={Enum.TextXAlignment.Center}
+				text={props.value}
+			/>
 		</Panel>
 	);
 }
@@ -138,6 +145,7 @@ export function RunOverPanel() {
 			name="RunOver"
 		>
 			<Text
+				fill={true}
 				order={1}
 				size={HUD_VIEW.bigText}
 				color={victory ? "uiAccent" : "uiHealth"}
@@ -146,6 +154,7 @@ export function RunOverPanel() {
 			/>
 			<Text order={2} size={HUD_VIEW.titleText} align={Enum.TextXAlignment.Center} wrap={true} text={main} />
 			<Text
+				fill={true}
 				order={3}
 				size={HUD_VIEW.smallText}
 				color="uiTextDim"

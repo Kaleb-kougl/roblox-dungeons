@@ -89,6 +89,7 @@ const DRAFT_CARDS_WIDTH =
 function WaitingLine(props: { order: number; count: number }) {
 	return (
 		<Text
+			fill={true}
 			order={props.order}
 			size={HUD_VIEW.smallText}
 			color="uiTextDim"
@@ -142,6 +143,7 @@ export function DraftOverlay() {
 			name="Draft"
 		>
 			<Text
+				fill={true}
 				order={1}
 				size={HUD_VIEW.bigText}
 				align={Enum.TextXAlignment.Center}
@@ -151,6 +153,7 @@ export function DraftOverlay() {
 				{cards}
 			</Row>
 			<Text
+				fill={true}
 				order={3}
 				size={HUD_VIEW.smallText}
 				color="uiTextDim"

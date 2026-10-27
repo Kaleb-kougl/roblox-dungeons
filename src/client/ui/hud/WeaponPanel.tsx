@@ -1,9 +1,18 @@
-import React from "@rbxts/react";
+import React, { useBinding, useEffect, useState } from "@rbxts/react";
 import { useSelector } from "@rbxts/react-reflex";
-import { selectBindings, selectInputDevice, selectSnapshot } from "client/store";
+import { RunService } from "@rbxts/services";
+import {
+	selectBindings,
+	selectGameActive,
+	selectInputDevice,
+	selectJuice,
+	selectRunInfo,
+	selectSnapshot,
+} from "client/store";
 import { HUD_FONT, role, str, themePack } from "client/ui/theme";
 import { swapHint } from "shared/play";
-import { HUD_STRINGS, HUD_VIEW } from "shared/view/hud";
+import { motionScale } from "shared/view/fx";
+import { HUD_HINTS, HUD_STRINGS, HUD_VIEW, hintVisible } from "shared/view/hud";
 import { Panel, Row, Text } from "./primitives";
 import { HighlightRing } from "./TutorialFx";
 
@@ -27,7 +36,7 @@ function WeaponSlot(props: { order: number; index: number; id: string; active: b
 			LayoutOrder={props.order}
 			Size={new UDim2(0, size.x, 0, size.y)}
 			BackgroundColor3={role("uiPanel")}
-			BackgroundTransparency={props.active ? 0 : HUD_VIEW.panelTransparency * 2}
+			BackgroundTransparency={props.active ? 0 : HUD_VIEW.weaponInactiveTransparency}
 			BorderSizePixel={0}
 		>
 			<uistroke
@@ -38,7 +47,7 @@ function WeaponSlot(props: { order: number; index: number; id: string; active: b
 				Size={new UDim2(0, NUMBER_WIDTH, 1, 0)}
 				BackgroundTransparency={1}
 				Font={HUD_FONT}
-				TextSize={HUD_VIEW.textSize}
+				TextSize={HUD_VIEW.weaponTextSize}
 				TextColor3={role(props.active ? "uiAccent" : "uiTextDim")}
 				Text={tostring(props.index + 1)}
 			/>
@@ -48,7 +57,7 @@ function WeaponSlot(props: { order: number; index: number; id: string; active: b
 				Size={new UDim2(1, -NUMBER_WIDTH, 1, 0)}
 				BackgroundTransparency={1}
 				Font={HUD_FONT}
-				TextSize={HUD_VIEW.textSize}
+				TextSize={HUD_VIEW.weaponTextSize}
 				TextXAlignment={Enum.TextXAlignment.Left}
 				TextColor3={role(props.active ? "uiText" : "uiTextDim")}
 				Text={weaponName(props.id)}
@@ -58,8 +67,60 @@ function WeaponSlot(props: { order: number; index: number; id: string; active: b
 }
 
 /**
- * Bottom left (web WeaponHud): the two weapon sets, the set in hand highlighted, and the device-aware SWAP hint
- * ("E swap" on keyboard, "Y swap" on a gamepad: game.inputDevice). `highlight`: the tutorial's ring (the bow lesson).
+ * The device-aware SWAP hint ("E swap" on keyboard, "Y swap" on a gamepad: game.inputDevice), timed so it never sits
+ * over the playfield for long (docs/HUD_LAYOUT.md H5): shown for HUD_HINTS.swapHintSeconds after a run starts (the
+ * run counter `game.run.run` changes or the game turns active) or the input device changes, then faded out over
+ * HUD_HINTS.fadeSeconds (hintVisible on a binding; Heartbeat runs only during the fade; reduced motion hides at once).
+ * Hidden, it takes no layout space. `forced` (the tutorial's weapon lesson) keeps it on.
+ */
+function SwapHint(props: { order: number; text: string; forced: boolean }) {
+	const run = useSelector(selectRunInfo).run;
+	const active = useSelector(selectGameActive);
+	const device = useSelector(selectInputDevice);
+	const motion = motionScale(useSelector(selectJuice));
+	const [hidden, setHidden] = useState(false);
+	const [fade, setFade] = useBinding(0);
+	useEffect(() => {
+		setHidden(false);
+		setFade(0);
+		const start = os.clock();
+		let connection: RBXScriptConnection | undefined;
+		const timer = task.delay(HUD_HINTS.swapHintSeconds, () => {
+			if (motion <= 0) {
+				setHidden(true);
+				return;
+			}
+			connection = RunService.Heartbeat.Connect(() => {
+				const t = hintVisible(os.clock() - start, HUD_HINTS.swapHintSeconds, HUD_HINTS.fadeSeconds);
+				setFade(t);
+				if (t >= 1) {
+					connection?.Disconnect();
+					connection = undefined;
+					setHidden(true);
+				}
+			});
+		});
+		return () => {
+			task.cancel(timer);
+			connection?.Disconnect();
+		};
+	}, [run, active, device, motion]);
+	if (hidden && !props.forced) return undefined;
+	return (
+		<Text
+			order={props.order}
+			size={HUD_VIEW.smallText}
+			color="uiTextDim"
+			transparency={props.forced ? 0 : fade}
+			text={props.text}
+		/>
+	);
+}
+
+/**
+ * Bottom left (web WeaponHud): the two weapon sets (compact slots, docs/HUD_LAYOUT.md H5), the set in hand
+ * highlighted, and the timed SWAP hint (SwapHint). `highlight`: the tutorial's ring (the bow lesson), which also keeps
+ * the hint on.
  */
 export function WeaponPanel(props: { readonly highlight?: boolean }) {
 	const s = useSelector(selectSnapshot);
@@ -70,12 +131,11 @@ export function WeaponPanel(props: { readonly highlight?: boolean }) {
 		<WeaponSlot key={`w${i}`} order={i + 1} index={i} id={id} active={i === s.activeSet} />
 	));
 	return (
-		<Panel position={new UDim2(0, HUD_VIEW.margin, 1, -HUD_VIEW.margin)} anchor={new Vector2(0, 1)} name="Weapons">
+		<Panel corner="bottomLeft" name="Weapons">
 			<Row order={1}>{slots}</Row>
-			<Text
+			<SwapHint
 				order={2}
-				size={HUD_VIEW.smallText}
-				color="uiTextDim"
+				forced={props.highlight === true}
 				text={str(HUD_STRINGS.weaponSwap, { key: swapHint(bindings)[device] })}
 			/>
 			{props.highlight === true ? <HighlightRing /> : undefined}

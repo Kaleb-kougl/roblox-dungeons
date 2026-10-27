@@ -93,6 +93,7 @@ export function InviteBadge() {
 			name="InviteBadge"
 		>
 			<Text
+				fill={true}
 				order={1}
 				size={HUD_VIEW.smallText}
 				color="uiAccent"

@@ -41,13 +41,9 @@ export function InfoPanel() {
 		replayText = str(replay.match ? HUD_STRINGS.replayMatch : HUD_STRINGS.replayMismatch, { ticks: replay.ticks });
 	}
 	return (
-		<Panel
-			position={new UDim2(1, -HUD_VIEW.margin, 1, -HUD_VIEW.margin)}
-			anchor={new Vector2(1, 1)}
-			width={INFO_WIDTH}
-			name="Info"
-		>
+		<Panel corner="bottomRight" width={INFO_WIDTH} name="Info">
 			<Text
+				fill={true}
 				order={1}
 				size={HUD_VIEW.smallText}
 				color="uiTextDim"
@@ -87,6 +83,7 @@ export function InfoPanel() {
 			) : undefined}
 			{info.debug ? (
 				<Text
+					fill={true}
 					order={4}
 					size={HUD_VIEW.smallText}
 					mono={true}
