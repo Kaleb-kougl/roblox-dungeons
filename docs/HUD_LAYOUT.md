@@ -1,6 +1,9 @@
 # HUD layout: keep the playfield clear (plan)
 
-Status (2026-10-26): **draft, nothing built.** Planned against `main` @ `08d12cf`. Shrinks the in-run HUD so it never
+Status (2026-10-26): **H1-H8 code-complete, verified headlessly only** (typecheck, lint, asset check, art tests,
+build, and the full Lune suite: 152 spec files, every one passing, run file by file). **Nothing has run in Studio**:
+the Studio check below and H9 are pending. Built on branch `hud-layout` from `main` @ `08d12cf` (four parallel streams
+plus a review pass), merged to main. Shrinks the in-run HUD so it never
 covers the part of the screen the player fights in: compact corner panels only, the info line moved to the pause menu,
 and panels that fade when the action moves under them. Presentation only: no sim, dungeon, hash, replay or fixture
 change. The Options settings document gains optional display fields (stays v2, no migration). Owner answers to the
@@ -137,7 +140,8 @@ panel shows the verdict too. The `KV_Debug` line never fades and stays where it 
   points are the watched player, living enemies and the boss (interpolated sim positions, one `WorldToViewportPoint`
   each), and enemy bullets capped at `maxBullets` (64 per pass; any one bullet inside a panel is enough to fade it, so no
   sorting). Panel rects come from the mounted corner panels' `AbsolutePosition` / `AbsoluteSize` (registered by ref).
-  Writes the result to a Reflex slice (`hud.occluded`, four booleans; dispatch only on change).
+  Writes the result to a Reflex slice (`hud.occluded`, four booleans; dispatch only on change). As built: per-corner
+  React bindings instead (`cornerFade.ts`), see "As built" under Tasks.
 - Panels apply it by wrapping each corner panel in a `CanvasGroup` and binding `GroupTransparency`
   (`HUD_OCCLUSION.occludedTransparency` 0.75). CanvasGroups render to a texture: four small ones are well inside the
   budget, but text can soften at fractional UIScale; H7 checks this on a 1080p screen and a phone, and falls back to
@@ -160,31 +164,62 @@ gains 70 (sanitize already drops unknown values, so old documents read as before
 
 ## Tasks
 
-- [ ] **H1. Fix the full-width panels.** `Text` sizes to content without `width` / `fill`; `fill` on the fixed-width
+- [x] **H1. Fix the full-width panels.** `Text` sizes to content without `width` / `fill`; `fill` on the fixed-width
   panels' texts; `HudFootprintCheck` under `KV_Debug`. -> Verify: `npm run verify`; Studio, endless and M1 at 1080p and
   the phone emulator: the top-left and bottom-left panels hug their content, nothing else moved, no footprint warning.
   Screenshot before / after into this doc.
-- [ ] **H2. Footprint budget.** `footprint.ts` + spec over `HUD_TEST_VIEWPORTS` x scales x ten-foot (print the cover
+- [x] **H2. Footprint budget.** `footprint.ts` + spec over `HUD_TEST_VIEWPORTS` x scales x ten-foot (print the cover
   share per viewport). Start with today's sizes to see which budgets fail, then H4 / H5 make them pass.
-- [ ] **H3. `Panel` corner prop.** `corner` replaces the hand-written position / anchor on the four corner panels
+- [x] **H3. `Panel` corner prop.** `corner` replaces the hand-written position / anchor on the four corner panels
   (same margins, no visual change).
-- [ ] **H4. Compact StatusPanel.** Words kept; `statusLabelWidth` tunable; floor line to the ScorePanel on scored runs;
+- [x] **H4. Compact StatusPanel.** Words kept; `statusLabelWidth` tunable; floor line to the ScorePanel on scored runs;
   the tutorial highlight rings still land on the right rows (hearts, flask, boosts, score) and the ghost heart still
   sits after the hearts. -> Verify: tutorial floor 1 in Studio.
-- [ ] **H5. Compact WeaponPanel.** Smaller slots, timed swap hint (`HUD_HINTS`, pure timing helper + spec), hint in the
+- [x] **H5. Compact WeaponPanel.** Smaller slots, timed swap hint (`HUD_HINTS`, pure timing helper + spec), hint in the
   pause overlay. The tutorial's weapon lesson ring (`highlight === "weapons"`) forces the hint on.
-- [ ] **H6. Info line to the pause menu.** `RunInfoLine` in PauseOverlay (solo and party) and RunOverPanel; InfoPanel
+- [x] **H6. Info line to the pause menu.** `RunInfoLine` in PauseOverlay (solo and party) and RunOverPanel; InfoPanel
   keeps the notice / verdict lines with `hintVisible` (+ spec) and the debug line. `TUTORIAL_VIEW.panelBottom` 132 can drop (it only cleared the bottom panels); retune in H9.
-- [ ] **H7. Occlusion fade.** `occlusion.ts` + spec, `HudOcclusionController`, the Reflex slice, CanvasGroup wrappers;
+- [x] **H7. Occlusion fade.** `occlusion.ts` + spec, `HudOcclusionController`, the Reflex slice, CanvasGroup wrappers;
   an Options > Display row `HUD fade` (On / Off, default On; overrides-only like `roomEdges`, settings spec cases).
   -> Verify: frame time with `KV_Debug` stats on the busiest endless floor (boss with adds) stays flat. Solid boxes
   (HD5) make this the main defence for the corners, so check the fade reads quickly at 1080p and on a phone.
-- [ ] **H8. 70 % HUD scale step.** `HUD_SCALE_PERCENTS`, settings spec (round trip, old docs).
+- [x] **H8. 70 % HUD scale step.** `HUD_SCALE_PERCENTS`, settings spec (round trip, old docs).
 - [ ] **H9. Playtest and docs.** 1080p, 1440p, 21:9, the phone emulator and a TV (ten-foot); M1, endless (incl. a boss
   floor with the boss bar and toasts), the tutorial, co-op spectating. Tune the budgets, transparencies and timings;
   decide the default HUD scale. Docs: docs/CLIENT.md's HUD section and table, a CLAUDE.md decision-log line (HUD
   footprint budget; corner panels; info line in the pause menu; occlusion fade and its setting), this doc's status. No PROVENANCE row (the web build's HUD layout
   is not ported pixel for pixel; the pieces ported in layout.ts keep theirs).
+
+As built (differences from the design above):
+
+- H1: `Text` takes `fill` (and `wrap` implies it) and an optional `transparency` (number or binding). Every existing
+  caller that relied on filling got `fill`; the InviteBadge (menu toasts, shown during runs) and the menu's Starting
+  panel were the same full-width bug and now hug their text. The runtime footprint check lives in
+  `HudOcclusionController` (KV_Debug, once a second, 1 px tolerance).
+- H2: budgets settled at status 240x160 (3 rows + one boost row + one item row, `statusEstimate`), score 200x160
+  (the floor line moved under it), weapons 240x80 (the swap hint above the slots). `HUD_TEST_TOP_INSET` (58 screen px,
+  the Roblox top bar) runs every check with and without the inset. Cover share at 100 %, no inset / with inset:
+  1280x720 9.7 / 10.6 %, 1920x1080 9.7 / 10.3 %, 844x390 9.8 / 11.5 % (limit 12 %, enforced with ten-foot off).
+  Ten-foot (TV) screens go over 12 % at 720p / 1080p and some boxes reach the clear zone above 100 % HUD scale: these
+  are printed by the spec, not failed. Today's screenshot case measured 29 %.
+- H4 / H6: RunItems keeps one row (`capOneRow`: newest items, a leading `+N` cell, string `hud.items.more`) and
+  BoostRow wraps at the status width (`wrapGrid`, `GridRow`; 4 simultaneous boosts take a second row). The info line
+  is `RunInfoLine` in the pause overlay (solo and party, with the fallback notice and the swap key) and the run-over
+  panel (which now shows the verdict too); InfoPanel's verdict line hides once the run is over.
+- H5: `weaponSlotSize` 108x30, `weaponTextSize` 16, `weaponInactiveTransparency` 0.7. The swap hint sits above the
+  slots so they never move; its timer (`useTimedHint`, shared with the verdict lines) restarts on a run start
+  (`runInfo.run`), the game going active and an input device change, not on a floor change or a Reduce Motion toggle.
+- H7: no Reflex slice: `client/ui/hud/cornerFade.ts` holds one React binding per corner, written by the controller
+  only on change, so the fade never re-renders the tree. A corner `Panel` is a transparent placed frame (the registry
+  ref, the tutorial ring via `overlay`) around a `canvasgroup` with the panel's background, padding and layout.
+  Points come from `Camera:WorldToScreenPoint` (GUI space, like `AbsolutePosition`); pad is reference px x the UIScale.
+- H8: `HUD_SCALE_PERCENTS` = [70, 80, 90, 100, 110, 125]; the HUD scale row's buttons are `HUD_VIEW.scaleOptionWidth`
+  (76) wide so six fit.
+
+Studio risks to check first (H9): CanvasGroup text softness at fractional UIScale (1.5 at 1080p) and on phones (the
+fallback is the `Text` / `Pip` transparency binding); AutomaticSize on the canvasgroup; the corner hit test lining up
+(walk into each corner; if it is ~58 px off vertically, switch to `WorldToViewportPoint` minus `GetGuiInset()`);
+CanvasGroup redraws while a ring pulses or a boost blinks inside the top-left group (frame time).
 
 Critical path: H1 (most of the win, ship it first) -> H2 -> H4 / H5 -> H9. H3 goes before H7 (the occlusion registry
 uses the corner prop); H6 and H8 can go alongside.

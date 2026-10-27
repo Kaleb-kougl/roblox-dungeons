@@ -171,6 +171,15 @@ Decision log (deviations from `PLAN.md`):
   judges rooms exactly as scoring does. `DisplaySettings.roomEdges` (default On, only Off stored; settings doc stays
   v2). `DashStyle.liftStuds` is optional (absent: every existing marking layer unchanged).
 
+- **HUD layout (docs/HUD_LAYOUT.md).** Presentation only (no sim, hash, replay or fixture change). `Text` with no
+  `width` sizes to its content (`fill` / `wrap` take the parent's width): a scale-width Text in an auto-sized `Panel`
+  had stretched the status and weapon panels across the screen. Always-on panels are corner `Panel`s held to
+  `HUD_FOOTPRINT` boxes outside `HUD_CLEAR_ZONE` (footprint.spec.ts); the info line (title / biome / seed / dungeon) is
+  in the pause overlay and run-over panel only; the swap hint and verdict lines are timed (`HUD_HINTS`); corner panels
+  fade under the action (`HudOcclusionController`, CanvasGroup + bindings). Settings: `DisplaySettings.hudFade`
+  (default On, only Off stored, document stays v2) and a 70 % step in `HUD_SCALE_PERCENTS`; one new theme string
+  `hud.items.more` and `options.display.hudFade`.
+
 ## Commands
 
 ```
