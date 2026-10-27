@@ -24,16 +24,22 @@ export type LobbyInviteSentSource = "server" | "platform";
  *   joinedInvite    joined a lobby through a live invite (platform or party)
  *   joinedOpen      joined the LaunchData lobby without an invite (Open, or the host's friend)
  *   followedClosed  the LaunchData lobby is closed to them: the sender heard `followed`
- *   full / gone / inRun   the lobby could not take them (a toast)
- *   noData          no LaunchData and no invite (Roblox's own menu invite, or the data never came)
+ *   arrived         a menu (game) invite: they arrived, the sender heard `inviteArrived`
+ *   full / gone / inRun / kickCooldown   the lobby could not take them (a toast)
+ *   busy            they were already busy or in a lobby when the LaunchData came (a toast)
+ *   noData          no LaunchData and no invite, though Roblox says someone referred them (`ReferredByPlayerId`:
+ *                   Roblox's own menu invite, or the data never came)
  */
 export type InviteArrivalOutcome =
 	| "joinedInvite"
 	| "joinedOpen"
 	| "followedClosed"
+	| "arrived"
 	| "full"
 	| "gone"
 	| "inRun"
+	| "kickCooldown"
+	| "busy"
 	| "noData";
 /** The LaunchData kind (shared/invite InviteLaunch): a lobby invite or a menu (game) invite. */
 export type InviteArrivalKind = "lobby" | "game";

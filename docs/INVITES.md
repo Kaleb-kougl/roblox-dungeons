@@ -195,16 +195,18 @@ and `PartyGrouped` (value = size, field01: `joined` / `created` / `offered`). Th
 - [x] **I3. Arrival resolver.** → Verify: a spec per priority row, busy arrivals, a forged LaunchData lobby id (Open:
   joins as the browser would; Closed without invite: `followed` only), party: mate's lobby / create / mate in a run /
   full.
-- [ ] **I4. InviteService.** Remotes, prompt, recipients, eligibility cache, arrival with LaunchData polling,
+- [x] **I4. InviteService.** Remotes, prompt, recipients, eligibility cache, arrival with LaunchData polling,
   `joinIntent`, party index, Studio fake attributes, rate limits. → Verify: Studio "Clients and Servers" with
   `KV_FakeLaunchData` / `KV_FakePartyId`: each I3 case driven end to end.
 - [ ] **I5. Client.** Buttons, eligibility state, toasts, first-join wait and tutorial skip, strings in every pack.
   → Verify: `npm run verify`; Studio: an invited fake arrival on a fresh profile goes to the lobby, not the tutorial;
   a normal fresh join still gets the tutorial within `intentWaitSeconds`.
-- [ ] **I6. Party grouping.** Wire the party cases of I3 into InviteService (arrival auto, mid-session toast).
+- [x] **I6. Party grouping.** Wire the party cases of I3 into InviteService (arrival auto, mid-session toast).
   → Verify: Studio with 3 clients sharing a fake PartyId: staggered arrivals end in one Closed lobby hosted by the
   first; a fourth with a different id is untouched.
 - [ ] **I7. Telemetry.** → Verify: no `ANALYTICS_FAILED` through send -> arrive -> join, and party grouping.
+  Server half done (InviteService / LobbyService log every event, see "As built (I4, I6, I7 server)"); the Studio /
+  published verify is open.
 - [ ] **I8. Notification string (owner).** Create it in Creator Dashboard for the live and test experiences (e.g.
   "{displayName} wants you in their descent in {experienceName}!"), paste the ids into `INVITE.notificationStringIds`.
 - [ ] **I9. Published playtest.** Two friend accounts (three for party): invite from a lobby (Open and Closed), from
@@ -238,6 +240,36 @@ As built (I1-I3, §6, §7):
   strings for I5 (every pack, and `menuStringKeys`).
 - **§7** `analyticsForInviteSent(source, recipients)`, `analyticsForInviteArrival(outcome, kind)`,
   `analyticsForPartyGrouped(size, how)` in shared/lobby analytics.ts (names in `LOBBY_ANALYTICS_EVENT`).
+
+As built (I4, I6, I7 server):
+
+- **I4** `server/services/InviteService.ts` (docs/SERVER.md "Roblox invites and parties" has the full flow, what each
+  remote and notice carries, and the Studio recipe). New LobbyService public methods: `lobbyOf`, `arrivalFacts`,
+  `fetchFriendship`, `platformInvites`, `applyArrival`, `partyInviteOffer`, `notify`. Pure helpers with specs in
+  `shared/invite/serviceRules.ts` (`inviteRecipientList`, `parseFakeRecipients`, `partyAcceptOrder`,
+  `arrivalToastForRefusal`, `inviteArrivalOutcome`, `partyOffers`). Config: `INVITE_RECIPIENTS_RATE`,
+  `INVITE_ELIGIBILITY_RATE` (10 / 60 s each, quietly dropped over budget), `INVITE_STUDIO_ATTRIBUTES`. Differences
+  from §4: `invitePrompt { withLobby }` is also refused for a lobby in a run (`inRun`); a recipient report is
+  ignored unless the sender is still in the lobby of their last prompt, and ids already recorded for that prompt are
+  skipped; a menu prompt's recipients log `LobbyInviteSent` (platform) though no invite record is made; no activity
+  feed line (lobbies have no feed). `inviteEligibility` re-sends `joinIntent` once resolved. A late LaunchData
+  re-resolves (busy / placed players get the resolver's toasts) and sends no second `joinIntent`. A `friends`
+  LaunchData lobby gets a fresh friendship check with its host before the resolve (the FriendCache would answer a
+  miss as "not friends"). Studio: Player attributes win over Workspace defaults (a Workspace `KV_FakePartyId` /
+  `KV_FakeLaunchData` covers the join itself), a Player attribute change acts as a late LaunchData / PartyId change,
+  and `KV_FakeInviteRecipients` stands in for the prompt closing.
+- **I6** Party index on `PartyId` (pcall; Studio: `KV_FakePartyId` only), accept order from one `GetPartyAsync` per
+  party (successes cached while a member is here). A PartyId change during the LaunchData wait, while the player is
+  in no lobby, re-resolves the arrival (covers a PartyId that is readable only a moment after PlayerAdded, an I0
+  question); later changes are offers only (ID4). The mid-session offer is the party invite itself (`lobbyInvites`,
+  source "party"), with no `partyLobby` notice: `partyLobby` is only sent to players the arrival MOVED into a lobby
+  (network.ts comment updated).
+- **I7 (server)** `InviteArrivalOutcome` gained `arrived` (a menu invite: the sender heard `inviteArrived`),
+  `kickCooldown` and `busy` (busy or already in a lobby when the LaunchData came). `InviteArrival` is logged at most
+  once per join, when a LaunchData or a live platform invite was involved (party grouping winning logs what the
+  invite alone would have done); `noData` only when the wait ended empty but `GetJoinData().ReferredByPlayerId` is
+  set (else every ordinary join would count). `PartyGrouped` `joined` / `created` for the arrival (value = party
+  members now in that lobby), `offered` for the offered player.
 
 Critical path: I0 -> I1 -> I2 -> I3 -> I4 -> I5 -> I9. I6 needs I4; I8 can happen any time before I9.
 

@@ -47,3 +47,30 @@ export const INVITE: InviteConfig = table.freeze({
 
 /** Per player: `invitePrompt` calls (sliding window; over it the request is dropped with a `rateLimited` notice). */
 export const INVITE_PROMPT_RATE = table.freeze({ count: 5, windowSeconds: 60 });
+/**
+ * Per player: `inviteRecipients` relays (one per prompt the client saw close; extra calls are dropped quietly, the
+ * server's own GameInvitePromptClosed still records the prompt).
+ */
+export const INVITE_RECIPIENTS_RATE = table.freeze({ count: 10, windowSeconds: 60 });
+/** Per player: `inviteEligibility` requests (extra calls are dropped quietly; the answer is cached anyway). */
+export const INVITE_ELIGIBILITY_RATE = table.freeze({ count: 10, windowSeconds: 60 });
+
+/**
+ * Studio-only test inputs for InviteService (read only under `RunService:IsStudio()`, ignored on live servers, off
+ * unless set; docs/SERVER.md "Roblox invites and parties"). A Player attribute wins over the Workspace one, which is
+ * the default for every player (set it before Play to cover the join itself).
+ */
+export const INVITE_STUDIO_ATTRIBUTES = table.freeze({
+	/** Player or Workspace, string: stands in for `GetJoinData().LaunchData` (negative test UserIds allowed). */
+	fakeLaunchData: "KV_FakeLaunchData",
+	/** Player or Workspace, string: stands in for `Player.PartyId` ("" = no party). */
+	fakePartyId: "KV_FakePartyId",
+	/** Workspace, boolean: forces the `inviteEligible` answer. */
+	fakeInviteEligible: "KV_FakeInviteEligible",
+	/**
+	 * Player or Workspace, string of UserIds joined by `fakeRecipientsSeparator` ("-2,-3"): after each `invitePrompt`
+	 * the server acts as if the prompt closed with these recipients (Studio never fires GameInvitePromptClosed).
+	 */
+	fakeInviteRecipients: "KV_FakeInviteRecipients",
+	fakeRecipientsSeparator: ",",
+});

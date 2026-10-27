@@ -137,8 +137,9 @@ export interface LobbyInviteView {
  *   inviteExpired / inviteDropped   an invite they received is gone (`lobbyId`)
  *   followed            a friend followed them into this server but cannot join their (closed) lobby (`userId`)
  *   inviteArrived       a friend they invited through Roblox arrived (`userId`; docs/INVITES.md)
- *   partyLobby          their Roblox Party was grouped into a lobby on arrival, or (mid-session) a party mate is in
- *                       one they can join (`lobbyId`, `userId` = the mate; docs/INVITES.md "Roblox Party")
+ *   partyLobby          their Roblox Party was grouped into a lobby on arrival: they were moved into it (`lobbyId`,
+ *                       `userId` = a party mate there; docs/INVITES.md "Roblox Party"). Mid-session grouping is no
+ *                       notice: it is a party invite (`lobbyInvites`, source "party")
  *   arrival             an arrival could not be placed: `key` is the theme string id of the toast
  */
 export interface LobbyNotice {
