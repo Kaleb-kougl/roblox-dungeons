@@ -31,6 +31,8 @@ export const HUD_STRINGS = {
 	/** Endless mode: the current floor and Depth. */
 	floor: "hud.floor",
 	info: "hud.info",
+	/** The owned-items row's last cell when more are owned than fit (docs/HUD_LAYOUT.md): "+{count}". */
+	itemsMore: "hud.items.more",
 	noticeFallback: "hud.notice.fallback",
 	debug: "hud.debug",
 	replayHint: "hud.debug.replayHint",

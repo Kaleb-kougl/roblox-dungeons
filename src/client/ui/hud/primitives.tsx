@@ -1,4 +1,4 @@
-import React, { useState } from "@rbxts/react";
+import React, { useMemo, useState } from "@rbxts/react";
 import { HUD_FONT, MONO_FONT, role } from "client/ui/theme";
 import type { ColorRole } from "shared/theme";
 import { HUD_VIEW, cornerAnchor, type HudCorner } from "shared/view/hud";
@@ -50,6 +50,17 @@ function strokeTransparency(t: number): number {
 /** One line (or a wrapped paragraph) of HUD text with a dark stroke for contrast over the dungeon. */
 export function Text(props: TextProps) {
 	const size = props.size ?? HUD_VIEW.textSize;
+	const fade = props.transparency;
+	// One mapped binding per source binding, not one per render (the snapshot re-renders panels ~10 Hz).
+	const stroke = useMemo(
+		() =>
+			fade === undefined
+				? HUD_VIEW.panelTransparency
+				: typeIs(fade, "number")
+				? strokeTransparency(fade)
+				: fade.map(strokeTransparency),
+		[fade],
+	);
 	const wrap = props.wrap === true;
 	const fill = props.width === undefined && (props.fill === true || wrap);
 	const hug = props.width === undefined && !fill;
@@ -69,13 +80,7 @@ export function Text(props: TextProps) {
 			TextColor3={role(props.color ?? "uiText")}
 			TextStrokeColor3={role("background")}
 			TextTransparency={props.transparency ?? 0}
-			TextStrokeTransparency={
-				props.transparency === undefined
-					? HUD_VIEW.panelTransparency
-					: typeIs(props.transparency, "number")
-					? strokeTransparency(props.transparency)
-					: props.transparency.map(strokeTransparency)
-			}
+			TextStrokeTransparency={stroke}
 			TextXAlignment={props.align ?? Enum.TextXAlignment.Left}
 			Text={props.text}
 		/>

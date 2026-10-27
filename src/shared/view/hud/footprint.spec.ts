@@ -1,6 +1,7 @@
 // The in-run HUD's footprint budget (docs/HUD_LAYOUT.md H2): the always-on corner panels stay out of the playfield.
 import { describe, expect, it } from "@rbxts/jest-globals";
 import { DEFAULT_HUD_SCALE_PERCENT, HUD_SCALE_PERCENTS } from "shared/settings";
+import { BOOST_VIEW } from "shared/view/boosts";
 import {
 	ALWAYS_ON_PANELS,
 	HUD_FOOTPRINT,
@@ -11,16 +12,20 @@ import {
 	footprintRects,
 	footprintReport,
 	rectsOverlap,
+	HUD_TEST_TOP_INSET,
 	scoreEstimate,
+	statusEstimate,
 	transientRects,
 	weaponsEstimate,
 } from "shared/view/hud";
 
 const TEN_FOOT = [false, true];
+/** No inset, and the Roblox top bar above the safe area. */
+const INSETS = [0, HUD_TEST_TOP_INSET];
 const PERCENT = 100;
 
-function label(x: number, y: number, tenFoot: boolean, percent: number): string {
-	return string.format("%dx%d %s %d%%", x, y, tenFoot ? "TV" : "  ", percent);
+function label(x: number, y: number, tenFoot: boolean, percent: number, inset = 0): string {
+	return string.format("%dx%d %s %d%%%s", x, y, tenFoot ? "TV" : "  ", percent, inset > 0 ? " bar" : "");
 }
 
 describe("HUD footprint budget", () => {
@@ -36,14 +41,16 @@ describe("HUD footprint budget", () => {
 		const bad: string[] = [];
 		const over: string[] = [];
 		for (const v of HUD_TEST_VIEWPORTS) {
-			for (const tenFoot of TEN_FOOT) {
-				for (const percent of HUD_SCALE_PERCENTS) {
-					const report = footprintReport(v.x, v.y, tenFoot, percent);
-					for (const p of report.panels) {
-						if (!p.intrudes) continue;
-						const what = `${label(v.x, v.y, tenFoot, percent)} ${p.panel}`;
-						if (percent <= PERCENT) bad.push(what);
-						else over.push(what);
+			for (const inset of INSETS) {
+				for (const tenFoot of TEN_FOOT) {
+					for (const percent of HUD_SCALE_PERCENTS) {
+						const report = footprintReport(v.x, v.y, tenFoot, percent, inset);
+						for (const p of report.panels) {
+							if (!p.intrudes) continue;
+							const what = `${label(v.x, v.y, tenFoot, percent, inset)} ${p.panel}`;
+							if (percent <= PERCENT) bad.push(what);
+							else over.push(what);
+						}
 					}
 				}
 			}
@@ -57,20 +64,22 @@ describe("HUD footprint budget", () => {
 		const rows: string[] = [];
 		const bad: string[] = [];
 		for (const v of HUD_TEST_VIEWPORTS) {
-			for (const tenFoot of TEN_FOOT) {
-				const r = footprintReport(v.x, v.y, tenFoot, DEFAULT_HUD_SCALE_PERCENT);
-				const cells: string[] = [];
-				for (const p of r.panels) cells.push(string.format("%s %.1f%%", p.panel, p.coverShare * PERCENT));
-				rows.push(
-					string.format(
-						"%s  total %.1f%%  (%s)",
-						label(v.x, v.y, tenFoot, DEFAULT_HUD_SCALE_PERCENT),
-						r.totalShare * PERCENT,
-						cells.join(", "),
-					),
-				);
-				if (!tenFoot && r.totalShare > HUD_FOOTPRINT_LIMITS.maxCoverShare)
-					bad.push(label(v.x, v.y, tenFoot, 100));
+			for (const inset of INSETS) {
+				for (const tenFoot of TEN_FOOT) {
+					const r = footprintReport(v.x, v.y, tenFoot, DEFAULT_HUD_SCALE_PERCENT, inset);
+					const cells: string[] = [];
+					for (const p of r.panels) cells.push(string.format("%s %.1f%%", p.panel, p.coverShare * PERCENT));
+					rows.push(
+						string.format(
+							"%s  total %.1f%%  (%s)",
+							label(v.x, v.y, tenFoot, DEFAULT_HUD_SCALE_PERCENT, inset),
+							r.totalShare * PERCENT,
+							cells.join(", "),
+						),
+					);
+					if (!tenFoot && r.totalShare > HUD_FOOTPRINT_LIMITS.maxCoverShare)
+						bad.push(label(v.x, v.y, tenFoot, DEFAULT_HUD_SCALE_PERCENT, inset));
+				}
 			}
 		}
 		print(`[footprint] cover share at 100 %:\n  ${rows.join("\n  ")}`);
@@ -80,15 +89,17 @@ describe("HUD footprint budget", () => {
 	it("never covers the centre column or the centre row, at any HUD scale", () => {
 		const bad: string[] = [];
 		for (const v of HUD_TEST_VIEWPORTS) {
-			const cx = v.x / 2;
-			const cy = v.y / 2;
-			for (const tenFoot of TEN_FOOT) {
-				for (const percent of HUD_SCALE_PERCENTS) {
-					for (const p of footprintRects(v.x, v.y, tenFoot, percent)) {
-						const r = p.rect;
-						const column = r.x < cx && cx < r.x + r.w;
-						const row = r.y < cy && cy < r.y + r.h;
-						if (column || row) bad.push(`${label(v.x, v.y, tenFoot, percent)} ${p.panel}`);
+			for (const inset of INSETS) {
+				const cx = v.x / 2;
+				const cy = inset + (v.y - inset) / 2;
+				for (const tenFoot of TEN_FOOT) {
+					for (const percent of HUD_SCALE_PERCENTS) {
+						for (const p of footprintRects(v.x, v.y, tenFoot, percent, inset)) {
+							const r = p.rect;
+							const column = r.x < cx && cx < r.x + r.w;
+							const row = r.y < cy && cy < r.y + r.h;
+							if (column || row) bad.push(`${label(v.x, v.y, tenFoot, percent, inset)} ${p.panel}`);
+						}
 					}
 				}
 			}
@@ -155,6 +166,21 @@ describe("HUD footprint budget", () => {
 		);
 		expect(e.w).toBeLessThanOrEqual(HUD_FOOTPRINT.score.maxW);
 		expect(e.h).toBeLessThanOrEqual(HUD_FOOTPRINT.score.maxH);
+	});
+
+	it("the StatusPanel's size from HUD_VIEW (3 rows, one boost row, one item row) fits its budget", () => {
+		const e = statusEstimate(BOOST_VIEW.iconSize);
+		print(
+			string.format(
+				"[footprint] status estimate %dx%d (budget %dx%d)",
+				e.w,
+				e.h,
+				HUD_FOOTPRINT.status.maxW,
+				HUD_FOOTPRINT.status.maxH,
+			),
+		);
+		expect(e.w).toBeLessThanOrEqual(HUD_FOOTPRINT.status.maxW);
+		expect(e.h).toBeLessThanOrEqual(HUD_FOOTPRINT.status.maxH);
 	});
 
 	it("lists every always-on panel once", () => {

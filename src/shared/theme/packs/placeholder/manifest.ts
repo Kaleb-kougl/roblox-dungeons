@@ -423,6 +423,7 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		"hud.seed": "seed {seed}",
 		"hud.floor": "Floor {floor} · Depth {depth}",
 		"hud.info": "{title} · {place} · {seed} · {dungeon}",
+		"hud.items.more": "+{count}",
 		"hud.notice.fallback": "enemies unavailable ({reason}); playing the floor without enemies",
 		"hud.restartAlt": "or {key}",
 		"hud.pause.resume": "Resume",

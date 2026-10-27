@@ -29,12 +29,13 @@ export interface FootprintBox {
 }
 
 /**
- * Budget boxes of the always-on panels. score is 160 high (not the plan's 130): with the endless floor line moved
- * under the combo meter (H4) its estimate is ~154. weapons is 80 high (not 64): the swap hint line, while it shows,
- * puts the compact panel at ~72 (see weaponsEstimate).
+ * Budget boxes of the always-on panels. status is 160 high (not the plan's 130): three label rows, one boost row and
+ * one row of owned items (RunItems caps itself at one row) come to 160 (statusEstimate). score is 160 high (not 130):
+ * with the endless floor line moved under the combo meter (H4) its estimate is ~154. weapons is 80 high (not 64): the
+ * swap hint line, while it shows, puts the compact panel at ~72 (see weaponsEstimate).
  */
 export const HUD_FOOTPRINT = {
-	status: { corner: "topLeft", maxW: 240, maxH: 130 },
+	status: { corner: "topLeft", maxW: 240, maxH: 160 },
 	score: { corner: "topRight", maxW: 200, maxH: 160 },
 	weapons: { corner: "bottomLeft", maxW: 240, maxH: 80 },
 } as const satisfies Readonly<Record<AlwaysOnPanel, FootprintBox>>;
@@ -148,6 +149,12 @@ export const HUD_FOOTPRINT_LIMITS = {
 	maxCoverShare: 0.12,
 } as const;
 
+/**
+ * The Roblox top bar's height (screen px): the HUD's ScreenGui sits inside CoreUISafeInsets, so on most clients the
+ * safe area starts this far below the viewport's top. The spec checks the budget with and without it.
+ */
+export const HUD_TEST_TOP_INSET = 58;
+
 /** Viewports the spec checks (px): 16:9 at three sizes, 16:10, 4:3, 21:9 and a landscape phone. */
 export const HUD_TEST_VIEWPORTS: ReadonlyArray<{ readonly x: number; readonly y: number }> = [
 	{ x: 1280, y: 720 },
@@ -159,7 +166,7 @@ export const HUD_TEST_VIEWPORTS: ReadonlyArray<{ readonly x: number; readonly y:
 	{ x: 844, y: 390 },
 ];
 
-/** A screen rect in px, origin at the safe area's top left. */
+/** A screen rect in px, origin at the viewport's top left. */
 export interface ScreenRect {
 	readonly x: number;
 	readonly y: number;
@@ -193,35 +200,52 @@ export interface PanelRect<P> {
 	readonly rect: ScreenRect;
 }
 
-/** Screen rects (px) of every always-on panel's budget box, at the HUD scale the client would use. */
+/** `r` moved down by `dy` px. */
+function shiftDown(r: ScreenRect, dy: number): ScreenRect {
+	return { x: r.x, y: r.y + dy, w: r.w, h: r.h };
+}
+
+/**
+ * Screen rects (px) of every always-on panel's budget box, at the HUD scale the client would use (useHudScale scales
+ * by the whole viewport). `topInset` (screen px, default 0): the safe area starts that far down (the Roblox top bar,
+ * HUD_TEST_TOP_INSET), and the boxes sit in the safe area.
+ */
 export function footprintRects(
 	vw: number,
 	vh: number,
 	tenFoot: boolean,
 	userPercent: number,
+	topInset = 0,
 ): ReadonlyArray<PanelRect<AlwaysOnPanel>> {
 	const scale = computeHudScale(vw, vh, tenFoot, userPercent);
+	const sh = vh - topInset;
 	return ALWAYS_ON_PANELS.map((panel) => {
 		const b: FootprintBox = HUD_FOOTPRINT[panel];
-		return { panel, rect: cornerRect(b.corner, b.maxW, b.maxH, vw, vh, scale) };
+		return { panel, rect: shiftDown(cornerRect(b.corner, b.maxW, b.maxH, vw, sh, scale), topInset) };
 	});
 }
 
-/** Screen rects (px) of every transient panel at its fullest. */
+/** Screen rects (px) of every transient panel at its fullest (`topInset` as in footprintRects). */
 export function transientRects(
 	vw: number,
 	vh: number,
 	tenFoot: boolean,
 	userPercent: number,
+	topInset = 0,
 ): ReadonlyArray<PanelRect<TransientPanel>> {
 	const scale = computeHudScale(vw, vh, tenFoot, userPercent);
-	return TRANSIENT_PANELS.map((panel) => ({ panel, rect: transientRect(HUD_TRANSIENT[panel], vw, vh, scale) }));
+	const sh = vh - topInset;
+	return TRANSIENT_PANELS.map((panel) => ({
+		panel,
+		rect: shiftDown(transientRect(HUD_TRANSIENT[panel], vw, sh, scale), topInset),
+	}));
 }
 
-/** HUD_CLEAR_ZONE in px for a viewport. */
-export function clearZoneRect(vw: number, vh: number): ScreenRect {
+/** HUD_CLEAR_ZONE in px for a viewport: fractions of the safe area below `topInset`. */
+export function clearZoneRect(vw: number, vh: number, topInset = 0): ScreenRect {
 	const z = HUD_CLEAR_ZONE;
-	return { x: vw * z.x0, y: vh * z.y0, w: vw * (z.x1 - z.x0), h: vh * (z.y1 - z.y0) };
+	const sh = vh - topInset;
+	return { x: vw * z.x0, y: topInset + sh * z.y0, w: vw * (z.x1 - z.x0), h: sh * (z.y1 - z.y0) };
 }
 
 /** True when the two rects share a positive area (touching edges do not overlap). */
@@ -245,12 +269,19 @@ export interface FootprintReport {
 	readonly intrudes: boolean;
 }
 
-export function footprintReport(vw: number, vh: number, tenFoot: boolean, userPercent: number): FootprintReport {
-	const zone = clearZoneRect(vw, vh);
-	const area = vw * vh;
+/** Each always-on box against the clear zone and its share of the safe area (`topInset` as in footprintRects). */
+export function footprintReport(
+	vw: number,
+	vh: number,
+	tenFoot: boolean,
+	userPercent: number,
+	topInset = 0,
+): FootprintReport {
+	const zone = clearZoneRect(vw, vh, topInset);
+	const area = vw * (vh - topInset);
 	let total = 0;
 	let any = false;
-	const panels = footprintRects(vw, vh, tenFoot, userPercent).map((p) => {
+	const panels = footprintRects(vw, vh, tenFoot, userPercent, topInset).map((p) => {
 		const intrudes = rectsOverlap(p.rect, zone);
 		const coverShare = area > 0 ? (p.rect.w * p.rect.h) / area : 0;
 		total += coverShare;
@@ -286,4 +317,20 @@ export function scoreEstimate(): { w: number; h: number } {
 			line(HUD_VIEW.smallText),
 		]),
 	};
+}
+
+/** Label rows of the StatusPanel (HP, Flask, Ember). */
+const STATUS_LABEL_ROWS = 3;
+
+/**
+ * The StatusPanel's height at its usual fullest, reference px: the three label rows (a label line or a heart,
+ * whichever is taller), ONE boost row (`boostRowH`: shared/view/boosts BOOST_VIEW.iconSize; four boosts running at
+ * once wrap to a second row, rare and brief) and one row of owned items (RunItems caps itself at one row). Width: the
+ * footprint's own (rows wrap or cap at statusRowMaxWidth). An unscored endless run's floor line is not counted:
+ * endless runs are scored, so the line sits in the ScorePanel.
+ */
+export function statusEstimate(boostRowH: number): { w: number; h: number } {
+	const rows = repeated(math.max(line(HUD_VIEW.textSize), HUD_VIEW.heartSize), STATUS_LABEL_ROWS);
+	rows.push(boostRowH, PROGRESSION_VIEW.iconSize);
+	return { w: HUD_FOOTPRINT.status.maxW, h: stack(rows) };
 }

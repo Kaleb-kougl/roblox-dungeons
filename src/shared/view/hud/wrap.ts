@@ -27,6 +27,26 @@ export function wrapGrid(count: number, cellW: number, cellH: number, gap: numbe
 	return { cols, rows, width: cols * cellW + (cols - 1) * gap, height: rows * cellH + (rows - 1) * gap };
 }
 
+export interface OneRowCap {
+	/** Cells drawn (the last `shown` of the list). */
+	readonly shown: number;
+	/** Cells left out, summed up in one extra "+more" cell (0: none, no extra cell). */
+	readonly more: number;
+}
+
+/**
+ * Caps `count` cells to the one row that fits in `maxWidth` (docs/HUD_LAYOUT.md review fix: RunItems never grows the
+ * StatusPanel past its footprint height). When they all fit, all show; otherwise the last `cols - 1` show and one
+ * cell says how many more there are, so the row still holds `cols` cells.
+ */
+export function capOneRow(count: number, cellW: number, gap: number, maxWidth: number): OneRowCap {
+	if (!(count > 0)) return { shown: 0, more: 0 };
+	const cols = math.max(1, math.floor((maxWidth + gap) / (cellW + gap)));
+	if (count <= cols) return { shown: count, more: 0 };
+	const shown = math.max(0, cols - 1);
+	return { shown, more: count - shown };
+}
+
 /** The widest a StatusPanel row may be: its footprint width less the panel's padding. */
 export function statusRowMaxWidth(): number {
 	return HUD_FOOTPRINT.status.maxW - 2 * HUD_VIEW.pad;

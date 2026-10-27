@@ -3,6 +3,7 @@ import { useSelector } from "@rbxts/react-reflex";
 import { GuiService } from "@rbxts/services";
 import {
 	selectAnyPanelOpen,
+	selectBindings,
 	selectCoopOverlay,
 	selectInputDevice,
 	selectLeaveConfirm,
@@ -12,6 +13,7 @@ import {
 	selectTutorial,
 } from "client/store";
 import { role, str } from "client/ui/theme";
+import { swapHint } from "shared/play";
 import { TUTORIAL_STRINGS } from "shared/tutorial";
 import { SFX } from "shared/view/audio";
 import { HUD_STRINGS, HUD_VIEW, LEADERBOARD_STRINGS, PAUSE_HINT } from "shared/view/hud";
@@ -78,7 +80,8 @@ const SKIP_CONFIRM: ConfirmSpec = {
  * Leaderboards. A first-run tutorial run (paused like solo): Resume / Restart tutorial / Skip tutorial / Options.
  * Leave run first shows the confirm ("Leaving ends your run..."; Leave / Cancel), Skip tutorial its own ("Skip the
  * tutorial?"; Skip / Keep playing). With a gamepad the selection starts on the first button (Cancel / Keep playing
- * in a confirm). Under the buttons, the run's info line and any fallback notice (RunInfoLine: docs/HUD_LAYOUT.md H6,
+ * in a confirm). Under the buttons, the weapon-swap key (the HUD's swap hint hides after a few seconds,
+ * docs/HUD_LAYOUT.md H5), the run's info line and any fallback notice (RunInfoLine: docs/HUD_LAYOUT.md H6,
  * the only place they show while a run is on). Hidden while a panel is open and once the run is over (the run-over
  * panel has the exits).
  */
@@ -89,6 +92,7 @@ export function PauseOverlay() {
 	const confirm = useSelector(selectLeaveConfirm);
 	const panelOpen = useSelector(selectAnyPanelOpen);
 	const device = useSelector(selectInputDevice);
+	const bindings = useSelector(selectBindings);
 	const tutorial = useSelector(selectTutorial);
 	const robloxMenuOpen = useSelector(selectRobloxMenuOpen);
 	const actions = useHudActions();
@@ -201,6 +205,16 @@ export function PauseOverlay() {
 					text={str(coop ? MENU_STRINGS.coopTitle : HUD_STRINGS.paused)}
 				/>
 				{body}
+				{s.weapons.size() > 0 ? (
+					<Text
+						fill={true}
+						order={18}
+						size={HUD_VIEW.smallText}
+						color="uiTextDim"
+						align={Enum.TextXAlignment.Center}
+						text={str(HUD_STRINGS.weaponSwap, { key: swapHint(bindings)[device] })}
+					/>
+				) : undefined}
 				<RunInfoLine order={19} />
 				<Text
 					fill={true}

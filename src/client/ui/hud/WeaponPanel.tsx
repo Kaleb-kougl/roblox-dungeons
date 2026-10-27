@@ -84,7 +84,8 @@ function SwapHint(props: { order: number; text: string; forced: boolean }) {
 
 /**
  * Bottom left (web WeaponHud): the two weapon sets (compact slots, docs/HUD_LAYOUT.md H5), the set in hand
- * highlighted, and the timed SWAP hint (SwapHint). `highlight`: the tutorial's ring (the bow lesson), which also keeps
+ * highlighted, and the timed SWAP hint (SwapHint) ABOVE the slots, so the bottom-anchored slots never move when it
+ * hides. `highlight`: the tutorial's ring (the bow lesson), which also keeps
  * the hint on.
  */
 export function WeaponPanel(props: { readonly highlight?: boolean }) {
@@ -97,12 +98,12 @@ export function WeaponPanel(props: { readonly highlight?: boolean }) {
 	));
 	return (
 		<Panel corner="bottomLeft" name="Weapons" overlay={props.highlight === true ? <HighlightRing /> : undefined}>
-			<Row order={1}>{slots}</Row>
 			<SwapHint
-				order={2}
+				order={1}
 				forced={props.highlight === true}
 				text={str(HUD_STRINGS.weaponSwap, { key: swapHint(bindings)[device] })}
 			/>
+			<Row order={2}>{slots}</Row>
 		</Panel>
 	);
 }

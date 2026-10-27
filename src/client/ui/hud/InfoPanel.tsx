@@ -14,6 +14,7 @@ import { useTimedHint } from "./useTimedHint";
  * faded out (useTimedHint), and (KV_Debug only) the debug line with the replay check, which never fades. The run's
  * info line (title, biome, seed, dungeon) is not here: it lives in the PauseOverlay and the RunOverPanel (RunInfoLine,
  * HD6). Nothing at all, not even the panel, when no line shows. Width: the footprint's verdict box (HUD_TRANSIENT).
+ * Once the run is over the verdict line stays off: the RunOverPanel shows it in the centre.
  */
 export function InfoPanel() {
 	const info = useSelector(selectRunInfo);
@@ -25,7 +26,7 @@ export function InfoPanel() {
 	const noticeHint = useTimedHint(HUD_HINTS.verdictSeconds, [notice]);
 	const verdictHint = useTimedHint(HUD_HINTS.verdictSeconds, [verdictText]);
 	const showNotice = notice !== "" && !noticeHint.hidden;
-	const showVerdict = verdictText !== "" && !verdictHint.hidden;
+	const showVerdict = verdictText !== "" && !verdictHint.hidden && s.outcome === "playing";
 	if (!showNotice && !showVerdict && !info.debug) return undefined;
 	let replayText = str(HUD_STRINGS.replayHint, { key: REPLAY_CHECK_KEYS.join(" / ") });
 	if (replay !== undefined) {

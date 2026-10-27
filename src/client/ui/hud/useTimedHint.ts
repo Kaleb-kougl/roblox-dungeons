@@ -1,4 +1,4 @@
-import { useBinding, useEffect, useState } from "@rbxts/react";
+import { useBinding, useEffect, useRef, useState } from "@rbxts/react";
 import { useSelector } from "@rbxts/react-reflex";
 import { RunService } from "@rbxts/services";
 import { selectJuice } from "client/store";
@@ -19,6 +19,9 @@ export interface TimedHint {
  */
 export function useTimedHint(showSeconds: number, triggers: ReadonlyArray<unknown>): TimedHint {
 	const motion = motionScale(useSelector(selectJuice));
+	// Read when the time is up, not a trigger: toggling Reduce Motion mid-run must not show the hint again.
+	const motionRef = useRef(motion);
+	motionRef.current = motion;
 	const [hidden, setHidden] = useState(false);
 	const [fade, setFade] = useBinding(0);
 	useEffect(() => {
@@ -27,7 +30,7 @@ export function useTimedHint(showSeconds: number, triggers: ReadonlyArray<unknow
 		const start = os.clock();
 		let connection: RBXScriptConnection | undefined;
 		const timer = task.delay(showSeconds, () => {
-			if (motion <= 0) {
+			if (motionRef.current <= 0) {
 				setHidden(true);
 				return;
 			}
@@ -45,6 +48,6 @@ export function useTimedHint(showSeconds: number, triggers: ReadonlyArray<unknow
 			task.cancel(timer);
 			connection?.Disconnect();
 		};
-	}, [showSeconds, motion, ...triggers]);
+	}, [showSeconds, ...triggers]);
 	return { hidden, fade };
 }

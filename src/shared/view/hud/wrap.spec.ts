@@ -1,7 +1,28 @@
 import { describe, expect, it } from "@rbxts/jest-globals";
 import { BOOST_KINDS } from "shared/theme";
 import { BOOST_VIEW } from "shared/view/boosts";
-import { HUD_FOOTPRINT, HUD_VIEW, PROGRESSION_VIEW, statusRowMaxWidth, wrapGrid } from "shared/view/hud";
+import { HUD_FOOTPRINT, HUD_VIEW, PROGRESSION_VIEW, capOneRow, statusRowMaxWidth, wrapGrid } from "shared/view/hud";
+
+describe("capOneRow", () => {
+	it("everything shows while it fits one row", () => {
+		// (100 + 2) / (10 + 2) -> 8 per row
+		expect(capOneRow(0, 10, 2, 100)).toEqual({ shown: 0, more: 0 });
+		expect(capOneRow(8, 10, 2, 100)).toEqual({ shown: 8, more: 0 });
+	});
+	it("past one row: the last cols - 1 show and one cell counts the rest", () => {
+		expect(capOneRow(9, 10, 2, 100)).toEqual({ shown: 7, more: 2 });
+		expect(capOneRow(30, 10, 2, 100)).toEqual({ shown: 7, more: 23 });
+	});
+	it("the status items row never wraps", () => {
+		const max = statusRowMaxWidth();
+		const size = PROGRESSION_VIEW.iconSize;
+		for (let n = 1; n <= 40; n++) {
+			const c = capOneRow(n, size, HUD_VIEW.gap, max);
+			const cells = c.shown + (c.more > 0 ? 1 : 0);
+			expect(wrapGrid(cells, size, size, HUD_VIEW.gap, max).rows).toBe(1);
+		}
+	});
+});
 
 describe("wrapGrid", () => {
 	it("no cells: an empty grid", () => {
