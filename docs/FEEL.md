@@ -1,6 +1,10 @@
 # Game feel: the hit pass (plan)
 
-Status (2026-10-26): **plan, not started.** Drafted from an audit of `main` @ `423e82a` against the "12 principles of
+Status (2026-10-26): **J1-J9 and J11 code-complete, verified headlessly only** (typecheck, lint, asset check, art
+tests, build, and the full Lune suite: 159 spec files, 2309 tests, all passing except `forge.spec.ts`'s NaN-bit vector,
+which fails the same way on `main` under x86_64 Lune and is unrelated). **Nothing has run in Studio**: the Studio check
+below and J12 are pending; J10 is optional and not started. Built on branch `game-feel` in four parallel streams (hurt,
+hit reaction, motion, latency probe) plus a review pass. Drafted from an audit of `main` @ `423e82a` against the "12 principles of
 game feel" reference (juice, input responsiveness, camera shake, squash & stretch, particles, hit stop, weight &
 physics, anticipation, screen flash, trails, audio feedback, appeal). Nine of the twelve are already in good shape.
 This plan fills the gaps: **feedback when the player is hit, a visible reaction on every hit landed, squash & stretch,
@@ -163,33 +167,70 @@ Never enemy bullets (JD3). Risk: a `Ball` Part cannot be non-uniform, so the pla
 
 ## Tasks
 
-- [ ] **J1. Shared state watch.** Move `AudioStateWatch` to `shared/view/watch.ts` (`StateWatch`), add `hurtKind` and
+- [x] **J1. Shared state watch.** Move `AudioStateWatch` to `shared/view/watch.ts` (`StateWatch`), add `hurtKind` and
   `rollEndEdge` with spec cases (harmless vs armor vs heart vs lethal, the Aegis pip, a co-op teammate's hit).
   -> Verify: `npm run verify`; the audio spec unchanged and passing.
-- [ ] **J2. Hurt flash.** `hurtFlash.ts` + spec (incl. the 1.33 Hz ceiling), `HurtFlashController`, `FEEL.hurt`.
+- [x] **J2. Hurt flash.** `hurtFlash.ts` + spec (incl. the 1.33 Hz ceiling), `HurtFlashController`, `FEEL.hurt`.
   -> Verify: Studio, endless floor 1: each hit kind reads at 1080p and on the phone emulator; the HUD stays above it.
-- [ ] **J3. Shake and freeze vocabulary.** `hurt` / `heavy` nudges, `applyHurtFreeze`, heavy-hit freeze; freezeRules
+- [x] **J3. Shake and freeze vocabulary.** `hurt` / `heavy` nudges, `applyHurtFreeze`, heavy-hit freeze; freezeRules
   and hitstop spec cases (priority, rate cap with a finisher combo, co-op ignored). -> Verify: solo sword combo into a
   finisher feels heavier without stutter; KV_Debug stats show the cap holding.
-- [ ] **J4. Hit reaction, sprite enemies.** `hitReact.ts` + spec, `SpriteView` rim flash / hold / push, wired in
+- [x] **J4. Hit reaction, sprite enemies.** `hitReact.ts` + spec, `SpriteView` rim flash / hold / push, wired in
   ActorRenderController. -> Verify: skeleton, sniper, bruiser, both bosses; capped boss hits flash only.
-- [ ] **J5. Hit reaction, placeholder enemies.** The `Flashing` Model + Highlight, push on the model. -> Verify: the
+- [x] **J5. Hit reaction, placeholder enemies.** The `Flashing` Model + Highlight, push on the model. -> Verify: the
   `placeholder` pack, a room of 10+ enemies under a bow stream: no Highlight flicker, Highlight count 2.
-- [ ] **J6. Squash & stretch.** `squash.ts` + spec (art-pixel rounding, reduced motion), `SpriteView.setScale`.
+- [x] **J6. Squash & stretch.** `squash.ts` + spec (art-pixel rounding, reduced motion), `SpriteView.setScale`.
   -> Verify: feet stay planted through every curve; no pixel shimmer on the knight at 1080p.
-- [ ] **J7. Afterimages.** `afterimage.ts` + spec, the Ghosts pool, the Demon Lord's charge. -> Verify: frame time
+- [x] **J7. Afterimages.** `afterimage.ts` + spec, the Ghosts pool, the Demon Lord's charge. -> Verify: frame time
   flat with 4 co-op players rolling.
-- [ ] **J8. Screen shake setting.** Juice schema, Options row, strings in both packs, settings spec.
-- [ ] **J9. Co-op latency probe.** Under `KV_Debug`: the current lead and press -> first stepped tick in ms on the
+- [x] **J8. Screen shake setting.** Juice schema, Options row, strings in both packs, settings spec.
+- [x] **J9. Co-op latency probe.** Under `KV_Debug`: the current lead and press -> first stepped tick in ms on the
   debug line. Numbers into this doc; no behaviour change.
 - [ ] **J10. (Optional) player bullet streaks.** Only if J12 asks for it.
-- [ ] **J11. Low-health pulse.** `lowHealth.ts` + spec, drawn by `HurtFlashController` (needs J2). -> Verify: Studio,
+- [x] **J11. Low-health pulse.** `lowHealth.ts` + spec, drawn by `HurtFlashController` (needs J2). -> Verify: Studio,
   drop to the last half heart: the pulse starts, stops on a flask, never shows with armor or the Aegis pip up; reduced
   motion shows the steady glow; the HUD and bullets near the edges stay readable through it.
 - [ ] **J12. Playtest and docs.** Solo M1, endless (incl. both bosses), the tutorial, co-op 2-4 with spectating, reduced
   motion on / off, every particles level. Tune `FEEL`. Docs: docs/CLIENT.md's FX section, a CLAUDE.md decision-log
   line (game feel pass; presentation only; `screenShake` setting), this doc's status. No PROVENANCE rows (no web
   source; freezeRules.ts keeps its row with a port-change note).
+
+As built (differences from the design above):
+
+- Tunables are split by stream instead of one `FEEL` object: `hurtConfig.ts` (`FEEL_HURT`, `FEEL_LOW_HEALTH`),
+  `hitReactConfig.ts` (`FEEL_HIT`), `motionFxConfig.ts` (`FEEL_SQUASH`, `FEEL_GHOST`), shared/view
+  `latencyProbeConfig.ts` (`LATENCY_PROBE`); `HEAVY_HIT_FREEZE_MS` (40) and the new nudge lengths stay in freezeRules.ts.
+- J1: `StateWatch` in `shared/view/watch.ts` (exported from `shared/view`, no longer from the audio barrel). No
+  `rollEndEdge`: the motion stream reads roll start / end itself (`RollEdgeWatch`). `lethal` comes from the death edge
+  (a lethal hit resets `hurtTicks`); a hit that dropped nothing is `harmless` only in the tutorial's harmless mode,
+  else `heart` (Second Wind restored the hearts the same frame). A forfeit (death with no `playerHits`) is `none`.
+- J2: the lethal flash holds 1.5 s (`SPECTATE.holdOnDeathSec`) then fades over 0.6 s, so it never sits under the
+  run-over panel. `HurtFlash` never restarts within `HURT_INVULN_SECONDS` of the last start (only upgrades the kind),
+  which keeps the 1.33 Hz ceiling through multi-tick frames. ScreenGui at `HUD_VIEW.hudDisplayOrder - 1`, disabled
+  while clear; real-time clock.
+- J3: heavy-hit freezes and kicks are solo only (in co-op the hitter may be a teammate); the hurt jolt plays in every
+  mode, the hurt freeze only in solo / the tutorial. **Co-op bug fix (outside the plan):** nothing called
+  `hitstop.frame()` in co-op, so the first kill's freeze left `timeScale()` at 0 and particles / sprite effects
+  stopped for the rest of the run. FreezeFrameController now drains the clock every co-op frame (every frame, not
+  only while active: `frame()` also moves the rate cap's time base). Sim pacing is unchanged.
+- J4: the push writes `StudsOffsetWorldSpace` (squash owns `Size` / `StudsOffset`; the anchors never rotate, so the
+  result is the same). The hold runs on its own real-time clock (stopped while paused, not slowed by hitstop); a hit
+  hold starts only when none runs (a focused target would otherwise never animate); kill holds follow the kill
+  freezes (50 / 80 ms, the boss death 250 ms on `bossDefeated`) and are off with Freeze frame off. The killing blow
+  flashes the corpse. A pooled view never holds the previous actor's frame (`reset()` clears the hold).
+- J5: placeholders flash and push but have no hold (no sprite clock). With `KV_EnemyOutline` off the Flashing
+  Highlight's rim goes clear; the fill flash stays.
+- J6: sprite views only (placeholder models are not deformed); bosses do not pop on hits (`FEEL_SQUASH.bossHits`); a
+  hit restarts the pop at most every 0.12 s; capped hits do not pop; the spawn curve eases 0.6 -> 1.08 by 60 % then
+  smoothsteps to 1; the death squash eases in over its first 30 %.
+- J7: every party member's roll leaves ghosts; 27 views prebuilt (3 x 8 party trails + 1 boss trail) under
+  `KV_Actors/Ghosts`; ghosts sit 0.03 studs behind their source; none recorded while the sprite is blinking.
+- J8: only the placeholder manifest defines `fx.settings.*` strings (vale inherits), so `fx.settings.screenShake` is
+  there. The server needed no change (it sanitizes through `JUICE_SETTING_KEYS`).
+- J9: KV_Debug, co-op only: a second debug line `co-op lead {lead}t {ms}ms · press->step {last}ms avg max n · late miss`
+  (`LatencyProbe`, the window of 16 presses). `LockstepClient.nextInputTick()` is the send target's own expression,
+  now shared by `pump` (behaviour unchanged). The headless floor is (lead + 1) ticks = 66.7 ms; Studio numbers pending.
+  Caveat: `startCoop` uses the KV_Debug value read at the last solo / tutorial start.
 
 Critical path: J1 -> J2 -> J3 (the hurt package, the biggest gap; ship it first) -> J4 / J5 -> J6 / J7 -> J12. J8 can go
 with J3, J11 right after J2; J9 any time.
@@ -203,8 +244,11 @@ with J3, J11 right after J2; J9 any time.
 5. Reduced motion on: flashes only, and the low-health glow steady. Screen shake off: no nudges at all, boss ones
    included.
 6. Last half heart with no armor: the edge pulse at about 1 Hz, gone after a flask; a hit during it flashes normally.
-7. Risks to check first: Highlight reparent flicker (J5), BillboardGui resize shimmer with Pixelated resampling (J6),
-   UIGradient edge banding on 21:9 (J2).
+7. Co-op: particles and sprite effects keep moving after kills (the drain fix); KV_Debug shows the latency line.
+8. Risks to check first: Highlight reparent flicker (J5), BillboardGui resize shimmer with Pixelated resampling (J6),
+   UIGradient edge banding on 21:9 (J2), the corners where two edge Frames overlap, the hurt ScreenGui never taking
+   clicks or gamepad selection, the 7-row Juice tab fitting its panel, ghost z-fighting and the Demon Lord's charge
+   ghosts reading as a smear (raise `FEEL_GHOST.everyTicks` for the boss if so), the spawn grow-in on summons.
 
 ## Decisions
 

@@ -180,6 +180,15 @@ Decision log (deviations from `PLAN.md`):
   fade under the action (`HudOcclusionController`, CanvasGroup + bindings). Settings: `DisplaySettings.hudFade`
   (default On, only Off stored, document stays v2) and a 70 % step in `HUD_SCALE_PERCENTS`; one new theme string
   `hud.items.more` and `options.display.hudFade`.
+- **Game feel pass (docs/FEEL.md).** Presentation only (no sim, dungeon, hash, replay or fixture change; lockstep
+  behaviour unchanged). Hurt feedback on the view player (`StateWatch.hurtKind`, moved from the audio watch to
+  `shared/view/watch.ts`): red screen edges in `uiHealth` (`HurtFlashController`, <= 1.33 Hz by `HURT_INVULN_TICKS`), a
+  2-texel `hurt` nudge, a 40 ms solo freeze; a 1 Hz low-health edge pulse while one more hit kills. Heavy hits: 40 ms solo
+  freeze + `heavy` nudge. Enemy hits: rim flash in `uiText`, a sprite hold, a 1-2 texel push (`hitReact.ts`;
+  placeholders flash under ONE more Highlight, `KV_Actors/Flashing`); squash & stretch (sprite views, whole art pixels)
+  and roll / brimstone-charge afterimages (`KV_Actors/Ghosts`). Juice setting `screenShake` (default On, overrides-only;
+  `screenShakeOn` = it and not reduced motion), string `fx.settings.screenShake`. Co-op now drains the hitstop clock
+  every frame (it was never drained, freezing particles after the first kill). No theme contract change.
 
 ## Commands
 
