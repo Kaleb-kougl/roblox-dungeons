@@ -1,7 +1,7 @@
 # Game feel: the hit pass (plan)
 
 Status (2026-10-26): **J1-J9 and J11 code-complete, verified headlessly only** (typecheck, lint, asset check, art
-tests, build, and the full Lune suite: 159 spec files, 2309 tests, all passing except `forge.spec.ts`'s NaN-bit vector,
+tests, build, and the full Lune suite: 159 spec files, 2311 tests, all passing except `forge.spec.ts`'s NaN-bit vector,
 which fails the same way on `main` under x86_64 Lune and is unrelated). **Nothing has run in Studio**: the Studio check
 below and J12 are pending; J10 is optional and not started. Built on branch `game-feel` in four parallel streams (hurt,
 hit reaction, motion, latency probe) plus a review pass. Drafted from an audit of `main` @ `423e82a` against the "12 principles of
