@@ -2,7 +2,8 @@
  * The stored settings document (one DataStore value per player, SettingsService) and the remotes' payload: every
  * settings group, overrides-only (what the player changed; absent = the defaults).
  *
- *   juice     JuiceOverrides     (juice.ts: health bars, damage numbers, freeze frame, particles, reduced motion)
+ *   juice     JuiceOverrides     (juice.ts: health bars, damage numbers, freeze frame, screen shake, particles, reduced
+ *                                motion)
  *   controls  ControlsOverrides  (shared/play bindings.ts: the key bindings that differ from DEFAULT_BINDINGS)
  *   audio     AudioOverrides     (audio.ts: master / music / sfx volume)
  *   display   DisplayOverrides   (display.ts: HUD scale, room edges)

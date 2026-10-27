@@ -6,10 +6,11 @@
  *
  * Inputs per rendered frame: the frame's summed SimEvents (LiveRun.frameEvents: every tick of the frame, so no event
  * is lost on multi-tick frames), the hit tracker's FX events (per-actor hits / kills / boss phases), and the sim state
- * (the enemy-bullet spawn counter; per-player and per-floor edges through AudioStateWatch). Output: the cues to start
- * this frame (sound ID + volume scale), each ID at most once per frame and once per its minimum interval (a bow stream
- * or a bullet ring is one sound, not fifty), at most one jingle (JINGLE_SFX), at most AUDIO_VIEW.maxStartsPerFrame of
- * them, the highest SFX_PRIORITY kept (the player's hurt and the telegraph over enemy shots and hits).
+ * (the enemy-bullet spawn counter; per-player and per-floor edges through StateWatch, shared/view watch.ts). Output:
+ * the cues to start this frame (sound ID + volume scale), each ID at most once per frame and once per its minimum
+ * interval (a bow stream or a bullet ring is one sound, not fifty), at most one jingle (JINGLE_SFX), at most
+ * AUDIO_VIEW.maxStartsPerFrame of them, the highest SFX_PRIORITY kept (the player's hurt and the telegraph over enemy
+ * shots and hits).
  *
  * Silent IDs: the mapper's `playable` predicate (the controller passes `pack.sound(id).assetId !== undefined`) turns a
  * silent ID into its SFX_FALLBACK when that one plays, else drops it before it is a candidate: a silent sound never
@@ -20,7 +21,7 @@
  * volume, a teammate's at AUDIO_VIEW.teammateVolume; shots, swaps and the bow's full charge are the local player's
  * only. The deflect (summed bulletsDeleted: the sim keeps no per-player count) is the local player's at full volume
  * when the local player could have deleted them this frame (guard up, this frame or the last, or a swing:
- * AudioStateWatch.mayDeflect), else a teammate's. A solo run reads the summed events exactly as before (the watch only
+ * StateWatch.mayDeflect), else a teammate's. A solo run reads the summed events exactly as before (the watch only
  * picks swing vs finisher).
  *
  * Boost drops (docs/BOOSTS.md B7) come from the frame's collected drop events (shared/view/boosts BoostEventSource,
@@ -36,7 +37,7 @@ import { AMBIENCE_IDS } from "shared/theme";
 import { NO_BOOST_EVENTS, type BoostEventSource } from "../boosts";
 import type { FxEvent } from "../fx/events";
 import { AUDIO_VIEW } from "./config";
-import { AudioStateWatch, SwingEdge } from "./watch";
+import { StateWatch, SwingEdge } from "../watch";
 
 /** Every sound effect the game plays, by logical ID (theme manifest). */
 export const SFX = {
@@ -409,7 +410,7 @@ export class AudioCueMapper {
 	private readonly lastStart = new Map<string, number>();
 	private readonly intervals = new Map<string, number>();
 	private lastEnemySpawned = -1;
-	readonly watch = new AudioStateWatch();
+	readonly watch = new StateWatch();
 	// This frame's candidates (parallel lists, reused).
 	private readonly pendingIds = new Array<string>();
 	private readonly pendingVolumes = new Array<number>();

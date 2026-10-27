@@ -358,6 +358,7 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		// Roblox-port additions (task 8 part B: HUD, juice panel, verdict and debug lines).
 		"fx.settings.reset": "Reset to defaults",
 		"fx.settings.close": "Close",
+		"fx.settings.screenShake": "Screen shake",
 		"fx.settings.system": "(system: {value})",
 		"fx.settings.offline": "Not saved yet: the server has not answered",
 		"fx.cap": "CAP",

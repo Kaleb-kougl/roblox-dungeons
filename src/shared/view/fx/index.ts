@@ -18,3 +18,6 @@ export * from "./rng";
 export * from "./config";
 export * from "./scorePops";
 export * from "./fxCues";
+export * from "./hurtConfig";
+export * from "./hurtFlash";
+export * from "./lowHealth";
