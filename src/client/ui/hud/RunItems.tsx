@@ -2,8 +2,15 @@ import React from "@rbxts/react";
 import { HUD_FONT, role, str } from "client/ui/theme";
 import { BOONS, CURSES, RELICS } from "shared/sim";
 import type { ColorRole } from "shared/theme";
-import { CURSE_COLOR_ROLE, PROGRESSION_VIEW, RELIC_COLOR_ROLE, itemIconKey, rarityColorRole } from "shared/view/hud";
-import { Row } from "./primitives";
+import {
+	CURSE_COLOR_ROLE,
+	PROGRESSION_VIEW,
+	RELIC_COLOR_ROLE,
+	itemIconKey,
+	rarityColorRole,
+	statusRowMaxWidth,
+} from "shared/view/hud";
+import { GridRow } from "./GridRow";
 
 const STROKE = 1;
 
@@ -32,7 +39,7 @@ function ItemIcon(props: { order: number; id: string; color: ColorRole }) {
 
 /**
  * The owned boons (rarity colour), relics and curses of an endless run as a row of icons, in the order taken (the
- * StatusPanel's last row). Nothing when there are none.
+ * StatusPanel's last row), wrapping at the status panel's footprint width (GridRow). Nothing when there are none.
  */
 export function RunItems(props: {
 	order: number;
@@ -56,5 +63,10 @@ export function RunItems(props: {
 		if (def !== undefined) icons.push(<ItemIcon key={`c${c}`} order={++n} id={def.id} color={CURSE_COLOR_ROLE} />);
 	}
 	if (icons.size() === 0) return undefined;
-	return <Row order={props.order}>{icons}</Row>;
+	const size = PROGRESSION_VIEW.iconSize;
+	return (
+		<GridRow order={props.order} count={icons.size()} cellW={size} cellH={size} maxWidth={statusRowMaxWidth()}>
+			{icons}
+		</GridRow>
+	);
 }
