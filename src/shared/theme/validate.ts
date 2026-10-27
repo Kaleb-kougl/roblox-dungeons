@@ -24,6 +24,9 @@
  * Roblox port (docs/BOOSTS.md B5): the boost slot (`boost.<kind>`, free-size world art; any other `boost.` ID is an
  * error) and the boost colour roles readable on every biome floor and wall and kept away from the enemy-bullet roles,
  * `boostColorReport` (the enemy outline's rules, per BOOST_ROLES colour).
+ *
+ * Roblox port (docs/ROOM_EDGES.md RE4): the room-edge colour roles, waiting and live readable on every biome floor
+ * (WCAG contrast) and all three kept away from the enemy-bullet roles and telegraph (CIE76), `roomEdgeReport`.
  */
 
 import { colorDifference, contrastRatio, isHexColor } from "./color";
@@ -67,9 +70,14 @@ import {
 	MIN_ENEMY_OUTLINE_CONTRAST,
 	MIN_FX_BULLET_DIFFERENCE,
 	MIN_HEALTH_BAR_CONTRAST,
+	MIN_ROOM_EDGE_CONTRAST,
+	MIN_ROOM_EDGE_DIFFERENCE,
 	MUSIC,
 	REQUIRED_ASSET_IDS,
 	REQUIRED_STRING_KEYS,
+	ROOM_EDGE_CONTRAST_ROLES,
+	ROOM_EDGE_DIFFERENCE_ROLES,
+	ROOM_EDGE_ROLES,
 	SLOTS,
 	SOUND_PITCH_LIMITS,
 	SOUND_PRESENTATION_KEYS,
@@ -599,6 +607,79 @@ export function boostColorReport(manifest: unknown): Array<BoostColorEntry> {
 	return out;
 }
 
+/**
+ * Room edges (docs/ROOM_EDGES.md RE4): every ROOM_EDGE_CONTRAST_ROLES colour (waiting, live) vs every biome's floor
+ * (WCAG contrast, >= MIN_ROOM_EDGE_CONTRAST; check "floor", `against` = the biome ID; walls are not checked, the lines
+ * lie on floors) and every ROOM_EDGE_ROLES colour (safe too) vs every ROOM_EDGE_DIFFERENCE_ROLES colour (CIE76 colour
+ * difference, >= MIN_ROOM_EDGE_DIFFERENCE; check "difference", `against` = the role). `value` is the ratio or the
+ * difference. Roles in ROOM_EDGE_ROLES order (floors first, then differences, per role), biomes in sorted order.
+ */
+export interface RoomEdgeEntry {
+	role: string;
+	check: "floor" | "difference";
+	color: string;
+	against: string;
+	againstColor: string;
+	value: number;
+	min: number;
+	ok: boolean;
+}
+
+export function roomEdgeReport(manifest: unknown): Array<RoomEdgeEntry> {
+	const out = new Array<RoomEdgeEntry>();
+	if (!isObj(manifest) || !isObj(manifest.colors)) {
+		return out;
+	}
+	const colors = manifest.colors;
+	const biomes = isObj(manifest.biomes) ? sortedEntries(manifest.biomes) : [];
+	for (const role of ROOM_EDGE_ROLES) {
+		const color = colors[role];
+		if (!isHexColor(color)) {
+			continue;
+		}
+		if (ROOM_EDGE_CONTRAST_ROLES.includes(role)) {
+			for (const [biome, def] of biomes) {
+				if (!isObj(def)) {
+					continue;
+				}
+				const againstColor = def.floor;
+				if (!isHexColor(againstColor)) {
+					continue;
+				}
+				const value = contrastRatio(color, againstColor);
+				out.push({
+					role,
+					check: "floor",
+					color,
+					against: biome,
+					againstColor,
+					value,
+					min: MIN_ROOM_EDGE_CONTRAST,
+					ok: value >= MIN_ROOM_EDGE_CONTRAST,
+				});
+			}
+		}
+		for (const against of ROOM_EDGE_DIFFERENCE_ROLES) {
+			const againstColor = colors[against];
+			if (!isHexColor(againstColor)) {
+				continue;
+			}
+			const value = colorDifference(color, againstColor);
+			out.push({
+				role,
+				check: "difference",
+				color,
+				against,
+				againstColor,
+				value,
+				min: MIN_ROOM_EDGE_DIFFERENCE,
+				ok: value >= MIN_ROOM_EDGE_DIFFERENCE,
+			});
+		}
+	}
+	return out;
+}
+
 type Err = (path: ReadonlyArray<string>, msg: string) => void;
 type UnknownKeys = (obj: Obj, path: ReadonlyArray<string>, allowed: ReadonlyArray<string>) => void;
 
@@ -927,6 +1008,27 @@ export function validateManifest(manifest: unknown, opts: ValidateOptions = {}):
 				`colour difference: ${c.role} ${c.color} vs ${c.against} ${c.againstColor} is ${fixed1(
 					c.value,
 				)} (CIE76), needs >= ${fixed1(c.min)}: a boost drop must never read as an enemy bullet`,
+			);
+		}
+	}
+
+	// --- room edges read on every biome floor and never as an enemy bullet or a telegraph ----------
+	for (const c of roomEdgeReport(manifest)) {
+		if (c.ok) {
+			continue;
+		}
+		if (c.check === "floor") {
+			err(
+				["colors", c.role],
+				`contrast: ${c.role} ${c.color} on ${c.against}${forgeSuffix(c.against)} floor ${c.againstColor} is ` +
+					`${fixed2(c.value)}:1, needs >= ${fixed1(c.min)}:1`,
+			);
+		} else {
+			err(
+				["colors", c.role],
+				`colour difference: ${c.role} ${c.color} vs ${c.against} ${c.againstColor} is ${fixed1(
+					c.value,
+				)} (CIE76), needs >= ${fixed1(c.min)}: a room edge must never read as an enemy bullet or a telegraph`,
 			);
 		}
 	}

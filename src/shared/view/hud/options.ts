@@ -53,6 +53,8 @@ export const OPTIONS_STRINGS = {
 	up: "options.up",
 	/** Display tab. */
 	hudScale: "options.display.hudScale",
+	/** The room-edge lines On / Off (docs/ROOM_EDGES.md RE6; the option labels are the juice tab's fx.settings.on / off). */
+	roomEdges: "options.display.roomEdges",
 	/** Prefixes: `options.tab.<tab>`, `options.device.<kbm|pad>`, `options.action.<action>`, `options.refused.<reason>`. */
 	tabPrefix: "options.tab.",
 	devicePrefix: "options.device.",

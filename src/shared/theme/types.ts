@@ -111,6 +111,12 @@ export const COLOR_ROLES = [
 	"boost.quickstep",
 	"boost.frenzy",
 	"boost.aegis",
+	// Roblox port (docs/ROOM_EDGES.md RE4): the dashed line where a corridor meets a room, one colour per room state
+	// (contract.ts ROOM_EDGE_ROLES). waiting and live are held to MIN_ROOM_EDGE_CONTRAST on every biome floor, all three
+	// to MIN_ROOM_EDGE_DIFFERENCE (CIE76) from the enemy-bullet roles and telegraph.
+	"roomEdge.safe",
+	"roomEdge.waiting",
+	"roomEdge.live",
 ] as const;
 
 export type ColorRole = (typeof COLOR_ROLES)[number];

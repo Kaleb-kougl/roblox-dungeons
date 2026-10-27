@@ -18,6 +18,8 @@
  *   outline.ts    enemy outlines (enemy outline plan O2 / O4): who gets the rim (actorOutlined), the actor folder's
  *                 groups, the shared Highlight's look, the KV_EnemyOutline switch (ACTOR_OUTLINE) and when a sprite's
  *                 baked rim draws (spriteOutlineVisible)
+ *   roomEdges.ts  room edges (docs/ROOM_EDGES.md): the dashed corridor-to-room edge runs of a floor (tunables:
+ *                 ROOM_EDGE_VIEW in roomEdgesConfig.ts); roomEdgeState.ts: each room's safe / waiting / live state
  *   decor/        the decor plan (docs/DECOR.md R3 / R6 / R8): planDecor, decorProfile, fade selection, glow points
  *
  * Sub-barrels (import from the folder): `shared/view/fx` (the juice layer: hit tracker, hitstop, bars, numbers,
@@ -38,4 +40,7 @@ export * from "./floorTexture";
 export * from "./breakablesConfig";
 export * from "./breakables";
 export * from "./outline";
+export * from "./roomEdgesConfig";
+export * from "./roomEdges";
+export * from "./roomEdgeState";
 export * from "./decor";

@@ -7,7 +7,8 @@
  * colour now live in PLACEHOLDER_VISUALS) and every `silent` one stayed silent. Roblox-port additions are marked
  * (enemy.dummy, the port sfx, breakables and the decor fx colour roles; no decor art: decor is optional; the port
  * audio IDs, ambience beds and fx colour roles of docs/FX_AUDIO.md; no fx art: sprite effects are optional; the boost
- * drops of docs/BOOSTS.md B5: gems, colour roles, strings and silent sounds).
+ * drops of docs/BOOSTS.md B5: gems, colour roles, strings and silent sounds; the room-edge colour roles of
+ * docs/ROOM_EDGES.md RE4).
  *
  * To replace art or audio later, change an entry's kind and paste the uploaded asset ID, e.g.
  *   "enemy.sniper": { kind: "spritesheet", assetId: "rbxassetid://<n>", frameW: 16, frameH: 16, pivot: { x: 8, y: 15 }, animations: { ... } },
@@ -93,6 +94,12 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		"boost.quickstep": "#3ff0d8",
 		"boost.frenzy": "#a8f03c",
 		"boost.aegis": "#c3a6ff",
+		// Roblox port (docs/ROOM_EDGES.md RE4): room edges, a value ramp (dim -> warm grey -> near-white), not hues, so
+		// no state reads as a bullet, a telegraph or a decor / fx tint. waiting and live are >= 5.4:1 / 12.9:1 on every
+		// biome floor (safe recedes: 2.5:1); all three are >= 41 CIE76 from the enemy-bullet roles and telegraph.
+		"roomEdge.safe": "#6a655c",
+		"roomEdge.waiting": "#a39e94",
+		"roomEdge.live": "#f4f1ea",
 	},
 	biomes: {
 		"biome.1": {
@@ -390,6 +397,7 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		"options.down": "-",
 		"options.up": "+",
 		"options.display.hudScale": "HUD scale",
+		"options.display.roomEdges": "Room edges",
 		"options.action.moveUp": "Move up",
 		"options.action.moveDown": "Move down",
 		"options.action.moveLeft": "Move left",

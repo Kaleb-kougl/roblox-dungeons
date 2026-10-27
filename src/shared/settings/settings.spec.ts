@@ -4,6 +4,7 @@
 import { describe, expect, it } from "@rbxts/jest-globals";
 import {
 	DEFAULT_HUD_SCALE_PERCENT,
+	DEFAULT_ROOM_EDGES,
 	HUD_SCALE_PERCENTS,
 	PlayerDocCache,
 	SETTINGS_DOC_V1,
@@ -23,6 +24,7 @@ import {
 	reuseSameGroups,
 	sameJuiceOverrides,
 	sameSettingsOverrides,
+	sanitizeDisplayOverrides,
 	sanitizeJuiceOverrides,
 	sanitizeJuiceSettings,
 	sanitizeSettingsOverrides,
@@ -191,6 +193,54 @@ describe("settings document v2", () => {
 		expect(sameSettingsOverrides(a, { controls: a.controls })).toBe(false);
 		expect(sameSettingsOverrides({}, { juice: {}, controls: {}, audio: {}, display: {} })).toBe(true);
 		expect(sameSettingsOverrides({ controls: { pad: { swap: "ButtonX" } } }, {})).toBe(false);
+	});
+});
+
+describe("display: room edges (docs/ROOM_EDGES.md RE6)", () => {
+	it("defaults to On; only Off is stored", () => {
+		expect(DEFAULT_ROOM_EDGES).toBe(true);
+		expect(defaultDisplaySettings().roomEdges).toBe(true);
+		expect(resolveDisplaySettings(undefined).roomEdges).toBe(true);
+		expect(sanitizeDisplayOverrides({ roomEdges: false })).toEqual({ roomEdges: false });
+		expect(sanitizeDisplayOverrides({ roomEdges: true })).toEqual({});
+		expect(resolveDisplaySettings({ roomEdges: false })).toEqual({
+			hudScale: DEFAULT_HUD_SCALE_PERCENT,
+			roomEdges: false,
+		});
+	});
+
+	it("round-trips Off through the stored document (still v2)", () => {
+		const overrides: SettingsOverrides = { display: { roomEdges: false } };
+		const doc = encodeSettingsDoc(overrides);
+		expect(doc).toEqual({ ...EMPTY_DOC, display: { roomEdges: false } });
+		expect(doc.v).toBe(2);
+		expect(decodeSettingsDoc(doc)).toEqual(overrides);
+		expect(resolveDisplaySettings(decodeSettingsDoc(doc).display).roomEdges).toBe(false);
+		// With a HUD scale too, and back to On through a patch (true is the default: the group clears).
+		const both = decodeSettingsDoc(encodeSettingsDoc({ display: { hudScale: 110, roomEdges: false } }));
+		expect(both).toEqual({ display: { hudScale: 110, roomEdges: false } });
+		expect(applySettingsPatch(overrides, { display: { roomEdges: true } })).toEqual({});
+		expect(sameSettingsOverrides(overrides, { display: { roomEdges: false } })).toBe(true);
+		expect(sameSettingsOverrides(overrides, {})).toBe(false);
+	});
+
+	it("ignores junk", () => {
+		for (const junk of [0, 1, "false", "off", "no", {}, [false]] as ReadonlyArray<unknown>) {
+			expect(sanitizeDisplayOverrides({ roomEdges: junk })).toEqual({});
+		}
+		expect(sanitizeSettingsOverrides({ display: { roomEdges: "false" } })).toEqual({});
+		expect(decodeSettingsDoc({ ...EMPTY_DOC, display: { roomEdges: 0, hudScale: 90 } })).toEqual({
+			display: { hudScale: 90 },
+		});
+	});
+
+	it("an older v2 document without the field reads On", () => {
+		const old = { v: 2, juice: {}, controls: {}, audio: {}, display: { hudScale: 125 } };
+		expect(resolveDisplaySettings(decodeSettingsDoc(old).display)).toEqual({ hudScale: 125, roomEdges: true });
+		expect(resolveDisplaySettings(decodeSettingsDoc({ v: 2 }).display).roomEdges).toBe(true);
+		expect(resolveDisplaySettings(decodeSettingsDoc({ v: SETTINGS_DOC_V1, juice: {} }).display).roomEdges).toBe(
+			true,
+		);
 	});
 });
 

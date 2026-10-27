@@ -861,6 +861,40 @@ export const MIN_ENEMY_OUTLINE_BULLET_DIFFERENCE = 40;
 export const MIN_BOOST_BULLET_DIFFERENCE = MIN_DECOR_FX_BULLET_DIFFERENCE;
 
 /**
+ * Roblox port (docs/ROOM_EDGES.md RE4): the dashed line on the floor where a corridor meets a room, one colour per
+ * room state, in RoomEdgeState order (index = shared/view RoomEdgeState: SAFE 0, WAITING 1, LIVE 2). Required in every
+ * pack like every role. A value ramp (dim -> grey -> near-white), not hues: the validator (`roomEdgeReport`) holds
+ * waiting and live to MIN_ROOM_EDGE_CONTRAST on every biome floor and all three to MIN_ROOM_EDGE_DIFFERENCE (CIE76)
+ * from ROOM_EDGE_DIFFERENCE_ROLES.
+ */
+export const ROOM_EDGE_ROLES: ReadonlyArray<ColorRole> = ["roomEdge.safe", "roomEdge.waiting", "roomEdge.live"];
+
+/**
+ * The room-edge roles held to MIN_ROOM_EDGE_CONTRAST on every biome floor (docs/ROOM_EDGES.md RE4). The lines lie on
+ * floors, never on walls, so walls are not checked; `roomEdge.safe` is meant to recede and has no contrast floor.
+ */
+export const ROOM_EDGE_CONTRAST_ROLES: ReadonlyArray<ColorRole> = ["roomEdge.waiting", "roomEdge.live"];
+
+/**
+ * Roblox port (docs/ROOM_EDGES.md RE4): minimum WCAG contrast ratio between every ROOM_EDGE_CONTRAST_ROLES colour and
+ * every biome floor. WCAG's bar for graphics, like the enemy outline's (MIN_ENEMY_OUTLINE_CONTRAST).
+ */
+export const MIN_ROOM_EDGE_CONTRAST = 3.0;
+
+/**
+ * The colours a room edge must never be mistaken for (docs/ROOM_EDGES.md RE4): the enemy bullets and `telegraph`, the
+ * other dashed floor lines that mean danger.
+ */
+export const ROOM_EDGE_DIFFERENCE_ROLES: ReadonlyArray<ColorRole> = [...ENEMY_BULLET_ROLES, "telegraph"];
+
+/**
+ * Roblox port (docs/ROOM_EDGES.md RE4): minimum CIE76 colour difference between every ROOM_EDGE_ROLES colour and every
+ * ROOM_EDGE_DIFFERENCE_ROLES colour: the decor fx / enemy outline bar. A red "live" line fails it (#ff6a6a is 35 from
+ * the placeholder telegraph #ff8a3d).
+ */
+export const MIN_ROOM_EDGE_DIFFERENCE = MIN_DECOR_FX_BULLET_DIFFERENCE;
+
+/**
  * Readability caps for ambient particles (docs/DECOR.md Phase 2 part 2), owned by the theme because a pack's ambient
  * texture may set its own look (`particle` on `decor.fx.ambient.*`) and the validator holds it to them: smaller and
  * more transparent than any bullet. Enemy bullets are drawn opaque (Neon) and 2 * BULLET_VIEW.enemyDrawRadius

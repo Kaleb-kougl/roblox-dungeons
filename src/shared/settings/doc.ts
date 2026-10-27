@@ -5,7 +5,7 @@
  *   juice     JuiceOverrides     (juice.ts: health bars, damage numbers, freeze frame, particles, reduced motion)
  *   controls  ControlsOverrides  (shared/play bindings.ts: the key bindings that differ from DEFAULT_BINDINGS)
  *   audio     AudioOverrides     (audio.ts: master / music / sfx volume)
- *   display   DisplayOverrides   (display.ts: HUD scale)
+ *   display   DisplayOverrides   (display.ts: HUD scale, room edges)
  *
  * Versions: v1 (task 8 / 9) was `{ v: 1, juice }`; v2 (task L4) is `{ v: 2, juice, controls, audio, display }`. A v1
  * document MIGRATES on read (its juice is kept, the new groups start empty) and is written back as v2 the next time

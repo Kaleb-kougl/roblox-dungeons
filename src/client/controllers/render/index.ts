@@ -1,6 +1,6 @@
 /**
  * Barrel for the game's renderers (task 8): pooled, interpolated placeholder views of the sim (bullets, actors and the
- * player, weapon arcs, telegraphs and the arena seal, run markers, the tutorial's world marker and guidance arrow,
+ * player, weapon arcs, telegraphs and the arena seal, run markers, the tutorial's world marker and guidance arrow, the room edges,
  * breakable barrels and crates, boost drops and the boosted players' auras, room decoration and its ambient life), plus
  * their Part helpers.
  */
@@ -15,6 +15,7 @@ export * from "./TelegraphController";
 export * from "./RunMarkerController";
 export * from "./TutorialMarkerController";
 export * from "./TutorialArrowController";
+export * from "./RoomEdgeController";
 export * from "./BreakableRenderController";
 export * from "./BoostDropRenderController";
 export * from "./BoostAuraController";

@@ -471,6 +471,21 @@ function DisplayTab(props: { order: number; actions: HudActions; selectable: boo
 					props.actions.updateDisplay({ hudScale: v });
 				}}
 			/>
+			<SettingRow
+				order={2}
+				name="roomEdges"
+				selectable={props.selectable}
+				label={str(OPTIONS_STRINGS.roomEdges)}
+				value={display.roomEdges}
+				options={[
+					{ value: true, label: str(SETTINGS_STRINGS.on) },
+					{ value: false, label: str(SETTINGS_STRINGS.off) },
+				]}
+				onPick={(v) => {
+					props.actions.playUi(SFX.uiClick);
+					props.actions.updateDisplay({ roomEdges: v });
+				}}
+			/>
 		</Panel>
 	);
 }

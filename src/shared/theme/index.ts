@@ -30,6 +30,7 @@ export {
 	isGameplayKey,
 	isStringKey,
 	juiceContrastReport,
+	roomEdgeReport,
 	validateManifest,
 	type BoostColorEntry,
 	type BreakableContrastEntry,
@@ -38,6 +39,7 @@ export {
 	type EnemyOutlineEntry,
 	type FxColorEntry,
 	type JuiceContrastEntry,
+	type RoomEdgeEntry,
 	type ValidateOptions,
 } from "./validate";
 export * from "./placeholders";

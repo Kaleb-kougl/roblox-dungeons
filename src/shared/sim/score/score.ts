@@ -657,7 +657,12 @@ function member(state: Readonly<SimState>, r: Readonly<RoomScore>, k: number): A
 	return a !== undefined && a.kind !== NO_KIND && a.id === r.memberIds[k] ? a : undefined;
 }
 
-function roomEngaged(state: Readonly<SimState>, r: Readonly<RoomScore>): boolean {
+/**
+ * A room record's engagement test (stepScore latches engageTick on the first tick it holds): a living player inside
+ * its bounds, or a member gone, dead, hurt or (room enemies) aggroed. Exported for the room-edge view
+ * (docs/ROOM_EDGES.md), which judges unscored runs with it. Pure.
+ */
+export function scoreRoomEngaged(state: Readonly<SimState>, r: Readonly<RoomScore>): boolean {
 	// Any living player inside (co-op: index order; solo: the player).
 	const n = partySize(state);
 	for (let i = 0; i < n; i++) {
@@ -672,7 +677,8 @@ function roomEngaged(state: Readonly<SimState>, r: Readonly<RoomScore>): boolean
 	return false;
 }
 
-function roomDown(state: Readonly<SimState>, r: Readonly<RoomScore>): boolean {
+/** A room record's clear test: no member present and alive. Exported for the room-edge view, as scoreRoomEngaged. */
+export function scoreRoomDown(state: Readonly<SimState>, r: Readonly<RoomScore>): boolean {
 	for (let k = 0; k < r.memberSlots.size(); k++) {
 		const a = member(state, r, k);
 		if (a !== undefined && a.alive !== 0) return false;
@@ -738,11 +744,11 @@ export function stepScore(state: SimState): void {
 		// Cleared, or a deferred room whose enemies have not spawned yet (attachScoreRoomMembers).
 		if (r.cleared !== 0 || r.memberSlots.size() === 0) continue;
 		if (r.engageTick < 0) {
-			if (!roomEngaged(state, r)) continue;
+			if (!scoreRoomEngaged(state, r)) continue;
 			r.engageTick = state.tick;
 			r.hitsAtEngage = hitsBefore;
 		}
-		if (roomDown(state, r)) clearRoom(state, s, r);
+		if (scoreRoomDown(state, r)) clearRoom(state, s, r);
 	}
 
 	e.comboChanged = s.combo !== e.comboStart ? 1 : 0;

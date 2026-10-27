@@ -12,6 +12,11 @@ export interface DashStyle {
 	readonly color: Color3;
 	readonly material: Enum.Material;
 	readonly transparency: number;
+	/**
+	 * Height of the dash's bottom above the floor, studs. Absent: MARKING_VIEW.liftTiles (every marking layer); room
+	 * edges (docs/ROOM_EDGES.md) sit lower, under the tutorial arrow and the markings.
+	 */
+	readonly liftStuds?: number;
 }
 
 const PARKED = new CFrame(BULLET_VIEW.parkedStuds[0], BULLET_VIEW.parkedStuds[1], BULLET_VIEW.parkedStuds[2]);
@@ -41,7 +46,7 @@ export class DashLayer implements SegmentSink {
 		this.color = style.color;
 		this.transparency = style.transparency;
 		this.size = new Vector3(style.width, style.height, style.length);
-		this.y = floorStudsY() + MARKING_VIEW.liftTiles * STUDS_PER_TILE + style.height / 2;
+		this.y = floorStudsY() + (style.liftStuds ?? MARKING_VIEW.liftTiles * STUDS_PER_TILE) + style.height / 2;
 	}
 
 	begin(): void {

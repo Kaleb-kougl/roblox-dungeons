@@ -147,7 +147,7 @@ describe("HUD helpers", () => {
 		const pack = quietPack(warnings);
 		const keys = optionsStringKeys(KBM_ACTIONS);
 		expect(keys.size()).toBe(
-			BINDING_REFUSALS.size() + KBM_ACTIONS.size() + OPTIONS_TABS.size() + OPTIONS_DEVICES.size() + 26,
+			BINDING_REFUSALS.size() + KBM_ACTIONS.size() + OPTIONS_TABS.size() + OPTIONS_DEVICES.size() + 27,
 		);
 		for (const key of keys) expect([key, pack.hasString(key)]).toEqual([key, true]);
 		// Every pad action is a keyboard action too (one name table).
@@ -164,6 +164,7 @@ describe("HUD helpers", () => {
 			"Esc is reserved and cannot be bound",
 		);
 		expect(pack.str(HUD_STRINGS.settings)).toBe("Options");
+		expect(pack.str(OPTIONS_STRINGS.roomEdges)).toBe("Room edges"); // docs/ROOM_EDGES.md RE6
 		expect(warnings).toEqual([]);
 	});
 
