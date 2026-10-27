@@ -12,6 +12,7 @@ import {
 	type SpriteClock,
 	type SpriteLayout,
 } from "shared/view";
+import { pushOffsetStuds, spriteRimShown } from "shared/view/fx";
 import { renderPart } from "./placeholders";
 
 const WHITE = new Color3(1, 1, 1);
@@ -66,6 +67,13 @@ export class SpriteView {
 	private tint = WHITE;
 	private transparency = 0;
 	private visible = true;
+	/** Hit reaction (docs/FEEL.md J4): the rim's own colour, the flash colour drawn instead, hold and push. */
+	private rimColor: Color3 | undefined;
+	private rimFlash: Color3 | undefined;
+	private held = false;
+	private pushX = 0;
+	private pushY = 0;
+	private readonly pushStuds = [0, 0, 0];
 
 	constructor(
 		readonly set: SpriteSet,
@@ -113,6 +121,7 @@ export class SpriteView {
 			rim.Size = UDim2.fromScale(1, 1);
 			rim.ResampleMode = label.ResampleMode;
 			rim.ImageColor3 = outline;
+			this.rimColor = outline;
 			rim.ZIndex = ACTOR_OUTLINE.spriteZIndex.outline;
 			rim.Visible = false; // until a frame with an outline image
 			rim.Parent = gui;
@@ -141,6 +150,7 @@ export class SpriteView {
 
 	/** Shows `choice` facing the sim direction (dirX, dirZ) under the camera `basis`; `dtSec` steps the clock. */
 	update(choice: SpriteAnimChoice, dirX: number, dirZ: number, basis: IsoBasis, dtSec: number): void {
+		if (this.held) return; // hit hold (setHold): frame, facing and clock stay
 		const set = this.set;
 		const facing = spriteFacing(dirX, dirZ, set.facings, basis, this.facing);
 		this.facing = facing;
@@ -197,6 +207,39 @@ export class SpriteView {
 		this.label.ImageColor3 = color;
 	}
 
+	/**
+	 * Hit flash (docs/FEEL.md J4): the rim label shows `color` instead of the outline colour, drawn even where the rim
+	 * is hidden (setOutlineShown false: a corpse's killing blow, KV_EnemyOutline off); undefined ends it. No-op without
+	 * `outline` or on a sheet with no outline image.
+	 */
+	setRimFlash(color: Color3 | undefined): void {
+		if (color === this.rimFlash) return;
+		this.rimFlash = color;
+		const rim = this.outline;
+		if (rim === undefined) return;
+		const shown = color ?? this.rimColor;
+		if (shown !== undefined) rim.ImageColor3 = shown;
+		this.syncOutline();
+	}
+
+	/** Hit hold (docs/FEEL.md J4): while true, update() leaves the frame, facing and sprite clock as they are. */
+	setHold(hold: boolean): void {
+		this.held = hold;
+	}
+
+	/**
+	 * Hit push (docs/FEEL.md J4): (x, y) whole render texels along `basis`'s right / up, as the billboard's
+	 * StudsOffsetWorldSpace (the anchor is never rotated, so that is world space; StudsOffset keeps the pivot). Written
+	 * only on change.
+	 */
+	setPushTexels(x: number, y: number, basis: IsoBasis): void {
+		if (x === this.pushX && y === this.pushY) return;
+		this.pushX = x;
+		this.pushY = y;
+		const o = pushOffsetStuds(x, y, basis, this.pushStuds);
+		this.gui.StudsOffsetWorldSpace = new Vector3(o[0], o[1], o[2]);
+	}
+
 	setTransparency(t: number): void {
 		if (t === this.transparency) return;
 		this.transparency = t;
@@ -221,7 +264,11 @@ export class SpriteView {
 	private syncOutline(): void {
 		const rim = this.outline;
 		if (rim === undefined) return;
-		const drawn = spriteOutlineVisible(this.visible, this.outlineShown, this.outlineImage);
+		const drawn = spriteOutlineVisible(
+			this.visible,
+			spriteRimShown(this.outlineShown, this.rimFlash !== undefined),
+			this.outlineImage,
+		);
 		if (drawn === this.outlineDrawn) return;
 		this.outlineDrawn = drawn;
 		rim.Visible = drawn;

@@ -21,3 +21,5 @@ export * from "./fxCues";
 export * from "./hurtConfig";
 export * from "./hurtFlash";
 export * from "./lowHealth";
+export * from "./hitReactConfig";
+export * from "./hitReact";

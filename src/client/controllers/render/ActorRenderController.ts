@@ -52,6 +52,16 @@ import {
 	type ActorSpriteInput,
 	type IsoBasis,
 } from "shared/view";
+import {
+	FEEL_HIT,
+	HitReactSlots,
+	motionScale,
+	nearestLivingPlayer,
+	pushOffsetStuds,
+	type FxEventBuffer,
+} from "shared/view/fx";
+import type { JuiceSettings } from "shared/settings";
+import { FxTrackerController } from "../fx/FxTrackerController";
 import { SimController } from "../game/SimController";
 import { ThemeController } from "../game/ThemeController";
 import {
@@ -112,6 +122,12 @@ interface ActorView {
 	hasOutline: boolean;
 	/** The model's pieces are under the enemies Model (the shared Highlight), not corpses. Sprite views: false. */
 	outlined: boolean;
+	/** Hit reaction (docs/FEEL.md J5), placeholder views only: the pieces are under the flashing Model; the push in
+	 * texels and as the world offset added to the model's origin. */
+	flashing: boolean;
+	pushX: number;
+	pushY: number;
+	push: Vector3;
 }
 
 /**
@@ -181,7 +197,22 @@ export class ActorRenderController implements OnStart {
 	/** The KV_EnemyOutline debug switch (outlineSwitchOn), read on change: the Highlight's Enabled and sprite rims. */
 	private outlineOn = true;
 
-	constructor(private readonly sim: SimController, private readonly theme: ThemeController) {}
+	// --- hit reaction (docs/FEEL.md J4 / J5) ---------------------------------------------------
+	private readonly hitReact = new HitReactSlots(this.basis);
+	/** The hit-reaction clock (s): real frame time, stopped while paused, not slowed by the hitstop clock. */
+	private hitNow = 0;
+	private hitMotion = 1;
+	private hitFlashColor = SPRITE_TINT_NONE;
+	/** KV_Actors/Flashing: the flashing placeholder bodies, under ONE fill Highlight (J5). */
+	private flashingModel: Model | undefined;
+	private readonly hitToward = { x: 0, z: 0 };
+	private readonly pushScratch = [0, 0, 0];
+
+	constructor(
+		private readonly sim: SimController,
+		private readonly theme: ThemeController,
+		private readonly fx: FxTrackerController,
+	) {}
 
 	onStart(): void {
 		const pack = this.theme.getPack();
@@ -208,6 +239,7 @@ export class ActorRenderController implements OnStart {
 		syncSwitch();
 		this.janitor.Add(Workspace.GetAttributeChangedSignal(ACTOR_OUTLINE.enabledAttribute).Connect(syncSwitch));
 		this.players.push(this.buildPlayerView(pack, players));
+		this.startHitReact(pack, folder);
 
 		RunService.BindToRenderStep(RENDER_STEP, Enum.RenderPriority.Camera.Value + RENDER_ORDER.viewsAfterCamera, () =>
 			this.frame(),
@@ -239,6 +271,7 @@ export class ActorRenderController implements OnStart {
 				if (view !== undefined) this.release(slot, view);
 				view = this.acquire(slot, a);
 			}
+			this.applyHitReact(slot, view);
 			this.drawActor(view, a, state.tick, alpha);
 		}
 		for (let slot = n; slot < this.viewSlots; slot++) {
@@ -315,6 +348,10 @@ export class ActorRenderController implements OnStart {
 				corpseTicks,
 				hasOutline,
 				outlined: false,
+				flashing: false,
+				pushX: 0,
+				pushY: 0,
+				push: Vector3.zero,
 			};
 		} else {
 			const visual = pack.placeholder(id);
@@ -343,6 +380,10 @@ export class ActorRenderController implements OnStart {
 				corpseTicks,
 				hasOutline,
 				outlined: group === "enemies",
+				flashing: false,
+				pushX: 0,
+				pushY: 0,
+				push: Vector3.zero,
 			};
 		}
 		this.views[slot] = view;
@@ -360,7 +401,7 @@ export class ActorRenderController implements OnStart {
 		}
 		const model = view.model!;
 		// Off the Highlight while pooled (a slot freed alive, e.g. on a floor change): the next acquire puts it back.
-		if (view.outlined) setModelParent(model, this.groups!.corpses);
+		if (view.outlined || view.flashing) setModelParent(model, this.groups!.corpses);
 		this.parking.add(model);
 		pushFree(this.free, model.visualId, model);
 	}
@@ -396,13 +437,13 @@ export class ActorRenderController implements OnStart {
 		const outlined = actorGroup(view.hasOutline, a.alive !== 0) === "enemies";
 		if (outlined !== view.outlined) {
 			view.outlined = outlined;
-			setModelParent(model, this.groups![outlined ? "enemies" : "corpses"]);
+			this.syncModelGroup(view, model);
 		}
 		const origin =
 			model.faces && (a.faceX !== 0 || a.faceZ !== 0)
 				? CFrame.lookAlong(at, new Vector3(a.faceX, 0, a.faceZ))
 				: new CFrame(at);
-		this.place(model, origin);
+		this.place(model, view.pushX === 0 && view.pushY === 0 ? origin : origin.add(view.push));
 		if (look !== view.look) {
 			view.look = look;
 			setModelColor(model, this.lookColor(pack, look) ?? model.baseColor);
@@ -598,6 +639,83 @@ export class ActorRenderController implements OnStart {
 			this.swordIndex = ok ? (index as number) : NO_WEAPON;
 		}
 		return this.swordIndex;
+	}
+
+	// --- hit reaction (docs/FEEL.md J4 / J5) ---------------------------------------------------
+
+	/**
+	 * The flashing Model (a sibling of the enemies Model) with its ONE Highlight, and the tracker feed. The Highlight
+	 * fills in FEEL_HIT.flashRole; its rim is the enemies Highlight's while KV_EnemyOutline is on and hidden while it
+	 * is off (the flash itself always shows, like the sprites' rim flash).
+	 */
+	private startHitReact(pack: ThemePack, folder: Folder): void {
+		this.hitFlashColor = pack.color(FEEL_HIT.flashRole);
+		const model = new Instance("Model");
+		model.Name = FEEL_HIT.flashingGroupName;
+		model.Parent = folder;
+		this.flashingModel = model;
+		const highlight = buildOutline(pack, model);
+		highlight.Name = FEEL_HIT.flashingHighlightName;
+		highlight.FillColor = this.hitFlashColor;
+		highlight.FillTransparency = FEEL_HIT.fillTransparency;
+		const syncSwitch = () => {
+			const on = outlineSwitchOn(Workspace.GetAttribute(ACTOR_OUTLINE.enabledAttribute));
+			highlight.OutlineTransparency = on ? ACTOR_OUTLINE.outlineTransparency : HIDDEN;
+		};
+		syncSwitch();
+		this.janitor.Add(Workspace.GetAttributeChangedSignal(ACTOR_OUTLINE.enabledAttribute).Connect(syncSwitch));
+		this.fx.onFrame((events, settings, dt) => this.hitReactFrame(events, settings, dt));
+	}
+
+	/** Once per frame after the tracker: advance the hit-reaction clock, then feed the frame's events. */
+	private hitReactFrame(events: FxEventBuffer, settings: Readonly<JuiceSettings>, dt: number): void {
+		if (this.sim.getContext()?.live?.isPaused() !== true) {
+			this.hitNow += math.min(math.max(dt, 0), FEEL_HIT.maxFrameDtSec);
+		}
+		this.hitMotion = motionScale(settings);
+		const state = this.sim.getState();
+		const alpha = this.sim.getAlpha();
+		const now = this.hitNow;
+		for (let i = 0; i < events.count(); i++) {
+			const e = events.at(i);
+			const toward =
+				e.type === "hit" && state !== undefined && nearestLivingPlayer(state, alpha, e.x, e.z, this.hitToward)
+					? this.hitToward
+					: undefined;
+			this.hitReact.onEvent(e, now, toward);
+		}
+	}
+
+	/** Slot `slot`'s hit look onto its view, before drawActor (a held sprite must not step this frame). */
+	private applyHitReact(slot: number, view: ActorView): void {
+		const look = this.hitReact.look(slot, view.id, this.hitNow, this.hitMotion);
+		const sprite = view.sprite;
+		if (sprite !== undefined) {
+			sprite.setRimFlash(look.rimFlash ? this.hitFlashColor : undefined);
+			sprite.setHold(look.hold);
+			sprite.setPushTexels(look.pushX, look.pushY, this.basis);
+			return;
+		}
+		// Placeholders: no sprite clock to hold; the push offsets the model, the flash reparents it (on change only).
+		if (look.pushX !== view.pushX || look.pushY !== view.pushY) {
+			view.pushX = look.pushX;
+			view.pushY = look.pushY;
+			const o = pushOffsetStuds(look.pushX, look.pushY, this.basis, this.pushScratch);
+			view.push = new Vector3(o[0], o[1], o[2]);
+		}
+		if (look.rimFlash !== view.flashing && this.flashingModel !== undefined) {
+			view.flashing = look.rimFlash;
+			this.syncModelGroup(view, view.model!);
+		}
+	}
+
+	/** A placeholder's pieces to their group: flashing while the hit flash runs, else enemies / corpses. */
+	private syncModelGroup(view: ActorView, model: PlaceholderModel): void {
+		const parent =
+			view.flashing && this.flashingModel !== undefined
+				? this.flashingModel
+				: this.groups![view.outlined ? "enemies" : "corpses"];
+		setModelParent(model, parent);
 	}
 
 	/** Destroys every pooled view (not used in play; kept for tests / teardown). */
