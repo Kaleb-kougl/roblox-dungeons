@@ -53,6 +53,60 @@ export const BOOST_VIEW = {
 	poofSeedSalt: 14,
 	/** The sprite set's loop (theme BOOST slot base animation). */
 	idleAnimation: "idle",
+
+	// --- the drop's art layers (docs/BOOST_ART.md BA3; only when the pack has art for `boost.<kind>`) ---------------
+	/**
+	 * Image art is drawn at the Lords of Pain props' scale, art pixels per tile (the vale world art's pixelsPerTile,
+	 * packs/vale/layout.ts: a 17 px gem is ~0.57 tiles wide), and never taller than maxHeightTiles in all (taller art
+	 * draws at frameH / maxHeightTiles px per tile: the 25 px coin scatter is 0.625 tiles tall). The pack's own
+	 * pixelsPerTile on a `boost.<kind>` image is not used (the BOOST image layouts carry none).
+	 */
+	artPixelsPerTile: 29.6,
+	/**
+	 * Halo: the pack's `decor.fx.glow` laid flat on the floor under the drop, tinted by the kind's colour role,
+	 * haloTiles across, at haloTransparency (a soft additive look: LightInfluence 0). Without that art, a Neon disc of
+	 * the same width in the role (the aura's look) at haloFallbackTransparency. Its pulse: + haloPulse x the bob's phase
+	 * (0 on the floor, 1 at the top: dimmest when the prop is highest), none under reduced motion.
+	 */
+	haloTiles: 1.2,
+	haloTransparency: 0.35,
+	haloFallbackTransparency: 0.55,
+	haloPulse: 0.2,
+	/**
+	 * The halo Part's top above the floor and its thickness, studs: over the decor flats (DECOR_VIEW.flatLiftStuds x 2)
+	 * and the floor effects (FX_SPRITE_VIEW.liftStuds + its layers), under every floor marking (MARKING_VIEW.liftTiles)
+	 * and every bullet (BULLET_Y). The Neon fallback disc uses the same.
+	 */
+	haloLiftStuds: 0.08,
+	haloThicknessStuds: 0.02,
+	haloMaterial: "Neon",
+	/**
+	 * Beam: the pack's `ui.marker.boost` image (the white loot indicator) as a camera-facing billboard rising from the
+	 * drop's base, tinted by the role, beamHeightTiles tall (under half the relic pedestal's
+	 * PROGRESSION_VIEW.pedestalBeamHeightTiles, so a relic reads as the bigger prize), at beamTransparency. It does not
+	 * bob (it marks the spot). No image: no beam.
+	 */
+	beamVisualId: "ui.marker.boost",
+	beamHeightTiles: 1.4,
+	beamTransparency: 0.3,
+	/**
+	 * Glint: the pack's `decor.fx.glint` looping over the prop's centre, glintScale x its own size, glintDepthStuds in
+	 * front of the prop. Each slot starts glintSlotPhaseFrames further into the loop (drops never twinkle in step);
+	 * under reduced motion it holds glintStillFrame.
+	 */
+	glintScale: 0.7,
+	glintDepthStuds: 0.1,
+	glintSlotPhaseFrames: 3,
+	glintStillFrame: 2,
+	/**
+	 * Pickup (art, no `fx.boost.collect`; BA-P4): the glint played once at pickupGlintScale x the drop's glint, and a
+	 * halo flash: from pickupHaloFromTransparency to gone over pickupFlashSeconds, growing to pickupHaloGrow x its size
+	 * (x motionScale: no growth under reduced motion, where the glint holds glintStillFrame and fades with the flash).
+	 */
+	pickupGlintScale: 2,
+	pickupFlashSeconds: 0.35,
+	pickupHaloGrow: 1.8,
+	pickupHaloFromTransparency: 0.1,
 	/** Workspace folder of the drops and its render step / profiler label. */
 	folderName: "KV_Drops",
 	renderStep: "KV_Drops",

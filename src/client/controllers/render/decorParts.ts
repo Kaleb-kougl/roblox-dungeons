@@ -167,9 +167,10 @@ export class ArtBillboard {
 	}
 }
 
-/** A flat floor image: the Part (owned by the caller) and its label (transparency / tint). */
+/** A flat floor image: the Part (owned by the caller), its SurfaceGui (lighting) and its label (transparency / tint). */
 export interface FloorArt {
 	readonly part: Part;
+	readonly gui: SurfaceGui;
 	readonly label: ImageLabel;
 }
 
@@ -232,5 +233,5 @@ export function buildFloorArt(
 	label.Parent = gui;
 	gui.Parent = part;
 	part.Parent = parent;
-	return { part, label };
+	return { part, gui, label };
 }

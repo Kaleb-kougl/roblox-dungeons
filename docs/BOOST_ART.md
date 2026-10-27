@@ -12,8 +12,9 @@ decor effects `decor.fx.glow` / `decor.fx.glint`) resolve to in the vale pack ch
 
 ## Status (2026-10-26)
 
-BA1 and BA2 are done (atlas entries, theme, validator, vale pack, gems out of decor; headless specs only). Open: BA3
-(renderer layers), BA4 (upload the five new PNGs), BA5 (Studio), BA6, BA7. Owner decisions are under "Decisions"; the
+BA1-BA3 are done headlessly (atlas entries, theme, validator, vale pack, gems out of decor; the renderer's halo, beam,
+glint and pickup flash in `BoostDropRenderController`, pure half in `shared/view/boosts/art.ts`; see "As built" and §3).
+Open: BA4 (upload the five new PNGs), BA5 (Studio), BA6. Owner decisions are under "Decisions"; the
 rest are recommended defaults (BA-P1..P6). See "As built (BA1, BA2)" for what differs from the plan text.
 
 ## As built (BA1, BA2)
@@ -116,6 +117,28 @@ only, BA-P4); the particle burst stays as the fallback.
 | `BoostAuraController` (optional, BA-P5) | `fx.boost.aura.<kind>` as a tinted `highlight_white` ring when the pack has it; Neon discs otherwise |
 | `BoostRow` (optional, BA-P6) | the kind's prop image as the HUD icon instead of the FRY / QST / FRZ / AEG label, when the pack has art |
 
+**As built (BA3, 2026-10-26; code-complete, Studio pending).** Owner call for BA3: the halo reuses the existing
+`decor.fx.glow` and the sparkle reuses `decor.fx.glint` (both already in the vale decor atlas), so `fx.boost.halo` is
+not needed by the renderer; the beam is `ui.marker.boost`. Accessors: `ThemePack.decor(decorFxId("glow"))`,
+`ThemePack.decor(decorFxId("glint"))`, `ThemePack.image(BOOST_VIEW.beamVisualId)` (= `"ui.marker.boost"`, the
+RunMarkerController pedestal-beam path), `ThemePack.boost(kind).color` for every tint, `ThemePack.fx(BOOST_COLLECT_FX_ID)`
+to decide the pickup effect. Only a kind with art (`boost.<kind>` image or sprites) gets layers; the placeholder gem is
+unchanged.
+
+| Layer | As built |
+|---|---|
+| Prop size | `boostImageLayout`: image art at `BOOST_VIEW.artPixelsPerTile` = 29.6 (the pack's own `pixelsPerTile` on a boost image is not used; the BOOST image layouts carry none), and at `frameH / maxHeightTiles` when that would be taller than `maxHeightTiles` (5/8) in all. Gems 17 x 15 px -> 0.57 x 0.51 tiles; coins 31 x 25 px -> 0.78 x 0.625 tiles. Stricter than `breakableArtLayout` (which caps only the part above the pivot; a centred pivot would have let the coins draw 0.84 tall). Sprite sets keep `breakableArtLayout` |
+| Halo | `decor.fx.glow` via decorParts `buildFloorArt` (top-face SurfaceGui on a thin Part, LightInfluence 0, built at the origin so its frame there is its offset from the floor point), tinted by the role, `haloTiles` 1.2 across, `haloTransparency` 0.35 + `haloPulse` 0.2 x `dropBobPhase` (dimmest at the bob's top; none under reduced motion). Top at `haloLiftStuds` 0.08 (`haloThicknessStuds` 0.02): over decor flats and floor effects, under markings and bullets (spec). No glow art: a Neon Cylinder disc (`haloMaterial`), `haloFallbackTransparency` 0.55. Does not bob or pop |
+| Beam | `ui.marker.boost` on its own anchor at the drop's base, `uprightImageBillboard` (its pivot, else bottom centre), tinted, `beamHeightTiles` **1.4** (not the plan's 1.5: the spec asserts strictly under half the pedestal's 3), `beamTransparency` 0.3. Not bobbing. No image -> no beam |
+| Glint | `decor.fx.glint` as a second BillboardGui on the prop's anchor (bobs with it), centred on the prop's centre, `glintScale` 0.7 x its own size, `glintDepthStuds` 0.1 in front, scaled with the pop (image props); frame `boostGlintFrame` = `decorLoopFrame(age, fps, frames, slot x glintSlotPhaseFrames 3)`; `glintStillFrame` 2 under reduced motion. Untinted |
+| Blink | `boostLayerTransparency(base, blink)`: opacities multiply, so halo, prop, beam and glint blink / dim together |
+| Pickup (BA-P4) | No `fx.boost.collect` and the kind has art: a pooled flash at the pickup point, on sim time: halo in the role from `pickupHaloFromTransparency` 0.1 to gone over `pickupFlashSeconds` 0.35, growing to `pickupHaloGrow` 1.8x (x motionScale), and the glint once from frame 0 at `pickupGlintScale` 2x (reduced motion: still frame fading with the halo); lasts `boostPickupSeconds` (8 frames at 12 fps: 0.67 s). Otherwise unchanged (`fx.boost.collect`, or the particle burst for placeholder kinds) |
+| Pool | Layers are built with the body, enabled / disabled on acquire / release, parked with it (one BulkMoveTo); flashes park on run start, floor change and exit; everything lives under `KV_Drops` (the controller's Janitor) |
+
+Studio-only checks (BA5): readability on each biome floor, the glint still frame and phase step look right, the halo's
+draw order against decor flats and floor effects, the beam's tint and height next to the pedestal, phone size, fps with
+four drops in 4-player co-op. The smoke list is in docs/CLIENT.md "Boost drop art".
+
 ### 4. Decor
 
 The decor plan (`shared/view/decor`, `packs/vale/manifest.ts`) loses the `gems` kind: its four variants are removed
@@ -135,7 +158,7 @@ so nothing was swapped; the kind left the contract too.
 - [x] **BA2. Theme.** Contract ids (`ui.marker.boost`; the halo is the reused `decor.fx.glow`), the halo rule, vale
   manifest entries, decor `gems` removed. → Verify: theme / vale / decor specs; the vale pack validates with and
   without the file ids. **Done** (see "As built").
-- [ ] **BA3. Renderer.** Halo, beam and glint layers in `BoostDropRenderController`, `BOOST_VIEW` tunables, reduced
+- [x] **BA3. Renderer.** (code-complete 2026-10-26; Studio check in BA5; as built in §3) Halo, beam and glint layers in `BoostDropRenderController`, `BOOST_VIEW` tunables, reduced
   motion. Pure helpers (halo pulse, beam alpha, glint phase per slot) in `shared/view/boosts` with specs.
   → Verify: `npm run verify`; `test:only -- view`.
 - [ ] **BA4. Upload.** Upload the five new PNGs (`boost-fury.png`, `boost-quickstep.png`, `boost-frenzy.png`,
