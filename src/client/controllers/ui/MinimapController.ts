@@ -1,7 +1,14 @@
 import { Controller, OnStart } from "@flamework/core";
 import { Janitor } from "@rbxts/janitor";
 import { AssetService, RunService } from "@rbxts/services";
-import { clientStore, selectDisplay, selectGameActive, selectMapView, selectMenuOpen } from "client/store";
+import {
+	clientStore,
+	selectDisplay,
+	selectGameActive,
+	selectInputDevice,
+	selectMapView,
+	selectMenuOpen,
+} from "client/store";
 import { cornerMapShown, minimapHostFrame, MINIMAP_HOSTS, type MinimapHost } from "client/ui";
 import { CAMERA_YAW_DEG } from "shared/config";
 import { RoomType, TILE_SIZE, worldToGrid, type WorldXZ } from "shared/dungeon";
@@ -639,7 +646,8 @@ export class MinimapController implements OnStart {
 
 		this.syncLayers(floor);
 		const corner = this.layers.get("corner");
-		const cornerOn = corner !== undefined && cornerMapShown(map, selectDisplay(store).minimap, outcome);
+		const touch = selectInputDevice(store) === "touch";
+		const cornerOn = corner !== undefined && cornerMapShown(map, selectDisplay(store).minimap, outcome, touch);
 		let any = cornerOn;
 		for (const [kind] of this.layers) if (kind !== "corner") any = true;
 		if (!any) return;

@@ -1,6 +1,6 @@
 import React from "@rbxts/react";
 import { useSelector } from "@rbxts/react-reflex";
-import { selectDisplay, selectMapView, selectSnapshot, type MapView } from "client/store";
+import { selectDisplay, selectInputDevice, selectMapView, selectSnapshot, type MapView } from "client/store";
 import { MINIMAP_PANEL } from "shared/view/hud";
 import { minimapHostRef } from "./minimapHosts";
 import { Panel } from "./primitives";
@@ -10,10 +10,11 @@ const HIDDEN = 1;
 /**
  * The corner map's show rule (docs/MINIMAP.md §8): this floor has a map (a dungeon floor, never the greybox, and the
  * map image was created), Options > Display > Minimap is On, the full map is closed and the run is still being played
- * (the run-over panel hides it). MinimapController reads the same rule to skip a hidden corner's work.
+ * (the run-over panel hides it). MinimapController reads the same rule to skip a hidden corner's work. On touch
+ * (`touch`, docs/MOBILE.md MBD8) the corner map never shows: the full map opens from the pause overlay instead.
  */
-export function cornerMapShown(map: MapView, minimapSetting: boolean, outcome: string): boolean {
-	return map.available && minimapSetting && !map.open && outcome === "playing";
+export function cornerMapShown(map: MapView, minimapSetting: boolean, outcome: string, touch = false): boolean {
+	return !touch && map.available && minimapSetting && !map.open && outcome === "playing";
 }
 
 /**
@@ -27,13 +28,14 @@ export function MinimapPanel() {
 	const map = useSelector(selectMapView);
 	const display = useSelector(selectDisplay);
 	const s = useSelector(selectSnapshot);
+	const touch = useSelector(selectInputDevice) === "touch";
 	return (
 		<Panel
 			corner="bottomRight"
 			width={MINIMAP_PANEL.w}
 			padding={0}
 			name="Minimap"
-			visible={cornerMapShown(map, display.minimap, s.outcome)}
+			visible={cornerMapShown(map, display.minimap, s.outcome, touch)}
 		>
 			<frame
 				key="MapHost"

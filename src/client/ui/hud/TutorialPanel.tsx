@@ -4,7 +4,7 @@ import { useSelector } from "@rbxts/react-reflex";
 import { selectBindings, selectInputDevice, selectTutorial, selectTutorialPromptKey } from "client/store";
 import { str } from "client/ui/theme";
 import { TUTORIAL_STRINGS, tutorialDeviceFor } from "shared/tutorial";
-import { HUD_VIEW, PAUSE_HINT, TUTORIAL_VIEW, tutorialPromptVars } from "shared/view/hud";
+import { HUD_VIEW, PAUSE_HINT, TOUCH_TUTORIAL_BOX, TUTORIAL_VIEW, tutorialPromptVars } from "shared/view/hud";
 import { Panel, Text } from "./primitives";
 
 const HALF = 0.5;
@@ -21,11 +21,17 @@ export function TutorialPanel() {
 	const device = useSelector(selectInputDevice);
 	const bindings = useSelector(selectBindings);
 	if (!t.active || t.ended || t.card !== undefined || promptKey === "") return undefined;
+	// Touch (docs/MOBILE.md MB10): top centre under the boss bar, and no key names (the pause hint is dropped).
+	const touch = device === "touch";
 	return (
 		<Panel
-			position={new UDim2(HALF, 0, 1, -TUTORIAL_VIEW.panelBottom)}
-			anchor={new Vector2(HALF, 1)}
-			width={TUTORIAL_VIEW.panelWidth}
+			position={
+				touch
+					? new UDim2(HALF, 0, 0, TOUCH_TUTORIAL_BOX.edge)
+					: new UDim2(HALF, 0, 1, -TUTORIAL_VIEW.panelBottom)
+			}
+			anchor={touch ? new Vector2(HALF, 0) : new Vector2(HALF, 1)}
+			width={touch ? TUTORIAL_VIEW.touchPanelWidth : TUTORIAL_VIEW.panelWidth}
 			align={Enum.HorizontalAlignment.Center}
 			name="Tutorial"
 		>
@@ -46,14 +52,16 @@ export function TutorialPanel() {
 					count: t.stepCount,
 				})}
 			/>
-			<Text
-				fill={true}
-				order={3}
-				size={HUD_VIEW.smallText}
-				color="uiTextDim"
-				align={Enum.TextXAlignment.Center}
-				text={str(TUTORIAL_STRINGS.panelHint, { key: PAUSE_HINT[keyDevice(device)] })}
-			/>
+			{touch ? undefined : (
+				<Text
+					fill={true}
+					order={3}
+					size={HUD_VIEW.smallText}
+					color="uiTextDim"
+					align={Enum.TextXAlignment.Center}
+					text={str(TUTORIAL_STRINGS.panelHint, { key: PAUSE_HINT[keyDevice(device)] })}
+				/>
+			)}
 		</Panel>
 	);
 }

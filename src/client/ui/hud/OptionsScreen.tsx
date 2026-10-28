@@ -828,13 +828,15 @@ export function OptionsScreen() {
 						text={str(SETTINGS_STRINGS.offline)}
 					/>
 				) : undefined}
-				<Text
-					fill={true}
-					order={6}
-					size={HUD_VIEW.smallText}
-					color="uiTextDim"
-					text={str(OPTIONS_STRINGS.hint, { key: SETTINGS_HINT[keyDevice(device)] })}
-				/>
+				{device === "touch" ? undefined : (
+					<Text
+						fill={true}
+						order={6}
+						size={HUD_VIEW.smallText}
+						color="uiTextDim"
+						text={str(OPTIONS_STRINGS.hint, { key: SETTINGS_HINT[keyDevice(device)] })}
+					/>
+				)}
 			</Panel>
 			<OptionsModal options={options} actions={actions} device={device} />
 		</frame>

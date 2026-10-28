@@ -40,6 +40,7 @@ const ITEMS: Record<PauseItem, ItemSpec> = {
 	leaderboards: { text: LEADERBOARD_STRINGS.open, sound: SFX.uiClick, run: (a) => a.setLeaderboardOpen(true) },
 	restartTutorial: { text: TUTORIAL_STRINGS.pauseRestart, sound: SFX.uiConfirm, run: (a) => a.playTutorial() },
 	skipTutorial: { text: TUTORIAL_STRINGS.pauseSkip, sound: SFX.uiClick, run: (a) => a.setTutorialSkipConfirm(true) },
+	map: { text: HUD_STRINGS.mapTitle, sound: SFX.uiClick, run: (a) => a.toggleMap() },
 };
 
 /** A confirm in place of the buttons: its question, then Yes / No (No is selected first with a pad). */
@@ -114,6 +115,8 @@ export function PauseOverlay() {
 	// Paused under the Roblox menu, the overlay is only hidden: its skip question waits for it.
 	const pending = pauseOverlayShown({ ...view, robloxMenuOpen: false });
 	const inTutorial = !coop && tutorial.active && !tutorial.ended;
+	// Touch (MB10): no key names; the Map item (co-op) and the weapons' Swap button stand in for them.
+	const touch = device === "touch";
 	const skipConfirm = inTutorial && tutorial.skipConfirmOpen;
 
 	useEffect(() => {
@@ -164,7 +167,7 @@ export function PauseOverlay() {
 			</>
 		);
 	} else {
-		const buttons = pauseItems(coop, inTutorial).map((item, i) => {
+		const buttons = pauseItems(coop, inTutorial, touch).map((item, i) => {
 			const spec = ITEMS[item];
 			return (
 				<MenuButton
@@ -207,7 +210,7 @@ export function PauseOverlay() {
 					text={str(coop ? MENU_STRINGS.coopTitle : HUD_STRINGS.paused)}
 				/>
 				{body}
-				{s.weapons.size() > 0 ? (
+				{s.weapons.size() > 0 && !touch ? (
 					<Text
 						fill={true}
 						order={18}
@@ -218,14 +221,16 @@ export function PauseOverlay() {
 					/>
 				) : undefined}
 				<RunInfoLine order={19} />
-				<Text
-					fill={true}
-					order={20}
-					size={HUD_VIEW.smallText}
-					color="uiTextDim"
-					align={Enum.TextXAlignment.Center}
-					text={str(hintKey, { key: PAUSE_HINT[keyDevice(device)] })}
-				/>
+				{touch ? undefined : (
+					<Text
+						fill={true}
+						order={20}
+						size={HUD_VIEW.smallText}
+						color="uiTextDim"
+						align={Enum.TextXAlignment.Center}
+						text={str(hintKey, { key: PAUSE_HINT[keyDevice(device)] })}
+					/>
+				)}
 			</Panel>
 		</frame>
 	);

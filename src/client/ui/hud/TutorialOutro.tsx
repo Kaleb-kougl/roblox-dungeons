@@ -6,7 +6,7 @@ import { selectBindings, selectInputDevice, selectTutorialOutroOpen } from "clie
 import { role, str } from "client/ui/theme";
 import { TUTORIAL_STRINGS } from "shared/tutorial";
 import { SFX } from "shared/view/audio";
-import { HUD_VIEW, TUTORIAL_VIEW, tutorialLeaderboardHint } from "shared/view/hud";
+import { HUD_VIEW, LEADERBOARD_STRINGS, TUTORIAL_VIEW, tutorialLeaderboardHint } from "shared/view/hud";
 import { useHudActions } from "./actions";
 import { MenuButton, Panel, Text } from "./primitives";
 
@@ -65,7 +65,11 @@ export function TutorialOutro() {
 					align={Enum.TextXAlignment.Center}
 					wrap={true}
 					text={str(TUTORIAL_STRINGS.outroBody, {
-						key: tutorialLeaderboardHint(bindings)[keyDevice(device)],
+						// Touch: no key; the pause menu's Leaderboards item is the way there.
+						key:
+							device === "touch"
+								? str(LEADERBOARD_STRINGS.open)
+								: tutorialLeaderboardHint(bindings)[keyDevice(device)],
 					})}
 				/>
 				<MenuButton

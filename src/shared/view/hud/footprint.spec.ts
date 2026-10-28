@@ -5,12 +5,18 @@ import { BOOST_VIEW } from "shared/view/boosts";
 import { MINIMAP_VIEW } from "shared/view/minimap";
 import {
 	ALWAYS_ON_PANELS,
+	TOUCH_ALWAYS_ON_PANELS,
+	TOUCH_TEST_VIEWPORTS,
+	TOUCH_TUTORIAL_BOX,
+	touchFootprintRects,
+	touchTutorialRect,
 	HUD_FOOTPRINT,
 	HUD_FOOTPRINT_LIMITS,
 	HUD_TEST_VIEWPORTS,
 	HUD_TRANSIENT,
 	HUD_VIEW,
 	MINIMAP_PANEL,
+	TUTORIAL_VIEW,
 	VERDICT_BOX,
 	clearZoneRect,
 	cornerRect,
@@ -248,5 +254,73 @@ describe("HUD footprint budget", () => {
 			),
 		);
 		expect(worst).toBeLessThanOrEqual(HUD_FOOTPRINT_LIMITS.maxCoverShare);
+	});
+});
+
+describe("touch footprint (docs/MOBILE.md MB10)", () => {
+	/** Percents the touch HUD is checked at (above 100 % the boxes may reach the clear zone, as on the desktop layout). */
+	const TOUCH_PERCENTS = HUD_SCALE_PERCENTS.filter((p) => p <= PERCENT);
+
+	it("keeps only the status and score panels on touch (no weapons panel, no corner minimap)", () => {
+		expect(TOUCH_ALWAYS_ON_PANELS).toEqual(["status", "score"]);
+	});
+
+	it("the touch boxes never cover the centre column or the centre row of the safe area", () => {
+		const bad: string[] = [];
+		for (const v of TOUCH_TEST_VIEWPORTS) {
+			for (const inset of INSETS) {
+				const cx = v.x / 2;
+				const cy = inset + (v.y - inset) / 2;
+				for (const percent of TOUCH_PERCENTS) {
+					for (const p of touchFootprintRects(v.x, v.y, percent, inset)) {
+						const r = p.rect;
+						const column = r.x < cx && cx < r.x + r.w;
+						const row = r.y < cy && cy < r.y + r.h;
+						if (column || row) bad.push(`${label(v.x, v.y, false, percent, inset)} ${p.panel}`);
+					}
+				}
+			}
+		}
+		expect(bad.join(", ")).toBe("");
+	});
+
+	it("the touch tutorial prompt (top centre, under the boss bar) does not intersect the status or score box", () => {
+		const bad: string[] = [];
+		for (const v of TOUCH_TEST_VIEWPORTS) {
+			for (const inset of INSETS) {
+				for (const percent of TOUCH_PERCENTS) {
+					const tutorial = touchTutorialRect(v.x, v.y, percent, inset);
+					for (const p of touchFootprintRects(v.x, v.y, percent, inset)) {
+						if (rectsOverlap(tutorial, p.rect))
+							bad.push(`${label(v.x, v.y, false, percent, inset)} tutorial/${p.panel}`);
+					}
+				}
+			}
+		}
+		expect(bad.join(", ")).toBe("");
+	});
+
+	it("the touch tutorial box keeps its touch width and sits under the boss bar", () => {
+		expect(TOUCH_TUTORIAL_BOX.anchor).toBe("topCentre");
+		expect(TOUCH_TUTORIAL_BOX.width).toBe(TUTORIAL_VIEW.touchPanelWidth);
+		expect(TOUCH_TUTORIAL_BOX.edge).toBeGreaterThanOrEqual(
+			HUD_TRANSIENT.bossBar.edge + HUD_TRANSIENT.bossBar.height,
+		);
+	});
+
+	it("prints (does not fail) any touch box that enters HUD_CLEAR_ZONE", () => {
+		const info: string[] = [];
+		for (const v of TOUCH_TEST_VIEWPORTS) {
+			for (const inset of INSETS) {
+				const zone = clearZoneRect(v.x, v.y, inset);
+				for (const percent of TOUCH_PERCENTS) {
+					for (const p of touchFootprintRects(v.x, v.y, percent, inset)) {
+						if (rectsOverlap(p.rect, zone))
+							info.push(`${label(v.x, v.y, false, percent, inset)} ${p.panel}`);
+					}
+				}
+			}
+		}
+		print(`[footprint] touch boxes in HUD_CLEAR_ZONE (<= 100 %): ${info.size() === 0 ? "none" : info.join(", ")}`);
 	});
 });

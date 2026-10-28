@@ -182,13 +182,15 @@ export function LeaderboardPanel(props: { localUserId: number }) {
 						actions.setLeaderboardOpen(false);
 					}}
 				/>
-				<Text
-					fill={true}
-					order={7}
-					size={HUD_VIEW.smallText}
-					color="uiTextDim"
-					text={str(LEADERBOARD_STRINGS.hint, { key: leaderboardHint(bindings)[keyDevice(device)] })}
-				/>
+				{device === "touch" ? undefined : (
+					<Text
+						fill={true}
+						order={7}
+						size={HUD_VIEW.smallText}
+						color="uiTextDim"
+						text={str(LEADERBOARD_STRINGS.hint, { key: leaderboardHint(bindings)[keyDevice(device)] })}
+					/>
+				)}
 			</Panel>
 		</frame>
 	);

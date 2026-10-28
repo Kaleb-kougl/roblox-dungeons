@@ -171,14 +171,16 @@ export function LobbyBrowser() {
 					}}
 				/>
 			</Row>
-			<Text
-				fill={true}
-				order={5}
-				size={HUD_VIEW.smallText}
-				color="uiTextDim"
-				align={Enum.TextXAlignment.Center}
-				text={str(MENU_STRINGS.backHint, { key: MENU_BACK_HINT[keyDevice(device)] })}
-			/>
+			{device === "touch" ? undefined : (
+				<Text
+					fill={true}
+					order={5}
+					size={HUD_VIEW.smallText}
+					color="uiTextDim"
+					align={Enum.TextXAlignment.Center}
+					text={str(MENU_STRINGS.backHint, { key: MENU_BACK_HINT[keyDevice(device)] })}
+				/>
+			)}
 		</Panel>
 	);
 }

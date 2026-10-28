@@ -8,22 +8,30 @@ import {
 	HUD_VIEW,
 	PROGRESSION_STRINGS,
 	PROGRESSION_VIEW,
+	TOUCH_STRINGS,
 	itemDescKey,
 	itemNameKey,
 	rarityColorRole,
 	rarityNameKey,
 } from "shared/view/hud";
+import { useHudActions } from "./actions";
 import { Panel, Row, Text } from "./primitives";
 
 const HALF = 0.5;
+const HIDDEN = 1;
+/** A touch tap target sits over its card, above the card's labels (touch only, docs/MOBILE.md MB10). */
+const TAP_ZINDEX = 2;
 const NAME_TOP = 0.08;
 const RARITY_TOP = 0.3;
 const DESC_TOP = 0.48;
 const DESC_HEIGHT = 0.46;
 const INSET = 0.92;
 
-/** One offered boon: name (rarity colour), rarity, one-line effect; the card under the stick is highlighted. */
-function DraftCard(props: { order: number; boon: number; selected: boolean }) {
+/**
+ * One offered boon: name (rarity colour), rarity, one-line effect; the card under the stick is highlighted. `onTap`
+ * (touch): a see-through button over the card takes the tap.
+ */
+function DraftCard(props: { order: number; boon: number; selected: boolean; onTap?: () => void }) {
 	const def = BOONS[props.boon];
 	if (def === undefined) return undefined;
 	const v = PROGRESSION_VIEW;
@@ -74,6 +82,18 @@ function DraftCard(props: { order: number; boon: number; selected: boolean }) {
 				TextColor3={role("uiText")}
 				Text={str(itemDescKey(def.id))}
 			/>
+			{props.onTap !== undefined ? (
+				<textbutton
+					key="Tap"
+					Size={UDim2.fromScale(1, 1)}
+					BackgroundTransparency={HIDDEN}
+					AutoButtonColor={false}
+					Selectable={false}
+					Text=""
+					ZIndex={TAP_ZINDEX}
+					Event={{ Activated: props.onTap }}
+				/>
+			) : undefined}
 		</frame>
 	);
 }
@@ -111,6 +131,8 @@ export function DraftOverlay() {
 	const device = useSelector(selectInputDevice);
 	const bindings = useSelector(selectBindings);
 	const tutorialEnded = useSelector(selectTutorialEnded);
+	const actions = useHudActions();
+	const touch = device === "touch";
 	if (tutorialEnded) return undefined;
 	if (!s.draftOpen) {
 		if (s.draftWaiting <= 0) return undefined;
@@ -131,7 +153,13 @@ export function DraftOverlay() {
 	const width = DRAFT_CARDS_WIDTH;
 	const hint = draftHint(bindings)[keyDevice(device)];
 	const cards = s.draftOffers.map((boon, i) => (
-		<DraftCard key={`c${i}`} order={i + 1} boon={boon} selected={i === s.draftSelected} />
+		<DraftCard
+			key={`c${i}`}
+			order={i + 1}
+			boon={boon}
+			selected={i === s.draftSelected}
+			onTap={touch ? () => actions.draftTap(i) : undefined}
+		/>
 	));
 	return (
 		<Panel
@@ -159,7 +187,9 @@ export function DraftOverlay() {
 				color="uiTextDim"
 				align={Enum.TextXAlignment.Center}
 				text={
-					s.draftReady
+					touch && s.draftReady
+						? str(TOUCH_STRINGS.hintDraft)
+						: s.draftReady
 						? str(PROGRESSION_STRINGS.draftHint, {
 								left: hint.left,
 								right: hint.right,

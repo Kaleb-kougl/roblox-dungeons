@@ -86,12 +86,13 @@ function SwapHint(props: { order: number; text: string; forced: boolean }) {
  * Bottom left (web WeaponHud): the two weapon sets (compact slots, docs/HUD_LAYOUT.md H5), the set in hand
  * highlighted, and the timed SWAP hint (SwapHint) ABOVE the slots, so the bottom-anchored slots never move when it
  * hides. `highlight`: the tutorial's ring (the bow lesson), which also keeps
- * the hint on.
+ * the hint on. Not on touch (docs/MOBILE.md MBD8): the screen's Swap button does the job and the thumbs own the corner.
  */
 export function WeaponPanel(props: { readonly highlight?: boolean }) {
 	const s = useSelector(selectSnapshot);
 	const device = useSelector(selectInputDevice);
 	const bindings = useSelector(selectBindings);
+	if (device === "touch") return undefined;
 	if (s.weapons.size() === 0) return undefined;
 	const slots = s.weapons.map((id, i) => (
 		<WeaponSlot key={`w${i}`} order={i + 1} index={i} id={id} active={i === s.activeSet} />

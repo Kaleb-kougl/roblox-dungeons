@@ -9,6 +9,7 @@ import {
 	HUD_VIEW,
 	SPECTATE_BAR_VIEW,
 	SPECTATE_HUD_STRINGS,
+	TOUCH_STRINGS,
 	spectateBarTransparency,
 	spectateHintShown,
 	spectateWatchingKey,
@@ -85,7 +86,11 @@ function SpectateBarBody(props: { name: string; position: number; count: number 
 						size={HUD_VIEW.smallText}
 						color={SPECTATE_BAR_VIEW.hintRole}
 						align={Enum.TextXAlignment.Center}
-						text={str(SPECTATE_HUD_STRINGS.hint, { next: keys.next, previous: keys.previous })}
+						text={
+							device === "touch"
+								? str(TOUCH_STRINGS.hintSpectate)
+								: str(SPECTATE_HUD_STRINGS.hint, { next: keys.next, previous: keys.previous })
+						}
 					/>
 				) : undefined}
 				<Text

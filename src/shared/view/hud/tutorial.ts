@@ -19,6 +19,8 @@ export const TUTORIAL_VIEW = {
 	 * InfoPanel's lines at the bottom right and the WeaponPanel at the bottom left). */
 	panelWidth: 480,
 	panelBottom: 132,
+	/** On touch (docs/MOBILE.md MB10): the prompt's width at the top centre, under the boss bar (footprint.ts). */
+	touchPanelWidth: 360,
 	/** ObjectiveCard (centre) and the outro card (centre, menu layer). */
 	cardWidth: 560,
 	outroWidth: 560,

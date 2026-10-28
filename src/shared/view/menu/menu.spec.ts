@@ -430,4 +430,10 @@ describe("notices, handoff and exits", () => {
 			false,
 		]);
 	});
+
+	it("on touch the co-op party overlay gains a Map item (docs/MOBILE.md MB10); solo and tutorial lists do not change", () => {
+		expect(pauseItems(true, false, true)).toEqual(["resume", "map", "leave", "settings", "leaderboards"]);
+		expect(pauseItems(false, false, true)).toEqual(pauseItems(false));
+		expect(pauseItems(false, true, true)).toEqual(pauseItems(false, true));
+	});
 });

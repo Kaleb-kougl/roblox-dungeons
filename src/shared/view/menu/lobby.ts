@@ -449,14 +449,18 @@ export type PauseItem =
 	| "leaderboards"
 	/** A first-run tutorial run (docs/TUTORIAL.md): a fresh tutorial run, and the skip (asks first). */
 	| "restartTutorial"
-	| "skipTutorial";
+	| "skipTutorial"
+	/** Touch (docs/MOBILE.md MB10): the full map, from the co-op party overlay (a tap on the map closes it). */
+	| "map";
 
 /**
  * The pause overlay's buttons: solo (the run is paused), the co-op overlay (the run goes on; no restart), or a
  * tutorial run (paused; Restart tutorial / Skip tutorial take Restart's and Leave run's places, no leaderboards: the
- * outro points there). The tutorial replay lives in the main menu, not here.
+ * outro points there). The tutorial replay lives in the main menu, not here. On touch (`touchMap`, co-op) the party
+ * overlay adds Map: the full map (solo has it in the pause overlay already).
  */
-export function pauseItems(coop: boolean, tutorial = false): ReadonlyArray<PauseItem> {
+export function pauseItems(coop: boolean, tutorial = false, touchMap = false): ReadonlyArray<PauseItem> {
+	if (coop && touchMap) return ["resume", "map", "leave", "settings", "leaderboards"];
 	if (coop) return ["resume", "leave", "settings", "leaderboards"];
 	if (tutorial) return ["resume", "restartTutorial", "skipTutorial", "settings"];
 	return ["resume", "restart", "leave", "settings", "leaderboards"];

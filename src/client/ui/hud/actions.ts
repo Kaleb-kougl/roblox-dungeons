@@ -51,6 +51,10 @@ export interface HudActions {
 	readonly startFirstRun: () => void;
 	readonly setTutorialSkipConfirm: (open: boolean) => void;
 	readonly skipTutorial: () => void;
+	/** Touch (docs/MOBILE.md MB10): tap a draft card (its index in the offer) to take it. */
+	readonly draftTap: (index: number) => void;
+	/** Touch (MB10): open / close the full map (the party overlay's Map item; a tap on the open map closes it). */
+	readonly toggleMap: () => void;
 }
 
 const NOOP: HudActions = {
@@ -79,6 +83,8 @@ const NOOP: HudActions = {
 	startFirstRun: () => undefined,
 	setTutorialSkipConfirm: () => undefined,
 	skipTutorial: () => undefined,
+	draftTap: () => undefined,
+	toggleMap: () => undefined,
 };
 
 export const HudActionsContext = React.createContext<HudActions>(NOOP);

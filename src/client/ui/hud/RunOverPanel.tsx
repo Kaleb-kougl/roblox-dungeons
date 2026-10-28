@@ -131,7 +131,9 @@ export function RunOverPanel() {
 	const victory = s.outcome === "victory";
 	const padKey = PAD_CONFIRM_LABEL;
 	const hint = restartHint(bindings);
-	const key = device === "gamepad" ? padKey : hint.keyboard;
+	// Touch: the Again button stands in for the restart key (docs/MOBILE.md MB10).
+	const touch = device === "touch";
+	const key = touch ? str(MENU_STRINGS.again) : device === "gamepad" ? padKey : hint.keyboard;
 	const otherKey = device === "gamepad" ? hint.keyboard : padKey;
 	const bossName = lastBoss !== "" ? str(`${lastBoss}.name`) : "";
 	const exits = runOverExits(info.coop, myLobby !== undefined);
@@ -159,14 +161,16 @@ export function RunOverPanel() {
 				text={str(victory ? HUD_STRINGS.runVictory : HUD_STRINGS.runOver)}
 			/>
 			<Text order={2} size={HUD_VIEW.titleText} align={Enum.TextXAlignment.Center} wrap={true} text={main} />
-			<Text
-				fill={true}
-				order={3}
-				size={HUD_VIEW.smallText}
-				color="uiTextDim"
-				align={Enum.TextXAlignment.Center}
-				text={str(HUD_STRINGS.restartAlt, { key: otherKey })}
-			/>
+			{touch ? undefined : (
+				<Text
+					fill={true}
+					order={3}
+					size={HUD_VIEW.smallText}
+					color="uiTextDim"
+					align={Enum.TextXAlignment.Center}
+					text={str(HUD_STRINGS.restartAlt, { key: otherKey })}
+				/>
+			)}
 			<Row order={4} align={Enum.HorizontalAlignment.Center}>
 				<Stat
 					order={1}

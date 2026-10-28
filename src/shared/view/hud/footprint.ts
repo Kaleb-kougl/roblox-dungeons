@@ -151,6 +151,18 @@ export const HUD_TRANSIENT = {
 	},
 } as const satisfies Readonly<Record<TransientPanel, TransientBox>>;
 
+/**
+ * The tutorial prompt on touch (docs/MOBILE.md MBD8, MB10): top centre under the boss bar, at TUTORIAL_VIEW.touchPanelWidth.
+ * Its height is the bottom prompt's estimate scaled to that width, so the same wrapped lines fit.
+ */
+export const TOUCH_TUTORIAL_BOX: TransientBox = {
+	anchor: "topCentre",
+	edge: HUD_TRANSIENT.bossBar.edge + HUD_TRANSIENT.bossBar.height + HUD_VIEW.gap,
+	width: TUTORIAL_VIEW.touchPanelWidth,
+	height: math.ceil((HUD_TRANSIENT.tutorial.height * TUTORIAL_VIEW.panelWidth) / TUTORIAL_VIEW.touchPanelWidth),
+	when: "a tutorial step's prompt on touch",
+};
+
 /** The middle of the safe area always-on panels never enter, as fractions of its width and height. */
 export const HUD_CLEAR_ZONE = { x0: 0.25, x1: 0.75, y0: 0.22, y1: 0.78 } as const;
 
@@ -302,6 +314,36 @@ export function footprintReport(
 		return { panel: p.panel, intrudes, coverShare };
 	});
 	return { panels, totalShare: total, intrudes: any };
+}
+
+/**
+ * The always-on panels on touch (MBD8): the weapons panel and the corner minimap are hidden (the full map opens from
+ * the pause overlay instead), so only the two top corners stay.
+ */
+export const TOUCH_ALWAYS_ON_PANELS: ReadonlyArray<AlwaysOnPanel> = ["status", "score"];
+
+/**
+ * footprintRects on touch: the HUD scale floors at HUD_VIEW.touchMinScale (computeHudScale with touch) and only
+ * TOUCH_ALWAYS_ON_PANELS are placed. `topInset` as in footprintRects.
+ */
+export function touchFootprintRects(
+	vw: number,
+	vh: number,
+	userPercent: number,
+	topInset = 0,
+): ReadonlyArray<PanelRect<AlwaysOnPanel>> {
+	const scale = computeHudScale(vw, vh, false, userPercent, true);
+	const sh = vh - topInset;
+	return TOUCH_ALWAYS_ON_PANELS.map((panel) => {
+		const b: FootprintBox = HUD_FOOTPRINT[panel];
+		return { panel, rect: shiftDown(cornerRect(b.corner, b.maxW, b.maxH, vw, sh, scale), topInset) };
+	});
+}
+
+/** The touch tutorial prompt's screen rect (TOUCH_TUTORIAL_BOX at the touch HUD scale; `topInset` as in footprintRects). */
+export function touchTutorialRect(vw: number, vh: number, userPercent: number, topInset = 0): ScreenRect {
+	const scale = computeHudScale(vw, vh, false, userPercent, true);
+	return shiftDown(transientRect(TOUCH_TUTORIAL_BOX, vw, vh - topInset, scale), topInset);
 }
 
 /** Text lines under the weapon slots (the swap hint). */

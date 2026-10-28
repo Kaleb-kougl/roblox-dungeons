@@ -3,8 +3,9 @@ import { useSelector } from "@rbxts/react-reflex";
 import { selectBindings, selectInputDevice, selectMapView, selectRunInfo, selectSnapshot } from "client/store";
 import { role, str } from "client/ui/theme";
 import { mapHint, keyDevice } from "shared/play";
-import { HUD_STRINGS, HUD_VIEW } from "shared/view/hud";
+import { HUD_STRINGS, HUD_VIEW, TOUCH_STRINGS } from "shared/view/hud";
 import { MINIMAP_VIEW } from "shared/view/minimap";
+import { useHudActions } from "./actions";
 import { minimapHostRef, type MinimapHost } from "./minimapHosts";
 import { Panel, Text } from "./primitives";
 
@@ -34,7 +35,8 @@ function MapHost(props: { host: MinimapHost; position: UDim2; anchor: Vector2; s
 /**
  * The full map toggle overlay (docs/MINIMAP.md M9, MD5): the whole floor in the middle of the screen, see-through, over
  * the running game (co-op cannot pause), its host `MINIMAP_VIEW.fullMap.heightShare` of the safe area's width and
- * height, the title above (`hud.map.title`) and the toggle hint below (`hud.map.hint`, shared/play mapHint). Shown while
+ * height, the title above (`hud.map.title`) and the toggle hint below (`hud.map.hint`, shared/play mapHint; on touch
+ * a tap anywhere closes it, docs/MOBILE.md MB10: a see-through button behind the map takes the tap). Shown while
  * the map is open on a floor with a map and the run is being played; a paused solo run shows the map in its pause
  * overlay instead (PauseMap), so this one steps aside there. MinimapController opens / closes it (Reflex `game.map`).
  */
@@ -44,12 +46,25 @@ export function FullMapOverlay() {
 	const info = useSelector(selectRunInfo);
 	const bindings = useSelector(selectBindings);
 	const device = useSelector(selectInputDevice);
+	const actions = useHudActions();
+	const touch = device === "touch";
 	const pausedSolo = s.paused && !info.coop;
 	if (!map.available || !map.open || s.outcome !== "playing" || pausedSolo) return undefined;
 	const share = MINIMAP_VIEW.fullMap.heightShare;
 	const edge = HALF - share / 2;
 	return (
 		<frame key="FullMap" Size={UDim2.fromScale(1, 1)} BackgroundTransparency={HIDDEN}>
+			{touch ? (
+				<textbutton
+					key="TouchClose"
+					Size={UDim2.fromScale(1, 1)}
+					BackgroundTransparency={HIDDEN}
+					AutoButtonColor={false}
+					Selectable={false}
+					Text=""
+					Event={{ Activated: () => actions.toggleMap() }}
+				/>
+			) : undefined}
 			<MapHost
 				host="full"
 				position={UDim2.fromScale(HALF, HALF)}
@@ -76,7 +91,11 @@ export function FullMapOverlay() {
 					order={1}
 					size={HUD_VIEW.smallText}
 					color="uiTextDim"
-					text={str(HUD_STRINGS.mapHint, { key: mapHint(bindings)[keyDevice(device)] })}
+					text={
+						touch
+							? str(TOUCH_STRINGS.hintMapClose)
+							: str(HUD_STRINGS.mapHint, { key: mapHint(bindings)[keyDevice(device)] })
+					}
 				/>
 			</Panel>
 		</frame>
