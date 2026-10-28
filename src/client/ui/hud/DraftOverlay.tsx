@@ -1,7 +1,7 @@
 import React from "@rbxts/react";
 import { useSelector } from "@rbxts/react-reflex";
 import { selectBindings, selectInputDevice, selectSnapshot, selectTutorialEnded } from "client/store";
-import { draftHint } from "shared/play";
+import { draftHint, keyDevice } from "shared/play";
 import { HUD_FONT, role, str } from "client/ui/theme";
 import { BOONS, DRAFT_OFFER_COUNT } from "shared/sim";
 import {
@@ -129,7 +129,7 @@ export function DraftOverlay() {
 	}
 	const v = PROGRESSION_VIEW;
 	const width = DRAFT_CARDS_WIDTH;
-	const hint = draftHint(bindings)[device];
+	const hint = draftHint(bindings)[keyDevice(device)];
 	const cards = s.draftOffers.map((boon, i) => (
 		<DraftCard key={`c${i}`} order={i + 1} boon={boon} selected={i === s.draftSelected} />
 	));

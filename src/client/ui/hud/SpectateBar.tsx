@@ -2,7 +2,7 @@ import React, { useBinding, useEffect } from "@rbxts/react";
 import { useSelector } from "@rbxts/react-reflex";
 import { RunService } from "@rbxts/services";
 import { selectBindings, selectInputDevice, selectJuice, selectSnapshot } from "client/store";
-import { spectateHint } from "shared/play";
+import { spectateHint, keyDevice } from "shared/play";
 import { str } from "client/ui/theme";
 import { motionScale } from "shared/view/fx";
 import {
@@ -48,7 +48,7 @@ function SpectateBarBody(props: { name: string; position: number; count: number 
 		});
 		return () => handle.connection?.Disconnect();
 	}, [motion]);
-	const keys = spectateHint(bindings)[device];
+	const keys = spectateHint(bindings)[keyDevice(device)];
 	return (
 		<canvasgroup
 			key="SpectateBar"

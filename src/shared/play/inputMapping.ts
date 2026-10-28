@@ -31,6 +31,7 @@ import {
 	type Bindings,
 } from "./bindings";
 import { DEBUG_REPLAY_CHECK_KEYS, FIXED_INPUTS, STICK_DEADZONE, TRIGGER_THRESHOLD } from "./config";
+import type { TouchSnapshot } from "./touch";
 
 // ---------------------------------------------------------------------------------------------
 // Bindings (bindings.ts holds the rebindable layout; this compiles one into lookup tables)
@@ -159,12 +160,14 @@ export interface GamepadSnapshot {
 	readonly buttons: ReadonlySet<string>;
 }
 
-export type AimDevice = "none" | "mouse" | "stick";
-export type InputDeviceKind = "keyboard" | "gamepad";
+export type AimDevice = "none" | "mouse" | "stick" | "touch";
+export type InputDeviceKind = "keyboard" | "gamepad" | "touch";
 
 export interface DeviceSnapshot {
 	readonly kbm: KeyboardMouseSnapshot;
 	readonly pad: GamepadSnapshot | undefined;
+	/** One frame of touch input (MB4); absent when no touch device is in use. Optional, so older snapshots still compile. */
+	readonly touch?: TouchSnapshot;
 	/** Which aim device was used most recently. */
 	readonly aimDevice: AimDevice;
 	/** World-space (sim units) vector from the player to the pointer's floor hit (any length). */
@@ -305,10 +308,11 @@ export function mapDevicesToInput(
 	out: InputFrame = { ...EMPTY_INPUT },
 	bindings: Bindings = DEFAULT_BINDINGS,
 ): InputFrame {
-	// Move: keyboard + left stick, summed and clamped to unit length, then rotated to world.
+	// Move: keyboard + left stick + touch stick, summed and clamped to unit length, then rotated to world.
 	const kb = keyboardMoveVector(snap.kbm.keys, bindings, snap.kbm.mouseButtons);
 	const ls = snap.pad !== undefined ? gamepadMoveVector(snap.pad) : ZERO;
-	const moveScreen = clampUnit(kb.x + ls.x, kb.y + ls.y);
+	const tm = snap.touch;
+	const moveScreen = clampUnit(kb.x + ls.x + (tm?.moveX ?? 0), kb.y + ls.y + (tm?.moveY ?? 0));
 	const move = screenToWorld(moveScreen.x, moveScreen.y);
 
 	// Aim: a direction only, from whichever device was used last.
@@ -319,10 +323,14 @@ export function mapDevicesToInput(
 		const rs = gamepadAimVector(snap.pad);
 		const w = screenToWorld(rs.x, rs.y);
 		aim = normalizeOrZero(w.x, w.z);
+	} else if (snap.aimDevice === "touch" && tm !== undefined) {
+		// Touch aim is already world space (TouchSnapshot): normalize it, as the mouse pointer is.
+		aim = normalizeOrZero(finite(tm.aimX), finite(tm.aimZ));
 	}
 
 	let buttons = keyboardMouseButtons(snap.kbm, bindings);
 	if (snap.pad !== undefined) buttons = bit32.bor(buttons, gamepadButtons(snap.pad, bindings));
+	if (tm !== undefined) buttons = bit32.bor(buttons, tm.buttons);
 
 	quantizeInput(move.x, move.z, aim.x, aim.y, buttons, out);
 	// quantizeButtons keeps the web build's bits only; the port's own bits (PORT_BUTTONS) pass through here.
@@ -355,11 +363,29 @@ export class InputDeviceTracker {
 		this.aimDevice = "mouse";
 	}
 
+	/** A touch on the controls: the last-used device is touch (UI hints only, never the sim). */
+	touched(): void {
+		this.device = "touch";
+	}
+
+	/** Touch aim (a centre stick or a manual drag) is the aim device until the mouse moves again. */
+	touchAimed(): void {
+		this.aimDevice = "touch";
+	}
+
 	/** Called once per sample with the current pad (or undefined). */
 	padSampled(pad: GamepadSnapshot | undefined): void {
 		if (isStickAiming(pad)) this.aimDevice = "stick";
 		if (isPadActive(pad, STICK_DEADZONE, this.bindings)) this.device = "gamepad";
 	}
+}
+
+/**
+ * The key-name table to read for a device: the keyboard or the gamepad hint tables. Touch has no key names of its own;
+ * it reads the keyboard's, and the touch prompts hide those lines (MB10) rather than index a missing field.
+ */
+export function keyDevice(device: InputDeviceKind): "keyboard" | "gamepad" {
+	return device === "gamepad" ? "gamepad" : "keyboard";
 }
 
 /** `buttons` without the debug bits unless `debugAllowed` (web maskDebugButtons). */

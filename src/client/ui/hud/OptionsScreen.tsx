@@ -23,6 +23,7 @@ import {
 	type BindingDevice,
 	type Bindings,
 	type GameAction,
+	keyDevice,
 } from "shared/play";
 import {
 	AUDIO_SETTING_KEYS,
@@ -832,7 +833,7 @@ export function OptionsScreen() {
 					order={6}
 					size={HUD_VIEW.smallText}
 					color="uiTextDim"
-					text={str(OPTIONS_STRINGS.hint, { key: SETTINGS_HINT[device] })}
+					text={str(OPTIONS_STRINGS.hint, { key: SETTINGS_HINT[keyDevice(device)] })}
 				/>
 			</Panel>
 			<OptionsModal options={options} actions={actions} device={device} />

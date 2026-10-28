@@ -14,6 +14,7 @@ import {
 	SHRINE_BUTTON,
 	SQRT1_2,
 	draftColumn,
+	quantizeInput,
 } from "shared/sim";
 import { LEADERBOARD_KEY, SETTINGS_KEY } from "shared/view/hud";
 import {
@@ -29,11 +30,13 @@ import {
 	boundPadButtonNames,
 	driverKeyAction,
 	keyboardMoveVector,
+	keyDevice,
 	mapDevicesToInput,
 	maskDebugButtons,
 	screenToWorld,
 	type DeviceSnapshot,
 	type GamepadSnapshot,
+	type TouchSnapshot,
 } from "shared/play";
 
 const S = SQRT1_2;
@@ -46,6 +49,7 @@ interface SnapOptions {
 	aimDevice?: DeviceSnapshot["aimDevice"];
 	pointerAimX?: number;
 	pointerAimZ?: number;
+	touch?: TouchSnapshot;
 }
 
 function snap(o: SnapOptions = {}): DeviceSnapshot {
@@ -55,6 +59,7 @@ function snap(o: SnapOptions = {}): DeviceSnapshot {
 		aimDevice: o.aimDevice ?? "none",
 		pointerAimX: o.pointerAimX ?? 0,
 		pointerAimZ: o.pointerAimZ ?? 0,
+		touch: o.touch,
 	};
 }
 
@@ -324,5 +329,51 @@ describe("M2 boon draft and curse shrine controls", () => {
 		expect(KEY_BINDINGS.get("One")).toBe(SHRINE_BUTTON);
 		expect(mapDevicesToInput(snap({ keys: ["One"] })).buttons).toBe(SHRINE_BUTTON);
 		expect(mapDevicesToInput(snap({ mouse: ["MouseButton1"] })).buttons).toBe(Button.FIRE);
+	});
+});
+
+describe("touch as a device (MB4)", () => {
+	it("a touch move is the same frame as a left stick pushed fully up, bit for bit", () => {
+		const t: TouchSnapshot = { moveX: 0, moveY: 1, aimX: 0, aimZ: 0, buttons: 0 };
+		expect(mapDevicesToInput(snap({ touch: t }))).toEqual(mapDevicesToInput(snap({ pad: pad([0, 1, 0, 0]) })));
+	});
+
+	it("touch aim is world space and normalized when touch is the aim device", () => {
+		const t: TouchSnapshot = { moveX: 0, moveY: 0, aimX: 3, aimZ: 4, buttons: 0 };
+		const f = mapDevicesToInput(snap({ aimDevice: "touch", touch: t }));
+		const q = quantizeInput(0, 0, 0.6, 0.8, 0);
+		expect([f.aimX, f.aimZ]).toEqual([q.aimX, q.aimZ]);
+		expect(mapDevicesToInput(snap({ touch: t })).aimX).toBe(0); // not the aim device: no aim
+	});
+
+	it("touch buttons are ORed with the mouse's", () => {
+		const t: TouchSnapshot = { moveX: 0, moveY: 0, aimX: 0, aimZ: 0, buttons: Button.ROLL };
+		expect(mapDevicesToInput(snap({ mouse: ["MouseButton1"], touch: t })).buttons).toBe(Button.ROLL + Button.FIRE);
+	});
+
+	it("a snapshot without touch is unchanged (the mouse aim case with touch: undefined)", () => {
+		const f = mapDevicesToInput({
+			...snap({ aimDevice: "mouse", pointerAimX: 3, pointerAimZ: -4 }),
+			touch: undefined,
+		});
+		expect([f.aimX, f.aimZ]).toEqual([600, -800]);
+	});
+
+	it("the tracker: touched() is the touch device, touchAimed() the touch aim; keys and the mouse take them back", () => {
+		const t = new InputDeviceTracker();
+		t.touched();
+		expect(t.device).toBe("touch");
+		t.touchAimed();
+		expect(t.aimDevice).toBe("touch");
+		t.keyPressed();
+		expect(t.device).toBe("keyboard");
+		t.mouseMoved();
+		expect(t.aimDevice).toBe("mouse");
+	});
+
+	it("keyDevice reads the keyboard's hint tables for touch", () => {
+		expect(keyDevice("touch")).toBe("keyboard");
+		expect(keyDevice("keyboard")).toBe("keyboard");
+		expect(keyDevice("gamepad")).toBe("gamepad");
 	});
 });

@@ -11,7 +11,7 @@ import {
 	type LeaderboardView,
 } from "shared/leaderboard";
 import { SFX } from "shared/view/audio";
-import { leaderboardHint } from "shared/play";
+import { leaderboardHint, keyDevice } from "shared/play";
 import { HUD_VIEW, LEADERBOARD_STRINGS, LEADERBOARD_VIEW } from "shared/view/hud";
 import { useHudActions } from "./actions";
 import { MenuButton, Panel, Row, Text } from "./primitives";
@@ -187,7 +187,7 @@ export function LeaderboardPanel(props: { localUserId: number }) {
 					order={7}
 					size={HUD_VIEW.smallText}
 					color="uiTextDim"
-					text={str(LEADERBOARD_STRINGS.hint, { key: leaderboardHint(bindings)[device] })}
+					text={str(LEADERBOARD_STRINGS.hint, { key: leaderboardHint(bindings)[keyDevice(device)] })}
 				/>
 			</Panel>
 		</frame>

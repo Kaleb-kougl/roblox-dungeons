@@ -7,6 +7,7 @@
  */
 import { TUTORIAL } from "shared/config";
 import type { OnboardingStatus } from "shared/onboarding";
+import type { InputDeviceKind } from "shared/play";
 import type { TutorialView } from "./director";
 import type { TutorialDevice, TutorialHighlight, TutorialMarkerKind } from "./steps";
 
@@ -148,9 +149,12 @@ export function tutorialHudEqual(a: Readonly<TutorialHudState>, b: Readonly<Tuto
 	);
 }
 
-/** The prompt variant for the HUD's last-used device (shared/play InputDeviceKind; touch has no controls yet). */
-export function tutorialDeviceFor(device: "keyboard" | "gamepad"): TutorialDevice {
-	return device === "gamepad" ? "gamepad" : "keyboard";
+/**
+ * The prompt variant for the HUD's last-used device (shared/play InputDeviceKind). Touch has its own prompt texts from
+ * MB12; until then its lines equal the keyboard's, so nothing on screen changes yet.
+ */
+export function tutorialDeviceFor(device: InputDeviceKind): TutorialDevice {
+	return device;
 }
 
 /** The panel's progress numbers: steps done (capped at the count) over the step count. */

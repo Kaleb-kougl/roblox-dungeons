@@ -1,3 +1,4 @@
+import { keyDevice } from "shared/play";
 import React, { useRef, useState } from "@rbxts/react";
 import { useSelector } from "@rbxts/react-reflex";
 import { Players } from "@rbxts/services";
@@ -275,7 +276,7 @@ export function LobbyRoom() {
 				size={HUD_VIEW.smallText}
 				color="uiTextDim"
 				align={Enum.TextXAlignment.Center}
-				text={str(MENU_STRINGS.backHint, { key: MENU_BACK_HINT[device] })}
+				text={str(MENU_STRINGS.backHint, { key: MENU_BACK_HINT[keyDevice(device)] })}
 			/>
 		</Panel>
 	);

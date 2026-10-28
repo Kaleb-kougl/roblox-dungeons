@@ -13,7 +13,7 @@ import {
 	selectTutorial,
 } from "client/store";
 import { role, str } from "client/ui/theme";
-import { swapHint } from "shared/play";
+import { swapHint, keyDevice } from "shared/play";
 import { TUTORIAL_STRINGS } from "shared/tutorial";
 import { SFX } from "shared/view/audio";
 import { HUD_STRINGS, HUD_VIEW, LEADERBOARD_STRINGS, PAUSE_HINT } from "shared/view/hud";
@@ -214,7 +214,7 @@ export function PauseOverlay() {
 						size={HUD_VIEW.smallText}
 						color="uiTextDim"
 						align={Enum.TextXAlignment.Center}
-						text={str(HUD_STRINGS.weaponSwap, { key: swapHint(bindings)[device] })}
+						text={str(HUD_STRINGS.weaponSwap, { key: swapHint(bindings)[keyDevice(device)] })}
 					/>
 				) : undefined}
 				<RunInfoLine order={19} />
@@ -224,7 +224,7 @@ export function PauseOverlay() {
 					size={HUD_VIEW.smallText}
 					color="uiTextDim"
 					align={Enum.TextXAlignment.Center}
-					text={str(hintKey, { key: PAUSE_HINT[device] })}
+					text={str(hintKey, { key: PAUSE_HINT[keyDevice(device)] })}
 				/>
 			</Panel>
 		</frame>

@@ -2,7 +2,7 @@ import React from "@rbxts/react";
 import { useSelector } from "@rbxts/react-reflex";
 import { selectBindings, selectGameActive, selectInputDevice, selectRunInfo, selectSnapshot } from "client/store";
 import { HUD_FONT, role, str, themePack } from "client/ui/theme";
-import { swapHint } from "shared/play";
+import { swapHint, keyDevice } from "shared/play";
 import { HUD_HINTS, HUD_STRINGS, HUD_VIEW } from "shared/view/hud";
 import { Panel, Row, Text } from "./primitives";
 import { useTimedHint } from "./useTimedHint";
@@ -101,7 +101,7 @@ export function WeaponPanel(props: { readonly highlight?: boolean }) {
 			<SwapHint
 				order={1}
 				forced={props.highlight === true}
-				text={str(HUD_STRINGS.weaponSwap, { key: swapHint(bindings)[device] })}
+				text={str(HUD_STRINGS.weaponSwap, { key: swapHint(bindings)[keyDevice(device)] })}
 			/>
 			<Row order={2}>{slots}</Row>
 		</Panel>

@@ -1,3 +1,4 @@
+import { keyDevice } from "shared/play";
 import React, { useEffect, useRef } from "@rbxts/react";
 import { useSelector } from "@rbxts/react-reflex";
 import { GuiService } from "@rbxts/services";
@@ -63,7 +64,9 @@ export function TutorialOutro() {
 					size={HUD_VIEW.titleText}
 					align={Enum.TextXAlignment.Center}
 					wrap={true}
-					text={str(TUTORIAL_STRINGS.outroBody, { key: tutorialLeaderboardHint(bindings)[device] })}
+					text={str(TUTORIAL_STRINGS.outroBody, {
+						key: tutorialLeaderboardHint(bindings)[keyDevice(device)],
+					})}
 				/>
 				<MenuButton
 					ref={startRef}

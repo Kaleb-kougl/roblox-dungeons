@@ -2,7 +2,7 @@ import React from "@rbxts/react";
 import { useSelector } from "@rbxts/react-reflex";
 import { selectBindings, selectInputDevice, selectMapView, selectRunInfo, selectSnapshot } from "client/store";
 import { role, str } from "client/ui/theme";
-import { mapHint } from "shared/play";
+import { mapHint, keyDevice } from "shared/play";
 import { HUD_STRINGS, HUD_VIEW } from "shared/view/hud";
 import { MINIMAP_VIEW } from "shared/view/minimap";
 import { minimapHostRef, type MinimapHost } from "./minimapHosts";
@@ -76,7 +76,7 @@ export function FullMapOverlay() {
 					order={1}
 					size={HUD_VIEW.smallText}
 					color="uiTextDim"
-					text={str(HUD_STRINGS.mapHint, { key: mapHint(bindings)[device] })}
+					text={str(HUD_STRINGS.mapHint, { key: mapHint(bindings)[keyDevice(device)] })}
 				/>
 			</Panel>
 		</frame>

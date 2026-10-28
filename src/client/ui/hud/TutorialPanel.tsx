@@ -1,3 +1,4 @@
+import { keyDevice } from "shared/play";
 import React from "@rbxts/react";
 import { useSelector } from "@rbxts/react-reflex";
 import { selectBindings, selectInputDevice, selectTutorial, selectTutorialPromptKey } from "client/store";
@@ -51,7 +52,7 @@ export function TutorialPanel() {
 				size={HUD_VIEW.smallText}
 				color="uiTextDim"
 				align={Enum.TextXAlignment.Center}
-				text={str(TUTORIAL_STRINGS.panelHint, { key: PAUSE_HINT[device] })}
+				text={str(TUTORIAL_STRINGS.panelHint, { key: PAUSE_HINT[keyDevice(device)] })}
 			/>
 		</Panel>
 	);
