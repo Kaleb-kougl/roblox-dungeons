@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from "@rbxts/react";
 import { useSelector } from "@rbxts/react-reflex";
-import { GuiService } from "@rbxts/services";
+import { GuiService, UserInputService } from "@rbxts/services";
 import {
 	selectAudio,
 	selectBindings,
@@ -30,6 +30,8 @@ import {
 	HEALTH_BARS_MODES,
 	HUD_SCALE_PERCENTS,
 	PARTICLES_LEVELS,
+	TOUCH_OPACITY_PERCENTS,
+	TOUCH_SIZE_PERCENTS,
 	stepVolume,
 	type AudioSettings,
 	type JuiceOverrides,
@@ -467,6 +469,8 @@ function AudioTab(props: { order: number; actions: HudActions; selectable: boole
 
 function DisplayTab(props: { order: number; actions: HudActions; selectable: boolean }) {
 	const display = useSelector(selectDisplay);
+	/** Touch devices only: the touch rows (docs/MOBILE.md MB11). Read once, when the tab opens. */
+	const touch = UserInputService.TouchEnabled;
 	return (
 		<Panel position={new UDim2()} anchor={new Vector2()} order={props.order} transparency={HIDDEN} padding={0}>
 			<SettingRow
@@ -545,6 +549,76 @@ function DisplayTab(props: { order: number; actions: HudActions; selectable: boo
 					props.actions.updateDisplay({ playerOutline: v });
 				}}
 			/>
+			{touch && (
+				<SettingRow
+					order={6}
+					name="touchSize"
+					selectable={props.selectable}
+					label={str(OPTIONS_STRINGS.touchSize)}
+					value={display.touchSize}
+					optionWidth={HUD_VIEW.scaleOptionWidth}
+					options={TOUCH_SIZE_PERCENTS.map((p) => ({
+						value: p,
+						label: str(OPTIONS_STRINGS.percent, { value: p }),
+					}))}
+					onPick={(v) => {
+						props.actions.playUi(SFX.uiClick);
+						props.actions.updateDisplay({ touchSize: v });
+					}}
+				/>
+			)}
+			{touch && (
+				<SettingRow
+					order={7}
+					name="touchOpacity"
+					selectable={props.selectable}
+					label={str(OPTIONS_STRINGS.touchOpacity)}
+					value={display.touchOpacity}
+					optionWidth={HUD_VIEW.scaleOptionWidth}
+					options={TOUCH_OPACITY_PERCENTS.map((p) => ({
+						value: p,
+						label: str(OPTIONS_STRINGS.percent, { value: p }),
+					}))}
+					onPick={(v) => {
+						props.actions.playUi(SFX.uiClick);
+						props.actions.updateDisplay({ touchOpacity: v });
+					}}
+				/>
+			)}
+			{touch && (
+				<SettingRow
+					order={8}
+					name="touchAutoTarget"
+					selectable={props.selectable}
+					label={str(OPTIONS_STRINGS.touchAutoTarget)}
+					value={display.touchAutoTarget}
+					options={[
+						{ value: true, label: str(SETTINGS_STRINGS.on) },
+						{ value: false, label: str(SETTINGS_STRINGS.off) },
+					]}
+					onPick={(v) => {
+						props.actions.playUi(SFX.uiClick);
+						props.actions.updateDisplay({ touchAutoTarget: v });
+					}}
+				/>
+			)}
+			{touch && (
+				<SettingRow
+					order={9}
+					name="touchLeftHanded"
+					selectable={props.selectable}
+					label={str(OPTIONS_STRINGS.touchLeftHanded)}
+					value={display.touchLeftHanded}
+					options={[
+						{ value: true, label: str(SETTINGS_STRINGS.on) },
+						{ value: false, label: str(SETTINGS_STRINGS.off) },
+					]}
+					onPick={(v) => {
+						props.actions.playUi(SFX.uiClick);
+						props.actions.updateDisplay({ touchLeftHanded: v });
+					}}
+				/>
+			)}
 		</Panel>
 	);
 }
