@@ -18,6 +18,7 @@ export const SPIKE_DEFAULTS = {
 	camera: false,
 	preload: false,
 	invites: false,
+	touch: false,
 } as const;
 
 /** Workspace attribute names that override SPIKE_DEFAULTS. */
@@ -26,9 +27,29 @@ export const SPIKE_ATTRIBUTES = {
 	camera: "KV_SpikeCamera",
 	preload: "KV_SpikePreload",
 	invites: "KV_InviteSpike",
+	touch: "KV_TouchSpike",
 } as const;
 
 export type SpikeName = keyof typeof SPIKE_DEFAULTS;
+
+/**
+ * Touch spike MB1 (docs/MOBILE_IMPL.md MB1, docs/SPIKES.md "Spike MB0"): a debug overlay on a phone or tablet that
+ * reports the input flags, the fps and memory, every active finger and the offset between touch and GUI space.
+ */
+export const TOUCH_SPIKE = {
+	/** Seconds between overlay refreshes (the fps window). */
+	refreshSec: 0.25,
+	/** Side of the probe square at the bottom left, pixels. */
+	probeSize: 120,
+	/** Finger lines shown (the rest are counted, not listed). */
+	maxFingerLines: 5,
+	/** DisplayOrder of the overlay ScreenGui: above the game HUD, under the spike HUD (100). */
+	displayOrder: 50,
+	/** Text size of the info label, pixels. */
+	textSize: 14,
+	/** BackgroundTransparency of the info label and the probe (0 = opaque). */
+	backgroundTransparency: 0.4,
+} as const;
 
 /** Spike A: pooled bullet Parts moved with one workspace:BulkMoveTo per frame. */
 export const BULLET_SPIKE = {

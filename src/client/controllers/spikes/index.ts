@@ -8,3 +8,4 @@ export * from "./InviteSpikeController";
 export * from "./PreloadSpikeController";
 export * from "./SpikeHudController";
 export * from "./spikeFlags";
+export * from "./TouchSpikeController";

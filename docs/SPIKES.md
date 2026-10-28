@@ -238,6 +238,51 @@ Array<number>)`, `Player.PartyId` (read-only string) and `GetJoinData().LaunchDa
 `Array<unknown>`: `src/types/roblox-social.d.ts` overloads them to `Array<Player>` / `Array<SocialPartyMemberData>`
 (keys from the reference; step 9 confirms them).
 
+## Spike MB0: touch input (docs/MOBILE.md)
+
+Not a task 1 gate: it answers the touch questions that MB2-MB9 (the mobile controls) are built on. Client code only
+(`TouchSpikeController`, flag `KV_TouchSpike`). It is **off by default** and its overlay is one Janitor: turning the flag
+off removes it. Run it on a **published place** (a phone, a tablet, and one low-end Android).
+
+### Turning it on
+
+- **Server console (replicates to every client):** `workspace:SetAttribute("KV_TouchSpike", true)`. Set it to `false` to
+  stop the overlay.
+- **Code default:** set `SPIKE_DEFAULTS.touch` to `true` in `src/shared/config/spikes.ts` (not for a published build).
+
+The overlay sits top centre (the text) and bottom left (a 120 px probe square, `TOUCH_SPIKE.probeSize`). It refreshes
+every `TOUCH_SPIKE.refreshSec`, so the fps is the frame count over that window.
+
+### Test script
+
+1. Read the flags on the overlay (`Touch`, `Mouse`, `Keyboard`, `Gamepad`, `GuiService.TouchControlsEnabled`,
+   `Orientation`).
+2. Put 1, 2, 3 fingers down and move them: do the finger numbers stay with their fingers? (A finger's number is fixed
+   the first time `TouchStarted` sees its InputObject.)
+3. Tap the probe square's top-left corner: read `probe same object` (does the probe get the same InputObject that
+   `TouchStarted` gave that finger?) and `probe offset` (touch position minus the button's `AbsolutePosition`; the
+   `GetGuiInset` value on the overlay is the top-bar inset, for comparison).
+4. Hold a finger anywhere: does `Mouse1 down` read `yes`, and does `mouse` follow the finger?
+5. Is the stock thumbstick / jump button visible before step MB9 lands? (Note what is on screen.)
+6. fps and memory (`mem`, `texture`) on endless floor 1, on a Demon Lord floor (find a seed with
+   `node scripts/find-boss-seed.js`) and with `KV_Stress` 600.
+
+### Results: touch input (MB0)
+
+| Question | Low-end Android | iPhone | Tablet |
+|---|---|---|---|
+| 1. Flags (Touch / Mouse / Keyboard / Gamepad, TouchControlsEnabled) | | | |
+| 2. Finger numbers stay with their fingers (1 / 2 / 3 fingers) | | | |
+| 3a. Probe same object (yes / no) | | | |
+| 3b. Probe offset at the top-left corner (x, y) | | | |
+| 4. `Mouse1 down` and `mouse` follow a held finger | | | |
+| 5. Stock thumbstick / jump visible | | | |
+| 6. fps and memory: endless floor 1 | | | |
+| 6. fps and memory: Demon Lord floor | | | |
+| 6. fps and memory: `KV_Stress` 600 | | | |
+
+Notes (device model, OS, orientation, the GuiInset value, anything odd):
+
 ## Results
 
 Fill these in; they decide the go/no-go gate in PLAN.md task 1.
