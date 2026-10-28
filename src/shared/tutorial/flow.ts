@@ -150,8 +150,8 @@ export function tutorialHudEqual(a: Readonly<TutorialHudState>, b: Readonly<Tuto
 }
 
 /**
- * The prompt variant for the HUD's last-used device (shared/play InputDeviceKind). Touch has its own prompt texts from
- * MB12; until then its lines equal the keyboard's, so nothing on screen changes yet.
+ * The prompt variant for the HUD's last-used device (shared/play InputDeviceKind). Touch has its own prompt texts
+ * (docs/MOBILE_IMPL.md MB12).
  */
 export function tutorialDeviceFor(device: InputDeviceKind): TutorialDevice {
 	return device;

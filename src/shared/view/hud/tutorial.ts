@@ -233,7 +233,7 @@ const PAD_MOVE_INPUT = "Thumbstick1";
  * `{ember}`, `{skill1}`, `{left}`, `{right}`), from the player's bindings (shared/play, Options > Controls) for the
  * HUD's last-used device, so a rebound key shows in every prompt. Keyboard: each action's primary input
  * (`{move}` = the four move keys, run together when each is one character: "WASD", else "Up / Left / Down / Right");
- * gamepad: the pad binding, `{move}` / `{left}` / `{right}` the fixed left stick. Touch prompts use the keyboard's.
+ * gamepad: the pad binding, `{move}` / `{left}` / `{right}` the fixed left stick. Touch prompts name no keys (MB12).
  */
 export function tutorialPromptVars(
 	device: "keyboard" | "gamepad" | "touch",

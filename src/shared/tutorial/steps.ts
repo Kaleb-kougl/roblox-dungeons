@@ -53,7 +53,7 @@ export interface TutorialMarkerTarget {
 	readonly lesson?: TutorialLessonId;
 }
 
-/** Input devices a prompt is written for. Touch has no controls yet: its keys hold the keyboard text for now. */
+/** Input devices a prompt is written for. Touch prompts name the on-screen controls (docs/MOBILE_IMPL.md MB12). */
 export type TutorialDevice = "keyboard" | "gamepad" | "touch";
 
 export const TUTORIAL_DEVICES: ReadonlyArray<TutorialDevice> = ["keyboard", "gamepad", "touch"];

@@ -250,8 +250,9 @@ describe("tutorialPromptVars", () => {
 		const kb = tutorialPromptVars("keyboard", b);
 		expect(kb.flask).toBe("G");
 		expect(kb.move).toBe("Up arrow / A / S / D");
+		// Touch prompts name the on-screen control and never show key names.
 		expect(pack.str(tutorialPromptKey("flask", "touch"), tutorialPromptVars("touch", b))).toBe(
-			"You're wounded. Drink your flask: G. You get 3 per floor, refilled on every new floor.",
+			"You're wounded. Drink your flask: tap Flask. You get 3 per floor, refilled on every new floor.",
 		);
 		expect(tutorialPromptVars("gamepad", rebound(DEFAULT_BINDINGS, "pad", "roll", "ButtonX")).roll).toBe("X");
 	});

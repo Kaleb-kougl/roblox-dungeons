@@ -704,27 +704,29 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		"curse.thirst.name": "Thirst",
 		"curse.thirst.desc": "-1 flask charge",
 		"curse.thirst.icon": "THR",
-		// First-run tutorial (docs/TUTORIAL.md; keys: shared/tutorial strings.ts). Touch = keyboard text for now. The
-		// prompts name keys through {move} / {fire} / {alt} / ... (the bound keys: shared/view/hud tutorialPromptVars).
+		// First-run tutorial (docs/TUTORIAL.md; keys: shared/tutorial strings.ts). Touch prompts name the on-screen
+		// controls in words (docs/MOBILE_IMPL.md MB12). Keyboard and gamepad prompts name keys through {move} / {fire} /
+		// {alt} / ... (the bound keys: shared/view/hud tutorialPromptVars).
 		"tutorial.prompt.follow.keyboard": "Follow the marker to the next room.",
 		"tutorial.prompt.follow.gamepad": "Follow the marker to the next room.",
 		"tutorial.prompt.follow.touch": "Follow the marker to the next room.",
 		"tutorial.prompt.objective.keyboard": "{fire}: Continue",
 		"tutorial.prompt.objective.gamepad": "{fire}: Continue",
-		"tutorial.prompt.objective.touch": "{fire}: Continue",
+		"tutorial.prompt.objective.touch": "Tap Attack to continue.",
 		"tutorial.prompt.move.keyboard": "Move: {move}",
 		"tutorial.prompt.move.gamepad": "Move: {move}",
-		"tutorial.prompt.move.touch": "Move: {move}",
+		"tutorial.prompt.move.touch": "Move: drag on the left side of the screen.",
 		"tutorial.prompt.flask.keyboard":
 			"You're wounded. Drink your flask: {flask}. You get 3 per floor, refilled on every new floor.",
 		"tutorial.prompt.flask.gamepad":
 			"You're wounded. Drink your flask: {flask}. You get 3 per floor, refilled on every new floor.",
 		"tutorial.prompt.flask.touch":
-			"You're wounded. Drink your flask: {flask}. You get 3 per floor, refilled on every new floor.",
+			"You're wounded. Drink your flask: tap Flask. You get 3 per floor, refilled on every new floor.",
 		"tutorial.prompt.attack.keyboard": "Aim with the mouse. Attack: hold {fire}. The third swing is a finisher.",
 		"tutorial.prompt.attack.gamepad":
 			"Aim with the right stick. Attack: hold {fire}. The third swing is a finisher.",
-		"tutorial.prompt.attack.touch": "Aim with the mouse. Attack: hold {fire}. The third swing is a finisher.",
+		"tutorial.prompt.attack.touch":
+			"Attack: hold the Attack stick. It aims at the nearest enemy; drag it to aim yourself. The third swing is a finisher.",
 		"tutorial.prompt.hits.keyboard":
 			"They rush you. Getting hit flashes you red. In a real run that costs half a heart.",
 		"tutorial.prompt.hits.gamepad":
@@ -740,28 +742,29 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		"tutorial.prompt.roll.gamepad":
 			"The orange line is its aim. Roll through the shot: {roll}. You can't be hit mid-roll.",
 		"tutorial.prompt.roll.touch":
-			"The orange line is its aim. Roll through the shot: {roll}. You can't be hit mid-roll.",
+			"The orange line is its aim. Roll through the shot: tap Roll. You can't be hit mid-roll.",
 		"tutorial.prompt.guard.keyboard":
 			"Block with the sword: {alt} as a shot reaches you. It deletes bullets, and shockwaves too.",
 		"tutorial.prompt.guard.gamepad":
 			"Block with the sword: {alt} as a shot reaches you. It deletes bullets, and shockwaves too.",
 		"tutorial.prompt.guard.touch":
-			"Block with the sword: {alt} as a shot reaches you. It deletes bullets, and shockwaves too.",
+			"Block with the sword: hold the Alt stick as a shot reaches you. It deletes bullets, and shockwaves too.",
 		"tutorial.prompt.guardHold.keyboard":
 			"It won't go down until you block one of its shots: {alt} with the sword as a shot reaches you.",
 		"tutorial.prompt.guardHold.gamepad":
 			"It won't go down until you block one of its shots: {alt} with the sword as a shot reaches you.",
 		"tutorial.prompt.guardHold.touch":
-			"It won't go down until you block one of its shots: {alt} with the sword as a shot reaches you.",
+			"It won't go down until you block one of its shots: hold Alt with the sword as a shot reaches you.",
 		"tutorial.prompt.bow.keyboard": "Swap to the bow: {swap}. Hold {alt} to charge a heavy arrow, then release.",
 		"tutorial.prompt.bow.gamepad": "Swap to the bow: {swap}. Hold {alt} to charge a heavy arrow, then release.",
-		"tutorial.prompt.bow.touch": "Swap to the bow: {swap}. Hold {alt} to charge a heavy arrow, then release.",
+		"tutorial.prompt.bow.touch":
+			"Swap to the bow: tap Swap. Drag the Alt stick to charge a heavy arrow, then let go.",
 		"tutorial.prompt.ember.keyboard":
 			"Too many bullets? {ember} burns an Ember and clears every enemy bullet. 2 per floor.",
 		"tutorial.prompt.ember.gamepad":
 			"Too many bullets? {ember} burns an Ember and clears every enemy bullet. 2 per floor.",
 		"tutorial.prompt.ember.touch":
-			"Too many bullets? {ember} burns an Ember and clears every enemy bullet. 2 per floor.",
+			"Too many bullets? Tap Ember: it burns an Ember and clears every enemy bullet. 2 per floor.",
 		"tutorial.prompt.relic.keyboard": "Relics are permanent for the run. Walk onto the pedestal.",
 		"tutorial.prompt.relic.gamepad": "Relics are permanent for the run. Walk onto the pedestal.",
 		"tutorial.prompt.relic.touch": "Relics are permanent for the run. Walk onto the pedestal.",
@@ -770,7 +773,7 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		"tutorial.prompt.curse.gamepad":
 			"Curses make the run harder and your score multiplier bigger. {skill1} to accept, or walk away.",
 		"tutorial.prompt.curse.touch":
-			"Curses make the run harder and your score multiplier bigger. {skill1} to accept, or walk away.",
+			"Curses make the run harder and your score multiplier bigger. Tap Accept to take it, or walk away.",
 		"tutorial.prompt.stairwell.keyboard":
 			"The stairwell takes you down. Every floor is more dangerous than the last.",
 		"tutorial.prompt.stairwell.gamepad":
@@ -778,7 +781,7 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		"tutorial.prompt.stairwell.touch": "The stairwell takes you down. Every floor is more dangerous than the last.",
 		"tutorial.prompt.draft.keyboard": "Pick a boon: {left} / {right}, then {fire}.",
 		"tutorial.prompt.draft.gamepad": "Pick a boon: {move}, then {fire}.",
-		"tutorial.prompt.draft.touch": "Pick a boon: {left} / {right}, then {fire}.",
+		"tutorial.prompt.draft.touch": "Pick a boon: tap a card.",
 		"tutorial.prompt.boss.keyboard":
 			"Every 5th floor ends with a boss. Orange previews show exactly where her bullets will go.",
 		"tutorial.prompt.boss.gamepad":

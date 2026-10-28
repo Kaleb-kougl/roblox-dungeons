@@ -236,8 +236,26 @@ describe("tutorial steps and strings", () => {
 				const key = tutorialPromptKey(s, d);
 				expect([key, pack.hasString(key)]).toEqual([key, true]);
 			}
-			// Touch has no controls yet: its text is the keyboard's.
-			expect(pack.str(tutorialPromptKey(s, "touch"))).toBe(pack.str(tutorialPromptKey(s, "keyboard")));
+			// Touch prompts name the on-screen controls in words: no placeholder is left in them.
+			expect(pack.str(tutorialPromptKey(s, "touch"))).never.toContain("{");
+		}
+		// The prompts written for touch (MB12) differ from the keyboard's.
+		for (const prompt of [
+			"objective",
+			"move",
+			"flask",
+			"attack",
+			"roll",
+			"guard",
+			"guardHold",
+			"bow",
+			"ember",
+			"curse",
+			"draft",
+		]) {
+			expect(pack.str(tutorialPromptKey(prompt, "touch"))).never.toBe(
+				pack.str(tutorialPromptKey(prompt, "keyboard")),
+			);
 		}
 		for (const c of TUTORIAL_CALLOUTS) expect(pack.hasString(c.key)).toBe(true);
 		// docs/BOOSTS.md B9 (P8 reversed): the boost lesson is a step and the pickup's ring, no callout any more.
