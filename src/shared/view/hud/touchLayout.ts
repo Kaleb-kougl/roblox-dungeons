@@ -46,6 +46,14 @@ export const TOUCH_LAYOUT = {
 	/** Fill alpha at 100 % opacity, and the pressed fill's multiplier (capped at 1). */
 	fillAlpha: 0.55,
 	pressedFillBoost: 1.6,
+	/** The knob's share of its button (Attack / Alt) or of the move base. */
+	knobShare: 0.4,
+	/** The move stick's idle ring and knob, as a share of the opacity setting (half opacity at rest). */
+	idleShare: 0.5,
+	/** The move base ring's stroke thickness, px. */
+	ringStroke: 2,
+	/** Correction (px) added to a touch point's position in GUI space (the MB0 spike measures it); 0 until measured. */
+	guiOffset: { x: 0, y: 0 },
 	play: [
 		{ id: "attack", x: 140, y: 140, r: 75, side: "action" },
 		{ id: "roll", x: 280, y: 70, r: 45, side: "action" },

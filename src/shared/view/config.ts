@@ -184,6 +184,8 @@ export const WEAPON_VIEW = {
 
 /** BindToRenderStep priority offsets (added to Enum.RenderPriority values by the controllers). */
 export const RENDER_ORDER = {
+	/** Touch controls: mode, layout and finger state, before the sim samples input (simAfterInput). */
+	touchBeforeSim: 0,
 	/** After Input: sample input once, then run the frame's ticks. */
 	simAfterInput: 1,
 	/** Right after the sim: the FX hit tracker diffs the new state and dispatches juice / audio events. */
