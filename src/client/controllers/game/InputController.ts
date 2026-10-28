@@ -1,6 +1,7 @@
 import { Controller, OnStart } from "@flamework/core";
 import { ContextActionService, TextChatService, UserInputService, Workspace } from "@rbxts/services";
-import { clientStore, selectBindings, selectInputCaptured } from "client/store";
+import { clientStore, selectBindings, selectDisplay, selectInputCaptured } from "client/store";
+import { TOUCH } from "shared/config";
 import {
 	DEFAULT_BINDINGS,
 	HeldInputGate,
@@ -21,8 +22,14 @@ import {
 	type Bindings,
 	type DriverKeyAction,
 	type GamepadSnapshot,
+	draftStatus,
+	pickAutoTarget,
+	TouchControls,
+	type TouchMode,
+	type TouchSnapshot,
 } from "shared/play";
-import { EMPTY_INPUT, type InputFrame } from "shared/sim";
+import { EMPTY_INPUT, playerAt, type InputFrame, type SimState } from "shared/sim";
+import type { BulletBlocker } from "shared/dungeon";
 import { pointerAimFromRay } from "shared/view";
 
 const SINK_ACTION = "KV_GameInput";
@@ -37,6 +44,13 @@ const UI_NAV_KEYS = new Set(["ButtonA", "ButtonB", "DPadUp", "DPadDown", "DPadLe
 
 type DriverListener = (action: Exclude<DriverKeyAction, undefined>) => void;
 type MapListener = () => void;
+
+/** What a touch frame needs from the run (SimController passes it to sample). */
+export interface TouchAimContext {
+	readonly state: SimState;
+	readonly playerIndex: number;
+	readonly blocked: BulletBlocker | undefined;
+}
 
 function keyCodeByName(): Map<string, Enum.KeyCode> {
 	const out = new Map<string, Enum.KeyCode>();
@@ -122,8 +136,25 @@ export class InputController implements OnStart {
 	private pointerAimZ = 0;
 	/** Connected gamepads, kept by GamepadConnected / GamepadDisconnected (no per-frame GetConnectedGamepads). */
 	private pads = new Array<Enum.UserInputType>();
+	/** The touch controls' state machine (MB3): fingers in, one TouchSnapshot per frame out. */
+	private readonly touch = new TouchControls();
+	/** The touch surface the screen shows (MB6 touchMode); hidden until the touch controls go up. */
+	private touchMode: TouchMode = "hidden";
+	private touchStickRadiusPx: number = TOUCH.stickRadiusRef;
+	/** The Attack / Alt centre-stick auto-target setting (DisplaySettings.touchAutoTarget). */
+	private touchAutoTarget = true;
+	/** The last auto-target: its ActorState.id (0 = none) and its world position. */
+	private targetId = 0;
+	private targetX = 0;
+	private targetZ = 0;
+	/** os.clock() at the previous sample: the touch frame's dt. */
+	private lastSampleClock = os.clock();
 
 	onStart(): void {
+		// A touch-only device (no keyboard, no gamepad): the touch controls are the input from the first frame.
+		if (UserInputService.TouchEnabled && !UserInputService.KeyboardEnabled && !UserInputService.GamepadEnabled) {
+			this.tracker.touched();
+		}
 		const refreshPads = () => (this.pads = UserInputService.GetConnectedGamepads());
 		refreshPads();
 		UserInputService.GamepadConnected.Connect(refreshPads);
@@ -133,12 +164,15 @@ export class InputController implements OnStart {
 		clientStore.subscribe(selectBindings, (b) => this.applyBindings(b));
 		this.inputCaptured = selectInputCaptured(clientStore.getState());
 		clientStore.subscribe(selectInputCaptured, (on) => (this.inputCaptured = on));
+		this.touchAutoTarget = selectDisplay(clientStore.getState()).touchAutoTarget;
+		clientStore.subscribe(selectDisplay, (d) => (this.touchAutoTarget = d.touchAutoTarget));
 
 		UserInputService.InputBegan.Connect((input, processed) => {
 			const t = input.UserInputType;
 			if (t === Enum.UserInputType.Keyboard) this.tracker.keyPressed();
 			else if (t === Enum.UserInputType.MouseButton1 || t === Enum.UserInputType.MouseButton2) {
-				this.tracker.mouseClicked();
+				// A phone can report a touch as a mouse click: the mouse counts only when one is attached.
+				if (UserInputService.MouseEnabled) this.tracker.mouseClicked();
 			}
 			this.publishDevice();
 			// A restart bound to a mouse button (CAS sinks keys only): not over a GUI, not during a capture.
@@ -148,8 +182,14 @@ export class InputController implements OnStart {
 		UserInputService.InputEnded.Connect((input) => {
 			this.guiMouse.delete(input.UserInputType);
 		});
+		UserInputService.TouchStarted.Connect(() => {
+			this.tracker.touched();
+			this.publishDevice();
+		});
 		UserInputService.InputChanged.Connect((input) => {
-			if (input.UserInputType === Enum.UserInputType.MouseMovement) this.tracker.mouseMoved();
+			if (input.UserInputType === Enum.UserInputType.MouseMovement && UserInputService.MouseEnabled) {
+				this.tracker.mouseMoved();
+			}
 		});
 	}
 
@@ -218,14 +258,28 @@ export class InputController implements OnStart {
 
 	/**
 	 * Polls every device ONCE for this rendered frame and returns the quantized, world-space frame. (playerX, playerZ)
-	 * is the player's current sim position (mouse aim is a vector from it).
+	 * is the player's current sim position (mouse aim is a vector from it). touchCtx is the run the touch controls read
+	 * (auto-target, facing, the draft); undefined means no touch frame.
 	 */
-	sample(playerX: number, playerZ: number, out: InputFrame = { ...EMPTY_INPUT }): InputFrame {
+	sample(
+		playerX: number,
+		playerZ: number,
+		out: InputFrame = { ...EMPTY_INPUT },
+		touchCtx?: TouchAimContext,
+	): InputFrame {
 		this.pollKeyboardMouse();
 		const pad = this.pollGamepad();
 		this.tracker.padSampled(pad);
 		this.publishDevice();
 		if (this.tracker.aimDevice === "mouse") this.updatePointerAim(playerX, playerZ);
+		const now = os.clock();
+		const dt = math.clamp(now - this.lastSampleClock, 0, TOUCH.maxFrameSec);
+		this.lastSampleClock = now;
+		let touchSnap: TouchSnapshot | undefined;
+		if (touchCtx !== undefined && (this.touchMode !== "hidden" || this.touch.hasDraftPick())) {
+			touchSnap = this.touchFrame(touchCtx, dt);
+			if (touchSnap.aimX !== 0 || touchSnap.aimZ !== 0) this.tracker.touchAimed();
+		}
 		const frame = mapDevicesToInput(
 			{
 				kbm: { keys: this.keys, mouseButtons: this.mouse },
@@ -233,12 +287,56 @@ export class InputController implements OnStart {
 				aimDevice: this.tracker.aimDevice,
 				pointerAimX: this.pointerAimX,
 				pointerAimZ: this.pointerAimZ,
+				touch: touchSnap,
 			},
 			out,
 			this.bindings,
 		);
 		frame.buttons = maskDebugButtons(frame.buttons, this.debugButtons);
 		return frame;
+	}
+
+	/** The touch controls' state machine (the TouchControlsController feeds and draws from it, MB9). */
+	getTouch(): TouchControls {
+		return this.touch;
+	}
+
+	/**
+	 * The touch surface the screen shows. Changing it drops every finger and the aim latch, so a surface that hides
+	 * cannot leave a stick held. A queued draft pick survives (the draft may still be open).
+	 */
+	setTouchMode(mode: TouchMode): void {
+		if (mode === this.touchMode) return;
+		this.touch.reset();
+		this.touchMode = mode;
+	}
+
+	getTouchMode(): TouchMode {
+		return this.touchMode;
+	}
+
+	/** The stick's full-deflection radius in raw px (the controls scale with the screen). */
+	setTouchStickRadiusPx(px: number): void {
+		this.touchStickRadiusPx = px;
+	}
+
+	/** A draft card was tapped: the stick is pushed into its column and a FIRE pulse confirms it. */
+	queueDraftPick(column: number): void {
+		this.touch.queueDraftPick(column);
+	}
+
+	/** Fires every map listener, as the bound map input does (the touch Map button, MB9). */
+	emitMapAction(): void {
+		for (const listener of this.mapListeners) listener();
+	}
+
+	/**
+	 * The auto-target's world position while the last Attack / Alt aim came from it, in play mode; undefined otherwise
+	 * (the target ring draws only then).
+	 */
+	getTouchTarget(): { readonly x: number; readonly z: number } | undefined {
+		if (this.touchMode !== "play" || !this.touch.lastAimWasAuto() || this.targetId === 0) return undefined;
+		return { x: this.targetX, z: this.targetZ };
 	}
 
 	/**
@@ -330,7 +428,10 @@ export class InputController implements OnStart {
 		if (chatFocused()) return; // typing in chat
 		for (const [code, name] of this.keyCodes) if (UserInputService.IsKeyDown(code)) this.keys.add(name);
 		this.keyGate.filter(this.keys);
-		for (const [t, name] of this.mouseTypes) if (UserInputService.IsMouseButtonPressed(t)) this.mouse.add(name);
+		// Phones can report touches as mouse input: the mouse buttons are read only when a mouse is attached.
+		if (UserInputService.MouseEnabled) {
+			for (const [t, name] of this.mouseTypes) if (UserInputService.IsMouseButtonPressed(t)) this.mouse.add(name);
+		}
 		if (this.mouseSuppressed) {
 			if (this.mouse.size() > 0) {
 				this.mouse.clear();
@@ -389,6 +490,34 @@ export class InputController implements OnStart {
 			this.pointerAimX = aim[0];
 			this.pointerAimZ = aim[1];
 		}
+	}
+
+	/** One touch frame: the controls' snapshot, with the auto-target and the draft read from the run. */
+	private touchFrame(ctx: TouchAimContext, dt: number): TouchSnapshot {
+		const me = playerAt(ctx.state, ctx.playerIndex);
+		const draft = draftStatus(ctx.state, ctx.playerIndex);
+		return this.touch.frame({
+			dt,
+			stickRadiusPx: this.touchStickRadiusPx,
+			autoTarget: this.touchAutoTarget,
+			facingX: me.faceX,
+			facingZ: me.faceZ,
+			autoAim: () => {
+				const t = pickAutoTarget({
+					state: ctx.state,
+					playerIndex: ctx.playerIndex,
+					blocked: ctx.blocked,
+					previousId: this.targetId,
+				});
+				this.targetId = t !== undefined ? t.id : 0;
+				if (t === undefined) return undefined;
+				this.targetX = t.x;
+				this.targetZ = t.z;
+				return { x: t.x - me.x, z: t.z - me.z };
+			},
+			draftOpen: draft.open,
+			draftReady: draft.ready,
+		});
 	}
 
 	private publishDevice(): void {

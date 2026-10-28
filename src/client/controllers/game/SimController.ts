@@ -469,6 +469,11 @@ export class SimController implements OnStart {
 		return this.stage?.holdsSim() === true;
 	}
 
+	/** The stage loader's cover is up (its blocksInput): no run input, no touch frame. */
+	isInputCovered(): boolean {
+		return this.stage?.blocksInput() === true;
+	}
+
 	/** The stage loader registers itself (StageController.onStart). */
 	setStageDriver(driver: StageDriver): void {
 		this.stage = driver;
@@ -837,7 +842,11 @@ export class SimController implements OnStart {
 		// keys drive the menu, never the character (solo pauses instead).
 		const covered = this.stage?.blocksInput() === true; // the stage loader's cover (docs/STAGE_LOADER.md SL7)
 		const menuOpen = this.inputController.menuOwnsInput() || this.robloxMenuOpen || covered;
-		const sampled = this.inputController.sample(me.x, me.z, this.input);
+		const sampled = this.inputController.sample(me.x, me.z, this.input, {
+			state: coop.state,
+			playerIndex: ctx.localIndex,
+			blocked: ctx.config.isBulletBlocked,
+		});
 		// Co-op spectating (docs/SPECTATE.md): the switch press comes from the raw buttons (the gate below rewrites the
 		// sampled frame in place), never while a menu owns the controls or from a click that began on a HUD button
 		// (the pause button's mouse-down comes before the overlay it opens).
@@ -1265,7 +1274,11 @@ export class SimController implements OnStart {
 		const p = run.state.player;
 		// Under the stage cover (a floor change's card) the sim gets neutral input: no blind draft confirm, no pause.
 		// The debug bits (K / J / the floor skip, present only with KV_Debug) still go through, so a floor skip works.
-		const sampled = this.inputController.sample(p.x, p.z, this.input);
+		const sampled = this.inputController.sample(p.x, p.z, this.input, {
+			state: run.state,
+			playerIndex: 0,
+			blocked: ctx.config.isBulletBlocked,
+		});
 		const covered = this.stage?.blocksInput() === true;
 		const debugButtons = bit32.band(sampled.buttons, ALL_DEBUG_BUTTONS);
 		const input = this.coverGate.apply(sampled, covered);
