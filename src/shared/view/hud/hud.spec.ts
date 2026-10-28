@@ -65,6 +65,12 @@ describe("HUD helpers", () => {
 		expect(computeHudScale(0, 720, false)).toBe(1);
 	});
 
+	it("on touch the floor is HUD_VIEW.touchMinScale; a big screen is unchanged", () => {
+		expect(computeHudScale(844, 390, false, 100, true)).toBe(0.75);
+		expect(computeHudScale(844, 390, false)).toBe(HUD_VIEW.minScale);
+		expect(computeHudScale(1920, 1080, false, 100, true)).toBe(computeHudScale(1920, 1080, false));
+	});
+
 	it("multiplies the player's HUD scale setting in after the clamp", () => {
 		expect(computeHudScale(1280, 720, false, 125)).toBe(1.25);
 		expect(computeHudScale(2560, 1440, false, 80)).toBe(HUD_VIEW.maxScale * 0.8);

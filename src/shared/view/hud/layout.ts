@@ -36,6 +36,8 @@ export const HUD_VIEW = {
 	/** The layout is designed for this viewport; UIScale = min(w / x, h / y), clamped. */
 	referenceSize: { x: 1280, y: 720 },
 	minScale: 0.6,
+	/** On touch (docs/MOBILE.md MB10): never below this, so body text stays >= 15 pt on a phone. */
+	touchMinScale: 0.75,
 	maxScale: 1.75,
 	/** Console / TV (GuiService:IsTenFootInterface): everything this much larger (read from across the room). */
 	tenFootBoost: 1.25,
@@ -85,13 +87,21 @@ export const HUD_VIEW = {
 
 /**
  * The clamped HUD scale for a viewport (console screens get HUD_VIEW.tenFootBoost), times the player's HUD scale
- * setting (`userPercent`, shared/settings display.ts; applied after the clamp so 80 % is always smaller).
+ * setting (`userPercent`, shared/settings display.ts; applied after the clamp so 80 % is always smaller). On touch the
+ * lower clamp is HUD_VIEW.touchMinScale instead of minScale.
  */
-export function computeHudScale(viewportW: number, viewportH: number, tenFoot: boolean, userPercent = PERCENT): number {
+export function computeHudScale(
+	viewportW: number,
+	viewportH: number,
+	tenFoot: boolean,
+	userPercent = PERCENT,
+	touch = false,
+): number {
 	const user = userPercent > 0 ? userPercent / PERCENT : 1;
 	if (!(viewportW > 0) || !(viewportH > 0)) return user;
 	const s = math.min(viewportW / HUD_VIEW.referenceSize.x, viewportH / HUD_VIEW.referenceSize.y);
-	return math.clamp(s * (tenFoot ? HUD_VIEW.tenFootBoost : 1), HUD_VIEW.minScale, HUD_VIEW.maxScale) * user;
+	const floor = touch ? HUD_VIEW.touchMinScale : HUD_VIEW.minScale;
+	return math.clamp(s * (tenFoot ? HUD_VIEW.tenFootBoost : 1), floor, HUD_VIEW.maxScale) * user;
 }
 
 /** Splits half-heart health into per-heart fills (2 full, 1 half, 0 empty), one entry per heart of heartsMax. */
