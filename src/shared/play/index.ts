@@ -8,6 +8,7 @@
  *   rebindFlow.ts    the Options screen's rebinding flow: capture -> bind / swap prompt / refusal, countdown, test strip
  *   snapshot.ts      the ~10 Hz HUD snapshot and its change check
  *   submitPolicy.ts  which finished runs are submitted, and the size caps checked before sending
+ *   touch/           touch controls state machine: fingers -> one TouchSnapshot per frame (docs/MOBILE_IMPL.md MB3)
  *
  * The client controllers (src/client/controllers/game) wrap these with Roblox input, attributes and remotes.
  */
@@ -18,3 +19,4 @@ export * from "./liveRun";
 export * from "./rebindFlow";
 export * from "./snapshot";
 export * from "./submitPolicy";
+export * from "./touch";
