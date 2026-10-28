@@ -22,6 +22,7 @@ Record every ported module in `PROVENANCE.md` (ported module, source path, sourc
 | `docs/TUTORIAL.md` | First-run tutorial ("Practice Descent"): plan, as-built notes, tasks T1-T8, owner decisions |
 | `docs/TUTORIAL_ARROW.md` | Tutorial guidance arrow (floor chevron pointing along the path to the objective): plan, tasks A1-A6, decisions |
 | `docs/OUTLINE.md` | Enemy outlines: plan, as-built notes, tasks O1-O7, decisions E1-E6 |
+| `docs/PLAYER_OUTLINE.md` | Player outline (rim around the watched player only, `playerOutline` role, 1 px knight sheets, Display setting): plan, as-built, tasks P1-P7, decisions |
 | `docs/FX_AUDIO.md` | Sprite effects and audio (Ninja Adventure FX / Audio): slots, pipelines, cue mappers, tasks X0 / F0-F6 / A0-A5 |
 | `docs/SPECTATE.md` | Co-op spectating (watch and switch between living teammates after a death): plan, tasks S0-S6, decisions |
 | `docs/BOOSTS.md` | Temporary boosts dropped by killed enemies (Fury / Quickstep / Frenzy / Aegis): plan, tasks B0-B11, decisions |
@@ -38,6 +39,7 @@ Record every ported module in `PROVENANCE.md` (ported module, source path, sourc
 | `docs/PRELOAD.md` | Asset preloading (join loading screen for the core tier, background queue for bosses / later music): plan, tasks P0-P7, decisions D1-D6 |
 | `docs/STAGE_LOADER.md` | Stage loader (cover while a floor generates and loads: run start, stairwell card, pre-generation during the boon draft, deferred view rebuilds): plan, tasks SL0-SL8, decisions SD1-SD6 |
 | `docs/INVITES.md` | Roblox friend invites (`PromptGameInvite` + LaunchData into a lobby) and Roblox Party grouping: plan, tasks I0-I9, decisions ID1-ID7 |
+| `docs/MOBILE.md` | Mobile play (two-stick touch controls with auto-target, touch HUD, touch menus / tutorial, real-device performance): plan, tasks MB0-MB16, decisions MBD1-MBD10. Step-by-step build: `docs/MOBILE_IMPL.md` (MB1-MB13) |
 
 Decision log (deviations from `PLAN.md`):
 - **Art (docs/ART.md).** The theme contract gained a `"sprites"` kind (large pre-rendered cells, 1/4/8/16 screen-space
@@ -231,6 +233,16 @@ Decision log (deviations from `PLAN.md`):
   docs/SPIKES.md) in a published place: none of these APIs work in Studio, which uses `KV_FakeLaunchData` /
   `KV_FakePartyId` / `KV_FakeInviteEligible` / `KV_FakeInviteRecipients` (Studio only). Ambient types for the party API
   in `src/types/roblox-social.d.ts`. Notification String ids (I8) go in `INVITE.notificationStringIds`.
+- **Player outline (docs/PLAYER_OUTLINE.md).** Presentation only (no sim, dungeon, lockstep, hash, replay or fixture
+  change). A new required colour role `playerOutline` (`#f4f1ea`, `minimap.self`'s; validated >= 3:1 on every biome
+  floor and wall and the darkest band, CIE76 >= 40 from `PLAYER_OUTLINE_DIFFERENCE_ROLES`: enemy bullets, telegraph,
+  `enemyOutline`, every boost, `playerOutlineReport`). Only the watched player (`getViewPlayerIndex`), alive
+  (`shared/view` `playerOutlined`, `PLAYER_OUTLINE`). Sprites: the knight's 1 px outline sheets; the atlas pipeline's
+  `outline` gained opt-in `clipAtCellEdge` (the pad rule is lifted, the rim stops at the cell edge, the build prints the
+  clip) because its 128 px cells already fill the 1024 atlases; its body sheets stayed byte-identical (ids unchanged),
+  the 8 `vanguard-*-outline.png` were uploaded 2026-10-28. Placeholders: `KV_Actors/Players/Outlined`, one more
+  Highlight (Occluded). Settings: `DisplaySettings.playerOutline` (default On, only Off stored, doc stays v2), string
+  `options.display.playerOutline`; debug attribute `KV_PlayerOutline`. Studio check pending.
 
 ## Commands
 

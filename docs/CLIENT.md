@@ -111,8 +111,8 @@ adds' landing spots).
 
 ## Enemy outlines (docs/OUTLINE.md)
 
-Every live enemy and boss gets a rim in the theme's `enemyOutline` colour; the player, corpses, decor and breakables
-never do. The rule is `shared/view` `actorOutlined(hasOutline, alive, enabled)` (`hasOutline` = the actor's
+Every live enemy and boss gets a rim in the theme's `enemyOutline` colour; corpses, decor and breakables never do
+(the watched player gets its own rim, see "Player outline"). The rule is `shared/view` `actorOutlined(hasOutline, alive, enabled)` (`hasOutline` = the actor's
 placeholder visual has an `outline` role); names and Highlight settings are `ACTOR_OUTLINE` (`shared/view/outline.ts`).
 
 - **Placeholders:** `KV_Actors` holds `Enemies` (a Model), `Corpses` and `Players` (Folders). One `Highlight`
@@ -126,6 +126,18 @@ placeholder visual has an `outline` role); names and Highlight settings are `ACT
   (the corpse fades without it). A sheet without an uploaded outline draws rimless. Sprite anchors stay directly in
   `KV_Actors`, outside the Highlight.
 - **Switch:** Workspace `KV_EnemyOutline` (see the attribute table) toggles the Highlight and every sprite rim at once.
+
+## Player outline (docs/PLAYER_OUTLINE.md)
+
+The watched player (the local player, or the teammate a dead player spectates) gets a rim in the theme's
+`playerOutline` colour (`#f4f1ea`, the minimap's "you"), alive only, while Options > Display > Player outline and
+Workspace `KV_PlayerOutline` are on. The rule is `shared/view` `playerOutlined(isView, dead, settingOn, switchOn)`;
+names and Highlight settings are `PLAYER_OUTLINE`.
+
+- **Sprites:** the knight's `vanguard-*-outline.png` sheets (1 px, `clipAtCellEdge`), drawn by every player's
+  `SpriteView` behind the frame, shown only on the watched player. Afterimages stay rimless.
+- **Placeholders:** the capsule moves into `KV_Actors/Players/Outlined` (a Model with ONE `PlayerOutline` Highlight,
+  Occluded) while outlined; the Highlight is off while the capsule blinks out.
 
 ## Breakables (docs/DECOR.md D4, R13)
 
@@ -673,6 +685,7 @@ is open, and only one of the Options screen / leaderboard panel is open at a tim
 | `KV_SkipMenu` | boolean | Dev only (read once, on join): no main menu; a solo run starts at once, as before the menu existed. Off by default. Co-op runs start from a lobby (Lobbies in the main menu): see "Main menu, lobbies and Leave run". |
 | `KV_ResetBindings` | boolean | Dev only, read ONCE when the client starts (not on R): when the server's settings arrive, the saved key bindings (`controls` group) are cleared and saved that way; the other groups are kept. Off by default (shared/settings `SETTINGS_ATTRIBUTES`). |
 | `KV_DecorBand` | number | Forces the decor depth band (0 kept, 1 worn, 2 ruined, 3 abyss; clamped) for every floor; changing it rebuilds the current floor's decoration at once. Unset: the floor's own band. Presentation only. |
+| `KV_PlayerOutline` | boolean | Player outline (docs/PLAYER_OUTLINE.md): `false` hides the watched player's rim (sprite and Highlight). Unset or `true`: on (the Options setting still applies). Presentation only. |
 | `KV_EnemyOutline` | boolean | Enemy outlines (docs/OUTLINE.md): `false` hides the Highlight and every sprite rim at once (toggles live, no reparenting). Unset or `true`: on. Presentation only. |
 | `KV_DecorDebug` | boolean | Draws the decor debug overlay: fade boxes, footprint stencils, breakable cells (toggles at once). Off by default. |
 | `KV_Tutorial` | boolean | Read once on join (not on R). `true`: the join starts the tutorial whatever the server says (the server is not asked; no main menu first); `false`: never (the normal join flow at once: the main menu, or `KV_SkipMenu`'s solo run). Unset: the server's `onboardingStatus` decides. Server side, `KV_ResetOnboarding` (docs/SERVER.md) resets the stored flag instead. |
@@ -1104,6 +1117,18 @@ With the actors merged the default `game` world has enemies; without them see "f
   sits behind the body and follows every facing and frame, it goes at death, comes back on pooled reuse; the player
   has none. Compare the sprite rim's width with the Highlight's on PC and the phone emulator (tune `widthPx`).
 - **Readability:** the rim never reads as an enemy bullet or a telegraph; write down fps and texture memory.
+
+### Player outline (docs/PLAYER_OUTLINE.md P7; not run in Studio yet)
+
+- **Solo, vale pack:** a thin near-white rim around the knight in every animation and facing (idle, run, roll, hit,
+  the three attacks); it blinks with the post-hit blink, goes at death, and walls hide it with the body. Roll
+  afterimages have none. Compare it with the enemy rim and the ring on PC and the phone emulator (1 px: tune
+  `widthPx` if it shimmers or vanishes).
+- **Placeholder pack:** the capsule shows a near-white Highlight rim; Explorer shows it under `KV_Actors/Players/Outlined`.
+- **Switches:** Options > Display > Player outline Off hides it at once and survives a rejoin;
+  `Workspace:SetAttribute("KV_PlayerOutline", false)` hides it, `true` brings it back.
+- **Co-op:** only your own knight has it; once dead, it moves to the teammate you spectate and follows Attack / Alt.
+- **Readability:** every biome and `KV_DecorBand`, snow especially; it never reads as a bullet, telegraph or boost.
 
 ### Demon Lord (docs/BOSS_DEMONLORD.md D6 / D7; not run in Studio yet)
 

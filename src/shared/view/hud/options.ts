@@ -59,6 +59,8 @@ export const OPTIONS_STRINGS = {
 	hudFade: "options.display.hudFade",
 	/** The corner minimap On / Off (docs/MINIMAP.md M10; labels as roomEdges). */
 	minimap: "options.display.minimap",
+	/** The watched player's rim On / Off (docs/PLAYER_OUTLINE.md P4; labels as roomEdges). */
+	playerOutline: "options.display.playerOutline",
 	/** Prefixes: `options.tab.<tab>`, `options.device.<kbm|pad>`, `options.action.<action>`, `options.refused.<reason>`. */
 	tabPrefix: "options.tab.",
 	devicePrefix: "options.device.",

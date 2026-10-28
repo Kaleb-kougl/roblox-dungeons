@@ -37,6 +37,9 @@ roles ([below](#effects-and-audio-docsfx_audiomd-a2-f1)).
    (>= `MIN_ENEMY_OUTLINE_CONTRAST` = 3.0:1; at the darkest decor band too, `shared/view` `decorBandContrastReport`,
    checked by its spec for every bundled pack) and at least `MIN_ENEMY_OUTLINE_BULLET_DIFFERENCE` = 40 (CIE76) from
    `enemyBullet` and `enemyBulletOutline`.
+   Player outline (docs/PLAYER_OUTLINE.md P1, `playerOutlineReport`): `playerOutline` against every biome's floor and
+   wall (>= `MIN_PLAYER_OUTLINE_CONTRAST` = 3.0:1, the darkest band too) and at least `MIN_PLAYER_OUTLINE_DIFFERENCE` =
+   40 (CIE76) from `PLAYER_OUTLINE_DIFFERENCE_ROLES` (the enemy bullets, `telegraph`, `enemyOutline`, every boost).
 5. **Names come from the string table** (with `{var}` interpolation and optional `locales`).
 6. **One pack at a time.** Switching packs is a restart.
 

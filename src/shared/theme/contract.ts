@@ -923,6 +923,31 @@ export const MIN_ENEMY_OUTLINE_BULLET_DIFFERENCE = 40;
 export const MIN_BOOST_BULLET_DIFFERENCE = MIN_DECOR_FX_BULLET_DIFFERENCE;
 
 /**
+ * Roblox port (player outline, step 1): minimum WCAG contrast ratio between `playerOutline` and every biome floor and
+ * wall, at full light and (shared/view decorBandContrastReport, run by its spec for every bundled pack) at the darkest
+ * decor band. The rim is what finds your own character in a crowded room, so it takes the enemy outline's graphics bar.
+ */
+export const MIN_PLAYER_OUTLINE_CONTRAST = MIN_ENEMY_OUTLINE_CONTRAST;
+
+/**
+ * The colours the player outline must never be mistaken for (player outline, step 1): the threats (the enemy bullets,
+ * `telegraph`, the `enemyOutline` rim, so the player never reads as an enemy) and every boost colour (a boost's aura is
+ * drawn on the player, around the rim).
+ */
+export const PLAYER_OUTLINE_DIFFERENCE_ROLES: ReadonlyArray<ColorRole> = [
+	...ENEMY_BULLET_ROLES,
+	"telegraph",
+	"enemyOutline",
+	...BOOST_ROLES,
+];
+
+/**
+ * Minimum CIE76 colour difference between `playerOutline` and every PLAYER_OUTLINE_DIFFERENCE_ROLES colour: the decor
+ * fx / enemy outline bar. The placeholder rim #f4f1ea (minimap.self, the map's "you") is >= 49 from all of them.
+ */
+export const MIN_PLAYER_OUTLINE_DIFFERENCE = MIN_DECOR_FX_BULLET_DIFFERENCE;
+
+/**
  * Roblox port (docs/ROOM_EDGES.md RE4): the dashed line on the floor where a corridor meets a room, one colour per
  * room state, in RoomEdgeState order (index = shared/view RoomEdgeState: SAFE 0, WAITING 1, LIVE 2). Required in every
  * pack like every role. A value ramp (dim -> grey -> near-white), not hues: the validator (`roomEdgeReport`) holds

@@ -17,6 +17,7 @@ import {
 	BIOMES,
 	MIN_ENEMY_BULLET_CONTRAST,
 	MIN_ENEMY_OUTLINE_CONTRAST,
+	MIN_PLAYER_OUTLINE_CONTRAST,
 	contrastRatio,
 	isHexColor,
 	parseHex,
@@ -150,10 +151,17 @@ export const ENEMY_OUTLINE_BAND_CHECK: DecorBandContrastCheck = {
 	min: MIN_ENEMY_OUTLINE_CONTRAST,
 };
 
+/** The player outline (player outline, step 1; MIN_PLAYER_OUTLINE_CONTRAST): its rim is self-lit like the enemies'. */
+export const PLAYER_OUTLINE_BAND_CHECK: DecorBandContrastCheck = {
+	role: "playerOutline",
+	min: MIN_PLAYER_OUTLINE_CONTRAST,
+};
+
 /** Every self-lit role the darkest-band check covers (the spec runs each for every bundled pack at every band). */
 export const DECOR_BAND_CONTRAST_CHECKS: ReadonlyArray<DecorBandContrastCheck> = [
 	ENEMY_BULLET_BAND_CHECK,
 	ENEMY_OUTLINE_BAND_CHECK,
+	PLAYER_OUTLINE_BAND_CHECK,
 ];
 
 /** One row of decorBandContrastReport. */

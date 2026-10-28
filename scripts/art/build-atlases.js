@@ -53,6 +53,9 @@
  * alpha inside the dilated mask, 0 outside. Drawn under the sprite and tinted, it composites to a rim that does not
  * light the anti-aliased bones from behind. Every pixel is white, so it needs no bleed. The set's pad must be at
  * least widthPx + 1, so the rim is never clipped and keeps a transparent border for the bilinear filter.
+ * `outline.clipAtCellEdge: true` (player outline) lifts the pad rule for a set whose cells cannot grow (the knight:
+ * 128 px cells, pad 0, 64 to a 1024 atlas): the rim stops at the cell edge where the body comes within widthPx of it,
+ * and the build prints how many cells and body pixels that clips (rimClip) so the cost stays visible.
  *
  * Downscale (set `downscale: k`, an integer; docs/BOSS_DEMONLORD.md D1): every kept frame is noise-cut at full
  * resolution, then box-filtered by k (the world-art `downscale`, premultiplied alpha). The union box is measured at
@@ -261,23 +264,54 @@ function encodePng(img) {
 // ---------------------------------------------------------------------------------------------
 // Outline sheets
 
-/** The set's outline config ({ widthPx }), or null when it has none. Throws on a bad config or a pad too small for it. */
+/**
+ * The set's outline config ({ widthPx }, plus clipAtCellEdge: true when set), or null when it has none. Throws on a bad
+ * config or a pad too small for it (unless clipAtCellEdge).
+ */
 function outlineConfig(id, set) {
 	const o = set.outline;
 	if (o === undefined) return null;
 	if (o === null || typeof o !== "object" || Array.isArray(o)) throw new Error(`${id}: outline must be an object { widthPx }`);
-	for (const k of Object.keys(o)) if (k !== "widthPx" && !k.startsWith("$")) throw new Error(`${id}: outline.${k}: unknown key (allowed: widthPx)`);
+	for (const k of Object.keys(o)) {
+		if (k !== "widthPx" && k !== "clipAtCellEdge" && !k.startsWith("$")) throw new Error(`${id}: outline.${k}: unknown key (allowed: widthPx, clipAtCellEdge)`);
+	}
 	const r = o.widthPx;
 	if (!Number.isInteger(r) || r < OUTLINE_MIN_WIDTH || r > OUTLINE_MAX_WIDTH) {
 		throw new Error(`${id}: outline.widthPx must be an integer in [${OUTLINE_MIN_WIDTH}, ${OUTLINE_MAX_WIDTH}], got ${JSON.stringify(r)}`);
 	}
-	if (!Number.isInteger(set.pad) || set.pad < r + 1) {
-		throw new Error(`${id}: pad ${set.pad} is too small for outline.widthPx ${r}: pad must be >= widthPx + 1 = ${r + 1} (so the rim is not clipped)`);
+	const clip = o.clipAtCellEdge;
+	if (clip !== undefined && clip !== true) throw new Error(`${id}: outline.clipAtCellEdge must be true or absent, got ${JSON.stringify(clip)}`);
+	if (!Number.isInteger(set.pad) || set.pad < 0) throw new Error(`${id}: pad must be a non-negative integer, got ${JSON.stringify(set.pad)}`);
+	if (clip !== true && set.pad < r + 1) {
+		throw new Error(
+			`${id}: pad ${set.pad} is too small for outline.widthPx ${r}: pad must be >= widthPx + 1 = ${r + 1} (so the rim is not clipped), or set outline.clipAtCellEdge`,
+		);
 	}
 	if (!set.pivot || !Number.isInteger(set.pivot.bodyAlpha) || !Number.isInteger(set.pivot.bodyMinRgb)) {
 		throw new Error(`${id}: outline needs pivot.bodyAlpha and pivot.bodyMinRgb (integers), its body mask`);
 	}
-	return { widthPx: r };
+	return clip === true ? { widthPx: r, clipAtCellEdge: true } : { widthPx: r };
+}
+
+/**
+ * What a cell-bounded rim clips (outline.clipAtCellEdge): the cells holding a body pixel closer than widthPx to their
+ * cell's edge (so part of its disc falls outside the cell), and how many such body pixels. 0 / 0 when nothing clips.
+ */
+function rimClip(img, frameW, frameH, widthPx, bodyAlpha, bodyMinRgb) {
+	const { w, h } = img;
+	const cellsHit = new Set();
+	let pixels = 0;
+	for (let y = 0; y < h; y++) {
+		const ly = y % frameH;
+		for (let x = 0; x < w; x++) {
+			const lx = x % frameW;
+			const near = lx < widthPx || ly < widthPx || frameW - 1 - lx < widthPx || frameH - 1 - ly < widthPx;
+			if (!near || !isBodyAt(img.data, (y * w + x) * 4, bodyAlpha, bodyMinRgb)) continue;
+			pixels++;
+			cellsHit.add(Math.floor(y / frameH) * Math.ceil(w / frameW) + Math.floor(x / frameW));
+		}
+	}
+	return { cells: cellsHit.size, pixels };
 }
 
 /** Body pixel test (the pivot's mask): alpha > bodyAlpha and max(R, G, B) > bodyMinRgb. `i` is the byte index. */
@@ -711,6 +745,7 @@ function buildSpriteSet(id, set, built) {
 		if (outline) {
 			sheet.outlineFile = `${sheetDef.name}-outline.png`;
 			sheet.outlineImg = outlineSheet(img, cw, ch, outline.widthPx, set.pivot.bodyAlpha, set.pivot.bodyMinRgb);
+			if (outline.clipAtCellEdge) sheet.rimClip = rimClip(img, cw, ch, outline.widthPx, set.pivot.bodyAlpha, set.pivot.bodyMinRgb);
 		}
 		sheets.push(sheet);
 	});
@@ -2270,7 +2305,9 @@ function main() {
 		console.log(`  pivot per facing (cell coords) on the measured frame: ${s.sanity.join(" ")}`);
 		for (const sh of s.sheets) {
 			const own = sh.cell ? `, cell ${sh.cell.frameW}x${sh.cell.frameH} pivot (${sh.cell.pivot.x}, ${sh.cell.pivot.y})` : "";
-			console.log(`  ${sh.file}: ${sh.img.w}x${sh.img.h}, ${sh.cells} cells${own}${sh.outlineFile ? ` + ${sh.outlineFile} (outline ${s.outline.widthPx} px)` : ""}`);
+			console.log(`  ${sh.file}: ${sh.img.w}x${sh.img.h}, ${sh.cells} cells${own}${sh.outlineFile ? ` + ${sh.outlineFile} (outline ${s.outline.widthPx} px)` : ""}${
+				sh.rimClip ? `, rim clipped at the cell edge in ${sh.rimClip.cells} cells (${sh.rimClip.pixels} body px)` : ""
+			}`);
 		}
 	}
 	for (const i of images) console.log(`${i.id}: ${i.layout.file} ${i.layout.w}x${i.layout.h}${i.meanHex ? ` mean ${i.meanHex}` : ""}`);
@@ -2320,6 +2357,7 @@ module.exports = {
 	layoutModule,
 	outlineConfig,
 	outlineSheet,
+	rimClip,
 	raster,
 	cellsMode,
 	compositeOver,

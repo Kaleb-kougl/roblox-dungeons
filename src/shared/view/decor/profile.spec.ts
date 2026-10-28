@@ -1,12 +1,14 @@
 // Depth profile (docs/DECOR.md Phase 2 part 1, task R8): band boundaries, forced bands, the plan never goes over the
 // R3 caps in any band, the band's swaps and torch share show up in the plan, and the darkest-band contrast check
-// passes for every bundled pack at every band, for the enemy bullet and the enemy outline (enemy outline plan O1).
+// passes for every bundled pack at every band, for the enemy bullet, the enemy outline (enemy outline plan O1) and
+// the player outline.
 import { describe, expect, it } from "@rbxts/jest-globals";
 import { TileType, buildEndlessFloor, generateDungeon, type Dungeon, type ForgeParams } from "shared/dungeon";
 import {
 	BIOMES,
 	MIN_ENEMY_BULLET_CONTRAST,
 	MIN_ENEMY_OUTLINE_CONTRAST,
+	MIN_PLAYER_OUTLINE_CONTRAST,
 	THEME_PACKS,
 	contrastRatio,
 	listThemePacks,
@@ -19,6 +21,7 @@ import {
 	ENEMY_OUTLINE_BAND_CHECK,
 	MAX_DECOR_SHARE,
 	MAX_TALL_PER_ROOM,
+	PLAYER_OUTLINE_BAND_CHECK,
 	biomeOfTheme,
 	darkestDecorBand,
 	decorBandContrastReport,
@@ -196,9 +199,10 @@ describe("decor profile: darkest-band contrast", () => {
 		}
 	});
 
-	it("keeps every self-lit role (bullet, outline) at its minimum in every band, for every bundled pack", () => {
-		expect(DECOR_BAND_CONTRAST_CHECKS.map((c) => c.role)).toEqual(["enemyBullet", "enemyOutline"]);
+	it("keeps every self-lit role (bullet, outlines) at its minimum in every band, for every bundled pack", () => {
+		expect(DECOR_BAND_CONTRAST_CHECKS.map((c) => c.role)).toEqual(["enemyBullet", "enemyOutline", "playerOutline"]);
 		expect(ENEMY_OUTLINE_BAND_CHECK.min).toBe(MIN_ENEMY_OUTLINE_CONTRAST);
+		expect(PLAYER_OUTLINE_BAND_CHECK.min).toBe(MIN_PLAYER_OUTLINE_CONTRAST);
 		for (const id of listThemePacks()) {
 			const manifest = THEME_PACKS[id];
 			for (const check of DECOR_BAND_CONTRAST_CHECKS) {

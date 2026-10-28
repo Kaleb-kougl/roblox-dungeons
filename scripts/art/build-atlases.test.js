@@ -163,6 +163,34 @@ describe("outlineConfig", () => {
 		assert.throws(() => A.outlineConfig("s", set(2)), /outline must be an object/);
 		assert.throws(() => A.outlineConfig("s", set({ widthPx: 2, colour: "red" })), /outline\.colour: unknown key/);
 	});
+
+	it("clipAtCellEdge lifts the pad rule (any pad >= 0) and is carried in the config", () => {
+		assert.deepEqual(A.outlineConfig("class.x", set({ widthPx: 1, clipAtCellEdge: true }, 0)), { widthPx: 1, clipAtCellEdge: true });
+		assert.deepEqual(A.outlineConfig("class.x", set({ widthPx: 3, clipAtCellEdge: true }, 1)), { widthPx: 3, clipAtCellEdge: true });
+		assert.throws(() => A.outlineConfig("class.x", set({ widthPx: 1 }, 0)), /or set outline\.clipAtCellEdge/);
+		for (const bad of [false, 1, "yes", null]) {
+			assert.throws(() => A.outlineConfig("s", set({ widthPx: 1, clipAtCellEdge: bad }, 0)), /clipAtCellEdge must be true or absent/, String(bad));
+		}
+		assert.throws(() => A.outlineConfig("s", set({ widthPx: 1, clipAtCellEdge: true }, -1)), /pad must be a non-negative integer/);
+	});
+});
+
+describe("rimClip", () => {
+	it("counts the cells and body pixels closer than widthPx to their cell's edge", () => {
+		const img = A.raster(8, 4); // two 4 x 4 cells
+		put(img, 1, 1, LIT); // cell 0, one px in from the edge: clipped at r 2, not at r 1
+		put(img, 7, 2, LIT); // cell 1, on its right edge
+		put(img, 4, 0, LIT); // cell 1, its top-left corner
+		assert.deepEqual(A.rimClip(img, 4, 4, 1, 64, 8), { cells: 1, pixels: 2 });
+		assert.deepEqual(A.rimClip(img, 4, 4, 2, 64, 8), { cells: 2, pixels: 3 });
+	});
+
+	it("ignores the shadow (not body) and an empty raster", () => {
+		const img = A.raster(4, 4);
+		assert.deepEqual(A.rimClip(img, 4, 4, 1, 64, 8), { cells: 0, pixels: 0 });
+		put(img, 0, 0, [0, 0, 0, 216]); // baked black shadow at the edge
+		assert.deepEqual(A.rimClip(img, 4, 4, 1, 64, 8), { cells: 0, pixels: 0 });
+	});
 });
 
 // ---------------------------------------------------------------------------------------------
@@ -197,6 +225,22 @@ function syntheticSet(name, extra) {
 		...extra,
 	};
 }
+
+describe("buildSpriteSet with a cell-clipped outline (clipAtCellEdge)", () => {
+	const tight = A.buildSpriteSet("class.tight", syntheticSet("tight", { pad: 0, outline: { widthPx: 1, clipAtCellEdge: true } }));
+	const loose = A.buildSpriteSet("class.loose", syntheticSet("loose", { pad: 0 }));
+
+	it("builds at pad 0, the body sheet byte-identical to the rimless set's, and reports the clip", () => {
+		const [sheet] = tight.sheets;
+		assert.equal(sheet.outlineFile, "tight-move-outline.png");
+		assert.deepEqual([tight.layout.frameW, tight.layout.frameH], [loose.layout.frameW, loose.layout.frameH]);
+		assert.deepEqual(sheet.img.data, loose.sheets[0].img.data);
+		assert.deepEqual(tight.outline, { widthPx: 1, clipAtCellEdge: true });
+		const expected = A.rimClip(sheet.img, tight.layout.frameW, tight.layout.frameH, 1, 64, 8);
+		assert.deepEqual(sheet.rimClip, expected);
+		assert.ok(expected.pixels > 0, "pad 0: the body reaches the cell edge");
+	});
+});
 
 describe("buildSpriteSet with an outline", () => {
 	const outlined = A.buildSpriteSet("enemy.test", syntheticSet("enemy", { outline: { widthPx: 2 } }));

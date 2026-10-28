@@ -1,6 +1,7 @@
 import { Controller, OnStart } from "@flamework/core";
 import { Janitor } from "@rbxts/janitor";
 import { RunService, Workspace } from "@rbxts/services";
+import { clientStore, selectDisplay } from "client/store";
 import { CAMERA_PITCH_DEG, CAMERA_YAW_DEG, STUDS_PER_TILE } from "shared/config";
 import {
 	CORPSE_TICKS,
@@ -24,6 +25,7 @@ import {
 	ACTOR_SPRITE_INPUTS,
 	ACTOR_VIEW,
 	BULLET_VIEW,
+	PLAYER_OUTLINE,
 	RENDER_ORDER,
 	SPRITE_VIEW,
 	actorGroup,
@@ -43,6 +45,7 @@ import {
 	outlineSwitchOn,
 	playerBlinkVisible,
 	playerLook,
+	playerOutlined,
 	playerSpriteInput,
 	studsX,
 	studsZ,
@@ -106,6 +109,8 @@ interface PlayerView {
 	readonly ring: Ring | undefined;
 	look: ActorLook;
 	transparency: number;
+	/** The placeholder capsule sits under the player-outline Model (shared/view playerOutlined; changes reparent). */
+	outlined: boolean;
 }
 
 interface ActorView {
@@ -166,6 +171,13 @@ interface ActorView {
  * the party's views. Enemy sprite anchors stay in the folder itself: their rim is baked (plan O4), the outline sheet in
  * the SpriteView's "Outline" label, tinted the same role, shown while shared/view actorOutlined. Workspace
  * KV_EnemyOutline = false turns the Highlight and the sprite rims off (read on change, never per frame).
+ *
+ * Player outline (docs/PLAYER_OUTLINE.md, shared/view PLAYER_OUTLINE): the watched player only (getViewPlayerIndex, so a
+ * spectator sees it on the teammate they watch), alive, while Options > Display > Player outline and Workspace
+ * KV_PlayerOutline are on (shared/view playerOutlined). Every player's SpriteView is built with the `playerOutline`
+ * rim (the knight's baked 1 px outline sheets) and shows it while playerOutlined. A placeholder capsule moves into
+ * `Players/Outlined`, a Model with ONE Highlight (rim only, Occluded), while playerOutlined (reparented only on a
+ * change); the Highlight is Enabled while that player is also visible, so the post-hit blink blinks the rim too.
  */
 @Controller({})
 export class ActorRenderController implements OnStart {
@@ -198,6 +210,12 @@ export class ActorRenderController implements OnStart {
 	private swordIndex: number | undefined;
 	/** The KV_EnemyOutline debug switch (outlineSwitchOn), read on change: the Highlight's Enabled and sprite rims. */
 	private outlineOn = true;
+	/** Player outline (docs/PLAYER_OUTLINE.md): DisplaySettings.playerOutline and KV_PlayerOutline, read on change. */
+	private playerOutlineSetting = true;
+	private playerOutlineOn = true;
+	/** Players/Outlined: the outlined placeholder capsule's Model, and its ONE Highlight. */
+	private outlinedPlayers: Model | undefined;
+	private playerHighlight: Highlight | undefined;
 	/** Squash & stretch and afterimages (docs/FEEL.md J6 / J7; ./motionFx.ts), built in onStart. */
 	private motion: MotionFx | undefined;
 
@@ -242,6 +260,7 @@ export class ActorRenderController implements OnStart {
 		};
 		syncSwitch();
 		this.janitor.Add(Workspace.GetAttributeChangedSignal(ACTOR_OUTLINE.enabledAttribute).Connect(syncSwitch));
+		this.startPlayerOutline(pack, players);
 		this.players.push(this.buildPlayerView(pack, players));
 		this.startHitReact(pack, folder);
 		this.startMotion(folder);
@@ -464,7 +483,9 @@ export class ActorRenderController implements OnStart {
 
 	private buildPlayerView(pack: ThemePack, folder: Instance): PlayerView {
 		const set = this.spriteSet(ACTOR_VIEW.playerVisualId);
-		const sprite = set !== undefined ? new SpriteView(set, folder) : undefined;
+		// Every player's view carries the player-outline rim; drawPlayer shows it on the watched player only.
+		const sprite =
+			set !== undefined ? new SpriteView(set, folder, set, 0, pack.color(PLAYER_OUTLINE.role)) : undefined;
 		const model =
 			set === undefined
 				? buildPlaceholder(
@@ -490,6 +511,7 @@ export class ActorRenderController implements OnStart {
 			ring: set !== undefined ? buildRing(pack, set, folder) : undefined,
 			look: "normal",
 			transparency: 0,
+			outlined: false,
 		};
 	}
 
@@ -501,12 +523,14 @@ export class ActorRenderController implements OnStart {
 		const n = partySize(state);
 		while (this.players.size() < n) this.players.push(this.buildPlayerView(pack, folder));
 		const localIndex = this.sim.getViewPlayerIndex(); // co-op spectating: the watched player gets the local ring
+		let rimDrawn = false; // the player-outline Highlight: an outlined capsule is drawn this frame
 		for (let i = 0; i < this.players.size(); i++) {
 			const view = this.players[i];
 			if (i < n) {
-				this.drawPlayer(view, state, i, alpha, pack, i === localIndex);
+				if (this.drawPlayer(view, state, i, alpha, pack, i === localIndex)) rimDrawn = true;
 				continue;
 			}
+			this.setPlayerOutlined(view, false);
 			if (view.model !== undefined) this.place(view.model, PARKED);
 			if (view.sprite !== undefined) {
 				this.moveParts.push(view.sprite.anchor);
@@ -519,8 +543,14 @@ export class ActorRenderController implements OnStart {
 			this.moveParts.push(view.pip);
 			this.moveCFrames.push(PARKED);
 		}
+		const highlight = this.playerHighlight;
+		if (highlight !== undefined && highlight.Enabled !== rimDrawn) highlight.Enabled = rimDrawn;
 	}
 
+	/**
+	 * Draws one party member; returns whether its placeholder capsule shows the player outline this frame (outlined and
+	 * not blinked out), for the shared Highlight's Enabled.
+	 */
 	private drawPlayer(
 		view: PlayerView,
 		state: SimState,
@@ -528,7 +558,7 @@ export class ActorRenderController implements OnStart {
 		alpha: number,
 		pack: ThemePack,
 		isLocal: boolean,
-	): void {
+	): boolean {
 		const p = playerAt(state, index);
 		const x = studsX(lerp(p.prevX, p.x, alpha));
 		const z = studsZ(lerp(p.prevZ, p.z, alpha));
@@ -540,6 +570,8 @@ export class ActorRenderController implements OnStart {
 		const dirZ = rolling ? p.rollDirZ : p.faceZ;
 		const look = playerLook(p.dead, p.iframeTicks);
 		const visible = playerBlinkVisible(p.dead, p.hurtTicks);
+		// Player outline (docs/PLAYER_OUTLINE.md): the watched, living player while the setting and the switch are on.
+		const outlined = playerOutlined(isLocal, dead, this.playerOutlineSetting, this.playerOutlineOn);
 
 		const sprite = view.sprite;
 		if (sprite !== undefined) {
@@ -560,10 +592,13 @@ export class ActorRenderController implements OnStart {
 				sprite.setTint(look === "dead" ? SPRITE_TINT_NONE : this.lookColor(pack, look) ?? SPRITE_TINT_NONE);
 			}
 			sprite.setVisible(visible);
+			sprite.setOutlineShown(outlined);
 			this.motion?.player(index, sprite, p, at);
 		} else {
 			this.drawPlayerModel(view, p, at, dirX, dirZ, dead, rolling, alpha, pack, look, visible);
+			this.setPlayerOutlined(view, outlined);
 		}
+		const rimDrawn = view.model !== undefined && outlined && visible;
 
 		const ring = view.ring;
 		if (ring !== undefined) {
@@ -581,7 +616,7 @@ export class ActorRenderController implements OnStart {
 				ring.color = color;
 				ring.decal.Color3 = color;
 			}
-			return;
+			return rimDrawn;
 		}
 
 		// Facing pip on the floor ahead of the player (hidden when dead).
@@ -596,6 +631,48 @@ export class ActorRenderController implements OnStart {
 				: (fx !== 0 || fz !== 0 ? CFrame.lookAlong(pipAt, new Vector3(fx, 0, fz)) : new CFrame(pipAt)).mul(
 						CFrame.Angles(0, math.pi / 4, 0),
 				  ),
+		);
+		return rimDrawn;
+	}
+
+	/** Moves a placeholder capsule into / out of the player-outline Model, only when its playerOutlined changes. */
+	private setPlayerOutlined(view: PlayerView, outlined: boolean): void {
+		const model = view.model;
+		if (model === undefined || outlined === view.outlined) return;
+		view.outlined = outlined;
+		const parent = outlined ? this.outlinedPlayers : this.groups?.players;
+		if (parent !== undefined) setModelParent(model, parent);
+	}
+
+	/**
+	 * The player outline's Model (Players/Outlined) with its ONE Highlight, and the two switches it follows: the Display
+	 * setting (store subscription) and the KV_PlayerOutline attribute, both read on change, never per frame.
+	 */
+	private startPlayerOutline(pack: ThemePack, players: Instance): void {
+		const model = new Instance("Model");
+		model.Name = PLAYER_OUTLINE.modelName;
+		model.Parent = players;
+		this.outlinedPlayers = model;
+		const highlight = new Instance("Highlight");
+		highlight.Name = PLAYER_OUTLINE.highlightName;
+		highlight.FillTransparency = PLAYER_OUTLINE.fillTransparency;
+		highlight.OutlineTransparency = PLAYER_OUTLINE.outlineTransparency;
+		highlight.OutlineColor = pack.color(PLAYER_OUTLINE.role);
+		highlight.DepthMode = Enum.HighlightDepthMode[PLAYER_OUTLINE.depthMode];
+		highlight.Enabled = false; // drawPlayers turns it on while an outlined capsule is drawn
+		highlight.Adornee = model;
+		highlight.Parent = model;
+		this.playerHighlight = highlight;
+		const syncSwitch = () => {
+			this.playerOutlineOn = outlineSwitchOn(Workspace.GetAttribute(PLAYER_OUTLINE.enabledAttribute));
+		};
+		syncSwitch();
+		this.janitor.Add(Workspace.GetAttributeChangedSignal(PLAYER_OUTLINE.enabledAttribute).Connect(syncSwitch));
+		this.playerOutlineSetting = selectDisplay(clientStore.getState()).playerOutline;
+		this.janitor.Add(
+			clientStore.subscribe(selectDisplay, (d) => {
+				this.playerOutlineSetting = d.playerOutline;
+			}),
 		);
 	}
 

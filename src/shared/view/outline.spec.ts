@@ -1,9 +1,17 @@
 // Enemy outlines (enemy outline plan O2 / O4): who gets the rim (living enemies and bosses with an outline role, while
 // the debug switch is on), which group a placeholder body is parented to, how the Workspace switch reads, and when a
-// sprite's baked rim label draws.
+// sprite's baked rim label draws; the player outline's rule (docs/PLAYER_OUTLINE.md).
 import { describe, expect, it } from "@rbxts/jest-globals";
 import { PLACEHOLDER_MANIFEST } from "shared/theme";
-import { ACTOR_OUTLINE, actorGroup, actorOutlined, outlineSwitchOn, spriteOutlineVisible } from "shared/view";
+import {
+	ACTOR_OUTLINE,
+	PLAYER_OUTLINE,
+	actorGroup,
+	actorOutlined,
+	outlineSwitchOn,
+	playerOutlined,
+	spriteOutlineVisible,
+} from "shared/view";
 
 describe("actorOutlined", () => {
 	it("outlines a living enemy with an outline role while the switch is on, and nothing else", () => {
@@ -69,5 +77,32 @@ describe("spriteOutlineVisible (plan O4)", () => {
 	it("puts the rim label under the frame", () => {
 		expect(ACTOR_OUTLINE.spriteZIndex.outline < ACTOR_OUTLINE.spriteZIndex.frame).toBe(true);
 		expect(ACTOR_OUTLINE.spriteLabelName).toBe("Outline");
+	});
+});
+
+describe("playerOutlined (docs/PLAYER_OUTLINE.md)", () => {
+	it("outlines only the watched, living player while the setting and the switch are on", () => {
+		expect(playerOutlined(true, false, true, true)).toBe(true);
+		expect(playerOutlined(false, false, true, true)).toBe(false); // a teammate (decision P1)
+		expect(playerOutlined(true, true, true, true)).toBe(false); // dead: the rim drops
+		expect(playerOutlined(true, false, false, true)).toBe(false); // Options > Display > Player outline Off
+		expect(playerOutlined(true, false, true, false)).toBe(false); // KV_PlayerOutline = false
+	});
+});
+
+describe("PLAYER_OUTLINE", () => {
+	it("uses the playerOutline role, Occluded, rim only, its own debug attribute", () => {
+		expect(PLAYER_OUTLINE.role).toBe("playerOutline");
+		expect(PLACEHOLDER_MANIFEST.colors[PLAYER_OUTLINE.role]).toBe("#f4f1ea");
+		expect(PLAYER_OUTLINE.depthMode).toBe("Occluded");
+		expect(PLAYER_OUTLINE.fillTransparency).toBe(1);
+		expect(PLAYER_OUTLINE.outlineTransparency).toBe(0);
+		expect(PLAYER_OUTLINE.enabledAttribute).toBe("KV_PlayerOutline");
+		expect(PLAYER_OUTLINE.enabledAttribute).never.toBe(ACTOR_OUTLINE.enabledAttribute);
+		expect(PLAYER_OUTLINE.highlightName).never.toBe(ACTOR_OUTLINE.highlightName);
+		const g = ACTOR_OUTLINE.groups;
+		expect(([g.enemies, g.corpses, g.players] as ReadonlyArray<string>).includes(PLAYER_OUTLINE.modelName)).toBe(
+			false,
+		);
 	});
 });

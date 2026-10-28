@@ -45,6 +45,9 @@ import type { RobloxAssetId } from "../../types";
  * Audio: 38 of the 54 art/build/audio/*.ogg files uploaded 2026-10-26 11:08 by k9kbdev (Asset Manager Bulk Import,
  * built by audio:build with ffmpeg 6.1.1), transcribed from Asset Manager screenshots. Not yet here: amb-b1, the nine
  * music-*.ogg, sfx-depth-up, sfx-enemy-hurt-3 / -4 / -6, sfx-enemy-telegraph, sfx-player-shoot, sfx-stairwell-open.
+ * vanguard-*-outline.png (the 8 knight outline sheets, player outline: 1 px, outline.clipAtCellEdge; the body sheets
+ * are byte-identical, so their IDs above stay) uploaded 2026-10-28 8:35 AM by k9kbdev, transcribed from an Asset Manager
+ * screenshot.
  */
 export const VALE_ASSET_IDS: Readonly<Record<string, RobloxAssetId>> = {
 	"amb-b3.ogg": "rbxassetid://123793639672129",
@@ -121,12 +124,40 @@ export const VALE_ASSET_IDS: Readonly<Record<string, RobloxAssetId>> = {
 	"ui-marker-boost.png": "rbxassetid://112357573917505",
 	"ui-marker-pedestal.png": "rbxassetid://126528421886645",
 	"ui-ring-player.png": "rbxassetid://111980900819302",
+	"vanguard-attack1-outline.png": "rbxassetid://95853451012948",
 	"vanguard-attack1.png": "rbxassetid://132423462677316",
+	"vanguard-attack2-outline.png": "rbxassetid://128123331343868",
 	"vanguard-attack2.png": "rbxassetid://139632320163472",
+	"vanguard-attack3-outline.png": "rbxassetid://131958607392874",
 	"vanguard-attack3.png": "rbxassetid://81872310850391",
+	"vanguard-death-outline.png": "rbxassetid://125767093717695",
 	"vanguard-death.png": "rbxassetid://138909624937484",
+	"vanguard-hit-outline.png": "rbxassetid://108411818015171",
 	"vanguard-hit.png": "rbxassetid://127829250065405",
+	"vanguard-idle-outline.png": "rbxassetid://119748457323306",
 	"vanguard-idle.png": "rbxassetid://126099595216301",
+	"vanguard-roll-outline.png": "rbxassetid://98834749208965",
 	"vanguard-roll.png": "rbxassetid://113453153969851",
+	"vanguard-run-outline.png": "rbxassetid://135965842289036",
 	"vanguard-run.png": "rbxassetid://98583531315344",
+	"demonlord-attack-outline.png": "rbxassetid://102763949876820",
+	"demonlord-attack.png": "rbxassetid://71694718471521",
+	"demonlord-attack2-outline.png": "rbxassetid://82560650525332",
+	"demonlord-attack2.png": "rbxassetid://110239070941569",
+	"demonlord-death-outline.png": "rbxassetid://89185443391803",
+	"demonlord-death.png": "rbxassetid://73191082516513",
+	"demonlord-idle-outline.png": "rbxassetid://103849445891803",
+	"demonlord-idle.png": "rbxassetid://88764271765384",
+	"demonlord-intro-outline.png": "rbxassetid://86257913427010",
+	"demonlord-intro.png": "rbxassetid://117876056911897",
+	"demonlord-move-outline.png": "rbxassetid://110100254787435",
+	"demonlord-move.png": "rbxassetid://70775680415093",
+	"demonlord-taunt-outline.png": "rbxassetid://81556574053660",
+	"demonlord-taunt.png": "rbxassetid://140374029101007",
+	"fx-ambient-b1.png": "rbxassetid://131103819510854",
+	"fx-ambient-b2.png": "rbxassetid://113130535213244",
+	"fx-ambient-b3.png": "rbxassetid://81069724717150",
+	"fx-ambient-b5.png": "rbxassetid://93348383001922",
+	"fx-effects.png": "rbxassetid://92741658775036",
+
 };

@@ -73,6 +73,10 @@ export const COLOR_ROLES = [
 	// shared Highlight; later the sprites' baked outline). The validator holds it to MIN_ENEMY_OUTLINE_CONTRAST against
 	// every biome floor and wall and MIN_ENEMY_OUTLINE_BULLET_DIFFERENCE (CIE76) from enemyBullet / enemyBulletOutline.
 	"enemyOutline",
+	// Roblox port (player outline, step 1): the rim drawn around the watched player's character (the knight sprite's
+	// baked outline, the placeholder capsule's Highlight). The validator holds it to MIN_PLAYER_OUTLINE_CONTRAST against
+	// every biome floor and wall and MIN_PLAYER_OUTLINE_DIFFERENCE (CIE76) from PLAYER_OUTLINE_DIFFERENCE_ROLES.
+	"playerOutline",
 	// Juice (src/fx in the web build): enemy health bars, damage numbers, death particles. The validator checks
 	// enemyHealth (and enemyHealthElite) against enemyHealthBack (>= 3:1) and every damage-number role against
 	// every biome floor (>= 4.5:1).

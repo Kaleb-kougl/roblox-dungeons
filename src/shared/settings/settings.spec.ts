@@ -7,6 +7,7 @@ import {
 	DEFAULT_ROOM_EDGES,
 	DEFAULT_HUD_FADE,
 	DEFAULT_MINIMAP,
+	DEFAULT_PLAYER_OUTLINE,
 	HUD_SCALE_PERCENTS,
 	JUICE_SETTING_KEYS,
 	PlayerDocCache,
@@ -242,6 +243,7 @@ describe("display: room edges (docs/ROOM_EDGES.md RE6)", () => {
 			roomEdges: false,
 			hudFade: DEFAULT_HUD_FADE,
 			minimap: DEFAULT_MINIMAP,
+			playerOutline: DEFAULT_PLAYER_OUTLINE,
 		});
 	});
 
@@ -277,6 +279,7 @@ describe("display: room edges (docs/ROOM_EDGES.md RE6)", () => {
 			roomEdges: true,
 			hudFade: true,
 			minimap: true,
+			playerOutline: true,
 		});
 		expect(resolveDisplaySettings(decodeSettingsDoc({ v: 2 }).display).roomEdges).toBe(true);
 		expect(resolveDisplaySettings(decodeSettingsDoc({ v: SETTINGS_DOC_V1, juice: {} }).display).roomEdges).toBe(
@@ -340,6 +343,7 @@ describe("display: minimap (docs/MINIMAP.md M10)", () => {
 			roomEdges: DEFAULT_ROOM_EDGES,
 			hudFade: DEFAULT_HUD_FADE,
 			minimap: false,
+			playerOutline: DEFAULT_PLAYER_OUTLINE,
 		});
 	});
 
@@ -376,6 +380,7 @@ describe("display: minimap (docs/MINIMAP.md M10)", () => {
 			roomEdges: false,
 			hudFade: false,
 			minimap: true,
+			playerOutline: true,
 		});
 		expect(resolveDisplaySettings(decodeSettingsDoc({ v: 2 }).display).minimap).toBe(true);
 		expect(resolveDisplaySettings(decodeSettingsDoc({ v: SETTINGS_DOC_V1, juice: {} }).display).minimap).toBe(true);
@@ -587,5 +592,48 @@ describe("PlayerDocCache", () => {
 		coroutine.resume(b);
 		expect(outcomes).toEqual(["a failed", "b saved"]);
 		expect(cache.isDirty("u_8")).toBe(false);
+	});
+});
+
+describe("display: player outline (docs/PLAYER_OUTLINE.md P4)", () => {
+	it("defaults to On; only Off is stored", () => {
+		expect(DEFAULT_PLAYER_OUTLINE).toBe(true);
+		expect(defaultDisplaySettings().playerOutline).toBe(true);
+		expect(resolveDisplaySettings(undefined).playerOutline).toBe(true);
+		expect(sanitizeDisplayOverrides({ playerOutline: false })).toEqual({ playerOutline: false });
+		expect(sanitizeDisplayOverrides({ playerOutline: true })).toEqual({});
+		expect(resolveDisplaySettings({ playerOutline: false })).toEqual({
+			hudScale: DEFAULT_HUD_SCALE_PERCENT,
+			roomEdges: DEFAULT_ROOM_EDGES,
+			hudFade: DEFAULT_HUD_FADE,
+			minimap: DEFAULT_MINIMAP,
+			playerOutline: false,
+		});
+	});
+
+	it("round-trips Off through the stored document (still v2)", () => {
+		const overrides: SettingsOverrides = { display: { playerOutline: false } };
+		const doc = encodeSettingsDoc(overrides);
+		expect(doc).toEqual({ ...EMPTY_DOC, display: { playerOutline: false } });
+		expect(doc.v).toBe(2);
+		expect(decodeSettingsDoc(doc)).toEqual(overrides);
+		expect(resolveDisplaySettings(decodeSettingsDoc(doc).display).playerOutline).toBe(false);
+		expect(applySettingsPatch(overrides, { display: { playerOutline: true } })).toEqual({});
+		expect(sameSettingsOverrides(overrides, { display: { playerOutline: false } })).toBe(true);
+		expect(sameSettingsOverrides(overrides, { display: { minimap: false } })).toBe(false);
+	});
+
+	it("ignores junk", () => {
+		for (const junk of [0, 1, "false", "off", {}, [false]] as ReadonlyArray<unknown>) {
+			expect(sanitizeDisplayOverrides({ playerOutline: junk })).toEqual({});
+		}
+	});
+
+	it("an older v2 document without the field reads On", () => {
+		const old = { v: 2, juice: {}, controls: {}, audio: {}, display: { minimap: false } };
+		expect(resolveDisplaySettings(decodeSettingsDoc(old).display).playerOutline).toBe(true);
+		expect(resolveDisplaySettings(decodeSettingsDoc({ v: SETTINGS_DOC_V1, juice: {} }).display).playerOutline).toBe(
+			true,
+		);
 	});
 });

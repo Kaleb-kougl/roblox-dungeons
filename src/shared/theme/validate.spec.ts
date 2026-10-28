@@ -188,13 +188,17 @@ describe("validateManifest: rejects bad manifests", () => {
 	it("checks contrast against walls too", () => {
 		const m = clone();
 		at(m, "biomes", "biome.5").wall = "#ff3fa4";
-		// A bullet-pink wall fails the enemy outline's rule too (red rim on pink, enemy outline plan O1), and the boost
-		// drops' (every BOOST_ROLES colour on every wall, docs/BOOSTS.md B5).
+		// A bullet-pink wall fails the enemy outline's rule too (red rim on pink, enemy outline plan O1), the player
+		// outline's (near-white on pink, player outline step 1) and the boost drops' (every BOOST_ROLES colour on every
+		// wall, docs/BOOSTS.md B5).
 		const ratio = (hex: string) => "%.2f".format(contrastRatio(hex, "#ff3fa4"));
 		expect(validateManifest(m)).toEqual([
 			'biomes["biome.5"].wall: contrast: enemyBullet #ff3fa4 on biome.5 (verdant) wall #ff3fa4 is 1.00:1, needs >= 3.0:1',
 			`colors.enemyOutline: contrast: enemyOutline #ff3b30 on biome.5 (verdant) wall #ff3fa4 is ${ratio(
 				"#ff3b30",
+			)}:1, needs >= 3.0:1`,
+			`colors.playerOutline: contrast: playerOutline #f4f1ea on biome.5 (verdant) wall #ff3fa4 is ${ratio(
+				"#f4f1ea",
 			)}:1, needs >= 3.0:1`,
 			`colors["boost.fury"]: contrast: boost.fury #ffc83d on biome.5 (verdant) wall #ff3fa4 is ${ratio(
 				"#ffc83d",

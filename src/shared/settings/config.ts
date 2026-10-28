@@ -45,3 +45,6 @@ export const DEFAULT_HUD_FADE = true;
 
 /** The corner minimap (docs/MINIMAP.md M10, Options > Display > Minimap): On by default (the full map key always works). */
 export const DEFAULT_MINIMAP = true;
+
+/** The watched player's rim (docs/PLAYER_OUTLINE.md P4, Options > Display > Player outline): On by default. */
+export const DEFAULT_PLAYER_OUTLINE = true;

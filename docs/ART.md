@@ -87,6 +87,10 @@ Enemy outlines (docs/OUTLINE.md O3, 2026-10-26): a set with `"outline": { "width
 `pad >= widthPx + 1`, so the skeleton's pad is 3: cells 98x74, atlases 980x962, pivot +2. `swarmer-move.png`,
 `swarmer-death.png` and both outline sheets were re-uploaded on 2026-10-26 (`assetIds.ts`). `npm run test:art`
 covers the pipeline's pure parts.
+Player outline (docs/PLAYER_OUTLINE.md P2, 2026-10-28): `class.vanguard` has `"outline": { "widthPx": 1,
+"clipAtCellEdge": true }`. Its 128 px cells already fill the 1024 atlases, so the pad stays 0 and the rim is cut at the
+cell edge instead (the build prints the clip: `vanguard-attack2`, 3 cells, 20 px); the body sheets stay byte-identical
+and only the 8 `vanguard-*-outline.png` sheets were uploaded (2026-10-28).
 
 Layered sources and per-sheet cells (docs/DEMON_ART.md DA2, 2026-10-26): a `grid` source may list `"layers"`
 (sub-folders of `dir`, bottom to top, `""` = the dir itself; e.g. `["Shadows", ""]`), composited before the crop and

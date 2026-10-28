@@ -17,6 +17,9 @@
  * Roblox port (enemy outline plan O1): the `enemyOutline` rim readable on every biome floor and wall (WCAG contrast)
  * and kept away from the enemy-bullet roles (CIE76), `enemyOutlineReport`.
  *
+ * Roblox port (player outline, step 1): the `playerOutline` rim readable on every biome floor and wall (WCAG contrast)
+ * and kept away from the threat and boost colours (PLAYER_OUTLINE_DIFFERENCE_ROLES, CIE76), `playerOutlineReport`.
+ *
  * Roblox port (docs/FX_AUDIO.md A2, F1): sound `variants` / `pitch` / `minInterval`, the ambience slot (`amb.b<n>`),
  * the fx slot (`fx.*`: one-facing sprite sets, `sizeTiles` cap, `tint` roles) and effect colours (FX_ROLES, tints and
  * untinted `meanColor`s) kept away from the enemy-bullet roles (`fxColorReport`).
@@ -76,6 +79,8 @@ import {
 	MIN_ENEMY_OUTLINE_CONTRAST,
 	MIN_FX_BULLET_DIFFERENCE,
 	MIN_HEALTH_BAR_CONTRAST,
+	MIN_PLAYER_OUTLINE_CONTRAST,
+	MIN_PLAYER_OUTLINE_DIFFERENCE,
 	MIN_ROOM_EDGE_CONTRAST,
 	MIN_ROOM_EDGE_DIFFERENCE,
 	MIN_MINIMAP_ENEMY_DIFFERENCE,
@@ -86,6 +91,7 @@ import {
 	MINIMAP_ROOM_TINT_MIX,
 	MINIMAP_TINT_ROLES,
 	MUSIC,
+	PLAYER_OUTLINE_DIFFERENCE_ROLES,
 	REQUIRED_ASSET_IDS,
 	REQUIRED_STRING_KEYS,
 	ROOM_EDGE_CONTRAST_ROLES,
@@ -541,6 +547,79 @@ export function enemyOutlineReport(manifest: unknown): Array<EnemyOutlineEntry> 
 			value,
 			min: MIN_ENEMY_OUTLINE_BULLET_DIFFERENCE,
 			ok: value >= MIN_ENEMY_OUTLINE_BULLET_DIFFERENCE,
+		});
+	}
+	return out;
+}
+
+/**
+ * The player outline (player outline, step 1): `playerOutline` vs every biome's floor and wall (WCAG contrast,
+ * >= MIN_PLAYER_OUTLINE_CONTRAST; check "surface", `against` = the biome ID, `surface` set) and vs every
+ * PLAYER_OUTLINE_DIFFERENCE_ROLES colour (CIE76 colour difference, >= MIN_PLAYER_OUTLINE_DIFFERENCE; check
+ * "difference", `against` = the role). `value` is the ratio or the difference. Biomes in sorted order, then the roles
+ * in PLAYER_OUTLINE_DIFFERENCE_ROLES order. Full light only: the darkest decor band is checked by shared/view
+ * decorBandContrastReport (PLAYER_OUTLINE_BAND_CHECK).
+ */
+export interface PlayerOutlineEntry {
+	check: "surface" | "difference";
+	color: string;
+	against: string;
+	/** The biome surface (check "surface" only). */
+	surface?: "floor" | "wall";
+	againstColor: string;
+	value: number;
+	min: number;
+	ok: boolean;
+}
+
+export function playerOutlineReport(manifest: unknown): Array<PlayerOutlineEntry> {
+	const out = new Array<PlayerOutlineEntry>();
+	if (!isObj(manifest) || !isObj(manifest.colors)) {
+		return out;
+	}
+	const colors = manifest.colors;
+	const color = colors.playerOutline;
+	if (!isHexColor(color)) {
+		return out;
+	}
+	if (isObj(manifest.biomes)) {
+		for (const [biome, def] of sortedEntries(manifest.biomes)) {
+			if (!isObj(def)) {
+				continue;
+			}
+			for (const surface of SURFACES) {
+				const againstColor = def[surface];
+				if (!isHexColor(againstColor)) {
+					continue;
+				}
+				const value = contrastRatio(color, againstColor);
+				out.push({
+					check: "surface",
+					color,
+					against: biome,
+					surface,
+					againstColor,
+					value,
+					min: MIN_PLAYER_OUTLINE_CONTRAST,
+					ok: value >= MIN_PLAYER_OUTLINE_CONTRAST,
+				});
+			}
+		}
+	}
+	for (const against of PLAYER_OUTLINE_DIFFERENCE_ROLES) {
+		const againstColor = colors[against];
+		if (!isHexColor(againstColor)) {
+			continue;
+		}
+		const value = colorDifference(color, againstColor);
+		out.push({
+			check: "difference",
+			color,
+			against,
+			againstColor,
+			value,
+			min: MIN_PLAYER_OUTLINE_DIFFERENCE,
+			ok: value >= MIN_PLAYER_OUTLINE_DIFFERENCE,
 		});
 	}
 	return out;
@@ -1116,6 +1195,28 @@ export function validateManifest(manifest: unknown, opts: ValidateOptions = {}):
 				`colour difference: enemyOutline ${c.color} vs ${c.against} ${c.againstColor} is ${fixed1(
 					c.value,
 				)} (CIE76), needs >= ${fixed1(c.min)}: an enemy outline must never read as an enemy bullet`,
+			);
+		}
+	}
+
+	// --- the player outline reads on every biome and never as a threat or a boost ------------------
+	for (const c of playerOutlineReport(manifest)) {
+		if (c.ok) {
+			continue;
+		}
+		if (c.check === "surface") {
+			err(
+				["colors", "playerOutline"],
+				`contrast: playerOutline ${c.color} on ${c.against}${forgeSuffix(c.against)} ${tostring(c.surface)} ${
+					c.againstColor
+				} is ${fixed2(c.value)}:1, needs >= ${fixed1(c.min)}:1`,
+			);
+		} else {
+			err(
+				["colors", "playerOutline"],
+				`colour difference: playerOutline ${c.color} vs ${c.against} ${c.againstColor} is ${fixed1(
+					c.value,
+				)} (CIE76), needs >= ${fixed1(c.min)}: the player's outline must never read as a threat or a boost`,
 			);
 		}
 	}

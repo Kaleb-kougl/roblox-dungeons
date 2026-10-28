@@ -114,13 +114,15 @@ describe("vale pack", () => {
 		}
 	});
 
-	it("every enemy and boss sprite set has an outline sheet per sheet; the player's sets have none", () => {
+	it("every enemy, boss and player sprite set has an outline sheet per sheet; no other set has one", () => {
 		// art/atlases.json: each enemy / boss set needs `outline` (enemy outline plan O3), or its sprites draw without a
-		// rim (bosses take the enemy rim too: their placeholder has the outline role)
+		// rim (bosses take the enemy rim too: their placeholder has the outline role). The knight carries the player
+		// outline's sheets (player outline: 1 px, clipAtCellEdge); the renderer tints each rim its own role.
 		let enemies = 0;
 		let bosses = 0;
 		for (const id of sortedKeys(VALE_SPRITE_LAYOUTS)) {
 			const enemy = id.sub(1, 6) === "enemy." || id.sub(1, 5) === "boss.";
+			const outlined = enemy || id === "class.vanguard";
 			if (enemy) {
 				enemies += 1;
 			}
@@ -128,7 +130,7 @@ describe("vale pack", () => {
 				bosses += 1;
 			}
 			for (const sheet of VALE_SPRITE_LAYOUTS[id].sheets) {
-				const expected = enemy ? `${sheet.file.sub(1, -5)}-outline.png` : undefined;
+				const expected = outlined ? `${sheet.file.sub(1, -5)}-outline.png` : undefined;
 				expect([id, sheet.file, sheet.outlineFile]).toEqual([id, sheet.file, expected]);
 			}
 		}
@@ -252,12 +254,19 @@ describe("vale pack", () => {
 		const sprites = pack.sprites("enemy.swarmer")!;
 		expect(sprites.frame("move", 3, 2).outlineImage).toBe(ids["swarmer-move-outline.png"]);
 		expect(sprites.frame("death", 3, 2).outlineImage).toBe(ids["swarmer-death-outline.png"]);
-		// the player's sheets have no outline file, so no outline
+		// the player's sheets carry the player outline's sheets the same way (player outline)
 		const vanguard = buildValeManifest(ids).assets["class.vanguard"] as SpriteSetAsset;
 		for (const sheet of vanguard.sheets) {
+			expect(sheet.outlineAssetId).never.toBe(undefined);
+		}
+		expect(pack.sprites("class.vanguard")!.frame("run", 0, 0).outlineImage).toBe(ids["vanguard-run-outline.png"]);
+		// until its outline sheets are uploaded, the knight still draws (rimless): the body ids are unchanged
+		const outlines = VALE_SPRITE_LAYOUTS["class.vanguard"].sheets.map((sheet) => sheet.outlineFile!);
+		const rimless = buildValeManifest(fakeIds(...outlines)).assets["class.vanguard"] as SpriteSetAsset;
+		expect(rimless.kind).toBe("sprites");
+		for (const sheet of rimless.sheets) {
 			expect(sheet.outlineAssetId).toBe(undefined);
 		}
-		expect(pack.sprites("class.vanguard")!.frame("run", 0, 0).outlineImage).toBe(undefined);
 	});
 
 	it("a set whose outline sheets are not uploaded still switches on, rimless", () => {
@@ -415,6 +424,7 @@ describe("vale sprite cells (hand-computed from the generated layout)", () => {
 			y: 256,
 			w: 128,
 			h: 128,
+			outlineAssetId: ids["vanguard-run-outline.png"],
 		});
 		// attack.3: last facing, last frame -> cell 63, the bottom-right cell
 		const last = set!.frame("attack.3", 7, 7);

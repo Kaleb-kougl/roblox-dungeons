@@ -65,6 +65,10 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		// Roblox port (enemy outline plan E1): hostile red, >= 3.4:1 on every biome floor and wall, CIE76 63 from
 		// enemyBullet.
 		enemyOutline: "#ff3b30",
+		// Roblox port (player outline, step 1): the watched player's rim, minimap.self's near-white (the map's "you"),
+		// >= 10.6:1 on every biome floor and wall, >= 72 CIE76 from the enemy bullets, telegraph and enemyOutline and
+		// >= 49 from every boost colour.
+		playerOutline: "#f4f1ea",
 		enemyHealth: "#e8473f",
 		enemyHealthChip: "#ffe6c2",
 		enemyHealthBack: "#1a0d10",
@@ -420,6 +424,7 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		"options.display.roomEdges": "Room edges",
 		"options.display.hudFade": "HUD fade",
 		"options.display.minimap": "Minimap",
+		"options.display.playerOutline": "Player outline",
 		"options.action.moveUp": "Move up",
 		"options.action.moveDown": "Move down",
 		"options.action.moveLeft": "Move left",

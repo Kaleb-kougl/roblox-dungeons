@@ -1,13 +1,15 @@
 /**
  * Display settings (Options screen, task L4): the HUD scale, a percent of the automatic scale (shared/view/hud
  * computeHudScale; the client's useHudScale multiplies it in), and the room-edge lines on the floor
- * (docs/ROOM_EDGES.md RE6), the corner panels' occlusion fade (docs/HUD_LAYOUT.md H7) and the corner minimap
- * (docs/MINIMAP.md M10). Presentation only; stored overrides-only (a new optional field needs no migration).
+ * (docs/ROOM_EDGES.md RE6), the corner panels' occlusion fade (docs/HUD_LAYOUT.md H7), the corner minimap
+ * (docs/MINIMAP.md M10) and the player outline (docs/PLAYER_OUTLINE.md P4). Presentation only; stored overrides-only (a
+ * new optional field needs no migration).
  */
 import {
 	DEFAULT_HUD_FADE,
 	DEFAULT_HUD_SCALE_PERCENT,
 	DEFAULT_MINIMAP,
+	DEFAULT_PLAYER_OUTLINE,
 	DEFAULT_ROOM_EDGES,
 	HUD_SCALE_PERCENTS,
 } from "./config";
@@ -21,6 +23,8 @@ export interface DisplaySettings {
 	hudFade: boolean;
 	/** Show the corner minimap (docs/MINIMAP.md M10; the full map key works either way). Default true: only Off is stored. */
 	minimap: boolean;
+	/** Draw the rim around the watched player's character (docs/PLAYER_OUTLINE.md P4). Default true: only Off is stored. */
+	playerOutline: boolean;
 }
 
 export type DisplayOverrides = Partial<DisplaySettings>;
@@ -30,6 +34,7 @@ export const DISPLAY_SETTING_KEYS: ReadonlyArray<keyof DisplaySettings> = [
 	"roomEdges",
 	"hudFade",
 	"minimap",
+	"playerOutline",
 ];
 
 export function defaultDisplaySettings(): DisplaySettings {
@@ -38,12 +43,13 @@ export function defaultDisplaySettings(): DisplaySettings {
 		roomEdges: DEFAULT_ROOM_EDGES,
 		hudFade: DEFAULT_HUD_FADE,
 		minimap: DEFAULT_MINIMAP,
+		playerOutline: DEFAULT_PLAYER_OUTLINE,
 	};
 }
 
 /**
  * Keeps only a hudScale that is one of HUD_SCALE_PERCENTS (and not the default) and a roomEdges that is a boolean other
- * than the default (so only `false`), and the same for hudFade and minimap. Never throws.
+ * than the default (so only `false`), and the same for hudFade, minimap and playerOutline. Never throws.
  */
 export function sanitizeDisplayOverrides(raw: unknown): DisplayOverrides {
 	const out: DisplayOverrides = {};
@@ -57,6 +63,8 @@ export function sanitizeDisplayOverrides(raw: unknown): DisplayOverrides {
 	if (typeIs(fade, "boolean") && fade !== DEFAULT_HUD_FADE) out.hudFade = fade;
 	const minimap = t.minimap;
 	if (typeIs(minimap, "boolean") && minimap !== DEFAULT_MINIMAP) out.minimap = minimap;
+	const rim = t.playerOutline;
+	if (typeIs(rim, "boolean") && rim !== DEFAULT_PLAYER_OUTLINE) out.playerOutline = rim;
 	return out;
 }
 

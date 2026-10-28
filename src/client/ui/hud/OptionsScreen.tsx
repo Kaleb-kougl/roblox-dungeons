@@ -529,6 +529,21 @@ function DisplayTab(props: { order: number; actions: HudActions; selectable: boo
 					props.actions.updateDisplay({ minimap: v });
 				}}
 			/>
+			<SettingRow
+				order={5}
+				name="playerOutline"
+				selectable={props.selectable}
+				label={str(OPTIONS_STRINGS.playerOutline)}
+				value={display.playerOutline}
+				options={[
+					{ value: true, label: str(SETTINGS_STRINGS.on) },
+					{ value: false, label: str(SETTINGS_STRINGS.off) },
+				]}
+				onPick={(v) => {
+					props.actions.playUi(SFX.uiClick);
+					props.actions.updateDisplay({ playerOutline: v });
+				}}
+			/>
 		</Panel>
 	);
 }

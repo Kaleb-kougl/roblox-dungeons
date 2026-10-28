@@ -74,3 +74,39 @@ export function actorGroup(hasOutline: boolean, alive: boolean): ActorGroup {
 export function spriteOutlineVisible(visible: boolean, shown: boolean, outlineImage: string | undefined): boolean {
 	return visible && shown && outlineImage !== undefined;
 }
+
+/**
+ * Player outline (docs/PLAYER_OUTLINE.md): a rim in the theme's `playerOutline` role around the watched player's
+ * character only (the local player, or the teammate a dead player spectates: SimController.getViewPlayerIndex), so you
+ * find yourself in a crowded room. Decisions P1-P4: only you, Occluded (walls hide it like the body), 1 art px, on by
+ * default (Options > Display > Player outline). Presentation only; nothing here feeds the sim.
+ *
+ * The knight sprite draws its baked outline sheet (art/atlases.json `class.vanguard` outline, 1 px, clipAtCellEdge) in
+ * the SpriteView's "Outline" label, tinted this role; the placeholder capsule sits in PLAYER_OUTLINE.modelName (a Model
+ * under the players folder) under ONE Highlight while outlined. Debug switch: Workspace attribute
+ * PLAYER_OUTLINE.enabledAttribute (boolean; absent = on, outlineSwitchOn).
+ */
+export const PLAYER_OUTLINE = {
+	/** The rim's colour role (theme validator: >= 3:1 on every biome floor and wall, CIE76 >= 40 from threats and boosts). */
+	role: "playerOutline" as ColorRole,
+	/** The Model (a child of the players folder) holding the outlined placeholder capsule, and its Highlight. */
+	modelName: "Outlined",
+	highlightName: "PlayerOutline",
+	/** Rim only, like the enemy outline: the body keeps its own colour, i-frame tint and blink. */
+	fillTransparency: 1,
+	outlineTransparency: 0,
+	/** Enum.HighlightDepthMode name: walls hide the rim exactly as they hide the body (decision P2). */
+	depthMode: "Occluded" as "Occluded" | "AlwaysOnTop",
+	/** Workspace attribute (boolean): false turns the player outline off (Highlight and sprite rim); absent = on. */
+	enabledAttribute: "KV_PlayerOutline",
+} as const;
+
+/**
+ * Whether a player's view shows the player outline: it is the watched player (`isView`: the local player, or the one a
+ * dead player spectates; teammates never get it, decision P1), alive (the rim drops the tick they die, like an enemy
+ * corpse's), the Display setting is on (`settingOn`, DisplaySettings.playerOutline) and the debug switch is on
+ * (`switchOn`, outlineSwitchOn of PLAYER_OUTLINE.enabledAttribute).
+ */
+export function playerOutlined(isView: boolean, dead: boolean, settingOn: boolean, switchOn: boolean): boolean {
+	return isView && !dead && settingOn && switchOn;
+}

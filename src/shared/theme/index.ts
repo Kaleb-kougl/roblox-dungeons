@@ -34,6 +34,7 @@ export {
 	isStringKey,
 	juiceContrastReport,
 	minimapReport,
+	playerOutlineReport,
 	roomEdgeReport,
 	validateManifest,
 	type BoostColorEntry,
@@ -44,6 +45,7 @@ export {
 	type FxColorEntry,
 	type JuiceContrastEntry,
 	type MinimapEntry,
+	type PlayerOutlineEntry,
 	type RoomEdgeEntry,
 	type ValidateOptions,
 } from "./validate";

@@ -17,7 +17,8 @@
  *                 (tunables: BREAKABLE_VIEW in breakablesConfig.ts)
  *   outline.ts    enemy outlines (enemy outline plan O2 / O4): who gets the rim (actorOutlined), the actor folder's
  *                 groups, the shared Highlight's look, the KV_EnemyOutline switch (ACTOR_OUTLINE) and when a sprite's
- *                 baked rim draws (spriteOutlineVisible)
+ *                 baked rim draws (spriteOutlineVisible); the player outline (docs/PLAYER_OUTLINE.md): who gets it
+ *                 (playerOutlined: the watched player, alive, setting and KV_PlayerOutline on) and its look (PLAYER_OUTLINE)
  *   roomEdges.ts  room edges (docs/ROOM_EDGES.md): the dashed corridor-to-room edge runs of a floor (tunables:
  *                 ROOM_EDGE_VIEW in roomEdgesConfig.ts); roomEdgeState.ts: each room's safe / waiting / live state
  *   watch.ts      StateWatch: per-player and per-floor edges from sim state (hurt and its HurtKind, death, roll,
