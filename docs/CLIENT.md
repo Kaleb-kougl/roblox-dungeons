@@ -320,30 +320,30 @@ Mouse aim uses the previous frame's camera (the web build does the same).
 
 ## Controls
 
-| Input | Keyboard / mouse | Gamepad | Web build |
-|---|---|---|---|
-| Move (screen-relative) | WASD (arrows too) | Left stick | WASD / left stick |
-| Aim | Mouse | Right stick | same |
-| Attack (hold) | Left click | RT | same |
-| Alt: sword guard / bow charge | Right click | LT | same |
-| Swap weapon sets | **E** | Y | **Tab** / Y |
-| Dodge roll | Space | LB | same |
-| Flask | F | D-pad up | same |
-| Ember (bullet clear) | Q | RB | same |
-| Pause (overlay: Resume / Restart / Leave run / Options / Leaderboards; co-op: the non-pausing party overlay; a tutorial run: Resume / Restart tutorial / Skip tutorial / Options) | **P** | Start | **Escape** / Start |
-| Options screen (juice settings, controls, audio, display) | **O** (B or Close closes it) | pause overlay -> Options; B closes | O (juice panel) |
-| Restart (same seed) | R (any time but in a tutorial run; a ranked run still being played is forfeited first: a death) | the pause overlay's Restart; after a death / victory **A** on the selected Again (menus and the run-over panel take the pad, so the D-pad-down restart binding never fires there) | R |
-| Menu back (main menu, lobby screens, the Leave run confirm, the party overlay) | Backspace | B | (none) |
-| Debug: one hit on the player | K (KV_Debug only) | | K |
-| Debug: 10 % off an engaged boss | J (KV_Debug only) | | J |
-| Debug: replay check | F8 or **L** (KV_Debug only) | | F8 |
-| Debug (endless): end the floor now | **N** (KV_Debug only; `DEBUG_FLOOR_BUTTON`, a port bit) | | (none) |
-| Debug (runs with drops): drop the next boost kind (Fury, Quickstep, Frenzy, Aegis, ...) 1.5 tiles ahead | **;** Semicolon (KV_Debug only; `DEBUG_DROP_BUTTON`, a port bit; M until docs/MINIMAP.md MD11) | | (none) |
-| Leaderboard panel | **B** (B again, pad B or Close closes it) | pause overlay -> Leaderboards; B closes | (none) |
-| Full map toggle (docs/MINIMAP.md M9; not sim input: `InputController.onMapAction` -> MinimapController) | **M** | D-pad left | (none) |
-| Boon draft (M2): pick a card | A / D (screen left / right; neither = centre card) | left stick left / right | (none) |
-| Boon draft: take the card | Left click (after 0.5 s) | RT | (none) |
-| Curse shrine (M2): accept | **1** (in the shrine zone) | A | (none) |
+| Input | Keyboard / mouse | Gamepad | Web build | Touch |
+|---|---|---|---|---|
+| Move (screen-relative) | WASD (arrows too) | Left stick | WASD / left stick | Move stick (left side, floating) |
+| Aim | Mouse | Right stick | same | Drag Attack / Alt (centre: auto-target) |
+| Attack (hold) | Left click | RT | same | Attack stick (right side) |
+| Alt: sword guard / bow charge | Right click | LT | same | Alt stick (up and left of Attack) |
+| Swap weapon sets | **E** | Y | **Tab** / Y | Swap |
+| Dodge roll | Space | LB | same | Roll |
+| Flask | F | D-pad up | same | Flask |
+| Ember (bullet clear) | Q | RB | same | Ember |
+| Pause (overlay: Resume / Restart / Leave run / Options / Leaderboards; co-op: the non-pausing party overlay; a tutorial run: Resume / Restart tutorial / Skip tutorial / Options) | **P** | Start | **Escape** / Start | Pause button (top bar) |
+| Options screen (juice settings, controls, audio, display) | **O** (B or Close closes it) | pause overlay -> Options; B closes | O (juice panel) | Pause overlay -> Options (tap) |
+| Restart (same seed) | R (any time but in a tutorial run; a ranked run still being played is forfeited first: a death) | the pause overlay's Restart; after a death / victory **A** on the selected Again (menus and the run-over panel take the pad, so the D-pad-down restart binding never fires there) | R | Restart in the pause overlay or run-over panel (tap) |
+| Menu back (main menu, lobby screens, the Leave run confirm, the party overlay) | Backspace | B | (none) | Back button (tap) |
+| Debug: one hit on the player | K (KV_Debug only) | | K | (none) |
+| Debug: 10 % off an engaged boss | J (KV_Debug only) | | J | (none) |
+| Debug: replay check | F8 or **L** (KV_Debug only) | | F8 | (none) |
+| Debug (endless): end the floor now | **N** (KV_Debug only; `DEBUG_FLOOR_BUTTON`, a port bit) | | (none) | (none) |
+| Debug (runs with drops): drop the next boost kind (Fury, Quickstep, Frenzy, Aegis, ...) 1.5 tiles ahead | **;** Semicolon (KV_Debug only; `DEBUG_DROP_BUTTON`, a port bit; M until docs/MINIMAP.md MD11) | | (none) | (none) |
+| Leaderboard panel | **B** (B again, pad B or Close closes it) | pause overlay -> Leaderboards; B closes | (none) | Pause overlay -> Leaderboards (tap) |
+| Full map toggle (docs/MINIMAP.md M9; not sim input: `InputController.onMapAction` -> MinimapController) | **M** | D-pad left | (none) | Map from the pause overlay (solo) or the party overlay's Map item; tap to close |
+| Boon draft (M2): pick a card | A / D (screen left / right; neither = centre card) | left stick left / right | (none) | Tap the card |
+| Boon draft: take the card | Left click (after 0.5 s) | RT | (none) | Same tap |
+| Curse shrine (M2): accept | **1** (in the shrine zone) | A | (none) | Accept button (only in a shrine's zone) |
 
 Roblox remaps: Roblox reserves Escape (game menu) and Tab (player list), so Pause is P and Swap is E (one swap key,
 so the HUD hint is unambiguous; C is not bound). The leaderboard panel is on B ("boards"), not N: N is the endless
@@ -383,6 +383,24 @@ overlay has a Restart button) and the selection starts on the first button. The 
 it is open (the web panel did not; on Roblox its clicks and the pad's A would otherwise reach the game); P inside it
 does not resume under it. After a menu button is clicked, the mouse buttons read as released until they are (no sword
 swing on Resume).
+
+## Touch controls (docs/MOBILE.md)
+
+Touch is a third input device. `mapDevicesToInput` merges `DeviceSnapshot.touch` with the keyboard and pad, so every
+touch control becomes an ordinary `InputFrame` (no sim change). The pure core is `shared/play/touch/` (`TouchControls`,
+`pickAutoTarget` (MBD6), the draft helpers, `touchMode`); the placement is `shared/view/hud/touchLayout.ts`
+(`TOUCH_LAYOUT`), and the tunables are `TOUCH` in `shared/config/touch.ts`. `TouchControlsController` draws the sticks
+and buttons (one ScreenGui, `KV_TouchControls`), turns off the stock touch GUI and locks `LandscapeSensor`.
+
+`touchMode` gives `play` (move and action controls), `spectate` (only Next / Prev) or `hidden` (under the pause overlay,
+any other menu, the full map, the boon draft and a frozen tutorial). The last device used wins: a keyboard or pad hides
+the touch controls until the next touch.
+
+Settings: `DisplaySettings.touchSize`, `touchOpacity`, `touchAutoTarget` and `touchLeftHanded` (overrides-only; the
+settings document stays v2), shown on Options > Display on touch-capable devices only.
+
+Spike: `KV_TouchSpike` (`TouchSpikeController`, off by default; see `docs/SPIKES.md`) is the MB0 device probe: input
+flags, fps and memory, one number per finger, and the touch-to-GUI offset.
 
 ## HUD (`src/client/ui/hud/`, React + Reflex)
 
@@ -1221,6 +1239,18 @@ server or `KV_Tutorial` = true on Workspace. Client-side checks first (this code
   `loaded: false`) or after 6 s, then the main menu; its Tutorial entry starts it.
 - Lobbies (2 players, one fresh): the fresh player's tutorial is never replaced by a lobby run; inviting them answers
   `Finish your current run first`; no `Lobby invites: N` badge shows during their tutorial.
+
+### Mobile (docs/MOBILE.md MB14; not run on a device yet)
+
+1. Emulator, iPhone landscape: no stock thumbstick or jump button. The controls show in a run and hide under the pause
+   overlay, the boon draft and the full map.
+2. Emulator, one finger: walk, attack and roll; tap a boon card to pick it.
+3. Emulator: the corner map and the weapons panel are gone, and the tutorial prompt is at the top, under the boss bar.
+4. Device: three fingers at once (move + attack + roll).
+5. Device: a bow release keeps its aim after the Attack stick lifts (the 0.25 s latch); the auto-target ring shows under
+   the enemy the centre ring would hit.
+6. Device: spectate Next / Prev in a co-op run after a death; left-handed (mirrored controls); touch sizes 80 % and 120
+   %.
 
 ## Gotchas
 

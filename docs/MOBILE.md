@@ -13,10 +13,12 @@ any other.
 
 ## Status (2026-10-28)
 
-Plan ready for implementation. Nothing is built. Owner decisions MBD1 (controls) and MBD2 (leaderboards) were made
-2026-10-28. MBD3-MBD9 are provisional defaults that the build follows as written (the owner may still change them);
+Code-complete headlessly: MB1-MB13 are built and specced (the Roblox client is checked by typecheck, lint and build, not
+yet in Studio or on a device). Nothing is on a device yet. Owner decisions MBD1 (controls) and MBD2 (leaderboards) were
+made 2026-10-28. MBD3-MBD9 are provisional defaults that the build follows as written (the owner may still change them);
 MBD10 (haptics) is not in v1. The step-by-step build is **`docs/MOBILE_IMPL.md`** (tasks MB1-MB13, written so a smaller
-model can do them one commit at a time); MB0 and MB14-MB16 need a device or Studio and stay with the owner.
+model can do them one commit at a time); MB0 and MB14-MB16 need a device or Studio and stay with the owner, so they stay
+unticked.
 
 ## What the code gives us (checked against `main` @ `7defae6`)
 
@@ -130,20 +132,20 @@ Implementer steps (MB1-MB13) are spelled out in **docs/MOBILE_IMPL.md**; [owner]
 - [ ] **MB0 [owner]. Device spike.** Run `KV_TouchSpike` (built in MB1) on a low-end Android, an iPhone and a tablet;
   fill the docs/SPIKES.md table (stock touch GUI, InputObject identity, touch vs GUI offset, mouse emulation, fps /
   memory on floor 1, a Demon Lord floor and `KV_Stress`). → Verify: table filled; go / no-go on MBD4.
-- [ ] **MB1. Touch spike overlay** (`KV_TouchSpike`, off by default).
-- [ ] **MB2. Tunables and layout.** `TOUCH`, `HUD_VIEW.touchMinScale`, `touchLayout()` + spec.
-- [ ] **MB3. TouchControls state machine** + spec.
-- [ ] **MB4. Touch in the input mapping** (`DeviceSnapshot.touch`, device / aim kinds, `keyDevice`) + spec.
-- [ ] **MB5. Auto-target** + spec.
-- [ ] **MB6. Draft helpers and `touchMode`** + specs.
-- [ ] **MB7. Settings and strings** + specs.
-- [ ] **MB8. InputController / SimController wiring.**
-- [ ] **MB9. TouchControlsController** (the on-screen controls).
-- [ ] **MB10. HUD on touch** (scale floor, hidden panels, full map, draft taps, touch hints, tutorial prompt on top,
+- [x] **MB1. Touch spike overlay** (`KV_TouchSpike`, off by default).
+- [x] **MB2. Tunables and layout.** `TOUCH`, `HUD_VIEW.touchMinScale`, `touchLayout()` + spec.
+- [x] **MB3. TouchControls state machine** + spec.
+- [x] **MB4. Touch in the input mapping** (`DeviceSnapshot.touch`, device / aim kinds, `keyDevice`) + spec.
+- [x] **MB5. Auto-target** + spec.
+- [x] **MB6. Draft helpers and `touchMode`** + specs.
+- [x] **MB7. Settings and strings** + specs.
+- [x] **MB8. InputController / SimController wiring.**
+- [x] **MB9. TouchControlsController** (the on-screen controls).
+- [x] **MB10. HUD on touch** (scale floor, hidden panels, full map, draft taps, touch hints, tutorial prompt on top,
   touch footprint spec).
-- [ ] **MB11. Options touch rows.**
-- [ ] **MB12. Tutorial prompts for touch.**
-- [ ] **MB13. Docs** (CLIENT.md, CLAUDE.md decision log, this file).
+- [x] **MB11. Options touch rows.**
+- [x] **MB12. Tutorial prompts for touch.**
+- [x] **MB13. Docs** (CLIENT.md, CLAUDE.md decision log, this file).
 - [ ] **MB14 [owner]. Studio emulator and device check, tuning** (docs/CLIENT.md "Mobile" smoke test; `TOUCH` /
   `TOUCH_LAYOUT`). → Verify: a first-time player finishes the tutorial and reaches floor 3 on a phone without help.
 - [ ] **MB15 [owner]. Performance pass.** Repeat the MB0 numbers with the controls on. If a budget fails, add an Effects

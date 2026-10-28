@@ -243,6 +243,15 @@ Decision log (deviations from `PLAN.md`):
   the 8 `vanguard-*-outline.png` were uploaded 2026-10-28. Placeholders: `KV_Actors/Players/Outlined`, one more
   Highlight (Occluded). Settings: `DisplaySettings.playerOutline` (default On, only Off stored, doc stays v2), string
   `options.display.playerOutline`; debug attribute `KV_PlayerOutline`. Studio check pending.
+- **Mobile play (docs/MOBILE.md).** Input and presentation only (no sim, dungeon, lockstep, hash, replay or fixture
+  change). Touch is a third device in `mapDevicesToInput` (`DeviceSnapshot.touch`, `InputDeviceKind` / `AimDevice`
+  `touch`); `shared/play/touch` holds the pure state machine (`TouchControls`: floating move stick, Attack / Alt action
+  sticks with a centre auto-target and a 0.25 s aim latch, buttons, draft taps), `pickAutoTarget`, the draft helpers and
+  `touchMode`; `shared/view/hud` `touchLayout` places the controls. `TouchControlsController` draws them (stock touch
+  GUI off, `LandscapeSensor`). On touch: HUD scale floor `HUD_VIEW.touchMinScale`, no weapons panel or corner minimap
+  (the full map from the pause / party overlay, tap to close), the tutorial prompt at the top. Settings
+  `DisplaySettings.touchSize` / `touchOpacity` / `touchAutoTarget` / `touchLeftHanded` (overrides-only, doc stays v2).
+  Required strings `TOUCH_STRING_KEYS`. Spike `KV_TouchSpike`. Device checks pending.
 
 ## Commands
 
