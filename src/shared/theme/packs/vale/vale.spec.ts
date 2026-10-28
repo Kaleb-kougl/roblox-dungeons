@@ -25,6 +25,7 @@ import { contrastReport, juiceContrastReport, validateManifest } from "../../val
 import { PLACEHOLDER_MANIFEST } from "../placeholder";
 import { VALE_ASSET_IDS } from "./assetIds";
 import { VALE_AUDIO_FILES } from "./audioLayout";
+import { VALE_AMBIENT_LAYOUTS, VALE_FX_SHEET } from "./fxLayout";
 import {
 	VALE_FLOOR_HEX,
 	VALE_IMAGE_LAYOUTS,
@@ -108,7 +109,10 @@ describe("vale pack", () => {
 	});
 
 	it("every uploaded ID names a real art/build file", () => {
+		// the effects atlas and the Ninja Adventure ambient flipbooks (fxLayout.ts) are art/build files too
 		const files = allFiles();
+		files.push(VALE_FX_SHEET.file);
+		for (const id of sortedKeys(VALE_AMBIENT_LAYOUTS)) files.push(VALE_AMBIENT_LAYOUTS[id].file);
 		for (const file of sortedKeys(VALE_ASSET_IDS)) {
 			expect([file, files.includes(file)]).toEqual([file, true]);
 		}
@@ -174,15 +178,21 @@ describe("vale pack", () => {
 		expect(VALE_MANIFEST.assets["class.vanguard"].kind).toBe("sprites");
 	});
 
-	it("as bundled, boss.demonlord is its placeholder: none of its 14 files has an ID yet", () => {
+	it("as bundled, boss.demonlord is its sprite set: all 14 files uploaded, every sheet with its rim", () => {
 		for (const sheet of VALE_SPRITE_LAYOUTS["boss.demonlord"].sheets) {
-			expect([sheet.file, VALE_ASSET_IDS[sheet.file]]).toEqual([sheet.file, undefined]);
-			expect([sheet.outlineFile, VALE_ASSET_IDS[sheet.outlineFile!]]).toEqual([sheet.outlineFile, undefined]);
+			expect([sheet.file, VALE_ASSET_IDS[sheet.file] !== undefined]).toEqual([sheet.file, true]);
+			expect([sheet.outlineFile, VALE_ASSET_IDS[sheet.outlineFile!] !== undefined]).toEqual([
+				sheet.outlineFile,
+				true,
+			]);
 		}
-		expect(VALE_MANIFEST.assets["boss.demonlord"]).toEqual({ kind: "placeholder" });
+		expect(VALE_MANIFEST.assets["boss.demonlord"].kind).toBe("sprites");
 		const pack = new ThemePack(VALE_MANIFEST, { warn: quiet });
-		expect(pack.sprites("boss.demonlord")).toBe(undefined);
-		expect(pack.placeholder("boss.demonlord").outline).toBe("enemyOutline");
+		const sprites = pack.sprites("boss.demonlord")!;
+		expect(sprites).never.toBe(undefined);
+		// idle facing 12 (S, towards the camera), frame 0: the uploaded sheet and its rim
+		expect(sprites.frame("idle", 12, 0).image).toBe(VALE_ASSET_IDS["demonlord-idle.png"]);
+		expect(sprites.frame("idle", 12, 0).outlineImage).toBe(VALE_ASSET_IDS["demonlord-idle-outline.png"]);
 		expect(pack.str("boss.demonlord.name")).toBe("The Demon Lord");
 	});
 

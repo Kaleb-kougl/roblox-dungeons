@@ -49,13 +49,18 @@ describe("vale effects (fx.*)", () => {
 		expect(sortedKeys(VALE_FX_LAYOUTS)).toEqual([...VALE_FX_IDS].sort());
 	});
 
-	it("as bundled (no effect PNG uploaded) has no fx entry, and no Ninja Adventure ambient texture", () => {
-		expect(VALE_ASSET_IDS[VALE_FX_SHEET.file]).toBe(undefined);
+	it("as bundled (effect PNG uploaded) draws the uploaded effects, and the R5 mote fills every biome's ambient slot", () => {
+		expect(VALE_ASSET_IDS[VALE_FX_SHEET.file]).never.toBe(undefined);
+		// the manifest's fx entries are exactly the effects vale draws (the boost drops' effects have no art yet)
 		for (const id of sortedKeys(VALE_MANIFEST.assets)) {
-			expect([id, isFxOrAmbient(id) && id.sub(1, 3) === "fx."]).toEqual([id, false]);
+			const drawn = (VALE_FX_IDS as ReadonlyArray<string>).includes(id);
+			expect([id, isFxOrAmbient(id) && id.sub(1, 3) === "fx."]).toEqual([id, drawn]);
 		}
 		const pack = new ThemePack(VALE_MANIFEST, { warn: quiet });
-		for (const id of FX_IDS) expect([id, pack.fx(id)]).toEqual([id, undefined]);
+		for (const id of FX_IDS) {
+			const drawn = (VALE_FX_IDS as ReadonlyArray<string>).includes(id);
+			expect([id, pack.fx(id) !== undefined]).toEqual([id, drawn]);
+		}
 		// a biome's ambient texture, if any, is the R5 mote (decor-mote.png, uploaded), never an fx-ambient flipbook
 		const mote = VALE_WORLD_LAYOUTS["mote"];
 		const moteId = mote.kind === "image" ? VALE_ASSET_IDS[mote.file] : undefined;
@@ -64,8 +69,11 @@ describe("vale effects (fx.*)", () => {
 			const fromMote = a === undefined || (moteId !== undefined && a.assetId === moteId);
 			expect([b.id, fromMote]).toEqual([b.id, true]);
 		}
+		// the Ninja Adventure flipbooks are uploaded, but the R5 mote fills every biome's ambient slot first (addWorldArt)
 		for (const id of sortedKeys(VALE_AMBIENT_LAYOUTS)) {
-			expect([id, VALE_ASSET_IDS[VALE_AMBIENT_LAYOUTS[id].file]]).toEqual([id, undefined]);
+			expect([id, VALE_ASSET_IDS[VALE_AMBIENT_LAYOUTS[id].file] !== undefined]).toEqual([id, true]);
+			const shown = VALE_MANIFEST.assets[id] as unknown as { assetId: string };
+			expect([id, shown.assetId]).toEqual([id, moteId]);
 		}
 	});
 

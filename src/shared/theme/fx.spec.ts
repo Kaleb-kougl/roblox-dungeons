@@ -21,6 +21,7 @@ import {
 import { ThemeCore } from "./core";
 import { ThemePack, hexToColor3 } from "./pack";
 import { THEME_PACKS } from "./packs";
+import { VALE_FX_IDS } from "./packs/vale/fx";
 import { PLACEHOLDER_MANIFEST } from "./packs/placeholder";
 import { COLOR_ROLES } from "./types";
 import { deepClone, sortedKeys, type Obj } from "./util";
@@ -138,15 +139,20 @@ describe("fx contract", () => {
 });
 
 describe("validateManifest: fx entries", () => {
-	it("every bundled pack ships no effects, keeps the fx roles far from enemy bullets and validates clean", () => {
+	it("every bundled pack ships only the effects its art covers, keeps the fx roles far from enemy bullets and validates clean", () => {
 		for (const id of sortedKeys(THEME_PACKS)) {
-			for (const asset of sortedKeys(THEME_PACKS[id].assets)) {
-				expect([id, asset, slotFor(asset) === FX]).toEqual([id, asset, false]);
-			}
+			// vale draws the fx.* sets whose art is uploaded (VALE_FX_IDS); the placeholder pack ships none
+			const shipped = sortedKeys(THEME_PACKS[id].assets).filter((asset) => slotFor(asset) === FX);
+			const expected: Array<string> = id === "vale" ? [...VALE_FX_IDS].sort() : [];
+			expect([id, shipped]).toEqual([id, expected]);
 			const report = fxColorReport(THEME_PACKS[id]);
-			expect([id, report.size()]).toEqual([id, FX_ROLES.size() * ENEMY_BULLET_ROLES.size()]);
+			// the fx roles, then every drawn effect's colour (vale: its tint role or meanColor), each against the bullet roles
+			const effectColours = id === "vale" ? VALE_FX_IDS.size() : 0;
+			expect([id, report.size()]).toEqual([id, (FX_ROLES.size() + effectColours) * ENEMY_BULLET_ROLES.size()]);
 			for (const e of report) {
-				expect([id, e.source, e.subject, e.against, e.ok]).toEqual([id, "role", e.subject, e.against, true]);
+				const isRole = (FX_ROLES as ReadonlyArray<string>).includes(e.subject);
+				const source = isRole ? "role" : e.tint !== undefined ? "tint" : "meanColor";
+				expect([id, e.source, e.subject, e.against, e.ok]).toEqual([id, source, e.subject, e.against, true]);
 				expect(e.difference).toBe(colorDifference(e.color, e.againstColor));
 			}
 			expect([id, validateManifest(THEME_PACKS[id], { packId: id })]).toEqual([id, []]);
