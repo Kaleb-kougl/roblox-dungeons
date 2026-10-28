@@ -8,7 +8,13 @@ import {
 	DEFAULT_HUD_FADE,
 	DEFAULT_MINIMAP,
 	DEFAULT_PLAYER_OUTLINE,
+	DEFAULT_TOUCH_AUTO_TARGET,
+	DEFAULT_TOUCH_LEFT_HANDED,
+	DEFAULT_TOUCH_OPACITY_PERCENT,
+	DEFAULT_TOUCH_SIZE_PERCENT,
 	HUD_SCALE_PERCENTS,
+	TOUCH_OPACITY_PERCENTS,
+	TOUCH_SIZE_PERCENTS,
 	JUICE_SETTING_KEYS,
 	PlayerDocCache,
 	SETTINGS_DOC_V1,
@@ -244,6 +250,10 @@ describe("display: room edges (docs/ROOM_EDGES.md RE6)", () => {
 			hudFade: DEFAULT_HUD_FADE,
 			minimap: DEFAULT_MINIMAP,
 			playerOutline: DEFAULT_PLAYER_OUTLINE,
+			touchSize: DEFAULT_TOUCH_SIZE_PERCENT,
+			touchOpacity: DEFAULT_TOUCH_OPACITY_PERCENT,
+			touchAutoTarget: DEFAULT_TOUCH_AUTO_TARGET,
+			touchLeftHanded: DEFAULT_TOUCH_LEFT_HANDED,
 		});
 	});
 
@@ -280,6 +290,10 @@ describe("display: room edges (docs/ROOM_EDGES.md RE6)", () => {
 			hudFade: true,
 			minimap: true,
 			playerOutline: true,
+			touchSize: DEFAULT_TOUCH_SIZE_PERCENT,
+			touchOpacity: DEFAULT_TOUCH_OPACITY_PERCENT,
+			touchAutoTarget: DEFAULT_TOUCH_AUTO_TARGET,
+			touchLeftHanded: DEFAULT_TOUCH_LEFT_HANDED,
 		});
 		expect(resolveDisplaySettings(decodeSettingsDoc({ v: 2 }).display).roomEdges).toBe(true);
 		expect(resolveDisplaySettings(decodeSettingsDoc({ v: SETTINGS_DOC_V1, juice: {} }).display).roomEdges).toBe(
@@ -344,6 +358,10 @@ describe("display: minimap (docs/MINIMAP.md M10)", () => {
 			hudFade: DEFAULT_HUD_FADE,
 			minimap: false,
 			playerOutline: DEFAULT_PLAYER_OUTLINE,
+			touchSize: DEFAULT_TOUCH_SIZE_PERCENT,
+			touchOpacity: DEFAULT_TOUCH_OPACITY_PERCENT,
+			touchAutoTarget: DEFAULT_TOUCH_AUTO_TARGET,
+			touchLeftHanded: DEFAULT_TOUCH_LEFT_HANDED,
 		});
 	});
 
@@ -381,6 +399,10 @@ describe("display: minimap (docs/MINIMAP.md M10)", () => {
 			hudFade: false,
 			minimap: true,
 			playerOutline: true,
+			touchSize: DEFAULT_TOUCH_SIZE_PERCENT,
+			touchOpacity: DEFAULT_TOUCH_OPACITY_PERCENT,
+			touchAutoTarget: DEFAULT_TOUCH_AUTO_TARGET,
+			touchLeftHanded: DEFAULT_TOUCH_LEFT_HANDED,
 		});
 		expect(resolveDisplaySettings(decodeSettingsDoc({ v: 2 }).display).minimap).toBe(true);
 		expect(resolveDisplaySettings(decodeSettingsDoc({ v: SETTINGS_DOC_V1, juice: {} }).display).minimap).toBe(true);
@@ -608,6 +630,10 @@ describe("display: player outline (docs/PLAYER_OUTLINE.md P4)", () => {
 			hudFade: DEFAULT_HUD_FADE,
 			minimap: DEFAULT_MINIMAP,
 			playerOutline: false,
+			touchSize: DEFAULT_TOUCH_SIZE_PERCENT,
+			touchOpacity: DEFAULT_TOUCH_OPACITY_PERCENT,
+			touchAutoTarget: DEFAULT_TOUCH_AUTO_TARGET,
+			touchLeftHanded: DEFAULT_TOUCH_LEFT_HANDED,
 		});
 	});
 
@@ -635,5 +661,69 @@ describe("display: player outline (docs/PLAYER_OUTLINE.md P4)", () => {
 		expect(resolveDisplaySettings(decodeSettingsDoc({ v: SETTINGS_DOC_V1, juice: {} }).display).playerOutline).toBe(
 			true,
 		);
+	});
+});
+
+describe("display: touch controls (docs/MOBILE.md MB7)", () => {
+	it("defaults: size 100 %, opacity 70 %, auto-target On, left-handed Off; the defaults are listed steps", () => {
+		expect(TOUCH_SIZE_PERCENTS.includes(DEFAULT_TOUCH_SIZE_PERCENT)).toBe(true);
+		expect(TOUCH_OPACITY_PERCENTS.includes(DEFAULT_TOUCH_OPACITY_PERCENT)).toBe(true);
+		expect(DEFAULT_TOUCH_AUTO_TARGET).toBe(true);
+		expect(DEFAULT_TOUCH_LEFT_HANDED).toBe(false);
+		expect(resolveDisplaySettings(undefined)).toEqual({
+			hudScale: DEFAULT_HUD_SCALE_PERCENT,
+			roomEdges: DEFAULT_ROOM_EDGES,
+			hudFade: DEFAULT_HUD_FADE,
+			minimap: DEFAULT_MINIMAP,
+			playerOutline: DEFAULT_PLAYER_OUTLINE,
+			touchSize: DEFAULT_TOUCH_SIZE_PERCENT,
+			touchOpacity: DEFAULT_TOUCH_OPACITY_PERCENT,
+			touchAutoTarget: DEFAULT_TOUCH_AUTO_TARGET,
+			touchLeftHanded: DEFAULT_TOUCH_LEFT_HANDED,
+		});
+	});
+
+	it("only non-default values are stored: size and opacity from their lists, the two switches off the default", () => {
+		expect(sanitizeDisplayOverrides({ touchSize: 120 })).toEqual({ touchSize: 120 });
+		expect(sanitizeDisplayOverrides({ touchSize: DEFAULT_TOUCH_SIZE_PERCENT })).toEqual({});
+		expect(sanitizeDisplayOverrides({ touchSize: 77 })).toEqual({});
+		expect(sanitizeDisplayOverrides({ touchOpacity: 40 })).toEqual({ touchOpacity: 40 });
+		expect(sanitizeDisplayOverrides({ touchOpacity: DEFAULT_TOUCH_OPACITY_PERCENT })).toEqual({});
+		expect(sanitizeDisplayOverrides({ touchOpacity: 55 })).toEqual({});
+		expect(sanitizeDisplayOverrides({ touchAutoTarget: false })).toEqual({ touchAutoTarget: false });
+		expect(sanitizeDisplayOverrides({ touchAutoTarget: true })).toEqual({});
+		expect(sanitizeDisplayOverrides({ touchLeftHanded: true })).toEqual({ touchLeftHanded: true });
+		expect(sanitizeDisplayOverrides({ touchLeftHanded: false })).toEqual({});
+	});
+
+	it("ignores junk", () => {
+		for (const junk of [0, "120", "true", {}, [true]] as ReadonlyArray<unknown>) {
+			expect(sanitizeDisplayOverrides({ touchSize: junk, touchOpacity: junk })).toEqual({});
+			expect(sanitizeDisplayOverrides({ touchAutoTarget: junk, touchLeftHanded: junk })).toEqual({});
+		}
+	});
+
+	it("round-trips through the stored document (still v2)", () => {
+		const overrides: SettingsOverrides = {
+			display: { touchSize: 120, touchOpacity: 40, touchAutoTarget: false, touchLeftHanded: true },
+		};
+		const doc = encodeSettingsDoc(overrides);
+		expect(doc.v).toBe(SETTINGS_DOC_VERSION);
+		expect(doc.v).toBe(2);
+		expect(decodeSettingsDoc(doc)).toEqual(overrides);
+		expect(resolveDisplaySettings(decodeSettingsDoc(doc).display)).toEqual({
+			...defaultDisplaySettings(),
+			touchSize: 120,
+			touchOpacity: 40,
+			touchAutoTarget: false,
+			touchLeftHanded: true,
+		});
+		expect(applySettingsPatch(overrides, { display: {} })).toEqual({});
+		expect(
+			sameSettingsOverrides(overrides, {
+				display: { touchSize: 120, touchOpacity: 40, touchAutoTarget: false, touchLeftHanded: true },
+			}),
+		).toBe(true);
+		expect(sameSettingsOverrides(overrides, { display: { touchSize: 120 } })).toBe(false);
 	});
 });

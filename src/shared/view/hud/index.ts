@@ -18,3 +18,4 @@ export * from "./minimapHud";
 export * from "./wrap";
 export * from "./occlusion";
 export * from "./touchLayout";
+export * from "./touch";

@@ -48,3 +48,17 @@ export const DEFAULT_MINIMAP = true;
 
 /** The watched player's rim (docs/PLAYER_OUTLINE.md P4, Options > Display > Player outline): On by default. */
 export const DEFAULT_PLAYER_OUTLINE = true;
+
+/** Touch control sizes, percent of the layout (docs/MOBILE.md MB7, Options > Display > Touch size). 100 is the default. */
+export const TOUCH_SIZE_PERCENTS: ReadonlyArray<number> = [80, 100, 120];
+export const DEFAULT_TOUCH_SIZE_PERCENT = 100;
+
+/** Touch control opacity, percent (docs/MOBILE.md MB7, Options > Display > Touch opacity). 70 is the default. */
+export const TOUCH_OPACITY_PERCENTS: ReadonlyArray<number> = [40, 70, 100];
+export const DEFAULT_TOUCH_OPACITY_PERCENT = 70;
+
+/** Touch auto-target: the aim assist on the attack stick (docs/MOBILE.md MB7, Options > Display > Auto-target): On. */
+export const DEFAULT_TOUCH_AUTO_TARGET = true;
+
+/** Left-handed touch layout: the controls mirror to the left side (docs/MOBILE.md MB7): Off. */
+export const DEFAULT_TOUCH_LEFT_HANDED = false;

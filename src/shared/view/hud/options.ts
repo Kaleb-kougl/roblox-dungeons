@@ -61,6 +61,11 @@ export const OPTIONS_STRINGS = {
 	minimap: "options.display.minimap",
 	/** The watched player's rim On / Off (docs/PLAYER_OUTLINE.md P4; labels as roomEdges). */
 	playerOutline: "options.display.playerOutline",
+	/** Touch controls (docs/MOBILE.md MB7): the size and opacity steps (percent), and the auto-target and left-handed On / Off rows (labels as roomEdges). */
+	touchSize: "options.display.touchSize",
+	touchOpacity: "options.display.touchOpacity",
+	touchAutoTarget: "options.display.touchAutoTarget",
+	touchLeftHanded: "options.display.touchLeftHanded",
 	/** Prefixes: `options.tab.<tab>`, `options.device.<kbm|pad>`, `options.action.<action>`, `options.refused.<reason>`. */
 	tabPrefix: "options.tab.",
 	devicePrefix: "options.device.",

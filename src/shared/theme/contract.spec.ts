@@ -179,8 +179,9 @@ describe("required IDs and strings", () => {
 			expect([id, slotFor(id) !== undefined]).toEqual([id, true]);
 		}
 		// + enemy.dummy.name, breakable.<kind>.name, boost.<kind>.name / .desc / .icon, hud.toast.boost, the loading
-		// screen's three (docs/PRELOAD.md P4) and the stage loader's five (docs/STAGE_LOADER.md SL2)
-		expect(REQUIRED_STRING_KEYS.size()).toBe(41 + 1 + 2 + 4 * 3 + 1 + 3 + 5);
+		// screen's three (docs/PRELOAD.md P4), the stage loader's five (docs/STAGE_LOADER.md SL2) and the touch
+		// controls' thirteen (docs/MOBILE.md MB7)
+		expect(REQUIRED_STRING_KEYS.size()).toBe(41 + 1 + 2 + 4 * 3 + 1 + 3 + 5 + 13);
 		expect(new Set(REQUIRED_STRING_KEYS).size()).toBe(REQUIRED_STRING_KEYS.size());
 		expect(BIOMES.map((b) => b.forgeTheme)).toEqual(["ancient", "molten", "frost", "grim", "verdant"]);
 	});

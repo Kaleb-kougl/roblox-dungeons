@@ -690,6 +690,27 @@ export const STAGE_STRING_KEYS = [
 	"stage.bossFloor",
 ] as const;
 
+/**
+ * Roblox port (docs/MOBILE.md MB7): the touch controls' strings (shared/view TOUCH_STRINGS, touchButtonLabelKey): the nine
+ * button labels (`touch.<id>`) and the four hint lines that replace the key names on touch. The theme imports nothing
+ * outside shared/theme, so the list is repeated here.
+ */
+export const TOUCH_STRING_KEYS = [
+	"touch.attack",
+	"touch.alt",
+	"touch.roll",
+	"touch.ember",
+	"touch.flask",
+	"touch.swap",
+	"touch.shrine",
+	"touch.spectateNext",
+	"touch.spectatePrev",
+	"touch.hint.draft",
+	"touch.hint.shrine",
+	"touch.hint.spectate",
+	"touch.hint.mapClose",
+] as const;
+
 /** Every string key a pack must define. Code may rely on these existing. */
 export const REQUIRED_STRING_KEYS: ReadonlyArray<string> = [
 	"game.title",
@@ -719,6 +740,7 @@ export const REQUIRED_STRING_KEYS: ReadonlyArray<string> = [
 	...BOOST_STRING_KEYS,
 	...LOADING_STRING_KEYS,
 	...STAGE_STRING_KEYS,
+	...TOUCH_STRING_KEYS,
 ];
 
 /**
