@@ -159,5 +159,4 @@ export const VALE_ASSET_IDS: Readonly<Record<string, RobloxAssetId>> = {
 	"fx-ambient-b3.png": "rbxassetid://81069724717150",
 	"fx-ambient-b5.png": "rbxassetid://93348383001922",
 	"fx-effects.png": "rbxassetid://92741658775036",
-
 };
