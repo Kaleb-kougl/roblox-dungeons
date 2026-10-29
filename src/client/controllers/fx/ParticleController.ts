@@ -12,6 +12,7 @@ import {
 	PALETTE_KIND_BASE,
 	PAL_SPARK,
 	PARTICLE_QUAD_CAPACITY,
+	ROOM_CLEAR,
 	burstSeed,
 	particleColorRole,
 	type ChipBurst,
@@ -77,6 +78,9 @@ export class ParticleController implements OnStart, ParticleWriter {
 	private boostBase = PAL_SPARK;
 	private collectBurst: ChipBurst | undefined;
 	private poofBurst: ChipBurst | undefined;
+	/** The room clear spark ring (docs/ROOM_CLEAR.md RC5): CLEAR's colour index, PERFECT's is the next one. */
+	private roomClearBase = PAL_SPARK;
+	private roomClearShape: ChipBurst | undefined;
 	private readonly moveParts = new Array<BasePart>();
 	private readonly moveCFrames = new Array<CFrame>();
 	private folder: Folder | undefined;
@@ -120,6 +124,9 @@ export class ParticleController implements OnStart, ParticleWriter {
 		for (const k of BOOST_KINDS) this.palette.push(pack.boost(k).color);
 		this.collectBurst = chipBurstOf(BOOST_VIEW.collectBurst);
 		this.poofBurst = chipBurstOf(BOOST_VIEW.poofBurst);
+		this.roomClearBase = this.palette.size();
+		this.palette.push(pack.color("uiAccent"), pack.color("ember"));
+		this.roomClearShape = chipBurstOf(ROOM_CLEAR.burst);
 
 		this.fx.onEvent((e, settings) => {
 			switch (e.type) {
@@ -183,6 +190,13 @@ export class ParticleController implements OnStart, ParticleWriter {
 		const burst = fade ? this.poofBurst : this.collectBurst;
 		if (burst === undefined || kind < 0 || kind >= BOOST_KINDS.size()) return;
 		this.system.chips(x, z, this.boostBase + kind, burst, seed, this.fx.settings());
+	}
+
+	/** The room clear spark ring at sim (x, z) (docs/ROOM_CLEAR.md RC5): uiAccent, or ember for PERFECT. */
+	roomClearBurst(x: number, z: number, perfect: boolean, seed: number): void {
+		const shape = this.roomClearShape;
+		if (shape === undefined) return;
+		this.system.chips(x, z, this.roomClearBase + (perfect ? 1 : 0), shape, seed, this.fx.settings());
 	}
 
 	private frame(rawDt: number): void {

@@ -29,3 +29,4 @@ export * from "./afterimage";
 export * from "./roomClears";
 export * from "./roomClearConfig";
 export * from "./roomClearSequence";
+export * from "./roomClearRules";

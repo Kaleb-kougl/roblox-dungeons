@@ -775,6 +775,11 @@ export class ActorRenderController implements OnStart {
 	}
 
 	/** Once per frame after the tracker: advance the hit-reaction clock, then feed the frame's events. */
+	/** Holds an actor's sprite for `seconds` of the hit-reaction clock (docs/ROOM_CLEAR.md RC5). */
+	holdActor(slot: number, actorId: number, seconds: number): void {
+		this.hitReact.hold(slot, actorId, this.hitNow + seconds);
+	}
+
 	private hitReactFrame(events: FxEventBuffer, settings: Readonly<JuiceSettings>, dt: number): void {
 		if (this.sim.getContext()?.live?.isPaused() !== true) {
 			this.hitNow += math.min(math.max(dt, 0), FEEL_HIT.maxFrameDtSec);

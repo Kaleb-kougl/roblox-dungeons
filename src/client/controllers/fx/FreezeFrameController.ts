@@ -76,6 +76,11 @@ export class FreezeFrameController implements OnStart {
 		});
 	}
 
+	/** Another controller's camera nudge (docs/ROOM_CLEAR.md RC5: the stamp's kick); the rank rule still applies. */
+	requestNudge(k: NudgeKind): void {
+		this.startNudge(k);
+	}
+
 	/** This frame's camera nudge in whole render pixels (x right, y up); (0, 0) almost always. */
 	getNudge(): Readonly<NudgeOffset> {
 		return this.nudge;

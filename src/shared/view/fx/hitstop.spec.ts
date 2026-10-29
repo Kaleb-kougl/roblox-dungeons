@@ -13,6 +13,7 @@ import {
 	HEAVY_KILL_FREEZE_MS,
 	KILL_FREEZE_MS,
 	NUDGE_MS,
+	STAMP_NUDGE_MS,
 	applyFreezeEvent,
 	applyHurtFreeze,
 	freezeMsFor,
@@ -399,6 +400,17 @@ describe("freeze-frame rules: port additions (docs/FEEL.md J3)", () => {
 		expect(simPacerFor(1, c)).toBe(c);
 		expect(simPacerFor(2, c)).toBe(undefined);
 		expect(simPacerFor(4, c)).toBe(undefined);
+	});
+
+	it("the room clear stamp's kick: 1 texel down for STAMP_NUDGE_MS, the heavy rank (docs/ROOM_CLEAR.md RC5)", () => {
+		const o = { x: 0, y: 0 };
+		expect(NUDGE_MS.stamp).toBe(STAMP_NUDGE_MS);
+		expect(nudgeOffset("stamp", 0, o)).toEqual({ x: 0, y: -1 });
+		expect(nudgeOffset("stamp", STAMP_NUDGE_MS - 1, o)).toEqual({ x: 0, y: -1 });
+		expect(nudgeOffset("stamp", STAMP_NUDGE_MS, o)).toEqual({ x: 0, y: 0 });
+		expect(nudgeReplaces("stamp", "heavy")).toBe(true);
+		expect(nudgeReplaces("heavy", "stamp")).toBe(true);
+		expect(nudgeReplaces("hurt", "stamp")).toBe(false);
 	});
 
 	it("nudges: heavy kick 1 texel down, hurt jolt 2 texels right / left / right; shake off or reduced motion: none", () => {

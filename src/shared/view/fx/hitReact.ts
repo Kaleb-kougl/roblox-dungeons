@@ -207,6 +207,12 @@ export class HitReactSlots {
 		this.startPush(i, e.x - toward.x, e.z - toward.z, texels, now);
 	}
 
+	/** Hold slot i's sprite until `endAt` if it still tracks `actorId` (docs/ROOM_CLEAR.md RC5: the co-op last-kill hold). */
+	hold(i: number, actorId: number, endAt: number): void {
+		if (i < 0 || i >= this.capacity || this.id[i] !== actorId) return;
+		this.extendHold(i, endAt);
+	}
+
 	private extendHold(i: number, endAt: number): void {
 		if (endAt > this.holdUntil[i]) this.holdUntil[i] = endAt;
 	}

@@ -6,7 +6,8 @@
  * Port change (docs/FEEL.md J3, JD12): a heavy landed hit (FxEvent.heavy, not capped) freezes HEAVY_HIT_FREEZE_MS and
  * kicks the camera 1 texel ("heavy" nudge); the view player getting hurt jolts the camera 2 texels ("hurt" nudge) and,
  * on a heart or lethal hit, freezes FEEL_HURT.freezeMs (applyHurtFreeze); nudge priority death > hurt > phase > heavy
- * (nudgeReplaces); screenShakeOn reads the port's screenShake setting too.
+ * (nudgeReplaces); screenShakeOn reads the port's screenShake setting too. Port (docs/ROOM_CLEAR.md RC5): the room clear stamp's
+ * 'stamp' nudge (1 texel down, STAMP_NUDGE_MS, the heavy rank).
  */
 import type { JuiceSettings } from "shared/settings";
 import type { HurtKind } from "../watch";
@@ -94,18 +95,22 @@ export function applyHurtFreeze(kind: HurtKind, clock: HitstopClock, settings: R
 // ---------------------------------------------------------------------------------------------
 // Camera nudge (render-only, whole render pixels; off under reducedMotion or the screenShake setting: screenShakeOn)
 
-export type NudgeKind = "none" | "heavy" | "phase" | "hurt" | "death";
+export type NudgeKind = "none" | "heavy" | "stamp" | "phase" | "hurt" | "death";
+
+/** Port (docs/ROOM_CLEAR.md RC5): the room clear stamp's 1-texel kick down. */
+export const STAMP_NUDGE_MS = 60;
 
 /** Nudge length per kind, ms of real time. */
 export const NUDGE_MS: Readonly<Record<NudgeKind, number>> = {
 	none: 0,
 	heavy: 50,
+	stamp: STAMP_NUDGE_MS,
 	phase: 80,
 	hurt: FEEL_HURT.nudgeSteps * FEEL_HURT.nudgeStepMs,
 	death: 240,
 };
 /** Priority: a running nudge is only replaced by one of the same or a higher rank (death > hurt > phase > heavy). */
-const NUDGE_RANK: Readonly<Record<NudgeKind, number>> = { none: 0, heavy: 1, phase: 2, hurt: 3, death: 4 };
+const NUDGE_RANK: Readonly<Record<NudgeKind, number>> = { none: 0, heavy: 1, stamp: 1, phase: 2, hurt: 3, death: 4 };
 /** The death nudge alternates right / left every this many ms. */
 const DEATH_NUDGE_STEP_MS = 60;
 
@@ -147,7 +152,7 @@ export function nudgeOffset(kind: NudgeKind, elapsedMs: number, out: NudgeOffset
 	if (kind === "none" || !(elapsedMs >= 0) || elapsedMs >= NUDGE_MS[kind]) return out;
 	if (kind === "phase") {
 		if (elapsedMs < NUDGE_MS.phase / 2) out.y = -1;
-	} else if (kind === "heavy") {
+	} else if (kind === "heavy" || kind === "stamp") {
 		out.y = -1;
 	} else if (kind === "hurt") {
 		const step = math.floor(elapsedMs / FEEL_HURT.nudgeStepMs);

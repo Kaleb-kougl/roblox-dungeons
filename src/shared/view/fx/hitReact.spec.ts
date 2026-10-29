@@ -248,6 +248,19 @@ describe("hit reaction", () => {
 		expect(s.look(0, 5, D, 1).rimFlash).toBe(true);
 	});
 
+	it("hold(i, id, until) extends only the matching actor's hold (docs/ROOM_CLEAR.md RC5)", () => {
+		const s = new HitReactSlots(BASIS);
+		s.onEvent(ev({ type: "spawned", actorId: 1 }), 0, undefined);
+		s.hold(0, 1, 0.5);
+		expect(s.look(0, 1, 0.4, 1).hold).toBe(true);
+		expect(s.look(0, 1, 0.5, 1).hold).toBe(false);
+		// Another id, an out-of-range slot: nothing.
+		s.hold(0, 2, 2);
+		s.hold(-1, 1, 2);
+		s.hold(s.capacity, 1, 2);
+		expect(s.look(0, 1, 0.6, 1).hold).toBe(false);
+	});
+
 	it("'reset' forgets every slot; other events and bad slots are ignored", () => {
 		const s = new HitReactSlots(BASIS);
 		s.onEvent(ev(), 0, undefined);
