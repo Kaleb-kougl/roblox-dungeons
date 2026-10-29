@@ -617,6 +617,8 @@ export const BOOST_BEAM_IMAGE_ID = "ui.marker.boost";
  * and shrine, stairwell, new floor, depth up, the run-over jingle, and the tutorial / lobby tracks. Then the Demon
  * Lord's (docs/BOSS_DEMONLORD.md D6): sfx.boss.taunt, a taunting boss's phase change (the roar plays while it is
  * silent). Then the boost drops' four (docs/BOOSTS.md B5).
+ * Then the room clear celebration's three (docs/ROOM_CLEAR.md RC4): PERFECT's jingle, a tally tick, a bonus landing
+ * in the score.
  */
 export const PORT_AUDIO_EVENTS = [
 	"sfx.player.swing",
@@ -646,6 +648,10 @@ export const PORT_AUDIO_EVENTS = [
 	"sfx.boost.collect",
 	"sfx.boost.expire",
 	"sfx.boost.aegisbreak",
+	// docs/ROOM_CLEAR.md RC4: PERFECT's jingle, a tally tick, a bonus landing in the score
+	"sfx.room.perfect",
+	"sfx.score.tick",
+	"sfx.score.land",
 ] as const;
 
 /**

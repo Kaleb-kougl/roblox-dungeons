@@ -71,6 +71,12 @@ export const SFX = {
 	breakableBreak: "sfx.breakable.break",
 	/** Endless floors (docs/FX_AUDIO.md A3): a combat room cleared, a relic pedestal taken, the curse shrine used. */
 	roomClear: "sfx.room.clear",
+	/** docs/ROOM_CLEAR.md RC4: PERFECT's stamp (a jingle; falls back to the CLEAR jingle while silent). */
+	roomPerfect: "sfx.room.perfect",
+	/** docs/ROOM_CLEAR.md RC4: a tally segment starts counting. */
+	scoreTick: "sfx.score.tick",
+	/** docs/ROOM_CLEAR.md RC4: the room bonus lands in the score panel. */
+	scoreLand: "sfx.score.land",
 	relicTake: "sfx.relic.take",
 	shrineUse: "sfx.shrine.use",
 	/** SimEvents stairwellOpened / floorChanged / depthChanged. */
@@ -133,6 +139,9 @@ export const ALL_SFX: ReadonlyArray<SfxId> = [
 	SFX.boostCollect,
 	SFX.boostExpire,
 	SFX.boostAegisBreak,
+	SFX.roomPerfect,
+	SFX.scoreTick,
+	SFX.scoreLand,
 ];
 
 /** IDs this port added to the placeholder pack (not in the web contract's AUDIO_EVENTS; theme PORT_AUDIO_EVENTS). */
@@ -160,6 +169,9 @@ export const PORT_SFX: ReadonlyArray<SfxId> = [
 	SFX.boostCollect,
 	SFX.boostExpire,
 	SFX.boostAegisBreak,
+	SFX.roomPerfect,
+	SFX.scoreTick,
+	SFX.scoreLand,
 ];
 
 /**
@@ -275,6 +287,9 @@ export const SFX_PRIORITY: Readonly<Record<SfxId, number>> = {
 	[SFX.bossTaunt]: 80,
 	[SFX.stairwellOpen]: 75,
 	[SFX.roomClear]: 72,
+	[SFX.roomPerfect]: 72,
+	[SFX.scoreLand]: 60,
+	[SFX.scoreTick]: 30,
 	[SFX.relicTake]: 70,
 	[SFX.shrineUse]: 70,
 	[SFX.floorEnter]: 68,
@@ -311,6 +326,7 @@ export const DUCKING_SFX: ReadonlyArray<SfxId> = [
 	SFX.depthUp,
 	SFX.gameOver,
 	SFX.roomClear,
+	SFX.roomPerfect,
 	SFX.shrineUse,
 	SFX.ember,
 ];
@@ -321,7 +337,14 @@ export const DUCKING_SFX: ReadonlyArray<SfxId> = [
  * stairwellOpened on one tick: the depth jingle plays, not the victory over it (depth.up ranks above victory; M1 has
  * no depth, so its boss kill keeps the victory). sfx.relic.take is a short power-up sound, not a jingle.
  */
-export const JINGLE_SFX: ReadonlyArray<SfxId> = [SFX.gameOver, SFX.depthUp, SFX.victory, SFX.roomClear, SFX.shrineUse];
+export const JINGLE_SFX: ReadonlyArray<SfxId> = [
+	SFX.gameOver,
+	SFX.depthUp,
+	SFX.victory,
+	SFX.roomClear,
+	SFX.roomPerfect,
+	SFX.shrineUse,
+];
 
 /**
  * A silent sound falls back to another ID: a pack without a finisher clip plays the plain swing there, one without a
@@ -332,6 +355,7 @@ export const SFX_FALLBACK: Readonly<Partial<Record<SfxId, SfxId>>> = {
 	[SFX.playerFinisher]: SFX.playerSwing,
 	[SFX.uiBack]: SFX.uiClick,
 	[SFX.bossTaunt]: SFX.bossRoar,
+	[SFX.roomPerfect]: SFX.roomClear,
 };
 
 /** Whether a sound ID has a clip in the theme pack (the controller passes `pack.sound(id).assetId !== undefined`). */
@@ -411,6 +435,8 @@ export class AudioCueMapper {
 	private readonly intervals = new Map<string, number>();
 	private lastEnemySpawned = -1;
 	readonly watch = new StateWatch();
+	/** The room clear celebration plays the jingle itself (docs/ROOM_CLEAR.md RC4; Room clear On). */
+	celebratesRoomClears = false;
 	// This frame's candidates (parallel lists, reused).
 	private readonly pendingIds = new Array<string>();
 	private readonly pendingVolumes = new Array<number>();
@@ -591,7 +617,7 @@ export class AudioCueMapper {
 			}
 		}
 		if (w.localCharged) this.cue(SFX.playerCharged, 1);
-		if (w.roomCleared) this.cue(SFX.roomClear, 1);
+		if (w.roomCleared && !this.celebratesRoomClears) this.cue(SFX.roomClear, 1);
 		if (w.relicTaken) this.cue(SFX.relicTake, 1);
 		if (w.shrineUsed) this.cue(SFX.shrineUse, 1);
 		if (w.wiped) this.cue(SFX.gameOver, 1);

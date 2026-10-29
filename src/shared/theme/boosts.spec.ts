@@ -105,15 +105,18 @@ describe("boosts: contract", () => {
 		for (const key of want) expect([key, REQUIRED_STRING_KEYS.includes(key)]).toEqual([key, true]);
 	});
 
-	it("appends the four boost sounds to the port's audio IDs, in order", () => {
+	it("appends the four boost sounds to the port's audio IDs, in order (docs/ROOM_CLEAR.md RC4: three more follow them)", () => {
 		const n = PORT_AUDIO_EVENTS.size();
+		// the room clear celebration's three (RC4) are appended after the boost four
+		const at = n - 7;
+		const stop = at + 4;
 		expect([
-			PORT_AUDIO_EVENTS[n - 4],
-			PORT_AUDIO_EVENTS[n - 3],
-			PORT_AUDIO_EVENTS[n - 2],
-			PORT_AUDIO_EVENTS[n - 1],
+			PORT_AUDIO_EVENTS[at],
+			PORT_AUDIO_EVENTS[at + 1],
+			PORT_AUDIO_EVENTS[at + 2],
+			PORT_AUDIO_EVENTS[at + 3],
 		]).toEqual(["sfx.boost.drop", "sfx.boost.collect", "sfx.boost.expire", "sfx.boost.aegisbreak"]);
-		for (let i = n - 4; i < n; i++) {
+		for (let i = at; i < stop; i++) {
 			const id = PORT_AUDIO_EVENTS[i];
 			expect([id, slotFor(id)?.soundGroup, REQUIRED_ASSET_IDS.includes(id)]).toEqual([id, "sfx", true]);
 		}

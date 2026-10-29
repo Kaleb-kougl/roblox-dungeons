@@ -371,6 +371,48 @@ describe("audio: boost drops (docs/BOOSTS.md B7)", () => {
 		]);
 	});
 
+	it("room clear celebration (docs/ROOM_CLEAR.md RC4): with celebratesRoomClears on, a room clear cues no sfx.room.clear", () => {
+		const roomOf = (s: SimState) => {
+			const fake = s as unknown as {
+				endless?: { floor: number };
+				score?: { rooms: Array<{ cleared: number }> };
+				run?: { pedestalTaken: number[]; shrineUsed: number };
+			};
+			fake.endless = { floor: 3 };
+			fake.score = { rooms: [{ cleared: 0 }] };
+			fake.run = { pedestalTaken: [0], shrineUsed: 0 };
+			return fake.score.rooms[0];
+		};
+		const celebrated = solo();
+		const celebratedRoom = roomOf(celebrated);
+		const on = primed(celebrated);
+		on.celebratesRoomClears = true;
+		celebratedRoom.cleared = 1;
+		expect(ids(on, 1, noEvents(), NO_FX, celebrated)).toEqual([]);
+
+		const plain = solo();
+		const plainRoom = roomOf(plain);
+		const off = primed(plain);
+		plainRoom.cleared = 1;
+		expect(ids(off, 1, noEvents(), NO_FX, plain)).toEqual([SFX.roomClear]);
+	});
+
+	it("the room clear celebration's three IDs are the theme's port audio events, ranked, in ALL_SFX and PORT_SFX", () => {
+		const ids3 = [SFX.roomPerfect, SFX.scoreTick, SFX.scoreLand];
+		expect(ids3).toEqual(["sfx.room.perfect", "sfx.score.tick", "sfx.score.land"]);
+		for (const id of ids3) {
+			expect([id, ALL_SFX.includes(id), PORT_SFX.includes(id), SFX_PRIORITY[id] > 0]).toEqual([
+				id,
+				true,
+				true,
+				true,
+			]);
+		}
+		expect(JINGLE_SFX.includes(SFX.roomPerfect)).toBe(true);
+		expect(DUCKING_SFX.includes(SFX.roomPerfect)).toBe(true);
+		expect(SFX_FALLBACK[SFX.roomPerfect]).toBe(SFX.roomClear);
+	});
+
 	it("the boost IDs are the theme's port audio events (lowercase aegisbreak), ranked, in ALL_SFX and PORT_SFX", () => {
 		const ids4 = [SFX.boostDrop, SFX.boostCollect, SFX.boostExpire, SFX.boostAegisBreak];
 		expect(ids4).toEqual(["sfx.boost.drop", "sfx.boost.collect", "sfx.boost.expire", "sfx.boost.aegisbreak"]);
@@ -712,7 +754,8 @@ describe("audio: one jingle per frame", () => {
 		fake.run.pedestalTaken[0] = 1;
 		// room clear and shrine are both jingles: the room's; the relic is no jingle and plays too
 		expect(ids(m, 1, noEvents(), NO_FX, s)).toEqual([SFX.roomClear, SFX.relicTake]);
-		const order = [SFX.gameOver, SFX.depthUp, SFX.victory, SFX.roomClear, SFX.shrineUse];
+		// docs/ROOM_CLEAR.md RC4: PERFECT's jingle ranks with the CLEAR one (72)
+		const order = [SFX.gameOver, SFX.depthUp, SFX.victory, SFX.roomClear, SFX.roomPerfect, SFX.shrineUse];
 		expect(JINGLE_SFX).toEqual(order);
 		for (let i = 1; i < order.size(); i++) {
 			expect([order[i], SFX_PRIORITY[order[i - 1]] >= SFX_PRIORITY[order[i]]]).toEqual([order[i], true]);

@@ -396,6 +396,43 @@
 			"notes": "0.45 s. Ducks the music.",
 			"confirmed": false
 		},
+		"sfx.room.perfect": {
+			"category": "jingle",
+			"clips": [
+				"ninja-adventure/Audio/Jingles/Success2.wav"
+			],
+			"volume": 0.65,
+			"notes": "docs/ROOM_CLEAR.md: PERFECT's stamp lands. Ducks the music.",
+			"alternates": [
+				"ninja-adventure/Audio/Jingles/Success4.wav",
+				"ninja-adventure/Audio/Jingles/LevelUp3.wav"
+			],
+			"confirmed": false
+		},
+		"sfx.score.tick": {
+			"category": "sfx",
+			"clips": [
+				"ninja-adventure/Audio/Sounds/Bonus/Coin2.wav"
+			],
+			"volume": 0.35,
+			"notes": "docs/ROOM_CLEAR.md: a tally segment starts counting.",
+			"alternates": [
+				"ninja-adventure/Audio/Sounds/Menu/Move5.wav"
+			],
+			"confirmed": false
+		},
+		"sfx.score.land": {
+			"category": "sfx",
+			"clips": [
+				"ninja-adventure/Audio/Sounds/Bonus/Coin3.wav"
+			],
+			"volume": 0.5,
+			"notes": "docs/ROOM_CLEAR.md: the room bonus lands in the score panel.",
+			"alternates": [
+				"ninja-adventure/Audio/Sounds/Bonus/Gold2.wav"
+			],
+			"confirmed": false
+		},
 		"sfx.relic.take": {
 			"category": "sfx",
 			"clips": [

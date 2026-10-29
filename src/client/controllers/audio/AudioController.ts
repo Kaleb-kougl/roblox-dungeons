@@ -176,6 +176,8 @@ export class AudioController implements OnStart {
 			this.cues.clear();
 			// The per-player split follows the view index: while spectating, the watched teammate's sounds are loud.
 			const viewIndex = this.sim.getViewPlayerIndex();
+			// The room clear celebration plays the jingle itself while it is on (docs/ROOM_CLEAR.md RC4).
+			this.mapper.celebratesRoomClears = this.fx.settings().roomClear;
 			this.mapper.frame(
 				os.clock(),
 				ctx.run.frameEvents,

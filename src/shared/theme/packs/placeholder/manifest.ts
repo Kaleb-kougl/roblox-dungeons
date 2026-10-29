@@ -258,6 +258,10 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		"sfx.boost.collect": SILENT,
 		"sfx.boost.expire": SILENT,
 		"sfx.boost.aegisbreak": SILENT,
+		// docs/ROOM_CLEAR.md RC4: PERFECT's jingle (falls back to the CLEAR jingle while silent), a tally tick, a bonus landing
+		"sfx.room.perfect": SILENT,
+		"sfx.score.tick": SILENT,
+		"sfx.score.land": SILENT,
 		"music.menu": SILENT,
 		"music.biome.1": SILENT,
 		"music.biome.2": SILENT,

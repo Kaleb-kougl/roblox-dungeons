@@ -22,6 +22,11 @@
 			"bytes": 78838
 		},
 		{
+			"path": "ninja-adventure/Audio/Jingles/Success2.wav",
+			"sha256": "da11709af4e6897153839f8e42ef88ce644efb4c946104b83cc53e11b64e899a",
+			"bytes": 209302
+		},
+		{
 			"path": "ninja-adventure/Audio/Jingles/Success3.wav",
 			"sha256": "79160dbc2270d36122038c0de5224dbe72ea8bddd76999bb4d7fbf1184656f93",
 			"bytes": 353010
@@ -90,6 +95,16 @@
 			"path": "ninja-adventure/Audio/Sounds/Ambient/Wind2.wav",
 			"sha256": "3bbf539d43c4b269285ee44d6546333344d31126f0e248c46349923e5f332c4a",
 			"bytes": 3387084
+		},
+		{
+			"path": "ninja-adventure/Audio/Sounds/Bonus/Coin2.wav",
+			"sha256": "8fe129feb63baafc2a65ad7f19dc184d6ec9e7d9d3df4a8a143740ffe009dfa6",
+			"bytes": 59188
+		},
+		{
+			"path": "ninja-adventure/Audio/Sounds/Bonus/Coin3.wav",
+			"sha256": "de0da28b73a35c1d0511f09f46f94d76a858ddb6c1dbe501c3ba78a8da05d8d7",
+			"bytes": 46932
 		},
 		{
 			"path": "ninja-adventure/Audio/Sounds/Bonus/PowerUp2.wav",
