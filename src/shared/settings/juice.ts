@@ -24,6 +24,8 @@ export interface JuiceSettings {
 	freezeFrame: boolean;
 	/** Port: the camera nudges (hurt jolt, heavy-hit kick, boss phase / death). Off under reducedMotion regardless. */
 	screenShake: boolean;
+	/** Port (docs/ROOM_CLEAR.md RCD13): the room clear celebration. Off keeps only the room clear jingle. */
+	roomClear: boolean;
 	/** Death particle density. reducedMotion lowers it one step. */
 	particles: ParticlesLevel;
 	/** Less motion everywhere: no shake, no freeze, fewer particles, numbers fade in place. Default: the system. */
@@ -38,6 +40,7 @@ export const JUICE_SETTING_KEYS: ReadonlyArray<keyof JuiceSettings> = [
 	"damageNumbers",
 	"freezeFrame",
 	"screenShake",
+	"roomClear",
 	"particles",
 	"reducedMotion",
 ];
@@ -48,6 +51,7 @@ export function defaultJuiceSettings(prefersReducedMotion = false): JuiceSetting
 		damageNumbers: true,
 		freezeFrame: true,
 		screenShake: true,
+		roomClear: true,
 		particles: "normal",
 		reducedMotion: prefersReducedMotion,
 	};
@@ -61,6 +65,7 @@ function readField(raw: Readonly<Record<string, unknown>>, out: JuiceOverrides):
 	if (typeIs(raw.damageNumbers, "boolean")) out.damageNumbers = raw.damageNumbers;
 	if (typeIs(raw.freezeFrame, "boolean")) out.freezeFrame = raw.freezeFrame;
 	if (typeIs(raw.screenShake, "boolean")) out.screenShake = raw.screenShake;
+	if (typeIs(raw.roomClear, "boolean")) out.roomClear = raw.roomClear;
 	if (typeIs(raw.reducedMotion, "boolean")) out.reducedMotion = raw.reducedMotion;
 }
 

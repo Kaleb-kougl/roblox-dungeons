@@ -825,36 +825,40 @@ screen's strings" case in `src/shared/view/preload.spec.ts` (the pattern for req
  * outside shared/theme, so the list is repeated here.
  */
 export const ROOM_CLEAR_STRING_KEYS = [
-	"roomClear.stamp.clear",
-	"roomClear.stamp.perfect",
-	"roomClear.stamp.multi",
-	"roomClear.line.kills",
-	"roomClear.line.clear",
-	"roomClear.line.perfect",
-	"roomClear.line.fast",
-	"roomClear.total",
-	"roomClear.chip",
-	"roomClear.fly",
+	"room.clear.stamp.clear",
+	"room.clear.stamp.perfect",
+	"room.clear.stamp.multi",
+	"room.clear.line.kills",
+	"room.clear.line.clear",
+	"room.clear.line.perfect",
+	"room.clear.line.fast",
+	"room.clear.total",
+	"room.clear.chip",
+	"room.clear.fly",
 ] as const;
 ```
 
-  and `...ROOM_CLEAR_STRING_KEYS,` at the end of `REQUIRED_STRING_KEYS`. Export it from `src/shared/theme/index.ts` if
+  and `...ROOM_CLEAR_STRING_KEYS,` at the end of `REQUIRED_STRING_KEYS`.
+  **As built (RC3):** the compiled `contract.luau` sat at Luau's 200-locals-per-function limit, and every spread in
+  `REQUIRED_STRING_KEYS` adds top-level temporaries, so the array is now built inside an arrow function called once
+  (`((): string[] => [ ... ])()`). String keys need a lowercase first segment (`isStringKey`), so the prefix is
+  `room.clear.*`, not `roomClear.*`. The Options > Juice row (`OptionsScreen.tsx`, order 5) is part of this step too. Export it from `src/shared/theme/index.ts` if
   `TOUCH_STRING_KEYS` is exported there.
 - `src/shared/theme/packs/placeholder/manifest.ts`, after the `"touch.hint.mapClose"` line (only the placeholder
   manifest has these strings; the vale pack inherits them):
 
 ```ts
-		// --- roomClear.* (docs/ROOM_CLEAR.md RC3: the room clear stamp, tally and chips) ------------------------
-		"roomClear.stamp.clear": "CLEAR",
-		"roomClear.stamp.perfect": "PERFECT",
-		"roomClear.stamp.multi": "{stamp} x{rooms}",
-		"roomClear.line.kills": "Kills {points}",
-		"roomClear.line.clear": "Clear +{points}",
-		"roomClear.line.perfect": "No hits +{points}",
-		"roomClear.line.fast": "Speed +{points}",
-		"roomClear.total": "= {points}",
-		"roomClear.chip": "{stamp} +{points}",
-		"roomClear.fly": "+{points}",
+		// --- room.clear.* (docs/ROOM_CLEAR.md RC3: the room clear stamp, tally and chips) ------------------------
+		"room.clear.stamp.clear": "CLEAR",
+		"room.clear.stamp.perfect": "PERFECT",
+		"room.clear.stamp.multi": "{stamp} x{rooms}",
+		"room.clear.line.kills": "Kills {points}",
+		"room.clear.line.clear": "Clear +{points}",
+		"room.clear.line.perfect": "No hits +{points}",
+		"room.clear.line.fast": "Speed +{points}",
+		"room.clear.total": "= {points}",
+		"room.clear.chip": "{stamp} +{points}",
+		"room.clear.fly": "+{points}",
 ```
 
   and next to `"fx.settings.screenShake": "Screen shake",`: `"fx.settings.roomClear": "Room clear",`.
@@ -875,16 +879,16 @@ import { TUTORIAL_VIEW } from "./tutorial";
 
 /** Every theme string key the celebration reads; all REQUIRED (theme contract ROOM_CLEAR_STRING_KEYS). */
 export const ROOM_CLEAR_STRINGS = {
-	clear: "roomClear.stamp.clear",
-	perfect: "roomClear.stamp.perfect",
-	multi: "roomClear.stamp.multi",
-	kills: "roomClear.line.kills",
-	clearLine: "roomClear.line.clear",
-	perfectLine: "roomClear.line.perfect",
-	fast: "roomClear.line.fast",
-	total: "roomClear.total",
-	chip: "roomClear.chip",
-	fly: "roomClear.fly",
+	clear: "room.clear.stamp.clear",
+	perfect: "room.clear.stamp.perfect",
+	multi: "room.clear.stamp.multi",
+	kills: "room.clear.line.kills",
+	clearLine: "room.clear.line.clear",
+	perfectLine: "room.clear.line.perfect",
+	fast: "room.clear.line.fast",
+	total: "room.clear.total",
+	chip: "room.clear.chip",
+	fly: "room.clear.fly",
 } as const;
 
 export const ROOM_CLEAR_VIEW = {

@@ -71,6 +71,8 @@ export const SETTINGS_STRINGS = {
 	freezeFrame: "fx.settings.freezeFrame",
 	/** Port (docs/FEEL.md J8): the Screen shake row. */
 	screenShake: "fx.settings.screenShake",
+	/** Port (docs/ROOM_CLEAR.md RC3): the Room clear row. */
+	roomClear: "fx.settings.roomClear",
 	particles: "fx.settings.particles",
 	reducedMotion: "fx.settings.reducedMotion",
 	on: "fx.settings.on",

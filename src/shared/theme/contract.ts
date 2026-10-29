@@ -711,8 +711,31 @@ export const TOUCH_STRING_KEYS = [
 	"touch.hint.mapClose",
 ] as const;
 
-/** Every string key a pack must define. Code may rely on these existing. */
-export const REQUIRED_STRING_KEYS: ReadonlyArray<string> = [
+/**
+ * Roblox port (docs/ROOM_CLEAR.md RC3): the room clear celebration's strings (shared/view ROOM_CLEAR_STRINGS): the
+ * two stamps, the stamp for several rooms on one tick (`{stamp}`, `{rooms}`), the tally segments (`{points}`), the
+ * running total, the corner chip (`{stamp}`, `{points}`) and the flying bonus (`{points}`). The theme imports nothing
+ * outside shared/theme, so the list is repeated here.
+ */
+export const ROOM_CLEAR_STRING_KEYS = [
+	"room.clear.stamp.clear",
+	"room.clear.stamp.perfect",
+	"room.clear.stamp.multi",
+	"room.clear.line.kills",
+	"room.clear.line.clear",
+	"room.clear.line.perfect",
+	"room.clear.line.fast",
+	"room.clear.total",
+	"room.clear.chip",
+	"room.clear.fly",
+] as const;
+
+/**
+ * Every string key a pack must define. Code may rely on these existing. Built inside a function: the spreads' Luau
+ * temporaries would otherwise be top-level locals, and this module's compiled Luau sits near the 200-locals-per-function
+ * limit (docs/ROOM_CLEAR.md RC3).
+ */
+export const REQUIRED_STRING_KEYS: ReadonlyArray<string> = ((): string[] => [
 	"game.title",
 	"ember.name",
 	...CLASS_IDS.map((c) => `class.${c}.name`),
@@ -741,7 +764,8 @@ export const REQUIRED_STRING_KEYS: ReadonlyArray<string> = [
 	...LOADING_STRING_KEYS,
 	...STAGE_STRING_KEYS,
 	...TOUCH_STRING_KEYS,
-];
+	...ROOM_CLEAR_STRING_KEYS,
+])();
 
 /**
  * Minimum WCAG contrast ratio between enemyBullet and every biome floor and wall

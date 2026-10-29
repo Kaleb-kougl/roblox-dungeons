@@ -161,6 +161,15 @@ function JuiceTab(props: { order: number; actions: HudActions; selectable: boole
 			/>
 			<SettingRow
 				order={5}
+				name="roomClear"
+				selectable={sel}
+				label={str(SETTINGS_STRINGS.roomClear)}
+				value={s.roomClear}
+				options={onOff}
+				onPick={(v) => pick({ roomClear: v })}
+			/>
+			<SettingRow
+				order={6}
 				name="particles"
 				selectable={sel}
 				label={str(SETTINGS_STRINGS.particles)}
@@ -172,7 +181,7 @@ function JuiceTab(props: { order: number; actions: HudActions; selectable: boole
 				onPick={(v) => pick({ particles: v })}
 			/>
 			<SettingRow
-				order={6}
+				order={7}
 				name="reducedMotion"
 				selectable={sel}
 				label={str(SETTINGS_STRINGS.reducedMotion)}
@@ -182,7 +191,7 @@ function JuiceTab(props: { order: number; actions: HudActions; selectable: boole
 			/>
 			<Text
 				fill={true}
-				order={7}
+				order={8}
 				size={HUD_VIEW.smallText}
 				color="uiTextDim"
 				text={str(SETTINGS_STRINGS.system, { value: system ? on : off })}

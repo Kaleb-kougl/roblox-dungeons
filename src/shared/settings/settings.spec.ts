@@ -54,6 +54,7 @@ describe("juice settings schema", () => {
 			damageNumbers: true,
 			freezeFrame: true,
 			screenShake: true,
+			roomClear: true,
 			particles: "normal",
 			reducedMotion: false,
 		});
@@ -88,6 +89,36 @@ describe("juice settings schema", () => {
 		const reset = applySettingsPatch({ juice: { screenShake: false } }, { juice: {} });
 		expect(reset.juice).toBe(undefined);
 		expect(resolveJuiceSettings(reset.juice).screenShake).toBe(true);
+	});
+
+	it("roomClear (port, docs/ROOM_CLEAR.md RC3): sanitized, round-trips, absent in old docs, cleared by a reset", () => {
+		const d = defaultJuiceSettings();
+		expect(JUICE_SETTING_KEYS.includes("roomClear")).toBe(true);
+		// sanitize: booleans only
+		expect(sanitizeJuiceOverrides({ roomClear: false })).toEqual({ roomClear: false });
+		expect(sanitizeJuiceOverrides({ roomClear: "off" })).toEqual({});
+		expect(sanitizeJuiceOverrides({ roomClear: 0 })).toEqual({});
+		expect(sanitizeJuiceSettings({ roomClear: false }, d)).toEqual({ ...d, roomClear: false });
+		// patches and the override comparison take it like freezeFrame
+		const patched = applyJuicePatch({ particles: "low" }, { roomClear: false });
+		expect(patched).toEqual({ particles: "low", roomClear: false });
+		expect(sameJuiceOverrides(patched, { particles: "low" })).toBe(false);
+		expect(sameJuiceOverrides(patched, { roomClear: false, particles: "low" })).toBe(true);
+		// the stored document round-trips it
+		const empty = { v: SETTINGS_DOC_VERSION, juice: {}, controls: {}, audio: {}, display: {} };
+		const doc = encodeSettingsDoc({ juice: { roomClear: false } });
+		expect(doc).toEqual({ ...empty, juice: { roomClear: false } });
+		expect(decodeSettingsDoc(doc)).toEqual({ juice: { roomClear: false } });
+		expect(resolveJuiceSettings(decodeSettingsDoc(doc).juice).roomClear).toBe(false);
+		// old documents (v1 and v2) without the key read as the default: on
+		const v1 = decodeSettingsDoc({ v: SETTINGS_DOC_V1, juice: { particles: "low" } });
+		expect(resolveJuiceSettings(v1.juice)).toEqual({ ...d, particles: "low" });
+		const v2 = decodeSettingsDoc({ ...empty, juice: { freezeFrame: false } });
+		expect(resolveJuiceSettings(v2.juice).roomClear).toBe(true);
+		// a reset (the client sends the empty group) clears it: back to the default
+		const reset = applySettingsPatch({ juice: { roomClear: false } }, { juice: {} });
+		expect(reset.juice).toBe(undefined);
+		expect(resolveJuiceSettings(reset.juice).roomClear).toBe(true);
 	});
 
 	it("sanitize keeps valid known keys and falls back to the defaults for the rest", () => {
