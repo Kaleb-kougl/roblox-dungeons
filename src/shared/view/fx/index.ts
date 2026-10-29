@@ -27,3 +27,5 @@ export * from "./motionFxConfig";
 export * from "./squash";
 export * from "./afterimage";
 export * from "./roomClears";
+export * from "./roomClearConfig";
+export * from "./roomClearSequence";
