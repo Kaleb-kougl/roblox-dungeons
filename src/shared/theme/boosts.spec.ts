@@ -106,14 +106,16 @@ describe("boosts: contract", () => {
 	});
 
 	it("appends the four boost sounds to the port's audio IDs, in order", () => {
-		const n = PORT_AUDIO_EVENTS.size();
+		// after sfx.boss.taunt (docs/BOSS_DEMONLORD.md D6); later features append after them (docs/COMBO.md CB3)
+		const first = (PORT_AUDIO_EVENTS as ReadonlyArray<string>).indexOf("sfx.boss.taunt") + 1;
+		const n = first + 4;
 		expect([
-			PORT_AUDIO_EVENTS[n - 4],
-			PORT_AUDIO_EVENTS[n - 3],
-			PORT_AUDIO_EVENTS[n - 2],
-			PORT_AUDIO_EVENTS[n - 1],
+			PORT_AUDIO_EVENTS[first],
+			PORT_AUDIO_EVENTS[first + 1],
+			PORT_AUDIO_EVENTS[first + 2],
+			PORT_AUDIO_EVENTS[first + 3],
 		]).toEqual(["sfx.boost.drop", "sfx.boost.collect", "sfx.boost.expire", "sfx.boost.aegisbreak"]);
-		for (let i = n - 4; i < n; i++) {
+		for (let i = first; i < n; i++) {
 			const id = PORT_AUDIO_EVENTS[i];
 			expect([id, slotFor(id)?.soundGroup, REQUIRED_ASSET_IDS.includes(id)]).toEqual([id, "sfx", true]);
 		}

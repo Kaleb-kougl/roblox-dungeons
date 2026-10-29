@@ -133,6 +133,15 @@ export const COLOR_ROLES = [
 	"minimap.boss",
 	"minimap.stairs",
 	"minimap.boost",
+	// Roblox port (docs/COMBO.md CB3): the combo's tier colours (x2 rampage .. x5 unstoppable; below x2 the meter keeps
+	// ember) and a broken streak's grey (contract.ts COMBO_ROLES). Held to COMBO_COLOR_RULES by comboReport: every tier
+	// (ember too) >= 3:1 on uiPanel and apart step to step (CIE76), the named tiers (CIE76) from the enemy-bullet roles
+	// and telegraph (the floor shout is drawn under bullets), combo.broken low-chroma and apart from every tier.
+	"combo.rampage",
+	"combo.carnage",
+	"combo.dominating",
+	"combo.unstoppable",
+	"combo.broken",
 ] as const;
 
 export type ColorRole = (typeof COLOR_ROLES)[number];

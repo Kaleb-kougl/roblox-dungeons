@@ -9,7 +9,7 @@
  * audio IDs, ambience beds and fx colour roles of docs/FX_AUDIO.md; no fx art: sprite effects are optional; the
  * Demon Lord, boss.demonlord, of docs/BOSS_DEMONLORD.md; the boost drops of docs/BOOSTS.md B5: gems, colour roles,
  * strings and silent sounds; the room-edge colour roles of docs/ROOM_EDGES.md RE4; the minimap colour roles and
- * strings of docs/MINIMAP.md M6).
+ * strings of docs/MINIMAP.md M6; the combo's colour roles, strings and silent sounds of docs/COMBO.md CB3).
  *
  * To replace art or audio later, change an entry's kind and paste the uploaded asset ID, e.g.
  *   "enemy.sniper": { kind: "spritesheet", assetId: "rbxassetid://<n>", frameW: 16, frameH: 16, pivot: { x: 8, y: 15 }, animations: { ... } },
@@ -119,6 +119,17 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		"minimap.boss": "#ff9a5a",
 		"minimap.stairs": "#7fd6ff",
 		"minimap.boost": "#ffc83d",
+		// Roblox port (docs/COMBO.md CB3): the combo ladder after ember's gold: light coral, crimson, orchid magenta,
+		// violet, then a neutral grey for a broken streak. Every tier is >= 4.4:1 on uiPanel and >= 30 CIE76 from the
+		// one below it (ember -> rampage 55); the named tiers are >= 42 CIE76 from the pink enemy bullet, its outline and
+		// the telegraph orange (the plan's coral #ff7a59, crimson #ff3b6b and magenta #e04bd6 were 19 / 31 / 32: too
+		// close to the telegraph and the bullet for a shout drawn under bullets). The grey's chroma is 3.6 and it is
+		// >= 53 CIE76 from every tier.
+		"combo.rampage": "#f88088",
+		"combo.carnage": "#ff2050",
+		"combo.dominating": "#c850e8",
+		"combo.unstoppable": "#b98cff",
+		"combo.broken": "#6b6a70",
 	},
 	biomes: {
 		"biome.1": {
@@ -258,6 +269,9 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		"sfx.boost.collect": SILENT,
 		"sfx.boost.expire": SILENT,
 		"sfx.boost.aegisbreak": SILENT,
+		// docs/COMBO.md CB3: the combo's tier-up sting and break shatter.
+		"sfx.combo.tier": SILENT,
+		"sfx.combo.break": SILENT,
 		"music.menu": SILENT,
 		"music.biome.1": SILENT,
 		"music.biome.2": SILENT,
@@ -849,5 +863,12 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		"room.clear.total": "= {points}",
 		"room.clear.chip": "{stamp} +{points}",
 		"room.clear.fly": "+{points}",
+		// --- hud.combo.* (docs/COMBO.md CB3: the combo's tier names, the break and the lapse's best) -------------
+		"hud.combo.rampage": "RAMPAGE",
+		"hud.combo.carnage": "CARNAGE",
+		"hud.combo.dominating": "DOMINATING",
+		"hud.combo.unstoppable": "UNSTOPPABLE",
+		"hud.combo.lost": "COMBO LOST",
+		"hud.combo.best": "BEST x{combo}",
 	},
 };

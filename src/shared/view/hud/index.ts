@@ -23,3 +23,4 @@ export * from "./touch";
 export * from "./roomClear";
 export * from "./comboConfig";
 export * from "./combo";
+export * from "./comboStrings";

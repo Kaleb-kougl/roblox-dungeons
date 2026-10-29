@@ -35,9 +35,14 @@
  * Roblox port (docs/MINIMAP.md M6): the minimap colour roles, the markers readable on `minimap.floor` and `uiPanel`
  * (WCAG contrast) and `minimap.enemy` kept away from `minimap.self`, `minimap.boost` and every `class.*` role (CIE76),
  * `minimapReport`.
+ *
+ * Roblox port (docs/COMBO.md CB3): the combo colour roles, every tier (ember and the four named tiers) readable on
+ * `uiPanel` and apart from the tier below it, the named tiers kept away from the enemy-bullet roles and telegraph (the
+ * floor shout lies under bullets) and `combo.broken` a low-chroma grey apart from every tier (COMBO_COLOR_RULES),
+ * `comboReport`.
  */
 
-import { colorDifference, contrastRatio, isHexColor, mixRgb, parseHex, toHex } from "./color";
+import { colorDifference, contrastRatio, isHexColor, labChroma, mixRgb, parseHex, toHex } from "./color";
 import {
 	AMBIENCE,
 	AMBIENCE_IDS,
@@ -49,6 +54,7 @@ import {
 	BOOST_KINDS,
 	BOOST_ROLES,
 	BREAKABLE_ROLES,
+	COMBO_COLOR_RULES,
 	DAMAGE_NUMBER_ROLES,
 	DECOR,
 	DECOR_FX_ROLES,
@@ -858,6 +864,98 @@ export function minimapReport(manifest: unknown): Array<MinimapEntry> {
 	return out;
 }
 
+/**
+ * The combo (docs/COMBO.md CB3), COMBO_COLOR_RULES (`rules` below) for each role:
+ * - check "panel": every `rules.tiers` colour vs `rules.panel` (WCAG contrast, >= minPanelContrast);
+ * - check "step": every tier but the first vs the one before it (CIE76, >= minStepDifference);
+ * - check "shout": every `rules.shouted` colour vs every `rules.shoutAgainst` colour (CIE76, >= minShoutDifference);
+ * - check "chroma": `rules.broken`'s CIE LCh C* (<= maxBrokenChroma; `against` "C*", no `againstColor`);
+ * - check "broken": `rules.broken` vs every tier (CIE76, >= minBrokenDifference).
+ * `value` is the ratio, difference or chroma; `limit` the rule's bar (a ceiling for "chroma", a floor otherwise). Tiers
+ * in ladder order (panel, step, shout per role), then the broken grey (chroma, then every tier). A role that is missing
+ * or not a hex colour is skipped (the colour-role check reports it). Imports one contract name on purpose: this
+ * module's compiled Luau sits at the 200-locals-per-function limit.
+ */
+export interface ComboEntry {
+	role: string;
+	check: "panel" | "step" | "shout" | "chroma" | "broken";
+	color: string;
+	against: string;
+	againstColor?: string;
+	value: number;
+	limit: number;
+	ok: boolean;
+}
+
+export function comboReport(manifest: unknown): Array<ComboEntry> {
+	const out = new Array<ComboEntry>();
+	if (!isObj(manifest) || !isObj(manifest.colors)) {
+		return out;
+	}
+	const colors = manifest.colors;
+	const rules = COMBO_COLOR_RULES;
+	const difference = (
+		role: string,
+		check: "step" | "shout" | "broken",
+		color: string,
+		against: string,
+		limit: number,
+	) => {
+		const againstColor = colors[against];
+		if (!isHexColor(againstColor)) {
+			return;
+		}
+		const value = colorDifference(color, againstColor);
+		out.push({ role, check, color, against, againstColor, value, limit, ok: value >= limit });
+	};
+	const panel = colors[rules.panel];
+	for (let i = 0; i < rules.tiers.size(); i++) {
+		const role = rules.tiers[i];
+		const color = colors[role];
+		if (!isHexColor(color)) {
+			continue;
+		}
+		if (isHexColor(panel)) {
+			const value = contrastRatio(color, panel);
+			out.push({
+				role,
+				check: "panel",
+				color,
+				against: rules.panel,
+				againstColor: panel,
+				value,
+				limit: rules.minPanelContrast,
+				ok: value >= rules.minPanelContrast,
+			});
+		}
+		if (i > 0) {
+			difference(role, "step", color, rules.tiers[i - 1], rules.minStepDifference);
+		}
+		if (rules.shouted.includes(role)) {
+			for (const against of rules.shoutAgainst) {
+				difference(role, "shout", color, against, rules.minShoutDifference);
+			}
+		}
+	}
+	const broken = colors[rules.broken];
+	if (isHexColor(broken)) {
+		const chroma = labChroma(broken);
+		out.push({
+			role: rules.broken,
+			check: "chroma",
+			color: broken,
+			against: "C*",
+			value: chroma,
+			limit: rules.maxBrokenChroma,
+			ok: chroma <= rules.maxBrokenChroma,
+		});
+		for (const against of rules.tiers) {
+			difference(rules.broken, "broken", broken, against, rules.minBrokenDifference);
+		}
+	}
+	return out;
+}
+
 /** Is `def` drawn art (an `image` or `sprites` asset), not a placeholder, silent or missing entry? */
 function isArtAsset(def: unknown): boolean {
 	return isObj(def) && (def.kind === "image" || def.kind === "sprites");
@@ -1282,6 +1380,42 @@ export function validateManifest(manifest: unknown, opts: ValidateOptions = {}):
 				`colour difference: ${c.role} ${c.color} vs ${c.against} ${c.againstColor} is ${fixed1(
 					c.value,
 				)} (CIE76), needs >= ${fixed1(c.min)}: an enemy dot must never read as a teammate or a pickup`,
+			);
+		}
+	}
+
+	// --- combo tiers read on the panel and apart, the shout never as a bullet, the break as grey ----
+	for (const c of comboReport(manifest)) {
+		if (c.ok) {
+			continue;
+		}
+		if (c.check === "panel") {
+			err(
+				["colors", c.role],
+				`contrast: ${c.role} ${c.color} on ${c.against} ${tostring(c.againstColor)} is ${fixed2(
+					c.value,
+				)}:1, needs >= ${fixed1(c.limit)}:1: a combo tier must read on the score panel`,
+			);
+		} else if (c.check === "chroma") {
+			err(
+				["colors", c.role],
+				`chroma: ${c.role} ${c.color} has C* ${fixed1(c.value)} (CIE LCh), needs <= ${fixed1(
+					c.limit,
+				)}: a broken combo must read as grey`,
+			);
+		} else {
+			let why = "a broken combo must never read as a live tier";
+			if (c.check === "step") {
+				why = "each combo tier must read as a new colour after the one below it";
+			} else if (c.check === "shout") {
+				why =
+					"a combo tier must never read as an enemy bullet or a telegraph (the floor shout lies under bullets)";
+			}
+			err(
+				["colors", c.role],
+				`colour difference: ${c.role} ${c.color} vs ${c.against} ${tostring(c.againstColor)} is ${fixed1(
+					c.value,
+				)} (CIE76), needs >= ${fixed1(c.limit)}: ${why}`,
 			);
 		}
 	}
