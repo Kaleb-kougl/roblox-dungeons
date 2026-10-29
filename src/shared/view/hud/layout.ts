@@ -74,9 +74,12 @@ export const HUD_VIEW = {
 	settingsLabelWidth: 210,
 	/** Characters of a server hash shown in the verdict line. */
 	hashChars: 8,
-	/** Score panel (top right, scored runs): width and the combo meter's bar height. */
+	/**
+	 * Score panel (top right, scored runs): width and the combo meter's bar height (docs/COMBO.md CB5, CD8: 6 -> 10,
+	 * the tier colours and the warning blink need the room; scoreEstimate 158 of HUD_FOOTPRINT.score's 160).
+	 */
 	scoreWidth: 200,
-	comboBarHeight: 6,
+	comboBarHeight: 10,
 	/** Results breakdown: label and value column widths. */
 	breakdownLabelWidth: 200,
 	breakdownValueWidth: 110,
