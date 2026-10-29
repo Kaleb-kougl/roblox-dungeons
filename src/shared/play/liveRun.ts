@@ -62,7 +62,13 @@ import {
 	type RunSummary,
 } from "shared/run";
 import { BoostFrameEvents, type BoostEventSource } from "shared/view/boosts";
-import { newFrameAdvance, type FrameAdvance, type FramePacer } from "shared/view/fx";
+import {
+	RoomClearEvents,
+	newFrameAdvance,
+	type FrameAdvance,
+	type FramePacer,
+	type RoomClearSource,
+} from "shared/view/fx";
 
 export interface LiveRunSetup {
 	readonly seed: number;
@@ -128,6 +134,8 @@ export interface RunView {
 	readonly runEvents: ReadonlyArray<RunEventRecord>;
 	/** The boost-drop events of the last frame's ticks, every player's (docs/BOOSTS.md B6 / B7). */
 	readonly boostEvents: BoostEventSource;
+	/** The room clears of the last frame's ticks (docs/ROOM_CLEAR.md RC1). */
+	readonly roomClears: RoomClearSource;
 	getAlpha(): number;
 }
 
@@ -269,6 +277,8 @@ export class LiveRun implements RunView {
 	readonly runEvents: RunEventRecord[] = [];
 	/** Runs with drops: the boost-drop events of the ticks run by the last frame() (docs/BOOSTS.md B6 / B7). */
 	readonly boostEvents = new BoostFrameEvents();
+	/** The room clears of the ticks run by the last frame() (docs/ROOM_CLEAR.md RC1; reset every frame). */
+	readonly roomClears = new RoomClearEvents();
 	/** What the pacer made of the last unpaused frame (frozen, time scale); a plain pass-through without a pacer. */
 	readonly lastAdvance: FrameAdvance = newFrameAdvance();
 	/** Run totals for the HUD's post-run panel (the telemetry's kill / hit counts, read without finishing it). */
@@ -317,6 +327,7 @@ export class LiveRun implements RunView {
 		this.scorePops.clear();
 		this.runEvents.clear();
 		this.boostEvents.reset();
+		this.roomClears.reset();
 		this.ticksThisFrame = 0;
 		if (this.forfeitPending) {
 			this.forfeitPending = false;
@@ -395,6 +406,7 @@ export class LiveRun implements RunView {
 		}
 		collectRunEvents(state, SOLO_PLAYER, this.runEvents);
 		this.boostEvents.collect(state);
+		this.roomClears.collect(state);
 		if (this.victoryTick === undefined && e.bossDefeated !== 0) this.victoryTick = state.tick;
 		if (this.deathTick === undefined && (e.playerDied !== 0 || state.player.dead !== 0)) {
 			this.deathTick = state.tick;

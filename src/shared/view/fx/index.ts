@@ -26,3 +26,4 @@ export * from "./hitReact";
 export * from "./motionFxConfig";
 export * from "./squash";
 export * from "./afterimage";
+export * from "./roomClears";

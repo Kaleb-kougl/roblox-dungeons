@@ -43,6 +43,7 @@ import {
 	type ScorePop,
 } from "shared/play";
 import { BoostFrameEvents } from "shared/view/boosts";
+import { RoomClearEvents } from "shared/view/fx";
 import { DEFAULT_LOCKSTEP, type LockstepTunables } from "./config";
 import { MergedDecoder, encodeInputBatch } from "./wire";
 
@@ -89,6 +90,8 @@ export class LockstepClient implements RunView {
 	readonly runEvents: RunEventRecord[] = [];
 	/** Boost-drop events of the ticks the last pump stepped (drop renderer, audio; docs/BOOSTS.md B6). */
 	readonly boostEvents = new BoostFrameEvents();
+	/** Room clears of the ticks the last pump stepped (docs/ROOM_CLEAR.md RC1; reset every pump). */
+	readonly roomClears = new RoomClearEvents();
 	/** Run totals for the HUD (kills, landed hits on the party). */
 	kills = 0;
 	hitsTaken = 0;
@@ -231,6 +234,7 @@ export class LockstepClient implements RunView {
 		this.scorePops.clear();
 		this.runEvents.clear();
 		this.boostEvents.reset();
+		this.roomClears.reset();
 		const inputs: OutgoingInputs[] = [];
 		const hashes: Array<{ tick: number; hash: string }> = [];
 		let final: RunFinal | undefined;
@@ -268,6 +272,7 @@ export class LockstepClient implements RunView {
 			}
 			collectRunEvents(state, this.localIndex, this.runEvents);
 			this.boostEvents.collect(state);
+			this.roomClears.collect(state);
 			stepped++;
 			if (state.tick % this.tunables.hashEvery === 0 && !this.stopped) {
 				this.unackedTicks.push(state.tick);
