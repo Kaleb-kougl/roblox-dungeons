@@ -23,7 +23,8 @@ const DISABLED_TEXT = 0.6;
 const LINE_SLACK = 4;
 
 export interface TextProps {
-	text: string;
+	/** A binding for a value written every frame (the rolling score): changes one property, never re-renders. */
+	text: string | React.Binding<string>;
 	order?: number;
 	color?: ColorRole;
 	size?: number;

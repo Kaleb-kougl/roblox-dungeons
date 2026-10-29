@@ -11,4 +11,5 @@ export * from "./minimapHosts";
 export * from "./MinimapPanel";
 export * from "./GameHud";
 export * from "./primitives";
+export * from "./roomClearBindings";
 export * from "./useHudScale";

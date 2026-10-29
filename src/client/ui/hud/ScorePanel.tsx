@@ -3,6 +3,7 @@ import { useSelector } from "@rbxts/react-reflex";
 import { selectSnapshot } from "client/store";
 import { role, str } from "client/ui/theme";
 import { HUD_STRINGS, HUD_VIEW, comboFraction, formatCombo } from "shared/view/hud";
+import { ROOM_CLEAR_UI } from "./roomClearBindings";
 import { Panel, Text } from "./primitives";
 import { HighlightRing } from "./TutorialFx";
 
@@ -13,7 +14,8 @@ const STROKE = 1;
  * the combo resets, as a bar that drains over the combo window: COMBO_WINDOW_TICKS, or what M2 boons / curses make of
  * it), and on endless floors the floor and Depth line under the meter (docs/HUD_LAYOUT.md H4; an unscored run keeps
  * it in the StatusPanel). Reads only the ~10 Hz snapshot. `highlight`: the tutorial's ring (the score callout, the
- * curse lesson).
+ * curse lesson). The score rolls up and waits for a room bonus to land (docs/ROOM_CLEAR.md RCD7): its number is the
+ * ROOM_CLEAR_UI.scoreText binding, written every frame by RoomClearController.
  */
 export function ScorePanel(props: { readonly highlight?: boolean }) {
 	const s = useSelector(selectSnapshot);
@@ -42,7 +44,7 @@ export function ScorePanel(props: { readonly highlight?: boolean }) {
 				order={2}
 				size={HUD_VIEW.bigText}
 				align={Enum.TextXAlignment.Right}
-				text={tostring(s.score)}
+				text={ROOM_CLEAR_UI.scoreText.binding}
 			/>
 			<Text
 				fill={true}

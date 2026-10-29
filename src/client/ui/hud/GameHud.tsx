@@ -14,6 +14,8 @@ import { LeaderboardPanel } from "./LeaderboardPanel";
 import { PauseButton } from "./PauseButton";
 import { PauseOverlay } from "./PauseOverlay";
 import { RunOverPanel } from "./RunOverPanel";
+import { RoomClearChips } from "./RoomClearChips";
+import { RoomClearStamp } from "./RoomClearStamp";
 import { ScorePanel } from "./ScorePanel";
 import { SpectateBar } from "./SpectateBar";
 import { OptionsScreen } from "./OptionsScreen";
@@ -29,7 +31,9 @@ import { WeaponPanel } from "./WeaponPanel";
  * The game HUD (task 8 part B; replaces part A's minimal text HUD), three ScreenGuis under PlayerGui:
  *
  *   KV_GameHud    StatusPanel (top left: hearts, armor + Aegis pips, flask, Embers, the boost row), WeaponPanel (bottom left: weapon sets + SWAP
- *                 hint), BossBar (top centre), ScorePanel (top right, scored runs: score + combo meter),
+ *                 hint), BossBar (top centre), ScorePanel (top right, scored runs: score + combo meter), RoomClearStamp (top centre: the room
+ *                 clear stamp and tally) and RoomClearChips (under the score panel: a co-op teammate's far clear),
+ *                 docs/ROOM_CLEAR.md RC7,
  *                 RunOverPanel (centre: death / victory + stats, the score breakdown in scored runs), MinimapPanel
  *                 (bottom right: the corner map, docs/MINIMAP.md M8), FullMapOverlay (centre: the full map toggle, M9),
  *                 InfoPanel (bottom right, above the minimap: notice, verdict, debug line), ToastPanel (top centre: M2 progression toasts and the
@@ -76,6 +80,8 @@ export function GameHud() {
 						<WeaponPanel key="Weapons" highlight={highlight === "weapons"} />
 						<BossBar key="Boss" highlight={highlight === "bossBar"} />
 						<ScorePanel key="Score" highlight={highlight === "score"} />
+						<RoomClearStamp key="RoomClearStamp" />
+						<RoomClearChips key="RoomClearChips" />
 						<RunOverPanel key="RunOver" />
 						<MinimapPanel key="Minimap" />
 						<FullMapOverlay key="FullMap" />
