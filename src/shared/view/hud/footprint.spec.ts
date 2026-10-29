@@ -9,6 +9,7 @@ import {
 	TOUCH_TEST_VIEWPORTS,
 	TOUCH_TUTORIAL_BOX,
 	touchFootprintRects,
+	touchTransientRect,
 	touchTutorialRect,
 	HUD_FOOTPRINT,
 	HUD_FOOTPRINT_LIMITS,
@@ -147,6 +148,16 @@ describe("HUD footprint budget", () => {
 		const zone = clearZoneRect(1280, 720);
 		expect(zone.x).toBe(320);
 		expect(zone.w).toBe(640);
+	});
+
+	it("the room clear stamp row ends above the toasts and the touch tutorial prompt (docs/ROOM_CLEAR.md RC6)", () => {
+		const stamp = HUD_TRANSIENT.roomClear;
+		expect(stamp.edge + stamp.height).toBeLessThanOrEqual(HUD_TRANSIENT.toasts.edge);
+		expect(stamp.edge + stamp.height).toBeLessThanOrEqual(TOUCH_TUTORIAL_BOX.edge);
+	});
+
+	it("the room clear chip starts below the score box (docs/ROOM_CLEAR.md RC6)", () => {
+		expect(HUD_TRANSIENT.roomClearChip.edge).toBeGreaterThanOrEqual(HUD_VIEW.margin + HUD_FOOTPRINT.score.maxH);
 	});
 
 	it("the WeaponPanel's size from HUD_VIEW fits its budget", () => {
@@ -293,6 +304,25 @@ describe("touch footprint (docs/MOBILE.md MB10)", () => {
 					for (const p of touchFootprintRects(v.x, v.y, percent, inset)) {
 						if (rectsOverlap(tutorial, p.rect))
 							bad.push(`${label(v.x, v.y, false, percent, inset)} tutorial/${p.panel}`);
+					}
+				}
+			}
+		}
+		expect(bad.join(", ")).toBe("");
+	});
+
+	it("the room clear stamp and chip do not intersect the status or score box on touch (docs/ROOM_CLEAR.md RC6)", () => {
+		const bad: string[] = [];
+		for (const v of TOUCH_TEST_VIEWPORTS) {
+			for (const inset of INSETS) {
+				for (const percent of TOUCH_PERCENTS) {
+					const stamp = touchTransientRect(HUD_TRANSIENT.roomClear, v.x, v.y, percent, inset);
+					const chip = touchTransientRect(HUD_TRANSIENT.roomClearChip, v.x, v.y, percent, inset);
+					for (const p of touchFootprintRects(v.x, v.y, percent, inset)) {
+						if (rectsOverlap(stamp, p.rect))
+							bad.push(`${label(v.x, v.y, false, percent, inset)} stamp/${p.panel}`);
+						if (rectsOverlap(chip, p.rect))
+							bad.push(`${label(v.x, v.y, false, percent, inset)} chip/${p.panel}`);
 					}
 				}
 			}

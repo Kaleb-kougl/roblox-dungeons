@@ -15,6 +15,7 @@ import type { HudCorner } from "./corners";
 import { PROGRESSION_VIEW } from "./progression";
 import { computeHudScale, HUD_VIEW } from "./layout";
 import { MINIMAP_PANEL } from "./minimapHud";
+import { ROOM_CLEAR_VIEW } from "./roomClear";
 import { SPECTATE_BAR_VIEW } from "./spectate";
 import { TUTORIAL_VIEW } from "./tutorial";
 
@@ -44,11 +45,22 @@ export const HUD_FOOTPRINT = {
 } as const satisfies Readonly<Record<AlwaysOnPanel, FootprintBox>>;
 
 /** The transient panels, in a fixed order. */
-export type TransientPanel = "bossBar" | "toasts" | "tutorial" | "spectate" | "verdict";
-export const TRANSIENT_PANELS: ReadonlyArray<TransientPanel> = ["bossBar", "toasts", "tutorial", "spectate", "verdict"];
+export type TransientPanel = "bossBar" | "toasts" | "tutorial" | "spectate" | "verdict" | "roomClear" | "roomClearChip";
+export const TRANSIENT_PANELS: ReadonlyArray<TransientPanel> = [
+	"bossBar",
+	"toasts",
+	"tutorial",
+	"spectate",
+	"verdict",
+	"roomClear",
+	"roomClearChip",
+];
 
-/** Where a transient panel hangs: centred at the top / bottom of the safe area, or in the bottom-right corner. */
-export type TransientAnchor = "topCentre" | "bottomCentre" | "bottomRight";
+/**
+ * Where a transient panel hangs: centred at the top / bottom of the safe area, or in the top-right / bottom-right
+ * corner (topRight: the room clear chips, docs/ROOM_CLEAR.md RC6).
+ */
+export type TransientAnchor = "topCentre" | "bottomCentre" | "topRight" | "bottomRight";
 
 export interface TransientBox {
 	readonly anchor: TransientAnchor;
@@ -149,6 +161,20 @@ export const HUD_TRANSIENT = {
 		height: VERDICT_BOX.height,
 		when: "a verdict or fallback notice changed (fades after a few seconds)",
 	},
+	roomClear: {
+		anchor: "topCentre",
+		edge: HUD_VIEW.margin,
+		width: ROOM_CLEAR_VIEW.width,
+		height: line(ROOM_CLEAR_VIEW.stampText) + ROOM_CLEAR_VIEW.rowGap + line(ROOM_CLEAR_VIEW.tallyText),
+		when: "a room clear's stamp and tally (1.5 s; never with the boss bar: boss rooms have no record)",
+	},
+	roomClearChip: {
+		anchor: "topRight",
+		edge: HUD_VIEW.margin + HUD_FOOTPRINT.score.maxH + HUD_VIEW.gap,
+		width: HUD_VIEW.scoreWidth,
+		height: stack(repeated(line(ROOM_CLEAR_VIEW.chipText), ROOM_CLEAR_VIEW.maxChips)),
+		when: "a co-op teammate's room clear far from the view player (1.5 s)",
+	},
 } as const satisfies Readonly<Record<TransientPanel, TransientBox>>;
 
 /**
@@ -216,6 +242,7 @@ function transientRect(box: TransientBox, vw: number, vh: number, scale: number)
 	const h = box.height * scale;
 	const edge = box.edge * scale;
 	if (box.anchor === "topCentre") return { x: vw * HALF - w * HALF, y: edge, w, h };
+	if (box.anchor === "topRight") return { x: vw - HUD_VIEW.margin * scale - w, y: edge, w, h };
 	if (box.anchor === "bottomCentre") return { x: vw * HALF - w * HALF, y: vh - edge - h, w, h };
 	return { x: vw - edge - w, y: vh - edge - h, w, h };
 }
@@ -340,10 +367,21 @@ export function touchFootprintRects(
 	});
 }
 
+/** A transient box's screen rect on touch (the touch HUD scale floor), `topInset` as in footprintRects. */
+export function touchTransientRect(
+	box: TransientBox,
+	vw: number,
+	vh: number,
+	userPercent: number,
+	topInset = 0,
+): ScreenRect {
+	const scale = computeHudScale(vw, vh, false, userPercent, true);
+	return shiftDown(transientRect(box, vw, vh - topInset, scale), topInset);
+}
+
 /** The touch tutorial prompt's screen rect (TOUCH_TUTORIAL_BOX at the touch HUD scale; `topInset` as in footprintRects). */
 export function touchTutorialRect(vw: number, vh: number, userPercent: number, topInset = 0): ScreenRect {
-	const scale = computeHudScale(vw, vh, false, userPercent, true);
-	return shiftDown(transientRect(TOUCH_TUTORIAL_BOX, vw, vh - topInset, scale), topInset);
+	return touchTransientRect(TOUCH_TUTORIAL_BOX, vw, vh, userPercent, topInset);
 }
 
 /** Text lines under the weapon slots (the swap hint). */
