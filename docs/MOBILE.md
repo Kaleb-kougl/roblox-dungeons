@@ -121,7 +121,12 @@ Recommended defaults (open):
   ScreenGui, GuiButtons whose `InputBegan` starts a finger, global `TouchMoved` / `TouchEnded`), sets the mode each
   frame before the sim samples, turns off the stock touch GUI, locks landscape and draws the auto-target ring.
   Stick math only ever uses deltas between two touch positions, so touch space and GUI space never mix (except where the
-  floating base is drawn: one offset constant, measured by the spike).
+  floating base is drawn and where `pickTouchTarget` settles an overlap: one offset constant, measured by the spike).
+  One touch is one finger on one control: a button's input area is its bounding square (UICorner only rounds the
+  drawing), so Attack's and Alt's squares overlap and a touch there fired `InputBegan` on both; the second overwrote the
+  first finger's `fingerIds` entry, its end never arrived and the machine then ignored every new touch on that control
+  (a stuck stick). Presses are now collected and resolved once per frame (`pickTouchTarget`: nearest centre by d / r),
+  and a finger whose `InputObject.UserInputState` is End / Cancel without a `TouchEnded` is ended by a per-frame sweep.
 - **Theme.** Required strings `TOUCH_STRING_KEYS` (`touch.*`), four `options.display.touch*` strings, the rewritten
   `tutorial.prompt.*.touch` texts (no key placeholders). No new colour roles or images in v1.
 

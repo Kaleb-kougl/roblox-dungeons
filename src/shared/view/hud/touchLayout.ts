@@ -169,3 +169,44 @@ export function touchLayout(
 		stickRadiusPx: TOUCH.stickRadiusRef * scale,
 	};
 }
+
+/** What a touch can begin on: a button or the move zone. */
+export type TouchTargetId = TouchButtonId | "move";
+
+/**
+ * The one control a touch belongs to. A TextButton takes input over its whole bounding square (the UICorner only
+ * rounds the drawing), so neighbouring circles' squares overlap at their corners (Attack and Alt do at every size) and
+ * one touch there fires InputBegan on both. `candidates` are the controls it fired on; the winner is the button whose
+ * circle centre is nearest relative to its radius (distance / r), the move zone only when the point is inside it (it
+ * never meets a button's square). (x, y) is the touch in the layout's space (origin at the safe area's top left).
+ * Undefined only for no candidates; a candidate this layout does not place scores last.
+ */
+export function pickTouchTarget(
+	layout: TouchLayoutResult,
+	candidates: ReadonlyArray<TouchTargetId>,
+	x: number,
+	y: number,
+): TouchTargetId | undefined {
+	if (candidates.size() === 1) return candidates[0];
+	let best: TouchTargetId | undefined;
+	let bestScore = math.huge;
+	for (const id of candidates) {
+		let score = math.huge;
+		if (id === "move") {
+			const z = layout.moveZone;
+			if (z !== undefined && x >= z.x && x <= z.x + z.w && y >= z.y && y <= z.y + z.h) score = 0;
+		} else {
+			for (const b of layout.buttons) {
+				if (b.id !== id || !(b.r > 0)) continue;
+				const dx = x - b.cx;
+				const dy = y - b.cy;
+				score = (dx * dx + dy * dy) / (b.r * b.r);
+			}
+		}
+		if (best === undefined || score < bestScore) {
+			best = id;
+			bestScore = score;
+		}
+	}
+	return best;
+}

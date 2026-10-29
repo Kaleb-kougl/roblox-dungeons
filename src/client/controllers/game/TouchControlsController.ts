@@ -14,21 +14,16 @@ import {
 import { HUD_FONT, role, str } from "client/ui";
 import { STUDS_PER_TILE, TOUCH } from "shared/config";
 import type { DisplaySettings } from "shared/settings";
-import {
-	stickVector,
-	touchMode,
-	type GameSnapshot,
-	type TouchControlId,
-	type TouchControls,
-	type TouchMode,
-} from "shared/play";
+import { stickVector, touchMode, type GameSnapshot, type TouchControls, type TouchMode } from "shared/play";
 import { RENDER_ORDER, floorStudsY, studsX, studsZ } from "shared/view";
 import {
 	TOUCH_LAYOUT,
+	pickTouchTarget,
 	touchButtonLabelKey,
 	touchLayout,
 	type TouchButtonId,
 	type TouchLayoutResult,
+	type TouchTargetId,
 } from "shared/view/hud";
 import { InputController } from "./InputController";
 import { SimController } from "./SimController";
@@ -57,6 +52,23 @@ interface Control {
 	fillT: number;
 	textT: number;
 	label: string;
+}
+
+/**
+ * A touch whose InputBegan fired since the last frame, on one control or (a corner where two buttons' hit squares
+ * overlap) several: frame() gives it to exactly one (pickTouchTarget). (x, y) is the touch-down point (raw touch px).
+ */
+interface PendingTouch {
+	readonly candidates: TouchTargetId[];
+	readonly x: number;
+	readonly y: number;
+	ended: boolean;
+}
+
+/** The touch is over: lifted (End) or taken by the system (Cancel, which fires no TouchEnded). */
+function touchOver(io: InputObject): boolean {
+	const s = io.UserInputState;
+	return s === Enum.UserInputState.End || s === Enum.UserInputState.Cancel;
 }
 
 /** Every GUI object and target marker the controller owns (built once in onStart). */
@@ -136,6 +148,12 @@ function place(ui: Ui, layout: TouchLayoutResult): void {
  * Touches go to the InputController's TouchControls machine (MB3) as fingers; the surface shown each frame follows
  * touchMode (MB6), and the auto-target ring is drawn in the world (KV_TouchTarget).
  *
+ * One touch is one finger on one control. InputBegan fires on every control whose hit square holds the touch (the
+ * squares of neighbouring circles overlap at the corners), so a press is collected as pending and resolved once in
+ * frame(), before the sim samples. A finger whose end the events missed (a cancelled touch fires no TouchEnded) is
+ * ended by its InputObject's UserInputState. Either leak used to leave a control held for good: the machine ignores
+ * new touches on a control a live finger holds.
+ *
  * Presentation only: it reads the store and the sim and never writes the sim. Everything it makes lives in the
  * Janitor; the render step (KV_TouchControls, before the sim samples input) is unbound with it.
  */
@@ -144,6 +162,8 @@ export class TouchControlsController implements OnStart {
 	private readonly janitor = new Janitor();
 	/** A Roblox touch InputObject -> the finger number the touch machine knows it by. */
 	private readonly fingerIds = new Map<InputObject, number>();
+	/** Touches begun since the last frame, not yet a finger (see PendingTouch). */
+	private readonly pending = new Map<InputObject, PendingTouch>();
 	private nextFinger = 1;
 	private ui: Ui | undefined;
 	private layout: TouchLayoutResult | undefined;
@@ -248,12 +268,16 @@ export class TouchControlsController implements OnStart {
 
 	// --- touches -----------------------------------------------------------------------------------------
 
-	private begin(io: InputObject, id: TouchControlId): void {
+	/** A touch began on a control: collected until frame() picks its one control (a second control's event joins it). */
+	private begin(io: InputObject, id: TouchTargetId): void {
 		if (io.UserInputType !== Enum.UserInputType.Touch) return;
-		const n = this.nextFinger;
-		this.nextFinger += 1;
-		this.fingerIds.set(io, n);
-		this.input.getTouch().begin(n, id, io.Position.X, io.Position.Y);
+		if (this.fingerIds.has(io)) return; // already a finger: a later InputBegan for the same touch
+		const p = this.pending.get(io);
+		if (p === undefined) {
+			this.pending.set(io, { candidates: [id], x: io.Position.X, y: io.Position.Y, ended: false });
+		} else if (!p.candidates.includes(id)) {
+			p.candidates.push(id);
+		}
 	}
 
 	private moved(io: InputObject): void {
@@ -262,10 +286,42 @@ export class TouchControlsController implements OnStart {
 	}
 
 	private ended(io: InputObject): void {
+		const p = this.pending.get(io);
+		if (p !== undefined) p.ended = true; // a tap within one frame: it still begins (and presses) in frame()
 		const n = this.fingerIds.get(io);
 		if (n === undefined) return;
 		this.input.getTouch().end(n);
 		this.fingerIds.delete(io);
+	}
+
+	/** Each pending touch becomes ONE finger, on the control pickTouchTarget gives it; a lifted one ends at once. */
+	private resolvePending(ui: Ui, layout: TouchLayoutResult, touch: TouchControls): void {
+		if (this.pending.size() === 0) return;
+		const origin = ui.gui.AbsolutePosition;
+		for (const [io, p] of this.pending) {
+			const gx = p.x - origin.X + TOUCH_LAYOUT.guiOffset.x;
+			const gy = p.y - origin.Y + TOUCH_LAYOUT.guiOffset.y;
+			const id = pickTouchTarget(layout, p.candidates, gx, gy);
+			if (id === undefined) continue;
+			const n = this.nextFinger;
+			this.nextFinger += 1;
+			this.fingerIds.set(io, n);
+			touch.begin(n, id, p.x, p.y);
+			if (p.ended || touchOver(io)) {
+				touch.end(n);
+				this.fingerIds.delete(io);
+			} else {
+				touch.move(n, io.Position.X, io.Position.Y); // any drag since the touch went down
+			}
+		}
+		this.pending.clear();
+	}
+
+	/** Ends every finger whose touch is over without a TouchEnded (cancelled by the system, or the event was missed). */
+	private sweepEnded(): void {
+		const over = new Array<InputObject>();
+		for (const [io] of this.fingerIds) if (touchOver(io)) over.push(io);
+		for (const io of over) this.ended(io);
 	}
 
 	// --- per frame ---------------------------------------------------------------------------------------
@@ -289,7 +345,9 @@ export class TouchControlsController implements OnStart {
 		});
 		if (mode !== this.mode) {
 			this.mode = mode;
-			if (mode === "hidden") this.fingerIds.clear();
+			// setTouchMode drops every finger on any change (play <-> spectate too): forget their touches with them.
+			this.fingerIds.clear();
+			this.pending.clear();
 		}
 		this.input.setTouchMode(mode);
 		ui.gui.Enabled = mode !== "hidden";
@@ -298,6 +356,8 @@ export class TouchControlsController implements OnStart {
 		const layout = this.layout;
 		if (layout === undefined) return;
 		const touch = this.input.getTouch();
+		this.sweepEnded();
+		this.resolvePending(ui, layout, touch);
 		this.updateButtons(ui, layout, snapshot, display, touch);
 		this.updateMove(ui, layout, display, touch);
 		this.updateTarget(ui);

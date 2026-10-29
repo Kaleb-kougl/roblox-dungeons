@@ -40,6 +40,7 @@ Record every ported module in `PROVENANCE.md` (ported module, source path, sourc
 | `docs/STAGE_LOADER.md` | Stage loader (cover while a floor generates and loads: run start, stairwell card, pre-generation during the boon draft, deferred view rebuilds): plan, tasks SL0-SL8, decisions SD1-SD6 |
 | `docs/INVITES.md` | Roblox friend invites (`PromptGameInvite` + LaunchData into a lobby) and Roblox Party grouping: plan, tasks I0-I9, decisions ID1-ID7 |
 | `docs/MOBILE.md` | Mobile play (two-stick touch controls with auto-target, touch HUD, touch menus / tutorial, real-device performance): plan, tasks MB0-MB16, decisions MBD1-MBD10. Step-by-step build: `docs/MOBILE_IMPL.md` (MB1-MB13) |
+| `docs/ROOM_CLEAR.md` | Room clear celebration (1.5 s: 0.5x slow motion on the last kill, CLEAR / PERFECT stamp, room score tally rolling into the score panel, a corner chip for a far co-op clear, On / Off setting; presentation only): plan, tasks RC0-RC10, decisions RCD1-RCD18. Step-by-step build: `docs/ROOM_CLEAR_IMPL.md` (RC1-RC9) |
 
 Decision log (deviations from `PLAN.md`):
 - **Art (docs/ART.md).** The theme contract gained a `"sprites"` kind (large pre-rendered cells, 1/4/8/16 screen-space

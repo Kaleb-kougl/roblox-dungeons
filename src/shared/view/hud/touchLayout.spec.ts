@@ -3,8 +3,8 @@
 import { describe, expect, it } from "@rbxts/jest-globals";
 import { TOUCH } from "shared/config";
 import { HUD_SCALE_PERCENTS } from "shared/settings";
-import { HUD_TEST_TOP_INSET, TOUCH_LAYOUT, TOUCH_TEST_VIEWPORTS, touchLayout } from ".";
-import type { ScreenRect, TouchLayoutMode, TouchLayoutResult, TouchPoint } from ".";
+import { HUD_TEST_TOP_INSET, TOUCH_LAYOUT, TOUCH_TEST_VIEWPORTS, pickTouchTarget, touchLayout } from ".";
+import type { ScreenRect, TouchCircle, TouchLayoutMode, TouchLayoutResult, TouchPoint } from ".";
 
 const PERCENT = 100;
 const SIZE_PERCENTS: ReadonlyArray<number> = [80, 100, 120];
@@ -138,5 +138,41 @@ describe("touch controls layout", () => {
 				}
 			}
 		}
+	});
+});
+
+describe("pickTouchTarget", () => {
+	const VIEW = TOUCH_TEST_VIEWPORTS[1];
+	const layout = touchLayout(VIEW.x, VIEW.y, VIEW.x, VIEW.y, PERCENT, PERCENT, false, "play");
+	function button(id: string): TouchCircle {
+		const b = layout.buttons.find((c) => c.id === id);
+		if (b === undefined) error(`no ${id}`, 0);
+		return b;
+	}
+	const attack = button("attack");
+	const alt = button("alt");
+
+	it("Attack's and Alt's hit squares overlap (why one touch can fire InputBegan on both)", () => {
+		const overlapX =
+			math.min(attack.cx + attack.r, alt.cx + alt.r) - math.max(attack.cx - attack.r, alt.cx - alt.r);
+		const overlapY =
+			math.min(attack.cy + attack.r, alt.cy + alt.r) - math.max(attack.cy - attack.r, alt.cy - alt.r);
+		expect(overlapX > 0 && overlapY > 0).toBe(true);
+	});
+
+	it("gives a touch in both squares to exactly one control, whatever the event order", () => {
+		// A point inside both squares (outside both circles), Attack's centre and a point inside Alt's circle.
+		const cornerX = alt.cx + alt.r - 1;
+		const cornerY = attack.cy - attack.r + 1;
+		const first = pickTouchTarget(layout, ["attack", "alt"], cornerX, cornerY);
+		expect(pickTouchTarget(layout, ["alt", "attack"], cornerX, cornerY)).toBe(first);
+		expect(pickTouchTarget(layout, ["alt", "attack"], attack.cx, attack.cy)).toBe("attack");
+		expect(pickTouchTarget(layout, ["attack", "alt"], alt.cx + alt.r * 0.6, alt.cy + alt.r * 0.6)).toBe("alt");
+	});
+
+	it("keeps a single candidate as it is", () => {
+		expect(pickTouchTarget(layout, ["roll"], 0, 0)).toBe("roll");
+		expect(pickTouchTarget(layout, ["move"], 0, 0)).toBe("move");
+		expect(pickTouchTarget(layout, [], 0, 0)).toBe(undefined);
 	});
 });
