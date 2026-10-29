@@ -63,8 +63,10 @@ import {
 } from "shared/run";
 import { BoostFrameEvents, type BoostEventSource } from "shared/view/boosts";
 import {
+	ComboEvents,
 	RoomClearEvents,
 	newFrameAdvance,
+	type ComboFrameSource,
 	type FrameAdvance,
 	type FramePacer,
 	type RoomClearSource,
@@ -136,6 +138,8 @@ export interface RunView {
 	readonly boostEvents: BoostEventSource;
 	/** The room clears of the last frame's ticks (docs/ROOM_CLEAR.md RC1). */
 	readonly roomClears: RoomClearSource;
+	/** The combo events of the last frame's ticks: feeds, cuts, a streak end (docs/COMBO.md CB1). */
+	readonly combo: ComboFrameSource;
 	getAlpha(): number;
 }
 
@@ -279,6 +283,8 @@ export class LiveRun implements RunView {
 	readonly boostEvents = new BoostFrameEvents();
 	/** The room clears of the ticks run by the last frame() (docs/ROOM_CLEAR.md RC1; reset every frame). */
 	readonly roomClears = new RoomClearEvents();
+	/** The combo events of the ticks run by the last frame() (docs/COMBO.md CB1; reset every frame). */
+	readonly combo = new ComboEvents();
 	/** What the pacer made of the last unpaused frame (frozen, time scale); a plain pass-through without a pacer. */
 	readonly lastAdvance: FrameAdvance = newFrameAdvance();
 	/** Run totals for the HUD's post-run panel (the telemetry's kill / hit counts, read without finishing it). */
@@ -328,6 +334,7 @@ export class LiveRun implements RunView {
 		this.runEvents.clear();
 		this.boostEvents.reset();
 		this.roomClears.reset();
+		this.combo.reset();
 		this.ticksThisFrame = 0;
 		if (this.forfeitPending) {
 			this.forfeitPending = false;
@@ -407,6 +414,7 @@ export class LiveRun implements RunView {
 		collectRunEvents(state, SOLO_PLAYER, this.runEvents);
 		this.boostEvents.collect(state);
 		this.roomClears.collect(state);
+		this.combo.collect(state);
 		if (this.victoryTick === undefined && e.bossDefeated !== 0) this.victoryTick = state.tick;
 		if (this.deathTick === undefined && (e.playerDied !== 0 || state.player.dead !== 0)) {
 			this.deathTick = state.tick;
