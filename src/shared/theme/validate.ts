@@ -1600,6 +1600,47 @@ function checkAssetIdAt(assetId: unknown, path: ReadonlyArray<string>, err: Err)
 	}
 }
 
+/**
+ * A ui image's 9-slice insets (docs/DRAFT_REVEAL.md DR3): { left, top, right, bottom }, integers >= 0 in art pixels,
+ * inside the image with a centre of at least 1 x 1 pixel (left + right < w, top + bottom < h). ui.* only.
+ */
+function checkSlice(
+	slice: unknown,
+	w: unknown,
+	h: unknown,
+	path: Array<string>,
+	inUi: boolean,
+	err: Err,
+	unknownKeys: UnknownKeys,
+) {
+	if (!inUi) {
+		err(path, "only ui.* images are 9-sliced");
+		return;
+	}
+	if (!isObj(slice)) {
+		err(path, 'must be { "left": int, "top": int, "right": int, "bottom": int } in art pixels');
+		return;
+	}
+	unknownKeys(slice, path, ["left", "top", "right", "bottom"]);
+	let ok = true;
+	for (const k of ["left", "top", "right", "bottom"]) {
+		if (!isNonNegInt(slice[k])) {
+			err(append(path, k), "must be an integer >= 0 (art pixels)");
+			ok = false;
+		}
+	}
+	if (!ok || !isPosInt(w) || !isPosInt(h)) {
+		return;
+	}
+	const [l, t, r, b] = [slice.left as number, slice.top as number, slice.right as number, slice.bottom as number];
+	if (l + r >= w || t + b >= h) {
+		err(
+			path,
+			`insets ${l} ${t} ${r} ${b} leave no centre in the ${w}x${h} image (left + right < w, top + bottom < h)`,
+		);
+	}
+}
+
 function validateAsset(def: unknown, path: Array<string>, slot: SlotContract, err: Err, unknownKeys: UnknownKeys) {
 	if (!isObj(def)) {
 		err(path, 'must be an object with a "kind"');
@@ -1639,8 +1680,11 @@ function validateAsset(def: unknown, path: Array<string>, slot: SlotContract, er
 				validateWorldImage(def, path, slot, err, unknownKeys);
 				break;
 			}
-			unknownKeys(def, path, ["kind", "assetId", "w", "h", "tilesPerImage", "pivot"]);
+			unknownKeys(def, path, ["kind", "assetId", "w", "h", "tilesPerImage", "pivot", "slice"]);
 			checkAssetId();
+			if (def.slice !== undefined) {
+				checkSlice(def.slice, def.w, def.h, append(path, "slice"), slot === UI, err, unknownKeys);
+			}
 			const imagePivot = def.pivot;
 			if (imagePivot !== undefined) {
 				const pp = append(path, "pivot");

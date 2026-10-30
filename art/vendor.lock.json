@@ -7830,6 +7830,11 @@
 			"path": "smallscale-knight/Spritesheets/With shadows/TakeDamage.png",
 			"sha256": "534b474ce2845523a06b48afceafbe02d746d9a0313af665056f594e0fb154cd",
 			"bytes": 464920
+		},
+		{
+			"path": "toffeecraft-horror-ui/UiHorror.png",
+			"sha256": "bc8fcc677c7f553233fe59d40a4710986de68d68aafddcd07ee5e17eb956220e",
+			"bytes": 146876
 		}
 	]
 }

@@ -7,7 +7,7 @@
  * counter-clockwise, 0 = screen right, 90 = screen up).
  */
 
-import type { HexColor, Pivot, PixelBox, SpriteSetAsset } from "../../types";
+import type { HexColor, Pivot, PixelBox, SliceInsets, SpriteSetAsset } from "../../types";
 
 /** An atlas PNG in art/build/, by file name. */
 export interface ValeSheetFile {
@@ -39,12 +39,14 @@ export interface ValeSpriteLayout extends Omit<SpriteSetAsset, "kind" | "sheets"
 
 /**
  * A single image in art/build/. `pivot` (pixels from the top-left) is where it is anchored, when it matters;
- * `pixelsPerTile`, on world art drawn at a sprite set's scale (art/atlases.json `pixelsPerTileFrom`), sizes it.
+ * `pixelsPerTile`, on world art drawn at a sprite set's scale (art/atlases.json `pixelsPerTileFrom`), sizes it;
+ * `slice`, on a 9-sliced panel (art/atlases.json `slice`), its insets in image pixels (ImageAsset.slice).
  */
 export interface ValeImageLayout extends ValeSheetFile {
 	tilesPerImage?: number;
 	pivot?: Pivot;
 	pixelsPerTile?: number;
+	slice?: SliceInsets;
 }
 
 export const VALE_SPRITE_LAYOUTS: Record<string, ValeSpriteLayout> = {
@@ -368,6 +370,42 @@ export const VALE_IMAGE_LAYOUTS: Record<string, ValeImageLayout> = {
 		pixelsPerTile: 29.6,
 	},
 	"tile.biome.1.floor": { file: "tile-biome1-floor.png", w: 256, h: 256, tilesPerImage: 4 },
+	"ui.draft.back": {
+		file: "ui-draft-back.png",
+		w: 93,
+		h: 45,
+		slice: { left: 46, top: 20, right: 46, bottom: 24 },
+	},
+	"ui.draft.back.eyes": {
+		file: "ui-draft-back-eyes.png",
+		w: 93,
+		h: 45,
+		slice: { left: 46, top: 20, right: 46, bottom: 24 },
+	},
+	"ui.draft.card.common": {
+		file: "ui-draft-card-common.png",
+		w: 90,
+		h: 44,
+		slice: { left: 6, top: 6, right: 6, bottom: 6 },
+	},
+	"ui.draft.card.rare": {
+		file: "ui-draft-card-rare.png",
+		w: 87,
+		h: 61,
+		slice: { left: 43, top: 30, right: 43, bottom: 30 },
+	},
+	"ui.draft.skull.left": {
+		file: "ui-draft-skull-left.png",
+		w: 17,
+		h: 18,
+		pivot: { x: 3, y: 5 },
+	},
+	"ui.draft.skull.right": {
+		file: "ui-draft-skull-right.png",
+		w: 17,
+		h: 18,
+		pivot: { x: 14, y: 5 },
+	},
 	"ui.marker.boost": {
 		file: "ui-marker-boost.png",
 		w: 8,
