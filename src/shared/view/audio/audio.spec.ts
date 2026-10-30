@@ -35,7 +35,14 @@ import {
 } from "shared/sim";
 import { AMBIENCE_IDS, AUDIO_EVENTS, PLACEHOLDER_MANIFEST, ThemePack, slotFor } from "shared/theme";
 import { BoostFrameEvents } from "../boosts";
-import { NO_COMBO_EVENTS, type ComboCut, type ComboFrameSource, type ComboReset } from "../fx";
+import {
+	NO_COMBO_EVENTS,
+	audibleCombo,
+	comboQuiet,
+	type ComboCut,
+	type ComboFrameSource,
+	type ComboReset,
+} from "../fx";
 import { FxEventBuffer, type FxEventType } from "../fx/events";
 import { COMBO_VIEW, KILL_PITCH, killPitchSpeed, semitonesToSpeed, tierStingSpeed } from "../hud";
 import {
@@ -1114,6 +1121,42 @@ describe("audio: the combo (docs/COMBO.md CB4)", () => {
 		const m = primed(s);
 		expect(comboCues(m, 1, s, NO_FX, streakEnd(34, false))).toEqual([]);
 		expect(comboCues(m, 2, s, NO_FX, streakEnd(14, false))).toEqual([]);
+	});
+
+	it("the quiet gate: the stage cover or a run over silences the sting and the break, as the display does", () => {
+		expect([
+			comboQuiet(false, false),
+			comboQuiet(true, false),
+			comboQuiet(false, true),
+			comboQuiet(true, true),
+		]).toEqual([false, true, true, true]);
+		const tierUp = comboFrame(19, 20);
+		const brk = streakEnd(34, true);
+		expect(audibleCombo(brk, false)).toBe(brk);
+		expect(audibleCombo(brk, true)).toBe(NO_COMBO_EVENTS);
+		const s = scored();
+		const m = primed(s);
+		// Run over (a solo death: the sim keeps stepping and the timer runs out in a live room): no shatter, no sting.
+		const over = comboQuiet(false, true);
+		expect(comboCues(m, 1, s, NO_FX, audibleCombo(brk, over))).toEqual([]);
+		expect(comboCues(m, 2, s, NO_FX, audibleCombo(streakEnd(14, true), over))).toEqual([]);
+		expect(comboCues(m, 3, s, NO_FX, audibleCombo(tierUp, over))).toEqual([]);
+		// Under the stage cover: the same.
+		const covered = comboQuiet(true, false);
+		expect(comboCues(m, 4, s, NO_FX, audibleCombo(brk, covered))).toEqual([]);
+		expect(comboCues(m, 5, s, NO_FX, audibleCombo(tierUp, covered))).toEqual([]);
+		// Nothing gated took a cooldown: uncovered, both play at once.
+		expect(comboCues(m, 5.1, s, NO_FX, audibleCombo(brk, comboQuiet(false, false)))).toEqual([
+			[SFX.comboBreak, 1, 0],
+		]);
+		expect(comboCues(m, 5.1, s, NO_FX, audibleCombo(tierUp, comboQuiet(false, false)))).toEqual([
+			[SFX.comboTier, 1, tierStingSpeed(1)],
+		]);
+		// The kill ladder stays (it is the kill sound itself, read from the live combo).
+		s.score!.combo = 30;
+		expect(comboCues(m, 6, s, KILL, audibleCombo(comboFrame(29, 30), covered))).toEqual([
+			[SFX.enemyDeath, 1, killPitchSpeed(30)],
+		]);
 	});
 
 	it("silent combo IDs (the placeholder pack) produce nothing and take no cooldown", () => {

@@ -12,11 +12,13 @@ import {
 	comboDropText,
 	comboMultRichText,
 	comboShardAt,
+	comboShardWidth,
 	comboShineOffset,
 	comboShoutText,
 	floorAxes,
 	richTextEscape,
 	shoutCanvasSize,
+	type ComboDropLook,
 	type ComboShardLook,
 } from "./comboDraw";
 
@@ -41,30 +43,43 @@ function run(s: ComboShout, sec: number, ducked = false, reduced = false): { op:
 }
 
 describe("combo shards", () => {
-	it("start at the centre of their piece of the fill, fly outward symmetrically, end faded", () => {
+	it("start at the centre of their piece of the whole track, fly outward symmetrically, end faded", () => {
 		const n = COMBO_VIEW.break.shards;
 		const o = shard();
 		for (let i = 0; i < n; i++) {
-			comboShardAt(i, n, 0, 0.5, o);
-			expect(o.xScale).toBeCloseTo(((i + 0.5) / n) * 0.5, 9);
+			comboShardAt(i, n, 0, o);
+			expect(o.xScale).toBeCloseTo((i + 0.5) / n, 9);
 			for (const v of [o.dxPx, o.dyPx, o.rotationDeg, o.transparency]) expect(v).toBeCloseTo(0, 9);
 			const mirror = shard();
-			comboShardAt(n - 1 - i, n, 0.7, 1, mirror);
-			comboShardAt(i, n, 0.7, 1, o);
+			comboShardAt(n - 1 - i, n, 0.7, mirror);
+			comboShardAt(i, n, 0.7, o);
 			expect(o.dxPx).toBeCloseTo(-mirror.dxPx, 9);
 			expect(o.rotationDeg).toBeCloseTo(-mirror.rotationDeg, 9);
 			expect(o.dyPx).toBeCloseTo(mirror.dyPx, 9);
-			comboShardAt(i, n, 1, 1, o);
+			comboShardAt(i, n, 1, o);
 			expect(o.transparency).toBe(1);
 			expect(o.dyPx).toBeCloseTo(COMBO_DRAW.shards.fallPx - COMBO_DRAW.shards.risePx, 9);
 			expect(math.abs(o.dxPx) <= COMBO_DRAW.shards.spreadPx + EPS).toBe(true);
 		}
 		// They rise first (y up is negative), then fall.
-		comboShardAt(0, n, 0.1, 1, o);
+		comboShardAt(0, n, 0.1, o);
 		expect(o.dyPx < 0).toBe(true);
 		// Out of range progress clamps.
-		comboShardAt(0, n, 2, 1, o);
+		comboShardAt(0, n, 2, o);
 		expect(o.transparency).toBe(1);
+	});
+
+	it("tile the whole track edge to edge, whatever the fill was (a real break's fill is ~0)", () => {
+		const n = COMBO_VIEW.break.shards;
+		const w = comboShardWidth(n);
+		expect(w).toBeCloseTo(1 / n, 9);
+		expect(n * w).toBeCloseTo(1, 9);
+		const o = shard();
+		comboShardAt(0, n, 0, o);
+		expect(o.xScale - w / 2).toBeCloseTo(0, 9);
+		comboShardAt(n - 1, n, 0, o);
+		expect(o.xScale + w / 2).toBeCloseTo(1, 9);
+		expect(comboShardWidth(0)).toBe(0);
 	});
 });
 
@@ -77,11 +92,26 @@ describe("combo row helpers", () => {
 		expect(comboShineOffset(-1)).toBeCloseTo(comboShineOffset(0), 9);
 	});
 
-	it("the crack's drop falls and fades; texts", () => {
-		expect(comboDropAt(0)).toEqual({ fallPx: 0, transparency: 0 });
-		expect(comboDropAt(1)).toEqual({ fallPx: COMBO_DRAW.dropFallPx, transparency: 1 });
+	it("the crack's drop falls and fades into one reused look; texts", () => {
+		const out: ComboDropLook = { fallPx: -1, transparency: -1 };
+		expect(comboDropAt(0, false, out)).toBe(out);
+		expect(out).toEqual({ fallPx: 0, transparency: 0 });
+		expect(comboDropAt(1, false, out)).toEqual({ fallPx: COMBO_DRAW.dropFallPx, transparency: 1 });
+		comboDropAt(0.5, false, out);
+		expect(out.fallPx).toBeCloseTo(COMBO_DRAW.dropFallPx / 2, 9);
+		expect(out.transparency).toBeCloseTo(0.5, 9);
+		expect(comboDropAt(2, false, out)).toEqual({ fallPx: COMBO_DRAW.dropFallPx, transparency: 1 });
 		expect(comboDropText("x1.2")).toBe("-x1.2");
 		expect(comboShoutText("RAMPAGE")).toBe(`RAMPAGE${COMBO_SHOUT_DRAW.bang}`);
+	});
+
+	it("reduced motion: the crack's drop fades in place, never falls", () => {
+		const out: ComboDropLook = { fallPx: -1, transparency: -1 };
+		for (const u of [0, 0.25, 0.5, 1]) {
+			comboDropAt(u, true, out);
+			expect(out.fallPx).toBe(0);
+			expect(out.transparency).toBeCloseTo(u, 9);
+		}
 	});
 
 	it("the multiplier's RichText: escaped, struck through only while broken", () => {

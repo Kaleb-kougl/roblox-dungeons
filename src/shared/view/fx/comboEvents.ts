@@ -11,8 +11,10 @@
  *   - startCombo: the first collected tick's `comboStart` (with no tick this frame: the last combo seen, so start, end
  *     and peak are equal and nothing moved). endCombo: `score.combo` after the frame's last tick. peak: the highest
  *     combo at the end of any of the frame's ticks (never below startCombo).
- *   - cuts: one per tick with `comboCut > 0` (several hits on one tick make one cut): before = that tick's comboStart,
- *     after = the combo at its end (a kill earlier in the same tick is inside the cut).
+ *   - cuts: one per tick with `comboCut > 0` that ENDED BELOW its comboStart (several hits on one tick make one cut):
+ *     before = that tick's comboStart, after = the combo at its end (a kill earlier in the same tick is inside the
+ *     cut). The sim counts `comboCut` even when nothing was lost (a hit at x1.0 stays at COMBO_MIN; a kill and a hit on
+ *     one tick can net zero or a gain), so such a tick records no cut: the display would show a crack of "-x0.0".
  *   - ended: the timer reset a combo above x1.0 (comboBroken). `lost` = that tick's comboStart, `peak` = the highest
  *     combo since the previous streak end (or since this collector was created), which spans frames, so it is tracked
  *     here and never reset per frame; `fight` = fightOn(state) at the reset tick (break vs lapse, CD3). The streak
@@ -59,7 +61,10 @@ export interface ComboFrameSource {
 	readonly kills: number;
 	/** ScoreEvents.grazes summed over the frame. */
 	readonly grazes: number;
-	/** Ticks with comboCut > 0, in order (before = comboStart, after = combo at tick end). */
+	/**
+	 * Ticks with comboCut > 0 that ended below their comboStart, in order (before = comboStart, after = combo at tick
+	 * end; always before > after).
+	 */
 	readonly cuts: ReadonlyArray<ComboCut>;
 	/** The frame's last streak end (at most one per window in practice). */
 	readonly ended: ComboReset | undefined;
@@ -116,7 +121,8 @@ export class ComboEvents implements ComboFrameSource {
 		if (combo > this.peak) this.peak = combo;
 		this.kills += e.kills;
 		this.grazes += e.grazes;
-		if (e.comboCut > 0) this.pushCut(e.comboStart, combo);
+		// A cut that lost nothing (a hit at x1.0, a kill and a hit netting zero or more) is no cut to show.
+		if (e.comboCut > 0 && combo < e.comboStart) this.pushCut(e.comboStart, combo);
 
 		// The streak's high: the feeds come before the cuts and the timer inside a tick (stepCombat, then stepScore).
 		const fed = e.comboStart + COMBO_STEP * (e.kills + e.grazes);
@@ -157,3 +163,25 @@ export const NO_COMBO_EVENTS: ComboFrameSource = table.freeze({
 	cuts: table.freeze([] as ComboCut[]),
 	ended: undefined,
 });
+
+/**
+ * The combo's quiet gate (docs/COMBO.md "Floor change / stage cover", "Run over"): true while the stage cover is up
+ * (SimController.isInputCovered, the cover and its fade) or the run is over (SimController.isRunOver: the solo run's
+ * outcome is no longer "playing" / the co-op client is over). ComboController hands the same two predicates to
+ * ComboDisplay (`covered` / `runOver`: no tier-up, break or lapse edge), and AudioController gates the mapper's combo
+ * source with this (audibleCombo), so the sting and the shatter can never play where the display shows nothing. The
+ * sim keeps stepping after a solo death, so the combo timer can still run out in a live room behind the run-over
+ * panel: without this, sfx.combo.break played over it.
+ */
+export function comboQuiet(covered: boolean, runOver: boolean): boolean {
+	return covered || runOver;
+}
+
+/**
+ * The combo source the audio mapper reads (AudioCueMapper.frame's `combo`): `source` as is, or NO_COMBO_EVENTS while
+ * `quiet` (comboQuiet): no tier sting, no break. The kill ladder reads the live score combo, not this, so a kill keeps
+ * its pitch (it is the kill sound itself).
+ */
+export function audibleCombo(source: ComboFrameSource, quiet: boolean): ComboFrameSource {
+	return quiet ? NO_COMBO_EVENTS : source;
+}

@@ -162,15 +162,20 @@ export const COMBO_VIEW = {
 	 */
 	crack: { flashSec: 0.25, shakePx: 3, shakeCycles: 2, shakeSec: 0.2, dropSec: 0.5, nameFadeSec: 0.25 },
 	/**
-	 * A break during a fight (CD3): grey and the lost value struck through for sec; the fill shatters into `shards`
-	 * pieces over shardSec; the camera kicks at kickDelaySec (comboBreak nudge, Screen shake).
+	 * A break during a fight (CD3): grey and the lost value struck through for sec; the WHOLE meter track shatters into
+	 * `shards` pieces in the lost tier's colour over shardSec (a break happens exactly when the timer reaches 0, so the
+	 * fill is empty by then: shards sized from it would be sub-pixel), the track grey under them; the camera kicks at
+	 * kickDelaySec (comboBreak nudge, Screen shake).
 	 */
 	break: { sec: 1.2, shards: 6, shardSec: 0.4, kickDelaySec: 0.08 },
 	/** A break that lost less than this (tenths, x2.0) is a small break: no shards, no kick, the sound at half (CD14). */
 	smallBreakBelow: 2 * COMBO_DENOMINATOR,
 	smallBreakVolume: 0.5,
-	/** A lapse (no fight on): the meter drains to grey over drainSec, BEST xN.N shows for bestSec. */
-	lapse: { drainSec: 0.3, bestSec: 1.2 },
+	/**
+	 * A lapse (no fight on): the (empty) meter track and the multiplier fade to grey over greySec, BEST xN.N shows for
+	 * bestSec. The fill is already empty when the timer runs out, so nothing drains.
+	 */
+	lapse: { greySec: 0.3, bestSec: 1.2 },
 } as const;
 
 /**

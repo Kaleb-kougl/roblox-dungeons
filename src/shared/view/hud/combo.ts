@@ -6,19 +6,25 @@
  * shatter, the camera kick, the floor shout).
  *
  * The rules it implements (docs/COMBO.md "Player experience", CD3 - CD9, CD14):
- *   - every feed (a kill or graze on the frame) pops the multiplier row from its tier's popScale;
+ *   - every feed (a kill or graze on the frame) pops the multiplier from its tier's popScale (`multScale`);
  *   - a frame whose peak reaches a higher tier than its start raises ONE `tierUp` edge for the highest new tier,
- *     slams the row and flashes the meter white; re-earning a tier after a cut plays it again (it is judged per frame
- *     from the frame's own start and peak, never from a "best tier so far");
- *   - a cut (any landed hit that cut the combo) raises `cut`, flashes the meter uiHealth, shakes the row and drops a
- *     `-xN.N` (the frame's total cut); a cut across a tier down fades the old name out and the lower one in;
- *   - a reset (`ended`) during a fight is a break: grey, the lost value struck through, COMBO LOST, the fill shatters
- *     and the camera kicks (a small break, lost < x2.0, has neither); with no fight on it is a lapse: the meter
- *     drains to grey and BEST xN.N shows; either ends at once when a new streak starts (combo above x1.0);
+ *     slams the tier name in (`slotScale`, the tier slot's own scale: the name is what slams, the multiplier keeps its
+ *     pop) and flashes the meter white; re-earning a tier after a cut plays it again (it is judged per frame from the
+ *     frame's own start and peak, never from a "best tier so far");
+ *   - a cut (a landed hit that cut the combo) raises `cut`, flashes the meter uiHealth, shakes the row and drops a
+ *     `-xN.N` (the frame's total cut); a cut across a tier down fades the old name out and the lower one in. Only a
+ *     real loss is a crack: cuts whose total is <= 0 (a hit at x1.0, a kill and a hit on one tick that net nothing)
+ *     show nothing (the collector already records only a tick that ended below its start; this is a second guard);
+ *   - a reset (`ended`) during a fight is a break: grey, the lost value struck through, COMBO LOST, the WHOLE meter
+ *     track shatters in the lost tier's colour (the fill is empty by then: a break is the timer reaching 0) and stays
+ *     grey, and the camera kicks (a small break, lost < x2.0, has no shards or kick); with no fight on it is a lapse:
+ *     the empty track and the multiplier fade to grey and BEST xN.N shows; either ends at once when a new streak
+ *     starts (combo above x1.0);
  *   - reduced motion: no pop, slam, shake, shards or kick; the warning blink is a steady dim; colours, names, the
  *     struck value, fades and every edge (so every sound) stay;
  *   - `covered` (the stage cover is up): no edges and no transient visuals (running ones are dropped), just the plain
- *     state, so the reveal shows the result; `runOver`: no break or lapse (the run-over panel takes it).
+ *     state, so the reveal shows the result; `runOver`: no tier up, break or lapse (the run-over panel takes it). The
+ *     audio mapper's sting and break follow the same two gates (shared/view/fx comboQuiet / audibleCombo).
  *
  * The events are read through a LOCAL structural interface (`ComboDisplayEvents`, the subset of CB1's
  * `ComboFrameSource` this reads), so this compiles on its own; a `ComboFrameSource` passes as is.
@@ -99,10 +105,16 @@ export interface ComboDisplayFrame {
 	tier: number;
 	/**
 	 * Colour role of the meter fill and the multiplier. Draw lerp(role, COMBO_BROKEN_ROLE, greyMix): a break is
-	 * COMBO_BROKEN_ROLE at once; a lapse drains from the lost tier's role to grey over COMBO_VIEW.lapse.drainSec.
+	 * COMBO_BROKEN_ROLE at once; a lapse fades from the lost tier's role to grey over COMBO_VIEW.lapse.greySec.
 	 */
 	role: string;
 	greyMix: number;
+	/**
+	 * The meter TRACK (its empty background): draw lerp(its uiPanel, COMBO_BROKEN_ROLE, trackGrey). 1 while a break
+	 * shows (the shards fly over a grey track), the lapse's fade (0 -> 1 over COMBO_VIEW.lapse.greySec) while a lapse
+	 * shows, else 0.
+	 */
+	trackGrey: number;
 	/** The multiplier to show (tenths): the lost value while a break shows, else the live combo. */
 	tenths: number;
 	/** Draw the multiplier struck through (a break). */
@@ -114,11 +126,13 @@ export interface ComboDisplayFrame {
 	slotTenths: number;
 	/** The slot's opacity (a tier-down name fade), 0..1. */
 	slotAlpha: number;
-	/** The combo row's UIScale (the feed pop; the tier-up slam while it runs). 1 under reduced motion. */
-	scale: number;
+	/** The tier slot's UIScale: the tier-up slam (COMBO_VIEW.slam, 1.6 -> 1), else 1. 1 under reduced motion. */
+	slotScale: number;
+	/** The multiplier's UIScale: the feed pop (the tier's popScale -> 1), else 1. 1 under reduced motion. */
+	multScale: number;
 	/** The row's horizontal offset, reference px (the crack's shake). 0 under reduced motion. */
 	shakePx: number;
-	/** Meter fill 0..1 (comboTimer / windowTicks; 0 while broken). */
+	/** Meter fill 0..1 (comboTimer / windowTicks; 0 while a break or lapse shows). */
 	fill: number;
 	/** The meter's flash overlay: role and opacity (0 = none). */
 	flashRole: ComboFlashRole;
@@ -131,8 +145,13 @@ export interface ComboDisplayFrame {
 	pulse: number;
 	/** The shine sweep's progress 0..1 across the row, or -1 (none). */
 	shine: number;
-	/** The shatter's progress 0..1 (COMBO_VIEW.break.shards pieces), or -1 (none). */
+	/**
+	 * The shatter's progress 0..1, or -1 (none): COMBO_VIEW.break.shards pieces of the WHOLE meter track (never sized
+	 * from the fill, which is empty at a break), in `shardRole`.
+	 */
 	shards: number;
+	/** Colour role of the shards: the lost tier's (COMBO_TIERS[comboTier(lost)].role). */
+	shardRole: string;
 	/** The crack's `-xN.N`: the frame's total cut (tenths) and its drop / fade progress 0..1, or -1 (none). */
 	dropTenths: number;
 	dropProgress: number;
@@ -191,26 +210,27 @@ export class ComboDisplay {
 	private nameFromTier = 0;
 	private breakT = IDLE;
 	private breakLost = COMBO_MIN;
+	private breakRole = tierRole(0);
 	private shardT = IDLE;
 	private kickT = IDLE;
 	private lapseT = IDLE;
 	private lapseBest = COMBO_MIN;
 	private lapseRole = tierRole(0);
-	private lapseFill = 0;
-	private lastFill = 0;
 
 	constructor() {
 		this.look = {
 			tier: 0,
 			role: tierRole(0),
 			greyMix: 0,
+			trackGrey: 0,
 			tenths: COMBO_MIN,
 			struck: false,
 			slot: "none",
 			slotTier: 0,
 			slotTenths: COMBO_MIN,
 			slotAlpha: 1,
-			scale: 1,
+			slotScale: 1,
+			multScale: 1,
 			shakePx: 0,
 			fill: 0,
 			flashRole: COMBO_FLASH_ROLES.tierUp,
@@ -220,6 +240,7 @@ export class ComboDisplay {
 			pulse: 0,
 			shine: IDLE,
 			shards: IDLE,
+			shardRole: tierRole(0),
 			dropTenths: 0,
 			dropProgress: IDLE,
 			tierUp: 0,
@@ -236,7 +257,6 @@ export class ComboDisplay {
 		this.tierClock = 0;
 		this.shownTier = 0;
 		this.blinkT = 0;
-		this.lastFill = 0;
 		this.clearEdges();
 	}
 
@@ -298,16 +318,17 @@ export class ComboDisplay {
 			this.popFrom = COMBO_TIERS[comboTier(ev.endCombo)].popScale;
 		}
 		const peakTier = comboTier(ev.peak);
-		if (peakTier > comboTier(ev.startCombo)) {
+		if (peakTier > comboTier(ev.startCombo) && !input.runOver) {
 			L.tierUp = peakTier;
 			if (motion) this.slamT = 0;
 			this.startFlash(COMBO_FLASH_ROLES.tierUp, COMBO_VIEW.tierFlashSec);
 			this.nameFadeT = IDLE;
 		}
 		const cuts = ev.cuts;
-		if (cuts.size() > 0) {
-			let lost = 0;
-			for (const c of cuts) lost += c.before - c.after;
+		let lost = 0;
+		for (const c of cuts) lost += c.before - c.after;
+		// Only a real loss is a crack (a hit at x1.0, or a kill and a hit netting nothing, shows nothing).
+		if (lost > 0) {
 			L.cut = true;
 			L.dropTenths = lost;
 			this.crackT = 0;
@@ -325,6 +346,7 @@ export class ComboDisplay {
 				L.broke = small ? "small" : "break";
 				this.breakT = 0;
 				this.breakLost = ended.lost;
+				this.breakRole = tierRole(comboTier(ended.lost));
 				this.lapseT = IDLE;
 				if (!small && motion) {
 					this.shardT = 0;
@@ -335,7 +357,6 @@ export class ComboDisplay {
 				this.lapseT = 0;
 				this.lapseBest = ended.peak;
 				this.lapseRole = tierRole(comboTier(ended.lost));
-				this.lapseFill = this.lastFill;
 				this.breakT = IDLE;
 			}
 		}
@@ -382,24 +403,27 @@ export class ComboDisplay {
 			L.struck = true;
 			L.slot = "lost";
 			L.fill = 0;
+			L.trackGrey = 1;
 		} else if (lapseU >= 0) {
-			const drain = clamp01(this.lapseT / COMBO_VIEW.lapse.drainSec);
-			L.role = drain >= 1 ? COMBO_BROKEN_ROLE : this.lapseRole;
-			L.greyMix = drain;
+			// The fill is empty (the timer ran out): the track and the multiplier fade to grey.
+			const grey = clamp01(this.lapseT / COMBO_VIEW.lapse.greySec);
+			L.role = grey >= 1 ? COMBO_BROKEN_ROLE : this.lapseRole;
+			L.greyMix = grey;
+			L.trackGrey = grey;
 			L.tenths = combo;
 			L.slot = "best";
 			L.slotTenths = this.lapseBest;
-			L.fill = this.lapseFill * (1 - drain);
+			L.fill = 0;
 		} else {
 			L.role = tierRole(tier);
 			L.greyMix = 0;
+			L.trackGrey = 0;
 			L.tenths = combo;
 			L.fill = live;
 			L.warn = combo > COMBO_MIN && input.comboTimer > 0 && live <= COMBO_VIEW.warnFraction;
 			this.writeSlot(tier);
 			this.writeTierExtras(tier);
 		}
-		this.lastFill = L.fill;
 
 		if (L.warn) this.blinkT += d;
 		else this.blinkT = 0;
@@ -412,6 +436,7 @@ export class ComboDisplay {
 		L.flashAlpha = flashU >= 0 ? 1 - flashU : 0;
 		L.dropProgress = progress(this.crackT, COMBO_VIEW.crack.dropSec);
 		L.shards = progress(this.shardT, COMBO_VIEW.break.shardSec);
+		L.shardRole = this.breakRole;
 	}
 
 	/** The tier slot: the name, fading out the old one and in the lower one after a tier-down cut. */
@@ -439,18 +464,20 @@ export class ComboDisplay {
 		}
 	}
 
-	/** Scale (slam over pop) and the crack's shake; none under reduced motion. */
+	/** The tier slot's slam, the multiplier's pop and the crack's shake; none under reduced motion. */
 	private writeMotion(motion: boolean): void {
 		const L = this.look;
-		L.scale = 1;
+		L.slotScale = 1;
+		L.multScale = 1;
 		L.shakePx = 0;
 		if (!motion) return;
 		const slamU = progress(this.slamT, COMBO_VIEW.slam.sec);
 		const popU = progress(this.popT, COMBO_VIEW.pop.sec);
 		if (slamU >= 0) {
 			const from = COMBO_VIEW.slam.fromScale;
-			L.scale = from + (1 - from) * easeOutBack(slamU);
-		} else if (popU >= 0) L.scale = this.popFrom + (1 - this.popFrom) * popU;
+			L.slotScale = from + (1 - from) * easeOutBack(slamU);
+		}
+		if (popU >= 0) L.multScale = this.popFrom + (1 - this.popFrom) * popU;
 		const C = COMBO_VIEW.crack;
 		const shakeU = progress(this.crackT, C.shakeSec);
 		if (shakeU >= 0) L.shakePx = C.shakePx * math.sin(FULL_TURN * C.shakeCycles * shakeU);

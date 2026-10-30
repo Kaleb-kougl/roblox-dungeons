@@ -1,6 +1,6 @@
 import React from "@rbxts/react";
 import { HUD_FONT, role } from "client/ui/theme";
-import { COMBO_DRAW, FOOTPRINT_ESTIMATE, HUD_VIEW, comboDropAt, comboShineOffset } from "shared/view/hud";
+import { COMBO_DRAW, FOOTPRINT_ESTIMATE, HUD_VIEW, comboShineOffset } from "shared/view/hud";
 import { COMBO_ROW_Z, COMBO_UI } from "./comboUi";
 
 const HIDDEN = 1;
@@ -19,9 +19,8 @@ const SLOT_STROKE = COMBO_UI.slotTransparency.binding.map(strokeOf);
 const SHINE_VISIBLE = COMBO_UI.shine.binding.map((u) => u >= 0);
 const SHINE_OFFSET = COMBO_UI.shine.binding.map((u) => new Vector2(comboShineOffset(u), 0));
 const DROP_VISIBLE = COMBO_UI.drop.binding.map((u) => u >= 0);
-const DROP_POSITION = COMBO_UI.drop.binding.map((u) => new UDim2(1, 0, 1, comboDropAt(u).fallPx));
-const DROP_TRANSPARENCY = COMBO_UI.drop.binding.map((u) => comboDropAt(u).transparency);
-const DROP_STROKE = COMBO_UI.drop.binding.map((u) => strokeOf(comboDropAt(u).transparency));
+const DROP_POSITION = COMBO_UI.dropFallPx.binding.map((px) => new UDim2(1, 0, 1, px));
+const DROP_STROKE = COMBO_UI.dropTransparency.binding.map(strokeOf);
 
 /** The shine band: clear outside, bandTransparency at its centre (a white copy of the text shows through it). */
 function shineBand(): NumberSequence {
@@ -39,11 +38,14 @@ function shineBand(): NumberSequence {
  * Score panel row 3 (docs/COMBO.md CB6, CD8): the combo row, one fixed-size frame the height of the old `x1.3` line, so
  * no row of the panel ever moves. Left: the tier slot (the tier name, COMBO LOST after a break, BEST xN.N after a
  * lapse; TextScaled up to COMBO_DRAW.slotMaxText, so a long name or translation shrinks to fit; it fades by the slot
- * alpha). Right, in a fixed COMBO_DRAW.multWidth slot: the multiplier (HUD_STRINGS.combo) in the tier colour (grey
- * on a break / lapse), struck through while broken (RichText `<s>`: the controller wraps the text, so the line is
- * exactly the text's width and colour), popped / slammed by a UIScale on the slot-sized label (anchored at its right
- * centre), with UNSTOPPABLE's shine (a white copy of the text seen through a swept UIGradient band).
- * The crack shakes the whole row by a position offset and drops a `-xN.N` from under the multiplier over the meter.
+ * alpha), SLAMMED in on a tier up by its own UIScale (COMBO_UI.slotScale, 1.6 -> 1; anchored at its left centre, so
+ * it grows in place from the row's left edge and moves nothing). Right, in a fixed COMBO_DRAW.multWidth slot: the
+ * multiplier (HUD_STRINGS.combo) in the tier colour (grey on a break / lapse), struck through while broken (RichText
+ * `<s>`: the controller wraps the text, so the line is exactly the text's width and colour), POPPED on every feed by
+ * its own UIScale on the slot-sized label (COMBO_UI.multScale, anchored at its right centre), with UNSTOPPABLE's shine
+ * (a white copy of the text seen through a swept UIGradient band). UIScale never feeds the layout, so neither moves a
+ * row. The crack shakes the whole row by a position offset and drops a `-xN.N` from under the multiplier over the meter
+ * (it falls while it fades; under reduced motion it fades in place: ComboController writes both, comboDropAt).
  * Every per-frame property is a COMBO_UI binding (ComboController writes them); this never re-renders per frame.
  */
 export function ComboRow(props: { readonly order: number; readonly width: number }) {
@@ -63,6 +65,8 @@ export function ComboRow(props: { readonly order: number; readonly width: number
 			<frame key="Content" Size={UDim2.fromScale(1, 1)} Position={SHAKE} BackgroundTransparency={HIDDEN}>
 				<textlabel
 					key="Slot"
+					AnchorPoint={new Vector2(0, HALF)}
+					Position={UDim2.fromScale(0, HALF)}
 					Size={new UDim2(0, slotW, 1, 0)}
 					BackgroundTransparency={HIDDEN}
 					Font={HUD_FONT}
@@ -76,6 +80,7 @@ export function ComboRow(props: { readonly order: number; readonly width: number
 					TextYAlignment={Enum.TextYAlignment.Center}
 					Text={U.slotText.binding}
 				>
+					<uiscale Scale={U.slotScale.binding} />
 					<uitextsizeconstraint MaxTextSize={COMBO_DRAW.slotMaxText} />
 				</textlabel>
 				<frame
@@ -100,7 +105,7 @@ export function ComboRow(props: { readonly order: number; readonly width: number
 						TextXAlignment={Enum.TextXAlignment.Right}
 						Text={U.multText.binding}
 					>
-						<uiscale Scale={U.scale.binding} />
+						<uiscale Scale={U.multScale.binding} />
 						<textlabel
 							key="Shine"
 							Size={UDim2.fromScale(1, 1)}
@@ -130,7 +135,7 @@ export function ComboRow(props: { readonly order: number; readonly width: number
 					TextSize={COMBO_DRAW.dropText}
 					TextColor3={role("uiHealth")}
 					TextStrokeColor3={stroke}
-					TextTransparency={DROP_TRANSPARENCY}
+					TextTransparency={U.dropTransparency.binding}
 					TextStrokeTransparency={DROP_STROKE}
 					TextXAlignment={Enum.TextXAlignment.Right}
 					Text={U.dropText.binding}

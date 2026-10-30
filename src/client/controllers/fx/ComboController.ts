@@ -7,7 +7,7 @@ import { COMBO_MIN, TILE_SIZE, partySize, playerAt, teamComboWindowTicks, type S
 import type { JuiceSettings } from "shared/settings";
 import type { ColorRole, ThemePack } from "shared/theme";
 import { degToRad, floorStudsY, lerp, studsX, studsZ } from "shared/view";
-import { FX_SPRITE_VIEW, FX_VIEW, screenShakeOn } from "shared/view/fx";
+import { FX_SPRITE_VIEW, FX_VIEW, screenShakeOn, type ComboFrameSource } from "shared/view/fx";
 import {
 	COMBO_BROKEN_ROLE,
 	COMBO_DEBUG,
@@ -20,6 +20,7 @@ import {
 	ComboDisplay,
 	ComboShout,
 	HUD_STRINGS,
+	comboDropAt,
 	comboDropText,
 	comboMultRichText,
 	comboShoutText,
@@ -33,6 +34,7 @@ import {
 	type ComboDisplayFrame,
 	type ComboDisplayInput,
 	type ComboDisplayReset,
+	type ComboDropLook,
 	type ShoutBox,
 } from "shared/view/hud";
 import { SimController } from "../game/SimController";
@@ -58,12 +60,14 @@ type ComboDebugKind = "tier" | "break" | "small" | "lapse" | "cut";
  * the frame's sim ticks) on a scored run it steps ONE ComboDisplay (shared/view/hud combo.ts) with the real frame dt,
  * the live `state.score` combo and timer, the team's combo window (shared/sim teamComboWindowTicks, as the snapshot
  * reads it), the frame's combo events (`RunView.combo`, CB1), the stage cover (SimController.isInputCovered: the cover
- * and its fade), the end of the run (the solo LiveRun's outcome / the co-op client's isOver) and the juice settings
- * (reduced motion; Screen shake through screenShakeOn), then:
+ * and its fade), the end of the run (SimController.isRunOver: the solo LiveRun's outcome / the co-op client's isOver;
+ * AudioController gates the sting and the shatter on the same two predicates, shared/view/fx comboQuiet) and the
+ * juice settings (reduced motion; Screen shake through screenShakeOn), then:
  *   - writes COMBO_UI (client/ui/hud comboUi.ts), the score panel's combo row and meter bindings, each only when its
  *     value changed: theme strings (the multiplier, the tier slot, the crack's drop) are rebuilt only when what they
  *     show changed, colours are the display's role lerped toward combo.broken by greyMix (the meter's pulse a further
- *     lerp toward uiText), and the shatter's pieces take the fill and colour of the frame before the break;
+ *     lerp toward uiText), the track greys by trackGrey, the shatter's pieces (the whole track) take the lost tier's
+ *     colour, and the crack's drop falls and fades (comboDropAt; in place under reduced motion);
  *   - on the `kick` edge asks FreezeFrameController for the `comboBreak` camera nudge (1 texel down, below hurt);
  *   - on a `tierUp` edge starts the floor shout (CD9): "RAMPAGE!" (the tier's name + COMBO_SHOUT_DRAW.bang) painted on
  *     the floor COMBO_SHOUT.offsetTiles up-screen of the view player's feet (SimController.getViewPlayerIndex: the
@@ -75,7 +79,9 @@ type ComboDebugKind = "tier" | "break" | "small" | "lapse" | "cut";
  *     ducks it. The stage cover and the run's end drop it.
  * An unscored run (no state.score) or no run shows nothing: the display, the shout and COMBO_UI go back to neutral
  * (ScorePanel hides itself on unscored runs as before). Presentation only, read-only on the sim. Studio aid:
- * COMBO_DEBUG.attribute (KV_ComboDebug, off by default) forces a tier-up / break / lapse / cut.
+ * COMBO_DEBUG.attribute (KV_ComboDebug, off by default) forces a tier-up / break / lapse / cut; the forced events also
+ * reach the audio mapper once (takeDebugSound, read by AudioController through the same quiet gate), so the sting and
+ * the shatter can be heard in Studio.
  */
 @Controller({})
 export class ComboController implements OnStart {
@@ -96,6 +102,18 @@ export class ComboController implements OnStart {
 	private readonly debugCut: Mutable<ComboDisplayCut> = { before: COMBO_MIN, after: COMBO_MIN };
 	private readonly debugReset: Mutable<ComboDisplayReset> = { lost: COMBO_MIN, peak: COMBO_MIN, fight: false };
 	private debugPending: ComboDebugKind | undefined;
+	/** The last forced events as a full ComboFrameSource for the audio mapper (taken once by takeDebugSound). */
+	private readonly debugSound: Mutable<ComboFrameSource> = {
+		ticks: 0,
+		startCombo: COMBO_MIN,
+		endCombo: COMBO_MIN,
+		peak: COMBO_MIN,
+		kills: 0,
+		grazes: 0,
+		cuts: NO_CUTS,
+		ended: undefined,
+	};
+	private debugSoundPending = false;
 	private debugTier = 0;
 	private pack: ThemePack | undefined;
 	/** Something non-neutral was drawn (cleared by off()). */
@@ -107,10 +125,8 @@ export class ComboController implements OnStart {
 	private slotTier = -1;
 	private slotTenths = -1;
 	private dropTenths = -1;
-	// --- the frame before: the shatter's pieces start from it ---
-	private prevFill = 0;
-	private prevFillColor = new Color3();
-	private prevShards = -1;
+	/** The crack's drop look, refilled each frame (comboDropAt). */
+	private readonly dropLook: ComboDropLook = { fallPx: 0, transparency: 0 };
 	// --- the shout's instances (one, reused) and what they last showed ---
 	private part: Part | undefined;
 	private surface: SurfaceGui | undefined;
@@ -159,7 +175,7 @@ export class ComboController implements OnStart {
 			return;
 		}
 		this.on = true;
-		const runOver = ctx.live !== undefined ? ctx.live.outcome() !== "playing" : ctx.coop?.isOver() === true;
+		const runOver = this.sim.isRunOver();
 		const covered = this.sim.isInputCovered();
 		const input = this.input;
 		input.dt = dt;
@@ -172,7 +188,7 @@ export class ComboController implements OnStart {
 		input.reducedMotion = settings.reducedMotion;
 		input.screenShake = screenShakeOn(settings);
 		const look = this.display.frame(input);
-		this.drawUi(look);
+		this.drawUi(look, settings.reducedMotion);
 		if (look.kick) this.freeze.requestNudge("comboBreak");
 		if (covered || runOver) this.shout.clear();
 		else if (look.tierUp > 0) this.shout.start(look.tierUp);
@@ -193,14 +209,13 @@ export class ComboController implements OnStart {
 		this.slotTier = -1;
 		this.slotTenths = -1;
 		this.dropTenths = -1;
-		this.prevFill = 0;
-		this.prevShards = -1;
 		this.debugPending = undefined;
+		this.debugSoundPending = false;
 	}
 
 	// --- COMBO_UI -----------------------------------------------------------------------------------
 
-	private drawUi(look: ComboDisplayFrame): void {
+	private drawUi(look: ComboDisplayFrame, reducedMotion: boolean): void {
 		const pack = this.pack;
 		if (pack === undefined) return;
 		const U = COMBO_UI;
@@ -214,7 +229,8 @@ export class ComboController implements OnStart {
 			U.multText.write(comboMultRichText(this.multiplier(pack, look.tenths), look.struck));
 		}
 		U.multColor.write(color);
-		U.scale.write(look.scale);
+		U.slotScale.write(look.slotScale);
+		U.multScale.write(look.multScale);
 		U.shakePx.write(look.shakePx);
 		U.shine.write(look.shine);
 
@@ -235,6 +251,11 @@ export class ComboController implements OnStart {
 			U.dropText.write(comboDropText(this.multiplier(pack, look.dropTenths)));
 		}
 		U.drop.write(look.dropProgress);
+		if (look.dropProgress >= 0) {
+			const drop = comboDropAt(look.dropProgress, reducedMotion, this.dropLook);
+			U.dropFallPx.write(drop.fallPx);
+			U.dropTransparency.write(drop.transparency);
+		}
 
 		const fillColor = look.pulse > 0 ? color.Lerp(pack.color(COMBO_FLASH_ROLES.tierUp), look.pulse) : color;
 		U.fill.write(look.fill);
@@ -243,17 +264,11 @@ export class ComboController implements OnStart {
 		U.flashColor.write(pack.color(look.flashRole));
 		U.flashAlpha.write(look.flashAlpha);
 
-		// The shatter starts from the fill as it was the frame before the break (the break frame's fill is 0).
-		if (look.shards >= 0 && this.prevShards < 0) {
-			U.shardFill.write(this.prevFill);
-			U.shardColor.write(this.prevFillColor);
-		}
+		// The track greys on a break / lapse; the shatter is the whole track in the lost tier's colour (the fill is
+		// empty at a break: the timer just reached 0).
+		U.trackGrey.write(look.trackGrey);
+		if (look.shards >= 0) U.shardColor.write(pack.color(look.shardRole as ColorRole));
 		U.shards.write(look.shards);
-		this.prevShards = look.shards;
-		if (look.shards < 0) {
-			this.prevFill = look.fill;
-			this.prevFillColor = fillColor;
-		}
 	}
 
 	/** HUD_STRINGS.combo of `tenths` ("x1.3"). */
@@ -392,6 +407,18 @@ export class ComboController implements OnStart {
 		if (raw === "break" || raw === "small" || raw === "lapse" || raw === "cut") this.debugPending = raw;
 	}
 
+	/**
+	 * The last KV_ComboDebug forced events for the audio mapper, once (undefined: none pending; the run's own then).
+	 * AudioController reads it on its own frame and still passes it through the quiet gate (comboQuiet), so a forced
+	 * break under the cover or after the run is as silent as a real one. A frame handler order where audio runs first
+	 * hears it one frame later.
+	 */
+	takeDebugSound(): ComboFrameSource | undefined {
+		if (!this.debugSoundPending) return undefined;
+		this.debugSoundPending = false;
+		return this.debugSound;
+	}
+
 	/** The forced events for this frame (consumed once), or undefined (the run's own). */
 	private takeDebugEvents(combo: number): ComboDisplayEvents | undefined {
 		const kind = this.debugPending;
@@ -421,6 +448,16 @@ export class ComboController implements OnStart {
 			r.fight = kind !== "lapse";
 			e.ended = r;
 		}
+		const a = this.debugSound;
+		a.ticks = 1;
+		a.startCombo = e.startCombo;
+		a.endCombo = e.endCombo;
+		a.peak = e.peak;
+		a.kills = e.kills;
+		a.grazes = e.grazes;
+		a.cuts = e.cuts;
+		a.ended = e.ended;
+		this.debugSoundPending = true;
 		return e;
 	}
 }

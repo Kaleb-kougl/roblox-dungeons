@@ -35,9 +35,11 @@ import {
 	type MusicView,
 	type Playable,
 } from "shared/view/audio";
+import { audibleCombo, comboQuiet } from "shared/view/fx";
 import { PreloadController } from "../game/PreloadController";
 import { SimController, type RunContext } from "../game/SimController";
 import { ThemeController } from "../game/ThemeController";
+import { ComboController } from "../fx/ComboController";
 import { FxTrackerController } from "../fx/FxTrackerController";
 
 /** One clip of a sound's pool: its pooled Sounds (round-robin; a busy clip restarts its oldest voice). */
@@ -108,7 +110,11 @@ class LoopChannel {
  *                quieter in co-op); each cue plays one clip of the ID's pool (round-robin, VariantPicker) at a
  *                jittered PlaybackSpeed (PitchJitter, the pack's pitch range; a cue's own speed instead when it has
  *                one: the combo's kill ladder and tier sting, docs/COMBO.md CB4) on a small pool of Sounds
- *                (AUDIO_VIEW.voicesPerSfx per ID). The mapper is given `playable` (the ID has an assetId): a silent
+ *                (AUDIO_VIEW.voicesPerSfx per ID). The combo's sting and shatter follow the combo display's gates:
+ *                the run view's combo events (or ComboController's KV_ComboDebug forced ones) pass through
+ *                audibleCombo(..., comboQuiet(isInputCovered, isRunOver)), the SimController predicates ComboController
+ *                hands ComboDisplay, so neither plays under the stage cover or over the run-over panel (the kill
+ *                ladder keeps its pitch). The mapper is given `playable` (the ID has an assetId): a silent
  *                ID with an SFX_FALLBACK cues that instead (no finisher clip: the swing), one without never becomes a
  *                cue (no cap slot, no cooldown).
  *   duck         a DUCKING_SFX sound (jingles, the Ember) dips the music group to AUDIO_VIEW.duck.level for the
@@ -155,6 +161,7 @@ export class AudioController implements OnStart {
 		private readonly theme: ThemeController,
 		private readonly fx: FxTrackerController,
 		private readonly preloader: PreloadController,
+		private readonly combo: ComboController,
 	) {}
 
 	onStart(): void {
@@ -185,7 +192,10 @@ export class AudioController implements OnStart {
 				viewIndex,
 				this.cues,
 				ctx.run.boostEvents,
-				ctx.run.combo,
+				audibleCombo(
+					this.combo.takeDebugSound() ?? ctx.run.combo,
+					comboQuiet(this.sim.isInputCovered(), this.sim.isRunOver()),
+				),
 			);
 			for (let i = 0; i < this.cues.size(); i++) {
 				this.play(this.cues.id(i), this.cues.volume(i), this.cues.speed(i));

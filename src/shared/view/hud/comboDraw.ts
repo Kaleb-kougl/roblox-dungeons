@@ -2,8 +2,8 @@
  * How the combo is DRAWN (docs/COMBO.md CB6 / CB7): the score panel's combo row and meter (client/ui/hud ComboRow /
  * ComboMeter, written per frame through COMBO_UI by the client's ComboController) and the floor shout. The display's
  * state machine (combo.ts ComboDisplay) decides WHAT shows and when; this module holds the pixel / tile sizes it is
- * drawn at and the small pure pieces of that drawing that are worth a spec: where a shard of the shattered fill is at a
- * point of its flight, where the shine band is, the crack's `-xN.N` drop, the floor's screen axes, the shout's canvas
+ * drawn at and the small pure pieces of that drawing that are worth a spec: where a shard of the shattered meter track
+ * is at a point of its flight, where the shine band is, the crack's `-xN.N` drop, the floor's screen axes, the shout's canvas
  * and the shout's own short timeline (ComboShout: fade in, fade out, slide, duck). Presentation only (CD1); every
  * number is free to move at the CB9 tuning pass.
  *
@@ -34,9 +34,10 @@ export const COMBO_DRAW = {
 	 */
 	shine: { bandWidth: 0.3, bandTransparency: 0.2 },
 	/**
-	 * The shatter (COMBO_VIEW.break.shards pieces of the fill): each piece flies outward from the fill's centre by up to
-	 * spreadPx, rises risePx then falls fallPx (a parabola over the flight), turns up to spinDeg and fades out.
-	 * Kept short so a piece stays inside the panel (the CanvasGroup clips at its edge).
+	 * The shatter (COMBO_VIEW.break.shards pieces of the WHOLE meter track, each 1 / shards of its width: a break is the
+	 * timer reaching 0, so the fill is empty by then and pieces of it would be sub-pixel): each piece flies outward
+	 * from the track's centre by up to spreadPx, rises risePx then falls fallPx (a parabola over the flight), turns up
+	 * to spinDeg and fades out. Kept short so a piece stays inside the panel (the CanvasGroup clips at its edge).
 	 */
 	shards: { spreadPx: 12, risePx: 6, fallPx: 18, spinDeg: 160 },
 	/**
@@ -71,7 +72,8 @@ export const COMBO_SHOUT_DRAW = {
 /**
  * Studio check aid (CLAUDE.md working agreement: off by default). Set the Workspace string attribute `attribute` to
  * "1".."4" (that tier's tier-up: the slam, flash and floor shout), "break", "small" (a small break), "lapse" or "cut";
- * every CHANGE to one of these fires it once on the next frame of a scored run. Absent / anything else: nothing.
+ * every CHANGE to one of these fires it once on the next frame of a scored run, on the display and (through the same
+ * quiet gate as real play) the sting / shatter. Absent / anything else: nothing.
  */
 export const COMBO_DEBUG = {
 	attribute: "KV_ComboDebug",
@@ -85,7 +87,7 @@ export const COMBO_DEBUG = {
 
 /** One shard's look at a point of its flight. Mutable: one per shard, refilled. */
 export interface ComboShardLook {
-	/** Its start: the centre of its piece of the fill, a fraction of the meter's width. */
+	/** Its start: the centre of its piece of the track, a fraction of the meter's width. */
 	xScale: number;
 	/** Offsets from that start and from the meter's vertical centre, px (y down). */
 	dxPx: number;
@@ -95,20 +97,26 @@ export interface ComboShardLook {
 }
 
 /**
- * Shard `i` of `n` at flight progress `u` (0..1, ComboDisplayFrame.shards) of a fill that was `fill` (0..1) full when
- * it shattered. Pieces left of the centre fly left, right of it right; outer pieces fly and turn further.
+ * Shard `i` of `n` at flight progress `u` (0..1, ComboDisplayFrame.shards): piece i of the whole track (comboShardWidth
+ * wide, never sized from the fill). Pieces left of the centre fly left, right of it right; outer pieces fly and turn
+ * further.
  */
-export function comboShardAt(i: number, n: number, u: number, fill: number, out: ComboShardLook): ComboShardLook {
+export function comboShardAt(i: number, n: number, u: number, out: ComboShardLook): ComboShardLook {
 	const S = COMBO_DRAW.shards;
 	const t = math.clamp(u, 0, 1);
 	const centre = n > 0 ? (i + 1 / 2) / n : 1 / 2;
 	const side = centre * 2 - 1;
-	out.xScale = centre * math.clamp(fill, 0, 1);
+	out.xScale = centre;
 	out.dxPx = S.spreadPx * side * t;
 	out.dyPx = (S.fallPx + S.risePx) * t * t - 2 * S.risePx * t;
 	out.rotationDeg = S.spinDeg * side * t;
 	out.transparency = t;
 	return out;
+}
+
+/** Each of `n` shards' width, a fraction of the meter's width: together they tile the whole track. */
+export function comboShardWidth(n: number): number {
+	return n > 0 ? 1 / n : 0;
 }
 
 /** The shine's UIGradient Offset X at sweep progress `u` (0..1): the band enters at the left and leaves at the right. */
@@ -117,10 +125,22 @@ export function comboShineOffset(u: number): number {
 	return -reach + 2 * reach * math.clamp(u, 0, 1);
 }
 
-/** The crack's `-xN.N` at drop progress `u` (0..1): its fall (px) and transparency. */
-export function comboDropAt(u: number): { readonly fallPx: number; readonly transparency: number } {
+/** The crack's `-xN.N` at a point of its drop. Mutable: the controller keeps one and refills it each frame. */
+export interface ComboDropLook {
+	/** How far it fell from under the multiplier, px (0 under reduced motion). */
+	fallPx: number;
+	transparency: number;
+}
+
+/**
+ * The crack's `-xN.N` at drop progress `u` (0..1), written into `out`: it falls COMBO_DRAW.dropFallPx while it fades;
+ * under reduced motion (`still`) it fades in place.
+ */
+export function comboDropAt(u: number, still: boolean, out: ComboDropLook): ComboDropLook {
 	const t = math.clamp(u, 0, 1);
-	return { fallPx: COMBO_DRAW.dropFallPx * t, transparency: t };
+	out.fallPx = still ? 0 : COMBO_DRAW.dropFallPx * t;
+	out.transparency = t;
+	return out;
 }
 
 /** The crack's drop text: the multiplier string of the cut (HUD_STRINGS.combo, "x1.2") with a minus. */

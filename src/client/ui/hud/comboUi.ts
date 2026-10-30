@@ -53,15 +53,20 @@ export const COMBO_UI = {
 	multText: new ComboUiValue(""),
 	/** lerp(role, combo.broken, greyMix). */
 	multColor: new ComboUiValue(NO_COLOR),
-	/** The multiplier's UIScale (pop / slam). */
-	scale: new ComboUiValue(1),
+	/** The tier slot's UIScale (the tier-up slam). */
+	slotScale: new ComboUiValue(1),
+	/** The multiplier's UIScale (the feed pop). */
+	multScale: new ComboUiValue(1),
 	/** The row's horizontal shake, reference px. */
 	shakePx: new ComboUiValue(0),
 	/** UNSTOPPABLE's shine sweep 0..1, or -1 (none). */
 	shine: new ComboUiValue(-1),
-	/** The crack's `-xN.N` and its drop progress 0..1, or -1 (none). */
+	/** The crack's `-xN.N` and its drop progress 0..1, or -1 (none: hidden). */
 	dropText: new ComboUiValue(""),
 	drop: new ComboUiValue(-1),
+	/** The drop's fall (px; 0 under reduced motion) and transparency (shared/view/hud comboDropAt). */
+	dropFallPx: new ComboUiValue(0),
+	dropTransparency: new ComboUiValue(0),
 	// --- row 4: the meter ---
 	/** Fill 0..1. */
 	fill: new ComboUiValue(0),
@@ -72,9 +77,10 @@ export const COMBO_UI = {
 	/** The flash overlay (tier up: uiText; crack: uiHealth) and its opacity 0..1. */
 	flashColor: new ComboUiValue(NO_COLOR),
 	flashAlpha: new ComboUiValue(0),
-	/** The shatter's progress 0..1, or -1 (none); the fill it shattered from and its colour. */
+	/** The track's grey (ComboDisplayFrame.trackGrey 0..1: its uiPanel lerped toward combo.broken). */
+	trackGrey: new ComboUiValue(0),
+	/** The shatter of the whole track: progress 0..1, or -1 (none), and the lost tier's colour. */
 	shards: new ComboUiValue(-1),
-	shardFill: new ComboUiValue(0),
 	shardColor: new ComboUiValue(NO_COLOR),
 } as const;
 

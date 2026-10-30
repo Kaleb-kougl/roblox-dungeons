@@ -44,6 +44,10 @@
  *   - Break (CD3, CD14): a streak end during a fight (ComboReset.fight) -> sfx.combo.break, at
  *     COMBO_VIEW.smallBreakVolume when it lost less than COMBO_VIEW.smallBreakBelow (x2.0). A lapse (no fight on) is
  *     silent. A hit cut has no sound of its own (CD4): the hurt sound plays on that frame.
+ *   - Quiet: the sting and the break follow the combo display's gates. The controller passes the source through
+ *     shared/view/fx audibleCombo(source, comboQuiet(covered, runOver)) with the predicates ComboController hands
+ *     ComboDisplay, so under the stage cover or once the run is over the mapper sees NO_COMBO_EVENTS (no sting, no
+ *     break); the kill ladder reads the live score combo and keeps its pitch.
  * Neither combo ID is a jingle or ducks the music; both obey the silent-ID, cooldown and cap rules like any cue.
  *
  * Every cue carries a playback speed (AudioCueList.speed): 0 = the pack's jitter (every cue but these), > 0 = that

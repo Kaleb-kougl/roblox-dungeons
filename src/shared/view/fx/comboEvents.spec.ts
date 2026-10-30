@@ -153,6 +153,25 @@ describe("ComboEvents: real score states", () => {
 		expect(ev.cuts).toEqual([{ before: 20, after: 10 }]);
 	});
 
+	it("a hit at x1.0 records no cut (the sim counts comboCut, the combo stays at COMBO_MIN)", () => {
+		const state = scoredM1();
+		const ev = new ComboEvents();
+		frameOf(ev, state, [[0, 1]]);
+		expect(state.score!.events.comboCut > 0).toBe(true);
+		expect(state.score!.combo).toBe(COMBO_MIN);
+		expect(ev.cuts.size()).toBe(0);
+	});
+
+	it("a kill and a hit on one tick that net no loss record no cut", () => {
+		const state = scoredM1();
+		const ev = new ComboEvents();
+		// x1.0: the kill feeds 10 -> 11, the hit cuts it back to max(10, floor(11 / 2)) = 10.
+		frameOf(ev, state, [[1, 1]]);
+		expect(state.score!.events.comboCut > 0).toBe(true);
+		expect([ev.startCombo, ev.endCombo, ev.kills]).toEqual([10, 10, 1]);
+		expect(ev.cuts.size()).toBe(0);
+	});
+
 	it("a streak end in a live room is a fight; after the room cleared (nothing live) it is not", () => {
 		const live = scoredM1();
 		live.score!.rooms[0].engageTick = 0;
@@ -308,6 +327,18 @@ describe("ComboEvents: hand-built ticks", () => {
 		expect([ev.ticks, ev.startCombo, ev.endCombo, ev.peak, ev.kills, ev.grazes]).toEqual([3, 10, 13, 13, 1, 2]);
 	});
 
+	it("records a cut only when the tick ended below its start", () => {
+		const ev = new ComboEvents();
+		const f = fake();
+		f.score.combo = 30;
+		ev.reset();
+		fakeTick(ev, f, 30, 180, { kills: 2, comboCut: 1 }); // 30 -> 32 -> 30: nothing lost
+		fakeTick(ev, f, 31, 180, { kills: 3, comboCut: 1 }); // 30 -> 33 -> 31: a net gain
+		expect(ev.cuts.size()).toBe(0);
+		fakeTick(ev, f, 15, 180, { comboCut: 1 });
+		expect(ev.cuts).toEqual([{ before: 31, after: 15 }]);
+	});
+
 	it("reuses its cut records across frames (no allocation once warm)", () => {
 		const ev = new ComboEvents();
 		const f = fake();
@@ -395,7 +426,7 @@ describe("ComboEvents: the recorded seed-1337 endless descent", () => {
 			const e = state.score!.events;
 			fKills += e.kills;
 			fGrazes += e.grazes;
-			if (e.comboCut > 0) fCuts++;
+			if (e.comboCut > 0 && state.score!.combo < e.comboStart) fCuts++;
 			if (e.comboBroken !== 0) {
 				broken++;
 				lost = e.comboStart;

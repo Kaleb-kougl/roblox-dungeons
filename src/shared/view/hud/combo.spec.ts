@@ -224,34 +224,40 @@ describe("ComboDisplay: climbing and tier up", () => {
 		d.combo = 21;
 		const L = d.feed(22);
 		expect(L.tierUp).toBe(0);
-		expect(L.scale).toBeCloseTo(COMBO_TIERS[1].popScale, 9);
+		expect(L.multScale).toBeCloseTo(COMBO_TIERS[1].popScale, 9);
+		expect(L.slotScale).toBe(1);
 		expect(L.role).toBe("combo.rampage");
 		expect(L.slot).toBe("tier");
 		expect(L.slotTier).toBe(1);
 		expect(L.tenths).toBe(22);
 		expect(L.fill).toBe(1);
-		expect(d.run(COMBO_VIEW.pop.sec + STEP).scale).toBe(1);
+		expect(d.run(COMBO_VIEW.pop.sec + STEP).multScale).toBe(1);
 	});
 
-	it("raises one tierUp edge, slams 1.6 -> 1 and flashes white", () => {
+	it("raises one tierUp edge, slams the tier name 1.6 -> 1 (the multiplier pops) and flashes white", () => {
 		const d = new Driver();
 		d.combo = 19;
 		let L = d.feed(20);
 		expect(L.tierUp).toBe(1);
-		expect(L.scale).toBeCloseTo(COMBO_VIEW.slam.fromScale, 9);
+		// The slam is the tier slot's own scale; the multiplier keeps its feed pop.
+		expect(L.slotScale).toBeCloseTo(COMBO_VIEW.slam.fromScale, 9);
+		expect(L.multScale).toBeCloseTo(COMBO_TIERS[1].popScale, 9);
+		expect(L.slot).toBe("tier");
 		expect(L.flashRole).toBe("uiText");
 		expect(L.flashAlpha).toBe(1);
 		expect(L.role).toBe("combo.rampage");
 		let dipped = false;
 		for (let i = 0; i < 6; i++) {
 			L = d.frame();
-			if (L.scale < 1) dipped = true;
+			if (L.slotScale < 1) dipped = true;
+			expect(L.multScale <= COMBO_TIERS[1].popScale + EPS).toBe(true);
 			expect(L.tierUp).toBe(0);
 		}
 		expect(dipped).toBe(true);
 		expect(L.flashAlpha).toBe(0);
 		L = d.run(COMBO_VIEW.slam.sec);
-		expect(L.scale).toBe(1);
+		expect(L.slotScale).toBe(1);
+		expect(L.multScale).toBe(1);
 		expect(d.tierUps).toEqual([1]);
 	});
 
@@ -410,6 +416,32 @@ describe("ComboDisplay: crack (a hit cut)", () => {
 		expect(L.role).toBe("combo.rampage");
 	});
 
+	it("a hit at x1.0 (a cut that lost nothing) shows no crack", () => {
+		const d = new Driver();
+		d.frame();
+		const L = d.frame({ start: COMBO_MIN, end: COMBO_MIN, cuts: [{ before: COMBO_MIN, after: COMBO_MIN }] });
+		expect(L.cut).toBe(false);
+		expect(L.flashAlpha).toBe(0);
+		expect(L.dropProgress).toBe(-1);
+		expect(L.shakePx).toBe(0);
+		for (let i = 0; i < 10; i++) expect(d.frame().shakePx).toBe(0);
+	});
+
+	it("a kill and a hit on one tick that net no loss (or a gain) show no crack", () => {
+		const d = new Driver();
+		d.combo = 20;
+		d.frame();
+		let L = d.frame({ start: 20, end: 20, kills: 1, cuts: [{ before: 20, after: 20 }] });
+		expect([L.cut, L.flashAlpha, L.dropProgress]).toEqual([false, 0, -1]);
+		L = d.frame({ start: 20, end: 21, kills: 3, cuts: [{ before: 20, after: 21 }] });
+		expect([L.cut, L.flashAlpha, L.dropProgress]).toEqual([false, 0, -1]);
+		expect(L.slotTier).toBe(1);
+		expect(L.slotAlpha).toBe(1);
+		// A real loss on a later frame still cracks.
+		L = d.frame({ start: 21, end: 15, cuts: [{ before: 21, after: 15 }] });
+		expect([L.cut, L.dropTenths, L.dropProgress]).toEqual([true, 6, 0]);
+	});
+
 	it("a cut that stays in the tier keeps the name", () => {
 		const d = new Driver();
 		d.combo = 39;
@@ -434,7 +466,9 @@ describe("ComboDisplay: break and lapse", () => {
 		expect(L.struck).toBe(true);
 		expect(L.slot).toBe("lost");
 		expect(L.fill).toBe(0);
+		expect(L.trackGrey).toBe(1);
 		expect(L.shards).toBe(0);
+		expect(L.shardRole).toBe("combo.carnage");
 		expect(L.kick).toBe(false);
 		L = d.run(COMBO_VIEW.break.shardSec + STEP);
 		expect(L.shards).toBe(-1);
@@ -445,13 +479,34 @@ describe("ComboDisplay: break and lapse", () => {
 		expect(at >= COMBO_VIEW.break.kickDelaySec - EPS && at < COMBO_VIEW.break.kickDelaySec + STEP + EPS).toBe(true);
 		L = d.run(COMBO_VIEW.break.sec - COMBO_VIEW.break.shardSec - 3 * STEP);
 		expect(L.slot).toBe("lost");
+		// The track stays grey after the shards are gone, until the break ends.
+		expect(L.trackGrey).toBe(1);
 		L = d.run(3 * STEP);
+		expect(L.trackGrey).toBe(0);
 		expect(L.role).toBe("ember");
 		expect(L.tenths).toBe(COMBO_MIN);
 		expect(L.struck).toBe(false);
 		expect(L.slot).toBe("none");
 		expect(L.greyMix).toBe(0);
 		expect(d.kicks.size()).toBe(1);
+	});
+
+	it("a real break comes with a near-zero fill: the whole track shatters in the lost tier's colour", () => {
+		const d = new Driver();
+		d.combo = 42;
+		// The timer's last tick: the fill is all but empty when the break lands.
+		let L = d.frame({}, { timer: 1 });
+		expect(L.fill > 0 && L.fill < 0.01).toBe(true);
+		L = d.reset(42, 45, true);
+		expect(L.broke).toBe("break");
+		expect(L.shards).toBe(0);
+		// The shards' colour is the lost tier's (DOMINATING), never the fill's; their size never reads the fill.
+		expect(L.shardRole).toBe("combo.dominating");
+		expect(L.fill).toBe(0);
+		expect(L.trackGrey).toBe(1);
+		L = d.run(COMBO_VIEW.break.shardSec / 2);
+		expect(L.shards > 0.4 && L.shards < 0.6).toBe(true);
+		expect(L.shardRole).toBe("combo.dominating");
 	});
 
 	it("a small break (lost < x2.0): grey and struck, no shards, no kick", () => {
@@ -495,9 +550,11 @@ describe("ComboDisplay: break and lapse", () => {
 		expect(L.fill).toBe(1);
 	});
 
-	it("a lapse (no fight): no sound edge, drains to grey over 0.3 s, BEST for 1.2 s, then x1.0", () => {
+	it("a lapse (no fight): no sound edge, the empty track and multiplier fade to grey over 0.3 s, BEST 1.2 s", () => {
 		const d = new Driver();
 		d.combo = 34;
+		// The timer ran out: the fill was all but empty already, so nothing drains.
+		d.frame({}, { timer: 1 });
 		let L = d.reset(34, 36, false);
 		expect(L.lapsed).toBe(true);
 		expect(L.broke).toBe("none");
@@ -507,18 +564,24 @@ describe("ComboDisplay: break and lapse", () => {
 		expect(L.tenths).toBe(COMBO_MIN);
 		expect(L.role).toBe("combo.carnage");
 		expect(L.greyMix).toBe(0);
+		expect(L.trackGrey).toBe(0);
+		expect(L.fill).toBe(0);
 		expect(L.shards).toBe(-1);
-		L = d.run(COMBO_VIEW.lapse.drainSec / 2);
+		L = d.run(COMBO_VIEW.lapse.greySec / 2);
 		expect(L.greyMix > 0.3 && L.greyMix < 0.7).toBe(true);
-		L = d.run(COMBO_VIEW.lapse.drainSec / 2 + STEP);
+		expect(L.trackGrey).toBe(L.greyMix);
+		expect(L.fill).toBe(0);
+		L = d.run(COMBO_VIEW.lapse.greySec / 2 + STEP);
 		expect(L.greyMix).toBe(1);
+		expect(L.trackGrey).toBe(1);
 		expect(L.role).toBe(COMBO_BROKEN_ROLE);
 		expect(L.slot).toBe("best");
 		expect(L.lapsed).toBe(false);
-		L = d.run(COMBO_VIEW.lapse.bestSec - COMBO_VIEW.lapse.drainSec);
+		L = d.run(COMBO_VIEW.lapse.bestSec - COMBO_VIEW.lapse.greySec);
 		expect(L.slot).toBe("none");
 		expect(L.role).toBe("ember");
 		expect(L.greyMix).toBe(0);
+		expect(L.trackGrey).toBe(0);
 		expect(d.kicks.size()).toBe(0);
 	});
 });
@@ -530,11 +593,15 @@ describe("ComboDisplay: reduced motion, the stage cover and run over", () => {
 		d.combo = 19;
 		let L = d.feed(20);
 		expect(L.tierUp).toBe(1);
-		expect(L.scale).toBe(1);
+		expect(L.slotScale).toBe(1);
+		expect(L.multScale).toBe(1);
 		expect(L.flashAlpha).toBe(1);
 		expect(L.role).toBe("combo.rampage");
 		expect(L.slotTier).toBe(1);
-		for (let i = 0; i < 10; i++) expect(d.feed(d.combo + 1).scale).toBe(1);
+		for (let i = 0; i < 10; i++) {
+			const F = d.feed(d.combo + 1);
+			expect([F.slotScale, F.multScale]).toEqual([1, 1]);
+		}
 		L = d.frame({ start: d.combo, end: 15, cuts: [{ before: d.combo, after: 15 }] });
 		expect(L.cut).toBe(true);
 		for (let i = 0; i < 20; i++) expect(d.frame().shakePx).toBe(0);
@@ -553,7 +620,7 @@ describe("ComboDisplay: reduced motion, the stage cover and run over", () => {
 		d.combo = 19;
 		let L = d.feed(20, { covered: true });
 		expect(L.tierUp).toBe(0);
-		expect(L.scale).toBe(1);
+		expect([L.slotScale, L.multScale]).toEqual([1, 1]);
 		expect(L.flashAlpha).toBe(0);
 		expect(L.role).toBe("combo.rampage");
 		d.combo = 34;
@@ -581,8 +648,11 @@ describe("ComboDisplay: reduced motion, the stage cover and run over", () => {
 		expect(d.tierUps.size()).toBe(0);
 	});
 
-	it("run over: no break or lapse", () => {
+	it("run over: no tier up, break or lapse", () => {
 		const d = new Driver();
+		d.combo = 19;
+		expect(d.feed(20, { runOver: true }).tierUp).toBe(0);
+		expect(d.tierUps.size()).toBe(0);
 		d.combo = 34;
 		let L = d.reset(34, 34, true, { runOver: true });
 		expect(L.broke).toBe("none");
