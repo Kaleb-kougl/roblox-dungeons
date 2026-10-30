@@ -38,6 +38,7 @@ rebinding, audio, display). Everything presentation-side reads the sim and never
 | `RoomClearController` | `.../fx/RoomClearController.ts` | docs/ROOM_CLEAR.md: reads `run.roomClears` once per frame (fx.onFrame), collapses a running sequence on danger (the view player hurt, a room engaging, the stage cover, a wipe), starts the full sequence (solo, or co-op near the room) or a corner chip per clear, asks the solo slow motion (`applyRoomClearSlowMo`), the co-op last-kill hold (`ActorRenderController.holdActor`) and the spark ring (`ParticleController.roomClearBurst`), plays `sfx.room.clear` / `.perfect`, `sfx.score.tick` / `.land` and the `stamp` nudge, rolls the score (`ScoreRoller`) and writes `ROOM_CLEAR_UI` (client/ui/hud roomClearBindings.ts) for RoomClearStamp, RoomClearChips and the ScorePanel's number. Real time, stopped while paused; Room clear Off: only the mapper's jingle. |
 | `HealthBarController` | `.../fx/HealthBarController.ts` | Enemy health bars: one pooled BillboardGui per actor slot (64), plate / chip / fill or pips, elite outline. |
 | `DamageNumberController` | `.../fx/DamageNumberController.ts` | Damage numbers: 48 pooled BillboardGuis, merge window, heavy / capped colours, "CAP" tag, rise + fade. |
+| `ComboController` | `.../fx/ComboController.ts` | docs/COMBO.md CB7: each frame steps `ComboDisplay` from `state.score` and `RunView.combo` (gated by the stage cover and run over) and writes `COMBO_UI` (ScorePanel's `ComboRow` / `ComboMeter`); the tier-up floor shout (one SurfaceGui Part, `KV_ComboShout`, under every bullet, ducking near enemy bullets); the break kick (`requestNudge("comboBreak")`); `KV_ComboDebug` forces one event (and its sound). |
 | `ScorePopController` | `.../fx/ScorePopController.ts` | Scored runs (M2): a rising, fading `+points` BillboardGui per kill (`LiveRun.scorePops`, pooled `ScorePopPool`). |
 | `ParticleController` | `.../fx/ParticleController.ts` | Death bursts, boss waves, roar sparks, hit sparks, breakable chips, boost pickup / fade bursts: pooled 1-3 px Parts, one BulkMoveTo per frame, particle budget. |
 | `FxSpriteController` | `.../fx/FxSpriteController.ts` | Sprite effects (docs/FX_AUDIO.md F3 / F4): the pure `FxCueMapper` turns each frame's FX events, summed sim events and state into one-shot cues (hit marks, swing trails, the guard shield, roll dust, flask, Ember ring, boss phase / slam / death, relic, shrine, death puffs, breakable splinters, boost pickups) and the stairwell loop; pooled floor-flat SurfaceGuis (or billboards) flip through the theme's `fx.*` flipbooks on the hitstop clock, budgeted by the particle level. Builds nothing without `fx.*` art (today). See "Sprite effects". |
@@ -1261,6 +1262,18 @@ server or `KV_Tutorial` = true on Workspace. Client-side checks first (this code
    the enemy the centre ring would hit.
 6. Device: spectate Next / Prev in a co-op run after a death; left-handed (mirrored controls); touch sizes 80 % and 120
    %.
+
+### Combo (docs/COMBO.md CB9; not run in Studio yet)
+
+1. Endless floor 1: chain 10 kills: the kill sound climbs, RAMPAGE slams in with the sting and the floor shout, the
+   meter turns coral; push on to CARNAGE (pulse), DOMINATING, UNSTOPPABLE (shine).
+2. A tier-up inside a dense ring: every bullet draws over the shout, which ducks to 15 % while one crosses it.
+3. Stop killing in a live room: the blink, then the shatter (whole-track shards, grey, struck value, COMBO LOST) and a
+   1-texel kick; clear a room and walk out: the silent lapse with BEST.
+4. Take a hit at x3.2: red flash, shake, `-x1.6` drop, the next kill lower; a hit at x1.0: nothing.
+5. Die mid-combo, and cross a stairwell mid-combo: no sting or shatter after the run ends or under the stage card.
+6. Co-op, reduced motion, Screen shake off, touch, HUD scale 70 %; `KV_ComboDebug` = `1`..`4` / `break` / `small` /
+   `lapse` / `cut`.
 
 ## Gotchas
 

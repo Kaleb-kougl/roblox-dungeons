@@ -496,6 +496,35 @@
 			"notes": "Run over (every player dead), over the music fading out; then silence (X7).",
 			"confirmed": false
 		},
+		"sfx.combo.tier": {
+			"category": "sfx",
+			"clips": [
+				"ninja-adventure/Audio/Sounds/Bonus/Bonus2.wav"
+			],
+			"volume": 0.6,
+			"minInterval": 0.5,
+			"alternates": [
+				"ninja-adventure/Audio/Sounds/Bonus/Bonus3.wav"
+			],
+			"notes": "Combo tier-up sting (docs/COMBO.md CD7): one clip, pitched by the cue mapper per tier (0 / +3 / +5 / +7 semitones at x2 / x3 / x4 / x5), so no pitch jitter here. Not a jingle: it may play with the room clear. Pick Bonus2 or Bonus3 at the audition (CD12).",
+			"confirmed": false
+		},
+		"sfx.combo.break": {
+			"category": "sfx",
+			"clips": [
+				{
+					"src": "pixabay/dragon-studio-glass-breaking-504033.mp3",
+					"trim": [
+						0,
+						1.2
+					]
+				}
+			],
+			"volume": 0.6,
+			"minInterval": 0.5,
+			"notes": "Combo break during a fight (docs/COMBO.md CD12): \"Glass breaking\" by DRAGON-STUDIO (Pixabay, id 504033). 3.12 s, 48 kHz stereo MP3: 85 ms lead (the silence trim takes it), the crash 0.1 - 1.0 s, a stray tinkle at 1.9 - 2.05 s that the [0, 1.2] trim cuts, silence after. A small break (below x2) plays it at half volume (COMBO_VIEW.smallBreakVolume). No pitch jitter.",
+			"confirmed": false
+		},
 		"music.menu": {
 			"category": "music",
 			"clips": [

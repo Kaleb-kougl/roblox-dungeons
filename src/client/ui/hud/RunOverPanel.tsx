@@ -12,17 +12,30 @@ import {
 	selectStageCovered,
 	selectVerdict,
 } from "client/store";
-import { str } from "client/ui/theme";
+import { HUD_FONT, role, str, themePack } from "client/ui/theme";
+import type { ColorRole } from "shared/theme";
 import { restartHint } from "shared/play";
 import { SIM_HZ } from "shared/sim";
 import { SFX } from "shared/view/audio";
-import { HUD_STRINGS, HUD_VIEW, SCORE_SOURCE_KEYS, formatClock, formatCombo } from "shared/view/hud";
+import {
+	COMBO_DRAW,
+	COMBO_TIERS,
+	FOOTPRINT_ESTIMATE,
+	HUD_STRINGS,
+	HUD_VIEW,
+	SCORE_SOURCE_KEYS,
+	comboBestRichText,
+	comboTier,
+	formatClock,
+	formatCombo,
+} from "shared/view/hud";
 import { MENU_STRINGS, PAD_CONFIRM_LABEL, partyRunOverLine, runOverExits } from "shared/view/menu";
 import { useHudActions } from "./actions";
 import { MenuButton, Panel, Row, Text } from "./primitives";
 import { RunInfoLine, verdictColor, verdictLine } from "./RunInfoLine";
 
 const HALF = 0.5;
+const HIDDEN = 1;
 const STAT_WIDTH = 150;
 
 function Stat(props: { order: number; label: string; value: string }) {
@@ -63,6 +76,46 @@ function BreakdownLine(props: { order: number; label: string; value: string; col
 	);
 }
 
+/**
+ * The best combo line (docs/COMBO.md CB6, CD16): "x3.4 CARNAGE", the tier's name in its colour (nothing below x2). Its
+ * value column is COMBO_DRAW.runOverValueExtra wider (the label's that much narrower, so the row keeps the breakdown's
+ * width and alignment) and TextScaled up to HUD_VIEW.textSize, so UNSTOPPABLE or a long translation shrinks to fit.
+ */
+function BestComboLine(props: { order: number; maxCombo: number }) {
+	const extra = COMBO_DRAW.runOverValueExtra;
+	const tier = COMBO_TIERS[comboTier(props.maxCombo)];
+	const name = tier.nameKey !== undefined ? str(tier.nameKey) : undefined;
+	const multiplier = str(HUD_STRINGS.combo, { combo: formatCombo(props.maxCombo) });
+	const value = comboBestRichText(multiplier, name, themePack()?.hex(tier.role as ColorRole) ?? "");
+	const h = HUD_VIEW.textSize + FOOTPRINT_ESTIMATE.lineSlack;
+	return (
+		<Row order={props.order}>
+			<Text
+				order={1}
+				width={HUD_VIEW.breakdownLabelWidth - extra}
+				color="uiTextDim"
+				text={str(HUD_STRINGS.maxCombo)}
+			/>
+			<textlabel
+				LayoutOrder={2}
+				Size={new UDim2(0, HUD_VIEW.breakdownValueWidth + extra, 0, h)}
+				BackgroundTransparency={HIDDEN}
+				Font={HUD_FONT}
+				RichText={true}
+				TextScaled={true}
+				TextSize={HUD_VIEW.textSize}
+				TextColor3={role("uiText")}
+				TextStrokeColor3={role("background")}
+				TextStrokeTransparency={HUD_VIEW.panelTransparency}
+				TextXAlignment={Enum.TextXAlignment.Right}
+				Text={value}
+			>
+				<uitextsizeconstraint MaxTextSize={HUD_VIEW.textSize} />
+			</textlabel>
+		</Row>
+	);
+}
+
 /** Scored runs (M2): the score, its points per source and the best combo. */
 function ScoreBreakdown(props: { order: number; score: number; points: ReadonlyArray<number>; maxCombo: number }) {
 	const lines = new Array<React.Element>();
@@ -81,11 +134,7 @@ function ScoreBreakdown(props: { order: number; score: number; points: ReadonlyA
 		>
 			<BreakdownLine order={1} label={str(HUD_STRINGS.score)} value={tostring(props.score)} color="uiAccent" />
 			{lines}
-			<BreakdownLine
-				order={props.points.size() + 2}
-				label={str(HUD_STRINGS.maxCombo)}
-				value={str(HUD_STRINGS.combo, { combo: formatCombo(props.maxCombo) })}
-			/>
+			<BestComboLine order={props.points.size() + 2} maxCombo={props.maxCombo} />
 		</Panel>
 	);
 }

@@ -474,6 +474,17 @@ export class SimController implements OnStart {
 		return this.stage?.blocksInput() === true;
 	}
 
+	/**
+	 * The run is over (the run-over panel shows): the solo run's outcome is no longer "playing", or the co-op client is
+	 * over. False with no run. The combo's display and its sounds read this one predicate (docs/COMBO.md: run over, no
+	 * break or lapse; shared/view/fx comboQuiet), so the two can never disagree.
+	 */
+	isRunOver(): boolean {
+		const ctx = this.ctx;
+		if (ctx === undefined) return false;
+		return ctx.live !== undefined ? ctx.live.outcome() !== "playing" : ctx.coop?.isOver() === true;
+	}
+
 	/** The stage loader registers itself (StageController.onStart). */
 	setStageDriver(driver: StageDriver): void {
 		this.stage = driver;

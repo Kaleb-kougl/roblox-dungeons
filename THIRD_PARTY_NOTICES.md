@@ -90,3 +90,15 @@ SOFTWARE.
   game projects"; "No attribution or credit required"; "Modify, recolor, and re-export freely for your own project";
   "Cannot resell, redistribute, or sublicense the raw asset files themselves"; "Not for use in stock-asset or
   asset-pack resale platforms". The downloaded copy has no licence file of its own.
+
+## "Glass breaking" (Pixabay sound effect)
+
+- Author: DRAGON-STUDIO. Source: Pixabay (https://pixabay.com/sound-effects/, search "glass breaking dragon-studio";
+  id 504033), downloaded by the owner as `dragon-studio-glass-breaking-504033.mp3` (3.12 s, 48 kHz stereo MP3).
+- Used for: `sfx.combo.break`, the combo's break during a fight (docs/COMBO.md CD12): trimmed to its first 1.2 s,
+  silence-trimmed, downmixed to mono, peak-normalised and encoded to OGG by `scripts/audio/build-audio.js`; only that
+  built OGG is uploaded to Roblox as an audio asset.
+- Raw file: `art/vendor/pixabay/` (gitignored, not redistributed).
+- License: Pixabay Content License (https://pixabay.com/service/license-summary/): free for commercial and
+  non-commercial use, no attribution required, modification allowed; the content may not be sold or distributed on
+  its own (unmodified, as a standalone file), which is why the raw file is kept out of the repo.

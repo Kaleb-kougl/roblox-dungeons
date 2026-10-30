@@ -41,6 +41,7 @@ Record every ported module in `PROVENANCE.md` (ported module, source path, sourc
 | `docs/INVITES.md` | Roblox friend invites (`PromptGameInvite` + LaunchData into a lobby) and Roblox Party grouping: plan, tasks I0-I9, decisions ID1-ID7 |
 | `docs/MOBILE.md` | Mobile play (two-stick touch controls with auto-target, touch HUD, touch menus / tutorial, real-device performance): plan, tasks MB0-MB16, decisions MBD1-MBD10. Step-by-step build: `docs/MOBILE_IMPL.md` (MB1-MB13) |
 | `docs/ROOM_CLEAR.md` | Room clear celebration (1.5 s: 0.5x slow motion on the last kill, CLEAR / PERFECT stamp, room score tally rolling into the score panel, a corner chip for a far co-op clear, On / Off setting; presentation only): plan, tasks RC0-RC10, decisions RCD1-RCD18. Step-by-step build: `docs/ROOM_CLEAR_IMPL.md` (RC1-RC9) |
+| `docs/COMBO.md` | Combo you chase (named tiers x2 Rampage / x3 Carnage / x4 Dominating / x5 Unstoppable, tier-coloured meter, kill sound climbing in pitch, tier-up sting and a floor shout that never hides bullets, a shatter on a break during a fight, a quiet lapse otherwise; presentation only): plan, tasks CB0-CB9, decisions CD1-CD16 |
 
 Decision log (deviations from `PLAN.md`):
 - **Art (docs/ART.md).** The theme contract gained a `"sprites"` kind (large pre-rendered cells, 1/4/8/16 screen-space
@@ -263,6 +264,17 @@ Decision log (deviations from `PLAN.md`):
   (`room.clear.*`); port audio IDs `sfx.room.perfect` / `sfx.score.tick` / `sfx.score.land` (SILENT in the placeholder);
   the `stamp` nudge. `REQUIRED_STRING_KEYS` is built inside a function: `contract.luau` sits at Luau's 200-locals
   limit, so never add top-level constants to contract.ts without checking it compiles under Lune. Studio check pending.
+- **Combo you chase (docs/COMBO.md).** Presentation only (no sim, dungeon, lockstep, hash, replay or fixture change; the
+  multiplier and its scoring are untouched). Tiers on the sim's tenths: x2 RAMPAGE, x3 CARNAGE, x4 DOMINATING, x5
+  UNSTOPPABLE (`COMBO_TIERS`). `RunView.combo` (`ComboEvents`, per tick) feeds `ComboDisplay` (ScorePanel's combo row
+  and 10 px meter, same five rows: 158 of 160) and the cue mapper: `sfx.enemy.death` climbs with the combo (+5 / +8 /
+  +10 / +12 semitones at x2-x5, per-cue speed replacing the jitter, rank 55 in a streak), `sfx.combo.tier` per
+  crossing, `sfx.combo.break` only when the timer runs out while `fightOn` (a lapse after a clear is silent and quiet);
+  no combo sound under the stage cover or after run over. Theme: five required colour roles `COMBO_ROLES`
+  (`comboReport`), six strings `COMBO_STRING_KEYS`, two port audio IDs (SILENT in the placeholder; the break clip is
+  the owner's Pixabay MP3 in gitignored `art/vendor/pixabay/`). The tier-up floor shout is a SurfaceGui under every
+  bullet (sprite effects' floor placement), <= 55 % opaque, ducking near enemy bullets. Nudge kind `comboBreak`.
+  Debug `KV_ComboDebug`. No setting. Studio check and audio upload pending.
 
 ## Commands
 

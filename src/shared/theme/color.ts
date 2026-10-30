@@ -100,6 +100,19 @@ export function toLab(rgb: Rgb): Lab {
 }
 
 /**
+ * CIE LCh chroma C* (sqrt(a*^2 + b*^2) in CIELAB under D65): 0 for a neutral grey, ~100+ for a vivid primary. NaN for
+ * malformed input. The combo's broken grey is held under a ceiling (contract.ts COMBO_COLOR_RULES.maxBrokenChroma).
+ */
+export function labChroma(c: Rgb | string): number {
+	const rgb = typeIs(c, "string") ? parseHex(c) : c;
+	if (rgb === undefined) {
+		return 0 / 0;
+	}
+	const lab = toLab(rgb);
+	return math.sqrt(lab.a * lab.a + lab.b * lab.b);
+}
+
+/**
  * CIE76 colour difference (Delta E*ab): Euclidean distance in CIELAB, 0 (identical) .. ~259 (blue vs yellow-green).
  * About 2.3 is a just-noticeable difference; colours of one hue family sit under ~20. Order doesn't matter. NaN for
  * malformed input. Where contrastRatio measures lightness only, this measures hue, chroma and lightness together

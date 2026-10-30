@@ -91,6 +91,9 @@ describe("audio contract: port IDs and ambience", () => {
 			"sfx.room.perfect",
 			"sfx.score.tick",
 			"sfx.score.land",
+			// docs/COMBO.md CB3
+			"sfx.combo.tier",
+			"sfx.combo.break",
 		]);
 		const web = new Set<string>([...AUDIO_EVENTS, ...BREAKABLE_AUDIO_EVENTS]);
 		for (const id of PORT_AUDIO_EVENTS) {

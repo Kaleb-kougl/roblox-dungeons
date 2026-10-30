@@ -15,15 +15,50 @@
  *   - the boss room (`encounter.bossRoom`; bosses are never record members): a living `data.boss` actor -> WAITING
  *     while its phase <= 0 (dormant), LIVE once a boss's phase > 0; none alive after one was seen alive (on this
  *     endless floor) -> SAFE; otherwise the record rules (a non-boss endless floor's stairwell room has none: SAFE).
+ *
+ * `fightOn(state)` is the LIVE rule on its own, for views that only ask "is a fight on right now?" (the combo's break
+ * vs lapse, docs/COMBO.md CB1 / CD3). It shares the boss test with RoomEdgeStates (livingBoss); the record test is
+ * recordState's LIVE branch (engaged, not cleared). It ignores the unscored fallback, whose latches live in a
+ * RoomEdgeStates instance: its readers are scored runs only.
  */
 import type { EncounterConfig } from "shared/dungeon";
-import { NO_KIND, archetypeAt, scoreRoomDown, scoreRoomEngaged, type RoomScore, type SimState } from "shared/sim";
+import {
+	NO_KIND,
+	archetypeAt,
+	scoreRoomDown,
+	scoreRoomEngaged,
+	type ActorState,
+	type RoomScore,
+	type SimState,
+} from "shared/sim";
 import { RoomEdgeState } from "./roomEdgesConfig";
 
 /** The record rule (scored and fallback alike). */
 function recordState(cleared: boolean, engaged: boolean): RoomEdgeState {
 	if (cleared) return RoomEdgeState.SAFE;
 	return engaged ? RoomEdgeState.LIVE : RoomEdgeState.WAITING;
+}
+
+/** A living boss actor (`data.boss`), dormant or not: the boss room's test, in RoomEdgeStates and fightOn alike. */
+function livingBoss(a: Readonly<ActorState>): boolean {
+	return a.kind !== NO_KIND && a.alive !== 0 && archetypeAt(a.kind).data.boss === true;
+}
+
+/**
+ * A fight is on (the room edges' LIVE rule, docs/COMBO.md CB1): a scored room record engaged (`engageTick >= 0`), not
+ * cleared and with members (a deferred endless room before its spawn has none and never engages), or a living boss
+ * awake (phase > 0). No encounter needed: bosses are never record members, so any awake boss is the boss room's fight.
+ * Pure; read-only on the sim.
+ */
+export function fightOn(state: Readonly<SimState>): boolean {
+	const score = state.score;
+	if (score !== undefined) {
+		for (const rec of score.rooms) {
+			if (rec.engageTick >= 0 && rec.cleared === 0 && rec.memberSlots.size() > 0) return true;
+		}
+	}
+	for (const a of state.combat.actors) if (livingBoss(a) && a.phase > 0) return true;
+	return false;
 }
 
 /** No endless floor (M1): the boss latch's floor key. */
@@ -90,7 +125,7 @@ export class RoomEdgeStates {
 			let alive = false;
 			let awake = false;
 			for (const a of state.combat.actors) {
-				if (a.kind === NO_KIND || a.alive === 0 || archetypeAt(a.kind).data.boss !== true) continue;
+				if (!livingBoss(a)) continue;
 				alive = true;
 				if (a.phase > 0) awake = true;
 			}

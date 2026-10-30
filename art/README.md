@@ -12,6 +12,7 @@ licences forbid redistributing the raw files. See `THIRD_PARTY_NOTICES.md` and `
 | `art/vendor/lords-of-pain-demo/` | Lords Of Pain - Old School Isometric Assets (DEMO). Unzip the contents (`enemy/`, `environment/`, ...) into the folder. Still read for the skeleton, the floor texture and the user-interface images | https://trevor-pupkin.itch.io/lords-of-pain |
 | `art/vendor/lords-of-pain/` | Lords Of Pain - Old School Isometric Assets, the full (paid) pack. Unzip so that `prop/`, `vfx/`, `environment/` and `Asset Index.txt` sit directly in the folder. Read for the decor props, effects and breakables (docs/DECOR.md R5) | https://trevor-pupkin.itch.io/lords-of-pain |
 | `art/vendor/ninja-adventure/` | Ninja Adventure Asset Pack (CC0): only its `FX/` and `Audio/` folders, with their original layout and casing (`FX/Attack/...`, `Audio/Sounds/...`, `Audio/Musics/...`, `Audio/Jingles/...`) | https://pixel-boy.itch.io/ninja-adventure-asset-pack |
+| `art/vendor/pixabay/` | Single sound effects from Pixabay (Pixabay Content License: no attribution, the raw file is not redistributed). Keep the downloaded file names. Today one: `dragon-studio-glass-breaking-504033.mp3` ("Glass breaking" by DRAGON-STUDIO, id 504033; `sfx.combo.break`, docs/COMBO.md CD12) | https://pixabay.com/sound-effects/ (search "glass breaking dragon-studio") |
 
 `art/vendor.lock.json` lists every source file the atlas pipeline reads, with its sha256; the pipeline refuses to
 run when a file is missing or different.
@@ -49,7 +50,8 @@ layout is the generated `packs/vale/fxLayout.ts`; contact sheets are `contact/fx
 
 ## Audio
 
-The sounds come from the Ninja Adventure pack's `Audio/` folder (`art/vendor/ninja-adventure/Audio/`, CC0).
+The sounds come from the Ninja Adventure pack's `Audio/` folder (`art/vendor/ninja-adventure/Audio/`, CC0), plus single
+Pixabay clips in `art/vendor/pixabay/` (the combo break's glass shatter; ffmpeg reads the MP3 like any WAV / OGG).
 `art/audio.json` maps every logical sound ID (`sfx.*`, `music.*`, `amb.*`) to its source clip(s), variants, volume,
 pitch jitter, minimum interval, gain and trim; `"silent": true` leaves an ID silent. `art/audio.lock.json` lists every
 clip it builds, with its sha256 (a separate lock from `vendor.lock.json`, so neither pipeline rewrites the other's).

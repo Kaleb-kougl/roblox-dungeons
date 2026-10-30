@@ -1,28 +1,32 @@
 import React from "@rbxts/react";
 import { useSelector } from "@rbxts/react-reflex";
 import { selectSnapshot } from "client/store";
-import { role, str } from "client/ui/theme";
-import { HUD_STRINGS, HUD_VIEW, comboFraction, formatCombo } from "shared/view/hud";
+import { str } from "client/ui/theme";
+import { HUD_STRINGS, HUD_VIEW } from "shared/view/hud";
+import { ComboMeter } from "./ComboMeter";
+import { ComboRow } from "./ComboRow";
 import { ROOM_CLEAR_UI } from "./roomClearBindings";
 import { Panel, Text } from "./primitives";
 import { HighlightRing } from "./TutorialFx";
-
-const STROKE = 1;
 
 /**
  * Top right, scored runs only (M2): the live score, the combo multiplier and its decay meter (the time left before
  * the combo resets, as a bar that drains over the combo window: COMBO_WINDOW_TICKS, or what M2 boons / curses make of
  * it), and on endless floors the floor and Depth line under the meter (docs/HUD_LAYOUT.md H4; an unscored run keeps
- * it in the StatusPanel). Reads only the ~10 Hz snapshot. `highlight`: the tutorial's ring (the score callout, the
- * curse lesson). The score rolls up and waits for a room bonus to land (docs/ROOM_CLEAR.md RCD7): its number is the
- * ROOM_CLEAR_UI.scoreText binding, written every frame by RoomClearController.
+ * it in the StatusPanel). `highlight`: the tutorial's ring (the score callout, the curse lesson). The score rolls up
+ * and waits for a room bonus to land (docs/ROOM_CLEAR.md RCD7): its number is the ROOM_CLEAR_UI.scoreText binding,
+ * written every frame by RoomClearController.
+ *
+ * docs/COMBO.md CB6 (CD8: the same five rows, 158 of HUD_FOOTPRINT.score's 160 px): row 3 is the combo row (ComboRow:
+ * the tier slot and the multiplier) and row 4 the combo meter (ComboMeter), both drawn per frame from COMBO_UI
+ * bindings that ComboController writes (the fill drains smoothly, not at the snapshot's 10 Hz); the rest reads the
+ * ~10 Hz snapshot, and an unscored run still shows no panel.
  */
 export function ScorePanel(props: { readonly highlight?: boolean }) {
 	const s = useSelector(selectSnapshot);
 	if (!s.scoring) return undefined;
 	const width = HUD_VIEW.scoreWidth;
 	const inner = width - HUD_VIEW.pad * 2;
-	const frac = comboFraction(s.comboTicks, s.comboWindowTicks);
 	return (
 		<Panel
 			corner="topRight"
@@ -46,29 +50,8 @@ export function ScorePanel(props: { readonly highlight?: boolean }) {
 				align={Enum.TextXAlignment.Right}
 				text={ROOM_CLEAR_UI.scoreText.binding}
 			/>
-			<Text
-				fill={true}
-				order={3}
-				size={HUD_VIEW.titleText}
-				color="ember"
-				align={Enum.TextXAlignment.Right}
-				text={str(HUD_STRINGS.combo, { combo: formatCombo(s.combo) })}
-			/>
-			<frame
-				key="ComboMeter"
-				LayoutOrder={4}
-				Size={new UDim2(0, inner, 0, HUD_VIEW.comboBarHeight)}
-				BackgroundColor3={role("uiPanel")}
-				BorderSizePixel={0}
-			>
-				<uistroke Thickness={STROKE} Color={role("uiTextDim")} />
-				<frame
-					key="Fill"
-					Size={UDim2.fromScale(frac, 1)}
-					BackgroundColor3={role("ember")}
-					BorderSizePixel={0}
-				/>
-			</frame>
+			<ComboRow order={3} width={inner} />
+			<ComboMeter order={4} width={inner} />
 			{s.floor > 0 ? (
 				<Text
 					order={5}

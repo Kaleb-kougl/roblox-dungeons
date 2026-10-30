@@ -33,9 +33,10 @@ export interface FootprintBox {
 /**
  * Budget boxes of the always-on panels. status is 160 high (not the plan's 130): three label rows, one boost row and
  * one row of owned items (RunItems caps itself at one row) come to 160 (statusEstimate). score is 160 high (not 130):
- * with the endless floor line moved under the combo meter (H4) its estimate is ~154. weapons is 80 high (not 64): the
- * swap hint line, while it shows, puts the compact panel at ~72 (see weaponsEstimate). minimap is the corner map
- * (docs/MINIMAP.md M7, MINIMAP_PANEL = MINIMAP_VIEW.panel: 140 x 140, MD7).
+ * with the endless floor line moved under the combo meter (H4) its estimate was ~154, ~158 since the combo meter grew
+ * 6 -> 10 px (docs/COMBO.md CB5, CD8). weapons is 80 high (not 64): the swap hint line, while it shows, puts the
+ * compact panel at ~72 (see weaponsEstimate). minimap is the corner map (docs/MINIMAP.md M7, MINIMAP_PANEL =
+ * MINIMAP_VIEW.panel: 140 x 140, MD7).
  */
 export const HUD_FOOTPRINT = {
 	status: { corner: "topLeft", maxW: 240, maxH: 160 },

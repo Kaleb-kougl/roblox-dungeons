@@ -7,6 +7,8 @@
 //   - tutorial floor 1 under the tutorial bot: the lesson rooms go WAITING -> LIVE -> SAFE, in walk order
 //   - fallback parity: run-full-1337's recorded inputs unscored (fallback records from buildScoreRooms at tick 0) and
 //     scored give identical per-room transition ticks; neither the records nor the sim state are touched
+//   - fightOn (docs/COMBO.md CB1), the LIVE rule alone, on a fresh scored / unscored M1 state: a room engaged, cleared,
+//     without members; the boss dormant, awake, dead
 import { describe, expect, it } from "@rbxts/jest-globals";
 import { TUTORIAL } from "shared/config";
 import type { EncounterConfig } from "shared/dungeon";
@@ -33,7 +35,7 @@ import {
 	type SimConfig,
 	type SimState,
 } from "shared/sim";
-import { RoomEdgeState, RoomEdgeStates } from ".";
+import { RoomEdgeState, RoomEdgeStates, fightOn } from ".";
 
 const { SAFE, WAITING, LIVE } = RoomEdgeState;
 /** One state change: [post-step tick, state]; a room's first entry is the state at the floor's first update. */
@@ -448,5 +450,54 @@ describe("RoomEdgeStates: fallback parity (run-full-1337's inputs, unscored vs K
 		expect(touched).toBe(0);
 		const s0 = createSimState(recording.seed, recording.spawn.x, recording.spawn.z, plain);
 		expect(fallbackRecords).toEqual(buildScoreRooms(s0, plain.encounter));
+	});
+});
+
+describe("fightOn: the LIVE rule alone (docs/COMBO.md CB1)", () => {
+	const SEED = 1337;
+	function m1(scored: boolean): SimState {
+		const setup = buildRunConfig(SEED, scored ? { scoring: {} } : {});
+		return createSimState(SEED, setup.spawn!.x, setup.spawn!.z, setup.config);
+	}
+	function boss(s: Readonly<SimState>): ActorState {
+		const b = s.combat.actors.find((a) => a.kind !== NO_KIND && archetypeAt(a.kind).data.boss === true);
+		if (b === undefined) error("no boss", 0);
+		return b;
+	}
+
+	it("a fresh run: no room engaged, the boss dormant -> no fight", () => {
+		const s = m1(true);
+		expect(s.score!.rooms.size() > 0).toBe(true);
+		expect(boss(s).phase).toBe(0);
+		expect(fightOn(s)).toBe(false);
+	});
+
+	it("a room engaged and not cleared is a fight; cleared it is not; a record without members never is", () => {
+		const s = m1(true);
+		const rec = s.score!.rooms[0];
+		rec.engageTick = 3;
+		expect(fightOn(s)).toBe(true);
+		rec.cleared = 1;
+		expect(fightOn(s)).toBe(false);
+		rec.cleared = 0;
+		const slots = rec.memberSlots;
+		rec.memberSlots = [];
+		expect(fightOn(s)).toBe(false);
+		rec.memberSlots = slots;
+		expect(fightOn(s)).toBe(true);
+	});
+
+	it("the boss: phase 0 no fight, phase > 0 a fight (scored or not), dead no fight", () => {
+		for (const scored of [true, false]) {
+			const s = m1(scored);
+			const b = boss(s);
+			expect([scored, fightOn(s)]).toEqual([scored, false]);
+			b.phase = 1;
+			expect([scored, fightOn(s)]).toEqual([scored, true]);
+			b.phase = 2;
+			expect([scored, fightOn(s)]).toEqual([scored, true]);
+			b.alive = 0;
+			expect([scored, fightOn(s)]).toEqual([scored, false]);
+		}
 	});
 });

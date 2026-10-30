@@ -618,7 +618,8 @@ export const BOOST_BEAM_IMAGE_ID = "ui.marker.boost";
  * Lord's (docs/BOSS_DEMONLORD.md D6): sfx.boss.taunt, a taunting boss's phase change (the roar plays while it is
  * silent). Then the boost drops' four (docs/BOOSTS.md B5).
  * Then the room clear celebration's three (docs/ROOM_CLEAR.md RC4): PERFECT's jingle, a tally tick, a bonus landing
- * in the score.
+ * in the score. Then the combo's two (docs/COMBO.md CB3): the tier-up sting (one clip, pitched up per tier) and the
+ * break's shatter.
  */
 export const PORT_AUDIO_EVENTS = [
 	"sfx.player.swing",
@@ -652,6 +653,10 @@ export const PORT_AUDIO_EVENTS = [
 	"sfx.room.perfect",
 	"sfx.score.tick",
 	"sfx.score.land",
+	// docs/COMBO.md CB3: the combo reaches a named tier (sfx.combo.tier, pitched per tier by the cue mapper); the combo
+	// breaks during a fight (sfx.combo.break, the shatter; a lapse with no fight on plays nothing)
+	"sfx.combo.tier",
+	"sfx.combo.break",
 ] as const;
 
 /**
@@ -737,6 +742,21 @@ export const ROOM_CLEAR_STRING_KEYS = [
 ] as const;
 
 /**
+ * Roblox port (docs/COMBO.md CB3): the combo's strings (shared/view COMBO_STRINGS): the four tier names (x2 RAMPAGE, x3
+ * CARNAGE, x4 DOMINATING, x5 UNSTOPPABLE; the tier below x2 has no name), the tier slot's COMBO LOST after a break and
+ * its BEST x3.4 after a lapse (`{combo}`, the streak's peak, formatted like `hud.score.combo`). The theme imports
+ * nothing outside shared/theme, so the list is repeated here.
+ */
+export const COMBO_STRING_KEYS = [
+	"hud.combo.rampage",
+	"hud.combo.carnage",
+	"hud.combo.dominating",
+	"hud.combo.unstoppable",
+	"hud.combo.lost",
+	"hud.combo.best",
+] as const;
+
+/**
  * Every string key a pack must define. Code may rely on these existing. Built inside a function: the spreads' Luau
  * temporaries would otherwise be top-level locals, and this module's compiled Luau sits near the 200-locals-per-function
  * limit (docs/ROOM_CLEAR.md RC3).
@@ -771,6 +791,7 @@ export const REQUIRED_STRING_KEYS: ReadonlyArray<string> = ((): string[] => [
 	...STAGE_STRING_KEYS,
 	...TOUCH_STRING_KEYS,
 	...ROOM_CLEAR_STRING_KEYS,
+	...COMBO_STRING_KEYS,
 ])();
 
 /**
@@ -1098,6 +1119,84 @@ export const MINIMAP_ENEMY_DIFFERENCE_ROLES: ReadonlyArray<ColorRole> = [
  * (0), and a warm red like the outline's #ff3b30 does too (39 from the placeholder `class.pyromancer` #d9784a).
  */
 export const MIN_MINIMAP_ENEMY_DIFFERENCE = MIN_DECOR_FX_BULLET_DIFFERENCE;
+
+/**
+ * Roblox port (docs/COMBO.md CB3, CD10): the combo's colours (shared/view/hud COMBO_TIERS, the meter, the multiplier,
+ * the tier name and the floor shout). Required in every pack like every role. One per named tier (x2 rampage, x3
+ * carnage, x4 dominating, x5 unstoppable; the tier below x2 keeps `ember`), then `combo.broken`, the grey of a broken
+ * streak. The validator (`comboReport`) holds them to COMBO_COLOR_RULES.
+ */
+export const COMBO_ROLES: ReadonlyArray<ColorRole> = [
+	"combo.rampage",
+	"combo.carnage",
+	"combo.dominating",
+	"combo.unstoppable",
+	"combo.broken",
+];
+
+/**
+ * The combo's ladder, one colour per tier in tier order (index = shared/view/hud comboTier: 0 none, 1 rampage .. 4
+ * unstoppable): `ember` (today's meter gold) below x2, then the four named tiers. Each is drawn on `uiPanel` (the score
+ * panel), and each step up must read as a new colour.
+ */
+export const COMBO_TIER_ROLES: ReadonlyArray<ColorRole> = [
+	"ember",
+	"combo.rampage",
+	"combo.carnage",
+	"combo.dominating",
+	"combo.unstoppable",
+];
+
+/** What `comboReport` checks against what, and the bars (COMBO_COLOR_RULES). */
+export interface ComboColorRules {
+	/** The ladder (COMBO_TIER_ROLES), each held to `minPanelContrast` on `panel` and `minStepDifference` from the one below. */
+	readonly tiers: ReadonlyArray<ColorRole>;
+	/** What the meter, multiplier and tier name are drawn over: the score panel. */
+	readonly panel: ColorRole;
+	/** The named tiers (`tiers` without `ember`): the floor shout is drawn in these, in the world. */
+	readonly shouted: ReadonlyArray<ColorRole>;
+	/**
+	 * The colours a shout must never be mistaken for (docs/COMBO.md CD9): the enemy bullets and `telegraph`. The shout is
+	 * painted on the floor under them, so a bullet crossing it must still read as a bullet.
+	 */
+	readonly shoutAgainst: ReadonlyArray<ColorRole>;
+	/** The broken streak's grey (the meter and multiplier after a break). */
+	readonly broken: ColorRole;
+	/** WCAG contrast of every tier on `panel`: the graphics bar, like the room edges' and the minimap markers'. */
+	readonly minPanelContrast: number;
+	/**
+	 * CIE76 between consecutive tiers (ember -> rampage -> ... -> unstoppable), so every tier-up is a visible colour
+	 * change (the tier name carries the meaning too; the colour is its twin).
+	 */
+	readonly minStepDifference: number;
+	/**
+	 * CIE76 between every `shouted` colour and every `shoutAgainst` colour: the decor fx / enemy outline bar. The plan's
+	 * starting coral #ff7a59 failed it (19.5 from the placeholder telegraph #ff8a3d), as did its crimson #ff3b6b (31.1)
+	 * and magenta #e04bd6 (32.1) against the pink bullet #ff3fa4.
+	 */
+	readonly minShoutDifference: number;
+	/** CIE LCh chroma C* (sqrt(a*^2 + b*^2), `labChroma`) of `broken`, at most: it reads as grey, not as another tier. */
+	readonly maxBrokenChroma: number;
+	/** CIE76 between `broken` and every tier. */
+	readonly minBrokenDifference: number;
+}
+
+/**
+ * Roblox port (docs/COMBO.md CB3): the combo colour rules (`comboReport`). One object, so the validator imports one
+ * name: its compiled Luau module sits at the 200-locals-per-function limit.
+ */
+export const COMBO_COLOR_RULES: ComboColorRules = {
+	tiers: COMBO_TIER_ROLES,
+	panel: "uiPanel",
+	shouted: ["combo.rampage", "combo.carnage", "combo.dominating", "combo.unstoppable"],
+	shoutAgainst: [...ENEMY_BULLET_ROLES, "telegraph"],
+	broken: "combo.broken",
+	minPanelContrast: 3.0,
+	minStepDifference: 25,
+	minShoutDifference: MIN_DECOR_FX_BULLET_DIFFERENCE,
+	maxBrokenChroma: 10,
+	minBrokenDifference: 40,
+};
 
 /**
  * Readability caps for ambient particles (docs/DECOR.md Phase 2 part 2), owned by the theme because a pack's ambient

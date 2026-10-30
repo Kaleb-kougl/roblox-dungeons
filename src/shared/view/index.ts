@@ -21,6 +21,7 @@
  *                 (playerOutlined: the watched player, alive, setting and KV_PlayerOutline on) and its look (PLAYER_OUTLINE)
  *   roomEdges.ts  room edges (docs/ROOM_EDGES.md): the dashed corridor-to-room edge runs of a floor (tunables:
  *                 ROOM_EDGE_VIEW in roomEdgesConfig.ts); roomEdgeState.ts: each room's safe / waiting / live state
+ *                 and fightOn (the LIVE rule alone: a fight is on; docs/COMBO.md CB1)
  *   watch.ts      StateWatch: per-player and per-floor edges from sim state (hurt and its HurtKind, death, roll,
  *                 swing, ...) for the audio mapper and the feel controllers (docs/FEEL.md J1)
  *   preload.ts    asset preloading (docs/PRELOAD.md): the core / later tiers of a pack's content ids, the loading
