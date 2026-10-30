@@ -18,7 +18,7 @@
 
 import { secondsToTicks } from "../../../playerData";
 import { movePlayer } from "../../../player";
-import { sweepArc, type ArcActorHit } from "../melee";
+import { sweepArc, type ArcActorHit, type ArcEraseSink } from "../melee";
 import { registerWeapon } from "../registry";
 import type { WeaponData, WeaponSlotState } from "../types";
 import { altPressed } from "./altButton";
@@ -146,6 +146,14 @@ const hitFinisher: ArcActorHit = (ctx, actor) => {
 	ctx.damageActor(actor, playerHitDamage(ctx.state, ctx.playerIndex, SWORD_DATA.finisherDamage));
 };
 
+/**
+ * The guard's erase sink (docs/GRAZE_PARRY.md GP1): pointed at the scored state's ScoreEvents.guardX / guardZ just
+ * before a guard sweep and back at NO_SINK_ROW after it, so it never keeps a state's arrays alive. Nothing is ever
+ * pushed into NO_SINK_ROW (the sink is only handed to sweepArc right after it is pointed at a state).
+ */
+const NO_SINK_ROW: number[] = [];
+const guardSink: ArcEraseSink = { x: NO_SINK_ROW, z: NO_SINK_ROW };
+
 function resetCombo(v: number[]): void {
 	v[SWORD_V_STEP] = 0;
 	v[SWORD_V_BUSY] = 0;
@@ -219,6 +227,15 @@ export const SWORD = registerWeapon<SwordData>({
 		if (v[SWORD_V_GUARD] > 0) {
 			v[SWORD_V_GUARD]--;
 			const deletedBefore = ctx.events.bulletsDeleted;
+			// docs/GRAZE_PARRY.md GP1 (presentation only): scored runs report each erased bullet's position into the
+			// score events' guardX / guardZ (one reused sink, no allocation per tick); guardPlayer follows below.
+			const score = ctx.state.score;
+			let sink: ArcEraseSink | undefined;
+			if (score !== undefined) {
+				guardSink.x = score.events.guardX;
+				guardSink.z = score.events.guardZ;
+				sink = guardSink;
+			}
 			sweepArc(
 				ctx,
 				p.x,
@@ -231,11 +248,19 @@ export const SWORD = registerWeapon<SwordData>({
 				true,
 				false,
 				runMods(ctx.state, ctx.playerIndex).mirror ? slot.weapon + 1 : undefined,
+				undefined,
+				sink,
 			);
 			// M2 scoring (opt-in): guard cancels, told apart from swing deletes. The tutorial's block lesson: a block
 			// releases its room's held enemies (tutorial.ts guard lock).
 			const cancels = ctx.events.bulletsDeleted - deletedBefore;
-			if (ctx.state.score !== undefined) scoreGuardCancels(ctx.state, cancels);
+			if (score !== undefined) {
+				guardSink.x = NO_SINK_ROW;
+				guardSink.z = NO_SINK_ROW;
+				const players = score.events.guardPlayer;
+				for (let k = 0; k < cancels; k++) players.push(ctx.playerIndex);
+				scoreGuardCancels(ctx.state, cancels);
+			}
 			if (ctx.state.tutorial !== undefined) tutorialOnGuardCancels(ctx.state, cancels);
 			return;
 		}

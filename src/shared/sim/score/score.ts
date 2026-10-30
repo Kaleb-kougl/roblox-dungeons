@@ -64,7 +64,7 @@ import type { BulletSimulation } from "../combat/bullets";
 import type { SimState } from "../state";
 import { partySize, playerAt, presentPlayerCount } from "../party";
 import { encounterCost } from "shared/dungeon";
-import { runMods, teamComboCutDivisorMultiplier, teamComboWindowTicks } from "../progression/runMods";
+import { SOLO_PLAYER, runMods, teamComboCutDivisorMultiplier, teamComboWindowTicks } from "../progression/runMods";
 import {
 	BOSS_FINAL_PHASE,
 	BOSS_NO_HIT_BONUS,
@@ -664,6 +664,9 @@ export const GRAZE_R2 = GRAZE_R * GRAZE_R;
  * distance to the player, `inHit` = inside the hit circle (before the hit is attempted), `grazeR2` = this tick's
  * squared graze radius (GRAZE_R2; wider with M2 Daredevil). `dead`: that player is dead
  * (default: player 0; co-op passes its graze target, the nearest living player, so a dead player never grazes).
+ * `grazer`: that player's index (default SOLO_PLAYER; co-op passes the graze target). An awarded graze pushes the
+ * bullet's position and velocity (read at once, never kept) and `grazer` into the events' graze arrays
+ * (docs/GRAZE_PARRY.md GP1, presentation only).
  */
 export function scoreBulletVisit(
 	state: SimState,
@@ -674,6 +677,7 @@ export function scoreBulletVisit(
 	inHit: boolean,
 	grazeR2: number = GRAZE_R2,
 	dead: boolean = state.player.dead !== 0,
+	grazer: number = SOLO_PLAYER,
 ): void {
 	if (bit32.band(payload, GRAZE_DONE_BIT) !== 0) return;
 	if (inHit) {
@@ -691,7 +695,15 @@ export function scoreBulletVisit(
 	const s = state.score;
 	if (dead || s === undefined) return;
 	award(state, s, ScoreSource.GRAZES, GRAZE_POINTS);
-	s.events.grazes += 1;
+	const e = s.events;
+	e.grazes += 1;
+	const pos = sim.positionAt(i);
+	e.grazeX.push(pos.x);
+	e.grazeZ.push(pos.z);
+	const vel = sim.velocityAt(i);
+	e.grazeVX.push(vel.x);
+	e.grazeVZ.push(vel.z);
+	e.grazePlayer.push(grazer);
 	feedCombo(state, s);
 }
 
