@@ -50,6 +50,11 @@
  *     break); the kill ladder reads the live score combo and keeps its pitch.
  * Neither combo ID is a jingle or ducks the music; both obey the silent-ID, cooldown and cap rules like any cue.
  *
+ * The boon draft reveal's five IDs (docs/DRAFT_REVEAL.md DR4: SFX.draftFlip .. draftPick) are never mapper cues: the
+ * client's reveal controller plays them straight through AudioController.play(id, volume, speed) on the reveal's own
+ * clock (the world is frozen under the draft). They are ranked, timed (SFX_MIN_INTERVAL) and listed (ALL_SFX, so the
+ * pack's minInterval and the preload reach them) like every SFX; the flare ducks the music (DUCKING_SFX) from play().
+ *
  * Every cue carries a playback speed (AudioCueList.speed): 0 = the pack's jitter (every cue but these), > 0 = that
  * exact PlaybackSpeed.
  *
@@ -128,6 +133,17 @@ export const SFX = {
 	 */
 	comboTier: "sfx.combo.tier",
 	comboBreak: "sfx.combo.break",
+	/**
+	 * The boon draft reveal (docs/DRAFT_REVEAL.md DR4; the theme's PORT_AUDIO_EVENTS). UI sounds the client's reveal
+	 * controller plays itself (AudioController.play with the reveal's per-cue speed), never from sim events: a card
+	 * flips (+2 semitones per card), a rare face lands (the chime), a legendary's charge (one hit, played six times as a
+	 * rising ladder 0.16 -> 0.07 s apart), the legendary flare (a jingle: it ducks the music), a boon is taken (the stamp).
+	 */
+	draftFlip: "sfx.draft.flip",
+	draftRare: "sfx.draft.rare",
+	draftCharge: "sfx.draft.charge",
+	draftLegendary: "sfx.draft.legendary",
+	draftPick: "sfx.draft.pick",
 } as const;
 export type SfxId = (typeof SFX)[keyof typeof SFX];
 
@@ -174,6 +190,11 @@ export const ALL_SFX: ReadonlyArray<SfxId> = [
 	SFX.scoreLand,
 	SFX.comboTier,
 	SFX.comboBreak,
+	SFX.draftFlip,
+	SFX.draftRare,
+	SFX.draftCharge,
+	SFX.draftLegendary,
+	SFX.draftPick,
 ];
 
 /** IDs this port added to the placeholder pack (not in the web contract's AUDIO_EVENTS; theme PORT_AUDIO_EVENTS). */
@@ -206,6 +227,11 @@ export const PORT_SFX: ReadonlyArray<SfxId> = [
 	SFX.scoreLand,
 	SFX.comboTier,
 	SFX.comboBreak,
+	SFX.draftFlip,
+	SFX.draftRare,
+	SFX.draftCharge,
+	SFX.draftLegendary,
+	SFX.draftPick,
 ];
 
 /**
@@ -303,6 +329,13 @@ export const SFX_MIN_INTERVAL: Readonly<Partial<Record<SfxId, number>>> = {
 	/** A sting per tier crossing, but a cut-and-re-earn flicker at a tier's edge never machine-guns it. */
 	[SFX.comboTier]: 0.5,
 	[SFX.comboBreak]: 0.5,
+	/** The flip ladder's cards land >= 0.22 s apart (a skip flips them all on one cue); this only stops a double start. */
+	[SFX.draftFlip]: 0.05,
+	/**
+	 * The charge ladder's hits close in to 0.07 s apart (shared/view/hud DRAFT_REVEAL), so its interval stays under that:
+	 * a guard against a doubled start, never a dropped rung.
+	 */
+	[SFX.draftCharge]: 0.05,
 };
 
 /**
@@ -334,18 +367,27 @@ export const SFX_PRIORITY: Readonly<Record<SfxId, number>> = {
 	[SFX.floorEnter]: 68,
 	/** An Aegis pip took the hit (the hurt sound plays too: it still counts as a hit). */
 	[SFX.boostAegisBreak]: 66,
+	/**
+	 * The boon draft reveal (docs/DRAFT_REVEAL.md DR4): above everything else that can play over a frozen draft. The
+	 * legendary flare ranks with the room clear's jingles, the charge over the drop / pick-up sounds.
+	 */
+	[SFX.draftLegendary]: 72,
 	/** The tier-up sting: under the jingles and the room clear (a tier up on a room's last kill plays both). */
 	[SFX.comboTier]: 65,
+	[SFX.draftCharge]: 62,
 	[SFX.boostCollect]: 64,
 	[SFX.boostDrop]: 62,
+	[SFX.draftPick]: 60,
 	[SFX.playerFlask]: 60,
 	[SFX.playerRoll]: 58,
 	[SFX.playerFinisher]: 56,
 	[SFX.playerCharged]: 55,
+	[SFX.draftRare]: 55,
 	[SFX.playerSwing]: 54,
 	[SFX.playerShoot]: 52,
 	[SFX.playerSwap]: 50,
 	[SFX.playerDeflect]: 50,
+	[SFX.draftFlip]: 50,
 	[SFX.boostExpire]: 48,
 	[SFX.uiConfirm]: 45,
 	[SFX.uiBack]: 45,
@@ -376,6 +418,7 @@ export const DUCKING_SFX: ReadonlyArray<SfxId> = [
 	SFX.roomClear,
 	SFX.roomPerfect,
 	SFX.shrineUse,
+	SFX.draftLegendary,
 	SFX.ember,
 ];
 
@@ -383,7 +426,9 @@ export const DUCKING_SFX: ReadonlyArray<SfxId> = [
  * Jingles (art/audio.json category "jingle"): at most one starts per frame, the highest SFX_PRIORITY (the others are
  * dropped before the cap and start no cooldown). An endless boss kill raises bossDefeated, depthChanged and
  * stairwellOpened on one tick: the depth jingle plays, not the victory over it (depth.up ranks above victory; M1 has
- * no depth, so its boss kill keeps the victory). sfx.relic.take is a short power-up sound, not a jingle.
+ * no depth, so its boss kill keeps the victory). sfx.relic.take is a short power-up sound, not a jingle. The draft's
+ * legendary flare (docs/DRAFT_REVEAL.md DR4) is a jingle too, but the reveal controller plays it itself (the world is
+ * frozen under the draft, so no mapper jingle shares its frame).
  */
 export const JINGLE_SFX: ReadonlyArray<SfxId> = [
 	SFX.gameOver,
@@ -391,6 +436,7 @@ export const JINGLE_SFX: ReadonlyArray<SfxId> = [
 	SFX.victory,
 	SFX.roomClear,
 	SFX.roomPerfect,
+	SFX.draftLegendary,
 	SFX.shrineUse,
 ];
 

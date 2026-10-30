@@ -619,7 +619,8 @@ export const BOOST_BEAM_IMAGE_ID = "ui.marker.boost";
  * silent). Then the boost drops' four (docs/BOOSTS.md B5).
  * Then the room clear celebration's three (docs/ROOM_CLEAR.md RC4): PERFECT's jingle, a tally tick, a bonus landing
  * in the score. Then the combo's two (docs/COMBO.md CB3): the tier-up sting (one clip, pitched up per tier) and the
- * break's shatter.
+ * break's shatter. Then the boon draft reveal's five (docs/DRAFT_REVEAL.md DR4): flip, rare chime, legendary charge,
+ * legendary flare, pick stamp.
  */
 export const PORT_AUDIO_EVENTS = [
 	"sfx.player.swing",
@@ -657,6 +658,14 @@ export const PORT_AUDIO_EVENTS = [
 	// breaks during a fight (sfx.combo.break, the shatter; a lapse with no fight on plays nothing)
 	"sfx.combo.tier",
 	"sfx.combo.break",
+	// docs/DRAFT_REVEAL.md DR4: the boon draft reveal, played by the client's reveal controller (not from sim events):
+	// a card flips (pitched up per card), a rare face lands (the chime), a legendary's charge (one short hit played as a
+	// rising ladder), the legendary flare (a jingle: it ducks the music), a boon is taken (the stamp)
+	"sfx.draft.flip",
+	"sfx.draft.rare",
+	"sfx.draft.charge",
+	"sfx.draft.legendary",
+	"sfx.draft.pick",
 ] as const;
 
 /**

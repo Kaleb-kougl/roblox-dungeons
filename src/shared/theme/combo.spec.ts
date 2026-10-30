@@ -263,8 +263,9 @@ describe("combo: strings and audio IDs", () => {
 	});
 
 	it("appends the tier sting and the break to the port's audio IDs, silent in the placeholder", () => {
-		const n = PORT_AUDIO_EVENTS.size();
-		expect([PORT_AUDIO_EVENTS[n - 2], PORT_AUDIO_EVENTS[n - 1]]).toEqual(["sfx.combo.tier", "sfx.combo.break"]);
+		// appended after the room clear's three (the draft reveal's five follow, docs/DRAFT_REVEAL.md DR4)
+		const at = (PORT_AUDIO_EVENTS as ReadonlyArray<string>).indexOf("sfx.score.land") + 1;
+		expect([PORT_AUDIO_EVENTS[at], PORT_AUDIO_EVENTS[at + 1]]).toEqual(["sfx.combo.tier", "sfx.combo.break"]);
 		const assets = PLACEHOLDER_MANIFEST.assets as unknown as Obj;
 		for (const id of ["sfx.combo.tier", "sfx.combo.break"]) {
 			expect([id, slotFor(id)?.soundGroup, REQUIRED_ASSET_IDS.includes(id), (assets[id] as Obj).kind]).toEqual([

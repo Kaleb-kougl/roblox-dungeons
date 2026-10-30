@@ -282,6 +282,13 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		// docs/COMBO.md CB3: the combo's tier-up sting and break shatter.
 		"sfx.combo.tier": SILENT,
 		"sfx.combo.break": SILENT,
+		// Roblox port (docs/DRAFT_REVEAL.md DR4): the boon draft reveal (flip, rare chime, legendary charge and flare,
+		// pick stamp), silent until the vale pack's clips are built and uploaded
+		"sfx.draft.flip": SILENT,
+		"sfx.draft.rare": SILENT,
+		"sfx.draft.charge": SILENT,
+		"sfx.draft.legendary": SILENT,
+		"sfx.draft.pick": SILENT,
 		"music.menu": SILENT,
 		"music.biome.1": SILENT,
 		"music.biome.2": SILENT,
