@@ -36,9 +36,10 @@
  *     frame's end (`state.score.combo`, after every tick), with no pack jitter (it would mask a step), and ranks
  *     COMBO_KILL_PRIORITY (over swings and shots) so a busy frame never drops the one sound that carries the ladder.
  *     Several kills on one frame stay one cue at the final pitch. At x1.0, or in an unscored run, it is the plain cue
- *     (the pack's jitter, SFX_PRIORITY). The ladder follows the combo value, so a graze climbs it silently, a hit cut
- *     lowers it (the next kill is heard lower) and a streak end drops it to the plain cue; the combo is the party's,
- *     so a teammate's kill climbs it too. Boss kills keep sfx.boss.death, unladdered.
+ *     (the pack's jitter, SFX_PRIORITY). The ladder follows the combo value, so a graze climbs it (with no kill sound:
+ *     the graze has its own shimmer, GP6 below), a hit cut lowers it (the next kill is heard lower) and a streak end
+ *     drops it to the plain cue; the combo is the party's, so a teammate's kill climbs it too. Boss kills keep
+ *     sfx.boss.death, unladdered.
  *   - Tier sting (CD7): the frame's peak reached a higher tier than its start (comboTier) -> sfx.combo.tier at
  *     tierStingSpeed(tier). Re-earning a tier after a cut plays it again, never inside its 0.5 s interval.
  *   - Break (CD3, CD14): a streak end during a fight (ComboReset.fight) -> sfx.combo.break, at
@@ -50,15 +51,42 @@
  *     break); the kill ladder reads the live score combo and keeps its pitch.
  * Neither combo ID is a jingle or ducks the music; both obey the silent-ID, cooldown and cap rules like any cue.
  *
+ * Grazes and parries (docs/GRAZE_PARRY.md GP6) come from the frame's NearMissFrame (shared/view/fx NearMissDirector,
+ * stepped once per rendered frame by the client's NearMissController; `undefined`, as with no run, adds nothing and
+ * leaves every other cue as before). The director already applies the scored-runs-only scope, the quiet gate (stage
+ * cover, run over), the view-player rule and the chain ladder, so the mapper only places the cues:
+ *   - Graze (GPD4): `grazeCue` (the view player's, at most one per frame, chained and spaced by the director) ->
+ *     sfx.player.graze at exactly `grazeCue.speed` (no pack jitter), volume NEAR_MISS_VIEW.graze.volume, minimum
+ *     interval NEAR_MISS_VIEW.graze.minIntervalSec, rank 53: under the player's hurt and the telegraph (a capped frame
+ *     never drops those for it), over enemy shots and hits. A teammate's grazes are silent. Silent: nothing.
+ *   - Parry (GPD5, GPD6, GPD10): the frame's `parryCues` make at most one sfx.player.parry (the local one wins over a
+ *     teammate's, then the higher speed) at the cue's exact `speed` (1, or bigSemitones up for a big guard): the local
+ *     (view) player's at full volume, a teammate's at AUDIO_VIEW.teammateVolume ranked TEAMMATE_PRIORITY_DROP
+ *     lower; rank 57 (over the kill ladder, under the hurt and the telegraph). The parry REPLACES the deflect: a frame
+ *     on which a guard erased bullets (a parry cue, or a PARRY! flash whose count grew: a later erase of the same
+ *     guard) plays no sfx.player.deflect for that guard (solo: none; co-op: the deflect's local / teammate side is
+ *     dropped when that side guarded). Swing deletes with no guard erase keep the deflect, and so does an unscored run
+ *     (no parries).
+ *     While sfx.player.parry is silent (SFX_FALLBACK -> the deflect) the mapper ignores parries entirely, so a guard
+ *     plays today's deflect exactly (its volume, rank, jitter and co-op guess).
+ * Neither ID is a jingle or ducks the music.
+ *
  * Every cue carries a playback speed (AudioCueList.speed): 0 = the pack's jitter (every cue but these), > 0 = that
- * exact PlaybackSpeed.
+ * exact PlaybackSpeed (the kill ladder, the tier sting, the graze and the parry).
  *
  * Presentation only: reads sim state, never writes it.
  */
 import { BOSS_DEMONLORD_ID, COMBO_MIN, archetypeIndex, partySize, type SimEvents, type SimState } from "shared/sim";
 import { AMBIENCE_IDS } from "shared/theme";
 import { NO_BOOST_EVENTS, type BoostEventSource } from "../boosts";
-import { NO_COMBO_EVENTS, type ComboFrameSource, type FxEvent } from "../fx";
+import {
+	NEAR_MISS_VIEW,
+	NO_COMBO_EVENTS,
+	type ComboFrameSource,
+	type FxEvent,
+	type NearMissFrame,
+	type ParryCue,
+} from "../fx";
 import { COMBO_VIEW, comboTier, killPitchSpeed, tierStingSpeed } from "../hud";
 import { AUDIO_VIEW } from "./config";
 import { StateWatch, SwingEdge } from "../watch";
@@ -128,6 +156,12 @@ export const SFX = {
 	 */
 	comboTier: "sfx.combo.tier",
 	comboBreak: "sfx.combo.break",
+	/**
+	 * Grazes and parries (docs/GRAZE_PARRY.md GP6; the theme's PORT_AUDIO_EVENTS): the view player's graze shimmer (one
+	 * clip, pitched by the graze chain) and a guard's parry ring-out (in place of the deflect; the deflect while silent).
+	 */
+	playerGraze: "sfx.player.graze",
+	playerParry: "sfx.player.parry",
 } as const;
 export type SfxId = (typeof SFX)[keyof typeof SFX];
 
@@ -174,6 +208,8 @@ export const ALL_SFX: ReadonlyArray<SfxId> = [
 	SFX.scoreLand,
 	SFX.comboTier,
 	SFX.comboBreak,
+	SFX.playerGraze,
+	SFX.playerParry,
 ];
 
 /** IDs this port added to the placeholder pack (not in the web contract's AUDIO_EVENTS; theme PORT_AUDIO_EVENTS). */
@@ -206,6 +242,8 @@ export const PORT_SFX: ReadonlyArray<SfxId> = [
 	SFX.scoreLand,
 	SFX.comboTier,
 	SFX.comboBreak,
+	SFX.playerGraze,
+	SFX.playerParry,
 ];
 
 /**
@@ -303,6 +341,8 @@ export const SFX_MIN_INTERVAL: Readonly<Partial<Record<SfxId, number>>> = {
 	/** A sting per tier crossing, but a cut-and-re-earn flicker at a tier's edge never machine-guns it. */
 	[SFX.comboTier]: 0.5,
 	[SFX.comboBreak]: 0.5,
+	/** The director already spaces graze cues this far apart (GPD4); the mapper's interval keeps a pack override. */
+	[SFX.playerGraze]: NEAR_MISS_VIEW.graze.minIntervalSec,
 };
 
 /**
@@ -340,9 +380,19 @@ export const SFX_PRIORITY: Readonly<Record<SfxId, number>> = {
 	[SFX.boostDrop]: 62,
 	[SFX.playerFlask]: 60,
 	[SFX.playerRoll]: 58,
+	/**
+	 * A guard's parry (GP6): once per guard, over the kill ladder (55), the swing and the deflect it replaces; under the
+	 * player's hurt and the telegraph.
+	 */
+	[SFX.playerParry]: 57,
 	[SFX.playerFinisher]: 56,
 	[SFX.playerCharged]: 55,
 	[SFX.playerSwing]: 54,
+	/**
+	 * The view player's graze shimmer (GP6): the smallest reward, under the swing and the kill ladder, over the player's
+	 * own shot and every enemy sound (a capped frame never drops the hurt or the telegraph for it).
+	 */
+	[SFX.playerGraze]: 53,
 	[SFX.playerShoot]: 52,
 	[SFX.playerSwap]: 50,
 	[SFX.playerDeflect]: 50,
@@ -367,6 +417,11 @@ export const COMBO_KILL_PRIORITY = 55;
 
 /** A teammate's cue ranks this much lower than the local player's same sound (never over the local telegraph). */
 export const TEAMMATE_PRIORITY_DROP = 50;
+
+/** AudioCueMapper.guardErased bits: whose guard erased bullets this frame (GP6). */
+const GUARD_NONE = 0;
+const GUARD_LOCAL = 1;
+const GUARD_TEAMMATE = 2;
 
 /** Sounds that dip the music (AUDIO_VIEW.duck) for their length: the jingles and the Ember. */
 export const DUCKING_SFX: ReadonlyArray<SfxId> = [
@@ -404,6 +459,11 @@ export const SFX_FALLBACK: Readonly<Partial<Record<SfxId, SfxId>>> = {
 	[SFX.uiBack]: SFX.uiClick,
 	[SFX.bossTaunt]: SFX.bossRoar,
 	[SFX.roomPerfect]: SFX.roomClear,
+	/**
+	 * GP6: while the parry is silent a guard sounds as before. The mapper honours this by not replacing the deflect at
+	 * all (today's cue: its volume, rank, jitter and co-op attribution), so the entry is what `resolve` / `play` see.
+	 */
+	[SFX.playerParry]: SFX.playerDeflect,
 };
 
 /** Whether a sound ID has a clip in the theme pack (the controller passes `pack.sound(id).assetId !== undefined`). */
@@ -584,6 +644,38 @@ export class AudioCueMapper {
 		else this.cue(id, AUDIO_VIEW.teammateVolume, priorityOf(id) - TEAMMATE_PRIORITY_DROP);
 	}
 
+	/**
+	 * Whose guard erased bullets this frame (GUARD_* bits): a parry cue (a guard's first erase) or a PARRY! flash whose
+	 * count grew (a later erase of the same guard). A `local` cue and `localIndex`'s flash (the director's view player,
+	 * the same index) are GUARD_LOCAL, anyone else's GUARD_TEAMMATE.
+	 */
+	private guardErased(frame: Readonly<NearMissFrame> | undefined, localIndex: number): number {
+		if (frame === undefined) return GUARD_NONE;
+		let bits = GUARD_NONE;
+		for (const c of frame.parryCues) bits = bit32.bor(bits, c.local ? GUARD_LOCAL : GUARD_TEAMMATE);
+		for (const f of frame.flashes) {
+			if (f.grew) bits = bit32.bor(bits, f.player === localIndex ? GUARD_LOCAL : GUARD_TEAMMATE);
+		}
+		return bits;
+	}
+
+	/**
+	 * At most one sfx.player.parry per frame: the local (view) player's guard if one started, else the teammate's with
+	 * the highest speed (the bigger guard); the local one at full volume, a teammate's at AUDIO_VIEW.teammateVolume and
+	 * TEAMMATE_PRIORITY_DROP lower. Its speed is the cue's (1, or bigSemitones up), exact.
+	 */
+	private parryCue(frame: Readonly<NearMissFrame>): void {
+		let best: ParryCue | undefined;
+		for (const c of frame.parryCues) {
+			if (best === undefined || (c.local && !best.local) || (c.local === best.local && c.speed > best.speed))
+				best = c;
+		}
+		if (best === undefined) return;
+		const rank = priorityOf(SFX.playerParry);
+		if (best.local) this.cue(SFX.playerParry, 1, rank, best.speed);
+		else this.cue(SFX.playerParry, AUDIO_VIEW.teammateVolume, rank - TEAMMATE_PRIORITY_DROP, best.speed);
+	}
+
 	/** Removes candidate `at`, keeping the order of the rest. */
 	private dropPending(at: number): void {
 		for (let i = at; i < this.pending - 1; i++) {
@@ -628,8 +720,9 @@ export class AudioCueMapper {
 	 * events of the frame, `state` the run's state after the frame, `localIndex` this client's player (0 solo; the
 	 * watched teammate while spectating, docs/SPECTATE.md: its sounds play at full volume), `boosts` the frame's
 	 * boost-drop events (the run view's `boostEvents`; none by default), `combo` the frame's combo events (the run
-	 * view's `combo`, docs/COMBO.md CB1; none by default). Appends the cues to start to `out` (in table order) and
-	 * returns it.
+	 * view's `combo`, docs/COMBO.md CB1; none by default), `nearMiss` the frame's grazes and parries output
+	 * (NearMissController's NearMissFrame of THIS frame, docs/GRAZE_PARRY.md GP6; undefined / no run: nothing, today's
+	 * cues exactly). Appends the cues to start to `out` (in table order) and returns it.
 	 */
 	frame(
 		now: number,
@@ -640,6 +733,7 @@ export class AudioCueMapper {
 		out: AudioCueList,
 		boosts: BoostEventSource = NO_BOOST_EVENTS,
 		combo: ComboFrameSource = NO_COMBO_EVENTS,
+		nearMiss: Readonly<NearMissFrame> | undefined = undefined,
 	): AudioCueList {
 		this.now = now;
 		this.pending = 0;
@@ -649,10 +743,16 @@ export class AudioCueMapper {
 		const w = this.watch;
 		w.update(state, localIndex);
 		const party = partySize(state) > 1;
+		// Parries (GP6): a guard that erased bullets this frame plays the parry, not the deflect. Only while the parry
+		// has a clip: a silent parry leaves today's deflect untouched (SFX_FALLBACK).
+		const parries = nearMiss !== undefined && this.playable(SFX.playerParry) ? nearMiss : undefined;
+		const guarded = this.guardErased(parries, localIndex);
 
 		for (const [field, id] of SIM_EVENT_SOUNDS) {
 			if (party && PLAYER_EVENT_FIELDS.includes(field)) continue;
 			if (!(events[field] > 0)) continue;
+			// Solo: the frame's deletes were the guard's (the parry plays instead).
+			if (id === SFX.playerDeflect && guarded !== GUARD_NONE) continue;
 			// Solo: the swing that was the sword's finisher plays the finisher instead.
 			if (id === SFX.playerSwing && w.swingEdge[localIndex] === SwingEdge.finisher)
 				this.cue(SFX.playerFinisher, 1);
@@ -674,9 +774,11 @@ export class AudioCueMapper {
 			if (w.swapEdge[localIndex]) this.cue(SFX.playerSwap, 1);
 			if (events.shotsFired > 0 && w.localShot) this.cue(SFX.playerShoot, 1);
 			// Deflects: the local player's when they could have made them, else a teammate's (quiet).
+			// A guard's erases are the parry's (GP6), never also a deflect.
 			if (events.bulletsDeleted > 0) {
-				if (w.mayDeflect[localIndex]) this.cue(SFX.playerDeflect, 1);
-				else
+				if (w.mayDeflect[localIndex]) {
+					if ((guarded & GUARD_LOCAL) === 0) this.cue(SFX.playerDeflect, 1);
+				} else if ((guarded & GUARD_TEAMMATE) === 0)
 					this.cue(
 						SFX.playerDeflect,
 						AUDIO_VIEW.teammateVolume,
@@ -725,6 +827,12 @@ export class AudioCueMapper {
 		if (ended !== undefined && ended.fight) {
 			this.cue(SFX.comboBreak, ended.lost < COMBO_VIEW.smallBreakBelow ? COMBO_VIEW.smallBreakVolume : 1);
 		}
+		// Grazes and parries (docs/GRAZE_PARRY.md GP6): the director's cues, at their exact speeds.
+		const graze = nearMiss?.grazeCue;
+		if (graze !== undefined) {
+			this.cue(SFX.playerGraze, NEAR_MISS_VIEW.graze.volume, priorityOf(SFX.playerGraze), graze.speed);
+		}
+		if (parries !== undefined) this.parryCue(parries);
 
 		this.keepOneJingle();
 		this.applyCap();
