@@ -24,7 +24,7 @@
  *            cleared / rooms with enemies on that floor; a boss floor's boss is one more room), rounded down before
  *            the multipliers (floorClearBase); a floor without enemy rooms pays the full 1000 x floor.
  *
- * Combo: tenths in [10, 50]. A kill / graze adds 1 (cap 50) AFTER its own award and refills the 180-tick timer;
+ * Combo: tenths in [10, 50]. A kill / graze adds 1 (cap 50) AFTER its own award and refills the 360-tick timer;
  * stepScore counts the timer down on ticks without a kill or graze and resets the combo to 10 when it runs out.
  * Each landed hit (events.playerHits, applied in stepScore after the tick's awards) cuts it to
  * max(10, floor(combo x (d - 1) / d)) with d = max(2, n), i.e. a cut of min(1/2, 1/n) rounded down to the tenth;
@@ -47,7 +47,7 @@
  * Depth and floor come from state.endless (scoreDepth / scoreFloor).
  *
  * M2 boons / curses (endless runs, read through progression/runMods.ts; neutral otherwise): the combo window
- * (Lingering +1.5 s, Impatience -1 s) and the hit cut's divisor x 2 (Composure) are TEAM-WIDE (teamComboWindowTicks /
+ * (Lingering +3 s, Impatience -2 s) and the hit cut's divisor x 2 (Composure) are TEAM-WIDE (teamComboWindowTicks /
  * teamComboCutDivisorMultiplier: Lingering / Composure if any living player owns it, Impatience once if any player
  * took it); kill points x 110 % (Bounty: kills and boss kills, not the no-hit bonus) follow the KILLER's boons; the
  * graze margin (Daredevil 0.75 tiles) the grazing player's (combat.ts passes the radius).

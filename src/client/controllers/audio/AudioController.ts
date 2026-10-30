@@ -23,7 +23,7 @@ import {
 	DUCKING_SFX,
 	MUSIC,
 	MusicDuck,
-	PitchJitter,
+	PitchVariance,
 	SFX,
 	VariantPicker,
 	ambienceFor,
@@ -108,8 +108,9 @@ class LoopChannel {
  *                tracker's events and the sim state into cues (once per frame, per-ID cooldowns with the pack's
  *                minInterval, one jingle, at most AUDIO_VIEW.maxStartsPerFrame by priority, teammates' sounds
  *                quieter in co-op); each cue plays one clip of the ID's pool (round-robin, VariantPicker) at a
- *                jittered PlaybackSpeed (PitchJitter, the pack's pitch range; a cue's own speed instead when it has
- *                one: the combo's kill ladder and tier sting, docs/COMBO.md CB4) on a small pool of Sounds
+ *                jittered PlaybackSpeed inside the pack's pitch range that keeps off the ID's last one
+ *                (PitchVariance, AUDIO_VIEW.pitchRepeatGap; a cue's own speed instead when it has one: the combo's
+ *                kill ladder and tier sting, docs/COMBO.md CB4) on a small pool of Sounds
  *                (AUDIO_VIEW.voicesPerSfx per ID). The combo's sting and shatter follow the combo display's gates:
  *                the run view's combo events (or ComboController's KV_ComboDebug forced ones) pass through
  *                audibleCombo(..., comboQuiet(isInputCovered, isRunOver)), the SimController predicates ComboController
@@ -145,7 +146,7 @@ export class AudioController implements OnStart {
 	private readonly playable: Playable = (id) => this.pack !== undefined && this.pack.sound(id).assetId !== undefined;
 	private readonly mapper = new AudioCueMapper(this.playable);
 	private readonly picker = new VariantPicker();
-	private readonly jitter = new PitchJitter();
+	private readonly pitch = new PitchVariance();
 	private readonly duck = new MusicDuck();
 	private readonly voices = new Map<string, Voices>();
 	private readonly groups = new Map<SoundGroupName, SoundGroup>();
@@ -261,8 +262,8 @@ export class AudioController implements OnStart {
 	/**
 	 * Plays one sound effect by logical ID at `scale` x its volume: the next clip of its pool, at `speed` when it is
 	 * > 0 (the combo's kill ladder and tier sting, docs/COMBO.md CB4: an exact PlaybackSpeed, no jitter), else at a
-	 * jittered speed from the pack's pitch range. A silent / missing ID plays its SFX_FALLBACK (mapper.resolve), else
-	 * nothing.
+	 * jittered speed from the pack's pitch range, away from the ID's last one. A silent / missing ID plays its
+	 * SFX_FALLBACK (mapper.resolve), else nothing.
 	 */
 	play(id: string, scale: number, speed = 0): void {
 		const playId = this.mapper.resolve(id);
@@ -273,7 +274,7 @@ export class AudioController implements OnStart {
 		const sound = clip.sounds[clip.next];
 		clip.next = (clip.next + 1) % clip.sounds.size();
 		sound.Volume = v.volume * scale;
-		sound.PlaybackSpeed = speed > 0 ? speed : this.jitter.speed(v.pitch);
+		sound.PlaybackSpeed = speed > 0 ? speed : this.pitch.speed(playId, v.pitch);
 		sound.TimePosition = 0;
 		sound.Play();
 		if ((DUCKING_SFX as ReadonlyArray<string>).includes(playId)) {

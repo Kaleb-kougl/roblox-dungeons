@@ -21,7 +21,7 @@ six strings, two port audio IDs. No new setting (CD11).
 
 | Piece | Today | Where |
 |---|---|---|
-| The combo | Tenths in [10, 50]. Every kill or graze adds 1 (`COMBO_STEP`) after its own award and refills the timer (`COMBO_WINDOW_TICKS` 180 = 3 s; Lingering +1.5 s, Impatience -1 s, team-wide). The timer runs out -> back to 10. A landed hit cuts it to `max(10, floor(c (d-1)/d))`, d = max(2, party size) (x2 Composure). Shared by the whole party. Frozen during a boon draft (the world is frozen) | shared/sim/score/scoreData.ts, score.ts `feedCombo`, `cutCombo`, `stepScore` |
+| The combo | Tenths in [10, 50]. Every kill or graze adds 1 (`COMBO_STEP`) after its own award and refills the timer (`COMBO_WINDOW_TICKS` 360 = 6 s since the 2026-10-30 retune, was 3 s; Lingering +3 s, Impatience -2 s, team-wide). The timer runs out -> back to 10. A landed hit cuts it to `max(10, floor(c (d-1)/d))`, d = max(2, party size) (x2 Composure). Shared by the whole party. Frozen during a boon draft (the world is frozen) | shared/sim/score/scoreData.ts, score.ts `feedCombo`, `cutCombo`, `stepScore` |
 | Per-tick combo events | `ScoreEvents.comboChanged`, `comboBroken` (the timer reset a combo above x1.0), `comboCut` (hits that cut it), `comboStart`, `comboFed`; cleared every tick, not hashed. **No view reads them yet** | score.ts `ScoreEvents` |
 | Score panel | Top right, scored runs: SCORE label, total, `x1.3` (`titleText` 24, `ember`), a 6 px meter (`comboBarHeight`, `ember` fill), the endless floor line. Reads the ~10 Hz Reflex snapshot (`combo`, `comboTicks`, `comboWindowTicks`) | client/ui/hud/ScorePanel.tsx, shared/play/snapshot.ts |
 | Footprint | `HUD_FOOTPRINT.score` 200 x 160; `scoreEstimate()` is **154**. One more text row (+26) would break `footprint.spec.ts` and the cover cap (`maxCoverShare` 0.145) | shared/view/hud/footprint.ts |
@@ -34,10 +34,10 @@ six strings, two port audio IDs. No new setting (CD11).
 
 Two facts shape the design:
 
-1. **x5 is 40 kills or grazes in a row**, each within 3 s of the last. x2 is 10, x3 is 20, x4 is 30. A milestone
+1. **x5 is 40 kills or grazes in a row**, each within 6 s of the last (3 s before the 2026-10-30 retune). x2 is 10, x3 is 20, x4 is 30. A milestone
    every 10 steps (the x4 tier fills the gap between x3 and the cap). Grazes count, so a bullet-dancing player climbs
    between kills.
-2. **The timer runs out after almost every room**: the walk to the next room takes longer than 3 s. A shatter there
+2. **The timer runs out after almost every room**: the walk to the next room takes longer than the window (3 s when this was written; 6 s since the retune). A shatter there
    would play after every clear, which is noise, not loss. So a reset **during a fight** is a *break* (shatter), and a
    reset with **no fight on** is a *lapse* (a quiet cash-out). CD3.
 
@@ -216,7 +216,7 @@ CD2, CD3, CD9, CD11 and CD12 are the owner's answers (2026-10-29); the rest are 
   strings, so a pack can rename them.
 - **CD3. Break vs lapse** (owner, 2026-10-29). The shatter plays only when the combo resets while a fight is on (a room LIVE by the room
   edges' rule, or a boss in phase > 0); otherwise the reset is a quiet lapse. Without this, a shatter plays after
-  nearly every room clear (the 3 s window always runs out on the walk).
+  nearly every room clear (the window, 3 s then, always ran out on the walk).
 - **CD4. A cut is a crack, visual only.** The hurt sound already plays on that frame.
 - **CD5. The ladder follows the combo value**, not a separate kill count: grazes raise it silently, a cut lowers it, a
   reset zeroes it. Piecewise steps (0.5 / 0.3 / 0.2 semitones per step through x2 / x3 / x5, cap +12) so the early

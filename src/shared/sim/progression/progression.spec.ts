@@ -525,13 +525,13 @@ describe("boons, each at its application point", () => {
 		expect([iframes([]), iframes([Boon.SLIPPERY])]).toEqual([ROLL_IFRAME_TICKS, 18]);
 	});
 
-	it("Lingering: a kill refills the combo timer to 270 ticks (4.5 s) instead of 180", () => {
+	it("Lingering: a kill refills the combo timer to 540 ticks (9 s) instead of 360", () => {
 		const timer = (boons: number[]) => {
 			const r = arena(boons);
 			ctxOf(r).killActor(spawnAt(r, "swarmer", 4, 4));
 			return r.s.score!.comboTimer;
 		};
-		expect([timer([]), timer([Boon.LINGERING])]).toEqual([COMBO_WINDOW_TICKS, 270]);
+		expect([timer([]), timer([Boon.LINGERING])]).toEqual([COMBO_WINDOW_TICKS, 540]);
 	});
 
 	it("Daredevil: a bullet passing 1.1 tiles from the player's centre grazes only with the 0.75-tile margin", () => {
@@ -775,13 +775,13 @@ describe("curse shrines", () => {
 		expect(speed([], 21)).toBe(5 * 1.4);
 	});
 
-	it("Impatience: the combo window 3 s -> 2 s (with Lingering 3.5 s)", () => {
+	it("Impatience: the combo window 6 s -> 4 s (with Lingering 7 s)", () => {
 		const r = arena([], [], [Curse.IMPATIENCE]);
-		expect(runMods(r.s, SOLO_PLAYER).comboWindowTicks).toBe(120);
+		expect(runMods(r.s, SOLO_PLAYER).comboWindowTicks).toBe(240);
 		ctxOf(r).killActor(spawnAt(r, "swarmer", 4, 4));
-		expect(r.s.score!.comboTimer).toBe(120);
+		expect(r.s.score!.comboTimer).toBe(240);
 		grantBoon(r.s, SOLO_PLAYER, Boon.LINGERING);
-		expect(runMods(r.s, SOLO_PLAYER).comboWindowTicks).toBe(210);
+		expect(runMods(r.s, SOLO_PLAYER).comboWindowTicks).toBe(420);
 	});
 });
 

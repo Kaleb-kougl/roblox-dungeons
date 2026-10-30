@@ -126,9 +126,9 @@ export const FLASK_BOON_CHARGES = 1;
 /** Warding: +1 armor pip (max and current), refilled each time a room's enemies spawn. */
 export const ARMOR_BOON_PIPS = 1;
 /** Lingering: the combo lasts this long without a kill or graze (instead of COMBO_WINDOW_SECONDS). */
-export const COMBO_WINDOW_BOON_SECONDS = 4.5;
+export const COMBO_WINDOW_BOON_SECONDS = 9;
 export const COMBO_WINDOW_BOON_BONUS_TICKS =
-	secondsToTicks(COMBO_WINDOW_BOON_SECONDS) - secondsToTicks(COMBO_WINDOW_SECONDS); // 90
+	secondsToTicks(COMBO_WINDOW_BOON_SECONDS) - secondsToTicks(COMBO_WINDOW_SECONDS); // 180
 /** Daredevil: the graze ring reaches this far beyond the hit distance (instead of GRAZE_MARGIN). */
 export const GRAZE_MARGIN_BOON = 0.75 * TILE_SIZE;
 /** Bounty: kill points (kills and boss kills, not the no-hit bonus) x KILL_POINTS_BOON_PERCENT / 100. */
@@ -209,8 +209,8 @@ export const CURSE_MIN_HEARTS_MAX = 2;
 /** Haste: enemy bullet speed x this (with the floor scaling, still capped at BULLET_SPEED_MAX_MULTIPLIER). */
 export const CURSE_BULLET_SPEED_MULTIPLIER = 1.15;
 /** Impatience: the combo window is this much shorter (never below CURSE_MIN_COMBO_WINDOW_TICKS). */
-export const CURSE_COMBO_WINDOW_LOSS_SECONDS = 1;
-export const CURSE_COMBO_WINDOW_LOSS_TICKS = secondsToTicks(CURSE_COMBO_WINDOW_LOSS_SECONDS); // 60
+export const CURSE_COMBO_WINDOW_LOSS_SECONDS = 2;
+export const CURSE_COMBO_WINDOW_LOSS_TICKS = secondsToTicks(CURSE_COMBO_WINDOW_LOSS_SECONDS); // 120
 export const CURSE_MIN_COMBO_WINDOW_TICKS = secondsToTicks(1);
 /** Thirst: -1 flask charge of maximum, never below CURSE_MIN_FLASK_MAX; current charges capped to it. */
 export const CURSE_FLASK_LOSS = 1;

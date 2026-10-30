@@ -83,7 +83,7 @@ describe("takeSnapshot: M2 progression (endless runs)", () => {
 		expect(s.draftOpen).toBe(true);
 		expect(s.draftOffers).toEqual(st.run!.players[SOLO_PLAYER].draftOffers);
 		expect([s.draftSelected, s.draftReady]).toEqual([1, false]);
-		expect([s.boons, s.comboWindowTicks]).toEqual([[Boon.LINGERING], 270]);
+		expect([s.boons, s.comboWindowTicks]).toEqual([[Boon.LINGERING], 540]);
 		expect(snapshotsEqual(s, { ...s, draftSelected: 0 })).toBe(false);
 		expect(snapshotsEqual(s, { ...s, boons: [] })).toBe(false);
 		expect(snapshotsEqual(s, { ...s, draftOffers: [...s.draftOffers] })).toBe(true);
