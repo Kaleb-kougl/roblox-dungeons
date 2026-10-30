@@ -165,12 +165,11 @@ describe("RoomClearSequence timeline", () => {
 		expect(d.bonusLanded).toBe(750);
 	});
 
-	it("collapse releases the bonus once, ends the sequence within collapseSec and never lands the stamp again", () => {
+	it("collapse releases the bonus once, ends the sequence within collapseSec and lands the stamp exactly once", () => {
 		for (const at of [0.05, 0.5, 1.0]) {
 			const d = new Driver();
 			d.frame(() => d.seq.start(makeClear({ perfect: true, perfectPoints: 500 }), "full", 1));
 			d.run(at);
-			const landedBefore = d.landed;
 			d.frame(() => {
 				d.seq.collapse();
 				d.seq.collapse();
@@ -185,7 +184,8 @@ describe("RoomClearSequence timeline", () => {
 			expect(frames * STEP <= ROOM_CLEAR.collapseSec + 2 * STEP + 1e-9).toBe(true);
 			d.run(0.3);
 			expect(d.bonusLanded).toBe(750);
-			expect(d.landed).toBe(landedBefore);
+			// Landed before the collapse (0.5 s, 1.0 s) or on the collapse frame (0.05 s): the jingle plays once either way.
+			expect(d.landed).toBe(1);
 		}
 	});
 

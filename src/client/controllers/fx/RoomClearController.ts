@@ -61,7 +61,14 @@ export class RoomClearController implements OnStart {
 		this.seq.clear();
 		this.watch.reset();
 		this.roller.reset(this.sim.getState()?.score?.total ?? 0);
+		this.hideAll();
+	}
+
+	/** Nothing of a celebration on screen: the module-level bindings outlive runs and HUD remounts. */
+	private hideAll(): void {
 		UI.visible.set(false);
+		UI.flyProgress.set(-1);
+		for (const t of UI.chipTransparency) t.set(1);
 	}
 
 	private frame(settings: Readonly<JuiceSettings>, rawDt: number): void {
@@ -70,7 +77,7 @@ export class RoomClearController implements OnStart {
 		const state = ctx.run.state;
 		const score = state.score;
 		if (score === undefined) {
-			UI.visible.set(false);
+			this.hideAll();
 			return;
 		}
 		const paused = ctx.live?.isPaused() === true;
@@ -84,9 +91,8 @@ export class RoomClearController implements OnStart {
 			view < this.watch.players() &&
 			hurtKindLanded(this.watch.hurtKind[view], this.sim.getFrameEvents()?.playerHits) !== "none";
 		const clears = ctx.run.roomClears;
-		if (hurt || clears.engaged > 0 || isPartyWiped(state) || selectStageCovered(clientStore.getState())) {
-			seq.collapse();
-		}
+		const danger = hurt || clears.engaged > 0 || isPartyWiped(state) || selectStageCovered(clientStore.getState());
+		if (danger) seq.collapse();
 
 		if (settings.roomClear) {
 			const solo = partySize(state) <= 1;
@@ -109,6 +115,9 @@ export class RoomClearController implements OnStart {
 			}
 		}
 
+		// A hurt, a wipe or the stage cover on the clear's own frame collapses the new sequence too. Not `engaged`: a room
+		// that engaged and cleared on the same tick counts there.
+		if (danger && (hurt || isPartyWiped(state) || selectStageCovered(clientStore.getState()))) seq.collapse();
 		const look = seq.frame(dt);
 		this.cues(look, settings);
 		const shown = this.roller.frame(dt, score.total, look.held, look.bonusLanded > 0);

@@ -196,11 +196,15 @@ export class RoomClearSequence {
 		L.segmentCount = n;
 	}
 
-	/** Danger or a transition: release the bonus now and fade out over collapseSec. No-op when idle or collapsing. */
+	/**
+	 * Danger or a transition: release the bonus now and fade out over collapseSec. No-op when idle or collapsing. A
+	 * collapse before the stamp landed still raises `landed` (once), so the room clear jingle is never lost.
+	 */
 	collapse(): void {
 		if (!this.active || this.collapseAt >= 0) return;
 		this.release();
 		this.collapseAt = this.t;
+		if (!this.landedDone) this.look.landed = true;
 		this.landedDone = true;
 	}
 
