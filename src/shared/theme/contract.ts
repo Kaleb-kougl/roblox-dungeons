@@ -619,7 +619,7 @@ export const BOOST_BEAM_IMAGE_ID = "ui.marker.boost";
  * silent). Then the boost drops' four (docs/BOOSTS.md B5).
  * Then the room clear celebration's three (docs/ROOM_CLEAR.md RC4): PERFECT's jingle, a tally tick, a bonus landing
  * in the score. Then the combo's two (docs/COMBO.md CB3): the tier-up sting (one clip, pitched up per tier) and the
- * break's shatter.
+ * break's shatter. Then the near misses' two (docs/GRAZE_PARRY.md GP3): a graze's shimmer and a parry's ring-out.
  */
 export const PORT_AUDIO_EVENTS = [
 	"sfx.player.swing",
@@ -657,6 +657,9 @@ export const PORT_AUDIO_EVENTS = [
 	// breaks during a fight (sfx.combo.break, the shatter; a lapse with no fight on plays nothing)
 	"sfx.combo.tier",
 	"sfx.combo.break",
+	// docs/GRAZE_PARRY.md GP3: a graze's shimmer (pitched by the cue mapper's chain ladder); a guard that erased bullets (replaces the deflect)
+	"sfx.player.graze",
+	"sfx.player.parry",
 ] as const;
 
 /**
@@ -757,6 +760,13 @@ export const COMBO_STRING_KEYS = [
 ] as const;
 
 /**
+ * Roblox port (docs/GRAZE_PARRY.md GP3): the parry flash's strings (shared/view, GP7): PARRY! and the count suffix a
+ * guard that erased 3 or more bullets adds after it (`{n}`, the guard's erase count: "PARRY! x5"). The theme imports
+ * nothing outside shared/theme, so the list is repeated here.
+ */
+export const NEAR_MISS_STRING_KEYS = ["fx.parry.text", "fx.parry.count"] as const;
+
+/**
  * Every string key a pack must define. Code may rely on these existing. Built inside a function: the spreads' Luau
  * temporaries would otherwise be top-level locals, and this module's compiled Luau sits near the 200-locals-per-function
  * limit (docs/ROOM_CLEAR.md RC3).
@@ -792,6 +802,7 @@ export const REQUIRED_STRING_KEYS: ReadonlyArray<string> = ((): string[] => [
 	...TOUCH_STRING_KEYS,
 	...ROOM_CLEAR_STRING_KEYS,
 	...COMBO_STRING_KEYS,
+	...NEAR_MISS_STRING_KEYS,
 ])();
 
 /**
@@ -1196,6 +1207,42 @@ export const COMBO_COLOR_RULES: ComboColorRules = {
 	minShoutDifference: MIN_DECOR_FX_BULLET_DIFFERENCE,
 	maxBrokenChroma: 10,
 	minBrokenDifference: 40,
+};
+
+/**
+ * Roblox port (docs/GRAZE_PARRY.md GP3): the near misses' colours (shared/view/fx, GP5 / GP7). Required in every pack
+ * like every role: `nearMiss.graze`, the white-cyan spark where a bullet skimmed past, and `nearMiss.parry`, the
+ * gold-white burst at every bullet a guard erased and the PARRY! floor text. Both are drawn in the world, on the floor
+ * and among bullets, so the validator (`nearMissReport`) holds them to NEAR_MISS_COLOR_RULES.
+ */
+export const NEAR_MISS_ROLES: ReadonlyArray<ColorRole> = ["nearMiss.graze", "nearMiss.parry"];
+
+/** What `nearMissReport` checks against what, and the bars (NEAR_MISS_COLOR_RULES). */
+export interface NearMissColorRules {
+	/** The roles checked (NEAR_MISS_ROLES). */
+	readonly roles: ReadonlyArray<ColorRole>;
+	/** WCAG contrast of every role on every biome floor (walls are not checked: sparks and text lie on floors). */
+	readonly minFloorContrast: number;
+	/**
+	 * The colours a spark or the PARRY! text must never be mistaken for: the enemy bullets and `telegraph`. Sparks fly
+	 * among bullets and the text is painted on the floor under them (the combo shout's construction, docs/COMBO.md CD9).
+	 */
+	readonly against: ReadonlyArray<ColorRole>;
+	/** CIE76 between every role and every `against` colour: the decor fx / enemy outline bar. */
+	readonly minDifference: number;
+}
+
+/**
+ * Roblox port (docs/GRAZE_PARRY.md GP3): the near-miss colour rules (`nearMissReport`). One object holding the roles
+ * too, so the validator imports one name: its compiled Luau module sits at the 200-locals-per-function limit, as this
+ * one nearly does (so no spread here: `against` is the room edges' list, the enemy bullets and `telegraph`, whose
+ * temporaries would be top-level locals).
+ */
+export const NEAR_MISS_COLOR_RULES: NearMissColorRules = {
+	roles: NEAR_MISS_ROLES,
+	minFloorContrast: 3.0,
+	against: ROOM_EDGE_DIFFERENCE_ROLES,
+	minDifference: MIN_DECOR_FX_BULLET_DIFFERENCE,
 };
 
 /**

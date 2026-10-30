@@ -94,6 +94,9 @@ describe("audio contract: port IDs and ambience", () => {
 			// docs/COMBO.md CB3
 			"sfx.combo.tier",
 			"sfx.combo.break",
+			// docs/GRAZE_PARRY.md GP3
+			"sfx.player.graze",
+			"sfx.player.parry",
 		]);
 		const web = new Set<string>([...AUDIO_EVENTS, ...BREAKABLE_AUDIO_EVENTS]);
 		for (const id of PORT_AUDIO_EVENTS) {

@@ -40,6 +40,10 @@
  * `uiPanel` and apart from the tier below it, the named tiers kept away from the enemy-bullet roles and telegraph (the
  * floor shout lies under bullets) and `combo.broken` a low-chroma grey apart from every tier (COMBO_COLOR_RULES),
  * `comboReport`.
+ *
+ * Roblox port (docs/GRAZE_PARRY.md GP3): the near-miss colour roles (graze spark, parry sparks and PARRY! text) readable
+ * on every biome floor (WCAG contrast) and kept away from the enemy-bullet roles and telegraph (CIE76)
+ * (NEAR_MISS_COLOR_RULES), `nearMissReport`.
  */
 
 import { colorDifference, contrastRatio, isHexColor, labChroma, mixRgb, parseHex, toHex } from "./color";
@@ -97,6 +101,7 @@ import {
 	MINIMAP_ROOM_TINT_MIX,
 	MINIMAP_TINT_ROLES,
 	MUSIC,
+	NEAR_MISS_COLOR_RULES,
 	PLAYER_OUTLINE_DIFFERENCE_ROLES,
 	REQUIRED_ASSET_IDS,
 	REQUIRED_STRING_KEYS,
@@ -956,6 +961,61 @@ export function comboReport(manifest: unknown): Array<ComboEntry> {
 	return out;
 }
 
+/**
+ * Near misses (docs/GRAZE_PARRY.md GP3), NEAR_MISS_COLOR_RULES (`rules` below) for each role in `rules.roles` order:
+ * - check "floor": the role vs every biome's floor (WCAG contrast, >= minFloorContrast; `against` = the biome ID,
+ *   biomes in sorted order; walls are not checked, sparks and the PARRY! text lie on floors);
+ * - check "difference": the role vs every `rules.against` colour (CIE76, >= minDifference; `against` = the role).
+ * `value` is the ratio or the difference. A role that is missing or not a hex colour is skipped (the colour-role check
+ * reports it). Imports one contract name on purpose: this module's compiled Luau sits at the 200-locals-per-function
+ * limit.
+ */
+export interface NearMissEntry {
+	role: string;
+	check: "floor" | "difference";
+	color: string;
+	against: string;
+	againstColor: string;
+	value: number;
+	min: number;
+	ok: boolean;
+}
+
+export function nearMissReport(manifest: unknown): Array<NearMissEntry> {
+	const out = new Array<NearMissEntry>();
+	if (!isObj(manifest) || !isObj(manifest.colors)) {
+		return out;
+	}
+	const colors = manifest.colors;
+	const rules = NEAR_MISS_COLOR_RULES;
+	const biomes = isObj(manifest.biomes) ? sortedEntries(manifest.biomes) : [];
+	for (const role of rules.roles) {
+		const color = colors[role];
+		if (!isHexColor(color)) {
+			continue;
+		}
+		for (const [biome, def] of biomes) {
+			const againstColor = isObj(def) ? def.floor : undefined;
+			if (!isHexColor(againstColor)) {
+				continue;
+			}
+			const value = contrastRatio(color, againstColor);
+			const min = rules.minFloorContrast;
+			out.push({ role, check: "floor", color, against: biome, againstColor, value, min, ok: value >= min });
+		}
+		for (const against of rules.against) {
+			const againstColor = colors[against];
+			if (!isHexColor(againstColor)) {
+				continue;
+			}
+			const value = colorDifference(color, againstColor);
+			const min = rules.minDifference;
+			out.push({ role, check: "difference", color, against, againstColor, value, min, ok: value >= min });
+		}
+	}
+	return out;
+}
+
 /** Is `def` drawn art (an `image` or `sprites` asset), not a placeholder, silent or missing entry? */
 function isArtAsset(def: unknown): boolean {
 	return isObj(def) && (def.kind === "image" || def.kind === "sprites");
@@ -1416,6 +1476,28 @@ export function validateManifest(manifest: unknown, opts: ValidateOptions = {}):
 				`colour difference: ${c.role} ${c.color} vs ${c.against} ${tostring(c.againstColor)} is ${fixed1(
 					c.value,
 				)} (CIE76), needs >= ${fixed1(c.limit)}: ${why}`,
+			);
+		}
+	}
+
+	// --- near-miss sparks and the PARRY! text read on every floor and never as a bullet --------------
+	for (const c of nearMissReport(manifest)) {
+		if (c.ok) {
+			continue;
+		}
+		if (c.check === "floor") {
+			err(
+				["colors", c.role],
+				`contrast: ${c.role} ${c.color} on ${c.against}${forgeSuffix(c.against)} floor ${c.againstColor} is ` +
+					`${fixed2(c.value)}:1, needs >= ${fixed1(c.min)}:1: a near miss must read on the floor`,
+			);
+		} else {
+			err(
+				["colors", c.role],
+				`colour difference: ${c.role} ${c.color} vs ${c.against} ${c.againstColor} is ${fixed1(
+					c.value,
+				)} (CIE76), needs >= ${fixed1(c.min)}: a near miss must never read as an enemy bullet or a telegraph ` +
+					"(its sparks fly among bullets, the PARRY! text lies under them)",
 			);
 		}
 	}
