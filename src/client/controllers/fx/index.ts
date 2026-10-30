@@ -16,3 +16,4 @@ export * from "./FxSpriteController";
 export * from "./HurtFlashController";
 export * from "./ComboController";
 export * from "./RoomClearController";
+export * from "./NearMissController";
