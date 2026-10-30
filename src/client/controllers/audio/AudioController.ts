@@ -259,6 +259,24 @@ export class AudioController implements OnStart {
 	}
 
 	/**
+	 * A UI cue played outside the mapper's frame (the boon draft reveal's sounds, DraftRevealController; docs/
+	 * DRAFT_REVEAL.md DR6): held to the ID's minimum interval like the gamepad focus tick (mapper.uiCue), then played
+	 * at `volume` x its volume and `speed` (PlaybackSpeed; 0 = the pack's jitter). A silent ID plays its fallback or
+	 * nothing. `sfx.draft.legendary` ducks the music itself (DUCKING_SFX).
+	 */
+	playCue(id: string, volume: number, speed: number): void {
+		if (this.mapper.uiCue(os.clock(), id)) this.play(id, volume, speed);
+	}
+
+	/**
+	 * Dips the music group to AUDIO_VIEW.duck.level for `seconds` from now (MusicDuck; a longer hold already running
+	 * wins): the draft reveal's legendary charge and hush (DR6).
+	 */
+	duckFor(seconds: number): void {
+		if (seconds > 0) this.duck.trigger(os.clock(), seconds);
+	}
+
+	/**
 	 * Plays one sound effect by logical ID at `scale` x its volume: the next clip of its pool, at `speed` when it is
 	 * > 0 (the combo's kill ladder and tier sting, docs/COMBO.md CB4: an exact PlaybackSpeed, no jitter), else at a
 	 * jittered speed from the pack's pitch range. A silent / missing ID plays its SFX_FALLBACK (mapper.resolve), else

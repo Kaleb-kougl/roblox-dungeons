@@ -7,6 +7,7 @@ import { CoopMenuInputGate, LockstepClient } from "shared/lockstep";
 import {
 	ALL_DEBUG_BUTTONS,
 	DEFAULT_RUN_SEED,
+	DraftRevealGate,
 	HUD_SNAPSHOT_INTERVAL_SEC,
 	LiveRun,
 	RANKED_WORLD_KIND,
@@ -47,6 +48,7 @@ import {
 	playerAt,
 	stressConfig,
 	stressTargetFrom,
+	type InputFrame,
 	type SimConfig,
 	type SimState,
 } from "shared/sim";
@@ -179,6 +181,18 @@ export interface StageDriver {
 	/** The cover owns the input until its reveal (neutral input reaches the sim, solo and co-op). */
 	blocksInput(): boolean;
 }
+/**
+ * The boon draft reveal as SimController sees it (docs/DRAFT_REVEAL.md DR6; DraftRevealController implements it and
+ * registers with `setDraftRevealDriver`; one direction only, so SimController never injects it). Without a driver the
+ * confirm is never held, as before.
+ */
+export interface DraftRevealDriver {
+	/** The local reveal is playing and not settled: the draft's confirm is held back (DraftRevealGate). */
+	blocksConfirm(): boolean;
+	/** A confirm press edge during the reveal: skip it (DRD6). */
+	skip(): void;
+}
+
 /** The run was left for the menu: "left" (Leave run, mid-run) or "exited" (Main menu / Back to lobby after it). */
 export type RunExitListener = (how: "left" | "exited") => void;
 
@@ -273,7 +287,10 @@ function biomeIndexFor(dungeon: Dungeon | undefined): number {
  * frames for the run must never be dropped) and only defers the listeners; the lockstep is never held. A floor change
  * switches the context at once (renderers read the state) and defers its listeners under the card, except the
  * tutorial's ending change (shared/view floorChangeStaged). While the cover owns the input, the solo sim and the
- * co-op wire get neutral input (`coverGate` / the co-op menu gate), so a draft is never confirmed blind. KV_Debug
+ * co-op wire get neutral input (`coverGate` / the co-op menu gate), so a draft is never confirmed blind. After that
+ * gate, both input paths hold the draft's confirm while the local boon draft reveal plays (`draftGate`, a shared/play
+ * DraftRevealGate; DraftRevealController registers through `setDraftRevealDriver`, docs/DRAFT_REVEAL.md DR6): a press
+ * then skips the reveal and stays masked until released. KV_Debug
  * (SL0): every listener call is timed (`[Stage] listeners (...): World 38.0 ms, ...`, labelled by its script) and the
  * sim step of a frame that changed the floor (`[Stage] floor step T ms`).
  */
@@ -345,6 +362,13 @@ export class SimController implements OnStart {
 	private stage: StageDriver | undefined;
 	/** Solo: neutral input while the stage cover owns the input; buttons held through its end stay masked. */
 	private readonly coverGate = new CoopMenuInputGate();
+	/** The boon draft reveal (setDraftRevealDriver), if registered. */
+	private draftReveal: DraftRevealDriver | undefined;
+	/**
+	 * Solo and co-op: the draft's confirm held back while the local reveal plays, after the cover / menu gate
+	 * (docs/DRAFT_REVEAL.md DR6, DRD2); a press then skips the reveal and stays masked until released.
+	 */
+	private readonly draftGate = new DraftRevealGate();
 	/** A tutorial run start is waiting for its forge under the stage cover (inRunningTutorial). */
 	private startingTutorial = false;
 
@@ -488,6 +512,22 @@ export class SimController implements OnStart {
 	/** The stage loader registers itself (StageController.onStart). */
 	setStageDriver(driver: StageDriver): void {
 		this.stage = driver;
+	}
+
+	/** The boon draft reveal registers itself (DraftRevealController.onStart). */
+	setDraftRevealDriver(driver: DraftRevealDriver): void {
+		this.draftReveal = driver;
+	}
+
+	/**
+	 * The draft reveal's confirm gate on this frame's input (in place), applied after the cover / menu gate: while the
+	 * reveal is not settled (and the run not paused) DRAFT_CONFIRM_BUTTON is masked and a press edge skips the reveal.
+	 */
+	private gateDraftConfirm(input: InputFrame, paused: boolean): void {
+		const driver = this.draftReveal;
+		const revealing = !paused && driver !== undefined && driver.blocksConfirm();
+		if (this.draftGate.apply(input, revealing)) driver?.skip();
+		this.draftGate.consumeSkip();
 	}
 
 	// --- tutorial (TutorialController) ---------------------------------------------------------
@@ -683,6 +723,7 @@ export class SimController implements OnStart {
 	 */
 	private beginRun(): void {
 		this.frozen = false;
+		this.draftGate.reset();
 		this.startingTutorial = false;
 		this.debug = Workspace.GetAttribute(RUN_ATTRIBUTES.debug) === true;
 		this.inputController.setDebug(this.debug);
@@ -735,6 +776,7 @@ export class SimController implements OnStart {
 	/** No run any more (the menu takes over): no context, no pending start, the HUD inactive; tells the listeners. */
 	private stopRun(how: "left" | "exited"): void {
 		this.clearExits();
+		this.draftGate.reset();
 		this.ctx = undefined;
 		this.frozen = false;
 		this.awaitingStart = undefined;
@@ -795,6 +837,7 @@ export class SimController implements OnStart {
 		}
 		const setup = result as ReturnType<typeof buildWorldSetup>;
 		const spawn = setup.spawn ?? { x: 0, z: 0 };
+		this.draftGate.reset();
 		const client = new LockstepClient({
 			runId: start.runId,
 			seed: start.seed,
@@ -874,6 +917,8 @@ export class SimController implements OnStart {
 		const input = this.coopMenuGate.apply(sampled, menuOpen || dead);
 		// Under the stage cover only the debug bits go through (KV_Debug: the floor skip still works while covered).
 		if (covered || (dead && !menuOpen)) input.buttons = bit32.band(raw.buttons, ALL_DEBUG_BUTTONS);
+		// The local draft reveal holds the confirm until it settled (a press skips it; docs/DRAFT_REVEAL.md DR6).
+		this.gateDraftConfirm(input, false);
 		// KV_Debug latency probe (docs/FEEL.md J9): watches the frame's input and the ticks it goes out for; the
 		// input handed to the pump is the same either way.
 		const probe = ctx.latencyProbe;
@@ -1024,6 +1069,7 @@ export class SimController implements OnStart {
 		tutorial: boolean,
 	): void {
 		const floor = requestedWorld === "endless" || requestedWorld === TUTORIAL_WORLD_KIND ? ENDLESS_FIRST_FLOOR : 0;
+		this.draftGate.reset();
 		if (this.stage !== undefined) {
 			this.ctx = undefined; // the old run stops here; the new one is built under the cover
 			this.startingTutorial = tutorial;
@@ -1294,6 +1340,9 @@ export class SimController implements OnStart {
 		const debugButtons = bit32.band(sampled.buttons, ALL_DEBUG_BUTTONS);
 		const input = this.coverGate.apply(sampled, covered);
 		if (covered) input.buttons = debugButtons;
+		// The draft reveal holds the confirm until it settled (a press skips it; docs/DRAFT_REVEAL.md DR6). A solo
+		// pause freezes the reveal, so nothing is held (or skipped) under the pause overlay.
+		this.gateDraftConfirm(input, run.isPaused());
 		const stepStart = this.debug ? os.clock() : 0;
 		run.frame(dt, input, simPacerFor(partySize(run.state), this.hitstop)); // solo: the hitstop clock paces
 		const floor = run.state.endless?.floor;
