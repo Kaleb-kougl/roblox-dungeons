@@ -46,8 +46,12 @@ import type { RobloxAssetId } from "../../types";
  * built by audio:build with ffmpeg 6.1.1), transcribed from Asset Manager screenshots. 15 more uploaded 2026-10-30
  * 12:08-12:10 PM by k9kbdev (amb-b1, the eight music-*.ogg, sfx-depth-up, sfx-enemy-hurt-3 / -4 / -6,
  * sfx-enemy-telegraph, sfx-stairwell-open), transcribed from Asset Manager screenshots. Not yet here:
- * sfx-player-shoot (the same batch re-uploaded sfx-enemy-shoot as 103955792909072; its ID above is unchanged) and the
- * room clear sounds (docs/ROOM_CLEAR.md RC4: sfx-room-perfect, sfx-score-tick, sfx-score-land, not built yet).
+ * the room clear sounds (docs/ROOM_CLEAR.md RC4: sfx-room-perfect, sfx-score-tick, sfx-score-land, not built yet).
+ * (The same batch re-uploaded sfx-enemy-shoot as 103955792909072; its ID above is unchanged.)
+ * sfx-player-shoot is NOT the pipeline's file: the owner chose an external clip, "djartmusic-arrow-twang_01-306041",
+ * uploaded 2026-10-30 12:29 PM by k9kbdev, instead of art/audio.json's Ninja Adventure Launch.wav. audio:build still
+ * writes sfx-player-shoot.ogg from Launch.wav (and audioLayout's `seconds` describes that file); do not upload that
+ * build over this ID. Record the clip's source and licence in THIRD_PARTY_NOTICES.md.
  * vanguard-*-outline.png (the 8 knight outline sheets, player outline: 1 px, outline.clipAtCellEdge; the body sheets
  * are byte-identical, so their IDs above stay) uploaded 2026-10-28 8:35 AM by k9kbdev, transcribed from an Asset Manager
  * screenshot.
@@ -117,6 +121,7 @@ export const VALE_ASSET_IDS: Readonly<Record<string, RobloxAssetId>> = {
 	"sfx-player-flask.ogg": "rbxassetid://132402914407938",
 	"sfx-player-hurt.ogg": "rbxassetid://109847922628008",
 	"sfx-player-roll.ogg": "rbxassetid://73804106008724",
+	"sfx-player-shoot.ogg": "rbxassetid://98736803949938",
 	"sfx-player-swap.ogg": "rbxassetid://88978044362008",
 	"sfx-player-swing-1.ogg": "rbxassetid://81803616082630",
 	"sfx-player-swing-2.ogg": "rbxassetid://120871115343244",
