@@ -106,7 +106,8 @@ class LoopChannel {
  *                tracker's events and the sim state into cues (once per frame, per-ID cooldowns with the pack's
  *                minInterval, one jingle, at most AUDIO_VIEW.maxStartsPerFrame by priority, teammates' sounds
  *                quieter in co-op); each cue plays one clip of the ID's pool (round-robin, VariantPicker) at a
- *                jittered PlaybackSpeed (PitchJitter, the pack's pitch range) on a small pool of Sounds
+ *                jittered PlaybackSpeed (PitchJitter, the pack's pitch range; a cue's own speed instead when it has
+ *                one: the combo's kill ladder and tier sting, docs/COMBO.md CB4) on a small pool of Sounds
  *                (AUDIO_VIEW.voicesPerSfx per ID). The mapper is given `playable` (the ID has an assetId): a silent
  *                ID with an SFX_FALLBACK cues that instead (no finisher clip: the swing), one without never becomes a
  *                cue (no cap slot, no cooldown).
@@ -184,8 +185,11 @@ export class AudioController implements OnStart {
 				viewIndex,
 				this.cues,
 				ctx.run.boostEvents,
+				ctx.run.combo,
 			);
-			for (let i = 0; i < this.cues.size(); i++) this.play(this.cues.id(i), this.cues.volume(i));
+			for (let i = 0; i < this.cues.size(); i++) {
+				this.play(this.cues.id(i), this.cues.volume(i), this.cues.speed(i));
+			}
 		});
 
 		// Music and ambience follow the HUD snapshot (outcome, boss engaged), the run (biome, tutorial) and the menu.
@@ -243,10 +247,12 @@ export class AudioController implements OnStart {
 	}
 
 	/**
-	 * Plays one sound effect by logical ID at `scale` x its volume: the next clip of its pool, a jittered speed.
-	 * A silent / missing ID plays its SFX_FALLBACK (mapper.resolve), else nothing.
+	 * Plays one sound effect by logical ID at `scale` x its volume: the next clip of its pool, at `speed` when it is
+	 * > 0 (the combo's kill ladder and tier sting, docs/COMBO.md CB4: an exact PlaybackSpeed, no jitter), else at a
+	 * jittered speed from the pack's pitch range. A silent / missing ID plays its SFX_FALLBACK (mapper.resolve), else
+	 * nothing.
 	 */
-	play(id: string, scale: number): void {
+	play(id: string, scale: number, speed = 0): void {
 		const playId = this.mapper.resolve(id);
 		if (playId === undefined) return;
 		const v = this.voicesFor(playId);
@@ -255,7 +261,7 @@ export class AudioController implements OnStart {
 		const sound = clip.sounds[clip.next];
 		clip.next = (clip.next + 1) % clip.sounds.size();
 		sound.Volume = v.volume * scale;
-		sound.PlaybackSpeed = this.jitter.speed(v.pitch);
+		sound.PlaybackSpeed = speed > 0 ? speed : this.jitter.speed(v.pitch);
 		sound.TimePosition = 0;
 		sound.Play();
 		if ((DUCKING_SFX as ReadonlyArray<string>).includes(playId)) {

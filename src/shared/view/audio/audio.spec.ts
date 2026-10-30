@@ -1,6 +1,7 @@
 // The audio layer's pure logic (docs/FX_AUDIO.md A3): sim events and state -> sound cues (cooldowns, the per-frame cap
 // and priorities, the co-op split, the new port cues), the music and ambience choice, the per-start choices (variants,
-// pitch, duck), the mixing volumes, and every ID it can play existing in the placeholder pack.
+// pitch, duck), the mixing volumes, every ID it can play existing in the placeholder pack, and the combo's sounds
+// (docs/COMBO.md CB4: the kill pitch ladder, the tier sting, the break).
 import { describe, expect, it } from "@rbxts/jest-globals";
 import { accumulateEvents, newFrameEvents, resetFrameEvents, type FrameEvents } from "shared/play";
 import { recordEndlessRun } from "shared/run/testing";
@@ -13,6 +14,7 @@ import {
 	BOW_DATA,
 	BOW_V_CHARGE,
 	Button,
+	COMBO_MIN,
 	EMPTY_INPUT,
 	SWORD,
 	SWORD_FINISHER,
@@ -33,10 +35,13 @@ import {
 } from "shared/sim";
 import { AMBIENCE_IDS, AUDIO_EVENTS, PLACEHOLDER_MANIFEST, ThemePack, slotFor } from "shared/theme";
 import { BoostFrameEvents } from "../boosts";
+import { NO_COMBO_EVENTS, type ComboCut, type ComboFrameSource, type ComboReset } from "../fx";
 import { FxEventBuffer, type FxEventType } from "../fx/events";
+import { COMBO_VIEW, KILL_PITCH, killPitchSpeed, semitonesToSpeed, tierStingSpeed } from "../hud";
 import {
 	ALL_SFX,
 	AUDIO_VIEW,
+	COMBO_KILL_PRIORITY,
 	BOSS_TAUNT_IDS,
 	AudioCueList,
 	AudioCueMapper,
@@ -292,11 +297,11 @@ describe("audio: sim events -> sound IDs", () => {
 		const s = solo();
 		const fake = s as unknown as {
 			endless?: { floor: number };
-			score?: { rooms: Array<{ cleared: number }> };
+			score?: { combo: number; rooms: Array<{ cleared: number }> };
 			run?: { pedestalTaken: number[]; shrineUsed: number };
 		};
 		fake.endless = { floor: 3 };
-		fake.score = { rooms: [{ cleared: 0 }, { cleared: 0 }] };
+		fake.score = { combo: COMBO_MIN, rooms: [{ cleared: 0 }, { cleared: 0 }] }; // the kill ladder reads combo
 		fake.run = { pedestalTaken: [0, 0], shrineUsed: 0 };
 		const m = primed(s);
 		fake.score.rooms[1].cleared = 1;
@@ -700,11 +705,11 @@ describe("audio: one jingle per frame", () => {
 		const s = solo();
 		const fake = s as unknown as {
 			endless?: { floor: number };
-			score?: { rooms: Array<{ cleared: number }> };
+			score?: { combo: number; rooms: Array<{ cleared: number }> };
 			run?: { pedestalTaken: number[]; shrineUsed: number };
 		};
 		fake.endless = { floor: 3 };
-		fake.score = { rooms: [{ cleared: 0 }] };
+		fake.score = { combo: COMBO_MIN, rooms: [{ cleared: 0 }] };
 		fake.run = { pedestalTaken: [0], shrineUsed: 0 };
 		const m = primed(s);
 		fake.score.rooms[0].cleared = 1;
@@ -910,5 +915,257 @@ describe("audio: music and ambience", () => {
 		expect(warnings).toEqual([]);
 		const fallback = SFX_FALLBACK as Readonly<Record<string, SfxId>>;
 		for (const id of ALL_SFX) if (fallback[id] !== undefined) expect(ALL_SFX).toContain(fallback[id]);
+	});
+});
+
+describe("audio: the combo (docs/COMBO.md CB4)", () => {
+	/** A scored run's state (the combo lives in state.score); a party of `size` shares it. */
+	function scored(size = 1): SimState {
+		return createSimState(1, 0, 0, size > 1 ? { party: { size }, scoring: { partySize: size } } : { scoring: {} });
+	}
+
+	/** One frame's combo events (the parts the mapper reads: start, peak, a streak end). */
+	function comboFrame(startCombo: number, peak: number, endCombo = peak, ended?: ComboReset): ComboFrameSource {
+		const cuts: ComboCut[] = [];
+		return { ticks: 1, startCombo, endCombo, peak, kills: 0, grazes: 0, cuts, ended };
+	}
+
+	/** A streak end: the timer reset `lost` (tenths), during a fight (a break) or not (a lapse). */
+	function streakEnd(lost: number, fight: boolean): ComboFrameSource {
+		return comboFrame(lost, lost, COMBO_MIN, { lost, peak: lost, fight });
+	}
+
+	/** One mapper frame: [id, volume, speed] triples. */
+	function comboCues(
+		m: AudioCueMapper,
+		now: number,
+		s: SimState,
+		fx: FxEventSource = NO_FX,
+		combo: ComboFrameSource = NO_COMBO_EVENTS,
+		e: SimEvents = noEvents(),
+	): Array<[string, number, number]> {
+		const out = m.frame(now, e, fx, s, 0, new AudioCueList(), undefined, combo);
+		const list: Array<[string, number, number]> = [];
+		for (let i = 0; i < out.size(); i++) list.push([out.id(i), out.volume(i), out.speed(i)]);
+		return list;
+	}
+
+	const KILL = fxOf([["killed"]]);
+
+	it("a kill per frame climbs in speed with the combo (no pack jitter: an exact speed)", () => {
+		const s = scored();
+		const m = primed(s);
+		let last = 1;
+		for (let c = 11; c <= 50; c++) {
+			s.score!.combo = c;
+			const out = comboCues(m, c, s, KILL);
+			expect([c, out]).toEqual([c, [[SFX.enemyDeath, 1, killPitchSpeed(c)]]]);
+			expect([c, out[0][2] > last]).toEqual([c, true]);
+			last = out[0][2];
+		}
+		// +5 semitones at x2, +12 (an octave) at x5
+		s.score!.combo = 20;
+		expect(comboCues(m, 100, s, KILL)[0][2]).toBe(semitonesToSpeed(5));
+		s.score!.combo = 50;
+		expect(comboCues(m, 101, s, KILL)[0][2]).toBe(semitonesToSpeed(KILL_PITCH.maxSemitones));
+		expect(semitonesToSpeed(KILL_PITCH.maxSemitones)).toBe(2);
+	});
+
+	it("three kills on one frame are one cue at the frame's final pitch", () => {
+		const s = scored();
+		const m = primed(s);
+		s.score!.combo = 23; // 20 + three kills
+		expect(comboCues(m, 1, s, fxOf([["killed"], ["killed"], ["killed"]]), comboFrame(20, 23))).toEqual([
+			[SFX.enemyDeath, 1, killPitchSpeed(23)],
+		]);
+	});
+
+	it("at x1.0 and in an unscored run the kill is today's cue (speed 0: the pack's jitter)", () => {
+		const u = solo();
+		expect(comboCues(primed(u), 1, u, KILL)).toEqual([[SFX.enemyDeath, 1, 0]]);
+		const s = scored();
+		expect(s.score!.combo).toBe(COMBO_MIN);
+		expect(comboCues(primed(s), 1, s, KILL)).toEqual([[SFX.enemyDeath, 1, 0]]);
+		// the other cues carry no speed either
+		const e = noEvents();
+		e.meleeSwings = 1;
+		s.score!.combo = 30;
+		expect(comboCues(primed(s), 2, s, NO_FX, NO_COMBO_EVENTS, e)).toEqual([[SFX.playerSwing, 1, 0]]);
+	});
+
+	it("a teammate's kill climbs the party's ladder (one combo, full volume)", () => {
+		const p = scored(2);
+		const m = primed(p);
+		p.score!.combo = 25;
+		expect(comboCues(m, 1, p, KILL)).toEqual([[SFX.enemyDeath, 1, killPitchSpeed(25)]]);
+	});
+
+	it("a hit cut plays no sound of its own and lowers the next kill's pitch", () => {
+		const s = scored();
+		const m = primed(s);
+		s.score!.combo = 30;
+		const high = comboCues(m, 1, s, KILL)[0][2];
+		expect(high).toBe(killPitchSpeed(30));
+		// the cut frame: the hurt sound only (CD4)
+		s.score!.combo = 15;
+		const hit = noEvents();
+		hit.playerHits = 1;
+		const cut: ComboFrameSource = { ...comboFrame(30, 30, 15), cuts: [{ before: 30, after: 15 }] };
+		expect(comboCues(m, 2, s, NO_FX, cut, hit)).toEqual([[SFX.playerHurt, 1, 0]]);
+		const low = comboCues(m, 3, s, KILL);
+		expect(low).toEqual([[SFX.enemyDeath, 1, killPitchSpeed(15)]]);
+		expect(low[0][2] < high).toBe(true);
+	});
+
+	it("after a streak end the next kill is unladdered", () => {
+		const s = scored();
+		const m = primed(s);
+		s.score!.combo = 34;
+		expect(comboCues(m, 1, s, KILL)[0][2]).toBe(killPitchSpeed(34));
+		s.score!.combo = COMBO_MIN;
+		expect(comboCues(m, 2, s, NO_FX, streakEnd(34, false))).toEqual([]);
+		expect(comboCues(m, 3, s, KILL)).toEqual([[SFX.enemyDeath, 1, 0]]);
+	});
+
+	it("a boss kill keeps sfx.boss.death, unladdered", () => {
+		const s = scored();
+		const m = primed(s);
+		s.score!.combo = 40;
+		expect(
+			comboCues(
+				m,
+				1,
+				s,
+				fxOf([
+					["killed", true],
+					["bossDefeated", true],
+				]),
+			),
+		).toEqual([[SFX.bossDeath, 1, 0]]);
+	});
+
+	it("in a streak the kill outranks a swing on a capped frame; at x1.0 the swing wins", () => {
+		const busy = noEvents();
+		// five cues above both (hurt 95, telegraph 90, Ember 88, flask 60, roll 58), then the swing (54) and the kill
+		busy.playerHits = 1;
+		busy.telegraphs = 1;
+		busy.emberUsed = 1;
+		busy.flaskUsed = 1;
+		busy.rollStarted = 1;
+		busy.meleeSwings = 1;
+		const s = scored();
+		s.score!.combo = 25;
+		const streak = comboCues(primed(s), 1, s, KILL, NO_COMBO_EVENTS, busy).map(([id]) => id);
+		expect(streak.size()).toBe(AUDIO_VIEW.maxStartsPerFrame);
+		expect(streak).toContain(SFX.enemyDeath);
+		expect(streak).never.toContain(SFX.playerSwing);
+		s.score!.combo = COMBO_MIN;
+		const plain = comboCues(primed(s), 1, s, KILL, NO_COMBO_EVENTS, busy).map(([id]) => id);
+		expect(plain).toContain(SFX.playerSwing);
+		expect(plain).never.toContain(SFX.enemyDeath);
+		const u = solo();
+		const unscored = comboCues(primed(u), 1, u, KILL, NO_COMBO_EVENTS, busy).map(([id]) => id);
+		expect(unscored).never.toContain(SFX.enemyDeath);
+	});
+
+	it("the tier sting: once per crossing at the tier's speed, again after re-earning, never inside 0.5 s", () => {
+		const s = scored();
+		const m = primed(s);
+		expect(comboCues(m, 1, s, NO_FX, comboFrame(18, 19))).toEqual([]);
+		expect(comboCues(m, 2, s, NO_FX, comboFrame(19, 20))).toEqual([[SFX.comboTier, 1, tierStingSpeed(1)]]);
+		expect(comboCues(m, 3, s, NO_FX, comboFrame(20, 21))).toEqual([]); // the same tier
+		expect(comboCues(m, 4, s, NO_FX, comboFrame(29, 30))).toEqual([[SFX.comboTier, 1, tierStingSpeed(2)]]);
+		expect([tierStingSpeed(1), tierStingSpeed(2), tierStingSpeed(3), tierStingSpeed(4)]).toEqual([
+			semitonesToSpeed(0),
+			semitonesToSpeed(3),
+			semitonesToSpeed(5),
+			semitonesToSpeed(7),
+		]);
+		// cut below x2, re-earned 0.3 s later: inside the interval, no sting
+		expect(comboCues(m, 4.1, s, NO_FX, comboFrame(30, 30, 15))).toEqual([]);
+		expect(comboCues(m, 4.3, s, NO_FX, comboFrame(19, 20))).toEqual([]);
+		// cut and re-earned after the interval: the sting again (re-earning is a reward)
+		expect(comboCues(m, 4.6, s, NO_FX, comboFrame(20, 20, 15))).toEqual([]);
+		expect(comboCues(m, 5, s, NO_FX, comboFrame(19, 20))).toEqual([[SFX.comboTier, 1, tierStingSpeed(1)]]);
+		// a frame that jumps two tiers stings once, at the higher one; crossing and cut in one frame still stings
+		expect(comboCues(m, 6, s, NO_FX, comboFrame(29, 41))).toEqual([[SFX.comboTier, 1, tierStingSpeed(3)]]);
+		expect(comboCues(m, 7, s, NO_FX, comboFrame(49, 50, 25))).toEqual([[SFX.comboTier, 1, tierStingSpeed(4)]]);
+		// no tick: nothing moved
+		expect(comboCues(m, 8, s, NO_FX, NO_COMBO_EVENTS)).toEqual([]);
+	});
+
+	it("a break during a fight: the shatter at full volume, a small one (below x2) at smallBreakVolume", () => {
+		const s = scored();
+		const m = primed(s);
+		expect(comboCues(m, 1, s, NO_FX, streakEnd(34, true))).toEqual([[SFX.comboBreak, 1, 0]]);
+		expect(comboCues(m, 2, s, NO_FX, streakEnd(COMBO_VIEW.smallBreakBelow, true))).toEqual([
+			[SFX.comboBreak, 1, 0],
+		]);
+		expect(comboCues(m, 3, s, NO_FX, streakEnd(COMBO_VIEW.smallBreakBelow - 1, true))).toEqual([
+			[SFX.comboBreak, COMBO_VIEW.smallBreakVolume, 0],
+		]);
+		expect(comboCues(m, 4, s, NO_FX, streakEnd(14, true))).toEqual([[SFX.comboBreak, 0.5, 0]]);
+		// inside its 0.5 s interval: dropped
+		expect(comboCues(m, 4.2, s, NO_FX, streakEnd(34, true))).toEqual([]);
+	});
+
+	it("a lapse (no fight on) is silent", () => {
+		const s = scored();
+		const m = primed(s);
+		expect(comboCues(m, 1, s, NO_FX, streakEnd(34, false))).toEqual([]);
+		expect(comboCues(m, 2, s, NO_FX, streakEnd(14, false))).toEqual([]);
+	});
+
+	it("silent combo IDs (the placeholder pack) produce nothing and take no cooldown", () => {
+		const warnings: string[] = [];
+		const pack = quietPack(warnings);
+		expect([pack.sound(SFX.comboTier).assetId, pack.sound(SFX.comboBreak).assetId]).toEqual([undefined, undefined]);
+		const s = scored();
+		const placeholder = new AudioCueMapper((id) => pack.sound(id).assetId !== undefined);
+		placeholder.frame(0, noEvents(), NO_FX, s, 0, new AudioCueList());
+		expect(comboCues(placeholder, 1, s, NO_FX, comboFrame(19, 20))).toEqual([]);
+		expect(comboCues(placeholder, 2, s, NO_FX, streakEnd(34, true))).toEqual([]);
+		// silent while the rest plays: nothing, and no cooldown started (a clip appearing plays at once)
+		const silent = new Set<string>([SFX.comboTier, SFX.comboBreak]);
+		const m = new AudioCueMapper((id) => !silent.has(id));
+		m.frame(0, noEvents(), NO_FX, s, 0, new AudioCueList());
+		expect(comboCues(m, 1, s, NO_FX, comboFrame(19, 20))).toEqual([]);
+		expect(comboCues(m, 1, s, NO_FX, streakEnd(34, true))).toEqual([]);
+		silent.clear();
+		expect(comboCues(m, 1.1, s, NO_FX, comboFrame(19, 20))).toEqual([[SFX.comboTier, 1, tierStingSpeed(1)]]);
+		expect(comboCues(m, 1.1, s, NO_FX, streakEnd(34, true))).toEqual([[SFX.comboBreak, 1, 0]]);
+		expect(warnings).toEqual([]);
+	});
+
+	it("the combo IDs: port audio events, ranked, 0.5 s apart, neither a jingle nor ducking", () => {
+		expect([SFX.comboTier, SFX.comboBreak]).toEqual(["sfx.combo.tier", "sfx.combo.break"]);
+		for (const id of [SFX.comboTier, SFX.comboBreak]) {
+			expect([
+				id,
+				ALL_SFX.includes(id),
+				PORT_SFX.includes(id),
+				JINGLE_SFX.includes(id),
+				DUCKING_SFX.includes(id),
+			]).toEqual([id, true, true, false, false]);
+			expect([id, new AudioCueMapper().intervalOf(id)]).toEqual([id, 0.5]);
+			expect([id, SFX_FALLBACK[id]]).toEqual([id, undefined]);
+		}
+		expect([SFX_PRIORITY[SFX.comboTier], SFX_PRIORITY[SFX.comboBreak]]).toEqual([65, 73]);
+		// the kill in a streak: over swings and shots, under the player's own hurt and the telegraph
+		expect(COMBO_KILL_PRIORITY).toBe(55);
+		for (const id of [SFX.playerSwing, SFX.playerShoot, SFX.playerDeflect, SFX.enemyDeath]) {
+			expect([id, COMBO_KILL_PRIORITY > SFX_PRIORITY[id]]).toEqual([id, true]);
+		}
+		expect(COMBO_KILL_PRIORITY < SFX_PRIORITY[SFX.playerHurt]).toBe(true);
+	});
+
+	it("AudioCueList: a cue's speed defaults to 0 and is reset on reuse", () => {
+		const list = new AudioCueList();
+		list.push(SFX.enemyDeath, 1, 1.5);
+		list.push(SFX.enemyHurt, 0.5);
+		expect([list.speed(0), list.speed(1)]).toEqual([1.5, 0]);
+		list.clear();
+		list.push(SFX.enemyDeath, 1);
+		expect([list.size(), list.speed(0)]).toEqual([1, 0]);
 	});
 });

@@ -30,12 +30,32 @@
  * out sfx.boost.expire (a teammate's is silent); an Aegis pip absorbing a hit sfx.boost.aegisbreak (split like the
  * pickup).
  *
+ * The combo (docs/COMBO.md CB4) comes from the score state and the frame's combo events (shared/view/fx
+ * ComboFrameSource, the run view's `combo`, every tick of the frame):
+ *   - Kill ladder (CD5, CD6): a regular kill's sfx.enemy.death plays at killPitchSpeed(combo), the score combo at the
+ *     frame's end (`state.score.combo`, after every tick), with no pack jitter (it would mask a step), and ranks
+ *     COMBO_KILL_PRIORITY (over swings and shots) so a busy frame never drops the one sound that carries the ladder.
+ *     Several kills on one frame stay one cue at the final pitch. At x1.0, or in an unscored run, it is the plain cue
+ *     (the pack's jitter, SFX_PRIORITY). The ladder follows the combo value, so a graze climbs it silently, a hit cut
+ *     lowers it (the next kill is heard lower) and a streak end drops it to the plain cue; the combo is the party's,
+ *     so a teammate's kill climbs it too. Boss kills keep sfx.boss.death, unladdered.
+ *   - Tier sting (CD7): the frame's peak reached a higher tier than its start (comboTier) -> sfx.combo.tier at
+ *     tierStingSpeed(tier). Re-earning a tier after a cut plays it again, never inside its 0.5 s interval.
+ *   - Break (CD3, CD14): a streak end during a fight (ComboReset.fight) -> sfx.combo.break, at
+ *     COMBO_VIEW.smallBreakVolume when it lost less than COMBO_VIEW.smallBreakBelow (x2.0). A lapse (no fight on) is
+ *     silent. A hit cut has no sound of its own (CD4): the hurt sound plays on that frame.
+ * Neither combo ID is a jingle or ducks the music; both obey the silent-ID, cooldown and cap rules like any cue.
+ *
+ * Every cue carries a playback speed (AudioCueList.speed): 0 = the pack's jitter (every cue but these), > 0 = that
+ * exact PlaybackSpeed.
+ *
  * Presentation only: reads sim state, never writes it.
  */
-import { BOSS_DEMONLORD_ID, archetypeIndex, partySize, type SimEvents, type SimState } from "shared/sim";
+import { BOSS_DEMONLORD_ID, COMBO_MIN, archetypeIndex, partySize, type SimEvents, type SimState } from "shared/sim";
 import { AMBIENCE_IDS } from "shared/theme";
 import { NO_BOOST_EVENTS, type BoostEventSource } from "../boosts";
-import type { FxEvent } from "../fx/events";
+import { NO_COMBO_EVENTS, type ComboFrameSource, type FxEvent } from "../fx";
+import { COMBO_VIEW, comboTier, killPitchSpeed, tierStingSpeed } from "../hud";
 import { AUDIO_VIEW } from "./config";
 import { StateWatch, SwingEdge } from "../watch";
 
@@ -92,6 +112,12 @@ export const SFX = {
 	boostCollect: "sfx.boost.collect",
 	boostExpire: "sfx.boost.expire",
 	boostAegisBreak: "sfx.boost.aegisbreak",
+	/**
+	 * The combo (docs/COMBO.md CB4; the theme's PORT_AUDIO_EVENTS): the tier-up sting (one clip, pitched per tier) and
+	 * the break's shatter (a streak end during a fight).
+	 */
+	comboTier: "sfx.combo.tier",
+	comboBreak: "sfx.combo.break",
 } as const;
 export type SfxId = (typeof SFX)[keyof typeof SFX];
 
@@ -133,6 +159,8 @@ export const ALL_SFX: ReadonlyArray<SfxId> = [
 	SFX.boostCollect,
 	SFX.boostExpire,
 	SFX.boostAegisBreak,
+	SFX.comboTier,
+	SFX.comboBreak,
 ];
 
 /** IDs this port added to the placeholder pack (not in the web contract's AUDIO_EVENTS; theme PORT_AUDIO_EVENTS). */
@@ -160,6 +188,8 @@ export const PORT_SFX: ReadonlyArray<SfxId> = [
 	SFX.boostCollect,
 	SFX.boostExpire,
 	SFX.boostAegisBreak,
+	SFX.comboTier,
+	SFX.comboBreak,
 ];
 
 /**
@@ -254,6 +284,9 @@ export const SFX_MIN_INTERVAL: Readonly<Partial<Record<SfxId, number>>> = {
 	[SFX.uiMove]: 0.08,
 	[SFX.boostDrop]: 0.1,
 	[SFX.boostCollect]: 0.05,
+	/** A sting per tier crossing, but a cut-and-re-earn flicker at a tier's edge never machine-guns it. */
+	[SFX.comboTier]: 0.5,
+	[SFX.comboBreak]: 0.5,
 };
 
 /**
@@ -274,12 +307,16 @@ export const SFX_PRIORITY: Readonly<Record<SfxId, number>> = {
 	/** The roar's slot: it plays in the roar's place. */
 	[SFX.bossTaunt]: 80,
 	[SFX.stairwellOpen]: 75,
+	/** The break: the loss you hear, above the room clear (they do not share a frame in practice). */
+	[SFX.comboBreak]: 73,
 	[SFX.roomClear]: 72,
 	[SFX.relicTake]: 70,
 	[SFX.shrineUse]: 70,
 	[SFX.floorEnter]: 68,
 	/** An Aegis pip took the hit (the hurt sound plays too: it still counts as a hit). */
 	[SFX.boostAegisBreak]: 66,
+	/** The tier-up sting: under the jingles and the room clear (a tier up on a room's last kill plays both). */
+	[SFX.comboTier]: 65,
 	[SFX.boostCollect]: 64,
 	[SFX.boostDrop]: 62,
 	[SFX.playerFlask]: 60,
@@ -301,6 +338,13 @@ export const SFX_PRIORITY: Readonly<Record<SfxId, number>> = {
 	[SFX.enemyHurt]: 20,
 	[SFX.enemyShoot]: 10,
 };
+
+/**
+ * sfx.enemy.death's rank while the combo is above x1.0 (CD6; SFX_PRIORITY's 35 otherwise): over the swing (54), the
+ * shot (52) and the deflect (50), tied with the bow's full charge, so a busy frame in a streak never drops the kill
+ * sound that carries the pitch ladder.
+ */
+export const COMBO_KILL_PRIORITY = 55;
 
 /** A teammate's cue ranks this much lower than the local player's same sound (never over the local telegraph). */
 export const TEAMMATE_PRIORITY_DROP = 50;
@@ -347,10 +391,14 @@ export interface FxEventSource {
 	at(i: number): Pick<FxEvent, "type" | "boss" | "phase"> & Partial<Pick<FxEvent, "kind">>;
 }
 
-/** One frame's cues: parallel id / volume-scale lists, reused frame after frame (no allocation once grown). */
+/**
+ * One frame's cues: parallel id / volume-scale / playback-speed lists, reused frame after frame (no allocation once
+ * grown).
+ */
 export class AudioCueList {
 	private readonly ids = new Array<string>();
 	private readonly volumes = new Array<number>();
+	private readonly speeds = new Array<number>();
 	private n = 0;
 
 	size(): number {
@@ -366,13 +414,22 @@ export class AudioCueList {
 		return this.volumes[i];
 	}
 
+	/**
+	 * The cue's PlaybackSpeed: 0 = the pack's jitter as for any sound (SoundRef.pitch), > 0 = exactly this speed, no
+	 * jitter (the kill ladder and the tier sting, docs/COMBO.md CB4).
+	 */
+	speed(i: number): number {
+		return this.speeds[i];
+	}
+
 	clear(): void {
 		this.n = 0;
 	}
 
-	push(id: string, volume: number): void {
+	push(id: string, volume: number, speed = 0): void {
 		this.ids[this.n] = id;
 		this.volumes[this.n] = volume;
+		this.speeds[this.n] = speed;
 		this.n++;
 	}
 
@@ -415,6 +472,7 @@ export class AudioCueMapper {
 	private readonly pendingIds = new Array<string>();
 	private readonly pendingVolumes = new Array<number>();
 	private readonly pendingRanks = new Array<number>();
+	private readonly pendingSpeeds = new Array<number>();
 	private pending = 0;
 	private now = 0;
 	private readonly tauntKinds = tauntKinds();
@@ -468,15 +526,17 @@ export class AudioCueMapper {
 
 	/**
 	 * A candidate for this frame (`id` resolved: a silent ID is its fallback or nothing): once per ID (the louder volume
-	 * and higher rank win), never inside its interval.
+	 * and higher rank win; a set `speed` replaces the earlier one: every kill of a frame carries the same final pitch),
+	 * never inside its interval. `speed` 0 = the pack's jitter (AudioCueList.speed).
 	 */
-	private cue(soundId: SfxId, volume: number, rank: number = priorityOf(soundId)): void {
+	private cue(soundId: SfxId, volume: number, rank: number = priorityOf(soundId), speed = 0): void {
 		const id = this.resolve(soundId);
 		if (id === undefined) return;
 		for (let i = 0; i < this.pending; i++) {
 			if (this.pendingIds[i] === id) {
 				if (volume > this.pendingVolumes[i]) this.pendingVolumes[i] = volume;
 				if (rank > this.pendingRanks[i]) this.pendingRanks[i] = rank;
+				if (speed > 0) this.pendingSpeeds[i] = speed;
 				return;
 			}
 		}
@@ -484,6 +544,7 @@ export class AudioCueMapper {
 		this.pendingIds[this.pending] = id;
 		this.pendingVolumes[this.pending] = volume;
 		this.pendingRanks[this.pending] = rank;
+		this.pendingSpeeds[this.pending] = speed;
 		this.pending++;
 	}
 
@@ -499,6 +560,7 @@ export class AudioCueMapper {
 			this.pendingIds[i] = this.pendingIds[i + 1];
 			this.pendingVolumes[i] = this.pendingVolumes[i + 1];
 			this.pendingRanks[i] = this.pendingRanks[i + 1];
+			this.pendingSpeeds[i] = this.pendingSpeeds[i + 1];
 		}
 		this.pending--;
 	}
@@ -535,8 +597,9 @@ export class AudioCueMapper {
 	 * One rendered frame at real time `now` (seconds): `events` are the frame's summed SimEvents, `fx` the tracker's
 	 * events of the frame, `state` the run's state after the frame, `localIndex` this client's player (0 solo; the
 	 * watched teammate while spectating, docs/SPECTATE.md: its sounds play at full volume), `boosts` the frame's
-	 * boost-drop events (the run view's `boostEvents`; none by default). Appends the cues to start
-	 * to `out` (in table order) and returns it.
+	 * boost-drop events (the run view's `boostEvents`; none by default), `combo` the frame's combo events (the run
+	 * view's `combo`, docs/COMBO.md CB1; none by default). Appends the cues to start to `out` (in table order) and
+	 * returns it.
 	 */
 	frame(
 		now: number,
@@ -546,6 +609,7 @@ export class AudioCueMapper {
 		localIndex: number,
 		out: AudioCueList,
 		boosts: BoostEventSource = NO_BOOST_EVENTS,
+		combo: ComboFrameSource = NO_COMBO_EVENTS,
 	): AudioCueList {
 		this.now = now;
 		this.pending = 0;
@@ -596,10 +660,15 @@ export class AudioCueMapper {
 		if (w.shrineUsed) this.cue(SFX.shrineUse, 1);
 		if (w.wiped) this.cue(SFX.gameOver, 1);
 
+		// The kill ladder (CD5, CD6): the frame's final score combo pitches every regular kill of the frame (one cue).
+		const scoreCombo = state.score !== undefined ? state.score.combo : COMBO_MIN;
+		const laddered = scoreCombo > COMBO_MIN;
+		const killRank = laddered ? COMBO_KILL_PRIORITY : priorityOf(SFX.enemyDeath);
+		const killSpeed = laddered ? killPitchSpeed(scoreCombo) : 0;
 		for (let i = 0; i < fx.count(); i++) {
 			const e = fx.at(i);
 			if (e.type === "hit") this.cue(SFX.enemyHurt, 1);
-			else if (e.type === "killed" && !e.boss) this.cue(SFX.enemyDeath, 1);
+			else if (e.type === "killed" && !e.boss) this.cue(SFX.enemyDeath, 1, killRank, killSpeed);
 			else if (e.type === "bossPhase" && e.phase >= 2) {
 				const kind = e.kind;
 				this.cue(kind !== undefined && this.tauntKinds.includes(kind) ? SFX.bossTaunt : SFX.bossRoar, 1);
@@ -617,13 +686,22 @@ export class AudioCueMapper {
 		const enemySpawned = state.combat.enemySpawned;
 		if (this.lastEnemySpawned >= 0 && enemySpawned > this.lastEnemySpawned) this.cue(SFX.enemyShoot, 1);
 		this.lastEnemySpawned = enemySpawned;
+		// The combo's tier sting and break (docs/COMBO.md CB4; a cut is silent, CD4).
+		const peakTier = comboTier(combo.peak);
+		if (peakTier > comboTier(combo.startCombo)) {
+			this.cue(SFX.comboTier, 1, priorityOf(SFX.comboTier), tierStingSpeed(peakTier));
+		}
+		const ended = combo.ended;
+		if (ended !== undefined && ended.fight) {
+			this.cue(SFX.comboBreak, ended.lost < COMBO_VIEW.smallBreakBelow ? COMBO_VIEW.smallBreakVolume : 1);
+		}
 
 		this.keepOneJingle();
 		this.applyCap();
 		for (let i = 0; i < this.pending; i++) {
 			const id = this.pendingIds[i];
 			this.lastStart.set(id, now);
-			out.push(id, this.pendingVolumes[i]);
+			out.push(id, this.pendingVolumes[i], this.pendingSpeeds[i]);
 		}
 		return out;
 	}
