@@ -7,6 +7,10 @@
  * kicks the camera 1 texel ("heavy" nudge); the view player getting hurt jolts the camera 2 texels ("hurt" nudge) and,
  * on a heart or lethal hit, freezes FEEL_HURT.freezeMs (applyHurtFreeze); nudge priority death > hurt > phase > heavy
  * (nudgeReplaces); screenShakeOn reads the port's screenShake setting too.
+ *
+ * Port change (docs/COMBO.md CB7): a combo break during a fight kicks the camera 1 texel down ("comboBreak" nudge, the
+ * heavy nudge's strength and length), ranked above heavy and below phase / hurt / death; the client's ComboController
+ * requests it on the ComboDisplay's `kick` edge (already off under reduced motion or without Screen shake).
  */
 import type { JuiceSettings } from "shared/settings";
 import type { HurtKind } from "../watch";
@@ -94,18 +98,33 @@ export function applyHurtFreeze(kind: HurtKind, clock: HitstopClock, settings: R
 // ---------------------------------------------------------------------------------------------
 // Camera nudge (render-only, whole render pixels; off under reducedMotion or the screenShake setting: screenShakeOn)
 
-export type NudgeKind = "none" | "heavy" | "phase" | "hurt" | "death";
+export type NudgeKind = "none" | "heavy" | "comboBreak" | "phase" | "hurt" | "death";
+
+/** The heavy-hit kick's length, ms (the combo break's kick reuses it). */
+const HEAVY_NUDGE_MS = 50;
 
 /** Nudge length per kind, ms of real time. */
 export const NUDGE_MS: Readonly<Record<NudgeKind, number>> = {
 	none: 0,
-	heavy: 50,
+	heavy: HEAVY_NUDGE_MS,
+	/** docs/COMBO.md CB7: the heavy nudge's length (and strength: nudgeOffset). */
+	comboBreak: HEAVY_NUDGE_MS,
 	phase: 80,
 	hurt: FEEL_HURT.nudgeSteps * FEEL_HURT.nudgeStepMs,
 	death: 240,
 };
-/** Priority: a running nudge is only replaced by one of the same or a higher rank (death > hurt > phase > heavy). */
-const NUDGE_RANK: Readonly<Record<NudgeKind, number>> = { none: 0, heavy: 1, phase: 2, hurt: 3, death: 4 };
+/**
+ * Priority: a running nudge is only replaced by one of the same or a higher rank (death > hurt > phase > comboBreak >
+ * heavy).
+ */
+const NUDGE_RANK: Readonly<Record<NudgeKind, number>> = {
+	none: 0,
+	heavy: 1,
+	comboBreak: 2,
+	phase: 3,
+	hurt: 4,
+	death: 5,
+};
 /** The death nudge alternates right / left every this many ms. */
 const DEATH_NUDGE_STEP_MS = 60;
 
@@ -138,8 +157,9 @@ export interface NudgeOffset {
 
 /**
  * The nudge's offset `elapsedMs` in, in whole render pixels along the camera's right / up axes, written to `out`.
- * phase: one pixel down for the first half. death: right, left, right, left... every 60 ms, then still. Port: heavy:
- * one pixel down throughout; hurt: FEEL_HURT.nudgeTexels right, left, right (one step each of nudgeStepMs).
+ * phase: one pixel down for the first half. death: right, left, right, left... every 60 ms, then still. Port: heavy
+ * and comboBreak: one pixel down throughout; hurt: FEEL_HURT.nudgeTexels right, left, right (one step each of
+ * nudgeStepMs).
  */
 export function nudgeOffset(kind: NudgeKind, elapsedMs: number, out: NudgeOffset): NudgeOffset {
 	out.x = 0;
@@ -147,7 +167,7 @@ export function nudgeOffset(kind: NudgeKind, elapsedMs: number, out: NudgeOffset
 	if (kind === "none" || !(elapsedMs >= 0) || elapsedMs >= NUDGE_MS[kind]) return out;
 	if (kind === "phase") {
 		if (elapsedMs < NUDGE_MS.phase / 2) out.y = -1;
-	} else if (kind === "heavy") {
+	} else if (kind === "heavy" || kind === "comboBreak") {
 		out.y = -1;
 	} else if (kind === "hurt") {
 		const step = math.floor(elapsedMs / FEEL_HURT.nudgeStepMs);

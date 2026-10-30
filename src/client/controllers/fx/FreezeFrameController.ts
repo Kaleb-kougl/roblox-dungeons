@@ -37,7 +37,8 @@ const MS = 1000;
  *   4. A heavy landed hit (FxEvent.heavy, not capped) freezes 40 ms and kicks the camera 1 texel; solo only (in co-op
  *      a teammate's finisher would kick everyone's camera). The view player's hurt edges (its own StateWatch, the
  *      view index as audio uses it) jolt the camera 2 texels; a heart or lethal hit also freezes 40 ms, solo only.
- *      Nudge priority death > hurt > phase > heavy (nudgeReplaces). The screenShake setting turns every nudge off.
+ *      Nudge priority death > hurt > phase > comboBreak > heavy (nudgeReplaces). The screenShake setting turns every
+ *      nudge off. Other views ask for one through requestNudge (the combo break's kick, docs/COMBO.md CB7).
  *   5. Co-op: the server's merged frames pace the sim (simPacerFor gives no pacer), so nothing else spends this
  *      clock's time; it is drained here every frame, so a kill's freeze (or the boss death's slow motion) holds the
  *      particles and sprite effects that scale by `hitstop.timeScale()` for its length only, never for good.
@@ -74,6 +75,15 @@ export class FreezeFrameController implements OnStart {
 			if (!this.solo()) clock.frame(dt, this.coopAdvance);
 			this.advanceNudge(dt, settings);
 		});
+	}
+
+	/**
+	 * Another view's camera nudge (docs/COMBO.md CB7: ComboController's `comboBreak` kick), under the same priority
+	 * (nudgeReplaces) and the same Screen shake gate as this controller's own; it starts moving on the next frame.
+	 */
+	requestNudge(kind: NudgeKind): void {
+		if (!screenShakeOn(this.fx.settings())) return;
+		this.startNudge(kind);
 	}
 
 	/** This frame's camera nudge in whole render pixels (x right, y up); (0, 0) almost always. */

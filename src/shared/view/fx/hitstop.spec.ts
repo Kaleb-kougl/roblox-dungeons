@@ -428,8 +428,28 @@ describe("freeze-frame rules: port additions (docs/FEEL.md J3)", () => {
 		expect(xs).toEqual([n, -n, n, 0]);
 	});
 
-	it("nudge priority: death > hurt > phase > heavy; a weaker nudge never cuts a stronger one short", () => {
-		const order: NudgeKind[] = ["heavy", "phase", "hurt", "death"];
+	it("combo break kick (docs/COMBO.md CB7): the heavy nudge's 1 texel down for the heavy nudge's length", () => {
+		const o = { x: 0, y: 0 };
+		expect(NUDGE_MS.comboBreak).toBe(NUDGE_MS.heavy);
+		for (let t = 0; t < NUDGE_MS.heavy + 20; t += 10) {
+			const heavy = nudgeOffset("heavy", t, o);
+			const hx = heavy.x;
+			const hy = heavy.y;
+			expect(nudgeOffset("comboBreak", t, o)).toEqual({ x: hx, y: hy });
+		}
+		expect(nudgeOffset("comboBreak", 0, o)).toEqual({ x: 0, y: -1 });
+		expect(nudgeOffset("comboBreak", NUDGE_MS.comboBreak, o)).toEqual({ x: 0, y: 0 });
+		// Below hurt (and phase, death), above heavy.
+		expect(nudgeReplaces("hurt", "comboBreak")).toBe(false);
+		expect(nudgeReplaces("phase", "comboBreak")).toBe(false);
+		expect(nudgeReplaces("death", "comboBreak")).toBe(false);
+		expect(nudgeReplaces("comboBreak", "hurt")).toBe(true);
+		expect(nudgeReplaces("heavy", "comboBreak")).toBe(true);
+		expect(nudgeReplaces("comboBreak", "heavy")).toBe(false);
+	});
+
+	it("nudge priority: death > hurt > phase > comboBreak > heavy; a weaker nudge never cuts a stronger one short", () => {
+		const order: NudgeKind[] = ["heavy", "comboBreak", "phase", "hurt", "death"];
 		for (let a = 0; a < order.size(); a++) {
 			for (let b = 0; b < order.size(); b++) {
 				expect(nudgeReplaces(order[a], order[b])).toBe(b >= a);
