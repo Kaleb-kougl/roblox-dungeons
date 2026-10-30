@@ -43,13 +43,17 @@ import type { RobloxAssetId } from "../../types";
  * 82560650525332, intro 117876056911897, intro-outline 86257913427010, taunt 140374029101007, taunt-outline
  * 81556574053660, death 73191082516513, death-outline 89185443391803.
  * Audio: 38 of the 54 art/build/audio/*.ogg files uploaded 2026-10-26 11:08 by k9kbdev (Asset Manager Bulk Import,
- * built by audio:build with ffmpeg 6.1.1), transcribed from Asset Manager screenshots. Not yet here: amb-b1, the nine
- * music-*.ogg, sfx-depth-up, sfx-enemy-hurt-3 / -4 / -6, sfx-enemy-telegraph, sfx-player-shoot, sfx-stairwell-open.
+ * built by audio:build with ffmpeg 6.1.1), transcribed from Asset Manager screenshots. 15 more uploaded 2026-10-30
+ * 12:08-12:10 PM by k9kbdev (amb-b1, the eight music-*.ogg, sfx-depth-up, sfx-enemy-hurt-3 / -4 / -6,
+ * sfx-enemy-telegraph, sfx-stairwell-open), transcribed from Asset Manager screenshots. Not yet here:
+ * sfx-player-shoot (the same batch re-uploaded sfx-enemy-shoot as 103955792909072; its ID above is unchanged) and the
+ * room clear sounds (docs/ROOM_CLEAR.md RC4: sfx-room-perfect, sfx-score-tick, sfx-score-land, not built yet).
  * vanguard-*-outline.png (the 8 knight outline sheets, player outline: 1 px, outline.clipAtCellEdge; the body sheets
  * are byte-identical, so their IDs above stay) uploaded 2026-10-28 8:35 AM by k9kbdev, transcribed from an Asset Manager
  * screenshot.
  */
 export const VALE_ASSET_IDS: Readonly<Record<string, RobloxAssetId>> = {
+	"amb-b1.ogg": "rbxassetid://91158343621799",
 	"amb-b3.ogg": "rbxassetid://123793639672129",
 	"amb-b4.ogg": "rbxassetid://106702179717675",
 	"amb-b5.ogg": "rbxassetid://113010219687537",
@@ -79,18 +83,31 @@ export const VALE_ASSET_IDS: Readonly<Record<string, RobloxAssetId>> = {
 	"bruiser-death.png": "rbxassetid://110099154312685",
 	"decor-atlas.png": "rbxassetid://107968620179940",
 	"decor-mote.png": "rbxassetid://108281638823690",
+	"music-biome-1.ogg": "rbxassetid://93211571195066",
+	"music-biome-2.ogg": "rbxassetid://119153958408720",
+	"music-biome-3.ogg": "rbxassetid://132935445941795",
+	"music-biome-4.ogg": "rbxassetid://101517228477138",
+	"music-biome-5.ogg": "rbxassetid://87253612195837",
+	"music-boss.ogg": "rbxassetid://82229819920090",
+	"music-menu.ogg": "rbxassetid://75564975309420",
+	"music-tutorial.ogg": "rbxassetid://87339075756554",
 	"sfx-boss-death.ogg": "rbxassetid://98231076745245",
 	"sfx-boss-roar.ogg": "rbxassetid://103385650363670",
 	"sfx-breakable-break.ogg": "rbxassetid://116444193017210",
 	"sfx-breakable-hit.ogg": "rbxassetid://77751477617243",
+	"sfx-depth-up.ogg": "rbxassetid://103313193441379",
 	"sfx-ember.ogg": "rbxassetid://132331997932373",
 	"sfx-enemy-death-1.ogg": "rbxassetid://120112698995155",
 	"sfx-enemy-death-2.ogg": "rbxassetid://139105704609425",
 	"sfx-enemy-death-3.ogg": "rbxassetid://100811224100190",
 	"sfx-enemy-hurt-1.ogg": "rbxassetid://92848072200948",
 	"sfx-enemy-hurt-2.ogg": "rbxassetid://72455668388301",
+	"sfx-enemy-hurt-3.ogg": "rbxassetid://136247486392757",
+	"sfx-enemy-hurt-4.ogg": "rbxassetid://81745704195515",
 	"sfx-enemy-hurt-5.ogg": "rbxassetid://116770794061890",
+	"sfx-enemy-hurt-6.ogg": "rbxassetid://85101791814178",
 	"sfx-enemy-shoot.ogg": "rbxassetid://117798043671657",
+	"sfx-enemy-telegraph.ogg": "rbxassetid://135727302886058",
 	"sfx-floor-enter.ogg": "rbxassetid://136963659016362",
 	"sfx-jingle-gameover.ogg": "rbxassetid://100204013637893",
 	"sfx-player-charged.ogg": "rbxassetid://134000846415949",
@@ -109,6 +126,7 @@ export const VALE_ASSET_IDS: Readonly<Record<string, RobloxAssetId>> = {
 	"sfx-relic-take.ogg": "rbxassetid://117702527882611",
 	"sfx-room-clear.ogg": "rbxassetid://91705259787657",
 	"sfx-shrine-use.ogg": "rbxassetid://116463287240842",
+	"sfx-stairwell-open.ogg": "rbxassetid://85934761619292",
 	"sfx-ui-back.ogg": "rbxassetid://97552556590703",
 	"sfx-ui-click.ogg": "rbxassetid://81382073811691",
 	"sfx-ui-confirm.ogg": "rbxassetid://129583273016065",
