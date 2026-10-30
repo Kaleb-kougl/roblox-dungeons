@@ -1,9 +1,11 @@
 # Room clear celebration (plan)
 
-Status (2026-10-29): **plan ready, nothing built.** Drafted from `main` @ `d6eb9d4`. Owner answers (2026-10-29):
-RCD10-RCD13 (1.5 s, 0.5x slow motion, a corner chip for a far-away clear in co-op, an On / Off setting). RCD1-RCD9 and
-the implementation refinements RCD14-RCD18 are proposed and stand unless the owner changes them. The step-by-step build
-is **`docs/ROOM_CLEAR_IMPL.md`** (RC1-RC9, then the owner's RC10); RC1 is next.
+Status (2026-10-30): **RC1-RC9 code-complete, verified headlessly only** (typecheck, lint, asset check, art tests,
+the roblox-ts build, and the full Lune suite: 183 spec files, 2627 tests, all passing). **Nothing has run in Studio**:
+the Studio check below and RC10 are pending, and `npm run build:place` stopped at its rojo step (no rojo on the build
+machine; its rbxtsc step passed). Owner answers (2026-10-29): RCD10-RCD13. RCD1-RCD9 and the refinements RCD14-RCD18
+are proposed. Built from `docs/ROOM_CLEAR_IMPL.md` on branch `room-clear-impl` (in the git worktree `.wtr/room-clear`,
+because another session was working in the main folder), branched from `room-clear`.
 
 Goal: make clearing a room the best moment of the loop. On the last kill the game eases into slow motion, a **CLEAR**
 stamp (or **PERFECT**, when the room was cleared without a hit) slams onto the screen, then the room's points count up
@@ -95,17 +97,29 @@ most two chips; a third merges the oldest at once. A full sequence and chips may
 Each step is a commit; the details, code and specs are in `docs/ROOM_CLEAR_IMPL.md`.
 
 - [x] **RC0. Owner decisions.** Answered 2026-10-29: RCD10-RCD13.
-- [ ] **RC1. Collector.** `roomClears.ts` + spec, on `RunView` (LiveRun, LockstepClient). Golden / replay specs unchanged.
-- [ ] **RC2. Tunables, style, sequence, roller.** Pure + spec (timeline, collapse, chips, reduced motion, roller).
-- [ ] **RC3. Setting, strings, HUD numbers.** `roomClear` setting, required strings, `ROOM_CLEAR_VIEW`, text builders.
-- [ ] **RC4. Sounds.** Three port audio IDs, cue mapper hand-off, `art/audio.json` entries (lock / build).
-- [ ] **RC5. Effect hooks.** Slow-motion rule, `stamp` nudge, co-op hold, spark ring.
-- [ ] **RC6. HUD footprint.** The two transient boxes and their specs (desktop and touch).
-- [ ] **RC7. HUD components.** Bindings, stamp + tally + flying bonus, corner chips, rolling score.
-- [ ] **RC8. RoomClearController.** Wires everything; `npm run build:place` still builds.
-- [ ] **RC9. Docs.** This doc's status and as-built notes, docs/CLIENT.md, the CLAUDE.md decision log.
+- [x] **RC1. Collector.** `roomClears.ts` + spec, on `RunView` (LiveRun, LockstepClient). Golden / replay specs unchanged.
+- [x] **RC2. Tunables, style, sequence, roller.** Pure + spec (timeline, collapse, chips, reduced motion, roller).
+- [x] **RC3. Setting, strings, HUD numbers.** `roomClear` setting, required strings, `ROOM_CLEAR_VIEW`, text builders.
+- [x] **RC4. Sounds.** Three port audio IDs, cue mapper hand-off, `art/audio.json` entries (lock / build).
+- [x] **RC5. Effect hooks.** Slow-motion rule, `stamp` nudge, co-op hold, spark ring.
+- [x] **RC6. HUD footprint.** The two transient boxes and their specs (desktop and touch).
+- [x] **RC7. HUD components.** Bindings, stamp + tally + flying bonus, corner chips, rolling score.
+- [x] **RC8. RoomClearController.** Wires everything; `npm run build:place` still builds.
+- [x] **RC9. Docs.** This doc's status and as-built notes, docs/CLIENT.md, the CLAUDE.md decision log.
 - [ ] **RC10. [owner] Studio check and sounds.** The check below; audition (`npm run audio:audition`), upload, ids into
   `packs/vale/assetIds.ts`; tune `ROOM_CLEAR` inside the 1.5 s.
+
+As built (differences from docs/ROOM_CLEAR_IMPL.md):
+
+- RC3: `REQUIRED_STRING_KEYS` is built inside an arrow function called once: the compiled `contract.luau` was at Luau's
+  200-locals-per-function limit and each spread adds top-level temporaries. String keys need a lowercase first segment
+  (`isStringKey`), so the strings are `room.clear.*`. The Options > Juice row landed with RC3.
+- RC4: `boosts.spec.ts` indexes the boost four before the three new port IDs; `contract.spec.ts` counts 28 port audio
+  IDs. `audio:lock` ran; `audio:build` did not (the build machine's ffmpeg 4.4.2 rejects the `ebur128` filter on an
+  existing clip), so `packs/vale/audioLayout.ts` has no entries for the new IDs yet: they are silent in vale too (RC10).
+- RC5: `HitReactSlots.hold(i, actorId, endAt)` (`until` is a Luau keyword). The stamp nudge cases are in
+  `hitstop.spec.ts`, where the nudge specs live.
+- RC7: chip rows are `chipText + lineSlack` tall; rows are built as `React.Element[]`.
 
 ## Studio check
 

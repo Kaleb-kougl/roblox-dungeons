@@ -35,6 +35,7 @@ rebinding, audio, display). Everything presentation-side reads the sim and never
 | `FxTrackerController` | `.../fx/FxTrackerController.ts` | Right after the sim (render step 102): the pure `HitTracker` diffs the live actors and dispatches the frame's FX events (hit, killed, spawned, capped, bossPhase, bossDefeated, reset) to the juice views and audio, with the effective juice settings. |
 | `FreezeFrameController` | `.../fx/FreezeFrameController.ts` | FX events -> hitstop requests on `SimController.hitstop` (kill 50 ms, heavy / elite 80 ms, boss phase 120 ms, boss death 250 ms + slow-mo; solo: heavy hit 40 ms, a heart / lethal hurt 40 ms, docs/FEEL.md J3); clears it when the setting goes off; drains it every co-op frame (co-op never paces the sim by it); the whole-render-pixel camera nudge (`getNudge()`, read by CameraController: boss phase / death, player hurt, heavy hits; off by `screenShakeOn`). |
 | `HurtFlashController` | `.../fx/HurtFlashController.ts` | docs/FEEL.md J2 / J11: a ScreenGui under the HUD with four edge Frames in `uiHealth` (UIGradient to clear at 0.18 of the short side): the hurt flash on the view player's hurt edges (`StateWatch.hurtKind`; half strength while spectating) and the low-health pulse (1 Hz; steady under reduced motion). Disabled while clear. |
+| `RoomClearController` | `.../fx/RoomClearController.ts` | docs/ROOM_CLEAR.md: reads `run.roomClears` once per frame (fx.onFrame), collapses a running sequence on danger (the view player hurt, a room engaging, the stage cover, a wipe), starts the full sequence (solo, or co-op near the room) or a corner chip per clear, asks the solo slow motion (`applyRoomClearSlowMo`), the co-op last-kill hold (`ActorRenderController.holdActor`) and the spark ring (`ParticleController.roomClearBurst`), plays `sfx.room.clear` / `.perfect`, `sfx.score.tick` / `.land` and the `stamp` nudge, rolls the score (`ScoreRoller`) and writes `ROOM_CLEAR_UI` (client/ui/hud roomClearBindings.ts) for RoomClearStamp, RoomClearChips and the ScorePanel's number. Real time, stopped while paused; Room clear Off: only the mapper's jingle. |
 | `HealthBarController` | `.../fx/HealthBarController.ts` | Enemy health bars: one pooled BillboardGui per actor slot (64), plate / chip / fill or pips, elite outline. |
 | `DamageNumberController` | `.../fx/DamageNumberController.ts` | Damage numbers: 48 pooled BillboardGuis, merge window, heavy / capped colours, "CAP" tag, rise + fade. |
 | `ScorePopController` | `.../fx/ScorePopController.ts` | Scored runs (M2): a rising, fading `+points` BillboardGui per kill (`LiveRun.scorePops`, pooled `ScorePopPool`). |
@@ -479,6 +480,15 @@ features read it.
 Time bases (as the web): bars and numbers age on sim time ((tick + alpha) / 60), so they hold during pause and
 hitstop; particles run on real time x the hitstop clock's time scale (0 during a freeze, the ramp in slow motion), 0
 while paused.
+
+### Room clear celebration (docs/ROOM_CLEAR.md; not run in Studio yet)
+
+Per tick, `RoomClearEvents` (shared/view/fx roomClears.ts, on LiveRun and LockstepClient) turns a room record's
+`cleared` 0 -> 1 into a `RoomClear` (exact ROOMS / PERFECT / FAST points from the per-source deltas, kill points since
+the engagement, the last killed member). `RoomClearController` runs the pure `RoomClearSequence` (1.5 s: stamp at
+0.06-0.16 s, tally segments from 0.3 s, the bonus lands at 1.15 s, fade 1.2-1.5 s; corner chips merge at 0.9 s) on real
+time and writes React bindings, so nothing re-renders per frame. The score panel shows `ScoreRoller`'s number: kill
+points roll over 0.15 s, a room bonus is hidden until it lands, then rolls over 0.3 s.
 
 ### Sprite effects (docs/FX_AUDIO.md F3 / F4; Roblox port, no web source)
 

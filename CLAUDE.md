@@ -253,6 +253,16 @@ Decision log (deviations from `PLAN.md`):
   (the full map from the pause / party overlay, tap to close), the tutorial prompt at the top. Settings
   `DisplaySettings.touchSize` / `touchOpacity` / `touchAutoTarget` / `touchLeftHanded` (overrides-only, doc stays v2).
   Required strings `TOUCH_STRING_KEYS`. Spike `KV_TouchSpike`. Device checks pending.
+- **Room clear celebration (docs/ROOM_CLEAR.md).** Presentation only (no sim, dungeon, lockstep, hash, replay or
+  fixture change). `RunView.roomClears` (`shared/view/fx` `RoomClearEvents`, collected per tick like the boost events)
+  diffs `state.score`'s room records and per-source points; `RoomClearSequence` / `ScoreRoller` (pure) drive
+  `RoomClearController`: solo slow motion (0.5x, `applyRoomClearSlowMo`), a co-op last-kill hold, a spark ring, the
+  CLEAR / PERFECT stamp and one tally row (`HUD_TRANSIENT.roomClear`, the boss bar's slot), a far co-op clear's corner
+  chip (`roomClearChip`, new `TransientAnchor` `topRight`), the score panel's rolling number (`Text` takes a binding).
+  Juice setting `roomClear` (default On, overrides-only, doc stays v2); required strings `ROOM_CLEAR_STRING_KEYS`
+  (`room.clear.*`); port audio IDs `sfx.room.perfect` / `sfx.score.tick` / `sfx.score.land` (SILENT in the placeholder);
+  the `stamp` nudge. `REQUIRED_STRING_KEYS` is built inside a function: `contract.luau` sits at Luau's 200-locals
+  limit, so never add top-level constants to contract.ts without checking it compiles under Lune. Studio check pending.
 
 ## Commands
 
