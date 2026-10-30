@@ -254,6 +254,17 @@ Decision log (deviations from `PLAN.md`):
   (the full map from the pause / party overlay, tap to close), the tutorial prompt at the top. Settings
   `DisplaySettings.touchSize` / `touchOpacity` / `touchAutoTarget` / `touchLeftHanded` (overrides-only, doc stays v2).
   Required strings `TOUCH_STRING_KEYS`. Spike `KV_TouchSpike`. Device checks pending.
+- **Combo you chase (docs/COMBO.md).** Presentation only (no sim, dungeon, lockstep, hash, replay or fixture change; the
+  multiplier and its scoring are untouched). Tiers on the sim's tenths: x2 RAMPAGE, x3 CARNAGE, x4 DOMINATING, x5
+  UNSTOPPABLE (`COMBO_TIERS`). `RunView.combo` (`ComboEvents`, per tick) feeds `ComboDisplay` (ScorePanel's combo row
+  and 10 px meter, same five rows: 158 of 160) and the cue mapper: `sfx.enemy.death` climbs with the combo (+5 / +8 /
+  +10 / +12 semitones at x2-x5, per-cue speed replacing the jitter, rank 55 in a streak), `sfx.combo.tier` per
+  crossing, `sfx.combo.break` only when the timer runs out while `fightOn` (a lapse after a clear is silent and quiet);
+  no combo sound under the stage cover or after run over. Theme: five required colour roles `COMBO_ROLES`
+  (`comboReport`), six strings `COMBO_STRING_KEYS`, two port audio IDs (SILENT in the placeholder; the break clip is
+  the owner's Pixabay MP3 in gitignored `art/vendor/pixabay/`). The tier-up floor shout is a SurfaceGui under every
+  bullet (sprite effects' floor placement), <= 55 % opaque, ducking near enemy bullets. Nudge kind `comboBreak`.
+  Debug `KV_ComboDebug`. No setting. Studio check and audio upload pending.
 
 ## Commands
 

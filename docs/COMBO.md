@@ -1,10 +1,11 @@
 # Combo you chase (plan)
 
-Status (2026-10-29): **plan ready, nothing built.** Drafted from `main` @ `1dbc97f` (Room clear RC2; RC3 is in the
-working tree). Owner answers (2026-10-29): CD2 (the names, plus an x4 tier), CD3 (break vs lapse), CD9 (the shout,
-which must never hide a bullet), CD11 (no setting), CD12 (the owner's glass clip). The rest are proposed and stand
-unless the owner changes them. Build after Room clear RC7 / RC8: both plans change `ScorePanel.tsx`, and this one
-reuses RC7's bindings pattern. CB1 is next.
+Status (2026-10-30): **CB0-CB8 built on branch `combo`** (from `room-clear` @ `e5663d1`, Room clear RC3), headless
+checks green; **CB9 (owner: Studio check, audio lock / build / upload) pending.** Owner answers (2026-10-29): CD2 (the
+names, plus an x4 tier), CD3 (break vs lapse), CD9 (the shout, which must never hide a bullet), CD11 (no setting),
+CD12 (the owner's glass clip). Merge after `room-clear`: both change `ScorePanel.tsx`, `cues.ts`, `AudioController.ts`
+and `art/audio.json` (Room clear RC4+ was still in progress), so expect conflicts there. As-built notes and the
+changes from the plan are in "As built" below.
 
 Goal: make the combo something the player chases and hates to lose. Today the multiplier climbs from x1.0 to x5.0 but
 it is a small gold `x1.3` over a 6 px bar, refreshed at ~10 Hz, and it drops back to x1.0 without a sound. After this
@@ -104,7 +105,7 @@ audible.
 
 | t (s) | What happens |
 |---|---|
-| 0 | `sfx.combo.break` (a shatter). The meter's fill **shatters**: 6 shards of the fill fly out and fall (0.4 s). The meter and multiplier turn `combo.broken` grey; the multiplier shows the lost value struck through (`x3.4`); the tier slot reads **COMBO LOST** |
+| 0 | `sfx.combo.break` (a shatter). The meter **shatters**: 6 shards spanning the whole track, in the lost tier's colour, fly out and fall (0.4 s; CD17). The meter track and multiplier turn `combo.broken` grey; the multiplier shows the lost value struck through (`x3.4`); the tier slot reads **COMBO LOST** |
 | 0.08 | A 1-texel camera kick down (a new `comboBreak` nudge at the `heavy` nudge's strength, below `hurt` in priority; off with Screen shake) |
 | 1.2 | Back to normal: `x1.0` in `ember`, the meter empty |
 
@@ -113,8 +114,8 @@ at half volume (`COMBO_VIEW.smallBreakVolume`). Losing x1.4 should sting, not pu
 
 ### Lapse (the timer ran out with no fight on)
 
-The usual end of a streak, on the walk out of a cleared room. No sound, no shards: the meter drains to grey over
-0.3 s and the tier slot shows **BEST x3.4** (the value the streak reached) for 1.2 s, then x1.0. It reads as cashing
+The usual end of a streak, on the walk out of a cleared room. No sound, no shards: the (empty) meter track and the
+multiplier fade to grey over 0.3 s (CD17) and the tier slot shows **BEST x3.4** (the value the streak reached) for 1.2 s, then x1.0. It reads as cashing
 out, not failing.
 
 ### Rules
@@ -157,28 +158,33 @@ out, not failing.
 Each step is a commit. Specs next to the code; `npm run verify` before each.
 
 - [x] **CB0. Owner decisions.** Answered 2026-10-29: CD2, CD3, CD9, CD11, CD12.
-- [ ] **CB1. Collector.** `comboEvents.ts` + spec (a feed, two feeds on one tick, a cut that crosses a tier, a break in
+- [x] **CB1. Collector.** `comboEvents.ts` + spec (a feed, two feeds on one tick, a cut that crosses a tier, a break in
   a live room, a lapse after a clear, a boss fight, a break under a frozen draft never fires, co-op cut divisor). Wired
   into both run views. Golden / replay specs unchanged.
-- [ ] **CB2. Tiers, pitch, display.** Pure + spec: tier boundaries (19 / 20 / 29 / 30 / 39 / 40 / 49 / 50),
+- [x] **CB2. Tiers, pitch, display.** Pure + spec: tier boundaries (19 / 20 / 29 / 30 / 39 / 40 / 49 / 50),
   `killPitchSpeed` at 10 / 20 / 30 / 40 / 50 (+0 / +5 / +8 / +10 / +12 semitones) and monotonic, `ComboDisplay`
   timelines (tier up, re-earn, crack, break, small break, lapse, reduced motion, a break under the stage cover, run
   over), `shoutDucked` (a bullet inside / on / outside the grown box; player bullets ignored).
-- [ ] **CB3. Theme.** Roles + `comboReport` (each tier >= 3:1 on `uiPanel`; ember -> rampage -> carnage -> dominating ->
+- [x] **CB3. Theme.** Roles + `comboReport` (each tier >= 3:1 on `uiPanel`; ember -> rampage -> carnage -> dominating ->
   unstoppable >= 25 CIE76 apart step to step; `combo.broken` low chroma and >= 40 CIE76 from every tier; the tier roles >= 40 CIE76
   from the enemy-bullet roles and `telegraph`, since the shout is drawn in the world), strings, the two audio IDs;
   contract / placeholder / vale specs.
-- [ ] **CB4. Audio.** Cue speed through the mapper and controller; mapper spec cases (a kill per frame climbing, three
+- [x] **CB4. Audio** (lock / build / upload left to CB9: the vendor packs are on the owner's Mac). Cue speed through the mapper and controller; mapper spec cases (a kill per frame climbing, three
   kills on one frame = one cue at the final pitch, a cut lowers it, a break resets it, a boss kill unladdered, a teammate
   kill climbs it, the sting's interval, the small break's volume, silent IDs fall to nothing). `art/audio.json` entries
   (CD12: the glass clip from `art/vendor/pixabay/`, trim `[0, 1.2]`), `audio:lock`, `audio:build`; the clip's row in
   `THIRD_PARTY_NOTICES.md` and where to get it in `art/README.md`.
-- [ ] **CB5. Footprint.** `comboBarHeight` 10; `scoreEstimate` and `footprint.spec.ts` (desktop and touch) still pass.
-- [ ] **CB6. HUD components.** Bindings, `ComboRow`, `ComboMeter`, the run-over line.
-- [ ] **CB7. ComboController.** Wires everything; `npm run build:place` still builds.
-- [ ] **CB8. Docs.** This doc's status and as-built notes, docs/CLIENT.md, the CLAUDE.md decision log.
-- [ ] **CB9. [owner] Studio check and sounds.** The check below; `npm run audio:audition`, upload, ids into
-  `packs/vale/assetIds.ts`; tune `KILL_PITCH` and `COMBO_VIEW` by ear and eye.
+- [x] **CB5. Footprint.** `comboBarHeight` 10; `scoreEstimate` and `footprint.spec.ts` (desktop and touch) still pass.
+- [x] **CB6. HUD components.** Bindings, `ComboRow`, `ComboMeter`, the run-over line.
+- [x] **CB7. ComboController.** Wires everything; `npm run build:place` still builds.
+- [x] **CB8. Docs.** This doc's status and as-built notes, docs/CLIENT.md, the CLAUDE.md decision log.
+- [ ] **CB9. [owner] Studio check and sounds.** The check below. Sounds, on the Mac: the clip in
+  `art/vendor/pixabay/` (already there), `npm run audio:audition` (pick Bonus2 or Bonus3 for the sting; the page flags
+  the raw 3.12 s clip as long, expected: it measures the untrimmed file), `npm run audio:lock`, `npm run audio:build`,
+  upload `art/upload/sfx-combo-tier.ogg` / `sfx-combo-break.ogg`, ids into `packs/vale/assetIds.ts`, `npm run verify`.
+  Until then both IDs are silent in vale. Tune `KILL_PITCH`, `COMBO_VIEW`, `COMBO_SHOUT` by ear and eye.
+  `KV_ComboDebug` (Workspace string attribute: `1`..`4`, `break`, `small`, `lapse`, `cut`) forces one event, with its
+  sound.
 
 ## Studio check
 
@@ -240,6 +246,41 @@ CD2, CD3, CD9, CD11 and CD12 are the owner's answers (2026-10-29); the rest are 
 - **CD14. A small break below x2** (no shards, no kick, half volume).
 - **CD15. Scored runs only.**
 - **CD16. The run-over best combo carries its tier name.**
+
+## As built (2026-10-30)
+
+| Piece | Where |
+|---|---|
+| `ComboEvents` / `ComboFrameSource` / `NO_COMBO_EVENTS`; `comboQuiet`, `audibleCombo` (the sounds' gate); `RunView.combo` on LiveRun and LockstepClient | shared/view/fx/comboEvents.ts, shared/play/liveRun.ts, shared/lockstep/client.ts |
+| `fightOn(state)` (the room edges' LIVE rule; `RoomEdgeStates` shares its boss test) | shared/view/roomEdgeState.ts |
+| `COMBO_TIERS`, `comboTier`, `KILL_PITCH`, `killPitchSpeed`, `tierStingSpeed`, `COMBO_VIEW`, `COMBO_SHOUT`; `ComboDisplay` (frame in, reused `ComboDisplayFrame` out: `slotScale` slam / `multScale` pop, `greyMix`, `trackGrey`, `shardRole`, edges); `shoutBoxAt`, `shoutDucked`; draw helpers `COMBO_DRAW`, `COMBO_SHOUT_DRAW`, `ComboShout`, `comboShardAt`, `comboDropAt`, the RichText builders, `floorAxes`, `shoutCanvasSize`, `COMBO_DEBUG` | shared/view/hud/comboConfig.ts, combo.ts, comboDraw.ts |
+| Roles `combo.rampage` `#f88088`, `combo.carnage` `#ff2050`, `combo.dominating` `#c850e8`, `combo.unstoppable` `#b98cff`, `combo.broken` `#6b6a70` (`COMBO_ROLES`, `COMBO_TIER_ROLES`, `COMBO_COLOR_RULES`, `comboReport`, `labChroma`); `COMBO_STRING_KEYS` / `COMBO_STRINGS`; `sfx.combo.tier` / `sfx.combo.break` | shared/theme, shared/view/hud/comboStrings.ts |
+| `SFX.comboTier` / `comboBreak` (priority 65 / 73, 0.5 s), `COMBO_KILL_PRIORITY` 55, per-cue speed (`AudioCueList.speed`: 0 = the pack's jitter, > 0 = that PlaybackSpeed), `AudioController.play(id, scale, speed = 0)`; `art/audio.json` entries, `THIRD_PARTY_NOTICES.md`, `art/README.md` | shared/view/audio/cues.ts, client AudioController |
+| `NudgeKind` `comboBreak` (heavy's 50 ms, 1 texel; rank death > hurt > phase > comboBreak > heavy), `FreezeFrameController.requestNudge` | shared/view/fx/freezeRules.ts, client |
+| `COMBO_UI` bindings, `ComboRow`, `ComboMeter`, ScorePanel rows 3-4, run-over "x3.4 CARNAGE" | client/ui/hud |
+| `ComboController` (FxTracker frame handler; floor shout Part `KV_ComboShout`; `SimController.isRunOver()` shared with the audio gate) | client/controllers/fx |
+
+Changes from the plan, found while building (an independent review pass caught the four marked *review*):
+
+- **CD17. A break shatters the whole track** (*review*), not the fill: the combo only breaks when its timer reaches 0,
+  so the fill is ~1 % wide then and fill-sized shards were invisible. The lapse fades the empty track and the multiplier
+  to grey (nothing left to drain).
+- **CD18. The combo sounds follow the display's gates** (*review*): no sting or break under the stage cover or after
+  the run is over (a solo run keeps stepping after death, so the timer could still run out in a live room). One
+  predicate (`comboQuiet`, `SimController.isRunOver`) for both. The kill ladder still plays (it is the kill sound).
+- **CD19. No crack without a loss** (*review*): the sim counts a hit at x1.0 as a cut; the collector records a cut
+  only when the tick ends below its start, and the display ignores a net loss <= 0.
+- **CD20. The tier name slams** (*review*), the multiplier pops: two UIScales (`slotScale`, `multScale`).
+- **CD21. Colours moved for the validator**: the plan's coral, crimson and magenta were < 40 CIE76 from `telegraph` /
+  the pink enemy bullet; the values above pass every `comboReport` rule (the vale pack inherits them).
+- **CD22. Per-cue speed replaces the jitter** (speed 0 keeps today's jitter) instead of multiplying into it.
+- Strike-through is RichText `<s>`; the floor shout follows the view player each frame; it sits one effect layer step
+  under the sprite effects (above decor flats and room edges); its 0.08 s fade-in is a draw tunable.
+
+Studio assumptions to check first (none can be checked headlessly): the UIScale slam on a TextScaled slot; RichText
+`<s>` and `<font color>` with TextScaled; the shine UIGradient on text; "UNSTOPPABLE" / "DOMINATING" in the 98 px slot
+at 70 %; the shards and drop not clipped by the corner CanvasGroup; the shout SurfaceGui's orientation (not mirrored
+or turned), crispness (canvas 320 x 66) and draw order under every bullet, telegraph and body; the kick's frame order.
 
 ## Later (not in this plan)
 
