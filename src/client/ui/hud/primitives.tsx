@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from "@rbxts/react";
-import { HUD_FONT, MONO_FONT, role } from "client/ui/theme";
+import { HUD_FONT, MONO_FONT, role, themePack } from "client/ui/theme";
 import type { ColorRole } from "shared/theme";
-import { HUD_VIEW, cornerAnchor, type HudCorner } from "shared/view/hud";
+import { DRAFT_REVEAL_VIEW, HUD_VIEW, cornerAnchor, draftSliceCenter, type HudCorner } from "shared/view/hud";
 import { cornerFadeBinding, cornerRef } from "./cornerFade";
 
 /**
@@ -19,6 +19,8 @@ const DIAMOND_ROTATION = 45;
 const DIAMOND_FILL = 0.72;
 /** A disabled MenuButton's text transparency. */
 const DISABLED_TEXT = 0.6;
+/** An untinted image. */
+const WHITE = new Color3(1, 1, 1);
 /** Text box height = text size + this (room for the stroke). */
 const LINE_SLACK = 4;
 
@@ -99,10 +101,14 @@ export interface PanelProps {
 	padding?: number;
 	horizontal?: boolean;
 	align?: Enum.HorizontalAlignment;
-	transparency?: number;
+	/** The uiPanel fill's transparency (a binding for a fading panel: the draft reveal, docs/DRAFT_REVEAL.md DR5). */
+	transparency?: number | React.Binding<number>;
 	name?: string;
-	/** Visible (default true): a panel that hides without unmounting (its children keep their instances). */
-	visible?: boolean;
+	/**
+	 * Visible (default true): a panel that hides without unmounting (its children keep their instances); a binding
+	 * shows / hides it per frame without a re-render.
+	 */
+	visible?: boolean | React.Binding<boolean>;
 	children?: React.ReactNode;
 	/**
 	 * Corner panels only: drawn on the outer frame, outside the CanvasGroup (a UIStroke such as the tutorial's
@@ -235,6 +241,56 @@ export function Pip(props: { order: number; filled: boolean; color: ColorRole; d
 				<uistroke Thickness={STROKE} Color={role(props.filled ? "background" : "uiTextDim")} />
 			</frame>
 		</frame>
+	);
+}
+
+export interface SlicedImageProps {
+	/** A theme ui image id (shared/theme ImageRef: its asset, size and optional 9-slice insets). */
+	id: string;
+	/** Drawn when the pack has no image for `id` (the placeholder pack, art not uploaded yet); default nothing. */
+	fallback?: React.ReactElement;
+	/** Art pixel -> reference px of a sliced image (SliceScale; default the card art's DRAFT_REVEAL_VIEW.artScale). */
+	sliceScale?: number;
+	size?: UDim2;
+	position?: UDim2;
+	anchor?: Vector2;
+	zIndex?: number;
+	transparency?: number | React.Binding<number>;
+	/** ImageColor3 (a white mask tinted, e.g. the draft back's eyes). */
+	color?: Color3;
+	visible?: boolean | React.Binding<boolean>;
+	name?: string;
+}
+
+/**
+ * A theme ui image as an ImageLabel (docs/DRAFT_REVEAL.md DR5; the primitive docs/UI_ART.md builds on): with `slice`
+ * insets it is 9-sliced (ScaleType Slice, SliceCenter = Rect(left, top, w - right, h - bottom), SliceScale), so the
+ * art's corners and studs keep their pixel size at any panel size; without, stretched. Always Pixelated. An id the
+ * pack does not have renders `fallback` (or nothing), so callers keep their flat look until the art is uploaded.
+ */
+export function SlicedImage(props: SlicedImageProps) {
+	const ref = themePack()?.image(props.id);
+	if (ref === undefined) return props.fallback;
+	const s = ref.slice;
+	const c = s !== undefined ? draftSliceCenter(ref.w, ref.h, s) : undefined;
+	return (
+		<imagelabel
+			key={props.name}
+			Image={ref.assetId}
+			ScaleType={c !== undefined ? Enum.ScaleType.Slice : Enum.ScaleType.Stretch}
+			SliceCenter={c !== undefined ? new Rect(c.x0, c.y0, c.x1, c.y1) : new Rect()}
+			SliceScale={props.sliceScale ?? DRAFT_REVEAL_VIEW.artScale}
+			ResampleMode={Enum.ResamplerMode.Pixelated}
+			ImageColor3={props.color ?? WHITE}
+			ImageTransparency={props.transparency ?? 0}
+			Size={props.size ?? UDim2.fromScale(FULL, FULL)}
+			Position={props.position ?? new UDim2()}
+			AnchorPoint={props.anchor ?? new Vector2()}
+			ZIndex={props.zIndex ?? 1}
+			Visible={props.visible ?? true}
+			BackgroundTransparency={HIDDEN}
+			BorderSizePixel={0}
+		/>
 	);
 }
 
