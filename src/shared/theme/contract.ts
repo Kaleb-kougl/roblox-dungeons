@@ -1199,6 +1199,28 @@ export const COMBO_COLOR_RULES: ComboColorRules = {
 };
 
 /**
+ * Roblox port (docs/DRAFT_REVEAL.md DR3, DRD3): the boon draft's rarity colours in rarity order (common, rare,
+ * legendary; shared/view/hud RARITY_COLOR_ROLES): the card names, the rarity stroke and the owned-boon icons. Bone,
+ * blood red and candle gold from the ToffeeCraft Horror UI sheet, so legendary is the brightest colour on the card.
+ * Required in every pack like every role; the loot `rarity.*` roles are separate. Held to BOON_RARITY_COLOR_RULES by
+ * `boonRarityReport`.
+ */
+export const BOON_RARITY_ROLES: ReadonlyArray<ColorRole> = ["boon.common", "boon.rare", "boon.legendary"];
+
+/**
+ * The boon rarity rules (`boonRarityReport`): every `roles` colour >= `minPanelContrast` (WCAG, the graphics bar) on
+ * `panel` (the draft card is drawn over the HUD's panel colour) and >= `minStepDifference` (CIE76) from the rarity below
+ * it, so each step up the ladder reads as a new colour. One object, so the validator imports one name (its compiled
+ * Luau sits near the 200-locals-per-function limit).
+ */
+export const BOON_RARITY_COLOR_RULES = {
+	roles: BOON_RARITY_ROLES,
+	panel: "uiPanel" as ColorRole,
+	minPanelContrast: 3.0,
+	minStepDifference: 25,
+} as const;
+
+/**
  * Readability caps for ambient particles (docs/DECOR.md Phase 2 part 2), owned by the theme because a pack's ambient
  * texture may set its own look (`particle` on `decor.fx.ambient.*`) and the validator holds it to them: smaller and
  * more transparent than any bullet. Enemy bullets are drawn opaque (Neon) and 2 * BULLET_VIEW.enemyDrawRadius

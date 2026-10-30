@@ -142,6 +142,12 @@ export const COLOR_ROLES = [
 	"combo.dominating",
 	"combo.unstoppable",
 	"combo.broken",
+	// Roblox port (docs/DRAFT_REVEAL.md DR3): the boon draft's rarity colours, bone / blood red / candle gold (contract.ts
+	// BOON_RARITY_ROLES; the loot rarity.* roles above are separate). Held to BOON_RARITY_COLOR_RULES by
+	// boonRarityReport: each >= 3:1 on uiPanel and apart from the rarity below it (CIE76).
+	"boon.common",
+	"boon.rare",
+	"boon.legendary",
 ] as const;
 
 export type ColorRole = (typeof COLOR_ROLES)[number];
