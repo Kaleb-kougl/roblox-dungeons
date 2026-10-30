@@ -4,7 +4,14 @@
  * and helpers, checked headlessly (hud.spec.ts: every key exists in the placeholder pack).
  */
 import { BOONS, CURSES, RARITY_NAMES, RELICS } from "shared/sim";
-import { BOOST_KINDS, BOOST_STRING_FIELDS, BOOST_TOAST_KEY, boostStringKey, type ColorRole } from "shared/theme";
+import {
+	BOON_RARITY_ROLES,
+	BOOST_KINDS,
+	BOOST_STRING_FIELDS,
+	BOOST_TOAST_KEY,
+	boostStringKey,
+	type ColorRole,
+} from "shared/theme";
 
 /** Fixed HUD strings of the draft, the toasts, the shrine hint and the owned-items panel. */
 export const PROGRESSION_STRINGS = {
@@ -52,8 +59,11 @@ export function progressionStringKeys(): string[] {
 	return out;
 }
 
-/** Card / icon colour per boon rarity (theme item-rarity roles): common, rare, legendary. */
-export const RARITY_COLOR_ROLES: ReadonlyArray<ColorRole> = ["rarity.normal", "rarity.rare", "rarity.unique"];
+/**
+ * Card / icon colour per boon rarity (theme BOON_RARITY_ROLES, docs/DRAFT_REVEAL.md DR3: bone, blood red, candle gold):
+ * common, rare, legendary. The loot `rarity.*` roles are not used here.
+ */
+export const RARITY_COLOR_ROLES: ReadonlyArray<ColorRole> = BOON_RARITY_ROLES;
 /** Relic and curse icons, the pedestal and the shrine markers (live / used). */
 export const RELIC_COLOR_ROLE: ColorRole = "uiAccent";
 export const CURSE_COLOR_ROLE: ColorRole = "uiHealth";

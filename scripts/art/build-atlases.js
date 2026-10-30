@@ -992,6 +992,25 @@ function contactSheet(result) {
  * One `images` entry. `pixelsPerTileFrom` (optional, a sprite set id): the image is world art drawn at that set's scale
  * (the boost drops, docs/BOOST_ART.md: the Lords of Pain props at the skeleton's), so its layout gets that set's
  * `pixelsPerTile` exactly. `built` (id -> buildSpriteSet result) is only read when it is given; buildImages passes it.
+ *
+ * Sheet cuts and 9-sliced panels (docs/DRAFT_REVEAL.md DR3; the ToffeeCraft Horror UI sheet):
+ *   - `rect` [x, y, w, h] (optional): the window of `file` the image is cut from (default: the whole file). `crop`
+ *     "none" keeps the window as it is, "alpha" trims it to its pixels with alpha > noiseAlpha (+ pad). With "none",
+ *     `noiseAlpha` (optional) clears the window's pixels with alpha <= it (absent: every pixel is kept);
+ *   - `pivot` may also be [x, y] (pixels from the image's top-left, inside it);
+ *   - `cutout` { outlineRgb } (optional): keeps only what an outline encloses (a piece cut from a busier panel, the
+ *     red-eyed skulls): pixels with alpha > 0 and max(R, G, B) <= outlineRgb are the outline; every pixel 4-connected
+ *     to the image border without crossing it is cleared (cutoutPixels);
+ *   - `slice` [left, top, right, bottom] (optional): 9-slice insets in image pixels, integers >= 0 that leave a centre
+ *     of at least 1 x 1 pixel; copied into the layout as { left, top, right, bottom };
+ *   - `centre: "flat"` (with `slice`): fills the slice centre with its rounded mean colour (alpha 255), so stretching
+ *     does not smear the panel's noise texture into blocks. `flatBoxes` [[x, y, w, h], ...] (optional) fill those boxes
+ *     instead, all with the one mean of their pixels: a panel whose slice stretches a 1 px row or column through its
+ *     edges (insets wide enough to keep the corner ornaments whole) flattens the panel fill along those lines too. The
+ *     boxes must cover the slice centre and hold only opaque pixels (flatFill);
+ *   - `mask` { maxRgb, boxes? } (optional, not with `centre`): the image becomes a white-on-transparent mask of its
+ *     pixels with alpha > 0 and max(R, G, B) <= maxRgb inside `boxes` (default: everywhere), e.g. a skull's eye
+ *     sockets. Same `file` / `rect` / `crop` / `slice` as the image it is drawn over keeps the two registered (maskPixels).
  */
 function buildImage(id, def, built) {
 	let pixelsPerTile;
@@ -1001,23 +1020,47 @@ function buildImage(id, def, built) {
 		pixelsPerTile = from.layout.pixelsPerTile;
 	}
 	const src = readPng(def.file);
+	const win = imageWindow(id, def, src);
 	let img;
 	let pivot;
 	if (def.crop === "none") {
-		img = raster(src.w, src.h);
-		blit(src, 0, 0, src.w, src.h, img, 0, 0, -1);
+		img = raster(win.w, win.h);
+		blit(src, win.x, win.y, win.w, win.h, img, 0, 0, def.noiseAlpha === undefined ? -1 : def.noiseAlpha);
 	} else if (def.crop === "alpha") {
-		const b = alphaBounds(src, 0, 0, src.w, src.h, def.noiseAlpha);
+		const b = alphaBounds(src, win.x, win.y, win.w, win.h, def.noiseAlpha);
 		if (!b) throw new Error(`${id}: no visible pixels`);
-		const w = b[2] - b[0] + 1 + 2 * def.pad;
-		const h = b[3] - b[1] + 1 + 2 * def.pad;
+		const pad = def.pad === undefined ? 0 : def.pad;
+		const w = b[2] - b[0] + 1 + 2 * pad;
+		const h = b[3] - b[1] + 1 + 2 * pad;
 		img = raster(w, h);
-		blit(src, b[0] - def.pad, b[1] - def.pad, w, h, img, 0, 0, def.noiseAlpha);
+		blit(src, win.x + b[0] - pad, win.y + b[1] - pad, w, h, img, 0, 0, def.noiseAlpha);
 	} else throw new Error(`${id}: unknown crop ${def.crop}`);
+	if (def.cutout !== undefined) {
+		if (!isByte(def.cutout.outlineRgb)) throw new Error(`${id}: cutout.outlineRgb must be an integer 0-255`);
+		cutoutPixels(img, def.cutout.outlineRgb);
+	}
 	if (def.pivot === "center") pivot = { x: img.w / 2, y: img.h / 2 };
 	else if (def.pivot === "bottom") pivot = { x: img.w / 2, y: img.h - def.pad };
-	else if (def.pivot !== undefined) throw new Error(`${id}: unknown pivot ${def.pivot}`);
+	else if (Array.isArray(def.pivot)) {
+		const [x, y] = def.pivot;
+		if (def.pivot.length !== 2 || !Number.isFinite(x) || !Number.isFinite(y) || x < 0 || y < 0 || x > img.w || y > img.h) {
+			throw new Error(`${id}: pivot ${JSON.stringify(def.pivot)} must be [x, y] inside the ${img.w}x${img.h} image`);
+		}
+		pivot = { x, y };
+	} else if (def.pivot !== undefined) throw new Error(`${id}: unknown pivot ${def.pivot}`);
 	if (img.w > MAX_ATLAS || img.h > MAX_ATLAS) throw new Error(`${id}: ${img.w}x${img.h} > ${MAX_ATLAS}`);
+	const slice = def.slice === undefined ? undefined : sliceInsets(id, def.slice, img);
+	if (def.mask !== undefined && def.centre !== undefined) throw new Error(`${id}: a mask has no centre to flatten`);
+	if (def.centre !== undefined) {
+		if (def.centre !== "flat") throw new Error(`${id}: centre must be "flat", got ${JSON.stringify(def.centre)}`);
+		if (!slice) throw new Error(`${id}: centre "flat" needs a slice`);
+		flatFill(id, img, slice, def.flatBoxes);
+	} else if (def.flatBoxes !== undefined) throw new Error(`${id}: flatBoxes needs centre "flat"`);
+	if (def.mask !== undefined) {
+		if (!isByte(def.mask.maxRgb)) throw new Error(`${id}: mask.maxRgb must be an integer 0-255`);
+		const boxes = def.mask.boxes === undefined ? [[0, 0, img.w, img.h]] : def.mask.boxes.map((b) => box(id, "mask box", b, img));
+		img = maskPixels(img, def.mask.maxRgb, boxes);
+	}
 
 	let meanHex;
 	if (def.meanHex) {
@@ -1031,7 +1074,116 @@ function buildImage(id, def, built) {
 	if (def.tilesPerImage !== undefined) layout.tilesPerImage = def.tilesPerImage;
 	if (pivot) layout.pivot = pivot;
 	if (pixelsPerTile !== undefined) layout.pixelsPerTile = pixelsPerTile;
+	if (slice) layout.slice = slice;
 	return { id, name: def.name, img, layout, meanHex };
+}
+
+const isByte = (n) => Number.isInteger(n) && n >= 0 && n <= 255;
+
+/** An image's source window ({ x, y, w, h } in `src`): `rect` checked inside the file, or the whole file. */
+function imageWindow(id, def, src) {
+	if (def.rect === undefined) return { x: 0, y: 0, w: src.w, h: src.h };
+	const [x, y, w, h] = box(id, "rect", def.rect, src);
+	return { x, y, w, h };
+}
+
+/** [x, y, w, h], integers, w and h >= 1, inside `img` (throws otherwise). */
+function box(id, what, b, img) {
+	const ok = Array.isArray(b) && b.length === 4 && b.every((n) => Number.isInteger(n)) && b[0] >= 0 && b[1] >= 0 && b[2] >= 1 && b[3] >= 1;
+	if (!ok || b[0] + b[2] > img.w || b[1] + b[3] > img.h) {
+		throw new Error(`${id}: ${what} ${JSON.stringify(b)} must be [x, y, w, h] (integers, w, h >= 1) inside the ${img.w}x${img.h} image`);
+	}
+	return b;
+}
+
+/** A `slice` [left, top, right, bottom] as layout insets, checked: integers >= 0 leaving a centre of >= 1 x 1 pixel. */
+function sliceInsets(id, slice, img) {
+	const ok = Array.isArray(slice) && slice.length === 4 && slice.every((n) => Number.isInteger(n) && n >= 0);
+	if (!ok) throw new Error(`${id}: slice ${JSON.stringify(slice)} must be [left, top, right, bottom], integers >= 0`);
+	const [left, top, right, bottom] = slice;
+	if (left + right >= img.w || top + bottom >= img.h) {
+		throw new Error(`${id}: slice ${JSON.stringify(slice)} leaves no centre in the ${img.w}x${img.h} image (left + right < w, top + bottom < h)`);
+	}
+	return { left, top, right, bottom };
+}
+
+/**
+ * Fills `boxes` (default: the slice centre) with the rounded mean RGB of their pixels, alpha 255, in place. Throws
+ * when a box holds a pixel that is not opaque or the boxes leave a centre pixel unfilled (it would stretch as it is).
+ */
+function flatFill(id, img, slice, flatBoxes) {
+	const cw = img.w - slice.left - slice.right;
+	const ch = img.h - slice.top - slice.bottom;
+	const boxes = flatBoxes === undefined ? [[slice.left, slice.top, cw, ch]] : flatBoxes.map((b) => box(id, "flat box", b, img));
+	const inside = new Uint8Array(img.w * img.h);
+	for (const [bx, by, bw, bh] of boxes) for (let y = by; y < by + bh; y++) for (let x = bx; x < bx + bw; x++) inside[y * img.w + x] = 1;
+	for (let y = slice.top; y < slice.top + ch; y++) {
+		for (let x = slice.left; x < slice.left + cw; x++) {
+			if (!inside[y * img.w + x]) throw new Error(`${id}: flatBoxes leave the slice centre's pixel (${x}, ${y}) unfilled`);
+		}
+	}
+	const sum = [0, 0, 0];
+	let n = 0;
+	for (let i = 0; i < inside.length; i++) {
+		if (!inside[i]) continue;
+		if (img.data[i * 4 + 3] !== 255) throw new Error(`${id}: flat box pixel (${i % img.w}, ${Math.floor(i / img.w)}) is not opaque`);
+		for (let k = 0; k < 3; k++) sum[k] += img.data[i * 4 + k];
+		n++;
+	}
+	const mean = sum.map((v) => Math.floor((2 * v + n) / (2 * n)));
+	for (let i = 0; i < inside.length; i++) if (inside[i]) img.data.set([mean[0], mean[1], mean[2], 255], i * 4);
+	return mean;
+}
+
+/**
+ * Clears, in place, every pixel 4-connected to the image border without crossing the outline (alpha > 0 and
+ * max(R, G, B) <= outlineRgb): what is left is the outline and what it encloses. 4-connected, so an outline drawn with
+ * 8-connected (diagonal) steps still closes.
+ */
+function cutoutPixels(img, outlineRgb) {
+	const { w, h, data } = img;
+	const isOutline = (i) => data[i * 4 + 3] > 0 && Math.max(data[i * 4], data[i * 4 + 1], data[i * 4 + 2]) <= outlineRgb;
+	const outside = new Uint8Array(w * h);
+	const stack = [];
+	const seed = (x, y) => {
+		const i = y * w + x;
+		if (!outside[i] && !isOutline(i)) {
+			outside[i] = 1;
+			stack.push(i);
+		}
+	};
+	for (let x = 0; x < w; x++) {
+		seed(x, 0);
+		seed(x, h - 1);
+	}
+	for (let y = 0; y < h; y++) {
+		seed(0, y);
+		seed(w - 1, y);
+	}
+	while (stack.length > 0) {
+		const i = stack.pop();
+		const x = i % w;
+		const y = (i - x) / w;
+		if (x > 0) seed(x - 1, y);
+		if (x < w - 1) seed(x + 1, y);
+		if (y > 0) seed(x, y - 1);
+		if (y < h - 1) seed(x, y + 1);
+	}
+	for (let i = 0; i < w * h; i++) if (outside[i]) data.fill(0, i * 4, i * 4 + 4);
+}
+
+/** A new raster: white, opaque where `img` has alpha > 0 and max(R, G, B) <= maxRgb inside one of `boxes`; else clear. */
+function maskPixels(img, maxRgb, boxes) {
+	const out = raster(img.w, img.h);
+	for (const [bx, by, bw, bh] of boxes) {
+		for (let y = by; y < by + bh; y++) {
+			for (let x = bx; x < bx + bw; x++) {
+				const i = (y * img.w + x) * 4;
+				if (img.data[i + 3] > 0 && Math.max(img.data[i], img.data[i + 1], img.data[i + 2]) <= maxRgb) out.data.set([255, 255, 255, 255], i);
+			}
+		}
+	}
+	return out;
 }
 
 /** Every `images` entry in id order; `sets` (buildSpriteSets' result) feeds `pixelsPerTileFrom`. */
@@ -1764,7 +1916,9 @@ function layoutModule(sets, images, floorHex, world) {
 		]),
 		" */",
 		"",
-		world ? 'import type { HexColor, Pivot, PixelBox, SpriteSetAsset } from "../../types";' : 'import type { HexColor, Pivot, SpriteSetAsset } from "../../types";',
+		world
+			? 'import type { HexColor, Pivot, PixelBox, SliceInsets, SpriteSetAsset } from "../../types";'
+			: 'import type { HexColor, Pivot, SliceInsets, SpriteSetAsset } from "../../types";',
 		"",
 		"/** An atlas PNG in art/build/, by file name. */",
 		"export interface ValeSheetFile {",
@@ -1805,13 +1959,15 @@ function layoutModule(sets, images, floorHex, world) {
 		"/**",
 		comment([
 			"A single image in art/build/. `pivot` (pixels from the top-left) is where it is anchored, when it matters;",
-			"`pixelsPerTile`, on world art drawn at a sprite set's scale (art/atlases.json `pixelsPerTileFrom`), sizes it.",
+			"`pixelsPerTile`, on world art drawn at a sprite set's scale (art/atlases.json `pixelsPerTileFrom`), sizes it;",
+			"`slice`, on a 9-sliced panel (art/atlases.json `slice`), its insets in image pixels (ImageAsset.slice).",
 		]),
 		" */",
 		"export interface ValeImageLayout extends ValeSheetFile {",
 		"\ttilesPerImage?: number;",
 		"\tpivot?: Pivot;",
 		"\tpixelsPerTile?: number;",
+		"\tslice?: SliceInsets;",
 		"}",
 		"",
 		`export const VALE_SPRITE_LAYOUTS: Record<string, ValeSpriteLayout> = ${tsValue(spriteLayouts, 0, PRINT_WIDTH)};`,
@@ -2346,7 +2502,11 @@ function main() {
 			}`);
 		}
 	}
-	for (const i of images) console.log(`${i.id}: ${i.layout.file} ${i.layout.w}x${i.layout.h}${i.meanHex ? ` mean ${i.meanHex}` : ""}`);
+	for (const i of images) {
+		const sl = i.layout.slice;
+		const slice = sl ? `, slice ${sl.left} ${sl.top} ${sl.right} ${sl.bottom}` : "";
+		console.log(`${i.id}: ${i.layout.file} ${i.layout.w}x${i.layout.h}${i.meanHex ? ` mean ${i.meanHex}` : ""}${slice}`);
+	}
 	if (world) {
 		for (const p of world.pieces) {
 			const l = worldLayout(p);
@@ -2380,17 +2540,21 @@ module.exports = {
 	alphaBounds,
 	blit,
 	bodyMask,
+	buildImage,
 	buildImages,
 	buildOutputs,
 	buildSpriteSet,
 	buildSpriteSets,
 	chooseGrid,
 	contactSheet,
+	cutoutPixels,
 	dilateCells,
 	discOffsets,
 	encodePng,
+	flatFill,
 	isBodyAt,
 	layoutModule,
+	maskPixels,
 	outlineConfig,
 	outlineSheet,
 	rimClip,

@@ -768,7 +768,16 @@ describe("audio: one jingle per frame", () => {
 		// room clear and shrine are both jingles: the room's; the relic is no jingle and plays too
 		expect(ids(m, 1, noEvents(), NO_FX, s)).toEqual([SFX.roomClear, SFX.relicTake]);
 		// docs/ROOM_CLEAR.md RC4: PERFECT's jingle ranks with the CLEAR one (72)
-		const order = [SFX.gameOver, SFX.depthUp, SFX.victory, SFX.roomClear, SFX.roomPerfect, SFX.shrineUse];
+		// docs/DRAFT_REVEAL.md DR4: the draft's legendary flare is a jingle too (played by the reveal controller)
+		const order = [
+			SFX.gameOver,
+			SFX.depthUp,
+			SFX.victory,
+			SFX.roomClear,
+			SFX.roomPerfect,
+			SFX.draftLegendary,
+			SFX.shrineUse,
+		];
 		expect(JINGLE_SFX).toEqual(order);
 		for (let i = 1; i < order.size(); i++) {
 			expect([order[i], SFX_PRIORITY[order[i - 1]] >= SFX_PRIORITY[order[i]]]).toEqual([order[i], true]);
@@ -1254,5 +1263,58 @@ describe("audio: the combo (docs/COMBO.md CB4)", () => {
 		list.clear();
 		list.push(SFX.enemyDeath, 1);
 		expect([list.size(), list.speed(0)]).toEqual([1, 0]);
+	});
+});
+
+describe("audio: the boon draft reveal (docs/DRAFT_REVEAL.md DR4)", () => {
+	const DRAFT = [SFX.draftFlip, SFX.draftRare, SFX.draftCharge, SFX.draftLegendary, SFX.draftPick];
+
+	it("the five IDs are the theme's port audio events, in ALL_SFX and PORT_SFX, with no fallback", () => {
+		expect(DRAFT).toEqual([
+			"sfx.draft.flip",
+			"sfx.draft.rare",
+			"sfx.draft.charge",
+			"sfx.draft.legendary",
+			"sfx.draft.pick",
+		]);
+		for (const id of DRAFT) {
+			expect([id, ALL_SFX.includes(id), PORT_SFX.includes(id), SFX_FALLBACK[id]]).toEqual([
+				id,
+				true,
+				true,
+				undefined,
+			]);
+		}
+	});
+
+	it("ranks them above everything else that can play over a frozen draft (pick 60, flip 50, rare 55, charge 62, legendary 72)", () => {
+		expect(DRAFT.map((id) => SFX_PRIORITY[id])).toEqual([50, 55, 62, 72, 60]);
+		// under the draft the world is frozen: no swing, shot, hit or drop sound can join, only menu sounds
+		for (const id of [SFX.uiConfirm, SFX.uiBack, SFX.uiClick, SFX.uiMove]) {
+			expect([id, SFX_PRIORITY[SFX.draftFlip] > SFX_PRIORITY[id]]).toEqual([id, true]);
+		}
+	});
+
+	it("intervals: the flip 0.05 s; the charge under the ladder's closest gap (0.07 s), so no rung is dropped", () => {
+		const m = new AudioCueMapper();
+		expect(m.intervalOf(SFX.draftFlip)).toBe(0.05);
+		expect(m.intervalOf(SFX.draftCharge) < 0.07).toBe(true);
+		expect(m.intervalOf(SFX.draftCharge) > 0).toBe(true);
+		for (const id of [SFX.draftRare, SFX.draftLegendary, SFX.draftPick])
+			expect([id, m.intervalOf(id)]).toEqual([id, 0]);
+	});
+
+	it("only the legendary flare ducks the music and is a jingle", () => {
+		for (const id of DRAFT) {
+			const flare = id === SFX.draftLegendary;
+			expect([id, DUCKING_SFX.includes(id), JINGLE_SFX.includes(id)]).toEqual([id, flare, flare]);
+		}
+	});
+
+	it("the mapper never cues them from a run (the reveal controller plays them itself)", () => {
+		for (const ticks of [1, 3]) {
+			const r = replayRecorded(ticks);
+			for (const id of DRAFT) expect([ticks, id, r.count(id)]).toEqual([ticks, id, 0]);
+		}
 	});
 });

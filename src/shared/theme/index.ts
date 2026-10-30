@@ -24,6 +24,7 @@ export {
 export { interpolate, placeholders, templateProblem, type StringVars } from "./strings";
 export {
 	ASSET_ID_PATTERN,
+	boonRarityReport,
 	boostColorReport,
 	breakableContrastReport,
 	comboReport,
@@ -39,6 +40,7 @@ export {
 	playerOutlineReport,
 	roomEdgeReport,
 	validateManifest,
+	type BoonRarityEntry,
 	type BoostColorEntry,
 	type BreakableContrastEntry,
 	type ComboEntry,

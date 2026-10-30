@@ -72,6 +72,7 @@ import {
 	type Pivot,
 	type PreloadMedia,
 	type RobloxAssetId,
+	type SliceInsets,
 	type SpriteAnimationDef,
 	type SpriteFacings,
 	type SpriteSetAsset,
@@ -385,6 +386,8 @@ export interface ImageRef {
 	readonly tilesPerImage: number | undefined;
 	/** ui.* images only: the anchor point, pixels from the top-left (undefined: the renderer's default). */
 	readonly pivot: Readonly<Pivot> | undefined;
+	/** ui.* images only: 9-slice insets in art pixels (ImageAsset.slice; undefined: drawn whole, not sliced). */
+	readonly slice: Readonly<SliceInsets> | undefined;
 }
 
 /**
@@ -679,7 +682,9 @@ export class ThemeCore {
 		const def = this.asset(id);
 		if (def === undefined || def.kind !== "image") return undefined;
 		const pivot = def.pivot !== undefined ? { x: def.pivot.x, y: def.pivot.y } : undefined;
-		return { assetId: def.assetId, w: def.w, h: def.h, tilesPerImage: def.tilesPerImage, pivot };
+		const s = def.slice;
+		const slice = s !== undefined ? { left: s.left, top: s.top, right: s.right, bottom: s.bottom } : undefined;
+		return { assetId: def.assetId, w: def.w, h: def.h, tilesPerImage: def.tilesPerImage, pivot, slice };
 	}
 
 	/**

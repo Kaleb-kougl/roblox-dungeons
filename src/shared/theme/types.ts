@@ -142,6 +142,12 @@ export const COLOR_ROLES = [
 	"combo.dominating",
 	"combo.unstoppable",
 	"combo.broken",
+	// Roblox port (docs/DRAFT_REVEAL.md DR3): the boon draft's rarity colours, bone / blood red / candle gold (contract.ts
+	// BOON_RARITY_ROLES; the loot rarity.* roles above are separate). Held to BOON_RARITY_COLOR_RULES by
+	// boonRarityReport: each >= 3:1 on uiPanel and apart from the rarity below it (CIE76).
+	"boon.common",
+	"boon.rare",
+	"boon.legendary",
 ] as const;
 
 export type ColorRole = (typeof COLOR_ROLES)[number];
@@ -179,6 +185,12 @@ export interface ImageAsset {
 	 * (default: bottom centre; centre for flat pieces and effects).
 	 */
 	pivot?: Pivot;
+	/**
+	 * ui.* slot, optional (docs/DRAFT_REVEAL.md DR3): the image is a 9-sliced panel; insets in art pixels from each edge,
+	 * inside the image with a centre of at least 1 x 1 pixel. Drawn as an ImageLabel with ScaleType Slice and
+	 * SliceCenter Rect(left, top, w - right, h - bottom); the corners keep their size, the edges and centre stretch.
+	 */
+	slice?: SliceInsets;
 	/** decor.* (except ambient textures) and breakable.* images, required: art pixels per world tile (sizes the art). */
 	pixelsPerTile?: number;
 	/** decor.* / breakable.* images: the region of the image to draw, pixels (default: all of it); an atlas cut. */
@@ -202,6 +214,14 @@ export interface ImageAsset {
 }
 
 /** A pixel rectangle inside an image, top-left origin. */
+/** 9-slice insets of a ui image (ImageAsset.slice), art pixels from the left, top, right and bottom edges. */
+export interface SliceInsets {
+	left: number;
+	top: number;
+	right: number;
+	bottom: number;
+}
+
 export interface PixelBox {
 	x: number;
 	y: number;

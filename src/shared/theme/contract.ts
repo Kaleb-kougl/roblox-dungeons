@@ -619,7 +619,8 @@ export const BOOST_BEAM_IMAGE_ID = "ui.marker.boost";
  * silent). Then the boost drops' four (docs/BOOSTS.md B5).
  * Then the room clear celebration's three (docs/ROOM_CLEAR.md RC4): PERFECT's jingle, a tally tick, a bonus landing
  * in the score. Then the combo's two (docs/COMBO.md CB3): the tier-up sting (one clip, pitched up per tier) and the
- * break's shatter.
+ * break's shatter. Then the boon draft reveal's five (docs/DRAFT_REVEAL.md DR4): flip, rare chime, legendary charge,
+ * legendary flare, pick stamp.
  */
 export const PORT_AUDIO_EVENTS = [
 	"sfx.player.swing",
@@ -657,6 +658,14 @@ export const PORT_AUDIO_EVENTS = [
 	// breaks during a fight (sfx.combo.break, the shatter; a lapse with no fight on plays nothing)
 	"sfx.combo.tier",
 	"sfx.combo.break",
+	// docs/DRAFT_REVEAL.md DR4: the boon draft reveal, played by the client's reveal controller (not from sim events):
+	// a card flips (pitched up per card), a rare face lands (the chime), a legendary's charge (one short hit played as a
+	// rising ladder), the legendary flare (a jingle: it ducks the music), a boon is taken (the stamp)
+	"sfx.draft.flip",
+	"sfx.draft.rare",
+	"sfx.draft.charge",
+	"sfx.draft.legendary",
+	"sfx.draft.pick",
 ] as const;
 
 /**
@@ -1197,6 +1206,52 @@ export const COMBO_COLOR_RULES: ComboColorRules = {
 	maxBrokenChroma: 10,
 	minBrokenDifference: 40,
 };
+
+/**
+ * Roblox port (docs/DRAFT_REVEAL.md DR3, DRD3): the boon draft's rarity colours in rarity order (common, rare,
+ * legendary; shared/view/hud RARITY_COLOR_ROLES): the card names, the rarity stroke and the owned-boon icons. Bone,
+ * blood red and candle gold from the ToffeeCraft Horror UI sheet, so legendary is the brightest colour on the card.
+ * Required in every pack like every role; the loot `rarity.*` roles are separate. Held to BOON_RARITY_COLOR_RULES by
+ * `boonRarityReport`.
+ */
+export const BOON_RARITY_ROLES: ReadonlyArray<ColorRole> = ["boon.common", "boon.rare", "boon.legendary"];
+
+/**
+ * The boon rarity rules (`boonRarityReport`): every `roles` colour >= `minPanelContrast` (WCAG, the graphics bar) on
+ * `panel` (the draft card is drawn over the HUD's panel colour) and >= `minStepDifference` (CIE76) from the rarity below
+ * it, so each step up the ladder reads as a new colour. One object, so the validator imports one name (its compiled
+ * Luau sits near the 200-locals-per-function limit).
+ */
+export const BOON_RARITY_COLOR_RULES = {
+	roles: BOON_RARITY_ROLES,
+	panel: "uiPanel" as ColorRole,
+	minPanelContrast: 3.0,
+	minStepDifference: 25,
+} as const;
+
+/**
+ * Roblox port (docs/DRAFT_REVEAL.md DR3, DRD12): the boon draft's card art, optional free-form ui images (any pack may
+ * leave any of them out; the overlay then draws today's flat card, and a missing skull leaves the legendary's corners
+ * plain). Cut from the ToffeeCraft Horror UI sheet and 9-sliced (ImageAsset `slice`):
+ *   - `ui.draft.back`: every card's back (the skull-and-chain panel);
+ *   - `ui.draft.back.eyes`: a white mask of the back's skull eye sockets, the same size, registration and `slice` as
+ *     the back, tinted red over it during a legendary's charge;
+ *   - `ui.draft.card.common` / `ui.draft.card.rare`: the faces (plain panel; studded red-trimmed panel with a tab, which
+ *     the legendary face reuses);
+ *   - `ui.draft.skull.left` / `ui.draft.skull.right`: the red-eyed skulls on the legendary face's top corners, not
+ *     sliced; their `pivot` sits on the face panel's outer frame corner.
+ * A function, not a constant: this module's compiled Luau sits near the 200-locals-per-function limit.
+ */
+export function draftSkinIds(): ReadonlyArray<string> {
+	return [
+		"ui.draft.back",
+		"ui.draft.back.eyes",
+		"ui.draft.card.common",
+		"ui.draft.card.rare",
+		"ui.draft.skull.left",
+		"ui.draft.skull.right",
+	];
+}
 
 /**
  * Readability caps for ambient particles (docs/DECOR.md Phase 2 part 2), owned by the theme because a pack's ambient

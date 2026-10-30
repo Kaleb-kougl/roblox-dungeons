@@ -525,6 +525,66 @@
 			"notes": "Combo break during a fight (docs/COMBO.md CD12): \"Glass breaking\" by DRAGON-STUDIO (Pixabay, id 504033). 3.12 s, 48 kHz stereo MP3: 85 ms lead (the silence trim takes it), the crash 0.1 - 1.0 s, a stray tinkle at 1.9 - 2.05 s that the [0, 1.2] trim cuts, silence after. A small break (below x2) plays it at half volume (COMBO_VIEW.smallBreakVolume). No pitch jitter.",
 			"confirmed": false
 		},
+		"sfx.draft.flip": {
+			"category": "sfx",
+			"clips": [
+				"ninja-adventure/Audio/Sounds/Menu/Move6.wav",
+				"ninja-adventure/Audio/Sounds/Menu/Move8.wav"
+			],
+			"volume": 0.45,
+			"notes": "docs/DRAFT_REVEAL.md DRD11: a draft card flips (a light card snap; the two clips are variants). Played by the reveal controller at the flip ladder's pitch (+0 / +2 / +4 semitones per card), so no pitch jitter here; 0.05 s minimum interval in code. Pick at the audition.",
+			"confirmed": false
+		},
+		"sfx.draft.rare": {
+			"category": "sfx",
+			"clips": [
+				"ninja-adventure/Audio/Sounds/Magic & Skill/Magic5.wav"
+			],
+			"volume": 0.55,
+			"alternates": [
+				"ninja-adventure/Audio/Sounds/Magic & Skill/Heal3.wav"
+			],
+			"notes": "docs/DRAFT_REVEAL.md DRD11: a rare face lands (the chime, with the trim flare and the shine). Pick Magic5 or Heal3 at the audition.",
+			"confirmed": false
+		},
+		"sfx.draft.charge": {
+			"category": "sfx",
+			"clips": [
+				"ninja-adventure/Audio/Sounds/Menu/Move7.wav"
+			],
+			"volume": 0.5,
+			"alternates": [
+				"ninja-adventure/Audio/Sounds/Menu/Menu5.wav",
+				"ninja-adventure/Audio/Sounds/Alert/Alert4.wav"
+			],
+			"notes": "docs/DRAFT_REVEAL.md DRD11: a legendary card's charge, one short hit played six times as a rising ladder (closing in from 0.16 s to 0.07 s apart, +0 -> +12 semitones, the reveal's per-cue speed; no riser clip), so it must be short (well under 0.07 s of attack) and has no pitch jitter; 0.05 s minimum interval in code (under the ladder's closest gap). Pick Move7, Menu5 or Alert4 at the audition.",
+			"confirmed": false
+		},
+		"sfx.draft.legendary": {
+			"category": "jingle",
+			"clips": [
+				"ninja-adventure/Audio/Jingles/Secret3.wav"
+			],
+			"volume": 0.7,
+			"alternates": [
+				"ninja-adventure/Audio/Jingles/Secret4.wav"
+			],
+			"notes": "docs/DRAFT_REVEAL.md DRD11: the legendary flare's sting (the flash, the ray burst, the pop). A jingle: it ducks the music for its length (DUCKING_SFX), on top of the charge's music dip. Pick Secret3 or Secret4 at the audition.",
+			"confirmed": false
+		},
+		"sfx.draft.pick": {
+			"category": "sfx",
+			"clips": [
+				"ninja-adventure/Audio/Sounds/Menu/Accept2.wav"
+			],
+			"volume": 0.55,
+			"alternates": [
+				"ninja-adventure/Audio/Sounds/Menu/Accept3.wav",
+				"ninja-adventure/Audio/Sounds/Menu/Accept5.wav"
+			],
+			"notes": "docs/DRAFT_REVEAL.md DRD10 / DRD11: a boon is taken (the stamp). Pick Accept2, Accept3 or Accept5 at the audition.",
+			"confirmed": false
+		},
 		"music.menu": {
 			"category": "music",
 			"clips": [

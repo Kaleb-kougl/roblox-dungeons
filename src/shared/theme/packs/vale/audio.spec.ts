@@ -149,3 +149,20 @@ describe("vale sounds switch on with their uploads", () => {
 		}
 	});
 });
+
+describe("vale draft reveal sounds (docs/DRAFT_REVEAL.md DR4)", () => {
+	const DRAFT = ["sfx.draft.flip", "sfx.draft.rare", "sfx.draft.charge", "sfx.draft.legendary", "sfx.draft.pick"];
+
+	it("are required sfx IDs, silent until audio:build lays them out and their files are uploaded", () => {
+		for (const id of DRAFT) {
+			expect([id, REQUIRED_ASSET_IDS.includes(id), slotFor(id)?.soundGroup]).toEqual([id, true, "sfx"]);
+			expect([id, PLACEHOLDER_MANIFEST.assets[id].kind]).toEqual([id, "silent"]);
+			// not built yet (the owner picks the candidates at the audition): no layout, so silent whatever the IDs
+			if (VALE_SOUND_LAYOUTS[id] === undefined) {
+				expect([id, buildValeManifest(audioIds()).assets[id].kind]).toEqual([id, "silent"]);
+			}
+			const all = VALE_SOUND_LAYOUTS[id]?.files.every((f) => VALE_ASSET_IDS[f] !== undefined) ?? false;
+			expect([id, VALE_MANIFEST.assets[id].kind]).toEqual([id, all ? "sound" : "silent"]);
+		}
+	});
+});

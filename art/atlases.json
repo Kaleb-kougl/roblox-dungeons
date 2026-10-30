@@ -490,6 +490,73 @@
 			"noiseAlpha": 2,
 			"pad": 3,
 			"pivot": "bottom"
+		},
+		"ui.draft.back": {
+			"$comment": "docs/DRAFT_REVEAL.md DR3: every draft card's back, the ToffeeCraft Horror UI sheet's skull-and-chain panel (alpha box 897 241 93 47; the faint alpha <= 10 pixels cleared -> 93x45). One sliced image, no split ornament: left / right insets 46 put both skulls and the chain's loop ends in the fixed corners, so the top edge stretches only column 46, between the skulls, where the chain loop is two straight rope lines (the loop lengthens; no skull stretches); top 20 / bottom 24 keep the side ropes' wraps (rows 26-33) in the fixed bottom corners and stretch row 20, plain rope. Flat fill (one mean grey) along every stretched line and over the panel below the chain: boxes 1-3 under the chain above the wraps (row 14 around the left skull's chin, cols 28-29), box 4 between the wraps, box 5 inside the chain loop between the skulls. Every boxed pixel is the panel's neutral grey fill (#1a1a1a-#272727).",
+			"file": "toffeecraft-horror-ui/UiHorror.png",
+			"name": "ui-draft-back",
+			"rect": [897, 241, 93, 47],
+			"crop": "alpha",
+			"noiseAlpha": 10,
+			"pad": 0,
+			"slice": [46, 20, 46, 24],
+			"centre": "flat",
+			"flatBoxes": [[5, 15, 83, 11], [5, 14, 23, 1], [30, 14, 58, 1], [8, 26, 78, 16], [42, 4, 9, 7]]
+		},
+		"ui.draft.back.eyes": {
+			"$comment": "docs/DRAFT_REVEAL.md DR3: the back's skull eye sockets as a white mask (the pure black pixels inside the two skulls' boxes: 31), cut exactly like ui.draft.back (same file, rect, crop and slice), so drawn over it with the same slice the sockets land on the back's; tinted red during a legendary's charge.",
+			"file": "toffeecraft-horror-ui/UiHorror.png",
+			"name": "ui-draft-back-eyes",
+			"rect": [897, 241, 93, 47],
+			"crop": "alpha",
+			"noiseAlpha": 10,
+			"pad": 0,
+			"slice": [46, 20, 46, 24],
+			"mask": { "maxRgb": 0, "boxes": [[21, 0, 14, 15], [57, 0, 16, 14]] }
+		},
+		"ui.draft.card.common": {
+			"$comment": "docs/DRAFT_REVEAL.md DR3: the common face, the plain rounded panel (alpha box 834 290 91 46 -> 90x44). Insets 6 hold the rounded corners; the edges are the plain border. Flat fill over the whole panel inside the border (two boxes around the rounded corners), so the stretched edge bands carry no noise.",
+			"file": "toffeecraft-horror-ui/UiHorror.png",
+			"name": "ui-draft-card-common",
+			"rect": [834, 290, 91, 46],
+			"crop": "alpha",
+			"noiseAlpha": 10,
+			"pad": 0,
+			"slice": [6, 6, 6, 6],
+			"centre": "flat",
+			"flatBoxes": [[1, 6, 88, 32], [6, 3, 78, 38]]
+		},
+		"ui.draft.card.rare": {
+			"$comment": "docs/DRAFT_REVEAL.md DR3: the rare face (the legendary's too, under the skulls), the studded panel with the red trim and the top tab (alpha box 931 369 88 61 -> 87x61 from x 932). Insets 43 / 30 / 43 / 30: the four 8x8 corner studs and the tab's rounded ends stay fixed; the top edge stretches column 43, the middle of the tab's flat bar (the tab lengthens, its ends keep their shape), the sides row 30 (plain trim). Flat fill over the panel below the tab. Its outer frame corners (the black line) are at (1, 3) and (86, 3): the skulls' pivots go there.",
+			"file": "toffeecraft-horror-ui/UiHorror.png",
+			"name": "ui-draft-card-rare",
+			"rect": [931, 369, 88, 61],
+			"crop": "alpha",
+			"noiseAlpha": 10,
+			"pad": 0,
+			"slice": [43, 30, 43, 30],
+			"centre": "flat",
+			"flatBoxes": [[5, 11, 77, 42]]
+		},
+		"ui.draft.skull.left": {
+			"$comment": "docs/DRAFT_REVEAL.md DR3: the legendary face's top-left skull, the red-eyed black skull on the menu panel's top-left corner (menu panel alpha box 290 194 91 119; skull 290 194 17x18, measured: the box of its black outline). The cutout keeps what the pure black outline encloses (the panel frame behind it goes). Pivot (3, 5): where the menu panel's outer frame corner lies under it; placed on ui.draft.card.rare's (1, 3), it overhangs the face by 2 px as on the menu.",
+			"file": "toffeecraft-horror-ui/UiHorror.png",
+			"name": "ui-draft-skull-left",
+			"rect": [290, 194, 17, 18],
+			"crop": "none",
+			"noiseAlpha": 10,
+			"cutout": { "outlineRgb": 0 },
+			"pivot": [3, 5]
+		},
+		"ui.draft.skull.right": {
+			"$comment": "docs/DRAFT_REVEAL.md DR3: the top-right skull (364 194 17x18 on the sheet), cut like the left one. Pivot (14, 5), the menu panel's outer frame corner (its right edge, x 88 on the panel); placed on ui.draft.card.rare's (86, 3).",
+			"file": "toffeecraft-horror-ui/UiHorror.png",
+			"name": "ui-draft-skull-right",
+			"rect": [364, 194, 17, 18],
+			"crop": "none",
+			"noiseAlpha": 10,
+			"cutout": { "outlineRgb": 0 },
+			"pivot": [14, 5]
 		}
 	},
 	"worldArt": {
