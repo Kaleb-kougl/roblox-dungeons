@@ -324,11 +324,12 @@ describe("ComboDisplay: the meter and the warning blink", () => {
 	it("fills timer / window and warns in the last 25 % (not at x1.0)", () => {
 		const d = new Driver();
 		d.combo = 25;
-		expect(d.frame({}, { timer: 90 }).fill).toBe(0.5);
-		const above = d.frame({}, { timer: 46 });
+		const quarter = COMBO_WINDOW_TICKS / 4;
+		expect(d.frame({}, { timer: COMBO_WINDOW_TICKS / 2 }).fill).toBe(0.5);
+		const above = d.frame({}, { timer: quarter + 1 });
 		expect(above.warn).toBe(false);
 		expect(above.dim).toBe(false);
-		expect(d.frame({}, { timer: 45 }).warn).toBe(true);
+		expect(d.frame({}, { timer: quarter }).warn).toBe(true);
 		d.combo = COMBO_MIN;
 		expect(d.frame({}, { timer: 30 }).warn).toBe(false);
 	});
