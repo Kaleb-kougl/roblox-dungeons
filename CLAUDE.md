@@ -44,6 +44,7 @@ Record every ported module in `PROVENANCE.md` (ported module, source path, sourc
 | `docs/COMBO.md` | Combo you chase (named tiers x2 Rampage / x3 Carnage / x4 Dominating / x5 Unstoppable, tier-coloured meter, kill sound climbing in pitch, tier-up sting and a floor shout that never hides bullets, a shatter on a break during a fight, a quiet lapse otherwise; presentation only): plan, tasks CB0-CB9, decisions CD1-CD16 |
 | `docs/DRAFT_REVEAL.md` | Boon draft reveal (cards deal face down and flip one by one, a rare chime, a legendary beat: charge, hush, flare and halo; a pick stamp; skip by pressing; the client holds the confirm until settled; presentation and client input only): plan, tasks DR0-DR9, decisions DRD1-DRD12 |
 | `docs/ENEMY_VARIANTS.md` | Enemy variants (three new endless archetypes: Imp flanker, Ooze zone-denier that splits, Summoner support; elite affixes Hulking / Swift / Shielded / Vengeful; both unlock by depth): plan, tasks EV0-EV14, decisions EVD1-EVD12 |
+| `docs/GRAZE_PARRY.md` | Grazes and parries (graze spark + shimmer climbing in pitch, parry sparks / ring-out / PARRY! floor flash / solo 30 ms freeze for a guard that erases bullets; one unhashed ScoreEvents feed, otherwise presentation only): plan, tasks GP0-GP10, decisions GPD1-GPD10 |
 
 Decision log (deviations from `PLAN.md`):
 - **Art (docs/ART.md).** The theme contract gained a `"sprites"` kind (large pre-rendered cells, 1/4/8/16 screen-space
