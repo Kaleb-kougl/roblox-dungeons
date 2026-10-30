@@ -138,6 +138,8 @@ export class InputController implements OnStart {
 	private pads = new Array<Enum.UserInputType>();
 	/** The touch controls' state machine (MB3): fingers in, one TouchSnapshot per frame out. */
 	private readonly touch = new TouchControls();
+	/** The boon draft reveal's tap filter (setDraftTapFilter), if registered. */
+	private draftTapFilter: (() => boolean) | undefined;
 	/** The touch surface the screen shows (MB6 touchMode); hidden until the touch controls go up. */
 	private touchMode: TouchMode = "hidden";
 	private touchStickRadiusPx: number = TOUCH.stickRadiusRef;
@@ -320,9 +322,22 @@ export class InputController implements OnStart {
 		this.touchStickRadiusPx = px;
 	}
 
-	/** A draft card was tapped: the stick is pushed into its column and a FIRE pulse confirms it. */
+	/**
+	 * A draft card was tapped: the stick is pushed into its column and a FIRE pulse confirms it, unless the draft
+	 * tap filter takes the tap (the boon draft reveal, docs/DRAFT_REVEAL.md DR6: a tap during the reveal skips it and
+	 * its pick is dropped).
+	 */
 	queueDraftPick(column: number): void {
+		if (this.draftTapFilter?.() === true) return;
 		this.touch.queueDraftPick(column);
+	}
+
+	/**
+	 * DraftRevealController registers its tap filter here (one injection direction: this controller never injects it):
+	 * called on every draft card tap; true = the tap was taken (a skip), no pick is queued.
+	 */
+	setDraftTapFilter(filter: () => boolean): void {
+		this.draftTapFilter = filter;
 	}
 
 	/** Fires every map listener, as the bound map input does (the touch Map button, MB9). */

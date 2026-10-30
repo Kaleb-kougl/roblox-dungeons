@@ -1,87 +1,378 @@
-import React from "@rbxts/react";
+import React, { useMemo } from "@rbxts/react";
 import { useSelector } from "@rbxts/react-reflex";
-import { selectBindings, selectInputDevice, selectSnapshot, selectTutorialEnded } from "client/store";
+import { selectBindings, selectInputDevice, selectTutorialEnded, type GameState } from "client/store";
 import { draftHint, keyDevice } from "shared/play";
-import { HUD_FONT, role, str } from "client/ui/theme";
-import { BOONS, DRAFT_OFFER_COUNT } from "shared/sim";
+import { HUD_FONT, role, str, themePack } from "client/ui/theme";
+import { BOONS, DRAFT_OFFER_COUNT, Rarity, type RarityId } from "shared/sim";
 import {
+	DRAFT_REVEAL_VIEW,
+	DRAFT_SKIN,
 	HUD_VIEW,
 	PROGRESSION_STRINGS,
 	PROGRESSION_VIEW,
 	TOUCH_STRINGS,
+	draftShineOffset,
+	draftSkullPlacement,
 	itemDescKey,
 	itemNameKey,
 	rarityColorRole,
 	rarityNameKey,
 } from "shared/view/hud";
 import { useHudActions } from "./actions";
-import { Panel, Row, Text } from "./primitives";
+import { DraftRays } from "./DraftRays";
+import { DRAFT_UI, type DraftCardUi } from "./draftUi";
+import { Panel, Row, SlicedImage, Text } from "./primitives";
 
 const HALF = 0.5;
 const HIDDEN = 1;
-/** A touch tap target sits over its card, above the card's labels (touch only, docs/MOBILE.md MB10). */
-const TAP_ZINDEX = 2;
 const NAME_TOP = 0.08;
 const RARITY_TOP = 0.3;
 const DESC_TOP = 0.48;
 const DESC_HEIGHT = 0.46;
 const INSET = 0.92;
+/** Draw order inside a card slot (ZIndexBehavior Sibling): the rays under the body, the tap target over it. */
+const SLOT_Z = { rays: 1, body: 2, tap: 3 } as const;
+/** Draw order inside the card body, bottom to top. */
+const BODY_Z = {
+	back: 1,
+	eyes: 2,
+	face: 3,
+	skull: 4,
+	text: 5,
+	shine: 6,
+	dim: 7,
+	flash: 8,
+	glow: 9,
+	select: 9,
+} as const;
 
-/**
- * One offered boon: name (rarity colour), rarity, one-line effect; the card under the stick is highlighted. `onTap`
- * (touch): a see-through button over the card takes the tap.
- */
-function DraftCard(props: { order: number; boon: number; selected: boolean; onTap?: () => void }) {
-	const def = BOONS[props.boon];
-	if (def === undefined) return undefined;
-	const v = PROGRESSION_VIEW;
-	const rarity = rarityColorRole(def.rarity);
+const selectDraftOpen = (state: { game: GameState }) => state.game.snapshot.draftOpen;
+const selectDraftWaiting = (state: { game: GameState }) => state.game.snapshot.draftWaiting;
+
+function boonOf(b: number) {
+	return b >= 0 ? BOONS[b] : undefined;
+}
+
+function rarityColor(r: RarityId): Color3 {
+	return role(rarityColorRole(r));
+}
+
+/** The eyes mask's tint (DRAFT_REVEAL_VIEW.eyeRgb, the red-eyed skulls' red). */
+function eyeColor(): Color3 {
+	const [r, g, b] = DRAFT_REVEAL_VIEW.eyeRgb;
+	return Color3.fromRGB(r, g, b);
+}
+
+/** The shine band: clear outside, bandTransparency in its middle. */
+function shineBand(): NumberSequence {
+	const S = DRAFT_REVEAL_VIEW.shine;
+	const half = S.bandWidth * HALF;
+	return new NumberSequence([
+		new NumberSequenceKeypoint(0, HIDDEN),
+		new NumberSequenceKeypoint(HALF - half, HIDDEN),
+		new NumberSequenceKeypoint(HALF, S.bandTransparency),
+		new NumberSequenceKeypoint(HALF + half, HIDDEN),
+		new NumberSequenceKeypoint(1, HIDDEN),
+	]);
+}
+
+/** A flat panel layer (the fallback when the pack has no card art): uiPanel fill and an outline. */
+function FlatLayer(props: {
+	z: number;
+	fill: React.Binding<number>;
+	stroke: React.Binding<number>;
+	color: Color3 | React.Binding<Color3>;
+	visible?: React.Binding<boolean>;
+}) {
 	return (
 		<frame
-			LayoutOrder={props.order}
-			Size={new UDim2(0, v.cardWidth, 0, v.cardHeight)}
+			Size={UDim2.fromScale(1, 1)}
 			BackgroundColor3={role("uiPanel")}
-			BackgroundTransparency={props.selected ? 0 : HUD_VIEW.panelTransparency}
+			BackgroundTransparency={props.fill}
 			BorderSizePixel={0}
+			ZIndex={props.z}
+			Visible={props.visible ?? true}
 		>
-			<uiscale Scale={props.selected ? v.selectedScale : 1} />
 			<uistroke
 				ApplyStrokeMode={Enum.ApplyStrokeMode.Border}
-				Thickness={props.selected ? v.selectedStroke : v.cardStroke}
-				Color={role(props.selected ? "uiAccent" : rarity)}
+				Thickness={PROGRESSION_VIEW.cardStroke}
+				Color={props.color}
+				Transparency={props.stroke}
 			/>
-			<textlabel
-				AnchorPoint={new Vector2(HALF, 0)}
-				Position={new UDim2(HALF, 0, NAME_TOP, 0)}
-				Size={new UDim2(INSET, 0, 0, HUD_VIEW.titleText)}
-				BackgroundTransparency={1}
-				Font={HUD_FONT}
-				TextSize={HUD_VIEW.titleText}
-				TextColor3={role(rarity)}
-				Text={str(itemNameKey(def.id))}
+		</frame>
+	);
+}
+
+/** One legendary skull on the face's top corner (only with the rare face art and the skull's own image). */
+function Skull(props: { side: "left" | "right"; ui: DraftCardUi; visible: React.Binding<boolean> }) {
+	const pack = themePack();
+	const face = pack?.image(DRAFT_SKIN.rare);
+	const id = props.side === "left" ? DRAFT_SKIN.skullLeft : DRAFT_SKIN.skullRight;
+	const skull = pack?.image(id);
+	if (face === undefined || skull === undefined) return undefined;
+	const p = draftSkullPlacement(props.side, skull, face.w);
+	return (
+		<SlicedImage
+			id={id}
+			name={`Skull_${props.side}`}
+			size={UDim2.fromOffset(p.w, p.h)}
+			position={new UDim2(p.fromRight ? 1 : 0, p.fromRight ? -p.x : p.x, 0, p.y)}
+			anchor={new Vector2(p.anchorX, p.anchorY)}
+			transparency={props.ui.ornamentT.binding}
+			visible={props.visible}
+			zIndex={BODY_Z.skull}
+		/>
+	);
+}
+
+/** A text row of the card (faded by the card's text transparency). */
+function CardText(props: {
+	top: number;
+	height: UDim2;
+	size: number;
+	text: React.Binding<string>;
+	color: Color3 | React.Binding<Color3>;
+	transparency: React.Binding<number>;
+	wrap?: boolean;
+}) {
+	return (
+		<textlabel
+			AnchorPoint={new Vector2(HALF, 0)}
+			Position={new UDim2(HALF, 0, props.top, 0)}
+			Size={props.height}
+			BackgroundTransparency={HIDDEN}
+			Font={HUD_FONT}
+			TextSize={props.size}
+			TextWrapped={props.wrap === true}
+			TextYAlignment={props.wrap === true ? Enum.TextYAlignment.Top : Enum.TextYAlignment.Center}
+			TextColor3={props.color}
+			TextTransparency={props.transparency}
+			Text={props.text}
+			ZIndex={BODY_Z.text}
+		/>
+	);
+}
+
+/**
+ * One offered boon's slot (docs/DRAFT_REVEAL.md DR5), by offer index: everything it draws is a DRAFT_UI binding
+ * (DraftRevealController writes them per frame), so it renders once. The slot is a fixed 240 x 150 layout box; inside:
+ *   - two ray rings behind the body (the legendary's burst and halo, DraftRays), larger than the slot;
+ *   - the body, the flip holder: centred (AnchorPoint 0.5), its width factor and offsets (tremble, rise, drop) and its
+ *     UIScale (pop * stamp * the selected scale) from bindings. Bottom to top: the back (`ui.draft.back` 9-sliced, or a
+ *     flat uiPanel card with a dim outline: every back looks the same), the back's red eyes (`ui.draft.back.eyes`, same
+ *     size and slice, tinted), the face (`ui.draft.card.common`, or `ui.draft.card.rare` for rare and legendary; else
+ *     the flat card with the rarity stroke), the legendary skulls, the name (real boon's rarity colour) / rarity /
+ *     effect rows (hidden while the card is thin), the shine sweep, the dim, the flash, the rarity glow stroke and the
+ *     uiAccent selection stroke (only once settled).
+ *   - touch (`onTap`): a see-through button over the card takes the tap (during the reveal it skips: InputController).
+ */
+function DraftCard(props: { index: number; onTap?: () => void }) {
+	const ui = DRAFT_UI.cards[props.index];
+	const look = useMemo(() => {
+		const rarity = ui.rarity.binding;
+		const boon = ui.boon.binding;
+		const panelText = role("uiText");
+		return {
+			common: rarity.map((r) => r === Rarity.COMMON),
+			rare: rarity.map((r) => r !== Rarity.COMMON),
+			legendary: rarity.map((r) => r === Rarity.LEGENDARY),
+			color: rarity.map(rarityColor),
+			flashColor: rarity.map((r) => panelText.Lerp(rarityColor(r), DRAFT_REVEAL_VIEW.flashRarityMix)),
+			name: boon.map((b) => {
+				const def = boonOf(b);
+				return def !== undefined ? str(itemNameKey(def.id)) : "";
+			}),
+			nameColor: boon.map((b) => rarityColor(boonOf(b)?.rarity ?? Rarity.COMMON)),
+			rarityName: boon.map((b) => {
+				const def = boonOf(b);
+				return def !== undefined ? str(rarityNameKey(def.rarity)) : "";
+			}),
+			desc: boon.map((b) => {
+				const def = boonOf(b);
+				return def !== undefined ? str(itemDescKey(def.id)) : "";
+			}),
+			shineVisible: ui.shine.binding.map((u) => u >= 0),
+			shineOffset: ui.shine.binding.map((u) => new Vector2(draftShineOffset(u), 0)),
+			band: shineBand(),
+			eyes: eyeColor(),
+			gold: rarityColor(Rarity.LEGENDARY),
+		};
+	}, [ui]);
+	const v = PROGRESSION_VIEW;
+	const dim = role("uiTextDim");
+	return (
+		<frame
+			LayoutOrder={props.index + 1}
+			Size={new UDim2(0, v.cardWidth, 0, v.cardHeight)}
+			BackgroundTransparency={HIDDEN}
+			Visible={ui.shown.binding}
+			ZIndex={ui.z.binding}
+		>
+			<DraftRays
+				key="Burst"
+				color={look.gold}
+				visible={ui.burstVisible.binding}
+				transparency={ui.burstT.binding}
+				scale={ui.burstScale.binding}
+				rotation={ui.rayAngle.binding}
+				zIndex={SLOT_Z.rays}
 			/>
-			<textlabel
-				AnchorPoint={new Vector2(HALF, 0)}
-				Position={new UDim2(HALF, 0, RARITY_TOP, 0)}
-				Size={new UDim2(INSET, 0, 0, HUD_VIEW.smallText)}
-				BackgroundTransparency={1}
-				Font={HUD_FONT}
-				TextSize={HUD_VIEW.smallText}
-				TextColor3={role("uiTextDim")}
-				Text={str(rarityNameKey(def.rarity))}
+			<DraftRays
+				key="Halo"
+				color={look.gold}
+				visible={ui.haloVisible.binding}
+				transparency={ui.haloT.binding}
+				scale={1}
+				rotation={ui.rayAngle.binding}
+				zIndex={SLOT_Z.rays}
 			/>
-			<textlabel
-				AnchorPoint={new Vector2(HALF, 0)}
-				Position={new UDim2(HALF, 0, DESC_TOP, 0)}
-				Size={new UDim2(INSET, 0, DESC_HEIGHT, 0)}
-				BackgroundTransparency={1}
-				Font={HUD_FONT}
-				TextSize={HUD_VIEW.smallText}
-				TextWrapped={true}
-				TextYAlignment={Enum.TextYAlignment.Top}
-				TextColor3={role("uiText")}
-				Text={str(itemDescKey(def.id))}
-			/>
+			<frame
+				key="Body"
+				AnchorPoint={new Vector2(HALF, HALF)}
+				Position={ui.position.binding}
+				Size={ui.size.binding}
+				BackgroundTransparency={HIDDEN}
+				ZIndex={SLOT_Z.body}
+			>
+				<uiscale Scale={ui.scale.binding} />
+				<SlicedImage
+					id={DRAFT_SKIN.back}
+					name="Back"
+					transparency={ui.backT.binding}
+					zIndex={BODY_Z.back}
+					fallback={
+						<FlatLayer
+							key="Back"
+							z={BODY_Z.back}
+							fill={ui.backFillT.binding}
+							stroke={ui.backT.binding}
+							color={dim}
+						/>
+					}
+				/>
+				<SlicedImage
+					id={DRAFT_SKIN.backEyes}
+					name="Eyes"
+					color={look.eyes}
+					transparency={ui.eyesT.binding}
+					zIndex={BODY_Z.eyes}
+				/>
+				<SlicedImage
+					id={DRAFT_SKIN.common}
+					name="FaceCommon"
+					transparency={ui.faceT.binding}
+					visible={look.common}
+					zIndex={BODY_Z.face}
+					fallback={
+						<FlatLayer
+							key="FaceCommon"
+							z={BODY_Z.face}
+							fill={ui.faceFillT.binding}
+							stroke={ui.faceT.binding}
+							color={look.color}
+							visible={look.common}
+						/>
+					}
+				/>
+				<SlicedImage
+					id={DRAFT_SKIN.rare}
+					name="FaceRare"
+					transparency={ui.faceT.binding}
+					visible={look.rare}
+					zIndex={BODY_Z.face}
+					fallback={
+						<FlatLayer
+							key="FaceRare"
+							z={BODY_Z.face}
+							fill={ui.faceFillT.binding}
+							stroke={ui.faceT.binding}
+							color={look.color}
+							visible={look.rare}
+						/>
+					}
+				/>
+				<Skull key="SkullLeft" side="left" ui={ui} visible={look.legendary} />
+				<Skull key="SkullRight" side="right" ui={ui} visible={look.legendary} />
+				<CardText
+					key="Name"
+					top={NAME_TOP}
+					height={new UDim2(INSET, 0, 0, HUD_VIEW.titleText)}
+					size={HUD_VIEW.titleText}
+					text={look.name}
+					color={look.nameColor}
+					transparency={ui.textT.binding}
+				/>
+				<CardText
+					key="Rarity"
+					top={RARITY_TOP}
+					height={new UDim2(INSET, 0, 0, HUD_VIEW.smallText)}
+					size={HUD_VIEW.smallText}
+					text={look.rarityName}
+					color={dim}
+					transparency={ui.textT.binding}
+				/>
+				<CardText
+					key="Desc"
+					top={DESC_TOP}
+					height={new UDim2(INSET, 0, DESC_HEIGHT, 0)}
+					size={HUD_VIEW.smallText}
+					text={look.desc}
+					color={role("uiText")}
+					transparency={ui.textT.binding}
+					wrap={true}
+				/>
+				<frame
+					key="Shine"
+					Size={UDim2.fromScale(1, 1)}
+					BackgroundColor3={role("uiText")}
+					BorderSizePixel={0}
+					Visible={look.shineVisible}
+					ZIndex={BODY_Z.shine}
+				>
+					<uigradient
+						Transparency={look.band}
+						Rotation={DRAFT_REVEAL_VIEW.shine.rotationDeg}
+						Offset={look.shineOffset}
+					/>
+				</frame>
+				<frame
+					key="Dim"
+					Size={UDim2.fromScale(1, 1)}
+					BackgroundColor3={role("background")}
+					BackgroundTransparency={ui.dimT.binding}
+					BorderSizePixel={0}
+					ZIndex={BODY_Z.dim}
+				/>
+				<frame
+					key="Flash"
+					Size={UDim2.fromScale(1, 1)}
+					BackgroundColor3={look.flashColor}
+					BackgroundTransparency={ui.flashT.binding}
+					BorderSizePixel={0}
+					ZIndex={BODY_Z.flash}
+				/>
+				<frame key="Glow" Size={UDim2.fromScale(1, 1)} BackgroundTransparency={HIDDEN} ZIndex={BODY_Z.glow}>
+					<uistroke
+						ApplyStrokeMode={Enum.ApplyStrokeMode.Border}
+						Thickness={DRAFT_REVEAL_VIEW.glowStroke}
+						Color={look.color}
+						Transparency={ui.glowT.binding}
+					/>
+				</frame>
+				<frame
+					key="Selected"
+					Size={UDim2.fromScale(1, 1)}
+					BackgroundTransparency={HIDDEN}
+					Visible={ui.selected.binding}
+					ZIndex={BODY_Z.select}
+				>
+					<uistroke
+						ApplyStrokeMode={Enum.ApplyStrokeMode.Border}
+						Thickness={v.selectedStroke}
+						Color={role("uiAccent")}
+					/>
+				</frame>
+			</frame>
 			{props.onTap !== undefined ? (
 				<textbutton
 					key="Tap"
@@ -90,7 +381,7 @@ function DraftCard(props: { order: number; boon: number; selected: boolean; onTa
 					AutoButtonColor={false}
 					Selectable={false}
 					Text=""
-					ZIndex={TAP_ZINDEX}
+					ZIndex={SLOT_Z.tap}
 					Event={{ Activated: props.onTap }}
 				/>
 			) : undefined}
@@ -106,7 +397,7 @@ const DRAFT_CARDS_WIDTH =
 	PROGRESSION_VIEW.cardGap * SIDES;
 
 /** Co-op: "waiting for N teammates" while others still choose (the world stays frozen until all confirmed). */
-function WaitingLine(props: { order: number; count: number }) {
+function WaitingLine(props: { order: number; count: number; transparency?: React.Binding<number> }) {
 	return (
 		<Text
 			fill={true}
@@ -115,90 +406,96 @@ function WaitingLine(props: { order: number; count: number }) {
 			color="uiTextDim"
 			align={Enum.TextXAlignment.Center}
 			text={str(PROGRESSION_STRINGS.draftWaiting, { count: props.count })}
+			transparency={props.transparency}
 		/>
 	);
 }
 
+const NOT_VISIBLE = DRAFT_UI.visible.binding.map((v) => !v);
+
 /**
- * Centre, M2 boon draft (endless runs, the world frozen): the LOCAL player's offered cards left to right (co-op: the
- * snapshot reads the client's player index), the one under the stick highlighted (the snapshot follows the live input
- * every frame while a draft is open), and the device-aware hint; until the draft accepts a confirm
- * (DRAFT_MIN_OPEN_TICKS) the hint reads "wait". Co-op: a "waiting for N teammates" line while others still choose,
- * alone once the local player has confirmed. Hidden once the tutorial ended (its floor 3 draft is never played).
+ * Centre, M2 boon draft (endless runs and the tutorial's floor 2 draft, the world frozen) with its reveal
+ * (docs/DRAFT_REVEAL.md DR5): the LOCAL player's offered cards left to right, dealt face down and flipped one by one by
+ * DraftRevealController, which writes every per-frame value (DRAFT_UI), including which boons the slots show: the
+ * overlay stays mounted from the controller's copy of the offers through the pick's stamp and exit fade (the
+ * snapshot's draft is already closed then) and hides when the reveal is done. The selection (uiAccent stroke, 1.06x)
+ * shows only once the reveal settled; the hint reads "wait" until settled and the sim's draftReady (DRAFT_UI.hintReady),
+ * then the device-aware key hint. Co-op: a "waiting for N teammates" line under the cards while others still choose,
+ * alone once the local reveal is done. Hidden once the tutorial ended (its floor 3 draft is never played). Renders on
+ * a device, bindings, tutorial or waiting-count change only, never per frame.
  */
 export function DraftOverlay() {
-	const s = useSelector(selectSnapshot);
 	const device = useSelector(selectInputDevice);
 	const bindings = useSelector(selectBindings);
 	const tutorialEnded = useSelector(selectTutorialEnded);
+	const draftOpen = useSelector(selectDraftOpen);
+	const waiting = useSelector(selectDraftWaiting);
 	const actions = useHudActions();
 	const touch = device === "touch";
+	const hintText = useMemo(() => {
+		const hint = draftHint(bindings)[keyDevice(device)];
+		const ready = touch
+			? str(TOUCH_STRINGS.hintDraft)
+			: str(PROGRESSION_STRINGS.draftHint, { left: hint.left, right: hint.right, confirm: hint.confirm });
+		const wait = str(PROGRESSION_STRINGS.draftWait);
+		return DRAFT_UI.hintReady.binding.map((r) => (r ? ready : wait));
+	}, [bindings, device, touch]);
 	if (tutorialEnded) return undefined;
-	if (!s.draftOpen) {
-		if (s.draftWaiting <= 0) return undefined;
-		return (
+	const cards: React.Element[] = [];
+	for (let i = 0; i < DRAFT_OFFER_COUNT; i++) {
+		cards.push(<DraftCard key={`c${i}`} index={i} onTap={touch ? () => actions.draftTap(i) : undefined} />);
+	}
+	return (
+		<>
 			<Panel
+				key="Draft"
 				position={UDim2.fromScale(HALF, HALF)}
 				anchor={new Vector2(HALF, HALF)}
 				width={DRAFT_CARDS_WIDTH}
 				align={Enum.HorizontalAlignment.Center}
 				padding={PROGRESSION_VIEW.cardGap}
-				name="DraftWaiting"
+				transparency={DRAFT_UI.panelT.binding}
+				visible={DRAFT_UI.visible.binding}
+				name="Draft"
 			>
-				<WaitingLine order={1} count={s.draftWaiting} />
+				<Text
+					fill={true}
+					order={1}
+					size={HUD_VIEW.bigText}
+					align={Enum.TextXAlignment.Center}
+					text={str(PROGRESSION_STRINGS.draftTitle)}
+					transparency={DRAFT_UI.titleT.binding}
+				/>
+				<Row order={2} align={Enum.HorizontalAlignment.Center}>
+					{cards}
+				</Row>
+				<Text
+					fill={true}
+					order={3}
+					size={HUD_VIEW.smallText}
+					color="uiTextDim"
+					align={Enum.TextXAlignment.Center}
+					text={hintText}
+					transparency={DRAFT_UI.hintT.binding}
+				/>
+				{waiting > 0 ? (
+					<WaitingLine order={4} count={waiting} transparency={DRAFT_UI.hintT.binding} />
+				) : undefined}
 			</Panel>
-		);
-	}
-	const v = PROGRESSION_VIEW;
-	const width = DRAFT_CARDS_WIDTH;
-	const hint = draftHint(bindings)[keyDevice(device)];
-	const cards = s.draftOffers.map((boon, i) => (
-		<DraftCard
-			key={`c${i}`}
-			order={i + 1}
-			boon={boon}
-			selected={i === s.draftSelected}
-			onTap={touch ? () => actions.draftTap(i) : undefined}
-		/>
-	));
-	return (
-		<Panel
-			position={UDim2.fromScale(HALF, HALF)}
-			anchor={new Vector2(HALF, HALF)}
-			width={width}
-			align={Enum.HorizontalAlignment.Center}
-			padding={v.cardGap}
-			name="Draft"
-		>
-			<Text
-				fill={true}
-				order={1}
-				size={HUD_VIEW.bigText}
-				align={Enum.TextXAlignment.Center}
-				text={str(PROGRESSION_STRINGS.draftTitle)}
-			/>
-			<Row order={2} align={Enum.HorizontalAlignment.Center}>
-				{cards}
-			</Row>
-			<Text
-				fill={true}
-				order={3}
-				size={HUD_VIEW.smallText}
-				color="uiTextDim"
-				align={Enum.TextXAlignment.Center}
-				text={
-					touch && s.draftReady
-						? str(TOUCH_STRINGS.hintDraft)
-						: s.draftReady
-						? str(PROGRESSION_STRINGS.draftHint, {
-								left: hint.left,
-								right: hint.right,
-								confirm: hint.confirm,
-						  })
-						: str(PROGRESSION_STRINGS.draftWait)
-				}
-			/>
-			{s.draftWaiting > 0 ? <WaitingLine order={4} count={s.draftWaiting} /> : undefined}
-		</Panel>
+			{!draftOpen && waiting > 0 ? (
+				<Panel
+					key="DraftWaiting"
+					position={UDim2.fromScale(HALF, HALF)}
+					anchor={new Vector2(HALF, HALF)}
+					width={DRAFT_CARDS_WIDTH}
+					align={Enum.HorizontalAlignment.Center}
+					padding={PROGRESSION_VIEW.cardGap}
+					visible={NOT_VISIBLE}
+					name="DraftWaiting"
+				>
+					<WaitingLine order={1} count={waiting} />
+				</Panel>
+			) : undefined}
+		</>
 	);
 }
