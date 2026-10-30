@@ -1,7 +1,10 @@
 # Grazes and parries (plan)
 
-Status (2026-10-30): **plan only, nothing built.** Decisions GPD1-GPD10 below carry a recommendation each; the owner
-answers them in GP0 before GP1 starts.
+Status (2026-10-30): **GP1-GP7 and GP9 built on branch `graze-parry`** (from `main` @ `3900250` plus a WIP
+snapshot commit of the owner's uncommitted tree), headless checks in "As built" below. The owner accepted every
+recommendation (GPD1-GPD10) as written. **GP8 (optional) not done; GP0 audio audition, GP10 audio lock / build /
+upload and the Studio check pending (owner).** Until the two clips are uploaded both IDs are silent: a guard plays
+today's deflect, a graze is silent, and the sparks and PARRY! flash already show.
 
 Goal: make the two skill moves the game already scores feel good the moment they happen. A **graze** (an enemy bullet
 skims past inside the graze ring and leaves without touching you) gets a small white spark where it skimmed and a
@@ -152,6 +155,27 @@ score pops (no "+5" per graze, GPD9), the tutorial's callouts, any hash group, f
 - **GPD9 Numbers.** No "+5" / "+10" pops for grazes or parries (the meter and PARRY! carry it).
 - **GPD10 Audio.** Two new port IDs rather than reusing `sfx.player.deflect` with pitch: the parry must sound
   different from a swing clearing bullets.
+
+## As built (2026-10-30)
+
+Built by parallel agents on worktree branches merged into `graze-parry` (`gp-sim`, `gp-theme`, `gp-view`, then
+`gp-particles`, `gp-audio`, `gp-flash`). Changes from the plan are marked **Change**.
+
+| Task | As built |
+|---|---|
+| GP1 | `ScoreEvents` `grazeX/Z/VX/VZ/Player`, `guardX/Z/Player` (created, cleared, deep-cloned; never hashed). `scoreBulletVisit(..., grazer = SOLO_PLAYER)` pushes the bullet's position / velocity after this tick's move (the tick it leaves the ring); co-op passes the nearest living player `ti`. `sweepArc(..., eraseSink?: ArcEraseSink)` (melee.ts, 13th parameter) pushes each erased bullet's position before the Mirror reflect; the sword's guard points one module-level sink at the score events only when `state.score` is set and pushes `ctx.playerIndex` per erase. Spec `sim/score/nearMissFeed.spec.ts` (11): positions, co-op attribution, swings / unscored record nothing, Mirror Cloak unchanged, clone, hash independence |
+| GP2 | `NearMissEvents` / `NearMissFrameSource` / `NO_NEAR_MISS_EVENTS` (shared/view/fx nearMissEvents.ts; pooled records `GrazeRecord`, `GuardEraseRecord`); `RunView.nearMiss` on LiveRun and LockstepClient (the only two RunViews) |
+| GP3 | Port audio IDs `sfx.player.graze` / `sfx.player.parry` (SILENT in the placeholder; vale silent until uploaded; art/audio.json unconfirmed candidates: graze Magic5 (alt Heal3, Bubble) 0.35, parry Bonus (alt Alert, Alert4) 0.7, not in `art/audio.lock.json` yet). Colour roles `nearMiss.graze` `#c8f4ff`, `nearMiss.parry` `#ffe9a8` (`NEAR_MISS_ROLES`, `NEAR_MISS_COLOR_RULES` against `ROOM_EDGE_DIFFERENCE_ROLES`, `nearMissReport` in `validateManifest`; lowest floor contrast 12.4 / 12.2:1, nearest: telegraph at 88.8 / 52.9 CIE76). Strings `fx.parry.text` "PARRY!", `fx.parry.count` "x{n}" (`NEAR_MISS_STRING_KEYS`). contract.luau / validate.luau are at 193 top-level locals (limit 200) |
+| GP4 | `NEAR_MISS_VIEW` (nearMissConfig.ts) and the pure `NearMissDirector.frame(source, state, viewIndex, quiet, settings, clockSec)` -> `NearMissFrame` { grazeSparks (closest point of the path), parryBursts (away from the guard, capped 8, extras add `weight`), grazeCue (view player, chain ladder), parryCues (one per guard start; +3 st from 3 first-frame erases), flashes (one per player, 0.45 s, pop / fade, count from 3, teammate 0.7), freezeMs }. A guard group = erases within `SWORD_DATA.guardTicks` of its first. `semitonesToSpeed` reused from hud/comboConfig (imported from the file: the hud barrel imports fx) |
+| — | **Change:** `NearMissController` (client/controllers/fx) owns the ONE director, steps it inside FxTrackerController's frame dispatch and calls its own `onFrame` subscribers (particles, flash, audio), so no consumer depends on Flamework start order |
+| GP5 | `DeathParticleSystem.graze(...)` / `.parry(...)` (kinds `KIND_GRAZE` 3, `KIND_PARRY` 4) on the death particles' pool, budget, RNG and draw path. Graze: sparks + a rigid 3-dot streak on the floor (no hop, no ring), never recycling other particles (spawns only under `graze.maxFill` of the live limit). Parry: a fan of sparks with a small hop (none under reduced motion) + one 1 px ring (RingPool, outside the budget as before). Spec `view/fx/nearMissParticles.spec.ts` (18) |
+| GP6 | `SFX.playerGraze` (priority 53: above enemy sounds and the shot, below the swing, the kill ladder, telegraph, hurt; min interval 0.05 s; exact speed) and `SFX.playerParry` (priority 57; local full, teammate at `AUDIO_VIEW.teammateVolume`; one per frame). A parry replaces the deflect; while the parry ID is silent the mapper ignores parries, so a guard sounds exactly as today. **Change:** the deflect is also muted for later erases of the same guard (one ring-out per guard, not ring-out + clicks); swing deletes keep it. **Change:** AudioController's sound frame now runs as a NearMissController subscriber (ComboController's debug sound may land a frame later). Spec `view/audio/nearMiss.spec.ts` (14) |
+| GP7 | `ParryFlashController` + shared/view/hud parryFlash.ts (`parryFlashCentre`, `parryFlashSize`, `parryFlashOpacity`, `parryFlashLabel`, `PARRY_FLASH_DRAW`, `PARRY_DEBUG`). The combo shout's floor SurfaceGui construction, layer and opacity cap; centre 1.2 tiles screen-down of the feet (the shout is screen-up; the boxes cannot overlap). One slot per player (MAX_PARTY_SIZE). Extracted for sharing, combo behaviour unchanged: `ShoutDuck` (comboDraw.ts) and `shoutBoxAt(..., sizeScale = 1)`. **Change:** the duck box is the drawn text's box (+ `duckMarginTiles`), not the full shout box; it still reaches ~0.2 tiles above the feet, so bullets at the guard will often duck the flash right after a parry (Studio check 5). Freeze through `sim.hitstop.request(freezeMs, settings)` (the heavy hit's path). Debug `KV_ParryDebug` (Workspace attribute, integer n: one flash of n erases on the view player; drawn only). Spec `view/hud/parryFlash.spec.ts` (14) |
+| GP8 | Not done (optional): the deflect and shield re-flash still use the `mayDeflect` guess when there is no parry |
+| GP9 | This section; CLAUDE.md decision log |
+
+Not done: the PARRY! text is world-space, so it follows the camera rather than the touch HUD scale floor (Studio /
+device check 9).
 
 ## Later (not in this plan)
 

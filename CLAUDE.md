@@ -287,6 +287,17 @@ Decision log (deviations from `PLAN.md`):
   the owner's Pixabay MP3 in gitignored `art/vendor/pixabay/`). The tier-up floor shout is a SurfaceGui under every
   bullet (sprite effects' floor placement), <= 55 % opaque, ducking near enemy bullets. Nudge kind `comboBreak`.
   Debug `KV_ComboDebug`. No setting. Studio check and audio upload pending.
+- **Grazes and parries (docs/GRAZE_PARRY.md).** One unhashed sim feed, otherwise presentation only (no hash, replay,
+  fixture, rng, score or lockstep change): `ScoreEvents` gained per-tick `grazeX/Z/VX/VZ/Player` (pushed by
+  `scoreBulletVisit`'s new trailing `grazer`) and `guardX/Z/Player` (the guard passes `sweepArc` a trailing
+  `ArcEraseSink`), like the kill pops' `popX`. `RunView.nearMiss` (`NearMissEvents`, per tick) feeds the ONE
+  `NearMissDirector`, owned by the client's `NearMissController`, whose `onFrame` subscribers are the sparks
+  (`DeathParticleSystem.graze` / `.parry`, kinds 3 / 4), `ParryFlashController` (PARRY! floor text on the combo
+  shout's construction, 1.2 tiles screen-down, solo 30 ms freeze through the hitstop clock) and AudioController (its
+  whole sound frame now runs as that subscriber). Theme: colour roles `nearMiss.graze` / `.parry` (`nearMissReport`),
+  strings `fx.parry.text` / `.count`, port audio IDs `sfx.player.graze` / `sfx.player.parry` (SILENT in the
+  placeholder; a silent parry leaves today's deflect untouched). contract.luau / validate.luau sit at 193 of Luau's
+  200 top-level locals. Scored runs only. No setting. Debug `KV_ParryDebug`. Audio upload and Studio check pending.
 
 ## Commands
 
