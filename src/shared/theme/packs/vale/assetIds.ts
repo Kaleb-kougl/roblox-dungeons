@@ -45,8 +45,8 @@ import type { RobloxAssetId } from "../../types";
  * Audio: 38 of the 54 art/build/audio/*.ogg files uploaded 2026-10-26 11:08 by k9kbdev (Asset Manager Bulk Import,
  * built by audio:build with ffmpeg 6.1.1), transcribed from Asset Manager screenshots. 15 more uploaded 2026-10-30
  * 12:08-12:10 PM by k9kbdev (amb-b1, the eight music-*.ogg, sfx-depth-up, sfx-enemy-hurt-3 / -4 / -6,
- * sfx-enemy-telegraph, sfx-stairwell-open), transcribed from Asset Manager screenshots. Not yet here:
- * the room clear sounds (docs/ROOM_CLEAR.md RC4: sfx-room-perfect, sfx-score-tick, sfx-score-land, not built yet).
+ * sfx-enemy-telegraph, sfx-stairwell-open), transcribed from Asset Manager screenshots. The room clear sounds
+ * (docs/ROOM_CLEAR.md RC4: sfx-room-perfect, sfx-score-tick, sfx-score-land) were built and uploaded the same day.
  * (The same batch re-uploaded sfx-enemy-shoot as 103955792909072; its ID above is unchanged.)
  * sfx-player-shoot is NOT the pipeline's file: the owner chose an external clip, "djartmusic-arrow-twang_01-306041",
  * uploaded 2026-10-30 12:29 PM by k9kbdev, instead of art/audio.json's Ninja Adventure Launch.wav. audio:build still
@@ -130,6 +130,9 @@ export const VALE_ASSET_IDS: Readonly<Record<string, RobloxAssetId>> = {
 	"sfx-player-swing-5.ogg": "rbxassetid://119336453391941",
 	"sfx-relic-take.ogg": "rbxassetid://117702527882611",
 	"sfx-room-clear.ogg": "rbxassetid://91705259787657",
+	"sfx-room-perfect.ogg": "rbxassetid://126017159048037",
+	"sfx-score-land.ogg": "rbxassetid://77069986772456",
+	"sfx-score-tick.ogg": "rbxassetid://117631758592807",
 	"sfx-shrine-use.ogg": "rbxassetid://116463287240842",
 	"sfx-stairwell-open.ogg": "rbxassetid://85934761619292",
 	"sfx-ui-back.ogg": "rbxassetid://97552556590703",
