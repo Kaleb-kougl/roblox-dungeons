@@ -4,7 +4,8 @@
  * presentation (tutorial.ts), the co-op spectate bar (spectate.ts), the corner panels' anchors (corners.ts), the
  * timed hints (hints.ts), the in-run HUD's footprint budget (footprint.ts, docs/HUD_LAYOUT.md H2; the corner minimap's box, minimapHud.ts), wrapping rows
  * of equal cells (wrap.ts), the corner panels' occlusion fade (occlusion.ts, H7) and the combo's tiers, kill pitch,
- * display state machine and floor shout test (comboConfig.ts, combo.ts; docs/COMBO.md CB2).
+ * display state machine and floor shout test (comboConfig.ts, combo.ts; docs/COMBO.md CB2), and how the combo row, meter
+ * and floor shout are drawn (comboDraw.ts, CB6 / CB7).
  */
 export * from "./layout";
 export * from "./strings";
@@ -24,3 +25,4 @@ export * from "./roomClear";
 export * from "./comboConfig";
 export * from "./combo";
 export * from "./comboStrings";
+export * from "./comboDraw";
