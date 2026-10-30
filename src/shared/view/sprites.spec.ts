@@ -72,8 +72,10 @@ import {
 	SWORD_V_BUSY,
 	SWORD_V_LAST,
 	SWORD_V_STEP,
+	TURRET_CASTER,
 	TURRET_RESPAWN_TICKS,
 	TURRET_SNIPER,
+	TURRET_SPRAYER,
 	WEAPON_SCRATCH_SLOTS,
 	newPlayerState,
 	ATTACK_TICKS_BOON_PERCENT,
@@ -133,7 +135,9 @@ import {
 	screenAngleDeg,
 	sniperAttack,
 	sniperSpriteInput,
+	turretCasterSpriteInput,
 	turretSniperSpriteInput,
+	turretSprayerSpriteInput,
 	turretSpriteInputOf,
 	screenAngleFromBasis,
 	spriteBillboard,
@@ -729,6 +733,74 @@ describe("chooseActorAnim (turret)", () => {
 		expect(build(actorState({ alive: 0, deadTicks: 1 }), 0).corpseTicks).toBe(12);
 	});
 });
+
+// M1's turrets as Demon Spawn sets (docs/DEMON_ART.md Phase 2). Independent of the built layout: a stand-in set with
+// an idle loop, a multi-frame hit and a death.
+const TURRET_SET = source({ idle: anim(4, 6, true), hit: anim(3, 12, false), death: anim(6, 10, false) });
+
+const M1_TURRETS: ReadonlyArray<
+	[string, typeof TURRET_SPRAYER, (a: Readonly<ActorState>, alpha: number) => ActorSpriteInput, string]
+> = [
+	["turret.sprayer", TURRET_SPRAYER, turretSprayerSpriteInput, "enemy.sprayer"],
+	["turret.caster", TURRET_CASTER, turretCasterSpriteInput, "enemy.caster"],
+];
+
+for (const [name, def, build, spriteId] of M1_TURRETS) {
+	describe(`chooseActorAnim (${name}, docs/DEMON_ART.md Phase 2)`, () => {
+		const corpseTicks = def.data.corpseTicks ?? CORPSE_TICKS;
+
+		it("is the archetype with its own sprite id", () => {
+			expect(def.id).toBe(name);
+			expect(def.data.spriteId).toBe(spriteId);
+		});
+
+		it("idles alive: never attacks or moves, even mid-burst or when displaced", () => {
+			const a = actorState({ aiState: AiState.TELEGRAPH, aiTicks: 5, cooldown: 1, prevX: 0, x: 1 });
+			const input = build(a, 0.5);
+			expect(input.alive).toBe(true);
+			expect(input.attack).toBe(undefined);
+			expect(input.speed).toBe(0);
+			expect(input.refSpeed).toBe(0);
+			expect(chooseActorAnim(input, TURRET_SET)).toEqual({ anim: "idle", rate: 1 });
+			expect(chooseActorAnim(input, SKELETON)).toEqual({ anim: "idle", rate: 1 });
+		});
+
+		it("plays a multi-frame hit over the hit flash (a 1-frame stand-in leaves it to the tint)", () => {
+			const hit = build(actorState({ flashTicks: HIT_FLASH_TICKS }), 0);
+			expect(hit.flashTicks).toBe(HIT_FLASH_TICKS);
+			expect(chooseActorAnim(hit, TURRET_SET)).toEqual({ anim: "hit", progress: 0, rate: 1 });
+			expect(chooseActorAnim(hit, SKELETON)).toEqual({ anim: "idle", rate: 1 });
+		});
+
+		it("plays death for its corpse time, then is hidden until it respawns", () => {
+			const dying = actorState({ alive: 0, deadTicks: 3 });
+			const input = build(dying, 0);
+			expect(input.alive).toBe(false);
+			expect(input.corpseTicks).toBe(corpseTicks);
+			expect(chooseActorAnim(input, TURRET_SET)).toEqual({
+				anim: "death",
+				progress: 3 / (corpseTicks * SPRITE_VIEW.deathCorpseFraction),
+				rate: 1,
+			});
+			expect(corpseTransparency(dying.alive, dying.deadTicks, input.corpseTicks)).toBeLessThan(1);
+			// Past the corpse time (but before TURRET_RESPAWN_TICKS): fully faded.
+			expect(TURRET_RESPAWN_TICKS).toBeGreaterThan(corpseTicks);
+			const gone = actorState({ alive: 0, deadTicks: corpseTicks });
+			expect(corpseTransparency(gone.alive, gone.deadTicks, build(gone, 0).corpseTicks)).toBe(1);
+			const later = actorState({ alive: 0, deadTicks: TURRET_RESPAWN_TICKS - 1 });
+			expect(corpseTransparency(later.alive, later.deadTicks, build(later, 0).corpseTicks)).toBe(1);
+		});
+
+		it("is a live idle body again once revived", () => {
+			// turretStepDead revives at TURRET_RESPAWN_TICKS: reviveActor sets alive = 1, deadTicks = 0.
+			const revived = actorState({ alive: 1, deadTicks: 0, hp: def.data.hp });
+			const input = build(revived, 0);
+			expect(input.alive).toBe(true);
+			expect(chooseActorAnim(input, TURRET_SET)).toEqual({ anim: "idle", rate: 1 });
+			expect(corpseTransparency(revived.alive, revived.deadTicks, input.corpseTicks)).toBe(0);
+		});
+	});
+}
 
 describe("tickSpeed", () => {
 	it("is one tick's displacement times SIM_HZ", () => {
@@ -1532,20 +1604,28 @@ describe("boss.act1 sprite timeline on a real fight (seed 1337)", () => {
 });
 
 describe("ACTOR_SPRITE_INPUTS", () => {
-	it("has builders for the swarmer, the sniper, turret.sniper, the bruiser, boss.act1 and boss.demonlord (other archetypes: none)", () => {
-		expect(ACTOR_SPRITE_INPUTS.size()).toBe(6);
+	it("has builders for the swarmer, the sniper, turret.sniper, turret.sprayer, turret.caster, the bruiser, boss.act1 and boss.demonlord (other archetypes: none)", () => {
+		expect(ACTOR_SPRITE_INPUTS.size()).toBe(8);
 		expect(ACTOR_SPRITE_INPUTS.get(SWARMER.id)).toBe(swarmerSpriteInput);
 		expect(ACTOR_SPRITE_INPUTS.get(SNIPER.id)).toBe(sniperSpriteInput);
 		expect(ACTOR_SPRITE_INPUTS.get(TURRET_SNIPER.id)).toBe(turretSniperSpriteInput);
+		expect(ACTOR_SPRITE_INPUTS.get(TURRET_SPRAYER.id)).toBe(turretSprayerSpriteInput);
+		expect(ACTOR_SPRITE_INPUTS.get(TURRET_CASTER.id)).toBe(turretCasterSpriteInput);
 		expect(ACTOR_SPRITE_INPUTS.get(BRUISER.id)).toBe(bruiserSpriteInput);
 		expect(ACTOR_SPRITE_INPUTS.get(BOSS_ACT1_ID)).toBe(bossAct1SpriteInput);
 		expect(ACTOR_SPRITE_INPUTS.get(BOSS_DEMONLORD_ID)).toBe(demonlordSpriteInput);
 	});
 
-	it("still draws the bruiser and both bosses as placeholders until the pack has a sprite set for them", () => {
+	it("still draws the bruiser, both bosses and M1's turrets as placeholders until the pack has a sprite set for them", () => {
 		// ActorRenderController takes the sprite path only with a builder AND pack.sprites(spriteId) (a `sprites` asset).
 		const quiet = () => undefined;
-		const ids = [BRUISER.data.spriteId, BOSS_ACT1_DATA.spriteId, DEMONLORD_DATA.spriteId];
+		const ids = [
+			BRUISER.data.spriteId,
+			BOSS_ACT1_DATA.spriteId,
+			DEMONLORD_DATA.spriteId,
+			TURRET_SPRAYER.data.spriteId,
+			TURRET_CASTER.data.spriteId,
+		];
 		for (const packId of listThemePacks()) {
 			const pack = loadThemePack(packId, { warn: quiet });
 			for (const id of ids) {

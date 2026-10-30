@@ -18,8 +18,9 @@ six bullet IDs, the biome tiles, `ui.cursor` (the facing pip) and the pedestal /
 | co-op player marker / under-player ring | **`highlight_yellow`**, tinted per player | Lords of Pain demo |
 | relic pedestal marker (`RunMarkerController`) | **`loot_indicator_yellow`** beam (+ `glint`, stretch) | Lords of Pain demo |
 | `enemy.sniper` (+ the tutorial's `turret.sniper`) | **Subservient** (worship; every other animation a stand-in, docs/SNIPER_ART.md) | Lords of Pain (full pack) |
-| `enemy.bruiser` | **Demon Beast 3** (idle, walk, Attack 4 leap and slam, TakeDamage 1, Die 1; docs/DEMON_ART.md): art staged (set built, 3 sheets + rims), **not yet uploaded** (licence not recorded, DD6), so still the placeholder | 2D Demons - TopDown asset pack v1.1 |
-| `boss.act1` (Mother Bramble) | **Demon Elite 3** (idle, walk, taunt, Attack 1-4, Die 1; docs/BRAMBLE_ART.md): art staged (set built, 7 sheets + rims), **not yet uploaded** (same licence gap), so still the placeholder | 2D Demons - TopDown asset pack v1.1 |
+| `enemy.bruiser` | **Demon Beast 3** (idle, walk, Attack 4 leap and slam, TakeDamage 1, Die 1; docs/DEMON_ART.md): 3 sheets + rims, uploaded 2026-10-26 | 2D Demons - TopDown asset pack v1.1 |
+| `boss.act1` (Mother Bramble) | **Demon Elite 3** (idle, walk, taunt, Attack 1-4, Die 1; docs/BRAMBLE_ART.md): 7 sheets + rims, uploaded 2026-10-26 | 2D Demons - TopDown asset pack v1.1 |
+| `enemy.sprayer` / `enemy.caster` (M1's turrets, the tutorial's sprayers) | **Demon Spawn 8** / **Demon Spawn 11** (Idle 1, TakeDamage 1, Die 1; the baked staff glow cut by `layerNoiseAlpha`; docs/DEMON_ART.md Phase 2): set built, 2 sheets + rims each, **not yet uploaded** (DA13), so still the placeholders | 2D Demons - TopDown asset pack v1.1 |
 | boost drops `boost.fury` / `.quickstep` / `.frenzy` / `.aegis` (docs/BOOST_ART.md) | **`gold_drop`** (Fury) and **`gemstones_blue` / `_green` / `_white`**, S facing frame 0, 29.6 px/tile; halo `decor.fx.glow` and sparkle `decor.fx.glint` (the decor atlas), beam **`loot_indicator_white`** (`ui.marker.boost`), all tinted by the kind's role | Lords of Pain (full pack) |
 | walls, the shrine | placeholder primitives (unchanged) | none |
 | every `bullet.*` | neon placeholders (unchanged: they keep the GDD bullet-readability rule) | none |
@@ -35,7 +36,7 @@ bought for this plan.
 |---|---|---|---|
 | **HD 8-Directional Top-Down Character Pack 1**, free edition (Knight), SmallScaleInt ([itch.io](https://smallscaleint.itch.io/hd-8-directional-top-down-character-pack-1)) | `2D HD Character Knight/Spritesheets/With shadows/` | 29 sheets. Each is **1920x1024** = 15 frames x **8 facings** in **128x128** cells, one animation per sheet, baked shadow | Commercial use, no attribution, may modify; **may not redistribute the raw files**; shipping them in a compiled game is allowed (author) |
 | **Lords of Pain: Old School Isometric Assets (DEMO)**, Pupkin Assets ([itch.io](https://trevor-pupkin.itch.io/lords-of-pain)) | `(DEMO) Lords Of Pain - Old School Isometric Assets/` | 539 PNGs, one **256x256** frame each, **16 facings** (E = 0 deg, counter-clockwise, 22.5 deg steps), baked shadow | Free and commercial use, may modify; **may not redistribute or resell, even if modified** |
-| **2D Demons - TopDown asset pack v1.1** (author and source not recorded) | `art/vendor/demons-topdown/` | 34 creatures; separated body / `Shadows/` / `Effects/` sheets, each **1920x1024** = 15 frames x **8 facings** in **128x128** cells, the knight's format (docs/DEMON_ART.md) | **Not recorded** (no licence file); nothing is uploaded until it is (DEMON_ART DD6, `THIRD_PARTY_NOTICES.md`) |
+| **2D Demons - TopDown asset pack v1.1** ("Top-down Demons"), SmallScaleInt ([itch.io](https://smallscaleint.itch.io/top-down-demons)) | `art/vendor/demons-topdown/` | 34 creatures; separated body / `Shadows/` / `Effects/` sheets, each **1920x1024** = 15 frames x **8 facings** in **128x128** cells, the knight's format (docs/DEMON_ART.md) | Standard Commercial License: commercial use, no attribution, may modify; **may not redistribute or resell the raw files** (DEMON_ART DD6, `THIRD_PARTY_NOTICES.md`) |
 
 Slice frames used:
 
@@ -96,7 +97,10 @@ Layered sources and per-sheet cells (docs/DEMON_ART.md DA2, 2026-10-26): a `grid
 (sub-folders of `dir`, bottom to top, `""` = the dir itself; e.g. `["Shadows", ""]`), composited before the crop and
 locked file by file; a set with `"cells": "perSheet"` trims each sheet to its own animations and gives it its own
 `frameW` / `frameH` / `pivot` in `layout.ts` and the theme (`SpriteSheetImage`, actor slots only), the pivot being the
-same point of the art in every sheet. No set uses either yet; every existing output is unchanged.
+same point of the art in every sheet. No set uses either yet; every existing output is unchanged. (Since used by
+`enemy.bruiser`, `boss.act1` and the turrets.) Per-layer noise cut (docs/DEMON_ART.md DA9 / DD7, 2026-10-30): with
+`layers`, `"layerNoiseAlpha": { <layer>: n }` clears that layer's pixels with alpha <= n before compositing; the
+turrets (Demon Spawn 8 / 11) use `{ "": 254 }` to drop the staff glow baked into their body sheets.
 
 ## Tasks
 

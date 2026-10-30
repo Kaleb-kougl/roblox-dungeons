@@ -30,7 +30,7 @@ Record every ported module in `PROVENANCE.md` (ported module, source path, sourc
 | `docs/SNIPER_ART.md` | Sniper art (`enemy.sniper` as the Lords of Pain subservient): mapping, budget, tasks SN1-SN8, decisions D1-D6 |
 | `docs/BOSS_DEMONLORD.md` | Demon Lord boss variant (`boss.demonlord`, seeded pick per endless boss floor, Lords of Pain Demonlord art): plan, tasks D0-D8, decisions |
 | `docs/CURSOR.md` | Gauntlet mouse cursor (Lords of Pain `cursor_gauntlet_*`, software cursor, hover / target colours): plan, tasks C0-C8, decisions D1-D5 |
-| `docs/DEMON_ART.md` | Placeholder enemies as 2D Demons (bruiser = Demon Beast 3; turrets later; Lords of Pain art unchanged): plan, tasks DA0-DA8, decisions DD1-DD6 |
+| `docs/DEMON_ART.md` | Placeholder enemies as 2D Demons (bruiser = Demon Beast 3; turrets sprayer / caster = Demon Spawn 8 / 11; Lords of Pain art unchanged): plan, tasks DA0-DA15, decisions DD1-DD7 |
 | `docs/BRAMBLE_ART.md` | Mother Bramble (`boss.act1`) as a 2D Demons Elite: state-to-animation mapping, size and budget, tasks BR0-BR7, decisions BD1-BD7 |
 | `docs/ROOM_EDGES.md` | Room edges (dashed floor line where every corridor meets a room, tinted safe / waiting / live): plan, tasks RE1-RE8, decisions RD1-RD9 |
 | `docs/HUD_LAYOUT.md` | In-run HUD footprint (corner panels, full-width band fix, info line to the pause menu, occlusion fade): plan, tasks H1-H9, decisions HD1-HD8 |
@@ -172,7 +172,11 @@ Decision log (deviations from `PLAN.md`):
   names its animation and plays segments of it (`ActorAttack.anim` / `segment` / `loop`, `ActorSpecial`, `flinch`),
   split at `SPRITE_ANIM_MARKS` (fractions of the frame count, measured on the art). Two sets: `enemy.bruiser` = Demon
   Beast 3 (the knight's density, 3 sheets + rims) and `boss.act1` = Demon Elite 3 (`bodyTiles` 2.5, 7 sheets + rims);
-  both uploaded 2026-10-26 (ids in `assetIds.ts`), so the bundled vale pack draws them.
+  both uploaded 2026-10-26 (ids in `assetIds.ts`), so the bundled vale pack draws them. Phase 2: the turrets
+  `enemy.sprayer` = Demon Spawn 8 and `enemy.caster` = Demon Spawn 11 (idle / hit / death, 2 sheets + rims each; move
+  and attack alias idle's cells, `turretSpriteInputOf`); their staff glow is baked semi-transparent into the body
+  sheet, so the grid source's `source.layerNoiseAlpha` (`{ "": 254 }`) clears a layer's faint pixels before
+  compositing (DD7). Built, not uploaded: both stay placeholders until their ids are in `assetIds.ts` (DA13).
 - **Room edges (docs/ROOM_EDGES.md).** Presentation only (no sim, hash, replay or fixture change). Three required theme
   colour roles `roomEdge.safe` / `.waiting` / `.live` (`ROOM_EDGE_ROLES`; waiting and live >= 3:1 on every biome floor,
   all three >= 40 CIE76 from the enemy-bullet roles and `telegraph`, `roomEdgeReport`). shared/sim score exports its

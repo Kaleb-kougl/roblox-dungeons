@@ -748,6 +748,51 @@ describe("layered grid sources", () => {
 		assert.equal(A.gridLayers("ok", { type: "grid", dir: "d" }), null);
 	});
 
+	it("layerNoiseAlpha clears a layer's faint pixels before it is composited, leaving the other layers whole", () => {
+		const bottom = A.raster(4, 1);
+		const top = A.raster(4, 1);
+		const SHADE = [2, 4, 5, 191];
+		const GLOW = [255, 0, 255, 126];
+		const BODY = [9, 9, 9, 255];
+		put(bottom, 0, 0, SHADE);
+		put(bottom, 1, 0, SHADE);
+		put(top, 0, 0, GLOW); // a glow over the shadow
+		put(top, 2, 0, GLOW); // a glow over nothing
+		put(top, 3, 0, BODY);
+		A.sourceCache.set("layer/cut/Shadows/a.png", bottom);
+		A.sourceCache.set("layer/cut/a.png", top);
+		const src = { type: "grid", dir: "layer/cut", frameW: 4, frameH: 1, layers: ["Shadows", ""] };
+		const cut = A.gridSheet("t", { ...src, layerNoiseAlpha: { "": 254 } }, "a.png");
+		assert.deepEqual(px(cut, 0, 0), SHADE); // the glow is gone, the shadow under it untouched
+		assert.deepEqual(px(cut, 1, 0), SHADE);
+		assert.deepEqual(px(cut, 2, 0), [0, 0, 0, 0]);
+		assert.deepEqual(px(cut, 3, 0), BODY);
+		// without the option (or a cut of 0) the glow composites as before; the cached sources are never touched
+		const plain = A.gridSheet("t", src, "a.png");
+		assert.notDeepEqual(px(plain, 0, 0), SHADE);
+		assert.deepEqual(px(plain, 2, 0), GLOW);
+		assert.deepEqual([...A.gridSheet("t", { ...src, layerNoiseAlpha: { "": 0 } }, "a.png").data], [...plain.data]);
+		assert.deepEqual(px(A.sourceCache.get("layer/cut/a.png"), 0, 0), GLOW);
+		// a cut on the bottom layer only clears that layer
+		const low = A.gridSheet("t", { ...src, layerNoiseAlpha: { Shadows: 191 } }, "a.png");
+		assert.deepEqual(px(low, 0, 0), GLOW);
+		assert.deepEqual(px(low, 1, 0), [0, 0, 0, 0]);
+	});
+
+	it("rejects a malformed layerNoiseAlpha", () => {
+		const grid = (layerNoiseAlpha, layers = ["Shadows", ""]) => ({ type: "grid", dir: "d", layers, layerNoiseAlpha });
+		assert.equal(A.gridLayerNoise("ok", { type: "grid", dir: "d", layers: [""] }), null);
+		assert.deepEqual(A.gridLayerNoise("ok", grid({ "": 254 })), [0, 254]);
+		assert.throws(() => A.gridLayerNoise("enemy.b", { type: "grid", dir: "d", layerNoiseAlpha: { "": 9 } }), /needs source\.layers/);
+		assert.throws(() => A.gridLayerNoise("enemy.b", grid({ Effects: 9 })), /names "Effects", which is not in source\.layers/);
+		for (const bad of [-1, 255, 1.5, "9", null]) {
+			assert.throws(() => A.gridLayerNoise("enemy.b", grid({ "": bad })), /enemy\.b: source\.layerNoiseAlpha/, JSON.stringify(bad));
+		}
+		for (const bad of [[254], 254, null]) {
+			assert.throws(() => A.gridLayerNoise("enemy.b", grid(bad)), /must be an object/, JSON.stringify(bad));
+		}
+	});
+
 	it("composites before the crop and the pivot: a shadow layer below the body grows the cell, the feet stay", () => {
 		const plain = syntheticSet("layered", {});
 		A.sourceCache.set("synthetic/Shadows/layered.png", A.raster(32, 16));

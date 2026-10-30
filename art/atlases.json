@@ -31,6 +31,8 @@
 		"\"\" = source.dir itself, e.g. [\"Shadows\", \"\"] = the body sheet drawn over the same-named sheet in Shadows/. Each",
 		"animation's sheet is the composite (premultiplied 'over') of its `file` from every layer, made before noiseAlpha,",
 		"the crop, the pivot and the outline read it. Every layer file must exist at the same size; the lock lists each one.",
+		"source.layerNoiseAlpha (optional, with layers; docs/DEMON_ART.md Phase 2): { <layer>: n }, n an integer 0-254: that layer's pixels with alpha <= n are",
+		"cleared before it is composited (noiseAlpha's rule, per layer), e.g. { \"\": 254 } keeps only the body sheet's opaque pixels and drops a glow baked into it.",
 		"cells (optional; docs/DEMON_ART.md DD4): \"perSheet\" crops each sheet to the union box of its own animations (+ pad,",
 		"and always covering the pivot) and writes that sheet's frameW / frameH / pivot into layout.ts; the pivot is the",
 		"set's (measured once), translated into each sheet's crop, so the feet stay put when the animation changes. The",
@@ -273,6 +275,90 @@
 				{ "name": "bruiser-attack", "animations": ["attack"] },
 				{ "name": "bruiser-body", "animations": ["idle", "move", "hit"] },
 				{ "name": "bruiser-death", "animations": ["death"] }
+			]
+		},
+		"enemy.sprayer": {
+			"$comment": [
+				"Turret.sprayer (M1's 16-bullet ring every 1.2 s) as Demon Spawn 8 (docs/DEMON_ART.md Phase 2), the dark-robed caster with the glowing staff; same pack and format as enemy.bruiser: body over Shadows/, no Effects/ (DD3).",
+				"Measured: the Shadows layer is flat alpha 191, RGB (2, 4, 5), as Beast 3's; but unlike Beast 3 the BODY sheet is not alpha 0/255 only: the staff orb's glow is baked into it,",
+				"~6,000-7,000 semi-transparent magenta (255, 0, 255) pixels per sheet (alpha up to 126, all within 3 px of the opaque body). It is an effect in the body layer (DD3: it would read as a bullet",
+				"next to the enemy-bullet roles), so layerNoiseAlpha { \"\": 254 } cuts the body layer to its opaque pixels before it is composited; the shadow under it stays whole, the orb's opaque core stays.",
+				"The renderer plays a turret as idle loop + hit flash + death corpse only (turretSpriteInputOf: never moves, never attacks), so move and attack are the idle cells (cellsOf, no textures).",
+				"Idle 1 frame 14 duplicates frame 0 (the loop picks from 0-13). hit = TakeDamage 1 frames 1, 3 (recoil) and 11, 13 (back towards the idle pose), stretched over the 6-tick flash, so it never",
+				"ends on the staff-swung frames 4-9. death = Die 1, the bruiser's picks (0, 2, 4, 6, 9, 14: standing, falling, lying); no frame of the three sheets touches the 128 source cell's edge.",
+				"cells \"perSheet\" (DD4): two sheets, body (idle + hit) 78x85 in 624x680 and death 116x97 in 696x776 (set union 116x99); 2 atlases + 2 rims. Pivot = source (66, 83).",
+				"Drawn at the knight's exact density (pixelsPerTileFrom, DD5): the idle body (alpha > 250, facing the camera) is 35x43 px = 0.92 x 1.13 tiles, against the turret's r 0.45 hitbox (0.9 across)."
+			],
+			"source": { "type": "grid", "dir": "demons-topdown/Spritesheets with seperated shadows and effects/Demon Spawn 8", "frameW": 128, "frameH": 128, "layers": ["Shadows", ""], "layerNoiseAlpha": { "": 254 } },
+			"facingCount": 8,
+			"rowForFacing": [0, 7, 6, 5, 4, 3, 2, 1],
+			"rowOrderEvidence": [
+				"Rows go CLOCKWISE from screen right, the knight's order (DEMON_ART DA1): output facing d = row (8 - d) % 8. Checked by eye on this set's built contact sheet (idle frame 0, 3x):",
+				"facing 6 (source row 2, towards the camera) shows the red T face marking on the hood, both hands at its sides (Spawn 11, the same rig, shows its striped face mask here); facing 2 (row 6, away) the hood from behind between spread horns, the staff upright at screen right.",
+				"facings 0 and 4 are the two profiles, the staff held out towards screen right and screen left; the face shows on facings 5-7 and the back on 1-3.",
+				"The staff stays in one hand: screen left in facing 6, screen right in facing 2, so the two are opposite views, not mirrored rows. Same rig as enemy.caster (Demon Spawn 11), same order."
+			],
+			"noiseAlpha": 2,
+			"pad": 3,
+			"pivot": { "measure": { "animation": "idle", "facing": 6, "frame": 0 }, "bodyAlpha": 250, "bodyMinRgb": 0, "footBand": 6 },
+			"pivotNote": "The body sheet's glow is cut (layerNoiseAlpha), so it is alpha 0/255 again and alpha > 250 is exactly the body: the pivot, the body height and the outline mask leave the flat alpha 191 shadow out (bodyMinRgb 0). Measured on idle facing 6 (source row 2, towards the camera), frame 0: feet at source (66, 83). The build's per-facing measure sits up to 8 px lower in the other facings: the staff's foot reaches below the feet there; on the contact sheet the pivot is on the feet in all 8 facings.",
+			"outline": { "widthPx": 2 },
+			"outlineNote": "Enemy contrast rim (docs/OUTLINE.md, decision E4: 2 art px). pad 3 = widthPx + 1.",
+			"pixelsPerTileFrom": "class.vanguard",
+			"resample": "Default",
+			"cells": "perSheet",
+			"animations": {
+				"idle": { "file": "Idle 1.png", "frames": [0, 3, 7, 10], "fps": 6, "loop": true },
+				"move": { "cellsOf": "idle", "fps": 6, "loop": true },
+				"attack": { "cellsOf": "idle", "fps": 6, "loop": true },
+				"hit": { "file": "TakeDamage 1.png", "frames": [1, 3, 11, 13], "fps": 12, "loop": false },
+				"death": { "file": "Die 1.png", "frames": [0, 2, 4, 6, 9, 14], "fps": 10, "loop": false }
+			},
+			"sheets": [
+				{ "name": "sprayer-body", "animations": ["idle", "hit"] },
+				{ "name": "sprayer-death", "animations": ["death"] }
+			]
+		},
+		"enemy.caster": {
+			"$comment": [
+				"Turret.caster (M1's 3-arm spiral) as Demon Spawn 11 (docs/DEMON_ART.md Phase 2), the pale rig-mate of Spawn 8 (same body and animations, red cloth); same pack and format as enemy.bruiser: body over Shadows/, no Effects/ (DD3).",
+				"Measured: the Shadows layer is flat alpha 191, RGB (2, 4, 5), as Beast 3's; but unlike Beast 3 the BODY sheet is not alpha 0/255 only: the staff orb's glow is baked into it,",
+				"~6,000-7,000 semi-transparent red (255, 0, 0) pixels per sheet (alpha up to 131, all within 3 px of the opaque body). It is an effect in the body layer (DD3: it would read as a bullet",
+				"next to the enemy-bullet roles), so layerNoiseAlpha { \"\": 254 } cuts the body layer to its opaque pixels before it is composited; the shadow under it stays whole, the orb's opaque core stays.",
+				"The renderer plays a turret as idle loop + hit flash + death corpse only (turretSpriteInputOf: never moves, never attacks), so move and attack are the idle cells (cellsOf, no textures).",
+				"Idle 1 frame 14 duplicates frame 0 (the loop picks from 0-13). hit = TakeDamage 1 frames 1, 3 (recoil) and 11, 13 (back towards the idle pose), stretched over the 6-tick flash, so it never",
+				"ends on the staff-swung frames 4-9. death = Die 1, the bruiser's picks (0, 2, 4, 6, 9, 14: standing, falling, lying); no frame of the three sheets touches the 128 source cell's edge.",
+				"cells \"perSheet\" (DD4): two sheets, body (idle + hit) 78x85 in 624x680 and death 116x97 in 696x776 (set union 116x99); 2 atlases + 2 rims. Pivot = source (66, 83).",
+				"Drawn at the knight's exact density (pixelsPerTileFrom, DD5): the idle body (alpha > 250, facing the camera) is 35x43 px = 0.92 x 1.13 tiles, against the turret's r 0.45 hitbox (0.9 across)."
+			],
+			"source": { "type": "grid", "dir": "demons-topdown/Spritesheets with seperated shadows and effects/Demon Spawn 11", "frameW": 128, "frameH": 128, "layers": ["Shadows", ""], "layerNoiseAlpha": { "": 254 } },
+			"facingCount": 8,
+			"rowForFacing": [0, 7, 6, 5, 4, 3, 2, 1],
+			"rowOrderEvidence": [
+				"Rows go CLOCKWISE from screen right, the knight's order (DEMON_ART DA1): output facing d = row (8 - d) % 8. Checked by eye on this set's built contact sheet (idle frame 0, 3x):",
+				"facing 6 (source row 2, towards the camera) shows the red-and-white striped face mask; facing 2 (row 6, away) the back of the dark horned helmet, no mask, the pale back between the red cloth.",
+				"facings 0 and 4 are the two profiles, the staff held out towards screen right and screen left; the face shows on facings 5-7 and the back on 1-3.",
+				"The staff stays in one hand: screen left in facing 6, screen right in facing 2, so the two are opposite views, not mirrored rows. Same rig as enemy.sprayer (Demon Spawn 8), same order."
+			],
+			"noiseAlpha": 2,
+			"pad": 3,
+			"pivot": { "measure": { "animation": "idle", "facing": 6, "frame": 0 }, "bodyAlpha": 250, "bodyMinRgb": 0, "footBand": 6 },
+			"pivotNote": "The body sheet's glow is cut (layerNoiseAlpha), so it is alpha 0/255 again and alpha > 250 is exactly the body: the pivot, the body height and the outline mask leave the flat alpha 191 shadow out (bodyMinRgb 0). Measured on idle facing 6 (source row 2, towards the camera), frame 0: feet at source (66, 83). The build's per-facing measure sits up to 8 px lower in the other facings: the staff's foot reaches below the feet there; on the contact sheet the pivot is on the feet in all 8 facings.",
+			"outline": { "widthPx": 2 },
+			"outlineNote": "Enemy contrast rim (docs/OUTLINE.md, decision E4: 2 art px). pad 3 = widthPx + 1.",
+			"pixelsPerTileFrom": "class.vanguard",
+			"resample": "Default",
+			"cells": "perSheet",
+			"animations": {
+				"idle": { "file": "Idle 1.png", "frames": [0, 3, 7, 10], "fps": 6, "loop": true },
+				"move": { "cellsOf": "idle", "fps": 6, "loop": true },
+				"attack": { "cellsOf": "idle", "fps": 6, "loop": true },
+				"hit": { "file": "TakeDamage 1.png", "frames": [1, 3, 11, 13], "fps": 12, "loop": false },
+				"death": { "file": "Die 1.png", "frames": [0, 2, 4, 6, 9, 14], "fps": 10, "loop": false }
+			},
+			"sheets": [
+				{ "name": "caster-body", "animations": ["idle", "hit"] },
+				{ "name": "caster-death", "animations": ["death"] }
 			]
 		},
 		"boss.act1": {

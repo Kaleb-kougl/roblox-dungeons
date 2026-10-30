@@ -132,6 +132,66 @@
 			"bytes": 158547
 		},
 		{
+			"path": "demons-topdown/Spritesheets with seperated shadows and effects/Demon Spawn 11/Die 1.png",
+			"sha256": "5a39cc23922f56bec24f3e343296e287c1182477fe6a79cd7ae332856018118f",
+			"bytes": 145921
+		},
+		{
+			"path": "demons-topdown/Spritesheets with seperated shadows and effects/Demon Spawn 11/Idle 1.png",
+			"sha256": "524df396bd389cdf666b33311373ee79661e6e97696cf49e823172c2e346b9df",
+			"bytes": 97843
+		},
+		{
+			"path": "demons-topdown/Spritesheets with seperated shadows and effects/Demon Spawn 11/Shadows/Die 1.png",
+			"sha256": "f3c17c9d5db5dd2808348324c6169a492f5457842f8c2b192a4c6884c1ee2590",
+			"bytes": 32792
+		},
+		{
+			"path": "demons-topdown/Spritesheets with seperated shadows and effects/Demon Spawn 11/Shadows/Idle 1.png",
+			"sha256": "801c25a15d32faf3b79c1cd39c9b6518414798af27e95c53d8a858cd85545018",
+			"bytes": 24968
+		},
+		{
+			"path": "demons-topdown/Spritesheets with seperated shadows and effects/Demon Spawn 11/Shadows/TakeDamage 1.png",
+			"sha256": "51a135a5cd2773ff4fcf8f52fa4d0745b9f7fd11d781e4e583209d0e9f2ddacc",
+			"bytes": 34331
+		},
+		{
+			"path": "demons-topdown/Spritesheets with seperated shadows and effects/Demon Spawn 11/TakeDamage 1.png",
+			"sha256": "9bcb68d13e8a89e18778a780838b6f6543d705240b6d58544b45b9e44ff2c74e",
+			"bytes": 146223
+		},
+		{
+			"path": "demons-topdown/Spritesheets with seperated shadows and effects/Demon Spawn 8/Die 1.png",
+			"sha256": "a25f9f6194bc729148ab43a42ce8838983e2d173c256c374ca02e8e6ea38aec8",
+			"bytes": 122206
+		},
+		{
+			"path": "demons-topdown/Spritesheets with seperated shadows and effects/Demon Spawn 8/Idle 1.png",
+			"sha256": "ebd1c74e35d002f0af20da89df70cb90508f8c9c59fc66775ef7156b406fcc0a",
+			"bytes": 82620
+		},
+		{
+			"path": "demons-topdown/Spritesheets with seperated shadows and effects/Demon Spawn 8/Shadows/Die 1.png",
+			"sha256": "55274f695de2f97890278c5544a8e2f7bab1653057d6202914f5f62bd9c1acb7",
+			"bytes": 30615
+		},
+		{
+			"path": "demons-topdown/Spritesheets with seperated shadows and effects/Demon Spawn 8/Shadows/Idle 1.png",
+			"sha256": "8f89c3ca141ec36126f4d9e2ca78932d6ef4c8c28362abddafe43c05ec0c1930",
+			"bytes": 23389
+		},
+		{
+			"path": "demons-topdown/Spritesheets with seperated shadows and effects/Demon Spawn 8/Shadows/TakeDamage 1.png",
+			"sha256": "1289317dc408c1aab6bf3389dbaa9d48459666921e15ff6f86ffaf64a919341f",
+			"bytes": 32115
+		},
+		{
+			"path": "demons-topdown/Spritesheets with seperated shadows and effects/Demon Spawn 8/TakeDamage 1.png",
+			"sha256": "408c9f1e3b95c970cdccb3b81cd17cd58ab0f4fab142acad6923738a36f8110b",
+			"bytes": 120392
+		},
+		{
 			"path": "lords-of-pain-demo/enemy/skeleton/skeleton_default_walk/E/skeleton_default_walk_E_0.0_0.png",
 			"sha256": "eaaf1ea383e0d5b159d1cc787610413cbb00258d64a2fd5a1fd91364e6d578f6",
 			"bytes": 17145

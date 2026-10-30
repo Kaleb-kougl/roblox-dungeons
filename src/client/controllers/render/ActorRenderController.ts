@@ -142,8 +142,9 @@ interface ActorView {
  *
  * Sprites (docs/ART.md S4): when the pack has a `sprites` set for the ID (`pack.sprites(id)`) and, for actors, the
  * archetype has a sprite input builder (shared/view ACTOR_SPRITE_INPUTS: the swarmer, the sniper, the tutorial's
- * turret.sniper, the bruiser, Mother Bramble and the Demon Lord), a pooled SpriteView (BillboardGui on a feet anchor)
- * shows the animation chosen from sim state (shared/view sprites.ts) in the facing nearest the sim's facing on screen;
+ * turret.sniper, M1's turret.sprayer / turret.caster, the bruiser, Mother Bramble and the Demon Lord), a pooled
+ * SpriteView (BillboardGui on a feet anchor) shows the animation chosen from sim state (shared/view sprites.ts) in the
+ * facing nearest the sim's facing on screen;
  * juice through the label: hit flash / telegraph pulse / i-frame tints (ImageColor3), corpse fade (ImageTransparency),
  * the post-hit blink (Visible). A boss sprite (data.boss: Mother Bramble, the Demon Lord) is drawn at least
  * ACTOR_VIEW.bossMinDrawPx wide (shared/view bossSpriteLayout, the placeholder bosses' rule; both sets already are, so

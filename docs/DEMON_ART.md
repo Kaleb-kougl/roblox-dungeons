@@ -1,7 +1,8 @@
 # Demon art: the placeholder enemies as 2D Demons
 
 The enemies that are still placeholder primitives are drawn from the **2D Demons - TopDown asset pack v1.1**
-(dropped into `art/` on 2026-10-26): first `enemy.bruiser`, then the turrets (Mother Bramble as a Demon Elite: docs/BRAMBLE_ART.md).
+(dropped into `art/` on 2026-10-26): first `enemy.bruiser`, then the turrets `enemy.sprayer` / `enemy.caster` (Phase 2;
+Mother Bramble as a Demon Elite: docs/BRAMBLE_ART.md).
 The Lords of Pain art stays exactly as it is (owner, 2026-10-26): `enemy.swarmer` (skeleton), `enemy.sniper` / `turret.sniper`
 (subservient, docs/SNIPER_ART.md) and `boss.demonlord` (Demonlord, docs/BOSS_DEMONLORD.md) are out of scope.
 
@@ -9,7 +10,16 @@ Work it task by task, like `PLAN.md` and `docs/ART.md`; each task ends with a **
 nothing touches `src/shared/sim/**`, `src/shared/dungeon/**`, collision or a replay hash, and every fixture stays
 bit-identical.
 
-## Status (2026-10-26)
+## Status (2026-10-30)
+
+**Phase 2 (turrets) is code-complete and built, not uploaded; specs not yet run headlessly.** DA9-DA12 and DA15 are
+done: the pipeline's `source.layerNoiseAlpha` (DD7), the `enemy.sprayer` (Demon Spawn 8) and `enemy.caster` (Demon
+Spawn 11) sets (`art/atlases.json` -> `layout.ts`; 4 textures each in gitignored `art/build` / `art/upload`, contact
+sheets `art/build/contact/enemy.sprayer.png` / `enemy.caster.png`), their renderer inputs (`turretSprayerSpriteInput`
+/ `turretCasterSpriteInput`) and the `vale.spec` cases. Verified so far: `test:art` 62/62, two `art:build`s
+byte-identical (every older output unchanged), eslint and `tsc --noEmit` on the changed files. **Not yet run:** the
+Lune specs (`sprites.spec`, `vale.spec`) and the full `npm run verify`. With no ids in `assetIds.ts` the bundled pack
+still draws both turrets as placeholders. Open: DA13 (upload, owner), DA14 (Studio).
 
 **Phase 1 is code-complete, verified headlessly and uploaded; waiting on Studio.** DA0 and DA2-DA6 are done: the
 pipeline (layered sources, per-sheet cells), the `enemy.bruiser` set (Demon Beast 3, `art/atlases.json` ->
@@ -27,9 +37,9 @@ The pack is in `art/vendor/demons-topdown/` (gitignored with the rest of `art/ve
 
 | Slot | Drawn by | Where it is seen | This plan |
 |---|---|---|---|
-| `enemy.bruiser` | placeholder primitive | 1 in 6 endless room picks (`ENDLESS_ROOM_KINDS` weight 1 of 6) | **Phase 1** |
-| `enemy.sprayer` (`turret.sprayer`), `enemy.caster` (`turret.caster`) | placeholder primitives | M1's turrets | Phase 2 |
-| `boss.act1` (Mother Bramble) | placeholder primitive | every endless boss floor, the tutorial boss, M1 | **docs/BRAMBLE_ART.md** (a Demon Elite) |
+| `enemy.bruiser` | Demon Beast 3 (uploaded 2026-10-26) | 1 in 6 endless room picks (`ENDLESS_ROOM_KINDS` weight 1 of 6) | **Phase 1** (done but DA1 / DA7) |
+| `enemy.sprayer` (`turret.sprayer`), `enemy.caster` (`turret.caster`) | placeholder primitives until DA13's upload (sets built: Demon Spawn 8 / 11) | M1's sandbox turrets, the tutorial's two sprayers (combat F) | **Phase 2** |
+| `boss.act1` (Mother Bramble) | Demon Elite 3 (uploaded 2026-10-26) | every endless boss floor it is picked for, the tutorial boss, M1 | **docs/BRAMBLE_ART.md** (a Demon Elite) |
 | `enemy.dummy` | placeholder post | the tutorial | not planned (a post, not a creature) |
 | `enemy.swarmer`, `enemy.sniper`, `turret.sniper`, `boss.demonlord` | Lords of Pain | | **unchanged** |
 
@@ -43,7 +53,7 @@ The pack is in `art/vendor/demons-topdown/` (gitignored with the rest of `art/ve
 | Animations (20-23 per creature) | Idle, Walk, Run, Run Backwards, Strafe Left / Right, Crouch, Crouch walk, Roll, Slide, BackFlip, Block (7 frames), Attack 1-4, Run Attack, TakeDamage, Die 1 / 2, Explode, Taunt. Extras on some rigs: Attack 5 / 6 / Attack Run (Spawn 1 / 8 / 11, Imp 9), Eat (Beast 4), Jump (Beast 5, Elite 2), Point (Elite 4) |
 | File names | **Not uniform**: `Idle 16.png` (Spawn 7, 10), `Idle 12.png` (Spawn 6), `Idle 1.png` (Spawn 1 / 8 / 11, Imp 9), `Idle 1 16bit.png` (Imp 7); `Strafe Left.png` vs `Strafe Left 1.png`; `Explode Copy.png`. Each animation names its `file`, as the knight's do |
 | Facing order | Undocumented; **measured (DA1): the knight's**, row r faces (360 - 45 r) mod 360, clockwise from screen right, so `rowForFacing` [0, 7, 6, 5, 4, 3, 2, 1]. Evidence by eye (Spawn 10 Attack 1, Beast 3 Walk / Attack 4 / Idle, Elite 3 / Elite 1 Idle and Walk) in the sets' `rowOrderEvidence` |
-| Alpha | Body sheets are alpha 0 / 255 only; the `Shadows/` layer is flat alpha 191, RGB (2, 4, 5). Idle frame 14 duplicates frame 0 (loops pick from 0-13) |
+| Alpha | Body sheets are alpha 0 / 255 only (not every rig: Spawn 8 / 11 bake a semi-transparent staff glow in, DD7); the `Shadows/` layer is flat alpha 191, RGB (2, 4, 5). Idle frame 14 duplicates frame 0 (loops pick from 0-13) |
 | Licence | No licence file in the download; the store page is SmallScaleInt's Standard Commercial License (https://smallscaleint.itch.io/top-down-demons): commercial use, no attribution, modify freely; no resale / redistribution of the raw files (DD6) |
 
 Rigs repeat (Beasts 4 / 5 share a winged body; Spawns 8 / 11 a robed one), so a variant can be swapped later at no
@@ -94,6 +104,9 @@ Each has a `-outline` sheet of the same size. The pivot is one source point, (66
   top-down 8-facing renders next to LoP's isometric 16-facing ones; DA7 checks that the mix reads, it does not change
   it.
 - **DD2. Demon Beast 3 for the bruiser.** Owner picks by eye from the DA1 contact sheet; Beast 1 is a drop-in.
+  Phase 2 the same way: **Demon Spawn 8 for the sprayer, Spawn 11 for the caster** (one robed rig, two colourings, so
+  the M1 pair reads as kin and differs by colour), picked by eye on the DA10 contact sheets (DA14 signs it off); any
+  other robed Spawn with `Idle 1` / `TakeDamage 1` / `Die 1` is a drop-in.
 - **DD3. Body + shadow layers, no baked effects.** Build from the separated sheets: body over `Shadows/`, skip
   `Effects/`. Beast 3's `Attack 1` swipe is magenta-pink, close to `enemyBullet` `#ff3fa4`: baked effects would read
   as bullets the sim never fired, and they widen the cells (97x112 -> 126x124). *Alternative:* the `Combined/`
@@ -108,6 +121,13 @@ Each has a `-outline` sheet of the same size. The pivot is one source point, (66
   skeleton (drawn at 29.6), give it its own `bodyTiles`.
 - **DD6. Licence: resolved (2026-10-26).** The pack is SmallScaleInt's "Top-down Demons" v1.1 (the knight's author),
   SmallScaleInt's Standard Commercial License (https://smallscaleint.itch.io/top-down-demons); recorded in `THIRD_PARTY_NOTICES.md`.
+- **DD7. Cut the turrets' baked glow (`source.layerNoiseAlpha`).** Spawn 8 / 11 carry the staff orb's glow inside the
+  body sheet (semi-transparent magenta / red, alpha <= 126 / 131), so DD3's "no `Effects/`" leaves it in; next to the
+  enemy-bullet roles it would read as a bullet the sim never fired. An opt-in per-layer noise cut (`{ "": 254 }`:
+  keep only the body layer's opaque pixels, before compositing) drops it and leaves the shadow layer whole and the
+  orb's opaque core in place; it also makes the pivot / outline mask exactly the body again. *Alternatives:* accept
+  the glow (no pipeline change; a fringe next to the turrets' own bullets), or pick other rigs without a baked glow
+  (a robed Spawn without a staff orb; loses the caster look).
 
 ## Tasks
 
@@ -204,11 +224,107 @@ Each has a `-outline` sheet of the same size. The pivot is one source point, (66
 
 ## Phase 2: turrets
 
-`enemy.sprayer` (`turret.sprayer`) and `enemy.caster` (`turret.caster`), M1's turrets: the robed casters **Demon
-Spawn 8** (dark robe, glowing staff) and its rig-mate **Spawn 11** (pale). Idle loop only, with the turret builder
-`turret.sniper` already uses (turrets never attack or move in the renderer); an optional fire flash would need a
-turret attack timer in `turretShared.ts`'s view data. Their baked orbs are effects: DD3 drops them. With DD4 each is
-~1 atlas + rim.
+`enemy.sprayer` (`turret.sprayer`) and `enemy.caster` (`turret.caster`): the robed casters **Demon Spawn 8** (dark
+robe, red face marking, glowing staff) and its rig-mate **Demon Spawn 11** (a recolour: pale body, red cloth, striped
+face mask; identical boxes). Where they are seen: M1's sandbox (one turret in each of the three rooms nearest the
+entrance, `TEST_TURRET_KINDS`) and the tutorial's combat F (two sprayers); endless rooms never pick turrets (`ENDLESS_ROOM_KINDS`).
+
+| | |
+|---|---|
+| Gameplay (sim, unchanged) | 12 hp, r 0.45, never moves; wakes within 9 u, a burst every period (the sprayer a 16-bullet ring every 1.2 s, the caster a 3-arm spiral); dead for 6 s (`TURRET_RESPAWN_TICKS` 360), then back at full hp |
+| Renderer | `turretSpriteInputOf` (the builder `turret.sniper` already uses): idle loop, the hit flash, the death corpse, hidden until it respawns; never `move` or `attack`. An optional fire flash would need a turret attack timer in `turretShared.ts`'s view data (not planned) |
+| Creatures (DD2) | Spawn 8 = sprayer, Spawn 11 = caster (the owner's pick by eye on the contact sheets; any robed Spawn is a drop-in) |
+| Size | Idle body (alpha > 250, facing the camera) **35x43 px** = 0.92 x 1.13 tiles at the knight's 38 px per tile, against the 0.9-tile hitbox: a squat caster a little shorter than the knight |
+| The glow | Unlike Beast 3's, the body sheets are not alpha 0 / 255 only: the staff orb's glow is baked in as ~6,000-7,000 semi-transparent pixels per sheet, magenta (255, 0, 255) on Spawn 8 (alpha <= 126), red (255, 0, 0) on Spawn 11 (alpha <= 131), all within 3 px of the opaque body. DD3 drops effects; this one is in the body layer, so DD7 cuts it |
+
+### Animation slots
+
+| Slot | Source | Plays when |
+|---|---|---|
+| `idle` (loop) | Idle 1, 4 frames (0, 3, 7, 10), fps 6 | alive (always: a turret never moves or attacks) |
+| `move`, `attack` | idle's cells (`cellsOf`, no textures): the validator needs every base animation | never on a turret |
+| `hit` (one-shot) | TakeDamage 1, 4 (1, 3, 11, 13): the recoil, then back towards the idle pose, never ending on the staff-swung frames 4-9; fps 12 over the 6-tick flash | the hit flash |
+| `death` (held while the corpse fades) | Die 1, 6 (0, 2, 4, 6, 9, 14), the bruiser's picks | dead, until the corpse time; then hidden until the respawn |
+
+### Budget (measured, DA10)
+
+Set cell (the union) **116x99**, pivot (60, 60) = source (66, 83) in the 128 cell, measured on idle facing 6 frame 0;
+38 px per tile from `class.vanguard`. Per-sheet cells (DD4), per set **2 atlases + 2 rims = 4 textures**, 8 for both:
+
+| Sheet | Animations | Cell | Pivot | Cells | Size |
+|---|---|---|---|---|---|
+| `sprayer-body` / `caster-body` | idle, hit | 78x85 | (41, 60) | 64 | 624x680 |
+| `sprayer-death` / `caster-death` | death | 116x97 | (60, 58) | 48 | 696x776 |
+
+Each has a `-outline` sheet of the same size (the 2 px enemy rim, `pad` 3).
+
+### Tasks
+
+- [x] **DA9. Measure, and the pipeline's `layerNoiseAlpha` (DD7).** Spawn 8 / 11: same 128 grid format and file
+  names (`Idle 1.png`, `TakeDamage 1.png`, `Die 1.png`), the `Shadows/` layer flat alpha 191 as Beast 3's, but the orb
+  glow baked semi-transparent into the body sheet. `scripts/art/build-atlases.js`: an opt-in grid source option
+  `source.layerNoiseAlpha: { <layer>: n }` (an integer 0-254 per listed layer) clears that layer's pixels with alpha
+  <= n before it is composited (noiseAlpha's rule, per layer; the cached source is never touched).
+  → Verify: `test:art` specs for the cut (the glow goes, the shadow under it stays whole, a cut of 0 is the plain
+  composite) and its errors; every older output byte-identical.
+  *As built (2026-10-30):* `gridLayerNoise` (bottom-first cuts, `MAX_LAYER_NOISE_ALPHA` 254), checked before any file
+  is read; errors for a key not in `source.layers`, a value outside 0-254, a non-object, or no `layers`. The composite
+  cache keys on the cuts too. Two new specs; `test:art` 62/62; the header comment in `art/atlases.json` documents it.
+
+- [x] **DA10. The two sets in `art/atlases.json`.** `enemy.sprayer` (Demon Spawn 8) and `enemy.caster` (Demon
+  Spawn 11): grid 128, `layers` `["Shadows", ""]`, `layerNoiseAlpha` `{ "": 254 }`, the knight's `rowForFacing`,
+  `noiseAlpha` 2, `pad` 3, `outline` 2 px, `pixelsPerTileFrom: "class.vanguard"`, `cells: "perSheet"`, the slot table's
+  frames, sheets `<x>-body` (idle + hit) and `<x>-death`.
+  → Verify: two builds byte-identical; `layout.ts` gains both with 8 facings and an `outlineFile` per sheet; the
+  contact sheets show the feet on the pivot in every facing.
+  *As built (2026-10-30):* numbers in the budget; `art:lock` added exactly the 12 files the sets read (3 sheets + their
+  `Shadows/` layers, per creature). The cut leaves the body alpha 0 / 255 again, so the pivot's `bodyAlpha` 250 /
+  `bodyMinRgb` 0 is exactly the body; the per-facing feet measure sits up to 8 px lower in the other facings (the
+  staff's foot), on the contact sheet the pivot is on the feet in all 8. No frame touches the 128 source edge. Row
+  order checked by eye on `art/build/contact/enemy.sprayer.png` / `enemy.caster.png` (`rowOrderEvidence`): Spawn 11's
+  face mask on facing 6 is clear; Spawn 8's front / back read less clearly (its red face marking; the staff hand).
+  Byte-identical across rebuilds; every older output unchanged.
+
+- [x] **DA11. Renderer inputs (`shared/view/sprites.ts`).** `turretSprayerSpriteInput` / `turretCasterSpriteInput`
+  (`turretSpriteInputOf`) in `ACTOR_SPRITE_INPUTS`; nothing else on the view or client side special-cases turrets
+  (`ActorRenderController`: doc comment only).
+  → Verify: `sprites.spec` per turret: its own sprite id; idle alive (never attack or move, even mid-burst or
+  displaced); a multi-frame hit over the flash (a 1-frame stand-in leaves it to the tint); death for the corpse time,
+  then hidden until `TURRET_RESPAWN_TICKS`; an idle body again once revived. `ACTOR_SPRITE_INPUTS` has 8 builders; the
+  bundled packs still draw both turrets as placeholders.
+  *As built (2026-10-30):* as specified. **Not yet run headlessly.**
+
+- [x] **DA12. The vale pack.** Nothing hand-written (`VALE_SPRITE_LAYOUTS` drives `manifest.ts`).
+  → Verify: `vale.spec` "vale enemy.sprayer and enemy.caster": the layouts (cells, pivots, density, animations; the
+  caster's equals the sprayer's but for file names); as bundled (no ids) both are the placeholder; with both sheets
+  `sprites`, either sheet missing keeps the placeholder (the other turret unaffected), outlines alone never switch
+  it; rims join per sheet and never hold a set back; each sheet's own cell is copied and drawn (hand-computed rects:
+  idle, the body sheet's last hit cell, death, `move` / `attack` equal to idle in every facing); with ids, all 4
+  content ids per set (sheets and rims) land in the preload core tier (`PRELOAD.core` `enemy.`, nothing hard-codes a
+  set), none in later. The per-sheet list in "vale per-sheet cells" gained both sets.
+  *As built (2026-10-30):* as specified; eslint and `tsc --noEmit` clean. **Not yet run headlessly** (Lune).
+
+- [ ] **DA13. Upload** (owner): the 4 sheets and 4 rims from `art/upload` (`sprayer-body`, `sprayer-body-outline`,
+  `sprayer-death`, `sprayer-death-outline`, the same for `caster`); paste the ids into `assetIds.ts` with the upload
+  note. Then the bundled vale pack draws both, and `vale.spec`'s "as bundled (nothing uploaded yet)" turret case fails
+  by design: rewrite it as the bruiser's (every sheet has an id, both are sets with every rim; a fresh pack is still
+  the placeholder). → Verify: `npm run verify`.
+
+- [ ] **DA14. Studio check.** M1's sandbox turrets (sprayer, caster) and the tutorial's two sprayers (combat F),
+  solo, PC and the phone emulator:
+  - readability against their own bullets (magenta ring, spiral) and the telegraph tint, rim on and off
+    (`KV_EnemyOutline`): the cut glow must not come back as a fringe;
+  - drawn size against the hitbox (hitbox debug view); feet planted on the pivot in all 8 facings;
+  - Spawn 8's row order (front / back, by eye);
+  - the hit flinch on a hit, the death corpse, then the respawn as an idle body after 6 s.
+  Record in `docs/SPIKES.md`. → Verify: the owner signs off DD2 (Spawn 8 / 11) and DD7.
+
+- [x] **DA15. Docs.** This section (status, the placeholder table, DD2 / DD7), `CLAUDE.md` (the Demon art bullet
+  and the docs table), `docs/ART.md` (slice table row for the turrets; the bruiser / Mother Bramble rows and the packs
+  row brought up to date with the 2026-10-26 upload and licence; the per-layer cut in the status notes),
+  `THIRD_PARTY_NOTICES.md` ("Used for" names the creatures, so it gained Spawn 8 / 11). `art/README.md` lists the
+  pack, not its sets: unchanged. After DA13 / DA14: the upload note here and in `docs/ART.md`, the Studio results in
+  `docs/SPIKES.md`.
 
 ## Phase 3: Mother Bramble
 
@@ -222,3 +338,4 @@ decisions BD1-BD7). It depends on DA0 and DA2 here.
 - **Baked lighting.** Shadows fall to the lower left on every demon sheet (and the knight's); LoP's shadows are its
   own.
 - **Row order** was measured by eye (DA1, the knight's); a wrong reading would mirror the brute, so DA7 checks it.
+  Spawn 8's front and back read less clearly than Spawn 11's (DA10), so DA14 checks it.

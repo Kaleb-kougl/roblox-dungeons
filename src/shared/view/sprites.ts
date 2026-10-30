@@ -20,8 +20,9 @@
  *           `attack`) > hit (multi-frame only; a 1-frame stand-in leaves it to the tint) > move > idle
  * An actor's attack comes from its archetype's own states (ACTOR_SPRITE_INPUTS): the swarmer's wind-up + lunge, the
  * sniper's line telegraph, the bruiser's leap + slam, Mother Bramble's phased attacks, the Demon Lord's swings
- * (demonlordSpriteInput); a turret (turret.sniper) never attacks or moves (idle loop), and its corpse is the one dead
- * spell before it respawns alive (turretShared.ts).
+ * (demonlordSpriteInput); a turret (turret.sniper, and the M1 turrets turret.sprayer / turret.caster of
+ * docs/DEMON_ART.md Phase 2) never attacks or moves (idle loop), and its corpse is the one dead spell before it
+ * respawns alive (turretShared.ts).
  * Death beats everything; the roll beats attacks because the sim cancels a wind-up and pauses the combo while rolling;
  * attacks beat the hit flinch because a hit never interrupts a swing or a lunge in the sim (the tint / blink shows the
  * hit instead). A special is a one-shot that is no attack (the boss is immune or summoning): a set without it (and
@@ -82,7 +83,9 @@ import {
 	SWORD_V_BUSY,
 	SWORD_V_LAST,
 	SWORD_V_STEP,
+	TURRET_CASTER,
 	TURRET_SNIPER,
+	TURRET_SPRAYER,
 	V_AUX_X,
 	V_AUX_Z,
 	V_LAST,
@@ -526,6 +529,12 @@ export function turretSpriteInputOf(
 
 /** ActorSpriteInput for the tutorial's turret.sniper (decision D3 of docs/SNIPER_ART.md: it wears the sniper's set). */
 export const turretSniperSpriteInput = turretSpriteInputOf(TURRET_SNIPER.data);
+
+/** ActorSpriteInput for M1's turret.sprayer (docs/DEMON_ART.md Phase 2: Demon Spawn 8, idle loop only). */
+export const turretSprayerSpriteInput = turretSpriteInputOf(TURRET_SPRAYER.data);
+
+/** ActorSpriteInput for M1's turret.caster (docs/DEMON_ART.md Phase 2: Demon Spawn 11, idle loop only). */
+export const turretCasterSpriteInput = turretSpriteInputOf(TURRET_CASTER.data);
 
 // ---------------------------------------------------------------------------------------------
 // The Demon Lord (boss.demonlord; docs/BOSS_DEMONLORD.md D6)
@@ -1162,10 +1171,11 @@ export function bossSpriteLayout(layout: SpriteLayout, minDrawPx: number): Sprit
 
 /**
  * Archetypes drawn as sprites when the pack has a sprite set for their spriteId: archetype ID -> input builder. The
- * swarmer, the sniper, the tutorial's turret.sniper (same spriteId "enemy.sniper", docs/SNIPER_ART.md D3), the
- * bruiser, Mother Bramble (boss.act1) and the Demon Lord (boss.demonlord); every other archetype stays a placeholder. A
- * builder alone draws nothing: ActorRenderController takes the sprite path only when the pack's `sprites(spriteId)` is
- * a set too, so each stays a placeholder until its set lands (docs/DEMON_ART.md DA5, docs/BRAMBLE_ART.md BR6,
+ * swarmer, the sniper, the tutorial's turret.sniper (same spriteId "enemy.sniper", docs/SNIPER_ART.md D3), M1's
+ * turret.sprayer / turret.caster ("enemy.sprayer" / "enemy.caster", docs/DEMON_ART.md Phase 2), the bruiser, Mother
+ * Bramble (boss.act1) and the Demon Lord (boss.demonlord); every other archetype stays a placeholder. A builder alone
+ * draws nothing: ActorRenderController takes the sprite path only when the pack's `sprites(spriteId)` is a set too, so
+ * each stays a placeholder until its set lands (docs/DEMON_ART.md DA5 and Phase 2, docs/BRAMBLE_ART.md BR6,
  * docs/BOSS_DEMONLORD.md D7).
  */
 export const ACTOR_SPRITE_INPUTS: ReadonlyMap<string, (a: Readonly<ActorState>, alpha: number) => ActorSpriteInput> =
@@ -1173,6 +1183,8 @@ export const ACTOR_SPRITE_INPUTS: ReadonlyMap<string, (a: Readonly<ActorState>, 
 		[SWARMER.id, swarmerSpriteInput],
 		[SNIPER.id, sniperSpriteInput],
 		[TURRET_SNIPER.id, turretSniperSpriteInput],
+		[TURRET_SPRAYER.id, turretSprayerSpriteInput],
+		[TURRET_CASTER.id, turretCasterSpriteInput],
 		[BRUISER.id, bruiserSpriteInput],
 		[BOSS_ACT1_ID, bossAct1SpriteInput],
 		[BOSS_DEMONLORD_ID, demonlordSpriteInput],

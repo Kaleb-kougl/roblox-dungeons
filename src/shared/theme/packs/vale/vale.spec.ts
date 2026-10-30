@@ -1,6 +1,7 @@
 // The vale pack (docs/ART.md S5): the generated atlas layout must satisfy the contract v2 validator once uploaded, the
 // runtime must address the cells the pipeline wrote, and entries without uploaded art must stay placeholders.
 import { describe, expect, it } from "@rbxts/jest-globals";
+import { preloadPlan } from "shared/view";
 import {
 	BIOMES,
 	BIOME_MATERIALS,
@@ -744,8 +745,8 @@ describe("vale per-sheet cells (docs/DEMON_ART.md DA2 / DD4)", () => {
 		expect([g.offset.X, g.offset.Y, g.size.X, g.size.Y, g.pivot]).toEqual([693, 791, 99, 113, { x: 51, y: 89 }]);
 	});
 
-	it('only the `cells: "perSheet"` sets (enemy.bruiser, boss.act1) give their sheets their own cells', () => {
-		const perSheet = ["boss.act1", "enemy.bruiser"];
+	it('only the `cells: "perSheet"` sets (enemy.bruiser, boss.act1, the turrets) give their sheets their own cells', () => {
+		const perSheet = ["boss.act1", "enemy.bruiser", "enemy.caster", "enemy.sprayer"];
 		for (const id of sortedKeys(VALE_SPRITE_LAYOUTS)) {
 			const own = perSheet.includes(id);
 			for (const sheet of VALE_SPRITE_LAYOUTS[id].sheets) {
@@ -1027,6 +1028,240 @@ describe("vale enemy.bruiser and boss.act1 (2D Demons, per-sheet cells)", () => 
 		const held = bramble.frame("hit", 3, 0);
 		expect([held.offset.X, held.offset.Y]).toEqual([321, 113]);
 		expect(held).toEqual(bramble.frame("idle", 3, 0));
+	});
+});
+
+/**
+ * M1's turrets as 2D Demons sets (docs/DEMON_ART.md Phase 2, DA12): enemy.sprayer (Demon Spawn 8) and enemy.caster
+ * (Demon Spawn 11, its recolour: identical boxes). Two per-sheet sheets each (body = idle + hit, death), a rim on
+ * both; move and attack are idle's cells (the renderer never plays them on a turret). Built, not uploaded: as bundled
+ * both are the placeholder, so these cases inject fake ids the way the bruiser's do.
+ */
+describe("vale enemy.sprayer and enemy.caster (2D Demons turrets, per-sheet cells)", () => {
+	const TURRETS: ReadonlyArray<[string, string]> = [
+		["enemy.sprayer", "sprayer"],
+		["enemy.caster", "caster"],
+	];
+	const sheetsOf = (prefix: string) => [`${prefix}-body.png`, `${prefix}-death.png`];
+	const outlineOf = (file: string) => `${file.sub(1, -5)}-outline.png`;
+	const filesOf = (prefix: string) => {
+		const files = new Array<string>();
+		for (const file of sheetsOf(prefix)) {
+			files.push(file);
+			files.push(outlineOf(file));
+		}
+		return files;
+	};
+
+	it("the layouts: 8 facings at the knight's density; body 78x85 and death 116x97 cells; every sheet <= 1024", () => {
+		for (const [id, prefix] of TURRETS) {
+			const l = VALE_SPRITE_LAYOUTS[id];
+			expect([id, l.frameW, l.frameH, l.pivot, l.pixelsPerTile]).toEqual([id, 116, 99, { x: 60, y: 60 }, 38]);
+			expect([id, l.pixelsPerTile]).toEqual([id, VALE_SPRITE_LAYOUTS["class.vanguard"].pixelsPerTile]);
+			expect([id, l.facings]).toEqual([id, { count: 8, zeroDeg: 0, ccw: true }]);
+			expect([id, l.resample]).toEqual([id, "Default"]);
+			expect(l.sheets).toEqual([
+				{
+					file: `${prefix}-body.png`,
+					w: 624,
+					h: 680,
+					frameW: 78,
+					frameH: 85,
+					pivot: { x: 41, y: 60 },
+					outlineFile: `${prefix}-body-outline.png`,
+				},
+				{
+					file: `${prefix}-death.png`,
+					w: 696,
+					h: 776,
+					frameW: 116,
+					frameH: 97,
+					pivot: { x: 60, y: 58 },
+					outlineFile: `${prefix}-death-outline.png`,
+				},
+			]);
+			for (const sheet of l.sheets) {
+				const c = sheet as unknown as { frameW: number; frameH: number };
+				expect([sheet.file, sheet.w <= 1024, sheet.h <= 1024, sheet.w % c.frameW, sheet.h % c.frameH]).toEqual([
+					sheet.file,
+					true,
+					true,
+					0,
+					0,
+				]);
+			}
+			// idle loop 4, hit 4 after idle's 32 cells on the body sheet, death 6 on its own; move / attack alias idle
+			expect(l.animations).toEqual({
+				attack: { sheet: 0, start: 0, frames: 4, fps: 6, loop: true },
+				death: { sheet: 1, start: 0, frames: 6, fps: 10, loop: false },
+				hit: { sheet: 0, start: 32, frames: 4, fps: 12, loop: false },
+				idle: { sheet: 0, start: 0, frames: 4, fps: 6, loop: true },
+				move: { sheet: 0, start: 0, frames: 4, fps: 6, loop: true },
+			});
+		}
+		// Spawn 11 is a recolour of Spawn 8: one layout but for the file names
+		const sprayer = VALE_SPRITE_LAYOUTS["enemy.sprayer"];
+		const caster = VALE_SPRITE_LAYOUTS["enemy.caster"];
+		expect([caster.frameW, caster.frameH, caster.pivot, caster.animations]).toEqual([
+			sprayer.frameW,
+			sprayer.frameH,
+			sprayer.pivot,
+			sprayer.animations,
+		]);
+	});
+
+	it("as bundled (nothing uploaded yet) both are the placeholder", () => {
+		for (const [id, prefix] of TURRETS) {
+			for (const file of filesOf(prefix)) {
+				expect([file, VALE_ASSET_IDS[file]]).toEqual([file, undefined]);
+			}
+			expect([id, VALE_MANIFEST.assets[id]]).toEqual([id, { kind: "placeholder" }]);
+			expect([id, new ThemePack(VALE_MANIFEST, { warn: quiet }).sprites(id)]).toEqual([id, undefined]);
+			expect([id, buildValeManifest({}).assets[id]]).toEqual([id, { kind: "placeholder" }]);
+		}
+	});
+
+	it("each switches to sprites with both sheets; either sheet missing keeps it a placeholder; rims alone never do", () => {
+		const theme = new ThemeCore(buildValeManifest(fakeIds()), { warn: quiet });
+		for (const [id, prefix] of TURRETS) {
+			// no optional animation: both sheets are required
+			expect(sheetsOf(prefix)).toEqual(VALE_SPRITE_LAYOUTS[id].sheets.map((sheet) => sheet.file));
+			const m = buildValeManifest(fakeIds());
+			expect(validateManifest(m, { packId: "vale" })).toEqual([]);
+			expect([id, m.assets[id].kind]).toEqual([id, "sprites"]);
+			expect([id, theme.sprites(id)!.animationNames]).toEqual([id, ["attack", "death", "hit", "idle", "move"]]);
+			for (const file of sheetsOf(prefix)) {
+				const without = buildValeManifest(fakeIds(file));
+				expect(validateManifest(without, { packId: "vale" })).toEqual([]);
+				expect([id, file, without.assets[id]]).toEqual([id, file, { kind: "placeholder" }]);
+			}
+			const outlinesOnly = buildValeManifest(fakeIds(...sheetsOf(prefix)));
+			expect([id, outlinesOnly.assets[id]]).toEqual([id, { kind: "placeholder" }]);
+			// the other turret is independent of this one's files
+			for (const [other] of TURRETS) {
+				if (other !== id) expect([id, other, outlinesOnly.assets[other].kind]).toEqual([id, other, "sprites"]);
+			}
+		}
+	});
+
+	it("the rims join per sheet and never hold a set back", () => {
+		for (const [id, prefix] of TURRETS) {
+			const [body, death] = sheetsOf(prefix);
+			const rimless = buildValeManifest(fakeIds(outlineOf(body), outlineOf(death)));
+			expect(validateManifest(rimless, { packId: "vale" })).toEqual([]);
+			const set = rimless.assets[id] as SpriteSetAsset;
+			expect([id, set.kind, set.sheets.size()]).toEqual([id, "sprites", 2]);
+			for (const sheet of set.sheets) expect([id, sheet.outlineAssetId]).toEqual([id, undefined]);
+			// one rim uploaded: only its own sheet has it
+			const ids = fakeIds(outlineOf(death));
+			const half = new ThemePack(buildValeManifest(ids), { warn: quiet }).sprites(id)!;
+			expect([id, half.frame("idle", 0, 0).outlineImage]).toEqual([id, ids[outlineOf(body)]]);
+			expect([id, half.frame("death", 0, 0).outlineImage]).toEqual([id, undefined]);
+			// with every file each sheet carries its own outline, on every frame
+			const all = fakeIds();
+			const sprites = new ThemeCore(buildValeManifest(all), { warn: quiet }).sprites(id)!;
+			for (const name of sprites.animationNames) {
+				const count = sprites.animation(name)!.frames;
+				for (let d = 0; d < 8; d++) {
+					for (let f = 0; f < count; f++) {
+						const r = sprites.frame(name, d, f);
+						const file = VALE_SPRITE_LAYOUTS[id].sheets[r.sheet].file;
+						expect([name, d, f, r.assetId, r.outlineAssetId]).toEqual([
+							name,
+							d,
+							f,
+							all[file],
+							all[outlineOf(file)],
+						]);
+					}
+				}
+			}
+		}
+	});
+
+	it("copies each sheet's own cell into the manifest and draws every frame in it (hand-computed rects)", () => {
+		const ids = fakeIds();
+		const m = buildValeManifest(ids);
+		const pack = new ThemePack(m, { warn: quiet });
+		for (const [id, prefix] of TURRETS) {
+			const set = m.assets[id] as SpriteSetAsset;
+			expect([id, set.frameW, set.frameH, set.pivot]).toEqual([id, 116, 99, { x: 60, y: 60 }]);
+			expect([id, set.sheets[0].frameW, set.sheets[0].frameH, set.sheets[0].pivot]).toEqual([
+				id,
+				78,
+				85,
+				{ x: 41, y: 60 },
+			]);
+			expect([id, set.sheets[1].frameW, set.sheets[1].frameH, set.sheets[1].pivot]).toEqual([
+				id,
+				116,
+				97,
+				{ x: 60, y: 58 },
+			]);
+			const sprites = pack.sprites(id)!;
+			// idle facing 5 frame 2: cell 22 of the body sheet (8 per row of 78x85) -> column 6, row 2
+			const idle = sprites.frame("idle", 5, 2);
+			expect([
+				id,
+				idle.image,
+				idle.outlineImage,
+				idle.offset.X,
+				idle.offset.Y,
+				idle.size.X,
+				idle.size.Y,
+				idle.pivot,
+			]).toEqual([
+				id,
+				ids[`${prefix}-body.png`],
+				ids[`${prefix}-body-outline.png`],
+				468,
+				170,
+				78,
+				85,
+				{ x: 41, y: 60 },
+			]);
+			// hit facing 7 frame 3: cell 32 + 28 + 3 = 63, the body sheet's last -> column 7, row 7 (bottom edge 680)
+			const hit = sprites.frame("hit", 7, 3);
+			expect([id, hit.image, hit.offset.X, hit.offset.Y, hit.offset.Y + hit.size.Y]).toEqual([
+				id,
+				ids[`${prefix}-body.png`],
+				546,
+				595,
+				680,
+			]);
+			// death facing 4 frame 5: cell 29 of the death sheet (6 per row of 116x97) -> column 5, row 4
+			const fall = sprites.frame("death", 4, 5);
+			expect([id, fall.image, fall.outlineImage, fall.offset.X, fall.offset.Y, fall.size.X, fall.size.Y]).toEqual(
+				[id, ids[`${prefix}-death.png`], ids[`${prefix}-death-outline.png`], 580, 388, 116, 97],
+			);
+			expect([id, fall.pivot]).toEqual([id, { x: 60, y: 58 }]);
+			// death facing 7 frame 5: cell 47, the sheet's last -> column 5, row 7 (bottom edge 776)
+			const last = sprites.frame("death", 7, 5);
+			expect([id, last.offset.X, last.offset.Y + last.size.Y]).toEqual([id, 580, 776]);
+			// move and attack are idle's cells, frame for frame, in every facing
+			for (let d = 0; d < 8; d++) {
+				for (let f = 0; f < 4; f++) {
+					expect([id, d, f, sprites.frame("move", d, f)]).toEqual([id, d, f, sprites.frame("idle", d, f)]);
+					expect([id, d, f, sprites.frame("attack", d, f)]).toEqual([id, d, f, sprites.frame("idle", d, f)]);
+				}
+			}
+		}
+	});
+
+	it("land in the preload core tier with their rims once uploaded (docs/PRELOAD.md: `enemy.` is core)", () => {
+		const ids = fakeIds();
+		const pack = new ThemePack(buildValeManifest(ids), { warn: quiet });
+		const plan = preloadPlan(pack);
+		const core = new Set(plan.core.map((r) => r.contentId as string));
+		const later = new Set(plan.later.map((r) => r.contentId as string));
+		for (const [id, prefix] of TURRETS) {
+			const refs = pack.contentIds(id).map((r) => r.contentId as string);
+			const want = filesOf(prefix).map((file) => ids[file]);
+			want.sort();
+			refs.sort();
+			expect([id, refs]).toEqual([id, want]);
+			for (const ref of refs) expect([id, ref, core.has(ref), later.has(ref)]).toEqual([id, ref, true, false]);
+		}
 	});
 });
 

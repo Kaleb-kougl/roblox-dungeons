@@ -46,6 +46,10 @@
  * maths: compositeOver), made before anything else reads it (noiseAlpha, crop boxes, pivot, outline). Every layer file
  * must exist and have the first layer's size; sourceFiles (so the lock and its check) lists every one. Absent: the one
  * sheet `source.dir/file`, read as it is.
+ * `source.layerNoiseAlpha` (optional, with `layers`; docs/DEMON_ART.md Phase 2): { <layer>: n }, an integer 0-254 per
+ * listed layer: that layer's pixels with alpha <= n are cleared BEFORE it is composited (noiseAlpha's rule, per layer),
+ * so a glow baked semi-transparent into the body sheet (Demon Spawn 8 / 11's staff orb) goes, while the shadow layer
+ * under it stays whole. Absent: every layer composited as it is.
  *
  * Outline sheets (set `outline: { widthPx }`, enemy contrast rim): per cell (never across a cell edge), the body mask
  * (the pivot's: alpha > pivot.bodyAlpha and max(R, G, B) > pivot.bodyMinRgb, so the baked black shadow is left out)
@@ -407,6 +411,30 @@ function gridLayers(what, source) {
 	return layers;
 }
 
+/** Largest per-layer noise cut: 255 would clear every pixel of the layer. */
+const MAX_LAYER_NOISE_ALPHA = 254;
+
+/**
+ * A grid source's `layerNoiseAlpha` (see the header) as one cut per layer, bottom first (0 = composited as it is), or
+ * null without it. Throws on a key that is not a listed layer, a value outside 0-MAX_LAYER_NOISE_ALPHA, or no `layers`.
+ */
+function gridLayerNoise(what, source) {
+	const cuts = source.layerNoiseAlpha;
+	if (cuts === undefined) return null;
+	const layers = gridLayers(what, source);
+	if (!layers) throw new Error(`${what}: source.layerNoiseAlpha needs source.layers`);
+	if (cuts === null || typeof cuts !== "object" || Array.isArray(cuts)) {
+		throw new Error(`${what}: source.layerNoiseAlpha must be an object of layer -> alpha (an integer 0-${MAX_LAYER_NOISE_ALPHA})`);
+	}
+	for (const [layer, n] of Object.entries(cuts)) {
+		if (!layers.includes(layer)) throw new Error(`${what}: source.layerNoiseAlpha names ${JSON.stringify(layer)}, which is not in source.layers`);
+		if (!Number.isInteger(n) || n < 0 || n > MAX_LAYER_NOISE_ALPHA) {
+			throw new Error(`${what}: source.layerNoiseAlpha.${JSON.stringify(layer)} must be an integer 0-${MAX_LAYER_NOISE_ALPHA}, got ${JSON.stringify(n)}`);
+		}
+	}
+	return layers.map((l) => cuts[l] ?? 0);
+}
+
 /** The art/vendor-relative files of a grid animation's sheet, bottom layer first (one file without `layers`). */
 function gridFiles(what, source, file) {
 	const layers = gridLayers(what, source);
@@ -419,25 +447,32 @@ const layeredCache = new Map();
 
 /**
  * A grid animation's sheet: the file as it is without `layers`; with them, the layers composited bottom to top over a
- * transparent raster (compositeOver at full opacity). A missing layer or one of another size fails.
+ * transparent raster (compositeOver at full opacity), each first noise-cut by its `layerNoiseAlpha` (a copy: the cached
+ * source is never touched). A missing layer or one of another size fails.
  */
 function gridSheet(what, source, file) {
 	const files = gridFiles(what, source, file);
 	if (source.layers === undefined) return readPng(files[0]);
-	const key = files.join("\n");
+	const cuts = gridLayerNoise(what, source);
+	const key = cuts ? `${files.join("\n")}\n${cuts.join()}` : files.join("\n");
 	let img = layeredCache.get(key);
 	if (img) return img;
 	for (const rel of files) {
 		if (!pngCache.has(rel) && !fs.existsSync(path.join(VENDOR, rel))) throw new Error(`${what}: layer file ${rel} is missing. ${missingHint(rel)}`);
 	}
-	for (const rel of files) {
-		const layer = readPng(rel);
+	files.forEach((rel, i) => {
+		let layer = readPng(rel);
 		if (!img) img = raster(layer.w, layer.h);
 		else if (layer.w !== img.w || layer.h !== img.h) {
 			throw new Error(`${what}: layer ${rel} is ${layer.w}x${layer.h}, but ${files[0]} is ${img.w}x${img.h} (layers must be the same size)`);
 		}
+		if (cuts && cuts[i] > 0) {
+			const cut = raster(layer.w, layer.h);
+			blit(layer, 0, 0, layer.w, layer.h, cut, 0, 0, cuts[i]);
+			layer = cut;
+		}
 		compositeOver(layer, img, 0, 0, MILLE);
-	}
+	});
 	layeredCache.set(key, img);
 	return img;
 }
@@ -632,6 +667,7 @@ function buildSpriteSet(id, set, built) {
 	const k = spriteDownscale(id, set);
 	const perSheet = cellsMode(id, set) === "perSheet";
 	gridLayers(id, set.source); // a malformed `layers` fails here, before any file is read
+	gridLayerNoise(id, set.source); // and a malformed `layerNoiseAlpha`
 
 	// 1. union crop box (source-frame coordinates) over every kept frame of every real animation and facing; with
 	// per-sheet cells, each animation's own box is kept for its sheet's crop
@@ -2363,6 +2399,7 @@ module.exports = {
 	compositeOver,
 	gridFiles,
 	gridLayers,
+	gridLayerNoise,
 	gridSheet,
 	removeStale,
 	sheetCell,
