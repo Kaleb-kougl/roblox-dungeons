@@ -145,6 +145,23 @@ export interface ScoreEvents {
 	popX: number[];
 	popZ: number[];
 	popPoints: number[];
+	/**
+	 * Grazes (docs/GRAZE_PARRY.md GP1, presentation only): per graze awarded this tick, the bullet's position and
+	 * velocity at the award (it has just left the graze ring) and the grazing player's index (solo 0; co-op the nearest
+	 * living player). Parallel arrays; size() === grazes.
+	 */
+	grazeX: number[];
+	grazeZ: number[];
+	grazeVX: number[];
+	grazeVZ: number[];
+	grazePlayer: number[];
+	/**
+	 * Guard cancels (GP1): per enemy bullet a sword guard erased this tick, its position when erased and the guarding
+	 * player's index. Parallel arrays; size() === guardCancels.
+	 */
+	guardX: number[];
+	guardZ: number[];
+	guardPlayer: number[];
 	/** Internal: the combo at the start of the tick, and 1 once a kill / graze fed it this tick. */
 	comboStart: number;
 	comboFed: number;
@@ -232,6 +249,14 @@ function emptyScoreEvents(): ScoreEvents {
 		popX: [],
 		popZ: [],
 		popPoints: [],
+		grazeX: [],
+		grazeZ: [],
+		grazeVX: [],
+		grazeVZ: [],
+		grazePlayer: [],
+		guardX: [],
+		guardZ: [],
+		guardPlayer: [],
 		comboStart: COMBO_MIN,
 		comboFed: 0,
 	};
@@ -403,7 +428,20 @@ export function cloneScoreState(s: Readonly<ScoreState>): ScoreState {
 		counts: [...s.counts],
 		scoredReviverIds: [...s.scoredReviverIds],
 		rooms: s.rooms.map(cloneRoom),
-		events: { ...e, popX: [...e.popX], popZ: [...e.popZ], popPoints: [...e.popPoints] },
+		events: {
+			...e,
+			popX: [...e.popX],
+			popZ: [...e.popZ],
+			popPoints: [...e.popPoints],
+			grazeX: [...e.grazeX],
+			grazeZ: [...e.grazeZ],
+			grazeVX: [...e.grazeVX],
+			grazeVZ: [...e.grazeVZ],
+			grazePlayer: [...e.grazePlayer],
+			guardX: [...e.guardX],
+			guardZ: [...e.guardZ],
+			guardPlayer: [...e.guardPlayer],
+		},
 	};
 }
 
@@ -421,6 +459,14 @@ export function clearScoreEvents(s: ScoreState): void {
 	e.popX.clear();
 	e.popZ.clear();
 	e.popPoints.clear();
+	e.grazeX.clear();
+	e.grazeZ.clear();
+	e.grazeVX.clear();
+	e.grazeVZ.clear();
+	e.grazePlayer.clear();
+	e.guardX.clear();
+	e.guardZ.clear();
+	e.guardPlayer.clear();
 	e.comboStart = s.combo;
 	e.comboFed = 0;
 }
