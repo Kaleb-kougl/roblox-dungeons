@@ -43,6 +43,8 @@ import {
 	SWORD_DATA,
 	type SimState,
 	WEB_SWORD_TIMINGS,
+	WEB_SWARMER_HP,
+	setSwarmerHp,
 } from "shared/sim";
 
 const TICKS = 3600;
@@ -403,6 +405,16 @@ function withPreRetuneSword<T>(f: () => T): T {
 	}
 }
 
+/** Runs with the web build's 2-hp swarmers (docs/M1.md's table predates the port's 1-hp retune), restoring after. */
+function withWebSwarmer<T>(f: () => T): T {
+	const portHp = setSwarmerHp(WEB_SWARMER_HP);
+	try {
+		return f();
+	} finally {
+		setSwarmerHp(portHp);
+	}
+}
+
 /**
  * "died at N s" in the doc: the source prints the death time to one decimal (`(tick / 60).toFixed(1)`) and the doc
  * rounds that to whole seconds (29.5 -> "30 s").
@@ -415,7 +427,9 @@ const BOW_ONLY = ["weapon.bow", "weapon.bow"];
 
 describe("docs/M1.md tuning table (walker vs room enemies, 60 s)", () => {
 	it("sword only (pre-retune sword): 23 of 24 killed, reached the boss room, died at 28 s / 30 of 32, died at 42 s; 12-14 bullets deleted", () => {
-		const [a, b] = withPreRetuneSword(() => [outcome(runLive(1337, SWORD_ONLY)), outcome(runLive(42, SWORD_ONLY))]);
+		const [a, b] = withWebSwarmer(() =>
+			withPreRetuneSword(() => [outcome(runLive(1337, SWORD_ONLY)), outcome(runLive(42, SWORD_ONLY))]),
+		);
 		expect([a.kills, a.roomEnemies, a.reachedBossRoom, diedAt(a, 28)]).toEqual([23, 24, true, true]);
 		expect([b.kills, b.roomEnemies, diedAt(b, 42)]).toEqual([30, 32, true]);
 		for (const o of [a, b]) {
@@ -427,8 +441,7 @@ describe("docs/M1.md tuning table (walker vs room enemies, 60 s)", () => {
 	});
 
 	it("bow only: 17 of 24 killed, died at 30 s / 29 of 32 killed, died at 26 s (same with the current sword: no sword)", () => {
-		const a = outcome(runLive(1337, BOW_ONLY));
-		const b = outcome(runLive(42, BOW_ONLY));
+		const [a, b] = withWebSwarmer(() => [outcome(runLive(1337, BOW_ONLY)), outcome(runLive(42, BOW_ONLY))]);
 		expect([a.kills, a.roomEnemies, diedAt(a, 30)]).toEqual([17, 24, true]);
 		expect([b.kills, b.roomEnemies, diedAt(b, 26)]).toEqual([29, 32, true]);
 		for (const o of [a, b]) {
@@ -438,7 +451,7 @@ describe("docs/M1.md tuning table (walker vs room enemies, 60 s)", () => {
 	});
 
 	it("default (sword + bow, random SWAP; pre-retune sword): 22 of 24 / 32 of 32 killed, engaged the boss both times, then died", () => {
-		const [a, b] = withPreRetuneSword(() => [outcome(runLive(1337)), outcome(runLive(42))]);
+		const [a, b] = withWebSwarmer(() => withPreRetuneSword(() => [outcome(runLive(1337)), outcome(runLive(42))]));
 		expect([a.kills, a.roomEnemies, a.bossEngaged, a.deathTick >= 0]).toEqual([22, 24, true, true]);
 		expect([b.kills, b.roomEnemies, b.bossEngaged, b.deathTick >= 0]).toEqual([32, 32, true, true]);
 		for (const o of [a, b]) {
@@ -447,7 +460,7 @@ describe("docs/M1.md tuning table (walker vs room enemies, 60 s)", () => {
 		}
 	});
 
-	it("the current sword (3 / 3 / 6; 14, 11, 25 ticks; reach 1.955 / 2.53: the port's retune): pinned outcomes of the same walkers", () => {
+	it("the port's current tuning (sword 3 / 3 / 6; 14, 11, 25 ticks; reach 1.955 / 2.53; 1-hp swarmers): pinned outcomes of the same walkers", () => {
 		const rows = [
 			outcome(runLive(1337, SWORD_ONLY)),
 			outcome(runLive(42, SWORD_ONLY)),
@@ -458,8 +471,8 @@ describe("docs/M1.md tuning table (walker vs room enemies, 60 s)", () => {
 		expect(rows).toEqual([
 			[20, 24, 1767, 17, true],
 			[29, 32, 2397, 20, true],
-			[24, 24, 1503, 50, true],
-			[32, 32, 2752, 9, true],
+			[16, 24, 1741, 0, false],
+			[29, 32, 2009, 3, true],
 		]);
 	});
 });

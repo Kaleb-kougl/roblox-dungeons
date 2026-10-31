@@ -39,7 +39,9 @@ import {
 	SWORD_REACH_PERCENT,
 	SWORD_TEMPO_PERCENT,
 	WEB_SWORD_TIMINGS,
+	WEB_SWARMER_HP,
 	setSwordTimings,
+	setSwarmerHp,
 	type SwordTimings,
 } from "shared/sim";
 
@@ -95,11 +97,14 @@ const PORTED: Record<string, unknown> = {
 describe("constants.json parity", () => {
 	// The port's sword is 20% slower (CLAUDE.md decision log); its web timers are compared here, the retune below.
 	let portSword: SwordTimings;
+	let portSwarmerHp = 0;
 	beforeAll(() => {
 		portSword = setSwordTimings(WEB_SWORD_TIMINGS);
+		portSwarmerHp = setSwarmerHp(WEB_SWARMER_HP);
 	});
 	afterAll(() => {
 		setSwordTimings(portSword);
+		setSwarmerHp(portSwarmerHp);
 	});
 
 	it("every exported constant of the ported modules matches bit for bit", () => {

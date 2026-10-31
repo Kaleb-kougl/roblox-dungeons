@@ -83,10 +83,19 @@ const STACKED_SPLIT = 0.5;
 /** Each neighbour pushes by half the overlap. */
 const SEPARATION_SHARE = 0.5;
 
+/**
+ * The web build's swarmer hp (fixtures/constants.json). Every golden fixture was recorded with it, so the parity specs
+ * replay under it (setSwarmerHp), like the sword's WEB_SWORD_TIMINGS.
+ */
+export const WEB_SWARMER_HP = 2;
+
+/** The port's swarmer hp (CLAUDE.md decision log, 2026-10-31): one less than the web build's, so fodder dies to one hit. */
+export const SWARMER_HP = 1;
+
 export const SWARMER = registerArchetype<SwarmerData>({
 	id: "swarmer",
 	data: {
-		hp: 2,
+		hp: SWARMER_HP,
 		radius: 0.3,
 		speed: 4.2,
 		contactDamage: HIT_NORMAL,
@@ -238,4 +247,14 @@ function separate(ctx: SimCtx, a: ActorState, d: SwarmerData): void {
 		pz *= k;
 	}
 	moveActor(ctx, a, px, pz);
+}
+
+/**
+ * Specs only: sets the swarmer's hp (e.g. to WEB_SWARMER_HP for a golden replay) and returns the previous value to
+ * restore. Hp is read at spawn, so it applies to every swarmer spawned afterwards.
+ */
+export function setSwarmerHp(hp: number): number {
+	const previous = SWARMER.data.hp;
+	SWARMER.data.hp = hp;
+	return previous;
 }

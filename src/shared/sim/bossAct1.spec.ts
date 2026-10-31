@@ -18,7 +18,7 @@
 // event stream it is fed from (same order) instead. `spawnFromQuery` (a URL query parser) has no Roblox counterpart:
 // `runSpawn(d, atBossDoor)` is checked instead. The per-tick "new bullet" scan tracks live slots in a map instead of
 // refilling a capacity-sized array every tick (same result, much faster under Lune).
-import { describe, expect, it } from "@rbxts/jest-globals";
+import { afterAll, describe, expect, it } from "@rbxts/jest-globals";
 import {
 	DEFAULT_ENCOUNTER,
 	ENEMY_BUDGET,
@@ -78,7 +78,17 @@ import {
 	type InputFrame,
 	type SimConfig,
 	type SimState,
+	WEB_SWARMER_HP,
+	setSwarmerHp,
 } from "shared/sim";
+
+// The boss's adds are swarmers; these fights, TTKs and summon counts were tuned with the web build's 2-hp swarmers
+// (the port's are 1 hp, CLAUDE.md decision log), so this file runs under WEB_SWARMER_HP. Set at load, not in a
+// beforeAll: describe bodies may run fights while the specs are collected.
+const portSwarmerHp = setSwarmerHp(WEB_SWARMER_HP);
+afterAll(() => {
+	setSwarmerHp(portSwarmerHp);
+});
 
 const D = BOSS_ACT1_DATA;
 /** The tuned hp (README: "Time to kill"). */

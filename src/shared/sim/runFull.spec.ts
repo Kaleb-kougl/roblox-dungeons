@@ -27,7 +27,9 @@ import {
 	type RunFixture,
 	type SimConfig,
 	WEB_SWORD_TIMINGS,
+	WEB_SWARMER_HP,
 	setSwordTimings,
+	setSwarmerHp,
 	type SwordTimings,
 } from "shared/sim";
 
@@ -35,8 +37,10 @@ import {
 // slower (CLAUDE.md decision log), so this file replays under WEB_SWORD_TIMINGS. Set at load, not in a beforeAll:
 // describe bodies may replay while the specs are collected.
 const portSword: SwordTimings = setSwordTimings(WEB_SWORD_TIMINGS);
+const portSwarmerHp = setSwarmerHp(WEB_SWARMER_HP); // the web swarmer's 2 hp (port: 1)
 afterAll(() => {
 	setSwordTimings(portSword);
+	setSwarmerHp(portSwarmerHp);
 });
 
 const run = runFull as unknown as RunFixture;

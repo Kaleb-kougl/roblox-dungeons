@@ -84,6 +84,13 @@ Decision log (deviations from `PLAN.md`):
   so both keep their share of the window; strings `boon.lingering.desc` / `curse.impatience.desc` follow. A sim change:
   every scored run (endless, `KV_Scoring` M1, the tutorial) replays and scores differently from older builds; no
   fixture is scored, so every fixture still matches. The HUD meter reads the window from the snapshot (unchanged code).
+- **One-hit swarmers (port retune, 2026-10-31).** The swarmer's hp is `SWARMER_HP` = 1, the web build's
+  `WEB_SWARMER_HP` 2 minus one (`archetypes/swarmer.ts`; endless hp scaling, party scaling and the boss's swarmer adds
+  all start from it). A sim change: M1, the tutorial, endless and the bosses' adds play differently from older builds.
+  Every golden fixture and the web-tuned specs (golden runs, validate / segments, constants, the boss TTK table,
+  `bossAct1.spec`, docs/M1.md's tuning table) replay under `setSwarmerHp(WEB_SWARMER_HP)` next to
+  `setSwordTimings(WEB_SWORD_TIMINGS)` and still match bit for bit; `enemies.determinism.spec` pins the port's current
+  outcomes separately.
 - **Archetype bands.** Kinds number by (`ArchetypeDef.band`, then id order), not id order alone. The web build's
   archetypes are band 0 (indices 0..6, pinned by hashed golden runs); a port-only archetype takes a NEW band so it
   numbers after the web table and no web index ever moves. The training dummy is band 1 (`PORT_BAND_TUTORIAL`),

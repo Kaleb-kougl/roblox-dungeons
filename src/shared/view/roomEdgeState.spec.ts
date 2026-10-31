@@ -19,12 +19,14 @@ import {
 	Button,
 	NO_KIND,
 	WEB_SWORD_TIMINGS,
+	WEB_SWARMER_HP,
 	archetypeAt,
 	buildScoreRooms,
 	createSimState,
 	deserializeRecording,
 	hashState,
 	setSwordTimings,
+	setSwarmerHp,
 	step,
 	stepRecorded,
 	type ActorState,
@@ -387,6 +389,7 @@ describe("RoomEdgeStates: fallback parity (run-full-1337's inputs, unscored vs K
 	let fallbackRecords: ReadonlyArray<RoomScore> = [];
 	// Recorded with the web build's sword (CLAUDE.md decision log): replay under its timings, restored right after.
 	const portSword = setSwordTimings(WEB_SWORD_TIMINGS);
+	const portSwarmerHp = setSwarmerHp(WEB_SWARMER_HP); // the web swarmer's 2 hp (port: 1)
 	try {
 		// The fallback records the unscored observer builds at tick 0, kept to prove update() never mutates them.
 		const probe = new EdgeObserver(
@@ -414,6 +417,7 @@ describe("RoomEdgeStates: fallback parity (run-full-1337's inputs, unscored vs K
 		scoredTrace = traceScored(scored).floors[0];
 	} finally {
 		setSwordTimings(portSword);
+		setSwarmerHp(portSwarmerHp);
 	}
 	print(
 		`[roomEdgeState] run-full-1337 unscored\n${describeTrace([unscoredTrace!])}\nscored\n${describeTrace([
