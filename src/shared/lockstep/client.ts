@@ -43,7 +43,7 @@ import {
 	type ScorePop,
 } from "shared/play";
 import { BoostFrameEvents } from "shared/view/boosts";
-import { ComboEvents, NearMissEvents, RoomClearEvents } from "shared/view/fx";
+import { ComboEvents, NearMissEvents, RoomClearEvents, VariantCueEvents } from "shared/view/fx";
 import { DEFAULT_LOCKSTEP, type LockstepTunables } from "./config";
 import { MergedDecoder, encodeInputBatch } from "./wire";
 
@@ -96,6 +96,8 @@ export class LockstepClient implements RunView {
 	readonly combo = new ComboEvents();
 	/** Grazes and guard erases of the ticks the last pump stepped (docs/GRAZE_PARRY.md GP2; reset every pump). */
 	readonly nearMiss = new NearMissEvents();
+	/** Enemy-variant sound events of the ticks the last pump stepped (docs/ENEMY_VARIANTS.md; reset every pump). */
+	readonly variantCues = new VariantCueEvents();
 	/** Run totals for the HUD (kills, landed hits on the party). */
 	kills = 0;
 	hitsTaken = 0;
@@ -241,6 +243,7 @@ export class LockstepClient implements RunView {
 		this.roomClears.reset();
 		this.combo.reset();
 		this.nearMiss.reset();
+		this.variantCues.reset();
 		const inputs: OutgoingInputs[] = [];
 		const hashes: Array<{ tick: number; hash: string }> = [];
 		let final: RunFinal | undefined;
@@ -281,6 +284,7 @@ export class LockstepClient implements RunView {
 			this.roomClears.collect(state);
 			this.combo.collect(state);
 			this.nearMiss.collect(state);
+			this.variantCues.collect(state);
 			stepped++;
 			if (state.tick % this.tunables.hashEvery === 0 && !this.stopped) {
 				this.unackedTicks.push(state.tick);
