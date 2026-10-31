@@ -4,7 +4,7 @@ import { Workspace } from "@rbxts/services";
 import { clientStore, selectTutorialEnded } from "client/store";
 import { DRAFT_SLOT_Z_RAISED, DRAFT_SLOT_Z_REST, DRAFT_UI, resetDraftUi } from "client/ui";
 import { draftConfirmHeld, draftNeverRevealed } from "shared/play";
-import { BOONS, DRAFT_MIN_OPEN_TICKS, DRAFT_OFFER_COUNT, Rarity, type RarityId } from "shared/sim";
+import { DRAFT_MIN_OPEN_TICKS, DRAFT_OFFER_COUNT, Rarity, cardDisplay, type RarityId } from "shared/sim";
 import type { JuiceSettings } from "shared/settings";
 import {
 	DRAFT_REVEAL_VIEW,
@@ -82,6 +82,8 @@ export class DraftRevealController implements OnStart, DraftRevealDriver {
 	private wasOpen = false;
 	/** The offer index taken (leaving), or -1. */
 	private chosen = NONE;
+	/** The local draft's draftTicks seen last frame (a drop while open is a builds re-deal). */
+	private lastDraftTicks = 0;
 	/** RunContext.counter of the run the reveal belongs to. */
 	private runCounter = NONE;
 	/** DRAFT_UI shows something (reset once when it stops). */
@@ -148,6 +150,14 @@ export class DraftRevealController implements OnStart, DraftRevealDriver {
 		const never = this.neverRevealed(ctx);
 		if (never && (fr.active || this.begun)) this.off();
 
+		// Builds' boss double draft (docs/BUILDS.md BUD4): a pick that re-deals keeps the draft open with new offers and
+		// its timer back at 0; deal the new cards at once (the cover is long gone), so the confirm gate never waits on a
+		// reveal that would not begin.
+		if (open && me !== undefined && this.begun && !never && me.draftTicks < this.lastDraftTicks) {
+			this.begin(me, ctx.floor, settings.reducedMotion);
+		}
+		this.lastDraftTicks = open && me !== undefined ? me.draftTicks : 0;
+
 		// The pick: the draft closed this frame; its "boon" run event names the card.
 		if (this.wasOpen && !open && this.begun && fr.active && !fr.leaving) {
 			const chosen = this.chosenOffer(ctx);
@@ -182,7 +192,8 @@ export class DraftRevealController implements OnStart, DraftRevealDriver {
 		this.count = math.min(offers.size(), DRAFT_OFFER_COUNT);
 		const shown: RarityId[] = [];
 		for (let i = 0; i < this.count; i++) {
-			const real = BOONS[offers[i]]?.rarity ?? Rarity.COMMON;
+			// A card id: a boon, or with builds a duo (legendary look until BU9's frames; docs/BUILDS.md).
+			const real = cardDisplay(offers[i])?.rarity ?? Rarity.COMMON;
 			shown.push(debug !== undefined && i < debug.size() ? debug[i] : real);
 		}
 		this.begun = true;
@@ -285,6 +296,7 @@ export class DraftRevealController implements OnStart, DraftRevealDriver {
 		this.floor = NONE;
 		this.wasOpen = false;
 		this.chosen = NONE;
+		this.lastDraftTicks = 0;
 		this.offers = [];
 		this.count = 0;
 		if (this.drawn) {

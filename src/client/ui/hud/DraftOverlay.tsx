@@ -3,7 +3,7 @@ import { useSelector } from "@rbxts/react-reflex";
 import { selectBindings, selectInputDevice, selectTutorialEnded, type GameState } from "client/store";
 import { draftHint, keyDevice } from "shared/play";
 import { HUD_FONT, role, str, themePack } from "client/ui/theme";
-import { BOONS, DRAFT_OFFER_COUNT, Rarity, type RarityId } from "shared/sim";
+import { DRAFT_OFFER_COUNT, Rarity, cardDisplay, type RarityId } from "shared/sim";
 import {
 	DRAFT_REVEAL_VIEW,
 	DRAFT_SKIN,
@@ -58,8 +58,9 @@ const BODY_Z = {
 const selectDraftOpen = (state: { game: GameState }) => state.game.snapshot.draftOpen;
 const selectDraftWaiting = (state: { game: GameState }) => state.game.snapshot.draftWaiting;
 
+/** The card's name / desc id and rarity look: a boon, or with builds a duo (docs/BUILDS.md card ids). */
 function boonOf(b: number) {
-	return b >= 0 ? BOONS[b] : undefined;
+	return b >= 0 ? cardDisplay(b) : undefined;
 }
 
 function rarityColor(r: RarityId): Color3 {

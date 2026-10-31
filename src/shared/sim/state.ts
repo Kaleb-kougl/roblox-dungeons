@@ -361,9 +361,9 @@ export function createSimState(
  * An independent copy of `s`. LIMITED: the bullet pools can only be rebuilt while pristine (no bullet ever spawned in
  * this run); once any bullet has been spawned this THROWS. Re-simulate from the recording instead.
  */
-function cloneRun(r: Readonly<RunState>): RunState {
+function cloneRun(r: Readonly<RunState>, builds: Readonly<BuildsState> | undefined): RunState {
 	const out = cloneRunState(r);
-	for (const p of out.players) refreshRunMods(p);
+	for (let i = 0; i < out.players.size(); i++) refreshRunMods(out.players[i], builds?.players[i]);
 	return out;
 }
 
@@ -376,7 +376,7 @@ export function cloneSimState(s: Readonly<SimState>): SimState {
 		combat: cloneCombatState(s.combat),
 		endless: s.endless !== undefined ? cloneEndlessState(s.endless) : undefined,
 		score: s.score !== undefined ? cloneScoreState(s.score) : undefined,
-		run: s.run !== undefined ? cloneRun(s.run) : undefined,
+		run: s.run !== undefined ? cloneRun(s.run, s.builds) : undefined,
 		tutorial: s.tutorial !== undefined ? cloneTutorialState(s.tutorial) : undefined,
 		breakables: s.breakables !== undefined ? cloneBreakablesState(s.breakables) : undefined,
 		drops: s.drops !== undefined ? cloneDropsState(s.drops) : undefined,

@@ -37,8 +37,16 @@
  * Offers (drawBoonOffers): with DRAFT_OFFER_COUNT or fewer unowned boons left, all of them (Boon order, no rng);
  * else per card one rngInt(0, 99) rarity roll (rarityPercents of the floor just cleared) and one rngInt pick among
  * the unowned, not yet offered boons of that rarity; a rarity with none left falls back to every remaining boon.
+ * Only the classic boons (CLASSIC_BOON_COUNT): the on-kill boons appended after them are builds-only.
+ *
+ * Builds (docs/BUILDS.md BU2, only with SimConfig.builds: endless worlds): the offers are draft CARDS (sim/builds
+ * cards.ts drawCardOffers: new boons, upgrades / evolutions of owned ones, duos; card ids in draftOffers), a confirm
+ * takes the card through grantCard (levels, duos), and the draft after a boss floor is dealt twice (BUD4: the first
+ * deal guarantees a duo when one is available; a confirm with draftsLeft > 1 re-deals for that player instead of
+ * closing, with one more drawCardOffers, the draft timer back at 0).
  */
 import { jsMax, jsMin } from "shared/jsmath";
+import { isBossFloor } from "shared/dungeon";
 import { rngInt, type RngHolder } from "../rng";
 import type { InputFrame } from "../input";
 import type { SimState } from "../state";
@@ -47,6 +55,9 @@ import type { EncounterConfig } from "../combat/actors/encounter";
 import { endlessFloorWorld } from "../endless";
 import { addCurse } from "../score/score";
 import { hasLeft, partySize, playerAt, weaponsAt } from "../party";
+import { buildPlayer } from "../builds/builds";
+import { drawPlayerCardOffers, grantCard } from "../builds/cards";
+import { rarityForRoll } from "./rarity";
 import {
 	ARMOR_BOON_PIPS,
 	BOONS,
@@ -69,19 +80,12 @@ import {
 	DRAFT_SELECT_DEAD_ZONE_AXIS,
 	FLASK_BOON_CHARGES,
 	HEART_BOON_HALF_HEARTS,
-	LEGENDARY_PERCENT_MAX,
-	LEGENDARY_PERCENT_PER_FLOOR,
 	NO_SELECTION,
 	PEDESTAL_RADIUS,
-	RARITY_PERCENT_COMMON,
-	RARITY_PERCENT_LEGENDARY,
-	RARITY_PERCENT_RARE,
 	RARITY_ROLL_RANGE,
 	RELIC_COUNT,
-	Rarity,
 	SHRINE_BUTTON,
 	SHRINE_RADIUS,
-	type RarityId,
 } from "./progressionData";
 import {
 	NEUTRAL_RUN_MODS,
@@ -192,25 +196,7 @@ export function clearRunEvents(r: RunState): void {
 // ---------------------------------------------------------------------------------------------
 // Offers
 
-/**
- * Rarity percents [common, rare, legendary] for a draft after `floorCleared` (1-based): legendary
- * 5 + (floorCleared - 1), at most 15, the rise taken from common; rare stays 25. Integers summing to 100.
- */
-export function rarityPercents(floorCleared: number): [number, number, number] {
-	const rise = jsMax(0, floorCleared - 1) * LEGENDARY_PERCENT_PER_FLOOR;
-	const legendary = jsMin(LEGENDARY_PERCENT_MAX, RARITY_PERCENT_LEGENDARY + rise);
-	const common = RARITY_PERCENT_COMMON - (legendary - RARITY_PERCENT_LEGENDARY);
-	return [common, RARITY_PERCENT_RARE, legendary];
-}
-
-/** The rarity of a roll in [0, 100): [0, legendary) legendary, then rare, then common. */
-export function rarityForRoll(roll: number, floorCleared: number): RarityId {
-	const percents = rarityPercents(floorCleared);
-	const legendary = percents[Rarity.LEGENDARY];
-	if (roll < legendary) return Rarity.LEGENDARY;
-	if (roll < legendary + percents[Rarity.RARE]) return Rarity.RARE;
-	return Rarity.COMMON;
-}
+export { rarityForRoll, rarityPercents } from "./rarity";
 
 /**
  * The boons a draft after `floorCleared` offers a player owning `owned` (see the file comment), without builds: only
@@ -233,17 +219,47 @@ export function drawBoonOffers(rng: RngHolder, owned: ReadonlyArray<number>, flo
 	return out;
 }
 
-/** Opens player `playerIndex`'s draft after `floorCleared`; false (no draft) when every boon is owned. */
-export function openDraft(state: SimState, playerIndex: number, floorCleared: number): boolean {
+/**
+ * Opens player `playerIndex`'s draft after `floorCleared`; false (no draft) when nothing is left to offer. With builds
+ * (docs/BUILDS.md BU2) the offers are cards (drawCardOffers) and `deals` drafts are dealt one after the other (a boss
+ * floor's double draft: 2, its first deal with a guaranteed duo); without builds, drawBoonOffers and one deal.
+ */
+export function openDraft(state: SimState, playerIndex: number, floorCleared: number, deals = 1): boolean {
 	const p = runPlayer(state, playerIndex);
 	if (p === undefined) return false;
-	const offers = drawBoonOffers(state, p.boons, floorCleared);
+	const bp = buildPlayer(state, playerIndex);
+	const offers =
+		bp !== undefined
+			? drawPlayerCardOffers(state, playerIndex, floorCleared, deals > 1)
+			: drawBoonOffers(state, p.boons, floorCleared);
+	if (bp !== undefined) bp.draftsLeft = offers.size() > 0 ? deals : 0;
 	if (offers.size() === 0) return false;
+	dealOffers(state, p, offers);
+	return true;
+}
+
+/** Puts `offers` on the table for `p` (a fresh draft or a builds re-deal): open, timer 0, the centre card selected. */
+function dealOffers(state: SimState, p: RunPlayerState, offers: number[]): void {
 	p.draftOpen = 1;
 	p.draftTicks = 0;
 	p.draftOffers = offers;
 	p.draftSelected = draftCardFor(DRAFT_COLUMN_CENTRE, offers.size());
 	state.run!.events.draftOpened = offers.size();
+}
+
+/**
+ * Builds: after a pick, the next deal of a multi-deal draft (draftsLeft > 1: the boss double draft), on the floor just
+ * cleared (the current floor - 1), no guaranteed duo. False (the draft closes) when no deal is left or nothing is left
+ * to offer.
+ */
+function redeal(state: SimState, playerIndex: number, p: RunPlayerState): boolean {
+	const bp = buildPlayer(state, playerIndex);
+	if (bp === undefined || bp.draftsLeft <= 1) return false;
+	bp.draftsLeft -= 1;
+	const floorCleared = (state.endless?.floor ?? 1) - 1;
+	const offers = drawPlayerCardOffers(state, playerIndex, floorCleared, false);
+	if (offers.size() === 0) return false;
+	dealOffers(state, p, offers);
 	return true;
 }
 
@@ -295,6 +311,8 @@ export function stepDraft(state: SimState, inputs: ReadonlyArray<Readonly<InputF
 		if (p !== undefined && p.draftOpen !== 0) {
 			if (hasLeft(state, i)) {
 				closeDraft(p);
+				const bp = buildPlayer(state, i);
+				if (bp !== undefined) bp.draftsLeft = 0;
 			} else {
 				p.draftTicks += 1;
 				p.draftSelected = draftCardFor(draftColumn(input), p.draftOffers.size());
@@ -302,11 +320,21 @@ export function stepDraft(state: SimState, inputs: ReadonlyArray<Readonly<InputF
 					bit32.band(input.buttons, DRAFT_CONFIRM_BUTTON) !== 0 &&
 					bit32.band(pl.prevButtons, DRAFT_CONFIRM_BUTTON) === 0;
 				if (confirm && p.draftTicks >= DRAFT_MIN_OPEN_TICKS && p.draftSelected !== NO_SELECTION) {
-					const boon = p.draftOffers[p.draftSelected];
-					closeDraft(p);
-					grantBoon(state, i, boon);
-					r.events.draftChosen = boon + 1;
-					p.events.draftChosen = boon + 1;
+					const card = p.draftOffers[p.draftSelected];
+					const bp = buildPlayer(state, i);
+					if (bp !== undefined) {
+						// Builds: the card (a level, an evolution or a duo); a boss double draft re-deals.
+						grantCard(state, i, card);
+						if (!redeal(state, i, p)) {
+							closeDraft(p);
+							bp.draftsLeft = 0;
+						}
+					} else {
+						closeDraft(p);
+						grantBoon(state, i, card);
+					}
+					r.events.draftChosen = card + 1;
+					p.events.draftChosen = card + 1;
 				}
 			}
 		}
@@ -324,6 +352,11 @@ export function stepDraft(state: SimState, inputs: ReadonlyArray<Readonly<InputF
 export function grantBoon(state: SimState, playerIndex: number, boon: number): void {
 	const p = runPlayer(state, playerIndex);
 	if (p === undefined || p.boons.includes(boon) || BOONS[boon] === undefined) return;
+	// Builds (docs/BUILDS.md): level I through grantCard, so the levels and the boons list stay in step.
+	if (buildPlayer(state, playerIndex) !== undefined) {
+		grantCard(state, playerIndex, boon);
+		return;
+	}
 	p.boons.push(boon);
 	const pl = playerAt(state, playerIndex);
 	if (boon === Boon.HEARTY) {
@@ -336,7 +369,7 @@ export function grantBoon(state: SimState, playerIndex: number, boon: number): v
 		pl.armorMax += ARMOR_BOON_PIPS;
 		pl.armor += ARMOR_BOON_PIPS;
 	}
-	refreshRunMods(p);
+	refreshRunMods(p, buildPlayer(state, playerIndex));
 }
 
 /** Player `playerIndex` gets `relic` (no-op if owned). Relics have no one-off effect. */
@@ -344,7 +377,7 @@ export function grantRelic(state: SimState, playerIndex: number, relic: number):
 	const p = runPlayer(state, playerIndex);
 	if (p === undefined || p.relics.includes(relic) || relic < 0 || relic >= RELIC_COUNT) return;
 	p.relics.push(relic);
-	refreshRunMods(p);
+	refreshRunMods(p, buildPlayer(state, playerIndex));
 }
 
 /** Player `playerIndex` takes `curse` (no-op if taken): one-off effects (hearts, flask), the score's +0.25, the mods. */
@@ -361,7 +394,7 @@ export function acceptCurse(state: SimState, playerIndex: number, curse: number)
 		pl.flask = jsMin(pl.flask, pl.flaskMax);
 	}
 	addCurse(state);
-	refreshRunMods(p);
+	refreshRunMods(p, buildPlayer(state, playerIndex));
 }
 
 function unowned(owned: ReadonlyArray<number>, count: number): number[] {
@@ -401,7 +434,16 @@ export function stepRun(
 	if (ev.floorChanged !== 0) {
 		placeFloor(r, encounter);
 		for (const p of r.players) p.secondWindUsed = 0;
-		for (let i = 0; i < n; i++) if (!hasLeft(state, i)) openDraft(state, i, ev.floorChanged - 1);
+		const floorCleared = ev.floorChanged - 1;
+		const builds = state.builds;
+		// Builds: a boss floor's draft is dealt twice (docs/BUILDS.md BUD4); without builds, one draft as always.
+		const deals =
+			builds === undefined
+				? 1
+				: isBossFloor(floorCleared)
+				? builds.config.bossFloorDrafts
+				: builds.config.floorDrafts;
+		for (let i = 0; i < n; i++) if (!hasLeft(state, i)) openDraft(state, i, floorCleared, deals);
 		return;
 	}
 

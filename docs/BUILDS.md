@@ -25,9 +25,13 @@ before.
 
 ## Status (2026-10-31)
 
-BU0 (the audit) done: findings and the plan changes they force are below. Nothing else built. Read on `main` @
-`5a0edc2`. Decisions BUD1-BUD14 are **settled** (2026-10-31, Kaleb: every proposed default accepted; BUD8 and BUD12
-stand as technical requirements).
+BU0, BU1 and BU2 built (branch `builds`): the audit below, the scaffolding (opt-in `SimConfig.builds` on endless worlds,
+`state.builds` with its own `builds` hash group appended last, the three on-kill boons appended, level tables, duos,
+card ids, effect bullet kinds / sources / data, the two port arc rows, theme entries with placeholder values and
+`buildReport`) and levels and offers (`drawCardOffers`, `grantCard`, level values through `computeRunMods`, the boss
+double draft). No effect rule exists yet (procs, the on-kill boons' effects, evolution and duo rules are BU3-BU6); the
+draft UI is today's with card ids decoded (BU9). Decisions BUD1-BUD14 are **settled** (2026-10-31, Kaleb: every proposed
+default accepted; BUD8 and BUD12 stand as technical requirements).
 
 ## What the code gives us (read on `main` @ `5a0edc2`)
 
@@ -101,7 +105,7 @@ telemetry export), so the picks per run stay the plan's arithmetic; BU13 tunes f
 on the densest EV13 census rooms: there is no player-bullet census harness (`run/testing/poolHighWater.ts` counts
 actors), so it is left to BU3 / BU13, which need that harness anyway for `EFFECT_BULLETS_MAX`.
 
-**Plan changes needed** (to fold into BU1 / BU2):
+**Plan changes needed** (all folded into BU1 / BU2):
 
 1. `drawBoonOffers` must keep drawing from the first 12 boons only (`CLASSIC_BOON_COUNT`): it iterated `BOON_COUNT`, so
    appending the on-kill boons would have changed the tutorial's floor-2 draft and every builds-free endless config.
@@ -121,6 +125,43 @@ actors), so it is left to BU3 / BU13, which need that harness anyway for `EFFECT
    placeholder colours; BU7 picks the vale values (placeholders: cream burst, ice-white shard, peach ember, blue spark).
 9. Specs that pinned "affixes is the last hash group" or the classic draft on `buildEndlessRunConfig` floors were
    updated (builds is last; `progression.spec.ts`'s `dungeon()` strips `builds` to keep pinning the classic draft).
+
+## BU1 / BU2 (as built)
+
+Where the build differs from, or adds to, the plan:
+
+- **Files.** `sim/builds/` (`buildsData.ts`: duos, card ids and decoders, `cardDisplay`, `BUILD_RULES`, effect
+  sources; `effectsData.ts`: effect tunables and BurstSpecs, data only; `builds.ts`: config, state, clone, events,
+  `cardKind`, hash; `cards.ts`: `drawCardOffers`, `grantCard`); levels in `progression/progressionData.ts`
+  (`*_BY_LEVEL` / `*S` / `*_TOTAL` tables whose first entry is today's constant, `boonMaxLevel`, `levelValue`).
+  Theme: `theme/builds.ts` (key lists) and `theme/buildColors.ts` (`BUILD_COLOR_RULES`, `buildReport`).
+- **`BuildsConfig` = `BUILD_RULES`** (one frozen object: offer percents, pity, deals per floor, GEN_MAX,
+  PROCS_PER_TICK, EFFECT_BULLETS_MAX), like `AFFIXES_CONFIG`. `createSimState` creates `state.builds` whenever
+  `config.builds` is set (one empty build per player).
+- **State** per player: `levels` (one per Boon index), `duos`, `grazes` / `kills` / `arrows` / `bigHits` (0 until
+  BU5 / BU6), `draftsLeft` (plan change 2); world: `procs` (`{ x, z, owner, gen, slot, id }`, empty until BU3). Hash
+  group `builds` (`BUILDS_SUBSYSTEM`), names `builds.players[i].levels[b]`, `builds.procs[k].gen`, ...
+- **`BuildEvents`** in BU2 carries only the takes (`evolvedPlayer` / `evolvedBoon`, `duoPlayer` / `duoTaken`); the
+  effect fields come with BU3+.
+- **Offers.** The type roll's fall-through cycles duo -> upgrade -> new -> duo. `duoPercent` = 20 + 2 x the floor just
+  cleared (22 % after floor 1), at most 40. Pity replaces the last card of a full draft by a weighted upgrade pick.
+  The boss double draft's guaranteed duo is card 0 of the FIRST deal only (one pick, no type roll); the second deal
+  rolls normally. A re-deal resets `draftTicks` to 0 (the `DRAFT_MIN_OPEN_TICKS` guard applies again) and sets
+  `events.draftOpened`.
+- **Grants.** `grantBoon` in a builds run goes through `grantCard` (level I), so `boons` and `levels` never disagree.
+  Hearty adds 2 half hearts per level, Deep Flask and Warding 1 / 1 / 0 (totals 1 / 2 / 2).
+- **Presentation (minimal; BU9 / BU10 are the real UI).** Card ids decode through `cardDisplay`: a duo card shows its
+  `duo.<id>.name` / `.desc` with the legendary rarity look; an upgrade or evolution card still shows the boon's level-I
+  name and line. The toast names the card. The reveal re-deals (plan change 3). No "Pick again" line yet.
+- **Theme.** Required: 7 strings (`BUILD_STRING_KEYS`, written out in `REQUIRED_STRING_KEYS`), 6 colour roles
+  (`boon.evolved`, `boon.duo` on top of the rarity ladder in `BOON_RARITY_COLOR_RULES.roles`; `build.spark` / `.burst`
+  / `.shard` / `.ember` in `buildReport`), 4 bullet visuals (`bullet.player.burst` / `.shard` / `.ember` / `.bolt`), 9
+  port audio IDs (SILENT). The per-boon and per-duo strings (`boon.<id>.desc.2`, `.evo.name`, `.evo.desc`, `duo.<id>.*`)
+  are listed by `view/hud` `progressionStringKeys` (checked by `hud.spec.ts`), as every boon string already was.
+  Placeholder colours (BU7 replaces them): evolved `#fff1b8`, duo `#7fe0ff`, spark `#20b0e0`, burst `#fff2d0`, shard
+  `#e8f0ff`, ember `#f0d0c0` (each >= 47 CIE76 from every danger role and boost, >= 5.8:1 on every biome floor).
+- **Endless replays and scores change** from the first draft (card offers draw differently, and floor 5's draft is
+  dealt twice); M1, every fixture and the tutorial replay exactly as before.
 
 ## Player experience
 

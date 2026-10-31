@@ -69,6 +69,9 @@ export function frame(mx: number, mz: number, buttons = 0, ax = 0, az = 0): Inpu
 	};
 }
 
+/** resolveDraft answers at most this many deals of one draft (builds' boss double draft deals 2). */
+const RESOLVE_DRAFT_MAX_DEALS = 4;
+
 /**
  * Test-only: closes every open boon draft WITHOUT a pick (state surgery; the game has no way to decline). For specs
  * about other systems that debug-skip floors (the offers' rng draws stay done).
@@ -82,6 +85,8 @@ export function dismissDraft(s: SimState): void {
 		p.draftOffers = [];
 		p.draftSelected = NO_SELECTION;
 	}
+	// Builds (docs/BUILDS.md): no deal left either.
+	if (s.builds !== undefined) for (const b of s.builds.players) b.draftsLeft = 0;
 }
 
 /** Test-only: debug-skips floors until `floor` (press, release), dismissing each draft (dismissDraft). */
@@ -167,22 +172,26 @@ export class Driver {
 	/**
 	 * Resolves an open boon draft: the stick on `column` (left / centre / right; for two cards the centre falls back to
 	 * the left one) until the draft has been open DRAFT_MIN_OPEN_TICKS, one FIRE press, then a release. No-op without
-	 * an open draft.
+	 * an open draft. Builds' boss double draft (docs/BUILDS.md BUD4): a confirm that re-deals (the draft stays open, its
+	 * timer back at 0) is answered the same way on the new offers; every pick lands in `drafted`.
 	 */
 	resolveDraft(column: number = DRAFT_COLUMN_CENTRE): void {
 		const p = this.state.run?.players[SOLO_PLAYER];
 		if (p === undefined || !isDraftOpen(this.state)) return;
-		let col = column;
-		if (draftCardFor(col, p.draftOffers.size()) < 0) col = DRAFT_COLUMN_LEFT;
-		const side = col === DRAFT_COLUMN_RIGHT ? 1 : col === DRAFT_COLUMN_LEFT ? -1 : 0;
-		const mx = side * DRAFT_SCREEN_RIGHT_X;
-		const mz = side * DRAFT_SCREEN_RIGHT_Z;
-		const pick = p.draftOffers[draftCardFor(col, p.draftOffers.size())];
-		while (p.draftTicks + 1 < DRAFT_MIN_OPEN_TICKS) this.tick(frame(mx, mz));
-		this.tick(frame(mx, mz, DRAFT_CONFIRM_BUTTON));
-		if (p.draftOpen !== 0) error("resolveDraft: the confirm did not close the draft", 0);
-		this.drafted.push(pick);
-		this.tick(frame(0, 0));
+		for (let deal = 0; deal < RESOLVE_DRAFT_MAX_DEALS && p.draftOpen !== 0; deal++) {
+			let col = column;
+			if (draftCardFor(col, p.draftOffers.size()) < 0) col = DRAFT_COLUMN_LEFT;
+			const side = col === DRAFT_COLUMN_RIGHT ? 1 : col === DRAFT_COLUMN_LEFT ? -1 : 0;
+			const mx = side * DRAFT_SCREEN_RIGHT_X;
+			const mz = side * DRAFT_SCREEN_RIGHT_Z;
+			const pick = p.draftOffers[draftCardFor(col, p.draftOffers.size())];
+			while (p.draftTicks + 1 < DRAFT_MIN_OPEN_TICKS) this.tick(frame(mx, mz));
+			this.tick(frame(mx, mz, DRAFT_CONFIRM_BUTTON));
+			if (p.draftOpen !== 0 && p.draftTicks !== 0) error("resolveDraft: the confirm did not close the draft", 0);
+			this.drafted.push(pick);
+			this.tick(frame(0, 0));
+		}
+		if (p.draftOpen !== 0) error("resolveDraft: the draft was still open after every deal", 0);
 	}
 
 	/** One SHRINE_BUTTON press (down, then up). */

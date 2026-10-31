@@ -8,6 +8,7 @@ import {
 	BOSS_FINAL_PHASE,
 	BOSS_NO_HIT_BONUS,
 	BOSS_ACT1_ID,
+	cardBoon,
 	COMBO_DENOMINATOR,
 	CURSE_BASE,
 	CURSE_DENOMINATOR,
@@ -178,8 +179,17 @@ describe("an endless run is scored", () => {
 				`curses ${me.curses.join(",")}`,
 		);
 		expect(relicFloor).toBe(2);
-		expect(drv.drafted.size()).toBe(7);
-		expect(me.boons).toEqual(drv.drafted);
+		// Builds (docs/BUILDS.md BU2): seven floor drafts, the one after the floor 5 boss dealt twice (BUD4); a card may
+		// level an owned boon, so the owned boons are the distinct ones in the order first taken, at their pick counts.
+		expect(drv.drafted.size()).toBe(7 + 1);
+		const distinct: number[] = [];
+		for (const card of drv.drafted) {
+			const b = cardBoon(card);
+			if (b >= 0 && !distinct.includes(b)) distinct.push(b);
+		}
+		expect(me.boons).toEqual(distinct);
+		const levels = drv.state.builds!.players[SOLO_PLAYER].levels;
+		for (const b of distinct) expect([b, levels[b]]).toEqual([b, drv.drafted.filter((c) => c === b).size()]);
 		expect(me.relics.size()).toBe(1);
 		expect(me.curses.size()).toBe(1);
 		expect(drv.state.score!.curses).toBe(1);
