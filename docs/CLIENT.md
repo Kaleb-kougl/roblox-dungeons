@@ -39,6 +39,7 @@ rebinding, audio, display). Everything presentation-side reads the sim and never
 | `HealthBarController` | `.../fx/HealthBarController.ts` | Enemy health bars: one pooled BillboardGui per actor slot (64), plate / chip / fill or pips, elite outline. |
 | `DamageNumberController` | `.../fx/DamageNumberController.ts` | Damage numbers: 48 pooled BillboardGuis, merge window, heavy / capped colours, "CAP" tag, rise + fade. |
 | `ComboController` | `.../fx/ComboController.ts` | docs/COMBO.md CB7: each frame steps `ComboDisplay` from `state.score` and `RunView.combo` (gated by the stage cover and run over) and writes `COMBO_UI` (ScorePanel's `ComboRow` / `ComboMeter`); the tier-up floor shout (one SurfaceGui Part, `KV_ComboShout`, under every bullet, ducking near enemy bullets); the break kick (`requestNudge("comboBreak")`); `KV_ComboDebug` forces one event (and its sound). |
+| `NewBestController` | `.../fx/NewBestController.ts` | docs/NEW_BEST.md NB7-NB9: stores `records(RecordsStatus)` (asks once on start), freezes each run's `RunBaseline` (records + `SimController.pendingRunClaims`, `KV_NewBestDebug`), steps `NewBestTracker` inside RoomClearController's `scoreRoll` frame (`onShownScore`) and hands its frame to the cue mapper (`AudioController.setNewBestCues`); writes `NEW_BEST_UI` (score panel target row, gold number, touch compact line, run-over record rows), asks `ComboController.requestShout` for NEW BEST!, drops the clear jingle on the fanfare frame, draws the gold confetti (`KV_NewBestConfetti`, HUD + 1; in-run outside the clear zone and hidden under menus, full screen at run over). |
 | `DraftRevealController` | `.../fx/DraftRevealController.ts` | docs/DRAFT_REVEAL.md DR6: each frame begins the local player's draft reveal once the stage cover lifts (`StageController.coverLifting()`), steps `DraftReveal` on unpaused frames, picks on the local `boon` run event and writes `DRAFT_UI` (the `DraftOverlay` cards); plays its cues through `AudioController.playCue` and its music dip through `duckFor`; drives SimController's confirm gate (`setDraftRevealDriver`: the confirm is held while the reveal plays or before it begins) and InputController's tap filter (a tap during the reveal skips). `KV_DraftRevealDebug` overrides the first cards' rarities (display only). |
 | `ScorePopController` | `.../fx/ScorePopController.ts` | Scored runs (M2): a rising, fading `+points` BillboardGui per kill (`LiveRun.scorePops`, pooled `ScorePopPool`). |
 | `ParticleController` | `.../fx/ParticleController.ts` | Death bursts, boss waves, roar sparks, hit sparks, breakable chips, boost pickup / fade bursts: pooled 1-3 px Parts, one BulkMoveTo per frame, particle budget. |
@@ -492,6 +493,20 @@ the engagement, the last killed member). `RoomClearController` runs the pure `Ro
 time and writes React bindings, so nothing re-renders per frame. The score panel shows `ScoreRoller`'s number: kill
 points roll over 0.15 s, a room bonus is hidden until it lands, then rolls over 0.3 s.
 
+### New-best celebration (docs/NEW_BEST.md; not run in Studio yet)
+
+At each run start `NewBestController` freezes the run's `RunBaseline` (shared/view/hud `baselineFrom` over
+`withPendingRuns`) in the store's `records` slice: the server's `records` status plus earlier ranked runs of the session
+whose verdict or records push has not arrived (`SimController.pendingRunClaims`), so an R-restart or a quick Again
+never aims at the old best. Only a ranked run (a server `runId`, not the tutorial, scored) draws anything. Each frame
+the tracker runs on the score roller's **shown** score inside RoomClearController's frame (`FX_FRAME_PHASE.scoreRoll`,
+before every normal handler), so the target row, the fanfare (`sfx.best.new`, outranking that frame's clear jingle), the
+gold flare and the NEW BEST! floor shout (ComboController's slot; a request under the stage cover waits for it to
+lift) agree with the number on screen; an edge due under the cover fires on the reveal's first frame (the stairwell
+card's `NEW DEEPEST` fanfare). In-run confetti stays outside `HUD_CLEAR_ZONE` and hides while a menu is up. At run over
+the panel and the controller share `runOverBest` (the verdict's `records` win once they arrive): ribbon, rolling record
+rows with tick / land, full-screen confetti, `Saved` / `Not saved`; a record run's jingle is `sfx.jingle.record`.
+
 ### Sprite effects (docs/FX_AUDIO.md F3 / F4; Roblox port, no web source)
 
 `FxSpriteController` (render step `KV_FxSprites` at Camera + 2) draws the cues of the pure `FxCueMapper`
@@ -721,6 +736,7 @@ is open, and only one of the Options screen / leaderboard panel is open at a tim
 | `KV_EnemyOutline` | boolean | Enemy outlines (docs/OUTLINE.md): `false` hides the Highlight and every sprite rim at once (toggles live, no reparenting). Unset or `true`: on. Presentation only. |
 | `KV_DecorDebug` | boolean | Draws the decor debug overlay: fade boxes, footprint stencils, breakable cells (toggles at once). Off by default. |
 | `KV_DraftRevealDebug` | string | Draft reveal (docs/DRAFT_REVEAL.md): `c` / `r` / `l` letters (or names), comma separated, e.g. `c,l,r`, `l,l`: every draft's reveal gives its first cards these rarities (art, glow, beat and sounds); the real offers, their text and the pick are unchanged. Off by default. |
+| `KV_NewBestDebug` | string | New best (docs/NEW_BEST.md): read at each ranked run start, forces the run's baseline: `score:2000`, `floor:2`, both (`score:2000,floor:3`), `first` (no record) or `unknown` (records not loaded). The server-side Studio fake `KV_FakeRecords` (`solo:48210:9`, `none`, `unknown`; docs/SERVER.md "Personal records") changes what the records say instead. Off by default. Presentation only. |
 | `KV_Tutorial` | boolean | Read once on join (not on R). `true`: the join starts the tutorial whatever the server says (the server is not asked; no main menu first); `false`: never (the normal join flow at once: the main menu, or `KV_SkipMenu`'s solo run). Unset: the server's `onboardingStatus` decides. Server side, `KV_ResetOnboarding` (docs/SERVER.md) resets the stored flag instead. |
 
 If the `game` world cannot start (e.g. a build without the actor archetypes: "Unknown archetype"), the client falls
@@ -1290,6 +1306,17 @@ server or `KV_Tutorial` = true on Workspace. Client-side checks first (this code
 5. Die mid-combo, and cross a stairwell mid-combo: no sting or shatter after the run ends or under the stage card.
 6. Co-op, reduced motion, Screen shake off, touch, HUD scale 70 %; `KV_ComboDebug` = `1`..`4` / `break` / `small` /
    `lapse` / `cut`.
+
+### New best (docs/NEW_BEST.md "Studio check"; not run in Studio yet)
+
+1. `KV_NewBestDebug` = `score:2000`, endless floor 1: `2000 TO BEST` dim, ember and pulsing near 1800; as the shown
+   number passes 2000 (try a room bonus landing, also under a stairwell card): fanfare, gold flare and shine, slam,
+   NEW BEST! floor shout, edge confetti; then `NEW BEST +n`. Pause right after: the confetti hides.
+2. `floor:2`: floor 2's card `Record floor`, floor 3's `NEW DEEPEST` with the fanfare at the reveal, floor 4's
+   `Deepest yet`.
+3. Die after both: the record jingle, ribbon, rolling rows, confetti, `Saved` after the verdict; press R or Again before
+   the verdict: the next run's target is the score just set, not the old best.
+4. `KV_FakeRecords` = `none` / `unknown`, touch (compact line under the combo line), HUD 70 %, reduced motion, co-op.
 
 ## Gotchas
 

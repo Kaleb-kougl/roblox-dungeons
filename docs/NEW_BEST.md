@@ -1,8 +1,12 @@
-# New-best celebration (plan)
+# New-best celebration (plan, as built)
 
-Status (2026-10-31): **plan, nothing built.** Owner answers (2026-10-31): NBD3 (deepest floor), NBD4 (quit runs
-count), NBD5 (first record quiet mid-run, loud at the end), NBD6 (Ninja Adventure sounds). NBD8 (confetti) still
-proposed.
+Status (2026-10-31): **built** (branch `new-best`, NB1-NB9 and NB11, plus a review-fix pass); headless checks green
+(typecheck, lint, asset ids, build, the records / view/hud / view/audio / theme specs, `build:place`). **Pending:** NB10,
+the owner's Studio check (none of the UI, sound or DataStore behaviour has run in Studio yet; see "As built" for what to
+check first) and the two sounds' audition / `audio:lock` / `audio:build` / upload (ids into `packs/vale/assetIds.ts`;
+both are SILENT until then and fall back to the PERFECT / game-over jingles). Owner answers (2026-10-31): NBD3 (deepest
+floor), NBD4 (quit runs count), NBD5 (first record quiet mid-run, loud at the end), NBD6 (Ninja Adventure sounds). NBD8
+(confetti) built as proposed.
 
 Goal: give every endless run a target and a payoff. Today a player's best lives only on the leaderboard panel (B), as
 the score of their best leaderboard run; nothing in a run says how close they are, and the run they finally beat it in
@@ -151,28 +155,28 @@ abandoned runs. So a small **records doc** joins the per-player docs.
 Each step is a commit. Specs next to the code; `npm run verify` before each.
 
 - [ ] **NB0. Owner decisions.** Answered 2026-10-31: NBD3, NBD4, NBD5, NBD6 (all as proposed). Open: NBD8 (confetti).
-- [ ] **NB1. Records core.** shared/records + spec: codec round trip and junk input, `mergeRecords` (score only, floor
+- [x] **NB1. Records core.** shared/records + spec: codec round trip and junk input, `mergeRecords` (score only, floor
   only, both, neither, lower never wins), seed from details (solo only, both, malformed), policy (endless death /
   abandoned, M1, tutorial, Studio, private).
-- [ ] **NB2. RecordsService.** Load / seed / save, update on accepted verdicts only (rejected, expired and ineligible
+- [x] **NB2. RecordsService.** Load / seed / save, update on accepted verdicts only (rejected, expired and ineligible
   never write), party contributors, the two remotes and `RunFinishVerdict.records`. docs/SERVER.md section. Studio fakes:
   `KV_FakeRecords` (`"solo:48210:9,coop:0:0"`).
-- [ ] **NB3. Tracker.** Pure + spec: no baseline -> nothing; chasing / reach / passed thresholds; crossing fires once,
+- [x] **NB3. Tracker.** Pure + spec: no baseline -> nothing; chasing / reach / passed thresholds; crossing fires once,
   on the shown score (a held room bonus crosses when it lands, not when the sim awards it); a crossing under the stage
   cover fires at the reveal; none after run over; deepest edge on the first floor past the record only; co-op uses the
   coop baseline; a mid-run records update does not move the baseline.
-- [ ] **NB4. Theme.** Role + report, strings, audio IDs, fallbacks; contract / placeholder / vale specs. Check
+- [x] **NB4. Theme.** Role + report, strings, audio IDs, fallbacks; contract / placeholder / vale specs. Check
   contract.luau / validate.luau stay under Luau's 200 top-level locals (both are near it: CLAUDE.md).
-- [ ] **NB5. Audio.** Mapper spec cases (crossing cue, deepest cue replaces floor enter, run-over swap on a record run
+- [x] **NB5. Audio.** Mapper spec cases (crossing cue, deepest cue replaces floor enter, run-over swap on a record run
   only, silent IDs fall back). `art/audio.json` entries, `audio:lock` / `audio:build` left to NB10 (the vendor packs are
   on the owner's Mac).
-- [ ] **NB6. Score panel.** Row 1 split, bindings, gold number; footprint spec green at 100 % and 70 %, touch.
-- [ ] **NB7. NewBestController.** Wires tracker, shout, confetti; `npm run build:place` builds.
-- [ ] **NB8. Stage card.**
-- [ ] **NB9. Run-over, pause, menu.**
+- [x] **NB6. Score panel.** Row 1 split, bindings, gold number; footprint spec green at 100 % and 70 %, touch.
+- [x] **NB7. NewBestController.** Wires tracker, shout, confetti; `npm run build:place` builds.
+- [x] **NB8. Stage card.**
+- [x] **NB9. Run-over, pause, menu.**
 - [ ] **NB10. [owner] Studio check and sounds.** Audition, lock, build, upload, ids into `packs/vale/assetIds.ts`.
   `KV_NewBestDebug` (Workspace string: `score:500`, `floor:2`, `first`, `unknown`) forces the run's baseline.
-- [ ] **NB11. Docs.** Status and as-built notes here, docs/CLIENT.md, docs/SERVER.md, the CLAUDE.md decision log.
+- [x] **NB11. Docs.** Status and as-built notes here, docs/CLIENT.md, docs/SERVER.md, the CLAUDE.md decision log.
 
 ## Studio check
 
@@ -214,6 +218,70 @@ NBD3, NBD4, NBD5 and NBD6 are the owner's answers (2026-10-31); the rest are pro
 - **NBD10. The baseline is frozen at run start**; an unknown baseline shows nothing in-run (never a false celebration),
   and the run-over can still celebrate from the verdict's `records`.
 - **NBD11. No setting.** Rare by nature; Reduced motion and the SFX volume cover it.
+
+## As built (2026-10-31)
+
+| Piece | Where |
+|---|---|
+| `RecordsDoc` `{ v: 1, endless: { solo?, coop? }, seeded? }` (`RecordEntry` score / floor each with its time and runId), codec (`RECORDS_CODEC`, decoding never throws), `mergeRecords` / `mergeRecordDocs` / `mergeStoredRecords` (max per board per field, ties keep the stored run, cancel over a newer version), `seedFromDetails` (carries `seeded`), `recordsStatusOf`, `runRecordsResult`, `RECORDS_POLICY` / `recordsEligibility`, `parseFakeRecords`, tunables (`KV_Records_v1`, retries, autosave, request rate, `KV_FakeRecords`) | shared/records (doc.ts, policy.ts, fake.ts, config.ts) |
+| `RecordsService` (PlayerDocCache load on join, seed from `LB_Details_v1` while the doc is unseeded, `applyRun` on accepted runs, direct merge writes for unknown / absent members, `ready` gate, BindToClose waits for validating runs); `MergeKeyValue` (UpdateAsync with a merge transform; no-op writes in Studio); `RunSessionService.conclude` calls `applyRun` next to the leaderboard post and fires each recipient's verdict `withRecords` | server/services, server/services/data/MergeKeyValue.ts |
+| Remotes `requestRecords` / `records(RecordsStatus)`; `RunFinishVerdict.records?: RunRecordsResult` (per recipient) | shared/network.ts |
+| `RunBaseline` (`unranked` / `unknown` / `none` / `known`), `baselineFrom`, `withPendingRuns` (`PendingRunClaim`), `parseNewBestDebug` / `debugBaseline`, `NewBestTracker` (target row, crossing / deepest / deeper-yet edges held under the cover, none after run over, slam / pulse / gold / flash / shine / confetti timelines, `recordRun`), text helpers (`newBestRowText`, `stageBestLine`, `recordRowText`, `runOverRibbonKey`, `recordSavedKey`, `bestText`), `runOverRecords`, `recordRollValue` / `recordRollEdges`, `confettiPieceAt`; `NEW_BEST` / `NEW_BEST_DRAW` / `NEW_BEST_ROLE`; `NEW_BEST_STRINGS` | shared/view/hud/newBest.ts, newBestConfig.ts, newBestStrings.ts |
+| Theme: role `newBest` `#ffd700` (`newBestReport` / `NEW_BEST_COLOR_RULES` / `newBestColorProblems`: >= 3:1 on `uiPanel`, >= 25 CIE76 from `ember` and the combo tiers, >= 40 from the enemy-bullet roles and `telegraph`); 18 required strings `NEW_BEST_STRING_KEYS` (`hud.best.*`, `stage.best.*`, `run.best.*`, `menu.best`); `sfx.best.new` / `sfx.jingle.record` in `PORT_AUDIO_EVENTS` (SILENT in the placeholder); `REQUIRED_ASSET_IDS` built inside a function and minimapReport's two role constants made local, so `contract.luau` / `validate.luau` sit at 179 / 199 of Luau's 200 top-level locals (counted on out/) | shared/theme (newBest.ts, newBestColors.ts, contract.ts, types.ts, validate.ts, placeholder manifest) |
+| Cue mapper: 11th parameter `newBest: NewBestCueSource` (default `NO_NEW_BEST_CUES`): `sfx.best.new` on `fanfare` (priority 74, above the room clear jingles; fallback `sfx.room.perfect`), the floor enter dropped on the first floor past the record while the fanfare can play, `runOverJingle` (`sfx.jingle.record`, priority 92, fallback `sfx.jingle.gameover`); both in `DUCKING_SFX`; `art/audio.json` entries (LevelUp2; LevelUp3 + Success4 `mix`), unconfirmed | shared/view/audio/cues.ts, art/audio.json |
+| Frame order: `FX_FRAME_PHASE` (`scoreRoll` -1 < `normal` 0) on `FxTrackerController.onFrame`; `RoomClearController` runs in `scoreRoll`, `onShownScore` hands the shown score to subscribers before its sounds, `dropClearJingle` (NBD7); `AudioController.setNewBestCues` | client/controllers/fx, client/controllers/audio |
+| `NewBestController` (records listener + `requestRecords` on start, baseline per run over `SimController.pendingRunClaims`, the tracker in `onShownScore`, `NEW_BEST_UI` writes, the shout through `ComboController.requestShout`, the confetti ScreenGui `KV_NewBestConfetti` at HUD + 1 hidden under menus, the run-over roll / sounds / confetti) | client/controllers/fx/NewBestController.ts, SimController (`pendingRunClaims`) |
+| `ComboController.requestShout` (priority shout in the tier shout's slot, held under the cover until it lifts) | client/controllers/fx/ComboController.ts |
+| Store `records` slice (`status`, frozen `baseline` + `baselineRun`, `selectSoloBest`); `VerdictView.records` / `serverScore` / `serverFloor`; stage slice `best` line | client/store |
+| `NEW_BEST_UI` bindings, `BestTargetRow` (score panel row 1 split; the gold number + shine), `ScorePanel`, `TouchStrip` (`BestCompactLine` under the combo line), `runOverBest` | client/ui/hud (BestTargetRow.tsx, ScorePanel.tsx, TouchStrip.tsx, newBestUi.ts, newBestRunOver.ts) |
+| Stage card second line (`StageController.bestLine`, `StageCard`) | client/controllers/game/StageController.tsx, client/ui/loading/StageCard.tsx |
+| `RunOverPanel` (ribbon, record rows, Saved / Not saved chip, the dim `Best` line), `PauseOverlay` (`Best ...` under the buttons), `MainMenu` (`menu.best` under Play solo) | client/ui/hud, client/ui/menu |
+
+Changes from the plan, found while building (the last five came from an independent review pass, *review*):
+
+- **Four baseline kinds**, not three: `unranked` (not the ranked world, the tutorial, M1 even under `KV_Scoring`, an
+  unscored run, a local-seed run) draws nothing anywhere, apart from `unknown` (records not loaded: nothing in-run, the
+  run over can still celebrate from the verdict's records). **Ranked** = the run has a server `runId`, is not the
+  tutorial and is scored.
+- **Policy as the leaderboard's where the plan was silent**: debug runs never count; a party run needs >= 2
+  contributors (`partyContributors`), credited members only.
+- **A first record hides the 0 -> n rows**: the ribbon says `FIRST RECORD`; old -> new rows only when there was a record.
+- **Touch**: the ScorePanel is not drawn on touch, so the compact target line hangs under the TouchStrip's combo line
+  (no size change), not in a 120 px score panel.
+- **No thousands separators**: no number formatter exists in the HUD; text helpers take an optional formatter, the
+  client passes plain digits (`12340 TO BEST`).
+- **Save chip colours**: `Saved` in `newBest` gold, `Not saved: run not verified` in `uiHealth`.
+- **`newBest` is `#ffd700`**, not the plan's `#ffd75e`: that was 14.8 CIE76 from the placeholder `ember` (`#ffd27a`),
+  under the 25 bar.
+- **Seeded marker** (*review*): the plan seeded "the first time a player's doc is empty". A failed seed read, or a
+  failed join load followed by a verdict's direct write, made the doc non-empty without the seed, so a veteran would
+  have stayed below their leaderboard best for good (a false FIRST RECORD at once). The doc now stores `seeded: true`
+  (still v1; old docs decode unseeded; every merge keeps it once either side has it); the service seeds whenever it is
+  absent (a max-merge: safe on a non-empty doc), marks it only after both board reads succeeded (no leaderboard entry
+  is seeded too), and on a failed seed sends `{ loaded: false }` for the session (no target rather than a false one),
+  writes verdicts directly, and retries on the next join. Nothing is sent before the join load and seed end, so an
+  early `requestRecords` never gets a pre-seed status (the join-end push answers it).
+- **Pending runs fold into the baseline** (*review*): the server pushes new records only after a verdict, so an
+  R-restart (the old run is submitted and counts), a quick Again or Leave run then Play froze a baseline missing the
+  record just set (a false NEW BEST at the old number). `SimController.pendingRunClaims` lists earlier ranked runs of
+  the session still in flight (the client's final score and floor while the verdict is pending; the server's numbers
+  once accepted with a records result, until the push; never debug, rejected or non-counting runs) and
+  `withPendingRuns` folds them in, max per field, same board. A pending run later rejected leaves the frozen baseline
+  alone (at worst one run aims too high).
+- **The shout at a reveal** (*review*): the tracker fires on the reveal's first frame (`coverLifting`), but
+  ComboController still saw the input cover through the 0.25 s fade and dropped the request. A priority shout now waits
+  under the cover until it lifts (dropped only on run over / run exit); the tier shout is unchanged.
+- **Confetti under menus** (*review*): the confetti ScreenGui sits at HUD + 1, under the menu dim and layer, so in-run
+  confetti hung behind the pause dim. It now hides while the solo pause, the party overlay, a menu screen, options or
+  leaderboards are up; run-over confetti is unchanged.
+
+Studio assumptions to check first (none can be checked headlessly): the UIScale slam on the TextScaled target slot and
+the gold number, and nothing clipped by the corner panel's CanvasGroup (HUD fade); the UIGradient shine on the score
+text; the confetti's display order against the pause overlay (now hidden) and the stage card (the deepest fanfare's
+confetti starts at the reveal); the touch compact line against the chips line; a verdict arriving after the run-over
+roll finished (the rows and chip re-derive from the server's records; check nothing replays oddly); `KV_FakeRecords`
+(`solo:48210:9`, `none`, `unknown`) and `KV_NewBestDebug` (`score:2000`, `floor:2`, `first`, `unknown`) as the Studio
+check below uses them, and a published-place pass with both off (the doc really updates and seeds).
 
 ## Later (not in this plan)
 
