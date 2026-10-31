@@ -454,6 +454,15 @@ Details (the task in brackets builds it):
 - **EVD11. Leaderboards stay on `LB_Solo_v1` / `LB_Coop_v1`** [EV7], as with the earlier endless changes (breakables,
   the Demon Lord, the combo window).
 - **EVD12. Affix colour is a floor ring plus the sprite rim's tint and the name chip, never a Highlight** [EV9].
+- **EVD13. Goo hit size** [EV1] (after EV0): a real hit radius by bullet kind in `enemyBulletHit` /
+  `enemyBulletHitParty` (goo ~0.35, every other kind keeps 0.12), drawn to match.
+- **EVD14. Goo exclusions** [EV1] (after EV0): no grazes, no guard-erase points or parry feed (the guard still erases
+  it), no enemy-shoot cue, no breakable damage, and ordinary sword swings do NOT erase it (only the guard does, so the
+  goo keeps denying floor). The 6-puddle cap is a count (live `BulletKind.GOO` bullets with the slime's emitter id), not
+  "by construction", because Hourglass slows bullet life.
+- **EVD15. Summons and slimelets spawned in an elite room keep the elite plate** [EV9] (today's view rule).
+- **EVD16. Vengeful corpses get a per-actor corpse length in the view** (hold + fade) [EV9]; the sim hold is never
+  built with `def.stepDead` (that marks a reviver for scoring, Vampire Fang and drops).
 
 ## Risks
 
