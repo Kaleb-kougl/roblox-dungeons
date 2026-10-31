@@ -5,13 +5,16 @@
  * HudOcclusionController (docs/HUD_LAYOUT.md H7); the minimap's host registry (minimapHosts) and the corner map's show
  * rule (MinimapPanel cornerMapShown) for MinimapController (docs/MINIMAP.md M8); the combo row and meter's bindings
  * (comboUi COMBO_UI) for ComboController (docs/COMBO.md CB6 / CB7); the draft reveal's bindings (draftUi DRAFT_UI) for
- * DraftRevealController (docs/DRAFT_REVEAL.md DR5 / DR6).
+ * DraftRevealController (docs/DRAFT_REVEAL.md DR5 / DR6); the new-best bindings (newBestUi NEW_BEST_UI) for
+ * NewBestController (docs/NEW_BEST.md NB6 / NB7).
  */
 export * from "./actions";
 export * from "./cornerFade";
 export * from "./comboUi";
 export * from "./draftUi";
 export * from "./minimapHosts";
+export * from "./newBestRunOver";
+export * from "./newBestUi";
 export * from "./MinimapPanel";
 export * from "./GameHud";
 export * from "./MenuFit";

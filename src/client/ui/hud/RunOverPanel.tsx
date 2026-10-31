@@ -5,8 +5,10 @@ import {
 	selectAnyPanelOpen,
 	selectBindings,
 	selectInputDevice,
+	selectBaselineRun,
 	selectLastBossId,
 	selectMyLobbyId,
+	selectRunBaseline,
 	selectRunInfo,
 	selectSnapshot,
 	selectStageCovered,
@@ -23,12 +25,17 @@ import {
 	FOOTPRINT_ESTIMATE,
 	HUD_STRINGS,
 	HUD_VIEW,
+	NEW_BEST_ROLE,
+	NEW_BEST_STRINGS,
 	SCORE_SOURCE_KEYS,
 	UI_ART,
+	bestText,
 	comboBestRichText,
 	comboTier,
 	formatClock,
 	formatCombo,
+	recordSavedKey,
+	runOverRibbonKey,
 } from "shared/view/hud";
 import {
 	MENU_FIT,
@@ -42,11 +49,27 @@ import {
 } from "shared/view/menu";
 import { useHudActions } from "./actions";
 import { MenuFit } from "./MenuFit";
+import { runOverBest, type RunOverBest } from "./newBestRunOver";
+import { NEW_BEST_UI } from "./newBestUi";
 import { ArtImage, MenuButton, Panel, Row, Text, panelIcon } from "./primitives";
 import { RunInfoLine, verdictColor, verdictLine } from "./RunInfoLine";
 
 const HIDDEN = 1;
 const STAT_WIDTH = 150;
+
+/** LayoutOrder of the panel's rows (the compact panel's left column uses the same numbers). */
+const ROW = {
+	header: 1,
+	ribbon: 2,
+	main: 3,
+	alt: 4,
+	stats: 5,
+	best: 6,
+	breakdown: 7,
+	exits: 8,
+	verdict: 9,
+	info: 10,
+} as const;
 
 function Stat(props: { order: number; label: string; value: string }) {
 	return (
@@ -168,6 +191,120 @@ function ScoreBreakdown(props: BreakdownProps) {
 	);
 }
 
+/**
+ * The gold ribbon across the panel under its header on a record run (docs/NEW_BEST.md NB9, runOverRibbonKey: `NEW
+ * BEST!` / `FIRST RECORD`): a full-width newBest bar with the text in the background colour.
+ */
+function BestRibbon(props: { order: number; text: string }) {
+	return (
+		<frame
+			key="BestRibbon"
+			LayoutOrder={props.order}
+			Size={new UDim2(1, 0, 0, HUD_VIEW.titleText + FOOTPRINT_ESTIMATE.lineSlack)}
+			BackgroundColor3={role(NEW_BEST_ROLE)}
+			BorderSizePixel={0}
+		>
+			<textlabel
+				Size={UDim2.fromScale(1, 1)}
+				BackgroundTransparency={HIDDEN}
+				Font={HUD_FONT}
+				TextSize={HUD_VIEW.titleText}
+				TextColor3={role("background")}
+				TextXAlignment={Enum.TextXAlignment.Center}
+				Text={props.text}
+			/>
+		</frame>
+	);
+}
+
+/**
+ * The run over's new-best block (docs/NEW_BEST.md NB9), ranked runs only (nothing otherwise: the old panel). A record
+ * run: its record rows in gold (`Score 48210 -> 61930 (+13720)` / `Deepest floor 9 -> 11 (+2)`, the NEW_BEST_UI
+ * record row bindings NewBestController rolls; none for a first record, whose ribbon says it) and the save chip
+ * (recordSavedKey: `Saved` in gold once the accepted verdict carried the server's records, `Not saved: run not
+ * verified` in uiHealth for a rejected one, nothing while waiting). No record: one dim line, the target for next time
+ * (`Best 48210 · floor 9`, bestText run.best.target).
+ */
+function BestBlock(props: { order: number; best: RunOverBest }) {
+	const b = props.best;
+	if (!b.ranked) return undefined;
+	const lines = new Array<React.Element>();
+	if (b.records.record) {
+		if (!b.records.first) {
+			const h = HUD_VIEW.textSize + FOOTPRINT_ESTIMATE.lineSlack;
+			b.records.rows.forEach((_, i) => {
+				const value = NEW_BEST_UI.recordRows[i];
+				if (value === undefined) return;
+				lines.push(
+					<textlabel
+						key={`Record${i}`}
+						LayoutOrder={i + 1}
+						Size={new UDim2(1, 0, 0, h)}
+						BackgroundTransparency={HIDDEN}
+						Font={HUD_FONT}
+						TextScaled={true}
+						TextSize={HUD_VIEW.textSize}
+						TextColor3={role(NEW_BEST_ROLE)}
+						TextStrokeColor3={role("background")}
+						TextStrokeTransparency={HUD_VIEW.panelTransparency}
+						TextXAlignment={Enum.TextXAlignment.Center}
+						Text={value.binding}
+					>
+						<uitextsizeconstraint MaxTextSize={HUD_VIEW.textSize} />
+					</textlabel>,
+				);
+			});
+		}
+		const saved = recordSavedKey(b.records, b.status);
+		if (saved !== undefined) {
+			lines.push(
+				<Text
+					key="Saved"
+					order={lines.size() + 1}
+					fill={true}
+					size={HUD_VIEW.smallText}
+					color={saved === NEW_BEST_STRINGS.saved ? NEW_BEST_ROLE : "uiHealth"}
+					align={Enum.TextXAlignment.Center}
+					text={str(saved)}
+				/>,
+			);
+		}
+	} else {
+		const target = bestText(b.target, NEW_BEST_STRINGS.target, str);
+		if (target !== "") {
+			lines.push(
+				<Text
+					key="Target"
+					order={1}
+					fill={true}
+					size={HUD_VIEW.smallText}
+					color="uiTextDim"
+					align={Enum.TextXAlignment.Center}
+					text={target}
+				/>,
+			);
+		}
+	}
+	if (lines.size() === 0) return undefined;
+	return (
+		<frame
+			key="Best"
+			LayoutOrder={props.order}
+			Size={new UDim2(1, 0, 0, 0)}
+			AutomaticSize={Enum.AutomaticSize.Y}
+			BackgroundTransparency={HIDDEN}
+		>
+			<uilistlayout
+				FillDirection={Enum.FillDirection.Vertical}
+				HorizontalAlignment={Enum.HorizontalAlignment.Center}
+				SortOrder={Enum.SortOrder.LayoutOrder}
+				Padding={new UDim(0, HUD_VIEW.gap)}
+			/>
+			{lines}
+		</frame>
+	);
+}
+
 /** A fixed-width column of the compact run-over panel (a fixed width, so wrapped and filling text resolve against it). */
 function Column(props: { order: number; width: number; gap: number; children?: React.ReactNode }) {
 	return (
@@ -233,6 +370,12 @@ function RunOverHeader(props: { order: number; victory: boolean; icon: string | 
  * Fitted into the safe area on touch (MenuFit, docs/UI_ART.md "Phones"); compact (a phone): two columns, the header,
  * the main line, the stats as lines, the exits, the verdict and the info line on the left, the score breakdown on
  * the right with tighter lines.
+ *
+ * New best (docs/NEW_BEST.md NB9), ranked runs only (runOverBest; an unranked run's panel is unchanged): on a record
+ * run the gold ribbon under the header (BestRibbon) and, under the stats (compact: atop the breakdown column), the
+ * record rows and the save chip (BestBlock); a run with no record gets the dim `Best ...` line there instead. The
+ * record fanfare (the cue mapper's run-over jingle swap), the rows' roll with its tick / land sounds and the
+ * full-screen confetti are NewBestController's.
  */
 export function RunOverPanel() {
 	const s = useSelector(selectSnapshot);
@@ -245,6 +388,8 @@ export function RunOverPanel() {
 	// The stage loader's cover (a run that ends under a floor card): no selection on the hidden buttons until it goes.
 	const covered = useSelector(selectStageCovered);
 	const verdict = useSelector(selectVerdict);
+	const baseline = useSelector(selectRunBaseline);
+	const baselineRun = useSelector(selectBaselineRun);
 	const actions = useHudActions();
 	const firstRef = useRef<TextButton>();
 	const over = s.outcome !== "playing";
@@ -275,10 +420,15 @@ export function RunOverPanel() {
 		: victory
 		? str(HUD_STRINGS.victory, { name: bossName, key })
 		: str(HUD_STRINGS.dead, { key });
+	const best = runOverBest(baseline, baselineRun, info.run, verdict, s.score, s.floor);
+	const ribbonKey = runOverRibbonKey(best.records);
+	const ribbon =
+		ribbonKey !== undefined ? <BestRibbon key="Ribbon" order={ROW.ribbon} text={str(ribbonKey)} /> : undefined;
+	const bestBlock = <BestBlock key="Best" order={ROW.best} best={best} />;
 	const header = (
 		<RunOverHeader
 			key="Header"
-			order={1}
+			order={ROW.header}
 			victory={victory}
 			icon={runOverIcon(victory, info.coop)}
 			text={str(victory ? HUD_STRINGS.runVictory : HUD_STRINGS.runOver)}
@@ -287,7 +437,7 @@ export function RunOverPanel() {
 	const mainLine = (
 		<Text
 			key="Main"
-			order={2}
+			order={ROW.main}
 			size={HUD_VIEW.titleText}
 			align={Enum.TextXAlignment.Center}
 			wrap={true}
@@ -298,7 +448,7 @@ export function RunOverPanel() {
 		<Text
 			key="Alt"
 			fill={true}
-			order={3}
+			order={ROW.alt}
 			size={HUD_VIEW.smallText}
 			color="uiTextDim"
 			align={Enum.TextXAlignment.Center}
@@ -314,7 +464,7 @@ export function RunOverPanel() {
 		verdictText !== "" ? (
 			<Text
 				key="Verdict"
-				order={7}
+				order={ROW.verdict}
 				size={HUD_VIEW.smallText}
 				color={verdictColor(verdict)}
 				align={Enum.TextXAlignment.Center}
@@ -323,7 +473,7 @@ export function RunOverPanel() {
 			/>
 		) : undefined;
 	const exitButtons = (size?: Vector2) => (
-		<Row key="Exits" order={6} align={Enum.HorizontalAlignment.Center}>
+		<Row key="Exits" order={ROW.exits} align={Enum.HorizontalAlignment.Center}>
 			{exits.again ? (
 				<MenuButton
 					ref={firstRef}
@@ -351,7 +501,7 @@ export function RunOverPanel() {
 			/>
 		</Row>
 	);
-	const breakdown = { order: 5, score: s.score, points: s.scorePoints, maxCombo: s.maxCombo };
+	const breakdown = { order: ROW.breakdown, score: s.score, points: s.scorePoints, maxCombo: s.maxCombo };
 	const breakdownWidth = HUD_VIEW.breakdownLabelWidth + HUD_VIEW.gap + HUD_VIEW.breakdownValueWidth;
 	return (
 		<MenuFit
@@ -371,9 +521,10 @@ export function RunOverPanel() {
 							<Row order={1}>
 								<Column order={1} width={left} gap={HUD_VIEW.gap}>
 									{header}
+									{ribbon}
 									{mainLine}
 									{altLine}
-									<Column order={4} width={breakdownWidth} gap={HUD_VIEW.gap}>
+									<Column order={ROW.stats} width={breakdownWidth} gap={HUD_VIEW.gap}>
 										{stats.map((st, i) => (
 											<BreakdownLine
 												key={`st${i}`}
@@ -385,10 +536,11 @@ export function RunOverPanel() {
 									</Column>
 									{exitButtons(new Vector2(MENU_FIT.runOverButton.x, MENU_FIT.runOverButton.y))}
 									{verdictRow}
-									<RunInfoLine order={8} />
+									<RunInfoLine order={ROW.info} />
 								</Column>
 								{s.scoring ? (
 									<Column order={2} width={right} gap={MENU_FIT.runOverLineGap}>
+										{best.ranked ? <BestBlock key="Best" order={0} best={best} /> : undefined}
 										{breakdownLines(breakdown)}
 									</Column>
 								) : undefined}
@@ -404,16 +556,18 @@ export function RunOverPanel() {
 						name="RunOver"
 					>
 						{header}
+						{ribbon}
 						{mainLine}
 						{altLine}
-						<Row order={4} align={Enum.HorizontalAlignment.Center}>
+						<Row order={ROW.stats} align={Enum.HorizontalAlignment.Center}>
 							{stats.map((st, i) => (
 								<Stat key={`st${i}`} order={i + 1} label={st.label} value={st.value} />
 							))}
 						</Row>
+						{bestBlock}
 						{s.scoring ? <ScoreBreakdown {...breakdown} /> : undefined}
 						{verdictRow}
-						<RunInfoLine order={8} />
+						<RunInfoLine order={ROW.info} />
 						{exitButtons()}
 					</Panel>
 				);

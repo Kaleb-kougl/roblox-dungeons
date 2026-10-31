@@ -16,12 +16,12 @@ import {
 	type StripSlot,
 	type TouchStripLayout,
 } from "shared/view/hud";
+import { BestCompactLine, ScoreNumber } from "./BestTargetRow";
 import { BoostRow, boostCellWidth, type BoostLook } from "./BoostRow";
 import { ComboMeter } from "./ComboMeter";
 import { ComboMultiplier } from "./ComboRow";
 import { cornerFadeBinding, cornerRef } from "./cornerFade";
 import { ArtImage, Pip, Text } from "./primitives";
-import { ROOM_CLEAR_UI } from "./roomClearBindings";
 import { RunItems, type ItemLook } from "./RunItems";
 import { useTouchStrip } from "./touchStripContext";
 import { Heart, aegisPips, pips, type StatusSkin } from "./StatusPanel";
@@ -144,8 +144,9 @@ export interface TouchStripProps {
  * the ScorePanel's corner panels. One row in the Roblox top bar, right of the pause button: hearts (with the armor /
  * Aegis pips and the tutorial's ghost heart), the flask icon and count, the Ember candle and count, the score (coin,
  * the rolling ROOM_CLEAR_UI number, the COMBO_UI multiplier) over a thin combo line (ComboMeter, tier colours and
- * bindings unchanged); under it one line of chips (BoostRow, then RunItems capped with "+N"). No panel box: icons and
- * stroked text, the art's icons when the pack has them (fitted to whole screen px under the strip's own UIScale,
+ * bindings unchanged) and, on a run with a new-best target, the compact target line hung under the combo line
+ * (BestCompactLine, docs/NEW_BEST.md NB6; no size changes); under it one line of chips (BoostRow, then RunItems capped
+ * with "+N"). No panel box: icons and stroked text, the art's icons when the pack has them (fitted to whole screen px under the strip's own UIScale,
  * ArtScaleContext), the flat pips and hearts otherwise. The row and the chips are one CanvasGroup registered as the
  * top-left corner panel, so HudOcclusionController fades it when the action passes under it. The tutorial's rings sit
  * on the hearts, the flask, the boosts and the score. Rendered in GameHud's KV_TouchStrip ScreenGui (full screen, no
@@ -293,7 +294,7 @@ export function TouchStrip(props: TouchStripProps) {
 									) : (
 										<FlatCoin order={1} size={T.flatIcon} />
 									)}
-									<Text order={2} size={T.scoreText} text={ROOM_CLEAR_UI.scoreText.binding} />
+									<ScoreNumber order={2} size={T.scoreText} align={Enum.TextXAlignment.Left} />
 									{L.showMult ? (
 										<ComboMultiplier
 											key="Mult"
@@ -305,6 +306,7 @@ export function TouchStrip(props: TouchStripProps) {
 									) : undefined}
 								</Group>
 								<ComboMeter order={2} width={L.widths.score} height={T.comboHeight} />
+								<BestCompactLine order={3} width={L.widths.score} />
 								{props.scoreHighlight === true ? <HighlightRing /> : undefined}
 							</frame>
 						) : undefined}

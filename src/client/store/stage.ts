@@ -1,4 +1,5 @@
 import { createProducer } from "@rbxts/reflex";
+import type { NewBestLineText } from "shared/view/hud";
 
 /**
  * Client-local Reflex slice for the stage loader's cover (docs/STAGE_LOADER.md SL5): whether it is up, what it says,
@@ -25,6 +26,11 @@ export interface StageCoverState {
 	readonly biomeKey: string;
 	/** The card's "Boss floor" line. */
 	readonly boss: boolean;
+	/**
+	 * The card's new-best line (docs/NEW_BEST.md NB8, shared/view/hud stageBestLine: `Deepest: floor 9 · 2 to go`,
+	 * `NEW DEEPEST` in gold, ...), or undefined (no floor target: an unranked run, no record, the run-start label).
+	 */
+	readonly best: NewBestLineText | undefined;
 	/** The run-start bar in [0, 1] (StageLoad.fraction). */
 	readonly fraction: number;
 }
@@ -37,6 +43,7 @@ export interface StageCoverView {
 	readonly floor: number;
 	readonly biomeKey: string;
 	readonly boss: boolean;
+	readonly best: NewBestLineText | undefined;
 	readonly fraction: number;
 }
 
@@ -49,6 +56,7 @@ const initialState: StageCoverState = {
 	floor: 0,
 	biomeKey: "",
 	boss: false,
+	best: undefined,
 	fraction: 0,
 };
 

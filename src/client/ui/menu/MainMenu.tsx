@@ -1,10 +1,10 @@
 import React, { useRef } from "@rbxts/react";
 import { useSelector } from "@rbxts/react-reflex";
-import { selectInviteEligible, selectMyLobbyId } from "client/store";
+import { selectInviteEligible, selectMyLobbyId, selectSoloBest } from "client/store";
 import { MenuButton, MenuFit, Panel, Row, Text } from "client/ui/hud";
 import { str } from "client/ui/theme";
 import { SFX } from "shared/view/audio";
-import { HUD_STRINGS, HUD_VIEW, UI_ART } from "shared/view/hud";
+import { HUD_STRINGS, HUD_VIEW, NEW_BEST_STRINGS, UI_ART, bestText } from "shared/view/hud";
 import { TUTORIAL_STRINGS } from "shared/tutorial";
 import {
 	MENU_FIT,
@@ -24,12 +24,14 @@ import { useGamepadFocus } from "./hooks";
  * lobby attached: docs/INVITES.md ID7; disabled with the reason when the server says this player cannot), Tutorial (the first-run Practice Descent again,
  * docs/TUTORIAL.md), Options (the Options screen) and Leaderboard (the leaderboard panel). With a gamepad the
  * selection starts on Play solo. Fitted into the safe area on touch (MenuFit); compact (a phone): the buttons in two
- * columns, the invite reason under them.
+ * columns, the invite reason under them. Under Play solo (compact: under its row), once the server's records loaded
+ * and the solo board has one, the player's solo best (`Best 48210 · floor 9`, docs/NEW_BEST.md NB9: menu.best).
  */
 export function MainMenu() {
 	const actions = useMenuActions();
 	const myLobby = useSelector(selectMyLobbyId);
 	const eligible = useSelector(selectInviteEligible);
+	const soloBest = useSelector(selectSoloBest);
 	const invite = platformInviteButton(eligible);
 	const playRef = useRef<TextButton>();
 	useGamepadFocus(playRef, "main");
@@ -47,10 +49,23 @@ export function MainMenu() {
 			}}
 		/>
 	);
+	const bestLine = bestText(soloBest, NEW_BEST_STRINGS.menu, str);
+	const best =
+		bestLine !== "" ? (
+			<Text
+				key="Best"
+				order={3}
+				fill={true}
+				size={HUD_VIEW.smallText}
+				color="uiTextDim"
+				align={Enum.TextXAlignment.Center}
+				text={bestLine}
+			/>
+		) : undefined;
 	const lobbies = (
 		<MenuButton
 			key="Lobbies"
-			order={3}
+			order={4}
 			name="Lobbies"
 			text={str(mainMenuLobbyKey(inLobby))}
 			onActivated={() => {
@@ -63,7 +78,7 @@ export function MainMenu() {
 	const inviteButton = (
 		<MenuButton
 			key="InviteFriends"
-			order={4}
+			order={5}
 			name="InviteFriends"
 			text={str(MENU_STRINGS.inviteFriends)}
 			disabled={!invite.enabled}
@@ -77,7 +92,7 @@ export function MainMenu() {
 		invite.reasonKey !== undefined ? (
 			<Text
 				key="InviteReason"
-				order={5}
+				order={6}
 				size={HUD_VIEW.smallText}
 				color="uiTextDim"
 				align={Enum.TextXAlignment.Center}
@@ -88,7 +103,7 @@ export function MainMenu() {
 	const tutorial = (
 		<MenuButton
 			key="Tutorial"
-			order={6}
+			order={7}
 			name="Tutorial"
 			text={str(TUTORIAL_STRINGS.menuOpen)}
 			onActivated={() => {
@@ -100,7 +115,7 @@ export function MainMenu() {
 	const options = (
 		<MenuButton
 			key="Options"
-			order={7}
+			order={8}
 			name="Options"
 			text={str(MENU_STRINGS.options)}
 			icon={UI_ART.ids.iconGear}
@@ -113,7 +128,7 @@ export function MainMenu() {
 	const leaderboard = (
 		<MenuButton
 			key="Leaderboard"
-			order={8}
+			order={9}
 			name="Leaderboard"
 			text={str(MENU_STRINGS.leaderboard)}
 			onActivated={() => {
@@ -148,11 +163,12 @@ export function MainMenu() {
 								{play}
 								{lobbies}
 							</Row>
-							<Row key="Row2" order={3}>
+							{best}
+							<Row key="Row2" order={4}>
 								{inviteButton}
 								{tutorial}
 							</Row>
-							<Row key="Row3" order={4}>
+							<Row key="Row3" order={5}>
 								{options}
 								{leaderboard}
 							</Row>
@@ -161,6 +177,7 @@ export function MainMenu() {
 					) : (
 						<>
 							{play}
+							{best}
 							{lobbies}
 							{inviteButton}
 							{reason}

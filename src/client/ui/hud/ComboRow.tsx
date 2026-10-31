@@ -22,8 +22,11 @@ const DROP_VISIBLE = COMBO_UI.drop.binding.map((u) => u >= 0);
 const DROP_POSITION = COMBO_UI.dropFallPx.binding.map((px) => new UDim2(1, 0, 1, px));
 const DROP_STROKE = COMBO_UI.dropTransparency.binding.map(strokeOf);
 
-/** The shine band: clear outside, bandTransparency at its centre (a white copy of the text shows through it). */
-function shineBand(): NumberSequence {
+/**
+ * The shine band: clear outside, bandTransparency at its centre (a white copy of the text shows through it). Also the
+ * new-best gold number's shine (BestTargetRow ScoreNumber, docs/NEW_BEST.md NB6).
+ */
+export function shineBand(): NumberSequence {
 	const half = COMBO_DRAW.shine.bandWidth / 2;
 	return new NumberSequence([
 		new NumberSequenceKeypoint(0, HIDDEN),

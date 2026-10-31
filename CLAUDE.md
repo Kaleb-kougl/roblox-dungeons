@@ -46,6 +46,7 @@ Record every ported module in `PROVENANCE.md` (ported module, source path, sourc
 | `docs/ENEMY_VARIANTS.md` | Enemy variants (three new endless archetypes: Imp flanker, Ooze zone-denier that splits, Summoner support; elite affixes Hulking / Swift / Shielded / Vengeful; both unlock by depth): plan, tasks EV0-EV14, decisions EVD1-EVD12 |
 | `docs/GRAZE_PARRY.md` | Grazes and parries (graze spark + shimmer climbing in pitch, parry sparks / ring-out / PARRY! floor flash / solo 30 ms freeze for a guard that erases bullets; one unhashed ScoreEvents feed, otherwise presentation only): plan, tasks GP0-GP10, decisions GPD1-GPD10 |
 | `docs/UI_ART.md` | UI art (the dark red pixel UI sheet: 9-sliced panels / buttons, hearts, potions, pills, icons, focus brackets; menus, then the in-run HUD, then touch; presentation only): builds on the Draft reveal (`slice`, `SlicedImage`): plan, as built, tasks UA0-UA15, decisions UAD1-UAD10 |
+| `docs/NEW_BEST.md` | New-best celebration (points-to-best in the score panel's label row, a fanfare + NEW BEST stamp / floor shout / edge confetti when the shown score passes your best or you reach a floor past your deepest, a record fanfare and old -> new roll at run over; server-owned personal records doc `KV_Records_v1`; no sim change): plan, as built, tasks NB0-NB11, decisions NBD1-NBD11 |
 
 Decision log (deviations from `PLAN.md`):
 - **Art (docs/ART.md).** The theme contract gained a `"sprites"` kind (large pre-rendered cells, 1/4/8/16 screen-space
@@ -352,6 +353,19 @@ Decision log (deviations from `PLAN.md`):
   audio ids (`sfx.enemy.blink` / `.summon` / `.split`, `sfx.affix.shieldbreak` / `.vengeful`, SILENT in the
   placeholder). First sighting: optional `seen` in the onboarding doc (still v1), remote `bestiarySeen`. Vale: the LoP
   slime set built (upload pending); imp / summoner rigs pending. Studio check pending.
+- **New-best celebration (docs/NEW_BEST.md).** Presentation plus one server doc (no sim, dungeon, lockstep, hash,
+  replay or fixture change; scoring and the leaderboard untouched). Personal records: DataStore `KV_Records_v1`
+  (`shared/records`, `RecordsService`; best score and deepest floor per board solo / coop, `{ v: 1, endless, seeded? }`),
+  written only by the server from its own replay of accepted endless runs (deaths AND abandoned runs, private servers
+  too, never Studio / debug runs, party runs as on the leaderboard), every write a max-merge inside UpdateAsync
+  (`MergeKeyValue`); seeded once from `LB_Details_v1` (a stored `seeded` marker; a failed seed or load = `loaded: false`,
+  retried next join). Remotes `requestRecords` / `records(RecordsStatus)`, `RunFinishVerdict.records` (per recipient).
+  The client freezes a per-run baseline (records + earlier runs still awaiting their verdict, `pendingRunClaims`) and
+  tracks the SHOWN score (`FX_FRAME_PHASE.scoreRoll`: RoomClearController's roller before every normal frame handler).
+  Theme: role `newBest` `#ffd700` (`newBestReport`), 18 strings `NEW_BEST_STRING_KEYS`, port audio IDs `sfx.best.new` /
+  `sfx.jingle.record` (SILENT in the placeholder, falling back to the PERFECT / game-over jingles); `contract.luau` /
+  `validate.luau` at 179 / 199 top-level locals (counted on out/). Debug `KV_NewBestDebug` (client baseline),
+  `KV_FakeRecords` (Studio records fake). No setting. Studio check and the sounds' audition / lock / build / upload pending.
 
 ## Commands
 

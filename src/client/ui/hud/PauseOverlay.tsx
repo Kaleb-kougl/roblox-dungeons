@@ -3,11 +3,13 @@ import { useSelector } from "@rbxts/react-reflex";
 import { GuiService } from "@rbxts/services";
 import {
 	selectAnyPanelOpen,
+	selectBaselineRun,
 	selectBindings,
 	selectCoopOverlay,
 	selectInputDevice,
 	selectLeaveConfirm,
 	selectRobloxMenuOpen,
+	selectRunBaseline,
 	selectRunInfo,
 	selectSnapshot,
 	selectTutorial,
@@ -16,7 +18,15 @@ import { str } from "client/ui/theme";
 import { swapHint, keyDevice } from "shared/play";
 import { TUTORIAL_STRINGS } from "shared/tutorial";
 import { SFX } from "shared/view/audio";
-import { HUD_STRINGS, HUD_VIEW, LEADERBOARD_STRINGS, PAUSE_HINT } from "shared/view/hud";
+import {
+	HUD_STRINGS,
+	HUD_VIEW,
+	LEADERBOARD_STRINGS,
+	NEW_BEST_STRINGS,
+	PAUSE_HINT,
+	baselineRecord,
+	bestText,
+} from "shared/view/hud";
 import {
 	MENU_STRINGS,
 	pauseItemIcon,
@@ -97,6 +107,8 @@ const SKIP_CONFIRM: ConfirmSpec = {
  * the only place they show while a run is on). Solo: the full map left of the menu (PauseMap, docs/MINIMAP.md MD5).
  * Hidden while a panel is open and once the run is over (the run-over panel has the exits). The solo dim covers the
  * whole screen (ScreenDim); the panel is fitted into the safe area on touch (MenuFit; the ornament only with room).
+ * A ranked run with a record shows the target line under the buttons (`Best 48210 · floor 9`, docs/NEW_BEST.md NB9:
+ * bestText of the run's frozen baseline); other runs are unchanged.
  */
 export function PauseOverlay() {
 	const s = useSelector(selectSnapshot);
@@ -108,6 +120,8 @@ export function PauseOverlay() {
 	const bindings = useSelector(selectBindings);
 	const tutorial = useSelector(selectTutorial);
 	const robloxMenuOpen = useSelector(selectRobloxMenuOpen);
+	const baseline = useSelector(selectRunBaseline);
+	const baselineRun = useSelector(selectBaselineRun);
 	const actions = useHudActions();
 	const firstRef = useRef<TextButton>();
 	const coop = info.coop;
@@ -146,6 +160,7 @@ export function PauseOverlay() {
 
 	if (!open) return undefined;
 	const hintKey = coop ? MENU_STRINGS.coopHint : HUD_STRINGS.pauseHint;
+	const best = baselineRun === info.run ? bestText(baselineRecord(baseline), NEW_BEST_STRINGS.target, str) : "";
 	let body: React.Element;
 	if ((confirm && !inTutorial) || skipConfirm) {
 		const spec = skipConfirm ? SKIP_CONFIRM : coop ? LEAVE_CONFIRM_COOP : LEAVE_CONFIRM;
@@ -223,10 +238,21 @@ export function PauseOverlay() {
 						{screenDividers("pause") ? (
 							<Divider key="Divider" order={17} skin={screenSkin("pause")} />
 						) : undefined}
+						{best !== "" ? (
+							<Text
+								key="Best"
+								fill={true}
+								order={18}
+								size={HUD_VIEW.smallText}
+								color="uiTextDim"
+								align={Enum.TextXAlignment.Center}
+								text={best}
+							/>
+						) : undefined}
 						{s.weapons.size() > 0 && !touch ? (
 							<Text
 								fill={true}
-								order={18}
+								order={19}
 								size={HUD_VIEW.smallText}
 								color="uiTextDim"
 								align={Enum.TextXAlignment.Center}
@@ -236,18 +262,18 @@ export function PauseOverlay() {
 						{touch && s.floor > 0 ? (
 							<Text
 								fill={true}
-								order={18}
+								order={19}
 								size={HUD_VIEW.smallText}
 								color="uiText"
 								align={Enum.TextXAlignment.Center}
 								text={str(HUD_STRINGS.floor, { floor: s.floor, depth: s.depth })}
 							/>
 						) : undefined}
-						<RunInfoLine order={19} />
+						<RunInfoLine order={20} />
 						{touch ? undefined : (
 							<Text
 								fill={true}
-								order={20}
+								order={21}
 								size={HUD_VIEW.smallText}
 								color="uiTextDim"
 								align={Enum.TextXAlignment.Center}

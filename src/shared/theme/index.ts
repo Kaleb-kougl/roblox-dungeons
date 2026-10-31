@@ -69,6 +69,15 @@ export {
 	type VariantColorProblem,
 	type VariantColorRules,
 } from "./variantColors";
+export * from "./newBest";
+export {
+	NEW_BEST_COLOR_RULES,
+	newBestColorProblems,
+	newBestReport,
+	type NewBestColorProblem,
+	type NewBestColorRules,
+	type NewBestEntry,
+} from "./newBestColors";
 export * from "./placeholders";
 export {
 	DEFAULT_PACK_ID,

@@ -68,7 +68,7 @@ import {
 	type StageKind,
 } from "shared/view";
 import { HitstopClock, simPacerFor, type FrameAdvance, type FramePacer } from "shared/view/fx";
-import { PROGRESSION_VIEW, toastFor } from "shared/view/hud";
+import { PROGRESSION_VIEW, boardFor, toastFor, type PendingRunClaim } from "shared/view/hud";
 import { afterRobloxMenuClosed, lobbyStartAccepted, restartForfeits } from "shared/view/menu";
 import { ENDLESS_FIRST_FLOOR, type Dungeon } from "shared/dungeon";
 import { InputController } from "./InputController";
@@ -320,8 +320,16 @@ export class SimController implements OnStart {
 	private toastSerial = 0;
 	/** claimedHash -> run counter of submissions waiting for a verdict. */
 	private readonly awaiting = new Map<string, { run: number; ending: string }>();
-	/** Ranked runs started this session: runId -> run counter and (once finished) ending. */
-	private readonly rankedRuns = new Map<string, { run: number; ending?: string; decided: boolean }>();
+	/**
+	 * Ranked runs started this session: runId -> run counter, (once finished) ending, and `claim`: the run's board and
+	 * final score / floor while its records may still be on the way (docs/NEW_BEST.md: the client's own numbers once
+	 * the final claim was sent and the verdict is pending, the server's once accepted with a records result; cleared
+	 * on a rejection or an accepted run that did not count). See pendingRunClaims.
+	 */
+	private readonly rankedRuns = new Map<
+		string,
+		{ run: number; ending?: string; decided: boolean; claim?: PendingRunClaim }
+	>();
 	/** The `startRun` request waiting for `runStarted`, with the local fallback run's parameters. */
 	private awaitingStart:
 		| {
@@ -510,6 +518,18 @@ export class SimController implements OnStart {
 		const ctx = this.ctx;
 		if (ctx === undefined) return false;
 		return ctx.live !== undefined ? ctx.live.outcome() !== "playing" : ctx.coop?.isOver() === true;
+	}
+
+	/**
+	 * Earlier ranked runs of this session whose records may not be in the client's records yet (docs/NEW_BEST.md
+	 * "pending runs"): finished, final claim sent, verdict pending (the client's own score and floor), or accepted with
+	 * a records result (the server's numbers). Never debug runs (KV_Debug: they never count), rejected runs or accepted
+	 * runs that did not count. NewBestController folds them into a new run's baseline (shared/view/hud withPendingRuns).
+	 */
+	pendingRunClaims(): ReadonlyArray<PendingRunClaim> {
+		const out = new Array<PendingRunClaim>();
+		for (const [, entry] of this.rankedRuns) if (entry.claim !== undefined) out.push(entry.claim);
+		return out;
 	}
 
 	/** The stage loader registers itself (StageController.onStart). */
@@ -951,7 +971,10 @@ export class SimController implements OnStart {
 		}
 		if (res.final !== undefined) {
 			const entry = this.rankedRuns.get(runId);
-			if (entry !== undefined) entry.ending = "death";
+			if (entry !== undefined) {
+				entry.ending = "death";
+				if (!this.debug) entry.claim = this.claimOf(coop.state);
+			}
 			clientStore.setVerdict({
 				status: "pending",
 				run: ctx.counter,
@@ -1524,6 +1547,15 @@ export class SimController implements OnStart {
 		);
 	}
 
+	/** A finished run's records claim: its board, final score and floor (pendingRunClaims). */
+	private claimOf(state: Readonly<SimState>): PendingRunClaim {
+		return {
+			board: boardFor(partySize(state)),
+			score: state.score?.total ?? 0,
+			floor: state.endless?.floor ?? 0,
+		};
+	}
+
 	/** Sends the segments the run cut (ranked runs that the server has not rejected yet). */
 	private uploadSegments(ctx: RunContext): void {
 		const runId = ctx.runId;
@@ -1561,6 +1593,7 @@ export class SimController implements OnStart {
 		}
 		const final = result as RunFinal;
 		clientStore.setVerdict({ status: "pending", run: ctx.counter, ending, claimedHash: final.claimedHash });
+		if (!this.debug) entry.claim = this.claimOf(live.state);
 		Events.finishRun.fire(final);
 		print(
 			`[Sim] finished ranked run ${ctx.counter} (${ending}): ${final.finalTick} ticks in ` +
@@ -1572,6 +1605,12 @@ export class SimController implements OnStart {
 		const entry = this.rankedRuns.get(v.runId);
 		if (entry === undefined || entry.decided) return;
 		entry.decided = true;
+		// Records (pendingRunClaims): an accepted run that counted keeps its board with the server's numbers until the
+		// records push that follows; anything else no longer raises a baseline.
+		entry.claim =
+			v.ok && v.records !== undefined && entry.claim !== undefined
+				? { board: v.records.board, score: v.score.score, floor: v.score.floor }
+				: undefined;
 		// Only the current run's verdict reaches the HUD: one for a run this client already left (a forfeiting restart,
 		// Leave run, a party run left for the menu or a new run) is only logged.
 		const current = this.ctx !== undefined && entry.run === this.ctx.counter;
@@ -1607,6 +1646,9 @@ export class SimController implements OnStart {
 			reason: v.reason,
 			serverHash: v.serverHash,
 			leaderboard: v.leaderboard,
+			records: v.records,
+			serverScore: v.score.score,
+			serverFloor: v.score.floor,
 		};
 		if (current) clientStore.setVerdict(view);
 		const where = v.failedSegment !== undefined ? ` (segment ${v.failedSegment})` : "";
