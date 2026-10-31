@@ -33,11 +33,14 @@ export interface StageCardProps {
  * Enabled while a cover is up (the `visible` binding). Centre column under the HUD's UIScale (useHudScale):
  *
  *   run start    the label (`stage.starting` "Starting run...", `stage.forging` "Forging floor {floor}...",
- *                `stage.building` "Building...") over a slim bar (STAGE_VIEW.barHeight, StageLoad.fraction)
+ *                `stage.building` "Building...") over a slim bar (STAGE_VIEW.barHeight, StageLoad.fraction) and, once
+ *                the run is built, floor 1's seeded roster under it (docs/DAILY.md DS2: `Swarmer · Bruiser`)
  *   floor change the card: `stage.floorCard` ("Floor 4") in big text, the biome line (`biome.<n>.name`, "Ancient
- *                Halls"), on a boss floor `stage.bossFloor` ("Boss floor") and, on a ranked run with a floor record,
- *                the new-best line (docs/NEW_BEST.md NB8: `Deepest: floor 9 · 2 to go`, `Record floor`, `NEW DEEPEST`
- *                / `Deepest yet` in the newBest gold); no bar
+ *                Halls"), on a boss floor `stage.bossFloor` ("Boss floor") and one second line (shared/view/hud
+ *                stageCardLine, docs/DAILY.md DSD13): the roster's `New: Imp` on a floor where kinds join, else, on a
+ *                ranked run with a floor record, the new-best line (docs/NEW_BEST.md NB8: `Deepest: floor 9 · 2 to
+ *                go`, `Record floor`, `NEW DEEPEST` / `Deepest yet` in the newBest gold; NEW DEEPEST outranks the
+ *                roster); no bar
  *
  * Drawn in the frame of the cut: Enabled, the fade and the rows' visibility are bindings StageController sets
  * synchronously (the slice reaches React only on Reflex's Heartbeat flush, after that frame's render), so the first
@@ -106,17 +109,17 @@ export function StageCard(props: StageCardProps) {
 				/>,
 			);
 		}
-		const best = stage.best;
-		if (best !== undefined) {
+		const line = stage.line;
+		if (line !== undefined) {
 			rows.push(
 				<Text
-					key="Best"
+					key="Line"
 					order={4}
 					width={width}
-					color={best.gold ? NEW_BEST_ROLE : "uiTextDim"}
+					color={line.gold ? NEW_BEST_ROLE : "uiTextDim"}
 					align={Enum.TextXAlignment.Center}
 					transparency={fade}
-					text={str(best.key, best.args)}
+					text={str(line.key, line.args)}
 				/>,
 			);
 		}
@@ -142,6 +145,20 @@ export function StageCard(props: StageCardProps) {
 				transparency={fade}
 			/>,
 		);
+		const line = stage.line;
+		if (line !== undefined) {
+			rows.push(
+				<Text
+					key="Line"
+					order={3}
+					width={width}
+					color={line.gold ? NEW_BEST_ROLE : "uiTextDim"}
+					align={Enum.TextXAlignment.Center}
+					transparency={fade}
+					text={str(line.key, line.args)}
+				/>,
+			);
+		}
 	}
 
 	return (

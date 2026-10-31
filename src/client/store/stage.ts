@@ -27,10 +27,12 @@ export interface StageCoverState {
 	/** The card's "Boss floor" line. */
 	readonly boss: boolean;
 	/**
-	 * The card's new-best line (docs/NEW_BEST.md NB8, shared/view/hud stageBestLine: `Deepest: floor 9 · 2 to go`,
-	 * `NEW DEEPEST` in gold, ...), or undefined (no floor target: an unranked run, no record, the run-start label).
+	 * The cover's second line (shared/view/hud stageCardLine, docs/DAILY.md DSD13): on the floor card new best's line
+	 * (docs/NEW_BEST.md NB8: `Deepest: floor 9 · 2 to go`, `NEW DEEPEST` in gold, ...) or the seeded roster's (`New:
+	 * Imp`), whichever wins; under a run start's bar floor 1's roster (`Swarmer · Bruiser`, set once the run is built:
+	 * setStageLine). Undefined: none.
 	 */
-	readonly best: NewBestLineText | undefined;
+	readonly line: NewBestLineText | undefined;
 	/** The run-start bar in [0, 1] (StageLoad.fraction). */
 	readonly fraction: number;
 }
@@ -43,7 +45,7 @@ export interface StageCoverView {
 	readonly floor: number;
 	readonly biomeKey: string;
 	readonly boss: boolean;
-	readonly best: NewBestLineText | undefined;
+	readonly line: NewBestLineText | undefined;
 	readonly fraction: number;
 }
 
@@ -56,7 +58,7 @@ const initialState: StageCoverState = {
 	floor: 0,
 	biomeKey: "",
 	boss: false,
-	best: undefined,
+	line: undefined,
 	fraction: 0,
 };
 
@@ -67,6 +69,8 @@ export const stageSlice = createProducer(initialState, {
 		state.labelKey === labelKey && state.floor === floor && state.fraction === fraction
 			? state
 			: { ...state, labelKey, floor, fraction },
+	/** The second line became known after the cut (a run start's roster, once the run is built). */
+	setStageLine: (state, line: NewBestLineText | undefined) => (state.shown ? { ...state, line } : state),
 	setStageRevealing: (state) => (state.revealing || !state.shown ? state : { ...state, revealing: true }),
 	hideStage: (state) => (state.shown ? { ...state, shown: false, revealing: false } : state),
 });

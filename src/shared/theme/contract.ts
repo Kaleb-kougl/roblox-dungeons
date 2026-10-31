@@ -32,6 +32,7 @@
 
 import type { AssetKind, ColorRole, ParticleFlipbookMode, Pivot } from "./types";
 import { NEW_BEST_STRING_KEYS } from "./newBest";
+import { ROSTER_STRING_KEYS } from "./roster";
 import { startsWith } from "./util";
 import { ENEMY_VARIANT_STRING_KEYS } from "./variants";
 
@@ -856,6 +857,8 @@ export const REQUIRED_STRING_KEYS: ReadonlyArray<string> = ((): string[] => [
 	...ENEMY_VARIANT_STRING_KEYS,
 	// docs/NEW_BEST.md NB4: the target row, the floor shout, the stairwell line, the run-over panel, the menu line
 	...NEW_BEST_STRING_KEYS,
+	// docs/DAILY.md DS2: the stage card's roster line (floor 1's kinds, a floor's new kinds)
+	...ROSTER_STRING_KEYS,
 ])();
 
 /**

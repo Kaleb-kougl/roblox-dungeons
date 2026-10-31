@@ -190,8 +190,8 @@ describe("required IDs and strings", () => {
 		// + ROOM_CLEAR_STRING_KEYS (docs/ROOM_CLEAR.md RC3) + COMBO_STRING_KEYS (docs/COMBO.md CB3)
 		// + NEAR_MISS_STRING_KEYS (docs/GRAZE_PARRY.md GP3)
 		// + docs/ENEMY_VARIANTS.md EV1: enemy.imp.name, enemy.slime.name, AFFIX_STRING_KEYS (4), BESTIARY_STRING_KEYS (7)
-		// + docs/NEW_BEST.md NB4: NEW_BEST_STRING_KEYS (18)
-		expect(REQUIRED_STRING_KEYS.size()).toBe(41 + 1 + 2 + 4 * 3 + 1 + 3 + 5 + 13 + 10 + 6 + 2 + 2 + 4 + 7 + 18);
+		// + docs/NEW_BEST.md NB4: NEW_BEST_STRING_KEYS (18) + docs/DAILY.md DS2: ROSTER_STRING_KEYS (2)
+		expect(REQUIRED_STRING_KEYS.size()).toBe(41 + 1 + 2 + 4 * 3 + 1 + 3 + 5 + 13 + 10 + 6 + 2 + 2 + 4 + 7 + 18 + 2);
 		expect(new Set(REQUIRED_STRING_KEYS).size()).toBe(REQUIRED_STRING_KEYS.size());
 		expect(BIOMES.map((b) => b.forgeTheme)).toEqual(["ancient", "molten", "frost", "grim", "verdant"]);
 	});
