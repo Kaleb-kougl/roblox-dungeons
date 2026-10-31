@@ -61,6 +61,7 @@ describe("registry: PORT_BAND_ENEMIES", () => {
 			"turret.sprayer",
 			"dummy",
 			"boss.demonlord",
+			"summoner", // EV4 (band 3)
 		]);
 	});
 });

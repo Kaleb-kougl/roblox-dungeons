@@ -27,3 +27,4 @@ export * from "./dummy";
 
 // --- Roblox port: endless bosses (band PORT_BAND_BOSSES: numbered after the tutorial's; docs/BOSS_DEMONLORD.md)
 export * from "./boss/demonlord";
+export * from "./summoner";

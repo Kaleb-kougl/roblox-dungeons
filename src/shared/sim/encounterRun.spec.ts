@@ -30,6 +30,7 @@ describe("encounter kinds are registered archetypes", () => {
 			"turret.sprayer",
 			"dummy", // band PORT_BAND_TUTORIAL: after the whole web table
 			"boss.demonlord", // band PORT_BAND_BOSSES: after the tutorial's (docs/BOSS_DEMONLORD.md)
+			"summoner", // band PORT_BAND_ENEMIES: after the port's bosses (docs/ENEMY_VARIANTS.md)
 		]);
 		for (const k of TEST_TURRET_KINDS) expect([k, hasArchetype(k)]).toEqual([k, true]);
 		expect(hasArchetype(DEFAULT_ENCOUNTER.boss!)).toBe(true);
