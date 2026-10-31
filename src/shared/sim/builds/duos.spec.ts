@@ -430,6 +430,9 @@ describe("Chain Reaction (Volatile + Chain Spark)", () => {
 	function genKill(withDuo: boolean, gen: number, cause: number): { s: SimState; n: ActorState } {
 		const s = fresh();
 		duoBuild(s, Duo.CHAIN_REACTION, withDuo, [Boon.SOUL_SHARDS]);
+		// One idle tick first: in play every kill happens inside stepCombat, which owns the builds scratch for this state
+		// (resetBuildScratch clears it when stepCombat binds a different state), so the kill below must follow one.
+		step(s, IDLE, ARENA);
 		const ctx = ctxOf(s);
 		const victim = dummy(ctx, 0, 3, 1);
 		const n = dummy(ctx, 2, 3); // a neighbour in spark and shard range

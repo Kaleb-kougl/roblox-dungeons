@@ -147,13 +147,20 @@ export function stepBuilds(ctx: SimCtx): void {
 	ctx.procCause = KillCause.NONE;
 }
 
+/** The state stepCombat last bound (resetBuildScratch). Identity only; never read. */
+let scratchOwner: SimState | undefined;
+
 /**
  * Clears every module-level scratch the builds rules fill and empty within one stepCombat (Ricochet, queued duo sparks,
- * Chain Reaction crosses, embers, the effect budget's session, volley targets). Nothing here is state: each list is
- * empty at the end of a normal tick. stepCombat calls it first every tick (with or without builds), so a tick that threw
- * halfway (a validator running several runs in one VM under pcall) can never leak another run's entries into this one.
+ * Chain Reaction crosses, embers, the effect budget's session, volley targets) when stepCombat is bound to a different
+ * state than last time. Nothing here is state: each list is empty at the end of a normal tick, and every kill that queues
+ * into them happens inside stepCombat. stepCombat calls it first every tick (with or without builds), so a tick that
+ * threw halfway in one run (a validator running several runs in one VM under pcall) can never leak its entries into the
+ * next run; within one run nothing is cleared (a no-op either way after a normal tick).
  */
-export function resetBuildScratch(): void {
+export function resetBuildScratch(state: SimState): void {
+	if (state === scratchOwner) return;
+	scratchOwner = state;
 	resetEvolutionScratch();
 	resetDuoScratch();
 	resetEffectScratch();

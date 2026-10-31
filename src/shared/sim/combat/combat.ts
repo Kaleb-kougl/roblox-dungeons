@@ -530,7 +530,7 @@ export function stepCombat(
 	ctx.bind(state, config, input);
 	// Per-tick module scratch back to empty (a no-op after a normal tick; see resetBuildScratch / resetBurstLimit).
 	resetBurstLimit();
-	resetBuildScratch();
+	resetBuildScratch(state);
 
 	// 1. Ember: clears every enemy bullet (player bullets stay).
 	if (state.events.emberUsed !== 0) state.events.bulletsCleared += c.enemyBullets.clear();

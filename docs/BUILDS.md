@@ -1320,9 +1320,10 @@ low findings:
 1. **Fixed.** `DraftRevealController` detected a boss double draft's re-deal only by the draft timer dropping; a co-op
    catch-up frame could step past it and keep the first deal's faces. A change of the offers now counts too.
 2. **Fixed (hardening).** `fireBurstLimited`'s limit and the builds modules' per-tick scratch (Ricochet, queued duo
-   sparks, Chain Reaction crosses, embers, the effect budget's session, volley targets) are reset at the top of every
-   `stepCombat` (`resetBurstLimit`, `resetBuildScratch`), so a tick that threw under a validator's pcall cannot leak into
-   the next run in the same VM. A no-op after a normal tick; no hash change.
+   sparks, Chain Reaction crosses, embers, the effect budget's session, volley targets) are reset at the top of
+   `stepCombat`: the burst limit every tick (`resetBurstLimit`), the builds scratch whenever `stepCombat` is bound to a
+   different state than last time (`resetBuildScratch(state)`), so a tick that threw under a validator's pcall cannot
+   leak into the next run in the same VM. A no-op after a normal tick; no hash change.
 3. **Owner call.** A dead co-op player's queued procs, and kills by their bullets still in flight, still fire Chain
    Spark / Volatile / Soul Shards, while every evolution and duo release needs the owner alive and present. BU3 only
    specified dropping leavers' procs. Keep (effects in flight finish) or drop them on death.
