@@ -1,4 +1,5 @@
 import { DRAFT_OFFER_COUNT, Rarity, type RarityId } from "shared/sim";
+import type { DraftSurface } from "shared/view/hud";
 import { ComboUiValue } from "./comboUi";
 
 /**
@@ -21,10 +22,15 @@ export interface DraftCardUi {
 	readonly position: ComboUiValue<UDim2>;
 	readonly size: ComboUiValue<UDim2>;
 	readonly scale: ComboUiValue<number>;
+	/** The image shown now (back / common / rare face): the dim silhouette and the overlay box follow it. */
+	readonly surface: ComboUiValue<DraftSurface>;
 	readonly backT: ComboUiValue<number>;
 	readonly backFillT: ComboUiValue<number>;
+	/** The flat back's / face's outline (hidden while the card is a sliver mid-flip). */
+	readonly backStrokeT: ComboUiValue<number>;
 	readonly faceT: ComboUiValue<number>;
 	readonly faceFillT: ComboUiValue<number>;
+	readonly faceStrokeT: ComboUiValue<number>;
 	readonly eyesT: ComboUiValue<number>;
 	readonly ornamentT: ComboUiValue<number>;
 	readonly textT: ComboUiValue<number>;
@@ -39,8 +45,10 @@ export interface DraftCardUi {
 	readonly haloVisible: ComboUiValue<boolean>;
 	readonly haloT: ComboUiValue<number>;
 	readonly rayAngle: ComboUiValue<number>;
+	/** The slot's centre, reference px right of the card row's centre (the ray layer under the row draws there). */
+	readonly rayX: ComboUiValue<number>;
 	readonly selected: ComboUiValue<boolean>;
-	/** The slot's ZIndex in the row (a slot with rays draws under the others). */
+	/** The slot's ZIndex in the row (a card drawn larger than its slot draws over the others). */
 	readonly z: ComboUiValue<number>;
 }
 
@@ -49,9 +57,12 @@ const HIDDEN = 1;
 const HALF = 0.5;
 export const DRAFT_BODY_POSITION = UDim2.fromScale(HALF, HALF);
 export const DRAFT_BODY_SIZE = UDim2.fromScale(1, 1);
-/** Slot ZIndex: a slot whose rays show draws under the others (ZIndexBehavior Sibling). */
-export const DRAFT_SLOT_Z_BEHIND = 1;
-export const DRAFT_SLOT_Z_FRONT = 2;
+/**
+ * Slot ZIndex in the card row (ZIndexBehavior Sibling): at rest, or raised over the others while its card is drawn
+ * larger than its slot (the legendary pop, the pick stamp, the selection), so the overhang is in front.
+ */
+export const DRAFT_SLOT_Z_REST = 1;
+export const DRAFT_SLOT_Z_RAISED = 2;
 
 function newCardUi(): DraftCardUi {
 	return {
@@ -61,10 +72,13 @@ function newCardUi(): DraftCardUi {
 		position: new ComboUiValue(DRAFT_BODY_POSITION),
 		size: new ComboUiValue(DRAFT_BODY_SIZE),
 		scale: new ComboUiValue(1),
+		surface: new ComboUiValue<DraftSurface>("back"),
 		backT: new ComboUiValue(HIDDEN),
 		backFillT: new ComboUiValue(HIDDEN),
+		backStrokeT: new ComboUiValue(HIDDEN),
 		faceT: new ComboUiValue(HIDDEN),
 		faceFillT: new ComboUiValue(HIDDEN),
+		faceStrokeT: new ComboUiValue(HIDDEN),
 		eyesT: new ComboUiValue(HIDDEN),
 		ornamentT: new ComboUiValue(HIDDEN),
 		textT: new ComboUiValue(HIDDEN),
@@ -78,8 +92,9 @@ function newCardUi(): DraftCardUi {
 		haloVisible: new ComboUiValue(false),
 		haloT: new ComboUiValue(HIDDEN),
 		rayAngle: new ComboUiValue(0),
+		rayX: new ComboUiValue(0),
 		selected: new ComboUiValue(false),
-		z: new ComboUiValue(DRAFT_SLOT_Z_FRONT),
+		z: new ComboUiValue(DRAFT_SLOT_Z_REST),
 	};
 }
 

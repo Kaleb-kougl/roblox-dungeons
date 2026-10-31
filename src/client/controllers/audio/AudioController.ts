@@ -260,12 +260,15 @@ export class AudioController implements OnStart {
 
 	/**
 	 * A UI cue played outside the mapper's frame (the boon draft reveal's sounds, DraftRevealController; docs/
-	 * DRAFT_REVEAL.md DR6): held to the ID's minimum interval like the gamepad focus tick (mapper.uiCue), then played
-	 * at `volume` x its volume and `speed` (PlaybackSpeed; 0 = the pack's jitter). A silent ID plays its fallback or
-	 * nothing. `sfx.draft.legendary` ducks the music itself (DUCKING_SFX).
+	 * DRAFT_REVEAL.md DR6), at `volume` x its volume and `speed` (PlaybackSpeed; 0 = the pack's jitter). No minimum
+	 * interval: the reveal already spaces its own cues (the charge rungs 0.07 s apart, the flips 0.22 s), and every cue
+	 * due in one long frame (a hitch, a low frame rate) must still play, each once (the ID's AUDIO_VIEW.voicesPerSfx
+	 * pooled voices take same-frame repeats: a reveal step is at most DRAFT_REVEAL.maxFrameDtSec, 0.1 s, so at most two
+	 * charge rungs share one). A
+	 * silent ID plays its fallback or nothing. `sfx.draft.legendary` ducks the music itself (DUCKING_SFX).
 	 */
 	playCue(id: string, volume: number, speed: number): void {
-		if (this.mapper.uiCue(os.clock(), id)) this.play(id, volume, speed);
+		this.play(id, volume, speed);
 	}
 
 	/**

@@ -11,17 +11,22 @@ import {
 	PROGRESSION_STRINGS,
 	PROGRESSION_VIEW,
 	TOUCH_STRINGS,
+	draftBodyBox,
 	draftShineOffset,
 	draftSkullPlacement,
+	draftSurfaceImageId,
+	draftTextNudge,
 	itemDescKey,
 	itemNameKey,
 	rarityColorRole,
 	rarityNameKey,
+	type DraftBodyBox,
+	type DraftSurface,
 } from "shared/view/hud";
 import { useHudActions } from "./actions";
 import { DraftRays } from "./DraftRays";
 import { DRAFT_UI, type DraftCardUi } from "./draftUi";
-import { Panel, Row, SlicedImage, Text } from "./primitives";
+import { Panel, SlicedImage, Text } from "./primitives";
 
 const HALF = 0.5;
 const HIDDEN = 1;
@@ -30,8 +35,12 @@ const RARITY_TOP = 0.3;
 const DESC_TOP = 0.48;
 const DESC_HEIGHT = 0.46;
 const INSET = 0.92;
-/** Draw order inside a card slot (ZIndexBehavior Sibling): the rays under the body, the tap target over it. */
-const SLOT_Z = { rays: 1, body: 2, tap: 3 } as const;
+/** Draw order inside a card slot (ZIndexBehavior Sibling): the tap target over the body. */
+const SLOT_Z = { body: 1, tap: 2 } as const;
+/** Draw order inside the card row: every ray ring on a layer under every card (a legendary's rays pass behind them). */
+const ROW_Z = { rays: 1, cards: 2 } as const;
+/** The surfaces a card can show (one dim silhouette each, visible while it is the current one). */
+const SURFACES: ReadonlyArray<DraftSurface> = ["back", "common", "rare"];
 /** Draw order inside the card body, bottom to top. */
 const BODY_Z = {
 	back: 1,
@@ -125,9 +134,10 @@ function Skull(props: { side: "left" | "right"; ui: DraftCardUi; visible: React.
 	);
 }
 
-/** A text row of the card (faded by the card's text transparency). */
+/** A text row of the card (faded by the card's text transparency), `nudge` reference px below its row. */
 function CardText(props: {
 	top: number;
+	nudge?: React.Binding<number>;
 	height: UDim2;
 	size: number;
 	text: React.Binding<string>;
@@ -138,7 +148,11 @@ function CardText(props: {
 	return (
 		<textlabel
 			AnchorPoint={new Vector2(HALF, 0)}
-			Position={new UDim2(HALF, 0, props.top, 0)}
+			Position={
+				props.nudge !== undefined
+					? props.nudge.map((px) => new UDim2(HALF, 0, props.top, px))
+					: new UDim2(HALF, 0, props.top, 0)
+			}
 			Size={props.height}
 			BackgroundTransparency={HIDDEN}
 			Font={HUD_FONT}
@@ -155,15 +169,20 @@ function CardText(props: {
 
 /**
  * One offered boon's slot (docs/DRAFT_REVEAL.md DR5), by offer index: everything it draws is a DRAFT_UI binding
- * (DraftRevealController writes them per frame), so it renders once. The slot is a fixed 240 x 150 layout box; inside:
- *   - two ray rings behind the body (the legendary's burst and halo, DraftRays), larger than the slot;
+ * (DraftRevealController writes them per frame), so it renders once. The slot is a fixed 240 x 150 layout box (its
+ * ray rings are on the row's ray layer, SlotRays); inside:
  *   - the body, the flip holder: centred (AnchorPoint 0.5), its width factor and offsets (tremble, rise, drop) and its
  *     UIScale (pop * stamp * the selected scale) from bindings. Bottom to top: the back (`ui.draft.back` 9-sliced, or a
  *     flat uiPanel card with a dim outline: every back looks the same), the back's red eyes (`ui.draft.back.eyes`, same
  *     size and slice, tinted), the face (`ui.draft.card.common`, or `ui.draft.card.rare` for rare and legendary; else
  *     the flat card with the rarity stroke), the legendary skulls, the name (real boon's rarity colour) / rarity /
- *     effect rows (hidden while the card is thin), the shine sweep, the dim, the flash, the rarity glow stroke and the
- *     uiAccent selection stroke (only once settled).
+ *     effect rows (hidden while the card is thin; on the rare face art the name and rarity rows sit lower, clear of
+ *     its tab: draftTextNudge), the shine sweep, the dim, the flash, the rarity glow stroke and the uiAccent selection
+ *     stroke (only once settled). With the art, the dim is the current surface's own sliced image tinted dark (its
+ *     exact silhouette), and the shine, flash, glow and selection are drawn on the surface's opaque body box
+ *     (draftBodyBox, rounded by a UICorner), never as a rectangle over the art's transparent corners: ImageColor3 only
+ *     multiplies, so a white silhouette of the art for the flash would need a baked mask (like the eyes). Without the
+ *     art every overlay covers the whole card, as before; the flat outlines hide while the card is a sliver.
  *   - touch (`onTap`): a see-through button over the card takes the tap (during the reveal it skips: InputController).
  */
 function DraftCard(props: { index: number; onTap?: () => void }) {
@@ -172,7 +191,23 @@ function DraftCard(props: { index: number; onTap?: () => void }) {
 		const rarity = ui.rarity.binding;
 		const boon = ui.boon.binding;
 		const panelText = role("uiText");
+		const pack = themePack();
+		const hasArt = (s: DraftSurface) => pack?.image(draftSurfaceImageId(s)) !== undefined;
+		const rareArt = hasArt("rare");
+		const box = ui.surface.binding.map((s): DraftBodyBox => draftBodyBox(s, hasArt(s)));
+		const isSurface = new Map<DraftSurface, React.Binding<boolean>>();
+		for (const s of SURFACES)
+			isSurface.set(
+				s,
+				ui.surface.binding.map((cur) => cur === s),
+			);
 		return {
+			boxPosition: box.map((b) => UDim2.fromOffset(b.left, b.top)),
+			boxSize: box.map((b) => new UDim2(1, -(b.left + b.right), 1, -(b.top + b.bottom))),
+			boxCorner: box.map((b) => new UDim(0, b.corner)),
+			isSurface,
+			nameNudge: rarity.map((r) => draftTextNudge(r, rareArt).name),
+			rarityNudge: rarity.map((r) => draftTextNudge(r, rareArt).rarity),
 			common: rarity.map((r) => r === Rarity.COMMON),
 			rare: rarity.map((r) => r !== Rarity.COMMON),
 			legendary: rarity.map((r) => r === Rarity.LEGENDARY),
@@ -195,7 +230,6 @@ function DraftCard(props: { index: number; onTap?: () => void }) {
 			shineOffset: ui.shine.binding.map((u) => new Vector2(draftShineOffset(u), 0)),
 			band: shineBand(),
 			eyes: eyeColor(),
-			gold: rarityColor(Rarity.LEGENDARY),
 		};
 	}, [ui]);
 	const v = PROGRESSION_VIEW;
@@ -208,24 +242,6 @@ function DraftCard(props: { index: number; onTap?: () => void }) {
 			Visible={ui.shown.binding}
 			ZIndex={ui.z.binding}
 		>
-			<DraftRays
-				key="Burst"
-				color={look.gold}
-				visible={ui.burstVisible.binding}
-				transparency={ui.burstT.binding}
-				scale={ui.burstScale.binding}
-				rotation={ui.rayAngle.binding}
-				zIndex={SLOT_Z.rays}
-			/>
-			<DraftRays
-				key="Halo"
-				color={look.gold}
-				visible={ui.haloVisible.binding}
-				transparency={ui.haloT.binding}
-				scale={1}
-				rotation={ui.rayAngle.binding}
-				zIndex={SLOT_Z.rays}
-			/>
 			<frame
 				key="Body"
 				AnchorPoint={new Vector2(HALF, HALF)}
@@ -245,18 +261,21 @@ function DraftCard(props: { index: number; onTap?: () => void }) {
 							key="Back"
 							z={BODY_Z.back}
 							fill={ui.backFillT.binding}
-							stroke={ui.backT.binding}
+							stroke={ui.backStrokeT.binding}
 							color={dim}
 						/>
 					}
 				/>
-				<SlicedImage
-					id={DRAFT_SKIN.backEyes}
-					name="Eyes"
-					color={look.eyes}
-					transparency={ui.eyesT.binding}
-					zIndex={BODY_Z.eyes}
-				/>
+				{/* The eyes light the back's skull sockets: only over the back art (never red sockets on the flat card). */}
+				{themePack()?.image(DRAFT_SKIN.back) !== undefined ? (
+					<SlicedImage
+						id={DRAFT_SKIN.backEyes}
+						name="Eyes"
+						color={look.eyes}
+						transparency={ui.eyesT.binding}
+						zIndex={BODY_Z.eyes}
+					/>
+				) : undefined}
 				<SlicedImage
 					id={DRAFT_SKIN.common}
 					name="FaceCommon"
@@ -296,6 +315,7 @@ function DraftCard(props: { index: number; onTap?: () => void }) {
 				<CardText
 					key="Name"
 					top={NAME_TOP}
+					nudge={look.nameNudge}
 					height={new UDim2(INSET, 0, 0, HUD_VIEW.titleText)}
 					size={HUD_VIEW.titleText}
 					text={look.name}
@@ -305,6 +325,7 @@ function DraftCard(props: { index: number; onTap?: () => void }) {
 				<CardText
 					key="Rarity"
 					top={RARITY_TOP}
+					nudge={look.rarityNudge}
 					height={new UDim2(INSET, 0, 0, HUD_VIEW.smallText)}
 					size={HUD_VIEW.smallText}
 					text={look.rarityName}
@@ -323,35 +344,61 @@ function DraftCard(props: { index: number; onTap?: () => void }) {
 				/>
 				<frame
 					key="Shine"
-					Size={UDim2.fromScale(1, 1)}
+					Position={look.boxPosition}
+					Size={look.boxSize}
 					BackgroundColor3={role("uiText")}
 					BorderSizePixel={0}
 					Visible={look.shineVisible}
 					ZIndex={BODY_Z.shine}
 				>
+					<uicorner CornerRadius={look.boxCorner} />
 					<uigradient
 						Transparency={look.band}
 						Rotation={DRAFT_REVEAL_VIEW.shine.rotationDeg}
 						Offset={look.shineOffset}
 					/>
 				</frame>
-				<frame
-					key="Dim"
-					Size={UDim2.fromScale(1, 1)}
-					BackgroundColor3={role("background")}
-					BackgroundTransparency={ui.dimT.binding}
-					BorderSizePixel={0}
-					ZIndex={BODY_Z.dim}
-				/>
+				<frame key="Dim" Size={UDim2.fromScale(1, 1)} BackgroundTransparency={HIDDEN} ZIndex={BODY_Z.dim}>
+					{SURFACES.map((surface) => (
+						<SlicedImage
+							key={`Dim_${surface}`}
+							id={draftSurfaceImageId(surface)}
+							name={`Dim_${surface}`}
+							color={role("background")}
+							transparency={ui.dimT.binding}
+							visible={look.isSurface.get(surface)}
+							fallback={
+								<frame
+									key={`Dim_${surface}`}
+									Size={UDim2.fromScale(1, 1)}
+									BackgroundColor3={role("background")}
+									BackgroundTransparency={ui.dimT.binding}
+									BorderSizePixel={0}
+									Visible={look.isSurface.get(surface)}
+								/>
+							}
+						/>
+					))}
+				</frame>
 				<frame
 					key="Flash"
-					Size={UDim2.fromScale(1, 1)}
+					Position={look.boxPosition}
+					Size={look.boxSize}
 					BackgroundColor3={look.flashColor}
 					BackgroundTransparency={ui.flashT.binding}
 					BorderSizePixel={0}
 					ZIndex={BODY_Z.flash}
-				/>
-				<frame key="Glow" Size={UDim2.fromScale(1, 1)} BackgroundTransparency={HIDDEN} ZIndex={BODY_Z.glow}>
+				>
+					<uicorner CornerRadius={look.boxCorner} />
+				</frame>
+				<frame
+					key="Glow"
+					Position={look.boxPosition}
+					Size={look.boxSize}
+					BackgroundTransparency={HIDDEN}
+					ZIndex={BODY_Z.glow}
+				>
+					<uicorner CornerRadius={look.boxCorner} />
 					<uistroke
 						ApplyStrokeMode={Enum.ApplyStrokeMode.Border}
 						Thickness={DRAFT_REVEAL_VIEW.glowStroke}
@@ -361,11 +408,13 @@ function DraftCard(props: { index: number; onTap?: () => void }) {
 				</frame>
 				<frame
 					key="Selected"
-					Size={UDim2.fromScale(1, 1)}
+					Position={look.boxPosition}
+					Size={look.boxSize}
 					BackgroundTransparency={HIDDEN}
 					Visible={ui.selected.binding}
 					ZIndex={BODY_Z.select}
 				>
+					<uicorner CornerRadius={look.boxCorner} />
 					<uistroke
 						ApplyStrokeMode={Enum.ApplyStrokeMode.Border}
 						Thickness={v.selectedStroke}
@@ -389,12 +438,53 @@ function DraftCard(props: { index: number; onTap?: () => void }) {
 	);
 }
 
+/**
+ * One slot's ray rings (the legendary's burst and halo, DraftRays) on the row's ray layer, centred where the slot's
+ * card sits in the row (DRAFT_UI rayX, shared/view/hud draftSlotOffsetX), so they pass behind every card.
+ */
+function SlotRays(props: { index: number }) {
+	const ui = DRAFT_UI.cards[props.index];
+	const look = useMemo(
+		() => ({
+			position: ui.rayX.binding.map((x) => new UDim2(HALF, x, HALF, 0)),
+			gold: rarityColor(Rarity.LEGENDARY),
+		}),
+		[ui],
+	);
+	return (
+		<frame
+			AnchorPoint={new Vector2(HALF, HALF)}
+			Position={look.position}
+			Size={new UDim2()}
+			BackgroundTransparency={HIDDEN}
+			Visible={ui.shown.binding}
+		>
+			<DraftRays
+				key="Burst"
+				color={look.gold}
+				visible={ui.burstVisible.binding}
+				transparency={ui.burstT.binding}
+				scale={ui.burstScale.binding}
+				rotation={ui.rayAngle.binding}
+				zIndex={1}
+			/>
+			<DraftRays
+				key="Halo"
+				color={look.gold}
+				visible={ui.haloVisible.binding}
+				transparency={ui.haloT.binding}
+				scale={1}
+				rotation={ui.rayAngle.binding}
+				zIndex={1}
+			/>
+		</frame>
+	);
+}
+
 /** A full draft's cards with the row's gaps between them, plus the panel's padding on both sides. */
 const SIDES = 2;
-const DRAFT_CARDS_WIDTH =
-	PROGRESSION_VIEW.cardWidth * DRAFT_OFFER_COUNT +
-	HUD_VIEW.gap * (DRAFT_OFFER_COUNT - 1) +
-	PROGRESSION_VIEW.cardGap * SIDES;
+const DRAFT_ROW_WIDTH = PROGRESSION_VIEW.cardWidth * DRAFT_OFFER_COUNT + HUD_VIEW.gap * (DRAFT_OFFER_COUNT - 1);
+const DRAFT_CARDS_WIDTH = DRAFT_ROW_WIDTH + PROGRESSION_VIEW.cardGap * SIDES;
 
 /** Co-op: "waiting for N teammates" while others still choose (the world stays frozen until all confirmed). */
 function WaitingLine(props: { order: number; count: number; transparency?: React.Binding<number> }) {
@@ -442,8 +532,10 @@ export function DraftOverlay() {
 	}, [bindings, device, touch]);
 	if (tutorialEnded) return undefined;
 	const cards: React.Element[] = [];
+	const rays: React.Element[] = [];
 	for (let i = 0; i < DRAFT_OFFER_COUNT; i++) {
 		cards.push(<DraftCard key={`c${i}`} index={i} onTap={touch ? () => actions.draftTap(i) : undefined} />);
+		rays.push(<SlotRays key={`r${i}`} index={i} />);
 	}
 	return (
 		<>
@@ -466,9 +558,31 @@ export function DraftOverlay() {
 					text={str(PROGRESSION_STRINGS.draftTitle)}
 					transparency={DRAFT_UI.titleT.binding}
 				/>
-				<Row order={2} align={Enum.HorizontalAlignment.Center}>
-					{cards}
-				</Row>
+				<frame
+					key="CardRow"
+					LayoutOrder={2}
+					Size={UDim2.fromOffset(DRAFT_ROW_WIDTH, PROGRESSION_VIEW.cardHeight)}
+					BackgroundTransparency={HIDDEN}
+				>
+					<frame key="Rays" Size={UDim2.fromScale(1, 1)} BackgroundTransparency={HIDDEN} ZIndex={ROW_Z.rays}>
+						{rays}
+					</frame>
+					<frame
+						key="Cards"
+						Size={UDim2.fromScale(1, 1)}
+						BackgroundTransparency={HIDDEN}
+						ZIndex={ROW_Z.cards}
+					>
+						<uilistlayout
+							FillDirection={Enum.FillDirection.Horizontal}
+							HorizontalAlignment={Enum.HorizontalAlignment.Center}
+							VerticalAlignment={Enum.VerticalAlignment.Center}
+							SortOrder={Enum.SortOrder.LayoutOrder}
+							Padding={new UDim(0, HUD_VIEW.gap)}
+						/>
+						{cards}
+					</frame>
+				</frame>
 				<Text
 					fill={true}
 					order={3}

@@ -187,7 +187,10 @@ export interface StageDriver {
  * confirm is never held, as before.
  */
 export interface DraftRevealDriver {
-	/** The local reveal is playing and not settled: the draft's confirm is held back (DraftRevealGate). */
+	/**
+	 * The draft's confirm is held back (DraftRevealGate): the local reveal is playing, or the local draft is open and its
+	 * reveal has not begun yet (shared/play draftConfirmHeld).
+	 */
 	blocksConfirm(): boolean;
 	/** A confirm press edge during the reveal: skip it (DRD6). */
 	skip(): void;
@@ -521,7 +524,8 @@ export class SimController implements OnStart {
 
 	/**
 	 * The draft reveal's confirm gate on this frame's input (in place), applied after the cover / menu gate: while the
-	 * reveal is not settled (and the run not paused) DRAFT_CONFIRM_BUTTON is masked and a press edge skips the reveal.
+	 * driver holds the confirm (the reveal not settled, or not begun yet for the open draft; never while paused)
+	 * DRAFT_CONFIRM_BUTTON is masked and a press edge skips the reveal.
 	 */
 	private gateDraftConfirm(input: InputFrame, paused: boolean): void {
 		const driver = this.draftReveal;
