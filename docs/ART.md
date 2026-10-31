@@ -22,7 +22,7 @@ six bullet IDs, the biome tiles, `ui.cursor` (the facing pip) and the pedestal /
 | `boss.act1` (Mother Bramble) | **Demon Elite 3** (idle, walk, taunt, Attack 1-4, Die 1; docs/BRAMBLE_ART.md): 7 sheets + rims, uploaded 2026-10-26 | 2D Demons - TopDown asset pack v1.1 |
 | `enemy.sprayer` / `enemy.caster` (M1's turrets, the tutorial's sprayers) | **Demon Spawn 8** / **Demon Spawn 11** (Idle 1, TakeDamage 1, Die 1; the baked staff glow cut by `layerNoiseAlpha`; docs/DEMON_ART.md Phase 2): 2 sheets + rims each, uploaded 2026-10-30 (DA13) | 2D Demons - TopDown asset pack v1.1 |
 | boost drops `boost.fury` / `.quickstep` / `.frenzy` / `.aegis` (docs/BOOST_ART.md) | **`gold_drop`** (Fury) and **`gemstones_blue` / `_green` / `_white`**, S facing frame 0, 29.6 px/tile; halo `decor.fx.glow` and sparkle `decor.fx.glint` (the decor atlas), beam **`loot_indicator_white`** (`ui.marker.boost`), all tinted by the kind's role | Lords of Pain (full pack) |
-| the UI (menus, overlays, in-run HUD, touch; docs/UI_ART.md) | 12 sliced pieces (`ui.panel.*`, `ui.button*`, `ui.option.*`, `ui.bar.*`, `ui.slot*`) and the `ui-icons.png` atlas (hearts, flasks, candle, chips, glyphs, ornament); built, **not uploaded yet** | UI User Interface Pack - Horror |
+| the UI (menus, overlays, in-run HUD, touch; docs/UI_ART.md) | 12 sliced pieces (`ui.panel.*`, `ui.button*`, `ui.option.*`, `ui.bar.*`, `ui.slot*`) and the `ui-icons.png` atlas (hearts, flasks, candle, chips, glyphs, ornament); uploaded 2026-10-30 | UI User Interface Pack - Horror |
 | walls, the shrine | placeholder primitives (unchanged) | none |
 | every `bullet.*` | neon placeholders (unchanged: they keep the GDD bullet-readability rule) | none |
 | audio | silent (unchanged) | none |

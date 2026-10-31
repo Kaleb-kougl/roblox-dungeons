@@ -17,9 +17,9 @@ below), and every art path is checked by typecheck, lint, build and the pure-log
 were taken as recommended (Kaleb, 2026-10-30: "proceed"). Built on the merged Draft reveal (`slice`, `SlicedImage`,
 the sheet crops, the notices entry). Changes from the plan found while building are in "As built".
 
-**Owner steps left:** merge `ui-art`; `npm run art:build`; upload the 13 new PNGs from `art/upload/` (12 `ui-*.png`
-sliced pieces + `ui-icons.png`) and paste their ids into `packs/vale/assetIds.ts`; run spike UA1 (`KV_UiArtSpike`,
-docs/SPIKES.md) and the Studio smoke test below (UA12, UA15).
+Merged to `main` (`3393c8a`). The 13 PNGs (12 sliced `ui-*.png` + `ui-icons.png`) were uploaded 2026-10-30 8:41 PM
+and their ids are in `packs/vale/assetIds.ts`, so the bundled vale pack now draws the skin (`valeUi.spec.ts` pins it).
+**Owner steps left:** spike UA1 (`KV_UiArtSpike`, docs/SPIKES.md) and the Studio smoke test below (UA12, UA15).
 
 ## The source
 
@@ -274,6 +274,41 @@ Changes from the plan, found while building:
   `DraftOverlay` is unchanged apart from `skin="none"` on its two Panels.
 - **Below UIScale ~0.75** art never drops under 1 screen px per art px, so hud frames pad a few px more than 8 and
   icons (ghost, run-over header) can overflow their boxes slightly.
+
+## Phones (2026-10-30, after the first phone look)
+
+Kaleb's phone screenshots (about 693-714 x 320-330 pt landscape, smaller than MOBILE.md's 844 x 390 reference) showed
+the menus overflowing the safe area, the bones ornament under Roblox's top bar, and the touch cluster rising into the
+score panel. All three predate the skin in part; fixed on `ua-mob-menus` / `ua-mob-touch`, merged to `main`.
+
+- **Menus fit the safe area on touch** (`shared/view/menu/fit.ts`, client `MenuFit`): a safe area under 650 reference
+  px tall switches screens to compact layouts (main menu buttons in two columns; run over in two columns; Options' tab
+  body scrolls), then one flexible list per screen shrinks (>= 96 px), then the whole panel scales (never under 0.6
+  effective, so a button stays >= 24 pt). Mouse, keyboard and gamepad: factor 1, nothing changes. The ornament shows
+  only when the fitted panel leaves room above it (the panel may move down up to half its overhang), else it is skipped.
+- **Full-screen dims:** MenuLayer's backdrop and the pause / Options / leaderboard / tutorial-outro dims draw in their
+  own full-screen ScreenGuis (`KV_MenuBackdrop`, `KV_GameMenuDim`), so they reach under the top bar and the notch. The
+  one desktop-visible change: the top-bar strip is dimmed too.
+- **Touch cluster clear of the corner panels** (`touchLayout`): a 2D keep-out from the status and score footprints
+  (measured in the HUD ScreenGui's rect); the largest scale up to the setting that keeps clear, then a compact cluster
+  (`TOUCH_LAYOUT.compact`: Ember under Attack, the rest left of it), then down to the smallest tappable circle; specced
+  on 844 x 390, 667 x 375 and 714 x 330 at every HUD scale and inset. Layouts that already fit are unchanged.
+- **Touch faces:** labels fit inside each control (`touchFace`, TextScaled with a size cap, a soft stroke); with the art,
+  Flask and Ember show `ui.flask.full` / `ui.candle` with a count badge; stick words show at rest, the knob only while
+  held (`HUD_SKIN.touch.knobAtRest`); ring art is the largest whole multiple of 39 px inside the circle, at
+  transparency 0.55.
+- **Touch HUD as one slim top strip** (owner, 2026-10-30; `shared/view/hud/touchStrip.ts`, ScreenGui `KV_TouchStrip`):
+  on touch the corner status and score panels are replaced by one row in Roblox's top-bar row, right of the pause
+  button: hearts (+ armor / Aegis, ghost heart), flask icon + count, Ember candle + count, coin + score + multiplier
+  over a 3 px combo line; no boxes, no row labels, no "Score" title. Under it one 15 px chips line (boosts, then owned
+  items capped with `hud.items.more`), then a slim boss bar (flat, no panel). Collapses when narrow (multiplier text,
+  then one heart + count, then 80 %, then below the bar). The Floor / Depth line moved to the pause overlay on touch.
+  One occlusion-faded CanvasGroup; `touchLayout` keeps clear of the strip, so the small phone gets the normal cluster
+  back (x0.53 compact -> x0.75 normal on 693 x 320). About 17 % of a 693 x 320 screen with a boss, ~5 % below the top
+  bar without one. Needs the emulator: the strip against Roblox's pill / voice button (`TopbarInset`), chip text
+  (~7.5 pt), the stamp / tutorial prompt over the cluster's Flask / Alt.
+- **Needs a device or the emulator:** the compact cluster's thumb reach, the knob-at-rest choice, "Accept" at ~8 pt with
+  the art, first-frame unfitted menus, the real panel heights against the estimates.
 
 ## Studio smoke test
 

@@ -10,8 +10,10 @@ import type { ImageAsset } from "../../types";
 import { sortedKeys } from "../../util";
 import { validateManifest } from "../../validate";
 import { PLACEHOLDER_MANIFEST } from "../placeholder";
+import { VALE_ASSET_IDS } from "./assetIds";
 import { VALE_IMAGE_LAYOUTS, type ValeImageLayout } from "./layout";
 import {
+	VALE_MANIFEST,
 	VALE_UI_ICON_SOURCE,
 	VALE_UI_REQUIRED_ART,
 	buildValeManifest,
@@ -210,6 +212,31 @@ describe("vale ui skin: the generated layouts", () => {
 		for (const id of uiSkinIds()) {
 			const layout = VALE_IMAGE_LAYOUTS[id];
 			if (layout !== undefined) expect([id, layout.slice !== undefined]).toEqual([id, true]);
+		}
+	});
+});
+
+describe("vale ui skin: uploaded 2026-10-30 (UA4)", () => {
+	it("the bundled vale pack draws every sliced piece and every icon as its uploaded image", () => {
+		expect(validateManifest(VALE_MANIFEST, { packId: "vale" })).toEqual([]);
+		const pack = new ThemePack(VALE_MANIFEST, { warn: quiet });
+		for (const id of uiSkinIds()) {
+			const file = VALE_IMAGE_LAYOUTS[id].file;
+			expect([id, VALE_ASSET_IDS[file] !== undefined, pack.image(id)?.assetId]).toEqual([
+				id,
+				true,
+				VALE_ASSET_IDS[file],
+			]);
+			expect([id, pack.image(id)?.slice !== undefined]).toEqual([id, true]);
+		}
+		const atlas = VALE_ASSET_IDS[VALE_UI_ICON_FILE];
+		expect(atlas).toBeDefined();
+		for (const id of uiIconIds()) {
+			const ref = pack.image(id);
+			expect([id, ref?.assetId, ref?.rect]).toEqual([id, atlas, VALE_UI_ICONS[id].rect]);
+		}
+		for (const id of sortedKeys(VALE_UI_REQUIRED_ART)) {
+			expect([id, VALE_MANIFEST.assets[id]?.kind]).toEqual([id, "image"]);
 		}
 	});
 });

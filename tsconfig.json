@@ -1,4 +1,6 @@
 {
+	// Only the game source: worktrees/ (other branches' full copies of src) must never be compiled into out/.
+	"include": ["src"],
 	"compilerOptions": {
 		// required
 		"allowSyntheticDefaultImports": true,

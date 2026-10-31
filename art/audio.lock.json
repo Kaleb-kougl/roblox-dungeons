@@ -17,6 +17,11 @@
 			"bytes": 273736
 		},
 		{
+			"path": "ninja-adventure/Audio/Jingles/Secret3.wav",
+			"sha256": "91224ef1963de1146264976bb81e4c441b25da5b7d344014aa341ec49886a115",
+			"bytes": 339696
+		},
+		{
 			"path": "ninja-adventure/Audio/Jingles/Success1.wav",
 			"sha256": "025ffc87feca7630e813eb1e4673c7db44b4ad1d51a58ff216ea58656266518c",
 			"bytes": 78838
@@ -232,6 +237,11 @@
 			"bytes": 582720
 		},
 		{
+			"path": "ninja-adventure/Audio/Sounds/Menu/Accept2.wav",
+			"sha256": "7cccd8dc645b86f24c95d4bf1c97122f32f20446614e17a328f9e291fc54f98f",
+			"bytes": 114792
+		},
+		{
 			"path": "ninja-adventure/Audio/Sounds/Menu/Accept4.wav",
 			"sha256": "ac809d93df1df424ecf3de13a92cd9a05d9fd9e5e7d43740e0b82b90c0e8a5a5",
 			"bytes": 43460
@@ -255,6 +265,21 @@
 			"path": "ninja-adventure/Audio/Sounds/Menu/Move4.wav",
 			"sha256": "a4c2b305afcfae81cdc38c44e50885bbe9030ea752cbb3ce32af64258cb8c81b",
 			"bytes": 36040
+		},
+		{
+			"path": "ninja-adventure/Audio/Sounds/Menu/Move6.wav",
+			"sha256": "ec90f3543a48993c6070672a35d12e29ffb0c4aa4049b0a2421162c34482d63f",
+			"bytes": 32024
+		},
+		{
+			"path": "ninja-adventure/Audio/Sounds/Menu/Move7.wav",
+			"sha256": "9519997b5798c5cf306e81bc19f95b30eaa3e7de3ad43a8ae91cfc22e31752fe",
+			"bytes": 53380
+		},
+		{
+			"path": "ninja-adventure/Audio/Sounds/Menu/Move8.wav",
+			"sha256": "f10515c77207f1ee63cec13f2379dcf691b50a81f55315891157052fe2a44223",
+			"bytes": 51024
 		},
 		{
 			"path": "ninja-adventure/Audio/Sounds/Whoosh & Slash/Launch.wav",

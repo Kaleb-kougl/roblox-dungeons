@@ -1441,13 +1441,27 @@ describe("vale draft skin (docs/DRAFT_REVEAL.md DR3: the ToffeeCraft Horror UI s
 	});
 
 	it("before their files have IDs: absent (the overlay's flat card), never a placeholder", () => {
-		for (const m of [VALE_MANIFEST, buildValeManifest(fakeIds(...ids.map(fileOf))), buildValeManifest({})]) {
+		for (const m of [buildValeManifest(fakeIds(...ids.map(fileOf))), buildValeManifest({})]) {
 			expect(validateManifest(m, { packId: "vale" })).toEqual([]);
 			const pack = new ThemePack(m, { warn: quiet });
 			for (const id of ids) {
 				expect([id, m.assets[id]]).toEqual([id, undefined]);
 				expect([id, pack.image(id)]).toEqual([id, undefined]);
 			}
+		}
+	});
+
+	it("uploaded 2026-10-30 (DR9): the bundled vale pack draws every draft id as its image", () => {
+		expect(validateManifest(VALE_MANIFEST, { packId: "vale" })).toEqual([]);
+		const pack = new ThemePack(VALE_MANIFEST, { warn: quiet });
+		for (const id of ids) {
+			const file = VALE_IMAGE_LAYOUTS[id].file;
+			expect([id, VALE_ASSET_IDS[file] !== undefined, VALE_MANIFEST.assets[id]?.kind]).toEqual([
+				id,
+				true,
+				"image",
+			]);
+			expect([id, pack.image(id)?.assetId]).toEqual([id, VALE_ASSET_IDS[file]]);
 		}
 	});
 

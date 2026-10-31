@@ -57,6 +57,15 @@ import type { RobloxAssetId } from "../../types";
  * screenshot.
  * sprayer-*.png / caster-*.png (Demon Spawn 8 / 11 turrets, 2 sheets + 2 outlines each, docs/DEMON_ART.md DA13)
  * uploaded 2026-10-30 2:55 PM by k9kbdev, transcribed from Asset Manager screenshots.
+ * The draft reveal sounds (docs/DRAFT_REVEAL.md DR9: sfx-draft-charge, sfx-draft-flip-1 / -2, sfx-draft-legendary,
+ * sfx-draft-pick) uploaded 2026-10-30 6:32 PM by k9kbdev, transcribed from an Asset Manager screenshot.
+ * sfx-draft-rare.ogg is built but not uploaded yet: sfx.draft.rare stays silent until its ID is here.
+ * The six draft card images (ui-draft-back / -back-eyes / -card-common / -card-rare / -skull-left / -skull-right, cut
+ * from the ToffeeCraft Horror UI sheet by art:build) uploaded 2026-10-30 6:33 PM by k9kbdev, transcribed from an Asset
+ * Manager screenshot.
+ * The UI skin (docs/UI_ART.md UA4: the 12 sliced ui-*.png pieces and the ui-icons.png atlas) uploaded 2026-10-30
+ * 8:41 PM by k9kbdev, transcribed from Asset Manager screenshots. That batch also re-uploaded the six ui-draft-*.png
+ * files as duplicates with new IDs, which are not used (the images are byte-identical to the ones listed here).
  */
 export const VALE_ASSET_IDS: Readonly<Record<string, RobloxAssetId>> = {
 	"amb-b1.ogg": "rbxassetid://91158343621799",
@@ -108,6 +117,11 @@ export const VALE_ASSET_IDS: Readonly<Record<string, RobloxAssetId>> = {
 	"sfx-combo-break.ogg": "rbxassetid://82071923495161",
 	"sfx-combo-tier.ogg": "rbxassetid://126389092133631",
 	"sfx-depth-up.ogg": "rbxassetid://103313193441379",
+	"sfx-draft-charge.ogg": "rbxassetid://81715740410141",
+	"sfx-draft-flip-1.ogg": "rbxassetid://107162978839359",
+	"sfx-draft-flip-2.ogg": "rbxassetid://106814155399198",
+	"sfx-draft-legendary.ogg": "rbxassetid://119499678299322",
+	"sfx-draft-pick.ogg": "rbxassetid://85146648456597",
 	"sfx-ember.ogg": "rbxassetid://132331997932373",
 	"sfx-enemy-death-1.ogg": "rbxassetid://120112698995155",
 	"sfx-enemy-death-2.ogg": "rbxassetid://139105704609425",
@@ -161,9 +175,28 @@ export const VALE_ASSET_IDS: Readonly<Record<string, RobloxAssetId>> = {
 	"swarmer-move-outline.png": "rbxassetid://71928565662655",
 	"swarmer-move.png": "rbxassetid://123202950556458",
 	"tile-biome1-floor.png": "rbxassetid://98164459682194",
+	"ui-bar-fill.png": "rbxassetid://77055366404694",
+	"ui-bar-track.png": "rbxassetid://102111490052610",
+	"ui-button-disabled.png": "rbxassetid://127150562683800",
+	"ui-button-focus.png": "rbxassetid://123935262412449",
+	"ui-button.png": "rbxassetid://107732705819497",
+	"ui-draft-back-eyes.png": "rbxassetid://101806914395578",
+	"ui-draft-back.png": "rbxassetid://107712653809455",
+	"ui-draft-card-common.png": "rbxassetid://134898571956574",
+	"ui-draft-card-rare.png": "rbxassetid://123306051421744",
+	"ui-draft-skull-left.png": "rbxassetid://116162957164169",
+	"ui-draft-skull-right.png": "rbxassetid://73547490089053",
+	"ui-icons.png": "rbxassetid://81953401024187",
 	"ui-marker-boost.png": "rbxassetid://112357573917505",
 	"ui-marker-pedestal.png": "rbxassetid://126528421886645",
+	"ui-option-off.png": "rbxassetid://73639480231098",
+	"ui-option-on.png": "rbxassetid://80273358331830",
+	"ui-panel-hud.png": "rbxassetid://81285223221947",
+	"ui-panel-menu.png": "rbxassetid://130316695278027",
+	"ui-panel-tall.png": "rbxassetid://123720256684597",
 	"ui-ring-player.png": "rbxassetid://111980900819302",
+	"ui-slot-pair.png": "rbxassetid://87197162434084",
+	"ui-slot.png": "rbxassetid://136314174801916",
 	"vanguard-attack1-outline.png": "rbxassetid://95853451012948",
 	"vanguard-attack1.png": "rbxassetid://132423462677316",
 	"vanguard-attack2-outline.png": "rbxassetid://128123331343868",
