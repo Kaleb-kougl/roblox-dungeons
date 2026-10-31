@@ -177,8 +177,9 @@ describe("required IDs and strings", () => {
 		// combo's two (docs/COMBO.md CB3), the near misses' two (docs/GRAZE_PARRY.md GP3) and the draft reveal's five
 		// (docs/DRAFT_REVEAL.md DR4)), 5 ambience beds and 4 boost drops). The draft's card art (draftSkinIds) is
 		// optional, so not here. + docs/ENEMY_VARIANTS.md EV1: enemy.imp, enemy.slime, bullet.enemy.goo and 5 port
-		// audio events. + docs/NEW_BEST.md NB4: 2 port audio events (sfx.best.new, sfx.jingle.record).
-		expect(REQUIRED_ASSET_IDS.size()).toBe(60 + 1 + 2 + 2 + 37 + 5 + 4 + 2 + 1 + 5 + 2);
+		// audio events. + docs/NEW_BEST.md NB4: 2 port audio events (sfx.best.new, sfx.jingle.record). + docs/DAILY.md
+		// DS10: 2 port audio events (sfx.rank.up, sfx.friend.passed).
+		expect(REQUIRED_ASSET_IDS.size()).toBe(60 + 1 + 2 + 2 + 37 + 5 + 4 + 2 + 1 + 5 + 2 + 2);
 		expect(AUDIO_EVENTS.size()).toBe(20);
 		expect(new Set(REQUIRED_ASSET_IDS).size()).toBe(REQUIRED_ASSET_IDS.size());
 		for (const id of REQUIRED_ASSET_IDS) {
@@ -191,7 +192,10 @@ describe("required IDs and strings", () => {
 		// + NEAR_MISS_STRING_KEYS (docs/GRAZE_PARRY.md GP3)
 		// + docs/ENEMY_VARIANTS.md EV1: enemy.imp.name, enemy.slime.name, AFFIX_STRING_KEYS (4), BESTIARY_STRING_KEYS (7)
 		// + docs/NEW_BEST.md NB4: NEW_BEST_STRING_KEYS (18) + docs/DAILY.md DS2: ROSTER_STRING_KEYS (2)
-		expect(REQUIRED_STRING_KEYS.size()).toBe(41 + 1 + 2 + 4 * 3 + 1 + 3 + 5 + 13 + 10 + 6 + 2 + 2 + 4 + 7 + 18 + 2);
+		// + docs/DAILY.md DS10: DAILY_RANK_STRING_KEYS (22)
+		expect(REQUIRED_STRING_KEYS.size()).toBe(
+			41 + 1 + 2 + 4 * 3 + 1 + 3 + 5 + 13 + 10 + 6 + 2 + 2 + 4 + 7 + 18 + 2 + 22,
+		);
 		expect(new Set(REQUIRED_STRING_KEYS).size()).toBe(REQUIRED_STRING_KEYS.size());
 		expect(BIOMES.map((b) => b.forgeTheme)).toEqual(["ancient", "molten", "frost", "grim", "verdant"]);
 	});

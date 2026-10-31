@@ -724,6 +724,34 @@
 			"notes": "docs/NEW_BEST.md NBD6: a record run's run over (2-3 s), in place of sfx.jingle.gameover (a death on a record run sounds like a win). LevelUp3 layered with Success4 (mix); tune the layer's gainDb / trim at the audition (NB10). GameOver2 is wrong in tone. While silent the game-over jingle plays.",
 			"confirmed": false
 		},
+		"sfx.rank.up": {
+			"category": "sfx",
+			"clips": [
+				"ninja-adventure/Audio/Sounds/Bonus/PowerUp1.wav"
+			],
+			"volume": 0.6,
+			"minInterval": 0.5,
+			"alternates": [
+				"ninja-adventure/Audio/Sounds/Bonus/Bonus3.wav",
+				"ninja-adventure/Audio/Sounds/Magic & Skill/Heal3.wav"
+			],
+			"notes": "docs/DAILY.md DS10: a daily run's predicted rank enters the top 100 / 10 / 3 / #1, with the TOP 10! floor shout. A short sting, not a jingle (no duck); the new-best fanfare wins a shared frame. Must read apart from the combo tier's Bonus2 and relic's PowerUp2. Unused as a primary clip so far (sfx.loot.rare's alternate only). Audition at DS12.",
+			"confirmed": false
+		},
+		"sfx.friend.passed": {
+			"category": "sfx",
+			"clips": [
+				"ninja-adventure/Audio/Sounds/Bonus/Gold2.wav"
+			],
+			"volume": 0.55,
+			"minInterval": 0.3,
+			"alternates": [
+				"ninja-adventure/Audio/Sounds/Bonus/Coin.wav",
+				"ninja-adventure/Audio/Sounds/Magic & Skill/Heal2.wav"
+			],
+			"notes": "docs/DAILY.md DS10: a friend passed on today's daily board, with their headshot toast (one per toast, the toasts queue). Short and light, under sfx.rank.up. Unused as a primary clip so far (relic's alternate only). Audition at DS12.",
+			"confirmed": false
+		},
 		"music.menu": {
 			"category": "music",
 			"clips": [
