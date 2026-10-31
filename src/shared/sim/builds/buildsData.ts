@@ -132,6 +132,12 @@ export interface BuildRules {
 	readonly procsPerTick: number;
 	/** Effect bullets alive per player (of the PLAYER_BULLET_CAPACITY slots); a burst fires only what fits. */
 	readonly effectBulletsMax: number;
+	/**
+	 * Player bullet slots kept free of effects per player in the party (BU3): an effect bullet only spawns while the
+	 * pool holds at most capacity - effectWeaponReserve x party size bullets, so the players' own fire (at most this
+	 * many alive each: the bow's stream at its fastest plus an Ember Wake ring, procs.spec.ts) always finds a slot.
+	 */
+	readonly effectWeaponReserve: number;
 }
 
 /** The game's builds rules (docs/BUILDS.md "Offers", "Chain reactions"). */
@@ -147,6 +153,7 @@ export const BUILD_RULES: BuildRules = table.freeze({
 	genMax: 3,
 	procsPerTick: 24,
 	effectBulletsMax: 160,
+	effectWeaponReserve: 32,
 });
 
 // --- Effect bullets' payload source (docs/BUILDS.md "Chain reactions") -------------------------------------
@@ -196,3 +203,14 @@ export function sourceGen(source: number): number {
 	if (!isBuildSource(source)) return 0;
 	return (source - BUILD_SOURCE_BASE) % BUILD_SOURCE_GENS;
 }
+
+/**
+ * The generation of the proc a kill by a player bullet with payload `source` makes (ctx.procGen, BU3): 0 for a weapon's
+ * bullet (the player's own shot, a reflected bullet, an Ember Wake ring), gen + 1 for a build effect of generation gen.
+ */
+export function killGenOfSource(source: number): number {
+	return isBuildSource(source) ? sourceGen(source) + 1 : 0;
+}
+
+/** Archetype ids whose kills never proc (BU3), besides every reviving archetype (def.stepDead: turrets). */
+export const PROC_INELIGIBLE_ARCHETYPES: ReadonlyArray<string> = ["dummy"];

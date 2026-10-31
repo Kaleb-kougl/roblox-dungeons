@@ -16,7 +16,7 @@ import { jsMax } from "shared/jsmath";
 import { BULLET_Y, ENEMY_BULLET_RADIUS, GOO_BULLET_RADIUS, TURN_COS, TURN_SIN } from "./combatData";
 import { BulletPayload } from "./payload";
 import { compose, gen } from "./projectilePatterns";
-import type { BulletModifier, BulletSimulation, BulletSpawnData } from "./bullets";
+import { releaseSpawnData, type BulletModifier, type BulletSimulation, type BulletSpawnData } from "./bullets";
 
 export { BulletPayload } from "./payload";
 
@@ -106,12 +106,34 @@ export interface BurstSpec {
 // gen.arc builds the shape around heading 0 (+Z); finishBurst turns it onto a unit direction with multiply-adds (no
 // angle, no trig on our side) and stamps life, payload and an untinted color (the renderer supplies the theme color).
 // Module-level scratch keeps a burst at the library's per-burst allocations.
-const burst = { count: 0, spread: 0, speed: 0, radius: 0, dirX: 0, dirZ: 1, life: 0, payload: 0, scale: 1 };
+// `limit` (fireBurstLimited only; math.huge otherwise, so every other burst is untouched): spawns past it are dropped
+// before the pool sees them (the first `limit` of the arc's order are kept) and go back to the spawn data pool.
+const burst = {
+	count: 0,
+	spread: 0,
+	speed: 0,
+	radius: 0,
+	dirX: 0,
+	dirZ: 1,
+	life: 0,
+	payload: 0,
+	scale: 1,
+	limit: math.huge,
+};
 const origin = { x: 0, y: BULLET_Y, z: 0 };
 const WHITE = 0xffffff;
+const cut: BulletSpawnData[] = [];
 
-/** Rotates the arc (built around +Z) onto (burst.dirX, burst.dirZ) and stamps life / payload / color / scale. */
+/**
+ * Rotates the arc (built around +Z) onto (burst.dirX, burst.dirZ) and stamps life / payload / color / scale; past
+ * burst.limit the spawns are cut off.
+ */
 const finishBurst: BulletModifier = (spawns: BulletSpawnData[]) => {
+	if (spawns.size() > burst.limit) {
+		while (spawns.size() > burst.limit) cut.push(spawns.pop()!);
+		releaseSpawnData(cut);
+		cut.clear();
+	}
 	// Direction at heading h is (sin h, cos h); rotating (vx, vz) by h: x' = vx*cos + vz*sin, z' = vz*cos - vx*sin.
 	const cos = burst.dirZ;
 	const sin = burst.dirX;
@@ -201,6 +223,30 @@ export function fireBurst(
 		spec.radius ?? 0,
 		spec.scale ?? 1,
 	);
+}
+
+/**
+ * fireBurst that spawns at most `limit` of the burst's bullets (the first ones of the arc's order: a ring is cut short,
+ * not re-spaced, so the shape stays an arc-table row). Builds' effect budget (sim/builds effects.ts fireEffect).
+ * Returns how many spawned (also fewer when the pool is full).
+ */
+export function fireBurstLimited(
+	sim: BulletSimulation,
+	emitterId: number,
+	x: number,
+	z: number,
+	dirX: number,
+	dirZ: number,
+	spec: BurstSpec,
+	source: number,
+	limit: number,
+): number {
+	if (limit <= 0) return 0;
+	if (limit >= spec.count) return fireBurst(sim, emitterId, x, z, dirX, dirZ, spec, source);
+	burst.limit = limit;
+	const n = fireBurst(sim, emitterId, x, z, dirX, dirZ, spec, source);
+	burst.limit = math.huge;
+	return n;
 }
 
 // ---------------------------------------------------------------------------------------------

@@ -29,6 +29,7 @@ import { scoreKill } from "../../score/score";
 import { runOnKill } from "../../progression/runMods";
 import { dropsOnKill } from "../../drops/drops";
 import { affixAbsorb, affixHoldsCorpse, affixesOnFree, affixesOnKill, affixesOnSpawn } from "../../affixes/affixes";
+import { buildsOnKill } from "../../builds/procs";
 import { ACTOR_HASH_FIELDS, ACTOR_SCRATCH_SLOTS, AiState, NO_KIND, type ActorState } from "./types";
 
 function zeros(n: number): number[] {
@@ -214,7 +215,11 @@ export function damageActor(ctx: SimCtx, a: ActorState, amount: number): number 
 		if (a.hp > 0) a.flashTicks = HIT_FLASH_TICKS;
 	}
 	if (def.onHit !== undefined) def.onHit(ctx, a, dmg);
-	if (a.alive !== 0 && a.hp <= 0) killActor(ctx, a);
+	if (a.alive !== 0 && a.hp <= 0) {
+		// Builds (docs/BUILDS.md BU3, opt-in): a kill by player damage queues its proc (never a revive or the dummy).
+		if (ctx.state.builds !== undefined) buildsOnKill(ctx, a, def);
+		killActor(ctx, a);
+	}
 	return dmg;
 }
 

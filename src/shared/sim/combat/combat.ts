@@ -18,6 +18,9 @@
  *                        piercing AND it broke the piece] -> first live actor in range, slot order (ctx.damageActor,
  *                        consume); piercing ones pass through actors (piercingBulletHit). M2 Sharpened (endless
  *                        runs): the payload damage x 1.25 when it hits (playerHitDamage)
+ *   6b. builds (only with state.builds, docs/BUILDS.md BU3): the proc queue (sim/builds procs.ts stepBuilds: on-kill
+ *      effects; sparks damage here, bursts / shards spawn here and first move next tick). A player bullet's hit binds
+ *      ctx.procGen from its payload source (an effect bullet's kill procs one generation on)
  *   7. contact damage: the first live actor with data.contactDamage > 0 touching the player (stepContactDamage)
  *
  * Exact against every golden run, with and without actors (run-full-1337 / run-boss-1337 included).
@@ -65,6 +68,8 @@ import { SimCtx } from "./ctx";
 import { nearestLivingPlayer, partySize, playerAt, playerBulletOwner } from "../party";
 import { scoreBulletVisit } from "../score/score";
 import { stepAffixes } from "../affixes/stepAffixes";
+import { stepBuilds } from "../builds/procs";
+import { killGenOfSource } from "../builds/buildsData";
 import { damageBreakable, enemyBulletHitsBreakable, type BreakablesState } from "../breakables/breakables";
 import { breakableSlotAt } from "../breakables/cells";
 import { BreakableSource } from "../breakables/breakablesData";
@@ -303,6 +308,8 @@ let hitPieces: BreakablesState | undefined;
 let grazeOn = false;
 /** The squared graze radius of this tick's solo player (M2 Daredevil widens it; co-op reads the grazing player's). */
 let grazeR2 = 0;
+/** Builds are on for this tick's state (playerBulletHit binds ctx.procGen from the payload source). */
+let buildsOn = false;
 
 function enemyBulletHit(i: number, pos: Readonly<Vec3>, payload: number): boolean {
 	if (hitBlocked !== undefined && hitBlocked(pos.x, pos.z)) return true;
@@ -409,6 +416,8 @@ function piercingBulletHit(i: number, pos: Readonly<Vec3>, payload: number): boo
 
 function playerBulletHit(i: number, pos: Readonly<Vec3>, payload: number): boolean {
 	if (hitBlocked !== undefined && hitBlocked(pos.x, pos.z)) return true;
+	// Builds (opt-in): the generation a kill by this bullet gives its proc, bound like the owner.
+	if (buildsOn) ctx.procGen = killGenOfSource(BulletPayload.get(payload, "source"));
 	const piercing = bit32.band(payload, PIERCE_BITS) !== 0;
 	if (hitPieces !== undefined) {
 		// A piece (docs/DECOR.md D4): it takes the payload damage; a plain bullet stops there, a piercing one flies on
@@ -491,6 +500,7 @@ export function stepCombat(
 	hitPieces = state.breakables !== undefined && state.breakables.intact > 0 ? state.breakables : undefined;
 	grazeOn = state.score !== undefined;
 	grazeR2 = runMods(state, SOLO_PLAYER).grazeR2;
+	buildsOn = state.builds !== undefined;
 	if (party) {
 		c.enemyBullets.forEachActive(enemyBulletHitParty);
 		c.playerBullets.forEachActive(playerBulletHitParty);
@@ -502,6 +512,12 @@ export function stepCombat(
 	hitBlocked = undefined;
 	hitPieces = undefined;
 	grazeOn = false;
+	if (buildsOn) {
+		ctx.procGen = 0;
+		buildsOn = false;
+		// 6b. Builds (opt-in): the proc queue (on-kill effects of this tick's kills and the carry-over).
+		stepBuilds(ctx);
+	}
 
 	// 7. Bodies.
 	stepContactDamage(ctx);

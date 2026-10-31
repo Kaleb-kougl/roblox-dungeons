@@ -21,6 +21,13 @@ export const CHAIN_SPARK_FORK_MIN = 1;
 
 // --- Volatile (a ring of bolts from the corpse) -------------------------------------------------------------
 
+/**
+ * The heading of every effect ring (Volatile, Thrill Seeker: the arc's first bullet flies this way) and of a shard
+ * whose target stands exactly on the corpse: +Z, a unit vector (no trig).
+ */
+export const EFFECT_DIR_X = 0;
+export const EFFECT_DIR_Z = 1;
+
 export const VOLATILE_SPEED = 10;
 export const VOLATILE_LIFE = 0.35;
 export const VOLATILE_DAMAGE = 1;
@@ -70,6 +77,8 @@ export const SOUL_SWARM_TURN = 0.25;
 export const SOUL_SHARD: BurstSpec = { count: 1, spread: 0, speed: 14, life: 0.8, damage: 2, kind: BulletKind.SHARD };
 /** Soul Swarm's shard: the same, piercing. */
 export const SOUL_SWARM_SHARD: BurstSpec = { ...SOUL_SHARD, pierce: SOUL_SWARM_PIERCE };
+/** Per level: the shard fired (I / II straight; III Soul Swarm's piercing shard, its steering is BU5's). */
+export const SOUL_SHARD_SPECS: ReadonlyArray<BurstSpec> = [SOUL_SHARD, SOUL_SHARD, SOUL_SWARM_SHARD];
 
 // --- Embers (Fire Arrows, Blazing Trail: stationary floor flames) -------------------------------------------
 
@@ -93,6 +102,14 @@ export const THRILL_SEEKER_RING: BurstSpec = {
 	damage: VOLATILE_DAMAGE,
 	kind: BulletKind.SPARK_BOLT,
 };
+
+/** The bullet kinds of build effects (BU3: the per-player effect budget counts live player bullets of these kinds). */
+export const EFFECT_BULLET_KINDS: ReadonlyArray<number> = [
+	BulletKind.BURST,
+	BulletKind.SHARD,
+	BulletKind.EMBER,
+	BulletKind.SPARK_BOLT,
+];
 
 /** Spark beams stay on screen this long (presentation, BuildEvents). */
 export const SPARK_BEAM_TICKS = secondsToTicks(0.12);

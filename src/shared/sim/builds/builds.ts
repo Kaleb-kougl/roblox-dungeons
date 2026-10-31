@@ -14,7 +14,7 @@
  *                    Jackpot, Flurry, Storm Blade, Close Call); 0 until those rules exist
  *   draftsLeft       deals left in the open draft, the one on screen included: 1 after a floor, 2 after a boss floor
  *                    (BUD4); a confirm with draftsLeft > 1 re-deals (./cards.ts) instead of closing. 0 while closed
- * and for the world: `procs`, the kill queue (BU3: { x, z, owner, gen, slot, id } per kill; empty until then).
+ * and for the world: `procs`, the kill queue (BU3, ./procs.ts: { x, z, owner, gen, slot, id } per kill, oldest first).
  *
  * Events (BuildEvents) are presentation only: cleared every tick, NOT hashed.
  */
@@ -63,7 +63,10 @@ export interface BuildProc {
 	id: number;
 }
 
-/** Per tick, presentation only (cleared every tick, NOT hashed). BU3+ fills the effects; BU2 the takes. */
+/**
+ * Per tick, presentation only (cleared every tick, NOT hashed; ScoreEvents' shape: parallel lists, one entry per
+ * event). BU2 the takes; BU3 / BU4 the on-kill effects, pushed by stepBuilds (./procs.ts) in resolution order.
+ */
 export interface BuildEvents {
 	/** Players (party index) whose pick this tick was an evolution (level III), and the boon. */
 	evolvedPlayer: number[];
@@ -71,7 +74,56 @@ export interface BuildEvents {
 	/** Players whose pick this tick was a duo, and the duo. */
 	duoPlayer: number[];
 	duoTaken: number[];
+	/**
+	 * Chain Spark, one entry per hop that hit: from (sparkX1, sparkZ1) (the corpse for the first hop, else the previous
+	 * target's position) to (sparkX2, sparkZ2) (the target's position when hit); the credited player and the proc's
+	 * generation (0: the player's own kill; climbs along a cascade).
+	 */
+	sparkX1: number[];
+	sparkZ1: number[];
+	sparkX2: number[];
+	sparkZ2: number[];
+	sparkOwner: number[];
+	sparkGen: number[];
+	/** Volatile rings that spawned at least one bolt: the corpse, owner, the proc's generation, bolts spawned. */
+	burstX: number[];
+	burstZ: number[];
+	burstOwner: number[];
+	burstGen: number[];
+	burstFired: number[];
+	/** Soul Shards volleys that spawned at least one shard: the corpse, owner, the proc's generation, shards spawned. */
+	shardX: number[];
+	shardZ: number[];
+	shardOwner: number[];
+	shardGen: number[];
+	shardFired: number[];
+	/** Effect bullets the effect budget (or a full pool) refused this tick; combat.dropped counts them too. */
+	effectDropped: number;
 }
+
+/** BuildEvents' lists (every field but effectDropped), for the clear and the clone. */
+const BUILD_EVENT_LISTS = [
+	"evolvedPlayer",
+	"evolvedBoon",
+	"duoPlayer",
+	"duoTaken",
+	"sparkX1",
+	"sparkZ1",
+	"sparkX2",
+	"sparkZ2",
+	"sparkOwner",
+	"sparkGen",
+	"burstX",
+	"burstZ",
+	"burstOwner",
+	"burstGen",
+	"burstFired",
+	"shardX",
+	"shardZ",
+	"shardOwner",
+	"shardGen",
+	"shardFired",
+] as const;
 
 /** SimState.builds. */
 export interface BuildsState {
@@ -79,7 +131,7 @@ export interface BuildsState {
 	readonly config: Readonly<BuildsConfig>;
 	/** One per player, party index order. */
 	players: BuildPlayerState[];
-	/** The kill queue, oldest first (BU3). */
+	/** The kill queue, oldest first (BU3, ./procs.ts). */
 	procs: BuildProc[];
 	/** NOT hashed. */
 	events: BuildEvents;
@@ -92,7 +144,29 @@ function newPlayer(): BuildPlayerState {
 }
 
 function emptyEvents(): BuildEvents {
-	return { evolvedPlayer: [], evolvedBoon: [], duoPlayer: [], duoTaken: [] };
+	return {
+		evolvedPlayer: [],
+		evolvedBoon: [],
+		duoPlayer: [],
+		duoTaken: [],
+		sparkX1: [],
+		sparkZ1: [],
+		sparkX2: [],
+		sparkZ2: [],
+		sparkOwner: [],
+		sparkGen: [],
+		burstX: [],
+		burstZ: [],
+		burstOwner: [],
+		burstGen: [],
+		burstFired: [],
+		shardX: [],
+		shardZ: [],
+		shardOwner: [],
+		shardGen: [],
+		shardFired: [],
+		effectDropped: 0,
+	};
 }
 
 /** Builds state at run start: an empty build per player (`players`: the party size, 1 solo). No rng. */
@@ -103,27 +177,27 @@ export function createBuildsState(config: Readonly<BuildsConfig>, players = 1): 
 }
 
 export function cloneBuildsState(s: Readonly<BuildsState>): BuildsState {
-	const e = s.events;
+	const events = emptyEvents();
+	for (const f of BUILD_EVENT_LISTS) for (const v of s.events[f]) events[f].push(v);
+	events.effectDropped = s.events.effectDropped;
 	return {
 		config: s.config,
 		players: s.players.map((p) => ({ ...p, levels: [...p.levels], duos: [...p.duos] })),
 		procs: s.procs.map((q) => ({ ...q })),
-		events: {
-			evolvedPlayer: [...e.evolvedPlayer],
-			evolvedBoon: [...e.evolvedBoon],
-			duoPlayer: [...e.duoPlayer],
-			duoTaken: [...e.duoTaken],
-		},
+		events,
 	};
 }
 
 /** Start of every tick (step.ts, with the other event clears). */
 export function clearBuildEvents(s: BuildsState): void {
 	const e = s.events;
-	e.evolvedPlayer.clear();
-	e.evolvedBoon.clear();
-	e.duoPlayer.clear();
-	e.duoTaken.clear();
+	for (const f of BUILD_EVENT_LISTS) e[f].clear();
+	e.effectDropped = 0;
+}
+
+/** The floor change (endless.ts nextFloor): queued procs are dropped with the floor's actors and bullets. */
+export function clearBuildProcs(s: BuildsState): void {
+	s.procs.clear();
 }
 
 // ---------------------------------------------------------------------------------------------
