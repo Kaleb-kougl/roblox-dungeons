@@ -1,10 +1,10 @@
 # Grazes and parries (plan)
 
-Status (2026-10-30): **GP1-GP7 and GP9 built on branch `graze-parry`** (from `main` @ `3900250` plus a WIP
-snapshot commit of the owner's uncommitted tree), headless checks in "As built" below. The owner accepted every
-recommendation (GPD1-GPD10) as written. **GP8 (optional) not done; GP0 audio audition, GP10 audio lock / build /
-upload and the Studio check pending (owner).** Until the two clips are uploaded both IDs are silent: a guard plays
-today's deflect, a graze is silent, and the sparks and PARRY! flash already show.
+Status (2026-10-30): **GP1-GP7 and GP9 built** (branch `graze-parry`, fast-forwarded into `main` on 2026-10-30),
+headless checks in "As built" below. The owner accepted every recommendation (GPD1-GPD10) as written. **GP0 / GP10
+audio done 2026-10-30:** the first candidates kept (graze `Magic & Skill/Magic5.wav` 0.648 s, parry `Bonus/Bonus.wav`
+1.461 s), locked, built and uploaded, ids in `packs/vale/assetIds.ts`, so the vale pack plays both. **GP8 (optional)
+not done; the Studio check pending (owner).**
 
 Goal: make the two skill moves the game already scores feel good the moment they happen. A **graze** (an enemy bullet
 skims past inside the graze ring and leaves without touching you) gets a small white spark where it skimmed and a
@@ -122,7 +122,7 @@ score pops (no "+5" per graze, GPD9), the tutorial's callouts, any hash group, f
 | GP7 | `ParryFlashController`: floor text from the shared shout pool, duck rule, `x N` count, teammate scale; solo 30 ms freeze | Studio: never hides a bullet, never overlaps the combo shout |
 | GP8 | Optional: in scored runs, `fx.guard.shield` re-flash and the deflect use the exact `guardPlayer` instead of the `mayDeflect` guess | Co-op specs green |
 | GP9 | Docs: as built here, CLAUDE.md decision log entry | Docs merged |
-| GP10 | Owner: `audio:lock` / `audio:build` / upload the two clips; Studio check below | Checked |
+| GP10 | Owner: `audio:lock` / `audio:build` / upload the two clips (done 2026-10-30); Studio check below (pending) | Checked |
 
 ## Studio check
 

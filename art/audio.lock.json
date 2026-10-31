@@ -97,6 +97,16 @@
 			"bytes": 3387084
 		},
 		{
+			"path": "ninja-adventure/Audio/Sounds/Bonus/Bonus.wav",
+			"sha256": "482d5b68fe3c9879bd746bb76bf2571aab33b9496ed27e19aaef6ccdf4c3e3fa",
+			"bytes": 264804
+		},
+		{
+			"path": "ninja-adventure/Audio/Sounds/Bonus/Bonus2.wav",
+			"sha256": "050eeaead33e67dae4bc02a27bb12adf3a2df293ff21decd06d184cec17ee67e",
+			"bytes": 73452
+		},
+		{
 			"path": "ninja-adventure/Audio/Sounds/Bonus/Coin2.wav",
 			"sha256": "8fe129feb63baafc2a65ad7f19dc184d6ec9e7d9d3df4a8a143740ffe009dfa6",
 			"bytes": 59188
@@ -212,6 +222,11 @@
 			"bytes": 97432
 		},
 		{
+			"path": "ninja-adventure/Audio/Sounds/Magic & Skill/Magic5.wav",
+			"sha256": "e6d4d18949e513255ed2363fb19133df40dfd38a088bef20f634157012fc2585",
+			"bytes": 114580
+		},
+		{
 			"path": "ninja-adventure/Audio/Sounds/Magic & Skill/Strange.wav",
 			"sha256": "9f0691117410272ce8d6894f3347e4e5764f46968539a8a61a339c741568cc9f",
 			"bytes": 582720
@@ -275,6 +290,11 @@
 			"path": "ninja-adventure/Audio/Sounds/Whoosh & Slash/Sword2.wav",
 			"sha256": "779c2e934b7dd714ff068fd5c371e6848d4a1d940c6936ed42368a13df352daf",
 			"bytes": 37772
+		},
+		{
+			"path": "pixabay/dragon-studio-glass-breaking-504033.mp3",
+			"sha256": "660b1795067c7b84cedb1bb497faab4b8ec8d6543c90fa199bc5b4e417ff634f",
+			"bytes": 105662
 		}
 	]
 }

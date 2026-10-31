@@ -1,7 +1,7 @@
 # Combo you chase (plan)
 
 Status (2026-10-30): **CB0-CB8 built on branch `combo`** (from `room-clear` @ `e5663d1`, Room clear RC3), headless
-checks green; **CB9 (owner: Studio check, audio lock / build / upload) pending.** Owner answers (2026-10-29): CD2 (the
+checks green; **CB9: audio locked, built and uploaded 2026-10-30 (ids in `packs/vale/assetIds.ts`); the Studio check pending.** Owner answers (2026-10-29): CD2 (the
 names, plus an x4 tier), CD3 (break vs lapse), CD9 (the shout, which must never hide a bullet), CD11 (no setting),
 CD12 (the owner's glass clip). Merged into `main` on 2026-10-30 after Room clear (RC1-RC9): the combo's `comboBreak`
 nudge ranks above the stamp's (heavy = stamp < comboBreak), and its two port audio IDs follow the room clear's three.

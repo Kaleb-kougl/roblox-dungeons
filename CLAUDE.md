@@ -287,7 +287,7 @@ Decision log (deviations from `PLAN.md`):
   (`comboReport`), six strings `COMBO_STRING_KEYS`, two port audio IDs (SILENT in the placeholder; the break clip is
   the owner's Pixabay MP3 in gitignored `art/vendor/pixabay/`). The tier-up floor shout is a SurfaceGui under every
   bullet (sprite effects' floor placement), <= 55 % opaque, ducking near enemy bullets. Nudge kind `comboBreak`.
-  Debug `KV_ComboDebug`. No setting. Studio check and audio upload pending.
+  Debug `KV_ComboDebug`. No setting. Clips uploaded 2026-10-30 (vale `assetIds.ts`); Studio check pending.
 - **Grazes and parries (docs/GRAZE_PARRY.md).** One unhashed sim feed, otherwise presentation only (no hash, replay,
   fixture, rng, score or lockstep change): `ScoreEvents` gained per-tick `grazeX/Z/VX/VZ/Player` (pushed by
   `scoreBulletVisit`'s new trailing `grazer`) and `guardX/Z/Player` (the guard passes `sweepArc` a trailing
@@ -298,7 +298,7 @@ Decision log (deviations from `PLAN.md`):
   whole sound frame now runs as that subscriber). Theme: colour roles `nearMiss.graze` / `.parry` (`nearMissReport`),
   strings `fx.parry.text` / `.count`, port audio IDs `sfx.player.graze` / `sfx.player.parry` (SILENT in the
   placeholder; a silent parry leaves today's deflect untouched). contract.luau / validate.luau sit at 193 of Luau's
-  200 top-level locals. Scored runs only. No setting. Debug `KV_ParryDebug`. Audio upload and Studio check pending.
+  200 top-level locals. Scored runs only. No setting. Debug `KV_ParryDebug`. Clips uploaded 2026-10-30 (vale graze Magic5, parry Bonus); Studio check pending.
 
 ## Commands
 

@@ -203,10 +203,10 @@ describe("nearMiss: strings and audio IDs", () => {
 				"silent",
 			]);
 		}
-		// the vale pack leaves them silent too until their clips are built and uploaded (docs/GRAZE_PARRY.md GP10)
+		// the vale pack plays them: built and uploaded 2026-10-30 (docs/GRAZE_PARRY.md GP10)
 		const vale = THEME_PACKS.vale.assets as unknown as Obj;
 		for (const id of ["sfx.player.graze", "sfx.player.parry"]) {
-			expect([id, (vale[id] as Obj).kind]).toEqual([id, "silent"]);
+			expect([id, (vale[id] as Obj).kind]).toEqual([id, "sound"]);
 		}
 	});
 });
