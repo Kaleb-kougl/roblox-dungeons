@@ -28,7 +28,7 @@ const STROKE = 1;
 const HALVES = 2;
 
 /** The pack's art lookups for one render (docs/UI_ART.md UA10); undefined without a pack: every piece flat. */
-interface StatusSkin {
+export interface StatusSkin {
 	readonly pack: ThemePack;
 	readonly has: SkinHas;
 	readonly uiScale: number;
@@ -39,13 +39,20 @@ interface StatusSkin {
  * the heart art (skinFor "heart": full / half / empty, all or none) the art fitted into the same HUD_VIEW.heartSize box
  * (ArtImage: whole screen px per art px); without, the flat heart.
  */
-function Heart(props: { order: number; fill: number; skin: StatusSkin | undefined }) {
+export function Heart(props: {
+	order: number;
+	fill: number;
+	skin: StatusSkin | undefined;
+	/** The heart's box, reference px (default HUD_VIEW.heartSize; the touch strip passes its slot). */
+	box?: { readonly w: number; readonly h: number };
+}) {
 	const size = HUD_VIEW.heartSize;
+	const box = props.box ?? { w: size, h: size };
 	const art = props.skin !== undefined ? skinFor(props.skin.has, "heart", heartSkinState(props.fill)) : undefined;
 	const flat = (
 		<frame
 			LayoutOrder={props.order}
-			Size={new UDim2(0, size, 0, size)}
+			Size={new UDim2(0, box.w, 0, box.h)}
 			BackgroundColor3={role("uiPanel")}
 			BorderSizePixel={0}
 		>
@@ -59,11 +66,11 @@ function Heart(props: { order: number; fill: number; skin: StatusSkin | undefine
 		</frame>
 	);
 	if (art === undefined) return flat;
-	return <ArtImage id={art} box={{ w: size, h: size }} order={props.order} fallback={flat} />;
+	return <ArtImage id={art} box={box} order={props.order} fallback={flat} />;
 }
 
 /** A pip's art (shared/view/hud pipArt) in its slot (pipArtSlot), or undefined: the flat pip. */
-function pipArtProps(skin: StatusSkin | undefined, kind: HudPipKind, filled: boolean): PipArtProps | undefined {
+export function pipArtProps(skin: StatusSkin | undefined, kind: HudPipKind, filled: boolean): PipArtProps | undefined {
 	if (skin === undefined) return undefined;
 	const art = pipArt(skin.has, kind, filled);
 	if (art === undefined) return undefined;
@@ -78,7 +85,7 @@ function pipArtProps(skin: StatusSkin | undefined, kind: HudPipKind, filled: boo
  * A row of `max` pips, `count` filled. With the art (UA10): flask charges are potions (full / spent), Ember pips
  * candles (unlit: dimmed), armor pips grey chips (empty: dimmed); without, the flat square / diamond pips.
  */
-function pips(
+export function pips(
 	count: number,
 	max: number,
 	color: "uiMana" | "uiAccent" | "ember",
@@ -107,7 +114,7 @@ function pips(
  * The Aegis pips (docs/BOOSTS.md B7): filled diamonds in their own colour after the `after` armor pips; with the art
  * (UA10) the white chip tinted by that colour.
  */
-function aegisPips(count: number, after: number, skin: StatusSkin | undefined) {
+export function aegisPips(count: number, after: number, skin: StatusSkin | undefined) {
 	const out = new Array<React.Element>();
 	for (let i = 0; i < count; i++) {
 		out.push(

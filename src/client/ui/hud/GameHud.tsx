@@ -1,8 +1,8 @@
 import React, { useState } from "@rbxts/react";
 import { useSelector } from "@rbxts/react-reflex";
-import { selectGameActive, selectGhostHeart, selectTutorialHighlight } from "client/store";
+import { selectGameActive, selectGhostHeart, selectInputDevice, selectTutorialHighlight } from "client/store";
 import { isBoostsHighlight } from "shared/view/boosts";
-import { HUD_VIEW } from "shared/view/hud";
+import { HUD_VIEW, TOUCH_STRIP_GUI } from "shared/view/hud";
 import { PAUSE_BUTTON_VIEW } from "shared/view/menu";
 import { BossBar } from "./BossBar";
 import { DraftOverlay } from "./DraftOverlay";
@@ -24,6 +24,8 @@ import { StatusPanel } from "./StatusPanel";
 import { ToastPanel } from "./ToastPanel";
 import { ObjectiveCard } from "./ObjectiveCard";
 import { TutorialOutro } from "./TutorialOutro";
+import { TouchStripHost } from "./TouchStrip";
+import { TouchStripGeometryContext, useTouchStripGeometry } from "./touchStripContext";
 import { TutorialPanel } from "./TutorialPanel";
 import { useHudScale } from "./useHudScale";
 import { WeaponPanel } from "./WeaponPanel";
@@ -51,6 +53,11 @@ import { WeaponPanel } from "./WeaponPanel";
  *   KV_PauseButton  PauseButton (mouse / touch; in the Roblox top bar, right of its buttons): pauses a solo run,
  *                 opens a co-op run's party overlay. Screen pixels and no safe-area insets: the top bar is outside
  *                 the safe area.
+ *   KV_TouchStrip   touch only (docs/UI_ART.md "Phones"): the TouchStrip (hearts, flask, Ember, score and combo line,
+ *                 a chips line) in the top bar right of the pause button, in place of the StatusPanel and the
+ *                 ScorePanel; full screen, no insets, its own UIScale (shared/view/hud touchStrip). On touch the boss
+ *                 bar is the slim one under it, and the tutorial prompt and the room clear stamp / chips sit under
+ *                 its boss slot (TouchStripGeometryContext, measured here from this ScreenGui and KV_GameHud).
  *
  * The first two lay out at the 1280x720 reference size under a UIScale (useHudScale) and sit inside the device's
  * safe area (ScreenInsets = CoreUISafeInsets: notches, the Roblox top bar). Reads only Reflex (the ~10 Hz snapshot, the input
@@ -62,11 +69,16 @@ export function GameHud() {
 	const highlight = useSelector(selectTutorialHighlight);
 	const ghostHeart = useSelector(selectGhostHeart);
 	const scale = useHudScale();
+	const touch = useSelector(selectInputDevice) === "touch";
 	const [dimLayer, setDimLayer] = useState<ScreenGui | undefined>(undefined);
+	const [hudGui, setHudGui] = useState<ScreenGui | undefined>(undefined);
+	const [stripGui, setStripGui] = useState<ScreenGui | undefined>(undefined);
+	const geometry = useTouchStripGeometry(touch, hudGui, stripGui);
 	return (
-		<>
+		<TouchStripGeometryContext.Provider value={touch ? geometry : undefined}>
 			<screengui
 				key="KV_GameHud"
+				ref={setHudGui}
 				ResetOnSpawn={false}
 				DisplayOrder={HUD_VIEW.hudDisplayOrder}
 				ScreenInsets={Enum.ScreenInsets.CoreUISafeInsets}
@@ -75,15 +87,17 @@ export function GameHud() {
 				<uiscale Scale={scale} />
 				{active ? (
 					<>
-						<StatusPanel
-							key="Status"
-							highlight={highlight === "flask" || highlight === "hearts" ? highlight : undefined}
-							ghostHeart={ghostHeart}
-							boostsHighlight={isBoostsHighlight(highlight)}
-						/>
+						{touch ? undefined : (
+							<StatusPanel
+								key="Status"
+								highlight={highlight === "flask" || highlight === "hearts" ? highlight : undefined}
+								ghostHeart={ghostHeart}
+								boostsHighlight={isBoostsHighlight(highlight)}
+							/>
+						)}
 						<WeaponPanel key="Weapons" highlight={highlight === "weapons"} />
 						<BossBar key="Boss" highlight={highlight === "bossBar"} />
-						<ScorePanel key="Score" highlight={highlight === "score"} />
+						{touch ? undefined : <ScorePanel key="Score" highlight={highlight === "score"} />}
 						<RoomClearStamp key="RoomClearStamp" />
 						<RoomClearChips key="RoomClearChips" />
 						<RunOverPanel key="RunOver" />
@@ -130,6 +144,27 @@ export function GameHud() {
 			>
 				<PauseButton key="PauseButton" />
 			</screengui>
-		</>
+			{touch ? (
+				<screengui
+					key={TOUCH_STRIP_GUI.gui}
+					ref={setStripGui}
+					ResetOnSpawn={false}
+					DisplayOrder={HUD_VIEW.hudDisplayOrder}
+					IgnoreGuiInset={true}
+					ScreenInsets={Enum.ScreenInsets.None}
+					ZIndexBehavior={Enum.ZIndexBehavior.Sibling}
+				>
+					{active ? (
+						<TouchStripHost
+							key="TouchStrip"
+							highlight={highlight === "flask" || highlight === "hearts" ? highlight : undefined}
+							ghostHeart={ghostHeart}
+							boostsHighlight={isBoostsHighlight(highlight)}
+							scoreHighlight={highlight === "score"}
+						/>
+					) : undefined}
+				</screengui>
+			) : undefined}
+		</TouchStripGeometryContext.Provider>
 	);
 }

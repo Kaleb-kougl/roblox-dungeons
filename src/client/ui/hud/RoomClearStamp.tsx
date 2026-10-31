@@ -3,6 +3,7 @@ import { HUD_FONT, role } from "client/ui/theme";
 import { smoothstep01 } from "shared/view/fx";
 import { FOOTPRINT_ESTIMATE, HUD_TRANSIENT, HUD_VIEW, ROOM_CLEAR_VIEW } from "shared/view/hud";
 import { ROOM_CLEAR_UI as UI } from "./roomClearBindings";
+import { useTouchStrip } from "./touchStripContext";
 
 const HALF = 0.5;
 const HIDDEN = 1;
@@ -12,10 +13,16 @@ const WHITE = new Color3(1, 1, 1);
 /**
  * The room clear stamp and its tally row (docs/ROOM_CLEAR.md RC7), top centre in the boss bar's slot
  * (HUD_TRANSIENT.roomClear), and the bonus chip flying to the score panel. Every changing property is a
- * ROOM_CLEAR_UI binding written by RoomClearController; this component renders once per run.
+ * ROOM_CLEAR_UI binding written by RoomClearController; this component renders once per run. On touch (docs/UI_ART.md
+ * "Phones") it hangs in the touch strip's boss slot and the chip flies to the strip's score.
  */
 export function RoomClearStamp() {
+	const strip = useTouchStrip();
 	const box = HUD_TRANSIENT.roomClear;
+	const edge = strip?.bossTop ?? box.edge;
+	const flyX = strip !== undefined ? (strip.scoreAt.x - strip.hudOrigin.x) / strip.hudScale : 0;
+	const flyY = strip !== undefined ? (strip.scoreAt.y - strip.hudOrigin.y) / strip.hudScale : 0;
+	const touch = strip !== undefined;
 	const slack = FOOTPRINT_ESTIMATE.lineSlack;
 	const stampH = ROOM_CLEAR_VIEW.stampText + slack;
 	const tallyH = ROOM_CLEAR_VIEW.tallyText + slack;
@@ -32,21 +39,23 @@ export function RoomClearStamp() {
 				new ColorSequenceKeypoint(HALF + w, gold),
 				new ColorSequenceKeypoint(1, gold),
 			]),
-			flyFrom: new UDim2(HALF, 0, 0, box.edge + box.height),
-			flyTo: new UDim2(
-				1,
-				-(HUD_VIEW.margin + HUD_VIEW.scoreWidth * HALF),
-				0,
-				HUD_VIEW.margin + ROOM_CLEAR_VIEW.flyTargetY,
-			),
+			flyFrom: new UDim2(HALF, 0, 0, edge + box.height),
+			flyTo: touch
+				? UDim2.fromOffset(flyX, flyY)
+				: new UDim2(
+						1,
+						-(HUD_VIEW.margin + HUD_VIEW.scoreWidth * HALF),
+						0,
+						HUD_VIEW.margin + ROOM_CLEAR_VIEW.flyTargetY,
+				  ),
 		};
-	}, [box]);
+	}, [box, edge, touch, flyX, flyY]);
 	return (
 		<>
 			<frame
 				key="RoomClear"
 				AnchorPoint={new Vector2(HALF, 0)}
-				Position={new UDim2(HALF, 0, 0, box.edge)}
+				Position={new UDim2(HALF, 0, 0, edge)}
 				Size={new UDim2(0, box.width, 0, box.height)}
 				BackgroundTransparency={HIDDEN}
 				Visible={UI.visible.binding}

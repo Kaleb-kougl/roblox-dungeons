@@ -2,6 +2,7 @@ import React from "@rbxts/react";
 import { HUD_FONT, role } from "client/ui/theme";
 import { FOOTPRINT_ESTIMATE, HUD_TRANSIENT, HUD_VIEW, ROOM_CLEAR_VIEW } from "shared/view/hud";
 import { ROOM_CLEAR_UI as UI } from "./roomClearBindings";
+import { useTouchStrip } from "./touchStripContext";
 
 const HALF = 0.5;
 const HIDDEN = 1;
@@ -9,10 +10,13 @@ const HIDDEN = 1;
 /**
  * The co-op corner chips (docs/ROOM_CLEAR.md RC7): a far teammate's room clear, a small line under the score panel
  * (HUD_TRANSIENT.roomClearChip) that slides in and merges into the score. Up to ROOM_CLEAR_VIEW.maxChips rows, each
- * bound to its ROOM_CLEAR_UI slot; this component renders once per run.
+ * bound to its ROOM_CLEAR_UI slot; this component renders once per run. On touch (docs/UI_ART.md "Phones") there is no
+ * score panel: the chips hang at the right under the touch strip's boss slot.
  */
 export function RoomClearChips() {
+	const strip = useTouchStrip();
 	const box = HUD_TRANSIENT.roomClearChip;
+	const edge = strip?.belowTop ?? box.edge;
 	const rowH = ROOM_CLEAR_VIEW.chipText + FOOTPRINT_ESTIMATE.lineSlack;
 	const rows = new Array<React.Element>();
 	for (let i = 0; i < ROOM_CLEAR_VIEW.maxChips; i++) {
@@ -38,7 +42,7 @@ export function RoomClearChips() {
 		<frame
 			key="RoomClearChips"
 			AnchorPoint={new Vector2(1, 0)}
-			Position={new UDim2(1, -HUD_VIEW.margin, 0, box.edge)}
+			Position={new UDim2(1, -HUD_VIEW.margin, 0, edge)}
 			Size={new UDim2(0, box.width, 0, box.height)}
 			BackgroundTransparency={HIDDEN}
 		>

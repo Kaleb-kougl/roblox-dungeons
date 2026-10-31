@@ -233,6 +233,16 @@ export function PauseOverlay() {
 								text={str(HUD_STRINGS.weaponSwap, { key: swapHint(bindings)[keyDevice(device)] })}
 							/>
 						) : undefined}
+						{touch && s.floor > 0 ? (
+							<Text
+								fill={true}
+								order={18}
+								size={HUD_VIEW.smallText}
+								color="uiText"
+								align={Enum.TextXAlignment.Center}
+								text={str(HUD_STRINGS.floor, { floor: s.floor, depth: s.depth })}
+							/>
+						) : undefined}
 						<RunInfoLine order={19} />
 						{touch ? undefined : (
 							<Text

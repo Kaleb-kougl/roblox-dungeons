@@ -14,9 +14,12 @@ export function GridRow(props: {
 	cellW: number;
 	cellH: number;
 	maxWidth: number;
+	/** Between cells (default HUD_VIEW.gap). */
+	gap?: number;
 	children?: React.ReactNode;
 }) {
-	const grid = wrapGrid(props.count, props.cellW, props.cellH, HUD_VIEW.gap, props.maxWidth);
+	const gap = props.gap ?? HUD_VIEW.gap;
+	const grid = wrapGrid(props.count, props.cellW, props.cellH, gap, props.maxWidth);
 	return (
 		<frame
 			LayoutOrder={props.order}
@@ -25,7 +28,7 @@ export function GridRow(props: {
 		>
 			<uigridlayout
 				CellSize={new UDim2(0, props.cellW, 0, props.cellH)}
-				CellPadding={new UDim2(0, HUD_VIEW.gap, 0, HUD_VIEW.gap)}
+				CellPadding={new UDim2(0, gap, 0, gap)}
 				FillDirection={Enum.FillDirection.Horizontal}
 				FillDirectionMaxCells={grid.cols}
 				SortOrder={Enum.SortOrder.LayoutOrder}

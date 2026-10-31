@@ -20,6 +20,7 @@ import { RENDER_ORDER, floorStudsY, studsX, studsZ } from "shared/view";
 import {
 	HUD_SKIN,
 	TOUCH_LAYOUT,
+	TOUCH_STRIP_GUI,
 	pickTouchTarget,
 	skinHasOf,
 	touchArtId,
@@ -319,8 +320,9 @@ function place(ui: Ui, layout: TouchLayoutResult): void {
  * whole multiple of the art inside the circle, shared/view/hud touchArtSize, at the flat fill's alpha; touchOpacity /
  * touchSize apply as before); without it, the flat circles. Either way each label sits in its box inside the control
  * (touchFace: TextScaled, capped), Flask / Ember show their icon and count when skinned, and a stick shows its word at
- * rest and its knob while held (touchStickParts). The controls keep clear of the corner panels' boxes, measured in
- * the HUD's own ScreenGui (touchLayout `hud`).
+ * rest and its knob while held (touchStickParts). The controls keep clear of the touch strip's boxes (docs/UI_ART.md
+ * "Phones": KV_TouchStrip's Footprint frames, touchLayout `hudBoxes`) or, while it is not mounted, of the corner
+ * panels' boxes, measured in the HUD's own ScreenGui (touchLayout `hud`).
  *
  * Presentation only: it reads the store and the sim and never writes the sim. Everything it makes lives in the
  * Janitor; the render step (KV_TouchControls, before the sim samples input) is unbound with it.
@@ -361,6 +363,25 @@ export class TouchControlsController implements OnStart {
 		const size = hud.AbsoluteSize;
 		if (!(size.X > 0 && size.Y > 0)) return undefined;
 		return { x: p.X - o.X, y: p.Y - o.Y, w: size.X, h: size.Y };
+	}
+
+	/**
+	 * The touch strip's footprint boxes (docs/UI_ART.md "Phones": its fade group and the boss slot, invisible frames in
+	 * KV_TouchStrip's Footprint folder) in the touch GUI's space, or undefined when the strip is not mounted (the
+	 * controls then keep clear of the corner panels' boxes, as before the strip).
+	 */
+	private stripBoxes(ui: Ui): ScreenRect[] | undefined {
+		const strip = ui.gui.Parent?.FindFirstChild(TOUCH_STRIP_GUI.gui)?.FindFirstChild(TOUCH_STRIP_GUI.footprint);
+		if (strip === undefined) return undefined;
+		const o = ui.gui.AbsolutePosition;
+		const out: ScreenRect[] = [];
+		for (const child of strip.GetChildren()) {
+			if (!child.IsA("GuiObject")) continue;
+			const p = child.AbsolutePosition;
+			const size = child.AbsoluteSize;
+			out.push({ x: p.X - o.X, y: p.Y - o.Y, w: size.X, h: size.Y });
+		}
+		return out.size() > 0 ? out : undefined;
 	}
 
 	private build(): Ui {
@@ -553,7 +574,13 @@ export class TouchControlsController implements OnStart {
 		const safe = ui.gui.AbsoluteSize;
 		const hud = this.hudFrame(ui);
 		const hudKey = hud !== undefined ? `${hud.x},${hud.y},${hud.w},${hud.h}` : "-";
-		const key = `${viewport.X},${viewport.Y},${safe.X},${safe.Y},${hudKey},${display.hudScale},${display.touchSize},${display.touchLeftHanded},${mode}`;
+		const boxes = this.stripBoxes(ui);
+		let boxKey = "-";
+		if (boxes !== undefined) {
+			boxKey = "";
+			for (const b of boxes) boxKey += `${b.x},${b.y},${b.w},${b.h};`;
+		}
+		const key = `${viewport.X},${viewport.Y},${safe.X},${safe.Y},${hudKey},${boxKey},${display.hudScale},${display.touchSize},${display.touchLeftHanded},${mode}`;
 		if (key === this.layoutKey) return;
 		this.layoutKey = key;
 		const layout = touchLayout(
@@ -566,6 +593,7 @@ export class TouchControlsController implements OnStart {
 			display.touchLeftHanded,
 			mode === "spectate" ? "spectate" : "play",
 			hud,
+			boxes,
 		);
 		this.layout = layout;
 		this.input.setTouchStickRadiusPx(layout.stickRadiusPx);

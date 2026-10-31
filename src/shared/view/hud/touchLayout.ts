@@ -2,7 +2,8 @@
  * Where the touch controls sit (docs/MOBILE.md MB2), pure. Positions are reference px measured from the ACTION side's
  * bottom corner of the safe area (the right edge, or the left when left-handed): x inward from that side edge, y up
  * from the bottom. touchLayout() scales them so no control reaches the status / score panels' budget boxes (plus
- * TOUCH_LAYOUT.clusterGap: touchPanelKeepOut), never below TOUCH_LAYOUT.minScale; where `play` cannot keep clear at
+ * TOUCH_LAYOUT.clusterGap: touchPanelKeepOut) or, given `hudBoxes`, the touch strip's boxes (touchStripKeepOut: the
+ * strip replaces those panels on touch, docs/UI_ART.md "Phones"), never below TOUCH_LAYOUT.minScale; where `play` cannot keep clear at
  * minScale (a short safe area: a phone under a tall top bar, or a HUD scale above 100 %) it takes the lower `compact`
  * cluster, and only below that the scale drops under minScale (never under the smallest tappable circle).
  */
@@ -191,6 +192,16 @@ export function touchPanelKeepOut(
 	});
 }
 
+/**
+ * The touch strip's boxes (shared/view/hud touchStrip `footprint`: its fade group and the boss slot, measured in the
+ * touch safe area) grown by TOUCH_LAYOUT.clusterGap at the touch HUD scale on every side: the keep-out on touch, where
+ * the strip replaces the status and score corner panels (docs/UI_ART.md "Phones").
+ */
+export function touchStripKeepOut(boxes: ReadonlyArray<ScreenRect>, hudScale: number): ReadonlyArray<ScreenRect> {
+	const gap = TOUCH_LAYOUT.clusterGap * hudScale;
+	return boxes.map((r) => ({ x: r.x - gap, y: r.y - gap, w: r.w + gap * 2, h: r.h + gap * 2 }));
+}
+
 interface HomeSpec {
 	readonly x: number;
 	readonly y: number;
@@ -276,9 +287,13 @@ export function touchLayout(
 	leftHanded: boolean,
 	mode: TouchLayoutMode,
 	hud?: ScreenRect, // the HUD ScreenGui's rect in the touch safe area (default: the safe area)
+	hudBoxes?: ReadonlyArray<ScreenRect>, // the touch strip's footprint in the touch safe area (replaces the corner boxes)
 ): TouchLayoutResult {
 	const hudScale = computeHudScale(viewportW, viewportH, false, hudPercent, true);
-	const keepOut = touchPanelKeepOut(viewportW, viewportH, hudPercent, hud ?? { x: 0, y: 0, w: safeW, h: safeH });
+	const keepOut =
+		hudBoxes !== undefined
+			? touchStripKeepOut(hudBoxes, hudScale)
+			: touchPanelKeepOut(viewportW, viewportH, hudPercent, hud ?? { x: 0, y: 0, w: safeW, h: safeH });
 	let topBand = 0;
 	for (const z of keepOut) topBand = math.max(topBand, z.y + z.h);
 
