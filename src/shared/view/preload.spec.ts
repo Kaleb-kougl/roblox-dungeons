@@ -10,6 +10,8 @@ import {
 	ThemePack,
 	type ContentRef,
 	type RobloxAssetId,
+	uiIconIds,
+	uiSkinIds,
 } from "shared/theme";
 import { VALE_MANIFEST } from "shared/theme/packs/vale";
 import {
@@ -150,6 +152,19 @@ describe("preloadPlan (docs/PRELOAD.md P2)", () => {
 		expect(numbers(plan.later)).toEqual(numbers([image(2), sound(7), sound(1), image(15), image(14), image(13)]));
 		// boss.act1's image 3 is already core (enemy.swarmer): first occurrence wins
 		expect(plan.later.map((r) => r.media)).toEqual(["image", "sound", "sound", "image", "image", "image"]);
+	});
+
+	it("every UI skin id (docs/UI_ART.md UA4) is core: one shared icon atlas is planned once", () => {
+		const assets: Record<string, Array<ContentRef>> = {};
+		uiSkinIds().forEach((id, i) => (assets[id] = [image(100 + i)]));
+		for (const id of uiIconIds()) assets[id] = [image(99)];
+		assets["boss.act1"] = [image(1)];
+		const plan = preloadPlan(fakeSource(assets, {}));
+		expect(numbers(plan.later)).toEqual([fakeId(1)]);
+		const core = numbers(plan.core);
+		expect(core.size()).toBe(uiSkinIds().size() + 1);
+		expect(core.filter((c) => c === fakeId(99)).size()).toBe(1);
+		for (const id of uiSkinIds()) expect([id, core.includes(assets[id][0].contentId)]).toEqual([id, true]);
 	});
 
 	it("an empty source plans nothing and releases at once", () => {

@@ -384,10 +384,18 @@ export interface ImageRef {
 	readonly h: number;
 	/** Repeating tile textures only: world tiles the image spans per side. */
 	readonly tilesPerImage: number | undefined;
-	/** ui.* images only: the anchor point, pixels from the top-left (undefined: the renderer's default). */
+	/**
+	 * ui.* images only: the anchor point, pixels from the top-left of `rect` (or the image) (undefined: the renderer's
+	 * default).
+	 */
 	readonly pivot: Readonly<Pivot> | undefined;
 	/** ui.* images only: 9-slice insets in art pixels (ImageAsset.slice; undefined: drawn whole, not sliced). */
 	readonly slice: Readonly<SliceInsets> | undefined;
+	/**
+	 * The region of the image to draw (ImageAsset.rect: ImageRectOffset / ImageRectSize), pixels, top-left origin;
+	 * undefined: the whole image. ui.* icons cut from one atlas (docs/UI_ART.md UA4).
+	 */
+	readonly rect: Readonly<PixelRect> | undefined;
 }
 
 /**
@@ -674,7 +682,7 @@ export class ThemeCore {
 
 	/**
 	 * An uploaded `image` asset with its size (and `tilesPerImage` for a repeating tile texture, `pivot` for a ui image
-	 * anchored at a point), or undefined for a
+	 * anchored at a point, `slice` for a 9-sliced one, `rect` for an atlas cut), or undefined for a
 	 * placeholder, any other kind or a missing ID. Never warns: callers use it for optional art (a floor texture, the
 	 * co-op ring) and keep their placeholder path when it is undefined.
 	 */
@@ -684,7 +692,9 @@ export class ThemeCore {
 		const pivot = def.pivot !== undefined ? { x: def.pivot.x, y: def.pivot.y } : undefined;
 		const s = def.slice;
 		const slice = s !== undefined ? { left: s.left, top: s.top, right: s.right, bottom: s.bottom } : undefined;
-		return { assetId: def.assetId, w: def.w, h: def.h, tilesPerImage: def.tilesPerImage, pivot, slice };
+		const r = def.rect;
+		const rect = r !== undefined ? { x: r.x, y: r.y, w: r.w, h: r.h } : undefined;
+		return { assetId: def.assetId, w: def.w, h: def.h, tilesPerImage: def.tilesPerImage, pivot, slice, rect };
 	}
 
 	/**

@@ -184,8 +184,8 @@ export interface ImageAsset {
 	/** Tile slot only: the image is a repeating floor/wall texture spanning this many world tiles per side (any w/h). */
 	tilesPerImage?: number;
 	/**
-	 * ui.* slot: the point placed on the image's anchor (a beam's foot, a ring's centre), pixels from the top-left,
-	 * inside the image. Presentation only. Without it the renderer uses its own default (bottom centre / centre).
+	 * ui.* slot: the point placed on the image's anchor (a beam's foot, a ring's centre), pixels from the top-left of
+	 * `rect` (or of the image without one), inside it. Presentation only. Without it the renderer uses its own default (bottom centre / centre).
 	 * decor.* / breakable.* slots: the point placed on the piece's ground spot, pixels from the top-left of `rect`
 	 * (default: bottom centre; centre for flat pieces and effects).
 	 */
@@ -198,7 +198,11 @@ export interface ImageAsset {
 	slice?: SliceInsets;
 	/** decor.* (except ambient textures) and breakable.* images, required: art pixels per world tile (sizes the art). */
 	pixelsPerTile?: number;
-	/** decor.* / breakable.* images: the region of the image to draw, pixels (default: all of it); an atlas cut. */
+	/**
+	 * decor.* / breakable.* / boost.* and ui.* images: the region of the image to draw, pixels (default: all of it); an
+	 * atlas cut (ui.*: docs/UI_ART.md UA4, the icon atlas), inside the image. A ui image's `pivot` is then from the
+	 * rect's top-left and inside it. A sliced ui image (`slice`) is drawn whole: no rect.
+	 */
 	rect?: PixelBox;
 	/** decor.delve.* only, required: how and where the piece is drawn (contract.ts DECOR_KIND_LAYERS). */
 	layer?: DecorLayer;
