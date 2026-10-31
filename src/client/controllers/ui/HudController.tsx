@@ -91,6 +91,7 @@ export class HudController implements OnStart {
 			playUi: (id) => this.audio.playUi(id),
 			setLeaderboardOpen: click((open: boolean) => this.leaderboard.setOpen(open)),
 			showLeaderboard: (board) => this.leaderboard.showBoard(board),
+			showLeaderboardTabs: (tabs) => this.leaderboard.showTabs(tabs),
 			setLeaveConfirm: click((open: boolean) => this.menu.setLeaveConfirm(open)),
 			leaveRun: click(() => this.menu.leaveRun()),
 			exitRun: click(() => this.menu.exitRun()),
@@ -118,6 +119,7 @@ export class HudController implements OnStart {
 		const menuActions: MenuActions = {
 			playSolo: click(() => this.menu.playSolo()),
 			playDaily: click(() => this.menu.playDaily()),
+			playDailyParty: click(() => this.menu.playDailyParty()),
 			openLobbies: click(() => this.menu.openLobbies()),
 			openLobbyRoom: click(() => this.menu.openLobbyRoom()),
 			openOptions: click(() => this.menu.openOptions()),

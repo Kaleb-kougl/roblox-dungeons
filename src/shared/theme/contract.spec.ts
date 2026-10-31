@@ -191,7 +191,10 @@ describe("required IDs and strings", () => {
 		// + NEAR_MISS_STRING_KEYS (docs/GRAZE_PARRY.md GP3)
 		// + docs/ENEMY_VARIANTS.md EV1: enemy.imp.name, enemy.slime.name, AFFIX_STRING_KEYS (4), BESTIARY_STRING_KEYS (7)
 		// + docs/NEW_BEST.md NB4: NEW_BEST_STRING_KEYS (18) + docs/DAILY.md DS2: ROSTER_STRING_KEYS (2)
-		expect(REQUIRED_STRING_KEYS.size()).toBe(41 + 1 + 2 + 4 * 3 + 1 + 3 + 5 + 13 + 10 + 6 + 2 + 2 + 4 + 7 + 18 + 2);
+		// + docs/DAILY.md DS9 / DS11 / DS12: DAILY_STRING_KEYS (63)
+		expect(REQUIRED_STRING_KEYS.size()).toBe(
+			41 + 1 + 2 + 4 * 3 + 1 + 3 + 5 + 13 + 10 + 6 + 2 + 2 + 4 + 7 + 18 + 2 + 63,
+		);
 		expect(new Set(REQUIRED_STRING_KEYS).size()).toBe(REQUIRED_STRING_KEYS.size());
 		expect(BIOMES.map((b) => b.forgeTheme)).toEqual(["ancient", "molten", "frost", "grim", "verdant"]);
 	});

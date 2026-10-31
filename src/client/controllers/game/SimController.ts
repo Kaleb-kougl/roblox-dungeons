@@ -1673,6 +1673,7 @@ export class SimController implements OnStart {
 			records: v.records,
 			serverScore: v.score.score,
 			serverFloor: v.score.floor,
+			daily: v.daily,
 		};
 		if (current) clientStore.setVerdict(view);
 		const where = v.failedSegment !== undefined ? ` (segment ${v.failedSegment})` : "";

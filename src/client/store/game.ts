@@ -1,5 +1,6 @@
 import { createProducer } from "@rbxts/reflex";
 import { EMPTY_SNAPSHOT, snapshotsEqual, type GameSnapshot, type InputDeviceKind } from "shared/play";
+import type { DailyRunResult } from "shared/daily";
 import type { RunRecordsResult } from "shared/records";
 import { latencyProbeViewsEqual, type LatencyProbeView } from "shared/view";
 
@@ -31,6 +32,11 @@ export interface VerdictView {
 	readonly records?: RunRecordsResult;
 	readonly serverScore?: number;
 	readonly serverFloor?: number;
+	/**
+	 * Daily runs (docs/DAILY.md DS11): this player's entry on the run's daily board from the server's verdict
+	 * (RunFinishVerdict.daily: posted / improved / previous / standing); absent when not an accepted daily run.
+	 */
+	readonly daily?: DailyRunResult;
 }
 
 export interface ReplayCheckView {

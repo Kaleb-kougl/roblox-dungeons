@@ -11,6 +11,11 @@ export interface MenuActions {
 	readonly playSolo: () => void;
 	/** The Daily (docs/DAILY.md): a ranked solo run in world "daily" on the server's seed of the day. */
 	readonly playDaily: () => void;
+	/**
+	 * "Daily with friends" (docs/DAILY.md DS9): a lobby on the daily world. In a lobby: its room (the host's forming
+	 * lobby switches to the Daily); else a new friends-visible lobby created on the daily world.
+	 */
+	readonly playDailyParty: () => void;
 	/** Lobbies: the browser, or straight to the lobby room while in a lobby. */
 	readonly openLobbies: () => void;
 	readonly openLobbyRoom: () => void;
@@ -51,6 +56,7 @@ const nothing = () => undefined;
 const NOOP: MenuActions = {
 	playSolo: nothing,
 	playDaily: nothing,
+	playDailyParty: nothing,
 	openLobbies: nothing,
 	openLobbyRoom: nothing,
 	playTutorial: nothing,

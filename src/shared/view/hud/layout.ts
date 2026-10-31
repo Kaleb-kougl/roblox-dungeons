@@ -148,6 +148,10 @@ export const LEADERBOARD_VIEW = {
 	/** The panel asks the server again for a board at most this often (the server caches 60 s anyway). */
 	refreshSeconds: 15,
 	scrollBarThickness: 6,
+	/** docs/DAILY.md DS9: the scope tabs (Today / Yesterday / All time: 3 across the 528 px content). */
+	scopeTab: { x: 170, y: 36 },
+	/** The board tabs (Solo / Co-op) and, on daily scopes, the filter tabs (Global / Friends): 4 across. */
+	boardTab: { x: 126, y: 30 },
 } as const;
 
 /** m:ss of sim time (web formatClock). */
