@@ -94,6 +94,11 @@ export const HUD_VIEW = {
 	/** Display order: the HUD under the pause / settings layer. */
 	hudDisplayOrder: 10,
 	menuDisplayOrder: 20,
+	/**
+	 * The full-screen layer the overlays' dims draw into (client/ui/hud ScreenDim, docs/UI_ART.md "Phones"): just under
+	 * the pause / settings layer, over the menu shell (MENU_VIEW.displayOrder 15) as the dims were.
+	 */
+	menuDimDisplayOrder: 19,
 } as const;
 
 /**

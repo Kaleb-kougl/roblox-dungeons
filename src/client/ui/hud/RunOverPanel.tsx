@@ -31,6 +31,7 @@ import {
 	formatCombo,
 } from "shared/view/hud";
 import {
+	MENU_FIT,
 	MENU_STRINGS,
 	PAD_CONFIRM_LABEL,
 	partyRunOverLine,
@@ -40,10 +41,10 @@ import {
 	screenSkin,
 } from "shared/view/menu";
 import { useHudActions } from "./actions";
+import { MenuFit } from "./MenuFit";
 import { ArtImage, MenuButton, Panel, Row, Text, panelIcon } from "./primitives";
 import { RunInfoLine, verdictColor, verdictLine } from "./RunInfoLine";
 
-const HALF = 0.5;
 const HIDDEN = 1;
 const STAT_WIDTH = 150;
 
@@ -125,14 +126,35 @@ function BestComboLine(props: { order: number; maxCombo: number }) {
 	);
 }
 
-/** Scored runs (M2): the score, its points per source and the best combo. */
-function ScoreBreakdown(props: { order: number; score: number; points: ReadonlyArray<number>; maxCombo: number }) {
-	const lines = new Array<React.Element>();
+interface BreakdownProps {
+	order: number;
+	score: number;
+	points: ReadonlyArray<number>;
+	maxCombo: number;
+}
+
+/** The breakdown's lines: the score, its points per source, the best combo. */
+function breakdownLines(props: BreakdownProps): React.Element[] {
+	const lines = [
+		<BreakdownLine
+			key="score"
+			order={1}
+			label={str(HUD_STRINGS.score)}
+			value={tostring(props.score)}
+			color="uiAccent"
+		/>,
+	];
 	for (let i = 0; i < props.points.size(); i++) {
 		const key = SCORE_SOURCE_KEYS[i];
 		if (key === undefined) continue;
 		lines.push(<BreakdownLine key={`s${i}`} order={i + 2} label={str(key)} value={tostring(props.points[i])} />);
 	}
+	lines.push(<BestComboLine key="combo" order={props.points.size() + 2} maxCombo={props.maxCombo} />);
+	return lines;
+}
+
+/** Scored runs (M2): the score, its points per source and the best combo. */
+function ScoreBreakdown(props: BreakdownProps) {
 	return (
 		<Panel
 			position={new UDim2()}
@@ -141,10 +163,28 @@ function ScoreBreakdown(props: { order: number; score: number; points: ReadonlyA
 			transparency={1}
 			align={Enum.HorizontalAlignment.Center}
 		>
-			<BreakdownLine order={1} label={str(HUD_STRINGS.score)} value={tostring(props.score)} color="uiAccent" />
-			{lines}
-			<BestComboLine order={props.points.size() + 2} maxCombo={props.maxCombo} />
+			{breakdownLines(props)}
 		</Panel>
+	);
+}
+
+/** A fixed-width column of the compact run-over panel (a fixed width, so wrapped and filling text resolve against it). */
+function Column(props: { order: number; width: number; gap: number; children?: React.ReactNode }) {
+	return (
+		<frame
+			LayoutOrder={props.order}
+			Size={new UDim2(0, props.width, 0, 0)}
+			AutomaticSize={Enum.AutomaticSize.Y}
+			BackgroundTransparency={HIDDEN}
+		>
+			<uilistlayout
+				FillDirection={Enum.FillDirection.Vertical}
+				HorizontalAlignment={Enum.HorizontalAlignment.Center}
+				SortOrder={Enum.SortOrder.LayoutOrder}
+				Padding={new UDim(0, props.gap)}
+			/>
+			{props.children}
+		</frame>
 	);
 }
 
@@ -189,6 +229,10 @@ function RunOverHeader(props: { order: number; victory: boolean; icon: string | 
  * wipe (desync, an error, expiry) shows here too, its main line naming the verdict's reason (partyRunOverLine), as
  * does a wiped party's run the server rejected. The panel counts as a menu, so the pad
  * drives the GUI selection here (it starts on the first button): the pad's hint is A, not the D-pad restart.
+ *
+ * Fitted into the safe area on touch (MenuFit, docs/UI_ART.md "Phones"); compact (a phone): two columns, the header,
+ * the main line, the stats as lines, the exits, the verdict and the info line on the left, the score breakdown on
+ * the right with tighter lines.
  */
 export function RunOverPanel() {
 	const s = useSelector(selectSnapshot);
@@ -231,80 +275,149 @@ export function RunOverPanel() {
 		: victory
 		? str(HUD_STRINGS.victory, { name: bossName, key })
 		: str(HUD_STRINGS.dead, { key });
-	return (
-		<Panel
-			position={UDim2.fromScale(HALF, HALF)}
-			anchor={new Vector2(HALF, HALF)}
-			width={HUD_VIEW.panelWidth * 2}
-			align={Enum.HorizontalAlignment.Center}
-			skin={screenSkin("runOver")}
-			name="RunOver"
-		>
-			<RunOverHeader
-				order={1}
-				victory={victory}
-				icon={runOverIcon(victory, info.coop)}
-				text={str(victory ? HUD_STRINGS.runVictory : HUD_STRINGS.runOver)}
+	const header = (
+		<RunOverHeader
+			key="Header"
+			order={1}
+			victory={victory}
+			icon={runOverIcon(victory, info.coop)}
+			text={str(victory ? HUD_STRINGS.runVictory : HUD_STRINGS.runOver)}
+		/>
+	);
+	const mainLine = (
+		<Text
+			key="Main"
+			order={2}
+			size={HUD_VIEW.titleText}
+			align={Enum.TextXAlignment.Center}
+			wrap={true}
+			text={main}
+		/>
+	);
+	const altLine = touch ? undefined : (
+		<Text
+			key="Alt"
+			fill={true}
+			order={3}
+			size={HUD_VIEW.smallText}
+			color="uiTextDim"
+			align={Enum.TextXAlignment.Center}
+			text={str(HUD_STRINGS.restartAlt, { key: otherKey })}
+		/>
+	);
+	const stats = [
+		{ label: str(victory ? HUD_STRINGS.timeVictory : HUD_STRINGS.time), value: formatClock(s.endTick / SIM_HZ) },
+		{ label: str(HUD_STRINGS.hits), value: tostring(s.hitsTaken) },
+		{ label: str(HUD_STRINGS.kills), value: tostring(s.kills) },
+	];
+	const verdictRow =
+		verdictText !== "" ? (
+			<Text
+				key="Verdict"
+				order={7}
+				size={HUD_VIEW.smallText}
+				color={verdictColor(verdict)}
+				align={Enum.TextXAlignment.Center}
+				wrap={true}
+				text={verdictText}
 			/>
-			<Text order={2} size={HUD_VIEW.titleText} align={Enum.TextXAlignment.Center} wrap={true} text={main} />
-			{touch ? undefined : (
-				<Text
-					fill={true}
-					order={3}
-					size={HUD_VIEW.smallText}
-					color="uiTextDim"
-					align={Enum.TextXAlignment.Center}
-					text={str(HUD_STRINGS.restartAlt, { key: otherKey })}
-				/>
-			)}
-			<Row order={4} align={Enum.HorizontalAlignment.Center}>
-				<Stat
-					order={1}
-					label={str(victory ? HUD_STRINGS.timeVictory : HUD_STRINGS.time)}
-					value={formatClock(s.endTick / SIM_HZ)}
-				/>
-				<Stat order={2} label={str(HUD_STRINGS.hits)} value={tostring(s.hitsTaken)} />
-				<Stat order={3} label={str(HUD_STRINGS.kills)} value={tostring(s.kills)} />
-			</Row>
-			{s.scoring ? (
-				<ScoreBreakdown order={5} score={s.score} points={s.scorePoints} maxCombo={s.maxCombo} />
-			) : undefined}
-			{verdictText !== "" ? (
-				<Text
-					order={7}
-					size={HUD_VIEW.smallText}
-					color={verdictColor(verdict)}
-					align={Enum.TextXAlignment.Center}
-					wrap={true}
-					text={verdictText}
-				/>
-			) : undefined}
-			<RunInfoLine order={8} />
-			<Row order={6} align={Enum.HorizontalAlignment.Center}>
-				{exits.again ? (
-					<MenuButton
-						ref={firstRef}
-						order={1}
-						name="Again"
-						text={str(MENU_STRINGS.again)}
-						onActivated={() => {
-							actions.playUi(SFX.uiConfirm);
-							actions.restart();
-						}}
-					/>
-				) : undefined}
+		) : undefined;
+	const exitButtons = (size?: Vector2) => (
+		<Row key="Exits" order={6} align={Enum.HorizontalAlignment.Center}>
+			{exits.again ? (
 				<MenuButton
-					ref={exits.again ? undefined : firstRef}
-					order={2}
-					name="Exit"
-					text={str(exits.exitKey)}
-					icon={runOverExitIcon(exits.exitKey)}
+					ref={firstRef}
+					order={1}
+					name="Again"
+					size={size}
+					text={str(MENU_STRINGS.again)}
 					onActivated={() => {
-						actions.playUi(SFX.uiClick);
-						actions.exitRun();
+						actions.playUi(SFX.uiConfirm);
+						actions.restart();
 					}}
 				/>
-			</Row>
-		</Panel>
+			) : undefined}
+			<MenuButton
+				ref={exits.again ? undefined : firstRef}
+				order={2}
+				name="Exit"
+				size={size}
+				text={str(exits.exitKey)}
+				icon={runOverExitIcon(exits.exitKey)}
+				onActivated={() => {
+					actions.playUi(SFX.uiClick);
+					actions.exitRun();
+				}}
+			/>
+		</Row>
+	);
+	const breakdown = { order: 5, score: s.score, points: s.scorePoints, maxCombo: s.maxCombo };
+	const breakdownWidth = HUD_VIEW.breakdownLabelWidth + HUD_VIEW.gap + HUD_VIEW.breakdownValueWidth;
+	return (
+		<MenuFit
+			render={(layout) => {
+				if (layout.compact) {
+					// A phone (docs/UI_ART.md "Phones"): the header, stats, exits and verdict on the left, the
+					// score breakdown beside them, so the panel is about half as tall.
+					const left = MENU_FIT.runOverLeftWidth;
+					const right = s.scoring ? breakdownWidth : 0;
+					return (
+						<Panel
+							width={left + (s.scoring ? HUD_VIEW.gap + right : 0) + HUD_VIEW.pad * 4}
+							align={Enum.HorizontalAlignment.Center}
+							skin={screenSkin("runOver")}
+							name="RunOver"
+						>
+							<Row order={1}>
+								<Column order={1} width={left} gap={HUD_VIEW.gap}>
+									{header}
+									{mainLine}
+									{altLine}
+									<Column order={4} width={breakdownWidth} gap={HUD_VIEW.gap}>
+										{stats.map((st, i) => (
+											<BreakdownLine
+												key={`st${i}`}
+												order={i + 1}
+												label={st.label}
+												value={st.value}
+											/>
+										))}
+									</Column>
+									{exitButtons(new Vector2(MENU_FIT.runOverButton.x, MENU_FIT.runOverButton.y))}
+									{verdictRow}
+									<RunInfoLine order={8} />
+								</Column>
+								{s.scoring ? (
+									<Column order={2} width={right} gap={MENU_FIT.runOverLineGap}>
+										{breakdownLines(breakdown)}
+									</Column>
+								) : undefined}
+							</Row>
+						</Panel>
+					);
+				}
+				return (
+					<Panel
+						width={HUD_VIEW.panelWidth * 2}
+						align={Enum.HorizontalAlignment.Center}
+						skin={screenSkin("runOver")}
+						name="RunOver"
+					>
+						{header}
+						{mainLine}
+						{altLine}
+						<Row order={4} align={Enum.HorizontalAlignment.Center}>
+							{stats.map((st, i) => (
+								<Stat key={`st${i}`} order={i + 1} label={st.label} value={st.value} />
+							))}
+						</Row>
+						{s.scoring ? <ScoreBreakdown {...breakdown} /> : undefined}
+						{verdictRow}
+						<RunInfoLine order={8} />
+						{exitButtons()}
+					</Panel>
+				);
+			}}
+		/>
 	);
 }

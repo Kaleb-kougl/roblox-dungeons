@@ -52,9 +52,11 @@ import {
 	refusalKey,
 	volumeIcon,
 } from "shared/view/hud";
-import { screenDividers, screenSkin } from "shared/view/menu";
+import { MENU_FIT, screenDividers, screenSkin } from "shared/view/menu";
 import { useHudActions, type HudActions } from "./actions";
+import { FitScroll, MenuFit } from "./MenuFit";
 import { ArtImage, Divider, MenuButton, Panel, Row, Text, panelIcon } from "./primitives";
+import { ScreenDim } from "./ScreenDim";
 
 const HALF = 0.5;
 const HIDDEN = 1;
@@ -317,6 +319,10 @@ function ControlsTab(props: {
 	options: OptionsState;
 	selectable: boolean;
 	rememberFocus: () => void;
+	/** A phone (MenuFit compact): the whole tab scrolls (FitScroll), so the action rows are a plain list. */
+	compact: boolean;
+	/** The action rows' scroll list height otherwise (OPTIONS_VIEW.listHeight; less on a short touch screen). */
+	listHeight: number;
 }) {
 	const bindings = useSelector(selectBindings);
 	const { actions, options } = props;
@@ -383,21 +389,35 @@ function ControlsTab(props: {
 					/>
 				) : undefined}
 			</Row>
-			<scrollingframe
-				LayoutOrder={3}
-				Size={new UDim2(1, 0, 0, OPTIONS_VIEW.listHeight)}
-				CanvasSize={new UDim2()}
-				AutomaticCanvasSize={Enum.AutomaticSize.Y}
-				ScrollingDirection={Enum.ScrollingDirection.Y}
-				ScrollBarThickness={OPTIONS_VIEW.scrollBar}
-				ScrollBarImageColor3={role("uiTextDim")}
-				BackgroundTransparency={HIDDEN}
-				BorderSizePixel={0}
-				Selectable={false}
-			>
-				<uilistlayout SortOrder={Enum.SortOrder.LayoutOrder} Padding={new UDim(0, HUD_VIEW.gap)} />
-				{rows}
-			</scrollingframe>
+			{props.compact ? (
+				<frame
+					key="Rows"
+					LayoutOrder={3}
+					Size={new UDim2(1, 0, 0, 0)}
+					AutomaticSize={Enum.AutomaticSize.Y}
+					BackgroundTransparency={HIDDEN}
+				>
+					<uilistlayout SortOrder={Enum.SortOrder.LayoutOrder} Padding={new UDim(0, HUD_VIEW.gap)} />
+					{rows}
+				</frame>
+			) : (
+				<scrollingframe
+					key="Rows"
+					LayoutOrder={3}
+					Size={new UDim2(1, 0, 0, props.listHeight)}
+					CanvasSize={new UDim2()}
+					AutomaticCanvasSize={Enum.AutomaticSize.Y}
+					ScrollingDirection={Enum.ScrollingDirection.Y}
+					ScrollBarThickness={OPTIONS_VIEW.scrollBar}
+					ScrollBarImageColor3={role("uiTextDim")}
+					BackgroundTransparency={HIDDEN}
+					BorderSizePixel={0}
+					Selectable={false}
+				>
+					<uilistlayout SortOrder={Enum.SortOrder.LayoutOrder} Padding={new UDim(0, HUD_VIEW.gap)} />
+					{rows}
+				</scrollingframe>
+			)}
 			<Text fill={true} order={4} size={HUD_VIEW.smallText} color="uiTextDim" text={str(OPTIONS_STRINGS.test)} />
 			<TestStrip order={5} device={device} pressed={options.pressed} />
 			{notice !== undefined ? (
@@ -822,7 +842,9 @@ function OptionsModal(props: { options: OptionsState; actions: HudActions; devic
  * server. Fully usable with a gamepad: every control is a Selectable MenuButton, the first tab is selected when it
  * opens, a prompt selects its first button and the rows behind it stop being selectable; when a prompt closes the
  * selection goes back to the button that opened it. The run is paused while it is open. Text from theme strings
- * (options.*, fx.settings.*), colours from theme roles.
+ * (options.*, fx.settings.*), colours from theme roles. The dim covers the whole screen (ScreenDim); fitted into the
+ * safe area on touch (MenuFit: the Controls list is the flexible list); compact (a phone): the tab's body scrolls
+ * (FitScroll, MENU_FIT.optionsWidth wide), the Controls rows a plain list inside it.
  */
 export function OptionsScreen() {
 	const open = useSelector(selectPanelOpen);
@@ -874,93 +896,112 @@ export function OptionsScreen() {
 			}}
 		/>
 	));
-	let body: React.ReactNode;
-	if (tab === "controls") {
-		body = (
-			<ControlsTab
-				order={BODY_ORDER}
-				actions={actions}
-				options={options}
-				selectable={selectable}
-				rememberFocus={rememberFocus}
-			/>
-		);
-	} else if (tab === "audio") body = <AudioTab order={BODY_ORDER} actions={actions} selectable={selectable} />;
-	else if (tab === "display") body = <DisplayTab order={BODY_ORDER} actions={actions} selectable={selectable} />;
-	else body = <JuiceTab order={BODY_ORDER} actions={actions} selectable={selectable} />;
+	const bodyFor = (compact: boolean, listHeight: number): React.Element => {
+		if (tab === "controls") {
+			return (
+				<ControlsTab
+					order={BODY_ORDER}
+					actions={actions}
+					options={options}
+					selectable={selectable}
+					rememberFocus={rememberFocus}
+					compact={compact}
+					listHeight={listHeight}
+				/>
+			);
+		}
+		if (tab === "audio") return <AudioTab order={BODY_ORDER} actions={actions} selectable={selectable} />;
+		if (tab === "display") return <DisplayTab order={BODY_ORDER} actions={actions} selectable={selectable} />;
+		return <JuiceTab order={BODY_ORDER} actions={actions} selectable={selectable} />;
+	};
 	const dividers = screenDividers("options");
 	return (
-		<frame
-			key="OptionsOverlay"
-			Size={UDim2.fromScale(1, 1)}
-			BackgroundColor3={role("background")}
-			BackgroundTransparency={HUD_VIEW.overlayTransparency}
-			BorderSizePixel={0}
-		>
-			<Panel
-				position={UDim2.fromScale(HALF, HALF)}
-				anchor={new Vector2(HALF, HALF)}
-				width={OPTIONS_VIEW.width}
-				padding={HUD_VIEW.pad * 2}
-				transparency={0}
-				skin={screenSkin("options")}
-				flatOnly={<uistroke Thickness={1} Color={role("uiAccent")} />}
-				name="Options"
-			>
-				<Text
-					fill={true}
-					order={1}
-					size={HUD_VIEW.titleText}
-					color="uiAccent"
-					text={str(OPTIONS_STRINGS.title)}
-				/>
-				<Row order={2}>{tabs}</Row>
-				{dividers ? <Divider key="DividerTop" order={3} skin={screenSkin("options")} /> : undefined}
-				{body}
-				{dividers ? <Divider key="DividerBottom" order={5} skin={screenSkin("options")} /> : undefined}
-				<Row order={6}>
-					{tab !== "controls" ? (
-						<MenuButton
+		<frame key="OptionsOverlay" Size={UDim2.fromScale(1, 1)} BackgroundTransparency={1} BorderSizePixel={0}>
+			<ScreenDim key="Dim" name="OptionsDim" transparency={HUD_VIEW.overlayTransparency} />
+			<MenuFit
+				flex={(compact) =>
+					compact
+						? { min: MENU_FIT.listMin, max: MENU_FIT.optionsBodyMax }
+						: tab === "controls"
+						? { min: MENU_FIT.listMin, max: OPTIONS_VIEW.listHeight }
+						: undefined
+				}
+				render={(layout) => (
+					<Panel
+						width={layout.compact ? MENU_FIT.optionsWidth : OPTIONS_VIEW.width}
+						padding={HUD_VIEW.pad * 2}
+						transparency={0}
+						skin={screenSkin("options")}
+						flatOnly={<uistroke Thickness={1} Color={role("uiAccent")} />}
+						name="Options"
+					>
+						<Text
+							fill={true}
 							order={1}
-							name="Reset"
-							text={str(OPTIONS_STRINGS.reset)}
-							selectable={selectable}
-							onActivated={() => {
-								actions.playUi(SFX.uiConfirm);
-								actions.resetSettings(tab);
-							}}
+							size={HUD_VIEW.titleText}
+							color="uiAccent"
+							text={str(OPTIONS_STRINGS.title)}
 						/>
-					) : undefined}
-					<MenuButton
-						order={2}
-						name="Close"
-						text={str(OPTIONS_STRINGS.close)}
-						selectable={selectable}
-						onActivated={() => {
-							actions.playUi(SFX.uiBack);
-							actions.setSettingsOpen(false);
-						}}
-					/>
-				</Row>
-				{!synced ? (
-					<Text
-						fill={true}
-						order={7}
-						size={HUD_VIEW.smallText}
-						color="telegraph"
-						text={str(SETTINGS_STRINGS.offline)}
-					/>
-				) : undefined}
-				{device === "touch" ? undefined : (
-					<Text
-						fill={true}
-						order={8}
-						size={HUD_VIEW.smallText}
-						color="uiTextDim"
-						text={str(OPTIONS_STRINGS.hint, { key: SETTINGS_HINT[keyDevice(device)] })}
-					/>
+						<Row order={2}>{tabs}</Row>
+						{dividers ? <Divider key="DividerTop" order={3} skin={screenSkin("options")} /> : undefined}
+						{layout.compact ? (
+							<FitScroll
+								key="Body"
+								order={BODY_ORDER}
+								height={layout.flex}
+								onContent={layout.setFlexContent}
+							>
+								{bodyFor(true, 0)}
+							</FitScroll>
+						) : (
+							bodyFor(false, layout.flex)
+						)}
+						{dividers ? <Divider key="DividerBottom" order={5} skin={screenSkin("options")} /> : undefined}
+						<Row order={6}>
+							{tab !== "controls" ? (
+								<MenuButton
+									order={1}
+									name="Reset"
+									text={str(OPTIONS_STRINGS.reset)}
+									selectable={selectable}
+									onActivated={() => {
+										actions.playUi(SFX.uiConfirm);
+										actions.resetSettings(tab);
+									}}
+								/>
+							) : undefined}
+							<MenuButton
+								order={2}
+								name="Close"
+								text={str(OPTIONS_STRINGS.close)}
+								selectable={selectable}
+								onActivated={() => {
+									actions.playUi(SFX.uiBack);
+									actions.setSettingsOpen(false);
+								}}
+							/>
+						</Row>
+						{!synced ? (
+							<Text
+								fill={true}
+								order={7}
+								size={HUD_VIEW.smallText}
+								color="telegraph"
+								text={str(SETTINGS_STRINGS.offline)}
+							/>
+						) : undefined}
+						{device === "touch" ? undefined : (
+							<Text
+								fill={true}
+								order={8}
+								size={HUD_VIEW.smallText}
+								color="uiTextDim"
+								text={str(OPTIONS_STRINGS.hint, { key: SETTINGS_HINT[keyDevice(device)] })}
+							/>
+						)}
+					</Panel>
 				)}
-			</Panel>
+			/>
 			<OptionsModal options={options} actions={actions} device={device} />
 		</frame>
 	);

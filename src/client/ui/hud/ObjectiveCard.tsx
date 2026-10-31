@@ -4,10 +4,9 @@ import { selectBindings, selectInputDevice, selectTutorial, selectTutorialPrompt
 import { str } from "client/ui/theme";
 import { TUTORIAL_STRINGS, tutorialDeviceFor } from "shared/tutorial";
 import { HUD_VIEW, TUTORIAL_VIEW, tutorialPromptVars } from "shared/view/hud";
+import { MenuFit } from "./MenuFit";
 import { Panel, Text } from "./primitives";
 import { screenSkin } from "shared/view/menu";
-
-const HALF = 0.5;
 
 /**
  * Centre, the tutorial's first step (docs/TUTORIAL.md lesson 0): the objective card ("Practice Descent", what a run
@@ -21,40 +20,42 @@ export function ObjectiveCard() {
 	const bindings = useSelector(selectBindings);
 	if (!t.active || t.ended || t.card !== "objective") return undefined;
 	return (
-		<Panel
-			position={UDim2.fromScale(HALF, HALF)}
-			anchor={new Vector2(HALF, HALF)}
-			width={TUTORIAL_VIEW.cardWidth}
-			align={Enum.HorizontalAlignment.Center}
-			padding={HUD_VIEW.pad * 2}
-			skin={screenSkin("objectiveCard")}
-			name="ObjectiveCard"
-		>
-			<Text
-				fill={true}
-				order={1}
-				size={HUD_VIEW.bigText}
-				color="uiAccent"
-				align={Enum.TextXAlignment.Center}
-				text={str(TUTORIAL_STRINGS.objectiveTitle)}
-			/>
-			<Text
-				order={2}
-				size={HUD_VIEW.titleText}
-				align={Enum.TextXAlignment.Center}
-				wrap={true}
-				text={str(TUTORIAL_STRINGS.objectiveBody)}
-			/>
-			{promptKey !== "" ? (
-				<Text
-					fill={true}
-					order={3}
-					size={HUD_VIEW.smallText}
-					color="uiTextDim"
-					align={Enum.TextXAlignment.Center}
-					text={str(promptKey, tutorialPromptVars(tutorialDeviceFor(device), bindings))}
-				/>
-			) : undefined}
-		</Panel>
+		<MenuFit
+			render={() => (
+				<Panel
+					width={TUTORIAL_VIEW.cardWidth}
+					align={Enum.HorizontalAlignment.Center}
+					padding={HUD_VIEW.pad * 2}
+					skin={screenSkin("objectiveCard")}
+					name="ObjectiveCard"
+				>
+					<Text
+						fill={true}
+						order={1}
+						size={HUD_VIEW.bigText}
+						color="uiAccent"
+						align={Enum.TextXAlignment.Center}
+						text={str(TUTORIAL_STRINGS.objectiveTitle)}
+					/>
+					<Text
+						order={2}
+						size={HUD_VIEW.titleText}
+						align={Enum.TextXAlignment.Center}
+						wrap={true}
+						text={str(TUTORIAL_STRINGS.objectiveBody)}
+					/>
+					{promptKey !== "" ? (
+						<Text
+							fill={true}
+							order={3}
+							size={HUD_VIEW.smallText}
+							color="uiTextDim"
+							align={Enum.TextXAlignment.Center}
+							text={str(promptKey, tutorialPromptVars(tutorialDeviceFor(device), bindings))}
+						/>
+					) : undefined}
+				</Panel>
+			)}
+		/>
 	);
 }

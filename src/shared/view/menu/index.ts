@@ -7,6 +7,7 @@
  */
 export * from "./config";
 export * from "./firstJoin";
+export * from "./fit";
 export * from "./nav";
 export * from "./lobby";
 export * from "./pause";

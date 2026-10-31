@@ -50,6 +50,11 @@ export const MENU_VIEW = {
 	refreshSeconds: 0.2,
 	/** Display order of the menu shell: above the HUD, under the pause / settings layer (shared/view/hud HUD_VIEW). */
 	displayOrder: 15,
+	/**
+	 * The backdrop's own full-screen ScreenGui, just under the shell (docs/UI_ART.md "Phones"): inside the shell's
+	 * safe-area ScreenGui it stopped at the top bar and a phone's notch insets and read as a second, plain panel.
+	 */
+	backdropDisplayOrder: 14,
 } as const;
 
 /**

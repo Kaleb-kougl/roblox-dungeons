@@ -12,7 +12,7 @@ import {
 	selectSnapshot,
 	selectTutorial,
 } from "client/store";
-import { role, str } from "client/ui/theme";
+import { str } from "client/ui/theme";
 import { swapHint, keyDevice } from "shared/play";
 import { TUTORIAL_STRINGS } from "shared/tutorial";
 import { SFX } from "shared/view/audio";
@@ -29,10 +29,11 @@ import {
 } from "shared/view/menu";
 import { useHudActions, type HudActions } from "./actions";
 import { PauseMap } from "./FullMapOverlay";
+import { MenuFit } from "./MenuFit";
 import { Divider, MenuButton, Panel, Row, Text } from "./primitives";
+import { ScreenDim } from "./ScreenDim";
 import { RunInfoLine } from "./RunInfoLine";
 
-const HALF = 0.5;
 const CONFIRM_BUTTON = new Vector2(HUD_VIEW.buttonSize.x / 2, HUD_VIEW.buttonSize.y);
 
 interface ItemSpec {
@@ -94,7 +95,8 @@ const SKIP_CONFIRM: ConfirmSpec = {
  * in a confirm). Under the buttons, the weapon-swap key (the HUD's swap hint hides after a few seconds,
  * docs/HUD_LAYOUT.md H5), the run's info line and any fallback notice (RunInfoLine: docs/HUD_LAYOUT.md H6,
  * the only place they show while a run is on). Solo: the full map left of the menu (PauseMap, docs/MINIMAP.md MD5).
- * Hidden while a panel is open and once the run is over (the run-over panel has the exits).
+ * Hidden while a panel is open and once the run is over (the run-over panel has the exits). The solo dim covers the
+ * whole screen (ScreenDim); the panel is fitted into the safe area on touch (MenuFit; the ornament only with room).
  */
 export function PauseOverlay() {
 	const s = useSelector(selectSnapshot);
@@ -196,55 +198,55 @@ export function PauseOverlay() {
 		body = <>{buttons}</>;
 	}
 	return (
-		<frame
-			key="PauseOverlay"
-			Size={UDim2.fromScale(1, 1)}
-			BackgroundColor3={role("background")}
-			BackgroundTransparency={coop ? 1 : HUD_VIEW.overlayTransparency}
-			BorderSizePixel={0}
-		>
+		<frame key="PauseOverlay" Size={UDim2.fromScale(1, 1)} BackgroundTransparency={1} BorderSizePixel={0}>
+			{coop ? undefined : <ScreenDim key="Dim" name="PauseDim" transparency={HUD_VIEW.overlayTransparency} />}
 			{coop ? undefined : <PauseMap key="Map" />}
-			<Panel
-				position={UDim2.fromScale(HALF, HALF)}
-				anchor={new Vector2(HALF, HALF)}
-				width={HUD_VIEW.panelWidth}
-				align={Enum.HorizontalAlignment.Center}
-				padding={HUD_VIEW.pad * 2}
-				skin={screenSkin("pause")}
+			<MenuFit
 				ornament={screenOrnament("pause")}
-			>
-				<Text
-					fill={true}
-					order={1}
-					size={HUD_VIEW.bigText}
-					color="uiAccent"
-					align={Enum.TextXAlignment.Center}
-					text={str(coop ? MENU_STRINGS.coopTitle : HUD_STRINGS.paused)}
-				/>
-				{body}
-				{screenDividers("pause") ? <Divider key="Divider" order={17} skin={screenSkin("pause")} /> : undefined}
-				{s.weapons.size() > 0 && !touch ? (
-					<Text
-						fill={true}
-						order={18}
-						size={HUD_VIEW.smallText}
-						color="uiTextDim"
-						align={Enum.TextXAlignment.Center}
-						text={str(HUD_STRINGS.weaponSwap, { key: swapHint(bindings)[keyDevice(device)] })}
-					/>
-				) : undefined}
-				<RunInfoLine order={19} />
-				{touch ? undefined : (
-					<Text
-						fill={true}
-						order={20}
-						size={HUD_VIEW.smallText}
-						color="uiTextDim"
-						align={Enum.TextXAlignment.Center}
-						text={str(hintKey, { key: PAUSE_HINT[keyDevice(device)] })}
-					/>
+				render={(layout) => (
+					<Panel
+						width={HUD_VIEW.panelWidth}
+						align={Enum.HorizontalAlignment.Center}
+						padding={HUD_VIEW.pad * 2}
+						skin={screenSkin("pause")}
+						ornament={layout.ornament}
+					>
+						<Text
+							fill={true}
+							order={1}
+							size={HUD_VIEW.bigText}
+							color="uiAccent"
+							align={Enum.TextXAlignment.Center}
+							text={str(coop ? MENU_STRINGS.coopTitle : HUD_STRINGS.paused)}
+						/>
+						{body}
+						{screenDividers("pause") ? (
+							<Divider key="Divider" order={17} skin={screenSkin("pause")} />
+						) : undefined}
+						{s.weapons.size() > 0 && !touch ? (
+							<Text
+								fill={true}
+								order={18}
+								size={HUD_VIEW.smallText}
+								color="uiTextDim"
+								align={Enum.TextXAlignment.Center}
+								text={str(HUD_STRINGS.weaponSwap, { key: swapHint(bindings)[keyDevice(device)] })}
+							/>
+						) : undefined}
+						<RunInfoLine order={19} />
+						{touch ? undefined : (
+							<Text
+								fill={true}
+								order={20}
+								size={HUD_VIEW.smallText}
+								color="uiTextDim"
+								align={Enum.TextXAlignment.Center}
+								text={str(hintKey, { key: PAUSE_HINT[keyDevice(device)] })}
+							/>
+						)}
+					</Panel>
 				)}
-			</Panel>
+			/>
 		</frame>
 	);
 }

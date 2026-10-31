@@ -14,10 +14,11 @@ import { SFX } from "shared/view/audio";
 import { leaderboardHint, keyDevice } from "shared/play";
 import { HUD_VIEW, LEADERBOARD_STRINGS, LEADERBOARD_VIEW } from "shared/view/hud";
 import { useHudActions } from "./actions";
+import { MenuFit } from "./MenuFit";
 import { MenuButton, Panel, Row, Text } from "./primitives";
-import { screenSkin } from "shared/view/menu";
+import { ScreenDim } from "./ScreenDim";
+import { MENU_FIT, screenSkin } from "shared/view/menu";
 
-const HALF = 0.5;
 const HIDDEN = 1;
 
 const TAB_LABEL: Readonly<Record<LeaderboardBoard, string>> = {
@@ -123,77 +124,77 @@ export function LeaderboardPanel(props: { localUserId: number }) {
 		/>
 	));
 	return (
-		<frame
-			key="LeaderboardOverlay"
-			Size={UDim2.fromScale(1, 1)}
-			BackgroundColor3={role("background")}
-			BackgroundTransparency={HUD_VIEW.overlayTransparency}
-			BorderSizePixel={0}
-		>
-			<Panel
-				position={UDim2.fromScale(HALF, HALF)}
-				anchor={new Vector2(HALF, HALF)}
-				width={LEADERBOARD_VIEW.width}
-				padding={HUD_VIEW.pad * 2}
-				transparency={0}
-				skin={screenSkin("leaderboard")}
-				flatOnly={<uistroke Thickness={1} Color={role("uiAccent")} />}
-				name="Leaderboards"
-			>
-				<Text
-					fill={true}
-					order={1}
-					size={HUD_VIEW.titleText}
-					color="uiAccent"
-					text={str(LEADERBOARD_STRINGS.title)}
-				/>
-				<Row order={2}>{tabs}</Row>
-				{status !== "" ? (
-					<Text fill={true} order={3} size={HUD_VIEW.smallText} color="uiTextDim" text={status} />
-				) : undefined}
-				{rows.size() > 0 ? (
-					<scrollingframe
-						key="Rows"
-						LayoutOrder={4}
-						Size={new UDim2(1, 0, 0, listHeight)}
-						CanvasSize={new UDim2(0, 0, 0, 0)}
-						AutomaticCanvasSize={Enum.AutomaticSize.Y}
-						ScrollBarThickness={LEADERBOARD_VIEW.scrollBarThickness}
-						ScrollBarImageColor3={role("uiTextDim")}
-						BackgroundTransparency={HIDDEN}
-						BorderSizePixel={0}
-						Selectable={false}
+		<frame key="LeaderboardOverlay" Size={UDim2.fromScale(1, 1)} BackgroundTransparency={1} BorderSizePixel={0}>
+			<ScreenDim key="Dim" name="LeaderboardDim" transparency={HUD_VIEW.overlayTransparency} />
+			<MenuFit
+				flex={{ min: MENU_FIT.listMin, max: listHeight }}
+				render={(layout) => (
+					<Panel
+						width={LEADERBOARD_VIEW.width}
+						padding={HUD_VIEW.pad * 2}
+						transparency={0}
+						skin={screenSkin("leaderboard")}
+						flatOnly={<uistroke Thickness={1} Color={role("uiAccent")} />}
+						name="Leaderboards"
 					>
-						<uilistlayout
-							FillDirection={Enum.FillDirection.Vertical}
-							SortOrder={Enum.SortOrder.LayoutOrder}
-							Padding={new UDim(0, HUD_VIEW.gap)}
+						<Text
+							fill={true}
+							order={1}
+							size={HUD_VIEW.titleText}
+							color="uiAccent"
+							text={str(LEADERBOARD_STRINGS.title)}
 						/>
-						{rows.map((r) => (
-							<BoardRow key={`r${r.rank}`} row={r} highlight={r.userId === props.localUserId} />
-						))}
-					</scrollingframe>
-				) : undefined}
-				<Text fill={true} order={5} size={HUD_VIEW.smallText} color="uiText" text={mineLine(view)} />
-				<MenuButton
-					order={6}
-					name="Close"
-					text={str(LEADERBOARD_STRINGS.close)}
-					onActivated={() => {
-						actions.playUi(SFX.uiBack);
-						actions.setLeaderboardOpen(false);
-					}}
-				/>
-				{device === "touch" ? undefined : (
-					<Text
-						fill={true}
-						order={7}
-						size={HUD_VIEW.smallText}
-						color="uiTextDim"
-						text={str(LEADERBOARD_STRINGS.hint, { key: leaderboardHint(bindings)[keyDevice(device)] })}
-					/>
+						<Row order={2}>{tabs}</Row>
+						{status !== "" ? (
+							<Text fill={true} order={3} size={HUD_VIEW.smallText} color="uiTextDim" text={status} />
+						) : undefined}
+						{rows.size() > 0 ? (
+							<scrollingframe
+								key="Rows"
+								LayoutOrder={4}
+								Size={new UDim2(1, 0, 0, layout.flex)}
+								CanvasSize={new UDim2(0, 0, 0, 0)}
+								AutomaticCanvasSize={Enum.AutomaticSize.Y}
+								ScrollBarThickness={LEADERBOARD_VIEW.scrollBarThickness}
+								ScrollBarImageColor3={role("uiTextDim")}
+								BackgroundTransparency={HIDDEN}
+								BorderSizePixel={0}
+								Selectable={false}
+							>
+								<uilistlayout
+									FillDirection={Enum.FillDirection.Vertical}
+									SortOrder={Enum.SortOrder.LayoutOrder}
+									Padding={new UDim(0, HUD_VIEW.gap)}
+								/>
+								{rows.map((r) => (
+									<BoardRow key={`r${r.rank}`} row={r} highlight={r.userId === props.localUserId} />
+								))}
+							</scrollingframe>
+						) : undefined}
+						<Text fill={true} order={5} size={HUD_VIEW.smallText} color="uiText" text={mineLine(view)} />
+						<MenuButton
+							order={6}
+							name="Close"
+							text={str(LEADERBOARD_STRINGS.close)}
+							onActivated={() => {
+								actions.playUi(SFX.uiBack);
+								actions.setLeaderboardOpen(false);
+							}}
+						/>
+						{device === "touch" ? undefined : (
+							<Text
+								fill={true}
+								order={7}
+								size={HUD_VIEW.smallText}
+								color="uiTextDim"
+								text={str(LEADERBOARD_STRINGS.hint, {
+									key: leaderboardHint(bindings)[keyDevice(device)],
+								})}
+							/>
+						)}
+					</Panel>
 				)}
-			</Panel>
+			/>
 		</frame>
 	);
 }
