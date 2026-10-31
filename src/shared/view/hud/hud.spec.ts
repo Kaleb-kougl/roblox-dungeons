@@ -12,7 +12,7 @@ import {
 	mapHint,
 } from "shared/play";
 import { HEALTH_BARS_MODES, HUD_SCALE_PERCENTS, PARTICLES_LEVELS } from "shared/settings";
-import { PLACEHOLDER_MANIFEST, ThemePack } from "shared/theme";
+import { BOON_RARITY_ROLES, PLACEHOLDER_MANIFEST, ThemePack } from "shared/theme";
 import { tutorialStringKeys } from "shared/tutorial";
 import {
 	BINDING_REFUSALS,
@@ -34,6 +34,8 @@ import {
 	bossFraction,
 	progressionStringKeys,
 	PROGRESSION_STRINGS,
+	RARITY_COLOR_ROLES,
+	rarityColorRole,
 	toastFor,
 	comboFraction,
 	computeHudScale,
@@ -131,6 +133,16 @@ describe("HUD helpers", () => {
 		expect(SCORE_SOURCE_KEYS.size()).toBe(9); // ... breakables (docs/DECOR.md D4) appended last
 		expect(pack.str(HUD_STRINGS.combo, { combo: "1.3" })).toBe("x1.3");
 		expect(warnings).toEqual([]);
+	});
+
+	it("boon cards and icons take the boon rarity roles, not the loot ones (docs/DRAFT_REVEAL.md DR3)", () => {
+		expect(RARITY_COLOR_ROLES).toBe(BOON_RARITY_ROLES);
+		expect([rarityColorRole(0), rarityColorRole(1), rarityColorRole(2)]).toEqual([
+			"boon.common",
+			"boon.rare",
+			"boon.legendary",
+		]);
+		expect(rarityColorRole(7)).toBe("boon.common");
 	});
 
 	it("a boost pickup's toast is `{name}: {desc}` of its kind (docs/BOOSTS.md B7), its keys in the pack", () => {

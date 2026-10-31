@@ -39,6 +39,7 @@ rebinding, audio, display). Everything presentation-side reads the sim and never
 | `HealthBarController` | `.../fx/HealthBarController.ts` | Enemy health bars: one pooled BillboardGui per actor slot (64), plate / chip / fill or pips, elite outline. |
 | `DamageNumberController` | `.../fx/DamageNumberController.ts` | Damage numbers: 48 pooled BillboardGuis, merge window, heavy / capped colours, "CAP" tag, rise + fade. |
 | `ComboController` | `.../fx/ComboController.ts` | docs/COMBO.md CB7: each frame steps `ComboDisplay` from `state.score` and `RunView.combo` (gated by the stage cover and run over) and writes `COMBO_UI` (ScorePanel's `ComboRow` / `ComboMeter`); the tier-up floor shout (one SurfaceGui Part, `KV_ComboShout`, under every bullet, ducking near enemy bullets); the break kick (`requestNudge("comboBreak")`); `KV_ComboDebug` forces one event (and its sound). |
+| `DraftRevealController` | `.../fx/DraftRevealController.ts` | docs/DRAFT_REVEAL.md DR6: each frame begins the local player's draft reveal once the stage cover lifts (`StageController.coverLifting()`), steps `DraftReveal` on unpaused frames, picks on the local `boon` run event and writes `DRAFT_UI` (the `DraftOverlay` cards); plays its cues through `AudioController.playCue` and its music dip through `duckFor`; drives SimController's confirm gate (`setDraftRevealDriver`: the confirm is held while the reveal plays or before it begins) and InputController's tap filter (a tap during the reveal skips). `KV_DraftRevealDebug` overrides the first cards' rarities (display only). |
 | `ScorePopController` | `.../fx/ScorePopController.ts` | Scored runs (M2): a rising, fading `+points` BillboardGui per kill (`LiveRun.scorePops`, pooled `ScorePopPool`). |
 | `ParticleController` | `.../fx/ParticleController.ts` | Death bursts, boss waves, roar sparks, hit sparks, breakable chips, boost pickup / fade bursts: pooled 1-3 px Parts, one BulkMoveTo per frame, particle budget. |
 | `FxSpriteController` | `.../fx/FxSpriteController.ts` | Sprite effects (docs/FX_AUDIO.md F3 / F4): the pure `FxCueMapper` turns each frame's FX events, summed sim events and state into one-shot cues (hit marks, swing trails, the guard shield, roll dust, flask, Ember ring, boss phase / slam / death, relic, shrine, death puffs, breakable splinters, boost pickups) and the stairwell loop; pooled floor-flat SurfaceGuis (or billboards) flip through the theme's `fx.*` flipbooks on the hitstop clock, budgeted by the particle level. Builds nothing without `fx.*` art (today). See "Sprite effects". |
@@ -719,6 +720,7 @@ is open, and only one of the Options screen / leaderboard panel is open at a tim
 | `KV_PlayerOutline` | boolean | Player outline (docs/PLAYER_OUTLINE.md): `false` hides the watched player's rim (sprite and Highlight). Unset or `true`: on (the Options setting still applies). Presentation only. |
 | `KV_EnemyOutline` | boolean | Enemy outlines (docs/OUTLINE.md): `false` hides the Highlight and every sprite rim at once (toggles live, no reparenting). Unset or `true`: on. Presentation only. |
 | `KV_DecorDebug` | boolean | Draws the decor debug overlay: fade boxes, footprint stencils, breakable cells (toggles at once). Off by default. |
+| `KV_DraftRevealDebug` | string | Draft reveal (docs/DRAFT_REVEAL.md): `c` / `r` / `l` letters (or names), comma separated, e.g. `c,l,r`, `l,l`: every draft's reveal gives its first cards these rarities (art, glow, beat and sounds); the real offers, their text and the pick are unchanged. Off by default. |
 | `KV_Tutorial` | boolean | Read once on join (not on R). `true`: the join starts the tutorial whatever the server says (the server is not asked; no main menu first); `false`: never (the normal join flow at once: the main menu, or `KV_SkipMenu`'s solo run). Unset: the server's `onboardingStatus` decides. Server side, `KV_ResetOnboarding` (docs/SERVER.md) resets the stored flag instead. |
 
 If the `game` world cannot start (e.g. a build without the actor archetypes: "Unknown archetype"), the client falls
@@ -1264,6 +1266,18 @@ server or `KV_Tutorial` = true on Workspace. Client-side checks first (this code
    the enemy the centre ring would hit.
 6. Device: spectate Next / Prev in a co-op run after a death; left-handed (mirrored controls); touch sizes 80 % and 120
    %.
+
+### Draft reveal (docs/DRAFT_REVEAL.md DR9; not run in Studio yet)
+
+1. Endless floor 1 -> 2: the backs rise as the floor card fades, flip one by one (climbing clicks); attack mashed
+   through the card picks nothing; one press during the flips skips; the hint reads wait until settled.
+2. `KV_DraftRevealDebug` = `c,l,r`: the centre card's charge (others dim, music dips, tremble, red eyes, gold glow,
+   rising ladder), hush, flare, sting, halo; pick it: the stamp and the pick sound. Then `l,l`, `r`, and a skip mid-charge.
+3. Reduced motion (crossfades, same timing; nothing confirms on the reveal's first frame), touch (a tap mid-reveal
+   skips, a tap after settle picks), gamepad RT, co-op (each client its own reveal, the waiting line), HUD scale 70 %,
+   the tutorial's floor 2 draft, the placeholder pack (flat cards in the boon colours).
+4. Once the six `ui-draft-*.png` are uploaded: the sliced faces, back and skulls crisp at 720 / 1080 / 1440 p, the
+   flip squash on the art, the dim / flash / glow following the card's body.
 
 ### Combo (docs/COMBO.md CB9; not run in Studio yet)
 

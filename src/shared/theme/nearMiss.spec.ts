@@ -192,8 +192,9 @@ describe("nearMiss: strings and audio IDs", () => {
 	});
 
 	it("appends the graze and the parry to the port's audio IDs, silent in the placeholder", () => {
-		const n = PORT_AUDIO_EVENTS.size();
-		expect([PORT_AUDIO_EVENTS[n - 2], PORT_AUDIO_EVENTS[n - 1]]).toEqual(["sfx.player.graze", "sfx.player.parry"]);
+		// right after the combo's two (the draft reveal's five follow, docs/DRAFT_REVEAL.md DR4)
+		const n = (PORT_AUDIO_EVENTS as ReadonlyArray<string>).indexOf("sfx.combo.break") + 1;
+		expect([PORT_AUDIO_EVENTS[n], PORT_AUDIO_EVENTS[n + 1]]).toEqual(["sfx.player.graze", "sfx.player.parry"]);
 		const assets = PLACEHOLDER_MANIFEST.assets as unknown as Obj;
 		for (const id of ["sfx.player.graze", "sfx.player.parry"]) {
 			expect([id, slotFor(id)?.soundGroup, REQUIRED_ASSET_IDS.includes(id), (assets[id] as Obj).kind]).toEqual([

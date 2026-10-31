@@ -170,11 +170,12 @@ describe("sprite contract", () => {
 describe("required IDs and strings", () => {
 	it("has the web build's roster (plus the port's dummy, breakables and boosts), every ID unique and in a slot", () => {
 		// 5 classes + 6 enemies (+ the port's dummy) + 5 bosses + 6 bullets + 12 items + 6 ui + 20 audio events
-		// (+ the port's 2 breakables and their 2 audio events, 32 port audio events (the Demon Lord's sfx.boss.taunt
+		// (+ the port's 2 breakables and their 2 audio events, 37 port audio events (the Demon Lord's sfx.boss.taunt
 		// the 21st, the boost drops' four after it, then the room clear celebration's three (docs/ROOM_CLEAR.md RC4), the
-		// combo's two (docs/COMBO.md CB3) and the near misses' two (docs/GRAZE_PARRY.md GP3)), 5 ambience beds and 4 boost
-		// drops).
-		expect(REQUIRED_ASSET_IDS.size()).toBe(60 + 1 + 2 + 2 + 32 + 5 + 4);
+		// combo's two (docs/COMBO.md CB3), the near misses' two (docs/GRAZE_PARRY.md GP3) and the draft reveal's five
+		// (docs/DRAFT_REVEAL.md DR4)), 5 ambience beds and 4 boost drops). The draft's card art (draftSkinIds) is
+		// optional, so not here.
+		expect(REQUIRED_ASSET_IDS.size()).toBe(60 + 1 + 2 + 2 + 37 + 5 + 4);
 		expect(AUDIO_EVENTS.size()).toBe(20);
 		expect(new Set(REQUIRED_ASSET_IDS).size()).toBe(REQUIRED_ASSET_IDS.size());
 		for (const id of REQUIRED_ASSET_IDS) {

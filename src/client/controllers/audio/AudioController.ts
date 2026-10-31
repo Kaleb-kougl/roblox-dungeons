@@ -274,6 +274,27 @@ export class AudioController implements OnStart {
 	}
 
 	/**
+	 * A UI cue played outside the mapper's frame (the boon draft reveal's sounds, DraftRevealController; docs/
+	 * DRAFT_REVEAL.md DR6), at `volume` x its volume and `speed` (PlaybackSpeed; 0 = the pack's jitter). No minimum
+	 * interval: the reveal already spaces its own cues (the charge rungs 0.07 s apart, the flips 0.22 s), and every cue
+	 * due in one long frame (a hitch, a low frame rate) must still play, each once (the ID's AUDIO_VIEW.voicesPerSfx
+	 * pooled voices take same-frame repeats: a reveal step is at most DRAFT_REVEAL.maxFrameDtSec, 0.1 s, so at most two
+	 * charge rungs share one). A
+	 * silent ID plays its fallback or nothing. `sfx.draft.legendary` ducks the music itself (DUCKING_SFX).
+	 */
+	playCue(id: string, volume: number, speed: number): void {
+		this.play(id, volume, speed);
+	}
+
+	/**
+	 * Dips the music group to AUDIO_VIEW.duck.level for `seconds` from now (MusicDuck; a longer hold already running
+	 * wins): the draft reveal's legendary charge and hush (DR6).
+	 */
+	duckFor(seconds: number): void {
+		if (seconds > 0) this.duck.trigger(os.clock(), seconds);
+	}
+
+	/**
 	 * Plays one sound effect by logical ID at `scale` x its volume: the next clip of its pool, at `speed` when it is
 	 * > 0 (the combo's kill ladder and tier sting, docs/COMBO.md CB4, the graze chain and the parry, docs/GRAZE_PARRY.md
 	 * GP6: an exact PlaybackSpeed, no jitter), else at a

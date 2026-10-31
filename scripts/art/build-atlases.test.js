@@ -967,3 +967,156 @@ describe("per-sheet cells", () => {
 		assert.equal(A.cellsMode("x", {}), "set");
 	});
 });
+
+describe("sheet cuts and 9-sliced panels (docs/DRAFT_REVEAL.md DR3)", () => {
+	const GREY = (v) => [v, v, v, 255];
+	const FRAME = [70, 36, 36, 255];
+	const pixel = (img, x, y) => Array.from(img.data.slice((y * img.w + x) * 4, (y * img.w + x) * 4 + 4));
+	const quiet = (fn) => {
+		const log = console.log;
+		console.log = () => undefined;
+		try {
+			return fn();
+		} finally {
+			console.log = log;
+		}
+	};
+	// A 40 x 30 sheet with two pieces: a 10 x 8 framed panel at (4, 5) whose fill is a grey ramp (noise), and a faint
+	// alpha-1 pixel next to it; another opaque blob at (25, 20) the rect must leave out.
+	const sheet = () => {
+		const img = A.raster(40, 30);
+		for (let y = 0; y < 8; y++) {
+			for (let x = 0; x < 10; x++) put(img, 4 + x, 5 + y, x === 0 || y === 0 || x === 9 || y === 7 ? FRAME : GREY(28 + ((x + y) % 4)));
+		}
+		put(img, 14, 9, [255, 255, 0, 1]);
+		for (let y = 20; y < 24; y++) for (let x = 25; x < 30; x++) put(img, x, y, LIT);
+		A.sourceCache.set("synthetic/sheet.png", img);
+		return img;
+	};
+	const panel = (extra) => ({ file: "synthetic/sheet.png", name: "panel", rect: [3, 4, 13, 11], crop: "alpha", noiseAlpha: 10, pad: 0, ...extra });
+
+	it("rect: crop alpha trims the window to its opaque pixels (faint noise cleared, the other piece left out)", () => {
+		sheet();
+		const [img] = A.buildImages({ "ui.panel.test": panel() }, []);
+		assert.deepEqual(img.layout, { file: "panel.png", w: 10, h: 8 });
+		assert.deepEqual(pixel(img.img, 0, 0), FRAME);
+		assert.deepEqual(pixel(img.img, 1, 1), GREY(30));
+		// crop "none" keeps the window as it is: 13 x 11 from (3, 4), the faint pixel cleared by noiseAlpha
+		const [none] = A.buildImages({ "ui.none.test": panel({ crop: "none" }) }, []);
+		assert.deepEqual([none.layout.w, none.layout.h], [13, 11]);
+		assert.equal(alphaAt(none.img, 11, 5), 0);
+		assert.deepEqual(pixel(none.img, 1, 1), FRAME);
+		// a window outside the file fails
+		assert.throws(() => A.buildImages({ "ui.bad.test": panel({ rect: [30, 20, 20, 5] }) }, []), /ui\.bad\.test: rect \[30,20,20,5\] must be \[x, y, w, h\].*inside the 40x30 image/);
+	});
+
+	it("slice passes into the layout as insets and must leave a centre", () => {
+		sheet();
+		const [img] = A.buildImages({ "ui.panel.test": panel({ slice: [1, 1, 1, 1] }) }, []);
+		assert.deepEqual(img.layout.slice, { left: 1, top: 1, right: 1, bottom: 1 });
+		const text = A.layoutModule([], [img], "#000000");
+		assert.match(text, /"ui\.panel\.test": \{[^}]*slice: \{ left: 1, top: 1, right: 1, bottom: 1 \}/);
+		assert.match(text, /\tslice\?: SliceInsets;/);
+		assert.match(text, /import type \{ HexColor, Pivot, SliceInsets, SpriteSetAsset \} from "\.\.\/\.\.\/types";/);
+		// left + right = w, top + bottom = h, negatives, fractions, wrong length
+		assert.throws(() => A.buildImages({ "ui.w.test": panel({ slice: [5, 1, 5, 1] }) }, []), /ui\.w\.test: slice \[5,1,5,1\] leaves no centre in the 10x8 image/);
+		assert.throws(() => A.buildImages({ "ui.h.test": panel({ slice: [1, 4, 1, 4] }) }, []), /leaves no centre/);
+		for (const bad of [[-1, 1, 1, 1], [1.5, 1, 1, 1], [1, 1, 1]]) {
+			assert.throws(() => A.buildImages({ "ui.n.test": panel({ slice: bad }) }, []), /slice .* must be \[left, top, right, bottom\], integers >= 0/);
+		}
+		// a centre of exactly 1 x 1 is enough
+		const [thin] = A.buildImages({ "ui.thin.test": panel({ slice: [4, 3, 5, 4] }) }, []);
+		assert.deepEqual(thin.layout.slice, { left: 4, top: 3, right: 5, bottom: 4 });
+		// no slice: no key
+		assert.equal("slice" in A.buildImages({ "ui.panel.test": panel() }, [])[0].layout, false);
+	});
+
+	it('centre "flat" fills the slice centre with its rounded mean colour; the frame is untouched', () => {
+		sheet();
+		const [img] = A.buildImages({ "ui.panel.test": panel({ slice: [1, 1, 1, 1], centre: "flat" }) }, []);
+		// the 8 x 6 centre: greys 28 + (x + y) % 4 for x 1..8, y 1..6 -> sum / 48, rounded
+		let sum = 0;
+		for (let y = 1; y <= 6; y++) for (let x = 1; x <= 8; x++) sum += 28 + ((x + y) % 4);
+		const mean = Math.floor((2 * sum + 48) / 96);
+		for (let y = 1; y <= 6; y++) for (let x = 1; x <= 8; x++) assert.deepEqual(pixel(img.img, x, y), GREY(mean));
+		for (const [x, y] of [[0, 0], [9, 0], [0, 7], [9, 7], [4, 0], [0, 3]]) assert.deepEqual(pixel(img.img, x, y), FRAME);
+		assert.equal(A.flatFill("t", (() => { const r = A.raster(3, 3); r.data.fill(255); return r; })(), { left: 1, top: 1, right: 1, bottom: 1 })[0], 255);
+	});
+
+	it("flatBoxes fill their boxes with one mean, must cover the centre and hold only opaque pixels", () => {
+		sheet();
+		// a 1 x 1 centre at (4, 3); boxes: the row y 3 and the column x 4 inside the frame (the stretched lines)
+		const def = panel({ slice: [4, 3, 5, 4], centre: "flat", flatBoxes: [[1, 3, 8, 1], [4, 1, 1, 6]] });
+		const [img] = A.buildImages({ "ui.panel.test": def }, []);
+		let sum = 0;
+		let n = 0;
+		for (let x = 1; x <= 8; x++) (sum += 28 + ((x + 3) % 4)), n++;
+		for (let y = 1; y <= 6; y++) if (y !== 3) (sum += 28 + ((4 + y) % 4)), n++;
+		const mean = GREY(Math.floor((2 * sum + n) / (2 * n)));
+		for (let x = 1; x <= 8; x++) assert.deepEqual(pixel(img.img, x, 3), mean);
+		for (let y = 1; y <= 6; y++) assert.deepEqual(pixel(img.img, 4, y), mean);
+		assert.deepEqual(pixel(img.img, 1, 1), GREY(30)); // outside the boxes: unchanged
+		assert.throws(() => A.buildImages({ "ui.c.test": panel({ slice: [1, 1, 1, 1], centre: "flat", flatBoxes: [[1, 1, 2, 2]] }) }, []), /ui\.c\.test: flatBoxes leave the slice centre's pixel \(3, 1\) unfilled/);
+		const clear = A.raster(4, 4);
+		for (let i = 0; i < 16; i++) if (i !== 5) clear.data.set(GREY(30), i * 4);
+		assert.throws(() => A.flatFill("ui.a.test", clear, { left: 1, top: 1, right: 1, bottom: 1 }), /ui\.a\.test: flat box pixel \(1, 1\) is not opaque/);
+		assert.throws(() => A.buildImages({ "ui.s.test": panel({ centre: "flat" }) }, []), /ui\.s\.test: centre "flat" needs a slice/);
+		assert.throws(() => A.buildImages({ "ui.b.test": panel({ flatBoxes: [[1, 1, 1, 1]] }) }, []), /ui\.b\.test: flatBoxes needs centre "flat"/);
+		assert.throws(() => A.buildImages({ "ui.o.test": panel({ slice: [1, 1, 1, 1], centre: "smear" }) }, []), /centre must be "flat"/);
+	});
+
+	it("cutout keeps what a closed outline encloses (a diagonal step still closes) and clears the rest", () => {
+		// 9 x 9: a diamond-ish outline of black pixels (8-connected), filled with grey, on a red panel
+		const img = A.raster(9, 9);
+		for (let i = 0; i < 81; i++) img.data.set([52, 12, 12, 255], i * 4);
+		const ring = [[4, 1], [3, 2], [5, 2], [2, 3], [6, 3], [2, 4], [6, 4], [2, 5], [6, 5], [3, 6], [5, 6], [4, 7]];
+		for (const [x, y] of ring) put(img, x, y, [0, 0, 0, 255]);
+		for (const [x, y] of [[4, 2], [3, 3], [4, 3], [5, 3], [3, 4], [4, 4], [5, 4], [3, 5], [4, 5], [5, 5], [4, 6]]) put(img, x, y, GREY(35));
+		A.cutoutPixels(img, 0);
+		const kept = [];
+		for (let y = 0; y < 9; y++) for (let x = 0; x < 9; x++) if (alphaAt(img, x, y) > 0) kept.push(`${x},${y}`);
+		assert.equal(kept.length, ring.length + 11);
+		for (const [x, y] of ring) assert.ok(kept.includes(`${x},${y}`));
+		assert.equal(alphaAt(img, 0, 0), 0);
+		assert.equal(alphaAt(img, 3, 1), 0); // outside the diagonal step
+		// through buildImages, with an explicit [x, y] pivot
+		A.sourceCache.set("synthetic/skull.png", (() => {
+			const s = A.raster(9, 9);
+			s.data.set(img.data);
+			for (let i = 0; i < 81; i++) if (s.data[i * 4 + 3] === 0) s.data.set([52, 12, 12, 255], i * 4);
+			return s;
+		})());
+		const def = { file: "synthetic/skull.png", name: "skull", crop: "none", cutout: { outlineRgb: 0 }, pivot: [2, 3] };
+		const [skull] = A.buildImages({ "ui.skull.test": def }, []);
+		assert.deepEqual(skull.layout, { file: "skull.png", w: 9, h: 9, pivot: { x: 2, y: 3 } });
+		assert.equal(alphaAt(skull.img, 0, 0), 0);
+		assert.equal(alphaAt(skull.img, 4, 4), 255);
+		assert.throws(() => A.buildImages({ "ui.p.test": { ...def, pivot: [10, 3] } }, []), /ui\.p\.test: pivot \[10,3\] must be \[x, y\] inside the 9x9 image/);
+		assert.throws(() => A.buildImages({ "ui.k.test": { ...def, cutout: { outlineRgb: 300 } } }, []), /cutout\.outlineRgb must be an integer 0-255/);
+	});
+
+	it("mask: white on transparent where the pixels are dark enough inside the boxes, same size as the cut", () => {
+		sheet();
+		const src = A.sourceCache.get("synthetic/sheet.png");
+		// two "sockets" in the panel, one outside the box
+		put(src, 6, 7, [0, 0, 0, 255]);
+		put(src, 7, 7, [0, 0, 0, 255]);
+		put(src, 11, 9, [0, 0, 0, 255]);
+		const [back, eyes] = quiet(() =>
+			A.buildImages({ "ui.back.test": panel({ slice: [4, 3, 5, 4] }), "ui.back.test.eyes": panel({ slice: [4, 3, 5, 4], mask: { maxRgb: 0, boxes: [[0, 0, 5, 8]] } }) }, []),
+		);
+		assert.deepEqual([eyes.layout.w, eyes.layout.h, eyes.layout.slice], [back.layout.w, back.layout.h, back.layout.slice]);
+		const white = [];
+		for (let y = 0; y < eyes.img.h; y++) for (let x = 0; x < eyes.img.w; x++) if (alphaAt(eyes.img, x, y) > 0) white.push(`${x},${y}`);
+		assert.deepEqual(white, ["2,2", "3,2"]); // (6, 7) and (7, 7) on the sheet; (11, 9) is outside the box
+		assert.deepEqual(pixel(eyes.img, 2, 2), [255, 255, 255, 255]);
+		// without boxes: every dark pixel
+		const [all] = A.buildImages({ "ui.all.test": panel({ mask: { maxRgb: 0 } }) }, []);
+		assert.equal(all.img.data.filter((v, i) => i % 4 === 3 && v > 0).length, 3);
+		assert.throws(() => A.buildImages({ "ui.m.test": panel({ slice: [1, 1, 1, 1], centre: "flat", mask: { maxRgb: 0 } }) }, []), /ui\.m\.test: a mask has no centre to flatten/);
+		assert.throws(() => A.buildImages({ "ui.m.test": panel({ mask: { maxRgb: 0, boxes: [[0, 0, 11, 1]] } }) }, []), /mask box \[0,0,11,1\] must be/);
+		// deterministic
+		const [again] = A.buildImages({ "ui.back.test.eyes": panel({ slice: [4, 3, 5, 4], mask: { maxRgb: 0, boxes: [[0, 0, 5, 8]] } }) }, []);
+		assert.equal(Buffer.compare(A.encodePng(again.img), A.encodePng(eyes.img)), 0);
+	});
+});

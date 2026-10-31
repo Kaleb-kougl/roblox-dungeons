@@ -103,3 +103,20 @@ SOFTWARE.
 - License: Pixabay Content License (https://pixabay.com/service/license-summary/): free for commercial and
   non-commercial use, no attribution required, modification allowed; the content may not be sold or distributed on
   its own (unmodified, as a standalone file), which is why the raw file is kept out of the repo.
+
+## UI User Interface Pack - Horror
+
+- Author: ToffeeCraft. Source: https://toffeecraft.itch.io/ui-user-interface-pack-horror ("a 32x32 pixel horror UI
+  pack": panels, buttons, skulls, candles, bones, eyes, potions, icons, a pixel font; name your own price). Two
+  downloads: `FreeHorrorUi.png.zip` (free) and `UiHorror.png.zip` ($1.80 or more); the build reads the paid file, the
+  one sheet `UiHorror.png` (1024x607 RGBA). The owner holds the paid tier (2026-10-30).
+- Used for: the boon draft cards (docs/DRAFT_REVEAL.md DR3): the card back (`ui.draft.back` and its eye-socket mask
+  `ui.draft.back.eyes`), the common and rare faces (`ui.draft.card.common` / `.rare`) and the legendary face's two
+  red-eyed skulls (`ui.draft.skull.left` / `.right`), cut from the sheet (cropped, the panel fill flattened, the
+  skulls cut out of the menu panel, the mask derived) by `scripts/art/build-atlases.js`; only those built images are
+  uploaded to Roblox. The three `boon.*` colour roles take the sheet's colours.
+- Raw file: `art/vendor/toffeecraft-horror-ui/UiHorror.png` (gitignored, not redistributed).
+- License (store page, recorded 2026-10-30): **Free License** "For personal use. - It can be used and edit freely. -
+  Not redistribute or resell this assets. - It can be used for game development and other productions."; **Paid
+  License** "For commercial or personal use." with the same other terms. No attribution required. A published Roblox
+  experience is not personal use, so the build uses the paid file under the Paid License.

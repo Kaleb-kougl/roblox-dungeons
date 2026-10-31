@@ -42,7 +42,7 @@ Record every ported module in `PROVENANCE.md` (ported module, source path, sourc
 | `docs/MOBILE.md` | Mobile play (two-stick touch controls with auto-target, touch HUD, touch menus / tutorial, real-device performance): plan, tasks MB0-MB16, decisions MBD1-MBD10. Step-by-step build: `docs/MOBILE_IMPL.md` (MB1-MB13) |
 | `docs/ROOM_CLEAR.md` | Room clear celebration (1.5 s: 0.5x slow motion on the last kill, CLEAR / PERFECT stamp, room score tally rolling into the score panel, a corner chip for a far co-op clear, On / Off setting; presentation only): plan, tasks RC0-RC10, decisions RCD1-RCD18. Step-by-step build: `docs/ROOM_CLEAR_IMPL.md` (RC1-RC9) |
 | `docs/COMBO.md` | Combo you chase (named tiers x2 Rampage / x3 Carnage / x4 Dominating / x5 Unstoppable, tier-coloured meter, kill sound climbing in pitch, tier-up sting and a floor shout that never hides bullets, a shatter on a break during a fight, a quiet lapse otherwise; presentation only): plan, tasks CB0-CB9, decisions CD1-CD16 |
-| `docs/DRAFT_REVEAL.md` | Boon draft reveal (cards deal face down and flip one by one, a rare chime, a legendary beat: charge, hush, flare and halo; a pick stamp; skip by pressing; the client holds the confirm until settled; cards in the dark UI sheet's style; presentation and client input only): plan, tasks DR0-DR9, decisions DRD1-DRD12 |
+| `docs/DRAFT_REVEAL.md` | Boon draft reveal (cards deal face down and flip one by one, a rare chime, a legendary beat: charge, hush, flare and halo; a pick stamp; skip by pressing; the client holds the confirm until settled; cards in the ToffeeCraft Horror UI sheet's style; presentation and client input only): plan, tasks DR0-DR9, decisions DRD1-DRD12 |
 | `docs/ENEMY_VARIANTS.md` | Enemy variants (three new endless archetypes: Imp flanker, Ooze zone-denier that splits, Summoner support; elite affixes Hulking / Swift / Shielded / Vengeful; both unlock by depth): plan, tasks EV0-EV14, decisions EVD1-EVD12 |
 | `docs/GRAZE_PARRY.md` | Grazes and parries (graze spark + shimmer climbing in pitch, parry sparks / ring-out / PARRY! floor flash / solo 30 ms freeze for a guard that erases bullets; one unhashed ScoreEvents feed, otherwise presentation only): plan, tasks GP0-GP10, decisions GPD1-GPD10 |
 | `docs/UI_ART.md` | UI art (the dark red pixel UI sheet: 9-sliced panels / buttons, hearts, potions, pills, icons, focus brackets; menus, then the in-run HUD, then touch; presentation only): builds on the Draft reveal branch (`slice`, `SlicedImage`): plan, tasks UA0-UA15, decisions UAD1-UAD10 |
@@ -297,8 +297,22 @@ Decision log (deviations from `PLAN.md`):
   shout's construction, 1.2 tiles screen-down, solo 30 ms freeze through the hitstop clock) and AudioController (its
   whole sound frame now runs as that subscriber). Theme: colour roles `nearMiss.graze` / `.parry` (`nearMissReport`),
   strings `fx.parry.text` / `.count`, port audio IDs `sfx.player.graze` / `sfx.player.parry` (SILENT in the
-  placeholder; a silent parry leaves today's deflect untouched). contract.luau / validate.luau sit at 193 of Luau's
-  200 top-level locals. Scored runs only. No setting. Debug `KV_ParryDebug`. Clips uploaded 2026-10-30 (vale graze Magic5, parry Bonus); Studio check pending.
+  placeholder; a silent parry leaves today's deflect untouched). contract.luau / validate.luau sit at 196 / 200 of
+  Luau's 200 top-level locals with the draft reveal merged (counted as written; `checkSlice` is a closure in
+  `validateAsset` to stay there). Scored runs only. No setting. Debug `KV_ParryDebug`. Clips uploaded 2026-10-30 (vale graze Magic5, parry Bonus); Studio check pending.
+
+- **Draft reveal (docs/DRAFT_REVEAL.md).** Presentation and client input only (no sim, dungeon, lockstep, hash, replay or
+  fixture change). The boon draft's cards deal face down and flip one by one (`DraftReveal`, pure, in shared/view/hud);
+  rare cards chime, a legendary flips last after a charge (others dim, music dips, the back's skull eyes light, a
+  pitch-up ladder of `sfx.draft.charge`), a hush and a flare, then keeps a halo; a press skips; a pick stamps. The
+  client holds the confirm (`DraftRevealGate`, shared/play) while the reveal plays or before it has begun for an open
+  local draft (the sim's `DRAFT_MIN_OPEN_TICKS` is untouched: the sim just sees the press later). Theme: three required
+  roles `boon.common` / `.rare` / `.legendary` (`BOON_RARITY_ROLES`, `boonRarityReport`; `RARITY_COLOR_ROLES` uses them
+  instead of the loot `rarity.*`), five port audio IDs `sfx.draft.*` (SILENT in the placeholder), ui images may carry
+  `slice` (ui.* only), optional `draftSkinIds()` cut from the ToffeeCraft Horror UI sheet (paid licence,
+  `THIRD_PARTY_NOTICES.md`) by new `images` options (`rect`, `cutout`, `slice`, `centre: "flat"`, `flatBoxes`, `mask`).
+  `contract.luau` / `validate.luau` are at 196 / 200 top-level locals with grazes and parries merged. Debug `KV_DraftRevealDebug`. No setting. Studio check, art upload and
+  sounds pending.
 
 ## Commands
 

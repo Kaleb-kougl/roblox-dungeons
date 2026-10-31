@@ -14,6 +14,7 @@ import {
 	ENEMY,
 	boostId,
 	decorFxId,
+	draftSkinIds,
 	parseDecorId,
 	requiredBaseAnimations,
 	type BiomeId,
@@ -1390,6 +1391,92 @@ describe("vale decor has no gemstones (docs/BOOST_ART.md decision 2)", () => {
 		expect([...VALE_RETIRED_WORLD_ART]).toEqual(["gems-blue", "gems-green", "gems-red", "gems-white"]);
 		for (const name of VALE_RETIRED_WORLD_ART) {
 			expect([name, VALE_WORLD_LAYOUTS[name] !== undefined]).toEqual([name, true]);
+		}
+	});
+});
+
+describe("vale draft skin (docs/DRAFT_REVEAL.md DR3: the ToffeeCraft Horror UI sheet's panels and skulls)", () => {
+	const ids = draftSkinIds();
+	const fileOf = (id: string) => VALE_IMAGE_LAYOUTS[id].file;
+
+	it("has a layout per draft id: the sliced panels, the eyes registered on the back, the skulls with pivots", () => {
+		expect(VALE_IMAGE_LAYOUTS["ui.draft.back"]).toEqual({
+			file: "ui-draft-back.png",
+			w: 93,
+			h: 45,
+			slice: { left: 46, top: 20, right: 46, bottom: 24 },
+		});
+		// the mask is the back's size and slice, so drawn over it with the same slice the sockets land on the back's
+		const back = VALE_IMAGE_LAYOUTS["ui.draft.back"];
+		expect(VALE_IMAGE_LAYOUTS["ui.draft.back.eyes"]).toEqual({ ...back, file: "ui-draft-back-eyes.png" });
+		expect(VALE_IMAGE_LAYOUTS["ui.draft.card.common"]).toEqual({
+			file: "ui-draft-card-common.png",
+			w: 90,
+			h: 44,
+			slice: { left: 6, top: 6, right: 6, bottom: 6 },
+		});
+		expect(VALE_IMAGE_LAYOUTS["ui.draft.card.rare"]).toEqual({
+			file: "ui-draft-card-rare.png",
+			w: 87,
+			h: 61,
+			slice: { left: 43, top: 30, right: 43, bottom: 30 },
+		});
+		expect(VALE_IMAGE_LAYOUTS["ui.draft.skull.left"]).toEqual({
+			file: "ui-draft-skull-left.png",
+			w: 17,
+			h: 18,
+			pivot: { x: 3, y: 5 },
+		});
+		expect(VALE_IMAGE_LAYOUTS["ui.draft.skull.right"]).toEqual({
+			file: "ui-draft-skull-right.png",
+			w: 17,
+			h: 18,
+			pivot: { x: 14, y: 5 },
+		});
+		const draftLayouts = sortedKeys(VALE_IMAGE_LAYOUTS).filter((id) => startsWith(id, "ui.draft."));
+		expect(draftLayouts).toEqual([...ids]);
+	});
+
+	it("before their files have IDs: absent (the overlay's flat card), never a placeholder", () => {
+		for (const m of [VALE_MANIFEST, buildValeManifest(fakeIds(...ids.map(fileOf))), buildValeManifest({})]) {
+			expect(validateManifest(m, { packId: "vale" })).toEqual([]);
+			const pack = new ThemePack(m, { warn: quiet });
+			for (const id of ids) {
+				expect([id, m.assets[id]]).toEqual([id, undefined]);
+				expect([id, pack.image(id)]).toEqual([id, undefined]);
+			}
+		}
+	});
+
+	it("each id becomes an image once its own file has an ID, with its slice / pivot", () => {
+		const all = fakeIds();
+		const m = buildValeManifest(all);
+		expect(validateManifest(m, { packId: "vale" })).toEqual([]);
+		const pack = new ThemePack(m, { warn: quiet });
+		for (const id of ids) {
+			const layout = VALE_IMAGE_LAYOUTS[id];
+			const want: Record<string, unknown> = {
+				kind: "image",
+				assetId: all[layout.file],
+				w: layout.w,
+				h: layout.h,
+			};
+			if (layout.slice !== undefined) want.slice = { ...layout.slice };
+			if (layout.pivot !== undefined) want.pivot = { ...layout.pivot };
+			expect([id, m.assets[id]]).toEqual([id, want]);
+			const image = pack.image(id)!;
+			expect([id, image.assetId, image.slice, image.pivot]).toEqual([
+				id,
+				all[layout.file],
+				layout.slice,
+				layout.pivot,
+			]);
+		}
+		// one uploaded file turns on exactly its own id
+		const one = buildValeManifest(fakeIds(...ids.filter((id) => id !== "ui.draft.card.rare").map(fileOf)));
+		expect(validateManifest(one, { packId: "vale" })).toEqual([]);
+		for (const id of ids) {
+			expect([id, one.assets[id]?.kind]).toEqual([id, id === "ui.draft.card.rare" ? "image" : undefined]);
 		}
 	});
 });

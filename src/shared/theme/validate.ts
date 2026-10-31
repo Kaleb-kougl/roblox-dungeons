@@ -44,6 +44,8 @@
  * Roblox port (docs/GRAZE_PARRY.md GP3): the near-miss colour roles (graze spark, parry sparks and PARRY! text) readable
  * on every biome floor (WCAG contrast) and kept away from the enemy-bullet roles and telegraph (CIE76)
  * (NEAR_MISS_COLOR_RULES), `nearMissReport`.
+ * Roblox port (docs/DRAFT_REVEAL.md DR3): the boon rarity colour roles readable on `uiPanel` and apart from the rarity
+ * below them (BOON_RARITY_COLOR_RULES), `boonRarityReport`; ui images may carry a 9-slice `slice` inside the image.
  */
 
 import { colorDifference, contrastRatio, isHexColor, labChroma, mixRgb, parseHex, toHex } from "./color";
@@ -56,6 +58,7 @@ import {
 	BOOST,
 	BOOST_HALO_FX,
 	BOOST_KINDS,
+	BOON_RARITY_COLOR_RULES,
 	BOOST_ROLES,
 	BREAKABLE_ROLES,
 	COMBO_COLOR_RULES,
@@ -1016,6 +1019,71 @@ export function nearMissReport(manifest: unknown): Array<NearMissEntry> {
 	return out;
 }
 
+/**
+ * The boon draft's rarity ladder (docs/DRAFT_REVEAL.md DR3), BOON_RARITY_COLOR_RULES (`rules` below), per role in
+ * rarity order: check "panel" (WCAG contrast on `rules.panel`, >= minPanelContrast), then for every rarity but the
+ * first check "step" (CIE76 from the rarity below it, >= minStepDifference). `value` is the ratio or difference, `limit`
+ * the bar. A role that is missing or not a hex colour is skipped (the colour-role check reports it).
+ */
+export interface BoonRarityEntry {
+	role: string;
+	check: "panel" | "step";
+	color: string;
+	against: string;
+	againstColor: string;
+	value: number;
+	limit: number;
+	ok: boolean;
+}
+
+export function boonRarityReport(manifest: unknown): Array<BoonRarityEntry> {
+	const out = new Array<BoonRarityEntry>();
+	if (!isObj(manifest) || !isObj(manifest.colors)) {
+		return out;
+	}
+	const colors = manifest.colors;
+	const rules = BOON_RARITY_COLOR_RULES;
+	for (let i = 0; i < rules.roles.size(); i++) {
+		const role = rules.roles[i];
+		const color = colors[role];
+		if (!isHexColor(color)) {
+			continue;
+		}
+		const panel = colors[rules.panel];
+		if (isHexColor(panel)) {
+			const value = contrastRatio(color, panel);
+			const limit = rules.minPanelContrast;
+			out.push({
+				role,
+				check: "panel",
+				color,
+				against: rules.panel,
+				againstColor: panel,
+				value,
+				limit,
+				ok: value >= limit,
+			});
+		}
+		const below = i > 0 ? rules.roles[i - 1] : undefined;
+		const belowColor = below !== undefined ? colors[below] : undefined;
+		if (below !== undefined && isHexColor(belowColor)) {
+			const value = colorDifference(color, belowColor);
+			const limit = rules.minStepDifference;
+			out.push({
+				role,
+				check: "step",
+				color,
+				against: below,
+				againstColor: belowColor,
+				value,
+				limit,
+				ok: value >= limit,
+			});
+		}
+	}
+	return out;
+}
+
 /** Is `def` drawn art (an `image` or `sprites` asset), not a placeholder, silent or missing entry? */
 function isArtAsset(def: unknown): boolean {
 	return isObj(def) && (def.kind === "image" || def.kind === "sprites");
@@ -1502,6 +1570,30 @@ export function validateManifest(manifest: unknown, opts: ValidateOptions = {}):
 		}
 	}
 
+	// --- boon rarities read on the panel and apart step to step (docs/DRAFT_REVEAL.md DR3) ------------
+	for (const c of boonRarityReport(manifest)) {
+		if (c.ok) {
+			continue;
+		}
+		if (c.check === "panel") {
+			err(
+				["colors", c.role],
+				`contrast: ${c.role} ${c.color} on ${c.against} ${c.againstColor} is ${fixed2(
+					c.value,
+				)}:1, needs >= ${fixed1(c.limit)}:1: a boon rarity must read on the draft card`,
+			);
+		} else {
+			err(
+				["colors", c.role],
+				`colour difference: ${c.role} ${c.color} vs ${c.against} ${c.againstColor} is ${fixed1(
+					c.value,
+				)} (CIE76), needs >= ${fixed1(
+					c.limit,
+				)}: each boon rarity must read as a new colour after the one below it`,
+			);
+		}
+	}
+
 	// --- boost art needs its halo (docs/BOOST_ART.md BA-P2) ---------------------------------------
 	for (const message of boostHaloProblems(assets)) {
 		err(message.path, message.msg);
@@ -1618,6 +1710,40 @@ function validateAsset(def: unknown, path: Array<string>, slot: SlotContract, er
 
 	const checkAssetId = () => checkAssetIdAt(def.assetId, append(path, "assetId"), err);
 
+	/**
+	 * A ui image's 9-slice insets (docs/DRAFT_REVEAL.md DR3): { left, top, right, bottom }, integers >= 0 in art
+	 * pixels, inside the image with a centre of at least 1 x 1 pixel (left + right < w, top + bottom < h). ui.* only.
+	 * A closure, not a module function: this module's compiled Luau sits at the 200-top-level-locals limit.
+	 */
+	const checkSlice = (slice: unknown, w: unknown, h: unknown, slicePath: Array<string>, inUi: boolean) => {
+		if (!inUi) {
+			err(slicePath, "only ui.* images are 9-sliced");
+			return;
+		}
+		if (!isObj(slice)) {
+			err(slicePath, 'must be { "left": int, "top": int, "right": int, "bottom": int } in art pixels');
+			return;
+		}
+		unknownKeys(slice, slicePath, ["left", "top", "right", "bottom"]);
+		let ok = true;
+		for (const k of ["left", "top", "right", "bottom"]) {
+			if (!isNonNegInt(slice[k])) {
+				err(append(slicePath, k), "must be an integer >= 0 (art pixels)");
+				ok = false;
+			}
+		}
+		if (!ok || !isPosInt(w) || !isPosInt(h)) {
+			return;
+		}
+		const [l, t, r, b] = [slice.left as number, slice.top as number, slice.right as number, slice.bottom as number];
+		if (l + r >= w || t + b >= h) {
+			err(
+				slicePath,
+				`insets ${l} ${t} ${r} ${b} leave no centre in the ${w}x${h} image (left + right < w, top + bottom < h)`,
+			);
+		}
+	};
+
 	switch (kind) {
 		case "placeholder": {
 			unknownKeys(def, path, ["kind"]);
@@ -1628,8 +1754,11 @@ function validateAsset(def: unknown, path: Array<string>, slot: SlotContract, er
 				validateWorldImage(def, path, slot, err, unknownKeys);
 				break;
 			}
-			unknownKeys(def, path, ["kind", "assetId", "w", "h", "tilesPerImage", "pivot"]);
+			unknownKeys(def, path, ["kind", "assetId", "w", "h", "tilesPerImage", "pivot", "slice"]);
 			checkAssetId();
+			if (def.slice !== undefined) {
+				checkSlice(def.slice, def.w, def.h, append(path, "slice"), slot === UI);
+			}
 			const imagePivot = def.pivot;
 			if (imagePivot !== undefined) {
 				const pp = append(path, "pivot");

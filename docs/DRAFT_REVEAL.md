@@ -1,6 +1,10 @@
 # Draft reveal (plan)
 
-Status (2026-10-30): **plan, not started.** Owner answers (2026-10-30): DRD3 (the look and colours come from the dark
+Status (2026-10-30): **DR0-DR8 built on branch `draft-reveal`** (from `main` @ `3900250`), card art included (owner,
+2026-10-30: "do the reveal work on this branch and skin it"); headless checks green (the one failing spec,
+`forge.spec.ts` "EncounterRng ... seedToState", fails the same on `main` in the x86_64 cloud runner: a NaN sign bit).
+**DR9 (owner: Studio check, art upload, sound audition / build / upload) pending.** As-built notes and the changes
+from the plan are in "As built" below. Owner answers (2026-10-30): DRD3 (the look and colours come from the dark
 UI sheet the owner supplied: see "Look" below), DRD5 (legendary flips last: yes), DRD8 (no new setting), DRD11 (the
 charge is a pitch-up, no riser clip). The sheet is **UI User Interface Pack - Horror** by ToffeeCraft
 ([itch.io](https://toffeecraft.itch.io/ui-user-interface-pack-horror)), **paid licence** (the owner has the paid
@@ -72,10 +76,15 @@ ladder climbs in ornament as well as colour, so rarity never rests on colour alo
 | Charge tell | The back's two skull sockets light up red: a white mask of the back's socket pixels, derived by `art:build`, tinted the red-eyed skulls' red | `ui.draft.back.eyes` | the skulls' red (a draw constant) |
 | Flare, halo, rays | Code-drawn rays and flash in candle gold over white | - | `boon.legendary` |
 
-- **Scale:** the panels are 9-sliced to the card's 240 x 150 (the art's corners and studs keep their size; the
-  charcoal centre stretches) at `SliceScale` 2 (one art pixel = 2 reference pixels), `ResampleMode` Pixelated. The
-  ui image contract gains an optional `slice` (SliceCenter, art pixels), carried through `art/atlases.json` `images`
-  and `VALE_IMAGE_LAYOUTS` like `pivot`.
+- **Scale:** the panels are 9-sliced to the card's 240 x 150 (the art's corners and studs keep their size) at
+  `SliceScale` 2 (one art pixel = 2 reference pixels), `ResampleMode` Pixelated. The ui image contract gains an
+  optional `slice` (`{ left, top, right, bottom }` insets in art pixels, ui.* only), carried through
+  `art/atlases.json` `images` (`"slice": [l, t, r, b]`) and `VALE_IMAGE_LAYOUTS` like `pivot`.
+- **Flat centres:** a stretched centre would smear the panels' noise texture into blocks, so the pipeline's
+  `"centre": "flat"` fills each sliced image's centre with its rounded mean colour.
+- **Shared with docs/UI_ART.md** (the whole-UI reskin from the same sheet, planned on `main`): the `slice` field, the
+  flat centre and the `SlicedImage` primitive are the ones that plan builds on (its UAD1 pixel snapping and its
+  `ui-atlas.png` packing come later and replace this branch's per-image files without changing the ids).
 - **Text** stays `HUD_FONT`: the name in the rarity colour, the rarity name, the effect in `uiText`. The sheet's
   pixel font is Later.
 - **Fallback:** every `ui.draft.*` id is an optional port id. The placeholder pack (and vale until uploaded) draws
@@ -165,7 +174,7 @@ is already closed). In co-op, the "waiting for N teammates" line takes its place
 | Port audio IDs `sfx.draft.flip` / `.rare` / `.charge` / `.legendary` / `.pick` in `PORT_AUDIO_EVENTS` (SILENT in the placeholder); `SFX` entries, priorities, `sfx.draft.legendary` in `DUCKING_SFX` and category `jingle`; `art/audio.json` entries | shared/theme contract, packs, shared/view/audio/cues.ts | DR4 |
 | `DRAFT_UI` bindings (per card slot, plus overlay alpha); `DraftCard` gains a back face, the sliced panel per rarity (or the flat fallback), the legendary skulls, the eyes overlay, a flip holder (width from a binding, AnchorPoint centre, text hidden while `width` < 0.9), a glow stroke, a flash frame, a ray ring (behind the card, outside the layout) and a shine gradient; a `SlicedImage` primitive (theme image + `slice` -> ImageLabel `ScaleType.Slice`, `SliceCenter`, `SliceScale`, Pixelated); the overlay hides the selection until settled and stays mounted while `leaving` | client/ui/hud/DraftOverlay.tsx, DraftRays.tsx, primitives | DR5 |
 | `DraftRevealController`: per frame, reads the local draft (`run.players[local]`), the stage phase and pause, begins / steps / skips / picks the reveal, writes `DRAFT_UI`, plays cues (`AudioController.play`), requests the music dip (a new `AudioController.duckFor(seconds)` on `MusicDuck`); exposes `blocksConfirm()` for SimController (solo and co-op input paths, after `coverGate`) and InputController (`queueDraftPick`) | client/controllers/fx/DraftRevealController.ts, SimController, InputController, AudioController | DR6 |
-| `KV_DraftRevealDebug` (Workspace string attribute, e.g. `c,r,l`, `l,l`): the next draft's reveal uses these rarities (display only: the faces stay the real boons); off by default | client controller, `shared/config` debug flags | DR6 |
+| `KV_DraftRevealDebug` (Workspace string attribute, e.g. `c,r,l`, `l,l`): every draft's reveal gives its first cards these rarities (display only: every real offer still shows, the rest keep their real rarity, the text rows stay the real boons); off by default | client controller, `DRAFT_REVEAL_VIEW.debugAttribute` | DR6 |
 
 ### Not changed
 
@@ -184,7 +193,7 @@ Each step is a commit. Specs next to the code; `npm run verify` before each.
   (no setting), DRD11 (the charge pitches up).
 - [x] **DR0b. The pack.** ToffeeCraft, "UI User Interface Pack - Horror", paid tier (owner, 2026-10-30); the sheet is
   `art/vendor/toffeecraft-horror-ui/UiHorror.png`; row in `docs/ART.md`'s packs table.
-- [ ] **DR1. Reveal core.** `draftRevealConfig.ts`, `draftReveal.ts` + spec: `revealOrder` (`[c,l,r]` -> 0, 2, 1;
+- [x] **DR1. Reveal core.** `draftRevealConfig.ts`, `draftReveal.ts` + spec: `revealOrder` (`[c,l,r]` -> 0, 2, 1;
   `[l,l,c]` -> 2, then 0 and 1 together); timelines for 3 commons (settled at 1.07 s, flip cues at +0 / +2 / +4
   semitones), a rare (chime on landing, shine), a legendary in the left column (charge -> hush -> flare, settled at
   ~2.0 s, the duck request, the six charge cues closing in and climbing to +12 semitones, none in the hush, the halo
@@ -192,28 +201,28 @@ Each step is a commit. Specs next to the code; `npm run verify` before each.
   first flip, mid-flip and mid-charge (no charge cue after the skip, the flare and sting still once); pick (stamp,
   leaving, done); reduced motion (crossfade, no tremble / pop / burst, same cue times); `step` with dt 0 and a huge dt
   (clamped, every cue still fires once, in order).
-- [ ] **DR2. Input gate.** `DraftRevealGate` + spec: FIRE masked until settled; a press edge during the reveal ->
+- [x] **DR2. Input gate.** `DraftRevealGate` + spec: FIRE masked until settled; a press edge during the reveal ->
   one skip; the held press stays masked after settle until released; other buttons and the stick pass; a press after
   settle passes on its first frame.
-- [ ] **DR3. Colours and card art.** A `THIRD_PARTY_NOTICES.md` entry for the pack (author, source, the file used,
+- [x] **DR3. Colours and card art.** A `THIRD_PARTY_NOTICES.md` entry for the pack (author, source, the file used,
   what it is used for, the licence wording above, raw files gitignored). The three `boon.*` roles (contract, placeholder, validator rule + spec);
   `RARITY_COLOR_ROLES` -> them. The ui image `slice` field (contract, types, validator, `VALE_IMAGE_LAYOUTS`), the six
   optional `ui.draft.*` ids, the `art/atlases.json` crops with `slice`, the eyes mask (`scripts/art`, node:test spec:
   only the back's socket pixels, white on transparent, same size as the back), `npm run art:build`; vale specs (each
   id falls back until it has an asset id).
-- [ ] **DR4. Audio.** The five IDs (contract, placeholder SILENT, vale), `SFX`, priorities (pick 60, flip 50, rare
+- [x] **DR4. Audio.** The five IDs (contract, placeholder SILENT, vale), `SFX`, priorities (pick 60, flip 50, rare
   55, charge 62, legendary 72: above everything else that can play over a frozen draft), min intervals (flip 0.05),
   `DUCKING_SFX`; mapper / contract / vale specs. `art/audio.json` entries with the DRD11 candidates (`confirmed:
   false`); lock / build / upload are DR9. Note: `contract.luau` sits at Luau's 200-locals limit; the IDs join the
   existing `PORT_AUDIO_EVENTS` array (no new top-level constant).
-- [ ] **DR5. Overlay.** `DRAFT_UI`, `SlicedImage`, the card back and faces (sliced art or the flat fallback), the
+- [x] **DR5. Overlay.** `DRAFT_UI`, `SlicedImage`, the card back and faces (sliced art or the flat fallback), the
   skulls and eyes, flip holder, glow, flash, rays, shine, selection-after-settle, the leaving fade. Touch and HUD scale
   70 % lay out as today.
-- [ ] **DR6. Controller and gate wiring.** `DraftRevealController`, `blocksConfirm()` in both SimController input
+- [x] **DR6. Controller and gate wiring.** `DraftRevealController`, `blocksConfirm()` in both SimController input
   paths and `queueDraftPick`, `AudioController.duckFor`, the debug attribute; `npm run build:place` still builds.
-- [ ] **DR7. Bot check.** The headless tutorial / endless / party bots drive the sim directly and are unaffected; add a
+- [x] **DR7. Bot check.** The headless tutorial / endless / party bots drive the sim directly and are unaffected; add a
   spec that the gate never masks anything once settled, so a bot-like client cannot stall.
-- [ ] **DR8. Docs.** This doc's status and as-built notes, docs/CLIENT.md, the CLAUDE.md decision log.
+- [x] **DR8. Docs.** This doc's status and as-built notes, docs/CLIENT.md, the CLAUDE.md decision log.
 - [ ] **DR9. [owner] Studio check, art and sounds.** The check below. On the Mac, after DR0b: `npm run art:build`,
   upload the six `art/upload/ui-draft-*.png`; `npm run audio:audition` (pick the candidates), `audio:lock`,
   `audio:build`, upload the five `sfx-draft-*.ogg`; ids into `packs/vale/assetIds.ts`, `npm run verify`. Tune
@@ -226,7 +235,7 @@ Each step is a commit. Specs next to the code; `npm run verify` before each.
    reads "wait" until settled.
 2. `KV_DraftRevealDebug = "c,l,r"`: the left and right cards flip, then the centre one charges (others dim, music
    dips, tremble, glow), the hush, the flare and sting; the halo keeps turning; pick it: the stamp and the pick sound.
-3. `"l,l"` with two cards; `"r"` with one; skip during the charge.
+3. `"l,l"` (the first two cards legendary: one shared beat), `"r"`; skip during the charge.
 4. Co-op (two clients): each reveals its own cards; the first to pick sees "waiting for 1 teammate"; a skip on one
    client does not touch the other.
 5. Touch: a tap during the flips skips and does not pick; a tap after settle picks. Gamepad: RT the same.
@@ -238,6 +247,51 @@ Each step is a commit. Specs next to the code; `npm run verify` before each.
    UIScale (studs and trim stay crisp, no seams at the slice lines); the width-squash flip on a sliced ImageLabel (the
    corners squash with it or keep their size: either may look right); the music dip and the jingle duck stacking without a pump; the
    ~2 s legendary reveal not feeling slow by the third run (if it does: shorten the charge, never drop the hush).
+
+## As built (2026-10-30)
+
+| Piece | Where |
+|---|---|
+| `DRAFT_REVEAL` (every timing above), `DRAFT_REVEAL_SFX`; `revealOrder` (beats: `[[0],[2],[1]]` for `c,l,r`; legendaries share the last beat), `chargeLadder()` (6 hits placed back from the charge's end, the last 0.06 s before the hush, volume 0.8 -> 1), `draftTrembleAt` (a step pattern at 15 Hz, frame-rate independent), `parseDraftRevealDebug`; `DraftReveal` (`begin` / `skip` / `pick` / `clear` / `step(dt)`, dt clamped to 0.1 s, one reused `DraftRevealFrame`: per offer index `face`, `width`, `rise`, `alpha`, `textAlpha`, `dim`, `tremble`, `glow`, `eyes`, `flash`, `burst*`, `pop`, `shine`, `halo*`, `stamp`, `drop`; overall `titleAlpha`, `overlayAlpha`, `settled`, `leaving`, `done`, this step's `cues` and `duck`) | shared/view/hud/draftRevealConfig.ts, draftReveal.ts |
+| `DRAFT_SKIN` ids, `DRAFT_REVEAL_VIEW` (art scale 2, text hidden below width 0.9, skull spots, eye red `#5b0000`, art body boxes, glow / flash / shine / rays, `rareArtTextNudgePx`, the debug attribute), pure helpers (slice rects, skull placement, face id per rarity, `draftSlotOffsetX`, `draftBodyBox`, ray angles, shine offset) | shared/view/hud/draftRevealView.ts |
+| `DraftRevealGate` (masks `DRAFT_CONFIRM_BUTTON` while revealing, a press edge = a skip, held until released; `consumeSkip`, `reset`) and the hold rule: the confirm is held while a reveal plays **or while the local draft is open and no reveal has begun for it on this floor**; never for a closed draft or one that is never revealed (tutorial ended, a tutorial floor past `TUTORIAL.lastFloor`) | shared/play/draftGate.ts |
+| Colour roles `BOON_RARITY_ROLES` (`boon.common` #d7d0c0 11.0:1, `boon.rare` #f46669 5.6:1, `boon.legendary` #f1bd44 9.8:1 on `uiPanel`; steps 61.9 / 64.1 CIE76), `BOON_RARITY_COLOR_RULES`, `boonRarityReport` (in `validateManifest`); `RARITY_COLOR_ROLES` = them | shared/theme, shared/view/hud/progression.ts |
+| Ui image `slice` (`SliceInsets`, ui.* only, validated; `ImageRef.slice` through `ThemePack.image`), optional `draftSkinIds()` | shared/theme contract / types / validate, packs/vale manifest |
+| Pipeline: `images` gained a `rect` source window, explicit `[x, y]` pivots, `cutout { outlineRgb }` (keeps what a closed black outline encloses: the skulls), `slice [l, t, r, b]`, `centre: "flat"` and `flatBoxes` (one mean grey through the stretched lines), `mask { maxRgb, boxes }` (the eyes); the sheet is in `art/vendor.lock.json`; `THIRD_PARTY_NOTICES.md` and `art/README.md` rows | scripts/art/build-atlases.js, art/atlases.json |
+| Sound ids `SFX.draftFlip` / `draftRare` / `draftCharge` / `draftLegendary` / `draftPick` (priorities 50 / 55 / 62 / 72 / 60; `sfx.draft.legendary` in `DUCKING_SFX` and `JINGLE_SFX`), five `art/audio.json` entries (`confirmed: false`) | shared/theme, shared/view/audio/cues.ts, art/audio.json |
+| `DRAFT_UI` bindings (write on change), `SlicedImage` primitive (`Panel` `visible` / `transparency` take bindings), `DraftOverlay` (a fixed card row: a ray layer under a cards layer; per card the flip holder, back art or flat back, eyes, face art or flat face, legendary skulls, text, shine, dim, flash, glow and selection; a card drawn larger than its slot is raised), `DraftRays` | client/ui/hud |
+| `DraftRevealController` (FxTracker frame: begins once the cover lifts, steps on unpaused frames, picks on the local `boon` run event, clears on run start / exit / floor change without a draft / tutorial end; cues to `AudioController.playCue`, `duck` to `AudioController.duckFor`); `StageController.coverLifting()`; `SimController` `setDraftRevealDriver` / `gateDraftConfirm` in the solo path (after `coverGate`; not while paused) and the co-op path (after the menu gate and cover / dead masking); `InputController.setDraftTapFilter` (a tap during the reveal skips and is dropped) | client/controllers |
+
+Changes from the plan, found while building (an independent review pass caught the ones marked *review*):
+
+- **DRD13. A pre-begin hold** (*review*). Under reduced motion the stage cover can finish at the start of a render
+  step while the reveal only begins in the FX step, so one frame let a mashed press confirm blind. The confirm is now
+  also held while the local draft is open and its reveal has not begun (above). A press on that frame is masked but
+  does not skip.
+- **DRD14. Card-shaped overlays** (*review*). Full-rect flash / dim would show as boxes over the non-rectangular art.
+  With the art, the dim is the current surface's own sliced image tinted dark; shine, flash, glow and selection sit on
+  the art's opaque body box (measured, `DRAFT_REVEAL_VIEW.body`) with a UICorner. `ImageColor3` only multiplies, so a
+  white silhouette would need baked face masks (Later). The flat fallback is unchanged.
+- **DRD15. Rays in their own layer** (*review*): a legendary's pop (1.25x, 30 px over a 6 px gap) and halo draw in
+  front of its neighbours, the rays behind the whole row.
+- **DRD16. The dip lasts to the flare** (*review*): charge + hush + fast flip + `duckOverlapSec` 0.1, so the music does
+  not climb and duck again under the sting. The reveal's cues bypass the min interval (a hitch could drop a rung).
+- **DRD17. The back is not split**: insets 46 / 20 / 46 / 24 keep both skulls and the chain's loop ends in fixed
+  corners; only the straight rope between them stretches. The rare tab stretches through its flat bar, its rounded ends
+  fixed. Skulls 17 x 18, pivoted on the menu panel's frame corner, overhang the card by 2 art px. On rare-art faces the
+  name row moves down 10 px and the rarity row 6 px (the tab and trim reach 22 px down).
+- **DRD18. Small timing calls.** The reduced-motion crossfade ends where the flip would land (same cue times); a
+  legendary-only draft charges at 0.35 s; the rare stroke flare fades from full over 0.3 s; the halo freezes during the
+  hush; a card past its flip midpoint finishes on a skip and the skip flip sound takes the next ladder step; strokes
+  hide below 5 % width (no line mid-flip).
+- The overlay re-renders only when the draft opens or closes, the waiting count, the device, the bindings or the
+  tutorial flag change; selection and hint come from `DRAFT_UI`.
+
+Studio assumptions to check first (none can be checked headlessly): the flip squash on a sliced ImageLabel narrower
+than its fixed corners (184 / 172 of the card's 240 px); seams or uneven studs at `SliceScale` 2 under a 70 % HUD
+scale; Frame `Rotation` rotating the ray holders' children, unclipped; UIGradient transparency combining with
+`BackgroundTransparency`; UIScale about a centre anchor; hidden slots taking no room in the list layout (the ray layer
+follows `draftSlotOffsetX`); the inset body boxes and UICorner over the art; the music dip and jingle duck together.
 
 ## Decisions
 
@@ -278,5 +332,7 @@ DRD3, DRD5, DRD8 and DRD11 are the owner's answers (2026-10-30); the rest are pr
 
 - The chosen card **flies** to its icon in the owned-items panel and the icon pops.
 - Boon icons on the faces; the sheet's pixel font for the card names.
+- White masks of the faces (like the eyes mask) so the flash and shine follow the art's exact outline.
+- Pixel-snapped `SliceScale` (docs/UI_ART.md UAD1) once that plan lands.
 - A legendary **reroll-proof pity** or odds changes: sim changes (scores and replays change).
 - A per-rarity music sting layer once the music has stems.

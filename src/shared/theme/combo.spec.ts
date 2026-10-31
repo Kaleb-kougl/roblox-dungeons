@@ -263,7 +263,8 @@ describe("combo: strings and audio IDs", () => {
 	});
 
 	it("appends the tier sting and the break to the port's audio IDs, silent in the placeholder", () => {
-		// appended after the room clear's three (docs/GRAZE_PARRY.md GP3's two came after them)
+		// appended after the room clear's three (docs/GRAZE_PARRY.md GP3's two came after them, then
+		// docs/DRAFT_REVEAL.md DR4's five)
 		const i = (PORT_AUDIO_EVENTS as ReadonlyArray<string>).indexOf("sfx.combo.tier");
 		expect([PORT_AUDIO_EVENTS[i - 1], PORT_AUDIO_EVENTS[i], PORT_AUDIO_EVENTS[i + 1]]).toEqual([
 			"sfx.score.land",

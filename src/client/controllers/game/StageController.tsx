@@ -212,6 +212,17 @@ export class StageController implements OnStart, StageDriver {
 		return this.load?.blocksInput() === true;
 	}
 
+	/**
+	 * What is under the cover can be seen: no cover, or the cover fading or gone (StagePhase `revealing` / `done`).
+	 * The boon draft reveal starts on the first such frame (docs/DRAFT_REVEAL.md "Rules", DraftRevealController).
+	 */
+	coverLifting(): boolean {
+		const load = this.load;
+		if (load === undefined) return true;
+		const phase = load.phase();
+		return phase === "revealing" || phase === "done";
+	}
+
 	// --- the load --------------------------------------------------------------------------------
 
 	private begin(kind: StageKind, work: StageWork | undefined, waitServer: boolean): void {
