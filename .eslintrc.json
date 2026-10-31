@@ -17,5 +17,29 @@
 	],
 	"rules": {
 		"prettier/prettier": "warn"
-	}
+	},
+	"overrides": [
+		{
+			"files": ["src/shared/**/*.ts", "src/shared/**/*.tsx", "src/client/**/*.ts", "src/client/**/*.tsx"],
+			"rules": {
+				"no-restricted-imports": [
+					"error",
+					{
+						"patterns": ["server", "server/*"]
+					}
+				]
+			}
+		},
+		{
+			"files": ["src/server/**/*.ts", "src/server/**/*.tsx"],
+			"rules": {
+				"no-restricted-imports": [
+					"error",
+					{
+						"patterns": ["client", "client/*"]
+					}
+				]
+			}
+		}
+	]
 }

@@ -30,6 +30,7 @@ import {
 	TUTORIAL_WORLD_KIND,
 	buildWorldSetup,
 	errorMessage,
+	isEndlessWorld,
 	isValidRunSeed,
 	type EndlessRunFloor,
 	type RunFinal,
@@ -755,8 +756,8 @@ export class SimController implements OnStart {
 		const world = readWorld();
 		// Endless runs always start at floor 1's entrance and never run the stress emitter.
 		const atBossDoor =
-			world !== "endless" && this.debug && Workspace.GetAttribute(RUN_ATTRIBUTES.spawnBoss) === true;
-		const stress = world !== "endless" ? stressTargetFrom(Workspace.GetAttribute(RUN_ATTRIBUTES.stress)) : 0;
+			!isEndlessWorld(world) && this.debug && Workspace.GetAttribute(RUN_ATTRIBUTES.spawnBoss) === true;
+		const stress = !isEndlessWorld(world) ? stressTargetFrom(Workspace.GetAttribute(RUN_ATTRIBUTES.stress)) : 0;
 		const ranked = shouldRequestServerRun({
 			seedAttributeSet: Workspace.GetAttribute(RUN_ATTRIBUTES.seed) !== undefined,
 			worldAttributeSet: Workspace.GetAttribute(RUN_ATTRIBUTES.world) !== undefined,
@@ -775,7 +776,7 @@ export class SimController implements OnStart {
 		const request: StartRunRequest = {
 			requestId: this.startRequests,
 			worldKind: RANKED_WORLD_KIND,
-			atBossDoor: atBossDoor && RANKED_WORLD_KIND !== "endless" ? true : undefined,
+			atBossDoor: atBossDoor && !isEndlessWorld(RANKED_WORLD_KIND) ? true : undefined,
 		};
 		this.awaitingStart = {
 			requestId: this.startRequests,
@@ -1095,7 +1096,8 @@ export class SimController implements OnStart {
 		startNotice: string,
 		tutorial: boolean,
 	): void {
-		const floor = requestedWorld === "endless" || requestedWorld === TUTORIAL_WORLD_KIND ? ENDLESS_FIRST_FLOOR : 0;
+		const floor =
+			isEndlessWorld(requestedWorld) || requestedWorld === TUTORIAL_WORLD_KIND ? ENDLESS_FIRST_FLOOR : 0;
 		this.draftGate.reset();
 		if (this.stage !== undefined) {
 			this.ctx = undefined; // the old run stops here; the new one is built under the cover
@@ -1132,7 +1134,7 @@ export class SimController implements OnStart {
 		// tutorial world is scored by its own config too.)
 		const scoring =
 			!tutorial &&
-			world !== "endless" &&
+			!isEndlessWorld(world) &&
 			runId === undefined &&
 			Workspace.GetAttribute(RUN_ATTRIBUTES.scoring) === true;
 

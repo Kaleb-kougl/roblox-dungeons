@@ -2,6 +2,7 @@
  * Leaderboard tunables (M5). Data only: the pure modules here and LeaderboardService read these (CLAUDE.md "No magic
  * numbers"). docs/SERVER.md "Leaderboards" has the DataStore layout.
  */
+import { KV_EPOCH_UNIX_SECONDS } from "shared/config";
 import { MAX_PARTY_SIZE } from "shared/run";
 
 const SECONDS_PER_MINUTE = 60;
@@ -104,8 +105,8 @@ export interface OrderedValueLayout {
 	readonly epochSeconds: number;
 }
 
-/** 2026-01-01T00:00:00Z. */
-const LEADERBOARD_EPOCH = 1767225600;
+/** 2026-01-01T00:00:00Z (shared/config KV_EPOCH_UNIX_SECONDS: also day 0 of the Daily, shared/daily). */
+const LEADERBOARD_EPOCH = KV_EPOCH_UNIX_SECONDS;
 const TWO_HOURS = 7200;
 
 export const ORDERED_VALUE_LAYOUT: OrderedValueLayout = table.freeze({
