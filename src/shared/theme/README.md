@@ -143,10 +143,13 @@ its cell by `PLACEHOLDER_PROPORTIONS`. Size is `[x width, y height, z depth alon
 | `enemy.sprayer` | Cylinder | 3 x 2.5 x 3 | `enemy.sprayer` | SmoothPlastic, outline `enemyOutline` | squat drum |
 | `enemy.caster` | Capsule | 2.5 x 4 x 2.5 | `enemy.caster` | SmoothPlastic, outline `enemyOutline` | slim capsule |
 | `enemy.summoner` | Cylinder | 3 x 4 x 3 | `enemy.summoner` | SmoothPlastic, outline `enemyOutline` | tall drum |
+| `enemy.imp` | Cone | 2 x 2.5 x 2 | `enemy.imp` | SmoothPlastic, outline `enemyOutline` | small cone (docs/ENEMY_VARIANTS.md EV1) |
+| `enemy.slime` | Dome | 3.5 x 1.75 x 3.5 | `enemy.slime` | SmoothPlastic, outline `enemyOutline` | low dome, the Ooze (EV1) |
 | `boss.1`..`boss.5`, `boss.act1` | Block | 12 x 9 x 12 | `boss` | SmoothPlastic, outline `enemyOutline` | large block |
 | `boss.demonlord` | Block | 9 x 12 x 9 | `boss` | SmoothPlastic, outline `enemyOutline` | tall block (the Demon Lord, docs/BOSS_DEMONLORD.md) |
 | `bullet.enemy.small/medium/large` | Ball | 2 x 2 x 2 | `enemyBullet` | **Neon**, outline `enemyBulletOutline` | centred; scaled to the gameplay radius |
 | `bullet.enemy.needle` | Block | 0.5 x 0.5 x 2 | `enemyBullet` | **Neon**, outline `enemyBulletOutline` | along the velocity |
+| `bullet.enemy.goo` | Cylinder (flat) | 2 x 0.25 x 2 | `enemyGoo` | **Neon**, outline `enemyBulletOutline` | the Ooze's goo puddle, a disc on the floor (EVD5) |
 | `bullet.player.basic` | Block | 0.5 x 0.5 x 2 | `playerBullet` | **Neon**, outline `playerBulletOutline` | thin bolt along the velocity |
 | `bullet.player.heavy` | Block | 1 x 1 x 2 | `playerBullet` | **Neon**, outline `playerBulletOutline` | thicker bolt |
 | `tile.biome.<n>.floor` | Block | 4 x 0.25 x 4 | biome `<n>` floor | SmoothPlastic | 1 px slab |
@@ -161,7 +164,8 @@ its cell by `PLACEHOLDER_PROPORTIONS`. Size is `[x width, y height, z depth alon
 
 Extra IDs under a known prefix (`bullet.enemy.wave`, `item.weapon.axe`, `breakable.urn`) use
 `PLACEHOLDER_PREFIX_DEFAULTS`. `decor.*` has no placeholders: an ID without art is not drawn.
-"Capsule" is not a Roblox PartType: build a Cylinder (axis up) with a Ball at each end. Shapes and materials are
+"Capsule" is not a Roblox PartType: build a Cylinder (axis up) with a Ball at each end. "Diamond", "Cone" and "Dome"
+are not either (a renderer without a case for one draws the plain Block). The other shapes and the materials are
 `Enum.PartType` / `Enum.Material` names.
 
 ## ID naming scheme and contract
@@ -171,9 +175,9 @@ Asset IDs are lowercase, dot-separated, at least two segments; the first segment
 | Prefix | Slot | Kinds | Contract |
 | --- | --- | --- | --- |
 | `class.<class>` | vanguard, ranger, pyromancer, tinkerer, hexblade | spritesheet, sprites, placeholder | 16x24 cells, pivot (8, 23); idle 4, run 6, roll 4, hit 2, death 6; facings down/up/left/right (`sprites`: idle, run, roll, hit, death, >= 1 frame each) |
-| `enemy.<archetype>` | swarmer, sprayer, sniper, bruiser, caster, summoner | spritesheet, sprites, placeholder | 16x16, pivot (8, 15); idle 4, move 4, attack 4, hit 2, death 4; 4 facings (`sprites`: idle, move, attack, hit, death) |
+| `enemy.<archetype>` | swarmer, sprayer, sniper, bruiser, caster, summoner (+ the port's dummy, imp, slime) | spritesheet, sprites, placeholder | 16x16, pivot (8, 15); idle 4, move 4, attack 4, hit 2, death 4; 4 facings (`sprites`: idle, move, attack, hit, death) |
 | `boss.<n>` | boss.1 .. boss.5 (+ the endless bosses `boss.act1`, `boss.demonlord`: `ENDLESS_BOSS_IDS`, not required but in every bundled pack with `<id>.name`) | spritesheet, sprites, placeholder | 48x48, pivot (24, 47); idle 4, move 4, attack 6, hit 2, death 8; no facings (`sprites`: as enemies, + optional `attack.2`, `intro`, `taunt`) |
-| `bullet.enemy.*`, `bullet.player.*` | small, medium, large, needle / basic, heavy | spritesheet, placeholder | 8x8, pivot (4, 4); fly 2 |
+| `bullet.enemy.*`, `bullet.player.*` | small, medium, large, needle, goo / basic, heavy | spritesheet, placeholder | 8x8, pivot (4, 4); fly 2 |
 | `tile.biome.<n>.<floor\|wall>` | biome tiles | image, placeholder | 16x16; with `tilesPerImage` any size up to 1024x1024 |
 | `item.*` | loot icons | image, placeholder | 16x16 |
 | `ui.*` | cursor, panel, icons; optional skin ids `uiSkinIds()` (sliced, `slice`) and `uiIconIds()` (one atlas, `rect`), docs/UI_ART.md | image, placeholder | free size; `slice` (ui only) and `rect` (ui, decor, breakable), never both on a ui image |
@@ -493,6 +497,8 @@ is not a string, a reversed or malformed `pitch` and a negative `minInterval` ar
   flask, swap, deflect, telegraph, boss death, victory) and the A2 additions `sfx.ui.back`, `sfx.ui.move`,
   `sfx.player.finisher`, `sfx.player.charged`, `sfx.room.clear`, `sfx.relic.take`, `sfx.shrine.use`,
   `sfx.stairwell.open`, `sfx.floor.enter`, `sfx.depth.up`, `sfx.jingle.gameover`, `music.tutorial`, `music.lobby`.
+  Later plans append theirs (the Demon Lord's taunt, boosts, room clear, combo, near misses, draft reveal, and the
+  enemy variants' `sfx.enemy.blink` / `.summon` / `.split`, `sfx.affix.shieldbreak` / `.vengeful`).
   `audio.spec.ts` checks every `allAudioIds()` entry is required.
 - **Ambience** (`AMBIENCE` slot, prefix `amb.`): one loop per biome, `amb.b1`..`amb.b5` (`AMBIENCE_IDS`,
   `ambienceId(biome)`; b<n> = `biome.<n>`, the decor biome keys), `sound` or `silent`, through the `sfx` SoundGroup
@@ -585,6 +591,7 @@ readable on every biome.
 | `contract.ts` | sprite contract (v2: `requiredBaseAnimations`, `MAX_IMAGE_SIDE`, `SPRITE_FACING_COUNTS`, `SPRITE_RESAMPLE_MODES`), decor (`DECOR`, `DECOR_KIND_LAYERS`, `parseDecorId`, `decorId`, `DECOR_FX_ROLES`, `DECOR_PARTICLE`), breakables (`BREAKABLE`, `BREAKABLE_KINDS`), effects and audio (`FX`, `FX_IDS`, `FX_ROLES`, `FX_SPRITE_MAX_TILES`, `AMBIENCE`, `AMBIENCE_IDS`, `PORT_AUDIO_EVENTS`, `SOUND_PITCH_LIMITS`), biome materials (`BIOME_MATERIALS`, `BIOME_MATERIAL_SURFACES`, `DEFAULT_BIOME_MATERIAL`), slots, SoundGroups, required IDs/strings, contrast thresholds, gameplay key words |
 | `color.ts`, `strings.ts` | WCAG contrast, CIE76 `colorDifference` and hex parsing; `{name}` interpolation |
 | `validate.ts` | `validateManifest`, `contrastReport`, `juiceContrastReport`, `decorFxReport`, `fxColorReport`, `breakableContrastReport`, `isGameplayKey` |
+| `variants.ts`, `variantColors.ts` | enemy variants (docs/ENEMY_VARIANTS.md EV1): `AFFIX_IDS`, `AFFIX_ROLES`, `AFFIX_STRING_KEYS`, `BESTIARY_STRING_KEYS`, `GOO_BULLET_ID`; `AFFIX_COLOR_RULES` / `affixReport`, `GOO_COLOR_RULES` / `gooReport` (kept out of `validate.ts`, which sits at Luau's 200-locals limit) |
 | `placeholders.ts` | `PLACEHOLDER_VISUALS`, `TELEGRAPH_VISUAL`, `PLACEHOLDER_PROPORTIONS`, `missingVisual` |
 | `core.ts` | `ThemeCore` (pure lookups and fallbacks), frame math, `SpriteSetLayout` |
 | `pack.ts` | `ThemePack` (Color3 / Vector2, `SpriteSet`), `loadThemePack`, the active pack |

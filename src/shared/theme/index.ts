@@ -56,6 +56,19 @@ export {
 	type RoomEdgeEntry,
 	type ValidateOptions,
 } from "./validate";
+export * from "./variants";
+export {
+	AFFIX_COLOR_RULES,
+	GOO_COLOR_RULES,
+	affixReport,
+	gooReport,
+	variantColorProblems,
+	type AffixEntry,
+	type GooEntry,
+	type VariantColorEntry,
+	type VariantColorProblem,
+	type VariantColorRules,
+} from "./variantColors";
 export * from "./placeholders";
 export {
 	DEFAULT_PACK_ID,
