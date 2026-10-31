@@ -24,6 +24,7 @@ import { tutorialHashNames, writeTutorialHash } from "./tutorial/tutorial";
 import { breakablesHashNames, writeBreakablesHash } from "./breakables/breakables";
 import { dropsHashNames, writeDropsHash } from "./drops/drops";
 import { affixesHashNames, writeAffixesHash } from "./affixes/affixes";
+import { devHashNames, writeDevHash } from "./dev/dev";
 import { buildsHashNames, writeBuildsHash } from "./builds/builds";
 
 /** The fixtures' subsystem groups, in hash order. */
@@ -43,6 +44,8 @@ export type HashSubsystem = (typeof HASH_SUBSYSTEMS)[number];
  *            state.drops exists
  *   affixes  elite affixes (docs/ENEMY_VARIANTS.md EV7: per actor slot affix, actorId, shield, Vengeful timer), when
  *            state.affixes exists
+ *   dev      developer mode (docs/DEV_MODE.md: god mode, blocked hits, toggles), when state.dev exists (local dev runs
+ *            only)
  *   builds   builds (docs/BUILDS.md BU1: per player boon levels, duos, counters, deals left; the proc queue), when
  *            state.builds exists; the LAST group
  */
@@ -54,6 +57,7 @@ export const TUTORIAL_SUBSYSTEM = "tutorial";
 export const BREAKABLES_SUBSYSTEM = "breakables";
 export const DROPS_SUBSYSTEM = "drops";
 export const AFFIXES_SUBSYSTEM = "affixes";
+export const DEV_SUBSYSTEM = "dev";
 export const BUILDS_SUBSYSTEM = "builds";
 /** Every group name a layout can have. */
 export type HashGroupName =
@@ -66,6 +70,7 @@ export type HashGroupName =
 	| typeof BREAKABLES_SUBSYSTEM
 	| typeof DROPS_SUBSYSTEM
 	| typeof AFFIXES_SUBSYSTEM
+	| typeof DEV_SUBSYSTEM
 	| typeof BUILDS_SUBSYSTEM;
 
 export interface HashGroup {
@@ -184,6 +189,13 @@ export function hashLayout(state: Readonly<SimState>, withNames = false): HashLa
 		writeAffixesHash(affixes, values);
 		if (withNames) affixesHashNames(affixes, names);
 		close(AFFIXES_SUBSYSTEM);
+	}
+
+	const dev = state.dev;
+	if (dev !== undefined) {
+		writeDevHash(dev, values);
+		if (withNames) devHashNames(names);
+		close(DEV_SUBSYSTEM);
 	}
 
 	const builds = state.builds;

@@ -156,6 +156,8 @@ Event pairs, like the user's other Flamework project. Flamework generates a runt
 | client -> server | `lockstepLeave` | `runId` | none (the leaver's frames carry the leave bit from the next tick; `runFinished` still comes) |
 | client -> server | `requestOnboarding` / `tutorialStarted` / `tutorialStep` / `tutorialFinished` | see "Onboarding (tutorial)" | `onboardingStatus` (request, finished) |
 | server -> client | `onboardingStatus` | `OnboardingStatus { loaded, tutorialDone }` (sent once after join too) | |
+| client -> server | `requestRecords` | none | `records` (see "Personal records") |
+| server -> client | `records` | `RecordsStatus { loaded, solo?: { score, floor }, coop?: { score, floor } }` (sent once after the join load and seed, again after a verdict raised a record) | |
 | client -> server | `invitePrompt` | `InvitePromptRequest { withLobby }` | the prompt opens (server side), or `invitePromptOnClient`; refusals `lobbyNotice { kind: "refused", requestKind: "invitePrompt" }` |
 | client -> server | `inviteRecipients` | `number[]` (the friends picked in a prompt the client saw close) | none beyond the lobby pushes |
 | client -> server | `inviteEligibility` | none | `joinIntent` again (once resolved), then `inviteEligible` |
@@ -181,6 +183,7 @@ The client side is `src/client/network.ts` (`GlobalEvents.createClient`); `SimCo
 | `REPLAY_CONCURRENCY` | 1 | Server-wide replay queue (`WorkQueue`, FIFO): concurrent players' replays run one after another instead of stacking CPU time on the same frames. The log line shows the queue wait. |
 | `SETTINGS_REQUEST_RATE` | 20 per 10 s per player | Settings remotes. |
 | `ONBOARDING_REQUEST_RATE` / `TUTORIAL_STEP_RATE` | 10 / 30 per 10 s per player | Onboarding remotes (`shared/onboarding/config.ts`). |
+| `RECORDS_REQUEST_RATE` | 10 per 10 s per player | `requestRecords` (`shared/records/config.ts`); a dropped request still answers with the cached status. |
 | `INVITE_PROMPT_RATE` / `INVITE_RECIPIENTS_RATE` / `INVITE_ELIGIBILITY_RATE` | 5 / 10 / 10 per 60 s per player | Roblox invite remotes (`shared/invite/config.ts`); a spent prompt budget is a `rateLimited` refusal, the others drop quietly. |
 | Seeds | integers in [0, 2^32) | What the web build's `seedFromQuery` produces. |
 | Debug input (`DEBUG_HIT`, `DEBUG_BOSS` bits) | rejected (`debug_input`) | K / J are debug keys. The boost debug drop (M, `DEBUG_DROP_BUTTON`, docs/BOOSTS.md) is a `PORT_BUTTONS` bit and is rejected the same way. |
@@ -823,12 +826,93 @@ in `SERVER_REFUSED_WORLDS`: every `RunSessionRegistry.start` (ranked `startRun`,
 (logged `[Onboarding] RESET`; saved like any change, never after a failed load), so every Studio join is a first join.
 Without API access the load fails (`[Onboarding] LOAD_FAILED`) and the tutorial is not forced.
 
+## Personal records
+
+`RecordsService` (`src/server/services/RecordsService.ts`; pure rules in `src/shared/records/`; plan in
+`docs/NEW_BEST.md` "Personal records (server)", tasks NB1-NB2) keeps each player's best score and deepest floor per
+board, for the new-best celebration. It is separate from the leaderboard entry: that one has no deepest floor and
+skips Studio, private-server and abandoned runs (NBD2).
+
+**Doc** (DataStore `KV_Records_v1`, key `u_<UserId>`): `{ v: 1, endless: { solo?: Rec, coop?: Rec }, seeded?: true }`,
+`Rec = { score, scoreAt, scoreRunId, floor, floorAt, floorRunId }`. Best score and deepest floor are independent
+(different runs may hold them, each with its own time and runId). A field at 0 is no record; a board with both at 0 is
+absent. "Floor" is `state.endless.floor`, the leaderboard's floor (NBD3). Decoding never throws
+(`decodeRecordsDoc`): junk, a missing `v` or another version reads as empty; each board and field decode on their own.
+`seeded` (stored only when true, still v1) marks a doc that took the leaderboard seed; a doc written before the
+marker existed decodes unseeded, and every merge keeps it once either side has it.
+
+**Writes are merges.** Every write goes through `MergeKeyValue` (`src/server/services/data/MergeKeyValue.ts`):
+`UpdateAsync` whose transform is `mergeStoredRecords(stored, incoming)`, max per board per field (strictly higher
+wins, a tie keeps the stored run). Concurrent servers can never lower a record, and the transform cancels (no write)
+when nothing changes or the stored doc is a NEWER version. The session cache is a `PlayerDocCache` (load on join with
+3 retries, save when dirty on leave / `BindToClose` / every `RECORDS_AUTOSAVE_SECONDS` = 120 s, plus a save spawned
+right after a verdict or seed changed the doc). Writes are tagged with the UserId.
+
+**Failure rule.** A failed join load sends `{ loaded: false }` (the client shows no target, never a false
+celebration) for the whole session, and its cache entry is never set, so nothing is saved from it. A verdict for such a
+player (or for a credited member who already left the server) is a merge write of that run alone: it can only raise
+the stored record, and it carries no `seeded` marker, so the next join still seeds. Such a member gets no `records`
+result in the verdict. A failed seed (below) is treated the same way for the session.
+
+**Seed:** after a successful load of a doc WITHOUT `seeded`, the two leaderboard details docs (`LB_Details_v1`,
+`solo_u_<UserId>` / `coop_u_<UserId>`, `RECORDS_SEED_RETRY` = the leaderboard read policy) are read and max-merged in
+(`seedFromDetails`: score, floor, time and runId of the best-score run; safe on a non-empty doc, e.g. a run written
+directly after a failed load), the doc is marked `seeded` (also when both reads return nothing: no leaderboard entry)
+and saved. Only when both reads succeeded: a failed read leaves the marker absent (retried on the next join) and makes
+the session's records unknown: `{ loaded: false }`, verdicts write the run alone without a `records` result. Nothing
+is sent before the join load and seed end (`ready`).
+
+**Updates** (`RunSessionService.conclude`, next to the leaderboard post, ACCEPTED runs only: rejected, expired and
+desynced runs never write): `RecordsService.applyRun` with the server replay's score and floor, the credited members
+(`partyContributors`, the same list the leaderboard gets) and the party size (board `boardForParty`).
+`RECORDS_POLICY` / `recordsEligibility`:
+
+| Rule | Records | Leaderboard |
+| --- | --- | --- |
+| World | endless only (`LEADERBOARD_ELIGIBLE_WORLDS`) | same |
+| Death-ended runs | count | post |
+| Abandoned (validated, did not die: Leave run / quit) | **count** (NBD4) | never |
+| Private (VIP) servers | **count** | never |
+| Studio | no (`writeFromStudio: false`; no Studio write at all, seeds included) | never |
+| Debug runs | never | never |
+| Party size / fewer than 2 contributors in a party run | refused (`party` / `contributors`) | same |
+
+Each credited member in the server with a loaded doc gets `mergeRecords` on the party's board (score and floor
+independently) and their own `RunRecordsResult { board, scoreImproved, floorImproved, previous: { score, floor } }`
+(`previous` 0 / 0 = the first record on that board). `applyRun` never yields (conclude can run on Heartbeat): saves are
+spawned and the `records` push is deferred, so `runFinished` goes out first.
+
+**Verdict.** `RunFinishVerdict.records` is per recipient: `runFinished` is fired per player (solo: the owner; party:
+every member still in the server), and each copy carries that player's own result (`withRecords`). A party member who
+was not credited, or whose records are unknown, gets no `records`. The new numbers are the verdict's own `score.score`
+/ `score.floor`. `records` means the merge was accepted into the server's session copy; its DataStore write is
+already spawned and retries on autosave / leave / shutdown if it fails (the verdict does not wait for it).
+
+**Remotes.** `records(RecordsStatus)` is sent once after the join load (and seed) ends, again after a verdict raised a
+record, and in answer to `requestRecords` (`RECORDS_REQUEST_RATE`, 10 per 10 s, logged only: a request answers with the
+current status once the join load and seed ended; an earlier one is not answered, the join-end push answers it, so
+the client never sees a pre-seed status).
+
+**Budget.** +1 `GetAsync` per join (+2 for the seed until the doc is seeded: once per player, again only after a
+failed seed), +1 `UpdateAsync` per credited member per
+finished ranked run that raised a record (a run that raises nothing writes nothing; an unknown / absent member's
+merge write may be cancelled inside the transform). `BindToClose` first waits for runs still validating
+(`setPendingRuns`, the leaderboard's count), then saves every dirty doc and waits for direct writes, within 25 s.
+
+**Studio only:** Workspace string attribute `KV_FakeRecords` (`parseFakeRecords`): `"solo:48210:9,coop:0:0"`
+(`<board>:<score>:<floor>`, 0:0 or absent = no record), `"none"` (no records: a first record) or `"unknown"`
+(`loaded: false`). It replaces what `records` sends; verdicts of eligible runs count in Studio under it and merge into
+the session's fake (so the next run's target moves), with nothing written and no seed. An unparsable value is ignored
+(`[Records] BAD_FAKE`). Without it, Studio reads the real doc (or fails without API access: `LOAD_FAILED`) and writes
+nothing.
+
 ## DataStores
 
 | DataStore | Key | Value | Written |
 | --- | --- | --- | --- |
 | `PlayerSettings` | `u_<UserId>` | settings document v2 `{ v: 2, juice, controls, audio, display }` (only what the player changed; v1 `{ v: 1, juice }` migrates on read) | when dirty: on leave, on `BindToClose` (parallel, 25 s budget), every 120 s |
 | `KV_Onboarding_v1` | `u_<UserId>` | `{ v: 1, tutorialVersion, outcome: "completed" \| "skipped", at }` (see "Onboarding (tutorial)") | when dirty: on leave, on `BindToClose`, every 120 s |
+| `KV_Records_v1` | `u_<UserId>` | `{ v: 1, endless: { solo?, coop? }, seeded? }`, each board `{ score, scoreAt, scoreRunId, floor, floorAt, floorRunId }` (see "Personal records") | merge writes (UpdateAsync, max per field, `seeded` kept): right after a verdict raised a record or a seed, and when dirty on leave / `BindToClose` / every 120 s |
 | `Runs` (off: `RUNS_DATASTORE_ENABLED = false`) | `u_<UserId>` | the last 50 accepted runs `{ id, seed, hash, ticks, kills, boss, died, at }` (UpdateAsync) | on each accepted run |
 
 Every write is tagged with the owner's UserId (`SetAsync`'s `userIds`, UpdateAsync's second return value), for

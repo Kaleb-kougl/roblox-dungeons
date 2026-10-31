@@ -9,8 +9,9 @@
  * (parryFlash.ts, docs/GRAZE_PARRY.md GP7), and the boon draft reveal's tunables and state machine
  * (draftRevealConfig.ts, draftReveal.ts; docs/DRAFT_REVEAL.md DR1) and how it is drawn (draftRevealView.ts, DR5), and the
  * UI skin's pixel scales, icon fit and part-to-image chains (skinConfig.ts, skin.ts; docs/UI_ART.md UA5), and the
- * builds HUD: draft card kinds (draftCards.ts, docs/BUILDS.md BU9), items-row cells and the Build list (buildHud.ts,
- * BU10).
+ * new-best celebration's tunables, strings, frozen run baseline, per-frame tracker, text / roll helpers and confetti
+ * paths (newBestConfig.ts, newBestStrings.ts, newBest.ts; docs/NEW_BEST.md NB3), and the builds HUD: draft card kinds
+ * (draftCards.ts, docs/BUILDS.md BU9), items-row cells and the Build list (buildHud.ts, BU10).
  */
 export * from "./layout";
 export * from "./strings";
@@ -41,3 +42,6 @@ export * from "./buildHud";
 export * from "./skinConfig";
 export * from "./skin";
 export * from "./hudSkin";
+export * from "./newBestConfig";
+export * from "./newBestStrings";
+export * from "./newBest";

@@ -60,4 +60,5 @@ export * from "./tutorial";
 export * from "./breakables";
 export * from "./drops";
 export * from "./affixes";
+export * from "./dev";
 export * from "./builds";

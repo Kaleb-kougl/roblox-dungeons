@@ -4,7 +4,7 @@ import { selectStageCover } from "client/store";
 import { Text, useHudScale } from "client/ui/hud";
 import { str } from "client/ui/theme";
 import { LOADING_VIEW, STAGE_STRINGS, STAGE_VIEW } from "shared/view";
-import { HUD_VIEW } from "shared/view/hud";
+import { HUD_VIEW, NEW_BEST_ROLE } from "shared/view/hud";
 import { Cover, ProgressBar } from "./parts";
 
 const HALF = 0.5;
@@ -35,7 +35,9 @@ export interface StageCardProps {
  *   run start    the label (`stage.starting` "Starting run...", `stage.forging` "Forging floor {floor}...",
  *                `stage.building` "Building...") over a slim bar (STAGE_VIEW.barHeight, StageLoad.fraction)
  *   floor change the card: `stage.floorCard` ("Floor 4") in big text, the biome line (`biome.<n>.name`, "Ancient
- *                Halls") and, on a boss floor, `stage.bossFloor` ("Boss floor"); no bar
+ *                Halls"), on a boss floor `stage.bossFloor` ("Boss floor") and, on a ranked run with a floor record,
+ *                the new-best line (docs/NEW_BEST.md NB8: `Deepest: floor 9 · 2 to go`, `Record floor`, `NEW DEEPEST`
+ *                / `Deepest yet` in the newBest gold); no bar
  *
  * Drawn in the frame of the cut: Enabled, the fade and the rows' visibility are bindings StageController sets
  * synchronously (the slice reaches React only on Reflex's Heartbeat flush, after that frame's render), so the first
@@ -101,6 +103,20 @@ export function StageCard(props: StageCardProps) {
 					align={Enum.TextXAlignment.Center}
 					transparency={fade}
 					text={str(STAGE_STRINGS.bossFloor)}
+				/>,
+			);
+		}
+		const best = stage.best;
+		if (best !== undefined) {
+			rows.push(
+				<Text
+					key="Best"
+					order={4}
+					width={width}
+					color={best.gold ? NEW_BEST_ROLE : "uiTextDim"}
+					align={Enum.TextXAlignment.Center}
+					transparency={fade}
+					text={str(best.key, best.args)}
 				/>,
 			);
 		}

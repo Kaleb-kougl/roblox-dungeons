@@ -23,7 +23,7 @@ import { PLACEHOLDER_PROPORTIONS, PLACEHOLDER_SHAPES, PLACEHOLDER_VISUALS, pxToS
 import { COLOR_ROLES, type ColorRole } from "./types";
 import { deepClone, sortedKeys, type Obj } from "./util";
 import { validateManifest } from "./validate";
-import { BUILD_AUDIO_IDS, BUILD_BULLET_IDS } from "./builds";
+import { BUILD_BULLET_IDS } from "./builds";
 import {
 	AFFIX_COLOR_RULES,
 	GOO_COLOR_RULES,
@@ -200,8 +200,8 @@ describe("enemy variants: contract", () => {
 	});
 
 	it("appends the five port audio IDs (lowercase segments: shieldbreak), required, sfx", () => {
-		// Only docs/BUILDS.md's sounds come after them.
-		const n = PORT_AUDIO_EVENTS.size() - BUILD_AUDIO_IDS.size();
+		// the last of them ends the variants' block (docs/NEW_BEST.md NB4's two, then docs/BUILDS.md's nine come after it)
+		const n = (PORT_AUDIO_EVENTS as ReadonlyArray<string>).indexOf("sfx.affix.vengeful") + 1;
 		const tail = new Array<string>();
 		for (let i = n - VARIANT_AUDIO.size(); i < n; i++) tail.push(PORT_AUDIO_EVENTS[i]);
 		expect(tail).toEqual(VARIANT_AUDIO);

@@ -10,3 +10,4 @@ export * from "./mode";
 export * from "./theme";
 export * from "./tutorial";
 export * from "./touch";
+export * from "./devMode";

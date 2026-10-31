@@ -25,6 +25,7 @@ import {
 	type BuildFxFrameSource,
 } from "../fx";
 import { FxEventBuffer } from "../fx/events";
+import { NO_NEW_BEST_CUES } from "../hud";
 import {
 	ALL_SFX,
 	AUDIO_VIEW,
@@ -184,6 +185,7 @@ function frame(m: AudioCueMapper, now: number, builds: BuildFxFrameSource, me = 
 		NO_COMBO_EVENTS,
 		undefined,
 		NO_VARIANT_CUES,
+		NO_NEW_BEST_CUES,
 		builds,
 	);
 }

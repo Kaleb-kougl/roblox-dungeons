@@ -169,6 +169,11 @@ export const COLOR_ROLES = [
 	"affix.shielded",
 	"affix.vengeful",
 	"enemyShield",
+	// Roblox port (docs/NEW_BEST.md NB4): the new-best gold (the passed target row, the gold score number, the NEW BEST!
+	// floor shout, the confetti, NEW DEEPEST on the stairwell card, the run-over ribbon). Held to NEW_BEST_COLOR_RULES by
+	// newBestReport (newBestColors.ts): >= 3:1 on uiPanel, (CIE76) apart from ember and every combo tier, and away from
+	// the enemy-bullet roles and telegraph (the shout is drawn on the floor under bullets).
+	"newBest",
 	// Roblox port (docs/BUILDS.md BU1): the evolution and duo cards' frames (builds.ts BOON_BUILD_ROLES; with the rarity
 	// ladder in boonRarityReport), then one colour per build effect (BUILD_EFFECT_ROLES: spark beams, Volatile's bolts,
 	// Soul Shards, embers), held to BUILD_COLOR_RULES by buildReport (buildColors.ts): >= 3:1 on every biome floor and

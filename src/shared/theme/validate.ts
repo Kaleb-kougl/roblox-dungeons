@@ -53,6 +53,10 @@
  * `affixReport` / `gooReport`, through `variantColorProblems`). That module holds the rules and the reports because
  * this one's compiled Luau sits at Luau's 200-locals-per-function limit: one import here, offset by dropping the old
  * MAX_FPS alias of MAX_ANIMATION_FPS.
+ *
+ * Roblox port (docs/NEW_BEST.md NB4): the new-best gold (newBestColors.ts `newBestReport`, through
+ * `newBestColorProblems`), in its own module for the same reason (offset by moving minimapReport's two role constants
+ * inside it).
  */
 
 import { colorDifference, contrastRatio, isHexColor, labChroma, mixRgb, parseHex, toHex } from "./color";
@@ -154,6 +158,7 @@ import {
 	startsWith,
 	type Obj,
 } from "./util";
+import { newBestColorProblems } from "./newBestColors";
 import { variantColorProblems } from "./variantColors";
 
 export interface ValidateOptions {
@@ -812,10 +817,10 @@ export interface MinimapEntry {
 	ok: boolean;
 }
 
-const MINIMAP_ENEMY_ROLE = "minimap.enemy";
-const MINIMAP_FLOOR_ROLE = "minimap.floor";
-
 export function minimapReport(manifest: unknown): Array<MinimapEntry> {
+	// Local, not module constants: this module's compiled Luau sits at the 200-locals limit (docs/NEW_BEST.md NB4).
+	const MINIMAP_ENEMY_ROLE = "minimap.enemy";
+	const MINIMAP_FLOOR_ROLE = "minimap.floor";
 	const out = new Array<MinimapEntry>();
 	if (!isObj(manifest) || !isObj(manifest.colors)) {
 		return out;
@@ -1603,6 +1608,11 @@ export function validateManifest(manifest: unknown, opts: ValidateOptions = {}):
 
 	// --- affix rings read on every floor, apart and never as a threat; goo reads as danger (docs/ENEMY_VARIANTS.md EV1)
 	for (const problem of variantColorProblems(manifest, forgeSuffix)) {
+		err(problem.path, problem.msg);
+	}
+
+	// --- the new-best gold reads on the panel, apart from the combo ladder, never as a threat (docs/NEW_BEST.md NB4)
+	for (const problem of newBestColorProblems(manifest)) {
 		err(problem.path, problem.msg);
 	}
 

@@ -59,7 +59,7 @@ import type { RobloxAssetId } from "../../types";
  * uploaded 2026-10-30 2:55 PM by k9kbdev, transcribed from Asset Manager screenshots.
  * The draft reveal sounds (docs/DRAFT_REVEAL.md DR9: sfx-draft-charge, sfx-draft-flip-1 / -2, sfx-draft-legendary,
  * sfx-draft-pick) uploaded 2026-10-30 6:32 PM by k9kbdev, transcribed from an Asset Manager screenshot.
- * sfx-draft-rare.ogg is built but not uploaded yet: sfx.draft.rare stays silent until its ID is here.
+ * sfx-draft-rare.ogg uploaded 2026-10-31 1:14 PM by k9kbdev, transcribed from an Asset Manager screenshot.
  * The six draft card images (ui-draft-back / -back-eyes / -card-common / -card-rare / -skull-left / -skull-right, cut
  * from the ToffeeCraft Horror UI sheet by art:build) uploaded 2026-10-30 6:33 PM by k9kbdev, transcribed from an Asset
  * Manager screenshot.
@@ -135,6 +135,7 @@ export const VALE_ASSET_IDS: Readonly<Record<string, RobloxAssetId>> = {
 	"sfx-draft-flip-2.ogg": "rbxassetid://106814155399198",
 	"sfx-draft-legendary.ogg": "rbxassetid://119499678299322",
 	"sfx-draft-pick.ogg": "rbxassetid://85146648456597",
+	"sfx-draft-rare.ogg": "rbxassetid://116974688136700",
 	"sfx-ember.ogg": "rbxassetid://132331997932373",
 	"sfx-enemy-blink.ogg": "rbxassetid://102016664523463",
 	"sfx-enemy-death-1.ogg": "rbxassetid://120112698995155",

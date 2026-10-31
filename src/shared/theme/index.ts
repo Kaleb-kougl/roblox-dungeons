@@ -69,6 +69,15 @@ export {
 	type VariantColorProblem,
 	type VariantColorRules,
 } from "./variantColors";
+export * from "./newBest";
+export {
+	NEW_BEST_COLOR_RULES,
+	newBestColorProblems,
+	newBestReport,
+	type NewBestColorProblem,
+	type NewBestColorRules,
+	type NewBestEntry,
+} from "./newBestColors";
 export * from "./builds";
 export { BUILD_COLOR_RULES, buildReport, type BuildColorEntry, type BuildColorRules } from "./buildColors";
 export * from "./placeholders";

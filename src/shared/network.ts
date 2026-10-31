@@ -2,6 +2,7 @@ import { Networking } from "@flamework/networking";
 import type { LeaderboardBoard, LeaderboardView } from "shared/leaderboard";
 import type { ArrivalJoinIntent, ArrivalToastKey } from "shared/invite";
 import type { OnboardingStatus, TutorialOutcome } from "shared/onboarding";
+import type { RecordsStatus, RunRecordsResult } from "shared/records";
 import type {
 	LobbyCreateRequest,
 	LobbyInviteSource,
@@ -36,7 +37,7 @@ import type { SettingsOverrides } from "shared/settings";
  * Request / reply as an event pair (the pattern of the user's other Flamework project): the client fires a request,
  * the server answers with its own event. Every client -> server event is rate limited per player in its service
  * (limits in shared/run `RUN_SUBMIT_RATE`, shared/settings `SETTINGS_REQUEST_RATE` and shared/onboarding
- * `ONBOARDING_REQUEST_RATE` / `TUTORIAL_FINISH_RATE` / `TUTORIAL_STEP_RATE`).
+ * `ONBOARDING_REQUEST_RATE` / `TUTORIAL_FINISH_RATE` / `TUTORIAL_STEP_RATE`, shared/records `RECORDS_REQUEST_RATE`).
  *
  * Bind side-specific handlers with `GlobalEvents.createServer` (src/server/network.ts) and `GlobalEvents.createClient`
  * (the client's network module, task 8), never here.
@@ -218,6 +219,13 @@ export interface RunFinishVerdict {
 	score: RunScore;
 	/** Accepted runs: what happened on the leaderboards ("queued", "ineligible:<reason>"). */
 	leaderboard?: LeaderboardPostStatus;
+	/**
+	 * Personal records (docs/NEW_BEST.md): THIS recipient's outcome of an accepted run that counted toward records
+	 * (shared/records RECORDS_POLICY) and was merged into their loaded records. Per recipient: in a party run each
+	 * member's verdict carries their own (a member not credited, or whose records are unknown, gets none). Absent on
+	 * rejected / expired / ineligible runs, after a failed join load, and in Studio without KV_FakeRecords.
+	 */
+	records?: RunRecordsResult;
 }
 
 export interface ClientToServerEvents {
@@ -324,6 +332,8 @@ export interface ClientToServerEvents {
 	 * `onboardingStatus` carries it in `seen`).
 	 */
 	bestiarySeen(id: string): void;
+	/** Personal records (docs/NEW_BEST.md): asks for this player's records; answered with `records`. */
+	requestRecords(): void;
 }
 
 export interface ServerToClientEvents {
@@ -349,6 +359,12 @@ export interface ServerToClientEvents {
 	 * `requestOnboarding` and `tutorialFinished`.
 	 */
 	onboardingStatus(status: OnboardingStatus): void;
+	/**
+	 * Personal records (docs/NEW_BEST.md): this player's best score and deepest floor per board. Sent once after the
+	 * join load (and the one-time seed) ends (`loaded: false` when that load failed: the client then shows no target),
+	 * again after a verdict raised a record, and in answer to `requestRecords`.
+	 */
+	records(status: RecordsStatus): void;
 	/** Co-op (M4): a party run starts (every member gets it, only after every member accepted the invite). */
 	partyRunStarted(start: PartyRunStart): void;
 	/** Lobbies: the lobbies this player may see and join (never closed ones), sorted. Throttled. */

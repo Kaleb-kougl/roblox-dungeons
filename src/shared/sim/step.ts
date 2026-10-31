@@ -24,6 +24,7 @@ import { clearBreakableEvents, type BreakablesConfig } from "./breakables/breaka
 import { clearDropsEvents, stepDrops, type DropsConfig } from "./drops/drops";
 import { boostsOnPlayerDied } from "./drops/boostMods";
 import { clearAffixEvents, type AffixesConfig } from "./affixes/affixes";
+import { stepDevToggle, type DevSimConfig } from "./dev/dev";
 import { clearBuildEvents, type BuildsConfig } from "./builds/builds";
 import type { SolidCells } from "shared/dungeon";
 
@@ -158,10 +159,17 @@ export interface SimConfig {
 	 */
 	affixes?: AffixesConfig;
 	/**
+	 * Developer mode (docs/DEV_MODE.md, dev/dev.ts): god mode (no hit lands while `state.dev.invulnerable` is 1;
+	 * DEV_GOD_BUTTON toggles it). Only the client's local `dev` world sets it (shared/run, refused by the server).
+	 * Absent: no dev state, nothing extra hashed (every fixture and every other run unchanged). Present: state.dev is
+	 * created and hashed as the "dev" subsystem, appended after "affixes".
+	 */
+	dev?: DevSimConfig;
+	/**
 	 * Builds (docs/BUILDS.md BU1 / BU2, builds/builds.ts): the rules (BUILDS_CONFIG is the game's). Absent: no builds
 	 * state, today's boon draft (drawBoonOffers, every boon level I), nothing extra hashed (every fixture, M1, the
 	 * tutorial). Present: state.builds is created and hashed as the "builds" subsystem, appended after every other group
-	 * (after "affixes"); the draft deals cards (levels, evolutions, duos) and a boss floor's draft is dealt twice.
+	 * (after "dev"); the draft deals cards (levels, evolutions, duos) and a boss floor's draft is dealt twice.
 	 */
 	builds?: BuildsConfig;
 }
@@ -189,7 +197,7 @@ const partyPrev: number[] = [];
  *
  * Tick order (fixed; part of the determinism contract):
  *   1. clear per-tick events (and the score's, the breakables', the drops', the affixes', the builds'); then FORFEIT_BUTTON ("Leave run") -> forfeitSoloRun:
- *      the player dies at this tick
+ *      the player dies at this tick; then (dev runs only) a DEV_GOD_BUTTON edge toggles god mode (stepDevToggle)
  *   2. stepPlayer  (movement, facing, roll, hearts, flask, Ember)
  *   3. stepCombat   (Ember clear, actors act, the player's weapons, bullets step, hits, contact damage)
  *   4. stepEndless  (endless mode only: Depth, floor clear points + stairwell / next floor, deferred room spawns)
@@ -225,6 +233,7 @@ export function step(
 	// Read before the forfeit, which closes an open draft: that tick stays a frozen draft tick.
 	const frozen = run !== undefined && isDraftOpen(state);
 	if (bit32.band(input.buttons, FORFEIT_BUTTON) !== 0) forfeitSoloRun(state);
+	if (state.dev !== undefined) stepDevToggle(state, soloInputs, soloPrev);
 	if (run !== undefined) {
 		clearRunEvents(run);
 		if (frozen) {
@@ -300,6 +309,7 @@ export function stepParty(
 	if (state.affixes !== undefined) clearAffixEvents(state.affixes);
 	if (state.builds !== undefined) clearBuildEvents(state.builds);
 	for (let i = 0; i < n; i++) if (hasLeftBit(inputs[i].buttons)) markPlayerLeft(state, i);
+	if (state.dev !== undefined) stepDevToggle(state, inputs, partyPrev);
 	const run = state.run;
 	if (run !== undefined) {
 		clearRunEvents(run);

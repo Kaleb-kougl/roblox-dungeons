@@ -1134,7 +1134,7 @@ duo in v1 (they are the safe picks); every other boon is in one or two.
   fixtures and the tutorial).
 - `state.builds`: per player `levels[BOON_COUNT]`, `duos` (indices, order taken), `grazes` / `kills` / `arrows` /
   `bigHits` counters (Thrill Seeker, Jackpot, Flurry, Storm Blade, Close Call); the `procs` queue. Its own hash group
-  **`builds`, appended LAST** (after `affixes`); `hashLayout.ts` names it.
+  **`builds`, appended LAST** (after `affixes` and `dev`); `hashLayout.ts` names it.
 - `computeRunMods(p, build?)`: with a build, the level tables; without, exactly today's values (the tutorial and M1).
 - `grantCard(state, i, card)`: New / Upgrade / Evolution raise `levels` (and add to `boons` at level I, so every
   existing reader still works); Hearty / Deep Flask / Warding's one-off effects apply per level gained; a duo goes to

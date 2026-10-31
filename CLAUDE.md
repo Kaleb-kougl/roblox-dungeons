@@ -46,6 +46,8 @@ Record every ported module in `PROVENANCE.md` (ported module, source path, sourc
 | `docs/ENEMY_VARIANTS.md` | Enemy variants (three new endless archetypes: Imp flanker, Ooze zone-denier that splits, Summoner support; elite affixes Hulking / Swift / Shielded / Vengeful; both unlock by depth): plan, tasks EV0-EV14, decisions EVD1-EVD12 |
 | `docs/GRAZE_PARRY.md` | Grazes and parries (graze spark + shimmer climbing in pitch, parry sparks / ring-out / PARRY! floor flash / solo 30 ms freeze for a guard that erases bullets; one unhashed ScoreEvents feed, otherwise presentation only): plan, tasks GP0-GP10, decisions GPD1-GPD10 |
 | `docs/UI_ART.md` | UI art (the dark red pixel UI sheet: 9-sliced panels / buttons, hearts, potions, pills, icons, focus brackets; menus, then the in-run HUD, then touch; presentation only): builds on the Draft reveal (`slice`, `SlicedImage`): plan, as built, tasks UA0-UA15, decisions UAD1-UAD10 |
+| `docs/NEW_BEST.md` | New-best celebration (points-to-best in the score panel's label row, a fanfare + NEW BEST stamp / floor shout / edge confetti when the shown score passes your best or you reach a floor past your deepest, a record fanfare and old -> new roll at run over; server-owned personal records doc `KV_Records_v1`; no sim change): plan, as built, tasks NB0-NB11, decisions NBD1-NBD11 |
+| `docs/DEV_MODE.md` | Developer mode (jump to any floor, instant R restart, god mode; local `dev` world, server-allowed players only via `DEV_MODE`): usage, access, how it works |
 | `docs/BUILDS.md` | Builds (on-kill boons Chain Spark / Volatile / Soul Shards with chain reactions, boon levels with an evolution at III, duo boons, the boss double draft; gameplay, opt-in `SimConfig.builds` on endless only): plan, tasks BU0-BU14, decisions BUD1-BUD14 |
 
 Decision log (deviations from `PLAN.md`):
@@ -353,9 +355,32 @@ Decision log (deviations from `PLAN.md`):
   audio ids (`sfx.enemy.blink` / `.summon` / `.split`, `sfx.affix.shieldbreak` / `.vengeful`, SILENT in the
   placeholder). First sighting: optional `seen` in the onboarding doc (still v1), remote `bestiarySeen`. Vale: the LoP
   slime set built (upload pending); imp / summoner rigs pending. Studio check pending.
+- **New-best celebration (docs/NEW_BEST.md).** Presentation plus one server doc (no sim, dungeon, lockstep, hash,
+  replay or fixture change; scoring and the leaderboard untouched). Personal records: DataStore `KV_Records_v1`
+  (`shared/records`, `RecordsService`; best score and deepest floor per board solo / coop, `{ v: 1, endless, seeded? }`),
+  written only by the server from its own replay of accepted endless runs (deaths AND abandoned runs, private servers
+  too, never Studio / debug runs, party runs as on the leaderboard), every write a max-merge inside UpdateAsync
+  (`MergeKeyValue`); seeded once from `LB_Details_v1` (a stored `seeded` marker; a failed seed or load = `loaded: false`,
+  retried next join). Remotes `requestRecords` / `records(RecordsStatus)`, `RunFinishVerdict.records` (per recipient).
+  The client freezes a per-run baseline (records + earlier runs still awaiting their verdict, `pendingRunClaims`) and
+  tracks the SHOWN score (`FX_FRAME_PHASE.scoreRoll`: RoomClearController's roller before every normal frame handler).
+  Theme: role `newBest` `#ffd700` (`newBestReport`), 18 strings `NEW_BEST_STRING_KEYS`, port audio IDs `sfx.best.new` /
+  `sfx.jingle.record` (SILENT in the placeholder, falling back to the PERFECT / game-over jingles); `contract.luau` /
+  `validate.luau` at 179 / 199 top-level locals (counted on out/). Debug `KV_NewBestDebug` (client baseline),
+  `KV_FakeRecords` (Studio records fake). No setting. Studio check and the sounds' audition / lock / build / upload pending.
+- **Developer mode (docs/DEV_MODE.md).** A client-only world `dev` (`shared/run` `buildDevRunConfig`, in
+  `SERVER_REFUSED_WORLDS`, never submitted: `unsubmittedReason` `dev`): the endless run of a seed started on any floor
+  (opt-in `EndlessConfig.startFloor` / `startDepth`; Depth = 1 + boss floors below) with god mode (opt-in
+  `SimConfig.dev`: `state.dev` hashed as the `dev` group appended after `affixes`, only `builds` after it;
+  `damagePlayer` lands nothing while `invulnerable`; port input bit `DEV_GOD_BUTTON` 65536 in `PORT_BUTTONS` toggles it, so `SIM_BUTTONS` is now
+  114687). Access is decided by the server (`DevModeService`, `shared/devmode` `devModeAllowed`, `shared/config`
+  `DEV_MODE`: master switch `enabled`, Studio, `allowedUserIds`, the user-owned place's creator) and published as the
+  player attribute `KV_DevAllowed`; `DevModeController` mounts the DEV chip / panel (F2) and the god key (F3) only then.
+  In a dev run R restarts at once on the same seed and floor (no forfeit). M1, every fixture, the tutorial, endless and
+  co-op replay exactly as before (none sets `startFloor` or `dev`).
 - **Builds (docs/BUILDS.md).** Gameplay. Opt-in `SimConfig.builds` (`BUILDS_CONFIG` = `BUILD_RULES`, endless only, BUD8)
   creates `state.builds` (per player boon levels, duos, counters, deals left; the proc queue) with its own hash group
-  `builds` appended LAST (after `affixes`). Three on-kill boons appended to `BOONS` (Chain Spark / Volatile / Soul Shards,
+  `builds` appended LAST (after `affixes` and `dev`). Three on-kill boons appended to `BOONS` (Chain Spark / Volatile / Soul Shards,
   indices 12-14); `drawBoonOffers` draws from the classic 12 only (`CLASSIC_BOON_COUNT`), so the tutorial's floor-2 draft
   is unchanged; builds runs draw `drawCardOffers` and grant through `grantCard` (levels II-III, the evolution at III,
   duos, a double draft after every boss floor). Card ids in `draftOffers`: a boon index, or `DUO_CARD_BASE` (64) + the

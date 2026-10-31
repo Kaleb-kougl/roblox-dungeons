@@ -90,6 +90,17 @@
  *   runOver)), so under the stage cover or once the run is over none of the five plays. None is a jingle, ducks the
  *   music or has a fallback: a silent ID (the placeholder pack's) plays nothing and takes no cap slot.
  *
+ * The new-best celebration (docs/NEW_BEST.md NB5) comes from the frame's NewBestCueSource (shared/view/hud: the
+ * client's NewBestTracker frame, stepped BEFORE the mapper in the same frame; NO_NEW_BEST_CUES by default, so every
+ * other cue is as before). The tracker already holds its edges under the stage cover and drops them after run over:
+ *   - Fanfare: `fanfare` (the shown score passed the best, or the first floor past the deepest at the card's reveal)
+ *     -> sfx.best.new, a jingle ranked above the room clear's (NBD7: on a shared frame the CLEAR / PERFECT jingle is
+ *     dropped, the stamp still shows). Silent: sfx.room.perfect plays (SFX_FALLBACK).
+ *   - Deepest floor: on the frame the run enters the first floor past `recordFloor` (floorChanged, the floor before the
+ *     frame at or under it, the floor after past it) sfx.floor.enter is dropped: the fanfare plays at the reveal in its
+ *     place. Only while sfx.best.new (or its fallback) can play: with neither, the floor enter stays.
+ *   - Run over: a record run (`recordRun`) plays sfx.jingle.record instead of sfx.jingle.gameover (runOverJingle);
+ *     silent, the game-over jingle (SFX_FALLBACK). A run with no record keeps the game-over jingle.
  * Build effects (docs/BUILDS.md BU8) come from the frame's BuildFxFrameSource (shared/view/fx BuildFxEvents, the run
  * view's `builds`, every tick of the frame; NO_BUILD_FX_EVENTS by default, so every other cue is as before), passed
  * through audibleBuilds(source, comboQuiet(covered, runOver)) like the variants: silent under the stage cover and once
@@ -130,7 +141,7 @@ import {
 	NO_VARIANT_CUES,
 	type VariantCueSource,
 } from "../fx";
-import { COMBO_VIEW, comboTier, killPitchSpeed, tierStingSpeed } from "../hud";
+import { COMBO_VIEW, NO_NEW_BEST_CUES, comboTier, killPitchSpeed, tierStingSpeed, type NewBestCueSource } from "../hud";
 import { AUDIO_VIEW } from "./config";
 import { StateWatch, SwingEdge } from "../watch";
 
@@ -227,6 +238,13 @@ export const SFX = {
 	affixShieldBreak: "sfx.affix.shieldbreak",
 	affixVengeful: "sfx.affix.vengeful",
 	/**
+	 * The new-best celebration (docs/NEW_BEST.md NB5; the theme's PORT_AUDIO_EVENTS): the in-run fanfare (the shown
+	 * score passes the best, or the first floor past the deepest; a jingle, the PERFECT jingle while silent) and a
+	 * record run's run-over fanfare (in place of the game-over jingle, which plays while it is silent).
+	 */
+	bestNew: "sfx.best.new",
+	jingleRecord: "sfx.jingle.record",
+	/**
 	 * Build effects (docs/BUILDS.md BU8; the theme's PORT_AUDIO_EVENTS, BUILD_AUDIO_IDS): a spark hop, a Volatile ring, a
 	 * Soul Shards volley, an ember dropped, a nova, an execute, an evolution / a duo taken, a Jackpot pop.
 	 */
@@ -297,6 +315,8 @@ export const ALL_SFX: ReadonlyArray<SfxId> = [
 	SFX.enemySplit,
 	SFX.affixShieldBreak,
 	SFX.affixVengeful,
+	SFX.bestNew,
+	SFX.jingleRecord,
 	SFX.buildSpark,
 	SFX.buildBurst,
 	SFX.buildShard,
@@ -350,6 +370,8 @@ export const PORT_SFX: ReadonlyArray<SfxId> = [
 	SFX.enemySplit,
 	SFX.affixShieldBreak,
 	SFX.affixVengeful,
+	SFX.bestNew,
+	SFX.jingleRecord,
 	SFX.buildSpark,
 	SFX.buildBurst,
 	SFX.buildShard,
@@ -491,6 +513,8 @@ export const SFX_PRIORITY: Readonly<Record<SfxId, number>> = {
 	[SFX.playerDeath]: 100,
 	[SFX.playerHurt]: 95,
 	[SFX.gameOver]: 92,
+	/** The game-over jingle's slot: it plays in its place on a record run. */
+	[SFX.jingleRecord]: 92,
 	[SFX.enemyTelegraph]: 90,
 	[SFX.ember]: 88,
 	/** Above the victory: an endless boss kill plays the depth jingle, not both (JINGLE_SFX). */
@@ -501,6 +525,11 @@ export const SFX_PRIORITY: Readonly<Record<SfxId, number>> = {
 	/** The roar's slot: it plays in the roar's place. */
 	[SFX.bossTaunt]: 80,
 	[SFX.stairwellOpen]: 75,
+	/**
+	 * The new-best fanfare (docs/NEW_BEST.md NBD7): above the combo break and the room clear's jingles, so on a shared
+	 * frame the clear jingle is dropped (one jingle per frame); under the depth jingle and the victory.
+	 */
+	[SFX.bestNew]: 74,
 	/** The break: the loss you hear, above the room clear (they do not share a frame in practice). */
 	[SFX.comboBreak]: 73,
 	[SFX.roomClear]: 72,
@@ -613,6 +642,8 @@ export const DUCKING_SFX: ReadonlyArray<SfxId> = [
 	SFX.victory,
 	SFX.depthUp,
 	SFX.gameOver,
+	SFX.jingleRecord,
+	SFX.bestNew,
 	SFX.roomClear,
 	SFX.roomPerfect,
 	SFX.shrineUse,
@@ -626,12 +657,15 @@ export const DUCKING_SFX: ReadonlyArray<SfxId> = [
  * stairwellOpened on one tick: the depth jingle plays, not the victory over it (depth.up ranks above victory; M1 has
  * no depth, so its boss kill keeps the victory). sfx.relic.take is a short power-up sound, not a jingle. The draft's
  * legendary flare (docs/DRAFT_REVEAL.md DR4) is a jingle too, but the reveal controller plays it itself (the world is
- * frozen under the draft, so no mapper jingle shares its frame).
+ * frozen under the draft, so no mapper jingle shares its frame). The new-best fanfare outranks the room clear's
+ * (docs/NEW_BEST.md NBD7); the record fanfare takes the game-over jingle's place.
  */
 export const JINGLE_SFX: ReadonlyArray<SfxId> = [
 	SFX.gameOver,
+	SFX.jingleRecord,
 	SFX.depthUp,
 	SFX.victory,
+	SFX.bestNew,
 	SFX.roomClear,
 	SFX.roomPerfect,
 	SFX.draftLegendary,
@@ -653,7 +687,20 @@ export const SFX_FALLBACK: Readonly<Partial<Record<SfxId, SfxId>>> = {
 	 * all (today's cue: its volume, rank, jitter and co-op attribution), so the entry is what `resolve` / `play` see.
 	 */
 	[SFX.playerParry]: SFX.playerDeflect,
+	/** docs/NEW_BEST.md NB5: a pack without the fanfare plays the PERFECT jingle there (one step: not on to the CLEAR). */
+	[SFX.bestNew]: SFX.roomPerfect,
+	/** A pack without the record fanfare plays the game-over jingle on a record run's run over. */
+	[SFX.jingleRecord]: SFX.gameOver,
 };
+
+/**
+ * The run-over jingle (docs/NEW_BEST.md NB5): sfx.jingle.record on a record run (`recordSet`: the tracker's recordRun,
+ * shared/view/hud isRecordRun), else sfx.jingle.gameover. The mapper plays it on the wipe; a client that plays the
+ * run over itself uses the same choice.
+ */
+export function runOverJingle(recordSet: boolean): SfxId {
+	return recordSet ? SFX.jingleRecord : SFX.gameOver;
+}
 
 /** Whether a sound ID has a clip in the theme pack (the controller passes `pack.sound(id).assetId !== undefined`). */
 export type Playable = (id: string) => boolean;
@@ -939,6 +986,19 @@ export class AudioCueMapper {
 		for (const t of builds.duos) this.playerCue(SFX.buildDuo, t.player, localIndex);
 	}
 
+	/**
+	 * NB5: this frame entered the first floor past the record (`newBest.recordFloor` > 0; floorChanged, the floor before
+	 * the frame's changes at or under it, the floor after past it) and the fanfare can play (sfx.best.new or its
+	 * fallback): the floor enter is dropped.
+	 */
+	private deepestEntered(events: Readonly<SimEvents>, state: Readonly<SimState>, newBest: NewBestCueSource): boolean {
+		const record = newBest.recordFloor;
+		if (!(record > 0) || !(events.floorChanged > 0) || state.endless === undefined) return false;
+		const floor = state.endless.floor;
+		if (floor <= record || floor - events.floorChanged > record) return false;
+		return this.resolve(SFX.bestNew) !== undefined;
+	}
+
 	/** Removes candidate `at`, keeping the order of the rest. */
 	private dropPending(at: number): void {
 		for (let i = at; i < this.pending - 1; i++) {
@@ -986,9 +1046,10 @@ export class AudioCueMapper {
 	 * view's `combo`, docs/COMBO.md CB1; none by default), `nearMiss` the frame's grazes and parries output
 	 * (NearMissController's NearMissFrame of THIS frame, docs/GRAZE_PARRY.md GP6; undefined / no run: nothing, today's
 	 * cues exactly), `variants` the frame's enemy-variant events (the run view's `variantCues` through
-	 * audibleVariantCues, docs/ENEMY_VARIANTS.md; none by default), `builds` the frame's build effects (the run view's
-	 * `builds` through audibleBuilds, docs/BUILDS.md BU8; none by default). Appends the cues to start to `out` (in table order)
-	 * and returns it.
+	 * audibleVariantCues, docs/ENEMY_VARIANTS.md; none by default), `newBest` the frame's new-best cues (the client's
+	 * NewBestTracker frame of THIS frame, docs/NEW_BEST.md NB5; none by default), `builds` the frame's build effects (the
+	 * run view's `builds` through audibleBuilds, docs/BUILDS.md BU8; none by default). Appends the cues to start to `out`
+	 * (in table order) and returns it.
 	 */
 	frame(
 		now: number,
@@ -1001,6 +1062,7 @@ export class AudioCueMapper {
 		combo: ComboFrameSource = NO_COMBO_EVENTS,
 		nearMiss: Readonly<NearMissFrame> | undefined = undefined,
 		variants: VariantCueSource = NO_VARIANT_CUES,
+		newBest: NewBestCueSource = NO_NEW_BEST_CUES,
 		builds: BuildFxFrameSource = NO_BUILD_FX_EVENTS,
 	): AudioCueList {
 		this.now = now;
@@ -1016,12 +1078,15 @@ export class AudioCueMapper {
 		// has a clip: a silent parry leaves today's deflect untouched (SFX_FALLBACK).
 		const parries = nearMiss !== undefined && this.playable(SFX.playerParry) ? nearMiss : undefined;
 		const guarded = this.guardErased(parries, localIndex);
+		// The first floor past the deepest (NB5): its floor enter makes way for the fanfare at the card's reveal.
+		const silentFloorEnter = this.deepestEntered(events, state, newBest);
 
 		for (const [field, id] of SIM_EVENT_SOUNDS) {
 			if (party && PLAYER_EVENT_FIELDS.includes(field)) continue;
 			if (!(events[field] > 0)) continue;
 			// Solo: the frame's deletes were the guard's (the parry plays instead).
 			if (id === SFX.playerDeflect && guarded !== GUARD_NONE) continue;
+			if (id === SFX.floorEnter && silentFloorEnter) continue;
 			// Solo: the swing that was the sword's finisher plays the finisher instead.
 			if (id === SFX.playerSwing && w.swingEdge[localIndex] === SwingEdge.finisher)
 				this.cue(SFX.playerFinisher, 1);
@@ -1059,7 +1124,9 @@ export class AudioCueMapper {
 		if (w.roomCleared && !this.celebratesRoomClears) this.cue(SFX.roomClear, 1);
 		if (w.relicTaken) this.cue(SFX.relicTake, 1);
 		if (w.shrineUsed) this.cue(SFX.shrineUse, 1);
-		if (w.wiped) this.cue(SFX.gameOver, 1);
+		// A record run's run over sounds like a win (NB5); the fanfare on the edges (the tracker's, never after run over).
+		if (w.wiped) this.cue(runOverJingle(newBest.recordRun), 1);
+		if (newBest.fanfare) this.cue(SFX.bestNew, 1);
 
 		// The kill ladder (CD5, CD6): the frame's final score combo pitches every regular kill of the frame (one cue).
 		const scoreCombo = state.score !== undefined ? state.score.combo : COMBO_MIN;
