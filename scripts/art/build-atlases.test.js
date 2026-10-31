@@ -1120,3 +1120,253 @@ describe("sheet cuts and 9-sliced panels (docs/DRAFT_REVEAL.md DR3)", () => {
 		assert.equal(Buffer.compare(A.encodePng(again.img), A.encodePng(eyes.img)), 0);
 	});
 });
+
+describe("UI art pieces and the icon atlas (docs/UI_ART.md UA2, UA3)", () => {
+	const fs = require("node:fs");
+	const path = require("node:path");
+	const pixel = (img, x, y) => Array.from(img.data.slice((y * img.w + x) * 4, (y * img.w + x) * 4 + 4));
+	// The ToffeeCraft Horror UI sheet is 1024 x 607 (docs/UI_ART.md "The source"); the tests never read it.
+	const SHEET = { file: "toffeecraft-horror-ui/UiHorror.png", w: 1024, h: 607 };
+	const config = JSON.parse(fs.readFileSync(path.join(__dirname, "..", "..", "art", "atlases.json"), "utf8"));
+	const SLICED = ["ui.panel.menu", "ui.panel.hud", "ui.panel.tall", "ui.button", "ui.button.focus", "ui.button.disabled", "ui.option.on", "ui.option.off", "ui.bar.track", "ui.bar.fill", "ui.slot.pair", "ui.slot"];
+	const ICONS = [
+		"ui.ornament.bones", "ui.focus.corner", "ui.chip", "ui.chip.white", "ui.heart.full", "ui.heart.half", "ui.heart.empty", "ui.flask.full", "ui.flask.empty",
+		"ui.candle", "ui.caret", "ui.divider", "ui.stick.ring", "ui.touch.button", "ui.icon.pause", "ui.icon.check", "ui.icon.cross", "ui.icon.help", "ui.icon.gear",
+		"ui.icon.home", "ui.icon.speaker", "ui.icon.mute", "ui.icon.coin", "ui.icon.skull", "ui.icon.skull.curse", "ui.icon.ghost", "ui.icon.rip",
+	];
+
+	it("art/atlases.json: every sliced piece and icon is there, cut from the sheet by a rect inside it", () => {
+		const inside = (r) => Array.isArray(r) && r.length === 4 && r.every(Number.isInteger) && r[0] >= 0 && r[1] >= 0 && r[2] >= 1 && r[3] >= 1 && r[0] + r[2] <= SHEET.w && r[1] + r[3] <= SHEET.h;
+		for (const id of SLICED) {
+			const def = config.images[id];
+			assert.ok(def, `${id} is in images`);
+			assert.equal(def.file, SHEET.file, id);
+			assert.ok(inside(def.rect), `${id}: rect ${JSON.stringify(def.rect)} inside the sheet`);
+			assert.ok(typeof def.$comment === "string" && def.$comment.length > 0, `${id} explains its slice`);
+			// the cut is at most the rect (crop alpha trims it), so the slice must leave a centre in the rect already
+			const [l, t, r, b] = def.slice;
+			assert.ok(l + r < def.rect[2] && t + b < def.rect[3], `${id}: slice ${def.slice} leaves a centre in the ${def.rect[2]}x${def.rect[3]} rect`);
+		}
+		assert.deepEqual(Object.keys(config.uiIcons.icons).filter((k) => k !== "$comment").sort(), [...ICONS].sort());
+		for (const id of ICONS) {
+			const def = config.uiIcons.icons[id];
+			assert.ok(inside(def.rect), `${id}: rect ${JSON.stringify(def.rect)} inside the sheet`);
+			assert.ok(typeof def.$comment === "string" && def.$comment.length > 0, `${id} notes its pick`);
+			assert.equal(def.file === undefined ? config.uiIcons.file : def.file, SHEET.file, id);
+		}
+		// the icon atlas reads the sheet the lock already lists
+		assert.ok(A.sourceFiles(config).includes(SHEET.file));
+		const lock = JSON.parse(fs.readFileSync(path.join(__dirname, "..", "..", "art", "vendor.lock.json"), "utf8"));
+		assert.ok(lock.files.some((f) => f.path === SHEET.file));
+	});
+
+	it("slice insets of 0 are allowed (a bar sliced horizontally only); the centre must stay >= 1 px", () => {
+		const img = A.raster(12, 4);
+		img.data.fill(255);
+		A.sourceCache.set("synthetic/bar.png", img);
+		const def = { file: "synthetic/bar.png", name: "bar", crop: "none", slice: [5, 0, 6, 0] };
+		const [bar] = A.buildImages({ "ui.bar.test": def }, []);
+		assert.deepEqual(bar.layout.slice, { left: 5, top: 0, right: 6, bottom: 0 });
+		assert.throws(() => A.buildImages({ "ui.bar.test": { ...def, slice: [6, 0, 6, 0] } }, []), /leaves no centre in the 12x4 image/);
+	});
+
+	it('rgb "white" keeps the alpha and whitens every pixel; "grey" is the luminance; clearRgb clears exact colours', () => {
+		const src = A.raster(3, 2);
+		put(src, 0, 0, [200, 40, 10, 255]);
+		put(src, 1, 0, [10, 200, 40, 120]);
+		put(src, 2, 0, [18, 0, 0, 255]); // the backdrop colour
+		put(src, 0, 1, [68, 21, 21, 255]);
+		put(src, 1, 1, [18, 0, 0, 7]); // the backdrop colour, any alpha
+		A.sourceCache.set("synthetic/rgb.png", src);
+		const def = { file: "synthetic/rgb.png", name: "rgb", crop: "none" };
+		const [white] = A.buildImages({ "ui.white.test": { ...def, rgb: "white" } }, []);
+		for (let i = 0; i < 6; i++) {
+			assert.equal(white.img.data[i * 4 + 3], src.data[i * 4 + 3], "alpha kept");
+			assert.deepEqual(Array.from(white.img.data.slice(i * 4, i * 4 + 3)), [255, 255, 255]);
+		}
+		const [grey] = A.buildImages({ "ui.grey.test": { ...def, rgb: "grey" } }, []);
+		assert.deepEqual(pixel(grey.img, 0, 1), [35, 35, 35, 255]); // (299 * 68 + 587 * 21 + 114 * 21 + 500) / 1000
+		assert.deepEqual(pixel(grey.img, 0, 0), [Math.floor((299 * 200 + 587 * 40 + 114 * 10 + 500) / 1000), Math.floor((299 * 200 + 587 * 40 + 114 * 10 + 500) / 1000), Math.floor((299 * 200 + 587 * 40 + 114 * 10 + 500) / 1000), 255]);
+		const [cleared] = A.buildImages({ "ui.clear.test": { ...def, clearRgb: ["#120000"] } }, []);
+		assert.equal(alphaAt(cleared.img, 2, 0), 0);
+		assert.equal(alphaAt(cleared.img, 1, 1), 0);
+		assert.deepEqual(pixel(cleared.img, 0, 0), [200, 40, 10, 255]);
+		assert.throws(() => A.buildImages({ "ui.bad.test": { ...def, rgb: "pink" } }, []), /ui\.bad\.test: rgb must be "white" or "grey"/);
+		assert.throws(() => A.buildImages({ "ui.bad.test": { ...def, clearRgb: ["120000"] } }, []), /clearRgb must be a non-empty list of "#rrggbb" colours/);
+		assert.throws(() => A.buildImages({ "ui.bad.test": { ...def, clearRgb: [] } }, []), /clearRgb must be a non-empty list/);
+	});
+
+	it("nineSlice keeps the corners and stretches the edges and centre; the slice contact sheet builds", () => {
+		// 5 x 5: a distinct colour per pixel; insets 2 / 2 / 2 / 2 leave the 1 x 1 centre (2, 2)
+		const img = A.raster(5, 5);
+		for (let y = 0; y < 5; y++) for (let x = 0; x < 5; x++) put(img, x, y, [x * 40, y * 40, 7, 255]);
+		const out = A.nineSlice(img, { left: 2, top: 2, right: 2, bottom: 2 }, 9, 7);
+		for (const [x, y, sx, sy] of [[0, 0, 0, 0], [1, 1, 1, 1], [8, 6, 4, 4], [7, 0, 3, 0], [0, 5, 0, 3], [4, 3, 2, 2], [2, 4, 2, 2], [6, 2, 2, 2]]) {
+			assert.deepEqual(pixel(out, x, y), pixel(img, sx, sy), `(${x}, ${y}) <- (${sx}, ${sy})`);
+		}
+		assert.throws(() => A.nineSlice(img, { left: 2, top: 2, right: 2, bottom: 2 }, 4, 7), /smaller than the fixed insets/);
+		const sheet = A.sliceContact({ img, layout: { slice: { left: 2, top: 2, right: 2, bottom: 2 } } });
+		assert.ok(sheet.w > 5 * 4 && sheet.h >= 5 * 4);
+	});
+
+	// Synthetic sheet: icons of assorted sizes, each pixel's colour encoding its piece and position.
+	const ICON_SIZES = [[8, 12], [18, 15], [18, 15], [10, 10], [48, 3], [39, 39], [14, 14], [5, 6], [28, 29], [7, 8], [44, 59], [43, 42], [89, 13], [11, 10], [1, 1]];
+	const iconSheet = () => {
+		const img = A.raster(256, 256);
+		const icons = {};
+		let x = 0;
+		let y = 0;
+		let rowH = 0;
+		ICON_SIZES.forEach(([w, h], n) => {
+			if (x + w + 1 > 256) {
+				x = 0;
+				y += rowH + 1;
+				rowH = 0;
+			}
+			for (let yy = 0; yy < h; yy++) for (let xx = 0; xx < w; xx++) put(img, x + xx, y + yy, [n * 16, (xx * 5) % 256, (yy * 5) % 256, xx === 0 ? 128 : 255]);
+			icons[`ui.t${String(n).padStart(2, "0")}`] = { rect: [x, y, w, h] };
+			x += w + 1;
+			rowH = Math.max(rowH, h);
+		});
+		A.sourceCache.set("synthetic/icons.png", img);
+		return { img, icons };
+	};
+	const section = (icons, extra) => ({ atlas: "ui-icons-test", file: "synthetic/icons.png", gutter: 1, icons, ...extra });
+
+	it("packs every icon with its gutter inside the atlas, no two overlapping, deterministically", () => {
+		const { icons } = iconSheet();
+		const built = A.buildUiIcons(section(icons));
+		assert.ok(built.w <= A.MAX_ATLAS && built.h <= A.MAX_ATLAS);
+		assert.deepEqual([built.img.w, built.img.h], [built.w, built.h]);
+		const ids = Object.keys(icons).sort();
+		assert.deepEqual(Object.keys(built.rects).sort(), ids);
+		const grown = ids.map((id) => {
+			const r = built.rects[id];
+			const [, , w, h] = icons[id].rect;
+			assert.deepEqual([r.w, r.h], [w, h], `${id} keeps its size`);
+			return { id, x: r.x - 1, y: r.y - 1, w: r.w + 2, h: r.h + 2 };
+		});
+		for (const g of grown) assert.ok(g.x >= 0 && g.y >= 0 && g.x + g.w <= built.w && g.y + g.h <= built.h, `${g.id} with its gutter is inside the atlas`);
+		for (let i = 0; i < grown.length; i++) {
+			for (let j = i + 1; j < grown.length; j++) {
+				const a = grown[i];
+				const b = grown[j];
+				assert.ok(a.x >= b.x + b.w || b.x >= a.x + a.w || a.y >= b.y + b.h || b.y >= a.y + a.h, `${a.id} and ${b.id} (with gutters) overlap`);
+			}
+		}
+		// the area used is at least the pieces' and the result is the same every time
+		const area = grown.reduce((n, g) => n + g.w * g.h, 0);
+		assert.ok(built.w * built.h >= area);
+		const again = A.buildUiIcons(section(icons));
+		assert.deepEqual(again.rects, built.rects);
+		assert.equal(Buffer.compare(A.encodePng(again.img), A.encodePng(built.img)), 0);
+	});
+
+	it("copies each piece's pixels into its rect and extrudes its edge pixels into the gutter", () => {
+		const { img: src, icons } = iconSheet();
+		const built = A.buildUiIcons(section(icons));
+		for (const id of Object.keys(icons)) {
+			const [sx, sy, w, h] = icons[id].rect;
+			const r = built.rects[id];
+			for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) assert.deepEqual(pixel(built.img, r.x + x, r.y + y), pixel(src, sx + x, sy + y), `${id} (${x}, ${y})`);
+			for (let y = -1; y <= h; y++) {
+				for (let x = -1; x <= w; x++) {
+					if (x >= 0 && x < w && y >= 0 && y < h) continue;
+					const ex = Math.min(Math.max(x, 0), w - 1);
+					const ey = Math.min(Math.max(y, 0), h - 1);
+					assert.deepEqual(pixel(built.img, r.x + x, r.y + y), pixel(built.img, r.x + ex, r.y + ey), `${id} gutter (${x}, ${y}) = its edge pixel (${ex}, ${ey})`);
+				}
+			}
+		}
+		// extrudeGutter alone: a 2 x 2 piece in a 6 x 6 raster, gutter 2
+		const r = A.raster(6, 6);
+		put(r, 2, 2, [1, 0, 0, 255]);
+		put(r, 3, 2, [2, 0, 0, 255]);
+		put(r, 2, 3, [3, 0, 0, 255]);
+		put(r, 3, 3, [4, 0, 0, 0]);
+		A.extrudeGutter(r, { x: 2, y: 2, w: 2, h: 2 }, 2);
+		assert.deepEqual(pixel(r, 0, 0), [1, 0, 0, 255]);
+		assert.deepEqual(pixel(r, 5, 0), [2, 0, 0, 255]);
+		assert.deepEqual(pixel(r, 0, 5), [3, 0, 0, 255]);
+		assert.deepEqual(pixel(r, 5, 4), [4, 0, 0, 0]);
+	});
+
+	it("white copies are white with the alpha kept; pivots, crop alpha and cutout pass through", () => {
+		const { img: src, icons } = iconSheet();
+		const id = "ui.t03";
+		const [sx, sy, w, h] = icons[id].rect;
+		const built = A.buildUiIcons(section({ ...icons, "ui.t03.white": { rect: icons[id].rect, rgb: "white", pivot: [5, 4] } }));
+		const r = built.rects["ui.t03.white"];
+		for (let y = 0; y < h; y++) {
+			for (let x = 0; x < w; x++) {
+				const p = pixel(built.img, r.x + x, r.y + y);
+				assert.deepEqual(p, [255, 255, 255, src.data[((sy + y) * src.w + sx + x) * 4 + 3]]);
+			}
+		}
+		assert.deepEqual(built.layouts["ui.t03.white"], { rect: r, pivot: { x: 5, y: 4 } });
+		assert.deepEqual(built.layouts[id], { rect: built.rects[id] });
+		// crop alpha trims a window to the piece (the 1 x 1 icon from a 5 x 5 window around it)
+		const [ox, oy] = icons["ui.t14"].rect;
+		const tight = A.buildUiIcons(section({ "ui.one": { rect: [Math.max(0, ox - 2), oy, 3, 3], crop: "alpha", noiseAlpha: 0 } }));
+		assert.ok(tight.rects["ui.one"].w <= 3 && tight.rects["ui.one"].h <= 3);
+	});
+
+	it("rejects an unknown key, a missing rect or file, a non-ui id and a bad gutter", () => {
+		const { icons } = iconSheet();
+		const one = { "ui.t00": icons["ui.t00"] };
+		assert.throws(() => A.buildUiIcons(section({ "ui.x": { rect: [0, 0, 2, 2], slice: [0, 0, 0, 0] } })), /ui\.x: unknown ui icon key slice/);
+		assert.throws(() => A.buildUiIcons(section({ "ui.x": {} })), /ui\.x: a ui icon needs a rect/);
+		assert.throws(() => A.buildUiIcons(section({ "boost.x": { rect: [0, 0, 2, 2] } })), /boost\.x: ui icon ids start with "ui\."/);
+		assert.throws(() => A.buildUiIcons(section(one, { file: undefined })), /ui\.t00: a ui icon needs a file/);
+		assert.throws(() => A.buildUiIcons(section(one, { gutter: 0 })), /uiIcons\.gutter must be an integer >= 1/);
+		assert.throws(() => A.buildUiIcons(section({ "ui.x": { rect: [250, 250, 10, 10] } })), /ui\.x: rect \[250,250,10,10\] must be/);
+		assert.throws(() => A.buildUiIcons(section(one, { maxSize: 10 })), /do not fit one 10x10 atlas/);
+		// sourceFiles lists the section's file (and an icon's own)
+		const files = A.sourceFiles({ spriteSets: {}, images: {}, uiIcons: section({ ...one, "ui.y": { rect: [0, 0, 1, 1], file: "other/x.png" } }) });
+		assert.deepEqual(files, ["other/x.png", "synthetic/icons.png"]);
+	});
+
+	it("uiIconLayout.ts has the fixed shape and matches the packed result, sorted by id", () => {
+		const { icons } = iconSheet();
+		const built = A.buildUiIcons(section({ ...icons, "ui.t01": { ...icons["ui.t01"], pivot: [3, 6] } }));
+		const text = A.uiIconLayoutModule(built);
+		const lines = text.split("\n");
+		assert.deepEqual(lines.slice(0, 12), [
+			"/** Generated by `npm run art:build` from art/atlases.json `uiIcons` (docs/UI_ART.md UA3). Do not edit. */",
+			"export interface ValeUiIconLayout {",
+			"\t/** The piece's rect in the icon atlas, pixels (gutter excluded). */",
+			"\treadonly rect: { readonly x: number; readonly y: number; readonly w: number; readonly h: number };",
+			"\t/** Optional anchor point, pixels from the rect's top-left. */",
+			"\treadonly pivot?: { readonly x: number; readonly y: number };",
+			"}",
+			"/** The atlas file name (the key of its id in assetIds.ts). */",
+			'export const VALE_UI_ICON_FILE = "ui-icons-test.png";',
+			"/** The atlas size, pixels. */",
+			`export const VALE_UI_ICON_ATLAS = { w: ${built.w}, h: ${built.h} } as const;`,
+			"export const VALE_UI_ICONS: Record<string, ValeUiIconLayout> = {",
+		]);
+		const entries = lines.slice(12, -2);
+		assert.deepEqual(lines.slice(-2), ["};", ""]);
+		const parsed = {};
+		for (const line of entries) {
+			const m = /^\t"([^"]+)": \{ rect: \{ x: (\d+), y: (\d+), w: (\d+), h: (\d+) \}(?:, pivot: \{ x: ([\d.]+), y: ([\d.]+) \})? \},$/.exec(line);
+			assert.ok(m, `entry line: ${line}`);
+			parsed[m[1]] = { rect: { x: +m[2], y: +m[3], w: +m[4], h: +m[5] }, ...(m[6] === undefined ? {} : { pivot: { x: +m[6], y: +m[7] } }) };
+		}
+		assert.deepEqual(Object.keys(parsed), Object.keys(built.layouts).sort());
+		assert.deepEqual(parsed, built.layouts);
+		assert.deepEqual(parsed["ui.t01"].pivot, { x: 3, y: 6 });
+		for (const id of Object.keys(parsed)) assert.deepEqual(parsed[id].rect, built.rects[id]);
+		// the contact sheet reads back through the layout
+		const contact = A.uiIconContact(built);
+		assert.ok(contact.w >= built.w * 4 && contact.h > built.h * 4);
+	});
+
+	it("maxRectsFit: best short side fit, ties by y then x; null when nothing fits", () => {
+		const free = [{ x: 10, y: 0, w: 5, h: 9 }, { x: 0, y: 5, w: 6, h: 6 }, { x: 0, y: 0, w: 5, h: 5 }];
+		assert.deepEqual(A.maxRectsFit(free, 5, 5), { f: free[2], score: 0 });
+		// 4 x 4: score 1 at (10, 0) and (0, 0), 2 at (0, 5); the tie goes to the lower y, then the lower x
+		assert.deepEqual(A.maxRectsFit(free, 4, 4).f, free[2]);
+		assert.equal(A.maxRectsFit(free, 7, 1), null);
+	});
+});

@@ -370,6 +370,36 @@ export const VALE_IMAGE_LAYOUTS: Record<string, ValeImageLayout> = {
 		pixelsPerTile: 29.6,
 	},
 	"tile.biome.1.floor": { file: "tile-biome1-floor.png", w: 256, h: 256, tilesPerImage: 4 },
+	"ui.bar.fill": {
+		file: "ui-bar-fill.png",
+		w: 48,
+		h: 16,
+		slice: { left: 8, top: 0, right: 8, bottom: 0 },
+	},
+	"ui.bar.track": {
+		file: "ui-bar-track.png",
+		w: 48,
+		h: 16,
+		slice: { left: 8, top: 0, right: 8, bottom: 0 },
+	},
+	"ui.button": {
+		file: "ui-button.png",
+		w: 90,
+		h: 27,
+		slice: { left: 5, top: 5, right: 5, bottom: 5 },
+	},
+	"ui.button.disabled": {
+		file: "ui-button-disabled.png",
+		w: 90,
+		h: 27,
+		slice: { left: 5, top: 5, right: 5, bottom: 5 },
+	},
+	"ui.button.focus": {
+		file: "ui-button-focus.png",
+		w: 90,
+		h: 27,
+		slice: { left: 5, top: 5, right: 5, bottom: 5 },
+	},
 	"ui.draft.back": {
 		file: "ui-draft-back.png",
 		w: 93,
@@ -418,11 +448,53 @@ export const VALE_IMAGE_LAYOUTS: Record<string, ValeImageLayout> = {
 		h: 103,
 		pivot: { x: 4, y: 100 },
 	},
+	"ui.option.off": {
+		file: "ui-option-off.png",
+		w: 52,
+		h: 15,
+		slice: { left: 4, top: 4, right: 4, bottom: 4 },
+	},
+	"ui.option.on": {
+		file: "ui-option-on.png",
+		w: 52,
+		h: 15,
+		slice: { left: 4, top: 4, right: 4, bottom: 4 },
+	},
+	"ui.panel.hud": {
+		file: "ui-panel-hud.png",
+		w: 90,
+		h: 44,
+		slice: { left: 6, top: 6, right: 6, bottom: 6 },
+	},
+	"ui.panel.menu": {
+		file: "ui-panel-menu.png",
+		w: 87,
+		h: 78,
+		slice: { left: 43, top: 11, right: 43, bottom: 8 },
+	},
+	"ui.panel.tall": {
+		file: "ui-panel-tall.png",
+		w: 64,
+		h: 76,
+		slice: { left: 31, top: 10, right: 32, bottom: 8 },
+	},
 	"ui.ring.player": {
 		file: "ui-ring-player.png",
 		w: 41,
 		h: 31,
 		pivot: { x: 20.5, y: 15.5 },
+	},
+	"ui.slot": {
+		file: "ui-slot.png",
+		w: 32,
+		h: 32,
+		slice: { left: 6, top: 6, right: 6, bottom: 6 },
+	},
+	"ui.slot.pair": {
+		file: "ui-slot-pair.png",
+		w: 96,
+		h: 60,
+		slice: { left: 47, top: 49, right: 48, bottom: 10 },
 	},
 };
 

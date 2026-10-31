@@ -18,6 +18,8 @@
  *   -> src/shared/theme/packs/vale/layout.ts   generated (committed): frame sizes, pivots, cells, sheets by file name
  *   -> src/shared/theme/packs/vale/fxLayout.ts generated (committed): the sprite-effect atlas and the ambient particle
  *                                        textures (docs/FX_AUDIO.md F2, F6; config keys `fx` and `ambient`)
+ *   -> src/shared/theme/packs/vale/uiIconLayout.ts generated (committed): the UI icon atlas (docs/UI_ART.md UA3;
+ *                                        config key `uiIcons`; section "UI icon atlas" below)
  *
  * World art (decor props, effects, breakables; docs/DECOR.md R5) has its own section below ("World art").
  *
@@ -94,6 +96,7 @@ const UPLOAD = path.join(ART, "upload");
 const LAYOUT_DIR = path.join(ROOT, "src", "shared", "theme", "packs", "vale");
 const LAYOUT_FILE = path.join(LAYOUT_DIR, "layout.ts");
 const FX_LAYOUT_FILE = path.join(LAYOUT_DIR, "fxLayout.ts");
+const UI_ICON_LAYOUT_FILE = path.join(LAYOUT_DIR, "uiIconLayout.ts");
 
 /** Roblox stores images at most this many pixels on a side. */
 const MAX_ATLAS = 1024;
@@ -505,6 +508,7 @@ function sourceFiles(config) {
 	for (const f of worldSourceFiles(config.worldArt)) files.add(f);
 	for (const id of fxIds(config)) files.add(config.fx.sets[id].file);
 	for (const id of ambientIds(config)) files.add(config.ambient[id].file);
+	if (config.uiIcons) for (const id of uiIconIds(config.uiIcons)) files.add(uiIconFile(config.uiIcons, id));
 	return [...files].sort();
 }
 
@@ -1011,6 +1015,10 @@ function contactSheet(result) {
  *   - `mask` { maxRgb, boxes? } (optional, not with `centre`): the image becomes a white-on-transparent mask of its
  *     pixels with alpha > 0 and max(R, G, B) <= maxRgb inside `boxes` (default: everywhere), e.g. a skull's eye
  *     sockets. Same `file` / `rect` / `crop` / `slice` as the image it is drawn over keeps the two registered (maskPixels).
+ *   - `clearRgb` ["#rrggbb", ...] (optional, docs/UI_ART.md UA3): clears the pixels of exactly those colours, after the
+ *     crop and the cutout (a piece painted on an opaque backdrop: the portrait frame's coin);
+ *   - `rgb` (optional, after `clearRgb`): "white" makes every pixel white with its alpha kept (a piece tinted by a
+ *     colour role in code, like the white loot beam), "grey" its rounded luminance (LUMA, alpha kept; a dimmed state).
  */
 function buildImage(id, def, built) {
 	let pixelsPerTile;
@@ -1039,6 +1047,8 @@ function buildImage(id, def, built) {
 		if (!isByte(def.cutout.outlineRgb)) throw new Error(`${id}: cutout.outlineRgb must be an integer 0-255`);
 		cutoutPixels(img, def.cutout.outlineRgb);
 	}
+	if (def.clearRgb !== undefined) clearColours(id, img, def.clearRgb);
+	if (def.rgb !== undefined) recolour(id, img, def.rgb);
 	if (def.pivot === "center") pivot = { x: img.w / 2, y: img.h / 2 };
 	else if (def.pivot === "bottom") pivot = { x: img.w / 2, y: img.h - def.pad };
 	else if (Array.isArray(def.pivot)) {
@@ -1184,6 +1194,32 @@ function maskPixels(img, maxRgb, boxes) {
 		}
 	}
 	return out;
+}
+
+const HEX_RGB = /^#[0-9a-fA-F]{6}$/;
+
+/** Clears, in place, every pixel whose RGB is exactly one of `colours` ("#rrggbb"), whatever its alpha. */
+function clearColours(id, img, colours) {
+	if (!Array.isArray(colours) || colours.length === 0 || !colours.every((c) => typeof c === "string" && HEX_RGB.test(c))) {
+		throw new Error(`${id}: clearRgb must be a non-empty list of "#rrggbb" colours, got ${JSON.stringify(colours)}`);
+	}
+	const keys = new Set(colours.map((c) => parseInt(c.slice(1), 16)));
+	for (let i = 0; i < img.w * img.h; i++) {
+		const p = i * 4;
+		if (keys.has(img.data[p] * 65536 + img.data[p + 1] * 256 + img.data[p + 2])) img.data.fill(0, p, p + 4);
+	}
+}
+
+/** `rgb` in place: "white" sets every pixel's RGB to 255, "grey" to its rounded luminance (LUMA); alpha is kept. */
+function recolour(id, img, mode) {
+	if (mode !== "white" && mode !== "grey") throw new Error(`${id}: rgb must be "white" or "grey", got ${JSON.stringify(mode)}`);
+	const d = img.data;
+	for (let p = 0; p < d.length; p += 4) {
+		const v = mode === "white" ? 255 : Math.floor((LUMA[0] * d[p] + LUMA[1] * d[p + 1] + LUMA[2] * d[p + 2] + MILLE / 2) / MILLE);
+		d[p] = v;
+		d[p + 1] = v;
+		d[p + 2] = v;
+	}
 }
 
 /** Every `images` entry in id order; `sets` (buildSpriteSets' result) feeds `pixelsPerTileFrom`. */
@@ -1614,6 +1650,20 @@ function buildWorldSprites(world, name, def, ppt, pad) {
 	};
 }
 
+/**
+ * MaxRects choice: the free rect a w x h item goes into (its top-left corner), best short side fit, ties by y, then x;
+ * { f, score } or null when nothing fits.
+ */
+function maxRectsFit(free, w, h) {
+	let best = null;
+	for (const f of free) {
+		if (f.w < w || f.h < h) continue;
+		const score = Math.min(f.w - w, f.h - h);
+		if (!best || score < best.score || (score === best.score && (f.y < best.f.y || (f.y === best.f.y && f.x < best.f.x)))) best = { f, score };
+	}
+	return best;
+}
+
 /** MaxRects free list: place `r` (taken), splitting every free rect it overlaps, then drop contained ones. */
 function takeRect(free, r) {
 	const next = [];
@@ -1675,12 +1725,11 @@ function packWorldAtlases(world, pieces) {
 		const h = p.img.h;
 		let best = null;
 		for (const a of atlases) {
-			for (const f of a.free) {
-				if (f.w < w || f.h < h) continue;
-				const score = Math.min(f.w - w, f.h - h);
-				if (!best || score < best.score || (score === best.score && (f.y < best.f.y || (f.y === best.f.y && f.x < best.f.x)))) best = { a, f, score };
+			const fit = maxRectsFit(a.free, w, h);
+			if (fit) {
+				best = { a, f: fit.f, score: fit.score };
+				break; // fill earlier atlases first
 			}
-			if (best) break; // fill earlier atlases first
 		}
 		if (!best) {
 			const a = open();
@@ -2407,6 +2456,264 @@ function printEffects(fx) {
 }
 
 // ---------------------------------------------------------------------------------------------
+// Sliced-image contact sheets (docs/UI_ART.md UA3)
+
+const SLICE_CONTACT_SCALE = 4;
+const SLICE_PREVIEW_SCALE = 2;
+const SLICE_LINE_RGB = [0, 230, 230];
+
+/**
+ * Nearest-neighbour 9-slice of `img` to W x H (Roblox ScaleType.Slice at SliceScale 1): the corners stay as they are,
+ * the edge bands and the centre stretch. W and H must leave the stretched part >= 1 px.
+ */
+function nineSlice(img, slice, W, H) {
+	const { left, top, right, bottom } = slice;
+	if (W < left + right + 1 || H < top + bottom + 1) throw new Error(`nineSlice: ${W}x${H} is smaller than the fixed insets`);
+	const axis = (v, n, lo, hi, out) => {
+		if (v < lo) return v;
+		if (v >= out - hi) return v - (out - n);
+		return lo + Math.floor(((v - lo) * (n - lo - hi)) / (out - lo - hi));
+	};
+	const out = raster(W, H);
+	for (let y = 0; y < H; y++) {
+		const sy = axis(y, img.h, top, bottom, H);
+		for (let x = 0; x < W; x++) {
+			const si = (sy * img.w + axis(x, img.w, left, right, W)) * 4;
+			out.data.set(img.data.subarray(si, si + 4), (y * W + x) * 4);
+		}
+	}
+	return out;
+}
+
+/** `src` scaled by s (nearest) and composited over the opaque `dst` at (dx, dy). */
+function overScaled(src, s, dst, dx, dy) {
+	for (let y = 0; y < src.h; y++) {
+		for (let x = 0; x < src.w; x++) {
+			const si = (y * src.w + x) * 4;
+			const a = src.data[si + 3];
+			if (a === 0) continue;
+			for (let yy = 0; yy < s; yy++) {
+				for (let xx = 0; xx < s; xx++) {
+					const di = ((dy + y * s + yy) * dst.w + dx + x * s + xx) * 4;
+					for (let k = 0; k < 3; k++) dst.data[di + k] = Math.floor((src.data[si + k] * a + dst.data[di + k] * (255 - a) + 127) / 255);
+				}
+			}
+		}
+	}
+}
+
+/**
+ * Contact sheet of a sliced image: the image at SLICE_CONTACT_SCALE with the slice centre's edges in cyan (a 1 px
+ * centre shows as two lines in one pixel column / row), then a 9-sliced preview at SLICE_PREVIEW_SCALE, twice as wide
+ * (plus 13 px) and, unless the slice has no top / bottom insets (a bar sliced horizontally only), twice as tall (+ 7).
+ */
+function sliceContact(image) {
+	const { img } = image;
+	const sl = image.layout.slice;
+	const S = SLICE_CONTACT_SCALE;
+	const P = SLICE_PREVIEW_SCALE;
+	const pw = img.w * 2 + 13;
+	const ph = sl.top + sl.bottom === 0 ? img.h : img.h * 2 + 7;
+	const preview = nineSlice(img, sl, pw, ph);
+	const m = CONTACT_GUTTER * 2;
+	const out = raster(m * 3 + img.w * S + pw * P, m * 2 + Math.max(img.h * S, ph * P));
+	fillRect(out, 0, 0, out.w, out.h, [CONTACT_BG, CONTACT_BG, CONTACT_BG]);
+	overScaled(img, S, out, m, m);
+	const x0 = m + sl.left * S;
+	const x1 = m + (img.w - sl.right) * S - 1;
+	const y0 = m + sl.top * S;
+	const y1 = m + (img.h - sl.bottom) * S - 1;
+	for (const x of [x0, x1]) fillRect(out, x, m, 1, img.h * S, SLICE_LINE_RGB);
+	for (const y of [y0, y1]) fillRect(out, m, y, img.w * S, 1, SLICE_LINE_RGB);
+	overScaled(preview, P, out, m * 2 + img.w * S, m);
+	return out;
+}
+
+// ---------------------------------------------------------------------------------------------
+// UI icon atlas (docs/UI_ART.md UA3; config key `uiIcons`)
+//
+// Small fixed-size pieces of the UI sheet (hearts, potions, glyphs, framed icons, the focus bracket, ...) in ONE atlas,
+// so one upload switches them all on. `uiIcons`: { atlas (file name without .png), file (the default source, relative
+// to art/vendor), gutter (px, default 1), maxSize (default MAX_ATLAS), icons: { <id>: def } }. Each def is an `images`
+// cut (buildImage) with these keys only: `rect` (required), `file`, `crop` (default "none": the rect as it is; "alpha"
+// trims to alpha > noiseAlpha, + pad), `noiseAlpha`, `pad`, `cutout`, `clearRgb`, `rgb`, `pivot`. Ids must start with
+// "ui.".
+//
+// Packing (deterministic): every piece grown by the gutter on each side, tallest first (then widest, then id), by
+// MaxRects (maxRectsFit / takeRect, the world atlas packer) into a bin of width W and height maxSize, for every W
+// from the widest piece to maxSize; the smallest W x used height wins (ties: the squarer, then the narrower). The
+// gutter pixels are EXTRUDED copies of the piece's edge pixels (corners: the corner pixel), written after the atlas's
+// alpha bleed, so a bilinear sample at a rect edge never reaches a neighbour. uiIconLayout.ts gives each id its rect
+// (gutter excluded) and its pivot when the def has one.
+
+const UI_ICON_KEYS = new Set(["$comment", "file", "rect", "crop", "noiseAlpha", "pad", "cutout", "clearRgb", "rgb", "pivot"]);
+
+function uiIconIds(section) {
+	return Object.keys(section.icons || {})
+		.filter((k) => k !== "$comment")
+		.sort();
+}
+
+function uiIconFile(section, id) {
+	const file = section.icons[id].file === undefined ? section.file : section.icons[id].file;
+	if (typeof file !== "string" || file === "") throw new Error(`${id}: a ui icon needs a file (its own or uiIcons.file)`);
+	return file;
+}
+
+/** Packs `pieces` ({ id, img }) as the section comment says: { w, h, rects: { id: { x, y, w, h } } } (gutter excluded). */
+function packUiIcons(pieces, gutter, maxSize) {
+	if (pieces.length === 0) throw new Error("uiIcons: no icons");
+	const order = [...pieces].sort((a, b) => b.img.h - a.img.h || b.img.w - a.img.w || (a.id < b.id ? -1 : 1));
+	const g2 = 2 * gutter;
+	const minW = Math.max(...order.map((p) => p.img.w + g2));
+	const maxW = Math.min(maxSize, order.reduce((n, p) => n + p.img.w + g2, 0));
+	let best = null;
+	for (let W = minW; W <= maxW; W++) {
+		const free = [{ x: 0, y: 0, w: W, h: maxSize }];
+		const at = [];
+		let H = 0;
+		for (const p of order) {
+			const fit = maxRectsFit(free, p.img.w + g2, p.img.h + g2);
+			if (!fit) break;
+			at.push({ p, x: fit.f.x, y: fit.f.y });
+			takeRect(free, { x: fit.f.x, y: fit.f.y, w: p.img.w + g2, h: p.img.h + g2 });
+			H = Math.max(H, fit.f.y + p.img.h + g2);
+		}
+		if (at.length < order.length) continue;
+		const better = !best || W * H < best.w * best.h || (W * H === best.w * best.h && (Math.max(W, H) < Math.max(best.w, best.h) || (Math.max(W, H) === Math.max(best.w, best.h) && W < best.w)));
+		if (better) best = { w: W, h: H, at };
+	}
+	if (!best) throw new Error(`uiIcons: the icons do not fit one ${maxSize}x${maxSize} atlas`);
+	const rects = {};
+	for (const { p, x, y } of best.at) rects[p.id] = { x: x + gutter, y: y + gutter, w: p.img.w, h: p.img.h };
+	return { w: best.w, h: best.h, rects };
+}
+
+/** Copies, in place, every pixel of the g px ring around rect r from the nearest pixel of r (edges and corners). */
+function extrudeGutter(img, r, g) {
+	for (let y = r.y - g; y < r.y + r.h + g; y++) {
+		for (let x = r.x - g; x < r.x + r.w + g; x++) {
+			if (x >= r.x && x < r.x + r.w && y >= r.y && y < r.y + r.h) continue;
+			const sx = Math.min(Math.max(x, r.x), r.x + r.w - 1);
+			const sy = Math.min(Math.max(y, r.y), r.y + r.h - 1);
+			const si = (sy * img.w + sx) * 4;
+			img.data.copyWithin((y * img.w + x) * 4, si, si + 4);
+		}
+	}
+}
+
+/** Builds every icon, packs them and draws the atlas: { file, gutter, pieces, w, h, rects, img, layouts }. */
+function buildUiIcons(section) {
+	if (typeof section.atlas !== "string" || !/^[a-z0-9-]+$/.test(section.atlas)) throw new Error(`uiIcons.atlas must be a file name without .png, got ${JSON.stringify(section.atlas)}`);
+	const gutter = section.gutter === undefined ? 1 : section.gutter;
+	if (!Number.isInteger(gutter) || gutter < 1) throw new Error(`uiIcons.gutter must be an integer >= 1, got ${JSON.stringify(section.gutter)}`);
+	const maxSize = section.maxSize === undefined ? MAX_ATLAS : section.maxSize;
+	if (!Number.isInteger(maxSize) || maxSize < 1 || maxSize > MAX_ATLAS) throw new Error(`uiIcons.maxSize must be an integer 1-${MAX_ATLAS}`);
+	const pieces = uiIconIds(section).map((id) => {
+		if (!id.startsWith("ui.")) throw new Error(`${id}: ui icon ids start with "ui."`);
+		const def = section.icons[id];
+		for (const k of Object.keys(def)) if (!UI_ICON_KEYS.has(k)) throw new Error(`${id}: unknown ui icon key ${k}`);
+		if (def.rect === undefined) throw new Error(`${id}: a ui icon needs a rect`);
+		const built = buildImage(id, { ...def, file: uiIconFile(section, id), name: id, crop: def.crop === undefined ? "none" : def.crop });
+		return { id, img: built.img, pivot: built.layout.pivot };
+	});
+	const packed = packUiIcons(pieces, gutter, maxSize);
+	const img = raster(packed.w, packed.h);
+	for (const p of pieces) {
+		const r = packed.rects[p.id];
+		blit(p.img, 0, 0, r.w, r.h, img, r.x, r.y, -1);
+	}
+	alphaBleed(img);
+	for (const p of pieces) extrudeGutter(img, packed.rects[p.id], gutter);
+	const layouts = {};
+	for (const p of pieces) {
+		layouts[p.id] = p.pivot ? { rect: packed.rects[p.id], pivot: p.pivot } : { rect: packed.rects[p.id] };
+	}
+	return { file: `${section.atlas}.png`, gutter, pieces, ...packed, img, layouts };
+}
+
+/** packs/vale/uiIconLayout.ts: the shape docs/UI_ART.md UA3 fixes (VALE_UI_ICON_FILE / _ATLAS, VALE_UI_ICONS by id). */
+function uiIconLayoutModule(icons) {
+	const xy = (p) => `{ x: ${p.x}, y: ${p.y} }`;
+	const entry = (id) => {
+		const l = icons.layouts[id];
+		const r = l.rect;
+		return `\t${JSON.stringify(id)}: { rect: { x: ${r.x}, y: ${r.y}, w: ${r.w}, h: ${r.h} }${l.pivot ? `, pivot: ${xy(l.pivot)}` : ""} },`;
+	};
+	const text = [
+		"/** Generated by `npm run art:build` from art/atlases.json `uiIcons` (docs/UI_ART.md UA3). Do not edit. */",
+		"export interface ValeUiIconLayout {",
+		"\t/** The piece's rect in the icon atlas, pixels (gutter excluded). */",
+		"\treadonly rect: { readonly x: number; readonly y: number; readonly w: number; readonly h: number };",
+		"\t/** Optional anchor point, pixels from the rect's top-left. */",
+		"\treadonly pivot?: { readonly x: number; readonly y: number };",
+		"}",
+		"/** The atlas file name (the key of its id in assetIds.ts). */",
+		`export const VALE_UI_ICON_FILE = ${JSON.stringify(icons.file)};`,
+		"/** The atlas size, pixels. */",
+		`export const VALE_UI_ICON_ATLAS = { w: ${icons.w}, h: ${icons.h} } as const;`,
+		"export const VALE_UI_ICONS: Record<string, ValeUiIconLayout> = {",
+		...Object.keys(icons.layouts).sort().map(entry),
+		"};",
+		"",
+	].join("\n");
+	for (const line of text.split("\n")) {
+		if (line.replace(/\t/g, "    ").length > PRINT_WIDTH) throw new Error(`uiIconLayout.ts line over ${PRINT_WIDTH} columns: ${line}`);
+	}
+	return text;
+}
+
+/**
+ * Contact sheet of the icon atlas: every icon read back from the atlas through its layout rect, in id order, at
+ * SLICE_CONTACT_SCALE on mid-grey in a darker frame, numbered (the build log lists number -> id), a red cross on the
+ * pivot; then the whole atlas at the same scale, gutters included.
+ */
+function uiIconContact(icons) {
+	const S = SLICE_CONTACT_SCALE;
+	const gap = FX_CONTACT_GAP;
+	const label = FX_CONTACT_LABEL;
+	const ids = Object.keys(icons.layouts).sort();
+	const rowW = Math.max(icons.w * S + 2 * gap, 1000);
+	const cells = [];
+	let x = gap;
+	let y = gap;
+	let rowH = 0;
+	for (const id of ids) {
+		const r = icons.layouts[id].rect;
+		const cw = Math.max(r.w * S, 24);
+		if (x + cw + gap > rowW && x > gap) {
+			x = gap;
+			y += rowH + gap;
+			rowH = 0;
+		}
+		cells.push({ id, x, y });
+		x += cw + gap;
+		rowH = Math.max(rowH, label + r.h * S);
+	}
+	const atlasY = y + rowH + gap * 2;
+	const out = raster(rowW, atlasY + icons.h * S + gap);
+	fillRect(out, 0, 0, out.w, out.h, [CONTACT_BG, CONTACT_BG, CONTACT_BG]);
+	cells.forEach(({ id, x: cx, y: cy }, n) => {
+		const l = icons.layouts[id];
+		const r = l.rect;
+		drawNumber(out, cx, cy + 2, n, 2, [240, 240, 240]);
+		fillRect(out, cx - 1, cy + label - 1, r.w * S + 2, r.h * S + 2, [96, 96, 96]);
+		fillRect(out, cx, cy + label, r.w * S, r.h * S, [CONTACT_BG, CONTACT_BG, CONTACT_BG]);
+		const cut = raster(r.w, r.h);
+		blit(icons.img, r.x, r.y, r.w, r.h, cut, 0, 0, -1);
+		overScaled(cut, S, out, cx, cy + label);
+		if (l.pivot) {
+			fillRect(out, cx + Math.floor(l.pivot.x * S) - 6, cy + label + Math.floor(l.pivot.y * S), 13, 1, [230, 30, 30]);
+			fillRect(out, cx + Math.floor(l.pivot.x * S), cy + label + Math.floor(l.pivot.y * S) - 6, 1, 13, [230, 30, 30]);
+		}
+	});
+	fillRect(out, gap - 1, atlasY - 1, icons.w * S + 2, icons.h * S + 2, [96, 96, 96]);
+	fillRect(out, gap, atlasY, icons.w * S, icons.h * S, [CONTACT_BG, CONTACT_BG, CONTACT_BG]);
+	overScaled(icons.img, S, out, gap, atlasY);
+	return out;
+}
+
+// ---------------------------------------------------------------------------------------------
 // Main
 
 function writeIfChanged(file, content) {
@@ -2429,7 +2736,8 @@ function removeStale(dir, keep) {
 
 /**
  * Every PNG the build writes, in write order: { dir: "build" | "contact", name, img }. Sheets (each followed by its
- * outline sheet, if any) and a contact sheet per set, then the images. Everything else in art/build is stale.
+ * outline sheet, if any) and a contact sheet per set, then the images (a sliced one followed by its sliceContact).
+ * Everything else in art/build is stale.
  */
 function buildOutputs(sets, images) {
 	const out = [];
@@ -2440,7 +2748,10 @@ function buildOutputs(sets, images) {
 		}
 		out.push({ dir: "contact", name: `${s.id}.png`, img: contactSheet(s) });
 	}
-	for (const i of images) out.push({ dir: "build", name: i.layout.file, img: i.img });
+	for (const i of images) {
+		out.push({ dir: "build", name: i.layout.file, img: i.img });
+		if (i.layout.slice) out.push({ dir: "contact", name: `${i.id}.png`, img: sliceContact(i) });
+	}
 	return out;
 }
 
@@ -2469,6 +2780,12 @@ function main() {
 		if (o.dir === "build") emit(BUILD, o.name, o.img, builtFiles);
 		else emit(CONTACT, o.name, o.img, contactFiles);
 	}
+	let icons;
+	if (config.uiIcons) {
+		icons = buildUiIcons(config.uiIcons);
+		emit(BUILD, icons.file, icons.img, builtFiles);
+		emit(CONTACT, icons.file, uiIconContact(icons), contactFiles);
+	}
 	let world;
 	if (config.worldArt) {
 		const { pieces } = buildWorldPieces(config.worldArt, sets);
@@ -2490,6 +2807,7 @@ function main() {
 
 	if (writeIfChanged(LAYOUT_FILE, layoutModule(sets, images, floor.meanHex, world))) changed++;
 	if (fx && writeIfChanged(FX_LAYOUT_FILE, fxLayoutModule(fx.atlas, fx.fxLayouts, fx.ambientLayouts))) changed++;
+	if (icons && writeIfChanged(UI_ICON_LAYOUT_FILE, uiIconLayoutModule(icons))) changed++;
 
 	for (const s of sets) {
 		const l = s.layout;
@@ -2517,6 +2835,16 @@ function main() {
 		for (const a of world.atlases) console.log(`  ${a.file}: ${a.img.w}x${a.img.h}, ${a.items.length} piece(s)`);
 	}
 	printEffects(fx);
+	if (icons) {
+		console.log(`ui icons: ${icons.file} ${icons.w}x${icons.h}, ${icons.pieces.length} icons, ${icons.gutter} px extruded gutter (contact numbers in id order)`);
+		Object.keys(icons.layouts)
+			.sort()
+			.forEach((id, n) => {
+				const l = icons.layouts[id];
+				const src = config.uiIcons.icons[id].rect;
+				console.log(`  #${n} ${id}: rect ${l.rect.x},${l.rect.y} ${l.rect.w}x${l.rect.h} (sheet ${src.join(",")})${l.pivot ? `, pivot (${l.pivot.x}, ${l.pivot.y})` : ""}`);
+			});
+	}
 	console.log(`art:build: ${builtFiles.size} atlas/image file(s), ${contactFiles.size} contact sheet(s), ${changed} file(s) updated`);
 	const uploaded = uploadedFiles();
 	const pending = [...builtFiles].sort().filter((f) => !uploaded.has(f));
@@ -2545,17 +2873,22 @@ module.exports = {
 	buildOutputs,
 	buildSpriteSet,
 	buildSpriteSets,
+	buildUiIcons,
 	chooseGrid,
 	contactSheet,
 	cutoutPixels,
 	dilateCells,
 	discOffsets,
 	encodePng,
+	extrudeGutter,
 	flatFill,
 	isBodyAt,
 	layoutModule,
 	maskPixels,
+	maxRectsFit,
+	nineSlice,
 	outlineConfig,
+	packUiIcons,
 	outlineSheet,
 	rimClip,
 	raster,
@@ -2567,8 +2900,12 @@ module.exports = {
 	gridSheet,
 	removeStale,
 	sheetCell,
+	sliceContact,
 	sourceFiles,
 	spriteSetOrder,
+	takeRect,
+	uiIconContact,
+	uiIconLayoutModule,
 	/** Composited layered sheets (gridSheet); tests clear it with the source cache. */
 	layeredCache,
 	/** Decoded sources by art/vendor-relative path; the tests put synthetic rasters here instead of files. */
