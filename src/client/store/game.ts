@@ -1,5 +1,6 @@
 import { createProducer } from "@rbxts/reflex";
 import { EMPTY_SNAPSHOT, snapshotsEqual, type GameSnapshot, type InputDeviceKind } from "shared/play";
+import type { RunRecordsResult } from "shared/records";
 import { latencyProbeViewsEqual, type LatencyProbeView } from "shared/view";
 
 /**
@@ -22,6 +23,14 @@ export interface VerdictView {
 	readonly serverHash?: string;
 	/** Ranked (segmented) runs: the server's leaderboard status ("queued", "ineligible:<reason>", "failed"). */
 	readonly leaderboard?: string;
+	/**
+	 * Ranked runs (docs/NEW_BEST.md NB9): this player's personal-records outcome from the server's verdict
+	 * (RunFinishVerdict.records; absent when not credited, ineligible, the records unknown, or Studio without the fake),
+	 * and the server's own final score / floor it refers to (the record's new numbers).
+	 */
+	readonly records?: RunRecordsResult;
+	readonly serverScore?: number;
+	readonly serverFloor?: number;
 }
 
 export interface ReplayCheckView {

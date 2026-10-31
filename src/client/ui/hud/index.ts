@@ -13,6 +13,7 @@ export * from "./cornerFade";
 export * from "./comboUi";
 export * from "./draftUi";
 export * from "./minimapHosts";
+export * from "./newBestRunOver";
 export * from "./newBestUi";
 export * from "./MinimapPanel";
 export * from "./GameHud";

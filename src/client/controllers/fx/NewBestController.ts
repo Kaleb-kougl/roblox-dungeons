@@ -2,11 +2,12 @@ import { Controller, OnStart } from "@flamework/core";
 import { Janitor } from "@rbxts/janitor";
 import { GuiService, Players, Workspace } from "@rbxts/services";
 import { Events } from "client/network";
-import { clientStore, selectRecordsStatus } from "client/store";
-import { NEW_BEST_UI, resetNewBestUi } from "client/ui";
+import { clientStore, selectRecordsStatus, type VerdictView } from "client/store";
+import { NEW_BEST_UI, resetNewBestUi, runOverBest, type RunOverBest } from "client/ui";
 import type { JuiceSettings } from "shared/settings";
 import { partySize } from "shared/sim";
 import type { ColorRole, StringVars, ThemePack } from "shared/theme";
+import { SFX } from "shared/view/audio";
 import {
 	HUD_VIEW,
 	NEW_BEST,
@@ -22,11 +23,16 @@ import {
 	debugBaseline,
 	newBestRowText,
 	parseNewBestDebug,
+	recordRollEdges,
+	recordRollValue,
+	recordRowText,
 	type ConfettiPiece,
 	type NewBestCueSource,
 	type NewBestFrame,
 	type NewBestInput,
 	type NewBestLine,
+	type RecordRollEdges,
+	type RecordRow,
 	type RunBaseline,
 } from "shared/view/hud";
 import { AudioController } from "../audio/AudioController";
@@ -45,6 +51,9 @@ const UNRANKED: RunBaseline = { kind: "unranked" };
 const CONFETTI_POOL = math.max(NEW_BEST.confetti.inRun.count, NEW_BEST.confetti.runOver.count);
 /** A gold piece's sparkle: its tone (0..1) mixes the gold this far toward uiText. */
 const CONFETTI_TONE_MIX = 0.5;
+/** The run-over burst's seed is the run's last in-run burst seed plus this (a pattern of its own). */
+const RUN_OVER_SEED_STEP = 1;
+const NO_ROWS: ReadonlyArray<RecordRow> = [];
 
 /**
  * The new-best celebration's per-frame view (docs/NEW_BEST.md NB7). Presentation only, read-only on the sim.
@@ -56,8 +65,8 @@ const CONFETTI_TONE_MIX = 0.5;
  *              server run session (RunContext.runId), not the tutorial, and scored; KV_NewBestDebug
  *              (NEW_BEST.debugAttribute, parseNewBestDebug / debugBaseline, read at run start) overrides a ranked run's
  *              baseline. A new NewBestTracker per run; a per-run Janitor drops what the run left on screen.
- *   frame      an onShownScore subscriber of RoomClearController: inside its FX_FRAME_PHASE.scoreRoll frame handler, right
- *              after the score roller produced the shown score and before every normal-phase handler (AudioController's
+ *   frame      an onShownScore subscriber of RoomClearController: inside its FX_FRAME_PHASE.scoreRoll frame handler,
+ *              right after the score roller produced the shown score and before every normal-phase handler (AudioController's
  *              cue mapper, which reads this frame through setNewBestCues; ComboController, which draws the shout). The
  *              tracker gets the shown score, the true score and floor, `underCover` (the stage card is up and not yet
  *              lifting: StageController.coverLifting, so an edge held under it fires on the reveal's first frame), the
@@ -65,9 +74,15 @@ const CONFETTI_TONE_MIX = 0.5;
  *              clear / perfect jingle is dropped (dropClearJingle, NBD7).
  *   draws      NEW_BEST_UI (the score panel's target row: text only on a change, colour, slam; the number's gold and
  *              shine; the touch strip's compact line), the NEW BEST! floor shout on the crossing (ComboController's
- *              shout slot, priority over a tier shout), and the gold confetti: one ScreenGui (KV_NewBestConfetti, over the
- *              HUD: NEW_BEST_DRAW.confettiDisplayOrderAboveHud) with a pool of plain Frames placed by confettiPieceAt
+ *              shout slot, priority over a tier shout), and the gold confetti: one ScreenGui (KV_NewBestConfetti, over
+ *              the HUD: NEW_BEST_DRAW.confettiDisplayOrderAboveHud) with a pool of plain Frames placed by confettiPieceAt
  *              (in-run: only outside HUD_CLEAR_ZONE; none under reduced motion).
+ *   run over   (NB9) from the run's end, the run-over panel's record (client/ui runOverBest: the same function the
+ *              panel draws from, so both agree; the server's verdict records win once they arrive): the record rows roll
+ *              (recordRollValue, real seconds since the run ended) into NEW_BEST_UI.recordRows with sfx.score.tick at
+ *              each row's start and sfx.score.land at its landing (recordRollEdges, through AudioController), and a
+ *              record run throws the full-screen confetti once (none under reduced motion). The record fanfare itself
+ *              is the cue mapper's (the tracker's recordRun on the wipe frame).
  * An unranked run (tutorial, M1, unscored, a local-seed run) writes nothing: its HUD is exactly the old one.
  */
 @Controller({})
@@ -96,6 +111,17 @@ export class NewBestController implements OnStart {
 	private readonly pieces = new Array<Frame>();
 	private readonly piece: ConfettiPiece = { x: 0, y: 0, sizePx: 0, rotationDeg: 0, transparency: 1, tone: 0 };
 	private confettiShown = false;
+	// --- the run over (NB9) ---
+	/** os.clock() when the run ended (-1: not over), and the last frame's seconds since. */
+	private overAt = -1;
+	private overPrevT = 0;
+	/** Seconds after the run's end when the full-screen confetti started (-1: not yet). */
+	private overConfettiAt = -1;
+	private overBest: RunOverBest | undefined;
+	private overVerdict: VerdictView | undefined;
+	private overScore = -1;
+	private overFloor = -1;
+	private readonly rollEdges: RecordRollEdges = { started: 0, landed: 0 };
 
 	constructor(
 		private readonly sim: SimController,
@@ -133,6 +159,11 @@ export class NewBestController implements OnStart {
 			this.rowGap = -1;
 			this.rowMargin = -1;
 			this.hideConfetti();
+			this.overAt = -1;
+			this.overPrevT = 0;
+			this.overConfettiAt = -1;
+			this.overBest = undefined;
+			this.overVerdict = undefined;
 		}, true);
 	}
 
@@ -147,7 +178,9 @@ export class NewBestController implements OnStart {
 		return debug !== undefined ? debugBaseline(debug, boardFor(party)) : baseline;
 	}
 
-	/** Nothing of the last run left: no tracker, no cues, neutral bindings, no confetti (ComboController drops the shout). */
+	/** Nothing of the last run left: no tracker, no cues, neutral bindings, no confetti
+	 * (ComboController drops the shout).
+	 */
 	private endRun(): void {
 		this.tracker = undefined;
 		this.cues = NO_NEW_BEST_CUES;
@@ -174,7 +207,65 @@ export class NewBestController implements OnStart {
 		this.drawRow(look);
 		if (look.fanfare) this.roomClear.dropClearJingle();
 		if (look.scoreCrossed) this.shout();
-		this.drawConfetti(look.confettiSeed, look.confettiAge, false);
+		if (input.runOver) this.runOverFrame(look, settings.reducedMotion);
+		else this.drawConfetti(look.confettiSeed, look.confettiAge, false);
+	}
+
+	// --- the run over (NB9) -----------------------------------------------------------------------------
+
+	private runOverFrame(look: NewBestFrame, reducedMotion: boolean): void {
+		const now = os.clock();
+		if (this.overAt < 0) {
+			this.overAt = now;
+			this.overPrevT = 0;
+		}
+		const t = now - this.overAt;
+		const records = this.runOverRecordsNow().records;
+		const rows = records.record && !records.first ? records.rows : NO_ROWS;
+		const s = (key: string, vars?: StringVars) => this.str(key, vars);
+		const U = NEW_BEST_UI.recordRows;
+		for (let i = 0; i < U.size(); i++) {
+			const row = rows[i];
+			U[i].write(row !== undefined ? recordRowText(row, recordRollValue(row, i, t), s) : "");
+		}
+		const edges = recordRollEdges(math.min(rows.size(), U.size()), this.overPrevT, t, this.rollEdges);
+		for (let i = 0; i < edges.started; i++) this.audio.play(SFX.scoreTick, 1);
+		for (let i = 0; i < edges.landed; i++) this.audio.play(SFX.scoreLand, 1);
+		this.overPrevT = t;
+		if (records.record && !reducedMotion && this.overConfettiAt < 0) this.overConfettiAt = t;
+		const age = this.overConfettiAt >= 0 ? t - this.overConfettiAt : -1;
+		if (age >= 0 && age < NEW_BEST.confetti.runOver.lifeSec) {
+			this.drawConfetti(look.confettiSeed + RUN_OVER_SEED_STEP, age, true);
+		} else this.drawConfetti(look.confettiSeed, look.confettiAge, false);
+	}
+
+	/** The run-over panel's new-best state now (recomputed only when the verdict or the final numbers change). */
+	private runOverRecordsNow(): RunOverBest {
+		const st = clientStore.getState();
+		const verdict = st.game.verdict;
+		const snap = st.game.snapshot;
+		const cached = this.overBest;
+		if (
+			cached !== undefined &&
+			verdict === this.overVerdict &&
+			snap.score === this.overScore &&
+			snap.floor === this.overFloor
+		) {
+			return cached;
+		}
+		this.overVerdict = verdict;
+		this.overScore = snap.score;
+		this.overFloor = snap.floor;
+		const best = runOverBest(
+			st.records.baseline,
+			st.records.baselineRun,
+			st.game.run.run,
+			verdict,
+			snap.score,
+			snap.floor,
+		);
+		this.overBest = best;
+		return best;
 	}
 
 	private str(key: string, vars?: StringVars): string {
