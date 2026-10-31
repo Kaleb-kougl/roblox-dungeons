@@ -12,6 +12,7 @@ export * from "./OnboardingService";
 export * from "./RecordsService";
 export * from "./InviteService";
 export * from "./DailyService";
+export * from "./DailyFriendsService";
 export * from "./data/DataStoreKeyValue";
 export * from "./data/MergeKeyValue";
 export * from "./data/OrderedDataStoreScores";

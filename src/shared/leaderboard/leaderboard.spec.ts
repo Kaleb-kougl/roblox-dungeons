@@ -34,6 +34,7 @@ import {
 	type DetailsStore,
 	type LeaderboardBoard,
 	type LeaderboardStores,
+	boardRefKey,
 	type OrderedScoreStore,
 	type PostContext,
 	type PostJob,
@@ -97,13 +98,25 @@ class MemoryDetails implements DetailsStore {
 	}
 }
 
+/** One in-memory ordered store per board and scope, keyed by boardRefKey ("solo", "coop", "solo_d303_r1", ...). */
 function memoryStores() {
-	const ordered = new Map<LeaderboardBoard, MemoryOrdered>([
+	const ordered = new Map<string, MemoryOrdered>([
 		["solo", new MemoryOrdered()],
 		["coop", new MemoryOrdered()],
 	]);
 	const details = new MemoryDetails();
-	const stores: LeaderboardStores = { ordered: (b) => ordered.get(b)!, details };
+	const stores: LeaderboardStores = {
+		ordered: (ref) => {
+			const key = boardRefKey(ref);
+			let store = ordered.get(key);
+			if (store === undefined) {
+				store = new MemoryOrdered();
+				ordered.set(key, store);
+			}
+			return store;
+		},
+		details,
+	};
 	return { stores, ordered, details };
 }
 
@@ -118,8 +131,12 @@ function run(score: number, floor: number, members: number[], at = T0, runId = "
 	};
 }
 
+/** Posts every job of a run; the outcomes without `previous` (checked on its own below). */
 function postAll(stores: LeaderboardStores, r: VerifiedRunPost) {
-	return planPosts(r).map((job) => postPersonalBest(stores, job));
+	return planPosts(r).map((job) => {
+		const o = postPersonalBest(stores, job);
+		return { improved: o.improved, detailsWritten: o.detailsWritten };
+	});
 }
 
 describe("ordered value encoding", () => {
@@ -178,7 +195,7 @@ describe("who posts where", () => {
 	it("only validated runs of an eligible world, never debug / Studio / VIP servers / abandoned", () => {
 		expect(leaderboardEligibility(ok)).toBe(undefined);
 		// Endless runs end only in death: a boss kill is a floor of the run, so R after it is an abandoned run.
-		expect(LEADERBOARD_POLICY.deathOnlyWorlds).toEqual(["endless"]);
+		expect(LEADERBOARD_POLICY.deathOnlyWorlds).toEqual(["endless", "daily"]);
 		expect(leaderboardEligibility({ ...ok, died: false, bossDefeated: true })).toBe("abandoned");
 		expect(leaderboardEligibility({ ...ok, partySize: 3, died: false, bossDefeated: true })).toBe("abandoned");
 		// A world whose run ENDS at the boss (the M1 run, were it eligible) still posts a boss kill.
@@ -227,8 +244,8 @@ describe("who posts where", () => {
 			["coop", 7],
 			["coop", 9],
 		]);
-		expect(jobs[0].details.partySize).toBe(3);
-		expect(jobs[0].details.members.map((m) => m.userId)).toEqual([7, 9]);
+		expect(jobs[0].details!.partySize).toBe(3);
+		expect(jobs[0].details!.members.map((m) => m.userId)).toEqual([7, 9]);
 	});
 
 	it("solo for one player, co-op from two; one job per member with the same value and details", () => {
@@ -244,8 +261,8 @@ describe("who posts where", () => {
 			["coop", 9],
 		]);
 		expect(coop[0].value).toBe(coop[2].value);
-		expect(coop[1].details.partySize).toBe(3);
-		expect(coop[1].details.members.map((m) => m.userId)).toEqual([7, 8, 9]);
+		expect(coop[1].details!.partySize).toBe(3);
+		expect(coop[1].details!.members.map((m) => m.userId)).toEqual([7, 8, 9]);
 		expect(orderedKey(7)).toBe("u_7");
 		expect(detailsKey("coop", 7)).toBe("coop_u_7");
 		expect(userIdFromKey("u_7")).toBe(7);
@@ -301,16 +318,18 @@ describe("personal bests (in-memory stores)", () => {
 		details.failNext = 1;
 		expect(() => postPersonalBest(stores, job)).toThrow();
 		expect(details.docs.get("solo_u_7")).toBe(undefined);
-		expect(postPersonalBest(stores, job)).toEqual({ improved: false, detailsWritten: true });
+		expect(postPersonalBest(stores, job)).toMatchObject({ improved: false, detailsWritten: true });
 		expect(decodeDetails(details.docs.get("solo_u_7"))?.score).toBe(100);
-		expect(postPersonalBest(stores, job)).toEqual({ improved: false, detailsWritten: false });
+		expect(postPersonalBest(stores, job)).toMatchObject({ improved: false, detailsWritten: false });
 	});
 
 	it("never lowers a best another server wrote meanwhile (the check runs inside UpdateAsync)", () => {
 		const { stores, ordered } = memoryStores();
 		const [job] = planPosts(run(100, 2, [7]));
 		ordered.get("solo")!.values.set("u_7", encodeOrderedValue({ score: 900, floor: 1, at: T0 }));
-		expect(postPersonalBest(stores, job).improved).toBe(false);
+		const outcome = postPersonalBest(stores, job);
+		expect(outcome.improved).toBe(false);
+		expect(outcome.previous).toBe(encodeOrderedValue({ score: 900, floor: 1, at: T0 })); // what the transform found
 		expect(isBetterValue(5, undefined)).toBe(true);
 		expect(isBetterValue(5, "garbage")).toBe(true);
 		expect(isBetterValue(5, 5)).toBe(false);

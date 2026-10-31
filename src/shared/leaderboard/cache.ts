@@ -74,6 +74,16 @@ export class SharedTtlCache<K, V> {
 		slot.at = -math.huge;
 	}
 
+	/**
+	 * Replaces the value a key holds, in place: its age is unchanged (it expires when it would have) and a key with no
+	 * value is left alone. The daily verdict merges a player's new entry into the cached top rows this way.
+	 */
+	patch(key: K, fn: (value: V) => V): void {
+		const slot = this.slots.get(key);
+		if (slot === undefined || !slot.has) return;
+		slot.value = fn(slot.value as V);
+	}
+
 	/** Keys held (for leak checks). */
 	size(): number {
 		return this.slots.size();

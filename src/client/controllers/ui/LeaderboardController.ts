@@ -3,7 +3,7 @@ import { Janitor } from "@rbxts/janitor";
 import { UserInputService } from "@rbxts/services";
 import { Events } from "client/network";
 import { clientStore, selectBindings, selectInputCaptured, selectLeaderboardOpen } from "client/store";
-import type { LeaderboardBoard } from "shared/leaderboard";
+import { leaderboardRequestKey, type LeaderboardBoard, type LeaderboardRequest } from "shared/leaderboard";
 import { inputsFor } from "shared/play";
 import { LEADERBOARD_VIEW, SETTINGS_PAD_CLOSE_KEY } from "shared/view/hud";
 import { SettingsController } from "./SettingsController";
@@ -19,7 +19,8 @@ import { SettingsController } from "./SettingsController";
 @Controller({})
 export class LeaderboardController implements OnStart {
 	private readonly janitor = new Janitor();
-	private readonly lastRequest = new Map<LeaderboardBoard, number>();
+	/** Last request time per leaderboardRequestKey. */
+	private readonly lastRequest = new Map<string, number>();
 
 	constructor(private readonly settings: SettingsController) {}
 
@@ -48,21 +49,26 @@ export class LeaderboardController implements OnStart {
 	setOpen(open: boolean): void {
 		if (open) this.settings.setPanelOpen(false);
 		clientStore.setLeaderboardOpen(open);
-		if (open) this.request(clientStore.getState().leaderboard.board);
+		if (open) this.request({ board: clientStore.getState().leaderboard.board, scope: "alltime" });
 	}
 
 	/** Shows a board (Solo / Co-op tab) and refreshes it if due. */
 	showBoard(board: LeaderboardBoard): void {
 		clientStore.setLeaderboardBoard(board);
-		this.request(board);
+		this.request({ board, scope: "alltime" });
 	}
 
-	private request(board: LeaderboardBoard): void {
+	/**
+	 * Asks for a board view (all-time, or a daily scope / friends view: docs/DAILY.md DS5 / DS7), at most once per
+	 * LEADERBOARD_VIEW.refreshSeconds per board, scope and friends flag. Daily views land in the store's `scoped`.
+	 */
+	request(request: LeaderboardRequest): void {
+		const key = leaderboardRequestKey(request);
 		const now = os.clock();
-		const last = this.lastRequest.get(board);
+		const last = this.lastRequest.get(key);
 		if (last !== undefined && now - last < LEADERBOARD_VIEW.refreshSeconds) return;
-		this.lastRequest.set(board, now);
+		this.lastRequest.set(key, now);
 		clientStore.setLeaderboardLoading(true);
-		Events.getLeaderboard.fire(board);
+		Events.getLeaderboard.fire(request);
 	}
 }

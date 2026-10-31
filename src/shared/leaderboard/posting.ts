@@ -7,7 +7,12 @@
  * score; at an equal score a deeper floor; never a later equal run). A co-op run posts one entry for EVERY member to
  * the co-op board (each member's co-op best). The checks run inside UpdateAsync, so concurrent servers never lower a
  * best.
+ *
+ * Daily runs (docs/DAILY.md DS5): a run of a `dailyWorlds` world posts to ITS day's daily board only (the session's
+ * day and ruleset, DSD5 / DSD11), with the same rule and value and no details document (DSD12). It never posts to the
+ * all-time boards, and an endless run never posts to a daily board (DSD6).
  */
+import type { DailyRunKey } from "shared/daily";
 import { playerDataKey } from "shared/settings";
 import {
 	COOP_MIN_PARTY,
@@ -18,6 +23,7 @@ import {
 	type LeaderboardPolicy,
 } from "./config";
 import { asOrderedValue, encodeOrderedValue } from "./orderedValue";
+import { ALLTIME_SCOPE, alltimeBoard, dailyBoard, type BoardRef } from "./scope";
 
 /** One player of a posted run, as stored with the entry. */
 export interface LeaderboardMember {
@@ -53,14 +59,24 @@ export interface VerifiedRunPost {
 	readonly floor: number;
 	/** Unix seconds. */
 	readonly at: number;
+	/** Daily runs: the session's day and ruleset (the board's scope, DSD5). Ignored outside the daily worlds. */
+	readonly daily?: DailyRunKey;
 }
 
-/** One personal-best write: `userId`'s entry on `board`. */
+/** One personal-best write: `userId`'s entry on `board` under `scope`. */
 export interface PostJob {
 	readonly board: LeaderboardBoard;
+	/** ALLTIME_SCOPE, or the daily board's dailyScope(day, ruleset). */
+	readonly scope: string;
 	readonly userId: number;
 	readonly value: number;
-	readonly details: LeaderboardEntryDetails;
+	/** The all-time details document; daily boards keep none (DSD12). */
+	readonly details?: LeaderboardEntryDetails;
+}
+
+/** The board a job writes. */
+export function jobBoard(job: PostJob): BoardRef {
+	return { board: job.board, scope: job.scope };
 }
 
 /** Why a validated run does not post (undefined: it posts). */
@@ -72,7 +88,9 @@ export type IneligibleReason =
 	| "abandoned"
 	| "party"
 	/** A party run (2+ members) where fewer than COOP_MIN_PARTY members contributed (partyContributors). */
-	| "contributors";
+	| "contributors"
+	/** A daily-world run without its session's daily key (day and ruleset): it has no board to post to. */
+	| "daily_key";
 
 export interface PostContext {
 	readonly worldKind: string;
@@ -86,13 +104,16 @@ export interface PostContext {
 	readonly bossDefeated: boolean;
 	/** Party runs: members who contributed (partyContributors). Default: every member. */
 	readonly contributors?: number;
+	/** Daily runs: the session's day and ruleset. */
+	readonly daily?: DailyRunKey;
 }
 
 export function leaderboardEligibility(
 	ctx: PostContext,
 	policy: LeaderboardPolicy = LEADERBOARD_POLICY,
 ): IneligibleReason | undefined {
-	if (!policy.eligibleWorlds.includes(ctx.worldKind)) return "world";
+	const daily = policy.dailyWorlds.includes(ctx.worldKind);
+	if (!daily && !policy.eligibleWorlds.includes(ctx.worldKind)) return "world";
 	if (ctx.debug) return "debug";
 	if (ctx.studio && !policy.postFromStudio) return "studio";
 	if (ctx.privateServer && !policy.postFromPrivateServers) return "private_server";
@@ -103,7 +124,21 @@ export function leaderboardEligibility(
 		if (!finished) return "abandoned";
 	}
 	if (ctx.partySize >= COOP_MIN_PARTY && (ctx.contributors ?? ctx.partySize) < COOP_MIN_PARTY) return "contributors";
+	if (daily && ctx.daily === undefined) return "daily_key";
 	return undefined;
+}
+
+/**
+ * The board an eligible run posts to: its day's daily board for a `dailyWorlds` run with a daily key (DSD5 / DSD6),
+ * else the all-time board of its party size. An endless run never gets a daily board, whatever key it carries.
+ */
+export function postTarget(
+	run: Pick<VerifiedRunPost, "worldKind" | "daily" | "partySize" | "members">,
+	policy: LeaderboardPolicy = LEADERBOARD_POLICY,
+): BoardRef {
+	const board = boardForParty(run.partySize ?? run.members.size());
+	if (policy.dailyWorlds.includes(run.worldKind) && run.daily !== undefined) return dailyBoard(board, run.daily);
+	return alltimeBoard(board);
 }
 
 /**
@@ -157,16 +192,25 @@ export function detailsKey(board: LeaderboardBoard, userId: number): string {
 	return `${board}_${playerDataKey(userId)}`;
 }
 
-/** The personal-best writes for a validated run: one per credited member, on the party's board. */
-export function planPosts(run: VerifiedRunPost): PostJob[] {
+/**
+ * The personal-best writes for a validated run: one per credited member, on its board (postTarget): the party's
+ * all-time board with a details document, or its day's daily board without one.
+ */
+export function planPosts(run: VerifiedRunPost, policy: LeaderboardPolicy = LEADERBOARD_POLICY): PostJob[] {
 	const partySize = run.partySize ?? run.members.size();
-	const board = boardForParty(partySize);
+	const target = postTarget(run, policy);
+	const board = target.board;
 	const value = encodeOrderedValue({ score: run.score, floor: run.floor, at: run.at });
-	const members = run.members.map((m) => ({ ...m }));
 	const jobs: PostJob[] = [];
+	if (target.scope !== ALLTIME_SCOPE) {
+		for (const m of run.members) jobs.push({ board, scope: target.scope, userId: m.userId, value });
+		return jobs;
+	}
+	const members = run.members.map((m) => ({ ...m }));
 	for (const m of run.members) {
 		jobs.push({
 			board,
+			scope: ALLTIME_SCOPE,
 			userId: m.userId,
 			value,
 			details: {
@@ -222,15 +266,18 @@ export interface DetailsStore {
 }
 
 export interface LeaderboardStores {
-	readonly ordered: (board: LeaderboardBoard) => OrderedScoreStore;
+	/** The ordered store of a board and scope (the all-time stores unscoped, daily ones scoped by day and ruleset). */
+	readonly ordered: (ref: BoardRef) => OrderedScoreStore;
 	readonly details: DetailsStore;
 }
 
 export interface PostOutcome {
 	/** The ordered entry went up (a new personal best). */
 	readonly improved: boolean;
-	/** The details document was written. */
+	/** The details document was written (always false for a daily job: no details). */
 	readonly detailsWritten: boolean;
+	/** The valid ordered value the write found (the last transform run's `old`); undefined: no entry before. */
+	readonly previous?: number;
 }
 
 /**
@@ -241,26 +288,29 @@ export interface PostOutcome {
 export function postPersonalBest(stores: LeaderboardStores, job: PostJob): PostOutcome {
 	let improved = false;
 	let equal = false;
-	stores.ordered(job.board).update(
+	let previous: number | undefined;
+	stores.ordered(jobBoard(job)).update(
 		orderedKey(job.userId),
 		(old) => {
 			// UpdateAsync may run the transform more than once: only the last run counts.
+			previous = asOrderedValue(old);
 			improved = isBetterValue(job.value, old);
-			equal = asOrderedValue(old) === job.value;
+			equal = previous === job.value;
 			return improved ? job.value : undefined;
 		},
 		[job.userId],
 	);
-	if (!improved && !equal) return { improved: false, detailsWritten: false };
+	const details = job.details;
+	if (details === undefined || (!improved && !equal)) return { improved, detailsWritten: false, previous };
 	let written = false;
 	stores.details.update(
 		detailsKey(job.board, job.userId),
 		(old) => {
 			const stored = detailsValue(old);
 			written = stored === undefined || stored < job.value;
-			return written ? job.details : undefined;
+			return written ? details : undefined;
 		},
 		[job.userId],
 	);
-	return { improved, detailsWritten: written };
+	return { improved, detailsWritten: written, previous };
 }

@@ -1,6 +1,6 @@
 import { Networking } from "@flamework/networking";
-import type { DailyStatus } from "shared/daily";
-import type { LeaderboardBoard, LeaderboardView } from "shared/leaderboard";
+import type { DailyRunResult, DailyStatus } from "shared/daily";
+import type { LeaderboardRequest, LeaderboardView } from "shared/leaderboard";
 import type { ArrivalJoinIntent, ArrivalToastKey } from "shared/invite";
 import type { OnboardingStatus, TutorialOutcome } from "shared/onboarding";
 import type { RecordsStatus, RunRecordsResult } from "shared/records";
@@ -233,6 +233,14 @@ export interface RunFinishVerdict {
 	 * rejected / expired / ineligible runs, after a failed join load, and in Studio without KV_FakeRecords.
 	 */
 	records?: RunRecordsResult;
+	/**
+	 * Daily runs (docs/DAILY.md DS5): THIS recipient's entry on the run's daily board (its start day and ruleset):
+	 * posted / improved / previous from the personal-best write, rank (exact, top rows) or percentile (estimate) and
+	 * entrants after it (shared/daily DailyRunResult). Accepted daily runs only; `posted: false` when the run did not
+	 * post (see `leaderboard`), the recipient was not credited, or the write did not land within DAILY_VERDICT.waitSeconds.
+	 * The verdict of a posting daily run waits for its writes (up to that long).
+	 */
+	daily?: DailyRunResult;
 }
 
 export interface ClientToServerEvents {
@@ -250,8 +258,13 @@ export interface ClientToServerEvents {
 	submitSegment(segment: RunSegment): void;
 	/** The end of the run, after its last segment. Answered with `runFinished`. */
 	finishRun(final: RunFinal): void;
-	/** Top rows of a board plus the caller's best; answered with `leaderboard`. */
-	getLeaderboard(board: LeaderboardBoard): void;
+	/**
+	 * Top rows of a board plus the caller's best; answered with `leaderboard`. `{ board, scope }`: the all-time boards
+	 * ("alltime") or the daily board of "today" / "yesterday" by the server's clock and ruleset; `friends: true` (daily
+	 * scopes only) asks for the caller's friends on it (shared/leaderboard LeaderboardRequest). Invalid requests are
+	 * dropped; rate limited (LEADERBOARD_REQUEST_RATE).
+	 */
+	getLeaderboard(request: LeaderboardRequest): void;
 	/** Asks for this player's saved settings (every group); answered with `settingsChanged`. */
 	requestSettings(): void;
 	/**
@@ -359,7 +372,10 @@ export interface ServerToClientEvents {
 	segmentVerdict(verdict: SegmentVerdict): void;
 	/** The verdict on a whole segmented run (also sent when it is rejected or expires before `finishRun`). */
 	runFinished(verdict: RunFinishVerdict): void;
-	/** The answer to `getLeaderboard`. */
+	/**
+	 * The answer to `getLeaderboard` (its `scope` / `friends` echo the request). A friends view with `pending` lookups is
+	 * pushed again as they resolve.
+	 */
 	leaderboard(view: LeaderboardView): void;
 	/**
 	 * This player's stored overrides, every group (only what they changed). The client resolves them against its
@@ -380,8 +396,10 @@ export interface ServerToClientEvents {
 	 */
 	records(status: RecordsStatus): void;
 	/**
-	 * The Daily (docs/DAILY.md): today's day, label, seed, ruleset and reset time (shared/daily DailyStatus). Sent in
-	 * answer to `requestDaily` and pushed to every player when the UTC day changes (DailyService).
+	 * The Daily (docs/DAILY.md): today's day, label, seed, ruleset and reset time (shared/daily DailyStatus), plus this
+	 * player's entries today (`mine`) and yesterday's podium (`podium`) when known. Sent in answer to `requestDaily`
+	 * (at once, then again once the board reads are in), pushed to every player when the UTC day changes, and to each
+	 * member after a daily run's verdict (DailyService).
 	 */
 	dailyStatus(status: DailyStatus): void;
 	/** Co-op (M4): a party run starts (every member gets it, only after every member accepted the invite). */

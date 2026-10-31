@@ -93,8 +93,11 @@ export interface LeaderboardPolicy {
 	readonly dailyWorlds: ReadonlyArray<string>;
 }
 
-/** The endless descent ends only in death (a boss kill raises the Depth and the run goes on). */
-export const LEADERBOARD_DEATH_ONLY_WORLDS: ReadonlyArray<string> = ["endless"];
+/**
+ * Worlds that end only in death: the endless descent and the Daily (a boss kill raises the Depth and the run goes on).
+ * shared/records reads it too; harmless there, its own eligible worlds stay endless-only.
+ */
+export const LEADERBOARD_DEATH_ONLY_WORLDS: ReadonlyArray<string> = ["endless", DAILY_WORLD_KIND];
 
 /**
  * World kinds whose validated runs post to the daily boards (DS5). Kept apart from LEADERBOARD_ELIGIBLE_WORLDS (the
