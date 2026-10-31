@@ -35,3 +35,4 @@ export * from "./draftReveal";
 export * from "./draftRevealView";
 export * from "./skinConfig";
 export * from "./skin";
+export * from "./hudSkin";

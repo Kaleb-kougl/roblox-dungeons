@@ -5,6 +5,7 @@ import { BOOST_VIEW } from "shared/view/boosts";
 import { MINIMAP_VIEW } from "shared/view/minimap";
 import {
 	ALWAYS_ON_PANELS,
+	FOOTPRINT_ESTIMATE,
 	TOUCH_ALWAYS_ON_PANELS,
 	TOUCH_TEST_VIEWPORTS,
 	TOUCH_TUTORIAL_BOX,
@@ -203,6 +204,14 @@ describe("HUD footprint budget", () => {
 		);
 		expect(e.w).toBeLessThanOrEqual(HUD_FOOTPRINT.status.maxW);
 		expect(e.h).toBeLessThanOrEqual(HUD_FOOTPRINT.status.maxH);
+	});
+
+	// docs/UI_ART.md UA10 (UAD7): the heart box went 22 -> 24 so an 18 x 15 art heart draws at 2 screen px per art px at
+	// 1080 p. 24 is one label line (textSize 20 + the 4 px slack), so a hearts row is no taller than before and the
+	// status estimate above is unchanged (160 of 160: three rows of max(line, heart) = 24).
+	it("the heart box (24 since the UI art) is no taller than a status label line, so no status row grows", () => {
+		expect(HUD_VIEW.heartSize).toBe(24);
+		expect(HUD_VIEW.heartSize).toBeLessThanOrEqual(HUD_VIEW.textSize + FOOTPRINT_ESTIMATE.lineSlack);
 	});
 
 	it("lists every always-on panel once", () => {
