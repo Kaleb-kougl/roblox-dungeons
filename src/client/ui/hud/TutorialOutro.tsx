@@ -9,6 +9,7 @@ import { SFX } from "shared/view/audio";
 import { HUD_VIEW, LEADERBOARD_STRINGS, TUTORIAL_VIEW, tutorialLeaderboardHint } from "shared/view/hud";
 import { useHudActions } from "./actions";
 import { MenuButton, Panel, Text } from "./primitives";
+import { screenSkin } from "shared/view/menu";
 
 const HALF = 0.5;
 const BUTTON = new Vector2(TUTORIAL_VIEW.outroButtonSize.x, TUTORIAL_VIEW.outroButtonSize.y);
@@ -50,6 +51,7 @@ export function TutorialOutro() {
 				width={TUTORIAL_VIEW.outroWidth}
 				align={Enum.HorizontalAlignment.Center}
 				padding={HUD_VIEW.pad * 2}
+				skin={screenSkin("tutorialOutro")}
 			>
 				<Text
 					fill={true}

@@ -45,18 +45,23 @@ import {
 	OPTIONS_VIEW,
 	SETTINGS_HINT,
 	SETTINGS_STRINGS,
+	UI_ART,
 	actionNameKey,
 	optionsDeviceKey,
 	optionsTabKey,
 	refusalKey,
+	volumeIcon,
 } from "shared/view/hud";
+import { screenDividers, screenSkin } from "shared/view/menu";
 import { useHudActions, type HudActions } from "./actions";
-import { MenuButton, Panel, Row, Text } from "./primitives";
+import { ArtImage, Divider, MenuButton, Panel, Row, Text, panelIcon } from "./primitives";
 
 const HALF = 0.5;
 const HIDDEN = 1;
 /** Modal prompts draw above the screen (ZIndexBehavior Sibling: later siblings on top; this keeps it explicit). */
 const MODAL_Z = 10;
+/** The screen's rows: title 1, tabs 2, a divider 3, the tab's body, a divider 5, Reset / Close 6, notes 7-8. */
+const BODY_ORDER = 4;
 
 interface Option<T> {
 	readonly value: T;
@@ -427,6 +432,35 @@ function ControlsTab(props: {
 // ---------------------------------------------------------------------------------------------
 // Audio and display tabs
 
+/**
+ * An audio row's label (docs/UI_ART.md UA8): with the frame art, the speaker glyph (the struck-through one at 0 %,
+ * volumeIcon) beside the label, both inside the label's width so the row keeps its columns; otherwise exactly the flat
+ * label.
+ */
+function VolumeLabel(props: { order: number; label: string; volume: number }) {
+	const icon = panelIcon(screenSkin("options"), volumeIcon(props.volume));
+	const glyph = UI_ART.iconBox.glyph;
+	const flat = <Text order={props.order} width={HUD_VIEW.settingsLabelWidth} text={props.label} />;
+	if (icon === undefined) return flat;
+	return (
+		<frame
+			LayoutOrder={props.order}
+			Size={new UDim2(0, HUD_VIEW.settingsLabelWidth, 0, HUD_VIEW.textSize)}
+			AutomaticSize={Enum.AutomaticSize.Y}
+			BackgroundTransparency={HIDDEN}
+		>
+			<uilistlayout
+				FillDirection={Enum.FillDirection.Horizontal}
+				VerticalAlignment={Enum.VerticalAlignment.Center}
+				SortOrder={Enum.SortOrder.LayoutOrder}
+				Padding={new UDim(0, HUD_VIEW.gap)}
+			/>
+			<ArtImage name="Icon" id={icon} order={1} box={{ w: glyph, h: glyph }} color="uiText" />
+			<Text order={2} width={HUD_VIEW.settingsLabelWidth - glyph - HUD_VIEW.gap} text={props.label} />
+		</frame>
+	);
+}
+
 function AudioTab(props: { order: number; actions: HudActions; selectable: boolean }) {
 	const audio = useSelector(selectAudio);
 	const labels: Record<keyof AudioSettings, string> = {
@@ -444,7 +478,7 @@ function AudioTab(props: { order: number; actions: HudActions; selectable: boole
 		};
 		return (
 			<Row key={key} order={i + 1}>
-				<Text order={0} width={HUD_VIEW.settingsLabelWidth} text={str(labels[key])} />
+				<VolumeLabel order={0} label={str(labels[key])} volume={audio[key]} />
 				<MenuButton
 					order={1}
 					name={`${key}_down`}
@@ -681,9 +715,10 @@ function Modal(props: {
 				align={Enum.HorizontalAlignment.Center}
 				padding={HUD_VIEW.pad * 2}
 				transparency={0}
+				skin={screenSkin("optionsPrompt")}
+				flatOnly={<uistroke Thickness={1} Color={role("uiAccent")} />}
 				name="Prompt"
 			>
-				<uistroke Thickness={1} Color={role("uiAccent")} />
 				{lines}
 				{buttons.size() > 0 ? (
 					<Row order={props.lines.size() + 1} align={Enum.HorizontalAlignment.Center}>
@@ -843,16 +878,17 @@ export function OptionsScreen() {
 	if (tab === "controls") {
 		body = (
 			<ControlsTab
-				order={3}
+				order={BODY_ORDER}
 				actions={actions}
 				options={options}
 				selectable={selectable}
 				rememberFocus={rememberFocus}
 			/>
 		);
-	} else if (tab === "audio") body = <AudioTab order={3} actions={actions} selectable={selectable} />;
-	else if (tab === "display") body = <DisplayTab order={3} actions={actions} selectable={selectable} />;
-	else body = <JuiceTab order={3} actions={actions} selectable={selectable} />;
+	} else if (tab === "audio") body = <AudioTab order={BODY_ORDER} actions={actions} selectable={selectable} />;
+	else if (tab === "display") body = <DisplayTab order={BODY_ORDER} actions={actions} selectable={selectable} />;
+	else body = <JuiceTab order={BODY_ORDER} actions={actions} selectable={selectable} />;
+	const dividers = screenDividers("options");
 	return (
 		<frame
 			key="OptionsOverlay"
@@ -867,9 +903,10 @@ export function OptionsScreen() {
 				width={OPTIONS_VIEW.width}
 				padding={HUD_VIEW.pad * 2}
 				transparency={0}
+				skin={screenSkin("options")}
+				flatOnly={<uistroke Thickness={1} Color={role("uiAccent")} />}
 				name="Options"
 			>
-				<uistroke Thickness={1} Color={role("uiAccent")} />
 				<Text
 					fill={true}
 					order={1}
@@ -878,8 +915,10 @@ export function OptionsScreen() {
 					text={str(OPTIONS_STRINGS.title)}
 				/>
 				<Row order={2}>{tabs}</Row>
+				{dividers ? <Divider key="DividerTop" order={3} skin={screenSkin("options")} /> : undefined}
 				{body}
-				<Row order={4}>
+				{dividers ? <Divider key="DividerBottom" order={5} skin={screenSkin("options")} /> : undefined}
+				<Row order={6}>
 					{tab !== "controls" ? (
 						<MenuButton
 							order={1}
@@ -906,7 +945,7 @@ export function OptionsScreen() {
 				{!synced ? (
 					<Text
 						fill={true}
-						order={5}
+						order={7}
 						size={HUD_VIEW.smallText}
 						color="telegraph"
 						text={str(SETTINGS_STRINGS.offline)}
@@ -915,7 +954,7 @@ export function OptionsScreen() {
 				{device === "touch" ? undefined : (
 					<Text
 						fill={true}
-						order={6}
+						order={8}
 						size={HUD_VIEW.smallText}
 						color="uiTextDim"
 						text={str(OPTIONS_STRINGS.hint, { key: SETTINGS_HINT[keyDevice(device)] })}

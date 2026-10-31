@@ -13,12 +13,16 @@ import {
 } from "client/store";
 import { role } from "client/ui/theme";
 import { SFX } from "shared/view/audio";
+import { UI_ART } from "shared/view/hud";
 import { PAUSE_BUTTON_VIEW, pauseButtonShown } from "shared/view/menu";
 import { useHudActions } from "./actions";
+import { ArtImage } from "./primitives";
 
 const HALF = 0.5;
 const ROUND = new UDim(HALF, 0);
 const BAR_OFFSET = (PAUSE_BUTTON_VIEW.barGap + PAUSE_BUTTON_VIEW.barWidth) / 2;
+/** The button is in screen px (the top bar is not under the HUD's UIScale): its icon fits at UIScale 1. */
+const SCREEN_PX = 1;
 
 /** The free part of the Roblox top bar (right of its own buttons); follows top bar changes. */
 function useTopbarInset(): Rect {
@@ -30,6 +34,16 @@ function useTopbarInset(): Rect {
 		return () => changed.Disconnect();
 	}, []);
 	return inset;
+}
+
+/** Today's code-drawn glyph: two bars (the fallback of the framed pause icon). */
+function PauseBars() {
+	return (
+		<>
+			<Bar x={-BAR_OFFSET} />
+			<Bar x={BAR_OFFSET} />
+		</>
+	);
 }
 
 function Bar(props: { x: number }) {
@@ -49,7 +63,9 @@ function Bar(props: { x: number }) {
  * of Roblox's own buttons, shown while a run is being played (shared/view/menu pauseButtonShown). A solo run pauses
  * (the pause overlay takes over, with Resume), a co-op run opens the party overlay. It acts on the PRESS, not the
  * release, so the click never reaches the game as an attack (HudActions.pause suppresses the mouse until released).
- * Its own ScreenGui without safe-area insets (GameHud): the top bar sits outside the HUD's safe area.
+ * Its own ScreenGui without safe-area insets (GameHud): the top bar sits outside the HUD's safe area. Its glyph is the
+ * framed pause icon when the pack has it (docs/UI_ART.md UA8; the one icon without a label: it has none today), else
+ * the two code-drawn bars.
  */
 export function PauseButton() {
 	const active = useSelector(selectGameActive);
@@ -114,8 +130,15 @@ export function PauseButton() {
 				Thickness={view.strokeThickness}
 				Color={role(hover ? "uiAccent" : "uiTextDim")}
 			/>
-			<Bar x={-BAR_OFFSET} />
-			<Bar x={BAR_OFFSET} />
+			<ArtImage
+				name="Icon"
+				id={UI_ART.ids.iconPause}
+				box={{ w: size * view.iconFraction, h: size * view.iconFraction }}
+				position={UDim2.fromScale(HALF, HALF)}
+				anchor={new Vector2(HALF, HALF)}
+				uiScale={SCREEN_PX}
+				fallback={<PauseBars />}
+			/>
 		</textbutton>
 	);
 }

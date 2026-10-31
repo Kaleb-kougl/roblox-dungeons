@@ -24,14 +24,23 @@ import {
 	HUD_STRINGS,
 	HUD_VIEW,
 	SCORE_SOURCE_KEYS,
+	UI_ART,
 	comboBestRichText,
 	comboTier,
 	formatClock,
 	formatCombo,
 } from "shared/view/hud";
-import { MENU_STRINGS, PAD_CONFIRM_LABEL, partyRunOverLine, runOverExits } from "shared/view/menu";
+import {
+	MENU_STRINGS,
+	PAD_CONFIRM_LABEL,
+	partyRunOverLine,
+	runOverExitIcon,
+	runOverExits,
+	runOverIcon,
+	screenSkin,
+} from "shared/view/menu";
 import { useHudActions } from "./actions";
-import { MenuButton, Panel, Row, Text } from "./primitives";
+import { ArtImage, MenuButton, Panel, Row, Text, panelIcon } from "./primitives";
 import { RunInfoLine, verdictColor, verdictLine } from "./RunInfoLine";
 
 const HALF = 0.5;
@@ -140,6 +149,35 @@ function ScoreBreakdown(props: { order: number; score: number; points: ReadonlyA
 }
 
 /**
+ * The run-over title ("Run over" / "Victory"). With the frame art and the header icon (runOverIcon: the skull for a
+ * solo death, the RIP stone for a party's end, none for a victory), the icon beside the title, the pair centred
+ * (docs/UI_ART.md UA8); otherwise exactly the flat title line.
+ */
+function RunOverHeader(props: { order: number; victory: boolean; icon: string | undefined; text: string }) {
+	const color = props.victory ? "uiAccent" : "uiHealth";
+	const icon = panelIcon(screenSkin("runOver"), props.icon);
+	if (icon === undefined) {
+		return (
+			<Text
+				fill={true}
+				order={props.order}
+				size={HUD_VIEW.bigText}
+				color={color}
+				align={Enum.TextXAlignment.Center}
+				text={props.text}
+			/>
+		);
+	}
+	const box = UI_ART.iconBox.header;
+	return (
+		<Row order={props.order} align={Enum.HorizontalAlignment.Center}>
+			<ArtImage name="HeaderIcon" id={icon} order={1} box={{ w: box, h: box }} />
+			<Text order={2} size={HUD_VIEW.bigText} color={color} text={props.text} />
+		</Row>
+	);
+}
+
+/**
  * Centre, after the run ends (web PlayerHud death line, BossHud victory banner and the playtest post-run panel's
  * stats): "Run over" / "Victory", "You died — press R to retry" or "<boss name> defeated — press R to play again"
  * with the restart key of the device used last (R / D-pad down) and the other one below, then the run's time, hits
@@ -199,14 +237,13 @@ export function RunOverPanel() {
 			anchor={new Vector2(HALF, HALF)}
 			width={HUD_VIEW.panelWidth * 2}
 			align={Enum.HorizontalAlignment.Center}
+			skin={screenSkin("runOver")}
 			name="RunOver"
 		>
-			<Text
-				fill={true}
+			<RunOverHeader
 				order={1}
-				size={HUD_VIEW.bigText}
-				color={victory ? "uiAccent" : "uiHealth"}
-				align={Enum.TextXAlignment.Center}
+				victory={victory}
+				icon={runOverIcon(victory, info.coop)}
 				text={str(victory ? HUD_STRINGS.runVictory : HUD_STRINGS.runOver)}
 			/>
 			<Text order={2} size={HUD_VIEW.titleText} align={Enum.TextXAlignment.Center} wrap={true} text={main} />
@@ -261,6 +298,7 @@ export function RunOverPanel() {
 					order={2}
 					name="Exit"
 					text={str(exits.exitKey)}
+					icon={runOverExitIcon(exits.exitKey)}
 					onActivated={() => {
 						actions.playUi(SFX.uiClick);
 						actions.exitRun();

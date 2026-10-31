@@ -15,6 +15,7 @@ import { leaderboardHint, keyDevice } from "shared/play";
 import { HUD_VIEW, LEADERBOARD_STRINGS, LEADERBOARD_VIEW } from "shared/view/hud";
 import { useHudActions } from "./actions";
 import { MenuButton, Panel, Row, Text } from "./primitives";
+import { screenSkin } from "shared/view/menu";
 
 const HALF = 0.5;
 const HIDDEN = 1;
@@ -135,9 +136,10 @@ export function LeaderboardPanel(props: { localUserId: number }) {
 				width={LEADERBOARD_VIEW.width}
 				padding={HUD_VIEW.pad * 2}
 				transparency={0}
+				skin={screenSkin("leaderboard")}
+				flatOnly={<uistroke Thickness={1} Color={role("uiAccent")} />}
 				name="Leaderboards"
 			>
-				<uistroke Thickness={1} Color={role("uiAccent")} />
 				<Text
 					fill={true}
 					order={1}

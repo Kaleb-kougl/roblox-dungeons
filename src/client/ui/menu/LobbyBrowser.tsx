@@ -14,6 +14,7 @@ import {
 	MENU_VIEW,
 	browserRows,
 	lobbyVisibilityKey,
+	screenSkin,
 } from "shared/view/menu";
 import { useMenuActions } from "./actions";
 import { spec, useGamepadFocus, useNameOf } from "./hooks";
@@ -123,6 +124,7 @@ export function LobbyBrowser() {
 			anchor={new Vector2(HALF, HALF)}
 			width={MENU_VIEW.screenWidth}
 			padding={HUD_VIEW.pad * 2}
+			skin={screenSkin("lobbyBrowser")}
 			name="LobbyBrowser"
 		>
 			<Text

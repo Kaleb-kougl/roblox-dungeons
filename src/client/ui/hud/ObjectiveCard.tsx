@@ -5,6 +5,7 @@ import { str } from "client/ui/theme";
 import { TUTORIAL_STRINGS, tutorialDeviceFor } from "shared/tutorial";
 import { HUD_VIEW, TUTORIAL_VIEW, tutorialPromptVars } from "shared/view/hud";
 import { Panel, Text } from "./primitives";
+import { screenSkin } from "shared/view/menu";
 
 const HALF = 0.5;
 
@@ -26,6 +27,7 @@ export function ObjectiveCard() {
 			width={TUTORIAL_VIEW.cardWidth}
 			align={Enum.HorizontalAlignment.Center}
 			padding={HUD_VIEW.pad * 2}
+			skin={screenSkin("objectiveCard")}
 			name="ObjectiveCard"
 		>
 			<Text
