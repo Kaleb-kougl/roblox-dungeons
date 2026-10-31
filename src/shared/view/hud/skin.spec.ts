@@ -8,19 +8,28 @@ import {
 	type RobloxAssetId,
 	type ThemeManifest,
 } from "shared/theme";
-import { VALE_IMAGE_LAYOUTS } from "shared/theme/packs/vale";
+import { VALE_IMAGE_LAYOUTS, VALE_UI_ICONS } from "shared/theme/packs/vale";
 import {
 	DRAFT_REVEAL_VIEW,
 	HUD_VIEW,
 	UI_ART,
+	artDensityBox,
 	artPixelScale,
 	buttonSkinState,
+	contentInsetsOf,
+	dividerShown,
 	fitArt,
 	fitTurnedArt,
 	focusCornerBox,
+	iconShown,
 	isQuarterTurn,
 	menuButtonSkin,
+	ornamentShown,
+	panelHasArt,
+	panelHidden,
 	panelSkinContext,
+	pillBarHeight,
+	pillBarSkin,
 	skinFor,
 	skinHasOf,
 	skinPadding,
@@ -28,6 +37,7 @@ import {
 	skinnedButtonTextRole,
 	snappedSliceScale,
 	uniformPadding,
+	volumeIcon,
 	type SkinHas,
 } from "shared/view/hud";
 import { MENU_VIEW } from "shared/view/menu";
@@ -225,7 +235,7 @@ describe("skinFor", () => {
 		const named = new Array<string>();
 		for (const [, id] of pairs(UI_ART.ids)) named.push(id);
 		for (const [, id] of pairs(UI_ART.panels)) named.push(id);
-		expect(named.size()).toBe(19);
+		expect(named.size()).toBe(32);
 		for (const id of named) {
 			expect([id, ALL.includes(id)]).toEqual([id, true]);
 		}
@@ -271,6 +281,15 @@ function insets(id: string) {
 	return s!;
 }
 
+/** A vale sliced panel's content insets (art px): its visible border, what padding follows. */
+function borders(id: string) {
+	const s = contentInsetsOf(id, insets(id));
+	expect([id, s !== undefined]).toEqual([id, true]);
+	return s!;
+}
+
+const SIDES = ["left", "top", "right", "bottom"] as const;
+
 describe("panel skins (UA7)", () => {
 	it("context: the skin prop, else hud in a corner and menu elsewhere; none is always flat", () => {
 		expect(panelSkinContext(undefined, true)).toBe("hud");
@@ -308,9 +327,9 @@ describe("panel skins (UA7)", () => {
 		expect(skinPadding(uniformPadding(8), undefined, 2)).toEqual(uniformPadding(8));
 	});
 
-	it("padding never leaves content on the drawn border at any HUD scale", () => {
+	it("padding never leaves content on the drawn (visible) border at any HUD scale", () => {
 		for (const id of [UI_ART.panels.menu, UI_ART.panels.hud, UI_ART.panels.list]) {
-			const s = insets(id);
+			const s = borders(id);
 			for (const context of ["menu", "hud", "list"] as const) {
 				for (const u of SCALES) {
 					const scale = snappedSliceScale(u, skinRefPerArt(context));
@@ -332,12 +351,219 @@ describe("panel skins (UA7)", () => {
 		expect(UI_ART.rowContext).toBe("hud");
 		const line = HUD_VIEW.smallText;
 		const fits = (id: string, u: number) => {
-			const s = insets(id);
+			const s = borders(id);
 			return (s.top + s.bottom) * snappedSliceScale(u, UI_ART.hudRefPerArt) + line <= MENU_VIEW.rowHeight + EPS;
 		};
 		expect(fits(UI_ART.panels.list, 1.5)).toBe(false);
 		for (const u of SCALES) {
 			expect([u, fits(skinFor(hasOnly(...ALL), "panel", UI_ART.rowContext)!, u)]).toEqual([u, true]);
+		}
+	});
+});
+
+describe("content insets (UA7)", () => {
+	it("every sliced panel id has a measured entry, whole art px, never deeper than its slice inset", () => {
+		const panels = [UI_ART.panels.menu, UI_ART.panels.hud, UI_ART.panels.list];
+		for (const id of panels) {
+			const c = UI_ART.contentInsets[id];
+			expect([id, c !== undefined]).toEqual([id, true]);
+			const s = insets(id);
+			for (const side of SIDES) {
+				const v = c![side];
+				expect([id, side, v >= 0, v % 1, v <= s[side]]).toEqual([id, side, true, 0, true]);
+			}
+		}
+		// Every entry is a sliced panel's (no stale ids).
+		for (const [id] of UI_ART.contentInsets as unknown as ReadonlyMap<string, unknown>) {
+			expect([id, panels.includes(id)]).toEqual([id, true]);
+		}
+	});
+
+	it("the measured borders: menu 5 / 11 / 5 / 7, tall 5 / 10 / 5 / 7, hud 2 / 3 / 2 / 3", () => {
+		expect(borders(UI_ART.panels.menu)).toEqual({ left: 5, top: 11, right: 5, bottom: 7 });
+		expect(borders(UI_ART.panels.list)).toEqual({ left: 5, top: 10, right: 5, bottom: 7 });
+		expect(borders(UI_ART.panels.hud)).toEqual({ left: 2, top: 3, right: 2, bottom: 3 });
+	});
+
+	it("contentInsetsOf falls back to the slice insets, then to nothing", () => {
+		const slice = { left: 4, top: 4, right: 4, bottom: 4 };
+		expect(contentInsetsOf("ui.option.on", slice)).toEqual(slice);
+		expect(contentInsetsOf("ui.option.on", undefined)).toBe(undefined);
+		expect(contentInsetsOf(UI_ART.panels.menu, undefined)).toEqual(UI_ART.contentInsets[UI_ART.panels.menu]);
+	});
+
+	it("a menu panel pads by its visible border, not its 43 px slice: 10 at the sides, 22 / 14 top / bottom", () => {
+		const menu = borders(UI_ART.panels.menu);
+		expect(skinPadding(uniformPadding(HUD_VIEW.pad), menu, 2)).toEqual({
+			left: 10,
+			top: 22,
+			right: 10,
+			bottom: 14,
+		});
+		// The menus' doubled pad (16) already clears the side rails: only the top and bottom grow.
+		expect(skinPadding(uniformPadding(HUD_VIEW.pad * 2), menu, 2)).toEqual({
+			left: 16,
+			top: 22,
+			right: 16,
+			bottom: 16,
+		});
+		// The slice insets would have taken 86 reference px per side.
+		expect(skinPadding(uniformPadding(HUD_VIEW.pad), insets(UI_ART.panels.menu), 2).left).toBe(86);
+	});
+
+	it("a fixed-width menu panel keeps at least the flat panel's content width minus the rails", () => {
+		const menu = borders(UI_ART.panels.menu);
+		for (const u of SCALES) {
+			const scale = snappedSliceScale(u, UI_ART.refPerArt);
+			const p = skinPadding(uniformPadding(HUD_VIEW.pad * 2), menu, scale);
+			const flat = HUD_VIEW.pad * 2 * 2;
+			// At most the rails' 5 art px per side at the largest whole scale (4 screen px per art px at 1.75 / 2.19).
+			expect([u, p.left + p.right - flat <= (5 * 2 * 4) / u + EPS]).toEqual([u, true]);
+		}
+	});
+});
+
+describe("panel decisions (UA7)", () => {
+	it("a fully transparent panel (a layout box) is always flat; a binding or a visible fill is not", () => {
+		expect(panelHidden(1)).toBe(true);
+		expect(panelHidden(2)).toBe(true);
+		expect(panelHidden(0)).toBe(false);
+		expect(panelHidden(HUD_VIEW.panelTransparency)).toBe(false);
+		expect(panelHidden(undefined)).toBe(false);
+		expect(panelHidden({})).toBe(false);
+		expect(panelSkinContext(undefined, false, true)).toBe(undefined);
+		expect(panelSkinContext("menu", false, true)).toBe(undefined);
+		expect(panelSkinContext("hud", true, true)).toBe(undefined);
+		expect(panelSkinContext("menu", false, false)).toBe("menu");
+	});
+
+	it("panelHasArt follows skinFor; no context is never art", () => {
+		const all = hasOnly(...ALL);
+		expect(panelHasArt(all, "menu")).toBe(true);
+		expect(panelHasArt(all, undefined)).toBe(false);
+		expect(panelHasArt(hasOnly(UI_ART.panels.hud), "menu")).toBe(false);
+		expect(panelHasArt(hasOnly(UI_ART.panels.list), "menu")).toBe(true);
+	});
+
+	it("the ornament: asked for, a menu panel on art, and the ornament art", () => {
+		const all = hasOnly(...ALL);
+		expect(ornamentShown(all, "menu", true)).toBe(true);
+		expect(ornamentShown(all, "menu", false)).toBe(false);
+		expect(ornamentShown(all, "hud", true)).toBe(false);
+		expect(ornamentShown(all, "list", true)).toBe(false);
+		expect(ornamentShown(all, undefined, true)).toBe(false);
+		expect(ornamentShown(hasOnly(UI_ART.panels.menu), "menu", true)).toBe(false);
+		expect(ornamentShown(hasOnly(UI_ART.ids.ornament), "menu", true)).toBe(false);
+		expect(UI_ART.ids.ornament).toBe("ui.ornament.bones");
+	});
+
+	it("the ornament is 89 x 13 art at the menu density: whole screen px, centred on the top edge", () => {
+		const art = VALE_UI_ICONS[UI_ART.ids.ornament].rect;
+		expect([art.w, art.h]).toEqual([89, 13]);
+		for (const u of SCALES) {
+			const box = artDensityBox(art.w, art.h, u, UI_ART.refPerArt);
+			const k = artPixelScale(u, UI_ART.refPerArt);
+			expect([u, math.abs(box.w * u - art.w * k) < EPS, math.abs(box.h * u - art.h * k) < EPS]).toEqual([
+				u,
+				true,
+				true,
+			]);
+			// Its lower part sits inside the menu panel's top border padding (never over a content row).
+			const below = box.h * (1 - UI_ART.ornament.anchorY);
+			const pad = skinPadding(uniformPadding(HUD_VIEW.pad * 2), borders(UI_ART.panels.menu), k / u);
+			expect([u, below <= pad.top + EPS]).toEqual([u, true]);
+		}
+	});
+
+	it("dividers only on a panel drawn on art with the stripe; 3 art px tall at the menu density", () => {
+		const all = hasOnly(...ALL);
+		expect(dividerShown(all, "menu")).toBe(true);
+		expect(dividerShown(all, undefined)).toBe(false);
+		expect(dividerShown(hasOnly(UI_ART.ids.divider), "menu")).toBe(false);
+		expect(dividerShown(hasOnly(UI_ART.panels.menu), "menu")).toBe(false);
+		const art = VALE_UI_ICONS[UI_ART.ids.divider].rect;
+		for (const u of SCALES) {
+			const h = artDensityBox(art.w, art.h, u).h;
+			expect([u, isWhole(h * u), h * u + EPS >= art.h]).toEqual([u, true, true]);
+		}
+	});
+});
+
+describe("icons (UA8)", () => {
+	it("beside a label only on art, only with the icon", () => {
+		const all = hasOnly(...ALL);
+		expect(iconShown(all, true, UI_ART.ids.iconGear)).toBe(UI_ART.ids.iconGear);
+		expect(iconShown(all, false, UI_ART.ids.iconGear)).toBe(undefined);
+		expect(iconShown(all, true, undefined)).toBe(undefined);
+		expect(iconShown(hasOnly(UI_ART.ids.button), true, UI_ART.ids.iconGear)).toBe(undefined);
+	});
+
+	it("audio rows: mute at 0, the speaker above", () => {
+		expect(volumeIcon(0)).toBe(UI_ART.ids.iconMute);
+		expect(volumeIcon(-1)).toBe(UI_ART.ids.iconMute);
+		expect(volumeIcon(10)).toBe(UI_ART.ids.iconSpeaker);
+		expect(volumeIcon(100)).toBe(UI_ART.ids.iconSpeaker);
+	});
+
+	it("every icon id the screens use is an optional ui id with an icon-atlas cut", () => {
+		const ids = UI_ART.ids;
+		for (const id of [
+			ids.iconPause,
+			ids.iconCheck,
+			ids.iconCross,
+			ids.iconGear,
+			ids.iconHome,
+			ids.iconSpeaker,
+			ids.iconMute,
+			ids.iconSkull,
+			ids.iconSkullCurse,
+			ids.iconGhost,
+			ids.iconRip,
+			ids.ornament,
+			ids.divider,
+		]) {
+			expect([id, ALL.includes(id), VALE_UI_ICONS[id] !== undefined]).toEqual([id, true, true]);
+		}
+	});
+
+	it("glyphs fit their box at 1080 p at 2 screen px per art px; the header and ghost boxes hold their art", () => {
+		const icons = VALE_UI_ICONS;
+		for (const id of [UI_ART.ids.iconGear, UI_ART.ids.iconSpeaker, UI_ART.ids.iconMute]) {
+			const r = icons[id].rect;
+			const f = fitArt(r.w, r.h, UI_ART.iconBox.glyph, UI_ART.iconBox.glyph, 1.5);
+			expect([id, f.scale]).toEqual([id, 2]);
+		}
+		for (const u of [1, 1.25, 1.5, 1.75, 2.1875]) {
+			for (const [id, box] of [
+				[UI_ART.ids.iconSkull, UI_ART.iconBox.header],
+				[UI_ART.ids.iconRip, UI_ART.iconBox.header],
+				[UI_ART.ids.iconGhost, UI_ART.iconBox.ghost],
+			] as const) {
+				const r = icons[id].rect;
+				const f = fitArt(r.w, r.h, box, box, u);
+				expect([id, u, f.w <= box + EPS && f.h <= box + EPS]).toEqual([id, u, true]);
+			}
+		}
+	});
+});
+
+describe("pill progress bar (UA9)", () => {
+	it("needs both the track and the fill", () => {
+		expect(pillBarSkin(hasOnly(...ALL))).toEqual({ track: UI_ART.ids.barTrack, fill: UI_ART.ids.barFill });
+		expect(pillBarSkin(hasOnly(UI_ART.ids.barTrack))).toBe(undefined);
+		expect(pillBarSkin(hasOnly(UI_ART.ids.barFill))).toBe(undefined);
+		expect(pillBarSkin(() => false)).toBe(undefined);
+	});
+
+	it("is the pill's art height at barRefPerArt, whole screen px: 16 at 720 p", () => {
+		const h = VALE_IMAGE_LAYOUTS[UI_ART.ids.barTrack].h;
+		expect(h).toBe(16);
+		expect(pillBarHeight(h, 1)).toBe(16);
+		for (const u of SCALES) {
+			const k = artPixelScale(u, UI_ART.barRefPerArt);
+			expect([u, math.abs(pillBarHeight(h, u) * u - h * k) < EPS]).toEqual([u, true]);
+			// Its round ends (8 art px, sliced) keep their shape: the bar is at least the ends' height.
+			expect([u, pillBarHeight(h, u) * u >= insets(UI_ART.ids.barTrack).left * 2 - EPS]).toEqual([u, true]);
 		}
 	});
 });

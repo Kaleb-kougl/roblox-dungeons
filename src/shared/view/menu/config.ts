@@ -68,6 +68,11 @@ export const PAUSE_BUTTON_VIEW = {
 	barWidth: 0.12,
 	barHeight: 0.42,
 	barGap: 0.12,
+	/**
+	 * The framed pause icon (ui.icon.pause, 14 x 14 art; docs/UI_ART.md UA8) in place of the bars: its box as a fraction
+	 * of the button (0.7 x 44 = 30.8 screen px: the art at 2 px per art px, 28 px, whose corners stay inside the circle).
+	 */
+	iconFraction: 0.7,
 	strokeThickness: 2,
 	/** Above the HUD, under the menu shell (MENU_VIEW.displayOrder) and the pause / settings layer. */
 	displayOrder: 12,
