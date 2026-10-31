@@ -26,6 +26,7 @@ import {
 	type ActorState,
 	type EncounterConfig,
 } from "shared/sim";
+import { eliteView, viewAffix, type AffixedState } from "../variants";
 import { FX_EVENT_CAPACITY, FxEventBuffer, type FxEvent, type FxEventType } from "./events";
 
 /** A hit that removes at least this much hp in one frame is `heavy` (sword finisher 6, heavy arrow 4; swings 3). */
@@ -49,8 +50,11 @@ export const describeFromRegistry: DescribeActor = (kind) => {
 	return ok ? (data as ActorInfo) : NO_INFO;
 };
 
-/** The slice of SimState the tracker reads (structural, so tests can pass plain objects). */
-export interface TrackedState {
+/**
+ * The slice of SimState the tracker reads (structural, so tests can pass plain objects). `affixes` (elite affixes,
+ * docs/ENEMY_VARIANTS.md EV9): an affixed actor is elite like one in an elite room.
+ */
+export interface TrackedState extends AffixedState {
 	readonly tick: number;
 	readonly events: { readonly enemyHits: number };
 	readonly combat: { readonly actors: ReadonlyArray<ActorState> };
@@ -198,7 +202,9 @@ export class HitTracker {
 				this.snapHpMax[i] = a.hpMax;
 				this.snapAlive[i] = a.alive !== 0 ? 1 : 0;
 				this.snapPhase[i] = a.phase;
-				this.snapElite[i] = encounter !== undefined && roomAt(encounter, a.x, a.z)?.type === "elite" ? 1 : 0;
+				// Elite: first seen in an elite room (runtime spawns there too, EVD15) OR carrying an affix (EVD12).
+				const eliteRoom = encounter !== undefined && roomAt(encounter, a.x, a.z)?.type === "elite";
+				this.snapElite[i] = eliteView(eliteRoom, viewAffix(state, i, a.id)) ? 1 : 0;
 				this.snapCappedTick[i] = -math.huge;
 				// The run's first frame adopts the initial encounter silently; later arrivals are runtime spawns.
 				if (!adopt) this.begin("spawned", i, a, x, z, info, tick);

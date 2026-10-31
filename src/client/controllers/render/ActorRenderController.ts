@@ -3,8 +3,10 @@ import { Janitor } from "@rbxts/janitor";
 import { RunService, Workspace } from "@rbxts/services";
 import { clientStore, selectDisplay } from "client/store";
 import { CAMERA_PITCH_DEG, CAMERA_YAW_DEG, STUDS_PER_TILE } from "shared/config";
+import { AffixKind, affixThemeIndex } from "shared/dungeon";
 import {
 	CORPSE_TICKS,
+	MAX_ACTORS,
 	NO_KIND,
 	NO_WEAPON,
 	ROLL_TICKS,
@@ -19,11 +21,12 @@ import {
 	type PlayerState,
 	type SimState,
 } from "shared/sim";
-import type { SpriteSet, ThemePack } from "shared/theme";
+import { AFFIX_IDS, ENEMY_SHIELD_ROLE, affixRole, type SpriteSet, type ThemePack } from "shared/theme";
 import {
 	ACTOR_OUTLINE,
 	ACTOR_SPRITE_INPUTS,
 	ACTOR_VIEW,
+	AFFIX_VIEW,
 	BULLET_VIEW,
 	PLAYER_OUTLINE,
 	RENDER_ORDER,
@@ -31,6 +34,8 @@ import {
 	actorGroup,
 	actorLook,
 	actorOutlined,
+	actorSpriteScale,
+	affixDrawScale,
 	animDtSec,
 	bossSpriteLayout,
 	chooseActorAnim,
@@ -47,13 +52,21 @@ import {
 	playerLook,
 	playerOutlined,
 	playerSpriteInput,
+	scaledSpriteLayout,
 	studsX,
 	studsZ,
 	swordTimingOf,
+	variantLook,
+	vengefulArmed,
+	vengefulCorpseView,
+	vengefulPulseOn,
+	viewAffix,
+	ShieldFlashWatch,
 	type ActorGroup,
 	type ActorLook,
 	type ActorSpriteInput,
 	type IsoBasis,
+	type VariantLook,
 } from "shared/view";
 import {
 	FEEL_HIT,
@@ -121,7 +134,9 @@ interface ActorView {
 	sprite: SpriteView | undefined;
 	/** The archetype's sprite input builder (sprite views only). */
 	spriteInput: ((a: Readonly<ActorState>, alpha: number) => ActorSpriteInput) | undefined;
-	look: ActorLook;
+	/** The free-list key the view goes back to (sprites: set id and draw scale; placeholders: the model's visualId). */
+	poolKey: string;
+	look: VariantLook;
 	transparency: number;
 	corpseTicks: number;
 	/** The placeholder visual has an outline role (enemies and bosses; shared/view actorGroup). Sprite views: the
@@ -179,6 +194,14 @@ interface ActorView {
  * rim (the knight's baked 1 px outline sheets) and shows it while playerOutlined. A placeholder capsule moves into
  * `Players/Outlined`, a Model with ONE Highlight (rim only, Occluded), while playerOutlined (reparented only on a
  * change); the Highlight is Enabled while that player is also visible, so the post-hit blink blinks the rim too.
+ *
+ * Enemy variants (docs/ENEMY_VARIANTS.md EV9; rules in shared/view variants.ts): the imp / Ooze / summoner draw through
+ * the same two paths (Cone / Dome placeholders; ACTOR_SPRITE_INPUTS once their sets land; `slime.small` wears the
+ * Ooze's set at its spriteScale). Elite affixes, never through a Highlight (EVD12): a Hulking actor is drawn at radius /
+ * data radius (affixDrawScale, in both pool keys); an affixed sprite's baked rim is tinted `affix.<id>`; a shield hit
+ * (ShieldFlashWatch) tints the body / flashes the rim in enemyShield; a Vengeful corpse (EVD16) is drawn as long as the
+ * sim holds it (vengefulCorpseView: opaque, then a short fade) and pulses in the telegraph look while its ring is
+ * pending. The floor ring is AffixRingController's.
  */
 @Controller({})
 export class ActorRenderController implements OnStart {
@@ -231,6 +254,14 @@ export class ActorRenderController implements OnStart {
 	private readonly hitToward = { x: 0, z: 0 };
 	private readonly pushScratch = [0, 0, 0];
 
+	// --- elite affixes (docs/ENEMY_VARIANTS.md EV9) ----------------------------------------------
+	/** Shield hits from a per-frame diff of state.affixes (the body flashes in enemyShield). */
+	private readonly shieldWatch = new ShieldFlashWatch(MAX_ACTORS);
+	/** `affix.<id>` per AFFIX_IDS index (the sprite rim's tint), enemyShield, and the plain rim (enemyOutline). */
+	private affixColors = new Array<Color3>();
+	private shieldColor = SPRITE_TINT_NONE;
+	private outlineColor = SPRITE_TINT_NONE;
+
 	constructor(
 		private readonly sim: SimController,
 		private readonly theme: ThemeController,
@@ -240,6 +271,9 @@ export class ActorRenderController implements OnStart {
 	onStart(): void {
 		const pack = this.theme.getPack();
 		this.pack = pack;
+		this.affixColors = AFFIX_IDS.map((id) => pack.color(affixRole(id)));
+		this.shieldColor = pack.color(ENEMY_SHIELD_ROLE);
+		this.outlineColor = pack.color(ACTOR_OUTLINE.role);
 		const folder = new Instance("Folder");
 		folder.Name = ACTOR_VIEW.folderName;
 		folder.Parent = Workspace;
@@ -283,6 +317,7 @@ export class ActorRenderController implements OnStart {
 		this.moveCFrames.clear();
 		this.motion?.beginFrame(state, this.dtSec, this.fx.settings());
 		this.drawPlayers(state, alpha);
+		this.shieldWatch.update(state);
 
 		const actors = state.combat.actors;
 		const n = actors.size();
@@ -295,10 +330,11 @@ export class ActorRenderController implements OnStart {
 			}
 			if (view === undefined || view.kind !== a.kind || view.id !== a.id) {
 				if (view !== undefined) this.release(slot, view);
-				view = this.acquire(slot, a);
+				view = this.acquire(slot, a, state);
 			}
-			this.applyHitReact(slot, view);
-			this.drawActor(view, a, state.tick, alpha);
+			const shieldFlash = this.shieldWatch.flashing(slot, a.id, state.tick);
+			this.applyHitReact(slot, view, shieldFlash);
+			this.drawActor(view, a, slot, state, shieldFlash, alpha);
 			this.motionActor(slot, view, a, alpha);
 		}
 		for (let slot = n; slot < this.viewSlots; slot++) {
@@ -336,32 +372,37 @@ export class ActorRenderController implements OnStart {
 		return set === false ? undefined : set;
 	}
 
-	private lookColor(pack: ThemePack, look: ActorLook): Color3 | undefined {
+	private lookColor(pack: ThemePack, look: VariantLook): Color3 | undefined {
+		if (look === "shield") return this.shieldColor;
 		return look === "normal" ? undefined : pack.color(ACTOR_VIEW.lookRoles[look]);
 	}
 
-	private acquire(slot: number, a: Readonly<ActorState>): ActorView {
+	private acquire(slot: number, a: Readonly<ActorState>, state: SimState): ActorView {
 		const pack = this.pack!;
 		const def = archetypeAt(a.kind);
 		const id = def.data.spriteId;
 		const corpseTicks = def.data.corpseTicks ?? CORPSE_TICKS;
 		const spriteInput = ACTOR_SPRITE_INPUTS.get(def.id);
 		const set = spriteInput !== undefined ? this.spriteSet(id) : undefined;
+		// Hulking (docs/ENEMY_VARIANTS.md EV9): drawn radius / data radius; it is stamped before init, so final here.
+		const affixScale =
+			viewAffix(state, slot, a.id) === AffixKind.HULKING ? affixDrawScale(a.radius, def.data.radius) : 1;
 		let view: ActorView;
 		if (set !== undefined) {
 			// The baked rim (plan O4) follows the placeholder visual's outline role, like the Highlight (O2). It depends
-			// on the ID alone, so the pool key needs nothing more.
+			// on the ID alone; the draw scale (slime.small's spriteScale, Hulking) is in the pool key.
 			const hasOutline = pack.placeholder(id).outline !== undefined;
 			const boss = def.data.boss === true;
-			const key = SPRITE_KEY + id;
+			const scale = actorSpriteScale(def.id, def.data.spriteScale, affixScale);
+			const key = `${SPRITE_KEY}${id}@${scale}`;
 			const sprite =
 				this.freeSprites.get(key)?.pop() ??
 				new SpriteView(
 					set,
 					this.folder!,
-					boss ? bossSpriteLayout(set, ACTOR_VIEW.bossMinDrawPx) : set,
+					scaledSpriteLayout(boss ? bossSpriteLayout(set, ACTOR_VIEW.bossMinDrawPx) : set, scale),
 					0,
-					hasOutline ? pack.color(ACTOR_OUTLINE.role) : undefined,
+					hasOutline ? this.outlineColor : undefined,
 				);
 			this.spriteParking.delete(sprite);
 			sprite.reset();
@@ -371,6 +412,7 @@ export class ActorRenderController implements OnStart {
 				model: undefined,
 				sprite,
 				spriteInput,
+				poolKey: key,
 				look: "normal",
 				transparency: 0,
 				corpseTicks,
@@ -387,6 +429,7 @@ export class ActorRenderController implements OnStart {
 			if (def.data.boss === true && visual.cellPx.w * scale < ACTOR_VIEW.bossMinDrawPx) {
 				scale = ACTOR_VIEW.bossMinDrawPx / visual.cellPx.w;
 			}
+			scale *= affixScale;
 			const key = `${id}@${scale}`;
 			const hasOutline = visual.outline !== undefined;
 			const group = actorGroup(hasOutline, a.alive !== 0);
@@ -403,6 +446,7 @@ export class ActorRenderController implements OnStart {
 				model,
 				sprite: undefined,
 				spriteInput: undefined,
+				poolKey: key,
 				look: "normal",
 				transparency: 0,
 				corpseTicks,
@@ -424,7 +468,7 @@ export class ActorRenderController implements OnStart {
 		const sprite = view.sprite;
 		if (sprite !== undefined) {
 			this.spriteParking.add(sprite);
-			pushFree(this.freeSprites, SPRITE_KEY + sprite.set.id, sprite);
+			pushFree(this.freeSprites, view.poolKey, sprite);
 			return;
 		}
 		const model = view.model!;
@@ -434,32 +478,67 @@ export class ActorRenderController implements OnStart {
 		pushFree(this.free, model.visualId, model);
 	}
 
-	private drawActor(view: ActorView, a: Readonly<ActorState>, tick: number, alpha: number): void {
+	private drawActor(
+		view: ActorView,
+		a: Readonly<ActorState>,
+		slot: number,
+		state: SimState,
+		shieldFlash: boolean,
+		alpha: number,
+	): void {
 		const pack = this.pack!;
+		const tick = state.tick;
 		const x = studsX(lerp(a.prevX, a.x, alpha));
 		const z = studsZ(lerp(a.prevZ, a.z, alpha));
 		const at = new Vector3(x, floorStudsY() + ACTOR_VIEW.liftStuds, z);
-		const look = actorLook(a.alive, a.flashTicks, a.aiState, tick);
+		// Elite affixes (docs/ENEMY_VARIANTS.md EV9): the rim's tint, the shield-hit flash, a Vengeful corpse's length
+		// (EVD16: held while its ring is pending, then a short fade) and its telegraph pulse.
+		const affix = viewAffix(state, slot, a.id);
+		const vengefulCorpse = a.alive === 0 && affix === AffixKind.VENGEFUL && state.affixes !== undefined;
+		const corpse = vengefulCorpse
+			? vengefulCorpseView(
+					view.corpseTicks,
+					state.affixes!.config.vengefulTelegraphTicks,
+					AFFIX_VIEW.vengefulFadeTicks,
+			  )
+			: undefined;
+		const pulse = vengefulCorpse && vengefulArmed(state, slot, a.id) && vengefulPulseOn(tick);
+		const look = variantLook(actorLook(a.alive, a.flashTicks, a.aiState, tick), a.alive, pulse, shieldFlash);
 
 		const sprite = view.sprite;
 		if (sprite !== undefined) {
 			this.moveParts.push(sprite.anchor);
 			this.moveCFrames.push(new CFrame(at));
-			const input = view.spriteInput!(a, alpha);
+			let input = view.spriteInput!(a, alpha);
+			if (corpse !== undefined) {
+				// The death keeps its own span; only the fade follows the held corpse.
+				const deathTicks = input.deathTicks ?? input.corpseTicks * SPRITE_VIEW.deathCorpseFraction;
+				input = { ...input, corpseTicks: corpse.corpseTicks, corpseFadeFrom: corpse.fadeFrom, deathTicks };
+			}
 			const choice = chooseActorAnim(input, sprite.set);
-			const transparency = corpseTransparency(a.alive, a.deadTicks, view.corpseTicks, input.corpseFadeFrom);
+			const transparency =
+				corpse !== undefined
+					? corpseTransparency(a.alive, a.deadTicks, corpse.corpseTicks, corpse.fadeFrom)
+					: corpseTransparency(a.alive, a.deadTicks, view.corpseTicks, input.corpseFadeFrom);
 			sprite.update(choice, a.faceX, a.faceZ, this.basis, this.dtSec);
 			if (look !== view.look) {
 				view.look = look;
 				sprite.setTint(this.lookColor(pack, look) ?? SPRITE_TINT_NONE);
 			}
 			sprite.setTransparency(transparency);
+			if (view.hasOutline) {
+				const k = affixThemeIndex(affix);
+				sprite.setRimColor(k >= 0 ? this.affixColors[k] ?? this.outlineColor : this.outlineColor);
+			}
 			// The rim goes the frame the actor dies (the corpse fades without it) and with KV_EnemyOutline = false.
 			sprite.setOutlineShown(actorOutlined(view.hasOutline, a.alive !== 0, this.outlineOn));
 			return;
 		}
 
-		const transparency = corpseTransparency(a.alive, a.deadTicks, view.corpseTicks);
+		const transparency =
+			corpse !== undefined
+				? corpseTransparency(a.alive, a.deadTicks, corpse.corpseTicks, corpse.fadeFrom)
+				: corpseTransparency(a.alive, a.deadTicks, view.corpseTicks);
 		const model = view.model!;
 		// A corpse drops the outline the first frame it is dead (once: only a change of group reparents).
 		const outlined = actorGroup(view.hasOutline, a.alive !== 0) === "enemies";
@@ -800,12 +879,15 @@ export class ActorRenderController implements OnStart {
 		}
 	}
 
-	/** Slot `slot`'s hit look onto its view, before drawActor (a held sprite must not step this frame). */
-	private applyHitReact(slot: number, view: ActorView): void {
+	/**
+	 * Slot `slot`'s hit look onto its view, before drawActor (a held sprite must not step this frame). `shieldFlash`: a
+	 * shield hit (docs/ENEMY_VARIANTS.md EV9) flashes a sprite's rim in enemyShield when no hit flash runs.
+	 */
+	private applyHitReact(slot: number, view: ActorView, shieldFlash: boolean): void {
 		const look = this.hitReact.look(slot, view.id, this.hitNow, this.hitMotion);
 		const sprite = view.sprite;
 		if (sprite !== undefined) {
-			sprite.setRimFlash(look.rimFlash ? this.hitFlashColor : undefined);
+			sprite.setRimFlash(look.rimFlash ? this.hitFlashColor : shieldFlash ? this.shieldColor : undefined);
 			sprite.setHold(look.hold);
 			sprite.setPushTexels(look.pushX, look.pushY, this.basis);
 			return;

@@ -1,15 +1,30 @@
 import { Controller, OnStart } from "@flamework/core";
 import { RunService, Workspace } from "@rbxts/services";
 import { STUDS_PER_TILE } from "shared/config";
-import { partySize, type BulletSimulation, type Vec3 as SimVec3 } from "shared/sim";
-import type { PlaceholderVisual, ThemePack } from "shared/theme";
-import { BULLET_VIEW, RENDER_ORDER, lerp, playerBulletTransparency, studsX, studsY, studsZ } from "shared/view";
+import { GOO_BULLET_RADIUS, SLIME, partySize, type BulletSimulation, type Vec3 as SimVec3 } from "shared/sim";
+import { GOO_BULLET_ID, type PlaceholderVisual, type ThemePack } from "shared/theme";
+import {
+	BULLET_VIEW,
+	GOO_VIEW,
+	RENDER_ORDER,
+	floorStudsY,
+	gooDecalLook,
+	isGooPayload,
+	lerp,
+	playerBulletTransparency,
+	studsX,
+	studsY,
+	studsZ,
+	type GooLook,
+} from "shared/view";
 import { SimController } from "../game/SimController";
 import { ThemeController } from "../game/ThemeController";
 import { renderPart } from "./placeholders";
 
 const RENDER_STEP = "KV_Bullets";
 const PARKED = new CFrame(BULLET_VIEW.parkedStuds[0], BULLET_VIEW.parkedStuds[1], BULLET_VIEW.parkedStuds[2]);
+/** A Cylinder's axis is X: turned to Y, it lies flat on the floor (the goo disc). */
+const FLAT = CFrame.Angles(0, 0, math.pi / 2);
 
 interface BulletLook {
 	readonly visual: PlaceholderVisual;
@@ -45,6 +60,8 @@ class BulletPool {
 		private readonly heavy: BulletLook | undefined,
 		/** Turn the part along the velocity (player bolts); enemy balls are round. */
 		private readonly orient: boolean,
+		/** Bullets this pool leaves to another one, by payload (the enemy pool skips goo while the goo pool draws it). */
+		private readonly skip?: (payload: number) => boolean,
 	) {}
 
 	/**
@@ -63,7 +80,7 @@ class BulletPool {
 		const prev = this.prev;
 		for (let i = 0; i < this.parts.size(); i++) {
 			const part = this.parts[i];
-			if (i < n && sim.isVisible(i)) {
+			if (i < n && sim.isVisible(i) && (this.skip === undefined || !this.skip(sim.payloadAt(i)))) {
 				const cur = sim.positionAt(i);
 				sim.previousPositionAt(i, prev);
 				const x = studsX(lerp(prev.x, cur.x, alpha));
@@ -155,6 +172,115 @@ class BulletPool {
 	}
 }
 
+/**
+ * The Ooze's goo puddles (docs/ENEMY_VARIANTS.md EVD5) from the enemy bullet simulation: part i = bullet SLOT i like
+ * BulletPool, but only slots whose payload kind is BulletKind.GOO (shared/view isGooPayload), each a flat disc of the
+ * `bullet.enemy.goo` placeholder (enemyGoo, Neon) as wide as the goo hit radius (GOO_BULLET_RADIUS), lying on the floor
+ * at GOO_VIEW.liftStuds: over the sprite effects, under the affix rings, every marking and every moving bullet. It pops
+ * in and fades out over its life (shared/view gooDecalLook; Size / Transparency written only on a quantized change).
+ * Puddles never move, so no interpolation. ONE BulkMoveTo per frame.
+ */
+class GooPool {
+	private readonly parts = new Array<BasePart>();
+	private readonly shown = new Array<boolean>();
+	private readonly sizeKey = new Array<number>();
+	private readonly alphaKey = new Array<number>();
+	private readonly moveParts = new Array<BasePart>();
+	private readonly moveCFrames = new Array<CFrame>();
+	private readonly look: GooLook = { scale: 0, transparency: 0 };
+	private readonly y: number;
+	private sim: BulletSimulation | undefined;
+
+	constructor(
+		private readonly folder: Folder,
+		private readonly color: Color3,
+		private readonly material: Enum.Material,
+		/** Disc diameter at full size, studs. */
+		private readonly diameter: number,
+		/** A puddle's whole life, seconds (the pop-in reads its age from it). */
+		private readonly totalLife: number,
+	) {
+		this.y = floorStudsY() + GOO_VIEW.liftStuds + GOO_VIEW.thicknessStuds / 2;
+	}
+
+	frame(sim: BulletSimulation): void {
+		if (sim !== this.sim) {
+			this.sim = sim;
+			this.parkAll();
+		}
+		const n = sim.highWater();
+		this.moveParts.clear();
+		this.moveCFrames.clear();
+		const q = GOO_VIEW.quantum;
+		for (let i = 0; i < n; i++) {
+			if (!sim.isVisible(i) || !isGooPayload(sim.payloadAt(i))) {
+				if (i < this.parts.size()) this.park(i);
+				continue;
+			}
+			gooDecalLook(sim.lifeAt(i), this.totalLife, this.look);
+			const size = math.round(this.look.scale / q) * q;
+			const alpha = math.round(this.look.transparency / q) * q;
+			if (size < q || alpha >= 1) {
+				if (i < this.parts.size()) this.park(i);
+				continue;
+			}
+			while (this.parts.size() <= i) this.grow();
+			const part = this.parts[i];
+			if (size !== this.sizeKey[i]) {
+				this.sizeKey[i] = size;
+				const d = this.diameter * size;
+				part.Size = new Vector3(GOO_VIEW.thicknessStuds, d, d);
+			}
+			if (alpha !== this.alphaKey[i]) {
+				this.alphaKey[i] = alpha;
+				part.Transparency = alpha;
+			}
+			const p = sim.positionAt(i);
+			this.moveParts.push(part);
+			this.moveCFrames.push(new CFrame(studsX(p.x), this.y, studsZ(p.z)).mul(FLAT));
+			this.shown[i] = true;
+		}
+		for (let i = n; i < this.parts.size(); i++) this.park(i);
+		if (this.moveParts.size() > 0) {
+			Workspace.BulkMoveTo(this.moveParts, this.moveCFrames, Enum.BulkMoveMode.FireCFrameChanged);
+		}
+	}
+
+	poolSize(): number {
+		return this.parts.size();
+	}
+
+	private park(i: number): void {
+		if (!this.shown[i]) return;
+		this.shown[i] = false;
+		this.moveParts.push(this.parts[i]);
+		this.moveCFrames.push(PARKED);
+	}
+
+	private parkAll(): void {
+		this.moveParts.clear();
+		this.moveCFrames.clear();
+		for (let i = 0; i < this.parts.size(); i++) this.park(i);
+		if (this.moveParts.size() > 0) {
+			Workspace.BulkMoveTo(this.moveParts, this.moveCFrames, Enum.BulkMoveMode.FireCFrameChanged);
+		}
+	}
+
+	private grow(): void {
+		const part = renderPart("Part", false);
+		part.Name = "Goo";
+		part.Shape = Enum.PartType.Cylinder;
+		part.Color = this.color;
+		part.Material = this.material;
+		part.CFrame = PARKED;
+		part.Parent = this.folder;
+		this.parts.push(part);
+		this.shown.push(false);
+		this.sizeKey.push(-1);
+		this.alphaKey.push(-1);
+	}
+}
+
 function bulletLook(pack: ThemePack, id: string, drawExtentStuds: number, axis: 0 | 2): BulletLook {
 	const visual = pack.placeholder(id);
 	const extent = visual.size[axis];
@@ -172,11 +298,15 @@ function bulletLook(pack: ThemePack, id: string, drawExtentStuds: number, axis: 
  * each scaled by the bullet's draw scale and its end-of-life fade. Theme placeholders and colour roles only.
  * Outlines (the theme's *BulletOutline roles) are not drawn yet: a Highlight per bullet is far over budget.
  * Co-op (M4): in a large party a teammate's bolts draw at TEAMMATE_BULLET_OPACITY (shared/view party.ts).
+ * Goo puddles (docs/ENEMY_VARIANTS.md EVD5): while GOO_VIEW.decal is on, the enemy pool skips BulletKind.GOO and a
+ * second pool on the same simulation (GooPool) draws them as flat floor decals under everything that moves; off (the
+ * fallback), goo is drawn like every enemy bullet.
  */
 @Controller({})
 export class BulletRenderController implements OnStart {
 	private enemy: BulletPool | undefined;
 	private player: BulletPool | undefined;
+	private goo: GooPool | undefined;
 
 	constructor(private readonly sim: SimController, private readonly theme: ThemeController) {}
 
@@ -188,13 +318,30 @@ export class BulletRenderController implements OnStart {
 		const S = STUDS_PER_TILE;
 		const enemyDiameter = 2 * BULLET_VIEW.enemyDrawRadius * S;
 		const playerLength = 2 * BULLET_VIEW.playerDrawHalfLength * S;
+		const decal = GOO_VIEW.decal;
 		const enemy = new BulletPool(
 			folder,
 			"EnemyBullet",
 			bulletLook(pack, BULLET_VIEW.enemyVisualId, enemyDiameter, 0),
 			undefined,
 			false,
+			decal ? isGooPayload : undefined,
 		);
+		let goo: GooPool | undefined;
+		if (decal) {
+			const gooFolder = new Instance("Folder");
+			gooFolder.Name = GOO_VIEW.folderName;
+			gooFolder.Parent = folder;
+			const visual = pack.placeholder(GOO_BULLET_ID);
+			goo = new GooPool(
+				gooFolder,
+				pack.visualColor(visual.color),
+				Enum.Material[visual.material],
+				2 * GOO_BULLET_RADIUS * S,
+				SLIME.data.goo.life,
+			);
+		}
+		this.goo = goo;
 		const player = new BulletPool(
 			folder,
 			"PlayerBullet",
@@ -214,6 +361,7 @@ export class BulletRenderController implements OnStart {
 				debug.profilebegin(BULLET_VIEW.profileLabel);
 				const alpha = this.sim.getAlpha();
 				enemy.frame(state.combat.enemyBullets, alpha);
+				goo?.frame(state.combat.enemyBullets);
 				const n = partySize(state);
 				const me = this.sim.getViewPlayerIndex(); // spectating: the watched teammate's bullets stay opaque
 				player.frame(
@@ -229,5 +377,10 @@ export class BulletRenderController implements OnStart {
 	/** Pooled bullet parts (enemy, player). */
 	getPoolSizes(): [number, number] {
 		return [this.enemy?.poolSize() ?? 0, this.player?.poolSize() ?? 0];
+	}
+
+	/** Pooled goo decal parts (0 with the decal look off). */
+	getGooPoolSize(): number {
+		return this.goo?.poolSize() ?? 0;
 	}
 }

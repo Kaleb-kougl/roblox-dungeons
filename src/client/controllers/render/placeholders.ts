@@ -2,9 +2,12 @@ import type { PlaceholderVisual, ThemePack } from "shared/theme";
 
 /**
  * Builds the Parts for a theme placeholder (shared/theme PLACEHOLDER_VISUALS): Ball / Block / Cylinder / Wedge, a
- * Capsule (a Cylinder capped by two Balls), or a Diamond (a boost drop's gem: a cube stood on a corner, turned 45
+ * Capsule (a Cylinder capped by two Balls), a Diamond (a boost drop's gem: a cube stood on a corner, turned 45
  * degrees about the vertical and then about its own depth axis, as wide and tall as the smaller of the visual's width
- * and height, so it never stands taller than the visual). Shape, size, material and colour all come from the visual and the pack;
+ * and height, so it never stands taller than the visual), a Cone (the imp, docs/ENEMY_VARIANTS.md: Roblox has no cone
+ * Part, so a stepped spire of CONE_TIERS upright Cylinders, each narrower, together the visual's width and height) or a
+ * Dome (the Ooze: a Ball as wide as the visual whose top sits at the visual's height; the rest of the ball hangs below
+ * it, under the floor slab for a base-anchored body, where the depth test hides it). Shape, size, material and colour all come from the visual and the pack;
  * nothing here names a colour or an asset.
  *
  * The model's origin is its anchor point: the floor point under it for anchor "base", its centre for "center". Each
@@ -46,6 +49,8 @@ const EIGHTH_TURN = math.pi / 4;
 const DIAMOND_TURN = CFrame.Angles(0, EIGHTH_TURN, 0).mul(CFrame.Angles(0, 0, EIGHTH_TURN));
 /** A cube of side s turned about Z by 45 degrees spans s x sqrt(2) across and up. */
 const SQRT2 = math.sqrt(2);
+/** The Cone's stepped tiers (bottom = full width, each next one narrower by width / CONE_TIERS). */
+const CONE_TIERS = 3;
 
 /**
  * The parts of `visual` scaled by `scale`, parented to `parent`. `castShadow` for bodies; markings and bullets pass
@@ -117,6 +122,24 @@ export function buildPlaceholder(
 				new Vector3(side, side, side),
 				new CFrame(0, centreY, 0).mul(DIAMOND_TURN),
 			);
+			break;
+		}
+		case "Cone": {
+			const tierH = h / CONE_TIERS;
+			const bottom = visual.anchor === "base" ? 0 : -h / 2;
+			for (let k = 0; k < CONE_TIERS; k++) {
+				const across = (w * (CONE_TIERS - k)) / CONE_TIERS;
+				const p = renderPart("Part", castShadow);
+				p.Shape = Enum.PartType.Cylinder;
+				add(p, new Vector3(tierH, across, across), new CFrame(0, bottom + (k + 0.5) * tierH, 0).mul(UPRIGHT));
+			}
+			break;
+		}
+		case "Dome": {
+			const top = visual.anchor === "base" ? h : h / 2;
+			const p = renderPart("Part", castShadow);
+			p.Shape = Enum.PartType.Ball;
+			add(p, new Vector3(w, w, w), new CFrame(0, top - w / 2, 0));
 			break;
 		}
 		default: {

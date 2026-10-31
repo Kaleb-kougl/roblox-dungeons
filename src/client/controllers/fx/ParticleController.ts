@@ -3,10 +3,20 @@ import { Janitor } from "@rbxts/janitor";
 import { RunService, Workspace } from "@rbxts/services";
 import { CAMERA_PITCH_DEG } from "shared/config";
 import type { JuiceSettings } from "shared/settings";
-import { archetypeAt, archetypeIds } from "shared/sim";
+import { IMP, MAX_ACTORS, archetypeAt, archetypeIds, archetypeIndex } from "shared/sim";
 import { BOOST_KINDS, BREAKABLE_KINDS, type ColorRole } from "shared/theme";
 import { BOOST_VIEW, type BoostBurstView } from "shared/view/boosts";
-import { BREAKABLE_VIEW, RENDER_ORDER, degToRad, floorStudsY, studsX, studsZ } from "shared/view";
+import {
+	BLINK_VIEW,
+	BREAKABLE_VIEW,
+	BlinkWatch,
+	RENDER_ORDER,
+	degToRad,
+	floorStudsY,
+	studsX,
+	studsZ,
+	type BlinkWatchState,
+} from "shared/view";
 import {
 	DeathParticleSystem,
 	FX_VIEW,
@@ -91,6 +101,10 @@ export class ParticleController implements OnStart, ParticleWriter {
 	private roomClearShape: ChipBurst | undefined;
 	/** nearMiss.graze's palette index; nearMiss.parry's is the next one (docs/GRAZE_PARRY.md GP5). */
 	private nearMissBase = PAL_SPARK;
+	/** The imp's blink puffs (docs/ENEMY_VARIANTS.md EV9): landings from a per-frame diff, the imp's kind (-1: none). */
+	private readonly blinks = new BlinkWatch(MAX_ACTORS);
+	private readonly blinkPuff: ChipBurst = BLINK_VIEW.puff;
+	private impKind = -1;
 	private readonly moveParts = new Array<BasePart>();
 	private readonly moveCFrames = new Array<CFrame>();
 	private folder: Folder | undefined;
@@ -142,6 +156,8 @@ export class ParticleController implements OnStart, ParticleWriter {
 		this.palette.push(pack.color("nearMiss.graze"), pack.color("nearMiss.parry"));
 
 		this.nearMiss.onFrame((frame, settings) => this.nearMissFrame(frame, settings));
+		const [impOk, impKind] = pcall(() => archetypeIndex(IMP.id));
+		this.impKind = impOk ? (impKind as number) : -1;
 
 		this.fx.onEvent((e, settings) => {
 			switch (e.type) {
@@ -257,6 +273,7 @@ export class ParticleController implements OnStart, ParticleWriter {
 			ctx.live?.isPaused() === true
 				? 0
 				: math.min(math.max(rawDt, 0), FX_VIEW.maxParticleDt) * this.sim.hitstop.timeScale();
+		this.blinkPuffs(ctx.run.state, settings);
 		this.system.update(dt, settings);
 		this.used = 0;
 		this.moveParts.clear();
@@ -269,6 +286,36 @@ export class ParticleController implements OnStart, ParticleWriter {
 		this.lastUsed = this.used;
 		if (this.moveParts.size() > 0) {
 			Workspace.BulkMoveTo(this.moveParts, this.moveCFrames, Enum.BulkMoveMode.FireCFrameChanged);
+		}
+	}
+
+	/**
+	 * Imp landings this frame (shared/view BlinkWatch): a puff in the imp's colour where it stood and where it landed
+	 * (no streak: the sim snaps prev to the new spot).
+	 */
+	private blinkPuffs(state: BlinkWatchState, settings: Readonly<JuiceSettings>): void {
+		if (this.impKind < 0) return;
+		const n = this.blinks.update(state, this.impKind);
+		const color = PALETTE_KIND_BASE + this.impKind;
+		for (let i = 0; i < n; i++) {
+			const p = this.blinks.at(i);
+			const salt = BLINK_VIEW.seedSalt;
+			this.system.chips(
+				p.fromX,
+				p.fromZ,
+				color,
+				this.blinkPuff,
+				burstSeed(p.actorId, state.tick, salt),
+				settings,
+			);
+			this.system.chips(
+				p.toX,
+				p.toZ,
+				color,
+				this.blinkPuff,
+				burstSeed(p.actorId, state.tick, salt + 1),
+				settings,
+			);
 		}
 	}
 

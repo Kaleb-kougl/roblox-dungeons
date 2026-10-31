@@ -28,6 +28,7 @@ import {
 	rect,
 	roarMarkings,
 	slamMarkings,
+	viewFxHints,
 	type ActorFxHintsView,
 	type AimClip,
 } from "shared/view";
@@ -56,7 +57,9 @@ function arenaOf(enc: EncounterConfig, a: Readonly<ActorState>): EncounterRoom |
  * `telegraph` role; the seal and the roar in the `boss` role). From sim state only (web ActorsView ActorFx +
  * BossView):
  *   - room enemies with data.fx: the sniper's aim line while it winds up (bold once the aim locks), the bruiser's
- *     expanding shockwave ring with its gap. The aim line stops where it first enters an intact breakable's cell
+ *     expanding shockwave ring with its gap, the enemy variants' filling floor rings (docs/ENEMY_VARIANTS.md EV9: the
+ *     imp's landing spot during its blink wind-up, the summoner's casting circle during its summon; a hint's `attack`
+ *     picks which of two telegraphs it belongs to, so the imp's aim line shows only during its landing aim). The aim line stops where it first enters an intact breakable's cell
  *     (shared/view clipToSolidCells over shared/sim solidCells): a crate stops the shot, though not the sniper's sight
  *     (docs/DECOR.md B2)
  *   - any other actor winding up (aiState TELEGRAPH) without a preview: a ring around it
@@ -137,7 +140,8 @@ export class TelegraphController implements OnStart {
 				this.drawBoss(def.id, def.data as RoarData, a, ctx.config.encounter, s, bright, dim, roar, seal);
 				continue;
 			}
-			const fx = (def.data as { fx?: ActorFxHintsView }).fx;
+			// viewFxHints: the summoner's casting ring only during its summon (docs/ENEMY_VARIANTS.md EV9).
+			const fx = viewFxHints(def.id, (def.data as { fx?: ActorFxHintsView }).fx);
 			const drew = fx !== undefined && actorFxMarkings(bright, dim, a, fx, x, z, alpha, clip);
 			if (!drew && a.aiState === AiState.TELEGRAPH) genericWindupMarkings(dim, x, z, a.radius);
 		}

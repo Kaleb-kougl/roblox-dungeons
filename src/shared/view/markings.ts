@@ -178,6 +178,8 @@ export interface ActorFxHintsView {
 		readonly lenSlot?: number;
 		readonly length?: number;
 		readonly boldTicks: number;
+		/** Roblox port (docs/ENEMY_VARIANTS.md): drawn only while ActorState.attack equals it. */
+		readonly attack?: number;
 	};
 	readonly shockwave?: {
 		readonly state: number;
@@ -189,6 +191,51 @@ export interface ActorFxHintsView {
 		readonly gapZ: number;
 		readonly gapHalfAngle: number;
 	};
+	/**
+	 * Roblox port (docs/ENEMY_VARIANTS.md EV9): a flat circle on the floor while aiState === state (and attack, when
+	 * set), centred on (v[xSlot], v[zSlot]) or on the actor (both absent), filling over fillTicks (ringMarkings).
+	 */
+	readonly ring?: {
+		readonly state: number;
+		readonly xSlot?: number;
+		readonly zSlot?: number;
+		readonly radius: number;
+		readonly fillTicks?: number;
+		readonly attack?: number;
+	};
+}
+
+/** True when a hint with an optional `attack` filter applies to an actor whose ActorState.attack is `attack`. */
+export function hintAttackMatches(hintAttack: number | undefined, attack: number): boolean {
+	return hintAttack === undefined || hintAttack === attack;
+}
+
+/**
+ * How full a `ring` hint is: 0 on the wind-up's first tick (aiTicks = fillTicks, set by ctx.telegraph) up to 1 at the
+ * render moment the telegraph runs out (aiTicks 1 with alpha 1: the tick the sim acts), render-interpolated like the
+ * other wind-ups; clamped to [0, 1]. No fillTicks (or 0): always full.
+ */
+export function ringFill(aiTicks: number, fillTicks: number | undefined, alpha: number): number {
+	if (fillTicks === undefined || !(fillTicks > 0)) return 1;
+	return math.clamp((fillTicks - aiTicks + alpha) / fillTicks, 0, 1);
+}
+
+/**
+ * A filling floor circle (the imp's landing spot, the summoner's casting circle): the full outline at `radius` on `dim`
+ * until the fill passes TELEGRAPH_VIEW.brightFrom, then on `bright`; and the filled part as a second circle growing
+ * from the centre to `radius` x fill on `bright` (nothing at fill 0).
+ */
+export function ringMarkings(
+	bright: SegmentSink,
+	dim: SegmentSink,
+	x: number,
+	z: number,
+	radius: number,
+	fill: number,
+): void {
+	arc(fill >= TELEGRAPH_VIEW.brightFrom ? bright : dim, x, z, radius, 0, TAU);
+	const inner = radius * math.clamp(fill, 0, 1);
+	if (inner > 0 && fill < 1) arc(bright, x, z, inner, 0, TAU);
 }
 
 /**
@@ -198,9 +245,9 @@ export interface ActorFxHintsView {
 export type AimClip = (x: number, z: number, dx: number, dz: number, len: number) => number;
 
 /**
- * The aim line (while winding up) and the expanding shockwave of one actor at its drawn position (x, z). Bold / young
- * markings go to `bright`, the rest to `dim`; `clip` (optional) shortens the aim line. Returns true when it drew
- * anything.
+ * The aim line (while winding up), the expanding shockwave and the filling floor ring (Roblox port) of one actor at its
+ * drawn position (x, z); a hint with `attack` draws only while ActorState.attack equals it. Bold / young markings go
+ * to `bright`, the rest to `dim`; `clip` (optional) shortens the aim line. Returns true when it drew anything.
  */
 export function actorFxMarkings(
 	bright: SegmentSink,
@@ -214,7 +261,7 @@ export function actorFxMarkings(
 ): boolean {
 	let drew = false;
 	const aim = fx.aimLine;
-	if (aim !== undefined && a.aiState === AiState.TELEGRAPH) {
+	if (aim !== undefined && a.aiState === AiState.TELEGRAPH && hintAttackMatches(aim.attack, a.attack)) {
 		const dx = a.v[aim.dirX];
 		const dz = a.v[aim.dirZ];
 		const full = aim.lenSlot !== undefined ? a.v[aim.lenSlot] : aim.length ?? 1;
@@ -233,6 +280,14 @@ export function actorFxMarkings(
 			arc(sink, x, z, radius, hg + wave.gapHalfAngle, hg + TAU - wave.gapHalfAngle);
 			drew = true;
 		}
+	}
+	const ring = fx.ring;
+	if (ring !== undefined && a.aiState === ring.state && hintAttackMatches(ring.attack, a.attack)) {
+		const at = ring.xSlot !== undefined && ring.zSlot !== undefined;
+		const cx = at ? a.v[ring.xSlot!] : x;
+		const cz = at ? a.v[ring.zSlot!] : z;
+		ringMarkings(bright, dim, cx, cz, ring.radius, ringFill(a.aiTicks, ring.fillTicks, alpha));
+		drew = true;
 	}
 	return drew;
 }

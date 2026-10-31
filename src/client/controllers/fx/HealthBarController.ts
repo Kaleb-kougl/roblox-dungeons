@@ -1,9 +1,21 @@
 import { Controller, OnStart } from "@flamework/core";
 import { Janitor } from "@rbxts/janitor";
 import { RunService } from "@rbxts/services";
-import { MAX_ACTORS, NO_KIND, roomAt } from "shared/sim";
-import type { ThemePack } from "shared/theme";
-import { RENDER_ORDER } from "shared/view";
+import { HUD_FONT } from "client/ui/theme";
+import { AffixKind, affixThemeIndex } from "shared/dungeon";
+import { MAX_ACTORS, NO_KIND, archetypeAt, roomAt } from "shared/sim";
+import { AFFIX_IDS, ENEMY_SHIELD_ROLE, affixRole, type ThemePack } from "shared/theme";
+import {
+	RENDER_ORDER,
+	affixChipKey,
+	affixChipRect,
+	affixDrawScale,
+	affixSlotView,
+	createBarRect,
+	eliteView,
+	shieldRowRect,
+	type BarRect,
+} from "shared/view";
 import {
 	FX_VIEW,
 	HealthBarSlots,
@@ -33,6 +45,19 @@ interface BarColors {
 	readonly back: Color3;
 	readonly elite: Color3;
 	readonly flash: Color3;
+	/** Elite affixes (docs/ENEMY_VARIANTS.md EV9): the shield row, and `affix.<id>` per AFFIX_IDS index (the chip). */
+	readonly shield: Color3;
+	readonly affix: ReadonlyArray<Color3>;
+}
+
+/** What a bar shows of its actor's affix this frame (reused). */
+interface BarAffix {
+	/** AFFIX_IDS index (-1: none) and the chip's text. */
+	index: number;
+	text: string;
+	/** Shielded: shield / shieldMax (shieldMax 0: no shield row). */
+	shield: number;
+	shieldMax: number;
 }
 
 function frame(parent: Instance, name: string, color: Color3): Frame {
@@ -66,6 +91,14 @@ class BarView {
 	private lastFlash = false;
 	private lastHp = -1;
 	private lastChipHp = -1;
+	/** The affix rows (docs/ENEMY_VARIANTS.md EV9): the name chip over the bar and the shield row on the plate. */
+	private readonly affixLabel: TextLabel;
+	private readonly shieldRow: Frame;
+	private readonly rect: BarRect = createBarRect();
+	private lastAffix = -2;
+	private lastShieldW = -1;
+	private lastShieldRow = false;
+	private lastAffixVis = -1;
 
 	constructor(holder: BasePart, parent: Instance, index: number, colors: BarColors) {
 		this.att = new Instance("Attachment");
@@ -96,7 +129,56 @@ class BarView {
 			pip.Visible = false;
 			this.pips.push(pip);
 		}
+		this.shieldRow = frame(gui, "Shield", colors.shield);
+		this.shieldRow.ZIndex = 5;
+		this.shieldRow.Visible = false;
+		const label = new Instance("TextLabel");
+		label.Name = "Affix";
+		label.BackgroundTransparency = HIDDEN;
+		label.BorderSizePixel = 0;
+		label.Font = HUD_FONT;
+		label.TextScaled = true;
+		label.TextStrokeColor3 = colors.back;
+		label.ZIndex = 6;
+		label.Visible = false;
+		label.Parent = gui;
+		this.affixLabel = label;
 		gui.Parent = parent;
+	}
+
+	/**
+	 * The affix rows over the bar: the shield row (enemyShield, shield / shieldMax of the inner row) on top of the plate
+	 * and the name chip above it in the affix's colour (shared/view shieldRowRect / affixChipRect). Written on change.
+	 */
+	private drawAffix(g: Readonly<BarGeometry>, affix: Readonly<BarAffix>, vis: number, colors: BarColors): void {
+		const hasRow = affix.shieldMax > 0;
+		const rowW = hasRow ? shieldRowRect(g, affix.shield, affix.shieldMax, this.rect).w : 0;
+		if (rowW !== this.lastShieldW || hasRow !== this.lastShieldRow) {
+			this.lastShieldW = rowW;
+			this.shieldRow.Visible = rowW > 0;
+			if (rowW > 0) {
+				const r = this.rect;
+				this.place(this.shieldRow, g, r.left, r.bottom, r.w, r.h);
+			}
+		}
+		if (affix.index !== this.lastAffix || hasRow !== this.lastShieldRow) {
+			this.lastAffix = affix.index;
+			const shown = affix.index >= 0;
+			this.affixLabel.Visible = shown;
+			if (shown) {
+				this.affixLabel.Text = affix.text;
+				this.affixLabel.TextColor3 = colors.affix[affix.index] ?? colors.flash;
+				const r = affixChipRect(g, hasRow, this.rect);
+				this.place(this.affixLabel, g, r.left, r.bottom, r.w, r.h);
+			}
+		}
+		this.lastShieldRow = hasRow;
+		if (vis !== this.lastAffixVis) {
+			this.lastAffixVis = vis;
+			this.shieldRow.BackgroundTransparency = HIDDEN - vis;
+			this.affixLabel.TextTransparency = HIDDEN - vis;
+			this.affixLabel.TextStrokeTransparency = HIDDEN - vis;
+		}
 	}
 
 	hide(): void {
@@ -106,7 +188,7 @@ class BarView {
 	}
 
 	/** Place a child rect (px, relative to the feet anchor, y up) inside the plate. */
-	private place(f: Frame, g: Readonly<BarGeometry>, left: number, bottom: number, w: number, h: number): void {
+	private place(f: GuiObject, g: Readonly<BarGeometry>, left: number, bottom: number, w: number, h: number): void {
 		const top = g.plateBottom + g.plateH;
 		f.Position = UDim2.fromScale((left - g.plateLeft) / g.plateW, (top - (bottom + h)) / g.plateH);
 		f.Size = UDim2.fromScale(w / g.plateW, h / g.plateH);
@@ -142,6 +224,9 @@ class BarView {
 		this.lastHp = -1;
 		this.lastVis = -1;
 		this.lastDx = 0 / 0;
+		this.lastAffix = -2;
+		this.lastShieldW = -1;
+		this.lastAffixVis = -1;
 	}
 
 	draw(
@@ -155,8 +240,10 @@ class BarView {
 		dx: number,
 		flash: boolean,
 		colors: BarColors,
+		affix: Readonly<BarAffix>,
 	): void {
 		this.layout(g, elite, colors);
+		this.drawAffix(g, affix, vis, colors);
 		this.att.WorldPosition = pos;
 		if (!this.shown) {
 			this.shown = true;
@@ -223,7 +310,9 @@ class BarView {
  *   bar   enemyHealthBack plate (1 px outline), enemyHealthChip trailing chunk, enemyHealth fill: 2 px tall, width
  *         BAR_WIDTH_RATIO of the drawn width, BAR_GAP px above the drawn top (1 px = FX_VIEW.pxStuds studs)
  *   pips  enemies with hpMax <= 4 (swarmers, snipers): one pip per hp, filled / chip / empty (dim)
- *   elite enemyHealthElite outline around a dark inner row
+ *   elite enemyHealthElite outline around a dark inner row (elite room OR an elite affix, docs/ENEMY_VARIANTS.md EV9)
+ *   affix the affix's name chip above the bar in `affix.<id>` (`affix.<id>.name`) and, for Shielded, a 1 px shield row
+ *         in enemyShield on top of the plate (shield / shieldMax); a Hulking bar sits over its 1.2x body
  *
  * On a hit the fill drops at once, the chip holds then drains (shared/view/fx barState), the fill flashes for 2 frames
  * (uiText) and the bar shakes 1 px (not under reducedMotion). Shown per the healthBars setting ('always' | 'onDamage' |
@@ -239,6 +328,9 @@ export class HealthBarController implements OnStart {
 	private readonly views = new Array<BarView>();
 	private sizes: ActorSizeCache | undefined;
 	private colors: BarColors | undefined;
+	/** The affix chip texts (`affix.<id>.name`, AFFIX_IDS order) and this frame's affix of the bar being drawn. */
+	private affixTexts = new Array<string>();
+	private readonly affix: BarAffix = { index: -1, text: "", shield: 0, shieldMax: 0 };
 
 	constructor(
 		private readonly sim: SimController,
@@ -255,8 +347,11 @@ export class HealthBarController implements OnStart {
 			back: pack.color("enemyHealthBack"),
 			elite: pack.color("enemyHealthElite"),
 			flash: pack.color("uiText"),
+			shield: pack.color(ENEMY_SHIELD_ROLE),
+			affix: AFFIX_IDS.map((id) => pack.color(affixRole(id))),
 		};
 		this.colors = colors;
+		this.affixTexts = AFFIX_IDS.map((_, i) => pack.str(affixChipKey(i + 1)!));
 		const folder = this.janitor.Add(fxFolder(FX_VIEW.barFolder));
 		const holder = attachmentHolder(folder, "Anchors");
 		for (let i = 0; i < MAX_ACTORS; i++) this.views.push(new BarView(holder, folder, i, colors));
@@ -313,10 +408,13 @@ export class HealthBarController implements OnStart {
 			const a = i < n ? actors[i] : undefined;
 			const present = a !== undefined && a.kind !== NO_KIND;
 			// Sync the slot with the live actor (keyed by id: a reused slot never inherits the old bar).
+			const affixSlot = present ? affixSlotView(state, i, a.id) : undefined;
+			const affix = affixSlot?.affix ?? AffixKind.NONE;
 			if (present) {
 				if (slots.id[i] !== a.id || (slots.alive[i] === 0 && a.alive !== 0)) {
-					const elite = encounter !== undefined && roomAt(encounter, a.x, a.z)?.type === "elite";
-					slots.adopt(i, a.id, a.hp, a.hpMax, a.alive !== 0, elite);
+					// Elite plate: an elite room (runtime spawns there too, EVD15) OR an affix (EVD12).
+					const eliteRoom = encounter !== undefined && roomAt(encounter, a.x, a.z)?.type === "elite";
+					slots.adopt(i, a.id, a.hp, a.hpMax, a.alive !== 0, eliteView(eliteRoom, affix));
 				} else if (a.alive !== 0 && a.hp > slots.hp[i]) {
 					slots.heal(i, a.hp);
 				}
@@ -335,7 +433,17 @@ export class HealthBarController implements OnStart {
 				view.hide();
 				continue;
 			}
-			const g = barGeometry(size.w, size.h, slots.hpMax[i], this.geom);
+			// Hulking is drawn 1.2x: its bar sits over the bigger body.
+			const scale =
+				present && affix === AffixKind.HULKING ? affixDrawScale(a.radius, archetypeAt(a.kind).data.radius) : 1;
+			const g = barGeometry(math.round(size.w * scale), math.ceil(size.h * scale), slots.hpMax[i], this.geom);
+			const ba = this.affix;
+			const k = present && a.alive !== 0 ? affixThemeIndex(affix) : -1;
+			ba.index = k;
+			ba.text = k >= 0 ? this.affixTexts[k] ?? "" : "";
+			const shieldSlot = k >= 0 && affix === AffixKind.SHIELDED ? affixSlot : undefined;
+			ba.shield = shieldSlot !== undefined ? shieldSlot.shield : 0;
+			ba.shieldMax = shieldSlot !== undefined ? shieldSlot.shieldMax : 0;
 			view.draw(
 				floorPoint(slots.x[i], slots.z[i]),
 				g,
@@ -347,6 +455,7 @@ export class HealthBarController implements OnStart {
 				slots.shake(i, now, motion),
 				slots.flashing(i, now),
 				colors,
+				ba,
 			);
 		}
 	}
