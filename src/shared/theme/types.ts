@@ -213,7 +213,6 @@ export interface ImageAsset {
 	outline?: Array<Pivot>;
 }
 
-/** A pixel rectangle inside an image, top-left origin. */
 /** 9-slice insets of a ui image (ImageAsset.slice), art pixels from the left, top, right and bottom edges. */
 export interface SliceInsets {
 	left: number;
@@ -222,6 +221,7 @@ export interface SliceInsets {
 	bottom: number;
 }
 
+/** A pixel rectangle inside an image, top-left origin. */
 export interface PixelBox {
 	x: number;
 	y: number;

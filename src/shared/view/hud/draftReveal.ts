@@ -25,7 +25,8 @@
  *     keep the overlay mounted from the controller's copy of the offers), `done` (the exit fade ended: unmount).
  *   - `cues`: this step's sounds, in order, each exactly once: `{ id, speed, volume }` (speed = PlaybackSpeed, from
  *     semitones as 2^(st / 12)). Ids are DRAFT_REVEAL_SFX.
- *   - `duck`: seconds of music dip to request this step (charge + hush, on the charge's start), 0 = none.
+ *   - `duck`: seconds of music dip to request this step (on the charge's start: charge + hush + fast flip + the
+ *     charge's duckOverlapSec, so the dip lasts until the sting ducks the music itself), 0 = none.
  *   - `cards[i]` for i < DRAFT_OFFER_COUNT, by OFFER index (never reveal order); `shown` is false past `count`:
  *       face        0 = the back, 1 = the face (a step at the flip's midpoint; a crossfade under reduced motion: draw
  *                   the back at 1 - face and the face at face)
@@ -160,6 +161,19 @@ export function revealOrder(rarities: ReadonlyArray<RarityId>): number[][] {
 	}
 	if (legendaries.size() > 0) beats.push(legendaries);
 	return beats;
+}
+
+/**
+ * The charge's tremble at `since` seconds into the charge, -1..1 (times tremblePx and the charge's progress): a
+ * sample-and-hold jitter, DRAFT_REVEAL.charge.tremblePattern stepped every 1 / trembleStepHz s. Pure in time, so a
+ * frame samples the same value whatever the frame rate (no aliasing).
+ */
+export function draftTrembleAt(since: number): number {
+	const C = DRAFT_REVEAL.charge;
+	const pattern = C.tremblePattern;
+	const n = pattern.size();
+	if (n === 0 || since < 0) return 0;
+	return pattern[math.floor(since * C.trembleStepHz) % n];
 }
 
 /** One hit of the legendary charge ladder: seconds after the charge starts, semitones, volume. */
@@ -408,7 +422,7 @@ export class DraftReveal {
 				volume: 1,
 			});
 			this.duckAt = this.chargeAt;
-			this.duckSec = C.sec + DRAFT_REVEAL.hushSec;
+			this.duckSec = this.flareAt - this.chargeAt + C.duckOverlapSec;
 		}
 		this.sortCues();
 		this.updateSettleAt();
@@ -683,10 +697,7 @@ export class DraftReveal {
 
 			if (p.legendary) {
 				c.eyes = charge;
-				if (charging && !reduced) {
-					const since = t - this.chargeAt;
-					c.tremble = R.charge.tremblePx * charge * math.sin(2 * math.pi * R.charge.trembleHz * since);
-				}
+				if (charging && !reduced) c.tremble = R.charge.tremblePx * charge * draftTrembleAt(t - this.chargeAt);
 				// The rays turn during the charge and from the fast flip on (frozen through the hush).
 				const turning = math.max(0, math.min(t, this.chargeEnd) - this.chargeAt) + math.max(0, t - p.flipAt);
 				c.haloAngle = reduced

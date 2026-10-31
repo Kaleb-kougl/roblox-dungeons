@@ -131,7 +131,7 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		"combo.unstoppable": "#b98cff",
 		"combo.broken": "#6b6a70",
 		// Roblox port (docs/DRAFT_REVEAL.md DR3, DRD3): the boon draft's rarity ladder from the ToffeeCraft Horror UI
-		// sheet: bone (its skulls), blood red (the hearts' highlight), candle gold (its one warm light). Each is >= 5:1
+		// sheet: bone (its skulls), blood red (the hearts' highlight), candle gold (its one warm light). Each is >= 3:1
 		// on uiPanel and >= 25 CIE76 from the rarity below it; vale keeps them.
 		"boon.common": "#d7d0c0",
 		"boon.rare": "#f46669",

@@ -12,6 +12,11 @@ import {
 	draftShineOffset,
 	draftSkullPlacement,
 	draftSliceCenter,
+	draftBodyBox,
+	draftSlotOffsetX,
+	draftSurfaceImageId,
+	draftSurfaceOf,
+	draftTextNudge,
 	newDraftCardLook,
 } from "./draftRevealView";
 import { HUD_VIEW } from "./layout";
@@ -150,25 +155,108 @@ describe("draft reveal view: the card look", () => {
 		expect(look.burstVisible).toBe(false);
 	});
 
-	it("puts a legendary's rays behind the other cards and lights its eyes during the charge", () => {
+	it("raises a popping legendary over its neighbours and lights its eyes during the charge", () => {
 		const reveal = new DraftReveal();
 		reveal.begin([Rarity.COMMON, Rarity.LEGENDARY], false);
 		// The common lands at 0.55 s; the charge runs 0.55 .. 1.25 s.
 		stepTo(reveal, 1.1);
 		const look = draftCardLook(reveal.frame.cards[1], 1, false, newDraftCardLook());
 		expect(look.eyesAlpha).toBeGreaterThan(0);
-		expect(look.raysBehind).toBe(true);
+		expect(look.surface).toBe("back");
+		expect(look.raised).toBe(false);
 		const other = draftCardLook(reveal.frame.cards[0], 1, false, newDraftCardLook());
 		expect(other.dimAlpha).toBeGreaterThan(0);
-		expect(other.raysBehind).toBe(false);
-		// After the flare: the halo stays.
-		stepTo(reveal, 1.5);
+		expect(other.surface).toBe("common");
+		expect(other.raised).toBe(false);
+		// The flare (at 1.51 s): the pop draws in front of the dimmed neighbour.
+		stepTo(reveal, 1.56 - 1.1);
+		draftCardLook(reveal.frame.cards[1], 1, false, look);
+		expect(look.scale).toBeGreaterThan(1);
+		expect(look.raised).toBe(true);
+		expect(look.surface).toBe("rare");
+		// After the pop: the halo stays, the card is back at rest in the row.
+		stepTo(reveal, 0.5);
 		draftCardLook(reveal.frame.cards[1], 1, false, look);
 		expect(look.faceAlpha).toBe(1);
 		expect(look.haloAlpha).toBeGreaterThan(0);
-		expect(look.raysBehind).toBe(true);
+		expect(look.raised).toBe(false);
+		draftCardLook(reveal.frame.cards[1], 1, true, look);
+		expect(look.raised).toBe(true); // the selection's 1.06x
 	});
 
+	it("hides the outline strokes and the glow while the card is a sliver", () => {
+		const reveal = new DraftReveal();
+		reveal.begin([Rarity.LEGENDARY], false);
+		// Every card legendary: the charge from 0.35 s, the fast flip from 1.17 s (mid-squash at 1.24 s).
+		let thinSeen = false;
+		for (let k = 0; k < 1500; k++) {
+			reveal.step(1 / 1000);
+			const card = reveal.frame.cards[0];
+			const look = draftCardLook(card, 1, false, newDraftCardLook());
+			if (card.width < DRAFT_REVEAL_VIEW.strokeMinWidth) {
+				thinSeen = true;
+				expect(look.backStrokeAlpha).toBe(0);
+				expect(look.faceStrokeAlpha).toBe(0);
+				expect(look.glowAlpha).toBe(0);
+			}
+		}
+		stepTo(reveal, 0.6);
+		const rest = draftCardLook(reveal.frame.cards[0], 1, false, newDraftCardLook());
+		expect(thinSeen).toBe(true);
+		expect(rest.faceStrokeAlpha).toBe(rest.faceAlpha);
+	});
+});
+
+describe("draft overlay geometry", () => {
+	it("centres the shown slots on the row like its list layout", () => {
+		const pitch = PROGRESSION_VIEW.cardWidth + HUD_VIEW.gap;
+		expect(draftSlotOffsetX(0, 1)).toBe(0);
+		expect(draftSlotOffsetX(0, 2)).toBe(-pitch / 2);
+		expect(draftSlotOffsetX(1, 2)).toBe(pitch / 2);
+		expect(draftSlotOffsetX(0, 3)).toBe(-pitch);
+		expect(draftSlotOffsetX(1, 3)).toBe(0);
+		expect(draftSlotOffsetX(2, 3)).toBe(pitch);
+	});
+
+	it("draws the overlays on the art's opaque body, or the whole card without art", () => {
+		const s = DRAFT_REVEAL_VIEW.artScale;
+		expect(draftBodyBox("rare", false)).toEqual({ left: 0, top: 0, right: 0, bottom: 0, corner: 0 });
+		const rare = draftBodyBox("rare", true);
+		expect(rare.top).toBe(DRAFT_REVEAL_VIEW.body.rare.top * s);
+		expect(rare.left).toBe(DRAFT_REVEAL_VIEW.body.rare.left * s);
+		expect(draftBodyBox("common", true).corner).toBe(DRAFT_REVEAL_VIEW.body.common.corner * s);
+		// Inside the 9-slice corners (the vale layout's insets), so the box scales like the art's corners.
+		for (const [surface, slice] of [
+			["back", { left: 46, top: 20, right: 46, bottom: 24 }],
+			["common", { left: 6, top: 6, right: 6, bottom: 6 }],
+			["rare", { left: 43, top: 30, right: 43, bottom: 30 }],
+		] as const) {
+			const b = DRAFT_REVEAL_VIEW.body[surface];
+			expect(b.left < slice.left && b.right < slice.right).toBe(true);
+			expect(b.top < slice.top && b.bottom < slice.bottom).toBe(true);
+			expect(b.corner <= math.min(slice.left, slice.top)).toBe(true);
+		}
+	});
+
+	it("picks the surface at the flip's midpoint and its image id", () => {
+		expect(draftSurfaceOf(Rarity.LEGENDARY, 0.49)).toBe("back");
+		expect(draftSurfaceOf(Rarity.LEGENDARY, 0.5)).toBe("rare");
+		expect(draftSurfaceOf(Rarity.RARE, 1)).toBe("rare");
+		expect(draftSurfaceOf(Rarity.COMMON, 1)).toBe("common");
+		expect(draftSurfaceImageId("back")).toBe(DRAFT_SKIN.back);
+		expect(draftSurfaceImageId("common")).toBe(DRAFT_SKIN.common);
+		expect(draftSurfaceImageId("rare")).toBe(DRAFT_SKIN.rare);
+	});
+
+	it("nudges the name and rarity rows only on the rare face art", () => {
+		expect(draftTextNudge(Rarity.COMMON, true)).toEqual({ name: 0, rarity: 0 });
+		expect(draftTextNudge(Rarity.LEGENDARY, false)).toEqual({ name: 0, rarity: 0 });
+		expect(draftTextNudge(Rarity.RARE, true)).toEqual(DRAFT_REVEAL_VIEW.rareArtTextNudgePx);
+		expect(draftTextNudge(Rarity.LEGENDARY, true)).toEqual(DRAFT_REVEAL_VIEW.rareArtTextNudgePx);
+	});
+});
+
+describe("draft overlay look (exit)", () => {
 	it("fades the panel and title in with the title and out with the exit fade", () => {
 		const reveal = new DraftReveal();
 		expect(draftOverlayLook(reveal.frame).visible).toBe(false);

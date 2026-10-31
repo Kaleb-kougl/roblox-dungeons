@@ -2,7 +2,14 @@
 import { describe, expect, it } from "@rbxts/jest-globals";
 import { Rarity, type RarityId } from "shared/sim";
 import { semitonesToSpeed } from "./comboConfig";
-import { DraftReveal, chargeLadder, parseDraftRevealDebug, revealOrder, type DraftRevealFrame } from "./draftReveal";
+import {
+	DraftReveal,
+	chargeLadder,
+	draftTrembleAt,
+	parseDraftRevealDebug,
+	revealOrder,
+	type DraftRevealFrame,
+} from "./draftReveal";
 import { DRAFT_REVEAL, DRAFT_REVEAL_SFX } from "./draftRevealConfig";
 
 const STEP = 1 / 60;
@@ -290,7 +297,9 @@ describe("DraftReveal: a legendary in the left column", () => {
 
 		expect(d.ducks.size()).toBe(1);
 		heardNear({ t: d.ducks[0].t, id: "", speed: 1, volume: 1 }, chargeAt);
-		expect(d.ducks[0].sec).toBeCloseTo(DRAFT_REVEAL.charge.sec + DRAFT_REVEAL.hushSec, 9);
+		// The dip lasts until just past the sting (it ducks the music itself), never ending between the hush and the flare.
+		expect(d.ducks[0].sec).toBeCloseTo(flare - chargeAt + DRAFT_REVEAL.charge.duckOverlapSec, 9);
+		expect(d.ducks[0].t + d.ducks[0].sec > stings[0].t).toBe(true);
 
 		expect(trembleInCharge).toBe(true);
 		expect(trembleInHush).toBe(false);
@@ -671,5 +680,39 @@ describe("DraftReveal: dt", () => {
 		expect(f.active).toBe(false);
 		expect(f.cards[0].shown).toBe(false);
 		expect(f.cues.size()).toBe(0);
+	});
+});
+
+describe("draftTrembleAt", () => {
+	const C2 = DRAFT_REVEAL.charge;
+
+	it("is pure in time: the same value at a time whatever the frame rate", () => {
+		for (const t of [0, 0.01, 0.07, 0.2, 0.33, 0.5, 0.69]) {
+			expect(draftTrembleAt(t)).toBe(draftTrembleAt(t));
+			expect(math.abs(draftTrembleAt(t)) <= 1).toBe(true);
+		}
+		expect(draftTrembleAt(-1)).toBe(0);
+	});
+
+	it("never aliases to a constant or a two-value flip at 30 or 60 fps over the charge", () => {
+		for (const fps of [30, 60, 144]) {
+			const seen = new Set<number>();
+			let pos = false;
+			let neg = false;
+			const frames = math.floor(C2.sec * fps);
+			for (let k = 0; k < frames; k++) {
+				const v = draftTrembleAt(k / fps);
+				seen.add(v);
+				if (v > 0) pos = true;
+				if (v < 0) neg = true;
+			}
+			expect(pos && neg).toBe(true);
+			expect(seen.size() > 2).toBe(true);
+		}
+	});
+
+	it("holds each value for at least two frames at 30 fps", () => {
+		expect(C2.trembleStepHz <= 30 / 2).toBe(true);
+		expect(C2.tremblePattern.size() > 2).toBe(true);
 	});
 });

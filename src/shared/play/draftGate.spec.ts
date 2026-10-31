@@ -1,7 +1,8 @@
 // docs/DRAFT_REVEAL.md DR2: the client's confirm gate during the draft reveal.
 import { describe, expect, it } from "@rbxts/jest-globals";
+import { TUTORIAL } from "shared/config";
 import { Button, DRAFT_CONFIRM_BUTTON, type InputFrame } from "shared/sim";
-import { DraftRevealGate } from "./draftGate";
+import { DraftRevealGate, draftConfirmHeld, draftNeverRevealed, type DraftConfirmFacts } from "./draftGate";
 
 const CONFIRM = DRAFT_CONFIRM_BUTTON;
 
@@ -100,5 +101,50 @@ describe("DraftRevealGate", () => {
 		const f = frame(CONFIRM);
 		gate.apply(f, false);
 		expect(f.buttons).toBe(CONFIRM);
+	});
+});
+
+function facts(over: Partial<DraftConfirmFacts>): DraftConfirmFacts {
+	return { draftOpen: true, revealBegun: false, revealing: false, neverRevealed: false, ...over };
+}
+
+describe("draftConfirmHeld", () => {
+	it("holds while the reveal plays", () => {
+		expect(draftConfirmHeld(facts({ revealBegun: true, revealing: true }))).toBe(true);
+	});
+
+	it("holds an open draft whose reveal has not begun (the frame the cover ends under reduced motion)", () => {
+		expect(draftConfirmHeld(facts({}))).toBe(true);
+	});
+
+	it("lets the confirm through once the reveal has begun and settled", () => {
+		expect(draftConfirmHeld(facts({ revealBegun: true, revealing: false }))).toBe(false);
+	});
+
+	it("never holds a closed draft or a draft that is never revealed", () => {
+		expect(draftConfirmHeld(facts({ draftOpen: false }))).toBe(false);
+		expect(draftConfirmHeld(facts({ neverRevealed: true }))).toBe(false);
+	});
+
+	it("a press on the pre-begin frame is masked, and a fresh press after the settle passes", () => {
+		const gate = new DraftRevealGate();
+		const pre = frame(CONFIRM);
+		gate.apply(pre, draftConfirmHeld(facts({})));
+		expect(pre.buttons).toBe(0);
+		gate.apply(frame(0), draftConfirmHeld(facts({ revealBegun: true, revealing: true })));
+		const settled = facts({ revealBegun: true });
+		gate.apply(frame(0), draftConfirmHeld(settled));
+		const fresh = frame(CONFIRM);
+		gate.apply(fresh, draftConfirmHeld(settled));
+		expect(fresh.buttons).toBe(CONFIRM);
+	});
+});
+
+describe("draftNeverRevealed", () => {
+	it("the tutorial's end, and a tutorial floor past its last", () => {
+		expect(draftNeverRevealed(false, 9, true)).toBe(true);
+		expect(draftNeverRevealed(true, TUTORIAL.lastFloor + 1, false)).toBe(true);
+		expect(draftNeverRevealed(true, TUTORIAL.lastFloor, false)).toBe(false);
+		expect(draftNeverRevealed(false, TUTORIAL.lastFloor + 1, false)).toBe(false);
 	});
 });

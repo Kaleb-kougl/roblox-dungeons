@@ -21,7 +21,7 @@ export interface DraftRaysProps {
  * A ring of gold rays (docs/DRAFT_REVEAL.md DR5, DRD12: code-drawn, no art): a square holder centred on its parent,
  * DRAFT_REVEAL_VIEW.rays.beams thin Frames through its centre (each two opposite rays), each fading from the centre to
  * clear tips by a UIGradient, the holder turned by `rotation` (children rotate with it) and scaled by a UIScale. It
- * sits behind the card body in the card's slot, larger than the slot, so it draws outside the layout and never moves
+ * sits on the card row's ray layer (DraftOverlay SlotRays), under every card and outside the layout, so it never moves
  * a card. Used twice per card: the legendary flare's burst and its halo.
  */
 export function DraftRays(props: DraftRaysProps) {

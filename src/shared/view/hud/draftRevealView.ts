@@ -29,6 +29,31 @@ export const DRAFT_REVEAL_VIEW = {
 	/** The name / rarity / effect (and the legendary skulls) are not drawn while the flip width is below this. */
 	textMinWidth: 0.9,
 	/**
+	 * Strokes (the flat card's outline, the rarity glow) are not drawn while the flip width is below this: a UIStroke on
+	 * a nearly zero-wide frame is a bright vertical line mid-flip with no card around it.
+	 */
+	strokeMinWidth: 0.05,
+	/**
+	 * Each card image's opaque body (art px in from the image's left / top / right / bottom edges, and its corner radius
+	 * in art px), measured on the art/atlases.json crops: with the art present, the flash, the shine, the glow stroke
+	 * and the selection stroke are drawn on this box (UICorner) instead of the full card rectangle, so they never show
+	 * as a box over the art's transparent corners (the rare face's top corners beside its tab, the back's rounded
+	 * corners). Insets stay inside the 9-slice corners, so they scale by artScale. The rare face: rows 3..58 and columns
+	 * 1..85 of its 87 x 61 are opaque (its studs and tab poke out of that box); the common face is the whole 90 x 44,
+	 * rounded by 5; the back's panel is rounded by about 5 under its two skulls (row 0: the skulls' tops only).
+	 */
+	body: {
+		back: { left: 2, top: 1, right: 1, bottom: 0, corner: 5 },
+		common: { left: 0, top: 0, right: 0, bottom: 0, corner: 5 },
+		rare: { left: 1, top: 3, right: 1, bottom: 2, corner: 0 },
+	},
+	/**
+	 * With the rare face art (rare and legendary cards), the name and rarity rows move down this many reference px:
+	 * the face's top 30 art px are a fixed slice (60 px) whose tab and trim reach 22 px down, where the flat card's
+	 * name row (from 12 px) would sit on them. The effect row keeps its place (it starts below the band's art).
+	 */
+	rareArtTextNudgePx: { name: 10, rarity: 6 },
+	/**
 	 * The legendary skulls' pivots land on these art pixels of the rare face (`ui.draft.card.rare`): the left one on
 	 * (1, 3) from the face's top-left, the right one on (86, 3) of the 87-wide face (so 87 - 86 = 1 art px in from the
 	 * right edge). The corners are fixed-size slices, so these scale by artScale from the card's nearest top corner.
@@ -61,6 +86,58 @@ const NONE = -1;
 /** One beam's Rotation (degrees) in the ray ring: beam k of `beams`, spread evenly over half a turn. */
 export function draftRayAngle(k: number, beams: number): number {
 	return beams > 0 ? (k * HALF_TURN_DEG) / beams : 0;
+}
+
+/** Which image a card shows: its back, the plain face (common) or the studded face (rare and legendary). */
+export type DraftSurface = "back" | "common" | "rare";
+
+/** The surface a card shows now: its back until the flip's midpoint (face < 0.5), then its rarity's face. */
+export function draftSurfaceOf(rarity: RarityId, face: number): DraftSurface {
+	if (face < HALF) return "back";
+	return rarity === Rarity.COMMON ? "common" : "rare";
+}
+
+/** A surface's theme ui image id (DRAFT_SKIN). */
+export function draftSurfaceImageId(surface: DraftSurface): string {
+	return surface === "back" ? DRAFT_SKIN.back : surface === "common" ? DRAFT_SKIN.common : DRAFT_SKIN.rare;
+}
+
+/** Where a card's overlays (flash, shine, glow, selection) are drawn: insets from the card's edges and a corner, ref px. */
+export interface DraftBodyBox {
+	readonly left: number;
+	readonly top: number;
+	readonly right: number;
+	readonly bottom: number;
+	readonly corner: number;
+}
+
+const FULL_CARD_BOX: DraftBodyBox = { left: 0, top: 0, right: 0, bottom: 0, corner: 0 };
+
+/**
+ * The overlay box of `surface`: its art's opaque body (DRAFT_REVEAL_VIEW.body, at artScale) when the pack has the
+ * art (`hasArt`), else the whole card, square (the flat fallback, unchanged).
+ */
+export function draftBodyBox(surface: DraftSurface, hasArt: boolean): DraftBodyBox {
+	if (!hasArt) return FULL_CARD_BOX;
+	const b = DRAFT_REVEAL_VIEW.body[surface];
+	const s = DRAFT_REVEAL_VIEW.artScale;
+	return { left: b.left * s, top: b.top * s, right: b.right * s, bottom: b.bottom * s, corner: b.corner * s };
+}
+
+/** The name and rarity rows' downward nudge, reference px (DRAFT_REVEAL_VIEW.rareArtTextNudgePx; 0 on the flat card). */
+export function draftTextNudge(rarity: RarityId, rareArt: boolean): { readonly name: number; readonly rarity: number } {
+	if (!rareArt || rarity === Rarity.COMMON) return { name: 0, rarity: 0 };
+	return DRAFT_REVEAL_VIEW.rareArtTextNudgePx;
+}
+
+/**
+ * Card slot `index`'s centre, reference px right of the card row's centre, with `count` cards shown (the row lays the
+ * shown slots out centred, PROGRESSION_VIEW.cardWidth wide, HUD_VIEW.gap apart; hidden slots take no room). The ray
+ * layer under the row draws a legendary's rays there.
+ */
+export function draftSlotOffsetX(index: number, count: number): number {
+	const pitch = PROGRESSION_VIEW.cardWidth + HUD_VIEW.gap;
+	return (index - (count - 1) * HALF) * pitch;
 }
 
 /** The face art of a rarity: common -> the plain panel; rare and legendary -> the studded panel. */
@@ -148,8 +225,13 @@ export interface DraftCardLook {
 	width: number;
 	/** The body's UIScale: pop * stamp, times PROGRESSION_VIEW.selectedScale while selected. */
 	scale: number;
+	/** The image the card shows now (back / common / rare face): the dim silhouette and the overlay box follow it. */
+	surface: DraftSurface;
 	/** Opacities 0..1 (the overlay's exit fade and the card's own alpha folded in). */
 	backAlpha: number;
+	/** The flat back's / face's outline (no art): their alphas, 0 while the card is a sliver (strokeMinWidth). */
+	backStrokeAlpha: number;
+	faceStrokeAlpha: number;
 	/** The flat back's panel fill (no back art): backAlpha at uiPanel's usual transparency. */
 	backFillAlpha: number;
 	faceAlpha: number;
@@ -172,8 +254,11 @@ export interface DraftCardLook {
 	rayAngle: number;
 	/** Draw the selection (uiAccent stroke, selectedScale): settled, and the card under the stick (or the one taken). */
 	selected: boolean;
-	/** Its rays show: the slot draws under the other slots (its rays pass behind their cards). */
-	raysBehind: boolean;
+	/**
+	 * The card is drawn larger than its slot (pop, stamp, selection: scale > 1), so its slot draws over the others (its
+	 * overhang is in front of the neighbours). The rays are on their own layer under the whole row.
+	 */
+	raised: boolean;
 }
 
 export function newDraftCardLook(): DraftCardLook {
@@ -183,7 +268,10 @@ export function newDraftCardLook(): DraftCardLook {
 		offsetY: 0,
 		width: 1,
 		scale: 1,
+		surface: "back",
 		backAlpha: 0,
+		backStrokeAlpha: 0,
+		faceStrokeAlpha: 0,
 		backFillAlpha: 0,
 		faceAlpha: 0,
 		faceFillAlpha: 0,
@@ -200,7 +288,7 @@ export function newDraftCardLook(): DraftCardLook {
 		haloAlpha: 0,
 		rayAngle: 0,
 		selected: false,
-		raysBehind: false,
+		raised: false,
 	};
 }
 
@@ -219,20 +307,24 @@ export function draftCardLook(
 	const a = card.shown ? math.clamp(card.alpha * overlayAlpha, 0, 1) : 0;
 	const face = math.clamp(card.face, 0, 1);
 	const wide = card.width >= DRAFT_REVEAL_VIEW.textMinWidth;
+	const thin = card.width < DRAFT_REVEAL_VIEW.strokeMinWidth;
 	const fill = 1 - HUD_VIEW.panelTransparency;
 	out.offsetX = card.tremble;
 	out.offsetY = card.rise + card.drop;
 	out.width = math.max(0, card.width);
 	out.selected = card.shown && selected;
 	out.scale = card.pop * card.stamp * (out.selected ? PROGRESSION_VIEW.selectedScale : 1);
+	out.surface = draftSurfaceOf(card.rarity, face);
 	out.backAlpha = a * (1 - face);
+	out.backStrokeAlpha = thin ? 0 : out.backAlpha;
 	out.backFillAlpha = out.backAlpha * fill;
 	out.faceAlpha = a * face;
+	out.faceStrokeAlpha = thin ? 0 : out.faceAlpha;
 	out.faceFillAlpha = out.faceAlpha * (out.selected ? 1 : fill);
 	out.eyesAlpha = out.backAlpha * math.clamp(card.eyes, 0, 1);
 	out.ornamentAlpha = wide ? out.faceAlpha : 0;
 	out.textAlpha = wide ? a * math.clamp(card.textAlpha, 0, 1) : 0;
-	out.glowAlpha = a * math.clamp(card.glow, 0, 1);
+	out.glowAlpha = thin ? 0 : a * math.clamp(card.glow, 0, 1);
 	out.flashAlpha = a * math.clamp(card.flash, 0, 1);
 	out.dimAlpha = a * math.clamp(card.dim, 0, 1);
 	out.shine = card.shown ? card.shine : NONE;
@@ -241,7 +333,7 @@ export function draftCardLook(
 	out.burstAlpha = out.burstVisible ? a * math.clamp(card.burstAlpha, 0, 1) : 0;
 	out.haloAlpha = a * math.clamp(card.haloAlpha, 0, 1);
 	out.rayAngle = card.haloAngle;
-	out.raysBehind = out.burstVisible || out.haloAlpha > 0;
+	out.raised = card.shown && out.scale > 1;
 	return out;
 }
 

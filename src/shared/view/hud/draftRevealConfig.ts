@@ -43,9 +43,23 @@ export const DRAFT_REVEAL = {
 	/**
 	 * The legendary charge (after the last other card landed; at flip.firstAtSec when every card is legendary): the other
 	 * cards dim to `dim` over dimInSec; the back's eyes and its edge glow rise 0 -> 1, the back trembles 0 ->
-	 * tremblePx at trembleHz, the rays fade in 0 -> rayAlpha and turn at halo.revPerSec.
+	 * tremblePx, the rays fade in 0 -> rayAlpha and turn at halo.revPerSec. The tremble is a sample-and-hold jitter in
+	 * time, not a sine: every 1 / trembleStepHz s it takes the next value of tremblePattern (fractions of the current
+	 * amplitude), so it reads the same at 30, 60 or 144 fps (a fast sine aliases with the frame rate: at 30 Hz it is a
+	 * constant offset at 30 fps). Keep trembleStepHz well under the slowest frame rate expected (30 fps).
+	 * `duckOverlapSec`: the music dip holds through the hush and the fast flip and this far past the flare, so the
+	 * sting's own duck (a jingle, DUCKING_SFX) takes over before the dip ends and the music never climbs in between.
 	 */
-	charge: { sec: 0.7, dim: 0.5, dimInSec: 0.15, tremblePx: 2, trembleHz: 30, rayAlpha: 0.2 },
+	charge: {
+		sec: 0.7,
+		dim: 0.5,
+		dimInSec: 0.15,
+		tremblePx: 2,
+		trembleStepHz: 15,
+		tremblePattern: [1, -0.55, 0.3, -1, 0.7, -0.25, 0.85, -0.7],
+		rayAlpha: 0.2,
+		duckOverlapSec: 0.1,
+	},
 	/**
 	 * The charge's pitch-up ladder (DRD11): `hits` sfx.draft.charge cues, the gaps closing linearly from firstGapSec to
 	 * lastGapSec, the pitch climbing linearly 0 -> topSemitones (volume fromVolume -> toVolume); the last hit
