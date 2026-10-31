@@ -12,7 +12,6 @@ import {
 	CHARACTER,
 	DIGIT_FONT,
 	ENEMY,
-	ENEMY_OPTIONAL_ANIMATIONS,
 	FACINGS,
 	GAMEPLAY_KEY_WORDS,
 	ITEM,
@@ -145,7 +144,7 @@ describe("sprite contract", () => {
 		expect(optionalBaseAnimations(BOSS)).toEqual(["attack.2", "attack.3", "attack.4", "intro", "taunt"]);
 		expect([CHARACTER.optionalAnimations, ENEMY.optionalAnimations, BOSS.optionalAnimations]).toEqual([
 			CLASS_OPTIONAL_ANIMATIONS,
-			ENEMY_OPTIONAL_ANIMATIONS,
+			["attack.2"],
 			BOSS_OPTIONAL_ANIMATIONS,
 		]);
 		for (const slot of SLOTS) {

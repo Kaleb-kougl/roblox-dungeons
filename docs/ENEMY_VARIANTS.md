@@ -321,7 +321,7 @@ exactly the 22 files the two sets read (11 body sheets + their `Shadows/` layers
   **`VARIANT_ANIM_MARKS.imp.land` = 5 / 9** (was the 0.5 placeholder; frames 0-4 over the blink, 5-8 over the aim, the
   last sweep frame on the fan's tick). Attack 5 splits cleanly, so Roll 1 was not needed for the blink.
 - **The summoner's names.** `VARIANT_SPRITE_VIEW.summonerAnims` (cast `attack.2`, panic `attack`) unchanged. The enemy
-  slot's contract now names `attack.2` as an optional animation (`ENEMY_OPTIONAL_ANIMATIONS`, like the boss's list):
+  slot's contract now names `attack.2` as an optional animation (inline `ENEMY.optionalAnimations`: the compiled contract.luau is at the 200-locals limit):
   the validator already accepted any extra name, so this only documents what the renderer asks for (theme README, the
   contract spec).
 - **Walk vs Run (stride against the knight).** Planted-foot slide per source frame in the profile row: knight Run
@@ -364,7 +364,7 @@ exactly the 22 files the two sets read (11 body sheets + their `Shadows/` layers
   dark floors. **Verdict: good to upload**; EV14 judges size against the hitbox, the Run at 3.2 u/s and the cast /
   panic timing in Studio.
 - **Code.** `art/atlases.json` (+ `vendor.lock.json` additions), `packs/vale/layout.ts` (generated),
-  `variantsConfig.ts` (`VARIANT_ANIM_MARKS.imp.land`), `theme/contract.ts` (`ENEMY_OPTIONAL_ANIMATIONS`), `assetIds.ts`
+  `variantsConfig.ts` (`VARIANT_ANIM_MARKS.imp.land`), `theme/contract.ts` (`ENEMY.optionalAnimations`), `assetIds.ts`
   (12 commented slots: an absent key keeps the placeholder, an empty string would not). Specs: `vale.spec` "vale
   enemy.imp and enemy.summoner" (layouts, placeholder as bundled, the switch on all three sheets and any one missing,
   rims per sheet, hand-computed cells, the preload core tier) and the per-sheet list; `variants.spec` "VARIANT_ANIM_MARKS

@@ -104,13 +104,6 @@ export const CLASS_OPTIONAL_ANIMATIONS = ["attack.1", "attack.2", "attack.3"] as
  */
 export const BOSS_OPTIONAL_ANIMATIONS = ["attack.2", "attack.3", "attack.4", "intro", "taunt"] as const;
 
-/**
- * Optional `sprites` animations of the enemy slot (docs/ENEMY_VARIANTS.md EV10): `attack.2`, a second named attack
- * (falls back to `attack`). The summoner plays it for its summon cast and `attack` for its panic ring
- * (shared/view variantsConfig VARIANT_SPRITE_VIEW.summonerAnims); no other enemy asks for it.
- */
-export const ENEMY_OPTIONAL_ANIMATIONS = ["attack.2"] as const;
-
 export const CHARACTER: SlotContract = {
 	slot: "class",
 	prefix: "class.",
@@ -134,7 +127,10 @@ export const ENEMY: SlotContract = {
 	animationOrder: ["idle", "move", "attack", "hit", "death"],
 	facings: FACINGS,
 	perSheetCells: true,
-	optionalAnimations: ENEMY_OPTIONAL_ANIMATIONS,
+	// docs/ENEMY_VARIANTS.md EV10: `attack.2`, a second named attack (falls back to `attack`): the summoner's summon
+	// cast (shared/view variantsConfig VARIANT_SPRITE_VIEW.summonerAnims). Inline, not a top-level constant: the
+	// compiled contract.luau sits at Luau's 200-locals limit.
+	optionalAnimations: ["attack.2"],
 };
 
 export const BOSS: SlotContract = {
