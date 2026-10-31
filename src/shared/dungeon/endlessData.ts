@@ -100,7 +100,8 @@ export interface EndlessRoomKind {
 
 /**
  * Unlock floors of the docs/ENEMY_VARIANTS.md room enemies (EVD2: 2 / 4 / 6, faster than the recommended 3 / 6 / 8).
- * Floor 1 buys only the original three, draw for draw as before (dungeon/roomPool.lock.spec.ts).
+ * Floor 1 buys only the original three, draw for draw as before (dungeon/roomPool.lock.spec.ts, without a roster); the
+ * seeded roster (ROSTER) closes more kinds on top of these and never lets one in before its unlock floor.
  */
 export const ROOM_KIND_UNLOCK_FLOOR = table.freeze({ imp: 2, slime: 4, summoner: 6 });
 
@@ -111,6 +112,7 @@ export const SUMMONERS_PER_ROOM = 1;
  * The room enemies of endless floors, in draw order. Turrets and the boss are not bought with room budgets. The first
  * three (and their weights 3 / 2 / 1) are the original pool and never change; the docs/ENEMY_VARIANTS.md kinds are
  * appended after them (EVD2) and join only from their unlock floor, so floors below every unlock spend as before.
+ * Endless floors buy only the kinds of the run's seeded roster (ROSTER, ./endless.ts endlessRoster; docs/DAILY.md DS1).
  */
 export const ENDLESS_ROOM_KINDS: ReadonlyArray<EndlessRoomKind> = [
 	{ kind: "swarmer", weight: 3 },
@@ -120,6 +122,25 @@ export const ENDLESS_ROOM_KINDS: ReadonlyArray<EndlessRoomKind> = [
 	{ kind: "slime", weight: 1, fromFloor: ROOM_KIND_UNLOCK_FLOOR.slime },
 	{ kind: "summoner", weight: 1, fromFloor: ROOM_KIND_UNLOCK_FLOOR.summoner, maxPerRoom: SUMMONERS_PER_ROOM },
 ];
+
+/** Tunables of the seeded roster (docs/DAILY.md DS1, DSD1 / DSD2 / DSD9): which room kinds a run meets per floor. */
+export interface RosterTunables {
+	/** The kind every roster holds from floor 1 on (it is not shuffled). */
+	readonly always: string;
+	/**
+	 * One more seeded kind joins every this many floors: the roster holds 1 + floor((floor - 1) / floorsPerKind) kinds
+	 * besides `always` (capped at the kinds there are), each from its unlock floor (EndlessRoomKind.fromFloor) only.
+	 */
+	readonly floorsPerKind: number;
+	/**
+	 * The roster's own rng stream: new EncounterRng(u32(runSeed) ^ salt), one Fisher-Yates shuffle per run. Drawn from
+	 * the RUN seed, so no floor's Forge, boss pick, breakables or affixes stream moves (salts in use: 0x27d4eb2f boss,
+	 * 0x5bd1e995 breakables, 0xcc9e2d51 affixes, 0x4b564452 drops). xxHash32's PRIME32_5.
+	 */
+	readonly salt: number;
+}
+
+export const ROSTER: RosterTunables = table.freeze({ always: "swarmer", floorsPerKind: 2, salt: 0x165667b1 });
 
 /**
  * Room enemies wider than half a tile (body radius > 0.5: the Ooze's 0.55, docs/ENEMY_VARIANTS.md EV0 item 14). A

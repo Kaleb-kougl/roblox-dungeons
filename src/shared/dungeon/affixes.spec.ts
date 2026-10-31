@@ -15,6 +15,7 @@ import {
 	endlessFloorParams,
 	endlessRoomSpawnTiles,
 	endlessRoomSpawns,
+	endlessRoster,
 	entranceSpawn,
 	generateDungeon,
 	isAffixExcluded,
@@ -153,7 +154,7 @@ describe("buildEndlessFloor with affixes: nothing else moves", () => {
 					expect(l.bossKind).toBe(bossKind);
 					const encounter = placeEncounter(d, { boss: bossKind });
 					expect(l.encounter).toEqual(encounter);
-					const roomSpawns = endlessRoomSpawns(d, floor, party);
+					const roomSpawns = endlessRoomSpawns(d, floor, party, endlessRoster(run, floor));
 					expect(l.roomSpawns).toEqual(roomSpawns);
 					const spawn = entranceSpawn(d);
 					const bossRoom = encounter.rooms[d.boss];

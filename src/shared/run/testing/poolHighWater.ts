@@ -16,6 +16,7 @@ import {
 	encounterRooms,
 	endlessFloorParams,
 	endlessRoomSpawns,
+	endlessRoster,
 	generateDungeon,
 	roomEncounterBudget,
 	type ActorSpawn,
@@ -106,8 +107,9 @@ export function poolHighWater(
 			// The layout does not depend on the party size: one Forge floor serves every party row.
 			const d = generateDungeon(endlessFloorParams(run, floor));
 			const rooms = encounterRooms(d);
+			const roster = endlessRoster(run, floor);
 			for (const row of byParty) {
-				const spawns = endlessRoomSpawns(d, floor, row.party);
+				const spawns = endlessRoomSpawns(d, floor, row.party, roster);
 				row.runs++;
 				let floorAlive = 0;
 				for (const room of rooms) {

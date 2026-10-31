@@ -3,9 +3,14 @@
 // and the new kinds (imp from floor 2, slime from 4, summoner from 6, EVD2) and must never move: floor 1 spends draw
 // for draw as before for every run seed and party size. Deeper floors are pinned informationally: each differs from
 // its pre-EV5 digest (the new kinds join), and the as-built digest is pinned to catch later drift.
+//
+// Re-recorded for the seeded roster (docs/DAILY.md DS1, DSD1: the roster applies to every endless run, so endless room
+// spawns change from floor 1 by design). Real floors spend with their run's roster (endlessRoster, as
+// buildEndlessFloor does): those digests are pinned as built below. The spender itself did not change: without a
+// roster (every unlocked kind open) floor 1 still gives exactly the pre-EV5 spawns, and floors 2-6 the EV5 ones.
 import { describe, expect, it } from "@rbxts/jest-globals";
 import { imul } from "shared/jsmath";
-import { endlessFloorParams, endlessRoomSpawns, generateDungeon, type ActorSpawn } from "shared/dungeon";
+import { endlessFloorParams, endlessRoomSpawns, endlessRoster, generateDungeon, type ActorSpawn } from "shared/dungeon";
 
 const FNV_OFFSET = 0x811c9dc5;
 const FNV_PRIME = 0x01000193;
@@ -21,14 +26,23 @@ function foldFloor(h: number, rooms: ReadonlyArray<ReadonlyArray<ActorSpawn>>): 
 	return fnv(h, "|");
 }
 
-/** Digest of endlessRoomSpawns over run seeds `first..last` on `floor`, one per party size in `parties`. */
-function digests(floor: number, first: number, last: number, parties: ReadonlyArray<number>): string[] {
+/**
+ * Digest of endlessRoomSpawns over run seeds `first..last` on `floor`, one per party size in `parties`; with `roster`
+ * each run spends with its seeded roster (a real floor), without it every unlocked kind is open (the pre-roster spender).
+ */
+function digests(
+	floor: number,
+	first: number,
+	last: number,
+	parties: ReadonlyArray<number>,
+	roster: boolean,
+): string[] {
 	const h = parties.map(() => FNV_OFFSET);
 	const n = parties.map(() => 0);
 	for (let run = first; run <= last; run++) {
 		const d = generateDungeon(endlessFloorParams(run, floor));
 		for (let p = 0; p < parties.size(); p++) {
-			const rooms = endlessRoomSpawns(d, floor, parties[p]);
+			const rooms = endlessRoomSpawns(d, floor, parties[p], roster ? endlessRoster(run, floor) : undefined);
 			h[p] = foldFloor(h[p], rooms);
 			for (const r of rooms) n[p] += r.size();
 		}
@@ -37,8 +51,8 @@ function digests(floor: number, first: number, last: number, parties: ReadonlyAr
 }
 
 describe("endless room pool lock (EV5)", () => {
-	it("floor 1, run seeds 1-200, party 1-4: the spawns are exactly the pre-EV5 ones", () => {
-		const got = digests(1, 1, 200, [1, 2, 3, 4]);
+	it("no roster: floor 1, run seeds 1-200, party 1-4: the spawns are exactly the pre-EV5 ones", () => {
+		const got = digests(1, 1, 200, [1, 2, 3, 4], false);
 		for (const line of got) print(`[room pool lock] ${line}`);
 		expect(got).toEqual([
 			"floor 1 party 1: 6504 spawns, 45049506", // check-asset-ids: allow (FNV-1a digest)
@@ -48,7 +62,7 @@ describe("endless room pool lock (EV5)", () => {
 		]);
 	});
 
-	it("floors 2-6, run seeds 1-40, solo: every floor differs from its pre-EV5 digest, pinned as built (informational)", () => {
+	it("no roster: floors 2-6, run seeds 1-40, solo: each differs from its pre-EV5 digest, pinned as built at EV5", () => {
 		// Before EV5 (commit f3e92ca); the new kinds join from floor 2 (imp), so every one of these floors moves.
 		const before = [
 			"floor 2 party 1: 1517 spawns, a3403803",
@@ -58,7 +72,7 @@ describe("endless room pool lock (EV5)", () => {
 			"floor 6 party 1: 2651 spawns, cd348b55",
 		];
 		const got: string[] = [];
-		for (let floor = 2; floor <= 6; floor++) got.push(digests(floor, 1, 40, [1])[0]);
+		for (let floor = 2; floor <= 6; floor++) got.push(digests(floor, 1, 40, [1], false)[0]);
 		for (const line of got) print(`[room pool lock] ${line}`);
 		for (let i = 0; i < got.size(); i++) expect(got[i]).never.toBe(before[i]);
 		expect(got).toEqual([
@@ -67,6 +81,30 @@ describe("endless room pool lock (EV5)", () => {
 			"floor 4 party 1: 1692 spawns, ef3fc224",
 			"floor 5 party 1: 1830 spawns, ecb0f584",
 			"floor 6 party 1: 2281 spawns, 1cde5ea7",
+		]);
+	});
+
+	it("seeded roster: floor 1, run seeds 1-200, party 1-4 (re-recorded for docs/DAILY.md DSD1)", () => {
+		const got = digests(1, 1, 200, [1, 2, 3, 4], true);
+		for (const line of got) print(`[room pool lock] roster ${line}`);
+		expect(got).toEqual([
+			"floor 1 party 1: 7384 spawns, 1f360722",
+			"floor 1 party 2: 9703 spawns, 7a7ec6d3",
+			"floor 1 party 3: 12003 spawns, 826822f6",
+			"floor 1 party 4: 13885 spawns, 47d57a83",
+		]);
+	});
+
+	it("seeded roster: floors 2-6, run seeds 1-40, solo (re-recorded for docs/DAILY.md DSD1)", () => {
+		const got: string[] = [];
+		for (let floor = 2; floor <= 6; floor++) got.push(digests(floor, 1, 40, [1], true)[0]);
+		for (const line of got) print(`[room pool lock] roster ${line}`);
+		expect(got).toEqual([
+			"floor 2 party 1: 1719 spawns, 3e64316b",
+			"floor 3 party 1: 1681 spawns, 15183218", // check-asset-ids: allow (FNV-1a digest)
+			"floor 4 party 1: 1910 spawns, 84135ed2",
+			"floor 5 party 1: 1930 spawns, 72673e2a",
+			"floor 6 party 1: 2466 spawns, b3c017ef",
 		]);
 	});
 });

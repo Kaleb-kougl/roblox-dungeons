@@ -22,6 +22,7 @@ import {
 	endlessRoomSpawnTiles,
 	withoutBreakableCells,
 	endlessRoomSpawns,
+	endlessRoster,
 	floorRoomCount,
 	floorSeed,
 	generateDungeon,
@@ -231,7 +232,7 @@ describe("endlessRoomSpawnTiles (where a too-close spawn may move to)", () => {
 		const again = buildEndlessFloor(1337, 3, (p) => generateDungeon(p));
 		expect(again.roomSpawnTiles).toEqual(fl.roomSpawnTiles);
 		// Computing the tiles draws from no rng: the spawns are what endlessRoomSpawns gives on its own.
-		expect(fl.roomSpawns).toEqual(endlessRoomSpawns(fl.dungeon, fl.floor));
+		expect(fl.roomSpawns).toEqual(endlessRoomSpawns(fl.dungeon, fl.floor, 1, endlessRoster(1337, fl.floor)));
 		// The floor's spawn tiles are these minus the cells its breakables stand on (docs/DECOR.md D4).
 		expect(withoutBreakableCells(endlessRoomSpawnTiles(fl.dungeon, fl.roomSpawns), fl.breakables ?? [])).toEqual(
 			fl.roomSpawnTiles,
@@ -314,7 +315,7 @@ describe("the boss pick moves nothing else on the floor", () => {
 					const d = fl.dungeon;
 					// The floor as it was built before the pick (Mother Bramble on every boss floor), piece by piece.
 					const bramble = placeEncounter(d, { boss: BOSS_ACT1_KIND });
-					const roomSpawns = endlessRoomSpawns(d, floor, party);
+					const roomSpawns = endlessRoomSpawns(d, floor, party, endlessRoster(seed, floor));
 					const boss = bramble.rooms[d.boss];
 					const stairwell = { x: boss.cx, z: boss.cz };
 					const spawn = entranceSpawn(d);
