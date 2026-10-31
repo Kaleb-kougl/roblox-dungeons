@@ -16,12 +16,14 @@ import {
 } from "client/store";
 import { HUD_FONT, role, str, themePack } from "client/ui/theme";
 import type { ColorRole } from "shared/theme";
+import { DAILY_WORLD_KIND } from "shared/daily";
 import { restartHint } from "shared/play";
 import { SIM_HZ } from "shared/sim";
 import { SFX } from "shared/view/audio";
 import {
 	COMBO_DRAW,
 	COMBO_TIERS,
+	DAILY_STRINGS,
 	FOOTPRINT_ESTIMATE,
 	HUD_STRINGS,
 	HUD_VIEW,
@@ -48,6 +50,7 @@ import {
 	screenSkin,
 } from "shared/view/menu";
 import { useHudActions } from "./actions";
+import { DailyResultBlock } from "./DailyResultBlock";
 import { MenuFit } from "./MenuFit";
 import { runOverBest, type RunOverBest } from "./newBestRunOver";
 import { NEW_BEST_UI } from "./newBestUi";
@@ -65,10 +68,13 @@ const ROW = {
 	alt: 4,
 	stats: 5,
 	best: 6,
-	breakdown: 7,
-	exits: 8,
-	verdict: 9,
-	info: 10,
+	/** docs/DAILY.md DS11: the daily block (daily runs only), then the friends you passed (DS10). */
+	daily: 7,
+	dailyFriends: 8,
+	breakdown: 9,
+	exits: 10,
+	verdict: 11,
+	info: 12,
 } as const;
 
 function Stat(props: { order: number; label: string; value: string }) {
@@ -376,6 +382,10 @@ function RunOverHeader(props: { order: number; victory: boolean; icon: string | 
  * record rows and the save chip (BestBlock); a run with no record gets the dim `Best ...` line there instead. The
  * record fanfare (the cue mapper's run-over jingle swap), the rows' roll with its tick / land sounds and the
  * full-screen confetti are NewBestController's.
+ *
+ * The Daily (docs/DAILY.md DS11), daily runs only: the daily block (DailyResultBlock: standing, entrants, best today,
+ * the save chip, the countdown) under new best's block (compact: atop the breakdown column), a spot for the friends
+ * you passed right after it (DS10), and the Again button reads Retry Daily (still the first, focused button).
  */
 export function RunOverPanel() {
 	const s = useSelector(selectSnapshot);
@@ -409,7 +419,10 @@ export function RunOverPanel() {
 	const hint = restartHint(bindings);
 	// Touch: the Again button stands in for the restart key (docs/MOBILE.md MB10).
 	const touch = device === "touch";
-	const key = touch ? str(MENU_STRINGS.again) : device === "gamepad" ? padKey : hint.keyboard;
+	// A daily run's Again is Retry Daily (docs/DAILY.md DS11, DSD3: unlimited attempts; the restart keeps the world).
+	const daily = info.world === DAILY_WORLD_KIND;
+	const againText = str(daily ? DAILY_STRINGS.retry : MENU_STRINGS.again);
+	const key = touch ? againText : device === "gamepad" ? padKey : hint.keyboard;
 	const otherKey = device === "gamepad" ? hint.keyboard : padKey;
 	const bossName = lastBoss !== "" ? str(`${lastBoss}.name`) : "";
 	const exits = runOverExits(info.coop, myLobby !== undefined);
@@ -425,6 +438,8 @@ export function RunOverPanel() {
 	const ribbon =
 		ribbonKey !== undefined ? <BestRibbon key="Ribbon" order={ROW.ribbon} text={str(ribbonKey)} /> : undefined;
 	const bestBlock = <BestBlock key="Best" order={ROW.best} best={best} />;
+	const recordRowsShown = best.ranked && best.records.record && !best.records.first;
+	const dailyBlock = <DailyResultBlock key="Daily" order={ROW.daily} recordRowsShown={recordRowsShown} />;
 	const header = (
 		<RunOverHeader
 			key="Header"
@@ -480,7 +495,7 @@ export function RunOverPanel() {
 					order={1}
 					name="Again"
 					size={size}
-					text={str(MENU_STRINGS.again)}
+					text={againText}
 					onActivated={() => {
 						actions.playUi(SFX.uiConfirm);
 						actions.restart();
@@ -540,6 +555,8 @@ export function RunOverPanel() {
 								</Column>
 								{s.scoring ? (
 									<Column order={2} width={right} gap={MENU_FIT.runOverLineGap}>
+										<DailyResultBlock key="Daily" order={-2} recordRowsShown={recordRowsShown} />
+										{/* daily friends passed (DS10): order -1 */}
 										{best.ranked ? <BestBlock key="Best" order={0} best={best} /> : undefined}
 										{breakdownLines(breakdown)}
 									</Column>
@@ -565,6 +582,8 @@ export function RunOverPanel() {
 							))}
 						</Row>
 						{bestBlock}
+						{dailyBlock}
+						{/* daily friends passed (DS10): order ROW.dailyFriends */}
 						{s.scoring ? <ScoreBreakdown {...breakdown} /> : undefined}
 						{verdictRow}
 						<RunInfoLine order={ROW.info} />
