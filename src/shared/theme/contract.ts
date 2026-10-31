@@ -127,6 +127,10 @@ export const ENEMY: SlotContract = {
 	animationOrder: ["idle", "move", "attack", "hit", "death"],
 	facings: FACINGS,
 	perSheetCells: true,
+	// docs/ENEMY_VARIANTS.md EV10: `attack.2`, a second named attack (falls back to `attack`): the summoner's summon
+	// cast (shared/view variantsConfig VARIANT_SPRITE_VIEW.summonerAnims). Inline, not a top-level constant: the
+	// compiled contract.luau sits at Luau's 200-locals limit.
+	optionalAnimations: ["attack.2"],
 };
 
 export const BOSS: SlotContract = {
@@ -315,7 +319,7 @@ export function requiredBaseAnimations(slot: SlotContract): Array<string> {
 
 /**
  * Named optional animations a `sprites` asset in this slot may define (`optionalAnimations`, in contract order): class
- * attack.1..3, boss attack.2 / attack.3 / attack.4 / intro / taunt; empty for the other slots. A copy. Never required
+ * attack.1..3, enemy attack.2, boss attack.2 / attack.3 / attack.4 / intro / taunt; empty for the other slots. A copy. Never required
  * (requiredBaseAnimations is the required list); any other extra name stays allowed (the validator checks every
  * animation a set defines, required or not).
  */

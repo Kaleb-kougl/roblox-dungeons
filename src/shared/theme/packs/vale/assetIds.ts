@@ -242,4 +242,18 @@ export const VALE_ASSET_IDS: Readonly<Record<string, RobloxAssetId>> = {
 	"fx-ambient-b3.png": "rbxassetid://81069724717150",
 	"fx-ambient-b5.png": "rbxassetid://93348383001922",
 	"fx-effects.png": "rbxassetid://92741658775036",
+	// Pending upload (docs/ENEMY_VARIANTS.md EV10 imp / summoner): paste each ID, then uncomment the line. A set switches
+	// once its three sheets have IDs (each -outline.png adds its rim); an absent key keeps the placeholder (never "").
+	// "imp-attack.png": "rbxassetid://",
+	// "imp-attack-outline.png": "rbxassetid://",
+	// "imp-body.png": "rbxassetid://",
+	// "imp-body-outline.png": "rbxassetid://",
+	// "imp-death.png": "rbxassetid://",
+	// "imp-death-outline.png": "rbxassetid://",
+	// "summoner-attack.png": "rbxassetid://",
+	// "summoner-attack-outline.png": "rbxassetid://",
+	// "summoner-body.png": "rbxassetid://",
+	// "summoner-body-outline.png": "rbxassetid://",
+	// "summoner-death.png": "rbxassetid://",
+	// "summoner-death-outline.png": "rbxassetid://",
 };

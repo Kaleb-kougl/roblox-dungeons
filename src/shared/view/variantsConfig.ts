@@ -16,7 +16,8 @@ export const VARIANT_SPRITE_VIEW = {
 	summonerMoveRefSpeed: SUMMONER.data.speed,
 	/**
 	 * The summoner's animations: the summon cast (a named attack; `attack` when the set lacks it) and the panic ring.
-	 * Tune by eye once its set lands (EV10).
+	 * enemy.summoner (Demon Spawn 10, EV10): `attack.2` = Taunt (arms out, sinking low), `attack` = Attack 2 (the
+	 * scythe sweep).
 	 */
 	summonerAnims: { cast: "attack.2", panic: "attack" },
 	/**
@@ -28,12 +29,16 @@ export const VARIANT_SPRITE_VIEW = {
 } as const;
 
 /**
- * Frame marks inside the new archetypes' attack animations (fractions of the frame count, like SPRITE_ANIM_MARKS):
- * placeholder halves until the art is measured (EV10).
+ * Frame marks inside the new archetypes' attack animations (fractions of the frame count, like SPRITE_ANIM_MARKS),
+ * measured on the built sets (docs/ENEMY_VARIANTS.md "EV10 imp / summoner (as built)").
  */
 export const VARIANT_ANIM_MARKS = {
-	/** The imp's `attack`: the crouch [0, land) over the blink wind-up, the landing / throw [land, 1] over the aim. */
-	imp: { land: 0.5 },
+	/**
+	 * The imp's `attack` (enemy.imp: Imp 9's Attack 5, 9 kept frames 0, 2, 4, 5, 7, 8, 9, 10, 11): the lean back and
+	 * deep crouch [0, land) (indices 0-4) over the blink wind-up, the rise and staff sweep [land, 1] (indices 5-8,
+	 * from source f8, where the body starts rising out of the crouch) over the landing aim.
+	 */
+	imp: { land: 5 / 9 },
 } as const;
 
 /** Elite affix looks (EVD12: a floor ring, the sprite rim's tint, the name chip, never a Highlight). */
