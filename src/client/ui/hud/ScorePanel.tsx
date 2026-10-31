@@ -3,9 +3,9 @@ import { useSelector } from "@rbxts/react-reflex";
 import { selectSnapshot } from "client/store";
 import { str, themePack } from "client/ui/theme";
 import { HUD_SKIN, HUD_STRINGS, HUD_VIEW } from "shared/view/hud";
+import { BestTargetRow, ScoreNumber } from "./BestTargetRow";
 import { ComboMeter } from "./ComboMeter";
 import { ComboRow } from "./ComboRow";
-import { ROOM_CLEAR_UI } from "./roomClearBindings";
 import { ArtImage, Panel, Row, Text } from "./primitives";
 import { HighlightRing } from "./TutorialFx";
 
@@ -21,6 +21,11 @@ import { HighlightRing } from "./TutorialFx";
  * the tier slot and the multiplier) and row 4 the combo meter (ComboMeter), both drawn per frame from COMBO_UI
  * bindings that ComboController writes (the fill drains smoothly, not at the snapshot's 10 Hz); the rest reads the
  * ~10 Hz snapshot, and an unscored run still shows no panel.
+ *
+ * docs/NEW_BEST.md NB6 (the same five rows, still 158 of 160): row 1 is BestTargetRow, the `SCORE` label on the right
+ * and the points-to-best target on the left in one line; the number is ScoreNumber, gold with a shine after the run's
+ * crossing. Both are drawn per frame from NEW_BEST_UI bindings that NewBestController writes; on a run without a target
+ * (unranked, first record, records unknown) they look exactly as before.
  *
  * With the UI art (docs/UI_ART.md UA11) the score number has the coin (ui.icon.coin, fitted into HUD_SKIN.coinBox) on
  * its left: the two in a right-aligned Row, the number sized to its text; without the coin, the full-width line.
@@ -39,32 +44,14 @@ export function ScorePanel(props: { readonly highlight?: boolean }) {
 			name="Score"
 			overlay={props.highlight === true ? <HighlightRing /> : undefined}
 		>
-			<Text
-				fill={true}
-				order={1}
-				size={HUD_VIEW.smallText}
-				color="uiTextDim"
-				align={Enum.TextXAlignment.Right}
-				text={str(HUD_STRINGS.score)}
-			/>
+			<BestTargetRow order={1} width={inner} />
 			{coin ? (
 				<Row order={2} align={Enum.HorizontalAlignment.Right}>
 					<ArtImage id={HUD_SKIN.ids.coin} order={1} box={{ w: HUD_SKIN.coinBox, h: HUD_SKIN.coinBox }} />
-					<Text
-						order={2}
-						size={HUD_VIEW.bigText}
-						align={Enum.TextXAlignment.Right}
-						text={ROOM_CLEAR_UI.scoreText.binding}
-					/>
+					<ScoreNumber order={2} size={HUD_VIEW.bigText} />
 				</Row>
 			) : (
-				<Text
-					fill={true}
-					order={2}
-					size={HUD_VIEW.bigText}
-					align={Enum.TextXAlignment.Right}
-					text={ROOM_CLEAR_UI.scoreText.binding}
-				/>
+				<ScoreNumber fill={true} order={2} size={HUD_VIEW.bigText} />
 			)}
 			<ComboRow order={3} width={inner} />
 			<ComboMeter order={4} width={inner} />

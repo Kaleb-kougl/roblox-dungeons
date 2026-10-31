@@ -64,3 +64,30 @@ export const NEW_BEST = {
 	 */
 	debugAttribute: "KV_NewBestDebug",
 } as const;
+
+/**
+ * How the client draws the celebration (docs/NEW_BEST.md NB6 / NB7 / NB9). Reference px (HUD_VIEW) unless noted.
+ */
+export const NEW_BEST_DRAW = {
+	/**
+	 * Score panel row 1 (the label row): px kept on the right for the `SCORE` label; the target slot on the left takes
+	 * the rest of the row minus HUD_VIEW.gap (TextScaled up to HUD_VIEW.smallText, so a long number or translation
+	 * shrinks to fit and the row never grows: scoreEstimate stays 158 of 160).
+	 */
+	labelSlotWidth: 56,
+	/** The reach row (ember) is drawn up to this share toward uiText at the pulse's peak. */
+	reachPulseMix: 0.5,
+	/**
+	 * The touch strip's compact target line (`-12340` / `NEW BEST`), hung under the strip's combo line, right-aligned
+	 * over the strip's score width: its text size and its gap under the combo line.
+	 */
+	touchText: 14,
+	touchGap: 2,
+	/**
+	 * The confetti's ScreenGui sits this far above HUD_VIEW.hudDisplayOrder: over the HUD (the corner panels, the
+	 * run-over panel), under the pause / settings layer and the stage card (LOADING_VIEW.displayOrder).
+	 */
+	confettiDisplayOrderAboveHud: 1,
+	/** Run-over record rows: score and floor at most. */
+	maxRecordRows: 2,
+} as const;
