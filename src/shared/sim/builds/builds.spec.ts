@@ -271,8 +271,9 @@ describe("opt-in state and the builds hash group (BU1)", () => {
 			expect(layout.names.size()).toBe(layout.values.size());
 			expect(layout.names[layout.names.size() - 1]).toBe("builds.procs.length");
 			expect(layout.values).toEqual(writeHashFields(s, []));
-			// 1 + per player (1 + 15 levels + 1 duos length + 6 scalars: BU5 appended bulwarkPending) + 1 procs length.
-			expect(g.finish - g.start).toBe(1 + n * (1 + BOON_COUNT + 1 + 6) + 1);
+			// 1 + per player (1 + 15 levels + 1 duos length + 7 scalars: BU5 appended bulwarkPending, BU6 closeGrazes)
+			// + 1 procs length.
+			expect(g.finish - g.start).toBe(1 + n * (1 + BOON_COUNT + 1 + 7) + 1);
 		}
 	});
 

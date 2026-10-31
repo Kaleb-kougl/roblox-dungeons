@@ -17,6 +17,9 @@
  *                segment from the hop's start, sparkFork 1. Forks never hop on.
  *   Volatile     a ring of VOLATILE_BURSTS[level] bolts from the corpse, heading EFFECT_DIR (fireEffect: effect
  *                VOLATILE, the proc's gen; the bolts hit through playerBulletHit, so playerHitDamage applies there).
+ *                Shrapnel (the Volatile + Sharpened duo, BU6): SHRAPNEL_BURSTS[level] instead (same rings, damage
+ *                SHRAPNEL_DAMAGE, pierce SHRAPNEL_PIERCE; III SHRAPNEL_CATACLYSM_PIERCE).
+ *   Sparks set ctx.procCause = KillCause.SPARK beside ctx.procGen around each strike (Chain Reaction, BU6).
  *   Soul Shards  SOUL_SHARDS_COUNTS[level] shards. Targets: up to that many living enemies within SOUL_SHARDS_RANGE of
  *                the corpse, nearest first (ties by slot, same skips as the spark); shard i flies at target i, the
  *                shards beyond the targets found at the nearest one; each is aimed at spawn (a unit vector by sqrt,
@@ -27,7 +30,7 @@ import type { SimCtx } from "../combat/ctx";
 import { playerHitDamage } from "../progression/runMods";
 import { BOON_MAX_LEVEL, levelValue } from "../progression/progressionData";
 import type { BuildProc, BuildsState } from "./builds";
-import { BuildEffect } from "./buildsData";
+import { BuildEffect, Duo } from "./buildsData";
 import {
 	CHAIN_SPARK_DAMAGE,
 	CHAIN_SPARK_FORK_DIVISOR,
@@ -36,12 +39,15 @@ import {
 	CHAIN_SPARK_RANGE,
 	EFFECT_DIR_X,
 	EFFECT_DIR_Z,
+	KillCause,
+	SHRAPNEL_BURSTS,
 	SOUL_SHARDS_COUNTS,
 	SOUL_SHARDS_RANGE,
 	SOUL_SHARD_SPECS,
 	VOLATILE_BURSTS,
 } from "./effectsData";
 import { fireAimedVolley, fireEffect, nearestEnemy } from "./effects";
+import { hasDuo } from "./hooks";
 
 const CHAIN_SPARK_RANGE2 = CHAIN_SPARK_RANGE * CHAIN_SPARK_RANGE;
 const SOUL_SHARDS_RANGE2 = SOUL_SHARDS_RANGE * SOUL_SHARDS_RANGE;
@@ -88,8 +94,10 @@ export function chainSpark(ctx: SimCtx, s: BuildsState, q: Readonly<BuildProc>, 
 		e.sparkFork.push(0);
 		hit.push(k);
 		ctx.procGen = q.gen + 1;
+		ctx.procCause = KillCause.SPARK;
 		ctx.damageActor(a, damage);
 		ctx.procGen = 0;
+		ctx.procCause = KillCause.NONE;
 		if (fork) {
 			const f = nearestEnemy(ctx, x, z, CHAIN_SPARK_RANGE2, q.id, hit);
 			if (f >= 0) {
@@ -103,8 +111,10 @@ export function chainSpark(ctx: SimCtx, s: BuildsState, q: Readonly<BuildProc>, 
 				e.sparkFork.push(1);
 				hit.push(f);
 				ctx.procGen = q.gen + 1;
+				ctx.procCause = KillCause.SPARK;
 				ctx.damageActor(b, forkDamage);
 				ctx.procGen = 0;
+				ctx.procCause = KillCause.NONE;
 			}
 		}
 		x = tx;
@@ -113,8 +123,9 @@ export function chainSpark(ctx: SimCtx, s: BuildsState, q: Readonly<BuildProc>, 
 	hit.clear();
 }
 
-/** Volatile for proc `q` at `level`. */
-export function volatileBurst(ctx: SimCtx, s: BuildsState, q: Readonly<BuildProc>, level: number): void {
+/** Volatile for proc `q` at `level` (Shrapnel's ring when the owner has the duo). Returns the bolts spawned. */
+export function volatileBurst(ctx: SimCtx, s: BuildsState, q: Readonly<BuildProc>, level: number): number {
+	const bursts = hasDuo(s.players[q.owner], Duo.SHRAPNEL) ? SHRAPNEL_BURSTS : VOLATILE_BURSTS;
 	const n = fireEffect(
 		ctx,
 		q.owner,
@@ -122,17 +133,18 @@ export function volatileBurst(ctx: SimCtx, s: BuildsState, q: Readonly<BuildProc
 		q.z,
 		EFFECT_DIR_X,
 		EFFECT_DIR_Z,
-		levelEntry(VOLATILE_BURSTS, level),
+		levelEntry(bursts, level),
 		BuildEffect.VOLATILE,
 		q.gen,
 	);
-	if (n <= 0) return;
+	if (n <= 0) return n;
 	const e = s.events;
 	e.burstX.push(q.x);
 	e.burstZ.push(q.z);
 	e.burstOwner.push(q.owner);
 	e.burstGen.push(q.gen);
 	e.burstFired.push(n);
+	return n;
 }
 
 /** Soul Shards for proc `q` at `level`. */

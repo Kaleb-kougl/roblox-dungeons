@@ -26,6 +26,7 @@ import { altPressed } from "./altButton";
 import { scoreGuardCancels } from "../../../score/score";
 import { tutorialOnGuardCancels } from "../../../tutorial/tutorial";
 import type { SimCtx } from "../../ctx";
+import type { ActorState } from "../../actors/types";
 import { attackTicks, playerHitDamage, runMods } from "../../../progression/runMods";
 
 export interface SwordData extends WeaponData {
@@ -143,7 +144,10 @@ export const SWORD_FINISHER = 3;
 const hitSwing: ArcActorHit = (ctx, actor) => {
 	ctx.damageActor(actor, playerHitDamage(ctx.state, ctx.playerIndex, SWORD_DATA.damage));
 };
+/** The first actor the finisher being swept hit (builds' Storm Blade, docs/BUILDS.md BU6); undefined otherwise. */
+let finisherFirst: ActorState | undefined;
 const hitFinisher: ArcActorHit = (ctx, actor) => {
+	if (finisherFirst === undefined) finisherFirst = actor;
 	ctx.damageActor(actor, playerHitDamage(ctx.state, ctx.playerIndex, SWORD_DATA.finisherDamage));
 };
 
@@ -164,6 +168,7 @@ function resetCombo(v: number[]): void {
 function swing(ctx: SimCtx, v: number[], n: number): void {
 	const p = ctx.player;
 	if (n === SWORD_FINISHER) {
+		finisherFirst = undefined;
 		const hits = sweepArc(
 			ctx,
 			p.x,
@@ -178,8 +183,9 @@ function swing(ctx: SimCtx, v: number[], n: number): void {
 			undefined,
 			SWORD_DATA.finisherDamage, // breakables take the base damage (docs/DECOR.md D4)
 		);
-		// Builds (docs/BUILDS.md BU5, opt-in): the finisher hook (Flurry's crescent).
-		if (ctx.state.builds !== undefined) buildsOnFinisher(ctx, hits);
+		// Builds (docs/BUILDS.md BU5 / BU6, opt-in): the finisher hook (Flurry's crescent, Storm Blade's spark).
+		if (ctx.state.builds !== undefined) buildsOnFinisher(ctx, hits, finisherFirst);
+		finisherFirst = undefined;
 		v[SWORD_V_STEP] = 0;
 		v[SWORD_V_BUSY] = attackTicks(ctx.state, ctx.playerIndex, SWORD_DATA.finisherRecoveryTicks);
 	} else {

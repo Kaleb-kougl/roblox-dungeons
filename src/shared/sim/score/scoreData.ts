@@ -90,6 +90,15 @@ export const JACKPOT_POINTS = 100;
 
 /** The combo is an integer of tenths: 10 = x1.0 .. 50 = x5.0. */
 export const COMBO_DENOMINATOR = 10;
+
+/**
+ * Gold Rush (the Bounty + Lingering duo, docs/BUILDS.md BU6, builds runs only): a kill scored while the combo is at
+ * least GOLD_RUSH_MIN_COMBO tenths (x3, before the kill's own +0.1) scores x GOLD_RUSH_PERCENT / 100 more, applied
+ * after Bounty (and the affix bonus) as one more integer percent factor (awardPoints' extraPercent).
+ */
+export const GOLD_RUSH_PERCENT = 125;
+export const GOLD_RUSH_MIN_COMBO_TIER = 3;
+export const GOLD_RUSH_MIN_COMBO = GOLD_RUSH_MIN_COMBO_TIER * COMBO_DENOMINATOR;
 export const COMBO_MIN = 10;
 export const COMBO_MAX = 50;
 /** Every kill or graze adds this many tenths (+0.1), capped at COMBO_MAX. */

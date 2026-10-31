@@ -65,6 +65,12 @@ export class SimCtx {
 	 * generation-g proc strikes (g + 1). Read only by buildsOnKill (with state.builds); never hashed.
 	 */
 	procGen = 0;
+	/**
+	 * Builds (docs/BUILDS.md BU6, sim/builds effectsData.ts KillCause): what deals the damage being dealt now, set and
+	 * reset beside procGen: SPARK while a spark strikes, BURST while a Volatile bolt hits, else NONE. Read only by
+	 * buildsOnKill (Chain Reaction); never hashed.
+	 */
+	procCause = 0;
 
 	bind(state: SimState, config: Readonly<SimConfig>, input: Readonly<InputFrame>): this {
 		this.state = state;
@@ -79,6 +85,7 @@ export class SimCtx {
 		this.events = state.events;
 		this.actors = state.combat.actors;
 		this.procGen = 0;
+		this.procCause = 0;
 		return this;
 	}
 

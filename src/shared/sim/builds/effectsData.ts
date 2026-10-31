@@ -92,6 +92,51 @@ export const FIRE_ARROWS_EMBERS_MAX = 4;
 /** Blazing Trail: a roll drops an ember every this many ticks. */
 export const BLAZING_TRAIL_EMBER_TICKS = 3;
 
+// --- Duos (docs/BUILDS.md "Duo boons", BU6; ./duos.ts) ---------------------------------------------------------
+
+/**
+ * A bow arrow (Fire Arrows, Storm Blade, Conductor) is a player bullet of kind PLAYER with the bow's payload source
+ * whose squared speed is within this relative tolerance of a bow arrow's (the stream arrow's or the heavy arrow's,
+ * BOW_DATA). It tells arrows from the bow-source Ember Wake ring (fired with the bow in hand, speed ROLL_RING_SPEED).
+ */
+export const ARROW_SPEED_TOLERANCE = 1e-6;
+/** The weapon whose arrows the duos read (its payload source is its weapon index + 1). */
+export const DUO_ARROW_WEAPON_ID = "weapon.bow";
+
+/** Storm Blade (Chain Spark + Swift Strikes): every this many arrow hits spark as if the last of them killed. */
+export const STORM_BLADE_ARROW_HITS = 5;
+
+/** Conductor (Chain Spark + Piercing Arrows): an arrow passing through an enemy sparks once (one hop) for this. */
+export const CONDUCTOR_DAMAGE = 1;
+export const CONDUCTOR_RANGE = CHAIN_SPARK_RANGE;
+
+/** Shrapnel (Volatile + Sharpened): burst bolts deal this and pierce SHRAPNEL_PIERCE (Cataclysm's pierce becomes 2). */
+export const SHRAPNEL_DAMAGE = 2;
+export const SHRAPNEL_PIERCE = 1;
+export const SHRAPNEL_CATACLYSM_PIERCE = 2;
+/** Per level: Volatile's ring with Shrapnel (VOLATILE_BURSTS' counts and shapes, Shrapnel's damage and pierce). */
+export const SHRAPNEL_BURSTS: ReadonlyArray<BurstSpec> = [
+	{ ...VOLATILE_BURSTS[0], damage: SHRAPNEL_DAMAGE, pierce: SHRAPNEL_PIERCE },
+	{ ...VOLATILE_BURSTS[1], damage: SHRAPNEL_DAMAGE, pierce: SHRAPNEL_PIERCE },
+	{ ...VOLATILE_BURSTS[2], damage: SHRAPNEL_DAMAGE, pierce: SHRAPNEL_CATACLYSM_PIERCE },
+];
+
+/** Close Call (Soul Shards + Daredevil): every this many grazes release one shard at the nearest enemy. */
+export const CLOSE_CALL_GRAZES = 3;
+export const CLOSE_CALL_SHARD = SOUL_SHARD;
+export const CLOSE_CALL_RANGE = SOUL_SHARDS_RANGE;
+
+/**
+ * What dealt the damage being dealt now (SimCtx.procCause, set beside ctx.procGen): Chain Reaction (Volatile + Chain
+ * Spark) cross-triggers on a kill by a spark (a Chain Spark hop or fork, a Storm Blade or Conductor spark) or by a
+ * Volatile bolt.
+ */
+export const KillCause = {
+	NONE: 0,
+	SPARK: 1,
+	BURST: 2,
+} as const;
+
 // --- Other effect bullets (evolutions) ------------------------------------------------------------------------
 
 /** Thrill Seeker: every THRILL_SEEKER_GRAZES grazes release a ring of 8 bolts around the player. */

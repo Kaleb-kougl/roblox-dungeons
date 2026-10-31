@@ -21,8 +21,11 @@
  *   6b. builds (only with state.builds, docs/BUILDS.md BU3 / BU5): sim/builds procs.ts stepBuilds: the evolutions'
  *      pre-drain phase (Ricochet splits, Soul Swarm steering, novas, Thrill Seeker), the proc queue (on-kill effects;
  *      sparks damage here, bursts / shards spawn here and first move next tick), Momentum. A player bullet's hit binds
- *      ctx.procGen from its payload source (an effect bullet's kill procs one generation on). In 6, Phantom Step
- *      (Slippery III) erases enemy bullets over a rolling owner, and a piercing hit calls buildsOnPierceHit
+ *      ctx.procGen from its payload source (an effect bullet's kill procs one generation on) and ctx.procCause (BU6:
+ *      BURST for a Volatile bolt). In 6, Phantom Step (Slippery III) erases enemy bullets over a rolling owner, a
+ *      piercing hit calls buildsOnPierceHit, and every actor hit by a player bullet calls buildsOnArrowHit (BU6: Storm
+ *      Blade, Conductor). 6b also runs the duos (Close Call, Fire Arrows / Blazing Trail embers, Storm Blade /
+ *      Conductor sparks, Chain Reaction)
  *   7. contact damage: the first live actor with data.contactDamage > 0 touching the player (stepContactDamage)
  *
  * Exact against every golden run, with and without actors (run-full-1337 / run-boss-1337 included).
@@ -71,8 +74,10 @@ import { nearestLivingPlayer, partySize, playerAt, playerBulletOwner } from "../
 import { scoreBulletVisit } from "../score/score";
 import { stepAffixes } from "../affixes/stepAffixes";
 import { stepBuilds } from "../builds/procs";
-import { killGenOfSource } from "../builds/buildsData";
+import { BuildEffect, killGenOfSource, sourceEffect } from "../builds/buildsData";
+import { KillCause } from "../builds/effectsData";
 import { buildsOnPierceHit, phantomStepErased, phantomStepOn } from "../builds/evolutions";
+import { buildsOnArrowHit } from "../builds/duos";
 import { damageBreakable, enemyBulletHitsBreakable, type BreakablesState } from "../breakables/breakables";
 import { breakableSlotAt } from "../breakables/cells";
 import { BreakableSource } from "../breakables/breakablesData";
@@ -431,8 +436,12 @@ function piercingBulletHit(i: number, pos: Readonly<Vec3>, payload: number): boo
 		const ez = pz - a.z;
 		if (lastHit !== 0 && ex * ex + ez * ez < r2) continue; // already inside at the start of the tick
 		damageActor(ctx, a, damage);
-		// Builds (BU5): the pierce-hit hook (Ricochet: an arrow's last hit that kills splits).
-		if (buildsOn) buildsOnPierceHit(ctx, a, pos.x, pos.z, BulletPayload.get(payload, "source"), pierce === 0);
+		// Builds (BU5 / BU6): the pierce-hit hook (Ricochet: an arrow's last hit that kills splits) and the arrow-hit
+		// hook (Storm Blade's count; Conductor when the arrow flies on).
+		if (buildsOn) {
+			buildsOnPierceHit(ctx, a, pos.x, pos.z, BulletPayload.get(payload, "source"), pierce === 0);
+			buildsOnArrowHit(ctx, a, i, payload, pierce > 0);
+		}
 		if (pierce === 0) return true;
 		pierce--;
 		hit = k + 1;
@@ -448,8 +457,13 @@ function piercingBulletHit(i: number, pos: Readonly<Vec3>, payload: number): boo
 
 function playerBulletHit(i: number, pos: Readonly<Vec3>, payload: number): boolean {
 	if (hitBlocked !== undefined && hitBlocked(pos.x, pos.z)) return true;
-	// Builds (opt-in): the generation a kill by this bullet gives its proc, bound like the owner.
-	if (buildsOn) ctx.procGen = killGenOfSource(BulletPayload.get(payload, "source"));
+	// Builds (opt-in): the generation a kill by this bullet gives its proc, bound like the owner, and (BU6, Chain
+	// Reaction) whether it is a Volatile bolt.
+	if (buildsOn) {
+		const source = BulletPayload.get(payload, "source");
+		ctx.procGen = killGenOfSource(source);
+		ctx.procCause = sourceEffect(source) === BuildEffect.VOLATILE ? KillCause.BURST : KillCause.NONE;
+	}
 	const piercing = bit32.band(payload, PIERCE_BITS) !== 0;
 	if (hitPieces !== undefined) {
 		// A piece (docs/DECOR.md D4): it takes the payload damage; a plain bullet stops there, a piercing one flies on
@@ -473,6 +487,8 @@ function playerBulletHit(i: number, pos: Readonly<Vec3>, payload: number): boole
 		const dz = pos.z - a.z;
 		if (dx * dx + dz * dz >= r * r) continue;
 		damageActor(ctx, a, playerHitDamage(ctx.state, ctx.playerIndex, BulletPayload.get(payload, "damage")));
+		// Builds (BU6): the arrow-hit hook (Storm Blade's count).
+		if (buildsOn) buildsOnArrowHit(ctx, a, i, payload, false);
 		return true;
 	}
 	return false;
@@ -547,6 +563,7 @@ export function stepCombat(
 	grazeOn = false;
 	if (buildsOn) {
 		ctx.procGen = 0;
+		ctx.procCause = KillCause.NONE;
 		buildsOn = false;
 		phantomAny = false;
 		// 6b. Builds (opt-in): the proc queue (on-kill effects of this tick's kills and the carry-over).

@@ -16,17 +16,43 @@
  *                                      lionHealed for each heal that restored anything.
  *   buildsFlurryArrow(ctx) / buildsFlurryArrowsFired(ctx, x, z, n)   bow.ts (which ./evolutions.ts's melee import
  *                                      would cycle back to): Flurry's arrow count, see ./evolutions.ts.
+ *
+ * Duo hooks (docs/BUILDS.md "Duo boons", BU6; nothing for a player without the duo or who left):
+ *   buildsOnGraze                      also Close Call (Soul Shards + Daredevil): the graze counts in `closeGrazes`;
+ *                                      stepBuilds releases a shard per CLOSE_CALL_GRAZES (./duos.ts).
+ *   buildsOnArmorBreak                 also Unshaken (Composure + Warding): the hit was taken on armor, so
+ *                                      BuildEvents.unshakenKept += 1 (stepScore leaves it out of the combo cuts) and a
+ *                                      duoProc entry at the player.
+ *   buildsGoldRush(state, killer) / buildsGoldRushPop(state, killer, x, z, points)   score.ts scoreKill: Gold Rush
+ *                                      (Bounty + Lingering) applies to the killer; its duoProc entry.
+ *   buildsUnshakenKept(state)          score.ts stepScore: this tick's Unshaken hits.
  */
 import { jsMin } from "shared/jsmath";
 import type { PlayerState, SimState } from "../state";
 import type { SimCtx } from "../combat/ctx";
 import { BOON_MAX_LEVEL, Boon } from "../progression/progressionData";
 import type { BuildPlayerState, BuildsState } from "./builds";
+import { Duo } from "./buildsData";
 import { FLURRY_ARROW_EVERY, FlurryKind, LIONHEART_HEAL_HALF_HEARTS } from "./effectsData";
 
 /** True when `p` owns `boon` evolved (level III). */
 export function isEvolved(p: Readonly<BuildPlayerState> | undefined, boon: number): boolean {
 	return p !== undefined && (p.levels[boon] ?? 0) >= BOON_MAX_LEVEL;
+}
+
+/** True when `p` owns duo `duo` (Duo index). */
+export function hasDuo(p: Readonly<BuildPlayerState> | undefined, duo: number): boolean {
+	return p !== undefined && p.duos.includes(duo);
+}
+
+/** One BuildEvents duoProc entry (see BuildEvents). */
+export function pushDuoProc(s: BuildsState, duo: number, owner: number, x: number, z: number, value: number): void {
+	const e = s.events;
+	e.duoProcDuo.push(duo);
+	e.duoProcOwner.push(owner);
+	e.duoProcX.push(x);
+	e.duoProcZ.push(z);
+	e.duoProcValue.push(value);
 }
 
 /** Player `i`'s PlayerState (read directly: party.ts imports player.ts, which imports this leaf). */
@@ -44,15 +70,38 @@ export function buildPlayerLeft(state: Readonly<SimState>, i: number): boolean {
 /** A graze was awarded to player `grazer` (see the file comment). */
 export function buildsOnGraze(state: SimState, grazer: number): void {
 	const p = state.builds?.players[grazer];
-	if (p === undefined || !isEvolved(p, Boon.DAREDEVIL)) return;
-	p.grazes += 1;
+	if (p === undefined) return;
+	if (isEvolved(p, Boon.DAREDEVIL)) p.grazes += 1;
+	if (hasDuo(p, Duo.CLOSE_CALL)) p.closeGrazes += 1;
 }
 
 /** One of player `i`'s armor pips broke (see the file comment). */
 export function buildsOnArmorBreak(state: SimState, i: number): void {
-	const p = state.builds?.players[i];
-	if (p === undefined || !isEvolved(p, Boon.WARDING) || buildPlayerLeft(state, i)) return;
-	p.bulwarkPending += 1;
+	const s = state.builds;
+	const p = s?.players[i];
+	if (s === undefined || p === undefined || buildPlayerLeft(state, i)) return;
+	if (isEvolved(p, Boon.WARDING)) p.bulwarkPending += 1;
+	if (hasDuo(p, Duo.UNSHAKEN)) {
+		s.events.unshakenKept += 1;
+		const pl = buildPlayerStateAt(state, i);
+		pushDuoProc(s, Duo.UNSHAKEN, i, pl.x, pl.z, 1);
+	}
+}
+
+/** Gold Rush applies to a kill credited to player `killer` (they own the duo and are present). */
+export function buildsGoldRush(state: Readonly<SimState>, killer: number): boolean {
+	return hasDuo(state.builds?.players[killer], Duo.GOLD_RUSH) && !buildPlayerLeft(state, killer);
+}
+
+/** A Gold Rush kill at (x, z) scored `points` for `killer` (BuildEvents only). */
+export function buildsGoldRushPop(state: SimState, killer: number, x: number, z: number, points: number): void {
+	const s = state.builds;
+	if (s !== undefined) pushDuoProc(s, Duo.GOLD_RUSH, killer, x, z, points);
+}
+
+/** This tick's hits taken on armor by Unshaken owners (0 without builds). */
+export function buildsUnshakenKept(state: Readonly<SimState>): number {
+	return state.builds?.events.unshakenKept ?? 0;
 }
 
 /** A room cleared PERFECT (see the file comment). */

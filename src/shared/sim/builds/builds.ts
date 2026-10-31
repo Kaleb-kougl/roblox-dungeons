@@ -12,8 +12,10 @@
  *   duos             duo indices, in the order taken
  *   grazes / kills / arrows / bigHits   counters for the evolutions and duos that count: BU5 grazes (Thrill
  *                    Seeker: grazes toward the next ring), kills (Jackpot: kills toward the next pay), arrows (Flurry:
- *                    stream arrows toward the next triple); each counts only while its boon is evolved. bigHits: BU6
+ *                    stream arrows toward the next triple); each counts only while its boon is evolved. bigHits (BU6,
+ *                    Storm Blade): arrow hits toward the next spark, counts only while the duo is owned
  *   bulwarkPending   (BU5, appended) armor pips broken whose Bulwark nova has not been released yet
+ *   closeGrazes      (BU6, appended) Close Call: grazes toward the next shard, counts only while the duo is owned
  *   draftsLeft       deals left in the open draft, the one on screen included: 1 after a floor, 2 after a boss floor
  *                    (BUD4); a confirm with draftsLeft > 1 re-deals (./cards.ts) instead of closing. 0 while closed
  * and for the world: `procs`, the kill queue (BU3, ./procs.ts: { x, z, owner, gen, slot, id } per kill, oldest first).
@@ -51,6 +53,8 @@ export interface BuildPlayerState {
 	draftsLeft: number;
 	/** Bulwark (BU5): armor pips broken whose nova stepBuilds has not released yet (./hooks.ts buildsOnArmorBreak). */
 	bulwarkPending: number;
+	/** Close Call (BU6): grazes toward the next shard (./hooks.ts buildsOnGraze; released by stepBuilds, ./duos.ts). */
+	closeGrazes: number;
 }
 
 /** One queued kill (BU3). Every field hashed. */
@@ -154,9 +158,31 @@ export interface BuildEvents {
 	ricochetZ: number[];
 	ricochetOwner: number[];
 	ricochetFired: number[];
+	// --- BU6 (duos). Parallel lists per group, one entry per event, pushed in resolution order. ---
+	/** Embers spawned (Fire Arrows, Blazing Trail): where, the owner, the Duo that dropped it. */
+	emberX: number[];
+	emberZ: number[];
+	emberOwner: number[];
+	emberDuo: number[];
+	/**
+	 * Duo rules that fired (one entry each; embers and Shrapnel's bolts have none): the Duo, the owner, where (Storm
+	 * Blade / Conductor: the enemy the spark started from; Chain Reaction: the corpse; Close Call / Unshaken: the
+	 * player; Gold Rush: the corpse) and a value (Storm Blade / Conductor / Chain Reaction's spark: enemies struck;
+	 * Chain Reaction's burst / Close Call: bullets spawned; Gold Rush: the kill's points; Unshaken: 1).
+	 */
+	duoProcDuo: number[];
+	duoProcOwner: number[];
+	duoProcX: number[];
+	duoProcZ: number[];
+	duoProcValue: number[];
+	/**
+	 * Unshaken: hits taken on armor this tick by its owners, which stepScore leaves out of the combo cuts. The one
+	 * BuildEvents field the sim reads (same tick only: written in stepCombat, read in stepScore, cleared next tick).
+	 */
+	unshakenKept: number;
 }
 
-/** BuildEvents' lists (every field but effectDropped), for the clear and the clone. */
+/** BuildEvents' lists (every field but effectDropped and unshakenKept), for the clear and the clone. */
 const BUILD_EVENT_LISTS = [
 	"evolvedPlayer",
 	"evolvedBoon",
@@ -215,6 +241,15 @@ const BUILD_EVENT_LISTS = [
 	"ricochetZ",
 	"ricochetOwner",
 	"ricochetFired",
+	"emberX",
+	"emberZ",
+	"emberOwner",
+	"emberDuo",
+	"duoProcDuo",
+	"duoProcOwner",
+	"duoProcX",
+	"duoProcZ",
+	"duoProcValue",
 ] as const;
 
 /** SimState.builds. */
@@ -232,7 +267,17 @@ export interface BuildsState {
 function newPlayer(): BuildPlayerState {
 	const levels: number[] = [];
 	for (let b = 0; b < BOON_COUNT; b++) levels.push(0);
-	return { levels, duos: [], grazes: 0, kills: 0, arrows: 0, bigHits: 0, draftsLeft: 0, bulwarkPending: 0 };
+	return {
+		levels,
+		duos: [],
+		grazes: 0,
+		kills: 0,
+		arrows: 0,
+		bigHits: 0,
+		draftsLeft: 0,
+		bulwarkPending: 0,
+		closeGrazes: 0,
+	};
 }
 
 function emptyEvents(): BuildEvents {
@@ -295,6 +340,16 @@ function emptyEvents(): BuildEvents {
 		ricochetZ: [],
 		ricochetOwner: [],
 		ricochetFired: [],
+		emberX: [],
+		emberZ: [],
+		emberOwner: [],
+		emberDuo: [],
+		duoProcDuo: [],
+		duoProcOwner: [],
+		duoProcX: [],
+		duoProcZ: [],
+		duoProcValue: [],
+		unshakenKept: 0,
 	};
 }
 
@@ -309,6 +364,7 @@ export function cloneBuildsState(s: Readonly<BuildsState>): BuildsState {
 	const events = emptyEvents();
 	for (const f of BUILD_EVENT_LISTS) for (const v of s.events[f]) events[f].push(v);
 	events.effectDropped = s.events.effectDropped;
+	events.unshakenKept = s.events.unshakenKept;
 	return {
 		config: s.config,
 		players: s.players.map((p) => ({ ...p, levels: [...p.levels], duos: [...p.duos] })),
@@ -322,6 +378,7 @@ export function clearBuildEvents(s: BuildsState): void {
 	const e = s.events;
 	for (const f of BUILD_EVENT_LISTS) e[f].clear();
 	e.effectDropped = 0;
+	e.unshakenKept = 0;
 }
 
 /** The floor change (endless.ts nextFloor): queued procs are dropped with the floor's actors and bullets. */
@@ -367,7 +424,15 @@ export function cardKind(state: Readonly<SimState>, playerIndex: number, card: n
 //   procs.length; per proc BUILD_PROC_FIELDS
 
 /** Scalar BuildPlayerState fields after the two lists, in hash order. Append only. */
-export const BUILD_PLAYER_SCALARS = ["grazes", "kills", "arrows", "bigHits", "draftsLeft", "bulwarkPending"] as const;
+export const BUILD_PLAYER_SCALARS = [
+	"grazes",
+	"kills",
+	"arrows",
+	"bigHits",
+	"draftsLeft",
+	"bulwarkPending",
+	"closeGrazes",
+] as const;
 
 /** Per proc, in hash order. Append only. */
 export const BUILD_PROC_FIELDS = ["x", "z", "owner", "gen", "slot", "id"] as const;

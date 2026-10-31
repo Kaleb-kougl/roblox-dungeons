@@ -6,9 +6,10 @@
  * ./hooks.ts, Jackpot in ./procs.ts.
  *
  * Hooks called during the phases of stepCombat (generic, so BU6's duos can reuse them):
- *   buildsOnFinisher(ctx, hits)     sword.ts, after a finisher's sweep (`hits` actors hit; BU6 Storm Blade reads it).
- *                                   Flurry (Swift Strikes III): FLURRY_CRESCENT from the player along the facing
- *                                   (fireEffect FLURRY, gen 0; first moves this tick, like an arrow).
+ *   buildsOnFinisher(ctx, hits, first)   sword.ts, after a finisher's sweep (`hits` actors hit, `first` the first of
+ *                                   them). Flurry (Swift Strikes III): FLURRY_CRESCENT from the player along the
+ *                                   facing (fireEffect FLURRY, gen 0; first moves this tick, like an arrow). BU6 Storm
+ *                                   Blade (./duos.ts stormBladeFinisher): a finisher that hit queues a spark.
  *   buildsFlurryArrow(ctx)          (./hooks.ts: bow.ts cannot import this module) per stream arrow, not the heavy
  *                                   arrow: Flurry counts it in `arrows`; the FLURRY_ARROW_EVERY-th returns true and the
  *                                   bow fires that arrow as FLURRY_ARROW_COUNT @ FLURRY_ARROW_SPREAD (weapon arrows:
@@ -82,6 +83,7 @@ import {
 } from "./effectsData";
 import { NO_SKIP_ID, fireAimedVolley, fireEffect, nearestEnemy } from "./effects";
 import { buildPlayerLeft, buildPlayerStateAt, isEvolved, pushFlurry } from "./hooks";
+import { stormBladeFinisher } from "./duos";
 
 const RICOCHET_RANGE2 = RICOCHET_RANGE * RICOCHET_RANGE;
 const SOUL_SWARM_RANGE2 = SOUL_SWARM_RANGE * SOUL_SWARM_RANGE;
@@ -101,10 +103,14 @@ function canRelease(state: Readonly<SimState>, i: number): boolean {
 // ---------------------------------------------------------------------------------------------
 // Flurry (Swift Strikes III)
 
-/** A sword finisher swept (`hits` actors hit); the acting player is ctx's. See the file comment. */
-export function buildsOnFinisher(ctx: SimCtx, hits: number): void {
+/**
+ * A sword finisher swept (`hits` actors hit; `first` the first actor it hit, undefined when none); the acting player is
+ * ctx's. See the file comment.
+ */
+export function buildsOnFinisher(ctx: SimCtx, hits: number, first?: Readonly<ActorState>): void {
 	const s = ctx.state.builds;
 	if (s === undefined) return;
+	if (hits > 0) stormBladeFinisher(ctx, first);
 	const owner = ctx.playerIndex;
 	if (!isEvolved(s.players[owner], Boon.SWIFT_STRIKES)) return;
 	const p = ctx.player;
