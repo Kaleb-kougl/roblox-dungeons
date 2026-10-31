@@ -25,15 +25,44 @@ before.
 
 ## Status (2026-10-31)
 
-BU0-BU5 built (branch `builds`): the audit below, the scaffolding (opt-in `SimConfig.builds` on endless worlds,
-`state.builds` with its own `builds` hash group appended last, the three on-kill boons appended, level tables, duos,
-card ids, effect bullet kinds / sources / data, the two port arc rows, theme entries with placeholder values and
-`buildReport`), levels and offers (`drawCardOffers`, `grantCard`, level values through `computeRunMods`, the boss
-double draft), the proc engine (kill queue, generations, `fireEffect` and its budget, the `BuildEvents` effect feed),
-Chain Spark / Volatile / Soul Shards at levels I-II (see "BU3 / BU4 (as built)"), the 13 evolution rules (level III,
-sim only; see "BU5 (as built)"), the draft UI and the build HUD (BU9 / BU10, presentation only; see "BU9 / BU10 (as
-built)"). Duo rules are BU6; nothing draws the effects yet (BU8). Decisions BUD1-BUD14 are **settled** (2026-10-31, Kaleb: every proposed default accepted; BUD8 and
+**BU0-BU10 code done** (sim, theme, view, UI): the audit (BU0), the scaffolding and offers (BU1 / BU2: opt-in
+`SimConfig.builds` on endless worlds, `state.builds` with its own `builds` hash group appended last, the three on-kill
+boons appended, level tables, card ids, `drawCardOffers` / `grantCard`, the boss double draft), the proc engine and the
+on-kill boons at I-II (BU3 / BU4), the 13 evolutions (BU5) and the 9 duos (BU6), the effect colours (BU7), the effect
+view (BU8, its follow-up and the BU6 view below: every `BuildEvents` field is read), the draft UI (BU9) and the build
+HUD (BU10). Each step is described in its "as built" section below. Still open: **BU11 art** and **BU12 audio** need
+the vendor packs (ToffeeCraft / Ninja Adventure, gitignored `art/vendor/`) on the owner's machine (every build sound
+is SILENT and every icon a text label until then); **BU13 tuning** is in progress on another branch; **BU14** (Studio
+check, frame time, readability) is pending, with the Studio checklists below (items 1-8 of BU9 / BU10, 1-19 of the
+effect view). Decisions BUD1-BUD14 are **settled** (2026-10-31, Kaleb: every proposed default accepted; BUD8 and
 BUD12 stand as technical requirements).
+
+**Owner calls** collected from the as-built sections (each is built as described; a different answer is a sim change,
+so endless replays would change again):
+
+1. **Chain Reaction (BU6).** Read as: below `GEN_MAX` the engine already cross-procs every on-kill boon, so the duo's
+   rule is one extra step at exactly `GEN_MAX` (3): a gen-3 spark kill still bursts and a gen-3 bolt kill still sparks,
+   both at gen 3, and nothing past it. Confirm, or say what "even past gen 1" should mean.
+2. **`effectWeaponReserve` = 32 per player (BU3).** A new rule beside `EFFECT_BULLETS_MAX` (160): effects never use the
+   pool's last 32 x party size slots, so a cascade can never starve weapon fire (the specced own-fire peak stays
+   within 32). Mirror Cloak's reflections are not covered by it (a full pool drops them, as before).
+3. **Executioner (BU5).** "At 20 %" is read as **at or below 20 % after the hit**: a landing hit that leaves a non-boss
+   at <= 20 % of its max hp kills it, so an enemy already at <= 20 % dies to any landing hit.
+4. **Flurry's triple arrow (BU5, deviation).** Every 6th stream arrow fires as 3 of the bow's own arrows (kind, source
+   and pierce of the bow), not effect bullets, so they count as arrows for Fire Arrows / Storm Blade / Conductor and
+   not in the effect budget.
+5. **Which arrows the arrow duos read (BU6, addition).** Stream, heavy and Flurry arrows (told apart by source and
+   speed); the Ember Wake ring fired with the bow in hand and Ricochet's split arrows do not count.
+6. **Unshaken (BU6).** A hit on armor keeps the combo but still counts as a hit taken (PERFECT, the boss no-hit bonus).
+   **Gold Rush (BU6)**: x125 % after Bounty, kills and boss kills, not the boss no-hit bonus; its points stay in the
+   kills / boss sources.
+7. **Targets (BU3, addition).** Sparks and shards never pick an actor spawned this tick (a slime's slimelets), and have
+   no line-of-sight check (they reach a neighbouring live room, the plan's edge case).
+8. **Presentation calls.** The boss double draft's first pick has no stamp (the cards re-deal at once) and its
+   guaranteed duo is card 0 of the first deal only (BU2 / BU9); level pips sit inside the item cells (BU10, the status
+   panel's footprint is full); effect colours are apricot / violet-white, not the plan's orange / pale violet (BUD12,
+   BU7); the Jackpot pop is a big gold score pop, not a floor ring (BU8 follow-up); Gold Rush tints the kill's own pop
+   in `boon.duo` instead of adding one (the BU6 view below).
 
 ## What the code gives us (read on `main` @ `5a0edc2`)
 
@@ -701,6 +730,50 @@ fields. Paths under `src/` unless noted.
     arrow split) on each Momentum volley (bigger per tier), Thrill Seeker ring, Flurry release and Ricochet split.
 15. Chain Spark III: Storm Crown forks are visibly thinner than the hop beams.
 16. Pick an evolution while a cascade is running: the gold flare still shows (not evicted by flares / novas).
+
+## BU6 view (as built)
+
+Presentation only: no sim, hash, replay, fixture or lockstep change. Closes BU6's "Not done" (no view for the duo
+procs, Gold Rush's own pop colour). Paths under `src/` unless noted.
+
+- **Feed** (`shared/view/fx/buildFxEvents.ts`). Embers now come from the sim's ember feed (`emberX/Z/Owner/Duo`; kind =
+  the `Duo`, gen 0): BU8's inference from new `BulletKind.EMBER` slots and its per-slot memory are gone (every ember
+  the sim fires is a duo's and pushes one entry; `isEmberPayload` stays for the bullet renderer's decal pool). The
+  `duoProc*` entries are split by duo into `goldRush` (amount = the kill's points), `unshaken` (owner = the player hit,
+  x / z where they stood) and `duoProcs` (Storm Blade, Conductor, Chain Reaction, Close Call; kind = the `Duo`, amount =
+  the value). `unshakenKept` (a per-tick count) is not read: the Unshaken entries carry the player.
+- **No double draw.** Storm Blade / Conductor sparks and Chain Reaction's cross sparks / bursts already arrive as
+  ordinary spark segments and burst entries (BU6), so their beams, spark bursts and cues are BU8's; Close Call's shard
+  and every ember are ordinary effect bullets. The duo view only adds what those lack:
+  - **Origin flare**: each `duoProcs` record pops BU8 follow-up's origin ring (`pop` look, same size, life and cap) in
+    `BUILD_FX_VIEW.pop.duoRole` = `boon.duo`, at the enemy the spark left from / the corpse / the player.
+  - **Unshaken glint**: a new following ring look `glint` (`BUILD_FX_VIEW.glint`: 0.4 s, closing in 1.1 -> 0.7 tiles,
+    16 segments, `boon.duo`) on the hit player, one per player (a newer hit restarts it), beside the evolve flare and
+    the Lionheart pulse; drawn by `BuildFxController` through `buildRingBlock` like every ring.
+  - **Gold Rush pop**: the kill's own score pop, tinted. `ScorePopPool` gained a per-slot `tone` (`ScorePopTone` KILL /
+    GOLD_RUSH); `scorePopTones` (pure, `scorePops.ts`) marks the kill pops that match a `goldRush` record of the frame
+    (same x, z and points: the sim pushes both from one kill), each record once; `ScorePopController` colours those
+    slots `BUILD_FX_VIEW.goldRush.role` (`boon.duo`) in the kill pool (no second pop, no new pool).
+- **Settings.** Reduced halves the flare and glint segments (`buildFxCount`); reduced motion draws both at their end
+  radius, fading only; quiet (stage cover, run over) and a new run forget them; records of a player outside the party
+  are ignored. The Gold Rush tint follows the kill pops' `damageNumbers` gate and reduced-motion rise.
+- **Audio.** Unchanged: the ember cue reads `embers` (now the feed's); duo sparks / bursts already play the spark /
+  burst cues. No cue for the flare, glint or Gold Rush (a kill sound already plays).
+- **Theme.** No new role, string or audio id (`boon.duo` is validated by the rarity report; the pop is text). No
+  contract, validator or Luau-locals change.
+- **Specs.** `view/fx/buildFxEvents.spec.ts` (embers from the feed only, not from an entry-less ember bullet; the duoProc
+  split; the sim's own Gold Rush / Unshaken hooks), `view/fx/buildFxRules.spec.ts` (duo flares in `boon.duo`, Gold Rush
+  and Unshaken none, outsiders ignored, Reduced / reduced motion; one beam and one flare for a Conductor spark; the glint
+  following, restarting, ending; flare + heal + glint side by side, death and quiet), `view/fx/scorePops.spec.ts` (tone
+  per slot; `scorePopTones` matching by x / z / points, each record once).
+
+**Studio checklist, continued (nothing could run in Studio here).**
+
+17. Storm Blade / Conductor / Chain Reaction / Close Call: a small ice-blue ring where the duo fired, next to (not
+    instead of) the sky-blue beam or the bullets; Reduced: fewer segments.
+18. Gold Rush at combo x3+: the kill's "+points" pop is ice-blue instead of the usual accent, one pop per kill (no
+    duplicate); off with damage numbers.
+19. Unshaken: an armor hit closes a quick ice-blue ring on the knight (following it), readable next to the hurt flash.
 
 ## Player experience
 

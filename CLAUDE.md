@@ -353,6 +353,26 @@ Decision log (deviations from `PLAN.md`):
   audio ids (`sfx.enemy.blink` / `.summon` / `.split`, `sfx.affix.shieldbreak` / `.vengeful`, SILENT in the
   placeholder). First sighting: optional `seen` in the onboarding doc (still v1), remote `bestiarySeen`. Vale: the LoP
   slime set built (upload pending); imp / summoner rigs pending. Studio check pending.
+- **Builds (docs/BUILDS.md).** Gameplay. Opt-in `SimConfig.builds` (`BUILDS_CONFIG` = `BUILD_RULES`, endless only, BUD8)
+  creates `state.builds` (per player boon levels, duos, counters, deals left; the proc queue) with its own hash group
+  `builds` appended LAST (after `affixes`). Three on-kill boons appended to `BOONS` (Chain Spark / Volatile / Soul Shards,
+  indices 12-14); `drawBoonOffers` draws from the classic 12 only (`CLASSIC_BOON_COUNT`), so the tutorial's floor-2 draft
+  is unchanged; builds runs draw `drawCardOffers` and grant through `grantCard` (levels II-III, the evolution at III,
+  duos, a double draft after every boss floor). Card ids in `draftOffers`: a boon index, or `DUO_CARD_BASE` (64) + the
+  duo index (`cardDisplay` decodes them for every reader). Effect bullets reuse the player pool: `BulletKind` 8-11
+  (`BURST` / `SHARD` / `EMBER` / `SPARK_BOLT`, no payload layout change) and payload sources from `BUILD_SOURCE_BASE`
+  (128) up (128 + effect x 4 + generation; weapon sources stay 1..127). Procs queue on `damageActor`'s kill line (never
+  in `killActor`: withers, boss sweeps, revivers and debug kills never proc) and resolve in `stepBuilds` (stepCombat
+  phase 6b) under `GEN_MAX` 3, `procsPerTick` and a per-player effect budget that keeps `effectWeaponReserve` (32)
+  slots per player free for weapon fire. `ScoreSource.JACKPOT` (9) is a build-only score source: its points / counts
+  entries exist only with `SimConfig.builds`, so every other scored run's `score` group is unchanged. Port arc rows 8
+  and 12 @ FULL_RING (`combat/arcTablePort.ts`); `BulletSimulation.setVelocity` (Soul Swarm). Theme: colour roles
+  `boon.evolved` / `boon.duo` (the boon rarity report) and `build.spark` / `.burst` / `.shard` / `.ember`
+  (`buildReport`: >= 40 CIE76 from every danger and boost role), 7 required strings (`BUILD_STRING_KEYS`; per-boon / per-duo strings via
+  `progressionStringKeys`), 4 bullet visuals, 9 port audio IDs `sfx.build.*` (SILENT in the placeholder); setting
+  `DisplaySettings.buildFx` (Full / Reduced, only Reduced stored, doc stays v2). No Luau-locals change. M1, every
+  fixture and the tutorial replay exactly as before; endless replays and scores changed (boards stay `_v1`, BUD9).
+  Studio check, art (BU11) and audio (BU12) pending; tuning (BU13) in progress.
 
 ## Commands
 

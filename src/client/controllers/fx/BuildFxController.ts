@@ -109,7 +109,7 @@ class FxPartPool {
 }
 
 /**
- * Build effects (docs/BUILDS.md BU8 and its follow-up): the ONE BuildFxDirector of the client, the NearMissController shape. Once per
+ * Build effects (docs/BUILDS.md BU8, its follow-up and the BU6 view): the ONE BuildFxDirector of the client, the NearMissController shape. Once per
  * rendered frame (an FxTrackerController frame handler, after the frame's sim ticks) it steps the director with the run
  * view's `builds` source (RunView.builds, collected per tick), the live state, the view player, the quiet gate
  * (comboQuiet over the stage cover and the run's end), the juice settings plus Options > Display > Build effects
@@ -119,11 +119,13 @@ class FxPartPool {
  *     Storm Crown fork thinner (beam.forkThicknessShare);
  *   - spark bursts / Phantom Step erase sparks: ParticleController.buildSparkBurst / buildPhantomBurst at each new
  *     target / erased bullet (Full or Reduced shape; none with particles off);
- *   - rings: novas, origin flares (Momentum / Thrill Seeker / Flurry / Ricochet), the evolve / duo flare and the
- *     Lionheart pulse on the knight, as pooled flat segments around the circle in the ring's role, sized by its look's
- *     block (buildRingBlock);
+ *   - rings: novas, origin flares (Momentum / Thrill Seeker / Flurry / Ricochet, and BU6's Storm Blade / Conductor /
+ *     Chain Reaction / Close Call in boon.duo), the evolve / duo flare, the Lionheart pulse and Unshaken's shield glint
+ *     on the knight, as pooled flat segments around the circle in the ring's role, sized by its look's block
+ *     (buildRingBlock);
  *   - execute flashes: a flat Neon disc in BUILD_FX_VIEW.execute.role, popping out and fading.
- * The Jackpot pop is the score pops' (ScorePopController reads RunView.builds.jackpots).
+ * The Jackpot pop and Gold Rush's kill pop are the score pops' (ScorePopController reads RunView.builds.jackpots /
+ * goldRush). Duo sparks and embers need nothing here: they come through as ordinary spark segments and ember bullets.
  *
  * Everything sits on the floor plane under the bullets (segment lifts in BUILD_FX_VIEW). One BulkMoveTo per frame.
  * With no run the director is reset and every part parked. Presentation only: read-only on the sim.

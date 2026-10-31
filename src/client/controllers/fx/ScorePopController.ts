@@ -14,6 +14,8 @@ import {
 	motionScale,
 	scorePopAlpha,
 	scorePopRise,
+	scorePopTones,
+	type ScorePopTone,
 } from "shared/view/fx";
 import { HUD_STRINGS } from "shared/view/hud";
 import { SimController } from "../game/SimController";
@@ -34,6 +36,8 @@ class PopView {
 	text = "";
 	alpha = -1;
 	rise = -1;
+	/** The ScorePopTone its label is coloured for. */
+	tone = 0;
 
 	constructor(holder: BasePart, parent: Instance, name: string, color: Color3, stroke: Color3) {
 		this.att = new Instance("Attachment");
@@ -70,6 +74,8 @@ class PopView {
 interface PopLayer {
 	readonly pool: ScorePopPool;
 	readonly views: PopView[];
+	/** Text colour per ScorePopTone (index 0 = KILL; a tone without an entry uses it). */
+	readonly colors: Color3[];
 	/** Glyph scale and extra start height (render px) of this layer. */
 	readonly scale: number;
 	readonly liftPx: number;
@@ -84,18 +90,24 @@ interface PopLayer {
  * Jackpot (docs/BUILDS.md BU8 follow-up): every RunView.builds.jackpots record pops the same "+points" in a second,
  * small pool (BUILD_FX_VIEW.jackpot: maxAlive, glyph scale, extra lift, boon.legendary's gold), with the same life,
  * fade, rise and damageNumbers gate.
+ *
+ * Gold Rush (docs/BUILDS.md BU6): a kill pop that matches a RunView.builds.goldRush record (scorePopTones) is that
+ * kill's own pop, in the kill pool, coloured BUILD_FX_VIEW.goldRush.role instead of uiAccent (never a second pop).
  */
 @Controller({})
 export class ScorePopController implements OnStart {
 	private readonly janitor = new Janitor();
 	private readonly clock = new SimClock();
-	private readonly kills: PopLayer = { pool: new ScorePopPool(), views: [], scale: 1, liftPx: 0 };
+	private readonly kills: PopLayer = { pool: new ScorePopPool(), views: [], colors: [], scale: 1, liftPx: 0 };
 	private readonly jackpots: PopLayer = {
 		pool: new ScorePopPool(BUILD_FX_VIEW.jackpot.maxAlive),
 		views: [],
+		colors: [],
 		scale: BUILD_FX_VIEW.jackpot.scale,
 		liftPx: BUILD_FX_VIEW.jackpot.liftPx,
 	};
+	/** The kill pops' tones this frame (scorePopTones, reused). */
+	private readonly tones: ScorePopTone[] = [];
 
 	constructor(
 		private readonly sim: SimController,
@@ -109,10 +121,12 @@ export class ScorePopController implements OnStart {
 		const holder = attachmentHolder(folder, "Anchors");
 		const stroke = pack.color("background");
 		const kills = this.kills;
+		kills.colors.push(pack.color("uiAccent"), pack.color(BUILD_FX_VIEW.goldRush.role));
 		for (let i = 0; i < kills.pool.capacity; i++)
-			kills.views.push(new PopView(holder, folder, `Pop${i}`, pack.color("uiAccent"), stroke));
+			kills.views.push(new PopView(holder, folder, `Pop${i}`, kills.colors[0], stroke));
 		const jackpots = this.jackpots;
 		const gold = pack.color(BUILD_FX_VIEW.jackpot.role);
+		jackpots.colors.push(gold);
 		for (let i = 0; i < jackpots.pool.capacity; i++)
 			jackpots.views.push(new PopView(holder, folder, `Jackpot${i}`, gold, stroke));
 
@@ -139,7 +153,9 @@ export class ScorePopController implements OnStart {
 			kills.pool.clear();
 			jackpots.pool.clear();
 		} else {
-			for (const p of run.scorePops) kills.pool.add(p.x, p.z, p.points, now);
+			const pops = run.scorePops;
+			const tones = scorePopTones(pops, run.builds.goldRush, this.tones);
+			for (let i = 0; i < pops.size(); i++) kills.pool.add(pops[i].x, pops[i].z, pops[i].points, now, tones[i]);
 			for (const j of run.builds.jackpots) jackpots.pool.add(j.x, j.z, j.amount, now);
 		}
 		const motion = motionScale(settings);
@@ -171,6 +187,11 @@ export class ScorePopController implements OnStart {
 			if (!view.shown || rise !== view.rise) {
 				view.rise = rise;
 				view.gui.StudsOffset = new Vector3(0, (SCORE_POP_BASE_PX + layer.liftPx + rise + glyphH / 2) * PX, 0);
+			}
+			const tone = pool.tone[i];
+			if (tone !== view.tone) {
+				view.tone = tone;
+				view.label.TextColor3 = layer.colors[tone] ?? layer.colors[0];
 			}
 			if (!view.shown) {
 				view.shown = true;

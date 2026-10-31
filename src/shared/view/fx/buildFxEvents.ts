@@ -3,7 +3,7 @@
  * BuildEvents (shared/sim builds.ts) are per TICK, cleared at the start of every tick and NOT hashed: one entry per spark
  * segment (hop or Storm Crown fork), per Volatile ring / Soul Shards volley, per evolution / duo taken, and BU5's novas,
  * Executioner kills, Phantom Step erases, Jackpot pays, Lionheart heals and the Momentum / Thrill Seeker / Flurry /
- * Ricochet releases. A rendered frame may run several ticks, so the run views (shared/play LiveRun, shared/lockstep
+ * Ricochet releases, and BU6's embers and duo procs ("BU6 (as built)"). A rendered frame may run several ticks, so the run views (shared/play LiveRun, shared/lockstep
  * LockstepClient) `reset` this at the start of every frame and `collect` after every tick, as they do NearMissEvents.
  * BuildFxDirector (buildFxRules.ts), the audio cue mapper and the score pops read it once per frame.
  *
@@ -11,26 +11,21 @@
  *   - EffectRecord's `amount` / `kind` per list: bursts / shards / momentum / thrills / flurries / ricochets the bullets
  *     spawned (momentum's kind the tier crossed, flurries' the FlurryKind); novas the radius in sim units (kind:
  *     NovaKind; NovaRecord adds the bullets erased); executes and phantoms 1; jackpots the points paid; heals the half
- *     hearts restored (owner = the healed player, x / z where they stood); embers 1. `gen` is the proc generation
- *     for sparks / bursts / shards / embers and 0 for every BU5 record (their bullets are generation 0).
- *   - Embers (Fire Arrows / Blazing Trail, BU6) have no feed entry: an ember is a stationary player bullet of
- *     BulletKind.EMBER, so a slot of that kind whose life left went UP since the last tick (or that held no ember) is a
- *     new one (its position, owner = emitter - 1, gen from its source): an ember's life only falls, a reused slot's
- *     jumps back to the full life. This per-slot memory spans frames (not reset per frame; a new simulation clears it).
+ *     hearts restored (owner = the healed player, x / z where they stood); embers 1 (kind: the Duo that dropped it,
+ *     Fire Arrows / Blazing Trail); duoProcs the duo rule's value (kind: the Duo; Storm Blade / Conductor / Chain
+ *     Reaction's spark: enemies struck; Chain Reaction's burst / Close Call: bullets spawned); goldRush the kill's
+ *     points (the same x / z / points as that kill's score pop); unshaken 1 (x / z the player at the hit). `gen` is the
+ *     proc generation for sparks / bursts / shards and 0 for every BU5 / BU6 record (embers and the duos' bullets are
+ *     fired at generation 0; Chain Reaction's at genMax, which its record does not carry).
+ *   - BU6's duoProc entries are split by duo: Gold Rush into `goldRush` (the score pops tint that kill's pop), Unshaken
+ *     into `unshaken` (the shield glint on the player), every other duo (Storm Blade, Conductor, Chain Reaction, Close
+ *     Call) into `duoProcs` (an origin flare). Their sparks and bullets are already ordinary spark segments / bursts /
+ *     shards / effect bullets, drawn as such.
  *   - Runs without builds (`state.builds === undefined`: M1, the tutorial, fixtures) collect nothing: no tick, no record.
  *
  * Read-only on the sim. No allocation in steady state (records come from pools that only grow). Presentation only.
  */
-import {
-	BulletKind,
-	BulletPayload,
-	playerAt,
-	partySize,
-	playerBulletOwner,
-	sourceGen,
-	type BulletSimulation,
-	type SimState,
-} from "shared/sim";
+import { BulletKind, BulletPayload, Duo, playerAt, partySize, type SimState } from "shared/sim";
 
 /** One spark segment: from (x1, z1) to the target at (x2, z2); `fork` a Storm Crown fork (from the hop's start). */
 export interface SparkRecord {
@@ -84,6 +79,12 @@ export interface BuildFxFrameSource {
 	readonly thrills: ReadonlyArray<EffectRecord>;
 	readonly flurries: ReadonlyArray<EffectRecord>;
 	readonly ricochets: ReadonlyArray<EffectRecord>;
+	/** BU6: Storm Blade / Conductor / Chain Reaction / Close Call firing (kind: the Duo). */
+	readonly duoProcs: ReadonlyArray<EffectRecord>;
+	/** BU6: Gold Rush kills (amount: the kill's points). */
+	readonly goldRush: ReadonlyArray<EffectRecord>;
+	/** BU6: hits Unshaken kept off the combo (owner: the player hit). */
+	readonly unshaken: ReadonlyArray<EffectRecord>;
 	readonly evolved: ReadonlyArray<TakeRecord>;
 	readonly duos: ReadonlyArray<TakeRecord>;
 }
@@ -145,7 +146,7 @@ class Pooled<T extends defined> {
 const newEffect = (): EffectSlot => ({ x: 0, z: 0, owner: 0, gen: 0, amount: 0, kind: 0, tick: 0 });
 const newTake = (): TakeSlot => ({ player: 0, index: 0, tick: 0 });
 
-/** True for a payload of BulletKind.EMBER. */
+/** True for a payload of BulletKind.EMBER (the bullet renderer's ember decal pool). */
 export function isEmberPayload(payload: number): boolean {
 	return BulletPayload.get(payload, "kind") === BulletKind.EMBER;
 }
@@ -175,6 +176,9 @@ export class BuildFxEvents implements BuildFxFrameSource {
 	private readonly thrillList = new Pooled<EffectSlot>(newEffect);
 	private readonly flurryList = new Pooled<EffectSlot>(newEffect);
 	private readonly ricochetList = new Pooled<EffectSlot>(newEffect);
+	private readonly duoProcList = new Pooled<EffectSlot>(newEffect);
+	private readonly goldRushList = new Pooled<EffectSlot>(newEffect);
+	private readonly unshakenList = new Pooled<EffectSlot>(newEffect);
 	private readonly evolvedList = new Pooled<TakeSlot>(newTake);
 	private readonly duoList = new Pooled<TakeSlot>(newTake);
 	/** Every effect list, for reset and count. */
@@ -191,10 +195,10 @@ export class BuildFxEvents implements BuildFxFrameSource {
 		this.thrillList,
 		this.flurryList,
 		this.ricochetList,
+		this.duoProcList,
+		this.goldRushList,
+		this.unshakenList,
 	];
-	/** Per player bullet slot: the ember life seen last tick (0: no ember there), and the simulation it belongs to. */
-	private readonly emberLife: number[] = [];
-	private emberSim: BulletSimulation | undefined;
 
 	readonly sparks: ReadonlyArray<SparkRecord> = this.sparkList.items;
 	readonly bursts: ReadonlyArray<EffectRecord> = this.burstList.items;
@@ -209,6 +213,9 @@ export class BuildFxEvents implements BuildFxFrameSource {
 	readonly thrills: ReadonlyArray<EffectRecord> = this.thrillList.items;
 	readonly flurries: ReadonlyArray<EffectRecord> = this.flurryList.items;
 	readonly ricochets: ReadonlyArray<EffectRecord> = this.ricochetList.items;
+	readonly duoProcs: ReadonlyArray<EffectRecord> = this.duoProcList.items;
+	readonly goldRush: ReadonlyArray<EffectRecord> = this.goldRushList.items;
+	readonly unshaken: ReadonlyArray<EffectRecord> = this.unshakenList.items;
 	readonly evolved: ReadonlyArray<TakeRecord> = this.evolvedList.items;
 	readonly duos: ReadonlyArray<TakeRecord> = this.duoList.items;
 
@@ -272,7 +279,7 @@ export class BuildFxEvents implements BuildFxFrameSource {
 			take(this.evolvedList.push(), e.evolvedPlayer[i], e.evolvedBoon[i], tick);
 		for (let i = 0; i < e.duoPlayer.size(); i++) take(this.duoList.push(), e.duoPlayer[i], e.duoTaken[i], tick);
 		this.collectEvolutions(state, tick);
-		this.collectEmbers(state, tick);
+		this.collectDuos(state, tick);
 	}
 
 	/** BU5's evolution records (see the file comment for each list's amount / kind). */
@@ -318,36 +325,21 @@ export class BuildFxEvents implements BuildFxFrameSource {
 		}
 	}
 
-	/** Embers spawned this tick (see the file comment). */
-	private collectEmbers(state: Readonly<SimState>, tick: number): void {
-		const sim = state.combat.playerBullets;
-		const seen = this.emberLife;
-		if (sim !== this.emberSim) {
-			this.emberSim = sim;
-			for (let i = 0; i < seen.size(); i++) seen[i] = 0;
+	/** BU6's embers and duo procs (see the file comment). */
+	private collectDuos(state: Readonly<SimState>, tick: number): void {
+		const e = state.builds!.events;
+		for (let i = 0; i < e.emberX.size(); i++) {
+			const r = this.emberList.push();
+			effect(r, e.emberX[i], e.emberZ[i], e.emberOwner[i], 0, 1, tick);
+			r.kind = e.emberDuo[i];
 		}
-		const n = sim.highWater();
-		while (seen.size() < n) seen.push(0);
-		for (let i = 0; i < seen.size(); i++) {
-			const payload = i < n && sim.isVisible(i) ? sim.payloadAt(i) : -1;
-			if (payload < 0 || !isEmberPayload(payload)) {
-				seen[i] = 0;
-				continue;
-			}
-			const life = sim.lifeAt(i);
-			const last = seen[i];
-			seen[i] = life;
-			if (life <= last) continue;
-			const p = sim.positionAt(i);
-			effect(
-				this.emberList.push(),
-				p.x,
-				p.z,
-				playerBulletOwner(sim.emitterIdAt(i)),
-				sourceGen(BulletPayload.get(payload, "source")),
-				1,
-				tick,
-			);
+		for (let i = 0; i < e.duoProcDuo.size(); i++) {
+			const duo = e.duoProcDuo[i];
+			const list =
+				duo === Duo.GOLD_RUSH ? this.goldRushList : duo === Duo.UNSHAKEN ? this.unshakenList : this.duoProcList;
+			const r = list.push();
+			effect(r, e.duoProcX[i], e.duoProcZ[i], e.duoProcOwner[i], 0, e.duoProcValue[i], tick);
+			r.kind = duo;
 		}
 	}
 }
@@ -398,6 +390,9 @@ export const NO_BUILD_FX_EVENTS: BuildFxFrameSource = table.freeze({
 	thrills: EMPTY_EFFECTS,
 	flurries: EMPTY_EFFECTS,
 	ricochets: EMPTY_EFFECTS,
+	duoProcs: EMPTY_EFFECTS,
+	goldRush: EMPTY_EFFECTS,
+	unshaken: EMPTY_EFFECTS,
 	evolved: EMPTY_TAKES,
 	duos: EMPTY_TAKES,
 });

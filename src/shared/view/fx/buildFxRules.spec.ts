@@ -1,10 +1,12 @@
 // The build effects director (docs/BUILDS.md BU8 and its follow-up): beam timing and jag, forks, spark bursts and
 // Phantom Step erase sparks (cap, view player first, particles off, Reduced's halved shape), nova rings per kind,
 // origin flares (Momentum / Thrill Seeker / Flurry / Ricochet), the evolve / duo flare and the Lionheart pulse on the
-// knight, execute flashes, the trails rule, reduced motion, the generation pitch, quiet and new-run resets.
+// knight, execute flashes, the trails rule, reduced motion, the generation pitch, quiet and new-run resets; BU6: duo
+// proc origin flares in boon.duo (their sparks only as the ordinary beams) and Unshaken's shield glint.
 import { describe, expect, it } from "@rbxts/jest-globals";
 import {
 	BUILDS_CONFIG,
+	Duo,
 	FlurryKind,
 	NovaKind,
 	OVERFLOWING_NOVA_RADIUS,
@@ -237,7 +239,7 @@ describe("buildFx rules: rings, flares, flashes", () => {
 		]);
 		expect(BUILD_FX_VIEW.nova.looks.size()).toBe(2);
 		// Every ring look has its own drawing block.
-		for (const look of ["nova", "flare", "heal", "pop"] as const)
+		for (const look of ["nova", "flare", "heal", "pop", "glint"] as const)
 			expect(buildRingBlock(look)).toBe(BUILD_FX_VIEW[look]);
 	});
 
@@ -480,6 +482,117 @@ describe("buildFx rules: the evolutions (BU8 follow-up)", () => {
 		expect([d.out.rings.size(), d.out.phantomBursts.size()]).toEqual([2, 1]);
 		d.frame(EMPTY, s, 0, true, settings(), 1.02);
 		d.frame(EMPTY, s, 0, false, settings(), 1.03);
+		expect(d.out.rings.size()).toBe(0);
+	});
+});
+
+/** Pushes one duoProc entry (as the sim's pushDuoProc does). */
+function duoProc(e: BuildEvents, duo: number, owner: number, x: number, z: number, value: number): void {
+	e.duoProcDuo.push(duo);
+	e.duoProcOwner.push(owner);
+	e.duoProcX.push(x);
+	e.duoProcZ.push(z);
+	e.duoProcValue.push(value);
+}
+
+describe("buildFx rules: the duos (BU6 view)", () => {
+	it("Storm Blade / Conductor / Chain Reaction / Close Call pop an origin flare in pop.duoRole; Gold Rush and Unshaken do not", () => {
+		const s = state(2);
+		const ev = bu5(s, (e) => {
+			duoProc(e, Duo.STORM_BLADE, 0, 1, 1, 2);
+			duoProc(e, Duo.CONDUCTOR, 1, 2, 2, 1);
+			duoProc(e, Duo.CHAIN_REACTION, 0, 3, 3, 12);
+			duoProc(e, Duo.CLOSE_CALL, 1, 4, 4, 1);
+			duoProc(e, Duo.GOLD_RUSH, 0, 5, 5, 206);
+			duoProc(e, Duo.CONDUCTOR, 7, 6, 6, 1); // outside the party: ignored
+		});
+		const p = BUILD_FX_VIEW.pop;
+		expect(p.duoRole).toBe("boon.duo");
+		const d = new BuildFxDirector();
+		d.frame(ev, s, 0, false, settings(), 1);
+		expect(d.out.rings.map((r) => [r.look, r.x, r.z, r.radius, r.role, r.segments])).toEqual([
+			["pop", 1, 1, p.r0Tiles, p.duoRole, p.segments],
+			["pop", 2, 2, p.r0Tiles, p.duoRole, p.segments],
+			["pop", 3, 3, p.r0Tiles, p.duoRole, p.segments],
+			["pop", 4, 4, p.r0Tiles, p.duoRole, p.segments],
+		]);
+		// No beam of their own: a duo spark's beam is its ordinary spark segment.
+		expect(d.out.beams.size()).toBe(0);
+		// Reduced halves the segments; reduced motion draws the end radius.
+		const r = new BuildFxDirector();
+		r.frame(ev, s, 0, false, settings("reduced", { reducedMotion: true }), 1);
+		expect(r.out.rings.map((g) => [g.radius, g.segments])[0]).toEqual([
+			p.r1Tiles,
+			buildFxCount(p.segments, "reduced"),
+		]);
+	});
+
+	it("a duo spark draws one beam (its spark segment) and one flare at its origin, never a second beam", () => {
+		const s = state();
+		const ev = bu5(s, (e) => {
+			e.sparkX1.push(1);
+			e.sparkZ1.push(2);
+			e.sparkX2.push(3);
+			e.sparkZ2.push(2);
+			e.sparkOwner.push(0);
+			e.sparkGen.push(0);
+			e.sparkFork.push(0);
+			duoProc(e, Duo.CONDUCTOR, 0, 1, 2, 1);
+		});
+		const d = new BuildFxDirector();
+		d.frame(ev, s, 0, false, settings(), 1);
+		expect(d.out.beams.size()).toBe(1);
+		expect(d.out.sparkBursts.map((b) => [b.x, b.z])).toEqual([[3, 2]]);
+		expect(d.out.rings.map((r) => [r.look, r.x, r.z])).toEqual([["pop", 1, 2]]);
+	});
+
+	it("Unshaken: a shield glint closes in on the hit player in glint.role, follows them, a newer one replaces it", () => {
+		const s = state(2);
+		const g = BUILD_FX_VIEW.glint;
+		const ev = bu5(s, (e) => duoProc(e, Duo.UNSHAKEN, 1, 0, 0, 1));
+		const d = new BuildFxDirector();
+		d.frame(ev, s, 0, false, settings(), 2);
+		expect(d.out.rings.map((r) => [r.look, r.role, r.radius, r.segments])).toEqual([
+			["glint", g.role, g.r0Tiles, g.segments],
+		]);
+		expect(g.r1Tiles < g.r0Tiles).toBe(true);
+		const p1 = s.party!.players[1];
+		p1.x = 3;
+		p1.z = -2;
+		d.frame(EMPTY, s, 0, false, settings(), 2 + g.sec * 0.999);
+		expect([d.out.rings[0].x, d.out.rings[0].z]).toEqual([3, -2]);
+		expect(d.out.rings[0].radius).toBeCloseTo(g.r1Tiles, 2);
+		// A second hit restarts it (one glint per player); it lives glint.sec.
+		const again = bu5(s, (e) => duoProc(e, Duo.UNSHAKEN, 1, 0, 0, 1), 2);
+		d.frame(again, s, 0, false, settings(), 2.5);
+		expect(d.out.rings.filter((r) => r.look === "glint").size()).toBe(1);
+		d.frame(EMPTY, s, 0, false, settings(), 2.5 + g.sec + 0.01);
+		expect(d.out.rings.size()).toBe(0);
+	});
+
+	it("the glint sits beside the evolve flare and the heal pulse (one each per player); Reduced, reduced motion, death, quiet", () => {
+		const s = state(2);
+		const g = BUILD_FX_VIEW.glint;
+		const ev = bu5(s, (e) => {
+			e.duoPlayer.push(0);
+			e.duoTaken.push(Duo.UNSHAKEN);
+			e.lionPlayer.push(0);
+			e.lionHealed.push(1);
+			duoProc(e, Duo.UNSHAKEN, 0, 0, 0, 1);
+			duoProc(e, Duo.UNSHAKEN, 1, 0, 0, 1);
+		});
+		const d = new BuildFxDirector();
+		d.frame(ev, s, 0, false, settings("reduced", { reducedMotion: true }), 1);
+		expect(d.out.rings.map((r) => [r.look, r.radius, r.segments])).toEqual([
+			["flare", BUILD_FX_VIEW.flare.r1Tiles, buildFxCount(BUILD_FX_VIEW.flare.segments, "reduced")],
+			["heal", BUILD_FX_VIEW.heal.r1Tiles, buildFxCount(BUILD_FX_VIEW.heal.segments, "reduced")],
+			["glint", g.r1Tiles, buildFxCount(g.segments, "reduced")],
+			["glint", g.r1Tiles, buildFxCount(g.segments, "reduced")],
+		]);
+		s.party!.players[1].dead = 1;
+		d.frame(EMPTY, s, 0, false, settings(), 1.01);
+		expect(d.out.rings.filter((r) => r.look === "glint").size()).toBe(1);
+		d.frame(EMPTY, s, 0, true, settings(), 1.02);
 		expect(d.out.rings.size()).toBe(0);
 	});
 });
