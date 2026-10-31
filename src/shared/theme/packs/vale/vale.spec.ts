@@ -692,11 +692,19 @@ describe("vale enemy.slime (docs/ENEMY_VARIANTS.md EV10: the Lords of Pain slime
 
 	it("with no IDs it is the placeholder; the outline alone never switches it on", () => {
 		expect(buildValeManifest({}).assets["enemy.slime"]).toEqual(PLACEHOLDER_MANIFEST.assets["enemy.slime"]);
-		expect(VALE_MANIFEST.assets["enemy.slime"]).toEqual(PLACEHOLDER_MANIFEST.assets["enemy.slime"]);
 		const noAtlas = buildValeManifest(fakeIds(SHEET));
 		expect(validateManifest(noAtlas, { packId: "vale" })).toEqual([]);
 		expect(noAtlas.assets["enemy.slime"]).toEqual(PLACEHOLDER_MANIFEST.assets["enemy.slime"]);
 		expect(new ThemePack(noAtlas, { warn: quiet }).sprites("enemy.slime")).toBe(undefined);
+	});
+
+	it("as bundled (uploaded 2026-10-31), enemy.slime is its sprite set with its rim", () => {
+		for (const file of [SHEET, OUTLINE]) expect([file, VALE_ASSET_IDS[file] !== undefined]).toEqual([file, true]);
+		expect(VALE_MANIFEST.assets["enemy.slime"].kind).toBe("sprites");
+		const set = new ThemePack(VALE_MANIFEST, { warn: quiet }).sprites("enemy.slime")!;
+		expect(set).never.toBe(undefined);
+		expect(set.frame("move", 2, 5).image).toBe(VALE_ASSET_IDS[SHEET]);
+		expect(set.frame("move", 2, 5).outlineImage).toBe(VALE_ASSET_IDS[OUTLINE]);
 	});
 
 	it("with slime-body.png it switches to sprites with every required animation; the rim joins with its outline", () => {

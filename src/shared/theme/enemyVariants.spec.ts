@@ -258,10 +258,15 @@ describe("enemy variants: bundled packs", () => {
 			expect([key, PLACEHOLDER_MANIFEST.strings[key]]).toEqual([key, text]);
 		for (const id of sortedKeys(THEME_PACKS)) {
 			const pack = THEME_PACKS[id];
-			for (const a of NEW_ARCHETYPES)
-				expect([id, a, pack.assets[`enemy.${a}`]]).toEqual([id, a, { kind: "placeholder" }]);
+			// Vale draws the uploaded slime set (2026-10-31); every other new enemy slot is the placeholder.
+			for (const a of NEW_ARCHETYPES) {
+				const kind = id === "vale" && a === "slime" ? "sprites" : "placeholder";
+				expect([id, a, pack.assets[`enemy.${a}`].kind]).toEqual([id, a, kind]);
+			}
 			expect([id, pack.assets[GOO_BULLET_ID]]).toEqual([id, { kind: "placeholder" }]);
-			for (const sfx of VARIANT_AUDIO) expect([id, sfx, pack.assets[sfx]]).toEqual([id, sfx, { kind: "silent" }]);
+			// Vale's five clips were uploaded 2026-10-31; the placeholder keeps them SILENT.
+			for (const sfx of VARIANT_AUDIO)
+				expect([id, sfx, pack.assets[sfx].kind]).toEqual([id, sfx, id === "vale" ? "sound" : "silent"]);
 			for (const [role, hex] of PLACEHOLDER_COLORS)
 				expect([id, role, pack.colors[role]]).toEqual([id, role, hex]);
 			for (const key of ENEMY_VARIANT_STRING_KEYS) {

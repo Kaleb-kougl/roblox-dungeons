@@ -17,9 +17,10 @@ appended last. M1 (`KALEB_VALE_MVP_PARAMS`), every golden fixture and the tutori
 Built (EV0-EV7, EV9, EV12, EV13 in code; EV10 / EV11 prepared) and merged to `main` (`34977e5`, 2026-10-31).
 Decisions: the scope answers, EVD1-EVD12 and EVD13-EVD16 (below). Headless: the full suite passes. Open:
 
-- **Owner uploads** (EV10 / EV11): `art/upload/slime-body.png`, `slime-body-outline.png` and the five
-  `sfx-enemy-*` / `sfx-affix-*` OGGs; ids go in the commented slots at the end of `packs/vale/assetIds.ts`. Until then
-  the vale pack draws placeholders (imp a cone, Ooze a dome) and the five sounds are silent.
+- **Uploaded 2026-10-31** (EV10 / EV11): `slime-body.png` / `slime-body-outline.png` and the five `sfx-enemy-*` /
+  `sfx-affix-*` clips have ids in `packs/vale/assetIds.ts`, so the bundled vale pack draws the slime (and the 0.6x
+  slimelet) as its sprite set with its rim and plays the five sounds. The imp still draws the placeholder cone and the
+  summoner the placeholder until their rigs are picked.
 - **Owner picks**: the Imp rig and the robed Spawn rig (`art/build/contact/ev-imps.png`, `ev-spawns.png`) and their
   animation mapping (see "EV10 slime (as built)"); then their sets get built like `enemy.bruiser`.
 - **Owner calls from EV13** (see "EV13 tuning (as built)"): the spender's dearest-kind tie-break plus an Ooze cap of 8

@@ -66,12 +66,9 @@ import type { RobloxAssetId } from "../../types";
  * The UI skin (docs/UI_ART.md UA4: the 12 sliced ui-*.png pieces and the ui-icons.png atlas) uploaded 2026-10-30
  * 8:41 PM by k9kbdev, transcribed from Asset Manager screenshots. That batch also re-uploaded the six ui-draft-*.png
  * files as duplicates with new IDs, which are not used (the images are byte-identical to the ones listed here).
- * NOT YET UPLOADED (docs/ENEMY_VARIANTS.md "EV10 slime (as built)" / "EV11 audio picks"): slime-body.png and
- * slime-body-outline.png (enemy.slime, also drawn 0.6x for slime.small: one 980x988 atlas + its rim), and
- * sfx-enemy-blink.ogg, sfx-enemy-summon.ogg, sfx-enemy-split.ogg, sfx-affix-shieldbreak.ogg, sfx-affix-vengeful.ogg.
- * Until their IDs are here enemy.slime draws the placeholder dome and the five sounds stay silent (only an absent key
- * keeps the fallback: never paste an empty string). The commented lines at the end of the map are the slots: paste
- * the ID after rbxassetid:// and uncomment the line.
+ * The enemy variants (docs/ENEMY_VARIANTS.md EV10 / EV11: slime-body.png and slime-body-outline.png for enemy.slime,
+ * also drawn 0.6x for slime.small; sfx-enemy-blink / -summon / -split, sfx-affix-shieldbreak / -vengeful) uploaded
+ * 2026-10-31 7:20 AM by k9kbdev, transcribed from an Asset Manager screenshot.
  */
 export const VALE_ASSET_IDS: Readonly<Record<string, RobloxAssetId>> = {
 	"amb-b1.ogg": "rbxassetid://91158343621799",
@@ -116,6 +113,8 @@ export const VALE_ASSET_IDS: Readonly<Record<string, RobloxAssetId>> = {
 	"music-boss.ogg": "rbxassetid://82229819920090",
 	"music-menu.ogg": "rbxassetid://75564975309420",
 	"music-tutorial.ogg": "rbxassetid://87339075756554",
+	"sfx-affix-shieldbreak.ogg": "rbxassetid://116871435989650",
+	"sfx-affix-vengeful.ogg": "rbxassetid://122645585698044",
 	"sfx-boss-death.ogg": "rbxassetid://98231076745245",
 	"sfx-boss-roar.ogg": "rbxassetid://103385650363670",
 	"sfx-breakable-break.ogg": "rbxassetid://116444193017210",
@@ -129,6 +128,7 @@ export const VALE_ASSET_IDS: Readonly<Record<string, RobloxAssetId>> = {
 	"sfx-draft-legendary.ogg": "rbxassetid://119499678299322",
 	"sfx-draft-pick.ogg": "rbxassetid://85146648456597",
 	"sfx-ember.ogg": "rbxassetid://132331997932373",
+	"sfx-enemy-blink.ogg": "rbxassetid://102016664523463",
 	"sfx-enemy-death-1.ogg": "rbxassetid://120112698995155",
 	"sfx-enemy-death-2.ogg": "rbxassetid://139105704609425",
 	"sfx-enemy-death-3.ogg": "rbxassetid://100811224100190",
@@ -139,6 +139,8 @@ export const VALE_ASSET_IDS: Readonly<Record<string, RobloxAssetId>> = {
 	"sfx-enemy-hurt-5.ogg": "rbxassetid://116770794061890",
 	"sfx-enemy-hurt-6.ogg": "rbxassetid://85101791814178",
 	"sfx-enemy-shoot.ogg": "rbxassetid://117798043671657",
+	"sfx-enemy-split.ogg": "rbxassetid://114706012715735",
+	"sfx-enemy-summon.ogg": "rbxassetid://84041560036469",
 	"sfx-enemy-telegraph.ogg": "rbxassetid://135727302886058",
 	"sfx-floor-enter.ogg": "rbxassetid://136963659016362",
 	"sfx-jingle-gameover.ogg": "rbxassetid://100204013637893",
@@ -170,6 +172,8 @@ export const VALE_ASSET_IDS: Readonly<Record<string, RobloxAssetId>> = {
 	"sfx-ui-confirm.ogg": "rbxassetid://129583273016065",
 	"sfx-ui-move.ogg": "rbxassetid://98968775960499",
 	"sfx-victory.ogg": "rbxassetid://138562382025197",
+	"slime-body-outline.png": "rbxassetid://125641170965641",
+	"slime-body.png": "rbxassetid://105955364807363",
 	"sniper-idle-outline.png": "rbxassetid://72531972026139",
 	"sniper-idle.png": "rbxassetid://136813347348140",
 	"sprayer-body-outline.png": "rbxassetid://113789975034893",
@@ -238,12 +242,4 @@ export const VALE_ASSET_IDS: Readonly<Record<string, RobloxAssetId>> = {
 	"fx-ambient-b3.png": "rbxassetid://81069724717150",
 	"fx-ambient-b5.png": "rbxassetid://93348383001922",
 	"fx-effects.png": "rbxassetid://92741658775036",
-	// Pending upload (docs/ENEMY_VARIANTS.md EV10 / EV11): paste each ID, then uncomment the line.
-	// "slime-body.png": "rbxassetid://",
-	// "slime-body-outline.png": "rbxassetid://",
-	// "sfx-enemy-blink.ogg": "rbxassetid://",
-	// "sfx-enemy-summon.ogg": "rbxassetid://",
-	// "sfx-enemy-split.ogg": "rbxassetid://",
-	// "sfx-affix-shieldbreak.ogg": "rbxassetid://",
-	// "sfx-affix-vengeful.ogg": "rbxassetid://",
 };
