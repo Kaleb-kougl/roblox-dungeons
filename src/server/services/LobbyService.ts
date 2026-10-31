@@ -176,6 +176,17 @@ export class LobbyService implements OnStart {
 			),
 		);
 		this.janitor.Add(
+			Events.lobbySetWorld.connect((player, worldKind) =>
+				this.request(player, "lobbySetWorld", this.requestLimiter, () => {
+					const r = this.lobbies.setWorld(player.UserId, worldKind);
+					if (!r.ok) return this.outbox.refused(player.UserId, "lobbySetWorld", r);
+					if (!r.changed) return;
+					log.info("WORLD", `lobby ${r.lobby.lobbyId}: world ${r.lobby.worldKind}`);
+					this.outbox.lobby(r.lobby);
+				}),
+			),
+		);
+		this.janitor.Add(
 			Events.lobbyTransferHost.connect((player, userId) =>
 				this.request(player, "lobbyTransferHost", this.requestLimiter, () => {
 					const r = this.lobbies.transferHost(player.UserId, userId);

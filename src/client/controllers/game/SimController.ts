@@ -30,6 +30,7 @@ import {
 	TUTORIAL_WORLD_KIND,
 	buildWorldSetup,
 	errorMessage,
+	isEndlessWorld,
 	isValidRunSeed,
 	type EndlessRunFloor,
 	type RunFinal,
@@ -53,6 +54,7 @@ import {
 	type SimState,
 } from "shared/sim";
 import { TUTORIAL } from "shared/config";
+import { RECORDS_POLICY } from "shared/records";
 import { BIOMES, type ThemePack } from "shared/theme";
 import {
 	LatencyProbe,
@@ -206,6 +208,15 @@ interface MadeRun {
 	readonly endlessFloor: ((floor: number) => EndlessRunFloor) | undefined;
 }
 
+/**
+ * A finished ranked run of `world` may raise the new-best baseline while its verdict is pending (pendingRunClaims):
+ * not with KV_Debug, and only in a world whose runs count toward personal records (shared/records RECORDS_POLICY: a
+ * Daily run never does, docs/DAILY.md DSD6).
+ */
+function claimsRecords(debug: boolean, world: RunWorldKind): boolean {
+	return !debug && RECORDS_POLICY.eligibleWorlds.includes(world);
+}
+
 /** KV_World, else the place's play mode (shared/run LIVE_RUN_WORLD: "endless" unless shared/config PLAY_MODE is "m1"). */
 function readWorld(): RunWorld {
 	const raw = Workspace.GetAttribute(RUN_ATTRIBUTES.world);
@@ -275,10 +286,12 @@ function biomeIndexFor(dungeon: Dungeon | undefined): number {
  * Recordings and hashes never depend on it (shared/play liveRun.hitstop.spec.ts).
  *
  * Ranked runs (M3 / M5, docs/SERVER.md "Segmented runs"): unless a debug attribute fixes the seed or world (or stress
- * is on), a run start asks the server (`startRun`) and plays the seed it answers with, on RANKED_WORLD_KIND. The
- * LiveRun cuts segments (floor change via its hook, else every SEGMENT_FALLBACK_TICKS) and this uploads them as they
- * are cut (`submitSegment`); the run's end cuts the last one and sends `finishRun`, answered by `runFinished`. No
- * answer within RUN_START_TIMEOUT_SECONDS (or a refusal): an unranked run on the local seed, submitted the old way.
+ * is on), a run start asks the server (`startRun`) and plays the seed it answers with, on RANKED_WORLD_KIND or the
+ * world startSolo asked for (the Daily, docs/DAILY.md: the server's seed of the day, built with the same
+ * buildWorldSetup("daily", ...) and cut, uploaded and finished exactly like an endless run). The LiveRun cuts
+ * segments (floor change via its hook, else every SEGMENT_FALLBACK_TICKS) and this uploads them as they are cut
+ * (`submitSegment`); the run's end cuts the last one and sends `finishRun`, answered by `runFinished`. No answer
+ * within RUN_START_TIMEOUT_SECONDS (or a refusal): an unranked run on the local seed, submitted the old way.
  * Each segment the server verified releases its recorded frames (LiveRun.releaseVerifiedFrames), except with
  * KV_Debug (F8's replay check replays the whole recording).
  *
@@ -353,6 +366,12 @@ export class SimController implements OnStart {
 	private restartAfterForfeit = false;
 	/** The lobby the next solo run belongs to (startSolo); "" for the main menu's Play solo and for restarts. */
 	private nextRunLobbyId = "";
+	/**
+	 * The world a ranked start asks the server for (`startRun`): RANKED_WORLD_KIND (Play solo), or the Daily
+	 * (shared/daily DAILY_WORLD_KIND: playDaily, a daily lobby's solo start). Set by startSolo; a restart (R, Again)
+	 * keeps it, so retrying a Daily is another Daily run.
+	 */
+	private rankedWorld: RunWorldKind = RANKED_WORLD_KIND;
 	private readonly exitListeners = new Array<RunExitListener>();
 
 	/** Co-op: neutral input while a menu owns the controls (a party run never pauses under one). */
@@ -619,13 +638,16 @@ export class SimController implements OnStart {
 
 	/**
 	 * Starts a solo run now (the menu's Play solo; `lobbyId` for a one-player lobby's `lobbyRunStart`): ranked unless
-	 * a debug attribute says otherwise (beginRun). Ignored while a party run is on.
+	 * a debug attribute says otherwise (beginRun). `worldKind`: the world the ranked start asks for (default
+	 * RANKED_WORLD_KIND; the Daily: shared/daily DAILY_WORLD_KIND, whose seed the server picks for the day). Ignored
+	 * while a party run is on.
 	 */
-	startSolo(lobbyId?: string): void {
+	startSolo(lobbyId?: string, worldKind: RunWorldKind = RANKED_WORLD_KIND): void {
 		if (this.ctx?.coop !== undefined && !this.ctx.coop.isOver()) return;
 		this.clearExits();
 		if (this.ctx?.live !== undefined) this.submit("abandoned"); // (only if not submitted yet, as R does)
 		this.nextRunLobbyId = lobbyId ?? "";
+		this.rankedWorld = worldKind;
 		this.beginRun();
 	}
 
@@ -755,8 +777,8 @@ export class SimController implements OnStart {
 		const world = readWorld();
 		// Endless runs always start at floor 1's entrance and never run the stress emitter.
 		const atBossDoor =
-			world !== "endless" && this.debug && Workspace.GetAttribute(RUN_ATTRIBUTES.spawnBoss) === true;
-		const stress = world !== "endless" ? stressTargetFrom(Workspace.GetAttribute(RUN_ATTRIBUTES.stress)) : 0;
+			!isEndlessWorld(world) && this.debug && Workspace.GetAttribute(RUN_ATTRIBUTES.spawnBoss) === true;
+		const stress = !isEndlessWorld(world) ? stressTargetFrom(Workspace.GetAttribute(RUN_ATTRIBUTES.stress)) : 0;
 		const ranked = shouldRequestServerRun({
 			seedAttributeSet: Workspace.GetAttribute(RUN_ATTRIBUTES.seed) !== undefined,
 			worldAttributeSet: Workspace.GetAttribute(RUN_ATTRIBUTES.world) !== undefined,
@@ -772,10 +794,11 @@ export class SimController implements OnStart {
 		this.stage?.awaitServer();
 		this.startRequests++;
 		this.startReply = undefined;
+		const rankedWorld = this.rankedWorld;
 		const request: StartRunRequest = {
 			requestId: this.startRequests,
-			worldKind: RANKED_WORLD_KIND,
-			atBossDoor: atBossDoor && RANKED_WORLD_KIND !== "endless" ? true : undefined,
+			worldKind: rankedWorld,
+			atBossDoor: atBossDoor && !isEndlessWorld(rankedWorld) ? true : undefined,
 		};
 		this.awaitingStart = {
 			requestId: this.startRequests,
@@ -973,7 +996,7 @@ export class SimController implements OnStart {
 			const entry = this.rankedRuns.get(runId);
 			if (entry !== undefined) {
 				entry.ending = "death";
-				if (!this.debug) entry.claim = this.claimOf(coop.state);
+				if (claimsRecords(this.debug, ctx.world)) entry.claim = this.claimOf(coop.state);
 			}
 			clientStore.setVerdict({
 				status: "pending",
@@ -1066,7 +1089,7 @@ export class SimController implements OnStart {
 			this.awaitingStart = undefined;
 			this.startReply = undefined;
 			if (reply.ok && reply.runId !== undefined && reply.seed !== undefined && isValidRunSeed(reply.seed)) {
-				const world = reply.worldKind ?? RANKED_WORLD_KIND;
+				const world = reply.worldKind ?? waiting.request.worldKind;
 				this.startRun(reply.seed, reply.atBossDoor === true, 0, world, reply.runId, "", false);
 			} else {
 				warn(`[Sim] ranked run refused (${reply.code ?? "?"}: ${reply.reason ?? ""}); playing unranked`);
@@ -1095,7 +1118,8 @@ export class SimController implements OnStart {
 		startNotice: string,
 		tutorial: boolean,
 	): void {
-		const floor = requestedWorld === "endless" || requestedWorld === TUTORIAL_WORLD_KIND ? ENDLESS_FIRST_FLOOR : 0;
+		const floor =
+			isEndlessWorld(requestedWorld) || requestedWorld === TUTORIAL_WORLD_KIND ? ENDLESS_FIRST_FLOOR : 0;
 		this.draftGate.reset();
 		if (this.stage !== undefined) {
 			this.ctx = undefined; // the old run stops here; the new one is built under the cover
@@ -1132,7 +1156,7 @@ export class SimController implements OnStart {
 		// tutorial world is scored by its own config too.)
 		const scoring =
 			!tutorial &&
-			world !== "endless" &&
+			!isEndlessWorld(world) &&
 			runId === undefined &&
 			Workspace.GetAttribute(RUN_ATTRIBUTES.scoring) === true;
 
@@ -1593,7 +1617,7 @@ export class SimController implements OnStart {
 		}
 		const final = result as RunFinal;
 		clientStore.setVerdict({ status: "pending", run: ctx.counter, ending, claimedHash: final.claimedHash });
-		if (!this.debug) entry.claim = this.claimOf(live.state);
+		if (claimsRecords(this.debug, ctx.world)) entry.claim = this.claimOf(live.state);
 		Events.finishRun.fire(final);
 		print(
 			`[Sim] finished ranked run ${ctx.counter} (${ending}): ${final.finalTick} ticks in ` +

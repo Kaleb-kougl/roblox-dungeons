@@ -33,6 +33,19 @@ describe("LobbyRunTracker", () => {
 		expect(t.playerRemoving(7)).toEqual([]); // already over
 	});
 
+	it("solo: only a start in the lobby's world is bound (a daily lobby waits for a daily start)", () => {
+		const t = new LobbyRunTracker();
+		t.expectSolo(7, "lobby-D", 0, "daily");
+		expect(t.soloStarted(7, "run-endless", "endless")).toBe(undefined);
+		expect(t.hasPending()).toBe(true);
+		expect(t.soloStarted(7, "run-daily", "daily")).toBe("lobby-D");
+		expect(t.concluded("run-daily")).toBe("lobby-D");
+		// The default world is endless (LOBBY.defaultWorld).
+		t.expectSolo(8, "lobby-E", 0);
+		expect(t.soloStarted(8, "run-daily-8", "daily")).toBe(undefined);
+		expect(t.soloStarted(8, "run-8", "endless")).toBe("lobby-E");
+	});
+
 	it("solo: no start within soloStartTimeoutSeconds ends it (sweep, UserId order)", () => {
 		const t = new LobbyRunTracker();
 		t.expectSolo(9, "lobby-B", 0);

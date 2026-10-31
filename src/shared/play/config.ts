@@ -19,7 +19,8 @@ export const RUN_ATTRIBUTES = {
 	stress: "KV_Stress",
 	/**
 	 * String, debug only: "endless" (endless mode), "game" (the M1 run), "dungeonNoEncounter" (the floor without
-	 * enemies) or "greybox" (the 16x16 arena). Default: shared/run LIVE_RUN_WORLD (shared/config PLAY_MODE). Pair it with
+	 * enemies) or "greybox" (the 16x16 arena): a local, unranked run on KV_Seed. Not "daily": its seed is the server's
+	 * (KV_Daily starts a ranked Daily). Default: shared/run LIVE_RUN_WORLD (shared/config PLAY_MODE). Pair it with
 	 * the server's Studio-only `KV_RunValidationWorld` so submissions validate in the same world.
 	 */
 	world: "KV_World",
@@ -44,6 +45,11 @@ export const RUN_ATTRIBUTES = {
 	 * never shows; the download queue still runs behind the menu. Off by default.
 	 */
 	skipLoading: "KV_SkipLoading",
+	/**
+	 * Boolean, debug: the main menu's Play solo (and KV_SkipMenu's start) starts the Daily instead (docs/DAILY.md: a
+	 * ranked run in world "daily" on the server's seed of the day), until the menu's Daily card exists. Off by default.
+	 */
+	daily: "KV_Daily",
 } as const;
 
 /** The web build's DEFAULT_SEED (`?seed=` absent). */

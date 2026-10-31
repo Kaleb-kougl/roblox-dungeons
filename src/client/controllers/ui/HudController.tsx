@@ -12,7 +12,7 @@ import {
 	type HudActions,
 	type MenuActions,
 } from "client/ui";
-import type { LobbyVisibility } from "shared/lobby";
+import type { LobbyVisibility, LobbyWorld } from "shared/lobby";
 import { draftColumnForCard } from "shared/play";
 import { AudioController } from "../audio/AudioController";
 import { InputController } from "../game/InputController";
@@ -117,6 +117,7 @@ export class HudController implements OnStart {
 
 		const menuActions: MenuActions = {
 			playSolo: click(() => this.menu.playSolo()),
+			playDaily: click(() => this.menu.playDaily()),
 			openLobbies: click(() => this.menu.openLobbies()),
 			openLobbyRoom: click(() => this.menu.openLobbyRoom()),
 			openOptions: click(() => this.menu.openOptions()),
@@ -133,6 +134,7 @@ export class HudController implements OnStart {
 			kick: click((id: number) => this.lobby.kick(id)),
 			makeHost: click((id: number) => this.lobby.transferHost(id)),
 			setVisibility: click((v: LobbyVisibility) => this.lobby.setVisibility(v)),
+			setLobbyWorld: click((w: LobbyWorld) => this.lobby.setWorld(w)),
 			rename: click(() => this.lobby.rename()),
 			invite: click((id: number) => this.lobby.invite(id)),
 			inviteFriendsToLobby: click(() => this.menu.inviteFriendsToLobby()),

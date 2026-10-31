@@ -43,7 +43,7 @@ export interface ReplayCheckView {
 /** Fixed facts about the current run, for the HUD's info line. */
 export interface RunInfo {
 	readonly seed: number;
-	/** "game" | "endless" | "dungeonNoEncounter" | "greybox". */
+	/** The world kind (shared/run worlds.ts): "endless", "daily", "tutorial", "game", "dungeonNoEncounter", "greybox". */
 	readonly world: string;
 	/** Biome name key for the floor (theme string), "" when there is no floor. */
 	readonly placeKey: string;

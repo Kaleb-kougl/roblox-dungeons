@@ -11,14 +11,28 @@
  *
  * Which worlds may post to the leaderboards is separate data (shared/leaderboard LEADERBOARD_ELIGIBLE_WORLDS).
  * Which registered worlds the SERVER refuses to run (session starts, including lobby starts) is SERVER_REFUSED_WORLDS.
+ * Which worlds are the endless descent (floors, scoring, death-only, the stage loader) is `isEndlessWorld`.
  */
+import { DAILY_WORLD_KIND } from "shared/daily";
 import { buildRunConfig, type RunSetup } from "./config";
 import { buildEndlessRunConfig } from "./endless";
 import { TUTORIAL_WORLD_KIND, buildTutorialRunConfig } from "./tutorial";
 import type { RunWorld } from "./limits";
 
-/** A registered world's name ("game", "dungeonNoEncounter", "greybox", "endless", "tutorial"). */
+/** A registered world's name ("game", "dungeonNoEncounter", "greybox", "endless", "daily", "tutorial"). */
 export type RunWorldKind = string;
+
+/** The endless descent's world kind (shared/play RANKED_WORLD_KIND, Play solo's world, is this one). */
+export const ENDLESS_WORLD_KIND = "endless";
+
+/**
+ * The world is the endless descent: floor after floor from the run seed (buildEndlessRunConfig), always scored, ended
+ * only by death, cut into one segment per floor. True for "endless" and "daily" (docs/DAILY.md: the same builder on
+ * the server's seed of the day). The tutorial builds endless floors too but is its own world (TUTORIAL_WORLD_KIND).
+ */
+export function isEndlessWorld(kind: RunWorldKind): boolean {
+	return kind === ENDLESS_WORLD_KIND || kind === DAILY_WORLD_KIND;
+}
 
 export interface WorldBuildOptions {
 	/** Start at the boss door (debug; only honoured where the limits allow it). */
@@ -77,7 +91,10 @@ function registerBuiltinWorlds(): void {
 	registerRunWorld("dungeonNoEncounter", legacyWorld("dungeonNoEncounter"));
 	registerRunWorld("greybox", legacyWorld("greybox"));
 	// Endless mode (always scored; the boss door has no meaning there). One line per new world.
-	registerRunWorld("endless", (seed, o) => buildEndlessRunConfig(seed, o.partySize));
+	registerRunWorld(ENDLESS_WORLD_KIND, (seed, o) => buildEndlessRunConfig(seed, o.partySize));
+	// The Daily (docs/DAILY.md): the endless descent, identical setup for the same seed. The server picks its seed of
+	// the day (RunSessionDeps.dailySeed, a server-only secret); a server world (not SERVER_REFUSED_WORLDS).
+	registerRunWorld(DAILY_WORLD_KIND, (seed, o) => buildEndlessRunConfig(seed, o.partySize));
 	// The first-run tutorial (docs/TUTORIAL.md): a fixed world whatever the seed, solo only, never leaderboard-eligible
 	// (shared/leaderboard LEADERBOARD_ELIGIBLE_WORLDS), played locally and refused by the server (SERVER_REFUSED_WORLDS).
 	registerRunWorld(TUTORIAL_WORLD_KIND, (_seed, o) => buildTutorialRunConfig(o.partySize));

@@ -7,9 +7,16 @@
  * `maxFinishingPerPlayer` sessions still validating their last segment (one more start answers `busy`). Open
  * sessions expire after `idleSeconds` without a segment or `maxAgeSeconds` in all (`sweep`).
  *
- * Pure and Roblox-API-free: the runId generator, the seed picker and the clock are injected (HttpService GUIDs,
- * Random and os.clock on the server; counters in tests). The world comes from the registry (worlds.ts).
+ * Seeds: every world takes `pickSeed()` (random), except the Daily (shared/daily DAILY_WORLD_KIND, docs/DAILY.md):
+ * its seed is `dailySeed(dailyDay(ctx.unixNow))`, the same for every start of one UTC day (the injected `dailySeed`
+ * holds the server-only secret, DSD8). The session keeps that day and the ruleset (`daily`), so a run started at
+ * 23:59:59 belongs to its start day whenever it finishes (DSD5).
+ *
+ * Pure and Roblox-API-free: the runId generator, the seed pickers and the clocks are injected (HttpService GUIDs,
+ * Random, the secret daily seed, os.clock and os.time on the server; counters in tests). The world comes from the
+ * registry (worlds.ts).
  */
+import { DAILY, DAILY_WORLD_KIND, dailyDay, type DailyRunKey } from "shared/daily";
 import { isValidRunSeed, type RunSetup } from "./config";
 import {
 	DEFAULT_RUN_SESSION_LIMITS,
@@ -57,6 +64,8 @@ export interface StartRunReply {
 	atBossDoor?: boolean;
 	/** Party members (owner first). */
 	members?: number[];
+	/** Daily runs (world "daily"): the day (shared/daily dailyDay) and ruleset the run belongs to (DSD5 / DSD11). */
+	daily?: DailyRunKey;
 	code?: StartRunRejectCode;
 	reason?: string;
 }
@@ -72,6 +81,11 @@ export interface RunSession {
 	readonly atBossDoor: boolean;
 	/** Debug limits were in force (debug input or boss door allowed): never posts to a leaderboard. */
 	readonly debug: boolean;
+	/**
+	 * Daily runs only (world "daily"): the UTC day the run started on and the ruleset in force (shared/daily
+	 * DailyRunKey). The run's board is that day's even if it finishes after midnight (DSD5). Undefined otherwise.
+	 */
+	readonly daily: DailyRunKey | undefined;
 	/** Session start (the registry's clock, seconds). */
 	readonly createdAt: number;
 	/** Last segment (or the start). */
@@ -87,7 +101,10 @@ export interface RunSession {
 
 /** What the caller knows about the start that the registry cannot (who is in the server, what is allowed). */
 export interface StartContext {
+	/** The registry's clock (seconds; os.clock on the server): activity, expiry, the segment clock. */
 	readonly now: number;
+	/** Wall clock, unix seconds UTC (os.time / DateTime on the server): the Daily's day (shared/daily dailyDay). */
+	readonly unixNow: number;
 	/** The UserId is a player in this server. */
 	readonly isInServer: (userId: number) => boolean;
 	readonly allowBossDoorSpawn: boolean;
@@ -107,8 +124,13 @@ export type StartRunResult =
 
 export interface RunSessionDeps {
 	readonly newRunId: () => string;
-	/** A seed in [0, 2^32). */
+	/** A seed in [0, 2^32): every world's seed except the Daily's. */
 	readonly pickSeed: () => number;
+	/**
+	 * The Daily's seed of day `day` (shared/daily dailyDay): the server passes its secret one (src/server/config
+	 * daily.ts dailySeed). Absent: a daily start answers `config_error`.
+	 */
+	readonly dailySeed?: (day: number) => number;
 	readonly limits?: RunSessionLimits;
 	readonly segmentLimits?: SegmentLimits;
 	readonly readScore?: RunScoreReader;
@@ -222,7 +244,9 @@ export class RunSessionRegistry {
 			return { ok: false, code: "busy", reason: "previous runs are still being checked" };
 		}
 
-		const seed = this.deps.pickSeed();
+		const picked = this.pickSeed(request.worldKind, ctx.unixNow);
+		if (typeIs(picked, "string")) return { ok: false, code: "config_error", reason: `config error: ${picked}` };
+		const { seed, daily } = picked;
 		if (!isValidRunSeed(seed)) return { ok: false, code: "config_error", reason: "config error: bad seed picked" };
 		// Co-op (M4): the world is built for the whole party (enemy hp / room budgets scale with its size).
 		const [built, setupOrErr] = pcall(() =>
@@ -249,6 +273,7 @@ export class RunSessionRegistry {
 			classId: request.classId,
 			atBossDoor,
 			debug: ctx.allowDebugInput || atBossDoor,
+			daily,
 			createdAt: ctx.now,
 			lastActivity: ctx.now,
 			setup,
@@ -273,6 +298,22 @@ export class RunSessionRegistry {
 		this.byId.set(runId, session);
 		this.openByOwner.set(ownerId, session);
 		return { ok: true, session, replaced };
+	}
+
+	/**
+	 * The run seed of a start in `worldKind` at wall time `unixNow`: the Daily's seed of that UTC day (with the day and
+	 * ruleset), else `pickSeed()`. A message when the Daily has no seed source.
+	 */
+	private pickSeed(
+		worldKind: RunWorldKind,
+		unixNow: number,
+	): { readonly seed: number; readonly daily: DailyRunKey | undefined } | string {
+		if (worldKind !== DAILY_WORLD_KIND) return { seed: this.deps.pickSeed(), daily: undefined };
+		const dailySeed = this.deps.dailySeed;
+		if (dailySeed === undefined) return "no daily seed on this server";
+		if (!isFiniteValue(unixNow)) return "no wall clock for the daily day";
+		const day = dailyDay(unixNow);
+		return { seed: dailySeed(day), daily: { day, ruleset: DAILY.ruleset } };
 	}
 
 	/** The session `runId` if `ownerId` owns it. */
