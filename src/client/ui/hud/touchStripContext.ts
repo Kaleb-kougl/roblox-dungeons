@@ -15,7 +15,7 @@ import {
 	type TouchStripGeometry,
 	type TouchStripLayout,
 } from "shared/view/hud";
-import { PAUSE_BUTTON_VIEW } from "shared/view/menu";
+import { pauseButtonSlot } from "shared/view/menu";
 
 /**
  * Where the touch strip may go (docs/UI_ART.md "Phones"), measured by GameHud on touch and handed down: undefined off
@@ -84,7 +84,8 @@ function rectKey(g: TouchStripGeometry): string {
  * Measures the strip's geometry while `on`: the HUD's safe area in screen px (KV_GameHud's AbsolutePosition less the
  * full-screen strip ScreenGui's: both read in the same GUI space, so the difference is the safe area's offset from the
  * screen's top left), the free top bar (GuiService.TopbarInset, screen px, as the pause button reads it) and the pause
- * button's slot. Follows the top bar, both ScreenGuis and the viewport; a new object only when a number changed.
+ * button's slot (shared/view/menu pauseButtonSlot on touch: right of the allowance for Roblox's voice button). Follows
+ * the top bar, both ScreenGuis and the viewport; a new object only when a number changed.
  */
 export function useTouchStripGeometry(
 	on: boolean,
@@ -107,16 +108,14 @@ export function useTouchStripGeometry(
 			const p = hud.AbsolutePosition;
 			const inset = GuiService.TopbarInset;
 			const inBar = inset.Width > 0 && inset.Height > 0;
-			const pause = PAUSE_BUTTON_VIEW;
+			const topbar = { x: inset.Min.X, y: inset.Min.Y, w: inset.Width, h: inset.Height };
 			const g: TouchStripGeometry = {
 				viewportW: camera.ViewportSize.X,
 				viewportH: camera.ViewportSize.Y,
 				hudPercent: percent,
 				safe: { x: p.X - o.X, y: p.Y - o.Y, w: size.X, h: size.Y },
-				topbar: inBar
-					? { x: inset.Min.X, y: inset.Min.Y, w: inset.Width, h: inset.Height }
-					: { x: 0, y: 0, w: 0, h: 0 },
-				reserveLeft: inBar ? pause.gap + math.min(pause.size, inset.Height) : pause.fallbackMargin + pause.size,
+				topbar: inBar ? topbar : { x: 0, y: 0, w: 0, h: 0 },
+				reserveLeft: pauseButtonSlot(topbar, true).reserveLeft,
 			};
 			const key = rectKey(g);
 			if (key === last) return;

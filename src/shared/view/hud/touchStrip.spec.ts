@@ -3,7 +3,7 @@
 // the touch controls keep clear of it and get the corner panels' old room back.
 import { describe, expect, it } from "@rbxts/jest-globals";
 import { HUD_SCALE_PERCENTS } from "shared/settings";
-import { PAUSE_BUTTON_VIEW } from "shared/view/menu";
+import { PAUSE_BUTTON_VIEW, pauseButtonSlot, robloxButtonsEnd } from "shared/view/menu";
 import {
 	HUD_TRANSIENT,
 	HUD_VIEW,
@@ -88,13 +88,15 @@ function safeOf(sc: Screen): ScreenRect {
 
 function geometry(sc: Screen, percent: number, topbar = true): TouchStripGeometry {
 	const x = sc.side + BUTTONS;
+	const bar = topbar ? { x, y: 0, w: sc.w - sc.side - x, h: TOP_BAR } : { x: 0, y: 0, w: 0, h: 0 };
 	return {
 		viewportW: sc.w,
 		viewportH: sc.h,
 		hudPercent: percent,
 		safe: safeOf(sc),
-		topbar: topbar ? { x, y: 0, w: sc.w - sc.side - x, h: TOP_BAR } : { x: 0, y: 0, w: 0, h: 0 },
-		reserveLeft: PAUSE_BUTTON_VIEW.gap + PAUSE_BUTTON_VIEW.size,
+		topbar: bar,
+		// As the client measures it on touch (touchStripContext): the pause button right of the voice button allowance.
+		reserveLeft: pauseButtonSlot(bar, true).reserveLeft,
 	};
 }
 
@@ -273,6 +275,37 @@ describe("touch strip: every screen, HUD scale and look", () => {
 	});
 });
 
+/** Steps the spec moves the end of Roblox's pill through. */
+const PILL_STEPS = 13;
+
+describe("touch strip: Roblox's buttons", () => {
+	it("the pause button and the strip keep the gap from Roblox's pill wherever it ends (Min.X .. one button past it)", () => {
+		const gap = PAUSE_BUTTON_VIEW.gap;
+		for (const sc of SCREENS) {
+			for (const percent of HUD_SCALE_PERCENTS) {
+				for (const [look, art] of LOOKS) {
+					const geo = geometry(sc, percent);
+					const r = touchStrip(geo, content(art));
+					const pause = pauseButtonSlot(geo.topbar, true);
+					const furthest = robloxButtonsEnd(geo.topbar.x, true);
+					expectOk(
+						sc.name,
+						"one button and its gap",
+						furthest - geo.topbar.x >= PAUSE_BUTTON_VIEW.robloxButton,
+					);
+					for (let i = 0; i <= PILL_STEPS; i++) {
+						const pillEnd = geo.topbar.x + ((furthest - geo.topbar.x) * i) / PILL_STEPS;
+						const where = string.format("%s hud %d %s pill ends %.1f", sc.name, percent, look, pillEnd);
+						expectOk(where, "pause button after the gap", pause.x - pillEnd >= gap - EPS);
+						expectOk(where, "strip after the gap", r.group.x - pillEnd >= gap - EPS);
+						expectOk(where, "strip right of the pause button", r.group.x >= pause.x + pause.size - EPS);
+					}
+				}
+			}
+		}
+	});
+});
+
 describe("touch strip: collapsing", () => {
 	it("collapses in order when the free top bar narrows, and never overlaps the bar's buttons", () => {
 		const sc = SCREENS[0];
@@ -356,7 +389,7 @@ describe("touch strip and the touch controls", () => {
 		}
 	});
 
-	it("the owner's phones get the usual cluster back at the HUD scale (they took the compact one under the corner panels)", () => {
+	it("the owner's phones get the usual cluster back (they took the compact one under the corner panels)", () => {
 		for (const sc of [SCREENS[0], SCREENS[1]]) {
 			const [, safe, boxes] = stripLayout(sc, PERCENT);
 			for (const hand of HANDS) {
@@ -364,7 +397,8 @@ describe("touch strip and the touch controls", () => {
 				const after = touchLayout(sc.w, sc.h, safe.w, safe.h, PERCENT, PERCENT, hand, "play", undefined, boxes);
 				expect(before.variant).toBe("compact");
 				expect(after.variant).toBe("play");
-				expect(after.scale).toBeCloseTo(after.hudScale, 6);
+				// The corner rules (TOUCH_LAYOUT.cornerBox / centreBand) may hold it under the HUD scale on a narrow phone.
+				expect(after.scale <= after.hudScale + EPS && after.scale >= TOUCH_LAYOUT.minScale - EPS).toBe(true);
 				print(
 					string.format(
 						"[touchStrip] %s %s: cluster %s x%.3f -> %s x%.3f (move zone top %.1f -> %.1f pt)",

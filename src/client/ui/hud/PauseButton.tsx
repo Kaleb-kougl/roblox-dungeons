@@ -5,6 +5,7 @@ import {
 	selectAnyPanelOpen,
 	selectCoopOverlay,
 	selectGameActive,
+	selectInputDevice,
 	selectMenuScreen,
 	selectRobloxMenuOpen,
 	selectRunInfo,
@@ -14,7 +15,7 @@ import {
 import { role } from "client/ui/theme";
 import { SFX } from "shared/view/audio";
 import { UI_ART } from "shared/view/hud";
-import { PAUSE_BUTTON_VIEW, pauseButtonShown } from "shared/view/menu";
+import { PAUSE_BUTTON_VIEW, pauseButtonShown, pauseButtonSlot } from "shared/view/menu";
 import { useHudActions } from "./actions";
 import { ArtImage } from "./primitives";
 
@@ -59,10 +60,11 @@ function Bar(props: { x: number }) {
 }
 
 /**
- * The on-screen pause button (mouse and touch; a pad pauses with Start): a round button in the Roblox top bar, right
- * of Roblox's own buttons, shown while a run is being played (shared/view/menu pauseButtonShown). A solo run pauses
- * (the pause overlay takes over, with Resume), a co-op run opens the party overlay. It acts on the PRESS, not the
- * release, so the click never reaches the game as an attack (HudActions.pause suppresses the mouse until released).
+ * The on-screen pause button (mouse and touch; a pad pauses with Start): a round button in the Roblox top bar, right of
+ * Roblox's own buttons (shared/view/menu pauseButtonSlot: on touch one Roblox button further right, for the voice
+ * button TopbarInset leaves out), shown while a run is being played (shared/view/menu pauseButtonShown). A solo run
+ * pauses (the pause overlay takes over, with Resume), a co-op run opens the party overlay. It acts on the PRESS, not
+ * the release, so the click never reaches the game as an attack (HudActions.pause suppresses the mouse until released).
  * Its own ScreenGui without safe-area insets (GameHud): the top bar sits outside the HUD's safe area. Its glyph is the
  * framed pause icon when the pack has it (docs/UI_ART.md UA8; the one icon without a label: it has none today), else
  * the two code-drawn bars.
@@ -78,6 +80,7 @@ export function PauseButton() {
 	const tutorialEnded = useSelector(selectTutorialEnded);
 	const actions = useHudActions();
 	const inset = useTopbarInset();
+	const touch = useSelector(selectInputDevice) === "touch";
 	const [hover, setHover] = useState(false);
 
 	const shown = pauseButtonShown({
@@ -97,11 +100,9 @@ export function PauseButton() {
 	if (!shown) return undefined;
 
 	const view = PAUSE_BUTTON_VIEW;
-	const inBar = inset.Width > 0 && inset.Height > 0;
-	const size = inBar ? math.min(view.size, inset.Height) : view.size;
-	const position = inBar
-		? UDim2.fromOffset(inset.Min.X + view.gap, inset.Min.Y + (inset.Height - size) / 2)
-		: UDim2.fromOffset(view.fallbackMargin, view.fallbackMargin);
+	const slot = pauseButtonSlot({ x: inset.Min.X, y: inset.Min.Y, w: inset.Width, h: inset.Height }, touch);
+	const size = slot.size;
+	const position = UDim2.fromOffset(slot.x, slot.y);
 	return (
 		<textbutton
 			key="PauseButton"

@@ -1,11 +1,15 @@
 /**
  * Where the touch controls sit (docs/MOBILE.md MB2), pure. Positions are reference px measured from the ACTION side's
  * bottom corner of the safe area (the right edge, or the left when left-handed): x inward from that side edge, y up
- * from the bottom. touchLayout() scales them so no control reaches the status / score panels' budget boxes (plus
- * TOUCH_LAYOUT.clusterGap: touchPanelKeepOut) or, given `hudBoxes`, the touch strip's boxes (touchStripKeepOut: the
- * strip replaces those panels on touch, docs/UI_ART.md "Phones"), never below TOUCH_LAYOUT.minScale; where `play` cannot keep clear at
- * minScale (a short safe area: a phone under a tall top bar, or a HUD scale above 100 %) it takes the lower `compact`
- * cluster, and only below that the scale drops under minScale (never under the smallest tappable circle).
+ * from the bottom. The cluster hugs its corner (owner 2026-10-31: "closer to the corners and less spaced out"): Attack
+ * near the corner, the other buttons packed on two arcs around it TOUCH_LAYOUT.neighbourGap apart, the move stick's
+ * idle home in the other bottom corner. touchLayout() scales them so no control reaches the status / score panels'
+ * budget boxes (plus TOUCH_LAYOUT.clusterGap: touchPanelKeepOut) or, given `hudBoxes`, the touch strip's boxes
+ * (touchStripKeepOut: the strip replaces those panels on touch, docs/UI_ART.md "Phones"), each side's controls stay in
+ * their corner box (TOUCH_LAYOUT.cornerBox) and out of the screen's middle third (TOUCH_LAYOUT.centreBand), never below
+ * TOUCH_LAYOUT.minScale; where `play` cannot keep clear at minScale (a short safe area under the corner panels at a
+ * large HUD scale) it takes the lower `compact` cluster, and only below that the scale drops under minScale (never
+ * under the smallest tappable circle); last of all the corner rules give way (TouchLayoutResult.inCorner).
  */
 import { TOUCH } from "shared/config";
 import { cornerRect, HUD_FOOTPRINT, TOUCH_ALWAYS_ON_PANELS } from "./footprint";
@@ -42,10 +46,20 @@ export const TOUCH_LAYOUT = {
 	clusterGap: 8,
 	/** The move zone's widest share of the safe area's width. */
 	moveZoneWidthShare: 0.4,
-	/** The move stick's idle ring, from the move side's bottom corner. */
-	moveHome: { x: 150, y: 150, r: 60 },
-	/** The move stick's idle ring with the `compact` cluster (lower, like it). */
-	compactMoveHome: { x: 130, y: 110, r: 60 },
+	/** The move stick's idle ring, from the move side's bottom corner (both clusters). */
+	moveHome: { x: 70, y: 70, r: 60 },
+	/**
+	 * Each side's controls stay inside a box from their bottom corner of the safe area, as shares of its width and
+	 * height (the scale gives way first): the action cluster never spreads over the right half.
+	 */
+	cornerBox: { w: 0.45, h: 0.75 },
+	/**
+	 * No control's centre in the middle `centreBand` of the screen's width (the middle third), the safe area taken as
+	 * centred in the viewport (a landscape phone's notch insets are symmetric): the player stands there.
+	 */
+	centreBand: 1 / 3,
+	/** Reference px between neighbouring controls in `play` / `compact` (their positions are packed with it). */
+	neighbourGap: 4,
 	/** Halvings of the scale search (touchLayout: the largest scale that keeps clear, to ~1e-7 of the range). */
 	fitSteps: 24,
 	/** Smallest circle diameter (px) the spec accepts. */
@@ -61,33 +75,39 @@ export const TOUCH_LAYOUT = {
 	ringStroke: 2,
 	/** Correction (px) added to a touch point's position in GUI space (the MB0 spike measures it); 0 until measured. */
 	guiOffset: { x: 0, y: 0 },
+	/**
+	 * Attack in the corner (10 px from both safe edges); the inner arc around it, Roll (on the bottom edge), Alt, Flask
+	 * and Ember (on the side edge); the outer arc, Swap (left of Roll and Alt) and Accept (over Alt and Flask). Every
+	 * neighbour TOUCH_LAYOUT.neighbourGap apart (rounded to whole px): 307 x 268 reference px.
+	 */
 	play: [
-		{ id: "attack", x: 140, y: 140, r: 75, side: "action" },
-		{ id: "roll", x: 280, y: 70, r: 45, side: "action" },
-		{ id: "alt", x: 250, y: 230, r: 50, side: "action" },
-		{ id: "ember", x: 60, y: 260, r: 38, side: "action" },
-		{ id: "flask", x: 380, y: 250, r: 38, side: "action" },
-		{ id: "swap", x: 400, y: 110, r: 38, side: "action" },
-		{ id: "shrine", x: 480, y: 170, r: 38, side: "action" },
+		{ id: "attack", x: 85, y: 85, r: 75, side: "action" },
+		{ id: "roll", x: 201, y: 52, r: 42, side: "action" },
+		{ id: "alt", x: 195, y: 144, r: 46, side: "action" },
+		{ id: "flask", x: 124, y: 194, r: 37, side: "action" },
+		{ id: "ember", x: 47, y: 195, r: 37, side: "action" },
+		{ id: "swap", x: 270, y: 99, r: 37, side: "action" },
+		{ id: "shrine", x: 193, y: 231, r: 37, side: "action" },
 	] as ReadonlyArray<CircleSpec>,
 	/**
-	 * The short-screen cluster (used when `play` cannot keep clear of the corner panels at minScale or above): at most
-	 * 200 reference px tall, so it fits under the score panel at minScale on a 251 pt tall safe area (a 330 pt phone
-	 * under the 58 pt top bar and the home indicator). Attack sits lower; Ember moves into the corner below it; Alt and
-	 * Roll stand left of Attack, Swap / Flask / Accept left of them.
+	 * The short-screen cluster (used when `play` cannot keep clear of the corner panels' boxes at minScale or above: the
+	 * score box takes the top of the action corner): at most 190 reference px tall (`play`: 268), so it fits under the
+	 * corner panels at minScale on a 251 pt tall safe area. Attack, Roll and Alt as in `play`; Ember / Swap and Flask /
+	 * Accept in two columns of two left of them, every neighbour TOUCH_LAYOUT.neighbourGap apart (399 wide).
 	 */
 	compact: [
-		{ id: "attack", x: 130, y: 115, r: 75, side: "action" },
-		{ id: "roll", x: 285, y: 48, r: 45, side: "action" },
-		{ id: "alt", x: 265, y: 150, r: 50, side: "action" },
-		{ id: "ember", x: 40, y: 40, r: 38, side: "action" },
-		{ id: "flask", x: 375, y: 60, r: 38, side: "action" },
-		{ id: "swap", x: 370, y: 150, r: 38, side: "action" },
-		{ id: "shrine", x: 460, y: 110, r: 38, side: "action" },
+		{ id: "attack", x: 85, y: 85, r: 75, side: "action" },
+		{ id: "roll", x: 201, y: 52, r: 42, side: "action" },
+		{ id: "alt", x: 195, y: 144, r: 46, side: "action" },
+		{ id: "ember", x: 284, y: 47, r: 37, side: "action" },
+		{ id: "swap", x: 280, y: 125, r: 37, side: "action" },
+		{ id: "flask", x: 362, y: 47, r: 37, side: "action" },
+		{ id: "shrine", x: 358, y: 125, r: 37, side: "action" },
 	] as ReadonlyArray<CircleSpec>,
+	/** Spectating: Next in the action corner, Prev in the move corner (where the move stick rests in play). */
 	spectate: [
-		{ id: "spectateNext", x: 140, y: 140, r: 60, side: "action" },
-		{ id: "spectatePrev", x: 140, y: 140, r: 60, side: "move" },
+		{ id: "spectateNext", x: 70, y: 70, r: 60, side: "action" },
+		{ id: "spectatePrev", x: 70, y: 70, r: 60, side: "move" },
 	] as ReadonlyArray<CircleSpec>,
 } as const;
 
@@ -130,6 +150,11 @@ export interface TouchLayoutResult {
 	 * cluster at the smallest tappable scale cannot (no test screen; the spec holds it true).
 	 */
 	readonly clear: boolean;
+	/**
+	 * Every control also stays in its corner (TOUCH_LAYOUT cornerBox / centreBand). False only under the corner panels'
+	 * boxes on a short phone at a large HUD scale (the strip, which replaces them on touch, always leaves the room).
+	 */
+	readonly inCorner: boolean;
 	/** The HUD scale the corner panels use on touch (computeHudScale with touch = true). */
 	readonly hudScale: number;
 	/** px from the safe area's top that the corner panels' boxes (and their gap) take: the lowest keepOut bottom. */
@@ -154,6 +179,7 @@ export function circleHitsRect(p: TouchPoint, z: ScreenRect): boolean {
 
 /** A small slack (px) for float noise when a circle exactly touches a box or the safe area's edge. */
 const CLEAR_EPS = 1e-6;
+const HALF = 0.5;
 
 /** Every point lies inside the `safeW` x `safeH` safe area and enters no `keepOut` rect. */
 export function touchControlsClear(
@@ -213,7 +239,7 @@ function smallestRadius(): number {
 	let m = math.huge;
 	for (const list of [TOUCH_LAYOUT.play, TOUCH_LAYOUT.compact, TOUCH_LAYOUT.spectate])
 		for (const c of list) m = math.min(m, c.r);
-	return math.min(m, TOUCH_LAYOUT.moveHome.r, TOUCH_LAYOUT.compactMoveHome.r);
+	return math.min(m, TOUCH_LAYOUT.moveHome.r);
 }
 
 /**
@@ -240,16 +266,44 @@ function placeCluster(
 	return out;
 }
 
-/** The cluster at scale `s` keeps clear with either hand (so the left-handed layout stays the right-handed's mirror). */
-function clusterFits(
+/**
+ * Every control of the cluster, its move home and the spectate buttons stays in its corner at scale `s`: inside
+ * TOUCH_LAYOUT.cornerBox from its side's bottom corner, its centre out of the screen's middle TOUCH_LAYOUT.centreBand
+ * (the safe area `safeW` wide taken as centred in the `viewportW` wide screen). The same for either hand.
+ */
+function clusterInCorner(
 	spec: ReadonlyArray<CircleSpec>,
 	home: HomeSpec,
 	s: number,
+	viewportW: number,
 	safeW: number,
 	safeH: number,
-	keepOut: ReadonlyArray<ScreenRect>,
 ): boolean {
+	const maxW = TOUCH_LAYOUT.cornerBox.w * safeW + CLEAR_EPS;
+	const maxH = TOUCH_LAYOUT.cornerBox.h * safeH + CLEAR_EPS;
+	const maxCentre = (safeW - viewportW * TOUCH_LAYOUT.centreBand) * HALF + CLEAR_EPS;
+	const ok = (c: HomeSpec) => (c.x + c.r) * s <= maxW && (c.y + c.r) * s <= maxH && c.x * s <= maxCentre;
+	for (const list of [spec, TOUCH_LAYOUT.spectate]) for (const c of list) if (!ok(c)) return false;
+	return ok(home);
+}
+
+/** What a fit must hold: the screen, and whether the corner rules (clusterInCorner) apply. */
+interface FitArea {
+	readonly viewportW: number;
+	readonly safeW: number;
+	readonly safeH: number;
+	readonly keepOut: ReadonlyArray<ScreenRect>;
+	readonly corner: boolean;
+}
+
+/**
+ * The cluster at scale `s` keeps clear with either hand (so the left-handed layout stays the right-handed's mirror)
+ * and, with `area.corner`, stays in its corners (clusterInCorner).
+ */
+function clusterFits(spec: ReadonlyArray<CircleSpec>, home: HomeSpec, s: number, area: FitArea): boolean {
+	const { viewportW, safeW, safeH, keepOut } = area;
 	return (
+		(!area.corner || clusterInCorner(spec, home, s, viewportW, safeW, safeH)) &&
 		touchControlsClear(placeCluster(spec, home, s, safeW, safeH, true), keepOut, safeW, safeH) &&
 		touchControlsClear(placeCluster(spec, home, s, safeW, safeH, false), keepOut, safeW, safeH)
 	);
@@ -261,17 +315,15 @@ function largestFit(
 	home: HomeSpec,
 	want: number,
 	lo: number,
-	safeW: number,
-	safeH: number,
-	keepOut: ReadonlyArray<ScreenRect>,
+	area: FitArea,
 ): number | undefined {
-	if (clusterFits(spec, home, want, safeW, safeH, keepOut)) return want;
-	if (lo > want || !clusterFits(spec, home, lo, safeW, safeH, keepOut)) return undefined;
+	if (clusterFits(spec, home, want, area)) return want;
+	if (lo > want || !clusterFits(spec, home, lo, area)) return undefined;
 	let a = lo;
 	let b = want;
 	for (let i = 0; i < TOUCH_LAYOUT.fitSteps; i++) {
 		const m = (a + b) / 2;
-		if (clusterFits(spec, home, m, safeW, safeH, keepOut)) a = m;
+		if (clusterFits(spec, home, m, area)) a = m;
 		else b = m;
 	}
 	return a;
@@ -297,23 +349,31 @@ export function touchLayout(
 	let topBand = 0;
 	for (const z of keepOut) topBand = math.max(topBand, z.y + z.h);
 
-	// The largest scale up to the setting's that keeps clear: the usual cluster, then the compact one, then the compact
-	// one under minScale down to the smallest tappable circle (TOUCH_LAYOUT.minDiameterPx).
+	// The largest scale up to the setting's that keeps clear and in the corners: the usual cluster, then the compact one,
+	// then the compact one under minScale down to the smallest tappable circle (TOUCH_LAYOUT.minDiameterPx); only then
+	// the compact one keeping clear without the corner rules (a short phone under the corner panels' boxes at a large
+	// HUD scale: the strip that replaces them leaves the corner room).
 	const want = math.max(TOUCH_LAYOUT.minScale, (hudScale * sizePercent) / PERCENT);
 	const floorScale = TOUCH_LAYOUT.minDiameterPx / (2 * smallestRadius());
+	const home: HomeSpec = TOUCH_LAYOUT.moveHome;
+	const area: FitArea = { viewportW, safeW, safeH, keepOut, corner: true };
 	let variant: TouchLayoutVariant = "play";
 	let spec = TOUCH_LAYOUT.play;
-	let home: HomeSpec = TOUCH_LAYOUT.moveHome;
-	let scale = largestFit(spec, home, want, TOUCH_LAYOUT.minScale, safeW, safeH, keepOut);
+	let scale = largestFit(spec, home, want, TOUCH_LAYOUT.minScale, area);
+	let inCorner = true;
 	if (scale === undefined) {
 		variant = "compact";
 		spec = TOUCH_LAYOUT.compact;
-		home = TOUCH_LAYOUT.compactMoveHome;
 		scale =
-			largestFit(spec, home, want, TOUCH_LAYOUT.minScale, safeW, safeH, keepOut) ??
-			largestFit(spec, home, TOUCH_LAYOUT.minScale, floorScale, safeW, safeH, keepOut);
+			largestFit(spec, home, want, TOUCH_LAYOUT.minScale, area) ??
+			largestFit(spec, home, TOUCH_LAYOUT.minScale, floorScale, area);
+	}
+	if (scale === undefined) {
+		inCorner = false;
+		scale = largestFit(spec, home, want, floorScale, { ...area, corner: false });
 	}
 	const clear = scale !== undefined;
+	inCorner = inCorner && clear;
 	const s = scale ?? floorScale;
 
 	const actionRight = !leftHanded;
@@ -346,6 +406,7 @@ export function touchLayout(
 		variant,
 		keepOut,
 		clear,
+		inCorner,
 		hudScale,
 		topBand,
 		moveZone,
