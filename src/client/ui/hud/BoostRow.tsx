@@ -17,15 +17,32 @@ import { HighlightRing } from "./TutorialFx";
 const STROKE = 1;
 const HIDDEN = 1;
 
+/** A boost cell's sizes (reference px): BOOST_VIEW's in the status panel, the touch strip's chips smaller. */
+export interface BoostLook {
+	readonly iconSize: number;
+	readonly iconTextSize: number;
+	readonly iconBarGap: number;
+	readonly barWidth: number;
+	readonly barHeight: number;
+}
+
+const STATUS_LOOK: BoostLook = BOOST_VIEW;
+
+/** A boost cell's width: icon, gap, bar. */
+export function boostCellWidth(look: BoostLook): number {
+	return look.iconSize + look.iconBarGap + look.barWidth;
+}
+
 /**
  * One running boost: an icon square in the kind's colour role with its `boost.<kind>.icon` label, and a bar beside it
  * draining with `fraction`. Under BOOST_VIEW.blinkSeconds left both blink (boostBlinkTransparency on the snapshot's
  * quantised secondsLeft, so the blink follows sim time and needs no frame connection; a steady dim under reduced
  * motion).
  */
-function BoostEntry(props: { order: number; entry: BoostHudEntry; motion: number }) {
+function BoostEntry(props: { order: number; entry: BoostHudEntry; motion: number; look: BoostLook }) {
 	const e = props.entry;
-	const v = BOOST_VIEW;
+	const v = props.look;
+	const tint = BOOST_VIEW;
 	const color = boostColorRole(e.kind);
 	const fade = boostBlinkTransparency(e.secondsLeft, props.motion);
 	return (
@@ -53,7 +70,7 @@ function BoostEntry(props: { order: number; entry: BoostHudEntry; motion: number
 					BackgroundTransparency={HIDDEN}
 					Font={HUD_FONT}
 					TextSize={v.iconTextSize}
-					TextColor3={role(v.iconTextRole)}
+					TextColor3={role(tint.iconTextRole)}
 					TextTransparency={fade}
 					Text={str(boostIconKey(e.kind))}
 				/>
@@ -61,7 +78,7 @@ function BoostEntry(props: { order: number; entry: BoostHudEntry; motion: number
 			<frame
 				LayoutOrder={2}
 				Size={new UDim2(0, v.barWidth, 0, v.barHeight)}
-				BackgroundColor3={role(v.barTrackRole)}
+				BackgroundColor3={role(tint.barTrackRole)}
 				BorderSizePixel={0}
 			>
 				<uistroke Thickness={STROKE} Color={role("background")} />
@@ -82,19 +99,29 @@ function BoostEntry(props: { order: number; entry: BoostHudEntry; motion: number
  * HUD's reference size under GameHud's UIScale, `useHudScale`).
  * `highlight`: the tutorial's pulsing ring on the row (TutorialView.highlight === "boosts"). Nothing when no boost runs.
  */
-export function BoostRow(props: { order: number; boosts: ReadonlyArray<BoostHudEntry>; highlight?: boolean }) {
+export function BoostRow(props: {
+	order: number;
+	boosts: ReadonlyArray<BoostHudEntry>;
+	highlight?: boolean;
+	/** Cell sizes, the row's widest and the gap (default: the status panel's; the touch strip's chips pass their own). */
+	look?: BoostLook;
+	maxWidth?: number;
+	gap?: number;
+}) {
 	const motion = motionScale(useSelector(selectJuice));
 	if (props.boosts.size() === 0) return undefined;
+	const look = props.look ?? STATUS_LOOK;
 	const entries = props.boosts.map((e, i) => (
-		<BoostEntry key={`boost${e.kind}`} order={i + 1} entry={e} motion={motion} />
+		<BoostEntry key={`boost${e.kind}`} order={i + 1} entry={e} motion={motion} look={look} />
 	));
 	return (
 		<GridRow
 			order={props.order}
 			count={entries.size()}
-			cellW={BOOST_VIEW.iconSize + BOOST_VIEW.iconBarGap + BOOST_VIEW.barWidth}
-			cellH={BOOST_VIEW.iconSize}
-			maxWidth={statusRowMaxWidth()}
+			cellW={boostCellWidth(look)}
+			cellH={look.iconSize}
+			maxWidth={props.maxWidth ?? statusRowMaxWidth()}
+			gap={props.gap}
 		>
 			{entries}
 			{props.highlight === true ? <HighlightRing /> : undefined}

@@ -83,47 +83,7 @@ export function ComboRow(props: { readonly order: number; readonly width: number
 					<uiscale Scale={U.slotScale.binding} />
 					<uitextsizeconstraint MaxTextSize={COMBO_DRAW.slotMaxText} />
 				</textlabel>
-				<frame
-					key="MultSlot"
-					AnchorPoint={new Vector2(1, HALF)}
-					Position={UDim2.fromScale(1, HALF)}
-					Size={new UDim2(0, multW, 1, 0)}
-					BackgroundTransparency={HIDDEN}
-				>
-					<textlabel
-						key="Mult"
-						AnchorPoint={new Vector2(1, HALF)}
-						Position={UDim2.fromScale(1, HALF)}
-						Size={UDim2.fromScale(1, 1)}
-						BackgroundTransparency={HIDDEN}
-						Font={HUD_FONT}
-						RichText={true}
-						TextSize={HUD_VIEW.titleText}
-						TextColor3={U.multColor.binding}
-						TextStrokeColor3={stroke}
-						TextStrokeTransparency={HUD_VIEW.panelTransparency}
-						TextXAlignment={Enum.TextXAlignment.Right}
-						Text={U.multText.binding}
-					>
-						<uiscale Scale={U.multScale.binding} />
-						<textlabel
-							key="Shine"
-							Size={UDim2.fromScale(1, 1)}
-							BackgroundTransparency={HIDDEN}
-							Font={HUD_FONT}
-							TextSize={HUD_VIEW.titleText}
-							RichText={true}
-							TextColor3={role("uiText")}
-							TextStrokeTransparency={HIDDEN}
-							TextXAlignment={Enum.TextXAlignment.Right}
-							Text={U.multText.binding}
-							Visible={SHINE_VISIBLE}
-							ZIndex={SHINE_Z}
-						>
-							<uigradient Transparency={shineBand()} Offset={SHINE_OFFSET} />
-						</textlabel>
-					</textlabel>
-				</frame>
+				<ComboMultiplier key="MultSlot" width={multW} textSize={HUD_VIEW.titleText} placed={true} />
 				<textlabel
 					key="Drop"
 					AnchorPoint={new Vector2(1, 0)}
@@ -142,6 +102,68 @@ export function ComboRow(props: { readonly order: number; readonly width: number
 					Visible={DROP_VISIBLE}
 				/>
 			</frame>
+		</frame>
+	);
+}
+
+/**
+ * The combo multiplier (docs/COMBO.md CB6): HUD_STRINGS.combo in the tier colour, struck through while broken, popped
+ * on every feed by its own UIScale, UNSTOPPABLE's shine over it; every property a COMBO_UI binding. `placed`: the
+ * score panel's combo row hangs it at its right centre, a `width` wide slot as tall as the row; otherwise (the touch
+ * strip, in a list layout) it is a `width` x `height` slot.
+ */
+export function ComboMultiplier(props: {
+	readonly width: number;
+	readonly textSize: number;
+	readonly placed?: boolean;
+	readonly height?: number;
+	readonly order?: number;
+}) {
+	const placed = props.placed === true;
+	const stroke = role("background");
+	const U = COMBO_UI;
+	return (
+		<frame
+			key="MultSlot"
+			LayoutOrder={props.order ?? 0}
+			AnchorPoint={placed ? new Vector2(1, HALF) : new Vector2()}
+			Position={placed ? UDim2.fromScale(1, HALF) : new UDim2()}
+			Size={placed ? new UDim2(0, props.width, 1, 0) : new UDim2(0, props.width, 0, props.height ?? 0)}
+			BackgroundTransparency={HIDDEN}
+		>
+			<textlabel
+				key="Mult"
+				AnchorPoint={new Vector2(1, HALF)}
+				Position={UDim2.fromScale(1, HALF)}
+				Size={UDim2.fromScale(1, 1)}
+				BackgroundTransparency={HIDDEN}
+				Font={HUD_FONT}
+				RichText={true}
+				TextSize={props.textSize}
+				TextColor3={U.multColor.binding}
+				TextStrokeColor3={stroke}
+				TextStrokeTransparency={HUD_VIEW.panelTransparency}
+				TextXAlignment={Enum.TextXAlignment.Right}
+				Text={U.multText.binding}
+			>
+				<uiscale Scale={U.multScale.binding} />
+				<textlabel
+					key="Shine"
+					Size={UDim2.fromScale(1, 1)}
+					BackgroundTransparency={HIDDEN}
+					Font={HUD_FONT}
+					TextSize={props.textSize}
+					RichText={true}
+					TextColor3={role("uiText")}
+					TextStrokeTransparency={HIDDEN}
+					TextXAlignment={Enum.TextXAlignment.Right}
+					Text={U.multText.binding}
+					Visible={SHINE_VISIBLE}
+					ZIndex={SHINE_Z}
+				>
+					<uigradient Transparency={shineBand()} Offset={SHINE_OFFSET} />
+				</textlabel>
+			</textlabel>
 		</frame>
 	);
 }

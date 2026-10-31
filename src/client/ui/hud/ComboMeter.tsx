@@ -65,7 +65,7 @@ const SHARDS: ReadonlyArray<ShardBindings> = (() => {
  * ZIndex, over row 5; the corner CanvasGroup clips anything past the panel's edge. Every per-frame property is a
  * COMBO_UI binding.
  */
-export function ComboMeter(props: { readonly order: number; readonly width: number }) {
+export function ComboMeter(props: { readonly order: number; readonly width: number; readonly height?: number }) {
 	const panel = role("uiPanel");
 	const broken = role(COMBO_BROKEN_ROLE as ColorRole);
 	const trackColor = useMemo(
@@ -92,7 +92,7 @@ export function ComboMeter(props: { readonly order: number; readonly width: numb
 		<frame
 			key="ComboMeter"
 			LayoutOrder={props.order}
-			Size={new UDim2(0, props.width, 0, HUD_VIEW.comboBarHeight)}
+			Size={new UDim2(0, props.width, 0, props.height ?? HUD_VIEW.comboBarHeight)}
 			BackgroundColor3={trackColor}
 			BorderSizePixel={0}
 			ZIndex={COMBO_METER_Z}

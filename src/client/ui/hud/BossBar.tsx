@@ -1,19 +1,22 @@
 import React from "@rbxts/react";
 import { useSelector } from "@rbxts/react-reflex";
 import { selectSnapshot } from "client/store";
-import { role, str, themePack } from "client/ui/theme";
+import { HUD_FONT, role, str, themePack } from "client/ui/theme";
 import {
 	HUD_SKIN,
 	HUD_STRINGS,
 	HUD_VIEW,
+	TOUCH_STRIP,
 	bossFraction,
 	fillClip,
 	pillFit,
 	romanPhase,
 	skinFor,
 	skinHasOf,
+	type TouchStripLayout,
 } from "shared/view/hud";
 import { Panel, Row, SlicedImage, Text } from "./primitives";
+import { useTouchStrip } from "./touchStripContext";
 import { HighlightRing } from "./TutorialFx";
 import { useHudScale } from "./useHudScale";
 
@@ -131,16 +134,115 @@ function PillBar(props: { frac: number; marks: ReadonlyArray<number>; trackId: s
 }
 
 /**
+ * The slim boss bar on touch (docs/UI_ART.md "Phones"): one row in the touch strip's boss slot (touchStrip `boss`,
+ * under the strip's chips line, top centre): the name (TextScaled down to fit its share), a thin flat bar (the `boss`
+ * fill and the phase notches; the 16 art px pill cannot be drawn this thin at a whole screen px per art px, so the
+ * flat bar is drawn with or without the art) and the phase. No panel box.
+ */
+function SlimBossBar(props: {
+	layout: TouchStripLayout;
+	frac: number;
+	marks: ReadonlyArray<number>;
+	name: string;
+	phase: string;
+	highlight?: boolean;
+}) {
+	const B = TOUCH_STRIP.boss;
+	const L = props.layout;
+	const width = L.boss.w / L.hudScale;
+	const nameW = math.floor(width * B.nameShare);
+	const barW = math.max(0, width - nameW - B.phaseWidth - HUD_VIEW.gap * 2);
+	const stroke = role("background");
+	return (
+		<frame
+			key="BossBar"
+			AnchorPoint={new Vector2(HALF, 0)}
+			Position={new UDim2(HALF, 0, 0, L.bossTop)}
+			Size={new UDim2(0, width, 0, B.height)}
+			BackgroundTransparency={HIDDEN}
+		>
+			<uilistlayout
+				FillDirection={Enum.FillDirection.Horizontal}
+				VerticalAlignment={Enum.VerticalAlignment.Center}
+				SortOrder={Enum.SortOrder.LayoutOrder}
+				Padding={new UDim(0, HUD_VIEW.gap)}
+			/>
+			<textlabel
+				key="Name"
+				LayoutOrder={1}
+				Size={new UDim2(0, nameW, 0, B.height)}
+				BackgroundTransparency={HIDDEN}
+				Font={HUD_FONT}
+				TextScaled={true}
+				TextColor3={role("uiText")}
+				TextStrokeColor3={stroke}
+				TextStrokeTransparency={HUD_VIEW.panelTransparency}
+				TextXAlignment={Enum.TextXAlignment.Left}
+				Text={props.name}
+			>
+				<uitextsizeconstraint MaxTextSize={B.text} />
+			</textlabel>
+			<frame
+				key="Bar"
+				LayoutOrder={2}
+				Size={new UDim2(0, barW, 0, B.barHeight)}
+				BackgroundColor3={role("uiPanel")}
+				BorderSizePixel={0}
+			>
+				<uistroke Thickness={STROKE} Color={role("background")} />
+				<frame
+					Size={UDim2.fromScale(props.frac, 1)}
+					BackgroundColor3={role("boss")}
+					BorderSizePixel={0}
+					ZIndex={BAR_Z.fill}
+				/>
+				{notches(props.marks, props.frac)}
+			</frame>
+			<textlabel
+				key="Phase"
+				LayoutOrder={3}
+				Size={new UDim2(0, B.phaseWidth, 0, B.height)}
+				BackgroundTransparency={HIDDEN}
+				Font={HUD_FONT}
+				TextScaled={true}
+				TextColor3={role("uiAccent")}
+				TextStrokeColor3={stroke}
+				TextStrokeTransparency={HUD_VIEW.panelTransparency}
+				TextXAlignment={Enum.TextXAlignment.Right}
+				Text={props.phase}
+			>
+				<uitextsizeconstraint MaxTextSize={B.text} />
+			</textlabel>
+			{props.highlight === true ? <HighlightRing /> : undefined}
+		</frame>
+	);
+}
+
+/**
  * Top centre (web BossHud): while a live boss is engaged, its name (theme string `<boss id>.name`) and phase (Roman
  * numerals, `boss.hud.phase`), and an hp bar in the `boss` role with a notch at every phase threshold (boss.act1:
  * 66 % / 33 %, from the archetype's phaseHp). Hidden otherwise; the victory line is the run-over panel's.
  * `highlight`: the tutorial's ring (the boss lesson, the phase callouts). With the UI art (docs/UI_ART.md UA11) the
- * panel is the in-run (hud) frame and the bar a pill (PillBar); without, the flat panel and bar.
+ * panel is the in-run (hud) frame and the bar a pill (PillBar); without, the flat panel and bar. On touch the slim bar
+ * under the touch strip (SlimBossBar).
  */
 export function BossBar(props: { readonly highlight?: boolean }) {
 	const s = useSelector(selectSnapshot);
+	const strip = useTouchStrip();
 	if (!s.bossVisible) return undefined;
 	const frac = bossFraction(s.bossHp, s.bossHpMax);
+	if (strip !== undefined) {
+		return (
+			<SlimBossBar
+				layout={strip}
+				frac={frac}
+				marks={s.bossPhaseMarks}
+				name={str(`${s.bossId}.name`)}
+				phase={str(HUD_STRINGS.bossPhase, { phase: romanPhase(s.bossPhase) })}
+				highlight={props.highlight}
+			/>
+		);
+	}
 	const width = HUD_VIEW.bossWidth;
 	const nameWidth = math.floor((width - HUD_VIEW.pad * 2) * NAME_WIDTH_SHARE);
 	const pack = themePack();

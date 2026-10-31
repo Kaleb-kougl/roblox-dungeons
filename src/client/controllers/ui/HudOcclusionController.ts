@@ -1,7 +1,14 @@
 import { Controller, OnStart } from "@flamework/core";
 import { Janitor } from "@rbxts/janitor";
 import { RunService, Workspace } from "@rbxts/services";
-import { clientStore, selectDisplay, selectGameActive, selectJuice, selectRunInfo } from "client/store";
+import {
+	clientStore,
+	selectDisplay,
+	selectGameActive,
+	selectInputDevice,
+	selectJuice,
+	selectRunInfo,
+} from "client/store";
 import { cornerFrame, setCornerFade } from "client/ui";
 import { NO_KIND, playerAt } from "shared/sim";
 import { RENDER_ORDER, floorStudsY, lerp, studsX, studsY, studsZ } from "shared/view";
@@ -100,7 +107,9 @@ export class HudOcclusionController implements OnStart {
 		const store = clientStore.getState();
 		const state = this.sim.getState();
 		const on = selectDisplay(store).hudFade && selectGameActive(store) && state !== undefined;
-		if (selectRunInfo(store).debug) this.checkFootprint(rawDt);
+		// On touch the top-left slot holds the touch strip (sized by its own layout, docs/UI_ART.md "Phones"), not the
+		// status panel, and the other corner panels are hidden: their budget boxes do not apply.
+		if (selectRunInfo(store).debug && selectInputDevice(store) !== "touch") this.checkFootprint(rawDt);
 		if (!on) {
 			if (this.active) {
 				this.active = false;
