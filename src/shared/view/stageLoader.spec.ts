@@ -142,6 +142,45 @@ describe("StageLoad: solo run start", () => {
 	});
 });
 
+describe("StageLoad: holdAtLeast (a run start's roster line, docs/DAILY.md DS2)", () => {
+	it("the reveal waits until the cover has been up that long (the settle frames still count)", () => {
+		const load = new StageLoad("runStart", { forge: true, floor: 1 }, CFG);
+		load.coverShown();
+		runWork(load);
+		load.holdAtLeast(0.75);
+		load.holdAtLeast(0.5); // never shortens
+		load.assetsDone();
+		load.frame(0.5);
+		load.frame(0.125);
+		expect(load.phase()).toBe("settling");
+		load.frame(0.0625);
+		expect(load.phase()).toBe("settling");
+		load.frame(0.0625);
+		expect(load.coverSeconds()).toBe(0.75);
+		expect(load.phase()).toBe("revealing");
+	});
+
+	it("maxCoverSec still lifts it; a hold already served passes at once", () => {
+		const long = new StageLoad("coopStart", { floor: 1 }, CFG);
+		long.coverShown();
+		runWork(long);
+		long.holdAtLeast(60);
+		long.assetsDone();
+		for (let i = 0; i < 5 && long.phase() === "settling"; i++) long.frame(1);
+		expect(long.phase()).toBe("revealing");
+		expect(long.capped()).toBe(true);
+		const late = new StageLoad("runStart", { forge: true, floor: 1 }, CFG);
+		late.coverShown();
+		runWork(late);
+		late.frame(1);
+		late.assetsDone();
+		late.frame(0);
+		late.holdAtLeast(0.5);
+		late.frame(0);
+		expect(late.phase()).toBe("revealing");
+	});
+});
+
 describe("StageLoad: co-op start and floor change", () => {
 	it("co-op start: notify only, never holds the sim", () => {
 		const load = new StageLoad("coopStart", { forge: true, pregen: true, waitServer: true, floor: 1 }, CFG);
@@ -330,6 +369,7 @@ describe("StageLoad: opacity and the bar", () => {
 	it("the real tunables are the plan's", () => {
 		expect(STAGE_LOADER.minCardSec).toBe(0.6);
 		expect(STAGE_LOADER.minStartSec).toBe(0);
+		expect(STAGE_LOADER.rosterStartSec).toBe(1);
 		expect(STAGE_LOADER.assetCapSec).toBe(3);
 		expect(STAGE_LOADER.maxCoverSec).toBe(8);
 		expect(STAGE_LOADER.settleFrames).toBe(2);

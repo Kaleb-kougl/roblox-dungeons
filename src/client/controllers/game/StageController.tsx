@@ -7,11 +7,12 @@ import { GuiService, Players, RunService } from "@rbxts/services";
 import { clientStore, selectBaselineRun, selectJuice, selectRunBaseline } from "client/store";
 import { StageCard } from "client/ui";
 import { TUTORIAL } from "shared/config";
-import { ENDLESS_FIRST_FLOOR } from "shared/dungeon";
+import { ENDLESS_FIRST_FLOOR, endlessRoster } from "shared/dungeon";
 import type { ContentRef } from "shared/theme";
-import { floorTarget, stageBestLine, type NewBestLineText } from "shared/view/hud";
+import { floorTarget, stageBestLine, stageCardLine, stageRosterLine, type NewBestLineText } from "shared/view/hud";
 import {
 	PregenTracker,
+	STAGE_LOADER,
 	StageLoad,
 	bossContentIds,
 	stageMerge,
@@ -77,6 +78,11 @@ function seconds(sec: number): string {
  *              the local player's draft on floor n has been open a rendered frame (solo and co-op, SD1). A floor
  *              reached without it was built mid-tick by the sim, as before (logged). Co-op starts pre-generate
  *              nothing under their cover (it would hold the cover while the party plays): floor 2 is built mid-tick.
+ *   lines      the cover's second line (shared/view/hud stageCardLine, docs/DAILY.md DS2 / DSD13): on a floor card the
+ *              seeded roster's `New: Imp` (stageRosterLine from the floor layout's roster and endlessRoster of the
+ *              floor before) or new best's line, NEW DEEPEST first; under a run start's bar floor 1's roster (`Swarmer ·
+ *              Bruiser`), set once the run is built (after the forge, or the listeners for a co-op start), and the
+ *              cover then shows at least STAGE_LOADER.rosterStartSec (StageLoad.holdAtLeast) so it can be read.
  *   cancel     SimController.stopRun (Leave run, exit) cancels: the cover goes, pending work is dropped. A restart, a
  *              new run or a party start replaces the load (stageMerge "new").
  *
@@ -113,6 +119,8 @@ export class StageController implements OnStart, StageDriver {
 	private forgeSec = 0;
 	private buildSec = 0;
 	private runCounter = 0;
+	/** The load serial whose run-start roster line was set (once per load). */
+	private rosterSerial = -1;
 
 	constructor(
 		private readonly sim: SimController,
@@ -255,11 +263,12 @@ export class StageController implements OnStart, StageDriver {
 		const label = load.label();
 		let biomeKey = "";
 		let boss = false;
-		let best: NewBestLineText | undefined;
+		let line: NewBestLineText | undefined;
 		if (kind === "floorChange" && ctx !== undefined) {
 			biomeKey = clientStore.getState().game.run.placeKey;
 			boss = ctx.endlessFloor !== undefined && ctx.floor > 0 && ctx.endlessFloor(ctx.floor).bossFloor;
-			best = this.bestLine(ctx, work?.floor ?? ctx.floor);
+			const floor = work?.floor ?? ctx.floor;
+			line = stageCardLine(this.bestLine(ctx, floor), this.rosterLine(ctx, floor));
 			const tracker = this.trackerFor(ctx);
 			if (ctx.floor > ENDLESS_FIRST_FLOOR && !tracker.wasBuilt(ctx.floor)) {
 				print(`${LOG} floor ${ctx.floor}: built mid-tick (not pre-generated)`);
@@ -273,7 +282,7 @@ export class StageController implements OnStart, StageDriver {
 			floor: label.vars.floor,
 			biomeKey,
 			boss,
-			best,
+			line,
 			fraction: load.fraction(),
 		});
 	}
@@ -292,6 +301,36 @@ export class StageController implements OnStart, StageDriver {
 		const record = floorTarget(baseline);
 		if (record === undefined) return undefined;
 		return stageBestLine(floor, baseline, floor > record + 1);
+	}
+
+	/**
+	 * The seeded roster's line for `floor` (docs/DAILY.md DS2, shared/view/hud stageRosterLine): floor 1 every kind,
+	 * later floors the kinds that joined there (the floor before's roster is endlessRoster(seed, floor - 1): cheap and
+	 * pure, no floor build). Undefined: no endless floor, a floor without a roster (the tutorial) or no kind joined.
+	 */
+	private rosterLine(ctx: RunContext, floor: number): NewBestLineText | undefined {
+		const build = ctx.endlessFloor;
+		if (build === undefined || floor < ENDLESS_FIRST_FLOOR) return undefined;
+		const roster = build(floor).layout.roster;
+		if (roster === undefined) return undefined;
+		const previous = floor > ENDLESS_FIRST_FLOOR ? endlessRoster(ctx.seed, floor - 1) : undefined;
+		const pack = this.theme.getPack();
+		return stageRosterLine(roster, previous, (key, vars) => pack.str(key, vars));
+	}
+
+	/**
+	 * A run start's roster line under the bar, once the run is built (called after the forge and after the listeners:
+	 * the context is the new run's then); the cover then shows at least STAGE_LOADER.rosterStartSec. Once per load.
+	 */
+	private runStartRoster(load: StageLoad): void {
+		if (load.kind === "floorChange" || this.rosterSerial === this.serial) return;
+		const ctx = this.sim.getContext();
+		if (ctx === undefined) return;
+		const line = this.rosterLine(ctx, ctx.floor);
+		if (line === undefined) return;
+		this.rosterSerial = this.serial;
+		clientStore.setStageLine(line);
+		load.holdAtLeast(STAGE_LOADER.rosterStartSec);
 	}
 
 	/**
@@ -335,6 +374,7 @@ export class StageController implements OnStart, StageDriver {
 			}
 			this.forgeSec = os.clock() - t0;
 			load.forged();
+			this.runStartRoster(load);
 			return;
 		}
 		if (item === "notify") {
@@ -343,6 +383,7 @@ export class StageController implements OnStart, StageDriver {
 			if (!ok) warn(`${LOG} a view rebuild failed: ${tostring(err)}`);
 			this.buildSec = os.clock() - t0;
 			load.built();
+			this.runStartRoster(load);
 			const [waitOk, waitErr] = pcall(() => this.waitAssets(load));
 			if (!waitOk) {
 				warn(`${LOG} the assets wait failed: ${tostring(waitErr)}`);

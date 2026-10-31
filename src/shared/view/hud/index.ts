@@ -10,7 +10,8 @@
  * (draftRevealConfig.ts, draftReveal.ts; docs/DRAFT_REVEAL.md DR1) and how it is drawn (draftRevealView.ts, DR5), and the
  * UI skin's pixel scales, icon fit and part-to-image chains (skinConfig.ts, skin.ts; docs/UI_ART.md UA5), and the
  * new-best celebration's tunables, strings, frozen run baseline, per-frame tracker, text / roll helpers and confetti
- * paths (newBestConfig.ts, newBestStrings.ts, newBest.ts; docs/NEW_BEST.md NB3).
+ * paths (newBestConfig.ts, newBestStrings.ts, newBest.ts; docs/NEW_BEST.md NB3), and the seeded roster's stage card
+ * line and its priority against new best's (rosterLine.ts, docs/DAILY.md DS2).
  */
 export * from "./layout";
 export * from "./strings";
@@ -42,3 +43,4 @@ export * from "./hudSkin";
 export * from "./newBestConfig";
 export * from "./newBestStrings";
 export * from "./newBest";
+export * from "./rosterLine";

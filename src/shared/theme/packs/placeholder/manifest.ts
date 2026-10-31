@@ -973,5 +973,8 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		"run.best.unsaved": "Not saved: run not verified",
 		"run.best.target": "Best {score} · floor {floor}",
 		"menu.best": "Best {score} · floor {floor}",
+		// --- roster.* (docs/DAILY.md DS2: the stage card's seeded roster line; {names} joined by the view) ----------------
+		"roster.line": "{names}",
+		"roster.new": "New: {names}",
 	},
 };
