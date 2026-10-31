@@ -693,6 +693,37 @@
 			"notes": "docs/ENEMY_VARIANTS.md EV11: a Vengeful corpse's ring. Fire3 is a 0.65 s flare (audible 0.6 s), about the corpse's 0.6 s telegraph, so started with the pulse it ends as the ring fires. Alternates: Alert4 (0.42 s, a warning, if the cue should read as a telegraph like sfx.enemy.telegraph), Explosion2 (0.63 s burst, if the cue plays on the ring itself).",
 			"confirmed": false
 		},
+		"sfx.best.new": {
+			"category": "jingle",
+			"clips": [
+				"ninja-adventure/Audio/Jingles/LevelUp2.wav"
+			],
+			"volume": 0.75,
+			"alternates": [
+				"ninja-adventure/Audio/Jingles/LevelUp3.wav",
+				"ninja-adventure/Audio/Jingles/Success4.wav"
+			],
+			"notes": "docs/NEW_BEST.md NBD6: the in-run new-best fanfare (~1.2 s): the shown score passes the best, or the first floor past the deepest at the stairwell card's reveal (in place of sfx.floor.enter). A jingle: it ducks the music and outranks the room clear's jingles on a shared frame (NBD7). Must read apart from room clear's Success1 and PERFECT's Success2. Audition LevelUp2 / LevelUp3 / Success4 (NB10); while silent the PERFECT jingle plays.",
+			"confirmed": false
+		},
+		"sfx.jingle.record": {
+			"category": "jingle",
+			"clips": [
+				{
+					"src": "ninja-adventure/Audio/Jingles/LevelUp3.wav",
+					"mix": [
+						"ninja-adventure/Audio/Jingles/Success4.wav"
+					]
+				}
+			],
+			"volume": 0.8,
+			"alternates": [
+				"ninja-adventure/Audio/Jingles/LevelUp3.wav",
+				"ninja-adventure/Audio/Jingles/Success4.wav"
+			],
+			"notes": "docs/NEW_BEST.md NBD6: a record run's run over (2-3 s), in place of sfx.jingle.gameover (a death on a record run sounds like a win). LevelUp3 layered with Success4 (mix); tune the layer's gainDb / trim at the audition (NB10). GameOver2 is wrong in tone. While silent the game-over jingle plays.",
+			"confirmed": false
+		},
 		"music.menu": {
 			"category": "music",
 			"clips": [
