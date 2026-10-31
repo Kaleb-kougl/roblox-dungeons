@@ -6,7 +6,15 @@ import { STUDS_PER_TILE } from "shared/config";
 import type { BuildFxLevel, JuiceSettings } from "shared/settings";
 import type { ColorRole } from "shared/theme";
 import { floorStudsY, studsX, studsZ } from "shared/view";
-import { BUILD_FX_VIEW, FX_VIEW, BuildFxDirector, comboQuiet, type BuildFxFrame, type RingView } from "shared/view/fx";
+import {
+	BUILD_FX_VIEW,
+	FX_VIEW,
+	BuildFxDirector,
+	buildRingBlock,
+	comboQuiet,
+	type BuildFxFrame,
+	type RingView,
+} from "shared/view/fx";
 import { SimController } from "../game/SimController";
 import { ThemeController } from "../game/ThemeController";
 import { renderPart } from "../render/placeholders";
@@ -101,19 +109,21 @@ class FxPartPool {
 }
 
 /**
- * Build effects (docs/BUILDS.md BU8): the ONE BuildFxDirector of the client, the NearMissController shape. Once per
+ * Build effects (docs/BUILDS.md BU8 and its follow-up): the ONE BuildFxDirector of the client, the NearMissController shape. Once per
  * rendered frame (an FxTrackerController frame handler, after the frame's sim ticks) it steps the director with the run
  * view's `builds` source (RunView.builds, collected per tick), the live state, the view player, the quiet gate
  * (comboQuiet over the stage cover and the run's end), the juice settings plus Options > Display > Build effects
  * (`buildFx`) and a forward-only real-time clock, then draws the frame and hands it to every subscriber:
  *
- *   - spark beams: each beam's jagged polyline as pooled thin Neon segments in build.spark, fading out (BEAM_SEC);
- *   - spark bursts: ParticleController.buildSparkBurst at each new hop's target (Full or Reduced shape; none with
- *     particles off);
- *   - rings: novas (BU5's feed) and the evolve / duo flare on the knight, as pooled flat segments around the circle in
- *     the ring's role (boon.evolved / boon.duo for flares);
- *   - execute flashes (BU5's feed): a flat Neon disc in BUILD_FX_VIEW.execute.role, popping out and fading;
- *   - Jackpot pops: the director ages them (a data slot) but nothing draws them until the sim feed names its fields.
+ *   - spark beams: each beam's jagged polyline as pooled thin Neon segments in build.spark, fading out (BEAM_SEC); a
+ *     Storm Crown fork thinner (beam.forkThicknessShare);
+ *   - spark bursts / Phantom Step erase sparks: ParticleController.buildSparkBurst / buildPhantomBurst at each new
+ *     target / erased bullet (Full or Reduced shape; none with particles off);
+ *   - rings: novas, origin flares (Momentum / Thrill Seeker / Flurry / Ricochet), the evolve / duo flare and the
+ *     Lionheart pulse on the knight, as pooled flat segments around the circle in the ring's role, sized by its look's
+ *     block (buildRingBlock);
+ *   - execute flashes: a flat Neon disc in BUILD_FX_VIEW.execute.role, popping out and fading.
+ * The Jackpot pop is the score pops' (ScorePopController reads RunView.builds.jackpots).
  *
  * Everything sits on the floor plane under the bullets (segment lifts in BUILD_FX_VIEW). One BulkMoveTo per frame.
  * With no run the director is reset and every part parked. Presentation only: read-only on the sim.
@@ -196,6 +206,7 @@ export class BuildFxController implements OnStart {
 			os.clock(),
 		);
 		for (const b of out.sparkBursts) this.particles.buildSparkBurst(b.x, b.z, out.burstShape, b.seed);
+		for (const b of out.phantomBursts) this.particles.buildPhantomBurst(b.x, b.z, out.phantomShape, b.seed);
 		this.draw(out);
 		for (const handler of this.handlers) handler(out);
 	}
@@ -230,27 +241,21 @@ export class BuildFxController implements OnStart {
 		for (const beam of out.beams) {
 			const pts = beam.points;
 			const alpha = 1 - beam.fade;
+			const thickness = beam.fork ? b.thicknessStuds * b.forkThicknessShare : b.thicknessStuds;
 			for (let i = 1; i < pts.size(); i++) {
 				const a = new Vector3(studsX(pts[i - 1].x), y, studsZ(pts[i - 1].z));
 				const c = new Vector3(studsX(pts[i].x), y, studsZ(pts[i].z));
 				const len = a.sub(c).Magnitude;
 				if (len <= 0) continue;
 				const cf = CFrame.lookAt(a.add(c).mul(0.5), c);
-				pool.place(
-					cf,
-					new Vector3(b.thicknessStuds, b.thicknessStuds, len),
-					color,
-					alpha,
-					this.moveParts,
-					this.moveCFrames,
-				);
+				pool.place(cf, new Vector3(thickness, thickness, len), color, alpha, this.moveParts, this.moveCFrames);
 			}
 		}
 	}
 
 	/** A ring of `r.segments` flat segments (chords) around (r.x, r.z) at r.radius. */
 	private drawRing(r: Readonly<RingView>, pool: FxPartPool): void {
-		const look = r.flare ? BUILD_FX_VIEW.flare : BUILD_FX_VIEW.nova;
+		const look = buildRingBlock(r.look);
 		const n = r.segments;
 		const radius = r.radius * STUDS_PER_TILE;
 		if (n <= 0 || radius <= 0) return;

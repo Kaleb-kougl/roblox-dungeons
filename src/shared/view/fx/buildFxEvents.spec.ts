@@ -2,7 +2,8 @@
 //   - hand-filled BuildEvents arrays (the sim's BU3 / BU4 pushes): a frame of several ticks keeps every spark, ring,
 //     volley and take in order with its tick; reset forgets them; a run without builds collects nothing
 //   - embers come from the player bullet simulation (a new EMBER slot, once), owner and gen from the bullet
-//   - BU5's nova / execute fields are read when the feed carries them (the plan's names), else nothing
+//   - every BU5 field (sparkFork, novas, executes, Phantom Step, Jackpot, Lionheart, Momentum, Thrill Seeker, Flurry,
+//     Ricochet) becomes a record of its list with the right amount / kind, per tick, reset per frame
 //   - audibleBuilds' quiet gate
 //   - the run views' wiring: LiveRun collects a real Chain Spark + Volatile proc tick by tick; LockstepClient per pump
 import "shared/sim/testing";
@@ -16,6 +17,10 @@ import {
 	BuildEffect,
 	EMBER_BURST,
 	EMPTY_INPUT,
+	FlurryKind,
+	JACKPOT_KILLS,
+	NovaKind,
+	OVERFLOWING_NOVA_RADIUS,
 	SimCtx,
 	clearBuildEvents,
 	createSimState,
@@ -25,7 +30,7 @@ import {
 	type SimState,
 } from "shared/sim";
 import { comboQuiet } from "./comboEvents";
-import { BuildFxEvents, NO_BUILD_FX_EVENTS, audibleBuilds } from "./buildFxEvents";
+import { BuildFxEvents, NO_BUILD_FX_EVENTS, audibleBuilds, type EffectRecord } from "./buildFxEvents";
 
 const SEED = 4242;
 
@@ -113,8 +118,9 @@ describe("BuildFxEvents", () => {
 		expect(ev.evolved.map((t) => [t.player, t.index, t.tick - t0])).toEqual([[1, Boon.VOLATILE, 3]]);
 		expect(ev.duos.map((t) => [t.player, t.index])).toEqual([[1, Boon.VOLATILE + 1]]);
 		expect(ev.count()).toBe(3 + 1 + 1 + 1 + 1);
-		// No BU5 fields in this feed yet (or empty ones): no novas, executes or Jackpot pops.
-		expect([ev.novas.size(), ev.executes.size(), ev.jackpots.size()]).toEqual([0, 0, 0]);
+		// No BU5 entries pushed: no novas, executes, Jackpot pops or releases; hand-pushed sparks without sparkFork are hops.
+		expect([ev.novas.size(), ev.executes.size(), ev.jackpots.size(), ev.momentum.size()]).toEqual([0, 0, 0, 0]);
+		expect(ev.sparks.map((r) => r.fork)).toEqual([false, false, false]);
 	});
 
 	it("reset forgets the frame and reuses its records", () => {
@@ -160,24 +166,122 @@ describe("BuildFxEvents", () => {
 		expect(ev.embers.map((r) => [r.x, r.z, r.owner, r.gen])).toEqual([[-1, -1, 0, 0]]);
 	});
 
-	it("reads BU5's nova and execute fields when the feed carries them (the plan's names)", () => {
-		const state = buildsState();
+	it("collects every BU5 field into its list (amount / kind per list, gen 0), per tick, and reset forgets them", () => {
+		const state = buildsState(2);
 		const ev = new BuildFxEvents();
-		const e = state.builds!.events as unknown as Record<string, number[]>;
-		e.novaX = [4];
-		e.novaZ = [5];
-		e.novaRadius = [3];
-		e.novaOwner = [0];
-		e.novaKind = [1];
-		e.execX = [6, 7];
-		e.execZ = [8, 9];
-		state.tick += 1;
+		const t0 = state.tick;
+		const fill = () => {
+			const b = state.builds!;
+			clearBuildEvents(b);
+			const e = b.events;
+			e.sparkX1.push(0, 1);
+			e.sparkZ1.push(0, 1);
+			e.sparkX2.push(1, 2);
+			e.sparkZ2.push(1, 2);
+			e.sparkOwner.push(0, 0);
+			e.sparkGen.push(0, 1);
+			e.sparkFork.push(0, 1);
+			e.novaX.push(4);
+			e.novaZ.push(5);
+			e.novaRadius.push(OVERFLOWING_NOVA_RADIUS);
+			e.novaOwner.push(1);
+			e.novaKind.push(NovaKind.BULWARK);
+			e.novaErased.push(7);
+			e.execX.push(6, 7);
+			e.execZ.push(8, 9);
+			e.execOwner.push(0, 1);
+			e.phantomX.push(-1);
+			e.phantomZ.push(-2);
+			e.phantomOwner.push(1);
+			e.jackpotX.push(3);
+			e.jackpotZ.push(3.5);
+			e.jackpotOwner.push(0);
+			e.jackpotPoints.push(240);
+			e.lionPlayer.push(1);
+			e.lionHealed.push(1);
+			e.momentumX.push(10);
+			e.momentumZ.push(11);
+			e.momentumOwner.push(0);
+			e.momentumTier.push(3);
+			e.momentumFired.push(3);
+			e.thrillX.push(12);
+			e.thrillZ.push(13);
+			e.thrillOwner.push(1);
+			e.thrillFired.push(8);
+			e.flurryX.push(14);
+			e.flurryZ.push(15);
+			e.flurryOwner.push(0);
+			e.flurryKind.push(FlurryKind.ARROWS);
+			e.flurryFired.push(3);
+			e.ricochetX.push(16);
+			e.ricochetZ.push(17);
+			e.ricochetOwner.push(1);
+			e.ricochetFired.push(2);
+			state.tick += 1;
+		};
+		const p1 = state.party!.players[1];
+		p1.x = 20;
+		p1.z = 21;
+		fill();
 		ev.collect(state);
-		expect(ev.novas.map((r) => [r.x, r.z, r.owner, r.amount, r.kind])).toEqual([[4, 5, 0, 3, 1]]);
-		expect(ev.executes.map((r) => [r.x, r.z])).toEqual([
-			[6, 8],
-			[7, 9],
+		const fx = (list: ReadonlyArray<EffectRecord>) => list.map((r) => [r.x, r.z, r.owner, r.gen, r.amount, r.kind]);
+		expect(ev.sparks.map((r) => r.fork)).toEqual([false, true]);
+		expect(fx(ev.novas)).toEqual([[4, 5, 1, 0, OVERFLOWING_NOVA_RADIUS, NovaKind.BULWARK]]);
+		expect(ev.novas[0].erased).toBe(7);
+		expect(fx(ev.executes)).toEqual([
+			[6, 8, 0, 0, 1, 0],
+			[7, 9, 1, 0, 1, 0],
 		]);
+		expect(fx(ev.phantoms)).toEqual([[-1, -2, 1, 0, 1, 0]]);
+		expect(fx(ev.jackpots)).toEqual([[3, 3.5, 0, 0, 240, 0]]);
+		// Lionheart: the healed player, where they stood, half hearts restored.
+		expect(fx(ev.heals)).toEqual([[20, 21, 1, 0, 1, 0]]);
+		expect(fx(ev.momentum)).toEqual([[10, 11, 0, 0, 3, 3]]);
+		expect(fx(ev.thrills)).toEqual([[12, 13, 1, 0, 8, 0]]);
+		expect(fx(ev.flurries)).toEqual([[14, 15, 0, 0, 3, FlurryKind.ARROWS]]);
+		expect(fx(ev.ricochets)).toEqual([[16, 17, 1, 0, 2, 0]]);
+		expect(ev.count()).toBe(2 + 1 + 2 + 1 + 1 + 1 + 1 + 1 + 1 + 1);
+		// A second tick in the same frame appends, each record keeping its tick.
+		fill();
+		ev.collect(state);
+		expect([ev.ticks, ev.thrills.size(), ev.thrills[0].tick - t0, ev.thrills[1].tick - t0]).toEqual([2, 2, 1, 2]);
+		ev.reset();
+		expect([ev.count(), ev.novas.size(), ev.heals.size(), ev.ricochets.size()]).toEqual([0, 0, 0, 0]);
+	});
+
+	it("the sim's own pushes: an Executioner kill and a Jackpot pay land in executes / jackpots", () => {
+		const setup = buildEndlessRunConfig(7);
+		const run = new LiveRun({
+			seed: 7,
+			spawnX: setup.spawn!.x,
+			spawnZ: setup.spawn!.z,
+			config: setup.config,
+			atBossDoor: false,
+			runId: "bu5",
+		});
+		run.frame(1 / 60, EMPTY_INPUT);
+		const state = run.state;
+		const levels = state.builds!.players[0].levels;
+		levels[Boon.SHARPENED] = 3;
+		levels[Boon.BOUNTY] = 3;
+		const world = setup.config.endless!.worldForFloor(state.endless!.floor);
+		const ctx = new SimCtx().bind(state, world.config, EMPTY_INPUT);
+		ctx.actingPlayer(0);
+		clearBuildEvents(state.builds!);
+		for (let k = 0; k < JACKPOT_KILLS; k++) {
+			const a = ctx.spawnActor("test.dummy", state.player.x + 1 + k / 8, state.player.z)!;
+			a.hp = 10;
+			a.hpMax = 10;
+			a.spawnTick = -1;
+			ctx.damageActor(a, 8); // leaves 20 %: executed
+		}
+		const ev = new BuildFxEvents();
+		ev.collect(state);
+		expect(ev.executes.size()).toBe(JACKPOT_KILLS);
+		expect([ev.executes[0].x, ev.executes[0].owner]).toEqual([state.player.x + 1, 0]);
+		expect(ev.jackpots.size()).toBe(1);
+		expect([ev.jackpots[0].owner, ev.jackpots[0].amount > 0]).toEqual([0, true]);
+		expect(ev.jackpots[0].amount).toBe(state.builds!.events.jackpotPoints[0]);
 	});
 
 	it("audibleBuilds passes the source through, or nothing while quiet (stage cover, run over)", () => {

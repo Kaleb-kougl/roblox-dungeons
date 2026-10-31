@@ -3,7 +3,7 @@
  * components take their keys from here, and hud.spec.ts checks each one exists in the placeholder pack, so a missing
  * key fails the build instead of showing the raw key in game.
  */
-import { SCORE_SOURCE_NAMES } from "shared/sim";
+import { BUILD_SCORE_SOURCE_NAMES, SCORE_SOURCE_NAMES } from "shared/sim";
 export const HUD_STRINGS = {
 	title: "game.title",
 	health: "hud.health",
@@ -50,8 +50,34 @@ export const HUD_STRINGS = {
 	mapHint: "hud.map.hint",
 } as const;
 
-/** Results breakdown label per score source, `score.source.<name>` (shared/sim SCORE_SOURCE_NAMES order). */
-export const SCORE_SOURCE_KEYS: ReadonlyArray<string> = SCORE_SOURCE_NAMES.map((n) => `score.source.${n}`);
+/**
+ * Results breakdown label per score source index, `score.source.<name>`: shared/sim SCORE_SOURCE_NAMES (every scored
+ * run's), then BUILD_SCORE_SOURCE_NAMES (docs/BUILDS.md BU5: `jackpot`, index 9, only in builds runs' points, so the
+ * run-over breakdown shows its row there and nowhere else).
+ */
+export const SCORE_SOURCE_KEYS: ReadonlyArray<string> = [...SCORE_SOURCE_NAMES, ...BUILD_SCORE_SOURCE_NAMES].map(
+	(n) => `score.source.${n}`,
+);
+
+/** One run-over breakdown row: the score source's index, its label key and its points. */
+export interface ScoreBreakdownRow {
+	readonly index: number;
+	readonly key: string;
+	readonly points: number;
+}
+
+/**
+ * The run-over breakdown's source rows for a snapshot's `scorePoints` (ScoreSource order): one per index that has a
+ * label (SCORE_SOURCE_KEYS), in order. A builds run's 10th entry (Jackpot) has one; an index past the keys is skipped.
+ */
+export function scoreBreakdownRows(points: ReadonlyArray<number>): ScoreBreakdownRow[] {
+	const rows: ScoreBreakdownRow[] = [];
+	for (let i = 0; i < points.size(); i++) {
+		const key = SCORE_SOURCE_KEYS[i];
+		if (key !== undefined) rows.push({ index: i, key, points: points[i] });
+	}
+	return rows;
+}
 
 /** "hud.ending.<death|victory|abandoned>". */
 export const ENDING_KEYS = ["hud.ending.death", "hud.ending.victory", "hud.ending.abandoned"] as const;

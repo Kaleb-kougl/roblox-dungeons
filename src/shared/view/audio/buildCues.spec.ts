@@ -1,6 +1,8 @@
-// Build effect sounds in the cue mapper (docs/BUILDS.md BU8): spark / burst / shard / ember from the frame's
-// BuildFxFrameSource, pitched by the frame's highest proc generation, one each per frame and interval, under a voice
-// cap; evolve / duo stings from the takes; teammates quieter; silent IDs nothing; the quiet gate; the theme's IDs.
+// Build effect sounds in the cue mapper (docs/BUILDS.md BU8 and its follow-up): spark / burst / shard / ember / nova /
+// execute / jackpot from the frame's BuildFxFrameSource, pitched by the frame's highest proc generation, one each per
+// frame and interval, under a voice cap; BU5's releases on the burst (Thrill Seeker, Flurry) and shard (Momentum,
+// Ricochet) cues; Phantom Step and Lionheart silent; evolve / duo stings from the takes; teammates quieter; silent IDs
+// nothing; the quiet gate; the theme's IDs.
 import { describe, expect, it } from "@rbxts/jest-globals";
 import {
 	ALL_EVENT_FIELDS,
@@ -64,6 +66,16 @@ interface Fx {
 	shards?: ReadonlyArray<[number, number]>;
 	evolved?: ReadonlyArray<number>; // players
 	duos?: ReadonlyArray<number>;
+	// BU5, each entry an owner.
+	novas?: ReadonlyArray<number>;
+	executes?: ReadonlyArray<number>;
+	jackpots?: ReadonlyArray<number>;
+	phantoms?: ReadonlyArray<number>;
+	heals?: ReadonlyArray<number>;
+	momentum?: ReadonlyArray<number>;
+	thrills?: ReadonlyArray<number>;
+	flurries?: ReadonlyArray<number>;
+	ricochets?: ReadonlyArray<number>;
 }
 
 /** A frame source with these records (one tick). */
@@ -99,6 +111,60 @@ function source(fx: Fx, players = 2): BuildFxEvents {
 	for (const p of fx.duos ?? []) {
 		e.duoPlayer.push(p);
 		e.duoTaken.push(0);
+	}
+	for (const o of fx.novas ?? []) {
+		e.novaX.push(0);
+		e.novaZ.push(0);
+		e.novaRadius.push(3);
+		e.novaOwner.push(o);
+		e.novaKind.push(0);
+		e.novaErased.push(1);
+	}
+	for (const o of fx.executes ?? []) {
+		e.execX.push(0);
+		e.execZ.push(0);
+		e.execOwner.push(o);
+	}
+	for (const o of fx.jackpots ?? []) {
+		e.jackpotX.push(0);
+		e.jackpotZ.push(0);
+		e.jackpotOwner.push(o);
+		e.jackpotPoints.push(100);
+	}
+	for (const o of fx.phantoms ?? []) {
+		e.phantomX.push(0);
+		e.phantomZ.push(0);
+		e.phantomOwner.push(o);
+	}
+	for (const o of fx.heals ?? []) {
+		e.lionPlayer.push(o);
+		e.lionHealed.push(1);
+	}
+	for (const o of fx.momentum ?? []) {
+		e.momentumX.push(0);
+		e.momentumZ.push(0);
+		e.momentumOwner.push(o);
+		e.momentumTier.push(2);
+		e.momentumFired.push(2);
+	}
+	for (const o of fx.thrills ?? []) {
+		e.thrillX.push(0);
+		e.thrillZ.push(0);
+		e.thrillOwner.push(o);
+		e.thrillFired.push(8);
+	}
+	for (const o of fx.flurries ?? []) {
+		e.flurryX.push(0);
+		e.flurryZ.push(0);
+		e.flurryOwner.push(o);
+		e.flurryKind.push(0);
+		e.flurryFired.push(5);
+	}
+	for (const o of fx.ricochets ?? []) {
+		e.ricochetX.push(0);
+		e.ricochetZ.push(0);
+		e.ricochetOwner.push(o);
+		e.ricochetFired.push(2);
 	}
 	s.tick = 1;
 	const ev = new BuildFxEvents();
@@ -268,5 +334,67 @@ describe("build cues: mapping", () => {
 			SFX.buildSpark,
 			SFX.buildEvolve,
 		]);
+	});
+});
+
+describe("build cues: the evolutions (BU8 follow-up)", () => {
+	it("a nova, an execute and a Jackpot each play their own cue at generation 0's pitch and the build volume", () => {
+		const out = frame(new AudioCueMapper(), 0, source({ novas: [0], executes: [0], jackpots: [0] }));
+		expect(ids(out)).toEqual([SFX.buildNova, SFX.buildExecute, SFX.buildJackpot]);
+		expect([out.speed(0), out.speed(1), out.speed(2)]).toEqual([
+			buildGenSpeed(0),
+			buildGenSpeed(0),
+			buildGenSpeed(0),
+		]);
+		expect([out.volume(0), out.volume(1), out.volume(2)]).toEqual([A.volume, A.volume, A.volume]);
+	});
+
+	it("Thrill Seeker and Flurry reuse the burst cue, Momentum and Ricochet the shard cue (one each per frame)", () => {
+		expect(ids(frame(new AudioCueMapper(), 0, source({ thrills: [0] })))).toEqual([SFX.buildBurst]);
+		expect(ids(frame(new AudioCueMapper(), 0, source({ flurries: [0] })))).toEqual([SFX.buildBurst]);
+		expect(ids(frame(new AudioCueMapper(), 0, source({ momentum: [0] })))).toEqual([SFX.buildShard]);
+		expect(ids(frame(new AudioCueMapper(), 0, source({ ricochets: [0] })))).toEqual([SFX.buildShard]);
+		// All four with a Volatile ring and a Soul Shards volley: still one burst and one shard.
+		const all = frame(
+			new AudioCueMapper(),
+			0,
+			source({ bursts: [[0, 2]], shards: [[0, 0]], thrills: [0], flurries: [0], momentum: [0], ricochets: [0] }),
+		);
+		expect(ids(all)).toEqual([SFX.buildBurst, SFX.buildShard]);
+		// The burst cue keeps the highest generation of everything it carries.
+		expect(all.speed(0)).toBe(buildGenSpeed(2));
+	});
+
+	it("a teammate's execute / release alone is quieter; the local player's share makes it full", () => {
+		const out = frame(new AudioCueMapper(), 0, source({ executes: [1], thrills: [1] }), 0);
+		expect([ids(out), out.volume(0), out.volume(1)]).toEqual([
+			[SFX.buildBurst, SFX.buildExecute],
+			A.volume * AUDIO_VIEW.teammateVolume,
+			A.volume * AUDIO_VIEW.teammateVolume,
+		]);
+		const mixed = frame(new AudioCueMapper(), 0, source({ thrills: [1], ricochets: [0] }), 0);
+		expect([mixed.volume(0), mixed.volume(1)]).toEqual([A.volume * AUDIO_VIEW.teammateVolume, A.volume]);
+	});
+
+	it("Phantom Step erases and Lionheart heals play nothing of their own", () => {
+		expect(ids(frame(new AudioCueMapper(), 0, source({ phantoms: [0, 0], heals: [0] })))).toEqual([]);
+	});
+
+	it("the releases share the voice cap and the per-ID interval", () => {
+		const m = new AudioCueMapper();
+		const gap = SFX_MIN_INTERVAL[SFX.buildBurst]!;
+		expect(ids(frame(m, 1, source({ thrills: [0] })))).toEqual([SFX.buildBurst]);
+		expect(ids(frame(m, 1 + gap / 2, source({ flurries: [0] })))).toEqual([]);
+		const capped = new AudioCueMapper();
+		const out = frame(
+			capped,
+			0,
+			source({ sparks: [[0, 0]], thrills: [0], momentum: [0], novas: [0], executes: [0], jackpots: [0] }),
+		);
+		expect(ids(out)).toEqual(
+			[SFX.buildSpark, SFX.buildBurst, SFX.buildShard, SFX.buildNova, SFX.buildExecute, SFX.buildJackpot].filter(
+				(_, i) => i < A.maxVoices,
+			),
+		);
 	});
 });

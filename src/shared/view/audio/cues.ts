@@ -94,8 +94,10 @@
  * view's `builds`, every tick of the frame; NO_BUILD_FX_EVENTS by default, so every other cue is as before), passed
  * through audibleBuilds(source, comboQuiet(covered, runOver)) like the variants: silent under the stage cover and once
  * the run is over.
- *   - sfx.build.spark / .burst / .shard / .ember (and BU5's .nova / .execute, and the Jackpot slot's .jackpot): at most
- *     one each per frame and per SFX_MIN_INTERVAL, at the exact speed buildGenSpeed(the frame's highest proc
+ *   - sfx.build.spark / .burst / .shard / .ember / .nova / .execute / .jackpot: at most one each per frame and per
+ *     SFX_MIN_INTERVAL (BU5's releases reuse two: a Thrill Seeker ring or a Flurry release plays .burst, a Momentum
+ *     volley or a Ricochet split .shard; a Phantom Step erase and a Lionheart heal play nothing of their own: the roll
+ *     and the PERFECT sting already sound), at the exact speed buildGenSpeed(the frame's highest proc
  *     generation of that effect) (BUILD_FX_VIEW.audio: +2 semitones per generation, capped), volume
  *     BUILD_FX_VIEW.audio.volume; an effect only a teammate set off plays at teammateVolume more and
  *     TEAMMATE_PRIORITY_DROP lower. Voice cap: at most BUILD_FX_VIEW.audio.maxVoices of these start within any
@@ -587,6 +589,9 @@ export const COMBO_KILL_PRIORITY = 55;
 /** A teammate's cue ranks this much lower than the local player's same sound (never over the local telegraph). */
 export const TEAMMATE_PRIORITY_DROP = 50;
 
+/** An empty effect list (buildCue's absent extra lists). */
+const NO_EFFECTS: ReadonlyArray<EffectRecord> = table.freeze([] as EffectRecord[]);
+
 /** The build cues under the voice cap (BUILD_FX_VIEW.audio.maxVoices), in the order a busy frame keeps them. */
 export const BUILD_VOICE_SFX: ReadonlyArray<SfxId> = [
 	SFX.buildSpark,
@@ -754,6 +759,9 @@ export class AudioCueMapper {
 	private readonly buildStarts = new Array<number>();
 	/** Build cues queued this frame (they count against the cap before they start). */
 	private buildQueued = 0;
+	/** buildCue's scan of its lists: the highest generation, and whether the local player set one off. */
+	private scanGen = 0;
+	private scanMine = false;
 
 	/** `playable`: whether an ID has a clip (silent IDs and their fallbacks; default: every ID plays). */
 	constructor(private readonly playable: Playable = EVERY_ID) {}
@@ -872,19 +880,32 @@ export class AudioCueMapper {
 	}
 
 	/**
-	 * One build effect cue (BU8) for the frame's `records` of it: none -> nothing; else at buildGenSpeed(highest gen),
-	 * BUILD_FX_VIEW.audio.volume, quieter and lower when only teammates set it off (records without an owner count as
-	 * the local player's); under the voice cap.
+	 * One build effect cue (BU8) for the frame's records of it, from up to three lists (the follow-up's evolution
+	 * releases share the burst / shard cues): none -> nothing; else at buildGenSpeed(highest gen),
+	 * BUILD_FX_VIEW.audio.volume, quieter and lower when only teammates set it off; under the voice cap.
 	 */
-	private buildCue(id: SfxId, records: ReadonlyArray<EffectRecord>, localIndex: number, owned = true): void {
-		if (records.size() === 0) return;
-		let gen = 0;
-		let mine = !owned;
+	private buildCue(
+		id: SfxId,
+		localIndex: number,
+		a: ReadonlyArray<EffectRecord>,
+		b: ReadonlyArray<EffectRecord> = NO_EFFECTS,
+		c: ReadonlyArray<EffectRecord> = NO_EFFECTS,
+	): void {
+		if (a.size() + b.size() + c.size() === 0) return;
+		this.scanGen = 0;
+		this.scanMine = false;
+		this.scanEffects(a, localIndex);
+		this.scanEffects(b, localIndex);
+		this.scanEffects(c, localIndex);
+		this.buildVoiceCue(id, this.scanGen, this.scanMine);
+	}
+
+	/** Raises scanGen to the records' highest generation; scanMine when one is `localIndex`'s. */
+	private scanEffects(records: ReadonlyArray<EffectRecord>, localIndex: number): void {
 		for (const r of records) {
-			if (r.gen > gen) gen = r.gen;
-			if (r.owner === localIndex) mine = true;
+			if (r.gen > this.scanGen) this.scanGen = r.gen;
+			if (r.owner === localIndex) this.scanMine = true;
 		}
-		this.buildVoiceCue(id, gen, mine);
 	}
 
 	private buildVoiceCue(id: SfxId, gen: number, mine: boolean): void {
@@ -908,12 +929,12 @@ export class AudioCueMapper {
 			}
 			this.buildVoiceCue(SFX.buildSpark, gen, mine);
 		}
-		this.buildCue(SFX.buildBurst, builds.bursts, localIndex);
-		this.buildCue(SFX.buildShard, builds.shards, localIndex);
-		this.buildCue(SFX.buildNova, builds.novas, localIndex);
-		if (builds.executes.size() > 0) this.buildVoiceCue(SFX.buildExecute, 0, true);
-		this.buildCue(SFX.buildJackpot, builds.jackpots, localIndex);
-		this.buildCue(SFX.buildEmber, builds.embers, localIndex);
+		this.buildCue(SFX.buildBurst, localIndex, builds.bursts, builds.thrills, builds.flurries);
+		this.buildCue(SFX.buildShard, localIndex, builds.shards, builds.momentum, builds.ricochets);
+		this.buildCue(SFX.buildNova, localIndex, builds.novas);
+		this.buildCue(SFX.buildExecute, localIndex, builds.executes);
+		this.buildCue(SFX.buildJackpot, localIndex, builds.jackpots);
+		this.buildCue(SFX.buildEmber, localIndex, builds.embers);
 		for (const t of builds.evolved) this.playerCue(SFX.buildEvolve, t.player, localIndex);
 		for (const t of builds.duos) this.playerCue(SFX.buildDuo, t.player, localIndex);
 	}
