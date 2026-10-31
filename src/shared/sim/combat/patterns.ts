@@ -13,7 +13,7 @@
  */
 
 import { jsMax } from "shared/jsmath";
-import { BULLET_Y, TURN_COS, TURN_SIN } from "./combatData";
+import { BULLET_Y, ENEMY_BULLET_RADIUS, GOO_BULLET_RADIUS, TURN_COS, TURN_SIN } from "./combatData";
 import { BulletPayload } from "./payload";
 import { compose, gen } from "./projectilePatterns";
 import type { BulletModifier, BulletSimulation, BulletSpawnData } from "./bullets";
@@ -31,7 +31,26 @@ export const BulletKind = {
 	ENEMY: 5,
 	/** Boss bullets. */
 	BOSS: 6,
+	/**
+	 * A goo puddle (Roblox port, docs/ENEMY_VARIANTS.md EVD5 / EVD13 / EVD14): a stationary enemy bullet the Ooze
+	 * leaves on the floor. It hurts like any enemy bullet (with its own hit radius, enemyBulletHitRadius) and walls
+	 * consume it, but it never grazes, ignores breakables (neither hurts nor is stopped by them), is not erased by an
+	 * ordinary sword swing, and a sword guard erases it without guard points, the parry feed or events.bulletsDeleted.
+	 * It counts in events.gooSpawned (the enemy-shoot sound skips it).
+	 */
+	GOO: 7,
 } as const;
+
+/**
+ * Enemy bullet hit radius by BulletKind where it differs from ENEMY_BULLET_RADIUS (docs/ENEMY_VARIANTS.md EVD13).
+ * Every kind without a row (every web kind) hits at ENEMY_BULLET_RADIUS exactly.
+ */
+const ENEMY_BULLET_KIND_RADIUS: ReadonlyMap<number, number> = new Map([[BulletKind.GOO, GOO_BULLET_RADIUS]]);
+
+/** The hit radius of an enemy bullet of kind `kind` (BulletKind), world units. */
+export function enemyBulletHitRadius(kind: number): number {
+	return ENEMY_BULLET_KIND_RADIUS.get(kind) ?? ENEMY_BULLET_RADIUS;
+}
 
 const packScratch = { damage: 0, kind: 0, source: 0, pierce: 0, lastHit: 0 };
 

@@ -36,5 +36,18 @@ export type PayloadValues = { [K in PayloadField]?: number };
  */
 export const BulletPayload = definePayload<PayloadField>(PAYLOAD_FIELDS);
 
+function fieldValueCount(field: PayloadField): number {
+	for (const [name, bits] of PAYLOAD_FIELDS) {
+		if (name !== field) continue;
+		let n = 1;
+		for (let b = 0; b < bits; b++) n *= 2;
+		return n;
+	}
+	return error(`payload field '${field}' is not in PAYLOAD_FIELDS`, 0);
+}
+
+/** Distinct values the payload's `kind` field holds (2^its width = 16): BulletKind values fit in 0 .. this - 1. */
+export const BULLET_KIND_COUNT = fieldValueCount("kind");
+
 /** Total bits used (28). */
 export const PAYLOAD_BITS = BulletPayload.bits;

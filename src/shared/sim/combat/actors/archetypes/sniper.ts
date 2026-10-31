@@ -8,10 +8,10 @@
  * of the shot (the volley is cancelled). No contact damage. Leashes home after losing the player.
  */
 
-import { SIM_DT } from "../../../units";
 import { HIT_NORMAL, secondsToTicks } from "../../../playerData";
 import { BulletKind, type BurstSpec } from "../../patterns";
 import type { SimCtx } from "../../ctx";
+import { enemyCooldown, walkStep } from "../actorMods";
 import { faceToward, moveActor, toPlayer, walkToward } from "../helpers";
 import { registerArchetype } from "../registry";
 import { AiState, type ActorState } from "../types";
@@ -129,7 +129,7 @@ export const SNIPER = registerArchetype<SniperData>({
 		initRoomEnemy(a);
 		const d = ctx.data<SniperData>(a);
 		a.v[SNIPER_STRAFE] = ctx.random() < COIN ? -1 : 1;
-		a.cooldown = ctx.randomInt(d.firstVolleyMin, d.firstVolleyMax);
+		a.cooldown = enemyCooldown(ctx, a, d.firstVolleyMin, d.firstVolleyMax);
 	},
 	step(ctx, a) {
 		const d = ctx.data<SniperData>(a);
@@ -172,9 +172,9 @@ function telegraphing(ctx: SimCtx, a: ActorState, d: SniperData): void {
 	if (p.dead === 0 && ctx.lineOfSight(a.x, a.z, p.x, p.z)) {
 		const shots = d.shots;
 		for (let i = 0; i < shots.size(); i++) ctx.fireEnemy(a, a.v[SNIPER_AIM_X], a.v[SNIPER_AIM_Z], shots[i]);
-		a.cooldown = ctx.randomInt(d.volleyCooldownMin, d.volleyCooldownMax);
+		a.cooldown = enemyCooldown(ctx, a, d.volleyCooldownMin, d.volleyCooldownMax);
 	} else {
-		a.cooldown = ctx.randomInt(d.firstVolleyMin, d.firstVolleyMax); // cancelled: try again soon
+		a.cooldown = enemyCooldown(ctx, a, d.firstVolleyMin, d.firstVolleyMax); // cancelled: try again soon
 	}
 	a.aiState = SNIPER_REPOSITION;
 	a.aiTicks = ctx.randomInt(d.strafeFlipMin, d.strafeFlipMax);
@@ -203,7 +203,7 @@ function reposition(ctx: SimCtx, a: ActorState, d: SniperData): void {
 		ctx.telegraph(a, d.telegraphTicks, SNIPER_ATTACK_LINE);
 		return;
 	}
-	const stepLen = d.speed * SIM_DT;
+	const stepLen = walkStep(ctx, a);
 	if (!los) {
 		// Lost sight: walk toward the player to find a line again (walls slide it around corners).
 		walkToward(ctx, a, p.x, p.z, stepLen, STEER);

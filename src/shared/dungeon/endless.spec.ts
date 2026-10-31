@@ -95,7 +95,10 @@ describe("endless floor derivation", () => {
 		expect([encounterCost("swarmer"), encounterCost("sniper"), encounterCost("bruiser")]).toEqual([1, 2, 3]);
 		expect(encounterCost("turret.caster")).toBe(2);
 		expect(encounterCost("nope")).toBe(DEFAULT_ENCOUNTER_COST);
-		expect(ENCOUNTER_COST.size()).toBe(6);
+		// docs/ENEMY_VARIANTS.md EV1: the new room enemies (slime.small is never bought: the default).
+		expect([encounterCost("imp"), encounterCost("slime"), encounterCost("summoner")]).toEqual([2, 3, 3]);
+		expect(encounterCost("slime.small")).toBe(DEFAULT_ENCOUNTER_COST);
+		expect(ENCOUNTER_COST.size()).toBe(9);
 	});
 });
 

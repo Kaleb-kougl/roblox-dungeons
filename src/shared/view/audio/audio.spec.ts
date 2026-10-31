@@ -247,6 +247,21 @@ describe("audio: sim events -> sound IDs", () => {
 		expect(at(4, 3)).toEqual([SFX.enemyShoot]);
 	});
 
+	it("goo puddles never play the enemy shot; other bullets fired in the same frame still do (docs/ENEMY_VARIANTS.md EVD14)", () => {
+		const s = solo();
+		const m = new AudioCueMapper();
+		const at = (now: number, spawned: number, goo: number) => {
+			s.combat.enemySpawned = spawned;
+			const e = noEvents();
+			e.gooSpawned = goo;
+			return ids(m, now, e, NO_FX, s);
+		};
+		expect(at(0, 10, 0)).toEqual([]);
+		expect(at(1, 11, 1)).toEqual([]); // one puddle only
+		expect(at(2, 14, 3)).toEqual([]); // three puddles only
+		expect(at(3, 18, 3)).toEqual([SFX.enemyShoot]); // three puddles and one bullet
+	});
+
 	it("solo: the sword's finisher swing plays sfx.player.finisher instead of the swing", () => {
 		const s = solo();
 		const m = primed(s);

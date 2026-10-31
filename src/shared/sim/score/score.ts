@@ -355,6 +355,37 @@ export function attachScoreRoomMembers(state: SimState, roomId: number, spawned:
 	r.hitsAtEngage = s.hitsTaken;
 }
 
+/**
+ * A runtime child (docs/ENEMY_VARIANTS.md: a slime's split, a summoner's summons) joins its parent's room record: the
+ * record whose members hold `parent`'s slot with `parent`'s id (alive or a corpse: a split runs in onDeath) gains
+ * `child` as one more member, so the room stays open (scoreRoomDown) until the child is down too. No-op without
+ * scoring, when the parent is in no record, when that room is already cleared, or when `child` is not in the pool or
+ * already a member. Par is unchanged (planned spawns fix it at floor start). Never called for boss adds.
+ */
+export function adoptScoreRoomMember(state: SimState, parent: Readonly<ActorState>, child: ActorState): void {
+	const s = state.score;
+	if (s === undefined) return;
+	const actors = state.combat.actors;
+	const parentSlot = actors.indexOf(parent as ActorState);
+	const childSlot = actors.indexOf(child);
+	if (parentSlot < 0 || childSlot < 0) return;
+	for (const r of s.rooms) {
+		let holdsParent = false;
+		let holdsChild = false;
+		for (let k = 0; k < r.memberSlots.size(); k++) {
+			const slot = r.memberSlots[k];
+			const id = r.memberIds[k];
+			if (slot === parentSlot && id === parent.id) holdsParent = true;
+			if (slot === childSlot && id === child.id) holdsChild = true;
+		}
+		if (!holdsParent) continue;
+		if (r.cleared !== 0 || holdsChild) return;
+		r.memberSlots.push(childSlot);
+		r.memberIds.push(child.id);
+		return;
+	}
+}
+
 /** Validated party size: an integer >= 1. */
 function partySizeOf(config: ScoringConfig): number {
 	const n = config.partySize ?? DEFAULT_PARTY_SIZE;
