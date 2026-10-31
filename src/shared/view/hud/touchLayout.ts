@@ -1,13 +1,15 @@
 /**
  * Where the touch controls sit (docs/MOBILE.md MB2), pure. Positions are reference px measured from the ACTION side's
  * bottom corner of the safe area (the right edge, or the left when left-handed): x inward from that side edge, y up
- * from the bottom. touchLayout() scales them so the cluster never reaches the status / score panels, never below
- * TOUCH_LAYOUT.minScale.
+ * from the bottom. touchLayout() scales them so no control reaches the status / score panels' budget boxes (plus
+ * TOUCH_LAYOUT.clusterGap: touchPanelKeepOut), never below TOUCH_LAYOUT.minScale; where `play` cannot keep clear at
+ * minScale (a short safe area: a phone under a tall top bar, or a HUD scale above 100 %) it takes the lower `compact`
+ * cluster, and only below that the scale drops under minScale (never under the smallest tappable circle).
  */
 import { TOUCH } from "shared/config";
-import { HUD_FOOTPRINT } from "./footprint";
-import type { ScreenRect } from "./footprint";
-import { computeHudScale, HUD_VIEW } from "./layout";
+import { cornerRect, HUD_FOOTPRINT, TOUCH_ALWAYS_ON_PANELS } from "./footprint";
+import type { FootprintBox, ScreenRect } from "./footprint";
+import { computeHudScale } from "./layout";
 
 export type TouchButtonId =
 	| "attack"
@@ -41,6 +43,10 @@ export const TOUCH_LAYOUT = {
 	moveZoneWidthShare: 0.4,
 	/** The move stick's idle ring, from the move side's bottom corner. */
 	moveHome: { x: 150, y: 150, r: 60 },
+	/** The move stick's idle ring with the `compact` cluster (lower, like it). */
+	compactMoveHome: { x: 130, y: 110, r: 60 },
+	/** Halvings of the scale search (touchLayout: the largest scale that keeps clear, to ~1e-7 of the range). */
+	fitSteps: 24,
 	/** Smallest circle diameter (px) the spec accepts. */
 	minDiameterPx: 40,
 	/** Fill alpha at 100 % opacity, and the pressed fill's multiplier (capped at 1). */
@@ -63,6 +69,21 @@ export const TOUCH_LAYOUT = {
 		{ id: "swap", x: 400, y: 110, r: 38, side: "action" },
 		{ id: "shrine", x: 480, y: 170, r: 38, side: "action" },
 	] as ReadonlyArray<CircleSpec>,
+	/**
+	 * The short-screen cluster (used when `play` cannot keep clear of the corner panels at minScale or above): at most
+	 * 200 reference px tall, so it fits under the score panel at minScale on a 251 pt tall safe area (a 330 pt phone
+	 * under the 58 pt top bar and the home indicator). Attack sits lower; Ember moves into the corner below it; Alt and
+	 * Roll stand left of Attack, Swap / Flask / Accept left of them.
+	 */
+	compact: [
+		{ id: "attack", x: 130, y: 115, r: 75, side: "action" },
+		{ id: "roll", x: 285, y: 48, r: 45, side: "action" },
+		{ id: "alt", x: 265, y: 150, r: 50, side: "action" },
+		{ id: "ember", x: 40, y: 40, r: 38, side: "action" },
+		{ id: "flask", x: 375, y: 60, r: 38, side: "action" },
+		{ id: "swap", x: 370, y: 150, r: 38, side: "action" },
+		{ id: "shrine", x: 460, y: 110, r: 38, side: "action" },
+	] as ReadonlyArray<CircleSpec>,
 	spectate: [
 		{ id: "spectateNext", x: 140, y: 140, r: 60, side: "action" },
 		{ id: "spectatePrev", x: 140, y: 140, r: 60, side: "move" },
@@ -73,6 +94,8 @@ export const TOUCH_LAYOUT = {
 export const TOUCH_TEST_VIEWPORTS: ReadonlyArray<{ readonly x: number; readonly y: number }> = [
 	{ x: 667, y: 375 },
 	{ x: 844, y: 390 },
+	/** A short phone (the owner's, from a screenshot: the cluster used to clamp at minScale into the score panel). */
+	{ x: 714, y: 330 },
 	{ x: 932, y: 430 },
 	{ x: 1024, y: 768 },
 	{ x: 1180, y: 820 },
@@ -91,12 +114,24 @@ export interface TouchCircle extends TouchPoint {
 	readonly id: TouchButtonId;
 }
 
+/** Which play cluster touchLayout placed: the usual one, or the short-screen one (TOUCH_LAYOUT.compact). */
+export type TouchLayoutVariant = "play" | "compact";
+
 export interface TouchLayoutResult {
 	/** The controls' scale (reference px -> px). */
 	readonly scale: number;
+	/** The play cluster used (spectate places its own two buttons at the same scale). */
+	readonly variant: TouchLayoutVariant;
+	/** The corner panels' boxes (and the gap) no control may enter, px in the safe area (touchPanelKeepOut). */
+	readonly keepOut: ReadonlyArray<ScreenRect>;
+	/**
+	 * Every control (both hands) keeps clear of `keepOut` and inside the safe area. False only when even the compact
+	 * cluster at the smallest tappable scale cannot (no test screen; the spec holds it true).
+	 */
+	readonly clear: boolean;
 	/** The HUD scale the corner panels use on touch (computeHudScale with touch = true). */
 	readonly hudScale: number;
-	/** px from the safe area's top that the corner panels' boxes (and their gap) take. */
+	/** px from the safe area's top that the corner panels' boxes (and their gap) take: the lowest keepOut bottom. */
 	readonly topBand: number;
 	/** The move zone (play mode only). */
 	readonly moveZone: ScreenRect | undefined;
@@ -107,11 +142,128 @@ export interface TouchLayoutResult {
 
 const PERCENT = 100;
 
-/** The largest value of `f` over the play circles. */
-function maxOverPlay(f: (c: CircleSpec) => number): number {
-	let m = 0;
-	for (const c of TOUCH_LAYOUT.play) m = math.max(m, f(c));
-	return m;
+/** True when the circle and the rect share a positive area (a circle touching an edge does not hit it). */
+export function circleHitsRect(p: TouchPoint, z: ScreenRect): boolean {
+	const nx = math.clamp(p.cx, z.x, z.x + z.w);
+	const ny = math.clamp(p.cy, z.y, z.y + z.h);
+	const dx = p.cx - nx;
+	const dy = p.cy - ny;
+	return dx * dx + dy * dy < p.r * p.r;
+}
+
+/** A small slack (px) for float noise when a circle exactly touches a box or the safe area's edge. */
+const CLEAR_EPS = 1e-6;
+
+/** Every point lies inside the `safeW` x `safeH` safe area and enters no `keepOut` rect. */
+export function touchControlsClear(
+	points: ReadonlyArray<TouchPoint>,
+	keepOut: ReadonlyArray<ScreenRect>,
+	safeW: number,
+	safeH: number,
+): boolean {
+	for (const p of points) {
+		const r = p.r - CLEAR_EPS;
+		if (p.cx - r < 0 || p.cy - r < 0 || p.cx + r > safeW || p.cy + r > safeH) return false;
+		const q = { cx: p.cx, cy: p.cy, r };
+		for (const z of keepOut) if (circleHitsRect(q, z)) return false;
+	}
+	return true;
+}
+
+/**
+ * The corner panels' budget boxes on touch (TOUCH_ALWAYS_ON_PANELS: status, score; HUD_FOOTPRINT at the touch HUD
+ * scale, HUD_VIEW.margin from the HUD's edges), each grown by TOUCH_LAYOUT.clusterGap on every side, px in the touch
+ * safe area. `hud` is the HUD ScreenGui's rect in that space (the client measures it; both sit in CoreUISafeInsets,
+ * so it is normally the safe area itself).
+ */
+export function touchPanelKeepOut(
+	viewportW: number,
+	viewportH: number,
+	hudPercent: number,
+	hud: ScreenRect,
+): ReadonlyArray<ScreenRect> {
+	const hudScale = computeHudScale(viewportW, viewportH, false, hudPercent, true);
+	const gap = TOUCH_LAYOUT.clusterGap * hudScale;
+	return TOUCH_ALWAYS_ON_PANELS.map((panel) => {
+		const b: FootprintBox = HUD_FOOTPRINT[panel];
+		const r = cornerRect(b.corner, b.maxW, b.maxH, hud.w, hud.h, hudScale);
+		return { x: hud.x + r.x - gap, y: hud.y + r.y - gap, w: r.w + gap * 2, h: r.h + gap * 2 };
+	});
+}
+
+interface HomeSpec {
+	readonly x: number;
+	readonly y: number;
+	readonly r: number;
+}
+
+/** The smallest radius of any control, reference px (the floor scale keeps it TOUCH_LAYOUT.minDiameterPx across). */
+function smallestRadius(): number {
+	let m = math.huge;
+	for (const list of [TOUCH_LAYOUT.play, TOUCH_LAYOUT.compact, TOUCH_LAYOUT.spectate])
+		for (const c of list) m = math.min(m, c.r);
+	return math.min(m, TOUCH_LAYOUT.moveHome.r, TOUCH_LAYOUT.compactMoveHome.r);
+}
+
+/**
+ * A cluster, its move home and the spectate buttons at scale `s`, the action side on the right (`actionRight`) or
+ * the left.
+ */
+function placeCluster(
+	spec: ReadonlyArray<CircleSpec>,
+	home: HomeSpec,
+	s: number,
+	safeW: number,
+	safeH: number,
+	actionRight: boolean,
+): TouchPoint[] {
+	const out: TouchPoint[] = [];
+	// The spectate buttons too: one scale serves both modes, so it does not jump when a player starts spectating.
+	for (const list of [spec, TOUCH_LAYOUT.spectate]) {
+		for (const c of list) {
+			const inward = (c.side === "action") === actionRight;
+			out.push({ cx: inward ? safeW - c.x * s : c.x * s, cy: safeH - c.y * s, r: c.r * s });
+		}
+	}
+	out.push({ cx: actionRight ? home.x * s : safeW - home.x * s, cy: safeH - home.y * s, r: home.r * s });
+	return out;
+}
+
+/** The cluster at scale `s` keeps clear with either hand (so the left-handed layout stays the right-handed's mirror). */
+function clusterFits(
+	spec: ReadonlyArray<CircleSpec>,
+	home: HomeSpec,
+	s: number,
+	safeW: number,
+	safeH: number,
+	keepOut: ReadonlyArray<ScreenRect>,
+): boolean {
+	return (
+		touchControlsClear(placeCluster(spec, home, s, safeW, safeH, true), keepOut, safeW, safeH) &&
+		touchControlsClear(placeCluster(spec, home, s, safeW, safeH, false), keepOut, safeW, safeH)
+	);
+}
+
+/** The largest scale in [lo, want] at which the cluster fits (want itself first), or undefined when lo does not. */
+function largestFit(
+	spec: ReadonlyArray<CircleSpec>,
+	home: HomeSpec,
+	want: number,
+	lo: number,
+	safeW: number,
+	safeH: number,
+	keepOut: ReadonlyArray<ScreenRect>,
+): number | undefined {
+	if (clusterFits(spec, home, want, safeW, safeH, keepOut)) return want;
+	if (lo > want || !clusterFits(spec, home, lo, safeW, safeH, keepOut)) return undefined;
+	let a = lo;
+	let b = want;
+	for (let i = 0; i < TOUCH_LAYOUT.fitSteps; i++) {
+		const m = (a + b) / 2;
+		if (clusterFits(spec, home, m, safeW, safeH, keepOut)) a = m;
+		else b = m;
+	}
+	return a;
 }
 
 export function touchLayout(
@@ -123,50 +275,68 @@ export function touchLayout(
 	sizePercent: number, // DisplaySettings.touchSize
 	leftHanded: boolean,
 	mode: TouchLayoutMode,
+	hud?: ScreenRect, // the HUD ScreenGui's rect in the touch safe area (default: the safe area)
 ): TouchLayoutResult {
 	const hudScale = computeHudScale(viewportW, viewportH, false, hudPercent, true);
-	const topBand =
-		(HUD_VIEW.margin + math.max(HUD_FOOTPRINT.status.maxH, HUD_FOOTPRINT.score.maxH) + TOUCH_LAYOUT.clusterGap) *
-		hudScale;
-	const clusterTop = maxOverPlay((c) => c.y + c.r);
-	const fit = (safeH - topBand) / clusterTop;
-	const scale = math.max(TOUCH_LAYOUT.minScale, math.min((hudScale * sizePercent) / PERCENT, fit));
+	const keepOut = touchPanelKeepOut(viewportW, viewportH, hudPercent, hud ?? { x: 0, y: 0, w: safeW, h: safeH });
+	let topBand = 0;
+	for (const z of keepOut) topBand = math.max(topBand, z.y + z.h);
+
+	// The largest scale up to the setting's that keeps clear: the usual cluster, then the compact one, then the compact
+	// one under minScale down to the smallest tappable circle (TOUCH_LAYOUT.minDiameterPx).
+	const want = math.max(TOUCH_LAYOUT.minScale, (hudScale * sizePercent) / PERCENT);
+	const floorScale = TOUCH_LAYOUT.minDiameterPx / (2 * smallestRadius());
+	let variant: TouchLayoutVariant = "play";
+	let spec = TOUCH_LAYOUT.play;
+	let home: HomeSpec = TOUCH_LAYOUT.moveHome;
+	let scale = largestFit(spec, home, want, TOUCH_LAYOUT.minScale, safeW, safeH, keepOut);
+	if (scale === undefined) {
+		variant = "compact";
+		spec = TOUCH_LAYOUT.compact;
+		home = TOUCH_LAYOUT.compactMoveHome;
+		scale =
+			largestFit(spec, home, want, TOUCH_LAYOUT.minScale, safeW, safeH, keepOut) ??
+			largestFit(spec, home, TOUCH_LAYOUT.minScale, floorScale, safeW, safeH, keepOut);
+	}
+	const clear = scale !== undefined;
+	const s = scale ?? floorScale;
 
 	const actionRight = !leftHanded;
-	const actionX = (x: number): number => (actionRight ? safeW - x * scale : x * scale);
-	const moveX = (x: number): number => (actionRight ? x * scale : safeW - x * scale);
+	const actionX = (x: number): number => (actionRight ? safeW - x * s : x * s);
+	const moveX = (x: number): number => (actionRight ? x * s : safeW - x * s);
 	const place = (c: CircleSpec): TouchCircle => ({
 		id: c.id,
 		cx: c.side === "action" ? actionX(c.x) : moveX(c.x),
-		cy: safeH - c.y * scale,
-		r: c.r * scale,
+		cy: safeH - c.y * s,
+		r: c.r * s,
 	});
-	const buttons = (mode === "play" ? TOUCH_LAYOUT.play : TOUCH_LAYOUT.spectate).map((c) => place(c));
+	const buttons = (mode === "play" ? spec : TOUCH_LAYOUT.spectate).map((c) => place(c));
 
 	let moveZone: ScreenRect | undefined;
 	let moveHome: TouchPoint | undefined;
 	if (mode === "play") {
-		const clusterLeft = maxOverPlay((c) => (c.x + c.r) * scale);
+		let clusterLeft = 0;
+		for (const c of spec) clusterLeft = math.max(clusterLeft, (c.x + c.r) * s);
 		const zoneW = math.min(
 			safeW * TOUCH_LAYOUT.moveZoneWidthShare,
-			safeW - clusterLeft - TOUCH_LAYOUT.clusterGap * scale,
+			safeW - clusterLeft - TOUCH_LAYOUT.clusterGap * s,
 		);
-		moveZone = { x: actionRight ? 0 : safeW - zoneW, y: topBand, w: zoneW, h: safeH - topBand };
-		moveHome = {
-			cx: moveX(TOUCH_LAYOUT.moveHome.x),
-			cy: safeH - TOUCH_LAYOUT.moveHome.y * scale,
-			r: TOUCH_LAYOUT.moveHome.r * scale,
-		};
+		const zoneTop = math.min(topBand, safeH);
+		moveZone = { x: actionRight ? 0 : safeW - zoneW, y: zoneTop, w: zoneW, h: safeH - zoneTop };
+		moveHome = { cx: moveX(home.x), cy: safeH - home.y * s, r: home.r * s };
 	}
 
 	return {
-		scale,
+		scale: s,
+		variant,
+		keepOut,
+		clear,
 		hudScale,
 		topBand,
 		moveZone,
 		moveHome,
 		buttons,
-		stickRadiusPx: TOUCH.stickRadiusRef * scale,
+		stickRadiusPx: TOUCH.stickRadiusRef * s,
 	};
 }
 

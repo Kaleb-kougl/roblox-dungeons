@@ -24,10 +24,15 @@ import {
 	touchArtId,
 	touchArtSize,
 	touchArtTransparency,
+	touchCountIcon,
+	touchFace,
 	touchLayout,
+	touchStickParts,
 	type HudPipKind,
 	type SkinHas,
 	type TouchArtControl,
+	type TouchBox,
+	type TouchButtonId,
 } from "shared/view/hud";
 
 /** The UIScales skin.spec.ts checks: minScale, 70 % at 720 p, 720 p, 1.25, 1080 p, maxScale, maxScale at 125 %. */
@@ -239,7 +244,7 @@ describe("touch art", () => {
 		expect([ring.w, ring.h, button.w, button.h]).toEqual([39, 39, 39, 39]);
 	});
 
-	it("draws a whole multiple of the art within half an art step of every laid-out circle", () => {
+	it("draws the largest whole multiple of the art inside every laid-out circle (never past it, never rounded up)", () => {
 		for (const v of TOUCH_TEST_VIEWPORTS) {
 			for (const size of [75, 100, 150]) {
 				const layout = touchLayout(v.x, v.y, v.x, v.y, 100, size, false, "play");
@@ -249,15 +254,21 @@ describe("touch art", () => {
 					const d = c.r * 2;
 					const s = touchArtSize(d, button.w);
 					expect([v.x, size, s % button.w, s >= button.w]).toEqual([v.x, size, 0, true]);
-					if (d >= button.w) expect(math.abs(s - d)).toBeLessThanOrEqual(button.w / 2 + EPS);
+					if (d >= button.w)
+						expect([v.x, size, s <= d + EPS, d - s < button.w]).toEqual([v.x, size, true, true]);
 				}
 			}
 		}
+		// The reference phone's Attack (98 px) draws at 2 px per art px, not 3 (the nearest multiple, 117 px).
+		expect(touchArtSize(98, 39)).toBe(78);
+		expect(touchArtSize(78, 39)).toBe(78);
 		expect(touchArtSize(10, 39)).toBe(39);
 		expect(touchArtSize(100, 0)).toBe(0);
 	});
 
 	it("follows the opacity setting, brighter when held, always in [0, 1]", () => {
+		// The art is a solid dark disc: it takes the flat fill's alpha, so it hides no more floor than the flat circle.
+		expect(HUD_SKIN.touch.artAlpha).toBe(TOUCH_LAYOUT.fillAlpha);
 		expect(touchArtTransparency(1, false)).toBeCloseTo(1 - HUD_SKIN.touch.artAlpha, 9);
 		expect(touchArtTransparency(0, false)).toBe(1);
 		expect(touchArtTransparency(0.5, true)).toBeLessThan(touchArtTransparency(0.5, false));
@@ -267,5 +278,94 @@ describe("touch art", () => {
 				expect(t >= 0 && t <= 1).toBe(true);
 			}
 		}
+	});
+});
+
+/** Every corner of `b` lies within `radius` of the centre (`c`, `c`). */
+function boxInCircle(b: TouchBox, c: number, radius: number): boolean {
+	for (const x of [b.x, b.x + b.w])
+		for (const y of [b.y, b.y + b.h])
+			if ((x - c) * (x - c) + (y - c) * (y - c) > radius * radius + 1e-6) return false;
+	return true;
+}
+
+describe("touch control faces", () => {
+	const ring = icon("ui.stick.ring");
+	const flask = icon("ui.flask.full");
+	const candle = icon("ui.candle");
+	const COUNTED: ReadonlyArray<TouchButtonId> = ["flask", "ember"];
+
+	it("Flask and Ember show the flask / candle with the count when the control is skinned; words otherwise", () => {
+		expect(touchCountIcon(hasAll, "flask", true)).toBe("ui.flask.full");
+		expect(touchCountIcon(hasAll, "ember", true)).toBe("ui.candle");
+		expect(touchCountIcon(hasAll, "flask", false)).toBe(undefined);
+		expect(touchCountIcon(hasNone, "ember", true)).toBe(undefined);
+		for (const id of ["attack", "alt", "roll", "swap", "shrine", "spectateNext"] as TouchButtonId[])
+			expect([id, touchCountIcon(hasAll, id, true)]).toEqual([id]);
+	});
+
+	it("keeps every label and icon inside the drawn disc's inside, at every laid-out size, both looks", () => {
+		for (const v of TOUCH_TEST_VIEWPORTS) {
+			for (const size of [80, 100, 120]) {
+				for (const mode of ["play", "spectate"] as const) {
+					const layout = touchLayout(v.x, v.y, v.x, v.y - 58, 100, size, false, mode);
+					for (const b of layout.buttons) {
+						const d = b.r * 2;
+						const counted = COUNTED.includes(b.id);
+						for (const skinned of [false, true]) {
+							const art = skinned ? touchArtSize(d, ring.w) : undefined;
+							const iconArt = skinned && counted ? (b.id === "flask" ? flask : candle) : undefined;
+							const face = touchFace(b.id, d, art, counted, iconArt);
+							const disc = art ?? d;
+							const inner =
+								(disc / 2) * (skinned ? HUD_SKIN.touch.artInnerShare : HUD_SKIN.touch.flatInnerShare);
+							const where = `${v.x}x${v.y} ${size} ${b.id} ${skinned ? "art" : "flat"}`;
+							expect([where, boxInCircle(face.text, d / 2, inner)]).toEqual([where, true]);
+							expect([where, face.maxText > 0, face.text.w > 0, face.text.h > 0]).toEqual([
+								where,
+								true,
+								true,
+								true,
+							]);
+							if (face.icon !== undefined) {
+								// The icon sits inside the drawn disc (its corners may reach the ring at 1 px per art px).
+								expect([where, boxInCircle(face.icon, d / 2, disc / 2)]).toEqual([where, true]);
+								const k = face.icon.w / (b.id === "flask" ? flask.w : candle.w);
+								expect([where, isWhole(k), k >= 1]).toEqual([where, true, true]);
+							}
+							expect([where, face.kind]).toEqual([
+								where,
+								iconArt !== undefined ? "iconCount" : counted ? "wordCount" : "word",
+							]);
+						}
+					}
+				}
+			}
+		}
+	});
+
+	it("words fit a wide box, a word and count a square that wraps; sticks may be larger", () => {
+		const word = touchFace("roll", 90, undefined, false, undefined);
+		expect(word.text.w > word.text.h).toBe(true);
+		expect(word.wrap).toBe(false);
+		const counted = touchFace("flask", 76, undefined, true, undefined);
+		expect(counted.text.w).toBeCloseTo(counted.text.h, 9);
+		expect(counted.wrap).toBe(true);
+		expect(touchFace("attack", 150, undefined, false, undefined).maxText).toBe(HUD_SKIN.touch.maxText.stick);
+		expect(word.maxText).toBe(HUD_SKIN.touch.maxText.button);
+		expect(HUD_SKIN.touch.minText <= HUD_SKIN.touch.maxText.count).toBe(true);
+	});
+
+	it("an icon's count is a badge at the bottom right of the icon's square", () => {
+		const face = touchFace("flask", 42, 39, true, flask);
+		expect(face.kind).toBe("iconCount");
+		const icon = face.icon!;
+		expect(face.text.x + face.text.w).toBeGreaterThan(icon.x + icon.w / 2);
+		expect(face.text.y + face.text.h).toBeGreaterThan(icon.y + icon.h / 2);
+	});
+
+	it("a stick shows its word at rest and its knob only while held", () => {
+		expect(touchStickParts(false)).toEqual({ knob: HUD_SKIN.touch.knobAtRest, label: true });
+		expect(touchStickParts(true)).toEqual({ knob: true, label: false });
 	});
 });

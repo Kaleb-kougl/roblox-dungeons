@@ -18,6 +18,7 @@ import type { ImageRef } from "shared/theme";
 import { stickVector, touchMode, type GameSnapshot, type TouchControls, type TouchMode } from "shared/play";
 import { RENDER_ORDER, floorStudsY, studsX, studsZ } from "shared/view";
 import {
+	HUD_SKIN,
 	TOUCH_LAYOUT,
 	pickTouchTarget,
 	skinHasOf,
@@ -25,8 +26,13 @@ import {
 	touchArtSize,
 	touchArtTransparency,
 	touchButtonLabelKey,
+	touchCountIcon,
+	touchFace,
 	touchLayout,
+	touchStickParts,
+	type ScreenRect,
 	type TouchArtControl,
+	type TouchFace,
 	type TouchButtonId,
 	type TouchLayoutResult,
 	type TouchTargetId,
@@ -36,6 +42,10 @@ import { SimController } from "./SimController";
 
 const RENDER_STEP = "KV_TouchControls";
 const GUI_NAME = "KV_TouchControls";
+/** The in-run HUD's ScreenGui (client/ui/hud GameHud): the corner panels the controls keep clear of sit in it. */
+const HUD_GUI_NAME = "KV_GameHud";
+/** A label's text stroke opacity, as a share of the text's (it keeps the words readable over a light floor). */
+const STROKE_SHARE = 0.6;
 const TARGET_NAME = "KV_TouchTarget";
 const HALF = 0.5;
 /** Fully transparent (an idle part of a surface). */
@@ -45,8 +55,8 @@ const NOT_SET = -1;
 const PERCENT = 100;
 /** A Cylinder's axis is X: turn it upright (as RunMarkerController does). */
 const UPRIGHT = CFrame.Angles(0, 0, math.pi * HALF);
-/** Draw order inside a skinned control (ZIndexBehavior Sibling): the ring art, the label over it, the knob on top. */
-const ART_Z = { art: 1, label: 2, knob: 3 } as const;
+/** Draw order inside a control (ZIndexBehavior Sibling): the ring art, the icon, the label over them, the knob on top. */
+const ART_Z = { art: 1, icon: 2, label: 3, knob: 4 } as const;
 
 /** A control's ring / button art (docs/UI_ART.md UA13): the ImageLabel and the art's width in px (its rect). */
 interface ControlArt {
@@ -61,8 +71,17 @@ interface Control {
 	readonly knob: Frame | undefined;
 	/** The ring / button art when the pack has it (docs/UI_ART.md UA13); undefined: the flat circle. */
 	readonly art: ControlArt | undefined;
-	/** Where the label is written: the button itself (flat), or a label over the art (skinned). */
-	readonly text: TextButton | TextLabel;
+	/** The label, in its box inside the control (shared/view/hud touchFace), TextScaled under `textSize`'s cap. */
+	readonly text: TextLabel;
+	readonly textSize: UITextSizeConstraint;
+	/** Flask / Ember with the art: the flask / candle icon shown with the count instead of the word (touchCountIcon). */
+	readonly icon: ControlArt | undefined;
+	/** The icon art's size, art px (touchFace fits it at a whole multiple). */
+	readonly iconArt: { readonly w: number; readonly h: number } | undefined;
+	/** Flask / Ember: the label carries the count. */
+	readonly counted: boolean;
+	/** The face the last layout gave it (what the label shows: word, word and count, or the count by the icon). */
+	face: TouchFace["kind"];
 	/** The label without the count (the theme string of touch.<id>). */
 	readonly name: string;
 	/** Placed by the current layout (the mode's buttons). */
@@ -156,30 +175,41 @@ function makeArt(parent: GuiObject, ref: ImageRef): ControlArt {
 	return { image, artPx: r?.w ?? ref.w };
 }
 
-/** A skinned control's label over its art (a child draws over its parent's own text, so the button's text hides). */
-function makeLabel(button: TextButton, name: string): TextLabel {
+/**
+ * A control's label: a TextLabel in the box touchFace gives it (set in place), TextScaled under a UITextSizeConstraint,
+ * with a soft dark stroke, so the word never spills past its control (it filled the whole square before).
+ */
+function makeLabel(button: TextButton, name: string): [TextLabel, UITextSizeConstraint] {
 	const label = new Instance("TextLabel");
 	label.Name = "Label";
-	label.Size = UDim2.fromScale(1, 1);
 	label.BackgroundTransparency = HIDDEN;
 	label.Active = false;
 	label.Text = name;
 	label.TextScaled = true;
 	label.Font = HUD_FONT;
 	label.TextColor3 = role("uiText");
+	label.TextStrokeColor3 = role("uiPanel");
 	label.ZIndex = ART_Z.label;
+	const size = new Instance("UITextSizeConstraint");
+	size.MinTextSize = HUD_SKIN.touch.minText;
+	size.Parent = label;
 	label.Parent = button;
-	return label;
+	return [label, size];
+}
+
+/** The icon a Flask / Ember control shows with its count (touchCountIcon), or undefined: the word. */
+function countIconRef(id: TouchButtonId, skinned: boolean): ImageRef | undefined {
+	const pack = themePack();
+	if (pack === undefined) return undefined;
+	const iconId = touchCountIcon(skinHasOf(pack), id, skinned);
+	return iconId !== undefined ? pack.image(iconId) : undefined;
 }
 
 function makeControl(id: TouchButtonId, gui: ScreenGui): Control {
 	const name = str(touchButtonLabelKey(id));
 	const button = new Instance("TextButton");
 	button.Name = id;
-	button.Text = name;
-	button.TextScaled = true;
-	button.Font = HUD_FONT;
-	button.TextColor3 = role("uiText");
+	button.Text = "";
 	button.BackgroundColor3 = role("uiPanel");
 	button.AutoButtonColor = false;
 	button.Selectable = false;
@@ -187,17 +217,58 @@ function makeControl(id: TouchButtonId, gui: ScreenGui): Control {
 	roundCorners(button);
 	const ref = artRef(id);
 	const art = ref !== undefined ? makeArt(button, ref) : undefined;
-	let text: TextButton | TextLabel = button;
-	if (art !== undefined) {
-		// Skinned (docs/UI_ART.md UA13): no flat fill, the label on its own TextLabel over the art.
-		button.BackgroundTransparency = HIDDEN;
-		button.TextTransparency = HIDDEN;
-		text = makeLabel(button, name);
+	// Skinned (docs/UI_ART.md UA13): no flat fill under the art.
+	if (art !== undefined) button.BackgroundTransparency = HIDDEN;
+	const [text, textSize] = makeLabel(button, name);
+	const iconRef = countIconRef(id, art !== undefined);
+	let icon: ControlArt | undefined;
+	let iconArt: { w: number; h: number } | undefined;
+	if (iconRef !== undefined) {
+		icon = makeArt(button, iconRef);
+		icon.image.Name = "Icon";
+		icon.image.ZIndex = ART_Z.icon;
+		iconArt = { w: iconRef.rect?.w ?? iconRef.w, h: iconRef.rect?.h ?? iconRef.h };
 	}
 	const knob = id === "attack" || id === "alt" ? makeKnob(button) : undefined;
-	if (knob !== undefined && art !== undefined) knob.ZIndex = ART_Z.knob;
+	if (knob !== undefined) knob.ZIndex = ART_Z.knob;
 	button.Parent = gui;
-	return { id, button, knob, art, text, name, placed: false, fillT: NOT_SET, textT: NOT_SET, label: name };
+	return {
+		id,
+		button,
+		knob,
+		art,
+		text,
+		textSize,
+		icon,
+		iconArt,
+		counted: id === "flask" || id === "ember",
+		face: "word",
+		name,
+		placed: false,
+		fillT: NOT_SET,
+		textT: NOT_SET,
+		label: name,
+	};
+}
+
+/** Puts a control's label (and icon) where touchFace says for a `diameter` px control. */
+function placeFace(c: Control, diameter: number, artSize: number | undefined): void {
+	const face = touchFace(c.id, diameter, artSize, c.counted, c.iconArt);
+	c.face = face.kind;
+	c.text.Position = UDim2.fromOffset(face.text.x, face.text.y);
+	c.text.Size = UDim2.fromOffset(face.text.w, face.text.h);
+	c.text.TextWrapped = face.wrap;
+	c.textSize.MaxTextSize = face.maxText;
+	c.label = ""; // rewrite the text for the new face (updateButtons)
+	if (c.icon !== undefined) {
+		const b = face.icon;
+		c.icon.image.Visible = b !== undefined;
+		if (b !== undefined) {
+			c.icon.image.AnchorPoint = new Vector2(0, 0);
+			c.icon.image.Position = UDim2.fromOffset(b.x, b.y);
+			c.icon.image.Size = UDim2.fromOffset(b.w, b.h);
+		}
+	}
 }
 
 /** Puts every placed circle, the move zone and the move base's size where the layout says (on a layout change). */
@@ -209,10 +280,12 @@ function place(ui: Ui, layout: TouchLayoutResult): void {
 		c.placed = true;
 		c.button.Position = UDim2.fromOffset(p.cx - p.r, p.cy - p.r);
 		c.button.Size = UDim2.fromOffset(p.r * 2, p.r * 2);
+		let side: number | undefined;
 		if (c.art !== undefined) {
-			const side = touchArtSize(p.r * 2, c.art.artPx);
+			side = touchArtSize(p.r * 2, c.art.artPx);
 			c.art.image.Size = UDim2.fromOffset(side, side);
 		}
+		placeFace(c, p.r * 2, side);
 	}
 	const zone = layout.moveZone;
 	ui.moveZone.Visible = zone !== undefined;
@@ -242,9 +315,12 @@ function place(ui: Ui, layout: TouchLayoutResult): void {
  * ended by its InputObject's UserInputState. Either leak used to leave a control held for good: the machine ignores
  * new touches on a control a live finger holds.
  *
- * With the UI art (docs/UI_ART.md UA13) the sticks draw ui.stick.ring and the buttons ui.touch.button (whole-pixel
- * multiples of the art, shared/view/hud touchArtSize; touchOpacity / touchSize apply as before; labels kept, no
- * glyphs); without it, the flat circles.
+ * With the UI art (docs/UI_ART.md UA13) the sticks draw ui.stick.ring and the buttons ui.touch.button (the largest
+ * whole multiple of the art inside the circle, shared/view/hud touchArtSize, at the flat fill's alpha; touchOpacity /
+ * touchSize apply as before); without it, the flat circles. Either way each label sits in its box inside the control
+ * (touchFace: TextScaled, capped), Flask / Ember show their icon and count when skinned, and a stick shows its word at
+ * rest and its knob while held (touchStickParts). The controls keep clear of the corner panels' boxes, measured in
+ * the HUD's own ScreenGui (touchLayout `hud`).
  *
  * Presentation only: it reads the store and the sim and never writes the sim. Everything it makes lives in the
  * Janitor; the render step (KV_TouchControls, before the sim samples input) is unbound with it.
@@ -274,6 +350,18 @@ export class TouchControlsController implements OnStart {
 	}
 
 	// --- build (once) ----------------------------------------------------------------------------------
+
+	/** The HUD ScreenGui's rect in the touch GUI's space (the corner panels sit in it), or undefined: not mounted. */
+	private hudFrame(ui: Ui): ScreenRect | undefined {
+		const playerGui = ui.gui.Parent;
+		const hud = playerGui?.FindFirstChild(HUD_GUI_NAME);
+		if (hud === undefined || !hud.IsA("ScreenGui")) return undefined;
+		const o = ui.gui.AbsolutePosition;
+		const p = hud.AbsolutePosition;
+		const size = hud.AbsoluteSize;
+		if (!(size.X > 0 && size.Y > 0)) return undefined;
+		return { x: p.X - o.X, y: p.Y - o.Y, w: size.X, h: size.Y };
+	}
 
 	private build(): Ui {
 		GuiService.TouchControlsEnabled = false;
@@ -463,7 +551,9 @@ export class TouchControlsController implements OnStart {
 	/** Re-lays the controls when anything they depend on changed (the viewport, the GUI, the settings, the mode). */
 	private layoutIfChanged(ui: Ui, viewport: Vector2, mode: TouchMode, display: DisplaySettings): void {
 		const safe = ui.gui.AbsoluteSize;
-		const key = `${viewport.X},${viewport.Y},${safe.X},${safe.Y},${display.hudScale},${display.touchSize},${display.touchLeftHanded},${mode}`;
+		const hud = this.hudFrame(ui);
+		const hudKey = hud !== undefined ? `${hud.x},${hud.y},${hud.w},${hud.h}` : "-";
+		const key = `${viewport.X},${viewport.Y},${safe.X},${safe.Y},${hudKey},${display.hudScale},${display.touchSize},${display.touchLeftHanded},${mode}`;
 		if (key === this.layoutKey) return;
 		this.layoutKey = key;
 		const layout = touchLayout(
@@ -475,6 +565,7 @@ export class TouchControlsController implements OnStart {
 			display.touchSize,
 			display.touchLeftHanded,
 			mode === "spectate" ? "spectate" : "play",
+			hud,
 		);
 		this.layout = layout;
 		this.input.setTouchStickRadiusPx(layout.stickRadiusPx);
@@ -509,20 +600,26 @@ export class TouchControlsController implements OnStart {
 			if (c.textT !== textT) {
 				c.textT = textT;
 				c.text.TextTransparency = textT;
+				c.text.TextStrokeTransparency = 1 - opacity * STROKE_SHARE;
 				if (c.knob !== undefined) c.knob.BackgroundTransparency = textT;
+				if (c.icon !== undefined) c.icon.image.ImageTransparency = textT;
 			}
 
 			const visible = c.placed && (c.id !== "shrine" || snapshot.atShrine);
 			if (c.button.Visible !== visible) c.button.Visible = visible;
 
-			const count = c.id === "ember" ? ` ${snapshot.embers}` : c.id === "flask" ? ` ${snapshot.flask}` : "";
-			const label = c.name + count;
+			const count = c.id === "ember" ? `${snapshot.embers}` : c.id === "flask" ? `${snapshot.flask}` : "";
+			const label = c.face === "iconCount" ? count : c.face === "wordCount" ? `${c.name} ${count}` : c.name;
 			if (c.label !== label) {
 				c.label = label;
 				c.text.Text = label;
 			}
 
 			if (c.knob !== undefined) {
+				// A stick: its word at rest, its knob while held (touchStickParts).
+				const parts = touchStickParts(held);
+				if (c.knob.Visible !== parts.knob) c.knob.Visible = parts.knob;
+				if (c.text.Visible !== parts.label) c.text.Visible = parts.label;
 				const stick = touch.stickView(c.id);
 				let dx = 0;
 				let dy = 0;

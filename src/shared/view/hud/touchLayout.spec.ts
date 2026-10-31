@@ -3,7 +3,19 @@
 import { describe, expect, it } from "@rbxts/jest-globals";
 import { TOUCH } from "shared/config";
 import { HUD_SCALE_PERCENTS } from "shared/settings";
-import { HUD_TEST_TOP_INSET, TOUCH_LAYOUT, TOUCH_TEST_VIEWPORTS, pickTouchTarget, touchLayout } from ".";
+import {
+	HUD_FOOTPRINT,
+	HUD_TEST_TOP_INSET,
+	TOUCH_ALWAYS_ON_PANELS,
+	TOUCH_LAYOUT,
+	TOUCH_TEST_VIEWPORTS,
+	computeHudScale,
+	cornerRect,
+	pickTouchTarget,
+	touchControlsClear,
+	touchLayout,
+	touchPanelKeepOut,
+} from ".";
 import type { ScreenRect, TouchCircle, TouchLayoutMode, TouchLayoutResult, TouchPoint } from ".";
 
 const PERCENT = 100;
@@ -48,6 +60,35 @@ function mirrored(right: TouchLayoutResult, left: TouchLayoutResult, w: number):
 	const a = right.moveHome;
 	const b = left.moveHome;
 	return math.abs(b.cx - (w - a.cx)) <= EPS && math.abs(b.cy - a.cy) <= EPS && math.abs(b.r - a.r) <= EPS;
+}
+
+/** Distance (px) from a circle's edge to a rect (negative: they overlap). */
+function edgeGap(p: TouchPoint, z: ScreenRect): number {
+	const nx = math.clamp(p.cx, z.x, z.x + z.w);
+	const ny = math.clamp(p.cy, z.y, z.y + z.h);
+	return math.sqrt((p.cx - nx) * (p.cx - nx) + (p.cy - ny) * (p.cy - ny)) - p.r;
+}
+
+/**
+ * Every point keeps TOUCH_LAYOUT.clusterGap (at the touch HUD scale) from the status / score panels' budget boxes,
+ * placed from HUD_FOOTPRINT here (independently of touchPanelKeepOut) in a safe area `safeW` x `safeH`.
+ */
+function clearOfPanels(
+	points: ReadonlyArray<TouchPoint>,
+	vw: number,
+	vh: number,
+	percent: number,
+	safeW: number,
+	safeH: number,
+): boolean {
+	const hudScale = computeHudScale(vw, vh, false, percent, true);
+	const gap = TOUCH_LAYOUT.clusterGap * hudScale;
+	for (const panel of TOUCH_ALWAYS_ON_PANELS) {
+		const b = HUD_FOOTPRINT[panel];
+		const box = cornerRect(b.corner, b.maxW, b.maxH, safeW, safeH, hudScale);
+		for (const p of points) if (edgeGap(p, box) < gap - TOP_SLACK) return false;
+	}
+	return true;
 }
 
 function expectOk(where: string, name: string, ok: boolean): void {
@@ -99,12 +140,13 @@ describe("touch controls layout", () => {
 								}
 								expectOk(where, "apart", apart);
 
-								// 3. Every circle's top is below the corner panels' band.
+								// 3. No circle comes within the gap of a corner panel's box (checked from footprint, not keepOut).
 								expectOk(
 									where,
-									"below the HUD band",
-									points.every((p) => p.cy - p.r >= r.topBand - TOP_SLACK),
+									"clear of the corner panels",
+									clearOfPanels(points, v.x, v.y, percent, safeW, safeH),
 								);
+								expectOk(where, "reported clear", r.clear);
 
 								// 4. Play mode: the move zone is clear of every button and at least 30 % of the width.
 								if (mode === "play" && r.moveZone !== undefined) {
@@ -138,6 +180,98 @@ describe("touch controls layout", () => {
 				}
 			}
 		}
+	});
+});
+
+/** The phones the owner plays on (docs/MOBILE.md: the 844 x 390 reference and the 667 x 375 small one). */
+const REFERENCE_PHONES: ReadonlyArray<{ readonly x: number; readonly y: number }> = [
+	{ x: 844, y: 390 },
+	{ x: 667, y: 375 },
+];
+/** A phone's safe-area insets (pt): the Roblox top bar, the home indicator, a notch on each side. */
+const TOP_INSETS: ReadonlyArray<number> = [0, HUD_TEST_TOP_INSET];
+const BOTTOM_INSETS: ReadonlyArray<number> = [0, 21];
+const SIDE_INSETS: ReadonlyArray<number> = [0, 47];
+
+describe("touch controls and the corner panels", () => {
+	it("never overlap on the reference phones: every HUD scale (110 / 125 % too), size, inset, hand and mode", () => {
+		for (const v of REFERENCE_PHONES) {
+			for (const top of TOP_INSETS) {
+				for (const bottom of BOTTOM_INSETS) {
+					for (const side of SIDE_INSETS) {
+						const safeW = v.x - side * 2;
+						const safeH = v.y - top - bottom;
+						for (const percent of HUD_SCALE_PERCENTS) {
+							for (const size of SIZE_PERCENTS) {
+								for (const hand of HANDS) {
+									for (const mode of MODES) {
+										const where = string.format(
+											"%dx%d top %d bottom %d side %d hud %d size %d %s %s",
+											v.x,
+											v.y,
+											top,
+											bottom,
+											side,
+											percent,
+											size,
+											hand ? "left" : "right",
+											mode,
+										);
+										const r = touchLayout(v.x, v.y, safeW, safeH, percent, size, hand, mode);
+										const points = allPoints(r);
+										expectOk(where, "clear", r.clear);
+										expectOk(
+											where,
+											"panels",
+											clearOfPanels(points, v.x, v.y, percent, safeW, safeH),
+										);
+										expectOk(
+											where,
+											"inside",
+											points.every((p) => insideRect(p, safeW, safeH)),
+										);
+										expectOk(
+											where,
+											"diameter",
+											points.every((p) => 2 * p.r >= TOUCH_LAYOUT.minDiameterPx),
+										);
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	});
+
+	it("used to overlap: the 844 x 390 phone under the top bar and the home indicator at 125 % takes the compact cluster", () => {
+		const r = touchLayout(844, 390, 844, 390 - HUD_TEST_TOP_INSET - 21, 125, PERCENT, false, "play");
+		expect(r.variant).toBe("compact");
+		expect(r.scale >= TOUCH_LAYOUT.minScale - EPS).toBe(true);
+		// The old rule (the full-width band, clamped at minScale) put Ember into the score panel's box here.
+		const band = r.topBand;
+		const oldEmberTop = 390 - HUD_TEST_TOP_INSET - 21 - (260 + 38) * TOUCH_LAYOUT.minScale;
+		expect(oldEmberTop < band).toBe(true);
+	});
+
+	it("keeps the usual cluster, and the old scale, wherever it fit before", () => {
+		const v = TOUCH_TEST_VIEWPORTS[1];
+		const r = touchLayout(v.x, v.y, v.x, v.y - HUD_TEST_TOP_INSET, PERCENT, PERCENT, false, "play");
+		expect(r.variant).toBe("play");
+		const old = (v.y - HUD_TEST_TOP_INSET - r.topBand) / (260 + 38);
+		expect(r.scale).toBeCloseTo(math.max(TOUCH_LAYOUT.minScale, math.min(r.hudScale, old)), 5);
+	});
+
+	it("follows the HUD's own frame when it sits lower than the touch safe area", () => {
+		const v = TOUCH_TEST_VIEWPORTS[1];
+		const safeH = v.y - 21;
+		const hud = { x: 0, y: HUD_TEST_TOP_INSET, w: v.x, h: safeH - HUD_TEST_TOP_INSET };
+		const r = touchLayout(v.x, v.y, v.x, safeH, PERCENT, PERCENT, false, "play", hud);
+		const keepOut = touchPanelKeepOut(v.x, v.y, PERCENT, hud);
+		expect(r.clear).toBe(true);
+		expect(touchControlsClear(allPoints(r), keepOut, v.x, safeH)).toBe(true);
+		for (const z of r.keepOut) expect(z.y + z.h > HUD_TEST_TOP_INSET).toBe(true);
 	});
 });
 
