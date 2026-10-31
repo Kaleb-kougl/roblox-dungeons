@@ -6,7 +6,14 @@ import { MenuButton, Panel, Row, Text } from "client/ui/hud";
 import { role, str } from "client/ui/theme";
 import { SFX } from "shared/view/audio";
 import { HUD_VIEW } from "shared/view/hud";
-import { LOBBY_STRINGS, MENU_STRINGS, MENU_VIEW, arrivedInviteShown, receivedInvites } from "shared/view/menu";
+import {
+	LOBBY_STRINGS,
+	MENU_STRINGS,
+	MENU_VIEW,
+	arrivedInviteShown,
+	receivedInvites,
+	screenSkin,
+} from "shared/view/menu";
 import { useMenuActions } from "./actions";
 import { spec, useClock, useNameOf } from "./hooks";
 
@@ -41,8 +48,9 @@ export function InviteToasts() {
 					order={i + 1}
 					width={MENU_VIEW.inviteToastWidth}
 					transparency={0}
+					skin={screenSkin("inviteToast")}
+					flatOnly={<uistroke Thickness={1} Color={role("uiAccent")} />}
 				>
-					<uistroke Thickness={1} Color={role("uiAccent")} />
 					<Text
 						order={1}
 						size={HUD_VIEW.smallText}
@@ -91,6 +99,7 @@ export function InviteBadge() {
 		<Panel
 			position={new UDim2(HALF, 0, 1, -MENU_VIEW.badgeBottom)}
 			anchor={new Vector2(HALF, 1)}
+			skin={screenSkin("inviteBadge")}
 			name="InviteBadge"
 		>
 			<Text
@@ -126,6 +135,7 @@ export function NoticeToasts() {
 			anchor={new Vector2(HALF, 0)}
 			width={MENU_VIEW.noticeWidth}
 			align={Enum.HorizontalAlignment.Center}
+			skin={screenSkin("notices")}
 			name="LobbyNotices"
 		>
 			{notices.map((n, i) => {

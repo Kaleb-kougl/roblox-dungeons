@@ -5,6 +5,7 @@ import { shrineHint, keyDevice } from "shared/play";
 import { str } from "client/ui/theme";
 import { HUD_VIEW, PROGRESSION_STRINGS, PROGRESSION_VIEW, TOUCH_STRINGS } from "shared/view/hud";
 import { Panel, Text } from "./primitives";
+import { screenSkin } from "shared/view/menu";
 
 const HALF = 0.5;
 
@@ -39,6 +40,7 @@ export function ToastPanel() {
 			anchor={new Vector2(HALF, 0)}
 			width={PROGRESSION_VIEW.toastWidth}
 			align={Enum.HorizontalAlignment.Center}
+			skin={screenSkin("toast")}
 			name="Toasts"
 		>
 			{lines}

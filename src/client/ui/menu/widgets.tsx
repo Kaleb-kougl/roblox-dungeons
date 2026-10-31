@@ -2,7 +2,16 @@ import React from "@rbxts/react";
 import { SlicedImage, useHudScale } from "client/ui/hud";
 import { HUD_FONT, role, themePack } from "client/ui/theme";
 import type { ColorRole } from "shared/theme";
-import { HUD_VIEW, UI_ART, skinFor, skinHasOf, skinPadding, skinRefPerArt, snappedSliceScale } from "shared/view/hud";
+import {
+	HUD_VIEW,
+	UI_ART,
+	contentInsetsOf,
+	skinFor,
+	skinHasOf,
+	skinPadding,
+	skinRefPerArt,
+	snappedSliceScale,
+} from "shared/view/hud";
 import { MENU_VIEW } from "shared/view/menu";
 
 /** The menu screens' building blocks on top of the HUD primitives: a scrolling list, a list row, a fixed-width cell. */
@@ -76,14 +85,15 @@ export function ListRow(props: ListRowProps) {
  * A list row on its frame art: UI_ART.rowContext's frame (ui.panel.hud: ui.panel.tall's borders do not fit a row,
  * skin.spec.ts) at that context's snapped density, ImageTransparency the flat row's transparency, its padding grown so
  * no cell sits on the border (left / right at least HUD_VIEW.pad as today, top / bottom the border). The image is the
- * container (a sibling image would be placed by the list layout).
+ * container (a sibling image would be placed by the list layout). The border is the frame's visible one
+ * (contentInsetsOf).
  */
 function SkinnedListRow(props: { row: ListRowProps; skinId: string }) {
 	const row = props.row;
 	const uiScale = useHudScale();
 	const sliceScale = snappedSliceScale(uiScale, skinRefPerArt(UI_ART.rowContext));
 	const flat = { left: HUD_VIEW.pad, top: 0, right: HUD_VIEW.pad, bottom: 0 };
-	const pad = skinPadding(flat, themePack()?.image(props.skinId)?.slice, sliceScale);
+	const pad = skinPadding(flat, contentInsetsOf(props.skinId, themePack()?.image(props.skinId)?.slice), sliceScale);
 	return (
 		<SlicedImage
 			id={props.skinId}

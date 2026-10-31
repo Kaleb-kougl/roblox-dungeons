@@ -216,19 +216,38 @@ export interface SkinBox {
  * and h). ArtImage fits the art into exactly this box at that scale.
  */
 export function focusCornerBox(artW: number, artH: number, uiScale: number, rotation: number): SkinBox {
+	const box = artDensityBox(artW, artH, uiScale, UI_ART.refPerArt);
+	return isQuarterTurn(rotation) ? { w: box.h, h: box.w } : box;
+}
+
+/**
+ * `artW` x `artH` art at a frame density's whole screen-px scale (artPixelScale(uiScale, refPerArt)), as reference px:
+ * the box a fixed-size piece drawn beside the frames takes (the menu ornament, a divider's height, the pill bar's
+ * height), so its pixels match the frame's. A UIScale that is not a positive number counts as 1.
+ */
+export function artDensityBox(
+	artW: number,
+	artH: number,
+	uiScale: number,
+	refPerArt: number = UI_ART.refPerArt,
+): SkinBox {
 	const u = uiScale > 0 && uiScale < math.huge ? uiScale : 1;
-	const k = artPixelScale(u, UI_ART.refPerArt);
-	const w = (artW * k) / u;
-	const h = (artH * k) / u;
-	return isQuarterTurn(rotation) ? { w: h, h: w } : { w, h };
+	const k = artPixelScale(u, refPerArt);
+	return { w: (artW * k) / u, h: (artH * k) / u };
 }
 
 /**
  * The context a Panel's skin is looked up in (skinFor "panel"), or undefined for "none" (always flat): its `skin`
- * prop, else "hud" for a corner panel and "menu" for every other.
+ * prop, else "hud" for a corner panel and "menu" for every other. A `hidden` panel (a fully transparent layout box:
+ * the Options tabs' bodies, the run-over stats) is always flat: it shows no fill, so it shows no frame either, and its
+ * padding never grows.
  */
-export function panelSkinContext(skin: PanelSkin | undefined, corner: boolean): SkinPanelContext | undefined {
-	if (skin === "none") {
+export function panelSkinContext(
+	skin: PanelSkin | undefined,
+	corner: boolean,
+	hidden: boolean = false,
+): SkinPanelContext | undefined {
+	if (skin === "none" || hidden) {
 		return undefined;
 	}
 	return skin ?? (corner ? "hud" : "menu");
@@ -252,23 +271,40 @@ export function uniformPadding(pad: number): SkinPadding {
 	return { left: pad, top: pad, right: pad, bottom: pad };
 }
 
+/** Whether a Panel's fill transparency hides it entirely (a number >= 1; a binding fades a visible panel). */
+export function panelHidden(transparency: unknown): boolean {
+	return typeIs(transparency, "number") && transparency >= 1;
+}
+
 /**
- * A skinned frame's padding: per side, the larger of the flat padding and the art's inset on that side at the drawn
- * SliceScale (reference px per art px), so content never sits on the frame's border. No slice: the flat padding.
+ * The art px per side content keeps clear of on frame `id` (docs/UI_ART.md UA7): its measured visible border
+ * (UI_ART.contentInsets), else its slice insets, else undefined (no border).
+ */
+export function contentInsetsOf(
+	id: string,
+	slice: Readonly<SliceInsets> | undefined,
+): Readonly<SliceInsets> | undefined {
+	return UI_ART.contentInsets[id] ?? slice;
+}
+
+/**
+ * A skinned frame's padding: per side, the larger of the flat padding and the art's border on that side (`insets`,
+ * art px: contentInsetsOf, the visible border, never the slice insets of a frame that has a measured one) at the drawn
+ * SliceScale (reference px per art px), so content never sits on the frame's border. No insets: the flat padding.
  */
 export function skinPadding(
 	base: SkinPadding,
-	slice: Readonly<SliceInsets> | undefined,
+	insets: Readonly<SliceInsets> | undefined,
 	sliceScale: number,
 ): SkinPadding {
-	if (slice === undefined) {
+	if (insets === undefined) {
 		return base;
 	}
 	return {
-		left: math.max(base.left, slice.left * sliceScale),
-		top: math.max(base.top, slice.top * sliceScale),
-		right: math.max(base.right, slice.right * sliceScale),
-		bottom: math.max(base.bottom, slice.bottom * sliceScale),
+		left: math.max(base.left, insets.left * sliceScale),
+		top: math.max(base.top, insets.top * sliceScale),
+		right: math.max(base.right, insets.right * sliceScale),
+		bottom: math.max(base.bottom, insets.bottom * sliceScale),
 	};
 }
 
@@ -303,4 +339,50 @@ export function menuButtonSkin(
 /** A skinned MenuButton's text colour: uiText when focused or active (on the red fill), uiTextDim otherwise. */
 export function skinnedButtonTextRole(active: boolean, focused: boolean): "uiText" | "uiTextDim" {
 	return active || focused ? "uiText" : "uiTextDim";
+}
+
+// ---- Menus, overlays, icons and the loading bar (docs/UI_ART.md UA7 / UA8 / UA9).
+
+/** Whether the pack draws a panel in `context` on art (skinFor "panel"). */
+export function panelHasArt(has: SkinHas, context: SkinPanelContext | undefined): boolean {
+	return context !== undefined && skinFor(has, "panel", context) !== undefined;
+}
+
+/**
+ * Whether a panel in `context` carries the bone ornament (UAD8): asked for (`wanted`: the main menu and pause panels,
+ * shared/view/menu screenOrnament), a menu panel, drawn on art, and the pack has the ornament.
+ */
+export function ornamentShown(has: SkinHas, context: SkinPanelContext | undefined, wanted: boolean): boolean {
+	return wanted && context === "menu" && panelHasArt(has, context) && has(UI_ART.ids.ornament);
+}
+
+/** Whether a divider (ui.divider) is drawn in a panel in `context`: only on a skinned panel with the art (else nothing). */
+export function dividerShown(has: SkinHas, context: SkinPanelContext | undefined): boolean {
+	return panelHasArt(has, context) && has(UI_ART.ids.divider);
+}
+
+/**
+ * The icon drawn beside a label (UAD9: beside, never instead of, the text: a MenuButton's, a screen header's, an audio
+ * row's), or undefined: only when its host is drawn on art (`onArt`: the skinned button or panel; the flat look stays
+ * exactly today's) and the pack has the icon.
+ */
+export function iconShown(has: SkinHas, onArt: boolean, icon: string | undefined): string | undefined {
+	return onArt && icon !== undefined && has(icon) ? icon : undefined;
+}
+
+/** An audio volume row's icon: the struck-through speaker at 0, the speaker otherwise. */
+export function volumeIcon(volume: number): string {
+	return volume <= 0 ? UI_ART.ids.iconMute : UI_ART.ids.iconSpeaker;
+}
+
+/** The pill bar's two images (UA9), or undefined: the flat bar. Both or neither (an art track never holds a flat fill). */
+export function pillBarSkin(has: SkinHas): { readonly track: string; readonly fill: string } | undefined {
+	const track = skinFor(has, "bar", "track");
+	const fill = skinFor(has, "bar", "fill");
+	return track !== undefined && fill !== undefined ? { track, fill } : undefined;
+}
+
+/** The pill bar's drawn height, reference px: its art height at UI_ART.barRefPerArt's whole screen-px scale. */
+export function pillBarHeight(artH: number, uiScale: number): number {
+	return artDensityBox(1, artH, uiScale, UI_ART.barRefPerArt).h;
 }

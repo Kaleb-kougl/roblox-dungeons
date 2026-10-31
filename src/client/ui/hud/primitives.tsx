@@ -5,11 +5,18 @@ import {
 	DRAFT_REVEAL_VIEW,
 	HUD_VIEW,
 	UI_ART,
+	artDensityBox,
+	contentInsetsOf,
 	cornerAnchor,
+	dividerShown,
+	iconShown,
 	draftSliceCenter,
 	fitTurnedArt,
 	focusCornerBox,
 	menuButtonSkin,
+	ornamentShown,
+	panelHasArt,
+	panelHidden,
 	panelSkinContext,
 	skinFor,
 	skinHasOf,
@@ -146,6 +153,15 @@ export interface PanelProps {
 	 * art (skinFor); otherwise the panel is exactly the flat one.
 	 */
 	skin?: PanelSkin;
+	/**
+	 * The bone ornament (ui.ornament.bones, docs/UI_ART.md UAD8) centred on the top edge, outside the layout (it never
+	 * moves content). Drawn only on a skinned menu panel with the art (ornamentShown); the main menu and pause panels ask.
+	 */
+	ornament?: boolean;
+	/**
+	 * Children drawn only in the flat look (an accent UIStroke round a flat panel: the frame art replaces it).
+	 */
+	flatOnly?: React.ReactNode;
 }
 
 /** A corner's position and anchor, HUD_VIEW.margin in from both edges. */
@@ -188,7 +204,7 @@ function panelBox(props: PanelProps): [UDim2, Vector2, UDim2, Enum.AutomaticSize
 
 /** The panel art id the pack draws for these props (skinFor "panel"), or undefined: the flat panel. */
 function panelSkinId(props: PanelProps): [string, SkinPanelContext] | undefined {
-	const context = panelSkinContext(props.skin, props.corner !== undefined);
+	const context = panelSkinContext(props.skin, props.corner !== undefined, panelHidden(props.transparency));
 	const pack = themePack();
 	if (context === undefined || pack === undefined) return undefined;
 	const id = skinFor(skinHasOf(pack), "panel", context);
@@ -233,6 +249,7 @@ export function Panel(props: PanelProps) {
 				>
 					{layout}
 					{props.children}
+					{props.flatOnly}
 				</canvasgroup>
 				{props.overlay}
 			</frame>
@@ -253,24 +270,53 @@ export function Panel(props: PanelProps) {
 		>
 			{layout}
 			{props.children}
+			{props.flatOnly}
 			{props.overlay}
 		</frame>
 	);
 }
 
 /**
+ * Whether a Panel with this `skin` (and corner placement) is drawn on its frame art in the active pack: a screen draws
+ * extras that belong to the art only (the spectate bar's ghost) when it is.
+ */
+export function panelArt(skin: PanelSkin | undefined, corner = false): boolean {
+	const pack = themePack();
+	return pack !== undefined && panelHasArt(skinHasOf(pack), panelSkinContext(skin, corner));
+}
+
+/**
+ * `icon` when a Panel with this `skin` is drawn on art and the pack has the icon (iconShown), else undefined: a screen's
+ * icon beside a label (the run-over header, the audio rows) that the flat look leaves out.
+ */
+export function panelIcon(skin: PanelSkin | undefined, icon: string | undefined): string | undefined {
+	const pack = themePack();
+	if (pack === undefined) return undefined;
+	const has = skinHasOf(pack);
+	return iconShown(has, panelHasArt(has, panelSkinContext(skin, false)), icon);
+}
+
+/**
  * A Panel drawn on its frame art (docs/UI_ART.md UA7): the box is a SlicedImage at the context's snapped density
  * (hud: UI_ART.hudRefPerArt, else refPerArt; whole screen px per art px), its ImageTransparency the panel's
  * transparency (in-run panels keep HUD_VIEW.panelTransparency, UAD6), its padding grown so no content sits on the
- * border (skinPadding). The image is the container (a sibling image would be placed by the list layout). A corner
- * panel's image sits inside its CanvasGroup, so the occlusion fade still applies.
+ * visible border (skinPadding over contentInsetsOf: the measured border, not the slice insets). The image is the
+ * container (a sibling image would be placed by the list layout). A corner panel's image sits inside its CanvasGroup,
+ * so the occlusion fade still applies. With the ornament, a transparent wrapper takes the placement and holds the image
+ * and the ornament as siblings (no layout there, so the ornament never moves content).
  */
 function SkinnedPanel(props: { panel: PanelProps; skinId: string; context: SkinPanelContext }) {
 	const p = props.panel;
 	const uiScale = useHudScale();
 	const sliceScale = snappedSliceScale(uiScale, skinRefPerArt(props.context));
-	const slice = themePack()?.image(props.skinId)?.slice;
-	const pad = skinPadding(uniformPadding(p.padding ?? HUD_VIEW.pad), slice, sliceScale);
+	const pack = themePack();
+	const slice = pack?.image(props.skinId)?.slice;
+	const pad = skinPadding(
+		uniformPadding(p.padding ?? HUD_VIEW.pad),
+		contentInsetsOf(props.skinId, slice),
+		sliceScale,
+	);
+	const ornament = pack !== undefined && ornamentShown(skinHasOf(pack), props.context, p.ornament === true);
 	const corner = p.corner;
 	const [position, anchor, size, autoSize] = panelBox(p);
 	const transparency = p.transparency ?? HUD_VIEW.panelTransparency;
@@ -311,6 +357,35 @@ function SkinnedPanel(props: { panel: PanelProps; skinId: string; context: SkinP
 			</frame>
 		);
 	}
+	if (ornament) {
+		return (
+			<frame
+				key={p.name}
+				Visible={p.visible ?? true}
+				LayoutOrder={p.order ?? 0}
+				Position={position}
+				AnchorPoint={anchor}
+				Size={size}
+				AutomaticSize={autoSize}
+				BackgroundTransparency={HIDDEN}
+				BorderSizePixel={0}
+			>
+				<SlicedImage
+					id={props.skinId}
+					name="Skin"
+					sliceScale={sliceScale}
+					size={size}
+					automaticSize={autoSize}
+					transparency={transparency}
+				>
+					{panelLayout(p, pad)}
+					{p.children}
+					{p.overlay}
+				</SlicedImage>
+				<PanelOrnament key="Ornament" />
+			</frame>
+		);
+	}
 	return (
 		<SlicedImage
 			id={props.skinId}
@@ -328,6 +403,68 @@ function SkinnedPanel(props: { panel: PanelProps; skinId: string; context: SkinP
 			{p.children}
 			{p.overlay}
 		</SlicedImage>
+	);
+}
+
+/**
+ * The bone ornament on a menu panel's top edge (UI_ART.ornament): the art at the menu frames' whole screen-px density
+ * (artDensityBox), centred horizontally, its anchorY fraction on the edge, drawn over the frame.
+ */
+function PanelOrnament() {
+	const ref = themePack()?.image(UI_ART.ids.ornament);
+	const uiScale = useHudScale();
+	if (ref === undefined) return undefined;
+	const r = ref.rect;
+	const box = artDensityBox(r?.w ?? ref.w, r?.h ?? ref.h, uiScale, UI_ART.refPerArt);
+	return (
+		<ArtImage
+			name="Ornament"
+			id={UI_ART.ids.ornament}
+			box={box}
+			position={UDim2.fromScale(HALF, 0)}
+			anchor={new Vector2(HALF, UI_ART.ornament.anchorY)}
+			zIndex={SKIN_Z.corners}
+		/>
+	);
+}
+
+/**
+ * A divider between a panel's sections (docs/UI_ART.md UA7): the ui.divider stripe stretched to the row's width (its
+ * columns are identical, so stretching is exact), its 3 art px tall at the menu frames' whole screen-px density.
+ * Nothing unless a panel with that `skin` is drawn on art and the pack has the stripe (dividerShown): the flat look has
+ * no divider.
+ */
+export function Divider(props: { order: number; skin: PanelSkin }) {
+	const pack = themePack();
+	const ref = pack?.image(UI_ART.ids.divider);
+	if (
+		pack === undefined ||
+		ref === undefined ||
+		!dividerShown(skinHasOf(pack), panelSkinContext(props.skin, false))
+	) {
+		return undefined;
+	}
+	return <DrawnDivider order={props.order} image={ref} />;
+}
+
+function DrawnDivider(props: { order: number; image: ImageRef }) {
+	const uiScale = useHudScale();
+	const r = props.image.rect;
+	const h = artDensityBox(r?.w ?? props.image.w, r?.h ?? props.image.h, uiScale, UI_ART.refPerArt).h;
+	return (
+		<imagelabel
+			key="Divider"
+			LayoutOrder={props.order}
+			Image={props.image.assetId}
+			ImageRectOffset={r !== undefined ? new Vector2(r.x, r.y) : Vector2.zero}
+			ImageRectSize={r !== undefined ? new Vector2(r.w, r.h) : Vector2.zero}
+			ScaleType={Enum.ScaleType.Stretch}
+			ResampleMode={Enum.ResamplerMode.Pixelated}
+			Size={new UDim2(FULL, 0, 0, h)}
+			Active={false}
+			BackgroundTransparency={HIDDEN}
+			BorderSizePixel={0}
+		/>
 	);
 }
 
@@ -472,6 +609,11 @@ export interface ArtImageProps {
 	zIndex?: number;
 	visible?: boolean | React.Binding<boolean>;
 	name?: string;
+	/**
+	 * The UIScale the image is drawn under (fitArt's screen px per reference px); default the HUD's (useHudScale). 1 for
+	 * a GUI outside the HUD's UIScale (the pause button in the top bar, in screen px).
+	 */
+	uiScale?: number;
 }
 
 /**
@@ -488,7 +630,8 @@ export function ArtImage(props: ArtImageProps) {
 function DrawnArtImage(p: { image: ImageRef; props: ArtImageProps }) {
 	const props = p.props;
 	const ref = p.image;
-	const uiScale = useHudScale();
+	const hudScale = useHudScale();
+	const uiScale = props.uiScale ?? hudScale;
 	const box = props.box;
 	const [boxW, boxH] = typeIs(box, "Vector2") ? [box.X, box.Y] : [box.w, box.h];
 	const r = ref.rect;
@@ -564,6 +707,47 @@ function DrawnFocusCorners(props: { image: ImageRef; zIndex: number }) {
 	return <>{corners}</>;
 }
 
+/**
+ * A skinned button's label with an icon: the glyph (UI_ART.iconBox.glyph box, tinted like the text: the white glyph
+ * set) and the text side by side, centred as a pair in the button. Never takes input (the button does).
+ */
+function IconLabel(props: { icon: string; text: string; textSize: number; color: ColorRole; transparency: number }) {
+	return (
+		<frame Size={UDim2.fromScale(FULL, FULL)} BackgroundTransparency={HIDDEN} Active={false} ZIndex={SKIN_Z.label}>
+			<uilistlayout
+				FillDirection={Enum.FillDirection.Horizontal}
+				HorizontalAlignment={Enum.HorizontalAlignment.Center}
+				VerticalAlignment={Enum.VerticalAlignment.Center}
+				SortOrder={Enum.SortOrder.LayoutOrder}
+				Padding={new UDim(0, HUD_VIEW.gap)}
+			/>
+			<ArtImage
+				name="Icon"
+				id={props.icon}
+				order={1}
+				box={{ w: UI_ART.iconBox.glyph, h: UI_ART.iconBox.glyph }}
+				color={props.color}
+				transparency={props.transparency}
+				zIndex={SKIN_Z.label}
+			/>
+			<textlabel
+				key="Text"
+				LayoutOrder={2}
+				Size={UDim2.fromScale(0, FULL)}
+				AutomaticSize={Enum.AutomaticSize.X}
+				BackgroundTransparency={HIDDEN}
+				Active={false}
+				ZIndex={SKIN_Z.label}
+				Font={HUD_FONT}
+				TextSize={props.textSize}
+				TextColor3={role(props.color)}
+				Text={props.text}
+				TextTransparency={props.transparency}
+			/>
+		</frame>
+	);
+}
+
 export interface MenuButtonProps {
 	text: string;
 	order: number;
@@ -579,6 +763,12 @@ export interface MenuButtonProps {
 	disabled?: boolean;
 	/** "option": an Options value, drawn on the option bars when the pack has them (on = active). Default a button. */
 	variant?: SkinButtonVariant;
+	/**
+	 * A ui icon id (UI_ART.ids, e.g. the gear beside Options) drawn left of the label, the pair centred (UAD9: beside the
+	 * text, never instead of it). Only on a button drawn on its art with the icon in the pack (iconShown);
+	 * otherwise no icon and the text exactly as today.
+	 */
+	icon?: string;
 }
 
 /**
@@ -598,6 +788,7 @@ export const MenuButton = React.forwardRef<TextButton, MenuButtonProps>((props, 
 		has !== undefined ? menuButtonSkin(has, props.variant ?? "button", active, focused, disabled) : undefined;
 	if (has !== undefined && skinId !== undefined) {
 		const corners = has(UI_ART.ids.focusCorner);
+		const icon = iconShown(has, true, props.icon);
 		return (
 			<textbutton
 				key={props.name}
@@ -623,18 +814,29 @@ export const MenuButton = React.forwardRef<TextButton, MenuButtonProps>((props, 
 				}}
 			>
 				<SlicedImage key="Skin" name="Skin" id={skinId} snap={true} zIndex={SKIN_Z.art} />
-				<textlabel
-					key="Label"
-					Size={UDim2.fromScale(FULL, FULL)}
-					BackgroundTransparency={HIDDEN}
-					Active={false}
-					ZIndex={SKIN_Z.label}
-					Font={HUD_FONT}
-					TextSize={props.textSize ?? HUD_VIEW.textSize}
-					TextColor3={role(skinnedButtonTextRole(active, focused))}
-					Text={props.text}
-					TextTransparency={disabled ? DISABLED_TEXT : 0}
-				/>
+				{icon !== undefined ? (
+					<IconLabel
+						key="Label"
+						icon={icon}
+						text={props.text}
+						textSize={props.textSize ?? HUD_VIEW.textSize}
+						color={skinnedButtonTextRole(active, focused)}
+						transparency={disabled ? DISABLED_TEXT : 0}
+					/>
+				) : (
+					<textlabel
+						key="Label"
+						Size={UDim2.fromScale(FULL, FULL)}
+						BackgroundTransparency={HIDDEN}
+						Active={false}
+						ZIndex={SKIN_Z.label}
+						Font={HUD_FONT}
+						TextSize={props.textSize ?? HUD_VIEW.textSize}
+						TextColor3={role(skinnedButtonTextRole(active, focused))}
+						Text={props.text}
+						TextTransparency={disabled ? DISABLED_TEXT : 0}
+					/>
+				)}
 				{corners ? (
 					focused ? (
 						<FocusCorners key="Focus" zIndex={SKIN_Z.corners} />

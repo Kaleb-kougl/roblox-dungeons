@@ -3,6 +3,7 @@
  * HUD fits its icons into, and which theme ui ids (contract.ts uiSkinIds / uiIconIds, all optional) each primitive
  * draws. The logic is skin.ts. Presentation only; reference px are the HUD's 1280 x 720 design pixels (HUD_VIEW).
  */
+import type { SliceInsets } from "shared/theme";
 import { DRAFT_REVEAL_VIEW } from "./draftRevealView";
 import { HUD_VIEW } from "./layout";
 
@@ -74,7 +75,42 @@ export const UI_ART = {
 		ember: 24,
 		pip: HUD_VIEW.pipSize,
 		glyph: 16,
+		/**
+		 * A screen header's icon (the run-over skull / RIP stone beside "Run over"): the 43 x 42 stone fits at UIScale 1
+		 * (one screen px per art px), a little over the title's line (HUD_VIEW.bigText 36 + 4).
+		 */
+		header: 44,
+		/** The spectate bar's ghost (48 x 60 art): never over its box at UIScale >= 1; the bar is ~90 reference px tall. */
+		ghost: 60,
 	},
+	/**
+	 * The visible border of each sliced panel, art px per side (docs/UI_ART.md UA7): the frame's rails, knobs and lips
+	 * that content must not sit on, measured on UiHorror.png (the alpha / luminance map of the crop, cross-checked with
+	 * its `flatBoxes` in art/atlases.json). Padding follows these, not the slice insets: ui.panel.menu's slice is 43 wide
+	 * at the sides only so its top tab's rounded ends sit in the fixed corners; its side rails are 5 px. Each value is <=
+	 * the slice inset on that side (skin.spec.ts). An id without an entry pads by its slice insets (contentInsetsOf).
+	 *   - ui.panel.menu (87 x 78): side rails cols 0-4 / 82-86; top = the tab's lower lip (rows 0-10); bottom rails 71-77.
+	 *   - ui.panel.tall (64 x 76): side rails 0-4 / 59-63; top = the tab (rows 0-9); bottom rails 69-75.
+	 *   - ui.panel.hud (90 x 44): a 1-2 px rim at the sides; top rim rows 0-2; bottom the inner shade and rim, rows 41-43.
+	 */
+	contentInsets: {
+		"ui.panel.menu": { left: 5, top: 11, right: 5, bottom: 7 },
+		"ui.panel.tall": { left: 5, top: 10, right: 5, bottom: 7 },
+		"ui.panel.hud": { left: 2, top: 3, right: 2, bottom: 3 },
+	} satisfies Record<string, SliceInsets> as Readonly<Record<string, Readonly<SliceInsets>>>,
+	/**
+	 * The menu ornament (ui.ornament.bones, UAD8): drawn at the menu frames' density (refPerArt, snapped), centred on the
+	 * panel's top edge horizontally, its art's `anchorY` fraction on that edge (0.5: half above, half over the top rail),
+	 * outside the layout (it never moves content), only on a skinned menu panel.
+	 */
+	ornament: { anchorY: 0.5 },
+	/**
+	 * The pill progress bar (ui.bar.track / .fill, UA9): drawn at its own art height (16 px, the rows never stretch) at
+	 * this density, snapped: 16 reference px at 720 p, so a loading bar grows from its flat 8 / 4 px to the pill's height.
+	 */
+	barRefPerArt: 1,
+	/** The curse skull (ui.icon.skull.curse) behind a curse cell's label in RunItems: this transparent, the label reads. */
+	curseSkullTransparency: 0.5,
 	/** The panel skin per context (UAD2): red-rimmed in menus, dark in a run (red keeps meaning danger), tall for lists. */
 	panels: {
 		menu: "ui.panel.menu",
@@ -99,5 +135,18 @@ export const UI_ART = {
 		barFill: "ui.bar.fill",
 		candle: "ui.candle",
 		focusCorner: "ui.focus.corner",
+		ornament: "ui.ornament.bones",
+		divider: "ui.divider",
+		iconPause: "ui.icon.pause",
+		iconCheck: "ui.icon.check",
+		iconCross: "ui.icon.cross",
+		iconGear: "ui.icon.gear",
+		iconHome: "ui.icon.home",
+		iconSpeaker: "ui.icon.speaker",
+		iconMute: "ui.icon.mute",
+		iconSkull: "ui.icon.skull",
+		iconSkullCurse: "ui.icon.skull.curse",
+		iconGhost: "ui.icon.ghost",
+		iconRip: "ui.icon.rip",
 	},
 } as const;
