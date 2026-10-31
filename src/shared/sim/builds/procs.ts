@@ -30,6 +30,7 @@ import { Boon } from "../progression/progressionData";
 import { buildLevel, type BuildPlayerState, type BuildProc, type BuildsState } from "./builds";
 import { PROC_INELIGIBLE_ARCHETYPES } from "./buildsData";
 import { beginEffectBudget, endEffectBudget } from "./effects";
+import { chainSpark, soulShards, volatileBurst } from "./onKill";
 
 /** The boons a proc fires, in the order it fires them (boon index order). */
 export const ON_KILL_BOONS: ReadonlyArray<number> = [Boon.CHAIN_SPARK, Boon.VOLATILE, Boon.SOUL_SHARDS];
@@ -61,7 +62,9 @@ function resolveProc(ctx: SimCtx, s: BuildsState, q: Readonly<BuildProc>): void 
 	for (const b of ON_KILL_BOONS) {
 		const level = buildLevel(p, b);
 		if (level <= 0) continue;
-		// BU4: the on-kill boon fires here.
+		if (b === Boon.CHAIN_SPARK) chainSpark(ctx, s, q, level);
+		else if (b === Boon.VOLATILE) volatileBurst(ctx, s, q, level);
+		else soulShards(ctx, s, q, level);
 	}
 }
 

@@ -25,13 +25,15 @@ before.
 
 ## Status (2026-10-31)
 
-BU0, BU1 and BU2 built (branch `builds`): the audit below, the scaffolding (opt-in `SimConfig.builds` on endless worlds,
+BU0-BU4 built (branch `builds`): the audit below, the scaffolding (opt-in `SimConfig.builds` on endless worlds,
 `state.builds` with its own `builds` hash group appended last, the three on-kill boons appended, level tables, duos,
 card ids, effect bullet kinds / sources / data, the two port arc rows, theme entries with placeholder values and
-`buildReport`) and levels and offers (`drawCardOffers`, `grantCard`, level values through `computeRunMods`, the boss
-double draft). No effect rule exists yet (procs, the on-kill boons' effects, evolution and duo rules are BU3-BU6); the
-draft UI is today's with card ids decoded (BU9). Decisions BUD1-BUD14 are **settled** (2026-10-31, Kaleb: every proposed
-default accepted; BUD8 and BUD12 stand as technical requirements).
+`buildReport`), levels and offers (`drawCardOffers`, `grantCard`, level values through `computeRunMods`, the boss
+double draft), the proc engine (kill queue, generations, `fireEffect` and its budget, the `BuildEvents` effect feed) and
+Chain Spark / Volatile / Soul Shards at levels I-II (see "BU3 / BU4 (as built)"). Evolution and duo rules are BU5 / BU6;
+nothing draws the effects yet (BU8: bullets show with the player bullet look, sparks are invisible), and the draft UI is
+today's with card ids decoded (BU9). Decisions BUD1-BUD14 are **settled** (2026-10-31, Kaleb: every proposed default
+accepted; BUD8 and BUD12 stand as technical requirements).
 
 ## What the code gives us (read on `main` @ `5a0edc2`)
 
@@ -162,6 +164,82 @@ Where the build differs from, or adds to, the plan:
   `#e8f0ff`, ember `#f0d0c0` (each >= 47 CIE76 from every danger role and boost, >= 5.8:1 on every biome floor).
 - **Endless replays and scores change** from the first draft (card offers draw differently, and floor 5's draft is
   dealt twice); M1, every fixture and the tutorial replay exactly as before.
+
+## BU3 / BU4 (as built)
+
+Where the build differs from, or adds to, the plan. Paths under `src/shared/sim/`.
+
+- **Files.** `builds/procs.ts` (`buildsOnKill`, `stepBuilds`, `ON_KILL_BOONS`, `hasOnKillEffect`), `builds/effects.ts`
+  (`fireEffect`, the budget, `nearestEnemy`, `effectBulletsAlive`), `builds/onKill.ts` (`chainSpark`, `volatileBurst`,
+  `soulShards`, `levelEntry`); specs in `builds/procs.spec.ts`. Hooks: `combat/actors/actors.ts` `damageActor` (kill
+  line), `combat/combat.ts` (`ctx.procGen` in `playerBulletHit`, phase 6b), `combat/ctx.ts` (`procGen`),
+  `endless.ts` `nextFloor` (`clearBuildProcs`), `combat/patterns.ts` (`fireBurstLimited`). Every hook is behind
+  `state.builds`; `finishBurst`'s new cut is a no-op at its default limit (`math.huge`), so M1, every fixture, the
+  tutorial and endless runs without builds step exactly as before.
+- **Procs are queued only when they can do something**: not for a gen >= `genMax` kill (instead of queueing a proc that
+  does nothing), and not for an owner with no on-kill boon (`hasOnKillEffect`; BU5 / BU6 widen it for the rules that
+  hook kills) or one who left. So a builds run whose players own no on-kill boon hashes exactly as in BU2.
+- **Never procs**: reviving archetypes (`def.stepDead`: turrets) and `PROC_INELIGIBLE_ARCHETYPES` (`["dummy"]`,
+  `buildsData.ts`), checked in `buildsOnKill` with the archetype `damageActor` already holds; direct `killActor`
+  (withers, boss sweeps, debug kills) never reaches it.
+- **Generations.** `ctx.procGen` is 0 by default (reset by `bind`, after the player bullet walk and after the drain).
+  `playerBulletHit` sets it to `killGenOfSource(source)` (weapon source: 0; effect source: its gen + 1) before any
+  damage, solo and co-op alike (the co-op wrapper binds the owner first). A spark sets it to the proc's gen + 1 around
+  its `damageActor`. Effect bullets carry the proc's gen in `buildSource(effect, gen)`; gens 0..2 are used.
+- **The queue.** `stepBuilds` runs in `stepCombat` right after both collision walks (phase 6b, before contact damage).
+  A party first drops leavers' procs (order kept); then `n = min(procsPerTick, queued)` resolve in order, then those
+  `n` leave the front (procs their kills pushed stay behind them). Floor change: `clearBuildProcs`.
+- **Targets** (`nearestEnemy`): living actors with squared distance <= range^2 (inclusive), ties to the lower slot,
+  never the proc's victim (by actor id), never a slot already in the spark / shard list, and **never an actor spawned
+  this tick** (`spawnTick === tick`: a slime's slimelets, like the actor phase; addition). No line-of-sight check (the
+  plan's edge case: sparks and shards reach a neighbouring live room).
+- **Volatile's heading.** Rings fire with `EFFECT_DIR` = +Z (`effectsData.ts`): bolt 0 flies +Z. A shard whose target
+  stands exactly on the corpse also uses it.
+- **Level tables, level III.** Every number is read by level (`levelValue` / `levelEntry`, clamped): level III reads
+  the III entries (4 hops / 3 damage, 16 bolts with pierce 1, 4 shards with `SOUL_SHARD_SPECS[2]` = Soul Swarm's
+  piercing shard) but its new rule is BU5's: the fork goes at the marked line in `chainSpark`, the steering at the
+  marked line in `soulShards`.
+- **Budget** (`fireEffect`): `limit = min(spec.count, effectBulletsMax - owner's live effect bullets, playerCapacity -
+  effectWeaponReserve x party size - every live player bullet)`; the first `limit` bullets of the burst's arc order spawn
+  (`fireBurstLimited` cuts the arc before the pool: a ring is cut short, never re-spaced, so no new arc row is needed).
+  New rule `BuildRules.effectWeaponReserve` = **32** per player: the second bound keeps that many slots per player free
+  of effects. The proof: effects only spawn while effects + weapon bullets <= capacity - 32n, and no player ever has
+  more than 32 of their own alive (spec: the bow's stream at Swift Strikes III + Frenzy with Ember Wake rings peaks
+  above 16 and at most 32), so weapon fire always finds a slot. Mirror Cloak's reflections are the one own-fire source
+  not bounded by it (a guard can reflect a wall of bullets); a full pool drops those as today. Counted per owner by
+  bullet kind (`EFFECT_BULLET_KINDS` = burst / shard / ember / spark bolt, emitter - 1); `stepBuilds` counts once per
+  drain. Refused bullets count in `combat.dropped` and `BuildEvents.effectDropped`. In solo the 160 cap binds; at
+  party size 4 the pool bound does (4 x 160 > 512 - 128).
+- **Damage.** Sparks: `playerHitDamage(owner, CHAIN_SPARK_DAMAGE[level])` computed once per proc. Bolts and shards: the
+  payload damage (1 / 2) goes through `playerHitDamage` in `playerBulletHit` with the owner bound (BUD6).
+- **Co-op credit.** Each proc binds `ctx.actingPlayer(owner)`, so scoring's killer (Bounty), Vampire Fang and the
+  owner's damage mods are the owner's; effect bullets use the owner's emitter. Player 0 is bound again afterwards.
+
+**`BuildEvents` feed** (per tick, cleared every tick, not hashed; parallel lists, one entry per event, pushed in
+resolution order) for the view task:
+
+| Fields | One entry per | Values |
+|---|---|---|
+| `sparkX1`, `sparkZ1`, `sparkX2`, `sparkZ2`, `sparkOwner`, `sparkGen` | spark hop that hit | from the corpse (first hop) or the previous target's position to the target's position when hit; the owner (party index); the proc's gen (0 = the player's own kill) |
+| `burstX`, `burstZ`, `burstOwner`, `burstGen`, `burstFired` | Volatile ring that spawned >= 1 bolt | the corpse, owner, the proc's gen, bolts spawned (fewer than the level's count when the budget cut it) |
+| `shardX`, `shardZ`, `shardOwner`, `shardGen`, `shardFired` | Soul Shards volley that spawned >= 1 shard | the corpse, owner, the proc's gen, shards spawned |
+| `effectDropped` (number) | tick | effect bullets refused by the budget or a full pool |
+| `evolvedPlayer` / `evolvedBoon`, `duoPlayer` / `duoTaken` | take (BU2) | unchanged |
+
+Bursts and shards spawn in phase 6b and first move on the next tick; the bullets themselves are in `playerBullets`
+(kind `BURST` / `SHARD`, source `buildSource(effect, gen)`, so `sourceGen` gives the pitch step).
+
+**Specs** (`builds/procs.spec.ts`, 27): the queued proc's fields and same-tick resolution, no proc without an on-kill
+boon or without builds, never procs (direct `killActor`, a turret, the training dummy, a real summoner wither, a real
+boss-death sweep), generations (sources; spark chain one hop per tick, gen-3 kill queues nothing; a bolt's kill at gen
+1), queue order / `procsPerTick` / carry-over, the floor-change clear, leavers, co-op credit (emitter, Vampire Fang
+counts), the budget (60 kills at Volatile II with the bow streaming: effects stop at 160, every drop is an effect's, 4
+arrows fire; a party of 4 stays under 512 - 4 x 32; the own-fire peak), Chain Spark (nearest / ties / never the victim,
+range 4.5 in / 4.51 out, two hops from the last target and never twice, Sharpened I / II damage 2.5 / 3), Volatile (8 /
+12 bolts, kind / source / emitter / speed, bolt 0 at +Z, Sharpened 1.25), Soul Shards (2 / 3 nearest, extra shards at
+the nearest, sqrt aim, range 8 in / 8.01 out, no target no shard, Sharpened 2.5), a real swarmer pack (8 swarmers,
+the bow's stream, Volatile I + Chain Spark I) dying at ticks `[16, 13, 13, 14, 16, 16, 15, 16]` (spawn order; the spec
+explains the ripple), and determinism (two runs hash the same every tick).
 
 ## Player experience
 

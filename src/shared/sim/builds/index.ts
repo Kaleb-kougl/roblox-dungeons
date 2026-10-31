@@ -8,4 +8,5 @@ export * from "./effectsData";
 export * from "./builds";
 export * from "./cards";
 export * from "./effects";
+export * from "./onKill";
 export * from "./procs";
