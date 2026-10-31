@@ -476,7 +476,7 @@ describe("boss.demonlord registry and data", () => {
 		for (let i = 0; i < web.size(); i++) expect([web[i], archetypeIndex(web[i])]).toEqual([web[i], i]);
 		expect(archetypeIndex(DUMMY_KIND)).toBe(7);
 		expect(archetypeIndex(BOSS_DEMONLORD_ID)).toBe(8);
-		expect([...archetypeIds()]).toEqual([...web, DUMMY_KIND, BOSS_DEMONLORD_ID]);
+		expect([...archetypeIds()]).toEqual([...web, DUMMY_KIND, BOSS_DEMONLORD_ID, "imp"]); // imp: PORT_BAND_ENEMIES
 		expect(archetypeAt(8)).toBe(BOSS_DEMONLORD);
 	});
 

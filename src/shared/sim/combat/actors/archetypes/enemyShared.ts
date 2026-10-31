@@ -51,6 +51,8 @@ const WATCH_RANGE2_FACTOR = 2.25;
  *               (both absent, e.g. a summoner's casting circle), `radius` world units; with fillTicks it fills from
  *               empty to full as aiTicks counts down from fillTicks to 0 (the telegraph's own countdown), else it is
  *               drawn full.
+ *   attack      (Roblox port, on aimLine and ring) when set, the hint is drawn only while ActorState.attack equals it:
+ *               an archetype with two telegraphs (the imp's blink ring, then its landing aim) shows each with its own.
  */
 export interface ActorFxHints {
 	readonly aimLine?: {
@@ -59,6 +61,7 @@ export interface ActorFxHints {
 		readonly lenSlot?: number;
 		readonly length?: number;
 		readonly boldTicks: number;
+		readonly attack?: number;
 	};
 	readonly shockwave?: {
 		readonly state: number;
@@ -76,6 +79,7 @@ export interface ActorFxHints {
 		readonly zSlot?: number;
 		readonly radius: number;
 		readonly fillTicks?: number;
+		readonly attack?: number;
 	};
 }
 
