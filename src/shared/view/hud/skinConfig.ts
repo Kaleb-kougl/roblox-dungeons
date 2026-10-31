@@ -10,6 +10,20 @@ import { HUD_VIEW } from "./layout";
 export type SkinPanelContext = "menu" | "hud" | "list";
 /** A button's look: focused (hover, gamepad selection) and active (pressed, chosen) share the red fill. */
 export type SkinButtonState = "normal" | "focused" | "active" | "disabled";
+/**
+ * A Panel's `skin` prop (docs/UI_ART.md UA7): a context, or "none" = always today's flat look (the draft reveal's
+ * panels, which keep the look the reveal built). Default: a corner panel is "hud", every other panel "menu".
+ */
+export type PanelSkin = SkinPanelContext | "none";
+/** Which MenuButton family a button draws: the long button, or an Options value (the option bars). */
+export type SkinButtonVariant = "button" | "option";
+
+/** One focus bracket: the bracket art (a top-left L) turned clockwise by `rotation`, its corner at the parent's (ax, ay). */
+export interface FocusCornerPlacement {
+	readonly rotation: number;
+	readonly ax: 0 | 1;
+	readonly ay: 0 | 1;
+}
 
 export const UI_ART = {
 	/**
@@ -17,6 +31,30 @@ export const UI_ART = {
 	 * (DRAFT_REVEAL_VIEW.artScale), so the menus and the cards share one pixel size.
 	 */
 	refPerArt: DRAFT_REVEAL_VIEW.artScale,
+	/**
+	 * Reference px per art px of the in-run (`hud` context) frames and the list rows: a finer density, so ui.panel.hud's
+	 * 6 art px border is 6 reference px, under HUD_VIEW.pad (8), and no corner panel changes size (footprint.spec.ts).
+	 */
+	hudRefPerArt: 1,
+	/**
+	 * The panel context of a menu list row (ListRow, at hudRefPerArt): ui.panel.tall's 10 + 8 art px top and bottom
+	 * borders leave no room for a line in MENU_VIEW.rowHeight at UIScale 1.5 (1080 p), ui.panel.hud's 6 + 6 do at every
+	 * scale (skin.spec.ts), so rows draw the hud frame.
+	 */
+	rowContext: "hud" satisfies SkinPanelContext as SkinPanelContext,
+	/**
+	 * The four focus brackets (FocusCorners): ui.focus.corner is a top-left L, turned clockwise (Roblox Rotation) to sit
+	 * in each corner of the focused button.
+	 */
+	focusCorners: [
+		{ rotation: 0, ax: 0, ay: 0 },
+		{ rotation: 90, ax: 1, ay: 0 },
+		{ rotation: 180, ax: 1, ay: 1 },
+		{ rotation: 270, ax: 0, ay: 1 },
+	] satisfies ReadonlyArray<FocusCornerPlacement> as ReadonlyArray<FocusCornerPlacement>,
+	/** Degrees in a half turn and a quarter turn (a quarter-turned image swaps its width and height on screen). */
+	halfTurn: 180,
+	quarterTurn: 90,
 	/** Fewest whole screen px per art px (a very small window draws the art at 1:1 rather than not at all). */
 	minArtScale: 1,
 	/**
@@ -60,5 +98,6 @@ export const UI_ART = {
 		barTrack: "ui.bar.track",
 		barFill: "ui.bar.fill",
 		candle: "ui.candle",
+		focusCorner: "ui.focus.corner",
 	},
 } as const;

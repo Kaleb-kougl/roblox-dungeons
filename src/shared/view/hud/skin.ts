@@ -4,8 +4,14 @@
  * along a fallback chain that ends in `undefined` (= today's flat look). Tunables in skinConfig.ts. Presentation only;
  * checked headlessly (skin.spec.ts). The client's primitives (UA6+) read these and draw.
  */
-import type { ThemePack } from "shared/theme";
-import { UI_ART, type SkinButtonState, type SkinPanelContext } from "./skinConfig";
+import type { SliceInsets, ThemePack } from "shared/theme";
+import {
+	UI_ART,
+	type PanelSkin,
+	type SkinButtonState,
+	type SkinButtonVariant,
+	type SkinPanelContext,
+} from "./skinConfig";
 
 /** `x` rounded to the nearest integer, halves up (`math.floor(x + 0.5)`; Luau's math.round sends halves away from 0). */
 function roundHalfUp(x: number): number {
@@ -170,4 +176,131 @@ export function skinFor<P extends SkinPart>(has: SkinHas, part: P, state: SkinSt
 /** skinFor's predicate for a theme pack: the id is an uploaded image (ThemePack.image). */
 export function skinHasOf(pack: Pick<ThemePack, "image">): SkinHas {
 	return (id) => pack.image(id) !== undefined;
+}
+
+// ---- The client primitives' decisions (docs/UI_ART.md UA6 / UA7): Panel, MenuButton, ListRow, ArtImage, FocusCorners.
+
+/** Whether a rotation (degrees) is an odd quarter turn: the image's width and height swap on screen. */
+export function isQuarterTurn(rotation: number): boolean {
+	return math.abs(rotation % UI_ART.halfTurn) === UI_ART.quarterTurn;
+}
+
+/**
+ * fitArt for an image drawn turned by `rotation` degrees: a quarter turn fits the art's turned size (h x w) into the
+ * box. Returns the label's own (unturned) size, reference px, and the whole scale.
+ */
+export function fitTurnedArt(
+	artW: number,
+	artH: number,
+	boxW: number,
+	boxH: number,
+	uiScale: number,
+	rotation: number,
+): ArtFit {
+	if (!isQuarterTurn(rotation)) {
+		return fitArt(artW, artH, boxW, boxH, uiScale);
+	}
+	const turned = fitArt(artH, artW, boxW, boxH, uiScale);
+	return { w: turned.h, h: turned.w, scale: turned.scale };
+}
+
+/** A box's size, reference px. */
+export interface SkinBox {
+	readonly w: number;
+	readonly h: number;
+}
+
+/**
+ * The on-screen box (reference px) of one focus bracket: `artW` x `artH` art at the menu frames' whole screen-px scale
+ * (artPixelScale at UI_ART.refPerArt, the button art's border density), turned by `rotation` (a quarter turn swaps w
+ * and h). ArtImage fits the art into exactly this box at that scale.
+ */
+export function focusCornerBox(artW: number, artH: number, uiScale: number, rotation: number): SkinBox {
+	const u = uiScale > 0 && uiScale < math.huge ? uiScale : 1;
+	const k = artPixelScale(u, UI_ART.refPerArt);
+	const w = (artW * k) / u;
+	const h = (artH * k) / u;
+	return isQuarterTurn(rotation) ? { w: h, h: w } : { w, h };
+}
+
+/**
+ * The context a Panel's skin is looked up in (skinFor "panel"), or undefined for "none" (always flat): its `skin`
+ * prop, else "hud" for a corner panel and "menu" for every other.
+ */
+export function panelSkinContext(skin: PanelSkin | undefined, corner: boolean): SkinPanelContext | undefined {
+	if (skin === "none") {
+		return undefined;
+	}
+	return skin ?? (corner ? "hud" : "menu");
+}
+
+/** Reference px per art px (before snapping) of a frame in `context`: hud -> UI_ART.hudRefPerArt, else refPerArt. */
+export function skinRefPerArt(context: SkinPanelContext): number {
+	return context === "hud" ? UI_ART.hudRefPerArt : UI_ART.refPerArt;
+}
+
+/** Per-side padding, reference px (UIPadding). */
+export interface SkinPadding {
+	readonly left: number;
+	readonly top: number;
+	readonly right: number;
+	readonly bottom: number;
+}
+
+/** The same padding on all four sides. */
+export function uniformPadding(pad: number): SkinPadding {
+	return { left: pad, top: pad, right: pad, bottom: pad };
+}
+
+/**
+ * A skinned frame's padding: per side, the larger of the flat padding and the art's inset on that side at the drawn
+ * SliceScale (reference px per art px), so content never sits on the frame's border. No slice: the flat padding.
+ */
+export function skinPadding(
+	base: SkinPadding,
+	slice: Readonly<SliceInsets> | undefined,
+	sliceScale: number,
+): SkinPadding {
+	if (slice === undefined) {
+		return base;
+	}
+	return {
+		left: math.max(base.left, slice.left * sliceScale),
+		top: math.max(base.top, slice.top * sliceScale),
+		right: math.max(base.right, slice.right * sliceScale),
+		bottom: math.max(base.bottom, slice.bottom * sliceScale),
+	};
+}
+
+/** A MenuButton's state for skinFor: disabled wins, then active (chosen), then focused (hover / gamepad selection). */
+export function buttonSkinState(active: boolean, focused: boolean, disabled: boolean): SkinButtonState {
+	if (disabled) {
+		return "disabled";
+	}
+	if (active) {
+		return "active";
+	}
+	return focused ? "focused" : "normal";
+}
+
+/**
+ * The art a MenuButton draws, or undefined (flat): the button family in its state, or for an Options value
+ * (`variant` "option") the option bars, on = active.
+ */
+export function menuButtonSkin(
+	has: SkinHas,
+	variant: SkinButtonVariant,
+	active: boolean,
+	focused: boolean,
+	disabled: boolean,
+): string | undefined {
+	if (variant === "option") {
+		return skinFor(has, "option", active ? "on" : "off");
+	}
+	return skinFor(has, "button", buttonSkinState(active, focused, disabled));
+}
+
+/** A skinned MenuButton's text colour: uiText when focused or active (on the red fill), uiTextDim otherwise. */
+export function skinnedButtonTextRole(active: boolean, focused: boolean): "uiText" | "uiTextDim" {
+	return active || focused ? "uiText" : "uiTextDim";
 }

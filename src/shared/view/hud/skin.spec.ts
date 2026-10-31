@@ -8,16 +8,29 @@ import {
 	type RobloxAssetId,
 	type ThemeManifest,
 } from "shared/theme";
+import { VALE_IMAGE_LAYOUTS } from "shared/theme/packs/vale";
 import {
 	DRAFT_REVEAL_VIEW,
+	HUD_VIEW,
 	UI_ART,
 	artPixelScale,
+	buttonSkinState,
 	fitArt,
+	fitTurnedArt,
+	focusCornerBox,
+	isQuarterTurn,
+	menuButtonSkin,
+	panelSkinContext,
 	skinFor,
 	skinHasOf,
+	skinPadding,
+	skinRefPerArt,
+	skinnedButtonTextRole,
 	snappedSliceScale,
+	uniformPadding,
 	type SkinHas,
 } from "shared/view/hud";
+import { MENU_VIEW } from "shared/view/menu";
 
 /**
  * UIScales the HUD takes: minScale 0.6, a 70 % HUD scale at 720 p (0.7), 720 p (1), 1.25, 1080 p (1.5), maxScale 1.75 and
@@ -212,7 +225,7 @@ describe("skinFor", () => {
 		const named = new Array<string>();
 		for (const [, id] of pairs(UI_ART.ids)) named.push(id);
 		for (const [, id] of pairs(UI_ART.panels)) named.push(id);
-		expect(named.size()).toBe(18);
+		expect(named.size()).toBe(19);
 		for (const id of named) {
 			expect([id, ALL.includes(id)]).toEqual([id, true]);
 		}
@@ -248,5 +261,175 @@ describe("skinFor", () => {
 		expect(has("ui.button.focus")).toBe(false);
 		expect(has("ui.panel")).toBe(false); // a placeholder is not an image
 		expect(skinFor(has, "button", "focused")).toBe("ui.button");
+	});
+});
+
+/** A vale sliced image's insets (art px). */
+function insets(id: string) {
+	const s = VALE_IMAGE_LAYOUTS[id].slice;
+	expect([id, s !== undefined]).toEqual([id, true]);
+	return s!;
+}
+
+describe("panel skins (UA7)", () => {
+	it("context: the skin prop, else hud in a corner and menu elsewhere; none is always flat", () => {
+		expect(panelSkinContext(undefined, true)).toBe("hud");
+		expect(panelSkinContext(undefined, false)).toBe("menu");
+		expect(panelSkinContext("none", true)).toBe(undefined);
+		expect(panelSkinContext("none", false)).toBe(undefined);
+		for (const s of ["menu", "hud", "list"] as const) {
+			expect([s, panelSkinContext(s, true), panelSkinContext(s, false)]).toEqual([s, s, s]);
+		}
+	});
+
+	it("density: hud frames at hudRefPerArt (1), menus and lists at refPerArt (2)", () => {
+		expect(UI_ART.hudRefPerArt).toBe(1);
+		expect(skinRefPerArt("hud")).toBe(UI_ART.hudRefPerArt);
+		expect(skinRefPerArt("menu")).toBe(UI_ART.refPerArt);
+		expect(skinRefPerArt("list")).toBe(UI_ART.refPerArt);
+	});
+
+	it("ui.panel.hud's border at hudRefPerArt fits under HUD_VIEW.pad: corner panels keep their size", () => {
+		const s = insets(UI_ART.panels.hud);
+		for (const inset of [s.left, s.top, s.right, s.bottom]) {
+			expect(inset * UI_ART.hudRefPerArt <= HUD_VIEW.pad).toBe(true);
+		}
+		const pad = skinPadding(uniformPadding(HUD_VIEW.pad), s, UI_ART.hudRefPerArt);
+		expect(pad).toEqual(uniformPadding(HUD_VIEW.pad));
+	});
+
+	it("padding: per side, the larger of the flat pad and the inset at the slice scale", () => {
+		const s = { left: 43, top: 11, right: 43, bottom: 8 };
+		expect(skinPadding(uniformPadding(8), s, 2)).toEqual({ left: 86, top: 22, right: 86, bottom: 16 });
+		expect(skinPadding(uniformPadding(30), s, 2)).toEqual({ left: 86, top: 30, right: 86, bottom: 30 });
+		expect(
+			skinPadding({ left: 8, top: 0, right: 8, bottom: 0 }, { left: 6, top: 6, right: 6, bottom: 6 }, 1.5),
+		).toEqual({ left: 9, top: 9, right: 9, bottom: 9 });
+		expect(skinPadding(uniformPadding(8), undefined, 2)).toEqual(uniformPadding(8));
+	});
+
+	it("padding never leaves content on the drawn border at any HUD scale", () => {
+		for (const id of [UI_ART.panels.menu, UI_ART.panels.hud, UI_ART.panels.list]) {
+			const s = insets(id);
+			for (const context of ["menu", "hud", "list"] as const) {
+				for (const u of SCALES) {
+					const scale = snappedSliceScale(u, skinRefPerArt(context));
+					const p = skinPadding(uniformPadding(HUD_VIEW.pad), s, scale);
+					// screen px: padding * u >= inset * whole screen px per art px
+					const k = artPixelScale(u, skinRefPerArt(context));
+					const ok =
+						p.left * u + EPS >= s.left * k &&
+						p.top * u + EPS >= s.top * k &&
+						p.right * u + EPS >= s.right * k &&
+						p.bottom * u + EPS >= s.bottom * k;
+					expect([id, context, u, ok]).toEqual([id, context, u, true]);
+				}
+			}
+		}
+	});
+
+	it("list rows draw the hud frame: ui.panel.tall's borders leave no line in a row at 1080 p, ui.panel.hud's do", () => {
+		expect(UI_ART.rowContext).toBe("hud");
+		const line = HUD_VIEW.smallText;
+		const fits = (id: string, u: number) => {
+			const s = insets(id);
+			return (s.top + s.bottom) * snappedSliceScale(u, UI_ART.hudRefPerArt) + line <= MENU_VIEW.rowHeight + EPS;
+		};
+		expect(fits(UI_ART.panels.list, 1.5)).toBe(false);
+		for (const u of SCALES) {
+			expect([u, fits(skinFor(hasOnly(...ALL), "panel", UI_ART.rowContext)!, u)]).toEqual([u, true]);
+		}
+	});
+});
+
+describe("button skins (UA7)", () => {
+	it("state: disabled, then active, then focused", () => {
+		expect(buttonSkinState(false, false, false)).toBe("normal");
+		expect(buttonSkinState(false, true, false)).toBe("focused");
+		expect(buttonSkinState(true, false, false)).toBe("active");
+		expect(buttonSkinState(true, true, false)).toBe("active");
+		expect(buttonSkinState(true, true, true)).toBe("disabled");
+		expect(buttonSkinState(false, true, true)).toBe("disabled");
+	});
+
+	it("menuButtonSkin: the button family by state, the option bars for an option (on = active)", () => {
+		const all = hasOnly(...ALL);
+		expect(menuButtonSkin(all, "button", false, false, false)).toBe("ui.button");
+		expect(menuButtonSkin(all, "button", false, true, false)).toBe("ui.button.focus");
+		expect(menuButtonSkin(all, "button", true, false, false)).toBe("ui.button.focus");
+		expect(menuButtonSkin(all, "button", false, true, true)).toBe("ui.button.disabled");
+		expect(menuButtonSkin(all, "option", true, false, false)).toBe("ui.option.on");
+		expect(menuButtonSkin(all, "option", false, true, false)).toBe("ui.option.off");
+		const none: SkinHas = () => false;
+		for (const variant of ["button", "option"] as const) {
+			for (const a of [false, true]) {
+				for (const f of [false, true]) {
+					expect([variant, a, f, menuButtonSkin(none, variant, a, f, false)]).toEqual([
+						variant,
+						a,
+						f,
+						undefined,
+					]);
+				}
+			}
+		}
+	});
+
+	it("skinned text: uiText when focused or active, uiTextDim otherwise", () => {
+		expect(skinnedButtonTextRole(false, false)).toBe("uiTextDim");
+		expect(skinnedButtonTextRole(false, true)).toBe("uiText");
+		expect(skinnedButtonTextRole(true, false)).toBe("uiText");
+		expect(skinnedButtonTextRole(true, true)).toBe("uiText");
+	});
+});
+
+describe("turned art and focus brackets (UA6)", () => {
+	it("quarter turns", () => {
+		expect([0, 90, 180, 270, -90, 360, 45].map(isQuarterTurn)).toEqual([
+			false,
+			true,
+			false,
+			true,
+			true,
+			false,
+			false,
+		]);
+	});
+
+	it("fitTurnedArt fits the turned size and returns the label's own size", () => {
+		for (const u of SCALES) {
+			expect(fitTurnedArt(8, 9, 30, 20, u, 0)).toEqual(fitArt(8, 9, 30, 20, u));
+			const turned = fitTurnedArt(8, 9, 30, 20, u, 90);
+			const plain = fitArt(9, 8, 30, 20, u);
+			expect([u, turned.scale, turned.w, turned.h]).toEqual([u, plain.scale, plain.h, plain.w]);
+		}
+	});
+
+	it("four brackets, one per corner, turned clockwise from the top-left L", () => {
+		expect(UI_ART.focusCorners.map((c) => [c.rotation, c.ax, c.ay])).toEqual([
+			[0, 0, 0],
+			[90, 1, 0],
+			[180, 1, 1],
+			[270, 0, 1],
+		]);
+		expect(UI_ART.ids.focusCorner).toBe("ui.focus.corner");
+	});
+
+	it("a bracket's box is the art at the menu frames' whole scale; ArtImage refits it at the same scale", () => {
+		for (const u of SCALES) {
+			const k = artPixelScale(u, UI_ART.refPerArt);
+			for (const c of UI_ART.focusCorners) {
+				const box = focusCornerBox(8, 9, u, c.rotation);
+				const turned = isQuarterTurn(c.rotation);
+				expect([u, c.rotation, isWhole(box.w * u), isWhole(box.h * u)]).toEqual([u, c.rotation, true, true]);
+				expect([u, c.rotation, math.abs(box.w * u - (turned ? 9 : 8) * k) < EPS]).toEqual([
+					u,
+					c.rotation,
+					true,
+				]);
+				const fit = fitTurnedArt(8, 9, box.w, box.h, u, c.rotation);
+				expect([u, c.rotation, fit.scale]).toEqual([u, c.rotation, k]);
+			}
+		}
 	});
 });
