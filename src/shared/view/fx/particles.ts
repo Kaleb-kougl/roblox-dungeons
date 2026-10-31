@@ -6,7 +6,10 @@
  *   RingPool       small pool of expanding 1 px ground rings (RING_SEGMENTS dots each) for the kill-spot flash.
  *   BurstQueue     delayed bursts (the boss death's three waves).
  *   DeathParticleSystem   the event -> burst rules (counts per enemy size / settings, colours, reducedMotion) and
- *                  draw(writer) of every ring dot and particle.
+ *                  draw(writer) of every ring dot and particle. Port addition (docs/GRAZE_PARRY.md GP5): graze sparks
+ *                  (KIND_GRAZE: a few floor-plane sparks + a 1 px streak, no hop, no ring, never recycling) and parry
+ *                  bursts (KIND_PARRY: a fan of sparks away from the guard + one ring), sharing the pool, the live
+ *                  budget and draw(); their numbers are NEAR_MISS_VIEW's (nearMissConfig.ts).
  *
  * Units: ground motion in SIM units (x, z, velocities per second) on the floor plane; the hop height `h` is in RENDER
  * PIXELS (screen-up). The client turns h into a world height (ParticleController); the web build instead shifted the
@@ -19,8 +22,10 @@
  * QuadBatch writer became ParticleWriter (anchor, hop px, size px, palette index, alpha); trig tables via math.cos/sin.
  */
 import type { JuiceSettings, ParticlesLevel } from "shared/settings";
+import { PIXELS_PER_TILE } from "shared/config";
 import { COLOR_ROLES, type ColorRole } from "shared/theme";
 import { effectiveParticles, particleBudget } from "./juiceRules";
+import { NEAR_MISS_VIEW } from "./nearMissConfig";
 import { RenderRng } from "./rng";
 
 // ---------------------------------------------------------------------------------------------
@@ -55,6 +60,9 @@ export const CHUNKS = 3;
 export const KIND_BODY = 0;
 export const KIND_SPARK = 1;
 export const KIND_CHUNK = 2;
+/** Grazes and parries (docs/GRAZE_PARRY.md GP5): a graze's sparks and streak dots; a parry burst's sparks. */
+export const KIND_GRAZE = 3;
+export const KIND_PARRY = 4;
 
 /** Per-kind motion: speed range (world units/s), drag (1/s, exponential), life (s), hop launch range (px/s). */
 export interface KindTuning {
@@ -72,6 +80,24 @@ export const TUNING: ReadonlyArray<KindTuning> = [
 	/* body  */ { speedMin: 4, speedMax: 11, drag: 9, life: 0.4, hopMin: 30, hopMax: 70, hold: 0.45 },
 	/* spark */ { speedMin: 7, speedMax: 15, drag: 11, life: 0.24, hopMin: 40, hopMax: 90, hold: 0.3 },
 	/* chunk */ { speedMin: 2, speedMax: 5, drag: 7, life: 0.6, hopMin: 20, hopMax: 40, hold: 0.6 },
+	/* graze */ {
+		speedMin: NEAR_MISS_VIEW.graze.sparkSpeedMin,
+		speedMax: NEAR_MISS_VIEW.graze.sparkSpeedMax,
+		drag: NEAR_MISS_VIEW.graze.drag,
+		life: NEAR_MISS_VIEW.graze.lifeSec,
+		hopMin: 0,
+		hopMax: 0,
+		hold: NEAR_MISS_VIEW.graze.hold,
+	},
+	/* parry */ {
+		speedMin: NEAR_MISS_VIEW.parry.sparkSpeedMin,
+		speedMax: NEAR_MISS_VIEW.parry.sparkSpeedMax,
+		drag: NEAR_MISS_VIEW.parry.drag,
+		life: NEAR_MISS_VIEW.parry.lifeSec,
+		hopMin: NEAR_MISS_VIEW.parry.hopMinPx,
+		hopMax: NEAR_MISS_VIEW.parry.hopMaxPx,
+		hold: NEAR_MISS_VIEW.parry.hold,
+	},
 ];
 /** Lifetime jitter: life * (1 +- LIFE_JITTER). */
 export const LIFE_JITTER = 0.2;
@@ -103,6 +129,10 @@ const ELITE_SPEED = 1.2;
 const ANGLE_JITTER = 0.3;
 /** Smallest life (s) a particle / ring may have. */
 const MIN_LIFE = 0.001;
+/** One render pixel in sim units (tiles): the graze streak's dot spacing. */
+const PX_TILES = 1 / PIXELS_PER_TILE;
+/** Below this length a direction is treated as zero (the +x fallback). */
+const MIN_DIR = 1e-9;
 
 /** reducedMotion: slower, shorter, no hop, rings flash in place (counts drop one level via effectiveParticles). */
 export const REDUCED_SPEED = 0.5;
@@ -351,6 +381,12 @@ export class ParticlePool {
 			i++;
 		}
 	}
+}
+
+/** A whole pixel size in [min, max], uniform (render-side rng). */
+function sizeBetween(rng: RenderRng, min: number, max: number): number {
+	const s = min + math.floor(rng.next() * (max - min + 1));
+	return s > max ? max : s;
 }
 
 /** Opacity of a particle: 1 for the first `hold` share of its life, then linear to 0. */
@@ -618,6 +654,25 @@ export function bossWaveCount(wave: number, settings: Readonly<JuiceSettings>): 
 	return m > 0 ? math.max(1, math.round(w.count * m)) : 0;
 }
 
+/** Sparks of one graze for these settings (NEAR_MISS_VIEW.graze.sparkCount x the level; 0 when off). */
+export function grazeSparkCount(settings: Readonly<JuiceSettings>): number {
+	const m = LEVEL_SCALE[effectiveParticles(settings)];
+	return m > 0 ? math.max(1, math.round(NEAR_MISS_VIEW.graze.sparkCount * m)) : 0;
+}
+
+/**
+ * Sparks of one parry burst of `weight` (1 + erases merged into it) for these settings: parry.sparkCount plus
+ * sparksPerMerged per merged erase (at most maxMergedSparks), x the level; 0 when off.
+ */
+export function parrySparkCount(weight: number, settings: Readonly<JuiceSettings>): number {
+	const m = LEVEL_SCALE[effectiveParticles(settings)];
+	if (m <= 0) return 0;
+	const p = NEAR_MISS_VIEW.parry;
+	const merged = weight > 1 ? math.floor(weight) - 1 : 0;
+	const extra = math.min(merged * p.sparksPerMerged, p.maxMergedSparks);
+	return math.max(1, math.round((p.sparkCount + extra) * m));
+}
+
 // ---------------------------------------------------------------------------------------------
 // The system
 
@@ -826,6 +881,120 @@ export class DeathParticleSystem {
 			const color = i % 2 === 0 ? PAL_WHITE : PAL_SPARK;
 			this.pool.spawn(limit, x, z, math.cos(a) * v, math.sin(a) * v, h, 0, life, t.drag, 1, color, KIND_SPARK);
 		}
+	}
+
+	/**
+	 * A graze at (x, z) (the skim point; docs/GRAZE_PARRY.md GPD3): grazeSparkCount sparks sprayed along the unit
+	 * direction (dirX, dirZ) within +-graze.spreadRad, plus a streak of graze.streakDots dots one px apart along the path,
+	 * all on the floor plane (h = 0, no hop), palette colour `color` (the nearMiss.graze role), life graze.lifeSec (x
+	 * REDUCED_LIFE, speeds x REDUCED_SPEED under reduced motion). No ring. Never recycles: nothing spawns unless the whole
+	 * graze fits under graze.maxFill of the live limit. Returns the particles spawned.
+	 */
+	graze(
+		x: number,
+		z: number,
+		dirX: number,
+		dirZ: number,
+		color: number,
+		seed: number,
+		settings: Readonly<JuiceSettings>,
+	): number {
+		const n = grazeSparkCount(settings);
+		if (n <= 0) return 0;
+		const g = NEAR_MISS_VIEW.graze;
+		const limit = this.limit(settings);
+		const total = n + g.streakDots;
+		if (this.pool.count + total > limit * g.maxFill) return 0;
+		let ux = dirX;
+		let uz = dirZ;
+		const len = math.sqrt(ux * ux + uz * uz);
+		if (len > MIN_DIR) {
+			ux /= len;
+			uz /= len;
+		} else {
+			ux = 1;
+			uz = 0;
+		}
+		this.rng.seed(seed);
+		const reduced = settings.reducedMotion;
+		const sp = reduced ? REDUCED_SPEED : 1;
+		const life = g.lifeSec * (reduced ? REDUCED_LIFE : 1);
+		const t = TUNING[KIND_GRAZE];
+		for (let i = 0; i < n; i++) {
+			const a = this.rng.range(-g.spreadRad, g.spreadRad);
+			const ca = math.cos(a);
+			const sa = math.sin(a);
+			const vx = ux * ca - uz * sa;
+			const vz = ux * sa + uz * ca;
+			const v = this.rng.range(t.speedMin, t.speedMax) * sp;
+			const size = sizeBetween(this.rng, g.sparkMinPx, g.sparkMaxPx);
+			this.pool.spawn(limit, x, z, vx * v, vz * v, 0, 0, life, t.drag, size, color, KIND_GRAZE);
+		}
+		const vs = g.streakSpeed * sp;
+		const mid = (g.streakDots - 1) / 2;
+		for (let k = 0; k < g.streakDots; k++) {
+			const o = (k - mid) * PX_TILES;
+			const sx = x + ux * o;
+			const sz = z + uz * o;
+			this.pool.spawn(limit, sx, sz, ux * vs, uz * vs, 0, 0, life, t.drag, g.streakPx, color, KIND_GRAZE);
+		}
+		return total;
+	}
+
+	/**
+	 * A parry burst at an erased bullet (x, z) (docs/GRAZE_PARRY.md GP5): parrySparkCount(weight) sparks thrown along the
+	 * unit direction (dirX, dirZ) (away from the guarding player) in a fan of +-parry.fanRad, with a small hop, plus one
+	 * expanding ring (parry.ringR0Tiles -> ringR1Tiles; fixed under reduced motion), palette colour `color` (the
+	 * nearMiss.parry role), life parry.lifeSec. Reduced motion: REDUCED_SPEED / REDUCED_LIFE, no hop. Recycles the
+	 * most-faded particles at the live limit like a kill burst. Returns the sparks spawned.
+	 */
+	parry(
+		x: number,
+		z: number,
+		dirX: number,
+		dirZ: number,
+		weight: number,
+		color: number,
+		seed: number,
+		settings: Readonly<JuiceSettings>,
+	): number {
+		const n = parrySparkCount(weight, settings);
+		if (n <= 0) return 0;
+		const p = NEAR_MISS_VIEW.parry;
+		const limit = this.limit(settings);
+		let ux = dirX;
+		let uz = dirZ;
+		const len = math.sqrt(ux * ux + uz * uz);
+		if (len > MIN_DIR) {
+			ux /= len;
+			uz /= len;
+		} else {
+			ux = 1;
+			uz = 0;
+		}
+		this.rng.seed(seed);
+		const reduced = settings.reducedMotion;
+		const sp = reduced ? REDUCED_SPEED : 1;
+		const life = p.lifeSec * (reduced ? REDUCED_LIFE : 1);
+		const t = TUNING[KIND_PARRY];
+		const step = (2 * p.fanRad) / n;
+		let spawned = 0;
+		for (let i = 0; i < n; i++) {
+			// Stratified across the fan with jitter inside each slice: every count spreads evenly.
+			const a = -p.fanRad + (i + this.rng.next()) * step;
+			const ca = math.cos(a);
+			const sa = math.sin(a);
+			const vx = ux * ca - uz * sa;
+			const vz = ux * sa + uz * ca;
+			const v = this.rng.range(t.speedMin, t.speedMax) * sp;
+			const vh = reduced ? 0 : this.rng.range(t.hopMin, t.hopMax);
+			const size = sizeBetween(this.rng, p.sparkMinPx, p.sparkMaxPx);
+			if (this.pool.spawn(limit, x, z, vx * v, vz * v, 0, vh, life, t.drag, size, color, KIND_PARRY) >= 0) {
+				spawned++;
+			}
+		}
+		this.rings.spawn(x, z, p.ringR0Tiles, p.ringR1Tiles, life, color, !reduced, RING_SEGMENTS);
+		return spawned;
 	}
 
 	/** Advance by dt seconds (already time-scaled): due boss waves fire, particles and rings move / age. */

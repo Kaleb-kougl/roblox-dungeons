@@ -43,6 +43,9 @@ Record every ported module in `PROVENANCE.md` (ported module, source path, sourc
 | `docs/ROOM_CLEAR.md` | Room clear celebration (1.5 s: 0.5x slow motion on the last kill, CLEAR / PERFECT stamp, room score tally rolling into the score panel, a corner chip for a far co-op clear, On / Off setting; presentation only): plan, tasks RC0-RC10, decisions RCD1-RCD18. Step-by-step build: `docs/ROOM_CLEAR_IMPL.md` (RC1-RC9) |
 | `docs/COMBO.md` | Combo you chase (named tiers x2 Rampage / x3 Carnage / x4 Dominating / x5 Unstoppable, tier-coloured meter, kill sound climbing in pitch, tier-up sting and a floor shout that never hides bullets, a shatter on a break during a fight, a quiet lapse otherwise; presentation only): plan, tasks CB0-CB9, decisions CD1-CD16 |
 | `docs/DRAFT_REVEAL.md` | Boon draft reveal (cards deal face down and flip one by one, a rare chime, a legendary beat: charge, hush, flare and halo; a pick stamp; skip by pressing; the client holds the confirm until settled; cards in the ToffeeCraft Horror UI sheet's style; presentation and client input only): plan, tasks DR0-DR9, decisions DRD1-DRD12 |
+| `docs/ENEMY_VARIANTS.md` | Enemy variants (three new endless archetypes: Imp flanker, Ooze zone-denier that splits, Summoner support; elite affixes Hulking / Swift / Shielded / Vengeful; both unlock by depth): plan, tasks EV0-EV14, decisions EVD1-EVD12 |
+| `docs/GRAZE_PARRY.md` | Grazes and parries (graze spark + shimmer climbing in pitch, parry sparks / ring-out / PARRY! floor flash / solo 30 ms freeze for a guard that erases bullets; one unhashed ScoreEvents feed, otherwise presentation only): plan, tasks GP0-GP10, decisions GPD1-GPD10 |
+| `docs/UI_ART.md` | UI art (the dark red pixel UI sheet: 9-sliced panels / buttons, hearts, potions, pills, icons, focus brackets; menus, then the in-run HUD, then touch; presentation only): builds on the Draft reveal branch (`slice`, `SlicedImage`): plan, tasks UA0-UA15, decisions UAD1-UAD10 |
 
 Decision log (deviations from `PLAN.md`):
 - **Art (docs/ART.md).** The theme contract gained a `"sprites"` kind (large pre-rendered cells, 1/4/8/16 screen-space
@@ -76,6 +79,11 @@ Decision log (deviations from `PLAN.md`):
   sword, so the parity specs (golden runs, validate / segments, constants, the boss TTK table) replay under
   `setSwordTimings(WEB_SWORD_TIMINGS)` (timers and reach) and still match bit for bit; live play (every world) and
   live replays use the port's sword.
+- **Longer score combo (port retune, 2026-10-30).** `COMBO_WINDOW_SECONDS` 3 -> 6 (`COMBO_WINDOW_TICKS` 180 -> 360,
+  `shared/sim/score/scoreData.ts`); Lingering 4.5 s -> 9 s (+3 s) and Impatience -1 s -> -2 s (`progressionData.ts`),
+  so both keep their share of the window; strings `boon.lingering.desc` / `curse.impatience.desc` follow. A sim change:
+  every scored run (endless, `KV_Scoring` M1, the tutorial) replays and scores differently from older builds; no
+  fixture is scored, so every fixture still matches. The HUD meter reads the window from the snapshot (unchanged code).
 - **Archetype bands.** Kinds number by (`ArchetypeDef.band`, then id order), not id order alone. The web build's
   archetypes are band 0 (indices 0..6, pinned by hashed golden runs); a port-only archetype takes a NEW band so it
   numbers after the web table and no web index ever moves. The training dummy is band 1 (`PORT_BAND_TUTORIAL`),
@@ -177,7 +185,7 @@ Decision log (deviations from `PLAN.md`):
   `enemy.sprayer` = Demon Spawn 8 and `enemy.caster` = Demon Spawn 11 (idle / hit / death, 2 sheets + rims each; move
   and attack alias idle's cells, `turretSpriteInputOf`); their staff glow is baked semi-transparent into the body
   sheet, so the grid source's `source.layerNoiseAlpha` (`{ "": 254 }`) clears a layer's faint pixels before
-  compositing (DD7). Built, not uploaded: both stay placeholders until their ids are in `assetIds.ts` (DA13).
+  compositing (DD7). Uploaded 2026-10-30 (DA13), so the bundled vale pack draws them.
 - **Room edges (docs/ROOM_EDGES.md).** Presentation only (no sim, hash, replay or fixture change). Three required theme
   colour roles `roomEdge.safe` / `.waiting` / `.live` (`ROOM_EDGE_ROLES`; waiting and live >= 3:1 on every biome floor,
   all three >= 40 CIE76 from the enemy-bullet roles and `telegraph`, `roomEdgeReport`). shared/sim score exports its
@@ -279,7 +287,19 @@ Decision log (deviations from `PLAN.md`):
   (`comboReport`), six strings `COMBO_STRING_KEYS`, two port audio IDs (SILENT in the placeholder; the break clip is
   the owner's Pixabay MP3 in gitignored `art/vendor/pixabay/`). The tier-up floor shout is a SurfaceGui under every
   bullet (sprite effects' floor placement), <= 55 % opaque, ducking near enemy bullets. Nudge kind `comboBreak`.
-  Debug `KV_ComboDebug`. No setting. Studio check and audio upload pending.
+  Debug `KV_ComboDebug`. No setting. Clips uploaded 2026-10-30 (vale `assetIds.ts`); Studio check pending.
+- **Grazes and parries (docs/GRAZE_PARRY.md).** One unhashed sim feed, otherwise presentation only (no hash, replay,
+  fixture, rng, score or lockstep change): `ScoreEvents` gained per-tick `grazeX/Z/VX/VZ/Player` (pushed by
+  `scoreBulletVisit`'s new trailing `grazer`) and `guardX/Z/Player` (the guard passes `sweepArc` a trailing
+  `ArcEraseSink`), like the kill pops' `popX`. `RunView.nearMiss` (`NearMissEvents`, per tick) feeds the ONE
+  `NearMissDirector`, owned by the client's `NearMissController`, whose `onFrame` subscribers are the sparks
+  (`DeathParticleSystem.graze` / `.parry`, kinds 3 / 4), `ParryFlashController` (PARRY! floor text on the combo
+  shout's construction, 1.2 tiles screen-down, solo 30 ms freeze through the hitstop clock) and AudioController (its
+  whole sound frame now runs as that subscriber). Theme: colour roles `nearMiss.graze` / `.parry` (`nearMissReport`),
+  strings `fx.parry.text` / `.count`, port audio IDs `sfx.player.graze` / `sfx.player.parry` (SILENT in the
+  placeholder; a silent parry leaves today's deflect untouched). contract.luau / validate.luau sit at 196 / 200 of
+  Luau's 200 top-level locals with the draft reveal merged (counted as written; `checkSlice` is a closure in
+  `validateAsset` to stay there). Scored runs only. No setting. Debug `KV_ParryDebug`. Clips uploaded 2026-10-30 (vale graze Magic5, parry Bonus); Studio check pending.
 
 - **Draft reveal (docs/DRAFT_REVEAL.md).** Presentation and client input only (no sim, dungeon, lockstep, hash, replay or
   fixture change). The boon draft's cards deal face down and flip one by one (`DraftReveal`, pure, in shared/view/hud);
@@ -291,7 +311,7 @@ Decision log (deviations from `PLAN.md`):
   instead of the loot `rarity.*`), five port audio IDs `sfx.draft.*` (SILENT in the placeholder), ui images may carry
   `slice` (ui.* only), optional `draftSkinIds()` cut from the ToffeeCraft Horror UI sheet (paid licence,
   `THIRD_PARTY_NOTICES.md`) by new `images` options (`rect`, `cutout`, `slice`, `centre: "flat"`, `flatBoxes`, `mask`).
-  `contract.luau` is at 193 top-level locals. Debug `KV_DraftRevealDebug`. No setting. Studio check, art upload and
+  `contract.luau` / `validate.luau` are at 196 / 200 top-level locals with grazes and parries merged. Debug `KV_DraftRevealDebug`. No setting. Studio check, art upload and
   sounds pending.
 
 ## Commands

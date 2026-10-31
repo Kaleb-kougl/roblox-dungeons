@@ -12,14 +12,14 @@ bit-identical.
 
 ## Status (2026-10-30)
 
-**Phase 2 (turrets) is code-complete and built, not uploaded; specs not yet run headlessly.** DA9-DA12 and DA15 are
+**Phase 2 (turrets) is code-complete, built and uploaded (2026-10-30); specs not yet run headlessly.** DA9-DA12 and DA15 are
 done: the pipeline's `source.layerNoiseAlpha` (DD7), the `enemy.sprayer` (Demon Spawn 8) and `enemy.caster` (Demon
 Spawn 11) sets (`art/atlases.json` -> `layout.ts`; 4 textures each in gitignored `art/build` / `art/upload`, contact
 sheets `art/build/contact/enemy.sprayer.png` / `enemy.caster.png`), their renderer inputs (`turretSprayerSpriteInput`
 / `turretCasterSpriteInput`) and the `vale.spec` cases. Verified so far: `test:art` 62/62, two `art:build`s
 byte-identical (every older output unchanged), eslint and `tsc --noEmit` on the changed files. **Not yet run:** the
-Lune specs (`sprites.spec`, `vale.spec`) and the full `npm run verify`. With no ids in `assetIds.ts` the bundled pack
-still draws both turrets as placeholders. Open: DA13 (upload, owner), DA14 (Studio).
+Lune specs (`sprites.spec`, `vale.spec`) and the full `npm run verify`. With their 8 ids in `assetIds.ts` the bundled pack
+draws both turrets (DA13 done, `vale.spec`'s bundled case rewritten). Open: DA14 (Studio).
 
 **Phase 1 is code-complete, verified headlessly and uploaded; waiting on Studio.** DA0 and DA2-DA6 are done: the
 pipeline (layered sources, per-sheet cells), the `enemy.bruiser` set (Demon Beast 3, `art/atlases.json` ->
@@ -38,7 +38,7 @@ The pack is in `art/vendor/demons-topdown/` (gitignored with the rest of `art/ve
 | Slot | Drawn by | Where it is seen | This plan |
 |---|---|---|---|
 | `enemy.bruiser` | Demon Beast 3 (uploaded 2026-10-26) | 1 in 6 endless room picks (`ENDLESS_ROOM_KINDS` weight 1 of 6) | **Phase 1** (done but DA1 / DA7) |
-| `enemy.sprayer` (`turret.sprayer`), `enemy.caster` (`turret.caster`) | placeholder primitives until DA13's upload (sets built: Demon Spawn 8 / 11) | M1's sandbox turrets, the tutorial's two sprayers (combat F) | **Phase 2** |
+| `enemy.sprayer` (`turret.sprayer`), `enemy.caster` (`turret.caster`) | Demon Spawn 8 / 11 (uploaded 2026-10-30, DA13) | M1's sandbox turrets, the tutorial's two sprayers (combat F) | **Phase 2** |
 | `boss.act1` (Mother Bramble) | Demon Elite 3 (uploaded 2026-10-26) | every endless boss floor it is picked for, the tutorial boss, M1 | **docs/BRAMBLE_ART.md** (a Demon Elite) |
 | `enemy.dummy` | placeholder post | the tutorial | not planned (a post, not a creature) |
 | `enemy.swarmer`, `enemy.sniper`, `turret.sniper`, `boss.demonlord` | Lords of Pain | | **unchanged** |
@@ -304,11 +304,13 @@ Each has a `-outline` sheet of the same size (the 2 px enemy rim, `pad` 3).
   set), none in later. The per-sheet list in "vale per-sheet cells" gained both sets.
   *As built (2026-10-30):* as specified; eslint and `tsc --noEmit` clean. **Not yet run headlessly** (Lune).
 
-- [ ] **DA13. Upload** (owner): the 4 sheets and 4 rims from `art/upload` (`sprayer-body`, `sprayer-body-outline`,
+- [x] **DA13. Upload** (owner): the 4 sheets and 4 rims from `art/upload` (`sprayer-body`, `sprayer-body-outline`,
   `sprayer-death`, `sprayer-death-outline`, the same for `caster`); paste the ids into `assetIds.ts` with the upload
   note. Then the bundled vale pack draws both, and `vale.spec`'s "as bundled (nothing uploaded yet)" turret case fails
   by design: rewrite it as the bruiser's (every sheet has an id, both are sets with every rim; a fresh pack is still
   the placeholder). → Verify: `npm run verify`.
+  *Done 2026-10-30 2:55 PM (k9kbdev):* 4 sheets + 4 outlines; ids transcribed from Asset Manager screenshots; the
+  bundled turret case now checks both sets draw with every rim. `npm run verify` (Lune) still to run.
 
 - [ ] **DA14. Studio check.** M1's sandbox turrets (sprayer, caster) and the tutorial's two sprayers (combat F),
   solo, PC and the phone emulator:

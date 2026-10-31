@@ -27,6 +27,12 @@ export const AUDIO_VIEW = {
 	/** Seed of the PlaybackSpeed jitter generator (voices.ts PitchJitter; presentation only). */
 	pitchSeed: 1,
 	/**
+	 * Repetitive sounds (voices.ts PitchVariance): a start never lands within this fraction of the sound's pitch range
+	 * of the same ID's previous start (0.25 of [0.95, 1.05]: at least 0.025 PlaybackSpeed apart). 0 = plain jitter;
+	 * at most 0.49.
+	 */
+	pitchRepeatGap: 0.25,
+	/**
 	 * The music dips to `level` (of its volume) while a DUCKING_SFX sound plays (jingles, the Ember), falling in
 	 * attackSec and coming back in releaseSec. A clip whose length is not known yet holds it for holdSec.
 	 */

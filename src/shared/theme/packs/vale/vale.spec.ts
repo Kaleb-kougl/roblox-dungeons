@@ -1035,8 +1035,8 @@ describe("vale enemy.bruiser and boss.act1 (2D Demons, per-sheet cells)", () => 
 /**
  * M1's turrets as 2D Demons sets (docs/DEMON_ART.md Phase 2, DA12): enemy.sprayer (Demon Spawn 8) and enemy.caster
  * (Demon Spawn 11, its recolour: identical boxes). Two per-sheet sheets each (body = idle + hit, death), a rim on
- * both; move and attack are idle's cells (the renderer never plays them on a turret). Built, not uploaded: as bundled
- * both are the placeholder, so these cases inject fake ids the way the bruiser's do.
+ * both; move and attack are idle's cells (the renderer never plays them on a turret). Uploaded 2026-10-30 (DA13): as
+ * bundled both are their sets; the switching cases inject fake ids the way the bruiser's do.
  */
 describe("vale enemy.sprayer and enemy.caster (2D Demons turrets, per-sheet cells)", () => {
 	const TURRETS: ReadonlyArray<[string, string]> = [
@@ -1111,13 +1111,24 @@ describe("vale enemy.sprayer and enemy.caster (2D Demons turrets, per-sheet cell
 		]);
 	});
 
-	it("as bundled (nothing uploaded yet) both are the placeholder", () => {
+	it("as bundled both are their sprite sets, every sheet with its rim (uploaded 2026-10-30, DA13)", () => {
 		for (const [id, prefix] of TURRETS) {
 			for (const file of filesOf(prefix)) {
-				expect([file, VALE_ASSET_IDS[file]]).toEqual([file, undefined]);
+				expect([file, VALE_ASSET_IDS[file] !== undefined]).toEqual([file, true]);
 			}
-			expect([id, VALE_MANIFEST.assets[id]]).toEqual([id, { kind: "placeholder" }]);
-			expect([id, new ThemePack(VALE_MANIFEST, { warn: quiet }).sprites(id)]).toEqual([id, undefined]);
+			expect([id, VALE_MANIFEST.assets[id].kind]).toEqual([id, "sprites"]);
+			expect([id, new ThemePack(VALE_MANIFEST, { warn: quiet }).sprites(id) !== undefined]).toEqual([id, true]);
+			const sheets = (VALE_MANIFEST.assets[id] as SpriteSetAsset).sheets;
+			const layout = VALE_SPRITE_LAYOUTS[id].sheets;
+			expect(sheets.size()).toBe(layout.size());
+			for (let i = 0; i < layout.size(); i++) {
+				expect([layout[i].file, sheets[i].assetId]).toEqual([layout[i].file, VALE_ASSET_IDS[layout[i].file]]);
+				expect([layout[i].file, sheets[i].outlineAssetId]).toEqual([
+					layout[i].file,
+					VALE_ASSET_IDS[outlineOf(layout[i].file)],
+				]);
+			}
+			// without the IDs (a fresh pack) both are still the placeholder
 			expect([id, buildValeManifest({}).assets[id]]).toEqual([id, { kind: "placeholder" }]);
 		}
 	});

@@ -569,7 +569,9 @@ master and group volume, live), each Sound at the manifest's per-ID volume x the
   `AudioStateWatch.mayDeflect`), else a teammate's. A solo run reads the summed events as before.
 - **Per start:** one clip of the ID's pool (assetId + `variants`, round-robin per ID: `VariantPicker`; a pool of
   `AUDIO_VIEW.voicesPerSfx` Sounds per ID split over the clips, a busy clip restarts its oldest voice) at a jittered
-  PlaybackSpeed inside the pack's `pitch` range (`PitchJitter`, seeded `AUDIO_VIEW.pitchSeed`; 1 without a range).
+  PlaybackSpeed inside the pack's `pitch` range (`PitchVariance` over `PitchJitter`, seeded `AUDIO_VIEW.pitchSeed`;
+  1 without a range) that never lands within `AUDIO_VIEW.pitchRepeatGap` of the range from the same ID's previous
+  start, so a repeated sound never plays twice at nearly the same pitch.
 - **Ducking:** a `DUCKING_SFX` sound (every jingle and the Ember) dips the music SoundGroup to `AUDIO_VIEW.duck.level`
   for the clip's length (`holdSec` while the length is not known yet), in `attackSec`, back in `releaseSec`
   (`MusicDuck`, every Heartbeat).

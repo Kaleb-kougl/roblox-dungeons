@@ -55,6 +55,8 @@ import type { RobloxAssetId } from "../../types";
  * vanguard-*-outline.png (the 8 knight outline sheets, player outline: 1 px, outline.clipAtCellEdge; the body sheets
  * are byte-identical, so their IDs above stay) uploaded 2026-10-28 8:35 AM by k9kbdev, transcribed from an Asset Manager
  * screenshot.
+ * sprayer-*.png / caster-*.png (Demon Spawn 8 / 11 turrets, 2 sheets + 2 outlines each, docs/DEMON_ART.md DA13)
+ * uploaded 2026-10-30 2:55 PM by k9kbdev, transcribed from Asset Manager screenshots.
  */
 export const VALE_ASSET_IDS: Readonly<Record<string, RobloxAssetId>> = {
 	"amb-b1.ogg": "rbxassetid://91158343621799",
@@ -85,6 +87,10 @@ export const VALE_ASSET_IDS: Readonly<Record<string, RobloxAssetId>> = {
 	"bruiser-body.png": "rbxassetid://139345385245627",
 	"bruiser-death-outline.png": "rbxassetid://96190576749559",
 	"bruiser-death.png": "rbxassetid://110099154312685",
+	"caster-body-outline.png": "rbxassetid://117972314048279",
+	"caster-body.png": "rbxassetid://94738405031552",
+	"caster-death-outline.png": "rbxassetid://128357725222665",
+	"caster-death.png": "rbxassetid://78384490395919",
 	"decor-atlas.png": "rbxassetid://107968620179940",
 	"decor-mote.png": "rbxassetid://108281638823690",
 	"music-biome-1.ogg": "rbxassetid://93211571195066",
@@ -99,6 +105,8 @@ export const VALE_ASSET_IDS: Readonly<Record<string, RobloxAssetId>> = {
 	"sfx-boss-roar.ogg": "rbxassetid://103385650363670",
 	"sfx-breakable-break.ogg": "rbxassetid://116444193017210",
 	"sfx-breakable-hit.ogg": "rbxassetid://77751477617243",
+	"sfx-combo-break.ogg": "rbxassetid://82071923495161",
+	"sfx-combo-tier.ogg": "rbxassetid://126389092133631",
 	"sfx-depth-up.ogg": "rbxassetid://103313193441379",
 	"sfx-ember.ogg": "rbxassetid://132331997932373",
 	"sfx-enemy-death-1.ogg": "rbxassetid://120112698995155",
@@ -119,7 +127,9 @@ export const VALE_ASSET_IDS: Readonly<Record<string, RobloxAssetId>> = {
 	"sfx-player-deflect.ogg": "rbxassetid://111196234749460",
 	"sfx-player-finisher.ogg": "rbxassetid://126253596804652",
 	"sfx-player-flask.ogg": "rbxassetid://132402914407938",
+	"sfx-player-graze.ogg": "rbxassetid://75883031011439",
 	"sfx-player-hurt.ogg": "rbxassetid://109847922628008",
+	"sfx-player-parry.ogg": "rbxassetid://124974710844270",
 	"sfx-player-roll.ogg": "rbxassetid://73804106008724",
 	"sfx-player-shoot.ogg": "rbxassetid://98736803949938",
 	"sfx-player-swap.ogg": "rbxassetid://88978044362008",
@@ -142,6 +152,10 @@ export const VALE_ASSET_IDS: Readonly<Record<string, RobloxAssetId>> = {
 	"sfx-victory.ogg": "rbxassetid://138562382025197",
 	"sniper-idle-outline.png": "rbxassetid://72531972026139",
 	"sniper-idle.png": "rbxassetid://136813347348140",
+	"sprayer-body-outline.png": "rbxassetid://113789975034893",
+	"sprayer-body.png": "rbxassetid://91705891235798",
+	"sprayer-death-outline.png": "rbxassetid://84907988039450",
+	"sprayer-death.png": "rbxassetid://103488605375534",
 	"swarmer-death-outline.png": "rbxassetid://72521271467524",
 	"swarmer-death.png": "rbxassetid://101974921579587",
 	"swarmer-move-outline.png": "rbxassetid://71928565662655",

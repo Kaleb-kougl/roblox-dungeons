@@ -9,7 +9,8 @@
  * audio IDs, ambience beds and fx colour roles of docs/FX_AUDIO.md; no fx art: sprite effects are optional; the
  * Demon Lord, boss.demonlord, of docs/BOSS_DEMONLORD.md; the boost drops of docs/BOOSTS.md B5: gems, colour roles,
  * strings and silent sounds; the room-edge colour roles of docs/ROOM_EDGES.md RE4; the minimap colour roles and
- * strings of docs/MINIMAP.md M6; the combo's colour roles, strings and silent sounds of docs/COMBO.md CB3).
+ * strings of docs/MINIMAP.md M6; the combo's colour roles, strings and silent sounds of docs/COMBO.md CB3; the near
+ * misses' colour roles, strings and silent sounds of docs/GRAZE_PARRY.md GP3).
  *
  * To replace art or audio later, change an entry's kind and paste the uploaded asset ID, e.g.
  *   "enemy.sniper": { kind: "spritesheet", assetId: "rbxassetid://<n>", frameW: 16, frameH: 16, pivot: { x: 8, y: 15 }, animations: { ... } },
@@ -130,6 +131,11 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		"combo.dominating": "#c850e8",
 		"combo.unstoppable": "#b98cff",
 		"combo.broken": "#6b6a70",
+		// Roblox port (docs/GRAZE_PARRY.md GP3): a graze's spark (white-cyan) and a parry's sparks and PARRY! text
+		// (gold-white). Both are >= 12:1 on every biome floor and >= 52 CIE76 from the pink enemy bullet, its outline and
+		// the telegraph orange (the parry's nearest is the telegraph, 52.9; the graze's 88.8).
+		"nearMiss.graze": "#c8f4ff",
+		"nearMiss.parry": "#ffe9a8",
 		// Roblox port (docs/DRAFT_REVEAL.md DR3, DRD3): the boon draft's rarity ladder from the ToffeeCraft Horror UI
 		// sheet: bone (its skulls), blood red (the hearts' highlight), candle gold (its one warm light). Each is >= 3:1
 		// on uiPanel and >= 25 CIE76 from the rarity below it; vale keeps them.
@@ -282,6 +288,9 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		// docs/COMBO.md CB3: the combo's tier-up sting and break shatter.
 		"sfx.combo.tier": SILENT,
 		"sfx.combo.break": SILENT,
+		// docs/GRAZE_PARRY.md GP3: a graze's shimmer and a parry's ring-out (the deflect plays while the parry is silent).
+		"sfx.player.graze": SILENT,
+		"sfx.player.parry": SILENT,
 		// Roblox port (docs/DRAFT_REVEAL.md DR4): the boon draft reveal (flip, rare chime, legendary charge and flare,
 		// pick stamp), silent until the vale pack's clips are built and uploaded
 		"sfx.draft.flip": SILENT,
@@ -701,7 +710,7 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		"boon.warding.desc": "1 armor pip, refilled in every room",
 		"boon.warding.icon": "ARM",
 		"boon.lingering.name": "Lingering",
-		"boon.lingering.desc": "Combo lasts 4.5 s instead of 3 s",
+		"boon.lingering.desc": "Combo lasts 9 s instead of 6 s",
 		"boon.lingering.icon": "CMB",
 		"boon.daredevil.name": "Daredevil",
 		"boon.daredevil.desc": "Grazes count from farther away",
@@ -731,7 +740,7 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		"curse.haste.desc": "Enemy bullets 15% faster",
 		"curse.haste.icon": "HST",
 		"curse.impatience.name": "Impatience",
-		"curse.impatience.desc": "Combo lasts 1 s less",
+		"curse.impatience.desc": "Combo lasts 2 s less",
 		"curse.impatience.icon": "IMP",
 		"curse.thirst.name": "Thirst",
 		"curse.thirst.desc": "-1 flask charge",
@@ -887,5 +896,8 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		"hud.combo.unstoppable": "UNSTOPPABLE",
 		"hud.combo.lost": "COMBO LOST",
 		"hud.combo.best": "BEST x{combo}",
+		// --- fx.parry.* (docs/GRAZE_PARRY.md GP3: the parry flash and its count from 3 erases, "PARRY! x5") ------
+		"fx.parry.text": "PARRY!",
+		"fx.parry.count": "x{n}",
 	},
 };

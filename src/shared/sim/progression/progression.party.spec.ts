@@ -299,13 +299,13 @@ describe("co-op: team-wide rules", () => {
 			ctxOf(r).killActor(spawnAt(r, "swarmer", 4, 4)); // credited to player 0
 			return r.s.score!.comboTimer;
 		};
-		expect([timer(false), timer(true)]).toEqual([270, COMBO_WINDOW_TICKS]);
+		expect([timer(false), timer(true)]).toEqual([540, COMBO_WINDOW_TICKS]);
 		// Nobody alive: every player's boons count (a solo run's dead player keeps theirs).
 		const r = arena();
 		grantBoon(r.s, 1, Boon.LINGERING);
 		playerAt(r.s, 0).dead = 1;
 		playerAt(r.s, 1).dead = 1;
-		expect(teamComboWindowTicks(r.s)).toBe(270);
+		expect(teamComboWindowTicks(r.s)).toBe(540);
 	});
 
 	it("Composure: any living owner halves the hit cut, whoever was hit", () => {
@@ -346,11 +346,11 @@ describe("co-op: team-wide rules", () => {
 		const r = arena();
 		acceptCurse(r.s, 0, Curse.IMPATIENCE);
 		acceptCurse(r.s, 1, Curse.IMPATIENCE);
-		expect(teamComboWindowTicks(r.s)).toBe(120);
+		expect(teamComboWindowTicks(r.s)).toBe(240);
 		playerAt(r.s, 0).dead = 1; // a curse is world state: its taker's death does not lift it
-		expect(teamComboWindowTicks(r.s)).toBe(120);
+		expect(teamComboWindowTicks(r.s)).toBe(240);
 		grantBoon(r.s, 1, Boon.LINGERING);
-		expect(teamComboWindowTicks(r.s)).toBe(210);
+		expect(teamComboWindowTicks(r.s)).toBe(420);
 	});
 });
 

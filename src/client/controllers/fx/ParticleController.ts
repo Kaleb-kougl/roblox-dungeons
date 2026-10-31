@@ -2,6 +2,7 @@ import { Controller, OnStart } from "@flamework/core";
 import { Janitor } from "@rbxts/janitor";
 import { RunService, Workspace } from "@rbxts/services";
 import { CAMERA_PITCH_DEG } from "shared/config";
+import type { JuiceSettings } from "shared/settings";
 import { archetypeAt, archetypeIds } from "shared/sim";
 import { BOOST_KINDS, BREAKABLE_KINDS, type ColorRole } from "shared/theme";
 import { BOOST_VIEW, type BoostBurstView } from "shared/view/boosts";
@@ -9,6 +10,7 @@ import { BREAKABLE_VIEW, RENDER_ORDER, degToRad, floorStudsY, studsX, studsZ } f
 import {
 	DeathParticleSystem,
 	FX_VIEW,
+	NEAR_MISS_VIEW,
 	PALETTE_KIND_BASE,
 	PAL_SPARK,
 	PARTICLE_QUAD_CAPACITY,
@@ -16,12 +18,14 @@ import {
 	burstSeed,
 	particleColorRole,
 	type ChipBurst,
+	type NearMissFrame,
 	type ParticleWriter,
 } from "shared/view/fx";
 import { SimController } from "../game/SimController";
 import { ThemeController } from "../game/ThemeController";
 import { renderPart } from "../render/placeholders";
 import { FxTrackerController } from "./FxTrackerController";
+import { NearMissController } from "./NearMissController";
 import { fxFolder } from "./fxHelpers";
 
 const RENDER_STEP = "KV_Particles";
@@ -58,6 +62,10 @@ interface ParticlePart {
  * Boost drops (docs/BOOSTS.md B6; called by BoostDropRenderController): `boostBurst` (a pickup without
  * `fx.boost.collect` art: BOOST_VIEW.collectBurst; a drop fading: BOOST_VIEW.poofBurst), in the kind's `boost.<kind>`
  * role, appended to the palette after the breakables.
+ * Grazes and parries (docs/GRAZE_PARRY.md GP5; NearMissController's per-frame output): per `grazeSparks` entry a
+ * graze's floor sparks + streak (nearMiss.graze, no hop, no ring, never recycling), per `parryBursts` entry a fan of
+ * sparks away from the guard + one ring (nearMiss.parry); both roles appended to the palette after the room clear's.
+ * Seeds: burstSeed(entry index, the state's tick, NEAR_MISS_VIEW graze / parry seedSalt).
  *
  * Budget: at most particleBudget(settings) live particles (128 / 320 / 512; one level lower under reducedMotion) plus
  * the ring dots, PARTICLE_QUAD_CAPACITY parts at most; the pool grows lazily and never shrinks (unused parts parked).
@@ -81,6 +89,8 @@ export class ParticleController implements OnStart, ParticleWriter {
 	/** The room clear spark ring (docs/ROOM_CLEAR.md RC5): CLEAR's colour index, PERFECT's is the next one. */
 	private roomClearBase = PAL_SPARK;
 	private roomClearShape: ChipBurst | undefined;
+	/** nearMiss.graze's palette index; nearMiss.parry's is the next one (docs/GRAZE_PARRY.md GP5). */
+	private nearMissBase = PAL_SPARK;
 	private readonly moveParts = new Array<BasePart>();
 	private readonly moveCFrames = new Array<CFrame>();
 	private folder: Folder | undefined;
@@ -92,6 +102,7 @@ export class ParticleController implements OnStart, ParticleWriter {
 		private readonly sim: SimController,
 		private readonly theme: ThemeController,
 		private readonly fx: FxTrackerController,
+		private readonly nearMiss: NearMissController,
 	) {}
 
 	onStart(): void {
@@ -127,6 +138,10 @@ export class ParticleController implements OnStart, ParticleWriter {
 		this.roomClearBase = this.palette.size();
 		this.palette.push(pack.color("uiAccent"), pack.color("ember"));
 		this.roomClearShape = chipBurstOf(ROOM_CLEAR.burst);
+		this.nearMissBase = this.palette.size();
+		this.palette.push(pack.color("nearMiss.graze"), pack.color("nearMiss.parry"));
+
+		this.nearMiss.onFrame((frame, settings) => this.nearMissFrame(frame, settings));
 
 		this.fx.onEvent((e, settings) => {
 			switch (e.type) {
@@ -197,6 +212,41 @@ export class ParticleController implements OnStart, ParticleWriter {
 		const shape = this.roomClearShape;
 		if (shape === undefined) return;
 		this.system.chips(x, z, this.roomClearBase + (perfect ? 1 : 0), shape, seed, this.fx.settings());
+	}
+
+	/** A frame's graze sparks and parry bursts (the frame object is reused: read now, never kept). */
+	private nearMissFrame(frame: Readonly<NearMissFrame>, settings: Readonly<JuiceSettings>): void {
+		const sparks = frame.grazeSparks;
+		const bursts = frame.parryBursts;
+		if (sparks.size() === 0 && bursts.size() === 0) return;
+		const tick = this.sim.getContext()?.run.state.tick ?? 0;
+		const grazeColor = this.nearMissBase;
+		const parryColor = this.nearMissBase + 1;
+		for (let i = 0; i < sparks.size(); i++) {
+			const g = sparks[i];
+			this.system.graze(
+				g.x,
+				g.z,
+				g.dirX,
+				g.dirZ,
+				grazeColor,
+				burstSeed(i, tick, NEAR_MISS_VIEW.graze.seedSalt),
+				settings,
+			);
+		}
+		for (let i = 0; i < bursts.size(); i++) {
+			const b = bursts[i];
+			this.system.parry(
+				b.x,
+				b.z,
+				b.dirX,
+				b.dirZ,
+				b.weight,
+				parryColor,
+				burstSeed(i, tick, NEAR_MISS_VIEW.parry.seedSalt),
+				settings,
+			);
+		}
 	}
 
 	private frame(rawDt: number): void {

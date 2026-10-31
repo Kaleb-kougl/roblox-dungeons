@@ -94,6 +94,9 @@ describe("audio contract: port IDs and ambience", () => {
 			// docs/COMBO.md CB3
 			"sfx.combo.tier",
 			"sfx.combo.break",
+			// docs/GRAZE_PARRY.md GP3
+			"sfx.player.graze",
+			"sfx.player.parry",
 			// docs/DRAFT_REVEAL.md DR4
 			"sfx.draft.flip",
 			"sfx.draft.rare",

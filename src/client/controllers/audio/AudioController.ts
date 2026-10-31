@@ -23,7 +23,7 @@ import {
 	DUCKING_SFX,
 	MUSIC,
 	MusicDuck,
-	PitchJitter,
+	PitchVariance,
 	SFX,
 	VariantPicker,
 	ambienceFor,
@@ -41,6 +41,7 @@ import { SimController, type RunContext } from "../game/SimController";
 import { ThemeController } from "../game/ThemeController";
 import { ComboController } from "../fx/ComboController";
 import { FxTrackerController } from "../fx/FxTrackerController";
+import { NearMissController } from "../fx/NearMissController";
 
 /** One clip of a sound's pool: its pooled Sounds (round-robin; a busy clip restarts its oldest voice). */
 interface ClipVoices {
@@ -108,13 +109,18 @@ class LoopChannel {
  *                tracker's events and the sim state into cues (once per frame, per-ID cooldowns with the pack's
  *                minInterval, one jingle, at most AUDIO_VIEW.maxStartsPerFrame by priority, teammates' sounds
  *                quieter in co-op); each cue plays one clip of the ID's pool (round-robin, VariantPicker) at a
- *                jittered PlaybackSpeed (PitchJitter, the pack's pitch range; a cue's own speed instead when it has
- *                one: the combo's kill ladder and tier sting, docs/COMBO.md CB4) on a small pool of Sounds
+ *                jittered PlaybackSpeed inside the pack's pitch range that keeps off the ID's last one
+ *                (PitchVariance, AUDIO_VIEW.pitchRepeatGap; a cue's own speed instead when it has one: the combo's
+ *                kill ladder and tier sting, docs/COMBO.md CB4) on a small pool of Sounds
  *                (AUDIO_VIEW.voicesPerSfx per ID). The combo's sting and shatter follow the combo display's gates:
  *                the run view's combo events (or ComboController's KV_ComboDebug forced ones) pass through
  *                audibleCombo(..., comboQuiet(isInputCovered, isRunOver)), the SimController predicates ComboController
  *                hands ComboDisplay, so neither plays under the stage cover or over the run-over panel (the kill
- *                ladder keeps its pitch). The mapper is given `playable` (the ID has an assetId): a silent
+ *                ladder keeps its pitch). Grazes and parries (docs/GRAZE_PARRY.md GP6): the frame's
+ *                NearMissFrame (NearMissController, already gated quiet) adds the view player's graze shimmer and
+ *                the parry ring-out in place of the deflect (the deflect while the parry is silent); this sound
+ *                frame is a NearMissController subscriber so that frame is always this rendered frame's (see
+ *                onStart). The mapper is given `playable` (the ID has an assetId): a silent
  *                ID with an SFX_FALLBACK cues that instead (no finisher clip: the swing), one without never becomes a
  *                cue (no cap slot, no cooldown).
  *   duck         a DUCKING_SFX sound (jingles, the Ember) dips the music group to AUDIO_VIEW.duck.level for the
@@ -145,7 +151,7 @@ export class AudioController implements OnStart {
 	private readonly playable: Playable = (id) => this.pack !== undefined && this.pack.sound(id).assetId !== undefined;
 	private readonly mapper = new AudioCueMapper(this.playable);
 	private readonly picker = new VariantPicker();
-	private readonly jitter = new PitchJitter();
+	private readonly pitch = new PitchVariance();
 	private readonly duck = new MusicDuck();
 	private readonly voices = new Map<string, Voices>();
 	private readonly groups = new Map<SoundGroupName, SoundGroup>();
@@ -162,6 +168,7 @@ export class AudioController implements OnStart {
 		private readonly fx: FxTrackerController,
 		private readonly preloader: PreloadController,
 		private readonly combo: ComboController,
+		private readonly nearMiss: NearMissController,
 	) {}
 
 	onStart(): void {
@@ -178,9 +185,16 @@ export class AudioController implements OnStart {
 		// The pack's per-sound minimum intervals override the mapper's defaults.
 		for (const id of ALL_SFX) this.mapper.setMinInterval(id, pack.sound(id).minInterval);
 
-		this.fx.onFrame((events) => {
+		// The sound frame runs as a NearMissController subscriber, not as a frame handler of its own: NearMissController
+		// steps its director inside FxTrackerController's frame dispatch (one handler, after the frame's sim ticks, once
+		// per dispatch whenever there is a run, which is the only time FxTrackerController dispatches) and then calls its
+		// subscribers. So the near-miss frame handed here is always THIS rendered frame's, whatever order Flamework starts
+		// the controllers in (two sibling fx.onFrame handlers would depend on registration order), and the tracker's
+		// event buffer (fx.tracker.events, still this frame's during the dispatch) is the one the frame handlers get.
+		this.nearMiss.onFrame((nearMiss) => {
 			const ctx = this.sim.getContext();
 			if (ctx === undefined) return;
+			const events = this.fx.tracker.events;
 			this.cues.clear();
 			// The per-player split follows the view index: while spectating, the watched teammate's sounds are loud.
 			const viewIndex = this.sim.getViewPlayerIndex();
@@ -198,6 +212,7 @@ export class AudioController implements OnStart {
 					this.combo.takeDebugSound() ?? ctx.run.combo,
 					comboQuiet(this.sim.isInputCovered(), this.sim.isRunOver()),
 				),
+				nearMiss,
 			);
 			for (let i = 0; i < this.cues.size(); i++) {
 				this.play(this.cues.id(i), this.cues.volume(i), this.cues.speed(i));
@@ -281,9 +296,10 @@ export class AudioController implements OnStart {
 
 	/**
 	 * Plays one sound effect by logical ID at `scale` x its volume: the next clip of its pool, at `speed` when it is
-	 * > 0 (the combo's kill ladder and tier sting, docs/COMBO.md CB4: an exact PlaybackSpeed, no jitter), else at a
-	 * jittered speed from the pack's pitch range. A silent / missing ID plays its SFX_FALLBACK (mapper.resolve), else
-	 * nothing.
+	 * > 0 (the combo's kill ladder and tier sting, docs/COMBO.md CB4, the graze chain and the parry, docs/GRAZE_PARRY.md
+	 * GP6: an exact PlaybackSpeed, no jitter), else at a
+	 * jittered speed from the pack's pitch range, away from the ID's last one. A silent / missing ID plays its
+	 * SFX_FALLBACK (mapper.resolve), else nothing.
 	 */
 	play(id: string, scale: number, speed = 0): void {
 		const playId = this.mapper.resolve(id);
@@ -294,7 +310,7 @@ export class AudioController implements OnStart {
 		const sound = clip.sounds[clip.next];
 		clip.next = (clip.next + 1) % clip.sounds.size();
 		sound.Volume = v.volume * scale;
-		sound.PlaybackSpeed = speed > 0 ? speed : this.jitter.speed(v.pitch);
+		sound.PlaybackSpeed = speed > 0 ? speed : this.pitch.speed(playId, v.pitch);
 		sound.TimePosition = 0;
 		sound.Play();
 		if ((DUCKING_SFX as ReadonlyArray<string>).includes(playId)) {

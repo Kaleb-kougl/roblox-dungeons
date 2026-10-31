@@ -17,6 +17,18 @@ const arc = { x: 0, z: 0, dirX: 0, dirZ: 1, r2: 0, halfCos: 1, deleted: 0, refle
 /** The swing's ctx while its bullet walk runs (sweepArc is synchronous and never re-entered). */
 let arcCtx: SimCtx | undefined;
 
+/**
+ * Where sweepArc reports the enemy bullets it erases (docs/GRAZE_PARRY.md GP1, presentation only): one x / z pair per
+ * erased bullet, its position at the erase, pushed in the walk's order. Never hashed, never read by the sim.
+ */
+export interface ArcEraseSink {
+	x: number[];
+	z: number[];
+}
+
+/** The sweep's erase sink while its bullet walk runs (cleared after it, like arcCtx). */
+let arcSink: ArcEraseSink | undefined;
+
 /** M2 Mirror Cloak: the erased enemy bullet at `pos` comes back as a player bullet, opposite way, same speed. */
 function reflect(ctx: SimCtx, i: number, pos: Readonly<Vec3>): void {
 	const c = ctx.combat;
@@ -53,6 +65,10 @@ function bulletInArc(i: number, pos: Readonly<Vec3>): boolean {
 	if (d2 > arc.r2) return false;
 	if (!inCone(dx, dz, math.sqrt(d2))) return false;
 	arc.deleted++;
+	if (arcSink !== undefined) {
+		arcSink.x.push(pos.x);
+		arcSink.z.push(pos.z);
+	}
 	if (arc.reflectPayload >= 0 && arcCtx !== undefined) reflect(arcCtx, i, pos);
 	return true; // consume
 }
@@ -68,6 +84,9 @@ function bulletInArc(i: number, pos: Readonly<Vec3>): boolean {
  *  - With `breakableDamage` (the sword's swings; docs/DECOR.md D4) and a run with breakables, a pass AFTER the actors:
  *    every intact piece the arc reaches takes that damage (meleeHitBreakables: the actors' arc test on the piece's
  *    circle). Not an enemy hit (no events.enemyHits, no damageDealt, no combo) and not counted in the result.
+ *  - With `eraseSink` (and `deleteEnemyBullets`), each erased enemy bullet's position at the erase is pushed into it
+ *    (docs/GRAZE_PARRY.md GP1: the sword's guard feeds ScoreEvents.guardX / guardZ). Presentation only: it changes
+ *    nothing the sim reads, hashes or draws.
  * Returns the number of actors hit.
  */
 export function sweepArc(
@@ -83,6 +102,7 @@ export function sweepArc(
 	record = true,
 	reflectSource?: number,
 	breakableDamage?: number,
+	eraseSink?: ArcEraseSink,
 ): number {
 	arc.x = x;
 	arc.z = z;
@@ -114,8 +134,10 @@ export function sweepArc(
 	}
 	if (deleteEnemyBullets) {
 		arcCtx = ctx;
+		arcSink = eraseSink;
 		ctx.combat.enemyBullets.forEachActive(bulletInArc);
 		arcCtx = undefined;
+		arcSink = undefined;
 		ctx.events.bulletsDeleted += arc.deleted;
 	}
 

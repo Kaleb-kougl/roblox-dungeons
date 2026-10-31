@@ -317,6 +317,7 @@ function enemyBulletHitParty(i: number, pos: Readonly<Vec3>, payload: number): b
 			g2 < ENEMY_HIT_R2,
 			runMods(state, ti).grazeR2,
 			target.dead !== 0,
+			ti,
 		);
 	}
 	for (let k = 0; k < n; k++) {

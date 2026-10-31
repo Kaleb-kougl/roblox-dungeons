@@ -207,6 +207,37 @@ export function shoutCanvasSize(pitchDeg: number = CAMERA_PITCH_DEG): readonly [
 	return [w, math.max(1, math.round(h))];
 }
 
+/**
+ * CD9's duck ceiling, shared by every floor text (the combo shout; the PARRY! flash, docs/GRAZE_PARRY.md GP7): at
+ * COMBO_SHOUT.maxOpacity while clear; while an enemy bullet is in the text's box (shoutDucked) it eases down to
+ * duckOpacity at a rate of (maxOpacity - duckOpacity) / duckSec, and back up at the same rate when clear. The text's
+ * opacity is min(its own envelope x maxOpacity, ceiling).
+ */
+export class ShoutDuck {
+	private ceiling: number = COMBO_SHOUT.maxOpacity;
+
+	/** Back to maxOpacity (a new text). */
+	reset(): void {
+		this.ceiling = COMBO_SHOUT.maxOpacity;
+	}
+
+	/** The current ceiling, without stepping. */
+	value(): number {
+		return this.ceiling;
+	}
+
+	/** Steps by `dt` real seconds (clamped to 0..COMBO_VIEW.maxFrameDtSec) with this frame's duck test; the ceiling. */
+	step(dt: number, ducked: boolean): number {
+		const S = COMBO_SHOUT;
+		const d = math.clamp(dt, 0, COMBO_VIEW.maxFrameDtSec);
+		const rate = S.duckSec > 0 ? ((S.maxOpacity - S.duckOpacity) / S.duckSec) * d : math.huge;
+		this.ceiling = ducked
+			? math.max(S.duckOpacity, this.ceiling - rate)
+			: math.min(S.maxOpacity, this.ceiling + rate);
+		return this.ceiling;
+	}
+}
+
 /** The shout's look this frame. Mutable, reused. */
 export interface ComboShoutLook {
 	/** A shout shows. */
@@ -230,13 +261,13 @@ export class ComboShout {
 	readonly look: ComboShoutLook = { active: false, tier: 0, opacity: 0, slideTiles: 0 };
 	private age = 0;
 	/** The duck ceiling: maxOpacity when clear, eased down to duckOpacity while ducked. */
-	private ceiling: number = COMBO_SHOUT.maxOpacity;
+	private readonly duck = new ShoutDuck();
 
 	start(tier: number): void {
 		this.look.active = tier > 0;
 		this.look.tier = tier;
 		this.age = 0;
-		this.ceiling = COMBO_SHOUT.maxOpacity;
+		this.duck.reset();
 		this.look.opacity = 0;
 		this.look.slideTiles = 0;
 	}
@@ -247,7 +278,7 @@ export class ComboShout {
 		this.look.opacity = 0;
 		this.look.slideTiles = 0;
 		this.age = 0;
-		this.ceiling = COMBO_SHOUT.maxOpacity;
+		this.duck.reset();
 	}
 
 	frame(dt: number, ducked: boolean, reducedMotion: boolean): ComboShoutLook {
@@ -261,15 +292,12 @@ export class ComboShout {
 			return L;
 		}
 		const S = COMBO_SHOUT;
-		const rate = S.duckSec > 0 ? ((S.maxOpacity - S.duckOpacity) / S.duckSec) * d : math.huge;
-		this.ceiling = ducked
-			? math.max(S.duckOpacity, this.ceiling - rate)
-			: math.min(S.maxOpacity, this.ceiling + rate);
+		const ceiling = this.duck.step(d, ducked);
 		const fadeIn = COMBO_SHOUT_DRAW.fadeInSec;
 		const rise = fadeIn > 0 ? this.age / fadeIn : 1;
 		const fall = (life - this.age) / (life - fadeIn);
 		const envelope = math.clamp(math.min(rise, fall), 0, 1);
-		L.opacity = math.min(S.maxOpacity * envelope, this.ceiling);
+		L.opacity = math.min(S.maxOpacity * envelope, ceiling);
 		const u = this.age / life;
 		L.slideTiles = reducedMotion ? 0 : S.slideTiles * (1 - (1 - u) * (1 - u));
 		return L;

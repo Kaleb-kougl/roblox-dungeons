@@ -85,7 +85,7 @@ SOFTWARE.
   docs/BRAMBLE_ART.md): the body sheets over their `Shadows/` sheets (`Effects/` not used), cropped and repacked into
   atlases with a baked outline by `scripts/art/build-atlases.js`, and uploaded to Roblox (2026-10-26, ids in
   `src/shared/theme/packs/vale/assetIds.ts`). Also `enemy.sprayer` (Demon Spawn 8) and `enemy.caster` (Demon Spawn 11,
-  docs/DEMON_ART.md Phase 2), built the same way (their baked staff glow cut out); not yet uploaded.
+  docs/DEMON_ART.md Phase 2), built the same way (their baked staff glow cut out); uploaded 2026-10-30.
 - Raw files: `art/vendor/demons-topdown/` (gitignored, not redistributed).
 - License (store page, "Standard Commercial License", recorded 2026-10-26): "Use in unlimited commercial or personal
   game projects"; "No attribution or credit required"; "Modify, recolor, and re-export freely for your own project";

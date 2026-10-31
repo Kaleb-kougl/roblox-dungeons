@@ -41,6 +41,9 @@
  * floor shout lies under bullets) and `combo.broken` a low-chroma grey apart from every tier (COMBO_COLOR_RULES),
  * `comboReport`.
  *
+ * Roblox port (docs/GRAZE_PARRY.md GP3): the near-miss colour roles (graze spark, parry sparks and PARRY! text) readable
+ * on every biome floor (WCAG contrast) and kept away from the enemy-bullet roles and telegraph (CIE76)
+ * (NEAR_MISS_COLOR_RULES), `nearMissReport`.
  * Roblox port (docs/DRAFT_REVEAL.md DR3): the boon rarity colour roles readable on `uiPanel` and apart from the rarity
  * below them (BOON_RARITY_COLOR_RULES), `boonRarityReport`; ui images may carry a 9-slice `slice` inside the image.
  */
@@ -101,6 +104,7 @@ import {
 	MINIMAP_ROOM_TINT_MIX,
 	MINIMAP_TINT_ROLES,
 	MUSIC,
+	NEAR_MISS_COLOR_RULES,
 	PLAYER_OUTLINE_DIFFERENCE_ROLES,
 	REQUIRED_ASSET_IDS,
 	REQUIRED_STRING_KEYS,
@@ -961,6 +965,61 @@ export function comboReport(manifest: unknown): Array<ComboEntry> {
 }
 
 /**
+ * Near misses (docs/GRAZE_PARRY.md GP3), NEAR_MISS_COLOR_RULES (`rules` below) for each role in `rules.roles` order:
+ * - check "floor": the role vs every biome's floor (WCAG contrast, >= minFloorContrast; `against` = the biome ID,
+ *   biomes in sorted order; walls are not checked, sparks and the PARRY! text lie on floors);
+ * - check "difference": the role vs every `rules.against` colour (CIE76, >= minDifference; `against` = the role).
+ * `value` is the ratio or the difference. A role that is missing or not a hex colour is skipped (the colour-role check
+ * reports it). Imports one contract name on purpose: this module's compiled Luau sits at the 200-locals-per-function
+ * limit.
+ */
+export interface NearMissEntry {
+	role: string;
+	check: "floor" | "difference";
+	color: string;
+	against: string;
+	againstColor: string;
+	value: number;
+	min: number;
+	ok: boolean;
+}
+
+export function nearMissReport(manifest: unknown): Array<NearMissEntry> {
+	const out = new Array<NearMissEntry>();
+	if (!isObj(manifest) || !isObj(manifest.colors)) {
+		return out;
+	}
+	const colors = manifest.colors;
+	const rules = NEAR_MISS_COLOR_RULES;
+	const biomes = isObj(manifest.biomes) ? sortedEntries(manifest.biomes) : [];
+	for (const role of rules.roles) {
+		const color = colors[role];
+		if (!isHexColor(color)) {
+			continue;
+		}
+		for (const [biome, def] of biomes) {
+			const againstColor = isObj(def) ? def.floor : undefined;
+			if (!isHexColor(againstColor)) {
+				continue;
+			}
+			const value = contrastRatio(color, againstColor);
+			const min = rules.minFloorContrast;
+			out.push({ role, check: "floor", color, against: biome, againstColor, value, min, ok: value >= min });
+		}
+		for (const against of rules.against) {
+			const againstColor = colors[against];
+			if (!isHexColor(againstColor)) {
+				continue;
+			}
+			const value = colorDifference(color, againstColor);
+			const min = rules.minDifference;
+			out.push({ role, check: "difference", color, against, againstColor, value, min, ok: value >= min });
+		}
+	}
+	return out;
+}
+
+/**
  * The boon draft's rarity ladder (docs/DRAFT_REVEAL.md DR3), BOON_RARITY_COLOR_RULES (`rules` below), per role in
  * rarity order: check "panel" (WCAG contrast on `rules.panel`, >= minPanelContrast), then for every rarity but the
  * first check "step" (CIE76 from the rarity below it, >= minStepDifference). `value` is the ratio or difference, `limit`
@@ -1489,6 +1548,28 @@ export function validateManifest(manifest: unknown, opts: ValidateOptions = {}):
 		}
 	}
 
+	// --- near-miss sparks and the PARRY! text read on every floor and never as a bullet --------------
+	for (const c of nearMissReport(manifest)) {
+		if (c.ok) {
+			continue;
+		}
+		if (c.check === "floor") {
+			err(
+				["colors", c.role],
+				`contrast: ${c.role} ${c.color} on ${c.against}${forgeSuffix(c.against)} floor ${c.againstColor} is ` +
+					`${fixed2(c.value)}:1, needs >= ${fixed1(c.min)}:1: a near miss must read on the floor`,
+			);
+		} else {
+			err(
+				["colors", c.role],
+				`colour difference: ${c.role} ${c.color} vs ${c.against} ${c.againstColor} is ${fixed1(
+					c.value,
+				)} (CIE76), needs >= ${fixed1(c.min)}: a near miss must never read as an enemy bullet or a telegraph ` +
+					"(its sparks fly among bullets, the PARRY! text lies under them)",
+			);
+		}
+	}
+
 	// --- boon rarities read on the panel and apart step to step (docs/DRAFT_REVEAL.md DR3) ------------
 	for (const c of boonRarityReport(manifest)) {
 		if (c.ok) {
@@ -1600,47 +1681,6 @@ function checkAssetIdAt(assetId: unknown, path: ReadonlyArray<string>, err: Err)
 	}
 }
 
-/**
- * A ui image's 9-slice insets (docs/DRAFT_REVEAL.md DR3): { left, top, right, bottom }, integers >= 0 in art pixels,
- * inside the image with a centre of at least 1 x 1 pixel (left + right < w, top + bottom < h). ui.* only.
- */
-function checkSlice(
-	slice: unknown,
-	w: unknown,
-	h: unknown,
-	path: Array<string>,
-	inUi: boolean,
-	err: Err,
-	unknownKeys: UnknownKeys,
-) {
-	if (!inUi) {
-		err(path, "only ui.* images are 9-sliced");
-		return;
-	}
-	if (!isObj(slice)) {
-		err(path, 'must be { "left": int, "top": int, "right": int, "bottom": int } in art pixels');
-		return;
-	}
-	unknownKeys(slice, path, ["left", "top", "right", "bottom"]);
-	let ok = true;
-	for (const k of ["left", "top", "right", "bottom"]) {
-		if (!isNonNegInt(slice[k])) {
-			err(append(path, k), "must be an integer >= 0 (art pixels)");
-			ok = false;
-		}
-	}
-	if (!ok || !isPosInt(w) || !isPosInt(h)) {
-		return;
-	}
-	const [l, t, r, b] = [slice.left as number, slice.top as number, slice.right as number, slice.bottom as number];
-	if (l + r >= w || t + b >= h) {
-		err(
-			path,
-			`insets ${l} ${t} ${r} ${b} leave no centre in the ${w}x${h} image (left + right < w, top + bottom < h)`,
-		);
-	}
-}
-
 function validateAsset(def: unknown, path: Array<string>, slot: SlotContract, err: Err, unknownKeys: UnknownKeys) {
 	if (!isObj(def)) {
 		err(path, 'must be an object with a "kind"');
@@ -1670,6 +1710,40 @@ function validateAsset(def: unknown, path: Array<string>, slot: SlotContract, er
 
 	const checkAssetId = () => checkAssetIdAt(def.assetId, append(path, "assetId"), err);
 
+	/**
+	 * A ui image's 9-slice insets (docs/DRAFT_REVEAL.md DR3): { left, top, right, bottom }, integers >= 0 in art
+	 * pixels, inside the image with a centre of at least 1 x 1 pixel (left + right < w, top + bottom < h). ui.* only.
+	 * A closure, not a module function: this module's compiled Luau sits at the 200-top-level-locals limit.
+	 */
+	const checkSlice = (slice: unknown, w: unknown, h: unknown, slicePath: Array<string>, inUi: boolean) => {
+		if (!inUi) {
+			err(slicePath, "only ui.* images are 9-sliced");
+			return;
+		}
+		if (!isObj(slice)) {
+			err(slicePath, 'must be { "left": int, "top": int, "right": int, "bottom": int } in art pixels');
+			return;
+		}
+		unknownKeys(slice, slicePath, ["left", "top", "right", "bottom"]);
+		let ok = true;
+		for (const k of ["left", "top", "right", "bottom"]) {
+			if (!isNonNegInt(slice[k])) {
+				err(append(slicePath, k), "must be an integer >= 0 (art pixels)");
+				ok = false;
+			}
+		}
+		if (!ok || !isPosInt(w) || !isPosInt(h)) {
+			return;
+		}
+		const [l, t, r, b] = [slice.left as number, slice.top as number, slice.right as number, slice.bottom as number];
+		if (l + r >= w || t + b >= h) {
+			err(
+				slicePath,
+				`insets ${l} ${t} ${r} ${b} leave no centre in the ${w}x${h} image (left + right < w, top + bottom < h)`,
+			);
+		}
+	};
+
 	switch (kind) {
 		case "placeholder": {
 			unknownKeys(def, path, ["kind"]);
@@ -1683,7 +1757,7 @@ function validateAsset(def: unknown, path: Array<string>, slot: SlotContract, er
 			unknownKeys(def, path, ["kind", "assetId", "w", "h", "tilesPerImage", "pivot", "slice"]);
 			checkAssetId();
 			if (def.slice !== undefined) {
-				checkSlice(def.slice, def.w, def.h, append(path, "slice"), slot === UI, err, unknownKeys);
+				checkSlice(def.slice, def.w, def.h, append(path, "slice"), slot === UI);
 			}
 			const imagePivot = def.pivot;
 			if (imagePivot !== undefined) {

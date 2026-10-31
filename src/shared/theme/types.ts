@@ -142,6 +142,11 @@ export const COLOR_ROLES = [
 	"combo.dominating",
 	"combo.unstoppable",
 	"combo.broken",
+	// Roblox port (docs/GRAZE_PARRY.md GP3): a graze's spark (white-cyan) and a parry's sparks and PARRY! floor text
+	// (gold-white) (contract.ts NEAR_MISS_ROLES). Held to NEAR_MISS_COLOR_RULES by nearMissReport: >= 3:1 on every biome
+	// floor and (CIE76) away from the enemy-bullet roles and telegraph (they are drawn among and under bullets).
+	"nearMiss.graze",
+	"nearMiss.parry",
 	// Roblox port (docs/DRAFT_REVEAL.md DR3): the boon draft's rarity colours, bone / blood red / candle gold (contract.ts
 	// BOON_RARITY_ROLES; the loot rarity.* roles above are separate). Held to BOON_RARITY_COLOR_RULES by
 	// boonRarityReport: each >= 3:1 on uiPanel and apart from the rarity below it (CIE76).

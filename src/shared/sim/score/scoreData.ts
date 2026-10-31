@@ -81,9 +81,9 @@ export const COMBO_MIN = 10;
 export const COMBO_MAX = 50;
 /** Every kill or graze adds this many tenths (+0.1), capped at COMBO_MAX. */
 export const COMBO_STEP = 1;
-/** With no kill or graze for this long the combo resets to COMBO_MIN. */
-export const COMBO_WINDOW_SECONDS = 3;
-export const COMBO_WINDOW_TICKS = secondsToTicks(COMBO_WINDOW_SECONDS); // 180
+/** With no kill or graze for this long the combo resets to COMBO_MIN (port retune: 2x the web build's 3 s). */
+export const COMBO_WINDOW_SECONDS = 6;
+export const COMBO_WINDOW_TICKS = secondsToTicks(COMBO_WINDOW_SECONDS); // 360
 /**
  * A landed hit cuts the combo by 1 / max(COMBO_CUT_MIN_DIVISOR, partySize), i.e. cut = min(1/2, 1/partySize):
  * combo = max(COMBO_MIN, floor(combo x (d - 1) / d)) in tenths (rounded DOWN to the tenth).

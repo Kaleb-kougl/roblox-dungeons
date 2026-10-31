@@ -525,6 +525,32 @@
 			"notes": "Combo break during a fight (docs/COMBO.md CD12): \"Glass breaking\" by DRAGON-STUDIO (Pixabay, id 504033). 3.12 s, 48 kHz stereo MP3: 85 ms lead (the silence trim takes it), the crash 0.1 - 1.0 s, a stray tinkle at 1.9 - 2.05 s that the [0, 1.2] trim cuts, silence after. A small break (below x2) plays it at half volume (COMBO_VIEW.smallBreakVolume). No pitch jitter.",
 			"confirmed": false
 		},
+		"sfx.player.graze": {
+			"category": "sfx",
+			"clips": [
+				"ninja-adventure/Audio/Sounds/Magic & Skill/Magic5.wav"
+			],
+			"volume": 0.35,
+			"alternates": [
+				"ninja-adventure/Audio/Sounds/Magic & Skill/Heal3.wav",
+				"ninja-adventure/Audio/Sounds/Elemental/Bubble.wav"
+			],
+			"notes": "A graze's airy shimmer (docs/GRAZE_PARRY.md GPD4): audition candidates (GP0), not picked yet. One clip, pitched by the cue mapper's chain ladder (+1 semitone per chained graze, cap +7), so no pitch jitter here. The 0.05 s minimum interval lives in code.",
+			"confirmed": false
+		},
+		"sfx.player.parry": {
+			"category": "sfx",
+			"clips": [
+				"ninja-adventure/Audio/Sounds/Bonus/Bonus.wav"
+			],
+			"volume": 0.7,
+			"alternates": [
+				"ninja-adventure/Audio/Sounds/Alert/Alert.wav",
+				"ninja-adventure/Audio/Sounds/Alert/Alert4.wav"
+			],
+			"notes": "A parry's bright ring-out, once per guard that erased bullets (docs/GRAZE_PARRY.md GPD10): audition candidates (GP0), not picked yet. Replaces that frame's sfx.player.deflect (the fallback while this is silent); +3 semitones from 3 erases, so no pitch jitter here. The minimum interval lives in code.",
+			"confirmed": false
+		},
 		"sfx.draft.flip": {
 			"category": "sfx",
 			"clips": [

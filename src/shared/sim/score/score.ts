@@ -24,7 +24,7 @@
  *            cleared / rooms with enemies on that floor; a boss floor's boss is one more room), rounded down before
  *            the multipliers (floorClearBase); a floor without enemy rooms pays the full 1000 x floor.
  *
- * Combo: tenths in [10, 50]. A kill / graze adds 1 (cap 50) AFTER its own award and refills the 180-tick timer;
+ * Combo: tenths in [10, 50]. A kill / graze adds 1 (cap 50) AFTER its own award and refills the 360-tick timer;
  * stepScore counts the timer down on ticks without a kill or graze and resets the combo to 10 when it runs out.
  * Each landed hit (events.playerHits, applied in stepScore after the tick's awards) cuts it to
  * max(10, floor(combo x (d - 1) / d)) with d = max(2, n), i.e. a cut of min(1/2, 1/n) rounded down to the tenth;
@@ -47,7 +47,7 @@
  * Depth and floor come from state.endless (scoreDepth / scoreFloor).
  *
  * M2 boons / curses (endless runs, read through progression/runMods.ts; neutral otherwise): the combo window
- * (Lingering +1.5 s, Impatience -1 s) and the hit cut's divisor x 2 (Composure) are TEAM-WIDE (teamComboWindowTicks /
+ * (Lingering +3 s, Impatience -2 s) and the hit cut's divisor x 2 (Composure) are TEAM-WIDE (teamComboWindowTicks /
  * teamComboCutDivisorMultiplier: Lingering / Composure if any living player owns it, Impatience once if any player
  * took it); kill points x 110 % (Bounty: kills and boss kills, not the no-hit bonus) follow the KILLER's boons; the
  * graze margin (Daredevil 0.75 tiles) the grazing player's (combat.ts passes the radius).
@@ -64,7 +64,7 @@ import type { BulletSimulation } from "../combat/bullets";
 import type { SimState } from "../state";
 import { partySize, playerAt, presentPlayerCount } from "../party";
 import { encounterCost } from "shared/dungeon";
-import { runMods, teamComboCutDivisorMultiplier, teamComboWindowTicks } from "../progression/runMods";
+import { SOLO_PLAYER, runMods, teamComboCutDivisorMultiplier, teamComboWindowTicks } from "../progression/runMods";
 import {
 	BOSS_FINAL_PHASE,
 	BOSS_NO_HIT_BONUS,
@@ -145,6 +145,23 @@ export interface ScoreEvents {
 	popX: number[];
 	popZ: number[];
 	popPoints: number[];
+	/**
+	 * Grazes (docs/GRAZE_PARRY.md GP1, presentation only): per graze awarded this tick, the bullet's position and
+	 * velocity at the award (it has just left the graze ring) and the grazing player's index (solo 0; co-op the nearest
+	 * living player). Parallel arrays; size() === grazes.
+	 */
+	grazeX: number[];
+	grazeZ: number[];
+	grazeVX: number[];
+	grazeVZ: number[];
+	grazePlayer: number[];
+	/**
+	 * Guard cancels (GP1): per enemy bullet a sword guard erased this tick, its position when erased and the guarding
+	 * player's index. Parallel arrays; size() === guardCancels.
+	 */
+	guardX: number[];
+	guardZ: number[];
+	guardPlayer: number[];
 	/** Internal: the combo at the start of the tick, and 1 once a kill / graze fed it this tick. */
 	comboStart: number;
 	comboFed: number;
@@ -232,6 +249,14 @@ function emptyScoreEvents(): ScoreEvents {
 		popX: [],
 		popZ: [],
 		popPoints: [],
+		grazeX: [],
+		grazeZ: [],
+		grazeVX: [],
+		grazeVZ: [],
+		grazePlayer: [],
+		guardX: [],
+		guardZ: [],
+		guardPlayer: [],
 		comboStart: COMBO_MIN,
 		comboFed: 0,
 	};
@@ -403,7 +428,20 @@ export function cloneScoreState(s: Readonly<ScoreState>): ScoreState {
 		counts: [...s.counts],
 		scoredReviverIds: [...s.scoredReviverIds],
 		rooms: s.rooms.map(cloneRoom),
-		events: { ...e, popX: [...e.popX], popZ: [...e.popZ], popPoints: [...e.popPoints] },
+		events: {
+			...e,
+			popX: [...e.popX],
+			popZ: [...e.popZ],
+			popPoints: [...e.popPoints],
+			grazeX: [...e.grazeX],
+			grazeZ: [...e.grazeZ],
+			grazeVX: [...e.grazeVX],
+			grazeVZ: [...e.grazeVZ],
+			grazePlayer: [...e.grazePlayer],
+			guardX: [...e.guardX],
+			guardZ: [...e.guardZ],
+			guardPlayer: [...e.guardPlayer],
+		},
 	};
 }
 
@@ -421,6 +459,14 @@ export function clearScoreEvents(s: ScoreState): void {
 	e.popX.clear();
 	e.popZ.clear();
 	e.popPoints.clear();
+	e.grazeX.clear();
+	e.grazeZ.clear();
+	e.grazeVX.clear();
+	e.grazeVZ.clear();
+	e.grazePlayer.clear();
+	e.guardX.clear();
+	e.guardZ.clear();
+	e.guardPlayer.clear();
 	e.comboStart = s.combo;
 	e.comboFed = 0;
 }
@@ -618,6 +664,9 @@ export const GRAZE_R2 = GRAZE_R * GRAZE_R;
  * distance to the player, `inHit` = inside the hit circle (before the hit is attempted), `grazeR2` = this tick's
  * squared graze radius (GRAZE_R2; wider with M2 Daredevil). `dead`: that player is dead
  * (default: player 0; co-op passes its graze target, the nearest living player, so a dead player never grazes).
+ * `grazer`: that player's index (default SOLO_PLAYER; co-op passes the graze target). An awarded graze pushes the
+ * bullet's position and velocity (read at once, never kept) and `grazer` into the events' graze arrays
+ * (docs/GRAZE_PARRY.md GP1, presentation only).
  */
 export function scoreBulletVisit(
 	state: SimState,
@@ -628,6 +677,7 @@ export function scoreBulletVisit(
 	inHit: boolean,
 	grazeR2: number = GRAZE_R2,
 	dead: boolean = state.player.dead !== 0,
+	grazer: number = SOLO_PLAYER,
 ): void {
 	if (bit32.band(payload, GRAZE_DONE_BIT) !== 0) return;
 	if (inHit) {
@@ -645,7 +695,15 @@ export function scoreBulletVisit(
 	const s = state.score;
 	if (dead || s === undefined) return;
 	award(state, s, ScoreSource.GRAZES, GRAZE_POINTS);
-	s.events.grazes += 1;
+	const e = s.events;
+	e.grazes += 1;
+	const pos = sim.positionAt(i);
+	e.grazeX.push(pos.x);
+	e.grazeZ.push(pos.z);
+	const vel = sim.velocityAt(i);
+	e.grazeVX.push(vel.x);
+	e.grazeVZ.push(vel.z);
+	e.grazePlayer.push(grazer);
 	feedCombo(state, s);
 }
 

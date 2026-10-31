@@ -509,14 +509,24 @@ export interface ShoutBox {
 	halfDepth: number;
 }
 
-/** Fills `out` for a shout centred at (x, z) reading along the unit vector (rightX, rightZ); sizes from COMBO_SHOUT. */
-export function shoutBoxAt(out: ShoutBox, x: number, z: number, rightX: number, rightZ: number): ShoutBox {
+/**
+ * Fills `out` for a shout centred at (x, z) reading along the unit vector (rightX, rightZ); sizes from COMBO_SHOUT,
+ * times `sizeScale` (default 1: the combo shout's box; the PARRY! flash passes the share of the box its text fills).
+ */
+export function shoutBoxAt(
+	out: ShoutBox,
+	x: number,
+	z: number,
+	rightX: number,
+	rightZ: number,
+	sizeScale = 1,
+): ShoutBox {
 	out.x = x;
 	out.z = z;
 	out.rightX = rightX;
 	out.rightZ = rightZ;
-	out.halfWidth = (COMBO_SHOUT.widthTiles * TILE_SIZE) / 2;
-	out.halfDepth = (COMBO_SHOUT.depthTiles * TILE_SIZE) / 2;
+	out.halfWidth = ((COMBO_SHOUT.widthTiles * TILE_SIZE) / 2) * sizeScale;
+	out.halfDepth = ((COMBO_SHOUT.depthTiles * TILE_SIZE) / 2) * sizeScale;
 	return out;
 }
 
