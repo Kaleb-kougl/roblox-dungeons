@@ -47,6 +47,7 @@ Record every ported module in `PROVENANCE.md` (ported module, source path, sourc
 | `docs/GRAZE_PARRY.md` | Grazes and parries (graze spark + shimmer climbing in pitch, parry sparks / ring-out / PARRY! floor flash / solo 30 ms freeze for a guard that erases bullets; one unhashed ScoreEvents feed, otherwise presentation only): plan, tasks GP0-GP10, decisions GPD1-GPD10 |
 | `docs/UI_ART.md` | UI art (the dark red pixel UI sheet: 9-sliced panels / buttons, hearts, potions, pills, icons, focus brackets; menus, then the in-run HUD, then touch; presentation only): builds on the Draft reveal (`slice`, `SlicedImage`): plan, as built, tasks UA0-UA15, decisions UAD1-UAD10 |
 | `docs/NEW_BEST.md` | New-best celebration (points-to-best in the score panel's label row, a fanfare + NEW BEST stamp / floor shout / edge confetti when the shown score passes your best or you reach a floor past your deepest, a record fanfare and old -> new roll at run over; server-owned personal records doc `KV_Records_v1`; no sim change): plan, as built, tasks NB0-NB11, decisions NBD1-NBD11 |
+| `docs/DAILY.md` | Daily dungeon and seeded rosters (every endless seed picks its enemy kinds: swarmers + 1 on floor 1, one more every 2 floors; a `daily` world with one server-side seed per UTC day, day-scoped solo / co-op boards, percentile, friends, rank climbing, yesterday's podium): plan, tasks DS0-DS14, decisions DSD1-DSD16 |
 
 Decision log (deviations from `PLAN.md`):
 - **Art (docs/ART.md).** The theme contract gained a `"sprites"` kind (large pre-rendered cells, 1/4/8/16 screen-space
