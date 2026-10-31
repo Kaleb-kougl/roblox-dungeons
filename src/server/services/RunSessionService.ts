@@ -6,6 +6,7 @@ import { Events } from "server/network";
 import { partyContributors, type LeaderboardMember } from "shared/leaderboard";
 import { LobbyRunTracker, type LobbyRunStart } from "shared/lobby";
 import type { LeaderboardPostStatus, RunFinishVerdict } from "shared/network";
+import type { RunRecordsResult } from "shared/records";
 import { RANKED_WORLD_KIND } from "shared/play";
 import {
 	DEFAULT_RUN_SCORE,
@@ -43,6 +44,7 @@ import {
 } from "shared/lockstep";
 import { LeaderboardService } from "./LeaderboardService";
 import { OnboardingService } from "./OnboardingService";
+import { RecordsService } from "./RecordsService";
 import { RunValidationService } from "./RunValidationService";
 
 const log = serverLogger("RunSession");
@@ -63,6 +65,11 @@ interface SessionMeta {
 
 const NOT_LEFT = -1;
 
+/** `verdict` with one recipient's personal records result (a copy; the verdict itself when there is none). */
+function withRecords(verdict: RunFinishVerdict, records: RunRecordsResult | undefined): RunFinishVerdict {
+	return records === undefined ? verdict : { ...verdict, records };
+}
+
 /** A lobby's run is over (`reason` is for the log). */
 export type LobbyRunEndedListener = (lobbyId: string, reason: string) => void;
 
@@ -80,7 +87,8 @@ export type LobbyRunStartResult = { readonly ok: true } | { readonly ok: false; 
  *                  (cheap checks) -> a pump replays it through RunValidationService's replay queue (one segment per
  *                  queue turn, ReplayBudget yields) -> `segmentVerdict` per segment
  *   finishRun      validator.finish -> decided once the last segment is replayed -> `runFinished` (accepted runs
- *                  go to LeaderboardService and fire RunValidationService's accepted listeners: telemetry)
+ *                  go to LeaderboardService and RecordsService, and fire RunValidationService's accepted listeners:
+ *                  telemetry). The verdict carries each recipient's own personal records result (`records`).
  *
  * A rejection at any point rejects the whole run (`runFinished` with the code, failed segment and tick window).
  * Open sessions expire (sweep every RUN_SESSION_SWEEP_SECONDS) and are dropped when their player leaves; a session
@@ -151,11 +159,13 @@ export class RunSessionService implements OnStart {
 		private readonly runs: RunValidationService,
 		private readonly leaderboards: LeaderboardService,
 		private readonly onboarding: OnboardingService,
+		private readonly records: RecordsService,
 	) {}
 
 	onStart(): void {
 		// BindToClose: the leaderboard flush waits for runs that may still post.
 		this.leaderboards.setPendingPosts(() => this.pendingPosts());
+		this.records.setPendingRuns(() => this.pendingPosts());
 		// A late `tutorialStarted` from a member of a party run must not mark them in the tutorial.
 		this.onboarding.setPartyRunCheck((p) => this.registry.busyReason(p.UserId) !== undefined);
 		this.janitor.Add(
@@ -627,6 +637,7 @@ export class RunSessionService implements OnStart {
 		const lobbyId = this.lobbyRuns.concluded(session.runId);
 		if (lobbyId !== undefined) this.lobbyRunEnded(lobbyId, `run ${session.runId} concluded`);
 		let leaderboard: LeaderboardPostStatus | undefined;
+		let records: Map<number, RunRecordsResult> | undefined;
 		const s = result.summary;
 		if (result.ok) {
 			log.info(
@@ -673,6 +684,23 @@ export class RunSessionService implements OnStart {
 			);
 			leaderboard = ok ? (status as LeaderboardPostStatus) : "failed";
 			if (!ok) log.warn("POST_FAILED", `run ${session.runId}: ${tostring(status)}`);
+			// Personal records (docs/NEW_BEST.md): the same credited members, the server's replay numbers. Never yields.
+			const [recordsOk, applied] = pcall(() =>
+				this.records.applyRun({
+					runId: session.runId,
+					worldKind: session.worldKind,
+					memberIds: credited.map((m) => m.userId),
+					partySize: session.members.size(),
+					score: result.score.score,
+					floor: result.score.floor,
+					at: os.time(),
+					debug: session.debug,
+					died: s.died,
+					bossDefeated: s.bossDefeated,
+				}),
+			);
+			if (recordsOk) records = applied as Map<number, RunRecordsResult>;
+			else log.warn("RECORDS_FAILED", `run ${session.runId}: ${tostring(applied)}`);
 		} else {
 			const code = result.code ?? "replay_error";
 			log.warn(
@@ -700,13 +728,15 @@ export class RunSessionService implements OnStart {
 			score: result.score,
 			leaderboard,
 		};
-		// Co-op: every member still here hears the verdict (owner included).
+		// Co-op: every member still here hears the verdict (owner included), each with their own records result.
 		if (session.members.size() > 1) {
-			for (const p of this.memberPlayers(session)) Events.runFinished.fire(p, verdict);
+			for (const p of this.memberPlayers(session)) {
+				Events.runFinished.fire(p, withRecords(verdict, records?.get(p.UserId)));
+			}
 			return;
 		}
 		if (player === undefined || player.Parent === undefined) return;
-		Events.runFinished.fire(player, verdict);
+		Events.runFinished.fire(player, withRecords(verdict, records?.get(player.UserId)));
 	}
 
 	private fireSegment(player: Player | undefined, verdict: SegmentVerdict): void {
