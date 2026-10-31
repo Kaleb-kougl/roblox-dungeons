@@ -37,7 +37,9 @@
 		"and always covering the pivot) and writes that sheet's frameW / frameH / pivot into layout.ts; the pivot is the",
 		"set's (measured once), translated into each sheet's crop, so the feet stay put when the animation changes. The",
 		"set-level frameW / frameH / pivot stay the union cell, pixelsPerTile stays per set. Absent: one cell for the set.",
-		"Per-sheet cells are drawn on actor sets only (class.*, enemy.*, boss.*; the theme validator refuses them elsewhere)."
+		"Per-sheet cells are drawn on actor sets only (class.*, enemy.*, boss.*; the theme validator refuses them elsewhere).",
+		"uiIcons (docs/UI_ART.md UA3): small UI sheet pieces packed into one icon atlas with its own generated layout,",
+		"src/shared/theme/packs/vale/uiIconLayout.ts (see the section's own comment)."
 	],
 	"spriteSets": {
 		"class.vanguard": {
@@ -557,6 +559,272 @@
 			"noiseAlpha": 10,
 			"cutout": { "outlineRgb": 0 },
 			"pivot": [14, 5]
+		},
+		"ui.panel.menu": {
+			"$comment": "docs/UI_ART.md UA2: the menu panel skin (main menu, lobby, Options, pause, run over), the black stone frame with the dark tab on top and the four corner knobs (alpha box 932 289 87 78, measured with scripts/art/ui-measure.js 940 300). Insets 43 / 11 / 43 / 8: the knobs and the tab's rounded ends stay in the fixed corners; the top edge stretches column 43, the middle of the tab's flat bar (the tab lengthens with the panel, like ui.draft.card.rare's), the sides row 11+ (the plain double rail), the bottom edge its plain rails. Flat fill (one mean grey) over the whole noisy interior inside the rails, including the strips beside the tab (rows 8-10) and above the bottom knobs (row 70): every boxed pixel is the interior's neutral grey.",
+			"file": "toffeecraft-horror-ui/UiHorror.png",
+			"name": "ui-panel-menu",
+			"rect": [932, 289, 87, 78],
+			"crop": "alpha",
+			"noiseAlpha": 10,
+			"pad": 0,
+			"slice": [43, 11, 43, 8],
+			"centre": "flat",
+			"flatBoxes": [[5, 11, 77, 59], [6, 70, 75, 1], [5, 10, 23, 1], [59, 10, 23, 1], [5, 9, 22, 1], [60, 9, 22, 1], [6, 8, 20, 1], [61, 8, 20, 1]]
+		},
+		"ui.panel.hud": {
+			"$comment": "docs/UI_ART.md UA2: the in-run panel skin (and the required ui.panel), the plain rounded landscape panel with the dark #370f0f rim (alpha box 899 194 90 44). Insets 6 hold the rounded corners; the edges are the plain rim. Flat fill over the noisy interior (the boxes follow its rounded outline); the uniform #161515 inner shade (rows 41-42, and column 1 of rows 38-40) is left as it is.",
+			"file": "toffeecraft-horror-ui/UiHorror.png",
+			"name": "ui-panel-hud",
+			"rect": [899, 194, 90, 44],
+			"crop": "alpha",
+			"noiseAlpha": 10,
+			"pad": 0,
+			"slice": [6, 6, 6, 6],
+			"centre": "flat",
+			"flatBoxes": [[1, 6, 88, 32], [2, 5, 86, 1], [2, 38, 86, 1], [3, 4, 84, 1], [3, 39, 84, 1], [5, 3, 80, 1], [5, 40, 80, 1]]
+		},
+		"ui.panel.tall": {
+			"$comment": "docs/UI_ART.md UA2: the tall frame with the red tab (lobby lists; alpha box 824 194 64 76). Insets 31 / 10 / 32 / 8: the knobs and the tab's rounded ends stay in the fixed corners; the top edge stretches column 31, the middle of the tab (cols 18-44), the sides row 10+ (plain rails). Flat fill over the noisy interior, the strips beside the tab (rows 7-9) and row 68 included.",
+			"file": "toffeecraft-horror-ui/UiHorror.png",
+			"name": "ui-panel-tall",
+			"rect": [824, 194, 64, 76],
+			"crop": "alpha",
+			"noiseAlpha": 10,
+			"pad": 0,
+			"slice": [31, 10, 32, 8],
+			"centre": "flat",
+			"flatBoxes": [[5, 10, 54, 58], [6, 68, 52, 1], [43, 9, 16, 1], [44, 8, 15, 1], [5, 9, 15, 1], [5, 8, 14, 1], [45, 7, 13, 1], [6, 7, 12, 1]]
+		},
+		"ui.button": {
+			"$comment": "docs/UI_ART.md UA2: MenuButton normal, the blank long button with the black #161616 fill and the red #441515 rim (alpha box 162 130 90 27). Insets 5 hold the cut corners; edges and centre are single colours (no flat fill needed).",
+			"file": "toffeecraft-horror-ui/UiHorror.png",
+			"name": "ui-button",
+			"rect": [162, 130, 90, 27],
+			"crop": "alpha",
+			"noiseAlpha": 10,
+			"pad": 0,
+			"slice": [5, 5, 5, 5]
+		},
+		"ui.button.focus": {
+			"$comment": "docs/UI_ART.md UA2: MenuButton focused / active, the blank long button with the red #3d1313 fill and the black rim (alpha box 162 100 90 27, same size as ui.button). Insets 5; single-colour edges and centre.",
+			"file": "toffeecraft-horror-ui/UiHorror.png",
+			"name": "ui-button-focus",
+			"rect": [162, 100, 90, 27],
+			"crop": "alpha",
+			"noiseAlpha": 10,
+			"pad": 0,
+			"slice": [5, 5, 5, 5]
+		},
+		"ui.button.disabled": {
+			"$comment": "docs/UI_ART.md UA2: MenuButton disabled. The sheet has no blank dark button without the red: its candidate at 259 132 is ui.button's art 2 px shorter, red rim included. So this is ui.button's cut (162 130 90 27, the same size, so a state change moves nothing) greyed (rgb grey: the red rim becomes a dim #232323 line on the #161616 fill). Insets 5.",
+			"file": "toffeecraft-horror-ui/UiHorror.png",
+			"name": "ui-button-disabled",
+			"rect": [162, 130, 90, 27],
+			"crop": "alpha",
+			"noiseAlpha": 10,
+			"pad": 0,
+			"rgb": "grey",
+			"slice": [5, 5, 5, 5]
+		},
+		"ui.option.on": {
+			"$comment": "docs/UI_ART.md UA2: the Options value buttons, chosen value: the blank short red bar under the small PLAY / SETTINGS / EXIT buttons (alpha box 6 168 52 15). Insets 4 hold the cut corners and the 3-row darker bottom lip; single-colour edges and centre.",
+			"file": "toffeecraft-horror-ui/UiHorror.png",
+			"name": "ui-option-on",
+			"rect": [6, 168, 52, 15],
+			"crop": "alpha",
+			"noiseAlpha": 10,
+			"pad": 0,
+			"slice": [4, 4, 4, 4]
+		},
+		"ui.option.off": {
+			"$comment": "docs/UI_ART.md UA2: the Options value buttons, the other values: the blank short grey bar (alpha box 70 168 52 15), cut and sliced like ui.option.on.",
+			"file": "toffeecraft-horror-ui/UiHorror.png",
+			"name": "ui-option-off",
+			"rect": [70, 168, 52, 15],
+			"crop": "alpha",
+			"noiseAlpha": 10,
+			"pad": 0,
+			"slice": [4, 4, 4, 4]
+		},
+		"ui.bar.track": {
+			"$comment": "docs/UI_ART.md UA2: bar track (boss bar, combo meter, loading), the black-red 48 x 16 pill (alpha box 614 39 48 16). Sliced horizontally only: insets 8 / 0 / 8 / 0 keep the round ends (radius 8) fixed and stretch the columns between them, each identical (a #1f0f0f body over a 3-row #0f0404 lip); drawn at its own height, so the rows never stretch.",
+			"file": "toffeecraft-horror-ui/UiHorror.png",
+			"name": "ui-bar-track",
+			"rect": [614, 39, 48, 16],
+			"crop": "alpha",
+			"noiseAlpha": 10,
+			"pad": 0,
+			"slice": [8, 0, 8, 0]
+		},
+		"ui.bar.fill": {
+			"$comment": "docs/UI_ART.md UA2: bar fill, the white 48 x 16 pill (alpha box 614 136 48 16, the same shape as ui.bar.track) made pure white with its alpha kept (rgb white: the lip shading goes), tinted by a colour role in code. Sliced like ui.bar.track.",
+			"file": "toffeecraft-horror-ui/UiHorror.png",
+			"name": "ui-bar-fill",
+			"rect": [614, 136, 48, 16],
+			"crop": "alpha",
+			"noiseAlpha": 10,
+			"pad": 0,
+			"rgb": "white",
+			"slice": [8, 0, 8, 0]
+		},
+		"ui.slot.pair": {
+			"$comment": "docs/UI_ART.md UA2: the weapon panel, the tabbed frame holding two slot squares (alpha box 208 515 96 60). Insets 47 / 49 / 48 / 10 keep each slot (cols 10-41 and 53-84, rows 15-46) whole in a fixed corner: the panel stretches column 47, between the slots (and the middle of the tab), and row 49, below them. Flat fill over the noisy interior outside the two slots (their frames and crossing lines are untouched).",
+			"file": "toffeecraft-horror-ui/UiHorror.png",
+			"name": "ui-slot-pair",
+			"rect": [208, 515, 96, 60],
+			"crop": "alpha",
+			"noiseAlpha": 10,
+			"pad": 0,
+			"slice": [47, 49, 48, 10],
+			"centre": "flat",
+			"flatBoxes": [[5, 10, 86, 5], [5, 47, 86, 5], [42, 15, 11, 32], [85, 15, 6, 32], [5, 15, 5, 32], [6, 52, 84, 1], [59, 9, 32, 1], [60, 8, 31, 1], [5, 9, 31, 1], [5, 8, 30, 1], [61, 7, 29, 1], [6, 7, 28, 1]]
+		},
+		"ui.slot": {
+			"$comment": "docs/UI_ART.md UA2: one slot square (the first of four, alpha box 320 512 32 32): a red double frame whose lines cross at the corners. Insets 6 keep the crossings fixed; the edge bands are straight lines and the #212121 centre a single colour.",
+			"file": "toffeecraft-horror-ui/UiHorror.png",
+			"name": "ui-slot",
+			"rect": [320, 512, 32, 32],
+			"crop": "alpha",
+			"noiseAlpha": 10,
+			"pad": 0,
+			"slice": [6, 6, 6, 6]
+		}
+	},
+	"uiIcons": {
+		"$comment": [
+			"docs/UI_ART.md UA3: small fixed-size pieces of the ToffeeCraft Horror UI sheet, packed into ONE atlas art/build/<atlas>.png",
+			"(MaxRects, a 1 px gutter of extruded edge pixels) with src/shared/theme/packs/vale/uiIconLayout.ts (VALE_UI_ICONS: rect,",
+			"pivot per id). Each icon is an `images`-style cut of `file` (default uiIcons.file): `rect` [x, y, w, h] in sheet pixels",
+			"(measured with scripts/art/ui-measure.js, the piece's alpha box unless noted), `crop` (default \"none\": the rect as it",
+			"is; \"alpha\" trims to alpha > noiseAlpha), optional `cutout`, `clearRgb`, `rgb` (\"white\" for tinting), `pivot`."
+		],
+		"atlas": "ui-icons",
+		"file": "toffeecraft-horror-ui/UiHorror.png",
+		"gutter": 1,
+		"icons": {
+			"ui.caret": {
+				"$comment": "Option steppers, scroll hints: the cream-white right-pointing caret (the light colourway, 8 x 12, row 2 of the triangles; it reads on the black buttons).",
+				"rect": [821, 50, 8, 12]
+			},
+			"ui.candle": {
+				"$comment": "Ember pips (and ui.icon.ember): the first of the four lit candles (17 x 19, flame included).",
+				"rect": [886, 439, 17, 19]
+			},
+			"ui.chip": {
+				"$comment": "Armor pips: the light grey raised 10 x 10 rounded chip (bottom grey row, first column).",
+				"rect": [355, 179, 10, 10]
+			},
+			"ui.chip.white": {
+				"$comment": "Aegis pips and combo shards, tinted in code: ui.chip made pure white with its alpha kept (rgb white).",
+				"rect": [355, 179, 10, 10],
+				"rgb": "white"
+			},
+			"ui.divider": {
+				"$comment": "Dividers in Options and the pause overlay: the first (blood red) of the seven 48 x 3 colour stripes.",
+				"rect": [710, 359, 48, 3]
+			},
+			"ui.flask.empty": {
+				"$comment": "A spent flask charge: the black round potion (first of the round row, 18 x 23).",
+				"rect": [935, 485, 18, 23]
+			},
+			"ui.flask.full": {
+				"$comment": "A flask charge (and ui.icon.mana): the red round potion (third of the round row, 18 x 23).",
+				"rect": [999, 485, 18, 23]
+			},
+			"ui.focus.corner": {
+				"$comment": "The focus brackets: the top-left L of the first solid white set (8 x 9; white, so the uiAccent tint shows true). Drawn four times, rotated.",
+				"rect": [580, 419, 8, 9]
+			},
+			"ui.heart.empty": {
+				"$comment": "Heart fill 0: the pale translucent heart of the first heart row (18 x 15, soft alpha kept: crop none).",
+				"rect": [887, 361, 18, 15]
+			},
+			"ui.heart.full": {
+				"$comment": "Heart fill 2 (and ui.icon.health): the full red heart of the first heart row (18 x 15).",
+				"rect": [823, 361, 18, 15]
+			},
+			"ui.heart.half": {
+				"$comment": "Heart fill 1: the half heart of the first heart row (left half red, right half pale; 18 x 15, same box as the full one).",
+				"rect": [855, 361, 18, 15]
+			},
+			"ui.icon.check": {
+				"$comment": "Options toggle on: the framed check of the dark-red colourway (grey glyph, black outline, #4a0000 fill; raised state = first of each pair). The block sits on an opaque grey backdrop, so the cut is the 14 x 14 box of the tile's black outline with cutout (what the outline encloses).",
+				"rect": [225, 401, 14, 14],
+				"cutout": { "outlineRgb": 0 }
+			},
+			"ui.icon.coin": {
+				"$comment": "Score panel icon: the gold coin inside the portrait-frame example (5 x 6), cut off its opaque #120000 backdrop with clearRgb.",
+				"rect": [109, 51, 5, 6],
+				"clearRgb": ["#120000"]
+			},
+			"ui.icon.cross": {
+				"$comment": "Options toggle off, close / back: the framed cross of the dark-red colourway, cut like ui.icon.check.",
+				"rect": [193, 417, 14, 14],
+				"cutout": { "outlineRgb": 0 }
+			},
+			"ui.icon.gear": {
+				"$comment": "Beside the Options label: the bare gear of the white #f0f0f0 glyph set (12 x 12), made pure white (rgb white) for tinting.",
+				"rect": [465, 402, 12, 12],
+				"rgb": "white"
+			},
+			"ui.icon.ghost": {
+				"$comment": "Spectate bar: the white ghost (body alpha box 500 515 44 59). Its tail wisps are loose pixels, so the cut is a window around it (495 513 50 63: left of the wraith's wisps at x >= 545, right of the doll at x <= 494) trimmed to alpha > 0.",
+				"rect": [495, 513, 50, 63],
+				"crop": "alpha",
+				"noiseAlpha": 0
+			},
+			"ui.icon.help": {
+				"$comment": "Help: the framed question mark of the dark-red colourway, cut like ui.icon.check.",
+				"rect": [193, 433, 14, 14],
+				"cutout": { "outlineRgb": 0 }
+			},
+			"ui.icon.home": {
+				"$comment": "Beside Leave run / main menu: the bare house of the white glyph set (7 x 8), made pure white.",
+				"rect": [451, 388, 7, 8],
+				"rgb": "white"
+			},
+			"ui.icon.mute": {
+				"$comment": "Audio rows, muted: the bare struck-through speaker of the white glyph set (11 x 10), made pure white.",
+				"rect": [481, 404, 11, 10],
+				"rgb": "white"
+			},
+			"ui.icon.pause": {
+				"$comment": "The pause button: the framed pause of the dark-red colourway, cut like ui.icon.check.",
+				"rect": [225, 385, 14, 14],
+				"cutout": { "outlineRgb": 0 }
+			},
+			"ui.icon.rip": {
+				"$comment": "Run-over panel: the clean RIP stone (the first of the two, 43 x 42).",
+				"rect": [595, 518, 43, 42]
+			},
+			"ui.icon.skull": {
+				"$comment": "Run-over header: the red-eyed skull (first of the four 28 x 29 skulls).",
+				"rect": [130, 162, 28, 29]
+			},
+			"ui.icon.skull.curse": {
+				"$comment": "Curses in RunItems: the bleeding skull (third of the four; soft alpha in the blood kept).",
+				"rect": [194, 162, 28, 29]
+			},
+			"ui.icon.speaker": {
+				"$comment": "Audio rows: the bare speaker with sound waves of the white glyph set (11 x 10, three loose parts: the cut is their union box), made pure white.",
+				"rect": [482, 387, 11, 10],
+				"rgb": "white"
+			},
+			"ui.ornament.bones": {
+				"$comment": "Main menu and pause panel ornament (never stretched): the top rail of the first bone-skull menu frame (frame alpha box 1 197 92 117): rows 197-209, the rope wrapped round the top rail with its two bone skulls (the skulls' jaws end on row 209); the frame body below is left out. Trimmed to alpha > 10 (-> 89 x 13 from x 3).",
+				"rect": [1, 197, 92, 13],
+				"crop": "alpha",
+				"noiseAlpha": 10
+			},
+			"ui.stick.ring": {
+				"$comment": "Touch sticks: the round frame with the red ring (second of the top row, 39 x 39).",
+				"rect": [757, 405, 39, 39]
+			},
+			"ui.touch.button": {
+				"$comment": "Touch buttons: the dark round frame with the dim rim (first of the top row, 39 x 39).",
+				"rect": [709, 405, 39, 39]
+			}
 		}
 	},
 	"worldArt": {
