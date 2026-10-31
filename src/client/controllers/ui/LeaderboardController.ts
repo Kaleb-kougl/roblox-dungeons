@@ -5,7 +5,7 @@ import { Events } from "client/network";
 import { clientStore, selectBindings, selectInputCaptured, selectLeaderboardOpen } from "client/store";
 import { leaderboardRequestKey, type LeaderboardBoard, type LeaderboardRequest } from "shared/leaderboard";
 import { inputsFor } from "shared/play";
-import { LEADERBOARD_VIEW, SETTINGS_PAD_CLOSE_KEY } from "shared/view/hud";
+import { LEADERBOARD_VIEW, SETTINGS_PAD_CLOSE_KEY, leaderboardTabRequest, type LeaderboardTabs } from "shared/view/hud";
 import { SettingsController } from "./SettingsController";
 
 /**
@@ -49,13 +49,22 @@ export class LeaderboardController implements OnStart {
 	setOpen(open: boolean): void {
 		if (open) this.settings.setPanelOpen(false);
 		clientStore.setLeaderboardOpen(open);
-		if (open) this.request({ board: clientStore.getState().leaderboard.board, scope: "alltime" });
+		if (open) {
+			const lb = clientStore.getState().leaderboard;
+			this.request(leaderboardTabRequest({ board: lb.board, scope: lb.scope, friends: lb.friends }));
+		}
+	}
+
+	/** Shows the panel's tabs (docs/DAILY.md DS9: scope x board x Global / Friends) and refreshes that view if due. */
+	showTabs(tabs: LeaderboardTabs): void {
+		clientStore.setLeaderboardTabs(tabs);
+		this.request(leaderboardTabRequest(tabs));
 	}
 
 	/** Shows a board (Solo / Co-op tab) and refreshes it if due. */
 	showBoard(board: LeaderboardBoard): void {
-		clientStore.setLeaderboardBoard(board);
-		this.request({ board, scope: "alltime" });
+		const lb = clientStore.getState().leaderboard;
+		this.showTabs({ board, scope: lb.scope, friends: lb.friends });
 	}
 
 	/**

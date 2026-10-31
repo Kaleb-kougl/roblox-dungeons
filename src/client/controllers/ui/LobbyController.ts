@@ -190,8 +190,9 @@ export class LobbyController implements OnStart {
 		Events.lobbyRequestList.fire();
 	}
 
-	create(visibility: LobbyVisibility): void {
-		Events.lobbyCreate.fire({ visibility });
+	/** A new lobby; `worldKind` names its world (default the server's: endless; the Daily: docs/DAILY.md DS9). */
+	create(visibility: LobbyVisibility, worldKind?: LobbyWorld): void {
+		Events.lobbyCreate.fire(worldKind !== undefined ? { visibility, worldKind } : { visibility });
 	}
 
 	join(lobbyId: string): void {

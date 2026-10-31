@@ -2,7 +2,7 @@ import React, { useContext } from "@rbxts/react";
 import type { LeaderboardBoard } from "shared/leaderboard";
 import type { BindingDevice, CaptureTarget, GameAction } from "shared/play";
 import type { AudioOverrides, DisplayOverrides, JuiceOverrides, SettingsGroup } from "shared/settings";
-import type { OptionsTab } from "shared/view/hud";
+import type { LeaderboardTabs, OptionsTab } from "shared/view/hud";
 
 /**
  * What the HUD's menus can do. HudController builds it from the controllers (SimController, SettingsController,
@@ -37,6 +37,8 @@ export interface HudActions {
 	/** Leaderboard panel (M5): open / close, and the Solo / Co-op tab. */
 	readonly setLeaderboardOpen: (open: boolean) => void;
 	readonly showLeaderboard: (board: LeaderboardBoard) => void;
+	/** The panel's tabs (docs/DAILY.md DS9: Today / Yesterday / All time x Solo / Co-op x Global / Friends). */
+	readonly showLeaderboardTabs: (tabs: LeaderboardTabs) => void;
 	/** Leave run (L6): show / hide the confirm, then leave (solo: forfeit; party: lockstepLeave) for the menu. */
 	readonly setLeaveConfirm: (open: boolean) => void;
 	readonly leaveRun: () => void;
@@ -76,6 +78,7 @@ const NOOP: HudActions = {
 	playUi: () => undefined,
 	setLeaderboardOpen: () => undefined,
 	showLeaderboard: () => undefined,
+	showLeaderboardTabs: () => undefined,
 	setLeaveConfirm: () => undefined,
 	leaveRun: () => undefined,
 	exitRun: () => undefined,

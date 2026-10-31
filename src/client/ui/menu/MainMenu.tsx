@@ -7,6 +7,7 @@ import { SFX } from "shared/view/audio";
 import { HUD_STRINGS, HUD_VIEW, NEW_BEST_STRINGS, UI_ART, bestText } from "shared/view/hud";
 import { TUTORIAL_STRINGS } from "shared/tutorial";
 import {
+	DAILY_MENU,
 	MENU_FIT,
 	MENU_STRINGS,
 	MENU_VIEW,
@@ -16,6 +17,7 @@ import {
 	screenSkin,
 } from "shared/view/menu";
 import { useMenuActions } from "./actions";
+import { DailyCard, DailyPodiumStrip } from "./DailyCard";
 import { useGamepadFocus } from "./hooks";
 
 /**
@@ -26,6 +28,11 @@ import { useGamepadFocus } from "./hooks";
  * selection starts on Play solo. Fitted into the safe area on touch (MenuFit); compact (a phone): the buttons in two
  * columns, the invite reason under them. Under Play solo (compact: under its row), once the server's records loaded
  * and the solo board has one, the player's solo best (`Best 48210 · floor 9`, docs/NEW_BEST.md NB9: menu.best).
+ *
+ * The Daily (docs/DAILY.md DS9): beside the button column (compact: under Play solo's row, before the other buttons)
+ * the Daily card (DailyCard: label and date, roster and boss preview, best today, countdown, Play Daily, Daily with
+ * friends) and under it yesterday's podium (DailyPodiumStrip, hidden when empty). Play solo keeps the pad's first
+ * selection; the card never blocks it.
  */
 export function MainMenu() {
 	const actions = useMenuActions();
@@ -88,11 +95,11 @@ export function MainMenu() {
 			}}
 		/>
 	);
-	const reason =
+	const reason = (order: number) =>
 		invite.reasonKey !== undefined ? (
 			<Text
 				key="InviteReason"
-				order={6}
+				order={order}
 				size={HUD_VIEW.smallText}
 				color="uiTextDim"
 				align={Enum.TextXAlignment.Center}
@@ -137,12 +144,19 @@ export function MainMenu() {
 			}}
 		/>
 	);
+	// The menu's button column (desktop: beside the Daily column) and the Daily column (card, then the podium).
+	const columnWidth = MENU_VIEW.mainWidth - HUD_VIEW.pad * 4;
+	const compactInner = MENU_FIT.mainCompactWidth - HUD_VIEW.pad * 4;
 	return (
 		<MenuFit
 			ornament={screenOrnament("mainMenu")}
 			render={(layout) => (
 				<Panel
-					width={layout.compact ? MENU_FIT.mainCompactWidth : MENU_VIEW.mainWidth}
+					width={
+						layout.compact
+							? MENU_FIT.mainCompactWidth
+							: MENU_VIEW.mainWidth + HUD_VIEW.gap + DAILY_MENU.cardWidth
+					}
 					align={Enum.HorizontalAlignment.Center}
 					padding={HUD_VIEW.pad * 2}
 					skin={screenSkin("mainMenu")}
@@ -164,30 +178,78 @@ export function MainMenu() {
 								{lobbies}
 							</Row>
 							{best}
-							<Row key="Row2" order={4}>
+							<DailyCard key="Daily" order={4} width={compactInner} compact={true} />
+							<DailyPodiumStrip key="Podium" order={5} width={compactInner} compact={true} />
+							<Row key="Row2" order={6}>
 								{inviteButton}
 								{tutorial}
 							</Row>
-							<Row key="Row3" order={5}>
+							<Row key="Row3" order={7}>
 								{options}
 								{leaderboard}
 							</Row>
-							{reason}
+							{reason(8)}
 						</>
 					) : (
-						<>
-							{play}
-							{best}
-							{lobbies}
-							{inviteButton}
-							{reason}
-							{tutorial}
-							{options}
-							{leaderboard}
-						</>
+						<Columns key="Columns" order={2}>
+							<Column key="Menu" order={1} width={columnWidth}>
+								{play}
+								{best}
+								{lobbies}
+								{inviteButton}
+								{reason(6)}
+								{tutorial}
+								{options}
+								{leaderboard}
+							</Column>
+							<Column key="Daily" order={2} width={DAILY_MENU.cardWidth}>
+								<DailyCard key="Card" order={1} width={DAILY_MENU.cardWidth} compact={false} />
+								<DailyPodiumStrip key="Podium" order={2} width={DAILY_MENU.cardWidth} compact={false} />
+							</Column>
+						</Columns>
 					)}
 				</Panel>
 			)}
 		/>
+	);
+}
+
+/** Side-by-side columns, tops aligned. */
+function Columns(props: { order: number; children?: React.ReactNode }) {
+	return (
+		<frame
+			LayoutOrder={props.order}
+			Size={new UDim2()}
+			AutomaticSize={Enum.AutomaticSize.XY}
+			BackgroundTransparency={1}
+		>
+			<uilistlayout
+				FillDirection={Enum.FillDirection.Horizontal}
+				VerticalAlignment={Enum.VerticalAlignment.Top}
+				SortOrder={Enum.SortOrder.LayoutOrder}
+				Padding={new UDim(0, HUD_VIEW.gap)}
+			/>
+			{props.children}
+		</frame>
+	);
+}
+
+/** A fixed-width, centred vertical column (fixed, so filling text resolves against it). */
+function Column(props: { order: number; width: number; children?: React.ReactNode }) {
+	return (
+		<frame
+			LayoutOrder={props.order}
+			Size={new UDim2(0, props.width, 0, 0)}
+			AutomaticSize={Enum.AutomaticSize.Y}
+			BackgroundTransparency={1}
+		>
+			<uilistlayout
+				FillDirection={Enum.FillDirection.Vertical}
+				HorizontalAlignment={Enum.HorizontalAlignment.Center}
+				SortOrder={Enum.SortOrder.LayoutOrder}
+				Padding={new UDim(0, HUD_VIEW.gap)}
+			/>
+			{props.children}
+		</frame>
 	);
 }
