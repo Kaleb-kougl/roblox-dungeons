@@ -24,7 +24,9 @@
  *   4. the player stands on a room's floor for the first time this floor: events.roomEntered = id + 1, and that room's
  *      deferred enemies spawn (EndlessFloorWorld.roomSpawns, in order, each at least SPAWN_SAFE_RADIUS from every
  *      living player: see safeRoomSpawns; a full pool drops the rest, counted in
- *      combat.actorsDropped); scoring attaches them to the room's record and engages it (attachScoreRoomMembers)
+ *      combat.actorsDropped); with elite affixes (state.affixes) each planned spawn carries its
+ *      EndlessFloorWorld.roomAffixes entry (same index), stamped by spawnActor before the archetype's init; scoring
+ *      attaches them to the room's record and engages it (attachScoreRoomMembers)
  *
  * Co-op (M4, party.ts), every per-player rule in player index order:
  *   2. EVERY player is dead: nothing else (the run is over); a dead player otherwise just waits (no mid-floor revive)
@@ -88,6 +90,12 @@ export interface EndlessFloorWorld {
 	 * Read only when the run's SimConfig.breakables is set (breakables/breakables.ts). Absent: none.
 	 */
 	readonly breakables?: ReadonlyArray<BreakablePlacement>;
+	/**
+	 * Elite affixes per planned room spawn (shared/dungeon assignAffixes, docs/ENEMY_VARIANTS.md EV6): an affix id
+	 * (shared/dungeon AffixKind, 0 = none) per roomSpawns entry, same shape. Read only when the run's SimConfig.affixes
+	 * is set (affixes/affixes.ts). Absent: none (the tutorial, hand-built test worlds).
+	 */
+	readonly roomAffixes?: ReadonlyArray<ReadonlyArray<number>>;
 }
 
 /** SimConfig.endless. */
@@ -160,11 +168,16 @@ function pressed(prevButtons: number, buttons: number, bit: number): boolean {
 	return bit32.band(buttons, bit) !== 0 && bit32.band(prevButtons, bit) === 0;
 }
 
-/** Spawns `spawns` in order; returns the actors that got a slot (a full pool drops the rest). */
-function spawnAll(spawns: ReadonlyArray<ActorSpawn>): ActorState[] {
+/**
+ * Spawns `spawns` in order; returns the actors that got a slot (a full pool drops the rest). `affixes[i]` (elite
+ * affixes: spawn i's planned affix, paired by index BEFORE any spawn can be dropped) is stamped by spawnActor before
+ * the archetype's init; absent or 0: none.
+ */
+function spawnAll(spawns: ReadonlyArray<ActorSpawn>, affixes?: ReadonlyArray<number>): ActorState[] {
 	const out: ActorState[] = [];
-	for (const s of spawns) {
-		const a = spawnActor(ctx, archetypeIndex(s.kind), s.x, s.z);
+	for (let i = 0; i < spawns.size(); i++) {
+		const s = spawns[i];
+		const a = spawnActor(ctx, archetypeIndex(s.kind), s.x, s.z, affixes?.[i] ?? 0);
 		if (a !== undefined) out.push(a);
 	}
 	return out;
@@ -205,7 +218,7 @@ function nextFloor(state: SimState, input: Readonly<InputFrame>, endless: Endles
 	ctx.bind(state, world.config, input);
 	spawnAll(world.config.encounter?.spawns ?? []);
 	// Scoring: the new floor's room records (deferred: members join when each room's enemies spawn).
-	rebuildScoreRooms(state, world.config.encounter, world.roomSpawns);
+	rebuildScoreRooms(state, world.config.encounter, world.roomSpawns, world.roomAffixes);
 	state.events.floorChanged = e.floor;
 }
 
@@ -323,7 +336,9 @@ function enterRoom(state: SimState, world: Readonly<EndlessFloorWorld>, e: Endle
 		state.events.roomEntered = id + 1;
 		const tiles = world.roomSpawnTiles?.[id];
 		const planned = world.roomSpawns[id];
-		const spawned = spawnAll(tiles !== undefined ? safeRoomSpawns(state, planned, tiles) : planned);
+		// safeRoomSpawns keeps the planned order and count (it only moves spawns), so index i is still planned spawn i.
+		const affixes = state.affixes !== undefined ? world.roomAffixes?.[id] : undefined;
+		const spawned = spawnAll(tiles !== undefined ? safeRoomSpawns(state, planned, tiles) : planned, affixes);
 		attachScoreRoomMembers(state, id, spawned); // scoring: the room engages now
 		dropsOnRoomSpawned(state, id, spawned); // boost drops: a guaranteed room's members (the tutorial)
 		tutorialOnRoomSpawned(state, e.floor, id, spawned); // the tutorial's block lesson: hold its room's enemies

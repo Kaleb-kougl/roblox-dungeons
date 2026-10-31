@@ -17,5 +17,5 @@ export { actorCooldownPercent, actorWalkPercent, enemyCooldown, enemyCooldownFix
 export { faceToward, lineOfSight, moveActor, toPlayer, walkToward, type ToPlayer } from "./helpers";
 export { EMPTY_ENCOUNTER, roomAt } from "./encounter";
 export type { ActorSpawn, EncounterConfig, EncounterRoom, EncounterRoomType } from "./encounter";
-export { isActorPresent } from "./actors";
+export { isActorPresent, spawnActor } from "./actors";
 export * from "./archetypes";

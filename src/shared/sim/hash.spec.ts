@@ -1,6 +1,24 @@
 import { describe, expect, it } from "@rbxts/jest-globals";
 import hashFixture from "shared/fixtures-generated/hash";
-import { createSimState, float64FromHex, float64Hex, hashNumbers, hashState, writeHashFields } from "shared/sim";
+import {
+	AFFIXES_CONFIG,
+	AFFIXES_SUBSYSTEM,
+	AFFIX_SLOT_HASH_FIELDS,
+	BRUISER,
+	DEFAULT_SIM_CONFIG,
+	EMPTY_INPUT,
+	SNIPER,
+	SWARMER,
+	createSimState,
+	float64FromHex,
+	float64Hex,
+	hashLayout,
+	hashNumbers,
+	hashState,
+	step,
+	writeHashFields,
+	type SimConfig,
+} from "shared/sim";
 
 describe("hashNumbers parity (fixtures/hash.json)", () => {
 	it("matches every vector (values decoded from their exact bits, NaN and -0 included)", () => {
@@ -46,5 +64,45 @@ describe("float64 hex helpers", () => {
 		}
 		expect(float64Hex(-0)).toBe("8000000000000000"); // check-asset-ids: allow (float64 bits)
 		expect(float64Hex(1)).toBe("3ff0000000000000");
+	});
+});
+
+describe("elite affixes are opt-in (docs/ENEMY_VARIANTS.md EV7)", () => {
+	const encounter = {
+		spawns: [
+			{ kind: SWARMER.id, x: 3, z: 3 },
+			{ kind: SNIPER.id, x: -4, z: 4 },
+			{ kind: BRUISER.id, x: 4, z: -4 },
+		],
+		rooms: [],
+		entranceRoom: -1,
+		bossRoom: -1,
+	};
+	const plainConfig: SimConfig = { ...DEFAULT_SIM_CONFIG, encounter };
+	const affixConfig: SimConfig = { ...plainConfig, affixes: AFFIXES_CONFIG };
+
+	it("without SimConfig.affixes the layout has no affixes group; with it, ONLY an appended last group differs", () => {
+		const plain = createSimState(1337, 0, 0, plainConfig);
+		const withAffixes = createSimState(1337, 0, 0, affixConfig);
+		expect(plain.affixes).toBe(undefined);
+		for (let t = 0; t <= 120; t++) {
+			const a = hashLayout(plain, true);
+			const b = hashLayout(withAffixes, true);
+			expect(a.groups.map((g) => g.name).includes(AFFIXES_SUBSYSTEM)).toBe(false);
+			expect(b.groups.size()).toBe(a.groups.size() + 1);
+			const last = b.groups[b.groups.size() - 1];
+			expect([last.name, last.start]).toEqual([AFFIXES_SUBSYSTEM, a.values.size()]);
+			const prefix: number[] = [];
+			for (let i = 0; i < last.start; i++) prefix.push(b.values[i]);
+			expect(prefix).toEqual(a.values);
+			// One slot per actor slot, every slot unaffixed (initial spawns never carry an affix).
+			const slots = withAffixes.combat.actors.size();
+			expect(b.values[last.start]).toBe(slots);
+			expect(last.finish - last.start).toBe(1 + slots * AFFIX_SLOT_HASH_FIELDS.size());
+			expect(b.names[last.start]).toBe("affixes.slots.length");
+			expect(b.values).toEqual(writeHashFields(withAffixes, []));
+			step(plain, EMPTY_INPUT, plainConfig);
+			step(withAffixes, EMPTY_INPUT, affixConfig);
+		}
 	});
 });

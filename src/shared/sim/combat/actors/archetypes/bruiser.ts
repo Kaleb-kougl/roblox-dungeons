@@ -76,8 +76,11 @@ const SHOCK_RADIUS = 0.55;
 const SHOCK_SPEED = 9;
 const SHOCK_SHOW_TICKS = 16;
 
-/** Gap offsets from the player's bearing, as (cos, sin) rotations: about +-36.9 and +-53.1 degrees. */
-const GAP_TURNS: ReadonlyArray<readonly [number, number]> = [
+/**
+ * Gap offsets from the player's bearing, as (cos, sin) rotations: about +-36.9 and +-53.1 degrees. Exported for the
+ * Vengeful affix's ring (affixes/stepAffixes.ts), which turns its gap the same way.
+ */
+export const GAP_TURNS: ReadonlyArray<readonly [number, number]> = [
 	[4 / 5, 3 / 5],
 	[4 / 5, -3 / 5],
 	[3 / 5, 4 / 5],
