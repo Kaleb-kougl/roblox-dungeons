@@ -29,11 +29,11 @@ BU0-BU4 built (branch `builds`): the audit below, the scaffolding (opt-in `SimCo
 `state.builds` with its own `builds` hash group appended last, the three on-kill boons appended, level tables, duos,
 card ids, effect bullet kinds / sources / data, the two port arc rows, theme entries with placeholder values and
 `buildReport`), levels and offers (`drawCardOffers`, `grantCard`, level values through `computeRunMods`, the boss
-double draft), the proc engine (kill queue, generations, `fireEffect` and its budget, the `BuildEvents` effect feed) and
-Chain Spark / Volatile / Soul Shards at levels I-II (see "BU3 / BU4 (as built)"). Evolution and duo rules are BU5 / BU6;
-nothing draws the effects yet (BU8: bullets show with the player bullet look, sparks are invisible), and the draft UI is
-today's with card ids decoded (BU9). Decisions BUD1-BUD14 are **settled** (2026-10-31, Kaleb: every proposed default
-accepted; BUD8 and BUD12 stand as technical requirements).
+double draft), the proc engine (kill queue, generations, `fireEffect` and its budget, the `BuildEvents` effect feed),
+Chain Spark / Volatile / Soul Shards at levels I-II (see "BU3 / BU4 (as built)"), the draft UI and the build HUD (BU9 /
+BU10, presentation only; see "BU9 / BU10 (as built)"). Evolution and duo rules are BU5 / BU6; nothing draws the
+effects yet (BU8). Decisions BUD1-BUD14 are **settled** (2026-10-31, Kaleb: every proposed default accepted; BUD8 and
+BUD12 stand as technical requirements).
 
 ## What the code gives us (read on `main` @ `5a0edc2`)
 
@@ -240,6 +240,74 @@ range 4.5 in / 4.51 out, two hops from the last target and never twice, Sharpene
 the nearest, sqrt aim, range 8 in / 8.01 out, no target no shard, Sharpened 2.5), a real swarmer pack (8 swarmers,
 the bow's stream, Volatile I + Chain Spark I) dying at ticks `[16, 13, 13, 14, 16, 16, 15, 16]` (spawn order; the spec
 explains the ripple), and determinism (two runs hash the same every tick).
+
+## BU9 / BU10 (as built)
+
+Presentation only: no sim, hash, replay or fixture change. Paths under `src/` unless noted.
+
+- **Files.** Pure: `shared/view/hud/draftCards.ts` (BU9: `HudText` = key + literal vars + `varKeys` looked up as
+  theme keys; `draftCardModel(card, kind)`, `draftBeatFor`, `draftToneRole` / `rarityTone`, `draftCardKinds`,
+  `draftRedealt`, `boonLineKey` / `boonLevelNameKey` / `levelText`, `DRAFT_CARD_VIEW`, `DUO_CHIP_SPAN`) and
+  `shared/view/hud/buildHud.ts` (BU10: `runItemCells`, `capItemCells`, `itemPipLayout`, `buildListRows`,
+  `capBuildList`, `pauseBuildWidth`, `BUILD_HUD_VIEW`), specs `draftCards.spec.ts` / `buildHud.spec.ts`.
+  `draftReveal.ts`: `DraftBeat` (values = `Rarity`'s), `begin(beats)`, frame `cards[i].beat` (was `rarity`);
+  `draftRevealView.ts` reads beats. Client: `DraftRevealController` (kinds read once at the deal), `draftUi.ts`
+  (`model`, `beat`, `tone` per card, `again`), `DraftOverlay` (`BannerRow`, "was" line, "Pick again"), `DraftRays`
+  (binding colour), `RunItems` (rewritten on the cell model), new `BuildList.tsx` (`BuildList`, `PauseBuild`),
+  `PauseOverlay`, `RunOverPanel`, `ToastPanel`, `client/ui/theme` `hudText`. Snapshot: `boonLevels` (parallel to
+  `boons`) and `duos`, the local player's (`playerIndex`), empty without builds. `RunEventRecord.build`
+  (`"evolved"` / `"duo"`, from the BU2 `BuildEvents` of the same tick, `buildTakeOf`); `toastFor(kind, index, build)`;
+  `ToastSpec` / `ToastView` gained `varKeys`.
+- **Card kinds.** Read with `cardKind` for the LOCAL player when the deal is dealt (before the pick raises the level),
+  so the overlay keeps the right faces through the pick's stamp and exit fade. New: today's card. Upgrade: name, banner
+  "Level II" + 2 of 3 pips in the card's colour, the line `boon.<id>.desc.2`, and under it `hud.draft.was` with the
+  level below's line ("was: Enemies you kill burst into a ring of 8 bolts"); it flips like its boon's rarity. Evolution:
+  the `.evo.name` / `.evo.desc`, banner "EVOLVE · {boon}" in `boon.evolved`, 3 of 3 pips, the legendary beat
+  (charge, skulls, halo; rays and glow in `boon.evolved`). Duo: name / desc, a joined chip of its two boons' icon
+  labels (each in its boon's rarity colour) + "DUO" in `boon.duo`, the legendary beat in `boon.duo`. Without builds
+  (the tutorial) every card is New: today's draft. The face art stays the studded (rare) face for every legendary beat
+  (no tint); the "own frame" is the glow / flat stroke in the card's colour, always on after the flare (halo pulse).
+- **Double draft.** The re-deal (the previous agent's re-begin on a `draftTicks` drop) is kept; `draftRedealt` (draft
+  open, `0 < draftsLeft < deals of the floor just cleared`) sets `DRAFT_UI.again` at the begin: "Pick again"
+  (`hud.draft.again`, uiAccent) shows under the title on the SECOND deal only (not on the first). The first pick of a
+  double draft still has no stamp (the cards re-deal at once), as before.
+- **Items row.** Boons (order taken), then duos (order taken, a double-wide joined chip in `boon.duo` with both boons'
+  icon labels), then relics, curses. Deviation: the level pips sit INSIDE the bottom of each boon cell (label moved up),
+  not under it: the status panel's 160 px footprint is full (`HUD_FOOTPRINT`, footprint.spec unchanged and passing).
+  Evolved boons: a 2 px `boon.evolved` outline. Legendaries and builds-free runs: no pips. The row is now a horizontal
+  list sized by `capItemCells` (one row, "+N" first, spans aware) instead of `GridRow` / `capOneRow`; touch chips use the
+  same component (smaller cells, `itemPipLayout` scales the pips).
+- **Build list.** "Build" (`hud.build.title`) then one row per boon (name or evolution name in its colour, level "I".."III"
+  or "" for a legendary / no builds, the line it has now, truncated) and per duo. Pause / party overlay: a side panel
+  right of the menu (`PauseBuild`; the solo map is on the left), width `pauseBuildWidth` (300, down to 260 on a narrow
+  screen), 12 rows (8 on touch), "+N" after. Run-over: beside the score breakdown (a Row) in the full layout; a third
+  260-wide column (8 rows) in the compact (phone) layout.
+- **Toasts.** A pick the sim recorded as an evolution shows `hud.toast.evolved` ("Volatile evolved: Cataclysm"), a duo
+  `hud.toast.duo` ("Duo: Fire Arrows"), anything else `hud.toast.boon` as before. No flare or sound yet (BU8 / BU12).
+- **Theme.** Only one key added: `hud.draft.was` ("was: {desc}", not required by the contract, in
+  `progressionStringKeys`, checked by hud.spec like `hud.items.more`). Changed placeholder values: `hud.draft.evolve`
+  "EVOLVE" -> "EVOLVE · {boon}"; `boon.volatile.desc` / `boon.soulShards.desc` now name their level-I counts (8 bolts,
+  2 shards) so the "was" line reads as a delta. No contract, colour role or Luau-locals change.
+- **Not done.** No pick stamp on the first card of a double draft; `KV_DraftRevealDebug` still takes beats only
+  (c / r / l), not card kinds; no art for the chip icons (text labels until BU11).
+
+**Studio checklist (nothing could run in Studio here).**
+
+1. Endless solo with builds: floor 1 draft shows three New cards exactly as before (names, rarity row, reveal).
+2. Own a common / rare boon at I: its Upgrade card reads "Level II" + 2 of 3 pips, the level II line, "was: ..." dim
+   under it, no overflow on the flat card and on the ToffeeCraft faces (name / banner nudge on the rare face).
+3. Own it at II: the Evolution card flips last with the charge / hush / flare, glow and rays in `boon.evolved` gold,
+   "EVOLVE · <boon>", 3 pips; picking it toasts "<boon> evolved: <evo>".
+4. Own both boons of a duo: the Duo card's chip (two icon cells) + "DUO" fits the banner row with the skulls; legendary
+   beat in `boon.duo`; picking it toasts "Duo: <name>".
+5. Clear floor 5 (boss): first deal (guaranteed duo) has no "Pick again"; after the pick the cards re-deal and "Pick
+   again" shows under the title; the confirm is not held forever (reveal re-begins). Co-op: each player's own.
+6. Items panel: pips inside each boon cell readable at 100 % / 70 % HUD scale and on the touch chips; an evolved boon
+   has the gold frame; a duo chip is double width; with many items the "+N" cell appears and the panel stays in its
+   footprint.
+7. Pause (solo and co-op party overlay): the Build panel sits right of the menu, clear of the screen edge at 1280 x 720,
+   1024 x 768 and a phone; run-over panel full and compact (phone) layouts with the Build column.
+8. Tutorial floor 2 draft and M1: unchanged (no pips, no Build rows beyond the tutorial boon's plain row in pause).
 
 ## Player experience
 

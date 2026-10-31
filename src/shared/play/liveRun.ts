@@ -37,6 +37,7 @@ import {
 	FixedStepLoop,
 	Recorder,
 	SOLO_PLAYER,
+	buildEvents,
 	copyInput,
 	createSimState,
 	dropsEvents,
@@ -105,8 +106,25 @@ export type RunEventKind = "boon" | "relic" | "curse" | "secondWind" | "fang" | 
 
 export interface RunEventRecord {
 	readonly kind: RunEventKind;
-	/** The boon / relic / curse index; 1 for secondWind; half hearts healed for fang; the Boost index for boost. */
+	/**
+	 * The boon / relic / curse index (for "boon" the draft card id: a boon, or with builds a duo); 1 for secondWind;
+	 * half hearts healed for fang; the Boost index for boost.
+	 */
 	readonly index: number;
+	/**
+	 * "boon" with builds (docs/BUILDS.md BU10): the sim's builds events recorded this pick as an evolution (level III)
+	 * or a duo taken by this player (the evolve / duo toast); undefined for any other pick.
+	 */
+	readonly build?: "evolved" | "duo";
+}
+
+/** Player `playerIndex`'s draft pick this tick as the builds events record it (an evolution, a duo), or undefined. */
+export function buildTakeOf(state: Readonly<SimState>, playerIndex: number): "evolved" | "duo" | undefined {
+	const be = buildEvents(state);
+	if (be === undefined) return undefined;
+	if (be.duoPlayer.includes(playerIndex)) return "duo";
+	if (be.evolvedPlayer.includes(playerIndex)) return "evolved";
+	return undefined;
 }
 
 /**
@@ -117,7 +135,8 @@ export interface RunEventRecord {
 export function collectRunEvents(state: Readonly<SimState>, playerIndex: number, out: RunEventRecord[]): void {
 	const re = state.run?.players[playerIndex]?.events;
 	if (re !== undefined) {
-		if (re.draftChosen !== 0) out.push({ kind: "boon", index: re.draftChosen - 1 });
+		if (re.draftChosen !== 0)
+			out.push({ kind: "boon", index: re.draftChosen - 1, build: buildTakeOf(state, playerIndex) });
 		if (re.relicCollected !== 0) out.push({ kind: "relic", index: re.relicCollected - 1 });
 		if (re.curseAccepted !== 0) out.push({ kind: "curse", index: re.curseAccepted - 1 });
 		if (re.secondWind !== 0) out.push({ kind: "secondWind", index: re.secondWind });

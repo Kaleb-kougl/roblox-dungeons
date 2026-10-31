@@ -3,7 +3,7 @@
  * client/controllers/render RunMarkerController): string keys, colour roles, key hints and layout numbers. Pure data
  * and helpers, checked headlessly (hud.spec.ts: every key exists in the placeholder pack).
  */
-import { BOONS, CURSES, DUOS, RARITY_NAMES, RELICS, boonMaxLevel, cardDisplay } from "shared/sim";
+import { BOONS, CURSES, DUOS, RARITY_NAMES, RELICS, boonMaxLevel, cardBoon, cardDisplay, cardDuo } from "shared/sim";
 import {
 	BOON_RARITY_ROLES,
 	BOOST_KINDS,
@@ -28,6 +28,22 @@ export const PROGRESSION_STRINGS = {
 	toastFang: "hud.toast.fang",
 	/** A boost pickup (docs/BOOSTS.md B7): `{name}: {desc}` of the kind (theme BOOST_TOAST_KEY). */
 	toastBoost: BOOST_TOAST_KEY,
+	// Builds (docs/BUILDS.md BU9 / BU10; theme BUILD_STRING_KEYS, plus the upgrade card's "was" line):
+	/** An Upgrade card's banner: `{level}` (roman). */
+	draftLevel: "hud.draft.level",
+	/** An Evolution card's banner: `{boon}` (the boon's name, a theme key). */
+	draftEvolve: "hud.draft.evolve",
+	/** A Duo card's banner: `{a}`, `{b}` (the two boons' names; the placeholder shows neither: the chip does). */
+	draftDuo: "hud.draft.duo",
+	/** The boss double draft's re-deal, under the title. */
+	draftAgain: "hud.draft.again",
+	/** An Upgrade card's previous line under the new one: `{desc}` (a theme key). */
+	draftWas: "hud.draft.was",
+	/** An evolution taken: `{boon}`, `{evo}`; a duo taken: `{name}` (theme keys). */
+	toastEvolved: "hud.toast.evolved",
+	toastDuo: "hud.toast.duo",
+	/** The pause / run-over Build list's title. */
+	buildTitle: "hud.build.title",
 } as const;
 
 /** Theme string keys of a boon / relic / curse id ("boon.sharpened"): its name, one-line effect, short icon label. */
@@ -137,13 +153,22 @@ export interface ToastSpec {
 	/** `{desc}`: a theme string key itself (boost pickups). */
 	readonly descKey?: string;
 	readonly amount?: number;
+	/** More vars that are theme string keys themselves (builds: an evolution's `{boon}` / `{evo}`). */
+	readonly varKeys?: Readonly<Record<string, string>>;
 }
+
+/** What a draft pick was, from the sim's builds events (shared/play RunEventRecord.build): an evolution or a duo. */
+export type BuildTake = "evolved" | "duo";
 
 /**
  * What a run event shows as a toast (kinds: shared/play RunEventKind; for "fang" `index` is the half hearts healed,
  * for "boost" the Boost index).
  */
-export function toastFor(kind: "boon" | "relic" | "curse" | "secondWind" | "fang" | "boost", index: number): ToastSpec {
+export function toastFor(
+	kind: "boon" | "relic" | "curse" | "secondWind" | "fang" | "boost",
+	index: number,
+	build?: BuildTake,
+): ToastSpec {
 	switch (kind) {
 		case "boost": {
 			const k = BOOST_KINDS[index] ?? BOOST_KINDS[0];
@@ -153,9 +178,22 @@ export function toastFor(kind: "boon" | "relic" | "curse" | "secondWind" | "fang
 				descKey: boostStringKey(k, "desc"),
 			};
 		}
-		case "boon":
-			// `index` is the draft card taken: a boon, or with builds a duo (docs/BUILDS.md card ids).
+		case "boon": {
+			// `index` is the draft card taken: a boon, or with builds a duo (docs/BUILDS.md card ids); `build` says
+			// when the sim's builds events recorded the pick as an evolution or a duo (BU10).
+			const d = cardDuo(index);
+			if (build === "duo" && d >= 0)
+				return { key: PROGRESSION_STRINGS.toastDuo, nameKey: itemNameKey(DUOS[d].id) };
+			const b = cardBoon(index);
+			if (build === "evolved" && b >= 0) {
+				const id = BOONS[b].id;
+				return {
+					key: PROGRESSION_STRINGS.toastEvolved,
+					varKeys: { boon: itemNameKey(id), evo: boonEvoNameKey(id) },
+				};
+			}
 			return { key: PROGRESSION_STRINGS.toastBoon, nameKey: itemNameKey(cardDisplay(index)?.id ?? "") };
+		}
 		case "relic":
 			return { key: PROGRESSION_STRINGS.toastRelic, nameKey: itemNameKey(RELICS[index]?.id ?? "") };
 		case "curse":

@@ -187,7 +187,14 @@ export function StatusPanel(props: StatusPanelProps) {
 			{s.floor > 0 && !s.scoring ? (
 				<Text order={5} color="uiText" text={str(HUD_STRINGS.floor, { floor: s.floor, depth: s.depth })} />
 			) : undefined}
-			<RunItems order={6} boons={s.boons} relics={s.relics} curses={s.curses} />
+			<RunItems
+				order={6}
+				boons={s.boons}
+				relics={s.relics}
+				curses={s.curses}
+				levels={s.boonLevels}
+				duos={s.duos}
+			/>
 		</Panel>
 	);
 }

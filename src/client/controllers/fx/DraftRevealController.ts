@@ -4,12 +4,19 @@ import { Workspace } from "@rbxts/services";
 import { clientStore, selectTutorialEnded } from "client/store";
 import { DRAFT_SLOT_Z_RAISED, DRAFT_SLOT_Z_REST, DRAFT_UI, resetDraftUi } from "client/ui";
 import { draftConfirmHeld, draftNeverRevealed } from "shared/play";
-import { DRAFT_MIN_OPEN_TICKS, DRAFT_OFFER_COUNT, Rarity, cardDisplay, type RarityId } from "shared/sim";
+import { DRAFT_MIN_OPEN_TICKS, DRAFT_OFFER_COUNT } from "shared/sim";
 import type { JuiceSettings } from "shared/settings";
 import {
 	DRAFT_REVEAL_VIEW,
+	DraftBeat,
 	DraftReveal,
+	draftCardKinds,
 	draftCardLook,
+	draftCardModel,
+	draftRedealt,
+	rarityTone,
+	type DraftBeatId,
+	type DraftTone,
 	draftOverlayLook,
 	draftSlotOffsetX,
 	newDraftCardLook,
@@ -40,9 +47,12 @@ function localDraft(ctx: RunContext): LocalDraft | undefined {
  * The boon draft reveal's driver (docs/DRAFT_REVEAL.md DR6). Once per rendered frame (an FxTrackerController frame
  * handler, after the frame's sim ticks) it reads the LOCAL player's draft (`run.state.run.players[localIndex]`) and:
  *   - begin: on the first frame the draft is open and the stage cover is fading or gone (StageController
- *     coverLifting), one shared/view/hud DraftReveal over every offer, at its rarity (BOONS[i].rarity); while the
- *     KV_DraftRevealDebug Workspace string attribute parses (DRAFT_REVEAL_VIEW.debugAttribute, off by default; display
- *     only: the faces stay the real boons) its rarities replace those of the first cards, the rest keep their own
+ *     coverLifting), one shared/view/hud DraftReveal over every offer, each card read once for the local player
+ *     (docs/BUILDS.md BU9: draftCardKinds / draftCardModel, written to DRAFT_UI with its beat, tone and the re-deal's
+ *     "Pick again" flag, draftRedealt): an evolution or a duo plays the legendary beat, any other card its rarity's;
+ *     while the KV_DraftRevealDebug Workspace string attribute parses (DRAFT_REVEAL_VIEW.debugAttribute, off by
+ *     default; display only: the faces stay the real cards) its beats replace those of the first cards (with the
+ *     rarity colours), the rest keep their own
  *     (every real offer always shows: the stick can select and confirm each one); reduced motion from the juice
  *     settings. Never for a draft that is never revealed (shared/play draftNeverRevealed: the tutorial ended, or a
  *     tutorial floor past TUTORIAL.lastFloor: the finished tutorial's floor 3 draft opens a frame before the tutorial
@@ -88,7 +98,7 @@ export class DraftRevealController implements OnStart, DraftRevealDriver {
 	private runCounter = NONE;
 	/** DRAFT_UI shows something (reset once when it stops). */
 	private drawn = false;
-	private debugRarities: RarityId[] | undefined;
+	private debugBeats: DraftBeatId[] | undefined;
 
 	constructor(
 		private readonly sim: SimController,
@@ -154,7 +164,7 @@ export class DraftRevealController implements OnStart, DraftRevealDriver {
 		// its timer back at 0; deal the new cards at once (the cover is long gone), so the confirm gate never waits on a
 		// reveal that would not begin.
 		if (open && me !== undefined && this.begun && !never && me.draftTicks < this.lastDraftTicks) {
-			this.begin(me, ctx.floor, settings.reducedMotion);
+			this.begin(ctx, me, settings.reducedMotion);
 		}
 		this.lastDraftTicks = open && me !== undefined ? me.draftTicks : 0;
 
@@ -170,7 +180,7 @@ export class DraftRevealController implements OnStart, DraftRevealDriver {
 		}
 		if (!open || (this.begun && ctx.floor !== this.floor)) this.begun = false;
 		if (open && me !== undefined && !this.begun && !never && this.stage.coverLifting()) {
-			this.begin(me, ctx.floor, settings.reducedMotion);
+			this.begin(ctx, me, settings.reducedMotion);
 		}
 		this.wasOpen = open;
 
@@ -183,27 +193,34 @@ export class DraftRevealController implements OnStart, DraftRevealDriver {
 		this.draw(open ? me : undefined);
 	}
 
-	private begin(me: LocalDraft, floor: number, reducedMotion: boolean): void {
+	private begin(ctx: RunContext, me: LocalDraft, reducedMotion: boolean): void {
 		const offers: number[] = [];
 		for (const b of me.draftOffers) offers.push(b);
-		// Every real offer shows; KV_DraftRevealDebug only overrides the first cards' rarities (display only).
-		const debug = this.debugRarities;
+		// Every real offer shows; KV_DraftRevealDebug only overrides the first cards' beats (display only).
+		const debug = this.debugBeats;
 		this.offers = offers;
 		this.count = math.min(offers.size(), DRAFT_OFFER_COUNT);
-		const shown: RarityId[] = [];
+		// docs/BUILDS.md BU9: each card's kind for the local player now (the deal), before the pick raises a level.
+		const kinds = draftCardKinds(ctx.run.state, ctx.localIndex, offers);
+		const beats: DraftBeatId[] = [];
+		const tones: DraftTone[] = [];
 		for (let i = 0; i < this.count; i++) {
-			// A card id: a boon, or with builds a duo (legendary look until BU9's frames; docs/BUILDS.md).
-			const real = cardDisplay(offers[i])?.rarity ?? Rarity.COMMON;
-			shown.push(debug !== undefined && i < debug.size() ? debug[i] : real);
+			const model = draftCardModel(offers[i], kinds[i]);
+			const override = debug !== undefined && i < debug.size() ? debug[i] : undefined;
+			beats.push(override ?? model?.beat ?? DraftBeat.COMMON);
+			tones.push(override !== undefined ? rarityTone(override) : model?.tone ?? "common");
+			DRAFT_UI.cards[i].model.write(model);
 		}
 		this.begun = true;
-		this.floor = floor;
+		this.floor = ctx.floor;
 		this.chosen = NONE;
-		this.reveal.begin(shown, reducedMotion);
+		this.reveal.begin(beats, reducedMotion);
+		DRAFT_UI.again.write(draftRedealt(ctx.run.state, ctx.localIndex));
 		for (let i = 0; i < DRAFT_OFFER_COUNT; i++) {
 			const ui = DRAFT_UI.cards[i];
-			ui.boon.write(i < this.count ? offers[i] : NONE);
-			ui.rarity.write(i < this.count ? shown[i] : Rarity.COMMON);
+			if (i >= this.count) ui.model.write(undefined);
+			ui.beat.write(i < this.count ? beats[i] : DraftBeat.COMMON);
+			ui.tone.write(i < this.count ? tones[i] : "common");
 		}
 	}
 
@@ -308,11 +325,11 @@ export class DraftRevealController implements OnStart, DraftRevealDriver {
 	private readDebug(): void {
 		const raw = Workspace.GetAttribute(DRAFT_REVEAL_VIEW.debugAttribute);
 		if (!typeIs(raw, "string") || raw === "") {
-			this.debugRarities = undefined;
+			this.debugBeats = undefined;
 			return;
 		}
-		this.debugRarities = parseDraftRevealDebug(raw);
-		if (this.debugRarities === undefined)
+		this.debugBeats = parseDraftRevealDebug(raw);
+		if (this.debugBeats === undefined)
 			warn(`[DraftReveal] ${DRAFT_REVEAL_VIEW.debugAttribute} = "${raw}" is not 1 to 3 of c / r / l; ignored`);
 	}
 }

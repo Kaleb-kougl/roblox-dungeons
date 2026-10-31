@@ -2,7 +2,7 @@ import React from "@rbxts/react";
 import { useSelector } from "@rbxts/react-reflex";
 import { selectBindings, selectInputDevice, selectSnapshot, selectToasts } from "client/store";
 import { shrineHint, keyDevice } from "shared/play";
-import { str } from "client/ui/theme";
+import { hudText, str } from "client/ui/theme";
 import { HUD_VIEW, PROGRESSION_STRINGS, PROGRESSION_VIEW, TOUCH_STRINGS } from "shared/view/hud";
 import { Panel, Text } from "./primitives";
 import { screenSkin } from "shared/view/menu";
@@ -11,7 +11,7 @@ const HALF = 0.5;
 
 /**
  * Top centre, M2 progression: the toasts of the last few seconds (boon taken, relic found, curse accepted, Second
- * Wind, Vampire Fang, a boost picked up (`{name}: {desc}`); the tutorial's callouts) and, while the player stands in an unused curse shrine's zone, the accept hint. Item names are
+ * Wind, Vampire Fang, a boost picked up (`{name}: {desc}`), with builds an evolution or a duo taken; the tutorial's callouts) and, while the player stands in an unused curse shrine's zone, the accept hint. Item names are
  * theme strings themselves (`<id>.name`).
  */
 export function ToastPanel() {
@@ -27,11 +27,14 @@ export function ToastPanel() {
 			color="uiAccent"
 			align={Enum.TextXAlignment.Center}
 			wrap={true}
-			text={str(t.key, {
-				name: t.nameKey !== undefined ? str(t.nameKey) : "",
-				desc: t.descKey !== undefined ? str(t.descKey) : "",
-				amount: t.amount ?? 0,
-			})}
+			text={hudText(
+				{ key: t.key, varKeys: t.varKeys },
+				{
+					name: t.nameKey !== undefined ? str(t.nameKey) : "",
+					desc: t.descKey !== undefined ? str(t.descKey) : "",
+					amount: t.amount ?? 0,
+				},
+			)}
 		/>
 	));
 	return (

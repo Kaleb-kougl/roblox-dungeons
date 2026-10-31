@@ -6,8 +6,7 @@
  * DraftOverlay (client/ui/hud) binds to it with no further logic. Presentation only; checked headlessly
  * (draftRevealView.spec.ts). Timings live in draftRevealConfig.ts; the card size stays PROGRESSION_VIEW's 240 x 150.
  */
-import { Rarity, type RarityId } from "shared/sim";
-import type { DraftRevealCardFrame, DraftRevealFrame } from "./draftReveal";
+import { DraftBeat, type DraftBeatId, type DraftRevealCardFrame, type DraftRevealFrame } from "./draftReveal";
 import { HUD_VIEW } from "./layout";
 import { PROGRESSION_VIEW } from "./progression";
 
@@ -91,10 +90,10 @@ export function draftRayAngle(k: number, beams: number): number {
 /** Which image a card shows: its back, the plain face (common) or the studded face (rare and legendary). */
 export type DraftSurface = "back" | "common" | "rare";
 
-/** The surface a card shows now: its back until the flip's midpoint (face < 0.5), then its rarity's face. */
-export function draftSurfaceOf(rarity: RarityId, face: number): DraftSurface {
+/** The surface a card shows now: its back until the flip's midpoint (face < 0.5), then its beat's face. */
+export function draftSurfaceOf(beat: DraftBeatId, face: number): DraftSurface {
 	if (face < HALF) return "back";
-	return rarity === Rarity.COMMON ? "common" : "rare";
+	return beat === DraftBeat.COMMON ? "common" : "rare";
 }
 
 /** A surface's theme ui image id (DRAFT_SKIN). */
@@ -125,8 +124,11 @@ export function draftBodyBox(surface: DraftSurface, hasArt: boolean): DraftBodyB
 }
 
 /** The name and rarity rows' downward nudge, reference px (DRAFT_REVEAL_VIEW.rareArtTextNudgePx; 0 on the flat card). */
-export function draftTextNudge(rarity: RarityId, rareArt: boolean): { readonly name: number; readonly rarity: number } {
-	if (!rareArt || rarity === Rarity.COMMON) return { name: 0, rarity: 0 };
+export function draftTextNudge(
+	beat: DraftBeatId,
+	rareArt: boolean,
+): { readonly name: number; readonly rarity: number } {
+	if (!rareArt || beat === DraftBeat.COMMON) return { name: 0, rarity: 0 };
 	return DRAFT_REVEAL_VIEW.rareArtTextNudgePx;
 }
 
@@ -140,9 +142,9 @@ export function draftSlotOffsetX(index: number, count: number): number {
 	return (index - (count - 1) * HALF) * pitch;
 }
 
-/** The face art of a rarity: common -> the plain panel; rare and legendary -> the studded panel. */
-export function draftFaceImageId(rarity: RarityId): string {
-	return rarity === Rarity.COMMON ? DRAFT_SKIN.common : DRAFT_SKIN.rare;
+/** The face art of a beat: common -> the plain panel; rare and legendary (evolution, duo) -> the studded panel. */
+export function draftFaceImageId(beat: DraftBeatId): string {
+	return beat === DraftBeat.COMMON ? DRAFT_SKIN.common : DRAFT_SKIN.rare;
 }
 
 /** 9-slice insets of a ui image (theme ImageRef.slice), art pixels. */
@@ -314,7 +316,7 @@ export function draftCardLook(
 	out.width = math.max(0, card.width);
 	out.selected = card.shown && selected;
 	out.scale = card.pop * card.stamp * (out.selected ? PROGRESSION_VIEW.selectedScale : 1);
-	out.surface = draftSurfaceOf(card.rarity, face);
+	out.surface = draftSurfaceOf(card.beat, face);
 	out.backAlpha = a * (1 - face);
 	out.backStrokeAlpha = thin ? 0 : out.backAlpha;
 	out.backFillAlpha = out.backAlpha * fill;

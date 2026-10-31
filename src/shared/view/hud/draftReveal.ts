@@ -4,9 +4,11 @@
  * (DR5) draws its frame with no further logic.
  *
  * API (one instance per client; every time is real, unpaused seconds):
- *   - `begin(rarities, reducedMotion)`: a new reveal of the local draft's cards, by OFFER index (1 to 3 rarities,
- *     shared/sim Rarity). Call it on the first frame the draft is open and the stage cover is fading or gone; t = 0
- *     is that moment. Replaces any running reveal. reducedMotion is fixed for the whole reveal.
+ *   - `begin(beats, reducedMotion)`: a new reveal of the local draft's cards, by OFFER index (1 to 3 DraftBeats: how
+ *     each card flips; a card's beat is its rarity's, except that a builds evolution or duo card takes the legendary
+ *     beat, docs/BUILDS.md BU9, buildHud.ts draftBeatFor). Call it on the first frame the draft is open and the stage
+ *     cover is fading or gone; t = 0 is that moment. Replaces any running reveal. reducedMotion is fixed for the whole
+ *     reveal.
  *   - `skip()`: the player pressed confirm during the reveal (DRD6, DraftRevealGate in shared/play): every card still
  *     face down flips at once over DRAFT_REVEAL.skipFlipSec with ONE flip cue; a legendary keeps its flash, burst,
  *     pop, sting and halo, but its charge (cues, tremble) stops and the hush is dropped; a pending music-dip request
@@ -36,7 +38,7 @@
  *       textAlpha   name / rarity / effect opacity (0 until the face lands)
  *       dim         darkening 0..1 (0.5 = half brightness: the others during a legendary charge)
  *       tremble     reference px X offset (the charging legendary back)
- *       glow        edge glow 0..1 in the card's rarity colour (rare stroke flare, legendary charge / halo pulse)
+ *       glow        edge glow 0..1 in the card's colour (rare stroke flare, legendary charge / halo pulse)
  *       eyes        the back's red eyes 0..1 (legendary charge; held after)
  *       flash       white flash over the card area 0..1 (legendary flare, pick stamp)
  *       burst       ray burst progress 0..1, or -1 (none); burstScale / burstAlpha to draw it
@@ -51,9 +53,21 @@
  * no rise, tremble, pop, burst, ray rotation, stamp scale or drop, no flash (the glow is already full at the flare);
  * every cue, the duck and the settle keep their times.
  */
-import { DRAFT_OFFER_COUNT, Rarity, type RarityId } from "shared/sim";
+import { DRAFT_OFFER_COUNT, Rarity } from "shared/sim";
 import { semitonesToSpeed } from "./comboConfig";
 import { DRAFT_REVEAL, DRAFT_REVEAL_FULL_TURN_DEG, DRAFT_REVEAL_SFX } from "./draftRevealConfig";
+
+/**
+ * How a card flips (docs/BUILDS.md BU9): COMMON alone in its turn, RARE alone with the chime, shine and stroke flare,
+ * LEGENDARY in the last beat with the charge, hush, flare and halo. The values are shared/sim Rarity's, so a boon's
+ * rarity is its beat; an evolution or a duo card plays the legendary beat (buildHud.ts draftBeatFor).
+ */
+export const DraftBeat = {
+	COMMON: Rarity.COMMON,
+	RARE: Rarity.RARE,
+	LEGENDARY: Rarity.LEGENDARY,
+} as const;
+export type DraftBeatId = (typeof DraftBeat)[keyof typeof DraftBeat];
 
 /** One sound to play this step. */
 export interface DraftRevealCue {
@@ -67,7 +81,8 @@ export interface DraftRevealCue {
 /** One card's look this step (by offer index). See the file header. */
 export interface DraftRevealCardFrame {
 	shown: boolean;
-	rarity: RarityId;
+	/** How the card flips; the face art follows it (common: the plain face, else the studded one). */
+	beat: DraftBeatId;
 	face: number;
 	width: number;
 	rise: number;
@@ -115,7 +130,7 @@ interface ScheduledCue extends DraftRevealCue {
 
 /** One card's timeline. */
 interface CardPlan {
-	rarity: RarityId;
+	beat: DraftBeatId;
 	legendary: boolean;
 	/** The flip (or crossfade) runs over [flipAt, flipAt + flipSec); it lands at flipAt + flipSec. */
 	flipAt: number;
@@ -152,11 +167,11 @@ function lerp(a: number, b: number, u: number): number {
  * The flip beats (DRD5, DRD7): each non-legendary card alone, left to right, then every legendary card in ONE beat.
  * `[c, l, r]` -> [[0], [2], [1]]; `[l, l, c]` -> [[2], [0, 1]].
  */
-export function revealOrder(rarities: ReadonlyArray<RarityId>): number[][] {
+export function revealOrder(cards: ReadonlyArray<DraftBeatId>): number[][] {
 	const beats: number[][] = [];
 	const legendaries: number[] = [];
-	for (let i = 0; i < rarities.size(); i++) {
-		if (rarities[i] === Rarity.LEGENDARY) legendaries.push(i);
+	for (let i = 0; i < cards.size(); i++) {
+		if (cards[i] === DraftBeat.LEGENDARY) legendaries.push(i);
 		else beats.push([i]);
 	}
 	if (legendaries.size() > 0) beats.push(legendaries);
@@ -212,26 +227,26 @@ export function chargeLadder(): ChargeHit[] {
 	return out;
 }
 
-/** Rarity letters of the KV_DraftRevealDebug attribute (DR6): `c` / `r` / `l` or the full names. */
-const DEBUG_RARITY: ReadonlyMap<string, RarityId> = new Map<string, RarityId>([
-	["c", Rarity.COMMON],
-	["common", Rarity.COMMON],
-	["r", Rarity.RARE],
-	["rare", Rarity.RARE],
-	["l", Rarity.LEGENDARY],
-	["legendary", Rarity.LEGENDARY],
+/** Beat letters of the KV_DraftRevealDebug attribute (DR6): `c` / `r` / `l` or the full names. */
+const DEBUG_BEAT: ReadonlyMap<string, DraftBeatId> = new Map<string, DraftBeatId>([
+	["c", DraftBeat.COMMON],
+	["common", DraftBeat.COMMON],
+	["r", DraftBeat.RARE],
+	["rare", DraftBeat.RARE],
+	["l", DraftBeat.LEGENDARY],
+	["legendary", DraftBeat.LEGENDARY],
 ]);
 
 /**
- * The KV_DraftRevealDebug attribute (`"c,l,r"`, `"l,l"`, `"r"`; spaces and case ignored) -> the rarities the next
+ * The KV_DraftRevealDebug attribute (`"c,l,r"`, `"l,l"`, `"r"`; spaces and case ignored) -> the beats the next
  * reveal plays, or undefined (empty, an unknown letter, or not 1..DRAFT_OFFER_COUNT entries).
  */
-export function parseDraftRevealDebug(text: string): RarityId[] | undefined {
+export function parseDraftRevealDebug(text: string): DraftBeatId[] | undefined {
 	const [compact] = text.lower().gsub("%s", "");
 	if (compact === "") return undefined;
-	const out: RarityId[] = [];
+	const out: DraftBeatId[] = [];
 	for (const token of compact.split(",")) {
-		const r = DEBUG_RARITY.get(token);
+		const r = DEBUG_BEAT.get(token);
 		if (r === undefined) return undefined;
 		out.push(r);
 	}
@@ -241,7 +256,7 @@ export function parseDraftRevealDebug(text: string): RarityId[] | undefined {
 function newCardFrame(): DraftRevealCardFrame {
 	return {
 		shown: false,
-		rarity: Rarity.COMMON,
+		beat: DraftBeat.COMMON,
 		face: 0,
 		width: 1,
 		rise: 0,
@@ -336,13 +351,13 @@ export class DraftReveal {
 		};
 	}
 
-	/** A new reveal of `rarities` (by offer index; at most DRAFT_OFFER_COUNT are used). */
-	begin(rarities: ReadonlyArray<RarityId>, reducedMotion: boolean): void {
+	/** A new reveal of cards flipping with `beats` (by offer index; at most DRAFT_OFFER_COUNT are used). */
+	begin(beats: ReadonlyArray<DraftBeatId>, reducedMotion: boolean): void {
 		const F = DRAFT_REVEAL.flip;
 		this.begun = true;
 		this.reduced = reducedMotion;
 		this.t = 0;
-		this.count = math.min(rarities.size(), DRAFT_OFFER_COUNT);
+		this.count = math.min(beats.size(), DRAFT_OFFER_COUNT);
 		this.plans.clear();
 		this.cues = [];
 		this.nextCue = 0;
@@ -354,13 +369,13 @@ export class DraftReveal {
 		this.chosen = NONE;
 		this.hasLegendary = false;
 
-		const used: RarityId[] = [];
-		for (let i = 0; i < this.count; i++) used.push(rarities[i]);
+		const used: DraftBeatId[] = [];
+		for (let i = 0; i < this.count; i++) used.push(beats[i]);
 		for (let i = 0; i < this.count; i++) {
-			const rarity = used[i];
+			const beat = used[i];
 			this.plans.push({
-				rarity,
-				legendary: rarity === Rarity.LEGENDARY,
+				beat,
+				legendary: beat === DraftBeat.LEGENDARY,
 				flipAt: 0,
 				flipSec: F.sec,
 				fromWidth: 1,
@@ -385,7 +400,7 @@ export class DraftReveal {
 				speed: semitonesToSpeed(semis),
 				volume: 1,
 			});
-			if (p.rarity === Rarity.RARE)
+			if (p.beat === DraftBeat.RARE)
 				this.cues.push({ at: lastLand, kind: "rare", card: i, id: DRAFT_REVEAL_SFX.rare, speed: 1, volume: 1 });
 			beat++;
 		}
@@ -459,7 +474,7 @@ export class DraftReveal {
 			p.fromFace = f;
 			p.flipAt = t;
 			p.flipSec = sec;
-			if (p.rarity === Rarity.RARE) rare = true;
+			if (p.beat === DraftBeat.RARE) rare = true;
 			if (p.legendary) legendary = true;
 		}
 		if (!any) return;
@@ -670,7 +685,7 @@ export class DraftReveal {
 			const p = this.plans[i];
 			const land = p.flipAt + p.flipSec;
 			c.shown = true;
-			c.rarity = p.rarity;
+			c.beat = p.beat;
 
 			// The deal.
 			const deal = clamp01((t - i * R.deal.staggerSec) / R.deal.sec);
@@ -725,7 +740,7 @@ export class DraftReveal {
 				}
 			} else {
 				c.dim = dim;
-				if (p.rarity === Rarity.RARE && t >= land) {
+				if (p.beat === DraftBeat.RARE && t >= land) {
 					const since = t - land;
 					c.glow = 1 - clamp01(since / R.rare.flareSec);
 					if (since < R.rare.shineSec) c.shine = since / R.rare.shineSec;
