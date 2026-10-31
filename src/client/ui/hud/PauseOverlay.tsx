@@ -28,6 +28,7 @@ import {
 	type PauseItem,
 } from "shared/view/menu";
 import { useHudActions, type HudActions } from "./actions";
+import { PauseBuild } from "./BuildList";
 import { PauseMap } from "./FullMapOverlay";
 import { MenuFit } from "./MenuFit";
 import { Divider, MenuButton, Panel, Row, Text } from "./primitives";
@@ -94,7 +95,8 @@ const SKIP_CONFIRM: ConfirmSpec = {
  * tutorial?"; Skip / Keep playing). With a gamepad the selection starts on the first button (Cancel / Keep playing
  * in a confirm). Under the buttons, the weapon-swap key (the HUD's swap hint hides after a few seconds,
  * docs/HUD_LAYOUT.md H5), the run's info line and any fallback notice (RunInfoLine: docs/HUD_LAYOUT.md H6,
- * the only place they show while a run is on). Solo: the full map left of the menu (PauseMap, docs/MINIMAP.md MD5).
+ * the only place they show while a run is on). Solo: the full map left of the menu (PauseMap, docs/MINIMAP.md MD5);
+ * solo and co-op: the local player's Build list right of it (PauseBuild, docs/BUILDS.md BU10).
  * Hidden while a panel is open and once the run is over (the run-over panel has the exits). The solo dim covers the
  * whole screen (ScreenDim); the panel is fitted into the safe area on touch (MenuFit; the ornament only with room).
  */
@@ -201,6 +203,7 @@ export function PauseOverlay() {
 		<frame key="PauseOverlay" Size={UDim2.fromScale(1, 1)} BackgroundTransparency={1} BorderSizePixel={0}>
 			{coop ? undefined : <ScreenDim key="Dim" name="PauseDim" transparency={HUD_VIEW.overlayTransparency} />}
 			{coop ? undefined : <PauseMap key="Map" />}
+			<PauseBuild key="Build" />
 			<MenuFit
 				ornament={screenOrnament("pause")}
 				render={(layout) => (

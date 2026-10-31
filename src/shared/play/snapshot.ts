@@ -95,6 +95,12 @@ export interface GameSnapshot {
 	readonly boons: ReadonlyArray<number>;
 	readonly relics: ReadonlyArray<number>;
 	readonly curses: ReadonlyArray<number>;
+	/**
+	 * Builds (docs/BUILDS.md BU10): the level of each owned boon, parallel to `boons` (empty without builds: the HUD
+	 * shows no levels), and the duos taken (Duo indices, in the order taken; empty without builds). The local player's.
+	 */
+	readonly boonLevels: ReadonlyArray<number>;
+	readonly duos: ReadonlyArray<number>;
 	/** The player stands in an unused curse shrine's zone (the HUD shows the accept hint). */
 	readonly atShrine: boolean;
 	/** Co-op spectating (docs/SPECTATE.md): the local player is dead and watches a teammate (the spectate bar shows). */
@@ -157,6 +163,8 @@ export const EMPTY_SNAPSHOT: GameSnapshot = table.freeze({
 	boons: table.freeze([]) as ReadonlyArray<number>,
 	relics: table.freeze([]) as ReadonlyArray<number>,
 	curses: table.freeze([]) as ReadonlyArray<number>,
+	boonLevels: table.freeze([]) as ReadonlyArray<number>,
+	duos: table.freeze([]) as ReadonlyArray<number>,
 	atShrine: false,
 	spectating: false,
 	spectateName: "",
@@ -232,6 +240,7 @@ export function takeSnapshot(state: Readonly<SimState>, extras: SnapshotExtras):
 	const bossDefeated = boss !== undefined && boss.alive === 0 && boss.phase > 0;
 	const score = state.score;
 	const mine = state.run?.players[me];
+	const build = state.builds?.players[me];
 	const drafting = mine !== undefined && mine.draftOpen !== 0;
 	const spectate = extras.spectate;
 	return {
@@ -278,6 +287,8 @@ export function takeSnapshot(state: Readonly<SimState>, extras: SnapshotExtras):
 		boons: mine !== undefined ? [...mine.boons] : NONE,
 		relics: mine !== undefined ? [...mine.relics] : NONE,
 		curses: mine !== undefined ? [...mine.curses] : NONE,
+		boonLevels: mine !== undefined && build !== undefined ? mine.boons.map((b) => build.levels[b] ?? 0) : NONE,
+		duos: build !== undefined ? [...build.duos] : NONE,
 		atShrine: extras.config !== undefined && atShrine(state, extras.config, me),
 		spectating: spectate !== undefined,
 		spectateName: spectate !== undefined ? spectate.name : "",
@@ -299,6 +310,7 @@ function listsEqual(a: ReadonlyArray<number>, b: ReadonlyArray<number>): boolean
 export function snapshotsEqual(a: GameSnapshot, b: GameSnapshot): boolean {
 	if (!listsEqual(a.draftOffers, b.draftOffers) || !listsEqual(a.boons, b.boons)) return false;
 	if (!listsEqual(a.relics, b.relics) || !listsEqual(a.curses, b.curses)) return false;
+	if (!listsEqual(a.boonLevels, b.boonLevels) || !listsEqual(a.duos, b.duos)) return false;
 	if (a.weapons.size() !== b.weapons.size()) return false;
 	for (let i = 0; i < a.weapons.size(); i++) if (a.weapons[i] !== b.weapons[i]) return false;
 	if (a.scorePoints.size() !== b.scorePoints.size()) return false;

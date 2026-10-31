@@ -3,7 +3,7 @@
  * client/controllers/render RunMarkerController): string keys, colour roles, key hints and layout numbers. Pure data
  * and helpers, checked headlessly (hud.spec.ts: every key exists in the placeholder pack).
  */
-import { BOONS, CURSES, DUOS, RARITY_NAMES, RELICS, boonMaxLevel, cardDisplay } from "shared/sim";
+import { BOONS, CURSES, DUOS, RARITY_NAMES, RELICS, boonMaxLevel, cardBoon, cardDisplay, cardDuo } from "shared/sim";
 import {
 	BOON_RARITY_ROLES,
 	BOOST_KINDS,
@@ -153,13 +153,22 @@ export interface ToastSpec {
 	/** `{desc}`: a theme string key itself (boost pickups). */
 	readonly descKey?: string;
 	readonly amount?: number;
+	/** More vars that are theme string keys themselves (builds: an evolution's `{boon}` / `{evo}`). */
+	readonly varKeys?: Readonly<Record<string, string>>;
 }
+
+/** What a draft pick was, from the sim's builds events (shared/play RunEventRecord.build): an evolution or a duo. */
+export type BuildTake = "evolved" | "duo";
 
 /**
  * What a run event shows as a toast (kinds: shared/play RunEventKind; for "fang" `index` is the half hearts healed,
  * for "boost" the Boost index).
  */
-export function toastFor(kind: "boon" | "relic" | "curse" | "secondWind" | "fang" | "boost", index: number): ToastSpec {
+export function toastFor(
+	kind: "boon" | "relic" | "curse" | "secondWind" | "fang" | "boost",
+	index: number,
+	build?: BuildTake,
+): ToastSpec {
 	switch (kind) {
 		case "boost": {
 			const k = BOOST_KINDS[index] ?? BOOST_KINDS[0];
@@ -169,9 +178,22 @@ export function toastFor(kind: "boon" | "relic" | "curse" | "secondWind" | "fang
 				descKey: boostStringKey(k, "desc"),
 			};
 		}
-		case "boon":
-			// `index` is the draft card taken: a boon, or with builds a duo (docs/BUILDS.md card ids).
+		case "boon": {
+			// `index` is the draft card taken: a boon, or with builds a duo (docs/BUILDS.md card ids); `build` says
+			// when the sim's builds events recorded the pick as an evolution or a duo (BU10).
+			const d = cardDuo(index);
+			if (build === "duo" && d >= 0)
+				return { key: PROGRESSION_STRINGS.toastDuo, nameKey: itemNameKey(DUOS[d].id) };
+			const b = cardBoon(index);
+			if (build === "evolved" && b >= 0) {
+				const id = BOONS[b].id;
+				return {
+					key: PROGRESSION_STRINGS.toastEvolved,
+					varKeys: { boon: itemNameKey(id), evo: boonEvoNameKey(id) },
+				};
+			}
 			return { key: PROGRESSION_STRINGS.toastBoon, nameKey: itemNameKey(cardDisplay(index)?.id ?? "") };
+		}
 		case "relic":
 			return { key: PROGRESSION_STRINGS.toastRelic, nameKey: itemNameKey(RELICS[index]?.id ?? "") };
 		case "curse":
