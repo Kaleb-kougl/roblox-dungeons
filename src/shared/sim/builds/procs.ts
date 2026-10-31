@@ -7,12 +7,14 @@
  * owner, ctx.procGen, the victim's slot and actor id) onto state.builds.procs, unless
  *   - the victim revives (def.stepDead: turrets) or is in PROC_INELIGIBLE_ARCHETYPES (the training dummy),
  *   - gen >= genMax (BUD5: a generation-3 proc would do nothing, so none is queued),
- *   - the owner left the run, or owns no on-kill effect (ON_KILL_BOONS; BU5 / BU6 widen hasOnKillEffect).
+ *   - the owner left the run, or owns no on-kill effect (ON_KILL_BOONS; BU6 widens hasOnKillEffect).
+ * Before the queue test, Jackpot (Bounty III, BU5) counts the kill (any generation; not a reviver's or the dummy's).
  * Withers, boss sweeps and debug kills call killActor directly and never get here.
  *
  * The queue (stepBuilds, inside stepCombat right after the player bullet collisions; the actor phase and stepAffixes ran
- * earlier in the tick): a party drops the procs of players who left, then the oldest min(procsPerTick, queued) procs
- * resolve in queue order, then leave the queue. Procs pushed while they resolve (kills by sparks) wait at the back for
+ * earlier in the tick): a party drops the procs of players who left, then the evolutions' pre-drain phase runs
+ * (./evolutions.ts stepEvolutions), then the oldest min(procsPerTick, queued) procs resolve in queue order and leave
+ * the queue, then Momentum (stepMomentum); all of it inside one effect budget session. Procs pushed while they resolve (kills by sparks) wait at the back for
  * the next tick, so a cascade ripples outward one generation per tick and nothing recurses. The rest are never dropped,
  * except by the floor change (endless.ts nextFloor: clearBuildProcs). A frozen draft tick never steps combat, so the
  * queue waits.
@@ -30,7 +32,11 @@ import { Boon } from "../progression/progressionData";
 import { buildLevel, type BuildPlayerState, type BuildProc, type BuildsState } from "./builds";
 import { PROC_INELIGIBLE_ARCHETYPES } from "./buildsData";
 import { beginEffectBudget, endEffectBudget } from "./effects";
+import { JACKPOT_KILLS } from "./effectsData";
+import { stepEvolutions, stepMomentum } from "./evolutions";
+import { isEvolved } from "./hooks";
 import { chainSpark, soulShards, volatileBurst } from "./onKill";
+import { scoreJackpot } from "../score/score";
 
 /** The boons a proc fires, in the order it fires them (boon index order). */
 export const ON_KILL_BOONS: ReadonlyArray<number> = [Boon.CHAIN_SPARK, Boon.VOLATILE, Boon.SOUL_SHARDS];
@@ -41,17 +47,38 @@ export function hasOnKillEffect(p: Readonly<BuildPlayerState>): boolean {
 	return false;
 }
 
-/** Actor `a` is about to die by player damage (damageActor; `def` its archetype): queue its proc (file comment). */
+/**
+ * Jackpot (Bounty III; BU5): the owner's eligible kill counts in `kills`; every JACKPOT_KILLS-th pays scoreJackpot
+ * (JACKPOT_POINTS x the floor, ScoreSource.JACKPOT) and pushes a BuildEvents jackpot pop at the corpse. Counts every
+ * kill a proc could come from (whatever its generation), never a reviver's or the dummy's.
+ */
+function jackpot(state: SimState, s: BuildsState, p: BuildPlayerState, owner: number, a: Readonly<ActorState>): void {
+	p.kills += 1;
+	if (p.kills < JACKPOT_KILLS) return;
+	p.kills -= JACKPOT_KILLS;
+	const points = scoreJackpot(state);
+	const e = s.events;
+	e.jackpotX.push(a.x);
+	e.jackpotZ.push(a.z);
+	e.jackpotOwner.push(owner);
+	e.jackpotPoints.push(points);
+}
+
+/**
+ * Actor `a` is about to die by player damage (damageActor; `def` its archetype): Jackpot counts it, then its proc is
+ * queued (file comment).
+ */
 export function buildsOnKill(ctx: SimCtx, a: Readonly<ActorState>, def: Readonly<ArchetypeDef>): void {
 	const state = ctx.state;
 	const s = state.builds;
 	if (s === undefined) return;
 	if (def.stepDead !== undefined || PROC_INELIGIBLE_ARCHETYPES.includes(def.id)) return;
-	const gen = ctx.procGen;
-	if (gen >= s.config.genMax) return;
 	const owner = ctx.playerIndex;
 	const p = s.players[owner];
-	if (p === undefined || hasLeft(state, owner) || !hasOnKillEffect(p)) return;
+	if (p === undefined || hasLeft(state, owner)) return;
+	if (isEvolved(p, Boon.BOUNTY)) jackpot(state, s, p, owner, a);
+	const gen = ctx.procGen;
+	if (gen >= s.config.genMax || !hasOnKillEffect(p)) return;
 	s.procs.push({ x: a.x, z: a.z, owner, gen, slot: ctx.actors.indexOf(a), id: a.id });
 }
 
@@ -88,15 +115,19 @@ export function stepBuilds(ctx: SimCtx): void {
 	if (s === undefined) return;
 	const procs = s.procs;
 	if (state.party !== undefined && procs.size() > 0) dropLeavers(state, procs);
-	const n = jsMin(s.config.procsPerTick, procs.size());
-	if (n <= 0) return;
 	beginEffectBudget(state);
+	// 1. The evolutions before the drain (./evolutions.ts: Ricochet splits, Soul Swarm steering, novas, Thrill Seeker).
+	stepEvolutions(ctx, s);
+	// 2. The drain.
+	const n = jsMin(s.config.procsPerTick, procs.size());
 	for (let k = 0; k < n; k++) resolveProc(ctx, s, procs[k]);
-	endEffectBudget();
 	// Dequeue the n resolved; the procs their kills pushed move up to the front.
 	const total = procs.size();
 	for (let k = n; k < total; k++) procs[k - n] = procs[k];
 	for (let k = 0; k < n; k++) procs.pop();
+	// 3. Momentum, after the drain (this tick's combo feeds, spark kills included).
+	stepMomentum(ctx, s);
+	endEffectBudget();
 	ctx.actingPlayer(0);
 	ctx.procGen = 0;
 }

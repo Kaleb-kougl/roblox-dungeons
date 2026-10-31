@@ -77,8 +77,10 @@ export const SOUL_SWARM_TURN = 0.25;
 export const SOUL_SHARD: BurstSpec = { count: 1, spread: 0, speed: 14, life: 0.8, damage: 2, kind: BulletKind.SHARD };
 /** Soul Swarm's shard: the same, piercing. */
 export const SOUL_SWARM_SHARD: BurstSpec = { ...SOUL_SHARD, pierce: SOUL_SWARM_PIERCE };
-/** Per level: the shard fired (I / II straight; III Soul Swarm's piercing shard, its steering is BU5's). */
+/** Per level: the shard fired (I / II straight; III Soul Swarm's piercing shard, which steers: ./evolutions.ts). */
 export const SOUL_SHARD_SPECS: ReadonlyArray<BurstSpec> = [SOUL_SHARD, SOUL_SHARD, SOUL_SWARM_SHARD];
+/** Soul Swarm: a shard steers toward the nearest living enemy within this range of the shard (BUD11). */
+export const SOUL_SWARM_RANGE = SOUL_SHARDS_RANGE;
 
 // --- Embers (Fire Arrows, Blazing Trail: stationary floor flames) -------------------------------------------
 
@@ -102,6 +104,90 @@ export const THRILL_SEEKER_RING: BurstSpec = {
 	damage: VOLATILE_DAMAGE,
 	kind: BulletKind.SPARK_BOLT,
 };
+
+// --- Evolutions (level III, docs/BUILDS.md "Evolutions (level III)", BU5; ./evolutions.ts, ./execute.ts) ------
+
+// Storm Crown is CHAIN_SPARK_HOPS / CHAIN_SPARK_DAMAGE's III entry plus the fork (CHAIN_SPARK_FORK_*) above;
+// Cataclysm is VOLATILE_BURSTS[2] (pierce CATACLYSM_PIERCE); Soul Swarm is SOUL_SHARD_SPECS[2] + SOUL_SWARM_TURN.
+
+/** Executioner (Sharpened III): a hit that leaves a non-boss enemy at or below this percent of its max hp kills it. */
+export const EXECUTIONER_HP_PERCENT = 20;
+
+/** Flurry (Swift Strikes III): every sword finisher releases this crescent along the swing (5 @ 0.5, a web shape). */
+export const FLURRY_SPEED = 12;
+export const FLURRY_LIFE = 0.35;
+export const FLURRY_DAMAGE = 1;
+export const FLURRY_CRESCENT: BurstSpec = {
+	count: 5,
+	spread: 0.5,
+	speed: FLURRY_SPEED,
+	life: FLURRY_LIFE,
+	damage: FLURRY_DAMAGE,
+	kind: BulletKind.SPARK_BOLT,
+};
+/** Flurry: every FLURRY_ARROW_EVERY-th stream arrow of the bow is FLURRY_ARROW_COUNT arrows @ FLURRY_ARROW_SPREAD (3 @ 0.12, a web shape). */
+export const FLURRY_ARROW_EVERY = 6;
+export const FLURRY_ARROW_COUNT = 3;
+export const FLURRY_ARROW_SPREAD = 0.12;
+
+/**
+ * Ricochet (Piercing Arrows III): a bow arrow whose last hit (no pierce left: the hit that ends it) kills splits into
+ * RICOCHET_ARROWS arrows aimed at the nearest living enemies within RICOCHET_RANGE of the split (as Soul Shards aim).
+ * The split arrows are effect bolts: the stream arrow's speed and damage, a shorter life.
+ */
+export const RICOCHET_ARROWS = 2;
+/** The weapon whose arrows ricochet (its payload source is its weapon index + 1). */
+export const RICOCHET_WEAPON_ID = "weapon.bow";
+export const RICOCHET_RANGE = 8 * TILE_SIZE;
+/** The bow's stream arrow speed (weapons/defs/bow.ts BOW_DATA.speed) and damage (BOW_DATA.damage). */
+export const RICOCHET_SPEED = 16;
+export const RICOCHET_DAMAGE = 1;
+export const RICOCHET_LIFE = 0.5;
+export const RICOCHET_ARROW: BurstSpec = {
+	count: 1,
+	spread: 0,
+	speed: RICOCHET_SPEED,
+	life: RICOCHET_LIFE,
+	damage: RICOCHET_DAMAGE,
+	kind: BulletKind.SPARK_BOLT,
+};
+
+/** Lionheart (Hearty III): a PERFECT room clear heals this many half hearts (up to the maximum). */
+export const LIONHEART_HEAL_HALF_HEARTS = 1;
+
+/**
+ * Novas (Overflowing: Deep Flask III on a flask drink; Bulwark: Warding III when an armor pip breaks): a full-circle
+ * sweep (melee.ts sweepArc with NOVA_HALF_ANGLE_COS) around the player erasing enemy bullets with the guard's goo rules
+ * (goo erased quietly), no guard points and no parry feed.
+ */
+export const OVERFLOWING_NOVA_RADIUS = 3 * TILE_SIZE;
+export const BULWARK_NOVA_RADIUS = 2.5 * TILE_SIZE;
+/** sweepArc's half-angle cosine for a full circle: below -1, so the cone test (dot >= halfCos x dist) always holds. */
+export const NOVA_HALF_ANGLE_COS = -2;
+/** BuildEvents.novaKind values. */
+export const NovaKind = {
+	OVERFLOWING: 0,
+	BULWARK: 1,
+} as const;
+
+/**
+ * Momentum (Lingering III): each combo tier crossing upward (x2 .. x5: tenths MOMENTUM_TIER_FIRST x COMBO_DENOMINATOR
+ * .. MOMENTUM_TIER_LAST x COMBO_DENOMINATOR) fires `tier` straight shards (SOUL_SHARD, gen 0) from the player at the
+ * nearest living enemies within SOUL_SHARDS_RANGE (Soul Shards' aim; no Soul Shards needed).
+ */
+export const MOMENTUM_TIER_FIRST = 2;
+export const MOMENTUM_TIER_LAST = 5;
+
+/** Jackpot (Bounty III): every JACKPOT_KILLS-th kill by the player pays score/scoreData.ts JACKPOT_POINTS x the floor. */
+export const JACKPOT_KILLS = 15;
+
+/** BuildEvents.flurryKind values. */
+export const FlurryKind = {
+	/** A finisher's crescent of bolts. */
+	CRESCENT: 0,
+	/** A stream arrow fired as 3. */
+	ARROWS: 1,
+} as const;
 
 /** The bullet kinds of build effects (BU3: the per-player effect budget counts live player bullets of these kinds). */
 export const EFFECT_BULLET_KINDS: ReadonlyArray<number> = [

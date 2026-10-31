@@ -19,6 +19,7 @@
 import { secondsToTicks } from "../../../playerData";
 import { movePlayer } from "../../../player";
 import { sweepArc, type ArcActorHit, type ArcEraseSink } from "../melee";
+import { buildsOnFinisher } from "../../../builds/evolutions";
 import { registerWeapon } from "../registry";
 import type { WeaponData, WeaponSlotState } from "../types";
 import { altPressed } from "./altButton";
@@ -163,7 +164,7 @@ function resetCombo(v: number[]): void {
 function swing(ctx: SimCtx, v: number[], n: number): void {
 	const p = ctx.player;
 	if (n === SWORD_FINISHER) {
-		sweepArc(
+		const hits = sweepArc(
 			ctx,
 			p.x,
 			p.z,
@@ -177,6 +178,8 @@ function swing(ctx: SimCtx, v: number[], n: number): void {
 			undefined,
 			SWORD_DATA.finisherDamage, // breakables take the base damage (docs/DECOR.md D4)
 		);
+		// Builds (docs/BUILDS.md BU5, opt-in): the finisher hook (Flurry's crescent).
+		if (ctx.state.builds !== undefined) buildsOnFinisher(ctx, hits);
 		v[SWORD_V_STEP] = 0;
 		v[SWORD_V_BUSY] = attackTicks(ctx.state, ctx.playerIndex, SWORD_DATA.finisherRecoveryTicks);
 	} else {

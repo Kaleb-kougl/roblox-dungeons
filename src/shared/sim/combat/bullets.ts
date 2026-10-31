@@ -107,6 +107,11 @@ export interface BulletSimulation {
 	writeStateHash(out: number[]): void;
 	/** Sets a live bullet's payload (no-op for a free slot). */
 	setPayload(i: number, payload: number): void;
+	/**
+	 * Roblox port (docs/BUILDS.md BU5, Soul Swarm's steering): sets a live bullet's x / z velocity (y kept; no-op for a
+	 * free slot). Velocity is already hashed (writeStateHash), so the hash layout is unchanged.
+	 */
+	setVelocity(i: number, x: number, z: number): void;
 	/** Spawns `pattern()` at `origin`; returns how many spawned (a full pool drops the rest). */
 	fireAt(origin: Readonly<Vec3>, pattern: BulletPattern, emitterId?: number): number;
 	/** One past the highest slot used since the pool was last empty (0 when empty). For renderers. */
@@ -470,6 +475,13 @@ class SimulationCore implements BulletSimulation {
 	setPayload(i: number, payload: number): void {
 		if (!(this.slotToDense[i] >= 0)) return;
 		this.payload[i] = payload;
+	}
+
+	setVelocity(i: number, x: number, z: number): void {
+		if (!(this.slotToDense[i] >= 0)) return;
+		const v = this.vel[i];
+		v.x = x;
+		v.z = z;
 	}
 
 	// ---- Hashing -----------------------------------------------------------------------------------

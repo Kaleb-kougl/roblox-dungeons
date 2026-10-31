@@ -14,7 +14,7 @@ import { cloneCombatState, createCombatState, startCombat, type CombatState } fr
 import type { SimConfig } from "./step";
 import { cloneEndlessState, createEndlessState, type EndlessState } from "./endless";
 import { ENDLESS_FIRST_FLOOR } from "shared/dungeon";
-import { cloneScoreState, createScoreState, type ScoreState } from "./score/score";
+import { addBuildScoreSources, cloneScoreState, createScoreState, type ScoreState } from "./score/score";
 import { cloneRunState, createRunState } from "./progression/progression";
 import { refreshRunMods, type RunState } from "./progression/runMods";
 import { cloneParty, createPartyState, partySize, playerAt, type PartyState } from "./party";
@@ -353,7 +353,11 @@ export function createSimState(
 	// Endless runs: boons, relics and curses (floor 1's pedestals and shrine). No rng.
 	if (firstFloor !== undefined) state.run = createRunState(world.encounter, partySize(state));
 	// Builds (docs/BUILDS.md): an empty build per player. No rng.
-	if (config.builds !== undefined) state.builds = createBuildsState(config.builds, partySize(state));
+	if (config.builds !== undefined) {
+		state.builds = createBuildsState(config.builds, partySize(state));
+		// The build-only score sources (BU5: Jackpot), so they hash only in builds runs.
+		if (state.score !== undefined) addBuildScoreSources(state.score);
+	}
 	return state;
 }
 

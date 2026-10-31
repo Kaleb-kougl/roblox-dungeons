@@ -10,8 +10,10 @@
  *   levels           one per Boon index (BOON_COUNT): 0 = not owned, 1..boonMaxLevel. RunPlayerState.boons keeps the
  *                    distinct boons in the order taken (level I pushes there), so every existing reader still works
  *   duos             duo indices, in the order taken
- *   grazes / kills / arrows / bigHits   counters for the evolutions and duos that count (BU5 / BU6: Thrill Seeker,
- *                    Jackpot, Flurry, Storm Blade, Close Call); 0 until those rules exist
+ *   grazes / kills / arrows / bigHits   counters for the evolutions and duos that count: BU5 grazes (Thrill
+ *                    Seeker: grazes toward the next ring), kills (Jackpot: kills toward the next pay), arrows (Flurry:
+ *                    stream arrows toward the next triple); each counts only while its boon is evolved. bigHits: BU6
+ *   bulwarkPending   (BU5, appended) armor pips broken whose Bulwark nova has not been released yet
  *   draftsLeft       deals left in the open draft, the one on screen included: 1 after a floor, 2 after a boss floor
  *                    (BUD4); a confirm with draftsLeft > 1 re-deals (./cards.ts) instead of closing. 0 while closed
  * and for the world: `procs`, the kill queue (BU3, ./procs.ts: { x, z, owner, gen, slot, id } per kill, oldest first).
@@ -47,6 +49,8 @@ export interface BuildPlayerState {
 	bigHits: number;
 	/** Deals left in the open draft (the one on screen included); 0 while no draft is open. */
 	draftsLeft: number;
+	/** Bulwark (BU5): armor pips broken whose nova stepBuilds has not released yet (./hooks.ts buildsOnArmorBreak). */
+	bulwarkPending: number;
 }
 
 /** One queued kill (BU3). Every field hashed. */
@@ -99,6 +103,57 @@ export interface BuildEvents {
 	shardFired: number[];
 	/** Effect bullets the effect budget (or a full pool) refused this tick; combat.dropped counts them too. */
 	effectDropped: number;
+	// --- BU5 (evolutions). Parallel lists per group, one entry per event, pushed in resolution order. ---
+	/** Parallel to the spark lists (one entry per segment): 0 a hop, 1 a Storm Crown fork (from the hop's start). */
+	sparkFork: number[];
+	/**
+	 * Novas (Overflowing: a flask drink; Bulwark: an armor pip broke): the centre (the player when released), the
+	 * radius (world units), the owner, NovaKind, and the enemy bullets erased (goo included).
+	 */
+	novaX: number[];
+	novaZ: number[];
+	novaRadius: number[];
+	novaOwner: number[];
+	novaKind: number[];
+	novaErased: number[];
+	/** Executioner kills: the enemy's position, the credited player. */
+	execX: number[];
+	execZ: number[];
+	execOwner: number[];
+	/** Phantom Step: per enemy bullet erased by a rolling player (goo erased quietly, not listed), where, and who. */
+	phantomX: number[];
+	phantomZ: number[];
+	phantomOwner: number[];
+	/** Jackpot pops: the corpse, the owner, the points paid (ScoreSource.JACKPOT). */
+	jackpotX: number[];
+	jackpotZ: number[];
+	jackpotOwner: number[];
+	jackpotPoints: number[];
+	/** Lionheart heals: the player and the half hearts restored (only heals that restored anything). */
+	lionPlayer: number[];
+	lionHealed: number[];
+	/** Momentum volleys (>= 1 shard spawned): the player's position, the owner, the tier crossed (2..5), shards spawned. */
+	momentumX: number[];
+	momentumZ: number[];
+	momentumOwner: number[];
+	momentumTier: number[];
+	momentumFired: number[];
+	/** Thrill Seeker rings (>= 1 bolt spawned): the player's position, the owner, bolts spawned. */
+	thrillX: number[];
+	thrillZ: number[];
+	thrillOwner: number[];
+	thrillFired: number[];
+	/** Flurry: the origin, the owner, FlurryKind (crescent / arrows), bullets spawned (crescent: bolts; arrows: 3). */
+	flurryX: number[];
+	flurryZ: number[];
+	flurryOwner: number[];
+	flurryKind: number[];
+	flurryFired: number[];
+	/** Ricochet splits (>= 1 arrow spawned): where the arrow ended, the owner, arrows spawned. */
+	ricochetX: number[];
+	ricochetZ: number[];
+	ricochetOwner: number[];
+	ricochetFired: number[];
 }
 
 /** BuildEvents' lists (every field but effectDropped), for the clear and the clone. */
@@ -123,6 +178,43 @@ const BUILD_EVENT_LISTS = [
 	"shardOwner",
 	"shardGen",
 	"shardFired",
+	"sparkFork",
+	"novaX",
+	"novaZ",
+	"novaRadius",
+	"novaOwner",
+	"novaKind",
+	"novaErased",
+	"execX",
+	"execZ",
+	"execOwner",
+	"phantomX",
+	"phantomZ",
+	"phantomOwner",
+	"jackpotX",
+	"jackpotZ",
+	"jackpotOwner",
+	"jackpotPoints",
+	"lionPlayer",
+	"lionHealed",
+	"momentumX",
+	"momentumZ",
+	"momentumOwner",
+	"momentumTier",
+	"momentumFired",
+	"thrillX",
+	"thrillZ",
+	"thrillOwner",
+	"thrillFired",
+	"flurryX",
+	"flurryZ",
+	"flurryOwner",
+	"flurryKind",
+	"flurryFired",
+	"ricochetX",
+	"ricochetZ",
+	"ricochetOwner",
+	"ricochetFired",
 ] as const;
 
 /** SimState.builds. */
@@ -140,7 +232,7 @@ export interface BuildsState {
 function newPlayer(): BuildPlayerState {
 	const levels: number[] = [];
 	for (let b = 0; b < BOON_COUNT; b++) levels.push(0);
-	return { levels, duos: [], grazes: 0, kills: 0, arrows: 0, bigHits: 0, draftsLeft: 0 };
+	return { levels, duos: [], grazes: 0, kills: 0, arrows: 0, bigHits: 0, draftsLeft: 0, bulwarkPending: 0 };
 }
 
 function emptyEvents(): BuildEvents {
@@ -166,6 +258,43 @@ function emptyEvents(): BuildEvents {
 		shardGen: [],
 		shardFired: [],
 		effectDropped: 0,
+		sparkFork: [],
+		novaX: [],
+		novaZ: [],
+		novaRadius: [],
+		novaOwner: [],
+		novaKind: [],
+		novaErased: [],
+		execX: [],
+		execZ: [],
+		execOwner: [],
+		phantomX: [],
+		phantomZ: [],
+		phantomOwner: [],
+		jackpotX: [],
+		jackpotZ: [],
+		jackpotOwner: [],
+		jackpotPoints: [],
+		lionPlayer: [],
+		lionHealed: [],
+		momentumX: [],
+		momentumZ: [],
+		momentumOwner: [],
+		momentumTier: [],
+		momentumFired: [],
+		thrillX: [],
+		thrillZ: [],
+		thrillOwner: [],
+		thrillFired: [],
+		flurryX: [],
+		flurryZ: [],
+		flurryOwner: [],
+		flurryKind: [],
+		flurryFired: [],
+		ricochetX: [],
+		ricochetZ: [],
+		ricochetOwner: [],
+		ricochetFired: [],
 	};
 }
 
@@ -238,7 +367,7 @@ export function cardKind(state: Readonly<SimState>, playerIndex: number, card: n
 //   procs.length; per proc BUILD_PROC_FIELDS
 
 /** Scalar BuildPlayerState fields after the two lists, in hash order. Append only. */
-export const BUILD_PLAYER_SCALARS = ["grazes", "kills", "arrows", "bigHits", "draftsLeft"] as const;
+export const BUILD_PLAYER_SCALARS = ["grazes", "kills", "arrows", "bigHits", "draftsLeft", "bulwarkPending"] as const;
 
 /** Per proc, in hash order. Append only. */
 export const BUILD_PROC_FIELDS = ["x", "z", "owner", "gen", "slot", "id"] as const;

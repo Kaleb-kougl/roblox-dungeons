@@ -18,9 +18,11 @@
  *                        piercing AND it broke the piece] -> first live actor in range, slot order (ctx.damageActor,
  *                        consume); piercing ones pass through actors (piercingBulletHit). M2 Sharpened (endless
  *                        runs): the payload damage x 1.25 when it hits (playerHitDamage)
- *   6b. builds (only with state.builds, docs/BUILDS.md BU3): the proc queue (sim/builds procs.ts stepBuilds: on-kill
- *      effects; sparks damage here, bursts / shards spawn here and first move next tick). A player bullet's hit binds
- *      ctx.procGen from its payload source (an effect bullet's kill procs one generation on)
+ *   6b. builds (only with state.builds, docs/BUILDS.md BU3 / BU5): sim/builds procs.ts stepBuilds: the evolutions'
+ *      pre-drain phase (Ricochet splits, Soul Swarm steering, novas, Thrill Seeker), the proc queue (on-kill effects;
+ *      sparks damage here, bursts / shards spawn here and first move next tick), Momentum. A player bullet's hit binds
+ *      ctx.procGen from its payload source (an effect bullet's kill procs one generation on). In 6, Phantom Step
+ *      (Slippery III) erases enemy bullets over a rolling owner, and a piercing hit calls buildsOnPierceHit
  *   7. contact damage: the first live actor with data.contactDamage > 0 touching the player (stepContactDamage)
  *
  * Exact against every golden run, with and without actors (run-full-1337 / run-boss-1337 included).
@@ -70,6 +72,7 @@ import { scoreBulletVisit } from "../score/score";
 import { stepAffixes } from "../affixes/stepAffixes";
 import { stepBuilds } from "../builds/procs";
 import { killGenOfSource } from "../builds/buildsData";
+import { buildsOnPierceHit, phantomStepErased, phantomStepOn } from "../builds/evolutions";
 import { damageBreakable, enemyBulletHitsBreakable, type BreakablesState } from "../breakables/breakables";
 import { breakableSlotAt } from "../breakables/cells";
 import { BreakableSource } from "../breakables/breakablesData";
@@ -310,6 +313,23 @@ let grazeOn = false;
 let grazeR2 = 0;
 /** Builds are on for this tick's state (playerBulletHit binds ctx.procGen from the payload source). */
 let buildsOn = false;
+/**
+ * Builds (docs/BUILDS.md BU5, Phantom Step): per player, enemy bullets inside their hit circle are erased this tick
+ * (sim/builds evolutions.ts phantomStepOn: Slippery III, rolling with i-frames). phantomAny: any of them.
+ */
+const phantom: boolean[] = [];
+let phantomAny = false;
+
+function computePhantom(state: SimState): void {
+	phantomAny = false;
+	phantom.clear();
+	if (state.builds === undefined) return;
+	for (let k = 0; k < partySize(state); k++) {
+		const on = phantomStepOn(state, k);
+		phantom.push(on);
+		if (on) phantomAny = true;
+	}
+}
 
 function enemyBulletHit(i: number, pos: Readonly<Vec3>, payload: number): boolean {
 	if (hitBlocked !== undefined && hitBlocked(pos.x, pos.z)) return true;
@@ -324,6 +344,11 @@ function enemyBulletHit(i: number, pos: Readonly<Vec3>, payload: number): boolea
 	const inHit = d2 < ENEMY_HIT_R2_BY_KIND[kind];
 	if (grazeOn && !goo) scoreBulletVisit(ctx.state, ctx.state.combat.enemyBullets, i, payload, d2, inHit, grazeR2);
 	if (!inHit) return false;
+	// Builds (BU5): Phantom Step erases it (no hit, no score, no parry feed; goo quietly).
+	if (phantomAny && phantom[SOLO_PLAYER]) {
+		phantomStepErased(ctx.state, SOLO_PLAYER, goo, pos.x, pos.z);
+		return true;
+	}
 	// Consumed only if the hit landed: i-frames, post-hit invulnerability, death and 0-damage bullets pass through.
 	return ctx.hurtPlayer(BulletPayload.get(payload, "damage"), BulletPayload.get(payload, "source") - 1);
 }
@@ -365,6 +390,11 @@ function enemyBulletHitParty(i: number, pos: Readonly<Vec3>, payload: number): b
 		const dx = pos.x - p.x;
 		const dz = pos.z - p.z;
 		if (dx * dx + dz * dz >= hitR2) continue;
+		// Builds (BU5): Phantom Step erases it over the first rolling owner it overlaps (index order).
+		if (phantomAny && phantom[k]) {
+			phantomStepErased(state, k, goo, pos.x, pos.z);
+			return true;
+		}
 		if (ctx.hurtPlayerAt(k, BulletPayload.get(payload, "damage"), BulletPayload.get(payload, "source") - 1)) {
 			return true;
 		}
@@ -401,6 +431,8 @@ function piercingBulletHit(i: number, pos: Readonly<Vec3>, payload: number): boo
 		const ez = pz - a.z;
 		if (lastHit !== 0 && ex * ex + ez * ez < r2) continue; // already inside at the start of the tick
 		damageActor(ctx, a, damage);
+		// Builds (BU5): the pierce-hit hook (Ricochet: an arrow's last hit that kills splits).
+		if (buildsOn) buildsOnPierceHit(ctx, a, pos.x, pos.z, BulletPayload.get(payload, "source"), pierce === 0);
 		if (pierce === 0) return true;
 		pierce--;
 		hit = k + 1;
@@ -501,6 +533,7 @@ export function stepCombat(
 	grazeOn = state.score !== undefined;
 	grazeR2 = runMods(state, SOLO_PLAYER).grazeR2;
 	buildsOn = state.builds !== undefined;
+	if (buildsOn) computePhantom(state);
 	if (party) {
 		c.enemyBullets.forEachActive(enemyBulletHitParty);
 		c.playerBullets.forEachActive(playerBulletHitParty);
@@ -515,6 +548,7 @@ export function stepCombat(
 	if (buildsOn) {
 		ctx.procGen = 0;
 		buildsOn = false;
+		phantomAny = false;
 		// 6b. Builds (opt-in): the proc queue (on-kill effects of this tick's kills and the carry-over).
 		stepBuilds(ctx);
 	}

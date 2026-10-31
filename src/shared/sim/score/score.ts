@@ -66,6 +66,7 @@ import { partySize, playerAt, presentPlayerCount } from "../party";
 import { AffixKind, encounterCost } from "shared/dungeon";
 import { affixKillPercent } from "../affixes/affixes";
 import { AFFIX_PAR_COST } from "../affixes/affixesData";
+import { buildsOnGraze, buildsOnPerfectRoom } from "../builds/hooks";
 import { SOLO_PLAYER, runMods, teamComboCutDivisorMultiplier, teamComboWindowTicks } from "../progression/runMods";
 import {
 	BOSS_FINAL_PHASE,
@@ -90,11 +91,13 @@ import {
 	GRAZE_MARGIN,
 	GRAZE_POINTS,
 	GUARD_CANCEL_POINTS,
+	JACKPOT_POINTS,
 	KILL_POINTS,
 	ROOM_CLEAR_POINTS,
 	ROOM_PAR_BASE_TICKS,
 	ROOM_PAR_TICKS_PER_COST,
 	ROOM_PERFECT_POINTS,
+	BUILD_SCORE_SOURCE_NAMES,
 	SCORE_SOURCE_COUNT,
 	SCORE_SOURCE_NAMES,
 	ScoreSource,
@@ -639,6 +642,27 @@ export function scoreBreakable(state: SimState, kind: number): number {
 	return award(state, s, ScoreSource.BREAKABLES, base * scoreFloor(state));
 }
 
+/**
+ * Builds runs (docs/BUILDS.md BU5, state.ts createSimState): appends the build-only sources (BUILD_SCORE_SOURCE_NAMES:
+ * JACKPOT) to points / counts, so they hash only in builds runs. Idempotent.
+ */
+export function addBuildScoreSources(s: ScoreState): void {
+	const total = SCORE_SOURCE_COUNT + BUILD_SCORE_SOURCE_NAMES.size();
+	while (s.points.size() < total) s.points.push(0);
+	while (s.counts.size() < total) s.counts.push(0);
+}
+
+/**
+ * Jackpot hook (sim/builds procs.ts, Bounty III): JACKPOT_POINTS x the floor into ScoreSource.JACKPOT, through the
+ * usual multipliers; never feeds the combo, touches no room record. Returns the points (0 without scoring or without
+ * the builds sources).
+ */
+export function scoreJackpot(state: SimState): number {
+	const s = state.score;
+	if (s === undefined || s.points.size() <= ScoreSource.JACKPOT) return 0;
+	return award(state, s, ScoreSource.JACKPOT, JACKPOT_POINTS * scoreFloor(state));
+}
+
 /** Sword guard hook: `n` enemy bullets erased by this tick's guard sweep. One award per bullet. */
 export function scoreGuardCancels(state: SimState, n: number): void {
 	const s = state.score;
@@ -754,6 +778,8 @@ export function scoreBulletVisit(
 	e.grazeVZ.push(vel.z);
 	e.grazePlayer.push(grazer);
 	feedCombo(state, s);
+	// Builds (docs/BUILDS.md BU5, opt-in): the graze counters (Thrill Seeker; released in stepBuilds).
+	if (state.builds !== undefined) buildsOnGraze(state, grazer);
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -797,7 +823,11 @@ function clearRoom(state: SimState, s: ScoreState, r: RoomScore): void {
 	r.cleared = 1;
 	s.events.roomsCleared += 1;
 	award(state, s, ScoreSource.ROOMS, ROOM_CLEAR_POINTS);
-	if (s.hitsTaken === r.hitsAtEngage) award(state, s, ScoreSource.PERFECT, ROOM_PERFECT_POINTS);
+	if (s.hitsTaken === r.hitsAtEngage) {
+		award(state, s, ScoreSource.PERFECT, ROOM_PERFECT_POINTS);
+		// Builds (docs/BUILDS.md BU5, opt-in): Lionheart heals on a PERFECT clear.
+		if (state.builds !== undefined) buildsOnPerfectRoom(state);
+	}
 	const under = r.parTicks - (state.tick - r.engageTick);
 	if (under > 0) award(state, s, ScoreSource.FAST, under * FAST_POINTS_PER_TICK);
 }
@@ -902,11 +932,16 @@ export function writeScoreHash(s: Readonly<ScoreState>, out: number[]): void {
 	}
 }
 
+/** The dump name of source index `k` (SCORE_SOURCE_NAMES, then BUILD_SCORE_SOURCE_NAMES). */
+function sourceName(k: number): string {
+	return k < SCORE_SOURCE_COUNT ? SCORE_SOURCE_NAMES[k] : BUILD_SCORE_SOURCE_NAMES[k - SCORE_SOURCE_COUNT];
+}
+
 /** Dump names for writeScoreHash, same order (`score.total`, `score.points.kills`, `score.rooms[0].cleared`, ...). */
 export function scoreHashNames(s: Readonly<ScoreState>, out: string[]): void {
 	for (const f of SCORE_HASH_FIELDS) out.push(`score.${f}`);
-	for (const n of SCORE_SOURCE_NAMES) out.push(`score.points.${n}`);
-	for (const n of SCORE_SOURCE_NAMES) out.push(`score.counts.${n}`);
+	for (let k = 0; k < s.points.size(); k++) out.push(`score.points.${sourceName(k)}`);
+	for (let k = 0; k < s.counts.size(); k++) out.push(`score.counts.${sourceName(k)}`);
 	out.push("score.scoredReviverIds.length");
 	for (let k = 0; k < s.scoredReviverIds.size(); k++) out.push(`score.scoredReviverIds[${k}]`);
 	out.push("score.rooms.length");

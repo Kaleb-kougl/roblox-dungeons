@@ -30,6 +30,7 @@ import { runOnKill } from "../../progression/runMods";
 import { dropsOnKill } from "../../drops/drops";
 import { affixAbsorb, affixHoldsCorpse, affixesOnFree, affixesOnKill, affixesOnSpawn } from "../../affixes/affixes";
 import { buildsOnKill } from "../../builds/procs";
+import { buildsExecute } from "../../builds/execute";
 import { ACTOR_HASH_FIELDS, ACTOR_SCRATCH_SLOTS, AiState, NO_KIND, type ActorState } from "./types";
 
 function zeros(n: number): number[] {
@@ -205,6 +206,8 @@ export function damageActor(ctx: SimCtx, a: ActorState, amount: number): number 
 	if (dmg > 0 && ctx.state.affixes !== undefined) dmg = affixAbsorb(ctx.state, a, dmg);
 	const cap = def.data.damageCapPerSecond;
 	if (cap !== undefined && dmg > 0) dmg = applyDamageCap(a, ctx.tick, dmg, cap);
+	// Builds (docs/BUILDS.md BU5, opt-in): Executioner turns a hit that leaves a non-boss enemy at <= 20 % into a kill.
+	if (ctx.state.builds !== undefined && dmg > 0) dmg = buildsExecute(ctx, a, def, dmg);
 	if (dmg > a.hp) dmg = a.hp; // overkill does not count
 	if (dmg > 0) {
 		// The tutorial's block lesson (tutorial.ts guard lock): a held actor keeps TUTORIAL_GUARD_HOLD_HP until a block.

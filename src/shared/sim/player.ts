@@ -42,6 +42,7 @@ import {
 import type { PlayerState, SimState } from "./state";
 import type { SimConfig } from "./step";
 import { weaponMoveMultiplier } from "./combat/weapons/weapons";
+import { buildsOnArmorBreak } from "./builds/hooks";
 import { SOLO_PLAYER, rollIframeTicks, runOnPlayerHit, runSecondWind, scalePercent } from "./progression/runMods";
 import { absorbWithAegis, boostWalkPercent, boostsOnPlayerDied } from "./drops/boostMods";
 import type { WeaponsState } from "./combat/weapons/types";
@@ -282,8 +283,11 @@ export function damagePlayer(
 
 	// Aegis (docs/BOOSTS.md): its pip absorbs the whole hit before armor and hearts.
 	if (!absorbWithAegis(state, playerIndex)) {
-		if (p.armor > 0) p.armor--;
-		else p.hearts = jsMax(0, p.hearts - halfHearts);
+		if (p.armor > 0) {
+			p.armor--;
+			// Builds (docs/BUILDS.md BU5, opt-in): Bulwark's nova (released by stepBuilds).
+			if (state.builds !== undefined) buildsOnArmorBreak(state, playerIndex);
+		} else p.hearts = jsMax(0, p.hearts - halfHearts);
 	}
 	state.events.playerHits += 1;
 	p.hurtTicks = HURT_INVULN_TICKS;

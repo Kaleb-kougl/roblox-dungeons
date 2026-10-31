@@ -36,6 +36,9 @@ import {
 	LEGENDARY_MAX_LEVEL,
 	PERCENT,
 	PLAYER_BULLET_CAPACITY,
+	SCORE_HASH_FIELDS,
+	SCORE_SOURCE_COUNT,
+	SCORE_SUBSYSTEM,
 	Rarity,
 	Rng,
 	SOLO_PLAYER,
@@ -58,6 +61,7 @@ import {
 	grantBoon,
 	grantCard,
 	grantRelic,
+	groupValues,
 	hashLayout,
 	hashState,
 	isBuildSource,
@@ -267,12 +271,12 @@ describe("opt-in state and the builds hash group (BU1)", () => {
 			expect(layout.names.size()).toBe(layout.values.size());
 			expect(layout.names[layout.names.size() - 1]).toBe("builds.procs.length");
 			expect(layout.values).toEqual(writeHashFields(s, []));
-			// 1 + per player (1 + 15 levels + 1 duos length + 5 scalars) + 1 procs length.
-			expect(g.finish - g.start).toBe(1 + n * (1 + BOON_COUNT + 1 + 5) + 1);
+			// 1 + per player (1 + 15 levels + 1 duos length + 6 scalars: BU5 appended bulwarkPending) + 1 procs length.
+			expect(g.finish - g.start).toBe(1 + n * (1 + BOON_COUNT + 1 + 6) + 1);
 		}
 	});
 
-	it("without SimConfig.builds nothing is created or hashed; with it ONLY the appended last group differs", () => {
+	it("without SimConfig.builds nothing is created or hashed; with it only the appended last group and the score's build-only source differ", () => {
 		const setup = buildEndlessRunConfig(SEED);
 		const spawn = setup.spawn!;
 		const withConfig = setup.config;
@@ -285,10 +289,25 @@ describe("opt-in state and the builds hash group (BU1)", () => {
 			const lb = hashLayout(b);
 			expect(la.groups.map((g) => g.name).includes(BUILDS_SUBSYSTEM)).toBe(false);
 			const last = lb.groups[lb.groups.size() - 1];
-			expect([last.name, last.start]).toEqual([BUILDS_SUBSYSTEM, la.values.size()]);
-			const prefix: number[] = [];
-			for (let i = 0; i < la.values.size(); i++) prefix.push(lb.values[i]);
-			expect([t, ...prefix]).toEqual([t, ...la.values]);
+			expect(last.name).toBe(BUILDS_SUBSYSTEM);
+			expect(lb.groups.size()).toBe(la.groups.size() + 1);
+			// BU5: a builds run's score group also holds the build-only sources (Jackpot) after the points and after
+			// the counts (0 here); every other group is identical.
+			for (let gi = 0; gi < la.groups.size(); gi++) {
+				const ga = la.groups[gi];
+				const gb = lb.groups[gi];
+				const va = groupValues(la, ga);
+				const want: number[] = [];
+				if (ga.name === SCORE_SUBSYSTEM) {
+					const f = SCORE_HASH_FIELDS.size();
+					const c = SCORE_SOURCE_COUNT;
+					for (let i = 0; i < va.size(); i++) {
+						want.push(va[i]);
+						if (i === f + c - 1 || i === f + 2 * c - 1) want.push(0);
+					}
+				} else for (const v of va) want.push(v);
+				expect([t, gb.name, ...groupValues(lb, gb)]).toEqual([t, ga.name, ...want]);
+			}
 			const input = frame(t % 40 < 20 ? 1 : -1, 0.3);
 			step(a, input, without);
 			step(b, input, withConfig);

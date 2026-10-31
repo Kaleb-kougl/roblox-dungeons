@@ -178,6 +178,8 @@ export const BuildEffect = {
 	RICOCHET: 5,
 	MOMENTUM: 6,
 	CLOSE_CALL: 7,
+	/** Soul Swarm (Soul Shards III): its shards steer (BU5), told apart from straight shards by this source. */
+	SOUL_SWARM: 8,
 } as const;
 export type BuildEffectId = (typeof BuildEffect)[keyof typeof BuildEffect];
 
