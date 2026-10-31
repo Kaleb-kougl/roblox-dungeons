@@ -77,7 +77,8 @@ export function roomBudget(d: Dungeon): number {
 	return n > 0 ? math.min(ROOM_CAP, math.floor(ENEMY_BUDGET / n)) : 0;
 }
 
-function isOpen(d: Dungeon, t: TileXZ): boolean {
+/** True when tile `t` (world tile centre) and all 8 of its neighbours are FLOOR (no wall, pillar or void touches it). */
+export function isOpenTile(d: Dungeon, t: TileXZ): boolean {
 	const gx = worldToGrid(t.x);
 	const gy = worldToGrid(t.z);
 	for (let oy = -1; oy <= 1; oy++)
@@ -221,7 +222,7 @@ export function planRoom(d: Dungeon, room: EncounterRoom, rng: DungeonRng): Plan
  * leaves MIN_TILES. Row order. Draws nothing from the rng.
  */
 export function roomSpawnTiles(d: Dungeon, room: EncounterRoom, tools: RoomTools): TileXZ[] {
-	let open = tools.floor().filter((t) => isOpen(d, t));
+	let open = tools.floor().filter((t) => isOpenTile(d, t));
 	if (open.size() < MIN_TILES) open = [...tools.floor()]; // odd tiny room: any floor tile
 	const doors = roomDoorways(d, room.id);
 	const clear = open.filter((t) => doors.every((door) => dist2(door, t) >= DOOR_CLEARANCE * DOOR_CLEARANCE));

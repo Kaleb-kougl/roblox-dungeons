@@ -411,6 +411,86 @@ way new archetypes use only the shared choke points (`ctx.telegraph`, `enemyCool
   densest census room), CLAUDE.md decision log entry, `THIRD_PARTY_NOTICES.md` (LoP slime and the new Demons rigs are
   already covered; list them). No PROVENANCE row (no web source). **Verify:** owner sign-off.
 
+### EV5 census (as built, 2026-10-30)
+
+Built: `EndlessRoomKind.fromFloor` / `maxPerRoom`; `spendEncounterBudget(rng, budget, floor, cap?)` and
+`populateEndlessRoom(room, tools, budget, floor)` (floor threaded from `endlessRoomSpawns`) skip a kind below its floor
+or at its room maximum in both the dearest scan and the weighted pick (`roomKindOpen`, no draw). Appended after bruiser:
+`imp` (floor 2, weight 2), `slime` (4, 1), `summoner` (6, 1, `SUMMONERS_PER_ROOM` 1); unlock floors are
+`ROOM_KIND_UNLOCK_FLOOR` in `endlessData.ts`. Wide bodies: `WIDE_BODY_KINDS` (`slime`, r 0.55; checked against the
+sim radii in `roomPool.spec.ts`) only take a tile whose 8 neighbours are FLOOR (`isOpenTile`). `roomSpawnTiles` already
+gives only such tiles except in a tiny room's fallback (fewer than 8 open tiles), and breakables keep 1.5 tiles from
+every planned spawn, so the filter changes no candidate list and no draw on normal rooms; with no open tile left a wide
+body ends the room's placement ("runs out of tiles"). Not covered: Hulking radii (applied after placement; a Hulking
+bruiser, 0.6, could only touch a wall in a fallback room) and the sim's safe-spawn move in a fallback room.
+
+Lock (`dungeon/roomPool.lock.spec.ts`, recorded before the change): floor 1, run seeds 1-200, party 1-4 is digest for
+digest identical; floors 2-6 (seeds 1-40, solo) all differ from their pre-EV5 digests. Census specs:
+`roomPool.census.spec.ts` (floors 1-10), `roomPool.census.deep.spec.ts` (11-20), `roomPool.census.party.spec.ts`
+(party 4). Means per populated room (combat / elite rooms other than the entrance and the boss room); "spent" is the
+placed enemies' encounter cost against the room budget; "affixed" is the share of affix-eligible planned spawns that
+`assignAffixes` stamps (elite rooms only below floor 11, which is why it doubles there).
+
+Solo, run seeds 1-60:
+
+| floor | rooms | enemies / room | swarmer | sniper | bruiser | imp | slime | summoner | spent / budget | max summoners | affixed |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| 1 | 452 | 4.27 | 2.51 | 1.27 | 0.48 | 0.00 | 0.00 | 0.00 | 6.50 / 6.50 (100 %) | 0 | 0.0 % |
+| 2 | 465 | 4.69 | 2.23 | 0.96 | 0.45 | 1.05 | 0.00 | 0.00 | 7.59 / 7.91 (96 %) | 0 | 0.0 % |
+| 3 | 444 | 5.19 | 2.27 | 1.17 | 0.55 | 1.19 | 0.00 | 0.00 | 8.67 / 9.10 (95 %) | 0 | 0.0 % |
+| 4 | 456 | 5.57 | 2.34 | 1.18 | 0.48 | 1.13 | 0.45 | 0.00 | 9.73 / 10.31 (94 %) | 0 | 8.5 % |
+| 5 | 457 | 6.15 | 2.43 | 1.36 | 0.57 | 1.25 | 0.54 | 0.00 | 10.98 / 11.69 (94 %) | 0 | 9.6 % |
+| 6 | 507 | 6.89 | 2.55 | 1.38 | 0.62 | 1.33 | 0.54 | 0.46 | 12.85 / 12.85 (100 %) | 1 | 7.8 % |
+| 7 | 513 | 7.40 | 2.66 | 1.40 | 0.64 | 1.53 | 0.66 | 0.50 | 13.95 / 14.24 (98 %) | 1 | 8.2 % |
+| 8 | 499 | 8.00 | 2.78 | 1.58 | 0.76 | 1.64 | 0.71 | 0.54 | 15.23 / 15.67 (97 %) | 1 | 8.9 % |
+| 9 | 510 | 8.37 | 2.81 | 1.64 | 0.83 | 1.69 | 0.87 | 0.53 | 16.16 / 16.73 (97 %) | 1 | 7.2 % |
+| 10 | 509 | 8.87 | 2.60 | 1.94 | 0.84 | 1.99 | 0.90 | 0.60 | 17.49 / 18.19 (96 %) | 1 | 8.7 % |
+| 11 | 570 | 9.64 | 2.66 | 2.15 | 0.99 | 2.13 | 1.08 | 0.64 | 19.33 / 19.33 (100 %) | 1 | 14.9 % |
+| 12 | 566 | 9.90 | 2.38 | 2.33 | 1.08 | 2.32 | 1.12 | 0.67 | 20.29 / 20.57 (99 %) | 1 | 14.9 % |
+| 13 | 569 | 10.31 | 2.11 | 2.53 | 1.17 | 2.60 | 1.20 | 0.69 | 21.58 / 22.01 (98 %) | 1 | 15.6 % |
+| 14 | 561 | 10.63 | 2.04 | 2.66 | 1.31 | 2.66 | 1.26 | 0.70 | 22.49 / 23.06 (98 %) | 1 | 15.0 % |
+| 15 | 561 | 11.10 | 1.99 | 2.59 | 1.49 | 2.77 | 1.49 | 0.77 | 23.97 / 24.67 (97 %) | 1 | 15.6 % |
+| 16 | 624 | 11.90 | 2.10 | 2.84 | 1.65 | 2.93 | 1.59 | 0.79 | 25.73 / 25.73 (100 %) | 1 | 15.3 % |
+| 17 | 616 | 12.03 | 1.68 | 3.09 | 1.76 | 2.95 | 1.74 | 0.81 | 26.69 / 26.98 (99 %) | 1 | 14.8 % |
+| 18 | 627 | 12.27 | 1.53 | 2.97 | 1.87 | 3.11 | 1.96 | 0.82 | 27.66 / 28.08 (98 %) | 1 | 14.3 % |
+| 19 | 614 | 12.71 | 1.39 | 3.19 | 2.10 | 3.06 | 2.15 | 0.81 | 29.10 / 29.67 (98 %) | 1 | 15.4 % |
+| 20 | 626 | 12.93 | 1.28 | 3.19 | 2.26 | 3.11 | 2.24 | 0.85 | 29.92 / 30.64 (98 %) | 1 | 14.5 % |
+
+Party of 4, run seeds 1-15:
+
+| floor | rooms | enemies / room | swarmer | sniper | bruiser | imp | slime | summoner | spent / budget | max summoners | affixed |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| 1 | 113 | 8.15 | 4.16 | 2.96 | 1.03 | 0.00 | 0.00 | 0.00 | 13.17 / 13.50 (98 %) | 0 | 0.0 % |
+| 2 | 115 | 9.31 | 3.90 | 2.24 | 1.09 | 2.08 | 0.00 | 0.00 | 15.81 / 16.43 (96 %) | 0 | 0.0 % |
+| 3 | 115 | 10.03 | 2.99 | 2.96 | 1.24 | 2.84 | 0.00 | 0.00 | 18.32 / 18.64 (98 %) | 0 | 0.0 % |
+| 4 | 112 | 10.21 | 2.56 | 2.58 | 1.35 | 2.48 | 1.23 | 0.00 | 20.43 / 21.09 (97 %) | 0 | 6.9 % |
+| 5 | 112 | 11.14 | 1.79 | 3.04 | 1.64 | 3.12 | 1.54 | 0.00 | 23.67 / 23.82 (99 %) | 0 | 7.2 % |
+| 6 | 125 | 11.66 | 1.90 | 3.02 | 1.39 | 2.84 | 1.65 | 0.87 | 25.34 / 25.98 (98 %) | 1 | 5.3 % |
+| 7 | 130 | 12.66 | 1.47 | 3.26 | 2.06 | 2.98 | 2.08 | 0.81 | 28.80 / 28.93 (100 %) | 1 | 6.4 % |
+| 8 | 133 | 13.41 | 1.19 | 3.08 | 2.66 | 3.20 | 2.47 | 0.83 | 31.59 / 32.07 (99 %) | 1 | 7.7 % |
+| 9 | 128 | 13.95 | 0.96 | 3.70 | 2.30 | 3.47 | 2.63 | 0.88 | 32.75 / 33.73 (97 %) | 1 | 4.7 % |
+| 10 | 134 | 14.46 | 0.69 | 2.94 | 4.86 | 2.86 | 2.33 | 0.78 | 36.19 / 37.14 (97 %) | 1 | 6.5 % |
+| 11 | 142 | 14.63 | 0.58 | 2.53 | 5.03 | 2.51 | 3.15 | 0.84 | 37.69 / 39.50 (95 %) | 1 | 14.0 % |
+| 12 | 141 | 14.87 | 0.40 | 1.94 | 5.89 | 1.76 | 4.00 | 0.87 | 40.09 / 41.73 (96 %) | 1 | 12.7 % |
+| 13 | 136 | 15.19 | 0.30 | 1.41 | 7.12 | 1.27 | 4.27 | 0.82 | 42.29 / 45.66 (93 %) | 1 | 15.5 % |
+| 14 | 136 | 15.52 | 0.40 | 0.61 | 7.39 | 0.68 | 5.56 | 0.88 | 44.47 / 46.88 (95 %) | 1 | 13.4 % |
+| 15 | 139 | 16.00 | 0.83 | 0.00 | 8.60 | 0.00 | 5.73 | 0.83 | 46.33 / 50.61 (92 %) | 1 | 13.6 % |
+| 16 | 154 | 16.00 | 0.00 | 0.00 | 16.00 | 0.00 | 0.00 | 0.00 | 48.00 / 53.19 (90 %) | 0 | 15.3 % |
+| 17 | 153 | 16.00 | 0.00 | 0.00 | 16.00 | 0.00 | 0.00 | 0.00 | 48.00 / 55.37 (87 %) | 0 | 13.8 % |
+| 18 | 153 | 16.00 | 0.00 | 0.00 | 16.00 | 0.00 | 0.00 | 0.00 | 48.00 / 57.30 (84 %) | 0 | 13.2 % |
+| 19 | 154 | 16.00 | 0.00 | 0.00 | 16.00 | 0.00 | 0.00 | 0.00 | 48.00 / 60.62 (79 %) | 0 | 13.8 % |
+| 20 | 154 | 16.00 | 0.00 | 0.00 | 16.00 | 0.00 | 0.00 | 0.00 | 48.00 / 62.87 (76 %) | 0 | 13.6 % |
+
+Readings: no kind before its floor and never two summoners in a room (both checked over every census room); a room
+holds about one imp per 4-5 enemies from floor 2. Budget use stays as before: below 100 % only by a fractional
+budget's remainder (elite x1.5, the per-floor 1.2) and the odd room that runs out of tiles. **Open (owner call, not
+changed in EV5):** once a room's budget passes `ENDLESS_ROOM_ACTOR_CAP` x 3 (48: for a party of 4 elite rooms from
+floor 10 and every room from floor 16; solo elite rooms from floor 23), every slot's "need" exceeds the dearest cost,
+so the spender's no-draw fallback buys the FIRST cost-3 kind every time: 16 bruisers, no oozes or summoners (this
+saturation predates EV5; before it the room was also 16 bruisers). A fix that leaves floor 1 alone: when two or more
+open kinds tie for dearest, pick among them by weight with one draw (floor 1 never reaches the fallback, so the lock
+spec would still hold; summoners stay capped at 1).
+
 ## Edge cases
 
 - **Co-op.** Each actor already targets the nearest living player; blink safety checks every living player; the party

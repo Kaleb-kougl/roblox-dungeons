@@ -1,7 +1,8 @@
 // Endless room pool lock (docs/ENEMY_VARIANTS.md EV5): a digest of every deferred room spawn (room id, kind, tile)
-// that endlessRoomSpawns gives. Recorded BEFORE the room pool learned fromFloor / maxPerRoom and the new kinds
-// (imp from floor 2, slime from 4, summoner from 6, EVD2). Floor 1 must spend draw for draw as before for every run
-// seed and party size; deeper floors are pinned too, informationally (they change once the pool holds new kinds).
+// that endlessRoomSpawns gives. The floor 1 digests were recorded BEFORE the room pool learned fromFloor / maxPerRoom
+// and the new kinds (imp from floor 2, slime from 4, summoner from 6, EVD2) and must never move: floor 1 spends draw
+// for draw as before for every run seed and party size. Deeper floors are pinned informationally: each differs from
+// its pre-EV5 digest (the new kinds join), and the as-built digest is pinned to catch later drift.
 import { describe, expect, it } from "@rbxts/jest-globals";
 import { imul } from "shared/jsmath";
 import { endlessFloorParams, endlessRoomSpawns, generateDungeon, type ActorSpawn } from "shared/dungeon";
@@ -47,16 +48,25 @@ describe("endless room pool lock (EV5)", () => {
 		]);
 	});
 
-	it("floors 2-6, run seeds 1-40, solo: pre-EV5 digests (informational)", () => {
-		const got: string[] = [];
-		for (let floor = 2; floor <= 6; floor++) got.push(digests(floor, 1, 40, [1])[0]);
-		for (const line of got) print(`[room pool lock] ${line}`);
-		expect(got).toEqual([
+	it("floors 2-6, run seeds 1-40, solo: every floor differs from its pre-EV5 digest, pinned as built (informational)", () => {
+		// Before EV5 (commit f3e92ca); the new kinds join from floor 2 (imp), so every one of these floors moves.
+		const before = [
 			"floor 2 party 1: 1517 spawns, a3403803",
 			"floor 3 party 1: 1659 spawns, 6f75d8da",
 			"floor 4 party 1: 1897 spawns, de42a458",
 			"floor 5 party 1: 2051 spawns, 96505152", // check-asset-ids: allow (FNV-1a digest)
 			"floor 6 party 1: 2651 spawns, cd348b55",
+		];
+		const got: string[] = [];
+		for (let floor = 2; floor <= 6; floor++) got.push(digests(floor, 1, 40, [1])[0]);
+		for (const line of got) print(`[room pool lock] ${line}`);
+		for (let i = 0; i < got.size(); i++) expect(got[i]).never.toBe(before[i]);
+		expect(got).toEqual([
+			"floor 2 party 1: 1458 spawns, 16d8c4d9",
+			"floor 3 party 1: 1557 spawns, 57452b5c",
+			"floor 4 party 1: 1692 spawns, ef3fc224",
+			"floor 5 party 1: 1830 spawns, ecb0f584",
+			"floor 6 party 1: 2281 spawns, 1cde5ea7",
 		]);
 	});
 });
