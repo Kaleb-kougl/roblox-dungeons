@@ -28,8 +28,9 @@ export type EnqueueOutcome = "queued" | "replaced" | "kept";
 
 const RATE_KEY = "writes";
 
-function jobKey(job: PostJob): string {
-	return `${job.board}:${job.userId}`;
+/** One queue slot per player, board and scope (`solo:alltime:7`, `solo:d303_r1:7`). */
+export function postJobKey(job: Pick<PostJob, "board" | "scope" | "userId">): string {
+	return `${job.board}:${job.scope}:${job.userId}`;
 }
 
 export class LeaderboardWriteQueue {
@@ -44,7 +45,7 @@ export class LeaderboardWriteQueue {
 		this.limiter = new SlidingWindowLimiter<string>(rate.count, rate.windowSeconds);
 	}
 
-	/** Queues a write; a queued write for the same player and board keeps only the higher value. */
+	/** Queues a write; a queued write for the same player, board and scope keeps only the higher value. */
 	enqueue(job: PostJob, now: number): EnqueueOutcome {
 		return this.put({ job, attempts: 0, notBefore: now });
 	}
@@ -91,7 +92,7 @@ export class LeaderboardWriteQueue {
 	}
 
 	private put(q: QueuedPost): EnqueueOutcome {
-		const key = jobKey(q.job);
+		const key = postJobKey(q.job);
 		const existing = this.byKey.get(key);
 		if (existing !== undefined) {
 			if (existing.job.value >= q.job.value) return "kept";

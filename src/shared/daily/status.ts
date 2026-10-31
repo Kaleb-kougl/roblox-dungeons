@@ -7,9 +7,68 @@ import { DAILY, DAILY_CLIENT } from "./config";
 import { dailyLabel, dailyResetsAt } from "./day";
 
 /**
- * `dailyStatus`. Only today's seed is ever sent (tomorrow's stays on the server, DSD8). Later phases add optional
- * fields here (`mine`: this player's best today per board, `podium`: yesterday's top 3), so readers must not assume
- * the shape is closed.
+ * Where an entry stands on a daily board (DS6): `rank` only when exact (inside the top rows read), `percentile` only
+ * from DAILY.minEntrantsForPercentile entrants (DSD15), `total` (entrants, from the histogram or a board shorter than
+ * the top rows) when known. Beyond the top rows there is no rank, only the estimated percentile.
+ */
+export interface DailyStanding {
+	/** 1-based, exact (the entry is inside the top LEADERBOARD_TOP_COUNT rows). */
+	rank?: number;
+	/** "Top N %": ceil(100 x rank / total) in [1, 100], the rank estimated beyond the top rows. */
+	percentile?: number;
+	/** Entrants on the board (estimate: the histogram lags up to a minute). */
+	total?: number;
+}
+
+/** A player's entry on a daily board: score and floor decoded from the ordered value, and where it stands. */
+export interface DailyMineEntry extends DailyStanding {
+	score: number;
+	floor: number;
+}
+
+/** This player's entries today (`dailyStatus.mine`), per board; a board without an entry is absent. */
+export interface DailyMine {
+	solo?: DailyMineEntry;
+	coop?: DailyMineEntry;
+}
+
+/** One row of yesterday's podium. */
+export interface DailyPodiumEntry {
+	userId: number;
+	name: string;
+	score: number;
+	floor: number;
+}
+
+/** Yesterday's podium (DS8): the top DAILY.podiumSize of yesterday's solo board and the caller's final entry. */
+export interface DailyPodium {
+	/** Yesterday's day index and shown number. */
+	day: number;
+	label: number;
+	/** Highest first; fewer than DAILY.podiumSize when fewer played. */
+	top: DailyPodiumEntry[];
+	/** The caller's entry on yesterday's solo board, with its final rank / percentile; absent if they did not play. */
+	mine?: DailyMineEntry;
+}
+
+/**
+ * A daily run's outcome on its board (`RunFinishVerdict.daily`, per recipient), for accepted daily runs. `posted`:
+ * the recipient's entry write completed (the board holds this run or a better one of theirs); `improved`: this run
+ * raised their entry; `previous`: their entry before it; the standing is their entry's after the write.
+ */
+export interface DailyRunResult extends DailyStanding {
+	/** The board's day (the run's start day, DSD5) and ruleset (DSD11). */
+	day: number;
+	ruleset: number;
+	posted: boolean;
+	improved: boolean;
+	previous?: { score: number; floor: number };
+}
+
+/**
+ * `dailyStatus`. Only today's seed is ever sent (tomorrow's stays on the server, DSD8). `mine` and `podium` come
+ * from the daily boards (absent while unknown: Studio without API access, an outage, nothing posted), so readers must
+ * not assume the shape is closed.
  */
 export interface DailyStatus {
 	/** Day index (0 = 2026-01-01 UTC). */
@@ -22,6 +81,10 @@ export interface DailyStatus {
 	ruleset: number;
 	/** Unix seconds (UTC) of the next midnight, when this Daily ends (compare with Workspace:GetServerTimeNow()). */
 	resetsAt: number;
+	/** This player's entries today (per board, with rank / percentile); absent when unknown. */
+	mine?: DailyMine;
+	/** Yesterday's podium (top 3 solo and the caller's final entry); absent when unknown. */
+	podium?: DailyPodium;
 }
 
 /** The status of `day` whose seed is `seed`, under the current ruleset. */

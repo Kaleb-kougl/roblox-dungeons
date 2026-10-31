@@ -4,7 +4,8 @@ import { HttpService, Players, RunService } from "@rbxts/services";
 import { dailyClockNow, dailySeed } from "server/config";
 import { serverLogger } from "server/log";
 import { Events } from "server/network";
-import { partyContributors, type LeaderboardMember } from "shared/leaderboard";
+import { DAILY_VERDICT, DAILY_WORLD_KIND, type DailyRunResult } from "shared/daily";
+import { boardForParty, dailyRunResult, partyContributors, type LeaderboardMember } from "shared/leaderboard";
 import { LobbyRunTracker, type LobbyRunStart } from "shared/lobby";
 import type { LeaderboardPostStatus, RunFinishVerdict } from "shared/network";
 import type { RunRecordsResult } from "shared/records";
@@ -42,6 +43,7 @@ import {
 	LockstepSession,
 	type LockstepStepResult,
 } from "shared/lockstep";
+import { DailyService } from "./DailyService";
 import { LeaderboardService } from "./LeaderboardService";
 import { OnboardingService } from "./OnboardingService";
 import { RecordsService } from "./RecordsService";
@@ -65,9 +67,20 @@ interface SessionMeta {
 
 const NOT_LEFT = -1;
 
-/** `verdict` with one recipient's personal records result (a copy; the verdict itself when there is none). */
-function withRecords(verdict: RunFinishVerdict, records: RunRecordsResult | undefined): RunFinishVerdict {
-	return records === undefined ? verdict : { ...verdict, records };
+/**
+ * `verdict` with one recipient's personal records result and daily board result (a copy; the verdict itself when
+ * there is neither).
+ */
+function forRecipient(
+	verdict: RunFinishVerdict,
+	records: RunRecordsResult | undefined,
+	daily: DailyRunResult | undefined,
+): RunFinishVerdict {
+	if (records === undefined && daily === undefined) return verdict;
+	const out: RunFinishVerdict = { ...verdict };
+	if (records !== undefined) out.records = records;
+	if (daily !== undefined) out.daily = daily;
+	return out;
 }
 
 /** A lobby's run is over (`reason` is for the log). */
@@ -163,6 +176,7 @@ export class RunSessionService implements OnStart {
 		private readonly leaderboards: LeaderboardService,
 		private readonly onboarding: OnboardingService,
 		private readonly records: RecordsService,
+		private readonly daily: DailyService,
 	) {}
 
 	onStart(): void {
@@ -690,6 +704,7 @@ export class RunSessionService implements OnStart {
 					debug: session.debug,
 					died: s.died,
 					bossDefeated: s.bossDefeated,
+					daily: session.daily,
 				}),
 			);
 			leaderboard = ok ? (status as LeaderboardPostStatus) : "failed";
@@ -739,14 +754,48 @@ export class RunSessionService implements OnStart {
 			leaderboard,
 		};
 		// Co-op: every member still here hears the verdict (owner included), each with their own records result.
-		if (session.members.size() > 1) {
-			for (const p of this.memberPlayers(session)) {
-				Events.runFinished.fire(p, withRecords(verdict, records?.get(p.UserId)));
+		const recipients = (): Player[] => {
+			if (session.members.size() > 1) return this.memberPlayers(session);
+			return player !== undefined && player.Parent !== undefined ? [player] : [];
+		};
+		const deliver = (daily: Map<number, DailyRunResult> | undefined) => {
+			for (const p of recipients()) {
+				if (p.Parent === undefined) continue;
+				Events.runFinished.fire(p, forRecipient(verdict, records?.get(p.UserId), daily?.get(p.UserId)));
 			}
+		};
+		const key = session.daily;
+		if (!result.ok || key === undefined || session.worldKind !== DAILY_WORLD_KIND) {
+			deliver(undefined);
 			return;
 		}
-		if (player === undefined || player.Parent === undefined) return;
-		Events.runFinished.fire(player, withRecords(verdict, records?.get(player.UserId)));
+		// A daily run (docs/DAILY.md DS5): each recipient's daily board result. A posting run's verdict waits for its
+		// writes (up to DAILY_VERDICT.waitSeconds) and reads the board, so it goes out from its own thread; then every
+		// member's daily status is refreshed (their entry and rank today).
+		const board = boardForParty(session.members.size());
+		if (leaderboard !== "queued") {
+			const notPosted = new Map<number, DailyRunResult>();
+			for (const id of session.members) notPosted.set(id, dailyRunResult(key, undefined));
+			deliver(notPosted);
+			return;
+		}
+		task.spawn(() => {
+			const [ok, results] = pcall(() =>
+				this.leaderboards.dailyResults(
+					session.runId,
+					board,
+					key,
+					session.members,
+					DAILY_VERDICT.waitSeconds,
+					DAILY_VERDICT.pollSeconds,
+				),
+			);
+			if (!ok) log.warn("DAILY_RESULT_FAILED", `run ${session.runId}: ${tostring(results)}`);
+			const daily = ok ? (results as Map<number, DailyRunResult>) : new Map<number, DailyRunResult>();
+			for (const id of session.members) if (!daily.has(id)) daily.set(id, dailyRunResult(key, undefined));
+			deliver(daily);
+			for (const p of recipients()) this.daily.refresh(p);
+		});
 	}
 
 	private fireSegment(player: Player | undefined, verdict: SegmentVerdict): void {

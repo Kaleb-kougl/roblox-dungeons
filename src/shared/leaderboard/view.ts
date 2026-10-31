@@ -7,9 +7,10 @@
  * OrderedDataStore has no "rank of key" query, so a true "around me" view would need paging through the whole
  * board; it is not offered.
  */
-import type { LeaderboardBoard } from "./config";
+import { ORDERED_VALUE_LAYOUT, type LeaderboardBoard } from "./config";
 import { decodeOrderedValue } from "./orderedValue";
 import { userIdFromKey, type LeaderboardEntryDetails } from "./posting";
+import type { LeaderboardScope } from "./scope";
 
 export interface LeaderboardRow {
 	rank: number;
@@ -22,15 +23,29 @@ export interface LeaderboardRow {
 export interface LeaderboardMine {
 	score: number;
 	floor: number;
+	/** 0 when unknown (daily boards keep no details, DSD12; a details write that has not landed yet). */
 	partySize: number;
-	/** Unix seconds of the run. */
+	/** Unix seconds of the run (daily boards: the start of its 2-hour time slot; 0 when unknown). */
 	at: number;
 	/** 1-based, when the player is in the top rows; undefined otherwise (outside the top, or not posted yet). */
 	rank?: number;
+	/** Daily boards: "top N %" (shared/daily DailyStanding), from DAILY.minEntrantsForPercentile entrants. */
+	percentile?: number;
 }
 
 export interface LeaderboardView {
 	board: LeaderboardBoard;
+	/** The scope asked for ("alltime", "today", "yesterday"). */
+	scope: LeaderboardScope;
+	/** Daily scopes: the board's day (shared/daily dailyDay) and ruleset, as the server resolved them. */
+	day?: number;
+	ruleset?: number;
+	/** The friends view: `rows` are the caller's friends with an entry (and the caller), ranked among themselves. */
+	friends?: boolean;
+	/** The friends view: friends whose entry is still being looked up (the view fills in; updates are pushed). */
+	pending?: number;
+	/** Daily scopes: entrants on the board when known (histogram estimate, or exact for a short board). */
+	total?: number;
 	/** False when the board could not be read at all (rows empty). */
 	ok: boolean;
 	/** Served from an older read because the latest failed. */
@@ -75,5 +90,23 @@ export function mineFromDetails(
 		partySize: details.partySize,
 		at: details.at,
 		rank: row?.rank,
+	};
+}
+
+/** The caller's entry on a daily board (no details doc, DSD12): from the ordered value, ranked if in `rows`. */
+export function mineFromOrderedValue(
+	value: number | undefined,
+	rows: ReadonlyArray<LeaderboardRow>,
+	userId: number,
+): LeaderboardMine | undefined {
+	if (value === undefined) return undefined;
+	const d = decodeOrderedValue(value);
+	const L = ORDERED_VALUE_LAYOUT;
+	return {
+		score: d.score,
+		floor: d.floor,
+		partySize: 0,
+		at: L.epochSeconds + d.timeSlot * L.timeSlotSeconds,
+		rank: rows.find((r) => r.userId === userId)?.rank,
 	};
 }

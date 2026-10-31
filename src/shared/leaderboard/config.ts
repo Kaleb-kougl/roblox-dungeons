@@ -3,6 +3,7 @@
  * numbers"). docs/SERVER.md "Leaderboards" has the DataStore layout.
  */
 import { KV_EPOCH_UNIX_SECONDS } from "shared/config";
+import { DAILY_WORLD_KIND } from "shared/daily";
 import { MAX_PARTY_SIZE } from "shared/run";
 
 const SECONDS_PER_MINUTE = 60;
@@ -20,6 +21,19 @@ export const LEADERBOARD_ORDERED_STORES: Readonly<Record<LeaderboardBoard, strin
 	solo: "LB_Solo_v1",
 	coop: "LB_Coop_v1",
 });
+
+/**
+ * Daily boards (docs/DAILY.md DS5, DSD12): one OrderedDataStore per board, SCOPED by day and ruleset
+ * (`GetOrderedDataStore(name, dailyScope(day, ruleset))`, scope `d<day>_r<ruleset>`). Key `u_<UserId>`, value =
+ * encodeOrderedValue (the all-time layout). No details document: score and floor decode from the value.
+ */
+export const LEADERBOARD_DAILY_ORDERED_STORES: Readonly<Record<LeaderboardBoard, string>> = table.freeze({
+	solo: "LB_Daily_Solo_v1",
+	coop: "LB_Daily_Coop_v1",
+});
+
+/** The daily boards' score histograms (DS6): key `<board>_<scope>_s<shard>`, value `{ v, c: counts }`. */
+export const LEADERBOARD_DAILY_HIST_STORE = "LB_Daily_Hist_v1";
 
 /** Regular DataStore with each personal best's details. Key `<board>_u_<UserId>` (detailsKey). */
 export const LEADERBOARD_DETAILS_STORE = "LB_Details_v1";
@@ -72,10 +86,24 @@ export interface LeaderboardPolicy {
 	 * of one of these posts only when it died (the whole party wiped); otherwise it was abandoned, boss kill or not.
 	 */
 	readonly deathOnlyWorlds: ReadonlyArray<string>;
+	/**
+	 * Worlds whose runs post to their day's DAILY board only (never the all-time boards, DSD6), by the run's own
+	 * daily key (the session's day and ruleset, never the clock at finish: DSD5). Not in `eligibleWorlds`.
+	 */
+	readonly dailyWorlds: ReadonlyArray<string>;
 }
 
-/** The endless descent ends only in death (a boss kill raises the Depth and the run goes on). */
-export const LEADERBOARD_DEATH_ONLY_WORLDS: ReadonlyArray<string> = ["endless"];
+/**
+ * Worlds that end only in death: the endless descent and the Daily (a boss kill raises the Depth and the run goes on).
+ * shared/records reads it too; harmless there, its own eligible worlds stay endless-only.
+ */
+export const LEADERBOARD_DEATH_ONLY_WORLDS: ReadonlyArray<string> = ["endless", DAILY_WORLD_KIND];
+
+/**
+ * World kinds whose validated runs post to the daily boards (DS5). Kept apart from LEADERBOARD_ELIGIBLE_WORLDS (the
+ * all-time boards), which shared/records RECORDS_POLICY reuses: daily runs never write records (DSD6).
+ */
+export const LEADERBOARD_DAILY_WORLDS: ReadonlyArray<string> = [DAILY_WORLD_KIND];
 
 /**
  * World kinds whose validated runs post: the endless descent only (the M5 slice's world, always scored). The M1 "game"
@@ -89,6 +117,7 @@ export const LEADERBOARD_POLICY: LeaderboardPolicy = table.freeze({
 	postFromPrivateServers: false,
 	postAbandoned: false,
 	deathOnlyWorlds: LEADERBOARD_DEATH_ONLY_WORLDS,
+	dailyWorlds: LEADERBOARD_DAILY_WORLDS,
 });
 
 /**
