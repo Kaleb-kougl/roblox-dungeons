@@ -1,5 +1,5 @@
 import React from "@rbxts/react";
-import { SlicedImage, useHudScale } from "client/ui/hud";
+import { SlicedImage, useArtScale } from "client/ui/hud";
 import { HUD_FONT, role, themePack } from "client/ui/theme";
 import type { ColorRole } from "shared/theme";
 import {
@@ -90,7 +90,7 @@ export function ListRow(props: ListRowProps) {
  */
 function SkinnedListRow(props: { row: ListRowProps; skinId: string }) {
 	const row = props.row;
-	const uiScale = useHudScale();
+	const uiScale = useArtScale();
 	const sliceScale = snappedSliceScale(uiScale, skinRefPerArt(UI_ART.rowContext));
 	const flat = { left: HUD_VIEW.pad, top: 0, right: HUD_VIEW.pad, bottom: 0 };
 	const pad = skinPadding(flat, contentInsetsOf(props.skinId, themePack()?.image(props.skinId)?.slice), sliceScale);

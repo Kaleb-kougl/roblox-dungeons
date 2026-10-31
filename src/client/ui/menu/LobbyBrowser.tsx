@@ -2,7 +2,7 @@ import { keyDevice } from "shared/play";
 import React, { useRef, useState } from "@rbxts/react";
 import { useSelector } from "@rbxts/react-reflex";
 import { selectInputDevice, selectLobbyList, selectMyLobbyId } from "client/store";
-import { MenuButton, Panel, Row, Text } from "client/ui/hud";
+import { MenuButton, MenuFit, Panel, Row, Text } from "client/ui/hud";
 import { str } from "client/ui/theme";
 import { LOBBY, LOBBY_VISIBILITIES, type LobbyVisibility } from "shared/lobby";
 import { SFX } from "shared/view/audio";
@@ -10,6 +10,7 @@ import { HUD_VIEW } from "shared/view/hud";
 import {
 	LOBBY_STRINGS,
 	MENU_BACK_HINT,
+	MENU_FIT,
 	MENU_STRINGS,
 	MENU_VIEW,
 	browserRows,
@@ -20,7 +21,6 @@ import { useMenuActions } from "./actions";
 import { spec, useGamepadFocus, useNameOf } from "./hooks";
 import { Cell, ListRow, ScrollList } from "./widgets";
 
-const HALF = 0.5;
 const SMALL = new Vector2(MENU_VIEW.smallButton.x, MENU_VIEW.smallButton.y);
 const WIDE = new Vector2(MENU_VIEW.wideButton.x, MENU_VIEW.wideButton.y);
 
@@ -28,7 +28,8 @@ const WIDE = new Vector2(MENU_VIEW.wideButton.x, MENU_VIEW.wideButton.y);
  * The lobby browser (task L5): the lobbies this player may see (the server's `lobbyList`, never closed ones), each
  * row with its preset name ("{host}'s descent"), count / max, Open / Friends, a friend marker, Starting / In run
  * (greyed, no Join) and Join. The top bar creates a lobby with the picked visibility (Open / Friends / Closed); while
- * in a lobby it offers "Your lobby" instead (Join is off: leave yours first). Refresh asks the server again.
+ * in a lobby it offers "Your lobby" instead (Join is off: leave yours first). Refresh asks the server again. Fitted
+ * into the safe area on touch (MenuFit: the lobby list is the flexible list).
  */
 export function LobbyBrowser() {
 	const actions = useMenuActions();
@@ -119,70 +120,73 @@ export function LobbyBrowser() {
 	});
 
 	return (
-		<Panel
-			position={UDim2.fromScale(HALF, HALF)}
-			anchor={new Vector2(HALF, HALF)}
-			width={MENU_VIEW.screenWidth}
-			padding={HUD_VIEW.pad * 2}
-			skin={screenSkin("lobbyBrowser")}
-			name="LobbyBrowser"
-		>
-			<Text
-				fill={true}
-				order={1}
-				size={HUD_VIEW.titleText}
-				color="uiAccent"
-				text={str(LOBBY_STRINGS.browserTitle)}
-			/>
-			{top}
-			<ScrollList order={3} height={MENU_VIEW.listHeight}>
-				{items.size() > 0 ? (
-					items
-				) : (
+		<MenuFit
+			flex={{ min: MENU_FIT.listMin, max: MENU_VIEW.listHeight }}
+			render={(layout) => (
+				<Panel
+					width={MENU_VIEW.screenWidth}
+					padding={HUD_VIEW.pad * 2}
+					skin={screenSkin("lobbyBrowser")}
+					name="LobbyBrowser"
+				>
 					<Text
 						fill={true}
-						key="Empty"
 						order={1}
-						color="uiTextDim"
-						align={Enum.TextXAlignment.Center}
-						text={str(LOBBY_STRINGS.empty)}
+						size={HUD_VIEW.titleText}
+						color="uiAccent"
+						text={str(LOBBY_STRINGS.browserTitle)}
 					/>
-				)}
-			</ScrollList>
-			<Row order={4} align={Enum.HorizontalAlignment.Center}>
-				<MenuButton
-					order={1}
-					name="Refresh"
-					size={SMALL}
-					textSize={HUD_VIEW.smallText}
-					text={str(LOBBY_STRINGS.refresh)}
-					onActivated={() => {
-						actions.playUi(SFX.uiClick);
-						actions.refreshLobbies();
-					}}
-				/>
-				<MenuButton
-					order={2}
-					name="Back"
-					size={SMALL}
-					textSize={HUD_VIEW.smallText}
-					text={str(MENU_STRINGS.back)}
-					onActivated={() => {
-						actions.playUi(SFX.uiBack);
-						actions.back();
-					}}
-				/>
-			</Row>
-			{device === "touch" ? undefined : (
-				<Text
-					fill={true}
-					order={5}
-					size={HUD_VIEW.smallText}
-					color="uiTextDim"
-					align={Enum.TextXAlignment.Center}
-					text={str(MENU_STRINGS.backHint, { key: MENU_BACK_HINT[keyDevice(device)] })}
-				/>
+					{top}
+					<ScrollList order={3} height={layout.flex}>
+						{items.size() > 0 ? (
+							items
+						) : (
+							<Text
+								fill={true}
+								key="Empty"
+								order={1}
+								color="uiTextDim"
+								align={Enum.TextXAlignment.Center}
+								text={str(LOBBY_STRINGS.empty)}
+							/>
+						)}
+					</ScrollList>
+					<Row order={4} align={Enum.HorizontalAlignment.Center}>
+						<MenuButton
+							order={1}
+							name="Refresh"
+							size={SMALL}
+							textSize={HUD_VIEW.smallText}
+							text={str(LOBBY_STRINGS.refresh)}
+							onActivated={() => {
+								actions.playUi(SFX.uiClick);
+								actions.refreshLobbies();
+							}}
+						/>
+						<MenuButton
+							order={2}
+							name="Back"
+							size={SMALL}
+							textSize={HUD_VIEW.smallText}
+							text={str(MENU_STRINGS.back)}
+							onActivated={() => {
+								actions.playUi(SFX.uiBack);
+								actions.back();
+							}}
+						/>
+					</Row>
+					{device === "touch" ? undefined : (
+						<Text
+							fill={true}
+							order={5}
+							size={HUD_VIEW.smallText}
+							color="uiTextDim"
+							align={Enum.TextXAlignment.Center}
+							text={str(MENU_STRINGS.backHint, { key: MENU_BACK_HINT[keyDevice(device)] })}
+						/>
+					)}
+				</Panel>
 			)}
-		</Panel>
+		/>
 	);
 }

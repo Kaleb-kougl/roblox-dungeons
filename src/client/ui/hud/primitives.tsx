@@ -32,7 +32,7 @@ import {
 	type SkinPanelContext,
 } from "shared/view/hud";
 import { cornerFadeBinding, cornerRef } from "./cornerFade";
-import { useHudScale } from "./useHudScale";
+import { useArtScale } from "./useHudScale";
 
 /**
  * The HUD's building blocks: text in the HUD font token, panels in theme roles, pips, and the one interactive
@@ -307,7 +307,7 @@ export function panelIcon(skin: PanelSkin | undefined, icon: string | undefined)
  */
 function SkinnedPanel(props: { panel: PanelProps; skinId: string; context: SkinPanelContext }) {
 	const p = props.panel;
-	const uiScale = useHudScale();
+	const uiScale = useArtScale();
 	const sliceScale = snappedSliceScale(uiScale, skinRefPerArt(props.context));
 	const pack = themePack();
 	const slice = pack?.image(props.skinId)?.slice;
@@ -412,7 +412,7 @@ function SkinnedPanel(props: { panel: PanelProps; skinId: string; context: SkinP
  */
 function PanelOrnament() {
 	const ref = themePack()?.image(UI_ART.ids.ornament);
-	const uiScale = useHudScale();
+	const uiScale = useArtScale();
 	if (ref === undefined) return undefined;
 	const r = ref.rect;
 	const box = artDensityBox(r?.w ?? ref.w, r?.h ?? ref.h, uiScale, UI_ART.refPerArt);
@@ -448,7 +448,7 @@ export function Divider(props: { order: number; skin: PanelSkin }) {
 }
 
 function DrawnDivider(props: { order: number; image: ImageRef }) {
-	const uiScale = useHudScale();
+	const uiScale = useArtScale();
 	const r = props.image.rect;
 	const h = artDensityBox(r?.w ?? props.image.w, r?.h ?? props.image.h, uiScale, UI_ART.refPerArt).h;
 	return (
@@ -553,7 +553,7 @@ export interface SlicedImageProps {
 	/** Art pixel -> reference px of a sliced image (SliceScale; default the card art's DRAFT_REVEAL_VIEW.artScale). */
 	sliceScale?: number;
 	/**
-	 * Snap the SliceScale to whole screen px per art px (docs/UI_ART.md UAD1): `snappedSliceScale(useHudScale(),
+	 * Snap the SliceScale to whole screen px per art px (docs/UI_ART.md UAD1): `snappedSliceScale(useArtScale(),
 	 * refPerArt)` instead of `sliceScale`. Default off (the draft reveal's cards keep the fixed scale).
 	 */
 	snap?: boolean;
@@ -590,7 +590,7 @@ export function SlicedImage(props: SlicedImageProps) {
 
 /** A snapped SlicedImage: its own component, so the UIScale hook runs only for snapped images (always, in it). */
 function SnappedSlicedImage(p: { image: ImageRef; props: SlicedImageProps }) {
-	const uiScale = useHudScale();
+	const uiScale = useArtScale();
 	return slicedLabel(p.props, p.image, snappedSliceScale(uiScale, p.props.refPerArt ?? UI_ART.refPerArt));
 }
 
@@ -644,8 +644,9 @@ export interface ArtImageProps {
 	visible?: boolean | React.Binding<boolean>;
 	name?: string;
 	/**
-	 * The UIScale the image is drawn under (fitArt's screen px per reference px); default the HUD's (useHudScale). 1 for
-	 * a GUI outside the HUD's UIScale (the pause button in the top bar, in screen px).
+	 * The UIScale the image is drawn under (fitArt's screen px per reference px); default the one art is drawn under
+	 * here (useArtScale: the HUD's, or a fitted menu's). 1 for a GUI outside the HUD's UIScale (the pause button in the
+	 * top bar, in screen px).
 	 */
 	uiScale?: number;
 }
@@ -664,7 +665,7 @@ export function ArtImage(props: ArtImageProps) {
 function DrawnArtImage(p: { image: ImageRef; props: ArtImageProps }) {
 	const props = p.props;
 	const ref = p.image;
-	const hudScale = useHudScale();
+	const hudScale = useArtScale();
 	const uiScale = props.uiScale ?? hudScale;
 	const box = props.box;
 	const [boxW, boxH] = typeIs(box, "Vector2") ? [box.X, box.Y] : [box.w, box.h];
@@ -718,7 +719,7 @@ export function FocusCorners(props: { zIndex?: number }) {
 }
 
 function DrawnFocusCorners(props: { image: ImageRef; zIndex: number }) {
-	const uiScale = useHudScale();
+	const uiScale = useArtScale();
 	const r = props.image.rect;
 	const w = r?.w ?? props.image.w;
 	const h = r?.h ?? props.image.h;

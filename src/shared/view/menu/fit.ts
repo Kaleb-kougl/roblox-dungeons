@@ -1,0 +1,204 @@
+/**
+ * Fitting the menu screens into the safe area on phones (docs/UI_ART.md "Phones"). Pure: client/ui/hud MenuFit
+ * measures a screen's panel and the area it centres in and applies the result. Headlessly tested (fit.spec.ts).
+ *
+ * One mechanism for every full-screen panel (main menu, lobby browser / room, Options, pause, run over, tutorial
+ * outro, objective card, leaderboards), in three steps, all of them on touch only (mouse, keyboard and gamepad keep
+ * exactly today's layout at every size: fitMenu is the identity there):
+ *   1. Compact layouts (menuCompact): a safe area shorter than MENU_FIT.compactBelow reference px (a phone in
+ *      landscape) makes the screens take their compact arrangement (two button columns, the run-over breakdown beside
+ *      the stats, the Options body scrolling, a lobby room's invite list in place of the member list). Decided from
+ *      the area alone, never from the panel's measured size, so a layout never flips back and forth.
+ *   2. One flexible list per screen (lobby lists, the leaderboard rows, the compact Options body) shrinks first, to
+ *      no less than its `min`, so the panel fits without shrinking any text.
+ *   3. What still does not fit is scaled down as a whole (a UIScale on the panel, art re-snapped to whole screen px),
+ *      never below MENU_FIT.minScale effective scale (the HUD scale times the factor), so tap targets stay usable.
+ * The bone ornament never leaves the area and never costs the panel any size: it shows only when the panel, as
+ * fitted, leaves room above it for the ornament's overhang (the panel moves down by up to half the overhang to make
+ * that room); otherwise it is skipped.
+ */
+import { UI_ART, artDensityBox } from "shared/view/hud";
+
+export const MENU_FIT = {
+	/** Clear space kept from each edge of the safe area, reference px (at the fitted scale). */
+	margin: 8,
+	/**
+	 * The smallest effective UIScale (HUD scale x fit factor) a menu is shrunk to: the desktop floor
+	 * (HUD_VIEW.minScale). A 40 reference px button stays 24 pt tall, body text 12 pt. A HUD scale already under it
+	 * (a phone at the 70 % HUD scale setting) is never shrunk.
+	 */
+	minScale: 0.6,
+	/**
+	 * Touch only: a safe area shorter than this (reference px at the HUD scale) takes the compact layouts: every
+	 * landscape phone at 100 % (844 x 390: 415; 932 x 430: 468) and at 70 % (844 x 390: 592), while a 720 p touch
+	 * screen (662) and a tablet (1024 x 768: about 860; iPad mini 1133 x 744: about 750) keep the full layouts. The
+	 * tallest full layout, a scored run's end, is about 650 tall (a HUD scale under MENU_FIT.minScale cannot shrink).
+	 */
+	compactBelow: 650,
+	/** Treat smaller changes as measuring noise (reference px; fit factor). */
+	epsilon: 0.5,
+	factorEpsilon: 0.001,
+	/** A flexible list never shrinks below this (reference px: two and a half 36 px rows). */
+	listMin: 96,
+	/** Compact main menu: two button columns (2 x HUD_VIEW.buttonSize.x + gap + 2 x the panel's 16 px padding). */
+	mainCompactWidth: 560,
+	/**
+	 * Compact run over: two columns, the header / stats / exits / verdict on the left, the score breakdown on the
+	 * right (HUD_VIEW.breakdownLabelWidth + breakdownValueWidth + gap = 316 wide). Exit buttons this size, side by side.
+	 */
+	runOverLeftWidth: 400,
+	runOverButton: { x: 190, y: 40 },
+	/** Compact run over: the breakdown's line gap (HUD_VIEW.gap elsewhere). */
+	runOverLineGap: 2,
+	/**
+	 * Compact Options: the panel's width (OPTIONS_VIEW.width 780 is a few px over a 693 x 320 phone's safe width; the
+	 * widest row, the HUD scale's six 76 px steps after its 210 px label, is 702 + the scroll bar) and the most its
+	 * scrolling body is drawn (it never draws taller than its content).
+	 */
+	optionsWidth: 760,
+	optionsBodyMax: 330,
+} as const;
+
+/** A size, reference px. */
+export interface MenuSize {
+	readonly w: number;
+	readonly h: number;
+}
+
+/** Safe-area insets, screen px (pt) per side. */
+export interface MenuInsets {
+	readonly top: number;
+	readonly left: number;
+	readonly right: number;
+	readonly bottom: number;
+}
+
+/** A positive finite number, else 1. */
+function positive(x: number): number {
+	return x > 0 && x < math.huge ? x : 1;
+}
+
+/**
+ * The area a menu panel centres in, reference px: the viewport minus the safe-area insets (the ScreenGui's
+ * CoreUISafeInsets AbsoluteSize), over the HUD scale. The client measures it; this is its formula (specs, and the
+ * client's first guess before the first measurement).
+ */
+export function menuArea(viewportW: number, viewportH: number, insets: MenuInsets, uiScale: number): MenuSize {
+	const u = positive(uiScale);
+	return {
+		w: math.max(0, viewportW - insets.left - insets.right) / u,
+		h: math.max(0, viewportH - insets.top - insets.bottom) / u,
+	};
+}
+
+/** Whether the screens take their compact layouts: touch, and an area shorter than MENU_FIT.compactBelow. */
+export function menuCompact(areaH: number, touch: boolean): boolean {
+	return touch && areaH > 0 && areaH < MENU_FIT.compactBelow;
+}
+
+/**
+ * How far the bone ornament rises above the panel's top edge, in the panel's own reference px: its art height at the
+ * menu frames' whole screen-px density (artDensityBox, refPerArt) for the effective scale, times the part above the
+ * edge (its anchor's y, UI_ART.ornament.anchorY, sits on the edge; 0.5: half above).
+ */
+export function ornamentOverhang(artH: number, effectiveScale: number): number {
+	return artDensityBox(1, artH, positive(effectiveScale), UI_ART.refPerArt).h * UI_ART.ornament.anchorY;
+}
+
+/** One flexible list: its height now (as drawn), and the range it may take, reference px. */
+export interface MenuFlex {
+	readonly current: number;
+	readonly min: number;
+	readonly max: number;
+}
+
+export interface MenuFitInput {
+	/** The panel's size as drawn now, at fit factor 1 (reference px), with its flexible list at `flex.current`. */
+	readonly w: number;
+	readonly h: number;
+	/** The area it centres in (menuArea / the measured ScreenGui), reference px at the HUD scale. */
+	readonly areaW: number;
+	readonly areaH: number;
+	/** The HUD scale (the ScreenGui's UIScale). */
+	readonly uiScale: number;
+	/** Touch is the last-used device: only then is anything fitted. */
+	readonly touch: boolean;
+	/** The panel draws the bone ornament (asked for, on menu art, the pack has it), and that art's height, art px. */
+	readonly ornament: boolean;
+	readonly ornamentArtH: number;
+	readonly flex?: MenuFlex;
+}
+
+export interface MenuFitResult {
+	/** The panel's UIScale (1: as designed). */
+	readonly factor: number;
+	/** Draw the ornament. */
+	readonly ornament: boolean;
+	/** Move the panel down by this much from the area's centre, reference px at the HUD scale (room for the ornament). */
+	readonly offsetY: number;
+	/** The flexible list's height, reference px (undefined without one). */
+	readonly flex: number | undefined;
+	/** The panel, as fitted, does not fit even at the floor (it overflows its area; the screen should be compacted). */
+	readonly overflow: boolean;
+}
+
+/**
+ * Fits a menu panel into its area (see the file comment). Not touch: the identity (factor 1, the ornament as asked,
+ * no offset, the flexible list at its max): every desktop / console layout is exactly today's. Touch:
+ *   - flex: `clamp(current + spare, min, max)` where spare = the area's height less the margins less the panel's;
+ *   - factor: `min(1, room / size)` per axis (room = area - 2 x margin), never below MENU_FIT.minScale / uiScale
+ *     (nor above 1); a panel bigger than its room at that floor overflows (`overflow`);
+ *   - ornament: shown when `(h + overhang) x factor` fits the room height, the overhang at the fitted scale
+ *     (ornamentOverhang); centred as is when `(h + 2 x overhang) x factor` fits, else moved down by `overhang x
+ *     factor / 2` so the ornament's top and the panel's bottom sit an equal margin from the area's edges.
+ */
+export function fitMenu(input: MenuFitInput): MenuFitResult {
+	const flex = input.flex;
+	if (!input.touch) {
+		return { factor: 1, ornament: input.ornament, offsetY: 0, flex: flex?.max, overflow: false };
+	}
+	const u = positive(input.uiScale);
+	const roomW = math.max(0, input.areaW - 2 * MENU_FIT.margin);
+	const roomH = math.max(0, input.areaH - 2 * MENU_FIT.margin);
+	let h = input.h;
+	let flexOut: number | undefined;
+	if (flex !== undefined) {
+		const lo = math.min(flex.min, flex.max);
+		flexOut = math.clamp(flex.current + (roomH - h), lo, flex.max);
+		h += flexOut - flex.current;
+	}
+	const w = input.w;
+	const fitW = w > 0 ? roomW / w : 1;
+	const fitH = h > 0 ? roomH / h : 1;
+	const floor = math.min(1, MENU_FIT.minScale / u);
+	const factor = math.max(floor, math.min(1, fitW, fitH));
+	const overflow = w * factor > roomW + MENU_FIT.epsilon || h * factor > roomH + MENU_FIT.epsilon;
+	let ornament = false;
+	let offsetY = 0;
+	if (input.ornament && !overflow) {
+		const over = ornamentOverhang(input.ornamentArtH, u * factor);
+		if ((h + over) * factor <= roomH) {
+			ornament = true;
+			if ((h + 2 * over) * factor > roomH) offsetY = (over * factor) / 2;
+		}
+	}
+	return { factor, ornament, offsetY, flex: flexOut, overflow };
+}
+
+/** Whether two fits differ by more than measuring noise (the client re-renders only then). */
+export function menuFitChanged(a: MenuFitResult, b: MenuFitResult): boolean {
+	if (a.ornament !== b.ornament || a.overflow !== b.overflow) return true;
+	if (math.abs(a.factor - b.factor) > MENU_FIT.factorEpsilon) return true;
+	if (math.abs(a.offsetY - b.offsetY) > MENU_FIT.epsilon) return true;
+	if ((a.flex === undefined) !== (b.flex === undefined)) return true;
+	return a.flex !== undefined && b.flex !== undefined && math.abs(a.flex - b.flex) > MENU_FIT.epsilon;
+}
+
+/**
+ * The lobby room's compact arrangement while the invite list is open (MENU_FIT): the invite panel takes the member
+ * list's place and the host's visibility row hides (both come back when it closes). Not compact: everything shows.
+ */
+export function lobbyRoomParts(compact: boolean, inviting: boolean): { members: boolean; hostControls: boolean } {
+	const replaced = compact && inviting;
+	return { members: !replaced, hostControls: !replaced };
+}

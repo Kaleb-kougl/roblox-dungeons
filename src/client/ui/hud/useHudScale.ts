@@ -1,4 +1,4 @@
-import { useEffect, useState } from "@rbxts/react";
+import { createContext, useContext, useEffect, useState } from "@rbxts/react";
 import { useSelector } from "@rbxts/react-reflex";
 import { GuiService, Workspace } from "@rbxts/services";
 import { selectDisplay, selectInputDevice } from "client/store";
@@ -38,4 +38,17 @@ export function useHudScale(): number {
 		};
 	}, [percent, touch]);
 	return scale;
+}
+
+/**
+ * The effective UIScale a subtree is drawn under when it sits below a second UIScale (a phone's fitted menu panel,
+ * client/ui/hud MenuFit: the HUD scale times the fit factor), so its frame art and icons snap to whole screen px at the
+ * scale they are really drawn at (docs/UI_ART.md UAD1). Undefined (no provider): the HUD scale.
+ */
+export const ArtScaleContext = createContext<number | undefined>(undefined);
+
+/** The UIScale art is drawn under here: ArtScaleContext inside a fitted menu, else the HUD scale (useHudScale). */
+export function useArtScale(): number {
+	const hud = useHudScale();
+	return useContext(ArtScaleContext) ?? hud;
 }

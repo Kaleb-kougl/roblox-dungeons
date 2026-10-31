@@ -1,4 +1,4 @@
-import React from "@rbxts/react";
+import React, { useState } from "@rbxts/react";
 import { useSelector } from "@rbxts/react-reflex";
 import { selectGameActive, selectGhostHeart, selectTutorialHighlight } from "client/store";
 import { isBoostsHighlight } from "shared/view/boosts";
@@ -14,6 +14,7 @@ import { LeaderboardPanel } from "./LeaderboardPanel";
 import { PauseButton } from "./PauseButton";
 import { PauseOverlay } from "./PauseOverlay";
 import { RunOverPanel } from "./RunOverPanel";
+import { DimLayerContext } from "./ScreenDim";
 import { RoomClearChips } from "./RoomClearChips";
 import { RoomClearStamp } from "./RoomClearStamp";
 import { ScorePanel } from "./ScorePanel";
@@ -45,6 +46,8 @@ import { WeaponPanel } from "./WeaponPanel";
  *                 run: Restart / Skip tutorial), the tutorial's outro card (TutorialOutro), the OptionsScreen (tabs:
  *                 juice, controls / rebinding, audio, display) and the LeaderboardPanel (M5), above the HUD and the
  *                 menu shell (client/ui/menu MenuLayer, mounted next to this by HudController)
+ *   KV_GameMenuDim  the full-screen layer under KV_GameMenu the overlays' dims draw into (ScreenDim; ScreenInsets None:
+ *                 under the top bar and into a phone's notch insets, docs/UI_ART.md "Phones")
  *   KV_PauseButton  PauseButton (mouse / touch; in the Roblox top bar, right of its buttons): pauses a solo run,
  *                 opens a co-op run's party overlay. Screen pixels and no safe-area insets: the top bar is outside
  *                 the safe area.
@@ -59,6 +62,7 @@ export function GameHud() {
 	const highlight = useSelector(selectTutorialHighlight);
 	const ghostHeart = useSelector(selectGhostHeart);
 	const scale = useHudScale();
+	const [dimLayer, setDimLayer] = useState<ScreenGui | undefined>(undefined);
 	return (
 		<>
 			<screengui
@@ -95,6 +99,14 @@ export function GameHud() {
 				) : undefined}
 			</screengui>
 			<screengui
+				key="KV_GameMenuDim"
+				ref={setDimLayer}
+				ResetOnSpawn={false}
+				DisplayOrder={HUD_VIEW.menuDimDisplayOrder}
+				IgnoreGuiInset={true}
+				ScreenInsets={Enum.ScreenInsets.None}
+			/>
+			<screengui
 				key="KV_GameMenu"
 				ResetOnSpawn={false}
 				DisplayOrder={HUD_VIEW.menuDisplayOrder}
@@ -102,10 +114,12 @@ export function GameHud() {
 				ZIndexBehavior={Enum.ZIndexBehavior.Sibling}
 			>
 				<uiscale Scale={scale} />
-				{active ? <PauseOverlay key="Pause" /> : undefined}
-				{active ? <TutorialOutro key="TutorialOutro" /> : undefined}
-				<OptionsScreen key="Options" />
-				<LeaderboardPanel key="Leaderboards" localUserId={Players.LocalPlayer.UserId} />
+				<DimLayerContext.Provider value={dimLayer}>
+					{active ? <PauseOverlay key="Pause" /> : undefined}
+					{active ? <TutorialOutro key="TutorialOutro" /> : undefined}
+					<OptionsScreen key="Options" />
+					<LeaderboardPanel key="Leaderboards" localUserId={Players.LocalPlayer.UserId} />
+				</DimLayerContext.Provider>
 			</screengui>
 			<screengui
 				key="KV_PauseButton"
