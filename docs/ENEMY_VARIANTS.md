@@ -401,9 +401,25 @@ way new archetypes use only the shared choke points (`ctx.telegraph`, `enemyCool
   the contact sheets signed off by the owner; texture counts within the budget table.
 - **EV11. Audio.** The five port IDs from the Ninja Adventure pack (`art/audio.json`), `audio:build`, upload.
   **Verify:** `audio:audition` by the owner; silent fallback while ids are missing.
+  *As built (cue mapping, branch `ev-cues`):* per-tick collector `shared/view/fx` `VariantCueEvents` (`RunView.variantCues`,
+  LiveRun / LockstepClient) feeds `AudioCueMapper.frame`'s trailing `variants`: `sfx.enemy.blink` on the imp's LANDING tick
+  (the wind-up start already plays `sfx.enemy.telegraph`), `sfx.enemy.summon` when summoned swarmers appear (cast
+  resolved), `sfx.enemy.split` when slimelets appear, `sfx.affix.shieldbreak` on `shieldBroke`, `sfx.affix.vengeful` on
+  `vengefulFired` (arming is the kill: no cue). World sounds (full volume for every client), ranks 49 / 47 / 46 / 42 / 41
+  (shield break, vengeful, blink, summon, split: under every player sound, over enemy hurt / death / shot), minimum
+  intervals 0.1-0.2 s, no fallback, no jingle / duck; silent under the stage cover and after run over
+  (`audibleVariantCues(.., comboQuiet(..))`).
 - **EV12. First sighting.** Per-account seen flags in `KV_Onboarding_v1` (codec bump in `shared/onboarding`), one toast
   per archetype / affix. **Verify:** codec specs (old docs read as "nothing seen"); a co-op party member who has seen
   it gets no toast.
+  *As built (branch `ev-cues`):* NO codec bump (plan change 9): an optional `seen` list of sighting ids (`imp`, `slime`,
+  `summoner`, `affix.<id>`; `shared/onboarding` sightings.ts, canonical order, unknown ids dropped, written only when
+  non-empty) under doc v 1; an old doc decodes exactly as before. `onboardingStatus.seen` (optional) tells the client;
+  remote `bestiarySeen(id)` (validated against `SIGHTING_IDS`, idempotent, `BESTIARY_SEEN_RATE` 10 / 10 s, never written
+  after a failed join load; a finish keeps `seen`). Client `SightingController` + pure `shared/view/sighting`
+  (`sightingsInView`: living actors within `SIGHTING_VIEW.radius` 9 of the view player; `SightingQueue`: one toast at a
+  time, 5 s + 0.75 s gap, nothing before a loaded status), toast line `bestiary.<id>` through the existing toasts; not in
+  the tutorial, under the stage cover or after run over; waits while a draft is open or paused. Studio check pending.
 - **EV13. Tuning.** TTK table per new archetype and affix vs the sword and the bow (like `bossAct1.ttk.spec.ts`), the
   EV5 census re-run with affixes, actor-pool high-water mark per floor (target < 48 of 64). **Verify:** the tables in
   this doc; no floor in the census drops a spawn.
