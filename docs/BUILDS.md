@@ -373,6 +373,114 @@ once; a drop and rise fires again; II never), Thrill Seeker (one ring per 8 graz
 III), Jackpot (the 15th kill pays 240 at x2.4; II pays nothing; the source and its dump names exist only in builds
 runs), and determinism (every evolution together on a swarmer pack, two runs hash the same every tick).
 
+## BU6 (as built)
+
+The 9 duo rules, sim only (nothing new is drawn: BU8 already draws embers by kind; the feed fields below are for the
+view task). Where the build differs from, or adds to, the plan. Paths under `src/shared/sim/`. Every rule is a no-op
+without `state.builds` and for a player who does not own the duo (`builds/hooks.ts` `hasDuo`) or who left; M1, every
+fixture, the tutorial and endless runs without builds step and score exactly as before (`awardPoints`' new factor is
+skipped at its default; the golden, lock, tutorial and determinism specs pass untouched).
+
+- **Files.** `builds/duos.ts` (Fire Arrows, Blazing Trail, Storm Blade, Conductor, Chain Reaction, Close Call;
+  `bowArrowLife`, `buildsOnArrowHit`, `stormBladeFinisher`, `chainReactionKill`, `stepDuosBeforeDrain` /
+  `stepDuosAfterDrain`), `builds/onKill.ts` (Shrapnel's ring; `volatileBurst` now returns the bolts spawned; sparks set
+  `ctx.procCause`), `builds/hooks.ts` (`hasDuo`, `pushDuoProc`, Close Call's graze count, Unshaken in
+  `buildsOnArmorBreak`, `buildsGoldRush` / `buildsGoldRushPop` / `buildsUnshakenKept`), `builds/procs.ts` (the genMax
+  branch, the new stepBuilds order), `score/score.ts` (Gold Rush, Unshaken), `combat/combat.ts` (the arrow-hit hook,
+  `ctx.procCause` for Volatile bolts), `combat/ctx.ts` (`procCause`, unhashed, reset like `procGen`),
+  `combat/weapons/defs/sword.ts` (the finisher's first actor hit, passed to `buildsOnFinisher(ctx, hits, first)`).
+  Data in `builds/effectsData.ts`; `GOLD_RUSH_*` in `score/scoreData.ts`. Specs: `builds/duos.spec.ts` (19).
+- **stepBuilds** (phase 6b) is now: leavers' procs dropped; `beginEffectBudget`; `stepEvolutions`;
+  `stepDuosBeforeDrain` (a. Close Call shards, b. Fire Arrows embers, c. Blazing Trail embers); the proc drain;
+  `stepDuosAfterDrain` (d. Storm Blade / Conductor sparks in queue order, e. Chain Reaction cross triggers);
+  `stepMomentum`; `endEffectBudget`. The sparks run after the drain so their kills proc next tick (one generation per
+  tick, as the drain's own sparks). Storm Blade, Conductor and Chain Reaction queue in module scratch from their hook
+  to stepBuilds of the same stepCombat call (never across ticks, so not hashed), like Ricochet.
+- **Arrows.** A bow arrow is a player bullet of kind `PLAYER` with the bow's source (`DUO_ARROW_WEAPON_ID`) whose
+  squared speed is within `ARROW_SPEED_TOLERANCE` (1e-6, relative) of the stream arrow's (16) or the heavy arrow's (22),
+  read lazily from the registry (`bow.ts` is never imported, so no registration order moves). Stream arrows, heavy
+  arrows and Flurry's triples count; the Ember Wake ring fired with the bow in hand (same source, speed 12) and
+  Ricochet's split arrows (effect bolts) do not. Addition: the plan did not say, but without it a roll with the bow in
+  hand would have dropped 16 rings' worth of embers.
+- **The rules** (constants in `builds/effectsData.ts` unless noted):
+  - **Fire Arrows**: each live arrow of an owner drops an `EMBER_BURST` ember (speed 0, damage 1, life 1.2 s =
+    72 ticks) where it is when its age is a multiple of `FIRE_ARROWS_EMBER_TICKS` (6), at most `FIRE_ARROWS_EMBERS_MAX`
+    (4): ages 6, 12, 18, 24. The per-arrow counter is the bullet's own life: age = round((spawn life - life) x
+    `SIM_HZ`), 1 on the tick it was fired; the spawn life (0.75 / 0.7 s) is the one of the arrow kind the speed match
+    found. No payload field. Embers in the walk's order (dense slots, backwards), fired after the walk.
+  - **Blazing Trail**: a living, rolling owner drops an ember where they stand when the roll's elapsed ticks
+    (`ROLL_TICKS` - rollTicks, 0 on the start tick) are a positive multiple of `BLAZING_TRAIL_EMBER_TICKS` (3): elapsed
+    3, 6, ..., 18, so 6 per roll; players in index order.
+  - **Embers** go through `fireEffect` (effect `EMBER`, gen 0, `EFFECT_DIR`): they count in the owner's effect budget
+    and the pool's weapon reserve like every effect bullet. They are ordinary non-piercing player bullets: the first
+    enemy that touches one consumes it (payload damage through `playerHitDamage`; a kill procs at gen 1), a wall or an
+    intact breakable's cell stops / is damaged by it exactly as any player bullet (none were special-cased: an arrow is
+    consumed before it reaches either, and a rolling player never stands in one, so embers practically never touch
+    them), and no player bullet ever touches enemy bullets.
+  - **Storm Blade**: a finisher that hit (`hits` > 0) queues a spark from the first actor its sweep hit; an owner's arrow
+    hits count in `bigHits` (only while the duo is owned) and every `STORM_BLADE_ARROW_HITS` (5)-th queues a spark from
+    the enemy hit. The spark is the owner's Chain Spark at their level (hops, damage, Storm Crown's forks) at
+    generation 0, the enemy hit as the skipped victim, so its kills proc at gen 1 (the plan's "gen 1").
+  - **Conductor**: an owner's arrow that damages an enemy and flies on (piercing, pierce left before the hit) queues one
+    hop to the nearest OTHER living enemy within `CONDUCTOR_RANGE` (= `CHAIN_SPARK_RANGE`, 4.5 tiles) of that enemy, for
+    `playerHitDamage(owner, CONDUCTOR_DAMAGE)` (1), generation 0 (its kill procs at gen 1). Once per pass-through; the
+    hit that consumes the arrow does not spark.
+  - **Shrapnel**: Volatile's ring is `SHRAPNEL_BURSTS[level]`: the same 8 / 12 / 16 @ FULL_RING rings with damage
+    `SHRAPNEL_DAMAGE` (2) and pierce `SHRAPNEL_PIERCE` (1); Cataclysm's `SHRAPNEL_CATACLYSM_PIERCE` (2). Every Volatile
+    ring of the owner, Chain Reaction's included.
+  - **Chain Reaction** (interpretation, for the owner to confirm): under BU3's engine every kill below `genMax` already
+    procs every on-kill boon the owner has, so "a spark kill bursts and a burst kill sparks, even past gen 1" is already
+    true for both boons' owners up to the cap. The duo's rule is the one step the engine refuses: a kill of generation
+    exactly `genMax` (3, which queues no proc) still cross-triggers once when it was made by a spark (any Chain Spark
+    hop or fork, a Storm Blade or Conductor spark; `ctx.procCause` `SPARK`) or by a Volatile bolt (`BURST`, from its
+    payload source): a spark kill bursts (Volatile at the owner's level, Shrapnel included), a bolt kill sparks (Chain
+    Spark at the owner's level), both AT generation `genMax` (source gen 3 fits `BUILD_SOURCE_GENS`). What a
+    generation-`genMax` effect kills is `genMax + 1` and never procs or crosses, so no effect ever carries a generation
+    above `GEN_MAX` and nothing else fires at `genMax` (no same-kind repeat, no Soul Shards). No proc is ever queued at
+    `genMax`. Resolved after the drain like the duo sparks.
+  - **Close Call**: grazes count in `closeGrazes` (only while the duo is owned; beside Thrill Seeker's `grazes`); per
+    `CLOSE_CALL_GRAZES` (3) stepBuilds fires one `CLOSE_CALL_SHARD` (= `SOUL_SHARD`, straight) from the player at the
+    nearest living enemy within `CLOSE_CALL_RANGE` (8 tiles), effect `CLOSE_CALL`, gen 0. A dead or departed owner's
+    shard is dropped; no enemy in range, no shard (the count is spent).
+  - **Gold Rush**: a kill credited to an owner while the combo is >= `GOLD_RUSH_MIN_COMBO` (30 tenths = x3, before the
+    kill's own +0.1; `score/scoreData.ts`) scores x `GOLD_RUSH_PERCENT` (125) / 100 after Bounty and the affix bonus,
+    as one more integer factor in `awardPoints` (`extraPercent`; exact floor, e.g. test.dummy's 50 at x3 with Bounty I:
+    floor(50 x 3 x 1.1 x 1.25) = 206). Kills and boss kills, not the boss no-hit bonus (as Bounty). Points stay in the
+    KILLS / BOSS source; no new score source.
+  - **Unshaken**: a hit on an owner that breaks an armor pip (`buildsOnArmorBreak`; an Aegis-absorbed hit is not on
+    armor) adds 1 to `BuildEvents.unshakenKept`; stepScore cuts the combo `playerHits - unshakenKept` times. The hit
+    still counts in `hitsTaken` (PERFECT, the boss no-hit bonus).
+- **Hash.** `builds` group: `closeGrazes` appended to `BUILD_PLAYER_SCALARS` (7 per player); `bigHits` now moves
+  (Storm Blade). builds.spec's layout pin updated (7 scalars). No other group changed; the score group is unchanged
+  (Gold Rush writes into existing sources). Every builds run's hash is one number per player wider.
+- **Not done.** No view for the duoProc entries or Gold Rush's own pop colour (the view task reads `duoProcDuo` =
+  `GOLD_RUSH` with the points); duo strings already existed (BU1).
+
+**`BuildEvents` fields added by BU6** (same conventions: per tick, cleared every tick, not hashed, parallel lists in
+resolution order; existing fields unchanged):
+
+| Fields | One entry per | Values |
+|---|---|---|
+| `emberX`, `emberZ`, `emberOwner`, `emberDuo` | ember spawned | where (the arrow's position / the rolling player's), the owner, the `Duo` (0 FIRE_ARROWS, 1 BLAZING_TRAIL) |
+| `duoProcDuo`, `duoProcOwner`, `duoProcX`, `duoProcZ`, `duoProcValue` | duo rule that fired (embers and Shrapnel have none) | the `Duo`; the owner; where: Storm Blade / Conductor the enemy the spark started from, Chain Reaction the corpse, Close Call / Unshaken the player, Gold Rush the corpse; value: Storm Blade / Conductor / Chain Reaction's spark enemies struck (pushed only when > 0), Chain Reaction's burst and Close Call bullets spawned (only when > 0), Gold Rush the kill's points (its `popPoints` entry), Unshaken 1 |
+| `unshakenKept` (number) | tick | hits taken on armor by Unshaken owners. The one BuildEvents field the sim reads (stepScore, same tick) |
+
+Duo sparks also push ordinary spark segments (`sparkX1` ... `sparkGen` 0, `sparkFork` 0; Storm Crown forks of a Storm
+Blade spark `sparkFork` 1) and Chain Reaction's cross bursts / sparks the ordinary burst / spark entries at gen 3.
+
+**Specs** (`builds/duos.spec.ts`, 19): offers (for every duo, one boon owned never offers it over 40 seeds with a
+guaranteed duo; both owned always; taken never), Fire Arrows (embers on steps 5 / 11 / 17 / 23 of a 45-tick arrow, 1.6
+apart; stationary EMBER, source, damage 1, in `effectBulletsAlive`, each gone 72 steps later; consumed by the first
+enemy only; a heavy arrow 4; the bow's Ember Wake ring none; no duo none), Blazing Trail (6 embers at elapsed 3 .. 18 at
+the player), Storm Blade (one spark per finisher, none for swings; every 5th arrow hit, `bigHits` the rest; the spark's
+kill bursts at gen 1), Conductor (the passed enemy's neighbour takes 1, the consuming hit sparks nothing), Shrapnel (8
+bolts 2 / pierce 1; Cataclysm pierce 2; without 1 / 0), Chain Reaction (genMax spark kill bursts at gen 3 only, bolt
+kill sparks at gen 3 only; gen 4 kills, NONE causes and no duo do nothing; a 4-enemy spark line bursts at gens 0-3 with
+the duo and 0-2 without, no proc ever queued at genMax), Close Call (3rd graze, a real graze beside Thrill Seeker's
+count, no duo no count), Gold Rush (exact points at x3 / x4.5 / Bounty III, none at x2.9 or without), Unshaken (armor
+hit keeps x3.0, hearts hit and no duo cut to 22), determinism (all 9 duos on a swarmer pack with the bow and rolls, two
+runs hash the same every tick).
+
 ## BU9 / BU10 (as built)
 
 Presentation only: no sim, hash, replay or fixture change. Paths under `src/` unless noted.
