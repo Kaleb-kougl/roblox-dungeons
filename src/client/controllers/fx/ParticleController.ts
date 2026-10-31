@@ -101,6 +101,8 @@ export class ParticleController implements OnStart, ParticleWriter {
 	private roomClearShape: ChipBurst | undefined;
 	/** nearMiss.graze's palette index; nearMiss.parry's is the next one (docs/GRAZE_PARRY.md GP5). */
 	private nearMissBase = PAL_SPARK;
+	/** build.spark's palette index (docs/BUILDS.md BU8: the spark burst at each spark target). */
+	private buildSparkColor = PAL_SPARK;
 	/** The imp's blink puffs (docs/ENEMY_VARIANTS.md EV9): landings from a per-frame diff, the imp's kind (-1: none). */
 	private readonly blinks = new BlinkWatch(MAX_ACTORS);
 	private readonly blinkPuff: ChipBurst = BLINK_VIEW.puff;
@@ -154,6 +156,8 @@ export class ParticleController implements OnStart, ParticleWriter {
 		this.roomClearShape = chipBurstOf(ROOM_CLEAR.burst);
 		this.nearMissBase = this.palette.size();
 		this.palette.push(pack.color("nearMiss.graze"), pack.color("nearMiss.parry"));
+		this.buildSparkColor = this.palette.size();
+		this.palette.push(pack.color("build.spark"));
 
 		this.nearMiss.onFrame((frame, settings) => this.nearMissFrame(frame, settings));
 		const [impOk, impKind] = pcall(() => archetypeIndex(IMP.id));
@@ -228,6 +232,14 @@ export class ParticleController implements OnStart, ParticleWriter {
 		const shape = this.roomClearShape;
 		if (shape === undefined) return;
 		this.system.chips(x, z, this.roomClearBase + (perfect ? 1 : 0), shape, seed, this.fx.settings());
+	}
+
+	/**
+	 * A spark burst at a Chain Spark target (docs/BUILDS.md BU8; BuildFxController calls it per new hop, shape from
+	 * BuildFxDirector: Full or Reduced's halved counts), in build.spark.
+	 */
+	buildSparkBurst(x: number, z: number, shape: Readonly<ChipBurst>, seed: number): void {
+		this.system.chips(x, z, this.buildSparkColor, shape, seed, this.fx.settings());
 	}
 
 	/** A frame's graze sparks and parry bursts (the frame object is reused: read now, never kept). */

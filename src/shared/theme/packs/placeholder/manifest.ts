@@ -530,6 +530,10 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		"options.display.hudFade": "HUD fade",
 		"options.display.minimap": "Minimap",
 		"options.display.playerOutline": "Player outline",
+		// Roblox port (docs/BUILDS.md BU8, BUD13): the build effects setting.
+		"options.display.buildFx": "Build effects",
+		"options.display.buildFx.full": "Full",
+		"options.display.buildFx.reduced": "Reduced",
 		"options.display.touchSize": "Touch size",
 		"options.display.touchOpacity": "Touch opacity",
 		"options.display.touchAutoTarget": "Auto-target",

@@ -4,7 +4,8 @@
  * docs/FX_AUDIO.md F4), the freeze frame (+ camera nudge), the room clear celebration (RoomClearController,
  * docs/ROOM_CLEAR.md), the combo's row / meter / floor shout / break kick (ComboController, docs/COMBO.md CB7), the one
  * near-miss director (NearMissController), the PARRY! floor flash + solo freeze (ParryFlashController,
- * docs/GRAZE_PARRY.md GP7) and the boon draft reveal (DraftRevealController, docs/DRAFT_REVEAL.md DR6). The pure logic
+ * docs/GRAZE_PARRY.md GP7), the boon draft reveal (DraftRevealController, docs/DRAFT_REVEAL.md DR6) and the build effects
+ * (BuildFxController, docs/BUILDS.md BU8). The pure logic
  * is shared/view/fx (and shared/view/hud for the combo, the PARRY! text and the draft reveal); these only draw it.
  * docs/CLIENT.md "Juice".
  */
@@ -21,3 +22,4 @@ export * from "./RoomClearController";
 export * from "./NearMissController";
 export * from "./ParryFlashController";
 export * from "./DraftRevealController";
+export * from "./BuildFxController";

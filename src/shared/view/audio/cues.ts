@@ -90,6 +90,21 @@
  *   runOver)), so under the stage cover or once the run is over none of the five plays. None is a jingle, ducks the
  *   music or has a fallback: a silent ID (the placeholder pack's) plays nothing and takes no cap slot.
  *
+ * Build effects (docs/BUILDS.md BU8) come from the frame's BuildFxFrameSource (shared/view/fx BuildFxEvents, the run
+ * view's `builds`, every tick of the frame; NO_BUILD_FX_EVENTS by default, so every other cue is as before), passed
+ * through audibleBuilds(source, comboQuiet(covered, runOver)) like the variants: silent under the stage cover and once
+ * the run is over.
+ *   - sfx.build.spark / .burst / .shard / .ember (and BU5's .nova / .execute, and the Jackpot slot's .jackpot): at most
+ *     one each per frame and per SFX_MIN_INTERVAL, at the exact speed buildGenSpeed(the frame's highest proc
+ *     generation of that effect) (BUILD_FX_VIEW.audio: +2 semitones per generation, capped), volume
+ *     BUILD_FX_VIEW.audio.volume; an effect only a teammate set off plays at teammateVolume more and
+ *     TEAMMATE_PRIORITY_DROP lower. Voice cap: at most BUILD_FX_VIEW.audio.maxVoices of these start within any
+ *     voiceWindowSec (counted from the cues that actually started); the rest of the frame's build cues are dropped in
+ *     the order above (spark first). A cascade is a climbing handful of sounds, never a machine gun.
+ *   - sfx.build.evolve / .duo on an evolution / duo taken (BuildEvents' takes): the local (view) player's at full
+ *     volume, a teammate's at teammateVolume; outside the voice cap, the pack's jitter.
+ *   None is a jingle, ducks the music or has a fallback: a silent ID plays nothing and takes no cap slot.
+ *
  * Every cue carries a playback speed (AudioCueList.speed): 0 = the pack's jitter (every cue but these), > 0 = that
  * exact PlaybackSpeed (the kill ladder, the tier sting, the graze and the parry).
  *
@@ -99,8 +114,13 @@ import { BOSS_DEMONLORD_ID, COMBO_MIN, archetypeIndex, partySize, type SimEvents
 import { AMBIENCE_IDS } from "shared/theme";
 import { NO_BOOST_EVENTS, type BoostEventSource } from "../boosts";
 import {
+	BUILD_FX_VIEW,
 	NEAR_MISS_VIEW,
+	NO_BUILD_FX_EVENTS,
 	NO_COMBO_EVENTS,
+	buildGenSpeed,
+	type BuildFxFrameSource,
+	type EffectRecord,
 	type ComboFrameSource,
 	type FxEvent,
 	type NearMissFrame,
@@ -204,6 +224,19 @@ export const SFX = {
 	enemySplit: "sfx.enemy.split",
 	affixShieldBreak: "sfx.affix.shieldbreak",
 	affixVengeful: "sfx.affix.vengeful",
+	/**
+	 * Build effects (docs/BUILDS.md BU8; the theme's PORT_AUDIO_EVENTS, BUILD_AUDIO_IDS): a spark hop, a Volatile ring, a
+	 * Soul Shards volley, an ember dropped, a nova, an execute, an evolution / a duo taken, a Jackpot pop.
+	 */
+	buildSpark: "sfx.build.spark",
+	buildBurst: "sfx.build.burst",
+	buildShard: "sfx.build.shard",
+	buildEmber: "sfx.build.ember",
+	buildNova: "sfx.build.nova",
+	buildExecute: "sfx.build.execute",
+	buildEvolve: "sfx.build.evolve",
+	buildDuo: "sfx.build.duo",
+	buildJackpot: "sfx.build.jackpot",
 } as const;
 export type SfxId = (typeof SFX)[keyof typeof SFX];
 
@@ -262,6 +295,15 @@ export const ALL_SFX: ReadonlyArray<SfxId> = [
 	SFX.enemySplit,
 	SFX.affixShieldBreak,
 	SFX.affixVengeful,
+	SFX.buildSpark,
+	SFX.buildBurst,
+	SFX.buildShard,
+	SFX.buildEmber,
+	SFX.buildNova,
+	SFX.buildExecute,
+	SFX.buildEvolve,
+	SFX.buildDuo,
+	SFX.buildJackpot,
 ];
 
 /** IDs this port added to the placeholder pack (not in the web contract's AUDIO_EVENTS; theme PORT_AUDIO_EVENTS). */
@@ -306,6 +348,15 @@ export const PORT_SFX: ReadonlyArray<SfxId> = [
 	SFX.enemySplit,
 	SFX.affixShieldBreak,
 	SFX.affixVengeful,
+	SFX.buildSpark,
+	SFX.buildBurst,
+	SFX.buildShard,
+	SFX.buildEmber,
+	SFX.buildNova,
+	SFX.buildExecute,
+	SFX.buildEvolve,
+	SFX.buildDuo,
+	SFX.buildJackpot,
 ];
 
 /**
@@ -418,6 +469,16 @@ export const SFX_MIN_INTERVAL: Readonly<Partial<Record<SfxId, number>>> = {
 	[SFX.enemySplit]: 0.1,
 	[SFX.affixShieldBreak]: 0.1,
 	[SFX.affixVengeful]: 0.15,
+	/** Build effects (BU8): a cascade's sparks / rings / volleys are one climbing sound per interval, never a stutter. */
+	[SFX.buildSpark]: 0.06,
+	[SFX.buildBurst]: 0.08,
+	[SFX.buildShard]: 0.08,
+	[SFX.buildEmber]: 0.12,
+	[SFX.buildNova]: 0.15,
+	[SFX.buildExecute]: 0.08,
+	[SFX.buildJackpot]: 0.2,
+	[SFX.buildEvolve]: 0.5,
+	[SFX.buildDuo]: 0.5,
 };
 
 /**
@@ -491,6 +552,20 @@ export const SFX_PRIORITY: Readonly<Record<SfxId, number>> = {
 	[SFX.enemySummon]: 42,
 	[SFX.enemySplit]: 41,
 	[SFX.boostExpire]: 48,
+	/**
+	 * Build effects (BU8): the evolve / duo stings with the tier sting; the Jackpot with the drops; an execute with the
+	 * finisher; the cascade sounds under the player's own swing and shot (a busy frame keeps the hurt, the telegraph and
+	 * the kill ladder over them), spark first, the ember (a quiet floor flame) last.
+	 */
+	[SFX.buildEvolve]: 64,
+	[SFX.buildDuo]: 64,
+	[SFX.buildJackpot]: 61,
+	[SFX.buildExecute]: 56,
+	[SFX.buildNova]: 52,
+	[SFX.buildSpark]: 51,
+	[SFX.buildBurst]: 48,
+	[SFX.buildShard]: 47,
+	[SFX.buildEmber]: 44,
 	[SFX.uiConfirm]: 45,
 	[SFX.uiBack]: 45,
 	[SFX.uiClick]: 44,
@@ -511,6 +586,17 @@ export const COMBO_KILL_PRIORITY = 55;
 
 /** A teammate's cue ranks this much lower than the local player's same sound (never over the local telegraph). */
 export const TEAMMATE_PRIORITY_DROP = 50;
+
+/** The build cues under the voice cap (BUILD_FX_VIEW.audio.maxVoices), in the order a busy frame keeps them. */
+export const BUILD_VOICE_SFX: ReadonlyArray<SfxId> = [
+	SFX.buildSpark,
+	SFX.buildBurst,
+	SFX.buildShard,
+	SFX.buildNova,
+	SFX.buildExecute,
+	SFX.buildJackpot,
+	SFX.buildEmber,
+];
 
 /** AudioCueMapper.guardErased bits: whose guard erased bullets this frame (GP6). */
 const GUARD_NONE = 0;
@@ -664,6 +750,10 @@ export class AudioCueMapper {
 	private pending = 0;
 	private now = 0;
 	private readonly tauntKinds = tauntKinds();
+	/** Start times of the build cues under the voice cap (oldest first; pruned to the window every frame). */
+	private readonly buildStarts = new Array<number>();
+	/** Build cues queued this frame (they count against the cap before they start). */
+	private buildQueued = 0;
 
 	/** `playable`: whether an ID has a clip (silent IDs and their fallbacks; default: every ID plays). */
 	constructor(private readonly playable: Playable = EVERY_ID) {}
@@ -774,6 +864,60 @@ export class AudioCueMapper {
 		else this.cue(SFX.playerParry, AUDIO_VIEW.teammateVolume, rank - TEAMMATE_PRIORITY_DROP, best.speed);
 	}
 
+	/** Build voices in use: starts within BUILD_FX_VIEW.audio.voiceWindowSec of `now` plus this frame's queued ones. */
+	private buildVoices(): number {
+		const window = BUILD_FX_VIEW.audio.voiceWindowSec;
+		while (this.buildStarts.size() > 0 && this.now - this.buildStarts[0] >= window) this.buildStarts.remove(0);
+		return this.buildStarts.size() + this.buildQueued;
+	}
+
+	/**
+	 * One build effect cue (BU8) for the frame's `records` of it: none -> nothing; else at buildGenSpeed(highest gen),
+	 * BUILD_FX_VIEW.audio.volume, quieter and lower when only teammates set it off (records without an owner count as
+	 * the local player's); under the voice cap.
+	 */
+	private buildCue(id: SfxId, records: ReadonlyArray<EffectRecord>, localIndex: number, owned = true): void {
+		if (records.size() === 0) return;
+		let gen = 0;
+		let mine = !owned;
+		for (const r of records) {
+			if (r.gen > gen) gen = r.gen;
+			if (r.owner === localIndex) mine = true;
+		}
+		this.buildVoiceCue(id, gen, mine);
+	}
+
+	private buildVoiceCue(id: SfxId, gen: number, mine: boolean): void {
+		if (this.buildVoices() >= BUILD_FX_VIEW.audio.maxVoices) return;
+		const volume = BUILD_FX_VIEW.audio.volume * (mine ? 1 : AUDIO_VIEW.teammateVolume);
+		const rank = priorityOf(id) - (mine ? 0 : TEAMMATE_PRIORITY_DROP);
+		const before = this.pending;
+		this.cue(id, volume, rank, buildGenSpeed(gen));
+		if (this.pending > before) this.buildQueued++;
+	}
+
+	/** The frame's build cues (BU8; see the file comment). */
+	private buildCues(builds: BuildFxFrameSource, localIndex: number): void {
+		const sparks = builds.sparks;
+		if (sparks.size() > 0) {
+			let gen = 0;
+			let mine = false;
+			for (const r of sparks) {
+				if (r.gen > gen) gen = r.gen;
+				if (r.owner === localIndex) mine = true;
+			}
+			this.buildVoiceCue(SFX.buildSpark, gen, mine);
+		}
+		this.buildCue(SFX.buildBurst, builds.bursts, localIndex);
+		this.buildCue(SFX.buildShard, builds.shards, localIndex);
+		this.buildCue(SFX.buildNova, builds.novas, localIndex);
+		if (builds.executes.size() > 0) this.buildVoiceCue(SFX.buildExecute, 0, true);
+		this.buildCue(SFX.buildJackpot, builds.jackpots, localIndex);
+		this.buildCue(SFX.buildEmber, builds.embers, localIndex);
+		for (const t of builds.evolved) this.playerCue(SFX.buildEvolve, t.player, localIndex);
+		for (const t of builds.duos) this.playerCue(SFX.buildDuo, t.player, localIndex);
+	}
+
 	/** Removes candidate `at`, keeping the order of the rest. */
 	private dropPending(at: number): void {
 		for (let i = at; i < this.pending - 1; i++) {
@@ -821,7 +965,8 @@ export class AudioCueMapper {
 	 * view's `combo`, docs/COMBO.md CB1; none by default), `nearMiss` the frame's grazes and parries output
 	 * (NearMissController's NearMissFrame of THIS frame, docs/GRAZE_PARRY.md GP6; undefined / no run: nothing, today's
 	 * cues exactly), `variants` the frame's enemy-variant events (the run view's `variantCues` through
-	 * audibleVariantCues, docs/ENEMY_VARIANTS.md; none by default). Appends the cues to start to `out` (in table order)
+	 * audibleVariantCues, docs/ENEMY_VARIANTS.md; none by default), `builds` the frame's build effects (the run view's
+	 * `builds` through audibleBuilds, docs/BUILDS.md BU8; none by default). Appends the cues to start to `out` (in table order)
 	 * and returns it.
 	 */
 	frame(
@@ -835,9 +980,11 @@ export class AudioCueMapper {
 		combo: ComboFrameSource = NO_COMBO_EVENTS,
 		nearMiss: Readonly<NearMissFrame> | undefined = undefined,
 		variants: VariantCueSource = NO_VARIANT_CUES,
+		builds: BuildFxFrameSource = NO_BUILD_FX_EVENTS,
 	): AudioCueList {
 		this.now = now;
 		this.pending = 0;
+		this.buildQueued = 0;
 		for (let i = 0; i < fx.count(); i++) {
 			if (fx.at(i).type === "reset") this.reset();
 		}
@@ -944,12 +1091,15 @@ export class AudioCueMapper {
 			this.cue(SFX.playerGraze, NEAR_MISS_VIEW.graze.volume, priorityOf(SFX.playerGraze), graze.speed);
 		}
 		if (parries !== undefined) this.parryCue(parries);
+		// Build effects (docs/BUILDS.md BU8): generation pitch, intervals and the voice cap.
+		this.buildCues(builds, localIndex);
 
 		this.keepOneJingle();
 		this.applyCap();
 		for (let i = 0; i < this.pending; i++) {
 			const id = this.pendingIds[i];
 			this.lastStart.set(id, now);
+			if ((BUILD_VOICE_SFX as ReadonlyArray<string>).includes(id)) this.buildStarts.push(now);
 			out.push(id, this.pendingVolumes[i], this.pendingSpeeds[i]);
 		}
 		return out;

@@ -64,11 +64,13 @@ import {
 } from "shared/run";
 import { BoostFrameEvents, type BoostEventSource } from "shared/view/boosts";
 import {
+	BuildFxEvents,
 	ComboEvents,
 	NearMissEvents,
 	RoomClearEvents,
 	VariantCueEvents,
 	newFrameAdvance,
+	type BuildFxFrameSource,
 	type ComboFrameSource,
 	type FrameAdvance,
 	type FramePacer,
@@ -167,6 +169,8 @@ export interface RunView {
 	readonly nearMiss: NearMissFrameSource;
 	/** The enemy-variant sound events of the last frame's ticks (docs/ENEMY_VARIANTS.md EV9 audio cues). */
 	readonly variantCues: VariantCueSource;
+	/** The build effects of the last frame's ticks, every player's (docs/BUILDS.md BU8). */
+	readonly builds: BuildFxFrameSource;
 	getAlpha(): number;
 }
 
@@ -316,6 +320,8 @@ export class LiveRun implements RunView {
 	readonly nearMiss = new NearMissEvents();
 	/** The enemy-variant sound events of the ticks run by the last frame() (docs/ENEMY_VARIANTS.md; reset every frame). */
 	readonly variantCues = new VariantCueEvents();
+	/** The build effects of the ticks run by the last frame() (docs/BUILDS.md BU8; reset every frame). */
+	readonly builds = new BuildFxEvents();
 	/** What the pacer made of the last unpaused frame (frozen, time scale); a plain pass-through without a pacer. */
 	readonly lastAdvance: FrameAdvance = newFrameAdvance();
 	/** Run totals for the HUD's post-run panel (the telemetry's kill / hit counts, read without finishing it). */
@@ -368,6 +374,7 @@ export class LiveRun implements RunView {
 		this.combo.reset();
 		this.nearMiss.reset();
 		this.variantCues.reset();
+		this.builds.reset();
 		this.ticksThisFrame = 0;
 		if (this.forfeitPending) {
 			this.forfeitPending = false;
@@ -450,6 +457,7 @@ export class LiveRun implements RunView {
 		this.combo.collect(state);
 		this.nearMiss.collect(state);
 		this.variantCues.collect(state);
+		this.builds.collect(state);
 		if (this.victoryTick === undefined && e.bossDefeated !== 0) this.victoryTick = state.tick;
 		if (this.deathTick === undefined && (e.playerDied !== 0 || state.player.dead !== 0)) {
 			this.deathTick = state.tick;

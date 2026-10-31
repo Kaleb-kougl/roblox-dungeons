@@ -27,6 +27,7 @@ import {
 } from "shared/play";
 import {
 	AUDIO_SETTING_KEYS,
+	BUILD_FX_LEVELS,
 	HEALTH_BARS_MODES,
 	HUD_SCALE_PERCENTS,
 	PARTICLES_LEVELS,
@@ -613,9 +614,24 @@ function DisplayTab(props: { order: number; actions: HudActions; selectable: boo
 					props.actions.updateDisplay({ playerOutline: v });
 				}}
 			/>
+			<SettingRow
+				order={6}
+				name="buildFx"
+				selectable={props.selectable}
+				label={str(OPTIONS_STRINGS.buildFx)}
+				value={display.buildFx}
+				options={BUILD_FX_LEVELS.map((level) => ({
+					value: level,
+					label: str(level === "full" ? OPTIONS_STRINGS.buildFxFull : OPTIONS_STRINGS.buildFxReduced),
+				}))}
+				onPick={(v) => {
+					props.actions.playUi(SFX.uiClick);
+					props.actions.updateDisplay({ buildFx: v });
+				}}
+			/>
 			{touch && (
 				<SettingRow
-					order={6}
+					order={7}
 					name="touchSize"
 					selectable={props.selectable}
 					label={str(OPTIONS_STRINGS.touchSize)}
@@ -633,7 +649,7 @@ function DisplayTab(props: { order: number; actions: HudActions; selectable: boo
 			)}
 			{touch && (
 				<SettingRow
-					order={7}
+					order={8}
 					name="touchOpacity"
 					selectable={props.selectable}
 					label={str(OPTIONS_STRINGS.touchOpacity)}
@@ -651,7 +667,7 @@ function DisplayTab(props: { order: number; actions: HudActions; selectable: boo
 			)}
 			{touch && (
 				<SettingRow
-					order={8}
+					order={9}
 					name="touchAutoTarget"
 					selectable={props.selectable}
 					label={str(OPTIONS_STRINGS.touchAutoTarget)}
@@ -668,7 +684,7 @@ function DisplayTab(props: { order: number; actions: HudActions; selectable: boo
 			)}
 			{touch && (
 				<SettingRow
-					order={9}
+					order={10}
 					name="touchLeftHanded"
 					selectable={props.selectable}
 					label={str(OPTIONS_STRINGS.touchLeftHanded)}

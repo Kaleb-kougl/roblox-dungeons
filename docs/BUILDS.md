@@ -309,6 +309,88 @@ Presentation only: no sim, hash, replay or fixture change. Paths under `src/` un
    1024 x 768 and a phone; run-over panel full and compact (phone) layouts with the Build column.
 8. Tutorial floor 2 draft and M1: unchanged (no pips, no Build rows beyond the tutorial boon's plain row in pause).
 
+## BU7 / BU8 (as built)
+
+Presentation only: no sim, hash, replay, fixture or lockstep change. Paths under `src/` unless noted.
+
+**BU7 (theme).** Final effect colours in the placeholder pack (vale clones them; the plan's "orange bolts" / "pale
+violet shards" cannot pass BUD12 in this palette, so they are the nearest light, warm shades that do). Measured by
+`buildReport` (theme/builds.spec.ts prints all 168 pairs: 3 packs x 4 roles x (5 floors + 9 danger / boost roles)):
+
+| Role | Value | Nearest danger / boost (CIE76) | Lowest floor contrast |
+|---|---|---|---|
+| `build.spark` | `#88d4fc` sky blue | 44.4 (quickstep, aegis) | 8.97:1 (biome.3) |
+| `build.burst` | `#f8c8a0` apricot | 44.7 (telegraph); Fury 46.0 | 9.59:1 (biome.3) |
+| `build.shard` | `#f4e8f8` violet-white | 44.8 (aegis) | 12.37:1 (biome.3) |
+| `build.ember` | `#f4f4b0` lemon cream | 44.5 (Fury) | 12.84:1 (biome.3) |
+
+The four are >= 25 CIE76 from each other (burst / ember the closest; they differ in shape: bolt vs floor disc). Strings
+and audio IDs were already complete (BU1: 7 `BUILD_STRING_KEYS`, per-boon / per-duo strings via
+`progressionStringKeys`, 9 SILENT `sfx.build.*` in `PORT_AUDIO_EVENTS`); BU8 adds three non-contract strings
+`options.display.buildFx` / `.full` / `.reduced` (checked by hud.spec through `optionsStringKeys`). No contract,
+validator or Luau-locals change.
+
+**BU8 (effect view).**
+
+- **Feed.** `shared/view/fx/buildFxEvents.ts` `BuildFxEvents` (`RunView.builds`, reset per frame, collected per tick in
+  LiveRun and LockstepClient, like `NearMissEvents`): sparks, bursts, shards, takes (evolved / duo) with their tick.
+  Additions: **embers** have no feed entry, so a player-bullet slot of `BulletKind.EMBER` whose life went UP since the
+  last tick is a new ember (per-slot memory across frames; owner = emitter - 1, gen from the source). **Novas /
+  executes** are read through `PendingBuildEventFields` with the plan's names (`novaX/Z/Radius/Owner/Kind`,
+  `execX/Z`) when BU5 adds them; until then nothing. **Jackpot**: no documented field, the `jackpots` list stays empty.
+  `audibleBuilds(source, comboQuiet(...))` is the audio gate.
+- **Director.** `buildFxRules.ts` `BuildFxDirector` (one per client, owned by `client/controllers/fx/BuildFxController`,
+  stepped as an FxTracker frame handler like `NearMissController`; `onFrame` subscribers). Beams live `BEAM_SEC` =
+  the sim's `SPARK_BEAM_TICKS` x `SIM_DT` (7 ticks, 0.117 s), opaque 40 %, then fade; 5 jagged segments re-rolled every
+  0.04 s (never under reduced motion), at most 24 alive. A spark burst (particle chips in `build.spark`) at each new
+  hop's target, at most 8 per frame (view player first), none with particles off. Novas: an expanding floor ring
+  (0.35 s, 24 segments). Execute: a flat disc in `uiHealth` popping out over 0.08 s, 0.22 s (the plan's "red" flash).
+  Evolve / duo flare: a 1 s ring around the taking player (0.3 -> 1.4 tiles) in `boon.evolved` / `boon.duo`. Quiet
+  (stage cover, run over) and a new run forget everything. Tunables `BUILD_FX_VIEW` (`buildFxConfig.ts`).
+- **Bullets.** `shared/view/buildBullets.ts`: `playerBulletLookOf(payload, scale)` (BURST / SHARD / SPARK_BOLT ->
+  burst / shard / bolt; anything else the weapon bolt, heavy by scale as before). `BulletRenderController`'s `BulletPool`
+  now takes a look array + `lookOf` (one pool, a per-part look switch replacing `heavyKey`: no extra parts per kind).
+  Burst and shard bolts trail one faint part per slot (`BUILD_BULLET_VIEW.trail`, a Map by slot) while
+  `buildTrailsOn` (Full and not reduced motion). Embers: the goo pool generalised to `DecalPool` (`GOO_DECAL`,
+  `EMBER_DECAL`); embers lie at lift 0.045 (under the goo's 0.08, every marking and every moving bullet), 0.5 tiles,
+  pop 0.08 s / fade 0.3 s; the player pool skips them.
+- **Audio.** `cues.ts`: nine `SFX.build*` (ALL_SFX, PORT_SFX, intervals 0.06-0.5 s, ranks: evolve / duo 64, jackpot
+  61, execute 56, nova 52, spark 51, burst 48, shard 47, ember 44). `AudioCueMapper.frame(..., builds)`: one cue per
+  effect per frame at `buildGenSpeed(highest gen)` (+2 semitones per generation, max +6), volume 0.6, a teammate-only
+  effect at teammate volume / rank - 50; **voice cap** 4 build starts per 0.25 s (`BUILD_VOICE_SFX` order, counted
+  from cues that actually started); evolve / duo through `playerCue`, outside the cap. All silent today (placeholder).
+- **Setting.** `DisplaySettings.buildFx` (`"full"` default, only `"reduced"` stored, doc stays v2; `BUILD_FX_LEVELS`);
+  Options > Display row after Player outline. Reduced halves spark-burst counts and ring segments
+  (`buildFxCount`, `reducedShare` 0.5) and drops trails; reduced motion also drops trails, the beam crackle, the ring
+  growth (drawn at full radius, fading) and the execute pop.
+- **Deviations.** Beams are pooled Neon Part segments, not Roblox `Beam`s (no attachments; one BulkMoveTo). The plan's
+  colour words (orange / pale violet) became apricot / violet-white (BUD12). The ember cue plays on an ember's
+  appearance (no feed field). The execute flash uses `uiHealth` (no new role).
+- **TODO for BU5 / BU6 (sim).** Novas and executes switch on by themselves once `BuildEvents` carries `novaX/Z/Radius/
+  Owner/Kind` and `execX/Z` (delete `PendingBuildEventFields` then; give `BUILD_FX_VIEW.nova.looks` a role per nova
+  kind). Jackpot: name the feed fields (proposed `jackpotX/Z/Owner/Points`), collect them into `jackpots` and draw the
+  pop in `BuildFxController` (the director already ages it; the cue already plays `sfx.build.jackpot`).
+- **Specs.** `view/fx/buildFxEvents.spec.ts` (collection per tick, reset, no builds, embers once, BU5 fields, quiet
+  gate, LiveRun with a real Chain Spark + Volatile proc, LockstepClient per pump), `view/fx/buildFxRules.spec.ts`
+  (beam timing / jag / cap, bursts, Reduced, trails rule, rings, flares, flashes, quiet / new run, generation pitch),
+  `view/buildBullets.spec.ts` (kind -> look, trails, pool split, ember decal), `view/audio/buildCues.spec.ts` (IDs,
+  pitch, teammates, intervals, voice cap, stings, silent IDs, quiet), `settings.spec.ts` (default, storage, junk).
+
+**Studio checklist (nothing could run in Studio here).**
+
+1. Endless solo, Volatile I: a kill bursts 8 apricot bolts with short trails, clearly not the pink enemy balls or the
+   orange telegraph on every biome; Options > Display > Build effects Reduced: no trails.
+2. Chain Spark II: a jagged sky-blue beam per hop for ~0.12 s with a small spark burst at each target; Reduced: fewer
+   particles; reduced motion: the beam holds one shape.
+3. Soul Shards: violet-white shards with trails toward the nearest enemies.
+4. A cascade on a swarmer pack: the spark / burst sounds climb in pitch with the generation and never machine-gun
+   (once clips exist; silent today).
+5. Pick an evolution / a duo: a gold / ice-blue ring grows around the knight for 1 s (and follows it).
+6. Fire Arrows (after BU6): lemon floor discs under the goo and under every bullet; pop in, fade out.
+7. Frame time with a dense cascade (beam / ring / trail parts pooled: `BuildFxController.getPoolSizes`,
+   `BulletRenderController.getBuildPoolSizes`).
+8. The stage cover and the run-over panel: no beams, rings or build sounds.
+
 ## Player experience
 
 1. **Floor 1 draft.** Three cards as today. One might be **Volatile**: "Enemies you kill burst into a ring of bolts."
