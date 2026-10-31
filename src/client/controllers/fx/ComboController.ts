@@ -55,6 +55,18 @@ type Mutable<T> = { -readonly [K in keyof T]: T[K] };
 /** What KV_ComboDebug can force (COMBO_DEBUG). */
 type ComboDebugKind = "tier" | "break" | "small" | "lapse" | "cut";
 
+/** A priority floor shout another controller asked for (requestShout): its text, colour and life. */
+interface PriorityShout {
+	readonly text: string;
+	readonly color: Color3;
+	readonly lifeSec: number;
+}
+
+/** The ComboShout tier a priority shout runs under (any tier > 0 starts it; its label is the request's own). */
+const PRIORITY_SHOUT_TIER = 1;
+/** shownTier while a priority shout's label is up (never a real tier). */
+const PRIORITY_SHOWN = -1;
+
 /**
  * The combo's per-frame view (docs/COMBO.md CB7). Once per rendered frame (an FxTrackerController frame handler, after
  * the frame's sim ticks) on a scored run it steps ONE ComboDisplay (shared/view/hud combo.ts) with the real frame dt,
@@ -76,7 +88,10 @@ type ComboDebugKind = "tier" | "break" | "small" | "lapse" | "cut";
  *     tier-up replaces a showing one), on FxSpriteController's "floor" placement (yawed by the camera, its own layer
  *     just under the sprite effects' layers: COMBO_SHOUT_DRAW.layerStepsBelowEffects), so every bullet, telegraph,
  *     marking, effect and body draws over it. While it shows, one shoutDucked pass over the enemy bullet pool per frame
- *     ducks it. The stage cover and the run's end drop it.
+ *     ducks it. The stage cover and the run's end drop it. The slot also takes a PRIORITY shout from another
+ *     controller (requestShout: NewBestController's NEW BEST!, docs/NEW_BEST.md NB7): it replaces a showing tier shout,
+ *     runs its own life on the same construction (ComboShout's lifeSec), and while it shows a tier-up is shown in the
+ *     panel only. Without a request nothing changes.
  * An unscored run (no state.score) or no run shows nothing: the display, the shout and COMBO_UI go back to neutral
  * (ScorePanel hides itself on unscored runs as before). Presentation only, read-only on the sim. Studio aid:
  * COMBO_DEBUG.attribute (KV_ComboDebug, off by default) forces a tier-up / break / lapse / cut; the forced events also
@@ -134,6 +149,9 @@ export class ComboController implements OnStart {
 	private shownTier = 0;
 	private shownOpacity = -1;
 	private shoutVisible = false;
+	/** A priority shout asked for since the last frame (requestShout), and the one showing. */
+	private priorityPending: PriorityShout | undefined;
+	private priority: PriorityShout | undefined;
 
 	constructor(
 		private readonly sim: SimController,
@@ -190,9 +208,27 @@ export class ComboController implements OnStart {
 		const look = this.display.frame(input);
 		this.drawUi(look, settings.reducedMotion);
 		if (look.kick) this.freeze.requestNudge("comboBreak");
-		if (covered || runOver) this.shout.clear();
-		else if (look.tierUp > 0) this.shout.start(look.tierUp);
+		if (covered || runOver) {
+			this.shout.clear();
+			this.priorityPending = undefined;
+		} else if (this.priorityPending !== undefined) {
+			this.priority = this.priorityPending;
+			this.priorityPending = undefined;
+			this.shownTier = 0; // relabel
+			this.shout.start(PRIORITY_SHOUT_TIER, this.priority.lifeSec);
+		} else if (look.tierUp > 0 && this.priority === undefined) this.shout.start(look.tierUp);
 		this.drawShout(state, ctx.run.getAlpha(), dt, settings.reducedMotion);
+		if (!this.shout.look.active) this.priority = undefined;
+	}
+
+	/**
+	 * Shows `text` in `color` in the floor shout's slot for `lifeSec` (docs/NEW_BEST.md NB7: the NEW BEST! shout; priority
+	 * over the tier shouts): it replaces a showing tier shout, and a tier-up while it shows stays in the panel only. Taken
+	 * on this controller's next frame (this frame's when asked before it); dropped under the stage cover, after the run's
+	 * end, with no scored run, and on a run start / exit.
+	 */
+	requestShout(text: string, color: Color3, lifeSec: number): void {
+		this.priorityPending = { text, color, lifeSec };
 	}
 
 	/** Back to neutral (no run, an unscored run; `force`: a run start / exit even if nothing showed). */
@@ -201,6 +237,8 @@ export class ComboController implements OnStart {
 		this.on = false;
 		this.display.clear();
 		this.shout.clear();
+		this.priorityPending = undefined;
+		this.priority = undefined;
 		this.hideShout();
 		resetComboUi();
 		this.multTenths = -1;
@@ -358,7 +396,14 @@ export class ComboController implements OnStart {
 		const label = this.label;
 		const pack = this.pack;
 		if (part === undefined || surface === undefined || label === undefined || pack === undefined) return;
-		if (tier !== this.shownTier) {
+		const priority = this.priority;
+		if (priority !== undefined) {
+			if (this.shownTier !== PRIORITY_SHOWN) {
+				this.shownTier = PRIORITY_SHOWN;
+				label.Text = priority.text;
+				label.TextColor3 = priority.color;
+			}
+		} else if (tier !== this.shownTier) {
 			this.shownTier = tier;
 			const def = COMBO_TIERS[math.clamp(tier, 0, COMBO_TOP_TIER)];
 			label.Text = def.nameKey !== undefined ? comboShoutText(pack.str(def.nameKey)) : "";

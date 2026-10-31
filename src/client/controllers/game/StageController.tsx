@@ -4,11 +4,12 @@ import React, { createBinding } from "@rbxts/react";
 import { ReflexProvider } from "@rbxts/react-reflex";
 import { createPortal, createRoot } from "@rbxts/react-roblox";
 import { GuiService, Players, RunService } from "@rbxts/services";
-import { clientStore, selectJuice } from "client/store";
+import { clientStore, selectBaselineRun, selectJuice, selectRunBaseline } from "client/store";
 import { StageCard } from "client/ui";
 import { TUTORIAL } from "shared/config";
 import { ENDLESS_FIRST_FLOOR } from "shared/dungeon";
 import type { ContentRef } from "shared/theme";
+import { floorTarget, stageBestLine, type NewBestLineText } from "shared/view/hud";
 import {
 	PregenTracker,
 	StageLoad,
@@ -254,9 +255,11 @@ export class StageController implements OnStart, StageDriver {
 		const label = load.label();
 		let biomeKey = "";
 		let boss = false;
+		let best: NewBestLineText | undefined;
 		if (kind === "floorChange" && ctx !== undefined) {
 			biomeKey = clientStore.getState().game.run.placeKey;
 			boss = ctx.endlessFloor !== undefined && ctx.floor > 0 && ctx.endlessFloor(ctx.floor).bossFloor;
+			best = this.bestLine(ctx, work?.floor ?? ctx.floor);
 			const tracker = this.trackerFor(ctx);
 			if (ctx.floor > ENDLESS_FIRST_FLOOR && !tracker.wasBuilt(ctx.floor)) {
 				print(`${LOG} floor ${ctx.floor}: built mid-tick (not pre-generated)`);
@@ -270,8 +273,25 @@ export class StageController implements OnStart, StageDriver {
 			floor: label.vars.floor,
 			biomeKey,
 			boss,
+			best,
 			fraction: load.fraction(),
 		});
+	}
+
+	/**
+	 * The floor card's new-best line for `floor` (docs/NEW_BEST.md NB8): shared/view/hud stageBestLine from this run's
+	 * frozen baseline (client/store records slice, NewBestController), undefined without a floor target or before the
+	 * run's baseline is stored. Floors come one at a time, so an earlier floor of the run was already past the record
+	 * exactly when this one is more than one past it. The deepest fanfare is not played here: the tracker holds its
+	 * edge under the cover and fires it on the reveal's first frame (coverLifting).
+	 */
+	private bestLine(ctx: RunContext, floor: number): NewBestLineText | undefined {
+		const store = clientStore.getState();
+		if (selectBaselineRun(store) !== ctx.counter) return undefined;
+		const baseline = selectRunBaseline(store);
+		const record = floorTarget(baseline);
+		if (record === undefined) return undefined;
+		return stageBestLine(floor, baseline, floor > record + 1);
 	}
 
 	/**

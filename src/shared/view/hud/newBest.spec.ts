@@ -19,6 +19,7 @@ import {
 	isRecordRun,
 	newBestRowText,
 	parseNewBestDebug,
+	recordRollEdges,
 	recordRollValue,
 	recordRowText,
 	recordSavedKey,
@@ -671,5 +672,42 @@ describe("new best: confetti", () => {
 			if (p !== undefined && p.x > zone.x && p.x < zone.x + zone.w) middle++;
 		}
 		expect(middle > 0).toBe(true);
+	});
+});
+
+describe("recordRollEdges (NB9: the run-over roll's tick / land sounds)", () => {
+	const R = NEW_BEST.runOver;
+
+	it("one start and one landing per row, at recordRollValue's times", () => {
+		const startAt = R.rowDelaySec;
+		expect(recordRollEdges(2, 0, startAt - STEP)).toEqual({ started: 0, landed: 0 });
+		expect(recordRollEdges(2, startAt - STEP, startAt)).toEqual({ started: 1, landed: 0 });
+		expect(recordRollEdges(2, startAt, startAt + R.rowGapSec)).toEqual({ started: 1, landed: 0 });
+		expect(recordRollEdges(2, startAt + R.rowGapSec, startAt + R.rollSec)).toEqual({ started: 0, landed: 1 });
+		expect(recordRollEdges(2, startAt + R.rollSec, startAt + R.rowGapSec + R.rollSec)).toEqual({
+			started: 0,
+			landed: 1,
+		});
+		// The second row lands when its value reaches row.to.
+		const row = { kind: "floor" as const, from: 9, to: 11, delta: 2 };
+		expect(recordRollValue(row, 1, startAt + R.rowGapSec + R.rollSec)).toBe(row.to);
+	});
+
+	it("summed over frames (or one long hitch) every edge counts exactly once; no rows, no edges", () => {
+		let started = 0;
+		let landed = 0;
+		let prev = 0;
+		for (let t = STEP; t <= 4; t += STEP) {
+			const e = recordRollEdges(2, prev, t);
+			started += e.started;
+			landed += e.landed;
+			prev = t;
+		}
+		expect([started, landed]).toEqual([2, 2]);
+		expect(recordRollEdges(2, 0, 10)).toEqual({ started: 2, landed: 2 });
+		expect(recordRollEdges(0, 0, 10)).toEqual({ started: 0, landed: 0 });
+		const out = { started: 9, landed: 9 };
+		expect(recordRollEdges(1, 10, 11, out)).toBe(out);
+		expect(out).toEqual({ started: 0, landed: 0 });
 	});
 });

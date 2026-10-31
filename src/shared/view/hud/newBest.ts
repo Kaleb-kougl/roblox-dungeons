@@ -614,6 +614,38 @@ export function recordRollValue(row: RecordRow, index: number, t: number): numbe
 	return u >= 1 ? row.to : row.from + math.floor((row.to - row.from) * eased);
 }
 
+/** The roll's sound edges between two frames (recordRollEdges): rows that started rolling, rows that landed. */
+export interface RecordRollEdges {
+	/** Rows whose roll started in (prevT, t]: sfx.score.tick each. */
+	started: number;
+	/** Rows that reached their value in (prevT, t]: sfx.score.land each. */
+	landed: number;
+}
+
+/**
+ * How many of `rowCount` record rows started rolling and how many landed between `prevT` (exclusive) and `t`
+ * (inclusive), seconds since the run-over panel opened (recordRollValue's timeline: row i starts at rowDelaySec + i x
+ * rowGapSec and lands rollSec later). The client plays one tick per start and one land per landing; summing over any
+ * split of the time gives each edge once. `out` (optional) is refilled and returned.
+ */
+export function recordRollEdges(
+	rowCount: number,
+	prevT: number,
+	t: number,
+	out: RecordRollEdges = { started: 0, landed: 0 },
+): RecordRollEdges {
+	const R = NEW_BEST.runOver;
+	out.started = 0;
+	out.landed = 0;
+	for (let i = 0; i < rowCount; i++) {
+		const start = R.rowDelaySec + i * R.rowGapSec;
+		const land = start + R.rollSec;
+		if (prevT < start && start <= t) out.started += 1;
+		if (prevT < land && land <= t) out.landed += 1;
+	}
+	return out;
+}
+
 /** The run's verdict as the run-over panel knows it (hud.verdict.<status>). */
 export type NewBestVerdictStatus = "pending" | "accepted" | "rejected" | "skipped";
 

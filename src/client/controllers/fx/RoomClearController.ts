@@ -25,8 +25,15 @@ import { SimController } from "../game/SimController";
 import { ThemeController } from "../game/ThemeController";
 import { ActorRenderController } from "../render/ActorRenderController";
 import { FreezeFrameController } from "./FreezeFrameController";
-import { FxTrackerController } from "./FxTrackerController";
+import { FX_FRAME_PHASE, FxTrackerController } from "./FxTrackerController";
 import { ParticleController } from "./ParticleController";
+
+/**
+ * Called once per frame on a scored run with the score panel's shown score (the roller's), the juice settings and
+ * the frame's step (real seconds, 0 while a solo run is paused), after the roll and BEFORE this frame's celebration
+ * sounds (docs/NEW_BEST.md NB7: NewBestController's tracker).
+ */
+export type ShownScoreHandler = (shown: number, settings: Readonly<JuiceSettings>, dt: number) => void;
 
 /**
  * The room clear celebration (docs/ROOM_CLEAR.md): once per frame it reads the run's room clears (RunView.roomClears),
@@ -35,12 +42,20 @@ import { ParticleController } from "./ParticleController";
  * last-kill hold and the spark ring, plays the stamp / tick / land sounds and the stamp kick, rolls the score and
  * writes the HUD bindings (client/ui ROOM_CLEAR_UI). Real time, stopped while a solo run is paused; not slowed by
  * hitstop. Presentation only.
+ *
+ * Frame order (docs/NEW_BEST.md NB7): this is a FX_FRAME_PHASE.scoreRoll frame handler, so it runs before every normal
+ * one (AudioController's cue mapper among them). Each frame it rolls the score, then hands the shown score to its
+ * onShownScore subscribers (NewBestController steps the new-best tracker there), then plays its sounds: a subscriber
+ * that calls dropClearJingle on that frame (the new-best fanfare, NBD7) silences this frame's clear / perfect / chip
+ * jingle (the stamp, its kick and the tally still play).
  */
 @Controller({})
 export class RoomClearController implements OnStart {
 	private readonly seq = new RoomClearSequence();
 	private readonly roller = new ScoreRoller();
 	private readonly watch = new StateWatch();
+	private readonly shownHandlers = new Array<ShownScoreHandler>();
+	private jingleDropped = false;
 
 	constructor(
 		private readonly sim: SimController,
@@ -54,7 +69,17 @@ export class RoomClearController implements OnStart {
 
 	onStart(): void {
 		this.sim.onRunStarted(() => this.newRun());
-		this.fx.onFrame((_, settings, dt) => this.frame(settings, dt));
+		this.fx.onFrame((_, settings, dt) => this.frame(settings, dt), FX_FRAME_PHASE.scoreRoll);
+	}
+
+	/** Every scored frame's shown score, after the roll and before this frame's sounds (see the class comment). */
+	onShownScore(handler: ShownScoreHandler): void {
+		this.shownHandlers.push(handler);
+	}
+
+	/** This frame's clear / perfect / chip jingle is dropped (NBD7). Only meaningful inside an onShownScore handler. */
+	dropClearJingle(): void {
+		this.jingleDropped = true;
 	}
 
 	private newRun(): void {
@@ -119,18 +144,21 @@ export class RoomClearController implements OnStart {
 		// that engaged and cleared on the same tick counts there.
 		if (danger && (hurt || isPartyWiped(state) || selectStageCovered(clientStore.getState()))) seq.collapse();
 		const look = seq.frame(dt);
-		this.cues(look, settings);
 		const shown = this.roller.frame(dt, score.total, look.held, look.bonusLanded > 0);
+		this.jingleDropped = false;
+		for (const handler of this.shownHandlers) handler(shown, settings, dt);
+		this.cues(look, settings);
 		this.write(look, shown);
 	}
 
 	private cues(look: Readonly<RoomClearLook>, settings: Readonly<JuiceSettings>): void {
+		const jingle = !this.jingleDropped;
 		if (look.landed) {
-			this.audio.play(look.perfect ? SFX.roomPerfect : SFX.roomClear, 1);
+			if (jingle) this.audio.play(look.perfect ? SFX.roomPerfect : SFX.roomClear, 1);
 			this.freeze.requestNudge(stampNudgeFor(settings));
 		}
 		if (look.ticks > 0) this.audio.play(SFX.scoreTick, 1);
-		if (look.chipsStarted > 0) this.audio.play(SFX.roomClear, ROOM_CLEAR.chip.jingleVolume);
+		if (look.chipsStarted > 0 && jingle) this.audio.play(SFX.roomClear, ROOM_CLEAR.chip.jingleVolume);
 		if (look.bonusLanded > 0) this.audio.play(SFX.scoreLand, 1);
 	}
 
