@@ -91,7 +91,8 @@ const PRIORITY_SHOWN = -1;
  *     ducks it. The stage cover and the run's end drop it. The slot also takes a PRIORITY shout from another
  *     controller (requestShout: NewBestController's NEW BEST!, docs/NEW_BEST.md NB7): it replaces a showing tier shout,
  *     runs its own life on the same construction (ComboShout's lifeSec), and while it shows a tier-up is shown in the
- *     panel only. Without a request nothing changes.
+ *     panel only; a request made under the cover waits for it to lift (a tier shout under the cover is still just
+ *     dropped). Without a request nothing changes.
  * An unscored run (no state.score) or no run shows nothing: the display, the shout and COMBO_UI go back to neutral
  * (ScorePanel hides itself on unscored runs as before). Presentation only, read-only on the sim. Studio aid:
  * COMBO_DEBUG.attribute (KV_ComboDebug, off by default) forces a tier-up / break / lapse / cut; the forced events also
@@ -208,9 +209,13 @@ export class ComboController implements OnStart {
 		const look = this.display.frame(input);
 		this.drawUi(look, settings.reducedMotion);
 		if (look.kick) this.freeze.requestNudge("comboBreak");
-		if (covered || runOver) {
+		if (runOver) {
 			this.shout.clear();
 			this.priorityPending = undefined;
+		} else if (covered) {
+			// The cover (and its fade) drops a showing shout; a priority request waits for it to lift (NewBestController
+			// fires on the reveal's first frame, coverLifting, while the fade still covers the input here).
+			this.shout.clear();
 		} else if (this.priorityPending !== undefined) {
 			this.priority = this.priorityPending;
 			this.priorityPending = undefined;
@@ -224,8 +229,8 @@ export class ComboController implements OnStart {
 	/**
 	 * Shows `text` in `color` in the floor shout's slot for `lifeSec` (docs/NEW_BEST.md NB7: the NEW BEST! shout; priority
 	 * over the tier shouts): it replaces a showing tier shout, and a tier-up while it shows stays in the panel only. Taken
-	 * on this controller's next frame (this frame's when asked before it); dropped under the stage cover, after the run's
-	 * end, with no scored run, and on a run start / exit.
+	 * on this controller's next frame (this frame's when asked before it), or held under the stage cover (and its fade)
+	 * until the first uncovered frame; dropped after the run's end, with no scored run, and on a run start / exit.
 	 */
 	requestShout(text: string, color: Color3, lifeSec: number): void {
 		this.priorityPending = { text, color, lifeSec };

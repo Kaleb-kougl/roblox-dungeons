@@ -31,6 +31,7 @@ import {
 	type NewBestFrame,
 	type NewBestRecordsInput,
 	type RunBaseline,
+	withPendingRuns,
 } from "./newBest";
 import { NEW_BEST, NEW_BEST_ROLE } from "./newBestConfig";
 import { NEW_BEST_STRINGS } from "./newBestStrings";
@@ -151,6 +152,54 @@ describe("new best: baseline", () => {
 		expect(step(t, { shown: 1500 }).gap).toBe(501);
 		expect(step(t, { shown: 2001 }).scoreCrossed).toBe(true);
 		expect(t.look.recordFloor).toBe(3);
+	});
+});
+
+describe("new best: pending runs (withPendingRuns)", () => {
+	const records: NewBestRecordsInput = {
+		loaded: true,
+		solo: { score: 48210, floor: 9 },
+		coop: { score: 3000, floor: 4 },
+	};
+
+	it("folds a pending run on the same board into the baseline, max per field", () => {
+		// R-restart right after a 61,930 run on floor 8: the next run aims at 61,930 and floor 9.
+		const folded = withPendingRuns(records, "solo", [{ board: "solo", score: 61930, floor: 8 }]);
+		expect(folded).toEqual({ loaded: true, solo: { score: 61930, floor: 9 }, coop: { score: 3000, floor: 4 } });
+		expect(baselineFrom(folded, 1, ENDLESS, true)).toEqual(known(61930, 9));
+		// Two pending runs: each field takes the higher.
+		const two = withPendingRuns(records, "solo", [
+			{ board: "solo", score: 50000, floor: 12 },
+			{ board: "solo", score: 55000, floor: 3 },
+		]);
+		expect(two?.solo).toEqual({ score: 55000, floor: 12 });
+	});
+
+	it("ignores other boards and lower runs (the records themselves when nothing changes)", () => {
+		expect(withPendingRuns(records, "solo", [{ board: "coop", score: 90000, floor: 20 }])).toBe(records);
+		expect(withPendingRuns(records, "solo", [{ board: "solo", score: 100, floor: 2 }])).toBe(records);
+		expect(withPendingRuns(records, "solo", [])).toBe(records);
+		const coop = withPendingRuns(records, "coop", [{ board: "coop", score: 4000, floor: 1 }]);
+		expect(coop).toEqual({ loaded: true, solo: { score: 48210, floor: 9 }, coop: { score: 4000, floor: 4 } });
+	});
+
+	it("turns a first record into a target once a pending run set one", () => {
+		const first = withPendingRuns({ loaded: true }, "solo", [{ board: "solo", score: 2500, floor: 3 }]);
+		expect(baselineFrom(first, 1, ENDLESS, true)).toEqual(known(2500, 3));
+		// Junk claims count as nothing.
+		const junk = withPendingRuns({ loaded: true }, "solo", [{ board: "solo", score: 0 / 0, floor: -1 }]);
+		expect(baselineFrom(junk, 1, ENDLESS, true)).toEqual(none());
+	});
+
+	it("leaves unknown records unknown", () => {
+		const claim = [{ board: "solo" as const, score: 61930, floor: 8 }];
+		expect(withPendingRuns(undefined, "solo", claim)).toBe(undefined);
+		const failed = { loaded: false };
+		expect(withPendingRuns(failed, "solo", claim)).toBe(failed);
+		expect(baselineFrom(withPendingRuns(failed, "solo", claim), 1, ENDLESS, true)).toEqual({
+			kind: "unknown",
+			board: "solo",
+		});
 	});
 });
 

@@ -7,6 +7,11 @@
  * and runId of the run that set it. A field at 0 is no record (its time is 0, its runId ""), and a board with both at
  * 0 is absent. Merges only ever raise a field (strictly higher wins; a tie keeps the older run), so a merge inside
  * UpdateAsync can never lower a record whatever order servers write in.
+ *
+ * `seeded` marks a doc that already took the one-time seed from the leaderboard details (seedFromDetails, after both
+ * board reads succeeded). Absent = not seeded yet (every doc written before the marker existed, and a merge write of a
+ * run alone), so RecordsService seeds whenever it is absent; once either side of a merge has it, the merge keeps it.
+ * Stored only when true (still doc version 1).
  */
 import { MAX_RUN_ID_CHARS } from "shared/run";
 import type { DocCodec } from "shared/settings";
@@ -38,6 +43,8 @@ export interface RecordsDoc {
 	v: typeof RECORDS_DOC_VERSION;
 	/** The endless descent's records (the only ranked world today). */
 	endless: RecordsBoards;
+	/** True once the one-time leaderboard seed ran (absent = not seeded: seed on the next join). Never false. */
+	seeded?: true;
 }
 
 /** A board's numbers as the client sees them. */
@@ -108,7 +115,7 @@ export function emptyRecordsDoc(): RecordsDoc {
 	return { v: RECORDS_DOC_VERSION, endless: {} };
 }
 
-/** True when no board has a record. */
+/** True when no board has a record (the `seeded` marker is not a record). */
 export function isEmptyRecords(doc: Readonly<RecordsDoc>): boolean {
 	for (const board of LEADERBOARD_BOARDS) if (doc.endless[board] !== undefined) return false;
 	return true;
@@ -155,6 +162,7 @@ export function decodeRecordsDoc(raw: unknown): RecordsDoc {
 		const entry = decodeRecordEntry(boards[board]);
 		if (entry !== undefined) out.endless[board] = entry;
 	}
+	if ((raw as { seeded?: unknown }).seeded === true) out.seeded = true;
 	return out;
 }
 
@@ -169,13 +177,14 @@ function copyEntry(e: Readonly<RecordEntry>): RecordEntry {
 	};
 }
 
-/** The value written to the DataStore: a normalized copy (absent boards left out). */
+/** The value written to the DataStore: a normalized copy (absent boards left out, `seeded` only when true). */
 export function encodeRecordsDoc(doc: Readonly<RecordsDoc>): RecordsDoc {
 	const out = emptyRecordsDoc();
 	for (const board of LEADERBOARD_BOARDS) {
 		const entry = decodeRecordEntry(doc.endless[board]);
 		if (entry !== undefined) out.endless[board] = copyEntry(entry);
 	}
+	if (doc.seeded === true) out.seeded = true;
 	return out;
 }
 
@@ -192,6 +201,7 @@ function sameEntry(a: Readonly<RecordEntry> | undefined, b: Readonly<RecordEntry
 }
 
 export function sameRecordsDoc(a: Readonly<RecordsDoc>, b: Readonly<RecordsDoc>): boolean {
+	if ((a.seeded === true) !== (b.seeded === true)) return false;
 	for (const board of LEADERBOARD_BOARDS) if (!sameEntry(a.endless[board], b.endless[board])) return false;
 	return true;
 }
@@ -223,13 +233,17 @@ function mergeEntries(a: RecordEntry | undefined, b: RecordEntry | undefined): R
 	return out;
 }
 
-/** Two documents merged, max per board per field; ties keep `a`'s (pass the stored doc as `a`). A new doc. */
+/**
+ * Two documents merged, max per board per field; ties keep `a`'s (pass the stored doc as `a`). `seeded` when either
+ * is. A new doc.
+ */
 export function mergeRecordDocs(a: Readonly<RecordsDoc>, b: Readonly<RecordsDoc>): RecordsDoc {
 	const out = emptyRecordsDoc();
 	for (const board of LEADERBOARD_BOARDS) {
 		const entry = mergeEntries(a.endless[board], b.endless[board]);
 		if (entry !== undefined) out.endless[board] = copyEntry(entry);
 	}
+	if (a.seeded === true || b.seeded === true) out.seeded = true;
 	return out;
 }
 
@@ -281,9 +295,9 @@ export function runRecordsResult(board: LeaderboardBoard, merge: RecordsMerge): 
 
 /**
  * UpdateAsync's transform for a records write: the stored value merged with `incoming` (mergeRecordDocs, the stored
- * side first, so ties keep the stored run). Undefined (cancel the write) when the stored value is a NEWER doc version
- * (an old server must not clobber it) or when the merge changes nothing (no write needed). Junk stored values read as
- * empty (decodeRecordsDoc), so they are replaced.
+ * side first, so ties keep the stored run; `seeded` stays once either side has it). Undefined (cancel the write) when
+ * the stored value is a NEWER doc version (an old server must not clobber it) or when the merge changes nothing (no
+ * write needed). Junk stored values read as empty (decodeRecordsDoc), so they are replaced.
  */
 export function mergeStoredRecords(stored: unknown, incoming: Readonly<RecordsDoc>): RecordsDoc | undefined {
 	if (typeIs(stored, "table")) {
@@ -292,9 +306,11 @@ export function mergeStoredRecords(stored: unknown, incoming: Readonly<RecordsDo
 	}
 	const old = decodeRecordsDoc(stored);
 	const merged = mergeRecordDocs(old, decodeRecordsDoc(encodeRecordsDoc(incoming)));
-	// A valid stored doc equal to the merge needs no write; a junk value is rewritten only if there is something to keep.
+	// A valid stored doc equal to the merge needs no write; a junk value is rewritten only if there is something to keep
+	// (a record or the seeded marker).
 	const storedValid = typeIs(stored, "table") && (stored as { v?: unknown }).v === RECORDS_DOC_VERSION;
-	if (sameRecordsDoc(old, merged) && (storedValid || isEmptyRecords(merged))) return undefined;
+	const nothingToKeep = isEmptyRecords(merged) && merged.seeded !== true;
+	if (sameRecordsDoc(old, merged) && (storedValid || nothingToKeep)) return undefined;
 	return encodeRecordsDoc(merged);
 }
 
@@ -305,9 +321,12 @@ export type RecordsSeedDetails = { readonly [K in LeaderboardBoard]?: unknown };
  * The one-time seed (NBD2): a player's leaderboard personal bests (shared/leaderboard decodeDetails per board) as
  * records, so a veteran's first run is not a FIRST RECORD. The leaderboard entry is the best-SCORE run, so its floor
  * seeds the deepest floor only as a floor (a later deeper run raises it). Malformed details are skipped per board.
+ * Call it only after BOTH board reads succeeded (a never-posted board reads as undefined): the result carries `seeded`,
+ * even with no board (a player with no leaderboard entry is seeded too), and a max-merge of it into any doc is safe.
  */
 export function seedFromDetails(details: RecordsSeedDetails): RecordsDoc {
 	const out = emptyRecordsDoc();
+	out.seeded = true;
 	for (const board of LEADERBOARD_BOARDS) {
 		const d = decodeDetails(details[board]);
 		if (d === undefined) continue;

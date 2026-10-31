@@ -5,8 +5,9 @@
  * score, the true score, the endless floor) and never writes sim state.
  *
  *   - `RunBaseline` (NBD9, NBD10): captured ONCE at run start from the client's copy of the personal records
- *     (`baselineFrom`, or `debugBaseline` for KV_NewBestDebug) and handed to the tracker's constructor: a records update
- *     mid-run never moves it. Four kinds:
+ *     (`baselineFrom` over `withPendingRuns`: earlier runs whose verdict is still pending folded in; or `debugBaseline`
+ *     for KV_NewBestDebug) and handed to the tracker's constructor: a records update mid-run never moves it. Four
+ *     kinds:
  *       "unranked"  not the ranked world (tutorial, M1 even under KV_Scoring, an unscored run): nothing anywhere;
  *       "unknown"   the records did not load: nothing in-run (never a false celebration); the run over can still
  *                   celebrate from the verdict's server records (`runOverRecords` with `server`);
@@ -98,6 +99,48 @@ export function baselineFrom(
 	const floor = rec !== undefined ? whole(rec.floor) : 0;
 	if (score < NEW_BEST.minScore) return { kind: "none", board, score, floor };
 	return { kind: "known", board, score, floor };
+}
+
+/**
+ * An earlier ranked run of this session whose records may not have reached the client's records yet: its verdict is
+ * still pending (the client's own final score and floor, a claim) or it was accepted with a records result (the
+ * server's numbers; the `records` push follows the verdict). SimController lists them (`pendingRunClaims`).
+ */
+export interface PendingRunClaim {
+	readonly board: NewBestBoard;
+	readonly score: number;
+	readonly floor: number;
+}
+
+/**
+ * The records with earlier runs still in flight folded in (max per field, `board` only), for freezing the next run's
+ * baseline: the server pushes new records only after a verdict, so a run started before the previous run's verdict
+ * (R-restart, a quick Again, Leave run then Play) would otherwise freeze a baseline below the record just set and
+ * replay a false NEW BEST at the old number. Records not loaded (or missing) are returned as they are: an unknown
+ * baseline stays unknown. A pending run that is later rejected leaves the frozen baseline alone (frozen per run,
+ * NBD10): at worst one run aims too high, never a false celebration. Returns `records` itself when nothing changes.
+ */
+export function withPendingRuns(
+	records: NewBestRecordsInput | undefined,
+	board: NewBestBoard,
+	pending: ReadonlyArray<PendingRunClaim>,
+): NewBestRecordsInput | undefined {
+	if (records === undefined || records.loaded !== true) return records;
+	const rec = board === "coop" ? records.coop : records.solo;
+	const baseScore = rec !== undefined ? whole(rec.score) : 0;
+	const baseFloor = rec !== undefined ? whole(rec.floor) : 0;
+	let score = baseScore;
+	let floor = baseFloor;
+	for (const claim of pending) {
+		if (claim.board !== board) continue;
+		score = math.max(score, whole(claim.score));
+		floor = math.max(floor, whole(claim.floor));
+	}
+	if (score === baseScore && floor === baseFloor) return records;
+	const merged: NewBestRecord = { score, floor };
+	return board === "coop"
+		? { loaded: true, solo: records.solo, coop: merged }
+		: { loaded: true, solo: merged, coop: records.coop };
 }
 
 /** KV_NewBestDebug's forced baseline (parseNewBestDebug). */

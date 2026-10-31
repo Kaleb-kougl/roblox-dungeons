@@ -2,7 +2,14 @@ import { Controller, OnStart } from "@flamework/core";
 import { Janitor } from "@rbxts/janitor";
 import { GuiService, Players, Workspace } from "@rbxts/services";
 import { Events } from "client/network";
-import { clientStore, selectRecordsStatus, type VerdictView } from "client/store";
+import {
+	clientStore,
+	selectAnyPanelOpen,
+	selectCoopOverlay,
+	selectMenuScreen,
+	selectRecordsStatus,
+	type VerdictView,
+} from "client/store";
 import { NEW_BEST_UI, resetNewBestUi, runOverBest, type RunOverBest } from "client/ui";
 import type { JuiceSettings } from "shared/settings";
 import { partySize } from "shared/sim";
@@ -34,6 +41,7 @@ import {
 	type RecordRollEdges,
 	type RecordRow,
 	type RunBaseline,
+	withPendingRuns,
 } from "shared/view/hud";
 import { AudioController } from "../audio/AudioController";
 import { SimController, type RunContext } from "../game/SimController";
@@ -62,7 +70,9 @@ const NO_ROWS: ReadonlyArray<RecordRow> = [];
  *              may have come first); the status goes to the client store (records slice).
  *   baseline   at every run start (SimController.onRunStarted) the run's RunBaseline is frozen (NBD10) and stored with
  *              the run's counter: shared/view/hud baselineFrom(records, party size, world, ranked), where ranked is a
- *              server run session (RunContext.runId), not the tutorial, and scored; KV_NewBestDebug
+ *              server run session (RunContext.runId), not the tutorial, and scored, and records are the store's with
+ *              earlier ranked runs still awaiting their verdict / records push folded in (withPendingRuns over
+ *              SimController.pendingRunClaims: an R-restart or a quick Again must not aim at the old best); KV_NewBestDebug
  *              (NEW_BEST.debugAttribute, parseNewBestDebug / debugBaseline, read at run start) overrides a ranked run's
  *              baseline. A new NewBestTracker per run; a per-run Janitor drops what the run left on screen.
  *   frame      an onShownScore subscriber of RoomClearController: inside its FX_FRAME_PHASE.scoreRoll frame handler,
@@ -76,7 +86,8 @@ const NO_ROWS: ReadonlyArray<RecordRow> = [];
  *              shine; the touch strip's compact line), the NEW BEST! floor shout on the crossing (ComboController's
  *              shout slot, priority over a tier shout), and the gold confetti: one ScreenGui (KV_NewBestConfetti, over
  *              the HUD: NEW_BEST_DRAW.confettiDisplayOrderAboveHud) with a pool of plain Frames placed by confettiPieceAt
- *              (in-run: only outside HUD_CLEAR_ZONE; none under reduced motion).
+ *              (in-run: only outside HUD_CLEAR_ZONE, hidden while a menu is up over the run (menuOver: the solo pause,
+ *              the party overlay, options, leaderboards); none under reduced motion).
  *   run over   (NB9) from the run's end, the run-over panel's record (client/ui runOverBest: the same function the
  *              panel draws from, so both agree; the server's verdict records win once they arrive): the record rows roll
  *              (recordRollValue, real seconds since the run ended) into NEW_BEST_UI.recordRows with sfx.score.tick at
@@ -172,7 +183,13 @@ export class NewBestController implements OnStart {
 		const state = ctx.run.state;
 		const ranked = ctx.runId !== undefined && !ctx.tutorial && state.score !== undefined;
 		const party = partySize(state);
-		const baseline = baselineFrom(selectRecordsStatus(clientStore.getState()), party, ctx.world, ranked);
+		// Earlier ranked runs whose verdict (and so the records push) has not arrived yet count too (pendingRunClaims).
+		const records = withPendingRuns(
+			selectRecordsStatus(clientStore.getState()),
+			boardFor(party),
+			this.sim.pendingRunClaims(),
+		);
+		const baseline = baselineFrom(records, party, ctx.world, ranked);
 		if (baseline.kind === "unranked") return baseline;
 		const debug = parseNewBestDebug(Workspace.GetAttribute(NEW_BEST.debugAttribute));
 		return debug !== undefined ? debugBaseline(debug, boardFor(party)) : baseline;
@@ -208,7 +225,23 @@ export class NewBestController implements OnStart {
 		if (look.fanfare) this.roomClear.dropClearJingle();
 		if (look.scoreCrossed) this.shout();
 		if (input.runOver) this.runOverFrame(look, settings.reducedMotion);
+		else if (this.menuOver()) this.hideConfetti();
 		else this.drawConfetti(look.confettiSeed, look.confettiAge, false);
+	}
+
+	/**
+	 * A menu is up over the run: the solo pause (the sim UI-paused: pause overlay, options), the co-op party overlay, a
+	 * menu screen, options or leaderboards. The in-run confetti hides under it (its layer sits under the menus, so it
+	 * would hang frozen or keep falling behind the dim); the run-over confetti is not affected.
+	 */
+	private menuOver(): boolean {
+		const st = clientStore.getState();
+		return (
+			this.sim.getContext()?.live?.isPaused() === true ||
+			selectAnyPanelOpen(st) ||
+			selectCoopOverlay(st) ||
+			selectMenuScreen(st) !== "none"
+		);
 	}
 
 	// --- the run over (NB9) -----------------------------------------------------------------------------

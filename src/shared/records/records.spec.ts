@@ -231,6 +231,72 @@ describe("mergeRecordDocs / mergeStoredRecords", () => {
 	});
 });
 
+describe("seeded marker", () => {
+	it("decodes old docs without it as unseeded and round-trips it", () => {
+		const old = decodeRecordsDoc(encodeRecordsDoc(sampleDoc()));
+		expect(old.seeded).toBeUndefined();
+		const seeded: RecordsDoc = { ...sampleDoc(), seeded: true };
+		const back = decodeRecordsDoc(encodeRecordsDoc(seeded));
+		expect(back.seeded).toBe(true);
+		expect(back).toEqual(seeded);
+		// Anything but true is unseeded.
+		for (const v of [false, 1, "true"]) {
+			expect(decodeRecordsDoc({ ...encodeRecordsDoc(sampleDoc()), seeded: v }).seeded).toBeUndefined();
+		}
+		// A seeded doc with no boards is still empty of records, but differs from the unseeded empty doc.
+		const bare = decodeRecordsDoc({ v: RECORDS_DOC_VERSION, endless: {}, seeded: true });
+		expect(isEmptyRecords(bare)).toBe(true);
+		expect(sameRecordsDoc(bare, emptyRecordsDoc())).toBe(false);
+		expect(RECORDS_CODEC.equals(bare, emptyRecordsDoc())).toBe(false);
+	});
+
+	it("survives every merge once either side has it", () => {
+		const seeded: RecordsDoc = { ...sampleDoc(), seeded: true };
+		const run = docOfRun("solo", { score: 90000, floor: 1, at: AT, runId: "x" });
+		expect(mergeRecordDocs(seeded, run).seeded).toBe(true);
+		expect(mergeRecordDocs(run, seeded).seeded).toBe(true);
+		expect(mergeRecordDocs(run, sampleDoc()).seeded).toBeUndefined();
+		expect(mergeRecords(seeded, "solo", { score: 90000, floor: 1, at: AT, runId: "x" }).doc.seeded).toBe(true);
+		// A merge write of a run alone over a seeded stored doc keeps the marker.
+		const stored = mergeStoredRecords(encodeRecordsDoc(seeded), run);
+		expect(stored!.seeded).toBe(true);
+		expect(bestOf(stored!, "solo")).toEqual({ score: 90000, floor: 9 });
+		// A run-alone write over nothing is not seeded, so the next join still seeds.
+		expect(mergeStoredRecords(undefined, run)!.seeded).toBeUndefined();
+	});
+
+	it("is written alone (no leaderboard entry) and only once", () => {
+		const bare = seedFromDetails({});
+		expect(bare.seeded).toBe(true);
+		// Over nothing, an unseeded empty doc or junk: written, so the next join does not read the board again.
+		expect(mergeStoredRecords(undefined, bare)).toEqual(bare);
+		expect(mergeStoredRecords(encodeRecordsDoc(emptyRecordsDoc()), bare)).toEqual(bare);
+		expect(mergeStoredRecords("junk", bare)).toEqual(bare);
+		// Over a doc that already has it: no write.
+		expect(mergeStoredRecords(encodeRecordsDoc(bare), bare)).toBe(undefined);
+		expect(mergeStoredRecords(encodeRecordsDoc({ ...sampleDoc(), seeded: true }), bare)).toBe(undefined);
+		// Over unseeded records: the marker is added, the records kept.
+		const up = mergeStoredRecords(encodeRecordsDoc(sampleDoc()), bare);
+		expect(up!.seeded).toBe(true);
+		expect(bestOf(up!, "solo")).toEqual({ score: 48210, floor: 9 });
+	});
+
+	it("seeds a non-empty doc by max-merge (a run written before the seed)", () => {
+		// The join load failed earlier and a verdict wrote the run alone; the leaderboard best is higher.
+		const before = docOfRun("solo", { score: 5000, floor: 12, at: AT + 50, runId: "late" });
+		const seeded = mergeRecordDocs(before, seedFromDetails({ solo: details(48210, 9, "lb-solo") }));
+		expect(seeded.seeded).toBe(true);
+		expect(seeded.endless.solo).toEqual({
+			score: 48210,
+			scoreAt: AT,
+			scoreRunId: "lb-solo",
+			floor: 12,
+			floorAt: AT + 50,
+			floorRunId: "late",
+		});
+	});
+});
+
 describe("seedFromDetails", () => {
 	it("seeds solo only", () => {
 		const doc = seedFromDetails({ solo: details(48210, 9, "lb-solo") });
@@ -243,6 +309,7 @@ describe("seedFromDetails", () => {
 			floorRunId: "lb-solo",
 		});
 		expect(doc.endless.coop).toBeUndefined();
+		expect(doc.seeded).toBe(true);
 	});
 
 	it("seeds both boards", () => {
