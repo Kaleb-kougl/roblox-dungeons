@@ -352,10 +352,32 @@ export function Row(props: { order?: number; children?: React.ReactNode; align?:
 	);
 }
 
-/** A square or diamond pip, filled with `color` or empty (uiPanel with a dim outline). */
-export function Pip(props: { order: number; filled: boolean; color: ColorRole; diamond?: boolean; size?: number }) {
+/** A Pip's art (docs/UI_ART.md UA10): a theme ui image fitted into `box`, maybe dimmed (an empty pip) or tinted. */
+export interface PipArtProps {
+	/** A theme ui image id (an icon-atlas cut); the pack lacking it draws the flat pip. */
+	readonly id: string;
+	/** The slot the art fits into, reference px (shared/view/hud pipArtSlot). */
+	readonly box: { readonly w: number; readonly h: number };
+	/** ImageTransparency (an unlit candle, an empty chip). Default 0. */
+	readonly transparency?: number;
+	/** Tint the (white) art with the pip's `color` role (the Aegis chip). Default false. */
+	readonly tinted?: boolean;
+}
+
+/**
+ * A square or diamond pip, filled with `color` or empty (uiPanel with a dim outline). With `art` the pip is that ui
+ * image (ArtImage, in `art.box`) when the pack has it; without the art, exactly the flat pip.
+ */
+export function Pip(props: {
+	order: number;
+	filled: boolean;
+	color: ColorRole;
+	diamond?: boolean;
+	size?: number;
+	art?: PipArtProps;
+}) {
 	const size = props.size ?? HUD_VIEW.pipSize;
-	return (
+	const flat = (
 		<frame LayoutOrder={props.order} Size={new UDim2(0, size, 0, size)} BackgroundTransparency={HIDDEN}>
 			<frame
 				AnchorPoint={new Vector2(HALF, HALF)}
@@ -371,6 +393,18 @@ export function Pip(props: { order: number; filled: boolean; color: ColorRole; d
 				<uistroke Thickness={STROKE} Color={role(props.filled ? "background" : "uiTextDim")} />
 			</frame>
 		</frame>
+	);
+	const art = props.art;
+	if (art === undefined) return flat;
+	return (
+		<ArtImage
+			id={art.id}
+			box={art.box}
+			order={props.order}
+			transparency={art.transparency ?? 0}
+			color={art.tinted === true ? props.color : undefined}
+			fallback={flat}
+		/>
 	);
 }
 

@@ -1,23 +1,48 @@
 import React from "@rbxts/react";
 import { useSelector } from "@rbxts/react-reflex";
 import { selectSnapshot } from "client/store";
-import { role, str } from "client/ui/theme";
+import { role, str, themePack } from "client/ui/theme";
+import type { ThemePack } from "shared/theme";
 import { BOOST_VIEW } from "shared/view/boosts";
-import { HUD_STRINGS, HUD_VIEW, heartFills } from "shared/view/hud";
+import {
+	HUD_STRINGS,
+	HUD_VIEW,
+	heartFills,
+	heartSkinState,
+	pipArt,
+	pipArtSlot,
+	skinFor,
+	skinHasOf,
+	type HudPipKind,
+	type SkinHas,
+} from "shared/view/hud";
 import { BoostRow } from "./BoostRow";
-import { Panel, Pip, Row, Text } from "./primitives";
+import { ArtImage, Panel, Pip, Row, Text, type PipArtProps } from "./primitives";
 import { RunItems } from "./RunItems";
 import { GhostHeart, HighlightRing } from "./TutorialFx";
+import { useHudScale } from "./useHudScale";
 
 const HIDDEN = 1;
 const STROKE = 1;
 /** Half hearts per heart. */
 const HALVES = 2;
 
-/** One heart: `fill` 0 (empty), 1 (half) or 2 (full) half hearts; the left half fills first (web PlayerHud Heart). */
-function Heart(props: { order: number; fill: number }) {
+/** The pack's art lookups for one render (docs/UI_ART.md UA10); undefined without a pack: every piece flat. */
+interface StatusSkin {
+	readonly pack: ThemePack;
+	readonly has: SkinHas;
+	readonly uiScale: number;
+}
+
+/**
+ * One heart: `fill` 0 (empty), 1 (half) or 2 (full) half hearts; the left half fills first (web PlayerHud Heart). With
+ * the heart art (skinFor "heart": full / half / empty, all or none) the art fitted into the same HUD_VIEW.heartSize box
+ * (ArtImage: whole screen px per art px); without, the flat heart.
+ */
+function Heart(props: { order: number; fill: number; skin: StatusSkin | undefined }) {
 	const size = HUD_VIEW.heartSize;
-	return (
+	const art = props.skin !== undefined ? skinFor(props.skin.has, "heart", heartSkinState(props.fill)) : undefined;
+	const flat = (
 		<frame
 			LayoutOrder={props.order}
 			Size={new UDim2(0, size, 0, size)}
@@ -33,22 +58,67 @@ function Heart(props: { order: number; fill: number }) {
 			/>
 		</frame>
 	);
+	if (art === undefined) return flat;
+	return <ArtImage id={art} box={{ w: size, h: size }} order={props.order} fallback={flat} />;
 }
 
-function pips(count: number, max: number, color: "uiMana" | "uiAccent" | "ember", diamond: boolean) {
+/** A pip's art (shared/view/hud pipArt) in its slot (pipArtSlot), or undefined: the flat pip. */
+function pipArtProps(skin: StatusSkin | undefined, kind: HudPipKind, filled: boolean): PipArtProps | undefined {
+	if (skin === undefined) return undefined;
+	const art = pipArt(skin.has, kind, filled);
+	if (art === undefined) return undefined;
+	const ref = skin.pack.image(art.id);
+	if (ref === undefined) return undefined;
+	const r = ref.rect;
+	const box = pipArtSlot(kind, r?.w ?? ref.w, r?.h ?? ref.h, skin.uiScale);
+	return { id: art.id, box, transparency: art.transparency, tinted: art.tinted };
+}
+
+/**
+ * A row of `max` pips, `count` filled. With the art (UA10): flask charges are potions (full / spent), Ember pips
+ * candles (unlit: dimmed), armor pips grey chips (empty: dimmed); without, the flat square / diamond pips.
+ */
+function pips(
+	count: number,
+	max: number,
+	color: "uiMana" | "uiAccent" | "ember",
+	diamond: boolean,
+	kind: HudPipKind,
+	skin: StatusSkin | undefined,
+) {
 	const out = new Array<React.Element>();
 	for (let i = 0; i < max; i++) {
-		out.push(<Pip key={`p${i}`} order={i + 1} filled={i < count} color={color} diamond={diamond} />);
+		const filled = i < count;
+		out.push(
+			<Pip
+				key={`p${i}`}
+				order={i + 1}
+				filled={filled}
+				color={color}
+				diamond={diamond}
+				art={pipArtProps(skin, kind, filled)}
+			/>,
+		);
 	}
 	return out;
 }
 
-/** The Aegis pips (docs/BOOSTS.md B7): filled diamonds in their own colour after the `after` armor pips. */
-function aegisPips(count: number, after: number) {
+/**
+ * The Aegis pips (docs/BOOSTS.md B7): filled diamonds in their own colour after the `after` armor pips; with the art
+ * (UA10) the white chip tinted by that colour.
+ */
+function aegisPips(count: number, after: number, skin: StatusSkin | undefined) {
 	const out = new Array<React.Element>();
 	for (let i = 0; i < count; i++) {
 		out.push(
-			<Pip key={`a${i}`} order={after + i + 1} filled={true} color={BOOST_VIEW.aegisPipRole} diamond={true} />,
+			<Pip
+				key={`a${i}`}
+				order={after + i + 1}
+				filled={true}
+				color={BOOST_VIEW.aegisPipRole}
+				diamond={true}
+				art={pipArtProps(skin, "aegis", true)}
+			/>,
 		);
 	}
 	return out;
@@ -70,12 +140,16 @@ export interface StatusPanelProps {
  * running boosts (BoostRow); on an unscored endless run a line with the floor and Depth (a scored run shows it under
  * the score, docs/HUD_LAYOUT.md H4); the owned boons, relics and curses (M2, RunItems). Reads only the ~10 Hz
  * snapshot. In the tutorial: the highlight ring on the hearts or the flask row or the boost row, and the ghost half
- * heart after a harmless hit.
+ * heart after a harmless hit. With the UI art (docs/UI_ART.md UA10) hearts, potions, candles and chips replace the
+ * flat shapes in the same rows (the highlight ring and ghost heart sit where they did); without it, the flat panel.
  */
 export function StatusPanel(props: StatusPanelProps) {
 	const s = useSelector(selectSnapshot);
+	const uiScale = useHudScale();
+	const pack = themePack();
+	const skin: StatusSkin | undefined = pack !== undefined ? { pack, has: skinHasOf(pack), uiScale } : undefined;
 	const hearts = heartFills(s.hearts, s.heartsMax).map((fill, i) => (
-		<Heart key={`h${i}`} order={i + 1} fill={fill} />
+		<Heart key={`h${i}`} order={i + 1} fill={fill} skin={skin} />
 	));
 	const armorMax = math.max(s.armorMax, s.armor);
 	const ghost = props.ghostHeart ?? 0;
@@ -87,20 +161,20 @@ export function StatusPanel(props: StatusPanelProps) {
 				{ghost > 0 ? <GhostHeart key={`ghost${ghost}`} order={hearts.size() + 1} /> : undefined}
 				{armorMax > 0 || s.aegisPips > 0 ? (
 					<Row order={hearts.size() + 2}>
-						{pips(s.armor, armorMax, "uiMana", true)}
-						{aegisPips(s.aegisPips, armorMax)}
+						{pips(s.armor, armorMax, "uiMana", true, "armor", skin)}
+						{aegisPips(s.aegisPips, armorMax, skin)}
 					</Row>
 				) : undefined}
 				{props.highlight === "hearts" ? <HighlightRing /> : undefined}
 			</Row>
 			<Row order={2}>
 				<Text order={0} width={HUD_VIEW.statusLabelWidth} color="uiTextDim" text={str(HUD_STRINGS.flask)} />
-				{pips(s.flask, s.flaskMax, "uiAccent", false)}
+				{pips(s.flask, s.flaskMax, "uiAccent", false, "flask", skin)}
 				{props.highlight === "flask" ? <HighlightRing /> : undefined}
 			</Row>
 			<Row order={3}>
 				<Text order={0} width={HUD_VIEW.statusLabelWidth} color="uiTextDim" text={str(HUD_STRINGS.ember)} />
-				{pips(s.embers, s.emberMax, "ember", true)}
+				{pips(s.embers, s.emberMax, "ember", true, "ember", skin)}
 			</Row>
 			<BoostRow order={4} boosts={s.boosts} highlight={props.boostsHighlight} />
 			{s.floor > 0 && !s.scoring ? (
