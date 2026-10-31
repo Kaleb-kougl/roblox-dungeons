@@ -254,6 +254,17 @@ export class SpriteView {
 		this.syncOutline();
 	}
 
+	/**
+	 * The rim's own colour (elite affixes, docs/ENEMY_VARIANTS.md EVD12: the affix colour instead of the outline role);
+	 * shown unless a rim flash is on. No-op without `outline`; written only on a change.
+	 */
+	setRimColor(color: Color3): void {
+		const rim = this.outline;
+		if (rim === undefined || color === this.rimColor) return;
+		this.rimColor = color;
+		if (this.rimFlash === undefined) rim.ImageColor3 = color;
+	}
+
 	/** Hit hold (docs/FEEL.md J4): while true, update() leaves the frame, facing and sprite clock as they are. */
 	setHold(hold: boolean): void {
 		this.held = hold;

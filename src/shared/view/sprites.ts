@@ -67,7 +67,15 @@ import {
 	SUMMON_HOLD_TICKS,
 	HIT_FLASH_TICKS,
 	HURT_INVULN_TICKS,
+	IMP,
+	IMP_ATTACK_BLINK,
+	IMP_ATTACK_FAN,
 	ROLL_TICKS,
+	SLIME,
+	SLIME_SMALL,
+	SUMMONER,
+	SUMMONER_ATTACK_PANIC,
+	SUMMONER_ATTACK_SUMMON,
 	SHOCK2_DELAY_TICKS,
 	SIM_DT,
 	SIM_HZ,
@@ -99,6 +107,7 @@ import {
 } from "shared/sim";
 import type { Pivot, SpriteAnimationDef, SpriteFacings } from "shared/theme";
 import { ACTOR_VIEW, SPRITE_ANIM_MARKS, SPRITE_VIEW } from "./config";
+import { VARIANT_ANIM_MARKS, VARIANT_SPRITE_VIEW } from "./variantsConfig";
 import { degToRad, isoBasis, type IsoBasis } from "./iso";
 
 const FULL_TURN = 360;
@@ -535,6 +544,135 @@ export const turretSprayerSpriteInput = turretSpriteInputOf(TURRET_SPRAYER.data)
 
 /** ActorSpriteInput for M1's turret.caster (docs/DEMON_ART.md Phase 2: Demon Spawn 11, idle loop only). */
 export const turretCasterSpriteInput = turretSpriteInputOf(TURRET_CASTER.data);
+
+// ---------------------------------------------------------------------------------------------
+// Enemy variants (docs/ENEMY_VARIANTS.md EV9): the imp, the Ooze (slime / slime.small) and the summoner
+
+const IMP_MARKS = VARIANT_ANIM_MARKS.imp;
+/** The imp's `attack`: the crouch over the blink wind-up, the landing and throw over the landing aim. */
+const IMP_CROUCH: AnimSegment = { from: 0, to: IMP_MARKS.land };
+const IMP_THROW: AnimSegment = { from: IMP_MARKS.land, to: 1 };
+
+/**
+ * The imp's attack timeline (imp.ts view contract): the blink wind-up (TELEGRAPH, IMP_ATTACK_BLINK, blinkTelegraphTicks:
+ * the ring fills) plays the crouch, the landing aim (TELEGRAPH, IMP_ATTACK_FAN, landAimTicks, from the landing tick;
+ * the fan fires as it runs out) the landing / throw; aiTicks counts each down. Undefined while repositioning.
+ */
+export function impAttack(aiState: number, attack: number, aiTicks: number, alpha: number): ActorAttack | undefined {
+	if (aiState !== AiState.TELEGRAPH) return undefined;
+	const d = IMP.data;
+	if (attack === IMP_ATTACK_BLINK) {
+		const total = d.blinkTelegraphTicks;
+		return { segment: IMP_CROUCH, elapsed: math.max(0, elapsedOf(total, aiTicks, alpha)), total };
+	}
+	if (attack === IMP_ATTACK_FAN) {
+		const total = d.landAimTicks;
+		return { segment: IMP_THROW, elapsed: math.max(0, elapsedOf(total, aiTicks, alpha)), total };
+	}
+	return undefined;
+}
+
+/** ActorSpriteInput for an imp (it strafes: the move loop scales by VARIANT_SPRITE_VIEW.impMoveRefSpeed). */
+export function impSpriteInput(a: Readonly<ActorState>, alpha: number): ActorSpriteInput {
+	return {
+		alive: a.alive !== 0,
+		deadTicks: a.deadTicks,
+		corpseTicks: IMP.data.corpseTicks ?? CORPSE_TICKS,
+		flashTicks: a.flashTicks,
+		attack: a.alive !== 0 ? impAttack(a.aiState, a.attack, a.aiTicks, alpha) : undefined,
+		speed: tickSpeed(a.prevX, a.prevZ, a.x, a.z),
+		refSpeed: VARIANT_SPRITE_VIEW.impMoveRefSpeed,
+		alpha,
+	};
+}
+
+/**
+ * An ActorSpriteInput builder for a slime with archetype data `data` and move reference speed `refSpeed`: the LoP slime
+ * has idle / move / death only (EV0), and the Ooze has no telegraph (the crawl and the puddles are its tell), so it
+ * never attacks; a hit is the tint. `slime.small` wears the same set, drawn at its data.spriteScale (actorSpriteScale).
+ */
+export function slimeSpriteInputOf(
+	data: Readonly<ArchetypeData>,
+	refSpeed: number,
+): (a: Readonly<ActorState>, alpha: number) => ActorSpriteInput {
+	const corpseTicks = data.corpseTicks ?? CORPSE_TICKS;
+	return (a, alpha) => ({
+		alive: a.alive !== 0,
+		deadTicks: a.deadTicks,
+		corpseTicks,
+		flashTicks: a.flashTicks,
+		attack: undefined,
+		speed: tickSpeed(a.prevX, a.prevZ, a.x, a.z),
+		refSpeed,
+		alpha,
+	});
+}
+
+/** ActorSpriteInput for the Ooze (`slime`). */
+export const slimeSpriteInput = slimeSpriteInputOf(SLIME.data, VARIANT_SPRITE_VIEW.slimeMoveRefSpeed);
+
+/** ActorSpriteInput for a slimelet (`slime.small`, the same set at 0.6x). */
+export const slimeSmallSpriteInput = slimeSpriteInputOf(SLIME_SMALL.data, VARIANT_SPRITE_VIEW.slimeSmallMoveRefSpeed);
+
+/**
+ * The summoner's attack timeline (summoner.ts view contract): the summon cast (TELEGRAPH, SUMMONER_ATTACK_SUMMON,
+ * summonTelegraphTicks; the casting circle fills, the summons burst out as it runs out) plays
+ * VARIANT_SPRITE_VIEW.summonerAnims.cast, the panic wind-up (SUMMONER_ATTACK_PANIC, panicTelegraphTicks; the ring fires
+ * as it runs out) `.panic`; aiTicks counts each down. Undefined otherwise (keeping range: move / idle; backing off: move).
+ */
+export function summonerAttack(
+	aiState: number,
+	attack: number,
+	aiTicks: number,
+	alpha: number,
+): ActorAttack | undefined {
+	if (aiState !== AiState.TELEGRAPH) return undefined;
+	const d = SUMMONER.data;
+	const names = VARIANT_SPRITE_VIEW.summonerAnims;
+	if (attack === SUMMONER_ATTACK_SUMMON) {
+		const total = d.summonTelegraphTicks;
+		return { anim: names.cast, elapsed: math.max(0, elapsedOf(total, aiTicks, alpha)), total };
+	}
+	if (attack === SUMMONER_ATTACK_PANIC) {
+		const total = d.panicTelegraphTicks;
+		return { anim: names.panic, elapsed: math.max(0, elapsedOf(total, aiTicks, alpha)), total };
+	}
+	return undefined;
+}
+
+/** ActorSpriteInput for a summoner (the move loop scales by VARIANT_SPRITE_VIEW.summonerMoveRefSpeed). */
+export function summonerSpriteInput(a: Readonly<ActorState>, alpha: number): ActorSpriteInput {
+	return {
+		alive: a.alive !== 0,
+		deadTicks: a.deadTicks,
+		corpseTicks: SUMMONER.data.corpseTicks ?? CORPSE_TICKS,
+		flashTicks: a.flashTicks,
+		attack: a.alive !== 0 ? summonerAttack(a.aiState, a.attack, a.aiTicks, alpha) : undefined,
+		speed: tickSpeed(a.prevX, a.prevZ, a.x, a.z),
+		refSpeed: VARIANT_SPRITE_VIEW.summonerMoveRefSpeed,
+		alpha,
+	};
+}
+
+/**
+ * The sprite path's draw scale of an actor: its data.spriteScale only for the ids in VARIANT_SPRITE_VIEW
+ * .spriteScaledIds (a set shared with a bigger sibling: `slime.small`), times `affixScale` (Hulking: affixDrawScale).
+ */
+export function actorSpriteScale(id: string, spriteScale: number | undefined, affixScale = 1): number {
+	const own = VARIANT_SPRITE_VIEW.spriteScaledIds.includes(id) ? spriteScale ?? 1 : 1;
+	return own * affixScale;
+}
+
+/** `layout` drawn `scale` times as large (pixelsPerTile / scale: the pivot stays on the feet); itself at scale 1. */
+export function scaledSpriteLayout(layout: SpriteLayout, scale: number): SpriteLayout {
+	if (scale === 1 || !(scale > 0)) return layout;
+	return {
+		frameW: layout.frameW,
+		frameH: layout.frameH,
+		pivot: layout.pivot,
+		pixelsPerTile: layout.pixelsPerTile / scale,
+	};
+}
 
 // ---------------------------------------------------------------------------------------------
 // The Demon Lord (boss.demonlord; docs/BOSS_DEMONLORD.md D6)
@@ -1173,7 +1311,8 @@ export function bossSpriteLayout(layout: SpriteLayout, minDrawPx: number): Sprit
  * Archetypes drawn as sprites when the pack has a sprite set for their spriteId: archetype ID -> input builder. The
  * swarmer, the sniper, the tutorial's turret.sniper (same spriteId "enemy.sniper", docs/SNIPER_ART.md D3), M1's
  * turret.sprayer / turret.caster ("enemy.sprayer" / "enemy.caster", docs/DEMON_ART.md Phase 2), the bruiser, Mother
- * Bramble (boss.act1) and the Demon Lord (boss.demonlord); every other archetype stays a placeholder. A builder alone
+ * Bramble (boss.act1), the Demon Lord (boss.demonlord) and the enemy variants (docs/ENEMY_VARIANTS.md EV9: imp, slime,
+ * slime.small, summoner); every other archetype stays a placeholder. A builder alone
  * draws nothing: ActorRenderController takes the sprite path only when the pack's `sprites(spriteId)` is a set too, so
  * each stays a placeholder until its set lands (docs/DEMON_ART.md DA5 and Phase 2, docs/BRAMBLE_ART.md BR6,
  * docs/BOSS_DEMONLORD.md D7).
@@ -1188,4 +1327,8 @@ export const ACTOR_SPRITE_INPUTS: ReadonlyMap<string, (a: Readonly<ActorState>, 
 		[BRUISER.id, bruiserSpriteInput],
 		[BOSS_ACT1_ID, bossAct1SpriteInput],
 		[BOSS_DEMONLORD_ID, demonlordSpriteInput],
+		[IMP.id, impSpriteInput],
+		[SLIME.id, slimeSpriteInput],
+		[SLIME_SMALL.id, slimeSmallSpriteInput],
+		[SUMMONER.id, summonerSpriteInput],
 	]);
