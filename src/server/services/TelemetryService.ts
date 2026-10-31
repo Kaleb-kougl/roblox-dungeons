@@ -5,6 +5,8 @@ import { serverLogger } from "server/log";
 import { TUTORIAL_FUNNEL } from "shared/onboarding";
 import {
 	RUN_FUNNEL,
+	analyticsForDailyFinish,
+	analyticsForDailyStart,
 	analyticsForRejection,
 	analyticsForRun,
 	analyticsForSession,
@@ -13,6 +15,7 @@ import {
 	type AnalyticsFields,
 	type RunTelemetryRecord,
 } from "shared/run";
+import { RecordsService } from "./RecordsService";
 import { RunValidationService } from "./RunValidationService";
 
 const log = serverLogger("Telemetry");
@@ -31,6 +34,10 @@ const log = serverLogger("Telemetry");
  * The one exception to "server-derived only": the first-run tutorial funnel (`logTutorial`, fed by
  * OnboardingService from the client's `tutorialStep` / `tutorialFinished`, filtered by shared/onboarding
  * TutorialFunnelTracker). It is drop-off data for a practice mode with nothing to win, so it is taken as reported.
+ *
+ * The Daily's events (`daily_start` / `daily_retry` / `daily_finish`, shared/run dailyAnalytics.ts) come from
+ * RecordsService `onDailyActivity`: server-side session starts and accepted runs, with the attempt number and the
+ * returning flag kept in the records doc.
  */
 @Service({})
 export class TelemetryService implements OnStart {
@@ -39,7 +46,7 @@ export class TelemetryService implements OnStart {
 	/** Players between PlayerRemoving and their session summary: their late runs still join the session. */
 	private readonly leaving = new Set<Player>();
 
-	constructor(private readonly runs: RunValidationService) {}
+	constructor(private readonly runs: RunValidationService, private readonly records: RecordsService) {}
 
 	onStart(): void {
 		this.janitor.Add(
@@ -51,6 +58,17 @@ export class TelemetryService implements OnStart {
 				}
 				this.logAll(player, analyticsForRun(run.telemetry), run.runId);
 			}),
+		);
+		// The Daily (docs/DAILY.md DS13): RecordsService reports each daily start and accepted daily run with the
+		// player's attempt number and returning flag (from the records doc's daily activity).
+		this.janitor.Add(
+			this.records.onDailyActivity((player, event) =>
+				this.logAll(
+					player,
+					event.kind === "start" ? analyticsForDailyStart(event.facts) : analyticsForDailyFinish(event.facts),
+					undefined,
+				),
+			),
 		);
 		this.janitor.Add(
 			this.runs.onRunRejected((player, code) => this.logAll(player, [analyticsForRejection(code)], undefined)),

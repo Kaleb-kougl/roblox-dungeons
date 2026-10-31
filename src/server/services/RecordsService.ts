@@ -3,8 +3,11 @@ import { Janitor } from "@rbxts/janitor";
 import { Players, RunService, Workspace } from "@rbxts/services";
 import { serverLogger } from "server/log";
 import { Events } from "server/network";
+import { DAILY_WORLD_KIND, type DailyRunKey } from "shared/daily";
 import { LEADERBOARD_DETAILS_STORE, boardForParty, detailsKey } from "shared/leaderboard";
 import {
+	DAILY_ACTIVITY_POLICY,
+	DailyActivityLedger,
 	RECORDS_AUTOSAVE_SECONDS,
 	RECORDS_CODEC,
 	RECORDS_DATASTORE_NAME,
@@ -18,19 +21,22 @@ import {
 	isEmptyRecords,
 	mergeRecordDocs,
 	mergeRecords,
+	mergeStoredDailyDelta,
 	mergeStoredRecords,
 	parseFakeRecords,
 	recordsEligibility,
 	recordsStatusOf,
 	runRecordsResult,
 	seedFromDetails,
+	type DailyActivityDelta,
+	type DailyBase,
 	type FakeRecords,
 	type RecordRun,
 	type RecordsDoc,
 	type RecordsStatus,
 	type RunRecordsResult,
 } from "shared/records";
-import { SlidingWindowLimiter } from "shared/run";
+import { SlidingWindowLimiter, type DailyFinishFacts, type DailyStartFacts } from "shared/run";
 import { PlayerDocCache, playerDataKey, withRetries, type KeyValueStore } from "shared/settings";
 import { DataStoreKeyValue } from "./data/DataStoreKeyValue";
 import { MergeKeyValue } from "./data/MergeKeyValue";
@@ -56,7 +62,26 @@ export interface RecordsRunSubmission {
 	readonly debug: boolean;
 	readonly died: boolean;
 	readonly bossDefeated: boolean;
+	/** Daily runs (world "daily"): the session's day and ruleset (shared/run RunSession.daily). */
+	readonly daily?: DailyRunKey;
 }
+
+/** A daily session start as RunSessionService hands it over (docs/DAILY.md DS13). */
+export interface DailyStartSubmission {
+	readonly runId: string;
+	/** The session's day (shared/run RunSession.daily). */
+	readonly day: number;
+	readonly memberIds: ReadonlyArray<number>;
+	readonly partySize: number;
+	readonly debug: boolean;
+}
+
+/** What RecordsService reports about the Daily, per player (TelemetryService logs it). */
+export type DailyActivityEvent =
+	| { readonly kind: "start"; readonly facts: DailyStartFacts }
+	| { readonly kind: "finish"; readonly facts: DailyFinishFacts };
+
+export type DailyActivityListener = (player: Player, event: DailyActivityEvent) => void;
 
 /** A player's Studio fake records (KV_FakeRecords) for this session; verdicts merge into `doc`. */
 interface FakeEntry {
@@ -99,6 +124,16 @@ interface FakeEntry {
  * is not answered (the join-end push answers it), so the client never sees a pre-seed status. `requestRecords` is
  * rate limited per player (RECORDS_REQUEST_RATE); a dropped request still answers when ready. A player who left while
  * the join load yielded is dropped, not cached.
+ *
+ * Daily activity (docs/DAILY.md DS13; shared/records daily.ts / dailyLedger.ts): the doc's optional `daily` field
+ * (starts on a day, the last two days with an accepted daily run). `dailyStarted` (RunSessionService, every accepted
+ * daily session start, debug sessions excepted) counts a start IN MEMORY (DailyActivityLedger: base = the doc as
+ * loaded, plus this server's additions) and reports the attempt number and the returning flag ("finished yesterday's
+ * daily too"). `applyRun` of a daily run (DAILY_ACTIVITY_POLICY; it never reaches the endless records, DSD6) reports
+ * each credited member's finish and writes ONE delta per member (mergeStoredDailyDelta inside UpdateAsync: the
+ * unwritten starts summed into the same day, the finished day kept), on a store separate from the session cache's
+ * whole-doc saves (which max-merge `daily`, so their stale copy changes nothing). Starts never written by a finish
+ * are flushed once on leave / shutdown. Listeners (`onDailyActivity`: TelemetryService) get each start and finish.
  */
 @Service({})
 export class RecordsService implements OnStart {
@@ -106,6 +141,10 @@ export class RecordsService implements OnStart {
 	private readonly store: KeyValueStore;
 	private readonly cache: PlayerDocCache<RecordsDoc>;
 	private readonly details = new DataStoreKeyValue(LEADERBOARD_DETAILS_STORE);
+	/** Daily activity delta writes (mergeStoredDailyDelta), apart from the cache's whole-doc merges. */
+	private readonly dailyStore: KeyValueStore;
+	private readonly dailyLedger = new DailyActivityLedger();
+	private readonly dailyListeners = new Set<DailyActivityListener>();
 	private readonly limiter = new SlidingWindowLimiter<Player>(
 		RECORDS_REQUEST_RATE.count,
 		RECORDS_REQUEST_RATE.windowSeconds,
@@ -123,6 +162,7 @@ export class RecordsService implements OnStart {
 
 	constructor() {
 		this.store = this.createStore();
+		this.dailyStore = this.createDailyStore();
 		this.cache = new PlayerDocCache(
 			this.store,
 			RECORDS_CODEC,
@@ -164,6 +204,30 @@ export class RecordsService implements OnStart {
 		this.pendingRuns = count;
 	}
 
+	/** Subscribes to daily starts and finishes (TelemetryService). Returns the disconnect. */
+	onDailyActivity(listener: DailyActivityListener): () => void {
+		this.dailyListeners.add(listener);
+		return () => this.dailyListeners.delete(listener);
+	}
+
+	/**
+	 * An accepted daily session start (RunSessionService): one start per member in the server, counted in memory, and
+	 * a `start` report each. Debug sessions count nowhere. Never yields.
+	 */
+	dailyStarted(start: DailyStartSubmission): void {
+		if (start.debug) return;
+		const board = boardForParty(start.partySize);
+		for (const userId of start.memberIds) {
+			const player = Players.GetPlayerByUserId(userId);
+			if (player === undefined) continue;
+			const note = this.dailyLedger.started(userId, start.day, start.runId, this.dailyBase(player));
+			this.emitDaily(player, {
+				kind: "start",
+				facts: { board, attempt: note.attempt, returning: note.returning },
+			});
+		}
+	}
+
 	/** This player's cached records doc, or undefined before it is loaded. */
 	getDoc(player: Player): Readonly<RecordsDoc> | undefined {
 		return this.cache.get(playerDataKey(player.UserId));
@@ -177,7 +241,7 @@ export class RecordsService implements OnStart {
 		const results = new Map<number, RunRecordsResult>();
 		const fake = this.fakeRecords();
 		const studio = RunService.IsStudio();
-		const reason = recordsEligibility({
+		const ctx = {
 			worldKind: run.worldKind,
 			partySize: run.partySize,
 			contributors: run.memberIds.size(),
@@ -187,7 +251,15 @@ export class RecordsService implements OnStart {
 			privateServer: this.isPrivateServer(),
 			died: run.died,
 			bossDefeated: run.bossDefeated,
-		});
+		};
+		// The Daily: its activity only, never the endless records (DSD6).
+		if (run.worldKind === DAILY_WORLD_KIND) {
+			const why = recordsEligibility(ctx, DAILY_ACTIVITY_POLICY);
+			if (why !== undefined) log.info("DAILY_INELIGIBLE", `run ${run.runId}: ${why}`);
+			else if (run.daily !== undefined) this.applyDailyRun(run, run.daily.day, fake !== undefined);
+			return results;
+		}
+		const reason = recordsEligibility(ctx);
 		if (reason !== undefined) {
 			log.info("INELIGIBLE", `run ${run.runId}: ${reason}`);
 			return results;
@@ -232,6 +304,73 @@ export class RecordsService implements OnStart {
 			this.writeDirect(userId, docOfRun(board, recordRun));
 		}
 		return results;
+	}
+
+	/**
+	 * An accepted daily run of day `day`: each credited member in the server gets the ledger's finish (one delta write,
+	 * a `finish` report); one who left gets a delta write of the finished day alone. Under the Studio fake nothing is
+	 * written.
+	 */
+	private applyDailyRun(run: RecordsRunSubmission, day: number, fake: boolean): void {
+		const board = boardForParty(run.partySize);
+		for (const userId of run.memberIds) {
+			const player = Players.GetPlayerByUserId(userId);
+			if (player === undefined) {
+				if (!fake) this.writeDailyDelta(userId, { day, starts: 0, finishedDay: day });
+				continue;
+			}
+			const note = this.dailyLedger.finished(userId, day, run.runId, this.dailyBase(player));
+			if (!fake) this.writeDailyDelta(userId, note.delta);
+			this.emitDaily(player, {
+				kind: "finish",
+				facts: { board, attempt: note.attempt, returning: note.returning, score: run.score, floor: run.floor },
+			});
+		}
+	}
+
+	/** The player's stored daily activity as this server knows it (the Studio fake: known, none). */
+	private dailyBase(player: Player): DailyBase {
+		if (this.fakeRecords() !== undefined) return { known: true, activity: undefined };
+		const key = playerDataKey(player.UserId);
+		const doc = this.cache.get(key);
+		const known = doc !== undefined && !this.cache.loadFailed(key);
+		return { known, activity: known && doc !== undefined ? doc.daily : undefined };
+	}
+
+	private emitDaily(player: Player, event: DailyActivityEvent): void {
+		for (const listener of this.dailyListeners) {
+			const [ok, err] = pcall(() => listener(player, event));
+			if (!ok) log.warn("DAILY_LISTENER_FAILED", tostring(err));
+		}
+	}
+
+	/** A daily activity delta write (spawned; BindToClose waits for it). Studio writes nothing (writesAllowed). */
+	private writeDailyDelta(userId: number, delta: DailyActivityDelta): void {
+		this.directWrites++;
+		task.spawn(() => {
+			const r = withRetries(
+				() => this.dailyStore.set(playerDataKey(userId), delta, [userId]),
+				RECORDS_RETRY,
+				(s) => task.wait(s),
+			);
+			this.directWrites--;
+			if (!r.ok) log.warn("DAILY_WRITE_FAILED", `${userId}: ${r.error}`);
+		});
+	}
+
+	/** The player's daily starts not written by a finish (leave / shutdown), then forgotten by the caller. */
+	private flushDaily(userId: number): void {
+		const delta = this.dailyLedger.flush(userId);
+		if (delta !== undefined && this.fakeRecords() === undefined) this.writeDailyDelta(userId, delta);
+	}
+
+	/** The daily activity's delta store (a seam like createStore). */
+	protected createDailyStore(): KeyValueStore {
+		return new MergeKeyValue(
+			RECORDS_DATASTORE_NAME,
+			(stored, incoming) => mergeStoredDailyDelta(stored, incoming),
+			() => this.writesAllowed(),
+		);
 	}
 
 	/** The store (a seam: a test or tool can subclass the service with an in-memory KeyValueStore). */
@@ -380,6 +519,8 @@ export class RecordsService implements OnStart {
 		this.fakes.delete(player);
 		this.ready.delete(player);
 		this.seedFailed.delete(player);
+		this.flushDaily(player.UserId);
+		this.dailyLedger.forget(player.UserId);
 		const key = playerDataKey(player.UserId);
 		if (this.cache.get(key) === undefined) return;
 		const outcome = this.cache.release(key);
@@ -395,6 +536,7 @@ export class RecordsService implements OnStart {
 		const deadline = this.now() + SHUTDOWN_SAVE_TIMEOUT_SECONDS;
 		while (this.pendingRuns() > 0 && this.now() < deadline) task.wait(SHUTDOWN_POLL_SECONDS);
 		this.closing = true;
+		for (const userId of this.dailyLedger.userIds()) this.flushDaily(userId);
 		let pending = 0;
 		for (const key of this.cache.keys()) {
 			if (!this.cache.isDirty(key)) continue;

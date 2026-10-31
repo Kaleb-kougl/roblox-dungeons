@@ -314,6 +314,20 @@ export class RunSessionService implements OnStart {
 			return m;
 		});
 		this.meta.set(s, { members, pumping: false });
+		// The Daily's activity (docs/DAILY.md DS13): an attempt per member, `daily_start` / `daily_retry`. Never yields.
+		const day = s.daily?.day;
+		if (day !== undefined) {
+			const [dailyOk, dailyErr] = pcall(() =>
+				this.records.dailyStarted({
+					runId: s.runId,
+					day,
+					memberIds: s.members,
+					partySize: s.members.size(),
+					debug: s.debug,
+				}),
+			);
+			if (!dailyOk) log.warn("DAILY_START_FAILED", `run ${s.runId}: ${tostring(dailyErr)}`);
+		}
 		// A solo lobby run: the player's next solo start in the lobby's world after lobbyRunStart is the lobby's run.
 		if (s.members.size() === 1) {
 			const lobbyId = this.lobbyRuns.soloStarted(s.ownerId, s.runId, s.worldKind);
@@ -707,6 +721,7 @@ export class RunSessionService implements OnStart {
 					debug: session.debug,
 					died: s.died,
 					bossDefeated: s.bossDefeated,
+					daily: session.daily,
 				}),
 			);
 			if (recordsOk) records = applied as Map<number, RunRecordsResult>;

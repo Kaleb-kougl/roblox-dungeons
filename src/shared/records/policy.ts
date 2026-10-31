@@ -6,6 +6,7 @@
  * other worlds, bad party sizes and party runs with fewer than COOP_MIN_PARTY contributors never count, as on the
  * leaderboard. Only ACCEPTED verdicts get here: rejected and expired runs never write.
  */
+import { DAILY_WORLD_KIND } from "shared/daily";
 import {
 	COOP_MIN_PARTY,
 	LEADERBOARD_DEATH_ONLY_WORLDS,
@@ -31,6 +32,21 @@ export interface RecordsPolicy {
 export const RECORDS_POLICY: RecordsPolicy = table.freeze({
 	eligibleWorlds: LEADERBOARD_ELIGIBLE_WORLDS,
 	deathOnlyWorlds: LEADERBOARD_DEATH_ONLY_WORLDS,
+	countAbandoned: true,
+	writeFromPrivateServers: true,
+	writeFromStudio: false,
+	countDebug: false,
+});
+
+/**
+ * Which accepted runs count toward the daily ACTIVITY (docs/DAILY.md DS13: the attempt count and the "played
+ * yesterday's daily too" flag in the records doc's `daily` field), through `recordsEligibility(ctx, this)`. The Daily
+ * only; otherwise the records' rules (abandoned validated runs and private servers count; never debug runs; Studio
+ * writes nothing). It is not RECORDS_POLICY: daily runs never write the endless records (DSD6).
+ */
+export const DAILY_ACTIVITY_POLICY: RecordsPolicy = table.freeze({
+	eligibleWorlds: [DAILY_WORLD_KIND],
+	deathOnlyWorlds: [DAILY_WORLD_KIND],
 	countAbandoned: true,
 	writeFromPrivateServers: true,
 	writeFromStudio: false,
