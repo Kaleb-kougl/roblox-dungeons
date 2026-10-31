@@ -196,6 +196,103 @@ widgets. Hourglass (`progression/runMods.ts:342`) slows enemy bullet TIME, so bu
     tile: check 1-tile pillar gaps with the steer mover in EV3 / EV7 (corridors are 3 wide).
 15. Minor: the "4 sites" are right for room enemies; `boss/shared.ts:397` also reads `d.speed` (boss, stays raw).
 
+### EV10 slime (as built) (2026-10-30)
+
+Branch `ev-art`. Built and verified headlessly; **nothing uploaded** (uploads happen on the owner's side), so the
+bundled vale pack still draws the placeholder dome for `slime` / `slime.small` and the five EV sounds stay silent.
+
+**Slime set `enemy.slime`** (`art/atlases.json`; `slime.small` draws the same set at `spriteScale` 0.6, no set of its
+own). Source `lords-of-pain/enemy/slime/` (`frames` source, the skeleton's 16 `facingDirs`, E = 0 counter-clockwise;
+the 256 new PNGs are in `art/vendor.lock.json` via `art:lock`). Animations: `idle` = `slime_default_idle` (1 frame),
+`move` = `slime_default_walk` (8, 10 fps), `death` = `slime_special_death` (7, 10 fps), every frame kept;
+stand-ins `hit` = idle's cell (flash only, no hit animation) and `attack` = the walk's cells (the Ooze has no
+telegraphed attack; the slot requires the name). Rim: `outline.widthPx` 2, `pad` 3 (docs/OUTLINE.md, as every enemy).
+
+- **Measured.** Union box (alpha > 2, baked shadow included) 64x46 -> cells **70x52**. The lit body (alpha > 64,
+  max RGB > 8, the skeleton's cut) is much smaller than EV0's "~42 px" (that was the shadowed box): 24x25 px on the
+  measured frame (idle, facing 12 = S, frame 0, stalk included); over the 16 idle facings 24-27 px wide, **mean 25.6
+  px** (N / S 24, E / W 27), the walk stretches to 34 px along its axis.
+- **Size.** Sized by width, not by the pack's scale (the skeleton's 29.6 px/tile would draw it 0.87 tiles wide):
+  1.1 tiles for r 0.55 needs 25.6 / 1.1 = 23.3 px/tile, so `bodyTiles` 1.07 (25 px / 1.07) -> **pixelsPerTile
+  23.4**: the dome is 1.03-1.15 tiles wide (mean 1.09); the slimelet at 0.6x is 0.66 tiles for r 0.35 (0.7). Pivot
+  (35, 36): the bottom edge of the dome.
+- **Budget: 2 textures**, one atlas for all three animations (16 x (1 + 8 + 7) = 256 cells, 14 per row x 19 rows):
+  `slime-body.png` **980x988** (676 KB) + `slime-body-outline.png` 980x988 (141 KB), ~3.9 MB GPU each (~7.7 MB),
+  the sniper's / one swarmer sheet pair's cost. `slime.small` adds nothing. Two builds are byte-identical.
+- **Contact sheet** (`art/build/contact/enemy.slime.png`, read 2026-10-30): all 16 facings x idle / walk / death
+  upright, the 2 px rim closed around the dome in every cell, the pivot cross on the dome's bottom edge in every facing.
+  Facing evidence: the walk stretches along the facing axis (wide on the E / W rows, tall on N / S) with the stalk
+  trailing; N rows show the back (no bright core), S rows the bright green core towards the camera; death melts the
+  stalk and slumps the dome into a puddle. Mean body colour `#2a3622`, **1.41:1** on the biome 1 floor (`#1a1619`):
+  the rim carries it, as on the sniper. Verdict: good to upload; the Studio check (EV14) judges size vs hitbox and the
+  0.6x slimelet.
+- **Code.** `packs/vale/layout.ts` gains `enemy.slime` (generated); `vale.spec.ts` covers the layout, placeholder
+  without IDs, the switch with `slime-body.png`, the rim joining only with its outline, and hand-computed cells.
+  `assetIds.ts` lists the pending files as commented slots (an absent key keeps the fallback; an empty string would not).
+
+**Owner: upload** `art/upload/slime-body.png` and `art/upload/slime-body-outline.png` (art), and the five OGGs below
+(`art/upload/sfx-enemy-blink.ogg`, `sfx-enemy-summon.ogg`, `sfx-enemy-split.ogg`, `sfx-affix-shieldbreak.ogg`,
+`sfx-affix-vengeful.ogg`); paste each ID into the commented slot at the end of `src/shared/theme/packs/vale/assetIds.ts`
+and uncomment it; `npm run verify`. (The six `sfx-draft-*.ogg` of docs/DRAFT_REVEAL.md were built in the same run and
+sit in `art/upload/` too; they are that plan's upload.)
+
+**Imp and summoner sets: not built, waiting on the owner's rig picks.** Decide, from `art/build/contact/ev-imps.png`
+and `ev-spawns.png`:
+
+1. **Imp rig**: one of Imp 1-10.
+2. **Summoner rig**: a robed Demon Spawn other than 8 / 11 (the turrets): 1-7, 9, 10, 12 or 13.
+3. **Imp blink source**: `Crouch.png` (a wind-up held over the 0.5 s ring), a segment of `Roll 1.png`, or
+   `BackFlip 1.png`; and which frames (a short segment, ~4-6 kept).
+4. **Imp fan**: which of `Attack 1-4.png` (shown over the 0.35 s aim telegraph, the shot on its last tick).
+5. **Summoner summon** (the 1.0 s cast under the ring): which `Attack N.png` (or `Taunt.png`); **panic** (0.5 s, the
+   gapped ring): another `Attack N.png`, or the same one.
+6. **Walk vs Run** for each (the imp moves at 3.2 u/s, the summoner at 1.8: `Run.png` may suit the imp).
+7. Whether blink / panic get **their own animation names** (`blink`, `panic`: extra names the contract allows, but
+   EV9's sprite inputs must choose them) or fold into `attack`.
+
+What each set entry will look like (per-sheet Demons pipeline, a copy of `enemy.bruiser`'s shape):
+`source: { type: "grid", dir: "demons-topdown/Spritesheets with seperated shadows and effects/<rig>", frameW: 128,
+frameH: 128, layers: ["Shadows", ""] }` (Effects/ skipped, DD3), `facingCount` 8, `rowForFacing` [0, 7, 6, 5, 4, 3,
+2, 1] (clockwise rows, the knight's order), `noiseAlpha` 2, `pad` 3, pivot measured on idle facing 6 frame 0
+(`bodyAlpha` 250, `bodyMinRgb` 0, `footBand` 6), `outline: { widthPx: 2 }`, `pixelsPerTileFrom: "class.vanguard"`
+(the artist's scale next to the knight; check drawn width vs r 0.35 / 0.4 in Studio), `resample` Default, `cells`
+"perSheet", and `layerNoiseAlpha: { "": 254 }` only if the rig's body sheets bake a glow (as Spawn 8 / 11 do: look at
+the contact sheet). Animation slots:
+
+| Slot | Imp (`enemy.imp`) | Summoner (`enemy.summoner`) |
+|---|---|---|
+| `idle` | `Idle.png`, 4 of 15 frames, 6 fps, loop | `Idle.png` (Spawn 1: `Idle 1.png`), 4 frames, 6 fps, loop |
+| `move` | `Walk.png` or `Run.png` (decision 6), 8 frames, 10 fps, loop | `Walk.png`, 8 frames, 10 fps, loop |
+| `attack` | the fan: `Attack N.png` (decision 4), ~6-8 frames, not looped | the summon cast: `Attack N.png` (decision 5), ~8 frames, stretched over the 1.0 s telegraph |
+| `blink` / `panic` (decision 7) | blink = `Crouch.png` or a `Roll 1.png` segment (decision 3) | panic = `Attack N.png` (decision 5) |
+| `hit` | `TakeDamage 1.png`, 4 frames, 12 fps | `TakeDamage 1.png`, 4 frames, 12 fps |
+| `death` | `Die 1.png`, 6 frames, 10 fps | `Die 1.png`, 6 frames, 10 fps |
+
+Sheets as the bruiser's: `<id>-body` (idle + move + hit, + blink for the imp), `<id>-attack` (+ panic for the
+summoner), `<id>-death`, each with its `-outline` sheet: expect **3 sheets + 3 rims = 6 textures per archetype**
+(the bruiser's count; the per-sheet crop decides the exact sizes). Then `npm run art:lock` (the new rig's files),
+`art:build`, the contact sheet, `vale.spec` cases like the bruiser's, upload, IDs.
+
+**EV11 audio picks (for the owner's audition).** `art/audio.json` gains the five IDs (`"confirmed": false`); `audio:lock`, `audio:build` (ffmpeg 6.1.1) and
+`audio:audition` ran, so `packs/vale/audioLayout.ts` lists them (silent until their IDs are in `assetIds.ts`: a sound
+switches on once all its files have IDs) and `art/audio-audition.html` has a section per ID with the pick and the
+alternates. Listen there (open it from `art/`). Clips under `ninja-adventure/Audio/Sounds/`; the pack's Sounds folders
+are Alert, Ambient, Bonus, Creature, Elemental, Hit & Impact, Jump & Bounce, Magic & Skill, Menu, Voice and Whoosh &
+Slash (plus Jingles and Musics). The picks avoid clips already picked for another ID; they were chosen by name,
+length, onset and brightness (measured), not by ear.
+
+| ID | Pick (built length) | Why | Alternates | Settings |
+|---|---|---|---|---|
+| `sfx.enemy.blink` | `Whoosh & Slash/Whoosh2.wav` (0.29 s) | a short air cut for the snap onto the ring; unused as a pick (roll's alternate) | `Magic & Skill/Magic1.wav` (brighter zap), `Creature/Wings.wav` (a flutter) | vol 0.45, pitch 0.95-1.08, 0.15 s |
+| `sfx.enemy.summon` | `Magic & Skill/Spirit.wav` (1.5 s) | a high ghostly swell that fills the 1.0 s summon ring if played at its start | `Alert/Alert5.wav` (1.5 s warning swell), `Magic & Skill/Magic2.wav` (0.31 s, if the cue plays on the burst) | vol 0.6, 0.5 s |
+| `sfx.enemy.split` | `Elemental/Bubble2.wav` (0.43 s) | a wet bubble pop; it plays over the kill's `sfx.enemy.death`, so quieter | `Elemental/Water4.wav` (splash), `Elemental/Water9.wav` (slower slosh) | vol 0.5, pitch 0.9-1.1, 0.1 s |
+| `sfx.affix.shieldbreak` | `Elemental/Explosion3.wav` (0.31 s) | a short bright crunch, apart from the Hit* hurts and the combo's glass | `Hit & Impact/Hit5.wav` (check it does not read as the player hit), `Elemental/Explosion.wav` (duller) | vol 0.6, pitch 0.97-1.03, 0.1 s |
+| `sfx.affix.vengeful` | `Elemental/Fire3.wav` (0.63 s) | a flare about as long as the corpse's 0.6 s telegraph, so started with the pulse it ends on the ring | `Alert/Alert4.wav` (a warning, if it should read as a telegraph), `Elemental/Explosion2.wav` (if it plays on the ring) | vol 0.6, 0.2 s |
+
+When each cue fires (blink on the landing tick or the ring; summon at the ring or the burst; vengeful at the pulse or
+the ring) is EV9's cue mapper; the alternates cover either choice. After the audition: edit the clips in
+`art/audio.json`, set `"confirmed": true`, `npm run audio:lock`, `audio:build`, `audio:audition`, upload the five OGGs.
+
 ## What the code gives us (read on `main` @ `3900250`)
 
 | Fact | Where | Consequence |

@@ -669,6 +669,80 @@ describe("vale enemy.sniper (docs/SNIPER_ART.md SN5: the Lords of Pain subservie
 	});
 });
 
+describe("vale enemy.slime (docs/ENEMY_VARIANTS.md EV10: the Lords of Pain slime; slime.small draws it smaller)", () => {
+	const SHEET = "slime-body.png";
+	const OUTLINE = "slime-body-outline.png";
+	const layout = VALE_SPRITE_LAYOUTS["enemy.slime"];
+
+	it("the layout: one 980x988 atlas of 70x52 cells (idle 1, walk 8, death 7 x 16 facings), 23.4 px/tile, a rim", () => {
+		expect(layout).never.toBe(undefined);
+		expect([layout.frameW, layout.frameH]).toEqual([70, 52]);
+		expect(layout.sheets).toEqual([{ file: SHEET, w: 980, h: 988, outlineFile: OUTLINE }]);
+		expect(layout.facings).toEqual({ count: 16, zeroDeg: 0, ccw: true });
+		// sized by width: ~25.6 px of dome / 23.4 = ~1.1 tiles for an r 0.55 body (art/atlases.json bodyTilesNote)
+		expect(layout.pixelsPerTile).toBe(23.4);
+		expect(layout.pivot).toEqual({ x: 35, y: 36 });
+		expect(layout.animations.idle).toEqual({ sheet: 0, start: 0, frames: 1, fps: 1, loop: true });
+		expect(layout.animations.move).toEqual({ sheet: 0, start: 16, frames: 8, fps: 10, loop: true });
+		expect(layout.animations.death).toEqual({ sheet: 0, start: 144, frames: 7, fps: 10, loop: false });
+		// stand-ins: hit = idle's cell (flash only), attack = the walk
+		expect(layout.animations.hit).toEqual({ sheet: 0, start: 0, frames: 1, fps: 1, loop: false });
+		expect(layout.animations.attack).toEqual({ sheet: 0, start: 16, frames: 8, fps: 10, loop: true });
+	});
+
+	it("with no IDs it is the placeholder; the outline alone never switches it on", () => {
+		expect(buildValeManifest({}).assets["enemy.slime"]).toEqual(PLACEHOLDER_MANIFEST.assets["enemy.slime"]);
+		expect(VALE_MANIFEST.assets["enemy.slime"]).toEqual(PLACEHOLDER_MANIFEST.assets["enemy.slime"]);
+		const noAtlas = buildValeManifest(fakeIds(SHEET));
+		expect(validateManifest(noAtlas, { packId: "vale" })).toEqual([]);
+		expect(noAtlas.assets["enemy.slime"]).toEqual(PLACEHOLDER_MANIFEST.assets["enemy.slime"]);
+		expect(new ThemePack(noAtlas, { warn: quiet }).sprites("enemy.slime")).toBe(undefined);
+	});
+
+	it("with slime-body.png it switches to sprites with every required animation; the rim joins with its outline", () => {
+		const ids = fakeIds();
+		const m = buildValeManifest(ids);
+		expect(validateManifest(m, { packId: "vale" })).toEqual([]);
+		const set = m.assets["enemy.slime"] as SpriteSetAsset;
+		expect(set.kind).toBe("sprites");
+		expect(set.sheets).toEqual([{ assetId: ids[SHEET], w: 980, h: 988, outlineAssetId: ids[OUTLINE] }]);
+		const sprites = new ThemeCore(m, { warn: quiet }).sprites("enemy.slime")!;
+		expect(sprites).never.toBe(undefined);
+		for (const name of requiredBaseAnimations(ENEMY)) {
+			expect([name, sprites.has(name)]).toEqual([name, true]);
+		}
+		const rimless = new ThemePack(buildValeManifest(fakeIds(OUTLINE)), { warn: quiet }).sprites("enemy.slime")!;
+		expect(rimless).never.toBe(undefined);
+		expect(rimless.frame("move", 4, 2).outlineImage).toBe(undefined);
+	});
+
+	it("cells (hand-computed): 14 per row; the stand-ins address idle's and the walk's cells", () => {
+		const ids = fakeIds();
+		const sprites = new ThemeCore(buildValeManifest(ids), { warn: quiet }).sprites("enemy.slime")!;
+		// move: facing 2, frame 5 -> cell 16 + 2 * 8 + 5 = 37 -> column 9, row 2
+		expect(sprites.frame("move", 2, 5)).toEqual({
+			sheet: 0,
+			assetId: ids[SHEET],
+			outlineAssetId: ids[OUTLINE],
+			x: 630,
+			y: 104,
+			w: 70,
+			h: 52,
+		});
+		// the last cell: death facing 15, frame 6 -> cell 144 + 105 + 6 = 255 -> column 3, row 18 (the bottom row)
+		const last = sprites.frame("death", 15, 6);
+		expect([last.x, last.y, last.x + last.w, last.y + last.h]).toEqual([210, 936, 280, 988]);
+		// idle / hit: facing 12 (towards the camera) -> cell 12 -> column 12, row 0
+		for (const name of ["idle", "hit"]) {
+			const r = sprites.frame(name, 12, 0);
+			expect([name, r.x, r.y]).toEqual([name, 840, 0]);
+		}
+		for (let f = 0; f < 8; f++) {
+			expect(sprites.frame("attack", 7, f)).toEqual(sprites.frame("move", 7, f));
+		}
+	});
+});
+
 describe("vale per-sheet cells (docs/DEMON_ART.md DA2 / DD4)", () => {
 	/**
 	 * A layout as art:build writes it for a `cells: "perSheet"` set: idle trimmed to 44x78 (pivot 24, 67), move and

@@ -66,6 +66,12 @@ import type { RobloxAssetId } from "../../types";
  * The UI skin (docs/UI_ART.md UA4: the 12 sliced ui-*.png pieces and the ui-icons.png atlas) uploaded 2026-10-30
  * 8:41 PM by k9kbdev, transcribed from Asset Manager screenshots. That batch also re-uploaded the six ui-draft-*.png
  * files as duplicates with new IDs, which are not used (the images are byte-identical to the ones listed here).
+ * NOT YET UPLOADED (docs/ENEMY_VARIANTS.md "EV10 slime (as built)" / "EV11 audio picks"): slime-body.png and
+ * slime-body-outline.png (enemy.slime, also drawn 0.6x for slime.small: one 980x988 atlas + its rim), and
+ * sfx-enemy-blink.ogg, sfx-enemy-summon.ogg, sfx-enemy-split.ogg, sfx-affix-shieldbreak.ogg, sfx-affix-vengeful.ogg.
+ * Until their IDs are here enemy.slime draws the placeholder dome and the five sounds stay silent (only an absent key
+ * keeps the fallback: never paste an empty string). The commented lines at the end of the map are the slots: paste
+ * the ID after rbxassetid:// and uncomment the line.
  */
 export const VALE_ASSET_IDS: Readonly<Record<string, RobloxAssetId>> = {
 	"amb-b1.ogg": "rbxassetid://91158343621799",
@@ -232,4 +238,12 @@ export const VALE_ASSET_IDS: Readonly<Record<string, RobloxAssetId>> = {
 	"fx-ambient-b3.png": "rbxassetid://81069724717150",
 	"fx-ambient-b5.png": "rbxassetid://93348383001922",
 	"fx-effects.png": "rbxassetid://92741658775036",
+	// Pending upload (docs/ENEMY_VARIANTS.md EV10 / EV11): paste each ID, then uncomment the line.
+	// "slime-body.png": "rbxassetid://",
+	// "slime-body-outline.png": "rbxassetid://",
+	// "sfx-enemy-blink.ogg": "rbxassetid://",
+	// "sfx-enemy-summon.ogg": "rbxassetid://",
+	// "sfx-enemy-split.ogg": "rbxassetid://",
+	// "sfx-affix-shieldbreak.ogg": "rbxassetid://",
+	// "sfx-affix-vengeful.ogg": "rbxassetid://",
 };

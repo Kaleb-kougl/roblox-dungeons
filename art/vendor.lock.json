@@ -5967,6 +5967,1286 @@
 			"bytes": 43623
 		},
 		{
+			"path": "lords-of-pain/enemy/slime/slime_default_idle/E/slime_default_idle_E_0.0_0.png",
+			"sha256": "9218722a183367d5313b1bdb36c30111eaa92988676c25c1802db6e351131362",
+			"bytes": 10645
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_default_idle/N/slime_default_idle_N_90.0_0.png",
+			"sha256": "162182db5dc36ce20b7d6177224f49c3fbd44217418bac6521164e202bfd456e",
+			"bytes": 10417
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_default_idle/NE/slime_default_idle_NE_45.0_0.png",
+			"sha256": "d415b8367272ed88b3b9c470a2750249fb01072b733e33da0a8ac4595f6e8357",
+			"bytes": 10351
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_default_idle/NEE/slime_default_idle_NEE_22.5_0.png",
+			"sha256": "5e1e3bbcbc24b806833ebea80a02e2eb30b0ade81c296163c8c4453fdbe2682a",
+			"bytes": 10384
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_default_idle/NNE/slime_default_idle_NNE_67.5_0.png",
+			"sha256": "b1bb2fb33288e2bb40bf1662231e5c732e39847e1d23123de146ed63c44abd35",
+			"bytes": 10554
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_default_idle/NNW/slime_default_idle_NNW_112.5_0.png",
+			"sha256": "982f06bcd9aa397620e6a25dd35beae25b42b281769837c50a991488e022fc1b",
+			"bytes": 10385
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_default_idle/NW/slime_default_idle_NW_135.0_0.png",
+			"sha256": "88de9964244f4bf2f09a3c2abf2cc55ad4915d9e1a618a6b7090acd48757730f",
+			"bytes": 10404
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_default_idle/NWW/slime_default_idle_NWW_157.5_0.png",
+			"sha256": "c3508c535994ff79153869512bb8d453993741c83c5f06f79f4970fd939f2098",
+			"bytes": 10639
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_default_idle/S/slime_default_idle_S_270.0_0.png",
+			"sha256": "762174de2064a8f133c4b28408cd0b05d301fde9b84dbec925adda6f8e59c37e",
+			"bytes": 10650
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_default_idle/SE/slime_default_idle_SE_315.0_0.png",
+			"sha256": "6c72a5f92bb3f4042e2dc7880dd5251d9610343bcf34368c466ca5323325ae2d",
+			"bytes": 10639
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_default_idle/SEE/slime_default_idle_SEE_337.5_0.png",
+			"sha256": "87b9c203c6677e251d747f3ba551b0c3d8c16b434a0f8ba88e1f941907ab944a",
+			"bytes": 10567
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_default_idle/SSE/slime_default_idle_SSE_292.5_0.png",
+			"sha256": "c0cd48447f48ecab7ee9aae3b53699d5979af54f331cb371bcbb55c0a09eb96f",
+			"bytes": 10495
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_default_idle/SSW/slime_default_idle_SSW_247.5_0.png",
+			"sha256": "11f54fcc66b7338f913a01faffd415b90f84586f626194cdaf293d48eb6c8643",
+			"bytes": 10570
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_default_idle/SW/slime_default_idle_SW_225.0_0.png",
+			"sha256": "bde4007546999188639ec679dca70115cf861eb08380615f79d678fdf46072dc",
+			"bytes": 10641
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_default_idle/SWW/slime_default_idle_SWW_202.5_0.png",
+			"sha256": "0519f30a046ef0009dc6b46b495dac203a9118bd6a593eb133abd77ab6e37e54",
+			"bytes": 10638
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_default_idle/W/slime_default_idle_W_180.0_0.png",
+			"sha256": "682c7a0862c18f3ea4c30be0e4e37ed651086dd87643c8bc091fcea28893ac23",
+			"bytes": 10602
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_default_walk/E/slime_default_walk_E_0.0_0.png",
+			"sha256": "c7204f3586d7b43356740329acef0227fff4e3240c49f260b53c646b547bf394",
+			"bytes": 10645
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_default_walk/E/slime_default_walk_E_0.0_1.png",
+			"sha256": "c8699aef67926cdb5c97de8f2e8d8ba58a2a1db8241a471aa791d7a47765f9a6",
+			"bytes": 10722
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_default_walk/E/slime_default_walk_E_0.0_2.png",
+			"sha256": "c7926ea460f435a99afae0c9fdb45e6b34b4c0f96b2a1aa211aac13b418cee70",
+			"bytes": 10939
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_default_walk/E/slime_default_walk_E_0.0_3.png",
+			"sha256": "bdf642d9016f2f12aa2d74c1b2fd54b4e6710896b3a5e99705b6bf0e4aa16ac8",
+			"bytes": 11380
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_default_walk/E/slime_default_walk_E_0.0_4.png",
+			"sha256": "3c6d4d23b030c884564be5ef55512c3c6d94a0154bceeb4b9776f5fb8572a593",
+			"bytes": 11617
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_default_walk/E/slime_default_walk_E_0.0_5.png",
+			"sha256": "54b7c33644807475d1c13bec31fe399be22a6710054be3c1d7b3c263238e91fc",
+			"bytes": 11380
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_default_walk/E/slime_default_walk_E_0.0_6.png",
+			"sha256": "a72051d7640c21c397ff55c4c0042fbd1b919ffc2b7484e3d01605b5526e36fc",
+			"bytes": 10936
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_default_walk/E/slime_default_walk_E_0.0_7.png",
+			"sha256": "09806167cd138876825e00c0fdfdd2b0d7d3c13675b92d4c27e82bd86bc62413",
+			"bytes": 10722
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_default_walk/N/slime_default_walk_N_90.0_0.png",
+			"sha256": "3f281b555b58f02791aa1f14ce918510224daab06b772685d7ed9f99b5b175f3",
+			"bytes": 10416
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_default_walk/N/slime_default_walk_N_90.0_1.png",
+			"sha256": "88030e3deb2f9aa59eadbbd58716c8a374826f294790eea0ac4895b1a46e9d08",
+			"bytes": 10672
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_default_walk/N/slime_default_walk_N_90.0_2.png",
+			"sha256": "26b68829382af3cd5ef33c33811ab8e274fa25055ed7bc02c259984cfe31cf0a",
+			"bytes": 10937
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_default_walk/N/slime_default_walk_N_90.0_3.png",
+			"sha256": "4ad4852837ce7c3a0c26e75eeaa04dec7321c5959533b1f3c5affc0268aebf7f",
+			"bytes": 11324
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_default_walk/N/slime_default_walk_N_90.0_4.png",
+			"sha256": "6afa5dda14961dc8601f1b65accfa96bc702890c6c3e3c79c54df62c431c38d6",
+			"bytes": 11597
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_default_walk/N/slime_default_walk_N_90.0_5.png",
+			"sha256": "68bdc41592f1b8429489921bda214b7291eff2ab14dcb1c0b4c66bb85ffbe92a",
+			"bytes": 11325
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_default_walk/N/slime_default_walk_N_90.0_6.png",
+			"sha256": "75060190943b720bf54e2fcc98b1d3635a4031964ea406327acede09f5fa825a",
+			"bytes": 10937
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_default_walk/N/slime_default_walk_N_90.0_7.png",
+			"sha256": "62ec0a023093145468f257cb935e1302739ded284866493f7ec27f4ce3b58041",
+			"bytes": 10663
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_default_walk/NE/slime_default_walk_NE_45.0_0.png",
+			"sha256": "c64aa68522c40a4e048afeba1a61f5ed892e4ddbe3ebad89ba6230230a5f7e1d",
+			"bytes": 10351
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_default_walk/NE/slime_default_walk_NE_45.0_1.png",
+			"sha256": "ef8fb01d70c73dfe45b815f586db2372326003ebfa3c63496e9e2cb292771127",
+			"bytes": 10420
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_default_walk/NE/slime_default_walk_NE_45.0_2.png",
+			"sha256": "23bf6ff8dd6fa01ed5b394f0d3d2790d5a1ef8d229c1e29e18a23d3ae19fd45d",
+			"bytes": 11060
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_default_walk/NE/slime_default_walk_NE_45.0_3.png",
+			"sha256": "0542cb5406a00deaeca6e8c415ecd8f4026a4e46b5bbc8c93cec102f4ae120ab",
+			"bytes": 11195
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_default_walk/NE/slime_default_walk_NE_45.0_4.png",
+			"sha256": "2bd02ef42f4df018a1a1fa420282397877303e079b15e73adc3a1067f02e9f5a",
+			"bytes": 11372
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_default_walk/NE/slime_default_walk_NE_45.0_5.png",
+			"sha256": "b7dd86fe87e22c8a1a88b59f46e9de6d1f8943779e716ebb1e2135e66568fdb1",
+			"bytes": 11195
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_default_walk/NE/slime_default_walk_NE_45.0_6.png",
+			"sha256": "a9d3156cd2dc404311d8b737e97c43de9def5cb07fa526928c6163e9af18a03e",
+			"bytes": 11054
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_default_walk/NE/slime_default_walk_NE_45.0_7.png",
+			"sha256": "901e89b0995847b4e1ab02e1c8c32ff70dd2cf74e17244b0116a1878662dd0b4",
+			"bytes": 10421
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_default_walk/NEE/slime_default_walk_NEE_22.5_0.png",
+			"sha256": "8aca528e5089f0f02bc018fd7254975b0656af9a9536360fb84dc12f0f5b6d1b",
+			"bytes": 10384
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_default_walk/NEE/slime_default_walk_NEE_22.5_1.png",
+			"sha256": "3fbf1b39cd2c4ea584fdce4f00bc14e551409ced8eea042315555fec30ad0683",
+			"bytes": 10548
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_default_walk/NEE/slime_default_walk_NEE_22.5_2.png",
+			"sha256": "5963d485466c634325ca0a8adb49c5b70348268c83a01b96238c2b40876aafd7",
+			"bytes": 10909
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_default_walk/NEE/slime_default_walk_NEE_22.5_3.png",
+			"sha256": "461a32f30ff0050eb2845df7412e7391d41005b20b489ed21d555dbfc556706e",
+			"bytes": 11367
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_default_walk/NEE/slime_default_walk_NEE_22.5_4.png",
+			"sha256": "c4d88041232f1d2984233f84158851b7a3611d7b0d77110de2368501e6d21fba",
+			"bytes": 11417
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_default_walk/NEE/slime_default_walk_NEE_22.5_5.png",
+			"sha256": "e2486bf72a5e25ae5d0894678768e3ab19e47f039ee2d9cbbcd1c2d73d5721bc",
+			"bytes": 11366
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_default_walk/NEE/slime_default_walk_NEE_22.5_6.png",
+			"sha256": "db7128265cf214ae92160f4e954e5e6b61aa865a2d439286cff4d731f406d7dc",
+			"bytes": 10909
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_default_walk/NEE/slime_default_walk_NEE_22.5_7.png",
+			"sha256": "464d682738f56c6e655845041ecb762d61b94defc7af0c6171b6372fbb1fda35",
+			"bytes": 10546
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_default_walk/NNE/slime_default_walk_NNE_67.5_0.png",
+			"sha256": "49d0dd23e31866f0ba0ce4a1287ab3fe7374c9910ec11ab110fc9aa116452275",
+			"bytes": 10554
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_default_walk/NNE/slime_default_walk_NNE_67.5_1.png",
+			"sha256": "f0ec9615fe8f6e8c18d121ef36f3cd831031d4844c375aec4903446fa24a28cd",
+			"bytes": 10565
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_default_walk/NNE/slime_default_walk_NNE_67.5_2.png",
+			"sha256": "8b6d97de870ffc75f8c00da9d34ec8a86eb78069a73e8d78ec8e7f769a490e6c",
+			"bytes": 11033
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_default_walk/NNE/slime_default_walk_NNE_67.5_3.png",
+			"sha256": "9a05d3df337f0c119b888a244575fd5269c0dd0221e4b31e58490ce84073e6c9",
+			"bytes": 11300
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_default_walk/NNE/slime_default_walk_NNE_67.5_4.png",
+			"sha256": "d9034618899f10eb37917492cf9801398407c1fdd607e18f3e23053d9f2adc93",
+			"bytes": 11520
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_default_walk/NNE/slime_default_walk_NNE_67.5_5.png",
+			"sha256": "2deaede2af5301abc9f794692487b51b4738ad9ce39fe61eeef5176ed66bdbb3",
+			"bytes": 11300
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_default_walk/NNE/slime_default_walk_NNE_67.5_6.png",
+			"sha256": "605c74ef298039dda0b7368b82bfc7259340c884266307437a4059f4d70a9f3f",
+			"bytes": 11033
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_default_walk/NNE/slime_default_walk_NNE_67.5_7.png",
+			"sha256": "7229a8724ab68e9a9b2bfb9f8877e173ada3128641d8fdbf42807f1f6cb90642",
+			"bytes": 10565
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_default_walk/NNW/slime_default_walk_NNW_112.5_0.png",
+			"sha256": "184461375415aaff20599979855dafc507d1c5b114e78a5a99fcfecb50ef4b9a",
+			"bytes": 10390
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_default_walk/NNW/slime_default_walk_NNW_112.5_1.png",
+			"sha256": "d899a55f3cadd9891741f7b8a7a0c7cad2d74e44cfcc7bd55458e66b7437d2f2",
+			"bytes": 10582
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_default_walk/NNW/slime_default_walk_NNW_112.5_2.png",
+			"sha256": "2c35b0be016a8efc0fdbcf50f8fba298d37905498d1ef1ef2538d9f938e3e9bd",
+			"bytes": 10974
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_default_walk/NNW/slime_default_walk_NNW_112.5_3.png",
+			"sha256": "4b39f5a90acf1103f808c4d3e87022c7f303436188c3e4be7b09a78ed243ac79",
+			"bytes": 11298
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_default_walk/NNW/slime_default_walk_NNW_112.5_4.png",
+			"sha256": "da13ab87246c16435314e68b167e83ba61600a516af21f5a51a7175f725364be",
+			"bytes": 11455
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_default_walk/NNW/slime_default_walk_NNW_112.5_5.png",
+			"sha256": "332bb0a54aa2ea79582a0873ea5f35544c25d043b5657843e02c1dc3a77d6006",
+			"bytes": 11302
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_default_walk/NNW/slime_default_walk_NNW_112.5_6.png",
+			"sha256": "bddd6e58b1801981a7bb3258ae052b7b446cd18d06385df0ff6e1d922b1fd0b1",
+			"bytes": 10974
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_default_walk/NNW/slime_default_walk_NNW_112.5_7.png",
+			"sha256": "c618fbce695bcacfc786b73802b259b66bcd86b794216cde7cce86e64ceee93e",
+			"bytes": 10583
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_default_walk/NW/slime_default_walk_NW_135.0_0.png",
+			"sha256": "b21f4221e3393f73cd49dab1e7ef514a284f3012d73179e178a83d3fa6b7b818",
+			"bytes": 10404
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_default_walk/NW/slime_default_walk_NW_135.0_1.png",
+			"sha256": "cbb74a4e9f43a53a0f6a869aa6c532df589b29f60c17ffe5f6aa23ee83ac2851",
+			"bytes": 10570
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_default_walk/NW/slime_default_walk_NW_135.0_2.png",
+			"sha256": "91b0e0eab266c2bb17a1a13b6f320e08920cfb4f09fb17ccc152e69a3be5177e",
+			"bytes": 11098
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_default_walk/NW/slime_default_walk_NW_135.0_3.png",
+			"sha256": "ae3a53c57bd54e89fd629f4bc0ac780f1b358e01eb5a11c098bf5b11e17b9b53",
+			"bytes": 11438
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_default_walk/NW/slime_default_walk_NW_135.0_4.png",
+			"sha256": "0002cfb37a5a41598127c46c10347c572b064ed13ce62c5beee56b72273d24ad",
+			"bytes": 11593
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_default_walk/NW/slime_default_walk_NW_135.0_5.png",
+			"sha256": "be0054acf78297d7ad26933c324e6f848bfa6b932db2cfa7fdb50ebc20248598",
+			"bytes": 11439
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_default_walk/NW/slime_default_walk_NW_135.0_6.png",
+			"sha256": "9085dd8b12dc7dae9a8355d842e827d1c00ad768c7f506971b5da5f9af2df334",
+			"bytes": 11099
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_default_walk/NW/slime_default_walk_NW_135.0_7.png",
+			"sha256": "d46bc8196c46989804a2347bed68d922619e42a8a9f6471e129ed2704ec14893",
+			"bytes": 10563
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_default_walk/NWW/slime_default_walk_NWW_157.5_0.png",
+			"sha256": "557a029f92978ec75f78eb344b53140887d52e2f888b364dafcfd26063e67890",
+			"bytes": 10632
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_default_walk/NWW/slime_default_walk_NWW_157.5_1.png",
+			"sha256": "cde7624fc8c851310ee2bd2dc0a8af0562d64279a8ad91b19b4964caa862f8be",
+			"bytes": 10800
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_default_walk/NWW/slime_default_walk_NWW_157.5_2.png",
+			"sha256": "4f90d08a9f8f6cf5fb96fc5a80b094a1ad1e39414d927ac42d65fb27349cc3b8",
+			"bytes": 11151
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_default_walk/NWW/slime_default_walk_NWW_157.5_3.png",
+			"sha256": "190b452af120139fe7c30f7c5f885256f77d672f88ee0dd52ec27b8c6e195487",
+			"bytes": 11488
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_default_walk/NWW/slime_default_walk_NWW_157.5_4.png",
+			"sha256": "e8e6931e9c7fc907dd7040a7445b8e4b73bdb2cd011d90a9d35109811f68660b",
+			"bytes": 11654
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_default_walk/NWW/slime_default_walk_NWW_157.5_5.png",
+			"sha256": "172ad63e2dd6d9b4dbb7bd2c184bef2e7890c335c897941c158e8a6bc7e48c66",
+			"bytes": 11488
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_default_walk/NWW/slime_default_walk_NWW_157.5_6.png",
+			"sha256": "e3daac65a8cea5062d7fa62cdc63551883fe9bddc22aeef71be699c49ed04461",
+			"bytes": 11151
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_default_walk/NWW/slime_default_walk_NWW_157.5_7.png",
+			"sha256": "0941d78bb53b218d0de8cfe945058302713aa59e39724281d9b2bebc68d0632b",
+			"bytes": 10800
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_default_walk/S/slime_default_walk_S_270.0_0.png",
+			"sha256": "38c7744a58da964744bb6a4b9fc0a2be5a4fc47741a31b3135bab31afad72f31",
+			"bytes": 10650
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_default_walk/S/slime_default_walk_S_270.0_1.png",
+			"sha256": "a98a52723f7f2a56121ff412539a1f39dd8b8e029a223b3f5701e03c41b35008",
+			"bytes": 10728
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_default_walk/S/slime_default_walk_S_270.0_2.png",
+			"sha256": "baa955d0dee98a246f51971320be4d2752cbed04fa2203d9447fa9471a802d5d",
+			"bytes": 11080
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_default_walk/S/slime_default_walk_S_270.0_3.png",
+			"sha256": "4a0ea3eba4bca4dbc74433972979bffad77538b64b64cadbb2a96459c22864c8",
+			"bytes": 11623
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_default_walk/S/slime_default_walk_S_270.0_4.png",
+			"sha256": "e3c3a20ac1697ecb5850dbedcc830315a10a01f4de1d4302dd3df1ae44eccc82",
+			"bytes": 11678
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_default_walk/S/slime_default_walk_S_270.0_5.png",
+			"sha256": "23920f8300f1dd988e194c7d86c6204486158ed3a2f12e03f5225fb8a5c731a0",
+			"bytes": 11616
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_default_walk/S/slime_default_walk_S_270.0_6.png",
+			"sha256": "408f3e3abe27b14b1cef121fb3232da2ae66d9cae2b21e260b01f6764e7df755",
+			"bytes": 11080
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_default_walk/S/slime_default_walk_S_270.0_7.png",
+			"sha256": "01f6a66f97243bf1324ecb0ae14bfd048014dbcef33a62597748477f45105617",
+			"bytes": 10728
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_default_walk/SE/slime_default_walk_SE_315.0_0.png",
+			"sha256": "e13ba5e0d2cd362b2692e012f959ff5b34abb93600e0e3ce0fda494b370b4e64",
+			"bytes": 10639
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_default_walk/SE/slime_default_walk_SE_315.0_1.png",
+			"sha256": "cc14a633ca745c6e7ffc2abd0d4f5d09d34d67de4909f936af6792a75116cc67",
+			"bytes": 10755
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_default_walk/SE/slime_default_walk_SE_315.0_2.png",
+			"sha256": "417b93a99ed54e1c21fb18ccd9c62f250c1d47d1780a75df5862637ba95fa428",
+			"bytes": 10968
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_default_walk/SE/slime_default_walk_SE_315.0_3.png",
+			"sha256": "895a378a5a40fc3173ca275cf9d7268a0085530ef4f0f6f34bb0ae36f5ffda87",
+			"bytes": 11365
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_default_walk/SE/slime_default_walk_SE_315.0_4.png",
+			"sha256": "6b1ac92b5cde53587a848f6f2bade8559788be31c3d42f001f46512071ccaeff",
+			"bytes": 11591
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_default_walk/SE/slime_default_walk_SE_315.0_5.png",
+			"sha256": "af6565a4303bf147965469dee6d86e88da51c3110c0e9786f180a0099295dd09",
+			"bytes": 11362
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_default_walk/SE/slime_default_walk_SE_315.0_6.png",
+			"sha256": "3003e957d5991251df71bebee51bd19162dbae0e490dced25b13e33bdfe6c968",
+			"bytes": 10968
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_default_walk/SE/slime_default_walk_SE_315.0_7.png",
+			"sha256": "6e4f6d3f15efbe4081f2c8ec1eb60d0259c04ee3aac2e3a2f9bcd6d1006e03c3",
+			"bytes": 10752
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_default_walk/SEE/slime_default_walk_SEE_337.5_0.png",
+			"sha256": "b3dc76a159677defd7baa2d7ca599ef817d20c3773f58ab3edffb171976ff2af",
+			"bytes": 10567
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_default_walk/SEE/slime_default_walk_SEE_337.5_1.png",
+			"sha256": "cc12691d3a8eb0375b30a718701519613180be05b0855c85e45084d882adf376",
+			"bytes": 10722
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_default_walk/SEE/slime_default_walk_SEE_337.5_2.png",
+			"sha256": "9d76f38d3d842c90fb0751730ecd4956a60e15159017c4bad1bf9cecfd8a6f02",
+			"bytes": 11048
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_default_walk/SEE/slime_default_walk_SEE_337.5_3.png",
+			"sha256": "7ca391e337b1252d5164d467823dee0f17e53e3317c0a8d262a1bdf3cfda7238",
+			"bytes": 11280
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_default_walk/SEE/slime_default_walk_SEE_337.5_4.png",
+			"sha256": "a5de93f021ed47c92f1d0ecfa81bece273a33eb1b19b12df625e5f4313eb96e0",
+			"bytes": 11508
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_default_walk/SEE/slime_default_walk_SEE_337.5_5.png",
+			"sha256": "ce3c06a327e45b6ab6b194d79626d7e8ba8944570e637c17bfe60d811887966e",
+			"bytes": 11284
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_default_walk/SEE/slime_default_walk_SEE_337.5_6.png",
+			"sha256": "da1daa4e676b8692da6a2fc2904dd23d6e0b51566aab8eca5d5207127e6061b0",
+			"bytes": 11047
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_default_walk/SEE/slime_default_walk_SEE_337.5_7.png",
+			"sha256": "ecbde87337ba9d0cd51ea2992785af8b55beae7c406cf5df28816d6ca4478fab",
+			"bytes": 10720
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_default_walk/SSE/slime_default_walk_SSE_292.5_0.png",
+			"sha256": "dc12f5564c819507027fd57aa500451fc57d7d3a127c4f20fab519e1a2b40736",
+			"bytes": 10495
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_default_walk/SSE/slime_default_walk_SSE_292.5_1.png",
+			"sha256": "9dcab86aa28f605713cbc42129fb5a3cea0f91556933dffd9e4cfbe457d429c4",
+			"bytes": 10606
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_default_walk/SSE/slime_default_walk_SSE_292.5_2.png",
+			"sha256": "2990896fc7fe26bb6b6f43ae988affcc3b19c7361512fa3cf6496084f8e7becc",
+			"bytes": 10948
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_default_walk/SSE/slime_default_walk_SSE_292.5_3.png",
+			"sha256": "1c308374f5c9e5520d9b8cd871546e208ff91bbd4dd0392903e40d13577f4ba3",
+			"bytes": 11496
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_default_walk/SSE/slime_default_walk_SSE_292.5_4.png",
+			"sha256": "2afeb0a349ca7bf692cca925955e3ee7ba9f1f1d623f57d8adcfb8a511149d5e",
+			"bytes": 11446
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_default_walk/SSE/slime_default_walk_SSE_292.5_5.png",
+			"sha256": "0ddc941a1e7e105886945597d309d3da955b070f93eef5b96b6711c4ec51734f",
+			"bytes": 11496
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_default_walk/SSE/slime_default_walk_SSE_292.5_6.png",
+			"sha256": "0c534f2e631ccfbf891f0399bababe250310d4012c5e0ed6b98f18b03489a8be",
+			"bytes": 10946
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_default_walk/SSE/slime_default_walk_SSE_292.5_7.png",
+			"sha256": "ed8513866dbe835a1d0d92e44b803756ed9dafb51ad4228cbc7a304a5012449f",
+			"bytes": 10603
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_default_walk/SSW/slime_default_walk_SSW_247.5_0.png",
+			"sha256": "eeccb011cbcf95175104af703f2aceaef74f6604c21a0cfb086dc4c79f1dd0a5",
+			"bytes": 10570
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_default_walk/SSW/slime_default_walk_SSW_247.5_1.png",
+			"sha256": "171876e41e86d56ed9aa7779d9124dbf1621f8cef265331b3557ad1ea4c64e61",
+			"bytes": 10727
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_default_walk/SSW/slime_default_walk_SSW_247.5_2.png",
+			"sha256": "0c70f52b712977013e6b5e253a6225e89b5bb8aa670e9048d37132c8ffbce2ab",
+			"bytes": 11135
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_default_walk/SSW/slime_default_walk_SSW_247.5_3.png",
+			"sha256": "7c3293c0cdc156c5536a6694da6330001b35dbf8015d472bbad11d2e432241f7",
+			"bytes": 11518
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_default_walk/SSW/slime_default_walk_SSW_247.5_4.png",
+			"sha256": "c5b79a683e1ffbc9101fc9c0a98306f6ef238a4202281f4aaa36fba9d8806706",
+			"bytes": 11743
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_default_walk/SSW/slime_default_walk_SSW_247.5_5.png",
+			"sha256": "63d087846d984503490cffde25cd38e14d9b4584fecc9520ddf652d88aa596b7",
+			"bytes": 11509
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_default_walk/SSW/slime_default_walk_SSW_247.5_6.png",
+			"sha256": "514152785464177b168ca50bf3a6b71d6fd61dcc8c5840752a0b5b4decbe2f13",
+			"bytes": 11133
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_default_walk/SSW/slime_default_walk_SSW_247.5_7.png",
+			"sha256": "afac59c0c7acbc49e047c69d2d60ad14f2bd1de622e4a32260635b79930d60eb",
+			"bytes": 10727
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_default_walk/SW/slime_default_walk_SW_225.0_0.png",
+			"sha256": "e2046f8808e682bade271614af91fbd0bb334b14b38e417a359bdec297eecf77",
+			"bytes": 10641
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_default_walk/SW/slime_default_walk_SW_225.0_1.png",
+			"sha256": "ac06fbfb699d9219d72d73e11f78cd0cdfd71adba682cd3d04f099c850ed5199",
+			"bytes": 10655
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_default_walk/SW/slime_default_walk_SW_225.0_2.png",
+			"sha256": "69886850c20264e99c2e139169bb890582731a94b585d2e22ba763e65c66bec7",
+			"bytes": 11079
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_default_walk/SW/slime_default_walk_SW_225.0_3.png",
+			"sha256": "74c7a5ff123a27558b65fcd42572ea1da7f3d57c0d4a7f5c2b6c3587161438b1",
+			"bytes": 11620
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_default_walk/SW/slime_default_walk_SW_225.0_4.png",
+			"sha256": "8361a274f2b93e55b2ff7c1682614a44ce93e90b2ad37fd16a24190d80d156f2",
+			"bytes": 11780
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_default_walk/SW/slime_default_walk_SW_225.0_5.png",
+			"sha256": "8fbc5b73afffd7515ebcbaaa5c3da2bdd2732994c5cd02ef566b9ff3604472bd",
+			"bytes": 11619
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_default_walk/SW/slime_default_walk_SW_225.0_6.png",
+			"sha256": "5dcb702472bd8a5db7b830f0c3c0945cc7ab9457fe4596ea4b3776696e385684",
+			"bytes": 11079
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_default_walk/SW/slime_default_walk_SW_225.0_7.png",
+			"sha256": "a993caa7ee197ad7f53fdacc273abf4f1e0ed3ad40482ba016247cd7cd022be3",
+			"bytes": 10656
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_default_walk/SWW/slime_default_walk_SWW_202.5_0.png",
+			"sha256": "2a11929f73c20138c3e49edb7df44451344f8d74cf438f3e1fef09c57b99ab59",
+			"bytes": 10638
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_default_walk/SWW/slime_default_walk_SWW_202.5_1.png",
+			"sha256": "0425f29f5b0801b571cb985a0829af2a832ccfa4213389a10866b8ccae1a7233",
+			"bytes": 10703
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_default_walk/SWW/slime_default_walk_SWW_202.5_2.png",
+			"sha256": "a85296f90bb76b1242498a2fd956dbe03346135f21f7ed00811e8f25216cd81c",
+			"bytes": 11157
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_default_walk/SWW/slime_default_walk_SWW_202.5_3.png",
+			"sha256": "28848f33f2814255c6394cd45ca74d3978b1fdc729e2e96fa77aa987d64175f5",
+			"bytes": 11777
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_default_walk/SWW/slime_default_walk_SWW_202.5_4.png",
+			"sha256": "edaa4b431d5500c4c87849e55f2999d747a11bd83a15e404b4bbfb8494bdf82e",
+			"bytes": 11789
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_default_walk/SWW/slime_default_walk_SWW_202.5_5.png",
+			"sha256": "7fb5490b21859600133c866b6ff7ec71d4339989937fd05307362bacbe691165",
+			"bytes": 11768
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_default_walk/SWW/slime_default_walk_SWW_202.5_6.png",
+			"sha256": "b8dcf013c1f63fed59ae7b6f897ddc25ef204873c10c65f0ebddf4e49a7f9d36",
+			"bytes": 11155
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_default_walk/SWW/slime_default_walk_SWW_202.5_7.png",
+			"sha256": "f410e9b4495b599b2073ec8d19ad28d75b99583ca8770e9fd93cf5fe9d7183c7",
+			"bytes": 10703
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_default_walk/W/slime_default_walk_W_180.0_0.png",
+			"sha256": "7e2a6128b14a02a5ac46f3de5a84cc2760c67d516e4b59cb773fe5d720220094",
+			"bytes": 10598
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_default_walk/W/slime_default_walk_W_180.0_1.png",
+			"sha256": "e3d80ec8c5898292896e1106b6c21f5aec618f364fc2e38c6cad6bcd54c33b41",
+			"bytes": 10661
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_default_walk/W/slime_default_walk_W_180.0_2.png",
+			"sha256": "0404dd61c7da1a95266e22ea91582ebc3177f4b0b3f1a517a7046ae2890a3075",
+			"bytes": 11115
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_default_walk/W/slime_default_walk_W_180.0_3.png",
+			"sha256": "acfb0461c9ea7c35ea78f97bbaeb7d3474b53dd71cea276b3a8be7e2bb786fb7",
+			"bytes": 11347
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_default_walk/W/slime_default_walk_W_180.0_4.png",
+			"sha256": "07f0b5f742e584289abaeec01ececb9c39a986ca70d686d4ca6fcf1cff183624",
+			"bytes": 11659
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_default_walk/W/slime_default_walk_W_180.0_5.png",
+			"sha256": "e8e04dba25ead818321656bcedfe2951bf899b7b9a922d2ae919210d2c4ef4ed",
+			"bytes": 11347
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_default_walk/W/slime_default_walk_W_180.0_6.png",
+			"sha256": "908820a6ced27c40783098e022b143d8c91785a82eef355098b0f689a078e169",
+			"bytes": 11118
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_default_walk/W/slime_default_walk_W_180.0_7.png",
+			"sha256": "327bfa49425e53a7e1ff9b8f9932355bdbfc7b6490e4daa5d5e64d1b8ad0e300",
+			"bytes": 10661
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_special_death/E/slime_special_death_E_0.0_0.png",
+			"sha256": "1cf9355b2cee295598f1685733e5ca1a8b82cfc5dfe6a248ba05d0a1cae83b74",
+			"bytes": 10696
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_special_death/E/slime_special_death_E_0.0_1.png",
+			"sha256": "f221202a9d91fe151e93533516ecfe51ae08f6f9b9844996e414ae3a6c84d4df",
+			"bytes": 10101
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_special_death/E/slime_special_death_E_0.0_2.png",
+			"sha256": "970a880b9941f19e3452dae9b7f52130d5d459afdb13e2b0a354ffd056fed5ca",
+			"bytes": 8343
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_special_death/E/slime_special_death_E_0.0_3.png",
+			"sha256": "2682875d05a5427740713484d3447936d668b8125e6943052544a808c290a1c3",
+			"bytes": 6632
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_special_death/E/slime_special_death_E_0.0_4.png",
+			"sha256": "3000597622e8d7fb8763fc0b0a173feedfa84114e2fda6dca55df92dc8f9821a",
+			"bytes": 5753
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_special_death/E/slime_special_death_E_0.0_5.png",
+			"sha256": "8fe8b7d03b905cb6693dc846b6d50d853106c486fa1561735e4df15d19501e77",
+			"bytes": 5858
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_special_death/E/slime_special_death_E_0.0_6.png",
+			"sha256": "bc51b4d7b7b2925a04764bd2c2709b0d12b9914aa034006e4972f0f038d33ab0",
+			"bytes": 5963
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_special_death/N/slime_special_death_N_90.0_0.png",
+			"sha256": "ad8da63f0cb19d6fac22443aca38f15381f28de01f15c03990183239447756fa",
+			"bytes": 10632
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_special_death/N/slime_special_death_N_90.0_1.png",
+			"sha256": "80f4ffbb0ad910667977e66cd11d201a92a2aa7bccfe48a6d3b353a6ce61af79",
+			"bytes": 9881
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_special_death/N/slime_special_death_N_90.0_2.png",
+			"sha256": "cdc4643a6fa237842d026ed607a1c23446bffac1242d02b2c74a5cc9348bec5f",
+			"bytes": 8454
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_special_death/N/slime_special_death_N_90.0_3.png",
+			"sha256": "7a511be122af5e32dfd6b0437f7ad9bee36c6b76946047a7101cd107d0d2a3af",
+			"bytes": 6734
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_special_death/N/slime_special_death_N_90.0_4.png",
+			"sha256": "5d7d9df3ccbd867e6e343087b2b2d30e60a141b175e3c37fde4380df3b8cf1be",
+			"bytes": 5986
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_special_death/N/slime_special_death_N_90.0_5.png",
+			"sha256": "5f52ee06c03ff0f0abf30b6494c903819e11dce92b10d1d9bef98f644dd785c1",
+			"bytes": 6111
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_special_death/N/slime_special_death_N_90.0_6.png",
+			"sha256": "f6692365ff2eabccd56e0867bc492ceb46e22c77dd8c368038091bde759f1b4e",
+			"bytes": 6148
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_special_death/NE/slime_special_death_NE_45.0_0.png",
+			"sha256": "9af661b0a6f468ca37f689b4ac00495382828262f08f75c54caba5999b8cad97",
+			"bytes": 10591
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_special_death/NE/slime_special_death_NE_45.0_1.png",
+			"sha256": "8881bd849710c038947866870945563497cd29c169c71a7d78909408bdbbdb81",
+			"bytes": 9891
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_special_death/NE/slime_special_death_NE_45.0_2.png",
+			"sha256": "89a72224048c675b82d30156a18d0cc5722fb8c987fe3b034cbca27026d27c51",
+			"bytes": 8348
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_special_death/NE/slime_special_death_NE_45.0_3.png",
+			"sha256": "263cb15237caff47136b600e2f7290dd399ee3dba17569c4228f4b2b00a3f3c1",
+			"bytes": 6727
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_special_death/NE/slime_special_death_NE_45.0_4.png",
+			"sha256": "350d4d6077943d40d6787fe4b05f139125b47e96b81631b59efaa8a2b8b47c7b",
+			"bytes": 5949
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_special_death/NE/slime_special_death_NE_45.0_5.png",
+			"sha256": "1d33a9338697d62fa97f1e01fecd4090071fcc03da9f7280ad04213d24439757",
+			"bytes": 6027
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_special_death/NE/slime_special_death_NE_45.0_6.png",
+			"sha256": "681867373737469b0c13bf70499201b6fbc2e7ed9b2ac577ba0f98e0d59db27a",
+			"bytes": 6101
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_special_death/NEE/slime_special_death_NEE_22.5_0.png",
+			"sha256": "da86a22061ad270fc594b5f3c45a6bd890eea204774f8ac0038a70d16fed0163",
+			"bytes": 10720
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_special_death/NEE/slime_special_death_NEE_22.5_1.png",
+			"sha256": "f8c968dea34cca31b8a9733eae8d823cc70d85bca51f88ae89f6a2a38234b601",
+			"bytes": 9963
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_special_death/NEE/slime_special_death_NEE_22.5_2.png",
+			"sha256": "26378a8e6975e195ca21fe0648f675bf9ce2727b206f390676f8c6389d13795e",
+			"bytes": 8521
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_special_death/NEE/slime_special_death_NEE_22.5_3.png",
+			"sha256": "4e9620d91b25d65d1dd7a647f9e4966f64ab5719ce898d72ce4b7d5052baf4f9",
+			"bytes": 6658
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_special_death/NEE/slime_special_death_NEE_22.5_4.png",
+			"sha256": "f138e0061a7b6d88d4abd9ec254d981e2bcca6ada949d20766f93c0818e4e09f",
+			"bytes": 5910
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_special_death/NEE/slime_special_death_NEE_22.5_5.png",
+			"sha256": "a96e290ab5fb72e4b2f6730f88ccf3c6d9773e37fe2c3043e22dcaf3a8ad3206",
+			"bytes": 5920
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_special_death/NEE/slime_special_death_NEE_22.5_6.png",
+			"sha256": "c7b3bf882ccda89012d7088a04bc9332bb83202fad1bc0262b47d16a3e3e6d99",
+			"bytes": 6003
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_special_death/NNE/slime_special_death_NNE_67.5_0.png",
+			"sha256": "9e3deea7fa30bb9795e0e0debd66bca297bacf5787edcd81aa8231697310717b",
+			"bytes": 10638
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_special_death/NNE/slime_special_death_NNE_67.5_1.png",
+			"sha256": "a5916d3784f7901bf8ef3e6ce6bf6db0ccf925c0aef30e6c6909e46e529b9ce8",
+			"bytes": 9876
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_special_death/NNE/slime_special_death_NNE_67.5_2.png",
+			"sha256": "7db26ae64686ecfe1153ed630680845f94d2e0fdb88c8684fc17a633077321a2",
+			"bytes": 8423
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_special_death/NNE/slime_special_death_NNE_67.5_3.png",
+			"sha256": "771b07411ceee2f4710cb0bfcc917c383e0062cf031fa56897acf3f4e61756b8",
+			"bytes": 6746
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_special_death/NNE/slime_special_death_NNE_67.5_4.png",
+			"sha256": "b17b9ddc37c4e753f2d4cd4268bf64f0393524218839c35be461cf345ff6bf85",
+			"bytes": 5899
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_special_death/NNE/slime_special_death_NNE_67.5_5.png",
+			"sha256": "91c2c9161dfbca1a8e3cfe7f6fa8cfe06fd2a6b2d8db1525ab54cfbe159b1629",
+			"bytes": 6040
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_special_death/NNE/slime_special_death_NNE_67.5_6.png",
+			"sha256": "82c74fe5baf204dc66c4a04d2764a06559d5d5ef076a0e76afa50d43f1838d25",
+			"bytes": 6082
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_special_death/NNW/slime_special_death_NNW_112.5_0.png",
+			"sha256": "f26c6c0db83471df970e04116466d78a40599c5735fe3e15a3672a33bad36d8b",
+			"bytes": 10572
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_special_death/NNW/slime_special_death_NNW_112.5_1.png",
+			"sha256": "c17062043b7bcf5fa90be7e99b126e3cd615bb28cf75f76599f1fe4b7b4b5b3c",
+			"bytes": 10003
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_special_death/NNW/slime_special_death_NNW_112.5_2.png",
+			"sha256": "54e1b8a354a65220dfd45b1575e3b2eabd469bf87f86e2de9998d5700e395753",
+			"bytes": 8421
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_special_death/NNW/slime_special_death_NNW_112.5_3.png",
+			"sha256": "b7823962e89795dc8d0b65747f5a290b123e4ea14d44c231260e7bb6c1b3583e",
+			"bytes": 6722
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_special_death/NNW/slime_special_death_NNW_112.5_4.png",
+			"sha256": "0979a18fa47f922236d495e853a0d1c7a62d3c436d841a75ee83193eafb9710d",
+			"bytes": 5803
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_special_death/NNW/slime_special_death_NNW_112.5_5.png",
+			"sha256": "6d2682aa6b90151ae73e471c8834ef739a4710e03488989fd5e10a1487d6e393",
+			"bytes": 5902
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_special_death/NNW/slime_special_death_NNW_112.5_6.png",
+			"sha256": "13676c40fa06f74b40daaf83543e51670a26a2c4ef111d776837ab3f60c2f79a",
+			"bytes": 5931
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_special_death/NW/slime_special_death_NW_135.0_0.png",
+			"sha256": "3e54ad49b9e74a4a7f3856c80d9203aa4bafe6cdeeaf46fb2bc9585905dea11b",
+			"bytes": 10688
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_special_death/NW/slime_special_death_NW_135.0_1.png",
+			"sha256": "e1dff31d383f37db0d671bf3a549336aab80bb2237facd0999f3de57425302fc",
+			"bytes": 10109
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_special_death/NW/slime_special_death_NW_135.0_2.png",
+			"sha256": "2d22ab797575b4cf8d7c5f34ae39d2cf11d5564dcba09ec7c1a6f492e506b4a3",
+			"bytes": 8466
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_special_death/NW/slime_special_death_NW_135.0_3.png",
+			"sha256": "13dcb1be532b93d75d490b6879c2c2939fabb53887a89af27a1ed12760752037",
+			"bytes": 6696
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_special_death/NW/slime_special_death_NW_135.0_4.png",
+			"sha256": "33f369f2c11db5b8671a1d72f48d3c719dd32cae01afc6359d007ce203f602d4",
+			"bytes": 5979
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_special_death/NW/slime_special_death_NW_135.0_5.png",
+			"sha256": "2d868a80f08dd48842e39bf87b811d13b2a197d87ebf8c8ac46229491b2efa30",
+			"bytes": 5970
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_special_death/NW/slime_special_death_NW_135.0_6.png",
+			"sha256": "762ec9a1abd29bb11b9c503a0a4d367e1d8b3132a05cf7f232cd09d16718c3f5",
+			"bytes": 5984
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_special_death/NWW/slime_special_death_NWW_157.5_0.png",
+			"sha256": "035dc5383d349225decc561d57043ad3ac3001b08b2d0225f531de42186d6dc4",
+			"bytes": 10803
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_special_death/NWW/slime_special_death_NWW_157.5_1.png",
+			"sha256": "f87f7507aa7f49d04e124c41ba7dad561020f96b15b384a805a9d2f103ab0bb9",
+			"bytes": 10039
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_special_death/NWW/slime_special_death_NWW_157.5_2.png",
+			"sha256": "b73ebf7d550c71f01a9ec835e725ebe79034b15f4405867922e388a99150e155",
+			"bytes": 8475
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_special_death/NWW/slime_special_death_NWW_157.5_3.png",
+			"sha256": "316799b95aba3ce06a5121e39e8535c8a458cd41346f777c10995194f8b96e92",
+			"bytes": 6813
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_special_death/NWW/slime_special_death_NWW_157.5_4.png",
+			"sha256": "d66ea1919e01fb6acc16a7d5564a41f02922cabc009acb289af12410d875afd0",
+			"bytes": 5930
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_special_death/NWW/slime_special_death_NWW_157.5_5.png",
+			"sha256": "f94e8fc1ab3872e9c7a3d089567ccb03ef9a253afb91a4173f7f0318ebf763fb",
+			"bytes": 5962
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_special_death/NWW/slime_special_death_NWW_157.5_6.png",
+			"sha256": "d916cde47ea1c9b7cefe8aa20de9a563f2a5fc9cb4f59ca1bb02540afad0853c",
+			"bytes": 6026
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_special_death/S/slime_special_death_S_270.0_0.png",
+			"sha256": "6243b2bf516f41bf13bf3aabae3d0f0f9ace2b3175924c7aaa4733f1231b6988",
+			"bytes": 10947
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_special_death/S/slime_special_death_S_270.0_1.png",
+			"sha256": "b8c1effaa5f53e4ea92ef8b6da5fff3ef71b86aeb3c62f346e74dc6cbccbd3c9",
+			"bytes": 10080
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_special_death/S/slime_special_death_S_270.0_2.png",
+			"sha256": "2a36db55cb6fd3fa6c30d4418383fcb64a270126b1ec40a26f3b4b0b76d2c03d",
+			"bytes": 8368
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_special_death/S/slime_special_death_S_270.0_3.png",
+			"sha256": "a3b8a46aaf040837bf0d4dc3d86ebdfef389c4f1d4743ed8d4bc60463a5e8967",
+			"bytes": 6737
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_special_death/S/slime_special_death_S_270.0_4.png",
+			"sha256": "5f98c96905662f1b80655768ab0f6d5ca6487d8426d168b1ef3e8b0f62dfa78c",
+			"bytes": 5911
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_special_death/S/slime_special_death_S_270.0_5.png",
+			"sha256": "f2876cdfe826db847e77872d9dd2ec611c15d97167dca661e9cd4837b226d53e",
+			"bytes": 5984
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_special_death/S/slime_special_death_S_270.0_6.png",
+			"sha256": "e81c83fd2f83524654c9b3e8533744e6f5e57e7e0faf35281eb0586a8e0ba162",
+			"bytes": 6023
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_special_death/SE/slime_special_death_SE_315.0_0.png",
+			"sha256": "80980231eaa3752a46dbb17d0c10fd7fe51f13cfe2d68523a0d39aba11f0dfe0",
+			"bytes": 10741
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_special_death/SE/slime_special_death_SE_315.0_1.png",
+			"sha256": "9417fa64870707de2a8c010c4e3ef0476d15051217a8e6b94abd50be4e63e767",
+			"bytes": 10056
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_special_death/SE/slime_special_death_SE_315.0_2.png",
+			"sha256": "de54b2601d864f0189349d60d0242bb8599f06485e5f6f27f3f4a997845964d1",
+			"bytes": 8314
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_special_death/SE/slime_special_death_SE_315.0_3.png",
+			"sha256": "82030b10122f710efa5e4518c23d7a610506de653b65f8b9094da698f5296013",
+			"bytes": 6747
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_special_death/SE/slime_special_death_SE_315.0_4.png",
+			"sha256": "82dd2346d97ecf9e2a9082755bab26af1253e48ceb02728f07ee3eee81c7361a",
+			"bytes": 5871
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_special_death/SE/slime_special_death_SE_315.0_5.png",
+			"sha256": "3f19ce2228759f76185fa4134b06da52e352d92736d01fb2f1b4b1270ae1d19c",
+			"bytes": 5947
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_special_death/SE/slime_special_death_SE_315.0_6.png",
+			"sha256": "6e04bddb9affe94168af479753fd63daf2ba3c145bdf0893ea594736a2389cc4",
+			"bytes": 5981
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_special_death/SEE/slime_special_death_SEE_337.5_0.png",
+			"sha256": "afc0ced28d7b33de1bba59c9e38a87b9c63a3eb170b34d7cf44bfc9c444d7b2e",
+			"bytes": 10756
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_special_death/SEE/slime_special_death_SEE_337.5_1.png",
+			"sha256": "4e2f639d4c2137f8e43452748c09fd441946e7600fe0538794dc138c070e5e7c",
+			"bytes": 10073
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_special_death/SEE/slime_special_death_SEE_337.5_2.png",
+			"sha256": "043b01b570c14417a066b0c2ebef04510bf7db4b691eb239a05917dfad212073",
+			"bytes": 8225
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_special_death/SEE/slime_special_death_SEE_337.5_3.png",
+			"sha256": "846790be4f6a3b9d77e52c1204b08008b45bfc046009569e21dcd7e4a9facfc0",
+			"bytes": 6551
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_special_death/SEE/slime_special_death_SEE_337.5_4.png",
+			"sha256": "c78d6b9a8a296ee19dfe573256cd05c210e7cea4f1638640d06718f8ef652926",
+			"bytes": 5866
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_special_death/SEE/slime_special_death_SEE_337.5_5.png",
+			"sha256": "7e9b840b438fdee23469b195a762db1957d2e2f0c015c2993afba9a89c92015b",
+			"bytes": 5953
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_special_death/SEE/slime_special_death_SEE_337.5_6.png",
+			"sha256": "17374605cfe64bd81f53fd98c16e78dbff6442a74e04c3ec09fddbb7343a9f74",
+			"bytes": 6022
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_special_death/SSE/slime_special_death_SSE_292.5_0.png",
+			"sha256": "6365d18fff30f2bbd0fe64f1a50997f29653fce8939aebe1d67c4fd7201e3b6b",
+			"bytes": 10738
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_special_death/SSE/slime_special_death_SSE_292.5_1.png",
+			"sha256": "bf2bf90c08afd3517c75bafa50d6885394148914b5561a01657035e2f63508af",
+			"bytes": 10063
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_special_death/SSE/slime_special_death_SSE_292.5_2.png",
+			"sha256": "7240733771fce90aace39d275178e14072c0fc42f8117d0213a8e4596fd8212b",
+			"bytes": 8402
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_special_death/SSE/slime_special_death_SSE_292.5_3.png",
+			"sha256": "44e90563f6554478d20addf7ed5007763572862f318c29d2ef80fc18663fb4fa",
+			"bytes": 6666
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_special_death/SSE/slime_special_death_SSE_292.5_4.png",
+			"sha256": "7bd47aa391e2b11d97a927cc0aaff4d3f781f11c62d88ad56452e40f7ff697ad",
+			"bytes": 5834
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_special_death/SSE/slime_special_death_SSE_292.5_5.png",
+			"sha256": "90ef0bf2c06d22a2f016fb4ad3e11d441286c6e156ee91574a2fef8ca1cb5b72",
+			"bytes": 5903
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_special_death/SSE/slime_special_death_SSE_292.5_6.png",
+			"sha256": "2318eab7dfd5d99bbf4d43af513a88eb1523e6c95aa31a3d5fbd8fc44371a7f1",
+			"bytes": 5935
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_special_death/SSW/slime_special_death_SSW_247.5_0.png",
+			"sha256": "c01b58728014830070813f00ed671e17384a8e982cf159a1dae5025abeab6be3",
+			"bytes": 10777
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_special_death/SSW/slime_special_death_SSW_247.5_1.png",
+			"sha256": "d332eac1cd6c4f20b68378d3c638fd01f4b64b71f60edb8c30e80a3c9f838f3d",
+			"bytes": 10103
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_special_death/SSW/slime_special_death_SSW_247.5_2.png",
+			"sha256": "c1bc31b29a55ea23fe701000ec73c956429a126517d4f5be642f013b20563985",
+			"bytes": 8427
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_special_death/SSW/slime_special_death_SSW_247.5_3.png",
+			"sha256": "5e46b4e3e97d1dfdb0526afd6cbf2d12b03ce4ec55f8658b0d7ebc76d08006a1",
+			"bytes": 6744
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_special_death/SSW/slime_special_death_SSW_247.5_4.png",
+			"sha256": "2271de887c21f8245bcb12140d100d3fac2eb5fd0d387255d6cce25caf665015",
+			"bytes": 5939
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_special_death/SSW/slime_special_death_SSW_247.5_5.png",
+			"sha256": "727363b84b66f95fc93394468714d3f624f808bf6ed60587736ea0993ae296b7",
+			"bytes": 6023
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_special_death/SSW/slime_special_death_SSW_247.5_6.png",
+			"sha256": "107a678be4bacc119a8e2d199ab9b1d9b669976d94efe59d6fc2425808647a1f",
+			"bytes": 6051
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_special_death/SW/slime_special_death_SW_225.0_0.png",
+			"sha256": "6d947f1a0a67b0366dfabfd10ab8dffe8d979dda9190f4231fbb5e25da5e87ea",
+			"bytes": 10836
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_special_death/SW/slime_special_death_SW_225.0_1.png",
+			"sha256": "1e0a1aeb7dc8502826ae55ede7325938952690d3dcaf978b9cc4331c4568577a",
+			"bytes": 10006
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_special_death/SW/slime_special_death_SW_225.0_2.png",
+			"sha256": "6b99b738f652925294a6e5ff8f4a7166a23ac85eb26974a7c64a6a33a829a4a1",
+			"bytes": 8362
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_special_death/SW/slime_special_death_SW_225.0_3.png",
+			"sha256": "382ccfbb796db3fca851b05df591f2fc642b4a8db849a1cb0acad1820ba5925a",
+			"bytes": 6742
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_special_death/SW/slime_special_death_SW_225.0_4.png",
+			"sha256": "cc6f4bd42960f3054ae15b75a7bbe57785e497bbf9b1104df81270056eb9a5a6",
+			"bytes": 5880
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_special_death/SW/slime_special_death_SW_225.0_5.png",
+			"sha256": "b2a3b46dfd987d7df111b38304fbce49fa51dcf353702d35640dc77e671b89dc",
+			"bytes": 5952
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_special_death/SW/slime_special_death_SW_225.0_6.png",
+			"sha256": "0a5042500babbfebbd25c4d250ee45635854f3140cc037a06423198b889a9ebd",
+			"bytes": 6056
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_special_death/SWW/slime_special_death_SWW_202.5_0.png",
+			"sha256": "2d849c57e3b5e810434775d3f0b5b63510ac64ad0e376ea6d3a584f67a595b9f",
+			"bytes": 10740
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_special_death/SWW/slime_special_death_SWW_202.5_1.png",
+			"sha256": "79386e7e93ab7b2660ebdb08e79a37d9f14da7b0948fb775af70ff56fc963c12",
+			"bytes": 10045
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_special_death/SWW/slime_special_death_SWW_202.5_2.png",
+			"sha256": "83a2732da0f668f895daee151ff466e296c60fa0f7bc2b68149710435e7f1643",
+			"bytes": 8553
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_special_death/SWW/slime_special_death_SWW_202.5_3.png",
+			"sha256": "36bd7f66afe35052176125f73c7e8628658c1d8b6414f8b0f10cec1dc471e23e",
+			"bytes": 6812
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_special_death/SWW/slime_special_death_SWW_202.5_4.png",
+			"sha256": "00a7827b0b11ac2897b700e1951259c9943bef7452aee400a7eb4cbd0cc01399",
+			"bytes": 6004
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_special_death/SWW/slime_special_death_SWW_202.5_5.png",
+			"sha256": "873ca2055b8a0e3f0dc65694c6d96c39cc1913ff944a8f23af94c30a3f04981a",
+			"bytes": 6018
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_special_death/SWW/slime_special_death_SWW_202.5_6.png",
+			"sha256": "e81f0bc95d9a8d0798eb21031744572a2ab3646747ecef322f73013079400c80",
+			"bytes": 6057
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_special_death/W/slime_special_death_W_180.0_0.png",
+			"sha256": "78999c1bcf52e92cd07018224bacecd6dc47b2e4ea38f5e3ca38791c7e3a0e81",
+			"bytes": 10626
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_special_death/W/slime_special_death_W_180.0_1.png",
+			"sha256": "3692ce8edddd5bee130186ad11af5527cd7653b2f532ce0e355622538393564a",
+			"bytes": 10220
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_special_death/W/slime_special_death_W_180.0_2.png",
+			"sha256": "7294583024bb340d7ef0c5124916fd4732f561974e077c0cbf5a497a1c3bac2f",
+			"bytes": 8434
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_special_death/W/slime_special_death_W_180.0_3.png",
+			"sha256": "dfb5dfb8b9217aa748f6455f4006ba86e7a3be249c94075e1c113b9380f1474f",
+			"bytes": 6736
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_special_death/W/slime_special_death_W_180.0_4.png",
+			"sha256": "5770fb51f945efba4b3bdd7a47c61355f28b1998ed874d6cb1ec68a15869b590",
+			"bytes": 5934
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_special_death/W/slime_special_death_W_180.0_5.png",
+			"sha256": "9ed068d7399b3e09d6b846554cfded48e952fd3ebc70217c20448e856dbd4aee",
+			"bytes": 5980
+		},
+		{
+			"path": "lords-of-pain/enemy/slime/slime_special_death/W/slime_special_death_W_180.0_6.png",
+			"sha256": "4c4ec7acd0f9c3cbff9367b7d430f0c0fcb7760ace1bfec6891f3127452ca047",
+			"bytes": 6046
+		},
+		{
 			"path": "lords-of-pain/none-playable character/subservient/subservient_special_working/E/subservient_special_working_E_0.0_0.png",
 			"sha256": "7e339e6422ff372634eb1832904a27523f977f0f11e654f7d803049ec3535717",
 			"bytes": 27030
