@@ -14,8 +14,8 @@ appended last. M1 (`KALEB_VALE_MVP_PARAMS`), every golden fixture and the tutori
 
 ## Status (2026-10-30)
 
-Planned. Owner answers taken (below, "Decisions"); recommended defaults EVD1-EVD12 are open until the task in
-brackets. Nothing built. Respite (docs/DIFFICULTY.md) is planned, not built: whichever lands second hooks into the
+Planned. Every decision is taken (below, "Decisions": the scope answers and EVD1-EVD12, 2026-10-30). Nothing
+built. Respite (docs/DIFFICULTY.md) is planned, not built: whichever lands second hooks into the
 other's choke points (see "Respite").
 
 ## What the code gives us (read on `main` @ `3900250`)
@@ -30,7 +30,7 @@ other's choke points (see "Respite").
 | A room's score record fixes its members at room spawn (`attachScoreRoomMembers` -> `memberSlots` / `memberIds`); `scoreRoomDown` = every member dead | `score/score.ts` | **Runtime children are not members**: a room would CLEAR (stamp, room edges go safe) with slimelets or summons still alive. Needs `adoptScoreRoomMember(state, parent, child)` |
 | Room enemies walk with `d.speed * SIM_DT` read at 4 sites (swarmer, sniper, bruiser, `stepCalm`); cooldowns are one `ctx.randomInt(min, max)` each | `archetypes/*.ts` | Swift needs one `walkStep(ctx, a)` helper and one `enemyCooldown(ctx, a, min, max)` helper (the SAME single draw, then scaled). Respite plans the same cooldown helper |
 | Telegraphs all start through `ctx.telegraph`; render hints are `ActorFxHints` (`aimLine`, `shockwave`) | `combat/ctx.ts`, `enemyShared.ts` | One new hint, `ring` (a floor circle at v-slot coordinates), covers the imp's landing spot and the summoner's circle |
-| `BurstSpec` has `speed`, `life`, `radius`, `scale` (render only); every enemy bullet is drawn with ONE look (`BULLET_VIEW.enemyVisualId`) | `combat/patterns.ts`, `BulletRenderController.ts` | Goo puddles are stationary bullets (speed 0, short life, larger radius): no new bullet system and no new bullet look |
+| `BurstSpec` has `speed`, `life`, `radius`, `scale` (render only); every enemy bullet is drawn with ONE look (`BULLET_VIEW.enemyVisualId`); the payload's `kind` field takes 0..15 and `BulletKind` uses 0..6 | `combat/patterns.ts`, `BulletRenderController.ts` | Goo puddles are stationary bullets (speed 0, short life, larger radius): no new bullet system. Their floor-decal look (EVD5) needs a new `BulletKind.GOO` (7) so the renderer can draw them from a second pool |
 | A new burst shape a port-only archetype fires is a row in `combat/arcTablePort.ts` | CLAUDE.md conventions | The imp's 5-bullet fan (and any summoner shape not already in the table) are port rows |
 | `CORPSE_TICKS` 30 (0.5 s); `freeActor` releases the emitter; in-flight bullets keep flying | `combatData.ts`, `actors.ts` | Vengeful's 0.6 s corpse telegraph needs the corpse held a little longer (one check in `stepActors`) |
 | `ENEMY_ARCHETYPES` already lists `summoner` (web contract: placeholder `#5a8a4a` cylinder, name "Summoner"), no sim archetype uses it | `theme/contract.ts`, placeholder manifest | The support enemy fills the existing slot; only `imp` and `slime` are new contract entries |
@@ -40,17 +40,18 @@ other's choke points (see "Respite").
 
 ## Player experience
 
-1. **Floors 1-2 are today's game.** Swarmers, snipers, bruisers.
-2. **Floor 3: Imps.** A small demon that hangs back, then crouches and a ring lights up on the floor beside you. It
+1. **Floor 1 is today's game.** Swarmers, snipers, bruisers.
+2. **Floor 2: Imps.** A small demon that hangs back, then crouches and a ring lights up on the floor beside you. It
    blinks into the ring and, a beat later, fires a short fan at you. Lesson: you can always see where it lands; move off
    the ring's line.
-3. **Floor 4: the first Champions.** Elite rooms now hold enemies with an affix: a coloured ring under them and a name
-   on their health bar ("Swift"). Hulking ones are big and tanky, Swift ones walk fast and attack more often.
-4. **Floor 6 (after the first boss): Oozes.** A slow slime that leaves a trail of goo (bullets that sit still and fade
-   after 3 s) and bursts into two fast slimelets when it dies. Lesson: kite it where you won't need to walk back.
-5. **Floor 7-9: Shielded and Vengeful champions; Summoners.** A Summoner keeps its distance and, under a glowing circle,
-   calls swarmers to its side; kill it and its summons wither. Vengeful champions pulse when they die and burst into a
-   gapped ring.
+3. **Floor 4: Oozes and the first Champions.** A slow slime that leaves a trail of goo (puddles on the floor that hurt
+   and fade after 3 s) and bursts into two fast slimelets when it dies. Lesson: kite it where you won't need to walk
+   back. Elite rooms now hold enemies with an affix: a coloured ring under them and a name on their health bar
+   ("Swift"). Hulking ones are big and tanky, Swift ones walk fast and attack more often.
+4. **Floor 6 (after the first boss): Summoners.** A Summoner keeps its distance and, under a glowing circle, calls
+   swarmers to its side; kill it and its summons wither.
+5. **Floors 7-9: Shielded and Vengeful champions.** Shielded ones carry a shield that refills if you leave them alone;
+   Vengeful ones pulse when they die and burst into a gapped ring.
 6. **Floor 11+:** a champion can turn up in any combat room, not only elite rooms.
 7. **First sighting** (EVD10): the first time an account meets each new enemy or affix, a one-line toast names it and
    its tell ("Imp: watch the ring").
@@ -67,12 +68,12 @@ attack. Numbers are starting values, tuned in EV13.
 | Gap it fills | Nothing today relocates; snipers kite slowly | Nothing denies floor over time | Nothing makes you pick a target |
 | Body | 3 hp, r 0.35, 3.2 u/s, no contact damage | 8 hp, r 0.55, 1.6 u/s, contact HIT_NORMAL | 6 hp, r 0.4, 1.8 u/s, no contact damage |
 | Engaged | Keeps 4-7 units (the sniper's approach / back off / strafe) | Crawls at the player | Keeps 6-9 units, prefers to break line of sight |
-| Attack | Every 2.4-3.2 s: **blink**. Telegraph 0.5 s: a `ring` on the floor at the destination (the player's bearing turned ~90 degrees either way with the Pythagorean rotations the bruiser uses, 5 units from the player). On the tick it lands it snaps there (prev = new position, no streak), then a 0.35 s aim telegraph and a **5-bullet fan** (~40 degrees, slow) at the player | **Goo trail**: every 0.5 s while moving, one stationary bullet (speed 0, life 3 s, radius ~0.4) at its trailing edge; at most 6 alive by construction | **Summon**: every 4.5-5.5 s, telegraph 1.0 s (`ring` at its feet), 2 swarmers burst out (`summonAdds` shape), at most 3 of its summons alive, at most 6 per life. **Panic**: player within 3 units -> 0.5 s telegraph, a gapped ring (the bruiser's ring spec) and it backs off |
+| Attack | Every 2.4-3.2 s: **blink**. Telegraph 0.5 s: a `ring` on the floor at the destination (the player's bearing turned ~90 degrees either way with the Pythagorean rotations the bruiser uses, 5 units from the player). On the tick it lands it snaps there (prev = new position, no streak), then a 0.35 s aim telegraph and a **5-bullet fan** (~40 degrees, slow) at the player | **Goo trail**: every 0.5 s while moving, one stationary bullet (`BulletKind.GOO`: speed 0, life 3 s, radius ~0.4, drawn as a floor decal, EVD5) at its trailing edge; at most 6 alive by construction | **Summon**: every 4.5-5.5 s, telegraph 1.0 s (`ring` at its feet), 2 swarmers burst out (`summonAdds` shape), at most 3 of its summons alive, at most 6 per life. **Panic**: player within 3 units -> 0.5 s telegraph, a gapped ring (the bruiser's ring spec) and it backs off |
 | Death | - | **Splits** into 2 `slime.small` (3 hp, r 0.35, 2.6 u/s, contact HIT_NORMAL, no trail, never splits, drawn 0.6x from `enemy.slime`), pushed out sideways, engaged, adopted into the parent's room | Its live summons **wither** (die with it, like a boss's adds) |
 | Counterplay | Read the ring, step off its line, punish the landing | Choose where to fight; the sword guard erases goo | Dive it; summons stop when it dies |
 | v[] budget (0-2 shared) | 3-4 destination, 5-6 aim dir, 7 strafe sign | 3 trail timer, 4-5 last facing | 3 summons left, 4-6 summon ids, 7 strafe sign |
 | Cost / points / drop % | 2 / 120 / 6 | 3 / 150 / 8 (small: - / 40 / 2) | 3 / 200 / 10 |
-| Unlock / weight (EVD2) | floor 3 / 2 | floor 6 / 1 | floor 8 / 1, **at most 1 per room** |
+| Unlock / weight (EVD2) | floor 2 / 2 | floor 4 / 1 | floor 6 / 1, **at most 1 per room** |
 | Art | Demons **Imp** rig (owner picks from the EV0 contact sheet; Roll / Crouch / Attack read as the blink) | LoP **slime** (idle, walk, death; hit = flash only) | Demons robed **Spawn** rig other than 8 / 11 (those are the turrets) |
 
 Blink safety: the destination must be a floor cell (`ctx.isBlocked` false, no breakable), inside the imp's own room,
@@ -114,6 +115,8 @@ chance, and each affixed member adds `AFFIX_PAR_COST` to its room's par time.
   slot, unless that room is already cleared. Called by the split and by the summoner (never by bosses: their adds stay
   outside room records, as today).
 - Data rows: `ENCOUNTER_COST`, `KILL_POINTS`, `DROPS.chanceByArchetype` for every new id.
+- `combat/patterns.ts`: `BulletKind.GOO = 7` (the Ooze's puddles). Collision, the guard's erase and hashing treat it
+  like every enemy bullet; only the renderer looks at the kind.
 
 ### 2. Dungeon: room pool and affix assignment (`shared/dungeon`)
 
@@ -146,6 +149,9 @@ new lockstep message. Leaderboards stay on `_v1` (EVD11).
 
 - `ENEMY_ARCHETYPES` += `imp`, `slime` (every pack fills `enemy.imp` / `enemy.slime` and `.name`; placeholders: a small
   cone and a low dome).
+- Goo (EVD5): a bullet visual `bullet.enemy.goo` (placeholder: a flat disc; vale: a slime puddle, flat on the floor)
+  and a colour role `enemyGoo`, validated >= 3:1 on every biome floor and within the enemy-bullet family (it must read
+  as "this hurts", never as decor: >= 40 CIE76 from `DECOR_FX_ROLES` and every boost role), `gooReport`.
 - Colour roles `AFFIX_ROLES` (`affix.hulking` / `.swift` / `.shielded` / `.vengeful`) and `enemyShield`, validated by an
   `affixReport`: >= 3:1 on every biome floor, >= 40 CIE76 from `ENEMY_BULLET_ROLES`, `telegraph` and `enemyOutline`.
 - Strings: `enemy.imp.name`, `enemy.slime.name`, `affix.<id>.name`, the first-sighting lines (`AFFIX_STRING_KEYS`,
@@ -160,6 +166,9 @@ new lockstep message. Leaderboards stay on `_v1` (EVD11).
 - `ACTOR_SPRITE_INPUTS` builders `impSpriteInput` (blink = crouch segment, landing = roll / attack), `slimeSpriteInput`
   (`slime.small` reads `spriteScale`), `summonerSpriteInput` (summon = a cast segment; panic = attack).
 - Markings: the `ring` hint (telegraph colour, filling like the existing telegraph bars).
+- Goo decals (EVD5): `BulletRenderController` gains a second pool for `BulletKind.GOO`, drawn flat on the floor (the
+  sprite effects' floor placement) under markings, so moving bullets always draw over it; a puddle fades over its last
+  0.5 s of life and pops in over its first few ticks. Every other enemy bullet keeps today's look.
 - Affixes: a floor ring under the actor (one per affixed actor, pooled; never a Highlight), the sprite rim's tint, the
   name chip and shield segment on the health bar, the elite plate when affixed, Vengeful's corpse pulse.
 - Every timing the view predicts (telegraph fill, attack animation stretch) reads the same helpers the sim uses, so
@@ -173,7 +182,7 @@ way new archetypes use only the shared choke points (`ctx.telegraph`, `enemyCool
 
 ## Tasks
 
-- **EV0. Audit and contact sheets.** Read-only: confirm the tutorial never calls the spender at floor >= 3; list every
+- **EV0. Audit and contact sheets.** Read-only: confirm the tutorial never calls the spender at floor >= 2 (its floors use their own room content); list every
   `d.speed` and cooldown read (sim and view); list the arc shapes needed (imp fan, anything the summoner fires that the
   table lacks); confirm `CORPSE_TICKS` and corpse handling in the view. Build contact sheets for Imp 1-10, the robed
   Spawns and the LoP slime (`art/build/contact/`). **Verify:** the findings and the owner's rig picks are written into
@@ -185,14 +194,14 @@ way new archetypes use only the shared choke points (`ctx.telegraph`, `enemyCool
 - **EV2. Imp.** Archetype, blink safety, the fan's `arcTablePort` row. **Verify:** specs: the ring is shown >= 0.5 s
   before every blink; a blink never lands in a wall, a breakable, another room or inside `SPAWN_SAFE_RADIUS`; no valid
   spot -> no blink, same draw count; determinism spec (two runs, same hashes).
-- **EV3. Ooze.** `slime`, `slime.small`, the goo trail, the split and its adoption. **Verify:** specs: at most 6 goo
-  alive per slime; the split spawns 2 (1 or 0 when the pool is full, `actorsDropped` counts the rest); smalls never
+- **EV3. Ooze.** `slime`, `slime.small`, `BulletKind.GOO`, the goo trail, the split and its adoption. **Verify:**
+  specs: at most 6 goo alive per slime; goo carries `BulletKind.GOO`; the split spawns 2 (1 or 0 when the pool is full, `actorsDropped` counts the rest); smalls never
   split; the room does not CLEAR until both smalls die; a guard erases goo.
 - **EV4. Summoner.** Summon, caps, wither, panic ring, adoption. **Verify:** specs: never more than 3 summons alive or
   6 per life; summons wither on its death; the room clears only when summons are dead; a full pool drops summons
   cleanly.
 - **EV5. Room pool.** `fromFloor` / `maxPerRoom` in the spender; the new kinds appended. **Verify:** a lock spec built
-  BEFORE the change (spender output for floors 1-2, seeds 1-200, solo and party 2-4) still matches after it; no kind
+  BEFORE the change (spender output for floor 1, seeds 1-200, solo and party 2-4) still matches after it; no kind
   before its floor; at most one summoner per room; a census table (floors 1-20 x run seeds 1-60: mean enemies per room
   by kind, budget spent) recorded here.
 - **EV6. Affix assignment (dungeon).** `assignAffixes`, `roomAffixes`, `AFFIXES` data. **Verify:** layouts, digests,
@@ -202,9 +211,11 @@ way new archetypes use only the shared choke points (`ctx.telegraph`, `enemyCool
   bonuses, the corpse hold. **Verify:** one spec per affix (Hulking hp and radius; Swift walk and cooldown but equal
   telegraph ticks; Shielded absorb and refill; Vengeful telegraph >= 0.6 s, then exactly one ring); without
   `affixes` the hash layout is unchanged; recording round trip and server validation of an affixed endless run.
-- **EV8. Theme and validators.** Final colour roles, `affixReport`, strings, audio IDs, vale values. **Verify:** the
+- **EV8. Theme and validators.** Final colour roles, `affixReport`, `gooReport`, `bullet.enemy.goo`, strings, audio
+  IDs, vale values. **Verify:** the
   theme validator passes for placeholder and vale; the report prints every pair it checks.
-- **EV9. View.** Sprite inputs, `ring` markings, blink snap and puff, affix rings / chips / shield segment / elite
+- **EV9. View.** Sprite inputs, `ring` markings, blink snap and puff, the goo decal pool (Studio: goo reads as
+  harmful on every biome floor, and moving bullets stay on top of it), affix rings / chips / shield segment / elite
   plate / corpse pulse, first-sighting toast plumbing. **Verify:** pure view specs (sprite input per state, ring fill
   timing equals the sim's telegraph, affix chip text); no Highlight added.
 - **EV10. Art.** Slime set (LoP pipeline, 16 facings), imp and summoner sets (per-sheet Demons pipeline + rims),
@@ -238,20 +249,24 @@ way new archetypes use only the shared choke points (`ctx.telegraph`, `enemyCool
 
 ## Decisions (2026-10-30, Kaleb)
 
+Scope:
+
 - **Both:** new archetypes and elite affixes.
-- **Unlock by depth:** floors 1-2 stay today's roster; new kinds and affixes join at set floors.
+- **Unlock by depth:** floor 1 stays today's roster; new kinds and affixes join at set floors.
 - **Three new archetypes** in v1: flanker, zone-denier, support.
 - **Art:** the Lords of Pain slime plus the 2D Demons pack.
 
-## Recommended defaults (confirm or change before the task in brackets)
+Details (the task in brackets builds it):
 
-- **EVD1. Roster and ids** [EV1]: `imp`, `slime` (+ `slime.small`), `summoner` (fills the existing `enemy.summoner`
-  slot), band 3. The slime is the zone-denier because its trail and split need no attack animation, which it lacks.
-- **EVD2. Unlock floors 3 / 6 / 8, weights 2 / 1 / 1 appended** [EV5]. The existing 3 / 2 / 1 never change.
+- **EVD1. Roster and ids** [EV1]: `imp` (flanker), `slime` (+ `slime.small`) as the zone-denier Ooze, `summoner` (fills
+  the existing `enemy.summoner` slot, a Demon Spawn rig), band 3.
+- **EVD2. Unlock floors 2 / 4 / 6, weights 2 / 1 / 1 appended** [EV5]. Faster than the recommended 3 / 6 / 8: only
+  floor 1 spends as today. The existing 3 / 2 / 1 never change.
 - **EVD3. Summoner limits** [EV4]: 1 per room, 2 per cast, 3 alive, 6 per life, summons wither on its death.
 - **EVD4. One split generation, 2 slimelets** [EV3].
-- **EVD5. Goo is an ordinary enemy bullet** [EV3]: same look, larger and stationary. Alternative: a flat floor decal
-  look (needs a second bullet pool in the renderer).
+- **EVD5. Goo is drawn as a flat floor decal** [EV3, EV9]. Still an ordinary enemy bullet in the sim (speed 0, 3 s
+  life), tagged `BulletKind.GOO`; the renderer draws it from a second pool, flat on the floor under markings and every
+  moving bullet, with its own visual `bullet.enemy.goo` and colour role `enemyGoo` (`gooReport`).
 - **EVD6. Four affixes, one per enemy** [EV6]: Hulking, Swift (floor 4), Shielded (7), Vengeful (9). Two affixes on one
   enemy is a later plan.
 - **EVD7. Where** [EV6]: elite rooms from floor 4 (35 %, at least 1), combat rooms from floor 11 (10 % each).
@@ -260,15 +275,17 @@ way new archetypes use only the shared choke points (`ctx.telegraph`, `enemyCool
 - **EVD10. First-sighting toast, once per account** [EV12].
 - **EVD11. Leaderboards stay on `LB_Solo_v1` / `LB_Coop_v1`** [EV7], as with the earlier endless changes (breakables,
   the Demon Lord, the combo window).
-- **EVD12. Affix colour is a floor ring plus the sprite rim's tint, never a Highlight** [EV9].
+- **EVD12. Affix colour is a floor ring plus the sprite rim's tint and the name chip, never a Highlight** [EV9].
 
 ## Risks
 
-- **Clutter.** Goo, fans and gapped rings on top of today's patterns. Mitigation: goo uses the one enemy bullet look,
-  the trail cap, EV14's readability check; EVD5 has a decal fallback.
+- **Clutter.** Goo, fans and gapped rings on top of today's patterns. Mitigation: the goo decal sits flat under every
+  moving bullet, `gooReport` keeps it in the danger family and away from decor, the trail cap, EV14's readability
+  check. Fallback if the decal reads as decor in Studio: draw `BulletKind.GOO` with the normal bullet look (one line in
+  the renderer, no sim change).
 - **Summoner frustration.** Hiding plus adds can drag a room. Mitigation: the caps, the wither, the panic ring that
   ends with it backing off into the open; EV13 measures room times against par.
-- **Endless replays and scores change** from floor 3 (kinds) and from tick 0 in hash terms (the `affixes` group
+- **Endless replays and scores change** from floor 2 (kinds) and from tick 0 in hash terms (the `affixes` group
   exists on every endless run). Expected; fixtures and M1 do not move.
 - **View drift.** A view read of raw archetype timings shows a wrong bar under Swift. EV0's list and EV9's timing spec.
 - **`contract.luau` locals limit.** EV1 compiles it under Lune before anything else lands.
