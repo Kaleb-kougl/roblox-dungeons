@@ -162,8 +162,16 @@ export class DraftRevealController implements OnStart, DraftRevealDriver {
 
 		// Builds' boss double draft (docs/BUILDS.md BUD4): a pick that re-deals keeps the draft open with new offers and
 		// its timer back at 0; deal the new cards at once (the cover is long gone), so the confirm gate never waits on a
-		// reveal that would not begin.
-		if (open && me !== undefined && this.begun && !never && me.draftTicks < this.lastDraftTicks) {
+		// reveal that would not begin. A timer drop alone can be missed (a co-op catch-up frame may step past the re-deal
+		// by more ticks than the old timer held), so a change of the offers counts too: the faces always show the cards
+		// the sim will grant.
+		if (
+			open &&
+			me !== undefined &&
+			this.begun &&
+			!never &&
+			(me.draftTicks < this.lastDraftTicks || this.offersChanged(me))
+		) {
 			this.begin(ctx, me, settings.reducedMotion);
 		}
 		this.lastDraftTicks = open && me !== undefined ? me.draftTicks : 0;
@@ -191,6 +199,14 @@ export class DraftRevealController implements OnStart, DraftRevealDriver {
 			if (out.duck > 0) this.audio.duckFor(out.duck);
 		}
 		this.draw(open ? me : undefined);
+	}
+
+	/** True when the open draft's offers are not the cards this reveal dealt (a re-deal). No allocation. */
+	private offersChanged(me: LocalDraft): boolean {
+		const offers = me.draftOffers;
+		if (offers.size() !== this.offers.size()) return true;
+		for (let i = 0; i < offers.size(); i++) if (offers[i] !== this.offers[i]) return true;
+		return false;
 	}
 
 	private begin(ctx: RunContext, me: LocalDraft, reducedMotion: boolean): void {

@@ -372,3 +372,14 @@ export function phantomStepErased(state: SimState, i: number, goo: boolean, x: n
 	e.phantomZ.push(z);
 	e.phantomOwner.push(i);
 }
+
+/** Drops this module's per-tick scratch (Ricochet splits, the steering walk): see resetBuildScratch. */
+export function resetEvolutionScratch(): void {
+	ricochetX.clear();
+	ricochetZ.clear();
+	ricochetOwner.clear();
+	ricochetGen.clear();
+	ricochetSkip.clear();
+	steerCtx = undefined;
+	steerExclude.clear();
+}

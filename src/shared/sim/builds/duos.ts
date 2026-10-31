@@ -423,3 +423,25 @@ export function stepDuosAfterDrain(ctx: SimCtx, s: BuildsState): void {
 	if (sparkDuo.size() > 0) releaseSparks(ctx, s);
 	if (crossOwner.size() > 0) releaseCrosses(ctx, s);
 }
+
+/** Drops this module's per-tick scratch (queued sparks, Chain Reaction crosses, the Fire Arrows walk): see
+ * resetBuildScratch. */
+export function resetDuoScratch(): void {
+	sparkDuo.clear();
+	sparkOwner.clear();
+	sparkX.clear();
+	sparkZ.clear();
+	sparkSlot.clear();
+	sparkId.clear();
+	crossOwner.clear();
+	crossX.clear();
+	crossZ.clear();
+	crossSlot.clear();
+	crossId.clear();
+	crossCause.clear();
+	fireArrowsOn.clear();
+	walkCtx = undefined;
+	emberOwner.clear();
+	emberX.clear();
+	emberZ.clear();
+}

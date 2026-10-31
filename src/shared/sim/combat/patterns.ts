@@ -226,6 +226,14 @@ export function fireBurst(
 }
 
 /**
+ * Restores fireBurst's limit (stepCombat calls it first every tick): a tick that threw inside fireBurstLimited must not
+ * leave every later burst in this VM cut short (a replay validator may run several runs in one VM under pcall).
+ */
+export function resetBurstLimit(): void {
+	burst.limit = math.huge;
+}
+
+/**
  * fireBurst that spawns at most `limit` of the burst's bullets (the first ones of the arc's order: a ring is cut short,
  * not re-spaced, so the shape stays an arc-table row). Builds' effect budget (sim/builds effects.ts fireEffect).
  * Returns how many spawned (also fewer when the pool is full).

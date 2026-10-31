@@ -35,10 +35,10 @@ import { hasLeft } from "../party";
 import { Boon } from "../progression/progressionData";
 import { buildLevel, type BuildPlayerState, type BuildProc, type BuildsState } from "./builds";
 import { PROC_INELIGIBLE_ARCHETYPES } from "./buildsData";
-import { beginEffectBudget, endEffectBudget } from "./effects";
+import { beginEffectBudget, endEffectBudget, resetEffectScratch } from "./effects";
 import { JACKPOT_KILLS, KillCause } from "./effectsData";
-import { stepEvolutions, stepMomentum } from "./evolutions";
-import { chainReactionKill, stepDuosAfterDrain, stepDuosBeforeDrain } from "./duos";
+import { resetEvolutionScratch, stepEvolutions, stepMomentum } from "./evolutions";
+import { chainReactionKill, resetDuoScratch, stepDuosAfterDrain, stepDuosBeforeDrain } from "./duos";
 import { isEvolved } from "./hooks";
 import { chainSpark, soulShards, volatileBurst } from "./onKill";
 import { scoreJackpot } from "../score/score";
@@ -145,4 +145,16 @@ export function stepBuilds(ctx: SimCtx): void {
 	ctx.actingPlayer(0);
 	ctx.procGen = 0;
 	ctx.procCause = KillCause.NONE;
+}
+
+/**
+ * Clears every module-level scratch the builds rules fill and empty within one stepCombat (Ricochet, queued duo sparks,
+ * Chain Reaction crosses, embers, the effect budget's session, volley targets). Nothing here is state: each list is
+ * empty at the end of a normal tick. stepCombat calls it first every tick (with or without builds), so a tick that threw
+ * halfway (a validator running several runs in one VM under pcall) can never leak another run's entries into this one.
+ */
+export function resetBuildScratch(): void {
+	resetEvolutionScratch();
+	resetDuoScratch();
+	resetEffectScratch();
 }

@@ -1310,3 +1310,21 @@ Asked: BUD1-BUD7, BUD9-BUD11, BUD13, BUD14 (each answered with the proposed defa
 - Weapon-specific boon pools or new weapons.
 - A meta-progression unlock tree for boons (all boons are available from run 1).
 - Changing the 12 existing boons' level-I numbers.
+
+## Review (2026-10-31)
+
+An independent read of `5a0edc2..c450591` found **no desync hazard and no gating leak** (hashing, clones, the
+`unshakenKept` same-tick read, iteration order, arithmetic, `drawBoonOffers` / tutorial / M1 paths all checked). Its four
+low findings:
+
+1. **Fixed.** `DraftRevealController` detected a boss double draft's re-deal only by the draft timer dropping; a co-op
+   catch-up frame could step past it and keep the first deal's faces. A change of the offers now counts too.
+2. **Fixed (hardening).** `fireBurstLimited`'s limit and the builds modules' per-tick scratch (Ricochet, queued duo
+   sparks, Chain Reaction crosses, embers, the effect budget's session, volley targets) are reset at the top of every
+   `stepCombat` (`resetBurstLimit`, `resetBuildScratch`), so a tick that threw under a validator's pcall cannot leak into
+   the next run in the same VM. A no-op after a normal tick; no hash change.
+3. **Owner call.** A dead co-op player's queued procs, and kills by their bullets still in flight, still fire Chain
+   Spark / Volatile / Soul Shards, while every evolution and duo release needs the owner alive and present. BU3 only
+   specified dropping leavers' procs. Keep (effects in flight finish) or drop them on death.
+4. **Open (cosmetic).** `BuildFxController`'s colour cache is never cleared, so a theme pack switch mid-session keeps
+   the old effect colours until the next session.

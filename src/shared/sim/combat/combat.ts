@@ -65,6 +65,7 @@ import {
 	enemyBulletHitRadius,
 	fireBurstRaw,
 	packPayload,
+	resetBurstLimit,
 	turnDir,
 	type Dir,
 } from "./patterns";
@@ -73,7 +74,7 @@ import { SimCtx } from "./ctx";
 import { nearestLivingPlayer, partySize, playerAt, playerBulletOwner } from "../party";
 import { scoreBulletVisit } from "../score/score";
 import { stepAffixes } from "../affixes/stepAffixes";
-import { stepBuilds } from "../builds/procs";
+import { resetBuildScratch, stepBuilds } from "../builds/procs";
 import { BuildEffect, killGenOfSource, sourceEffect } from "../builds/buildsData";
 import { KillCause } from "../builds/effectsData";
 import { buildsOnPierceHit, phantomStepErased, phantomStepOn } from "../builds/evolutions";
@@ -527,6 +528,9 @@ export function stepCombat(
 	const c = state.combat;
 	const party = state.party !== undefined && inputs !== undefined;
 	ctx.bind(state, config, input);
+	// Per-tick module scratch back to empty (a no-op after a normal tick; see resetBuildScratch / resetBurstLimit).
+	resetBurstLimit();
+	resetBuildScratch();
 
 	// 1. Ember: clears every enemy bullet (player bullets stay).
 	if (state.events.emberUsed !== 0) state.events.bulletsCleared += c.enemyBullets.clear();

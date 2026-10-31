@@ -64,6 +64,13 @@ function countEffects(state: Readonly<SimState>): void {
 	state.combat.playerBullets.forEachActive(countVisit);
 }
 
+/** Drops every per-tick scratch of this module (stepCombat, first thing each tick: see resetBuildScratch). */
+export function resetEffectScratch(): void {
+	session = undefined;
+	sessionCounted = false;
+	volleyTargets.clear();
+}
+
 /** stepBuilds begins: count once (at the first fireEffect), keep the count until endEffectBudget. */
 export function beginEffectBudget(state: SimState): void {
 	session = state;
