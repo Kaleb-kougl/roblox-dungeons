@@ -52,12 +52,12 @@ SOFTWARE.
 - Used for: the decor props, decor effects and breakables (`decor.*`, `breakable.*`: columns, wall segments, the
   brazier and its lit loop, the wall torch, rubble, bones, mushrooms, gemstones, the flame / fire / glow / glint / zone
   effects, barrels and crates with their break loops; docs/DECOR.md R5), plus `enemy.swarmer` (skeleton),
-  `enemy.sniper` (the subservient, docs/SNIPER_ART.md; the tutorial's `turret.sniper` draws it too), the biome 1
+  `enemy.sniper` (the subservient, docs/SNIPER_ART.md; the tutorial's `turret.sniper` draws it too), `enemy.slime` (the slime, docs/ENEMY_VARIANTS.md EV10; `slime.small` draws it smaller), the biome 1
   floor texture, the player ring and the relic pedestal beam. All of it is repacked into atlases by
   `scripts/art/build-atlases.js` (cropped, recombined, the ambient particle texture downscaled and recoloured) and
   uploaded to Roblox.
 - Raw files: `art/vendor/lords-of-pain/` (the full pack, bought 2026-10-25; its `prop/`, `vfx/`, `environment/`
-  and `none-playable character/subservient/` folders) and `art/vendor/lords-of-pain-demo/` (the free demo, still read
+  `none-playable character/subservient/` and `enemy/slime/` folders) and `art/vendor/lords-of-pain-demo/` (the free demo, still read
   for the skeleton, the floor texture and the user-interface images: this copy of the full pack has no `enemy/` or
   `user interface/` folder). Both gitignored, not redistributed.
 - License (`Licence.txt` in both packs, the same text): "This asset pack can be used in both free and commercial

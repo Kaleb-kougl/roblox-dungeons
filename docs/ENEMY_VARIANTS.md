@@ -12,11 +12,24 @@ room pool only from their unlock floor (floors before it spend exactly as today)
 `SimConfig.affixes` with their own `state.affixes`, their own rng stream on the dungeon side and their own hash group
 appended last. M1 (`KALEB_VALE_MVP_PARAMS`), every golden fixture and the tutorial replay exactly as before.
 
-## Status (2026-10-30)
+## Status (2026-10-31)
 
-Planned. Every decision is taken (below, "Decisions": the scope answers and EVD1-EVD12, 2026-10-30). Nothing
-built. Respite (docs/DIFFICULTY.md) is planned, not built: whichever lands second hooks into the
-other's choke points (see "Respite").
+Built on branch `enemy-variants` (EV0-EV7, EV9, EV12, EV13 in code; EV10 / EV11 prepared), not merged to `main`.
+Decisions: the scope answers, EVD1-EVD12 and EVD13-EVD16 (below). Headless: the full suite passes. Open:
+
+- **Owner uploads** (EV10 / EV11): `art/upload/slime-body.png`, `slime-body-outline.png` and the five
+  `sfx-enemy-*` / `sfx-affix-*` OGGs; ids go in the commented slots at the end of `packs/vale/assetIds.ts`. Until then
+  the vale pack draws placeholders (imp a cone, Ooze a dome) and the five sounds are silent.
+- **Owner picks**: the Imp rig and the robed Spawn rig (`art/build/contact/ev-imps.png`, `ev-spawns.png`) and their
+  animation mapping (see "EV10 slime (as built)"); then their sets get built like `enemy.bruiser`.
+- **Owner calls from EV13** (see "EV13 tuning (as built)"): the spender's dearest-kind tie-break plus an Ooze cap of 8
+  per room; Ooze hp 8 -> 6 and slimelet 3 -> 2. From the branch review: the Summoner only checks for panic when its
+  summon cooldown is up (so a dive right after a cast gets no panic for up to ~5.5 s); the Imp fires its fan even if it
+  lost sight during the 0.35 s aim (the sniper cancels).
+- **Studio check (EV14)**: the checklists under EV9 / EV12 / EV10; nothing has run in Studio.
+- Respite (docs/DIFFICULTY.md) is not built: it hooks into `actorWalkPercent` / `actorCooldownPercent`
+  (`combat/actors/actorMods.ts`) when it lands.
+- `validate.luau` sits at Luau's 200 top-level locals: the next theme validator addition must fold into a module.
 
 ## EV0 findings (2026-10-30)
 
