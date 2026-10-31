@@ -10,6 +10,8 @@ import {
 	EMPTY_INPUT,
 	AFFIXES_CONFIG,
 	AFFIXES_SUBSYSTEM,
+	BUILDS_CONFIG,
+	BUILDS_SUBSYSTEM,
 	BREAKABLES_SUBSYSTEM,
 	DROPS_CONFIG,
 	DROPS_SUBSYSTEM,
@@ -77,7 +79,7 @@ describe("buildEndlessRunConfig", () => {
 		const f1 = setup.endlessFloor(1);
 		const s = createSimState(1337, f1.spawnX, f1.spawnZ, setup.config);
 		const layout = hashLayout(s, true);
-		expect(layout.groups.size()).toBe(12);
+		expect(layout.groups.size()).toBe(13);
 		expect(layout.groups[9].name).toBe(BREAKABLES_SUBSYSTEM);
 		expect(layout.names[layout.groups[9].start]).toBe("breakables.length");
 		expect(layout.values[layout.groups[9].start]).toBe(f1.breakables!.size());
@@ -89,6 +91,10 @@ describe("buildEndlessRunConfig", () => {
 		expect(setup.config.affixes).toBe(AFFIXES_CONFIG);
 		expect(layout.groups[11].name).toBe(AFFIXES_SUBSYSTEM);
 		expect(layout.names[layout.groups[11].start]).toBe("affixes.slots.length");
+		// docs/BUILDS.md BU1: endless runs have builds (BUILDS_CONFIG), hashed after affixes (last).
+		expect(setup.config.builds).toBe(BUILDS_CONFIG);
+		expect(layout.groups[12].name).toBe(BUILDS_SUBSYSTEM);
+		expect(layout.names[layout.groups[12].start]).toBe("builds.players.length");
 		const g = layout.groups[6];
 		expect(g.name).toBe(ENDLESS_HASH_SUBSYSTEM);
 		expect(layout.groups[7].name).toBe(SCORE_SUBSYSTEM);

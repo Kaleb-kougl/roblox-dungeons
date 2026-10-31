@@ -7,7 +7,7 @@
 // the origin). The scripted 2-player run with drafts, a relic and a curse is shared/run partyProgression.spec.ts.
 import { describe, expect, it } from "@rbxts/jest-globals";
 import {
-	BOON_COUNT,
+	CLASSIC_BOON_COUNT,
 	BOW_DATA,
 	Boon,
 	BulletKind,
@@ -359,14 +359,14 @@ describe("co-op: drafts", () => {
 		const r = arena();
 		const s = r.s;
 		// Player 0 owns all but three boons: their offers are exactly those three (no rng); player 1 draws.
-		for (let b = 0; b < BOON_COUNT - DRAFT_OFFER_COUNT; b++) grantBoon(s, 0, b);
+		for (let b = 0; b < CLASSIC_BOON_COUNT - DRAFT_OFFER_COUNT; b++) grantBoon(s, 0, b);
 		const twin = { rngState: s.rngState };
 		const want0 = drawBoonOffers(twin, rp(s, 0).boons, 1);
 		const want1 = drawBoonOffers(twin, rp(s, 1).boons, 1);
 		tick(r, 0, frame(0, 0, DEBUG_FLOOR_BUTTON));
 		expect(s.endless!.floor).toBe(2);
 		expect([rp(s, 0).draftOffers, rp(s, 1).draftOffers]).toEqual([want0, want1]);
-		expect(want0).toEqual([BOON_COUNT - 3, BOON_COUNT - 2, BOON_COUNT - 1]);
+		expect(want0).toEqual([CLASSIC_BOON_COUNT - 3, CLASSIC_BOON_COUNT - 2, CLASSIC_BOON_COUNT - 1]);
 		expect(s.rngState).toBe(twin.rngState);
 		expect([teammatesDrafting(s, 0), teammatesDrafting(s, 1)]).toEqual([1, 1]);
 

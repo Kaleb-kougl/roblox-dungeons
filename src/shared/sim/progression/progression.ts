@@ -50,8 +50,8 @@ import { hasLeft, partySize, playerAt, weaponsAt } from "../party";
 import {
 	ARMOR_BOON_PIPS,
 	BOONS,
-	BOON_COUNT,
 	Boon,
+	CLASSIC_BOON_COUNT,
 	CURSE_COUNT,
 	CURSE_FLASK_LOSS,
 	CURSE_HEART_LOSS,
@@ -212,10 +212,14 @@ export function rarityForRoll(roll: number, floorCleared: number): RarityId {
 	return Rarity.COMMON;
 }
 
-/** The boons a draft after `floorCleared` offers a player owning `owned` (see the file comment). */
+/**
+ * The boons a draft after `floorCleared` offers a player owning `owned` (see the file comment), without builds: only
+ * the classic boons (CLASSIC_BOON_COUNT; the on-kill boons are builds-only, docs/BUILDS.md), so it draws exactly as
+ * before they were appended.
+ */
 export function drawBoonOffers(rng: RngHolder, owned: ReadonlyArray<number>, floorCleared: number): number[] {
 	const left: number[] = [];
-	for (let b = 0; b < BOON_COUNT; b++) if (!owned.includes(b)) left.push(b);
+	for (let b = 0; b < CLASSIC_BOON_COUNT; b++) if (!owned.includes(b)) left.push(b);
 	if (left.size() <= DRAFT_OFFER_COUNT) return left;
 	const out: number[] = [];
 	while (out.size() < DRAFT_OFFER_COUNT) {

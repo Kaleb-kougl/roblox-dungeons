@@ -283,12 +283,12 @@ const gooVisual = (): PlaceholderVisual =>
 		material: "Neon",
 	});
 
-const playerBulletVisual = (proportions: Proportions): PlaceholderVisual =>
+const playerBulletVisual = (proportions: Proportions, color: ColorRole = "playerBullet"): PlaceholderVisual =>
 	visual({
 		shape: "Block",
 		cell: BULLET_CELL,
 		proportions,
-		color: role("playerBullet"),
+		color: role(color),
 		outline: "playerBulletOutline",
 		material: "Neon",
 		faces: true,
@@ -358,6 +358,19 @@ function buildTable(): Record<string, PlaceholderVisual> {
 	t[GOO_BULLET_ID] = gooVisual();
 	t["bullet.player.basic"] = playerBulletVisual(PLACEHOLDER_PROPORTIONS.playerBolt);
 	t["bullet.player.heavy"] = playerBulletVisual(PLACEHOLDER_PROPORTIONS.playerHeavyBolt);
+	// Build effects (Roblox port, docs/BUILDS.md BU1): small neon bolts in their effect colours; the ember a flat disc
+	// on the floor (the goo puddle's construction).
+	t["bullet.player.burst"] = playerBulletVisual(PLACEHOLDER_PROPORTIONS.playerBolt, "build.burst");
+	t["bullet.player.shard"] = playerBulletVisual(PLACEHOLDER_PROPORTIONS.playerBolt, "build.shard");
+	t["bullet.player.bolt"] = playerBulletVisual(PLACEHOLDER_PROPORTIONS.playerBolt, "build.spark");
+	t["bullet.player.ember"] = visual({
+		shape: "Cylinder",
+		cell: BULLET_CELL,
+		proportions: PLACEHOLDER_PROPORTIONS.goo,
+		color: role("build.ember"),
+		outline: "playerBulletOutline",
+		material: "Neon",
+	});
 	// Tiles: floor slabs and wall cubes in each biome's floor / wall colour.
 	for (const b of BIOMES) {
 		t[`tile.${b.id}.floor`] = tileVisual(b.id, "floor");

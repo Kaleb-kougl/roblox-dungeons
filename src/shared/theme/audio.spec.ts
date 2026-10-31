@@ -109,6 +109,16 @@ describe("audio contract: port IDs and ambience", () => {
 			"sfx.enemy.split",
 			"sfx.affix.shieldbreak",
 			"sfx.affix.vengeful",
+			// docs/BUILDS.md BU1
+			"sfx.build.spark",
+			"sfx.build.burst",
+			"sfx.build.shard",
+			"sfx.build.ember",
+			"sfx.build.nova",
+			"sfx.build.execute",
+			"sfx.build.evolve",
+			"sfx.build.duo",
+			"sfx.build.jackpot",
 		]);
 		const web = new Set<string>([...AUDIO_EVENTS, ...BREAKABLE_AUDIO_EVENTS]);
 		for (const id of PORT_AUDIO_EVENTS) {

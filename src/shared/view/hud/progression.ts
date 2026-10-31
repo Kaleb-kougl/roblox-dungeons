@@ -3,7 +3,7 @@
  * client/controllers/render RunMarkerController): string keys, colour roles, key hints and layout numbers. Pure data
  * and helpers, checked headlessly (hud.spec.ts: every key exists in the placeholder pack).
  */
-import { BOONS, CURSES, RARITY_NAMES, RELICS } from "shared/sim";
+import { BOONS, CURSES, DUOS, RARITY_NAMES, RELICS, boonMaxLevel, cardDisplay } from "shared/sim";
 import {
 	BOON_RARITY_ROLES,
 	BOOST_KINDS,
@@ -41,6 +41,21 @@ export function itemIconKey(id: string): string {
 	return `${id}.icon`;
 }
 
+/**
+ * Builds (docs/BUILDS.md BU1): a levelled boon's line at level 2 (`<id>.desc.2`; level I is `<id>.desc`, level III
+ * the evolution's), and its evolution's name and line (`<id>.evo.name`, `<id>.evo.desc`).
+ */
+export const BOON_LEVEL_2 = 2;
+export function boonLevelDescKey(id: string, level: number): string {
+	return level <= 1 ? itemDescKey(id) : `${id}.desc.${level}`;
+}
+export function boonEvoNameKey(id: string): string {
+	return `${id}.evo.name`;
+}
+export function boonEvoDescKey(id: string): string {
+	return `${id}.evo.desc`;
+}
+
 /** `boon.rarity.<common|rare|legendary>`. */
 export function rarityNameKey(rarity: number): string {
 	return `boon.rarity.${RARITY_NAMES[rarity] ?? RARITY_NAMES[0]}`;
@@ -51,8 +66,14 @@ export function progressionStringKeys(): string[] {
 	const out: string[] = [];
 	for (const [, key] of pairs(PROGRESSION_STRINGS as unknown as Map<string, string>)) out.push(key);
 	for (let r = 0; r < RARITY_NAMES.size(); r++) out.push(rarityNameKey(r));
-	for (const defs of [BOONS, RELICS, CURSES] as ReadonlyArray<ReadonlyArray<{ readonly id: string }>>) {
+	for (const defs of [BOONS, RELICS, CURSES, DUOS] as ReadonlyArray<ReadonlyArray<{ readonly id: string }>>) {
 		for (const d of defs) out.push(itemNameKey(d.id), itemDescKey(d.id), itemIconKey(d.id));
+	}
+	// Builds (docs/BUILDS.md BU1): every levelled boon's level-2 line and its evolution's name and line.
+	for (let b = 0; b < BOONS.size(); b++) {
+		if (boonMaxLevel(b) <= 1) continue;
+		const id = BOONS[b].id;
+		out.push(boonLevelDescKey(id, BOON_LEVEL_2), boonEvoNameKey(id), boonEvoDescKey(id));
 	}
 	// Boost drops (docs/BOOSTS.md B7): every kind's name / desc / icon (the toast and the HUD's boost row).
 	for (const k of BOOST_KINDS) for (const f of BOOST_STRING_FIELDS) out.push(boostStringKey(k, f));
@@ -133,7 +154,8 @@ export function toastFor(kind: "boon" | "relic" | "curse" | "secondWind" | "fang
 			};
 		}
 		case "boon":
-			return { key: PROGRESSION_STRINGS.toastBoon, nameKey: itemNameKey(BOONS[index]?.id ?? "") };
+			// `index` is the draft card taken: a boon, or with builds a duo (docs/BUILDS.md card ids).
+			return { key: PROGRESSION_STRINGS.toastBoon, nameKey: itemNameKey(cardDisplay(index)?.id ?? "") };
 		case "relic":
 			return { key: PROGRESSION_STRINGS.toastRelic, nameKey: itemNameKey(RELICS[index]?.id ?? "") };
 		case "curse":

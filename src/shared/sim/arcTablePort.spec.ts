@@ -12,6 +12,9 @@ import {
 	IMP_FAN_COUNT,
 	IMP_FAN_SPREAD,
 	PORT_ARC_SHAPES,
+	SOUL_SHARD,
+	THRILL_SEEKER_RING,
+	VOLATILE_BURSTS,
 	PORT_ARC_SOURCES,
 	arcAngle,
 	arcTrig,
@@ -79,5 +82,27 @@ describe("port arc shapes (combat/arcTablePort.ts)", () => {
 		expect([float64Hex(s.sin[2]), float64Hex(s.cos[2])]).toEqual([float64Hex(0), float64Hex(1)]);
 		expect(s.sin[0]).toBeCloseTo(math.sin(-IMP_FAN_SPREAD / 2), 15);
 		expect(() => gen.arc(fan.count, fan.spread + 1e-12)).toThrow("arc table miss");
+	});
+
+	it("the builds rings (8 and 12 @ FULL_RING, docs/BUILDS.md BU1) resolve to their port shapes and fire", () => {
+		// Volatile I / II and Thrill Seeker; Volatile III (16) and a single shard (1 @ 0) are web rows.
+		const eight = PORT_ARC_SHAPES[3];
+		const twelve = PORT_ARC_SHAPES[4];
+		expect([eight.count, eight.full, twelve.count, twelve.full]).toEqual([8, true, 12, true]);
+		expect(arcTrig(VOLATILE_BURSTS[0].count, VOLATILE_BURSTS[0].spread)).toBe(eight);
+		expect(arcTrig(THRILL_SEEKER_RING.count, THRILL_SEEKER_RING.spread)).toBe(eight);
+		expect(arcTrig(VOLATILE_BURSTS[1].count, VOLATILE_BURSTS[1].spread)).toBe(twelve);
+		expect(arcTrig(VOLATILE_BURSTS[2].count, VOLATILE_BURSTS[2].spread).count).toBe(16);
+		expect(PORT_ARC_SHAPES.includes(arcTrig(VOLATILE_BURSTS[2].count, VOLATILE_BURSTS[2].spread))).toBe(false);
+		expect(arcTrig(SOUL_SHARD.count, SOUL_SHARD.spread).count).toBe(1);
+		for (const spec of VOLATILE_BURSTS) expect(gen.arc(spec.count, spec.spread, 2).size()).toBe(spec.count);
+		// Evenly spaced: bullet 0 straight down +Z, bullet count/4 at a quarter turn (sin 1, cos 0 to the ulp).
+		for (const s of [eight, twelve]) {
+			expect([float64Hex(s.sin[0]), float64Hex(s.cos[0])]).toEqual([float64Hex(0), float64Hex(1)]);
+			expect(s.sin[s.count / 4]).toBeCloseTo(1, 15);
+			expect(s.cos[s.count / 4]).toBeCloseTo(0, 15);
+		}
+		// Any spread at or past the full-ring threshold is the same ring.
+		expect(arcTrig(8, FULL_RING + 1)).toBe(eight);
 	});
 });

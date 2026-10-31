@@ -169,6 +169,16 @@ export const COLOR_ROLES = [
 	"affix.shielded",
 	"affix.vengeful",
 	"enemyShield",
+	// Roblox port (docs/BUILDS.md BU1): the evolution and duo cards' frames (builds.ts BOON_BUILD_ROLES; with the rarity
+	// ladder in boonRarityReport), then one colour per build effect (BUILD_EFFECT_ROLES: spark beams, Volatile's bolts,
+	// Soul Shards, embers), held to BUILD_COLOR_RULES by buildReport (buildColors.ts): >= 3:1 on every biome floor and
+	// (CIE76) away from the enemy-bullet roles, telegraph, enemyGoo, enemyOutline and every boost colour.
+	"boon.evolved",
+	"boon.duo",
+	"build.spark",
+	"build.burst",
+	"build.shard",
+	"build.ember",
 ] as const;
 
 export type ColorRole = (typeof COLOR_ROLES)[number];

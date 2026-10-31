@@ -4,10 +4,10 @@
  * (validateRun with world "endless") calls the same function, so both get identical floors from the run seed alone.
  *
  *   config   { endless: { runSeed, worldForFloor }, scoring: ENDLESS_SCORING, breakables: BREAKABLES_CONFIG,
- *              drops: DROPS_CONFIG, affixes: AFFIXES_CONFIG }
+ *              drops: DROPS_CONFIG, affixes: AFFIXES_CONFIG, builds: BUILDS_CONFIG }
  *            (shared/sim endless.ts: every tick runs with the current floor; endless runs are ALWAYS scored, on client
  *            and server alike, and always have breakable barrels and crates (docs/DECOR.md D4), boost drops
- *            (docs/BOOSTS.md B4) and elite affixes (docs/ENEMY_VARIANTS.md EV7))
+ *            (docs/BOOSTS.md B4), elite affixes (docs/ENEMY_VARIANTS.md EV7) and builds (docs/BUILDS.md BU1))
  *   floor f  buildEndlessFloor(runSeed, f) (shared/dungeon endless.ts: solid pillars, breakables) + circleMover / bulletBlocker /
  *            actorMover / actorSteerMover (enemies walk around pillars) on its dungeon; built on first use, kept in a
  *            per-config LRU (ENDLESS_FLOOR_CACHE_SIZE), the dungeons in a server-wide LRU (ENDLESS_DUNGEON_CACHE_SIZE)
@@ -38,6 +38,7 @@ import {
 	DEFAULT_PARTY_SIZE,
 	DROPS_CONFIG,
 	AFFIXES_CONFIG,
+	BUILDS_CONFIG,
 	MAX_PARTY_SIZE,
 	PLAYER_RADIUS,
 	isValidPartySize,
@@ -198,6 +199,7 @@ export function buildEndlessRunConfig(runSeed: number, partySize: number = DEFAU
 					breakables: BREAKABLES_CONFIG,
 					drops: DROPS_CONFIG,
 					affixes: AFFIXES_CONFIG,
+					builds: BUILDS_CONFIG,
 			  }
 			: {
 					endless: { runSeed, worldForFloor },
@@ -206,6 +208,7 @@ export function buildEndlessRunConfig(runSeed: number, partySize: number = DEFAU
 					breakables: BREAKABLES_CONFIG,
 					drops: DROPS_CONFIG,
 					affixes: AFFIXES_CONFIG,
+					builds: BUILDS_CONFIG,
 			  };
 	return {
 		config,

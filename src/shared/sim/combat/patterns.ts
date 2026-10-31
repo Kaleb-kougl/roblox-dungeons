@@ -39,6 +39,16 @@ export const BulletKind = {
 	 * It counts in events.gooSpawned (the enemy-shoot sound skips it).
 	 */
 	GOO: 7,
+	/**
+	 * Builds (Roblox port, docs/BUILDS.md BU1): player effect bullets. Only their look and audio differ (the payload's
+	 * `source` says which effect and generation, sim/builds BUILD_SOURCE_BASE): BURST Volatile's ring of bolts, SHARD
+	 * Soul Shards, EMBER a stationary floor flame (Fire Arrows / Blazing Trail), SPARK_BOLT the bolts of Flurry and
+	 * Thrill Seeker.
+	 */
+	BURST: 8,
+	SHARD: 9,
+	EMBER: 10,
+	SPARK_BOLT: 11,
 } as const;
 
 /**

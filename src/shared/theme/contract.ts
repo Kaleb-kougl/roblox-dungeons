@@ -446,6 +446,12 @@ export const BULLET_IDS = [
 	// Roblox port (docs/ENEMY_VARIANTS.md EV1, EVD5): the Ooze's goo puddle (variants.ts GOO_BULLET_ID), drawn flat on
 	// the floor under every moving bullet, tinted `enemyGoo`
 	"bullet.enemy.goo",
+	// Roblox port (docs/BUILDS.md BU1): the build effects' player bullets (builds.ts BUILD_BULLET_IDS, the same list):
+	// Volatile's bolts, Soul Shards, embers (a flat floor flame), Flurry / Thrill Seeker bolts
+	"bullet.player.burst",
+	"bullet.player.shard",
+	"bullet.player.ember",
+	"bullet.player.bolt",
 ] as const;
 
 export const ITEM_IDS = [
@@ -700,6 +706,17 @@ export const PORT_AUDIO_EVENTS = [
 	"sfx.enemy.split",
 	"sfx.affix.shieldbreak",
 	"sfx.affix.vengeful",
+	// docs/BUILDS.md BU1 (builds.ts BUILD_AUDIO_IDS, the same list): a spark arcs, a burst, shards fly, an ember lights,
+	// a nova, an execute, an evolution or a duo is taken, a Jackpot pays
+	"sfx.build.spark",
+	"sfx.build.burst",
+	"sfx.build.shard",
+	"sfx.build.ember",
+	"sfx.build.nova",
+	"sfx.build.execute",
+	"sfx.build.evolve",
+	"sfx.build.duo",
+	"sfx.build.jackpot",
 ] as const;
 
 /**
@@ -844,6 +861,14 @@ export const REQUIRED_STRING_KEYS: ReadonlyArray<string> = ((): string[] => [
 	...COMBO_STRING_KEYS,
 	...NEAR_MISS_STRING_KEYS,
 	...ENEMY_VARIANT_STRING_KEYS,
+	// docs/BUILDS.md BU1: builds.ts BUILD_STRING_KEYS, written out (an import would be one more top-level local)
+	"hud.draft.level",
+	"hud.draft.evolve",
+	"hud.draft.duo",
+	"hud.draft.again",
+	"hud.toast.evolved",
+	"hud.toast.duo",
+	"hud.build.title",
 ])();
 
 /**
@@ -1302,7 +1327,9 @@ export const BOON_RARITY_ROLES: ReadonlyArray<ColorRole> = ["boon.common", "boon
  * Luau sits near the 200-locals-per-function limit).
  */
 export const BOON_RARITY_COLOR_RULES = {
-	roles: BOON_RARITY_ROLES,
+	// The rarity ladder (BOON_RARITY_ROLES), then docs/BUILDS.md's evolution and duo card frames (builds.ts
+	// BOON_BUILD_ROLES) on top of it, written out (a spread here would be top-level Luau temporaries).
+	roles: ["boon.common", "boon.rare", "boon.legendary", "boon.evolved", "boon.duo"] as ReadonlyArray<ColorRole>,
 	panel: "uiPanel" as ColorRole,
 	minPanelContrast: 3.0,
 	minStepDifference: 25,

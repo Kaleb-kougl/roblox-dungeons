@@ -69,6 +69,8 @@ export {
 	type VariantColorProblem,
 	type VariantColorRules,
 } from "./variantColors";
+export * from "./builds";
+export { BUILD_COLOR_RULES, buildReport, type BuildColorEntry, type BuildColorRules } from "./buildColors";
 export * from "./placeholders";
 export {
 	DEFAULT_PACK_ID,

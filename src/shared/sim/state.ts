@@ -27,6 +27,7 @@ import {
 import { cloneBreakablesState, createBreakablesState, type BreakablesState } from "./breakables/breakables";
 import { cloneDropsState, createDropsState, type DropsState } from "./drops/drops";
 import { cloneAffixesState, createAffixesState, type AffixesState } from "./affixes/affixes";
+import { cloneBuildsState, createBuildsState, type BuildsState } from "./builds/builds";
 
 export interface PlayerState {
 	x: number;
@@ -278,6 +279,12 @@ export interface SimState {
 	 * (after "drops"). See affixes/affixes.ts.
 	 */
 	affixes?: AffixesState;
+	/**
+	 * Builds (docs/BUILDS.md BU1), only when SimConfig.builds is set: every player's boon levels, duos and counters, the
+	 * proc queue, the boss double draft's deals left. Hashed as the "builds" subsystem, appended after every other group
+	 * (after "affixes"). See builds/builds.ts.
+	 */
+	builds?: BuildsState;
 }
 
 /**
@@ -290,6 +297,7 @@ export interface SimState {
  * With `config.breakables`, `breakables` state is created (floor 1's pieces in endless mode, else its `pieces`).
  * With `config.drops`, `drops` state is created (its own rng stream from `seed`, one boost entry per player).
  * With `config.affixes`, `affixes` state is created before the encounter spawns (its slots follow the actor pool).
+ * With `config.builds`, `builds` state is created (an empty build per player).
  */
 export function createSimState(
 	seed: number,
@@ -344,6 +352,8 @@ export function createSimState(
 	}
 	// Endless runs: boons, relics and curses (floor 1's pedestals and shrine). No rng.
 	if (firstFloor !== undefined) state.run = createRunState(world.encounter, partySize(state));
+	// Builds (docs/BUILDS.md): an empty build per player. No rng.
+	if (config.builds !== undefined) state.builds = createBuildsState(config.builds, partySize(state));
 	return state;
 }
 
@@ -371,6 +381,7 @@ export function cloneSimState(s: Readonly<SimState>): SimState {
 		breakables: s.breakables !== undefined ? cloneBreakablesState(s.breakables) : undefined,
 		drops: s.drops !== undefined ? cloneDropsState(s.drops) : undefined,
 		affixes: s.affixes !== undefined ? cloneAffixesState(s.affixes) : undefined,
+		builds: s.builds !== undefined ? cloneBuildsState(s.builds) : undefined,
 	};
 	if (s.party !== undefined) clone.party = cloneParty(s.party, clone);
 	return clone;

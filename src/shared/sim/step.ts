@@ -24,6 +24,7 @@ import { clearBreakableEvents, type BreakablesConfig } from "./breakables/breaka
 import { clearDropsEvents, stepDrops, type DropsConfig } from "./drops/drops";
 import { boostsOnPlayerDied } from "./drops/boostMods";
 import { clearAffixEvents, type AffixesConfig } from "./affixes/affixes";
+import { clearBuildEvents, type BuildsConfig } from "./builds/builds";
 import type { SolidCells } from "shared/dungeon";
 
 export { PLAYER_RADIUS, PLAYER_SPEED } from "./playerData";
@@ -156,6 +157,13 @@ export interface SimConfig {
 	 * subsystem, appended after every other group (after "drops").
 	 */
 	affixes?: AffixesConfig;
+	/**
+	 * Builds (docs/BUILDS.md BU1 / BU2, builds/builds.ts): the rules (BUILDS_CONFIG is the game's). Absent: no builds
+	 * state, today's boon draft (drawBoonOffers, every boon level I), nothing extra hashed (every fixture, M1, the
+	 * tutorial). Present: state.builds is created and hashed as the "builds" subsystem, appended after every other group
+	 * (after "affixes"); the draft deals cards (levels, evolutions, duos) and a boss floor's draft is dealt twice.
+	 */
+	builds?: BuildsConfig;
 }
 
 /** Matches the 16x16 greybox room: inner wall faces at +/-7.75, minus the 0.4 player half-width (rounded). */
@@ -180,7 +188,7 @@ const partyPrev: number[] = [];
  * Advances `state` by exactly one tick of SIM_DT, in place. Solo runs only (a party state needs stepParty).
  *
  * Tick order (fixed; part of the determinism contract):
- *   1. clear per-tick events (and the score's, the breakables', the drops', the affixes'); then FORFEIT_BUTTON ("Leave run") -> forfeitSoloRun:
+ *   1. clear per-tick events (and the score's, the breakables', the drops', the affixes', the builds'); then FORFEIT_BUTTON ("Leave run") -> forfeitSoloRun:
  *      the player dies at this tick
  *   2. stepPlayer  (movement, facing, roll, hearts, flask, Ember)
  *   3. stepCombat   (Ember clear, actors act, the player's weapons, bullets step, hits, contact damage)
@@ -212,6 +220,7 @@ export function step(
 	const drops = state.drops;
 	if (drops !== undefined) clearDropsEvents(drops);
 	if (state.affixes !== undefined) clearAffixEvents(state.affixes);
+	if (state.builds !== undefined) clearBuildEvents(state.builds);
 	const run = state.run;
 	// Read before the forfeit, which closes an open draft: that tick stays a frozen draft tick.
 	const frozen = run !== undefined && isDraftOpen(state);
@@ -289,6 +298,7 @@ export function stepParty(
 	const drops = state.drops;
 	if (drops !== undefined) clearDropsEvents(drops);
 	if (state.affixes !== undefined) clearAffixEvents(state.affixes);
+	if (state.builds !== undefined) clearBuildEvents(state.builds);
 	for (let i = 0; i < n; i++) if (hasLeftBit(inputs[i].buttons)) markPlayerLeft(state, i);
 	const run = state.run;
 	if (run !== undefined) {
