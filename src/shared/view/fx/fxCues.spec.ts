@@ -276,6 +276,7 @@ describe("FxCueMapper over the recorded endless run", () => {
 		const one = census();
 		// (not fx.shrine.use: the bot presses the shrine and debug-skips the floor within 5 ticks, and a frame that changes
 		// floor drops every cue of the old floor, by design)
+		let short = 0;
 		for (const id of [
 			"fx.boss.death",
 			"fx.relic.take",
@@ -284,8 +285,16 @@ describe("FxCueMapper over the recorded endless run", () => {
 			"fx.flask",
 			"fx.ember.ring",
 		] as FxId[]) {
-			expect([id, paced.counts.get(id) ?? 0]).toEqual([id, one.counts.get(id) ?? 0]);
+			const p = paced.counts.get(id) ?? 0;
+			const o = one.counts.get(id) ?? 0;
+			expect([id, p <= o]).toEqual([id, true]);
+			short += o - p;
 		}
+		// A cue landing on a telegraph's first frame is dropped by design (FX_SPRITE_VIEW.telegraphClearTiles), and a
+		// frame of several ticks can hold a telegraph start the 1-tick replay sees a tick apart: since the endless room
+		// pool's new kinds (docs/ENEMY_VARIANTS.md EV5) the bot drinks its flask on floor 5 beside a swarmer whose lunge
+		// telegraph starts inside the same paced frame. Every missing cue must be one of those drops.
+		expect(short <= math.max(0, paced.mapper.stats.telegraph - one.mapper.stats.telegraph)).toBe(true);
 		expect(paced.onTelegraph).toBe(0);
 		expect(paced.loopWrong).toBe(0);
 	});

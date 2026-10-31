@@ -92,11 +92,41 @@ export const ENDLESS_PACK_SIZE = 4;
 export interface EndlessRoomKind {
 	readonly kind: string;
 	readonly weight: number;
+	/** First floor whose rooms may buy this kind (absent: every floor). Below it the spender skips the kind entirely. */
+	readonly fromFloor?: number;
+	/** Most of this kind one room buys (absent: only ENDLESS_ROOM_ACTOR_CAP limits it). */
+	readonly maxPerRoom?: number;
 }
 
-/** The room enemies of endless floors, in draw order. Turrets and the boss are not bought with room budgets. */
+/**
+ * Unlock floors of the docs/ENEMY_VARIANTS.md room enemies (EVD2: 2 / 4 / 6, faster than the recommended 3 / 6 / 8).
+ * Floor 1 buys only the original three, draw for draw as before (dungeon/roomPool.lock.spec.ts).
+ */
+export const ROOM_KIND_UNLOCK_FLOOR = table.freeze({ imp: 2, slime: 4, summoner: 6 });
+
+/** Summoners one room buys at most (EVD3: one support per room, whatever the budget or the party size). */
+export const SUMMONERS_PER_ROOM = 1;
+
+/**
+ * The room enemies of endless floors, in draw order. Turrets and the boss are not bought with room budgets. The first
+ * three (and their weights 3 / 2 / 1) are the original pool and never change; the docs/ENEMY_VARIANTS.md kinds are
+ * appended after them (EVD2) and join only from their unlock floor, so floors below every unlock spend as before.
+ */
 export const ENDLESS_ROOM_KINDS: ReadonlyArray<EndlessRoomKind> = [
 	{ kind: "swarmer", weight: 3 },
 	{ kind: "sniper", weight: 2 },
 	{ kind: "bruiser", weight: 1 },
+	{ kind: "imp", weight: 2, fromFloor: ROOM_KIND_UNLOCK_FLOOR.imp },
+	{ kind: "slime", weight: 1, fromFloor: ROOM_KIND_UNLOCK_FLOOR.slime },
+	{ kind: "summoner", weight: 1, fromFloor: ROOM_KIND_UNLOCK_FLOOR.summoner, maxPerRoom: SUMMONERS_PER_ROOM },
 ];
+
+/**
+ * Room enemies wider than half a tile (body radius > 0.5: the Ooze's 0.55, docs/ENEMY_VARIANTS.md EV0 item 14). A
+ * body that size spawned on a tile centre beside a wall overlaps the wall and can stick, so the endless placer gives
+ * them only tiles whose 8 neighbours are all FLOOR (./enemyRooms.ts isOpenTile); roomSpawnTiles already holds to
+ * that except in a tiny room's fallback. Kept here as data so the dungeon need not read the sim's archetype table
+ * (dungeon/roomPool.spec.ts checks it against the registered radii). Affix radii (Hulking) are applied after
+ * placement and are not covered.
+ */
+export const WIDE_BODY_KINDS: ReadonlySet<string> = new Set<string>(["slime"]);
