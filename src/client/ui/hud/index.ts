@@ -7,7 +7,8 @@
  * (comboUi COMBO_UI) for ComboController (docs/COMBO.md CB6 / CB7); the draft reveal's bindings (draftUi DRAFT_UI) for
  * DraftRevealController (docs/DRAFT_REVEAL.md DR5 / DR6); the new-best bindings (newBestUi NEW_BEST_UI) for
  * NewBestController (docs/NEW_BEST.md NB6 / NB7); the Daily's clock and headshot hooks (dailyHooks) for the menu's
- * Daily card and podium (docs/DAILY.md DS9) and the run-over daily block (DailyResultBlock, DS11).
+ * Daily card and podium (docs/DAILY.md DS9), the run-over daily block (DailyResultBlock, DS11) and the headshot
+ * cache (headshots) for DailyRankController (DS10).
  */
 export * from "./actions";
 export * from "./cornerFade";
@@ -15,6 +16,7 @@ export * from "./dailyHooks";
 export * from "./DailyResultBlock";
 export * from "./comboUi";
 export * from "./draftUi";
+export * from "./headshots";
 export * from "./minimapHosts";
 export * from "./newBestRunOver";
 export * from "./newBestUi";

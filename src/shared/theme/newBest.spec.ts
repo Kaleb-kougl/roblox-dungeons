@@ -201,7 +201,8 @@ describe("new best: strings and audio IDs", () => {
 	});
 
 	it("appends the in-run fanfare and the record fanfare to the port's audio IDs, silent in the placeholder", () => {
-		const n = PORT_AUDIO_EVENTS.size();
+		// docs/DAILY.md DS10 appended the rank layer's two after them.
+		const n = PORT_AUDIO_EVENTS.indexOf("sfx.jingle.record") + 1;
 		expect([PORT_AUDIO_EVENTS[n - 3], PORT_AUDIO_EVENTS[n - 2], PORT_AUDIO_EVENTS[n - 1]]).toEqual([
 			"sfx.affix.vengeful",
 			"sfx.best.new",

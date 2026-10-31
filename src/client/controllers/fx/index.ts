@@ -5,7 +5,8 @@
  * docs/ROOM_CLEAR.md), the combo's row / meter / floor shout / break kick (ComboController, docs/COMBO.md CB7), the one
  * near-miss director (NearMissController), the PARRY! floor flash + solo freeze (ParryFlashController,
  * docs/GRAZE_PARRY.md GP7), the boon draft reveal (DraftRevealController, docs/DRAFT_REVEAL.md DR6) and the new-best
- * celebration (NewBestController, docs/NEW_BEST.md NB7). The pure logic
+ * celebration (NewBestController, docs/NEW_BEST.md NB7) and the Daily's in-run rank layer it drives (DailyRankController,
+ * docs/DAILY.md DS10). The pure logic
  * is shared/view/fx (and shared/view/hud for the combo, the PARRY! text and the draft reveal); these only draw it.
  * docs/CLIENT.md "Juice".
  */
@@ -23,3 +24,4 @@ export * from "./NearMissController";
 export * from "./ParryFlashController";
 export * from "./DraftRevealController";
 export * from "./NewBestController";
+export * from "./DailyRankController";

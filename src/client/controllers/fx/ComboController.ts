@@ -18,6 +18,7 @@ import {
 	COMBO_TIERS,
 	COMBO_TOP_TIER,
 	ComboDisplay,
+	FLOOR_SHOUT_PRIORITY,
 	ComboShout,
 	HUD_STRINGS,
 	comboDropAt,
@@ -55,11 +56,15 @@ type Mutable<T> = { -readonly [K in keyof T]: T[K] };
 /** What KV_ComboDebug can force (COMBO_DEBUG). */
 type ComboDebugKind = "tier" | "break" | "small" | "lapse" | "cut";
 
-/** A priority floor shout another controller asked for (requestShout): its text, colour and life. */
+/**
+ * A priority floor shout another controller asked for (requestShout): its text, colour, life and rank in the slot
+ * (shared/view/hud FLOOR_SHOUT_PRIORITY: new best > rank threshold; a tier shout ranks under both).
+ */
 interface PriorityShout {
 	readonly text: string;
 	readonly color: Color3;
 	readonly lifeSec: number;
+	readonly priority: number;
 }
 
 /** The ComboShout tier a priority shout runs under (any tier > 0 starts it; its label is the request's own). */
@@ -92,7 +97,9 @@ const PRIORITY_SHOWN = -1;
  *     controller (requestShout: NewBestController's NEW BEST!, docs/NEW_BEST.md NB7): it replaces a showing tier shout,
  *     runs its own life on the same construction (ComboShout's lifeSec), and while it shows a tier-up is shown in the
  *     panel only; a request made under the cover waits for it to lift (a tier shout under the cover is still just
- *     dropped). Without a request nothing changes.
+ *     dropped). Requests rank (FLOOR_SHOUT_PRIORITY, docs/DAILY.md DS10: new best > the Daily's rank threshold): the
+ *     higher of two asked on one frame wins, and a lower one is dropped while a higher one shows. Without a request
+ *     nothing changes.
  * An unscored run (no state.score) or no run shows nothing: the display, the shout and COMBO_UI go back to neutral
  * (ScorePanel hides itself on unscored runs as before). Presentation only, read-only on the sim. Studio aid:
  * COMBO_DEBUG.attribute (KV_ComboDebug, off by default) forces a tier-up / break / lapse / cut; the forced events also
@@ -217,10 +224,14 @@ export class ComboController implements OnStart {
 			// fires on the reveal's first frame, coverLifting, while the fade still covers the input here).
 			this.shout.clear();
 		} else if (this.priorityPending !== undefined) {
-			this.priority = this.priorityPending;
+			const asked = this.priorityPending;
 			this.priorityPending = undefined;
-			this.shownTier = 0; // relabel
-			this.shout.start(PRIORITY_SHOUT_TIER, this.priority.lifeSec);
+			// A lower-ranked request is dropped while a higher one shows (FLOOR_SHOUT_PRIORITY).
+			if (this.priority === undefined || asked.priority >= this.priority.priority) {
+				this.priority = asked;
+				this.shownTier = 0; // relabel
+				this.shout.start(PRIORITY_SHOUT_TIER, asked.lifeSec);
+			}
 		} else if (look.tierUp > 0 && this.priority === undefined) this.shout.start(look.tierUp);
 		this.drawShout(state, ctx.run.getAlpha(), dt, settings.reducedMotion);
 		if (!this.shout.look.active) this.priority = undefined;
@@ -231,9 +242,13 @@ export class ComboController implements OnStart {
 	 * over the tier shouts): it replaces a showing tier shout, and a tier-up while it shows stays in the panel only. Taken
 	 * on this controller's next frame (this frame's when asked before it), or held under the stage cover (and its fade)
 	 * until the first uncovered frame; dropped after the run's end, with no scored run, and on a run start / exit.
+	 * `priority` (FLOOR_SHOUT_PRIORITY; default new best's, the highest): of two requests before one frame the higher
+	 * wins (the later on a tie), and a request ranked under the priority shout showing is dropped.
 	 */
-	requestShout(text: string, color: Color3, lifeSec: number): void {
-		this.priorityPending = { text, color, lifeSec };
+	requestShout(text: string, color: Color3, lifeSec: number, priority: number = FLOOR_SHOUT_PRIORITY.newBest): void {
+		const pending = this.priorityPending;
+		if (pending !== undefined && pending.priority > priority) return;
+		this.priorityPending = { text, color, lifeSec, priority };
 	}
 
 	/** Back to neutral (no run, an unscored run; `force`: a run start / exit even if nothing showed). */
