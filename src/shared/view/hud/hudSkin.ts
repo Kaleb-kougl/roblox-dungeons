@@ -70,10 +70,37 @@ export const HUD_SKIN = {
 		/** The controls drawn with ui.stick.ring (the sticks); every other button draws ui.touch.button. */
 		sticks: ["move", "attack", "alt"] satisfies ReadonlyArray<TouchArtControl> as ReadonlyArray<TouchArtControl>,
 		/**
-		 * The art's opacity at 100 % touchOpacity (the flat fill's TOUCH_LAYOUT.fillAlpha is 0.55: the art is a frame, not a
-		 * see-through disc); a held button is brighter by TOUCH_LAYOUT.pressedFillBoost, capped at opaque.
+		 * The art's opacity at 100 % touchOpacity: the flat fill's (TOUCH_LAYOUT.fillAlpha 0.55; was 0.8). Both pieces are
+		 * solid dark discs (#1c1c1c inside the red ring), so at 0.8 they hid the floor; at the flat fill's alpha the floor
+		 * shows through as it does under the flat circles. A held button is brighter by TOUCH_LAYOUT.pressedFillBoost.
 		 */
-		artAlpha: 0.8,
+		artAlpha: TOUCH_LAYOUT.fillAlpha,
+		/**
+		 * The art's inside, as a share of its radius: the red ring's inner edge (15.5 of 19.5 art px on both 39 px pieces).
+		 * Labels and icons stay inside it.
+		 */
+		artInnerShare: 0.79,
+		/** The flat circle's label area, as a share of its radius (a pad inside the round edge). */
+		flatInnerShare: 0.9,
+		/**
+		 * Largest label text, px (UITextSizeConstraint over TextScaled; the touch GUI has no UIScale, so px are screen
+		 * px): a stick's word, a button's word (or word and count), a count beside an icon.
+		 */
+		maxText: { stick: 18, button: 14, count: 14 },
+		/** Below this a label is never drawn smaller (UITextSizeConstraint.MinTextSize). */
+		minText: 6,
+		/**
+		 * Buttons that show an icon and their count instead of the word when the control has its art (and the icon
+		 * atlas is in: it is all or nothing): Flask the full flask, Ember the candle. The flat look keeps the words.
+		 */
+		countIcons: { flask: "ui.flask.full", ember: "ui.candle" } as Partial<Record<TouchButtonId, string>>,
+		/** The count beside an icon: a badge at the bottom right of the icon's square, as shares of that square. */
+		badge: { w: 0.55, h: 0.5 },
+		/**
+		 * Sticks (Attack / Alt) at rest show their word where the knob would sit; the knob shows only while a finger holds
+		 * the stick (the word hides then, under the thumb). The knob covered the word's middle before.
+		 */
+		knobAtRest: false,
 	},
 } as const;
 
@@ -197,13 +224,15 @@ export function touchArtId(has: SkinHas, control: TouchArtControl): string | und
 }
 
 /**
- * The drawn size (screen px) of `artPx`-wide round touch art on a control `diameterPx` across: the nearest whole
- * multiple of the art (at least one), so the ring stays crisp and within half an art step of the control's circle.
- * The touch GUI has no UIScale: its px are screen px.
+ * The drawn size (screen px) of `artPx`-wide round touch art on a control `diameterPx` across: the largest whole
+ * multiple of the art that fits inside the control's circle (at least one), so the ring stays crisp, never draws past
+ * the circle the layout keeps clear of the corner panels and of its neighbours, and never rounds UP to the next, much
+ * chunkier multiple (it used to take the nearest: a 98 px Attack drew 117 px at 3 px per art px). The hit circle may
+ * then be up to one art step wider than the drawing (a forgiving touch). The touch GUI has no UIScale: px are screen px.
  */
 export function touchArtSize(diameterPx: number, artPx: number): number {
 	if (!(artPx > 0)) return 0;
-	const k = math.max(UI_ART.minArtScale, math.floor(diameterPx / artPx + 0.5));
+	const k = math.max(UI_ART.minArtScale, math.floor(diameterPx / artPx + UI_ART.fitEpsilon));
 	return artPx * k;
 }
 
@@ -214,4 +243,99 @@ export function touchArtSize(diameterPx: number, artPx: number): number {
 export function touchArtTransparency(alpha: number, held: boolean): number {
 	const a = alpha * HUD_SKIN.touch.artAlpha * (held ? TOUCH_LAYOUT.pressedFillBoost : 1);
 	return 1 - math.clamp(a, 0, 1);
+}
+
+/** A box inside a touch control, px from the control's top left (its 2r x 2r button). */
+export interface TouchBox {
+	readonly x: number;
+	readonly y: number;
+	readonly w: number;
+	readonly h: number;
+}
+
+/** The icon a count button shows instead of its word (HUD_SKIN.touch.countIcons), or undefined (the word). */
+export function touchCountIcon(has: SkinHas, control: TouchButtonId, skinned: boolean): string | undefined {
+	if (!skinned) return undefined;
+	const id = HUD_SKIN.touch.countIcons[control];
+	return id !== undefined && has(id) ? id : undefined;
+}
+
+/** A control's face: its label (a word, a word and count, or a count beside an icon) and where each part sits. */
+export interface TouchFace {
+	/** "word": the name; "wordCount": the name and count, wrapped (flat Flask / Ember); "iconCount": icon + count. */
+	readonly kind: "word" | "wordCount" | "iconCount";
+	/** The text's box (the count badge for iconCount). TextScaled inside it, capped at maxText. */
+	readonly text: TouchBox;
+	readonly maxText: number;
+	/** The text may wrap (wordCount: name over count). */
+	readonly wrap: boolean;
+	/** iconCount: the icon's drawn box, a whole multiple of its art (at least one), centred. */
+	readonly icon: TouchBox | undefined;
+}
+
+const COS_30 = math.sqrt(3) / 2;
+const SIN_30 = 0.5;
+const SQRT_HALF = math.sqrt(0.5);
+
+/**
+ * Where a touch control's label goes (docs/UI_ART.md UA13), px from its button's top left (`diameterPx` square).
+ * Everything sits inside the drawn disc's inside: the art's (`artSizePx`, touchArtSize, up to its red ring:
+ * HUD_SKIN.touch.artInnerShare) or, flat (`artSizePx` undefined), the circle's (flatInnerShare), centred.
+ *   - a word: the widest box of 2:1-ish proportions inscribed in that circle (30 degrees: w = sqrt 3 r, h = r);
+ *   - a word and its count (flat Flask / Ember): the inscribed square, wrapped onto two lines;
+ *   - an icon and its count (`icon` = the icon art's size, art px: touchCountIcon): the icon at the largest whole
+ *     multiple fitting the inscribed square (at least one), the count as a badge at that square's bottom right.
+ * The text is TextScaled inside its box with the kind's maxText (sticks larger), so it can never spill.
+ */
+export function touchFace(
+	control: TouchButtonId,
+	diameterPx: number,
+	artSizePx: number | undefined,
+	hasCount: boolean,
+	icon: { readonly w: number; readonly h: number } | undefined,
+): TouchFace {
+	const t = HUD_SKIN.touch;
+	const disc = artSizePx ?? diameterPx;
+	const inner = (disc / 2) * (artSizePx !== undefined ? t.artInnerShare : t.flatInnerShare);
+	const c = diameterPx / 2;
+	const stick = HUD_SKIN.touch.sticks.includes(control);
+	const square = 2 * inner * SQRT_HALF;
+	const centred = (w: number, h: number): TouchBox => ({ x: c - w / 2, y: c - h / 2, w, h });
+	if (icon !== undefined && hasCount && icon.w > 0 && icon.h > 0) {
+		const k = math.max(
+			UI_ART.minArtScale,
+			math.floor(math.min(square / icon.w, square / icon.h) + UI_ART.fitEpsilon),
+		);
+		const bw = square * t.badge.w;
+		const bh = square * t.badge.h;
+		const edge = c + square / 2;
+		return {
+			kind: "iconCount",
+			text: { x: edge - bw, y: edge - bh, w: bw, h: bh },
+			maxText: t.maxText.count,
+			wrap: false,
+			icon: centred(icon.w * k, icon.h * k),
+		};
+	}
+	if (hasCount) {
+		return {
+			kind: "wordCount",
+			text: centred(square, square),
+			maxText: t.maxText.button,
+			wrap: true,
+			icon: undefined,
+		};
+	}
+	return {
+		kind: "word",
+		text: centred(2 * inner * COS_30, 2 * inner * SIN_30),
+		maxText: stick ? t.maxText.stick : t.maxText.button,
+		wrap: false,
+		icon: undefined,
+	};
+}
+
+/** What a stick (Attack / Alt) shows: its knob while held (or always, HUD_SKIN.touch.knobAtRest), its word otherwise. */
+export function touchStickParts(held: boolean): { readonly knob: boolean; readonly label: boolean } {
+	return { knob: held || HUD_SKIN.touch.knobAtRest, label: !held };
 }
