@@ -12,11 +12,26 @@
  * board reads succeeded). Absent = not seeded yet (every doc written before the marker existed, and a merge write of a
  * run alone), so RecordsService seeds whenever it is absent; once either side of a merge has it, the merge keeps it.
  * Stored only when true (still doc version 1).
+ *
+ * `daily` (optional, still doc version 1; daily.ts, docs/DAILY.md DS13) is the player's daily activity: starts on a
+ * day (the attempt number) and the last two days with an accepted daily run (the "played yesterday's daily too"
+ * flag). A doc without it decodes exactly as before; a malformed one reads as absent. Whole-doc merges max-merge it
+ * (mergeDailyActivity) and RecordsService adds to it with delta writes (mergeStoredDailyDelta). It is separate from
+ * the endless records: daily runs never touch `endless` (DSD6).
  */
 import { MAX_RUN_ID_CHARS } from "shared/run";
 import type { DocCodec } from "shared/settings";
 import { LEADERBOARD_BOARDS, decodeDetails, type LeaderboardBoard } from "shared/leaderboard";
 import { RECORDS_DOC_VERSION } from "./config";
+import {
+	applyDailyDelta,
+	decodeDailyActivity,
+	decodeDailyDelta,
+	encodeDailyActivity,
+	mergeDailyActivity,
+	sameDailyActivity,
+	type DailyActivity,
+} from "./daily";
 
 /** One board's records: the best score and the deepest floor, each with the run that set it. */
 export interface RecordEntry {
@@ -45,6 +60,8 @@ export interface RecordsDoc {
 	endless: RecordsBoards;
 	/** True once the one-time leaderboard seed ran (absent = not seeded: seed on the next join). Never false. */
 	seeded?: true;
+	/** The player's daily activity (daily.ts, docs/DAILY.md DS13); absent = none known. */
+	daily?: DailyActivity;
 }
 
 /** A board's numbers as the client sees them. */
@@ -163,6 +180,8 @@ export function decodeRecordsDoc(raw: unknown): RecordsDoc {
 		if (entry !== undefined) out.endless[board] = entry;
 	}
 	if ((raw as { seeded?: unknown }).seeded === true) out.seeded = true;
+	const daily = decodeDailyActivity((raw as { daily?: unknown }).daily);
+	if (daily !== undefined) out.daily = daily;
 	return out;
 }
 
@@ -177,7 +196,10 @@ function copyEntry(e: Readonly<RecordEntry>): RecordEntry {
 	};
 }
 
-/** The value written to the DataStore: a normalized copy (absent boards left out, `seeded` only when true). */
+/**
+ * The value written to the DataStore: a normalized copy (absent boards left out, `seeded` only when true, `daily` only
+ * when valid).
+ */
 export function encodeRecordsDoc(doc: Readonly<RecordsDoc>): RecordsDoc {
 	const out = emptyRecordsDoc();
 	for (const board of LEADERBOARD_BOARDS) {
@@ -185,6 +207,8 @@ export function encodeRecordsDoc(doc: Readonly<RecordsDoc>): RecordsDoc {
 		if (entry !== undefined) out.endless[board] = copyEntry(entry);
 	}
 	if (doc.seeded === true) out.seeded = true;
+	const daily = encodeDailyActivity(doc.daily);
+	if (daily !== undefined) out.daily = daily;
 	return out;
 }
 
@@ -202,6 +226,7 @@ function sameEntry(a: Readonly<RecordEntry> | undefined, b: Readonly<RecordEntry
 
 export function sameRecordsDoc(a: Readonly<RecordsDoc>, b: Readonly<RecordsDoc>): boolean {
 	if ((a.seeded === true) !== (b.seeded === true)) return false;
+	if (!sameDailyActivity(a.daily, b.daily)) return false;
 	for (const board of LEADERBOARD_BOARDS) if (!sameEntry(a.endless[board], b.endless[board])) return false;
 	return true;
 }
@@ -235,7 +260,7 @@ function mergeEntries(a: RecordEntry | undefined, b: RecordEntry | undefined): R
 
 /**
  * Two documents merged, max per board per field; ties keep `a`'s (pass the stored doc as `a`). `seeded` when either
- * is. A new doc.
+ * is; `daily` max-merged (mergeDailyActivity: a stale copy never lowers or doubles it). A new doc.
  */
 export function mergeRecordDocs(a: Readonly<RecordsDoc>, b: Readonly<RecordsDoc>): RecordsDoc {
 	const out = emptyRecordsDoc();
@@ -244,6 +269,8 @@ export function mergeRecordDocs(a: Readonly<RecordsDoc>, b: Readonly<RecordsDoc>
 		if (entry !== undefined) out.endless[board] = copyEntry(entry);
 	}
 	if (a.seeded === true || b.seeded === true) out.seeded = true;
+	const daily = mergeDailyActivity(a.daily, b.daily);
+	if (daily !== undefined) out.daily = daily;
 	return out;
 }
 
@@ -309,9 +336,31 @@ export function mergeStoredRecords(stored: unknown, incoming: Readonly<RecordsDo
 	// A valid stored doc equal to the merge needs no write; a junk value is rewritten only if there is something to keep
 	// (a record or the seeded marker).
 	const storedValid = typeIs(stored, "table") && (stored as { v?: unknown }).v === RECORDS_DOC_VERSION;
-	const nothingToKeep = isEmptyRecords(merged) && merged.seeded !== true;
+	const nothingToKeep = isEmptyRecords(merged) && merged.seeded !== true && merged.daily === undefined;
 	if (sameRecordsDoc(old, merged) && (storedValid || nothingToKeep)) return undefined;
 	return encodeRecordsDoc(merged);
+}
+
+/**
+ * UpdateAsync's transform for a daily-activity delta write (RecordsService, docs/DAILY.md DS13): the stored doc with
+ * the delta ADDED to its `daily` (applyDailyDelta: the same day sums the starts, so two servers counting on one day
+ * both land; a delta for an older day adds only its finished day). The endless records and `seeded` are kept as
+ * stored. Undefined (cancel) when the stored value is a NEWER doc version, the delta is malformed, or nothing changes.
+ * A junk stored value reads as empty and is replaced.
+ */
+export function mergeStoredDailyDelta(stored: unknown, delta: unknown): RecordsDoc | undefined {
+	if (typeIs(stored, "table")) {
+		const v = (stored as { v?: unknown }).v;
+		if (isFiniteNumber(v) && v > RECORDS_DOC_VERSION) return undefined;
+	}
+	const d = decodeDailyDelta(delta);
+	if (d === undefined) return undefined;
+	const old = decodeRecordsDoc(stored);
+	const daily = applyDailyDelta(old.daily, d);
+	if (sameDailyActivity(old.daily, daily)) return undefined;
+	const out = encodeRecordsDoc(old);
+	if (daily !== undefined) out.daily = daily;
+	return out;
 }
 
 /** Raw `LB_Details_v1` values of one player (detailsKey per board; undefined = never posted). */
