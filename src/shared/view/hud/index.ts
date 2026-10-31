@@ -23,6 +23,7 @@ export * from "./minimapHud";
 export * from "./wrap";
 export * from "./occlusion";
 export * from "./touchLayout";
+export * from "./touchStrip";
 export * from "./touch";
 export * from "./roomClear";
 export * from "./comboConfig";
