@@ -42,13 +42,16 @@ import {
 } from "./contract";
 import type { BiomeTileKey, ColorRole } from "./types";
 import { startsWith } from "./util";
+import { GOO_BULLET_ID } from "./variants";
 
 /**
  * Part shapes. Ball/Block/Cylinder/Wedge are Enum.PartType names; Capsule = a Cylinder capped by two Balls;
  * Diamond (a boost drop's gem, docs/BOOSTS.md B5) = a Block stood on a corner (turned 45 degrees about two axes; a
- * renderer with no Diamond case draws the plain Block).
+ * renderer with no Diamond case draws the plain Block). Cone (the Imp) = a point-up cone or pyramid filling the size,
+ * Dome (the Ooze) = the top half of a squashed ball, its flat face on the floor (docs/ENEMY_VARIANTS.md EV1; a
+ * renderer with no Cone / Dome case draws the plain Block).
  */
-export const PLACEHOLDER_SHAPES = ["Ball", "Block", "Cylinder", "Wedge", "Capsule", "Diamond"] as const;
+export const PLACEHOLDER_SHAPES = ["Ball", "Block", "Cylinder", "Wedge", "Capsule", "Diamond", "Cone", "Dome"] as const;
 export type PlaceholderShape = (typeof PLACEHOLDER_SHAPES)[number];
 
 /** Enum.Material names: Neon for bullets (they must glow on every floor), SmoothPlastic for everything else. */
@@ -114,6 +117,10 @@ export const PLACEHOLDER_PROPORTIONS = {
 	summoner: [0.75, 1, 0.75],
 	/** Training dummy (tutorial): a thin upright post, as tall as the cell. */
 	dummy: [0.375, 1, 0.375],
+	/** Imp (docs/ENEMY_VARIANTS.md EV1): a small cone, half the cell wide, a little taller (2 x 2.5 x 2 studs). */
+	imp: [0.5, 0.625, 0.5],
+	/** Ooze (`slime`, EV1): a low dome, nearly the cell wide and half as tall (3.5 x 1.75 x 3.5 studs). */
+	slime: [0.875, 0.4375, 0.875],
 	/** Bosses: a large block, the full 48 x 48 cell wide, 3/4 tall (Mother Bramble, boss.act1, and boss.1..5). */
 	boss: [1, 0.75, 1],
 	/**
@@ -123,6 +130,11 @@ export const PLACEHOLDER_PROPORTIONS = {
 	demonlord: [0.75, 1, 0.75],
 	/** Enemy bullets: a ball filling the 8 px cell (the renderer scales it to the gameplay radius). */
 	enemyBullet: [1, 1, 1],
+	/**
+	 * Goo puddles (`bullet.enemy.goo`, docs/ENEMY_VARIANTS.md EVD5): a flat disc filling the 8 px cell, 1 px thick, lying
+	 * on the floor (the renderer scales it to the gameplay radius).
+	 */
+	goo: [1, 1 / 8, 1],
 	/** Needle bullets: a thin neon sliver along the velocity. */
 	needle: [0.25, 0.25, 1],
 	/** Player bullets: a thin bolt along the velocity. */
@@ -221,6 +233,8 @@ const ENEMY_SHAPES: Record<EnemyArchetype, { shape: PlaceholderShape; proportion
 	caster: { shape: "Capsule", proportions: PLACEHOLDER_PROPORTIONS.caster },
 	summoner: { shape: "Cylinder", proportions: PLACEHOLDER_PROPORTIONS.summoner },
 	dummy: { shape: "Cylinder", proportions: PLACEHOLDER_PROPORTIONS.dummy },
+	imp: { shape: "Cone", proportions: PLACEHOLDER_PROPORTIONS.imp },
+	slime: { shape: "Dome", proportions: PLACEHOLDER_PROPORTIONS.slime },
 };
 
 const enemyVisual = (archetype: EnemyArchetype): PlaceholderVisual =>
@@ -252,6 +266,21 @@ const enemyBulletVisual = (shape: PlaceholderShape, proportions: Proportions): P
 		material: "Neon",
 		faces: true,
 		anchor: "center",
+	});
+
+/**
+ * The goo puddle (docs/ENEMY_VARIANTS.md EVD5): a flat disc in `enemyGoo` lying on the floor (its base on the floor,
+ * unturned), Neon like every bullet placeholder (it hurts), with the enemy bullets' dark outline. The renderer's goo
+ * pool draws it under the moving bullets.
+ */
+const gooVisual = (): PlaceholderVisual =>
+	visual({
+		shape: "Cylinder",
+		cell: BULLET_CELL,
+		proportions: PLACEHOLDER_PROPORTIONS.goo,
+		color: role("enemyGoo"),
+		outline: "enemyBulletOutline",
+		material: "Neon",
 	});
 
 const playerBulletVisual = (proportions: Proportions): PlaceholderVisual =>
@@ -309,7 +338,8 @@ function buildTable(): Record<string, PlaceholderVisual> {
 	for (const c of CLASS_IDS) {
 		t[`class.${c}`] = classVisual(`class.${c}`);
 	}
-	// Enemies: one silhouette per archetype (swarmer ball, sniper wedge, bruiser block, ..., dummy post).
+	// Enemies: one silhouette per archetype (swarmer ball, sniper wedge, bruiser block, ..., dummy post, imp cone, ooze
+	// dome).
 	for (const archetype of ENEMY_ARCHETYPES) {
 		t[`enemy.${archetype}`] = enemyVisual(archetype);
 	}
@@ -320,11 +350,12 @@ function buildTable(): Record<string, PlaceholderVisual> {
 	}
 	t["boss.act1"] = bossVisual();
 	t["boss.demonlord"] = bossVisual(PLACEHOLDER_PROPORTIONS.demonlord);
-	// Bullets: enemy = neon ball with a dark outline; player = thin neon bolt.
+	// Bullets: enemy = neon ball with a dark outline (goo: a flat disc on the floor); player = thin neon bolt.
 	t["bullet.enemy.small"] = enemyBulletVisual("Ball", PLACEHOLDER_PROPORTIONS.enemyBullet);
 	t["bullet.enemy.medium"] = enemyBulletVisual("Ball", PLACEHOLDER_PROPORTIONS.enemyBullet);
 	t["bullet.enemy.large"] = enemyBulletVisual("Ball", PLACEHOLDER_PROPORTIONS.enemyBullet);
 	t["bullet.enemy.needle"] = enemyBulletVisual("Block", PLACEHOLDER_PROPORTIONS.needle);
+	t[GOO_BULLET_ID] = gooVisual();
 	t["bullet.player.basic"] = playerBulletVisual(PLACEHOLDER_PROPORTIONS.playerBolt);
 	t["bullet.player.heavy"] = playerBulletVisual(PLACEHOLDER_PROPORTIONS.playerHeavyBolt);
 	// Tiles: floor slabs and wall cubes in each biome's floor / wall colour.

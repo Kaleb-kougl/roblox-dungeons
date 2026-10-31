@@ -65,6 +65,9 @@ export const COLOR_ROLES = [
 	"enemy.summoner",
 	// Roblox port: the tutorial's Training Dummy (contract.ts ENEMY_ARCHETYPES)
 	"enemy.dummy",
+	// Roblox port (docs/ENEMY_VARIANTS.md EV1): the endless Imp (flanker) and Ooze (zone-denier, `slime`)
+	"enemy.imp",
+	"enemy.slime",
 	// Bosses share one accent
 	"boss",
 	// Enemy attack warnings (telegraph lines, slam shockwaves): hot like enemy bullets, but not a bullet
@@ -153,6 +156,19 @@ export const COLOR_ROLES = [
 	"boon.common",
 	"boon.rare",
 	"boon.legendary",
+	// Roblox port (docs/ENEMY_VARIANTS.md EV1, EVD5): the Ooze's goo puddles (the flat `bullet.enemy.goo` decal). Held to
+	// GOO_COLOR_RULES by gooReport (variantColors.ts): >= 3:1 on every biome floor and (CIE76) away from every decor fx
+	// and boost colour, so a puddle reads as danger, never as decor or a pickup.
+	"enemyGoo",
+	// Roblox port (docs/ENEMY_VARIANTS.md EV1, EVD12): one colour per elite affix (variants.ts AFFIX_ROLES: the floor
+	// ring, the sprite rim's tint, the name chip) and a Shielded enemy's shield segment. Held to AFFIX_COLOR_RULES by
+	// affixReport (variantColors.ts): >= 3:1 on every biome floor and (CIE76) away from the enemy-bullet roles,
+	// telegraph, enemyOutline and each other.
+	"affix.hulking",
+	"affix.swift",
+	"affix.shielded",
+	"affix.vengeful",
+	"enemyShield",
 ] as const;
 
 export type ColorRole = (typeof COLOR_ROLES)[number];

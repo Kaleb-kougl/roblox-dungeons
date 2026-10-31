@@ -76,6 +76,20 @@
  * clock (the world is frozen under the draft). They are ranked, timed (SFX_MIN_INTERVAL) and listed (ALL_SFX, so the
  * pack's minInterval and the preload reach them) like every SFX; the flare ducks the music (DUCKING_SFX) from play().
  *
+ * Enemy variants (docs/ENEMY_VARIANTS.md EV9 / EV11) come from the frame's VariantCueSource (shared/view/fx
+ * VariantCueEvents, the run view's `variantCues`, every tick of the frame; NO_VARIANT_CUES by default, so every other
+ * cue is as before). World sounds, the same for every player of a party (full volume, like the enemy's shot):
+ *   - sfx.enemy.blink on an Imp's blink LANDING (the snap to its ring, then its aim line). The wind-up start already
+ *     plays sfx.enemy.telegraph, so a blink sound there would only double it; the landing is the surprise to hear.
+ *   - sfx.enemy.summon when a Summoner's cast resolves and its swarmers appear (its wind-up plays the telegraph).
+ *   - sfx.enemy.split when an Ooze's slimelets appear (the tick it dies; its death sound plays too).
+ *   - sfx.affix.shieldbreak on a shield breaking (AffixEvents.shieldBroke).
+ *   - sfx.affix.vengeful when a Vengeful corpse fires its ring (AffixEvents.vengefulFired; the ring's bullets also
+ *     raise the enemy shot). Arming (the kill) has no sound of its own: the kill plays the death sound.
+ *   Quiet: the controller passes the source through shared/view/fx audibleVariantCues(source, comboQuiet(covered,
+ *   runOver)), so under the stage cover or once the run is over none of the five plays. None is a jingle, ducks the
+ *   music or has a fallback: a silent ID (the placeholder pack's) plays nothing and takes no cap slot.
+ *
  * Every cue carries a playback speed (AudioCueList.speed): 0 = the pack's jitter (every cue but these), > 0 = that
  * exact PlaybackSpeed (the kill ladder, the tier sting, the graze and the parry).
  *
@@ -91,6 +105,8 @@ import {
 	type FxEvent,
 	type NearMissFrame,
 	type ParryCue,
+	NO_VARIANT_CUES,
+	type VariantCueSource,
 } from "../fx";
 import { COMBO_VIEW, comboTier, killPitchSpeed, tierStingSpeed } from "../hud";
 import { AUDIO_VIEW } from "./config";
@@ -178,6 +194,16 @@ export const SFX = {
 	draftCharge: "sfx.draft.charge",
 	draftLegendary: "sfx.draft.legendary",
 	draftPick: "sfx.draft.pick",
+	/**
+	 * Enemy variants (docs/ENEMY_VARIANTS.md EV9 / EV11; the theme's PORT_AUDIO_EVENTS): an Imp's blink landing, a
+	 * Summoner's summons appearing, an Ooze's split, a shield breaking (`shieldbreak`: asset ID segments are lowercase)
+	 * and a Vengeful corpse firing its ring.
+	 */
+	enemyBlink: "sfx.enemy.blink",
+	enemySummon: "sfx.enemy.summon",
+	enemySplit: "sfx.enemy.split",
+	affixShieldBreak: "sfx.affix.shieldbreak",
+	affixVengeful: "sfx.affix.vengeful",
 } as const;
 export type SfxId = (typeof SFX)[keyof typeof SFX];
 
@@ -231,6 +257,11 @@ export const ALL_SFX: ReadonlyArray<SfxId> = [
 	SFX.draftCharge,
 	SFX.draftLegendary,
 	SFX.draftPick,
+	SFX.enemyBlink,
+	SFX.enemySummon,
+	SFX.enemySplit,
+	SFX.affixShieldBreak,
+	SFX.affixVengeful,
 ];
 
 /** IDs this port added to the placeholder pack (not in the web contract's AUDIO_EVENTS; theme PORT_AUDIO_EVENTS). */
@@ -270,6 +301,11 @@ export const PORT_SFX: ReadonlyArray<SfxId> = [
 	SFX.draftCharge,
 	SFX.draftLegendary,
 	SFX.draftPick,
+	SFX.enemyBlink,
+	SFX.enemySummon,
+	SFX.enemySplit,
+	SFX.affixShieldBreak,
+	SFX.affixVengeful,
 ];
 
 /**
@@ -376,6 +412,12 @@ export const SFX_MIN_INTERVAL: Readonly<Partial<Record<SfxId, number>>> = {
 	 * a guard against a doubled start, never a dropped rung.
 	 */
 	[SFX.draftCharge]: 0.05,
+	/** Enemy variants: several imps landing / slimes splitting close together are one sound, not a stutter. */
+	[SFX.enemyBlink]: 0.12,
+	[SFX.enemySummon]: 0.2,
+	[SFX.enemySplit]: 0.1,
+	[SFX.affixShieldBreak]: 0.1,
+	[SFX.affixVengeful]: 0.15,
 };
 
 /**
@@ -438,6 +480,16 @@ export const SFX_PRIORITY: Readonly<Record<SfxId, number>> = {
 	[SFX.playerSwap]: 50,
 	[SFX.playerDeflect]: 50,
 	[SFX.draftFlip]: 50,
+	/**
+	 * Enemy variants (docs/ENEMY_VARIANTS.md): under every player sound, over the enemy's hurt, death and shot. A broken
+	 * shield is the player's hit paying off (just under the swap / deflect); a Vengeful ring and an Imp's landing are
+	 * danger (a ring and a fan follow; the telegraph itself ranks 90); summons and splits are new bodies.
+	 */
+	[SFX.affixShieldBreak]: 49,
+	[SFX.affixVengeful]: 47,
+	[SFX.enemyBlink]: 46,
+	[SFX.enemySummon]: 42,
+	[SFX.enemySplit]: 41,
 	[SFX.boostExpire]: 48,
 	[SFX.uiConfirm]: 45,
 	[SFX.uiBack]: 45,
@@ -768,7 +820,9 @@ export class AudioCueMapper {
 	 * boost-drop events (the run view's `boostEvents`; none by default), `combo` the frame's combo events (the run
 	 * view's `combo`, docs/COMBO.md CB1; none by default), `nearMiss` the frame's grazes and parries output
 	 * (NearMissController's NearMissFrame of THIS frame, docs/GRAZE_PARRY.md GP6; undefined / no run: nothing, today's
-	 * cues exactly). Appends the cues to start to `out` (in table order) and returns it.
+	 * cues exactly), `variants` the frame's enemy-variant events (the run view's `variantCues` through
+	 * audibleVariantCues, docs/ENEMY_VARIANTS.md; none by default). Appends the cues to start to `out` (in table order)
+	 * and returns it.
 	 */
 	frame(
 		now: number,
@@ -780,6 +834,7 @@ export class AudioCueMapper {
 		boosts: BoostEventSource = NO_BOOST_EVENTS,
 		combo: ComboFrameSource = NO_COMBO_EVENTS,
 		nearMiss: Readonly<NearMissFrame> | undefined = undefined,
+		variants: VariantCueSource = NO_VARIANT_CUES,
 	): AudioCueList {
 		this.now = now;
 		this.pending = 0;
@@ -862,8 +917,18 @@ export class AudioCueMapper {
 		for (const p of boosts.aegisBroke) this.playerCue(SFX.boostAegisBreak, p, localIndex);
 		for (const e of boosts.ended) if (e.player === localIndex) this.cue(SFX.boostExpire, 1);
 		const enemySpawned = state.combat.enemySpawned;
-		if (this.lastEnemySpawned >= 0 && enemySpawned > this.lastEnemySpawned) this.cue(SFX.enemyShoot, 1);
+		// Goo puddles (docs/ENEMY_VARIANTS.md EVD14) count in enemySpawned but never play the shot: only a rise beyond
+		// the frame's gooSpawned does.
+		if (this.lastEnemySpawned >= 0 && enemySpawned - this.lastEnemySpawned > events.gooSpawned) {
+			this.cue(SFX.enemyShoot, 1);
+		}
 		this.lastEnemySpawned = enemySpawned;
+		// Enemy variants (docs/ENEMY_VARIANTS.md EV9 / EV11): world sounds, every tick of the frame.
+		if (variants.blinks > 0) this.cue(SFX.enemyBlink, 1);
+		if (variants.summons > 0) this.cue(SFX.enemySummon, 1);
+		if (variants.splits > 0) this.cue(SFX.enemySplit, 1);
+		if (variants.shieldBreaks > 0) this.cue(SFX.affixShieldBreak, 1);
+		if (variants.vengefulFired > 0) this.cue(SFX.affixVengeful, 1);
 		// The combo's tier sting and break (docs/COMBO.md CB4; a cut is silent, CD4).
 		const peakTier = comboTier(combo.peak);
 		if (peakTier > comboTier(combo.startCombo)) {

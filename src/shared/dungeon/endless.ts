@@ -11,13 +11,16 @@
  *                 hash(floor seed, BOSS_PICK.salt), one draw, so nothing else on the floor depends on the pick
  *   stairwell     the boss room's center floor tile; on other floors the boss room is empty and holds it from the start
  *   room enemies  per combat / elite room: ENCOUNTER_BUDGET spent by ENCOUNTER_COST from the room's own encounter rng
- *                 (encounterRoomSeed(dungeon seed, room id), as placeEncounter does), placed on the M1 populator's
+ *                 (encounterRoomSeed(dungeon seed, room id), as placeEncounter does) on the kinds open on the floor
+ *                 (ENDLESS_ROOM_KINDS fromFloor / maxPerRoom, docs/ENEMY_VARIANTS.md EV5), placed on the M1 populator's
  *                 spawn tiles (enemyRooms.ts). They are NOT spawned at floor start: the sim spawns a room's list when
  *                 the player first walks into that room (deferred), which keeps the live actor count under MAX_ACTORS
  *                 however large the budgets grow.
  *   breakables    barrels and crates in combat / elite / treasure rooms (./breakables.ts, docs/DECOR.md D4), placed
- *                 last from their own stream hash(floor seed, BREAKABLE.salt) and kept clear of the room spawns
+ *                 from their own stream hash(floor seed, BREAKABLE.salt) and kept clear of the room spawns
  *                 (which depend on the party size, so the pieces do too); their cells leave roomSpawnTiles
+ *   affixes       elite affixes per planned room spawn (./affixes.ts, docs/ENEMY_VARIANTS.md EV6), last, from their
+ *                 own stream hash(floor seed, AFFIXES.salt); nothing above reads them
  *
  * Generating the dungeon is left to the caller (`dungeonFor`), so shared/run can cache it (LRU).
  */
@@ -34,9 +37,10 @@ import {
 	type RoomTools,
 	type TileXZ,
 } from "./encounter";
-import { SPREAD_TRIES, SWARMER_KIND, nearestFree, roomSpawnTiles, spreadTile } from "./enemyRooms";
+import { SPREAD_TRIES, SWARMER_KIND, isOpenTile, nearestFree, roomSpawnTiles, spreadTile } from "./enemyRooms";
 import { encounterCost } from "./encounterCost";
 import { placeBreakables, withoutBreakableCells, type BreakablePlacement } from "./breakables";
+import { assignAffixes } from "./affixes";
 import type { ActorSpawn, EncounterConfig, EncounterRoom, EncounterRoomType } from "./encounterTypes";
 import {
 	BOSS_FLOOR_EVERY,
@@ -55,6 +59,7 @@ import {
 	ENDLESS_SOLID_PILLARS,
 	FLOOR_SEED_MUL,
 	PARTY_BUDGET_MULTIPLIERS,
+	WIDE_BODY_KINDS,
 	type EndlessRoomKind,
 } from "./endlessData";
 
@@ -124,19 +129,37 @@ export function roomEncounterBudget(floor: number, roomType: EncounterRoomType, 
 }
 
 /**
- * Spends `budget` on room enemies (archetype ids, in spawn order), at most `cap` of them; the costs never add up to
- * more than the budget. Each pick: the affordable kinds (ENDLESS_ROOM_KINDS) that cost at least budget-left / slots-left
- * (so a big budget buys dearer enemies instead of running out of slots), drawn by weight with one rng draw; when none
- * of them is that dear, the dearest affordable kind (no draw). Stops when nothing is affordable or the cap is reached.
+ * True when a room on `floor` that has already bought `bought` (count per kind) may buy kind `k`: from its unlock floor
+ * (EndlessRoomKind.fromFloor) and below its room maximum (maxPerRoom). Draws nothing.
  */
-export function spendEncounterBudget(rng: DungeonRng, budget: number, cap: number = ENDLESS_ROOM_ACTOR_CAP): string[] {
+function roomKindOpen(k: EndlessRoomKind, floor: number, bought: ReadonlyMap<string, number>): boolean {
+	if (k.fromFloor !== undefined && floor < k.fromFloor) return false;
+	return k.maxPerRoom === undefined || (bought.get(k.kind) ?? 0) < k.maxPerRoom;
+}
+
+/**
+ * Spends `budget` on the room enemies of a room on `floor` (archetype ids, in spawn order), at most `cap` of them; the
+ * costs never add up to more than the budget. Only the kinds open on the floor take part (roomKindOpen: unlocked and
+ * below their room maximum; a closed kind is skipped in both loops below, so it moves no total and no draw). Each pick:
+ * the affordable open kinds (ENDLESS_ROOM_KINDS) that cost at least budget-left / slots-left (so a big budget buys
+ * dearer enemies instead of running out of slots), drawn by weight with one rng draw; when none of them is that dear,
+ * the dearest affordable open kind (no draw). Stops when nothing is affordable or the cap is reached.
+ */
+export function spendEncounterBudget(
+	rng: DungeonRng,
+	budget: number,
+	floor: number,
+	cap: number = ENDLESS_ROOM_ACTOR_CAP,
+): string[] {
 	const out: string[] = [];
+	const bought = new Map<string, number>();
 	let left = budget;
 	while (out.size() < cap) {
 		const need = left / (cap - out.size());
 		let total = 0;
 		let dearest: EndlessRoomKind | undefined;
 		for (const k of ENDLESS_ROOM_KINDS) {
+			if (!roomKindOpen(k, floor, bought)) continue;
 			const c = encounterCost(k.kind);
 			if (c > left) continue;
 			if (dearest === undefined || c > encounterCost(dearest.kind)) dearest = k;
@@ -147,6 +170,7 @@ export function spendEncounterBudget(rng: DungeonRng, budget: number, cap: numbe
 		if (total > 0) {
 			let r = rng.next() * total;
 			for (const k of ENDLESS_ROOM_KINDS) {
+				if (!roomKindOpen(k, floor, bought)) continue;
 				const c = encounterCost(k.kind);
 				if (c > left || c < need) continue;
 				pick = k;
@@ -155,20 +179,29 @@ export function spendEncounterBudget(rng: DungeonRng, budget: number, cap: numbe
 			}
 		}
 		out.push(pick.kind);
+		bought.set(pick.kind, (bought.get(pick.kind) ?? 0) + 1);
 		left -= encounterCost(pick.kind);
 	}
 	return out;
 }
 
 /**
- * One endless room's enemies: spendEncounterBudget(tools.rng, budget), then placement on roomSpawnTiles: swarmers in
- * packs of up to ENDLESS_PACK_SIZE on the free tiles nearest their pack's anchor, everything else (and each new pack's
- * anchor) on a spread-out free tile (spreadTile, same rng). Stops early when the room runs out of tiles.
+ * One endless room's enemies on `floor`: spendEncounterBudget(tools.rng, budget, floor), then placement on
+ * roomSpawnTiles: swarmers in packs of up to ENDLESS_PACK_SIZE on the free tiles nearest their pack's anchor,
+ * everything else (and each new pack's anchor) on a spread-out free tile (spreadTile, same rng). A wide body
+ * (WIDE_BODY_KINDS) only takes a tile whose 8 neighbours are FLOOR (isOpenTile); roomSpawnTiles are all such tiles
+ * except in a tiny room's fallback, so the filter leaves the candidates, and every draw, as they were. Stops early
+ * when the room runs out of tiles (for a wide body: of open ones).
  */
-export function populateEndlessRoom(room: EncounterRoom, tools: RoomTools, budget: number): ActorSpawn[] {
+export function populateEndlessRoom(
+	room: EncounterRoom,
+	tools: RoomTools,
+	budget: number,
+	floor: number,
+): ActorSpawn[] {
 	const d = tools.dungeon;
 	const rng = tools.rng;
-	const kinds = spendEncounterBudget(rng, budget);
+	const kinds = spendEncounterBudget(rng, budget, floor);
 	const spawns: ActorSpawn[] = [];
 	if (kinds.size() === 0) return spawns;
 	const open = roomSpawnTiles(d, room, tools);
@@ -182,9 +215,10 @@ export function populateEndlessRoom(room: EncounterRoom, tools: RoomTools, budge
 			t = nearestFree(open, used, pack, 1)[0];
 			packLeft--;
 		} else {
+			const wide = WIDE_BODY_KINDS.has(kind);
 			t = spreadTile(
 				rng,
-				open.filter((o) => !used.has(o)),
+				open.filter((o) => !used.has(o) && (!wide || isOpenTile(d, o))),
 				anchors,
 				SPREAD_TRIES,
 			);
@@ -228,7 +262,7 @@ export function endlessRoomSpawns(d: Dungeon, floor: number, partySize = 1): Act
 				return { x: room.cx, z: room.cz };
 			},
 		};
-		out.push(populateEndlessRoom(room, tools, budget));
+		out.push(populateEndlessRoom(room, tools, budget, floor));
 	}
 	return out;
 }
@@ -300,6 +334,11 @@ export interface EndlessFloorLayout {
 	 * are already left out of roomSpawnTiles. Absent: none (the tutorial's hand-built floors).
 	 */
 	readonly breakables?: ReadonlyArray<BreakablePlacement>;
+	/**
+	 * Elite affixes (./affixes.ts assignAffixes, docs/ENEMY_VARIANTS.md EV6): an affix id (shared/dungeon AffixKind; 0 =
+	 * none) per planned room spawn, same shape as roomSpawns. Absent: none (the tutorial's hand-built floors).
+	 */
+	readonly roomAffixes?: ReadonlyArray<ReadonlyArray<number>>;
 }
 
 /**
@@ -327,6 +366,8 @@ export function buildEndlessFloor(
 		{ seed: params.seed, dungeon: d, encounter, roomSpawns, spawn, stairwell },
 		floor,
 	);
+	// Affixes run after everything else, on their own rng stream (./affixes.ts): nothing above moves.
+	const roomAffixes = assignAffixes(params.seed, floor, encounter.rooms, roomSpawns);
 	return {
 		floor,
 		seed: params.seed,
@@ -340,5 +381,6 @@ export function buildEndlessFloor(
 		spawn: { x: spawn.x, z: spawn.z },
 		stairwell,
 		breakables,
+		roomAffixes,
 	};
 }

@@ -611,6 +611,88 @@
 			"notes": "docs/DRAFT_REVEAL.md DRD10 / DRD11: a boon is taken (the stamp). Pick Accept2, Accept3 or Accept5 at the audition.",
 			"confirmed": false
 		},
+		"sfx.enemy.blink": {
+			"category": "sfx",
+			"clips": [
+				"ninja-adventure/Audio/Sounds/Whoosh & Slash/Whoosh2.wav"
+			],
+			"volume": 0.45,
+			"pitch": [
+				0.95,
+				1.08
+			],
+			"minInterval": 0.15,
+			"alternates": [
+				"ninja-adventure/Audio/Sounds/Magic & Skill/Magic1.wav",
+				"ninja-adventure/Audio/Sounds/Creature/Wings.wav"
+			],
+			"notes": "docs/ENEMY_VARIANTS.md EV11: an Imp snaps to its ring (the landing tick). Whoosh2 is a short air cut (0.44 s, audible 0.26 s, peak at 0.14 s), unused as a pick elsewhere (sfx.player.roll's alternate). Alternates: Magic1 (a bright 0.4 s zap, more magical; sfx.enemy.shoot's alternate), Wings (a 0.45 s flutter, imp-like). Imps come in pairs: pitch jitter and a 0.15 s interval keep two blinks from phasing.",
+			"confirmed": false
+		},
+		"sfx.enemy.summon": {
+			"category": "sfx",
+			"clips": [
+				"ninja-adventure/Audio/Sounds/Magic & Skill/Spirit.wav"
+			],
+			"volume": 0.6,
+			"minInterval": 0.5,
+			"alternates": [
+				"ninja-adventure/Audio/Sounds/Alert/Alert5.wav",
+				"ninja-adventure/Audio/Sounds/Magic & Skill/Magic2.wav"
+			],
+			"notes": "docs/ENEMY_VARIANTS.md EV11: a Summoner calls its two swarmers. Spirit is a high ghostly swell (1.5 s, audible 1.4 s, peak at 0.24 s), unused as a pick (sfx.boss.roar's and sfx.shrine.use's alternate): started with the 1.0 s summon ring it fills the telegraph. Alternates: Alert5 (a 1.5 s warning swell, more alarm than magic), Magic2 (0.31 s, for a cue on the burst itself rather than the telegraph). At most one Summoner per room, so no pitch jitter.",
+			"confirmed": false
+		},
+		"sfx.enemy.split": {
+			"category": "sfx",
+			"clips": [
+				"ninja-adventure/Audio/Sounds/Elemental/Bubble2.wav"
+			],
+			"volume": 0.5,
+			"pitch": [
+				0.9,
+				1.1
+			],
+			"minInterval": 0.1,
+			"alternates": [
+				"ninja-adventure/Audio/Sounds/Elemental/Water4.wav",
+				"ninja-adventure/Audio/Sounds/Elemental/Water9.wav"
+			],
+			"notes": "docs/ENEMY_VARIANTS.md EV11: an Ooze dies and splits into two slimelets. Bubble2 is a 0.43 s wet bubble pop (not Bubble.wav, sfx.player.graze's 1.5 s alternate). It plays over the kill's sfx.enemy.death, so it stays quieter. Alternates: Water4 (0.41 s splash, sharper onset), Water9 (0.54 s, a slower slosh). Pitch jitter: a guard sweep can kill two at once.",
+			"confirmed": false
+		},
+		"sfx.affix.shieldbreak": {
+			"category": "sfx",
+			"clips": [
+				"ninja-adventure/Audio/Sounds/Elemental/Explosion3.wav"
+			],
+			"volume": 0.6,
+			"pitch": [
+				0.97,
+				1.03
+			],
+			"minInterval": 0.1,
+			"alternates": [
+				"ninja-adventure/Audio/Sounds/Hit & Impact/Hit5.wav",
+				"ninja-adventure/Audio/Sounds/Elemental/Explosion.wav"
+			],
+			"notes": "docs/ENEMY_VARIANTS.md EV11: a Shielded enemy's shield breaks (the plan's sfx.affix.shieldBreak). Explosion3 is a short bright crunch (0.33 s, immediate onset, the brightest of the short explosions), sfx.enemy.death's alternate, unused as a pick. Alternates: Hit5 (0.33 s punch, sfx.player.hurt's alternate: check it does not read as the player being hit), Explosion (0.37 s, duller). Must stand apart from sfx.enemy.hurt (Hit*) and sfx.combo.break (the glass).",
+			"confirmed": false
+		},
+		"sfx.affix.vengeful": {
+			"category": "sfx",
+			"clips": [
+				"ninja-adventure/Audio/Sounds/Elemental/Fire3.wav"
+			],
+			"volume": 0.6,
+			"minInterval": 0.2,
+			"alternates": [
+				"ninja-adventure/Audio/Sounds/Alert/Alert4.wav",
+				"ninja-adventure/Audio/Sounds/Elemental/Explosion2.wav"
+			],
+			"notes": "docs/ENEMY_VARIANTS.md EV11: a Vengeful corpse's ring. Fire3 is a 0.65 s flare (audible 0.6 s), about the corpse's 0.6 s telegraph, so started with the pulse it ends as the ring fires. Alternates: Alert4 (0.42 s, a warning, if the cue should read as a telegraph like sfx.enemy.telegraph), Explosion2 (0.63 s burst, if the cue plays on the ring itself).",
+			"confirmed": false
+		},
 		"music.menu": {
 			"category": "music",
 			"clips": [

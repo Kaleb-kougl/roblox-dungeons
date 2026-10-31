@@ -48,6 +48,11 @@
  * below them (BOON_RARITY_COLOR_RULES), `boonRarityReport`; ui images may carry a 9-slice `slice` inside the image.
  * Roblox port (docs/UI_ART.md UA4): ui images may carry a `rect` (an icon atlas cut) inside the image, the pivot then
  * inside the rect; a sliced ui image takes no rect.
+ *
+ * Roblox port (docs/ENEMY_VARIANTS.md EV1): the affix rings / shield segment and the goo puddles (variantColors.ts
+ * `affixReport` / `gooReport`, through `variantColorProblems`). That module holds the rules and the reports because
+ * this one's compiled Luau sits at Luau's 200-locals-per-function limit: one import here, offset by dropping the old
+ * MAX_FPS alias of MAX_ANIMATION_FPS.
  */
 
 import { colorDifference, contrastRatio, isHexColor, labChroma, mixRgb, parseHex, toHex } from "./color";
@@ -149,6 +154,7 @@ import {
 	startsWith,
 	type Obj,
 } from "./util";
+import { variantColorProblems } from "./variantColors";
 
 export interface ValidateOptions {
 	/** Expected manifest id (the pack's folder name). */
@@ -164,7 +170,6 @@ const PACK_ID_PATTERN = "^[a-z0-9][a-z0-9%-]*$";
 const LOCALE_PATTERNS = ["^[a-z][a-z][a-z]?$", "^[a-z][a-z][a-z]?%-[A-Z][A-Z]$"];
 const IDENT_PATTERN = "^[%a_][%w_]*$";
 const INDEX_PATTERN = "^%d+$";
-const MAX_FPS = MAX_ANIMATION_FPS;
 
 /** Asset IDs: lowercase dot-separated segments, at least two (`enemy.sniper`, `bullet.enemy.small`). */
 export function isAssetId(id: string): boolean {
@@ -1596,6 +1601,11 @@ export function validateManifest(manifest: unknown, opts: ValidateOptions = {}):
 		}
 	}
 
+	// --- affix rings read on every floor, apart and never as a threat; goo reads as danger (docs/ENEMY_VARIANTS.md EV1)
+	for (const problem of variantColorProblems(manifest, forgeSuffix)) {
+		err(problem.path, problem.msg);
+	}
+
 	// --- boost art needs its halo (docs/BOOST_ART.md BA-P2) ---------------------------------------
 	for (const message of boostHaloProblems(assets)) {
 		err(message.path, message.msg);
@@ -1913,8 +1923,8 @@ function validateAsset(def: unknown, path: Array<string>, slot: SlotContract, er
 				if (!isPosInt(a.frames)) {
 					err(append(ap, "frames"), "must be an integer >= 1");
 				}
-				if (!typeIs(a.fps, "number") || !(a.fps > 0) || a.fps > MAX_FPS) {
-					err(append(ap, "fps"), `must be a number in (0, ${MAX_FPS}]`);
+				if (!typeIs(a.fps, "number") || !(a.fps > 0) || a.fps > MAX_ANIMATION_FPS) {
+					err(append(ap, "fps"), `must be a number in (0, ${MAX_ANIMATION_FPS}]`);
 				}
 				if (!typeIs(a.loop, "boolean")) {
 					err(append(ap, "loop"), "must be true or false");
@@ -2505,8 +2515,8 @@ function validateSpriteSet(def: Obj, path: Array<string>, slot: SlotContract, er
 				`is ${a.stride}, less than frames (${a.frames}): consecutive facings would share cells`,
 			);
 		}
-		if (!typeIs(a.fps, "number") || !(a.fps > 0) || a.fps > MAX_FPS) {
-			err(append(ap, "fps"), `must be a number in (0, ${MAX_FPS}]`);
+		if (!typeIs(a.fps, "number") || !(a.fps > 0) || a.fps > MAX_ANIMATION_FPS) {
+			err(append(ap, "fps"), `must be a number in (0, ${MAX_ANIMATION_FPS}]`);
 		}
 		if (!typeIs(a.loop, "boolean")) {
 			err(append(ap, "loop"), "must be true or false");

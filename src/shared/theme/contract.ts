@@ -32,6 +32,7 @@
 
 import type { AssetKind, ColorRole, ParticleFlipbookMode, Pivot } from "./types";
 import { startsWith } from "./util";
+import { ENEMY_VARIANT_STRING_KEYS } from "./variants";
 
 /** Directional slots draw one animation row per facing, in this order. */
 export const FACINGS = ["down", "up", "left", "right"] as const;
@@ -343,9 +344,22 @@ export type ClassId = (typeof CLASS_IDS)[number];
 
 /**
  * The web build's six, then the Roblox port's `dummy` (the tutorial's Training Dummy, sim archetype 'dummy'): every
- * pack fills `enemy.dummy` (asset and colour role) and `enemy.dummy.name` like the others.
+ * pack fills `enemy.dummy` (asset and colour role) and `enemy.dummy.name` like the others. Then the endless roster's
+ * `imp` (the Imp, a flanker) and `slime` (the Ooze, a zone-denier; its slimelets `slime.small` draw `enemy.slime`
+ * smaller) of docs/ENEMY_VARIANTS.md EV1: `enemy.imp` / `enemy.slime` and their `.name` the same way (placeholders: a
+ * small cone and a low dome). The Summoner fills the web build's existing `summoner`.
  */
-export const ENEMY_ARCHETYPES = ["swarmer", "sprayer", "sniper", "bruiser", "caster", "summoner", "dummy"] as const;
+export const ENEMY_ARCHETYPES = [
+	"swarmer",
+	"sprayer",
+	"sniper",
+	"bruiser",
+	"caster",
+	"summoner",
+	"dummy",
+	"imp",
+	"slime",
+] as const;
 export type EnemyArchetype = (typeof ENEMY_ARCHETYPES)[number];
 
 export const RARITIES = ["normal", "magic", "rare", "unique", "set", "glyphword"] as const;
@@ -425,6 +439,9 @@ export const BULLET_IDS = [
 	"bullet.enemy.needle",
 	"bullet.player.basic",
 	"bullet.player.heavy",
+	// Roblox port (docs/ENEMY_VARIANTS.md EV1, EVD5): the Ooze's goo puddle (variants.ts GOO_BULLET_ID), drawn flat on
+	// the floor under every moving bullet, tinted `enemyGoo`
+	"bullet.enemy.goo",
 ] as const;
 
 export const ITEM_IDS = [
@@ -621,7 +638,9 @@ export const BOOST_BEAM_IMAGE_ID = "ui.marker.boost";
  * in the score. Then the combo's two (docs/COMBO.md CB3): the tier-up sting (one clip, pitched up per tier) and the
  * break's shatter. Then the near misses' two (docs/GRAZE_PARRY.md GP3): a graze's shimmer and a parry's ring-out.
  * Then the boon draft reveal's five (docs/DRAFT_REVEAL.md DR4): flip, rare chime, legendary charge, legendary flare,
- * pick stamp.
+ * pick stamp. Then the enemy variants' five (docs/ENEMY_VARIANTS.md EV1): an Imp's blink, a Summoner's call, an Ooze's
+ * split, a Shielded enemy's shield breaking (the plan's `sfx.affix.shieldBreak`: asset ID segments are lowercase) and a
+ * Vengeful corpse's ring.
  */
 export const PORT_AUDIO_EVENTS = [
 	"sfx.player.swing",
@@ -670,6 +689,13 @@ export const PORT_AUDIO_EVENTS = [
 	"sfx.draft.charge",
 	"sfx.draft.legendary",
 	"sfx.draft.pick",
+	// docs/ENEMY_VARIANTS.md EV1: an Imp blinks to its ring, a Summoner calls its swarmers, an Ooze splits, a shield
+	// breaks, a Vengeful corpse fires its ring
+	"sfx.enemy.blink",
+	"sfx.enemy.summon",
+	"sfx.enemy.split",
+	"sfx.affix.shieldbreak",
+	"sfx.affix.vengeful",
 ] as const;
 
 /**
@@ -813,6 +839,7 @@ export const REQUIRED_STRING_KEYS: ReadonlyArray<string> = ((): string[] => [
 	...ROOM_CLEAR_STRING_KEYS,
 	...COMBO_STRING_KEYS,
 	...NEAR_MISS_STRING_KEYS,
+	...ENEMY_VARIANT_STRING_KEYS,
 ])();
 
 /**

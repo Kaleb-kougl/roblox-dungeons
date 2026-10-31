@@ -174,8 +174,9 @@ describe("required IDs and strings", () => {
 		// the 21st, the boost drops' four after it, then the room clear celebration's three (docs/ROOM_CLEAR.md RC4), the
 		// combo's two (docs/COMBO.md CB3), the near misses' two (docs/GRAZE_PARRY.md GP3) and the draft reveal's five
 		// (docs/DRAFT_REVEAL.md DR4)), 5 ambience beds and 4 boost drops). The draft's card art (draftSkinIds) is
-		// optional, so not here.
-		expect(REQUIRED_ASSET_IDS.size()).toBe(60 + 1 + 2 + 2 + 37 + 5 + 4);
+		// optional, so not here. + docs/ENEMY_VARIANTS.md EV1: enemy.imp, enemy.slime, bullet.enemy.goo and 5 port
+		// audio events.
+		expect(REQUIRED_ASSET_IDS.size()).toBe(60 + 1 + 2 + 2 + 37 + 5 + 4 + 2 + 1 + 5);
 		expect(AUDIO_EVENTS.size()).toBe(20);
 		expect(new Set(REQUIRED_ASSET_IDS).size()).toBe(REQUIRED_ASSET_IDS.size());
 		for (const id of REQUIRED_ASSET_IDS) {
@@ -186,7 +187,8 @@ describe("required IDs and strings", () => {
 		// controls' thirteen (docs/MOBILE.md MB7)
 		// + ROOM_CLEAR_STRING_KEYS (docs/ROOM_CLEAR.md RC3) + COMBO_STRING_KEYS (docs/COMBO.md CB3)
 		// + NEAR_MISS_STRING_KEYS (docs/GRAZE_PARRY.md GP3)
-		expect(REQUIRED_STRING_KEYS.size()).toBe(41 + 1 + 2 + 4 * 3 + 1 + 3 + 5 + 13 + 10 + 6 + 2);
+		// + docs/ENEMY_VARIANTS.md EV1: enemy.imp.name, enemy.slime.name, AFFIX_STRING_KEYS (4), BESTIARY_STRING_KEYS (7)
+		expect(REQUIRED_STRING_KEYS.size()).toBe(41 + 1 + 2 + 4 * 3 + 1 + 3 + 5 + 13 + 10 + 6 + 2 + 2 + 4 + 7);
 		expect(new Set(REQUIRED_STRING_KEYS).size()).toBe(REQUIRED_STRING_KEYS.size());
 		expect(BIOMES.map((b) => b.forgeTheme)).toEqual(["ancient", "molten", "frost", "grim", "verdant"]);
 	});

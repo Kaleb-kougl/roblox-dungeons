@@ -63,7 +63,9 @@ import { roomAt, type ActorSpawn, type EncounterConfig, type EncounterRoom } fro
 import type { BulletSimulation } from "../combat/bullets";
 import type { SimState } from "../state";
 import { partySize, playerAt, presentPlayerCount } from "../party";
-import { encounterCost } from "shared/dungeon";
+import { AffixKind, encounterCost } from "shared/dungeon";
+import { affixKillPercent } from "../affixes/affixes";
+import { AFFIX_PAR_COST } from "../affixes/affixesData";
 import { SOLO_PLAYER, runMods, teamComboCutDivisorMultiplier, teamComboWindowTicks } from "../progression/runMods";
 import {
 	BOSS_FINAL_PHASE,
@@ -314,12 +316,15 @@ function newRoomScore(room: Readonly<EncounterRoom>): RoomScore {
 /**
  * Room records for a floor whose room enemies are DEFERRED (endless mode: `roomSpawns[id]` spawn when the player
  * first walks into room `id`): one record per encounter room with spawns, room id order, par = base + per-cost x the
- * summed encounterCost of its spawns. No members yet: attachScoreRoomMembers adds them (and engages the room) on the
- * tick they spawn; until then stepScore skips the record. Pure.
+ * summed encounterCost of its spawns. Elite affixes (docs/ENEMY_VARIANTS.md EVD8; `roomAffixes`, the floor's affix per
+ * planned spawn, given only when the run has affixes): + per-cost x AFFIX_PAR_COST per affixed planned spawn. No
+ * members yet: attachScoreRoomMembers adds them (and engages the room) on the tick they spawn; until then stepScore
+ * skips the record. Pure.
  */
 export function buildDeferredScoreRooms(
 	encounter: EncounterConfig | undefined,
 	roomSpawns: ReadonlyArray<ReadonlyArray<ActorSpawn>>,
+	roomAffixes?: ReadonlyArray<ReadonlyArray<number>>,
 ): RoomScore[] {
 	const out: RoomScore[] = [];
 	if (encounter === undefined) return out;
@@ -328,6 +333,14 @@ export function buildDeferredScoreRooms(
 		if (spawns === undefined || spawns.size() === 0) continue;
 		const r = newRoomScore(room);
 		for (const sp of spawns) r.parTicks += ROOM_PAR_TICKS_PER_COST * encounterCost(sp.kind);
+		const affixes = roomAffixes?.[room.id];
+		if (affixes !== undefined) {
+			for (let i = 0; i < spawns.size(); i++) {
+				const affix = affixes[i];
+				if (affix !== undefined && affix !== AffixKind.NONE)
+					r.parTicks += ROOM_PAR_TICKS_PER_COST * AFFIX_PAR_COST;
+			}
+		}
 		out.push(r);
 	}
 	return out;
@@ -355,6 +368,37 @@ export function attachScoreRoomMembers(state: SimState, roomId: number, spawned:
 	r.hitsAtEngage = s.hitsTaken;
 }
 
+/**
+ * A runtime child (docs/ENEMY_VARIANTS.md: a slime's split, a summoner's summons) joins its parent's room record: the
+ * record whose members hold `parent`'s slot with `parent`'s id (alive or a corpse: a split runs in onDeath) gains
+ * `child` as one more member, so the room stays open (scoreRoomDown) until the child is down too. No-op without
+ * scoring, when the parent is in no record, when that room is already cleared, or when `child` is not in the pool or
+ * already a member. Par is unchanged (planned spawns fix it at floor start). Never called for boss adds.
+ */
+export function adoptScoreRoomMember(state: SimState, parent: Readonly<ActorState>, child: ActorState): void {
+	const s = state.score;
+	if (s === undefined) return;
+	const actors = state.combat.actors;
+	const parentSlot = actors.indexOf(parent as ActorState);
+	const childSlot = actors.indexOf(child);
+	if (parentSlot < 0 || childSlot < 0) return;
+	for (const r of s.rooms) {
+		let holdsParent = false;
+		let holdsChild = false;
+		for (let k = 0; k < r.memberSlots.size(); k++) {
+			const slot = r.memberSlots[k];
+			const id = r.memberIds[k];
+			if (slot === parentSlot && id === parent.id) holdsParent = true;
+			if (slot === childSlot && id === child.id) holdsChild = true;
+		}
+		if (!holdsParent) continue;
+		if (r.cleared !== 0 || holdsChild) return;
+		r.memberSlots.push(childSlot);
+		r.memberIds.push(child.id);
+		return;
+	}
+}
+
 /** Validated party size: an integer >= 1. */
 function partySizeOf(config: ScoringConfig): number {
 	const n = config.partySize ?? DEFAULT_PARTY_SIZE;
@@ -364,14 +408,15 @@ function partySizeOf(config: ScoringConfig): number {
 
 /**
  * Score state for a new run (createSimState calls it after the encounter spawned). With `roomSpawns` (endless mode:
- * the first floor's deferred room enemies) the room records are buildDeferredScoreRooms', else buildScoreRooms' from
- * the actors present. Draws no rng.
+ * the first floor's deferred room enemies, and its `roomAffixes`) the room records are buildDeferredScoreRooms', else
+ * buildScoreRooms' from the actors present. Draws no rng.
  */
 export function createScoreState(
 	state: Readonly<SimState>,
 	config: ScoringConfig,
 	encounter: EncounterConfig | undefined,
 	roomSpawns?: ReadonlyArray<ReadonlyArray<ActorSpawn>>,
+	roomAffixes?: ReadonlyArray<ReadonlyArray<number>>,
 ): ScoreState {
 	return {
 		total: 0,
@@ -385,7 +430,7 @@ export function createScoreState(
 		points: zeros(SCORE_SOURCE_COUNT),
 		counts: zeros(SCORE_SOURCE_COUNT),
 		scoredReviverIds: [],
-		rooms: roomRecords(state, encounter, roomSpawns),
+		rooms: roomRecords(state, encounter, roomSpawns, roomAffixes),
 		events: emptyScoreEvents(),
 	};
 }
@@ -394,25 +439,28 @@ function roomRecords(
 	state: Readonly<SimState>,
 	encounter: EncounterConfig | undefined,
 	roomSpawns: ReadonlyArray<ReadonlyArray<ActorSpawn>> | undefined,
+	roomAffixes: ReadonlyArray<ReadonlyArray<number>> | undefined,
 ): RoomScore[] {
+	// Affix par only in runs with affixes (SimConfig.affixes): a floor's roomAffixes alone changes nothing.
 	return roomSpawns !== undefined
-		? buildDeferredScoreRooms(encounter, roomSpawns)
+		? buildDeferredScoreRooms(encounter, roomSpawns, state.affixes !== undefined ? roomAffixes : undefined)
 		: buildScoreRooms(state, encounter);
 }
 
 /**
  * A new floor's encounter (endless mode's floor transition, after its initial actors spawned): replaces the room
- * records (deferred ones when `roomSpawns` is given, as in createScoreState) and forgets a pending boss final phase.
- * Score, combo, curses and the breakdown carry over.
+ * records (deferred ones when `roomSpawns` is given, with the floor's `roomAffixes`, as in createScoreState) and
+ * forgets a pending boss final phase. Score, combo, curses and the breakdown carry over.
  */
 export function rebuildScoreRooms(
 	state: SimState,
 	encounter: EncounterConfig | undefined,
 	roomSpawns?: ReadonlyArray<ReadonlyArray<ActorSpawn>>,
+	roomAffixes?: ReadonlyArray<ReadonlyArray<number>>,
 ): void {
 	const s = state.score;
 	if (s === undefined) return;
-	s.rooms = roomRecords(state, encounter, roomSpawns);
+	s.rooms = roomRecords(state, encounter, roomSpawns, roomAffixes);
 	s.bossFinalHits = -1;
 }
 
@@ -554,7 +602,8 @@ export function scoreKill(state: SimState, a: Readonly<ActorState>, killer = 0):
 		s.scoredReviverIds.push(a.id);
 	}
 	const base = KILL_POINTS.get(def.id) ?? DEFAULT_KILL_POINTS;
-	const bonus = runMods(state, killer).killPointsPercent;
+	// Bounty (the killer's boons), then (elite affixes, EVD8) x killPointsPercent for an affixed kill.
+	const bonus = affixKillPercent(state, a, runMods(state, killer).killPointsPercent);
 	let pts: number;
 	if (def.data.boss === true) {
 		pts = award(state, s, ScoreSource.BOSS, base, undefined, bonus);

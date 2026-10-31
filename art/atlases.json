@@ -177,6 +177,39 @@
 			},
 			"sheets": [{ "name": "sniper-idle", "animations": ["idle"] }]
 		},
+		"enemy.slime": {
+			"$comment": [
+				"Lords of Pain slime (docs/ENEMY_VARIANTS.md EV10): the Ooze, a green dome with a stalk on top. Its slimelets",
+				"(slime.small) draw this same set at spriteScale 0.6 (no set of their own). Same file layout and angles as the",
+				"skeleton: <folder>/<facing>/<folder>_<facing>_<angle>_<frame>.png, folder angles are screen angles (E = 0, N = 90,",
+				"counter-clockwise), the output convention already; the script rebuilds each file name from d * 22.5 and fails if",
+				"it does not exist, so the facing order below is checked. The pack has idle (1 frame), walk (8) and death (7, it",
+				"slumps and spreads): all three are real, every frame kept. Stand-ins: hit = idle's one cell (flash only, no hit",
+				"animation), attack = the walk's cells (the Ooze has no telegraphed attack; the slot requires the name).",
+				"Union box (alpha > noiseAlpha, the soft baked shadow included) is 64x46 + 3 px pad = 70x52: 16 x (1 + 8 + 7) =",
+				"256 cells, 14 per row x 19 rows, ONE 980x988 atlas (slime-body) + its outline sheet."
+			],
+			"source": { "type": "frames", "dir": "lords-of-pain/enemy/slime", "frameW": 256, "frameH": 256 },
+			"facingCount": 16,
+			"facingDirs": ["E", "NEE", "NE", "NNE", "N", "NNW", "NW", "NWW", "W", "SWW", "SW", "SSW", "S", "SSE", "SE", "SEE"],
+			"noiseAlpha": 2,
+			"pad": 3,
+			"pivot": { "measure": { "animation": "idle", "facing": 12, "frame": 0 }, "bodyAlpha": 64, "bodyMinRgb": 8, "footBand": 3 },
+			"pivotNote": "Body cut as the skeleton's (same pack, black baked shadow): lit pixels at alpha > 64. Measured on idle facing 12 (S, towards the camera), frame 0: the body there is 24x25 px (the stalk on top included); the dome has no feet, so the pivot is the bottom edge of the dome, at the middle of its lowest rows.",
+			"outline": { "widthPx": 2 },
+			"outlineNote": "Enemy contrast rim (docs/OUTLINE.md, decision E4: 2 art px). pad 3 = widthPx + 1.",
+			"bodyTiles": 1.07,
+			"bodyTilesNote": "Sized by WIDTH, not by the pack scale (the skeleton's 29.6 px/tile would draw the dome 0.87 tiles wide for an r 0.55 body): the lit body (alpha > 64) of the 16 idle facings is 24-27 px wide, mean 25.6 px (N / S 24, E / W 27), so 1.1 tiles wide needs ~23.3 px/tile. bodyTiles = the measured frame's body height 25 px / 23.4 = 1.07 -> pixelsPerTile 23.4: the dome is 1.03-1.15 tiles wide (mean 1.09), the slimelet at 0.6x 0.66 tiles for r 0.35.",
+			"resample": "Default",
+			"animations": {
+				"idle": { "folder": "slime_default_idle", "frames": [0], "fps": 1, "loop": true },
+				"move": { "folder": "slime_default_walk", "frames": [0, 1, 2, 3, 4, 5, 6, 7], "fps": 10, "loop": true },
+				"death": { "folder": "slime_special_death", "frames": [0, 1, 2, 3, 4, 5, 6], "fps": 10, "loop": false },
+				"attack": { "cellsOf": "move", "fps": 10, "loop": true },
+				"hit": { "cellsOf": "idle", "frames": 1, "fps": 1, "loop": false }
+			},
+			"sheets": [{ "name": "slime-body", "animations": ["idle", "move", "death"] }]
+		},
 		"boss.demonlord": {
 			"$comment": [
 				"Lords of Pain Demonlord (docs/BOSS_DEMONLORD.md D1): one 256x256 PNG per frame, the skeleton's naming and",

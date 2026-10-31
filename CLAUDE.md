@@ -326,6 +326,25 @@ Decision log (deviations from `PLAN.md`):
   minimap stays flat (`HUD_SKIN.minimapFramed` false: its turned map would paint over a frame). `contract.luau` /
   `validate.luau` are at 198 / 195 top-level locals (counted on out/). Spike `KV_UiArtSpike`. Upload and Studio check
   pending.
+- **Enemy variants (docs/ENEMY_VARIANTS.md).** Gameplay. Four port archetypes in band 3 (`PORT_BAND_ENEMIES`, indices
+  9-12; no web, dummy or Demon Lord index moves): `imp` (blink flanker: floor ring at the landing spot, 5-bullet fan, a
+  port arc row 5 @ 0.7), `slime` / `slime.small` (the Ooze: goo trail of stationary `BulletKind.GOO` bullets, at most 6
+  per slime by count, splits into 2 slimelets adopted into its score room), `summoner` (2 swarmers per cast, 3 alive, 6
+  per life, they wither with it; fills the existing `enemy.summoner` slot). Endless rooms buy them from floors 2 / 4 / 6
+  (`EndlessRoomKind.fromFloor` / `maxPerRoom`, `spendEncounterBudget(rng, budget, floor, cap)`); floor 1 spends draw for
+  draw as before (`roomPool.lock.spec`). Room-enemy walks and cooldowns go through `walkStep` / `enemyCooldown`
+  (`combat/actors/actorMods.ts`; exactly the raw values at 100 %). `adoptScoreRoomMember` keeps a room open for runtime
+  children. Goo: per-kind hit radius (`enemyBulletHitRadius`, goo 0.35), no grazes, no guard points / parry feed (the
+  guard still erases it), ordinary swings and breakables ignore it, no shoot cue (`events.gooSpawned`). Elite affixes
+  (Hulking / Swift / Shielded / Vengeful): assigned after the Forge from their own stream (`AFFIXES.salt` 0xcc9e2d51,
+  `roomAffixes` on the floor), opt-in `SimConfig.affixes` (endless only), `state.affixes` with its own hash group
+  `affixes` appended LAST (after `drops`), stamped in `spawnActor` before `init` for planned spawns only. M1, every
+  fixture and the tutorial replay exactly as before; endless replays and scores changed (boards stay `_v1`). View: ring
+  hints with an `attack` filter, goo floor decals (second bullet pool, `GOO_VIEW.decal`), affix floor rings / rim tint /
+  name chip / shield row (never a Highlight), Hulking draw scale in the pool keys, Vengeful corpse length. Five port
+  audio ids (`sfx.enemy.blink` / `.summon` / `.split`, `sfx.affix.shieldbreak` / `.vengeful`, SILENT in the
+  placeholder). First sighting: optional `seen` in the onboarding doc (still v1), remote `bestiarySeen`. Vale: the LoP
+  slime set built (upload pending); imp / summoner rigs pending. Studio check pending.
 
 ## Commands
 

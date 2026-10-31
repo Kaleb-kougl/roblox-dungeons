@@ -5,7 +5,8 @@
  *
  * stepCombat order (fixed; part of the determinism contract):
  *   1. Ember: events.emberUsed -> enemyBullets.clear() (every enemy bullet)
- *   2. actors, in slot order (stepActors): AI, movement, firing, runtime spawns (stepped from the next tick on)
+ *   2. actors, in slot order (stepActors): AI, movement, firing, runtime spawns (stepped from the next tick on); then
+ *      (elite affixes, only with state.affixes) the affix phase (stepAffixes: shield refills, Vengeful rings)
  *   3. the stress emitter
  *   4. the player's weapons (stepWeapons: cooldowns, SWAP, trigger -> fire / melee sweep)
  *   5. step both simulations by SIM_DT (./bullets.ts, the ported r3f-projectiles pool); M2 Hourglass (endless runs):
@@ -49,10 +50,21 @@ import {
 	enemyBulletCapacity,
 } from "./combatData";
 import { createBulletSimulation, type BulletSimulation, type Vec3 } from "./bullets";
-import { BulletKind, BulletPayload, FULL_RING, fireBurstRaw, packPayload, turnDir, type Dir } from "./patterns";
+import {
+	BulletKind,
+	BulletPayload,
+	FULL_RING,
+	enemyBulletHitRadius,
+	fireBurstRaw,
+	packPayload,
+	turnDir,
+	type Dir,
+} from "./patterns";
+import { BULLET_KIND_COUNT } from "./payload";
 import { SimCtx } from "./ctx";
 import { nearestLivingPlayer, partySize, playerAt, playerBulletOwner } from "../party";
 import { scoreBulletVisit } from "../score/score";
+import { stepAffixes } from "../affixes/stepAffixes";
 import { damageBreakable, enemyBulletHitsBreakable, type BreakablesState } from "../breakables/breakables";
 import { breakableSlotAt } from "../breakables/cells";
 import { BreakableSource } from "../breakables/breakablesData";
@@ -271,6 +283,19 @@ const ENEMY_HIT_R = PLAYER_RADIUS + ENEMY_BULLET_RADIUS;
 /** (PLAYER_RADIUS + ENEMY_BULLET_RADIUS)^2, the enemy bullet vs player test (constants.json `derived`). */
 export const ENEMY_HIT_R2 = ENEMY_HIT_R * ENEMY_HIT_R;
 
+/**
+ * (PLAYER_RADIUS + enemyBulletHitRadius(kind))^2 per BulletKind, index = kind, built once (docs/ENEMY_VARIANTS.md
+ * EVD13). Every kind but GOO computes exactly ENEMY_HIT_R2 (same operands, same operations).
+ */
+const ENEMY_HIT_R2_BY_KIND: ReadonlyArray<number> = (() => {
+	const out: number[] = [];
+	for (let kind = 0; kind < BULLET_KIND_COUNT; kind++) {
+		const r = PLAYER_RADIUS + enemyBulletHitRadius(kind);
+		out.push(r * r);
+	}
+	return out;
+})();
+
 let hitBlocked: BulletBlocker | undefined;
 /** This tick's breakables with an intact piece (docs/DECOR.md D4), else undefined: no lookup per bullet. */
 let hitPieces: BreakablesState | undefined;
@@ -281,13 +306,16 @@ let grazeR2 = 0;
 
 function enemyBulletHit(i: number, pos: Readonly<Vec3>, payload: number): boolean {
 	if (hitBlocked !== undefined && hitBlocked(pos.x, pos.z)) return true;
-	if (hitPieces !== undefined && enemyBulletHitsBreakable(ctx.state, hitPieces, pos.x, pos.z)) return true;
+	const kind = BulletPayload.get(payload, "kind");
+	// Goo (docs/ENEMY_VARIANTS.md EVD14) ignores breakables and never grazes.
+	const goo = kind === BulletKind.GOO;
+	if (!goo && hitPieces !== undefined && enemyBulletHitsBreakable(ctx.state, hitPieces, pos.x, pos.z)) return true;
 	const p = ctx.state.player;
 	const dx = pos.x - p.x;
 	const dz = pos.z - p.z;
 	const d2 = dx * dx + dz * dz;
-	const inHit = d2 < ENEMY_HIT_R2;
-	if (grazeOn) scoreBulletVisit(ctx.state, ctx.state.combat.enemyBullets, i, payload, d2, inHit, grazeR2);
+	const inHit = d2 < ENEMY_HIT_R2_BY_KIND[kind];
+	if (grazeOn && !goo) scoreBulletVisit(ctx.state, ctx.state.combat.enemyBullets, i, payload, d2, inHit, grazeR2);
 	if (!inHit) return false;
 	// Consumed only if the hit landed: i-frames, post-hit invulnerability, death and 0-damage bullets pass through.
 	return ctx.hurtPlayer(BulletPayload.get(payload, "damage"), BulletPayload.get(payload, "source") - 1);
@@ -299,10 +327,14 @@ function enemyBulletHit(i: number, pos: Readonly<Vec3>, payload: number): boolea
  */
 function enemyBulletHitParty(i: number, pos: Readonly<Vec3>, payload: number): boolean {
 	if (hitBlocked !== undefined && hitBlocked(pos.x, pos.z)) return true;
-	if (hitPieces !== undefined && enemyBulletHitsBreakable(ctx.state, hitPieces, pos.x, pos.z)) return true;
+	const kind = BulletPayload.get(payload, "kind");
+	// Goo (docs/ENEMY_VARIANTS.md EVD14) ignores breakables and never grazes.
+	const goo = kind === BulletKind.GOO;
+	if (!goo && hitPieces !== undefined && enemyBulletHitsBreakable(ctx.state, hitPieces, pos.x, pos.z)) return true;
 	const state = ctx.state;
 	const n = partySize(state);
-	if (grazeOn) {
+	const hitR2 = ENEMY_HIT_R2_BY_KIND[kind];
+	if (grazeOn && !goo) {
 		const ti = nearestLivingPlayer(state, pos.x, pos.z);
 		const target = playerAt(state, ti);
 		const gx = pos.x - target.x;
@@ -314,7 +346,7 @@ function enemyBulletHitParty(i: number, pos: Readonly<Vec3>, payload: number): b
 			i,
 			payload,
 			g2,
-			g2 < ENEMY_HIT_R2,
+			g2 < hitR2,
 			runMods(state, ti).grazeR2,
 			target.dead !== 0,
 			ti,
@@ -325,7 +357,7 @@ function enemyBulletHitParty(i: number, pos: Readonly<Vec3>, payload: number): b
 		if (p.dead !== 0) continue;
 		const dx = pos.x - p.x;
 		const dz = pos.z - p.z;
-		if (dx * dx + dz * dz >= ENEMY_HIT_R2) continue;
+		if (dx * dx + dz * dz >= hitR2) continue;
 		if (ctx.hurtPlayerAt(k, BulletPayload.get(payload, "damage"), BulletPayload.get(payload, "source") - 1)) {
 			return true;
 		}
@@ -444,6 +476,7 @@ export function stepCombat(
 
 	// 2-4. Act.
 	stepActors(ctx);
+	if (state.affixes !== undefined) stepAffixes(ctx);
 	if (c.stressTarget > 0) stepStress(c);
 	if (party) stepPartyWeapons(state, inputs);
 	else stepWeapons(ctx);

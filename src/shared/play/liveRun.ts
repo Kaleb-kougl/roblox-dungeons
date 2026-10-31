@@ -66,12 +66,14 @@ import {
 	ComboEvents,
 	NearMissEvents,
 	RoomClearEvents,
+	VariantCueEvents,
 	newFrameAdvance,
 	type ComboFrameSource,
 	type FrameAdvance,
 	type FramePacer,
 	type NearMissFrameSource,
 	type RoomClearSource,
+	type VariantCueSource,
 } from "shared/view/fx";
 
 export interface LiveRunSetup {
@@ -144,6 +146,8 @@ export interface RunView {
 	readonly combo: ComboFrameSource;
 	/** The grazes and guard erases of the last frame's ticks, every player's (docs/GRAZE_PARRY.md GP2). */
 	readonly nearMiss: NearMissFrameSource;
+	/** The enemy-variant sound events of the last frame's ticks (docs/ENEMY_VARIANTS.md EV9 audio cues). */
+	readonly variantCues: VariantCueSource;
 	getAlpha(): number;
 }
 
@@ -291,6 +295,8 @@ export class LiveRun implements RunView {
 	readonly combo = new ComboEvents();
 	/** The grazes and guard erases of the ticks run by the last frame() (docs/GRAZE_PARRY.md GP2; reset every frame). */
 	readonly nearMiss = new NearMissEvents();
+	/** The enemy-variant sound events of the ticks run by the last frame() (docs/ENEMY_VARIANTS.md; reset every frame). */
+	readonly variantCues = new VariantCueEvents();
 	/** What the pacer made of the last unpaused frame (frozen, time scale); a plain pass-through without a pacer. */
 	readonly lastAdvance: FrameAdvance = newFrameAdvance();
 	/** Run totals for the HUD's post-run panel (the telemetry's kill / hit counts, read without finishing it). */
@@ -342,6 +348,7 @@ export class LiveRun implements RunView {
 		this.roomClears.reset();
 		this.combo.reset();
 		this.nearMiss.reset();
+		this.variantCues.reset();
 		this.ticksThisFrame = 0;
 		if (this.forfeitPending) {
 			this.forfeitPending = false;
@@ -423,6 +430,7 @@ export class LiveRun implements RunView {
 		this.roomClears.collect(state);
 		this.combo.collect(state);
 		this.nearMiss.collect(state);
+		this.variantCues.collect(state);
 		if (this.victoryTick === undefined && e.bossDefeated !== 0) this.victoryTick = state.tick;
 		if (this.deathTick === undefined && (e.playerDied !== 0 || state.player.dead !== 0)) {
 			this.deathTick = state.tick;

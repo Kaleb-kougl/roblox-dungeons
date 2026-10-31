@@ -9,8 +9,8 @@
  * archetypes); slots 3..7 are each archetype's own.
  */
 
-import { SIM_DT } from "../../../units";
 import type { SimCtx } from "../../ctx";
+import { walkStep } from "../actorMods";
 import { toPlayer, walkToward } from "../helpers";
 import { AiState, NO_KIND, type ActorState, type ArchetypeData } from "../types";
 
@@ -46,6 +46,13 @@ const WATCH_RANGE2_FACTOR = 2.25;
  *   shockwave   a flat ring on the floor expanding from the actor while aiState === state:
  *               age = startTicks - aiTicks ticks, radius = radius + speed * age / 60, shown for showTicks ticks,
  *               with a gap of gapHalfAngle radians either side of the unit direction (v[gapX], v[gapZ]).
+ *   ring        (Roblox port, docs/ENEMY_VARIANTS.md) a flat circle on the floor while aiState === state, centred on
+ *               the world point (v[xSlot], v[zSlot]) (both set, e.g. an imp's blink destination) or on the actor itself
+ *               (both absent, e.g. a summoner's casting circle), `radius` world units; with fillTicks it fills from
+ *               empty to full as aiTicks counts down from fillTicks to 0 (the telegraph's own countdown), else it is
+ *               drawn full.
+ *   attack      (Roblox port, on aimLine and ring) when set, the hint is drawn only while ActorState.attack equals it:
+ *               an archetype with two telegraphs (the imp's blink ring, then its landing aim) shows each with its own.
  */
 export interface ActorFxHints {
 	readonly aimLine?: {
@@ -54,6 +61,7 @@ export interface ActorFxHints {
 		readonly lenSlot?: number;
 		readonly length?: number;
 		readonly boldTicks: number;
+		readonly attack?: number;
 	};
 	readonly shockwave?: {
 		readonly state: number;
@@ -64,6 +72,14 @@ export interface ActorFxHints {
 		readonly gapX: number;
 		readonly gapZ: number;
 		readonly gapHalfAngle: number;
+	};
+	readonly ring?: {
+		readonly state: number;
+		readonly xSlot?: number;
+		readonly zSlot?: number;
+		readonly radius: number;
+		readonly fillTicks?: number;
+		readonly attack?: number;
 	};
 }
 
@@ -170,7 +186,7 @@ export function stepCalm(ctx: SimCtx, a: ActorState): boolean {
 			engage(a);
 			return false;
 		}
-		const left = walkToward(ctx, a, a.v[V_HOME_X], a.v[V_HOME_Z], d.speed * SIM_DT, STEER);
+		const left = walkToward(ctx, a, a.v[V_HOME_X], a.v[V_HOME_Z], walkStep(ctx, a), STEER);
 		if (left <= HOME_EPS) {
 			a.aiState = AiState.IDLE;
 			a.aiTicks = 0;

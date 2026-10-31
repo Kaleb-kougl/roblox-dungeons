@@ -95,16 +95,19 @@ describe("endless floor derivation", () => {
 		expect([encounterCost("swarmer"), encounterCost("sniper"), encounterCost("bruiser")]).toEqual([1, 2, 3]);
 		expect(encounterCost("turret.caster")).toBe(2);
 		expect(encounterCost("nope")).toBe(DEFAULT_ENCOUNTER_COST);
-		expect(ENCOUNTER_COST.size()).toBe(6);
+		// docs/ENEMY_VARIANTS.md EV1: the new room enemies (slime.small is never bought: the default).
+		expect([encounterCost("imp"), encounterCost("slime"), encounterCost("summoner")]).toEqual([2, 3, 3]);
+		expect(encounterCost("slime.small")).toBe(DEFAULT_ENCOUNTER_COST);
+		expect(ENCOUNTER_COST.size()).toBe(9);
 	});
 });
 
-describe("spendEncounterBudget", () => {
+describe("spendEncounterBudget (floor 1: the original three kinds)", () => {
 	it("is deterministic from the rng and never spends more than the budget or the cap", () => {
 		for (let seed = 1; seed <= 200; seed++) {
 			const budget = 6 + (seed % 40) * 1.7;
-			const a = spendEncounterBudget(new EncounterRng(seed), budget);
-			const b = spendEncounterBudget(new EncounterRng(seed), budget);
+			const a = spendEncounterBudget(new EncounterRng(seed), budget, 1);
+			const b = spendEncounterBudget(new EncounterRng(seed), budget, 1);
 			expect(a).toEqual(b);
 			expect(costOf(a) <= budget).toBe(true);
 			expect(a.size() <= ENDLESS_ROOM_ACTOR_CAP).toBe(true);
@@ -114,10 +117,10 @@ describe("spendEncounterBudget", () => {
 	});
 
 	it("a budget the cap cannot hold in cheap enemies buys dear ones", () => {
-		const big = spendEncounterBudget(new EncounterRng(7), 3 * ENDLESS_ROOM_ACTOR_CAP);
+		const big = spendEncounterBudget(new EncounterRng(7), 3 * ENDLESS_ROOM_ACTOR_CAP, 1);
 		expect(big.size()).toBe(ENDLESS_ROOM_ACTOR_CAP);
 		for (const k of big) expect(k).toBe("bruiser");
-		expect(spendEncounterBudget(new EncounterRng(7), 0.5)).toEqual([]);
+		expect(spendEncounterBudget(new EncounterRng(7), 0.5, 1)).toEqual([]);
 	});
 });
 

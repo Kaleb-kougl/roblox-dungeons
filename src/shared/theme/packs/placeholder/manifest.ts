@@ -10,7 +10,8 @@
  * Demon Lord, boss.demonlord, of docs/BOSS_DEMONLORD.md; the boost drops of docs/BOOSTS.md B5: gems, colour roles,
  * strings and silent sounds; the room-edge colour roles of docs/ROOM_EDGES.md RE4; the minimap colour roles and
  * strings of docs/MINIMAP.md M6; the combo's colour roles, strings and silent sounds of docs/COMBO.md CB3; the near
- * misses' colour roles, strings and silent sounds of docs/GRAZE_PARRY.md GP3).
+ * misses' colour roles, strings and silent sounds of docs/GRAZE_PARRY.md GP3; the enemy variants' Imp and Ooze,
+ * goo puddle, affix and goo colour roles, strings and silent sounds of docs/ENEMY_VARIANTS.md EV1).
  *
  * To replace art or audio later, change an entry's kind and paste the uploaded asset ID, e.g.
  *   "enemy.sniper": { kind: "spritesheet", assetId: "rbxassetid://<n>", frameW: 16, frameH: 16, pivot: { x: 8, y: 15 }, animations: { ... } },
@@ -61,6 +62,10 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		"enemy.caster": "#a05ab8",
 		"enemy.summoner": "#5a8a4a",
 		"enemy.dummy": "#9a7b4f",
+		// Roblox port (docs/ENEMY_VARIANTS.md EV1): the Imp, a dusty rose, and the Ooze, a steel teal: >= 36 CIE76 from
+		// every other enemy colour and >= 47 from the pink enemy bullet, its outline, the telegraph and the outline red.
+		"enemy.imp": "#e098b8",
+		"enemy.slime": "#3080a0",
 		boss: "#d9c24a",
 		telegraph: "#ff8a3d",
 		// Roblox port (enemy outline plan E1): hostile red, >= 3.4:1 on every biome floor and wall, CIE76 63 from
@@ -142,6 +147,20 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		"boon.common": "#d7d0c0",
 		"boon.rare": "#f46669",
 		"boon.legendary": "#f1bd44",
+		// Roblox port (docs/ENEMY_VARIANTS.md EV1, EVD5): the Ooze's goo puddles, a hot magenta beside the enemy bullet's
+		// pink (a puddle hurts): >= 4.1:1 on every biome floor and >= 69 CIE76 from every decor fx and boost colour
+		// (nearest: boost.aegis), so it never reads as decor or a pickup (gooReport). It stays 50 CIE76 from the bullet
+		// itself, so a decor or boost colour planted in the bullet's family fails only its own rule.
+		enemyGoo: "#f000f0",
+		// Roblox port (docs/ENEMY_VARIANTS.md EV1, EVD12): the affix rings (hulking gold, swift jade, shielded azure,
+		// vengeful violet) and the shield segment's ice white. Each is >= 4.0:1 on every biome floor, >= 48 CIE76 from
+		// the pink enemy bullet, its outline, the telegraph orange and the outline red (nearest: hulking vs telegraph),
+		// and >= 48 from each other (nearest: shielded vs enemyShield); vengeful is 52 from the goo magenta (affixReport).
+		"affix.hulking": "#ffe470",
+		"affix.swift": "#3ce0a0",
+		"affix.shielded": "#00a0f0",
+		"affix.vengeful": "#9070f0",
+		enemyShield: "#d8ecff",
 	},
 	biomes: {
 		"biome.1": {
@@ -188,6 +207,9 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		"enemy.caster": PLACEHOLDER,
 		"enemy.summoner": PLACEHOLDER,
 		"enemy.dummy": PLACEHOLDER,
+		// Roblox port (docs/ENEMY_VARIANTS.md EV1): the Imp (a small cone) and the Ooze (a low dome).
+		"enemy.imp": PLACEHOLDER,
+		"enemy.slime": PLACEHOLDER,
 		"boss.1": PLACEHOLDER,
 		"boss.2": PLACEHOLDER,
 		"boss.3": PLACEHOLDER,
@@ -201,6 +223,8 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		"bullet.enemy.needle": PLACEHOLDER,
 		"bullet.player.basic": PLACEHOLDER,
 		"bullet.player.heavy": PLACEHOLDER,
+		// Roblox port (docs/ENEMY_VARIANTS.md EVD5): the Ooze's goo puddle, a flat disc on the floor.
+		"bullet.enemy.goo": PLACEHOLDER,
 		"tile.biome.1.floor": PLACEHOLDER,
 		"tile.biome.1.wall": PLACEHOLDER,
 		"tile.biome.2.floor": PLACEHOLDER,
@@ -298,6 +322,13 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		"sfx.draft.charge": SILENT,
 		"sfx.draft.legendary": SILENT,
 		"sfx.draft.pick": SILENT,
+		// Roblox port (docs/ENEMY_VARIANTS.md EV1): an Imp's blink, a Summoner's call, an Ooze's split, a shield breaking,
+		// a Vengeful corpse's ring; silent until the vale pack's clips are built and uploaded (EV11)
+		"sfx.enemy.blink": SILENT,
+		"sfx.enemy.summon": SILENT,
+		"sfx.enemy.split": SILENT,
+		"sfx.affix.shieldbreak": SILENT,
+		"sfx.affix.vengeful": SILENT,
 		"music.menu": SILENT,
 		"music.biome.1": SILENT,
 		"music.biome.2": SILENT,
@@ -330,6 +361,8 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		"enemy.caster.name": "Caster",
 		"enemy.summoner.name": "Summoner",
 		"enemy.dummy.name": "Training Dummy",
+		"enemy.imp.name": "Imp",
+		"enemy.slime.name": "Ooze",
 		"breakable.barrel.name": "Barrel",
 		"breakable.crate.name": "Crate",
 		"boss.1.name": "Act I Boss",
@@ -899,5 +932,17 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		// --- fx.parry.* (docs/GRAZE_PARRY.md GP3: the parry flash and its count from 3 erases, "PARRY! x5") ------
 		"fx.parry.text": "PARRY!",
 		"fx.parry.count": "x{n}",
+		// --- affix.* / bestiary.* (docs/ENEMY_VARIANTS.md EV1: the affix name chips and the first-sighting toasts) -----
+		"affix.hulking.name": "Hulking",
+		"affix.swift.name": "Swift",
+		"affix.shielded.name": "Shielded",
+		"affix.vengeful.name": "Vengeful",
+		"bestiary.imp": "Imp: watch the ring where it lands",
+		"bestiary.slime": "Ooze: its goo hurts, and it splits when it dies",
+		"bestiary.summoner": "Summoner: kill it and its summons wither",
+		"bestiary.affix.hulking": "Hulking: bigger, tougher and slower",
+		"bestiary.affix.swift": "Swift: moves and attacks faster, same warnings",
+		"bestiary.affix.shielded": "Shielded: its shield refills if you let it rest",
+		"bestiary.affix.vengeful": "Vengeful: bursts into a ring when it dies",
 	},
 };

@@ -29,11 +29,13 @@ const FULL_RING_THRESHOLD = TAU - 1e-9;
 
 /**
  * Every port-only burst shape. Spreads are written with the same expression (and constants) as the archetype's
- * BurstSpec so the float is the same one: boss/demonlord.ts CLEAVE_SPREAD = 2.4, HELLFIRE_GAP = 1.0 (FULL_RING = 2 PI).
+ * BurstSpec so the float is the same one: boss/demonlord.ts CLEAVE_SPREAD = 2.4, HELLFIRE_GAP = 1.0 (FULL_RING = 2 PI);
+ * archetypes/imp.ts IMP_FAN_SPREAD = 0.7 (docs/ENEMY_VARIANTS.md EV2).
  */
 export const PORT_ARC_SOURCES: ReadonlyArray<PortArcSource> = [
 	{ count: 7, spread: 2.4, source: "boss/demonlord.ts CLEAVE (and DOUBLE_CLEAVE's two arcs)" },
 	{ count: 8, spread: TAU / 3 - 1.0, source: "boss/demonlord.ts HELLFIRE_ARC (three per ring)" },
+	{ count: 5, spread: 0.7, source: "archetypes/imp.ts FAN (IMP_FAN_SPREAD)" },
 ];
 
 /** gen.arc's angle of bullet `i` of (count, spread) at heading 0 (the formula in ./projectilePatterns.ts). */

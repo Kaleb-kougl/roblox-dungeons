@@ -250,6 +250,7 @@ export const SWORD = registerWeapon<SwordData>({
 				runMods(ctx.state, ctx.playerIndex).mirror ? slot.weapon + 1 : undefined,
 				undefined,
 				sink,
+				true, // the guard erases goo too (docs/ENEMY_VARIANTS.md EVD14), outside bulletsDeleted: no points
 			);
 			// M2 scoring (opt-in): guard cancels, told apart from swing deletes. The tutorial's block lesson: a block
 			// releases its room's held enemies (tutorial.ts guard lock).

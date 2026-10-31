@@ -127,9 +127,24 @@
 			"bytes": 83084
 		},
 		{
+			"path": "ninja-adventure/Audio/Sounds/Elemental/Bubble2.wav",
+			"sha256": "078b0a6f9d82b0a1c5a1f9d8ec8293e77433da71e8af82b08dc0377d41556ad3",
+			"bytes": 75404
+		},
+		{
+			"path": "ninja-adventure/Audio/Sounds/Elemental/Explosion3.wav",
+			"sha256": "02b967e031f286686255db39446c60d641380ab26dbb81a2ee4dd760e566ae16",
+			"bytes": 58928
+		},
+		{
 			"path": "ninja-adventure/Audio/Sounds/Elemental/Explosion6.wav",
 			"sha256": "01a254a81b96eefb2c56c8927c759365fb397382231c09645083c3fe9d689cd8",
 			"bytes": 175604
+		},
+		{
+			"path": "ninja-adventure/Audio/Sounds/Elemental/Fire3.wav",
+			"sha256": "f9764ebfd7109235ac413512f706dd1d6a2cd2c0df57c07daf36f971d6e843fa",
+			"bytes": 114944
 		},
 		{
 			"path": "ninja-adventure/Audio/Sounds/Elemental/Fireball.wav",
@@ -232,6 +247,11 @@
 			"bytes": 114580
 		},
 		{
+			"path": "ninja-adventure/Audio/Sounds/Magic & Skill/Spirit.wav",
+			"sha256": "1516f1532307b19f7c0bfeb49091b53f084b531a9f135e1c5fbf7e61e7a37063",
+			"bytes": 264810
+		},
+		{
 			"path": "ninja-adventure/Audio/Sounds/Magic & Skill/Strange.wav",
 			"sha256": "9f0691117410272ce8d6894f3347e4e5764f46968539a8a61a339c741568cc9f",
 			"bytes": 582720
@@ -315,6 +335,11 @@
 			"path": "ninja-adventure/Audio/Sounds/Whoosh & Slash/Sword2.wav",
 			"sha256": "779c2e934b7dd714ff068fd5c371e6848d4a1d940c6936ed42368a13df352daf",
 			"bytes": 37772
+		},
+		{
+			"path": "ninja-adventure/Audio/Sounds/Whoosh & Slash/Whoosh2.wav",
+			"sha256": "7ba3cc15a17cf9dd7e2da8dec4d5f8d5e73a7d5e316c213a52731f71c484abec",
+			"bytes": 78332
 		},
 		{
 			"path": "pixabay/dragon-studio-glass-breaking-504033.mp3",

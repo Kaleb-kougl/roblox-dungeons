@@ -12,6 +12,9 @@
  *                 switch command, SpectateTracker (tunables: SPECTATE in spectateConfig.ts)
  *   floorTexture.ts  world-anchored Texture offsets so merged floor slabs show one continuous pattern
  *   sprites.ts    sprite renderer logic: world facing -> screen facing, animation + frame from sim state, billboard
+ *   variants.ts   enemy variants on screen (docs/ENEMY_VARIANTS.md EV9): affix reads / looks (ring, chip, shield row,
+ *                 shield flash, Hulking scale, elite), the Vengeful corpse, the goo pool split and decal look, imp
+ *                 landings (BlinkWatch), the summoner's ring filter (tunables: variantsConfig.ts)
  *   spriteCell.ts per-sheet cells (docs/DEMON_ART.md DD4): the billboard layout of one sheet's own cell and pivot
  *   breakables.ts breakable barrels / crates on screen: the frame diff, hit blink / shake, placement, debris, aim clip
  *                 (tunables: BREAKABLE_VIEW in breakablesConfig.ts)
@@ -50,6 +53,8 @@ export * from "./party";
 export * from "./spectateConfig";
 export * from "./spectate";
 export * from "./sprites";
+export * from "./variantsConfig";
+export * from "./variants";
 export * from "./spriteCell";
 export * from "./floorTexture";
 export * from "./breakablesConfig";

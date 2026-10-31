@@ -155,6 +155,7 @@ function bench(players: number, wholeFloor: boolean): BenchResult {
 	}
 	expect(s.endless!.roomsEntered[room]).toBe(1);
 	const before = countActors(s.combat).present;
+	const startIds = s.combat.actors.map((a) => (a.kind !== NO_KIND && a.alive !== 0 ? a.id : -1));
 	const times: number[] = [];
 	let actors = 0;
 	let enemyBullets = 0;
@@ -181,7 +182,14 @@ function bench(players: number, wholeFloor: boolean): BenchResult {
 	const mean = times.reduce((a, b) => a + b, 0) / times.size();
 	times.sort();
 	const hashUs = (hashTime / hashes) * 1e6;
-	expect(countActors(s.combat).present).toBe(before); // nobody killed: the fight stayed at full size
+	// Nobody killed: every actor alive at the start still is, so the fight stayed at full size. The count itself may
+	// grow: a summoner (docs/ENEMY_VARIANTS.md EV4, in the room pool from floor 6 since EV5) calls swarmers mid-fight.
+	for (let i = 0; i < startIds.size(); i++) {
+		if (startIds[i] < 0) continue;
+		const a = s.combat.actors[i];
+		expect([i, a.id, a.alive !== 0]).toEqual([i, startIds[i], true]);
+	}
+	expect(countActors(s.combat).present >= before).toBe(true);
 	return {
 		stepUs: mean * 1e6,
 		p99Us: times[math.min(times.size() - 1, math.floor(times.size() * 0.99))] * 1e6,

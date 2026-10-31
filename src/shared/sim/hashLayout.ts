@@ -23,6 +23,7 @@ import { partyHashNames, writePartyHash } from "./party";
 import { tutorialHashNames, writeTutorialHash } from "./tutorial/tutorial";
 import { breakablesHashNames, writeBreakablesHash } from "./breakables/breakables";
 import { dropsHashNames, writeDropsHash } from "./drops/drops";
+import { affixesHashNames, writeAffixesHash } from "./affixes/affixes";
 
 /** The fixtures' subsystem groups, in hash order. */
 export const HASH_SUBSYSTEMS = ["core", "combatHeader", "actors", "weapons", "enemyBullets", "playerBullets"] as const;
@@ -38,7 +39,9 @@ export type HashSubsystem = (typeof HASH_SUBSYSTEMS)[number];
  *   breakables  breakable barrels and crates (docs/DECOR.md D4: per piece kind, cell, hp, broken tick), when
  *            state.breakables exists
  *   drops    boost drops (docs/BOOSTS.md: the drop stream, pity, ground slots, guards, boost timers, Aegis pips), when
- *            state.drops exists; the LAST group
+ *            state.drops exists
+ *   affixes  elite affixes (docs/ENEMY_VARIANTS.md EV7: per actor slot affix, actorId, shield, Vengeful timer), when
+ *            state.affixes exists; the LAST group
  */
 export const ENDLESS_HASH_SUBSYSTEM = "endless";
 export const SCORE_SUBSYSTEM = "score";
@@ -47,6 +50,7 @@ export const PARTY_SUBSYSTEM = "party";
 export const TUTORIAL_SUBSYSTEM = "tutorial";
 export const BREAKABLES_SUBSYSTEM = "breakables";
 export const DROPS_SUBSYSTEM = "drops";
+export const AFFIXES_SUBSYSTEM = "affixes";
 /** Every group name a layout can have. */
 export type HashGroupName =
 	| HashSubsystem
@@ -56,7 +60,8 @@ export type HashGroupName =
 	| typeof PARTY_SUBSYSTEM
 	| typeof TUTORIAL_SUBSYSTEM
 	| typeof BREAKABLES_SUBSYSTEM
-	| typeof DROPS_SUBSYSTEM;
+	| typeof DROPS_SUBSYSTEM
+	| typeof AFFIXES_SUBSYSTEM;
 
 export interface HashGroup {
 	readonly name: HashGroupName;
@@ -167,6 +172,13 @@ export function hashLayout(state: Readonly<SimState>, withNames = false): HashLa
 		writeDropsHash(drops, values);
 		if (withNames) dropsHashNames(drops, names);
 		close(DROPS_SUBSYSTEM);
+	}
+
+	const affixes = state.affixes;
+	if (affixes !== undefined) {
+		writeAffixesHash(affixes, values);
+		if (withNames) affixesHashNames(affixes, names);
+		close(AFFIXES_SUBSYSTEM);
 	}
 
 	return { values, names, groups };

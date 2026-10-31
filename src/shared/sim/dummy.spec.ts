@@ -58,7 +58,15 @@ describe("dummy: registry", () => {
 		expect(DUMMY.band).toBe(PORT_BAND_TUTORIAL);
 		expect([...webArchetypeIds()]).toEqual(WEB_TABLE);
 		// The Demon Lord (band PORT_BAND_BOSSES) numbers after the dummy.
-		expect([...archetypeIds()]).toEqual([...WEB_TABLE, DUMMY_KIND, BOSS_DEMONLORD_ID]);
+		expect([...archetypeIds()]).toEqual([
+			...WEB_TABLE,
+			DUMMY_KIND,
+			BOSS_DEMONLORD_ID,
+			"imp",
+			"slime",
+			"slime.small",
+			"summoner",
+		]); // band-3 room enemies (docs/ENEMY_VARIANTS.md)
 		for (let i = 0; i < WEB_TABLE.size(); i++)
 			expect([WEB_TABLE[i], archetypeIndex(WEB_TABLE[i])]).toEqual([WEB_TABLE[i], i]);
 		expect(archetypeIndex(DUMMY_KIND)).toBe(WEB_TABLE.size());

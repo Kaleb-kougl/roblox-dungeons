@@ -8,6 +8,9 @@ import {
 	CLEAVE,
 	FULL_RING,
 	HELLFIRE_ARC,
+	IMP,
+	IMP_FAN_COUNT,
+	IMP_FAN_SPREAD,
 	PORT_ARC_SHAPES,
 	PORT_ARC_SOURCES,
 	arcAngle,
@@ -63,5 +66,18 @@ describe("port arc shapes (combat/arcTablePort.ts)", () => {
 		expect(gen.arc(CLEAVE.count, CLEAVE.spread, 2).size()).toBe(CLEAVE.count);
 		// A near-miss still misses.
 		expect(() => gen.arc(CLEAVE.count, CLEAVE.spread + 1e-12)).toThrow("arc table miss");
+	});
+
+	it("the imp's fan (5 @ 0.7 rad, docs/ENEMY_VARIANTS.md EV2) resolves to its port shape and fires", () => {
+		const fan = IMP.data.fan;
+		expect([fan.count, float64Hex(fan.spread)]).toEqual([IMP_FAN_COUNT, float64Hex(IMP_FAN_SPREAD)]);
+		expect([fan.count, float64Hex(fan.spread)]).toEqual([5, float64Hex(0.7)]);
+		expect(arcTrig(fan.count, fan.spread)).toBe(PORT_ARC_SHAPES[2]);
+		expect(gen.arc(fan.count, fan.spread, 2).size()).toBe(fan.count);
+		// The middle bullet flies straight down the aim; the outer two are half the spread either side.
+		const s = PORT_ARC_SHAPES[2];
+		expect([float64Hex(s.sin[2]), float64Hex(s.cos[2])]).toEqual([float64Hex(0), float64Hex(1)]);
+		expect(s.sin[0]).toBeCloseTo(math.sin(-IMP_FAN_SPREAD / 2), 15);
+		expect(() => gen.arc(fan.count, fan.spread + 1e-12)).toThrow("arc table miss");
 	});
 });

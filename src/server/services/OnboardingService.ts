@@ -4,6 +4,7 @@ import { HttpService, Players, RunService, Workspace } from "@rbxts/services";
 import { serverLogger } from "server/log";
 import { Events } from "server/network";
 import {
+	BESTIARY_SEEN_RATE,
 	ONBOARDING_AUTOSAVE_SECONDS,
 	ONBOARDING_CODEC,
 	ONBOARDING_DATASTORE_NAME,
@@ -15,11 +16,14 @@ import {
 	TutorialFunnelTracker,
 	emptyOnboardingDoc,
 	finishedOnboardingDoc,
+	isSightingId,
 	isTutorialOutcome,
 	isTutorialStepNumber,
 	onboardingStatusOf,
+	seenOf,
 	tutorialFinishEvents,
 	tutorialStepEvent,
+	withSeenId,
 	type OnboardingDoc,
 	type TutorialOutcome,
 } from "shared/onboarding";
@@ -57,9 +61,18 @@ const SHUTDOWN_POLL_SECONDS = 0.1;
  * Studio only: Workspace attribute ONBOARDING_RESET_ATTRIBUTE (`KV_ResetOnboarding`) = true resets a joining
  * player's loaded doc to empty (saved like any change), so every Studio join is a first join.
  *
+ * First sightings (docs/ENEMY_VARIANTS.md EV12): the doc's optional `seen` list (shared/onboarding sightings.ts,
+ * under doc version 1). `onboardingStatus` carries it; `bestiarySeen(id)` adds a known id (anything else is ignored;
+ * an id already seen changes nothing, so it is idempotent and writes nothing), through the same cache as every
+ * change (saved when dirty: autosave, leave, shutdown), never after a FAILED join load (that would overwrite the
+ * unknown stored doc, tutorial state included). Updates are merge-safe: a finish keeps `seen` (finishedOnboardingDoc
+ * with the cached doc's seenOf) and a sighting keeps the tutorial fields (withSeenId), each read from the cache right
+ * before its set with no yield in between.
+ *
  * Remotes are re-validated (types, step range; a step's funnel name comes from the shared step list, never from the
- * client) and rate limited per player
- * (ONBOARDING_REQUEST_RATE for request / started, TUTORIAL_FINISH_RATE for finished, TUTORIAL_STEP_RATE for steps); a
+ * client; a sighting id against SIGHTING_IDS) and rate limited per player
+ * (ONBOARDING_REQUEST_RATE for request / started, TUTORIAL_FINISH_RATE for finished, TUTORIAL_STEP_RATE for steps,
+ * BESTIARY_SEEN_RATE for sightings); a
  * rate-limited request or finish still answers with the cached status when loaded, and a rate-limited finish still
  * closes the open attempt (no telemetry, nothing written). Races as in SettingsService: the join load and
  * an early request share one read, and a player who left while a handler yielded is dropped, not cached.
@@ -79,6 +92,10 @@ export class OnboardingService implements OnStart {
 	private readonly finishLimiter = new SlidingWindowLimiter<Player>(
 		TUTORIAL_FINISH_RATE.count,
 		TUTORIAL_FINISH_RATE.windowSeconds,
+	);
+	private readonly seenLimiter = new SlidingWindowLimiter<Player>(
+		BESTIARY_SEEN_RATE.count,
+		BESTIARY_SEEN_RATE.windowSeconds,
 	);
 	/** RunSessionService: true while the player is in a party run that is not concluded (setPartyRunCheck). */
 	private inPartyRun: (player: Player) => boolean = () => false;
@@ -149,6 +166,16 @@ export class OnboardingService implements OnStart {
 					return;
 				}
 				this.finish(player, outcome);
+			}),
+		);
+		this.janitor.Add(
+			Events.bestiarySeen.connect((player, id) => {
+				if (player.Parent === undefined || !this.allow(this.seenLimiter, player, "bestiarySeen")) return;
+				if (!isSightingId(id)) {
+					log.warn("BAD_SIGHTING", `${player.UserId}: bestiarySeen dropped`);
+					return;
+				}
+				this.markSeen(player, id);
 			}),
 		);
 
@@ -258,9 +285,24 @@ export class OnboardingService implements OnStart {
 		}
 		if (this.loadFor(player) === undefined) return;
 		const key = playerDataKey(player.UserId);
-		this.cache.set(key, finishedOnboardingDoc(outcome, os.time()));
+		// Merge: the sightings seen so far stay (read right before the set, no yield in between).
+		this.cache.set(key, finishedOnboardingDoc(outcome, os.time(), seenOf(this.cache.get(key))));
 		log.info("TUTORIAL_FINISHED", `${player.UserId}: ${outcome}`);
 		this.send(player);
+	}
+
+	/**
+	 * Records first sighting `id` (a known id): the cached doc plus `id`, every tutorial field kept. Nothing when it was
+	 * seen already, the player left, or the join load failed (the stored doc is unknown: never overwrite it).
+	 */
+	private markSeen(player: Player, id: string): void {
+		if (this.loadFor(player) === undefined) return;
+		const key = playerDataKey(player.UserId);
+		if (this.cache.loadFailed(key)) return;
+		const doc = this.cache.get(key);
+		if (doc === undefined) return;
+		const updated = withSeenId(doc, id);
+		if (updated !== doc && this.cache.set(key, updated)) log.info("SIGHTING", `${player.UserId}: ${id}`);
 	}
 
 	/** Answers a dropped request with the cached status, if loaded. */
@@ -279,6 +321,7 @@ export class OnboardingService implements OnStart {
 		this.requestLimiter.forget(player);
 		this.stepLimiter.forget(player);
 		this.finishLimiter.forget(player);
+		this.seenLimiter.forget(player);
 		this.trackers.delete(player);
 		this.resetPending.delete(player);
 		const key = playerDataKey(player.UserId);
