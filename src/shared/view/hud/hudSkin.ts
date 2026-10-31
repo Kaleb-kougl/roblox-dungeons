@@ -59,10 +59,11 @@ export const HUD_SKIN = {
 	slotRefPerArt: UI_ART.hudRefPerArt,
 	/**
 	 * The corner minimap's frame (UA11): true = the corner Panel's hud skin, with the map host shrunk by the frame's
-	 * border so the panel keeps MINIMAP_PANEL's footprint; false = the flat panel (skin "none"), the escape hatch if
-	 * the turned map image is seen painting over the frame's border in Studio (UA12).
+	 * border so the panel keeps MINIMAP_PANEL's footprint; false = the flat panel (skin "none"). Off until the Studio
+	 * check (UA12): the map image is turned 45 degrees and only the corner CanvasGroup clips it, at the panel's OUTER
+	 * edge, so it most likely paints over the frame's border; framing it needs its own clip inside the border first.
 	 */
-	minimapFramed: true,
+	minimapFramed: false,
 	/** Reference px per art px (before snapping) of the full map's frame: the in-run density. */
 	fullMapRefPerArt: UI_ART.hudRefPerArt,
 	touch: {

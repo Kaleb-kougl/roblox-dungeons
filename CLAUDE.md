@@ -313,6 +313,19 @@ Decision log (deviations from `PLAN.md`):
   `THIRD_PARTY_NOTICES.md`) by new `images` options (`rect`, `cutout`, `slice`, `centre: "flat"`, `flatBoxes`, `mask`).
   `contract.luau` / `validate.luau` are at 196 / 200 top-level locals with grazes and parries merged. Debug `KV_DraftRevealDebug`. No setting. Studio check, art upload and
   sounds pending.
+- **UI art (docs/UI_ART.md).** Presentation only (no sim, dungeon, lockstep, hash, replay or fixture change). The UI
+  skins itself from the ToffeeCraft Horror UI sheet: 12 optional sliced ids (`uiSkinIds()`: panels menu / hud / tall,
+  buttons, option bars, pill bar track / fill, slots) as their own PNGs, 27 optional icons (`uiIconIds()`: hearts,
+  flasks, candle, chips, focus corner, ornament, divider, touch rings, glyphs) packed by `art:build` into ONE
+  `ui-icons.png` (`uiIcons` in art/atlases.json, generated `packs/vale/uiIconLayout.ts`, all icons switch on together);
+  ui images may carry a `rect` (not with `slice`). Pure logic in shared/view/hud `skin.ts` / `skinConfig.ts` /
+  `hudSkin.ts` (`UI_ART`: menus 2, in-run frames 1 reference px per art px, snapped to whole screen px; padding from the
+  measured `contentInsets`, not the slice insets) and shared/view/menu `skin.ts`; client primitives `SlicedImage`
+  (`snap`), `ArtImage`, `FocusCorners`, `Panel` `skin`, `MenuButton` `variant` / `icon`. Without the art every screen
+  is today's flat UI except two deliberate sizes: `HUD_VIEW.heartSize` 22 -> 24, `bossBarHeight` 12 -> 16. The corner
+  minimap stays flat (`HUD_SKIN.minimapFramed` false: its turned map would paint over a frame). `contract.luau` /
+  `validate.luau` are at 198 / 195 top-level locals (counted on out/). Spike `KV_UiArtSpike`. Upload and Studio check
+  pending.
 
 ## Commands
 
