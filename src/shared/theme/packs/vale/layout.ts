@@ -268,6 +268,22 @@ export const VALE_SPRITE_LAYOUTS: Record<string, ValeSpriteLayout> = {
 			move: { sheet: 0, start: 0, frames: 4, fps: 6, loop: true },
 		},
 	},
+	"enemy.slime": {
+		frameW: 70,
+		frameH: 52,
+		pivot: { x: 35, y: 36 },
+		pixelsPerTile: 23.4,
+		resample: "Default",
+		facings: { count: 16, zeroDeg: 0, ccw: true },
+		sheets: [{ file: "slime-body.png", w: 980, h: 988, outlineFile: "slime-body-outline.png" }],
+		animations: {
+			attack: { sheet: 0, start: 16, frames: 8, fps: 10, loop: true },
+			death: { sheet: 0, start: 144, frames: 7, fps: 10, loop: false },
+			hit: { sheet: 0, start: 0, frames: 1, fps: 1, loop: false },
+			idle: { sheet: 0, start: 0, frames: 1, fps: 1, loop: true },
+			move: { sheet: 0, start: 16, frames: 8, fps: 10, loop: true },
+		},
+	},
 	"enemy.sniper": {
 		frameW: 126,
 		frameH: 93,
