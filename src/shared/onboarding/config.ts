@@ -8,7 +8,11 @@ import { TUTORIAL_STEP_COUNT } from "shared/tutorial";
  */
 export const ONBOARDING_TUTORIAL_VERSION = 1;
 
-/** Bump when the stored document's shape changes incompatibly (old documents then read as empty). */
+/**
+ * Bump when the stored document's shape changes incompatibly (old documents then read as empty, which sends every
+ * existing player through the first-run tutorial again). An optional field needs no bump: the first sightings' `seen`
+ * (docs/ENEMY_VARIANTS.md EV12, plan change 9) is one, under version 1.
+ */
 export const ONBOARDING_DOC_VERSION = 1;
 
 /** DataStore holding one OnboardingDoc per player, keyed by shared/settings `playerDataKey(userId)`. */

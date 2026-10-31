@@ -317,6 +317,13 @@ export interface ClientToServerEvents {
 	tutorialStep(step: number): void;
 	/** Onboarding: the tutorial was completed or skipped. Recorded as done; answered with `onboardingStatus`. */
 	tutorialFinished(outcome: TutorialOutcome): void;
+	/**
+	 * First sightings (docs/ENEMY_VARIANTS.md EV12): this client showed the first-sighting toast for `id` (a
+	 * shared/onboarding SIGHTING_IDS entry). Recorded in this player's onboarding doc: unknown ids are ignored, a known
+	 * one is idempotent, rate limited (BESTIARY_SEEN_RATE), never written after a failed join load. No reply (the next
+	 * `onboardingStatus` carries it in `seen`).
+	 */
+	bestiarySeen(id: string): void;
 }
 
 export interface ServerToClientEvents {
