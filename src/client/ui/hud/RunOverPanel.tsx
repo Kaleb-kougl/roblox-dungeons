@@ -24,12 +24,12 @@ import {
 	FOOTPRINT_ESTIMATE,
 	HUD_STRINGS,
 	HUD_VIEW,
-	SCORE_SOURCE_KEYS,
 	UI_ART,
 	comboBestRichText,
 	comboTier,
 	formatClock,
 	formatCombo,
+	scoreBreakdownRows,
 } from "shared/view/hud";
 import {
 	MENU_FIT,
@@ -146,10 +146,15 @@ function breakdownLines(props: BreakdownProps): React.Element[] {
 			color="uiAccent"
 		/>,
 	];
-	for (let i = 0; i < props.points.size(); i++) {
-		const key = SCORE_SOURCE_KEYS[i];
-		if (key === undefined) continue;
-		lines.push(<BreakdownLine key={`s${i}`} order={i + 2} label={str(key)} value={tostring(props.points[i])} />);
+	for (const row of scoreBreakdownRows(props.points)) {
+		lines.push(
+			<BreakdownLine
+				key={`s${row.index}`}
+				order={row.index + 2}
+				label={str(row.key)}
+				value={tostring(row.points)}
+			/>,
+		);
 	}
 	lines.push(<BestComboLine key="combo" order={props.points.size() + 2} maxCombo={props.maxCombo} />);
 	return lines;

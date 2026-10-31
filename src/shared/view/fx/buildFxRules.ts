@@ -1,22 +1,29 @@
 /**
- * Build effects, the pure rules (docs/BUILDS.md BU8). BuildFxDirector turns a frame's build effects
+ * Build effects, the pure rules (docs/BUILDS.md BU8 and its follow-up). BuildFxDirector turns a frame's build effects
  * (BuildFxFrameSource, collected per tick by the run views) into what the client's BuildFxController and the particle
  * system draw, once per rendered frame after the ticks. It owns every rule that spans frames:
  *
- *   - Spark beams: one per hop, alive for the sim's SPARK_BEAM_TICKS in seconds (0.12 s), opaque for BUILD_FX_VIEW.beam
- *     .hold of it, then fading. A jagged line of beam.segments segments; the inner joints sit off the straight line by
- *     a seeded amount (render RNG; at most jagTiles, at most jagShare of the hop) and re-roll every rejagSec (a
- *     crackle), never under reduced motion. At most beam.maxAlive: a new beam past the cap replaces the oldest.
- *   - Spark bursts: one per hop at its target, the frame's new ones only, at most sparkBurst.perFrame (the view player's
- *     first); none with particles off. Reduced halves every count of the burst's shape (`burstShape`).
- *   - Novas (BU5's feed): an expanding floor ring, radius 0 -> the nova's, fading over the last fadeShare of nova.sec;
- *     ring segments halve under Reduced; under reduced motion the ring sits at its full radius and only fades.
- *   - Executes (BU5's feed): a flat flash popping out (no pop under reduced motion) and fading over execute.sec.
- *   - Evolve / duo flares: a ring around the taking player (its CURRENT position) in the card's role over flare.sec;
- *     a player's newer take replaces their flare. A dead player's flare ends.
- *   - Jackpot pops: a data slot (the sim feed has no field yet), aged and faded like the rest.
+ *   - Spark beams: one per segment, alive for the sim's SPARK_BEAM_TICKS in seconds (0.12 s), opaque for
+ *     BUILD_FX_VIEW.beam.hold of it, then fading. A jagged line of beam.segments segments; the inner joints sit off the
+ *     straight line by a seeded amount (render RNG; at most jagTiles, at most jagShare of the hop) and re-roll every
+ *     rejagSec (a crackle), never under reduced motion. A Storm Crown fork is flagged (drawn thinner). At most
+ *     beam.maxAlive: a new beam past the cap replaces the oldest.
+ *   - Spark bursts: one per segment at its target, the frame's new ones only, at most sparkBurst.perFrame (the view
+ *     player's first); none with particles off. Reduced halves every count of the burst's shape (`burstShape`).
+ *   - Phantom Step erase sparks: the same rule with phantom.perFrame and the phantom shape (`phantomShape`).
+ *   - Floor rings (`rings`, each with its drawing block `look`), radius r0 -> r1 eased out, fading over the last
+ *     fadeShare; segments halve under Reduced; under reduced motion a ring sits at r1 and only fades:
+ *       nova  (BU5) radius 0 -> the nova's, in nova.looks[kind]'s role, at most nova.maxAlive;
+ *       pop   (BU5) a small flare where a Momentum volley / Thrill Seeker ring / Flurry release / Ricochet split left,
+ *             in the colour of what it fired (Momentum grows by tier), at most pop.maxAlive;
+ *       flare the evolve / duo ring around the taking player in the card's role;
+ *       heal  Lionheart's pulse around the healed player in heal.role.
+ *     Flares and heal pulses follow their player's CURRENT position; a player's newer one of the same look replaces
+ *     theirs, and a dead player's ends.
+ *   - Executes (BU5): a flat flash popping out (no pop under reduced motion) and fading over execute.sec.
  *   - Trails: `trails` is true only with buildFx Full and not reduced motion (BulletRenderController's burst / shard
  *     trails).
+ *   - The Jackpot pop is the score pops' (the client's ScorePopController reads RunView.builds.jackpots); nothing here.
  *
  * Gates: `quiet` (the stage cover or run over: comboQuiet) puts nothing out and forgets everything alive. A new run
  * (another state object, or the tick going back) forgets everything too. Records of a player outside the party are
@@ -24,12 +31,12 @@
  *
  * No allocation in steady state: the output and its records are reused frame to frame. Presentation only.
  */
-import { SIM_DT, SPARK_BEAM_TICKS, partySize, playerAt, type SimState } from "shared/sim";
+import { MOMENTUM_TIER_FIRST, SIM_DT, SPARK_BEAM_TICKS, partySize, playerAt, type SimState } from "shared/sim";
 import type { BuildFxLevel, JuiceSettings } from "shared/settings";
 import type { ColorRole } from "shared/theme";
 // Not the shared/view/hud barrel (hud imports this barrel): comboConfig only imports shared/sim.
 import { semitonesToSpeed } from "../hud/comboConfig";
-import { BUILD_FX_VIEW } from "./buildFxConfig";
+import { BUILD_FX_VIEW, type BuildRingLook } from "./buildFxConfig";
 import type { BuildFxFrameSource, EffectRecord, SparkRecord } from "./buildFxEvents";
 import { effectiveParticles } from "./juiceRules";
 import type { ChipBurst } from "./particles";
@@ -49,12 +56,14 @@ export interface BeamView {
 	readonly points: ReadonlyArray<Readonly<BeamPoint>>;
 	readonly owner: number;
 	readonly gen: number;
+	/** A Storm Crown fork (drawn thinner). */
+	readonly fork: boolean;
 	/** Opacity factor (1, then -> 0). */
 	readonly fade: number;
 	readonly ageSec: number;
 }
 
-/** One new spark burst at a target (sim units). */
+/** One new chip burst (a spark target or a Phantom Step erase; sim units). */
 export interface SparkBurstView {
 	readonly x: number;
 	readonly z: number;
@@ -62,7 +71,7 @@ export interface SparkBurstView {
 	readonly seed: number;
 }
 
-/** One live floor ring (a nova or an evolve / duo flare). */
+/** One live floor ring (a nova, an origin flare, an evolve / duo flare or a heal pulse). */
 export interface RingView {
 	readonly x: number;
 	readonly z: number;
@@ -72,8 +81,8 @@ export interface RingView {
 	readonly role: ColorRole;
 	/** Segments to draw (Reduced halves them). */
 	readonly segments: number;
-	/** BUILD_FX_VIEW.nova or .flare drawing block. */
-	readonly flare: boolean;
+	/** Its BUILD_FX_VIEW drawing block (thickness, width, lift). */
+	readonly look: BuildRingLook;
 }
 
 /** One live execute flash. */
@@ -85,27 +94,28 @@ export interface FlashView {
 	readonly fade: number;
 }
 
-/** One live Jackpot pop (slot: the sim feed has no field yet). */
-export interface JackpotView {
-	readonly x: number;
-	readonly z: number;
-	readonly owner: number;
-	readonly amount: number;
-	readonly ageSec: number;
-	readonly fade: number;
-}
-
 /** What BuildFxDirector.frame fills (reused: valid until the next frame call). */
 export interface BuildFxFrame {
 	readonly beams: ReadonlyArray<BeamView>;
 	readonly sparkBursts: ReadonlyArray<SparkBurstView>;
 	/** The spark burst's shape this frame (Full, or Reduced's halved counts). */
 	readonly burstShape: Readonly<ChipBurst>;
+	/** This frame's new Phantom Step erase sparks and their shape. */
+	readonly phantomBursts: ReadonlyArray<SparkBurstView>;
+	readonly phantomShape: Readonly<ChipBurst>;
 	readonly rings: ReadonlyArray<RingView>;
 	readonly flashes: ReadonlyArray<FlashView>;
-	readonly jackpots: ReadonlyArray<JackpotView>;
 	/** Draw the burst / shard bullet trails (Full and not reduced motion). */
 	readonly trails: boolean;
+}
+
+/** What every ring look's BUILD_FX_VIEW block has: its life and fade, and its segments' sizes (studs). */
+export interface BuildRingBlock {
+	readonly sec: number;
+	readonly fadeShare: number;
+	readonly thicknessStuds: number;
+	readonly widthStuds: number;
+	readonly liftStuds: number;
 }
 
 /** The settings the director reads: the juice settings plus the Display tab's buildFx. */
@@ -211,7 +221,15 @@ export function buildGenSpeed(gen: number): number {
 
 /** The spark burst shape at a level (Reduced halves every count). */
 export function sparkBurstShape(level: BuildFxLevel): ChipBurst {
-	const s = BUILD_FX_VIEW.sparkBurst;
+	return chipShape(BUILD_FX_VIEW.sparkBurst, level);
+}
+
+/** The Phantom Step erase sparks' shape at a level (Reduced halves every count). */
+export function phantomBurstShape(level: BuildFxLevel): ChipBurst {
+	return chipShape(BUILD_FX_VIEW.phantom, level);
+}
+
+function chipShape(s: Readonly<ChipBurst>, level: BuildFxLevel): ChipBurst {
 	return {
 		chunks: buildFxCount(s.chunks, level),
 		bits: buildFxCount(s.bits, level),
@@ -222,10 +240,16 @@ export function sparkBurstShape(level: BuildFxLevel): ChipBurst {
 	};
 }
 
-/** The look of nova kind `kind`. */
-function novaRole(kind: number): ColorRole {
+/** The role of nova kind `kind` (nova.looks, else its fallback). */
+export function novaRole(kind: number): ColorRole {
 	const n = BUILD_FX_VIEW.nova;
 	return (n.looks[kind] ?? n.fallback).role;
+}
+
+/** A Momentum flare's end radius, tiles: pop.r1Tiles + tierTiles per tier above the first (MOMENTUM_TIER_FIRST). */
+export function momentumPopTiles(tier: number): number {
+	const p = BUILD_FX_VIEW.pop;
+	return p.r1Tiles + p.tierTiles * math.max(tier - MOMENTUM_TIER_FIRST, 0);
 }
 
 interface BeamSlot {
@@ -235,6 +259,7 @@ interface BeamSlot {
 	z2: number;
 	owner: number;
 	gen: number;
+	fork: boolean;
 	seed: number;
 	startSec: number;
 	ageSec: number;
@@ -252,16 +277,19 @@ interface BurstSlot {
 interface RingSlot {
 	x: number;
 	z: number;
-	/** Nova: its radius; flare: unused (flare r0 / r1). */
-	maxRadius: number;
+	/** Radius at the start and the end, sim units (tiles). */
+	r0: number;
+	r1: number;
 	radius: number;
 	fade: number;
 	role: ColorRole;
 	segments: number;
-	flare: boolean;
-	/** Flares follow this player (-1: a nova). */
+	look: BuildRingLook;
+	/** Flares and heal pulses follow this player (-1: it stays where it began). */
 	player: number;
 	startSec: number;
+	sec: number;
+	fadeShare: number;
 }
 
 interface FlashSlot {
@@ -272,23 +300,14 @@ interface FlashSlot {
 	startSec: number;
 }
 
-interface JackpotSlot {
-	x: number;
-	z: number;
-	owner: number;
-	amount: number;
-	ageSec: number;
-	fade: number;
-	startSec: number;
-}
-
 interface FrameSlot {
 	readonly beams: BeamSlot[];
 	readonly sparkBursts: BurstSlot[];
 	burstShape: ChipBurst;
+	readonly phantomBursts: BurstSlot[];
+	phantomShape: ChipBurst;
 	readonly rings: RingSlot[];
 	readonly flashes: FlashSlot[];
-	readonly jackpots: JackpotSlot[];
 	trails: boolean;
 }
 
@@ -316,6 +335,17 @@ function claim<T extends defined>(list: T[], free: T[], cap: number, make: () =>
 
 const FULL_SHAPE = sparkBurstShape("full");
 const REDUCED_SHAPE = sparkBurstShape("reduced");
+const FULL_PHANTOM = phantomBurstShape("full");
+const REDUCED_PHANTOM = phantomBurstShape("reduced");
+
+/** The record lists that make an origin flare, and each one's role. */
+type PopSource = "momentum" | "thrills" | "flurries" | "ricochets";
+const POP_SOURCES: ReadonlyArray<[PopSource, ColorRole]> = [
+	["momentum", BUILD_FX_VIEW.pop.momentumRole],
+	["thrills", BUILD_FX_VIEW.pop.thrillRole],
+	["flurries", BUILD_FX_VIEW.pop.flurryRole],
+	["ricochets", BUILD_FX_VIEW.pop.ricochetRole],
+];
 
 /** The build effects' per-frame director (see the file comment). One per client (BuildFxController). */
 export class BuildFxDirector {
@@ -325,16 +355,22 @@ export class BuildFxDirector {
 		beams: [],
 		sparkBursts: [],
 		burstShape: FULL_SHAPE,
+		phantomBursts: [],
+		phantomShape: FULL_PHANTOM,
 		rings: [],
 		flashes: [],
-		jackpots: [],
 		trails: true,
 	};
 	private readonly freeBeams: BeamSlot[] = [];
 	private readonly burstPool: BurstSlot[] = [];
+	private readonly phantomPool: BurstSlot[] = [];
+	/** Live rings by kind (the output `rings` is rebuilt from them every frame): novas, origin flares, followers. */
+	private readonly novaRings: RingSlot[] = [];
+	private readonly popRings: RingSlot[] = [];
+	private readonly followRings: RingSlot[] = [];
+	private readonly ringLists: ReadonlyArray<RingSlot[]> = [this.novaRings, this.popRings, this.followRings];
 	private readonly freeRings: RingSlot[] = [];
 	private readonly freeFlashes: FlashSlot[] = [];
-	private readonly freeJackpots: JackpotSlot[] = [];
 	private readonly rng = new RenderRng();
 	private lastState: Readonly<SimState> | undefined;
 	private lastTick = 0;
@@ -348,13 +384,15 @@ export class BuildFxDirector {
 		const s = this.slot;
 		for (const b of s.beams) this.freeBeams.push(b);
 		s.beams.clear();
-		for (const r of s.rings) this.freeRings.push(r);
+		for (const list of this.ringLists) {
+			for (const r of list) this.freeRings.push(r);
+			list.clear();
+		}
 		s.rings.clear();
 		for (const f of s.flashes) this.freeFlashes.push(f);
 		s.flashes.clear();
-		for (const j of s.jackpots) this.freeJackpots.push(j);
-		s.jackpots.clear();
 		s.sparkBursts.clear();
+		s.phantomBursts.clear();
 	}
 
 	/**
@@ -371,6 +409,7 @@ export class BuildFxDirector {
 	): BuildFxFrame {
 		const out = this.slot;
 		out.sparkBursts.clear();
+		out.phantomBursts.clear();
 		if (state !== this.lastState || state.tick < this.lastTick) this.resetAll();
 		this.lastState = state;
 		this.lastTick = state.tick;
@@ -378,6 +417,7 @@ export class BuildFxDirector {
 		const level = settings.buildFx;
 		out.trails = buildTrailsOn(level, juice.reducedMotion);
 		out.burstShape = level === "full" ? FULL_SHAPE : REDUCED_SHAPE;
+		out.phantomShape = level === "full" ? FULL_PHANTOM : REDUCED_PHANTOM;
 		if (quiet) {
 			this.resetAll();
 			return this.out;
@@ -386,17 +426,37 @@ export class BuildFxDirector {
 		const reduced = juice.reducedMotion;
 		this.addBeams(source.sparks, n, clockSec);
 		if (effectiveParticles(juice) !== "off") {
-			this.addBursts(source.sparks, n, viewIndex, true);
-			this.addBursts(source.sparks, n, viewIndex, false);
+			const ph = BUILD_FX_VIEW.phantom;
+			this.addSparkBursts(source.sparks, n, viewIndex, true);
+			this.addSparkBursts(source.sparks, n, viewIndex, false);
+			this.addChips(
+				source.phantoms,
+				n,
+				viewIndex,
+				true,
+				out.phantomBursts,
+				this.phantomPool,
+				ph.perFrame,
+				ph.seedSalt,
+			);
+			this.addChips(
+				source.phantoms,
+				n,
+				viewIndex,
+				false,
+				out.phantomBursts,
+				this.phantomPool,
+				ph.perFrame,
+				ph.seedSalt,
+			);
 		}
 		this.addNovas(source.novas, n, level, clockSec);
-		this.addFlashes(source, clockSec);
-		this.addJackpots(source.jackpots, n, clockSec);
-		this.addFlares(source, n, level, clockSec);
+		this.addPops(source, n, level, clockSec);
+		this.addFlashes(source.executes, n, clockSec);
+		this.addFollowers(source, n, level, clockSec);
 		this.ageBeams(clockSec, reduced);
 		this.ageRings(state, n, clockSec, reduced);
 		this.ageFlashes(clockSec, reduced);
-		this.ageJackpots(clockSec);
 		return this.out;
 	}
 
@@ -412,6 +472,7 @@ export class BuildFxDirector {
 				z2: 0,
 				owner: 0,
 				gen: 0,
+				fork: false,
 				seed: 0,
 				startSec: 0,
 				ageSec: 0,
@@ -424,30 +485,40 @@ export class BuildFxDirector {
 			b.z2 = r.z2;
 			b.owner = r.owner;
 			b.gen = r.gen;
+			b.fork = r.fork;
 			b.seed = burstSeed(i, r.tick, BUILD_FX_VIEW.beam.seedSalt);
 			b.startSec = clockSec;
 		}
 	}
 
-	/** One pass of spark bursts: the view player's (`viewPass`) or everyone else's, up to the frame's cap. */
-	private addBursts(sparks: ReadonlyArray<SparkRecord>, n: number, viewIndex: number, viewPass: boolean): void {
+	/** One pass of spark bursts (at each segment's target): the view player's (`viewPass`) or everyone else's. */
+	private addSparkBursts(sparks: ReadonlyArray<SparkRecord>, n: number, viewIndex: number, viewPass: boolean): void {
 		const out = this.slot.sparkBursts;
 		const sb = BUILD_FX_VIEW.sparkBurst;
 		for (let i = 0; i < sparks.size(); i++) {
 			if (out.size() >= sb.perFrame) return;
 			const r = sparks[i];
 			if (r.owner < 0 || r.owner >= n || (r.owner === viewIndex) !== viewPass) continue;
-			const k = out.size();
-			let b = this.burstPool[k];
-			if (b === undefined) {
-				b = { x: 0, z: 0, owner: 0, seed: 0 };
-				this.burstPool.push(b);
-			}
-			b.x = r.x2;
-			b.z = r.z2;
-			b.owner = r.owner;
-			b.seed = burstSeed(i, r.tick, sb.seedSalt);
-			out.push(b);
+			pushBurst(out, this.burstPool, r.x2, r.z2, r.owner, burstSeed(i, r.tick, sb.seedSalt));
+		}
+	}
+
+	/** One pass of chip bursts at each record: the view player's (`viewPass`) or everyone else's, up to `cap`. */
+	private addChips(
+		records: ReadonlyArray<EffectRecord>,
+		n: number,
+		viewIndex: number,
+		viewPass: boolean,
+		out: BurstSlot[],
+		pool: BurstSlot[],
+		cap: number,
+		salt: number,
+	): void {
+		for (let i = 0; i < records.size(); i++) {
+			if (out.size() >= cap) return;
+			const r = records[i];
+			if (r.owner < 0 || r.owner >= n || (r.owner === viewIndex) !== viewPass) continue;
+			pushBurst(out, pool, r.x, r.z, r.owner, burstSeed(i, r.tick, salt));
 		}
 	}
 
@@ -455,54 +526,106 @@ export class BuildFxDirector {
 		return {
 			x: 0,
 			z: 0,
-			maxRadius: 0,
+			r0: 0,
+			r1: 0,
 			radius: 0,
 			fade: 1,
 			role: BUILD_FX_VIEW.nova.fallback.role,
 			segments: 0,
-			flare: false,
+			look: "nova",
 			player: -1,
 			startSec: 0,
+			sec: 0,
+			fadeShare: 1,
 		};
+	}
+
+	/** Claims a ring in `list` (capped) and sets everything but its position. */
+	private ring(
+		list: RingSlot[],
+		cap: number,
+		look: BuildRingLook,
+		role: ColorRole,
+		r0: number,
+		r1: number,
+		segments: number,
+		player: number,
+		clockSec: number,
+	): RingSlot {
+		const g = claim(list, this.freeRings, cap, () => this.newRing());
+		setRing(g, look, role, r0, r1, segments, player, clockSec);
+		return g;
 	}
 
 	private addNovas(novas: ReadonlyArray<EffectRecord>, n: number, level: BuildFxLevel, clockSec: number): void {
 		const nv = BUILD_FX_VIEW.nova;
+		const segments = buildFxCount(nv.segments, level);
 		for (const r of novas) {
 			if (r.owner < 0 || r.owner >= n) continue;
-			const g = claim(this.slot.rings, this.freeRings, nv.maxAlive + n, () => this.newRing());
+			const g = this.ring(
+				this.novaRings,
+				nv.maxAlive,
+				"nova",
+				novaRole(r.kind),
+				0,
+				r.amount,
+				segments,
+				-1,
+				clockSec,
+			);
 			g.x = r.x;
 			g.z = r.z;
-			g.maxRadius = r.amount;
-			g.role = novaRole(r.kind);
-			g.segments = buildFxCount(nv.segments, level);
-			g.flare = false;
-			g.player = -1;
-			g.startSec = clockSec;
 		}
 	}
 
-	private addFlares(source: BuildFxFrameSource, n: number, level: BuildFxLevel, clockSec: number): void {
+	/** Origin flares (POP_SOURCES order): Momentum's grows with its tier (the record's kind). */
+	private addPops(source: BuildFxFrameSource, n: number, level: BuildFxLevel, clockSec: number): void {
+		const p = BUILD_FX_VIEW.pop;
+		const segments = buildFxCount(p.segments, level);
+		for (const [key, role] of POP_SOURCES) {
+			const records = source[key];
+			const tiered = key === "momentum";
+			for (const r of records) {
+				if (r.owner < 0 || r.owner >= n) continue;
+				const r1 = tiered ? momentumPopTiles(r.kind) : p.r1Tiles;
+				const g = this.ring(this.popRings, p.maxAlive, "pop", role, p.r0Tiles, r1, segments, -1, clockSec);
+				g.x = r.x;
+				g.z = r.z;
+			}
+		}
+	}
+
+	/** Evolve / duo flares and Lionheart pulses: one per player and look (a newer one replaces it). */
+	private addFollowers(source: BuildFxFrameSource, n: number, level: BuildFxLevel, clockSec: number): void {
 		const f = BUILD_FX_VIEW.flare;
-		for (const t of source.evolved) this.flare(t.player, f.evolvedRole, n, level, clockSec);
-		for (const t of source.duos) this.flare(t.player, f.duoRole, n, level, clockSec);
+		const h = BUILD_FX_VIEW.heal;
+		const flareSegments = buildFxCount(f.segments, level);
+		for (const t of source.evolved) this.follow(t.player, "flare", f.evolvedRole, flareSegments, n, clockSec);
+		for (const t of source.duos) this.follow(t.player, "flare", f.duoRole, flareSegments, n, clockSec);
+		const healSegments = buildFxCount(h.segments, level);
+		for (const r of source.heals) this.follow(r.owner, "heal", h.role, healSegments, n, clockSec);
 	}
 
-	private flare(player: number, role: ColorRole, n: number, level: BuildFxLevel, clockSec: number): void {
+	private follow(
+		player: number,
+		look: "flare" | "heal",
+		role: ColorRole,
+		segments: number,
+		n: number,
+		clockSec: number,
+	): void {
 		if (player < 0 || player >= n) return;
-		const rings = this.slot.rings;
+		const block = look === "flare" ? BUILD_FX_VIEW.flare : BUILD_FX_VIEW.heal;
+		const rings = this.followRings;
 		let g: RingSlot | undefined;
-		for (const r of rings) if (r.flare && r.player === player) g = r;
-		if (g === undefined) g = claim(rings, this.freeRings, BUILD_FX_VIEW.nova.maxAlive + n, () => this.newRing());
-		g.role = role;
-		g.segments = buildFxCount(BUILD_FX_VIEW.flare.segments, level);
-		g.flare = true;
-		g.player = player;
-		g.startSec = clockSec;
+		for (const r of rings) if (r.look === look && r.player === player) g = r;
+		if (g === undefined) g = claim(rings, this.freeRings, 2 * n, () => this.newRing());
+		setRing(g, look, role, block.r0Tiles, block.r1Tiles, segments, player, clockSec);
 	}
 
-	private addFlashes(source: BuildFxFrameSource, clockSec: number): void {
-		for (const r of source.executes) {
+	private addFlashes(executes: ReadonlyArray<EffectRecord>, n: number, clockSec: number): void {
+		for (const r of executes) {
+			if (r.owner < 0 || r.owner >= n) continue;
 			const f = claim(this.slot.flashes, this.freeFlashes, BUILD_FX_VIEW.execute.maxAlive, () => ({
 				x: 0,
 				z: 0,
@@ -513,26 +636,6 @@ export class BuildFxDirector {
 			f.x = r.x;
 			f.z = r.z;
 			f.startSec = clockSec;
-		}
-	}
-
-	private addJackpots(jackpots: ReadonlyArray<EffectRecord>, n: number, clockSec: number): void {
-		for (const r of jackpots) {
-			if (r.owner < 0 || r.owner >= n) continue;
-			const j = claim(this.slot.jackpots, this.freeJackpots, BUILD_FX_VIEW.jackpot.maxAlive, () => ({
-				x: 0,
-				z: 0,
-				owner: 0,
-				amount: 0,
-				ageSec: 0,
-				fade: 1,
-				startSec: 0,
-			}));
-			j.x = r.x;
-			j.z = r.z;
-			j.owner = r.owner;
-			j.amount = r.amount;
-			j.startSec = clockSec;
 		}
 	}
 
@@ -548,26 +651,25 @@ export class BuildFxDirector {
 		}
 	}
 
+	/** Ages every ring list and rebuilds the output `rings` (novas, origin flares, then followers). */
 	private ageRings(state: Readonly<SimState>, n: number, clockSec: number, reducedMotion: boolean): void {
-		const rings = this.slot.rings;
-		const nv = BUILD_FX_VIEW.nova;
-		const f = BUILD_FX_VIEW.flare;
-		sweep(rings, this.freeRings, (g) => {
-			const age = clockSec - g.startSec;
-			if (!g.flare) return age < nv.sec;
-			return age < f.sec && g.player < n && playerAt(state, g.player).dead === 0;
-		});
-		for (const g of rings) {
-			const age = math.max(clockSec - g.startSec, 0);
-			if (g.flare) {
-				const p = playerAt(state, g.player);
-				g.x = p.x;
-				g.z = p.z;
-				g.radius = ringRadius(age, f.sec, f.r0Tiles, f.r1Tiles, reducedMotion);
-				g.fade = lifeFade(age, f.sec, f.fadeShare);
-			} else {
-				g.radius = ringRadius(age, nv.sec, 0, g.maxRadius, reducedMotion);
-				g.fade = lifeFade(age, nv.sec, nv.fadeShare);
+		const out = this.slot.rings;
+		out.clear();
+		for (const list of this.ringLists) {
+			sweep(list, this.freeRings, (g) => {
+				if (clockSec - g.startSec >= g.sec) return false;
+				return g.player < 0 || (g.player < n && playerAt(state, g.player).dead === 0);
+			});
+			for (const g of list) {
+				const age = math.max(clockSec - g.startSec, 0);
+				if (g.player >= 0) {
+					const p = playerAt(state, g.player);
+					g.x = p.x;
+					g.z = p.z;
+				}
+				g.radius = ringRadius(age, g.sec, g.r0, g.r1, reducedMotion);
+				g.fade = lifeFade(age, g.sec, g.fadeShare);
+				out.push(g);
 			}
 		}
 	}
@@ -582,14 +684,49 @@ export class BuildFxDirector {
 			f.fade = lifeFade(age, e.sec, 1);
 		}
 	}
+}
 
-	private ageJackpots(clockSec: number): void {
-		const sec = BUILD_FX_VIEW.jackpot.sec;
-		const list = this.slot.jackpots;
-		sweep(list, this.freeJackpots, (j) => clockSec - j.startSec < sec);
-		for (const j of list) {
-			j.ageSec = math.max(clockSec - j.startSec, 0);
-			j.fade = lifeFade(j.ageSec, sec, 1);
-		}
+/** Appends a burst at (x, z) to `out`, reusing `pool`'s slot of the same index. */
+function pushBurst(out: BurstSlot[], pool: BurstSlot[], x: number, z: number, owner: number, seed: number): void {
+	const k = out.size();
+	let b = pool[k];
+	if (b === undefined) {
+		b = { x: 0, z: 0, owner: 0, seed: 0 };
+		pool.push(b);
 	}
+	b.x = x;
+	b.z = z;
+	b.owner = owner;
+	b.seed = seed;
+	out.push(b);
+}
+
+/** A ring look's BUILD_FX_VIEW block (its life, fade share and drawing sizes). */
+export function buildRingBlock(look: BuildRingLook): BuildRingBlock {
+	if (look === "nova") return BUILD_FX_VIEW.nova;
+	if (look === "pop") return BUILD_FX_VIEW.pop;
+	if (look === "heal") return BUILD_FX_VIEW.heal;
+	return BUILD_FX_VIEW.flare;
+}
+
+function setRing(
+	g: RingSlot,
+	look: BuildRingLook,
+	role: ColorRole,
+	r0: number,
+	r1: number,
+	segments: number,
+	player: number,
+	clockSec: number,
+): void {
+	const b = buildRingBlock(look);
+	g.look = look;
+	g.role = role;
+	g.r0 = r0;
+	g.r1 = r1;
+	g.segments = segments;
+	g.player = player;
+	g.startSec = clockSec;
+	g.sec = b.sec;
+	g.fadeShare = b.fadeShare;
 }

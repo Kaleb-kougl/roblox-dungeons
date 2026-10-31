@@ -1,8 +1,20 @@
-// The build effects director (docs/BUILDS.md BU8): beam timing and jag, spark bursts (cap, view player first,
-// particles off, Reduced's halved shape), nova rings, the evolve / duo flare on the knight, execute flashes, the
-// trails rule, the generation pitch, quiet and new-run resets.
+// The build effects director (docs/BUILDS.md BU8 and its follow-up): beam timing and jag, forks, spark bursts and
+// Phantom Step erase sparks (cap, view player first, particles off, Reduced's halved shape), nova rings per kind,
+// origin flares (Momentum / Thrill Seeker / Flurry / Ricochet), the evolve / duo flare and the Lionheart pulse on the
+// knight, execute flashes, the trails rule, reduced motion, the generation pitch, quiet and new-run resets.
 import { describe, expect, it } from "@rbxts/jest-globals";
-import { BUILDS_CONFIG, SIM_DT, SPARK_BEAM_TICKS, createSimState, type SimState } from "shared/sim";
+import {
+	BUILDS_CONFIG,
+	FlurryKind,
+	NovaKind,
+	OVERFLOWING_NOVA_RADIUS,
+	SIM_DT,
+	SPARK_BEAM_TICKS,
+	clearBuildEvents,
+	createSimState,
+	type BuildEvents,
+	type SimState,
+} from "shared/sim";
 import { defaultJuiceSettings, type BuildFxLevel, type JuiceSettings } from "shared/settings";
 import { semitonesToSpeed } from "../hud/comboConfig";
 import { BUILD_FX_VIEW } from "./buildFxConfig";
@@ -18,7 +30,11 @@ import {
 	buildGenSpeed,
 	buildTrailsOn,
 	executePop,
+	buildRingBlock,
 	lifeFade,
+	momentumPopTiles,
+	novaRole,
+	phantomBurstShape,
 	ringRadius,
 	sparkBurstShape,
 	type BeamPoint,
@@ -184,31 +200,45 @@ describe("buildFx rules: rings, flares, flashes", () => {
 		expect(executePop(BUILD_FX_VIEW.execute.popSec, false)).toBe(1);
 	});
 
-	it("a nova expands to its radius over nova.sec (Reduced halves its segments); an execute flashes", () => {
+	it("a nova expands to its radius over nova.sec in its kind's role (Reduced halves its segments); an execute flashes", () => {
 		const s = state();
-		const ev = new BuildFxEvents();
-		const e = s.builds!.events as unknown as Record<string, number[]>;
-		e.novaX = [1];
-		e.novaZ = [2];
-		e.novaRadius = [3];
-		e.novaOwner = [0];
-		e.novaKind = [0];
-		e.execX = [5];
-		e.execZ = [6];
+		const e = s.builds!.events;
+		e.novaX.push(1);
+		e.novaZ.push(2);
+		e.novaRadius.push(OVERFLOWING_NOVA_RADIUS);
+		e.novaOwner.push(0);
+		e.novaKind.push(NovaKind.OVERFLOWING);
+		e.novaErased.push(0);
+		e.execX.push(5, 9);
+		e.execZ.push(6, 9);
+		e.execOwner.push(0, 3); // the second's owner is outside the party: ignored
 		s.tick = 1;
+		const ev = new BuildFxEvents();
 		ev.collect(s);
 		const d = new BuildFxDirector();
 		const nv = BUILD_FX_VIEW.nova;
 		d.frame(ev, s, 0, false, settings("reduced"), 1);
-		expect(d.out.rings.map((r) => [r.x, r.z, r.radius, r.flare, r.segments, r.role])).toEqual([
-			[1, 2, 0, false, nv.segments / 2, nv.fallback.role],
+		expect(d.out.rings.map((r) => [r.x, r.z, r.radius, r.look, r.segments, r.role])).toEqual([
+			[1, 2, 0, "nova", nv.segments / 2, "fx.heal"],
 		]);
 		expect(d.out.flashes.map((f) => [f.x, f.z, f.scale])).toEqual([[5, 6, BUILD_FX_VIEW.execute.popScale]]);
 		d.frame(EMPTY, s, 0, false, settings(), 1 + nv.sec / 2);
-		expect(d.out.rings[0].radius).toBeCloseTo(ringRadius(nv.sec / 2, nv.sec, 0, 3, false), 9);
+		expect(d.out.rings[0].radius).toBeCloseTo(ringRadius(nv.sec / 2, nv.sec, 0, OVERFLOWING_NOVA_RADIUS, false), 9);
 		d.frame(EMPTY, s, 0, false, settings(), 1 + nv.sec);
 		expect(d.out.rings.size()).toBe(0);
 		expect(d.out.flashes.size()).toBe(0);
+	});
+
+	it("nova looks: Overflowing in fx.heal, Bulwark in build.spark, any other kind the fallback", () => {
+		expect([novaRole(NovaKind.OVERFLOWING), novaRole(NovaKind.BULWARK), novaRole(9)]).toEqual([
+			"fx.heal",
+			"build.spark",
+			BUILD_FX_VIEW.nova.fallback.role,
+		]);
+		expect(BUILD_FX_VIEW.nova.looks.size()).toBe(2);
+		// Every ring look has its own drawing block.
+		for (const look of ["nova", "flare", "heal", "pop"] as const)
+			expect(buildRingBlock(look)).toBe(BUILD_FX_VIEW[look]);
 	});
 
 	it("an evolve / duo flare rings the taking player (current position) in the card's role, 1 s; dead: gone", () => {
@@ -222,8 +252,8 @@ describe("buildFx rules: rings, flares, flashes", () => {
 		const d = new BuildFxDirector();
 		const f = BUILD_FX_VIEW.flare;
 		d.frame(ev, s, 0, false, settings(), 5);
-		expect(d.out.rings.map((r) => [r.flare, r.role, r.radius, r.segments])).toEqual([
-			[true, f.evolvedRole, f.r0Tiles, f.segments],
+		expect(d.out.rings.map((r) => [r.look, r.role, r.radius, r.segments])).toEqual([
+			["flare", f.evolvedRole, f.r0Tiles, f.segments],
 		]);
 		const p1 = s.party!.players[1];
 		p1.x = 7;
@@ -242,6 +272,214 @@ describe("buildFx rules: rings, flares, flashes", () => {
 		expect(d.out.rings.map((r) => r.role)).toEqual([f.duoRole]);
 		p1.dead = 1;
 		d.frame(EMPTY, s, 0, false, settings(), 5.7);
+		expect(d.out.rings.size()).toBe(0);
+	});
+});
+
+/** A frame source from hand-pushed BU5 entries (one tick; `fill` pushes into the state's BuildEvents). */
+function bu5(s: SimState, fill: (e: BuildEvents) => void, tick = 1): BuildFxEvents {
+	clearBuildEvents(s.builds!);
+	fill(s.builds!.events);
+	s.tick = tick;
+	const ev = new BuildFxEvents();
+	ev.collect(s);
+	return ev;
+}
+
+describe("buildFx rules: the evolutions (BU8 follow-up)", () => {
+	it("a Storm Crown fork's beam is flagged (drawn thinner), a hop's is not", () => {
+		const s = state();
+		const ev = bu5(s, (e) => {
+			e.sparkX1.push(0, 0);
+			e.sparkZ1.push(0, 0);
+			e.sparkX2.push(1, 0);
+			e.sparkZ2.push(0, 1);
+			e.sparkOwner.push(0, 0);
+			e.sparkGen.push(0, 0);
+			e.sparkFork.push(0, 1);
+		});
+		const d = new BuildFxDirector();
+		d.frame(ev, s, 0, false, settings(), 1);
+		expect(d.out.beams.map((b) => b.fork)).toEqual([false, true]);
+		expect(BUILD_FX_VIEW.beam.forkThicknessShare < 1).toBe(true);
+	});
+
+	it("origin flares: Momentum (by tier), Thrill Seeker, Flurry and Ricochet pop a small ring where they left", () => {
+		const s = state(2);
+		const ev = bu5(s, (e) => {
+			e.momentumX.push(1);
+			e.momentumZ.push(1);
+			e.momentumOwner.push(0);
+			e.momentumTier.push(4);
+			e.momentumFired.push(4);
+			e.thrillX.push(2);
+			e.thrillZ.push(2);
+			e.thrillOwner.push(1);
+			e.thrillFired.push(8);
+			e.flurryX.push(3);
+			e.flurryZ.push(3);
+			e.flurryOwner.push(0);
+			e.flurryKind.push(FlurryKind.CRESCENT);
+			e.flurryFired.push(5);
+			e.ricochetX.push(4);
+			e.ricochetZ.push(4);
+			e.ricochetOwner.push(5); // outside the party: ignored
+			e.ricochetFired.push(2);
+		});
+		const p = BUILD_FX_VIEW.pop;
+		const d = new BuildFxDirector();
+		d.frame(ev, s, 0, false, settings(), 1);
+		expect(d.out.rings.map((r) => [r.look, r.x, r.z, r.radius, r.role, r.segments])).toEqual([
+			["pop", 1, 1, p.r0Tiles, p.momentumRole, p.segments],
+			["pop", 2, 2, p.r0Tiles, p.thrillRole, p.segments],
+			["pop", 3, 3, p.r0Tiles, p.flurryRole, p.segments],
+		]);
+		expect(momentumPopTiles(2)).toBe(p.r1Tiles);
+		expect(momentumPopTiles(4)).toBeCloseTo(p.r1Tiles + 2 * p.tierTiles, 9);
+		// It grows to its end radius (Momentum's by tier) and stays put; gone after pop.sec.
+		d.frame(EMPTY, s, 0, false, settings(), 1 + p.sec * 0.999);
+		expect(d.out.rings[0].radius).toBeCloseTo(momentumPopTiles(4), 2);
+		expect(d.out.rings[1].radius).toBeCloseTo(p.r1Tiles, 2);
+		expect([d.out.rings[0].x, d.out.rings[0].z]).toEqual([1, 1]);
+		d.frame(EMPTY, s, 0, false, settings(), 1 + p.sec);
+		expect(d.out.rings.size()).toBe(0);
+	});
+
+	it("origin flares cap at pop.maxAlive (oldest replaced) and never evict a flare on the knight", () => {
+		const s = state();
+		const d = new BuildFxDirector();
+		const evolve = bu5(s, (e) => {
+			e.evolvedPlayer.push(0);
+			e.evolvedBoon.push(0);
+		});
+		d.frame(evolve, s, 0, false, settings(), 1);
+		const many = bu5(
+			s,
+			(e) => {
+				for (let i = 0; i < BUILD_FX_VIEW.pop.maxAlive + 3; i++) {
+					e.thrillX.push(i);
+					e.thrillZ.push(0);
+					e.thrillOwner.push(0);
+					e.thrillFired.push(8);
+				}
+			},
+			2,
+		);
+		d.frame(many, s, 0, false, settings(), 1.01);
+		const pops = d.out.rings.filter((r) => r.look === "pop");
+		expect(pops.size()).toBe(BUILD_FX_VIEW.pop.maxAlive);
+		expect(pops[0].x).toBe(3);
+		expect(d.out.rings.filter((r) => r.look === "flare").size()).toBe(1);
+	});
+
+	it("Lionheart: a heal pulse rings the healed player in heal.role, follows them, ends on death", () => {
+		const s = state(2);
+		const ev = bu5(s, (e) => {
+			e.lionPlayer.push(1);
+			e.lionHealed.push(1);
+		});
+		const h = BUILD_FX_VIEW.heal;
+		const d = new BuildFxDirector();
+		d.frame(ev, s, 0, false, settings("reduced"), 3);
+		expect(d.out.rings.map((r) => [r.look, r.role, r.radius, r.segments])).toEqual([
+			["heal", h.role, h.r0Tiles, h.segments / 2],
+		]);
+		expect(h.role).toBe("fx.heal");
+		const p1 = s.party!.players[1];
+		p1.x = -4;
+		p1.z = 6;
+		d.frame(EMPTY, s, 0, false, settings(), 3 + h.sec / 2);
+		expect([d.out.rings[0].x, d.out.rings[0].z]).toEqual([-4, 6]);
+		p1.dead = 1;
+		d.frame(EMPTY, s, 0, false, settings(), 3 + h.sec / 2 + 0.01);
+		expect(d.out.rings.size()).toBe(0);
+	});
+
+	it("reduced motion: every ring sits at its end radius and only fades; the execute does not pop", () => {
+		const s = state();
+		const ev = bu5(s, (e) => {
+			e.novaX.push(0);
+			e.novaZ.push(0);
+			e.novaRadius.push(2.5);
+			e.novaOwner.push(0);
+			e.novaKind.push(NovaKind.BULWARK);
+			e.novaErased.push(3);
+			e.flurryX.push(1);
+			e.flurryZ.push(1);
+			e.flurryOwner.push(0);
+			e.flurryKind.push(FlurryKind.ARROWS);
+			e.flurryFired.push(3);
+			e.lionPlayer.push(0);
+			e.lionHealed.push(1);
+			e.execX.push(2);
+			e.execZ.push(2);
+			e.execOwner.push(0);
+		});
+		const d = new BuildFxDirector();
+		d.frame(ev, s, 0, false, settings("full", { reducedMotion: true }), 1);
+		expect(d.out.rings.map((r) => [r.look, r.radius, r.fade, r.role])).toEqual([
+			["nova", 2.5, 1, "build.spark"],
+			["pop", BUILD_FX_VIEW.pop.r1Tiles, 1, BUILD_FX_VIEW.pop.flurryRole],
+			["heal", BUILD_FX_VIEW.heal.r1Tiles, 1, "fx.heal"],
+		]);
+		expect(d.out.flashes.map((f) => f.scale)).toEqual([1]);
+	});
+
+	it("Phantom Step erase sparks: one chip burst per erase, the view player's first, capped; none with particles off", () => {
+		const s = state(2);
+		const ph = BUILD_FX_VIEW.phantom;
+		const ev = bu5(s, (e) => {
+			for (let i = 0; i < ph.perFrame; i++) {
+				e.phantomX.push(i);
+				e.phantomZ.push(0);
+				e.phantomOwner.push(1);
+			}
+			e.phantomX.push(99);
+			e.phantomZ.push(7);
+			e.phantomOwner.push(0);
+		});
+		const d = new BuildFxDirector();
+		d.frame(ev, s, 0, false, settings(), 1);
+		const out = d.out.phantomBursts;
+		expect(out.size()).toBe(ph.perFrame);
+		expect([out[0].x, out[0].z, out[0].owner]).toEqual([99, 7, 0]);
+		expect(d.out.phantomShape.sparks).toBe(ph.sparks);
+		d.frame(EMPTY, s, 0, false, settings(), 1.01);
+		expect(d.out.phantomBursts.size()).toBe(0);
+		const off = new BuildFxDirector();
+		off.frame(ev, s, 0, false, settings("full", { particles: "off" }), 1);
+		expect(off.out.phantomBursts.size()).toBe(0);
+		const reduced = phantomBurstShape("reduced");
+		expect([reduced.bits, reduced.sparks]).toEqual([
+			buildFxCount(ph.bits, "reduced"),
+			buildFxCount(ph.sparks, "reduced"),
+		]);
+		const r = new BuildFxDirector();
+		r.frame(ev, s, 0, false, settings("reduced"), 1);
+		expect(r.out.phantomShape.sparks).toBe(reduced.sparks);
+	});
+
+	it("quiet forgets every ring kind and puts out no phantom sparks", () => {
+		const s = state();
+		const ev = bu5(s, (e) => {
+			e.momentumX.push(0);
+			e.momentumZ.push(0);
+			e.momentumOwner.push(0);
+			e.momentumTier.push(2);
+			e.momentumFired.push(2);
+			e.phantomX.push(0);
+			e.phantomZ.push(0);
+			e.phantomOwner.push(0);
+			e.lionPlayer.push(0);
+			e.lionHealed.push(1);
+		});
+		const d = new BuildFxDirector();
+		d.frame(ev, s, 0, true, settings(), 1);
+		expect([d.out.rings.size(), d.out.phantomBursts.size()]).toEqual([0, 0]);
+		d.frame(ev, s, 0, false, settings(), 1.01);
+		expect([d.out.rings.size(), d.out.phantomBursts.size()]).toEqual([2, 1]);
+		d.frame(EMPTY, s, 0, true, settings(), 1.02);
+		d.frame(EMPTY, s, 0, false, settings(), 1.03);
 		expect(d.out.rings.size()).toBe(0);
 	});
 });

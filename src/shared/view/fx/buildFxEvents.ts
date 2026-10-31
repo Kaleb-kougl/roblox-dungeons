@@ -1,19 +1,22 @@
 /**
- * A frame's build effects (docs/BUILDS.md BU8, "Presentation feed"). The sim's BuildEvents (shared/sim builds.ts) are
- * per TICK, cleared at the start of every tick and NOT hashed: one entry per spark hop that hit (`sparkX1/Z1/X2/Z2`,
- * owner, gen), per Volatile ring and per Soul Shards volley that spawned at least one bullet (corpse, owner, gen,
- * bullets fired), per evolution / duo taken. A rendered frame may run several ticks, so the run views (shared/play
- * LiveRun, shared/lockstep LockstepClient) `reset` this at the start of every frame and `collect` after every tick, as
- * they do NearMissEvents. BuildFxDirector (buildFxRules.ts) and the audio cue mapper read it once per frame.
+ * A frame's build effects (docs/BUILDS.md BU8, "Presentation feed"; BU5's fields in "BU5 (as built)"). The sim's
+ * BuildEvents (shared/sim builds.ts) are per TICK, cleared at the start of every tick and NOT hashed: one entry per spark
+ * segment (hop or Storm Crown fork), per Volatile ring / Soul Shards volley, per evolution / duo taken, and BU5's novas,
+ * Executioner kills, Phantom Step erases, Jackpot pays, Lionheart heals and the Momentum / Thrill Seeker / Flurry /
+ * Ricochet releases. A rendered frame may run several ticks, so the run views (shared/play LiveRun, shared/lockstep
+ * LockstepClient) `reset` this at the start of every frame and `collect` after every tick, as they do NearMissEvents.
+ * BuildFxDirector (buildFxRules.ts), the audio cue mapper and the score pops read it once per frame.
  *
  *   - Every record carries `tick`: state.tick at the end of the tick that produced it.
+ *   - EffectRecord's `amount` / `kind` per list: bursts / shards / momentum / thrills / flurries / ricochets the bullets
+ *     spawned (momentum's kind the tier crossed, flurries' the FlurryKind); novas the radius in sim units (kind:
+ *     NovaKind; NovaRecord adds the bullets erased); executes and phantoms 1; jackpots the points paid; heals the half
+ *     hearts restored (owner = the healed player, x / z where they stood); embers 1. `gen` is the proc generation
+ *     for sparks / bursts / shards / embers and 0 for every BU5 record (their bullets are generation 0).
  *   - Embers (Fire Arrows / Blazing Trail, BU6) have no feed entry: an ember is a stationary player bullet of
  *     BulletKind.EMBER, so a slot of that kind whose life left went UP since the last tick (or that held no ember) is a
  *     new one (its position, owner = emitter - 1, gen from its source): an ember's life only falls, a reused slot's
  *     jumps back to the full life. This per-slot memory spans frames (not reset per frame; a new simulation clears it).
- *   - Novas and executes (BU5) read the plan's field names (`novaX/Z/Radius/Owner/Kind`, `execX/Z`) when the sim's
- *     BuildEvents carries them (PendingBuildEventFields); until then they collect nothing. The Jackpot pop has no
- *     documented field yet: `jackpots` stays empty (a data slot the director already handles).
  *   - Runs without builds (`state.builds === undefined`: M1, the tutorial, fixtures) collect nothing: no tick, no record.
  *
  * Read-only on the sim. No allocation in steady state (records come from pools that only grow). Presentation only.
@@ -21,29 +24,15 @@
 import {
 	BulletKind,
 	BulletPayload,
+	playerAt,
+	partySize,
 	playerBulletOwner,
 	sourceGen,
-	type BuildEvents,
 	type BulletSimulation,
 	type SimState,
 } from "shared/sim";
 
-/**
- * The evolution feed fields the plan names (docs/BUILDS.md Architecture 4) that BU5 adds to BuildEvents. Read
- * optionally so this view works before and after that merge; once the sim declares them they are plain BuildEvents
- * fields and this cast is a no-op.
- */
-interface PendingBuildEventFields {
-	readonly novaX?: ReadonlyArray<number>;
-	readonly novaZ?: ReadonlyArray<number>;
-	readonly novaRadius?: ReadonlyArray<number>;
-	readonly novaOwner?: ReadonlyArray<number>;
-	readonly novaKind?: ReadonlyArray<number>;
-	readonly execX?: ReadonlyArray<number>;
-	readonly execZ?: ReadonlyArray<number>;
-}
-
-/** One spark hop: from (x1, z1) to the target at (x2, z2). */
+/** One spark segment: from (x1, z1) to the target at (x2, z2); `fork` a Storm Crown fork (from the hop's start). */
 export interface SparkRecord {
 	readonly x1: number;
 	readonly z1: number;
@@ -51,33 +40,30 @@ export interface SparkRecord {
 	readonly z2: number;
 	readonly owner: number;
 	readonly gen: number;
+	readonly fork: boolean;
 	readonly tick: number;
 }
 
-/** A Volatile ring, a Soul Shards volley, an ember dropped or a nova: where, whose, which generation. */
+/** One effect: where, whose, which generation, how much and which kind (see the file comment per list). */
 export interface EffectRecord {
 	readonly x: number;
 	readonly z: number;
 	readonly owner: number;
 	readonly gen: number;
-	/** Bullets spawned (burst / shard), 1 for an ember, the radius in sim units for a nova. */
 	readonly amount: number;
-	/** The nova's kind (sim novaKind); 0 for every other record. */
 	readonly kind: number;
 	readonly tick: number;
+}
+
+/** A nova (Overflowing / Bulwark): an EffectRecord (amount = radius, kind = NovaKind) and the bullets it erased. */
+export interface NovaRecord extends EffectRecord {
+	readonly erased: number;
 }
 
 /** An evolution or duo taken: the player and the boon / duo index. */
 export interface TakeRecord {
 	readonly player: number;
 	readonly index: number;
-	readonly tick: number;
-}
-
-/** An execute (Executioner): where the enemy died. */
-export interface ExecuteRecord {
-	readonly x: number;
-	readonly z: number;
 	readonly tick: number;
 }
 
@@ -89,10 +75,15 @@ export interface BuildFxFrameSource {
 	readonly bursts: ReadonlyArray<EffectRecord>;
 	readonly shards: ReadonlyArray<EffectRecord>;
 	readonly embers: ReadonlyArray<EffectRecord>;
-	readonly novas: ReadonlyArray<EffectRecord>;
-	readonly executes: ReadonlyArray<ExecuteRecord>;
-	/** Jackpot pops (no sim field yet: always empty). */
+	readonly novas: ReadonlyArray<NovaRecord>;
+	readonly executes: ReadonlyArray<EffectRecord>;
+	readonly phantoms: ReadonlyArray<EffectRecord>;
 	readonly jackpots: ReadonlyArray<EffectRecord>;
+	readonly heals: ReadonlyArray<EffectRecord>;
+	readonly momentum: ReadonlyArray<EffectRecord>;
+	readonly thrills: ReadonlyArray<EffectRecord>;
+	readonly flurries: ReadonlyArray<EffectRecord>;
+	readonly ricochets: ReadonlyArray<EffectRecord>;
 	readonly evolved: ReadonlyArray<TakeRecord>;
 	readonly duos: ReadonlyArray<TakeRecord>;
 }
@@ -104,6 +95,7 @@ interface SparkSlot {
 	z2: number;
 	owner: number;
 	gen: number;
+	fork: boolean;
 	tick: number;
 }
 
@@ -117,15 +109,13 @@ interface EffectSlot {
 	tick: number;
 }
 
+interface NovaSlot extends EffectSlot {
+	erased: number;
+}
+
 interface TakeSlot {
 	player: number;
 	index: number;
-	tick: number;
-}
-
-interface ExecuteSlot {
-	x: number;
-	z: number;
 	tick: number;
 }
 
@@ -170,16 +160,38 @@ export class BuildFxEvents implements BuildFxFrameSource {
 		z2: 0,
 		owner: 0,
 		gen: 0,
+		fork: false,
 		tick: 0,
 	}));
 	private readonly burstList = new Pooled<EffectSlot>(newEffect);
 	private readonly shardList = new Pooled<EffectSlot>(newEffect);
 	private readonly emberList = new Pooled<EffectSlot>(newEffect);
-	private readonly novaList = new Pooled<EffectSlot>(newEffect);
+	private readonly novaList = new Pooled<NovaSlot>(() => ({ ...newEffect(), erased: 0 }));
+	private readonly executeList = new Pooled<EffectSlot>(newEffect);
+	private readonly phantomList = new Pooled<EffectSlot>(newEffect);
 	private readonly jackpotList = new Pooled<EffectSlot>(newEffect);
-	private readonly executeList = new Pooled<ExecuteSlot>(() => ({ x: 0, z: 0, tick: 0 }));
+	private readonly healList = new Pooled<EffectSlot>(newEffect);
+	private readonly momentumList = new Pooled<EffectSlot>(newEffect);
+	private readonly thrillList = new Pooled<EffectSlot>(newEffect);
+	private readonly flurryList = new Pooled<EffectSlot>(newEffect);
+	private readonly ricochetList = new Pooled<EffectSlot>(newEffect);
 	private readonly evolvedList = new Pooled<TakeSlot>(newTake);
 	private readonly duoList = new Pooled<TakeSlot>(newTake);
+	/** Every effect list, for reset and count. */
+	private readonly effectLists: ReadonlyArray<Pooled<EffectSlot>> = [
+		this.burstList,
+		this.shardList,
+		this.emberList,
+		this.novaList,
+		this.executeList,
+		this.phantomList,
+		this.jackpotList,
+		this.healList,
+		this.momentumList,
+		this.thrillList,
+		this.flurryList,
+		this.ricochetList,
+	];
 	/** Per player bullet slot: the ember life seen last tick (0: no ember there), and the simulation it belongs to. */
 	private readonly emberLife: number[] = [];
 	private emberSim: BulletSimulation | undefined;
@@ -188,9 +200,15 @@ export class BuildFxEvents implements BuildFxFrameSource {
 	readonly bursts: ReadonlyArray<EffectRecord> = this.burstList.items;
 	readonly shards: ReadonlyArray<EffectRecord> = this.shardList.items;
 	readonly embers: ReadonlyArray<EffectRecord> = this.emberList.items;
-	readonly novas: ReadonlyArray<EffectRecord> = this.novaList.items;
+	readonly novas: ReadonlyArray<NovaRecord> = this.novaList.items;
+	readonly executes: ReadonlyArray<EffectRecord> = this.executeList.items;
+	readonly phantoms: ReadonlyArray<EffectRecord> = this.phantomList.items;
 	readonly jackpots: ReadonlyArray<EffectRecord> = this.jackpotList.items;
-	readonly executes: ReadonlyArray<ExecuteRecord> = this.executeList.items;
+	readonly heals: ReadonlyArray<EffectRecord> = this.healList.items;
+	readonly momentum: ReadonlyArray<EffectRecord> = this.momentumList.items;
+	readonly thrills: ReadonlyArray<EffectRecord> = this.thrillList.items;
+	readonly flurries: ReadonlyArray<EffectRecord> = this.flurryList.items;
+	readonly ricochets: ReadonlyArray<EffectRecord> = this.ricochetList.items;
 	readonly evolved: ReadonlyArray<TakeRecord> = this.evolvedList.items;
 	readonly duos: ReadonlyArray<TakeRecord> = this.duoList.items;
 
@@ -198,29 +216,16 @@ export class BuildFxEvents implements BuildFxFrameSource {
 	reset(): void {
 		this.ticks = 0;
 		this.sparkList.clear();
-		this.burstList.clear();
-		this.shardList.clear();
-		this.emberList.clear();
-		this.novaList.clear();
-		this.jackpotList.clear();
-		this.executeList.clear();
+		for (const l of this.effectLists) l.clear();
 		this.evolvedList.clear();
 		this.duoList.clear();
 	}
 
 	/** Every record of this frame (0: nothing happened). */
 	count(): number {
-		return (
-			this.sparks.size() +
-			this.bursts.size() +
-			this.shards.size() +
-			this.embers.size() +
-			this.novas.size() +
-			this.jackpots.size() +
-			this.executes.size() +
-			this.evolved.size() +
-			this.duos.size()
-		);
+		let n = this.sparks.size() + this.evolved.size() + this.duos.size();
+		for (const l of this.effectLists) n += l.items.size();
+		return n;
 	}
 
 	/** After every tick. No-op without builds. */
@@ -238,6 +243,7 @@ export class BuildFxEvents implements BuildFxFrameSource {
 			r.z2 = e.sparkZ2[i];
 			r.owner = e.sparkOwner[i];
 			r.gen = e.sparkGen[i];
+			r.fork = (e.sparkFork[i] ?? 0) !== 0;
 			r.tick = tick;
 		}
 		for (let i = 0; i < e.burstX.size(); i++) {
@@ -265,36 +271,50 @@ export class BuildFxEvents implements BuildFxFrameSource {
 		for (let i = 0; i < e.evolvedPlayer.size(); i++)
 			take(this.evolvedList.push(), e.evolvedPlayer[i], e.evolvedBoon[i], tick);
 		for (let i = 0; i < e.duoPlayer.size(); i++) take(this.duoList.push(), e.duoPlayer[i], e.duoTaken[i], tick);
-		this.collectPending(e, tick);
+		this.collectEvolutions(state, tick);
 		this.collectEmbers(state, tick);
 	}
 
-	/** BU5's novas and executes, when the sim's feed has them (see PendingBuildEventFields). */
-	private collectPending(events: Readonly<BuildEvents>, tick: number): void {
-		const e = events as unknown as PendingBuildEventFields;
-		const nx = e.novaX;
-		if (nx !== undefined) {
-			for (let i = 0; i < nx.size(); i++) {
-				const r = effect(
-					this.novaList.push(),
-					nx[i],
-					e.novaZ?.[i] ?? 0,
-					e.novaOwner?.[i] ?? 0,
-					0,
-					e.novaRadius?.[i] ?? 0,
-					tick,
-				);
-				r.kind = e.novaKind?.[i] ?? 0;
-			}
+	/** BU5's evolution records (see the file comment for each list's amount / kind). */
+	private collectEvolutions(state: Readonly<SimState>, tick: number): void {
+		const e = state.builds!.events;
+		for (let i = 0; i < e.novaX.size(); i++) {
+			const r = this.novaList.push();
+			effect(r, e.novaX[i], e.novaZ[i], e.novaOwner[i], 0, e.novaRadius[i], tick);
+			r.kind = e.novaKind[i];
+			r.erased = e.novaErased[i];
 		}
-		const ex = e.execX;
-		if (ex !== undefined) {
-			for (let i = 0; i < ex.size(); i++) {
-				const r = this.executeList.push();
-				r.x = ex[i];
-				r.z = e.execZ?.[i] ?? 0;
-				r.tick = tick;
-			}
+		for (let i = 0; i < e.execX.size(); i++)
+			effect(this.executeList.push(), e.execX[i], e.execZ[i], e.execOwner[i], 0, 1, tick);
+		for (let i = 0; i < e.phantomX.size(); i++)
+			effect(this.phantomList.push(), e.phantomX[i], e.phantomZ[i], e.phantomOwner[i], 0, 1, tick);
+		for (let i = 0; i < e.jackpotX.size(); i++) {
+			const points = e.jackpotPoints[i];
+			effect(this.jackpotList.push(), e.jackpotX[i], e.jackpotZ[i], e.jackpotOwner[i], 0, points, tick);
+		}
+		const n = partySize(state);
+		for (let i = 0; i < e.lionPlayer.size(); i++) {
+			const who = e.lionPlayer[i];
+			const p = who >= 0 && who < n ? playerAt(state, who) : undefined;
+			effect(this.healList.push(), p?.x ?? 0, p?.z ?? 0, who, 0, e.lionHealed[i], tick);
+		}
+		for (let i = 0; i < e.momentumX.size(); i++) {
+			const r = this.momentumList.push();
+			const fired = e.momentumFired[i];
+			effect(r, e.momentumX[i], e.momentumZ[i], e.momentumOwner[i], 0, fired, tick);
+			r.kind = e.momentumTier[i];
+		}
+		for (let i = 0; i < e.thrillX.size(); i++)
+			effect(this.thrillList.push(), e.thrillX[i], e.thrillZ[i], e.thrillOwner[i], 0, e.thrillFired[i], tick);
+		for (let i = 0; i < e.flurryX.size(); i++) {
+			const r = this.flurryList.push();
+			const fired = e.flurryFired[i];
+			effect(r, e.flurryX[i], e.flurryZ[i], e.flurryOwner[i], 0, fired, tick);
+			r.kind = e.flurryKind[i];
+		}
+		for (let i = 0; i < e.ricochetX.size(); i++) {
+			const fired = e.ricochetFired[i];
+			effect(this.ricochetList.push(), e.ricochetX[i], e.ricochetZ[i], e.ricochetOwner[i], 0, fired, tick);
 		}
 	}
 
@@ -359,8 +379,8 @@ function take(r: TakeSlot, player: number, index: number, tick: number): void {
 
 const EMPTY_SPARKS = table.freeze([] as SparkRecord[]);
 const EMPTY_EFFECTS = table.freeze([] as EffectRecord[]);
+const EMPTY_NOVAS = table.freeze([] as NovaRecord[]);
 const EMPTY_TAKES = table.freeze([] as TakeRecord[]);
-const EMPTY_EXECUTES = table.freeze([] as ExecuteRecord[]);
 
 /** No build effects (no run, no builds, or audibleBuilds while quiet). Frozen. */
 export const NO_BUILD_FX_EVENTS: BuildFxFrameSource = table.freeze({
@@ -369,9 +389,15 @@ export const NO_BUILD_FX_EVENTS: BuildFxFrameSource = table.freeze({
 	bursts: EMPTY_EFFECTS,
 	shards: EMPTY_EFFECTS,
 	embers: EMPTY_EFFECTS,
-	novas: EMPTY_EFFECTS,
-	executes: EMPTY_EXECUTES,
+	novas: EMPTY_NOVAS,
+	executes: EMPTY_EFFECTS,
+	phantoms: EMPTY_EFFECTS,
 	jackpots: EMPTY_EFFECTS,
+	heals: EMPTY_EFFECTS,
+	momentum: EMPTY_EFFECTS,
+	thrills: EMPTY_EFFECTS,
+	flurries: EMPTY_EFFECTS,
+	ricochets: EMPTY_EFFECTS,
 	evolved: EMPTY_TAKES,
 	duos: EMPTY_TAKES,
 });

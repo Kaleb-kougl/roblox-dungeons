@@ -631,6 +631,77 @@ validator or Luau-locals change.
    `BulletRenderController.getBuildPoolSizes`).
 8. The stage cover and the run-over panel: no beams, rings or build sounds.
 
+## BU8 follow-up (as built)
+
+Presentation only: no sim, hash, replay, fixture or lockstep change. Closes BU8's "TODO for BU5 / BU6 (sim)" for BU5's
+fields. Paths under `src/` unless noted.
+
+- **Feed.** `shared/view/fx/buildFxEvents.ts`: the `PendingBuildEventFields` shim is gone; every BU5 field is read
+  typed, per tick, into its own pooled list on `BuildFxFrameSource`: `SparkRecord.fork` (`sparkFork`; hand-filled specs
+  without it read as hops), `novas` (`NovaRecord`: amount = radius, kind = `NovaKind`, `erased`), `executes` (now an
+  `EffectRecord` with the credited owner; `ExecuteRecord` removed), `phantoms`, `jackpots` (amount = points), `heals`
+  (owner = the healed player, x / z where they stood at collect, amount = half hearts), `momentum` (kind = tier, amount =
+  shards), `thrills`, `flurries` (kind = `FlurryKind`), `ricochets`. BU5 records carry gen 0. `count` / `reset` walk
+  one list of the effect pools.
+- **Director** (`buildFxRules.ts`, tunables in `buildFxConfig.ts`). `RingView.flare` became `look`
+  (`BuildRingLook` = `nova` / `flare` / `heal` / `pop`; `buildRingBlock(look)` gives the drawing block). Rings live in
+  three internal lists (novas capped at `nova.maxAlive`, origin flares at `pop.maxAlive`, followers one per player and
+  look) so a busy cascade never evicts the knight's flare; `rings` is rebuilt from them each frame.
+  - Novas: `nova.looks` = Overflowing `fx.heal` (the flask effect's green: it fires on the drink), Bulwark
+    `build.spark`; `novaRole(kind)`, unknown kinds the fallback. Expanding 0 -> radius over 0.35 s as before.
+  - Origin flares (`pop`): a 0.25 s ring 0.1 -> 0.55 tiles at a Momentum volley (+0.1 tile per tier above x2,
+    `momentumPopTiles`), Thrill Seeker ring, Flurry release and Ricochet split; Momentum in `build.shard`, the other
+    three in `build.spark` (the colour of what they fire). Stays where it left.
+  - Lionheart: a 0.6 s pulse 0.5 -> 1.2 tiles in `fx.heal` around the healed player, following them (like the flare;
+    a newer one replaces it; ends on death).
+  - Phantom Step: chip bursts (`phantomBursts`, `phantomShape`: 2 bits + 3 sparks, `build.shard`), at most 8 a frame,
+    view player first, none with particles off; `ParticleController.buildPhantomBurst` (one palette entry appended).
+  - Executes: flashes only for owners in the party; otherwise unchanged (`uiHealth` disc, pop).
+  - Storm Crown forks: `BeamView.fork`; `BuildFxController` draws them at `beam.forkThicknessShare` (0.6) thickness.
+  - The evolve / duo flare is BU8's, unchanged (now a `flare` follower).
+  - Reduced halves every ring's segments and both chip shapes (`buildFxCount`); reduced motion draws every ring at its
+    end radius (fading only), no execute pop, no beam crackle, no trails (as BU8).
+  - The director's Jackpot slot (`JackpotView`, `jackpots`) is removed: see Score.
+- **Score.** The Jackpot pop uses the score pops' machinery: `ScorePopController` keeps a second `ScorePopPool`
+  (`BUILD_FX_VIEW.jackpot.maxAlive` 4) fed from `RunView.builds.jackpots`, same "+points" string, life, fade, rise and
+  `damageNumbers` gate, glyphs x2, 6 px higher, in `boon.legendary`'s candle gold (a HUD text colour; a gold floor ring
+  was rejected: it would read as a Fury drop's halo at the same corpse). `score.source.jackpot` ("Jackpot") added to the
+  placeholder pack (vale inherits it; not a contract key). `SCORE_SOURCE_KEYS` = `SCORE_SOURCE_NAMES` then
+  `BUILD_SCORE_SOURCE_NAMES` (10 keys); the run-over breakdown takes its rows from the new pure
+  `scoreBreakdownRows(points)` (shared/view/hud strings.ts), so a builds run (10 points) shows the Jackpot row and
+  every other scored run (9) is unchanged.
+- **Audio** (`cues.ts`). `buildCue(id, localIndex, a, b?, c?)` merges up to three lists (highest gen, "mine" if any
+  record is the local player's): `.burst` = Volatile rings + Thrill Seeker + Flurry, `.shard` = Soul Shards + Momentum
+  + Ricochet; `.nova`, `.execute` (now owner-aware: a teammate's alone is quieter) and `.jackpot` from their feeds. Same
+  intervals, ranks, voice cap and quiet gate. Phantom Step and Lionheart have no cue (the roll and the PERFECT sting
+  already sound; a dense erase must not stutter).
+- **No new colour role**, so no validator or Luau-locals change: every ring and chip reuses a role already validated
+  (`fx.heal` by the fx rules, `build.*` by `buildReport`, `boon.legendary` by the rarity report; the pop is text).
+- **Specs.** `view/fx/buildFxEvents.spec.ts` (every BU5 field into its list with amount / kind, two ticks, reset; the
+  sim's own pushes: 15 Executioner kills and a Jackpot through `damageActor` in a real endless run),
+  `view/fx/buildFxRules.spec.ts` (nova roles and timing, fork flag, origin flares by tier / role / cap that never evict
+  the flare, the Lionheart pulse following and ending, reduced motion, Phantom sparks cap / order / particles off /
+  Reduced, quiet over every ring kind), `view/audio/buildCues.spec.ts` (nova / execute / jackpot cues, the burst / shard
+  reuse with merged generation, teammate volume, Phantom / Lionheart silent, interval and voice cap across the
+  releases), `view/hud/hud.spec.ts` (10 keys, the Jackpot string, `scoreBreakdownRows` 9 vs 10 rows).
+- **Not done.** No duo (BU6) look beyond BU8's embers; no art or clips (all build sounds are SILENT in the placeholder);
+  `novaErased` and `lionHealed` are collected but not shown (no count on screen).
+
+**Studio checklist, continued (nothing could run in Studio here).**
+
+9. Deep Flask III: drinking a flask grows a green ring to 3 tiles that wipes nearby bullets; Warding III: an armor pip
+   breaking grows a blue 2.5-tile ring. Both under the bullets, readable on every biome.
+10. Sharpened III: a red disc pops on each executed enemy; never on a boss.
+11. Slippery III: rolling through bullets leaves small violet-white chips where they vanish; Reduced: fewer chips;
+    particles off: none.
+12. Bounty III: every 15th kill pops a big gold "+points" above the corpse (bigger and higher than kill pops; off with
+    damage numbers); the run-over breakdown has a "Jackpot" row in builds runs only (none in the tutorial / M1).
+13. Hearty III: a PERFECT clear rings the knight in green for 0.6 s (following it).
+14. Lingering III / Daredevil III / Swift Strikes III / Piercing Arrows III: a small flare at the knight (or where the
+    arrow split) on each Momentum volley (bigger per tier), Thrill Seeker ring, Flurry release and Ricochet split.
+15. Chain Spark III: Storm Crown forks are visibly thinner than the hop beams.
+16. Pick an evolution while a cascade is running: the gold flare still shows (not evicted by flares / novas).
+
 ## Player experience
 
 1. **Floor 1 draft.** Three cards as today. One might be **Volatile**: "Enemies you kill burst into a ring of bolts."

@@ -596,6 +596,8 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		"score.source.floors": "Floors",
 		"score.source.boss": "Boss",
 		"score.source.breakables": "Breakables",
+		// Roblox port (docs/BUILDS.md BU8 follow-up): the build-only Jackpot source (Bounty III), builds runs only.
+		"score.source.jackpot": "Jackpot",
 		// M5: leaderboards.
 		"hud.pause.leaderboard": "Leaderboards",
 		"hud.leaderboard.title": "Leaderboards",
