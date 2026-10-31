@@ -64,6 +64,11 @@ export const DROPS = {
 		["swarmer", 3],
 		["sniper", 8],
 		["bruiser", 10],
+		// Roblox port: the endless room enemies (docs/ENEMY_VARIANTS.md EV1).
+		["imp", 6],
+		["slime", 8],
+		["slime.small", 2],
+		["summoner", 10],
 	]) as ReadonlyMap<string, number>,
 	pityKills: 20,
 	groundSeconds: 10,

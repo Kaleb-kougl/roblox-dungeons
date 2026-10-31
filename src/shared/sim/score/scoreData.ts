@@ -24,6 +24,11 @@ export const KILL_POINTS: ReadonlyMap<string, number> = new Map<string, number>(
 	["boss.act1", 5000],
 	// Roblox port: the second endless boss (docs/BOSS_DEMONLORD.md), Mother Bramble's budget and points.
 	["boss.demonlord", 5000],
+	// Roblox port: the endless room enemies (docs/ENEMY_VARIANTS.md EV1).
+	["imp", 120],
+	["slime", 150],
+	["slime.small", 40],
+	["summoner", 200],
 ]);
 /** Kill points of an archetype id not in the table (test archetypes). */
 export const DEFAULT_KILL_POINTS = 50;

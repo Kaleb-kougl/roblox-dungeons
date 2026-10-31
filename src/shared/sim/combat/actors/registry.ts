@@ -12,7 +12,8 @@
  * turret.caster, turret.sniper, turret.sprayer` (indices 0..6; ActorState.kind is hashed, so the golden runs pin it).
  * The port's own archetypes take a higher band so they number AFTER every web id instead of sorting in between and
  * shifting them: `dummy` (the tutorial's training dummy) is band PORT_BAND_TUTORIAL = 1, index 7; `boss.demonlord`
- * (the second endless boss, docs/BOSS_DEMONLORD.md) is band PORT_BAND_BOSSES = 2, index 8. A later addition takes the
+ * (the second endless boss, docs/BOSS_DEMONLORD.md) is band PORT_BAND_BOSSES = 2, index 8; the endless room enemies
+ * of docs/ENEMY_VARIANTS.md are band PORT_BAND_ENEMIES = 3 (indices 9..12). A later addition takes the
  * next band, so no index that a recording or fixture already holds ever moves. Specs may add test archetypes
  * (shared/sim/testing, band 0) in their own module world.
  */
@@ -28,6 +29,12 @@ export const WEB_ARCHETYPE_BAND = 0;
 export const PORT_BAND_TUTORIAL = 1;
 /** ArchetypeDef.band of the port's own bosses (`boss.demonlord`): numbered after the tutorial's. */
 export const PORT_BAND_BOSSES = 2;
+/**
+ * ArchetypeDef.band of the port's own room enemies (docs/ENEMY_VARIANTS.md): numbered after the port's bosses, so
+ * `imp`, `slime`, `slime.small`, `summoner` take indices 9..12 (compareIds: a prefix sorts first) and no recorded
+ * index moves.
+ */
+export const PORT_BAND_ENEMIES = 3;
 
 const byId = new Map<string, ArchetypeDef>();
 let sorted: ArchetypeDef[] | undefined;

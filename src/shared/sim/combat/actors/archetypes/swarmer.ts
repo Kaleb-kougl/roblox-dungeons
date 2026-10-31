@@ -14,6 +14,7 @@
 import { SIM_DT } from "../../../units";
 import { HIT_NORMAL, secondsToTicks } from "../../../playerData";
 import type { SimCtx } from "../../ctx";
+import { enemyCooldown, walkStep } from "../actorMods";
 import { faceToward, moveActor, toPlayer, walkToward } from "../helpers";
 import { registerArchetype } from "../registry";
 import { AiState, type ActorState } from "../types";
@@ -111,7 +112,7 @@ export const SWARMER = registerArchetype<SwarmerData>({
 	},
 	init(ctx, a) {
 		initRoomEnemy(a);
-		a.cooldown = ctx.randomInt(0, secondsToTicks(FIRST_LUNGE_JITTER_SECONDS)); // packs don't lunge in lockstep
+		a.cooldown = enemyCooldown(ctx, a, 0, secondsToTicks(FIRST_LUNGE_JITTER_SECONDS)); // packs don't lunge in lockstep
 	},
 	step(ctx, a) {
 		const d = ctx.data<SwarmerData>(a);
@@ -186,7 +187,7 @@ function chase(ctx: SimCtx, a: ActorState, d: SwarmerData): void {
 		a.v[SWARMER_DIR_X] = dirX;
 		a.v[SWARMER_DIR_Z] = dirZ;
 		faceToward(a, dirX, dirZ);
-		a.cooldown = ctx.randomInt(d.lungeCooldownMin, d.lungeCooldownMax);
+		a.cooldown = enemyCooldown(ctx, a, d.lungeCooldownMin, d.lungeCooldownMax);
 		ctx.telegraph(a, d.lungeTelegraphTicks, SWARMER_ATTACK_LUNGE);
 		return;
 	}
@@ -196,7 +197,7 @@ function chase(ctx: SimCtx, a: ActorState, d: SwarmerData): void {
 	const tz = a.v[SWARMER_LAST_Z] - a.z;
 	const left = math.sqrt(tx * tx + tz * tz) - d.chaseStop;
 	if (left > 0) {
-		const walk = d.speed * SIM_DT;
+		const walk = walkStep(ctx, a);
 		walkToward(ctx, a, a.v[SWARMER_LAST_X], a.v[SWARMER_LAST_Z], walk < left ? walk : left, STEER);
 	} else faceToward(a, tx, tz);
 }

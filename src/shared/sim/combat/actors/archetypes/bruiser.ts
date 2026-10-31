@@ -14,10 +14,10 @@
  * ring, or rolling through it) answers it.
  */
 
-import { SIM_DT } from "../../../units";
 import { HIT_HEAVY, HIT_NORMAL, PLAYER_RADIUS, secondsToTicks } from "../../../playerData";
 import { BulletKind, rotateDir, type BurstSpec, type Dir } from "../../patterns";
 import type { SimCtx } from "../../ctx";
+import { enemyCooldown, enemyCooldownFixed, walkStep } from "../actorMods";
 import { faceToward, toPlayer, walkToward } from "../helpers";
 import { registerArchetype } from "../registry";
 import { AiState, type ActorState } from "../types";
@@ -136,7 +136,7 @@ export const BRUISER = registerArchetype<BruiserData>({
 	step(ctx, a) {
 		const d = ctx.data<BruiserData>(a);
 		if (stepCalm(ctx, a)) {
-			a.cooldown = d.firstSlam;
+			a.cooldown = enemyCooldownFixed(ctx, a, d.firstSlam);
 			return;
 		}
 		if (shouldLeash(ctx, a)) {
@@ -194,7 +194,7 @@ function chase(ctx: SimCtx, a: ActorState, d: BruiserData): void {
 	}
 	const contact = a.radius + PLAYER_RADIUS - STOP_INSIDE_CONTACT;
 	if (dist > contact) {
-		const walk = d.speed * SIM_DT;
+		const walk = walkStep(ctx, a);
 		const left = dist - contact;
 		walkToward(ctx, a, p.x, p.z, walk < left ? walk : left, STEER);
 	} else faceToward(a, tp.dx, tp.dz);
@@ -209,5 +209,5 @@ function slam(ctx: SimCtx, a: ActorState, d: BruiserData, dirX: number, dirZ: nu
 	ctx.fireEnemy(a, -gapScratch.x, -gapScratch.z, d.ring);
 	a.aiState = BRUISER_RECOVER;
 	a.aiTicks = d.recoverTicks;
-	a.cooldown = ctx.randomInt(d.slamCooldownMin, d.slamCooldownMax);
+	a.cooldown = enemyCooldown(ctx, a, d.slamCooldownMin, d.slamCooldownMax);
 }
