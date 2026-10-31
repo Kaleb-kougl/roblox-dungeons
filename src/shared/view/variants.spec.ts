@@ -44,6 +44,7 @@ import {
 	type SimState,
 } from "shared/sim";
 import { AFFIX_IDS, affixNameKey, affixRole, loadThemePack, type SpriteAnimationDef } from "shared/theme";
+import { VALE_SPRITE_LAYOUTS } from "shared/theme/packs/vale";
 import { HitTracker } from "./fx";
 import {
 	ACTOR_SPRITE_INPUTS,
@@ -57,6 +58,9 @@ import {
 	summonerSpriteInput,
 	actorSpriteScale,
 	scaledSpriteLayout,
+	segmentLength,
+	segmentStart,
+	spriteFrame,
 	type SpriteAnimSource,
 } from "./sprites";
 import { actorFxMarkings, ringFill, type ActorFxHintsView, type SegmentSink } from "./markings";
@@ -606,5 +610,55 @@ describe("imp blink puffs", () => {
 			}
 		}
 		expect(puffs).toBeGreaterThanOrEqual(3);
+	});
+});
+
+// ---------------------------------------------------------------------------------------------
+// The marks on the built EV10 sets (docs/ENEMY_VARIANTS.md "EV10 imp / summoner (as built)")
+
+describe("VARIANT_ANIM_MARKS and summonerAnims on the built enemy.imp / enemy.summoner sets (layout.ts)", () => {
+	// The kept-frame indices below are the art measurement (Imp 9 Attack 5: the sweep starts at source f8 = kept index
+	// 5 of 9), not the table: this pins that the mark, read through segmentStart / segmentLength, lands on them with
+	// the frame counts art:build wrote.
+	/** [first frame, frame count] of `[from, to)` in an n-frame animation. */
+	const part = (from: number, to: number, n: number) => [
+		segmentStart({ from, to }, n),
+		segmentLength({ from, to }, n),
+	];
+	/** [animation, frame] the renderer draws for `input` on `set` (a stretched attack: no clock). */
+	const drawn = (set: SpriteAnimSource, input: ReturnType<typeof impSpriteInput>) => {
+		const choice = chooseActorAnim(input, set);
+		return [choice.anim, spriteFrame(set, choice, undefined, 0).frame];
+	};
+
+	it("imp (Attack 5): lean back and crouch 0-4 over the blink wind-up, the rise and sweep 5-8 over the landing aim", () => {
+		const anims = VALE_SPRITE_LAYOUTS["enemy.imp"].animations;
+		const n = anims.attack.frames;
+		expect(n).toBe(9);
+		expect(VARIANT_ANIM_MARKS.imp.land).toBe(5 / 9);
+		expect(part(0, VARIANT_ANIM_MARKS.imp.land, n)).toEqual([0, 5]);
+		expect(part(VARIANT_ANIM_MARKS.imp.land, 1, n)).toEqual([5, 4]);
+		const set = source(anims);
+		const imp = (attack: number, aiTicks: number, alpha = 0) =>
+			drawn(set, impSpriteInput(actor({ aiState: AiState.TELEGRAPH, attack, aiTicks }), alpha));
+		const d = IMP.data;
+		expect(imp(IMP_ATTACK_BLINK, d.blinkTelegraphTicks)).toEqual(["attack", 0]);
+		expect(imp(IMP_ATTACK_BLINK, 1, 0.99)).toEqual(["attack", 4]);
+		expect(imp(IMP_ATTACK_FAN, d.landAimTicks)).toEqual(["attack", 5]);
+		expect(imp(IMP_ATTACK_FAN, 1, 0.99)).toEqual(["attack", 8]);
+	});
+
+	it("summoner: Taunt (attack.2, 8 frames) over the summon cast, Attack 2 (attack, 6) over the panic wind-up", () => {
+		const anims = VALE_SPRITE_LAYOUTS["enemy.summoner"].animations;
+		expect([anims.attack.frames, anims["attack.2"].frames]).toEqual([6, 8]);
+		expect(VARIANT_SPRITE_VIEW.summonerAnims).toEqual({ cast: "attack.2", panic: "attack" });
+		const set = source(anims);
+		const summoner = (attack: number, aiTicks: number, alpha = 0) =>
+			drawn(set, summonerSpriteInput(actor({ aiState: AiState.TELEGRAPH, attack, aiTicks }), alpha));
+		const d = SUMMONER.data;
+		expect(summoner(SUMMONER_ATTACK_SUMMON, d.summonTelegraphTicks)).toEqual(["attack.2", 0]);
+		expect(summoner(SUMMONER_ATTACK_SUMMON, 1, 0.99)).toEqual(["attack.2", 7]);
+		expect(summoner(SUMMONER_ATTACK_PANIC, d.panicTelegraphTicks)).toEqual(["attack", 0]);
+		expect(summoner(SUMMONER_ATTACK_PANIC, 1, 0.99)).toEqual(["attack", 5]);
 	});
 });

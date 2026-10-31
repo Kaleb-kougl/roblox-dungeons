@@ -396,6 +396,88 @@
 				{ "name": "caster-death", "animations": ["death"] }
 			]
 		},
+		"enemy.imp": {
+			"$comment": [
+				"The imp (docs/ENEMY_VARIANTS.md EV10) as Imp 9, the red imp with a staff (owner-delegated pick, 2026-10-31); same pack and format as enemy.bruiser: body over Shadows/, no Effects/ (DEMON_ART DD3).",
+				"Measured: the body sheets are alpha 0/255 only (no baked glow, so no layerNoiseAlpha); the Shadows layer is flat alpha 194, RGB (2, 4, 5).",
+				"move = Run (a crouched sprint): its planted foot slides ~2.6 px per source frame (Walk ~1.9), so at 28.3 px/tile one 15-frame cycle covers ~1.4 tiles; 8 kept frames at fps 14 play it in 0.57 s = 1.8 tiles at 3.2 u/s (1.3x the art's stride; the knight's run 1.8x, the bruiser's walk 0.8x). The Walk (~1.0 tile a cycle) would skate 2.6x at fps 10.",
+				"attack = Attack 5 (lean back with the staff, a deep crouch, then the rising staff sweep): kept 0, 2, 4, 5, 7 are the wind-up (the body drops from 42 to 23-25 px tall over frames 5-7), 8-11 the rise and the sweep.",
+				"The view plays [0, land) over the 30-tick blink wind-up and [land, 1] over the 21-tick landing aim (VARIANT_ANIM_MARKS.imp.land = 5/9: the sweep starts at kept index 5, source f8); 12-14 (the return to idle) are not kept.",
+				"hit = TakeDamage 1 (1, 3, 5, 8) and death = Die 1 (0, 2, 4, 6, 9, 14): the bruiser's picks. Idle 1 frame 14 duplicates frame 0 (the loop picks from 0-13).",
+				"Scale: bodyTiles 1.2 (owner brief: a bit smaller than the knight's 1.5; at the knight's density it would stand 0.89 tiles, 60% of him): the idle body (alpha > 250, facing the camera) is 34 px tall -> 28.3 px/tile, 31-33 px (1.1-1.2 tiles, staff included) wide against the r 0.35 hitbox.",
+				"cells \"perSheet\" (DD4): attack 64x74 in 384x888, body (idle + move + hit) 62x64 in 496x1024, death 78x70 in 312x840 (set union 78x81); 3 atlases + 3 rims. Pivot = source (69, 86)."
+			],
+			"source": { "type": "grid", "dir": "demons-topdown/Spritesheets with seperated shadows and effects/Imp 9", "frameW": 128, "frameH": 128, "layers": ["Shadows", ""] },
+			"facingCount": 8,
+			"rowForFacing": [0, 7, 6, 5, 4, 3, 2, 1],
+			"rowOrderEvidence": [
+				"Rows go CLOCKWISE from screen right, the knight's order (DEMON_ART DA1): output facing d = row (8 - d) % 8. Checked by eye on this set's contact sheet.",
+				"row 2 (facing 6, towards the camera): the face with both white eyes and the purple belt gem; row 6 (facing 2, away): the back of the head between the horns, no eyes.",
+				"row 0 runs to screen right (Run f5-f10: the body leans right, the staff trails left); row 4 the mirror view to screen left."
+			],
+			"noiseAlpha": 2,
+			"pad": 3,
+			"pivot": { "measure": { "animation": "idle", "facing": 6, "frame": 0 }, "bodyAlpha": 250, "bodyMinRgb": 0, "footBand": 6 },
+			"pivotNote": "Body sheets are alpha 0/255 only; the Shadows layer is flat alpha 194, RGB (2, 4, 5), drawn under the body. alpha > 250 is exactly the body, so the pivot, the body height and the outline mask leave the shadow out (bodyMinRgb 0). Measured on idle facing 6 (source row 2, towards the camera), frame 0.",
+			"outline": { "widthPx": 2 },
+			"outlineNote": "Enemy contrast rim (docs/OUTLINE.md, decision E4: 2 art px). pad 3 = widthPx + 1.",
+			"bodyTiles": 1.2,
+			"resample": "Default",
+			"cells": "perSheet",
+			"animations": {
+				"idle": { "file": "Idle 1.png", "frames": [0, 3, 7, 10], "fps": 6, "loop": true },
+				"move": { "file": "Run.png", "frames": [0, 2, 4, 5, 7, 9, 11, 12], "fps": 14, "loop": true },
+				"attack": { "file": "Attack 5.png", "frames": [0, 2, 4, 5, 7, 8, 9, 10, 11], "fps": 12, "loop": false },
+				"hit": { "file": "TakeDamage 1.png", "frames": [1, 3, 5, 8], "fps": 12, "loop": false },
+				"death": { "file": "Die 1.png", "frames": [0, 2, 4, 6, 9, 14], "fps": 10, "loop": false }
+			},
+			"sheets": [
+				{ "name": "imp-attack", "animations": ["attack"] },
+				{ "name": "imp-body", "animations": ["idle", "move", "hit"] },
+				{ "name": "imp-death", "animations": ["death"] }
+			]
+		},
+		"enemy.summoner": {
+			"$comment": [
+				"The summoner (docs/ENEMY_VARIANTS.md EV10) as Demon Spawn 10, the pale robed horned demon with a scythe (owner-delegated pick, 2026-10-31): the priority target, pale so it stands out from the dark turrets (Spawn 8 / 11) and the red imps.",
+				"Same pack and format as enemy.bruiser: body over Shadows/, no Effects/ (DEMON_ART DD3). Measured: the body sheets are alpha 0/255 only (no baked glow, no layerNoiseAlpha); the Shadows layer is flat alpha 191, RGB (2, 4, 5).",
+				"attack.2 = Taunt, the summon cast (VARIANT_SPRITE_VIEW.summonerAnims.cast) stretched over the 60-tick casting ring: kept 0, 3 (standing), 4, 5, 7, 9, 10 (arms out, sinking low: the body drops from 47 to 30 px tall), 12 (rising as the summons burst out).",
+				"attack = Attack 2, the panic (summonerAnims.panic) stretched over its 30-tick gapped ring: kept 0, 2, 3 (the scythe raised overhead), 4, 5, 6 (the wide sweep down, on the ring's release).",
+				"move = Walk: the planted foot slides ~2.9 px per source frame, so one cycle is ~1.4 tiles at 31.3 px/tile; 8 kept frames at fps 10 = 0.8 s = 1.44 tiles at 1.8 u/s (1.0x the art's stride).",
+				"hit = TakeDamage 1 (1, 3, 5, 8) and death = Die 1 (0, 2, 4, 6, 9, 14): the bruiser's picks. Idle 16 frame 14 duplicates frame 0 (the loop picks from 0-13).",
+				"Scale: bodyTiles 1.5, the knight's height (owner brief; at the knight's density it would stand 1.24 tiles): the idle body (alpha > 250, facing the camera) is 47 px tall, horns included -> 31.3 px/tile; 34-36 px (1.1 tiles) wide against the r 0.4 hitbox.",
+				"cells \"perSheet\" (DD4): attack (attack + attack.2) 80x93 in 960x930, body (idle + move + hit) 70x77 in 700x1001, death 100x87 in 600x696 (set union 100x104); 3 atlases + 3 rims. Pivot = source (66, 83)."
+			],
+			"source": { "type": "grid", "dir": "demons-topdown/Spritesheets with seperated shadows and effects/Demon Spawn 10", "frameW": 128, "frameH": 128, "layers": ["Shadows", ""] },
+			"facingCount": 8,
+			"rowForFacing": [0, 7, 6, 5, 4, 3, 2, 1],
+			"rowOrderEvidence": [
+				"Rows go CLOCKWISE from screen right, the knight's order (DEMON_ART DA1): output facing d = row (8 - d) % 8. Spawn 10 Attack 1 is one of DA1's row-order references (the bow aimed right in row 0, at the camera in row 2, away in row 6).",
+				"Checked by eye on this set's contact sheet: row 2 (facing 6) shows the red face under the hood and the robe's front; row 6 (facing 2) the back of the hood between the horns."
+			],
+			"noiseAlpha": 2,
+			"pad": 3,
+			"pivot": { "measure": { "animation": "idle", "facing": 6, "frame": 0 }, "bodyAlpha": 250, "bodyMinRgb": 0, "footBand": 6 },
+			"pivotNote": "Body sheets are alpha 0/255 only; the Shadows layer is flat alpha 191, RGB (2, 4, 5), drawn under the body. alpha > 250 is exactly the body, so the pivot, the body height and the outline mask leave the shadow out (bodyMinRgb 0). Measured on idle facing 6 (source row 2, towards the camera), frame 0.",
+			"outline": { "widthPx": 2 },
+			"outlineNote": "Enemy contrast rim (docs/OUTLINE.md, decision E4: 2 art px). pad 3 = widthPx + 1.",
+			"bodyTiles": 1.5,
+			"resample": "Default",
+			"cells": "perSheet",
+			"animations": {
+				"idle": { "file": "Idle 16.png", "frames": [0, 3, 7, 10], "fps": 6, "loop": true },
+				"move": { "file": "Walk.png", "frames": [0, 2, 4, 5, 7, 9, 11, 12], "fps": 10, "loop": true },
+				"attack": { "file": "Attack 2.png", "frames": [0, 2, 3, 4, 5, 6], "fps": 12, "loop": false },
+				"attack.2": { "file": "Taunt.png", "frames": [0, 3, 4, 5, 7, 9, 10, 12], "fps": 8, "loop": false },
+				"hit": { "file": "TakeDamage 1.png", "frames": [1, 3, 5, 8], "fps": 12, "loop": false },
+				"death": { "file": "Die 1.png", "frames": [0, 2, 4, 6, 9, 14], "fps": 10, "loop": false }
+			},
+			"sheets": [
+				{ "name": "summoner-attack", "animations": ["attack", "attack.2"] },
+				{ "name": "summoner-body", "animations": ["idle", "move", "hit"] },
+				{ "name": "summoner-death", "animations": ["death"] }
+			]
+		},
 		"boss.act1": {
 			"$comment": [
 				"Mother Bramble as Demon Elite 3 (docs/BRAMBLE_ART.md BR3, decision BD1), same pack and format as enemy.bruiser: body over Shadows/, no Effects/ (DD3).",

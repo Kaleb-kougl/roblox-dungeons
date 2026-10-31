@@ -175,7 +175,7 @@ Asset IDs are lowercase, dot-separated, at least two segments; the first segment
 | Prefix | Slot | Kinds | Contract |
 | --- | --- | --- | --- |
 | `class.<class>` | vanguard, ranger, pyromancer, tinkerer, hexblade | spritesheet, sprites, placeholder | 16x24 cells, pivot (8, 23); idle 4, run 6, roll 4, hit 2, death 6; facings down/up/left/right (`sprites`: idle, run, roll, hit, death, >= 1 frame each) |
-| `enemy.<archetype>` | swarmer, sprayer, sniper, bruiser, caster, summoner (+ the port's dummy, imp, slime) | spritesheet, sprites, placeholder | 16x16, pivot (8, 15); idle 4, move 4, attack 4, hit 2, death 4; 4 facings (`sprites`: idle, move, attack, hit, death) |
+| `enemy.<archetype>` | swarmer, sprayer, sniper, bruiser, caster, summoner (+ the port's dummy, imp, slime) | spritesheet, sprites, placeholder | 16x16, pivot (8, 15); idle 4, move 4, attack 4, hit 2, death 4; 4 facings (`sprites`: idle, move, attack, hit, death, + optional `attack.2`: the summoner's cast) |
 | `boss.<n>` | boss.1 .. boss.5 (+ the endless bosses `boss.act1`, `boss.demonlord`: `ENDLESS_BOSS_IDS`, not required but in every bundled pack with `<id>.name`) | spritesheet, sprites, placeholder | 48x48, pivot (24, 47); idle 4, move 4, attack 6, hit 2, death 8; no facings (`sprites`: as enemies, + optional `attack.2`, `intro`, `taunt`) |
 | `bullet.enemy.*`, `bullet.player.*` | small, medium, large, needle, goo / basic, heavy | spritesheet, placeholder | 8x8, pivot (4, 4); fly 2 |
 | `tile.biome.<n>.<floor\|wall>` | biome tiles | image, placeholder | 16x16; with `tilesPerImage` any size up to 1024x1024 |

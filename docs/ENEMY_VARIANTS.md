@@ -19,10 +19,14 @@ Decisions: the scope answers, EVD1-EVD12 and EVD13-EVD16 (below). Headless: the 
 
 - **Uploaded 2026-10-31** (EV10 / EV11): `slime-body.png` / `slime-body-outline.png` and the five `sfx-enemy-*` /
   `sfx-affix-*` clips have ids in `packs/vale/assetIds.ts`, so the bundled vale pack draws the slime (and the 0.6x
-  slimelet) as its sprite set with its rim and plays the five sounds. The imp still draws the placeholder cone and the
-  summoner the placeholder until their rigs are picked.
-- **Owner picks**: the Imp rig and the robed Spawn rig (`art/build/contact/ev-imps.png`, `ev-spawns.png`) and their
-  animation mapping (see "EV10 slime (as built)"); then their sets get built like `enemy.bruiser`.
+  slimelet) as its sprite set with its rim and plays the five sounds.
+- **Imp and summoner sets built, pending upload** (2026-10-31, the picks delegated by the owner; see "EV10 imp /
+  summoner (as built)"): `enemy.imp` = Demons **Imp 9** (idle, Run, Attack 5 split at `VARIANT_ANIM_MARKS.imp.land`
+  5 / 9, TakeDamage 1, Die 1), `enemy.summoner` = **Demon Spawn 10** (idle, Walk, Attack 2 = panic, Taunt =
+  `attack.2` the summon cast, TakeDamage 1, Die 1). Until their 12 files are uploaded (`art/upload/imp-attack`,
+  `imp-body`, `imp-death`, `summoner-attack`, `summoner-body`, `summoner-death`, each `.png` plus its `-outline.png`)
+  and their IDs pasted into the commented slots of `assetIds.ts`, the imp draws the placeholder cone and the summoner
+  the placeholder drum.
 - **Owner calls from EV13** (see "EV13 tuning (as built)"): the spender's dearest-kind tie-break plus an Ooze cap of 8
   per room; Ooze hp 8 -> 6 and slimelet 3 -> 2. From the branch review: the Summoner only checks for panic when its
   summon cooldown is up (so a dive right after a cast gets no panic for up to ~5.5 s); the Imp fires its fan even if it
@@ -250,7 +254,7 @@ telegraphed attack; the slot requires the name). Rim: `outline.widthPx` 2, `pad`
 and uncomment it; `npm run verify`. (The six `sfx-draft-*.ogg` of docs/DRAFT_REVEAL.md were built in the same run and
 sit in `art/upload/` too; they are that plan's upload.)
 
-**Imp and summoner sets: not built, waiting on the owner's rig picks.** Decide, from `art/build/contact/ev-imps.png`
+**Imp and summoner sets (the pre-pick brief; superseded by "EV10 imp / summoner (as built)" below).** Decide, from `art/build/contact/ev-imps.png`
 and `ev-spawns.png`:
 
 1. **Imp rig**: one of Imp 1-10.
@@ -286,6 +290,94 @@ Sheets as the bruiser's: `<id>-body` (idle + move + hit, + blink for the imp), `
 summoner), `<id>-death`, each with its `-outline` sheet: expect **3 sheets + 3 rims = 6 textures per archetype**
 (the bruiser's count; the per-sheet crop decides the exact sizes). Then `npm run art:lock` (the new rig's files),
 `art:build`, the contact sheet, `vale.spec` cases like the bruiser's, upload, IDs.
+
+### EV10 imp / summoner (as built) (2026-10-31)
+
+Branch `ev-rigs`. Built and verified headlessly; **nothing uploaded**, so the bundled vale pack still draws the
+placeholder cone (`enemy.imp`) and drum (`enemy.summoner`) until the 12 files below have IDs. Presentation only:
+nothing under `sim/`, `dungeon/` or the fixtures changed.
+
+**Picks** (delegated by the owner, 2026-10-31): `enemy.imp` = Demons **Imp 9** (the red imp with a staff),
+`enemy.summoner` = Demons **Demon Spawn 10** (the pale robed horned demon with a scythe: the priority target, a
+different body from the dark turrets Spawn 8 / 11 and from the red imps). Both are a copy of `enemy.bruiser`'s shape
+in `art/atlases.json`: grid 128, body over `Shadows/` (no `Effects/`, DD3), the knight's `rowForFacing`, `noiseAlpha`
+2, `pad` 3, the 2 px rim, pivot on idle facing 6 frame 0 (`bodyAlpha` 250, `bodyMinRgb` 0, `footBand` 6),
+`resample` Default, `cells` "perSheet". Neither rig bakes a glow into its body sheets (alpha 0 / 255 only), so no
+`layerNoiseAlpha`; the shadow layer is flat alpha 194 (Imp 9) / 191 (Spawn 10), RGB (2, 4, 5). `art:lock` added
+exactly the 22 files the two sets read (11 body sheets + their `Shadows/` layers).
+
+| Slot | Imp 9 (`enemy.imp`) | Demon Spawn 10 (`enemy.summoner`) |
+|---|---|---|
+| `idle` (loop) | `Idle 1`, 0 3 7 10, fps 6 | `Idle 16`, 0 3 7 10, fps 6 |
+| `move` (loop, by speed) | **`Run`** (a crouched sprint), 0 2 4 5 7 9 11 12, fps 14 | `Walk`, 0 2 4 5 7 9 11 12, fps 10 |
+| `attack` | **`Attack 5`**, 0 2 4 5 7 8 9 10 11 (9): lean back, deep crouch, then the rising staff sweep; [0, `land`) over the 30-tick blink wind-up, [`land`, 1] over the 21-tick landing aim | **`Attack 2`** (the panic), 0 2 3 4 5 6 (6): the scythe raised overhead, then the wide sweep down on the ring's release, over the 30-tick panic wind-up |
+| `attack.2` | | **`Taunt`** (the summon cast), 0 3 4 5 7 9 10 12 (8), fps 8: standing, arms out sinking low (the body drops 47 -> 30 px), rising as the summons burst, over the 60-tick ring |
+| `hit` | `TakeDamage 1`, 1 3 5 8, fps 12 | `TakeDamage 1`, 1 3 5 8, fps 12 |
+| `death` | `Die 1`, 0 2 4 6 9 14, fps 10 | `Die 1`, 0 2 4 6 9 14, fps 10 |
+
+- **The imp's mark.** Body height (alpha > 250, facing the camera) over Attack 5: 42 35 40 39 37 **23 23 25** 35 49
+  51 50 47 43 42 px (frames 0-14): the crouch bottoms out over f5-f7 and the body rises from f8 into the sweep
+  (f9-f11); f12-f14 return to idle and are not kept. So the sweep starts at kept index 5 of 9:
+  **`VARIANT_ANIM_MARKS.imp.land` = 5 / 9** (was the 0.5 placeholder; frames 0-4 over the blink, 5-8 over the aim, the
+  last sweep frame on the fan's tick). Attack 5 splits cleanly, so Roll 1 was not needed for the blink.
+- **The summoner's names.** `VARIANT_SPRITE_VIEW.summonerAnims` (cast `attack.2`, panic `attack`) unchanged. The enemy
+  slot's contract now names `attack.2` as an optional animation (`ENEMY_OPTIONAL_ANIMATIONS`, like the boss's list):
+  the validator already accepted any extra name, so this only documents what the renderer asks for (theme README, the
+  contract spec).
+- **Walk vs Run (stride against the knight).** Planted-foot slide per source frame in the profile row: knight Run
+  ~5.7 px (at 6 u/s and fps 12 it plays 1.8x its stride), bruiser Walk ~5 px (0.8x at 2 u/s), Imp 9 Walk ~1.9 px,
+  Imp 9 Run ~2.6 px, Spawn 10 Walk ~2.9 px. At 3.2 u/s the imp's Walk (1.0 tile a cycle) would skate 2.6x at fps 10;
+  the Run (1.4 tiles a cycle) at fps 14 plays 1.3x: Run, and it reads as a darting imp. The summoner's Walk (1.4 tiles
+  a cycle) at fps 10 and 1.8 u/s plays 1.0x.
+- **Scale** (`bodyTiles`, not the knight's density). At the knight's 38 px/tile Imp 9 would stand 0.89 tiles (60% of
+  the knight's 1.5) and Spawn 10 1.24. As built: the imp **bodyTiles 1.2** (34 px -> 28.3 px/tile: a bit smaller
+  than the knight; 31-33 px = 1.1-1.2 tiles wide with the staff, against r 0.35), the summoner **bodyTiles 1.5**
+  (47 px -> 31.3 px/tile: the knight's height; 34-36 px = 1.1 tiles wide, against r 0.4). The Studio check (EV14)
+  judges both against the hitbox.
+- **Budget: 6 textures per set** (3 atlases + 3 rims, each <= 1024), the bruiser's count:
+
+| Sheet | Animations | Cell | Pivot | Cells | Size | PNG |
+|---|---|---|---|---|---|---|
+| `imp-attack` | attack | 64x74 | (37, 57) | 72 | 384x888 | 299 KB |
+| `imp-body` | idle, move, hit | 62x64 | (36, 48) | 128 | 496x1024 | 483 KB |
+| `imp-death` | death | 78x70 | (44, 46) | 48 | 312x840 | 212 KB |
+| `summoner-attack` | attack, attack.2 | 80x93 | (42, 68) | 112 | 960x930 | 778 KB |
+| `summoner-body` | idle, move, hit | 70x77 | (37, 55) | 128 | 700x1001 | 766 KB |
+| `summoner-death` | death | 100x87 | (52, 51) | 48 | 600x696 | 366 KB |
+
+  Set cells (the unions) 78x81, pivot (44, 57) = source (69, 86) for the imp; 100x104, pivot (52, 68) = source
+  (66, 83) for the summoner. Each sheet has its `-outline` sheet of the same size (17-60 KB). GPU: ~8.9 MB for the
+  imp (rims included), ~16 MB for the summoner (the bruiser ~14 MB). No frame touches the 128 source edge (source
+  boxes 28,32-99,106 and 17,18-110,115), no rim is clipped at a cell edge. Two builds are byte-identical; `layout.ts`
+  only gained the two sets (every older layout unchanged).
+- **Contact sheets** (`art/build/contact/enemy.imp.png`, `enemy.summoner.png`, read 2026-10-31; the source rows at
+  4x in `art/build/ev-previews/`): every frame inside its cell with the 2 px rim closed around it; the pivot cross on
+  the feet facing the camera. In the other facings the per-facing feet measure stays within 3 px vertically for the
+  imp (horizontally up to ~15 px in the right profile: its back foot; the knight spreads ~10 px) and sits up to 8 px
+  lower for the summoner (the scythe blade below the feet in the profiles, as the turrets' staff). Row order (the
+  pack's, DA1) checked by eye: Imp 9 row 2 shows the face (both eyes, the purple belt gem), row 6 the horns from
+  behind; Spawn 10 row 2 the red face marking under the hood, row 6 the strap across its back; row 0 faces screen
+  right for both. Mean body colour on the biome 1 floor (`#1a1619`): the imp `#862f29` **2.09:1**, the summoner
+  `#765b4e` **2.88:1** (the turrets: Spawn 8 1.88:1, Spawn 11 3.37:1). By mean luminance the summoner is not paler
+  than the caster turret: it stands apart by its silhouette (horns, the scythe, the long grey-olive robe), and the
+  turrets never share an endless room with it (`ENDLESS_ROOM_KINDS` picks no turret). The rim carries both on the
+  dark floors. **Verdict: good to upload**; EV14 judges size against the hitbox, the Run at 3.2 u/s and the cast /
+  panic timing in Studio.
+- **Code.** `art/atlases.json` (+ `vendor.lock.json` additions), `packs/vale/layout.ts` (generated),
+  `variantsConfig.ts` (`VARIANT_ANIM_MARKS.imp.land`), `theme/contract.ts` (`ENEMY_OPTIONAL_ANIMATIONS`), `assetIds.ts`
+  (12 commented slots: an absent key keeps the placeholder, an empty string would not). Specs: `vale.spec` "vale
+  enemy.imp and enemy.summoner" (layouts, placeholder as bundled, the switch on all three sheets and any one missing,
+  rims per sheet, hand-computed cells, the preload core tier) and the per-sheet list; `variants.spec` "VARIANT_ANIM_MARKS
+  and summonerAnims on the built ..." (the mark lands on kept index 5 of 9; the cast draws `attack.2` 0-7, the panic
+  `attack` 0-5); `contract.spec` (the enemy's optional list).
+
+**Owner: upload** these 12 files from `art/upload/`: `imp-attack.png`, `imp-attack-outline.png`, `imp-body.png`,
+`imp-body-outline.png`, `imp-death.png`, `imp-death-outline.png`, `summoner-attack.png`,
+`summoner-attack-outline.png`, `summoner-body.png`, `summoner-body-outline.png`, `summoner-death.png`,
+`summoner-death-outline.png`; paste each ID into its commented slot at the end of
+`src/shared/theme/packs/vale/assetIds.ts` and uncomment it. A set switches once its three sheets have IDs (each
+outline adds its rim). Then `vale.spec`'s "as bundled (nothing uploaded yet) both are the placeholder" fails by
+design: rewrite it as the turrets' bundled case. `npm run verify`.
 
 **EV11 audio picks (for the owner's audition).** `art/audio.json` gains the five IDs (`"confirmed": false`); `audio:lock`, `audio:build` (ffmpeg 6.1.1) and
 `audio:audition` ran, so `packs/vale/audioLayout.ts` lists them (silent until their IDs are in `assetIds.ts`: a sound

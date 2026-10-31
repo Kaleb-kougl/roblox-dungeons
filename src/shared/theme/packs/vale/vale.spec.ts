@@ -831,8 +831,8 @@ describe("vale per-sheet cells (docs/DEMON_ART.md DA2 / DD4)", () => {
 		expect([g.offset.X, g.offset.Y, g.size.X, g.size.Y, g.pivot]).toEqual([693, 791, 99, 113, { x: 51, y: 89 }]);
 	});
 
-	it('only the `cells: "perSheet"` sets (enemy.bruiser, boss.act1, the turrets) give their sheets their own cells', () => {
-		const perSheet = ["boss.act1", "enemy.bruiser", "enemy.caster", "enemy.sprayer"];
+	it('only the `cells: "perSheet"` sets (enemy.bruiser, boss.act1, the turrets, the imp, the summoner) give their sheets their own cells', () => {
+		const perSheet = ["boss.act1", "enemy.bruiser", "enemy.caster", "enemy.imp", "enemy.sprayer", "enemy.summoner"];
 		for (const id of sortedKeys(VALE_SPRITE_LAYOUTS)) {
 			const own = perSheet.includes(id);
 			for (const sheet of VALE_SPRITE_LAYOUTS[id].sheets) {
@@ -1352,6 +1352,241 @@ describe("vale enemy.sprayer and enemy.caster (2D Demons turrets, per-sheet cell
 		const core = new Set(plan.core.map((r) => r.contentId as string));
 		const later = new Set(plan.later.map((r) => r.contentId as string));
 		for (const [id, prefix] of TURRETS) {
+			const refs = pack.contentIds(id).map((r) => r.contentId as string);
+			const want = filesOf(prefix).map((file) => ids[file]);
+			want.sort();
+			refs.sort();
+			expect([id, refs]).toEqual([id, want]);
+			for (const ref of refs) expect([id, ref, core.has(ref), later.has(ref)]).toEqual([id, ref, true, false]);
+		}
+	});
+});
+
+/**
+ * The EV10 sets (docs/ENEMY_VARIANTS.md "EV10 imp / summoner (as built)"): enemy.imp (Imp 9) and enemy.summoner
+ * (Demon Spawn 10, whose attack sheet also holds the optional `attack.2`, the summon cast), per-sheet cells, three
+ * sheets and three rims each. Not uploaded yet: the bundled pack draws both as the placeholder until their 12 files
+ * have IDs in assetIds.ts.
+ */
+describe("vale enemy.imp and enemy.summoner (EV10: Imp 9 / Demon Spawn 10, per-sheet cells)", () => {
+	const SETS: ReadonlyArray<[string, string]> = [
+		["enemy.imp", "imp"],
+		["enemy.summoner", "summoner"],
+	];
+	const sheetsOf = (prefix: string) => [`${prefix}-attack.png`, `${prefix}-body.png`, `${prefix}-death.png`];
+	const outlineOf = (file: string) => `${file.sub(1, -5)}-outline.png`;
+	const filesOf = (prefix: string) => {
+		const files = new Array<string>();
+		for (const file of sheetsOf(prefix)) {
+			files.push(file);
+			files.push(outlineOf(file));
+		}
+		return files;
+	};
+	const sheet = (file: string, w: number, h: number, frameW: number, frameH: number, x: number, y: number) => ({
+		file,
+		w,
+		h,
+		frameW,
+		frameH,
+		pivot: { x, y },
+		outlineFile: outlineOf(file),
+	});
+
+	it("the layouts: 8 facings at their own bodyTiles density; three sheets, each <= 1024 and a whole number of cells", () => {
+		const imp = VALE_SPRITE_LAYOUTS["enemy.imp"];
+		expect([imp.frameW, imp.frameH, imp.pivot, imp.pixelsPerTile]).toEqual([78, 81, { x: 44, y: 57 }, 28.3]);
+		expect(imp.sheets).toEqual([
+			sheet("imp-attack.png", 384, 888, 64, 74, 37, 57),
+			sheet("imp-body.png", 496, 1024, 62, 64, 36, 48),
+			sheet("imp-death.png", 312, 840, 78, 70, 44, 46),
+		]);
+		// Attack 5 (9 frames), then idle 4 / Run 8 / TakeDamage 4 on the body sheet, Die 6 on its own
+		expect(imp.animations).toEqual({
+			attack: { sheet: 0, start: 0, frames: 9, fps: 12, loop: false },
+			death: { sheet: 2, start: 0, frames: 6, fps: 10, loop: false },
+			hit: { sheet: 1, start: 96, frames: 4, fps: 12, loop: false },
+			idle: { sheet: 1, start: 0, frames: 4, fps: 6, loop: true },
+			move: { sheet: 1, start: 32, frames: 8, fps: 14, loop: true },
+		});
+		const summoner = VALE_SPRITE_LAYOUTS["enemy.summoner"];
+		expect([summoner.frameW, summoner.frameH, summoner.pivot, summoner.pixelsPerTile]).toEqual([
+			100,
+			104,
+			{ x: 52, y: 68 },
+			31.3,
+		]);
+		expect(summoner.sheets).toEqual([
+			sheet("summoner-attack.png", 960, 930, 80, 93, 42, 68),
+			sheet("summoner-body.png", 700, 1001, 70, 77, 37, 55),
+			sheet("summoner-death.png", 600, 696, 100, 87, 52, 51),
+		]);
+		// Attack 2 (the panic, 6) then Taunt (the cast, attack.2, 8) share the attack sheet
+		expect(summoner.animations).toEqual({
+			attack: { sheet: 0, start: 0, frames: 6, fps: 12, loop: false },
+			"attack.2": { sheet: 0, start: 48, frames: 8, fps: 8, loop: false },
+			death: { sheet: 2, start: 0, frames: 6, fps: 10, loop: false },
+			hit: { sheet: 1, start: 96, frames: 4, fps: 12, loop: false },
+			idle: { sheet: 1, start: 0, frames: 4, fps: 6, loop: true },
+			move: { sheet: 1, start: 32, frames: 8, fps: 10, loop: true },
+		});
+		for (const [id] of SETS) {
+			const l = VALE_SPRITE_LAYOUTS[id];
+			expect([id, l.facings, l.resample]).toEqual([id, { count: 8, zeroDeg: 0, ccw: true }, "Default"]);
+			for (const s of l.sheets) {
+				const c = s as unknown as { frameW: number; frameH: number };
+				expect([s.file, s.w <= 1024, s.h <= 1024, s.w % c.frameW, s.h % c.frameH]).toEqual([
+					s.file,
+					true,
+					true,
+					0,
+					0,
+				]);
+			}
+		}
+	});
+
+	it("as bundled (nothing uploaded yet) both are the placeholder", () => {
+		for (const [id, prefix] of SETS) {
+			for (const file of filesOf(prefix)) expect([file, VALE_ASSET_IDS[file]]).toEqual([file, undefined]);
+			expect([id, VALE_MANIFEST.assets[id]]).toEqual([id, { kind: "placeholder" }]);
+		}
+	});
+
+	it("each switches to sprites with all three sheets; any sheet missing keeps it a placeholder; rims alone never do", () => {
+		const theme = new ThemeCore(buildValeManifest(fakeIds()), { warn: quiet });
+		const names: Record<string, Array<string>> = {
+			"enemy.imp": ["attack", "death", "hit", "idle", "move"],
+			"enemy.summoner": ["attack", "attack.2", "death", "hit", "idle", "move"],
+		};
+		for (const [id, prefix] of SETS) {
+			expect(sheetsOf(prefix)).toEqual(VALE_SPRITE_LAYOUTS[id].sheets.map((s) => s.file));
+			const m = buildValeManifest(fakeIds());
+			expect(validateManifest(m, { packId: "vale" })).toEqual([]);
+			expect([id, m.assets[id].kind]).toEqual([id, "sprites"]);
+			expect([id, theme.sprites(id)!.animationNames]).toEqual([id, names[id]]);
+			for (const file of sheetsOf(prefix)) {
+				const without = buildValeManifest(fakeIds(file));
+				expect(validateManifest(without, { packId: "vale" })).toEqual([]);
+				expect([id, file, without.assets[id]]).toEqual([id, file, { kind: "placeholder" }]);
+			}
+			const outlinesOnly = buildValeManifest(fakeIds(...sheetsOf(prefix)));
+			expect([id, outlinesOnly.assets[id]]).toEqual([id, { kind: "placeholder" }]);
+			for (const [other] of SETS) {
+				if (other !== id) expect([id, other, outlinesOnly.assets[other].kind]).toEqual([id, other, "sprites"]);
+			}
+		}
+	});
+
+	it("the rims join per sheet and never hold a set back", () => {
+		for (const [id, prefix] of SETS) {
+			const [attack, body, death] = sheetsOf(prefix);
+			const rimless = buildValeManifest(fakeIds(outlineOf(attack), outlineOf(body), outlineOf(death)));
+			expect(validateManifest(rimless, { packId: "vale" })).toEqual([]);
+			const set = rimless.assets[id] as SpriteSetAsset;
+			expect([id, set.kind, set.sheets.size()]).toEqual([id, "sprites", 3]);
+			for (const s of set.sheets) expect([id, s.outlineAssetId]).toEqual([id, undefined]);
+			// one rim missing: only its own sheet goes without
+			const ids = fakeIds(outlineOf(death));
+			const part = new ThemePack(buildValeManifest(ids), { warn: quiet }).sprites(id)!;
+			expect([id, part.frame("idle", 0, 0).outlineImage]).toEqual([id, ids[outlineOf(body)]]);
+			expect([id, part.frame("attack", 0, 0).outlineImage]).toEqual([id, ids[outlineOf(attack)]]);
+			expect([id, part.frame("death", 0, 0).outlineImage]).toEqual([id, undefined]);
+			// with every file each sheet carries its own outline, on every frame
+			const all = fakeIds();
+			const sprites = new ThemeCore(buildValeManifest(all), { warn: quiet }).sprites(id)!;
+			for (const name of sprites.animationNames) {
+				const count = sprites.animation(name)!.frames;
+				for (let d = 0; d < 8; d++) {
+					for (let f = 0; f < count; f++) {
+						const r = sprites.frame(name, d, f);
+						const file = VALE_SPRITE_LAYOUTS[id].sheets[r.sheet].file;
+						expect([name, d, f, r.assetId, r.outlineAssetId]).toEqual([
+							name,
+							d,
+							f,
+							all[file],
+							all[outlineOf(file)],
+						]);
+					}
+				}
+			}
+		}
+	});
+
+	it("copies each sheet's own cell into the manifest and draws every frame in it (hand-computed rects)", () => {
+		const ids = fakeIds();
+		const m = buildValeManifest(ids);
+		const pack = new ThemePack(m, { warn: quiet });
+		/** [image, outline, x, y, w, h, pivot] of one frame. */
+		const rect = (id: string, name: string, d: number, f: number) => {
+			const r = pack.sprites(id)!.frame(name, d, f);
+			return [r.image, r.outlineImage, r.offset.X, r.offset.Y, r.size.X, r.size.Y, r.pivot];
+		};
+		const at = (file: string, x: number, y: number, w: number, h: number, px: number, py: number) => [
+			ids[file],
+			ids[outlineOf(file)],
+			x,
+			y,
+			w,
+			h,
+			{ x: px, y: py },
+		];
+		const imp = m.assets["enemy.imp"] as SpriteSetAsset;
+		expect([imp.frameW, imp.frameH, imp.pivot, imp.pixelsPerTile]).toEqual([78, 81, { x: 44, y: 57 }, 28.3]);
+		expect(imp.sheets.map((s) => [s.frameW, s.frameH, s.pivot])).toEqual([
+			[64, 74, { x: 37, y: 57 }],
+			[62, 64, { x: 36, y: 48 }],
+			[78, 70, { x: 44, y: 46 }],
+		]);
+		// attack facing 5 frame 2: cell 47 of the attack sheet (6 per row of 64x74) -> column 5, row 7
+		expect(rect("enemy.imp", "attack", 5, 2)).toEqual(at("imp-attack.png", 320, 518, 64, 74, 37, 57));
+		// attack facing 7 frame 8: cell 71, the sheet's last -> column 5, row 11 (bottom edge 888)
+		expect(rect("enemy.imp", "attack", 7, 8)).toEqual(at("imp-attack.png", 320, 814, 64, 74, 37, 57));
+		// move facing 3 frame 5: cell 32 + 24 + 5 = 61 of the body sheet (8 per row of 62x64) -> column 5, row 7
+		expect(rect("enemy.imp", "move", 3, 5)).toEqual(at("imp-body.png", 310, 448, 62, 64, 36, 48));
+		// hit facing 7 frame 3: cell 96 + 28 + 3 = 127, the body sheet's last -> column 7, row 15 (bottom edge 1024)
+		expect(rect("enemy.imp", "hit", 7, 3)).toEqual(at("imp-body.png", 434, 960, 62, 64, 36, 48));
+		// death facing 4 frame 5: cell 29 of the death sheet (4 per row of 78x70) -> column 1, row 7
+		expect(rect("enemy.imp", "death", 4, 5)).toEqual(at("imp-death.png", 78, 490, 78, 70, 44, 46));
+		// death facing 7 frame 5: cell 47, the sheet's last -> column 3, row 11 (bottom edge 840)
+		expect(rect("enemy.imp", "death", 7, 5)).toEqual(at("imp-death.png", 234, 770, 78, 70, 44, 46));
+
+		const summoner = m.assets["enemy.summoner"] as SpriteSetAsset;
+		expect([summoner.frameW, summoner.frameH, summoner.pivot, summoner.pixelsPerTile]).toEqual([
+			100,
+			104,
+			{ x: 52, y: 68 },
+			31.3,
+		]);
+		expect(summoner.sheets.map((s) => [s.frameW, s.frameH, s.pivot])).toEqual([
+			[80, 93, { x: 42, y: 68 }],
+			[70, 77, { x: 37, y: 55 }],
+			[100, 87, { x: 52, y: 51 }],
+		]);
+		// attack facing 5 frame 2: cell 32 of the attack sheet (12 per row of 80x93) -> column 8, row 2
+		expect(rect("enemy.summoner", "attack", 5, 2)).toEqual(at("summoner-attack.png", 640, 186, 80, 93, 42, 68));
+		// attack.2 facing 0 frame 0: cell 48, after the panic's 6 x 8 -> column 0, row 4
+		expect(rect("enemy.summoner", "attack.2", 0, 0)).toEqual(at("summoner-attack.png", 0, 372, 80, 93, 42, 68));
+		// attack.2 facing 7 frame 7: cell 48 + 56 + 7 = 111, the sheet's last -> column 3, row 9 (bottom edge 930)
+		expect(rect("enemy.summoner", "attack.2", 7, 7)).toEqual(at("summoner-attack.png", 240, 837, 80, 93, 42, 68));
+		// move facing 3 frame 5: cell 61 of the body sheet (10 per row of 70x77) -> column 1, row 6
+		expect(rect("enemy.summoner", "move", 3, 5)).toEqual(at("summoner-body.png", 70, 462, 70, 77, 37, 55));
+		// hit facing 7 frame 3: cell 127, the body sheet's last -> column 7, row 12 (bottom edge 1001)
+		expect(rect("enemy.summoner", "hit", 7, 3)).toEqual(at("summoner-body.png", 490, 924, 70, 77, 37, 55));
+		// death facing 4 frame 5: cell 29 of the death sheet (6 per row of 100x87) -> column 5, row 4
+		expect(rect("enemy.summoner", "death", 4, 5)).toEqual(at("summoner-death.png", 500, 348, 100, 87, 52, 51));
+		// death facing 7 frame 5: cell 47, the sheet's last -> column 5, row 7 (bottom edge 696)
+		expect(rect("enemy.summoner", "death", 7, 5)).toEqual(at("summoner-death.png", 500, 609, 100, 87, 52, 51));
+	});
+
+	it("land in the preload core tier with their rims once uploaded (docs/PRELOAD.md: `enemy.` is core)", () => {
+		const ids = fakeIds();
+		const pack = new ThemePack(buildValeManifest(ids), { warn: quiet });
+		const plan = preloadPlan(pack);
+		const core = new Set(plan.core.map((r) => r.contentId as string));
+		const later = new Set(plan.later.map((r) => r.contentId as string));
+		for (const [id, prefix] of SETS) {
 			const refs = pack.contentIds(id).map((r) => r.contentId as string);
 			const want = filesOf(prefix).map((file) => ids[file]);
 			want.sort();
