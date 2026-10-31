@@ -1,13 +1,13 @@
 import { OnStart, Service } from "@flamework/core";
 import { Janitor } from "@rbxts/janitor";
 import { HttpService, Players, RunService } from "@rbxts/services";
+import { dailyClockNow, dailySeed } from "server/config";
 import { serverLogger } from "server/log";
 import { Events } from "server/network";
 import { partyContributors, type LeaderboardMember } from "shared/leaderboard";
 import { LobbyRunTracker, type LobbyRunStart } from "shared/lobby";
 import type { LeaderboardPostStatus, RunFinishVerdict } from "shared/network";
 import type { RunRecordsResult } from "shared/records";
-import { RANKED_WORLD_KIND } from "shared/play";
 import {
 	DEFAULT_RUN_SCORE,
 	MAX_RUN_ID_CHARS,
@@ -104,9 +104,10 @@ export type LobbyRunStartResult = { readonly ok: true } | { readonly ok: false; 
  * A member leaving (the server, or the run with `lockstepLeave`) makes them dead for the rest of the run (the owner
  * leaving does not abandon it). A desync ends the run unranked (`runFinished` code "desync" to every member).
  *
- * Lobby runs (shared/lobby LobbyRunTracker): a one-member lobby's run is the next ranked session its player starts
- * after `lobbyRunStart`. Whenever a lobby's run ends (its session concluded with any outcome, its solo player left,
- * or no solo start came in time) the `onLobbyRunEnded` listeners hear the lobbyId (LobbyService -> `runEnded`).
+ * Lobby runs (shared/lobby LobbyRunTracker): a one-member lobby's run is the next solo session its player starts in
+ * the lobby's world (endless or the Daily) after `lobbyRunStart`. Whenever a lobby's run ends (its session concluded
+ * with any outcome, its solo player left, or no solo start came in time) the `onLobbyRunEnded` listeners hear the
+ * lobbyId (LobbyService -> `runEnded`). A lobby's party run is created in the lobby's world too.
  *
  * A player playing the first-run tutorial (OnboardingService `isInTutorial`) is busy for lobbies too
  * (`busyReason` adds `tutorialBusyReason`): they cannot create or join a lobby or be invited, a lobby Start or a due
@@ -123,6 +124,8 @@ export class RunSessionService implements OnStart {
 	private readonly registry = new RunSessionRegistry({
 		newRunId: () => HttpService.GenerateGUID(false),
 		pickSeed: () => this.random.NextInteger(0, MAX_RUN_SEED),
+		// The Daily (docs/DAILY.md): one seed per UTC day from the server-only secret (DSD8).
+		dailySeed: (day) => dailySeed(day),
 	});
 	private readonly meta = new Map<RunSession, SessionMeta>();
 	private readonly startLimiter = new SlidingWindowLimiter<Player>(
@@ -270,6 +273,7 @@ export class RunSessionService implements OnStart {
 			worldKind: s.worldKind,
 			atBossDoor: s.atBossDoor,
 			members: [...s.members],
+			daily: s.daily !== undefined ? { day: s.daily.day, ruleset: s.daily.ruleset } : undefined,
 		};
 	}
 
@@ -277,6 +281,7 @@ export class RunSessionService implements OnStart {
 		const limits = this.runs.limits();
 		return {
 			now: os.clock(),
+			unixNow: dailyClockNow(),
 			isInServer: (id) => Players.GetPlayerByUserId(id) !== undefined,
 			allowBossDoorSpawn: limits.allowBossDoorSpawn,
 			allowDebugInput: limits.allowDebugInput,
@@ -309,14 +314,15 @@ export class RunSessionService implements OnStart {
 			return m;
 		});
 		this.meta.set(s, { members, pumping: false });
-		// A solo lobby run: the player's next ranked start after lobbyRunStart is the lobby's run.
-		if (s.members.size() === 1 && s.worldKind === RANKED_WORLD_KIND) {
-			const lobbyId = this.lobbyRuns.soloStarted(s.ownerId, s.runId);
+		// A solo lobby run: the player's next solo start in the lobby's world after lobbyRunStart is the lobby's run.
+		if (s.members.size() === 1) {
+			const lobbyId = this.lobbyRuns.soloStarted(s.ownerId, s.runId, s.worldKind);
 			if (lobbyId !== undefined) log.info("LOBBY_RUN", `run ${s.runId} is lobby ${lobbyId}'s solo run`);
 		}
 		log.info(
 			"STARTED",
 			`${player.UserId} run ${s.runId} world ${s.worldKind} seed ${s.seed} party ${s.members.size()}` +
+				(s.daily !== undefined ? ` day ${s.daily.day} ruleset ${s.daily.ruleset}` : "") +
 				(s.debug ? " (debug)" : ""),
 		);
 		return { ok: true, session: s };
@@ -348,7 +354,8 @@ export class RunSessionService implements OnStart {
 	 * A lobby's countdown ended (LobbyService, `Lobbies.tick`). Party: the run is created with the members (join
 	 * order, the first is the owner) as consent, each member's open SOLO session is concluded first ("abandoned":
 	 * they chose to leave it), and the lockstep run is announced (`partyRunStarted` with the lobbyId). Solo: the one
-	 * member's client is told to start a ranked run (`lobbyRunStart`); that start is bound to the lobby.
+	 * member's client is told to start a ranked run (`lobbyRunStart`); that start is bound to the lobby. Both in the
+	 * lobby's world (`start.worldKind`: endless or the Daily, whose seed is resolved now, at start time, like solo).
 	 */
 	startLobbyRun(start: LobbyRunStart): LobbyRunStartResult {
 		// A member who readied and then started the tutorial is not pulled out of it (Lobbies.tick checks busyReason
@@ -360,10 +367,13 @@ export class RunSessionService implements OnStart {
 		if (start.kind === "solo") {
 			const player = Players.GetPlayerByUserId(start.userId);
 			if (player === undefined) return { ok: false, reason: "the player left" };
-			const replaced = this.lobbyRuns.expectSolo(start.userId, start.lobbyId, os.clock());
+			const replaced = this.lobbyRuns.expectSolo(start.userId, start.lobbyId, os.clock(), start.worldKind);
 			if (replaced !== undefined) this.lobbyRunEnded(replaced, "another lobby run was requested");
-			Events.lobbyRunStart.fire(player, { lobbyId: start.lobbyId, kind: "solo" });
-			log.info("LOBBY_SOLO", `${start.userId} lobby ${start.lobbyId}: solo run requested`);
+			Events.lobbyRunStart.fire(player, { lobbyId: start.lobbyId, kind: "solo", worldKind: start.worldKind });
+			log.info(
+				"LOBBY_SOLO",
+				`${start.userId} lobby ${start.lobbyId}: solo run requested (world ${start.worldKind})`,
+			);
 			return { ok: true };
 		}
 		const members = start.members;
@@ -371,7 +381,7 @@ export class RunSessionService implements OnStart {
 		if (owner === undefined) return { ok: false, reason: "a member left" };
 		const others: number[] = [];
 		for (let i = 1; i < members.size(); i++) others.push(members[i]);
-		const r = this.createSession(owner, { requestId: 0, worldKind: RANKED_WORLD_KIND, party: others }, members);
+		const r = this.createSession(owner, { requestId: 0, worldKind: start.worldKind, party: others }, members);
 		if (!r.ok) return { ok: false, reason: `could not start: ${r.reason}` };
 		const s = r.session;
 		this.lobbyRuns.party(s.runId, start.lobbyId);

@@ -1,4 +1,5 @@
 import { Networking } from "@flamework/networking";
+import type { DailyStatus } from "shared/daily";
 import type { LeaderboardBoard, LeaderboardView } from "shared/leaderboard";
 import type { ArrivalJoinIntent, ArrivalToastKey } from "shared/invite";
 import type { OnboardingStatus, TutorialOutcome } from "shared/onboarding";
@@ -11,6 +12,7 @@ import type {
 	LobbyRefusal,
 	LobbySummary,
 	LobbyVisibility,
+	LobbyWorld,
 } from "shared/lobby";
 import type {
 	RunFinal,
@@ -37,7 +39,8 @@ import type { SettingsOverrides } from "shared/settings";
  * Request / reply as an event pair (the pattern of the user's other Flamework project): the client fires a request,
  * the server answers with its own event. Every client -> server event is rate limited per player in its service
  * (limits in shared/run `RUN_SUBMIT_RATE`, shared/settings `SETTINGS_REQUEST_RATE` and shared/onboarding
- * `ONBOARDING_REQUEST_RATE` / `TUTORIAL_FINISH_RATE` / `TUTORIAL_STEP_RATE`, shared/records `RECORDS_REQUEST_RATE`).
+ * `ONBOARDING_REQUEST_RATE` / `TUTORIAL_FINISH_RATE` / `TUTORIAL_STEP_RATE`, shared/records `RECORDS_REQUEST_RATE`,
+ * shared/daily `DAILY_REQUEST_RATE`).
  *
  * Bind side-specific handlers with `GlobalEvents.createServer` (src/server/network.ts) and `GlobalEvents.createClient`
  * (the client's network module, task 8), never here.
@@ -84,6 +87,8 @@ export interface LobbyView {
 	nameId: LobbyNameId;
 	hostId: number;
 	visibility: LobbyVisibility;
+	/** The world its run is played in: "endless" or "daily" (shared/lobby LobbyWorld; the host's `lobbySetWorld`). */
+	worldKind: LobbyWorld;
 	phase: LobbyPhase;
 	/** Join order (the run's player order). */
 	members: number[];
@@ -106,14 +111,16 @@ export interface LobbyStateUpdate {
 
 /**
  * `lobbyRunStart`: the countdown of this player's ONE-member lobby ended. The client starts a ranked solo run at once
- * (`startRun` with shared/play RANKED_WORLD_KIND); the server binds this player's next ranked start to the lobby, and
- * the lobby returns to `forming` when that run is decided (any outcome, a restart included), when the player leaves,
- * or when no start came within shared/lobby LOBBY_SERVICE.soloStartTimeoutSeconds. A party lobby gets
- * `partyRunStarted` (with `lobbyId`) instead.
+ * (`startRun` with the lobby's `worldKind`: shared/play RANKED_WORLD_KIND or the Daily); the server binds this
+ * player's next solo start in that world to the lobby, and the lobby returns to `forming` when that run is decided (any
+ * outcome, a restart included), when the player leaves, or when no start came within shared/lobby
+ * LOBBY_SERVICE.soloStartTimeoutSeconds. A party lobby gets `partyRunStarted` (with `lobbyId`) instead.
  */
 export interface LobbySoloRunStart {
 	lobbyId: string;
 	kind: "solo";
+	/** The lobby's world: the `startRun` world kind. */
+	worldKind: LobbyWorld;
 }
 
 /** One live invite this player received (`lobbyInvites` carries the whole current list). */
@@ -285,6 +292,11 @@ export interface ClientToServerEvents {
 	lobbySetVisibility(visibility: string): void;
 	/** Host only; a LOBBY_NAMES id. */
 	lobbySetName(nameId: string): void;
+	/**
+	 * Host only, while the lobby is forming: its world, a shared/lobby LOBBY_WORLDS kind ("endless" / "daily"). A change
+	 * clears every Ready. Answered by `lobbyState` (or a refusal).
+	 */
+	lobbySetWorld(worldKind: string): void;
 	/** Host only. */
 	lobbyTransferHost(userId: number): void;
 	/** Any member. */
@@ -334,6 +346,8 @@ export interface ClientToServerEvents {
 	bestiarySeen(id: string): void;
 	/** Personal records (docs/NEW_BEST.md): asks for this player's records; answered with `records`. */
 	requestRecords(): void;
+	/** The Daily (docs/DAILY.md): asks for today's status; answered with `dailyStatus`. Rate limited. */
+	requestDaily(): void;
 }
 
 export interface ServerToClientEvents {
@@ -365,6 +379,11 @@ export interface ServerToClientEvents {
 	 * again after a verdict raised a record, and in answer to `requestRecords`.
 	 */
 	records(status: RecordsStatus): void;
+	/**
+	 * The Daily (docs/DAILY.md): today's day, label, seed, ruleset and reset time (shared/daily DailyStatus). Sent in
+	 * answer to `requestDaily` and pushed to every player when the UTC day changes (DailyService).
+	 */
+	dailyStatus(status: DailyStatus): void;
 	/** Co-op (M4): a party run starts (every member gets it, only after every member accepted the invite). */
 	partyRunStarted(start: PartyRunStart): void;
 	/** Lobbies: the lobbies this player may see and join (never closed ones), sorted. Throttled. */

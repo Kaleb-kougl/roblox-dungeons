@@ -39,6 +39,7 @@ export function lobbyViewOf(lobby: Lobby, invites: ReadonlyArray<LobbyInvite>, n
 		nameId: lobby.nameId,
 		hostId: lobby.hostId,
 		visibility: lobby.visibility,
+		worldKind: lobby.worldKind,
 		phase: lobby.phase,
 		members: [...lobby.members],
 		ready: [...lobby.ready],
