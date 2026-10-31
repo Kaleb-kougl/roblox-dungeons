@@ -11,13 +11,15 @@ bars behind and beside the text.
 
 ## Status (2026-10-30)
 
-Planned. No code written. Decisions UAD1-UAD10 below are recommendations waiting for Kaleb's sign-off.
+**Code-complete headlessly on branch `ui-art`** (UA0-UA13, UA14 docs); not merged to `main`. Nothing is uploaded
+and nothing has been seen in Studio: with no art every screen renders today's flat look (two deliberate size changes
+below), and every art path is checked by typecheck, lint, build and the pure-logic specs only. Decisions UAD1-UAD10
+were taken as recommended (Kaleb, 2026-10-30: "proceed"). Built on the merged Draft reveal (`slice`, `SlicedImage`,
+the sheet crops, the notices entry). Changes from the plan found while building are in "As built".
 
-**Depends on the Draft reveal branch** (docs/DRAFT_REVEAL.md, being built on its own branch). Its DR3 and DR5 bring
-the pieces this plan builds on: the ui image `slice` field, the `SlicedImage` primitive, `art/atlases.json` `images`
-crops from `UiHorror.png`, `VALE_IMAGE_LAYOUTS.slice`, the `THIRD_PARTY_NOTICES.md` entry and the `boon.*` rarity
-roles. This plan does not build any of those a second time. Work starts on a `ui-art` branch cut from `main` **after
-the reveal branch merges** (UA0); until then only the tasks marked *(no reveal code)* can start.
+**Owner steps left:** merge `ui-art`; `npm run art:build`; upload the 13 new PNGs from `art/upload/` (12 `ui-*.png`
+sliced pieces + `ui-icons.png`) and paste their ids into `packs/vale/assetIds.ts`; run spike UA1 (`KV_UiArtSpike`,
+docs/SPIKES.md) and the Studio smoke test below (UA12, UA15).
 
 ## The source
 
@@ -170,67 +172,108 @@ overlay and its cards (the reveal's); the minimap's map image (only its frame).
 
 ### Phase 0: groundwork
 
-- [ ] **UA0. Start point.** The reveal branch is merged to `main` with DR3 and DR5 (`slice`, `SlicedImage`, the
+- [x] **UA0. Start point.** The reveal branch is merged to `main` with DR3 and DR5 (`slice`, `SlicedImage`, the
   `UiHorror.png` crops, the notices entry). Cut `ui-art` from `main`. → Verify: `npm run verify` green on the new
   branch; `SlicedImage` and `ImageAsset.slice` exist.
-- [ ] **UA1. Studio spike** (`KV_UiArtSpike`, off by default, Janitor cleanup; results in `docs/SPIKES.md`), after the
+- [ ] **UA1. Studio spike** (code built; the Studio run is the owner's) (`KV_UiArtSpike`, off by default, Janitor cleanup; results in `docs/SPIKES.md`), after the
   reveal's DR9 Studio check: a sliced test panel with a fractional `SliceScale` inside a `CanvasGroup` with
   `GroupTransparency`, and an icon cut with `ImageRectOffset`, at 720 / 1080 / 1440 p, UIScale 0.6-1.75 and HUD scale
   70 / 125 %. Answer: (a) `snappedSliceScale` puts borders on whole screen px, (b) no gutter bleed from the icon atlas
   at 1 px, (c) a CanvasGroup keeps pixels crisp, (d) whether a large stretched noise centre needs `flat`. → Verify:
   the four answers in SPIKES.md.
-- [ ] **UA2. Measuring tool and cuts** *(no reveal code)*. `scripts/art/ui-measure.js`; the list of every piece in
+- [x] **UA2. Measuring tool and cuts** *(no reveal code)*. `scripts/art/ui-measure.js`; the list of every piece in
   Architecture 2 with measured rects and chosen slices (kept in this doc until UA3 writes them into `atlases.json`).
   → Verify: `node scripts/art/ui-measure.js 170 110` prints the long red button's rect; Kaleb looks at a contact
   sheet of the cuts.
-- [ ] **UA3. Pipeline.** The sliced `images` entries; `centre: "flat"`; the icon atlas (packing, extruded gutters,
+- [x] **UA3. Pipeline.** The sliced `images` entries; `centre: "flat"`; the icon atlas (packing, extruded gutters,
   `uiIconLayout.ts`, contact sheet); tests in `scripts/art/build-atlases.test.js` (rect inside the sheet, centre >= 1
   px, flat centre colour, gutter pixels equal their edge). → Verify: `npm run test:art`; `art:build` writes the PNGs
   and `ui-icons.png` <= 1024 x 1024.
-- [ ] **UA4. Theme.** `uiSkinIds()`, `rect` on ui.* icons, validator rules, vale manifest from the layouts once
+- [x] **UA4. Theme.** `uiSkinIds()`, `rect` on ui.* icons, validator rules, vale manifest from the layouts once
   uploaded; specs (vale with and without each id; the icon atlas all-or-nothing; placeholder has none of the optional
   ids; `contentIds` holds them). Upload the PNGs and paste the ids. → Verify: `npm test` (theme, vale, preload specs);
   `check:assets`; Lune compiles `contract.luau`.
-- [ ] **UA5. Pure skin logic** *(no reveal code)*. `skin.ts`, `skinConfig.ts`, barrel; specs: `artPixelScale` and
+- [x] **UA5. Pure skin logic** *(no reveal code)*. `skin.ts`, `skinConfig.ts`, barrel; specs: `artPixelScale` and
   `snappedSliceScale` give whole screen px at UIScale 0.6, 0.7, 1, 1.25, 1.5, 1.75, 2.1875 (ten-foot max) and equal 2
   at 1 / 1.5 / 2; `fitArt` never exceeds its box; every `skinFor` fallback branch; placeholder -> `undefined`. →
   Verify: `npm run test:only -- view/hud/skin`.
-- [ ] **UA6. Client primitives.** `SlicedImage` `snap`, `ArtImage`, `FocusCorners`. → Verify: `npm run verify`;
+- [x] **UA6. Client primitives.** `SlicedImage` `snap`, `ArtImage`, `FocusCorners`. → Verify: `npm run verify`;
   Studio with `KV_UiArtSpike`: one of each on screen.
 
 ### Phase 1: menus and overlays
 
-- [ ] **UA7. Panels and buttons.** `Panel` (menu kind outside a run, hud kind in a run), `MenuButton` (normal /
+- [x] **UA7. Panels and buttons.** `Panel` (menu kind outside a run, hud kind in a run), `MenuButton` (normal /
   focused / active / disabled), option bars, `ListRow`, `ScrollList` bar tint, the bone ornament on the main menu and
   pause panels, dividers in Options. → Verify: Studio: main menu, lobby browser and room, Options (every tab), pause,
   run over, tutorial outro, toasts; gamepad navigation reaches every button and shows the brackets.
-- [ ] **UA8. Icons.** Pause button icon, Options check / cross toggles and speaker / mute rows, gear / home / help
+- [x] **UA8. Icons.** Pause button icon, Options check / cross toggles and speaker / mute rows, gear / home / help
   beside their labels, run-over skull / RIP, spectate ghost, dead teammate skull, curse skull in `RunItems`. → Verify:
   Studio; every button still has its text label.
-- [ ] **UA9. Loading and stage covers.** Pill `ProgressBar` (track + white fill tinted `uiAccent`), candelabras on the
+- [x] **UA9. Loading and stage covers.** Pill `ProgressBar` (track + white fill tinted `uiAccent`), candelabras on the
   cover. → Verify: `KV_SkipLoading` off, cold join: the bar fills crisply; the stage card on a floor change.
 
 ### Phase 2: in-run HUD
 
-- [ ] **UA10. Status panel.** Hearts from art (box 22 -> 24, UAD7), the tutorial's ghost heart, potions for flask
+- [x] **UA10. Status panel.** Hearts from art (box 22 -> 24, UAD7), the tutorial's ghost heart, potions for flask
   charges, candles for Ember, chips for armor and Aegis, the tutorial's highlight ring around the new rows. → Verify:
   `footprint.spec.ts` updated and green; Studio: take damage to a half heart, drink, spend Ember.
-- [ ] **UA11. Bars, slots, frames.** Boss bar (pill track, white fill tinted `boss`, notches on top), combo meter
+- [x] **UA11. Bars, slots, frames.** Boss bar (pill track, white fill tinted `boss`, notches on top), combo meter
   track and shards (tier colours unchanged), weapon panel's two slots, score coin icon, minimap and full-map frames. →
   Verify: Studio: a boss fight, a combo to x5 and a break, a weapon swap; `comboReport` unchanged.
-- [ ] **UA12. Readability over the floor.** Corner panels at `panelTransparency`, the occlusion fade over the new art,
+- [ ] **UA12. Readability over the floor.** (code side done; the Studio walk is the owner's) Corner panels at `panelTransparency`, the occlusion fade over the new art,
   every biome floor; a bullet behind a panel edge still reads. → Verify: Studio, walk past every corner in biomes 1-5.
 
 ### Phase 3: touch
 
-- [ ] **UA13. Touch controls.** Ring frames for the sticks, round buttons with glyphs; `touchOpacity` / `touchSize`
+- [x] **UA13. Touch controls.** Ring frames for the sticks, round buttons with glyphs; `touchOpacity` / `touchSize`
   apply. → Verify: Studio device emulator (phone landscape); later a real device (docs/MOBILE.md).
 
 ### Wrap-up
 
-- [ ] **UA14. Docs.** "As built" here; `docs/ART.md` mapping and status rows (the pack row: "draft cards and the
+- [x] **UA14. Docs.** "As built" here; `docs/ART.md` mapping and status rows (the pack row: "draft cards and the
   UI"); `shared/theme/README.md` (the skin ids, `rect` on ui icons, `centre`); CLAUDE.md decision-log line.
 - [ ] **UA15. Studio smoke test** (below).
+
+## As built (2026-10-30, branch `ui-art`)
+
+| Piece | Where |
+|---|---|
+| `scripts/art/ui-measure.js <x> <y>` (8-connected flood fill, prints the alpha rect) + spec | scripts/art |
+| 12 sliced `images` entries (rects measured, slices chosen on the contact sheets, `flatBoxes` where a stretched line crosses texture); new `images` options `rgb: "white" \| "grey"` and `clearRgb`; a 4x contact sheet per sliced piece with the slice lines and a 9-sliced preview | art/atlases.json, scripts/art/build-atlases.js |
+| `uiIcons` section: 27 icons packed (MaxRects, the world packer's best fit moved into `maxRectsFit`, byte-identical output) into **`ui-icons.png` 115 x 154** with a 1 px extruded gutter; generated `packs/vale/uiIconLayout.ts` (`VALE_UI_ICON_FILE`, `VALE_UI_ICON_ATLAS`, `VALE_UI_ICONS`) | art/atlases.json, scripts/art, packs/vale |
+| `uiSkinIds()` / `uiIconIds()` (optional port ids, inside functions: `contract.luau` is at 198 / 200 locals); `rect` on `ui.*` images (inside the image, pivot from the rect, refused together with `slice`); `ImageRef.rect` | shared/theme contract / types / core / validate |
+| vale: sliced ids join the optional-image loop; `valeUiIconImages` (all icons once `ui-icons.png` has an id, else none); `VALE_UI_REQUIRED_ART` (`ui.panel` <- `ui.panel.hud`, `ui.icon.health` <- `ui.heart.full`, `.mana` <- `ui.flask.full`, `.ember` <- `ui.candle`); preload core tier lists the atlas once | packs/vale/manifest.ts |
+| `UI_ART` (`refPerArt` 2, `hudRefPerArt` 1, `contentInsets`, icon boxes, focus corners), `artPixelScale`, `snappedSliceScale`, `fitArt` / `fitTurnedArt`, `skinFor` / `skinHasOf`, `skinPadding` / `contentInsetsOf`, button state / text role helpers | shared/view/hud/skin.ts, skinConfig.ts |
+| `HUD_SKIN` (pip art, dims, pill fit and fill clip, minimap frame, touch art), `UI_SCREEN_SKINS` (which skin every screen's panel takes) | shared/view/hud/hudSkin.ts, shared/view/menu/skin.ts |
+| `SlicedImage` `snap` / `refPerArt` / `children`; `ArtImage`; `FocusCorners`; `Panel` `skin` (`menu` \| `hud` \| `list` \| `none`; corner panels default `hud`, others `menu`, a fully transparent Panel always flat) and `flatOnly` children; `MenuButton` `variant="option"` and `icon`; skinned `ListRow`; `Pip` `art` | client/ui/hud/primitives.tsx, client/ui/menu/widgets.tsx |
+| Screens: main menu and pause (bones ornament, dividers, gear / home icons), lobby browser / room, Options (option bars, dividers, speaker / mute), run over (skull / RIP header), spectate bar (ghost), RunItems (curse skull), toasts, tutorial panels, the pause button icon, the pill `ProgressBar` (loading + stage covers) | client/ui/hud, menu, loading |
+| HUD: hearts / flasks / candles / chips in StatusPanel, pill boss bar with a clipped fill, `ui.slot` weapon slots, the score coin, the full map's frame; touch rings and buttons | client/ui/hud, client/controllers/game/TouchControlsController.ts |
+| Spike `KV_UiArtSpike` (`SPIKE_DEFAULTS.uiArt` off) | client/controllers/spikes, client/ui/spikes, docs/SPIKES.md "Spike UA1" |
+
+Changes from the plan, found while building:
+
+- **Content insets.** Padding follows each frame's measured visible border (`UI_ART.contentInsets`: menu 5 / 11 / 5 / 7,
+  tall 5 / 10 / 5 / 7, hud 2 / 3 / 2 / 3 art px), not its slice insets: the menu panel's tab forces 43 px side insets,
+  which would have padded every menu panel by 86 px a side.
+- **Two densities.** Menus draw frames at 2 reference px per art px (the reveal's), in-run frames and list rows at 1
+  (`hudRefPerArt`), so corner panels keep their size; both snapped to whole screen px.
+- **Deliberate flat-look changes:** `HUD_VIEW.heartSize` 22 -> 24 (UAD7) and `bossBarHeight` 12 -> 16 (a 16 art px
+  pill cannot fit 12 at a whole scale at 720 p; footprint specs updated, the touch tutorial prompt moves down 4 px).
+- **ui.button.disabled** is the normal button greyed (`rgb: "grey"`): the sheet has no blank button without the red.
+- **ui.panel.hud keeps a dark-red rim** (#370f0f): every plain rounded panel on the sheet has one (UAD2 only roughly met).
+- **ui.stick.ring / ui.touch.button** are icons (fixed size, whole multiples of 39 px), not sliced pieces.
+- **Combo meter unchanged:** the 16 px pill does not fit the 10 px meter, and a taller meter breaks the score panel's
+  160 px budget (spec pins it).
+- **Corner minimap stays flat** (`HUD_SKIN.minimapFramed` false): its map image is turned 45 degrees and only the
+  corner CanvasGroup clips it, at the panel's outer edge, so it would paint over the frame. Framing it needs an inner
+  clip first. The full map's frame is drawn (outside the map, under it).
+- **Skipped:** candelabras on the covers (not in the icon atlas), check / cross on the On / Off rows (the red bar
+  already marks the choice), the dead-teammate skull (no list with a dead state outside the HUD), glyphs on touch
+  buttons (their labels fill the circle).
+- **The reveal's cards are not snapped yet** (UAD1 says they should be): `SlicedImage` `snap` is opt-in, so
+  `DraftOverlay` is unchanged apart from `skin="none"` on its two Panels.
+- **Below UIScale ~0.75** art never drops under 1 screen px per art px, so hud frames pad a few px more than 8 and
+  icons (ghost, run-over header) can overflow their boxes slightly.
 
 ## Studio smoke test
 

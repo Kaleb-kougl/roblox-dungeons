@@ -10,20 +10,25 @@ import {
 	SPECTATE_BAR_VIEW,
 	SPECTATE_HUD_STRINGS,
 	TOUCH_STRINGS,
+	UI_ART,
 	spectateBarTransparency,
 	spectateHintShown,
 	spectateWatchingKey,
 } from "shared/view/hud";
-import { Panel, Text } from "./primitives";
+import { screenSkin } from "shared/view/menu";
+import { ArtImage, Panel, Text, panelArt } from "./primitives";
 
 const HALF = 0.5;
 const HIDDEN = 1;
+/** The ghost draws over the bar's frame (ZIndexBehavior Sibling keeps it after the panel; explicit for Global too). */
+const GHOST_Z = 2;
 
 /**
  * Bottom centre, co-op spectating (docs/SPECTATE.md S5): while the local player is dead and watches a teammate,
  * "Spectating <name> · 2 / 3", the switch hint (the player's own Attack / Alt bindings on the last-used device; hidden
  * with fewer than two living teammates and during a hold) and "You're back on the next floor". Fades in when it appears (instant under
- * reduced motion). Reads only the HUD snapshot (shared/play takeSnapshot's spectate fields).
+ * reduced motion). With the frame art (docs/UI_ART.md UA8), the ghost at the bar's left, beside the centred lines and
+ * outside their layout (the canvas group has none). Reads only the HUD snapshot (shared/play takeSnapshot's spectate fields).
  */
 export function SpectateBar() {
 	const s = useSelector(selectSnapshot);
@@ -50,6 +55,8 @@ function SpectateBarBody(props: { name: string; position: number; count: number 
 		return () => handle.connection?.Disconnect();
 	}, [motion]);
 	const keys = spectateHint(bindings)[keyDevice(device)];
+	const skin = screenSkin("spectate");
+	const ghost = UI_ART.iconBox.ghost;
 	return (
 		<canvasgroup
 			key="SpectateBar"
@@ -66,6 +73,7 @@ function SpectateBarBody(props: { name: string; position: number; count: number 
 				anchor={new Vector2(0, 0)}
 				width={SPECTATE_BAR_VIEW.width}
 				align={Enum.HorizontalAlignment.Center}
+				skin={skin}
 				name="Spectate"
 			>
 				<Text
@@ -102,6 +110,17 @@ function SpectateBarBody(props: { name: string; position: number; count: number 
 					text={str(SPECTATE_HUD_STRINGS.back)}
 				/>
 			</Panel>
+			{panelArt(skin) ? (
+				<ArtImage
+					key="Ghost"
+					name="Ghost"
+					id={UI_ART.ids.iconGhost}
+					box={{ w: ghost, h: ghost }}
+					position={new UDim2(0, HUD_VIEW.pad, HALF, 0)}
+					anchor={new Vector2(0, HALF)}
+					zIndex={GHOST_Z}
+				/>
+			) : undefined}
 		</canvasgroup>
 	);
 }

@@ -6,6 +6,7 @@ import { str } from "client/ui/theme";
 import { TUTORIAL_STRINGS, tutorialDeviceFor } from "shared/tutorial";
 import { HUD_VIEW, PAUSE_HINT, TOUCH_TUTORIAL_BOX, TUTORIAL_VIEW, tutorialPromptVars } from "shared/view/hud";
 import { Panel, Text } from "./primitives";
+import { screenSkin } from "shared/view/menu";
 
 const HALF = 0.5;
 
@@ -33,6 +34,7 @@ export function TutorialPanel() {
 			anchor={touch ? new Vector2(HALF, 0) : new Vector2(HALF, 1)}
 			width={touch ? TUTORIAL_VIEW.touchPanelWidth : TUTORIAL_VIEW.panelWidth}
 			align={Enum.HorizontalAlignment.Center}
+			skin={screenSkin("tutorialPrompt")}
 			name="Tutorial"
 		>
 			<Text

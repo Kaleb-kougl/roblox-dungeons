@@ -7,7 +7,8 @@
  * display state machine and floor shout test (comboConfig.ts, combo.ts; docs/COMBO.md CB2), and how the combo row, meter
  * and floor shout are drawn (comboDraw.ts, CB6 / CB7), the PARRY! floor flash's placement, size, opacity and label
  * (parryFlash.ts, docs/GRAZE_PARRY.md GP7), and the boon draft reveal's tunables and state machine
- * (draftRevealConfig.ts, draftReveal.ts; docs/DRAFT_REVEAL.md DR1) and how it is drawn (draftRevealView.ts, DR5).
+ * (draftRevealConfig.ts, draftReveal.ts; docs/DRAFT_REVEAL.md DR1) and how it is drawn (draftRevealView.ts, DR5), and the
+ * UI skin's pixel scales, icon fit and part-to-image chains (skinConfig.ts, skin.ts; docs/UI_ART.md UA5).
  */
 export * from "./layout";
 export * from "./strings";
@@ -32,3 +33,6 @@ export * from "./parryFlash";
 export * from "./draftRevealConfig";
 export * from "./draftReveal";
 export * from "./draftRevealView";
+export * from "./skinConfig";
+export * from "./skin";
+export * from "./hudSkin";

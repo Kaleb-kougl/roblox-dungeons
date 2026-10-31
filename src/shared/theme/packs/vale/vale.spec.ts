@@ -28,6 +28,7 @@ import { PLACEHOLDER_MANIFEST } from "../placeholder";
 import { VALE_ASSET_IDS } from "./assetIds";
 import { VALE_AUDIO_FILES } from "./audioLayout";
 import { VALE_AMBIENT_LAYOUTS, VALE_FX_SHEET } from "./fxLayout";
+import { VALE_UI_ICON_FILE } from "./uiIconLayout";
 import {
 	VALE_FLOOR_HEX,
 	VALE_IMAGE_LAYOUTS,
@@ -70,6 +71,8 @@ function allFiles(): Array<string> {
 	for (const file of sortedKeys(VALE_AUDIO_FILES)) {
 		files.push(file);
 	}
+	// the UI icon atlas (docs/UI_ART.md UA4): one file for every icon
+	files.push(VALE_UI_ICON_FILE);
 	files.sort();
 	return files;
 }

@@ -11,3 +11,4 @@ export * from "./nav";
 export * from "./lobby";
 export * from "./pause";
 export * from "./strings";
+export * from "./skin";

@@ -549,6 +549,7 @@ export function DraftOverlay() {
 				transparency={DRAFT_UI.panelT.binding}
 				visible={DRAFT_UI.visible.binding}
 				name="Draft"
+				skin="none"
 			>
 				<Text
 					fill={true}
@@ -606,6 +607,7 @@ export function DraftOverlay() {
 					padding={PROGRESSION_VIEW.cardGap}
 					visible={NOT_VISIBLE}
 					name="DraftWaiting"
+					skin="none"
 				>
 					<WaitingLine order={1} count={waiting} />
 				</Panel>

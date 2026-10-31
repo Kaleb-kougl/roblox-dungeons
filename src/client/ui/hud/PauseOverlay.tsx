@@ -17,10 +17,19 @@ import { swapHint, keyDevice } from "shared/play";
 import { TUTORIAL_STRINGS } from "shared/tutorial";
 import { SFX } from "shared/view/audio";
 import { HUD_STRINGS, HUD_VIEW, LEADERBOARD_STRINGS, PAUSE_HINT } from "shared/view/hud";
-import { MENU_STRINGS, pauseItems, pauseOverlayShown, type PauseItem } from "shared/view/menu";
+import {
+	MENU_STRINGS,
+	pauseItemIcon,
+	pauseItems,
+	pauseOverlayShown,
+	screenDividers,
+	screenOrnament,
+	screenSkin,
+	type PauseItem,
+} from "shared/view/menu";
 import { useHudActions, type HudActions } from "./actions";
 import { PauseMap } from "./FullMapOverlay";
-import { MenuButton, Panel, Row, Text } from "./primitives";
+import { Divider, MenuButton, Panel, Row, Text } from "./primitives";
 import { RunInfoLine } from "./RunInfoLine";
 
 const HALF = 0.5;
@@ -176,6 +185,7 @@ export function PauseOverlay() {
 					order={i + 2}
 					name={item}
 					text={str(spec.text)}
+					icon={pauseItemIcon(item)}
 					onActivated={() => {
 						actions.playUi(spec.sound);
 						spec.run(actions);
@@ -200,6 +210,8 @@ export function PauseOverlay() {
 				width={HUD_VIEW.panelWidth}
 				align={Enum.HorizontalAlignment.Center}
 				padding={HUD_VIEW.pad * 2}
+				skin={screenSkin("pause")}
+				ornament={screenOrnament("pause")}
 			>
 				<Text
 					fill={true}
@@ -210,6 +222,7 @@ export function PauseOverlay() {
 					text={str(coop ? MENU_STRINGS.coopTitle : HUD_STRINGS.paused)}
 				/>
 				{body}
+				{screenDividers("pause") ? <Divider key="Divider" order={17} skin={screenSkin("pause")} /> : undefined}
 				{s.weapons.size() > 0 && !touch ? (
 					<Text
 						fill={true}

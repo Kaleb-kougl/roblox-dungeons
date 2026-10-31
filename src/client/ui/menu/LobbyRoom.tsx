@@ -19,6 +19,7 @@ import {
 	lobbyRoomModel,
 	lobbyVisibilityKey,
 	platformInviteButton,
+	screenSkin,
 } from "shared/view/menu";
 import { useMenuActions } from "./actions";
 import { spec, useClock, useGamepadFocus, useNameOf } from "./hooks";
@@ -140,7 +141,13 @@ export function LobbyRoom() {
 	const candidates = inviting ? inviteCandidates(lobby.players, view, me, m.canInvite, nameOf) : [];
 	const platform = platformInviteButton(lobby.inviteEligible, m.canInvite);
 	const invitePanel = inviting ? (
-		<Panel position={new UDim2()} anchor={new Vector2()} order={7} width={MENU_VIEW.screenWidth - HUD_VIEW.pad * 4}>
+		<Panel
+			position={new UDim2()}
+			anchor={new Vector2()}
+			order={7}
+			width={MENU_VIEW.screenWidth - HUD_VIEW.pad * 4}
+			skin={screenSkin("lobbyInvites")}
+		>
 			<Text fill={true} order={1} color="uiAccent" text={str(LOBBY_STRINGS.inviteTitle)} />
 			<Row order={2}>
 				<MenuButton
@@ -196,6 +203,7 @@ export function LobbyRoom() {
 			anchor={new Vector2(HALF, HALF)}
 			width={MENU_VIEW.screenWidth}
 			padding={HUD_VIEW.pad * 2}
+			skin={screenSkin("lobbyRoom")}
 			name="LobbyRoom"
 		>
 			<Text fill={true} order={1} size={HUD_VIEW.titleText} color="uiAccent" text={spec(m.title)} />

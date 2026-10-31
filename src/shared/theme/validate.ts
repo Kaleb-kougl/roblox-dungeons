@@ -46,6 +46,8 @@
  * (NEAR_MISS_COLOR_RULES), `nearMissReport`.
  * Roblox port (docs/DRAFT_REVEAL.md DR3): the boon rarity colour roles readable on `uiPanel` and apart from the rarity
  * below them (BOON_RARITY_COLOR_RULES), `boonRarityReport`; ui images may carry a 9-slice `slice` inside the image.
+ * Roblox port (docs/UI_ART.md UA4): ui images may carry a `rect` (an icon atlas cut) inside the image, the pivot then
+ * inside the rect; a sliced ui image takes no rect.
  */
 
 import { colorDifference, contrastRatio, isHexColor, labChroma, mixRgb, parseHex, toHex } from "./color";
@@ -1754,10 +1756,53 @@ function validateAsset(def: unknown, path: Array<string>, slot: SlotContract, er
 				validateWorldImage(def, path, slot, err, unknownKeys);
 				break;
 			}
-			unknownKeys(def, path, ["kind", "assetId", "w", "h", "tilesPerImage", "pivot", "slice"]);
+			const imageKeys = ["kind", "assetId", "w", "h", "tilesPerImage", "pivot", "slice"];
+			if (slot === UI) {
+				imageKeys.push("rect");
+			}
+			unknownKeys(def, path, imageKeys);
 			checkAssetId();
 			if (def.slice !== undefined) {
 				checkSlice(def.slice, def.w, def.h, append(path, "slice"), slot === UI);
+			}
+			// ui.* (docs/UI_ART.md UA4): `rect`, the region drawn (an icon atlas cut), inside the image; the pivot is then
+			// from the rect's top-left and inside it. A sliced image is drawn whole, so it takes no rect.
+			let pivotBox = isPosInt(def.w) && isPosInt(def.h) ? { w: def.w, h: def.h } : undefined;
+			let pivotWhat = "image";
+			const uiRect = def.rect;
+			if (uiRect !== undefined) {
+				const rp = append(path, "rect");
+				pivotWhat = "rect";
+				if (
+					!isObj(uiRect) ||
+					!isNonNegInt(uiRect.x) ||
+					!isNonNegInt(uiRect.y) ||
+					!isPosInt(uiRect.w) ||
+					!isPosInt(uiRect.h)
+				) {
+					err(
+						rp,
+						'must be { "x": int >= 0, "y": int >= 0, "w": int >= 1, "h": int >= 1 } in pixels of the image',
+					);
+					pivotBox = undefined;
+				} else {
+					unknownKeys(uiRect, rp, ["x", "y", "w", "h"]);
+					if (def.slice !== undefined) {
+						err(rp, "a sliced image is drawn whole: give it no rect");
+					}
+					if (
+						pivotBox !== undefined &&
+						(uiRect.x + uiRect.w > pivotBox.w || uiRect.y + uiRect.h > pivotBox.h)
+					) {
+						err(
+							rp,
+							`(${uiRect.x}, ${uiRect.y}) ${uiRect.w}x${uiRect.h} reaches outside the ${def.w}x${def.h} image`,
+						);
+						pivotBox = undefined;
+					} else {
+						pivotBox = { w: uiRect.w, h: uiRect.h };
+					}
+				}
 			}
 			const imagePivot = def.pivot;
 			if (imagePivot !== undefined) {
@@ -1768,15 +1813,17 @@ function validateAsset(def: unknown, path: Array<string>, slot: SlotContract, er
 						`only ui.*, decor.*, breakable.* and boost.* images have a pivot; slot "${slot.slot}" has none`,
 					);
 				} else if (!isObj(imagePivot) || !isFiniteNumber(imagePivot.x) || !isFiniteNumber(imagePivot.y)) {
-					err(pp, 'must be { "x": number, "y": number } in pixels from the image top-left');
+					err(pp, `must be { "x": number, "y": number } in pixels from the ${pivotWhat} top-left`);
 				} else {
 					unknownKeys(imagePivot, pp, ["x", "y"]);
 					if (
-						isPosInt(def.w) &&
-						isPosInt(def.h) &&
-						(imagePivot.x < 0 || imagePivot.x > def.w || imagePivot.y < 0 || imagePivot.y > def.h)
+						pivotBox !== undefined &&
+						(imagePivot.x < 0 || imagePivot.x > pivotBox.w || imagePivot.y < 0 || imagePivot.y > pivotBox.h)
 					) {
-						err(pp, `(${imagePivot.x}, ${imagePivot.y}) is outside the ${def.w}x${def.h} image`);
+						err(
+							pp,
+							`(${imagePivot.x}, ${imagePivot.y}) is outside the ${pivotBox.w}x${pivotBox.h} ${pivotWhat}`,
+						);
 					}
 				}
 			}

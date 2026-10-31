@@ -8,6 +8,7 @@ import { HUD_HINTS, HUD_STRINGS, HUD_TRANSIENT, HUD_VIEW, VERDICT_BOX } from "sh
 import { Panel, Text } from "./primitives";
 import { noticeText, verdictColor, verdictLine } from "./RunInfoLine";
 import { useTimedHint } from "./useTimedHint";
+import { screenSkin } from "shared/view/menu";
 
 const RIGHT = 1;
 const BOTTOM = 1;
@@ -45,6 +46,7 @@ export function InfoPanel() {
 			position={new UDim2(RIGHT, -HUD_VIEW.margin, BOTTOM, -VERDICT_BOX.edge)}
 			anchor={new Vector2(RIGHT, BOTTOM)}
 			width={HUD_TRANSIENT.verdict.width}
+			skin={screenSkin("info")}
 			name="Info"
 		>
 			{showNotice ? (

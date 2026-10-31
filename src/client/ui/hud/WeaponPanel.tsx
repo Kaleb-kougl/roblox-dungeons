@@ -3,8 +3,8 @@ import { useSelector } from "@rbxts/react-reflex";
 import { selectBindings, selectGameActive, selectInputDevice, selectRunInfo, selectSnapshot } from "client/store";
 import { HUD_FONT, role, str, themePack } from "client/ui/theme";
 import { swapHint, keyDevice } from "shared/play";
-import { HUD_HINTS, HUD_STRINGS, HUD_VIEW } from "shared/view/hud";
-import { Panel, Row, Text } from "./primitives";
+import { HUD_HINTS, HUD_SKIN, HUD_STRINGS, HUD_VIEW } from "shared/view/hud";
+import { Panel, Row, SlicedImage, Text } from "./primitives";
 import { useTimedHint } from "./useTimedHint";
 import { HighlightRing } from "./TutorialFx";
 
@@ -12,6 +12,9 @@ const STROKE = 1;
 const ACTIVE_STROKE = 2;
 const NUMBER_WIDTH = 22;
 const HALF = 0.5;
+const HIDDEN = 1;
+/** Inside a slot: the frame art, the labels over it. */
+const SLOT_Z = { art: 1, label: 2 } as const;
 
 /** A weapon's display name: theme string `<id>.name`, its id without one, "-" for an empty set (web WeaponHud). */
 function weaponName(id: string): string {
@@ -20,21 +23,41 @@ function weaponName(id: string): string {
 	return themePack()?.hasString(key) === true ? str(key) : id;
 }
 
-/** One weapon set: its number and the weapon's name; the set in hand is highlighted (uiAccent ring, opaque). */
+/**
+ * One weapon set: its number and the weapon's name; the set in hand is highlighted (uiAccent ring, opaque). With the
+ * slot art (docs/UI_ART.md UA11) the slot is the ui.slot frame (9-sliced at the in-run density, snapped to whole screen
+ * px) behind the labels, the inactive one at HUD_VIEW.weaponInactiveTransparency and without a ring; without the art,
+ * the flat slot.
+ */
 function WeaponSlot(props: { order: number; index: number; id: string; active: boolean }) {
 	const size = HUD_VIEW.weaponSlotSize;
+	const slotT = props.active ? 0 : HUD_VIEW.weaponInactiveTransparency;
+	const art = themePack()?.image(HUD_SKIN.ids.slot) !== undefined;
 	return (
 		<frame
 			LayoutOrder={props.order}
 			Size={new UDim2(0, size.x, 0, size.y)}
 			BackgroundColor3={role("uiPanel")}
-			BackgroundTransparency={props.active ? 0 : HUD_VIEW.weaponInactiveTransparency}
+			BackgroundTransparency={art ? HIDDEN : slotT}
 			BorderSizePixel={0}
 		>
-			<uistroke
-				Thickness={props.active ? ACTIVE_STROKE : STROKE}
-				Color={role(props.active ? "uiAccent" : "uiTextDim")}
-			/>
+			{art ? (
+				<SlicedImage
+					key="Skin"
+					name="Skin"
+					id={HUD_SKIN.ids.slot}
+					snap={true}
+					refPerArt={HUD_SKIN.slotRefPerArt}
+					transparency={slotT}
+					zIndex={SLOT_Z.art}
+				/>
+			) : undefined}
+			{!art || props.active ? (
+				<uistroke
+					Thickness={props.active ? ACTIVE_STROKE : STROKE}
+					Color={role(props.active ? "uiAccent" : "uiTextDim")}
+				/>
+			) : undefined}
 			<textlabel
 				Size={new UDim2(0, NUMBER_WIDTH, 1, 0)}
 				BackgroundTransparency={1}
@@ -42,6 +65,7 @@ function WeaponSlot(props: { order: number; index: number; id: string; active: b
 				TextSize={HUD_VIEW.weaponTextSize}
 				TextColor3={role(props.active ? "uiAccent" : "uiTextDim")}
 				Text={tostring(props.index + 1)}
+				ZIndex={SLOT_Z.label}
 			/>
 			<textlabel
 				AnchorPoint={new Vector2(0, HALF)}
@@ -53,6 +77,7 @@ function WeaponSlot(props: { order: number; index: number; id: string; active: b
 				TextXAlignment={Enum.TextXAlignment.Left}
 				TextColor3={role(props.active ? "uiText" : "uiTextDim")}
 				Text={weaponName(props.id)}
+				ZIndex={SLOT_Z.label}
 			/>
 		</frame>
 	);

@@ -1302,6 +1302,73 @@ export function draftSkinIds(): ReadonlyArray<string> {
 }
 
 /**
+ * Roblox port (docs/UI_ART.md UA4, Architecture 2): the UI skin's 9-sliced pieces, optional free-form ui images (a pack
+ * may leave out any of them; the primitive then draws today's flat look, shared/view/hud skin.ts `skinFor`). Each is its
+ * own image with a `slice`, cut from the ToffeeCraft Horror UI sheet:
+ *   - `ui.panel.menu` / `.hud` / `.tall`: panel frames (menus: red-rimmed and tabbed; in a run: dark rounded; lists);
+ *   - `ui.button` / `.focus` / `.disabled`: the menu button (normal; focused or active: red fill; disabled);
+ *   - `ui.option.on` / `.off`: an Options value (the chosen one; the others);
+ *   - `ui.bar.track` / `.fill`: a pill bar (the fill is white, tinted by a role);
+ *   - `ui.slot.pair` / `ui.slot`: the weapon panel's two-slot frame and one slot.
+ * A function, not a constant: this module's compiled Luau sits near the 200-locals-per-function limit.
+ */
+export function uiSkinIds(): ReadonlyArray<string> {
+	return [
+		"ui.panel.menu",
+		"ui.panel.hud",
+		"ui.panel.tall",
+		"ui.button",
+		"ui.button.focus",
+		"ui.button.disabled",
+		"ui.option.on",
+		"ui.option.off",
+		"ui.bar.track",
+		"ui.bar.fill",
+		"ui.slot.pair",
+		"ui.slot",
+	];
+}
+
+/**
+ * Roblox port (docs/UI_ART.md UA4, UAD10): the UI skin's small fixed-size pieces, optional free-form ui images packed
+ * into ONE icon atlas: each is an `image` of the whole atlas with a `rect` (the piece) and maybe a `pivot` (pixels from
+ * the rect's top-left). A pack that has the atlas has all of them (all or nothing). The focus bracket, chips (`.white`:
+ * tinted by a role), hearts, flasks, the candle, a caret, a divider, the touch ring and button, and the glyphs.
+ * A function, not a constant: this module's compiled Luau sits near the 200-locals-per-function limit.
+ */
+export function uiIconIds(): ReadonlyArray<string> {
+	return [
+		"ui.ornament.bones",
+		"ui.focus.corner",
+		"ui.chip",
+		"ui.chip.white",
+		"ui.heart.full",
+		"ui.heart.half",
+		"ui.heart.empty",
+		"ui.flask.full",
+		"ui.flask.empty",
+		"ui.candle",
+		"ui.caret",
+		"ui.divider",
+		"ui.stick.ring",
+		"ui.touch.button",
+		"ui.icon.pause",
+		"ui.icon.check",
+		"ui.icon.cross",
+		"ui.icon.help",
+		"ui.icon.gear",
+		"ui.icon.home",
+		"ui.icon.speaker",
+		"ui.icon.mute",
+		"ui.icon.coin",
+		"ui.icon.skull",
+		"ui.icon.skull.curse",
+		"ui.icon.ghost",
+		"ui.icon.rip",
+	];
+}
+
+/**
  * Readability caps for ambient particles (docs/DECOR.md Phase 2 part 2), owned by the theme because a pack's ambient
  * texture may set its own look (`particle` on `decor.fx.ambient.*`) and the validator holds it to them: smaller and
  * more transparent than any bullet. Enemy bullets are drawn opaque (Neon) and 2 * BULLET_VIEW.enemyDrawRadius

@@ -4,9 +4,16 @@ import { selectInviteEligible, selectMyLobbyId } from "client/store";
 import { MenuButton, Panel, Text } from "client/ui/hud";
 import { str } from "client/ui/theme";
 import { SFX } from "shared/view/audio";
-import { HUD_STRINGS, HUD_VIEW } from "shared/view/hud";
+import { HUD_STRINGS, HUD_VIEW, UI_ART } from "shared/view/hud";
 import { TUTORIAL_STRINGS } from "shared/tutorial";
-import { MENU_STRINGS, MENU_VIEW, mainMenuLobbyKey, platformInviteButton } from "shared/view/menu";
+import {
+	MENU_STRINGS,
+	MENU_VIEW,
+	mainMenuLobbyKey,
+	platformInviteButton,
+	screenOrnament,
+	screenSkin,
+} from "shared/view/menu";
 import { useMenuActions } from "./actions";
 import { useGamepadFocus } from "./hooks";
 
@@ -34,6 +41,8 @@ export function MainMenu() {
 			width={MENU_VIEW.mainWidth}
 			align={Enum.HorizontalAlignment.Center}
 			padding={HUD_VIEW.pad * 2}
+			skin={screenSkin("mainMenu")}
+			ornament={screenOrnament("mainMenu")}
 			name="MainMenu"
 		>
 			<Text
@@ -97,6 +106,7 @@ export function MainMenu() {
 				order={7}
 				name="Options"
 				text={str(MENU_STRINGS.options)}
+				icon={UI_ART.ids.iconGear}
 				onActivated={() => {
 					actions.playUi(SFX.uiClick);
 					actions.openOptions();

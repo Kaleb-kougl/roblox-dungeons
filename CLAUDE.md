@@ -45,7 +45,7 @@ Record every ported module in `PROVENANCE.md` (ported module, source path, sourc
 | `docs/DRAFT_REVEAL.md` | Boon draft reveal (cards deal face down and flip one by one, a rare chime, a legendary beat: charge, hush, flare and halo; a pick stamp; skip by pressing; the client holds the confirm until settled; cards in the ToffeeCraft Horror UI sheet's style; presentation and client input only): plan, tasks DR0-DR9, decisions DRD1-DRD12 |
 | `docs/ENEMY_VARIANTS.md` | Enemy variants (three new endless archetypes: Imp flanker, Ooze zone-denier that splits, Summoner support; elite affixes Hulking / Swift / Shielded / Vengeful; both unlock by depth): plan, tasks EV0-EV14, decisions EVD1-EVD12 |
 | `docs/GRAZE_PARRY.md` | Grazes and parries (graze spark + shimmer climbing in pitch, parry sparks / ring-out / PARRY! floor flash / solo 30 ms freeze for a guard that erases bullets; one unhashed ScoreEvents feed, otherwise presentation only): plan, tasks GP0-GP10, decisions GPD1-GPD10 |
-| `docs/UI_ART.md` | UI art (the dark red pixel UI sheet: 9-sliced panels / buttons, hearts, potions, pills, icons, focus brackets; menus, then the in-run HUD, then touch; presentation only): builds on the Draft reveal branch (`slice`, `SlicedImage`): plan, tasks UA0-UA15, decisions UAD1-UAD10 |
+| `docs/UI_ART.md` | UI art (the dark red pixel UI sheet: 9-sliced panels / buttons, hearts, potions, pills, icons, focus brackets; menus, then the in-run HUD, then touch; presentation only): builds on the Draft reveal (`slice`, `SlicedImage`): plan, as built, tasks UA0-UA15, decisions UAD1-UAD10 |
 
 Decision log (deviations from `PLAN.md`):
 - **Art (docs/ART.md).** The theme contract gained a `"sprites"` kind (large pre-rendered cells, 1/4/8/16 screen-space
@@ -313,6 +313,19 @@ Decision log (deviations from `PLAN.md`):
   `THIRD_PARTY_NOTICES.md`) by new `images` options (`rect`, `cutout`, `slice`, `centre: "flat"`, `flatBoxes`, `mask`).
   `contract.luau` / `validate.luau` are at 196 / 200 top-level locals with grazes and parries merged. Debug `KV_DraftRevealDebug`. No setting. Studio check, art upload and
   sounds pending.
+- **UI art (docs/UI_ART.md).** Presentation only (no sim, dungeon, lockstep, hash, replay or fixture change). The UI
+  skins itself from the ToffeeCraft Horror UI sheet: 12 optional sliced ids (`uiSkinIds()`: panels menu / hud / tall,
+  buttons, option bars, pill bar track / fill, slots) as their own PNGs, 27 optional icons (`uiIconIds()`: hearts,
+  flasks, candle, chips, focus corner, ornament, divider, touch rings, glyphs) packed by `art:build` into ONE
+  `ui-icons.png` (`uiIcons` in art/atlases.json, generated `packs/vale/uiIconLayout.ts`, all icons switch on together);
+  ui images may carry a `rect` (not with `slice`). Pure logic in shared/view/hud `skin.ts` / `skinConfig.ts` /
+  `hudSkin.ts` (`UI_ART`: menus 2, in-run frames 1 reference px per art px, snapped to whole screen px; padding from the
+  measured `contentInsets`, not the slice insets) and shared/view/menu `skin.ts`; client primitives `SlicedImage`
+  (`snap`), `ArtImage`, `FocusCorners`, `Panel` `skin`, `MenuButton` `variant` / `icon`. Without the art every screen
+  is today's flat UI except two deliberate sizes: `HUD_VIEW.heartSize` 22 -> 24, `bossBarHeight` 12 -> 16. The corner
+  minimap stays flat (`HUD_SKIN.minimapFramed` false: its turned map would paint over a frame). `contract.luau` /
+  `validate.luau` are at 198 / 195 top-level locals (counted on out/). Spike `KV_UiArtSpike`. Upload and Studio check
+  pending.
 
 ## Commands
 

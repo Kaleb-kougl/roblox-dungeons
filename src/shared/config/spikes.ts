@@ -8,6 +8,7 @@
  *   workspace:SetAttribute("KV_SpikeCamera", true)
  *   workspace:SetAttribute("KV_SpikePreload", true)   (best set before Play: it measures the join)
  *   workspace:SetAttribute("KV_InviteSpike", true)    (client + server; only a published place has the APIs)
+ *   workspace:SetAttribute("KV_UiArtSpike", true)     (client; docs/UI_ART.md UA1)
  * An attribute, when present, overrides the default below; setting it to false stops the spike
  * and cleans up everything it made.
  */
@@ -19,6 +20,7 @@ export const SPIKE_DEFAULTS = {
 	preload: false,
 	invites: false,
 	touch: false,
+	uiArt: false,
 } as const;
 
 /** Workspace attribute names that override SPIKE_DEFAULTS. */
@@ -28,6 +30,7 @@ export const SPIKE_ATTRIBUTES = {
 	preload: "KV_SpikePreload",
 	invites: "KV_InviteSpike",
 	touch: "KV_TouchSpike",
+	uiArt: "KV_UiArtSpike",
 } as const;
 
 export type SpikeName = keyof typeof SPIKE_DEFAULTS;
@@ -204,4 +207,53 @@ export const INVITE_SPIKE = {
 	dumpMaxStringChars: 200,
 	/** Seconds a player must wait between two spike requests to the server. */
 	requestCooldownSec: 1,
+} as const;
+
+/**
+ * Spike UA1 (docs/UI_ART.md UA1, docs/SPIKES.md "Spike UA1"): the UI art primitives on screen. A sliced test panel at
+ * two sizes with SliceScale snapped and fixed, the same inside a CanvasGroup with GroupTransparency, a row of
+ * icon-atlas images at their fitArt size, a focused-button bracket demo, and a line with the UIScale and scales.
+ * Reference px (the HUD's 1280 x 720 design; the spike's ScreenGui carries the HUD's UIScale).
+ */
+export const UI_ART_SPIKE = {
+	/** ScreenGui DisplayOrder: above the menus and HUD, under the spike HUD (100). */
+	displayOrder: 60,
+	/** The sliced test panel's id and its two sizes, reference px. */
+	panelId: "ui.panel.menu",
+	sizes: [
+		[200, 120],
+		[420, 300],
+	],
+	/** GroupTransparency of the CanvasGroup copy. */
+	groupTransparency: 0.5,
+	/** Icon-atlas ids drawn in the icon row, each with the UI_ART.iconBox kind it fits into. */
+	icons: [
+		["ui.heart.full", "heart"],
+		["ui.heart.half", "heart"],
+		["ui.heart.empty", "heart"],
+		["ui.flask.full", "flask"],
+		["ui.flask.empty", "flask"],
+		["ui.candle", "ember"],
+		["ui.chip", "pip"],
+		["ui.chip.white", "pip"],
+		["ui.focus.corner", "glyph"],
+		["ui.icon.check", "glyph"],
+		["ui.icon.cross", "glyph"],
+		["ui.icon.gear", "glyph"],
+		["ui.icon.help", "glyph"],
+		["ui.icon.pause", "glyph"],
+		["ui.icon.home", "glyph"],
+		["ui.icon.speaker", "glyph"],
+		["ui.icon.mute", "glyph"],
+		["ui.icon.coin", "glyph"],
+	],
+	/** The bracket demo: a button-sized ui.button with the four focus brackets, reference px. */
+	buttonId: "ui.button",
+	buttonSize: [260, 40],
+	/** Gap between the spike's pieces, its outer margin and backdrop transparency. */
+	gap: 12,
+	margin: 16,
+	backdropTransparency: 0.2,
+	/** Decimals printed for the UIScale and SliceScale. */
+	scaleFormat: "%.4f",
 } as const;

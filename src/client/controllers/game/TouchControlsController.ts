@@ -11,16 +11,22 @@ import {
 	selectRobloxMenuOpen,
 	selectSnapshot,
 } from "client/store";
-import { HUD_FONT, role, str } from "client/ui";
+import { HUD_FONT, role, str, themePack } from "client/ui";
 import { STUDS_PER_TILE, TOUCH } from "shared/config";
 import type { DisplaySettings } from "shared/settings";
+import type { ImageRef } from "shared/theme";
 import { stickVector, touchMode, type GameSnapshot, type TouchControls, type TouchMode } from "shared/play";
 import { RENDER_ORDER, floorStudsY, studsX, studsZ } from "shared/view";
 import {
 	TOUCH_LAYOUT,
 	pickTouchTarget,
+	skinHasOf,
+	touchArtId,
+	touchArtSize,
+	touchArtTransparency,
 	touchButtonLabelKey,
 	touchLayout,
+	type TouchArtControl,
 	type TouchButtonId,
 	type TouchLayoutResult,
 	type TouchTargetId,
@@ -39,12 +45,24 @@ const NOT_SET = -1;
 const PERCENT = 100;
 /** A Cylinder's axis is X: turn it upright (as RunMarkerController does). */
 const UPRIGHT = CFrame.Angles(0, 0, math.pi * HALF);
+/** Draw order inside a skinned control (ZIndexBehavior Sibling): the ring art, the label over it, the knob on top. */
+const ART_Z = { art: 1, label: 2, knob: 3 } as const;
+
+/** A control's ring / button art (docs/UI_ART.md UA13): the ImageLabel and the art's width in px (its rect). */
+interface ControlArt {
+	readonly image: ImageLabel;
+	readonly artPx: number;
+}
 
 /** One button: its frame, its knob (Attack / Alt), and the values last written (only changes are written). */
 interface Control {
 	readonly id: TouchButtonId;
 	readonly button: TextButton;
 	readonly knob: Frame | undefined;
+	/** The ring / button art when the pack has it (docs/UI_ART.md UA13); undefined: the flat circle. */
+	readonly art: ControlArt | undefined;
+	/** Where the label is written: the button itself (flat), or a label over the art (skinned). */
+	readonly text: TextButton | TextLabel;
 	/** The label without the count (the theme string of touch.<id>). */
 	readonly name: string;
 	/** Placed by the current layout (the mode's buttons). */
@@ -78,6 +96,8 @@ interface Ui {
 	readonly moveZone: TextButton;
 	readonly moveBase: Frame;
 	readonly moveRing: UIStroke;
+	/** The move base's ring art (docs/UI_ART.md UA13), replacing moveRing when the pack has it. */
+	readonly moveArt: ControlArt | undefined;
 	readonly moveKnob: Frame;
 	readonly markerFolder: Folder;
 	readonly marker: Part;
@@ -104,6 +124,54 @@ function makeKnob(parent: GuiObject): Frame {
 	return knob;
 }
 
+/** The theme image a control draws (shared/view/hud touchArtId), or undefined: the flat circle. */
+function artRef(control: TouchArtControl): ImageRef | undefined {
+	const pack = themePack();
+	if (pack === undefined) return undefined;
+	const id = touchArtId(skinHasOf(pack), control);
+	return id !== undefined ? pack.image(id) : undefined;
+}
+
+/**
+ * A control's ring / button art: an ImageLabel of the icon-atlas cut (ImageRectOffset / ImageRectSize), Pixelated,
+ * centred, under the label; sized on a layout change (place: touchArtSize), its transparency per frame.
+ */
+function makeArt(parent: GuiObject, ref: ImageRef): ControlArt {
+	const image = new Instance("ImageLabel");
+	image.Name = "Skin";
+	image.Image = ref.assetId;
+	const r = ref.rect;
+	if (r !== undefined) {
+		image.ImageRectOffset = new Vector2(r.x, r.y);
+		image.ImageRectSize = new Vector2(r.w, r.h);
+	}
+	image.ResampleMode = Enum.ResamplerMode.Pixelated;
+	image.AnchorPoint = new Vector2(HALF, HALF);
+	image.Position = UDim2.fromScale(HALF, HALF);
+	image.BackgroundTransparency = HIDDEN;
+	image.BorderSizePixel = 0;
+	image.Active = false;
+	image.ZIndex = ART_Z.art;
+	image.Parent = parent;
+	return { image, artPx: r?.w ?? ref.w };
+}
+
+/** A skinned control's label over its art (a child draws over its parent's own text, so the button's text hides). */
+function makeLabel(button: TextButton, name: string): TextLabel {
+	const label = new Instance("TextLabel");
+	label.Name = "Label";
+	label.Size = UDim2.fromScale(1, 1);
+	label.BackgroundTransparency = HIDDEN;
+	label.Active = false;
+	label.Text = name;
+	label.TextScaled = true;
+	label.Font = HUD_FONT;
+	label.TextColor3 = role("uiText");
+	label.ZIndex = ART_Z.label;
+	label.Parent = button;
+	return label;
+}
+
 function makeControl(id: TouchButtonId, gui: ScreenGui): Control {
 	const name = str(touchButtonLabelKey(id));
 	const button = new Instance("TextButton");
@@ -117,9 +185,19 @@ function makeControl(id: TouchButtonId, gui: ScreenGui): Control {
 	button.Selectable = false;
 	button.Visible = false;
 	roundCorners(button);
+	const ref = artRef(id);
+	const art = ref !== undefined ? makeArt(button, ref) : undefined;
+	let text: TextButton | TextLabel = button;
+	if (art !== undefined) {
+		// Skinned (docs/UI_ART.md UA13): no flat fill, the label on its own TextLabel over the art.
+		button.BackgroundTransparency = HIDDEN;
+		button.TextTransparency = HIDDEN;
+		text = makeLabel(button, name);
+	}
 	const knob = id === "attack" || id === "alt" ? makeKnob(button) : undefined;
+	if (knob !== undefined && art !== undefined) knob.ZIndex = ART_Z.knob;
 	button.Parent = gui;
-	return { id, button, knob, name, placed: false, fillT: NOT_SET, textT: NOT_SET, label: name };
+	return { id, button, knob, art, text, name, placed: false, fillT: NOT_SET, textT: NOT_SET, label: name };
 }
 
 /** Puts every placed circle, the move zone and the move base's size where the layout says (on a layout change). */
@@ -131,6 +209,10 @@ function place(ui: Ui, layout: TouchLayoutResult): void {
 		c.placed = true;
 		c.button.Position = UDim2.fromOffset(p.cx - p.r, p.cy - p.r);
 		c.button.Size = UDim2.fromOffset(p.r * 2, p.r * 2);
+		if (c.art !== undefined) {
+			const side = touchArtSize(p.r * 2, c.art.artPx);
+			c.art.image.Size = UDim2.fromOffset(side, side);
+		}
 	}
 	const zone = layout.moveZone;
 	ui.moveZone.Visible = zone !== undefined;
@@ -139,7 +221,13 @@ function place(ui: Ui, layout: TouchLayoutResult): void {
 		ui.moveZone.Size = UDim2.fromOffset(zone.w, zone.h);
 	}
 	const home = layout.moveHome;
-	if (home !== undefined) ui.moveBase.Size = UDim2.fromOffset(home.r * 2, home.r * 2);
+	if (home !== undefined) {
+		ui.moveBase.Size = UDim2.fromOffset(home.r * 2, home.r * 2);
+		if (ui.moveArt !== undefined) {
+			const side = touchArtSize(home.r * 2, ui.moveArt.artPx);
+			ui.moveArt.image.Size = UDim2.fromOffset(side, side);
+		}
+	}
 }
 
 /**
@@ -153,6 +241,10 @@ function place(ui: Ui, layout: TouchLayoutResult): void {
  * frame(), before the sim samples. A finger whose end the events missed (a cancelled touch fires no TouchEnded) is
  * ended by its InputObject's UserInputState. Either leak used to leave a control held for good: the machine ignores
  * new touches on a control a live finger holds.
+ *
+ * With the UI art (docs/UI_ART.md UA13) the sticks draw ui.stick.ring and the buttons ui.touch.button (whole-pixel
+ * multiples of the art, shared/view/hud touchArtSize; touchOpacity / touchSize apply as before; labels kept, no
+ * glyphs); without it, the flat circles.
  *
  * Presentation only: it reads the store and the sim and never writes the sim. Everything it makes lives in the
  * Janitor; the render step (KV_TouchControls, before the sim samples input) is unbound with it.
@@ -217,7 +309,12 @@ export class TouchControlsController implements OnStart {
 		moveRing.Color = role("uiText");
 		moveRing.Thickness = TOUCH_LAYOUT.ringStroke;
 		moveRing.Parent = moveBase;
+		const moveRef = artRef("move");
+		const moveArt = moveRef !== undefined ? makeArt(moveBase, moveRef) : undefined;
+		// Skinned (docs/UI_ART.md UA13): the ring art replaces the stroke.
+		if (moveArt !== undefined) moveRing.Enabled = false;
 		const moveKnob = makeKnob(moveBase);
+		if (moveArt !== undefined) moveKnob.ZIndex = ART_Z.knob;
 		moveBase.Parent = gui;
 
 		const controls = new Map<TouchButtonId, Control>();
@@ -263,7 +360,7 @@ export class TouchControlsController implements OnStart {
 			"Disconnect",
 		);
 
-		return { gui, controls, moveZone, moveBase, moveRing, moveKnob, markerFolder, marker };
+		return { gui, controls, moveZone, moveBase, moveRing, moveArt, moveKnob, markerFolder, marker };
 	}
 
 	// --- touches -----------------------------------------------------------------------------------------
@@ -398,13 +495,20 @@ export class TouchControlsController implements OnStart {
 		for (const [, c] of ui.controls) {
 			const held = touch.isHeld(c.id);
 			const fillT = 1 - (held ? math.min(1, fill * TOUCH_LAYOUT.pressedFillBoost) : fill);
-			if (c.fillT !== fillT) {
+			if (c.art !== undefined) {
+				// Skinned: the art's opacity follows the setting and the press (touchArtTransparency).
+				const artT = touchArtTransparency(opacity, held);
+				if (c.fillT !== artT) {
+					c.fillT = artT;
+					c.art.image.ImageTransparency = artT;
+				}
+			} else if (c.fillT !== fillT) {
 				c.fillT = fillT;
 				c.button.BackgroundTransparency = fillT;
 			}
 			if (c.textT !== textT) {
 				c.textT = textT;
-				c.button.TextTransparency = textT;
+				c.text.TextTransparency = textT;
 				if (c.knob !== undefined) c.knob.BackgroundTransparency = textT;
 			}
 
@@ -415,7 +519,7 @@ export class TouchControlsController implements OnStart {
 			const label = c.name + count;
 			if (c.label !== label) {
 				c.label = label;
-				c.button.Text = label;
+				c.text.Text = label;
 			}
 
 			if (c.knob !== undefined) {
@@ -457,7 +561,8 @@ export class TouchControlsController implements OnStart {
 		}
 		ui.moveBase.Position = UDim2.fromOffset(x - home.r, y - home.r);
 		ui.moveKnob.Position = new UDim2(HALF, kx, HALF, ky);
-		ui.moveRing.Transparency = 1 - alpha;
+		if (ui.moveArt !== undefined) ui.moveArt.image.ImageTransparency = touchArtTransparency(alpha, false);
+		else ui.moveRing.Transparency = 1 - alpha;
 		ui.moveKnob.BackgroundTransparency = 1 - alpha;
 	}
 
