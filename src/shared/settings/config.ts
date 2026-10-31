@@ -49,6 +49,14 @@ export const DEFAULT_MINIMAP = true;
 /** The watched player's rim (docs/PLAYER_OUTLINE.md P4, Options > Display > Player outline): On by default. */
 export const DEFAULT_PLAYER_OUTLINE = true;
 
+/**
+ * Build effects (docs/BUILDS.md BUD13, Options > Display > Build effects): Full, or Reduced (half the spark / nova
+ * particles and ring segments, no bullet trails). Presentation only: effect bullets are always drawn.
+ */
+export type BuildFxLevel = "full" | "reduced";
+export const BUILD_FX_LEVELS: ReadonlyArray<BuildFxLevel> = ["full", "reduced"];
+export const DEFAULT_BUILD_FX: BuildFxLevel = "full";
+
 /** Touch control sizes, percent of the layout (docs/MOBILE.md MB7, Options > Display > Touch size). 100 is the default. */
 export const TOUCH_SIZE_PERCENTS: ReadonlyArray<number> = [80, 100, 120];
 export const DEFAULT_TOUCH_SIZE_PERCENT = 100;
