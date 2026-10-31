@@ -29,6 +29,7 @@ import {
 	NEW_BEST_STRINGS,
 	SCORE_SOURCE_KEYS,
 	UI_ART,
+	bestTargetKey,
 	bestText,
 	comboBestRichText,
 	comboTier,
@@ -52,6 +53,7 @@ import { MenuFit } from "./MenuFit";
 import { runOverBest, type RunOverBest } from "./newBestRunOver";
 import { NEW_BEST_UI } from "./newBestUi";
 import { ArtImage, MenuButton, Panel, Row, Text, panelIcon } from "./primitives";
+import { DailyPassedRow } from "./DailyPassedRow";
 import { RunInfoLine, verdictColor, verdictLine } from "./RunInfoLine";
 
 const HIDDEN = 1;
@@ -65,10 +67,12 @@ const ROW = {
 	alt: 4,
 	stats: 5,
 	best: 6,
-	breakdown: 7,
-	exits: 8,
-	verdict: 9,
-	info: 10,
+	/** docs/DAILY.md DS10: the friends a daily run passed (DailyPassedRow). */
+	dailyPassed: 7,
+	breakdown: 8,
+	exits: 9,
+	verdict: 10,
+	info: 11,
 } as const;
 
 function Stat(props: { order: number; label: string; value: string }) {
@@ -270,7 +274,7 @@ function BestBlock(props: { order: number; best: RunOverBest }) {
 			);
 		}
 	} else {
-		const target = bestText(b.target, NEW_BEST_STRINGS.target, str);
+		const target = bestText(b.target, bestTargetKey(b.daily), str);
 		if (target !== "") {
 			lines.push(
 				<Text
@@ -421,7 +425,7 @@ export function RunOverPanel() {
 		? str(HUD_STRINGS.victory, { name: bossName, key })
 		: str(HUD_STRINGS.dead, { key });
 	const best = runOverBest(baseline, baselineRun, info.run, verdict, s.score, s.floor);
-	const ribbonKey = runOverRibbonKey(best.records);
+	const ribbonKey = runOverRibbonKey(best.records, best.daily);
 	const ribbon =
 		ribbonKey !== undefined ? <BestRibbon key="Ribbon" order={ROW.ribbon} text={str(ribbonKey)} /> : undefined;
 	const bestBlock = <BestBlock key="Best" order={ROW.best} best={best} />;
@@ -540,7 +544,8 @@ export function RunOverPanel() {
 								</Column>
 								{s.scoring ? (
 									<Column order={2} width={right} gap={MENU_FIT.runOverLineGap}>
-										{best.ranked ? <BestBlock key="Best" order={0} best={best} /> : undefined}
+										{best.ranked ? <BestBlock key="Best" order={-1} best={best} /> : undefined}
+										<DailyPassedRow key="DailyPassed" order={0} />
 										{breakdownLines(breakdown)}
 									</Column>
 								) : undefined}
@@ -565,6 +570,7 @@ export function RunOverPanel() {
 							))}
 						</Row>
 						{bestBlock}
+						<DailyPassedRow key="DailyPassed" order={ROW.dailyPassed} />
 						{s.scoring ? <ScoreBreakdown {...breakdown} /> : undefined}
 						{verdictRow}
 						<RunInfoLine order={ROW.info} />

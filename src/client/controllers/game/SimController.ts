@@ -1,7 +1,7 @@
 import { Controller, OnStart } from "@flamework/core";
 import { GuiService, Players, RunService, Workspace } from "@rbxts/services";
 import { Events } from "client/network";
-import { clientStore, type RunInfo, type VerdictView } from "client/store";
+import { clientStore, selectDailyStatus, type RunInfo, type VerdictView } from "client/store";
 import type { PartyRunStart, RunFinishVerdict, RunVerdict } from "shared/network";
 import { CoopMenuInputGate, LockstepClient } from "shared/lockstep";
 import {
@@ -54,6 +54,7 @@ import {
 	type SimState,
 } from "shared/sim";
 import { TUTORIAL } from "shared/config";
+import { DAILY_WORLD_KIND } from "shared/daily";
 import { RECORDS_POLICY } from "shared/records";
 import { BIOMES, type ThemePack } from "shared/theme";
 import {
@@ -215,6 +216,14 @@ interface MadeRun {
  */
 function claimsRecords(debug: boolean, world: RunWorldKind): boolean {
 	return !debug && RECORDS_POLICY.eligibleWorlds.includes(world);
+}
+
+/**
+ * A finished ranked Daily run may raise the next daily run's best-today baseline while its verdict is pending
+ * (docs/DAILY.md DS10: pendingRunClaims with `daily`, the day): not with KV_Debug (it never posts).
+ */
+function claimsDaily(debug: boolean, world: RunWorldKind): boolean {
+	return !debug && world === DAILY_WORLD_KIND;
 }
 
 /** KV_World, else the place's play mode (shared/run LIVE_RUN_WORLD: "endless" unless shared/config PLAY_MODE is "m1"). */
@@ -996,7 +1005,7 @@ export class SimController implements OnStart {
 			const entry = this.rankedRuns.get(runId);
 			if (entry !== undefined) {
 				entry.ending = "death";
-				if (claimsRecords(this.debug, ctx.world)) entry.claim = this.claimOf(coop.state);
+				entry.claim = this.finishedClaim(ctx, coop.state);
 			}
 			clientStore.setVerdict({
 				status: "pending",
@@ -1580,6 +1589,19 @@ export class SimController implements OnStart {
 		};
 	}
 
+	/**
+	 * A finished ranked run's claim for pendingRunClaims, or undefined: an endless run's records claim, a Daily run's
+	 * best-today claim tagged with its day (the daily status of the run's own seed; none when that status is gone, e.g.
+	 * the day changed: the next run's baseline is a new day's anyway), nothing for any other world or KV_Debug.
+	 */
+	private finishedClaim(ctx: RunContext, state: Readonly<SimState>): PendingRunClaim | undefined {
+		if (claimsRecords(this.debug, ctx.world)) return this.claimOf(state);
+		if (!claimsDaily(this.debug, ctx.world)) return undefined;
+		const status = selectDailyStatus(clientStore.getState());
+		if (status === undefined || status.seed !== ctx.seed) return undefined;
+		return { ...this.claimOf(state), daily: status.day };
+	}
+
 	/** Sends the segments the run cut (ranked runs that the server has not rejected yet). */
 	private uploadSegments(ctx: RunContext): void {
 		const runId = ctx.runId;
@@ -1617,7 +1639,7 @@ export class SimController implements OnStart {
 		}
 		const final = result as RunFinal;
 		clientStore.setVerdict({ status: "pending", run: ctx.counter, ending, claimedHash: final.claimedHash });
-		if (claimsRecords(this.debug, ctx.world)) entry.claim = this.claimOf(live.state);
+		entry.claim = this.finishedClaim(ctx, live.state);
 		Events.finishRun.fire(final);
 		print(
 			`[Sim] finished ranked run ${ctx.counter} (${ending}): ${final.finalTick} ticks in ` +
@@ -1631,10 +1653,19 @@ export class SimController implements OnStart {
 		entry.decided = true;
 		// Records (pendingRunClaims): an accepted run that counted keeps its board with the server's numbers until the
 		// records push that follows; anything else no longer raises a baseline.
-		entry.claim =
-			v.ok && v.records !== undefined && entry.claim !== undefined
-				? { board: v.records.board, score: v.score.score, floor: v.score.floor }
-				: undefined;
+		// A Daily run's claim (docs/DAILY.md DS10) stays with the server's numbers when its entry write completed (the
+		// dailyStatus push follows the verdict), else it no longer raises a baseline.
+		const claim = entry.claim;
+		if (claim !== undefined && claim.daily !== undefined) {
+			entry.claim =
+				v.ok && v.daily !== undefined && v.daily.posted
+					? { board: claim.board, score: v.score.score, floor: v.score.floor, daily: v.daily.day }
+					: undefined;
+		} else
+			entry.claim =
+				v.ok && v.records !== undefined && claim !== undefined
+					? { board: v.records.board, score: v.score.score, floor: v.score.floor }
+					: undefined;
 		// Only the current run's verdict reaches the HUD: one for a run this client already left (a forfeiting restart,
 		// Leave run, a party run left for the menu or a new run) is only logged.
 		const current = this.ctx !== undefined && entry.run === this.ctx.counter;
@@ -1673,6 +1704,7 @@ export class SimController implements OnStart {
 			records: v.records,
 			serverScore: v.score.score,
 			serverFloor: v.score.floor,
+			daily: v.daily,
 		};
 		if (current) clientStore.setVerdict(view);
 		const where = v.failedSegment !== undefined ? ` (segment ${v.failedSegment})` : "";

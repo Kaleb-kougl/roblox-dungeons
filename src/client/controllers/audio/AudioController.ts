@@ -36,7 +36,7 @@ import {
 	type Playable,
 } from "shared/view/audio";
 import { audibleCombo, audibleVariantCues, comboQuiet } from "shared/view/fx";
-import { NO_NEW_BEST_CUES, type NewBestCueSource } from "shared/view/hud";
+import { NO_DAILY_RANK_CUES, NO_NEW_BEST_CUES, type DailyRankCueSource, type NewBestCueSource } from "shared/view/hud";
 import { PreloadController } from "../game/PreloadController";
 import { SimController, type RunContext } from "../game/SimController";
 import { ThemeController } from "../game/ThemeController";
@@ -165,6 +165,8 @@ export class AudioController implements OnStart {
 	private ambience: LoopChannel | undefined;
 	/** This frame's new-best cues (setNewBestCues; none until NewBestController registers). */
 	private newBestCues: () => NewBestCueSource = () => NO_NEW_BEST_CUES;
+	/** This frame's daily rank cues (setRankCues; none until DailyRankController registers). */
+	private rankCues: () => DailyRankCueSource = () => NO_DAILY_RANK_CUES;
 
 	constructor(
 		private readonly sim: SimController,
@@ -218,6 +220,7 @@ export class AudioController implements OnStart {
 				nearMiss,
 				audibleVariantCues(ctx.run.variantCues, quiet),
 				this.newBestCues(),
+				this.rankCues(),
 			);
 			for (let i = 0; i < this.cues.size(); i++) {
 				this.play(this.cues.id(i), this.cues.volume(i), this.cues.speed(i));
@@ -282,6 +285,15 @@ export class AudioController implements OnStart {
 	 */
 	setNewBestCues(source: () => NewBestCueSource): void {
 		this.newBestCues = source;
+	}
+
+	/**
+	 * Where the sound frame reads the Daily's rank cues (docs/DAILY.md DS10): DailyRankController registers its frame
+	 * here. It steps inside NewBestController's tracker frame (RoomClearController's scoreRoll phase), before this sound
+	 * frame, so the cues are THIS frame's: sfx.rank.up on a threshold shout, sfx.friend.passed on a friend toast.
+	 */
+	setRankCues(source: () => DailyRankCueSource): void {
+		this.rankCues = source;
 	}
 
 	/** A menu sound (sfx.ui.*). */

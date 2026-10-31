@@ -1,6 +1,8 @@
 import { createProducer } from "@rbxts/reflex";
 import { EMPTY_SNAPSHOT, snapshotsEqual, type GameSnapshot, type InputDeviceKind } from "shared/play";
+import type { DailyRunResult } from "shared/daily";
 import type { RunRecordsResult } from "shared/records";
+import type { StringVars } from "shared/theme";
 import { latencyProbeViewsEqual, type LatencyProbeView } from "shared/view";
 
 /**
@@ -31,6 +33,11 @@ export interface VerdictView {
 	readonly records?: RunRecordsResult;
 	readonly serverScore?: number;
 	readonly serverFloor?: number;
+	/**
+	 * Accepted daily runs (docs/DAILY.md DS10 / DS11): this player's outcome on the day's board (RunFinishVerdict.daily:
+	 * posted, improved, previous, the standing); new best's run-over record reads it in place of `records`.
+	 */
+	readonly daily?: DailyRunResult;
 }
 
 export interface ReplayCheckView {
@@ -71,6 +78,13 @@ export interface ToastView {
 	/** `{desc}`, looked up as a theme string key (boost pickups). */
 	readonly descKey?: string;
 	readonly amount?: number;
+	/**
+	 * Literal vars for the line (docs/DAILY.md DS10: a friend's name and score), applied over the looked-up ones; a
+	 * player's name is never a theme key.
+	 */
+	readonly args?: StringVars;
+	/** A player whose headshot leads the line (docs/DAILY.md DS10: a friend passed), fetched by ToastPanel. */
+	readonly headshotUserId?: number;
 	/** os.clock() at which it disappears. */
 	readonly until: number;
 }

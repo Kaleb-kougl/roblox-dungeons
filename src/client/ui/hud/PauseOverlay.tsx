@@ -22,10 +22,11 @@ import {
 	HUD_STRINGS,
 	HUD_VIEW,
 	LEADERBOARD_STRINGS,
-	NEW_BEST_STRINGS,
 	PAUSE_HINT,
 	baselineRecord,
+	bestTargetKey,
 	bestText,
+	isDailyBaseline,
 } from "shared/view/hud";
 import {
 	MENU_STRINGS,
@@ -160,7 +161,11 @@ export function PauseOverlay() {
 
 	if (!open) return undefined;
 	const hintKey = coop ? MENU_STRINGS.coopHint : HUD_STRINGS.pauseHint;
-	const best = baselineRun === info.run ? bestText(baselineRecord(baseline), NEW_BEST_STRINGS.target, str) : "";
+	// A daily run's baseline is best today (docs/DAILY.md DS10): "Best today {score}".
+	const best =
+		baselineRun === info.run
+			? bestText(baselineRecord(baseline), bestTargetKey(isDailyBaseline(baseline)), str)
+			: "";
 	let body: React.Element;
 	if ((confirm && !inTutorial) || skipConfirm) {
 		const spec = skipConfirm ? SKIP_CONFIRM : coop ? LEAVE_CONFIRM_COOP : LEAVE_CONFIRM;

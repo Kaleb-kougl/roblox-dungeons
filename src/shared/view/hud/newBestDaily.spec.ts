@@ -11,6 +11,7 @@ import {
 	baselineFrom,
 	bestTargetKey,
 	dailyBaselineFrom,
+	dailyServerRecords,
 	debugBaseline,
 	floorTarget,
 	isDailyBaseline,
@@ -185,6 +186,26 @@ describe("new best on a daily run: beats and text", () => {
 		expect(runOverRecords(none, 0, 12).record).toBe(false);
 		// the endless none baseline still counts a deeper floor
 		expect(isRecordRun({ kind: "none", board: "solo", score: 0, floor: 0 }, 0, 12)).toBe(true);
+	});
+
+	it("the run over reads verdict.daily: improved -> a score row from the previous entry, never a floor row", () => {
+		const b = dailyBaselineFrom(status({ solo: { score: 2000 } }), 1, SEED, true);
+		expect(dailyServerRecords(undefined)).toBe(undefined);
+		const raised = dailyServerRecords({ improved: true, previous: { score: 1500, floor: 4 } });
+		expect(raised).toEqual({ scoreImproved: true, floorImproved: false, previous: { score: 1500, floor: 4 } });
+		const r = runOverRecords(b, 2600, 9, raised);
+		expect([r.record, r.first, r.fromServer, r.rows]).toEqual([
+			true,
+			false,
+			true,
+			[{ kind: "score", from: 1500, to: 2600, delta: 1100 }],
+		]);
+		// the day's first entry: no previous -> FIRST RUN TODAY
+		const first = runOverRecords(b, 800, 3, dailyServerRecords({ improved: true }));
+		expect([first.record, first.first]).toEqual([true, true]);
+		// not raised: no record, the dim line shows the server's previous
+		const kept = dailyServerRecords({ improved: false, previous: { score: 5000, floor: 7 } });
+		expect(runOverRecords(b, 2600, 9, kept).record).toBe(false);
 	});
 
 	it("says best today: the row, the shout, the ribbon, the record row and the target line", () => {

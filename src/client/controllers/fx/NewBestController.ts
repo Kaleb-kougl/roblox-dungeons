@@ -6,29 +6,36 @@ import {
 	clientStore,
 	selectAnyPanelOpen,
 	selectCoopOverlay,
+	selectDailyStatus,
 	selectMenuScreen,
 	selectRecordsStatus,
 	type VerdictView,
 } from "client/store";
 import { NEW_BEST_UI, resetNewBestUi, runOverBest, type RunOverBest } from "client/ui";
+import { DAILY_WORLD_KIND } from "shared/daily";
 import type { JuiceSettings } from "shared/settings";
 import { partySize } from "shared/sim";
 import type { ColorRole, StringVars, ThemePack } from "shared/theme";
 import { SFX } from "shared/view/audio";
 import {
+	DAILY_RANK,
+	FLOOR_SHOUT_PRIORITY,
 	HUD_VIEW,
 	NEW_BEST,
 	NEW_BEST_DRAW,
 	NEW_BEST_ROLE,
-	NEW_BEST_STRINGS,
 	NO_NEW_BEST_CUES,
 	NewBestTracker,
 	baselineFrom,
 	boardFor,
 	clearZoneRect,
 	confettiPieceAt,
+	dailyBaselineFrom,
 	debugBaseline,
+	isDailyBaseline,
 	newBestRowText,
+	newBestShoutKey,
+	parseDailyRankDebug,
 	parseNewBestDebug,
 	recordRollEdges,
 	recordRollValue,
@@ -63,6 +70,24 @@ const CONFETTI_TONE_MIX = 0.5;
 const RUN_OVER_SEED_STEP = 1;
 const NO_ROWS: ReadonlyArray<RecordRow> = [];
 
+/** What a rank layer puts in the score panel's target row in place of new best's text (strings resolved). */
+export interface NewBestRowOverride {
+	readonly text: string;
+	readonly compact: string;
+	readonly color: Color3;
+}
+
+/**
+ * The Daily's in-run rank layer (docs/DAILY.md DS10: DailyRankController), driven from here so its order is fixed: it
+ * starts with a daily run's frozen best-today baseline, ends with the run, and steps right after the new-best tracker
+ * in the same frame (the shown score, the cover, run over); a row it returns replaces new best's text.
+ */
+export interface NewBestRankLayer {
+	newRun(ctx: RunContext, baseline: RunBaseline): void;
+	endRun(): void;
+	frame(look: Readonly<NewBestFrame>, input: Readonly<NewBestInput>): NewBestRowOverride | undefined;
+}
+
 /**
  * The new-best celebration's per-frame view (docs/NEW_BEST.md NB7). Presentation only, read-only on the sim.
  *
@@ -95,6 +120,12 @@ const NO_ROWS: ReadonlyArray<RecordRow> = [];
  *              record run throws the full-screen confetti once (none under reduced motion). The record fanfare itself
  *              is the cue mapper's (the tracker's recordRun on the wipe frame).
  * An unranked run (tutorial, M1, unscored, a local-seed run) writes nothing: its HUD is exactly the old one.
+ *
+ * Daily runs (docs/DAILY.md DS10, DSD6): the baseline is best today (shared/view/hud dailyBaselineFrom over the store's
+ * last dailyStatus, for the run's own seed, with this day's pending daily claims folded in; KV_DailyRankDebug's `best`
+ * or KV_NewBestDebug override it in Studio), the strings say "best today", the shout ranks FLOOR_SHOUT_PRIORITY.newBest
+ * (over the rank layer's thresholds), and the rank layer (setRankLayer: DailyRankController) starts with the run, steps
+ * right after the tracker each frame and may take over the target row once best today is passed.
  */
 @Controller({})
 export class NewBestController implements OnStart {
@@ -110,6 +141,12 @@ export class NewBestController implements OnStart {
 		reducedMotion: false,
 	};
 	private tracker: NewBestTracker | undefined;
+	/** The run's baseline is a daily run's (best today): its strings, its rank layer. */
+	private daily = false;
+	private rankLayer: NewBestRankLayer | undefined;
+	/** The rank layer's row strings last written (undefined: new best's own text is in the row). */
+	private overrideText: string | undefined;
+	private overrideCompact: string | undefined;
 	/** The latest tracker frame (this frame's once the tracker stepped; none with no ranked run). */
 	private cues: NewBestCueSource = NO_NEW_BEST_CUES;
 	private pack: ThemePack | undefined;
@@ -155,6 +192,11 @@ export class NewBestController implements OnStart {
 		this.roomClear.onShownScore((shown, settings, dt) => this.frame(shown, settings, dt));
 	}
 
+	/** The Daily's rank layer registers itself (DailyRankController.onStart). */
+	setRankLayer(layer: NewBestRankLayer): void {
+		this.rankLayer = layer;
+	}
+
 	// --- the run ----------------------------------------------------------------------------------------
 
 	private newRun(ctx: RunContext): void {
@@ -163,12 +205,16 @@ export class NewBestController implements OnStart {
 		clientStore.setRunBaseline(baseline, ctx.counter);
 		if (baseline.kind === "unranked") return;
 		this.tracker = new NewBestTracker(baseline);
+		this.daily = isDailyBaseline(baseline);
+		if (this.daily) this.rankLayer?.newRun(ctx, baseline);
 		// What this run draws goes with it (a run start, Leave run / Main menu): the bindings, the confetti.
 		this.runJanitor.Add(() => {
 			resetNewBestUi();
 			this.rowLine = "";
 			this.rowGap = -1;
 			this.rowMargin = -1;
+			this.overrideText = undefined;
+			this.overrideCompact = undefined;
 			this.hideConfetti();
 			this.overAt = -1;
 			this.overPrevT = 0;
@@ -183,6 +229,7 @@ export class NewBestController implements OnStart {
 		const state = ctx.run.state;
 		const ranked = ctx.runId !== undefined && !ctx.tutorial && state.score !== undefined;
 		const party = partySize(state);
+		if (ctx.world === DAILY_WORLD_KIND) return this.dailyBaselineOf(ctx, party, ranked);
 		// Earlier ranked runs whose verdict (and so the records push) has not arrived yet count too (pendingRunClaims).
 		const records = withPendingRuns(
 			selectRecordsStatus(clientStore.getState()),
@@ -195,10 +242,34 @@ export class NewBestController implements OnStart {
 		return debug !== undefined ? debugBaseline(debug, boardFor(party)) : baseline;
 	}
 
+	/**
+	 * A daily run's frozen baseline (docs/DAILY.md DS10): best today from the store's last dailyStatus for the run's
+	 * seed, this day's pending daily claims folded in; in Studio KV_DailyRankDebug's `best` (with its forced board) or
+	 * KV_NewBestDebug override a ranked run's, score only.
+	 */
+	private dailyBaselineOf(ctx: RunContext, party: number, ranked: boolean): RunBaseline {
+		const status = selectDailyStatus(clientStore.getState());
+		const baseline = dailyBaselineFrom(status, party, ctx.seed, ranked, this.sim.pendingRunClaims());
+		if (baseline.kind === "unranked") return baseline;
+		const board = boardFor(party);
+		const rankDebug = parseDailyRankDebug(Workspace.GetAttribute(DAILY_RANK.debugAttribute));
+		if (rankDebug !== undefined) {
+			return debugBaseline(
+				rankDebug.best > 0 ? { kind: "set", score: rankDebug.best, floor: 0 } : { kind: "first" },
+				board,
+				true,
+			);
+		}
+		const debug = parseNewBestDebug(Workspace.GetAttribute(NEW_BEST.debugAttribute));
+		return debug !== undefined ? debugBaseline(debug, board, true) : baseline;
+	}
+
 	/** Nothing of the last run left: no tracker, no cues, neutral bindings, no confetti
 	 * (ComboController drops the shout).
 	 */
 	private endRun(): void {
+		if (this.daily) this.rankLayer?.endRun();
+		this.daily = false;
 		this.tracker = undefined;
 		this.cues = NO_NEW_BEST_CUES;
 		this.runJanitor.Cleanup();
@@ -221,7 +292,8 @@ export class NewBestController implements OnStart {
 		input.reducedMotion = settings.reducedMotion;
 		const look = tracker.frame(input);
 		this.cues = look;
-		this.drawRow(look);
+		// The Daily's rank layer steps right after the tracker (DS10) and may own the row past best today.
+		this.drawRow(look, this.daily ? this.rankLayer?.frame(look, input) : undefined);
 		if (look.fanfare) this.roomClear.dropClearJingle();
 		if (look.scoreCrossed) this.shout();
 		if (input.runOver) this.runOverFrame(look, settings.reducedMotion);
@@ -259,7 +331,9 @@ export class NewBestController implements OnStart {
 		const U = NEW_BEST_UI.recordRows;
 		for (let i = 0; i < U.size(); i++) {
 			const row = rows[i];
-			U[i].write(row !== undefined ? recordRowText(row, recordRollValue(row, i, t), s) : "");
+			U[i].write(
+				row !== undefined ? recordRowText(row, recordRollValue(row, i, t), s, undefined, this.daily) : "",
+			);
 		}
 		const edges = recordRollEdges(math.min(rows.size(), U.size()), this.overPrevT, t, this.rollEdges);
 		for (let i = 0; i < edges.started; i++) this.audio.play(SFX.scoreTick, 1);
@@ -309,16 +383,43 @@ export class NewBestController implements OnStart {
 		return this.pack?.color(roleName as ColorRole) ?? new Color3();
 	}
 
-	/** The score panel's target row, the number's gold and shine, the touch strip's compact line. */
-	private drawRow(look: NewBestFrame): void {
+	/**
+	 * The score panel's target row, the number's gold and shine, the touch strip's compact line. `override`: the Daily's
+	 * rank layer owns the row's text and colour this frame (DS10); the gold number, shine and slam stay new best's.
+	 */
+	private drawRow(look: NewBestFrame, override?: NewBestRowOverride): void {
+		const U = NEW_BEST_UI;
+		if (override !== undefined) {
+			if (override.text !== this.overrideText) {
+				this.overrideText = override.text;
+				U.rowText.write(override.text);
+			}
+			if (override.compact !== this.overrideCompact) {
+				this.overrideCompact = override.compact;
+				U.compactText.write(override.compact);
+			}
+			this.rowLine = ""; // new best's text is rebuilt when it takes the row back
+			U.rowColor.write(override.color);
+		} else {
+			this.overrideText = undefined;
+			this.overrideCompact = undefined;
+			this.drawBestRow(look);
+		}
+		U.rowScale.write(look.slamScale);
+		U.scoreGold.write(look.goldMix * (1 - look.whiteFlash));
+		U.shine.write(look.shine);
+	}
+
+	/** New best's own target row text and colour (daily runs: the best-today strings). */
+	private drawBestRow(look: NewBestFrame): void {
 		const U = NEW_BEST_UI;
 		if (look.line !== this.rowLine || look.gap !== this.rowGap || look.margin !== this.rowMargin) {
 			this.rowLine = look.line;
 			this.rowGap = look.gap;
 			this.rowMargin = look.margin;
 			const s = (key: string, vars?: StringVars) => this.str(key, vars);
-			U.rowText.write(newBestRowText(look, false, s));
-			U.compactText.write(newBestRowText(look, true, s));
+			U.rowText.write(newBestRowText(look, false, s, undefined, this.daily));
+			U.compactText.write(newBestRowText(look, true, s, undefined, this.daily));
 		}
 		if (look.line === "chasing") U.rowColor.write(this.color("uiTextDim"));
 		else if (look.line === "reach") {
@@ -326,14 +427,19 @@ export class NewBestController implements OnStart {
 			const mix = look.pulse * NEW_BEST_DRAW.reachPulseMix;
 			U.rowColor.write(mix > 0 ? ember.Lerp(this.color("uiText"), mix) : ember);
 		} else if (look.line === "passed") U.rowColor.write(this.color(NEW_BEST_ROLE));
-		U.rowScale.write(look.slamScale);
-		U.scoreGold.write(look.goldMix * (1 - look.whiteFlash));
-		U.shine.write(look.shine);
 	}
 
-	/** NEW BEST! in the floor shout's slot (priority over a tier shout; ComboController draws it). */
+	/**
+	 * NEW BEST! (daily: NEW BEST TODAY!) in the floor shout's slot, ranked over the rank layer's threshold shouts and
+	 * the tier shouts (FLOOR_SHOUT_PRIORITY; ComboController draws it).
+	 */
 	private shout(): void {
-		this.combo.requestShout(this.str(NEW_BEST_STRINGS.shout), this.color(NEW_BEST_ROLE), NEW_BEST.shout.lifeSec);
+		this.combo.requestShout(
+			this.str(newBestShoutKey(this.daily)),
+			this.color(NEW_BEST_ROLE),
+			NEW_BEST.shout.lifeSec,
+			FLOOR_SHOUT_PRIORITY.newBest,
+		);
 	}
 
 	// --- confetti ---------------------------------------------------------------------------------------
