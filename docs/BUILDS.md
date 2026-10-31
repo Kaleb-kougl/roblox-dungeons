@@ -25,8 +25,9 @@ before.
 
 ## Status (2026-10-31)
 
-Planned. Nothing built. Read on `main` @ `5a0edc2`. Decisions BUD1-BUD14 are **settled** (2026-10-31, Kaleb: every
-proposed default accepted; BUD8 and BUD12 stand as technical requirements).
+BU0 (the audit) done: findings and the plan changes they force are below. Nothing else built. Read on `main` @
+`5a0edc2`. Decisions BUD1-BUD14 are **settled** (2026-10-31, Kaleb: every proposed default accepted; BUD8 and BUD12
+stand as technical requirements).
 
 ## What the code gives us (read on `main` @ `5a0edc2`)
 
@@ -52,6 +53,74 @@ Paths are under `src/shared/` unless they start with `docs/`.
 | The draft reveal has rarity beats (rare chime, legendary charge / hush / flare / halo) and reads a card's rarity | `view/hud/draftReveal.ts` 49-179, docs/DRAFT_REVEAL.md | Evolution and duo cards reuse the legendary beat (DRD7) with their own colour role; upgrade cards flip like their boon's rarity |
 | HUD lists items by `BOONS[index].id` (toasts, items panel), snapshot copies `boons` / `draftOffers` | `view/hud/progression.ts` 136, `play/snapshot.ts` 85, 274, 300 | Every reader of `draftOffers` must decode card ids; the items panel gains level pips |
 | `DEFAULT_LOADOUT` = sword + bow (swap) | `sim/combat/weapons/loadout.ts` 8 | Bow-only rules (Piercing Arrows, Fire Arrows) are fine: everyone carries both |
+
+## BU0 findings (2026-10-31)
+
+Read on `builds` @ `125a163` (= `main` @ `5a0edc2` + this plan). Paths under `src/shared/` unless noted.
+
+**Readers of `boons` / `draftOffers` / `BOONS[...]`.**
+
+| Where | Reads | With card ids |
+|---|---|---|
+| `sim/progression/progression.ts` | `drawBoonOffers` (iterates `b < BOON_COUNT`), `openDraft`, `stepDraft` (`draftOffers[draftSelected]` -> `grantBoon`, `draftChosen = boon + 1`), `writeRunHash` | `drawBoonOffers` iterated BOON_COUNT: appending boons would have changed the tutorial's draft (plan change 1); `stepDraft` branches to `grantCard` |
+| `sim/progression/runMods.ts` | `computeRunMods` (`owns(boons, ...)`), `teamOwnsBoon` (Lingering, Composure) | levels through `computeRunMods(p, build?)`; Lingering's team rule reads levels |
+| `play/snapshot.ts` | copies `draftOffers` / `boons`, compares them | numbers only: unchanged |
+| `play/liveRun.ts` `collectRunEvents` | `draftChosen - 1` as a `"boon"` event's index | the index is a card id: every consumer decodes it |
+| `view/hud/progression.ts` | `toastFor("boon")` -> `BOONS[index].id`; `progressionStringKeys` over `BOONS` | `cardDisplay(card)` (a duo card must not index `BOONS`) |
+| `client/ui/hud/DraftOverlay.tsx` | `boonOf(b)` = `BOONS[b]` (name, rarity, desc) | `cardDisplay` |
+| `client/controllers/fx/DraftRevealController.ts` | `BOONS[offer].rarity`; the pick by `offers.indexOf(event index)`; begins once per floor under `coverLifting` | `cardDisplay`; the re-deal re-begins (plan change 3) |
+| `client/ui/hud/RunItems.tsx`, `StatusPanel.tsx`, `TouchStrip.tsx` | owned `boons` -> `BOONS[b]` | `boons` keeps its meaning (distinct boons, order taken): unchanged |
+| `client/controllers/ui/HudController.tsx` | `draftOffers.size()` (touch draft taps) | unchanged |
+| `tutorial/director.ts` (step `draft`, rule `boon`) | `boons.size() > 0 && draftOpen === 0` | the tutorial has no builds: unchanged |
+| `run/testing/endlessBot.ts`, `partyBot.ts`, `tutorialBot.ts` | resolve a draft with one confirm and expect it closed | the double draft keeps it open (plan change 4) |
+| `server/` | nothing (runs are validated by replay) | - |
+
+**`damageActor` callers** (all player damage): `combat/weapons/defs/sword.ts` (swing, finisher; the swinging player
+bound), `defs/testMelee.ts` (test weapon), `combat/combat.ts` `piercingBulletHit` and `playerBulletHit` (player bullets;
+co-op binds the owner in `playerBulletHitParty`). No enemy, hazard or breakable path damages an actor. **Direct
+`killActor`**: `archetypes/summoner.ts` `wither` (its summons die with it), `boss/shared.ts` the boss-death sweep of
+adds in the arena, and `boss/shared.ts` `debugHit` (KV_Debug's J key, writes hp then kills). Specs call it directly
+too. So the proc hook on `damageActor`'s kill line (not in `killActor`) is right: withers, sweeps, revives
+(`def.stepDead` turrets, the dummy) and debug kills never proc.
+
+**`BulletRenderController`.** One `BulletPool` per simulation (enemy, player) plus the goo decal pool; a pool takes a
+`skip(payload)` predicate (the enemy pool skips `BulletKind.GOO` while the goo pool draws it). The player pool has one
+look (`bullet.player.basic`) and switches to the heavy look by scale (`heavyKey`). Effect looks fit either as extra
+pools over the same `playerBullets` with complementary kind predicates (each grows to the simulation's high-water mark:
+that many more parts per pool), or as a per-part look switch keyed by kind like `heavyKey` (one pool, no extra parts).
+The second is cheaper for four kinds; embers are a decal pool exactly like goo. BU8 decides.
+
+**Luau locals.** Counted on `out/` as every column-0 `local` name: `contract.luau` 199, `validate.luau` 200 (the
+earlier docs' 198 / 195 counted differently). Both are unchanged after BU1 (no new top-level name in either: the IDs
+are written inside existing lists, `buildReport` lives in `buildColors.ts` and is folded into `variantColors.ts`'
+`variantColorProblems`, which `validateManifest` already calls), and both compile and load under Lune (the theme specs
+run them).
+
+**Not measured.** Run length (floors reached): no evidence in the repo (leaderboard floors live in the DataStore, no
+telemetry export), so the picks per run stay the plan's arithmetic; BU13 tunes from play. The player-bullet high-water
+on the densest EV13 census rooms: there is no player-bullet census harness (`run/testing/poolHighWater.ts` counts
+actors), so it is left to BU3 / BU13, which need that harness anyway for `EFFECT_BULLETS_MAX`.
+
+**Plan changes needed** (to fold into BU1 / BU2):
+
+1. `drawBoonOffers` must keep drawing from the first 12 boons only (`CLASSIC_BOON_COUNT`): it iterated `BOON_COUNT`, so
+   appending the on-kill boons would have changed the tutorial's floor-2 draft and every builds-free endless config.
+2. The double draft's `remaining` is per player (`BuildPlayerState.draftsLeft`): co-op players confirm at different
+   ticks, so one world counter cannot say whose deal comes next.
+3. The client must re-begin the draft reveal on a re-deal: `DraftRevealController` begins once per floor under the
+   stage cover's fade, and `DraftRevealGate` holds the confirm while a draft is open and its reveal has not begun, so
+   the second deal would have soft-locked. It now re-begins when the open draft's `draftTicks` drops.
+4. The test drivers (`endlessBot.resolveDraft`, `partyBot.resolveDrafts`) answer every deal of a draft.
+5. Every `refreshRunMods` caller passes the build (`grantRelic`, `acceptCurse`, `grantBoon`, the clone), or a relic or
+   a curse would silently drop the levels back to level I.
+6. `rarityPercents` / `rarityForRoll` move to `progression/rarity.ts` (re-exported) so `builds/cards.ts` can roll
+   rarity without a require cycle.
+7. Erratum: Chain Spark is in three duos (Storm Blade, Conductor, Chain Reaction), not "one or two".
+8. BUD12 leaves almost no warm orange or violet in the placeholder palette (telegraph orange, Fury gold, Aegis
+   lavender, goo magenta are all within 40 CIE76): the plan's "orange bolts" and "pale violet shards" cannot be the
+   placeholder colours; BU7 picks the vale values (placeholders: cream burst, ice-white shard, peach ember, blue spark).
+9. Specs that pinned "affixes is the last hash group" or the classic draft on `buildEndlessRunConfig` floors were
+   updated (builds is last; `progression.spec.ts`'s `dungeon()` strips `builds` to keep pinning the classic draft).
 
 ## Player experience
 
