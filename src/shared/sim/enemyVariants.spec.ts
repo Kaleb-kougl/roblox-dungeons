@@ -61,6 +61,7 @@ describe("registry: PORT_BAND_ENEMIES", () => {
 			"turret.sprayer",
 			"dummy",
 			"boss.demonlord",
+			"imp", // EV2 (band PORT_BAND_ENEMIES: index 9)
 		]);
 	});
 });
