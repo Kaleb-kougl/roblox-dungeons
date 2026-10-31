@@ -26,6 +26,7 @@ import {
 } from "./tutorial/tutorial";
 import { cloneBreakablesState, createBreakablesState, type BreakablesState } from "./breakables/breakables";
 import { cloneDropsState, createDropsState, type DropsState } from "./drops/drops";
+import { cloneAffixesState, createAffixesState, type AffixesState } from "./affixes/affixes";
 
 export interface PlayerState {
 	x: number;
@@ -271,6 +272,12 @@ export interface SimState {
 	 * "breakables"). See drops/drops.ts.
 	 */
 	drops?: DropsState;
+	/**
+	 * Elite affixes (docs/ENEMY_VARIANTS.md EV7), only when SimConfig.affixes is set: one affix slot per actor slot
+	 * (affix, actorId guard, shield, Vengeful timer). Hashed as the "affixes" subsystem, appended after every other group
+	 * (after "drops"). See affixes/affixes.ts.
+	 */
+	affixes?: AffixesState;
 }
 
 /**
@@ -282,6 +289,7 @@ export interface SimState {
  * With `config.tutorial`, `tutorial` state is created and every player starts with its `startHalfHearts` (if set).
  * With `config.breakables`, `breakables` state is created (floor 1's pieces in endless mode, else its `pieces`).
  * With `config.drops`, `drops` state is created (its own rng stream from `seed`, one boost entry per player).
+ * With `config.affixes`, `affixes` state is created before the encounter spawns (its slots follow the actor pool).
  */
 export function createSimState(
 	seed: number,
@@ -320,11 +328,19 @@ export function createSimState(
 	}
 	// Boost drops: their own rng stream (seed ^ DROPS.salt), never state.rngState. No sim rng.
 	if (config.drops !== undefined) state.drops = createDropsState(config.drops, seed, partySize(state));
+	// Elite affixes: before any spawn, so the slots grow with the pool. No rng.
+	if (config.affixes !== undefined) state.affixes = createAffixesState(config.affixes);
 	// Spawns the encounter (archetype init hooks may draw from the sim rng) and the stress emitter.
 	startCombat(state, world);
 	// After the spawns (scoring's room records read them; endless floors: the floor's deferred room spawns). No rng.
 	if (config.scoring !== undefined) {
-		state.score = createScoreState(state, config.scoring, world.encounter, firstFloor?.roomSpawns);
+		state.score = createScoreState(
+			state,
+			config.scoring,
+			world.encounter,
+			firstFloor?.roomSpawns,
+			firstFloor?.roomAffixes,
+		);
 	}
 	// Endless runs: boons, relics and curses (floor 1's pedestals and shrine). No rng.
 	if (firstFloor !== undefined) state.run = createRunState(world.encounter, partySize(state));
@@ -354,6 +370,7 @@ export function cloneSimState(s: Readonly<SimState>): SimState {
 		tutorial: s.tutorial !== undefined ? cloneTutorialState(s.tutorial) : undefined,
 		breakables: s.breakables !== undefined ? cloneBreakablesState(s.breakables) : undefined,
 		drops: s.drops !== undefined ? cloneDropsState(s.drops) : undefined,
+		affixes: s.affixes !== undefined ? cloneAffixesState(s.affixes) : undefined,
 	};
 	if (s.party !== undefined) clone.party = cloneParty(s.party, clone);
 	return clone;

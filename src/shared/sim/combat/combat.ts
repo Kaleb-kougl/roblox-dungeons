@@ -5,7 +5,8 @@
  *
  * stepCombat order (fixed; part of the determinism contract):
  *   1. Ember: events.emberUsed -> enemyBullets.clear() (every enemy bullet)
- *   2. actors, in slot order (stepActors): AI, movement, firing, runtime spawns (stepped from the next tick on)
+ *   2. actors, in slot order (stepActors): AI, movement, firing, runtime spawns (stepped from the next tick on); then
+ *      (elite affixes, only with state.affixes) the affix phase (stepAffixes: shield refills, Vengeful rings)
  *   3. the stress emitter
  *   4. the player's weapons (stepWeapons: cooldowns, SWAP, trigger -> fire / melee sweep)
  *   5. step both simulations by SIM_DT (./bullets.ts, the ported r3f-projectiles pool); M2 Hourglass (endless runs):
@@ -63,6 +64,7 @@ import { BULLET_KIND_COUNT } from "./payload";
 import { SimCtx } from "./ctx";
 import { nearestLivingPlayer, partySize, playerAt, playerBulletOwner } from "../party";
 import { scoreBulletVisit } from "../score/score";
+import { stepAffixes } from "../affixes/stepAffixes";
 import { damageBreakable, enemyBulletHitsBreakable, type BreakablesState } from "../breakables/breakables";
 import { breakableSlotAt } from "../breakables/cells";
 import { BreakableSource } from "../breakables/breakablesData";
@@ -474,6 +476,7 @@ export function stepCombat(
 
 	// 2-4. Act.
 	stepActors(ctx);
+	if (state.affixes !== undefined) stepAffixes(ctx);
 	if (c.stressTarget > 0) stepStress(c);
 	if (party) stepPartyWeapons(state, inputs);
 	else stepWeapons(ctx);

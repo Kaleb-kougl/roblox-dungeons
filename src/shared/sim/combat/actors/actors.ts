@@ -28,6 +28,7 @@ import { archetypeAt } from "./registry";
 import { scoreKill } from "../../score/score";
 import { runOnKill } from "../../progression/runMods";
 import { dropsOnKill } from "../../drops/drops";
+import { affixAbsorb, affixHoldsCorpse, affixesOnFree, affixesOnKill, affixesOnSpawn } from "../../affixes/affixes";
 import { ACTOR_HASH_FIELDS, ACTOR_SCRATCH_SLOTS, AiState, NO_KIND, type ActorState } from "./types";
 
 function zeros(n: number): number[] {
@@ -106,15 +107,22 @@ function clearActor(a: ActorState): void {
 	fill(a.v, 0);
 }
 
-/** Spawns archetype index `kind` at (x, z); see SimCtx.spawnActor. */
-export function spawnActor(ctx: SimCtx, kind: number, x: number, z: number): ActorState | undefined {
+/**
+ * Spawns archetype index `kind` at (x, z); see SimCtx.spawnActor. `affix` (shared/dungeon AffixKind; elite affixes,
+ * docs/ENEMY_VARIANTS.md EV7): only the endless room spawn path passes one; it is stamped (affixes.ts affixesOnSpawn:
+ * Hulking hp / radius, the shield) BEFORE def.init, so init's first cooldown draw already sees Swift. Without
+ * state.affixes it is ignored.
+ */
+export function spawnActor(ctx: SimCtx, kind: number, x: number, z: number, affix = 0): ActorState | undefined {
 	const c = ctx.combat;
 	const actors = c.actors;
 	const def = archetypeAt(kind); // throws before touching the pool for a bad kind
 	let a: ActorState | undefined;
+	let slot = -1;
 	for (let i = 0; i < actors.size(); i++) {
 		if (actors[i].kind === NO_KIND) {
 			a = actors[i];
+			slot = i;
 			break;
 		}
 	}
@@ -125,6 +133,7 @@ export function spawnActor(ctx: SimCtx, kind: number, x: number, z: number): Act
 		}
 		a = createFreeActor();
 		actors.push(a);
+		slot = actors.size() - 1;
 	}
 	const d = def.data;
 	a.id = c.nextActorId;
@@ -155,6 +164,8 @@ export function spawnActor(ctx: SimCtx, kind: number, x: number, z: number): Act
 	a.emitterId = c.enemyBullets.acquireEmitter();
 	c.enemyEmitters += 1;
 	ctx.events.actorsSpawned += 1;
+	// Elite affixes (opt-in): the slot's affix entry follows the pool; a planned room spawn's affix is stamped here.
+	if (ctx.state.affixes !== undefined) affixesOnSpawn(ctx.state, slot, a, affix);
 	if (def.init !== undefined) def.init(ctx, a);
 	return a;
 }
@@ -189,6 +200,8 @@ export function damageActor(ctx: SimCtx, a: ActorState, amount: number): number 
 	ev.enemyHits += 1;
 	let dmg = def.filterDamage !== undefined ? def.filterDamage(ctx, a, amount) : amount;
 	if (!(dmg > 0)) dmg = 0;
+	// Elite affixes (opt-in): a Shielded actor's shield takes its share after filterDamage, before the cap.
+	if (dmg > 0 && ctx.state.affixes !== undefined) dmg = affixAbsorb(ctx.state, a, dmg);
 	const cap = def.data.damageCapPerSecond;
 	if (cap !== undefined && dmg > 0) dmg = applyDamageCap(a, ctx.tick, dmg, cap);
 	if (dmg > a.hp) dmg = a.hp; // overkill does not count
@@ -222,6 +235,8 @@ export function killActor(ctx: SimCtx, a: ActorState): void {
 	if (ctx.state.run !== undefined) runOnKill(ctx.state, ctx.playerIndex, def.stepDead !== undefined);
 	// Boost drops (docs/BOOSTS.md, opt-in): the kill may drop a boost (its own rng stream), before onDeath's own kills.
 	if (ctx.state.drops !== undefined) dropsOnKill(ctx, a, def.stepDead !== undefined);
+	// Elite affixes (opt-in): a Vengeful corpse arms its ring (fired by stepAffixes).
+	if (ctx.state.affixes !== undefined) affixesOnKill(ctx.state, a);
 	if (def.onDeath !== undefined) def.onDeath(ctx, a);
 }
 
@@ -237,12 +252,14 @@ export function reviveActor(a: ActorState): void {
 export function freeActor(ctx: SimCtx, a: ActorState): void {
 	if (a.kind === NO_KIND) return;
 	ctx.combat.enemyBullets.releaseEmitter(a.emitterId);
+	if (ctx.state.affixes !== undefined) affixesOnFree(ctx.state, a);
 	clearActor(a);
 }
 
 /**
  * The actor phase of stepCombat: every present actor in slot order, except those spawned this tick.
- * prev = position; flash counts down; alive -> def.step; dead -> deadTicks += 1, then def.stepDead or the corpse timer.
+ * prev = position; flash counts down; alive -> def.step; dead -> deadTicks += 1, then def.stepDead or the corpse timer (elite affixes: a Vengeful corpse whose ring is pending
+ * is held past it, affixHoldsCorpse; never through def.stepDead, which marks a reviver).
  * A `while` loop: archetypes may append slots mid-loop (runtime spawns), and the bound must be re-read like JS does
  * (the new slots are skipped anyway: spawnTick === tick).
  */
@@ -251,8 +268,10 @@ export function stepActors(ctx: SimCtx): void {
 	const tick = ctx.tick;
 	// Co-op: each actor's hooks see its own target (the nearest living player) as ctx.player.
 	const party = ctx.state.party !== undefined;
+	const affixes = ctx.state.affixes !== undefined;
 	let i = 0;
 	while (i < actors.size()) {
+		const slot = i;
 		const a = actors[i];
 		i++;
 		if (a.kind === NO_KIND || a.spawnTick === tick) continue;
@@ -266,7 +285,11 @@ export function stepActors(ctx: SimCtx): void {
 		} else {
 			a.deadTicks++;
 			if (def.stepDead !== undefined) def.stepDead(ctx, a);
-			else if (a.deadTicks >= (def.data.corpseTicks ?? CORPSE_TICKS)) freeActor(ctx, a);
+			else if (
+				a.deadTicks >= (def.data.corpseTicks ?? CORPSE_TICKS) &&
+				!(affixes && affixHoldsCorpse(ctx.state, slot, a))
+			)
+				freeActor(ctx, a);
 		}
 	}
 	if (party) ctx.actingPlayer(0);

@@ -54,6 +54,7 @@ import { archetypeAt, archetypeIndex } from "../combat/actors/registry";
 import { bossEngaged } from "../combat/actors/archetypes/boss/shared";
 import type { EncounterConfig } from "../combat/actors/encounter";
 import { partySize, playerAt } from "../party";
+import { affixDropBonus } from "../affixes/affixes";
 import {
 	AEGIS_PIPS,
 	BOOSTS,
@@ -414,7 +415,8 @@ export function dropsOnKill(ctx: SimCtx, a: Readonly<ActorState>, reviving: bool
 	const config = d.config;
 	const pity = config.pityKills > 0 && d.killsSinceDrop >= config.pityKills;
 	if (!pity) {
-		const percent = dropChancePercent(config, def.id);
+		// Elite affixes (EVD8): an affixed kill adds dropChanceBonus points (0 without affixes).
+		const percent = dropChancePercent(config, def.id) + affixDropBonus(state, a);
 		if (!(percent > 0) || rngInt(d, 0, DROP_ROLL_RANGE - 1) >= percent) {
 			d.killsSinceDrop += 1;
 			return;

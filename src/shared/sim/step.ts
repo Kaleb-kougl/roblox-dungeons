@@ -23,6 +23,7 @@ import type { TutorialSimConfig } from "./tutorial/tutorial";
 import { clearBreakableEvents, type BreakablesConfig } from "./breakables/breakables";
 import { clearDropsEvents, stepDrops, type DropsConfig } from "./drops/drops";
 import { boostsOnPlayerDied } from "./drops/boostMods";
+import { clearAffixEvents, type AffixesConfig } from "./affixes/affixes";
 import type { SolidCells } from "shared/dungeon";
 
 export { PLAYER_RADIUS, PLAYER_SPEED } from "./playerData";
@@ -147,6 +148,14 @@ export interface SimConfig {
 	 * (stepDrops) and hashed as the "drops" subsystem, appended after every other group.
 	 */
 	drops?: DropsConfig;
+	/**
+	 * Elite affixes (docs/ENEMY_VARIANTS.md EV7, affixes/affixes.ts): the rules (AFFIXES_CONFIG is the game's); which
+	 * planned room spawn carries which affix comes from each endless floor's world (EndlessFloorWorld.roomAffixes).
+	 * Absent: no affixes state, every affix read neutral, nothing extra hashed (every fixture, M1, the tutorial).
+	 * Present: state.affixes is created, stepped (stepAffixes, inside stepCombat) and hashed as the "affixes"
+	 * subsystem, appended after every other group (after "drops").
+	 */
+	affixes?: AffixesConfig;
 }
 
 /** Matches the 16x16 greybox room: inner wall faces at +/-7.75, minus the 0.4 player half-width (rounded). */
@@ -171,7 +180,7 @@ const partyPrev: number[] = [];
  * Advances `state` by exactly one tick of SIM_DT, in place. Solo runs only (a party state needs stepParty).
  *
  * Tick order (fixed; part of the determinism contract):
- *   1. clear per-tick events (and the score's, the breakables', the drops'); then FORFEIT_BUTTON ("Leave run") -> forfeitSoloRun:
+ *   1. clear per-tick events (and the score's, the breakables', the drops', the affixes'); then FORFEIT_BUTTON ("Leave run") -> forfeitSoloRun:
  *      the player dies at this tick
  *   2. stepPlayer  (movement, facing, roll, hearts, flask, Ember)
  *   3. stepCombat   (Ember clear, actors act, the player's weapons, bullets step, hits, contact damage)
@@ -202,6 +211,7 @@ export function step(
 	if (state.breakables !== undefined) clearBreakableEvents(state.breakables);
 	const drops = state.drops;
 	if (drops !== undefined) clearDropsEvents(drops);
+	if (state.affixes !== undefined) clearAffixEvents(state.affixes);
 	const run = state.run;
 	// Read before the forfeit, which closes an open draft: that tick stays a frozen draft tick.
 	const frozen = run !== undefined && isDraftOpen(state);
@@ -278,6 +288,7 @@ export function stepParty(
 	if (state.breakables !== undefined) clearBreakableEvents(state.breakables);
 	const drops = state.drops;
 	if (drops !== undefined) clearDropsEvents(drops);
+	if (state.affixes !== undefined) clearAffixEvents(state.affixes);
 	for (let i = 0; i < n; i++) if (hasLeftBit(inputs[i].buttons)) markPlayerLeft(state, i);
 	const run = state.run;
 	if (run !== undefined) {

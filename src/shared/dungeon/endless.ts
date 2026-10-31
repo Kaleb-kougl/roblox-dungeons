@@ -16,8 +16,10 @@
  *                 the player first walks into that room (deferred), which keeps the live actor count under MAX_ACTORS
  *                 however large the budgets grow.
  *   breakables    barrels and crates in combat / elite / treasure rooms (./breakables.ts, docs/DECOR.md D4), placed
- *                 last from their own stream hash(floor seed, BREAKABLE.salt) and kept clear of the room spawns
+ *                 from their own stream hash(floor seed, BREAKABLE.salt) and kept clear of the room spawns
  *                 (which depend on the party size, so the pieces do too); their cells leave roomSpawnTiles
+ *   affixes       elite affixes per planned room spawn (./affixes.ts, docs/ENEMY_VARIANTS.md EV6), last, from their
+ *                 own stream hash(floor seed, AFFIXES.salt); nothing above reads them
  *
  * Generating the dungeon is left to the caller (`dungeonFor`), so shared/run can cache it (LRU).
  */
@@ -37,6 +39,7 @@ import {
 import { SPREAD_TRIES, SWARMER_KIND, nearestFree, roomSpawnTiles, spreadTile } from "./enemyRooms";
 import { encounterCost } from "./encounterCost";
 import { placeBreakables, withoutBreakableCells, type BreakablePlacement } from "./breakables";
+import { assignAffixes } from "./affixes";
 import type { ActorSpawn, EncounterConfig, EncounterRoom, EncounterRoomType } from "./encounterTypes";
 import {
 	BOSS_FLOOR_EVERY,
@@ -300,6 +303,11 @@ export interface EndlessFloorLayout {
 	 * are already left out of roomSpawnTiles. Absent: none (the tutorial's hand-built floors).
 	 */
 	readonly breakables?: ReadonlyArray<BreakablePlacement>;
+	/**
+	 * Elite affixes (./affixes.ts assignAffixes, docs/ENEMY_VARIANTS.md EV6): an affix id (shared/dungeon AffixKind; 0 =
+	 * none) per planned room spawn, same shape as roomSpawns. Absent: none (the tutorial's hand-built floors).
+	 */
+	readonly roomAffixes?: ReadonlyArray<ReadonlyArray<number>>;
 }
 
 /**
@@ -327,6 +335,8 @@ export function buildEndlessFloor(
 		{ seed: params.seed, dungeon: d, encounter, roomSpawns, spawn, stairwell },
 		floor,
 	);
+	// Affixes run after everything else, on their own rng stream (./affixes.ts): nothing above moves.
+	const roomAffixes = assignAffixes(params.seed, floor, encounter.rooms, roomSpawns);
 	return {
 		floor,
 		seed: params.seed,
@@ -340,5 +350,6 @@ export function buildEndlessFloor(
 		spawn: { x: spawn.x, z: spawn.z },
 		stairwell,
 		breakables,
+		roomAffixes,
 	};
 }
