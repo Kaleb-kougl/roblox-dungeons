@@ -281,6 +281,19 @@ Decision log (deviations from `PLAN.md`):
   bullet (sprite effects' floor placement), <= 55 % opaque, ducking near enemy bullets. Nudge kind `comboBreak`.
   Debug `KV_ComboDebug`. No setting. Studio check and audio upload pending.
 
+- **Draft reveal (docs/DRAFT_REVEAL.md).** Presentation and client input only (no sim, dungeon, lockstep, hash, replay or
+  fixture change). The boon draft's cards deal face down and flip one by one (`DraftReveal`, pure, in shared/view/hud);
+  rare cards chime, a legendary flips last after a charge (others dim, music dips, the back's skull eyes light, a
+  pitch-up ladder of `sfx.draft.charge`), a hush and a flare, then keeps a halo; a press skips; a pick stamps. The
+  client holds the confirm (`DraftRevealGate`, shared/play) while the reveal plays or before it has begun for an open
+  local draft (the sim's `DRAFT_MIN_OPEN_TICKS` is untouched: the sim just sees the press later). Theme: three required
+  roles `boon.common` / `.rare` / `.legendary` (`BOON_RARITY_ROLES`, `boonRarityReport`; `RARITY_COLOR_ROLES` uses them
+  instead of the loot `rarity.*`), five port audio IDs `sfx.draft.*` (SILENT in the placeholder), ui images may carry
+  `slice` (ui.* only), optional `draftSkinIds()` cut from the ToffeeCraft Horror UI sheet (paid licence,
+  `THIRD_PARTY_NOTICES.md`) by new `images` options (`rect`, `cutout`, `slice`, `centre: "flat"`, `flatBoxes`, `mask`).
+  `contract.luau` is at 193 top-level locals. Debug `KV_DraftRevealDebug`. No setting. Studio check, art upload and
+  sounds pending.
+
 ## Commands
 
 ```
