@@ -46,6 +46,7 @@ import { SOLO_PLAYER, rollIframeTicks, runOnPlayerHit, runSecondWind, scalePerce
 import { absorbWithAegis, boostWalkPercent, boostsOnPlayerDied } from "./drops/boostMods";
 import type { WeaponsState } from "./combat/weapons/types";
 import { tutorialStartHalfHearts } from "./tutorial/tutorial";
+import { devBlocksHit } from "./dev/dev";
 
 export { PLAYER_SPEED } from "./playerData";
 
@@ -255,6 +256,8 @@ export function isPlayerInvulnerable(state: Readonly<SimState>, p: Readonly<Play
  *  - at 0 hearts the player dies: dead = 1, roll/flask/i-frames end, events.playerDied = 1, their boosts end (M2
  *    Second Wind, endless runs: once per floor the player keeps SECOND_WIND_HALF_HEARTS instead),
  *  - M2 Hourglass (endless runs): the landed hit starts the enemy bullet slow.
+ * Developer mode's god mode (SimConfig.dev, dev/dev.ts: state.dev.invulnerable): returns false and nothing changes but
+ * dev.blockedHits += 1.
  * Tutorial harmless mode (SimConfig.tutorial.harmless, tutorial/tutorial.ts): a landed hit still counts in
  * events.playerHits, starts the post-hit invulnerability and runs the on-hit hooks (Hourglass; the score's combo cut
  * reads playerHits), and tutorial.harmlessHits += 1; armor, hearts, Second Wind and death are skipped. Returns true.
@@ -270,6 +273,8 @@ export function damagePlayer(
 ): boolean {
 	if (!(halfHearts > 0)) return false;
 	if (isPlayerInvulnerable(state, p)) return false;
+	// Developer mode's god mode (docs/DEV_MODE.md): the hit never lands (counted in dev.blockedHits).
+	if (devBlocksHit(state)) return false;
 
 	const tutorial = state.tutorial;
 	if (tutorial !== undefined && tutorial.harmless !== 0) {

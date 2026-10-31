@@ -11,6 +11,7 @@ export * from "./LobbyService";
 export * from "./OnboardingService";
 export * from "./RecordsService";
 export * from "./InviteService";
+export * from "./DevModeService";
 export * from "./data/DataStoreKeyValue";
 export * from "./data/MergeKeyValue";
 export * from "./data/OrderedDataStoreScores";

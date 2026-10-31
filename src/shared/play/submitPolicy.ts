@@ -19,12 +19,14 @@ export function shouldSubmitRun(ending: RunEnding, ticks: number, firstRunAfterD
 }
 
 /** Why a run is never sent, whatever its length (the verdict line's `skipped` code). */
-export type UnsubmittedReason = "tutorial" | "stress" | "scored";
+export type UnsubmittedReason = "tutorial" | "dev" | "stress" | "scored";
 
 /** What decides whether a run can be submitted at all (the SimController's RunContext). */
 export interface SubmitEligibility {
 	/** A first-run tutorial run (world `tutorial`): played locally, never submitted, no segments. */
 	readonly tutorial: boolean;
+	/** A developer mode run (world `dev`, docs/DEV_MODE.md): played locally, never submitted, no segments. Absent: false. */
+	readonly dev?: boolean;
 	/** Stress target (0 = off): the server never builds a stress config. */
 	readonly stress: number;
 	/** KV_Scoring on an M1 world: the server replays the unscored config, so the hash would never match. */
@@ -34,6 +36,7 @@ export interface SubmitEligibility {
 /** The reason a run is never submitted, or undefined when it may be (then shouldSubmitRun decides). */
 export function unsubmittedReason(run: Readonly<SubmitEligibility>): UnsubmittedReason | undefined {
 	if (run.tutorial) return "tutorial";
+	if (run.dev === true) return "dev";
 	if (run.stress > 0) return "stress";
 	if (run.scoring) return "scored";
 	return undefined;

@@ -45,6 +45,8 @@ import type { SimState } from "./state";
 import type { SimConfig } from "./step";
 import { refillAtCheckpoint } from "./player";
 import { DEBUG_FLOOR_BUTTON, ENDLESS_FIRST_DEPTH, SPAWN_SAFE_RADIUS, STAIRWELL_RADIUS } from "./endlessData";
+import { ENDLESS_FIRST_FLOOR } from "shared/dungeon";
+import { isIntegerNumber } from "./jsnum";
 import { SimCtx } from "./combat/ctx";
 import { freeActor, spawnActor } from "./combat/actors/actors";
 import { archetypeIndex } from "./combat/actors/registry";
@@ -104,6 +106,23 @@ export interface EndlessConfig {
 	readonly runSeed: number;
 	/** Floor `floor`'s world. MUST be pure and cheap on repeat calls (cached): step() calls it every tick. */
 	readonly worldForFloor: (floor: number) => Readonly<EndlessFloorWorld>;
+	/**
+	 * Developer mode's floor jump (docs/DEV_MODE.md): the run starts on this floor (an integer >= ENDLESS_FIRST_FLOOR).
+	 * Absent: ENDLESS_FIRST_FLOOR, exactly as before. Only the client's local `dev` world sets it.
+	 */
+	readonly startFloor?: number;
+	/** With startFloor: the Depth the run starts at (an integer >= ENDLESS_FIRST_DEPTH). Absent: ENDLESS_FIRST_DEPTH. */
+	readonly startDepth?: number;
+}
+
+/** The floor an endless run starts on: `startFloor`, or ENDLESS_FIRST_FLOOR. Throws on an invalid startFloor. */
+export function endlessStartFloor(config: Readonly<EndlessConfig>): number {
+	const floor = config.startFloor;
+	if (floor === undefined) return ENDLESS_FIRST_FLOOR;
+	if (!isIntegerNumber(floor) || floor < ENDLESS_FIRST_FLOOR) {
+		error(`endless: startFloor must be an integer >= ${ENDLESS_FIRST_FLOOR}, got ${tostring(floor)}`, 0);
+	}
+	return floor;
 }
 
 /** SimState.endless: plain numbers, every field hashed (writeEndlessHash). */
@@ -130,11 +149,20 @@ function roomCountOf(world: Readonly<EndlessFloorWorld>): number {
 	return world.roomSpawns.size();
 }
 
-/** Endless state at run start, on `world` (shared/dungeon ENDLESS_FIRST_FLOOR). */
-export function createEndlessState(world: Readonly<EndlessFloorWorld>): EndlessState {
+/**
+ * Endless state at run start, on `world` (shared/dungeon ENDLESS_FIRST_FLOOR, or EndlessConfig.startFloor's) at
+ * `depth` (default ENDLESS_FIRST_DEPTH; throws unless an integer >= it).
+ */
+export function createEndlessState(
+	world: Readonly<EndlessFloorWorld>,
+	depth: number = ENDLESS_FIRST_DEPTH,
+): EndlessState {
+	if (!isIntegerNumber(depth) || depth < ENDLESS_FIRST_DEPTH) {
+		error(`endless: startDepth must be an integer >= ${ENDLESS_FIRST_DEPTH}, got ${tostring(depth)}`, 0);
+	}
 	return {
 		floor: world.floor,
-		depth: ENDLESS_FIRST_DEPTH,
+		depth,
 		stairsOpen: world.bossFloor ? 0 : 1,
 		floorStartTick: 0,
 		roomsEntered: zeros(roomCountOf(world)),

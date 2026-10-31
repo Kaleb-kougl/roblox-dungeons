@@ -14,3 +14,4 @@ export * from "./HudController";
 export * from "./LoadingController";
 export * from "./HudOcclusionController";
 export * from "./MinimapController";
+export * from "./DevModeController";
