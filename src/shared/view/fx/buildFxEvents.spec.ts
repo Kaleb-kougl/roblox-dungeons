@@ -1,7 +1,9 @@
 // The build effects collector (docs/BUILDS.md BU8, "Presentation feed"):
 //   - hand-filled BuildEvents arrays (the sim's BU3 / BU4 pushes): a frame of several ticks keeps every spark, ring,
 //     volley and take in order with its tick; reset forgets them; a run without builds collects nothing
-//   - embers come from the player bullet simulation (a new EMBER slot, once), owner and gen from the bullet
+//   - BU6: embers come from the sim's ember feed (emberX / Z / Owner / Duo), never from the bullet pool; duoProc
+//     entries split into goldRush / unshaken / duoProcs (kind = the Duo, amount = the value), also from the sim's own
+//     Gold Rush and Unshaken hooks
 //   - every BU5 field (sparkFork, novas, executes, Phantom Step, Jackpot, Lionheart, Momentum, Thrill Seeker, Flurry,
 //     Ricochet) becomes a record of its list with the right amount / kind, per tick, reset per frame
 //   - audibleBuilds' quiet gate
@@ -15,6 +17,7 @@ import {
 	BUILDS_CONFIG,
 	Boon,
 	BuildEffect,
+	Duo,
 	EMBER_BURST,
 	EMPTY_INPUT,
 	FlurryKind,
@@ -22,6 +25,8 @@ import {
 	NovaKind,
 	OVERFLOWING_NOVA_RADIUS,
 	SimCtx,
+	buildsGoldRushPop,
+	buildsOnArmorBreak,
 	clearBuildEvents,
 	createSimState,
 	fireEffect,
@@ -146,24 +151,86 @@ describe("BuildFxEvents", () => {
 		expect([ev.ticks, ev.count()]).toEqual([0, 0]);
 	});
 
-	it("an ember is collected once, on the tick it appears, with its owner and generation", () => {
+	it("embers come from the ember feed (kind: the Duo, gen 0), never from an ember bullet without an entry", () => {
 		const state = buildsState(2);
 		const ctx = new SimCtx().bind(state, { builds: BUILDS_CONFIG, party: { size: 2 } }, EMPTY_INPUT);
 		const ev = new BuildFxEvents();
+		// An ember bullet fired outside the duo rules (no feed entry): nothing (no inference from the pool).
 		expect(fireEffect(ctx, 1, 2, 3, 0, 1, EMBER_BURST, BuildEffect.EMBER, 1)).toBe(1);
 		ev.collect(state);
-		expect(ev.embers.map((r) => [r.x, r.z, r.owner, r.gen, r.amount])).toEqual([[2, 3, 1, 1, 1]]);
-		// The same ember a tick later (life falling): not new.
+		expect(ev.embers.size()).toBe(0);
+		const b = state.builds!;
+		clearBuildEvents(b);
+		b.events.emberX.push(4, 5);
+		b.events.emberZ.push(6, 7);
+		b.events.emberOwner.push(1, 0);
+		b.events.emberDuo.push(Duo.FIRE_ARROWS, Duo.BLAZING_TRAIL);
+		state.tick += 1;
 		ev.reset();
-		state.combat.playerBullets.step(1 / 60);
 		ev.collect(state);
-		expect(ev.embers.size()).toBe(0);
-		// Unchanged life (a frozen tick): still not new. A second ember: new.
+		expect(ev.embers.map((r) => [r.x, r.z, r.owner, r.gen, r.amount, r.kind])).toEqual([
+			[4, 6, 1, 0, 1, Duo.FIRE_ARROWS],
+			[5, 7, 0, 0, 1, Duo.BLAZING_TRAIL],
+		]);
+		expect(ev.embers[0].tick).toBe(state.tick);
+		// Once: the next tick's cleared feed adds none.
+		clearBuildEvents(b);
+		state.tick += 1;
 		ev.collect(state);
-		expect(ev.embers.size()).toBe(0);
-		fireEffect(ctx, 0, -1, -1, 0, 1, EMBER_BURST, BuildEffect.EMBER, 0);
+		expect(ev.embers.size()).toBe(2);
+	});
+
+	it("BU6 duo procs: Gold Rush into goldRush, Unshaken into unshaken, every other duo into duoProcs", () => {
+		const state = buildsState(2);
+		const ev = new BuildFxEvents();
+		const b = state.builds!;
+		clearBuildEvents(b);
+		const push = (duo: number, owner: number, x: number, value: number) => {
+			b.events.duoProcDuo.push(duo);
+			b.events.duoProcOwner.push(owner);
+			b.events.duoProcX.push(x);
+			b.events.duoProcZ.push(-x);
+			b.events.duoProcValue.push(value);
+		};
+		push(Duo.STORM_BLADE, 0, 1, 3);
+		push(Duo.GOLD_RUSH, 1, 2, 206);
+		push(Duo.CONDUCTOR, 1, 3, 1);
+		push(Duo.UNSHAKEN, 0, 4, 1);
+		push(Duo.CHAIN_REACTION, 0, 5, 12);
+		push(Duo.CLOSE_CALL, 1, 6, 1);
+		state.tick += 1;
 		ev.collect(state);
-		expect(ev.embers.map((r) => [r.x, r.z, r.owner, r.gen])).toEqual([[-1, -1, 0, 0]]);
+		const fx = (list: ReadonlyArray<EffectRecord>) => list.map((r) => [r.x, r.z, r.owner, r.gen, r.amount, r.kind]);
+		expect(fx(ev.duoProcs)).toEqual([
+			[1, -1, 0, 0, 3, Duo.STORM_BLADE],
+			[3, -3, 1, 0, 1, Duo.CONDUCTOR],
+			[5, -5, 0, 0, 12, Duo.CHAIN_REACTION],
+			[6, -6, 1, 0, 1, Duo.CLOSE_CALL],
+		]);
+		expect(fx(ev.goldRush)).toEqual([[2, -2, 1, 0, 206, Duo.GOLD_RUSH]]);
+		expect(fx(ev.unshaken)).toEqual([[4, -4, 0, 0, 1, Duo.UNSHAKEN]]);
+		expect(ev.count()).toBe(6);
+		ev.reset();
+		expect([ev.duoProcs.size(), ev.goldRush.size(), ev.unshaken.size(), ev.count()]).toEqual([0, 0, 0, 0]);
+	});
+
+	it("the sim's own Gold Rush and Unshaken pushes land in goldRush / unshaken", () => {
+		const state = buildsState(2);
+		const b = state.builds!;
+		b.players[1].duos.push(Duo.UNSHAKEN);
+		const p1 = state.party!.players[1];
+		p1.x = 8;
+		p1.z = 9;
+		clearBuildEvents(b);
+		buildsOnArmorBreak(state, 1);
+		buildsOnArmorBreak(state, 0); // no duo: nothing
+		buildsGoldRushPop(state, 0, 3, 4, 150);
+		state.tick += 1;
+		const ev = new BuildFxEvents();
+		ev.collect(state);
+		expect(ev.unshaken.map((r) => [r.x, r.z, r.owner, r.amount])).toEqual([[8, 9, 1, 1]]);
+		expect(ev.goldRush.map((r) => [r.x, r.z, r.owner, r.amount])).toEqual([[3, 4, 0, 150]]);
+		expect(ev.duoProcs.size()).toBe(0);
 	});
 
 	it("collects every BU5 field into its list (amount / kind per list, gen 0), per tick, and reset forgets them", () => {

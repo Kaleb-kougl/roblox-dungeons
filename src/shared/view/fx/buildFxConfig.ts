@@ -12,8 +12,11 @@ export interface NovaLook {
 	readonly role: ColorRole;
 }
 
-/** The floor rings' drawing blocks (BUILD_FX_VIEW keys): novas, evolve / duo flares, Lionheart pulses, origin flares. */
-export type BuildRingLook = "nova" | "flare" | "heal" | "pop";
+/**
+ * The floor rings' drawing blocks (BUILD_FX_VIEW keys): novas, evolve / duo flares, Lionheart pulses, origin flares and
+ * Unshaken's shield glints.
+ */
+export type BuildRingLook = "nova" | "flare" | "heal" | "pop" | "glint";
 
 export const BUILD_FX_VIEW = {
 	/** Chain Spark's jagged beam per hop (pooled Neon segments in build.spark). */
@@ -87,7 +90,9 @@ export const BUILD_FX_VIEW = {
 	/**
 	 * A small flare at the origin of a Momentum volley, a Thrill Seeker ring, a Flurry release and a Ricochet split
 	 * (BU5): a quick ring, r0 -> r1 (+ tierTiles per Momentum tier above the first), in the colour of the bullets it
-	 * fired (shards: build.shard; spark bolts: build.spark). It stays where it was released.
+	 * fired (shards: build.shard; spark bolts: build.spark). It stays where it was released. BU6's duo procs (Storm
+	 * Blade / Conductor: the enemy the spark left from; Chain Reaction: the corpse; Close Call: the player) pop the same
+	 * ring in duoRole, the duo card's colour (their sparks / bullets are drawn as any spark / effect bullet).
 	 */
 	pop: {
 		sec: 0.25,
@@ -106,6 +111,24 @@ export const BUILD_FX_VIEW = {
 		thrillRole: "build.spark" as ColorRole,
 		flurryRole: "build.spark" as ColorRole,
 		ricochetRole: "build.spark" as ColorRole,
+		duoRole: "boon.duo" as ColorRole,
+	},
+	/**
+	 * Unshaken's shield glint (BU6): a hit on armor that the duo kept off the combo closes a quick ring in on the hit
+	 * player (r0 -> r1, following them), in the duo card's colour. A newer glint replaces theirs.
+	 */
+	glint: {
+		sec: 0.4,
+		/** Radius, tiles: r0 -> r1 (ease-out, closing in); r1 throughout under reduced motion (it only fades). */
+		r0Tiles: 1.1,
+		r1Tiles: 0.7,
+		/** Ring segments (Full); Reduced halves them. */
+		segments: 16,
+		thicknessStuds: 0.05,
+		widthStuds: 0.2,
+		liftStuds: 0.14,
+		fadeShare: 0.5,
+		role: "boon.duo" as ColorRole,
 	},
 	/**
 	 * Phantom Step's erase sparks (BU5): a few chips where each enemy bullet vanished in a roll, in build.shard's
@@ -160,6 +183,13 @@ export const BUILD_FX_VIEW = {
 		scale: 2,
 		liftPx: 6,
 		role: "boon.legendary" as ColorRole,
+	},
+	/**
+	 * Gold Rush's kill pop (BU6): that kill's own score pop (the kill pops' pool, size and rules) in the duo card's
+	 * colour instead of uiAccent, so a kill Gold Rush raised reads apart (a HUD text colour, never on the floor).
+	 */
+	goldRush: {
+		role: "boon.duo" as ColorRole,
 	},
 	/** Reduced (BUD13): spark / nova particle counts and ring segments times this (rounded, at least 1 where > 0). */
 	reducedShare: 0.5,

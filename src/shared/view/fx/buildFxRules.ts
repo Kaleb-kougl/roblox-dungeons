@@ -15,15 +15,18 @@
  *     fadeShare; segments halve under Reduced; under reduced motion a ring sits at r1 and only fades:
  *       nova  (BU5) radius 0 -> the nova's, in nova.looks[kind]'s role, at most nova.maxAlive;
  *       pop   (BU5) a small flare where a Momentum volley / Thrill Seeker ring / Flurry release / Ricochet split left,
- *             in the colour of what it fired (Momentum grows by tier), at most pop.maxAlive;
+ *             in the colour of what it fired (Momentum grows by tier), and (BU6) where a Storm Blade / Conductor /
+ *             Chain Reaction / Close Call fired, in pop.duoRole; at most pop.maxAlive;
  *       flare the evolve / duo ring around the taking player in the card's role;
- *       heal  Lionheart's pulse around the healed player in heal.role.
- *     Flares and heal pulses follow their player's CURRENT position; a player's newer one of the same look replaces
- *     theirs, and a dead player's ends.
+ *       heal  Lionheart's pulse around the healed player in heal.role;
+ *       glint (BU6) Unshaken's shield glint closing in on the player whose armor hit it kept off the combo.
+ *     Flares, heal pulses and glints follow their player's CURRENT position; a player's newer one of the same look
+ *     replaces theirs, and a dead player's ends.
  *   - Executes (BU5): a flat flash popping out (no pop under reduced motion) and fading over execute.sec.
  *   - Trails: `trails` is true only with buildFx Full and not reduced motion (BulletRenderController's burst / shard
  *     trails).
- *   - The Jackpot pop is the score pops' (the client's ScorePopController reads RunView.builds.jackpots); nothing here.
+ *   - The Jackpot pop and Gold Rush's tinted kill pop are the score pops' (the client's ScorePopController reads
+ *     RunView.builds.jackpots / goldRush; scorePops.ts scorePopTones); nothing here.
  *
  * Gates: `quiet` (the stage cover or run over: comboQuiet) puts nothing out and forgets everything alive. A new run
  * (another state object, or the tick going back) forgets everything too. Records of a player outside the party are
@@ -339,13 +342,25 @@ const FULL_PHANTOM = phantomBurstShape("full");
 const REDUCED_PHANTOM = phantomBurstShape("reduced");
 
 /** The record lists that make an origin flare, and each one's role. */
-type PopSource = "momentum" | "thrills" | "flurries" | "ricochets";
+type PopSource = "momentum" | "thrills" | "flurries" | "ricochets" | "duoProcs";
 const POP_SOURCES: ReadonlyArray<[PopSource, ColorRole]> = [
 	["momentum", BUILD_FX_VIEW.pop.momentumRole],
 	["thrills", BUILD_FX_VIEW.pop.thrillRole],
 	["flurries", BUILD_FX_VIEW.pop.flurryRole],
 	["ricochets", BUILD_FX_VIEW.pop.ricochetRole],
+	["duoProcs", BUILD_FX_VIEW.pop.duoRole],
 ];
+
+/** The ring looks that follow a player (at most one each per player). */
+type FollowLook = "flare" | "heal" | "glint";
+const FOLLOW_LOOKS: ReadonlyArray<FollowLook> = ["flare", "heal", "glint"];
+
+/** A following look's block (its radii as well as its drawing sizes). */
+function followBlock(look: FollowLook) {
+	if (look === "flare") return BUILD_FX_VIEW.flare;
+	if (look === "heal") return BUILD_FX_VIEW.heal;
+	return BUILD_FX_VIEW.glint;
+}
 
 /** The build effects' per-frame director (see the file comment). One per client (BuildFxController). */
 export class BuildFxDirector {
@@ -595,31 +610,34 @@ export class BuildFxDirector {
 		}
 	}
 
-	/** Evolve / duo flares and Lionheart pulses: one per player and look (a newer one replaces it). */
+	/** Evolve / duo flares, Lionheart pulses and Unshaken glints: one per player and look (a newer one replaces it). */
 	private addFollowers(source: BuildFxFrameSource, n: number, level: BuildFxLevel, clockSec: number): void {
 		const f = BUILD_FX_VIEW.flare;
 		const h = BUILD_FX_VIEW.heal;
+		const gl = BUILD_FX_VIEW.glint;
 		const flareSegments = buildFxCount(f.segments, level);
 		for (const t of source.evolved) this.follow(t.player, "flare", f.evolvedRole, flareSegments, n, clockSec);
 		for (const t of source.duos) this.follow(t.player, "flare", f.duoRole, flareSegments, n, clockSec);
 		const healSegments = buildFxCount(h.segments, level);
 		for (const r of source.heals) this.follow(r.owner, "heal", h.role, healSegments, n, clockSec);
+		const glintSegments = buildFxCount(gl.segments, level);
+		for (const r of source.unshaken) this.follow(r.owner, "glint", gl.role, glintSegments, n, clockSec);
 	}
 
 	private follow(
 		player: number,
-		look: "flare" | "heal",
+		look: FollowLook,
 		role: ColorRole,
 		segments: number,
 		n: number,
 		clockSec: number,
 	): void {
 		if (player < 0 || player >= n) return;
-		const block = look === "flare" ? BUILD_FX_VIEW.flare : BUILD_FX_VIEW.heal;
+		const block = followBlock(look);
 		const rings = this.followRings;
 		let g: RingSlot | undefined;
 		for (const r of rings) if (r.look === look && r.player === player) g = r;
-		if (g === undefined) g = claim(rings, this.freeRings, 2 * n, () => this.newRing());
+		if (g === undefined) g = claim(rings, this.freeRings, FOLLOW_LOOKS.size() * n, () => this.newRing());
 		setRing(g, look, role, block.r0Tiles, block.r1Tiles, segments, player, clockSec);
 	}
 
@@ -706,6 +724,7 @@ export function buildRingBlock(look: BuildRingLook): BuildRingBlock {
 	if (look === "nova") return BUILD_FX_VIEW.nova;
 	if (look === "pop") return BUILD_FX_VIEW.pop;
 	if (look === "heal") return BUILD_FX_VIEW.heal;
+	if (look === "glint") return BUILD_FX_VIEW.glint;
 	return BUILD_FX_VIEW.flare;
 }
 

@@ -34,6 +34,54 @@ export function scorePopRise(age: number, motion: number): number {
 	return math.round(SCORE_POP_RISE_PX * motion * (1 - (1 - t) * (1 - t)));
 }
 
+/** A pop's colour (ScorePopPool.tone): a kill pop, or a kill Gold Rush raised (docs/BUILDS.md BU6, its own colour). */
+export const ScorePopTone = { KILL: 0, GOLD_RUSH: 1 } as const;
+export type ScorePopTone = (typeof ScorePopTone)[keyof typeof ScorePopTone];
+
+/** A kill's score pop (the run views' scorePops). */
+export interface ScorePopPoint {
+	readonly x: number;
+	readonly z: number;
+	readonly points: number;
+}
+
+/** A Gold Rush kill (the run views' builds.goldRush: amount = the kill's points). */
+export interface GoldRushPoint {
+	readonly x: number;
+	readonly z: number;
+	readonly amount: number;
+}
+
+const goldRushTaken: boolean[] = [];
+
+/**
+ * Fills `out` (cleared) with each kill pop's tone: GOLD_RUSH when a Gold Rush record of the frame has exactly its x, z
+ * and points (the sim pushes both from the same kill, with the same numbers), each record marking one pop, the first
+ * unmarked match in order; KILL otherwise. Returns `out`. No allocation in steady state.
+ */
+export function scorePopTones(
+	pops: ReadonlyArray<ScorePopPoint>,
+	goldRush: ReadonlyArray<GoldRushPoint>,
+	out: ScorePopTone[],
+): ScorePopTone[] {
+	out.clear();
+	const taken = goldRushTaken;
+	taken.clear();
+	for (let k = 0; k < goldRush.size(); k++) taken.push(false);
+	for (const p of pops) {
+		let tone: ScorePopTone = ScorePopTone.KILL;
+		for (let k = 0; k < goldRush.size(); k++) {
+			const g = goldRush[k];
+			if (taken[k] || g.x !== p.x || g.z !== p.z || g.amount !== p.points) continue;
+			taken[k] = true;
+			tone = ScorePopTone.GOLD_RUSH;
+			break;
+		}
+		out.push(tone);
+	}
+	return out;
+}
+
 /** The pool: parallel arrays by slot. `live[i]` is 1 while slot i shows a pop. */
 export class ScorePopPool {
 	readonly capacity: number;
@@ -42,6 +90,8 @@ export class ScorePopPool {
 	readonly z: number[] = [];
 	readonly points: number[] = [];
 	readonly born: number[] = [];
+	/** ScorePopTone per slot. */
+	readonly tone: ScorePopTone[] = [];
 	private nextSlot = 0;
 
 	constructor(capacity = SCORE_POP_POOL_SIZE) {
@@ -52,11 +102,12 @@ export class ScorePopPool {
 			this.z.push(0);
 			this.points.push(0);
 			this.born.push(0);
+			this.tone.push(ScorePopTone.KILL);
 		}
 	}
 
 	/** Adds a pop at sim (x, z), born `now`; reuses slots round-robin (the oldest goes first). Returns its slot. */
-	add(x: number, z: number, points: number, now: number): number {
+	add(x: number, z: number, points: number, now: number, tone: ScorePopTone = ScorePopTone.KILL): number {
 		const i = this.nextSlot;
 		this.nextSlot = (i + 1) % this.capacity;
 		this.live[i] = 1;
@@ -64,6 +115,7 @@ export class ScorePopPool {
 		this.z[i] = z;
 		this.points[i] = points;
 		this.born[i] = now;
+		this.tone[i] = tone;
 		return i;
 	}
 
