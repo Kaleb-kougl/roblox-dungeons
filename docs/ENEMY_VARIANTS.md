@@ -604,6 +604,155 @@ saturation predates EV5; before it the room was also 16 bruisers). A fix that le
 open kinds tie for dearest, pick among them by weight with one draw (floor 1 never reaches the fallback, so the lock
 spec would still hold; summoners stay capped at 1).
 
+### EV13 tuning (as built, 2026-10-31)
+
+Branch `ev-tune`. Measurements only: spec files and test support, **no gameplay number or code changed**; the
+recommendations at the end are owner calls. New files: `sim/variants.ttk.sword.spec.ts` / `variants.ttk.bow.spec.ts`
+(harness `run/testing/variantTtk.ts`), `run/poolHighWater.shallow.spec.ts` / `.deep.spec.ts` (analytic,
+`run/testing/poolHighWater.ts`), `run/poolHighWater.sim.spec.ts` (simulated), `dungeon/spenderFallback.spec.ts`
+(`dungeon/testing/spenderFallback.ts`). Each prints its table and asserts only loose bounds (everything dies, floor 1
+fast, the pool under 48, the spender mirror exact). Headless runtimes: 3 / 5 / 19 / 24 / 11 / 7 s. The EV5 census specs
+re-ran on the merged base (affixes, view, art all in): all three tables above are unchanged row for row.
+
+**1. Time to kill.** One enemy in an open 24 x 24 arena, the player at the origin and the enemy 4.5 units away (inside
+every aggro range), god mode (hits counted, never lethal), run seeds 1-6, mean seconds from tick 0 (approach and chases
+after a blink count). Hp: spawn hp (Hulking x175 % and the shield stamped from base hp) x `endlessActorHp(1, false,
+floor, depth)` with Depth +1 per boss on the way (floor 1 / 6 / 11 / 20 = Depth 1 / 2 / 3 / 4: x1 / 2.1 / 4.05 / 8.5),
+applied to slimelets and summons as they appear. Sword: the port's timings (swing, swing, finisher: 12 damage per 64
+ticks, 11.25 dps flat out), walks to 1.4 units and holds FIRE in reach. Bow: the stream only (1 per arrow, 5 dps), keeps
+5 units, aims at the centre with no lead. Slime = until the Ooze and both slimelets are dead; summoner = until it dies
+(its summons wither). "Par" = what the member adds to its room's par, 1.5 s x (cost + 2 if affixed); the room base 6 s
+comes on top.
+
+| enemy | hp f1 / f20 | par s | sword f1 / f6 / f11 / f20 | bow f1 / f6 / f11 / f20 | hits taken f20 sword / bow |
+|---|---|---|---|---|---|
+| swarmer | 2 / 17 | 1.5 | 0.2 / 0.5 / 0.9 / 1.6 | 0.4 / 1.0 / 1.8 / 3.5 | 1.3 / 0.0 |
+| sniper | 4 / 34 | 3.0 | 0.8 / 1.2 / 1.9 / 3.4 | 1.3 / 4.6 / 9.3 / 19.8 | 0.7 / 7.3 |
+| bruiser | 10 / 85 | 4.5 | 1.0 / 2.0 / 3.7 / 7.8 | 2.0 / 4.2 / 8.1 / 17.1 | 10.0 / 1.0 |
+| **imp** | 3 / 25.5 | 3.0 | 0.6 / 1.2 / 1.7 / 3.1 | 2.1 / 8.1 / 15.3 / **29.3** | 1.0 / 7.7 |
+| **slime (+2 small)** | 8 (+3 +3) / 68 (+26 +26) | 4.5 | 0.9 / 3.1 / 5.9 / **11.2** | 3.0 / 6.2 / 11.8 / 24.0 | **14.0** / 9.0 |
+| **summoner** | 6 / 51 | 4.5 | 0.7 / 1.6 / 2.6 / 5.0 | 1.3 / 3.9 / 7.6 / 15.9 | 1.0 / 16.5 |
+| swarmer Hulking | 3.5 / 29.8 | 4.5 | 0.5 / 0.9 / 1.3 / 2.6 | 0.8 / 1.6 / 3.0 / 5.8 | 3.0 / 2.0 |
+| swarmer Swift | 2 / 17 | 4.5 | 0.2 / 0.5 / 0.9 / 1.5 | 0.4 / 1.0 / 1.8 / 3.4 | 1.8 / 1.0 |
+| swarmer Shielded | 2 + 0.8 / 17 + 6.8 | 4.5 | 0.2 / 0.5 / 0.9 / 2.0 | 0.6 / 1.2 / 2.4 / 4.6 | 2.0 / 1.0 |
+| sniper Hulking | 7 / 59.5 | 6.0 | 1.2 / 1.6 / 2.9 / 5.4 | 2.3 / 5.4 / 10.4 / 21.9 | 2.0 / 8.2 |
+| sniper Swift | 4 / 34 | 6.0 | 0.9 / 1.3 / 1.9 / 3.4 | 2.7 / 5.1 / 10.0 / 20.5 | 1.7 / 9.3 |
+| sniper Shielded | 4 + 1.6 / 34 + 13.6 | 6.0 | 0.8 / 1.2 / 2.3 / 4.4 | 3.4 / 6.6 / 12.2 / 27.3 | 1.7 / 10.3 |
+| bruiser Hulking | 17.5 / 148.8 | 7.5 | 1.6 / 3.5 / 6.3 / 13.3 | 3.6 / 7.4 / 14.1 / 29.7 | 17.0 / 1.0 |
+| bruiser Swift | 10 / 85 | 7.5 | 0.9 / 2.0 / 3.7 / 7.8 | 2.0 / 4.2 / 8.1 / 17.1 | 10.0 / 1.0 |
+| bruiser Shielded | 10 + 4 / 85 + 34 | 7.5 | 1.4 / 2.7 / 5.2 / 10.5 | 2.8 / 6.0 / 11.3 / 23.9 | 13.0 / 1.0 |
+
+Shielded **without** the refill (`shieldRefillTicks` = infinity) prints exactly the Shielded rows for every enemy, floor
+and weapon, and Vengeful prints exactly the plain rows (its ring comes after the kill). Readings:
+
+- **Ooze is the slowest kill per cost**: from floor 6, 1.45-1.6x the bruiser's sword TTK at the same cost 3 (f6 3.1 vs
+  2.0, f11 5.9 vs 3.7, f20 11.2 vs 7.8), 1.4-1.5x with the bow, and the most hits taken by a sword player (14 per kill at f20: contact
+  plus goo). Its 14 hp of bodies (8 + 3 + 3) against the bruiser's 10 is most of it.
+- **Imp vs the bow**: 17 % of the bow's flat-out dps at f20 (sniper 34 %, bruiser 99 %): blink plus strafe make a
+  centre-aimed stream miss. The bot never shoots the landing spot during the 0.35 s aim telegraph, which is the intended
+  counterplay, so a human does better; with the sword the imp dies like a sniper. Summoner vs the bow: its summons
+  screen the arrows (16.5 hits taken); with the sword it dies in 5 s at f20 ("dive it" works).
+- **Affixes**: Hulking +60-75 % TTK (its hp; only +11 % for the bow on a sniper, where misses dominate), Shielded
+  +25-40 % (its shield), Swift and Vengeful 0 % (pressure only:
+  Swift raises the hits a swarmer / sniper lands, 1.3 -> 1.8 and 0.7 -> 1.7 with the sword). **The Shielded refill never
+  fires in a continuous fight**: it only matters to a player who stops dealing damage to that enemy for 5 s.
+- **Par vs TTK**: a member's par share (1.5 s per cost) covers its solo sword TTK up to about floor 11 for every kind but
+  the Ooze (f11 ratio TTK / par: swarmer 0.6, sniper 0.63, imp 0.57, summoner 0.58, bruiser 0.82, **slime 1.31**); by f20
+  (hp x8.5) every kind is past its par share (bruiser 1.73, slime 2.49). Par does not scale with hp or Depth anywhere
+  (pre-existing, not an EV issue); `AFFIX_PAR_COST` 2 (+3 s) covers Hulking's extra sword TTK up to f11 on a bruiser
+  (+2.6 s) and at every floor on a swarmer / sniper (<= +2 s).
+
+**2. Actor-pool high-water.** Analytic, from the real planned spawns of run seeds 1-20 x floors 1-20 (one Forge floor
+serves both party sizes). Per room: *alive* = bought + every Ooze already split (+1 each) + every summoner at its 3 live
+summons; *slots* = alive + every Ooze's corpse (held 30 ticks while its children live) + one cast's summon corpses (2):
+the room's worst instant. *Floor alive* = the sum over a floor's rooms (the pool is per floor).
+
+| floor | solo max alive / slots | party 4 max alive / slots | max floor alive solo / party 4 |
+|---|---|---|---|
+| 1 | 8 / 8 | 13 / 13 | 36 / 72 |
+| 2 | 8 / 8 | 14 / 14 | 43 / 84 |
+| 3 | 9 / 9 | 14 / 14 | 49 / 96 |
+| 4 | 10 / 12 | 17 / 20 | 58 / 108 |
+| 5 | 11 / 13 | 18 / 22 | 63 / 119 |
+| 6 | 15 / 19 | 25 / 34 | 92 / 167 |
+| 7 | 15 / 18 | 26 / 36 | 101 / 178 |
+| 8 | 17 / 21 | 27 / 38 | 111 / 193 |
+| 9 | 16 / 20 | 30 / **43** | 111 / 196 |
+| 10 | 18 / 24 | 24 / 32 | 117 / 203 |
+| 11 | 19 / 26 | 25 / 36 | 147 / 233 |
+| 12 | 19 / 25 | 26 / 37 | 150 / 247 |
+| 13 | 20 / 26 | 28 / 40 | 134 / 231 |
+| 14 | 21 / 27 | 30 / **43** | 140 / 254 |
+| 15 | 22 / 29 | 30 / **43** | 171 / 264 |
+| 16 | 23 / 31 | 16 / 16 | 179 / 192 |
+| 17 | 24 / 33 | 16 / 16 | 186 / 192 |
+| 18 | 25 / 34 | 16 / 16 | 196 / 192 |
+| 19 | 28 / 40 | 16 / 16 | 193 / 192 |
+| 20 | 28 / 40 | 16 / 16 | 223 / 192 |
+
+Worst rooms (43 slots, all party 4, all "11 Oozes + the summoner"): run 9 floor 9 room 0 (elite: 11 slime, 1 summoner,
+3 bruiser, 1 sniper), run 17 floor 14 room 10 (combat: 11 slime, 1 summoner, bruiser, imp, sniper, swarmer), run 4
+floor 15 room 1 (combat: 11 slime, 3 bruiser, 1 summoner, 1 swarmer); solo worst 40 (run 12 floor 19 room 0, run 19
+floor 20 room 11: 10 Oozes + the summoner). Party 4 from floor 16 is the spender's saturated fallback (16 bruisers, see
+4), hence the drop to 16.
+
+Simulated (`poolHighWater.sim.spec.ts`: party 4 debug-skipped to the floor, Depth set to the boss count, all four in
+the floor's densest room, 40 s, god mode; "passive" never attacks, "sword" walks in and swings):
+
+| room | estimate | passive: max present / alive, dropped | sword: max present / alive, dropped, kills |
+|---|---|---|---|
+| run 1 floor 20 room 2 (16 bruiser, Depth 4) | 16 | 17 / 17, 0 | 17 / 17, 0, 16 (cleared) |
+| run 17 floor 14 room 10 (11 slime + summoner + 4, Depth 3) | 43 | 19 / 19, 0 (3 summons) | 21 / 18, 0, 44 (cleared; peak 10 slimelets + 5 corpses) |
+
+(The 17th actor is the floor's dormant boss in its arena.) **Target met**: no room reaches 48 in the analytic worst case
+(max 43) and the measured peak is half of it; no spawn dropped. Two caveats: the analytic bound is not a construction
+bound (a room below budget 48 could in principle buy 15 Oozes + the summoner: 16 + 15 + 3 = 34 alive, 51 slots), and
+the pool is per floor: a party that runs through rooms without clearing them can hold far more than 64 (floor sums up
+to 264; 72 already on floor 1 for a party of 4, so this predates the variants), and then splits and summons are the
+spawns that get dropped.
+
+**3. Room time vs par: skipped.** No endless bot clears rooms: `run/testing` `endlessBot` walks and debug-skips,
+`partyBot` swings only while walking floor 1 to the stairwell, and `replay.bench.spec.ts`'s fighter never attacks. The
+par-share comparison in 1 is the rough substitute; EV14's Studio pass (or a room-clearing bot, a later task) measures
+real clear times.
+
+**4. The spender's dearest fallback** (`spenderFallback.spec.ts`: floors 1-30, party 1-4, combat and elite, 200 room
+streams each, mirror checked draw for draw against `spendEncounterBudget`). 141 of the 240 (floor, party, room type)
+rows fire it at least once; 95 of those break a tie by the kinds' order. Two regimes:
+
+- **Tail** (near the cap, the budget left falls between two costs): 0.01-1 pick per room, almost always one swarmer
+  (no tie: harmless). The one tied case is a budget of exactly 48.0 (party 4 elite, floor 9): every room's last pick is a
+  sniper, never an imp, by order.
+- **Saturated** (budget >= 16 x 3 = 48): all 16 picks, a three-way tie bruiser / slime / summoner that the order always
+  gives to the bruiser: **16 bruisers, no Ooze, no summoner, no affix-eligible variety**. It starts at elite rooms
+  floor 10 (party 4), 12 (party 3), 16 (party 2), 23 (solo); combat rooms floor 16 (party 4), 20 (party 3), 26 (party
+  2), 36 (solo). Above it the extra budget is simply not spent: 93 % spent at its start, 54 % (party 4 elite, floor 20),
+  38 % (floor 30).
+- **The EV5 proposal** (when the fallback has a tie, one draw picks among the tied kinds by weight) changes **no floor-1
+  room** (0 of 1600 samples: the lock spec would hold) and only the tied rows above: a saturated room becomes about 7.5
+  bruisers + 7.5 Oozes + 1 summoner. But it pushes the pool: worst slots 16 -> 45-47 per 200 samples, and a construction
+  worst case of 15 Oozes (51 slots).
+
+**Recommendations (owner calls; nothing changed here).**
+
+1. **Spender tie-break: yes, with an Ooze room cap.** Add the weighted tie-break (one draw only on a fallback tie) AND
+   `maxPerRoom` 8 on `slime` (a `SLIMES_PER_ROOM` like `SUMMONERS_PER_ROOM`). Saturated rooms become ~1 summoner + 7.5
+   Oozes (capped at 8) + bruisers, and a room's pool slots are bounded by construction at 16 + 8 + 3 + 8 + 2 = 37 (< 48)
+   whatever the budget. The cap also trims today's 11-Ooze rooms (party 4, floors 9-15). Cost: the endless rooms that hit
+   a fallback tie or would buy more than 8 Oozes change (deep and party rooms; floor 1 never, so the EV5 lock still
+   holds); the census tables are re-recorded. The unspent
+   budget above 48 is a separate, later decision (spend it on affixes or raise the cap with the party size; each +1 cap
+   adds at most 3 pool slots).
+2. **Ooze hp 8 -> 6 and slimelet hp 3 -> 2** (`slime.ts`): 10 hp of bodies, the bruiser's, at the same cost 3; expected
+   TTK about 0.7x today (f20 sword ~8 s, the bruiser's 7.8). Alternative: keep the hp and accept the Ooze as the hard
+   cost-3 kind (par share 4.5 s vs 5.9 s TTK at f11). Raising its cost to 4 is NOT advised: it would make the Ooze the
+   dearest kind, so the saturated fallback would buy 16 of them.
+3. **Imp and summoner: no change.** Sword TTKs sit with the sniper's; their bow weakness is the design (shoot the landing,
+   dive the summoner). EV14's Studio check should confirm with a human bow player (target: an imp within ~2x a sniper's
+   bow time).
+4. **Shielded: no change**, but know that the 5 s refill only punishes disengaging; if it should matter more, 3 s
+   (`shieldRefillTicks` 180) is the lever. Hulking, Swift, Vengeful and `AFFIX_PAR_COST` 2: no change.
+
 ## Edge cases
 
 - **Co-op.** Each actor already targets the nearest living player; blink safety checks every living player; the party
