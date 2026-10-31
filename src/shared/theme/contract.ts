@@ -31,6 +31,7 @@
  */
 
 import type { AssetKind, ColorRole, ParticleFlipbookMode, Pivot } from "./types";
+import { NEW_BEST_STRING_KEYS } from "./newBest";
 import { startsWith } from "./util";
 import { ENEMY_VARIANT_STRING_KEYS } from "./variants";
 
@@ -644,7 +645,8 @@ export const BOOST_BEAM_IMAGE_ID = "ui.marker.boost";
  * Then the boon draft reveal's five (docs/DRAFT_REVEAL.md DR4): flip, rare chime, legendary charge, legendary flare,
  * pick stamp. Then the enemy variants' five (docs/ENEMY_VARIANTS.md EV1): an Imp's blink, a Summoner's call, an Ooze's
  * split, a Shielded enemy's shield breaking (the plan's `sfx.affix.shieldBreak`: asset ID segments are lowercase) and a
- * Vengeful corpse's ring.
+ * Vengeful corpse's ring. Then the new-best celebration's two (docs/NEW_BEST.md NB4): the in-run fanfare (falls back
+ * to the PERFECT jingle while silent) and the run-over record fanfare (falls back to the game-over jingle).
  */
 export const PORT_AUDIO_EVENTS = [
 	"sfx.player.swing",
@@ -700,6 +702,10 @@ export const PORT_AUDIO_EVENTS = [
 	"sfx.enemy.split",
 	"sfx.affix.shieldbreak",
 	"sfx.affix.vengeful",
+	// docs/NEW_BEST.md NB4: the shown score passes the best / the first floor past the deepest (a jingle); a record
+	// run's run over, in place of sfx.jingle.gameover (a jingle)
+	"sfx.best.new",
+	"sfx.jingle.record",
 ] as const;
 
 /**
@@ -709,8 +715,12 @@ export const PORT_AUDIO_EVENTS = [
 export const AMBIENCE_IDS = ["amb.b1", "amb.b2", "amb.b3", "amb.b4", "amb.b5"] as const;
 export type AmbienceId = (typeof AMBIENCE_IDS)[number];
 
-/** Every asset ID a pack must define (biome tile IDs are required through the biome entries). */
-export const REQUIRED_ASSET_IDS: ReadonlyArray<string> = [
+/**
+ * Every asset ID a pack must define (biome tile IDs are required through the biome entries). Built inside a function
+ * like REQUIRED_STRING_KEYS: the spreads' Luau temporaries were about 25 of this module's top-level locals, which sit
+ * near Luau's 200-per-function limit (docs/NEW_BEST.md NB4).
+ */
+export const REQUIRED_ASSET_IDS: ReadonlyArray<string> = ((): string[] => [
 	...CLASS_IDS.map((c) => `class.${c}`),
 	...ENEMY_ARCHETYPES.map((e) => `enemy.${e}`),
 	...BOSS_IDS,
@@ -723,7 +733,7 @@ export const REQUIRED_ASSET_IDS: ReadonlyArray<string> = [
 	...PORT_AUDIO_EVENTS,
 	...AMBIENCE_IDS,
 	...BOOST_KINDS.map((k) => boostId(k)),
-];
+])();
 
 /**
  * Roblox port (docs/PRELOAD.md P4): the join loading screen's strings (shared/view LOADING_STRINGS): its title, the
@@ -844,6 +854,8 @@ export const REQUIRED_STRING_KEYS: ReadonlyArray<string> = ((): string[] => [
 	...COMBO_STRING_KEYS,
 	...NEAR_MISS_STRING_KEYS,
 	...ENEMY_VARIANT_STRING_KEYS,
+	// docs/NEW_BEST.md NB4: the target row, the floor shout, the stairwell line, the run-over panel, the menu line
+	...NEW_BEST_STRING_KEYS,
 ])();
 
 /**

@@ -161,6 +161,11 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		"affix.shielded": "#00a0f0",
 		"affix.vengeful": "#9070f0",
 		enemyShield: "#d8ecff",
+		// Roblox port (docs/NEW_BEST.md NB4): the new-best gold, a deep pure gold (the plan's #ffd75e was 14.8 CIE76 from
+		// ember, too close to the reach state's colour): 12.1:1 on uiPanel, >= 38 CIE76 from ember and every combo tier
+		// (nearest: ember) and >= 52 from the pink enemy bullet, its outline and the telegraph orange (nearest: the
+		// telegraph) (newBestReport).
+		newBest: "#ffd700",
 	},
 	biomes: {
 		"biome.1": {
@@ -329,6 +334,11 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		"sfx.enemy.split": SILENT,
 		"sfx.affix.shieldbreak": SILENT,
 		"sfx.affix.vengeful": SILENT,
+		// Roblox port (docs/NEW_BEST.md NB4): the in-run new-best fanfare (falls back to the PERFECT jingle while silent)
+		// and the record run's run-over fanfare (falls back to the game-over jingle); silent until the vale pack's clips are
+		// built and uploaded (NB10)
+		"sfx.best.new": SILENT,
+		"sfx.jingle.record": SILENT,
 		"music.menu": SILENT,
 		"music.biome.1": SILENT,
 		"music.biome.2": SILENT,
@@ -944,5 +954,24 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		"bestiary.affix.swift": "Swift: moves and attacks faster, same warnings",
 		"bestiary.affix.shielded": "Shielded: its shield refills if you let it rest",
 		"bestiary.affix.vengeful": "Vengeful: bursts into a ring when it dies",
+		// --- hud.best.* / stage.best.* / run.best.* / menu.best (docs/NEW_BEST.md NB4: the new-best celebration) ------
+		"hud.best.toGo": "{points} TO BEST",
+		"hud.best.toGoShort": "-{points}",
+		"hud.best.new": "NEW BEST",
+		"hud.best.over": "NEW BEST +{points}",
+		"hud.best.shout": "NEW BEST!",
+		"stage.best.toGo": "Deepest: floor {floor} · {n} to go",
+		"stage.best.oneToGo": "Deepest: floor {floor} · 1 to go",
+		"stage.best.recordFloor": "Record floor",
+		"stage.best.newDeepest": "NEW DEEPEST",
+		"stage.best.deeperYet": "Deepest yet",
+		"run.best.ribbon": "NEW BEST!",
+		"run.best.first": "FIRST RECORD",
+		"run.best.score": "Score {old} -> {new} (+{delta})",
+		"run.best.floor": "Deepest floor {old} -> {new} (+{delta})",
+		"run.best.saved": "Saved",
+		"run.best.unsaved": "Not saved: run not verified",
+		"run.best.target": "Best {score} · floor {floor}",
+		"menu.best": "Best {score} · floor {floor}",
 	},
 };
