@@ -18,6 +18,184 @@ Planned. Every decision is taken (below, "Decisions": the scope answers and EVD1
 built. Respite (docs/DIFFICULTY.md) is planned, not built: whichever lands second hooks into the
 other's choke points (see "Respite").
 
+## EV0 findings (2026-10-30)
+
+Read-only audit of `enemy-variants` @ `c9849b7` (main + draft reveal + grazes and parries). Paths are under `src/`
+unless they start with `docs/` or `art/`. Contact sheets (gitignored `art/build/contact/`, made by a scratch PIL
+script, not committed: dark `#1a1619`, 2x nearest): `ev-imps.png` (Imp 1-10, Idle frame 0, rows 2 / 1 / 6 =
+front / three-quarter / back by DA1's row order), `ev-spawns.png` (Demon spawn 1-7, 9, 10, 12, 13), `ev-slime.png`
+(LoP slime S: idle 1, walk 8, death 7 frames; the body is only ~42 px of the 256 px cell). **Owner rig picks: pending.**
+
+**1. Tutorial vs the spender: never reached.** `shared/run/tutorial.ts` `buildTutorialFloor` (475-503) calls
+`placeEncounter(d, { boss })` with no `populate` (480; `dungeon/encounter.ts:188` populates only when given one), takes
+floor 1's spawns from `TUTORIAL_ROOMS` (131; explicit kinds placed by `placeLesson` 353 in `buildFloor1Plan` 417) and
+gives every other floor empty spawns (`emptyPerRoom`, 485). `TUTORIAL.lastFloor` = 2 (`config/tutorial.ts:93`);
+"floor 3" (the draft reveal's) is floor 2's layout, empty (file comment 25, `tutorialFloorCache` 507). Only
+`buildEndlessFloor` (`dungeon/endless.ts:323`) calls `endlessRoomSpawns`; `populateEndlessRoom` /
+`spendEncounterBudget` have no other caller. Nothing to gate.
+
+**2. Speed and cooldown reads.**
+
+| Site | Read | Swift / helper |
+|---|---|---|
+| `sim/.../archetypes/swarmer.ts:199` | `d.speed * SIM_DT` (chase walk) | `walkStep` |
+| `sniper.ts:206` | `d.speed * SIM_DT` (approach / back off / strafe) | `walkStep` |
+| `bruiser.ts:197` | `d.speed * SIM_DT` | `walkStep` |
+| `enemyShared.ts:173` | `d.speed * SIM_DT` (stepCalm leash walk home) | `walkStep` |
+| `boss/shared.ts:397` | `d.speed * SIM_DT` (boss walk home) | boss: stays raw |
+| `swarmer.ts:133` | `d.lungeSpeed * SIM_DT` (lunge, an attack) | stays raw (reach is the telegraphed aim line) |
+| `testing/testArchetypes.ts:42` | `ctx.data(a).speed` | test only |
+| `swarmer.ts:114` | `randomInt(0, jitter)` first lunge, in **`init`** | `enemyCooldown` (see plan change 7) |
+| `swarmer.ts:189` | `randomInt(lungeCooldownMin, Max)` | `enemyCooldown` |
+| `sniper.ts:132` | `randomInt(firstVolleyMin, Max)`, in **`init`** | `enemyCooldown` (plan change 7) |
+| `sniper.ts:175` / `177` | volley cooldown / cancelled retry | `enemyCooldown` |
+| `bruiser.ts:139` | `a.cooldown = d.firstSlam` (fixed, NO draw, every calm tick) | a no-draw scale or leave |
+| `bruiser.ts:212` | `randomInt(slamCooldownMin, Max)` | `enemyCooldown` |
+| `sniper.ts:180`, `235` | `randomInt(strafeFlipMin, Max)` into `aiTicks` | movement timer, not a cooldown: leave |
+| `bruiser.ts:205`, `boss/*` | gap turns / boss picks | not timing |
+| `turretShared.ts:73/98/105` | fixed `firstTicks` / `periodTicks` | turrets: never affixed |
+
+View reads that predict sim timing or speed: `view/sprites.ts` `swarmerAttack` 457-466 (`lungeTelegraphTicks` +
+`lungeTicks`), `sniperAttack` 488-492 (`telegraphTicks`), `bruiserAttack` 661-674 (`telegraphTicks`, `recoverTicks`),
+boss 798 (`slamRecoverTicks` / `recoverTicks`); corpse time 474 / 499 / 517 / 619 / 681 and
+`client/.../render/ActorRenderController.ts:347` (`data.corpseTicks ?? CORPSE_TICKS`); move-anim rate
+`sprites.ts:218-220` = measured ground speed / `refSpeed` (clamped 0.25-2), refs `view/config.ts:219/221/226/253/255`
+(`data.speed`); markings `view/markings.ts:216-235` (aim line bold when `aiTicks < boldTicks`; shockwave
+`startTicks` = the bruiser's fixed recover, `speed` unscaled) via `TelegraphController.ts:140-142`. **None reads a
+cooldown**, so Swift (cooldowns only, telegraphs never shorten, EVD9) needs no view change; the walk anim speeds up
+by itself (1.35x Swift, 0.85x Hulking). Only a lever that scales telegraph / lunge / recover ticks would need these
+view sites to read the helpers.
+
+**3. Arc shapes.** Web table (`combat/arcTable.ts`): bruiser ring 17 @ 5.026548245743669 (summoner panic ring and
+Vengeful reuse `BRUISER.data.ring` or the same expression: no row); 1 @ 0 (goo's single bullet: no row); 5 @ 0.5
+(turret.sniper, 28.6 deg) and 5 @ 1 (boss FAN, 57.3 deg). **No 5-bullet ~40 deg fan exists.** Port table today:
+7 @ 2.4 and 8 @ TAU/3 - 1 (Demon Lord). Add the imp row: (a) `IMP_FAN` spread as a literal constant in `imp.ts`
+(e.g. 0.7 = 40.1 deg); (b) one `PORT_ARC_SOURCES` row in `combat/arcTablePort.ts` `{ count: 5, spread: 0.7, source:
+"archetypes/imp.ts FAN" }`, written with the SAME literal (the Demon Lord rows copy literals; no import, to keep
+the module graph flat); (c) a case in `sim/arcTablePort.spec.ts` ("resolve to these shapes and fire"); nothing to
+regenerate. Reusing 5 @ 0.5 or 5 @ 1 instead needs NO row: a port row equal to a web shape throws at load
+(`combat/projectilePatterns.ts:66-68`).
+
+**4. Corpses.** `CORPSE_TICKS` 30 (`combat/combatData.ts:52`); `stepActors` (`actors.ts:267-269`): dead ->
+`deadTicks++`, then `def.stepDead` or free at `data.corpseTicks ?? CORPSE_TICKS`; `freeActor` (237-240) releases the
+emitter (bullets keep flying), so a held corpse can still `ctx.fireEnemy` (no alive check, `ctx.ts:176`). View:
+`corpseTransparency` (`sprites.ts:1147`) is `clamp(deadTicks / corpseTicks)`: past 30 ticks a held corpse is fully
+transparent, and the death animation is stretched over `corpseTicks`. Holding a slot longer breaks nothing in the sim
+(pool pressure only; `roomClears.ts:57` picks the member with the smallest `deadTicks`, fine), but Vengeful's 36-tick
+hold would pulse an invisible corpse (plan change 5). `def.stepDead` must NOT be used for the hold: it marks a kind as
+a reviver (`scoreKill` `scoredReviverIds`, `runOnKill` Vampire Fang, `dropsOnKill` exclusion; `actors.ts:221-226`).
+
+**5. Grazes, parries, per-bullet mechanics.** Graze (`score/score.ts:671-708`, called from `combat/combat.ts:290` solo
+and 304-315 co-op): an enemy bullet that enters the graze ring (`PLAYER_RADIUS + ENEMY_BULLET_RADIUS + GRAZE_MARGIN`)
+and leaves without entering the hit circle awards `GRAZE_POINTS` 5 (hashed score), **feeds the combo** and pushes the
+unhashed spark feed; once per bullet (payload `GRAZE_DONE_BIT`). Guard (`weapons/defs/sword.ts:222-264`): every enemy
+bullet erased by the guard sweep scores `GUARD_CANCEL_POINTS` 10 (`scoreGuardCancels`), pushes `guardX/Z` (PARRY!
+flash, sparks, solo 30 ms freeze, sound) and releases the tutorial guard lock; Mirror Cloak reflect skips speed-0
+bullets already (`weapons/melee.ts:37`). **Every sword swing and finisher also erases enemy bullets**
+(`sword.ts:166-195`, `deleteEnemyBullets` true; unscored). Other per-bullet paths: Ember clears all; walls and
+breakables consume enemy bullets and **enemy bullets damage breakables** (`breakables.ts:200`, `combat.ts:284` / `302`); the
+enemy-shoot cue fires on any rise of `combat.enemySpawned` (`view/audio/cues.ts:864-866`); combo shout / PARRY! /
+HUD occlusion duck near enemy bullets (`ComboController`, `ParryFlashController`, `HudOcclusionController`). A goo
+puddle (stationary, one per 0.5 s, 3 s life) is farmable: walk the trail = 2 grazes/s per Ooze (points + combo kept
+alive), guard the trail = 10 pts + a PARRY per puddle. Exclusions by `BulletKind.GOO`: graze visit (both hit
+callbacks), guard cancel count + sink (count goo apart from `arc.deleted`, `melee.ts:67`), the enemy-shoot cue, and
+(owner call) breakable damage. Hit radius is global (`ENEMY_BULLET_RADIUS` 0.12, `combat.ts:270`): see plan change 1.
+
+**6. Hash groups.** Order (`sim/hashLayout.ts`, `sim/replay.ts:182-183`): core, combatHeader, actors, weapons,
+enemyBullets, playerBullets, endless, score, run, party, tutorial, breakables, **drops (last)**. Respite: not built
+(no `respite` in `src/`; docs/DIFFICULTY.md status 2026-10-27, planned).
+
+**7. Score.** Par = `ROOM_PAR_BASE_TICKS` 360 + `ROOM_PAR_TICKS_PER_COST` 90 x `encounterCost(kind)` summed over the
+PLANNED spawns, fixed at floor start (`buildDeferredScoreRooms`, `score.ts:320-333`, via `rebuildScoreRooms`,
+`sim/endless.ts:208`). Members: `attachScoreRoomMembers` (`score.ts:341-357`) on room entry
+(`sim/endless.ts:320-332`: `spawnAll`, then attach, drops, tutorial); hashed as count + (slot, id) pairs
+(`score.ts:851-852`); `member()` (713-716) guards stale slots by id; `scoreRoomDown` (739-745) = no member present
+and alive, judged in the end-of-tick pass (802-808), so a child spawned in `onDeath` and adopted in the same tick
+keeps the room open. `adoptScoreRoomMember` goes next to `attachScoreRoomMembers` in `score.ts` (find the record
+whose members hold the parent's slot + id, `cleared === 0`, append the child; no par change), exported through the
+score barrel. View: `view/fx/roomClears.ts` reads `memberSlots` live (57, 129); `view/roomEdgeState.ts` uses the
+exported `scoreRoomDown` / `scoreRoomEngaged` (fallback only for unscored M1); both follow adopted members as is.
+
+**8. Elite in the view.** `view/fx/tracker.ts:201`: `snapElite` = the actor's room type is `elite` at the first frame
+its slot is seen (so runtime spawns in an elite room are already "elite"); `events.ts:62`; consumers:
+`HealthBarController.ts:129/276/342` (plate `enemyHealthElite`), `ParticleController.ts:160` (x1.5 gold sparks),
+`hitReact.ts:58` / `freezeRules.ts:51` (heavier kill freeze). "Affixed" must come from `state.affixes` (actorId
+guard) at the same line.
+
+**9. Worlds.** One builder for client and server: `shared/run/endless.ts` `buildEndlessRunConfig` (182-211; config
+literals 191-205, solo and party) through `shared/run/worlds.ts:65` `buildWorldSetup`; `affixes: AFFIXES_CONFIG` goes
+next to `breakables` / `drops` there. Floors: `endlessRunFloor` -> `endlessFloorWorld(layout)` (115-139, add
+`roomAffixes`); layout from `dungeon/endless.ts:309` `buildEndlessFloor` (`EndlessFloorLayout` 276, breakables run last
+at 325); sim type `EndlessFloorWorld` (`sim/endless.ts:65`). The tutorial also uses `endlessFloorWorld`
+(`run/tutorial.ts:503`), so `roomAffixes` must be optional.
+
+**10. Bullet renderer.** `client/.../render/BulletRenderController.ts`: `BulletPool` (28-162) maps part i = bullet
+SLOT i, lazily grown to `highWater()`, one `BulkMoveTo` per pool per frame; two pools today (enemy, player). The client
+reads no payload today; kind = `BulletPayload.get(sim.payloadAt(i), "kind")` (graze flag bits sit above the layout).
+A second enemy pool fits: give `BulletPool` an optional kind filter (`include GOO` / `exclude GOO`) on the same
+`state.combat.enemyBullets`, the goo pool with its own look, a flat floor CFrame and its own fade (the sim's
+`fadeAt` shrinks over the last 1 s, `bullets.ts:79`). Cost: a second part array as long as the enemy high-water mark
+(parked parts).
+
+**11. Onboarding.** `shared/onboarding/doc.ts`: `{ v, tutorialVersion, outcome, at }`, `ONBOARDING_DOC_VERSION` 1
+(`config.ts`); `decodeOnboardingDoc` returns the EMPTY doc for any other `v`. A per-account seen set fits as an
+optional field (`seen: string[]` of archetype / affix ids, capped, unknown ids dropped) read as empty when missing,
+**under v 1** (plan change 9). Status reaches the client by `onboardingStatus` (`shared/network.ts:344`); a
+`markSeen` remote with its own rate limit like `TUTORIAL_STEP_RATE`. Toast: `client/ui/hud/ToastPanel.tsx`.
+
+**12. Theme contract.** `ENEMY_ARCHETYPES` (`theme/contract.ts:348`) generates the required `enemy.<x>` asset slots
+(685) and `enemy.<x>.name` strings (788); colour roles are a hand list (`theme/types.ts:60-67`); placeholders
+`PLACEHOLDER_PROPORTIONS` (`placeholders.ts:100-116`), `ENEMY_SHAPES` (216-223), `buildTable` (313); placeholder pack
+colours / assets / strings (`packs/placeholder/manifest.ts:62/189/331`); vale deep-clones the placeholder manifest
+(`packs/vale/manifest.ts:397`). Top-level locals in the compiled `out/` (built after HEAD): **contract.luau 196,
+validate.luau 200** (at the limit).
+
+**13. Packs.** `populateEndlessRoom` (`dungeon/endless.ts:168-205`) packs only `kind === SWARMER_KIND`; every other
+kind (so imp, slime, summoner) takes `spreadTile` and becomes an anchor: spread out. The spender (132-160) also
+computes `dearest` over all affordable kinds; `fromFloor` / `maxPerRoom` must skip in that loop too.
+
+**14. Recent work to account for.** Grazes / parries (item 5). Combo window 6 s (grazes and withered summons feed
+it). Draft reveal: no sim change; tutorial floor 3 (item 1). UI art (planned): restyles toasts and HUD panels, so the
+first-sighting toast must use `ToastPanel`, and affix chips / shield segment the existing health-bar plate, not new
+widgets. Hourglass (`progression/runMods.ts:342`) slows enemy bullet TIME, so bullet lives stretch.
+
+### Plan changes needed
+
+1. **Goo size.** `BurstSpec.radius` is a spawn OFFSET, not a hit size (`combat/patterns.ts:61`); every enemy bullet
+   hits at `ENEMY_BULLET_RADIUS` 0.12. Either a GOO hit radius in `enemyBulletHit` / `enemyBulletHitParty` (by kind;
+   no other bullet changes) or keep 0.12 and only draw it larger (`scale` / the decal).
+2. **"At most 6 goo alive by construction" is false under Hourglass** (bullet life slows). Cap by count or restate the
+   bound and spec it without Hourglass.
+3. **Exclude `BulletKind.GOO`** from grazes, from guard cancel points and the parry feed (still erased), from the
+   enemy-shoot cue; decide breakable damage. Collision / hashing unchanged otherwise.
+4. **Any sword swing erases goo**, not only the guard (unscored). Fix the counterplay text, or exempt GOO from swing
+   erases.
+5. **Vengeful corpse view:** the view needs a per-actor corpse length (hold + fade, from `state.affixes`) or the
+   pulse is invisible after 30 ticks; never implement the hold with `def.stepDead`.
+6. **Vengeful in co-op:** `stepAffixes` runs after the actor phase, so it must `ctx.targetNearest(corpse)` itself;
+   its gap turn is one main-rng `ctx.randomInt` (affixed runs only).
+7. **Stamping happens after `init`:** swarmer and sniper draw their first cooldown in `init` (inside `spawnActor`),
+   so Swift cannot scale it unless the affix is known before `init`; accept and spec it, or stamp inside the spawn.
+   Pair each planned spawn with `spawnActor`'s result in the loop (`spawnAll` silently drops; `sim/endless.ts:164`).
+   Bruiser's first slam is a fixed value (no draw): `enemyCooldown` needs a no-draw form or it stays unscaled.
+8. **Affix par goes in at floor start:** `AFFIX_PAR_COST` must be added in `buildDeferredScoreRooms` from
+   `roomAffixes` (plumbed through `rebuildScoreRooms`), not when stamping. Adopted children add no par; set the
+   slime's cost with the split included (`slime.small` without a row would cost `DEFAULT_ENCOUNTER_COST` 1).
+9. **EV12 must not bump `ONBOARDING_DOC_VERSION`:** old docs would decode as empty and every existing player would be
+   forced through the first-run tutorial again. Add an optional `seen` field under v 1.
+10. **`validate.luau` is at 200 top-level locals** (contract.luau 196): `affixReport` / `gooReport` go in a new module
+    whose call is folded into existing code; EV1 / EV8 compile both under Lune.
+11. **Summoner wither by id:** `onBossDeath` kills everything in the arena and `summonedAlive` counts by kind; the
+    summoner must count and wither only its own summons (ids in v4-6), through `ctx.killActor` (they score, feed the
+    combo, roll drops and pity).
+12. **Hulking draw size:** placeholders are pooled by `id@spriteScale` (`ActorRenderController.ts:386-390`) and sprite
+    views by set id; 1.2x needs a per-actor scale in both (pool key including it).
+13. **Elite look:** the view already marks runtime spawns in elite rooms elite (`tracker.ts:201`); say whether
+    summons and slimelets keep that.
+14. **Radius > 0.5:** slime 0.55 (Hulking 0.66) and Hulking bruiser 0.6 would be the first room enemies wider than a
+    tile: check 1-tile pillar gaps with the steer mover in EV3 / EV7 (corridors are 3 wide).
+15. Minor: the "4 sites" are right for room enemies; `boss/shared.ts:397` also reads `d.speed` (boss, stays raw).
+
 ## What the code gives us (read on `main` @ `3900250`)
 
 | Fact | Where | Consequence |
