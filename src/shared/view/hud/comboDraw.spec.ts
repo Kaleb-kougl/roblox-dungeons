@@ -214,4 +214,20 @@ describe("ComboShout", () => {
 		expect(s.look.active).toBe(false);
 		expect(s.frame(STEP, false, false).opacity).toBe(0);
 	});
+
+	it("a longer life (the NEW BEST! shout) lasts its own life on the same fade; the default life is unchanged", () => {
+		const life = COMBO_SHOUT.lifeSec * 2;
+		const long = new ComboShout();
+		long.start(1, life);
+		run(long, COMBO_SHOUT.lifeSec + STEP * 2);
+		expect(long.look.active).toBe(true);
+		expect(long.look.opacity > 0).toBe(true);
+		run(long, life - COMBO_SHOUT.lifeSec);
+		expect(long.look.active).toBe(false);
+		const a = new ComboShout();
+		const b = new ComboShout();
+		a.start(2);
+		b.start(2, COMBO_SHOUT.lifeSec);
+		expect(run(a, COMBO_SHOUT.lifeSec + 0.1).op).toEqual(run(b, COMBO_SHOUT.lifeSec + 0.1).op);
+	});
 });

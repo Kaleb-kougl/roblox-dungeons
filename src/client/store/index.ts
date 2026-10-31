@@ -5,6 +5,7 @@ import { loadingSlice } from "./loading";
 import { lobbySlice } from "./lobby";
 import { menuSlice } from "./menu";
 import { optionsSlice } from "./options";
+import { recordsSlice } from "./records";
 import { settingsSlice } from "./settings";
 import { spikesSlice } from "./spikes";
 import { stageSlice } from "./stage";
@@ -20,7 +21,8 @@ import { tutorialSlice } from "./tutorial";
  * lobby list, this player's lobby, invites and notices (L5); the `tutorial` slice the first-run tutorial's
  * HUD state (prompt, highlight, outro) and whether the first-run gate is still deciding; the `loading` slice the join
  * loading screen (released, core progress, Skip shown: docs/PRELOAD.md P4); the `stage` slice the stage loader's cover
- * (shown / revealing, its label, the card's lines, the run-start bar: docs/STAGE_LOADER.md SL5).
+ * (shown / revealing, its label, the card's lines, the run-start bar: docs/STAGE_LOADER.md SL5); the `records` slice the
+ * personal records the server sent and the run's frozen new-best baseline (docs/NEW_BEST.md NB7).
  *
  * Import through the directory (`client/store`), never the file.
  */
@@ -30,6 +32,7 @@ export * from "./loading";
 export * from "./lobby";
 export * from "./menu";
 export * from "./options";
+export * from "./records";
 export * from "./selectors";
 export * from "./settings";
 export * from "./spikes";
@@ -47,6 +50,7 @@ export const clientStore = combineProducers({
 	tutorial: tutorialSlice,
 	loading: loadingSlice,
 	stage: stageSlice,
+	records: recordsSlice,
 });
 
 export type ClientStore = typeof clientStore;

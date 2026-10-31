@@ -36,6 +36,7 @@ import {
 	type Playable,
 } from "shared/view/audio";
 import { audibleCombo, audibleVariantCues, comboQuiet } from "shared/view/fx";
+import { NO_NEW_BEST_CUES, type NewBestCueSource } from "shared/view/hud";
 import { PreloadController } from "../game/PreloadController";
 import { SimController, type RunContext } from "../game/SimController";
 import { ThemeController } from "../game/ThemeController";
@@ -162,6 +163,8 @@ export class AudioController implements OnStart {
 	private duckLevel = 1;
 	private music: LoopChannel | undefined;
 	private ambience: LoopChannel | undefined;
+	/** This frame's new-best cues (setNewBestCues; none until NewBestController registers). */
+	private newBestCues: () => NewBestCueSource = () => NO_NEW_BEST_CUES;
 
 	constructor(
 		private readonly sim: SimController,
@@ -214,6 +217,7 @@ export class AudioController implements OnStart {
 				audibleCombo(this.combo.takeDebugSound() ?? ctx.run.combo, quiet),
 				nearMiss,
 				audibleVariantCues(ctx.run.variantCues, quiet),
+				this.newBestCues(),
 			);
 			for (let i = 0; i < this.cues.size(); i++) {
 				this.play(this.cues.id(i), this.cues.volume(i), this.cues.speed(i));
@@ -267,6 +271,17 @@ export class AudioController implements OnStart {
 				if (this.mapper.uiCue(os.clock(), SFX.uiMove)) this.play(SFX.uiMove, 1);
 			}),
 		);
+	}
+
+	/**
+	 * Where the sound frame reads the new-best cues (docs/NEW_BEST.md NB5 / NB7): NewBestController registers its
+	 * tracker's frame here (one injection direction: this controller never injects it). The tracker is stepped inside
+	 * RoomClearController's FX_FRAME_PHASE.scoreRoll frame handler, before this sound frame (a normal-phase
+	 * NearMissController subscriber), so the cues read are always THIS frame's: the fanfare on its frame (outranking a
+	 * room clear jingle, NBD7), the record floor's silent floor enter and the record run's jingle.
+	 */
+	setNewBestCues(source: () => NewBestCueSource): void {
+		this.newBestCues = source;
 	}
 
 	/** A menu sound (sfx.ui.*). */

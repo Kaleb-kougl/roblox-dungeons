@@ -255,17 +255,21 @@ export interface ComboShoutLook {
  * per rendered frame with whether an enemy bullet is in its box (shoutDucked). It fades in over fadeInSec, then out
  * linearly to COMBO_SHOUT.lifeSec, at most maxOpacity; while ducked its opacity eases down to duckOpacity at a rate of
  * (maxOpacity - duckOpacity) / duckSec and back up when clear; it slides slideTiles up-screen (ease out) over its
- * life, not at all under reduced motion (a plain fade). `clear` drops it (stage cover, a new run, no run).
+ * life, not at all under reduced motion (a plain fade). `clear` drops it (stage cover, a new run, no run). `lifeSec`
+ * (default COMBO_SHOUT.lifeSec): a longer shout on the same construction (the new-best NEW BEST! shout, docs/NEW_BEST.md
+ * NB7: NEW_BEST.shout.lifeSec); the fade-in, duck and slide rules are the same over its own life.
  */
 export class ComboShout {
 	readonly look: ComboShoutLook = { active: false, tier: 0, opacity: 0, slideTiles: 0 };
 	private age = 0;
+	private life: number = COMBO_SHOUT.lifeSec;
 	/** The duck ceiling: maxOpacity when clear, eased down to duckOpacity while ducked. */
 	private readonly duck = new ShoutDuck();
 
-	start(tier: number): void {
+	start(tier: number, lifeSec: number = COMBO_SHOUT.lifeSec): void {
 		this.look.active = tier > 0;
 		this.look.tier = tier;
+		this.life = lifeSec;
 		this.age = 0;
 		this.duck.reset();
 		this.look.opacity = 0;
@@ -286,7 +290,7 @@ export class ComboShout {
 		if (!L.active) return L;
 		const d = math.clamp(dt, 0, COMBO_VIEW.maxFrameDtSec);
 		this.age += d;
-		const life = COMBO_SHOUT.lifeSec;
+		const life = this.life;
 		if (this.age >= life) {
 			this.clear();
 			return L;

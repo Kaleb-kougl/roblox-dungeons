@@ -14,6 +14,20 @@ export type FxEventHandler = (e: FxEvent, settings: Readonly<JuiceSettings>) => 
 export type FxFrameHandler = (events: FxEventBuffer, settings: Readonly<JuiceSettings>, realDt: number) => void;
 
 /**
+ * Frame handler phases (onFrame): a lower phase runs first; handlers of one phase run in registration order (which
+ * follows Flamework's start order, so no handler may depend on it). `scoreRoll`: RoomClearController's frame, whose
+ * score roller produces the frame's shown score, with NewBestController's tracker stepped inside it (docs/NEW_BEST.md
+ * NB7), so the new-best frame is ready before every `normal` handler: NearMissController (and AudioController's sound
+ * frame, its subscriber, which hands the new-best cues to the cue mapper) and ComboController (the NEW BEST! shout).
+ */
+export const FX_FRAME_PHASE = { scoreRoll: -1, normal: 0 } as const;
+
+interface PhasedFrameHandler {
+	readonly phase: number;
+	readonly handler: FxFrameHandler;
+}
+
+/**
  * The juice layer's event source (port of project-kaleb-vale src/fx/FxTracker.tsx @ 42897e2, the provider half). Once
  * per rendered frame, right after the SimController ran the frame's ticks (RENDER_ORDER.fxAfterSim), the pure
  * HitTracker (shared/view/fx) diffs the live actors against its snapshot and the frame's events go to every
@@ -26,7 +40,7 @@ export type FxFrameHandler = (events: FxEventBuffer, settings: Readonly<JuiceSet
 export class FxTrackerController implements OnStart {
 	readonly tracker = new HitTracker();
 	private readonly handlers = new Array<FxEventHandler>();
-	private readonly frameHandlers = new Array<FxFrameHandler>();
+	private readonly frameHandlers = new Array<PhasedFrameHandler>();
 
 	constructor(private readonly sim: SimController) {}
 
@@ -41,9 +55,12 @@ export class FxTrackerController implements OnStart {
 		this.handlers.push(handler);
 	}
 
-	/** Once per frame, after the events. */
-	onFrame(handler: FxFrameHandler): void {
-		this.frameHandlers.push(handler);
+	/** Once per frame, after the events, in `phase` order (FX_FRAME_PHASE; default normal). */
+	onFrame(handler: FxFrameHandler, phase: number = FX_FRAME_PHASE.normal): void {
+		const list = this.frameHandlers;
+		let at = list.size();
+		while (at > 0 && list[at - 1].phase > phase) at--;
+		list.insert(at, { phase, handler });
 	}
 
 	/** The effective juice settings now (memoized selector over the store). */
@@ -61,6 +78,6 @@ export class FxTrackerController implements OnStart {
 			const e = events.at(i);
 			for (const handler of this.handlers) handler(e, settings);
 		}
-		for (const handler of this.frameHandlers) handler(events, settings, dt);
+		for (const h of this.frameHandlers) h.handler(events, settings, dt);
 	}
 }
