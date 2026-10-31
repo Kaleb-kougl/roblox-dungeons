@@ -21,4 +21,6 @@ export * from "./scope";
 export * from "./top";
 export * from "./histogram";
 export * from "./rank";
+export * from "./waiters";
 export * from "./friends";
+export * from "./dailyViews";
