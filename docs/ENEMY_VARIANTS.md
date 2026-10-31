@@ -14,7 +14,7 @@ appended last. M1 (`KALEB_VALE_MVP_PARAMS`), every golden fixture and the tutori
 
 ## Status (2026-10-31)
 
-Built on branch `enemy-variants` (EV0-EV7, EV9, EV12, EV13 in code; EV10 / EV11 prepared), not merged to `main`.
+Built (EV0-EV7, EV9, EV12, EV13 in code; EV10 / EV11 prepared) and merged to `main` (`34977e5`, 2026-10-31).
 Decisions: the scope answers, EVD1-EVD12 and EVD13-EVD16 (below). Headless: the full suite passes. Open:
 
 - **Owner uploads** (EV10 / EV11): `art/upload/slime-body.png`, `slime-body-outline.png` and the five
