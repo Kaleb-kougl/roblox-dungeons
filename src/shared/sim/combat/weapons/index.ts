@@ -2,7 +2,7 @@
 export { NO_WEAPON, WEAPON_SCRATCH_SLOTS, WEAPON_SETS } from "./types";
 export type { WeaponData, WeaponDef, WeaponSlotState, WeaponStyle, WeaponTrigger, WeaponsState } from "./types";
 export { hasWeapon, registerWeapon, weaponAt, weaponIds, weaponIndex } from "./registry";
-export { sweepArc } from "./melee";
+export { sweepArc, sweepGooErased } from "./melee";
 export type { ArcActorHit } from "./melee";
 export { activeWeaponSlot, weaponMoveMultiplier } from "./weapons";
 export { DEFAULT_LOADOUT } from "./loadout";

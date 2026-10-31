@@ -268,6 +268,29 @@ describe("breakables: they block", () => {
 		expect(s.score).toBe(undefined); // (an unscored world: enemy breaks score nothing anyway)
 	});
 
+	it("goo (BulletKind.GOO, docs/ENEMY_VARIANTS.md EVD14) neither damages a piece nor is stopped by it", () => {
+		const config = world([piece(2, 0, "barrel")]);
+		const s = createSimState(1, CX, CZ - 5, config);
+		const em = s.combat.enemyBullets.acquireEmitter();
+		s.combat.enemyEmitters += 1;
+		const goo = packPayload(1, BulletKind.GOO, 1);
+		s.combat.enemySpawned += fireBurstRaw(s.combat.enemyBullets, em, CX, CZ, 1, 0, 1, 0, 6, 2, goo);
+		let hits = 0;
+		for (let t = 0; t < 40; t++) {
+			step(s, IDLE, config);
+			hits += s.events.breakableHits;
+		}
+		expect(hits).toBe(0);
+		expect(s.breakables!.pieces[0].hp).toBe(BREAKABLE_HP[0]);
+		expect(s.combat.enemyBullets.activeCount).toBe(1); // it went through the barrel's cell
+		let x = 0;
+		s.combat.enemyBullets.forEachActive((_i, pos) => {
+			x = pos.x;
+			return false;
+		});
+		expect(x > CX + 3).toBe(true);
+	});
+
 	it("a crate shields the player behind it from an enemy bullet", () => {
 		const config = world([piece(1, 0)]);
 		const s = createSimState(1, CX + 2, CZ, config);

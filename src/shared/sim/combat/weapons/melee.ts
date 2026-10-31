@@ -6,14 +6,25 @@
 import type { SimCtx } from "../ctx";
 import type { Vec3 } from "../bullets";
 import { NO_KIND, type ActorState } from "../actors/types";
-import { BulletKind, fireBurstRaw, packPayload } from "../patterns";
+import { BulletKind, BulletPayload, fireBurstRaw, packPayload } from "../patterns";
 import { MIRROR_BULLET_DAMAGE, MIRROR_BULLET_LIFE } from "../../progression/progressionData";
 import { meleeHitBreakables } from "../../breakables/breakables";
 
 /** Called for each live actor inside the arc (slot order). Usually: ctx.damageActor(actor, damage). */
 export type ArcActorHit = (ctx: SimCtx, actor: ActorState) => void;
 
-const arc = { x: 0, z: 0, dirX: 0, dirZ: 1, r2: 0, halfCos: 1, deleted: 0, reflectPayload: -1 };
+const arc = {
+	x: 0,
+	z: 0,
+	dirX: 0,
+	dirZ: 1,
+	r2: 0,
+	halfCos: 1,
+	deleted: 0,
+	reflectPayload: -1,
+	eraseGoo: false,
+	gooErased: 0,
+};
 /** The swing's ctx while its bullet walk runs (sweepArc is synchronous and never re-entered). */
 let arcCtx: SimCtx | undefined;
 
@@ -58,12 +69,20 @@ function inCone(dx: number, dz: number, dist: number): boolean {
 	return dot >= arc.halfCos * dist;
 }
 
-function bulletInArc(i: number, pos: Readonly<Vec3>): boolean {
+function bulletInArc(i: number, pos: Readonly<Vec3>, payload: number): boolean {
+	// Goo (docs/ENEMY_VARIANTS.md EVD14): an ordinary swing leaves it on the floor; a guard erases it quietly (not in
+	// `deleted`, so no events.bulletsDeleted, no guard points, no erase sink entry, never reflected).
+	const goo = BulletPayload.get(payload, "kind") === BulletKind.GOO;
+	if (goo && !arc.eraseGoo) return false;
 	const dx = pos.x - arc.x;
 	const dz = pos.z - arc.z;
 	const d2 = dx * dx + dz * dz;
 	if (d2 > arc.r2) return false;
 	if (!inCone(dx, dz, math.sqrt(d2))) return false;
+	if (goo) {
+		arc.gooErased++;
+		return true; // consume
+	}
 	arc.deleted++;
 	if (arcSink !== undefined) {
 		arcSink.x.push(pos.x);
@@ -87,6 +106,9 @@ function bulletInArc(i: number, pos: Readonly<Vec3>): boolean {
  *  - With `eraseSink` (and `deleteEnemyBullets`), each erased enemy bullet's position at the erase is pushed into it
  *    (docs/GRAZE_PARRY.md GP1: the sword's guard feeds ScoreEvents.guardX / guardZ). Presentation only: it changes
  *    nothing the sim reads, hashes or draws.
+ *  - Goo puddles (BulletKind.GOO, docs/ENEMY_VARIANTS.md EVD14) are erased only with `eraseGoo` (the sword's guard):
+ *    then quietly, outside events.bulletsDeleted and the erase sink, never reflected (sweepGooErased counts them).
+ *    Without it a sweep leaves them on the floor.
  * Returns the number of actors hit.
  */
 export function sweepArc(
@@ -103,6 +125,7 @@ export function sweepArc(
 	reflectSource?: number,
 	breakableDamage?: number,
 	eraseSink?: ArcEraseSink,
+	eraseGoo = false,
 ): number {
 	arc.x = x;
 	arc.z = z;
@@ -111,6 +134,8 @@ export function sweepArc(
 	arc.r2 = radius * radius;
 	arc.halfCos = halfAngleCos;
 	arc.deleted = 0;
+	arc.eraseGoo = eraseGoo;
+	arc.gooErased = 0;
 	arc.reflectPayload =
 		reflectSource !== undefined ? packPayload(MIRROR_BULLET_DAMAGE, BulletKind.PLAYER, reflectSource) : -1;
 
@@ -152,4 +177,9 @@ export function sweepArc(
 	w.swingHalfCos = halfAngleCos;
 	ctx.events.meleeSwings += 1;
 	return hits;
+}
+
+/** Goo puddles the last sweepArc erased (its `eraseGoo`; 0 after a sweep without it). Not in events.bulletsDeleted. */
+export function sweepGooErased(): number {
+	return arc.gooErased;
 }

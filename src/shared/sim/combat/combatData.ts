@@ -16,6 +16,12 @@ export const BULLET_Y = 0.5;
 
 /** Enemy bullet hit radius, world units. Smaller than it is drawn (Gungeon-style forgiving hitboxes). */
 export const ENEMY_BULLET_RADIUS = 0.12;
+/**
+ * Hit radius of a goo puddle (BulletKind.GOO, docs/ENEMY_VARIANTS.md EVD13), world units: a stationary floor puddle,
+ * much wider than a flying bullet. Every other enemy bullet kind hits at ENEMY_BULLET_RADIUS (patterns.ts
+ * enemyBulletHitRadius).
+ */
+export const GOO_BULLET_RADIUS = 0.35;
 /** Enemy bullet lifetime, seconds (walls cull almost all of them first). */
 export const ENEMY_BULLET_LIFE = 6;
 /** Enemy bullet damage, half hearts (a normal hit). */

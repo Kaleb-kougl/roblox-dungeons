@@ -862,7 +862,11 @@ export class AudioCueMapper {
 		for (const p of boosts.aegisBroke) this.playerCue(SFX.boostAegisBreak, p, localIndex);
 		for (const e of boosts.ended) if (e.player === localIndex) this.cue(SFX.boostExpire, 1);
 		const enemySpawned = state.combat.enemySpawned;
-		if (this.lastEnemySpawned >= 0 && enemySpawned > this.lastEnemySpawned) this.cue(SFX.enemyShoot, 1);
+		// Goo puddles (docs/ENEMY_VARIANTS.md EVD14) count in enemySpawned but never play the shot: only a rise beyond
+		// the frame's gooSpawned does.
+		if (this.lastEnemySpawned >= 0 && enemySpawned - this.lastEnemySpawned > events.gooSpawned) {
+			this.cue(SFX.enemyShoot, 1);
+		}
 		this.lastEnemySpawned = enemySpawned;
 		// The combo's tier sting and break (docs/COMBO.md CB4; a cut is silent, CD4).
 		const peakTier = comboTier(combo.peak);

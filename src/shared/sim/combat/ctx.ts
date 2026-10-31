@@ -24,7 +24,7 @@ import { damagePlayer } from "../player";
 import type { PlayerState, SimEvents, SimState } from "../state";
 import type { SimConfig } from "../step";
 import type { CombatState } from "./combat";
-import { fireBurst, type BurstSpec } from "./patterns";
+import { BulletKind, fireBurst, type BurstSpec } from "./patterns";
 import { scaledEnemyBulletSpeedMultiplier } from "../endlessData";
 import { tutorialScalingFloor } from "../tutorial/tutorial";
 import { archetypeAt, archetypeIndex } from "./actors/registry";
@@ -193,6 +193,7 @@ export class SimCtx {
 		const n = fireBurst(c.enemyBullets, actor.emitterId, x, z, dirX, dirZ, spec, actor.kind + 1, speedScale);
 		c.enemySpawned += n;
 		c.dropped += spec.count - n;
+		if (spec.kind === BulletKind.GOO) this.state.events.gooSpawned += n; // the enemy-shoot sound skips goo
 		return n;
 	}
 
