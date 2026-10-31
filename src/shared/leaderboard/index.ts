@@ -21,3 +21,4 @@ export * from "./scope";
 export * from "./top";
 export * from "./histogram";
 export * from "./rank";
+export * from "./friends";
