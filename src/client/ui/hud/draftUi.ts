@@ -1,5 +1,5 @@
-import { DRAFT_OFFER_COUNT, Rarity, type RarityId } from "shared/sim";
-import type { DraftSurface } from "shared/view/hud";
+import { DRAFT_OFFER_COUNT } from "shared/sim";
+import { DraftBeat, type DraftBeatId, type DraftCardModel, type DraftSurface, type DraftTone } from "shared/view/hud";
 import { ComboUiValue } from "./comboUi";
 
 /**
@@ -14,10 +14,15 @@ import { ComboUiValue } from "./comboUi";
 /** One card slot (by OFFER index). */
 export interface DraftCardUi {
 	readonly shown: ComboUiValue<boolean>;
-	/** The offered boon (BOONS index; the name, rarity and effect rows), -1 = none. */
-	readonly boon: ComboUiValue<number>;
-	/** The reveal's rarity of this card (its panel, skulls, glow; KV_DraftRevealDebug may differ from the boon's). */
-	readonly rarity: ComboUiValue<RarityId>;
+	/**
+	 * What the card shows (shared/view/hud draftCardModel: name, banner, line, "was" line, level pips, duo chip; the
+	 * card's kind for the local player, read at the deal), undefined = none.
+	 */
+	readonly model: ComboUiValue<DraftCardModel | undefined>;
+	/** How the card flips (its face art, skulls, text nudge; KV_DraftRevealDebug may differ from the card's own). */
+	readonly beat: ComboUiValue<DraftBeatId>;
+	/** The card's colour (stroke, glow, flash, rays): its rarity, or boon.evolved / boon.duo (docs/BUILDS.md BU9). */
+	readonly tone: ComboUiValue<DraftTone>;
 	/** The body: position in its slot (centre + tremble, rise + drop), size (the flip's width factor), UIScale. */
 	readonly position: ComboUiValue<UDim2>;
 	readonly size: ComboUiValue<UDim2>;
@@ -67,8 +72,9 @@ export const DRAFT_SLOT_Z_RAISED = 2;
 function newCardUi(): DraftCardUi {
 	return {
 		shown: new ComboUiValue(false),
-		boon: new ComboUiValue(-1),
-		rarity: new ComboUiValue<RarityId>(Rarity.COMMON),
+		model: new ComboUiValue<DraftCardModel | undefined>(undefined),
+		beat: new ComboUiValue<DraftBeatId>(DraftBeat.COMMON),
+		tone: new ComboUiValue<DraftTone>("common"),
 		position: new ComboUiValue(DRAFT_BODY_POSITION),
 		size: new ComboUiValue(DRAFT_BODY_SIZE),
 		scale: new ComboUiValue(1),
@@ -114,6 +120,8 @@ export const DRAFT_UI = {
 	hintT: new ComboUiValue(HIDDEN),
 	/** The hint shows the keys (settled and the sim's draftReady), else `hud.draft.wait`. */
 	hintReady: new ComboUiValue(false),
+	/** The deal on screen is the boss double draft's re-deal: the "Pick again" line (docs/BUILDS.md BU9). */
+	again: new ComboUiValue(false),
 	cards: perCard(),
 } as const;
 
@@ -125,5 +133,6 @@ export function resetDraftUi(): void {
 	U.titleT.reset();
 	U.hintT.reset();
 	U.hintReady.reset();
+	U.again.reset();
 	for (const c of U.cards) for (const [, v] of pairs(c)) (v as ComboUiValue<unknown>).reset();
 }

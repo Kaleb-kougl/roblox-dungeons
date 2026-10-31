@@ -28,6 +28,22 @@ export const PROGRESSION_STRINGS = {
 	toastFang: "hud.toast.fang",
 	/** A boost pickup (docs/BOOSTS.md B7): `{name}: {desc}` of the kind (theme BOOST_TOAST_KEY). */
 	toastBoost: BOOST_TOAST_KEY,
+	// Builds (docs/BUILDS.md BU9 / BU10; theme BUILD_STRING_KEYS, plus the upgrade card's "was" line):
+	/** An Upgrade card's banner: `{level}` (roman). */
+	draftLevel: "hud.draft.level",
+	/** An Evolution card's banner: `{boon}` (the boon's name, a theme key). */
+	draftEvolve: "hud.draft.evolve",
+	/** A Duo card's banner: `{a}`, `{b}` (the two boons' names; the placeholder shows neither: the chip does). */
+	draftDuo: "hud.draft.duo",
+	/** The boss double draft's re-deal, under the title. */
+	draftAgain: "hud.draft.again",
+	/** An Upgrade card's previous line under the new one: `{desc}` (a theme key). */
+	draftWas: "hud.draft.was",
+	/** An evolution taken: `{boon}`, `{evo}`; a duo taken: `{name}` (theme keys). */
+	toastEvolved: "hud.toast.evolved",
+	toastDuo: "hud.toast.duo",
+	/** The pause / run-over Build list's title. */
+	buildTitle: "hud.build.title",
 } as const;
 
 /** Theme string keys of a boon / relic / curse id ("boon.sharpened"): its name, one-line effect, short icon label. */
