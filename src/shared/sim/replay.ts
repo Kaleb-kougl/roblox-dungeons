@@ -22,6 +22,7 @@ import { writeTutorialHash } from "./tutorial/tutorial";
 import { writeBreakablesHash } from "./breakables/breakables";
 import { writeDropsHash } from "./drops/drops";
 import { writeAffixesHash } from "./affixes/affixes";
+import { writeDevHash } from "./dev/dev";
 import { isFiniteNumber, isIntegerNumber, numberToJsString } from "./jsnum";
 import { isJsonArray, isJsonObject, jsonToJsString, parseJson, type JsonValue } from "./json";
 import { jsMin } from "shared/jsmath";
@@ -184,6 +185,8 @@ export function writeHashFields(state: Readonly<SimState>, out: number[]): numbe
 	if (state.drops !== undefined) writeDropsHash(state.drops, out);
 	// Elite affixes (docs/ENEMY_VARIANTS.md EV7), only when the run has them, appended last (after drops).
 	if (state.affixes !== undefined) writeAffixesHash(state.affixes, out);
+	// Developer mode (docs/DEV_MODE.md), only in local dev runs, appended last (after affixes).
+	if (state.dev !== undefined) writeDevHash(state.dev, out);
 	return out;
 }
 

@@ -26,11 +26,14 @@ import {
 	type RunView,
 } from "shared/play";
 import {
+	DEV_WORLD_KIND,
 	LIVE_RUN_WORLD,
 	TUTORIAL_WORLD_KIND,
 	buildWorldSetup,
+	clampDevFloor,
 	errorMessage,
 	isValidRunSeed,
+	type DevRunOptions,
 	type EndlessRunFloor,
 	type RunFinal,
 	type SegmentVerdict,
@@ -41,6 +44,7 @@ import {
 	type StartRunRequest,
 } from "shared/run";
 import {
+	DEV_GOD_BUTTON,
 	EMPTY_INPUT,
 	copyInput,
 	isDraftOpen,
@@ -141,6 +145,11 @@ export interface RunContext {
 	 * segments, no R / pad restart (the pause overlay has Restart tutorial and Skip tutorial).
 	 */
 	readonly tutorial: boolean;
+	/**
+	 * A developer mode run (world `dev`, docs/DEV_MODE.md): local, never submitted (verdict code `dev`), no segments;
+	 * R / Again restart it at once on the same seed and start floor (no forfeit), Leave run just stops it.
+	 */
+	readonly dev: boolean;
 	/**
 	 * KV_Debug co-op runs only (docs/FEEL.md J9): the latency probe behind the debug line's lead and press -> stepped
 	 * tick numbers. Measurement only: nothing it does reaches what is sent, stepped, hashed or recorded.
@@ -374,6 +383,11 @@ export class SimController implements OnStart {
 	private readonly draftGate = new DraftRevealGate();
 	/** A tutorial run start is waiting for its forge under the stage cover (inRunningTutorial). */
 	private startingTutorial = false;
+	/** Developer mode (docs/DEV_MODE.md): the last dev run's choices and seed (R restarts with them). */
+	private devRun: DevRunOptions | undefined;
+	private devSeed = DEFAULT_RUN_SEED;
+	/** Developer mode: DEV_GOD_BUTTON goes out with the next frame that steps a tick (toggleGodMode). */
+	private pendingGodToggle = false;
 
 	/** The freeze frame / slow motion clock (presentation pacing only; cleared at every run start). */
 	readonly hitstop = new HitstopClock();
@@ -572,6 +586,62 @@ export class SimController implements OnStart {
 		return (this.ctx?.tutorial === true && !this.frozen) || this.startingTutorial;
 	}
 
+	// --- developer mode (DevModeController, docs/DEV_MODE.md) ------------------------------------
+
+	/**
+	 * Starts a developer mode run now (world `dev`, local): `options.startFloor` (clamped to the panel's range) of the
+	 * endless run on `seed`, god mode per `options.invulnerable`. The current solo run is left as by Play solo
+	 * (submitted as abandoned when it qualifies). Ignored while a party run is on. The caller (DevModeController) is
+	 * only reachable for players the server allowed (shared/config DEV_MODE).
+	 */
+	startDev(options: DevRunOptions, seed: number): void {
+		if (this.ctx?.coop !== undefined && !this.ctx.coop.isOver()) return;
+		if (!isValidRunSeed(seed)) return;
+		this.clearExits();
+		if (this.ctx?.live !== undefined) this.submit("abandoned");
+		this.nextRunLobbyId = "";
+		this.devRun = { startFloor: clampDevFloor(options.startFloor), invulnerable: options.invulnerable };
+		this.devSeed = seed;
+		this.beginDev();
+	}
+
+	/** The current run is a developer mode run. */
+	isDevRun(): boolean {
+		return this.ctx?.dev === true;
+	}
+
+	/** Developer mode: god mode as the sim has it now (state.dev), or undefined outside a dev run. */
+	getGodMode(): boolean | undefined {
+		const d = this.ctx?.dev === true ? this.ctx.run.state.dev : undefined;
+		return d !== undefined ? d.invulnerable !== 0 : undefined;
+	}
+
+	/** Developer mode: a toggle is waiting for the next stepped tick (the panel shows it as pending). */
+	isGodTogglePending(): boolean {
+		return this.pendingGodToggle && this.ctx?.dev === true;
+	}
+
+	/**
+	 * Developer mode: flips god mode in the running dev run (DEV_GOD_BUTTON on the next frame that steps a tick, so it
+	 * is recorded and replays). A second call before that cancels the first. Nothing outside a dev run.
+	 */
+	toggleGodMode(): void {
+		if (this.ctx?.dev !== true) return;
+		this.pendingGodToggle = !this.pendingGodToggle;
+	}
+
+	/** Builds the dev run of `devRun` / `devSeed` (startDev, and R / Again in a dev run). */
+	private beginDev(): void {
+		this.frozen = false;
+		this.startingTutorial = false;
+		this.pendingGodToggle = false;
+		this.debug = Workspace.GetAttribute(RUN_ATTRIBUTES.debug) === true;
+		this.inputController.setDebug(this.debug);
+		this.awaitingStart = undefined; // a ranked start still waiting is dropped (the server replaces that session)
+		this.startReply = undefined;
+		this.startRun(this.devSeed, false, 0, DEV_WORLD_KIND, undefined, "", false);
+	}
+
 	// --- menu actions (pause overlay, settings panel) -------------------------------------------
 
 	/** Resume a paused run (pause overlay "Resume"; P / Start toggle it too). */
@@ -632,8 +702,8 @@ export class SimController implements OnStart {
 			this.stopRun("left");
 			return;
 		}
-		if (ctx.tutorial) {
-			// Skip tutorial: a practice run is never submitted (submit records the "tutorial" verdict) or forfeited.
+		if (ctx.tutorial || ctx.dev) {
+			// Skip tutorial / leaving a dev run: never submitted (submit records the skipped verdict) or forfeited.
 			this.submit("abandoned");
 			this.stopRun("left");
 			return;
@@ -878,6 +948,7 @@ export class SimController implements OnStart {
 			endlessFloor: setup.endlessFloor,
 			lobbyId: start.lobbyId,
 			tutorial: false,
+			dev: false,
 			latencyProbe: this.debug ? new LatencyProbe() : undefined,
 		};
 		this.frozen = false;
@@ -1072,7 +1143,12 @@ export class SimController implements OnStart {
 		startNotice: string,
 		tutorial: boolean,
 	): void {
-		const floor = requestedWorld === "endless" || requestedWorld === TUTORIAL_WORLD_KIND ? ENDLESS_FIRST_FLOOR : 0;
+		const floor =
+			requestedWorld === DEV_WORLD_KIND
+				? clampDevFloor(this.devRun?.startFloor ?? ENDLESS_FIRST_FLOOR)
+				: requestedWorld === "endless" || requestedWorld === TUTORIAL_WORLD_KIND
+				? ENDLESS_FIRST_FLOOR
+				: 0;
 		this.draftGate.reset();
 		if (this.stage !== undefined) {
 			this.ctx = undefined; // the old run stops here; the new one is built under the cover
@@ -1110,6 +1186,7 @@ export class SimController implements OnStart {
 		const scoring =
 			!tutorial &&
 			world !== "endless" &&
+			world !== DEV_WORLD_KIND &&
 			runId === undefined &&
 			Workspace.GetAttribute(RUN_ATTRIBUTES.scoring) === true;
 
@@ -1165,6 +1242,7 @@ export class SimController implements OnStart {
 			endlessFloor,
 			lobbyId: tutorial ? "" : this.nextRunLobbyId,
 			tutorial,
+			dev: world === DEV_WORLD_KIND,
 		};
 		this.nextRunLobbyId = ""; // a restart (R) is a plain solo run
 		this.ctx = ctx;
@@ -1175,7 +1253,8 @@ export class SimController implements OnStart {
 		print(
 			`[Sim] run ${this.counter} started: seed ${seed}, world ${world}${atBossDoor ? ", boss door" : ""}` +
 				(runId !== undefined ? `, ranked run ${runId}` : "") +
-				(tutorial ? " (tutorial: local, not submitted)" : ""),
+				(tutorial ? " (tutorial: local, not submitted)" : "") +
+				(world === DEV_WORLD_KIND ? ` (dev: floor ${floor}, local, not submitted)` : ""),
 		);
 	}
 
@@ -1275,7 +1354,8 @@ export class SimController implements OnStart {
 		scoring: boolean,
 	): MadeRun | string {
 		const [ok, result] = pcall(() => {
-			const setup = buildWorldSetup(world, seed, { atBossDoor });
+			const dev = world === DEV_WORLD_KIND ? this.devRun : undefined;
+			const setup = buildWorldSetup(world, seed, { atBossDoor, dev });
 			const spawn = setup.spawn ?? { x: 0, z: 0 };
 			const stressCfg = stressConfig(stress, spawn.x, spawn.z);
 			const config: Readonly<SimConfig> =
@@ -1347,8 +1427,12 @@ export class SimController implements OnStart {
 		// The draft reveal holds the confirm until it settled (a press skips it; docs/DRAFT_REVEAL.md DR6). A solo
 		// pause freezes the reveal, so nothing is held (or skipped) under the pause overlay.
 		this.gateDraftConfirm(input, run.isPaused());
+		// Developer mode's god-mode toggle: one press edge, held until a frame steps a tick (paused under the panel).
+		const godPulse = this.pendingGodToggle && ctx.dev;
+		if (godPulse) input.buttons = bit32.bor(input.buttons, DEV_GOD_BUTTON);
 		const stepStart = this.debug ? os.clock() : 0;
-		run.frame(dt, input, simPacerFor(partySize(run.state), this.hitstop)); // solo: the hitstop clock paces
+		const ticks = run.frame(dt, input, simPacerFor(partySize(run.state), this.hitstop)); // solo: the hitstop clock paces
+		if (godPulse && ticks > 0) this.pendingGodToggle = false;
 		const floor = run.state.endless?.floor;
 		if (floor !== undefined && floor !== ctx.floor) {
 			if (this.debug) {
@@ -1416,6 +1500,17 @@ export class SimController implements OnStart {
 		const live = ctx.live;
 		if (live === undefined || this.restartAfterForfeit || this.leaveAfterForfeit) return;
 		if (ctx.tutorial) return; // no R / pad restart in the tutorial (the pause overlay has Restart tutorial)
+		if (ctx.dev) {
+			// Developer mode: the same seed and start floor again at once (never submitted, so nothing to forfeit), god
+			// mode as it is now (a toggle still pending counts).
+			const god = this.getGodMode();
+			if (god !== undefined && this.devRun !== undefined) {
+				this.devRun = { ...this.devRun, invulnerable: god !== this.pendingGodToggle };
+			}
+			this.submit("abandoned");
+			this.beginDev();
+			return;
+		}
 		if (restartForfeits(ctx.runId !== undefined, live.outcome() === "playing") && live.requestForfeit()) {
 			this.restartAfterForfeit = true;
 			print(`[Sim] run ${ctx.counter}: restarting (forfeit; counts as a death)`);

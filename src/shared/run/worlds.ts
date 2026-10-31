@@ -15,9 +15,10 @@
 import { buildRunConfig, type RunSetup } from "./config";
 import { buildEndlessRunConfig } from "./endless";
 import { TUTORIAL_WORLD_KIND, buildTutorialRunConfig } from "./tutorial";
+import { DEV_WORLD_KIND, buildDevRunConfig, type DevRunOptions } from "./dev";
 import type { RunWorld } from "./limits";
 
-/** A registered world's name ("game", "dungeonNoEncounter", "greybox", "endless", "tutorial"). */
+/** A registered world's name ("game", "dungeonNoEncounter", "greybox", "endless", "tutorial", "dev"). */
 export type RunWorldKind = string;
 
 export interface WorldBuildOptions {
@@ -25,6 +26,8 @@ export interface WorldBuildOptions {
 	readonly atBossDoor: boolean;
 	/** Co-op (M4): players in the run (default 1); a builder that cannot host a party throws (`config_error`). */
 	readonly partySize?: number;
+	/** The `dev` world only (docs/DEV_MODE.md): start floor and god mode. Absent: DEFAULT_DEV_RUN. Others ignore it. */
+	readonly dev?: DevRunOptions;
 }
 
 /** Builds a run's world from its seed. Pure and deterministic; may throw (a session start answers `config_error`). */
@@ -50,11 +53,11 @@ export function isRunWorldKind(kind: unknown): kind is RunWorldKind {
 
 /**
  * Registered worlds the server never runs: they are played only locally on the client (the first-run tutorial,
- * docs/TUTORIAL.md). They stay registered so the client's buildWorldSetup builds them; run session starts
+ * docs/TUTORIAL.md; developer mode, docs/DEV_MODE.md). They stay registered so the client's buildWorldSetup builds them; run session starts
  * (runSessions.ts: ranked, party and lobby starts alike) refuse them (`unknown_world`), so no run in them is ever
  * submitted, validated or posted.
  */
-export const SERVER_REFUSED_WORLDS: ReadonlySet<RunWorldKind> = new ReadonlySet([TUTORIAL_WORLD_KIND]);
+export const SERVER_REFUSED_WORLDS: ReadonlySet<RunWorldKind> = new ReadonlySet([TUTORIAL_WORLD_KIND, DEV_WORLD_KIND]);
 
 /** A registered world the server may run (session starts, including lobby starts): not in SERVER_REFUSED_WORLDS. */
 export function isServerRunWorld(kind: unknown): kind is RunWorldKind {
@@ -81,6 +84,9 @@ function registerBuiltinWorlds(): void {
 	// The first-run tutorial (docs/TUTORIAL.md): a fixed world whatever the seed, solo only, never leaderboard-eligible
 	// (shared/leaderboard LEADERBOARD_ELIGIBLE_WORLDS), played locally and refused by the server (SERVER_REFUSED_WORLDS).
 	registerRunWorld(TUTORIAL_WORLD_KIND, (_seed, o) => buildTutorialRunConfig(o.partySize));
+	// Developer mode (docs/DEV_MODE.md): an endless run started on any floor, optional god mode. Solo, client-only
+	// (SERVER_REFUSED_WORLDS), never leaderboard-eligible.
+	registerRunWorld(DEV_WORLD_KIND, (seed, o) => buildDevRunConfig(seed, o.dev, o.partySize));
 }
 
 registerBuiltinWorlds();

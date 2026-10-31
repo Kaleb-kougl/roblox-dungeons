@@ -12,8 +12,7 @@ import { seedToState } from "./rng";
 import { newPlayerState } from "./player";
 import { cloneCombatState, createCombatState, startCombat, type CombatState } from "./combat/combat";
 import type { SimConfig } from "./step";
-import { cloneEndlessState, createEndlessState, type EndlessState } from "./endless";
-import { ENDLESS_FIRST_FLOOR } from "shared/dungeon";
+import { cloneEndlessState, createEndlessState, endlessStartFloor, type EndlessState } from "./endless";
 import { cloneScoreState, createScoreState, type ScoreState } from "./score/score";
 import { cloneRunState, createRunState } from "./progression/progression";
 import { refreshRunMods, type RunState } from "./progression/runMods";
@@ -27,6 +26,7 @@ import {
 import { cloneBreakablesState, createBreakablesState, type BreakablesState } from "./breakables/breakables";
 import { cloneDropsState, createDropsState, type DropsState } from "./drops/drops";
 import { cloneAffixesState, createAffixesState, type AffixesState } from "./affixes/affixes";
+import { cloneDevState, createDevState, type DevState } from "./dev/dev";
 
 export interface PlayerState {
 	x: number;
@@ -278,18 +278,27 @@ export interface SimState {
 	 * (after "drops"). See affixes/affixes.ts.
 	 */
 	affixes?: AffixesState;
+	/**
+	 * Developer mode (docs/DEV_MODE.md), only when SimConfig.dev is set: god mode, blocked hits, toggles. Hashed as the
+	 * "dev" subsystem, appended after every other group (after "affixes"). See dev/dev.ts.
+	 */
+	dev?: DevState;
 }
 
 /**
  * A fresh run. `config` is the run's SimConfig (the same one every step() and the replay get): combat state is built
  * from it (encounter spawns, loadout, stress mode, bullet culling), so live play and runReplay create identical worlds.
  * Omitted: an empty config (no actors, default loadout, bounds-culled bullets). With `config.endless`, combat state is
- * built from floor 1's world (`worldForFloor(ENDLESS_FIRST_FLOOR).config`) and `endless` state is created.
+ * built from floor 1's world (`worldForFloor(ENDLESS_FIRST_FLOOR).config`, or its `startFloor`'s) and `endless` state is
+ * created.
  * With `config.party` (size > 1) every party member starts at the spawn too (party.ts), before the encounter spawns.
  * With `config.tutorial`, `tutorial` state is created and every player starts with its `startHalfHearts` (if set).
  * With `config.breakables`, `breakables` state is created (floor 1's pieces in endless mode, else its `pieces`).
  * With `config.drops`, `drops` state is created (its own rng stream from `seed`, one boost entry per player).
  * With `config.affixes`, `affixes` state is created before the encounter spawns (its slots follow the actor pool).
+ * With `config.dev`, `dev` state is created (developer mode's god mode, docs/DEV_MODE.md).
+ * `config.endless.startFloor` / `startDepth` (developer mode's floor jump) start on that floor and Depth instead of
+ * floor 1 / Depth 1; absent, exactly as before.
  */
 export function createSimState(
 	seed: number,
@@ -297,7 +306,8 @@ export function createSimState(
 	spawnZ: number,
 	config: Readonly<SimConfig> = {},
 ): SimState {
-	const firstFloor = config.endless !== undefined ? config.endless.worldForFloor(ENDLESS_FIRST_FLOOR) : undefined;
+	const endless = config.endless;
+	const firstFloor = endless !== undefined ? endless.worldForFloor(endlessStartFloor(endless)) : undefined;
 	const world = firstFloor !== undefined ? firstFloor.config : config;
 	const state: SimState = {
 		tick: 0,
@@ -306,7 +316,7 @@ export function createSimState(
 		player: newPlayerState(spawnX, spawnZ),
 		events: emptyEvents(),
 		combat: createCombatState(world),
-		endless: firstFloor !== undefined ? createEndlessState(firstFloor) : undefined,
+		endless: firstFloor !== undefined ? createEndlessState(firstFloor, endless?.startDepth) : undefined,
 	};
 	// Co-op: the other players (and their player bullet emitter ids) exist before anything spawns. No rng.
 	state.party = createPartyState(state, config.party, world.loadout, spawnX, spawnZ);
@@ -330,6 +340,8 @@ export function createSimState(
 	if (config.drops !== undefined) state.drops = createDropsState(config.drops, seed, partySize(state));
 	// Elite affixes: before any spawn, so the slots grow with the pool. No rng.
 	if (config.affixes !== undefined) state.affixes = createAffixesState(config.affixes);
+	// Developer mode (god mode). No rng.
+	if (config.dev !== undefined) state.dev = createDevState(config.dev);
 	// Spawns the encounter (archetype init hooks may draw from the sim rng) and the stress emitter.
 	startCombat(state, world);
 	// After the spawns (scoring's room records read them; endless floors: the floor's deferred room spawns). No rng.
@@ -371,6 +383,7 @@ export function cloneSimState(s: Readonly<SimState>): SimState {
 		breakables: s.breakables !== undefined ? cloneBreakablesState(s.breakables) : undefined,
 		drops: s.drops !== undefined ? cloneDropsState(s.drops) : undefined,
 		affixes: s.affixes !== undefined ? cloneAffixesState(s.affixes) : undefined,
+		dev: s.dev !== undefined ? cloneDevState(s.dev) : undefined,
 	};
 	if (s.party !== undefined) clone.party = cloneParty(s.party, clone);
 	return clone;

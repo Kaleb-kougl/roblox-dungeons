@@ -46,6 +46,7 @@ Record every ported module in `PROVENANCE.md` (ported module, source path, sourc
 | `docs/ENEMY_VARIANTS.md` | Enemy variants (three new endless archetypes: Imp flanker, Ooze zone-denier that splits, Summoner support; elite affixes Hulking / Swift / Shielded / Vengeful; both unlock by depth): plan, tasks EV0-EV14, decisions EVD1-EVD12 |
 | `docs/GRAZE_PARRY.md` | Grazes and parries (graze spark + shimmer climbing in pitch, parry sparks / ring-out / PARRY! floor flash / solo 30 ms freeze for a guard that erases bullets; one unhashed ScoreEvents feed, otherwise presentation only): plan, tasks GP0-GP10, decisions GPD1-GPD10 |
 | `docs/UI_ART.md` | UI art (the dark red pixel UI sheet: 9-sliced panels / buttons, hearts, potions, pills, icons, focus brackets; menus, then the in-run HUD, then touch; presentation only): builds on the Draft reveal (`slice`, `SlicedImage`): plan, as built, tasks UA0-UA15, decisions UAD1-UAD10 |
+| `docs/DEV_MODE.md` | Developer mode (jump to any floor, instant R restart, god mode; local `dev` world, server-allowed players only via `DEV_MODE`): usage, access, how it works |
 
 Decision log (deviations from `PLAN.md`):
 - **Art (docs/ART.md).** The theme contract gained a `"sprites"` kind (large pre-rendered cells, 1/4/8/16 screen-space
@@ -352,6 +353,16 @@ Decision log (deviations from `PLAN.md`):
   audio ids (`sfx.enemy.blink` / `.summon` / `.split`, `sfx.affix.shieldbreak` / `.vengeful`, SILENT in the
   placeholder). First sighting: optional `seen` in the onboarding doc (still v1), remote `bestiarySeen`. Vale: the LoP
   slime set built (upload pending); imp / summoner rigs pending. Studio check pending.
+- **Developer mode (docs/DEV_MODE.md).** A client-only world `dev` (`shared/run` `buildDevRunConfig`, in
+  `SERVER_REFUSED_WORLDS`, never submitted: `unsubmittedReason` `dev`): the endless run of a seed started on any floor
+  (opt-in `EndlessConfig.startFloor` / `startDepth`; Depth = 1 + boss floors below) with god mode (opt-in
+  `SimConfig.dev`: `state.dev` hashed as the `dev` group appended LAST, after `affixes`; `damagePlayer` lands nothing
+  while `invulnerable`; port input bit `DEV_GOD_BUTTON` 65536 in `PORT_BUTTONS` toggles it, so `SIM_BUTTONS` is now
+  114687). Access is decided by the server (`DevModeService`, `shared/devmode` `devModeAllowed`, `shared/config`
+  `DEV_MODE`: master switch `enabled`, Studio, `allowedUserIds`, the user-owned place's creator) and published as the
+  player attribute `KV_DevAllowed`; `DevModeController` mounts the DEV chip / panel (F2) and the god key (F3) only then.
+  In a dev run R restarts at once on the same seed and floor (no forfeit). M1, every fixture, the tutorial, endless and
+  co-op replay exactly as before (none sets `startFloor` or `dev`).
 
 ## Commands
 

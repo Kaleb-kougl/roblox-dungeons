@@ -10,6 +10,7 @@ export * from "./SettingsService";
 export * from "./LobbyService";
 export * from "./OnboardingService";
 export * from "./InviteService";
+export * from "./DevModeService";
 export * from "./data/DataStoreKeyValue";
 export * from "./data/OrderedDataStoreScores";
 export * from "./spikes";
