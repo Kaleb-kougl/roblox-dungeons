@@ -20,7 +20,8 @@ const dungeon = (seed: number) => generateDungeon({ ...KALEB_VALE_MVP_PARAMS, se
 
 describe("encounter kinds are registered archetypes", () => {
 	it("the registry is the web build's index table (shared/dungeon's encounter spec hard-codes it), then the port's", () => {
-		expect([...archetypeIds()]).toEqual([
+		// The prefix up to the Demon Lord: docs/ENEMY_VARIANTS.md's band-3 room enemies number after it.
+		expect([...archetypeIds()].filter((_, i) => i < 9)).toEqual([
 			"boss.act1",
 			"bruiser",
 			"sniper",

@@ -30,3 +30,4 @@ export * from "./boss/demonlord";
 
 // --- Roblox port: endless room enemies (band PORT_BAND_ENEMIES: numbered after the port's bosses; docs/ENEMY_VARIANTS.md)
 export * from "./imp";
+export * from "./slime";
