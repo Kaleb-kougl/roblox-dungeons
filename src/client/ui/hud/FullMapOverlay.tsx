@@ -10,6 +10,7 @@ import {
 	TOUCH_STRINGS,
 	skinFor,
 	skinHasOf,
+	contentInsetsOf,
 	sliceBorder,
 	snappedSliceScale,
 } from "shared/view/hud";
@@ -37,7 +38,7 @@ function MapHost(props: { host: MinimapHost; position: UDim2; anchor: Vector2; s
 	const skinId = pack !== undefined ? skinFor(skinHasOf(pack), "panel", "hud") : undefined;
 	const slice = skinId !== undefined ? pack?.image(skinId)?.slice : undefined;
 	const sliceScale = snappedSliceScale(uiScale, HUD_SKIN.fullMapRefPerArt);
-	const border = sliceBorder(slice, sliceScale);
+	const border = sliceBorder(skinId !== undefined ? contentInsetsOf(skinId, slice) : slice, sliceScale);
 	return (
 		<frame
 			key="MapHost"

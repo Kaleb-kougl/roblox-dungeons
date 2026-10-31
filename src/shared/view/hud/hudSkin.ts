@@ -176,7 +176,10 @@ export function fillClip(fraction: number): FillClip {
 	return { clip: f, inner: 1 / f, visible: true };
 }
 
-/** A frame's border on each side, reference px, at SliceScale `sliceScale` (the slice insets; none: 0). */
+/**
+ * A frame's border on each side, reference px, at SliceScale `sliceScale`, from `insets` (pass the measured visible
+ * border, skin.ts contentInsetsOf, so it matches the Panel's padding; none: 0).
+ */
 export function sliceBorder(slice: Readonly<SliceInsets> | undefined, sliceScale: number): SkinPadding {
 	return skinPadding(uniformPadding(0), slice, sliceScale);
 }

@@ -9,6 +9,7 @@ import {
 	skinFor,
 	skinHasOf,
 	skinRefPerArt,
+	contentInsetsOf,
 	sliceBorder,
 	snappedSliceScale,
 	type ArtSlot,
@@ -34,8 +35,9 @@ function hostSize(uiScale: number): ArtSlot {
 	const pack = themePack();
 	const id = pack !== undefined && HUD_SKIN.minimapFramed ? skinFor(skinHasOf(pack), "panel", "hud") : undefined;
 	const slice = id !== undefined ? pack?.image(id)?.slice : undefined;
-	if (slice === undefined) return { w: MINIMAP_PANEL.w, h: MINIMAP_PANEL.h };
-	const border = sliceBorder(slice, snappedSliceScale(uiScale, skinRefPerArt("hud")));
+	if (id === undefined || slice === undefined) return { w: MINIMAP_PANEL.w, h: MINIMAP_PANEL.h };
+	// The visible border (the measured content insets), the same border the Panel pads by.
+	const border = sliceBorder(contentInsetsOf(id, slice), snappedSliceScale(uiScale, skinRefPerArt("hud")));
 	return insetSize(MINIMAP_PANEL.w, MINIMAP_PANEL.h, border);
 }
 

@@ -64,8 +64,8 @@ export const UI_ART = {
 	 */
 	fitEpsilon: 1e-9,
 	/**
-	 * Square boxes (reference px) the HUD fits its art icons into (fitArt, UAD7): the heart box is 24 (HUD_VIEW.heartSize
-	 * is 22 until the client's status panel task, UA10, moves it with the footprint spec), so an 18 x 15 heart draws at 2
+	 * Square boxes (reference px) the HUD fits its art icons into (fitArt, UAD7): the heart box is 24 (= HUD_VIEW.heartSize
+	 * since UA10; footprint.spec.ts pins it under a label line), so an 18 x 15 heart draws at 2
 	 * screen px per art px at 1080 p. Flasks and candles sit in the hearts' rows; chips are pips; glyphs sit beside
 	 * button labels.
 	 */
