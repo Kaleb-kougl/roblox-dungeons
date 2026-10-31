@@ -198,7 +198,8 @@ describe("enemy variants: contract", () => {
 	});
 
 	it("appends the five port audio IDs (lowercase segments: shieldbreak), required, sfx", () => {
-		const n = PORT_AUDIO_EVENTS.size();
+		// the last of them ends the variants' block (docs/NEW_BEST.md NB4's two come after it)
+		const n = (PORT_AUDIO_EVENTS as ReadonlyArray<string>).indexOf("sfx.affix.vengeful") + 1;
 		const tail = new Array<string>();
 		for (let i = n - VARIANT_AUDIO.size(); i < n; i++) tail.push(PORT_AUDIO_EVENTS[i]);
 		expect(tail).toEqual(VARIANT_AUDIO);
