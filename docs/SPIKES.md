@@ -11,6 +11,7 @@ turned off.
 | B: iso camera | Does a narrow-FOV perspective camera far away pass for the web build's orthographic iso view? | `src/client/controllers/spikes/CameraSpikeController.ts` |
 | P0: preload | Does `PreloadAsync` fetch images and sounds from content id strings, or only through instances? Does a sheet's first draw hitch? (docs/PRELOAD.md D4 / D5) | `src/client/controllers/spikes/PreloadSpikeController.ts` |
 | I0: invites | What do `PromptGameInvite`, LaunchData, `GameInvitePromptClosed`, `CanSendGameInviteAsync` and the Party API really do in a published place? (docs/INVITES.md "What the Roblox API gives us") | `src/server/services/spikes/InviteSpikeService.ts`, `src/client/controllers/spikes/InviteSpikeController.ts` |
+| UA1: UI art | Do snapped 9-slice borders land on whole screen px, does the icon atlas bleed, does a CanvasGroup keep pixels crisp, does a stretched panel centre need `flat`? (docs/UI_ART.md UA1) | `src/client/controllers/spikes/UiArtSpikeController.tsx`, `src/client/ui/spikes/UiArtSpike.tsx` |
 
 Tunables for all of them: `src/shared/config/spikes.ts`. HUD: `src/client/ui/spikes/SpikeHud.tsx` (top left, with buttons
 for touch devices).
@@ -282,6 +283,54 @@ every `TOUCH_SPIKE.refreshSec`, so the fps is the frame count over that window.
 | 6. fps and memory: `KV_Stress` 600 | | | |
 
 Notes (device model, OS, orientation, the GuiInset value, anything odd):
+
+## Spike UA1: UI art primitives (docs/UI_ART.md)
+
+Not a task 1 gate: it answers the four pixel questions the UI skin (docs/UI_ART.md UA6-UA13) is built on. Client code only
+(`UiArtSpikeController`, flag `KV_UiArtSpike`, tunables `UI_ART_SPIKE` in `src/shared/config/spikes.ts`). It is **off by
+default**; its ScreenGui (`KV_UiArtSpike`, display order 60, the HUD's UIScale from `useHudScale`) is one Janitor:
+turning the flag off unmounts and removes it. Run it after the draft reveal's DR9 Studio check, with the UI art uploaded
+(the sliced PNGs and `ui-icons.png` ids pasted into `packs/vale/assetIds.ts`, UA4); until then it shows the scales line
+and a red line naming what is not uploaded.
+
+### Turning it on
+
+- **Command bar, while playing:** `workspace:SetAttribute("KV_UiArtSpike", true)`; `false` removes it.
+- **Code default:** set `SPIKE_DEFAULTS.uiArt` to `true` in `src/shared/config/spikes.ts` (not for a published build).
+
+### What it shows (top to bottom, scrolls)
+
+1. The scales line: the current UIScale, then for the menus (`UI_ART.refPerArt` 2) and the HUD (`UI_ART.hudRefPerArt` 1)
+   `artPixelScale` (whole screen px per art px) and the snapped `SliceScale` (`snappedSliceScale`).
+2. (a) `ui.panel.menu` 9-sliced at 200 x 120 and 420 x 300 reference px, each with SliceScale snapped and fixed (2).
+3. (b) the same four panels inside a `CanvasGroup` at `GroupTransparency` 0.5 (the corner panels' occlusion fade).
+4. (c) a row of icon-atlas `ArtImage`s (hearts, flasks, candle, chips, the focus bracket, the glyphs), each fitted into
+   its `UI_ART.iconBox` (fitArt), and a `ui.button` at 260 x 40 with `FocusCorners` (four `ui.focus.corner` brackets,
+   tinted `uiAccent`).
+
+### Test script
+
+Window sizes 720 p, 1080 p, 1440 p (Studio's device emulator or a resized window), each at HUD scale 70 %, 100 % and
+125 % (Options > Display), so UIScale covers 0.6-1.75; zoom a screenshot to 400 % to count pixels.
+
+1. **(a) Snapped borders on whole screen px:** in the snapped panels every art pixel of the border is the same number of
+   screen px (`artPixelScale` on the scales line); compare the fixed ones at a fractional UIScale (uneven rows expected).
+2. **(b) Icon atlas bleed:** no neighbouring piece's pixels or a gutter line at the edges of any icon in (c), at the
+   smallest window (1 screen px per art px) and the largest.
+3. **(c) CanvasGroup crispness:** the panels in (b) are as crisp as in (a) (no blur, no resampling seam), only fainter.
+4. **(d) Stretched centre:** the 420 x 300 panel's centre: does the noise smear into visible blocks? If so, the panel
+   crops need `centre: "flat"` (UAD4).
+
+### Results: UI art (UA1)
+
+| Question | 720 p | 1080 p | 1440 p | HUD scale 70 % / 125 % |
+|---|---|---|---|---|
+| (a) Snapped borders on whole screen px | | | | |
+| (b) No gutter bleed from the icon atlas | | | | |
+| (c) A CanvasGroup keeps pixels crisp | | | | |
+| (d) A large stretched noise centre needs `flat` | | | | |
+
+Results pending (the art is not uploaded yet). Notes (UIScale values seen, anything odd):
 
 ## Results
 

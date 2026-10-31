@@ -87,6 +87,7 @@ function SettingRow<T extends string | boolean | number>(props: {
 			name={`${props.name}_${tostring(o.value)}`}
 			text={o.label}
 			active={o.value === props.value}
+			variant="option"
 			selectable={props.selectable}
 			size={new Vector2(props.optionWidth ?? HUD_VIEW.optionSize.x, HUD_VIEW.optionSize.y)}
 			textSize={HUD_VIEW.smallText}
