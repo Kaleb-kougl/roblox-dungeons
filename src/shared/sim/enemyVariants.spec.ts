@@ -54,7 +54,7 @@ describe("registry: PORT_BAND_ENEMIES", () => {
 		// The first nine (the band-3 enemies of EV2-EV4 number after them).
 		const ids = archetypeIds();
 		const head: string[] = [];
-		for (let i = 0; i < 9; i++) head.push(ids[i]);
+		for (let i = 0; i < ids.size(); i++) head.push(ids[i]);
 		expect(head).toEqual([
 			"boss.act1",
 			"bruiser",
@@ -65,7 +65,10 @@ describe("registry: PORT_BAND_ENEMIES", () => {
 			"turret.sprayer",
 			"dummy",
 			"boss.demonlord",
-			"imp", // EV2 (band PORT_BAND_ENEMIES: index 9)
+			"imp", // band PORT_BAND_ENEMIES (docs/ENEMY_VARIANTS.md): indices 9-12
+			"slime",
+			"slime.small",
+			"summoner",
 		]);
 	});
 });

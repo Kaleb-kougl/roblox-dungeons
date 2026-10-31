@@ -78,7 +78,8 @@ const SHOCK_SHOW_TICKS = 16;
 
 /**
  * Gap offsets from the player's bearing, as (cos, sin) rotations: about +-36.9 and +-53.1 degrees. Exported for the
- * Vengeful affix's ring (affixes/stepAffixes.ts), which turns its gap the same way.
+ * Vengeful affix's ring (affixes/stepAffixes.ts) and the summoner's panic ring (docs/ENEMY_VARIANTS.md EV4), which turn
+ * their gaps the same way.
  */
 export const GAP_TURNS: ReadonlyArray<readonly [number, number]> = [
 	[4 / 5, 3 / 5],

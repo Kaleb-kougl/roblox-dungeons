@@ -21,7 +21,7 @@ const dungeon = (seed: number) => generateDungeon({ ...KALEB_VALE_MVP_PARAMS, se
 describe("encounter kinds are registered archetypes", () => {
 	it("the registry is the web build's index table (shared/dungeon's encounter spec hard-codes it), then the port's", () => {
 		// The prefix up to the Demon Lord: docs/ENEMY_VARIANTS.md's band-3 room enemies number after it.
-		expect([...archetypeIds()].filter((_, i) => i < 9)).toEqual([
+		expect([...archetypeIds()]).toEqual([
 			"boss.act1",
 			"bruiser",
 			"sniper",
@@ -32,6 +32,9 @@ describe("encounter kinds are registered archetypes", () => {
 			"dummy", // band PORT_BAND_TUTORIAL: after the whole web table
 			"boss.demonlord", // band PORT_BAND_BOSSES: after the tutorial's (docs/BOSS_DEMONLORD.md)
 			"imp", // band PORT_BAND_ENEMIES: after the port's bosses (docs/ENEMY_VARIANTS.md)
+			"slime",
+			"slime.small",
+			"summoner",
 		]);
 		for (const k of TEST_TURRET_KINDS) expect([k, hasArchetype(k)]).toEqual([k, true]);
 		expect(hasArchetype(DEFAULT_ENCOUNTER.boss!)).toBe(true);
