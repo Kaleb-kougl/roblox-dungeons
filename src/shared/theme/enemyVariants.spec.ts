@@ -258,9 +258,9 @@ describe("enemy variants: bundled packs", () => {
 			expect([key, PLACEHOLDER_MANIFEST.strings[key]]).toEqual([key, text]);
 		for (const id of sortedKeys(THEME_PACKS)) {
 			const pack = THEME_PACKS[id];
-			// Vale draws the uploaded slime set (2026-10-31); every other new enemy slot is the placeholder.
+			// Vale draws the uploaded imp and slime sets (2026-10-31); the placeholder pack keeps its shapes.
 			for (const a of NEW_ARCHETYPES) {
-				const kind = id === "vale" && a === "slime" ? "sprites" : "placeholder";
+				const kind = id === "vale" ? "sprites" : "placeholder";
 				expect([id, a, pack.assets[`enemy.${a}`].kind]).toEqual([id, a, kind]);
 			}
 			expect([id, pack.assets[GOO_BULLET_ID]]).toEqual([id, { kind: "placeholder" }]);

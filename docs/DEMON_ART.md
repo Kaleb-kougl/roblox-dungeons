@@ -40,7 +40,7 @@ The pack is in `art/vendor/demons-topdown/` (gitignored with the rest of `art/ve
 | `enemy.bruiser` | Demon Beast 3 (uploaded 2026-10-26) | 1 in 6 endless room picks (`ENDLESS_ROOM_KINDS` weight 1 of 6) | **Phase 1** (done but DA1 / DA7) |
 | `enemy.sprayer` (`turret.sprayer`), `enemy.caster` (`turret.caster`) | Demon Spawn 8 / 11 (uploaded 2026-10-30, DA13) | M1's sandbox turrets, the tutorial's two sprayers (combat F) | **Phase 2** |
 | `boss.act1` (Mother Bramble) | Demon Elite 3 (uploaded 2026-10-26) | every endless boss floor it is picked for, the tutorial boss, M1 | **docs/BRAMBLE_ART.md** (a Demon Elite) |
-| `enemy.imp`, `enemy.summoner` | Imp 9 / Demon Spawn 10 (built 2026-10-31, **pending upload**; placeholder cone / drum until then) | endless rooms from their unlock floors (docs/ENEMY_VARIANTS.md) | **docs/ENEMY_VARIANTS.md** "EV10 imp / summoner (as built)" (this pipeline, per-sheet cells, rims) |
+| `enemy.imp`, `enemy.summoner` | Imp 9 / Demon Spawn 10 (built and uploaded 2026-10-31) | endless rooms from their unlock floors (docs/ENEMY_VARIANTS.md) | **docs/ENEMY_VARIANTS.md** "EV10 imp / summoner (as built)" (this pipeline, per-sheet cells, rims) |
 | `enemy.dummy` | placeholder post | the tutorial | not planned (a post, not a creature) |
 | `enemy.swarmer`, `enemy.sniper`, `turret.sniper`, `boss.demonlord` | Lords of Pain | | **unchanged** |
 

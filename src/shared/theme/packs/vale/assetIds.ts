@@ -69,6 +69,8 @@ import type { RobloxAssetId } from "../../types";
  * The enemy variants (docs/ENEMY_VARIANTS.md EV10 / EV11: slime-body.png and slime-body-outline.png for enemy.slime,
  * also drawn 0.6x for slime.small; sfx-enemy-blink / -summon / -split, sfx-affix-shieldbreak / -vengeful) uploaded
  * 2026-10-31 7:20 AM by k9kbdev, transcribed from an Asset Manager screenshot.
+ * The imp (Imp 9) and summoner (Demon Spawn 10) sets (docs/ENEMY_VARIANTS.md EV10: imp-* / summoner-* attack, body and
+ * death sheets with their outlines) uploaded 2026-10-31 7:50 AM by k9kbdev, transcribed from an Asset Manager screenshot.
  */
 export const VALE_ASSET_IDS: Readonly<Record<string, RobloxAssetId>> = {
 	"amb-b1.ogg": "rbxassetid://91158343621799",
@@ -105,6 +107,12 @@ export const VALE_ASSET_IDS: Readonly<Record<string, RobloxAssetId>> = {
 	"caster-death.png": "rbxassetid://78384490395919",
 	"decor-atlas.png": "rbxassetid://107968620179940",
 	"decor-mote.png": "rbxassetid://108281638823690",
+	"imp-attack-outline.png": "rbxassetid://87826495349638",
+	"imp-attack.png": "rbxassetid://106802821695726",
+	"imp-body-outline.png": "rbxassetid://80038327609999",
+	"imp-body.png": "rbxassetid://130645679779456",
+	"imp-death-outline.png": "rbxassetid://134104614361499",
+	"imp-death.png": "rbxassetid://84336726009588",
 	"music-biome-1.ogg": "rbxassetid://93211571195066",
 	"music-biome-2.ogg": "rbxassetid://119153958408720",
 	"music-biome-3.ogg": "rbxassetid://132935445941795",
@@ -180,6 +188,12 @@ export const VALE_ASSET_IDS: Readonly<Record<string, RobloxAssetId>> = {
 	"sprayer-body.png": "rbxassetid://91705891235798",
 	"sprayer-death-outline.png": "rbxassetid://84907988039450",
 	"sprayer-death.png": "rbxassetid://103488605375534",
+	"summoner-attack-outline.png": "rbxassetid://71799709544334",
+	"summoner-attack.png": "rbxassetid://78838021771893",
+	"summoner-body-outline.png": "rbxassetid://118322277029322",
+	"summoner-body.png": "rbxassetid://93404933546612",
+	"summoner-death-outline.png": "rbxassetid://80709656173090",
+	"summoner-death.png": "rbxassetid://102657103898767",
 	"swarmer-death-outline.png": "rbxassetid://72521271467524",
 	"swarmer-death.png": "rbxassetid://101974921579587",
 	"swarmer-move-outline.png": "rbxassetid://71928565662655",
@@ -242,18 +256,4 @@ export const VALE_ASSET_IDS: Readonly<Record<string, RobloxAssetId>> = {
 	"fx-ambient-b3.png": "rbxassetid://81069724717150",
 	"fx-ambient-b5.png": "rbxassetid://93348383001922",
 	"fx-effects.png": "rbxassetid://92741658775036",
-	// Pending upload (docs/ENEMY_VARIANTS.md EV10 imp / summoner): paste each ID, then uncomment the line. A set switches
-	// once its three sheets have IDs (each -outline.png adds its rim); an absent key keeps the placeholder (never "").
-	// "imp-attack.png": "rbxassetid://",
-	// "imp-attack-outline.png": "rbxassetid://",
-	// "imp-body.png": "rbxassetid://",
-	// "imp-body-outline.png": "rbxassetid://",
-	// "imp-death.png": "rbxassetid://",
-	// "imp-death-outline.png": "rbxassetid://",
-	// "summoner-attack.png": "rbxassetid://",
-	// "summoner-attack-outline.png": "rbxassetid://",
-	// "summoner-body.png": "rbxassetid://",
-	// "summoner-body-outline.png": "rbxassetid://",
-	// "summoner-death.png": "rbxassetid://",
-	// "summoner-death-outline.png": "rbxassetid://",
 };

@@ -20,13 +20,11 @@ Decisions: the scope answers, EVD1-EVD12 and EVD13-EVD16 (below). Headless: the 
 - **Uploaded 2026-10-31** (EV10 / EV11): `slime-body.png` / `slime-body-outline.png` and the five `sfx-enemy-*` /
   `sfx-affix-*` clips have ids in `packs/vale/assetIds.ts`, so the bundled vale pack draws the slime (and the 0.6x
   slimelet) as its sprite set with its rim and plays the five sounds.
-- **Imp and summoner sets built, pending upload** (2026-10-31, the picks delegated by the owner; see "EV10 imp /
-  summoner (as built)"): `enemy.imp` = Demons **Imp 9** (idle, Run, Attack 5 split at `VARIANT_ANIM_MARKS.imp.land`
-  5 / 9, TakeDamage 1, Die 1), `enemy.summoner` = **Demon Spawn 10** (idle, Walk, Attack 2 = panic, Taunt =
-  `attack.2` the summon cast, TakeDamage 1, Die 1). Until their 12 files are uploaded (`art/upload/imp-attack`,
-  `imp-body`, `imp-death`, `summoner-attack`, `summoner-body`, `summoner-death`, each `.png` plus its `-outline.png`)
-  and their IDs pasted into the commented slots of `assetIds.ts`, the imp draws the placeholder cone and the summoner
-  the placeholder drum.
+- **Imp and summoner sets uploaded 2026-10-31** (the picks delegated by the owner; see "EV10 imp / summoner (as
+  built)"): `enemy.imp` = Demons **Imp 9** (idle, Run, Attack 5 split at `VARIANT_ANIM_MARKS.imp.land` 5 / 9,
+  TakeDamage 1, Die 1), `enemy.summoner` = **Demon Spawn 10** (idle, Walk, Attack 2 = panic, Taunt = `attack.2` the
+  summon cast, TakeDamage 1, Die 1). All 12 files have ids in `assetIds.ts`, so the bundled vale pack draws both as
+  their sprite sets with rims. Every new enemy now has its art.
 - **Owner calls from EV13** (see "EV13 tuning (as built)"): the spender's dearest-kind tie-break plus an Ooze cap of 8
   per room; Ooze hp 8 -> 6 and slimelet 3 -> 2. From the branch review: the Summoner only checks for panic when its
   summon cooldown is up (so a dive right after a cast gets no panic for up to ~5.5 s); the Imp fires its fan even if it

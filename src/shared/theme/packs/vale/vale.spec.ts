@@ -1446,10 +1446,15 @@ describe("vale enemy.imp and enemy.summoner (EV10: Imp 9 / Demon Spawn 10, per-s
 		}
 	});
 
-	it("as bundled (nothing uploaded yet) both are the placeholder", () => {
+	it("as bundled (uploaded 2026-10-31) both are their sprite sets, every sheet with its rim", () => {
 		for (const [id, prefix] of SETS) {
-			for (const file of filesOf(prefix)) expect([file, VALE_ASSET_IDS[file]]).toEqual([file, undefined]);
-			expect([id, VALE_MANIFEST.assets[id]]).toEqual([id, { kind: "placeholder" }]);
+			for (const file of filesOf(prefix))
+				expect([file, VALE_ASSET_IDS[file] !== undefined]).toEqual([file, true]);
+			expect([id, VALE_MANIFEST.assets[id].kind]).toEqual([id, "sprites"]);
+			const set = VALE_MANIFEST.assets[id] as SpriteSetAsset;
+			for (const sheet of set.sheets) {
+				expect([id, sheet.outlineAssetId !== undefined]).toEqual([id, true]);
+			}
 		}
 	});
 
