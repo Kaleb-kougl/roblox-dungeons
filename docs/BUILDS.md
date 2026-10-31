@@ -25,14 +25,14 @@ before.
 
 ## Status (2026-10-31)
 
-BU0-BU4 built (branch `builds`): the audit below, the scaffolding (opt-in `SimConfig.builds` on endless worlds,
+BU0-BU5 built (branch `builds`): the audit below, the scaffolding (opt-in `SimConfig.builds` on endless worlds,
 `state.builds` with its own `builds` hash group appended last, the three on-kill boons appended, level tables, duos,
 card ids, effect bullet kinds / sources / data, the two port arc rows, theme entries with placeholder values and
 `buildReport`), levels and offers (`drawCardOffers`, `grantCard`, level values through `computeRunMods`, the boss
 double draft), the proc engine (kill queue, generations, `fireEffect` and its budget, the `BuildEvents` effect feed),
-Chain Spark / Volatile / Soul Shards at levels I-II (see "BU3 / BU4 (as built)"), the draft UI and the build HUD (BU9 /
-BU10, presentation only; see "BU9 / BU10 (as built)"). Evolution and duo rules are BU5 / BU6; nothing draws the
-effects yet (BU8). Decisions BUD1-BUD14 are **settled** (2026-10-31, Kaleb: every proposed default accepted; BUD8 and
+Chain Spark / Volatile / Soul Shards at levels I-II (see "BU3 / BU4 (as built)"), the 13 evolution rules (level III,
+sim only; see "BU5 (as built)"), the draft UI and the build HUD (BU9 / BU10, presentation only; see "BU9 / BU10 (as
+built)"). Duo rules are BU6; nothing draws the effects yet (BU8). Decisions BUD1-BUD14 are **settled** (2026-10-31, Kaleb: every proposed default accepted; BUD8 and
 BUD12 stand as technical requirements).
 
 ## What the code gives us (read on `main` @ `5a0edc2`)
@@ -197,8 +197,7 @@ Where the build differs from, or adds to, the plan. Paths under `src/shared/sim/
   stands exactly on the corpse also uses it.
 - **Level tables, level III.** Every number is read by level (`levelValue` / `levelEntry`, clamped): level III reads
   the III entries (4 hops / 3 damage, 16 bolts with pierce 1, 4 shards with `SOUL_SHARD_SPECS[2]` = Soul Swarm's
-  piercing shard) but its new rule is BU5's: the fork goes at the marked line in `chainSpark`, the steering at the
-  marked line in `soulShards`.
+  piercing shard) but its new rule is BU5's (since built: "BU5 (as built)").
 - **Budget** (`fireEffect`): `limit = min(spec.count, effectBulletsMax - owner's live effect bullets, playerCapacity -
   effectWeaponReserve x party size - every live player bullet)`; the first `limit` bullets of the burst's arc order spawn
   (`fireBurstLimited` cuts the arc before the pool: a ring is cut short, never re-spaced, so no new arc row is needed).
@@ -240,6 +239,139 @@ range 4.5 in / 4.51 out, two hops from the last target and never twice, Sharpene
 the nearest, sqrt aim, range 8 in / 8.01 out, no target no shard, Sharpened 2.5), a real swarmer pack (8 swarmers,
 the bow's stream, Volatile I + Chain Spark I) dying at ticks `[16, 13, 13, 14, 16, 16, 15, 16]` (spawn order; the spec
 explains the ripple), and determinism (two runs hash the same every tick).
+
+## BU5 (as built)
+
+The 13 evolution rules, sim only (nothing draws them yet: BU8). Where the build differs from, or adds to, the plan.
+Paths under `src/shared/sim/`. Every rule is a no-op without `state.builds` and for a player whose boon is below level
+III (`builds/hooks.ts` `isEvolved`); M1, every fixture, the tutorial and endless runs without builds step exactly as
+before (the golden, lock and determinism specs pass untouched).
+
+- **Files.** `builds/evolutions.ts` (the rules inside stepCombat: Flurry's crescent, Ricochet, Soul Swarm steering, the
+  novas, Thrill Seeker, Momentum, Phantom Step), `builds/execute.ts` (Executioner), `builds/hooks.ts` (a LEAF module for
+  the callers that would cycle: score.ts's graze and PERFECT hooks, player.ts's armor break, bow.ts's Flurry arrow
+  count; `isEvolved`, `buildPlayerStateAt`, `buildPlayerLeft`), `builds/onKill.ts` (Storm Crown's fork, Soul Swarm's
+  source), `builds/procs.ts` (Jackpot, the new stepBuilds order), `builds/effects.ts` (`fireAimedVolley`: Soul Shards,
+  Momentum and Ricochet share the aim; `NO_SKIP_ID`), `score/score.ts` (`scoreJackpot`, `addBuildScoreSources`),
+  `combat/bullets.ts` (`BulletSimulation.setVelocity(i, x, z)`: x / z velocity of a live bullet, y kept; velocity was
+  already hashed, so no layout change). Data in `builds/effectsData.ts` (and `JACKPOT_POINTS` in `score/scoreData.ts`).
+  Specs: `builds/evolutions.spec.ts` (30).
+- **Generic hooks** (BU6's duos reuse them; each is called only with `state.builds`):
+
+  | Hook | Called from | BU5 rule |
+  |---|---|---|
+  | `buildsOnKill(ctx, a, def)` (BU3) | `actors.ts` damageActor's kill line | Jackpot counts, then the proc queue |
+  | `buildsExecute(ctx, a, def, dmg)` | `actors.ts` damageActor after filterDamage / the Shielded absorb / the cap, before the overkill clamp and hp subtraction | Executioner |
+  | `buildsOnGraze(state, grazer)` | `score.ts` scoreBulletVisit, per graze awarded | Thrill Seeker counts (`grazes`) |
+  | `buildsOnArmorBreak(state, i)` | `player.ts` damagePlayer, an armor pip broke | Bulwark counts (`bulwarkPending`) |
+  | `buildsOnPerfectRoom(state)` | `score.ts` clearRoom, with the PERFECT award | Lionheart |
+  | `buildsOnFinisher(ctx, hits)` | `sword.ts` after a finisher's sweep (`hits` = actors hit) | Flurry's crescent |
+  | `buildsFlurryArrow(ctx)` / `buildsFlurryArrowsFired(ctx, x, z, n)` | `bow.ts` per stream arrow / after the triple | Flurry's triple |
+  | `buildsOnPierceHit(ctx, a, x, z, source, consumed)` | `combat.ts` piercingBulletHit after each actor damaged | Ricochet |
+  | `phantomStepOn(state, i)` / `phantomStepErased(state, i, goo, x, z)` | `combat.ts` enemy bullet walks (flags per player computed once per tick) | Phantom Step |
+
+- **stepBuilds** (phase 6b) is now: leavers' procs dropped; `beginEffectBudget`; `stepEvolutions` (a. Ricochet splits
+  queued by this tick's player bullet walk, b. Soul Swarm steering, c. novas: Overflowing then Bulwark per player in
+  index order, d. Thrill Seeker rings); the proc drain (unchanged); `stepMomentum`; `endEffectBudget`. The effect
+  budget's count is now taken lazily at the session's first `fireEffect` (nothing in stepBuilds releases a player
+  bullet), so a tick with nothing to fire walks no bullets.
+- **The rules** (constants in `builds/effectsData.ts` unless noted):
+  - **Storm Crown**: after each hop's strike, the nearest OTHER living enemy within `CHAIN_SPARK_RANGE` of the hop's
+    START (same skips, never one already struck) takes `playerHitDamage(owner, max(CHAIN_SPARK_FORK_MIN,
+    floor(CHAIN_SPARK_DAMAGE[III] / CHAIN_SPARK_FORK_DIVISOR)))` = 1 (x Sharpened / Fury), procing at gen + 1 like a
+    hop; forks never hop on and count as struck.
+  - **Cataclysm**: no new code (BU4's `VOLATILE_BURSTS[2]`, pierce `CATACLYSM_PIERCE`); now specced.
+  - **Soul Swarm**: III's shards carry a new source, `BuildEffect.SOUL_SWARM` (8, appended), so straight shards (I / II,
+    Momentum's) never steer. Each tick (6b) every live SOUL_SWARM shard turns toward the nearest living enemy within
+    `SOUL_SWARM_RANGE` (= `SOUL_SHARDS_RANGE`, 8 tiles) of the shard, never the actor it last pierced (payload
+    `lastHit`): `v' = |v| x normalize(v / |v| + SOUL_SWARM_TURN x d)` (sqrt only), at most atan(0.25) of turn per tick.
+  - **Executioner**: a landing hit (dmg > 0 after the shield and the cap) on a non-boss (`def.data.boss`) that would NOT
+    kill it and leaves `(hp - dmg) x 100 <= EXECUTIONER_HP_PERCENT (20) x hpMax` deals the rest instead. Reading:
+    "left at or below 20 %" is AFTER the hit, so an enemy already at <= 20 % dies to any landing hit. Credited to the
+    bound player (bullet owner, swinger, spark owner); it dies on damageActor's kill line, so it scores, procs and
+    counts like any player kill.
+  - **Flurry**: a finisher fires `FLURRY_CRESCENT` (5 @ 0.5 `SPARK_BOLT`s, `FLURRY_SPEED` 12, `FLURRY_LIFE` 0.35 s,
+    `FLURRY_DAMAGE` 1) from the player along the facing, effect FLURRY, gen 0, in the weapons phase (it moves and hits
+    the same tick, like an arrow). Every `FLURRY_ARROW_EVERY` (6)-th STREAM arrow (not the heavy arrow) is fired as
+    `FLURRY_ARROW_COUNT` @ `FLURRY_ARROW_SPREAD` (3 @ 0.12): deviation, these are the bow's own arrows (kind PLAYER, its
+    source and pierce), not effect bullets; the own-fire reserve spec (Swift Strikes III + Frenzy + Ember Wake, which
+    is now Flurry) still peaks within `effectWeaponReserve`. Counter `arrows` (counts only while evolved).
+  - **Ricochet**: the hit that ENDS a piercing bow arrow (no pierce left; payload source = the bow's weapon index + 1,
+    `RICOCHET_WEAPON_ID`, so heavy arrows and Flurry triples count, effect bolts never) and kills queues a split; 6b
+    fires `RICOCHET_ARROWS` (2) `RICOCHET_ARROW`s (`SPARK_BOLT`, speed 16 / damage 1 = the stream arrow's, life 0.5 s)
+    from where the arrow ended at the nearest living enemies within `RICOCHET_RANGE` (8 tiles; never the victim; the
+    second at the first when only one is found; none found: no split). Effect RICOCHET at the arrow's kill generation
+    (0), so the split arrows' kills proc at gen 1 (the plan's "gen 1"). Queued in module scratch from the walk to 6b of
+    the same stepCombat call (never across ticks, so not hashed).
+  - **Lionheart**: a PERFECT clear heals every living, present Hearty III owner `LIONHEART_HEAL_HALF_HEARTS` (1, up to
+    the maximum). The PERFECT judge is score.ts clearRoom's `hitsTaken === hitsAtEngage`.
+  - **Phantom Step**: while a player rolls (`rollTicks > 0`) with i-frames running (`iframeTicks > 0`; Ember's
+    i-frames alone do not count), an enemy bullet inside their hit circle (the per-kind radius) is erased instead of
+    passing through: no hit, no graze, no score, no parry feed; goo too, quietly (no event entry). Co-op: the first
+    rolling owner it overlaps, index order.
+  - **Overflowing / Bulwark**: novas are `sweepArc` around the player with `NOVA_HALF_ANGLE_COS` (-2: a full circle),
+    enemy bullets only, `eraseGoo` (the guard's goo rule), no erase sink (no parry feed), no guard points (they still
+    add to `events.bulletsDeleted`, as any sweep does). Overflowing: on the drink tick (`flaskTicks ===
+    FLASK_USE_TICKS`), `OVERFLOWING_NOVA_RADIUS` 3 tiles. Bulwark: one per broken pip, `BULWARK_NOVA_RADIUS` 2.5 tiles,
+    through the hashed `bulwarkPending` (a break in the actor phase or the bullet walk releases the same tick; contact
+    damage steps after 6b, so its nova comes the next tick). A dead or departed owner releases nothing.
+  - **Momentum**: after the drain, each tier t in `MOMENTUM_TIER_FIRST`..`MOMENTUM_TIER_LAST` (2..5) whose tenths
+    t x `COMBO_DENOMINATOR` the combo crossed upward this tick (`ScoreEvents.comboStart` < t x 10 <= combo: the combo
+    only rises inside stepCombat, so no extra state) fires t `SOUL_SHARD`s (straight) from every living Lingering III
+    owner at the nearest enemies within `SOUL_SHARDS_RANGE`, effect MOMENTUM, gen 0. Once per crossing; a cut and a rise
+    again crosses again.
+  - **Thrill Seeker**: grazes count (`grazes`) only while Daredevil III; per `THRILL_SEEKER_GRAZES` (8), 6b of that tick
+    fires `THRILL_SEEKER_RING` (8 @ FULL_RING `SPARK_BOLT`s) around the player, effect THRILL_SEEKER, gen 0 (a dead
+    owner's ring is dropped).
+  - **Jackpot**: every kill a proc could come from (player damage, any generation, never a reviver's or the dummy's)
+    counts (`kills`) only while Bounty III; every `JACKPOT_KILLS` (15)-th pays `scoreJackpot`: `JACKPOT_POINTS` (100)
+    x the floor into `ScoreSource.JACKPOT`, through the usual multipliers (combo, Depth, curses) like breakables, never
+    feeding the combo. It pays before the kill's own scoring (the combo before that kill).
+- **Hash.** `builds` group: `bulwarkPending` appended to `BUILD_PLAYER_SCALARS` (6 per player); `grazes` / `kills` /
+  `arrows` now move (Thrill Seeker / Jackpot / Flurry). `score` group: `ScoreSource.JACKPOT` = 9 is a BUILD-ONLY source
+  (`BUILD_SCORE_SOURCE_NAMES = ["jackpot"]`; `SCORE_SOURCE_NAMES` / `SCORE_SOURCE_COUNT` stay the 9 every scored run
+  has): `createSimState` appends its entry to `points` / `counts` only with `SimConfig.builds`
+  (`addBuildScoreSources`), dump names `score.points.jackpot` / `score.counts.jackpot`. So every scored run without
+  builds (the tutorial, `KV_Scoring` M1, builds-free endless) hashes exactly as before; builds runs' score group is 2
+  numbers wider. builds.spec's two BU1 layout pins were updated (6 scalars; the score group's two extra zeros).
+- **Fix (BU2 bug).** The bow read Piercing Arrows as "owned or not" (`bowPierce > 0` -> +1), so level II / III fired +1
+  instead of +2. `bow.ts` now builds its specs per extra pierce (`*_BY_PIERCE`); without builds `bowPierce` is 0 / 1,
+  so nothing else changes.
+- **Not done here.** The `score.source.jackpot` string and a results row (the run-over breakdown skips an index without
+  a key, so the 10th entry is simply not shown; the view / theme task appends `BUILD_SCORE_SOURCE_NAMES` keys); duo
+  rules (BU6); every look and sound (BU7 / BU8).
+
+**`BuildEvents` fields added by BU5** (same conventions as "BU3 / BU4 (as built)": per tick, cleared every tick, not
+hashed, parallel lists in resolution order; existing fields unchanged):
+
+| Fields | One entry per | Values |
+|---|---|---|
+| `sparkFork` | spark segment (parallel to `sparkX1` ... `sparkGen`) | 0 a hop, 1 a Storm Crown fork (from the hop's start to the fork target) |
+| `novaX`, `novaZ`, `novaRadius`, `novaOwner`, `novaKind`, `novaErased` | nova | the owner's position, radius in world units (3 / 2.5), owner, `NovaKind` (0 OVERFLOWING, 1 BULWARK), enemy bullets erased (goo included) |
+| `execX`, `execZ`, `execOwner` | Executioner kill | the enemy's position, the credited player |
+| `phantomX`, `phantomZ`, `phantomOwner` | enemy bullet Phantom Step erased (not goo) | its position, the rolling player |
+| `jackpotX`, `jackpotZ`, `jackpotOwner`, `jackpotPoints` | Jackpot pay | the corpse, owner, points paid |
+| `lionPlayer`, `lionHealed` | Lionheart heal that restored anything | the player, half hearts restored |
+| `momentumX`, `momentumZ`, `momentumOwner`, `momentumTier`, `momentumFired` | Momentum volley (>= 1 shard) | the owner's position, owner, tier crossed (2..5), shards spawned |
+| `thrillX`, `thrillZ`, `thrillOwner`, `thrillFired` | Thrill Seeker ring (>= 1 bolt) | the owner's position, owner, bolts spawned |
+| `flurryX`, `flurryZ`, `flurryOwner`, `flurryKind`, `flurryFired` | Flurry release | the player's position, owner, `FlurryKind` (0 CRESCENT, 1 ARROWS), bullets spawned |
+| `ricochetX`, `ricochetZ`, `ricochetOwner`, `ricochetFired` | Ricochet split (>= 1 arrow) | where the arrow ended, owner, arrows spawned |
+
+The bullets themselves: Flurry crescents, Thrill Seeker rings and Ricochet arrows are `SPARK_BOLT`s, Soul Swarm and
+Momentum shards `SHARD`s, told apart by `sourceEffect(source)` (FLURRY 3, THRILL_SEEKER 4, RICOCHET 5, MOMENTUM 6,
+SOUL_SWARM 8); Flurry's triple arrows are ordinary arrows.
+
+**Specs** (`builds/evolutions.spec.ts`, 30): Storm Crown (fork target and damage, no fork at II, 4 hops on a line with
+forks never re-striking), Cataclysm (16 piercing bolts reach the enemy behind; II's stop), Soul Swarm (source / pierce;
+turn-limited steering at constant speed; two runs identical; II straight), Executioner (20 % in / 21 % out, an already
+low enemy, it scores and procs, never a boss, never below III), Flurry (a 5-bolt crescent per finisher, none at II;
+arrow volleys 1, 1, 1, 1, 1, 3, 1, 1), Ricochet (split at the 2 nearest, both hit; SPARK_BOLTs aimed apart; none at II
+or when the last hit does not kill), Lionheart (PERFECT heals, a hit or II does not), Phantom Step (erased with no hit /
+score / parry; goo quietly; no i-frames takes the hit; II passes through), novas (Overflowing 3 tiles with goo and no
+guard points / parry feed; Bulwark 2.5 tiles; none at II or on a hearts hit), Momentum (tiers 2..5 fire 2..5 shards
+once; a drop and rise fires again; II never), Thrill Seeker (one ring per 8 grazes from a real graze; counting only at
+III), Jackpot (the 15th kill pays 240 at x2.4; II pays nothing; the source and its dump names exist only in builds
+runs), and determinism (every evolution together on a swarmer pack, two runs hash the same every tick).
 
 ## BU9 / BU10 (as built)
 
