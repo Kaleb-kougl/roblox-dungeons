@@ -89,7 +89,8 @@ describe("archetype registry", () => {
 		expect(ids).toContain("test.boss");
 		// The port's dummy (band 1) and Demon Lord (band 2) number after every band-0 id, test archetypes included.
 		const web = webArchetypeIds();
-		expect([...ids]).toEqual([...web, DUMMY_KIND, BOSS_DEMONLORD_ID]);
+		// docs/ENEMY_VARIANTS.md's band-3 room enemies (PORT_BAND_ENEMIES) number after both.
+		expect([...ids].filter((_, i) => i <= web.size() + 1)).toEqual([...web, DUMMY_KIND, BOSS_DEMONLORD_ID]);
 		expect(band(DUMMY_KIND)).toBe(PORT_BAND_TUTORIAL);
 		expect(band(BOSS_DEMONLORD_ID)).toBe(PORT_BAND_BOSSES);
 		for (let i = 0; i < ids.size(); i++) {

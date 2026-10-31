@@ -51,7 +51,11 @@ function setup(): { s: SimState; ctx: SimCtx; actors: ActorState[] } {
 describe("registry: PORT_BAND_ENEMIES", () => {
 	it("is band 3, after the bosses; the recorded indices 0..8 are unchanged", () => {
 		expect([PORT_BAND_TUTORIAL, PORT_BAND_BOSSES, PORT_BAND_ENEMIES]).toEqual([1, 2, 3]);
-		expect([...archetypeIds()]).toEqual([
+		// The first nine (the band-3 enemies of EV2-EV4 number after them).
+		const ids = archetypeIds();
+		const head: string[] = [];
+		for (let i = 0; i < 9; i++) head.push(ids[i]);
+		expect(head).toEqual([
 			"boss.act1",
 			"bruiser",
 			"sniper",
