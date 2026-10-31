@@ -1,11 +1,13 @@
 /**
  * When the pause overlay and the on-screen pause button show, and what closing the Roblox menu does to a solo run
- * (client/ui/hud PauseOverlay / PauseButton, client SimController). Pure, headlessly tested (pause.spec.ts).
+ * (client/ui/hud PauseOverlay / PauseButton, client SimController), and where the pause button sits in the Roblox top
+ * bar (pauseButtonSlot). Pure, headlessly tested (pause.spec.ts).
  *
  * Roblox keeps Escape (and the pad's Start) for its own menu and a game cannot take it. A solo run pauses while
  * that menu is open, the pause overlay stays hidden under it (one menu at a time), and closing it leaves the run
  * paused with the overlay up, so the player resumes when ready (P / Start / Resume) instead of landing in live bullets.
  */
+import { PAUSE_BUTTON_VIEW } from "./config";
 
 /** What the pause overlay and the pause button read. */
 export interface PauseView {
@@ -52,4 +54,50 @@ export function afterRobloxMenuClosed(
 ): "stayPaused" | "resume" | "unchanged" {
 	if (!pausedByMenu) return "unchanged";
 	return playing && !frozen ? "stayPaused" : "resume";
+}
+
+/** A rect in screen px (GuiService.TopbarInset as x / y / width / height). */
+export interface TopbarRect {
+	readonly x: number;
+	readonly y: number;
+	readonly w: number;
+	readonly h: number;
+}
+
+/** Where the pause button goes, screen px. */
+export interface PauseButtonSlot {
+	readonly x: number;
+	readonly y: number;
+	readonly size: number;
+	/**
+	 * Screen px from the free top bar's left (TopbarInset.Min.X) to the button's right edge, or, with no top bar, from
+	 * the screen's left: what the touch strip keeps clear of (shared/view/hud touchStrip `reserveLeft`).
+	 */
+	readonly reserveLeft: number;
+}
+
+/**
+ * The furthest Roblox's own left-side top-bar buttons may reach, screen px: TopbarInset.Min.X (`topbarX`), plus on
+ * touch one Roblox button and its gap (PAUSE_BUTTON_VIEW.robloxButton / robloxButtonGap: the voice button TopbarInset
+ * leaves out on phones).
+ */
+export function robloxButtonsEnd(topbarX: number, touch: boolean): number {
+	const v = PAUSE_BUTTON_VIEW;
+	return topbarX + (touch ? v.robloxButton + v.robloxButtonGap : 0);
+}
+
+/**
+ * The pause button's slot for the free top bar `topbar` (GuiService.TopbarInset; zero-sized when the top bar is
+ * hidden): PAUSE_BUTTON_VIEW.gap right of Roblox's buttons (robloxButtonsEnd), vertically centred in the bar, never
+ * taller than it; with no top bar, `fallbackMargin` from the screen's top left. `touch` only moves it right in the bar
+ * (desktop is exactly TopbarInset.Min.X + gap).
+ */
+export function pauseButtonSlot(topbar: TopbarRect, touch: boolean): PauseButtonSlot {
+	const v = PAUSE_BUTTON_VIEW;
+	if (!(topbar.w > 0 && topbar.h > 0)) {
+		return { x: v.fallbackMargin, y: v.fallbackMargin, size: v.size, reserveLeft: v.fallbackMargin + v.size };
+	}
+	const size = math.min(v.size, topbar.h);
+	const x = robloxButtonsEnd(topbar.x, touch) + v.gap;
+	return { x, y: topbar.y + (topbar.h - size) / 2, size, reserveLeft: x + size - topbar.x };
 }

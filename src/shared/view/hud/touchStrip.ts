@@ -113,8 +113,9 @@ export interface TouchStripGeometry {
 	/** The free part of the Roblox top bar (GuiService.TopbarInset), screen px; zero-sized when there is none. */
 	readonly topbar: ScreenRect;
 	/**
-	 * Screen px kept for the game's pause button: from the free top bar's left (its gap and size), or, with no top bar,
-	 * from the screen's left (its fallback margin and size); 0 for none.
+	 * Screen px kept for the game's pause button: from the free top bar's left to the button's right edge (on touch the
+	 * allowance for Roblox's voice button, the gap and the size: shared/view/menu pauseButtonSlot), or, with no top
+	 * bar, from the screen's left (its fallback margin and size); 0 for none.
 	 */
 	readonly reserveLeft: number;
 }

@@ -59,14 +59,24 @@ export const MENU_VIEW = {
 
 /**
  * The on-screen pause button (client/ui/hud PauseButton): a round button in the Roblox top bar, right of Roblox's own
- * buttons (GuiService.TopbarInset), in screen pixels (the top bar is not under the HUD's UIScale). With the top bar
- * hidden (TopbarInset empty) it sits `fallbackMargin` from the screen's top left corner.
+ * buttons (GuiService.TopbarInset, plus the touch allowance: pauseButtonSlot), in screen pixels (the top bar is not
+ * under the HUD's UIScale). With the top bar hidden (TopbarInset empty) it sits `fallbackMargin` from the screen's top
+ * left corner.
  */
 export const PAUSE_BUTTON_VIEW = {
 	/** Diameter; never taller than the top bar. */
 	size: 44,
-	/** Gap from the end of Roblox's buttons (TopbarInset.Min.X). */
+	/** Gap from the end of Roblox's buttons (TopbarInset.Min.X, plus the touch allowance on touch). */
 	gap: 8,
+	/**
+	 * Touch only: Roblox's own top-bar buttons can reach one of its buttons (`robloxButton`, the 44 pt circle / pill
+	 * slot) and its gap past TopbarInset.Min.X. On the owner's phone (693 x 320, voice chat on, 2026-10-31) the pill's
+	 * voice / headset button ended 49 pt past Min.X (TopbarInset leaves it out), so the pause button was drawn behind
+	 * it. Applied on every touch device: whether that button shows is not known up front (it depends on the player's
+	 * voice eligibility and appears late). Desktop (mouse / pad) keeps Min.X.
+	 */
+	robloxButton: 44,
+	robloxButtonGap: 8,
 	fallbackMargin: 12,
 	backgroundTransparency: 0.3,
 	/** The two bars of the pause glyph, as fractions of the button: width, height, gap between them. */

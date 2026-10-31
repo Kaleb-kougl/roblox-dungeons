@@ -1,8 +1,10 @@
 // The touch controls' layout fits every test screen (docs/MOBILE.md MB2): on screen, apart, below the HUD panels,
-// big enough, the move zone clear of the buttons, and the left-handed layout the mirror of the right-handed one.
+// big enough, the move zone clear of the buttons, and the left-handed layout the mirror of the right-handed one; the
+// cluster packed into its corner (owner 2026-10-31), the move stick resting in the other.
 import { describe, expect, it } from "@rbxts/jest-globals";
 import { TOUCH } from "shared/config";
 import { HUD_SCALE_PERCENTS } from "shared/settings";
+import { pauseButtonSlot } from "shared/view/menu";
 import {
 	HUD_FOOTPRINT,
 	HUD_TEST_TOP_INSET,
@@ -15,6 +17,7 @@ import {
 	touchControlsClear,
 	touchLayout,
 	touchPanelKeepOut,
+	touchStrip,
 } from ".";
 import type { ScreenRect, TouchCircle, TouchLayoutMode, TouchLayoutResult, TouchPoint } from ".";
 
@@ -245,22 +248,20 @@ describe("touch controls and the corner panels", () => {
 		}
 	});
 
-	it("used to overlap: the 844 x 390 phone under the top bar and the home indicator at 125 % takes the compact cluster", () => {
+	it("takes the compact cluster under the corner panels where the usual one cannot keep clear at minScale", () => {
+		// The 844 x 390 phone under the top bar and the home indicator at 125 %: the score panel's box takes the top of
+		// the action corner.
 		const r = touchLayout(844, 390, 844, 390 - HUD_TEST_TOP_INSET - 21, 125, PERCENT, false, "play");
 		expect(r.variant).toBe("compact");
+		expect(r.clear).toBe(true);
 		expect(r.scale >= TOUCH_LAYOUT.minScale - EPS).toBe(true);
-		// The old rule (the full-width band, clamped at minScale) put Ember into the score panel's box here.
-		const band = r.topBand;
-		const oldEmberTop = 390 - HUD_TEST_TOP_INSET - 21 - (260 + 38) * TOUCH_LAYOUT.minScale;
-		expect(oldEmberTop < band).toBe(true);
 	});
 
-	it("keeps the usual cluster, and the old scale, wherever it fit before", () => {
-		const v = TOUCH_TEST_VIEWPORTS[1];
+	it("keeps the usual cluster at the HUD scale where it fits its corner (the tablet)", () => {
+		const v = { x: 1024, y: 768 };
 		const r = touchLayout(v.x, v.y, v.x, v.y - HUD_TEST_TOP_INSET, PERCENT, PERCENT, false, "play");
 		expect(r.variant).toBe("play");
-		const old = (v.y - HUD_TEST_TOP_INSET - r.topBand) / (260 + 38);
-		expect(r.scale).toBeCloseTo(math.max(TOUCH_LAYOUT.minScale, math.min(r.hudScale, old)), 5);
+		expect(r.scale).toBeCloseTo(r.hudScale, 6);
 	});
 
 	it("follows the HUD's own frame when it sits lower than the touch safe area", () => {
@@ -272,6 +273,179 @@ describe("touch controls and the corner panels", () => {
 		expect(r.clear).toBe(true);
 		expect(touchControlsClear(allPoints(r), keepOut, v.x, safeH)).toBe(true);
 		for (const z of r.keepOut) expect(z.y + z.h > HUD_TEST_TOP_INSET).toBe(true);
+	});
+});
+
+/** The corner spec's screens (pt): a small iPhone and the owner's phone, the reference phone, a tablet. */
+const CORNER_SCREENS: ReadonlyArray<{ readonly x: number; readonly y: number }> = [
+	{ x: 667, y: 308 },
+	{ x: 693, y: 320 },
+	{ x: 844, y: 390 },
+	{ x: 1024, y: 768 },
+];
+/** Safe-area insets (pt): none; an iPhone's notches, top bar and home indicator; the owner's Android phone's. */
+const CORNER_INSETS: ReadonlyArray<{ readonly side: number; readonly top: number; readonly bottom: number }> = [
+	{ side: 0, top: 0, bottom: 0 },
+	{ side: 47, top: HUD_TEST_TOP_INSET, bottom: 21 },
+	{ side: 49, top: HUD_TEST_TOP_INSET, bottom: 0 },
+];
+/** The action cluster's box from its corner, as shares of the safe area (owner: <= 45 % wide, <= 75 % tall). */
+const CORNER_BOX_W = 0.45;
+const CORNER_BOX_H = 0.75;
+/** The widest gap (pt) from any control of the cluster to its nearest neighbour ("a few pt"). */
+const NEIGHBOUR_GAP_MAX = 6;
+/** The move stick's idle ring: at most this far (pt) from both safe edges of its corner. */
+const MOVE_HOME_EDGE_MAX = 12;
+const THIRD = 1 / 3;
+/** The strip's content for its footprint (a full run: hearts, pips, flask, Ember, a six-digit score). */
+const STRIP_CONTENT = { heartsMax: 10, ghost: false, pips: 2, flaskMax: 3, emberMax: 3, scoring: true, score: 123456 };
+
+/** The touch strip's footprint in the touch safe area (docs/UI_ART.md "Phones"), the top bar `x` .. the safe right. */
+function stripBoxes(vw: number, vh: number, percent: number, side: number, top: number, bottom: number): ScreenRect[] {
+	const safe = { x: side, y: top, w: vw - side * 2, h: vh - top - bottom };
+	// Roblox's buttons end ~208 pt after the side inset (TopbarInset.Min.X); a bar only when there is one (top > 0).
+	const bar = top > 0 ? { x: side + 208, y: 0, w: vw - side * 2 - 208, h: top } : { x: 0, y: 0, w: 0, h: 0 };
+	const r = touchStrip(
+		{
+			viewportW: vw,
+			viewportH: vh,
+			hudPercent: percent,
+			safe,
+			topbar: bar,
+			reserveLeft: pauseButtonSlot(bar, true).reserveLeft,
+		},
+		STRIP_CONTENT,
+	);
+	return r.footprint.map((b) => ({ x: b.x - safe.x, y: b.y - safe.y, w: b.w, h: b.h }));
+}
+
+/** Edge-to-edge gap (px) between two circles. */
+function circleGap(a: TouchPoint, b: TouchPoint): number {
+	return math.sqrt((a.cx - b.cx) * (a.cx - b.cx) + (a.cy - b.cy) * (a.cy - b.cy)) - a.r - b.r;
+}
+
+describe("touch controls in the corners", () => {
+	it("packs the cluster into its corner and rests the move stick in the other: phones and a tablet, both hands, HUD 70-125 %", () => {
+		for (const v of CORNER_SCREENS) {
+			for (const ins of CORNER_INSETS) {
+				const safeW = v.x - ins.side * 2;
+				const safeH = v.y - ins.top - ins.bottom;
+				for (const percent of HUD_SCALE_PERCENTS) {
+					// The touch HUD: the strip in the top bar (it replaces the corner panels, whose boxes the specs above
+					// keep the controls clear of before it mounts; on a short phone those leave no corner room).
+					const boxes = stripBoxes(v.x, v.y, percent, ins.side, ins.top, ins.bottom);
+					for (const size of SIZE_PERCENTS) {
+						for (const hand of HANDS) {
+							for (const mode of MODES) {
+								const where = string.format(
+									"%dx%d side %d top %d bottom %d hud %d size %d %s %s",
+									v.x,
+									v.y,
+									ins.side,
+									ins.top,
+									ins.bottom,
+									percent,
+									size,
+									hand ? "left" : "right",
+									mode,
+								);
+								const r = touchLayout(
+									v.x,
+									v.y,
+									safeW,
+									safeH,
+									percent,
+									size,
+									hand,
+									mode,
+									undefined,
+									boxes,
+								);
+								expectOk(where, "clear", r.clear);
+								expectOk(where, "in its corner", r.inCorner);
+								// Distances inward from the action side's edge (right, or left when left-handed).
+								const inward = (p: TouchPoint) => (hand ? p.cx : safeW - p.cx);
+								let boxW = 0;
+								let boxH = 0;
+								for (const b of r.buttons) {
+									if (b.id === "spectatePrev") continue;
+									boxW = math.max(boxW, inward(b) + b.r);
+									boxH = math.max(boxH, safeH - b.cy + b.r);
+								}
+								expectOk(where, "cluster box width", boxW <= CORNER_BOX_W * safeW + EPS);
+								expectOk(where, "cluster box height", boxH <= CORNER_BOX_H * safeH + EPS);
+								// No centre in the screen's middle third (the safe area sits between equal side insets).
+								for (const p of allPoints(r)) {
+									const x = ins.side + p.cx;
+									expectOk(
+										where,
+										"out of the middle third",
+										x <= v.x * THIRD + EPS || x >= v.x * (1 - THIRD) - EPS,
+									);
+								}
+								if (mode === "play") {
+									// Packed: every button's nearest neighbour a few pt away (and not overlapping).
+									for (const b of r.buttons) {
+										let nearest = math.huge;
+										for (const o of r.buttons)
+											if (o !== b) nearest = math.min(nearest, circleGap(b, o));
+										expectOk(
+											where,
+											`${b.id} packed`,
+											nearest >= -EPS && nearest <= NEIGHBOUR_GAP_MAX,
+										);
+									}
+									const home = r.moveHome!;
+									const fromSide = hand ? safeW - home.cx : home.cx;
+									expectOk(
+										where,
+										"move home by its side edge",
+										fromSide - home.r <= MOVE_HOME_EDGE_MAX,
+									);
+									expectOk(
+										where,
+										"move home by the bottom",
+										safeH - home.cy - home.r <= MOVE_HOME_EDGE_MAX,
+									);
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	});
+
+	it("prints the cluster per screen (pt from the safe area's top left; docs/MOBILE.md)", () => {
+		const lines: string[] = [];
+		for (const v of [CORNER_SCREENS[0], CORNER_SCREENS[1], CORNER_SCREENS[2]]) {
+			for (const ins of [CORNER_INSETS[0], CORNER_INSETS[2]]) {
+				const safeW = v.x - ins.side * 2;
+				const safeH = v.y - ins.top - ins.bottom;
+				const boxes = stripBoxes(v.x, v.y, PERCENT, ins.side, ins.top, ins.bottom);
+				for (const hand of HANDS) {
+					const r = touchLayout(v.x, v.y, safeW, safeH, PERCENT, PERCENT, hand, "play", undefined, boxes);
+					let line = string.format(
+						"%dx%d side %d top %d %s: %s x%.3f (safe %dx%d)",
+						v.x,
+						v.y,
+						ins.side,
+						ins.top,
+						hand ? "left" : "right",
+						r.variant,
+						r.scale,
+						safeW,
+						safeH,
+					);
+					for (const b of r.buttons) line += string.format(" %s (%.0f, %.0f) r%.1f", b.id, b.cx, b.cy, b.r);
+					const h = r.moveHome!;
+					line += string.format(" move (%.0f, %.0f) r%.1f", h.cx, h.cy, h.r);
+					lines.push(line);
+				}
+			}
+		}
+		print(`[touchLayout]\n${lines.join("\n")}`);
+		expect(lines.size() > 0).toBe(true);
 	});
 });
 
