@@ -307,6 +307,13 @@ score panel. All three predate the skin in part; fixed on `ua-mob-menus` / `ua-m
   back (x0.53 compact -> x0.75 normal on 693 x 320). About 17 % of a 693 x 320 screen with a boss, ~5 % below the top
   bar without one. Needs the emulator: the strip against Roblox's pill / voice button (`TopbarInset`), chip text
   (~7.5 pt), the stamp / tutorial prompt over the cluster's Flask / Alt.
+- **Controls in the corners, nothing behind Roblox's buttons** (owner, 2026-10-31): `TopbarInset.Min.X` ends ~49 pt
+  before Roblox's pill on a phone with the voice button, so on touch the pause button sits after `robloxButtonsEnd`
+  (Min.X + one Roblox button 44 + gap 8, always on touch; `shared/view/menu/pause.ts` `pauseButtonSlot`) + 8 pt, and
+  the strip after it (desktop unchanged). The touch cluster is a tight arc around Attack in the bottom-right corner
+  (Attack 10 ref px from both safe edges; Roll, Alt, Flask, Ember on the inner arc, Swap and Accept outside; 4 ref px
+  between hit circles), the move stick's idle home near the bottom-left corner; specced to stay in a 45 % x 75 %
+  corner box, out of the screen's middle third, both hands, every HUD scale.
 - **Needs a device or the emulator:** the compact cluster's thumb reach, the knob-at-rest choice, "Accept" at ~8 pt with
   the art, first-frame unfitted menus, the real panel heights against the estimates.
 
