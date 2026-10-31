@@ -372,7 +372,7 @@ Decision log (deviations from `PLAN.md`):
   `progressionStringKeys`), 4 bullet visuals, 9 port audio IDs `sfx.build.*` (SILENT in the placeholder); setting
   `DisplaySettings.buildFx` (Full / Reduced, only Reduced stored, doc stays v2). No Luau-locals change. M1, every
   fixture and the tutorial replay exactly as before; endless replays and scores changed (boards stay `_v1`, BUD9).
-  Studio check, art (BU11) and audio (BU12) pending; tuning (BU13) in progress.
+  Studio check, art (BU11) and audio (BU12) pending; tuning measured (BU13, owner calls open).
 
 ## Commands
 

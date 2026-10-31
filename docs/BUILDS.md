@@ -32,7 +32,7 @@ on-kill boons at I-II (BU3 / BU4), the 13 evolutions (BU5) and the 9 duos (BU6),
 view (BU8, its follow-up and the BU6 view below: every `BuildEvents` field is read), the draft UI (BU9) and the build
 HUD (BU10). Each step is described in its "as built" section below. Still open: **BU11 art** and **BU12 audio** need
 the vendor packs (ToffeeCraft / Ninja Adventure, gitignored `art/vendor/`) on the owner's machine (every build sound
-is SILENT and every icon a text label until then); **BU13 tuning** is in progress on another branch; **BU14** (Studio
+is SILENT and every icon a text label until then); **BU13 tuning** is measured ("BU13 tuning (as built)"; its recommendations are owner calls, nothing changed); **BU14** (Studio
 check, frame time, readability) is pending, with the Studio checklists below (items 1-8 of BU9 / BU10, 1-19 of the
 effect view). Decisions BUD1-BUD14 are **settled** (2026-10-31, Kaleb: every proposed default accepted; BUD8 and
 BUD12 stand as technical requirements).
@@ -774,6 +774,201 @@ procs, Gold Rush's own pop colour). Paths under `src/` unless noted.
 18. Gold Rush at combo x3+: the kill's "+points" pop is ice-blue instead of the usual accent, one pop per kill (no
     duplicate); off with damage numbers.
 19. Unshaken: an armor hit closes a quick ice-blue ring on the knight (following it), readable next to the hurt flash.
+
+## BU13 tuning (as built, 2026-10-31)
+
+Branch `builds-tune`. Measurements only: test support and spec files, **no gameplay number or rule changed**; the
+recommendations at the end are owner calls. Harnesses: `run/testing/buildTune.ts` (build TTK, the kill probe, the player
+bullet high-water) and `run/testing/buildOffers.ts` (offer statistics). Specs (each prints its table with a
+`[builds tune]` prefix and asserts only loose bounds; headless runtimes in brackets): `sim/builds.ttk.pack.spec.ts`
+(1.5 s), `sim/builds.ttk.room.spec.ts` (16 s), `sim/builds.ttk.boss.sword.spec.ts` (20 s), `.boss.bow.spec.ts` (34 s),
+`.boss.deep.spec.ts` (25 s), `run/buildsPool.spec.ts` (7 s), `run/buildsOffers.spec.ts` (13 s).
+
+**Method.** Every fight is solo in an open endless ARENA (an endless world with no rooms and the stairs out of reach, as
+`builds/procs.spec.ts`; `builds` and `affixes` on, no drops), god mode (hearts refilled every tick, hits counted), the
+build granted card by card through `grantCard` before tick 0. Hp comes from the sim itself: the state's endless floor and
+Depth are set before anything spawns (Depth +1 per boss on the way: floors 1 / 6 / 11 = Depth 1 / 2 / 3), so
+`spawnActor` scales every actor, slimelets, summons and boss adds included. Bots: the target is the nearest living actor;
+the sword walks in and holds FIRE in reach (the full combo); the bow keeps 5 units and holds FIRE (the stream, no charged
+shots), **leading** its target, strafing and staying off the arena's edges (EV13's centre-aiming, backing-off bow bot was
+cornered under a swarmer or missed a strafing imp for minutes in mixed rooms, so this bot is a better player: no-build
+bow numbers are faster than EV13's). A duo row holds its two boons at level I (their own effects included: Chain Spark's
+sparks, Swift Strikes' 80 % recovery, Piercing Arrows' +1 pierce; Ember Wake's roll ring never fires, the bots do not
+roll). **Effect kills** and **procs** come from a kill probe: for the fight every archetype is re-registered (same band)
+as a copy whose `onHit` calls the original and, when the hit is about to kill, reads `ctx.procGen` (> 0: a spark, an
+effect bullet or an ember made the kill) and repeats `buildsOnKill`'s queue test; the originals are registered back.
+"queue" in the specs' output is the most procs still queued after a drain: at most 7 anywhere (Storm Crown on a pack),
+so `PROCS_PER_TICK` 24 never binds. No fight dropped a weapon shot.
+
+**1. Swarmer pack** (8 swarmers 5-7 units ahead, `procs.spec.ts`'s pack; run seeds 1-3, mean seconds to the last kill):
+
+| build | sword s f1 / f6 / f11 (x no build) | bow s f1 / f6 / f11 (x no build) | effect kills f6 / f11 sword; bow | procs f11 sword / bow | max gen |
+|---|---|---|---|---|---|
+| no build | 1.4 / 1.4 / 1.8 (1.00 / 1.00 / 1.00) | 1.6 / 4.7 / 9.5 (1.00 / 1.00 / 1.00) | 0% / 0%; 0% / 0% | 0.0 / 0.0 | 0 |
+| Chain Spark I | 0.3 / 0.7 / 1.0 (0.25 / 0.50 / 0.56) | 0.5 / 2.6 / 5.1 (0.30 / 0.55 / 0.54) | 21% / 33%; 25% / 25% | 8.0 / 8.0 | 3 |
+| Storm Crown (Chain Spark III) | 0.3 / 0.3 / 0.7 (0.24 / 0.24 / 0.40) | 0.2 / 1.0 / 1.6 (0.14 / 0.21 / 0.17) | 67% / 50%; 88% / 88% | 8.0 / 4.0 | 3 |
+| Volatile I | 0.4 / 0.6 / 1.1 (0.29 / 0.41 / 0.60) | 0.3 / 1.5 / 3.4 (0.20 / 0.32 / 0.36) | 58% / 46%; 75% / 13% | 7.7 / 8.0 | 3 |
+| Cataclysm (Volatile III) | 0.4 / 0.4 / 0.8 (0.29 / 0.31 / 0.44) | 0.3 / 1.1 / 1.9 (0.20 / 0.24 / 0.20) | 67% / 71%; 88% / 75% | 7.0 / 6.0 | 3 |
+| Soul Shards I | 0.4 / 0.6 / 1.0 (0.29 / 0.43 / 0.57) | 0.3 / 1.7 / 2.8 (0.21 / 0.35 / 0.29) | 54% / 50%; 63% / 38% | 8.0 / 8.0 | 3 |
+| Soul Swarm (Soul Shards III) | 0.4 / 0.4 / 0.7 (0.28 / 0.31 / 0.40) | 0.3 / 1.1 / 1.8 (0.19 / 0.24 / 0.18) | 67% / 71%; 88% / 88% | 6.7 / 7.0 | 3 |
+| Cataclysm + Chain Reaction (+ Chain Spark I) | 0.3 / 0.4 / 0.7 (0.25 / 0.28 / 0.39) | 0.3 / 1.1 / 1.9 (0.17 / 0.24 / 0.20) | 67% / 71%; 88% / 75% | 6.3 / 5.0 | 4 |
+| Fire Arrows (Ember Wake + Piercing Arrows I) | 1.4 / 1.4 / 1.8 (1.00 / 1.00 / 1.00) | 0.9 / 1.6 / 2.6 (0.55 / 0.34 / 0.27) | 0% / 0%; 50% / 63% | 0.0 / 0.0 | 1 |
+| Storm Blade (Chain Spark I + Swift Strikes I) | 0.3 / 0.5 / 1.2 (0.25 / 0.37 / 0.69) | 0.5 / 1.9 / 3.5 (0.28 / 0.40 / 0.37) | 29% / 33%; 63% / 38% | 7.7 / 8.0 | 3 |
+
+**2. Mixed room** (per floor, among solo run seeds 1-10's rooms with the most distinct kinds, the one closest to the
+floor's mean enemy count, with its planned affixes; spawns centred on the player, pushed out to `SPAWN_SAFE_RADIUS`; run
+seeds 1-3). f1: run 3 room 9 (2 sniper, 2 swarmer, 1 bruiser); f6: run 5 room 11 (summoner, imp, slime, 2 bruiser,
+sniper\*, 2 swarmer\*); f11: run 8 room 11 (slime\*, bruiser\*, imp, summoner, sniper\*, 3 swarmer, 2 swarmer\*);
+\* = affixed. Procs per room are about one per kill (13-18 kills at f11 with slimelets and summons).
+
+| build | sword s f1 / f6 / f11 (x no build) | bow s f1 / f6 / f11 (x no build) | effect kills f6 / f11 sword; bow | procs f11 sword / bow | max gen |
+|---|---|---|---|---|---|
+| no build | 3.9 / 14.6 / 19.2 (1.00 / 1.00 / 1.00) | 4.5 / 28.3 / 51.0 (1.00 / 1.00 / 1.00) | 0% / 0%; 0% / 0% | 0.0 / 0.0 | 0 |
+| Chain Spark I | 3.9 / 11.9 / 18.8 (0.99 / 0.82 / 0.98) | 4.5 / 22.7 / 45.1 (1.00 / 0.80 / 0.88) | 10% / 13%; 8% / 11% | 17.3 / 18.0 | 2 |
+| Storm Crown (Chain Spark III) | 3.9 / 10.5 / 14.5 (0.99 / 0.72 / 0.76) | 4.1 / 9.8 / 28.3 (0.91 / 0.35 / 0.55) | 28% / 25%; 40% / 37% | 16.0 / 18.0 | 2 |
+| Volatile I | 3.9 / 13.0 / 17.5 (1.00 / 0.89 / 0.91) | 4.6 / 22.1 / 43.8 (1.01 / 0.78 / 0.86) | 10% / 12%; 2% / 20% | 17.3 / 17.7 | 3 |
+| Cataclysm (Volatile III) | 3.9 / 12.0 / 17.9 (1.00 / 0.82 / 0.93) | 4.6 / 16.9 / 37.2 (1.01 / 0.60 / 0.73) | 17% / 17%; 43% / 33% | 16.0 / 15.7 | 3 |
+| Soul Shards I | 3.1 / 10.7 / 17.1 (0.79 / 0.73 / 0.89) | 2.3 / 18.0 / 40.1 (0.52 / 0.64 / 0.79) | 21% / 12%; 17% / 20% | 16.7 / 17.7 | 3 |
+| Soul Swarm (Soul Shards III) | 2.5 / 5.3 / 9.3 (0.63 / 0.36 / 0.48) | 2.1 / 6.2 / 16.5 (0.47 / 0.22 / 0.32) | 63% / 45%; 78% / 67% | 13.0 / 13.3 | 3 |
+| Cataclysm + Chain Reaction (+ Chain Spark I) | 3.9 / 10.1 / 15.8 (0.99 / 0.69 / 0.82) | 4.5 / 14.6 / 32.6 (1.00 / 0.52 / 0.64) | 28% / 25%; 45% / 44% | 16.0 / 15.7 | 4 |
+| Fire Arrows (Ember Wake + Piercing Arrows I) | 3.9 / 14.6 / 19.2 (1.00 / 1.00 / 1.00) | 3.2 / 13.1 / 20.0 (0.70 / 0.46 / 0.39) | 0% / 0%; 40% / 37% | 0.0 / 0.0 | 1 |
+| Storm Blade (Chain Spark I + Swift Strikes I) | 3.4 / 8.9 / 15.5 (0.86 / 0.61 / 0.81) | 3.8 / 16.3 / 31.0 (0.83 / 0.58 / 0.61) | 11% / 15%; 29% / 33% | 16.0 / 17.7 | 3 |
+
+**3. Mother Bramble** (her own floors 5 / 10 / 15 = Depth 1 / 2 / 3: 540 / 810 / 1215 hp; a 26 x 26 boss room, the player
+3 units inside its edge; seeds 1-2 at f5 / f10, seed 1 at f15). Her `damageCapPerSecond` 6 puts a floor under every fight:
+hp / 6 = **90 / 135 / 202.5 s**.
+
+| build | sword s f5 / f10 / f15 | bow s f5 / f10 / f15 (x no build) | effect kills (her adds) sword; bow f5 / f10 / f15 |
+|---|---|---|---|
+| no build | 98.2 / 146.9 / 219.0 | 117.8 / 179.7 / 284.0 (1.00 / 1.00 / 1.00) | 0% / 0% / 0%; 0% / 0% / 0% |
+| Chain Spark I | 98.2 / 146.9 / 219.0 | 112.8 / 171.5 / 259.6 (0.96 / 0.95 / 0.91) | 3% / 0% / 0%; 26% / 6% / 0% |
+| Storm Crown (Chain Spark III) | 98.2 / 146.9 / 219.0 | 111.7 / 166.6 / 255.2 (0.95 / 0.93 / 0.90) | 34% / 3% / 14%; 61% / 50% / 16% |
+| Volatile I | 98.2 / 146.9 / 219.0 | 114.0 / 174.8 / 271.0 (0.97 / 0.97 / 0.95) | 0% / 0% / 0%; 13% / 6% / 4% |
+| Cataclysm (Volatile III) | 98.2 / 146.9 / 219.0 | 112.3 / 169.9 / 261.4 (0.95 / 0.95 / 0.92) | 17% / 0% / 14%; 22% / 15% / 13% |
+| Soul Shards I | 98.2 / 146.9 / 219.0 | 112.3 / 169.3 / 257.0 (0.95 / 0.94 / 0.90) | 0% / 0% / 0%; 30% / 22% / 16% |
+| Soul Swarm (Soul Shards III) | 98.1 / 146.9 / 219.0 | 112.2 / 168.3 / 254.0 (0.95 / 0.94 / 0.89) | 37% / 31% / 36%; 61% / 59% / 53% |
+| Cataclysm + Chain Reaction (+ Chain Spark I) | 98.2 / 146.9 / 219.0 | 111.7 / 168.2 / 254.8 (0.95 / 0.94 / 0.90) | 17% / 0% / 14%; 35% / 47% / 19% |
+| Fire Arrows (Ember Wake + Piercing Arrows I) | 98.2 / 146.9 / 219.0 | 94.1 / 140.6 / 210.1 (0.80 / 0.78 / 0.74) | 0% / 0% / 0%; 58% / 52% / 58% |
+| Storm Blade (Chain Spark I + Swift Strikes I) | 97.5 / 144.3 / 213.7 | 95.5 / 143.2 / 217.4 (0.81 / 0.80 / 0.77) | 34% / 8% / 0%; 25% / 20% / 11% |
+
+**4. Player bullet high-water** (40 s, god mode, every player with the build, rolls every 1.5 s staggered; the densest
+room by EV13's slot estimate of the run / floor, with its planned affixes, as an open arena: no wall ends a bullet early,
+the pool's worst case). The heaviest builds: Cataclysm + Storm Crown + Chain Reaction + Soul Swarm (every on-kill boon at
+III and the cross trigger), and Fire Arrows + Thrill Seeker at their heaviest (Ember Wake, Piercing Arrows III =
+Ricochet, Swift Strikes III = Flurry, Daredevil III). "Weapon shots dropped" = `combat.dropped`'s rise minus the effect
+bullets the budget refused (the enemy pool never filled).
+
+| build | party | room (\* = affixed) | max player bullets | max effects all / one player | max own weapon bullets one player | effect bullets refused | weapon shots dropped | max enemy bullets | kills | cleared s |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Cataclysm + Storm Crown + Chain Reaction + Soul Swarm, sword | 1 | run 12 f19 room 0 (1 summoner\*, 3 slime\*, 7 slime, 1 bruiser, 1 sniper, 1 imp\*, 1 swarmer\*) | 160 | 160 / 160 | 0 | 221 | 0 | 62 | 39 | 19.0 |
+| Cataclysm + Storm Crown + Chain Reaction + Soul Swarm, bow | 1 | run 12 f19 room 0 (1 summoner\*, 3 slime\*, 7 slime, 1 bruiser, 1 sniper, 1 imp\*, 1 swarmer\*) | 75 | 74 / 74 | 3 | 0 | 0 | 83 | 10 | no |
+| Fire Arrows + Thrill Seeker (+ Ricochet, Flurry), bow | 1 | run 12 f19 room 0 (1 summoner\*, 3 slime\*, 7 slime, 1 bruiser, 1 sniper, 1 imp\*, 1 swarmer\*) | 64 | 43 / 43 | 24 | 0 | 0 | 83 | 31 | no |
+| Cataclysm + Storm Crown + Chain Reaction + Soul Swarm, sword | 1 | run 1 f6 room 11 (4 swarmer, 1 summoner, 1 sniper, 1 slime) | 148 | 148 / 148 | 0 | 0 | 0 | 18 | 9 | 3.7 |
+| Cataclysm + Storm Crown + Chain Reaction + Soul Swarm, bow | 1 | run 1 f6 room 11 (4 swarmer, 1 summoner, 1 sniper, 1 slime) | 101 | 100 / 100 | 2 | 0 | 0 | 1 | 11 | 3.1 |
+| Fire Arrows + Thrill Seeker (+ Ricochet, Flurry), bow | 1 | run 1 f6 room 11 (4 swarmer, 1 summoner, 1 sniper, 1 slime) | 67 | 46 / 46 | 24 | 0 | 0 | 8 | 9 | 4.9 |
+| Cataclysm + Storm Crown + Chain Reaction + Soul Swarm, sword | 4 | run 17 f14 room 10 (11 slime, 1 summoner, 1 bruiser, 1 imp, 1 sniper, 1 swarmer) | 176 | 176 / 99 | 0 | 0 | 0 | 62 | 38 | 15.2 |
+| Cataclysm + Storm Crown + Chain Reaction + Soul Swarm, bow | 4 | run 17 f14 room 10 (11 slime, 1 summoner, 1 bruiser, 1 imp, 1 sniper, 1 swarmer) | 62 | 60 / 60 | 4 | 0 | 0 | 99 | 7 | no |
+| Fire Arrows + Thrill Seeker (+ Ricochet, Flurry), bow | 4 | run 17 f14 room 10 (11 slime, 1 summoner, 1 bruiser, 1 imp, 1 sniper, 1 swarmer) | 208 | 157 / 56 | 24 | 0 | 0 | 74 | 44 | 22.6 |
+| Cataclysm + Storm Crown + Chain Reaction + Soul Swarm, sword | 4 | run 1 f6 room 10 (3 bruiser, 2 slime\*, 1 bruiser\*, 1 slime, 1 sniper\*, 1 imp, 3 sniper, 1 imp\*, 1 summoner) | 100 | 100 / 100 | 0 | 0 | 0 | 57 | 22 | 10.1 |
+| Cataclysm + Storm Crown + Chain Reaction + Soul Swarm, bow | 4 | run 1 f6 room 10 (3 bruiser, 2 slime\*, 1 bruiser\*, 1 slime, 1 sniper\*, 1 imp, 3 sniper, 1 imp\*, 1 summoner) | 91 | 85 / 79 | 4 | 0 | 0 | 105 | 24 | 25.4 |
+| Fire Arrows + Thrill Seeker (+ Ricochet, Flurry), bow | 4 | run 1 f6 room 10 (3 bruiser, 2 slime\*, 1 bruiser\*, 1 slime, 1 sniper\*, 1 imp, 3 sniper, 1 imp\*, 1 summoner) | 221 | 167 / 57 | 24 | 0 | 0 | 80 | 24 | 9.2 |
+
+**5. Offer statistics** (1000 simulated runs per policy on the real `drawCardOffers` and `BUILD_RULES`, one player, an
+offer rng per run; one draft per floor cleared, two after floors 5 and 10 with the first deal's guaranteed duo; "by floor
+N" = the build walking onto floor N: 6 picks by floor 6, 12 by floor 11). Policies: greedy = an evolution, else a duo,
+else an upgrade, else the first card; random = a uniform card; duo-seeking = greedy, but a new boon that completes a duo
+with an owned boon before an upgrade. The pity is detected exactly (the same rng state drawn again with the pity off).
+
+| policy | by floor | runs with >= 1 evolution | runs with >= 1 duo | mean evolutions | mean duos | mean boons / levels | drafts offering an evolution / a duo | pity: drafts / runs |
+|---|---|---|---|---|---|---|---|---|
+| greedy | 6 | 100.0% | 8.8% | 1.80 | 0.09 | 2.14 / 5.91 | 30.0% / 1.5% | 3.5% / 19.4% |
+| greedy | 11 | 100.0% | 45.9% | 3.42 | 0.52 | 4.33 / 11.48 | 28.5% / 4.7% | 2.5% / 26.3% |
+| random | 6 | 65.3% | 10.4% | 0.71 | 0.10 | 3.51 / 5.89 | 31.4% / 5.4% | 5.0% / 26.4% |
+| random | 11 | 97.6% | 45.3% | 2.28 | 0.53 | 5.68 / 11.47 | 47.7% / 13.4% | 4.8% / 42.1% |
+| duo-seeking | 6 | 97.2% | 42.1% | 1.45 | 0.44 | 2.38 / 5.56 | 24.1% / 8.2% | 4.6% / 24.4% |
+| duo-seeking | 11 | 100.0% | 93.9% | 2.82 | 1.50 | 4.52 / 10.50 | 23.5% / 14.3% | 4.1% / 39.4% |
+
+The boss double draft's guaranteed duo was **available** (a duo in the pool at the first deal) after floor 5 / floor 10
+in 7.7 % / 17.9 % of greedy runs, 14.9 % / 32.9 % random, 24.3 % / 31.2 % duo-seeking. Picks by kind: greedy new 36 % /
+upgrade 31 % / evolution 29 % / duo 4 %; random 47 / 29 / 19 / 4; duo-seeking 38 / 26 / 24 / 13. One `BuildRules` change
+at a time (by floor 11, greedy and random):
+
+| rules | policy | by floor | runs with >= 1 evolution | runs with >= 1 duo | mean evolutions | mean duos | mean boons / levels | drafts offering an evolution / a duo | pity: drafts / runs |
+|---|---|---|---|---|---|---|---|---|---|
+| upgradePercent 25 | greedy | 11 | 100.0% | 46.2% | 3.41 | 0.52 | 4.35 / 11.48 | 28.4% / 4.8% | 5.5% / 49.3% |
+| upgradePercent 25 | random | 11 | 94.7% | 49.4% | 2.01 | 0.59 | 6.08 / 11.41 | 43.0% / 15.4% | 10.3% / 71.3% |
+| upgradePercent 45 | greedy | 11 | 100.0% | 46.1% | 3.42 | 0.52 | 4.33 / 11.48 | 28.5% / 4.8% | 1.1% / 11.8% |
+| upgradePercent 45 | random | 11 | 99.0% | 42.1% | 2.50 | 0.49 | 5.36 / 11.51 | 50.1% / 12.7% | 1.9% / 20.1% |
+| evolutionWeight 1 | greedy | 11 | 100.0% | 45.9% | 3.42 | 0.52 | 4.33 / 11.48 | 28.5% / 4.7% | 2.5% / 26.3% |
+| evolutionWeight 1 | random | 11 | 96.2% | 46.0% | 2.19 | 0.54 | 5.69 / 11.46 | 45.2% / 13.5% | 4.8% / 42.8% |
+| evolutionWeight 3 | greedy | 11 | 100.0% | 45.9% | 3.42 | 0.52 | 4.33 / 11.48 | 28.5% / 4.7% | 2.5% / 26.3% |
+| evolutionWeight 3 | random | 11 | 98.2% | 45.1% | 2.33 | 0.53 | 5.68 / 11.47 | 48.2% / 13.4% | 4.7% / 41.9% |
+| duoPercentBase 30 | greedy | 11 | 100.0% | 46.0% | 3.42 | 0.52 | 4.33 / 11.48 | 28.5% / 4.6% | 1.4% / 15.9% |
+| duoPercentBase 30 | random | 11 | 98.6% | 43.5% | 2.39 | 0.51 | 5.54 / 11.49 | 48.8% / 13.4% | 2.8% / 28.6% |
+| upgradePityCards huge (no pity) | greedy | 11 | 100.0% | 46.8% | 3.41 | 0.53 | 4.34 / 11.47 | 28.4% / 4.9% | 0.0% / 0.0% |
+| upgradePityCards huge (no pity) | random | 11 | 96.1% | 47.2% | 2.18 | 0.57 | 5.78 / 11.43 | 45.8% / 14.1% | 0.0% / 0.0% |
+
+**Readings.**
+
+- **Packs melt, as designed.** Any on-kill boon at level I clears the 8-swarmer pack 1.7-5x faster (x 0.20-0.60), level
+  III 2.3-7x (x 0.14-0.44); with the bow at f11 every level-III on-kill build is x 0.17-0.20 and effects make 75-88 % of
+  the kills. Generations reach the cap (gen 3; 4 only with Chain Reaction, its cross trigger's kills).
+- **Mixed rooms are where builds separate.** Level I is mild (sword x 0.73-1.00, bow x 0.52-1.01; a floor-1 room of
+  snipers and a bruiser barely notices). Level III, sword / bow at f6 and f11: Storm Crown x 0.72-0.76 / 0.35-0.55,
+  Cataclysm x 0.82-0.93 / 0.60-0.73, **Soul Swarm x 0.36-0.48 / 0.22-0.32** (the outlier: its shards fly 8 tiles and
+  steer, so they are a ranged weapon for the sword player, and the bot takes 3-7 hits instead of 12-17), Cataclysm +
+  Chain Reaction x 0.69-0.82 / 0.52-0.64. **Fire Arrows** (3 picks, no evolution needed) is the strongest bow build per
+  pick: x 0.46 / 0.39 with 37-40 % of the kills by embers; it does nothing for the sword. Storm Blade x 0.58-0.86 with
+  either weapon (part of it Swift Strikes I). Effects make 10-63 % (sword) and 2-78 % (bow) of a room's kills at f6 /
+  f11.
+- **Bosses are capped, not built.** Mother Bramble's 6 damage / s cap (her own data, older than builds; the Demon Lord's
+  is the same 6) binds the sword already: 98 / 147 / 219 s with every build (only Storm Blade, through Swift Strikes,
+  shaves 1-2 %). The bow (5 dps flat out) gains 3-11 % from on-kill boons (only her adds proc: 11-25 procs a fight) and
+  19-26 % from Fire Arrows and Storm Blade (Swift Strikes I lifts the stream to 6.25 dps, over the cap), ending 4-7 %
+  above the cap's floor. No build can shorten her below hp / 6, so at Depth 3 every Mother Bramble fight lasts over 3.4
+  minutes.
+- **Pool: the BU3 budgets hold with room to spare.** No weapon shot dropped in any run. One player's effects hit
+  `EFFECT_BULLETS_MAX` 160 only with the sword's full on-kill build in the 15-enemy floor-19 room (221 effect bullets
+  refused in 40 s). The most player bullets ever alive: 221 of 512 (party 4, Fire Arrows + Thrill Seeker, floor 6), far
+  below the 384 effects may take in a party of 4 (512 - 4 x 32). A player's own weapon bullets peaked at 24 (Fire Arrows
+  with Flurry's triples) of the 32 reserved. Enemy bullets peaked at 105 of 2048.
+- **Evolutions are easy, duos are rare.** The upgrade pity puts an upgrade card in every full draft of a player who owns
+  an upgradable boon, so a greedy player evolves in every run by floor 6 (1.8 evolutions; 3.4 by floor 11) and even a
+  random picker has 2.3 by floor 11; the pity itself fires in only 2.5-5 % of drafts. Duos: 9-10 % of runs by floor 6,
+  45-46 % by floor 11, **0.5 per run** for greedy and random players, against the plan's "1-3 duos" (the plan's 2-3
+  evolutions are met or beaten). Only a player who chases partners gets there (duo-seeking: 94 %, 1.5 per run). The boss
+  draft's guarantee rarely has anything to guarantee (8-24 % at floor 5, 18-33 % at floor 10). No `BuildRules` number
+  moves duos by more than about 4 points: the bottleneck is owning both boons of a pair (`duoPercent` only acts once a duo is
+  available), while `upgradePercent` mostly moves how often the pity fires (25: in 49-71 % of runs; 45: 12-20 %).
+
+**Recommendations (owner calls; nothing changed here).**
+
+1. **Duos: make partners findable** (the one number the measurements say is off). Options, in order of reach: (a) a
+   partner bias in the new-card pick: an unowned boon that completes a duo with an owned boon weighs x2-x3 within its
+   rarity (a rule change in `drawCardOffers`; every builds run's offers draw differently); (b) the boss double draft's
+   guarantee falls back to such a partner card when no duo is available (boss floors only); (c) accept duos as the reward
+   for playing toward them (duo-seeking already reaches 94 %). Suggested: (b), then (a) at x2, re-measured with
+   `buildsOffers.spec.ts` (target: >= 1 duo in ~75 % of greedy / random runs by floor 11). Raising `duoPercent` alone
+   does nothing.
+2. **Upgrade odds: no change** (`upgradePercent` 35, `evolutionWeight` 2, pity after 3 cards). Evolutions already land by
+   floor 6 for a player who wants them; `evolutionWeight` barely matters (+-0.1 evolutions for a random picker).
+3. **Soul Swarm: watch, no change yet.** It is the room outlier (x 0.22-0.48; the next level-III build x 0.35-0.93), which
+   is the "feels broken" moment the plan wants. If BU14's play says it dominates: 4 -> 3 shards at III
+   (`SOUL_SHARD_SPECS[2]` count) or a lower `SOUL_SWARM_TURN`.
+4. **Fire Arrows: keep** (the owner's example duo); the lever if bows converge on it is `FIRE_ARROWS_EMBERS_MAX` 4 -> 3.
+5. **Budgets: keep** `EFFECT_BULLETS_MAX` 160, `effectWeaponReserve` 32, `PROCS_PER_TICK` 24, `GEN_MAX` 3 (no weapon shot
+   dropped, own fire peaks at 24, the queue never carries more than 7).
+6. **Boss cap (not a builds number, flagged).** Builds cannot speed up a boss beyond `damageCapPerSecond` 6, and Depth
+   scales boss hp but not the cap, so Mother Bramble takes >= 90 / 135 / 202.5 s at Depth 1 / 2 / 3. If deep boss fights
+   should stay near today's floor-5 length and reward builds, scale the cap with `depthHpMultiplier` (both bosses; an
+   endless replay change). Otherwise accept: the boss is the build-proof test.
+
+**Not measured.** Real floor geometry (walls and pillars stop effect bullets; the arenas are the pool's worst case and an
+optimistic case for TTK: the bow bot could not clear a dense real room in 40 s, so every run here is an arena), party
+TTK (the pool runs are a party of 4, but no party TTK table), the Demon Lord (same cap, so the same boss reading is
+expected), relics, curses and boosts, human play (no dodging or charged shots; god mode), and real run length (the offer
+statistics assume a run reaches floor 11). The offer simulation draws from its own rng per run, not interleaved with a
+real run's combat draws (same rules and generator, different sequences).
 
 ## Player experience
 

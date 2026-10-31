@@ -1,0 +1,268 @@
+/**
+ * Test support for specs (never imported by the game): docs/BUILDS.md BU13's offer statistics. Simulated drafts on the
+ * real offer function (sim/builds drawCardOffers with BUILD_RULES), one player, outside the sim: each simulated run
+ * keeps its own levels / duos and its own Rng (seeded from the run index, so the draws are not the ones a real run
+ * would interleave with combat, but they come from the same generator and the same rules). Measurements only.
+ *
+ * A run: after each floor cleared 1..lastFloor one draft, two after a boss floor (BUILD_RULES.bossFloorDrafts; the first
+ * deal guarantees a duo when one is available, as openDraft passes `deals > 1`), the pick applied as grantCard would
+ * (a boon card raises its level, a duo card is taken). "By floor N" = after the drafts of floors 1..N-1: the build a
+ * player walks onto floor N with (floor 6: 6 picks, floor 11: 12).
+ *
+ * Policies: "greedy" takes an evolution if offered, else a duo, else an upgrade, else the first card; "random" takes a
+ * uniformly random card (its own Rng, so the offers' draws do not depend on the policy's); "duo-seeking" takes an
+ * evolution, else a duo, else a new boon that completes a duo with a boon already owned, else an upgrade, else the first
+ * card (a player who plays for duos).
+ *
+ * Upgrade pity: a draft's offers are drawn twice from the same rng state, once with the real rules and once with the
+ * pity off (upgradePityCards = huge); both draw the same cards up to the pity step, so the pity fired exactly when the
+ * player had an upgradable boon, the pity-off draft has at least upgradePityCards cards and none of them is an upgrade
+ * (the real draft then differs in its last card only, which is checked).
+ */
+import { isBossFloor } from "shared/dungeon";
+import {
+	BOON_COUNT,
+	BOON_MAX_LEVEL,
+	BUILD_RULES,
+	CardKind,
+	DUOS,
+	DUO_COUNT,
+	Rng,
+	boonMaxLevel,
+	cardBoon,
+	cardDuo,
+	drawCardOffers,
+	duoAvailable,
+	rngInt,
+	type BuildRules,
+	type CardKindId,
+} from "shared/sim";
+
+export type PickPolicy = "greedy" | "random" | "duo-seeking";
+
+/** A card's kind for a player with `levels` (buildsData CardKind; -1 for no card). */
+export function offerKind(levels: ReadonlyArray<number>, card: number): CardKindId | -1 {
+	if (cardDuo(card) >= 0) return CardKind.DUO;
+	const b = cardBoon(card);
+	if (b < 0) return -1;
+	const level = levels[b] ?? 0;
+	return level <= 0 ? CardKind.NEW : level >= BOON_MAX_LEVEL - 1 ? CardKind.EVOLUTION : CardKind.UPGRADE;
+}
+
+/** True when `card` is a new boon whose duo partner (any duo, not yet available) is already owned. */
+export function completesDuo(levels: ReadonlyArray<number>, card: number): boolean {
+	const b = cardBoon(card);
+	if (b < 0 || (levels[b] ?? 0) > 0) return false;
+	for (const d of DUOS) {
+		if (d.a === b && (levels[d.b] ?? 0) > 0) return true;
+		if (d.b === b && (levels[d.a] ?? 0) > 0) return true;
+	}
+	return false;
+}
+
+/** The policy's pick among `offers` (an index). */
+export function pickOffer(
+	policy: PickPolicy,
+	levels: ReadonlyArray<number>,
+	offers: ReadonlyArray<number>,
+	rng: Rng,
+): number {
+	if (policy === "random") return rngInt(rng, 0, offers.size() - 1);
+	for (const want of [CardKind.EVOLUTION, CardKind.DUO]) {
+		for (let i = 0; i < offers.size(); i++) if (offerKind(levels, offers[i]) === want) return i;
+	}
+	if (policy === "duo-seeking") {
+		for (let i = 0; i < offers.size(); i++) if (completesDuo(levels, offers[i])) return i;
+	}
+	for (let i = 0; i < offers.size(); i++) if (offerKind(levels, offers[i]) === CardKind.UPGRADE) return i;
+	return 0;
+}
+
+/** One checkpoint's tallies over every run ("by floor N"). */
+export interface OfferCheckpoint {
+	readonly floor: number;
+	runs: number;
+	runsWithEvolution: number;
+	runsWithDuo: number;
+	evolutions: number;
+	duos: number;
+	/** Distinct boons owned, and boon levels owned (sum of levels). */
+	boons: number;
+	levels: number;
+	/** Drafts dealt so far, and how many of them had the pity fire; runs where it fired at least once. */
+	drafts: number;
+	pityDrafts: number;
+	runsWithPity: number;
+	/** Drafts that offered at least one evolution / at least one duo card. */
+	draftsOfferingEvolution: number;
+	draftsOfferingDuo: number;
+}
+
+/** Per boss floor (5, 10, ...): how often the double draft's first deal had a duo to guarantee. */
+export interface BossDuoTally {
+	readonly floor: number;
+	deals: number;
+	available: number;
+}
+
+export interface OfferStats {
+	readonly policy: PickPolicy;
+	readonly checkpoints: OfferCheckpoint[];
+	readonly bossDuo: BossDuoTally[];
+	/** Picks by kind over the whole simulation (CardKind order: new, upgrade, evolution, duo). */
+	readonly picks: number[];
+}
+
+/** The run index's offer seed and policy seed (two streams). */
+const OFFER_SEED_MUL = 0x9e3779b1;
+const POLICY_SEED_SALT = 0x5bd1e995;
+
+function countEvolved(levels: ReadonlyArray<number>): number {
+	let n = 0;
+	for (let b = 0; b < BOON_COUNT; b++) if (boonMaxLevel(b) === BOON_MAX_LEVEL && levels[b] === BOON_MAX_LEVEL) n++;
+	return n;
+}
+
+/**
+ * `runs` simulated runs with `policy`, tallied "by floor N" for each N in `checkpoints` (ascending; the last one sets
+ * how far a run goes: its drafts are those of floors 1 .. N - 1). `rules`: BUILD_RULES unless a spec compares.
+ */
+export function simulateOffers(
+	policy: PickPolicy,
+	runs: number,
+	checkpoints: ReadonlyArray<number>,
+	rules: Readonly<BuildRules> = BUILD_RULES,
+): OfferStats {
+	const noPity: BuildRules = { ...rules, upgradePityCards: math.huge };
+	const tallies: OfferCheckpoint[] = checkpoints.map((floor) => ({
+		floor,
+		runs: 0,
+		runsWithEvolution: 0,
+		runsWithDuo: 0,
+		evolutions: 0,
+		duos: 0,
+		boons: 0,
+		levels: 0,
+		drafts: 0,
+		pityDrafts: 0,
+		runsWithPity: 0,
+		draftsOfferingEvolution: 0,
+		draftsOfferingDuo: 0,
+	}));
+	const bossDuo: BossDuoTally[] = [];
+	const lastFloor = checkpoints[checkpoints.size() - 1] - 1;
+	for (let f = 1; f <= lastFloor; f++) if (isBossFloor(f)) bossDuo.push({ floor: f, deals: 0, available: 0 });
+	const picks = [0, 0, 0, 0];
+	for (let run = 1; run <= runs; run++) {
+		const rng = new Rng(run * OFFER_SEED_MUL);
+		const policyRng = new Rng(bit32.bxor(run, POLICY_SEED_SALT));
+		const levels: number[] = [];
+		for (let b = 0; b < BOON_COUNT; b++) levels.push(0);
+		const duos: number[] = [];
+		let drafts = 0;
+		let pityDrafts = 0;
+		let offeredEvo = 0;
+		let offeredDuo = 0;
+		let checkpoint = 0;
+		for (let floorCleared = 1; floorCleared <= lastFloor; floorCleared++) {
+			const boss = isBossFloor(floorCleared);
+			const deals = boss ? rules.bossFloorDrafts : rules.floorDrafts;
+			for (let d = 0; d < deals; d++) {
+				const guarantee = boss && d === 0;
+				if (guarantee) {
+					let any = false;
+					for (let k = 0; k < DUO_COUNT; k++) if (duoAvailable(levels, duos, k)) any = true;
+					for (const t of bossDuo) {
+						if (t.floor !== floorCleared) continue;
+						t.deals++;
+						if (any) t.available++;
+					}
+				}
+				let upgradable = false;
+				for (let b = 0; b < BOON_COUNT; b++)
+					if (levels[b] > 0 && levels[b] < boonMaxLevel(b)) upgradable = true;
+				const probe = drawCardOffers({ rngState: rng.rngState }, noPity, levels, duos, floorCleared, guarantee);
+				const offers = drawCardOffers(rng, rules, levels, duos, floorCleared, guarantee);
+				if (offers.size() === 0) continue;
+				drafts++;
+				const probeHasUpgrade = probe.some((c) => {
+					const k = offerKind(levels, c);
+					return k === CardKind.UPGRADE || k === CardKind.EVOLUTION;
+				});
+				const pity = upgradable && !probeHasUpgrade && probe.size() >= rules.upgradePityCards;
+				for (let i = 0; i < offers.size() - 1; i++) {
+					if (offers[i] !== probe[i])
+						error("simulateOffers: the pity-off draft differs before its last card", 0);
+				}
+				if (pity) pityDrafts++;
+				if (offers.some((c) => offerKind(levels, c) === CardKind.EVOLUTION)) offeredEvo++;
+				if (offers.some((c) => offerKind(levels, c) === CardKind.DUO)) offeredDuo++;
+				const card = offers[pickOffer(policy, levels, offers, policyRng)];
+				const kind = offerKind(levels, card);
+				picks[kind]++;
+				const duo = cardDuo(card);
+				if (duo >= 0) duos.push(duo);
+				else levels[cardBoon(card)]++;
+			}
+			// Checkpoint "by floor floorCleared + 1".
+			while (checkpoint < tallies.size() && tallies[checkpoint].floor === floorCleared + 1) {
+				const t = tallies[checkpoint];
+				const evo = countEvolved(levels);
+				t.runs++;
+				if (evo > 0) t.runsWithEvolution++;
+				if (duos.size() > 0) t.runsWithDuo++;
+				t.evolutions += evo;
+				t.duos += duos.size();
+				for (let b = 0; b < BOON_COUNT; b++) {
+					if (levels[b] > 0) t.boons++;
+					t.levels += levels[b];
+				}
+				t.drafts += drafts;
+				t.pityDrafts += pityDrafts;
+				if (pityDrafts > 0) t.runsWithPity++;
+				t.draftsOfferingEvolution += offeredEvo;
+				t.draftsOfferingDuo += offeredDuo;
+				checkpoint++;
+			}
+		}
+	}
+	return { policy, checkpoints: tallies, bossDuo, picks };
+}
+
+const pct = (a: number, b: number) => (b > 0 ? string.format("%.1f%%", (100 * a) / b) : "-");
+const mean = (a: number, b: number) => (b > 0 ? string.format("%.2f", a / b) : "-");
+
+export function offerHeader(): string {
+	return (
+		"| policy | by floor | runs with >= 1 evolution | runs with >= 1 duo | mean evolutions | mean duos | " +
+		"mean boons / levels | drafts offering an evolution / a duo | pity: drafts / runs |"
+	);
+}
+
+export function formatOfferRow(policy: PickPolicy, t: OfferCheckpoint): string {
+	return (
+		`| ${policy} | ${t.floor} | ${pct(t.runsWithEvolution, t.runs)} | ${pct(t.runsWithDuo, t.runs)} | ` +
+		`${mean(t.evolutions, t.runs)} | ${mean(t.duos, t.runs)} | ${mean(t.boons, t.runs)} / ${mean(
+			t.levels,
+			t.runs,
+		)} | ` +
+		`${pct(t.draftsOfferingEvolution, t.drafts)} / ${pct(t.draftsOfferingDuo, t.drafts)} | ` +
+		`${pct(t.pityDrafts, t.drafts)} / ${pct(t.runsWithPity, t.runs)} |`
+	);
+}
+
+export function formatBossDuo(policy: PickPolicy, stats: OfferStats): string {
+	return stats.bossDuo
+		.map((t) => `${policy} floor ${t.floor}: guaranteed duo available ${pct(t.available, t.deals)}`)
+		.join("; ");
+}
+
+export function formatPicks(policy: PickPolicy, stats: OfferStats): string {
+	const total = stats.picks.reduce((a, b) => a + b, 0);
+	return (
+		`${policy} picks: new ${pct(stats.picks[CardKind.NEW], total)}, upgrade ${pct(
+			stats.picks[CardKind.UPGRADE],
+			total,
+		)}, ` + `evolution ${pct(stats.picks[CardKind.EVOLUTION], total)}, duo ${pct(stats.picks[CardKind.DUO], total)}`
+	);
+}
