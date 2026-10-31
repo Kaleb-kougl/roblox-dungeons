@@ -1,12 +1,12 @@
 import React from "@rbxts/react";
 import { useSelector } from "@rbxts/react-reflex";
 import { selectSnapshot } from "client/store";
-import { str } from "client/ui/theme";
-import { HUD_STRINGS, HUD_VIEW } from "shared/view/hud";
+import { str, themePack } from "client/ui/theme";
+import { HUD_SKIN, HUD_STRINGS, HUD_VIEW } from "shared/view/hud";
 import { ComboMeter } from "./ComboMeter";
 import { ComboRow } from "./ComboRow";
 import { ROOM_CLEAR_UI } from "./roomClearBindings";
-import { Panel, Text } from "./primitives";
+import { ArtImage, Panel, Row, Text } from "./primitives";
 import { HighlightRing } from "./TutorialFx";
 
 /**
@@ -21,12 +21,16 @@ import { HighlightRing } from "./TutorialFx";
  * the tier slot and the multiplier) and row 4 the combo meter (ComboMeter), both drawn per frame from COMBO_UI
  * bindings that ComboController writes (the fill drains smoothly, not at the snapshot's 10 Hz); the rest reads the
  * ~10 Hz snapshot, and an unscored run still shows no panel.
+ *
+ * With the UI art (docs/UI_ART.md UA11) the score number has the coin (ui.icon.coin, fitted into HUD_SKIN.coinBox) on
+ * its left: the two in a right-aligned Row, the number sized to its text; without the coin, the full-width line.
  */
 export function ScorePanel(props: { readonly highlight?: boolean }) {
 	const s = useSelector(selectSnapshot);
 	if (!s.scoring) return undefined;
 	const width = HUD_VIEW.scoreWidth;
 	const inner = width - HUD_VIEW.pad * 2;
+	const coin = themePack()?.image(HUD_SKIN.ids.coin) !== undefined;
 	return (
 		<Panel
 			corner="topRight"
@@ -43,13 +47,25 @@ export function ScorePanel(props: { readonly highlight?: boolean }) {
 				align={Enum.TextXAlignment.Right}
 				text={str(HUD_STRINGS.score)}
 			/>
-			<Text
-				fill={true}
-				order={2}
-				size={HUD_VIEW.bigText}
-				align={Enum.TextXAlignment.Right}
-				text={ROOM_CLEAR_UI.scoreText.binding}
-			/>
+			{coin ? (
+				<Row order={2} align={Enum.HorizontalAlignment.Right}>
+					<ArtImage id={HUD_SKIN.ids.coin} order={1} box={{ w: HUD_SKIN.coinBox, h: HUD_SKIN.coinBox }} />
+					<Text
+						order={2}
+						size={HUD_VIEW.bigText}
+						align={Enum.TextXAlignment.Right}
+						text={ROOM_CLEAR_UI.scoreText.binding}
+					/>
+				</Row>
+			) : (
+				<Text
+					fill={true}
+					order={2}
+					size={HUD_VIEW.bigText}
+					align={Enum.TextXAlignment.Right}
+					text={ROOM_CLEAR_UI.scoreText.binding}
+				/>
+			)}
 			<ComboRow order={3} width={inner} />
 			<ComboMeter order={4} width={inner} />
 			{s.floor > 0 ? (

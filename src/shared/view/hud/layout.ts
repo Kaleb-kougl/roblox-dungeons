@@ -49,8 +49,12 @@ export const HUD_VIEW = {
 	smallText: 16,
 	bigText: 36,
 	titleText: 24,
-	/** Hearts, pips, weapon slots (docs/HUD_LAYOUT.md H5: compact slots, 132 x 40 / text 20 before). */
-	heartSize: 22,
+	/**
+	 * Hearts, pips, weapon slots (docs/HUD_LAYOUT.md H5: compact slots, 132 x 40 / text 20 before). The heart box went
+	 * 22 -> 24 with the UI art (docs/UI_ART.md UA10, UAD7): an 18 x 15 art heart fits it at 2 screen px per art px at
+	 * 1080 p; 24 is a label line's height, so no status row grows (statusEstimate unchanged).
+	 */
+	heartSize: 24,
 	pipSize: 12,
 	weaponSlotSize: { x: 108, y: 30 },
 	weaponTextSize: 16,
@@ -58,9 +62,13 @@ export const HUD_VIEW = {
 	weaponInactiveTransparency: 0.7,
 	/** StatusPanel: the HP / Flask / Ember labels' column width (docs/HUD_LAYOUT.md H4, HD8: the words stay). */
 	statusLabelWidth: 86,
-	/** Boss bar. */
+	/**
+	 * Boss bar. Its bar went 12 -> 16 with the UI art (docs/UI_ART.md UA11): the ui.bar pill is 16 art px tall, so 16 is
+	 * the smallest row it fits at a whole screen px per art px at 720 p (shared/view/hud hudSkin pillFit); the flat bar
+	 * takes the same row, so both looks lay out alike (HUD_TRANSIENT.bossBar, the touch tutorial prompt under it).
+	 */
 	bossWidth: 520,
-	bossBarHeight: 12,
+	bossBarHeight: 16,
 	bossNotchWidth: 2,
 	/** Panels. */
 	panelTransparency: 0.25,

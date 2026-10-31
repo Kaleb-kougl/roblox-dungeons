@@ -1,23 +1,43 @@
 import React from "@rbxts/react";
 import { useSelector } from "@rbxts/react-reflex";
 import { selectBindings, selectInputDevice, selectMapView, selectRunInfo, selectSnapshot } from "client/store";
-import { role, str } from "client/ui/theme";
+import { role, str, themePack } from "client/ui/theme";
 import { mapHint, keyDevice } from "shared/play";
-import { HUD_STRINGS, HUD_VIEW, TOUCH_STRINGS } from "shared/view/hud";
+import {
+	HUD_SKIN,
+	HUD_STRINGS,
+	HUD_VIEW,
+	TOUCH_STRINGS,
+	skinFor,
+	skinHasOf,
+	sliceBorder,
+	snappedSliceScale,
+} from "shared/view/hud";
 import { MINIMAP_VIEW } from "shared/view/minimap";
 import { useHudActions } from "./actions";
 import { minimapHostRef, type MinimapHost } from "./minimapHosts";
-import { Panel, Text } from "./primitives";
+import { Panel, SlicedImage, Text } from "./primitives";
+import { useHudScale } from "./useHudScale";
 
 const HALF = 0.5;
 const HIDDEN = 1;
+/** The frame art under the map layer (MinimapController's root sits at the default ZIndex 1). */
+const FRAME_Z = 0;
 
 /**
  * The full map's host (docs/MINIMAP.md M9): an empty frame with the map backdrop (uiPanel at
  * MINIMAP_VIEW.fullMap.transparency) that MinimapController fills (the shared EditableImage in a second ImageLabel,
- * fitted to this frame, turned like the corner map, markers on top).
+ * fitted to this frame, turned like the corner map, markers on top). With the in-run frame art (docs/UI_ART.md UA11)
+ * the backdrop is the hud panel skin instead (snapped, at the same transparency), grown outward by its border so the
+ * frame rings the map and the map image (fitted to the host) never covers it; without the art, the flat backdrop.
  */
 function MapHost(props: { host: MinimapHost; position: UDim2; anchor: Vector2; size: UDim2 }) {
+	const uiScale = useHudScale();
+	const pack = themePack();
+	const skinId = pack !== undefined ? skinFor(skinHasOf(pack), "panel", "hud") : undefined;
+	const slice = skinId !== undefined ? pack?.image(skinId)?.slice : undefined;
+	const sliceScale = snappedSliceScale(uiScale, HUD_SKIN.fullMapRefPerArt);
+	const border = sliceBorder(slice, sliceScale);
 	return (
 		<frame
 			key="MapHost"
@@ -26,9 +46,22 @@ function MapHost(props: { host: MinimapHost; position: UDim2; anchor: Vector2; s
 			AnchorPoint={props.anchor}
 			Size={props.size}
 			BackgroundColor3={role("uiPanel")}
-			BackgroundTransparency={MINIMAP_VIEW.fullMap.transparency}
+			BackgroundTransparency={skinId !== undefined ? HIDDEN : MINIMAP_VIEW.fullMap.transparency}
 			BorderSizePixel={0}
-		/>
+		>
+			{skinId !== undefined ? (
+				<SlicedImage
+					key="Frame"
+					name="Frame"
+					id={skinId}
+					sliceScale={sliceScale}
+					position={new UDim2(0, -border.left, 0, -border.top)}
+					size={new UDim2(1, border.left + border.right, 1, border.top + border.bottom)}
+					transparency={MINIMAP_VIEW.fullMap.transparency}
+					zIndex={FRAME_Z}
+				/>
+			) : undefined}
+		</frame>
 	);
 }
 
