@@ -45,7 +45,7 @@ Record every ported module in `PROVENANCE.md` (ported module, source path, sourc
 | `docs/DRAFT_REVEAL.md` | Boon draft reveal (cards deal face down and flip one by one, a rare chime, a legendary beat: charge, hush, flare and halo; a pick stamp; skip by pressing; the client holds the confirm until settled; cards in the ToffeeCraft Horror UI sheet's style; presentation and client input only): plan, tasks DR0-DR9, decisions DRD1-DRD12 |
 | `docs/ENEMY_VARIANTS.md` | Enemy variants (three new endless archetypes: Imp flanker, Ooze zone-denier that splits, Summoner support; elite affixes Hulking / Swift / Shielded / Vengeful; both unlock by depth): plan, tasks EV0-EV14, decisions EVD1-EVD12 |
 | `docs/GRAZE_PARRY.md` | Grazes and parries (graze spark + shimmer climbing in pitch, parry sparks / ring-out / PARRY! floor flash / solo 30 ms freeze for a guard that erases bullets; one unhashed ScoreEvents feed, otherwise presentation only): plan, tasks GP0-GP10, decisions GPD1-GPD10 |
-| `docs/UI_ART.md` | UI art (the dark red pixel UI sheet: 9-sliced panels / buttons, hearts, potions, pills, icons, focus brackets; menus, then the in-run HUD, then touch; presentation only): builds on the Draft reveal branch (`slice`, `SlicedImage`): plan, tasks UA0-UA15, decisions UAD1-UAD10 |
+| `docs/UI_ART.md` | UI art (the dark red pixel UI sheet: 9-sliced panels / buttons, hearts, potions, pills, icons, focus brackets; menus, then the in-run HUD, then touch; presentation only): builds on the Draft reveal (`slice`, `SlicedImage`): plan, as built, tasks UA0-UA15, decisions UAD1-UAD10 |
 
 Decision log (deviations from `PLAN.md`):
 - **Art (docs/ART.md).** The theme contract gained a `"sprites"` kind (large pre-rendered cells, 1/4/8/16 screen-space
