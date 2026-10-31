@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "@rbxts/react";
-import { Players, RunService, Workspace } from "@rbxts/services";
+import { RunService, Workspace } from "@rbxts/services";
 import { str } from "client/ui/theme";
 import { dailyDay } from "shared/daily";
 import { dailyCountdownLine, dailySecondsLeft, dailyText } from "shared/view/hud";
@@ -45,59 +45,4 @@ export function useDailyClock(resetsAt: number | undefined): DailyClock {
 		return () => conn.Disconnect();
 	}, [resetsAt]);
 	return { today, countdown };
-}
-
-// --- headshots ---------------------------------------------------------------------------------
-
-/** Fetched headshot content ids per UserId (a failed fetch is cached as "" and never retried this session). */
-const headshots = new Map<number, string>();
-const fetching = new Set<number>();
-const waiting = new Map<number, Set<(id: string) => void>>();
-
-function fetchHeadshot(userId: number): void {
-	if (fetching.has(userId)) return;
-	fetching.add(userId);
-	task.spawn(() => {
-		const [ok, content] = pcall(() => {
-			const [id] = Players.GetUserThumbnailAsync(
-				userId,
-				Enum.ThumbnailType.HeadShot,
-				Enum.ThumbnailSize.Size48x48,
-			);
-			return id;
-		});
-		const id = ok && typeIs(content, "string") ? content : "";
-		headshots.set(userId, id);
-		fetching.delete(userId);
-		const listeners = waiting.get(userId);
-		waiting.delete(userId);
-		if (listeners !== undefined) for (const f of listeners) f(id);
-	});
-}
-
-/**
- * A player's Roblox headshot (Players:GetUserThumbnailAsync, fetched once per session and cached; docs/DAILY.md DS9
- * yesterday's podium): the content id once fetched, undefined while loading or when it failed (draw a placeholder).
- * Test / Studio players (UserId <= 0) have none.
- */
-export function useHeadshot(userId: number): string | undefined {
-	const [id, setId] = useState<string | undefined>(() => headshots.get(userId));
-	useEffect(() => {
-		const known = headshots.get(userId);
-		if (known !== undefined) {
-			setId(known);
-			return;
-		}
-		setId(undefined);
-		if (userId <= 0) return;
-		const listener = (got: string) => setId(got);
-		const set = waiting.get(userId) ?? new Set();
-		set.add(listener);
-		waiting.set(userId, set);
-		fetchHeadshot(userId);
-		return () => {
-			waiting.get(userId)?.delete(listener);
-		};
-	}, [userId]);
-	return id !== undefined && id !== "" ? id : undefined;
 }

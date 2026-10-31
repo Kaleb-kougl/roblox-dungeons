@@ -6,7 +6,7 @@
  * rule (MinimapPanel cornerMapShown) for MinimapController (docs/MINIMAP.md M8); the combo row and meter's bindings
  * (comboUi COMBO_UI) for ComboController (docs/COMBO.md CB6 / CB7); the draft reveal's bindings (draftUi DRAFT_UI) for
  * DraftRevealController (docs/DRAFT_REVEAL.md DR5 / DR6); the new-best bindings (newBestUi NEW_BEST_UI) for
- * NewBestController (docs/NEW_BEST.md NB6 / NB7); the Daily's clock and headshot hooks (dailyHooks) for the menu's
+ * NewBestController (docs/NEW_BEST.md NB6 / NB7); the Daily's clock hook (dailyHooks)  for the menu's
  * Daily card and podium (docs/DAILY.md DS9), the run-over daily block (DailyResultBlock, DS11) and the headshot
  * cache (headshots) for DailyRankController (DS10).
  */

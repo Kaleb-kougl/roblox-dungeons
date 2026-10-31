@@ -3,7 +3,7 @@ import { Players } from "@rbxts/services";
 
 /**
  * Player headshots for the Daily's rank layer (docs/DAILY.md DS10): the friend toasts (ToastPanel) and the run-over row
- * of friends passed (DailyPassedRow). One session cache per user id; `Players:GetUserThumbnailAsync` (HeadShot 48x48)
+ * of friends passed (DailyPassedRow), and yesterday's podium on the menu (DailyCard, DS9). One session cache per user id; `Players:GetUserThumbnailAsync` (HeadShot 48x48)
  * yields, so it runs on its own thread, once per id (a failure is cached as "" and never retried this session: the UI
  * then shows the name alone). DailyRankController prefetches the nearest friends at a daily run's start.
  */
@@ -20,6 +20,12 @@ export function fetchHeadshot(userId: number, done?: (image: string) => void): v
 	const known = cache.get(userId);
 	if (known !== undefined) {
 		done?.(known);
+		return;
+	}
+	if (userId <= 0) {
+		// Test / Studio players (UserId <= 0) have no headshot.
+		cache.set(userId, "");
+		done?.("");
 		return;
 	}
 	const queue = waiting.get(userId);
