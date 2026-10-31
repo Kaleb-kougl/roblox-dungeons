@@ -161,17 +161,22 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		"affix.shielded": "#00a0f0",
 		"affix.vengeful": "#9070f0",
 		enemyShield: "#d8ecff",
-		// Roblox port (docs/BUILDS.md BU1, placeholder values; BU7 picks the final ones): the evolution card's pale gold
-		// (41 CIE76 above boon.legendary) and the duo card's ice blue, both far above 3:1 on uiPanel; then the effect
-		// colours, each >= 47 CIE76 from the enemy bullet, its outline, the telegraph, goo, the outline red and every boost
-		// colour (nearest: aqua quickstep / lavender aegis) and >= 5.8:1 on every biome floor (buildReport). The palette
-		// near danger is crowded: no warm orange or violet passes, so burst is a cream, shard an ice white, ember a peach.
+		// Roblox port (docs/BUILDS.md BU1 / BU7): the evolution card's pale gold (41 CIE76 above boon.legendary) and the duo
+		// card's ice blue, both far above 3:1 on uiPanel; then the effect colours (BU7, final; vale clones them): light and
+		// warm where the danger palette leaves room, so an effect reads as the player's next to the pink bullets, the
+		// telegraph orange and the goo magenta. Spark an electric sky blue (lightning, brighter than the steel player bolt),
+		// burst a warm apricot (the plan's "orange bolts": a saturated orange sits within 40 of the telegraph and the Fury
+		// gold), shard a violet-white (its "pale violet": anything more violet falls within 40 of the Aegis lavender),
+		// ember a lemon cream (a flame on the floor). Each is >= 44.4 CIE76 from the enemy bullet, its outline, the
+		// telegraph, goo, the outline red and every boost colour (nearest: spark vs quickstep / aegis 44.4, burst vs
+		// telegraph 44.7, shard vs aegis 44.8, ember vs fury 44.5) and >= 8.9:1 on every biome floor and vale's textured
+		// floor (buildReport, every pair printed by theme/builds.spec.ts); the four are >= 25 CIE76 from each other.
 		"boon.evolved": "#fff1b8",
 		"boon.duo": "#7fe0ff",
-		"build.spark": "#20b0e0",
-		"build.burst": "#fff2d0",
-		"build.shard": "#e8f0ff",
-		"build.ember": "#f0d0c0",
+		"build.spark": "#88d4fc",
+		"build.burst": "#f8c8a0",
+		"build.shard": "#f4e8f8",
+		"build.ember": "#f4f4b0",
 	},
 	biomes: {
 		"biome.1": {
