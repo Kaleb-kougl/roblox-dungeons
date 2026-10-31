@@ -17,6 +17,15 @@ export interface DailyConfig {
 	readonly ruleset: number;
 	/** Shown number = day + this (day 0, 2026-01-01, is Daily #1; 2026-10-31 is Daily #304). */
 	readonly labelOffset: number;
+	/**
+	 * Yesterday's board (rows, the caller's entry, its histogram) is cached this long per server (DS5 / DS8): it stops
+	 * changing once the day is over (only runs started before midnight still post to it).
+	 */
+	readonly yesterdayCacheSeconds: number;
+	/** Fewer entrants than this: no percentile, only `#rank of total` when the rank is exact (DSD15). */
+	readonly minEntrantsForPercentile: number;
+	/** Rows on yesterday's podium (DS8). */
+	readonly podiumSize: number;
 }
 
 export const DAILY: DailyConfig = table.freeze({
@@ -24,6 +33,9 @@ export const DAILY: DailyConfig = table.freeze({
 	secondsPerDay: SECONDS_PER_DAY,
 	ruleset: 1,
 	labelOffset: 1,
+	yesterdayCacheSeconds: 600,
+	minEntrantsForPercentile: 20,
+	podiumSize: 3,
 });
 
 /**
@@ -63,4 +75,84 @@ export const DAILY_CLIENT = table.freeze({
 	staleRetrySeconds: 15,
 	/** No answer at all yet (join): ask again this often. */
 	unansweredRetrySeconds: 30,
+});
+
+/*
+ * DataStore budget (per server, per minute; Roblox: GetAsync 60 + 10 x players, Set / Update 60 + 10 x players,
+ * GetSortedAsync 5 + 2 x players; each key at most one write per 6 s). OrderedDataStore calls count against the same
+ * request types as regular DataStores (docs/DAILY.md DS0 confirms it on a published place). What the Daily adds:
+ *
+ *   writes   1 UpdateAsync per credited member of a finished daily run (the leaderboard write queue,
+ *            LEADERBOARD_WRITE_RATE: the same as an endless post) + at most 1 histogram UpdateAsync per active board
+ *            and scope per DAILY_HIST.flushSeconds (today solo / co-op; yesterday's around midnight): <= 3 a minute.
+ *   sorted   1 GetSortedAsync per board and scope per cache period: today 60 s, yesterday DAILY.yesterdayCacheSeconds.
+ *            Today solo + co-op + yesterday solo (the podium) <= 2.1 a minute.
+ *   reads    the caller's own entry: 1 GetAsync per player, board and scope per 60 s (yesterday 600 s), only when asked
+ *            (a view, the daily status); histogram: DAILY_HIST.shards GetAsync per board and scope per
+ *            DAILY_HIST.cacheSeconds (8 a minute per board read; yesterday's every 600 s); friends: at most
+ *            DAILY_FRIENDS.readsPerMinute GetAsync, shared by every player of the server.
+ *
+ * Every read is behind a cache (SharedTtlCache in LeaderboardService, the friends lookup cache).
+ */
+
+/** Score histogram per daily board (docs/DAILY.md "5. Percentile", shared/leaderboard histogram.ts). */
+export const DAILY_HIST = table.freeze({
+	/** Buckets per board (bucketOf: 0 below firstEdge, then 3 per doubling, the last one open-ended). */
+	buckets: 64,
+	/** Bucket 1 starts at 2^firstEdgeExponent (64); bucket 0 holds every lower score (0 included). */
+	firstEdgeExponent: 6,
+	/**
+	 * Edges inside one doubling [2^k, 2^(k+1)): 2^k x numerators[i] / denominators[i] = 1, 5/4, 8/5 (ratios 1.25, 1.28,
+	 * 1.25: log-uniform to within 3 %). Integer arithmetic (floor), so every server computes the same edges.
+	 */
+	edgeNumerators: [1, 5, 8] as ReadonlyArray<number>,
+	edgeDenominators: [1, 4, 5] as ReadonlyArray<number>,
+	/** Shard keys per board and scope (`<board>_<scope>_s<n>`): a server writes the one picked by its JobId. */
+	shards: 8,
+	/** A server flushes its buffered deltas this often (1 UpdateAsync per board and scope with deltas). */
+	flushSeconds: 60,
+	/** The summed shards (8 GetAsync) are cached this long per board and scope (yesterday: DAILY.yesterdayCacheSeconds). */
+	cacheSeconds: 60,
+	/** BindToClose: the histogram flush runs after the leaderboard flush, for at most this long. */
+	shutdownFlushSeconds: 5,
+	/** Stored shard document version (`{ v, c: counts[buckets] }`). */
+	version: 1,
+});
+
+/** Friends on the daily boards (docs/DAILY.md "6. Friends", DSD16; shared/leaderboard friends.ts). */
+export const DAILY_FRIENDS = table.freeze({
+	/** Friends looked up per player (Roblox's friends-list limit): in-server friends first, then list order. */
+	max: 200,
+	/**
+	 * Per-friend GetAsync reads on a day's ordered store, per server per minute (sliding window), shared by every
+	 * player: a player with 200 friends none of whom is in the top rows fills in over ~200 / this minutes the first
+	 * time, then from the cache. The lever if the budget is tight (with `max`).
+	 */
+	readsPerMinute: 30,
+	/** A looked-up friend's entry (or "no entry") is cached this long per (scope, userId), shared by the server. */
+	cacheSeconds: 300,
+	/** The lookup queue is pumped this often (seconds). */
+	pumpSeconds: 0.5,
+	/** While a player's friends view is filling in, an updated view is pushed at most this often (seconds). */
+	progressPushSeconds: 5,
+	/** A friends view keeps being pushed as it fills in for this long after the request (seconds). */
+	watchSeconds: 120,
+	/** The friends list (GetFriendsAsync, paged) is fetched once per player per session; retried after this on failure. */
+	listRetrySeconds: 60,
+	/** Studio only: Workspace attribute with UserIds standing in for the friends list (GetFriendsAsync fails there). */
+	fakeAttribute: "KV_FakeFriends",
+	/** KV_FakeFriends separator (spaces allowed around ids). */
+	fakeSeparator: ",",
+});
+
+/** The verdict of a daily run (RunFinishVerdict.daily). */
+export const DAILY_VERDICT = table.freeze({
+	/**
+	 * The verdict waits this long at most for the members' daily writes (they go through the leaderboard write queue,
+	 * usually within a second or two), so it can say improved / previous / rank. Past it: `posted: false` (the write
+	 * may still land; the next daily status shows it).
+	 */
+	waitSeconds: 15,
+	/** How often the waiting verdict checks its writes (seconds). */
+	pollSeconds: 0.25,
 });
