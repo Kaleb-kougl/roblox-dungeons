@@ -416,6 +416,17 @@ Decision log (deviations from `PLAN.md`):
   placeholder). Telemetry `daily_*` and an optional `daily` field in `KV_Records_v1` (still v1). Debug `KV_Daily`,
   `KV_DailyRankDebug`, Studio `KV_FakeFriends`. DS0 spike and Studio check pending.
 
+- **Tutorial analytics funnel (docs/TUTORIAL_FUNNEL.md).** Telemetry only (no sim, dungeon, lockstep, hash, replay or
+  fixture change). A once-per-user onboarding funnel (`LogOnboardingFunnelStepEvent`: Joined -> Loaded -> TutorialStarted
+  -> 16 lessons -> Completed, fresh players only, step 1 fields entry / revision) and the attempt funnel `TutorialAttempt`
+  (replaces `tutorial`; `started` = 1, completed = 18) plus custom events for lesson time / hits / stuck, skip,
+  abandon, restart, outro, gate and the new-player window (first 3 runs, return within 7 days). Pure core in
+  `shared/onboarding` (`PlayerTutorialTelemetry`, trackers, `read*` validators, `analyticsCatalog` budget spec) and
+  `shared/tutorial` `TutorialMetrics`; remote payloads `tutorialStarted(info)` / `tutorialFinished(info)`, new
+  `tutorialLesson` / `tutorialStuck` / `onboardingReport`; onboarding doc gains optional `firstDay` / `newRuns` /
+  `returned` (still v1). Per-session cap 3 logged attempts / 240 events. Debug `KV_AnalyticsDebug`. TF0 spike, Studio
+  checks and the dashboard (TF9) pending.
+
 ## Commands
 
 ```

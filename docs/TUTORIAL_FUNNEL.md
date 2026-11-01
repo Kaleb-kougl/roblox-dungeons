@@ -4,8 +4,8 @@ Goal: see **where new players drop out between joining and their first real run,
 they last finished, but how long each lesson took, where they got stuck, whether they quit the game or skipped, and
 whether finishing the tutorial makes them more likely to play a ranked run and come back.
 
-Work it task by task, like `PLAN.md`; each task ends with a **Verify**. Decisions TFD1-TFD10 are proposed defaults
-for the owner to confirm.
+Work it task by task, like `PLAN.md`; each task ends with a **Verify**. Decisions TFD1-TFD10 were accepted as
+proposed (Kaleb, 2026-11-01: "proceed implementing").
 
 **What changes where.** Telemetry only: no sim, dungeon, lockstep, hash, replay or fixture change. Server
 (OnboardingService, TelemetryService, two new hooks on run starts / accepted runs), pure shared code
@@ -14,7 +14,12 @@ fields join the onboarding doc (no version bump, like `seen`).
 
 ## Status (2026-11-01)
 
-**Plan only.** Nothing built. TF0 (published-place spike) gates the onboarding funnel call's exact signature.
+**Built headlessly** on branch `tutorial-funnel` (TF1-TF8, then an independent review and its fixes). Typecheck, lint,
+asset ids, the art specs, build and the full headless suite pass except the two specs that also fail on `main` in the
+cloud box (`forge.spec` `EncounterRng ... seedToState`: a NaN sign bit on x86_64 Linux, known since docs/DAILY.md;
+`sim/bench.spec`: a wall-clock budget on a loaded 2-core machine). **Not done:** TF0 (published-place spike: does
+`LogOnboardingFunnelStepEvent` take custom fields, do they filter), the Studio checks of TF5-TF7 (nothing on the server
+or client runs headlessly), and TF9 (dashboard). See "As built".
 
 ## What the code gives us today (read on `main` @ `62b5263`)
 
@@ -168,36 +173,72 @@ window.
   custom fields, do they filter, does the onboarding tab show; `View Events` shows each kind. Record in docs/SPIKES.md.
   -> Verify: one fresh alt account's events in View Events; the signature written down. If custom fields are refused,
   step 1's segmentation falls back to an `OnboardingEntry` custom event (TFD3 note).
-- [ ] **TF1. Event catalog.** `shared/onboarding` `analyticsCatalog.ts`: every funnel name, onboarding / attempt step
+- [x] **TF1. Event catalog.** `shared/onboarding` `analyticsCatalog.ts`: every funnel name, onboarding / attempt step
   list, custom event name and field value set, plus a registry of the existing run / lobby / invite / daily names.
   -> Verify: spec: <= 100 custom event names game-wide, <= 10 funnels, step names <= 32 chars and unique, every field
   value set bounded and the product of every event's sets <= 8,000, the tutorial bot's attempt <= 80 events.
-- [ ] **TF2. Doc fields.** `firstDay` / `newRuns` / `returned` in the onboarding codec. -> Verify: codec spec (old docs
+- [x] **TF2. Doc fields.** `firstDay` / `newRuns` / `returned` in the onboarding codec. -> Verify: codec spec (old docs
   decode, a malformed field decodes empty, round trip).
-- [ ] **TF3. Trackers (pure).** `OnboardingFunnelTracker` (open-while-not-done, step offsets, step-1 fields, once per
+- [x] **TF3. Trackers (pure).** `OnboardingFunnelTracker` (open-while-not-done, step offsets, step-1 fields, once per
   session for Joined / Loaded / gate) and `TutorialFunnelTracker` with entry / device / current step / per-step report
   dedupe, plus the event builders. -> Verify: specs: restart inside the first session, a leave and rejoin, a skip
   closes, a menu replay never logs onboarding steps, bypassed players stop at step 1, out-of-range payloads drop.
-- [ ] **TF4. TutorialMetrics.** Per-step seconds, hits, stuck clock in `shared/tutorial`. -> Verify: bot spec (in order
+- [x] **TF4. TutorialMetrics.** Per-step seconds, hits, stuck clock in `shared/tutorial`. -> Verify: bot spec (in order
   and out of order) pins every lesson's seconds and hits at fixed dt; a pause frame adds nothing; `guardLate` reports a
   `guardHold` stuck when held past the threshold.
-- [ ] **TF5. Server wiring.** Remotes, validation, `TUTORIAL_REPORT_RATE`, OnboardingService -> TelemetryService
+- [x] **TF5. Server wiring.** Remotes, validation, `TUTORIAL_REPORT_RATE`, OnboardingService -> TelemetryService
   (`logOnboarding` via `LogOnboardingFunnelStepEvent`, the attempt funnel rename), abandon on leave and `leaveTutorial`,
   Joined after the intent, docs/SERVER.md rows. -> Verify: `npm run verify`; Studio with `KV_AnalyticsDebug` (TF8)
   shows the expected sequence for a fresh player, a skip, a restart and a leave.
-- [ ] **TF6. Client wiring.** TutorialController sends entry / device / lesson / stuck / outro reports and the gate
+- [x] **TF6. Client wiring.** TutorialController sends entry / device / lesson / stuck / outro reports and the gate
   reason; LoadingController's release sends `loaded`. -> Verify: Studio, same four paths; nothing sent outside a
   tutorial except `loaded` / `gate`.
-- [ ] **TF7. New-player runs.** RunSessionService / RunValidationService hooks, the window, the two events and
+- [x] **TF7. New-player runs.** RunSessionService / RunValidationService hooks, the window, the two events and
   `NewPlayerReturned`. -> Verify: spec on the window rule (pure); Studio with `KV_ResetOnboarding`: three runs log
   1, 2, 3 and a fourth logs nothing.
-- [ ] **TF8. Debug echo.** Workspace `KV_AnalyticsDebug` (off by default): TelemetryService prints every spec it would
+- [x] **TF8. Debug echo.** Workspace `KV_AnalyticsDebug` (off by default): TelemetryService prints every spec it would
   send (Studio sends nothing). -> Verify: Output lists each event with fields.
 - [ ] **TF9. Dashboard and first read.** Publish, play 3-5 fresh accounts (keyboard, gamepad, phone), build the charts
   in "Questions this answers", write a "Reading the dashboard" section here (sample sizes, the 24 h delay, cohorting).
   -> Verify: every chart shows data.
 
 Critical path: TF0 -> TF3 -> TF5 -> TF6 -> TF9. TF1, TF2, TF4, TF8 run alongside.
+
+## As built (2026-11-01)
+
+Where the build differs from, or pins down, the design above:
+
+- **Names.** Tunables are `TUTORIAL_TELEMETRY` (`shared/onboarding` config; `TUTORIAL_FUNNEL` stays the attempt funnel's
+  name, now `"TutorialAttempt"`), event names `TUTORIAL_ANALYTICS_EVENT`, steps `ONBOARDING_FUNNEL` /
+  `TUTORIAL_ATTEMPT_FUNNEL_STEPS` (`started` 1, lessons n + 1, `completed` 18; onboarding `Joined` 1, `Loaded` 2,
+  `TutorialStarted` 3, lessons n + 3, `Completed` 20), revision `t1r1` (`tutorialFunnelRevision()`). The stuck threshold
+  is client side, `TUTORIAL.stuckSeconds` (20, shared/config), because shared/tutorial cannot import shared/onboarding.
+- **Pure layer** (all specced): `reports.ts` (payload types and `read*` validators), `funnel.ts`
+  (`TutorialFunnelTracker` + builders), `onboardingFunnel.ts` (`OnboardingFunnelTracker`), `newPlayer.ts`,
+  `playerTelemetry.ts` (`PlayerTutorialTelemetry`: the per-player orchestration OnboardingService feeds),
+  `analyticsCatalog.ts` (every funnel / event name in the game with its field sets: 36 custom event names of 100,
+  3 funnels of 10, 2153 field combinations of 8,000; counting rule in its header), `analyticsDebug.ts`.
+  `shared/tutorial` `metrics.ts` (`TutorialMetrics`, driven by the director; `TUTORIAL_PROMPT_IDS`, the one prompt list
+  the server validates against).
+- **Lesson clock.** A frame's dt and the harmless hits its ticks landed go to what the previous frame showed: the
+  current step and the prompt step (both, when they differ). Bot pins (fixed dt): in order 69.5 s over the 16 lessons,
+  the boss lesson 24.1 s / 26 hits; no stuck report (longest episode 17.8 s). A completion's `stepId` is always `none`
+  (the director clears it on the finish frame).
+- **Join entry.** InviteService calls `OnboardingService.joinIntent` for every `joinIntent` it sends (no DI cycle:
+  Invite -> Onboarding -> Telemetry). lobby / party settle at once; `none` becomes `organic` only when it can no longer
+  be upgraded (15 s after join: `INVITE.launchDataWaitSeconds` + the upgrade margin); nothing by then, or a leave
+  before, logs `unknown`. The intent may arrive before the join load (state created on first touch).
+- **Budget** (review fix): per player per server session only the first `maxAttemptsLoggedPerSession` (3) attempts log,
+  within `maxEventsPerSession` (240); later attempts open and close unlogged. `tutorialStarted` has its own
+  `TUTORIAL_START_RATE` (3 per 10 s).
+- **Outro seconds:** a choice uses the client's card-open seconds; `left` uses the server's time since the `completed`
+  finish (beat included).
+- **New-player window.** Runs count at acceptance (`NewPlayerRunStarted` reports `newRuns + 1`, so a run that never
+  validates repeats its number). A leaving player's doc is held until `RunValidationService.waitUntilIdle(player)`, so
+  a solo run accepted after the leave still logs and writes (a party member who left is still skipped). Debug runs never
+  count; Studio runs count only while `KV_AnalyticsDebug` is on (so TF7's Studio check can see them).
+- **Debug.** Workspace `KV_AnalyticsDebug` (off by default) prints every spec TelemetryService logs
+  (`[Telemetry] ANALYTICS: ...`).
 
 ## Edge cases
 
@@ -213,7 +254,7 @@ Critical path: TF0 -> TF3 -> TF5 -> TF6 -> TF9. TF1, TF2, TF4, TF8 run alongside
   `partyRun`.
 - **Renumbering.** Inserting a lesson bumps `TUTORIAL_FUNNEL_REVISION`; never rename a shipped step id.
 
-## Decisions (proposed defaults, owner to confirm)
+## Decisions (accepted 2026-11-01)
 
 1. **TFD1. Onboarding funnel = the first-join tutorial, every lesson in it.** Not a short macro funnel: 20 steps is far
    under 100 and the per-lesson drop-off is the main question.
