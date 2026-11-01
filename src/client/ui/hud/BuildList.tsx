@@ -2,7 +2,7 @@ import React from "@rbxts/react";
 import { useSelector } from "@rbxts/react-reflex";
 import { Workspace } from "@rbxts/services";
 import { selectInputDevice, selectSnapshot } from "client/store";
-import { HUD_FONT, hudText, role, str } from "client/ui/theme";
+import { useHudFont, hudText, role, str } from "client/ui/theme";
 import {
 	BUILD_HUD_VIEW,
 	HUD_STRINGS,
@@ -24,6 +24,7 @@ const LINE_SLACK = 4;
 
 /** One row: the name in its colour, the level, the line it has now (dim, truncated to the row). */
 function Row(props: { order: number; row: BuildListRow; width: number }) {
+	const hudFont = useHudFont();
 	const V = BUILD_HUD_VIEW;
 	const h = HUD_VIEW.smallText + LINE_SLACK;
 	const descW = math.max(0, props.width - V.listNameWidth - V.listLevelWidth - 2 * HUD_VIEW.gap);
@@ -38,7 +39,7 @@ function Row(props: { order: number; row: BuildListRow; width: number }) {
 			LayoutOrder={order}
 			Size={UDim2.fromOffset(w, h)}
 			BackgroundTransparency={HIDDEN}
-			Font={HUD_FONT}
+			Font={hudFont}
 			TextSize={HUD_VIEW.smallText}
 			TextColor3={color}
 			TextStrokeColor3={role("background")}

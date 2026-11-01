@@ -1,5 +1,5 @@
 import React from "@rbxts/react";
-import { HUD_FONT, role, str } from "client/ui/theme";
+import { useHudFont, role, str } from "client/ui/theme";
 import {
 	FOOTPRINT_ESTIMATE,
 	HUD_STRINGS,
@@ -37,6 +37,7 @@ const COMPACT_VISIBLE = NEW_BEST_UI.compactText.binding.map((t) => t !== "");
  * row then looks exactly as it did.
  */
 export function BestTargetRow(props: { readonly order: number; readonly width: number }) {
+	const hudFont = useHudFont();
 	const h = HUD_VIEW.smallText + FOOTPRINT_ESTIMATE.lineSlack;
 	const slotW = math.max(0, props.width - NEW_BEST_DRAW.labelSlotWidth - HUD_VIEW.gap);
 	const stroke = role("background");
@@ -47,7 +48,7 @@ export function BestTargetRow(props: { readonly order: number; readonly width: n
 				key="Label"
 				Size={UDim2.fromScale(1, 1)}
 				BackgroundTransparency={HIDDEN}
-				Font={HUD_FONT}
+				Font={hudFont}
 				TextSize={HUD_VIEW.smallText}
 				TextColor3={role("uiTextDim")}
 				TextStrokeColor3={stroke}
@@ -61,7 +62,7 @@ export function BestTargetRow(props: { readonly order: number; readonly width: n
 				Position={UDim2.fromScale(0, HALF)}
 				Size={new UDim2(0, slotW, 1, 0)}
 				BackgroundTransparency={HIDDEN}
-				Font={HUD_FONT}
+				Font={hudFont}
 				TextScaled={true}
 				TextSize={HUD_VIEW.smallText}
 				TextColor3={U.rowColor.binding}
@@ -91,6 +92,7 @@ export function ScoreNumber(props: {
 	readonly size: number;
 	readonly align?: Enum.TextXAlignment;
 }) {
+	const hudFont = useHudFont();
 	const fill = props.fill === true;
 	const align = props.align ?? Enum.TextXAlignment.Right;
 	return (
@@ -100,7 +102,7 @@ export function ScoreNumber(props: {
 			Size={new UDim2(fill ? 1 : 0, 0, 0, props.size + FOOTPRINT_ESTIMATE.lineSlack)}
 			AutomaticSize={fill ? Enum.AutomaticSize.None : Enum.AutomaticSize.X}
 			BackgroundTransparency={HIDDEN}
-			Font={HUD_FONT}
+			Font={hudFont}
 			TextSize={props.size}
 			TextColor3={SCORE_COLOR}
 			TextStrokeColor3={role("background")}
@@ -112,7 +114,7 @@ export function ScoreNumber(props: {
 				key="Shine"
 				Size={UDim2.fromScale(1, 1)}
 				BackgroundTransparency={HIDDEN}
-				Font={HUD_FONT}
+				Font={hudFont}
 				TextSize={props.size}
 				TextColor3={role("uiText")}
 				TextStrokeTransparency={HIDDEN}
@@ -135,6 +137,7 @@ export function ScoreNumber(props: {
  * Hidden while empty (a run without a target looks as before).
  */
 export function BestCompactLine(props: { readonly order: number; readonly width: number }) {
+	const hudFont = useHudFont();
 	const U = NEW_BEST_UI;
 	return (
 		<frame
@@ -149,7 +152,7 @@ export function BestCompactLine(props: { readonly order: number; readonly width:
 				Position={UDim2.fromOffset(0, NEW_BEST_DRAW.touchGap)}
 				Size={new UDim2(1, 0, 0, NEW_BEST_DRAW.touchText + FOOTPRINT_ESTIMATE.lineSlack)}
 				BackgroundTransparency={HIDDEN}
-				Font={HUD_FONT}
+				Font={hudFont}
 				TextScaled={true}
 				TextSize={NEW_BEST_DRAW.touchText}
 				TextColor3={U.rowColor.binding}

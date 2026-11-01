@@ -14,7 +14,7 @@ import {
 	selectStageCovered,
 	selectVerdict,
 } from "client/store";
-import { HUD_FONT, role, str, themePack } from "client/ui/theme";
+import { useHudFont, role, str, themePack } from "client/ui/theme";
 import type { ColorRole } from "shared/theme";
 import { DAILY_WORLD_KIND } from "shared/daily";
 import { restartHint } from "shared/play";
@@ -125,6 +125,7 @@ function BreakdownLine(props: { order: number; label: string; value: string; col
  * width and alignment) and TextScaled up to HUD_VIEW.textSize, so UNSTOPPABLE or a long translation shrinks to fit.
  */
 function BestComboLine(props: { order: number; maxCombo: number }) {
+	const hudFont = useHudFont();
 	const extra = COMBO_DRAW.runOverValueExtra;
 	const tier = COMBO_TIERS[comboTier(props.maxCombo)];
 	const name = tier.nameKey !== undefined ? str(tier.nameKey) : undefined;
@@ -143,7 +144,7 @@ function BestComboLine(props: { order: number; maxCombo: number }) {
 				LayoutOrder={2}
 				Size={new UDim2(0, HUD_VIEW.breakdownValueWidth + extra, 0, h)}
 				BackgroundTransparency={HIDDEN}
-				Font={HUD_FONT}
+				Font={hudFont}
 				RichText={true}
 				TextScaled={true}
 				TextSize={HUD_VIEW.textSize}
@@ -211,6 +212,7 @@ function ScoreBreakdown(props: BreakdownProps) {
  * BEST!` / `FIRST RECORD`): a full-width newBest bar with the text in the background colour.
  */
 function BestRibbon(props: { order: number; text: string }) {
+	const hudFont = useHudFont();
 	return (
 		<frame
 			key="BestRibbon"
@@ -222,7 +224,7 @@ function BestRibbon(props: { order: number; text: string }) {
 			<textlabel
 				Size={UDim2.fromScale(1, 1)}
 				BackgroundTransparency={HIDDEN}
-				Font={HUD_FONT}
+				Font={hudFont}
 				TextSize={HUD_VIEW.titleText}
 				TextColor3={role("background")}
 				TextXAlignment={Enum.TextXAlignment.Center}
@@ -242,6 +244,7 @@ function BestRibbon(props: { order: number; text: string }) {
  * runOverBestLines); on a daily run it draws no save chip (the daily block's is the one, docs/DAILY.md DS11).
  */
 function BestBlock(props: { order: number; best: RunOverBest }) {
+	const hudFont = useHudFont();
 	const b = props.best;
 	if (!b.ranked) return undefined;
 	const lines = new Array<React.Element>();
@@ -256,7 +259,7 @@ function BestBlock(props: { order: number; best: RunOverBest }) {
 					LayoutOrder={i + 1}
 					Size={new UDim2(1, 0, 0, h)}
 					BackgroundTransparency={HIDDEN}
-					Font={HUD_FONT}
+					Font={hudFont}
 					TextScaled={true}
 					TextSize={HUD_VIEW.textSize}
 					TextColor3={role(NEW_BEST_ROLE)}

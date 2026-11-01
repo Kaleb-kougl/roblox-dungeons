@@ -99,7 +99,7 @@ export function LobbyBrowser() {
 		const color = r.inRun ? "uiTextDim" : "uiText";
 		return (
 			<ListRow key={r.lobbyId} order={i + 1} dim={r.inRun}>
-				<Cell order={1} width={MENU_VIEW.nameWidth} color={color} text={spec(r.title)} />
+				<Cell order={1} width={MENU_VIEW.nameWidth} color={color} font="name" text={spec(r.title)} />
 				<Cell order={2} width={MENU_VIEW.countWidth} color={color} text={spec(r.count)} />
 				<Cell order={3} width={MENU_VIEW.tagWidth} color="uiTextDim" text={str(r.visibilityKey)} />
 				<Cell order={4} width={MENU_VIEW.tagWidth} color={r.hasFriend ? "uiAccent" : "uiTextDim"} text={tag} />

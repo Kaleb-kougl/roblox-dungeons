@@ -1,11 +1,12 @@
 /**
- * Barrel for the game's core controllers (task 8): theme, asset preloading (docs/PRELOAD.md), input, the live sim,
- * the stage loader (docs/STAGE_LOADER.md: the cover while a floor builds, pre-generation), the first-run tutorial, the
+ * Barrel for the game's core controllers (task 8): theme, the locale shown (docs/LOCALIZATION.md L6), asset preloading
+ * (docs/PRELOAD.md), input, the live sim, the stage loader (docs/STAGE_LOADER.md: the cover while a floor builds, pre-generation), the first-run tutorial, the
  * first-sighting toasts (docs/ENEMY_VARIANTS.md EV12),
  * camera, world and the character guard.
  * docs/CLIENT.md has the controller map and the per-frame data flow.
  */
 export * from "./ThemeController";
+export * from "./LocaleController";
 export * from "./PreloadController";
 export * from "./InputController";
 export * from "./SimController";

@@ -12,6 +12,8 @@ import {
 	BUILD_FX_LEVELS,
 	DEFAULT_TOUCH_AUTO_TARGET,
 	DEFAULT_TOUCH_LEFT_HANDED,
+	DEFAULT_LANGUAGE,
+	LANGUAGE_AUTO,
 	DEFAULT_TOUCH_OPACITY_PERCENT,
 	DEFAULT_TOUCH_SIZE_PERCENT,
 	HUD_SCALE_PERCENTS,
@@ -29,6 +31,7 @@ import {
 	defaultDisplaySettings,
 	defaultJuiceSettings,
 	encodeSettingsDoc,
+	languageOverride,
 	playerDataKey,
 	resolveAudioSettings,
 	resolveDisplaySettings,
@@ -288,6 +291,7 @@ describe("display: room edges (docs/ROOM_EDGES.md RE6)", () => {
 			touchOpacity: DEFAULT_TOUCH_OPACITY_PERCENT,
 			touchAutoTarget: DEFAULT_TOUCH_AUTO_TARGET,
 			touchLeftHanded: DEFAULT_TOUCH_LEFT_HANDED,
+			language: DEFAULT_LANGUAGE,
 		});
 	});
 
@@ -329,6 +333,7 @@ describe("display: room edges (docs/ROOM_EDGES.md RE6)", () => {
 			touchOpacity: DEFAULT_TOUCH_OPACITY_PERCENT,
 			touchAutoTarget: DEFAULT_TOUCH_AUTO_TARGET,
 			touchLeftHanded: DEFAULT_TOUCH_LEFT_HANDED,
+			language: DEFAULT_LANGUAGE,
 		});
 		expect(resolveDisplaySettings(decodeSettingsDoc({ v: 2 }).display).roomEdges).toBe(true);
 		expect(resolveDisplaySettings(decodeSettingsDoc({ v: SETTINGS_DOC_V1, juice: {} }).display).roomEdges).toBe(
@@ -398,6 +403,7 @@ describe("display: minimap (docs/MINIMAP.md M10)", () => {
 			touchOpacity: DEFAULT_TOUCH_OPACITY_PERCENT,
 			touchAutoTarget: DEFAULT_TOUCH_AUTO_TARGET,
 			touchLeftHanded: DEFAULT_TOUCH_LEFT_HANDED,
+			language: DEFAULT_LANGUAGE,
 		});
 	});
 
@@ -440,6 +446,7 @@ describe("display: minimap (docs/MINIMAP.md M10)", () => {
 			touchOpacity: DEFAULT_TOUCH_OPACITY_PERCENT,
 			touchAutoTarget: DEFAULT_TOUCH_AUTO_TARGET,
 			touchLeftHanded: DEFAULT_TOUCH_LEFT_HANDED,
+			language: DEFAULT_LANGUAGE,
 		});
 		expect(resolveDisplaySettings(decodeSettingsDoc({ v: 2 }).display).minimap).toBe(true);
 		expect(resolveDisplaySettings(decodeSettingsDoc({ v: SETTINGS_DOC_V1, juice: {} }).display).minimap).toBe(true);
@@ -672,6 +679,7 @@ describe("display: player outline (docs/PLAYER_OUTLINE.md P4)", () => {
 			touchOpacity: DEFAULT_TOUCH_OPACITY_PERCENT,
 			touchAutoTarget: DEFAULT_TOUCH_AUTO_TARGET,
 			touchLeftHanded: DEFAULT_TOUCH_LEFT_HANDED,
+			language: DEFAULT_LANGUAGE,
 		});
 	});
 
@@ -750,6 +758,7 @@ describe("display: touch controls (docs/MOBILE.md MB7)", () => {
 			touchOpacity: DEFAULT_TOUCH_OPACITY_PERCENT,
 			touchAutoTarget: DEFAULT_TOUCH_AUTO_TARGET,
 			touchLeftHanded: DEFAULT_TOUCH_LEFT_HANDED,
+			language: DEFAULT_LANGUAGE,
 		});
 	});
 
@@ -795,5 +804,54 @@ describe("display: touch controls (docs/MOBILE.md MB7)", () => {
 			}),
 		).toBe(true);
 		expect(sameSettingsOverrides(overrides, { display: { touchSize: 120 } })).toBe(false);
+	});
+});
+
+describe("display: language (docs/LOCALIZATION.md L6)", () => {
+	it("defaults to Automatic, which is never stored", () => {
+		expect(DEFAULT_LANGUAGE).toBe(LANGUAGE_AUTO);
+		expect(defaultDisplaySettings().language).toBe(LANGUAGE_AUTO);
+		expect(resolveDisplaySettings(undefined).language).toBe(LANGUAGE_AUTO);
+		expect(sanitizeDisplayOverrides({ language: LANGUAGE_AUTO })).toEqual({});
+	});
+
+	it("stores a known locale code (hidden ones too), as LOCALES spells it", () => {
+		expect(sanitizeDisplayOverrides({ language: "en" })).toEqual({ language: "en" });
+		expect(sanitizeDisplayOverrides({ language: "de" })).toEqual({ language: "de" });
+		expect(sanitizeDisplayOverrides({ language: "en-XA" })).toEqual({ language: "en-XA" });
+		expect(resolveDisplaySettings({ language: "pt-BR" }).language).toBe("pt-BR");
+	});
+
+	it("drops unknown codes and junk (they read as Automatic)", () => {
+		for (const junk of ["xx", "EN", "pt-br", "", 1, true, {}, ["de"]] as ReadonlyArray<unknown>) {
+			expect(sanitizeDisplayOverrides({ language: junk })).toEqual({});
+		}
+		expect(resolveDisplaySettings({ language: "xx" }).language).toBe(LANGUAGE_AUTO);
+		expect(decodeSettingsDoc({ ...EMPTY_DOC, display: { language: "klingon", hudScale: 90 } })).toEqual({
+			display: { hudScale: 90 },
+		});
+	});
+
+	it("round-trips through the stored document (still v2); an older v2 document reads Automatic", () => {
+		const overrides: SettingsOverrides = { display: { language: "de" } };
+		const doc = encodeSettingsDoc(overrides);
+		expect(doc).toEqual({ ...EMPTY_DOC, display: { language: "de" } });
+		expect(doc.v).toBe(2);
+		expect(decodeSettingsDoc(doc)).toEqual(overrides);
+		expect(applySettingsPatch(overrides, { display: { language: LANGUAGE_AUTO } })).toEqual({});
+		expect(sameSettingsOverrides(overrides, { display: { language: "de" } })).toBe(true);
+		expect(sameSettingsOverrides(overrides, { display: { language: "fr" } })).toBe(false);
+		const old = { v: 2, juice: {}, controls: {}, audio: {}, display: { minimap: false } };
+		expect(resolveDisplaySettings(decodeSettingsDoc(old).display).language).toBe(LANGUAGE_AUTO);
+	});
+
+	it("an override is honoured for live locales; hidden ones only for developers", () => {
+		expect(languageOverride(LANGUAGE_AUTO, true)).toBe(undefined);
+		expect(languageOverride("en", false)).toBe("en");
+		expect(languageOverride("de", false)).toBe(undefined);
+		expect(languageOverride("de", true)).toBe("de");
+		expect(languageOverride("en-XA", false)).toBe(undefined);
+		expect(languageOverride("en-XA", true)).toBe("en-XA");
+		expect(languageOverride("xx", true)).toBe(undefined);
 	});
 });

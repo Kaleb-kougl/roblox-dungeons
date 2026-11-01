@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from "@rbxts/react";
-import { HUD_FONT, MONO_FONT, role, themePack } from "client/ui/theme";
+import { alignFor, fontFor, role, textSizeFor, themePack, useUiFonts, type FontRole } from "client/ui/theme";
 import type { ColorRole, ImageRef } from "shared/theme";
 import {
 	DRAFT_REVEAL_VIEW,
@@ -35,8 +35,12 @@ import { cornerFadeBinding, cornerRef } from "./cornerFade";
 import { useArtScale } from "./useHudScale";
 
 /**
- * The HUD's building blocks: text in the HUD font token, panels in theme roles, pips, and the one interactive
+ * The HUD's building blocks: text in the locale's fonts, panels in theme roles, pips, and the one interactive
  * primitive (MenuButton: mouse, touch and gamepad selection read the same). Every colour is a theme role.
+ *
+ * Locale (docs/LOCALIZATION.md L4, design 7): the text primitives read the locale's fonts (client/ui/theme
+ * useUiFonts), scale text sizes by its sizeScale (1 for Latin: unchanged) and align left-aligned text right in a
+ * right-to-left locale (alignFor); nothing else is mirrored (LD6).
  */
 
 const FULL = 1;
@@ -64,6 +68,8 @@ export interface TextProps {
 	size?: number;
 	align?: Enum.TextXAlignment;
 	mono?: boolean;
+	/** Which locale font (default "text"; `mono` is "mono"): "name" for player display names and endonyms (LD13). */
+	font?: FontRole;
 	/**
 	 * Width (reference px). Without it the text sizes to its content (AutomaticSize X), unless `fill` (or `wrap`) asks
 	 * for the parent's width. Never fill inside an automatically sized panel: a scale width there resolves against the
@@ -84,7 +90,8 @@ function strokeTransparency(t: number): number {
 
 /** One line (or a wrapped paragraph) of HUD text with a dark stroke for contrast over the dungeon. */
 export function Text(props: TextProps) {
-	const size = props.size ?? HUD_VIEW.textSize;
+	const fonts = useUiFonts();
+	const size = textSizeFor(fonts, props.size ?? HUD_VIEW.textSize);
 	const fade = props.transparency;
 	// One mapped binding per source binding, not one per render (the snapshot re-renders panels ~10 Hz).
 	const stroke = useMemo(
@@ -109,14 +116,14 @@ export function Text(props: TextProps) {
 			}
 			AutomaticSize={wrap ? Enum.AutomaticSize.Y : hug ? Enum.AutomaticSize.X : Enum.AutomaticSize.None}
 			BackgroundTransparency={HIDDEN}
-			Font={props.mono === true ? MONO_FONT : HUD_FONT}
+			Font={fontFor(fonts, props.font ?? (props.mono === true ? "mono" : "text"))}
 			TextSize={size}
 			TextWrapped={wrap}
 			TextColor3={role(props.color ?? "uiText")}
 			TextStrokeColor3={role("background")}
 			TextTransparency={props.transparency ?? 0}
 			TextStrokeTransparency={stroke}
-			TextXAlignment={props.align ?? Enum.TextXAlignment.Left}
+			TextXAlignment={alignFor(fonts, props.align ?? Enum.TextXAlignment.Left)}
 			Text={props.text}
 		/>
 	);
@@ -746,7 +753,14 @@ function DrawnFocusCorners(props: { image: ImageRef; zIndex: number }) {
  * A skinned button's label with an icon: the glyph (UI_ART.iconBox.glyph box, tinted like the text: the white glyph
  * set) and the text side by side, centred as a pair in the button. Never takes input (the button does).
  */
-function IconLabel(props: { icon: string; text: string; textSize: number; color: ColorRole; transparency: number }) {
+function IconLabel(props: {
+	icon: string;
+	text: string;
+	textSize: number;
+	color: ColorRole;
+	transparency: number;
+	font: Enum.Font;
+}) {
 	return (
 		<frame Size={UDim2.fromScale(FULL, FULL)} BackgroundTransparency={HIDDEN} Active={false} ZIndex={SKIN_Z.label}>
 			<uilistlayout
@@ -773,7 +787,7 @@ function IconLabel(props: { icon: string; text: string; textSize: number; color:
 				BackgroundTransparency={HIDDEN}
 				Active={false}
 				ZIndex={SKIN_Z.label}
-				Font={HUD_FONT}
+				Font={props.font}
 				TextSize={props.textSize}
 				TextColor3={role(props.color)}
 				Text={props.text}
@@ -804,6 +818,8 @@ export interface MenuButtonProps {
 	 * otherwise no icon and the text exactly as today.
 	 */
 	icon?: string;
+	/** Which locale font the label uses (default "text"; "name" for a display name or an endonym, LD13). */
+	font?: FontRole;
 }
 
 /**
@@ -814,6 +830,9 @@ export interface MenuButtonProps {
  */
 export const MenuButton = React.forwardRef<TextButton, MenuButtonProps>((props, ref) => {
 	const [focused, setFocused] = useState(false);
+	const fonts = useUiFonts();
+	const font = fontFor(fonts, props.font);
+	const textSize = textSizeFor(fonts, props.textSize ?? HUD_VIEW.textSize);
 	const size = props.size ?? new Vector2(HUD_VIEW.buttonSize.x, HUD_VIEW.buttonSize.y);
 	const active = props.active === true;
 	const disabled = props.disabled === true;
@@ -834,8 +853,8 @@ export const MenuButton = React.forwardRef<TextButton, MenuButtonProps>((props, 
 				Selectable={props.selectable !== false}
 				BackgroundTransparency={HIDDEN}
 				BorderSizePixel={0}
-				Font={HUD_FONT}
-				TextSize={props.textSize ?? HUD_VIEW.textSize}
+				Font={font}
+				TextSize={textSize}
 				Text={props.text}
 				TextTransparency={HIDDEN}
 				Event={{
@@ -854,7 +873,8 @@ export const MenuButton = React.forwardRef<TextButton, MenuButtonProps>((props, 
 						key="Label"
 						icon={icon}
 						text={props.text}
-						textSize={props.textSize ?? HUD_VIEW.textSize}
+						textSize={textSize}
+						font={font}
 						color={skinnedButtonTextRole(active, focused)}
 						transparency={disabled ? DISABLED_TEXT : 0}
 					/>
@@ -865,8 +885,8 @@ export const MenuButton = React.forwardRef<TextButton, MenuButtonProps>((props, 
 						BackgroundTransparency={HIDDEN}
 						Active={false}
 						ZIndex={SKIN_Z.label}
-						Font={HUD_FONT}
-						TextSize={props.textSize ?? HUD_VIEW.textSize}
+						Font={font}
+						TextSize={textSize}
 						TextColor3={role(skinnedButtonTextRole(active, focused))}
 						Text={props.text}
 						TextTransparency={disabled ? DISABLED_TEXT : 0}
@@ -898,8 +918,8 @@ export const MenuButton = React.forwardRef<TextButton, MenuButtonProps>((props, 
 			BackgroundColor3={role(active ? "uiAccent" : "uiPanel")}
 			BackgroundTransparency={active || focused ? 0 : HUD_VIEW.panelTransparency}
 			BorderSizePixel={0}
-			Font={HUD_FONT}
-			TextSize={props.textSize ?? HUD_VIEW.textSize}
+			Font={font}
+			TextSize={textSize}
 			TextColor3={role(active ? "uiPanel" : focused ? "uiText" : "uiTextDim")}
 			Text={props.text}
 			TextTransparency={disabled ? DISABLED_TEXT : 0}

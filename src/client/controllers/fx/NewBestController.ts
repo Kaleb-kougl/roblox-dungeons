@@ -11,7 +11,14 @@ import {
 	selectRecordsStatus,
 	type VerdictView,
 } from "client/store";
-import { NEW_BEST_UI, resetNewBestUi, runOverBest, type RunOverBest, createKvScreenGui } from "client/ui";
+import {
+	NEW_BEST_UI,
+	onLocaleChanged,
+	resetNewBestUi,
+	runOverBest,
+	type RunOverBest,
+	createKvScreenGui,
+} from "client/ui";
 import { DAILY_WORLD_KIND } from "shared/daily";
 import type { JuiceSettings } from "shared/settings";
 import { partySize } from "shared/sim";
@@ -185,6 +192,9 @@ export class NewBestController implements OnStart {
 		this.gui = this.janitor.Add(this.buildConfetti());
 		this.janitor.Add(this.runJanitor, "Cleanup");
 		this.janitor.Add(Events.records.connect((status) => clientStore.setRecordsStatus(status)));
+		// A locale switch (docs/LOCALIZATION.md L6): the target row's strings are rebuilt on the next frame (NaN never
+		// equals the frame's gap); the run-over rows are written every frame.
+		this.janitor.Add(onLocaleChanged(() => (this.rowGap = 0 / 0)));
 		Events.requestRecords.fire();
 		this.audio.setNewBestCues(() => this.cues);
 		this.sim.onRunStarted((ctx) => this.newRun(ctx));

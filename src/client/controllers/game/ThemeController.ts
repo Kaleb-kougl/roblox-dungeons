@@ -5,15 +5,14 @@ import { loadThemePack, setActiveThemePack, type ThemePack } from "shared/theme"
 /**
  * Loads the theme pack once (in onInit, before any controller's onStart) and makes it the active pack. Every visual
  * the client builds goes through it: placeholder shapes and colour roles today, uploaded art later (manifest only).
+ * LocaleController switches its strings (ThemePack.setLocale, docs/LOCALIZATION.md L6).
  */
 @Controller({ loadOrder: 0 })
 export class ThemeController implements OnInit {
 	private pack: ThemePack | undefined;
 
 	onInit(): void {
-		const pack = loadThemePack(THEME_PACK_ID);
-		setActiveThemePack(pack);
-		this.pack = pack;
+		this.getPack(); // LocaleController (same loadOrder) may have loaded it already: keep that pack and its locale
 	}
 
 	getPack(): ThemePack {

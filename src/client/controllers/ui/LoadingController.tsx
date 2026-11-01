@@ -5,7 +5,7 @@ import { ReflexProvider } from "@rbxts/react-reflex";
 import { createPortal, createRoot } from "@rbxts/react-roblox";
 import { Players } from "@rbxts/services";
 import { clientStore } from "client/store";
-import { LoadingScreen } from "client/ui";
+import { LoadingScreen, LocaleRoot } from "client/ui";
 import { SFX } from "shared/view/audio";
 import { AudioController } from "../audio/AudioController";
 import { InputController } from "../game/InputController";
@@ -53,7 +53,9 @@ export class LoadingController implements OnStart {
 		root.render(
 			createPortal(
 				<ReflexProvider producer={clientStore}>
-					<LoadingScreen onSkip={onSkip} onFaded={onFaded} />
+					<LocaleRoot>
+						<LoadingScreen onSkip={onSkip} onFaded={onFaded} />
+					</LocaleRoot>
 				</ReflexProvider>,
 				playerGui,
 			),

@@ -1,6 +1,6 @@
 import React from "@rbxts/react";
 import { DEV_PANEL_VIEW } from "shared/config";
-import { HUD_FONT, MONO_FONT, role } from "client/ui/theme";
+import { DEV_MONO_FONT, DEV_TEXT_FONT, role } from "client/ui/theme";
 
 const V = DEV_PANEL_VIEW;
 const S = DEV_PANEL_VIEW.strings;
@@ -46,7 +46,7 @@ function Button(props: { text: string; width?: number; order: number; accent?: b
 			Text={props.text}
 			TextColor3={role("uiText")}
 			TextSize={V.textSize}
-			Font={HUD_FONT}
+			Font={DEV_TEXT_FONT}
 			Event={{ Activated: props.onClick }}
 		>
 			<Corner />
@@ -67,7 +67,7 @@ function Label(props: { text: string; order: number; width?: number; dim?: boole
 			TextSize={props.size ?? V.textSize}
 			TextWrapped={true}
 			TextXAlignment={Enum.TextXAlignment.Left}
-			Font={HUD_FONT}
+			Font={DEV_TEXT_FONT}
 		/>
 	);
 }
@@ -84,7 +84,7 @@ function Field(props: { text: string; order: number; width: number; onCommit: (t
 			ClearTextOnFocus={false}
 			TextColor3={role("uiText")}
 			TextSize={V.textSize}
-			Font={MONO_FONT}
+			Font={DEV_MONO_FONT}
 			Event={{ FocusLost: (box) => props.onCommit(box.Text) }}
 		>
 			<Corner />
@@ -145,7 +145,7 @@ export function DevPanel(props: DevPanelProps) {
 				Text={chipText}
 				TextColor3={role("uiText")}
 				TextSize={V.textSize}
-				Font={HUD_FONT}
+				Font={DEV_TEXT_FONT}
 				Event={{ Activated: props.onToggleOpen }}
 			>
 				<Corner />

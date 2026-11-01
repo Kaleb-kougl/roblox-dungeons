@@ -2,7 +2,7 @@ import { Controller, OnStart } from "@flamework/core";
 import { Janitor } from "@rbxts/janitor";
 import { RunService } from "@rbxts/services";
 import { createKvBillboardGui } from "client/ui";
-import { HUD_FONT } from "client/ui/theme";
+import { currentHudFont, onLocaleChanged } from "client/ui/theme";
 import { charCount } from "shared/l10n";
 import { RENDER_ORDER } from "shared/view";
 import {
@@ -54,7 +54,7 @@ class PopView {
 		const label = new Instance("TextLabel");
 		label.BackgroundTransparency = HIDDEN;
 		label.Size = UDim2.fromScale(1, 1);
-		label.Font = HUD_FONT;
+		label.Font = currentHudFont();
 		label.TextScaled = true;
 		label.TextColor3 = color;
 		label.TextStrokeColor3 = stroke;
@@ -130,6 +130,13 @@ export class ScorePopController implements OnStart {
 		jackpots.colors.push(gold);
 		for (let i = 0; i < jackpots.pool.capacity; i++)
 			jackpots.views.push(new PopView(holder, folder, `Jackpot${i}`, gold, stroke));
+		// A locale switch (docs/LOCALIZATION.md L6): every label's font (the text is read on each show).
+		this.janitor.Add(
+			onLocaleChanged(() => {
+				const font = currentHudFont();
+				for (const view of [...kills.views, ...jackpots.views]) view.label.Font = font;
+			}),
+		);
 
 		this.sim.onRunStarted(() => {
 			kills.pool.clear();

@@ -57,7 +57,7 @@ function BoardRow(props: { row: LeaderboardRow; highlight: boolean }) {
 				color="uiTextDim"
 				text={str(LEADERBOARD_STRINGS.rank, { rank: r.rank })}
 			/>
-			<Text order={2} width={nameWidth()} size={HUD_VIEW.smallText} color={color} text={r.name} />
+			<Text order={2} width={nameWidth()} size={HUD_VIEW.smallText} color={color} font="name" text={r.name} />
 			<Text
 				order={3}
 				width={LEADERBOARD_VIEW.scoreWidth}
