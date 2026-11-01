@@ -55,6 +55,7 @@ import { bossEngaged } from "../combat/actors/archetypes/boss/shared";
 import type { EncounterConfig } from "../combat/actors/encounter";
 import { partySize, playerAt } from "../party";
 import { affixDropBonus } from "../affixes/affixes";
+import { landDrop, lowestFreeDropSlot } from "./breakLoot";
 import {
 	AEGIS_PIPS,
 	BOOSTS,
@@ -99,6 +100,12 @@ export interface DropsConfig {
 	readonly maxOnGround: number;
 	/** Guaranteed drops (the tutorial). Absent: none. */
 	readonly guaranteed?: ReadonlyArray<DropGuarantee>;
+	/**
+	 * Boosts from breakables (docs/BREAKABLE_DROPS.md, ./breakLoot.ts): true fills DropsState.pieceLoot from each
+	 * floor's loot, releases it when a piece breaks, and hashes pieceLoot. Absent: off (DROPS_CONFIG, so the tutorial's
+	 * guaranteedDropsConfig spread never inherits it); endless runs use ENDLESS_DROPS_CONFIG.
+	 */
+	readonly breakableLoot?: boolean;
 }
 
 /** The game's drops config (endless solo and co-op; docs/BOOSTS.md "Worlds"). */
@@ -110,6 +117,12 @@ export const DROPS_CONFIG: DropsConfig = table.freeze({
 	pickupRadius: DROPS.pickupRadius,
 	maxOnGround: DROPS.maxOnGround,
 });
+
+/**
+ * Every endless run's drops config (shared/run buildEndlessRunConfig: solo, co-op, daily, dev): DROPS_CONFIG plus boosts
+ * from breakables (docs/BREAKABLE_DROPS.md BL4). Never spread into the tutorial's config.
+ */
+export const ENDLESS_DROPS_CONFIG: DropsConfig = table.freeze({ ...DROPS_CONFIG, breakableLoot: true });
 
 const NO_CHANCES: ReadonlyMap<string, number> = new Map<string, number>();
 
@@ -195,6 +208,20 @@ export interface DropsEvents {
 	ended: BoostEnded[];
 	/** Players whose Aegis pip absorbed a hit this tick, in hit order. */
 	aegisBroke: number[];
+	/**
+	 * Ground slots whose drop came out of a broken breakable this tick (docs/BREAKABLE_DROPS.md), a subset of `dropped`,
+	 * in order.
+	 */
+	fromPiece: number[];
+	/** Loaded breakables that broke with every ground slot taken this tick: the boost is lost (a fizzle in the view). */
+	lostLoot: DropLostLoot[];
+}
+
+/** A loaded breakable's boost that found no free ground slot (docs/BREAKABLE_DROPS.md BLD5). World position. */
+export interface DropLostLoot {
+	readonly kind: number;
+	readonly x: number;
+	readonly z: number;
 }
 
 /** SimState.drops. */
@@ -213,6 +240,11 @@ export interface DropsState {
 	guards: DropGuard[];
 	/** One per player, party index order (solo: one). */
 	players: BoostPlayerState[];
+	/**
+	 * Boost kind hidden in each breakable slot of the current floor (docs/BREAKABLE_DROPS.md), NO_BOOST = empty. Always
+	 * empty unless DropsConfig.breakableLoot; hashed only then.
+	 */
+	pieceLoot: number[];
 	/** NOT hashed. */
 	events: DropsEvents;
 }
@@ -236,7 +268,7 @@ function newBoostPlayer(): BoostPlayerState {
 }
 
 function emptyEvents(): DropsEvents {
-	return { dropped: [], collected: [], expired: [], ended: [], aegisBroke: [] };
+	return { dropped: [], collected: [], expired: [], ended: [], aegisBroke: [], fromPiece: [], lostLoot: [] };
 }
 
 /** The drop stream's first word for a run seeded `seed` (seedToState(seed) XOR DROPS.salt). */
@@ -260,6 +292,7 @@ export function createDropsState(config: Readonly<DropsConfig>, seed: number, pl
 		ground,
 		guards: [],
 		players: list,
+		pieceLoot: [],
 		events: emptyEvents(),
 	};
 }
@@ -273,12 +306,15 @@ export function cloneDropsState(d: Readonly<DropsState>): DropsState {
 		ground: d.ground.map((g) => ({ ...g })),
 		guards: d.guards.map((g) => ({ kind: g.kind, ids: [...g.ids] })),
 		players: d.players.map((p) => ({ ticks: [...p.ticks], aegisPips: p.aegisPips })),
+		pieceLoot: [...d.pieceLoot],
 		events: {
 			dropped: [...d.events.dropped],
 			collected: d.events.collected.map((e) => ({ ...e })),
 			expired: d.events.expired.map((e) => ({ ...e })),
 			ended: d.events.ended.map((e) => ({ ...e })),
 			aegisBroke: [...d.events.aegisBroke],
+			fromPiece: [...d.events.fromPiece],
+			lostLoot: d.events.lostLoot.map((e) => ({ ...e })),
 		},
 	};
 }
@@ -291,27 +327,15 @@ export function clearDropsEvents(d: DropsState): void {
 	e.expired.clear();
 	e.ended.clear();
 	e.aegisBroke.clear();
+	e.fromPiece.clear();
+	e.lostLoot.clear();
 }
 
 // ---------------------------------------------------------------------------------------------
 // Landing
 
-/** The lowest free ground slot, -1 when every slot is taken. */
-function lowestFreeSlot(d: Readonly<DropsState>): number {
-	for (let i = 0; i < d.ground.size(); i++) if (d.ground[i].kind === NO_BOOST) return i;
-	return -1;
-}
-
-/** `kind` lands in ground slot `slot` at (x, z) on `tick`. */
-function land(d: DropsState, slot: number, kind: number, x: number, z: number, tick: number): void {
-	const g = d.ground[slot];
-	g.kind = kind;
-	g.x = x;
-	g.z = z;
-	g.spawnTick = tick;
-	g.ticksLeft = d.config.groundTicks;
-	d.events.dropped.push(slot);
-}
+// lowestFreeDropSlot / landDrop live in the leaf ./breakLoot.ts (shared with the breakables' release,
+// docs/BREAKABLE_DROPS.md).
 
 /** The weighted kind pick: ONE rngInt(0, BOOST_TOTAL_WEIGHT - 1) from the drop stream. */
 export function pickBoostKind(d: DropsState): number {
@@ -385,9 +409,9 @@ export function dropsOnKill(ctx: SimCtx, a: Readonly<ActorState>, reviving: bool
 	if (d.guards.size() > 0) {
 		const kind = guardKill(d, a.id);
 		if (kind !== NO_BOOST) {
-			const slot = lowestFreeSlot(d);
+			const slot = lowestFreeDropSlot(d);
 			if (slot >= 0) {
-				land(d, slot, kind, a.x, a.z, state.tick);
+				landDrop(d, slot, kind, a.x, a.z, state.tick);
 				d.killsSinceDrop = 0;
 			}
 			return;
@@ -405,7 +429,7 @@ export function dropsOnKill(ctx: SimCtx, a: Readonly<ActorState>, reviving: bool
 	}
 
 	// 3. A full ground: skipped, a dry kill.
-	const slot = lowestFreeSlot(d);
+	const slot = lowestFreeDropSlot(d);
 	if (slot < 0) {
 		d.killsSinceDrop += 1;
 		return;
@@ -424,7 +448,7 @@ export function dropsOnKill(ctx: SimCtx, a: Readonly<ActorState>, reviving: bool
 	}
 
 	// 5. The kind, and it lands.
-	land(d, slot, pickBoostKind(d), a.x, a.z, state.tick);
+	landDrop(d, slot, pickBoostKind(d), a.x, a.z, state.tick);
 	d.killsSinceDrop = 0;
 }
 
@@ -487,9 +511,16 @@ export function stepDrops(
 		if (input === undefined || !pressed(prevButtons[i], input.buttons, DEBUG_DROP_BUTTON)) continue;
 		const p = playerAt(state, i);
 		if (p.dead !== 0) continue;
-		const slot = lowestFreeSlot(d);
+		const slot = lowestFreeDropSlot(d);
 		if (slot < 0) continue;
-		land(d, slot, d.debugNextKind, p.x + p.faceX * DEBUG_DROP_AHEAD, p.z + p.faceZ * DEBUG_DROP_AHEAD, state.tick);
+		landDrop(
+			d,
+			slot,
+			d.debugNextKind,
+			p.x + p.faceX * DEBUG_DROP_AHEAD,
+			p.z + p.faceZ * DEBUG_DROP_AHEAD,
+			state.tick,
+		);
 		d.debugNextKind = (d.debugNextKind + 1) % BOOST_COUNT;
 	}
 
@@ -581,6 +612,14 @@ export function boostTicksLeft(state: Readonly<SimState>, playerIndex: number, k
 	return state.drops?.players[playerIndex]?.ticks[kind] ?? 0;
 }
 
+/**
+ * The boost kind hidden in breakable slot `slot` of the current floor (docs/BREAKABLE_DROPS.md), NO_BOOST when the
+ * slot holds none, the feature is off, or there are no drops. Read-only (the view's glint).
+ */
+export function breakableLootAt(state: Readonly<SimState>, slot: number): number {
+	return state.drops?.pieceLoot[slot] ?? NO_BOOST;
+}
+
 /** Player `playerIndex`'s Aegis pips (0 without drops). */
 export function aegisPips(state: Readonly<SimState>, playerIndex: number): number {
 	return state.drops?.players[playerIndex]?.aegisPips ?? 0;
@@ -589,7 +628,8 @@ export function aegisPips(state: Readonly<SimState>, playerIndex: number): numbe
 // ---------------------------------------------------------------------------------------------
 // Hash: the "drops" group, appended after every other group only when state.drops exists.
 //   rngState, killsSinceDrop, debugNextKind; ground.length, per slot DROP_GROUND_HASH_FIELDS; guards.length, per guard
-//   kind, ids.length, ids; players.length, per player ticks.length, ticks, aegisPips
+//   kind, ids.length, ids; players.length, per player ticks.length, ticks, aegisPips; then ONLY with
+//   config.breakableLoot (docs/BREAKABLE_DROPS.md): pieceLoot.length, pieceLoot
 
 /** Per ground slot, in this order (dump names `drops.ground[<slot>].<name>`). Append only. */
 export const DROP_GROUND_HASH_FIELDS = ["kind", "x", "z", "spawnTick", "ticksLeft"] as const;
@@ -608,6 +648,10 @@ export function writeDropsHash(d: Readonly<DropsState>, out: number[]): void {
 		out.push(p.ticks.size());
 		for (const t of p.ticks) out.push(t);
 		out.push(p.aegisPips);
+	}
+	if (d.config.breakableLoot === true) {
+		out.push(d.pieceLoot.size());
+		for (const k of d.pieceLoot) out.push(k);
 	}
 }
 
@@ -628,5 +672,9 @@ export function dropsHashNames(d: Readonly<DropsState>, out: string[]): void {
 		out.push(`${prefix}.ticks.length`);
 		for (let k = 0; k < d.players[i].ticks.size(); k++) out.push(`${prefix}.ticks[${k}]`);
 		out.push(`${prefix}.aegisPips`);
+	}
+	if (d.config.breakableLoot === true) {
+		out.push("drops.pieceLoot.length");
+		for (let i = 0; i < d.pieceLoot.size(); i++) out.push(`drops.pieceLoot[${i}]`);
 	}
 }

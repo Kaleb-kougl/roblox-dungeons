@@ -25,7 +25,9 @@
  * picks swing vs finisher).
  *
  * Boost drops (docs/BOOSTS.md B7) come from the frame's collected drop events (shared/view/boosts BoostEventSource,
- * the run view's `boostEvents`, every tick of the frame): a landing plays sfx.boost.drop; a pickup sfx.boost.collect
+ * the run view's `boostEvents`, every tick of the frame): a landing plays sfx.boost.drop (a landing out of a broken
+ * piece, `fromPiece`, plays sfx.breakable.loot instead: docs/BREAKABLE_DROPS.md BL6; the drop's sound while silent;
+ * a loaded piece lost on a full floor, `lostLoot`, is silent: its break plays); a pickup sfx.boost.collect
  * (the local player's at full volume, a teammate's at AUDIO_VIEW.teammateVolume); a boost of the LOCAL player running
  * out sfx.boost.expire (a teammate's is silent); an Aegis pip absorbing a hit sfx.boost.aegisbreak (split like the
  * pickup).
@@ -283,6 +285,12 @@ export const SFX = {
 	 */
 	rankUp: "sfx.rank.up",
 	friendPassed: "sfx.friend.passed",
+	/**
+	 * Boosts from breakables (docs/BREAKABLE_DROPS.md BL5 / BL6; the theme's PORT_AUDIO_EVENTS): a loaded barrel / crate
+	 * broke and its boost hopped out (BoostEventSource.fromPiece), in place of sfx.boost.drop for that landing, which
+	 * plays while this one is silent (SFX_FALLBACK).
+	 */
+	breakableLoot: "sfx.breakable.loot",
 } as const;
 export type SfxId = (typeof SFX)[keyof typeof SFX];
 
@@ -354,6 +362,7 @@ export const ALL_SFX: ReadonlyArray<SfxId> = [
 	SFX.buildJackpot,
 	SFX.rankUp,
 	SFX.friendPassed,
+	SFX.breakableLoot,
 ];
 
 /** IDs this port added to the placeholder pack (not in the web contract's AUDIO_EVENTS; theme PORT_AUDIO_EVENTS). */
@@ -411,6 +420,7 @@ export const PORT_SFX: ReadonlyArray<SfxId> = [
 	SFX.buildJackpot,
 	SFX.rankUp,
 	SFX.friendPassed,
+	SFX.breakableLoot,
 ];
 
 /**
@@ -536,6 +546,8 @@ export const SFX_MIN_INTERVAL: Readonly<Partial<Record<SfxId, number>>> = {
 	/** The rank layer (DS10): two thresholds a moment apart (or a friend toast each queue step) never stutter. */
 	[SFX.rankUp]: 0.5,
 	[SFX.friendPassed]: 0.3,
+	/** Two loaded pieces broken by one swing / one ring are one sound (the boost drop's interval). */
+	[SFX.breakableLoot]: 0.1,
 };
 
 /**
@@ -589,6 +601,11 @@ export const SFX_PRIORITY: Readonly<Record<SfxId, number>> = {
 	[SFX.comboTier]: 65,
 	[SFX.draftCharge]: 62,
 	[SFX.boostCollect]: 64,
+	/**
+	 * A boost out of a broken piece (docs/BREAKABLE_DROPS.md BL6): just over a kill drop's landing (the rarer, chosen
+	 * reward), under the pickup; over the piece's own break (40), which plays on the same frame.
+	 */
+	[SFX.breakableLoot]: 63,
 	[SFX.boostDrop]: 62,
 	[SFX.draftPick]: 60,
 	[SFX.playerFlask]: 60,
@@ -730,6 +747,11 @@ export const SFX_FALLBACK: Readonly<Partial<Record<SfxId, SfxId>>> = {
 	[SFX.bestNew]: SFX.roomPerfect,
 	/** A pack without the record fanfare plays the game-over jingle on a record run's run over. */
 	[SFX.jingleRecord]: SFX.gameOver,
+	/**
+	 * docs/BREAKABLE_DROPS.md BL5: a pack without the loot clip plays the boost drop's landing there (so a frame with a
+	 * kill drop and a piece drop is one sfx.boost.drop: `cue` merges by the resolved ID).
+	 */
+	[SFX.breakableLoot]: SFX.boostDrop,
 };
 
 /**
@@ -1191,7 +1213,10 @@ export class AudioCueMapper {
 		if (events.breakablesBroken > 0) this.cue(SFX.breakableBreak, 1);
 		if (events.breakableHits > events.breakablesBroken) this.cue(SFX.breakableHit, 1);
 		// Boost drops (every tick of the frame): landings, pickups and Aegis breaks by player, the local player's ends.
-		if (boosts.dropped.size() > 0) this.cue(SFX.boostDrop, 1);
+		// A landing out of a broken piece (fromPiece, a subset of dropped) plays the loot sound instead of the drop's.
+		const fromPieces = boosts.fromPiece.size();
+		if (boosts.dropped.size() > fromPieces) this.cue(SFX.boostDrop, 1);
+		if (fromPieces > 0) this.cue(SFX.breakableLoot, 1);
 		for (const c of boosts.collected) this.playerCue(SFX.boostCollect, c.player, localIndex);
 		for (const p of boosts.aegisBroke) this.playerCue(SFX.boostAegisBreak, p, localIndex);
 		for (const e of boosts.ended) if (e.player === localIndex) this.cue(SFX.boostExpire, 1);

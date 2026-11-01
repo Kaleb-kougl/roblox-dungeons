@@ -179,8 +179,8 @@ describe("required IDs and strings", () => {
 		// optional, so not here. + docs/ENEMY_VARIANTS.md EV1: enemy.imp, enemy.slime, bullet.enemy.goo and 5 port
 		// audio events. + docs/NEW_BEST.md NB4: 2 port audio events (sfx.best.new, sfx.jingle.record).
 		// + docs/BUILDS.md BU1: 4 effect bullet visuals and 9 port audio events. + docs/DAILY.md DS10: 2 port audio
-		// events (sfx.rank.up, sfx.friend.passed).
-		expect(REQUIRED_ASSET_IDS.size()).toBe(60 + 1 + 2 + 2 + 37 + 5 + 4 + 2 + 1 + 5 + 2 + 4 + 9 + 2);
+		// events (sfx.rank.up, sfx.friend.passed). + docs/BREAKABLE_DROPS.md BL5: 1 port audio event (sfx.breakable.loot).
+		expect(REQUIRED_ASSET_IDS.size()).toBe(60 + 1 + 2 + 2 + 37 + 5 + 4 + 2 + 1 + 5 + 2 + 4 + 9 + 2 + 1);
 		expect(AUDIO_EVENTS.size()).toBe(20);
 		expect(new Set(REQUIRED_ASSET_IDS).size()).toBe(REQUIRED_ASSET_IDS.size());
 		for (const id of REQUIRED_ASSET_IDS) {

@@ -228,6 +228,13 @@ writes the sim.
   The tutorial's ring: GameHud passes `boostsHighlight={isBoostsHighlight(highlight)}` (shared/view/boosts, id
   `BOOST_VIEW.hudHighlight` = `"boosts"`), so the tutorial only has to emit that highlight id.
 - **Audio:** the cue table under "Audio" (`AudioCueMapper.frame(..., boostEvents)`).
+- **Boosts from breakables** (docs/BREAKABLE_DROPS.md BL6): `BreakableRenderController` puts the `decor.fx.glint`
+  sparkle on every intact piece with `breakableLootAt(state, slot) !== NO_BOOST` (pooled anchors, `syncLoot` every
+  frame, phase per cell, sim time, hidden near enemy bullets but not goo, cleared the frame it breaks and on a new
+  layout; reduced motion: still). `BoostDropRenderController` hops a drop in from the piece's top when its slot and
+  landing tick match `boostEvents.fromPiece`, and `ParticleController.lootFizzle` marks `lostLoot`. Shared glint parts
+  in `render/glintParts.ts`. Debug: Workspace boolean `KV_LootDebug` (Studio or KV_Debug, off by default) labels each
+  loaded piece with its kind. Sound `sfx.breakable.loot` (falls back to `sfx.boost.drop`).
 
 ## Room decoration (docs/DECOR.md R4, R9, R10)
 

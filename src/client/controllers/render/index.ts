@@ -22,6 +22,7 @@ export * from "./BreakableRenderController";
 export * from "./BoostDropRenderController";
 export * from "./BoostAuraController";
 export * from "./decorParts";
+export * from "./glintParts";
 export * from "./DecorController";
 export * from "./DecorFxController";
 export * from "./motionFx";

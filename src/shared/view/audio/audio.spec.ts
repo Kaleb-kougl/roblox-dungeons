@@ -379,6 +379,37 @@ describe("audio: boost drops (docs/BOOSTS.md B7)", () => {
 		expect(ids(new AudioCueMapper(), 0, noEvents(), NO_FX, s)).toEqual([]);
 	});
 
+	it("a landing out of a broken piece plays sfx.breakable.loot instead of the drop (docs/BREAKABLE_DROPS.md BL6)", () => {
+		const s = solo();
+		const b = new BoostFrameEvents();
+		const piece = { slot: 1, kind: 2, x: 3, z: 4 };
+		b.dropped.push(piece);
+		b.fromPiece.push({ ...piece, spawnTick: 7 });
+		expect(boostCues(new AudioCueMapper(), 0, s, b)).toEqual([[SFX.breakableLoot, 1]]);
+		// with a kill's landing on the same frame: both sounds
+		b.dropped.push({ slot: 0, kind: 0, x: 1, z: 2 });
+		expect(boostCues(new AudioCueMapper(), 0, s, b)).toEqual([
+			[SFX.boostDrop, 1],
+			[SFX.breakableLoot, 1],
+		]);
+		// silent loot clip (the placeholder pack): the drop plays, once for the whole frame
+		const silentLoot = () => new AudioCueMapper((id) => id !== SFX.breakableLoot);
+		expect(boostCues(silentLoot(), 0, s, b)).toEqual([[SFX.boostDrop, 1]]);
+		b.reset();
+		b.dropped.push(piece);
+		b.fromPiece.push({ ...piece, spawnTick: 7 });
+		expect(boostCues(silentLoot(), 0, s, b)).toEqual([[SFX.boostDrop, 1]]);
+		// its interval: a second piece 0.05 s later is the same sound
+		const m = new AudioCueMapper();
+		expect(boostCues(m, 1, s, b)).toEqual([[SFX.breakableLoot, 1]]);
+		expect(boostCues(m, 1.05, s, b)).toEqual([]);
+		expect(boostCues(m, 1.2, s, b)).toEqual([[SFX.breakableLoot, 1]]);
+		// lost loot (every ground slot taken) has no sound of its own: the break plays
+		b.reset();
+		b.lostLoot.push({ kind: 1, x: 3, z: 4 });
+		expect(boostCues(new AudioCueMapper(), 0, s, b)).toEqual([]);
+	});
+
 	it("co-op: a teammate's pickup and Aegis break are quiet; only the local player's boost running out plays", () => {
 		const s = party(2);
 		const m = primed(s, 0);
@@ -439,6 +470,24 @@ describe("audio: boost drops (docs/BOOSTS.md B7)", () => {
 		expect(JINGLE_SFX.includes(SFX.roomPerfect)).toBe(true);
 		expect(DUCKING_SFX.includes(SFX.roomPerfect)).toBe(true);
 		expect(SFX_FALLBACK[SFX.roomPerfect]).toBe(SFX.roomClear);
+	});
+
+	it("sfx.breakable.loot (docs/BREAKABLE_DROPS.md BL5) is a port ID, ranked between the drop and the pickup, falling back to the drop", () => {
+		expect(SFX.breakableLoot).toBe("sfx.breakable.loot");
+		expect([ALL_SFX.includes(SFX.breakableLoot), PORT_SFX.includes(SFX.breakableLoot)]).toEqual([true, true]);
+		expect(SFX_PRIORITY[SFX.breakableLoot]).toBeGreaterThan(SFX_PRIORITY[SFX.boostDrop]);
+		expect(SFX_PRIORITY[SFX.breakableLoot]).toBeLessThan(SFX_PRIORITY[SFX.boostCollect]);
+		expect(SFX_FALLBACK[SFX.breakableLoot]).toBe(SFX.boostDrop);
+		expect([JINGLE_SFX.includes(SFX.breakableLoot), DUCKING_SFX.includes(SFX.breakableLoot)]).toEqual([
+			false,
+			false,
+		]);
+		// silent (the placeholder pack): it resolves to the drop; with neither clip, nothing
+		const silentLoot = new AudioCueMapper((id) => id !== SFX.breakableLoot);
+		expect(silentLoot.resolve(SFX.breakableLoot)).toBe(SFX.boostDrop);
+		expect(new AudioCueMapper().resolve(SFX.breakableLoot)).toBe(SFX.breakableLoot);
+		const silent = new AudioCueMapper((id) => id !== SFX.breakableLoot && id !== SFX.boostDrop);
+		expect(silent.resolve(SFX.breakableLoot)).toBe(undefined);
 	});
 
 	it("the boost IDs are the theme's port audio events (lowercase aegisbreak), ranked, in ALL_SFX and PORT_SFX", () => {

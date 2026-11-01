@@ -121,6 +121,23 @@ describe("boosts: contract", () => {
 		}
 	});
 
+	it("appends sfx.breakable.loot last (docs/BREAKABLE_DROPS.md BL5): required, sfx, SILENT in the placeholder and vale", () => {
+		const n = PORT_AUDIO_EVENTS.size();
+		expect([PORT_AUDIO_EVENTS[n - 2], PORT_AUDIO_EVENTS[n - 1]]).toEqual([
+			"sfx.friend.passed",
+			"sfx.breakable.loot",
+		]);
+		const id = "sfx.breakable.loot";
+		const assets = PLACEHOLDER_MANIFEST.assets as unknown as Record<string, { kind: string }>;
+		expect([slotFor(id)?.soundGroup, REQUIRED_ASSET_IDS.includes(id), assets[id].kind]).toEqual([
+			"sfx",
+			true,
+			"silent",
+		]);
+		// no file id yet (BL7 picks the clip): the vale pack keeps the placeholder's SILENT, the drop sound plays there
+		expect(THEME_PACKS.vale.assets[id]?.kind).toBe("silent");
+	});
+
 	it("adds one colour role per kind, held to the enemy outline's bars", () => {
 		expect([...BOOST_ROLES]).toEqual(BOOST_KINDS.map((k) => boostId(k)));
 		const roles = new Set<string>(COLOR_ROLES);

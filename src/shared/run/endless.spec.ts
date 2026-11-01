@@ -15,6 +15,7 @@ import {
 	BREAKABLES_SUBSYSTEM,
 	DROPS_CONFIG,
 	DROPS_SUBSYSTEM,
+	ENDLESS_DROPS_CONFIG,
 	ENDLESS_HASH_SUBSYSTEM,
 	RUN_SUBSYSTEM,
 	SCORE_SUBSYSTEM,
@@ -35,6 +36,7 @@ import {
 	subsystemHashes,
 	writeHashFields,
 	NO_KIND,
+	NO_BOOST,
 } from "shared/sim";
 import { BOSS_DEMONLORD_KIND, bossKindFor, floorSeed, isBossFloor } from "shared/dungeon";
 import {
@@ -83,10 +85,22 @@ describe("buildEndlessRunConfig", () => {
 		expect(layout.groups[9].name).toBe(BREAKABLES_SUBSYSTEM);
 		expect(layout.names[layout.groups[9].start]).toBe("breakables.length");
 		expect(layout.values[layout.groups[9].start]).toBe(f1.breakables!.size());
-		// docs/BOOSTS.md B4: endless runs drop boosts (the game's DROPS_CONFIG), hashed last.
-		expect(setup.config.drops).toBe(DROPS_CONFIG);
-		expect(layout.groups[10].name).toBe(DROPS_SUBSYSTEM);
-		expect(layout.names[layout.groups[10].start]).toBe("drops.rngState");
+		// docs/BOOSTS.md B4: endless runs drop boosts (DROPS_CONFIG plus boosts from breakables: ENDLESS_DROPS_CONFIG,
+		// docs/BREAKABLE_DROPS.md BL4), hashed after breakables; the group ends with floor 1's loot, one per piece.
+		expect(setup.config.drops).toBe(ENDLESS_DROPS_CONFIG);
+		expect({ ...setup.config.drops, breakableLoot: undefined }).toEqual({ ...DROPS_CONFIG });
+		const dg = layout.groups[10];
+		expect(dg.name).toBe(DROPS_SUBSYSTEM);
+		expect(layout.names[dg.start]).toBe("drops.rngState");
+		const lootAt = dg.finish - 1 - f1.breakables!.size();
+		expect([layout.names[lootAt], layout.values[lootAt]]).toEqual([
+			"drops.pieceLoot.length",
+			f1.breakables!.size(),
+		]);
+		expect(layout.names[lootAt - 1]).toBe("drops.players[0].aegisPips");
+		let loaded = 0;
+		for (let i = lootAt + 1; i < dg.finish; i++) if (layout.values[i] !== NO_BOOST) loaded++;
+		expect(loaded).toBe(f1.breakableLoot!.size());
 		// docs/ENEMY_VARIANTS.md EV7: endless runs have elite affixes (AFFIXES_CONFIG), hashed after drops (last).
 		expect(setup.config.affixes).toBe(AFFIXES_CONFIG);
 		expect(layout.groups[11].name).toBe(AFFIXES_SUBSYSTEM);

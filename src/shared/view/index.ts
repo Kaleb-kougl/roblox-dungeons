@@ -20,6 +20,9 @@
  *   spriteCell.ts per-sheet cells (docs/DEMON_ART.md DD4): the billboard layout of one sheet's own cell and pivot
  *   breakables.ts breakable barrels / crates on screen: the frame diff, hit blink / shake, placement, debris, aim clip
  *                 (tunables: BREAKABLE_VIEW in breakablesConfig.ts)
+ *   breakableLoot.ts  boosts from breakables (docs/BREAKABLE_DROPS.md BL6): the loaded piece's glint (phase, cadence,
+ *                 billboard, duck), the released boost's hop, the KV_LootDebug label (tunables: BREAKABLE_LOOT_VIEW in
+ *                 breakableLootConfig.ts)
  *   outline.ts    enemy outlines (enemy outline plan O2 / O4): who gets the rim (actorOutlined), the actor folder's
  *                 groups, the shared Highlight's look, the KV_EnemyOutline switch (ACTOR_OUTLINE) and when a sprite's
  *                 baked rim draws (spriteOutlineVisible); the player outline (docs/PLAYER_OUTLINE.md): who gets it
@@ -63,6 +66,8 @@ export * from "./spriteCell";
 export * from "./floorTexture";
 export * from "./breakablesConfig";
 export * from "./breakables";
+export * from "./breakableLootConfig";
+export * from "./breakableLoot";
 export * from "./outline";
 export * from "./roomEdgesConfig";
 export * from "./roomEdges";

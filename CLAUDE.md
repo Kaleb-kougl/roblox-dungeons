@@ -28,6 +28,7 @@ Record every ported module in `PROVENANCE.md` (ported module, source path, sourc
 | `docs/SPECTATE.md` | Co-op spectating (watch and switch between living teammates after a death): plan, tasks S0-S6, decisions |
 | `docs/BOOSTS.md` | Temporary boosts dropped by killed enemies (Fury / Quickstep / Frenzy / Aegis): plan, tasks B0-B11, decisions |
 | `docs/BOOST_ART.md` | Boost drop art (Lords of Pain gold coins and gemstones, tinted halo and beam, gems out of decor): plan, tasks BA0-BA7, decisions |
+| `docs/BREAKABLE_DROPS.md` | Boosts from breakables (some barrels / crates hold a boost, picked per floor from the floor seed, released on any break, a soft glint on loaded pieces): plan, tasks BL0-BL9, decisions BLD1-BLD9 |
 | `docs/SNIPER_ART.md` | Sniper art (`enemy.sniper` as the Lords of Pain subservient): mapping, budget, tasks SN1-SN8, decisions D1-D6 |
 | `docs/BOSS_DEMONLORD.md` | Demon Lord boss variant (`boss.demonlord`, seeded pick per endless boss floor, Lords of Pain Demonlord art): plan, tasks D0-D8, decisions |
 | `docs/CURSOR.md` | Gauntlet mouse cursor (Lords of Pain `cursor_gauntlet_*`, software cursor, hover / target colours): plan, tasks C0-C8, decisions D1-D5 |
@@ -442,6 +443,20 @@ Decision log (deviations from `PLAN.md`):
   `tutorialLesson` / `tutorialStuck` / `onboardingReport`; onboarding doc gains optional `firstDay` / `newRuns` /
   `returned` (still v1). Per-session cap 3 logged attempts / 240 events. Debug `KV_AnalyticsDebug`. TF0 spike, Studio
   checks and the dashboard (TF9) pending.
+- **Boosts from breakables (docs/BREAKABLE_DROPS.md).** Gameplay. Some barrels and crates hold a boost: shared/dungeon
+  `placeBreakableLoot` picks them per floor after breakables from their own stream (`floorSeed ^ BREAKABLE_LOOT.salt`
+  0xe6546b64; per depth band 0-2 / 1-2 / 1-3 / 1-3, at most one per room, crates weighted 2 : 1, kinds by the `BOOSTS`
+  weights, mirrored in `BREAKABLE_LOOT.kindWeights` and checked by a sim spec), stored as `EndlessFloorLayout` /
+  `EndlessFloorWorld.breakableLoot`; layouts, digests, props, spawns, pieces, affixes and boss picks are unchanged. The
+  sim draws no rng: opt-in `DropsConfig.breakableLoot` (`ENDLESS_DROPS_CONFIG`; never on `DROPS_CONFIG`, which the
+  tutorial's `guaranteedDropsConfig` spreads) fills `DropsState.pieceLoot` (createSimState, nextFloor) and
+  `drops/breakLoot.ts` `dropsOnBreak` (a leaf, from `damageBreakable`'s break line: any source) lands it as an ordinary
+  ground drop at the cell centre, or loses it when every ground slot is taken (`events.lostLoot`); kill pity untouched.
+  `pieceLoot` is hashed at the end of the `drops` group only with the flag. M1, every fixture and the tutorial replay
+  exactly as before; endless replays and scores changed (all-time boards stay `_v1`, `DAILY.ruleset` 1 -> 2). View:
+  `decor.fx.glint` on loaded pieces (`BREAKABLE_LOOT_VIEW`), a hop for `fromPiece` landings, a fizzle for lost loot,
+  port audio ID `sfx.breakable.loot` (SILENT in the placeholder, falls back to `sfx.boost.drop`); no Luau-locals change.
+  Debug `KV_LootDebug`. Studio check, the vale clip (BL7) and playtest (BL9) pending.
 
 ## Commands
 

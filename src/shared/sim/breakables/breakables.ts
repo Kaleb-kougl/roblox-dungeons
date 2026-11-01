@@ -20,16 +20,19 @@
  *            BREAKABLE_SLAM_RADIUS. Not the Ember, not bodies.
  *   score    a piece a PLAYER breaks (sword, player bullet) scores ScoreSource.BREAKABLES (score.ts scoreBreakable):
  *            BREAKABLE_POINTS[kind] x floor; it never feeds the combo and no room record sees it.
+ *   loot     a piece that holds a boost (docs/BREAKABLE_DROPS.md, drops/breakLoot.ts) releases it when it breaks, from
+ *            any source (dropsOnBreak, after the score); only with DropsConfig.breakableLoot.
  *   events   SimEvents.breakableHits (every hit, the breaking one included) and .breakablesBroken; per tick (cleared
  *            by step(), presentation only, not hashed) `hitSlots` and `brokenSlots` (slot per hit / break, in order).
  *
  * Co-op: the same rules for every player (bullets carry their owner; the team score gets the points). Everything here
  * is deterministic: fixed slot order, no rng, no trig.
  */
-import { BREAKABLE_KINDS, cellKey, gridToWorld, type BreakablePlacement } from "shared/dungeon";
+import { BREAKABLE_KINDS, cellKey, gridToWorld, type BreakableLoot, type BreakablePlacement } from "shared/dungeon";
 import type { SimState } from "../state";
 import { breakableSlotAt } from "./cells";
 import { scoreBreakable } from "../score/score";
+import { dropsOnBreak } from "../drops/breakLoot";
 import {
 	BREAKABLE_ENEMY_BULLET_DAMAGE,
 	BREAKABLE_HIT_RADIUS,
@@ -55,6 +58,12 @@ export interface BreakablesConfig {
 	 * floor's pieces come from its world (EndlessFloorWorld.breakables).
 	 */
 	readonly pieces?: ReadonlyArray<BreakablePlacement>;
+	/**
+	 * With `pieces` (a run WITHOUT endless mode): the pieces that hold a boost ({ slot into `pieces`, Boost index }),
+	 * read only when the run's DropsConfig.breakableLoot is set (docs/BREAKABLE_DROPS.md). Endless runs ignore it: each
+	 * floor's loot comes from its world (EndlessFloorWorld.breakableLoot).
+	 */
+	readonly loot?: ReadonlyArray<BreakableLoot>;
 }
 
 /** The game's breakables config (every endless run; shared/run buildEndlessRunConfig). */
@@ -170,8 +179,8 @@ export function clearBreakableEvents(b: BreakablesState): void {
 /**
  * Damages the intact piece in `slot` by `amount` from `source` (BreakableSource). events.breakableHits += 1 and the
  * slot joins hitSlots; at hp <= 0 it breaks this tick: hp 0, brokenTick = state.tick, out of the lookup,
- * events.breakablesBroken += 1, brokenSlots; a player's break (MELEE / PLAYER_BULLET) scores (scoreBreakable).
- * Returns true when it broke. A broken (or missing) slot: nothing, false.
+ * events.breakablesBroken += 1, brokenSlots; a player's break (MELEE / PLAYER_BULLET) scores (scoreBreakable); a
+ * loaded piece releases its boost (dropsOnBreak, every source). Returns true when it broke. A broken (or missing) slot: nothing, false.
  */
 export function damageBreakable(state: SimState, slot: number, amount: number, source: BreakableSourceId): boolean {
 	const b = state.breakables;
@@ -193,6 +202,7 @@ export function damageBreakable(state: SimState, slot: number, amount: number, s
 	ev.breakablesBroken += 1;
 	b.brokenSlots.push(slot);
 	if (source === BreakableSource.MELEE || source === BreakableSource.PLAYER_BULLET) scoreBreakable(state, p.kind);
+	dropsOnBreak(state, slot);
 	return true;
 }
 

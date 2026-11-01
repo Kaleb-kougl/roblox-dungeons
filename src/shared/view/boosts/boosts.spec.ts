@@ -36,6 +36,7 @@ import {
 	BOOST_VIEW,
 	BoostFrameEvents,
 	DropSlotTracker,
+	NOT_ON_GROUND,
 	auraDisc,
 	auraTopStuds,
 	auraTransparency,
@@ -51,6 +52,7 @@ import {
 	dropPopScale,
 	dropSecondsLeft,
 	isBoostsHighlight,
+	pieceLandingAt,
 } from ".";
 
 const CONFIG: SimConfig = { ...DEFAULT_SIM_CONFIG, drops: DROPS_CONFIG };
@@ -252,6 +254,73 @@ describe("boosts: BoostFrameEvents (every tick of a frame)", () => {
 		const none = new BoostFrameEvents();
 		none.collect(createSimState(1, 0, 0, DEFAULT_SIM_CONFIG));
 		expect(none.count()).toBe(0);
+	});
+});
+
+describe("boosts: BoostFrameEvents from breakables (docs/BREAKABLE_DROPS.md BL6)", () => {
+	/** Lands `kind` in ground slot `slot` at (x, z) on this tick, as the sim's land() does. */
+	function landAt(s: SimState, slot: number, kind: number, x: number, z: number): void {
+		const g = s.drops!.ground[slot];
+		g.kind = kind;
+		g.x = x;
+		g.z = z;
+		g.spawnTick = s.tick;
+		g.ticksLeft = DROPS_CONFIG.groundTicks;
+	}
+
+	it("a piece's landing is in dropped AND fromPiece (with its landing tick); a kill's only in dropped", () => {
+		const s = fresh();
+		s.tick = 40;
+		const d = s.drops!;
+		landAt(s, 0, Boost.FURY, 1, 2); // a kill drop
+		landAt(s, 1, Boost.FRENZY, 5.5, 6.5); // out of a piece
+		d.events.dropped.push(0, 1);
+		d.events.fromPiece.push(1);
+		const e = new BoostFrameEvents();
+		e.collect(s);
+		expect(e.dropped).toEqual([
+			{ slot: 0, kind: Boost.FURY, x: 1, z: 2 },
+			{ slot: 1, kind: Boost.FRENZY, x: 5.5, z: 6.5 },
+		]);
+		expect(e.fromPiece).toEqual([{ slot: 1, kind: Boost.FRENZY, x: 5.5, z: 6.5, spawnTick: 40 }]);
+		// a piece's landing counts once (as a landing)
+		expect(e.count()).toBe(2);
+		expect(pieceLandingAt(e, 1, 40)).toEqual(e.fromPiece[0]);
+		expect(pieceLandingAt(e, 0, 40)).toBe(undefined);
+		// the slot refilled later (another tick) is not the piece's drop
+		expect(pieceLandingAt(e, 1, 41)).toBe(undefined);
+		e.reset();
+		expect([e.count(), e.fromPiece.size(), e.lostLoot.size()]).toEqual([0, 0, 0]);
+	});
+
+	it("taken on its landing tick: still a piece landing, NOT_ON_GROUND; freed unseen: in neither list", () => {
+		const s = fresh();
+		const d = s.drops!;
+		d.events.dropped.push(2, 3);
+		d.events.fromPiece.push(2, 3);
+		d.events.collected.push({ player: 0, kind: Boost.AEGIS, slot: 2, x: 3, z: 4 });
+		const e = new BoostFrameEvents();
+		e.collect(s);
+		expect(e.dropped).toEqual([{ slot: 2, kind: Boost.AEGIS, x: 3, z: 4 }]);
+		expect(e.fromPiece).toEqual([{ slot: 2, kind: Boost.AEGIS, x: 3, z: 4, spawnTick: NOT_ON_GROUND }]);
+		expect(pieceLandingAt(e, 3, s.tick)).toBe(undefined);
+	});
+
+	it("collects lost loot (a copy) across ticks; it counts as an event", () => {
+		const s = fresh();
+		const d = s.drops!;
+		const lost = { kind: Boost.QUICKSTEP, x: 7.5, z: 8.5 };
+		d.events.lostLoot.push(lost);
+		const e = new BoostFrameEvents();
+		e.collect(s);
+		tick(s); // the sim clears its per-tick events; the frame's copy keeps them
+		e.collect(s);
+		expect(e.lostLoot).toEqual([lost]);
+		expect(e.lostLoot[0] === lost).toBe(false);
+		expect([e.count(), e.dropped.size(), e.fromPiece.size()]).toEqual([1, 0, 0]);
+		const none = new BoostFrameEvents();
+		none.collect(createSimState(1, 0, 0, DEFAULT_SIM_CONFIG));
+		expect([none.fromPiece.size(), none.lostLoot.size()]).toEqual([0, 0]);
 	});
 });
 

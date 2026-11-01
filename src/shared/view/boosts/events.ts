@@ -4,6 +4,11 @@
  * shared/lockstep LockstepClient) `collect` them after every tick into one BoostFrameEvents and `reset` it at the start
  * of every frame, as they do their FrameEvents. The drop renderer (pickup bursts, poofs) and the audio cue mapper read
  * it once per frame. Presentation only: plain numbers, read-only on the sim, tested headlessly.
+ *
+ * Boosts from breakables (docs/BREAKABLE_DROPS.md BL6): `fromPiece` lists the frame's landings that came out of a
+ * broken barrel / crate (a subset of `dropped`, collected in the same pass, so a landing `dropped` skips is skipped here
+ * too) with their landing tick (the renderer's hop matches it to the slot's drop); `lostLoot` the loaded pieces that
+ * broke with every ground slot taken (the renderer's fizzle).
  */
 import {
 	NO_BOOST,
@@ -12,6 +17,7 @@ import {
 	type BoostEnded,
 	type DropCollected,
 	type DropExpired,
+	type DropLostLoot,
 	type SimState,
 } from "shared/sim";
 
@@ -23,6 +29,17 @@ export interface BoostLanding {
 	readonly z: number;
 }
 
+/**
+ * A landing out of a broken breakable (docs/BREAKABLE_DROPS.md): the landing, and the ground slot's `spawnTick` at
+ * collection (the tick it landed), or NOT_ON_GROUND when it was taken on its landing tick (it never shows).
+ */
+export interface PieceLanding extends BoostLanding {
+	readonly spawnTick: number;
+}
+
+/** PieceLanding.spawnTick of a piece's drop taken on its landing tick (no slot to hop). */
+export const NOT_ON_GROUND = -1;
+
 /** What the drop renderer and the audio mapper read (BoostFrameEvents satisfies it). */
 export interface BoostEventSource {
 	readonly dropped: ReadonlyArray<BoostLanding>;
@@ -30,6 +47,10 @@ export interface BoostEventSource {
 	readonly expired: ReadonlyArray<DropExpired>;
 	readonly ended: ReadonlyArray<BoostEnded>;
 	readonly aegisBroke: ReadonlyArray<number>;
+	/** The landings out of a broken breakable (a subset of `dropped`, same order). */
+	readonly fromPiece: ReadonlyArray<PieceLanding>;
+	/** Loaded breakables that broke with every ground slot taken: the boost is lost (kind, sim position). */
+	readonly lostLoot: ReadonlyArray<DropLostLoot>;
 }
 
 /** The boost-drop events of every tick a frame ran, in tick order. */
@@ -39,6 +60,8 @@ export class BoostFrameEvents implements BoostEventSource {
 	readonly expired: DropExpired[] = [];
 	readonly ended: BoostEnded[] = [];
 	readonly aegisBroke: number[] = [];
+	readonly fromPiece: PieceLanding[] = [];
+	readonly lostLoot: DropLostLoot[] = [];
 
 	/** A new frame: forget the last one's events. */
 	reset(): void {
@@ -47,6 +70,8 @@ export class BoostFrameEvents implements BoostEventSource {
 		this.expired.clear();
 		this.ended.clear();
 		this.aegisBroke.clear();
+		this.fromPiece.clear();
+		this.lostLoot.clear();
 	}
 
 	/** Every event of this frame (0: nothing happened). */
@@ -56,33 +81,61 @@ export class BoostFrameEvents implements BoostEventSource {
 			this.collected.size() +
 			this.expired.size() +
 			this.ended.size() +
-			this.aegisBroke.size()
+			this.aegisBroke.size() +
+			this.lostLoot.size()
 		);
 	}
 
 	/**
 	 * After every tick: appends that tick's events (no-op without drops). A landing's kind and position come from its
 	 * ground slot; a drop taken on its landing tick from that tick's pickup; one a floor change freed on the same tick
-	 * (it never showed) is skipped.
+	 * (it never showed) is skipped. A landing in the tick's `fromPiece` is also a PieceLanding (its slot's spawnTick, or
+	 * NOT_ON_GROUND when taken at once). `count()` counts a piece's landing once (as a landing).
 	 */
 	collect(state: Readonly<SimState>): void {
 		const ev = dropsEvents(state);
 		if (ev === undefined) return;
 		const ground = dropsGround(state);
+		const pieces = ev.fromPiece;
 		for (const slot of ev.dropped) {
 			const g = ground[slot];
+			let landing: BoostLanding | undefined;
+			let spawnTick = NOT_ON_GROUND;
 			if (g !== undefined && g.kind !== NO_BOOST) {
-				this.dropped.push({ slot, kind: g.kind, x: g.x, z: g.z });
-				continue;
+				landing = { slot, kind: g.kind, x: g.x, z: g.z };
+				spawnTick = g.spawnTick;
+			} else {
+				const taken = ev.collected.find((c) => c.slot === slot);
+				if (taken !== undefined) landing = { slot, kind: taken.kind, x: taken.x, z: taken.z };
 			}
-			const taken = ev.collected.find((c) => c.slot === slot);
-			if (taken !== undefined) this.dropped.push({ slot, kind: taken.kind, x: taken.x, z: taken.z });
+			if (landing === undefined) continue;
+			this.dropped.push(landing);
+			if (pieces.includes(slot)) {
+				this.fromPiece.push({
+					slot,
+					kind: landing.kind,
+					x: landing.x,
+					z: landing.z,
+					spawnTick,
+				});
+			}
 		}
 		for (const c of ev.collected) this.collected.push(c);
 		for (const e of ev.expired) this.expired.push(e);
 		for (const e of ev.ended) this.ended.push(e);
 		for (const p of ev.aegisBroke) this.aegisBroke.push(p);
+		for (const l of ev.lostLoot) this.lostLoot.push({ kind: l.kind, x: l.x, z: l.z });
 	}
+}
+
+/**
+ * The frame's landing out of a piece in ground slot `slot` whose drop landed on `spawnTick` (the slot's GroundDrop), or
+ * undefined: that drop is a kill drop (or a debug one). Tick-matched, so a piece's drop taken and the slot refilled by a
+ * kill within one frame never hops.
+ */
+export function pieceLandingAt(source: BoostEventSource, slot: number, spawnTick: number): PieceLanding | undefined {
+	for (const p of source.fromPiece) if (p.slot === slot && p.spawnTick === spawnTick) return p;
+	return undefined;
 }
 
 /** No events (a run view without drops, the specs' default). */

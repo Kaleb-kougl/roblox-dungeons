@@ -19,6 +19,7 @@ import {
 	type WorldImage,
 } from "shared/theme";
 import {
+	BREAKABLE_LOOT_VIEW,
 	BULLET_VIEW,
 	RENDER_ORDER,
 	SPRITE_VIEW,
@@ -27,6 +28,8 @@ import {
 	degToRad,
 	floorStudsY,
 	isoBasis,
+	lootHopStuds,
+	lootSettledAgeSec,
 	spriteBillboard,
 	studsX,
 	studsZ,
@@ -55,6 +58,7 @@ import {
 	dropBobStuds,
 	dropPopScale,
 	dropSecondsLeft,
+	pieceLandingAt,
 } from "shared/view/boosts";
 import { burstSeed, motionScale } from "shared/view/fx";
 import { SimController } from "../game/SimController";
@@ -62,7 +66,8 @@ import { ThemeController } from "../game/ThemeController";
 import { FxTrackerController } from "../fx/FxTrackerController";
 import { FxSpriteController } from "../fx/FxSpriteController";
 import { ParticleController } from "../fx/ParticleController";
-import { buildFloorArt, restingAnimation, visualLayout, widthLayout } from "./decorParts";
+import { buildFloorArt, visualLayout, widthLayout } from "./decorParts";
+import { buildGlint, setGlintBoard, setGlintFrame, setGlintTransparency, type Glint } from "./glintParts";
 import {
 	buildPlaceholder,
 	destroyModel,
@@ -123,18 +128,6 @@ interface Beam {
 	shown: number;
 }
 
-/** The glint: `decor.fx.glint` as a BillboardGui on an anchor (the prop's, or its own for a pickup flash). */
-interface Glint {
-	readonly gui: BillboardGui;
-	readonly label: ImageLabel;
-	readonly piece: DecorPiece;
-	readonly anim: string | undefined;
-	readonly frames: number;
-	readonly fps: number;
-	shownFrame: number;
-	shown: number;
-}
-
 /** The art layers of a drop with art (docs/BOOST_ART.md BA3), pooled with its body. */
 interface ArtLayers {
 	readonly halo: Halo;
@@ -161,6 +154,8 @@ interface DropView {
 	/** Base point on the floor at the drop's position. */
 	readonly rest: CFrame;
 	readonly body: DropBody;
+	/** It came out of a broken breakable (docs/BREAKABLE_DROPS.md BL6): it hops in instead of popping. */
+	readonly hopped: boolean;
 }
 
 /** A pickup flash (BA-P4): a halo flash and the glint played once, at the pickup point. Pooled. */
@@ -200,7 +195,13 @@ interface Flash {
  * Effects come from the run view's per-tick boost events (`RunView.boostEvents`, every tick of the frame): a pickup
  * plays `fx.boost.collect` when the pack has it (FxSpriteController.boostCollect); else, for a kind with art, a pickup
  * flash (the glint once at pickupGlintScale and a growing, fading halo, on sim time; pooled); else a particle burst in
- * the kind's colour (ParticleController.boostBurst). A drop that faded leaves a small poof. Sounds are not played
+ * the kind's colour (ParticleController.boostBurst). A drop that faded leaves a small poof.
+ *
+ * Boosts from breakables (docs/BREAKABLE_DROPS.md BL6): a landed slot that matches one of the frame's `fromPiece`
+ * landings (pieceLandingAt: slot and landing tick) hops in instead of popping: from the piece's top
+ * (BREAKABLE_LOOT_VIEW.hopFromTiles) to the floor in an arc hopTiles high over hopSeconds (lootHopStuds, sim time; none
+ * under reduced motion), its bob and halo pulse counted from the touch-down (lootSettledAgeSec). A loaded piece lost on
+ * a full floor (`lostLoot`) leaves a small grey fizzle at the piece (ParticleController.lootFizzle). Sounds are not played
  * here: AudioController maps the same events (shared/view/audio cues.ts). All moves in one workspace:BulkMoveTo per
  * frame (one CFrame per part, the last written). Read-only on the sim.
  */
@@ -285,10 +286,13 @@ export class BoostDropRenderController implements OnStart {
 		const motion = motionScale(this.fx.settings());
 		const t = this.tracker;
 		t.update(ground, state.tick);
-		for (const slot of t.cleared) this.release(slot);
-		for (const slot of t.landed) this.attach(slot, ground[slot]);
-
 		const ev = ctx.run.boostEvents;
+		for (const slot of t.cleared) this.release(slot);
+		for (const slot of t.landed) {
+			const g = ground[slot];
+			this.attach(slot, g, g !== undefined && pieceLandingAt(ev, slot, g.spawnTick) !== undefined);
+		}
+
 		for (const c of ev.collected) {
 			if (this.collectFx) this.sprites.boostCollect(c.x, c.z);
 			else if (this.hasArt(c.kind)) this.startFlash(c.kind, c.x, c.z, simSec, motion);
@@ -304,6 +308,11 @@ export class BoostDropRenderController implements OnStart {
 		for (const e of ev.expired) {
 			this.particles.boostBurst(e.x, e.z, e.kind, true, burstSeed(e.slot, state.tick, BOOST_VIEW.poofSeedSalt));
 		}
+		// A loaded piece broke with every ground slot taken (BLD5): its boost fizzles out at the piece.
+		for (let i = 0; i < ev.lostLoot.size(); i++) {
+			const l = ev.lostLoot[i];
+			this.particles.lootFizzle(l.x, l.z, burstSeed(i, state.tick, BREAKABLE_LOOT_VIEW.fizzleSeedSalt));
+		}
 
 		let any = false;
 		for (const [slot, view] of this.views) {
@@ -318,7 +327,10 @@ export class BoostDropRenderController implements OnStart {
 		debug.profileend();
 	}
 
-	/** One frame of a drop: bob, pop, blink, the sprite's idle loop, the art layers. */
+	/**
+	 * One frame of a drop: bob, pop (a piece's drop: the hop instead, its bob and halo pulse counted from the touch-down),
+	 * blink, the sprite's idle loop, the art layers.
+	 */
 	private animate(
 		view: DropView,
 		g: Readonly<GroundDrop>,
@@ -329,16 +341,17 @@ export class BoostDropRenderController implements OnStart {
 	): void {
 		const body = view.body;
 		const age = dropAgeSec(tick, alpha, g.spawnTick);
-		const bob = dropBobStuds(age, motion);
+		const settled = lootSettledAgeSec(age, view.hopped);
+		const lift = dropBobStuds(settled, motion) + (view.hopped ? lootHopStuds(age, motion) : 0);
 		const blink = boostBlinkTransparency(dropSecondsLeft(g.ticksLeft), motion);
-		this.setScale(body, dropPopScale(age, motion));
+		this.setScale(body, view.hopped ? 1 : dropPopScale(age, motion));
 		this.setTransparency(body, blink);
-		this.place(body, bob !== 0 ? view.rest.add(new Vector3(0, bob, 0)) : view.rest);
+		this.place(body, lift !== 0 ? view.rest.add(new Vector3(0, lift, 0)) : view.rest);
 		body.sprite?.update(IDLE, 0, 0, this.basis, dtSec);
 		const layers = body.layers;
 		if (layers === undefined) return;
 		const halo = layers.halo;
-		setHaloTransparency(halo, boostLayerTransparency(boostHaloTransparency(age, motion, halo.base), blink));
+		setHaloTransparency(halo, boostLayerTransparency(boostHaloTransparency(settled, motion, halo.base), blink));
 		if (layers.beam !== undefined) setBeamTransparency(layers.beam, boostBeamTransparency(blink));
 		const glint = layers.glint;
 		if (glint !== undefined) {
@@ -376,12 +389,12 @@ export class BoostDropRenderController implements OnStart {
 		return look !== undefined && look.board !== undefined;
 	}
 
-	private attach(slot: number, g: Readonly<GroundDrop> | undefined): void {
+	private attach(slot: number, g: Readonly<GroundDrop> | undefined, hopped: boolean): void {
 		if (g === undefined) return;
 		if (this.views.has(slot)) this.release(slot);
 		const body = this.acquire(g.kind);
 		const rest = new CFrame(studsX(g.x), floorStudsY() + BOOST_VIEW.liftStuds, studsZ(g.z));
-		this.views.set(slot, { slot, rest, body });
+		this.views.set(slot, { slot, rest, body, hopped });
 		body.sprite?.update(IDLE, 0, 0, this.basis, 0);
 		this.place(body, rest);
 		this.placeLayers(body, new CFrame(studsX(g.x), floorStudsY(), studsZ(g.z)), rest);
@@ -444,7 +457,12 @@ export class BoostDropRenderController implements OnStart {
 		const glintPiece = this.glint;
 		const glint =
 			glintPiece !== undefined
-				? buildGlint(glintPiece, propAnchor, boostGlintBillboard(board, visualLayout(glintPiece.art)))
+				? buildGlint(
+						glintPiece,
+						propAnchor,
+						boostGlintBillboard(board, visualLayout(glintPiece.art)),
+						BOOST_VIEW.idleAnimation,
+				  )
 				: undefined;
 		return { halo, beam, glint };
 	}
@@ -610,7 +628,12 @@ export class BoostDropRenderController implements OnStart {
 		const piece = this.glint;
 		const glint =
 			piece !== undefined
-				? buildGlint(piece, anchor, boostGlintBillboard(EMPTY_BOARD, visualLayout(piece.art)))
+				? buildGlint(
+						piece,
+						anchor,
+						boostGlintBillboard(EMPTY_BOARD, visualLayout(piece.art)),
+						BOOST_VIEW.idleAnimation,
+				  )
 				: undefined;
 		if (glint !== undefined) glint.gui.Enabled = false;
 		return { halo, anchor, glint, at: PARKED, startSec: 0, endSec: 0 };
@@ -763,66 +786,6 @@ function buildBeam(image: ImageRef, color: Color3, parent: Instance): Beam {
 	gui.Parent = anchor;
 	anchor.Parent = parent;
 	return { anchor, gui, label, shown: HIDDEN };
-}
-
-/** The glint billboard on `anchor`, drawn as `board` (boostGlintBillboard), untinted, hidden until its first frame. */
-function buildGlint(piece: DecorPiece, anchor: Part, board: SpriteBillboard): Glint {
-	const art = piece.art;
-	let anim: string | undefined;
-	let frames = 1;
-	let fps = 0;
-	const gui = createKvBillboardGui("Glint");
-	gui.LightInfluence = SELF_LIT;
-	gui.AlwaysOnTop = false;
-	gui.ResetOnSpawn = false;
-	gui.Adornee = anchor;
-	const label = new Instance("ImageLabel");
-	label.BackgroundTransparency = HIDDEN;
-	label.BorderSizePixel = 0;
-	label.Size = UDim2.fromScale(1, 1);
-	label.ImageColor3 = WHITE;
-	label.ImageTransparency = HIDDEN;
-	if (art.kind === "image") {
-		label.Image = art.image;
-		label.ImageRectOffset = art.offset;
-		label.ImageRectSize = art.size;
-	} else {
-		label.ResampleMode = Enum.ResamplerMode[art.set.resample];
-		anim = restingAnimation(art.set, BOOST_VIEW.idleAnimation);
-		const def = anim !== undefined ? art.set.animation(anim) : undefined;
-		if (def !== undefined) {
-			frames = math.max(1, def.frames);
-			fps = def.fps;
-		}
-	}
-	label.Parent = gui;
-	gui.Parent = anchor;
-	const glint: Glint = { gui, label, piece, anim, frames, fps, shownFrame: -1, shown: HIDDEN };
-	setGlintBoard(glint, board);
-	setGlintFrame(glint, 0);
-	return glint;
-}
-
-function setGlintBoard(glint: Glint, b: SpriteBillboard): void {
-	glint.gui.Size = new UDim2(b.w, 0, b.h, 0);
-	glint.gui.StudsOffset = new Vector3(b.offsetX, b.offsetY, b.offsetZ);
-}
-
-/** A sprite glint's frame (image art: nothing). Written only when it changes. */
-function setGlintFrame(glint: Glint, frame: number): void {
-	const art = glint.piece.art;
-	if (art.kind !== "sprites" || glint.anim === undefined || frame === glint.shownFrame) return;
-	glint.shownFrame = frame;
-	const f = art.set.frame(glint.anim, 0, frame);
-	if (glint.label.Image !== f.image) glint.label.Image = f.image;
-	glint.label.ImageRectOffset = f.offset;
-	glint.label.ImageRectSize = f.size;
-}
-
-function setGlintTransparency(glint: Glint, t: number): void {
-	if (t === glint.shown) return;
-	glint.shown = t;
-	glint.label.ImageTransparency = t;
 }
 
 function setBeamTransparency(beam: Beam, t: number): void {
