@@ -161,6 +161,18 @@ export const DECOR_FX = {
 		{ lifetime: [4, 6], speed: [0.2, 0.5], accelY: 0.08, spreadDeg: 120, up: true },
 		{ lifetime: [5, 8], speed: [0.15, 0.35], accelY: 0.05, spreadDeg: 90, up: true },
 	] as ReadonlyArray<AmbientMotion>,
+	/**
+	 * Abyss motes (docs/VOID_DECOR.md VD8): a second emitter volume deep in the void, under the floor plane, so floor,
+	 * wall and void Parts hide every mote that is not over open abyss and none can draw over a bullet. This share of
+	 * the ambient emitter's live count (`abyssMoteSpec`), in a volume `abyssMoteVolumeHeightTiles` high centred
+	 * `abyssMoteLiftTiles` above the abyss plane (VOID.abyssDepthTiles under the floor; x / z as ambientVolumeTiles),
+	 * drifting by `abyssMoteMotion` whatever the biome's own motion (molten embers would climb out of the abyss). A spec
+	 * checks the highest a mote can climb stays under the floor.
+	 */
+	abyssMoteShare: 0.3,
+	abyssMoteLiftTiles: 1,
+	abyssMoteVolumeHeightTiles: 1,
+	abyssMoteMotion: { lifetime: [6, 10], speed: [0.05, 0.15], accelY: 0, spreadDeg: 180, up: true } as AmbientMotion,
 } as const;
 
 /** One Forge particle kind's motion (DECOR_FX.ambientMotion). */

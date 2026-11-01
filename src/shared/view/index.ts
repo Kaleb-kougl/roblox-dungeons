@@ -39,8 +39,9 @@
  *                 n + 1 during floor n's draft), the KV_Debug listener timing line (tunables: STAGE_LOADER and the
  *                 cover's layout STAGE_VIEW in stageLoaderConfig.ts; string keys: STAGE_STRINGS in stageStrings.ts)
  *   decor/        the decor plan (docs/DECOR.md R3 / R6 / R8): planDecor, decorProfile, fade selection, glow points
- *   voidDecor/    void decoration (docs/VOID_DECOR.md VD2 / VD4): voidField, planVoid (shoulder / ledge / outcrop /
- *                 abyss per cell, greedy rects), VOID / VOID_DEPTH
+ *   voidDecor/    void decoration (docs/VOID_DECOR.md VD2-VD4, VD9): voidField, planVoid (shoulder / ledge / outcrop /
+ *                 abyss per cell, greedy rects), VOID / VOID_DEPTH, the VoidController's columns (voidColumnOf,
+ *                 voidLayerStyle, voidRunInput, VOID_VIEW)
  *   minimap/      the minimap with fog of war (docs/MINIMAP.md M1-M5): map tiles, sight, FogOfWar, the turned map
  *                 transform, the RGBA8 painter (tunables: MINIMAP_VIEW in minimap/config.ts)
  *

@@ -2,7 +2,7 @@ import { Controller, OnStart } from "@flamework/core";
 import { Janitor } from "@rbxts/janitor";
 import { RunService, Workspace } from "@rbxts/services";
 import { STUDS_PER_TILE } from "shared/config";
-import { DECOR_FX_TINT, decorFxId, type DecorPiece } from "shared/theme";
+import { DECOR_FX_TINT, decorFxId, type DecorPiece, type ThemePack } from "shared/theme";
 import {
 	BULLET_VIEW,
 	DECOR_FX,
@@ -12,7 +12,10 @@ import {
 	DecorLightPool,
 	NO_DECOR_LIGHT,
 	SPRITE_VIEW,
+	VOID,
+	VOID_VIEW,
 	WALL_DEPTH_BIAS,
+	abyssMoteSpec,
 	ambientEmitterSpec,
 	decorFlameMaxGrow,
 	decorFlickerScale,
@@ -59,6 +62,22 @@ const FLIPBOOK_LAYOUTS: ReadonlyMap<number, Enum.ParticleFlipbookLayout> = new M
 		[8, Enum.ParticleFlipbookLayout.Grid8x8],
 	],
 );
+
+/** The abyss motes' spec while KV_VoidOff is on: nothing emitted. */
+const OFF_SPEC: AmbientEmitterSpec = { live: 0, rate: 0, motion: DECOR_FX.abyssMoteMotion };
+
+/** An emitter's rate and motion from `spec` (Speed / Acceleration in tiles x STUDS_PER_TILE); off and cleared at 0. */
+function applyMotion(emitter: ParticleEmitter, spec: AmbientEmitterSpec): void {
+	const m = spec.motion;
+	emitter.Rate = spec.rate;
+	emitter.Lifetime = new NumberRange(m.lifetime[0], m.lifetime[1]);
+	emitter.Speed = new NumberRange(m.speed[0] * S, m.speed[1] * S);
+	emitter.Acceleration = new Vector3(0, m.accelY * S, 0);
+	emitter.SpreadAngle = new Vector2(m.spreadDeg, m.spreadDeg);
+	emitter.EmissionDirection = m.up ? Enum.NormalId.Top : Enum.NormalId.Bottom;
+	emitter.Enabled = spec.rate > 0;
+	if (spec.rate <= 0) emitter.Clear();
+}
 
 /** A looping effect billboard (flame, glow, glint) and how it animates. */
 interface FxBillboard {
@@ -120,6 +139,11 @@ interface FixedLight extends DecorLight {
  *               without it), rate from ambientEmitterSpec (Forge count x band light x juice particle level, zero under
  *               reduced motion, capped at DECOR_FX.maxParticles); TimeScale 0 while the decoration is frozen. A
  *               texture with a theme `flipbook` (docs/FX_AUDIO.md F6) plays it (FlipbookLayout / Mode / Framerate).
+ *   abyss motes a second, sparser volume with the same look deep in the void (docs/VOID_DECOR.md VD8):
+ *               abyssMoteSpec (DECOR_FX.abyssMoteShare of the ambient count, so the same band / level / motion
+ *               scaling and none under reduced motion) in its own slow drift, centred DECOR_FX.abyssMoteLiftTiles
+ *               above the abyss plane (VOID.abyssDepthTiles under the floor). Under the floor plane, so only open abyss
+ *               shows it and it never draws over a bullet. Off while Workspace KV_VoidOff is true.
  *
  * Everything per floor belongs to the floor's Janitor (rebuilt when DecorController's scene revision moves); the pool
  * lights and the emitter live as long as the controller. Read-only on the sim.
@@ -149,6 +173,13 @@ export class DecorFxController implements OnStart {
 	private emitterPart: Part | undefined;
 	private emitter: ParticleEmitter | undefined;
 	private emitterSpec: AmbientEmitterSpec | undefined;
+	private abyssPart: Part | undefined;
+	private abyssEmitter: ParticleEmitter | undefined;
+	private abyssSpec: AmbientEmitterSpec | undefined;
+	/** The ambient spec abyssSpec was made from. */
+	private abyssFrom: AmbientEmitterSpec | undefined;
+	/** Workspace KV_VoidOff (VOID_VIEW.offAttribute): no abyss motes. */
+	private voidOff = false;
 	/** The inputs emitterSpec was made from (recomputed only when one changes). */
 	private specTheme = "";
 	private specLight = 0;
@@ -174,7 +205,18 @@ export class DecorFxController implements OnStart {
 		folder.Parent = Workspace;
 		this.folder = this.janitor.Add(folder);
 		for (let i = 0; i < this.pool.size; i++) this.poolLights.push(this.buildLight(folder, `DecorPoolLight${i}`));
-		this.buildEmitter(folder);
+		[this.emitterPart, this.emitter] = this.buildEmitter(folder, "DecorAmbient", DECOR_FX.ambientVolumeTiles[1]);
+		[this.abyssPart, this.abyssEmitter] = this.buildEmitter(
+			folder,
+			"DecorAbyssMotes",
+			DECOR_FX.abyssMoteVolumeHeightTiles,
+		);
+		const readVoidOff = () => {
+			this.voidOff = Workspace.GetAttribute(VOID_VIEW.offAttribute) === true;
+			this.abyssSpec = undefined; // re-applied next frame
+		};
+		readVoidOff();
+		this.janitor.Add(Workspace.GetAttributeChangedSignal(VOID_VIEW.offAttribute).Connect(readVoidOff));
 		RunService.BindToRenderStep(
 			DECOR_FX.renderStep,
 			Enum.RenderPriority.Camera.Value + DECOR_RENDER_ORDER.decorFxAfterDecor,
@@ -466,12 +508,13 @@ export class DecorFxController implements OnStart {
 
 	// --- ambient particles -------------------------------------------------------------------------
 
-	private buildEmitter(folder: Instance): void {
+	/** An invisible volume Part with a disabled Box-volume ParticleEmitter (`height` tiles; x / z as the ambient's). */
+	private buildEmitter(folder: Instance, name: string, height: number): [Part, ParticleEmitter] {
 		const part = renderPart("Part", false);
-		part.Name = "DecorAmbient";
+		part.Name = name;
 		part.Transparency = HIDDEN;
-		const [vx, vy, vz] = DECOR_FX.ambientVolumeTiles;
-		part.Size = new Vector3(vx * S, vy * S, vz * S);
+		const [vx, , vz] = DECOR_FX.ambientVolumeTiles;
+		part.Size = new Vector3(vx * S, height * S, vz * S);
 		part.CFrame = PARKED;
 		const emitter = new Instance("ParticleEmitter");
 		emitter.Enabled = false;
@@ -481,21 +524,25 @@ export class DecorFxController implements OnStart {
 		emitter.LockedToPart = false;
 		emitter.Parent = part;
 		part.Parent = folder;
-		this.emitterPart = part;
-		this.emitter = emitter;
+		return [part, emitter];
 	}
 
 	/** The floor biome's ambient look on the emitter (off without the pack's texture). */
 	private setAmbient(scene: DecorScene | undefined): void {
-		const emitter = this.emitter;
-		if (emitter === undefined) return;
 		this.emitterSpec = undefined;
+		this.abyssSpec = undefined;
 		const art = scene !== undefined ? this.theme.getPack().ambient(scene.plan.biome) : undefined;
 		this.hasAmbient = art !== undefined;
+		if (this.emitter !== undefined) this.setLook(this.emitter, art);
+		if (this.abyssEmitter !== undefined) this.setLook(this.abyssEmitter, art);
+	}
+
+	/** One emitter off and cleared, then given the biome's ambient look (stays off without art). */
+	private setLook(emitter: ParticleEmitter, art: ReturnType<ThemePack["ambient"]>): void {
 		emitter.Enabled = false;
 		emitter.Rate = 0;
 		emitter.Clear();
-		if (art === undefined || scene === undefined) return;
+		if (art === undefined) return;
 		emitter.Texture = art.assetId;
 		emitter.Size = new NumberSequence(art.sizeStuds);
 		emitter.Transparency = new NumberSequence([
@@ -540,20 +587,34 @@ export class DecorFxController implements OnStart {
 		this.specMotion = motion;
 		if (last === undefined || last.rate !== spec.rate || last.motion !== spec.motion) {
 			this.emitterSpec = spec;
-			const m = spec.motion;
-			emitter.Rate = spec.rate;
-			emitter.Lifetime = new NumberRange(m.lifetime[0], m.lifetime[1]);
-			emitter.Speed = new NumberRange(m.speed[0] * S, m.speed[1] * S);
-			emitter.Acceleration = new Vector3(0, m.accelY * S, 0);
-			emitter.SpreadAngle = new Vector2(m.spreadDeg, m.spreadDeg);
-			emitter.EmissionDirection = m.up ? Enum.NormalId.Top : Enum.NormalId.Bottom;
-			emitter.Enabled = spec.rate > 0;
-			if (spec.rate <= 0) emitter.Clear();
+			applyMotion(emitter, spec);
 		}
 		emitter.TimeScale = frozen ? 0 : 1;
 		const focus = Workspace.CurrentCamera?.Focus.Position;
 		if (focus !== undefined) {
 			part.CFrame = new CFrame(focus.X, floorStudsY() + DECOR_FX.ambientHeightTiles * S, focus.Z);
+		}
+		this.updateAbyssMotes(spec, frozen, focus);
+	}
+
+	/** The abyss motes (VD8): abyssMoteSpec of this frame's ambient spec, deep under the camera focus. */
+	private updateAbyssMotes(ambient: AmbientEmitterSpec, frozen: boolean, focus: Vector3 | undefined): void {
+		const emitter = this.abyssEmitter;
+		const part = this.abyssPart;
+		if (emitter === undefined || part === undefined) return;
+		// recomputed only when the ambient spec object changes (updateAmbient keeps it while its inputs hold)
+		if (this.abyssSpec === undefined || this.abyssFrom !== ambient) {
+			this.abyssFrom = ambient;
+			const spec = this.voidOff ? OFF_SPEC : abyssMoteSpec(ambient);
+			const last = this.abyssSpec;
+			this.abyssSpec = spec;
+			if (last === undefined || last.rate !== spec.rate || last.motion !== spec.motion)
+				applyMotion(emitter, spec);
+		}
+		emitter.TimeScale = frozen ? 0 : 1;
+		if (focus !== undefined) {
+			const y = floorStudsY() + (DECOR_FX.abyssMoteLiftTiles - VOID.abyssDepthTiles) * S;
+			part.CFrame = new CFrame(focus.X, y, focus.Z);
 		}
 	}
 
@@ -569,6 +630,7 @@ export class DecorFxController implements OnStart {
 		const view = this.decor.getView();
 		if (scene === undefined || view === undefined) {
 			if (this.emitter !== undefined) this.emitter.TimeScale = 0;
+			if (this.abyssEmitter !== undefined) this.abyssEmitter.TimeScale = 0;
 			return;
 		}
 		debug.profilebegin(DECOR_FX.profileLabel);

@@ -13,7 +13,8 @@ replay, a hash or a fixture. VOID cells stay VOID in the grid; bullets and bodie
 
 Planned. Owner calls taken on 2026-11-01: VDD1-VDD3 (below). VD0's census is done (`scripts/lune/void-census.luau`,
 numbers below); VD1 (theme contract), VD7 (void art slots), VD2 (the pure void planner,
-`src/shared/view/voidDecor/`) and VD4's band knobs are built; nothing draws yet (VD3).
+`src/shared/view/voidDecor/`) and VD4's band knobs are built; VD3 (the geometry: `VoidController`, the abyss backdrop),
+VD8 (abyss motes) and VD9 (debug attributes) are built and wait for their Studio checks. Pieces (VD5 / VD6) next.
 
 ## What the camera sees today (VD0 census)
 
@@ -212,10 +213,39 @@ The shoulder wears down with depth, using the existing `decorProfile` bands (kep
   floors up to 25, 450 floors) peaked at 470. `planVoid` ~16 ms per floor under Lune on the loaded 2-core box (the same
   run timed `planDecor` at 13 ms; the field is ~5 ms of it); expect a fraction of that on a client.
 
-- [ ] **VD3. Geometry.** `VoidController`, the deeper biome-tinted backdrop, cliff faces, materials and tints per biome,
+- [x] **VD3. Geometry.** `VoidController`, the deeper biome-tinted backdrop, cliff faces, materials and tints per biome,
   stage-cover deferral.
   -> Verify: `npm run verify`; in Studio every biome: shoulders meet walls with no gaps or z-fighting, cliffs read on
   the near side, part count and build time written down (PC and phone emulator).
+  **As built (2026-11-01).** `src/client/controllers/render/VoidController.ts` (thin) over the pure
+  `src/shared/view/voidDecor/parts.ts` and `viewConfig.ts` (`VOID_VIEW`). On run start, every floor change and a change
+  of `KV_DecorBand` / `KV_VoidOff` / `KV_VoidDebug`: `voidRunInput(dungeon, layout, depth, KV_DecorBand)` (an endless
+  floor: `voidInputOfLayout(ctx.endlessFloor(ctx.floor).layout, state.endless.depth)`; else the bare dungeon; the forced
+  band parsed like DecorController's) -> `planVoidCached`, so **the VoidController and the DecorController read one
+  cached plan** as long as the DecorController (VD5) plans its void from the same input (or a `profile` of the same
+  band: same Dungeon object, floor seed and band hit the cache; `parts.spec.ts` checks it). Skipped when the Dungeon,
+  floor seed, band and both attributes are unchanged (a restart on the same seed). One `renderPart` per rect in Workspace
+  `KV_Void` (anchored, CanCollide / CanQuery / CanTouch false, CastShadow like the walls, `VOID_VIEW.castShadow`):
+  `voidColumnOf(rect)` = the rect's cells (cell (gx, gy) centred on world (gx, gy), WorldController's studs mapping)
+  from its `top` down to the abyss plane plus `VOID_VIEW.columnSinkTiles` (half the 0.25-tile backdrop slab), so cliff
+  faces meet the abyss with no seam and no bottom pokes out under the slab. Look (`voidLayerStyle`): shoulder
+  `shoulderColor` + `materials.shoulder`, ledge and outcrop `ledgeColor` + `materials.cliff` (SmoothPlastic default).
+  Biome matched like WorldController (`themeKey` -> `BIOMES.forgeTheme`); an unmatched theme gets no void (logged;
+  none exists: every Forge theme has a biome). The greybox gets none (VDD7); like the world, the void stays when the
+  run is left. Built inside the `onRunStarted` / `onFloorChanged` listeners, which StageController already runs one
+  frame late under the cover (docs/STAGE_LOADER.md), like the world and decor builds; no per-frame work. Output
+  `[Void] built P parts (floor F, band, biome.N: shoulder S / ledge L / outcrop O), plan X ms, T ms`.
+  **Backdrop = abyss**: WorldController puts the backdrop's top face `VOID.abyssDepthTiles` (5) under the floor
+  (`GAME_WORLD.backdropDepthTiles` removed: one source of truth; nothing else read it) in the matched biome's
+  `abyssColor`; greybox / unmatched keep `background`. `backdropMarginTiles` 24 still covers the view (half depth
+  ~10.3 tiles on the floor plane + ~3.5 tiles of shift for a plane 5 tiles down). The world still sits 64 studs up, so
+  the backdrop (top at 44 studs) still hides a stray character on a template Baseplate. Specs `voidDecor/parts.spec.ts`
+  (12): plan input = decor input (bands, forced band, the shared cache), column geometry (edges, top, bottom inside the
+  slab, every rect of 9 floors under the wall top), no wall / floor cell on the grid's border over 20 floors (so no
+  wall ever stands over the abyss at the grid edge), layer styles and debug tints.
+  - [ ] Studio check: every biome (`KV_DecorBand` 0-3, N through floors 1-16): shoulders meet walls with no gaps or
+    z-fighting, near-side cliffs read, material textures on the tall cliff Parts (Risks), the snow biome's shoulder not
+    read as floor; part count and build time (the `[Void]` line) on PC and the phone emulator.
 
 - [x] **VD4. Depth bands.** `VOID_DEPTH` knobs read through `decorProfile`; `KV_DecorBand` forces them too.
   -> Verify: specs per band; in Studio `N` through floors 1-16.
@@ -251,16 +281,42 @@ The shoulder wears down with depth, using the existing `decorProfile` bands (kep
   `bush`, ancient `statue`. Specs in `void.spec.ts` (valid IDs round-trip and validate, unknown kinds / biome numbers /
   variants rejected, layers enforced, lookups).
 
-- [ ] **VD8. Abyss atmosphere.** The ledge -> abyss colour ramp, sparse abyss motes on the existing ambient emitter
+- [x] **VD8. Abyss atmosphere.** The ledge -> abyss colour ramp, sparse abyss motes on the existing ambient emitter
   (drawn under the floor, so never over a bullet), the molten bottom glow. Optional: a faint texture on the backdrop
   that drifts at a fraction of the camera's motion (fake parallax; off under Reduced motion).
   -> Verify: validator for any glow; in Studio every biome, Reduced motion on and off.
+  **As built (2026-11-01), modest.** *Colour ramp*: the three validated steps only (shoulder -> ledge -> abyss, VD1's
+  luminance order); outcrops take the ledge colour. A darker outer-band shade was **skipped**: `voidReport` validates
+  only the ledge colour, and a further mix toward the abyss is not guaranteed to stay lighter than the abyss (mixing in
+  sRGB can dip below both ends in luminance) nor checked for bullet contrast. *Abyss motes* (DecorFxController): a
+  second emitter volume (`DecorAbyssMotes`, under `KV_DecorFx`) with the biome's ambient look, under the camera focus,
+  centred `DECOR_FX.abyssMoteLiftTiles` (1) above the abyss plane, `abyssMoteVolumeHeightTiles` (1) high;
+  `abyssMoteSpec(ambient)` = `abyssMoteShare` (0.3) of the ambient emitter's live count (so the band's light, the juice
+  particle level and `motionScale` scale it, and Reduced motion zeroes it), drifting by its own `abyssMoteMotion` (6-10 s,
+  0.05-0.15 tiles/s, no acceleration) whatever the biome's motion (molten embers would climb 11 tiles out of the abyss).
+  Under the floor plane: floor, wall and void Parts hide every mote that is not over open abyss, so none can draw over
+  a bullet; `parts.spec.ts` checks the volume sits above the abyss plane and `ambientMaxRiseTiles` (fastest speed for the
+  longest life plus any upward acceleration) keeps the highest mote under the floor. `KV_VoidOff` turns them off too.
+  Nothing draws without a `decor.fx.ambient.b<n>` texture (none uploaded yet), like the ambient motes.
+  **Skipped**: the molten bottom glow (would be a new emissive surface needing its own validator rule; the abyss
+  colour carries the red-black tint) and the fake parallax backdrop texture (needs an uploaded texture; no asset).
+  - [ ] Studio check: every biome with ambient art uploaded, Reduced motion on and off: motes only over open abyss,
+    sparse, never over the floor; none under Reduced motion.
 
-- [ ] **VD9. Preload and debug.** Void materials need no upload; new art joins `biomeContentIds`. Debug attributes
+- [x] **VD9. Preload and debug.** Void materials need no upload; new art joins `biomeContentIds`. Debug attributes
   `KV_VoidDebug` (tints each layer) and `KV_VoidOff`, off by default, Janitor-cleaned.
   -> Verify: `contentIds.spec.ts`; the attributes in Studio.
+  **As built (2026-11-01).** `VOID_VIEW.offAttribute` `KV_VoidOff` (no void Parts, no abyss motes; the bare abyss
+  backdrop stays) and `VOID_VIEW.debugAttribute` `KV_VoidDebug` (each raised layer in a flat SmoothPlastic tint,
+  `VOID_VIEW.debugColors`: shoulder blue, ledge amber, outcrop magenta), both off by default, reacting at once through
+  `GetAttributeChangedSignal` connections held by the controllers' Janitors (the decor's live pattern). Preload: the
+  void uses built-in materials and theme colours only, no content id, so nothing joins `PRELOAD` or
+  `biomeContentIds`; `contentIds.spec.ts` passes unchanged. Future `decor.void.*` art (VD6 / VD7) joins
+  `biomeContentIds` then.
+  - [ ] Studio check: both attributes toggle live mid-run, and nothing is left behind after a floor change or restart.
 
-- [ ] **VD10. Docs.** `CLAUDE.md` decision log, `docs/CLIENT.md` (VoidController, debug attributes),
+- [ ] **VD10. Docs.** `CLAUDE.md` decision log, `docs/CLIENT.md` (VoidController, debug attributes: done with VD3 /
+  VD9, section "Void decoration"),
   `src/shared/theme/README.md` (the new placeholders and surfaces), a cross-link from `docs/DECOR.md`.
 
 - [ ] **VD11. Studio check and playtest.** Every biome at every band, solo and co-op, PC and phone emulator: the void

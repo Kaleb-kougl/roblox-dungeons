@@ -35,8 +35,7 @@ export const GAME_WORLD = {
 	poolSinkTiles: 0.18,
 	/** Pool slab thickness, tiles (web DungeonFloor FLOOR_THICKNESS). */
 	poolThicknessTiles: 0.1,
-	/** The backdrop slab (colour role `background`) sits this far below the floor, tiles. */
-	backdropDepthTiles: 2,
+	// The backdrop's depth under the floor is the abyss's: voidDecor VOID.abyssDepthTiles (docs/VOID_DECOR.md VD3).
 	/** Backdrop thickness, tiles. */
 	backdropThicknessTiles: 0.25,
 	/** The backdrop extends this far past the dungeon on every side, tiles (more than half the view's width). */

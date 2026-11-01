@@ -6,7 +6,12 @@
  *   config.ts  VOID (heights, widths, outcrop rules, rect budget, salts), VOID_DEPTH (per depth band knobs, VD4)
  *   field.ts   voidField: Chebyshev distance to the nearest wall / floor cell, enclosed void pockets
  *   plan.ts    planVoid / planVoidCached: per-cell layer (shoulder / ledge / outcrop / abyss) and top, greedy rects
+ *   viewConfig.ts  VOID_VIEW (VD3 / VD9): the VoidController's folder, debug attributes and palette, column sink
+ *   parts.ts   voidRunInput (a run floor's plan input, as DecorController's), voidColumnOf (a rect's Part in studs),
+ *              voidLayerStyle (colour / material / debug tint per layer)
  */
 export * from "./config";
 export * from "./field";
 export * from "./plan";
+export * from "./viewConfig";
+export * from "./parts";
