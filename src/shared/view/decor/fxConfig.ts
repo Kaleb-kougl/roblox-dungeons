@@ -57,6 +57,9 @@ export const DECOR_VIEW = {
 		"torch",
 		"banner",
 		"brazier",
+		// docs/VOID_DECOR.md VD5: the void's curb runs (Lords of Pain wall1) and flagstone patches (tiles) sit on the grid
+		"curb",
+		"flagstones",
 	] as ReadonlyArray<DecorKind>,
 	/** Debug drawing: edge thickness, studs; colours (theme roles); stencil cell inset, tiles. */
 	debugEdgeStuds: 0.08,

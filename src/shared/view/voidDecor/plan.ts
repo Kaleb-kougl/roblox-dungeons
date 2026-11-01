@@ -32,10 +32,7 @@ import { TileType } from "shared/dungeon";
 import { decorHash01, decorProfile, type DecorProfile } from "../decor";
 import { VOID, VOID_DEPTH, type VoidDepthBand } from "./config";
 import { voidField, type VoidField } from "./field";
-
-/** What a void cell is drawn as. NONE = not a void cell. */
-export const VoidLayer = { NONE: 0, SHOULDER: 1, LEDGE: 2, OUTCROP: 3, ABYSS: 4 } as const;
-export type VoidLayer = (typeof VoidLayer)[keyof typeof VoidLayer];
+import { VoidLayer } from "./layer";
 
 /** Cells [x, x + w) x [y, y + h) of one layer at one height (grid cells; top in tiles above the floor). */
 export interface VoidRect {

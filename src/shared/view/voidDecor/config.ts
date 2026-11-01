@@ -1,6 +1,7 @@
 /**
- * Void decoration tunables (docs/VOID_DECOR.md VD2, VD4): the layers' heights and widths, the outcrop rules, the
- * per-band knobs and the hash salts. Presentation only: nothing here reaches the sim, a replay or a Forge param.
+ * Void decoration tunables (docs/VOID_DECOR.md VD2, VD4, VD5): the layers' heights and widths, the outcrop rules, the
+ * per-band knobs, the set pieces' caps and spacing (VOID_PIECES, read by shared/view/decor's planDecor), the debug
+ * attributes and the hash salts. Presentation only: nothing here reaches the sim, a replay or a Forge param.
  * Starting values from the plan; VD11 tunes them in Studio.
  */
 import { GAME_WORLD } from "../config";
@@ -59,6 +60,74 @@ export const VOID = {
 	},
 	/** Lattice coordinates key the noise hash as ly * latticeStride + lx (any grid fits under it). */
 	latticeStride: 4096,
+} as const;
+
+/**
+ * The void set pieces (docs/VOID_DECOR.md VD5): what planDecor stands and lays on the void's surfaces when it is given a
+ * VoidPlan (DecorSource "void"). Distances in tiles; starting values from the plan, VD11 tunes them. Every piece passes
+ * the footprint rule at its surface's height (standing pieces) or lies wholly on one surface (flat pieces, `flatRadiusTiles`).
+ */
+export const VOID_PIECES = {
+	/** Standing void pieces (ruin runs, columns, stumps, biome kinds) per room, at most ... */
+	tallPerRoom: 4,
+	/** ... and low curbs per room on top of them (the per-floor cap maxStanding counts both). */
+	curbPerRoom: 2,
+	/** Standing void pieces stand at least this far apart (Euclidean, between their nearest footprint cells). */
+	tallMinSpacing: 3,
+	/** ... and at least this far from every decor standing piece (Forge tall, far-wall dressing) and wall piece (torch). */
+	decorClearTiles: 2,
+	/** Standing void pieces per floor, at most (the plan's target: <= 80 tall / low). */
+	maxStanding: 80,
+	/** Flat void pieces per floor, at most (the plan's target: <= 200) ... */
+	maxFlat: 200,
+	/** ... and at most this share of the floor's shoulder cells. */
+	flatShare: 0.25,
+	/**
+	 * A flat void piece is drawn no wider than this from its pivot (world tiles: DecorController scales larger art down,
+	 * decorPieceLayout), and every cell within that radius must be the same void surface (layer and top), so it never
+	 * hangs over a wall, the abyss or a lower step.
+	 */
+	flatRadiusTiles: 1.25,
+	/** Flat void pieces lie at least this far apart (Euclidean, cell centres): two decals never overlap. */
+	flatMinSpacing: 2.5,
+	/**
+	 * Flat candidates are taken at hashed gaps along the scan (one hash per piece, not per cell): the mean gap, in
+	 * eligible cells. Larger = sparser.
+	 */
+	flatGap: 6,
+	/** Ruin runs (`wall` / `wallBroken`) stand on straight shoulder rows exactly this far from the wall (field distance). */
+	ruinDist: 2,
+	/** Columns stand on shoulder cells this far from the wall, at least ... */
+	columnMinDist: 2,
+	/** ... and at most. */
+	columnMaxDist: 3,
+	/** Column candidates are tried at hashed gaps along the scan: the mean gap, in eligible cells. */
+	columnGap: 4,
+	/** A curb (`curb`, low) covers this many cells along a straight outer shoulder edge. */
+	curbTiles: 3,
+	/** Flagstone patches lie only on shoulder cells of a room (not a corridor) at most this far from its wall. */
+	flagstoneMaxDist: 3,
+	/** Share of column spots that take a biome void kind (decor.void.b<n>.<kind>) when the pack has art for one. */
+	biomeShare: 0.5,
+	/** Flat kinds every biome lays on the void (round clutter: the pack's rocks / bricks). */
+	flatKinds: ["debris"] as ReadonlyArray<string>,
+	/** Extra flat kinds per biome: bones in grim, moss in verdant (by BiomeId). */
+	biomeFlatKinds: { "biome.4": ["bones"], "biome.5": ["moss"] } as Readonly<Record<string, ReadonlyArray<string>>>,
+	/**
+	 * Hash salts (decorHash's third argument), one per independent choice; distinct from DECOR_SALT's and VOID.salt's.
+	 * Arbitrary distinct 32-bit values.
+	 */
+	salt: {
+		/**
+		 * A placed piece's one hash: its variant and facing, whole vs broken (the depth profile's columnBrokenShare /
+		 * wallBrokenShare), a flat piece's kind, and the scan's next gap.
+		 */
+		variant: 0x4cf5ad43,
+		/** The column and flat scans' first gaps. */
+		gap: 0x5f356495,
+		/** A column spot taking a biome void kind, and which one. */
+		biome: 0x3c6ef372,
+	},
 } as const;
 
 /** One depth band's void knobs (docs/VOID_DECOR.md "Depth bands"); index = DECOR_DEPTH.bands' index. */

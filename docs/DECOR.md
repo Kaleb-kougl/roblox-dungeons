@@ -48,6 +48,11 @@ As built, differing from the text below:
   endless runs is unchanged.
 - **R13**: placeholder blocks (crate 4x2x4, barrel 3.5x2.5x3.5 studs), blink / shake / chips / sparks (sparks at the
   piece centre, not the contact point), the sniper aim line clipped at intact pieces; art capped at 5/8 tile tall.
+- **Void set pieces (docs/VOID_DECOR.md VD5 / VD6).** With `DecorPlanInput.voidPlan` (DecorController passes
+  `planVoidCached` unless Workspace `KV_VoidOff`), planDecor appends source `"void"` entries standing / lying on the
+  void's shoulder and ledge tops (entry `y` = the surface top; ruin runs, columns, curbs, flat clutter, flagstones,
+  optional biome `decor.void.*` kinds), each under the footprint rule at its surface's height (`footprintStencil` now
+  caches per top). Without a void plan the plan is byte-identical; the census and budget specs here are unchanged.
 - **Gems are not decor (docs/BOOST_ART.md BA2, decision 2).** A gem cluster on the floor always means a boost drop,
   so the contract has no `gems` decor kind any more (`decor.delve.*.gems` is an unknown decor ID) and the vale pack
   maps nothing onto the four `gems-*` world art pieces (`VALE_RETIRED_WORLD_ART`). No floor changed: the decor plan

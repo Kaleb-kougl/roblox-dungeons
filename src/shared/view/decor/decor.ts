@@ -6,9 +6,12 @@
  * so art and its effects are never drawn larger). The client DecorController (R4) only copies the results onto its
  * instances. Allocation-free per frame (selectDecorFades).
  */
+import { CAMERA_PITCH_DEG } from "shared/config";
 import type { DecorArt, Pivot } from "shared/theme";
-import type { Vec3 } from "../iso";
+import { degToRad, type Vec3 } from "../iso";
 import type { SpriteLayout } from "../sprites";
+// by file, not the voidDecor barrel: voidDecor/plan.ts imports this folder's barrel
+import { VOID_PIECES } from "../voidDecor/config";
 import type { DecorEntry, DecorPlan } from "./decorPlan";
 import { DECOR_FX } from "./fxConfig";
 import { DECOR_REACT } from "./reactConfig";
@@ -170,9 +173,10 @@ export function fitArtLayout(
 /**
  * The layout plan entry `entry` is drawn with, given its art's own `layout`: a standing piece (tall / low, the ones
  * with a fade box) is held inside its DECOR_BOX screen box (the fade box polygon: the unpadded box the footprint rule
- * pads), so the art never covers more than the rule proved safe; flat and wall pieces are not under the footprint rule
- * and keep `layout`. `outline`: the art's outline in the facing drawn (decorOutline), held instead of the whole cell.
- * Undefined: the art cannot be drawn inside its box.
+ * pads), so the art never covers more than the rule proved safe; a void flat piece (docs/VOID_DECOR.md VD5) is held
+ * within VOID_PIECES.flatRadiusTiles of its pivot (flatLayoutWithin: the radius the plan checked lies on one surface);
+ * other flat and wall pieces are not under the footprint rule and keep `layout`. `outline`: the art's outline in the
+ * facing drawn (decorOutline), held instead of the whole cell. Undefined: the art cannot be drawn inside its box.
  */
 export function decorPieceLayout(
 	plan: DecorPlan,
@@ -181,10 +185,42 @@ export function decorPieceLayout(
 	outline?: ReadonlyArray<Readonly<Pivot>>,
 ): SpriteLayout | undefined {
 	const e = plan.entries[entry];
+	if (e !== undefined && e.layer === "flat" && e.source === "void")
+		return flatLayoutWithin(layout, VOID_PIECES.flatRadiusTiles);
 	if (e === undefined || e.fade < 0) return layout;
 	const box = plan.fadeBoxes[e.fade];
 	const cam = DECOR_CAMERA;
 	return fitArtLayout(layout, box.polygon, screenX(cam, e.x, e.y, e.z), screenY(cam, e.x, e.y, e.z), 1, outline);
+}
+
+/**
+ * The farthest a flat image drawn with `layout` reaches from its pivot on the ground, world tiles: its cell laid flat
+ * like the co-op ring (sprites.ts floorImageSize: width frameW / pixelsPerTile, depth frameH / pixelsPerTile stretched
+ * by 1 / sin(pitch)), turned by the camera yaw (a turn keeps distances), so the farthest of its four corners.
+ */
+export function flatLayoutReach(layout: SpriteLayout, pitchDeg: number = CAMERA_PITCH_DEG): number {
+	const ppt = layout.pixelsPerTile;
+	if (!(ppt > 0)) return 0;
+	const stretch = 1 / math.sin(degToRad(pitchDeg));
+	const p = layout.pivot;
+	const dx = math.max(p.x, layout.frameW - p.x) / ppt;
+	const dz = (math.max(p.y, layout.frameH - p.y) / ppt) * stretch;
+	return math.sqrt(dx * dx + dz * dz);
+}
+
+/**
+ * `layout` scaled down (pixelsPerTile raised, aspect and pivot kept) so a flat image drawn with it reaches no farther
+ * than `radiusTiles` from its pivot (flatLayoutReach); unchanged when it already does.
+ */
+export function flatLayoutWithin(
+	layout: SpriteLayout,
+	radiusTiles: number,
+	pitchDeg: number = CAMERA_PITCH_DEG,
+): SpriteLayout {
+	const reach = flatLayoutReach(layout, pitchDeg);
+	if (!(radiusTiles > 0) || reach <= radiusTiles) return layout;
+	const pixelsPerTile = (layout.pixelsPerTile * reach) / radiusTiles;
+	return { frameW: layout.frameW, frameH: layout.frameH, pivot: layout.pivot, pixelsPerTile };
 }
 
 /**
