@@ -14,6 +14,7 @@ licences forbid redistributing the raw files. See `THIRD_PARTY_NOTICES.md` and `
 | `art/vendor/ninja-adventure/` | Ninja Adventure Asset Pack (CC0): only its `FX/` and `Audio/` folders, with their original layout and casing (`FX/Attack/...`, `Audio/Sounds/...`, `Audio/Musics/...`, `Audio/Jingles/...`) | https://pixel-boy.itch.io/ninja-adventure-asset-pack |
 | `art/vendor/toffeecraft-horror-ui/` | UI User Interface Pack - Horror (ToffeeCraft, the paid download `UiHorror.png.zip`): the one sheet `UiHorror.png` (1024x607) directly in the folder. Read for the boon draft cards (docs/DRAFT_REVEAL.md DR3) | https://toffeecraft.itch.io/ui-user-interface-pack-horror |
 | `art/vendor/pixabay/` | Single sound effects from Pixabay (Pixabay Content License: no attribution, the raw file is not redistributed). Keep the downloaded file names. Today one: `dragon-studio-glass-breaking-504033.mp3` ("Glass breaking" by DRAGON-STUDIO, id 504033; `sfx.combo.break`, docs/COMBO.md CD12) | https://pixabay.com/sound-effects/ (search "glass breaking dragon-studio") |
+| `art/vendor/kaleb-vale/` | Original art drawn by code, not downloaded: `loot-glint/loot_glint_0..7.png`, the anime twinkle on loaded barrels and crates (docs/BREAKABLE_DROPS.md), from `scripts/art/gen-loot-glint.js`. `npm run art:build` / `art:lock` regenerate it first (byte-identical), so nothing to fetch | (generated) |
 
 `art/vendor.lock.json` lists every source file the atlas pipeline reads, with its sha256; the pipeline refuses to
 run when a file is missing or different.
@@ -38,7 +39,8 @@ inputs, byte-identical outputs; files no longer built are removed from all three
    sprite set into art once every one of its sheets has an ID, and an image once its file has one; until then the
    entry stays a placeholder (decor: not drawn). Uploading the floor texture also switches the `biome.1` floor colour
    to its mean colour; `decor-atlas.png` switches every decor piece, decor effect and breakable at once,
-   `decor-mote.png` the biomes' ambient particles.
+   `decor-mote.png` the biomes' ambient particles, `loot-glint.png` the twinkle on loaded barrels and crates (until it
+   has an ID they show the treasure glint from `decor-atlas.png`).
 4. `npm run verify` (validator, contrast checks, `check-asset-ids`).
 
 Re-upload a PNG and paste its new ID whenever `art:build` changes it (the layout module changes with it).

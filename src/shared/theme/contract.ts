@@ -1095,9 +1095,11 @@ const DECOR_AMBIENT_NAME = "ambient";
 /**
  * The biome-independent decor effects: `torch` the flame loop on a lit wall torch (Lords of Pain `vfx/flame`),
  * `flame` the bigger loop on a lit brazier (`vfx/flames`), `glow` the soft additive sprite under a glowing piece
- * (`vfx/glow`), `glint` the treasure sparkle (`vfx/glint`), `zone` the ring on an open stairwell (`vfx/zone`).
+ * (`vfx/glow`), `glint` the treasure sparkle (`vfx/glint`), `zone` the ring on an open stairwell (`vfx/zone`), `loot`
+ * the twinkle on a loaded barrel or crate (docs/BREAKABLE_DROPS.md; the vale pack's is original art,
+ * scripts/art/gen-loot-glint.js; a pack without it shows `glint` there instead).
  */
-export const DECOR_FX_NAMES = ["torch", "flame", "glow", "glint", "zone"] as const;
+export const DECOR_FX_NAMES = ["torch", "flame", "glow", "glint", "zone", "loot"] as const;
 export type DecorFxName = (typeof DECOR_FX_NAMES)[number];
 
 /** The colour role tinting each effect (and the lights / particles a renderer adds for it). */
@@ -1107,6 +1109,7 @@ export const DECOR_FX_TINT: Readonly<Record<DecorFxName, ColorRole>> = {
 	glow: "decor.fx.glow",
 	glint: "decor.fx.glint",
 	zone: "decor.fx.zone",
+	loot: "decor.fx.glint",
 };
 
 /**

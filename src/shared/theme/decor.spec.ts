@@ -239,13 +239,14 @@ describe("decor contract", () => {
 	});
 
 	it("names effects decor.fx.<name> and ambient textures decor.fx.ambient.b<n>, with their colour roles", () => {
-		expect(DECOR_FX_NAMES).toEqual(["torch", "flame", "glow", "glint", "zone"]);
+		expect(DECOR_FX_NAMES).toEqual(["torch", "flame", "glow", "glint", "zone", "loot"]);
 		expect(decorFxId("torch")).toBe("decor.fx.torch");
 		for (const name of DECOR_FX_NAMES) {
 			expect(parseDecorId(decorFxId(name))).toEqual({ type: "fx", name });
 			expect([name, DECOR_FX_ROLES.includes(DECOR_FX_TINT[name])]).toEqual([name, true]);
 		}
 		expect(DECOR_FX_TINT.torch).toBe("decor.fx.flame");
+		expect(DECOR_FX_TINT.loot).toBe("decor.fx.glint");
 		expect(decorAmbientId("biome.2")).toBe("decor.fx.ambient.b2");
 		for (const b of BIOMES) {
 			expect(parseDecorId(decorAmbientId(b.id))).toEqual({ type: "ambient", biome: b.id });
@@ -383,7 +384,7 @@ describe("validateManifest: decor pieces and effects", () => {
 		const forms =
 			"decor.delve.b<1..5>.<kind>[.<1..4>], " +
 			"decor.void.b<1..5>.<spire|drift|vent|crag|grave|deadtree|root|bush|statue>[.<1..4>], " +
-			"decor.fx.<torch|flame|glow|glint|zone>, decor.fx.ambient.b<1..5>; " +
+			"decor.fx.<torch|flame|glow|glint|zone|loot>, decor.fx.ambient.b<1..5>; " +
 			"kinds: contract.ts DECOR_KINDS, lowercase; VOID_DECOR.kinds";
 		expect(withAssets({ "decor.delve.b1.chest": torchImage(), "decor.fx.fire": { kind: "silent" } })).toEqual([
 			`assets["decor.delve.b1.chest"]: unknown decor ID (use ${forms})`,

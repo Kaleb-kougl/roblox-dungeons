@@ -302,6 +302,46 @@
 			"bytes": 55506
 		},
 		{
+			"path": "kaleb-vale/loot-glint/loot_glint_0.png",
+			"sha256": "14b3a0328651b9b4c19ff9808431b2365e073a5dd565d9d6c0c6d1ec23716a13",
+			"bytes": 145
+		},
+		{
+			"path": "kaleb-vale/loot-glint/loot_glint_1.png",
+			"sha256": "5a4ebd0106ffa318e54563b82b5f76e35f3af5ea755e5a0e6f39cd1bd74638fc",
+			"bytes": 164
+		},
+		{
+			"path": "kaleb-vale/loot-glint/loot_glint_2.png",
+			"sha256": "077bbd67d231037fade48a0a50695fd43e0483f134c29f0d3159574ffe193eae",
+			"bytes": 225
+		},
+		{
+			"path": "kaleb-vale/loot-glint/loot_glint_3.png",
+			"sha256": "6c03f7b8b3fe7665b40392a1f12a2cb6a6b17b2a1249dff3bf3cc3c18ae2e16e",
+			"bytes": 296
+		},
+		{
+			"path": "kaleb-vale/loot-glint/loot_glint_4.png",
+			"sha256": "b026958c7490aa9a3eb656304d7111790c74fef32e8f8a45d88ba57ed4e70b3d",
+			"bytes": 328
+		},
+		{
+			"path": "kaleb-vale/loot-glint/loot_glint_5.png",
+			"sha256": "5be9eddeffbdbd496edae9f325772fc33652067cdd3686258d50c0fd537abb49",
+			"bytes": 297
+		},
+		{
+			"path": "kaleb-vale/loot-glint/loot_glint_6.png",
+			"sha256": "61f732792b015d65fa6d6b3e009c4fd7b3072770731129b31252078bc4494d76",
+			"bytes": 237
+		},
+		{
+			"path": "kaleb-vale/loot-glint/loot_glint_7.png",
+			"sha256": "10f56ff132326812e168a78220b35a6f76a3d3e3e6961c20c482c937708f3c8a",
+			"bytes": 164
+		},
+		{
 			"path": "lords-of-pain-demo/enemy/skeleton/skeleton_default_walk/E/skeleton_default_walk_E_0.0_0.png",
 			"sha256": "eaaf1ea383e0d5b159d1cc787610413cbb00258d64a2fd5a1fd91364e6d578f6",
 			"bytes": 17145

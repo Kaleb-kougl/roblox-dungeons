@@ -1370,3 +1370,61 @@ describe("UI art pieces and the icon atlas (docs/UI_ART.md UA2, UA3)", () => {
 		assert.equal(A.maxRectsFit(free, 7, 1), null);
 	});
 });
+
+describe("world sprite sets with `own` (docs/BREAKABLE_DROPS.md, the loot glint)", () => {
+	/** A synthetic world sprite piece: `n` cells of w x h, each with one lit pixel. */
+	function spritePiece(name, n, w, h, own) {
+		const cells = [];
+		for (let k = 0; k < n; k++) {
+			const img = A.raster(w, h);
+			put(img, k % w, 0, LIT);
+			cells.push({ img });
+		}
+		return {
+			name,
+			kind: "sprites",
+			frameW: w,
+			frameH: h,
+			pivot: { x: 1, y: 1 },
+			pixelsPerTile: 29.6,
+			facings: { count: 1, zeroDeg: 0, ccw: true },
+			dirs: ["E"],
+			animations: { idle: { start: 0, frames: n, fps: 12, loop: true } },
+			cells,
+			own,
+		};
+	}
+	const world = { atlas: { name: "decor-atlas", maxSize: 64 } };
+
+	it("packs the own set into its own sheet and leaves the shared atlas byte-identical", () => {
+		const shared = () => [spritePiece("glint", 8, 6, 5), spritePiece("zone", 3, 10, 10)];
+		const before = A.packWorldAtlases(world, shared());
+		const after = A.packWorldAtlases(world, [...shared(), spritePiece("lootglint", 8, 7, 7, "loot-glint")]);
+		assert.equal(after.atlases.length, before.atlases.length + 1);
+		const a0 = before.atlases[0];
+		const b0 = after.atlases[0];
+		assert.equal(b0.file, "decor-atlas.png");
+		assert.equal(b0.img.w, a0.img.w);
+		assert.equal(b0.img.h, a0.img.h);
+		assert.deepEqual(Buffer.from(b0.img.data), Buffer.from(a0.img.data));
+		const own = after.atlases[after.atlases.length - 1];
+		assert.equal(own.file, "loot-glint.png");
+		// one row, as wide as its cells (8 x 7 = 56 <= 64), as tall as one cell
+		assert.equal(own.img.w, 56);
+		assert.equal(own.img.h, 7);
+	});
+
+	it("wraps an own set wider than maxSize onto more rows, and its layout names its own sheet", () => {
+		const packed = A.packWorldAtlases(world, [spritePiece("lootglint", 12, 7, 7, "loot-glint")]);
+		const own = packed.atlases.find((a) => a.file === "loot-glint.png");
+		assert.ok(own);
+		// 64 / 7 = 9 cells per row: 12 cells -> 2 rows
+		assert.equal(own.img.w, 64);
+		assert.equal(own.img.h, 14);
+		const piece = own.items[0];
+		const l = A.worldLayout(piece);
+		assert.equal(l.kind, "sprites");
+		assert.deepEqual(l.sheets, [{ file: "loot-glint.png", w: own.img.w, h: own.img.h }]);
+		assert.deepEqual(l.animations.idle, { sheet: 0, start: 0, frames: 12, fps: 12, loop: true });
+	});
+});

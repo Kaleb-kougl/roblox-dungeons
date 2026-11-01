@@ -1238,6 +1238,8 @@ function buildImages(images, sets) {
 // `clearRgbBelow` clears darker pixels, e.g. smoke). A piece is
 //   an image    one frame (`file`), optionally downscaled (box filter, premultiplied), cut out of a shared atlas by a
 //               `rect`, or written as its own PNG (`own`: a ParticleEmitter texture cannot take an ImageRect);
+//               a sprite set may also say `own`: its cells become their own sheet `<own>.png`, packed after the shared
+//               atlases, so adding one never repacks (and never forces a re-upload of) the shared atlas;
 //   sprites     `animations` x `facings`: facing d of the output (SpriteSetAsset: zeroDeg + d * 360 / count, ccw) uses
 //               the pack's facing at zeroDeg + d * 360 / count + artOffsetDeg; every facing is cropped so its own
 //               measured pivot lands on the same cell pixel (one cell size and pivot per set).
@@ -1647,6 +1649,7 @@ function buildWorldSprites(world, name, def, ppt, pad) {
 		cells,
 		outlines,
 		glowAt,
+		own: def.own,
 	};
 }
 
@@ -1689,15 +1692,15 @@ function packWorldAtlases(world, pieces) {
 	const size = world.atlas.maxSize;
 	const atlases = [];
 	const open = () => {
-		const a = { index: atlases.length, free: [{ x: 0, y: 0, w: size, h: size }], usedH: 0, bandY: 0, items: [] };
+		const a = { index: atlases.length, width: size, free: [{ x: 0, y: 0, w: size, h: size }], usedH: 0, bandY: 0, items: [] };
 		a.name = a.index === 0 ? world.atlas.name : `${world.atlas.name}-${a.index + 1}`;
 		atlases.push(a);
 		return a;
 	};
 	open();
-	const sprites = pieces.filter((p) => p.kind === "sprites").sort((a, b) => b.frameH - a.frameH || (a.name < b.name ? -1 : 1));
+	const sprites = pieces.filter((p) => p.kind === "sprites" && !p.own).sort((a, b) => b.frameH - a.frameH || (a.name < b.name ? -1 : 1));
 	const band = (a, p) => {
-		const perRow = Math.floor(size / p.frameW);
+		const perRow = Math.floor(a.width / p.frameW);
 		const rowsNeeded = Math.ceil(p.cells.length / perRow);
 		const y0 = Math.ceil(a.bandY / p.frameH) * p.frameH;
 		if (perRow < 1 || y0 + rowsNeeded * p.frameH > size) return false;
@@ -1743,16 +1746,25 @@ function packWorldAtlases(world, pieces) {
 		best.a.usedH = Math.max(best.a.usedH, p.at.y + h);
 		best.a.items.push(p);
 	}
+	// a sprite set with `own` is its own sheet `<own>.png` (its cells alone, one row up to maxSize wide, then more rows),
+	// added after the shared atlases are packed, so a new own set never moves anything in them
+	for (const p of pieces.filter((q) => q.kind === "sprites" && q.own)) {
+		const width = Math.min(size, p.cells.length * p.frameW);
+		const a = { index: -1, own: true, name: p.own, width, free: [], usedH: 0, bandY: 0, items: [] };
+		if (!band(a, p)) throw new Error(`${p.name}: ${p.cells.length} cells of ${p.frameW}x${p.frameH} do not fit its own ${size} sheet`);
+		atlases.push(a);
+	}
 	// rasters: the full width (sprite cells run across it), the used height; no two pieces may share a pixel
 	for (const a of atlases) {
-		a.img = raster(size, a.usedH);
-		const taken = new Uint8Array(size * a.usedH);
+		const W = a.width;
+		a.img = raster(W, a.usedH);
+		const taken = new Uint8Array(W * a.usedH);
 		const claim = (x, y, w, h, what) => {
-			if (x < 0 || y < 0 || x + w > size || y + h > a.usedH) throw new Error(`${what}: outside ${a.name}`);
+			if (x < 0 || y < 0 || x + w > W || y + h > a.usedH) throw new Error(`${what}: outside ${a.name}`);
 			for (let yy = y; yy < y + h; yy++) {
 				for (let xx = x; xx < x + w; xx++) {
-					if (taken[yy * size + xx]) throw new Error(`${what}: overlaps another piece in ${a.name} at (${xx}, ${yy})`);
-					taken[yy * size + xx] = 1;
+					if (taken[yy * W + xx]) throw new Error(`${what}: overlaps another piece in ${a.name} at (${xx}, ${yy})`);
+					taken[yy * W + xx] = 1;
 				}
 			}
 		};
@@ -2874,6 +2886,7 @@ module.exports = {
 	buildSpriteSet,
 	buildSpriteSets,
 	buildUiIcons,
+	buildWorldPieces,
 	chooseGrid,
 	contactSheet,
 	cutoutPixels,
@@ -2890,6 +2903,7 @@ module.exports = {
 	outlineConfig,
 	packUiIcons,
 	outlineSheet,
+	packWorldAtlases,
 	rimClip,
 	raster,
 	cellsMode,
@@ -2906,6 +2920,7 @@ module.exports = {
 	takeRect,
 	uiIconContact,
 	uiIconLayoutModule,
+	worldLayout,
 	/** Composited layered sheets (gridSheet); tests clear it with the source cache. */
 	layeredCache,
 	/** Decoded sources by art/vendor-relative path; the tests put synthetic rasters here instead of files. */
