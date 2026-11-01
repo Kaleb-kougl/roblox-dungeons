@@ -2,23 +2,42 @@ import { Controller, OnStart } from "@flamework/core";
 import { RunService, Workspace } from "@rbxts/services";
 import { Events } from "client/network";
 import { clientStore } from "client/store";
-import { DEFAULT_TUTORIAL_START_INFO, TUTORIAL_NO_STEP_ID } from "shared/onboarding";
+import {
+	TUTORIAL_NO_STEP_ID,
+	type OnboardingStatus,
+	type TutorialEntry,
+	type TutorialOutroChoice,
+} from "shared/onboarding";
 import { RUN_ATTRIBUTES } from "shared/play";
 import {
 	TutorialDirector,
 	TutorialOutroBeat,
 	tutorialAttribute,
+	tutorialDeviceFor,
 	tutorialHudFrom,
 	type FirstRunDecision,
 	type TutorialMarker,
+	type TutorialStuckReport,
+	type TutorialView,
 } from "shared/tutorial";
 import { JoinGate, RENDER_ORDER } from "shared/view";
 import { PROGRESSION_VIEW, TUTORIAL_VIEW } from "shared/view/hud";
-import { FirstJoinGate, firstJoinDispatchChoice } from "shared/view/menu";
+import { FirstJoinGate, firstJoinDispatchChoice, firstJoinGateReason } from "shared/view/menu";
 import { PreloadController } from "./PreloadController";
 import { SimController, type RunContext } from "./SimController";
 
 const RENDER_STEP = "KV_Tutorial";
+
+/** A finish report's step id: the director's current step id, TUTORIAL_NO_STEP_ID when it has none (finished). */
+function finishStepId(view: Readonly<TutorialView> | undefined): string {
+	const id = view?.stepId ?? "";
+	return id !== "" ? id : TUTORIAL_NO_STEP_ID;
+}
+
+/** One stuck report as a fresh table (the director's report arrays are reused every frame). */
+function sendStuck(report: Readonly<TutorialStuckReport>): void {
+	Events.tutorialStuck.fire({ prompt: report.prompt, seconds: report.seconds });
+}
 
 /**
  * The first-run tutorial on the client (docs/TUTORIAL.md §4, docs/CLIENT.md "The tutorial run"):
@@ -50,6 +69,13 @@ const RENDER_STEP = "KV_Tutorial";
  * - **Pause overlay**: Restart tutorial (a fresh run and director), Skip tutorial (after a confirm:
  *   `tutorialFinished("skipped")`, then the run is left for the menu like Leave run). The main menu's Tutorial
  *   replays it.
+ * - **Telemetry (docs/TUTORIAL_FUNNEL.md TF6; docs/CLIENT.md "The tutorial run").** `tutorialStarted({ entry,
+ *   device })` per tutorial run (the entry threaded through `playTutorial(entry)`, `firstJoin` for the gate's start;
+ *   the store's input device at the start); every director update's `newLessonReports` / `newStuckReports` as
+ *   `tutorialLesson` / `tutorialStuck` (before the finish on the finish frame); a skip flushes the open stuck episode
+ *   first; `tutorialFinished` carries the director's current step id. `onboardingReport` `gate` once per session at
+ *   the dispatch (firstJoinGateReason), `outro` once per attempt when the outro card closes (choice, real seconds
+ *   open). `loaded` is PreloadController's (the release).
  */
 @Controller({})
 export class TutorialController implements OnStart {
@@ -68,6 +94,14 @@ export class TutorialController implements OnStart {
 	private readonly decidedListeners = new Array<(choice: FirstRunDecision) => void>();
 	/** Dispatches the gate's decision once the loading screen released too (docs/PRELOAD.md P5). */
 	private readonly join = new JoinGate<FirstRunDecision>();
+	/** The onboarding status the gate had when it latched (the gate reason). */
+	private gateStatus: OnboardingStatus | undefined;
+	/** The gate report went out (once per session). */
+	private gateReported = false;
+	/** How the next tutorial run began (set by every start, read by onRunStarted). */
+	private pendingEntry: TutorialEntry = "firstJoin";
+	/** os.clock() when this attempt's outro card opened; undefined: not open (or already reported). */
+	private outroOpenedAt: number | undefined;
 
 	constructor(private readonly sim: SimController, private readonly preload: PreloadController) {}
 
@@ -104,16 +138,21 @@ export class TutorialController implements OnStart {
 
 	// --- menu actions (HudController) ------------------------------------------------------------
 
-	/** Closes the outro card (its "Start my first run" then does the main menu's Play solo: HudController). */
+	/** The outro's "Start my first run": closes the card (HudController then does the main menu's Play solo). */
 	closeOutro(): void {
+		this.reportOutro("firstRun");
 		clientStore.setTutorialOutroOpen(false);
 	}
 
-	/** Outro "Play the tutorial again", pause "Restart tutorial" and the main menu's "Tutorial". */
-	playTutorial(): void {
+	/**
+	 * Starts a tutorial run: outro "Play the tutorial again" (`again`), pause "Restart tutorial" (`restart`) and the
+	 * main menu's "Tutorial" (`menu`). Any restart while the outro card is open closes it as `again`.
+	 */
+	playTutorial(entry: TutorialEntry): void {
+		this.reportOutro("again");
 		clientStore.setTutorialOutroOpen(false);
 		clientStore.setTutorialSkipConfirm(false);
-		this.sim.startTutorial();
+		this.startTutorial(entry);
 	}
 
 	/**
@@ -124,8 +163,12 @@ export class TutorialController implements OnStart {
 	skipTutorial(): void {
 		clientStore.setTutorialSkipConfirm(false);
 		if (!this.sim.isTutorialRun() || this.beat !== undefined) return; // already finished: the outro handles it
-		Events.tutorialFinished.fire({ outcome: "skipped", stepId: TUTORIAL_NO_STEP_ID }); // TF6 wires the real step id
-		print("[Tutorial] skipped");
+		// The open stuck episode ends here (a long one reports), then the skip with the current step.
+		const director = this.director;
+		if (director !== undefined) for (const report of director.flushMetrics()) sendStuck(report);
+		const stepId = finishStepId(director?.getView());
+		Events.tutorialFinished.fire({ outcome: "skipped", stepId });
+		print(`[Tutorial] skipped at ${stepId}`);
 		this.director = undefined;
 		clientStore.endTutorial();
 		this.sim.leaveRun();
@@ -139,6 +182,9 @@ export class TutorialController implements OnStart {
 	// --- per run / per frame ---------------------------------------------------------------------
 
 	private onRunStarted(ctx: RunContext): void {
+		// Another run took the player off the outro card (a lobby start): `menu`. Play again / Start my first run
+		// reported their own choice before this.
+		this.reportOutro("menu");
 		this.beat = undefined;
 		this.lastRevision = -1;
 		if (!ctx.tutorial) {
@@ -150,14 +196,19 @@ export class TutorialController implements OnStart {
 		const director = new TutorialDirector();
 		this.director = director;
 		this.runCounter = ctx.counter;
-		// Every tutorial start is a new funnel attempt (and marks the player busy for lobbies).
-		Events.tutorialStarted.fire(DEFAULT_TUTORIAL_START_INFO); // TF6 wires entry / device
+		// Every tutorial start is a new funnel attempt (and marks the player busy for lobbies): how it began and the
+		// last-used input device now (TFD9).
+		const entry = this.pendingEntry;
+		this.pendingEntry = "firstJoin";
+		const device = tutorialDeviceFor(clientStore.getState().game.inputDevice);
+		Events.tutorialStarted.fire({ entry, device });
 		clientStore.beginTutorial(tutorialHudFrom(director.getView()));
-		print(`[Tutorial] run ${ctx.counter}: practice descent started`);
+		print(`[Tutorial] run ${ctx.counter}: practice descent started (${entry}, ${device})`);
 	}
 
 	/** The run was left for the menu (Skip tutorial, or any Leave run / exit): no tutorial on screen any more. */
 	private onRunExited(): void {
+		this.reportOutro("menu");
 		this.director = undefined;
 		this.runCounter = -1;
 		this.beat = undefined;
@@ -182,7 +233,18 @@ export class TutorialController implements OnStart {
 		}
 		this.decided = choice;
 		if (onRelease) print(`[Tutorial] first run: ${choice} (dispatched as the loading screen released)`);
-		if (choice === "tutorial") this.sim.startTutorial();
+		if (!this.gateReported) {
+			this.gateReported = true;
+			const reason = firstJoinGateReason(choice, {
+				forced: this.forced,
+				inLobby: lobby.mine !== undefined,
+				intent: lobby.joinIntent,
+				status: this.gateStatus,
+			});
+			Events.onboardingReport.fire({ kind: "gate", reason });
+			print(`[Tutorial] first run gate: ${reason}`);
+		}
+		if (choice === "tutorial") this.startTutorial("firstJoin");
 		for (const listener of this.decidedListeners) listener(choice);
 		this.decidedListeners.clear();
 	}
@@ -195,6 +257,7 @@ export class TutorialController implements OnStart {
 			const choice = gate.poll(dt, this.forced);
 			if (choice === "wait") return;
 			this.gate = undefined;
+			this.gateStatus = gate.seenStatus();
 			print(
 				`[Tutorial] first run: ${choice} (after ${string.format("%.1f", gate.waitedSeconds())} s, join intent ${
 					gate.seenIntent() ?? "not received"
@@ -229,6 +292,11 @@ export class TutorialController implements OnStart {
 			dt,
 		});
 		for (const step of view.newFunnelSteps) Events.tutorialStep.fire(step);
+		// Metrics (not in `revision`: read every update). On the finish frame these go out before tutorialFinished;
+		// that frame's prompt change already ended the open stuck episode.
+		for (const r of view.newLessonReports)
+			Events.tutorialLesson.fire({ step: r.step, seconds: r.seconds, hits: r.hits });
+		for (const r of view.newStuckReports) sendStuck(r);
 		if (view.callouts.size() > 0) {
 			const expires = os.clock() + TUTORIAL_VIEW.calloutSeconds;
 			for (const key of view.callouts) {
@@ -241,19 +309,41 @@ export class TutorialController implements OnStart {
 			this.lastRevision = view.revision;
 			clientStore.setTutorialHud(tutorialHudFrom(view));
 		}
-		if (view.finished) this.finish(ctx);
+		if (view.finished) this.finish(ctx, view);
 	}
 
 	/** The floor 2 -> 3 change: freeze the run and report the completion now, the outro after the beat. */
-	private finish(ctx: RunContext): void {
+	private finish(ctx: RunContext, view: Readonly<TutorialView>): void {
 		this.sim.freezeTutorialRun();
-		Events.tutorialFinished.fire({ outcome: "completed", stepId: TUTORIAL_NO_STEP_ID }); // TF6 wires the real step id
+		// The step id current at the finish frame (the director clears it once finished: TUTORIAL_NO_STEP_ID).
+		const stepId = finishStepId(view);
+		Events.tutorialFinished.fire({ outcome: "completed", stepId });
 		clientStore.endTutorial();
 		this.beat = new TutorialOutroBeat();
-		print(`[Tutorial] run ${ctx.counter}: completed; the outro follows`);
+		print(`[Tutorial] run ${ctx.counter}: completed at ${stepId}; the outro follows`);
 	}
 
 	private showOutro(): void {
+		this.outroOpenedAt = os.clock();
 		clientStore.setTutorialOutroOpen(true);
+	}
+
+	/**
+	 * The outro card closed (once per attempt; nothing when it is not open): `onboardingReport({ kind: "outro" })` with
+	 * the choice and the real seconds it was open. Leaving the game on it is the server's (`left`).
+	 */
+	private reportOutro(choice: TutorialOutroChoice): void {
+		const openedAt = this.outroOpenedAt;
+		if (openedAt === undefined) return;
+		this.outroOpenedAt = undefined;
+		const seconds = math.max(0, os.clock() - openedAt);
+		Events.onboardingReport.fire({ kind: "outro", choice, seconds });
+		print(`[Tutorial] outro closed: ${choice} after ${string.format("%.1f", seconds)} s`);
+	}
+
+	/** Every tutorial start goes through here: the entry for onRunStarted's `tutorialStarted`, then the run. */
+	private startTutorial(entry: TutorialEntry): void {
+		this.pendingEntry = entry;
+		this.sim.startTutorial();
 	}
 }

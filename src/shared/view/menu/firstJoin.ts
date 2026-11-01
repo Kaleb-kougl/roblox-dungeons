@@ -10,9 +10,12 @@
  * The latched choice is not final: it is DISPATCHED only once the join loading screen released (up to
  * PRELOAD's timeout later), and the server may place the player meanwhile (a late LaunchData, a party mate arriving)
  * and upgrade its `joinIntent` from none to lobby / party. `firstJoinDispatchChoice` re-checks at dispatch.
+ *
+ * Telemetry (docs/TUTORIAL_FUNNEL.md §4 `OnboardingGate`): `firstJoinGateReason` names why the dispatched choice went
+ * where it went; TutorialController sends it once per session as `onboardingReport({ kind: "gate", reason })`.
  */
 import { INVITE, type ArrivalJoinIntent } from "shared/invite";
-import type { OnboardingStatus } from "shared/onboarding";
+import type { OnboardingGateReason, OnboardingStatus } from "shared/onboarding";
 import { TUTORIAL } from "shared/config";
 import { firstRunChoice, type FirstRunChoice, type FirstRunDecision, type FirstRunInputs } from "shared/tutorial";
 
@@ -51,6 +54,38 @@ export function firstJoinDispatchChoice(latched: FirstRunDecision, facts: FirstJ
 	if (latched !== "tutorial" || facts.forced === true) return latched;
 	if (facts.inLobby || facts.intent === "lobby" || facts.intent === "party") return "normal";
 	return latched;
+}
+
+/** What the client knows when it names the dispatched choice's reason. */
+export interface FirstJoinGateFacts extends FirstJoinDispatchFacts {
+	/**
+	 * The onboarding status the gate had when it latched (undefined: none came before the timeout, or KV_Tutorial was
+	 * set and the server was not asked). A status that arrives after the latch does not change the reason.
+	 */
+	readonly status: Readonly<OnboardingStatus> | undefined;
+}
+
+/**
+ * Why the first-join choice `dispatched` (firstJoinDispatchChoice's answer) went where it went, first match wins:
+ *   forced      KV_Tutorial was set (true or false)
+ *   tutorial    the tutorial starts
+ *   timeout     the normal flow, no onboarding status before the timeout
+ *   loadFailed  the normal flow, the server's load failed (`loaded: false`)
+ *   done        the normal flow, the tutorial is done (a grouped veteran too: the menu was theirs anyway)
+ *   party       the normal flow for a new player whose latest join intent is `party`
+ *   invited     the normal flow for a new player whose latest join intent is `lobby`, or who is in a lobby by now
+ * A new player sent to the menu with neither (unreachable through FirstJoinGate + firstJoinDispatchChoice) is
+ * `invited`: grouping is the only rule that routes a loaded, not-done player past the tutorial.
+ */
+export function firstJoinGateReason(dispatched: FirstRunDecision, facts: FirstJoinGateFacts): OnboardingGateReason {
+	if (facts.forced !== undefined) return "forced";
+	if (dispatched === "tutorial") return "tutorial";
+	const status = facts.status;
+	if (status === undefined) return "timeout";
+	if (!status.loaded) return "loadFailed";
+	if (status.tutorialDone) return "done";
+	if (facts.intent === "party") return "party";
+	return "invited";
 }
 
 /**
@@ -94,6 +129,11 @@ export class FirstJoinGate {
 
 	decided(): FirstRunDecision | undefined {
 		return this.choice;
+	}
+
+	/** The onboarding status this gate saw (undefined: none yet), for the gate reason (firstJoinGateReason). */
+	seenStatus(): Readonly<OnboardingStatus> | undefined {
+		return this.status;
 	}
 
 	/** The intent this gate saw (undefined: none yet), for the decision's log line. */
