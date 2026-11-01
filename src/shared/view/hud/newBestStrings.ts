@@ -12,7 +12,6 @@ export const NEW_BEST_STRINGS = {
 	over: "hud.best.over",
 	shout: "hud.best.shout",
 	stageToGo: "stage.best.toGo",
-	stageOneToGo: "stage.best.oneToGo",
 	stageRecordFloor: "stage.best.recordFloor",
 	stageNewDeepest: "stage.best.newDeepest",
 	stageDeeperYet: "stage.best.deeperYet",

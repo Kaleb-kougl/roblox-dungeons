@@ -18,15 +18,15 @@
 import { BOSS_FLOOR_EVERY, bossKindFor, endlessRoster, floorSeed } from "shared/dungeon";
 import { dailyLabel, type DailyMineEntry, type DailyPodium, type DailyStatus } from "shared/daily";
 import type { LobbyVisibility } from "shared/lobby";
+import { formatThousands } from "shared/l10n";
 import {
 	DAILY_STRINGS,
-	ROSTER_VIEW,
+	ROSTER_STRINGS,
 	STANDING_KEYS,
 	dailyDateText,
 	dailyLobbyWorldKey,
 	dailyText,
-	enemyNameKey,
-	formatThousands,
+	rosterNames,
 	standingOf,
 	type DailyStr,
 } from "shared/view/hud";
@@ -74,6 +74,8 @@ export interface DailyCardModel {
 	readonly known: boolean;
 	readonly roster: string;
 	readonly boss: string;
+	/** The compact card's one preview line: roster and boss joined by `roster.separator` ("" until known). */
+	readonly preview: string;
 	/** `Your best today 23,410 · #41`, `Not played yet`, or "" when unknown (no DataStore). */
 	readonly best: string;
 	/** The quiet placeholder while today's status is unknown ("" otherwise). */
@@ -101,21 +103,25 @@ export function dailyCardModel(status: DailyStatus | undefined, today: number, s
 			known: false,
 			roster: "",
 			boss: "",
+			preview: "",
 			best: "",
 			placeholder: s(DAILY_STRINGS.cardLoading),
 			resetsAt: undefined,
 		};
 	}
 	const preview = dailyPreview(current.seed);
-	const names = preview.roster.map((k) => s(enemyNameKey(k))).join(ROSTER_VIEW.separator);
+	const names = rosterNames(preview.roster, s);
 	const mine = current.mine;
 	let best = "";
 	if (mine !== undefined) best = mine.solo !== undefined ? bestToday(mine.solo, s) : s(DAILY_STRINGS.cardNotPlayed);
+	const roster = s(DAILY_STRINGS.cardRoster, { names });
+	const boss = s(DAILY_STRINGS.cardBoss, { floor: preview.bossFloor, name: s(`${preview.boss}.name`) });
 	return {
 		title,
 		known: true,
-		roster: s(DAILY_STRINGS.cardRoster, { names }),
-		boss: s(DAILY_STRINGS.cardBoss, { floor: preview.bossFloor, name: s(`${preview.boss}.name`) }),
+		roster,
+		boss,
+		preview: `${roster}${s(ROSTER_STRINGS.separator)}${boss}`,
 		best,
 		placeholder: "",
 		resetsAt: current.resetsAt,
@@ -130,6 +136,8 @@ export interface DailyPodiumRow {
 	readonly name: string;
 	/** `#1`. */
 	readonly placeText: string;
+	/** The compact row: `#1 Name` (`daily.podium.row`). */
+	readonly line: string;
 	/** `23,410`. */
 	readonly score: string;
 }
@@ -146,15 +154,17 @@ export interface DailyPodiumModel {
 /** Yesterday's podium strip, or undefined (hidden) when unknown or nobody played. */
 export function dailyPodiumModel(podium: DailyPodium | undefined, s: DailyStr): DailyPodiumModel | undefined {
 	if (podium === undefined || podium.top.size() === 0) return undefined;
-	const rows = podium.top.map(
-		(e, i): DailyPodiumRow => ({
+	const rows = podium.top.map((e, i): DailyPodiumRow => {
+		const placeText = s(DAILY_STRINGS.standingRank, { rank: i + 1 });
+		return {
 			place: i + 1,
 			userId: e.userId,
 			name: e.name,
-			placeText: s(DAILY_STRINGS.standingRank, { rank: i + 1 }),
+			placeText,
+			line: s(DAILY_STRINGS.podiumRow, { place: placeText, name: e.name }),
 			score: formatThousands(e.score),
-		}),
-	);
+		};
+	});
 	let mine = "";
 	if (podium.mine !== undefined) {
 		const standing = standingOf(podium.mine, STANDING_KEYS);

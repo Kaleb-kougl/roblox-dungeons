@@ -12,6 +12,7 @@
  *   full     the pool drops its oldest number (least recently popped) for the new one.
  * Under reducedMotion (motion = 0): no jitter, no rise, no pop; numbers still appear and fade in place.
  */
+import { formatDecimal } from "shared/l10n";
 import { BAR_GAP } from "./bars";
 import { RenderRng } from "./rng";
 
@@ -228,8 +229,14 @@ export function numberBaseY(h: number, boss: boolean): number {
 	return boss ? math.round(h * BOSS_NUMBER_HEIGHT) : h + NUMBER_BASE_GAP;
 }
 
-/** The text a pooled number shows: its value (whole numbers without decimals), or `capText` for a CAP tag. */
+/** Decimals a fractional damage number shows. */
+export const NUMBER_DECIMALS = 1;
+
+/**
+ * The text a pooled number shows: its value (whole numbers without decimals; a fraction with the number locale's
+ * decimal separator, shared/l10n formatDecimal), or `capText` for a CAP tag.
+ */
 export function numberText(style: number, value: number, capText: string): string {
 	if (style === NumberStyle.CAP) return capText;
-	return value === math.floor(value) ? tostring(value) : string.format("%.1f", value);
+	return value === math.floor(value) ? tostring(value) : formatDecimal(value, NUMBER_DECIMALS);
 }

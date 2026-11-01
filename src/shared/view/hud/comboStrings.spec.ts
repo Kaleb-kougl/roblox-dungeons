@@ -16,6 +16,8 @@ describe("the combo's strings", () => {
 			COMBO_STRINGS.unstoppable,
 			COMBO_STRINGS.lost,
 			COMBO_STRINGS.best,
+			COMBO_STRINGS.shout,
+			COMBO_STRINGS.bestNamed,
 		];
 		expect(keys).toEqual([...COMBO_STRING_KEYS]);
 		for (const key of keys) expect([key, REQUIRED_STRING_KEYS.includes(key)]).toEqual([key, true]);

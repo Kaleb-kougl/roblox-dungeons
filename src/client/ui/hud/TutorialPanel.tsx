@@ -4,7 +4,7 @@ import { useSelector } from "@rbxts/react-reflex";
 import { selectBindings, selectInputDevice, selectTutorial, selectTutorialPromptKey } from "client/store";
 import { str } from "client/ui/theme";
 import { TUTORIAL_STRINGS, tutorialDeviceFor } from "shared/tutorial";
-import { HUD_VIEW, PAUSE_HINT, TOUCH_TUTORIAL_BOX, TUTORIAL_VIEW, tutorialPromptVars } from "shared/view/hud";
+import { HUD_VIEW, TOUCH_TUTORIAL_BOX, TUTORIAL_VIEW, pauseHint, tutorialPromptVars } from "shared/view/hud";
 import { Panel, Text } from "./primitives";
 import { useTouchStrip } from "./touchStripContext";
 import { screenSkin } from "shared/view/menu";
@@ -41,7 +41,7 @@ export function TutorialPanel() {
 				order={1}
 				align={Enum.TextXAlignment.Center}
 				wrap={true}
-				text={str(promptKey, tutorialPromptVars(tutorialDeviceFor(device), bindings))}
+				text={str(promptKey, tutorialPromptVars(tutorialDeviceFor(device), bindings, str))}
 			/>
 			<Text
 				fill={true}
@@ -61,7 +61,7 @@ export function TutorialPanel() {
 					size={HUD_VIEW.smallText}
 					color="uiTextDim"
 					align={Enum.TextXAlignment.Center}
-					text={str(TUTORIAL_STRINGS.panelHint, { key: PAUSE_HINT[keyDevice(device)] })}
+					text={str(TUTORIAL_STRINGS.panelHint, { key: pauseHint(str)[keyDevice(device)] })}
 				/>
 			)}
 		</Panel>

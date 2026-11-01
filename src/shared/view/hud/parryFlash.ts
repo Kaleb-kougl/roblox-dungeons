@@ -9,7 +9,8 @@
  *     pop's peak and 1 / popScale of it at rest; a teammate's is flash.teammateScale of that), which is also the
  *     duck box's share (shoutBoxAt's sizeScale), so the duck test follows the drawn text;
  *   - its opacity: the shout's cap x the flash's fade, never above the duck ceiling (ShoutDuck, CD9's numbers);
- *   - its label: `fx.parry.text`, plus ` fx.parry.count` ("x5") once the guard erased flash.countFrom or more.
+ *   - its label: `fx.parry.text`, or `fx.parry.count` ("{text} x{n}": "PARRY! x5") once the guard erased
+ *     flash.countFrom or more.
  * Presentation only.
  */
 import { TILE_SIZE } from "shared/sim";
@@ -82,5 +83,5 @@ export interface ParryFlashStrings {
 export function parryFlashLabel(strings: ParryFlashStrings, count: number, showCount: boolean): string {
 	const text = strings.str(PARRY_FLASH_STRINGS.text);
 	if (!showCount) return text;
-	return `${text} ${strings.str(PARRY_FLASH_STRINGS.count, { n: count })}`;
+	return strings.str(PARRY_FLASH_STRINGS.count, { text, n: count });
 }

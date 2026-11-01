@@ -426,7 +426,8 @@ export class ComboController implements OnStart {
 		} else if (tier !== this.shownTier) {
 			this.shownTier = tier;
 			const def = COMBO_TIERS[math.clamp(tier, 0, COMBO_TOP_TIER)];
-			label.Text = def.nameKey !== undefined ? comboShoutText(pack.str(def.nameKey)) : "";
+			label.Text =
+				def.nameKey !== undefined ? comboShoutText(pack.str(def.nameKey), (k, v) => pack.str(k, v)) : "";
 			label.TextColor3 = pack.color(def.role as ColorRole);
 		}
 		if (look.opacity !== this.shownOpacity) {

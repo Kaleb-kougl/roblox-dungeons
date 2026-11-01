@@ -93,7 +93,7 @@ export function ToastPanel() {
 					text={
 						device === "touch"
 							? str(TOUCH_STRINGS.hintShrine)
-							: str(PROGRESSION_STRINGS.shrineHint, { key: shrineHint(bindings)[keyDevice(device)] })
+							: str(PROGRESSION_STRINGS.shrineHint, { key: shrineHint(bindings, str)[keyDevice(device)] })
 					}
 				/>
 			) : undefined}

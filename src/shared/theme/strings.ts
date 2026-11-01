@@ -42,3 +42,32 @@ export function templateProblem(template: string): string | undefined {
 	}
 	return undefined;
 }
+
+/** A template's placeholder names, sorted (a multiset: repeats kept). */
+function placeholderBag(template: string): Array<string> {
+	const names = placeholders(template);
+	names.sort();
+	return names;
+}
+
+/**
+ * A readable problem when `text` (a translation) does not use exactly the placeholders of `english` (same names, same
+ * number of each), or undefined when it does. `english` that is not a string has nothing to compare: undefined.
+ */
+export function placeholderMismatch(english: unknown, text: string): string | undefined {
+	if (!typeIs(english, "string")) return undefined;
+	const want = placeholderBag(english);
+	const got = placeholderBag(text);
+	let same = want.size() === got.size();
+	if (same) {
+		for (let i = 0; i < want.size(); i++) {
+			if (want[i] !== got[i]) {
+				same = false;
+				break;
+			}
+		}
+	}
+	if (same) return undefined;
+	const list = (names: Array<string>) => (names.size() > 0 ? names.map((n) => `{${n}}`).join(" ") : "none");
+	return `placeholders ${list(got)} differ from the English ${list(want)}`;
+}

@@ -11,4 +11,8 @@ export const COMBO_STRINGS = {
 	unstoppable: "hud.combo.unstoppable",
 	lost: "hud.combo.lost",
 	best: "hud.combo.best",
+	/** The floor shout around a tier's name (`{name}`: "RAMPAGE!"; comboShoutText). */
+	shout: "hud.combo.shout",
+	/** The run-over best combo with its tier's name (`{combo}` `{name}`; comboBestRichText). */
+	bestNamed: "hud.combo.bestNamed",
 } as const;

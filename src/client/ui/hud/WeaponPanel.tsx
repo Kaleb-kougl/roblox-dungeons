@@ -127,7 +127,7 @@ export function WeaponPanel(props: { readonly highlight?: boolean }) {
 			<SwapHint
 				order={1}
 				forced={props.highlight === true}
-				text={str(HUD_STRINGS.weaponSwap, { key: swapHint(bindings)[keyDevice(device)] })}
+				text={str(HUD_STRINGS.weaponSwap, { key: swapHint(bindings, str)[keyDevice(device)] })}
 			/>
 			<Row order={2}>{slots}</Row>
 		</Panel>

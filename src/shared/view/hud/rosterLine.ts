@@ -7,9 +7,10 @@
  *   stageRosterLine  the card's roster line: at a run start (no floor before) every kind, `roster.line` ("Swarmer ·
  *                    Bruiser"); on a floor where kinds joined `roster.new` ("New: Imp"); else none
  *   stageCardLine    the card's one second line (DSD13): new best's NEW DEEPEST outranks the roster line, which
- *                    outranks new best's other lines ("Deepest: floor 9 · 2 to go", "Record floor", "Deepest yet")
+ *                    outranks new best's other lines ("Deepest: floor 9 · floors to go: 2", "Record floor", ...)
+ *   rosterNames      kind names joined with `roster.separator` (" · "; also the Daily card's roster)
  *
- * Names are the kinds' `enemy.<id>.name` strings joined with ROSTER_VIEW.separator.
+ * Names are the kinds' `enemy.<id>.name` strings joined with the `roster.separator` string.
  */
 import { NEW_BEST_STRINGS } from "./newBestStrings";
 import type { NewBestLineText, NewBestStr } from "./newBest";
@@ -18,12 +19,8 @@ import type { NewBestLineText, NewBestStr } from "./newBest";
 export const ROSTER_STRINGS = {
 	line: "roster.line",
 	joined: "roster.new",
-} as const;
-
-/** How the roster line is drawn. */
-export const ROSTER_VIEW = {
-	/** Between two kind names ("Swarmer · Bruiser"). */
-	separator: " · ",
+	/** Between two kind names ("Swarmer · Bruiser"; docs/LOCALIZATION.md L1). */
+	separator: "roster.separator",
 } as const;
 
 /** The theme string key of an enemy kind's name (`enemy.<id>.name`, required for every theme ENEMY_ARCHETYPES id). */
@@ -38,8 +35,9 @@ export function rosterJoined(roster: ReadonlyArray<string>, previous: ReadonlyAr
 	return out;
 }
 
-function namesOf(kinds: ReadonlyArray<string>, s: NewBestStr): string {
-	return kinds.map((k) => s(enemyNameKey(k))).join(ROSTER_VIEW.separator);
+/** The kinds' names joined with the `roster.separator` string ("Swarmer · Bruiser"). */
+export function rosterNames(kinds: ReadonlyArray<string>, s: NewBestStr): string {
+	return kinds.map((k) => s(enemyNameKey(k))).join(s(ROSTER_STRINGS.separator));
 }
 
 /**
@@ -54,10 +52,11 @@ export function stageRosterLine(
 	s: NewBestStr,
 ): NewBestLineText | undefined {
 	if (roster === undefined || roster.size() === 0) return undefined;
-	if (previous === undefined) return { key: ROSTER_STRINGS.line, args: { names: namesOf(roster, s) }, gold: false };
+	if (previous === undefined)
+		return { key: ROSTER_STRINGS.line, args: { names: rosterNames(roster, s) }, gold: false };
 	const joined = rosterJoined(roster, previous);
 	if (joined.size() === 0) return undefined;
-	return { key: ROSTER_STRINGS.joined, args: { names: namesOf(joined, s) }, gold: false };
+	return { key: ROSTER_STRINGS.joined, args: { names: rosterNames(joined, s) }, gold: false };
 }
 
 /**

@@ -44,7 +44,7 @@ import {
 	OPTIONS_STRINGS,
 	OPTIONS_TABS,
 	OPTIONS_VIEW,
-	SETTINGS_HINT,
+	settingsHint,
 	SETTINGS_STRINGS,
 	UI_ART,
 	actionNameKey,
@@ -214,7 +214,7 @@ function JuiceTab(props: { order: number; actions: HudActions; selectable: boole
 
 function slotText(b: Bindings, device: BindingDevice, action: GameAction, slot: 0 | 1): string {
 	const input = slotInput(b, device, action, slot);
-	return input !== undefined ? inputLabel(input) : str(OPTIONS_STRINGS.emptySlot);
+	return input !== undefined ? inputLabel(input, str) : str(OPTIONS_STRINGS.emptySlot);
 }
 
 function BindingRow(props: {
@@ -428,7 +428,7 @@ function ControlsTab(props: {
 					color="telegraph"
 					wrap={true}
 					text={str(refusalKey(notice.reason), {
-						input: inputLabel(notice.input),
+						input: inputLabel(notice.input, str),
 						action: str(actionNameKey(notice.action)),
 					})}
 				/>
@@ -791,7 +791,7 @@ function OptionsModal(props: { options: OptionsState; actions: HudActions; devic
 				device={props.device}
 				lines={[
 					str(OPTIONS_STRINGS.conflict, {
-						input: inputLabel(c.input),
+						input: inputLabel(c.input, str),
 						action: str(actionNameKey(c.holder.action)),
 					}),
 				]}
@@ -1012,7 +1012,7 @@ export function OptionsScreen() {
 								order={8}
 								size={HUD_VIEW.smallText}
 								color="uiTextDim"
-								text={str(OPTIONS_STRINGS.hint, { key: SETTINGS_HINT[keyDevice(device)] })}
+								text={str(OPTIONS_STRINGS.hint, { key: settingsHint(str)[keyDevice(device)] })}
 							/>
 						)}
 					</Panel>

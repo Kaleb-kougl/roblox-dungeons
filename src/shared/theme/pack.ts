@@ -28,12 +28,14 @@ import {
 	type BreakableTheme,
 	type DecorArt,
 	type FxArt,
+	type LocaleReport,
 	type ImageRef,
 	type SoundRef,
 	type SpriteSetLayout,
 	type WorldArt,
 	type WorldImageArt,
 } from "./core";
+import type { LocaleTable } from "shared/l10n";
 import { THEME_PACKS } from "./packs";
 import type { PlaceholderColor, PlaceholderVisual } from "./placeholders";
 import type { StringVars } from "./strings";
@@ -248,8 +250,10 @@ export interface BiomeColors extends BiomeTheme {
 }
 
 export interface ThemePackOptions {
-	/** Active locale; strings fall back to the default table. */
+	/** Active locale (setLocale); strings fall back to the default table. */
 	locale?: string;
+	/** Generated locale tables by code (default: LOCALE_TABLES; specs pass synthetic ones). */
+	localeTables?: ReadonlyMap<string, LocaleTable>;
 	/** Validator errors found at load (kept for debug overlays). */
 	problems?: ReadonlyArray<string>;
 	/** Where warnings go (default: Roblox `warn`). */
@@ -266,7 +270,8 @@ export class ThemePack {
 	readonly core: ThemeCore;
 	readonly id: string;
 	readonly name: string;
-	readonly locale: string | undefined;
+	/** Active locale code (undefined: the default table). Read-only: change it with setLocale. */
+	locale: string | undefined;
 	readonly problems: ReadonlyArray<string>;
 
 	private readonly colors = new Map<string, Color3>();
@@ -585,6 +590,20 @@ export class ThemePack {
 	str(key: string, vars?: StringVars): string {
 		return this.core.str(key, vars);
 	}
+
+	/**
+	 * Switch strings (and the shared/l10n number locale) to locale `code`, live (docs/LOCALIZATION.md L3; ThemeCore
+	 * setLocale). Colours, sprites and sounds don't depend on the locale.
+	 */
+	setLocale(code: string | undefined): void {
+		this.core.setLocale(code);
+		this.locale = this.core.locale;
+	}
+
+	/** What the active locale's generated table could not supply (ThemeCore localeReport). */
+	localeReport(): LocaleReport {
+		return this.core.localeReport();
+	}
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -593,7 +612,10 @@ export class ThemePack {
 export interface LoadOptions {
 	/** Packs to choose from (default: THEME_PACKS, the bundled packs). */
 	packs?: Readonly<Record<string, unknown>>;
+	/** Active locale (ThemePack.setLocale; change it live later the same way). */
 	locale?: string;
+	/** Generated locale tables by code (default: LOCALE_TABLES). */
+	localeTables?: ReadonlyMap<string, LocaleTable>;
 	/** Where warnings and validation problems go (default: Roblox `warn`). */
 	warn?: (message: string) => void;
 }
@@ -617,7 +639,12 @@ export function loadThemePack(id: string = DEFAULT_PACK_ID, opts: LoadOptions = 
 		if (problems.size() > 0) {
 			sink(`[theme:${id}] pack has ${problems.size()} problem(s):\n  ${problems.join("\n  ")}`);
 		}
-		return new ThemePack(manifest, { locale: opts.locale, problems, warn: sink });
+		return new ThemePack(manifest, {
+			locale: opts.locale,
+			localeTables: opts.localeTables,
+			problems,
+			warn: sink,
+		});
 	}
 	if (id !== DEFAULT_PACK_ID) {
 		sink(`[theme] pack "${id}" not found, falling back to "${DEFAULT_PACK_ID}"`);

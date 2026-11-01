@@ -11,8 +11,10 @@
  *                     boss (`{floor}`, `{name}`), best today (`{score}`, `{standing}`), not played, the quiet placeholder,
  *                     the countdown (`{time}`), Play Daily, Daily with friends
  *   daily.standing.*  a board standing: `#{rank}`, `top {percent}%`, `#{rank} of {total}` (under 20 entrants, DSD15)
- *   daily.date[.*]    the UTC date (`{weekday} {month} {date}`) and the weekday / month names
- *   daily.podium.*    yesterday's podium: title (`{label}`), your final standing / score
+ *   daily.date.*      the UTC date (`daily.date.format`: `{weekday} {month} {date}`, the order translatable) and the
+ *                     weekday / month names
+ *   daily.podium.*    yesterday's podium: title (`{label}`), your final standing / score, a place's row (`{place}`
+ *                     `{name}`)
  *   daily.result.*    the run-over daily block: title, rank / percentile / too few, entrants, best today lines, the
  *                     save chip, Retry Daily
  *   daily.tab.*       the leaderboard panel's scope (Today / Yesterday / All time) and filter (Global / Friends) tabs
@@ -34,7 +36,7 @@ export const DAILY_STRING_KEYS: ReadonlyArray<string> = [
 	"daily.standing.rank",
 	"daily.standing.percentile",
 	"daily.standing.rankOf",
-	"daily.date",
+	"daily.date.format",
 	"daily.date.weekday.mon",
 	"daily.date.weekday.tue",
 	"daily.date.weekday.wed",
@@ -57,6 +59,7 @@ export const DAILY_STRING_KEYS: ReadonlyArray<string> = [
 	"daily.podium.title",
 	"daily.podium.mine",
 	"daily.podium.mineScore",
+	"daily.podium.row",
 	"daily.result.title",
 	"daily.result.rank",
 	"daily.result.percentile",

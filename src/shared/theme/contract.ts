@@ -35,6 +35,7 @@ import { DAILY_STRING_KEYS } from "./daily";
 import { DAILY_RANK_STRING_KEYS } from "./dailyRank";
 import { NEW_BEST_STRING_KEYS } from "./newBest";
 import { ROSTER_STRING_KEYS } from "./roster";
+import { INPUT_KEY_STRING_KEYS } from "./inputKeys";
 import { startsWith } from "./util";
 import { ENEMY_VARIANT_STRING_KEYS } from "./variants";
 
@@ -822,8 +823,9 @@ export const ROOM_CLEAR_STRING_KEYS = [
 /**
  * Roblox port (docs/COMBO.md CB3): the combo's strings (shared/view COMBO_STRINGS): the four tier names (x2 RAMPAGE, x3
  * CARNAGE, x4 DOMINATING, x5 UNSTOPPABLE; the tier below x2 has no name), the tier slot's COMBO LOST after a break and
- * its BEST x3.4 after a lapse (`{combo}`, the streak's peak, formatted like `hud.score.combo`). The theme imports
- * nothing outside shared/theme, so the list is repeated here.
+ * its BEST x3.4 after a lapse (`{combo}`, the streak's peak, formatted like `hud.score.combo`), the floor shout around
+ * a tier's name (`{name}`, "RAMPAGE!") and the run-over best combo with its tier (`{combo}` `{name}`; docs/LOCALIZATION.md
+ * L1). The theme imports nothing outside shared/theme, so the list is repeated here.
  */
 export const COMBO_STRING_KEYS = [
 	"hud.combo.rampage",
@@ -832,11 +834,13 @@ export const COMBO_STRING_KEYS = [
 	"hud.combo.unstoppable",
 	"hud.combo.lost",
 	"hud.combo.best",
+	"hud.combo.shout",
+	"hud.combo.bestNamed",
 ] as const;
 
 /**
- * Roblox port (docs/GRAZE_PARRY.md GP3): the parry flash's strings (shared/view, GP7): PARRY! and the count suffix a
- * guard that erased 3 or more bullets adds after it (`{n}`, the guard's erase count: "PARRY! x5"). The theme imports
+ * Roblox port (docs/GRAZE_PARRY.md GP3): the parry flash's strings (shared/view, GP7): PARRY! and the counted form a
+ * guard that erased 3 or more bullets shows (`{text}` PARRY!, `{n}` the guard's erase count: "PARRY! x5"). The theme imports
  * nothing outside shared/theme, so the list is repeated here.
  */
 export const NEAR_MISS_STRING_KEYS = ["fx.parry.text", "fx.parry.count"] as const;
@@ -895,6 +899,8 @@ export const REQUIRED_STRING_KEYS: ReadonlyArray<string> = ((): string[] => [
 	...ROSTER_STRING_KEYS,
 	// docs/DAILY.md DS10: new best's "best today" wording, the rank layer's target row, toasts, shouts, run-over row
 	...DAILY_RANK_STRING_KEYS,
+	// docs/LOCALIZATION.md L1: named keys' labels (`input.key.<name>`) and the key list joiner
+	...INPUT_KEY_STRING_KEYS,
 ])();
 
 /**

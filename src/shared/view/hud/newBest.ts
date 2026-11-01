@@ -618,7 +618,7 @@ export interface NewBestLineText {
 
 /**
  * The stairwell card's second line for `floor` (undefined: none, for a baseline without a floor target): below the
- * record `stage.best.toGo` ("Deepest: floor {floor} · {n} to go") or one floor below `stage.best.oneToGo`; on it
+ * record `stage.best.toGo` ("Deepest: floor {floor} · floors to go: {n}", one key for every n: LD7); on it
  * `stage.best.recordFloor`; past it `stage.best.newDeepest` (gold) on the first floor past the record of the run, else
  * `stage.best.deeperYet` (gold). `alreadyDeeper`: an earlier floor of this run was already past the record
  * (NewBestFrame.deeper read BEFORE this floor, or simply floor > record + 1 for stairs).
@@ -634,9 +634,7 @@ export function stageBestLine(
 	if (floor > record)
 		return { key: alreadyDeeper ? K.stageDeeperYet : K.stageNewDeepest, args: undefined, gold: true };
 	if (floor === record) return { key: K.stageRecordFloor, args: undefined, gold: false };
-	const n = record - floor;
-	if (n === 1) return { key: K.stageOneToGo, args: { floor: record }, gold: false };
-	return { key: K.stageToGo, args: { floor: record, n }, gold: false };
+	return { key: K.stageToGo, args: { floor: record, n: record - floor }, gold: false };
 }
 
 // ---------------------------------------------------------------------------------------------------------------

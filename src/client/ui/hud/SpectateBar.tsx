@@ -54,7 +54,7 @@ function SpectateBarBody(props: { name: string; position: number; count: number 
 		});
 		return () => handle.connection?.Disconnect();
 	}, [motion]);
-	const keys = spectateHint(bindings)[keyDevice(device)];
+	const keys = spectateHint(bindings, str)[keyDevice(device)];
 	const skin = screenSkin("spectate");
 	const ghost = UI_ART.iconBox.ghost;
 	return (
