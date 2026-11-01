@@ -637,6 +637,8 @@ write (ordered written, details failed) still writes the details.
 | --- | --- | --- | --- |
 | `LB_Solo_v1`, `LB_Coop_v1` | OrderedDataStore | `u_<UserId>` | the ordered value (no userIds tag: ordered stores take none; the key names the player) |
 | `LB_Details_v1` | DataStore | `solo_u_<UserId>`, `coop_u_<UserId>` | `{ v: 1, value, score, floor, partySize, members: [{ userId, name, classId? }], at, runId, worldKind }`, tagged `[UserId]` |
+| `LB_Daily_Solo_v1`, `LB_Daily_Coop_v1` (scope `d<day>_r<ruleset>`) | OrderedDataStore | `u_<UserId>` | the ordered value (all-time layout); no details doc (docs/DAILY.md DS5, DSD12): an accepted daily death posts 1 UpdateAsync per credited member through the write queue, personal-best rule inside UpdateAsync, to the session's day and ruleset |
+| `LB_Daily_Hist_v1` | DataStore | `<board>_<scope>_s<0..7>` (e.g. `solo_d303_r1_s3`) | `{ v: 1, c: number[64] }` score histogram shard (docs/DAILY.md DS6); one shard may hold negative counts, only the sum is meaningful. Each server writes the shard picked from its JobId (FNV-1a mod 8) at most once per 60 s per board and scope (UpdateAsync adds counts) and at BindToClose |
 
 Budgets: writes go through `LeaderboardWriteQueue` (at most `LEADERBOARD_WRITE_RATE` = 20 jobs per 60 s per server,
 coalesced per player + board keeping the best, failed writes retried with backoff 2 s doubling to 60 s, 5 tries).
@@ -751,6 +753,9 @@ Custom events (`LogCustomEvent`; fields are `CustomField01..03`):
 | `LobbyInviteAnswered` | 1 | `accept` / `decline` / `expire` | | | an invite is accepted (joined), declined or expires (invitee) |
 | `InviteArrival` | 1 | `joinedInvite` / `joinedOpen` / `followedClosed` / `arrived` / `full` / `gone` / `inRun` / `kickCooldown` / `busy` / `noData` | `lobby` / `game` | | a player arrived from a Roblox invite (docs/INVITES.md I4, I7) |
 | `PartyGrouped` | party members grouped | `joined` / `created` / `offered` | | | a Roblox Party arrival was grouped, or a mid-session party invite offered (docs/INVITES.md I6, I7) |
+| `daily_start` | 1 | board (`solo` / `coop`) | attempt bucket (`1` / `2` / `3-5` / `6-10` / `11+`) | `returning` / `notReturning` / `unknown` (finished a daily on the previous day) | an accepted daily session start, per member in the server (not debug sessions; docs/DAILY.md DS13) |
+| `daily_retry` | attempt number | attempt bucket | board | | the same start when it is not the member's first daily start of that day |
+| `daily_finish` | score | score bucket (`<1k` / `1k-5k` / `5k-10k` / `10k-25k` / `25k-50k` / `50k-100k` / `100k-250k` / `250k+`) | floor bucket (`1` / `2-4` / `5-9` / `10-14` / `15-19` / `20+`) | `<attempt bucket>/<returning>` | an accepted daily run (deaths and abandoned validated runs; not debug / Studio), per credited member in the server |
 
 Lobby events come from `src/shared/lobby/analytics.ts`, logged through `TelemetryService.logEvents(player, specs)`.
 
@@ -912,7 +917,7 @@ nothing.
 | --- | --- | --- | --- |
 | `PlayerSettings` | `u_<UserId>` | settings document v2 `{ v: 2, juice, controls, audio, display }` (only what the player changed; v1 `{ v: 1, juice }` migrates on read) | when dirty: on leave, on `BindToClose` (parallel, 25 s budget), every 120 s |
 | `KV_Onboarding_v1` | `u_<UserId>` | `{ v: 1, tutorialVersion, outcome: "completed" \| "skipped", at }` (see "Onboarding (tutorial)") | when dirty: on leave, on `BindToClose`, every 120 s |
-| `KV_Records_v1` | `u_<UserId>` | `{ v: 1, endless: { solo?, coop? }, seeded? }`, each board `{ score, scoreAt, scoreRunId, floor, floorAt, floorRunId }` (see "Personal records") | merge writes (UpdateAsync, max per field, `seeded` kept): right after a verdict raised a record or a seed, and when dirty on leave / `BindToClose` / every 120 s |
+| `KV_Records_v1` | `u_<UserId>` | `{ v: 1, endless: { solo?, coop? }, seeded?, daily? }`, each board `{ score, scoreAt, scoreRunId, floor, floorAt, floorRunId }`; `daily = { day, starts, lastFinishedDay?, prevFinishedDay? }` (docs/DAILY.md DS13) (see "Personal records") | merge writes (UpdateAsync, max per field, `seeded` kept, `daily` max-merged): right after a verdict raised a record or a seed, and when dirty on leave / `BindToClose` / every 120 s; daily-activity delta writes (UpdateAsync, same-day starts summed): one per credited member per accepted daily run, plus one on leave / shutdown for starts no finish wrote |
 | `Runs` (off: `RUNS_DATASTORE_ENABLED = false`) | `u_<UserId>` | the last 50 accepted runs `{ id, seed, hash, ticks, kills, boss, died, at }` (UpdateAsync) | on each accepted run |
 
 Every write is tagged with the owner's UserId (`SetAsync`'s `userIds`, UpdateAsync's second return value), for

@@ -22,8 +22,13 @@ change**; the rest is server (seed, boards, ranks) and presentation.
 
 ## Status (2026-10-31)
 
-Planned. Nothing built. Read on `main` @ `fa15bf4` (new best merged; developer mode on its own branch). Decisions
-DSD1-DSD16 are **settled** (2026-10-31, Kaleb): every proposed default accepted except DSD16 (all friends, up to 200).
+**Built** on branch `daily` (DS1-DS13; merged from `daily-roster`, `daily-core`, `daily-boards`, `daily-telemetry`,
+`daily-menu`, `daily-rank`, then an independent review and `daily-fixes`). Decisions DSD1-DSD16 are settled (Kaleb,
+2026-10-31: every proposed default except DSD16, all friends up to 200). Headless: typecheck, lint, asset ids, build and
+the full suite pass (one failure, `forge.spec` `EncounterRng ... seedToState`, also fails on `main` on x86_64 Linux: a
+NaN sign bit; it passes on the owner's machine). **Not done:** DS0's published-place spike (scoped OrderedDataStores,
+per-key write cooldown, `GetFriendsAsync` paging, thumbnails, the DataStore budget) and DS14's Studio check: nothing
+here has run in Studio or a live server. Vale's two new sounds are unconfirmed picks (not built, SILENT).
 
 ## What the code gives us (read on `main` @ `fa15bf4`)
 
@@ -112,8 +117,12 @@ a dearer kind joins. The census reports it; tuning is an owner call.
   leaderboard epoch (2026-01-01 UTC), so today (2026-10-31) is **Daily #304** (day 0 = Jan 1 shown as #1: `label = day +
   1`). `dailyResetsAt(day)`, `dailyLabel(day)`. Day boundary: **UTC midnight** (DSD5; 5 pm Pacific in summer time, 4 pm
   in winter).
-- **Seed (server only, DSD8).** `dailySeed(day) = u32(hash32(day, DAILY_SECRET))` in `server/` (a server-only config
-  module, never under `shared/`, so a client cannot compute tomorrow's seed and practise it in a dev world). Valid by
+- **Seed (server only, DSD8).** `dailySeed(day)` = the first 4 bytes (big-endian uint32) of
+  HMAC-SHA256(key, `"kv-daily|" .. day`) with a 256-bit key in `src/server/config/daily.ts` (not exported; never
+  under `shared/`, ESLint blocks shared / client imports of `server/*`), so a client that sees today's seed cannot
+  recover the key or compute tomorrow's. The SHA-256 / HMAC code is pure and shared (`shared/crypto`, FIPS 180-2 and
+  RFC 4231 vectors); `dailySeedFrom(day, key)` refuses keys under 16 bytes. (First build used an invertible 32-bit
+  mixer; the review caught it.) Valid by
   `isValidRunSeed`. The seed of today is sent to clients (`dailyStatus`), so the menu can preview the roster and boss.
 - **Ruleset (DSD11).** `DAILY.ruleset` (an integer in `shared/config`) joins the board scope. Bump it with any change
   that alters endless play; after an update, servers still on the old build keep posting to the old ruleset's board
@@ -174,7 +183,7 @@ histogram:
 - `Players:GetFriendsAsync(userId)` once per player per session (paged, cached). The friend entries come from (a) the
   top-100 rows already read (free) and (b) one `GetAsync` per remaining friend on the day's ordered store, queued under
   a per-server read budget (`DAILY_FRIENDS.readsPerMinute`), deduplicated in a shared cache per (scope, userId) for
-  `DAILY_FRIENDS.cacheSeconds` (300). Friends in this server first, then the rest in list order, every friend looked up (DSD16: `DAILY_FRIENDS.max` 200, the friends-list limit). The Friends tab fills in as
+  `DAILY_FRIENDS.refreshSeconds` (900, stale-while-revalidate: a friend read once stays known and is re-read in the background behind never-read friends; a leaver's queued lookups are dropped). Friends in this server first, then the rest in list order, every friend looked up (DSD16: `DAILY_FRIENDS.max` 200, the friends-list limit). The Friends tab fills in as
   the queue drains; the in-run baseline takes whatever has arrived by run start.
 - Friends tab: friends with an entry today, ranked, you included. The run baseline (below) includes their scores.
 
@@ -269,6 +278,72 @@ inside functions (as `REQUIRED_STRING_KEYS` does) and DS12 compiles both under L
 
 Order: DS0, then DS1-DS2 (roster, shippable alone), then DS3-DS5 (a playable Daily with a board), then DS6-DS11 (the
 dopamine layer), DS12-DS14 alongside.
+
+## As built (2026-10-31)
+
+Paths under `src/`. Pure logic lives in shared modules with specs; services and controllers are thin.
+
+- **Roster (DS1, DS2).** `shared/dungeon` `rosterOrder(runSeed)`: Fisher-Yates over `[sniper, bruiser, imp, slime,
+  summoner]` from `new EncounterRng(u32(runSeed) ^ ROSTER.salt)` (for i = 4..1, j = int(0, i), swap; 4 draws, no
+  cache). `endlessRoster(runSeed, floor)` grows floor by floor to `min(5, 1 + floor((f - 1) / 2))` seeded kinds, each
+  join the first kind of the order not yet in and unlocked on f; join order, swarmer first, never shrinks. With today's
+  unlock floors no roster waits: sniper / bruiser on 1, imp 3, ooze 5, summoner 7, full on 9. `roomKindOpen` closes
+  kinds outside the roster without a draw (optional trailing `roster` on `spendEncounterBudget` / `populateEndlessRoom` /
+  `endlessRoomSpawns`); `buildEndlessFloor` always passes it and stores `EndlessFloorLayout.roster` (absent on the
+  tutorial's floors). `roomPool.lock.spec` keeps the no-roster digests and pins the roster ones. Census: budget spent is
+  unchanged on every floor (solo floor 1: 3.66 swarmers per room, was 2.51); a cheap roster can only leave budget
+  unspent for parties of 5+ on floors 3-4. Stage card: `stageRosterLine` / `stageCardLine` (NEW DEEPEST > roster > new
+  best's other lines), strings `roster.line` / `roster.new`; the run start shows floor 1's roster and holds the cover at
+  least `STAGE_LOADER.rosterStartSec` (1 s; 0 removes the hold).
+- **Day, seed, world, sessions (DS3, DS4).** `shared/daily`: `dailyDay`, `dailyDayStart`, `dailyResetsAt`, `dailyLabel`
+  (= day + 1), `dailyScope` (`d<day>_r<ruleset>`), `DAILY.ruleset` 1; the epoch is `shared/config`
+  `KV_EPOCH_UNIX_SECONDS` (shared with the leaderboard's ordered value). The `daily` world is `buildEndlessRunConfig`;
+  `isEndlessWorld` (endless, daily) replaced the descent checks in SimController; `RANKED_WORLD_KIND` stays endless.
+  `RunSessionRegistry` seeds a daily start from `dailySeed(dailyDay(ctx.unixNow))` (`StartContext.unixNow` =
+  `GetServerTimeNow`; `now` stays `os.clock`) and stores `session.daily = { day, ruleset }` (also `StartRunReply.daily`).
+  Lobbies carry `worldKind` (`endless` | `daily`), set by the host while forming (`lobbySetWorld`, clears Ready).
+  `requestDaily` -> `dailyStatus` from `DailyService` (rate limit; broadcast when the UTC day turns, tracked by its own
+  `lastPushedDay`); client `DailyController` + Reflex slice `daily`. `SimController.startSolo(lobbyId?, worldKind)`,
+  `MenuController.playDaily` / `playDailyParty`; debug attribute `KV_Daily`. A refused or timed-out daily start falls
+  back to an unranked local endless run, like Play solo.
+- **Boards, percentile, friends, podium (DS5-DS8).** `BoardRef { board, scope, daily? }`; the all-time boards stay
+  unscoped and byte-compatible. Daily posts: `policy.dailyWorlds` (not `LEADERBOARD_ELIGIBLE_WORLDS`, which records
+  reuse), death-only, never Studio / private servers / debug / abandoned, to the session's day. `getLeaderboard({ board,
+  scope: "alltime" | "today" | "yesterday", friends? })`; views carry `scope`, `day`, `total`, `pending`,
+  `mine.percentile`. Histogram: 64 log buckets (2^k x {1, 5/4, 8/5}), deltas from the PB transform, per-server buffer
+  flushed every 60 s into 8 JobId shards; `estimateRank` is exact in the top 100, interpolated beyond (within 1
+  percentile point on log-normal boards, 3 on a dense bimodal one); percentile = `ceil(100 x rank / total)` from 20
+  entrants. `RunFinishVerdict.daily` waits up to 15 s for the members' writes and ranks on the cached rows with the new
+  entry merged in (no extra sorted read). `dailyStatus.mine` is `{}` plus entries once both boards were read (absent =
+  unknown), `podium` = yesterday's solo top 3 + the caller's final entry. Friends: `DailyFriendsService`
+  (`GetFriendsAsync` once per session, Studio `KV_FakeFriends`), one per-server queue at 30 reads / min, in-server
+  friends first, refresh 900 s. Tables in docs/SERVER.md.
+- **Menu and result card (DS9, DS11, DS12).** `DailyCard` beside Play solo (compact: below it): label + UTC date, floor
+  1's roster, floor 5's boss, best today (`#41` exact, `top 9%`, `#3 of 12`, `Not played yet`), a per-second
+  countdown binding, Play Daily / Daily with friends; `DailyPodiumStrip` with headshots (one cache,
+  `client/ui/hud/headshots.ts`). Lobby room world toggle (host, forming). Leaderboard tabs Today / Yesterday / All time
+  x Solo / Co-op x Global / Friends. Run over (daily): `DailyResultBlock` owns the standing, entrants, countdown and the
+  single Saved / Not saved chip; new best's `BestBlock` owns the record roll (`runOverBestLines`); Again reads Retry
+  Daily. 63 strings `DAILY_STRING_KEYS`.
+- **Rank layer (DS10).** `DailyRankBaseline` frozen at run start (today's top rows and friends view of the run's board,
+  best today, total); `DailyRankTracker` from the shown score: next rung / #1 / nearer of next friend and the top-100
+  cut-off in new best's target row; thresholds 100 / 10 / 3 / 1 once each, only on a real improvement and with that
+  many others on the board; every friend at or above best today passed once (queued headshot toasts); held under the
+  cover, none after run over. Shout priority new best > rank threshold > combo tier (`ComboController.requestShout`).
+  New best on daily runs: `dailyBaselineFrom` (best today for the run's seed, score only, FIRST RUN TODAY), run-over
+  record from `verdict.daily`. 22 strings `DAILY_RANK_STRING_KEYS`; port audio IDs `sfx.rank.up` / `sfx.friend.passed`
+  (SILENT in the placeholder; unconfirmed vale picks `Bonus/PowerUp1` / `Bonus/Gold2` in `art/audio.json`). Debug
+  `KV_DailyRankDebug`.
+- **Telemetry (DS13).** `daily_start`, `daily_retry`, `daily_finish` (docs/SERVER.md); per-player
+  `daily: { day, starts, lastFinishedDay?, prevFinishedDay? }` in `KV_Records_v1` (no codec bump; max-merged on whole-doc
+  writes, same-day starts summed on delta writes), one UpdateAsync per credited member per accepted daily run.
+  `RECORDS_POLICY` untouched (DSD6).
+
+**Owner checks before shipping:** DS0 in a published place; DS14 in Studio (menu width 766 px and the phone fit, run-over
+height at 720p, the rank text in the 158 / 160 px target row, toasts with headshots, tabs, the lobby toggle, a co-op
+daily run); audition / build / upload the two sounds; histogram `DAILY_HIST.shards` (8) if more than ~80 servers write
+in a minute; the 256-bit seed key sits in server source (never replicated to clients), so keep the repo private or move
+it to a server-only store.
 
 ## Edge cases
 

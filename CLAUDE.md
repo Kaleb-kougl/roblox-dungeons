@@ -367,6 +367,21 @@ Decision log (deviations from `PLAN.md`):
   `sfx.jingle.record` (SILENT in the placeholder, falling back to the PERFECT / game-over jingles); `contract.luau` /
   `validate.luau` at 179 / 199 top-level locals (counted on out/). Debug `KV_NewBestDebug` (client baseline),
   `KV_FakeRecords` (Studio records fake). No setting. Studio check and the sounds' audition / lock / build / upload pending.
+- **Daily dungeon and seeded rosters (docs/DAILY.md).** Gameplay (dungeon) plus a server feature. Every endless run's
+  seed picks its room enemy kinds (`shared/dungeon` `endlessRoster`: swarmers + 1 seeded kind on floor 1, one more every 2
+  floors within the unlock floors, own stream `runSeed ^ ROSTER.salt` 0x165667b1; `roomKindOpen` closes the others with
+  no draw); layouts, digests, props and boss picks are unchanged, room spawns (and so breakables and affixes) change:
+  endless replays and scores changed from floor 1 (boards stay `_v1`); M1, every fixture and the tutorial replay exactly
+  as before (`roomPool.lock.spec` keeps the no-roster digests). A `daily` world (`buildEndlessRunConfig`, no sim, hash or
+  lockstep change) seeded by the server only: HMAC-SHA256 with a 256-bit key in `src/server/config/daily.ts`
+  (`shared/crypto`; ESLint blocks shared / client imports of `server/*`), one seed per UTC day, `session.daily = { day,
+  ruleset }`. Day-scoped OrderedDataStores `LB_Daily_Solo_v1` / `LB_Daily_Coop_v1` (scope `d<day>_r<ruleset>`, no details
+  doc), histogram shards `LB_Daily_Hist_v1`, `dailyStatus` (`mine`, `podium`), `RunFinishVerdict.daily`; daily runs never
+  post to the all-time boards and never write endless records (`policy.dailyWorlds`, DSD6). Client: Daily card, podium,
+  lobby world toggle, leaderboard tabs, in-run rank layer, run-over daily block; strings `ROSTER_STRING_KEYS` /
+  `DAILY_STRING_KEYS` / `DAILY_RANK_STRING_KEYS`, port audio IDs `sfx.rank.up` / `sfx.friend.passed` (SILENT in the
+  placeholder). Telemetry `daily_*` and an optional `daily` field in `KV_Records_v1` (still v1). Debug `KV_Daily`,
+  `KV_DailyRankDebug`, Studio `KV_FakeFriends`. DS0 spike and Studio check pending.
 
 ## Commands
 
