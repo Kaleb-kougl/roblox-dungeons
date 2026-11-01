@@ -9,8 +9,8 @@ validates and steps in lockstep like everything else. It closes the gap both ear
 ("Drops ... are out of v1") and docs/BOOSTS.md "Out of scope" ("Drops from breakables ... `dropsOnBreak` could reuse
 this later").
 
-Status (2026-11-01): **plan only**, nothing built. Owner decisions BLD1-BLD9 are settled (all accepted as recommended,
-2026-11-01, Kaleb); see "Decisions".
+Status (2026-11-01): **BL0-BL4 built** (gameplay: dungeon, sim, worlds; see "As built (BL0-BL4)"); BL5-BL9 open.
+Owner decisions BLD1-BLD9 are settled (all accepted as recommended, 2026-11-01, Kaleb); see "Decisions".
 
 ## The idea in one paragraph
 
@@ -120,24 +120,24 @@ break; re-run the replay bench. Daily boards: the loot is part of the day's seed
 
 ## Tasks
 
-- [ ] **BL0. Confirm the assumptions.** Every row of "What the code gives us"; the require graph for the leaf hook;
+- [x] **BL0. Confirm the assumptions.** Every row of "What the code gives us"; the require graph for the leaf hook;
   the salt is unused; pieces per floor at `roomScale` 2 per band (a census print in `dungeon/breakables.spec.ts`), and
   how often all 4 ground slots are full at a break (from the drops census bot). Edit the band counts if a band has too
   few pieces to place them. -> Verify: each row confirmed or this plan edited.
-- [ ] **BL1. Dungeon.** `breakableLootData.ts`, `placeBreakableLoot`, `breakableLoot` on `EndlessFloorLayout` and
+- [x] **BL1. Dungeon.** `breakableLootData.ts`, `placeBreakableLoot`, `breakableLoot` on `EndlessFloorLayout` and
   `EndlessFloorWorld`, barrel. -> Verify: `breakableLoot.spec.ts`: pure (same seed, same list), fixed draws, band
   counts, one per room, crates about twice as often as barrels over the census, every kind reachable; `endless.spec`
   digests, pieces, spawns, affixes and boss picks unchanged; `roomPool.lock.spec` unchanged; a sim spec checks
   `kindWeights` equals `BOOSTS` weights.
-- [ ] **BL2. Sim state and hash.** `DropsConfig.breakableLoot`, `pieceLoot`, `dropsOnFloorPieces` at both call sites,
+- [x] **BL2. Sim state and hash.** `DropsConfig.breakableLoot`, `pieceLoot`, `dropsOnFloorPieces` at both call sites,
   clone, config-gated hash and names. -> Verify: `npm run verify` with every golden fixture, the M1 hash, the tutorial
   lock spec and every existing endless replay unchanged (nothing sets the flag yet); clone / hash specs.
-- [ ] **BL3. Release.** `drops/breakLoot.ts` `dropsOnBreak` from `damageBreakable`, events. -> Verify: `breakLoot.spec`:
+- [x] **BL3. Release.** `drops/breakLoot.ts` `dropsOnBreak` from `damageBreakable`, events. -> Verify: `breakLoot.spec`:
   each source releases (melee, player bullet, piercing arrow that breaks and flies on, enemy bullet, slam); unloaded
   pieces release nothing; a piece releases once; position = cell centre; landing-tick pickup; full ground -> lost, no
   slot taken; `state.rngState` and the drop stream (`drops.rngState`, `killsSinceDrop`) untouched; floor change resets
   the loot; co-op picker only.
-- [ ] **BL4. Worlds.** `ENDLESS_DROPS_CONFIG` in `buildEndlessRunConfig` (solo, party, daily, dev). -> Verify: the
+- [x] **BL4. Worlds.** `ENDLESS_DROPS_CONFIG` in `buildEndlessRunConfig` (solo, party, daily, dev). -> Verify: the
   endless / party / partyProgression specs replay and validate segmented; extend `run/dropsCensus.spec.ts`: drops per
   floor from kills vs pieces, share taken, lost-on-full count (expected ~0); replay bench within budget.
 - [ ] **BL5. Theme.** `sfx.breakable.loot` in `PORT_AUDIO_EVENTS`, placeholder SILENT, fallback rule.
@@ -206,3 +206,90 @@ Each line is the accepted choice, then the alternative that was turned down.
 - Hearts, Ember or currency from pieces (hearts stay with the flask and Vampire Fang).
 - Breakables in the tutorial, M1 or boss rooms.
 - New boost kinds, loot tables per biome, mimics (a crate that bites).
+
+## As built (BL0-BL4)
+
+Code: `shared/dungeon` `breakableLootData.ts` (`BREAKABLE_LOOT`, a leaf) and `breakableLoot.ts` (`placeBreakableLoot`,
+`breakableLootSeed`, `breakableLootBand`, type `BreakableLoot`); `shared/sim` `drops/breakLoot.ts` (a leaf:
+`dropsOnFloorPieces`, `dropsOnBreak`, and the landing helpers `lowestFreeDropSlot` / `landDrop` that drops.ts now
+imports from it); `ENDLESS_DROPS_CONFIG` in `drops/drops.ts`. Specs: `dungeon/breakableLoot.spec.ts`,
+`sim/drops/breakLoot.spec.ts`, `run/endless.spec.ts` (the drops group), `run/dropsCensus.spec.ts` (BL4 census).
+
+**BL0: the table above, checked against this branch.**
+
+- Every row holds. All four break sources reach `damageBreakable` (`meleeHitBreakables`, the player bullet pass,
+  `enemyBulletHitsBreakable`, `slamBreakables`); `dropsOnBreak` sits on its break line after the score.
+  `resetBreakables` (sim/endless.ts `nextFloor`) and `createSimState` are the only two places pieces are made, and both
+  now call `dropsOnFloorPieces` right after. `writeDropsHash` is the single writer behind both `writeHashFields`
+  (replay.ts) and `hashLayout`, so gating inside it covers both. `TUTORIAL_DROPS_CONFIG = guaranteedDropsConfig(...)`
+  spreads `DROPS_CONFIG`: the switch is off there. Boss rooms get no pieces.
+- **Require graph.** `breakLoot.ts` requires only `shared/dungeon` and `./dropsData` (which requires `units` and
+  `playerData`); its `SimState` / `DropsState` imports are type-only and erased (checked on `out/`). `breakables.ts`,
+  `drops.ts`, `state.ts` and `endless.ts` require it; no cycle.
+- **Salt.** `0xe6546b64` appeared nowhere in `src/` before; the floor salts in use stay distinct (breakables
+  `0x5bd1e995`, boss pick `0x27d4eb2f`, affixes `0xcc9e2d51`, roster `0x165667b1` on the run seed, drops `0x4b564452`
+  on the run's sim seed). The spec checks the floor ones.
+- **Pieces per floor at `roomScale` 2** (census in `breakableLoot.spec.ts`: runs 1-10 x floors 1, 3, 4, 5, 7, 9, 10,
+  12, 14, 15, 17, 19; boss floors included):
+
+  | Band | Pieces / floor | Rooms with pieces / floor (min) | Floors with fewer such rooms than the band max | Loaded / floor |
+  |---|---|---|---|---|
+  | kept (0-2) | 22.0 | 6.3 (4) | 0 / 30 | 1.00 |
+  | worn (1-2) | 42.0 | 9.6 (8) | 0 / 30 | 1.53 |
+  | ruined (1-3) | 70.1 | 10.7 (10) | 0 / 30 | 2.10 |
+  | abyss (1-3) | 107.5 | 11.6 (10) | 0 / 30 | 2.10 |
+
+  Every band places its max on every census floor (one per room needs `max` rooms with pieces), so **the band counts
+  are unchanged**. Crates are loaded 1.83x as often per piece as barrels (weights 2 : 1, drawn without replacement under
+  the room cap); kinds 61 / 56 / 49 / 36 (Fury / Quickstep / Frenzy / Aegis) of 202. `roomAt` on the piece's cell centre
+  agrees with the Forge's own room grid for every loaded piece of the census (the spec asserts it).
+- **Full ground at a break**: 0 of the census's 14 loaded pieces (BL4 below). BLD5 stands.
+
+**Differences from the sketch above.**
+
+- `placeBreakableLoot(floorSeed, floor, pieces, encounter)` takes the floor's `EncounterConfig` (for `roomAt`), not
+  `rooms`. A piece in no room (none in the census) would be uncapped. Draws: 1 (the count, always) + 2 per loaded piece;
+  it stops early only when the candidates run out.
+- `ENDLESS_DROPS_CONFIG` lives in shared/sim `drops.ts` beside `DROPS_CONFIG` (exported through `shared/sim`), not in
+  run/endless.ts; `buildEndlessRunConfig` uses it for solo and party, so daily (`buildEndlessRunConfig`) and dev
+  (`buildDevRunConfig` spreads it) get it too.
+- `DropsEvents.lostLoot` entries are `{ kind, x, z }` (the stub's shape), not `{ x, z }`.
+- `dropsOnFloorPieces` throws on a loot slot or kind out of range. With the switch on and no breakables state,
+  `pieceLoot` stays empty and the hash still appends its length (0).
+- The release reads the piece from `state.breakables` at the break; `spawnTick` is the piece's `brokenTick` (a break
+  inside `step()` lands on the tick being stepped, so after the step it is `state.tick - 1`).
+
+**BL2-BL3 Verify.** `breakLoot.spec.ts` (20 tests): the weights spec (`BREAKABLE_LOOT.kindWeights` = `BOOSTS` weights),
+the switch never on `DROPS_CONFIG` / `guaranteedDropsConfig`, `pieceLoot` per piece and its hashed tail after
+`drops.players[n].aegisPips`, the switch off giving per-tick hashes and dump names identical to the same run without
+loot, clone, every break source (sword, bow, a heavy arrow that breaks the crate and still hits the dummy behind, enemy
+bullets, the slam releasing several in slot order), unloaded and released-once, cell-centre position and full ground
+life, landing-tick pickup, full ground -> `lostLoot` with no slot taken, `state.rngState` / `drops.rngState` /
+`killsSinceDrop` equal to the unloaded twin run, floor 1 -> 2 loot (old drops freed), dev `startFloor` 6's loot, co-op
+picker only, a recorded replay. The golden fixtures, the M1 hash and the tutorial lock spec are untouched (none sets the
+switch); see the full-suite note below.
+
+**BL4: worlds and census.** Only `endless.spec`'s hash-layout test needed editing (`drops` = `ENDLESS_DROPS_CONFIG`,
+the group's `drops.pieceLoot.length` tail = floor 1's piece count, its loaded entries = floor 1's loot); every endless,
+party, partyProgression, affixes, dev and tutorial spec passes unchanged (they compare live runs with their replays and
+segmented validation). The census bot (`dropsCensus.spec.ts`) now also detours to every loaded piece still standing
+once a floor's rooms are done (it swings through clutter in the way), then collects. Seeds 1337 / 4242 / 90210, floors
+1-4, 12 floors:
+
+- from kills: 478 kills, 37 drops = **3.08 per floor, 7.7 % of kills**, 81 % taken;
+- from pieces: 14 loaded, 13 opened, **13 drops = 1.08 per floor** (+35 % on the kill drops), 9 taken (69 %: a few
+  faded while the bot walked to the next glint);
+- **lost to a full ground: 0**; all drops: 39 of 50 taken (78 %).
+
+The honest one-floor run (seed 4242, no surgery) released 1 piece drop and took it; it replays to its live hash and
+validates through `SegmentedValidator` in 1200-tick segments (the bot dies on that floor, as before this change).
+
+**Replay bench** (`run/replay.bench.spec.ts`, ms per replayed tick, this branch / the untouched base on the same host,
+one run each; floor 15 runs, which carry loot): solo room 0.305 / 0.333, 8 players room 0.704 / 0.736, solo floor
+0.439 / 0.515, 8 players floor 1.359 / 1.393: no measurable cost (one array per floor, one check per break).
+
+**Full suite** (`npm run test:only` after a build, 2026-11-01): 4027 of 4029 passed. `dungeon/forge/forge.spec`
+("EncounterRng ... seedToState vectors", a NaN's sign bit under Lune) fails on the untouched base too.
+`sim/bench.spec`'s dungeon case missed its 2 ms budget by 0.03 ms on a loaded host (M1 config: no drops, nothing of
+this feature runs) and passed on a rerun. Every golden fixture, the M1 hash, `roomPool.lock.spec` and the tutorial lock
+spec (`run/tutorial.spec`) pass unchanged.
