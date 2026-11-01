@@ -671,20 +671,102 @@ export const INPUT_LABELS: ReadonlyMap<string, string> = new Map<string, string>
 	["ButtonSelect", "Select"],
 	["Thumbstick1", "Left stick"],
 	["Thumbstick2", "Right stick"],
+	["StickLeft", "Stick left"],
+	["StickRight", "Stick right"],
 ]);
 
-/** The pad's (fixed) left-stick directions, as the boon draft hint names them. */
-export const STICK_DIRECTION_LABELS = { left: "Stick left", right: "Stick right" } as const;
+/** The pad's (fixed) left-stick directions, as the boon draft hint names them (label names, not Enum.KeyCode). */
+export const STICK_DIRECTION_INPUTS = { left: "StickLeft", right: "StickRight" } as const;
 
-/** Display text for one input name ("MouseButton1" -> "Click", "One" -> "1", "ButtonR2" -> "RT", "Q" -> "Q"). */
-export function inputLabel(name: string): string {
+/**
+ * Input names whose label is a word, so it is translated (docs/LOCALIZATION.md L1): each has a theme string
+ * `input.key.<name>` whose English is its INPUT_LABELS text (or the name itself: Space, Backspace, ...). Letters,
+ * digits, F-keys, punctuation and the pad's face / shoulder buttons (A, LB, RT) read the same in every language.
+ * The theme repeats this list (shared/theme INPUT_KEY_STRING_KEYS; bindings.spec checks they agree).
+ */
+export const INPUT_KEY_STRING_NAMES: ReadonlyArray<string> = [
+	"MouseButton1",
+	"MouseButton2",
+	"MouseButton3",
+	"Space",
+	"Return",
+	"Backspace",
+	"Tab",
+	"CapsLock",
+	"LeftShift",
+	"RightShift",
+	"LeftControl",
+	"RightControl",
+	"LeftAlt",
+	"RightAlt",
+	"Up",
+	"Down",
+	"Left",
+	"Right",
+	"Insert",
+	"Delete",
+	"Home",
+	"End",
+	"PageUp",
+	"PageDown",
+	"Escape",
+	"KeypadZero",
+	"KeypadOne",
+	"KeypadTwo",
+	"KeypadThree",
+	"KeypadFour",
+	"KeypadFive",
+	"KeypadSix",
+	"KeypadSeven",
+	"KeypadEight",
+	"KeypadNine",
+	"KeypadPeriod",
+	"KeypadDivide",
+	"KeypadMultiply",
+	"KeypadMinus",
+	"KeypadPlus",
+	"KeypadEnter",
+	"DPadUp",
+	"DPadDown",
+	"DPadLeft",
+	"DPadRight",
+	"ButtonStart",
+	"ButtonSelect",
+	"Thumbstick1",
+	"Thumbstick2",
+	"StickLeft",
+	"StickRight",
+];
+
+const INPUT_KEY_STRING_SET: ReadonlySet<string> = new Set<string>(INPUT_KEY_STRING_NAMES);
+
+/** A string lookup for input labels (ThemePack.str, the client's `str`). */
+export type InputLabelStr = (key: string) => string;
+
+/** The theme string key of an input name's label (`input.key.<name>`; only INPUT_KEY_STRING_NAMES have one). */
+export function inputKeyStringKey(name: string): string {
+	return `input.key.${name}`;
+}
+
+/**
+ * Display text for one input name ("MouseButton1" -> "Click", "One" -> "1", "ButtonR2" -> "RT", "Q" -> "Q"). With a
+ * string lookup `s`, a name in INPUT_KEY_STRING_NAMES reads its `input.key.<name>` string (translated); without one,
+ * or for any other name, the English INPUT_LABELS text, else the raw name.
+ */
+export function inputLabel(name: string, s?: InputLabelStr): string {
+	if (s !== undefined && INPUT_KEY_STRING_SET.has(name)) return s(inputKeyStringKey(name));
 	return INPUT_LABELS.get(name) ?? name;
 }
 
 /** The label of `action`'s primary input on `device` ("" when the action is not on that device). */
-export function actionLabel(b: Bindings, device: BindingDevice, action: GameAction): string {
+export function actionLabel(b: Bindings, device: BindingDevice, action: GameAction, s?: InputLabelStr): string {
 	const inputs = inputsFor(b, device, action);
-	return inputs.size() > 0 ? inputLabel(inputs[0]) : "";
+	return inputs.size() > 0 ? inputLabel(inputs[0], s) : "";
+}
+
+/** Both labels of a per-device pair of input names (layout.ts PAUSE_INPUTS / SETTINGS_INPUTS). */
+export function deviceHintOf(inputs: DeviceHint, s?: InputLabelStr): DeviceHint {
+	return { keyboard: inputLabel(inputs.keyboard, s), gamepad: inputLabel(inputs.gamepad, s) };
 }
 
 /** A key name per last-used device (shared/play InputDeviceKind), as the HUD hints index them. */
@@ -693,33 +775,33 @@ export interface DeviceHint {
 	readonly gamepad: string;
 }
 
-function actionHint(b: Bindings, action: PadAction): DeviceHint {
-	return { keyboard: actionLabel(b, "kbm", action), gamepad: actionLabel(b, "pad", action) };
+function actionHint(b: Bindings, action: PadAction, s: InputLabelStr | undefined): DeviceHint {
+	return { keyboard: actionLabel(b, "kbm", action, s), gamepad: actionLabel(b, "pad", action, s) };
 }
 
 /** The weapon-swap hint (defaults: E / Y). */
-export function swapHint(b: Bindings = DEFAULT_BINDINGS): DeviceHint {
-	return actionHint(b, "swap");
+export function swapHint(b: Bindings = DEFAULT_BINDINGS, s?: InputLabelStr): DeviceHint {
+	return actionHint(b, "swap", s);
 }
 
 /** The restart hint (defaults: R / D-pad down). */
-export function restartHint(b: Bindings = DEFAULT_BINDINGS): DeviceHint {
-	return actionHint(b, "restart");
+export function restartHint(b: Bindings = DEFAULT_BINDINGS, s?: InputLabelStr): DeviceHint {
+	return actionHint(b, "restart", s);
 }
 
 /** The curse shrine's accept hint: skill 1 (defaults: 1 / A; the HUD's ToastPanel). */
-export function shrineHint(b: Bindings = DEFAULT_BINDINGS): DeviceHint {
-	return actionHint(b, "skill1");
+export function shrineHint(b: Bindings = DEFAULT_BINDINGS, s?: InputLabelStr): DeviceHint {
+	return actionHint(b, "skill1", s);
 }
 
 /** The full map's toggle hint, `hud.map.hint` (defaults: M / D-pad left; docs/MINIMAP.md M9). */
-export function mapHint(b: Bindings = DEFAULT_BINDINGS): DeviceHint {
-	return actionHint(b, "map");
+export function mapHint(b: Bindings = DEFAULT_BINDINGS, s?: InputLabelStr): DeviceHint {
+	return actionHint(b, "map", s);
 }
 
 /** The leaderboard panel's close hint (defaults: B / B; the pad's is the fixed menu close button). */
-export function leaderboardHint(b: Bindings = DEFAULT_BINDINGS): DeviceHint {
-	return { keyboard: actionLabel(b, "kbm", "leaderboard"), gamepad: inputLabel(FIXED_INPUTS.padMenuClose) };
+export function leaderboardHint(b: Bindings = DEFAULT_BINDINGS, s?: InputLabelStr): DeviceHint {
+	return { keyboard: actionLabel(b, "kbm", "leaderboard", s), gamepad: inputLabel(FIXED_INPUTS.padMenuClose, s) };
 }
 
 export interface DraftHintKeys {
@@ -729,20 +811,23 @@ export interface DraftHintKeys {
 }
 
 /** The boon draft's hint (defaults: A / D / Click; Stick left / Stick right / RT; the HUD's DraftOverlay). */
-export function draftHint(b: Bindings = DEFAULT_BINDINGS): {
+export function draftHint(
+	b: Bindings = DEFAULT_BINDINGS,
+	s?: InputLabelStr,
+): {
 	readonly keyboard: DraftHintKeys;
 	readonly gamepad: DraftHintKeys;
 } {
 	return {
 		keyboard: {
-			left: actionLabel(b, "kbm", "moveLeft"),
-			right: actionLabel(b, "kbm", "moveRight"),
-			confirm: actionLabel(b, "kbm", "fire"),
+			left: actionLabel(b, "kbm", "moveLeft", s),
+			right: actionLabel(b, "kbm", "moveRight", s),
+			confirm: actionLabel(b, "kbm", "fire", s),
 		},
 		gamepad: {
-			left: STICK_DIRECTION_LABELS.left,
-			right: STICK_DIRECTION_LABELS.right,
-			confirm: actionLabel(b, "pad", "fire"),
+			left: inputLabel(STICK_DIRECTION_INPUTS.left, s),
+			right: inputLabel(STICK_DIRECTION_INPUTS.right, s),
+			confirm: actionLabel(b, "pad", "fire", s),
 		},
 	};
 }
@@ -754,12 +839,15 @@ export interface SpectateHintKeys {
 }
 
 /** Co-op spectating's switch hint (defaults: Click / Right click, RT / LT; the HUD's SpectateBar). */
-export function spectateHint(b: Bindings = DEFAULT_BINDINGS): {
+export function spectateHint(
+	b: Bindings = DEFAULT_BINDINGS,
+	s?: InputLabelStr,
+): {
 	readonly keyboard: SpectateHintKeys;
 	readonly gamepad: SpectateHintKeys;
 } {
 	return {
-		keyboard: { next: actionLabel(b, "kbm", "fire"), previous: actionLabel(b, "kbm", "alt") },
-		gamepad: { next: actionLabel(b, "pad", "fire"), previous: actionLabel(b, "pad", "alt") },
+		keyboard: { next: actionLabel(b, "kbm", "fire", s), previous: actionLabel(b, "kbm", "alt", s) },
+		gamepad: { next: actionLabel(b, "pad", "fire", s), previous: actionLabel(b, "pad", "alt", s) },
 	};
 }

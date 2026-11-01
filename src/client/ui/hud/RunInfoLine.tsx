@@ -37,7 +37,7 @@ export function verdictLine(v: VerdictView): string {
 	});
 	// Ranked runs: where the run went on the leaderboards.
 	const posted = leaderboardPostKey(v.leaderboard);
-	return posted !== undefined ? `${line} · ${str(posted)}` : line;
+	return posted !== undefined ? str(HUD_STRINGS.verdictWithPost, { verdict: line, posted: str(posted) }) : line;
 }
 
 /** The verdict line's colour role: rejected in uiHealth, accepted in uiText, the rest dim. */

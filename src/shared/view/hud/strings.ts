@@ -48,6 +48,8 @@ export const HUD_STRINGS = {
 	/** The full map overlay's title and its toggle hint, "{key} map" (docs/MINIMAP.md M9; key: shared/play mapHint). */
 	mapTitle: "hud.map.title",
 	mapHint: "hud.map.hint",
+	/** A ranked run's verdict line with where it posted (`{verdict}` · `{posted}`; docs/LOCALIZATION.md L1). */
+	verdictWithPost: "hud.verdict.withPost",
 } as const;
 
 /**

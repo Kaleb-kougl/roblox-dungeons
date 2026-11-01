@@ -129,7 +129,7 @@ function BestComboLine(props: { order: number; maxCombo: number }) {
 	const tier = COMBO_TIERS[comboTier(props.maxCombo)];
 	const name = tier.nameKey !== undefined ? str(tier.nameKey) : undefined;
 	const multiplier = str(HUD_STRINGS.combo, { combo: formatCombo(props.maxCombo) });
-	const value = comboBestRichText(multiplier, name, themePack()?.hex(tier.role as ColorRole) ?? "");
+	const value = comboBestRichText(multiplier, name, themePack()?.hex(tier.role as ColorRole) ?? "", str);
 	const h = HUD_VIEW.textSize + FOOTPRINT_ESTIMATE.lineSlack;
 	return (
 		<Row order={props.order}>
@@ -424,7 +424,7 @@ export function RunOverPanel() {
 	if (!over) return undefined;
 	const victory = s.outcome === "victory";
 	const padKey = PAD_CONFIRM_LABEL;
-	const hint = restartHint(bindings);
+	const hint = restartHint(bindings, str);
 	// Touch: the Again button stands in for the restart key (docs/MOBILE.md MB10).
 	const touch = device === "touch";
 	// A daily run's Again is Retry Daily (docs/DAILY.md DS11, DSD3: unlimited attempts; the restart keeps the world).

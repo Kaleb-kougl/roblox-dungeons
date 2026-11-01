@@ -689,7 +689,7 @@ export function DraftOverlay() {
 	const actions = useHudActions();
 	const touch = device === "touch";
 	const hintText = useMemo(() => {
-		const hint = draftHint(bindings)[keyDevice(device)];
+		const hint = draftHint(bindings, str)[keyDevice(device)];
 		const ready = touch
 			? str(TOUCH_STRINGS.hintDraft)
 			: str(PROGRESSION_STRINGS.draftHint, { left: hint.left, right: hint.right, confirm: hint.confirm });

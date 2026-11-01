@@ -128,7 +128,7 @@ export function FullMapOverlay() {
 					text={
 						touch
 							? str(TOUCH_STRINGS.hintMapClose)
-							: str(HUD_STRINGS.mapHint, { key: mapHint(bindings)[keyDevice(device)] })
+							: str(HUD_STRINGS.mapHint, { key: mapHint(bindings, str)[keyDevice(device)] })
 					}
 				/>
 			</Panel>

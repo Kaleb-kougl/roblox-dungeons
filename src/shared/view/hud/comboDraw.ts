@@ -12,6 +12,7 @@
 import { CAMERA_PITCH_DEG, CAMERA_YAW_DEG } from "shared/config";
 import { degToRad } from "../iso";
 import { COMBO_SHOUT, COMBO_VIEW } from "./comboConfig";
+import { COMBO_STRINGS } from "./comboStrings";
 
 /** The combo row and meter's drawing sizes (reference px) and looks. */
 export const COMBO_DRAW = {
@@ -65,8 +66,6 @@ export const COMBO_SHOUT_DRAW = {
 	/** Lit like the HUD (LightInfluence 0): the tier colour as validated, on every biome's lighting. */
 	lightInfluence: 0,
 	folderName: "KV_ComboShout",
-	/** Appended to the tier's name: "RAMPAGE!" (one literal, so a pack only translates the name). */
-	bang: "!",
 } as const;
 
 /**
@@ -165,20 +164,31 @@ export function comboMultRichText(multiplier: string, struck: boolean): string {
 	return struck ? `<s>${safe}</s>` : safe;
 }
 
+/** A theme string lookup for the combo's composed texts (the client's `str`, or `(k, v) => pack.str(k, v)`). */
+export type ComboTextStr = (key: string, vars?: Readonly<Record<string, string | number>>) => string;
+
+/** Fill `{name}` placeholders of a RichText template with already-escaped (or tagged) parts; the template is escaped. */
+function fillRich(template: string, parts: Readonly<Record<string, string>>): string {
+	const [out] = richTextEscape(template).gsub("{([%w_]+)}", (key: string) => parts[key]);
+	return out;
+}
+
 /**
  * The run-over best combo value (CD16): the multiplier, then the tier's name in its colour (`hex`, "#rrggbb") when the
- * best reached a tier (`name` undefined below x2: the multiplier alone). RichText, every part escaped.
+ * best reached a tier (`name` undefined below x2: the multiplier alone), in `hud.combo.bestNamed`'s order ("{combo}
+ * {name}"). RichText, every part escaped.
  */
-export function comboBestRichText(multiplier: string, name: string | undefined, hex: string): string {
+export function comboBestRichText(multiplier: string, name: string | undefined, hex: string, s: ComboTextStr): string {
 	const safe = richTextEscape(multiplier);
 	if (name === undefined || name === "") return safe;
 	const named = richTextEscape(name);
-	return hex === "" ? `${safe} ${named}` : `${safe} <font color="${hex}">${named}</font>`;
+	const tinted = hex === "" ? named : `<font color="${hex}">${named}</font>`;
+	return fillRich(s(COMBO_STRINGS.bestNamed), { combo: safe, name: tinted });
 }
 
-/** The floor shout's text: the tier's name with COMBO_SHOUT_DRAW.bang ("RAMPAGE!"). */
-export function comboShoutText(name: string): string {
-	return `${name}${COMBO_SHOUT_DRAW.bang}`;
+/** The floor shout's text: the tier's name in `hud.combo.shout` ("{name}!": "RAMPAGE!"). */
+export function comboShoutText(name: string, s: ComboTextStr): string {
+	return s(COMBO_STRINGS.shout, { name });
 }
 
 /** Unit floor (x, z) vectors of the camera's screen-right and screen-up (away from the camera) for a yaw. */

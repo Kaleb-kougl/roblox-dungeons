@@ -154,7 +154,6 @@ describe("new best: strings and audio IDs", () => {
 			"hud.best.over",
 			"hud.best.shout",
 			"stage.best.toGo",
-			"stage.best.oneToGo",
 			"stage.best.recordFloor",
 			"stage.best.newDeepest",
 			"stage.best.deeperYet",
@@ -180,8 +179,8 @@ describe("new best: strings and audio IDs", () => {
 		expect(pack.str("hud.best.toGoShort", { points: 12340 })).toBe("-12340");
 		expect(pack.str("hud.best.over", { points: 3120 })).toBe("NEW BEST +3120");
 		expect([pack.str("hud.best.new"), pack.str("hud.best.shout")]).toEqual(["NEW BEST", "NEW BEST!"]);
-		expect(pack.str("stage.best.toGo", { floor: 9, n: 2 })).toBe("Deepest: floor 9 · 2 to go");
-		expect(pack.str("stage.best.oneToGo", { floor: 9 })).toBe("Deepest: floor 9 · 1 to go");
+		expect(pack.str("stage.best.toGo", { floor: 9, n: 2 })).toBe("Deepest: floor 9 · floors to go: 2");
+		expect(pack.str("stage.best.toGo", { floor: 9, n: 1 })).toBe("Deepest: floor 9 · floors to go: 1");
 		expect([
 			pack.str("stage.best.recordFloor"),
 			pack.str("stage.best.newDeepest"),

@@ -21,7 +21,19 @@ export {
 	type Lab,
 	type Rgb,
 } from "./color";
-export { interpolate, placeholders, templateProblem, type StringVars } from "./strings";
+export { interpolate, placeholderMismatch, placeholders, templateProblem, type StringVars } from "./strings";
+export {
+	CASED_SCRIPTS,
+	LOWERCASE_RANGES,
+	hasLowercase,
+	isAllCaps,
+	isLowercaseCodepoint,
+	isValidUtf8,
+	localeTextProblems,
+	validateLocaleTable,
+	type LocaleTableProblem,
+} from "./localeCheck";
+export { LOCALE_TABLES } from "./locales";
 export {
 	ASSET_ID_PATTERN,
 	boonRarityReport,
@@ -102,6 +114,7 @@ export {
 	type FrameUV,
 	type FxArt,
 	type ImageRef,
+	type LocaleReport,
 	type PixelRect,
 	type SheetLayout,
 	type SoundRef,
@@ -138,3 +151,4 @@ export {
 } from "./pack";
 export { THEME_PACKS } from "./packs";
 export { PLACEHOLDER_MANIFEST } from "./packs/placeholder";
+export * from "./inputKeys";

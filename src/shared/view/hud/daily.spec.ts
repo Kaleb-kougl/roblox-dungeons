@@ -2,6 +2,7 @@
 // DAILY_STRING_KEYS in order and exist in every bundled pack; thousands, the countdown across the midnight edge, the
 // UTC date, the standing forms (DSD15), the leaderboard tabs and the daily tab's lines, the run-over daily block's states.
 import { describe, expect, it } from "@rbxts/jest-globals";
+import { formatThousands } from "shared/l10n";
 import { DAILY, dailyDayStart, dailyResetsAt, type DailyRunResult } from "shared/daily";
 import type { LeaderboardView } from "shared/leaderboard";
 import {
@@ -9,6 +10,7 @@ import {
 	PLACEHOLDER_MANIFEST,
 	REQUIRED_STRING_KEYS,
 	ThemePack,
+	interpolate,
 	type StringVars,
 } from "shared/theme";
 import { VALE_MANIFEST } from "shared/theme/packs/vale";
@@ -24,7 +26,6 @@ import {
 	dailyStringKeys,
 	dailyText,
 	formatCountdown,
-	formatThousands,
 	leaderboardFilterShown,
 	leaderboardTabRequest,
 	standingOf,
@@ -64,7 +65,7 @@ describe("daily strings", () => {
 });
 
 describe("daily text: numbers and the countdown", () => {
-	it("groups thousands", () => {
+	it("groups thousands (shared/l10n, the source locale)", () => {
 		expect(formatThousands(0)).toBe("0");
 		expect(formatThousands(999)).toBe("999");
 		expect(formatThousands(1000)).toBe("1,000");
@@ -110,6 +111,10 @@ describe("daily text: the UTC date", () => {
 		expect(dailyCivilDate(789)).toEqual({ year: 2028, month: 2, date: 29, weekday: 1 });
 		expect(dailyDateText(303, str)).toBe("Sat Oct 31");
 		expect(dailyDateText(304, str)).toBe("Sun Nov 1");
+		// The order is the `daily.date.format` string's (docs/LOCALIZATION.md L1), so a locale can reorder it.
+		const reorder = (key: string, vars?: StringVars) =>
+			key === "daily.date.format" ? interpolate("{date}. {month} ({weekday})", vars) : str(key, vars);
+		expect(dailyDateText(303, reorder)).toBe("31. Oct (Sat)");
 	});
 });
 
@@ -175,7 +180,7 @@ describe("daily board lines", () => {
 	it("entrants and your best with its standing", () => {
 		const mine = { score: 23410, floor: 9, partySize: 0, at: 0 };
 		const ranked = dailyBoardLines(view({ rows: [ROW], total: 1240, mine: { ...mine, rank: 41 } }), false, str);
-		expect([ranked.total, ranked.mine]).toEqual(["1,240 players", "Your best: 23,410 (floor 9) · #41"]);
+		expect([ranked.total, ranked.mine]).toEqual(["Players: 1,240", "Your best: 23,410 (floor 9) · #41"]);
 		expect(
 			dailyBoardLines(view({ rows: [ROW], total: 1240, mine: { ...mine, percentile: 9 } }), false, str).mine,
 		).toBe("Your best: 23,410 (floor 9) · top 9%");
@@ -235,7 +240,7 @@ describe("run-over daily block", () => {
 		expect(blockText(input({ result: { ...RESULT, rank: 38, total: 1240 } }))).toEqual({
 			title: "Daily #304",
 			standing: "#38 today",
-			entrants: "of 1,240 players",
+			entrants: "Players: 1,240",
 			best: "Best today 23,410 -> 26,870",
 			improved: true,
 			saved: "saved",
@@ -244,7 +249,7 @@ describe("run-over daily block", () => {
 
 	it("estimate beyond the top rows", () => {
 		const b = blockText(input({ result: { ...RESULT, percentile: 14, total: 1240 } }));
-		expect([b?.standing, b?.entrants]).toEqual(["Top 14%", "of 1,240 players"]);
+		expect([b?.standing, b?.entrants]).toEqual(["Top 14%", "Players: 1,240"]);
 	});
 
 	it("too few entrants for a percentile: #n of m, no separate entrants line", () => {
@@ -332,7 +337,7 @@ describe("run over on a daily run: one owner per piece (new best's block, then t
 		expect(p).toEqual({
 			ribbon: "NEW BEST TODAY!",
 			best: ["Best today 23,410 -> 26,870 (+3,460)"],
-			daily: ["Daily #304", "#38 today", "of 1,240 players", "Saved"],
+			daily: ["Daily #304", "#38 today", "Players: 1,240", "Saved"],
 		});
 		expect([count(p, "Saved"), count(p, "Best today")]).toEqual([1, 1]);
 	});
@@ -352,7 +357,7 @@ describe("run over on a daily run: one owner per piece (new best's block, then t
 		expect(p).toEqual({
 			ribbon: undefined,
 			best: ["Best today 30,000"],
-			daily: ["Daily #304", "#12 today", "of 1,240 players", "Saved"],
+			daily: ["Daily #304", "#12 today", "Players: 1,240", "Saved"],
 		});
 		expect([count(p, "Saved"), count(p, "Best today")]).toEqual([1, 1]);
 	});

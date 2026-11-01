@@ -5,7 +5,7 @@ import { describe, expect, it } from "@rbxts/jest-globals";
 import { BOSS_FLOOR_EVERY, bossKindFor, endlessRoster, floorSeed } from "shared/dungeon";
 import { dailyResetsAt, dailyStatusFor, type DailyPodium, type DailyStatus } from "shared/daily";
 import { PLACEHOLDER_MANIFEST, ThemePack, type StringVars } from "shared/theme";
-import { ROSTER_VIEW, enemyNameKey } from "shared/view/hud";
+import { enemyNameKey } from "shared/view/hud";
 import { dailyCardModel, dailyPodiumModel, dailyPreview, lobbyWorldModel } from "shared/view/menu";
 
 const quiet = (): void => {};
@@ -32,11 +32,12 @@ describe("daily card", () => {
 	it("today's status: title, roster, boss, countdown end", () => {
 		const m = dailyCardModel(status({}), TODAY, str);
 		const p = dailyPreview(SEED);
-		const names = p.roster.map((k) => str(enemyNameKey(k))).join(ROSTER_VIEW.separator);
+		const names = p.roster.map((k) => str(enemyNameKey(k))).join(" · ");
 		expect(m.title).toBe("DAILY #304 · Sat Oct 31");
 		expect(m.known).toBe(true);
 		expect(m.roster).toBe(`Floor 1: ${names}`);
 		expect(m.boss).toBe(`Floor 5 boss: ${str(`${p.boss}.name`)}`);
+		expect(m.preview).toBe(`${m.roster} · ${m.boss}`);
 		expect(m.placeholder).toBe("");
 		expect(m.resetsAt).toBe(dailyResetsAt(TODAY));
 		// No `mine` at all (no DataStore): no best line.
@@ -67,6 +68,7 @@ describe("daily card", () => {
 				known: false,
 				roster: "",
 				boss: "",
+				preview: "",
 				best: "",
 				placeholder: "Today's daily is on its way",
 				resetsAt: undefined,
@@ -103,6 +105,7 @@ describe("yesterday's podium", () => {
 			[2, 2, "Sam", "#2", "38,800"],
 			[3, 3, "Kim", "#3", "9,050"],
 		]);
+		expect(m?.rows.map((r) => r.line)).toEqual(["#1 Alex", "#2 Sam", "#3 Kim"]);
 		expect(m?.mine).toBe("You finished #57");
 		expect(
 			dailyPodiumModel({ ...PODIUM, mine: { score: 8120, floor: 5, percentile: 12, total: 1480 } }, str)?.mine,

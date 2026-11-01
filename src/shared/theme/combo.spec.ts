@@ -234,7 +234,7 @@ describe("combo: validator", () => {
 describe("combo: strings and audio IDs", () => {
 	const quiet = (): void => {};
 
-	it("requires the tier names, COMBO LOST and BEST x{combo}, filled in every bundled pack", () => {
+	it("requires the tier names, COMBO LOST, BEST x{combo}, the shout and the run-over best, filled in every bundled pack", () => {
 		expect([...COMBO_STRING_KEYS]).toEqual([
 			"hud.combo.rampage",
 			"hud.combo.carnage",
@@ -242,6 +242,8 @@ describe("combo: strings and audio IDs", () => {
 			"hud.combo.unstoppable",
 			"hud.combo.lost",
 			"hud.combo.best",
+			"hud.combo.shout",
+			"hud.combo.bestNamed",
 		]);
 		for (const key of COMBO_STRING_KEYS) expect([key, REQUIRED_STRING_KEYS.includes(key)]).toEqual([key, true]);
 		for (const id of sortedKeys(THEME_PACKS)) {
@@ -256,6 +258,8 @@ describe("combo: strings and audio IDs", () => {
 			"UNSTOPPABLE",
 			"COMBO LOST",
 			"BEST x{combo}",
+			"{name}!",
+			"{combo} {name}",
 		]);
 		// the same placeholder as the multiplier's x{combo}
 		expect(pack.str("hud.combo.best", { combo: "3.4" })).toBe("BEST x3.4");

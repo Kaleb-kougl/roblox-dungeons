@@ -22,7 +22,7 @@ import {
 	HUD_STRINGS,
 	HUD_VIEW,
 	LEADERBOARD_STRINGS,
-	PAUSE_HINT,
+	pauseHint,
 	baselineRecord,
 	bestTargetKey,
 	bestText,
@@ -264,7 +264,7 @@ export function PauseOverlay() {
 								size={HUD_VIEW.smallText}
 								color="uiTextDim"
 								align={Enum.TextXAlignment.Center}
-								text={str(HUD_STRINGS.weaponSwap, { key: swapHint(bindings)[keyDevice(device)] })}
+								text={str(HUD_STRINGS.weaponSwap, { key: swapHint(bindings, str)[keyDevice(device)] })}
 							/>
 						) : undefined}
 						{touch && s.floor > 0 ? (
@@ -285,7 +285,7 @@ export function PauseOverlay() {
 								size={HUD_VIEW.smallText}
 								color="uiTextDim"
 								align={Enum.TextXAlignment.Center}
-								text={str(hintKey, { key: PAUSE_HINT[keyDevice(device)] })}
+								text={str(hintKey, { key: pauseHint(str)[keyDevice(device)] })}
 							/>
 						)}
 					</Panel>

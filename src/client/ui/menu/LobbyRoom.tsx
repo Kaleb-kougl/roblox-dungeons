@@ -66,7 +66,7 @@ export function LobbyRoom() {
 				order={1}
 				width={MENU_VIEW.nameWidth}
 				color={r.me ? "uiAccent" : "uiText"}
-				text={r.me ? `${r.name} ${str(LOBBY_STRINGS.you)}` : r.name}
+				text={r.me ? str(LOBBY_STRINGS.you, { name: r.name }) : r.name}
 			/>
 			<Cell
 				order={2}

@@ -189,15 +189,16 @@ describe("required IDs and strings", () => {
 		// + enemy.dummy.name, breakable.<kind>.name, boost.<kind>.name / .desc / .icon, hud.toast.boost, the loading
 		// screen's three (docs/PRELOAD.md P4), the stage loader's five (docs/STAGE_LOADER.md SL2) and the touch
 		// controls' thirteen (docs/MOBILE.md MB7)
-		// + ROOM_CLEAR_STRING_KEYS (docs/ROOM_CLEAR.md RC3) + COMBO_STRING_KEYS (docs/COMBO.md CB3)
+		// + ROOM_CLEAR_STRING_KEYS (docs/ROOM_CLEAR.md RC3) + COMBO_STRING_KEYS (docs/COMBO.md CB3; + shout, bestNamed)
 		// + NEAR_MISS_STRING_KEYS (docs/GRAZE_PARRY.md GP3)
 		// + docs/ENEMY_VARIANTS.md EV1: enemy.imp.name, enemy.slime.name, AFFIX_STRING_KEYS (4), BESTIARY_STRING_KEYS (7)
-		// + docs/NEW_BEST.md NB4: NEW_BEST_STRING_KEYS (18) + docs/BUILDS.md BU1: BUILD_STRING_KEYS (7)
-		// + docs/DAILY.md DS2: ROSTER_STRING_KEYS (2)
-		// + docs/DAILY.md DS9 / DS11 / DS12: DAILY_STRING_KEYS (63)
+		// + docs/NEW_BEST.md NB4: NEW_BEST_STRING_KEYS (17: one floors-to-go key) + docs/BUILDS.md BU1: BUILD_STRING_KEYS (7)
+		// + docs/DAILY.md DS2: ROSTER_STRING_KEYS (3, with the separator)
+		// + docs/DAILY.md DS9 / DS11 / DS12: DAILY_STRING_KEYS (64, with the podium row)
 		// + docs/DAILY.md DS10: DAILY_RANK_STRING_KEYS (22)
+		// + docs/LOCALIZATION.md L1: INPUT_KEY_STRING_KEYS (51 key labels + input.separator)
 		expect(REQUIRED_STRING_KEYS.size()).toBe(
-			41 + 1 + 2 + 4 * 3 + 1 + 3 + 5 + 13 + 10 + 6 + 2 + 2 + 4 + 7 + 18 + 7 + 2 + 63 + 22,
+			41 + 1 + 2 + 4 * 3 + 1 + 3 + 5 + 13 + 10 + 8 + 2 + 2 + 4 + 7 + 17 + 7 + 3 + 64 + 22 + 52,
 		);
 		expect(new Set(REQUIRED_STRING_KEYS).size()).toBe(REQUIRED_STRING_KEYS.size());
 		expect(BIOMES.map((b) => b.forgeTheme)).toEqual(["ancient", "molten", "frost", "grim", "verdant"]);

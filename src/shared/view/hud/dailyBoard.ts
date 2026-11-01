@@ -12,7 +12,8 @@ import {
 	type LeaderboardView,
 } from "shared/leaderboard";
 import { DAILY_STRINGS } from "./dailyStrings";
-import { STANDING_KEYS, dailyText, formatThousands, standingOf, type DailyStr } from "./dailyText";
+import { formatThousands } from "shared/l10n";
+import { STANDING_KEYS, dailyText, standingOf, type DailyStr } from "./dailyText";
 
 /** The panel's tab state: scope (today / yesterday / all time), board (solo / co-op), global or friends. */
 export interface LeaderboardTabs {

@@ -41,4 +41,9 @@ describe("isDevOnlyStringKey", () => {
 		expect(isDevOnlyStringKey("hud.debug.net")).toBe(true);
 		expect(isDevOnlyStringKey("hud.score")).toBe(false);
 	});
+	it("lets players read the run-over panel's playtest.run.* labels", () => {
+		expect(isDevOnlyStringKey("playtest.run.over")).toBe(false);
+		expect(isDevOnlyStringKey("playtest.run.kills")).toBe(false);
+		expect(isDevOnlyStringKey("playtest.run.attempt")).toBe(true);
+	});
 });

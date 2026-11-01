@@ -15,8 +15,8 @@ import { VALE_MANIFEST } from "shared/theme/packs/vale";
 import {
 	NEW_BEST_STRINGS,
 	ROSTER_STRINGS,
-	ROSTER_VIEW,
 	enemyNameKey,
+	rosterNames,
 	rosterJoined,
 	stageBestLine,
 	stageCardLine,
@@ -38,7 +38,7 @@ function cardText(run: number, floor: number): string | undefined {
 
 describe("roster line: strings", () => {
 	it("are the contract's required ROSTER_STRING_KEYS, in every bundled pack, with {names}; every kind has a name", () => {
-		expect([ROSTER_STRINGS.line, ROSTER_STRINGS.joined]).toEqual([...ROSTER_STRING_KEYS]);
+		expect([ROSTER_STRINGS.line, ROSTER_STRINGS.joined, ROSTER_STRINGS.separator]).toEqual([...ROSTER_STRING_KEYS]);
 		for (const key of ROSTER_STRING_KEYS) expect([key, REQUIRED_STRING_KEYS.includes(key)]).toEqual([key, true]);
 		for (const manifest of [PLACEHOLDER_MANIFEST, VALE_MANIFEST]) {
 			const p = new ThemePack(manifest, { warn: quiet });
@@ -50,7 +50,10 @@ describe("roster line: strings", () => {
 			expect((ENEMY_ARCHETYPES as ReadonlyArray<string>).includes(kind)).toBe(true);
 			expect(REQUIRED_STRING_KEYS.includes(enemyNameKey(kind))).toBe(true);
 		}
-		expect(ROSTER_VIEW.separator).toBe(" · ");
+		expect(str(ROSTER_STRINGS.separator)).toBe(" · ");
+		// The separator is a string (docs/LOCALIZATION.md L1): a pack or a locale may change it.
+		const slash = (key: string) => (key === ROSTER_STRINGS.separator ? " / " : key);
+		expect(rosterNames(["swarmer", "imp"], slash)).toBe("enemy.swarmer.name / enemy.imp.name");
 	});
 });
 
@@ -111,10 +114,10 @@ describe("stage card line priority (DSD13)", () => {
 		expect(stageCardLine(deepest, roster)).toBe(deepest);
 	});
 
-	it("the roster line outranks new best's other lines (to go, 1 to go, record floor, deepest yet)", () => {
+	it("the roster line outranks new best's other lines (to go, record floor, deepest yet)", () => {
 		const others = [7, 8, 9].map((f) => stageBestLine(f, b, false)!);
 		others.push(stageBestLine(11, b, true)!);
-		expect(others.map((o) => o.key)).toEqual([K.stageToGo, K.stageOneToGo, K.stageRecordFloor, K.stageDeeperYet]);
+		expect(others.map((o) => o.key)).toEqual([K.stageToGo, K.stageToGo, K.stageRecordFloor, K.stageDeeperYet]);
 		for (const o of others) expect(stageCardLine(o, roster)).toBe(roster);
 	});
 

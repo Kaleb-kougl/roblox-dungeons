@@ -289,7 +289,7 @@ export function LeaderboardPanel(props: { localUserId: number }) {
 								size={HUD_VIEW.smallText}
 								color="uiTextDim"
 								text={str(LEADERBOARD_STRINGS.hint, {
-									key: leaderboardHint(bindings)[keyDevice(device)],
+									key: leaderboardHint(bindings, str)[keyDevice(device)],
 								})}
 							/>
 						)}

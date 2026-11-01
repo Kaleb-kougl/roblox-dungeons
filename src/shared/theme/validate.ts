@@ -142,7 +142,8 @@ import {
 	type DecorIdInfo,
 	type SlotContract,
 } from "./contract";
-import { templateProblem } from "./strings";
+// One namespace import (not named ones): this module sits at Luau's 200 top-level locals (docs/LOCALIZATION.md L3).
+import * as Strings from "./strings";
 import { BIOME_TILE_KEYS, COLOR_ROLES, MANIFEST_FORMAT } from "./types";
 import {
 	append,
@@ -1191,7 +1192,7 @@ export function validateManifest(manifest: unknown, opts: ValidateOptions = {}):
 		if (!typeIs(text, "string")) {
 			err(["strings", key], "must be a string");
 		} else {
-			const problem = templateProblem(text);
+			const problem = Strings.templateProblem(text);
 			if (problem !== undefined) {
 				err(["strings", key], problem);
 			}
@@ -1221,7 +1222,9 @@ export function validateManifest(manifest: unknown, opts: ValidateOptions = {}):
 					if (!typeIs(text, "string")) {
 						err(["locales", locale, key], "must be a string");
 					} else {
-						const problem = templateProblem(text);
+						// Braces, then the English placeholder multiset (a translation that drops {score} is broken).
+						const problem =
+							Strings.templateProblem(text) ?? Strings.placeholderMismatch(strings[key], text);
 						if (problem !== undefined) {
 							err(["locales", locale, key], problem);
 						}

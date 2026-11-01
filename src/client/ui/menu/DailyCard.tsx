@@ -4,7 +4,7 @@ import { selectDailyStatus } from "client/store";
 import { MenuButton, Panel, Row, Text, useDailyClock, useHeadshot } from "client/ui/hud";
 import { HUD_FONT, role, str } from "client/ui/theme";
 import { SFX } from "shared/view/audio";
-import { DAILY_STRINGS, FOOTPRINT_ESTIMATE, HUD_VIEW, ROSTER_VIEW } from "shared/view/hud";
+import { DAILY_STRINGS, FOOTPRINT_ESTIMATE, HUD_VIEW } from "shared/view/hud";
 import { DAILY_MENU, dailyCardModel, dailyPodiumModel, type DailyPodiumRow } from "shared/view/menu";
 import { useMenuActions } from "./actions";
 
@@ -114,9 +114,7 @@ export function DailyCard(props: { order: number; width: number; compact: boolea
 			text={m.title}
 		/>
 	);
-	const preview = props.compact
-		? small("Preview", 3, m.known ? `${m.roster}${ROSTER_VIEW.separator}${m.boss}` : "")
-		: undefined;
+	const preview = props.compact ? small("Preview", 3, m.known ? m.preview : "") : undefined;
 	return (
 		<Panel
 			order={props.order}
@@ -178,7 +176,7 @@ function PodiumCell(props: { row: DailyPodiumRow; compact: boolean }) {
 			<Row order={r.place}>
 				<Headshot order={1} userId={r.userId} size={DAILY_MENU.headshotCompact} />
 				<Stack order={2} width={w} gap={0}>
-					<Clipped order={1} width={w} text={`${r.placeText} ${r.name}`} />
+					<Clipped order={1} width={w} text={r.line} />
 					<Clipped order={2} width={w} text={r.score} color="uiAccent" />
 				</Stack>
 			</Row>

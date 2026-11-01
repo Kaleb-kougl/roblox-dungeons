@@ -6,9 +6,16 @@
  * headlessly tested (tutorialHud.spec.ts); client/ui/hud, TutorialMarkerController and TutorialArrowController draw
  * them.
  */
-import { DEFAULT_BINDINGS, actionLabel, inputLabel, leaderboardHint, type Bindings } from "shared/play";
+import {
+	DEFAULT_BINDINGS,
+	actionLabel,
+	inputLabel,
+	leaderboardHint,
+	type Bindings,
+	type InputLabelStr,
+} from "shared/play";
 import type { ColorRole } from "shared/theme";
-import { PAUSE_HINT } from "./layout";
+import { pauseHint } from "./layout";
 
 const TAU = math.pi * 2;
 const HALF = 0.5;
@@ -228,51 +235,58 @@ export function tutorialArrowOnScreen(
 /** The pad's (fixed) move and aim sticks, as the gamepad prompts name them. */
 const PAD_MOVE_INPUT = "Thumbstick1";
 
+/** Between key names in a list ("Up arrow / Left arrow / ..."): the `input.separator` string, English without a lookup. */
+export const INPUT_SEPARATOR_KEY = "input.separator";
+const INPUT_SEPARATOR = " / ";
+
 /**
  * The key names the tutorial prompts' templates read (`{move}`, `{fire}`, `{alt}`, `{roll}`, `{flask}`, `{swap}`,
  * `{ember}`, `{skill1}`, `{left}`, `{right}`), from the player's bindings (shared/play, Options > Controls) for the
  * HUD's last-used device, so a rebound key shows in every prompt. Keyboard: each action's primary input
- * (`{move}` = the four move keys, run together when each is one character: "WASD", else "Up / Left / Down / Right");
- * gamepad: the pad binding, `{move}` / `{left}` / `{right}` the fixed left stick. Touch prompts name no keys (MB12).
+ * (`{move}` = the four move keys, run together when each is one character: "WASD", else joined by
+ * `input.separator`: "Up arrow / Left arrow / Down arrow / Right arrow"); gamepad: the pad binding, `{move}` /
+ * `{left}` / `{right}` the fixed left stick. Touch prompts name no keys (MB12). With a string lookup `s` (the client's
+ * `str`), named keys read their translated `input.key.*` label (shared/play inputLabel); without one, English.
  */
 export function tutorialPromptVars(
 	device: "keyboard" | "gamepad" | "touch",
 	b: Bindings = DEFAULT_BINDINGS,
+	s?: InputLabelStr,
 ): Readonly<Record<string, string>> {
 	if (device === "gamepad") {
-		const stick = inputLabel(PAD_MOVE_INPUT);
+		const stick = inputLabel(PAD_MOVE_INPUT, s);
 		return {
 			move: stick,
 			left: stick,
 			right: stick,
-			fire: actionLabel(b, "pad", "fire"),
-			alt: actionLabel(b, "pad", "alt"),
-			roll: actionLabel(b, "pad", "roll"),
-			flask: actionLabel(b, "pad", "flask"),
-			swap: actionLabel(b, "pad", "swap"),
-			ember: actionLabel(b, "pad", "ember"),
-			skill1: actionLabel(b, "pad", "skill1"),
+			fire: actionLabel(b, "pad", "fire", s),
+			alt: actionLabel(b, "pad", "alt", s),
+			roll: actionLabel(b, "pad", "roll", s),
+			flask: actionLabel(b, "pad", "flask", s),
+			swap: actionLabel(b, "pad", "swap", s),
+			ember: actionLabel(b, "pad", "ember", s),
+			skill1: actionLabel(b, "pad", "skill1", s),
 		};
 	}
 	const dirs = [
-		actionLabel(b, "kbm", "moveUp"),
-		actionLabel(b, "kbm", "moveLeft"),
-		actionLabel(b, "kbm", "moveDown"),
-		actionLabel(b, "kbm", "moveRight"),
+		actionLabel(b, "kbm", "moveUp", s),
+		actionLabel(b, "kbm", "moveLeft", s),
+		actionLabel(b, "kbm", "moveDown", s),
+		actionLabel(b, "kbm", "moveRight", s),
 	];
 	let short = true;
 	for (const d of dirs) if (d.size() !== 1) short = false;
 	return {
-		move: dirs.join(short ? "" : " / "),
+		move: dirs.join(short ? "" : s !== undefined ? s(INPUT_SEPARATOR_KEY) : INPUT_SEPARATOR),
 		left: dirs[1],
 		right: dirs[3],
-		fire: actionLabel(b, "kbm", "fire"),
-		alt: actionLabel(b, "kbm", "alt"),
-		roll: actionLabel(b, "kbm", "roll"),
-		flask: actionLabel(b, "kbm", "flask"),
-		swap: actionLabel(b, "kbm", "swap"),
-		ember: actionLabel(b, "kbm", "ember"),
-		skill1: actionLabel(b, "kbm", "skill1"),
+		fire: actionLabel(b, "kbm", "fire", s),
+		alt: actionLabel(b, "kbm", "alt", s),
+		roll: actionLabel(b, "kbm", "roll", s),
+		flask: actionLabel(b, "kbm", "flask", s),
+		swap: actionLabel(b, "kbm", "swap", s),
+		ember: actionLabel(b, "kbm", "ember", s),
+		skill1: actionLabel(b, "kbm", "skill1", s),
 	};
 }
 
@@ -280,6 +294,9 @@ export function tutorialPromptVars(
  * The outro's "{key}" (where the leaderboard opens), per device: the bound leaderboard key (default B), or the pad's
  * pause menu (Leaderboards).
  */
-export function tutorialLeaderboardHint(b: Bindings = DEFAULT_BINDINGS): { keyboard: string; gamepad: string } {
-	return { keyboard: leaderboardHint(b).keyboard, gamepad: PAUSE_HINT.gamepad };
+export function tutorialLeaderboardHint(
+	b: Bindings = DEFAULT_BINDINGS,
+	s?: InputLabelStr,
+): { keyboard: string; gamepad: string } {
+	return { keyboard: leaderboardHint(b, s).keyboard, gamepad: pauseHint(s).gamepad };
 }
