@@ -32,3 +32,8 @@ build/
 /art/vendor
 /art/build
 /art/upload
+
+# Localization pipeline output (docs/LOCALIZATION.md L10): the English dump (npm run l10n:dump) and the CSVs to
+# upload to the Roblox cloud table (npm run l10n:export)
+/l10n/build
+/l10n/out
