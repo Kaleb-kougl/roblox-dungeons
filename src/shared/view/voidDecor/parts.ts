@@ -13,7 +13,8 @@ import type { BiomeMaterialSurface } from "shared/theme";
 import { STUDS_PER_TILE } from "shared/config";
 import { floorStudsY, studsX, studsZ } from "../space";
 import { VOID } from "./config";
-import { VoidLayer, voidInputOfLayout, type VoidPlanInput, type VoidRect } from "./plan";
+import { VoidLayer } from "./layer";
+import { voidInputOfLayout, type VoidPlanInput, type VoidRect } from "./plan";
 import { VOID_VIEW } from "./viewConfig";
 
 const HALF = 0.5;
