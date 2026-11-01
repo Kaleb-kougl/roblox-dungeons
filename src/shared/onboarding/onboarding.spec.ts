@@ -1,9 +1,11 @@
 // Onboarding (first-run tutorial, docs/TUTORIAL.md §5-6): the stored document's codec, the done rule, the
-// PlayerDocCache failure rule with this codec, and the tutorial funnel filter.
+// PlayerDocCache failure rule with this codec, the new-player doc fields (docs/TUTORIAL_FUNNEL.md TF2), and the
+// tutorial attempt funnel filter.
 import { describe, expect, it } from "@rbxts/jest-globals";
 import { TUTORIAL_STEPS, TUTORIAL_STEP_COUNT } from "shared/tutorial";
 import {
 	MAX_TUTORIAL_STEP_NAME_CHARS,
+	NEW_PLAYER,
 	ONBOARDING_CODEC,
 	ONBOARDING_DOC_VERSION,
 	ONBOARDING_TUTORIAL_VERSION,
@@ -19,12 +21,18 @@ import {
 	isTutorialDone,
 	isTutorialOutcome,
 	isTutorialStepNumber,
+	SIGHTING_IDS,
+	newPlayerFieldsOf,
 	onboardingStatusOf,
 	sameOnboardingDoc,
+	seenOf,
 	tutorialFunnelStepName,
 	tutorialFinishEvents,
 	tutorialStepEvent,
+	withNewPlayerFields,
+	withSeenId,
 	type OnboardingDoc,
+	type TutorialStartInfo,
 } from "shared/onboarding";
 import { PlayerDocCache, type KeyValueStore } from "shared/settings";
 
@@ -170,49 +178,146 @@ describe("onboarding doc in PlayerDocCache", () => {
 	});
 });
 
-describe("tutorial funnel filter", () => {
+describe("onboarding doc: new-player fields (TF2)", () => {
+	const base = { v: ONBOARDING_DOC_VERSION, tutorialVersion: 1, outcome: "completed", at: AT };
+
+	it("old docs decode without them; the stored shape is unchanged without them", () => {
+		const doc = decodeOnboardingDoc(base);
+		expect(doc.firstDay).toBe(undefined);
+		expect(doc.newRuns).toBe(undefined);
+		expect(doc.returned).toBe(undefined);
+		expect(encodeOnboardingDoc(doc)).toEqual(base);
+	});
+
+	it("round-trips every field; equals compares each", () => {
+		const doc: OnboardingDoc = {
+			...finishedOnboardingDoc("skipped", AT),
+			firstDay: 20_000,
+			newRuns: 2,
+			returned: true,
+		};
+		const stored = encodeOnboardingDoc(doc);
+		expect(stored.firstDay).toBe(20_000);
+		expect(stored.newRuns).toBe(2);
+		expect(stored.returned).toBe(true);
+		const back = ONBOARDING_CODEC.decode(stored);
+		expect(back).toEqual(doc);
+		expect(ONBOARDING_CODEC.equals(back, doc)).toBe(true);
+		expect(sameOnboardingDoc(doc, { ...doc, firstDay: 20_001 })).toBe(false);
+		expect(sameOnboardingDoc(doc, { ...doc, newRuns: 3 })).toBe(false);
+		expect(sameOnboardingDoc(doc, { ...doc, returned: undefined })).toBe(false);
+		expect(sameOnboardingDoc(doc, { ...doc, firstDay: undefined })).toBe(false);
+		// newRuns 0 and returned false are kept (written as stored).
+		const zero: OnboardingDoc = { ...emptyOnboardingDoc(), firstDay: 5, newRuns: 0, returned: false };
+		expect(decodeOnboardingDoc(encodeOnboardingDoc(zero))).toEqual(zero);
+	});
+
+	it("a malformed field decodes as absent and never touches the rest", () => {
+		const bad: Array<[string, unknown]> = [
+			["firstDay", -1],
+			["firstDay", 1.5],
+			["firstDay", 0 / 0],
+			["firstDay", math.huge],
+			["firstDay", "20000"],
+			["newRuns", -1],
+			["newRuns", NEW_PLAYER.runs + 1],
+			["newRuns", 0.5],
+			["newRuns", true],
+			["returned", 1],
+			["returned", "yes"],
+		];
+		for (const [key, value] of bad) {
+			const raw: Record<string, unknown> = { ...base, firstDay: 7, newRuns: 1, returned: true };
+			raw[key] = value;
+			const doc = decodeOnboardingDoc(raw);
+			expect((doc as unknown as Record<string, unknown>)[key]).toBe(undefined);
+			expect(isTutorialDone(doc)).toBe(true);
+			expect(doc.outcome).toBe("completed");
+			for (const other of ["firstDay", "newRuns", "returned"]) {
+				if (other === key) continue;
+				expect((doc as unknown as Record<string, unknown>)[other]).toBe(raw[other]);
+			}
+		}
+	});
+
+	it("finishing and sightings keep the new-player fields", () => {
+		const doc: OnboardingDoc = { ...emptyOnboardingDoc(), firstDay: 9, newRuns: 1 };
+		const finished = finishedOnboardingDoc("completed", AT, seenOf(doc), doc);
+		expect(finished.firstDay).toBe(9);
+		expect(finished.newRuns).toBe(1);
+		expect(finished.returned).toBe(undefined);
+		expect(finishedOnboardingDoc("completed", AT).firstDay).toBe(undefined);
+		const seen = withSeenId(doc, SIGHTING_IDS[0]);
+		expect(seen.firstDay).toBe(9);
+		expect(seen.newRuns).toBe(1);
+		const patched = withNewPlayerFields(finished, { returned: true });
+		expect(patched).toEqual({ ...finished, returned: true });
+		expect(newPlayerFieldsOf({ firstDay: -3, newRuns: 2, returned: false })).toEqual({
+			newRuns: 2,
+			returned: false,
+		});
+	});
+});
+
+describe("tutorial attempt funnel filter", () => {
+	const INFO: TutorialStartInfo = { entry: "firstJoin", device: "keyboard" };
+
 	it("drops steps outside an attempt", () => {
 		const t = new TutorialFunnelTracker();
 		expect(t.isActive()).toBe(false);
 		expect(t.accept(1)).toBe(false);
 		expect(t.finish()).toBe(undefined);
-		t.start("a");
-		expect(t.finish()).toEqual({ attemptId: "a", lastStep: 0 });
+		expect(t.start("a", INFO)).toBe(undefined);
+		expect(t.finish()).toEqual({
+			attemptId: "a",
+			lastStep: 0,
+			entry: "firstJoin",
+			device: "keyboard",
+			stepId: TUTORIAL_STEPS[0].id,
+			logged: true,
+		});
 		expect(t.accept(1)).toBe(false);
 	});
 
 	it("accepts only strictly increasing integer steps in 1..max", () => {
 		const t = new TutorialFunnelTracker(5);
-		t.start("a");
+		t.start("a", INFO);
 		expect(t.getAttemptId()).toBe("a");
 		const tries = [0, -1, 1.5, 0 / 0, math.huge, 6, 1, 1, 3, 2, 3, 5, 4, 5];
 		const accepted: number[] = [];
 		for (const s of tries) if (t.accept(s)) accepted.push(s);
 		expect(accepted).toEqual([1, 3, 5]);
 		expect(t.getLastStep()).toBe(5);
-		expect(t.finish()).toEqual({ attemptId: "a", lastStep: 5 });
+		expect(t.finish()?.lastStep).toBe(5);
 		expect(t.isActive()).toBe(false);
 	});
 
 	it("a restart without a new attempt logs nothing again; a new attempt starts over", () => {
 		const t = new TutorialFunnelTracker(5);
-		t.start("a");
+		t.start("a", INFO);
 		expect(t.accept(1)).toBe(true);
 		expect(t.accept(2)).toBe(true);
 		// The client restarted its tutorial but did not send tutorialStarted: same attempt, repeats are dropped.
 		expect(t.accept(1)).toBe(false);
 		expect(t.accept(2)).toBe(false);
 		expect(t.accept(3)).toBe(true);
-		// "Restart tutorial" sends tutorialStarted: a new attempt (new funnel session) counts from 1 again.
-		t.start("b");
+		// "Restart tutorial" sends tutorialStarted: a new attempt (new funnel session) counts from 1 again, and the
+		// replaced attempt comes back closed (logged as restarted).
+		const replaced = t.start("b", { entry: "restart", device: "gamepad" });
+		expect(replaced?.attemptId).toBe("a");
+		expect(replaced?.lastStep).toBe(3);
+		expect(replaced?.stepId).toBe(TUTORIAL_STEPS[3].id);
 		expect(t.getLastStep()).toBe(0);
 		expect(t.accept(1)).toBe(true);
-		expect(t.finish()).toEqual({ attemptId: "b", lastStep: 1 });
+		const ended = t.finish();
+		expect(ended?.attemptId).toBe("b");
+		expect(ended?.entry).toBe("restart");
+		expect(ended?.device).toBe("gamepad");
 	});
 
 	it("clear drops the attempt (player left)", () => {
 		const t = new TutorialFunnelTracker();
-		t.start("a");
+		t.start("a", INFO);
 		t.accept(2);
 		t.clear();
 		expect(t.isActive()).toBe(false);
@@ -235,19 +340,33 @@ describe("tutorial funnel filter", () => {
 		expect(tutorialFunnelStepName(TUTORIAL_FUNNEL_MAX_STEP + 1)).toBe(`step${TUTORIAL_FUNNEL_MAX_STEP + 1}`);
 	});
 
-	it("events: lessons and completed are funnel steps; a skip is a custom event", () => {
+	it("events: started is step 1, lesson n is n + 1, completed follows the last lesson; a skip is a custom event", () => {
+		expect(TUTORIAL_FUNNEL).toBe("TutorialAttempt");
 		expect(tutorialStepEvent(3)).toEqual({
 			kind: "funnel",
 			funnel: TUTORIAL_FUNNEL,
-			step: 3,
+			step: 4,
 			stepName: TUTORIAL_STEPS[2].id,
 		});
-		expect(tutorialFinishEvents("completed", 9)).toEqual([
+		const ended = {
+			attemptId: "a",
+			lastStep: 4,
+			entry: "menu" as const,
+			device: "touch" as const,
+			stepId: "roll",
+			logged: true,
+		};
+		expect(tutorialFinishEvents("completed", ended)).toEqual([
 			{ kind: "funnel", funnel: TUTORIAL_FUNNEL, step: TUTORIAL_FUNNEL_COMPLETED_STEP, stepName: "completed" },
 		]);
-		expect(TUTORIAL_FUNNEL_COMPLETED_STEP).toBe(TUTORIAL_FUNNEL_MAX_STEP + 1);
-		expect(tutorialFinishEvents("skipped", 4)).toEqual([
-			{ kind: "custom", name: TUTORIAL_SKIPPED_EVENT, value: 4 },
+		expect(TUTORIAL_FUNNEL_COMPLETED_STEP).toBe(TUTORIAL_FUNNEL_MAX_STEP + 2);
+		expect(tutorialFinishEvents("skipped", ended)).toEqual([
+			{
+				kind: "custom",
+				name: TUTORIAL_SKIPPED_EVENT,
+				value: 4,
+				fields: { field01: "roll", field02: "menu", field03: "touch" },
+			},
 		]);
 	});
 });

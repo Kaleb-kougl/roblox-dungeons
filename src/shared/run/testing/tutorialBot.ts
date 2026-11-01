@@ -51,7 +51,14 @@ import {
 	type InputFrame,
 	type SimState,
 } from "shared/sim";
-import { TUTORIAL_STEPS, TutorialDirector, TutorialGuide, type TutorialView } from "shared/tutorial";
+import {
+	TUTORIAL_STEPS,
+	TutorialDirector,
+	TutorialGuide,
+	type TutorialLessonReport,
+	type TutorialStuckReport,
+	type TutorialView,
+} from "shared/tutorial";
 import { TUTORIAL_VIEW } from "shared/view/hud";
 import { TUTORIAL_ROOMS, buildTutorialRunConfig, tutorialRoom, type TutorialLessonId } from "../tutorial";
 import type { EndlessRunSetup } from "../endless";
@@ -77,6 +84,18 @@ export interface TutorialBotOptions {
 	 * block (TutorialSimConfig.guardLock); default false: guard first, then fight.
 	 */
 	readonly guardLate?: boolean;
+	/**
+	 * With guardLate: once the sim holds the bruiser, keep swinging this many more ticks before guarding (a player who
+	 * does not get the guardHold prompt: the TutorialMetrics stuck spec). Default 0.
+	 */
+	readonly guardHoldDelayTicks?: number;
+	/** The director's stuck threshold (TutorialDirectorOptions.stuckSeconds; default TUTORIAL.stuckSeconds). */
+	readonly stuckSeconds?: number;
+	/**
+	 * Shadow directors with these stuck thresholds, fed the very same frames as the bot's own (their views never steer
+	 * the bot): one run compares thresholds (TutorialBotResult.shadowStuckReports, same order).
+	 */
+	readonly shadowStuckSeconds?: ReadonlyArray<number>;
 }
 
 export interface TutorialBotResult {
@@ -137,6 +156,20 @@ export interface TutorialBotResult {
 	/** The first tick the block lesson's bruiser was held at 1 hp waiting for a block (-1 never), and ticks held. */
 	readonly guardHeldTick: number;
 	readonly guardHeldTicks: number;
+	/** Every TutorialView.newLessonReports / newStuckReports entry (docs/TUTORIAL_FUNNEL.md TF4), in the order reported. */
+	readonly lessonReports: ReadonlyArray<TutorialLessonReport>;
+	readonly stuckReports: ReadonlyArray<TutorialStuckReport>;
+	/** Per shadowStuckSeconds entry: that shadow director's stuck reports, in order. */
+	readonly shadowStuckReports: ReadonlyArray<ReadonlyArray<TutorialStuckReport>>;
+	/**
+	 * Re-derived from the views (a check on TutorialMetrics' lesson clock, metrics.ts): frames charged to at least one
+	 * step (the previous view's current step or prompt step), frames charged to two (an out-of-order prompt step), and
+	 * the harmless hits landed on frames charged to none / to two.
+	 */
+	readonly clockFrames: number;
+	readonly sharedClockFrames: number;
+	readonly unclockedHits: number;
+	readonly sharedHits: number;
 }
 
 const DEFAULT_MAX_TICKS = 20 * 60 * SIM_HZ;
@@ -174,8 +207,19 @@ class TutorialBot {
 	readonly setup = buildTutorialRunConfig();
 	readonly run: LiveRun;
 	readonly state: SimState;
-	readonly director = new TutorialDirector();
+	readonly director: TutorialDirector;
+	readonly shadows: TutorialDirector[] = [];
+	readonly lessonReports: TutorialLessonReport[] = [];
+	readonly stuckReports: TutorialStuckReport[] = [];
+	readonly shadowStuckReports: TutorialStuckReport[][] = [];
 	view: Readonly<TutorialView>;
+	clockFrames = 0;
+	sharedClockFrames = 0;
+	unclockedHits = 0;
+	sharedHits = 0;
+	private chargeCurrent = 0;
+	private chargePrompt = 0;
+	private lastHarmless = 0;
 	readonly stepDoneTicks: number[] = [];
 	readonly funnelSteps: number[] = [];
 	readonly callouts: string[] = [];
@@ -200,6 +244,7 @@ class TutorialBot {
 	guardHeldTick = -1;
 	guardHeldTicks = 0;
 	guardLate = false;
+	guardHoldDelayTicks = 0;
 	dropsLanded = 0;
 	dropsTaken = 0;
 	private prevHearts: number;
@@ -211,7 +256,17 @@ class TutorialBot {
 	guideUnreachableTicks = 0;
 	private readonly guide: TutorialGuide | undefined;
 
-	constructor(readonly maxTicks: number, steer: "bot" | "guide" = "bot") {
+	constructor(
+		readonly maxTicks: number,
+		steer: "bot" | "guide" = "bot",
+		stuckSeconds?: number,
+		shadowStuckSeconds: ReadonlyArray<number> = [],
+	) {
+		this.director = new TutorialDirector({ stuckSeconds });
+		for (const s of shadowStuckSeconds) {
+			this.shadows.push(new TutorialDirector({ stuckSeconds: s }));
+			this.shadowStuckReports.push([]);
+		}
 		this.guide = steer === "guide" ? new TutorialGuide(TUTORIAL_VIEW) : undefined;
 		const spawn = this.setup.spawn!;
 		this.run = new LiveRun({
@@ -253,14 +308,21 @@ class TutorialBot {
 	/** One frame = one tick (LiveRun with dt = SIM_DT), then the director. */
 	tick(input: InputFrame): void {
 		this.run.frame(SIM_DT, input);
-		const v = this.director.update({
+		const f = {
 			state: this.run.state,
 			config: this.setup.config,
 			events: this.run.frameEvents,
 			buttons: input.buttons,
 			dt: SIM_DT,
-		});
+		};
+		const v = this.director.update(f);
 		this.view = v;
+		this.watchClocks(v);
+		for (const r of v.newLessonReports) this.lessonReports.push({ ...r });
+		for (const r of v.newStuckReports) this.stuckReports.push({ ...r });
+		for (let k = 0; k < this.shadows.size(); k++) {
+			for (const r of this.shadows[k].update(f).newStuckReports) this.shadowStuckReports[k].push({ ...r });
+		}
 		const t = this.state.tick;
 		for (let i = 0; i < v.done.size(); i++) if (v.done[i] && this.stepDoneTicks[i] < 0) this.stepDoneTicks[i] = t;
 		for (const n of v.newFunnelSteps) this.funnelSteps.push(n);
@@ -295,6 +357,25 @@ class TutorialBot {
 			if (g.unreachable) this.guideUnreachableTicks++;
 		}
 		this.watchDrops();
+	}
+
+	/** The lesson clocks re-derived from the views (TutorialBotResult.clockFrames ...). */
+	private watchClocks(v: Readonly<TutorialView>): void {
+		const harmless = this.state.tutorial?.harmlessHits ?? 0;
+		const hits = harmless - this.lastHarmless;
+		this.lastHarmless = harmless;
+		const clocks =
+			(this.chargeCurrent >= 0 ? 1 : 0) +
+			(this.chargePrompt >= 0 && this.chargePrompt !== this.chargeCurrent ? 1 : 0);
+		if (clocks > 0) this.clockFrames++;
+		else this.unclockedHits += hits;
+		if (clocks > 1) {
+			this.sharedClockFrames++;
+			this.sharedHits += hits;
+		}
+		const live = !v.finished && v.stepIndex < v.stepCount;
+		this.chargeCurrent = live ? v.stepIndex : -1;
+		this.chargePrompt = live ? v.promptStepIndex : -1;
 	}
 
 	/** True while a boost drop lies on the floor. */
@@ -634,10 +715,13 @@ class TutorialBot {
 			this.wield(false);
 			const guardBase = this.state.score!.counts[ScoreSource.GUARD];
 			let lastAlt = false;
+			let heldTicks = 0;
 			this.fight(lesson, () => {
 				if (this.state.score!.counts[ScoreSource.GUARD] > guardBase) return undefined;
-				// guardLate: swing until the sim holds the bruiser at 1 hp (it cannot die before a block), then guard.
+				// guardLate: swing until the sim holds the bruiser at 1 hp (it cannot die before a block), then guard
+				// (after guardHoldDelayTicks more swings).
 				if (this.guardLate && !isTutorialGuardHolding(this.state)) return undefined;
+				if (this.guardLate && heldTicks++ < this.guardHoldDelayTicks) return undefined;
 				// Guard (ALT press edge) when a bullet comes close; otherwise stand and face it (no swings yet).
 				const want = this.nearestBullet() < GUARD_TRIGGER && !lastAlt;
 				lastAlt = want;
@@ -729,8 +813,14 @@ class TutorialBot {
 
 /** Plays the tutorial with the bot (see the file comment) and returns what the director reported. */
 export function playTutorial(options: TutorialBotOptions = {}): TutorialBotResult {
-	const bot = new TutorialBot(options.maxTicks ?? DEFAULT_MAX_TICKS, options.steer);
+	const bot = new TutorialBot(
+		options.maxTicks ?? DEFAULT_MAX_TICKS,
+		options.steer,
+		options.stuckSeconds,
+		options.shadowStuckSeconds,
+	);
 	bot.guardLate = options.guardLate === true;
+	bot.guardHoldDelayTicks = options.guardHoldDelayTicks ?? 0;
 	const order = options.order ?? TUTORIAL_ROOMS.map((r) => r.lesson);
 	bot.objective();
 	bot.walkABit();
@@ -776,5 +866,12 @@ export function playTutorial(options: TutorialBotOptions = {}): TutorialBotResul
 		boostCurrentOnDrop: bot.boostCurrentOnDrop,
 		guardHeldTick: bot.guardHeldTick,
 		guardHeldTicks: bot.guardHeldTicks,
+		lessonReports: bot.lessonReports,
+		stuckReports: bot.stuckReports,
+		shadowStuckReports: bot.shadowStuckReports,
+		clockFrames: bot.clockFrames,
+		sharedClockFrames: bot.sharedClockFrames,
+		unclockedHits: bot.unclockedHits,
+		sharedHits: bot.sharedHits,
 	};
 }

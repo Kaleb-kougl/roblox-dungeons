@@ -9,9 +9,15 @@
  * touches the tutorial fields; `seen` is written only when it lists something, so a player who has seen nothing keeps
  * the old stored shape. A build from before EV12 reads a new doc fine (it ignores `seen`), but drops `seen` when it
  * writes (only during a rollout with mixed servers; the worst case is a repeated toast).
+ *
+ * The new-player window (docs/TUTORIAL_FUNNEL.md §7, TF2): three more OPTIONAL fields under the same version, read the
+ * same way as `seen`: `firstDay` (a non-negative integer UTC day), `newRuns` (an integer 0..NEW_PLAYER.runs) and
+ * `returned` (a boolean). Each is read on its own: missing or malformed decodes as absent and never touches any other
+ * field; each is written only when present, so a doc without them keeps the old stored shape. Every copy this module
+ * makes (finishing, a sighting) keeps them.
  */
 import type { DocCodec } from "shared/settings";
-import { ONBOARDING_DOC_VERSION, ONBOARDING_TUTORIAL_VERSION } from "./config";
+import { NEW_PLAYER, ONBOARDING_DOC_VERSION, ONBOARDING_TUTORIAL_VERSION } from "./config";
 import { normalizeSeen, sameSeen, withSighting } from "./sightings";
 
 export type TutorialOutcome = "completed" | "skipped";
@@ -30,6 +36,15 @@ export interface OnboardingDoc {
 	 * (never an empty list: see seenOf / withSeenId).
 	 */
 	seen?: ReadonlyArray<string>;
+	/**
+	 * The new-player window (docs/TUTORIAL_FUNNEL.md §7, TF2): the UTC day number (floor(os.time() / 86400)) of the
+	 * first fresh join. Absent = the player joined before the field existed (never in the window) or is not fresh.
+	 */
+	firstDay?: number;
+	/** Ranked runs accepted inside the window, 0..NEW_PLAYER.runs (absent = 0). */
+	newRuns?: number;
+	/** NewPlayerReturned was logged: never again. Absent = false. */
+	returned?: boolean;
 }
 
 /** What the server tells the client (`onboardingStatus`). */
@@ -53,6 +68,10 @@ export interface StoredOnboardingDoc {
 	at: number;
 	/** Written only when it lists something (EV12; old docs have none). */
 	seen?: string[];
+	/** The new-player window (TF2): each written only when present. */
+	firstDay?: number;
+	newRuns?: number;
+	returned?: boolean;
 }
 
 export function emptyOnboardingDoc(): OnboardingDoc {
@@ -61,14 +80,18 @@ export function emptyOnboardingDoc(): OnboardingDoc {
 
 /**
  * The document written when a player finishes the current tutorial at `at` (os.time()). `seen`: the sightings to keep
- * (pass the current doc's, seenOf(doc): finishing the tutorial never forgets a sighting).
+ * (pass the current doc's, seenOf(doc): finishing the tutorial never forgets a sighting). `keep`: the doc whose
+ * new-player fields (firstDay / newRuns / returned, TF2) to keep (pass the current doc: finishing never resets the
+ * new-player window); absent = none.
  */
 export function finishedOnboardingDoc(
 	outcome: TutorialOutcome,
 	at: number,
 	seen: ReadonlyArray<string> = [],
+	keep?: Readonly<OnboardingDoc>,
 ): OnboardingDoc {
-	return withSeenList({ tutorialVersion: ONBOARDING_TUTORIAL_VERSION, outcome, at }, seen);
+	const out = withSeenList({ tutorialVersion: ONBOARDING_TUTORIAL_VERSION, outcome, at }, seen);
+	return keep !== undefined ? withNewPlayerFields(out, newPlayerFieldsOf(keep)) : out;
 }
 
 /** The sighting ids of a doc (empty when it has none). */
@@ -76,11 +99,53 @@ export function seenOf(doc: Readonly<OnboardingDoc> | undefined): ReadonlyArray<
 	return doc?.seen ?? [];
 }
 
-/** `doc` with `seen` normalized (absent when empty). A copy. */
+/** `doc` with `seen` normalized (absent when empty), its new-player fields kept. A copy. */
 function withSeenList(doc: Readonly<OnboardingDoc>, seen: ReadonlyArray<string>): OnboardingDoc {
 	const list = normalizeSeen(seen);
 	const out: OnboardingDoc = { tutorialVersion: doc.tutorialVersion, outcome: doc.outcome, at: doc.at };
 	if (list.size() > 0) out.seen = list;
+	copyNewPlayerFields(out, doc);
+	return out;
+}
+
+/** The new-player window's doc fields (TF2): each optional. */
+export interface NewPlayerFields {
+	firstDay?: number;
+	newRuns?: number;
+	returned?: boolean;
+}
+
+/** A valid `firstDay`: a non-negative integer UTC day number. */
+export function isNewPlayerFirstDay(v: unknown): v is number {
+	return isNonNegativeInteger(v);
+}
+
+/** A valid `newRuns`: an integer 0..NEW_PLAYER.runs. */
+export function isNewPlayerRunCount(v: unknown): v is number {
+	return isNonNegativeInteger(v) && v <= NEW_PLAYER.runs;
+}
+
+/** The valid new-player fields of `doc` (a malformed one is left out). */
+export function newPlayerFieldsOf(doc: Readonly<NewPlayerFields>): NewPlayerFields {
+	const out: NewPlayerFields = {};
+	if (isNewPlayerFirstDay(doc.firstDay)) out.firstDay = doc.firstDay;
+	if (isNewPlayerRunCount(doc.newRuns)) out.newRuns = doc.newRuns;
+	if (typeIs(doc.returned, "boolean")) out.returned = doc.returned;
+	return out;
+}
+
+/** Copies `from`'s valid new-player fields onto `to` (in place; fields absent in `from` are left as they are). */
+function copyNewPlayerFields(to: NewPlayerFields, from: Readonly<NewPlayerFields>): void {
+	const f = newPlayerFieldsOf(from);
+	if (f.firstDay !== undefined) to.firstDay = f.firstDay;
+	if (f.newRuns !== undefined) to.newRuns = f.newRuns;
+	if (f.returned !== undefined) to.returned = f.returned;
+}
+
+/** `doc` with `patch`'s valid new-player fields set over its own (every other field kept). A copy. */
+export function withNewPlayerFields(doc: Readonly<OnboardingDoc>, patch: Readonly<NewPlayerFields>): OnboardingDoc {
+	const out = withSeenList(doc, seenOf(doc));
+	copyNewPlayerFields(out, patch);
 	return out;
 }
 
@@ -121,6 +186,7 @@ export function encodeOnboardingDoc(doc: Readonly<OnboardingDoc>): StoredOnboard
 	};
 	const seen = normalizeSeen(doc.seen);
 	if (seen.size() > 0) out.seen = seen;
+	copyNewPlayerFields(out, doc);
 	return out;
 }
 
@@ -129,16 +195,27 @@ export function encodeOnboardingDoc(doc: Readonly<OnboardingDoc>): StoredOnboard
  * doc (the player is offered the tutorial again, which is the safe direction). A bad `at` alone reads as 0, so a
  * finished player is not sent back through the tutorial over a timestamp. `seen` (EV12) is optional and read on its
  * own: missing or bad reads as nothing seen, unknown ids are dropped (normalizeSeen), and neither ever empties the doc.
+ * The new-player fields (TF2) are read the same way, each on its own: malformed = absent.
  */
 export function decodeOnboardingDoc(raw: unknown): OnboardingDoc {
 	if (!typeIs(raw, "table")) return emptyOnboardingDoc();
-	const doc = raw as { v?: unknown; tutorialVersion?: unknown; outcome?: unknown; at?: unknown; seen?: unknown };
+	const doc = raw as {
+		v?: unknown;
+		tutorialVersion?: unknown;
+		outcome?: unknown;
+		at?: unknown;
+		seen?: unknown;
+		firstDay?: unknown;
+		newRuns?: unknown;
+		returned?: unknown;
+	};
 	if (doc.v !== ONBOARDING_DOC_VERSION) return emptyOnboardingDoc();
 	if (!isNonNegativeInteger(doc.tutorialVersion) || !isTutorialOutcome(doc.outcome)) return emptyOnboardingDoc();
 	const at = isFiniteNumber(doc.at) && doc.at >= 0 ? doc.at : 0;
 	const out: OnboardingDoc = { tutorialVersion: doc.tutorialVersion, outcome: doc.outcome, at };
 	const seen = normalizeSeen(doc.seen);
 	if (seen.size() > 0) out.seen = seen;
+	copyNewPlayerFields(out, doc as NewPlayerFields);
 	return out;
 }
 
@@ -147,7 +224,10 @@ export function sameOnboardingDoc(a: Readonly<OnboardingDoc>, b: Readonly<Onboar
 		a.tutorialVersion === b.tutorialVersion &&
 		a.outcome === b.outcome &&
 		a.at === b.at &&
-		sameSeen(seenOf(a), seenOf(b))
+		sameSeen(seenOf(a), seenOf(b)) &&
+		a.firstDay === b.firstDay &&
+		a.newRuns === b.newRuns &&
+		a.returned === b.returned
 	);
 }
 

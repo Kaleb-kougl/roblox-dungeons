@@ -1,6 +1,7 @@
 import { Controller, OnInit, OnStart } from "@flamework/core";
 import { Janitor } from "@rbxts/janitor";
 import { ContentProvider, RunService, Workspace } from "@rbxts/services";
+import { Events } from "client/network";
 import { clientStore } from "client/store";
 import { RUN_ATTRIBUTES } from "shared/play";
 import type { ContentRef, ThemePack } from "shared/theme";
@@ -72,8 +73,9 @@ function seconds(t: number): string {
  *              Reflex `loading` slice (only on a change) until the release, then disconnects. Workspace
  *              `KV_SkipLoading` (RUN_ATTRIBUTES.skipLoading, read once) releases at once; an empty core tier (the
  *              placeholder pack) releases in onInit. `whenReleased(cb)` runs cb once released (at once if it is;
- *              each in its own thread), `isReleased()`.
- *   loaded     `whenLoaded(refs, cb, label?)` (docs/STAGE_LOADER.md SL6, the stage loader's assets wait): cb once every
+ *              each in its own thread), `isReleased()`. The release sends `onboardingReport({ kind: "loaded" })`
+ *              once per session (docs/TUTORIAL_FUNNEL.md TF6: the onboarding funnel's `Loaded`).
+ *   loaded    `whenLoaded(refs, cb, label?)` (docs/STAGE_LOADER.md SL6, the stage loader's assets wait): cb once every
  *              one of `refs` resolved (ok or failed), synchronously at once if they all have, else in its own thread
  *              when the last one does; refs not yet resolved go through `request(refs, "front", label)` (never
  *              requested: queued on the front lane; waiting in the back lane: moved up). shared/view LoadWaiters keeps
@@ -326,6 +328,9 @@ export class PreloadController implements OnInit, OnStart {
 			skipVisible: false,
 		});
 		clientStore.setLoadingReleased();
+		// Onboarding funnel step 2 `Loaded` (docs/TUTORIAL_FUNNEL.md §2): once per session (`released` latches), for
+		// every release kind (core, Skip, timeout, KV_SkipLoading).
+		Events.onboardingReport.fire({ kind: "loaded" });
 		for (const listener of this.releaseListeners) task.spawn(listener);
 		this.releaseListeners.clear();
 	}

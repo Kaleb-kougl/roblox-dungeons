@@ -412,6 +412,10 @@ As built (T6; code-complete, Studio check pending; ported onto the main menu / l
 
 ### 6. Telemetry
 
+**Superseded by docs/TUTORIAL_FUNNEL.md (2026-11-01):** the `tutorial` funnel is now `TutorialAttempt` (`started` = 1,
+lessons 2..17, `completed` = 18) next to a once-per-user onboarding funnel and the lesson / skip / abandon / outro /
+gate / new-player events. The text below describes the original T7 build.
+
 `tutorialStep(step)` -> `TelemetryService` -> `AnalyticsService.LogFunnelStepEvent(player, "tutorial", sessionId, step,
 stepName)`, `stepName` = the step's id in `shared/tutorial` `TUTORIAL_STEPS` (1..16; `completed` is 17).
 **Renumbered on 2026-10-26**: the `boost` step was inserted as step 6, so `roll` .. `finish` moved from 6..15 to 7..16

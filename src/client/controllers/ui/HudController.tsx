@@ -95,7 +95,8 @@ export class HudController implements OnStart {
 			setLeaveConfirm: click((open: boolean) => this.menu.setLeaveConfirm(open)),
 			leaveRun: click(() => this.menu.leaveRun()),
 			exitRun: click(() => this.menu.exitRun()),
-			playTutorial: click(() => this.tutorial.playTutorial()),
+			playTutorial: click(() => this.tutorial.playTutorial("again")),
+			restartTutorial: click(() => this.tutorial.playTutorial("restart")),
 			// The outro's "Start my first run" is the main menu's Play solo.
 			startFirstRun: click(() => {
 				this.tutorial.closeOutro();
@@ -125,7 +126,7 @@ export class HudController implements OnStart {
 			openOptions: click(() => this.menu.openOptions()),
 			openLeaderboard: click(() => this.menu.openLeaderboard()),
 			inviteFriends: click(() => this.menu.inviteFriends()),
-			playTutorial: click(() => this.tutorial.playTutorial()),
+			playTutorial: click(() => this.tutorial.playTutorial("menu")),
 			back: click(() => this.menu.back()),
 			refreshLobbies: click(() => this.lobby.requestList()),
 			createLobby: click((v: LobbyVisibility) => this.menu.createLobby(v)),

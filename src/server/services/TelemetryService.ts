@@ -1,8 +1,8 @@
 import { OnStart, Service } from "@flamework/core";
 import { Janitor } from "@rbxts/janitor";
-import { AnalyticsService, Players } from "@rbxts/services";
+import { AnalyticsService, Players, Workspace } from "@rbxts/services";
 import { serverLogger } from "server/log";
-import { TUTORIAL_FUNNEL } from "shared/onboarding";
+import { ANALYTICS_DEBUG_ATTRIBUTE, TUTORIAL_FUNNEL, describeAnalyticsSpec } from "shared/onboarding";
 import {
 	RUN_FUNNEL,
 	analyticsForDailyFinish,
@@ -31,9 +31,16 @@ const log = serverLogger("Telemetry");
  * waits for it (RunValidationService `waitUntilIdle`), then the player's entry is dropped; nothing is kept for a
  * departed player after that.
  *
- * The one exception to "server-derived only": the first-run tutorial funnel (`logTutorial`, fed by
- * OnboardingService from the client's `tutorialStep` / `tutorialFinished`, filtered by shared/onboarding
- * TutorialFunnelTracker). It is drop-off data for a practice mode with nothing to win, so it is taken as reported.
+ * The one exception to "server-derived only": the tutorial / onboarding telemetry (docs/TUTORIAL_FUNNEL.md):
+ * `logTutorial` (the `TutorialAttempt` funnel and its custom events, funnel session id = the attempt id) and
+ * `logOnboarding` (the once-per-user onboarding funnel, OnboardingGate, the new-player events), fed by OnboardingService
+ * from the client's tutorial remotes, filtered and bounded by shared/onboarding PlayerTutorialTelemetry. It is drop-off
+ * data for a practice mode with nothing to win, so it is taken as reported within those bounds (TFD7).
+ *
+ * Debug echo (TF8): with the Workspace attribute ANALYTICS_DEBUG_ATTRIBUTE (`KV_AnalyticsDebug`) = true (off by
+ * default; read on every log, so it can be toggled mid-session) every spec this service logs is also printed
+ * (`[Telemetry] ANALYTICS: ...`, shared/onboarding describeAnalyticsSpec), live servers included. Studio sends nothing
+ * to AnalyticsService, so this is how a Studio session shows what would be sent.
  *
  * The Daily's events (`daily_start` / `daily_retry` / `daily_finish`, shared/run dailyAnalytics.ts) come from
  * RecordsService `onDailyActivity`: server-side session starts and accepted runs, with the attempt number and the
@@ -106,9 +113,19 @@ export class TelemetryService implements OnStart {
 		this.logAll(player, specs, attemptId);
 	}
 
+	/**
+	 * Onboarding telemetry with no funnel session (shared/onboarding: the onboarding funnel `LogOnboardingFunnelStepEvent`,
+	 * OnboardingGate, TutorialOutroChoice, the new-player events). Callers pass only what the trackers accepted.
+	 */
+	logOnboarding(player: Player, specs: ReadonlyArray<AnalyticsEventSpec>): void {
+		this.logAll(player, specs, undefined);
+	}
+
 	/** Logs specs in order; one failing call (bad field, throttling) never stops the rest. */
 	protected logAll(player: Player, specs: ReadonlyArray<AnalyticsEventSpec>, funnelSessionId: string | undefined) {
+		const echo = Workspace.GetAttribute(ANALYTICS_DEBUG_ATTRIBUTE) === true;
 		for (const spec of specs) {
+			if (echo) log.info("ANALYTICS", `${player.UserId} ${describeAnalyticsSpec(spec, funnelSessionId)}`);
 			const [ok, err] = pcall(() => this.logOne(player, spec, funnelSessionId));
 			if (!ok) log.warn("ANALYTICS_FAILED", `${spec.kind} event: ${tostring(err)}`);
 		}
@@ -122,6 +139,8 @@ export class TelemetryService implements OnStart {
 			const sessionId =
 				spec.funnel === RUN_FUNNEL || spec.funnel === TUTORIAL_FUNNEL ? funnelSessionId : undefined;
 			AnalyticsService.LogFunnelStepEvent(player, spec.funnel, sessionId, spec.step, spec.stepName, fields);
+		} else if (spec.kind === "onboarding") {
+			AnalyticsService.LogOnboardingFunnelStepEvent(player, spec.step, spec.stepName, fields);
 		} else {
 			const status =
 				spec.status === "Start"
