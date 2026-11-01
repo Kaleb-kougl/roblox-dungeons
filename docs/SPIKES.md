@@ -12,6 +12,7 @@ turned off.
 | P0: preload | Does `PreloadAsync` fetch images and sounds from content id strings, or only through instances? Does a sheet's first draw hitch? (docs/PRELOAD.md D4 / D5) | `src/client/controllers/spikes/PreloadSpikeController.ts` |
 | I0: invites | What do `PromptGameInvite`, LaunchData, `GameInvitePromptClosed`, `CanSendGameInviteAsync` and the Party API really do in a published place? (docs/INVITES.md "What the Roblox API gives us") | `src/server/services/spikes/InviteSpikeService.ts`, `src/client/controllers/spikes/InviteSpikeController.ts` |
 | UA1: UI art | Do snapped 9-slice borders land on whole screen px, does the icon atlas bleed, does a CanvasGroup keep pixels crisp, does a stretched panel centre need `flat`? (docs/UI_ART.md UA1) | `src/client/controllers/spikes/UiArtSpikeController.tsx`, `src/client/ui/spikes/UiArtSpike.tsx` |
+| L0: localization | Which fonts draw each script we may ship (tofu, fallback or correct), do Arabic shaping / right-to-left and CJK / Thai wrapping work, which locale id is the player's language, does `AutoLocalize = false` stop translated content, and what does the cloud table's CSV look like? (docs/LOCALIZATION.md L0) | `src/client/controllers/spikes/L10nSpikeController.ts`, `src/shared/spikes/l10nSpike.ts` |
 
 Tunables for all of them: `src/shared/config/spikes.ts`. HUD: `src/client/ui/spikes/SpikeHud.tsx` (top left, with buttons
 for touch devices).
@@ -331,6 +332,143 @@ Window sizes 720 p, 1080 p, 1440 p (Studio's device emulator or a resized window
 | (d) A large stretched noise centre needs `flat` | | | | |
 
 Results pending (the art is not uploaded yet). Notes (UIScale values seen, anything odd):
+
+## Spike L0: localization (docs/LOCALIZATION.md)
+
+Not a task 1 gate: it decides the fonts per script, the Roblox locale codes and which scripts can ship
+(docs/LOCALIZATION.md L0, LD8, LD12). Client code only (`L10nSpikeController`, flag `KV_L10nSpike`, tunables
+`L10N_SPIKE` in `src/shared/config/spikes.ts`; the font candidates and sample strings are data in
+`src/shared/spikes/l10nSpike.ts`, checked by `l10nSpike.spec.ts`). It is **off by default**; its two ScreenGuis
+(`KV_L10nSpike`, display order 70, and the probe `KV_L10nSpikeAuto`, the only GUI we ever create with AutoLocalize on)
+are one Janitor: turning the flag off removes both. Run it in Studio for (a)-(c), and in a **published place** for
+(d)-(f) (the account language, the cloud table and auto-translation only exist there; Studio's Test > Player Emulator
+locale picker is a useful second look, note what it changes).
+
+### Turning it on
+
+- **Command bar, while playing:** `workspace:SetAttribute("KV_L10nSpike", true)`; `false` removes it.
+- **Server console in a published place (replicates):** the same line.
+- **Code default:** set `SPIKE_DEFAULTS.l10n` to `true` in `src/shared/config/spikes.ts` (not for a published build).
+
+### What it shows (one sheet, scrolls both ways)
+
+1. **(c) The top lines** (also printed as `[L10nSpike] locale ids`, and again whenever `LocaleId` or `RobloxLocaleId`
+   changes): `LocalizationService.RobloxLocaleId`, `LocalizationService.SystemLocaleId`, `Players.LocalPlayer.LocaleId`,
+   the `AutoLocalize` default of a freshly created ScreenGui and TextLabel, and whether a TextLabel has a `TextDirection`
+   property (read through pcall).
+2. **(a) The glyph sheet:** one row per font candidate (`Arcade`, `Code`, `BuilderSans`, `SourceSans`, `GothamMedium`,
+   `Ubuntu`, `Roboto`; a font the engine lacks shows `(missing)` in red) and one column per sample: the nine Latin
+   locales (es, pt, fr, de, it, pl, tr, id, vi, each with its accents), ru (Cyrillic), ja (kana + kanji), ko, zh-hans,
+   zh-hant, th, hi (Devanagari), ar (with the number 12450 and the Latin name Kaleb inside) and pseudo (`⟦ ⟧` and
+   no-break spaces). Each cell is 240 x 26 px at text size 18, clipped; under it `fits yes|no WxH` is its `TextFits`
+   and `TextBounds`. One second after it opens, the spike prints one `[L10nSpike] <font>: ...` line per font with every
+   cell's metrics (copy them into the results).
+3. **(b) Wrapped text:** a 220 px `TextWrapped` box per script (a long German word, vi, ru, ja, ko, zh-hans, zh-hant,
+   th, hi, ar, pseudo), in `Arcade` and in `BuilderSans`; then the Arabic paragraph right-aligned with `TextDirection`
+   set to `Auto`, `LeftToRight` and `RightToLeft` (a caption says when setting it failed).
+4. **(d) The AutoLocalize probe:** three labels whose text is exactly `Localization spike probe: start the run`
+   (`L10N_SPIKE_PROBE_SOURCE`): label 3 in the sheet (root off, label on), labels 1 (root on, label on) and 2 (root on,
+   label off) bottom right. The spike prints all three texts after one second.
+
+### Test script
+
+1. **(a) Glyphs**, Studio: for every font x column, is it correct, a silent fallback (drawn, but in a visibly different
+   face from the rest of the row), tofu (boxes / blanks), or clipped (`fits no`)? Zoom a screenshot to 200 %. Pay most
+   attention to `Arcade` on the Latin columns (LD8: Latin keeps the pixel look only if Arcade draws them all) and to
+   the pseudo brackets.
+2. **(b) Arabic**, Studio: are the letters joined (shaped), not isolated forms? Do the words run right to left, with
+   `Kaleb` and `12450` each reading left to right inside? Which `TextDirection` (if the property exists) reads right?
+3. **(c) Line breaking**, Studio: do the CJK boxes break between characters and stay inside their width? Does Thai
+   break between words, cut a word mid-cluster, or overflow? Does the long German word overflow or break?
+4. **(d) Locale ids**, published place: an account whose Roblox language is Español on a device whose system language is
+   French. Read the top lines on the client; on the server console run
+   `for _, p in game.Players:GetPlayers() do print(p.Name, p.LocaleId) end` and
+   `print(game:GetService("LocalizationService").RobloxLocaleId)`. Which id follows the account language (the
+   in-experience language)? Switch the account language through every language we may ship and record each code (the
+   downloaded CSV header in step 6 lists the table's codes too).
+5. **(e) AutoLocalize**, published place, with the Creator Hub setup below: the defaults come from the top lines.
+   With the account language Español: label 1 should show the Spanish entry, label 2 English. Label 3 tells whether a
+   root's `AutoLocalize = false` keeps a descendant's `true` from translating (expected: English). Also look at the
+   rest of the game's UI: nothing of ours may change language.
+6. **(f) Cloud upload and auto-translate**, Creator Hub (steps below): does auto-translate fill both uploaded rows, does
+   it keep `{name}` intact in every language, and what is the exact header line of the downloaded CSV?
+
+### Creator Hub setup for (e) and (f)
+
+Record the menu paths you actually used in the notes (the docs we read named Creator Hub → Localization → Settings /
+Table Management, and Studio's Localization Tools).
+
+1. Publish the place. Creator Hub → Creations → the experience → **Localization** → **Settings**: source language
+   English; **Automatic Text Capture off**; **Use Translated Content on** for in-experience content; add Spanish and
+   French as supported languages.
+2. **(e) The probe entry:** in the localization table add one entry whose **Source** is exactly
+   `Localization spike probe: start the run` (no Key or Context needed), and give it a hand-written Spanish
+   translation that cannot be mistaken for a machine one, e.g. `[es] SONDA OK`.
+3. **(f) The CSV:** save these two rows as `l10n-spike.csv` (UTF-8) and upload it through Table Management:
+
+   ```csv
+   Key,Source,Context,Example
+   spike.l10n.plain,Start the run,L0 spike (f): a menu button that starts a run,
+   spike.l10n.named,"Welcome back, {name}!","L0 spike (f): a greeting; {name} is a player's display name","Welcome back, Kaleb!"
+   ```
+
+4. Turn **automatic translation on** for the supported languages (per-language toggles), wait until the entries show
+   translations (note how long it took), then **download** the table as CSV.
+5. Copy the downloaded CSV's **first line (the header)** verbatim into the results, and check each language's
+   `spike.l10n.named` for `{name}` (untouched, translated, re-cased or dropped?). Note whether auto-translate replaced
+   the hand-written `[es] SONDA OK`.
+6. Afterwards delete the three spike entries from the table, and turn Use Translated Content back to what
+   docs/LOCALIZATION.md design 4 says.
+
+### Results: localization (L0)
+
+Checklist (one line of result each):
+
+- [ ] (a) Glyph sheet per script and font (table below). Result:
+- [ ] (b) Arabic shaping and right-to-left order; `TextDirection` exists / which value works. Result:
+- [ ] (c) CJK and Thai line breaking with `TextWrapped`. Result:
+- [ ] (d) `Player.LocaleId` vs `RobloxLocaleId` (client and server) for Español account + French device; full code list. Result:
+- [ ] (e) `AutoLocalize` defaults (ScreenGui / TextLabel); root false stops translated content for descendants. Result:
+- [ ] (f) Auto-translate fills uploaded entries; `{name}` kept; exact CSV header. Result:
+
+Glyph sheet (correct / fallback / tofu / clipped):
+
+| Column | Arcade | Code | BuilderSans | SourceSans | GothamMedium | Ubuntu | Roboto |
+|---|---|---|---|---|---|---|---|
+| es | | | | | | | |
+| pt | | | | | | | |
+| fr | | | | | | | |
+| de | | | | | | | |
+| it | | | | | | | |
+| pl | | | | | | | |
+| tr | | | | | | | |
+| id | | | | | | | |
+| vi | | | | | | | |
+| ru (Cyrillic) | | | | | | | |
+| ja | | | | | | | |
+| ko | | | | | | | |
+| zh-hans | | | | | | | |
+| zh-hant | | | | | | | |
+| th | | | | | | | |
+| hi (Devanagari) | | | | | | | |
+| ar | | | | | | | |
+| pseudo `⟦ ⟧` + NBSP | | | | | | | |
+
+| Question | Studio | Published place |
+|---|---|---|
+| `RobloxLocaleId` / `SystemLocaleId` / `Player.LocaleId` (client) | | |
+| `Player.LocaleId` / `RobloxLocaleId` (server) | | |
+| AutoLocalize default: ScreenGui / TextLabel | | |
+| `TextDirection` property, best value for Arabic | | |
+| Probe labels 1 / 2 / 3 (translated or English) | | |
+| Auto-translate filled the uploaded rows (which languages, how long) | | |
+| `{name}` kept in every language | | |
+
+Downloaded CSV header (verbatim):
+
+Roblox locale codes seen (language: code):
+
+Notes (Studio version, Player Emulator behaviour, anything odd):
 
 ## Results
 

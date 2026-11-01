@@ -9,6 +9,7 @@
  *   workspace:SetAttribute("KV_SpikePreload", true)   (best set before Play: it measures the join)
  *   workspace:SetAttribute("KV_InviteSpike", true)    (client + server; only a published place has the APIs)
  *   workspace:SetAttribute("KV_UiArtSpike", true)     (client; docs/UI_ART.md UA1)
+ *   workspace:SetAttribute("KV_L10nSpike", true)      (client; docs/LOCALIZATION.md L0)
  * An attribute, when present, overrides the default below; setting it to false stops the spike
  * and cleans up everything it made.
  */
@@ -21,6 +22,7 @@ export const SPIKE_DEFAULTS = {
 	invites: false,
 	touch: false,
 	uiArt: false,
+	l10n: false,
 } as const;
 
 /** Workspace attribute names that override SPIKE_DEFAULTS. */
@@ -31,6 +33,7 @@ export const SPIKE_ATTRIBUTES = {
 	invites: "KV_InviteSpike",
 	touch: "KV_TouchSpike",
 	uiArt: "KV_UiArtSpike",
+	l10n: "KV_L10nSpike",
 } as const;
 
 export type SpikeName = keyof typeof SPIKE_DEFAULTS;
@@ -256,4 +259,42 @@ export const UI_ART_SPIKE = {
 	backdropTransparency: 0.2,
 	/** Decimals printed for the UIScale and SliceScale. */
 	scaleFormat: "%.4f",
+} as const;
+
+/**
+ * Spike L0 (docs/LOCALIZATION.md L0, docs/SPIKES.md "Spike L0"): a glyph sheet (font candidates x script samples, each
+ * cell with its TextFits and TextBounds), wrapped-text boxes per script, the Arabic sample in each TextDirection, the
+ * AutoLocalize probe labels and the locale ids. Samples and font candidates: shared/spikes l10nSpike.ts. Screen px.
+ */
+export const L10N_SPIKE = {
+	/** ScreenGui DisplayOrder: above the menus and HUD, under the spike HUD (100). */
+	displayOrder: 70,
+	/** Outer margin, gap between pieces, backdrop transparency. */
+	margin: 12,
+	gap: 6,
+	backdropTransparency: 0.15,
+	/** Monospace text size of headings and info lines. */
+	infoTextSize: 14,
+	/** Glyph sheet: the font-name column width, one cell's size, the sample's text size and the metrics line's. */
+	fontColumnWidth: 120,
+	cellWidth: 240,
+	cellHeight: 26,
+	glyphTextSize: 18,
+	metricsTextSize: 11,
+	metricsHeight: 14,
+	/** Wrapped-text boxes: width, text size, and the fonts each box is drawn in (one row per font). */
+	wrapWidth: 220,
+	wrapTextSize: 16,
+	wrapFonts: ["Arcade", "BuilderSans"],
+	/** The Arabic direction row: box width and the TextDirection names tried (each set through pcall). */
+	directionWidth: 320,
+	directions: ["Auto", "LeftToRight", "RightToLeft"],
+	/** The AutoLocalize probe labels: width, height, text size. */
+	probeWidth: 360,
+	probeHeight: 28,
+	probeTextSize: 18,
+	/** Seconds after the sheet mounts before the TextFits / TextBounds table is printed (layout has settled). */
+	logDelaySec: 1,
+	/** Format of a cell's metrics line: TextFits, then TextBounds width x height. */
+	metricsFormat: "fits %s  %dx%d",
 } as const;

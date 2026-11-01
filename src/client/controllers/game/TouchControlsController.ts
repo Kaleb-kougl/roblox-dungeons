@@ -11,7 +11,7 @@ import {
 	selectRobloxMenuOpen,
 	selectSnapshot,
 } from "client/store";
-import { HUD_FONT, role, str, themePack } from "client/ui";
+import { HUD_FONT, role, str, themePack, createKvScreenGui } from "client/ui";
 import { STUDS_PER_TILE, TOUCH } from "shared/config";
 import type { DisplaySettings } from "shared/settings";
 import type { ImageRef } from "shared/theme";
@@ -389,8 +389,7 @@ export class TouchControlsController implements OnStart {
 		const playerGui = Players.LocalPlayer.WaitForChild("PlayerGui") as PlayerGui;
 		playerGui.ScreenOrientation = Enum.ScreenOrientation.LandscapeSensor;
 
-		const gui = new Instance("ScreenGui");
-		gui.Name = GUI_NAME;
+		const gui = createKvScreenGui(GUI_NAME);
 		gui.ResetOnSpawn = false;
 		gui.ScreenInsets = Enum.ScreenInsets.CoreUISafeInsets;
 		gui.DisplayOrder = TOUCH_LAYOUT.displayOrder;

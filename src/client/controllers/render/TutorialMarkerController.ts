@@ -1,6 +1,7 @@
 import { Controller, OnStart } from "@flamework/core";
 import { Janitor } from "@rbxts/janitor";
 import { RunService, Workspace } from "@rbxts/services";
+import { createKvBillboardGui } from "client/ui";
 import { STUDS_PER_TILE } from "shared/config";
 import type { ImageRef } from "shared/theme";
 import { RENDER_ORDER, SPRITE_VIEW, floorStudsY, studsX, studsZ, uprightImageBillboard } from "shared/view";
@@ -118,7 +119,7 @@ function buildBeam(folder: Folder, image: ImageRef): [BillboardGui, Part] {
 	anchor.Transparency = HIDDEN;
 	anchor.Size = new Vector3(SPRITE_VIEW.anchorStuds, SPRITE_VIEW.anchorStuds, SPRITE_VIEW.anchorStuds);
 	const b = uprightImageBillboard(image.w, image.h, TUTORIAL_VIEW.markerImageHeightTiles, image.pivot);
-	const gui = new Instance("BillboardGui");
+	const gui = createKvBillboardGui("Beam");
 	gui.Size = new UDim2(b.w, 0, b.h, 0);
 	gui.StudsOffset = new Vector3(b.offsetX, b.offsetY, b.offsetZ);
 	gui.LightInfluence = 0;

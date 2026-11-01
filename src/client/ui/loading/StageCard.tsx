@@ -166,6 +166,7 @@ export function StageCard(props: StageCardProps) {
 			key="KV_Stage"
 			ref={guiRef}
 			ResetOnSpawn={false}
+			AutoLocalize={false}
 			Enabled={props.visible}
 			DisplayOrder={LOADING_VIEW.displayOrder}
 			IgnoreGuiInset={true}

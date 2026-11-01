@@ -3,7 +3,7 @@ import { Janitor } from "@rbxts/janitor";
 import React from "@rbxts/react";
 import { createRoot, type Root } from "@rbxts/react-roblox";
 import { Players, RunService, UserInputService, Workspace } from "@rbxts/services";
-import { DevPanel, type DevPanelProps } from "client/ui";
+import { DevPanel, type DevPanelProps, createKvScreenGui } from "client/ui";
 import { DEV_MODE, DEV_PANEL_VIEW } from "shared/config";
 import { isBossFloor } from "shared/dungeon";
 import { RUN_ATTRIBUTES } from "shared/play";
@@ -59,8 +59,7 @@ export class DevModeController implements OnStart {
 		if (this.root !== undefined) return;
 		this.seed = this.initialSeed();
 		this.open = Workspace.GetAttribute(DEV_MODE.openOnJoinAttribute) === true;
-		const gui = new Instance("ScreenGui");
-		gui.Name = GUI_NAME;
+		const gui = createKvScreenGui(GUI_NAME);
 		gui.ResetOnSpawn = false;
 		gui.DisplayOrder = DEV_MODE.displayOrder;
 		gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling;

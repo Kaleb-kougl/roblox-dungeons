@@ -1,6 +1,7 @@
 import { Controller, OnStart } from "@flamework/core";
 import { Janitor } from "@rbxts/janitor";
 import { RunService } from "@rbxts/services";
+import { createKvBillboardGui } from "client/ui";
 import { HUD_FONT } from "client/ui/theme";
 import { RENDER_ORDER } from "shared/view";
 import {
@@ -43,8 +44,7 @@ class PopView {
 		this.att = new Instance("Attachment");
 		this.att.Name = name;
 		this.att.Parent = holder;
-		const gui = new Instance("BillboardGui");
-		gui.Name = name;
+		const gui = createKvBillboardGui(name);
 		gui.Adornee = this.att;
 		gui.AlwaysOnTop = true;
 		gui.LightInfluence = 0;

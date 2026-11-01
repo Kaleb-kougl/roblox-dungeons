@@ -1,6 +1,7 @@
 import { Controller, OnStart } from "@flamework/core";
 import { Janitor } from "@rbxts/janitor";
 import { Players, Workspace } from "@rbxts/services";
+import { createKvScreenGui } from "client/ui";
 import type { JuiceSettings } from "shared/settings";
 import { StateWatch } from "shared/view";
 import {
@@ -71,8 +72,7 @@ export class HurtFlashController implements OnStart {
 	}
 
 	private build(): ScreenGui {
-		const gui = new Instance("ScreenGui");
-		gui.Name = GUI_NAME;
+		const gui = createKvScreenGui(GUI_NAME);
 		gui.ResetOnSpawn = false;
 		gui.IgnoreGuiInset = true;
 		gui.ScreenInsets = Enum.ScreenInsets.None;

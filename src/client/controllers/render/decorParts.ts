@@ -1,3 +1,4 @@
+import { createKvBillboardGui, createKvSurfaceGui } from "client/ui";
 import { CAMERA_YAW_DEG, STUDS_PER_TILE } from "shared/config";
 import type { SpriteSet, WorldVisual } from "shared/theme";
 import {
@@ -89,8 +90,7 @@ export class ArtBillboard {
 		this.ox = b.offsetX;
 		this.oy = b.offsetY;
 		this.oz = b.offsetZ + extraDepthStuds;
-		const gui = new Instance("BillboardGui");
-		gui.Name = name;
+		const gui = createKvBillboardGui(name);
 		gui.Size = new UDim2(b.w, 0, b.h, 0);
 		gui.StudsOffset = new Vector3(this.ox, this.oy, this.oz);
 		gui.LightInfluence = 0;
@@ -215,7 +215,7 @@ export function buildFloorArt(
 	part.Transparency = HIDDEN;
 	part.Size = new Vector3(w, thickness, d);
 	part.CFrame = new CFrame(at.X, at.Y + lift - thickness / 2, at.Z).mul(CAMERA_YAW).mul(new CFrame(ox, 0, oz));
-	const gui = new Instance("SurfaceGui");
+	const gui = createKvSurfaceGui("Floor");
 	gui.Face = Enum.NormalId.Top;
 	gui.SizingMode = Enum.SurfaceGuiSizingMode.FixedSize;
 	gui.CanvasSize = size;

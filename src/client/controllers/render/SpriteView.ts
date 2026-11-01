@@ -1,3 +1,4 @@
+import { createKvBillboardGui } from "client/ui";
 import type { Pivot, SpriteSet } from "shared/theme";
 import {
 	ACTOR_OUTLINE,
@@ -112,8 +113,7 @@ export class SpriteView {
 		anchor.Size = new Vector3(SPRITE_VIEW.anchorStuds, SPRITE_VIEW.anchorStuds, SPRITE_VIEW.anchorStuds);
 		this.anchor = anchor;
 
-		const gui = new Instance("BillboardGui");
-		gui.Name = set.id;
+		const gui = createKvBillboardGui(set.id);
 		this.gui = gui;
 		this.cellW = set.frameW;
 		this.cellH = set.frameH;

@@ -1,7 +1,7 @@
 import { Controller, OnStart } from "@flamework/core";
 import { Janitor } from "@rbxts/janitor";
 import { Workspace } from "@rbxts/services";
-import { HUD_FONT } from "client/ui";
+import { HUD_FONT, createKvSurfaceGui } from "client/ui";
 import { CAMERA_YAW_DEG, STUDS_PER_TILE } from "shared/config";
 import { MAX_PARTY_SIZE, partySize, playerAt, type SimState } from "shared/sim";
 import type { JuiceSettings } from "shared/settings";
@@ -252,7 +252,7 @@ export class ParryFlashController implements OnStart {
 		);
 		part.CFrame = PARKED;
 		const [w, h] = shoutCanvasSize();
-		const surface = new Instance("SurfaceGui");
+		const surface = createKvSurfaceGui("Shout");
 		surface.Face = Enum.NormalId.Top;
 		surface.SizingMode = Enum.SurfaceGuiSizingMode.FixedSize;
 		surface.CanvasSize = new Vector2(w, h);

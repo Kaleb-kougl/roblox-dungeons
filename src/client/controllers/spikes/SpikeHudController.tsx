@@ -4,7 +4,7 @@ import { ReflexProvider } from "@rbxts/react-reflex";
 import { createRoot } from "@rbxts/react-roblox";
 import { Players } from "@rbxts/services";
 import { clientStore } from "client/store";
-import { SpikeHud } from "client/ui";
+import { SpikeHud, createKvScreenGui } from "client/ui";
 
 const GUI_NAME = "KV_SpikeHud";
 const DISPLAY_ORDER = 100;
@@ -17,8 +17,7 @@ const DISPLAY_ORDER = 100;
 export class SpikeHudController implements OnStart {
 	onStart(): void {
 		const playerGui = Players.LocalPlayer.WaitForChild("PlayerGui");
-		const screenGui = new Instance("ScreenGui");
-		screenGui.Name = GUI_NAME;
+		const screenGui = createKvScreenGui(GUI_NAME);
 		screenGui.ResetOnSpawn = false;
 		screenGui.DisplayOrder = DISPLAY_ORDER;
 		screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling;
