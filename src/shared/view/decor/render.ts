@@ -129,3 +129,25 @@ export function ambientEmitterSpec(
 	const mean = (motionDef.lifetime[0] + motionDef.lifetime[1]) * HALF;
 	return { live, rate: live > 0 && mean > 0 ? live / mean : 0, motion: motionDef };
 }
+
+/**
+ * The abyss motes (docs/VOID_DECOR.md VD8): a second, sparser emitter deep in the void, DECOR_FX.abyssMoteShare of the
+ * ambient emitter's live count (so the band's light, the juice particle level and motionScale scale it the same way,
+ * and Reduced motion zeroes it) in their own slow drift (DECOR_FX.abyssMoteMotion), whatever the biome's motion.
+ */
+export function abyssMoteSpec(ambient: AmbientEmitterSpec): AmbientEmitterSpec {
+	const m = DECOR_FX.abyssMoteMotion;
+	const live = math.max(0, math.floor(ambient.live * DECOR_FX.abyssMoteShare));
+	const mean = (m.lifetime[0] + m.lifetime[1]) * HALF;
+	return { live, rate: live > 0 && mean > 0 ? live / mean : 0, motion: m };
+}
+
+/**
+ * The most a particle of motion `m` can climb from where it is emitted, tiles (the emitter's Speed and Acceleration are
+ * in tiles x STUDS_PER_TILE): its fastest speed straight up for its longest life, plus any upward acceleration. A bound,
+ * not a mean: the abyss motes' volume sits low enough that even this stays under the floor (voidDecor parts.spec).
+ */
+export function ambientMaxRiseTiles(m: AmbientMotion): number {
+	const life = m.lifetime[1];
+	return m.speed[1] * life + HALF * math.max(0, m.accelY) * life * life;
+}

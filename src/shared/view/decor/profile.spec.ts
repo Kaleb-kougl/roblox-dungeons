@@ -14,6 +14,7 @@ import {
 	listThemePacks,
 	parseHex,
 	relativeLuminance,
+	voidReport,
 } from "shared/theme";
 import {
 	DECOR_BAND_CONTRAST_CHECKS,
@@ -216,6 +217,46 @@ describe("decor profile: darkest-band contrast", () => {
 						expect(r.min).toBe(check.min);
 						expect(r.ratio).toBe(contrastRatio(manifest.colors[check.role], r.color));
 					}
+				}
+			}
+		}
+	});
+
+	it("keeps enemy bullets >= 3:1 on the void's shoulder and ledge in every band, darkest included (docs/VOID_DECOR.md VD1)", () => {
+		for (const id of listThemePacks()) {
+			const manifest = THEME_PACKS[id];
+			for (let band = 0; band < DECOR_DEPTH.bands.size(); band++) {
+				const light = DECOR_DEPTH.bands[band].light;
+				const rows = voidReport(manifest, light);
+				// shoulder and ledge per biome
+				expect([id, band, rows.filter((r) => r.check === "bullet").size()]).toEqual([
+					id,
+					band,
+					BIOMES.size() * 2,
+				]);
+				for (const r of rows) {
+					if (!r.ok)
+						print(`[void] ${id} band ${band} ${r.biome} ${r.check} ${r.subject} ${r.color}: ${r.value}`);
+					expect([id, band, r.biome, r.check, r.subject, r.ok]).toEqual([
+						id,
+						band,
+						r.biome,
+						r.check,
+						r.subject,
+						true,
+					]);
+					expect(r.light).toBe(light);
+				}
+			}
+			// the darkest band's rows describe the shoulder dimmed by that band's light (the bullet is self-lit)
+			const light = DECOR_DEPTH.bands[darkestDecorBand()].light;
+			for (const r of voidReport(manifest, light)) {
+				if (r.check === "bullet" && r.subject === "shoulder") {
+					expect([id, r.biome, r.color]).toEqual([
+						id,
+						r.biome,
+						dimHex(manifest.biomes[r.biome].shoulder, light),
+					]);
 				}
 			}
 		}

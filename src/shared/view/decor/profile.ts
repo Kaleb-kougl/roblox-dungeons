@@ -19,9 +19,8 @@ import {
 	MIN_ENEMY_OUTLINE_CONTRAST,
 	MIN_PLAYER_OUTLINE_CONTRAST,
 	contrastRatio,
+	dimHex,
 	isHexColor,
-	parseHex,
-	toHex,
 	type BiomeId,
 	type ColorRole,
 } from "shared/theme";
@@ -100,38 +99,11 @@ export function darkestDecorBand(): number {
 	return out;
 }
 
-const CHANNEL_MAX = 255;
-const SRGB_LINEAR_KNEE = 0.04045;
-const SRGB_LINEAR_SLOPE = 12.92;
-const SRGB_OUT_KNEE = 0.0031308;
-const SRGB_OFFSET = 0.055;
-const SRGB_SCALE = 1.055;
-const SRGB_GAMMA = 2.4;
-
-function toLinear(c: number): number {
-	const s = c / CHANNEL_MAX;
-	return s <= SRGB_LINEAR_KNEE ? s / SRGB_LINEAR_SLOPE : ((s + SRGB_OFFSET) / SRGB_SCALE) ** SRGB_GAMMA;
-}
-
-function fromLinear(l: number): number {
-	const s = l <= SRGB_OUT_KNEE ? l * SRGB_LINEAR_SLOPE : SRGB_SCALE * l ** (1 / SRGB_GAMMA) - SRGB_OFFSET;
-	return s * CHANNEL_MAX;
-}
-
 /**
- * `hex` lit by `light` (0..1) instead of 1: each channel scaled in linear light (what a dimmer ambient does to an
- * unlit surface), back to sRGB. Its relative luminance is `light` times the original's (to rounding).
+ * `hex` lit by `light` (0..1) instead of 1, in linear light (shared/theme `dimHex`, re-exported: the theme's void check,
+ * docs/VOID_DECOR.md VD1, dims the shoulder the same way).
  */
-export function dimHex(hex: string, light: number): string {
-	const rgb = parseHex(hex);
-	if (rgb === undefined) return hex;
-	const k = math.clamp(light, 0, 1);
-	return toHex({
-		r: fromLinear(toLinear(rgb.r) * k),
-		g: fromLinear(toLinear(rgb.g) * k),
-		b: fromLinear(toLinear(rgb.b) * k),
-	});
-}
+export { dimHex };
 
 /** A self-lit colour role drawn over the floors and walls, and the WCAG ratio it must keep against them. */
 export interface DecorBandContrastCheck {

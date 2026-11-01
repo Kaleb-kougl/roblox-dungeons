@@ -90,7 +90,7 @@ if (set !== undefined) {
 | `hex(role)` | `"#rrggbb"` | warns once, `#ff00ff` |
 | `str(key, vars?)` | text with `{name}` filled (active locale, then default table) | warns once, returns the key |
 | `has(id)` / `hasString(key)` | boolean | |
-| `biome(id)` | `{ id, forgeTheme, nameKey, floor, wall, floorColor, wallColor, tiles, materials }` (`materials`: `{ floor, wall, pool }` material names, every surface filled) | warns once, magenta floor/wall, SmoothPlastic materials; a bad material name warns once and uses SmoothPlastic |
+| `biome(id)` | `{ id, forgeTheme, nameKey, floor, wall, shoulder, abyss, ledge, floorColor, wallColor, shoulderColor, abyssColor, ledgeColor, tiles, materials }` (`materials`: `{ floor, wall, pool, shoulder, cliff }` material names, every surface filled; `ledge` = `voidLedgeColor(shoulder, abyss)`, docs/VOID_DECOR.md VD1) | warns once, magenta floor/wall, SmoothPlastic materials; a bad material name warns once and uses SmoothPlastic |
 | `sound(id)` | `SoundRef` `{ assetId \| undefined, volume, group: "sfx" \| "music", variants, pitch?, minInterval? }`, cached ([sound extras](#sound-extras-variants-pitch-mininterval)) | warns once, silent |
 | `fx(id)` | `FxSprite` (one-facing `set`, `frames` / `fps` / `loop`, `sizeTiles` / `widthTiles` / `heightTiles`, `tint`, `color`, `additive`, `frame(i)`), cached ([sprite effects](#sprite-effects-fx)) | `undefined`, **no warning** (effects are optional); malformed art warns once, `undefined` |
 | `texture(id)` | uploaded image `assetId`, or `undefined` while a placeholder (and for a `sprites` asset) | warns once, `undefined` |
@@ -100,6 +100,7 @@ if (set !== undefined) {
 | `placeholder(id)` | `PlaceholderVisual` | warns once, a magenta block the size of the slot's cell |
 | `decor(id)` | `DecorPiece` (layer, glow, glowAt, emissive, `art`: `WorldImage` \| `WorldSprites`), cached | `undefined`, **no warning** (decor is optional); malformed art warns once, `undefined` |
 | `decorVariants(biome, kind)` | every `DecorPiece` of a kind for a biome: base ID, then `.1` .. `.4` | `[]`, no warning |
+| `voidDecorVariants(biome, kind)` | the same for optional void art `decor.void.b<n>.<kind>` (docs/VOID_DECOR.md VD7) | `[]`, no warning |
 | `ambient(biome)` | `AmbientParticles` (texture, `sizeStuds`, `transparency` clamped to `DECOR_PARTICLE`, `emissive`, `role`, `color`) | `undefined`, no warning |
 | `breakable(kind)` | `Breakable` (`id`, `nameKey`, `color`, `art`: `WorldVisual` \| undefined, `placeholder`), cached | warns once, magenta placeholder |
 | `visualColor(ref)` / `visualHex(ref)` | colour of a placeholder's `color` (a role, a biome surface, or missing) | |
@@ -315,7 +316,12 @@ stays. `tilesPerImage` on any other slot is an error.
 
 ### Biome materials (`materials`, docs/DECOR.md R1)
 
-A biome may name the Roblox built-in material of its floor slabs, wall blocks and sunken pools:
+A biome may name the Roblox built-in material of its floor slabs, wall blocks and sunken pools, and (docs/VOID_DECOR.md
+VD1) of the void's rock shoulder and its cliffs (ledges, outcrops): surfaces `floor`, `wall`, `pool`, `shoulder`,
+`cliff`. Every biome also carries two required void colours next to `floor` / `wall`: `shoulder` and `abyss`
+(voidColors.ts `voidReport`: the shoulder >= `VOID_CONTRAST.shoulderVsFloor` (4) CIE76 from the floor and nearer the
+wall than the floor; abyss <= ledge <= shoulder in luminance; `enemyBullet` >= 3:1 on shoulder and ledge; the abyss
+>= 40 CIE76 from `enemyBullet` and `telegraph`).
 
 ```ts
 "biome.2": { name: "biome.2.name", floor: "#2a1a16", wall: "#4a2a20", tiles: { /* ... */ },
@@ -354,6 +360,7 @@ an error):
 | ID | What |
 | --- | --- |
 | `decor.delve.b<n>.<kind>` | a piece for biome n (b1..b5 = `biome.1`..`biome.5`); the kind segment is the kind in lowercase (`shardIce` -> `shardice`; `decorId("biome.3", "shardIce")`) |
+| `decor.void.b<n>.<kind>[.<v>]` | optional void art for biome n (docs/VOID_DECOR.md VD7): `VOID_DECOR.kinds` spire, crag, grave, deadtree, statue (tall / low), vent, root, bush (low), drift (flat); `voidDecorId("biome.3", "spire")` |
 | `decor.delve.b<n>.<kind>.<v>` | variant v (1..`DECOR_MAX_VARIANTS` = 4: `bones1`..`3`, `bricks` / `rocks` debris); renderers pick one per cell by hash among `decorVariants(biome, kind)` |
 | `decor.fx.torch` / `flame` / `glow` / `glint` / `zone` | effects: flame loop on a lit wall torch (`vfx/flame`), bigger loop on a lit brazier (`vfx/flames`), soft glow under glowing pieces (`vfx/glow`), treasure sparkle (`vfx/glint`), open-stairwell ring (`vfx/zone`) |
 | `decor.fx.ambient.b<n>` | biome n's ambient particle texture (ParticleEmitter.Texture) |
@@ -368,6 +375,7 @@ floor where it could hide a bullet:
 | `tall`, `low` (placed on far-wall tops) | brazier, sarco, pillar, grave, candle, icicle, shardIce (the web plan's tall pieces, in its priority order); wall, wallBroken, column, columnBroken (R6 far-wall dressing) |
 | `flat` (where the Forge put them) | debris, bones, crack, moss, roots, ring, bossCrystal, shrineCrystal, brokenBarrel, brokenCrate (the decal a broken breakable leaves) |
 | `wall` | torch, banner |
+| `flat` / `low` (void dressing, docs/VOID_DECOR.md VD7) | flagstones (flat), curb (low only) |
 
 `chest` (the treasure interactable sits there) and `arch` (doorways stay clear) are never drawn and are not kinds;
 nor is `gems` (docs/BOOST_ART.md decision 2: a gem cluster on the floor always means a boost drop).

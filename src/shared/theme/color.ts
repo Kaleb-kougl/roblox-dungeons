@@ -99,6 +99,39 @@ export function toLab(rgb: Rgb): Lab {
 	return { l: 116 * fy - 16, a: 500 * (fx - fy), b: 200 * (fy - fz) };
 }
 
+// sRGB transfer function (IEC 61966-2-1). Standard constants, not tunables.
+const SRGB_OUT_KNEE = 0.0031308;
+const SRGB_SLOPE = 12.92;
+const SRGB_OFFSET = 0.055;
+const SRGB_SCALE = 1.055;
+const SRGB_GAMMA = 2.4;
+
+/**
+ * Roblox port (docs/DECOR.md R8; moved here from shared/view/decor for docs/VOID_DECOR.md VD1): `hex` lit by `light`
+ * (0..1, clamped) instead of 1: each channel scaled in linear light (what a dimmer ambient does to an unlit surface),
+ * back to sRGB. Its relative luminance is `light` times the original's (to rounding). Malformed input comes back as is.
+ */
+export function dimHex(hex: string, light: number): string {
+	const rgb = parseHex(hex);
+	if (rgb === undefined) {
+		return hex;
+	}
+	const k = math.clamp(light, 0, 1);
+	const toLinear = (c: number) => {
+		const s = c / CHANNEL_MAX;
+		return s <= SRGB_LINEAR_KNEE ? s / SRGB_SLOPE : ((s + SRGB_OFFSET) / SRGB_SCALE) ** SRGB_GAMMA;
+	};
+	const fromLinear = (l: number) => {
+		const s = l <= SRGB_OUT_KNEE ? l * SRGB_SLOPE : SRGB_SCALE * l ** (1 / SRGB_GAMMA) - SRGB_OFFSET;
+		return s * CHANNEL_MAX;
+	};
+	return toHex({
+		r: fromLinear(toLinear(rgb.r) * k),
+		g: fromLinear(toLinear(rgb.g) * k),
+		b: fromLinear(toLinear(rgb.b) * k),
+	});
+}
+
 /**
  * CIE LCh chroma C* (sqrt(a*^2 + b*^2) in CIELAB under D65): 0 for a neutral grey, ~100+ for a vivid primary. NaN for
  * malformed input. The combo's broken grey is held under a ceiling (contract.ts COMBO_COLOR_RULES.maxBrokenChroma).

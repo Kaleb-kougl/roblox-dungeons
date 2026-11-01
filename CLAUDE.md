@@ -35,6 +35,7 @@ Record every ported module in `PROVENANCE.md` (ported module, source path, sourc
 | `docs/DEMON_ART.md` | Placeholder enemies as 2D Demons (bruiser = Demon Beast 3; turrets sprayer / caster = Demon Spawn 8 / 11; Lords of Pain art unchanged): plan, tasks DA0-DA15, decisions DD1-DD7 |
 | `docs/BRAMBLE_ART.md` | Mother Bramble (`boss.act1`) as a 2D Demons Elite: state-to-animation mapping, size and budget, tasks BR0-BR7, decisions BD1-BD7 |
 | `docs/ROOM_EDGES.md` | Room edges (dashed floor line where every corridor meets a room, tinted safe / waiting / live): plan, tasks RE1-RE8, decisions RD1-RD9 |
+| `docs/VOID_DECOR.md` | Void decoration (rock shoulder along every wall and corridor, ledges, a dark biome-tinted abyss, set pieces framing rooms from behind their far walls; presentation only): census, plan, tasks VD0-VD11, decisions VDD1-VDD9 |
 | `docs/HUD_LAYOUT.md` | In-run HUD footprint (corner panels, full-width band fix, info line to the pause menu, occlusion fade): plan, tasks H1-H9, decisions HD1-HD8 |
 | `docs/FEEL.md` | Game feel pass (hurt flash and jolt, hit flash / hold / push, squash & stretch, roll afterimages, low-health pulse, screen shake setting): plan, tasks J1-J12, decisions JD1-JD13 |
 | `docs/MINIMAP.md` | Minimap with fog of war (corner map + full-map toggle, sight + whole-room reveal, shared party map): plan, tasks M0-M12, decisions MD1-MD14 |
@@ -457,6 +458,25 @@ Decision log (deviations from `PLAN.md`):
   `decor.fx.glint` on loaded pieces (`BREAKABLE_LOOT_VIEW`), a hop for `fromPiece` landings, a fizzle for lost loot,
   port audio ID `sfx.breakable.loot` (SILENT in the placeholder, falls back to `sfx.boost.drop`); no Luau-locals change.
   Debug `KV_LootDebug`. Studio check, the vale clip (BL7) and playtest (BL9) pending.
+
+- **Void decoration (docs/VOID_DECOR.md).** Presentation only (no sim, dungeon, lockstep, hash, replay, fixture, minimap
+  or collision change; VOID cells stay VOID). Pure core `shared/view/voidDecor` (`voidField`, `planVoid` /
+  `planVoidCached`: per void cell a layer, shoulder / ledge / outcrop / abyss, and a top, greedy-merged into <= 500
+  columns a floor; `VOID`, `VOID_DEPTH` per decor depth band, `VOID_PIECES`, `VOID_VIEW`; salts of its own, never the
+  Forge rng). `VoidController` builds one render-only Part per column (top at 0.85 x wall height, down into the
+  backdrop); the backdrop moved to `VOID.abyssDepthTiles` (5; `GAME_WORLD.backdropDepthTiles` is gone) in the biome's
+  abyss colour; a sparse abyss mote emitter under the floor (`DECOR_FX.abyssMote*`). Theme: every `BiomeDef` requires
+  `shoulder` / `abyss` hex (`BiomeTheme` adds `ledge` = `voidLedgeColor`, `VOID_COLORS.ledgeMix`), surfaces `shoulder` /
+  `cliff` join `BIOME_MATERIAL_SURFACES`, validator `voidReport` (`VOID_CONTRAST.shoulderVsFloor` 4 CIE76 and the
+  shoulder nearer the wall than the floor; luminance shoulder >= ledge >= abyss; `enemyBullet` >= 3:1 on shoulder and
+  ledge; abyss >= 40 CIE76 from `enemyBullet` / `telegraph`); `dimHex` moved to shared/theme `color.ts`. Decor kinds
+  `flagstones` (flat) and `curb` (low) appended to `DECOR_KINDS`; optional `decor.void.b<n>.<kind>` biome kinds
+  (`VOID_DECOR`, `pack.voidDecorVariants`). planDecor takes an optional `voidPlan` (source `"void"`, entries' `y` = the
+  surface top, appended after every decor entry): standing pieces pass the footprint rule at their surface AND the
+  far-side rule (`farSide`: their room screen-down, no walkable cell screen-up; VDD2); without a void plan planDecor is
+  byte-identical. `decorPlan.ts` / `decor.ts` import `voidDecor/config` and `/layer` by file (a require cycle through
+  the barrel). Debug `KV_VoidOff` / `KV_VoidDebug`. Vale `flagstones` / `curb` (`tiles` / `wall1`) stay dormant until
+  the decor atlas is rebuilt and re-uploaded (VD6 owner steps). Studio checks pending.
 
 ## Commands
 

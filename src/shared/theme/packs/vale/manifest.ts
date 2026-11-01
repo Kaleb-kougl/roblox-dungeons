@@ -106,13 +106,16 @@ type AssetIds = Readonly<Record<string, string>>;
  *   - biome.3 frost: Snow floor, Glacier walls, Ice pools (the frozen lake).
  *   - biome.4 grim: Slate floor, Cobblestone walls (crypt masonry), Mud pools (the miasma).
  *   - biome.5 verdant: Grass floor, pale Limestone walls (the ruin), Glass pools (still water).
+ * The void (docs/VOID_DECOR.md VD1, its biome table): the rock shoulder along the walls and its cliffs (ledges and
+ * outcrops): ancient Brick (as its walls) / Rock, molten Basalt / Basalt, frost Glacier / Ice, grim Slate / Rock,
+ * verdant Ground / Mud. The shoulder and abyss colours are the placeholder pack's (inherited with its biomes).
  */
 export const VALE_BIOME_MATERIALS: Readonly<Record<BiomeId, Readonly<BiomeMaterials>>> = {
-	"biome.1": { floor: "Pavement", wall: "Brick" },
-	"biome.2": { floor: "Basalt", wall: "Rock", pool: "CrackedLava" },
-	"biome.3": { floor: "Snow", wall: "Glacier", pool: "Ice" },
-	"biome.4": { floor: "Slate", wall: "Cobblestone", pool: "Mud" },
-	"biome.5": { floor: "Grass", wall: "Limestone", pool: "Glass" },
+	"biome.1": { floor: "Pavement", wall: "Brick", shoulder: "Brick", cliff: "Rock" },
+	"biome.2": { floor: "Basalt", wall: "Rock", pool: "CrackedLava", shoulder: "Basalt", cliff: "Basalt" },
+	"biome.3": { floor: "Snow", wall: "Glacier", pool: "Ice", shoulder: "Glacier", cliff: "Ice" },
+	"biome.4": { floor: "Slate", wall: "Cobblestone", pool: "Mud", shoulder: "Slate", cliff: "Rock" },
+	"biome.5": { floor: "Grass", wall: "Limestone", pool: "Glass", shoulder: "Ground", cliff: "Mud" },
 };
 
 /**
@@ -240,6 +243,18 @@ export const VALE_DECOR_PIECES: ReadonlyArray<ValeDecorPiece> = [
 ];
 
 /**
+ * docs/VOID_DECOR.md VD6: the void's two standard kinds, the Lords of Pain `tiles` flagstone patch (flat) and the `wall1`
+ * low curb. Neither is in the built decor atlas yet (art/atlases.json worldArt lacks them: adding them repacks the
+ * uploaded decor-atlas.png, so the owner adds them at its next rebuild, steps in docs/VOID_DECOR.md VD6). Mapped like
+ * VALE_DECOR_PIECES, but each only while VALE_WORLD_LAYOUTS has its art: dormant until then, on by itself after the
+ * rebuild (layout.ts) and the re-upload (assetIds.ts).
+ */
+export const VALE_VOID_DECOR_PIECES: ReadonlyArray<ValeDecorPiece> = [
+	{ kind: "flagstones", art: "tiles", layer: "flat" },
+	{ kind: "curb", art: "wall1", layer: "low" },
+];
+
+/**
  * World art pieces in layout.ts that no ID maps onto: the four gemstone clusters, decor until docs/BOOST_ART.md
  * decision 2 (gems are boost drops now). They stay in art/atlases.json and the uploaded decor-atlas.png only so that
  * atlas does not repack and need a re-upload; remove them (here and in atlases.json) at the next decor atlas rebuild.
@@ -341,6 +356,15 @@ function addWorldArt(manifest: ThemeManifest, ids: AssetIds): void {
 			const asset = worldAsset(worldLayout(piece.art), ids, {
 				layer: piece.layer,
 				glow: piece.glow,
+				outline: piece.layer === "tall" || piece.layer === "low",
+			});
+			if (asset !== undefined) manifest.assets[decorId(b.id, piece.kind, piece.variant)] = asset;
+		}
+		for (const piece of VALE_VOID_DECOR_PIECES) {
+			const layout = VALE_WORLD_LAYOUTS[piece.art];
+			if (layout === undefined) continue; // not built yet (see VALE_VOID_DECOR_PIECES)
+			const asset = worldAsset(layout, ids, {
+				layer: piece.layer,
 				outline: piece.layer === "tall" || piece.layer === "low",
 			});
 			if (asset !== undefined) manifest.assets[decorId(b.id, piece.kind, piece.variant)] = asset;

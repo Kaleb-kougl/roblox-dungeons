@@ -11,6 +11,10 @@
  * Roblox port (docs/DECOR.md): decor lookups (`decor`, `decorVariants`, `ambient`) are optional art and never warn for
  * an ID the pack leaves out; `breakable` is required art (art, or its placeholder box).
  *
+ * Roblox port (docs/VOID_DECOR.md VD1, VD7): `biome` carries the void's `shoulder` / `abyss` colours and the derived
+ * `ledge` (voidLedgeColor) and the shoulder / cliff materials; `voidDecorVariants` looks up optional void art
+ * (`decor.void.b<n>.<kind>[.<v>]`, never warns for a kind the pack leaves out).
+ *
  * Roblox port (docs/BOOSTS.md B5): `boost` is required art too (art, or its placeholder gem), with its strings.
  *
  * Roblox port (docs/FX_AUDIO.md A2, F1): `sound` resolves variants, pitch jitter and minimum intervals (cached);
@@ -28,7 +32,6 @@ import {
 	BIOMES,
 	BIOME_MATERIALS,
 	BIOME_MATERIAL_SURFACES,
-	DECOR_KIND_LAYERS,
 	DECOR_MAX_VARIANTS,
 	DECOR_MIN_OUTLINE_POINTS,
 	DECOR_PARTICLE,
@@ -49,6 +52,7 @@ import {
 	decorAmbientRole,
 	decorId,
 	parseDecorId,
+	voidDecorId,
 	requiredAnimationList,
 	requiredBaseAnimations,
 	slotFor,
@@ -62,6 +66,7 @@ import {
 	type ForgeTheme,
 	type FxId,
 	type SoundGroupName,
+	type VoidDecorKind,
 } from "./contract";
 import { missingVisual, placeholderVisualFor, type PlaceholderColor, type PlaceholderVisual } from "./placeholders";
 import {
@@ -95,6 +100,7 @@ import {
 	type SpriteSheetImage,
 } from "./types";
 import { describeValue, isArrayLike, isInteger, isObj, sortedEntries, sortedKeys, startsWith, type Obj } from "./util";
+import { voidLedgeColor } from "./voidColors";
 
 export const DEFAULT_PACK_ID = "placeholder";
 export const MISSING_COLOR: HexColor = "#ff00ff";
@@ -513,6 +519,12 @@ export interface BiomeTheme {
 	readonly nameKey: string;
 	readonly floor: HexColor;
 	readonly wall: HexColor;
+	/** docs/VOID_DECOR.md VD1: the void's rock shoulder (top and body); MISSING_COLOR when the pack lacks it. */
+	readonly shoulder: HexColor;
+	/** docs/VOID_DECOR.md VD1: the deep void and the backdrop; MISSING_COLOR when the pack lacks it. */
+	readonly abyss: HexColor;
+	/** docs/VOID_DECOR.md VD1: the ledge, voidLedgeColor(shoulder, abyss) (the validator checks this colour). */
+	readonly ledge: HexColor;
 	readonly tiles: { readonly floor: string; readonly wall: string };
 	/** Roblox material (`Enum.Material` name) per surface; DEFAULT_BIOME_MATERIAL where the pack names none. */
 	readonly materials: Readonly<Record<BiomeMaterialSurface, BiomeMaterial>>;
@@ -523,6 +535,8 @@ const DEFAULT_MATERIALS: Readonly<Record<BiomeMaterialSurface, BiomeMaterial>> =
 	floor: DEFAULT_BIOME_MATERIAL,
 	wall: DEFAULT_BIOME_MATERIAL,
 	pool: DEFAULT_BIOME_MATERIAL,
+	shoulder: DEFAULT_BIOME_MATERIAL,
+	cliff: DEFAULT_BIOME_MATERIAL,
 };
 
 export interface SoundRef {
@@ -975,8 +989,8 @@ export class ThemeCore {
 		}
 		const d = def as unknown as Obj;
 		let layer: DecorLayer | undefined;
-		if (info.type === "piece") {
-			const allowed = DECOR_KIND_LAYERS[info.kind] as ReadonlyArray<string>;
+		if (info.type === "piece" || info.type === "void") {
+			const allowed = info.layers as ReadonlyArray<string>;
 			if (!typeIs(d.layer, "string") || !allowed.includes(d.layer)) {
 				this.warnOnce(
 					`decor:${id}`,
@@ -1038,6 +1052,22 @@ export class ThemeCore {
 		if (base !== undefined) out.push(base);
 		for (let v = 1; v <= DECOR_MAX_VARIANTS; v++) {
 			const art = this.decor(decorId(biome, kind, v));
+			if (art !== undefined) out.push(art);
+		}
+		return out;
+	}
+
+	/**
+	 * docs/VOID_DECOR.md VD7: every void art piece of `kind` the pack has for `biome`, in ID order: the base ID
+	 * `decor.void.b<n>.<kind>`, then the variants `.1` .. `.DECOR_MAX_VARIANTS`. Empty (no warning) when it has none:
+	 * draw nothing (void art is optional). Same checks and cache as `decor`.
+	 */
+	voidDecorVariants(biome: BiomeId, kind: VoidDecorKind): Array<DecorArt> {
+		const out = new Array<DecorArt>();
+		const base = this.decor(voidDecorId(biome, kind));
+		if (base !== undefined) out.push(base);
+		for (let v = 1; v <= DECOR_MAX_VARIANTS; v++) {
+			const art = this.decor(voidDecorId(biome, kind, v));
 			if (art !== undefined) out.push(art);
 		}
 		return out;
@@ -1332,8 +1362,9 @@ export class ThemeCore {
 	// --- biomes --------------------------------------------------------------------------------
 
 	/**
-	 * Biome colors, tile IDs and surface materials. Unknown biome: warn once, magenta floor/wall, default tile IDs and
-	 * DEFAULT_BIOME_MATERIAL everywhere.
+	 * Biome colors (floor, wall, the void's shoulder / abyss / derived ledge), tile IDs and surface materials. Unknown
+	 * biome: warn once, magenta colours, default tile IDs and DEFAULT_BIOME_MATERIAL everywhere; a malformed colour is
+	 * magenta too (the validator reports it).
 	 */
 	biome(id: string): BiomeTheme {
 		const forgeTheme = BIOMES.find((b) => b.id === id)?.forgeTheme;
@@ -1347,17 +1378,27 @@ export class ThemeCore {
 				nameKey: `${id}.name`,
 				floor: MISSING_COLOR,
 				wall: MISSING_COLOR,
+				shoulder: MISSING_COLOR,
+				abyss: MISSING_COLOR,
+				ledge: MISSING_COLOR,
 				tiles: defaultTiles,
 				materials: DEFAULT_MATERIALS,
 			};
 		}
 		const tiles = isObj(def.tiles) ? def.tiles : {};
+		const shoulder = isHexColor(def.shoulder) ? def.shoulder : MISSING_COLOR;
+		const abyss = isHexColor(def.abyss) ? def.abyss : MISSING_COLOR;
 		return {
 			id,
 			forgeTheme,
 			nameKey: typeIs(def.name, "string") ? def.name : `${id}.name`,
 			floor: isHexColor(def.floor) ? def.floor : MISSING_COLOR,
 			wall: isHexColor(def.wall) ? def.wall : MISSING_COLOR,
+			shoulder,
+			abyss,
+			// magenta unless both are valid (a malformed shoulder or abyss stays loud)
+			ledge:
+				shoulder !== MISSING_COLOR && abyss !== MISSING_COLOR ? voidLedgeColor(shoulder, abyss) : MISSING_COLOR,
 			tiles: {
 				floor: typeIs(tiles.floor, "string") ? tiles.floor : defaultTiles.floor,
 				wall: typeIs(tiles.wall, "string") ? tiles.wall : defaultTiles.wall,

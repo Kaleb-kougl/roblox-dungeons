@@ -406,6 +406,21 @@ describe("vale biome materials (docs/DECOR.md R1)", () => {
 		}
 	});
 
+	it("gives every biome the void's shoulder and cliff materials (docs/VOID_DECOR.md VD1 biome table)", () => {
+		const expected: Record<BiomeId, [string, string]> = {
+			"biome.1": ["Brick", "Rock"],
+			"biome.2": ["Basalt", "Basalt"],
+			"biome.3": ["Glacier", "Ice"],
+			"biome.4": ["Slate", "Rock"],
+			"biome.5": ["Ground", "Mud"],
+		};
+		const pack = new ThemePack(VALE_MANIFEST, { warn: quiet });
+		for (const b of BIOMES) {
+			const m = pack.biome(b.id).materials;
+			expect([b.id, m.shoulder, m.cliff]).toEqual([b.id, ...expected[b.id]]);
+		}
+	});
+
 	it("a textured floor stays SmoothPlastic; walls and pools keep their materials", () => {
 		// as bundled, biome.1's stone texture is uploaded
 		const pack = new ThemePack(VALE_MANIFEST, { warn: quiet });
@@ -414,8 +429,16 @@ describe("vale biome materials (docs/DECOR.md R1)", () => {
 			floor: DEFAULT_BIOME_MATERIAL,
 			wall: VALE_BIOME_MATERIALS["biome.1"].wall,
 			pool: DEFAULT_BIOME_MATERIAL,
+			shoulder: "Brick",
+			cliff: "Rock",
 		});
-		expect(pack.biome("biome.2").materials).toEqual({ floor: "Basalt", wall: "Rock", pool: "CrackedLava" });
+		expect(pack.biome("biome.2").materials).toEqual({
+			floor: "Basalt",
+			wall: "Rock",
+			pool: "CrackedLava",
+			shoulder: "Basalt",
+			cliff: "Basalt",
+		});
 		// without the texture, biome.1's floor gets its material
 		const noFloor = new ThemePack(buildValeManifest(fakeIds("tile-biome1-floor.png")), { warn: quiet });
 		expect(noFloor.biome("biome.1").materials.floor).toBe(VALE_BIOME_MATERIALS["biome.1"].floor);

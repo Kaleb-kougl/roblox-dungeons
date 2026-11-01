@@ -212,6 +212,8 @@ describe("decor contract", () => {
 			expect([k, layersOf(k)]).toEqual([k, ["flat"]]);
 		}
 		expect([layersOf("torch"), layersOf("banner")]).toEqual([["wall"], ["wall"]]);
+		// void dressing (docs/VOID_DECOR.md VD7): the flagstone patch lies flat, the curb stands low
+		expect([layersOf("flagstones"), layersOf("curb")]).toEqual([["flat"], ["low"]]);
 	});
 
 	it("names pieces decor.delve.b<n>.<kind>[.<v>] with a lowercase kind segment, round-tripping through parseDecorId", () => {
@@ -227,7 +229,10 @@ describe("decor contract", () => {
 					const variant = v === 0 ? undefined : v;
 					const id = decorId(b.id, kind, variant);
 					expect([id, isAssetId(id)]).toEqual([id, true]);
-					expect([id, parseDecorId(id)]).toEqual([id, { type: "piece", biome: b.id, kind, variant }]);
+					expect([id, parseDecorId(id)]).toEqual([
+						id,
+						{ type: "piece", biome: b.id, kind, variant, layers: DECOR_KIND_LAYERS[kind] },
+					]);
 				}
 			}
 		}
@@ -375,11 +380,14 @@ describe("validateManifest: decor pieces and effects", () => {
 	});
 
 	it("rejects IDs outside the decor grammars (and skips their shape checks)", () => {
+		const forms =
+			"decor.delve.b<1..5>.<kind>[.<1..4>], " +
+			"decor.void.b<1..5>.<spire|drift|vent|crag|grave|deadtree|root|bush|statue>[.<1..4>], " +
+			"decor.fx.<torch|flame|glow|glint|zone>, decor.fx.ambient.b<1..5>; " +
+			"kinds: contract.ts DECOR_KINDS, lowercase; VOID_DECOR.kinds";
 		expect(withAssets({ "decor.delve.b1.chest": torchImage(), "decor.fx.fire": { kind: "silent" } })).toEqual([
-			'assets["decor.delve.b1.chest"]: unknown decor ID (use decor.delve.b<1..5>.<kind>[.<1..4>], ' +
-				"decor.fx.<torch|flame|glow|glint|zone>, decor.fx.ambient.b<1..5>; kinds: contract.ts DECOR_KINDS, lowercase)",
-			'assets["decor.fx.fire"]: unknown decor ID (use decor.delve.b<1..5>.<kind>[.<1..4>], ' +
-				"decor.fx.<torch|flame|glow|glint|zone>, decor.fx.ambient.b<1..5>; kinds: contract.ts DECOR_KINDS, lowercase)",
+			`assets["decor.delve.b1.chest"]: unknown decor ID (use ${forms})`,
+			`assets["decor.fx.fire"]: unknown decor ID (use ${forms})`,
 		]);
 	});
 

@@ -27,6 +27,7 @@ import {
 	VALE_DECOR_FX,
 	VALE_DECOR_PIECES,
 	VALE_RETIRED_WORLD_ART,
+	VALE_VOID_DECOR_PIECES,
 	buildValeManifest,
 } from "./manifest";
 
@@ -70,16 +71,21 @@ describe("vale world art (docs/DECOR.md R5)", () => {
 	it("names real layouts, and every layout is used", () => {
 		const used = new Set<string>([VALE_AMBIENT_ART.art]);
 		for (const p of VALE_DECOR_PIECES) used.add(p.art);
+		for (const p of VALE_VOID_DECOR_PIECES) used.add(p.art);
 		for (const name of DECOR_FX_NAMES) used.add(VALE_DECOR_FX[name]);
 		for (const kind of BREAKABLE_KINDS) used.add(VALE_BREAKABLE_ART[kind]);
-		for (const art of used) expect([art, VALE_WORLD_LAYOUTS[art] !== undefined]).toEqual([art, true]);
+		// the void pieces' art may still be missing from the built atlas (docs/VOID_DECOR.md VD6): dormant until built
+		const pending = new Set<string>();
+		for (const p of VALE_VOID_DECOR_PIECES) if (VALE_WORLD_LAYOUTS[p.art] === undefined) pending.add(p.art);
+		for (const art of used)
+			if (!pending.has(art)) expect([art, VALE_WORLD_LAYOUTS[art] !== undefined]).toEqual([art, true]);
 		// every layout is used, except the retired gems (docs/BOOST_ART.md decision 2), which nothing may use
 		for (const name of sortedKeys(VALE_WORLD_LAYOUTS)) {
 			expect([name, used.has(name)]).toEqual([name, !VALE_RETIRED_WORLD_ART.includes(name)]);
 		}
 		// decor pieces: a kind's layer is one it allows, its variant in range, no ID twice
 		const seen = new Set<string>();
-		for (const p of VALE_DECOR_PIECES) {
+		for (const p of [...VALE_DECOR_PIECES, ...VALE_VOID_DECOR_PIECES]) {
 			const id = decorId("biome.1", p.kind, p.variant);
 			expect([id, seen.has(id)]).toEqual([id, false]);
 			seen.add(id);
@@ -144,6 +150,22 @@ describe("vale world art (docs/DECOR.md R5)", () => {
 			expect([kind, core.decorVariants("biome.3", kind).size()]).toEqual([kind, 4]);
 		}
 		expect(core.decorVariants("biome.4", "grave").size()).toBe(0); // no Lords of Pain art: not drawn
+	});
+
+	it("void pieces (docs/VOID_DECOR.md VD6): flagstones / curb map once the atlas has their art, every biome alike", () => {
+		const m = buildValeManifest(worldIds());
+		const core = new ThemeCore(m, { warn: quiet });
+		for (const p of VALE_VOID_DECOR_PIECES) {
+			const built = VALE_WORLD_LAYOUTS[p.art] !== undefined;
+			for (const b of BIOMES) {
+				const id = decorId(b.id, p.kind, p.variant);
+				expect([id, m.assets[id] !== undefined]).toEqual([id, built]);
+				if (built) expect([id, core.decor(id)?.layer]).toEqual([id, p.layer]);
+			}
+		}
+		// the void's other pieces reuse the decor kinds' art: ruin runs, columns, stumps, debris
+		for (const kind of ["wall", "wallBroken", "column", "columnBroken", "debris"] as const)
+			expect([kind, core.decorVariants("biome.2", kind).size() > 0]).toEqual([kind, true]);
 	});
 
 	it("grid pieces face the camera's wall normals; the brazier lights, the torch's glow is its cup", () => {

@@ -12,11 +12,15 @@ import {
 	decorInputOfLayout,
 	decorOutline,
 	decorPieceLayout,
+	flatLayoutReach,
 	insideBy,
 	planDecor,
+	planVoid,
 	screenX,
 	screenY,
 	spriteFacing,
+	voidInputOfLayout,
+	VOID_PIECES,
 	type DecorPlan,
 	type SpriteLayout,
 } from "shared/view";
@@ -25,6 +29,9 @@ import { ThemeCore, type DecorArt } from "../../core";
 import { sortedKeys } from "../../util";
 import { VALE_WORLD_LAYOUTS } from "./layout";
 import { buildValeManifest } from "./manifest";
+
+/** A void ruin run's art is drawn at least this share of its size (any facing; see the void pieces' test). */
+const VOID_RUN_MIN_SCALE = 0.9;
 
 const dungeons = new Map<string, Dungeon>();
 function dungeonFor(params: ForgeParams): Dungeon {
@@ -137,6 +144,46 @@ describe("vale decor art held to DECOR_BOX (docs/DECOR.md R5)", () => {
 		expect(screenY(basis, 0, 0, 1) - screenY(basis, 0, 0, 0) < 0).toBe(true); // +Z runs down-left on screen
 		expect(slope(3) > 0).toBe(true);
 		expect(slope(2) < 0).toBe(true);
+	});
+
+	it("void pieces (docs/VOID_DECOR.md VD6): standing art fits its box at the surface's top, flats within their reach", () => {
+		const drawn = new Map<string, number>();
+		for (const [runSeed, floor] of [
+			[1, 2],
+			[5, 5],
+			[7, 11],
+			[4, 16],
+		]) {
+			const layout = buildEndlessFloor(runSeed, floor, dungeonFor);
+			const plan = planDecor({ ...decorInputOfLayout(layout), voidPlan: planVoid(voidInputOfLayout(layout)) });
+			plan.entries.forEach((e, i) => {
+				if (e.source !== "void") return;
+				const list = core.decorVariants(plan.biome, e.kind);
+				const art = list[e.variant] ?? list[0];
+				if (art === undefined) return; // curb / flagstones: not in the built atlas yet
+				const own = layoutOf(art);
+				if (e.layer === "flat") {
+					const held = decorPieceLayout(plan, i, own)!;
+					expect([e.kind, flatLayoutReach(held) <= VOID_PIECES.flatRadiusTiles + 1e-9]).toEqual([
+						e.kind,
+						true,
+					]);
+				} else {
+					const [dx, dz] = decorFacingDir(e);
+					const facing = art.art.kind === "sprites" ? spriteFacing(dx, dz, art.art.set.facings, basis, 0) : 0;
+					const fitted = decorPieceLayout(plan, i, own, decorOutline(art, facing));
+					expect([e.kind, fitted !== undefined]).toEqual([e.kind, true]);
+					const scale = own.pixelsPerTile / fitted!.pixelsPerTile;
+					// void ruin runs stand on rooms' far sides (VDD2), facing +X / +Z like far-wall dressing (>= 0.95);
+					// the floor keeps a margin for wall3's -X / -Z renders (0.93, measured before the far-side rule)
+					const min = e.kind === "wall" || e.kind === "wallBroken" ? VOID_RUN_MIN_SCALE : 1 - 1e-9;
+					expect([e.kind, e.faceX, e.faceZ, scale >= min]).toEqual([e.kind, e.faceX, e.faceZ, true]);
+				}
+				drawn.set(e.kind, (drawn.get(e.kind) ?? 0) + 1);
+			});
+		}
+		for (const kind of ["wall", "column", "debris"])
+			expect([kind, (drawn.get(kind) ?? 0) > 0]).toEqual([kind, true]);
 	});
 
 	it("the brazier's flame and glow fit its box at their largest", () => {

@@ -484,9 +484,22 @@ export interface BiomeDef {
 	name: string;
 	floor: HexColor;
 	wall: HexColor;
+	/**
+	 * Roblox port (docs/VOID_DECOR.md VD1): the void's rock shoulder along every wall and corridor, its top colour. Must
+	 * read as wall mass, never as floor (voidColors.ts `voidReport`).
+	 */
+	shoulder: HexColor;
+	/**
+	 * Roblox port (docs/VOID_DECOR.md VD1): the deep void (the backdrop under the shoulder, and past the grid), darkest
+	 * of the void colours. The ledge between them is derived (`voidLedgeColor(shoulder, abyss)`).
+	 */
+	abyss: HexColor;
 	/** Logical asset IDs for this biome's tiles, e.g. { floor: 'tile.biome.1.floor' }. */
 	tiles: Record<BiomeTileKey, string>;
-	/** Optional presentation: the Roblox material of the floor / wall / pool Parts (absent: SmoothPlastic). */
+	/**
+	 * Optional presentation: the Roblox material of the floor / wall / pool Parts and the void's shoulder / cliff Parts
+	 * (absent: SmoothPlastic).
+	 */
 	materials?: BiomeMaterials;
 }
 

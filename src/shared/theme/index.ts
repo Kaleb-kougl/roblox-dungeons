@@ -10,6 +10,7 @@ export {
 	channelToByte,
 	colorDifference,
 	contrastRatio,
+	dimHex,
 	isHexColor,
 	labChroma,
 	mixChannel,
@@ -94,6 +95,16 @@ export {
 	type NewBestColorRules,
 	type NewBestEntry,
 } from "./newBestColors";
+export {
+	VOID_COLORS,
+	VOID_CONTRAST,
+	voidColorProblems,
+	voidLedgeColor,
+	voidReport,
+	type VoidColorProblem,
+	type VoidContrastRules,
+	type VoidEntry,
+} from "./voidColors";
 export * from "./builds";
 export { BUILD_COLOR_RULES, buildReport, type BuildColorEntry, type BuildColorRules } from "./buildColors";
 export * from "./placeholders";

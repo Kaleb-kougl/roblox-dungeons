@@ -57,6 +57,10 @@
  * Roblox port (docs/NEW_BEST.md NB4): the new-best gold (newBestColors.ts `newBestReport`, through
  * `newBestColorProblems`), in its own module for the same reason (offset by moving minimapReport's two role constants
  * inside it).
+ *
+ * Roblox port (docs/VOID_DECOR.md VD1, VD7): every biome's required `shoulder` / `abyss` colours (voidColors.ts
+ * `voidReport`, through `voidColorProblems`; offset by inlining the boost ID list and reading a decor piece's layers
+ * from `parseDecorId` instead of importing DECOR_KIND_LAYERS) and the optional `decor.void.b<n>.<kind>[.<v>]` pieces.
  */
 
 import { colorDifference, contrastRatio, isHexColor, labChroma, mixRgb, parseHex, toHex } from "./color";
@@ -77,7 +81,6 @@ import {
 	DECOR,
 	DECOR_FX_ROLES,
 	DECOR_ID_FORMS,
-	DECOR_KIND_LAYERS,
 	DECOR_LAYERS,
 	DECOR_MIN_OUTLINE_POINTS,
 	DECOR_PARTICLE,
@@ -161,6 +164,7 @@ import {
 } from "./util";
 import { newBestColorProblems } from "./newBestColors";
 import { variantColorProblems } from "./variantColors";
+import { voidColorProblems } from "./voidColors";
 
 export interface ValidateOptions {
 	/** Expected manifest id (the pack's folder name). */
@@ -1136,7 +1140,6 @@ const SLOT_PREFIXES =
 	"class., enemy., boss., bullet., tile., item., ui., sfx., music., decor., breakable., amb., fx., boost.";
 const AMBIENCE_ID_LIST = AMBIENCE_IDS.join(", ");
 const FX_ID_LIST = FX_IDS.join(", ");
-const BOOST_ID_LIST = BOOST_KINDS.map((k) => boostId(k)).join(", ");
 
 function forgeSuffix(biome: string): string {
 	const forge = BIOMES.find((b) => b.id === biome)?.forgeTheme;
@@ -1274,7 +1277,10 @@ export function validateManifest(manifest: unknown, opts: ValidateOptions = {}):
 			continue;
 		}
 		if (slot === DECOR && parseDecorId(assetId) === undefined) {
-			err(path, `unknown decor ID (use ${DECOR_ID_FORMS}; kinds: contract.ts DECOR_KINDS, lowercase)`);
+			err(
+				path,
+				`unknown decor ID (use ${DECOR_ID_FORMS}; kinds: contract.ts DECOR_KINDS, lowercase; VOID_DECOR.kinds)`,
+			);
 			continue;
 		}
 		if (slot === AMBIENCE && !isAmbienceId(assetId)) {
@@ -1286,7 +1292,7 @@ export function validateManifest(manifest: unknown, opts: ValidateOptions = {}):
 			continue;
 		}
 		if (slot === BOOST && !isBoostId(assetId)) {
-			err(path, `unknown boost ID (known: ${BOOST_ID_LIST})`);
+			err(path, `unknown boost ID (known: ${BOOST_KINDS.map((k) => boostId(k)).join(", ")})`);
 			continue;
 		}
 		validateAsset(def, path, slot, err, unknownKeys);
@@ -1312,13 +1318,14 @@ export function validateManifest(manifest: unknown, opts: ValidateOptions = {}):
 			err(path, "must be an object");
 			continue;
 		}
-		unknownKeys(def, path, ["name", "floor", "wall", "tiles", "materials"]);
+		unknownKeys(def, path, ["name", "floor", "wall", "shoulder", "abyss", "tiles", "materials"]);
 		if (!typeIs(def.name, "string")) {
 			err(append(path, "name"), "must be a string-table key");
 		} else if (!hasKey(strings, def.name)) {
 			err(append(path, "name"), `string key ${q(def.name)} is not in strings`);
 		}
-		for (const s of SURFACES) {
+		// floor and wall, then the void's shoulder and abyss (docs/VOID_DECOR.md VD1), all required
+		for (const s of [...SURFACES, "shoulder", "abyss"]) {
 			if (!isHexColor(def[s])) {
 				err(append(path, s), `must be "#rrggbb", got ${describeValue(def[s])}`);
 			}
@@ -1616,6 +1623,11 @@ export function validateManifest(manifest: unknown, opts: ValidateOptions = {}):
 
 	// --- the new-best gold reads on the panel, apart from the combo ladder, never as a threat (docs/NEW_BEST.md NB4)
 	for (const problem of newBestColorProblems(manifest)) {
+		err(problem.path, problem.msg);
+	}
+
+	// --- the void's shoulder reads as wall, darkens into the abyss, never hides a bullet (docs/VOID_DECOR.md VD1)
+	for (const problem of voidColorProblems(manifest)) {
 		err(problem.path, problem.msg);
 	}
 
@@ -2045,6 +2057,7 @@ const DECOR_LAYER_LIST = DECOR_LAYERS.map((l) => q(l)).join(" | ");
 function decorArtKeys(info: DecorIdInfo, kind: "image" | "sprites"): Array<string> {
 	switch (info.type) {
 		case "piece":
+		case "void":
 			return ["layer", "glow", "glowAt", "emissive", kind === "image" ? "outline" : "outlines"];
 		case "fx":
 			return ["glow", "glowAt", "emissive"];
@@ -2159,7 +2172,7 @@ function validateOutline(
 
 /**
  * The decor fields of a decor piece or effect (image or sprite set): a piece's `layer` (required, one of the layers
- * its kind allows: DECOR_KIND_LAYERS), `glow` / `emissive` booleans, `glowAt` only with `glow: true` and inside the
+ * its kind allows: DECOR_KIND_LAYERS, or VOID_DECOR.layers for a void piece), `glow` / `emissive` booleans, `glowAt` only with `glow: true` and inside the
  * drawn box.
  */
 function validateDecorFields(
@@ -2171,8 +2184,8 @@ function validateDecorFields(
 	err: Err,
 	unknownKeys: UnknownKeys,
 ) {
-	if (info.type === "piece") {
-		const allowed = DECOR_KIND_LAYERS[info.kind] as ReadonlyArray<string>;
+	if (info.type === "piece" || info.type === "void") {
+		const allowed = info.layers as ReadonlyArray<string>;
 		const lp = append(path, "layer");
 		const layer = def.layer;
 		if (layer === undefined) {

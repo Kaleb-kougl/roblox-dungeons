@@ -3,7 +3,7 @@ import { Janitor } from "@rbxts/janitor";
 import { RunService, Workspace } from "@rbxts/services";
 import { CAMERA_PITCH_DEG, CAMERA_YAW_DEG, STUDS_PER_TILE } from "shared/config";
 import { isDraftOpen, type SimState } from "shared/sim";
-import type { DecorKind, DecorPiece } from "shared/theme";
+import type { DecorKind, DecorPiece, VoidDecorKind } from "shared/theme";
 import {
 	BULLET_Y,
 	BULLET_VIEW,
@@ -14,6 +14,7 @@ import {
 	DECOR_RENDER_ORDER,
 	DECOR_VIEW,
 	DecorDirector,
+	VOID_VIEW,
 	WALL_DEPTH_BIAS,
 	decorEntryFootprint,
 	decorFacingDir,
@@ -29,11 +30,15 @@ import {
 	footprintStencil,
 	isoBasis,
 	planDecor,
+	planVoidCached,
 	selectDecorFades,
 	spriteFacing,
 	studsX,
 	studsY,
 	studsZ,
+	voidForceBand,
+	voidBiomeOf,
+	voidRunInput,
 	type DecorBody,
 	type DecorEntry,
 	type DecorFrame,
@@ -43,6 +48,7 @@ import {
 	type SpriteAnimChoice,
 	type SpriteLayout,
 	type StandingKind,
+	type VoidPlan,
 } from "shared/view";
 import { motionScale } from "shared/view/fx";
 import { FxTrackerController } from "../fx/FxTrackerController";
@@ -101,6 +107,11 @@ interface PieceView {
  *                 scaled down / lifted when the art is larger; art that cannot fit at all is not drawn (logged).
  *   wall          the same, pushed WALL_DEPTH_BIAS toward the camera off the wall face.
  *   flat          a top-face SurfaceGui on a thin invisible floor Part (decorParts buildFloorArt), per floor.
+ *   void          docs/VOID_DECOR.md VD6: the floor's void plan (planVoidCached of the same band inputs: the void
+ *                 geometry shares it) goes into planDecor, whose "void" entries stand / lie on their surface's top
+ *                 (entry.y: the billboard anchor, or the flat Part raised to it); a biome void kind draws from
+ *                 pack.voidDecorVariants. Workspace KV_VoidOff (VOID_VIEW.offAttribute, boolean, default off) plans
+ *                 without the void (the geometry reads the same attribute).
  *   fade          selectDecorFades with every living player and the live boss: a hidden body fades the piece to
  *                 DECOR_VIEW.fadeTransparency over fadeSeconds.
  *   director      once per frame (not while paused, frozen, or a draft is open) DecorDirector.update with the state,
@@ -160,6 +171,7 @@ export class DecorController implements OnStart {
 			if (ctx !== undefined) this.build(ctx);
 		};
 		this.janitor.Add(Workspace.GetAttributeChangedSignal(DECOR_DEPTH.forceBandAttribute).Connect(rebuild));
+		this.janitor.Add(Workspace.GetAttributeChangedSignal(VOID_VIEW.offAttribute).Connect(rebuild));
 		this.janitor.Add(
 			Workspace.GetAttributeChangedSignal(DECOR_VIEW.debugAttribute).Connect(() => this.buildDebug()),
 		);
@@ -227,7 +239,7 @@ export class DecorController implements OnStart {
 		const depth = ctx.run.state.endless?.depth ?? 1;
 		const base: DecorPlanInput = layout !== undefined ? decorInputOfLayout(layout, depth) : { dungeon };
 		const forced = Workspace.GetAttribute(DECOR_DEPTH.forceBandAttribute);
-		const forceBand = typeIs(forced, "number") && forced === forced ? forced : undefined;
+		const forceBand = voidForceBand(forced);
 		const profile = decorProfile(base.floor ?? 1, base.depth ?? 1, dungeon.params.themeKey, forceBand);
 		const pack = this.theme.getPack();
 		const variants = new Map<DecorKind, ReadonlyArray<DecorPiece>>();
@@ -239,7 +251,30 @@ export class DecorController implements OnStart {
 			}
 			return list;
 		};
-		const input: DecorPlanInput = { ...base, profile, variants: (kind) => variantsOf(kind).size() };
+		const voidVariants = new Map<VoidDecorKind, ReadonlyArray<DecorPiece>>();
+		const voidVariantsOf = (kind: VoidDecorKind) => {
+			let list = voidVariants.get(kind);
+			if (list === undefined) {
+				list = pack.voidDecorVariants(profile.biome, kind);
+				voidVariants.set(kind, list);
+			}
+			return list;
+		};
+		let voidPlan: VoidPlan | undefined;
+		if (
+			Workspace.GetAttribute(VOID_VIEW.offAttribute) !== true &&
+			voidBiomeOf(dungeon.params.themeKey) !== undefined
+		) {
+			// the same input VoidController builds (voidRunInput), so both read one cached plan
+			voidPlan = planVoidCached(voidRunInput(dungeon, layout, depth, forced));
+		}
+		const input: DecorPlanInput = {
+			...base,
+			profile,
+			variants: (kind) => variantsOf(kind).size(),
+			voidPlan,
+			voidVariants: (kind) => voidVariantsOf(kind).size(),
+		};
 		const plan = planDecor(input);
 		const scene = decorScene(input, plan, layout?.bossFloor);
 		this.scene = scene;
@@ -250,7 +285,7 @@ export class DecorController implements OnStart {
 		let instances = 0;
 		let unfit = 0;
 		plan.entries.forEach((e, i) => {
-			const list = variantsOf(e.kind);
+			const list = e.voidKind !== undefined ? voidVariantsOf(e.voidKind) : variantsOf(e.kind);
 			const piece = list[e.variant] ?? list[0];
 			if (piece === undefined) return;
 			// held inside its box by its outline in the facing it is drawn in (a diagonal wall's cell is mostly corners)
@@ -273,9 +308,12 @@ export class DecorController implements OnStart {
 		this.flushMoves();
 		this.buildDebug();
 		const c = plan.counts;
+		const v = plan.voidCounts;
 		print(
 			`[Decor] floor ${plan.floor} (${profile.bandName}, ${profile.biome}): plan ${plan.entries.size()} ` +
-				`(flat ${c.flat}, low ${c.low}, tall ${c.tall}, wall ${c.wall}), drawn ${this.drawn.size()} ` +
+				`(flat ${c.flat}, low ${c.low}, tall ${c.tall}, wall ${c.wall}; void ${
+					voidPlan !== undefined ? `tall ${v.tall}, low ${v.low}, flat ${v.flat}` : "off"
+				}), drawn ${this.drawn.size()} ` +
 				`(~${instances} instances${unfit > 0 ? `, ${unfit} art too large for its box` : ""}), ` +
 				`${string.format("%.1f", (os.clock() - started) * MS)} ms`,
 		);
@@ -287,7 +325,8 @@ export class DecorController implements OnStart {
 		if (e.layer === "flat") {
 			const facing =
 				piece.art.kind === "sprites" ? spriteFacing(dirX, dirZ, piece.art.set.facings, this.basis, 0) : 0;
-			const at = new Vector3(studsX(e.x), floorStudsY(), studsZ(e.z));
+			// a void flat piece lies on its surface's top (entry.y), every other on the floor
+			const at = new Vector3(studsX(e.x), e.source === "void" ? studsY(e.y) : floorStudsY(), studsZ(e.z));
 			const flat = buildFloorArt(
 				piece.id,
 				piece.art,
@@ -296,6 +335,7 @@ export class DecorController implements OnStart {
 				DECOR_VIEW.flatThicknessStuds,
 				DECOR_VIEW.flatLiftStuds,
 				facing,
+				layout,
 			);
 			if (flat === undefined) return undefined;
 			this.floorJanitor.Add(flat.part);
@@ -514,7 +554,11 @@ export class DecorController implements OnStart {
 			if (e.layer !== "tall" && e.layer !== "low") continue;
 			const box = DECOR_BOX[e.kind as StandingKind];
 			if (box === undefined) continue;
-			const st = footprintStencil(decorEntryFootprint(e), box);
+			// a void piece's stencil at its surface's top (entry.y), every other at the wall top (the default)
+			const st =
+				e.source === "void"
+					? footprintStencil(decorEntryFootprint(e), box, DECOR_CAMERA, e.y)
+					: footprintStencil(decorEntryFootprint(e), box);
 			for (let k = 0; k < st.size(); k += 2) {
 				const x = e.cellX + st[k];
 				const z = e.cellY + st[k + 1];

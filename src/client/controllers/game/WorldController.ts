@@ -14,6 +14,7 @@ import {
 } from "shared/theme";
 import {
 	GAME_WORLD,
+	VOID,
 	floorStudsY,
 	floorTextureOffsets,
 	greedyRectsOf,
@@ -43,7 +44,9 @@ interface Surface {
 /**
  * Builds the run's floor in Workspace (web DungeonFloor): floor slabs, wall blocks and sunken pools from the Dungeon
  * Forge grid, each tile type merged into as few Parts as the greedy rectangle scan finds (shared/view tileMerge.ts;
- * seed 1337: 1,840 tiles -> 133 Parts), plus one backdrop slab under everything in the `background` colour role.
+ * seed 1337: 1,840 tiles -> 133 Parts), plus one backdrop slab under everything: the abyss (docs/VOID_DECOR.md VD3),
+ * VOID.abyssDepthTiles under the floor in the matched biome's `abyss` colour (the greybox / an unmatched theme: the
+ * `background` colour role). The void's shoulder and ledge columns standing on it are VoidController's.
  * Sizes and colours come from the theme: `tile.biome.<n>.floor / .wall` placeholders of the biome whose Dungeon Forge
  * theme matches the floor (falling back to the pack's `floor` / `wall` roles, as the web build does). When the pack has
  * the biome's floor tile as an image with `tilesPerImage`, every floor slab also gets it as a top-face Texture
@@ -98,7 +101,7 @@ export class WorldController implements OnStart {
 	private surfaces(
 		pack: ThemePack,
 		themeKey: string | undefined,
-	): { floor: Surface; wall: Surface; poolMaterial: Enum.Material } {
+	): { floor: Surface; wall: Surface; poolMaterial: Enum.Material; abyss: Color3 } {
 		const biome = themeKey !== undefined ? BIOMES.find((b) => b.forgeTheme === themeKey) : undefined;
 		const floorId = biome !== undefined ? `tile.${biome.id}.floor` : "tile.biome.1.floor";
 		const wallId = biome !== undefined ? `tile.${biome.id}.wall` : "tile.biome.1.wall";
@@ -127,11 +130,13 @@ export class WorldController implements OnStart {
 				material: Enum.Material[materials?.wall ?? wallVisual.material],
 			},
 			poolMaterial: Enum.Material[materials?.pool ?? floorVisual.material],
+			// the backdrop: the biome's abyss (docs/VOID_DECOR.md VD1 / VD3); greybox / unmatched keep `background`
+			abyss: biome !== undefined ? pack.biome(biome.id).abyssColor : pack.color("background"),
 		};
 	}
 
 	private buildDungeon(pack: ThemePack, d: Dungeon, folder: Folder): number {
-		const { floor, wall, poolMaterial } = this.surfaces(pack, d.params.themeKey);
+		const { floor, wall, poolMaterial, abyss } = this.surfaces(pack, d.params.themeKey);
 		const S = STUDS_PER_TILE;
 		const floorThick = floor.visual.size[1];
 		const wallHeight = GAME_WORLD.wallHeightTiles * S;
@@ -174,7 +179,7 @@ export class WorldController implements OnStart {
 			poolThick,
 			false,
 		);
-		n += this.backdrop(pack, folder, -0.5, -0.5, d.W - 0.5, d.H - 0.5);
+		n += this.backdrop(abyss, folder, -0.5, -0.5, d.W - 0.5, d.H - 0.5);
 		return n;
 	}
 
@@ -188,7 +193,7 @@ export class WorldController implements OnStart {
 		const thick = floor.visual.size[1];
 		const rect: TileRect = { x: minX, y: minZ, w, h };
 		let n = this.slabs(folder, "Floor", [rect], floor, floorStudsY() - thick / 2, thick, false);
-		n += this.backdrop(pack, folder, minX - 0.5, minZ - 0.5, minX + w - 0.5, minZ + h - 0.5);
+		n += this.backdrop(pack.color("background"), folder, minX - 0.5, minZ - 0.5, minX + w - 0.5, minZ + h - 0.5);
 		return n;
 	}
 
@@ -237,8 +242,12 @@ export class WorldController implements OnStart {
 		return rects.size();
 	}
 
-	/** The backdrop: one slab below the floor, past the floor's edges by GAME_WORLD.backdropMarginTiles. */
-	private backdrop(pack: ThemePack, folder: Folder, minX: number, minZ: number, maxX: number, maxZ: number): number {
+	/**
+	 * The backdrop (the abyss): one slab whose top face lies VOID.abyssDepthTiles below the floor, past the floor's
+	 * edges by GAME_WORLD.backdropMarginTiles (24: covers the view's half depth, ~10.3 tiles on the floor plane, plus the
+	 * ~3.5 tiles a plane 5 tiles down shifts up the screen at the camera's 55 degree pitch).
+	 */
+	private backdrop(color: Color3, folder: Folder, minX: number, minZ: number, maxX: number, maxZ: number): number {
 		const S = STUDS_PER_TILE;
 		const m = GAME_WORLD.backdropMarginTiles;
 		const thick = GAME_WORLD.backdropThicknessTiles * S;
@@ -247,10 +256,10 @@ export class WorldController implements OnStart {
 		part.Size = new Vector3((maxX - minX + 2 * m) * S, thick, (maxZ - minZ + 2 * m) * S);
 		part.CFrame = new CFrame(
 			studsX((minX + maxX) / 2),
-			floorStudsY() - GAME_WORLD.backdropDepthTiles * S - thick / 2,
+			floorStudsY() - VOID.abyssDepthTiles * S - thick / 2,
 			studsZ((minZ + maxZ) / 2),
 		);
-		part.Color = pack.color("background");
+		part.Color = color;
 		part.Material = Enum.Material.SmoothPlastic;
 		part.Parent = folder;
 		return 1;
