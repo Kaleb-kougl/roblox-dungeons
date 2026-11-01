@@ -25,7 +25,9 @@
  * picks swing vs finisher).
  *
  * Boost drops (docs/BOOSTS.md B7) come from the frame's collected drop events (shared/view/boosts BoostEventSource,
- * the run view's `boostEvents`, every tick of the frame): a landing plays sfx.boost.drop; a pickup sfx.boost.collect
+ * the run view's `boostEvents`, every tick of the frame): a landing plays sfx.boost.drop (a landing out of a broken
+ * piece, `fromPiece`, plays sfx.breakable.loot instead: docs/BREAKABLE_DROPS.md BL6; the drop's sound while silent;
+ * a loaded piece lost on a full floor, `lostLoot`, is silent: its break plays); a pickup sfx.boost.collect
  * (the local player's at full volume, a teammate's at AUDIO_VIEW.teammateVolume); a boost of the LOCAL player running
  * out sfx.boost.expire (a teammate's is silent); an Aegis pip absorbing a hit sfx.boost.aegisbreak (split like the
  * pickup).
@@ -1211,7 +1213,10 @@ export class AudioCueMapper {
 		if (events.breakablesBroken > 0) this.cue(SFX.breakableBreak, 1);
 		if (events.breakableHits > events.breakablesBroken) this.cue(SFX.breakableHit, 1);
 		// Boost drops (every tick of the frame): landings, pickups and Aegis breaks by player, the local player's ends.
-		if (boosts.dropped.size() > 0) this.cue(SFX.boostDrop, 1);
+		// A landing out of a broken piece (fromPiece, a subset of dropped) plays the loot sound instead of the drop's.
+		const fromPieces = boosts.fromPiece.size();
+		if (boosts.dropped.size() > fromPieces) this.cue(SFX.boostDrop, 1);
+		if (fromPieces > 0) this.cue(SFX.breakableLoot, 1);
 		for (const c of boosts.collected) this.playerCue(SFX.boostCollect, c.player, localIndex);
 		for (const p of boosts.aegisBroke) this.playerCue(SFX.boostAegisBreak, p, localIndex);
 		for (const e of boosts.ended) if (e.player === localIndex) this.cue(SFX.boostExpire, 1);
