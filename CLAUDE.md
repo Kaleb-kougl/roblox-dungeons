@@ -35,6 +35,7 @@ Record every ported module in `PROVENANCE.md` (ported module, source path, sourc
 | `docs/DEMON_ART.md` | Placeholder enemies as 2D Demons (bruiser = Demon Beast 3; turrets sprayer / caster = Demon Spawn 8 / 11; Lords of Pain art unchanged): plan, tasks DA0-DA15, decisions DD1-DD7 |
 | `docs/BRAMBLE_ART.md` | Mother Bramble (`boss.act1`) as a 2D Demons Elite: state-to-animation mapping, size and budget, tasks BR0-BR7, decisions BD1-BD7 |
 | `docs/ROOM_EDGES.md` | Room edges (dashed floor line where every corridor meets a room, tinted safe / waiting / live): plan, tasks RE1-RE8, decisions RD1-RD9 |
+| `docs/VOID_DECOR.md` | Void decoration (rock shoulder along every wall and corridor, ledges, a dark biome-tinted abyss, set pieces framing rooms from behind their far walls; presentation only): census, plan, tasks VD0-VD11, decisions VDD1-VDD9 |
 | `docs/HUD_LAYOUT.md` | In-run HUD footprint (corner panels, full-width band fix, info line to the pause menu, occlusion fade): plan, tasks H1-H9, decisions HD1-HD8 |
 | `docs/FEEL.md` | Game feel pass (hurt flash and jolt, hit flash / hold / push, squash & stretch, roll afterimages, low-health pulse, screen shake setting): plan, tasks J1-J12, decisions JD1-JD13 |
 | `docs/MINIMAP.md` | Minimap with fog of war (corner map + full-map toggle, sight + whole-room reveal, shared party map): plan, tasks M0-M12, decisions MD1-MD14 |
