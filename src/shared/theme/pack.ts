@@ -15,6 +15,7 @@ import {
 	type BoostKind,
 	type BreakableKind,
 	type DecorKind,
+	type VoidDecorKind,
 	type DecorLayer,
 	type FxId,
 } from "./contract";
@@ -247,6 +248,10 @@ const UNTINTED = new Color3(1, 1, 1);
 export interface BiomeColors extends BiomeTheme {
 	readonly floorColor: Color3;
 	readonly wallColor: Color3;
+	/** docs/VOID_DECOR.md VD1: `shoulder`, `abyss` and `ledge` as Color3. */
+	readonly shoulderColor: Color3;
+	readonly abyssColor: Color3;
+	readonly ledgeColor: Color3;
 }
 
 export interface ThemePackOptions {
@@ -405,6 +410,19 @@ export class ThemePack {
 		return out;
 	}
 
+	/**
+	 * docs/VOID_DECOR.md VD7: every void art piece of `kind` for `biome` (`decor.void.b<n>.<kind>`, then variants .1 ..);
+	 * empty, without a warning, when the pack has none (void art is optional: draw nothing).
+	 */
+	voidDecorVariants(biome: BiomeId, kind: VoidDecorKind): Array<DecorPiece> {
+		const out = new Array<DecorPiece>();
+		for (const art of this.core.voidDecorVariants(biome, kind)) {
+			const piece = this.decor(art.id);
+			if (piece !== undefined) out.push(piece);
+		}
+		return out;
+	}
+
 	/** A biome's ambient particle, or undefined (no warning) when the pack has none. Clamped to DECOR_PARTICLE. */
 	ambient(biome: BiomeId): AmbientParticles | undefined {
 		const a = this.core.ambient(biome);
@@ -542,7 +560,10 @@ export class ThemePack {
 
 	// --- biomes --------------------------------------------------------------------------------
 
-	/** Biome colours (hex and Color3), tile IDs and surface materials. Unknown biome: warn once, magenta floor/wall. */
+	/**
+	 * Biome colours (hex and Color3: floor, wall, the void's shoulder / abyss / ledge), tile IDs and surface materials
+	 * (floor, wall, pool, shoulder, cliff). Unknown biome: warn once, magenta colours.
+	 */
 	biome(id: string): BiomeColors {
 		const b = this.core.biome(id);
 		return {
@@ -551,10 +572,16 @@ export class ThemePack {
 			nameKey: b.nameKey,
 			floor: b.floor,
 			wall: b.wall,
+			shoulder: b.shoulder,
+			abyss: b.abyss,
+			ledge: b.ledge,
 			tiles: b.tiles,
 			materials: b.materials,
 			floorColor: this.cachedColor(b.floor),
 			wallColor: this.cachedColor(b.wall),
+			shoulderColor: this.cachedColor(b.shoulder),
+			abyssColor: this.cachedColor(b.abyss),
+			ledgeColor: this.cachedColor(b.ledge),
 		};
 	}
 

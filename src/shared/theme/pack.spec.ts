@@ -249,7 +249,13 @@ describe("ThemePack lookups", () => {
 		for (const b of BIOMES) {
 			expect([b.id, p.biome(b.id).materials]).toEqual([
 				b.id,
-				{ floor: DEFAULT_BIOME_MATERIAL, wall: DEFAULT_BIOME_MATERIAL, pool: DEFAULT_BIOME_MATERIAL },
+				{
+					floor: DEFAULT_BIOME_MATERIAL,
+					wall: DEFAULT_BIOME_MATERIAL,
+					pool: DEFAULT_BIOME_MATERIAL,
+					shoulder: DEFAULT_BIOME_MATERIAL,
+					cliff: DEFAULT_BIOME_MATERIAL,
+				},
 			]);
 		}
 		expect(DEFAULT_BIOME_MATERIAL).toBe("SmoothPlastic");
@@ -265,12 +271,20 @@ describe("ThemePack lookups", () => {
 		at(m, "biomes", "biome.4").materials = "Slate";
 		const w = sink();
 		const p = pack(w, m);
-		expect(p.biome("biome.2").materials).toEqual({ floor: "SmoothPlastic", wall: "Rock", pool: "CrackedLava" });
+		expect(p.biome("biome.2").materials).toEqual({
+			floor: "SmoothPlastic",
+			wall: "Rock",
+			pool: "CrackedLava",
+			shoulder: "SmoothPlastic",
+			cliff: "SmoothPlastic",
+		});
 		expect(p.core.biome("biome.2").materials).toEqual(p.biome("biome.2").materials);
 		expect(p.biome("biome.3").materials).toEqual({
 			floor: "SmoothPlastic",
 			wall: "SmoothPlastic",
 			pool: "SmoothPlastic",
+			shoulder: "SmoothPlastic",
+			cliff: "SmoothPlastic",
 		});
 		expect(p.biome("biome.3").materials).toEqual(p.biome("biome.3").materials); // second lookup: no new warning
 		expect(p.biome("biome.4").materials.floor).toBe("SmoothPlastic");

@@ -419,8 +419,12 @@ export const BIOME_MATERIALS = [
 ] as const;
 export type BiomeMaterial = (typeof BIOME_MATERIALS)[number];
 
-/** The surfaces a biome can pick a material for: floor slabs, wall blocks, sunken pools. */
-export const BIOME_MATERIAL_SURFACES = ["floor", "wall", "pool"] as const;
+/**
+ * The surfaces a biome can pick a material for: floor slabs, wall blocks, sunken pools, and (docs/VOID_DECOR.md VD1) the
+ * void's rock shoulder along the walls (its top and body) and its cliffs (the lower ledges and the outcrops rising from
+ * the abyss).
+ */
+export const BIOME_MATERIAL_SURFACES = ["floor", "wall", "pool", "shoulder", "cliff"] as const;
 export type BiomeMaterialSurface = (typeof BIOME_MATERIAL_SURFACES)[number];
 
 /**
@@ -946,6 +950,7 @@ export const MIN_BOOST_CONTRAST = 3.0;
 // Decor (Roblox port, docs/DECOR.md R2 and Phase 2 part 2): the web build's DECOR slot
 //
 //   decor.delve.b<n>.<kind>[.<v>]   a decoration piece for biome n (b1..b5 = biome.1..5), optional variant v
+//   decor.void.b<n>.<kind>[.<v>]    a void art piece for biome n (docs/VOID_DECOR.md VD7, VOID_DECOR kinds)
 //   decor.fx.<torch|flame|glow|glint|zone>   biome-independent effects drawn on pieces / the stairwell
 //   decor.fx.ambient.b<n>           biome n's ambient particle texture
 //
@@ -1000,6 +1005,11 @@ export const DECOR_KIND_LAYERS = {
 	// wall pieces
 	torch: WALL_SPOT,
 	banner: WALL_SPOT,
+	// void dressing (docs/VOID_DECOR.md VD7): the Lords of Pain `tiles` flagstone patch on shoulder tops near rooms, the
+	// `wall1` low curb along shoulder edges (low only: a curb is never a tall piece). Inline arrays: this module's
+	// compiled Luau sits near the 200-locals limit.
+	flagstones: FLAT_SPOT,
+	curb: ["low"] as const,
 } as const satisfies Record<string, ReadonlyArray<DecorLayer>>;
 export type DecorKind = keyof typeof DECOR_KIND_LAYERS;
 
@@ -1028,7 +1038,39 @@ export const DECOR_KINDS: ReadonlyArray<DecorKind> = [
 	"brokenCrate",
 	"torch",
 	"banner",
+	"flagstones",
+	"curb",
 ];
+
+/**
+ * Roblox port (docs/VOID_DECOR.md VD7, VDD3): optional per-biome void art, `decor.void.b<n>.<kind>[.<v>]`, drawn on the
+ * void's shoulder (or rising from the abyss) only when a pack fills it, under the same footprint rule as every void
+ * piece. No pack has to; any kind is accepted in any biome (the plan's biome wishes, frost spire / drift, molten vent /
+ * crag, grim grave / deadtree, verdant root / bush, ancient statue, are art direction, not rules). Layers per kind
+ * (`layers`): the standing tall shapes (spire, crag, deadtree, statue, grave) may be drawn tall or low, like the decor
+ * plan's far-wall pieces; the short ones (vent, bush, root) low only; a snow drift lies flat. One table (kinds in
+ * declaration order, layers, ID prefix), so this module's compiled Luau gains one local (it sits near Luau's 200).
+ */
+export const VOID_DECOR = {
+	prefix: "decor.void.",
+	kinds: ["spire", "drift", "vent", "crag", "grave", "deadtree", "root", "bush", "statue"],
+	layers: {
+		spire: TALL_SPOT,
+		drift: FLAT_SPOT,
+		vent: ["low"],
+		crag: TALL_SPOT,
+		grave: TALL_SPOT,
+		deadtree: TALL_SPOT,
+		root: ["low"],
+		bush: ["low"],
+		statue: TALL_SPOT,
+	},
+} as const satisfies {
+	prefix: string;
+	kinds: ReadonlyArray<string>;
+	layers: Record<string, ReadonlyArray<DecorLayer>>;
+};
+export type VoidDecorKind = (typeof VOID_DECOR.kinds)[number];
 
 /** A piece may have numbered variants `decor.delve.b<n>.<kind>.<v>`, v in 1..DECOR_MAX_VARIANTS (bones1..3, ...). */
 export const DECOR_MAX_VARIANTS = 4;
@@ -1492,6 +1534,18 @@ export type DecorIdInfo =
 			readonly kind: DecorKind;
 			/** 1..DECOR_MAX_VARIANTS, or undefined for the base ID. */
 			readonly variant: number | undefined;
+			/** The layers the kind may be drawn in (DECOR_KIND_LAYERS[kind]). */
+			readonly layers: ReadonlyArray<DecorLayer>;
+	  }
+	| {
+			/** docs/VOID_DECOR.md VD7: optional per-biome void art, `decor.void.b<n>.<kind>[.<v>]`. */
+			readonly type: "void";
+			readonly biome: BiomeId;
+			readonly kind: VoidDecorKind;
+			/** 1..DECOR_MAX_VARIANTS, or undefined for the base ID. */
+			readonly variant: number | undefined;
+			/** The layers the kind may be drawn in (VOID_DECOR.layers[kind]). */
+			readonly layers: ReadonlyArray<DecorLayer>;
 	  }
 	| { readonly type: "fx"; readonly name: DecorFxName }
 	| { readonly type: "ambient"; readonly biome: BiomeId };
@@ -1503,7 +1557,12 @@ function decorSegmentMaps() {
 	}
 	const biomes = new Map<string, BiomeId>();
 	DECOR_BIOME_KEYS.forEach((key, i) => biomes.set(key, BIOMES[i].id));
-	return { kinds, biomes };
+	// void kinds are lowercase already (VOID_DECOR.kinds)
+	const voidKinds = new Map<string, VoidDecorKind>();
+	for (const k of VOID_DECOR.kinds) {
+		voidKinds.set(k, k);
+	}
+	return { kinds, biomes, voidKinds };
 }
 const DECOR_SEGMENTS = decorSegmentMaps();
 const DECOR_KIND_BY_SEGMENT: ReadonlyMap<string, DecorKind> = DECOR_SEGMENTS.kinds;
@@ -1521,6 +1580,15 @@ export function decorBiomeKey(biome: string): DecorBiomeKey | undefined {
  */
 export function decorId(biome: BiomeId, kind: DecorKind, variant?: number): string {
 	const base = `${DECOR_DELVE_PREFIX}${decorBiomeKey(biome)}.${kind.lower()}`;
+	return variant !== undefined ? `${base}.${variant}` : base;
+}
+
+/**
+ * docs/VOID_DECOR.md VD7: the ID of a void art piece: voidDecorId("biome.3", "spire") = "decor.void.b3.spire";
+ * `variant` appends ".<v>".
+ */
+export function voidDecorId(biome: BiomeId, kind: VoidDecorKind, variant?: number): string {
+	const base = `${VOID_DECOR.prefix}${decorBiomeKey(biome)}.${kind}`;
 	return variant !== undefined ? `${base}.${variant}` : base;
 }
 
@@ -1545,20 +1613,28 @@ export function parseDecorId(id: string): DecorIdInfo | undefined {
 	if (segs[0] !== "decor") {
 		return undefined;
 	}
-	if (segs[1] === "delve" && (segs.size() === 4 || segs.size() === 5)) {
+	if ((segs[1] === "delve" || segs[1] === "void") && (segs.size() === 4 || segs.size() === 5)) {
 		const biome = DECOR_BIOME_BY_KEY.get(segs[2]);
+		let variant: number | undefined;
+		if (segs.size() === 5) {
+			variant = tonumber(segs[4]);
+			if (variant === undefined || `${variant}` !== segs[4] || variant < 1 || variant > DECOR_MAX_VARIANTS) {
+				return undefined;
+			}
+		}
+		if (biome === undefined) {
+			return undefined;
+		}
+		if (segs[1] === "void") {
+			const voidKind = DECOR_SEGMENTS.voidKinds.get(segs[3]);
+			return voidKind !== undefined
+				? { type: "void", biome, kind: voidKind, variant, layers: VOID_DECOR.layers[voidKind] }
+				: undefined;
+		}
 		const kind = DECOR_KIND_BY_SEGMENT.get(segs[3]);
-		if (biome === undefined || kind === undefined) {
-			return undefined;
-		}
-		if (segs.size() === 4) {
-			return { type: "piece", biome, kind, variant: undefined };
-		}
-		const variant = tonumber(segs[4]);
-		if (variant === undefined || `${variant}` !== segs[4] || variant < 1 || variant > DECOR_MAX_VARIANTS) {
-			return undefined;
-		}
-		return { type: "piece", biome, kind, variant };
+		return kind !== undefined
+			? { type: "piece", biome, kind, variant, layers: DECOR_KIND_LAYERS[kind] }
+			: undefined;
 	}
 	if (segs[1] === "fx" && segs.size() === 3) {
 		const name = DECOR_FX_NAMES.find((n) => n === segs[2]);
@@ -1574,6 +1650,7 @@ export function parseDecorId(id: string): DecorIdInfo | undefined {
 /** For messages: the decor ID grammars. */
 export const DECOR_ID_FORMS =
 	`decor.delve.b<1..${DECOR_BIOME_KEYS.size()}>.<kind>[.<1..${DECOR_MAX_VARIANTS}>], ` +
+	`decor.void.b<1..${DECOR_BIOME_KEYS.size()}>.<${VOID_DECOR.kinds.join("|")}>[.<1..${DECOR_MAX_VARIANTS}>], ` +
 	`decor.fx.<${DECOR_FX_NAMES.join("|")}>, decor.fx.ambient.b<1..${DECOR_BIOME_KEYS.size()}>`;
 
 // ---------------------------------------------------------------------------------------------

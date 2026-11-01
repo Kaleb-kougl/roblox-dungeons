@@ -183,35 +183,51 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		"build.shard": "#f4e8f8",
 		"build.ember": "#f4f4b0",
 	},
+	// Roblox port (docs/VOID_DECOR.md VD1): `shoulder` is the wall darkened in linear light (ancient x0.95, molten x0.75,
+	// frost x0.9, grim x0.8, verdant x0.9: as far as the "nearer the wall than the floor" rule lets each go; the ancient
+	// wall is only 4.5 CIE76 from its floor, so its shoulder stays nearly the wall), 4.1 / 9.8 / 5.1 / 8.5 / 4.3 CIE76
+	// from the floors (VOID_CONTRAST.shoulderVsFloor 4). `abyss` sits near `background`, tinted per biome: cold
+	// blue-black, deep red-black, dark teal, green-black, dark moss; >= 92 CIE76 from the enemy bullet and telegraph. The
+	// enemy bullet is >= 3.89:1 on every shoulder and >= 4.55:1 on every ledge (voidReport).
 	biomes: {
 		"biome.1": {
 			name: "biome.1.name",
 			floor: "#2b2722",
 			wall: "#36302a",
+			shoulder: "#352f29",
+			abyss: "#0c1018",
 			tiles: { floor: "tile.biome.1.floor", wall: "tile.biome.1.wall" },
 		},
 		"biome.2": {
 			name: "biome.2.name",
 			floor: "#2a1a16",
 			wall: "#4a2a20",
+			shoulder: "#40241b",
+			abyss: "#170a09",
 			tiles: { floor: "tile.biome.2.floor", wall: "tile.biome.2.wall" },
 		},
 		"biome.3": {
 			name: "biome.3.name",
 			floor: "#1e2a33",
 			wall: "#2a3842",
+			shoulder: "#28353f",
+			abyss: "#081517",
 			tiles: { floor: "tile.biome.3.floor", wall: "tile.biome.3.wall" },
 		},
 		"biome.4": {
 			name: "biome.4.name",
 			floor: "#1c1a20",
 			wall: "#34303a",
+			shoulder: "#2e2a34",
+			abyss: "#0b130e",
 			tiles: { floor: "tile.biome.4.floor", wall: "tile.biome.4.wall" },
 		},
 		"biome.5": {
 			name: "biome.5.name",
 			floor: "#1d2a1d",
 			wall: "#283626",
+			shoulder: "#263324",
+			abyss: "#11150a",
 			tiles: { floor: "tile.biome.5.floor", wall: "tile.biome.5.wall" },
 		},
 	},

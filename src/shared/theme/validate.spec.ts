@@ -189,8 +189,8 @@ describe("validateManifest: rejects bad manifests", () => {
 		const m = clone();
 		at(m, "biomes", "biome.5").wall = "#ff3fa4";
 		// A bullet-pink wall fails the enemy outline's rule too (red rim on pink, enemy outline plan O1), the player
-		// outline's (near-white on pink, player outline step 1) and the boost drops' (every BOOST_ROLES colour on every
-		// wall, docs/BOOSTS.md B5).
+		// outline's (near-white on pink, player outline step 1), the boost drops' (every BOOST_ROLES colour on every
+		// wall, docs/BOOSTS.md B5) and the void shoulder's (docs/VOID_DECOR.md VD1).
 		const ratio = (hex: string) => "%.2f".format(contrastRatio(hex, "#ff3fa4"));
 		expect(validateManifest(m)).toEqual([
 			'biomes["biome.5"].wall: contrast: enemyBullet #ff3fa4 on biome.5 (verdant) wall #ff3fa4 is 1.00:1, needs >= 3.0:1',
@@ -212,6 +212,9 @@ describe("validateManifest: rejects bad manifests", () => {
 			`colors["boost.aegis"]: contrast: boost.aegis #c3a6ff on biome.5 (verdant) wall #ff3fa4 is ${ratio(
 				"#c3a6ff",
 			)}:1, needs >= 3.0:1`,
+			// and the void's shoulder no longer sits nearer its wall than its floor (docs/VOID_DECOR.md VD1)
+			'biomes["biome.5"].shoulder: colour difference: shoulder #263324 is 97.2 (CIE76) from wall #ff3fa4 but 4.3 ' +
+				"from the floor: the shoulder must sit nearer the wall than the floor (it reads as wall mass)",
 		]);
 	});
 
@@ -977,7 +980,7 @@ describe("validateManifest: biome materials (docs/DECOR.md R1)", () => {
 		const m = clone();
 		at(m, "biomes", "biome.4").materials = { wall: "Slate", ceiling: "Slate" };
 		expect(validateManifest(m)).toEqual([
-			'biomes["biome.4"].materials.ceiling: unknown key (allowed: floor, wall, pool)',
+			'biomes["biome.4"].materials.ceiling: unknown key (allowed: floor, wall, pool, shoulder, cliff)',
 		]);
 	});
 
@@ -995,7 +998,7 @@ describe("validateManifest: biome materials (docs/DECOR.md R1)", () => {
 		at(m, "biomes", "biome.1").materials = "Slate";
 		at(m, "biomes", "biome.3").materials = { floor: 3, wall: true };
 		expect(validateManifest(m)).toEqual([
-			'biomes["biome.1"].materials: must map floor, wall, pool to material names, got "Slate"',
+			'biomes["biome.1"].materials: must map floor, wall, pool, shoulder, cliff to material names, got "Slate"',
 			'biomes["biome.3"].materials.floor: must be a material name string, got 3',
 			'biomes["biome.3"].materials.wall: must be a material name string, got true',
 		]);

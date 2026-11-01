@@ -106,13 +106,16 @@ type AssetIds = Readonly<Record<string, string>>;
  *   - biome.3 frost: Snow floor, Glacier walls, Ice pools (the frozen lake).
  *   - biome.4 grim: Slate floor, Cobblestone walls (crypt masonry), Mud pools (the miasma).
  *   - biome.5 verdant: Grass floor, pale Limestone walls (the ruin), Glass pools (still water).
+ * The void (docs/VOID_DECOR.md VD1, its biome table): the rock shoulder along the walls and its cliffs (ledges and
+ * outcrops): ancient Brick (as its walls) / Rock, molten Basalt / Basalt, frost Glacier / Ice, grim Slate / Rock,
+ * verdant Ground / Mud. The shoulder and abyss colours are the placeholder pack's (inherited with its biomes).
  */
 export const VALE_BIOME_MATERIALS: Readonly<Record<BiomeId, Readonly<BiomeMaterials>>> = {
-	"biome.1": { floor: "Pavement", wall: "Brick" },
-	"biome.2": { floor: "Basalt", wall: "Rock", pool: "CrackedLava" },
-	"biome.3": { floor: "Snow", wall: "Glacier", pool: "Ice" },
-	"biome.4": { floor: "Slate", wall: "Cobblestone", pool: "Mud" },
-	"biome.5": { floor: "Grass", wall: "Limestone", pool: "Glass" },
+	"biome.1": { floor: "Pavement", wall: "Brick", shoulder: "Brick", cliff: "Rock" },
+	"biome.2": { floor: "Basalt", wall: "Rock", pool: "CrackedLava", shoulder: "Basalt", cliff: "Basalt" },
+	"biome.3": { floor: "Snow", wall: "Glacier", pool: "Ice", shoulder: "Glacier", cliff: "Ice" },
+	"biome.4": { floor: "Slate", wall: "Cobblestone", pool: "Mud", shoulder: "Slate", cliff: "Rock" },
+	"biome.5": { floor: "Grass", wall: "Limestone", pool: "Glass", shoulder: "Ground", cliff: "Mud" },
 };
 
 /**
