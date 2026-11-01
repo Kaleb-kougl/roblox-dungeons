@@ -41,9 +41,10 @@ own world (floor 1, no god mode, `DEV_GOD_BUTTON` flagged as a debug bit) and fa
   endless run on seed S. Depth is 1 + the boss floors below N (as if every boss was killed); no boons yet. Solo only.
 - **Sim, opt-in** (`shared/sim`): `EndlessConfig.startFloor` / `startDepth` (absent: floor 1 / Depth 1, exactly as
   before); `SimConfig.dev` creates `state.dev` (`invulnerable`, `blockedHits`, `toggles`), hashed as the `dev` group
-  appended LAST (after `affixes`). While `invulnerable` is 1, `damagePlayer` lands nothing (no armor, hearts, hit event,
-  i-frames, on-hit hooks or death). A `DEV_GOD_BUTTON` (65536, a port bit in `PORT_BUTTONS`) press edge toggles it; the
-  client pulses it for one stepped frame, so the toggle is recorded and F8's replay check still matches.
+  appended after `affixes` (only `builds`, docs/BUILDS.md, comes after it). While `invulnerable` is 1, `damagePlayer`
+  lands nothing (no armor, hearts, hit event, i-frames, on-hit hooks or death). A `DEV_GOD_BUTTON` (65536, a port bit
+  in `PORT_BUTTONS`) press edge toggles it; the client pulses it for one stepped frame, so the toggle is recorded and
+  F8's replay check still matches.
 - **Client**: `SimController.startDev` / `toggleGodMode` / `isDevRun` / `getGodMode`; `RunContext.dev`;
   `DevModeController` + `client/ui/dev` `DevPanel`. Panel look and dev-only English text: `DEV_PANEL_VIEW` (not in the
   theme packs: only developers see it, and the theme contract sits at Luau's local limit).

@@ -18,6 +18,7 @@ import {
 	type BlinkWatchState,
 } from "shared/view";
 import {
+	BUILD_FX_VIEW,
 	DeathParticleSystem,
 	FX_VIEW,
 	NEAR_MISS_VIEW,
@@ -76,6 +77,8 @@ interface ParticlePart {
  * graze's floor sparks + streak (nearMiss.graze, no hop, no ring, never recycling), per `parryBursts` entry a fan of
  * sparks away from the guard + one ring (nearMiss.parry); both roles appended to the palette after the room clear's.
  * Seeds: burstSeed(entry index, the state's tick, NEAR_MISS_VIEW graze / parry seedSalt).
+ * Builds (docs/BUILDS.md BU8; BuildFxController's per-frame output): `buildSparkBurst` (build.spark) and
+ * `buildPhantomBurst` (BUILD_FX_VIEW.phantom.role), appended to the palette after the near-miss roles.
  *
  * Budget: at most particleBudget(settings) live particles (128 / 320 / 512; one level lower under reducedMotion) plus
  * the ring dots, PARTICLE_QUAD_CAPACITY parts at most; the pool grows lazily and never shrinks (unused parts parked).
@@ -101,6 +104,10 @@ export class ParticleController implements OnStart, ParticleWriter {
 	private roomClearShape: ChipBurst | undefined;
 	/** nearMiss.graze's palette index; nearMiss.parry's is the next one (docs/GRAZE_PARRY.md GP5). */
 	private nearMissBase = PAL_SPARK;
+	/** build.spark's palette index (docs/BUILDS.md BU8: the spark burst at each spark target). */
+	private buildSparkColor = PAL_SPARK;
+	/** BUILD_FX_VIEW.phantom.role's palette index (BU8 follow-up: Phantom Step's erase sparks). */
+	private buildPhantomColor = PAL_SPARK;
 	/** The imp's blink puffs (docs/ENEMY_VARIANTS.md EV9): landings from a per-frame diff, the imp's kind (-1: none). */
 	private readonly blinks = new BlinkWatch(MAX_ACTORS);
 	private readonly blinkPuff: ChipBurst = BLINK_VIEW.puff;
@@ -154,6 +161,10 @@ export class ParticleController implements OnStart, ParticleWriter {
 		this.roomClearShape = chipBurstOf(ROOM_CLEAR.burst);
 		this.nearMissBase = this.palette.size();
 		this.palette.push(pack.color("nearMiss.graze"), pack.color("nearMiss.parry"));
+		this.buildSparkColor = this.palette.size();
+		this.palette.push(pack.color("build.spark"));
+		this.buildPhantomColor = this.palette.size();
+		this.palette.push(pack.color(BUILD_FX_VIEW.phantom.role));
 
 		this.nearMiss.onFrame((frame, settings) => this.nearMissFrame(frame, settings));
 		const [impOk, impKind] = pcall(() => archetypeIndex(IMP.id));
@@ -228,6 +239,22 @@ export class ParticleController implements OnStart, ParticleWriter {
 		const shape = this.roomClearShape;
 		if (shape === undefined) return;
 		this.system.chips(x, z, this.roomClearBase + (perfect ? 1 : 0), shape, seed, this.fx.settings());
+	}
+
+	/**
+	 * A spark burst at a Chain Spark target (docs/BUILDS.md BU8; BuildFxController calls it per new hop, shape from
+	 * BuildFxDirector: Full or Reduced's halved counts), in build.spark.
+	 */
+	buildSparkBurst(x: number, z: number, shape: Readonly<ChipBurst>, seed: number): void {
+		this.system.chips(x, z, this.buildSparkColor, shape, seed, this.fx.settings());
+	}
+
+	/**
+	 * A few chips where Phantom Step erased an enemy bullet (docs/BUILDS.md BU8 follow-up; BuildFxController calls it
+	 * per new erase, shape from BuildFxDirector), in BUILD_FX_VIEW.phantom.role.
+	 */
+	buildPhantomBurst(x: number, z: number, shape: Readonly<ChipBurst>, seed: number): void {
+		this.system.chips(x, z, this.buildPhantomColor, shape, seed, this.fx.settings());
 	}
 
 	/** A frame's graze sparks and parry bursts (the frame object is reused: read now, never kept). */

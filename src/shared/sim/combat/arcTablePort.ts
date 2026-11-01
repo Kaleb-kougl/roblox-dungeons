@@ -36,6 +36,9 @@ export const PORT_ARC_SOURCES: ReadonlyArray<PortArcSource> = [
 	{ count: 7, spread: 2.4, source: "boss/demonlord.ts CLEAVE (and DOUBLE_CLEAVE's two arcs)" },
 	{ count: 8, spread: TAU / 3 - 1.0, source: "boss/demonlord.ts HELLFIRE_ARC (three per ring)" },
 	{ count: 5, spread: 0.7, source: "archetypes/imp.ts FAN (IMP_FAN_SPREAD)" },
+	// docs/BUILDS.md BU1: full rings (spread FULL_RING = 2 PI, combat/patterns.ts; TAU here is the same expression)
+	{ count: 8, spread: TAU, source: "builds/effectsData.ts VOLATILE_BURSTS[0], THRILL_SEEKER_RING (8 @ FULL_RING)" },
+	{ count: 12, spread: TAU, source: "builds/effectsData.ts VOLATILE_BURSTS[1] (12 @ FULL_RING)" },
 ];
 
 /** gen.arc's angle of bullet `i` of (count, spread) at heading 0 (the formula in ./projectilePatterns.ts). */

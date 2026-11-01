@@ -22,6 +22,7 @@ import {
 import {
 	ALL_BUTTONS,
 	AFFIXES_SUBSYSTEM,
+	BUILDS_SUBSYSTEM,
 	Button,
 	DEV_GOD_BUTTON,
 	DEV_SUBSYSTEM,
@@ -181,14 +182,16 @@ describe("god mode", () => {
 		expect(state.player.armor + state.player.hearts).toBeLessThan(armorHearts);
 	});
 
-	it("is hashed as the last group, `dev`, after affixes, and replays bit for bit", () => {
+	it("is hashed as the `dev` group, after affixes and before builds (the endless world's, the last group), and replays bit for bit", () => {
 		const a = devState(3, true);
 		const layout = hashLayout(a, true);
 		const names = layout.groups.map((g) => g.name);
-		expect(names[names.size() - 1]).toBe(DEV_SUBSYSTEM);
-		expect(names[names.size() - 2]).toBe(AFFIXES_SUBSYSTEM);
+		expect(names[names.size() - 1]).toBe(BUILDS_SUBSYSTEM);
+		expect(names[names.size() - 2]).toBe(DEV_SUBSYSTEM);
+		expect(names[names.size() - 3]).toBe(AFFIXES_SUBSYSTEM);
 		expect(layout.values).toEqual(writeHashFields(a, []));
-		expect(layout.names[layout.names.size() - 1]).toBe("dev.toggles");
+		const dev = layout.groups[layout.groups.size() - 2];
+		expect(layout.names[dev.finish - 1]).toBe("dev.toggles");
 		const b = devState(3, true);
 		const run = (s: SimState) => {
 			press(s, Button.DEBUG_HIT);

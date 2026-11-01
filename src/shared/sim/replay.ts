@@ -23,6 +23,7 @@ import { writeBreakablesHash } from "./breakables/breakables";
 import { writeDropsHash } from "./drops/drops";
 import { writeAffixesHash } from "./affixes/affixes";
 import { writeDevHash } from "./dev/dev";
+import { writeBuildsHash } from "./builds/builds";
 import { isFiniteNumber, isIntegerNumber, numberToJsString } from "./jsnum";
 import { isJsonArray, isJsonObject, jsonToJsString, parseJson, type JsonValue } from "./json";
 import { jsMin } from "shared/jsmath";
@@ -183,10 +184,12 @@ export function writeHashFields(state: Readonly<SimState>, out: number[]): numbe
 	if (state.breakables !== undefined) writeBreakablesHash(state.breakables, out);
 	// Boost drops (docs/BOOSTS.md), only when the run has them, appended after every other group (after breakables).
 	if (state.drops !== undefined) writeDropsHash(state.drops, out);
-	// Elite affixes (docs/ENEMY_VARIANTS.md EV7), only when the run has them, appended last (after drops).
+	// Elite affixes (docs/ENEMY_VARIANTS.md EV7), only when the run has them, appended after drops.
 	if (state.affixes !== undefined) writeAffixesHash(state.affixes, out);
-	// Developer mode (docs/DEV_MODE.md), only in local dev runs, appended last (after affixes).
+	// Developer mode (docs/DEV_MODE.md), only in local dev runs, appended after affixes.
 	if (state.dev !== undefined) writeDevHash(state.dev, out);
+	// Builds (docs/BUILDS.md BU1), only when the run has them, appended last (after dev).
+	if (state.builds !== undefined) writeBuildsHash(state.builds, out);
 	return out;
 }
 

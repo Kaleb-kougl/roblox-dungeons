@@ -337,6 +337,8 @@ export function TouchStrip(props: TouchStripProps) {
 							boons={s.boons}
 							relics={s.relics}
 							curses={s.curses}
+							levels={s.boonLevels}
+							duos={s.duos}
 							look={CHIP_ITEM}
 							maxWidth={itemsW}
 							gap={CHIPS.cellGap}

@@ -10,7 +10,8 @@
  * (draftRevealConfig.ts, draftReveal.ts; docs/DRAFT_REVEAL.md DR1) and how it is drawn (draftRevealView.ts, DR5), and the
  * UI skin's pixel scales, icon fit and part-to-image chains (skinConfig.ts, skin.ts; docs/UI_ART.md UA5), and the
  * new-best celebration's tunables, strings, frozen run baseline, per-frame tracker, text / roll helpers and confetti
- * paths (newBestConfig.ts, newBestStrings.ts, newBest.ts; docs/NEW_BEST.md NB3).
+ * paths (newBestConfig.ts, newBestStrings.ts, newBest.ts; docs/NEW_BEST.md NB3), and the builds HUD: draft card kinds
+ * (draftCards.ts, docs/BUILDS.md BU9), items-row cells and the Build list (buildHud.ts, BU10).
  */
 export * from "./layout";
 export * from "./strings";
@@ -36,6 +37,8 @@ export * from "./parryFlash";
 export * from "./draftRevealConfig";
 export * from "./draftReveal";
 export * from "./draftRevealView";
+export * from "./draftCards";
+export * from "./buildHud";
 export * from "./skinConfig";
 export * from "./skin";
 export * from "./hudSkin";

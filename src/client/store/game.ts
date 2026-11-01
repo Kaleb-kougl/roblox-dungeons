@@ -71,6 +71,8 @@ export interface ToastView {
 	/** `{desc}`, looked up as a theme string key (boost pickups). */
 	readonly descKey?: string;
 	readonly amount?: number;
+	/** More vars looked up as theme string keys (builds: an evolution toast's `{boon}` / `{evo}`). */
+	readonly varKeys?: Readonly<Record<string, string>>;
 	/** os.clock() at which it disappears. */
 	readonly until: number;
 }

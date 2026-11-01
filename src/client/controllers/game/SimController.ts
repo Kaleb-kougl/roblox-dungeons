@@ -1548,7 +1548,7 @@ export class SimController implements OnStart {
 		const now = os.clock();
 		for (const e of view.runEvents) {
 			this.toastSerial++;
-			const spec = toastFor(e.kind, e.index);
+			const spec = toastFor(e.kind, e.index, e.build);
 			clientStore.pushToast(
 				{ id: this.toastSerial, ...spec, until: now + PROGRESSION_VIEW.toastSeconds },
 				PROGRESSION_VIEW.maxToasts,

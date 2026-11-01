@@ -121,7 +121,8 @@ export class PartyDriver {
 	 * Resolves every open boon draft (see the file comment): each drafting player holds the stick on their card until
 	 * their draft has been open DRAFT_MIN_OPEN_TICKS, presses FIRE once, then releases; then one idle tick. `pick(i,
 	 * offers, taken)` chooses player i's offer index (default: the first offer nobody lower took this round). No-op
-	 * without an open draft.
+	 * without an open draft. Builds' boss double draft (docs/BUILDS.md BUD4): a confirm that re-deals (the draft stays
+	 * open, its timer back at 0) is answered the same way on the new offers (`taken` empty).
 	 */
 	resolveDrafts(
 		pick: (i: number, offers: ReadonlyArray<number>, taken: ReadonlyArray<number>) => number = firstFree,
@@ -142,10 +143,14 @@ export class PartyDriver {
 		}
 		const pressed: boolean[] = [];
 		for (let i = 0; i < this.n; i++) pressed.push(false);
-		for (let guard = 0; guard < DRAFT_MIN_OPEN_TICKS * 4 && isDraftOpen(this.state); guard++) {
+		for (let guard = 0; guard < DRAFT_MIN_OPEN_TICKS * 8 && isDraftOpen(this.state); guard++) {
 			const f: InputFrame[] = [];
 			for (let i = 0; i < this.n; i++) {
 				const p = run.players[i];
+				if (pressed[i] && p.draftOpen !== 0 && p.draftTicks === 0) {
+					pressed[i] = false;
+					choice[i] = pick(i, p.draftOffers, []);
+				}
 				if (p.draftOpen === 0 || choice[i] < 0) {
 					f.push({ ...EMPTY_INPUT });
 					continue;

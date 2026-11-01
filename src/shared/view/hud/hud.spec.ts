@@ -27,6 +27,7 @@ import {
 	optionsStringKeys,
 	refusalKey,
 	SCORE_SOURCE_KEYS,
+	scoreBreakdownRows,
 	LEADERBOARD_POST_STATUSES,
 	LEADERBOARD_STRINGS,
 	SETTINGS_STRINGS,
@@ -130,9 +131,29 @@ describe("HUD helpers", () => {
 		expect(pack.str(VERDICT_KEYS[1], { run: 2, ending: "victory", hash: "abcd1234" })).toBe(
 			"Run 2 (victory): verified by the server (abcd1234)",
 		);
-		expect(SCORE_SOURCE_KEYS.size()).toBe(9); // ... breakables (docs/DECOR.md D4) appended last
+		// ... breakables (docs/DECOR.md D4), then the build-only jackpot (docs/BUILDS.md BU5, builds runs only).
+		expect(SCORE_SOURCE_KEYS.size()).toBe(10);
+		expect([SCORE_SOURCE_KEYS[8], SCORE_SOURCE_KEYS[9]]).toEqual([
+			"score.source.breakables",
+			"score.source.jackpot",
+		]);
+		expect(pack.str(SCORE_SOURCE_KEYS[9], {})).toBe("Jackpot");
 		expect(pack.str(HUD_STRINGS.combo, { combo: "1.3" })).toBe("x1.3");
 		expect(warnings).toEqual([]);
+	});
+
+	it("the run-over breakdown: a row per labelled source; a builds run's 10th (Jackpot) shows, others have 9", () => {
+		const plain = [1, 2, 3, 4, 5, 6, 7, 8, 9];
+		expect(scoreBreakdownRows(plain).map((r) => [r.index, r.key, r.points])).toEqual(
+			plain.map((p, i) => [i, SCORE_SOURCE_KEYS[i], p]),
+		);
+		const builds = [...plain, 240];
+		const rows = scoreBreakdownRows(builds);
+		expect(rows.size()).toBe(10);
+		expect([rows[9].index, rows[9].key, rows[9].points]).toEqual([9, "score.source.jackpot", 240]);
+		// An index past every key (a future source without a label) is skipped, never a blank row.
+		expect(scoreBreakdownRows([...builds, 5]).size()).toBe(10);
+		expect(scoreBreakdownRows([]).size()).toBe(0);
 	});
 
 	it("boon cards and icons take the boon rarity roles, not the loot ones (docs/DRAFT_REVEAL.md DR3)", () => {
@@ -167,7 +188,7 @@ describe("HUD helpers", () => {
 		const pack = quietPack(warnings);
 		const keys = optionsStringKeys(KBM_ACTIONS);
 		expect(keys.size()).toBe(
-			BINDING_REFUSALS.size() + KBM_ACTIONS.size() + OPTIONS_TABS.size() + OPTIONS_DEVICES.size() + 34,
+			BINDING_REFUSALS.size() + KBM_ACTIONS.size() + OPTIONS_TABS.size() + OPTIONS_DEVICES.size() + 37,
 		);
 		for (const key of keys) expect([key, pack.hasString(key)]).toEqual([key, true]);
 		// Every pad action is a keyboard action too (one name table).
@@ -188,6 +209,8 @@ describe("HUD helpers", () => {
 		expect(pack.str(OPTIONS_STRINGS.hudFade)).toBe("HUD fade"); // docs/HUD_LAYOUT.md H7
 		expect(pack.str(OPTIONS_STRINGS.minimap)).toBe("Minimap"); // docs/MINIMAP.md M10
 		expect(pack.str(OPTIONS_STRINGS.playerOutline)).toBe("Player outline"); // docs/PLAYER_OUTLINE.md P4
+		expect(pack.str(OPTIONS_STRINGS.buildFx)).toBe("Build effects"); // docs/BUILDS.md BUD13
+		expect(pack.str(OPTIONS_STRINGS.buildFxReduced)).toBe("Reduced");
 		expect(pack.str(actionNameKey("map"))).toBe("Map"); // docs/MINIMAP.md M9
 		expect(pack.str(HUD_STRINGS.mapTitle)).toBe("Map");
 		expect(pack.str(HUD_STRINGS.mapHint, { key: mapHint().keyboard })).toBe("M map");

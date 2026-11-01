@@ -13,7 +13,7 @@ import { newPlayerState } from "./player";
 import { cloneCombatState, createCombatState, startCombat, type CombatState } from "./combat/combat";
 import type { SimConfig } from "./step";
 import { cloneEndlessState, createEndlessState, endlessStartFloor, type EndlessState } from "./endless";
-import { cloneScoreState, createScoreState, type ScoreState } from "./score/score";
+import { addBuildScoreSources, cloneScoreState, createScoreState, type ScoreState } from "./score/score";
 import { cloneRunState, createRunState } from "./progression/progression";
 import { refreshRunMods, type RunState } from "./progression/runMods";
 import { cloneParty, createPartyState, partySize, playerAt, type PartyState } from "./party";
@@ -27,6 +27,7 @@ import { cloneBreakablesState, createBreakablesState, type BreakablesState } fro
 import { cloneDropsState, createDropsState, type DropsState } from "./drops/drops";
 import { cloneAffixesState, createAffixesState, type AffixesState } from "./affixes/affixes";
 import { cloneDevState, createDevState, type DevState } from "./dev/dev";
+import { cloneBuildsState, createBuildsState, type BuildsState } from "./builds/builds";
 
 export interface PlayerState {
 	x: number;
@@ -280,9 +281,15 @@ export interface SimState {
 	affixes?: AffixesState;
 	/**
 	 * Developer mode (docs/DEV_MODE.md), only when SimConfig.dev is set: god mode, blocked hits, toggles. Hashed as the
-	 * "dev" subsystem, appended after every other group (after "affixes"). See dev/dev.ts.
+	 * "dev" subsystem, appended after "affixes". See dev/dev.ts.
 	 */
 	dev?: DevState;
+	/**
+	 * Builds (docs/BUILDS.md BU1), only when SimConfig.builds is set: every player's boon levels, duos and counters, the
+	 * proc queue, the boss double draft's deals left. Hashed as the "builds" subsystem, appended after every other group
+	 * (after "dev"). See builds/builds.ts.
+	 */
+	builds?: BuildsState;
 }
 
 /**
@@ -299,6 +306,7 @@ export interface SimState {
  * With `config.dev`, `dev` state is created (developer mode's god mode, docs/DEV_MODE.md).
  * `config.endless.startFloor` / `startDepth` (developer mode's floor jump) start on that floor and Depth instead of
  * floor 1 / Depth 1; absent, exactly as before.
+ * With `config.builds`, `builds` state is created (an empty build per player).
  */
 export function createSimState(
 	seed: number,
@@ -356,6 +364,12 @@ export function createSimState(
 	}
 	// Endless runs: boons, relics and curses (floor 1's pedestals and shrine). No rng.
 	if (firstFloor !== undefined) state.run = createRunState(world.encounter, partySize(state));
+	// Builds (docs/BUILDS.md): an empty build per player. No rng.
+	if (config.builds !== undefined) {
+		state.builds = createBuildsState(config.builds, partySize(state));
+		// The build-only score sources (BU5: Jackpot), so they hash only in builds runs.
+		if (state.score !== undefined) addBuildScoreSources(state.score);
+	}
 	return state;
 }
 
@@ -363,9 +377,9 @@ export function createSimState(
  * An independent copy of `s`. LIMITED: the bullet pools can only be rebuilt while pristine (no bullet ever spawned in
  * this run); once any bullet has been spawned this THROWS. Re-simulate from the recording instead.
  */
-function cloneRun(r: Readonly<RunState>): RunState {
+function cloneRun(r: Readonly<RunState>, builds: Readonly<BuildsState> | undefined): RunState {
 	const out = cloneRunState(r);
-	for (const p of out.players) refreshRunMods(p);
+	for (let i = 0; i < out.players.size(); i++) refreshRunMods(out.players[i], builds?.players[i]);
 	return out;
 }
 
@@ -378,12 +392,13 @@ export function cloneSimState(s: Readonly<SimState>): SimState {
 		combat: cloneCombatState(s.combat),
 		endless: s.endless !== undefined ? cloneEndlessState(s.endless) : undefined,
 		score: s.score !== undefined ? cloneScoreState(s.score) : undefined,
-		run: s.run !== undefined ? cloneRun(s.run) : undefined,
+		run: s.run !== undefined ? cloneRun(s.run, s.builds) : undefined,
 		tutorial: s.tutorial !== undefined ? cloneTutorialState(s.tutorial) : undefined,
 		breakables: s.breakables !== undefined ? cloneBreakablesState(s.breakables) : undefined,
 		drops: s.drops !== undefined ? cloneDropsState(s.drops) : undefined,
 		affixes: s.affixes !== undefined ? cloneAffixesState(s.affixes) : undefined,
 		dev: s.dev !== undefined ? cloneDevState(s.dev) : undefined,
+		builds: s.builds !== undefined ? cloneBuildsState(s.builds) : undefined,
 	};
 	if (s.party !== undefined) clone.party = cloneParty(s.party, clone);
 	return clone;

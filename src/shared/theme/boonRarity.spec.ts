@@ -3,6 +3,7 @@
 import { describe, expect, it } from "@rbxts/jest-globals";
 import { colorDifference, contrastRatio } from "./color";
 import { BOON_RARITY_COLOR_RULES, BOON_RARITY_ROLES } from "./contract";
+import { BOON_BUILD_ROLES } from "./builds";
 import { THEME_PACKS } from "./packs";
 import { PLACEHOLDER_MANIFEST } from "./packs/placeholder";
 import { COLOR_ROLES, type ColorRole } from "./types";
@@ -32,7 +33,8 @@ describe("boon rarity: colour roles", () => {
 		for (const r of BOON_RARITY_ROLES) {
 			expect([r, (COLOR_ROLES as ReadonlyArray<string>).includes(r)]).toEqual([r, true]);
 		}
-		expect(RULES.roles).toBe(BOON_RARITY_ROLES);
+		// The ladder, then docs/BUILDS.md's evolution and duo frames on top of it.
+		expect([...RULES.roles]).toEqual([...BOON_RARITY_ROLES, ...BOON_BUILD_ROLES]);
 		expect([RULES.panel, RULES.minPanelContrast, RULES.minStepDifference]).toEqual(["uiPanel", 3, 25]);
 	});
 
@@ -84,6 +86,8 @@ describe("boon rarity: validator", () => {
 		expect(steps.map((e) => [e.role, e.against])).toEqual([
 			["boon.rare", "boon.common"],
 			["boon.legendary", "boon.rare"],
+			["boon.evolved", "boon.legendary"],
+			["boon.duo", "boon.evolved"],
 		]);
 	});
 

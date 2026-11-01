@@ -20,6 +20,7 @@ import { restartHint } from "shared/play";
 import { SIM_HZ } from "shared/sim";
 import { SFX } from "shared/view/audio";
 import {
+	BUILD_HUD_VIEW,
 	COMBO_DRAW,
 	COMBO_TIERS,
 	FOOTPRINT_ESTIMATE,
@@ -27,7 +28,6 @@ import {
 	HUD_VIEW,
 	NEW_BEST_ROLE,
 	NEW_BEST_STRINGS,
-	SCORE_SOURCE_KEYS,
 	UI_ART,
 	bestText,
 	comboBestRichText,
@@ -36,6 +36,7 @@ import {
 	formatCombo,
 	recordSavedKey,
 	runOverRibbonKey,
+	scoreBreakdownRows,
 } from "shared/view/hud";
 import {
 	MENU_FIT,
@@ -52,6 +53,7 @@ import { MenuFit } from "./MenuFit";
 import { runOverBest, type RunOverBest } from "./newBestRunOver";
 import { NEW_BEST_UI } from "./newBestUi";
 import { ArtImage, MenuButton, Panel, Row, Text, panelIcon } from "./primitives";
+import { BuildList } from "./BuildList";
 import { RunInfoLine, verdictColor, verdictLine } from "./RunInfoLine";
 
 const HIDDEN = 1;
@@ -167,10 +169,15 @@ function breakdownLines(props: BreakdownProps): React.Element[] {
 			color="uiAccent"
 		/>,
 	];
-	for (let i = 0; i < props.points.size(); i++) {
-		const key = SCORE_SOURCE_KEYS[i];
-		if (key === undefined) continue;
-		lines.push(<BreakdownLine key={`s${i}`} order={i + 2} label={str(key)} value={tostring(props.points[i])} />);
+	for (const row of scoreBreakdownRows(props.points)) {
+		lines.push(
+			<BreakdownLine
+				key={`s${row.index}`}
+				order={row.index + 2}
+				label={str(row.key)}
+				value={tostring(row.points)}
+			/>,
+		);
 	}
 	lines.push(<BestComboLine key="combo" order={props.points.size() + 2} maxCombo={props.maxCombo} />);
 	return lines;
@@ -360,6 +367,7 @@ function RunOverHeader(props: { order: number; victory: boolean; icon: string | 
  * with the restart key of the device used last (R / D-pad down) and the other one below, then the run's time, hits
  * taken and kills; in a scored run (M2) the score and its breakdown by source; under the exits, the server's verdict
  * line and the run's info line (RunInfoLine; docs/HUD_LAYOUT.md H6: the in-run InfoPanel only flashes the verdict).
+ * With boons, the Build list (docs/BUILDS.md BU10) beside the score breakdown (a third column on a phone).
  *
  * Exits (L3 / L6): "Again" (solo runs; R) and "Main menu", or "Back to lobby" while in a lobby. A party run has no
  * Again: R / the button go back to the lobby (once the party's verdict is in). A party run the server ended before the
@@ -503,6 +511,7 @@ export function RunOverPanel() {
 	);
 	const breakdown = { order: ROW.breakdown, score: s.score, points: s.scorePoints, maxCombo: s.maxCombo };
 	const breakdownWidth = HUD_VIEW.breakdownLabelWidth + HUD_VIEW.gap + HUD_VIEW.breakdownValueWidth;
+	const hasBuild = s.boons.size() > 0 || s.duos.size() > 0;
 	return (
 		<MenuFit
 			render={(layout) => {
@@ -511,9 +520,16 @@ export function RunOverPanel() {
 					// score breakdown beside them, so the panel is about half as tall.
 					const left = MENU_FIT.runOverLeftWidth;
 					const right = s.scoring ? breakdownWidth : 0;
+					// docs/BUILDS.md BU10: the Build list as a third column (a phone's panel is wide, not tall).
+					const build = hasBuild ? BUILD_HUD_VIEW.listCompactWidth : 0;
 					return (
 						<Panel
-							width={left + (s.scoring ? HUD_VIEW.gap + right : 0) + HUD_VIEW.pad * 4}
+							width={
+								left +
+								(s.scoring ? HUD_VIEW.gap + right : 0) +
+								(hasBuild ? HUD_VIEW.gap + build : 0) +
+								HUD_VIEW.pad * 4
+							}
 							align={Enum.HorizontalAlignment.Center}
 							skin={screenSkin("runOver")}
 							name="RunOver"
@@ -544,6 +560,11 @@ export function RunOverPanel() {
 										{breakdownLines(breakdown)}
 									</Column>
 								) : undefined}
+								{hasBuild ? (
+									<Column order={3} width={build} gap={MENU_FIT.runOverLineGap}>
+										<BuildList order={1} width={build} maxRows={BUILD_HUD_VIEW.listCompactRows} />
+									</Column>
+								) : undefined}
 							</Row>
 						</Panel>
 					);
@@ -565,7 +586,17 @@ export function RunOverPanel() {
 							))}
 						</Row>
 						{bestBlock}
-						{s.scoring ? <ScoreBreakdown {...breakdown} /> : undefined}
+						{/* docs/BUILDS.md BU10: the score breakdown and the Build list side by side. */}
+						<Row order={ROW.breakdown} align={Enum.HorizontalAlignment.Center}>
+							{s.scoring ? <ScoreBreakdown {...breakdown} order={1} /> : undefined}
+							{hasBuild ? (
+								<BuildList
+									order={2}
+									width={BUILD_HUD_VIEW.listWidth}
+									maxRows={BUILD_HUD_VIEW.listMaxRows}
+								/>
+							) : undefined}
+						</Row>
 						{verdictRow}
 						<RunInfoLine order={ROW.info} />
 						{exitButtons()}

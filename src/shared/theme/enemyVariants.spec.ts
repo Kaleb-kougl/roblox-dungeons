@@ -23,6 +23,7 @@ import { PLACEHOLDER_PROPORTIONS, PLACEHOLDER_SHAPES, PLACEHOLDER_VISUALS, pxToS
 import { COLOR_ROLES, type ColorRole } from "./types";
 import { deepClone, sortedKeys, type Obj } from "./util";
 import { validateManifest } from "./validate";
+import { BUILD_BULLET_IDS } from "./builds";
 import {
 	AFFIX_COLOR_RULES,
 	GOO_COLOR_RULES,
@@ -157,7 +158,8 @@ describe("enemy variants: contract", () => {
 
 	it("adds the goo puddle: a required bullet visual and the enemyGoo colour role", () => {
 		expect(GOO_BULLET_ID).toBe("bullet.enemy.goo");
-		expect(BULLET_IDS[BULLET_IDS.size() - 1]).toBe(GOO_BULLET_ID);
+		// After the web build's six; only docs/BUILDS.md's effect bullets come after it.
+		expect(BULLET_IDS[BULLET_IDS.size() - 1 - BUILD_BULLET_IDS.size()]).toBe(GOO_BULLET_ID);
 		expect([has(REQUIRED_ASSET_IDS, GOO_BULLET_ID), slotFor(GOO_BULLET_ID)?.slot]).toEqual([true, "bullet"]);
 		expect([ENEMY_GOO_ROLE, has(COLOR_ROLES, ENEMY_GOO_ROLE)]).toEqual(["enemyGoo", true]);
 	});
@@ -198,7 +200,7 @@ describe("enemy variants: contract", () => {
 	});
 
 	it("appends the five port audio IDs (lowercase segments: shieldbreak), required, sfx", () => {
-		// the last of them ends the variants' block (docs/NEW_BEST.md NB4's two come after it)
+		// the last of them ends the variants' block (docs/NEW_BEST.md NB4's two, then docs/BUILDS.md's nine come after it)
 		const n = (PORT_AUDIO_EVENTS as ReadonlyArray<string>).indexOf("sfx.affix.vengeful") + 1;
 		const tail = new Array<string>();
 		for (let i = n - VARIANT_AUDIO.size(); i < n; i++) tail.push(PORT_AUDIO_EVENTS[i]);

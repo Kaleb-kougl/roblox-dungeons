@@ -5,7 +5,9 @@
  *
  *   - `affixReport` (AFFIX_COLOR_RULES): the affix rings and the shield segment read on every biome floor and never as
  *     a bullet, a telegraph, the enemy rim or another affix;
- *   - `gooReport` (GOO_COLOR_RULES): the goo puddles read on every biome floor and never as decor or a pickup.
+ *   - `gooReport` (GOO_COLOR_RULES): the goo puddles read on every biome floor and never as decor or a pickup;
+ *   - and, folded in here so validate.ts takes no new name (docs/BUILDS.md BU1), buildColors.ts `buildReport`: the
+ *     builds effect colours read on every floor and never as danger.
  */
 
 import { colorDifference, contrastRatio, isHexColor } from "./color";
@@ -13,6 +15,7 @@ import { BOOST_ROLES, DECOR_FX_ROLES, ENEMY_BULLET_ROLES, MIN_DECOR_FX_BULLET_DI
 import type { ColorRole } from "./types";
 import { isObj, sortedEntries } from "./util";
 import { AFFIX_ROLES, ENEMY_GOO_ROLE, ENEMY_SHIELD_ROLE } from "./variants";
+import { buildReport } from "./buildColors";
 
 /** What a variant colour report checks against what, and the bars (AFFIX_COLOR_RULES, GOO_COLOR_RULES). */
 export interface VariantColorRules {
@@ -158,10 +161,16 @@ const WHY = {
 		difference: "goo must read as danger, never as decor or a boost drop",
 		apart: "",
 	},
+	build: {
+		floor: "a build effect must read on the floor",
+		difference:
+			"a build effect must never read as an enemy bullet, a telegraph, goo, the enemy outline or a boost drop",
+		apart: "",
+	},
 } as const;
 
 /**
- * Every failed affix and goo check as a validator message (validateManifest adds them to its errors, path
+ * Every failed affix, goo and build effect check as a validator message (validateManifest adds them to its errors, path
  * `colors.<role>`). `suffix(biome)` is the validator's forge-theme suffix for a biome ID (" (crypt)").
  */
 export function variantColorProblems(manifest: unknown, suffix: (biome: string) => string): Array<VariantColorProblem> {
@@ -169,6 +178,7 @@ export function variantColorProblems(manifest: unknown, suffix: (biome: string) 
 	const reports = [
 		{ entries: affixReport(manifest), why: WHY.affix },
 		{ entries: gooReport(manifest), why: WHY.goo },
+		{ entries: buildReport(manifest), why: WHY.build },
 	];
 	for (const report of reports) {
 		for (const c of report.entries) {

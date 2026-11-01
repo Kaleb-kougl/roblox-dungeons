@@ -78,10 +78,27 @@ export const FLOOR_CLEAR_POINTS = 1000;
  */
 export const BREAKABLE_POINTS: ReadonlyArray<number> = [10, 20];
 
+// --- Builds (docs/BUILDS.md BU5) ------------------------------------------------------------------------
+
+/**
+ * Jackpot (Bounty III, sim/builds): every 15th kill by its owner pays JACKPOT_POINTS x the floor into the JACKPOT
+ * source, through the usual multipliers (combo, Depth, curses); it never feeds the combo and touches no room record.
+ */
+export const JACKPOT_POINTS = 100;
+
 // --- Multipliers -----------------------------------------------------------------------------------------
 
 /** The combo is an integer of tenths: 10 = x1.0 .. 50 = x5.0. */
 export const COMBO_DENOMINATOR = 10;
+
+/**
+ * Gold Rush (the Bounty + Lingering duo, docs/BUILDS.md BU6, builds runs only): a kill scored while the combo is at
+ * least GOLD_RUSH_MIN_COMBO tenths (x3, before the kill's own +0.1) scores x GOLD_RUSH_PERCENT / 100 more, applied
+ * after Bounty (and the affix bonus) as one more integer percent factor (awardPoints' extraPercent).
+ */
+export const GOLD_RUSH_PERCENT = 125;
+export const GOLD_RUSH_MIN_COMBO_TIER = 3;
+export const GOLD_RUSH_MIN_COMBO = GOLD_RUSH_MIN_COMBO_TIER * COMBO_DENOMINATOR;
 export const COMBO_MIN = 10;
 export const COMBO_MAX = 50;
 /** Every kill or graze adds this many tenths (+0.1), capped at COMBO_MAX. */
@@ -120,6 +137,12 @@ export const ScoreSource = {
 	BOSS: 7,
 	/** Breakables broken by a player (docs/DECOR.md D4): appended, so every earlier index stays put. */
 	BREAKABLES: 8,
+	/**
+	 * Jackpot (docs/BUILDS.md BU5, Bounty III): appended after BREAKABLES, and ONLY in runs with SimConfig.builds
+	 * (BUILD_SCORE_SOURCE_NAMES; createSimState appends its entry to points / counts there, addBuildScoreSources).
+	 * Every other scored run keeps SCORE_SOURCE_COUNT sources, so its "score" hash group is unchanged.
+	 */
+	JACKPOT: 9,
 } as const;
 export type ScoreSourceId = (typeof ScoreSource)[keyof typeof ScoreSource];
 /** Source names in index order (dump names, results screen string keys `score.source.<name>`). */
@@ -134,4 +157,10 @@ export const SCORE_SOURCE_NAMES = [
 	"boss",
 	"breakables",
 ] as const;
+/** The sources every scored run has (points / counts length without builds). */
 export const SCORE_SOURCE_COUNT = SCORE_SOURCE_NAMES.size();
+/**
+ * Sources only a builds run has, appended after SCORE_SOURCE_NAMES (ScoreSource.JACKPOT = SCORE_SOURCE_COUNT). A builds
+ * run's points / counts hold SCORE_SOURCE_COUNT + BUILD_SCORE_SOURCE_NAMES.size() entries.
+ */
+export const BUILD_SCORE_SOURCE_NAMES = ["jackpot"] as const;

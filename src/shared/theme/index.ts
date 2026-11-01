@@ -78,6 +78,8 @@ export {
 	type NewBestColorRules,
 	type NewBestEntry,
 } from "./newBestColors";
+export * from "./builds";
+export { BUILD_COLOR_RULES, buildReport, type BuildColorEntry, type BuildColorRules } from "./buildColors";
 export * from "./placeholders";
 export {
 	DEFAULT_PACK_ID,

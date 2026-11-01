@@ -9,6 +9,7 @@ import {
 	BOONS,
 	BOON_COUNT,
 	BOW_DATA,
+	CLASSIC_BOON_COUNT,
 	BOW_V_CHARGE,
 	Boon,
 	BulletKind,
@@ -152,11 +153,15 @@ function arena(boons: number[] = [], relics: number[] = [], curses: number[] = [
 	return { config: ARENA, s };
 }
 
-/** A fresh run on the real endless floors of SEED. */
+/**
+ * A fresh run on the real endless floors of SEED, WITHOUT builds (docs/BUILDS.md: the classic draft these specs pin;
+ * builds' card draft is specced in sim/builds builds.spec.ts).
+ */
 function dungeon(): Run {
 	const setup = buildEndlessRunConfig(SEED);
 	const spawn = setup.spawn!;
-	return { config: setup.config, s: createSimState(SEED, spawn.x, spawn.z, setup.config) };
+	const config: SimConfig = { ...setup.config, builds: undefined };
+	return { config, s: createSimState(SEED, spawn.x, spawn.z, config) };
 }
 
 function tick(r: Run, input: Readonly<InputFrame> = EMPTY_INPUT): void {
@@ -196,11 +201,13 @@ const me = (s: SimState) => s.run!.players[SOLO_PLAYER];
 // ---------------------------------------------------------------------------------------------
 
 describe("boon offers", () => {
-	it("12 boons: 7 common, 3 rare, 2 legendary, 4 per category; 4 relics, 4 curses", () => {
-		expect(BOON_COUNT).toBe(12);
-		const by = (rarity: number) => BOONS.filter((b) => b.rarity === rarity).size();
+	it("12 classic boons: 7 common, 3 rare, 2 legendary, 4 per category; 4 relics, 4 curses", () => {
+		// docs/BUILDS.md BU1: three on-kill boons appended after them (builds-only; drawBoonOffers never sees them).
+		expect([CLASSIC_BOON_COUNT, BOON_COUNT]).toEqual([12, 15]);
+		const classic = BOONS.filter((_, i) => i < CLASSIC_BOON_COUNT);
+		const by = (rarity: number) => classic.filter((b) => b.rarity === rarity).size();
 		expect([by(Rarity.COMMON), by(Rarity.RARE), by(Rarity.LEGENDARY)]).toEqual([7, 3, 2]);
-		for (const c of ["offense", "defense", "score"]) expect(BOONS.filter((b) => b.category === c).size()).toBe(4);
+		for (const c of ["offense", "defense", "score"]) expect(classic.filter((b) => b.category === c).size()).toBe(4);
 		expect([RELICS.size(), CURSES.size()]).toEqual([4, 4]);
 	});
 
@@ -229,7 +236,7 @@ describe("boon offers", () => {
 			expect(offers.size()).toBe(DRAFT_OFFER_COUNT);
 			// The same algorithm by hand on a twin generator.
 			const left: number[] = [];
-			for (let b = 0; b < BOON_COUNT; b++) if (!owned.includes(b)) left.push(b);
+			for (let b = 0; b < CLASSIC_BOON_COUNT; b++) if (!owned.includes(b)) left.push(b);
 			const want: number[] = [];
 			for (let k = 0; k < DRAFT_OFFER_COUNT; k++) {
 				const rarity = rarityForRoll(rngInt(twin, 0, 99), floor);
@@ -271,12 +278,12 @@ describe("boon offers", () => {
 			for (const b of offers) expect(BOONS[b].rarity).never.toBe(Rarity.LEGENDARY);
 		}
 		const owned: number[] = [];
-		for (let b = 0; b < BOON_COUNT - 2; b++) owned.push(b);
+		for (let b = 0; b < CLASSIC_BOON_COUNT - 2; b++) owned.push(b);
 		const quiet = new Rng(9);
 		const before = quiet.getState();
-		expect(drawBoonOffers(quiet, owned, 3)).toEqual([BOON_COUNT - 2, BOON_COUNT - 1]);
+		expect(drawBoonOffers(quiet, owned, 3)).toEqual([CLASSIC_BOON_COUNT - 2, CLASSIC_BOON_COUNT - 1]);
 		expect(quiet.getState()).toBe(before);
-		owned.push(BOON_COUNT - 2, BOON_COUNT - 1);
+		owned.push(CLASSIC_BOON_COUNT - 2, CLASSIC_BOON_COUNT - 1);
 		expect(drawBoonOffers(quiet, owned, 3)).toEqual([]);
 	});
 

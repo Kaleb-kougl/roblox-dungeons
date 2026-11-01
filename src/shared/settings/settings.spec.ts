@@ -8,6 +8,8 @@ import {
 	DEFAULT_HUD_FADE,
 	DEFAULT_MINIMAP,
 	DEFAULT_PLAYER_OUTLINE,
+	DEFAULT_BUILD_FX,
+	BUILD_FX_LEVELS,
 	DEFAULT_TOUCH_AUTO_TARGET,
 	DEFAULT_TOUCH_LEFT_HANDED,
 	DEFAULT_TOUCH_OPACITY_PERCENT,
@@ -281,6 +283,7 @@ describe("display: room edges (docs/ROOM_EDGES.md RE6)", () => {
 			hudFade: DEFAULT_HUD_FADE,
 			minimap: DEFAULT_MINIMAP,
 			playerOutline: DEFAULT_PLAYER_OUTLINE,
+			buildFx: DEFAULT_BUILD_FX,
 			touchSize: DEFAULT_TOUCH_SIZE_PERCENT,
 			touchOpacity: DEFAULT_TOUCH_OPACITY_PERCENT,
 			touchAutoTarget: DEFAULT_TOUCH_AUTO_TARGET,
@@ -321,6 +324,7 @@ describe("display: room edges (docs/ROOM_EDGES.md RE6)", () => {
 			hudFade: true,
 			minimap: true,
 			playerOutline: true,
+			buildFx: DEFAULT_BUILD_FX,
 			touchSize: DEFAULT_TOUCH_SIZE_PERCENT,
 			touchOpacity: DEFAULT_TOUCH_OPACITY_PERCENT,
 			touchAutoTarget: DEFAULT_TOUCH_AUTO_TARGET,
@@ -389,6 +393,7 @@ describe("display: minimap (docs/MINIMAP.md M10)", () => {
 			hudFade: DEFAULT_HUD_FADE,
 			minimap: false,
 			playerOutline: DEFAULT_PLAYER_OUTLINE,
+			buildFx: DEFAULT_BUILD_FX,
 			touchSize: DEFAULT_TOUCH_SIZE_PERCENT,
 			touchOpacity: DEFAULT_TOUCH_OPACITY_PERCENT,
 			touchAutoTarget: DEFAULT_TOUCH_AUTO_TARGET,
@@ -430,6 +435,7 @@ describe("display: minimap (docs/MINIMAP.md M10)", () => {
 			hudFade: false,
 			minimap: true,
 			playerOutline: true,
+			buildFx: DEFAULT_BUILD_FX,
 			touchSize: DEFAULT_TOUCH_SIZE_PERCENT,
 			touchOpacity: DEFAULT_TOUCH_OPACITY_PERCENT,
 			touchAutoTarget: DEFAULT_TOUCH_AUTO_TARGET,
@@ -661,6 +667,7 @@ describe("display: player outline (docs/PLAYER_OUTLINE.md P4)", () => {
 			hudFade: DEFAULT_HUD_FADE,
 			minimap: DEFAULT_MINIMAP,
 			playerOutline: false,
+			buildFx: DEFAULT_BUILD_FX,
 			touchSize: DEFAULT_TOUCH_SIZE_PERCENT,
 			touchOpacity: DEFAULT_TOUCH_OPACITY_PERCENT,
 			touchAutoTarget: DEFAULT_TOUCH_AUTO_TARGET,
@@ -695,6 +702,37 @@ describe("display: player outline (docs/PLAYER_OUTLINE.md P4)", () => {
 	});
 });
 
+describe("display: build effects (docs/BUILDS.md BUD13)", () => {
+	it("defaults to Full; only Reduced is stored", () => {
+		expect([...BUILD_FX_LEVELS]).toEqual(["full", "reduced"]);
+		expect(DEFAULT_BUILD_FX).toBe("full");
+		expect(defaultDisplaySettings().buildFx).toBe("full");
+		expect(resolveDisplaySettings(undefined).buildFx).toBe("full");
+		expect(sanitizeDisplayOverrides({ buildFx: "reduced" })).toEqual({ buildFx: "reduced" });
+		expect(sanitizeDisplayOverrides({ buildFx: "full" })).toEqual({});
+		expect(resolveDisplaySettings({ buildFx: "reduced" }).buildFx).toBe("reduced");
+	});
+
+	it("round-trips Reduced through the stored document (still v2)", () => {
+		const overrides: SettingsOverrides = { display: { buildFx: "reduced" } };
+		const doc = encodeSettingsDoc(overrides);
+		expect(doc).toEqual({ ...EMPTY_DOC, display: { buildFx: "reduced" } });
+		expect(doc.v).toBe(2);
+		expect(decodeSettingsDoc(doc)).toEqual(overrides);
+		expect(applySettingsPatch(overrides, { display: { buildFx: "full" } })).toEqual({});
+		expect(sameSettingsOverrides(overrides, { display: { buildFx: "reduced" } })).toBe(true);
+		expect(sameSettingsOverrides(overrides, {})).toBe(false);
+	});
+
+	it("ignores junk; an older v2 document without the field reads Full", () => {
+		for (const junk of [0, true, "Reduced", "off", {}, ["reduced"]] as ReadonlyArray<unknown>) {
+			expect(sanitizeDisplayOverrides({ buildFx: junk })).toEqual({});
+		}
+		const old = { v: 2, juice: {}, controls: {}, audio: {}, display: { minimap: false } };
+		expect(resolveDisplaySettings(decodeSettingsDoc(old).display).buildFx).toBe("full");
+	});
+});
+
 describe("display: touch controls (docs/MOBILE.md MB7)", () => {
 	it("defaults: size 100 %, opacity 70 %, auto-target On, left-handed Off; the defaults are listed steps", () => {
 		expect(TOUCH_SIZE_PERCENTS.includes(DEFAULT_TOUCH_SIZE_PERCENT)).toBe(true);
@@ -707,6 +745,7 @@ describe("display: touch controls (docs/MOBILE.md MB7)", () => {
 			hudFade: DEFAULT_HUD_FADE,
 			minimap: DEFAULT_MINIMAP,
 			playerOutline: DEFAULT_PLAYER_OUTLINE,
+			buildFx: DEFAULT_BUILD_FX,
 			touchSize: DEFAULT_TOUCH_SIZE_PERCENT,
 			touchOpacity: DEFAULT_TOUCH_OPACITY_PERCENT,
 			touchAutoTarget: DEFAULT_TOUCH_AUTO_TARGET,

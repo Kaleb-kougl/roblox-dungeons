@@ -6,6 +6,7 @@
 import { describe, expect, it } from "@rbxts/jest-globals";
 import {
 	AFFIXES_SUBSYSTEM,
+	BUILDS_SUBSYSTEM,
 	BREAKABLES_SUBSYSTEM,
 	DROPS_SUBSYSTEM,
 	ENDLESS_HASH_SUBSYSTEM,
@@ -15,6 +16,7 @@ import {
 	SCORE_SUBSYSTEM,
 	SHRINE_BUTTON,
 	SHRINE_RADIUS,
+	cardBoon,
 	computeRunMods,
 	createSimState,
 	decodeRecording,
@@ -201,17 +203,25 @@ describe("a 2-player endless run with per-player progression", () => {
 		expect(rounds >= 4).toBe(true);
 		expect([run.drv.drafted[0].size(), run.drv.drafted[1].size()]).toEqual([rounds, rounds]);
 		for (let k = 0; k < rounds; k++) expect(run.drv.drafted[0][k]).never.toBe(run.drv.drafted[1][k]);
-		expect(rp[0].boons).toEqual(run.drv.drafted[0]);
-		expect(rp[1].boons).toEqual(run.drv.drafted[1]);
+		// Builds (docs/BUILDS.md BU2): a card may level an owned boon, so the owned boons are the distinct ones in the
+		// order first taken.
+		for (let i = 0; i < N; i++) {
+			const distinct: number[] = [];
+			for (const card of run.drv.drafted[i]) {
+				const b = cardBoon(card);
+				if (b >= 0 && !distinct.includes(b)) distinct.push(b);
+			}
+			expect(rp[i].boons).toEqual(distinct);
+		}
 		// The relic is player 0's, the curse player 1's; the score multiplier counts the one curse.
 		expect([rp[0].relics.size(), rp[1].relics.size()]).toEqual([1, 0]);
 		expect([rp[0].curses.size(), rp[1].curses.size()]).toEqual([0, 1]);
 		expect(live.score!.curses).toBe(1);
-		// Each player's modifiers are their own lists' (and differ).
-		for (let i = 0; i < N; i++) expect(runMods(live, i)).toEqual(computeRunMods(rp[i]));
+		// Each player's modifiers are their own lists' at their builds levels (and differ).
+		for (let i = 0; i < N; i++) expect(runMods(live, i)).toEqual(computeRunMods(rp[i], live.builds!.players[i]));
 	});
 
-	it("hashes run (two players) after score, then party, breakables, drops, then affixes last", () => {
+	it("hashes run (two players) after score, then party, breakables, drops, affixes, then builds last", () => {
 		const layout = hashLayout(live, true);
 		const names = layout.groups.map((g) => g.name);
 		expect(names).toEqual([
@@ -223,6 +233,7 @@ describe("a 2-player endless run with per-player progression", () => {
 			BREAKABLES_SUBSYSTEM,
 			DROPS_SUBSYSTEM,
 			AFFIXES_SUBSYSTEM,
+			BUILDS_SUBSYSTEM,
 		]);
 		const runGroup = layout.groups[names.indexOf(RUN_SUBSYSTEM)];
 		expect([layout.names[runGroup.start], layout.values[runGroup.start]]).toEqual(["run.players.length", N]);

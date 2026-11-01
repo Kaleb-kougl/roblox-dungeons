@@ -35,7 +35,7 @@ import {
 	type MusicView,
 	type Playable,
 } from "shared/view/audio";
-import { audibleCombo, audibleVariantCues, comboQuiet } from "shared/view/fx";
+import { audibleBuilds, audibleCombo, audibleVariantCues, comboQuiet } from "shared/view/fx";
 import { NO_NEW_BEST_CUES, type NewBestCueSource } from "shared/view/hud";
 import { PreloadController } from "../game/PreloadController";
 import { SimController, type RunContext } from "../game/SimController";
@@ -122,7 +122,9 @@ class LoopChannel {
  *                the parry ring-out in place of the deflect (the deflect while the parry is silent); this sound
  *                frame is a NearMissController subscriber so that frame is always this rendered frame's (see
  *                onStart). Enemy variants (docs/ENEMY_VARIANTS.md): the run view's `variantCues` (blink landing,
- *                summons, split, shield break, Vengeful ring) through audibleVariantCues with the same quiet gate. The mapper is given `playable` (the ID has an assetId): a silent
+ *                summons, split, shield break, Vengeful ring) through audibleVariantCues with the same quiet gate, and
+ *                the build effects (docs/BUILDS.md BU8: spark / burst / shard / ember pitched by proc generation under
+ *                a voice cap, evolve / duo stings) from the run view's `builds` through audibleBuilds. The mapper is given `playable` (the ID has an assetId): a silent
  *                ID with an SFX_FALLBACK cues that instead (no finisher clip: the swing), one without never becomes a
  *                cue (no cap slot, no cooldown).
  *   duck         a DUCKING_SFX sound (jingles, the Ember) dips the music group to AUDIO_VIEW.duck.level for the
@@ -204,7 +206,7 @@ export class AudioController implements OnStart {
 			const viewIndex = this.sim.getViewPlayerIndex();
 			// The room clear celebration plays the jingle itself while it is on (docs/ROOM_CLEAR.md RC4).
 			this.mapper.celebratesRoomClears = this.fx.settings().roomClear;
-			// One quiet gate for the combo's and the enemy variants' sounds: the stage cover, run over.
+			// One quiet gate for the combo's, the enemy variants' and the build effects' sounds: the stage cover, run over.
 			const quiet = comboQuiet(this.sim.isInputCovered(), this.sim.isRunOver());
 			this.mapper.frame(
 				os.clock(),
@@ -218,6 +220,7 @@ export class AudioController implements OnStart {
 				nearMiss,
 				audibleVariantCues(ctx.run.variantCues, quiet),
 				this.newBestCues(),
+				audibleBuilds(ctx.run.builds, quiet),
 			);
 			for (let i = 0; i < this.cues.size(); i++) {
 				this.play(this.cues.id(i), this.cues.volume(i), this.cues.speed(i));

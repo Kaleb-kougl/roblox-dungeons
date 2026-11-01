@@ -48,6 +48,7 @@ Record every ported module in `PROVENANCE.md` (ported module, source path, sourc
 | `docs/UI_ART.md` | UI art (the dark red pixel UI sheet: 9-sliced panels / buttons, hearts, potions, pills, icons, focus brackets; menus, then the in-run HUD, then touch; presentation only): builds on the Draft reveal (`slice`, `SlicedImage`): plan, as built, tasks UA0-UA15, decisions UAD1-UAD10 |
 | `docs/NEW_BEST.md` | New-best celebration (points-to-best in the score panel's label row, a fanfare + NEW BEST stamp / floor shout / edge confetti when the shown score passes your best or you reach a floor past your deepest, a record fanfare and old -> new roll at run over; server-owned personal records doc `KV_Records_v1`; no sim change): plan, as built, tasks NB0-NB11, decisions NBD1-NBD11 |
 | `docs/DEV_MODE.md` | Developer mode (jump to any floor, instant R restart, god mode; local `dev` world, server-allowed players only via `DEV_MODE`): usage, access, how it works |
+| `docs/BUILDS.md` | Builds (on-kill boons Chain Spark / Volatile / Soul Shards with chain reactions, boon levels with an evolution at III, duo boons, the boss double draft; gameplay, opt-in `SimConfig.builds` on endless only): plan, tasks BU0-BU14, decisions BUD1-BUD14 |
 
 Decision log (deviations from `PLAN.md`):
 - **Art (docs/ART.md).** The theme contract gained a `"sprites"` kind (large pre-rendered cells, 1/4/8/16 screen-space
@@ -370,13 +371,33 @@ Decision log (deviations from `PLAN.md`):
 - **Developer mode (docs/DEV_MODE.md).** A client-only world `dev` (`shared/run` `buildDevRunConfig`, in
   `SERVER_REFUSED_WORLDS`, never submitted: `unsubmittedReason` `dev`): the endless run of a seed started on any floor
   (opt-in `EndlessConfig.startFloor` / `startDepth`; Depth = 1 + boss floors below) with god mode (opt-in
-  `SimConfig.dev`: `state.dev` hashed as the `dev` group appended LAST, after `affixes`; `damagePlayer` lands nothing
-  while `invulnerable`; port input bit `DEV_GOD_BUTTON` 65536 in `PORT_BUTTONS` toggles it, so `SIM_BUTTONS` is now
+  `SimConfig.dev`: `state.dev` hashed as the `dev` group appended after `affixes`, only `builds` after it;
+  `damagePlayer` lands nothing while `invulnerable`; port input bit `DEV_GOD_BUTTON` 65536 in `PORT_BUTTONS` toggles it, so `SIM_BUTTONS` is now
   114687). Access is decided by the server (`DevModeService`, `shared/devmode` `devModeAllowed`, `shared/config`
   `DEV_MODE`: master switch `enabled`, Studio, `allowedUserIds`, the user-owned place's creator) and published as the
   player attribute `KV_DevAllowed`; `DevModeController` mounts the DEV chip / panel (F2) and the god key (F3) only then.
   In a dev run R restarts at once on the same seed and floor (no forfeit). M1, every fixture, the tutorial, endless and
   co-op replay exactly as before (none sets `startFloor` or `dev`).
+- **Builds (docs/BUILDS.md).** Gameplay. Opt-in `SimConfig.builds` (`BUILDS_CONFIG` = `BUILD_RULES`, endless only, BUD8)
+  creates `state.builds` (per player boon levels, duos, counters, deals left; the proc queue) with its own hash group
+  `builds` appended LAST (after `affixes` and `dev`). Three on-kill boons appended to `BOONS` (Chain Spark / Volatile / Soul Shards,
+  indices 12-14); `drawBoonOffers` draws from the classic 12 only (`CLASSIC_BOON_COUNT`), so the tutorial's floor-2 draft
+  is unchanged; builds runs draw `drawCardOffers` and grant through `grantCard` (levels II-III, the evolution at III,
+  duos, a double draft after every boss floor). Card ids in `draftOffers`: a boon index, or `DUO_CARD_BASE` (64) + the
+  duo index (`cardDisplay` decodes them for every reader). Effect bullets reuse the player pool: `BulletKind` 8-11
+  (`BURST` / `SHARD` / `EMBER` / `SPARK_BOLT`, no payload layout change) and payload sources from `BUILD_SOURCE_BASE`
+  (128) up (128 + effect x 4 + generation; weapon sources stay 1..127). Procs queue on `damageActor`'s kill line (never
+  in `killActor`: withers, boss sweeps, revivers and debug kills never proc) and resolve in `stepBuilds` (stepCombat
+  phase 6b) under `GEN_MAX` 3, `procsPerTick` and a per-player effect budget that keeps `effectWeaponReserve` (32)
+  slots per player free for weapon fire. `ScoreSource.JACKPOT` (9) is a build-only score source: its points / counts
+  entries exist only with `SimConfig.builds`, so every other scored run's `score` group is unchanged. Port arc rows 8
+  and 12 @ FULL_RING (`combat/arcTablePort.ts`); `BulletSimulation.setVelocity` (Soul Swarm). Theme: colour roles
+  `boon.evolved` / `boon.duo` (the boon rarity report) and `build.spark` / `.burst` / `.shard` / `.ember`
+  (`buildReport`: >= 40 CIE76 from every danger and boost role), 7 required strings (`BUILD_STRING_KEYS`; per-boon / per-duo strings via
+  `progressionStringKeys`), 4 bullet visuals, 9 port audio IDs `sfx.build.*` (SILENT in the placeholder); setting
+  `DisplaySettings.buildFx` (Full / Reduced, only Reduced stored, doc stays v2). No Luau-locals change. M1, every
+  fixture and the tutorial replay exactly as before; endless replays and scores changed (boards stay `_v1`, BUD9).
+  Studio check, art (BU11) and audio (BU12) pending; tuning measured (BU13, owner calls open).
 
 ## Commands
 

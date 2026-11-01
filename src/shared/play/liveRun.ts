@@ -37,6 +37,7 @@ import {
 	FixedStepLoop,
 	Recorder,
 	SOLO_PLAYER,
+	buildEvents,
 	copyInput,
 	createSimState,
 	dropsEvents,
@@ -63,11 +64,13 @@ import {
 } from "shared/run";
 import { BoostFrameEvents, type BoostEventSource } from "shared/view/boosts";
 import {
+	BuildFxEvents,
 	ComboEvents,
 	NearMissEvents,
 	RoomClearEvents,
 	VariantCueEvents,
 	newFrameAdvance,
+	type BuildFxFrameSource,
 	type ComboFrameSource,
 	type FrameAdvance,
 	type FramePacer,
@@ -105,8 +108,25 @@ export type RunEventKind = "boon" | "relic" | "curse" | "secondWind" | "fang" | 
 
 export interface RunEventRecord {
 	readonly kind: RunEventKind;
-	/** The boon / relic / curse index; 1 for secondWind; half hearts healed for fang; the Boost index for boost. */
+	/**
+	 * The boon / relic / curse index (for "boon" the draft card id: a boon, or with builds a duo); 1 for secondWind;
+	 * half hearts healed for fang; the Boost index for boost.
+	 */
 	readonly index: number;
+	/**
+	 * "boon" with builds (docs/BUILDS.md BU10): the sim's builds events recorded this pick as an evolution (level III)
+	 * or a duo taken by this player (the evolve / duo toast); undefined for any other pick.
+	 */
+	readonly build?: "evolved" | "duo";
+}
+
+/** Player `playerIndex`'s draft pick this tick as the builds events record it (an evolution, a duo), or undefined. */
+export function buildTakeOf(state: Readonly<SimState>, playerIndex: number): "evolved" | "duo" | undefined {
+	const be = buildEvents(state);
+	if (be === undefined) return undefined;
+	if (be.duoPlayer.includes(playerIndex)) return "duo";
+	if (be.evolvedPlayer.includes(playerIndex)) return "evolved";
+	return undefined;
 }
 
 /**
@@ -117,7 +137,8 @@ export interface RunEventRecord {
 export function collectRunEvents(state: Readonly<SimState>, playerIndex: number, out: RunEventRecord[]): void {
 	const re = state.run?.players[playerIndex]?.events;
 	if (re !== undefined) {
-		if (re.draftChosen !== 0) out.push({ kind: "boon", index: re.draftChosen - 1 });
+		if (re.draftChosen !== 0)
+			out.push({ kind: "boon", index: re.draftChosen - 1, build: buildTakeOf(state, playerIndex) });
 		if (re.relicCollected !== 0) out.push({ kind: "relic", index: re.relicCollected - 1 });
 		if (re.curseAccepted !== 0) out.push({ kind: "curse", index: re.curseAccepted - 1 });
 		if (re.secondWind !== 0) out.push({ kind: "secondWind", index: re.secondWind });
@@ -148,6 +169,8 @@ export interface RunView {
 	readonly nearMiss: NearMissFrameSource;
 	/** The enemy-variant sound events of the last frame's ticks (docs/ENEMY_VARIANTS.md EV9 audio cues). */
 	readonly variantCues: VariantCueSource;
+	/** The build effects of the last frame's ticks, every player's (docs/BUILDS.md BU8). */
+	readonly builds: BuildFxFrameSource;
 	getAlpha(): number;
 }
 
@@ -297,6 +320,8 @@ export class LiveRun implements RunView {
 	readonly nearMiss = new NearMissEvents();
 	/** The enemy-variant sound events of the ticks run by the last frame() (docs/ENEMY_VARIANTS.md; reset every frame). */
 	readonly variantCues = new VariantCueEvents();
+	/** The build effects of the ticks run by the last frame() (docs/BUILDS.md BU8; reset every frame). */
+	readonly builds = new BuildFxEvents();
 	/** What the pacer made of the last unpaused frame (frozen, time scale); a plain pass-through without a pacer. */
 	readonly lastAdvance: FrameAdvance = newFrameAdvance();
 	/** Run totals for the HUD's post-run panel (the telemetry's kill / hit counts, read without finishing it). */
@@ -349,6 +374,7 @@ export class LiveRun implements RunView {
 		this.combo.reset();
 		this.nearMiss.reset();
 		this.variantCues.reset();
+		this.builds.reset();
 		this.ticksThisFrame = 0;
 		if (this.forfeitPending) {
 			this.forfeitPending = false;
@@ -431,6 +457,7 @@ export class LiveRun implements RunView {
 		this.combo.collect(state);
 		this.nearMiss.collect(state);
 		this.variantCues.collect(state);
+		this.builds.collect(state);
 		if (this.victoryTick === undefined && e.bossDefeated !== 0) this.victoryTick = state.tick;
 		if (this.deathTick === undefined && (e.playerDied !== 0 || state.player.dead !== 0)) {
 			this.deathTick = state.tick;

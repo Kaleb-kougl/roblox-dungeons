@@ -51,6 +51,11 @@
  * teamComboCutDivisorMultiplier: Lingering / Composure if any living player owns it, Impatience once if any player
  * took it); kill points x 110 % (Bounty: kills and boss kills, not the no-hit bonus) follow the KILLER's boons; the
  * graze margin (Daredevil 0.75 tiles) the grazing player's (combat.ts passes the radius).
+ *
+ * Builds duos (docs/BUILDS.md BU6, only with state.builds; sim/builds hooks.ts): Gold Rush (the killer's duo) scores a
+ * kill at combo >= GOLD_RUSH_MIN_COMBO x GOLD_RUSH_PERCENT / 100 after Bounty (awardPoints' extraPercent; kills and
+ * boss kills, not the no-hit bonus); Unshaken's hits taken on armor (BuildEvents.unshakenKept) are left out of
+ * stepScore's combo cuts (they still count in hitsTaken, so PERFECT still sees them).
  */
 
 import { PLAYER_RADIUS } from "../playerData";
@@ -66,6 +71,13 @@ import { partySize, playerAt, presentPlayerCount } from "../party";
 import { AffixKind, encounterCost } from "shared/dungeon";
 import { affixKillPercent } from "../affixes/affixes";
 import { AFFIX_PAR_COST } from "../affixes/affixesData";
+import {
+	buildsGoldRush,
+	buildsGoldRushPop,
+	buildsOnGraze,
+	buildsOnPerfectRoom,
+	buildsUnshakenKept,
+} from "../builds/hooks";
 import { SOLO_PLAYER, runMods, teamComboCutDivisorMultiplier, teamComboWindowTicks } from "../progression/runMods";
 import {
 	BOSS_FINAL_PHASE,
@@ -87,14 +99,18 @@ import {
 	FLOOR_CLEAR_POINTS,
 	FLOOR_SCALE_DENOMINATOR,
 	FLOOR_SCALE_PERCENT_PER_FLOOR,
+	GOLD_RUSH_MIN_COMBO,
+	GOLD_RUSH_PERCENT,
 	GRAZE_MARGIN,
 	GRAZE_POINTS,
 	GUARD_CANCEL_POINTS,
+	JACKPOT_POINTS,
 	KILL_POINTS,
 	ROOM_CLEAR_POINTS,
 	ROOM_PAR_BASE_TICKS,
 	ROOM_PAR_TICKS_PER_COST,
 	ROOM_PERFECT_POINTS,
+	BUILD_SCORE_SOURCE_NAMES,
 	SCORE_SOURCE_COUNT,
 	SCORE_SOURCE_NAMES,
 	ScoreSource,
@@ -526,7 +542,9 @@ const AWARD_DENOMINATOR = COMBO_DENOMINATOR * CURSE_DENOMINATOR * FLOOR_SCALE_DE
 
 /**
  * floor(base x combo/10 x depth x curse/4 x scale/100) as integer arithmetic: the numerator is an integer below 2^53
- * (exact), `num % den` is exact, so (num - num % den) / den is the exact floor.
+ * (exact), `num % den` is exact, so (num - num % den) / den is the exact floor. `bonusPercent` (M2 Bounty, affixes)
+ * and `extraPercent` (builds Gold Rush, applied after it) are more integer factors over 100 each; at their default
+ * (100) the arithmetic is exactly the shorter form, so a run without them scores bit-identically.
  */
 export function awardPoints(
 	state: Readonly<SimState>,
@@ -534,13 +552,21 @@ export function awardPoints(
 	base: number,
 	scalePercent: number = FLOOR_SCALE_DENOMINATOR,
 	bonusPercent: number = FLOOR_SCALE_DENOMINATOR,
+	extraPercent: number = FLOOR_SCALE_DENOMINATOR,
 ): number {
 	const num = base * s.combo * scoreDepth(state) * (CURSE_BASE + s.curses * CURSE_STEP) * scalePercent;
-	if (bonusPercent === FLOOR_SCALE_DENOMINATOR) return (num - (num % AWARD_DENOMINATOR)) / AWARD_DENOMINATOR;
-	// An extra integer percent (M2 Bounty): one more factor over 100, still an exact integer numerator.
-	const big = num * bonusPercent;
-	const den = AWARD_DENOMINATOR * FLOOR_SCALE_DENOMINATOR;
-	return (big - (big % den)) / den;
+	if (extraPercent === FLOOR_SCALE_DENOMINATOR) {
+		if (bonusPercent === FLOOR_SCALE_DENOMINATOR) return (num - (num % AWARD_DENOMINATOR)) / AWARD_DENOMINATOR;
+		// An extra integer percent (M2 Bounty): one more factor over 100, still an exact integer numerator.
+		const big = num * bonusPercent;
+		const den = AWARD_DENOMINATOR * FLOOR_SCALE_DENOMINATOR;
+		return (big - (big % den)) / den;
+	}
+	// Two more factors over 100 (Bounty, then Gold Rush): the numerator stays an exact integer (far below 2^53 for any
+	// kill: base <= 5000, combo <= 50, curse and scale factors in the tens and hundreds, percents <= 200).
+	const huge = num * bonusPercent * extraPercent;
+	const hugeDen = AWARD_DENOMINATOR * FLOOR_SCALE_DENOMINATOR * FLOOR_SCALE_DENOMINATOR;
+	return (huge - (huge % hugeDen)) / hugeDen;
 }
 
 function award(
@@ -550,8 +576,9 @@ function award(
 	base: number,
 	scalePercent?: number,
 	bonusPercent?: number,
+	extraPercent?: number,
 ): number {
-	const pts = awardPoints(state, s, base, scalePercent, bonusPercent);
+	const pts = awardPoints(state, s, base, scalePercent, bonusPercent, extraPercent);
 	s.total += pts;
 	s.points[source] += pts;
 	s.counts[source] += 1;
@@ -604,9 +631,14 @@ export function scoreKill(state: SimState, a: Readonly<ActorState>, killer = 0):
 	const base = KILL_POINTS.get(def.id) ?? DEFAULT_KILL_POINTS;
 	// Bounty (the killer's boons), then (elite affixes, EVD8) x killPointsPercent for an affixed kill.
 	const bonus = affixKillPercent(state, a, runMods(state, killer).killPointsPercent);
+	// Builds (docs/BUILDS.md BU6, opt-in): Gold Rush, after Bounty, at combo x3 or more (before this kill's +0.1).
+	const gold =
+		state.builds !== undefined && s.combo >= GOLD_RUSH_MIN_COMBO && buildsGoldRush(state, killer)
+			? GOLD_RUSH_PERCENT
+			: undefined;
 	let pts: number;
 	if (def.data.boss === true) {
-		pts = award(state, s, ScoreSource.BOSS, base, undefined, bonus);
+		pts = award(state, s, ScoreSource.BOSS, base, undefined, bonus, gold);
 		const finalPhase = BOSS_FINAL_PHASE.get(def.id);
 		if (finalPhase !== undefined && a.phase >= finalPhase) {
 			// Hits landed so far, this tick's included (events.playerHits is live during the tick).
@@ -616,8 +648,9 @@ export function scoreKill(state: SimState, a: Readonly<ActorState>, killer = 0):
 		}
 		s.bossFinalHits = -1;
 	} else {
-		pts = award(state, s, ScoreSource.KILLS, base, floorScalePercent(scoreFloor(state)), bonus);
+		pts = award(state, s, ScoreSource.KILLS, base, floorScalePercent(scoreFloor(state)), bonus, gold);
 	}
+	if (gold !== undefined) buildsGoldRushPop(state, killer, a.x, a.z, pts);
 	const e = s.events;
 	e.kills += 1;
 	e.popX.push(a.x);
@@ -637,6 +670,27 @@ export function scoreBreakable(state: SimState, kind: number): number {
 	const base = BREAKABLE_POINTS[kind];
 	if (base === undefined) return 0;
 	return award(state, s, ScoreSource.BREAKABLES, base * scoreFloor(state));
+}
+
+/**
+ * Builds runs (docs/BUILDS.md BU5, state.ts createSimState): appends the build-only sources (BUILD_SCORE_SOURCE_NAMES:
+ * JACKPOT) to points / counts, so they hash only in builds runs. Idempotent.
+ */
+export function addBuildScoreSources(s: ScoreState): void {
+	const total = SCORE_SOURCE_COUNT + BUILD_SCORE_SOURCE_NAMES.size();
+	while (s.points.size() < total) s.points.push(0);
+	while (s.counts.size() < total) s.counts.push(0);
+}
+
+/**
+ * Jackpot hook (sim/builds procs.ts, Bounty III): JACKPOT_POINTS x the floor into ScoreSource.JACKPOT, through the
+ * usual multipliers; never feeds the combo, touches no room record. Returns the points (0 without scoring or without
+ * the builds sources).
+ */
+export function scoreJackpot(state: SimState): number {
+	const s = state.score;
+	if (s === undefined || s.points.size() <= ScoreSource.JACKPOT) return 0;
+	return award(state, s, ScoreSource.JACKPOT, JACKPOT_POINTS * scoreFloor(state));
 }
 
 /** Sword guard hook: `n` enemy bullets erased by this tick's guard sweep. One award per bullet. */
@@ -754,6 +808,8 @@ export function scoreBulletVisit(
 	e.grazeVZ.push(vel.z);
 	e.grazePlayer.push(grazer);
 	feedCombo(state, s);
+	// Builds (docs/BUILDS.md BU5, opt-in): the graze counters (Thrill Seeker; released in stepBuilds).
+	if (state.builds !== undefined) buildsOnGraze(state, grazer);
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -797,7 +853,11 @@ function clearRoom(state: SimState, s: ScoreState, r: RoomScore): void {
 	r.cleared = 1;
 	s.events.roomsCleared += 1;
 	award(state, s, ScoreSource.ROOMS, ROOM_CLEAR_POINTS);
-	if (s.hitsTaken === r.hitsAtEngage) award(state, s, ScoreSource.PERFECT, ROOM_PERFECT_POINTS);
+	if (s.hitsTaken === r.hitsAtEngage) {
+		award(state, s, ScoreSource.PERFECT, ROOM_PERFECT_POINTS);
+		// Builds (docs/BUILDS.md BU5, opt-in): Lionheart heals on a PERFECT clear.
+		if (state.builds !== undefined) buildsOnPerfectRoom(state);
+	}
 	const under = r.parTicks - (state.tick - r.engageTick);
 	if (under > 0) award(state, s, ScoreSource.FAST, under * FAST_POINTS_PER_TICK);
 }
@@ -835,7 +895,9 @@ export function stepScore(state: SimState): void {
 	const hits = ev.playerHits;
 	const cutMultiplier = teamComboCutDivisorMultiplier(state);
 	const present = presentPlayerCount(state) ?? s.partySize;
-	for (let k = 0; k < hits; k++) cutCombo(s, cutMultiplier, present);
+	// Builds (docs/BUILDS.md BU6, opt-in): Unshaken's hits taken on armor never cut the combo (they still count).
+	const cuts = state.builds !== undefined ? hits - buildsUnshakenKept(state) : hits;
+	for (let k = 0; k < cuts; k++) cutCombo(s, cutMultiplier, present);
 	const hitsBefore = s.hitsTaken;
 	s.hitsTaken += hits;
 
@@ -902,11 +964,16 @@ export function writeScoreHash(s: Readonly<ScoreState>, out: number[]): void {
 	}
 }
 
+/** The dump name of source index `k` (SCORE_SOURCE_NAMES, then BUILD_SCORE_SOURCE_NAMES). */
+function sourceName(k: number): string {
+	return k < SCORE_SOURCE_COUNT ? SCORE_SOURCE_NAMES[k] : BUILD_SCORE_SOURCE_NAMES[k - SCORE_SOURCE_COUNT];
+}
+
 /** Dump names for writeScoreHash, same order (`score.total`, `score.points.kills`, `score.rooms[0].cleared`, ...). */
 export function scoreHashNames(s: Readonly<ScoreState>, out: string[]): void {
 	for (const f of SCORE_HASH_FIELDS) out.push(`score.${f}`);
-	for (const n of SCORE_SOURCE_NAMES) out.push(`score.points.${n}`);
-	for (const n of SCORE_SOURCE_NAMES) out.push(`score.counts.${n}`);
+	for (let k = 0; k < s.points.size(); k++) out.push(`score.points.${sourceName(k)}`);
+	for (let k = 0; k < s.counts.size(); k++) out.push(`score.counts.${sourceName(k)}`);
 	out.push("score.scoredReviverIds.length");
 	for (let k = 0; k < s.scoredReviverIds.size(); k++) out.push(`score.scoredReviverIds[${k}]`);
 	out.push("score.rooms.length");

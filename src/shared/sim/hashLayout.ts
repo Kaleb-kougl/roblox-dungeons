@@ -25,6 +25,7 @@ import { breakablesHashNames, writeBreakablesHash } from "./breakables/breakable
 import { dropsHashNames, writeDropsHash } from "./drops/drops";
 import { affixesHashNames, writeAffixesHash } from "./affixes/affixes";
 import { devHashNames, writeDevHash } from "./dev/dev";
+import { buildsHashNames, writeBuildsHash } from "./builds/builds";
 
 /** The fixtures' subsystem groups, in hash order. */
 export const HASH_SUBSYSTEMS = ["core", "combatHeader", "actors", "weapons", "enemyBullets", "playerBullets"] as const;
@@ -44,7 +45,9 @@ export type HashSubsystem = (typeof HASH_SUBSYSTEMS)[number];
  *   affixes  elite affixes (docs/ENEMY_VARIANTS.md EV7: per actor slot affix, actorId, shield, Vengeful timer), when
  *            state.affixes exists
  *   dev      developer mode (docs/DEV_MODE.md: god mode, blocked hits, toggles), when state.dev exists (local dev runs
- *            only); the LAST group
+ *            only)
+ *   builds   builds (docs/BUILDS.md BU1: per player boon levels, duos, counters, deals left; the proc queue), when
+ *            state.builds exists; the LAST group
  */
 export const ENDLESS_HASH_SUBSYSTEM = "endless";
 export const SCORE_SUBSYSTEM = "score";
@@ -55,6 +58,7 @@ export const BREAKABLES_SUBSYSTEM = "breakables";
 export const DROPS_SUBSYSTEM = "drops";
 export const AFFIXES_SUBSYSTEM = "affixes";
 export const DEV_SUBSYSTEM = "dev";
+export const BUILDS_SUBSYSTEM = "builds";
 /** Every group name a layout can have. */
 export type HashGroupName =
 	| HashSubsystem
@@ -66,7 +70,8 @@ export type HashGroupName =
 	| typeof BREAKABLES_SUBSYSTEM
 	| typeof DROPS_SUBSYSTEM
 	| typeof AFFIXES_SUBSYSTEM
-	| typeof DEV_SUBSYSTEM;
+	| typeof DEV_SUBSYSTEM
+	| typeof BUILDS_SUBSYSTEM;
 
 export interface HashGroup {
 	readonly name: HashGroupName;
@@ -191,6 +196,13 @@ export function hashLayout(state: Readonly<SimState>, withNames = false): HashLa
 		writeDevHash(dev, values);
 		if (withNames) devHashNames(names);
 		close(DEV_SUBSYSTEM);
+	}
+
+	const builds = state.builds;
+	if (builds !== undefined) {
+		writeBuildsHash(builds, values);
+		if (withNames) buildsHashNames(builds, names);
+		close(BUILDS_SUBSYSTEM);
 	}
 
 	return { values, names, groups };

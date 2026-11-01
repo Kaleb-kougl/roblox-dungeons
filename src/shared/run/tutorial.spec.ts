@@ -147,9 +147,11 @@ describe("tutorial world: the lock", () => {
 		expect(setup.endlessFloor(1).config.actorSteerMover).never.toBe(undefined);
 		// And the run config the same top-level fields as an endless run's, plus the tutorial's own, minus breakables
 		// (docs/DECOR.md B7: the tutorial's lessons are tuned to rooms without barrels and crates) and elite affixes
-		// (docs/ENEMY_VARIANTS.md: never in the tutorial). Drops are set, but not the endless defaults: only combat B's
-		// guaranteed Fury (docs/BOOSTS.md B9).
-		const keys = configKeys(buildEndlessRunConfig(1).config).filter((k) => k !== "breakables" && k !== "affixes");
+		// (docs/ENEMY_VARIANTS.md: never in the tutorial) and builds (docs/BUILDS.md BUD8: the tutorial keeps today's
+		// draft). Drops are set, but not the endless defaults: only combat B's guaranteed Fury (docs/BOOSTS.md B9).
+		const keys = configKeys(buildEndlessRunConfig(1).config).filter(
+			(k) => k !== "breakables" && k !== "affixes" && k !== "builds",
+		);
 		keys.push("tutorial");
 		keys.sort();
 		expect(configKeys(setup.config)).toEqual(keys);
@@ -158,6 +160,7 @@ describe("tutorial world: the lock", () => {
 		expect(setup.config.drops).never.toBe(DROPS_CONFIG);
 		for (const f of [1, 2, 3]) expect(setup.endlessFloor(f).breakables).toBe(undefined);
 		expect(setup.config.affixes).toBe(undefined);
+		expect(setup.config.builds).toBe(undefined);
 		for (const f of [1, 2, 3]) expect(setup.endlessFloor(f).roomAffixes).toBe(undefined);
 	});
 

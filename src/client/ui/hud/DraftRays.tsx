@@ -7,7 +7,7 @@ const HIDDEN = 1;
 const ALONG_BEAM_DEG = 90;
 
 export interface DraftRaysProps {
-	readonly color: Color3;
+	readonly color: Color3 | React.Binding<Color3>;
 	readonly visible: React.Binding<boolean>;
 	/** The whole ring's transparency (every beam's BackgroundTransparency). */
 	readonly transparency: React.Binding<number>;

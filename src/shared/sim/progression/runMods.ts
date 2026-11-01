@@ -13,7 +13,8 @@
  *   the player it happens to     roll i-frames, the Hourglass trigger, Second Wind, Vampire Fang (the killer), the
  *                                graze radius (the grazing player)
  * Team-wide rules read the `team*` accessors instead (one value for the whole world, never stacked per player):
- *   teamComboWindowTicks              Lingering if ANY counted player owns it; Impatience once if ANY player took it
+ *   teamComboWindowTicks              Lingering if ANY counted player owns it (builds: the highest level among them);
+ *                                     Impatience once if ANY player took it
  *   teamComboCutDivisorMultiplier     Composure if ANY counted player owns it
  *   teamEnemyBulletSpeedMultiplier    Haste once if ANY player took it
  *   consumeEnemyBulletTimeScale       the Hourglass slow while ANY player's timer runs
@@ -36,26 +37,27 @@ import { PLAYER_RADIUS } from "../playerData";
 import { ENEMY_BULLET_RADIUS } from "../combat/combatData";
 import { COMBO_WINDOW_TICKS, GRAZE_MARGIN } from "../score/scoreData";
 import {
-	ATTACK_TICKS_BOON_PERCENT,
-	BOW_PIERCE_BOON,
+	ATTACK_TICKS_BOON_PERCENTS,
+	BOW_PIERCE_BOONS,
 	Boon,
 	COMBO_CUT_BOON_DIVISOR_MULTIPLIER,
-	COMBO_WINDOW_BOON_BONUS_TICKS,
+	COMBO_WINDOW_BOON_BONUS_TICKS_BY_LEVEL,
 	CURSE_BULLET_SPEED_MULTIPLIER,
 	CURSE_COMBO_WINDOW_LOSS_TICKS,
 	CURSE_MIN_COMBO_WINDOW_TICKS,
 	Curse,
-	DAMAGE_BOON_PERCENT,
+	DAMAGE_BOON_PERCENTS,
 	FANG_HEAL_HALF_HEARTS,
 	FANG_KILLS,
-	GRAZE_MARGIN_BOON,
+	GRAZE_MARGIN_BOONS,
 	HOURGLASS_TICKS,
 	HOURGLASS_TIME_SCALE,
-	KILL_POINTS_BOON_PERCENT,
+	KILL_POINTS_BOON_PERCENTS,
 	PERCENT,
-	ROLL_IFRAME_BOON_PERCENT,
+	ROLL_IFRAME_BOON_PERCENTS,
 	Relic,
 	SECOND_WIND_HALF_HEARTS,
+	levelValue,
 } from "./progressionData";
 import { boostAttackTicksPercent, boostDamagePercent } from "../drops/boostMods";
 
@@ -186,35 +188,66 @@ export const NEUTRAL_RUN_MODS: RunMods = table.freeze({
 	secondWind: false,
 });
 
-/** The combo window in ticks with / without Lingering and Impatience (floored at CURSE_MIN_COMBO_WINDOW_TICKS). */
-function comboWindowFor(lingering: boolean, impatience: boolean): number {
+/**
+ * The combo window in ticks for a Lingering level (0 = not owned) with / without Impatience (floored at
+ * CURSE_MIN_COMBO_WINDOW_TICKS).
+ */
+function comboWindowFor(lingeringLevel: number, impatience: boolean): number {
 	let combo = COMBO_WINDOW_TICKS;
-	if (lingering) combo += COMBO_WINDOW_BOON_BONUS_TICKS;
+	if (lingeringLevel > 0) combo += levelValue(COMBO_WINDOW_BOON_BONUS_TICKS_BY_LEVEL, lingeringLevel);
 	if (impatience) combo -= CURSE_COMBO_WINDOW_LOSS_TICKS;
 	return combo < CURSE_MIN_COMBO_WINDOW_TICKS ? CURSE_MIN_COMBO_WINDOW_TICKS : combo;
 }
 
 /**
- * RunMods from a player's boons, relics and curses (pure). The combo window, the hit-cut multiplier and the enemy
- * bullet speed are this player's own share; the rules read the team-wide accessors below (teamComboWindowTicks, ...).
+ * A player's builds levels (docs/BUILDS.md: sim/builds BuildPlayerState.levels, one per Boon index, 0 = not owned).
+ * Structural, so this leaf module needs no import from sim/builds.
  */
-export function computeRunMods(p: Readonly<Pick<RunPlayerState, "boons" | "relics" | "curses">>): RunMods {
+export interface BoonLevels {
+	readonly levels: ReadonlyArray<number>;
+}
+
+/**
+ * The level of `boon` for a player: with builds, `build.levels[boon]` (0 = not owned); without (the tutorial, M1,
+ * hand-built configs), 1 when owned, so every per-level table reads its level-I entry: today's numbers exactly.
+ */
+function boonLevel(b: ReadonlyArray<number>, build: Readonly<BoonLevels> | undefined, boon: number): number {
+	if (build !== undefined) return build.levels[boon] ?? 0;
+	return owns(b, boon) ? 1 : 0;
+}
+
+/** `values`'s entry for `level` (1..), `none` at level 0. */
+function perLevel(level: number, values: ReadonlyArray<number>, none: number): number {
+	return level > 0 ? levelValue(values, level) : none;
+}
+
+/**
+ * RunMods from a player's boons, relics and curses (pure), at their builds levels when `build` is given (docs/BUILDS.md
+ * BU2: Sharpened 125 / 150 / 175, Swift Strikes 80 / 70 / 60, ...). Without `build` every owned boon is level I: exactly
+ * the numbers from before levels existed. The combo window, the hit-cut multiplier and the enemy bullet speed are this
+ * player's own share; the rules read the team-wide accessors below (teamComboWindowTicks, ...).
+ */
+export function computeRunMods(
+	p: Readonly<Pick<RunPlayerState, "boons" | "relics" | "curses">>,
+	build?: Readonly<BoonLevels>,
+): RunMods {
 	const b = p.boons;
 	const c = p.curses;
-	const combo = comboWindowFor(owns(b, Boon.LINGERING), owns(c, Curse.IMPATIENCE));
-	const margin = owns(b, Boon.DAREDEVIL) ? GRAZE_MARGIN_BOON : GRAZE_MARGIN;
+	const level = (boon: number) => boonLevel(b, build, boon);
+	const combo = comboWindowFor(level(Boon.LINGERING), owns(c, Curse.IMPATIENCE));
+	const margin = perLevel(level(Boon.DAREDEVIL), GRAZE_MARGIN_BOONS, GRAZE_MARGIN);
 	const grazeR = PLAYER_RADIUS + ENEMY_BULLET_RADIUS + margin;
 	return {
-		damagePercent: owns(b, Boon.SHARPENED) ? DAMAGE_BOON_PERCENT : PERCENT,
-		attackTicksPercent: owns(b, Boon.SWIFT_STRIKES) ? ATTACK_TICKS_BOON_PERCENT : PERCENT,
-		bowPierce: owns(b, Boon.PIERCING_ARROWS) ? BOW_PIERCE_BOON : 0,
+		damagePercent: perLevel(level(Boon.SHARPENED), DAMAGE_BOON_PERCENTS, PERCENT),
+		attackTicksPercent: perLevel(level(Boon.SWIFT_STRIKES), ATTACK_TICKS_BOON_PERCENTS, PERCENT),
+		bowPierce: perLevel(level(Boon.PIERCING_ARROWS), BOW_PIERCE_BOONS, 0),
 		rollRing: owns(b, Boon.EMBER_WAKE),
-		rollIframePercent: owns(b, Boon.SLIPPERY) ? ROLL_IFRAME_BOON_PERCENT : PERCENT,
+		rollIframePercent: perLevel(level(Boon.SLIPPERY), ROLL_IFRAME_BOON_PERCENTS, PERCENT),
 		armorOnRoomSpawn: owns(b, Boon.WARDING),
 		comboWindowTicks: combo,
 		grazeMargin: margin,
 		grazeR2: grazeR * grazeR,
-		killPointsPercent: owns(b, Boon.BOUNTY) ? KILL_POINTS_BOON_PERCENT : PERCENT,
+		killPointsPercent: perLevel(level(Boon.BOUNTY), KILL_POINTS_BOON_PERCENTS, PERCENT),
 		comboCutDivisorMultiplier: owns(b, Boon.COMPOSURE) ? COMBO_CUT_BOON_DIVISOR_MULTIPLIER : 1,
 		enemyBulletSpeedMultiplier: owns(c, Curse.HASTE) ? CURSE_BULLET_SPEED_MULTIPLIER : 1,
 		mirror: owns(p.relics, Relic.MIRROR_CLOAK),
@@ -224,9 +257,12 @@ export function computeRunMods(p: Readonly<Pick<RunPlayerState, "boons" | "relic
 	};
 }
 
-/** Rebuilds a player's derived mods (call after changing boons, relics or curses). */
-export function refreshRunMods(p: RunPlayerState): void {
-	p.mods = computeRunMods(p);
+/**
+ * Rebuilds a player's derived mods (call after changing boons, relics, curses or builds levels). `build`: the player's
+ * builds levels in a run with SimConfig.builds (sim/builds buildPlayer), else undefined.
+ */
+export function refreshRunMods(p: RunPlayerState, build?: Readonly<BoonLevels>): void {
+	p.mods = computeRunMods(p, build);
 }
 
 /** The run progression of player `playerIndex`, or undefined outside endless runs / for a player that is not there. */
@@ -391,10 +427,31 @@ export function teamCursed(state: Readonly<SimState>, curse: number): boolean {
 	return false;
 }
 
-/** The combo window in ticks for the whole team: Lingering (any counted owner), Impatience (once), the floor. */
+/**
+ * The highest level of `boon` among the counted players (living; everyone when nobody is alive): their builds level
+ * with SimConfig.builds (state.builds), else 1 for an owner. 0 when no counted player owns it.
+ */
+export function teamBoonLevel(state: Readonly<SimState>, boon: number): number {
+	const r = state.run;
+	if (r === undefined) return 0;
+	const builds = state.builds;
+	const all = nobodyAlive(state);
+	let best = 0;
+	for (let i = 0; i < r.players.size(); i++) {
+		if (!all && playerStateAt(state, i).dead !== 0) continue;
+		const level = boonLevel(r.players[i].boons, builds?.players[i], boon);
+		if (level > best) best = level;
+	}
+	return best;
+}
+
+/**
+ * The combo window in ticks for the whole team: Lingering (any counted owner; with builds, the highest level among
+ * them, docs/BUILDS.md BU2), Impatience (once), the floor.
+ */
 export function teamComboWindowTicks(state: Readonly<SimState>): number {
 	if (state.run === undefined) return COMBO_WINDOW_TICKS;
-	return comboWindowFor(teamOwnsBoon(state, Boon.LINGERING), teamCursed(state, Curse.IMPATIENCE));
+	return comboWindowFor(teamBoonLevel(state, Boon.LINGERING), teamCursed(state, Curse.IMPATIENCE));
 }
 
 /** The combo hit cut's divisor multiplier for the whole team (Composure: any counted owner). */

@@ -58,6 +58,7 @@ import { PARTY_REVIVE_HALF_HEARTS } from "./partyData";
 import { resetBreakables } from "./breakables/breakables";
 import { dropsOnRoomSpawned } from "./drops/drops";
 import { tutorialOnRoomSpawned } from "./tutorial/tutorial";
+import { clearBuildProcs } from "./builds/builds";
 
 /** A candidate spawn position (structurally shared/dungeon's TileXZ). */
 export interface SpawnTile {
@@ -220,6 +221,8 @@ function nextFloor(state: SimState, input: Readonly<InputFrame>, endless: Endles
 	const c = state.combat;
 	c.enemyBullets.clear();
 	c.playerBullets.clear();
+	// Builds (docs/BUILDS.md BU3): queued procs die with the floor.
+	if (state.builds !== undefined) clearBuildProcs(state.builds);
 	const actors = c.actors;
 	for (let i = 0; i < actors.size(); i++) if (actors[i].kind !== NO_KIND) freeActor(ctx, actors[i]);
 
