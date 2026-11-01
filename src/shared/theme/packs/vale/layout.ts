@@ -898,6 +898,19 @@ export const VALE_WORLD_LAYOUTS: Record<string, ValeWorldLayout> = {
 		pivot: { x: 33, y: 33 },
 		pixelsPerTile: 29.6,
 	},
+	lootglint: {
+		kind: "sprites",
+		frameW: 29,
+		frameH: 35,
+		pivot: { x: 15, y: 18 },
+		pixelsPerTile: 29.6,
+		resample: "Default",
+		facings: { count: 1, zeroDeg: 0, ccw: true },
+		sheets: [{ file: "loot-glint.png", w: 232, h: 35 }],
+		animations: {
+			idle: { sheet: 0, start: 0, frames: 8, fps: 12, loop: true },
+		},
+	},
 	mote: {
 		kind: "image",
 		file: "decor-mote.png",

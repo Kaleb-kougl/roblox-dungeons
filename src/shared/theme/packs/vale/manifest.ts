@@ -268,6 +268,7 @@ export const VALE_DECOR_FX: Readonly<Record<DecorFxName, string>> = {
 	glow: "glow",
 	glint: "glint",
 	zone: "zone",
+	loot: "lootglint",
 };
 
 /**

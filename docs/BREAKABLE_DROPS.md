@@ -329,3 +329,26 @@ spec (`run/tutorial.spec`) pass unchanged.
   piece breaks and on a floor change; a break shows the hop from the piece's top, then the normal bob; four drops on
   the ground + a loaded break shows the grey fizzle; the placeholder's loot sound plays the drop sound; two players see
   the same glints and the same gem; `KV_LootDebug` labels with the placeholder boxes and the vale art.
+
+## Loot glint art (2026-11-01)
+
+Loaded pieces have their own twinkle: `decor.fx.loot` (a new optional `DECOR_FX_NAMES` entry, tinted by the existing
+`decor.fx.glint` role, so no new colour role and no Luau-locals change). The vale art is original, an anime-style
+pixel-art star drawn by `scripts/art/gen-loot-glint.js` (8 frames of 31 x 31 white pixels, 12 fps: a dot pops into a
+plus, stretches into a long thin four-point star with short diagonal rays and a small companion sparkle at the peak,
+frame 4, then shrinks away; `scripts/art/gen-loot-glint.test.js`). `art:build` / `art:lock` run the generator first
+into `art/vendor/kaleb-vale/loot-glint/` (byte-identical output, pinned in `art/vendor.lock.json`). The atlas pipeline
+gained `own` on world sprite sets: the piece `lootglint` is its own sheet `loot-glint.png` (232 x 35, cells 29 x 35,
+pivot (15, 18)), packed after the shared atlases, so `decor-atlas.png` does not repack and needs no re-upload
+(`build-atlases.test.js` pins that). The `lootglint` layout entry was written from the pipeline's own functions; the
+next full `art:build` reproduces it. Until `loot-glint.png` has an ID in `assetIds.ts`, BreakableRenderController
+falls back to `decor.fx.glint` (`BREAKABLE_LOOT_VIEW.glintFx` / `glintFallbackFx`). Boost gems and the relic pedestal
+keep the Lords of Pain glint.
+
+`BREAKABLE_LOOT_VIEW.glintStillFrame` 2 -> 4 (the twinkle's peak). Frame 2 of the Lords of Pain glint is empty (as
+are frames 1 and 2 of its source files), so under reduced motion the loaded-piece glint showed nothing; frame 4 is
+visible in both arts. The boost gems' `BOOST_VIEW.glintStillFrame` is also 2 on the same Lords of Pain art, so their
+reduced-motion glint is likely invisible too (not changed here; docs/BOOST_ART.md).
+
+To switch it on: `npm run art:build`, upload `art/upload/loot-glint.png`, paste its ID into `assetIds.ts` as
+`"loot-glint.png"`, `npm run verify`.

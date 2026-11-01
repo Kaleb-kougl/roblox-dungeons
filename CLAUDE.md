@@ -457,7 +457,11 @@ Decision log (deviations from `PLAN.md`):
   exactly as before; endless replays and scores changed (all-time boards stay `_v1`, `DAILY.ruleset` 1 -> 2). View:
   `decor.fx.glint` on loaded pieces (`BREAKABLE_LOOT_VIEW`), a hop for `fromPiece` landings, a fizzle for lost loot,
   port audio ID `sfx.breakable.loot` (SILENT in the placeholder, falls back to `sfx.boost.drop`); no Luau-locals change.
-  Debug `KV_LootDebug`. Studio check, the vale clip (BL7) and playtest (BL9) pending.
+  Debug `KV_LootDebug`. Loaded pieces twinkle with their own optional `decor.fx.loot` (tint role `decor.fx.glint`,
+  fallback `decor.fx.glint`): the vale art is original, `scripts/art/gen-loot-glint.js` (run by `art:build` /
+  `art:lock` into `art/vendor/kaleb-vale/`), packed as its own sheet `loot-glint.png` through the pipeline's new `own` on
+  world sprite sets, so `decor-atlas.png` does not repack. Upload of `loot-glint.png`, Studio check, the vale clip (BL7)
+  and playtest (BL9) pending.
 
 - **Void decoration (docs/VOID_DECOR.md).** Presentation only (no sim, dungeon, lockstep, hash, replay, fixture, minimap
   or collision change; VOID cells stay VOID). Pure core `shared/view/voidDecor` (`voidField`, `planVoid` /

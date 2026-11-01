@@ -956,7 +956,9 @@
 			"mote: the ambient particle texture of every biome, zone.png (a soft white disc) at 1/16, alpha stretched to 255",
 			"(the emitter's Transparency sets the look), RGB white (the emitter's Color tints it); its own file, since a",
 			"ParticleEmitter.Texture takes no ImageRect. zone: the stairwell disc at 1/4 (676 px of soft disc is far more",
-			"than the 2.6 tiles it is drawn at)."
+			"than the 2.6 tiles it is drawn at). lootglint: the loaded-piece glint (docs/BREAKABLE_DROPS.md), original art drawn by",
+			"scripts/art/gen-loot-glint.js (art:build and art:lock run it first) into art/vendor/kaleb-vale/; `own` on a sprite set:",
+			"its own sheet loot-glint.png, packed after the decor atlas, so adding it never repacks that atlas."
 		],
 		"pixelsPerTileFrom": "enemy.swarmer",
 		"noiseAlpha": 2,
@@ -1169,6 +1171,18 @@
 				"alpha": "normalize",
 				"rgb": "white",
 				"own": "decor-mote"
+			},
+			"lootglint": {
+				"animations": {
+					"idle": {
+						"file": "kaleb-vale/loot-glint/loot_glint_{f}.png",
+						"frames": [0, 1, 2, 3, 4, 5, 6, 7],
+						"fps": 12,
+						"loop": true
+					}
+				},
+				"pivot": "union",
+				"own": "loot-glint"
 			}
 		}
 	},

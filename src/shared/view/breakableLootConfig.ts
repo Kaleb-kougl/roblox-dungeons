@@ -1,4 +1,4 @@
-import type { ColorRole } from "shared/theme";
+import type { ColorRole, DecorFxName } from "shared/theme";
 import { BREAKABLE_VIEW } from "./breakablesConfig";
 
 /**
@@ -24,12 +24,15 @@ export interface LootFizzleView {
 export const BREAKABLE_LOOT_VIEW = {
 	// --- the glint on a loaded intact piece (BLD3) ------------------------------------------------------------------
 	/**
-	 * The pack's `decor.fx.glint` (the treasure sparkle, also drawn over boost gems) plays once every glintEverySeconds
+	 * The pack's `decor.fx.<glintFx>` (the loot twinkle; a pack without it: `decor.fx.<glintFallbackFx>`, the treasure
+	 * sparkle also drawn over boost gems) plays once every glintEverySeconds
 	 * of sim time on a loaded piece (hidden between), each piece glintPhaseSlots / glintPhaseSlots of the cycle off the
 	 * others by its cell hash (lootGlintPhaseSec), so two loaded crates never sparkle in step and every client of a party
 	 * sees the same glint at the same tick. Art without frames (an image, or a sprite with no fps) shows for
 	 * glintFlashSeconds per cycle. No glint art: no glint.
 	 */
+	glintFx: "loot" as DecorFxName,
+	glintFallbackFx: "glint" as DecorFxName,
 	glintEverySeconds: 3.5,
 	glintFlashSeconds: 0.45,
 	glintPhaseSlots: 64,
@@ -39,7 +42,8 @@ export const BREAKABLE_LOOT_VIEW = {
 	glintTransparency: 0.2,
 	/** Reduced motion (motionScale 0): a still sparkle, always shown at this transparency, frame glintStillFrame. */
 	reducedTransparency: 0.4,
-	glintStillFrame: 2,
+	/** The vale twinkle's peak (scripts/art/gen-loot-glint.js PEAK_FRAME); also a visible frame of the fallback glint. */
+	glintStillFrame: 4,
 	/**
 	 * Its billboard: the art's own size x glintScale, centred glintTopFraction of the way up the piece as drawn (on its
 	 * top, inside its silhouette's height cap BREAKABLE_VIEW.maxHeightTiles), glintDepthStuds nearer the camera than the

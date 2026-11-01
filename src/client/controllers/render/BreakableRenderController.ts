@@ -8,7 +8,6 @@ import { BREAKABLE_KINDS, gridToWorld, type Dungeon } from "shared/dungeon";
 import { NO_BOOST, SIM_HZ, breakableLootAt, type SimState } from "shared/sim";
 import {
 	BIOMES,
-	BOOST_GLINT_FX,
 	BREAKABLE_SHATTER_ANIMATION,
 	decorFxId,
 	type BiomeId,
@@ -166,8 +165,8 @@ const EMPTY_BOARD: SpriteBillboard = { w: 0, h: 0, offsetX: 0, offsetY: 0, offse
  *                sfx.breakable.hit / .break (shared/view/audio cues.ts).
  *
  * Loot (docs/BREAKABLE_DROPS.md BL6, BLD3): every frame, each intact piece whose slot holds a boost (shared/sim
- * breakableLootAt; nothing while the run has no breakable loot) gets a glint: the pack's `decor.fx.glint` (the treasure
- * sparkle, also drawn over boost gems; no art, no glint) on its own pooled anchor at the piece's base, its billboard on
+ * breakableLootAt; nothing while the run has no breakable loot) gets a glint: the pack's `decor.fx.loot` (the anime
+ * twinkle; without it `decor.fx.glint`, the treasure sparkle also drawn over boost gems; no art, no glint) on its own pooled anchor at the piece's base, its billboard on
  * the drawn piece's top (lootGlintBillboard), depth-tested. It plays once every BREAKABLE_LOOT_VIEW.glintEverySeconds of
  * sim time, phased by the piece's cell (lootGlintPhaseSec: every client of a party sees the same sparkle), soft
  * (glintTransparency); a still sparkle under reduced motion; hidden while an enemy bullet is within duckTiles
@@ -207,7 +206,7 @@ export class BreakableRenderController implements OnStart {
 	private dungeon: Dungeon | undefined;
 	private lastSimSec: number | undefined;
 	private shown = false;
-	/** The pack's `decor.fx.glint` and its layout (undefined: no glint on loaded pieces). */
+	/** The pack's `decor.fx.loot` (else `decor.fx.glint`) and its layout (undefined: no glint on loaded pieces). */
 	private glintArt: DecorPiece | undefined;
 	private glintLayout: SpriteLayout | undefined;
 	/** Loaded intact pieces' glints by slot, and the pool. */
@@ -237,7 +236,9 @@ export class BreakableRenderController implements OnStart {
 		folder.Parent = Workspace;
 		this.folder = this.janitor.Add(folder);
 		for (let k = 0; k < BREAKABLE_KINDS.size(); k++) this.looks.push(this.lookFor(pack, k));
-		this.glintArt = pack.decor(decorFxId(BOOST_GLINT_FX));
+		this.glintArt =
+			pack.decor(decorFxId(BREAKABLE_LOOT_VIEW.glintFx)) ??
+			pack.decor(decorFxId(BREAKABLE_LOOT_VIEW.glintFallbackFx));
 		this.glintLayout = this.glintArt !== undefined ? visualLayout(this.glintArt.art) : undefined;
 		this.readLootDebug();
 		this.janitor.Add(

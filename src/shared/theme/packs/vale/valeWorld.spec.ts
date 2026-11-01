@@ -92,8 +92,8 @@ describe("vale world art (docs/DECOR.md R5)", () => {
 			expect([id, (DECOR_KIND_LAYERS[p.kind] as ReadonlyArray<string>).includes(p.layer)]).toEqual([id, true]);
 			expect(parseDecorId(id)).toBeDefined();
 		}
-		// the new files go to one shared atlas plus the particle texture: two uploads
-		expect(worldFiles()).toEqual(["decor-atlas.png", "decor-mote.png"]);
+		// one shared atlas, the particle texture and the loot twinkle's own sheet (docs/BREAKABLE_DROPS.md): three uploads
+		expect(worldFiles()).toEqual(["decor-atlas.png", "decor-mote.png", "loot-glint.png"]);
 	});
 
 	it("with every world file uploaded validates with zero problems, every ID mapped", () => {
