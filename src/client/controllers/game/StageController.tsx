@@ -306,14 +306,15 @@ export class StageController implements OnStart, StageDriver {
 	/**
 	 * The seeded roster's line for `floor` (docs/DAILY.md DS2, shared/view/hud stageRosterLine): floor 1 every kind,
 	 * later floors the kinds that joined there (the floor before's roster is endlessRoster(seed, floor - 1): cheap and
-	 * pure, no floor build). Undefined: no endless floor, a floor without a roster (the tutorial) or no kind joined.
+	 * pure, no floor build). `runStart`: every kind on any floor (a dev run starting past floor 1, docs/DEV_MODE.md).
+	 * Undefined: no endless floor, a floor without a roster (the tutorial) or no kind joined.
 	 */
-	private rosterLine(ctx: RunContext, floor: number): NewBestLineText | undefined {
+	private rosterLine(ctx: RunContext, floor: number, runStart = false): NewBestLineText | undefined {
 		const build = ctx.endlessFloor;
 		if (build === undefined || floor < ENDLESS_FIRST_FLOOR) return undefined;
 		const roster = build(floor).layout.roster;
 		if (roster === undefined) return undefined;
-		const previous = floor > ENDLESS_FIRST_FLOOR ? endlessRoster(ctx.seed, floor - 1) : undefined;
+		const previous = !runStart && floor > ENDLESS_FIRST_FLOOR ? endlessRoster(ctx.seed, floor - 1) : undefined;
 		const pack = this.theme.getPack();
 		return stageRosterLine(roster, previous, (key, vars) => pack.str(key, vars));
 	}
@@ -326,7 +327,7 @@ export class StageController implements OnStart, StageDriver {
 		if (load.kind === "floorChange" || this.rosterSerial === this.serial) return;
 		const ctx = this.sim.getContext();
 		if (ctx === undefined) return;
-		const line = this.rosterLine(ctx, ctx.floor);
+		const line = this.rosterLine(ctx, ctx.floor, true);
 		if (line === undefined) return;
 		this.rosterSerial = this.serial;
 		clientStore.setStageLine(line);

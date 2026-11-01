@@ -306,6 +306,12 @@ Paths under `src/`. Pure logic lives in shared modules with specs; services and 
   `lastPushedDay`); client `DailyController` + Reflex slice `daily`. `SimController.startSolo(lobbyId?, worldKind)`,
   `MenuController.playDaily` / `playDailyParty`; debug attribute `KV_Daily`. A refused or timed-out daily start falls
   back to an unranked local endless run, like Play solo.
+- **With Builds and Developer mode (merged on `main`).** The `daily` world is `buildEndlessRunConfig`, so it carries
+  `SimConfig.builds` (`BUILDS_CONFIG`) like endless (docs/BUILDS.md BUD8 "endless only" covers every world built from
+  the endless config): daily runs draft cards, proc on-kill boons and score Jackpots; the server replays them through
+  the same builder. The client-only `dev` world (docs/DEV_MODE.md) builds endless floors too, so it gets the seeded
+  roster; it is not `isEndlessWorld` (never submitted, its own start floor: SimController checks `DEV_WORLD_KIND`
+  first), and its run start's stage line lists the whole roster of its start floor, not only the kinds joining there.
 - **Boards, percentile, friends, podium (DS5-DS8).** `BoardRef { board, scope, daily? }`; the all-time boards stay
   unscoped and byte-compatible. Daily posts: `policy.dailyWorlds` (not `LEADERBOARD_ELIGIBLE_WORLDS`, which records
   reuse), death-only, never Studio / private servers / debug / abandoned, to the session's day. `getLeaderboard({ board,
