@@ -195,6 +195,20 @@ export interface DropsEvents {
 	ended: BoostEnded[];
 	/** Players whose Aegis pip absorbed a hit this tick, in hit order. */
 	aegisBroke: number[];
+	/**
+	 * Ground slots whose drop came out of a broken breakable this tick (docs/BREAKABLE_DROPS.md), a subset of `dropped`,
+	 * in order.
+	 */
+	fromPiece: number[];
+	/** Loaded breakables that broke with every ground slot taken this tick: the boost is lost (a fizzle in the view). */
+	lostLoot: DropLostLoot[];
+}
+
+/** A loaded breakable's boost that found no free ground slot (docs/BREAKABLE_DROPS.md BLD5). World position. */
+export interface DropLostLoot {
+	readonly kind: number;
+	readonly x: number;
+	readonly z: number;
 }
 
 /** SimState.drops. */
@@ -213,6 +227,11 @@ export interface DropsState {
 	guards: DropGuard[];
 	/** One per player, party index order (solo: one). */
 	players: BoostPlayerState[];
+	/**
+	 * Boost kind hidden in each breakable slot of the current floor (docs/BREAKABLE_DROPS.md), NO_BOOST = empty. Always
+	 * empty unless DropsConfig.breakableLoot; hashed only then.
+	 */
+	pieceLoot: number[];
 	/** NOT hashed. */
 	events: DropsEvents;
 }
@@ -236,7 +255,7 @@ function newBoostPlayer(): BoostPlayerState {
 }
 
 function emptyEvents(): DropsEvents {
-	return { dropped: [], collected: [], expired: [], ended: [], aegisBroke: [] };
+	return { dropped: [], collected: [], expired: [], ended: [], aegisBroke: [], fromPiece: [], lostLoot: [] };
 }
 
 /** The drop stream's first word for a run seeded `seed` (seedToState(seed) XOR DROPS.salt). */
@@ -260,6 +279,7 @@ export function createDropsState(config: Readonly<DropsConfig>, seed: number, pl
 		ground,
 		guards: [],
 		players: list,
+		pieceLoot: [],
 		events: emptyEvents(),
 	};
 }
@@ -273,12 +293,15 @@ export function cloneDropsState(d: Readonly<DropsState>): DropsState {
 		ground: d.ground.map((g) => ({ ...g })),
 		guards: d.guards.map((g) => ({ kind: g.kind, ids: [...g.ids] })),
 		players: d.players.map((p) => ({ ticks: [...p.ticks], aegisPips: p.aegisPips })),
+		pieceLoot: [...d.pieceLoot],
 		events: {
 			dropped: [...d.events.dropped],
 			collected: d.events.collected.map((e) => ({ ...e })),
 			expired: d.events.expired.map((e) => ({ ...e })),
 			ended: d.events.ended.map((e) => ({ ...e })),
 			aegisBroke: [...d.events.aegisBroke],
+			fromPiece: [...d.events.fromPiece],
+			lostLoot: d.events.lostLoot.map((e) => ({ ...e })),
 		},
 	};
 }
@@ -291,6 +314,8 @@ export function clearDropsEvents(d: DropsState): void {
 	e.expired.clear();
 	e.ended.clear();
 	e.aegisBroke.clear();
+	e.fromPiece.clear();
+	e.lostLoot.clear();
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -579,6 +604,14 @@ export function activeBoosts(state: Readonly<SimState>, playerIndex: number, out
 /** Ticks left of player `playerIndex`'s boost `kind` (0: not running, or no drops). */
 export function boostTicksLeft(state: Readonly<SimState>, playerIndex: number, kind: number): number {
 	return state.drops?.players[playerIndex]?.ticks[kind] ?? 0;
+}
+
+/**
+ * The boost kind hidden in breakable slot `slot` of the current floor (docs/BREAKABLE_DROPS.md), NO_BOOST when the
+ * slot holds none, the feature is off, or there are no drops. Read-only (the view's glint).
+ */
+export function breakableLootAt(state: Readonly<SimState>, slot: number): number {
+	return state.drops?.pieceLoot[slot] ?? NO_BOOST;
 }
 
 /** Player `playerIndex`'s Aegis pips (0 without drops). */
