@@ -122,6 +122,8 @@ export class TelemetryService implements OnStart {
 			const sessionId =
 				spec.funnel === RUN_FUNNEL || spec.funnel === TUTORIAL_FUNNEL ? funnelSessionId : undefined;
 			AnalyticsService.LogFunnelStepEvent(player, spec.funnel, sessionId, spec.step, spec.stepName, fields);
+		} else if (spec.kind === "onboarding") {
+			AnalyticsService.LogOnboardingFunnelStepEvent(player, spec.step, spec.stepName, fields);
 		} else {
 			const status =
 				spec.status === "Start"

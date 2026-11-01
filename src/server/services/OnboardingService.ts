@@ -5,6 +5,7 @@ import { serverLogger } from "server/log";
 import { Events } from "server/network";
 import {
 	BESTIARY_SEEN_RATE,
+	DEFAULT_TUTORIAL_START_INFO,
 	ONBOARDING_AUTOSAVE_SECONDS,
 	ONBOARDING_CODEC,
 	ONBOARDING_DATASTORE_NAME,
@@ -138,7 +139,7 @@ export class OnboardingService implements OnStart {
 					return;
 				}
 				const attemptId = HttpService.GenerateGUID(false);
-				this.trackerFor(player).start(attemptId);
+				this.trackerFor(player).start(attemptId, DEFAULT_TUTORIAL_START_INFO);
 				log.info("TUTORIAL_STARTED", `${player.UserId} attempt ${attemptId}`);
 			}),
 		);
@@ -281,7 +282,7 @@ export class OnboardingService implements OnStart {
 		// Telemetry first (no yield): the attempt closes now, so the player is no longer in the tutorial.
 		const ended = this.trackers.get(player)?.finish();
 		if (ended !== undefined) {
-			this.telemetry.logTutorial(player, tutorialFinishEvents(outcome, ended.lastStep), ended.attemptId);
+			this.telemetry.logTutorial(player, tutorialFinishEvents(outcome, ended), ended.attemptId);
 		}
 		if (this.loadFor(player) === undefined) return;
 		const key = playerDataKey(player.UserId);
