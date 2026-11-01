@@ -1,6 +1,6 @@
 /**
  * Daily tunables (docs/DAILY.md "2. The day and the daily seed"). Data only: day.ts, seed.ts and the services read
- * these (CLAUDE.md "No magic numbers"). The daily seed's SECRET is not here: it lives in the server only
+ * these (CLAUDE.md "No magic numbers"). The daily seed's KEY is not here: it lives in the server only
  * (src/server/config/daily.ts, DSD8), so no client can compute a day's seed before the server reveals it.
  */
 import { KV_EPOCH_UNIX_SECONDS, SECONDS_PER_DAY } from "shared/config";
@@ -45,17 +45,13 @@ export const DAILY: DailyConfig = table.freeze({
 export const DAILY_WORLD_KIND = "daily";
 
 /**
- * dailySeedFrom's 32-bit mixer: `secret ^ imul(day, dayMultiplier)` (a bijection of the day for a fixed secret: no
- * two days of one secret share a seed), then MurmurHash3's fmix32 finalizer (multipliers and shifts below). The
- * day multiplier is the golden-ratio constant (odd).
+ * dailySeedFrom (seed.ts): seed = the first 4 bytes (a big-endian uint32) of HMAC-SHA256(key, messagePrefix ..
+ * day), the day in decimal. The key is server-only and at least `minKeyBytes` long (128 bits: out of brute-force
+ * reach). Changing the prefix changes every day's seed, like changing the key.
  */
-export const DAILY_SEED_MIX = table.freeze({
-	dayMultiplier: 0x9e3779b1,
-	mulA: 0x85ebca6b,
-	mulB: 0xc2b2ae35,
-	shiftA: 16,
-	shiftB: 13,
-	shiftC: 16,
+export const DAILY_SEED = table.freeze({
+	messagePrefix: "kv-daily|",
+	minKeyBytes: 16,
 });
 
 /** Per player: `requestDaily` calls (sliding window; extra calls are dropped: the status is pushed anyway). */

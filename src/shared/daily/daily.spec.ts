@@ -1,13 +1,16 @@
 // The Daily's day math and seed (docs/DAILY.md DS3): UTC-midnight day boundaries from the leaderboard epoch, labels
-// (2026-10-31 is Daily #304), the board scope, the keyless seed mixer (valid run seeds, all distinct and well spread
-// over 10,000 days with a test secret), and the daily world building exactly the endless world for the same seed.
+// (2026-10-31 is Daily #304), the board scope, the keyless seed derivation (HMAC-SHA256: a known answer that pins the
+// message format, valid run seeds, all distinct and well spread over 10,000 days with a test key, another key -> other
+// seeds, short keys refused), and the daily world building exactly the endless world for the same seed.
 import { describe, expect, it } from "@rbxts/jest-globals";
 import { KV_EPOCH_UNIX_SECONDS } from "shared/config";
+import { bytesOfHex, hexOf, hmacSha256, stringBytes } from "shared/crypto";
 import { ORDERED_VALUE_LAYOUT } from "shared/leaderboard";
 import { hashState, createSimState } from "shared/sim";
 import {
 	DAILY,
 	DAILY_CLIENT,
+	DAILY_SEED,
 	DAILY_WORLD_KIND,
 	dailyDay,
 	dailyDayStart,
@@ -16,6 +19,7 @@ import {
 	dailyRunKeyAt,
 	dailyScope,
 	dailySeedFrom,
+	dailySeedMessage,
 	dailyStatusFor,
 	nextDailyRequestAt,
 } from "shared/daily";
@@ -32,9 +36,20 @@ import {
 
 /** 2026-10-31T00:00:00Z (today in the plan: Daily #304). */
 const OCT_31 = 1793404800;
-/** A test secret (the real one is server-only, src/server/config/daily.ts). */
-const TEST_SECRET = 0x1234abcd;
+/** A 128-bit test key, bytes 0x00..0x0f (the real key is server-only, src/server/config/daily.ts). */
+const TEST_KEY = bytesOfHex("000102030405060708090a0b0c0d0e0f");
 const DAYS = 10000;
+
+let testSeeds: number[] | undefined;
+/** dailySeedFrom(day, TEST_KEY) for days 0..DAYS-1 (computed once: HMAC is not free under Lune). */
+function seedsOfTestKey(): number[] {
+	if (testSeeds === undefined) {
+		const out: number[] = [];
+		for (let day = 0; day < DAYS; day++) out.push(dailySeedFrom(day, TEST_KEY));
+		testSeeds = out;
+	}
+	return testSeeds;
+}
 
 describe("day math", () => {
 	it("starts at the leaderboard's epoch (one source of truth), day 0 = 2026-01-01", () => {
@@ -94,25 +109,38 @@ describe("client re-requests", () => {
 });
 
 describe("daily seed", () => {
+	it("is the first 4 bytes of HMAC-SHA256(key, 'kv-daily|' .. day), big-endian (known answers from Node's crypto)", () => {
+		expect(DAILY_SEED.messagePrefix).toBe("kv-daily|");
+		expect(dailySeedMessage(303)).toBe("kv-daily|303");
+		expect(dailySeedMessage(-1)).toBe("kv-daily|-1");
+		expect(dailySeedMessage(0)).toBe("kv-daily|0");
+		expect(() => dailySeedMessage(1.5)).toThrow();
+		const mac = hexOf(hmacSha256(TEST_KEY, stringBytes("kv-daily|303")));
+		expect(string.sub(mac, 1, 8)).toBe("63c07788");
+		expect(dailySeedFrom(303, TEST_KEY)).toBe(0x63c07788);
+		expect(dailySeedFrom(-1, TEST_KEY)).toBe(4071871891); // check-asset-ids: allow (HMAC test vector)
+		expect(dailySeedFrom(0, TEST_KEY)).toBe(212400100); // check-asset-ids: allow (HMAC test vector)
+	});
+
 	it("is a valid run seed for every day of 10,000, all distinct, and deterministic", () => {
+		const seeds = seedsOfTestKey();
 		const seen = new Set<number>();
 		for (let day = 0; day < DAYS; day++) {
-			const seed = dailySeedFrom(day, TEST_SECRET);
-			if (!isValidRunSeed(seed)) error(`day ${day}: invalid seed ${seed}`);
-			seen.add(seed);
+			if (!isValidRunSeed(seeds[day])) error(`day ${day}: invalid seed ${seeds[day]}`);
+			seen.add(seeds[day]);
 		}
 		expect(seen.size()).toBe(DAYS);
-		expect(dailySeedFrom(303, TEST_SECRET)).toBe(dailySeedFrom(303, TEST_SECRET));
-		expect(isValidRunSeed(dailySeedFrom(-1, TEST_SECRET))).toBe(true); // before the epoch too
+		expect(dailySeedFrom(303, TEST_KEY)).toBe(seeds[303]);
+		expect(isValidRunSeed(dailySeedFrom(-1, TEST_KEY))).toBe(true); // before the epoch too
 	});
 
 	it("spreads over the whole 32-bit range (top 4 bits and every bit near 50 %)", () => {
+		const seeds = seedsOfTestKey();
 		const buckets: number[] = [];
 		const ones: number[] = [];
 		for (let i = 0; i < 16; i++) buckets.push(0);
 		for (let b = 0; b < 32; b++) ones.push(0);
-		for (let day = 0; day < DAYS; day++) {
-			const seed = dailySeedFrom(day, TEST_SECRET);
+		for (const seed of seeds) {
 			buckets[bit32.rshift(seed, 28)] += 1;
 			for (let b = 0; b < 32; b++) if (bit32.btest(seed, bit32.lshift(1, b))) ones[b] += 1;
 		}
@@ -125,10 +153,18 @@ describe("daily seed", () => {
 		}
 	});
 
-	it("depends on the secret: another secret gives another seed for the same day", () => {
+	it("depends on the key: another key gives other seeds for the same days", () => {
+		const seeds = seedsOfTestKey();
+		const other = bytesOfHex("07070707070707070707070707070707"); // check-asset-ids: allow (test key bytes)
 		let same = 0;
-		for (let day = 0; day < 100; day++) if (dailySeedFrom(day, TEST_SECRET) === dailySeedFrom(day, 7)) same++;
+		for (let day = 0; day < 1000; day++) if (dailySeedFrom(day, other) === seeds[day]) same++;
 		expect(same).toBe(0);
+	});
+
+	it("refuses a key shorter than 128 bits", () => {
+		expect(DAILY_SEED.minKeyBytes).toBe(16);
+		expect(() => dailySeedFrom(303, bytesOfHex("000102030405060708090a0b0c0d0e"))).toThrow();
+		expect(() => dailySeedFrom(303, [])).toThrow();
 	});
 });
 
@@ -143,7 +179,7 @@ describe("daily world", () => {
 			expect([kind, isEndlessWorld(kind)]).toEqual([kind, false]);
 		}
 		for (const [seed, partySize] of [
-			[dailySeedFrom(303, TEST_SECRET), 1],
+			[dailySeedFrom(303, TEST_KEY), 1],
 			[1337, 3],
 		] as const) {
 			const daily = buildWorldSetup(DAILY_WORLD_KIND, seed, { atBossDoor: false, partySize });

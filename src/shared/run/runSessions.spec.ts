@@ -11,6 +11,7 @@ import {
 	quantizeInput,
 	type InputFrame,
 } from "shared/sim";
+import { bytesOfHex } from "shared/crypto";
 import { DAILY, DAILY_WORLD_KIND, dailyDay, dailySeedFrom } from "shared/daily";
 import { LOBBY, Lobbies } from "shared/lobby";
 import { LiveRun } from "shared/play";
@@ -37,9 +38,9 @@ const LATE = 1e9;
 /** 2026-10-31T00:00:00Z (Daily #304, day 303) and its noon: the wall clock (StartContext.unixNow) of most starts. */
 const OCT_31 = 1793404800;
 const OCT_31_NOON = OCT_31 + 43200;
-/** The daily seed's fake secret (the real one is server-only, src/server/config/daily.ts). */
-const TEST_SECRET = 0x1234abcd;
-const fakeDailySeed = (day: number) => dailySeedFrom(day, TEST_SECRET);
+/** The daily seed's test key (the real one is server-only, src/server/config/daily.ts). */
+const TEST_KEY = bytesOfHex("000102030405060708090a0b0c0d0e0f");
+const fakeDailySeed = (day: number) => dailySeedFrom(day, TEST_KEY);
 
 /** Picks the seeds in order (default: always 1337, the floor of run-player-dungeon-1337); the Daily's from the fake. */
 function registry(seeds: number[] = [1337]) {
