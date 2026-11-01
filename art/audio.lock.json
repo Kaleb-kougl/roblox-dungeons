@@ -12,6 +12,16 @@
 			"bytes": 208388
 		},
 		{
+			"path": "ninja-adventure/Audio/Jingles/LevelUp2.wav",
+			"sha256": "96a14dd1df3cc995a39a6c94dffeb86b1fe05f09fb9d6d87679536c290023d9f",
+			"bytes": 353012
+		},
+		{
+			"path": "ninja-adventure/Audio/Jingles/LevelUp3.wav",
+			"sha256": "dfac129f984681acf572e203135c228e8066402a197e224702da27233450d50e",
+			"bytes": 264812
+		},
+		{
 			"path": "ninja-adventure/Audio/Jingles/Secret2.wav",
 			"sha256": "8829fc50a9b6ae7f76eff208cf421990f939fc8d7570b038efde12dc6974dace",
 			"bytes": 273736
@@ -35,6 +45,11 @@
 			"path": "ninja-adventure/Audio/Jingles/Success3.wav",
 			"sha256": "79160dbc2270d36122038c0de5224dbe72ea8bddd76999bb4d7fbf1184656f93",
 			"bytes": 353010
+		},
+		{
+			"path": "ninja-adventure/Audio/Jingles/Success4.wav",
+			"sha256": "e12aa512e8dbeea954c94674370114b8d4649904ae4409576815ea61e7085c63",
+			"bytes": 227658
 		},
 		{
 			"path": "ninja-adventure/Audio/Musics/13 - Mystical.ogg",
@@ -120,6 +135,16 @@
 			"path": "ninja-adventure/Audio/Sounds/Bonus/Coin3.wav",
 			"sha256": "de0da28b73a35c1d0511f09f46f94d76a858ddb6c1dbe501c3ba78a8da05d8d7",
 			"bytes": 46932
+		},
+		{
+			"path": "ninja-adventure/Audio/Sounds/Bonus/Gold2.wav",
+			"sha256": "40d2c1361af4fa6299c9bb8d18c3606e35fcbe43ce18683891dad76badbeae0f",
+			"bytes": 74218
+		},
+		{
+			"path": "ninja-adventure/Audio/Sounds/Bonus/PowerUp1.wav",
+			"sha256": "f684a041c42646a6285692218010d9ed590421eba63e5d05d9c4f71026a5379f",
+			"bytes": 83304
 		},
 		{
 			"path": "ninja-adventure/Audio/Sounds/Bonus/PowerUp2.wav",
