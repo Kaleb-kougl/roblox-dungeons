@@ -657,7 +657,9 @@ export const BOOST_BEAM_IMAGE_ID = "ui.marker.boost";
  * split, a Shielded enemy's shield breaking (the plan's `sfx.affix.shieldBreak`: asset ID segments are lowercase) and a
  * Vengeful corpse's ring. Then the new-best celebration's two (docs/NEW_BEST.md NB4): the in-run fanfare (falls back
  * to the PERFECT jingle while silent) and the run-over record fanfare (falls back to the game-over jingle). Then the
- * Daily's rank layer's two (docs/DAILY.md DS10): a rank threshold's sting and a friend passed.
+ * Daily's rank layer's two (docs/DAILY.md DS10): a rank threshold's sting and a friend passed. Then the breakable
+ * drops' one (docs/BREAKABLE_DROPS.md BL5): a boost hops out of a broken barrel / crate (sfx.boost.drop plays while it
+ * is silent).
  */
 export const PORT_AUDIO_EVENTS = [
 	"sfx.player.swing",
@@ -732,6 +734,9 @@ export const PORT_AUDIO_EVENTS = [
 	// the shown score passes a friend's best today (with their toast)
 	"sfx.rank.up",
 	"sfx.friend.passed",
+	// docs/BREAKABLE_DROPS.md BL5: a loaded barrel / crate breaks and its boost hops out (in place of sfx.boost.drop for
+	// that landing, which plays while this one is silent)
+	"sfx.breakable.loot",
 ] as const;
 
 /**

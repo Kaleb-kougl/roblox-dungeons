@@ -75,8 +75,13 @@ describe("the daily rank layer's strings and sounds", () => {
 	});
 
 	it("append sfx.rank.up and sfx.friend.passed to the port's audio IDs, silent in the placeholder", () => {
-		const n = PORT_AUDIO_EVENTS.size();
-		expect([PORT_AUDIO_EVENTS[n - 2], PORT_AUDIO_EVENTS[n - 1]]).toEqual(["sfx.rank.up", "sfx.friend.passed"]);
+		// after the build sounds; later features append after them (docs/BREAKABLE_DROPS.md BL5)
+		const n = (PORT_AUDIO_EVENTS as ReadonlyArray<string>).indexOf("sfx.friend.passed") + 1;
+		expect([PORT_AUDIO_EVENTS[n - 3], PORT_AUDIO_EVENTS[n - 2], PORT_AUDIO_EVENTS[n - 1]]).toEqual([
+			"sfx.build.jackpot",
+			"sfx.rank.up",
+			"sfx.friend.passed",
+		]);
 		const assets = PLACEHOLDER_MANIFEST.assets as unknown as Record<string, { kind: string }>;
 		for (const id of ["sfx.rank.up", "sfx.friend.passed"]) {
 			expect([id, slotFor(id)?.soundGroup, REQUIRED_ASSET_IDS.includes(id), assets[id].kind]).toEqual([

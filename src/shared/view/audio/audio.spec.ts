@@ -441,6 +441,24 @@ describe("audio: boost drops (docs/BOOSTS.md B7)", () => {
 		expect(SFX_FALLBACK[SFX.roomPerfect]).toBe(SFX.roomClear);
 	});
 
+	it("sfx.breakable.loot (docs/BREAKABLE_DROPS.md BL5) is a port ID, ranked between the drop and the pickup, falling back to the drop", () => {
+		expect(SFX.breakableLoot).toBe("sfx.breakable.loot");
+		expect([ALL_SFX.includes(SFX.breakableLoot), PORT_SFX.includes(SFX.breakableLoot)]).toEqual([true, true]);
+		expect(SFX_PRIORITY[SFX.breakableLoot]).toBeGreaterThan(SFX_PRIORITY[SFX.boostDrop]);
+		expect(SFX_PRIORITY[SFX.breakableLoot]).toBeLessThan(SFX_PRIORITY[SFX.boostCollect]);
+		expect(SFX_FALLBACK[SFX.breakableLoot]).toBe(SFX.boostDrop);
+		expect([JINGLE_SFX.includes(SFX.breakableLoot), DUCKING_SFX.includes(SFX.breakableLoot)]).toEqual([
+			false,
+			false,
+		]);
+		// silent (the placeholder pack): it resolves to the drop; with neither clip, nothing
+		const silentLoot = new AudioCueMapper((id) => id !== SFX.breakableLoot);
+		expect(silentLoot.resolve(SFX.breakableLoot)).toBe(SFX.boostDrop);
+		expect(new AudioCueMapper().resolve(SFX.breakableLoot)).toBe(SFX.breakableLoot);
+		const silent = new AudioCueMapper((id) => id !== SFX.breakableLoot && id !== SFX.boostDrop);
+		expect(silent.resolve(SFX.breakableLoot)).toBe(undefined);
+	});
+
 	it("the boost IDs are the theme's port audio events (lowercase aegisbreak), ranked, in ALL_SFX and PORT_SFX", () => {
 		const ids4 = [SFX.boostDrop, SFX.boostCollect, SFX.boostExpire, SFX.boostAegisBreak];
 		expect(ids4).toEqual(["sfx.boost.drop", "sfx.boost.collect", "sfx.boost.expire", "sfx.boost.aegisbreak"]);

@@ -125,6 +125,8 @@ describe("audio contract: port IDs and ambience", () => {
 			// docs/DAILY.md DS10
 			"sfx.rank.up",
 			"sfx.friend.passed",
+			// docs/BREAKABLE_DROPS.md BL5
+			"sfx.breakable.loot",
 		]);
 		const web = new Set<string>([...AUDIO_EVENTS, ...BREAKABLE_AUDIO_EVENTS]);
 		for (const id of PORT_AUDIO_EVENTS) {

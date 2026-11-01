@@ -374,6 +374,9 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		// pack's clips are auditioned, built and uploaded (DS12)
 		"sfx.rank.up": SILENT,
 		"sfx.friend.passed": SILENT,
+		// Roblox port (docs/BREAKABLE_DROPS.md BL5): a boost hops out of a broken barrel / crate (sfx.boost.drop plays
+		// while it is silent); silent until the vale pack's clip is picked, built and uploaded (BL7)
+		"sfx.breakable.loot": SILENT,
 		"music.menu": SILENT,
 		"music.biome.1": SILENT,
 		"music.biome.2": SILENT,
