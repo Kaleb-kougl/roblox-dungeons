@@ -1,13 +1,16 @@
 import { Controller, OnStart } from "@flamework/core";
 import { Janitor } from "@rbxts/janitor";
 import { RunService, Workspace } from "@rbxts/services";
-import { createKvBillboardGui, createKvSurfaceGui } from "client/ui";
+import { DEV_MONO_FONT, createKvBillboardGui, createKvSurfaceGui } from "client/ui";
 import { CAMERA_PITCH_DEG, CAMERA_YAW_DEG } from "shared/config";
+import { RUN_ATTRIBUTES } from "shared/play";
 import { BREAKABLE_KINDS, gridToWorld, type Dungeon } from "shared/dungeon";
-import { SIM_HZ } from "shared/sim";
+import { NO_BOOST, SIM_HZ, breakableLootAt, type SimState } from "shared/sim";
 import {
 	BIOMES,
+	BOOST_GLINT_FX,
 	BREAKABLE_SHATTER_ANIMATION,
+	decorFxId,
 	type BiomeId,
 	type Breakable,
 	type DecorPiece,
@@ -18,12 +21,16 @@ import {
 } from "shared/theme";
 import {
 	BREAKABLE_DEBRIS,
+	BREAKABLE_LOOT_VIEW,
 	BREAKABLE_VIEW,
 	BULLET_VIEW,
 	BreakableTracker,
+	LOOT_GLINT_HIDDEN,
 	RENDER_ORDER,
 	SPRITE_VIEW,
 	animDtSec,
+	artPieceTop,
+	boxPieceTop,
 	breakableArtLayout,
 	breakableBaseStuds,
 	breakableBoxStuds,
@@ -36,9 +43,17 @@ import {
 	floorImageOffset,
 	floorImageSize,
 	isoBasis,
+	lootDebugText,
+	lootGlintBillboard,
+	lootGlintDucked,
+	lootGlintFrame,
+	lootGlintPhaseSec,
+	lootGlintTransparency,
 	oneShotSec,
 	spriteBillboard,
+	type PieceTop,
 	type SpriteAnimChoice,
+	type SpriteBillboard,
 	type SpriteLayout,
 } from "shared/view";
 import { burstSeed, motionScale } from "shared/view/fx";
@@ -56,6 +71,8 @@ import {
 	type PlaceholderModel,
 } from "./placeholders";
 import { SPRITE_TINT_NONE, SpriteView } from "./SpriteView";
+import { visualLayout } from "./decorParts";
+import { buildGlint, setGlintBoard, setGlintFrame, setGlintTransparency, type Glint } from "./glintParts";
 
 const RENDER_STEP = "KV_Breakables";
 const PARKED = new CFrame(BULLET_VIEW.parkedStuds[0], BULLET_VIEW.parkedStuds[1], BULLET_VIEW.parkedStuds[2]);
@@ -77,6 +94,8 @@ interface KindLook {
 	/** The sprite set's one-shot break, seconds (0: none). */
 	readonly shatterSec: number;
 	readonly flash: Color3;
+	/** Where a loaded piece's glint sits: the drawn piece's top (art layout or placeholder box). */
+	readonly top: PieceTop;
 }
 
 /** A static image billboard (image art): an invisible anchor Part with a BillboardGui + ImageLabel. */
@@ -111,6 +130,19 @@ interface PieceView {
 	debris: BasePart | undefined;
 }
 
+/** A loaded piece's glint (docs/BREAKABLE_DROPS.md BL6): `decor.fx.glint` on its own anchor at the piece's base. Pooled. */
+interface LootGlint {
+	readonly anchor: Part;
+	readonly glint: Glint;
+	/** lootGlintPhaseSec of the piece's cell, and its cell centre (sim units: the bullet duck). */
+	phaseSec: number;
+	x: number;
+	z: number;
+}
+
+/** A zero-size billboard (a pooled glint before a piece sets its own). */
+const EMPTY_BOARD: SpriteBillboard = { w: 0, h: 0, offsetX: 0, offsetY: 0, offsetZ: 0 };
+
 /**
  * Breakable barrels and crates (docs/DECOR.md D4, task R13), drawn from the sim's `state.breakables` (endless runs;
  * nothing without it). Once per rendered frame (after the camera, like every view) the pure BreakableTracker
@@ -132,6 +164,16 @@ interface PieceView {
  *                biome's decor brokenBarrel / brokenCrate (a variant by cell hash; nothing when the pack has none).
  *                Sounds are not played here: AudioController maps the frame's summed breakableHits / breakablesBroken to
  *                sfx.breakable.hit / .break (shared/view/audio cues.ts).
+ *
+ * Loot (docs/BREAKABLE_DROPS.md BL6, BLD3): every frame, each intact piece whose slot holds a boost (shared/sim
+ * breakableLootAt; nothing while the run has no breakable loot) gets a glint: the pack's `decor.fx.glint` (the treasure
+ * sparkle, also drawn over boost gems; no art, no glint) on its own pooled anchor at the piece's base, its billboard on
+ * the drawn piece's top (lootGlintBillboard), depth-tested. It plays once every BREAKABLE_LOOT_VIEW.glintEverySeconds of
+ * sim time, phased by the piece's cell (lootGlintPhaseSec: every client of a party sees the same sparkle), soft
+ * (glintTransparency); a still sparkle under reduced motion; hidden while an enemy bullet is within duckTiles
+ * (lootGlintDucked), so it is never drawn over a bullet. It goes the frame the piece breaks (or its loot is released) and
+ * with every new layout (floor change, restart, run end). Debug: KV_LootDebug (Workspace boolean, Studio or KV_Debug,
+ * off by default) labels every loaded intact piece with its boost kind (lootDebugText, developer English).
  *
  * Bodies are pooled per kind and reused across floors (parked far below when unused); debris decals belong to the
  * floor's Janitor (cleaned on every new layout and when the run ends). Static pieces are placed once; only shaking
@@ -165,6 +207,16 @@ export class BreakableRenderController implements OnStart {
 	private dungeon: Dungeon | undefined;
 	private lastSimSec: number | undefined;
 	private shown = false;
+	/** The pack's `decor.fx.glint` and its layout (undefined: no glint on loaded pieces). */
+	private glintArt: DecorPiece | undefined;
+	private glintLayout: SpriteLayout | undefined;
+	/** Loaded intact pieces' glints by slot, and the pool. */
+	private readonly glints = new Map<number, LootGlint>();
+	private readonly freeGlints = new Array<LootGlint>();
+	/** KV_LootDebug's labels by slot (their anchor Parts), and whether it is on. */
+	private readonly lootLabels = new Map<number, Part>();
+	private lootDebug = false;
+	private readonly slotScratch = new Array<number>();
 
 	constructor(
 		private readonly sim: SimController,
@@ -185,6 +237,13 @@ export class BreakableRenderController implements OnStart {
 		folder.Parent = Workspace;
 		this.folder = this.janitor.Add(folder);
 		for (let k = 0; k < BREAKABLE_KINDS.size(); k++) this.looks.push(this.lookFor(pack, k));
+		this.glintArt = pack.decor(decorFxId(BOOST_GLINT_FX));
+		this.glintLayout = this.glintArt !== undefined ? visualLayout(this.glintArt.art) : undefined;
+		this.readLootDebug();
+		this.janitor.Add(
+			Workspace.GetAttributeChangedSignal(BREAKABLE_LOOT_VIEW.debugAttribute).Connect(() => this.readLootDebug()),
+		);
+		this.janitor.Add(Workspace.GetAttributeChangedSignal(RUN_ATTRIBUTES.debug).Connect(() => this.readLootDebug()));
 
 		const reset = (ctx: RunContext) => {
 			this.dungeon = ctx.dungeon;
@@ -208,13 +267,15 @@ export class BreakableRenderController implements OnStart {
 		if (art !== undefined && art.kind === "sprites") {
 			const set = art.set;
 			const shatter = set.animation(BREAKABLE_SHATTER_ANIMATION);
+			const layout = breakableArtLayout(set);
 			return {
 				theme,
 				set,
 				image: undefined,
-				layout: breakableArtLayout(set),
+				layout,
 				shatterSec: shatter !== undefined && !shatter.loop ? oneShotSec(shatter.frames, shatter.fps) : 0,
 				flash,
+				top: artPieceTop(layout),
 			};
 		}
 		if (art !== undefined && art.kind === "image") {
@@ -224,9 +285,19 @@ export class BreakableRenderController implements OnStart {
 				pivot: art.pivot,
 				pixelsPerTile: art.pixelsPerTile,
 			};
-			return { theme, set: undefined, image: art, layout: breakableArtLayout(layout), shatterSec: 0, flash };
+			const capped = breakableArtLayout(layout);
+			return {
+				theme,
+				set: undefined,
+				image: art,
+				layout: capped,
+				shatterSec: 0,
+				flash,
+				top: artPieceTop(capped),
+			};
 		}
-		return { theme, set: undefined, image: undefined, layout: undefined, shatterSec: 0, flash };
+		const top = boxPieceTop(breakableBoxStuds(theme.placeholder.size));
+		return { theme, set: undefined, image: undefined, layout: undefined, shatterSec: 0, flash, top };
 	}
 
 	private frame(): void {
@@ -253,6 +324,7 @@ export class BreakableRenderController implements OnStart {
 		for (const view of this.idling) {
 			if (!this.active.has(view)) view.body?.sprite?.update(IDLE, 0, 0, this.basis, dtSec);
 		}
+		this.syncLoot(state, simSec, motion);
 		this.flushMoves();
 		debug.profileend();
 	}
@@ -308,6 +380,7 @@ export class BreakableRenderController implements OnStart {
 
 	/** Every view's body back to its pool (parked), every debris decal destroyed (the floor's Janitor). */
 	private clearViews(): void {
+		this.releaseLoot();
 		for (let slot = 0; slot < this.views.size(); slot++) {
 			const view = this.views[slot];
 			if (view !== undefined && view.body !== undefined) this.release(view);
@@ -515,6 +588,150 @@ export class BreakableRenderController implements OnStart {
 		if (body.image !== undefined) body.image.label.ImageColor3 = on ? flash : SPRITE_TINT_NONE;
 	}
 
+	// --- loot (docs/BREAKABLE_DROPS.md BL6) ------------------------------------------------------------
+
+	/** Slot `slot` is an intact piece of the layout drawn whose slot holds a boost. */
+	private loaded(state: Readonly<SimState>, slot: number): boolean {
+		return (
+			this.views[slot] !== undefined && this.tracker.isIntact(slot) && breakableLootAt(state, slot) !== NO_BOOST
+		);
+	}
+
+	/**
+	 * One frame of the loot hints: glints (and KV_LootDebug labels) follow the loaded intact pieces, then every glint
+	 * steps its cadence (hidden between passes and near an enemy bullet). Nothing while the run has no breakable loot and
+	 * nothing is shown.
+	 */
+	private syncLoot(state: Readonly<SimState>, simSec: number, motion: number): void {
+		const n = state.drops?.pieceLoot.size() ?? 0;
+		if (n === 0 && this.glints.size() === 0 && this.lootLabels.size() === 0) return;
+		const gone = this.slotScratch;
+		gone.clear();
+		for (const [slot] of this.glints) if (!this.loaded(state, slot)) gone.push(slot);
+		for (const slot of gone) this.releaseGlint(slot);
+		gone.clear();
+		for (const [slot] of this.lootLabels) if (!this.lootDebug || !this.loaded(state, slot)) gone.push(slot);
+		for (const slot of gone) this.removeLabel(slot);
+		gone.clear();
+		if (this.glintArt !== undefined || this.lootDebug) {
+			for (let slot = 0; slot < n; slot++) {
+				if (!this.loaded(state, slot)) continue;
+				if (this.glintArt !== undefined && !this.glints.has(slot)) this.attachGlint(slot);
+				if (this.lootDebug && !this.lootLabels.has(slot)) this.addLabel(slot, breakableLootAt(state, slot));
+			}
+		}
+		if (this.glints.size() === 0) return;
+		const bullets = state.combat.enemyBullets;
+		const shown = lootGlintTransparency(motion);
+		for (const [, g] of this.glints) {
+			const glint = g.glint;
+			const frame = lootGlintFrame(simSec, g.phaseSec, glint.fps, glint.frames, motion);
+			if (frame === LOOT_GLINT_HIDDEN || lootGlintDucked(g.x, g.z, bullets)) {
+				setGlintTransparency(glint, HIDDEN);
+				continue;
+			}
+			setGlintFrame(glint, frame);
+			setGlintTransparency(glint, shown);
+		}
+	}
+
+	/** A loaded piece's glint (pooled), on its top, hidden until its cadence shows it. */
+	private attachGlint(slot: number): void {
+		const view = this.views[slot];
+		const layout = this.glintLayout;
+		if (view === undefined || layout === undefined) return;
+		const g = this.freeGlints.pop() ?? this.buildLootGlint();
+		if (g === undefined) return;
+		const look = this.looks[view.kind] ?? this.looks[0];
+		setGlintBoard(g.glint, lootGlintBillboard(look.top, layout));
+		setGlintTransparency(g.glint, HIDDEN);
+		g.glint.gui.Enabled = true;
+		g.phaseSec = lootGlintPhaseSec(view.cellX, view.cellY);
+		g.x = gridToWorld(view.cellX);
+		g.z = gridToWorld(view.cellY);
+		this.moves.set(g.anchor, view.rest);
+		this.glints.set(slot, g);
+	}
+
+	private buildLootGlint(): LootGlint | undefined {
+		const art = this.glintArt;
+		if (art === undefined) return undefined;
+		const anchor = renderPart("Part", false);
+		anchor.Name = "LootGlint";
+		anchor.Transparency = HIDDEN;
+		anchor.Size = new Vector3(SPRITE_VIEW.anchorStuds, SPRITE_VIEW.anchorStuds, SPRITE_VIEW.anchorStuds);
+		anchor.CFrame = PARKED;
+		anchor.Parent = this.folder;
+		const glint = buildGlint(art, anchor, EMPTY_BOARD, BREAKABLE_VIEW.idleAnimation);
+		return { anchor, glint, phaseSec: 0, x: 0, z: 0 };
+	}
+
+	private releaseGlint(slot: number): void {
+		const g = this.glints.get(slot);
+		if (g === undefined) return;
+		this.glints.delete(slot);
+		setGlintTransparency(g.glint, HIDDEN);
+		g.glint.gui.Enabled = false;
+		this.moves.set(g.anchor, PARKED);
+		this.freeGlints.push(g);
+	}
+
+	/** Every glint back to the pool and every debug label gone (new layout, run end, teardown). */
+	private releaseLoot(): void {
+		const slots = this.slotScratch;
+		slots.clear();
+		for (const [slot] of this.glints) slots.push(slot);
+		for (const slot of slots) this.releaseGlint(slot);
+		slots.clear();
+		for (const [slot] of this.lootLabels) slots.push(slot);
+		for (const slot of slots) this.removeLabel(slot);
+		slots.clear();
+	}
+
+	/** KV_LootDebug: on in Studio or with KV_Debug, while the Workspace attribute is true. */
+	private readLootDebug(): void {
+		const allowed = RunService.IsStudio() || Workspace.GetAttribute(RUN_ATTRIBUTES.debug) === true;
+		this.lootDebug = allowed && Workspace.GetAttribute(BREAKABLE_LOOT_VIEW.debugAttribute) === true;
+	}
+
+	/** A debug label over slot `slot`'s piece naming Boost `kind` (developer English, AutoLocalize off). */
+	private addLabel(slot: number, kind: number): void {
+		const view = this.views[slot];
+		if (view === undefined) return;
+		const v = BREAKABLE_LOOT_VIEW;
+		const anchor = renderPart("Part", false);
+		anchor.Name = "LootDebug";
+		anchor.Transparency = HIDDEN;
+		anchor.Size = new Vector3(SPRITE_VIEW.anchorStuds, SPRITE_VIEW.anchorStuds, SPRITE_VIEW.anchorStuds);
+		anchor.CFrame = view.rest;
+		const gui = createKvBillboardGui("LootDebug");
+		gui.Size = UDim2.fromOffset(v.debugWidthPx, v.debugHeightPx);
+		gui.StudsOffsetWorldSpace = new Vector3(0, v.debugLiftStuds, 0);
+		gui.AlwaysOnTop = true;
+		gui.ResetOnSpawn = false;
+		gui.Adornee = anchor;
+		const label = new Instance("TextLabel");
+		label.BackgroundTransparency = HIDDEN;
+		label.BorderSizePixel = 0;
+		label.Size = UDim2.fromScale(1, 1);
+		label.Font = DEV_MONO_FONT;
+		label.TextSize = v.debugTextSize;
+		label.TextColor3 = this.pack!.color(v.debugRole);
+		label.TextStrokeTransparency = 0;
+		label.Text = lootDebugText(kind);
+		label.Parent = gui;
+		gui.Parent = anchor;
+		anchor.Parent = this.folder;
+		this.lootLabels.set(slot, anchor);
+	}
+
+	private removeLabel(slot: number): void {
+		const anchor = this.lootLabels.get(slot);
+		if (anchor === undefined) return;
+		this.lootLabels.delete(slot);
+		anchor.Destroy();
+	}
+
 	// --- debris ----------------------------------------------------------------------------------
 
 	/** The flat decal a broken piece leaves (its biome's variant by cell hash), or nothing without art. */
@@ -531,6 +748,9 @@ export class BreakableRenderController implements OnStart {
 	}
 
 	private destroyPools(): void {
+		this.releaseLoot();
+		for (const g of this.freeGlints) g.anchor.Destroy();
+		this.freeGlints.clear();
 		for (const [, list] of this.free) {
 			for (const body of list) {
 				if (body.model !== undefined) destroyModel(body.model);

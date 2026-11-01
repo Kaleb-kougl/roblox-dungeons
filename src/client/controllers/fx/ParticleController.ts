@@ -8,6 +8,7 @@ import { BOOST_KINDS, BREAKABLE_KINDS, type ColorRole } from "shared/theme";
 import { BOOST_VIEW, type BoostBurstView } from "shared/view/boosts";
 import {
 	BLINK_VIEW,
+	BREAKABLE_LOOT_VIEW,
 	BREAKABLE_VIEW,
 	BlinkWatch,
 	RENDER_ORDER,
@@ -79,6 +80,8 @@ interface ParticlePart {
  * Seeds: burstSeed(entry index, the state's tick, NEAR_MISS_VIEW graze / parry seedSalt).
  * Builds (docs/BUILDS.md BU8; BuildFxController's per-frame output): `buildSparkBurst` (build.spark) and
  * `buildPhantomBurst` (BUILD_FX_VIEW.phantom.role), appended to the palette after the near-miss roles.
+ * Boosts from breakables (docs/BREAKABLE_DROPS.md BL6; called by BoostDropRenderController): `lootFizzle` (a loaded
+ * piece's boost lost on a full floor: BREAKABLE_LOOT_VIEW.fizzleBurst in its fizzleRole, appended after the builds').
  *
  * Budget: at most particleBudget(settings) live particles (128 / 320 / 512; one level lower under reducedMotion) plus
  * the ring dots, PARTICLE_QUAD_CAPACITY parts at most; the pool grows lazily and never shrinks (unused parts parked).
@@ -99,6 +102,9 @@ export class ParticleController implements OnStart, ParticleWriter {
 	private boostBase = PAL_SPARK;
 	private collectBurst: ChipBurst | undefined;
 	private poofBurst: ChipBurst | undefined;
+	/** A loaded breakable's boost lost on a full floor (docs/BREAKABLE_DROPS.md BL6): its colour index and shape. */
+	private fizzleColor = PAL_SPARK;
+	private fizzleBurst: ChipBurst | undefined;
 	/** The room clear spark ring (docs/ROOM_CLEAR.md RC5): CLEAR's colour index, PERFECT's is the next one. */
 	private roomClearBase = PAL_SPARK;
 	private roomClearShape: ChipBurst | undefined;
@@ -165,6 +171,9 @@ export class ParticleController implements OnStart, ParticleWriter {
 		this.palette.push(pack.color("build.spark"));
 		this.buildPhantomColor = this.palette.size();
 		this.palette.push(pack.color(BUILD_FX_VIEW.phantom.role));
+		this.fizzleColor = this.palette.size();
+		this.palette.push(pack.color(BREAKABLE_LOOT_VIEW.fizzleRole));
+		this.fizzleBurst = chipBurstOf(BREAKABLE_LOOT_VIEW.fizzleBurst);
 
 		this.nearMiss.onFrame((frame, settings) => this.nearMissFrame(frame, settings));
 		const [impOk, impKind] = pcall(() => archetypeIndex(IMP.id));
@@ -232,6 +241,16 @@ export class ParticleController implements OnStart, ParticleWriter {
 		const burst = fade ? this.poofBurst : this.collectBurst;
 		if (burst === undefined || kind < 0 || kind >= BOOST_KINDS.size()) return;
 		this.system.chips(x, z, this.boostBase + kind, burst, seed, this.fx.settings());
+	}
+
+	/**
+	 * A loaded breakable broke at sim (x, z) with every ground slot taken (docs/BREAKABLE_DROPS.md BL6, BLD5): its boost
+	 * fizzles out, a small grey puff (BREAKABLE_LOOT_VIEW.fizzleBurst in fizzleRole).
+	 */
+	lootFizzle(x: number, z: number, seed: number): void {
+		const burst = this.fizzleBurst;
+		if (burst === undefined) return;
+		this.system.chips(x, z, this.fizzleColor, burst, seed, this.fx.settings());
 	}
 
 	/** The room clear spark ring at sim (x, z) (docs/ROOM_CLEAR.md RC5): uiAccent, or ember for PERFECT. */
@@ -387,7 +406,7 @@ export class ParticleController implements OnStart, ParticleWriter {
 	}
 }
 
-/** A BOOST_VIEW burst as the particle system's chip burst. */
+/** A BOOST_VIEW (or BREAKABLE_LOOT_VIEW fizzle) burst as the particle system's chip burst. */
 function chipBurstOf(b: BoostBurstView): ChipBurst {
 	return {
 		chunks: b.chunks,
