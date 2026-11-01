@@ -372,5 +372,5 @@ read helpers, hash), `boostMods.ts` (the effect reads, a leaf), specs `drops.spe
 ## Out of scope
 
 - Permanent stat pickups, coins / currency, healing hearts as drops (hearts stay with the flask and Vampire Fang).
-- Drops from breakables (docs/DECOR.md B5 kept them out of v1; `dropsOnBreak` could reuse this later).
+- ~~Drops from breakables~~: built in docs/BREAKABLE_DROPS.md (loaded pieces picked per floor, `dropsOnBreak`).
 - Magnet / auto-pickup, rarity tiers for boosts, boosts that affect the whole party.

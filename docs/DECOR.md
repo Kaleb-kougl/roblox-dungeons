@@ -393,7 +393,8 @@ build's Delve floor handles breakable walls at `35307022` (D3) and reuse what fi
 - **B4. Toughness** (in hits, tunables in the data module): barrel 1 sword hit / 2 arrows / 4 enemy bullets; crate 2
   sword hits / 4 arrows / 8 enemy bullets.
 - **B5. Reward**: score only. A new score source `BREAKABLES`, small points x floor; it does **not** feed the combo
-  (no farming) and does not count toward room clear / perfect / fast. Drops (a heart or Ember) are out of v1.
+  (no farming) and does not count toward room clear / perfect / fast. Drops (a heart or Ember) are out of v1;
+  boosts from breakables are docs/BREAKABLE_DROPS.md.
 - **B6. Where**: combat, elite and treasure rooms only (never entrance, shrine, boss, corridors). Per room by band:
   kept 0-2, worn 1-3, ruined 2-4, abyss 3-6 (x room area, capped). Mostly clusters of 2-4 hugging a wall, plus at
   most one lone piece as mid-room cover in combat rooms >= 10 tiles.

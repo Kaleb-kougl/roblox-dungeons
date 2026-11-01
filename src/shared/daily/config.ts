@@ -31,7 +31,8 @@ export interface DailyConfig {
 export const DAILY: DailyConfig = table.freeze({
 	epochSeconds: KV_EPOCH_UNIX_SECONDS,
 	secondsPerDay: SECONDS_PER_DAY,
-	ruleset: 1,
+	// 2: breakable loot (docs/BREAKABLE_DROPS.md) changes endless play.
+	ruleset: 2,
 	labelOffset: 1,
 	yesterdayCacheSeconds: 600,
 	minEntrantsForPercentile: 20,

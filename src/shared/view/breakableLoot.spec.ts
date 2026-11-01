@@ -3,7 +3,7 @@
 // boost's hop (the arc from the piece's top, the bob after it) and the KV_LootDebug label.
 import { describe, expect, it } from "@rbxts/jest-globals";
 import { CAMERA_PITCH_DEG, STUDS_PER_TILE } from "shared/config";
-import { Boost } from "shared/sim";
+import { Boost, BulletKind, BulletPayload } from "shared/sim";
 import {
 	BREAKABLE_LOOT_VIEW,
 	BREAKABLE_VIEW,
@@ -28,8 +28,15 @@ const V = BREAKABLE_LOOT_VIEW;
 const S = STUDS_PER_TILE;
 
 /** A fake bullet pool: visible bullets at the given floor points. */
-function pool(points: ReadonlyArray<readonly [number, number]>, hidden: ReadonlyArray<number> = []): LootGlintBullets {
+function pool(
+	points: ReadonlyArray<readonly [number, number]>,
+	hidden: ReadonlyArray<number> = [],
+	payloads: ReadonlyArray<number> = [],
+): LootGlintBullets {
 	return {
+		payloadAt(i) {
+			return payloads[i] ?? 0;
+		},
 		highWater() {
 			return points.size();
 		},
@@ -156,6 +163,23 @@ describe("breakable loot: the glint's place", () => {
 		).toBe(true);
 		// a dead (invisible) slot never ducks it
 		expect(lootGlintDucked(5, 5, pool([[5, 5]], [0]))).toBe(false);
+		// Ooze goo (a floor decal under the glint) never ducks it; a real bullet beside it still does
+		const goo = BulletPayload.with(0, "kind", BulletKind.GOO);
+		expect(lootGlintDucked(5, 5, pool([[5, 5]], [], [goo]))).toBe(false);
+		expect(
+			lootGlintDucked(
+				5,
+				5,
+				pool(
+					[
+						[5, 5],
+						[5.1, 5],
+					],
+					[],
+					[goo, 0],
+				),
+			),
+		).toBe(true);
 	});
 });
 

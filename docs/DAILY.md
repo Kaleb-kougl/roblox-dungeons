@@ -127,6 +127,7 @@ a dearer kind joins. The census reports it; tuning is an owner call.
 - **Ruleset (DSD11).** `DAILY.ruleset` (an integer in `shared/config`) joins the board scope. Bump it with any change
   that alters endless play; after an update, servers still on the old build keep posting to the old ruleset's board
   and new servers to the new one, so no daily board mixes two rulesets.
+  History: 1 at launch of the feature; 2 with boosts from breakables (docs/BREAKABLE_DROPS.md, 2026-11-01).
 
 ### 3. World, sessions, remotes
 

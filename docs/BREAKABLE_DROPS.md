@@ -9,7 +9,9 @@ validates and steps in lockstep like everything else. It closes the gap both ear
 ("Drops ... are out of v1") and docs/BOOSTS.md "Out of scope" ("Drops from breakables ... `dropsOnBreak` could reuse
 this later").
 
-Status (2026-11-01): **BL0-BL4 built** (gameplay: dungeon, sim, worlds; see "As built (BL0-BL4)"); BL5-BL9 open.
+Status (2026-11-01): **code-complete except audio.** BL0-BL6 and BL8 built and headless-tested ("As built (BL0-BL4)",
+"As built (BL5-BL6, review)"); the client half (glint, hop, fizzle) is typechecked and linted but its Verify needs
+Studio. Open: BL7 (vale audio: the loot sound plays the drop sound until a clip is uploaded) and BL9 (playtest).
 Owner decisions BLD1-BLD9 are settled (all accepted as recommended, 2026-11-01, Kaleb); see "Decisions".
 
 ## The idea in one paragraph
@@ -140,14 +142,14 @@ break; re-run the replay bench. Daily boards: the loot is part of the day's seed
 - [x] **BL4. Worlds.** `ENDLESS_DROPS_CONFIG` in `buildEndlessRunConfig` (solo, party, daily, dev). -> Verify: the
   endless / party / partyProgression specs replay and validate segmented; extend `run/dropsCensus.spec.ts`: drops per
   floor from kills vs pieces, share taken, lost-on-full count (expected ~0); replay bench within budget.
-- [ ] **BL5. Theme.** `sfx.breakable.loot` in `PORT_AUDIO_EVENTS`, placeholder SILENT, fallback rule.
+- [x] **BL5. Theme.** `sfx.breakable.loot` in `PORT_AUDIO_EVENTS`, placeholder SILENT, fallback rule.
   -> Verify: contract / validator / `audio.spec.ts`.
-- [ ] **BL6. View.** Glint, hop, fizzle, cue, `KV_LootDebug`. -> Verify: headless specs for the pure parts; Studio:
+- [x] **BL6. View.** (code-complete; Studio check pending) Glint, hop, fizzle, cue, `KV_LootDebug`. -> Verify: headless specs for the pure parts; Studio:
   loaded pieces glint on every biome and never over a bullet, the hop reads, reduced motion still, 2 players see the
   same glints and the same gem.
 - [ ] **BL7. Vale audio.** Pick a Ninja Adventure clip (Audio/Sounds `Bonus`), `art/audio.json`, `audio:build`, upload,
   paste the id. -> Verify: `audio:build`, `test:art`, the vale validator.
-- [ ] **BL8. Docs.** `CLAUDE.md` decision log line (and this file's docs-table row), `src/shared/sim/README.md` (hook,
+- [x] **BL8. Docs.** `CLAUDE.md` decision log line (and this file's docs-table row), `src/shared/sim/README.md` (hook,
   hash), docs/CLIENT.md (glint, debug attribute), docs/DECOR.md B5 and docs/BOOSTS.md "Out of scope" point here.
   -> Verify: `npm run verify`.
 - [ ] **BL9. Playtest.** Solo and co-op, PC and phone: is the glint noticed, do players detour for it mid-fight, does
@@ -293,3 +295,37 @@ one run each; floor 15 runs, which carry loot): solo room 0.305 / 0.333, 8 playe
 `sim/bench.spec`'s dungeon case missed its 2 ms budget by 0.03 ms on a loaded host (M1 config: no drops, nothing of
 this feature runs) and passed on a rerun. Every golden fixture, the M1 hash, `roomPool.lock.spec` and the tutorial lock
 spec (`run/tutorial.spec`) pass unchanged.
+
+## As built (BL5-BL6, review)
+
+- **Theme (BL5).** `sfx.breakable.loot` appended to `PORT_AUDIO_EVENTS` (SILENT in the placeholder); while it has no
+  clip it plays `sfx.boost.drop` (`SFX_FALLBACK`, like `sfx.boss.taunt` / `sfx.best.new`). Cue rank 63 (between the drop
+  and the pickup), 0.1 s minimum interval; cues merge by the resolved id, so a silent loot sound gives one drop sound per
+  frame. Lost loot has no sound of its own (the break sound plays). `contract.luau` / `validate.luau` unchanged at
+  183 / 199 top-level locals (only an array entry).
+- **View (BL6).** Pure half `shared/view/breakableLoot.ts` + `breakableLootConfig.ts` (`BREAKABLE_LOOT_VIEW`), specs
+  next to it; client `BreakableRenderController` (glint), `BoostDropRenderController` (hop, fizzle),
+  `ParticleController.lootFizzle`, and `render/glintParts.ts` (the glint parts moved out of BoostDropRenderController,
+  no behaviour change). `BoostFrameEvents` gained `fromPiece` (`PieceLanding`: slot + landing tick) and `lostLoot`.
+  Differences from the sketch:
+  - The glint's phase is a hash of the piece's cell (`decorHash`), not a random draw, and it runs on sim time, so every
+    co-op client shows the same sparkle.
+  - Besides sitting under the bullets' plane, the glint hides while an enemy bullet is within
+    `BREAKABLE_LOOT_VIEW.duckTiles` (1.25) of the piece. Ooze goo is skipped (review fix: a stationary floor decal,
+    renewed while a slime lingers, would have hidden the hint for as long as the trail lay there).
+  - The hop starts at the pieces' height cap (`maxHeightTiles`), not each piece's drawn height.
+  - A drop hops only when its slot AND landing tick match a `fromPiece` entry, so a kill drop that refills the slot in
+    the same frame pops as usual.
+  - The fizzle uses the `uiTextDim` colour role (grey); no new role.
+  - A pack without `decor.fx.glint` art (the placeholder) draws no glint and has no fallback: loaded pieces look like
+    the rest there. The vale pack has the art.
+  - Debug: Workspace boolean `KV_LootDebug` (Studio or `KV_Debug`, off by default) labels each loaded intact piece
+    "loot: <kind>" through `createKvBillboardGui` (developer text, English).
+- **Daily ruleset (review).** This changes endless play, so `DAILY.ruleset` went 1 -> 2 (docs/DAILY.md DSD11): servers
+  still on an older build keep posting to `d<day>_r1`, new ones to `d<day>_r2`, and no daily board mixes the two.
+  BLD9 (all-time boards stay `_v1`) is unchanged.
+- **Studio smoke list.** Loaded pieces glint on every biome, slowly and out of step; the glint sits on the piece's top
+  and hides when an enemy bullet comes near (not for goo); reduced motion: a still sparkle; it is gone the frame the
+  piece breaks and on a floor change; a break shows the hop from the piece's top, then the normal bob; four drops on
+  the ground + a loaded break shows the grey fizzle; the placeholder's loot sound plays the drop sound; two players see
+  the same glints and the same gem; `KV_LootDebug` labels with the placeholder boxes and the vale art.

@@ -19,6 +19,7 @@ import { BREAKABLE_LOOT_VIEW } from "./breakableLootConfig";
 import { degToRad } from "./iso";
 import { decorHash } from "./decor";
 import { spriteBillboard, type SpriteBillboard, type SpriteLayout } from "./sprites";
+import { isGooPayload } from "./variants";
 
 /** lootGlintFrame: the glint is hidden this frame. */
 export const LOOT_GLINT_HIDDEN = -1;
@@ -118,11 +119,14 @@ export interface LootGlintBullets {
 	highWater(): number;
 	isVisible(i: number): boolean;
 	positionAt(i: number): Readonly<{ x: number; z: number }>;
+	payloadAt(i: number): number;
 }
 
 /**
  * True when a visible bullet of `bullets` (pass the ENEMY pool) has its centre within `radius` (sim floor units,
  * default duckTiles) of the piece's cell centre (x, z) on both floor axes: the glint hides. Stops at the first hit.
+ * Ooze goo is skipped: a stationary floor decal drawn under the glint, renewed while a slime lingers, it would hide the
+ * hint for as long as the trail lies there.
  */
 export function lootGlintDucked(
 	x: number,
@@ -132,7 +136,7 @@ export function lootGlintDucked(
 ): boolean {
 	const n = bullets.highWater();
 	for (let i = 0; i < n; i++) {
-		if (!bullets.isVisible(i)) continue;
+		if (!bullets.isVisible(i) || isGooPayload(bullets.payloadAt(i))) continue;
 		const p = bullets.positionAt(i);
 		if (math.abs(p.x - x) <= radius && math.abs(p.z - z) <= radius) return true;
 	}

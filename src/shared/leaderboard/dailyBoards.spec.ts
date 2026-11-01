@@ -150,7 +150,9 @@ describe("board refs and requests", () => {
 	});
 
 	it("resolves today / yesterday by the server's day and the current ruleset", () => {
-		expect(resolveBoardRequest({ board: "solo", scope: "today" }, 303)).toEqual(dailyBoard("solo", DAY));
+		expect(resolveBoardRequest({ board: "solo", scope: "today" }, 303)).toEqual(
+			dailyBoard("solo", { day: 303, ruleset: DAILY.ruleset }),
+		);
 		expect(resolveBoardRequest({ board: "coop", scope: "yesterday" }, 303)).toEqual(
 			dailyBoard("coop", { day: 302, ruleset: DAILY.ruleset }),
 		);
