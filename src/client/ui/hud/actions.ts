@@ -45,11 +45,13 @@ export interface HudActions {
 	/** Run-over "Main menu" / "Back to lobby": leave the finished run for the menu. */
 	readonly exitRun: () => void;
 	/**
-	 * First-run tutorial (TutorialController): a new tutorial run (pause Restart tutorial, outro Play the tutorial
-	 * again), the outro's Start my first run (the main menu's Play solo), the pause overlay's skip question and the
+	 * First-run tutorial (TutorialController): a new tutorial run (`playTutorial`: the outro's Play the tutorial again;
+	 * `restartTutorial`: the pause overlay's Restart tutorial; two actions so the funnel's attempt entry tells them
+	 * apart), the outro's Start my first run (the main menu's Play solo), the pause overlay's skip question and the
 	 * skip itself (back to the menu, like Leave run).
 	 */
 	readonly playTutorial: () => void;
+	readonly restartTutorial: () => void;
 	readonly startFirstRun: () => void;
 	readonly setTutorialSkipConfirm: (open: boolean) => void;
 	readonly skipTutorial: () => void;
@@ -83,6 +85,7 @@ const NOOP: HudActions = {
 	leaveRun: () => undefined,
 	exitRun: () => undefined,
 	playTutorial: () => undefined,
+	restartTutorial: () => undefined,
 	startFirstRun: () => undefined,
 	setTutorialSkipConfirm: () => undefined,
 	skipTutorial: () => undefined,

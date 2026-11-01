@@ -4,7 +4,7 @@ import { describe, expect, it } from "@rbxts/jest-globals";
 import { TUTORIAL } from "shared/config";
 import { INVITE, type ArrivalJoinIntent } from "shared/invite";
 import type { OnboardingStatus } from "shared/onboarding";
-import { FirstJoinGate, firstJoinChoice, firstJoinDispatchChoice } from ".";
+import { FirstJoinGate, firstJoinChoice, firstJoinDispatchChoice, firstJoinGateReason } from ".";
 
 const NEW_PLAYER = { loaded: true, tutorialDone: false };
 const VETERAN = { loaded: true, tutorialDone: true };
@@ -153,5 +153,70 @@ describe("firstJoinDispatchChoice", () => {
 		expect(latched).toBe("tutorial");
 		// The loading screen is still up; a party mate arrives and the server upgrades the intent.
 		expect(latched !== "wait" && firstJoinDispatchChoice(latched, facts(true, "party"))).toBe("normal");
+	});
+});
+
+describe("firstJoinGateReason (docs/TUTORIAL_FUNNEL.md OnboardingGate)", () => {
+	const facts = (
+		status: OnboardingStatus | undefined,
+		inLobby: boolean,
+		intent: ArrivalJoinIntent | undefined,
+		forced?: boolean,
+	) => ({ status, inLobby, intent, forced });
+
+	it("KV_Tutorial is `forced` either way, whatever else is known", () => {
+		expect(firstJoinGateReason("tutorial", facts(undefined, false, undefined, true))).toBe("forced");
+		expect(firstJoinGateReason("normal", facts(undefined, false, undefined, false))).toBe("forced");
+		expect(firstJoinGateReason("tutorial", facts(VETERAN, true, "party", true))).toBe("forced");
+	});
+
+	it("a tutorial start is `tutorial` (status or the intent timeout)", () => {
+		expect(firstJoinGateReason("tutorial", facts(NEW_PLAYER, false, "none"))).toBe("tutorial");
+		expect(firstJoinGateReason("tutorial", facts(NEW_PLAYER, false, undefined))).toBe("tutorial");
+	});
+
+	it("the normal flow names the status first: timeout, loadFailed, done", () => {
+		expect(firstJoinGateReason("normal", facts(undefined, false, undefined))).toBe("timeout");
+		expect(firstJoinGateReason("normal", facts(undefined, true, "lobby"))).toBe("timeout");
+		expect(firstJoinGateReason("normal", facts(LOAD_FAILED, false, "none"))).toBe("loadFailed");
+		expect(firstJoinGateReason("normal", facts(LOAD_FAILED, false, "party"))).toBe("loadFailed");
+		expect(firstJoinGateReason("normal", facts(VETERAN, false, "none"))).toBe("done");
+		expect(firstJoinGateReason("normal", facts(VETERAN, true, "party"))).toBe("done");
+	});
+
+	it("a new player sent to the menu by grouping: party, else invited (lobby intent or placed in a lobby)", () => {
+		expect(firstJoinGateReason("normal", facts(NEW_PLAYER, false, "party"))).toBe("party");
+		expect(firstJoinGateReason("normal", facts(NEW_PLAYER, true, "party"))).toBe("party");
+		expect(firstJoinGateReason("normal", facts(NEW_PLAYER, false, "lobby"))).toBe("invited");
+		expect(firstJoinGateReason("normal", facts(NEW_PLAYER, true, "none"))).toBe("invited");
+		expect(firstJoinGateReason("normal", facts(NEW_PLAYER, true, undefined))).toBe("invited");
+	});
+
+	it("end to end through the gate and the dispatch re-check", () => {
+		const run = (
+			status: OnboardingStatus | undefined,
+			intent: ArrivalJoinIntent | undefined,
+			waited: number,
+			atDispatch: { inLobby: boolean; intent: ArrivalJoinIntent | undefined },
+		) => {
+			const gate = new FirstJoinGate(STATUS_WAIT, INTENT_WAIT);
+			if (status !== undefined) gate.receive(status);
+			if (intent !== undefined) gate.receiveIntent(intent);
+			const latched = gate.poll(waited, undefined);
+			if (latched === "wait") return "wait";
+			const dispatchFacts = { forced: undefined, ...atDispatch };
+			const dispatched = firstJoinDispatchChoice(latched, dispatchFacts);
+			return firstJoinGateReason(dispatched, { ...dispatchFacts, status: gate.seenStatus() });
+		};
+		const alone = { inLobby: false, intent: "none" as const };
+		expect(run(NEW_PLAYER, "none", 0.1, alone)).toBe("tutorial");
+		expect(run(NEW_PLAYER, undefined, INTENT_WAIT, { inLobby: false, intent: undefined })).toBe("tutorial");
+		expect(run(NEW_PLAYER, "lobby", 0.1, { inLobby: true, intent: "lobby" })).toBe("invited");
+		expect(run(NEW_PLAYER, "party", 0.1, { inLobby: true, intent: "party" })).toBe("party");
+		expect(run(NEW_PLAYER, "none", 0.1, { inLobby: true, intent: "party" })).toBe("party"); // upgraded later
+		expect(run(NEW_PLAYER, "none", 0.1, { inLobby: true, intent: "none" })).toBe("invited"); // placed, no upgrade yet
+		expect(run(VETERAN, undefined, 0.1, alone)).toBe("done");
+		expect(run(LOAD_FAILED, undefined, 0.1, alone)).toBe("loadFailed");
+		expect(run(undefined, undefined, STATUS_WAIT, alone)).toBe("timeout");
 	});
 });
