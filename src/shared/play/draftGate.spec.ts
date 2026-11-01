@@ -2,7 +2,14 @@
 import { describe, expect, it } from "@rbxts/jest-globals";
 import { TUTORIAL } from "shared/config";
 import { Button, DRAFT_CONFIRM_BUTTON, type InputFrame } from "shared/sim";
-import { DraftRevealGate, draftConfirmHeld, draftNeverRevealed, type DraftConfirmFacts } from "./draftGate";
+import {
+	DraftRevealGate,
+	draftConfirmHeld,
+	draftNeverRevealed,
+	dropDraftGuiMouse,
+	type DraftConfirmFacts,
+} from "./draftGate";
+import { mapDevicesToInput, type DeviceSnapshot } from "./inputMapping";
 
 const CONFIRM = DRAFT_CONFIRM_BUTTON;
 
@@ -146,5 +153,61 @@ describe("draftNeverRevealed", () => {
 		expect(draftNeverRevealed(true, TUTORIAL.lastFloor + 1, false)).toBe(true);
 		expect(draftNeverRevealed(true, TUTORIAL.lastFloor, false)).toBe(false);
 		expect(draftNeverRevealed(false, TUTORIAL.lastFloor + 1, false)).toBe(false);
+	});
+});
+
+describe("dropDraftGuiMouse (a click on a draft card)", () => {
+	const CLICK = "MouseButton1";
+	const RIGHT = "MouseButton2";
+
+	function kbm(mouse: Set<string>): DeviceSnapshot {
+		return {
+			kbm: { keys: new Set(), mouseButtons: mouse },
+			pad: undefined,
+			aimDevice: "none",
+			pointerAimX: 0,
+			pointerAimZ: 0,
+		};
+	}
+
+	it("drops a press that began on a card while the draft is open", () => {
+		const mouse = new Set([CLICK]);
+		dropDraftGuiMouse(mouse, new Set([CLICK]), true);
+		expect(mouse.size()).toBe(0);
+	});
+
+	it("so the click never sets the confirm bit (default bindings: Click is FIRE)", () => {
+		const before = new Set([CLICK]);
+		expect(bit32.btest(mapDevicesToInput(kbm(before)).buttons, CONFIRM)).toBe(true);
+		const mouse = new Set([CLICK]);
+		dropDraftGuiMouse(mouse, new Set([CLICK]), true);
+		expect(bit32.btest(mapDevicesToInput(kbm(mouse)).buttons, CONFIRM)).toBe(false);
+	});
+
+	it("keeps a click on the world (not over a GUI): it still confirms the card under the stick", () => {
+		const mouse = new Set([CLICK]);
+		dropDraftGuiMouse(mouse, new Set(), true);
+		expect(mouse.has(CLICK)).toBe(true);
+		expect(bit32.btest(mapDevicesToInput(kbm(mouse)).buttons, CONFIRM)).toBe(true);
+	});
+
+	it("drops only the buttons pressed over the GUI", () => {
+		const mouse = new Set([CLICK, RIGHT]);
+		dropDraftGuiMouse(mouse, new Set([CLICK]), true);
+		expect(mouse.has(CLICK)).toBe(false);
+		expect(mouse.has(RIGHT)).toBe(true);
+	});
+
+	it("drops nothing while the draft is closed", () => {
+		const mouse = new Set([CLICK, RIGHT]);
+		dropDraftGuiMouse(mouse, new Set([CLICK, RIGHT]), false);
+		expect(mouse.has(CLICK)).toBe(true);
+		expect(mouse.has(RIGHT)).toBe(true);
+	});
+
+	it("ignores a GUI press that is no longer polled as down", () => {
+		const mouse = new Set<string>();
+		dropDraftGuiMouse(mouse, new Set([CLICK]), true);
+		expect(mouse.size()).toBe(0);
 	});
 });

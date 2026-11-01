@@ -348,7 +348,8 @@ function BannerRow(props: { ui: DraftCardUi; nudge: React.Binding<number> }) {
  *     (draftBodyBox, rounded by a UICorner), never as a rectangle over the art's transparent corners: ImageColor3 only
  *     multiplies, so a white silhouette of the art for the flash would need a baked mask (like the eyes). Without the
  *     art every overlay covers the whole card, as before; the flat outlines hide while the card is a sliver.
- *   - touch (`onTap`): a see-through button over the card takes the tap (during the reveal it skips: InputController).
+ *   - tap / click (`onTap`): a see-through button over the card takes a touch tap or a mouse click (during the reveal it
+ *     skips: InputController); a click's mouse press never reaches the sim as the confirm (InputController.sample).
  */
 function DraftCard(props: { index: number; onTap?: () => void }) {
 	const ui = DRAFT_UI.cards[props.index];
@@ -700,7 +701,8 @@ export function DraftOverlay() {
 	const cards: React.Element[] = [];
 	const rays: React.Element[] = [];
 	for (let i = 0; i < DRAFT_OFFER_COUNT; i++) {
-		cards.push(<DraftCard key={`c${i}`} index={i} onTap={touch ? () => actions.draftTap(i) : undefined} />);
+		// Touch taps and mouse clicks pick the card; a gamepad never focuses the button (Selectable false).
+		cards.push(<DraftCard key={`c${i}`} index={i} onTap={() => actions.draftTap(i)} />);
 		rays.push(<SlotRays key={`r${i}`} index={i} />);
 	}
 	return (

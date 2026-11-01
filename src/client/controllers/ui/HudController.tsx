@@ -103,7 +103,7 @@ export class HudController implements OnStart {
 			}),
 			setTutorialSkipConfirm: click((open: boolean) => this.tutorial.setSkipConfirm(open)),
 			skipTutorial: click(() => this.tutorial.skipTutorial()),
-			// Touch (docs/MOBILE.md MB10): a tapped card is picked by its column, as the stick would push it.
+			// Touch (docs/MOBILE.md MB10) and mouse: a tapped / clicked card is picked by its column, as the stick would push it.
 			draftTap: click((index: number) =>
 				this.input.queueDraftPick(
 					draftColumnForCard(index, clientStore.getState().game.snapshot.draftOffers.size()),

@@ -3,7 +3,8 @@
  *
  *   bindings.ts      rebindable controls: actions, default layout, rebind / swap rules, stored overrides, labels
  *   config.ts        run setup attributes, HUD snapshot rate, device thresholds, rebinding lists
- *   draftGate.ts     the boon draft reveal's confirm gate: confirm masked until the reveal settles, a press skips it
+ *   draftGate.ts     the boon draft reveal's confirm gate: confirm masked until the reveal settles, a press skips it; a
+ *                    draft card click's mouse press kept off the sim (dropDraftGuiMouse)
  *   inputMapping.ts  device snapshots -> quantized InputFrame (port of the web build's devices.ts) through a layout
  *   liveRun.ts       one live run: fixed-step loop, recording per tick, pause, outcome, submission, F8 replay check
  *   rebindFlow.ts    the Options screen's rebinding flow: capture -> bind / swap prompt / refusal, countdown, test strip
