@@ -154,7 +154,7 @@ Event pairs, like the user's other Flamework project. Flamework generates a runt
 | server -> client | `partyRunStarted` | `PartyRunStart { runId, seed, worldKind, members, lobbyId }` | |
 | client -> server | `lockstepInput` / `lockstepHash` / `lockstepFinal` | inputs; `runId, ticks[], hashes[]` (batched, resent until acknowledged); `RunFinal` | `lockstepFrames(runId, firstTick, data, hashAck)` |
 | client -> server | `lockstepLeave` | `runId` | none (the leaver's frames carry the leave bit from the next tick; `runFinished` still comes) |
-| client -> server | `requestOnboarding` / `tutorialStarted` / `tutorialStep` / `tutorialFinished` | see "Onboarding (tutorial)" | `onboardingStatus` (request, finished) |
+| client -> server | `requestOnboarding` / `tutorialStarted` / `tutorialStep` / `tutorialFinished` / `tutorialLesson` / `tutorialStuck` / `onboardingReport` | see "Onboarding (tutorial)" | `onboardingStatus` (request, finished) |
 | server -> client | `onboardingStatus` | `OnboardingStatus { loaded, tutorialDone }` (sent once after join too) | |
 | client -> server | `requestRecords` | none | `records` (see "Personal records") |
 | server -> client | `records` | `RecordsStatus { loaded, solo?: { score, floor }, coop?: { score, floor } }` (sent once after the join load and seed, again after a verdict raised a record) | |
@@ -182,7 +182,7 @@ The client side is `src/client/network.ts` (`GlobalEvents.createClient`); `SimCo
 | `REPLAY_BUDGET_SECONDS` | 4 ms | The replay yields (`task.wait()`) whenever 4 ms of `os.clock()` work piled up since the last yield (was: every 2,000 ticks, ~160 ms blocks). The check runs in the replay's `onCheckpoint` hook (`ReplayBudget`, clock injected), so validate.ts and the sim never read a clock. At ~80 us per tick (an M1 floor) a 20-minute run takes ~25 s of wall time; deep endless floors cost far more per tick ("Replay capacity" below). Segmented replays check it every `SEGMENT_BUDGET_CHECK_TICKS` = 4 ticks (was 16: at ~1.1 ms per tick a check could overshoot by ~18 ms). |
 | `REPLAY_CONCURRENCY` | 1 | Server-wide replay queue (`WorkQueue`, FIFO): concurrent players' replays run one after another instead of stacking CPU time on the same frames. The log line shows the queue wait. |
 | `SETTINGS_REQUEST_RATE` | 20 per 10 s per player | Settings remotes. |
-| `ONBOARDING_REQUEST_RATE` / `TUTORIAL_STEP_RATE` | 10 / 30 per 10 s per player | Onboarding remotes (`shared/onboarding/config.ts`). |
+| `ONBOARDING_REQUEST_RATE` / `TUTORIAL_STEP_RATE` / `TUTORIAL_FINISH_RATE` / `TUTORIAL_REPORT_RATE` | 10 / 30 / 10 / 40 per 10 s per player | Onboarding remotes (`shared/onboarding/config.ts`): request + started / steps / finish (its own budget) / lesson + stuck + onboardingReport together. |
 | `RECORDS_REQUEST_RATE` | 10 per 10 s per player | `requestRecords` (`shared/records/config.ts`); a dropped request still answers with the cached status. |
 | `INVITE_PROMPT_RATE` / `INVITE_RECIPIENTS_RATE` / `INVITE_ELIGIBILITY_RATE` | 5 / 10 / 10 per 60 s per player | Roblox invite remotes (`shared/invite/config.ts`); a spent prompt budget is a `rateLimited` refusal, the others drop quietly. |
 | Seeds | integers in [0, 2^32) | What the web build's `seedFromQuery` produces. |
@@ -756,8 +756,31 @@ Custom events (`LogCustomEvent`; fields are `CustomField01..03`):
 | `daily_start` | 1 | board (`solo` / `coop`) | attempt bucket (`1` / `2` / `3-5` / `6-10` / `11+`) | `returning` / `notReturning` / `unknown` (finished a daily on the previous day) | an accepted daily session start, per member in the server (not debug sessions; docs/DAILY.md DS13) |
 | `daily_retry` | attempt number | attempt bucket | board | | the same start when it is not the member's first daily start of that day |
 | `daily_finish` | score | score bucket (`<1k` / `1k-5k` / `5k-10k` / `10k-25k` / `25k-50k` / `50k-100k` / `100k-250k` / `250k+`) | floor bucket (`1` / `2-4` / `5-9` / `10-14` / `15-19` / `20+`) | `<attempt bucket>/<returning>` | an accepted daily run (deaths and abandoned validated runs; not debug / Studio), per credited member in the server |
+| `TutorialLessonTime` | seconds the lesson was current (real time, pause excluded, 0..900, 0.1 s) | lesson step id | attempt entry | attempt device | a `tutorialLesson` report, once per lesson per attempt (see "Onboarding (tutorial)") |
+| `TutorialLessonHits` | harmless hits while the lesson was current (1..500) | lesson step id | attempt entry | attempt device | the same report, only when hits > 0 |
+| `TutorialStuck` | seconds on one prompt with no progress (0..900) | prompt id (shared/tutorial `TUTORIAL_PROMPT_IDS`) | attempt entry | attempt device | a `tutorialStuck` report, once per prompt per attempt, at most 6 per attempt |
+| `TutorialSkipped` | last lesson step reached in the attempt (0 = none) | current step id (`TUTORIAL_STEPS` id or `none`) | attempt entry | attempt device | `tutorialFinished` skipped (an open attempt) |
+| `TutorialAbandoned` | last lesson step reached | current step id | attempt entry | `leave` / `partyRun` | the player left the game with an attempt open, or a party run took it (`leaveTutorial`) |
+| `TutorialRestarted` | last lesson step reached | current step id of the replaced attempt | | | `tutorialStarted({ entry: "restart" })` while an attempt was open |
+| `TutorialOutroChoice` | seconds on the outro, measured by the server (completed finish -> report or leave; 0..3600) | `firstRun` / `again` / `menu` / `left` | entry of the finished attempt | | the outro closed (`onboardingReport` outro, once per completed attempt), or `left` when the player left on it |
+| `OnboardingGate` | 1 | `tutorial` / `invited` / `party` / `done` / `loadFailed` / `timeout` / `forced` | | | `onboardingReport` gate, once per session, any player (a reason contradicting the server's doc / intent is logged anyway, with a `GATE_CONTRADICTS` warning) |
+| `NewPlayerRunStarted` | run number (counted runs + 1, 1..3) | tutorial outcome (`completed` / `skipped` / `none`) | | | a ranked (endless) or daily session start, per member in the new-player window (not debug; not Studio unless `KV_AnalyticsDebug`) |
+| `NewPlayerRun` | run number (1..3) | tutorial outcome | run end (`death` / `abandoned` / `victory`) | floor bucket (the Daily's) | an accepted ranked or daily run, per credited member in the window (same rules); counts the run in the doc |
+| `NewPlayerReturned` | whole UTC days since `firstDay` (1..7) | tutorial outcome | | | the first join on a later UTC day within 7 days of `firstDay`, once per player |
 
 Lobby events come from `src/shared/lobby/analytics.ts`, logged through `TelemetryService.logEvents(player, specs)`.
+The tutorial / onboarding events and funnels come from `src/shared/onboarding` (`PlayerTutorialTelemetry`), logged by
+OnboardingService through `TelemetryService.logTutorial(player, specs, attemptId)` (the `TutorialAttempt` funnel and
+its custom events) and `logOnboarding(player, specs)` (no funnel session: the onboarding funnel, `OnboardingGate`,
+`TutorialOutroChoice`, the new-player events); see "Onboarding (tutorial)".
+
+**Debug echo** (docs/TUTORIAL_FUNNEL.md TF8): the Workspace attribute `KV_AnalyticsDebug = true` (off by default; read
+on every log, so it can be toggled mid-session; live servers too) makes TelemetryService print every spec it logs, one
+line each: `[Telemetry] ANALYTICS: <userId> custom <name> = <value> [f1=.. f2=.. f3=..]`, `funnel <funnel> #<step>
+<name> (session <id>)`, `onboarding #<step> <name>`, `progression <status> <path> #<level> <name>`
+(`shared/onboarding` `describeAnalyticsSpec`). Studio sends nothing to AnalyticsService, so this is how a Studio
+session shows what a live server would send. In Studio it also lets runs count in the new-player window (the explicit
+Studio test path, like `KV_FakeRecords` for records); without it Studio runs never count.
 
 Every field value comes from a small fixed set (Roblox: 8,000 combinations, 100 custom event names, 10 funnels).
 The web build's per-run markers (`boss.phase`, `boss.engaged`, `boss.defeated`, `player.death`, `run.victory`) and
@@ -768,51 +791,95 @@ JSON session files and F9 export.
 
 ## Onboarding (tutorial)
 
-`OnboardingService` (pure parts in `src/shared/onboarding/`; plan in `docs/TUTORIAL.md` §5-6) remembers whether a
-player has done the first-run tutorial ("Practice Descent"), logs its funnel, and marks players in it as busy for
-lobbies. The client side (TutorialController, T6) only talks to it through these remotes:
+`OnboardingService` (pure parts in `src/shared/onboarding/`; plan in `docs/TUTORIAL.md` §5-6, telemetry plan in
+`docs/TUTORIAL_FUNNEL.md`) remembers whether a player has done the first-run tutorial ("Practice Descent"), logs its
+funnels and events, keeps the new-player window, and marks players in it as busy for lobbies. The client side
+(TutorialController, LoadingController) only talks to it through these remotes:
 
 | Direction | Event | Payload | Server does | Reply |
 | --- | --- | --- | --- | --- |
-| server -> client | `onboardingStatus` | `{ loaded: boolean, tutorialDone: boolean }` | sent once the join load ends (success or failure) | |
+| server -> client | `onboardingStatus` | `{ loaded: boolean, tutorialDone: boolean, seen? }` | sent once the join load ends (success or failure) | |
 | client -> server | `requestOnboarding` | none | loads if needed (shares the join read) | `onboardingStatus` |
-| client -> server | `tutorialStarted` | none | opens a new funnel attempt (server GUID = funnel session id); `isInTutorial` = true. Ignored from a member of an unconcluded party run (a late message) | none |
-| client -> server | `tutorialStep` | `step: number` | integer 1..`TUTORIAL_FUNNEL_MAX_STEP` (16, = shared/tutorial `TUTORIAL_STEP_COUNT`), strictly above the attempt's last. The funnel step name is the server's: that step's id in the shared step list (`tutorialStepName`), never a client string | none |
-| client -> server | `tutorialFinished` | `"completed" \| "skipped"` | closes the attempt (`isInTutorial` = false), writes the doc. The client sends `completed` the moment the run freezes (before the outro beat) | `onboardingStatus` |
+| client -> server | `tutorialStarted` | `{ entry: "firstJoin" \| "restart" \| "menu" \| "again", device: "keyboard" \| "gamepad" \| "touch" }` | opens a new attempt (server GUID = funnel session id); `isInTutorial` = true; logs attempt step 1 `started` (entry / revision / device), onboarding `TutorialStarted` for a `firstJoin` while the onboarding funnel is open, `TutorialRestarted` for an attempt a `restart` replaced. A malformed payload is read as `{ firstJoin, keyboard }` (`DEFAULT_TUTORIAL_START_INFO`, warned `BAD_START_INFO`). Ignored from a member of an unconcluded party run (a late message) | none |
+| client -> server | `tutorialStep` | `step: number` | integer 1..`TUTORIAL_FUNNEL_MAX_STEP` (16, = shared/tutorial `TUTORIAL_STEP_COUNT`), strictly above the attempt's last: attempt step `step + 1`, and onboarding step `step + 3` while it is open. The step name is the server's: that step's id in the shared step list (`tutorialStepName`), never a client string | none |
+| client -> server | `tutorialLesson` | `{ step, seconds, hits }` | `readLessonReport` (step 1..16, hits an integer >= 0, seconds finite; clamped to 900 s / 500 hits, rounded to 0.1 s), once per lesson per open attempt: `TutorialLessonTime`, plus `TutorialLessonHits` when hits > 0 | none |
+| client -> server | `tutorialStuck` | `{ prompt, seconds }` | `readStuckReport` (a `TUTORIAL_PROMPT_IDS` id, seconds clamped to 900), once per prompt per open attempt, at most 6: `TutorialStuck` | none |
+| client -> server | `onboardingReport` | `{ kind: "loaded" }` / `{ kind: "gate", reason }` / `{ kind: "outro", choice, seconds }` | `readOnboardingReport`. `loaded`: onboarding `Loaded`. `gate`: `OnboardingGate` once per session (any player; a reason the server's doc or intent contradicts, e.g. `done` for a fresh doc, is logged anyway with a `GATE_CONTRADICTS` warning). `outro`: `TutorialOutroChoice` once per completed attempt, valued with the SERVER's seconds since the completion (the client's `seconds` is ignored) | none |
+| client -> server | `tutorialFinished` | `{ outcome: "completed" \| "skipped", stepId }` (a bare outcome string from an older client is accepted, without a step id) | notes the current step id (`TUTORIAL_STEPS` id or `none`), closes the attempt (`isInTutorial` = false; a completion opens the outro), logs attempt step 18 `completed` or `TutorialSkipped`, onboarding `Completed` (completed, while open) and closes the onboarding funnel either way, writes the doc (keeping `seen` and the new-player fields). The client sends `completed` the moment the run freezes (before the outro beat) | `onboardingStatus` |
 
 Every value is re-checked on the server (Flamework's guard checks only the shape), and the remotes are rate limited
 per player: `ONBOARDING_REQUEST_RATE` (10 per 10 s for request / started together), `TUTORIAL_FINISH_RATE` (10 per
-10 s, its own budget so other traffic never drops the finish) and `TUTORIAL_STEP_RATE` (30 per 10 s). A dropped
-request or finish still answers with the cached status; a dropped finish still closes the attempt (not recorded).
+10 s, its own budget so other traffic never drops the finish), `TUTORIAL_STEP_RATE` (30 per 10 s) and
+`TUTORIAL_REPORT_RATE` (40 per 10 s for `tutorialLesson` / `tutorialStuck` / `onboardingReport` together). A dropped
+request or finish still answers with the cached status; a dropped finish still closes the attempt (not recorded, no
+telemetry). On top of the rates, one attempt logs at most `TUTORIAL_TELEMETRY.maxEventsPerAttempt` (80) events, the
+last 2 kept for its exit and outro.
 
 **Doc** (DataStore `KV_Onboarding_v1`, key `u_<UserId>`, `PlayerDocCache` like settings: load on join with 3 retries,
 save when dirty on leave / `BindToClose` / every 120 s, writes tagged with the UserId):
-`{ v: 1, tutorialVersion, outcome, at }`. `tutorialDone = tutorialVersion >= ONBOARDING_TUTORIAL_VERSION` (1; bump it
-to offer a rewritten tutorial again). `tutorialFinished` writes `{ tutorialVersion: ONBOARDING_TUTORIAL_VERSION,
-outcome, at: os.time() }` (a replay overwrites outcome and time). Anything missing or malformed decodes as the empty
-doc (`tutorialVersion: 0`: never played); a bad `at` alone decodes as 0.
+`{ v: 1, tutorialVersion, outcome, at, seen?, firstDay?, newRuns?, returned? }`. `tutorialDone = tutorialVersion >=
+ONBOARDING_TUTORIAL_VERSION` (1; bump it to offer a rewritten tutorial again). `tutorialFinished` writes
+`{ tutorialVersion: ONBOARDING_TUTORIAL_VERSION, outcome, at: os.time() }` (a replay overwrites outcome and time),
+keeping `seen` and the new-player fields. Anything missing or malformed decodes as the empty doc (`tutorialVersion: 0`:
+never played); a bad `at` alone decodes as 0. The optional fields (no version bump) are each read on their own
+(malformed = absent) and written only when present: `seen` (first sightings, docs/ENEMY_VARIANTS.md EV12), `firstDay`
+(the UTC day number `floor(os.time() / 86400)` of the first fresh join), `newRuns` (ranked runs counted in the
+new-player window, 0..3), `returned` (`NewPlayerReturned` was logged).
 
 **Failure rule.** A failed join load sends `{ loaded: false, tutorialDone: false }`: the client then plays a normal run
 and keeps the Tutorial button in the pause menu (a DataStore outage never forces a veteran through the tutorial). The
 stored value is never overwritten because of the failure; only a `tutorialFinished` in that session writes (the same
-rule as a settings change), after which `loaded` reads true once that save succeeded.
+rule as a settings change), after which `loaded` reads true once that save succeeded. Sightings and the new-player
+window never write after a failed load, and the onboarding funnel logs nothing for that session (we do not know
+whether the player is new).
 
-**Trust.** Completion only skips a practice mode and the tutorial is never submitted, so the server records what the
-client says; the funnel is the one piece of telemetry taken from the client (bounded as above).
+**Trust (TFD7).** Completion only skips a practice mode and the tutorial is never submitted, so the server records what
+the client says; the tutorial telemetry is the one piece taken from the client, bounded as above, and nothing in it
+feeds rewards or boards.
 
-**Funnel** `tutorial` (`LogFunnelStepEvent`, session id = the attempt id): steps 1..16 are the lessons, named by
-their ids in `shared/tutorial` `TUTORIAL_STEPS` (objective, move, flask, attack, hits, boost, roll, guard, bow, ember,
-relic, curse, stairwell, draft, boss, finish; the client sends only the number), step 17 is `completed`. **Renumbered
-2026-10-26**: the `boost` step was inserted as step 6 (docs/BOOSTS.md B9), so roll..finish moved from 6..15 to 7..16 and
-`completed` from 16 to 17; funnel data recorded before that is not comparable past step 5 (docs/TUTORIAL.md §6). Each `tutorialStarted` (first run, Restart tutorial, a replay) is a new attempt
-counting from 1, so a restart never repeats steps inside one funnel session; steps outside an attempt are dropped. A
-**skip is not a funnel step** (Roblox counts every lower step number as reached, which would credit a skipper with
-every lesson): it logs the custom event `TutorialSkipped` (value = last lesson step reached in the attempt) and the
-funnel shows the drop-off where they stopped. The client reports only leading lessons it PRACTISED (`TutorialDirector`
-`funnelStepReached`: done and not skipped), so a lesson left behind (its floor left early) stops the attempt's funnel
-there for good; only `completed` (logged on a completed finish) then counts the rest. `TUTORIAL_FUNNEL_MAX_STEP` is the tutorial's step count
-(`TUTORIAL_STEP_COUNT`), so a new step moves `completed` with it; never rename or reorder shipped step ids, or the
-dashboard funnel splits (inserting a step, as `boost` was, shifts every later number: note the date).
+**Attempt funnel** `TutorialAttempt` (`LogFunnelStepEvent`, session id = the attempt id; replaces the old `tutorial`
+funnel, which no longer logs, TFD5): step 1 `started` (custom fields: field01 entry, field02 revision
+`t<ONBOARDING_TUTORIAL_VERSION>r<TUTORIAL_FUNNEL_REVISION>`, field03 device; Roblox filters apply to step 1 only),
+steps 2..17 the lessons (lesson n = step n + 1), named by their ids in `shared/tutorial` `TUTORIAL_STEPS` (objective,
+move, flask, attack, hits, boost, roll, guard, bow, ember, relic, curse, stairwell, draft, boss, finish; the client
+sends only the number), step 18 `completed`. Each `tutorialStarted` (first run, Restart tutorial, a menu replay, Play
+again) is a new attempt counting from 1; steps outside an attempt are dropped. A **skip is not a funnel step** (Roblox
+counts every lower step number as reached, which would credit a skipper with every lesson): it logs `TutorialSkipped`
+and the funnel shows the drop-off where they stopped. The client reports only leading lessons it PRACTISED
+(`TutorialDirector` `funnelStepReached`), so a lesson left behind stops the attempt's funnel there for good; only
+`completed` then counts the rest. Never rename or reorder shipped step ids; inserting a lesson bumps
+`TUTORIAL_FUNNEL_REVISION` (filter by the revision field instead of reading dates). A start that replaces an open
+attempt logs `TutorialRestarted` for it when its entry is `restart`; any other entry replacing an open attempt (a
+client that lost it without a finish) logs nothing for it (warned `ATTEMPT_REPLACED`): it was neither a leave nor a
+party run.
+
+**Onboarding funnel** (`LogOnboardingFunnelStepEvent`, once per user, TFD1): 1 `Joined`, 2 `Loaded`, 3
+`TutorialStarted`, 4..19 the lessons (lesson n = step n + 3), 20 `Completed`. Open only for a FRESH player (the doc
+loaded and `tutorialVersion` 0, TFD2) and only until the tutorial is completed or skipped (a leave does not close it:
+the next join, still fresh, keeps filling the same once-per-user funnel; repeated steps count once). `Joined` carries
+field01 entry (`organic` / `invited` / `party` / `unknown`), field02 revision, field03 `none` (a reserved experiment
+arm). The entry comes from the server's own `joinIntent` (InviteService calls `OnboardingService.joinIntent` for
+every one it sends): `lobby` -> `invited` and `party` -> `party` at once (an intent is never downgraded); `none` ->
+`organic` once it can no longer be upgraded, `ONBOARDING_ENTRY_WAIT_SECONDS` (15 = `INVITE.launchDataWaitSeconds` +
+`intentUpgradeMarginSeconds`) after join (a delayed poll); no intent by then -> `unknown`. A player who leaves first
+logs the latest intent's entry, or `unknown`. Steps that come before `Joined` wait and log right after it, in order.
+**Bypassed players** (invited / party arrivals, TFD3) log `Joined` only; their gate reason is in `OnboardingGate`.
+Filter `entry = organic` for the clean tutorial funnel. `TutorialStarted` is logged only for a `firstJoin` start; a
+menu replay never touches this funnel.
+
+**Leaving.** On PlayerRemoving (before the player's state is dropped): `Joined` if still owed, then an open attempt
+logs `TutorialAbandoned` (`leave`), else an open outro logs `TutorialOutroChoice` `left` (server seconds). A party run
+taking an open attempt (`leaveTutorial`) logs `TutorialAbandoned` (`partyRun`).
+
+**New-player window** (TF7, TFD8; `shared/onboarding` `newPlayer.ts`, `playerTelemetry.ts`). A successful join load
+of a fresh doc without `firstDay` sets it to today; a join on a later UTC day within 7 days logs `NewPlayerReturned`
+(once: `returned`). While `firstDay` is set and fewer than 3 runs were counted: every session start in a counted world
+(RunSessionService, per member) logs `NewPlayerRunStarted` (value = counted + 1, so a run that never validates repeats
+its number), and every accepted run (RunSessionService `conclude`, per credited member: party runs use
+`partyContributors`, as the leaderboard) logs `NewPlayerRun` and counts it (`newRuns` + 1). Counted worlds:
+`NEW_PLAYER_RUN_POLICY` = the all-time boards' worlds (endless) and the Daily; never debug runs; never Studio unless
+`KV_AnalyticsDebug` is on (RecordsService's rule: Studio counts only on an explicit test path). Members not in the
+server, or whose join load failed, are skipped. A player who joined before `firstDay` existed is never in the window.
 
 **Lobbies busy.** While `isInTutorial`, the player is busy for lobbies: `RunSessionService.busyReason` (what
 LobbyService passes to `Lobbies` as `busyReason`) adds `tutorialBusyReason` to the registry's (an unconcluded party
@@ -822,14 +889,16 @@ the tutorial since is cancelled when it ends (`Lobbies.tick`; countdownCancelled
 `startLobbyRun` re-checks every member for the tutorial before the handoff (party and solo), so a lobby never pulls a
 player out of it. A player already in a lobby who starts the tutorial (main menu -> Tutorial) stays a member; the
 lobby just cannot start until they finished or skipped. A party run that does start ends every member's tutorial
-attempt (`leaveTutorial`, unlogged: their clients switched runs), and a late `tutorialStarted` from a member of an
+attempt (`leaveTutorial`, logged as `TutorialAbandoned` `partyRun`: their clients switched runs), and a late `tutorialStarted` from a member of an
 unconcluded party run is ignored (`setPartyRunCheck`), so nobody stays busy by mistake. The tutorial world itself is
 in `SERVER_REFUSED_WORLDS`: every `RunSessionRegistry.start` (ranked `startRun`, lobby party and solo starts) answers
 `unknown_world` for it.
 
 **Studio only:** the Workspace attribute `KV_ResetOnboarding = true` resets each joining player's loaded doc to empty
 (logged `[Onboarding] RESET`; saved like any change, never after a failed load), so every Studio join is a first join.
-Without API access the load fails (`[Onboarding] LOAD_FAILED`) and the tutorial is not forced.
+Without API access the load fails (`[Onboarding] LOAD_FAILED`) and the tutorial is not forced. With
+`KV_AnalyticsDebug = true` the Output lists every tutorial / onboarding event (`[Telemetry] ANALYTICS: ...`, see
+"Telemetry"); with both set, a Studio join walks the whole onboarding funnel and the new-player window counts runs.
 
 ## Personal records
 
@@ -916,7 +985,7 @@ nothing.
 | DataStore | Key | Value | Written |
 | --- | --- | --- | --- |
 | `PlayerSettings` | `u_<UserId>` | settings document v2 `{ v: 2, juice, controls, audio, display }` (only what the player changed; v1 `{ v: 1, juice }` migrates on read) | when dirty: on leave, on `BindToClose` (parallel, 25 s budget), every 120 s |
-| `KV_Onboarding_v1` | `u_<UserId>` | `{ v: 1, tutorialVersion, outcome: "completed" \| "skipped", at }` (see "Onboarding (tutorial)") | when dirty: on leave, on `BindToClose`, every 120 s |
+| `KV_Onboarding_v1` | `u_<UserId>` | `{ v: 1, tutorialVersion, outcome: "completed" \| "skipped", at, seen?, firstDay?, newRuns?, returned? }` (see "Onboarding (tutorial)") | when dirty: on leave, on `BindToClose`, every 120 s |
 | `KV_Records_v1` | `u_<UserId>` | `{ v: 1, endless: { solo?, coop? }, seeded?, daily? }`, each board `{ score, scoreAt, scoreRunId, floor, floorAt, floorRunId }`; `daily = { day, starts, lastFinishedDay?, prevFinishedDay? }` (docs/DAILY.md DS13) (see "Personal records") | merge writes (UpdateAsync, max per field, `seeded` kept, `daily` max-merged): right after a verdict raised a record or a seed, and when dirty on leave / `BindToClose` / every 120 s; daily-activity delta writes (UpdateAsync, same-day starts summed): one per credited member per accepted daily run, plus one on leave / shutdown for starts no finish wrote |
 | `Runs` (off: `RUNS_DATASTORE_ENABLED = false`) | `u_<UserId>` | the last 50 accepted runs `{ id, seed, hash, ticks, kills, boss, died, at }` (UpdateAsync) | on each accepted run |
 

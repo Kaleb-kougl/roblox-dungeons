@@ -37,6 +37,7 @@ import {
 import type { InvitePromptOptions, InvitePromptRequest } from "shared/network";
 import { SlidingWindowLimiter, type AnalyticsEventSpec } from "shared/run";
 import { LobbyService } from "./LobbyService";
+import { OnboardingService } from "./OnboardingService";
 import { TelemetryService } from "./TelemetryService";
 
 const log = serverLogger("Invite");
@@ -157,8 +158,9 @@ function partyIdOf(player: Player): string | undefined {
  *   placed). Nothing placed them and no LaunchData yet: it is polled every INVITE.launchDataPollSeconds for
  *   INVITE.launchDataWaitSeconds (stopping once they are in a lobby) and a late one is resolved again. Whenever an
  *   arrival places a player whose last `joinIntent` was "none" within launchDataWaitSeconds +
- *   intentUpgradeMarginSeconds of their join, a fresh `joinIntent` goes out (shouldUpgradeJoinIntent).
- *   Analytics: `InviteArrival` once per join, `PartyGrouped`.
+ *   intentUpgradeMarginSeconds of their join, a fresh `joinIntent` goes out (shouldUpgradeJoinIntent). Every
+ *   `joinIntent` sent also goes to OnboardingService.joinIntent (the onboarding funnel's join entry,
+ *   docs/TUTORIAL_FUNNEL.md §2). Analytics: `InviteArrival` once per join, `PartyGrouped`.
  * - **Party index** (I6): PartyId per player and its changed signal. A change during the LaunchData wait (the id
  *   came late) re-resolves the arrival; any later change, or a mate joining the party while both are here, is only an
  *   offer (ID4, `partyOffers` -> party invites, `PartyGrouped` "offered").
@@ -189,7 +191,11 @@ export class InviteService implements OnStart {
 	private readonly partyFetches = new Map<string, PartyFetch>();
 	private joinSeq = 0;
 
-	constructor(private readonly lobbyService: LobbyService, private readonly telemetry: TelemetryService) {}
+	constructor(
+		private readonly lobbyService: LobbyService,
+		private readonly telemetry: TelemetryService,
+		private readonly onboarding: OnboardingService,
+	) {}
 
 	onStart(): void {
 		this.janitor.Add(
@@ -346,7 +352,7 @@ export class InviteService implements OnStart {
 	private eligibility(player: Player): void {
 		const m = this.members.get(player);
 		if (m === undefined) return;
-		if (m.intent !== undefined) Events.joinIntent.fire(player, { kind: m.intent });
+		if (m.intent !== undefined) this.sendJoinIntent(player, m.intent);
 		if (isStudio()) {
 			const forced = Workspace.GetAttribute(INVITE_STUDIO_ATTRIBUTES.fakeInviteEligible);
 			if (typeIs(forced, "boolean")) {
@@ -449,7 +455,7 @@ export class InviteService implements OnStart {
 		this.resolve(m);
 		if (!this.present(m)) return;
 		m.intent = joinIntentNow(this.lobbyService.lobbyOf(userId) !== undefined, m.placement);
-		Events.joinIntent.fire(player, { kind: m.intent });
+		this.sendJoinIntent(player, m.intent);
 		log.info("ARRIVAL", `${userId}: joinIntent ${m.intent}`);
 		if (m.launchSeen || m.intent !== "none") return this.arrivalSettled(m);
 
@@ -593,7 +599,17 @@ export class InviteService implements OnStart {
 		if (!shouldUpgradeJoinIntent(m.intent, current, os.clock() - m.addedAt)) return;
 		m.intent = current;
 		log.info("JOIN_INTENT_UPGRADED", `${userId}: ${current}`);
-		Events.joinIntent.fire(m.player, { kind: current });
+		this.sendJoinIntent(m.player, current);
+	}
+
+	/**
+	 * Sends `joinIntent` and tells OnboardingService (the onboarding funnel's join entry, docs/TUTORIAL_FUNNEL.md §2).
+	 * Never yields.
+	 */
+	private sendJoinIntent(player: Player, intent: ArrivalJoinIntent): void {
+		Events.joinIntent.fire(player, { kind: intent });
+		const [ok, err] = pcall(() => this.onboarding.joinIntent(player, intent));
+		if (!ok) log.warn("ONBOARDING_INTENT_FAILED", `${player.UserId}: ${tostring(err)}`);
 	}
 
 	private logArrival(player: Player, outcome: InviteArrivalOutcome, kind: "lobby" | "game"): void {
