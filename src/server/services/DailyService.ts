@@ -54,8 +54,13 @@ export class DailyService implements OnStart {
 		DAILY_REQUEST_RATE.count,
 		DAILY_REQUEST_RATE.windowSeconds,
 	);
-	/** Today's status (rebuilt when the day turns). */
+	/** Today's status (rebuilt when the day turns, by whichever caller first asks: status()). */
 	private current: DailyStatus | undefined;
+	/**
+	 * The day the midnight push last covered (checkDay's own record, apart from `current`: a requestDaily or a run
+	 * start that rebuilds `current` after midnight must not swallow the push).
+	 */
+	private lastPushedDay: number | undefined;
 	private readonly personal = new Map<Player, PersonalStatus>();
 	/** Players whose board parts are being read; `true` = asked again meanwhile (read once more after). */
 	private readonly refreshing = new Map<Player, boolean>();
@@ -81,7 +86,7 @@ export class DailyService implements OnStart {
 				this.refreshing.delete(player);
 			}),
 		);
-		this.status();
+		this.lastPushedDay = this.status().day;
 		const watch = task.spawn(() => {
 			for (;;) {
 				task.wait(DAILY_SERVICE.dayCheckSeconds);
@@ -156,11 +161,14 @@ export class DailyService implements OnStart {
 		this.personal.set(player, { day, mine: dailyMineFrom(reads), podium });
 	}
 
-	/** The midnight push: when the UTC day turned since the last status, every player hears the new one. */
+	/**
+	 * The midnight push: when the UTC day turned since the last push, every player hears the new status. Tracked by
+	 * `lastPushedDay`, not by `current`, which any status() call (requestDaily, statusFor) may already have rebuilt.
+	 */
 	private checkDay(): void {
-		const before = this.current;
 		const now = this.status();
-		if (before === undefined || before.day === now.day) return;
+		if (this.lastPushedDay === now.day) return;
+		this.lastPushedDay = now.day;
 		Events.dailyStatus.broadcast(now);
 		for (const player of Players.GetPlayers()) this.refresh(player);
 	}
