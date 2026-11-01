@@ -76,9 +76,11 @@ const ROW = {
 	daily: 7,
 	dailyPassed: 8,
 	breakdown: 9,
-	exits: 10,
-	verdict: 11,
-	info: 12,
+	/** Narrow (portrait) only: the Build list under the breakdown (beside it elsewhere). */
+	build: 10,
+	exits: 11,
+	verdict: 12,
+	info: 13,
 } as const;
 
 function Stat(props: { order: number; label: string; value: string }) {
@@ -383,7 +385,8 @@ function RunOverHeader(props: { order: number; victory: boolean; icon: string | 
  *
  * Fitted into the safe area on touch (MenuFit, docs/UI_ART.md "Phones"); compact (a phone): two columns, the header,
  * the main line, the stats as lines, the exits, the verdict and the info line on the left, the score breakdown on
- * the right with tighter lines.
+ * the right with tighter lines. Narrow (a phone in portrait): the full layout in one MENU_FIT.runOverNarrowWidth
+ * column, the stats as lines, the Build list under the breakdown and the smaller exit buttons.
  *
  * New best (docs/NEW_BEST.md NB9), ranked runs only (runOverBest; an unranked run's panel is unchanged): on a record
  * run the gold ribbon under the header (BestRibbon) and, under the stats (compact: atop the breakdown column), the
@@ -587,9 +590,11 @@ export function RunOverPanel() {
 						</Panel>
 					);
 				}
+				// A phone in portrait: one narrow column (the stats as lines, the Build list under the breakdown).
+				const narrow = layout.narrow;
 				return (
 					<Panel
-						width={HUD_VIEW.panelWidth * 2}
+						width={narrow ? MENU_FIT.runOverNarrowWidth : HUD_VIEW.panelWidth * 2}
 						align={Enum.HorizontalAlignment.Center}
 						skin={screenSkin("runOver")}
 						name="RunOver"
@@ -598,18 +603,26 @@ export function RunOverPanel() {
 						{ribbon}
 						{mainLine}
 						{altLine}
-						<Row order={ROW.stats} align={Enum.HorizontalAlignment.Center}>
-							{stats.map((st, i) => (
-								<Stat key={`st${i}`} order={i + 1} label={st.label} value={st.value} />
-							))}
-						</Row>
+						{narrow ? (
+							<Column order={ROW.stats} width={breakdownWidth} gap={HUD_VIEW.gap}>
+								{stats.map((st, i) => (
+									<BreakdownLine key={`st${i}`} order={i + 1} label={st.label} value={st.value} />
+								))}
+							</Column>
+						) : (
+							<Row order={ROW.stats} align={Enum.HorizontalAlignment.Center}>
+								{stats.map((st, i) => (
+									<Stat key={`st${i}`} order={i + 1} label={st.label} value={st.value} />
+								))}
+							</Row>
+						)}
 						{bestBlock}
 						{dailyBlock}
 						<DailyPassedRow key="DailyPassed" order={ROW.dailyPassed} />
-						{/* docs/BUILDS.md BU10: the score breakdown and the Build list side by side. */}
+						{/* docs/BUILDS.md BU10: the score breakdown and the Build list side by side (narrow: stacked). */}
 						<Row order={ROW.breakdown} align={Enum.HorizontalAlignment.Center}>
 							{s.scoring ? <ScoreBreakdown {...breakdown} order={1} /> : undefined}
-							{hasBuild ? (
+							{hasBuild && !narrow ? (
 								<BuildList
 									order={2}
 									width={BUILD_HUD_VIEW.listWidth}
@@ -617,9 +630,18 @@ export function RunOverPanel() {
 								/>
 							) : undefined}
 						</Row>
+						{hasBuild && narrow ? (
+							<BuildList
+								order={ROW.build}
+								width={BUILD_HUD_VIEW.listWidth}
+								maxRows={BUILD_HUD_VIEW.listCompactRows}
+							/>
+						) : undefined}
 						{verdictRow}
 						<RunInfoLine order={ROW.info} />
-						{exitButtons()}
+						{exitButtons(
+							narrow ? new Vector2(MENU_FIT.runOverButton.x, MENU_FIT.runOverButton.y) : undefined,
+						)}
 					</Panel>
 				);
 			}}

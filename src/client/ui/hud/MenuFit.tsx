@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "@rbxts/react";
 import { useSelector } from "@rbxts/react-reflex";
-import { GuiService, Workspace } from "@rbxts/services";
+import { GuiService, UserInputService, Workspace } from "@rbxts/services";
 import { selectInputDevice } from "client/store";
 import { role, themePack } from "client/ui/theme";
 import { UI_ART, ornamentShown, skinHasOf } from "shared/view/hud";
@@ -10,6 +10,8 @@ import {
 	menuArea,
 	menuCompact,
 	menuFitChanged,
+	menuFitDevice,
+	menuNarrow,
 	MENU_VIEW,
 	type MenuFitResult,
 	type MenuSize,
@@ -23,6 +25,8 @@ const HIDDEN = 1;
 export interface MenuLayout {
 	/** Take the compact arrangement (shared/view/menu menuCompact: touch, a short safe area). */
 	readonly compact: boolean;
+	/** Take the narrow arrangement (shared/view/menu menuNarrow: touch, a portrait safe area). */
+	readonly narrow: boolean;
 	/** Draw the bone ornament (asked for, and fitMenu found room above the panel). Pass it to the Panel. */
 	readonly ornament: boolean;
 	/** The flexible list's height, reference px (the `flex` range's max when there is none or nothing to fit). */
@@ -62,12 +66,13 @@ function guessArea(uiScale: number): MenuSize {
  * A transparent frame fills the parent (the ScreenGui's safe area, or a full-size overlay inside it) and measures it;
  * a box at its centre holds the panel under a UIScale (the fit factor) and measures the panel. On touch the screen
  * gets the compact flag, its flexible list's height and the ornament decision, and the box is scaled / moved to fit;
- * the art under it snaps at the scale it is drawn at (ArtScaleContext). Without touch the factor is 1, nothing moves
- * and the flexible list keeps its max: exactly the unfitted layout.
+ * the art under it snaps at the scale it is drawn at (ArtScaleContext). "Touch" is menuFitDevice: the last-used device
+ * is touch or the device has a touchscreen (a phone stays fitted after a key press). Without it the factor is 1,
+ * nothing moves and the flexible list keeps its max: exactly the unfitted layout.
  */
 export function MenuFit(props: MenuFitProps) {
 	const hud = useHudScale();
-	const touch = useSelector(selectInputDevice) === "touch";
+	const touch = menuFitDevice(useSelector(selectInputDevice) === "touch", UserInputService.TouchEnabled);
 	const areaRef = useRef<Frame>();
 	const boxRef = useRef<Frame>();
 	const [area, setArea] = useState<MenuSize>(() => guessArea(hud));
@@ -76,8 +81,9 @@ export function MenuFit(props: MenuFitProps) {
 	const ornamentArt = pack?.image(UI_ART.ids.ornament);
 	const wantsOrnament = pack !== undefined && ornamentShown(skinHasOf(pack), "menu", props.ornament === true);
 	const compact = menuCompact(area.h, touch);
+	const narrow = menuNarrow(area.w, area.h, touch);
 	// The compact body's content height belongs to the compact layout only.
-	useEffect(() => setContent(undefined), [compact]);
+	useEffect(() => setContent(undefined), [compact, narrow]);
 	const flexRange = typeIs(props.flex, "function") ? props.flex(compact) : props.flex;
 	const flexMax = flexRange !== undefined ? math.min(flexRange.max, content ?? math.huge) : 0;
 	const initial: MenuFitResult = {
@@ -111,6 +117,7 @@ export function MenuFit(props: MenuFitProps) {
 			areaH,
 			uiScale: hud,
 			touch,
+			narrow,
 			ornament: wantsOrnament,
 			ornamentArtH: ornamentArt?.rect?.h ?? ornamentArt?.h ?? 0,
 			flex:
@@ -143,6 +150,7 @@ export function MenuFit(props: MenuFitProps) {
 
 	const layout: MenuLayout = {
 		compact,
+		narrow,
 		ornament: wantsOrnament && shown.ornament,
 		flex: math.min(shown.flex ?? flexMax, flexMax),
 		setFlexContent: (h) => {

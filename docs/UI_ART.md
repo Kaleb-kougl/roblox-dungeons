@@ -314,6 +314,15 @@ score panel. All three predate the skin in part; fixed on `ua-mob-menus` / `ua-m
   (Attack 10 ref px from both safe edges; Roll, Alt, Flask, Ember on the inner arc, Swap and Accept outside; 4 ref px
   between hit circles), the move stick's idle home near the bottom-left corner; specced to stay in a 45 % x 75 %
   corner box, out of the screen's middle third, both hands, every HUD scale.
+- **Fit on any touchscreen, and in portrait** (2026-11-01, after emulator screenshots of cut-off menus in both
+  orientations): the fit keyed on the last-used device, so a phone driven by keys (Studio's device emulator after
+  WASD, a Bluetooth keyboard) drew the desktop layouts unfitted. `menuFitDevice` now also fits on any device with a
+  touchscreen (`UserInputService.TouchEnabled`); desktops without one are unchanged. A portrait area (`menuNarrow`:
+  touch, taller than wide) takes narrow layouts: the main menu's stacked (compact) layout, the run over in one
+  `MENU_FIT.runOverNarrowWidth` (480) column (stats as lines, the Build list under the breakdown, the smaller exits),
+  and every other screen may shrink to `MENU_FIT.narrowMinScale` (0.45 effective; Options and the lobbies on a 375 pt
+  phone). Real phones are held in landscape (LandscapeSensor), so portrait is mostly the emulator's. Specced in
+  fit.spec.ts (375 / 390 / 430 pt portrait phones, touch and keyboard scales).
 - **Needs a device or the emulator:** the compact cluster's thumb reach, the knob-at-rest choice, "Accept" at ~8 pt with
   the art, first-frame unfitted menus, the real panel heights against the estimates.
 

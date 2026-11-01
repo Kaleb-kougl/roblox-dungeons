@@ -213,6 +213,14 @@ function wrapDeg(deg: number): number {
 	return a === 0 ? 0 : a;
 }
 
+/**
+ * The ImageLabel.Rotation that shows a cue's `rotationDeg` (degrees clockwise on screen) under `placement`: a floor
+ * effect adds FX_SPRITE_VIEW.floorCanvasTurnDeg (its SurfaceGui canvas is turned on screen), a billboard takes it as is.
+ */
+export function fxLabelRotationDeg(rotationDeg: number, placement: "floor" | "billboard"): number {
+	return placement === "floor" ? wrapDeg(rotationDeg + FX_SPRITE_VIEW.floorCanvasTurnDeg) : rotationDeg;
+}
+
 function grow(arr: number[], n: number, value: number): void {
 	while (arr.size() < n) arr.push(value);
 }

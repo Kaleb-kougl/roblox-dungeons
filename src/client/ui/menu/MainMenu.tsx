@@ -25,8 +25,8 @@ import { useGamepadFocus } from "./hooks";
  * (the browser; "Your lobby" goes straight to the room while in one), Invite friends (Roblox's invite prompt, no
  * lobby attached: docs/INVITES.md ID7; disabled with the reason when the server says this player cannot), Tutorial (the first-run Practice Descent again,
  * docs/TUTORIAL.md), Options (the Options screen) and Leaderboard (the leaderboard panel). With a gamepad the
- * selection starts on Play solo. Fitted into the safe area on touch (MenuFit); compact (a phone): the buttons in two
- * columns, the invite reason under them. Under Play solo (compact: under its row), once the server's records loaded
+ * selection starts on Play solo. Fitted into the safe area on touch (MenuFit); compact or narrow (a phone, landscape
+ * or portrait): the buttons in two columns, the invite reason under them. Under Play solo (compact: under its row), once the server's records loaded
  * and the solo board has one, the player's solo best (`Best 48210 · floor 9`, docs/NEW_BEST.md NB9: menu.best).
  *
  * The Daily (docs/DAILY.md DS9): beside the button column (compact: under Play solo's row, before the other buttons)
@@ -150,66 +150,75 @@ export function MainMenu() {
 	return (
 		<MenuFit
 			ornament={screenOrnament("mainMenu")}
-			render={(layout) => (
-				<Panel
-					width={
-						layout.compact
-							? MENU_FIT.mainCompactWidth
-							: MENU_VIEW.mainWidth + HUD_VIEW.gap + DAILY_MENU.cardWidth
-					}
-					align={Enum.HorizontalAlignment.Center}
-					padding={HUD_VIEW.pad * 2}
-					skin={screenSkin("mainMenu")}
-					ornament={layout.ornament}
-					name="MainMenu"
-				>
-					<Text
-						fill={true}
-						order={1}
-						size={HUD_VIEW.bigText}
-						color="uiAccent"
-						align={Enum.TextXAlignment.Center}
-						text={str(HUD_STRINGS.title)}
-					/>
-					{layout.compact ? (
-						<>
-							<Row key="Row1" order={2}>
-								{play}
-								{lobbies}
-							</Row>
-							{best}
-							<DailyCard key="Daily" order={4} width={compactInner} compact={true} />
-							<DailyPodiumStrip key="Podium" order={5} width={compactInner} compact={true} />
-							<Row key="Row2" order={6}>
-								{inviteButton}
-								{tutorial}
-							</Row>
-							<Row key="Row3" order={7}>
-								{options}
-								{leaderboard}
-							</Row>
-							{reason(8)}
-						</>
-					) : (
-						<Columns key="Columns" order={2}>
-							<Column key="Menu" order={1} width={columnWidth}>
-								{play}
+			render={(layout) => {
+				// A phone in either orientation: the stacked two-column layout (the Daily card under Play solo's row).
+				const stacked = layout.compact || layout.narrow;
+				return (
+					<Panel
+						width={
+							stacked
+								? MENU_FIT.mainCompactWidth
+								: MENU_VIEW.mainWidth + HUD_VIEW.gap + DAILY_MENU.cardWidth
+						}
+						align={Enum.HorizontalAlignment.Center}
+						padding={HUD_VIEW.pad * 2}
+						skin={screenSkin("mainMenu")}
+						ornament={layout.ornament}
+						name="MainMenu"
+					>
+						<Text
+							fill={true}
+							order={1}
+							size={HUD_VIEW.bigText}
+							color="uiAccent"
+							align={Enum.TextXAlignment.Center}
+							text={str(HUD_STRINGS.title)}
+						/>
+						{stacked ? (
+							<>
+								<Row key="Row1" order={2}>
+									{play}
+									{lobbies}
+								</Row>
 								{best}
-								{lobbies}
-								{inviteButton}
-								{reason(6)}
-								{tutorial}
-								{options}
-								{leaderboard}
-							</Column>
-							<Column key="Daily" order={2} width={DAILY_MENU.cardWidth}>
-								<DailyCard key="Card" order={1} width={DAILY_MENU.cardWidth} compact={false} />
-								<DailyPodiumStrip key="Podium" order={2} width={DAILY_MENU.cardWidth} compact={false} />
-							</Column>
-						</Columns>
-					)}
-				</Panel>
-			)}
+								<DailyCard key="Daily" order={4} width={compactInner} compact={true} />
+								<DailyPodiumStrip key="Podium" order={5} width={compactInner} compact={true} />
+								<Row key="Row2" order={6}>
+									{inviteButton}
+									{tutorial}
+								</Row>
+								<Row key="Row3" order={7}>
+									{options}
+									{leaderboard}
+								</Row>
+								{reason(8)}
+							</>
+						) : (
+							<Columns key="Columns" order={2}>
+								<Column key="Menu" order={1} width={columnWidth}>
+									{play}
+									{best}
+									{lobbies}
+									{inviteButton}
+									{reason(6)}
+									{tutorial}
+									{options}
+									{leaderboard}
+								</Column>
+								<Column key="Daily" order={2} width={DAILY_MENU.cardWidth}>
+									<DailyCard key="Card" order={1} width={DAILY_MENU.cardWidth} compact={false} />
+									<DailyPodiumStrip
+										key="Podium"
+										order={2}
+										width={DAILY_MENU.cardWidth}
+										compact={false}
+									/>
+								</Column>
+							</Columns>
+						)}
+					</Panel>
+				);
+			}}
 		/>
 	);
 }

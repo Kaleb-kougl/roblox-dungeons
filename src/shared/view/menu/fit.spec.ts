@@ -13,12 +13,15 @@ import {
 	uniformPadding,
 } from "shared/view/hud";
 import {
+	DAILY_MENU,
 	MENU_FIT,
 	MENU_VIEW,
 	fitMenu,
 	lobbyRoomParts,
 	menuArea,
 	menuCompact,
+	menuFitDevice,
+	menuNarrow,
 	ornamentOverhang,
 	type MenuFitInput,
 	type MenuFitResult,
@@ -335,6 +338,153 @@ describe("menu fit on phones (docs/UI_ART.md Phones)", () => {
 		const main = fitOn(s, all.get("mainMenu")!, u, true);
 		expect(main.ornament).toBe(false);
 		expect(u * main.factor).toBeLessThan(0.66);
+	});
+});
+
+/**
+ * Portrait phones (pt; the top bar plus the notch under CoreUISafeInsets, the home indicator at the bottom). Real phones
+ * are held in landscape (LandscapeSensor); Studio's device emulator shows them upright.
+ */
+const PORTRAITS: ReadonlyArray<Screen> = [
+	{ name: "390x844", x: 390, y: 844, insets: { top: TOP, left: 0, right: 0, bottom: 34 } },
+	{ name: "375x667", x: 375, y: 667, insets: { top: TOP, left: 0, right: 0, bottom: 0 } },
+	{ name: "430x932", x: 430, y: 932, insets: { top: TOP, left: 0, right: 0, bottom: 34 } },
+];
+
+/** The screens as drawn in portrait: the main menu's stacked layout, the run over's one column, the rest full. */
+function narrowEstimates(uiScale: number): ReadonlyMap<string, Estimate> {
+	const out = new Map<string, Estimate>();
+	const full = estimates(uiScale, false);
+	for (const name of SCREENS) out.set(name, full.get(name)!);
+	const compactMain = estimates(uiScale, true).get("mainMenu")!;
+	// The stacked main menu with the Daily card and podium under Play solo's row (generously 240 tall).
+	out.set("mainMenu", { ...compactMain, h: compactMain.h + 240 });
+	const lineH = LINE(HUD_VIEW.textSize);
+	const breakdown = SCORE_LINES * lineH + (SCORE_LINES - 1) * HUD_VIEW.gap + HUD_VIEW.pad * 2;
+	out.set("runOver", {
+		w: MENU_FIT.runOverNarrowWidth,
+		h: column(
+			[
+				UI_ART.iconBox.header,
+				2 * LINE(HUD_VIEW.titleText),
+				3 * lineH + 2 * HUD_VIEW.gap,
+				breakdown,
+				MENU_FIT.runOverButton.y,
+				TWO_SMALL_LINES,
+				TWO_SMALL_LINES,
+			],
+			HUD_VIEW.pad,
+			uiScale,
+		),
+		ornament: false,
+	});
+	return out;
+}
+
+function narrowFit(s: Screen, e: Estimate, uiScale: number): MenuFitResult {
+	const area = menuArea(s.x, s.y, s.insets, uiScale);
+	return fitMenu({
+		w: e.w,
+		h: e.h,
+		areaW: area.w,
+		areaH: area.h,
+		uiScale,
+		touch: true,
+		narrow: menuNarrow(area.w, area.h, true),
+		ornament: e.ornament,
+		ornamentArtH: ORNAMENT_ART_H,
+		flex: e.flex !== undefined ? { current: e.flex.max, min: e.flex.min, max: e.flex.max } : undefined,
+	});
+}
+
+describe("menu fit on a touchscreen and in portrait", () => {
+	it("a touchscreen fits whatever was pressed last; a desktop without one never does", () => {
+		expect(menuFitDevice(true, true)).toBe(true);
+		expect(menuFitDevice(false, true)).toBe(true);
+		expect(menuFitDevice(true, false)).toBe(true);
+		expect(menuFitDevice(false, false)).toBe(false);
+	});
+
+	it("a phone driven by a keyboard (the desktop HUD scale) is still compact in landscape", () => {
+		for (const s of PHONES) {
+			const u = computeHudScale(s.x, s.y, false);
+			expect([s.name, menuCompact(menuArea(s.x, s.y, s.insets, u).h, menuFitDevice(false, true))]).toEqual([
+				s.name,
+				true,
+			]);
+		}
+	});
+
+	it("portrait is narrow; landscape phones, desktops and a landscape tablet never are", () => {
+		for (const s of PORTRAITS) {
+			for (const touch of [true, false]) {
+				for (const percent of [70, 100, 125]) {
+					const u = computeHudScale(s.x, s.y, false, percent, touch);
+					const a = menuArea(s.x, s.y, s.insets, u);
+					expect([s.name, touch, percent, menuNarrow(a.w, a.h, true)]).toEqual([
+						s.name,
+						touch,
+						percent,
+						true,
+					]);
+				}
+			}
+		}
+		for (const s of [...PHONES, ...DESKTOPS]) {
+			for (const percent of [70, 100, 125]) {
+				const u = computeHudScale(s.x, s.y, false, percent, true);
+				const a = menuArea(s.x, s.y, s.insets, u);
+				expect([s.name, percent, menuNarrow(a.w, a.h, true)]).toEqual([s.name, percent, false]);
+			}
+		}
+		const u = computeHudScale(1024, 768, false, 100, true);
+		const a = menuArea(1024, 768, { top: TOP, left: 0, right: 0, bottom: 20 }, u);
+		expect(menuNarrow(a.w, a.h, true)).toBe(false);
+		// Not a touch device: never narrow.
+		expect(menuNarrow(400, 900, false)).toBe(false);
+	});
+
+	it("every screen fits inside a portrait phone, at no less than the narrow floor", () => {
+		for (const s of PORTRAITS) {
+			// The touch scale, and the desktop floor (Studio's emulator driven by a keyboard).
+			for (const touch of [true, false]) {
+				const u = computeHudScale(s.x, s.y, false, 100, touch);
+				const all = narrowEstimates(u);
+				for (const name of SCREENS) {
+					const e = all.get(name)!;
+					const fit = narrowFit(s, e, u);
+					expect([s.name, touch, name, fit.overflow]).toEqual([s.name, touch, name, false]);
+					expect(u * fit.factor).toBeGreaterThanOrEqual(MENU_FIT.narrowMinScale - 1e-9);
+					expectInside(s, e, fit, u);
+				}
+			}
+		}
+	});
+
+	it("the portrait main menu and run over keep the full floor (only the widest screens use the narrow one)", () => {
+		for (const s of PORTRAITS) {
+			const u = computeHudScale(s.x, s.y, false, 100, true);
+			const all = narrowEstimates(u);
+			for (const name of ["mainMenu", "runOver", "pause", "leaderboard", "tutorialOutro"]) {
+				expect([s.name, name, u * narrowFit(s, all.get(name)!, u).factor >= MENU_FIT.minScale]).toEqual([
+					s.name,
+					name,
+					true,
+				]);
+			}
+		}
+	});
+
+	it("without the narrow layouts the main menu and run over would not fit a portrait phone", () => {
+		const s = PORTRAITS[0];
+		const u = computeHudScale(s.x, s.y, false, 100, true);
+		const full = estimates(u, false);
+		const main = {
+			...full.get("mainMenu")!,
+			w: MENU_VIEW.mainWidth + HUD_VIEW.gap + DAILY_MENU.cardWidth + 4 * HUD_VIEW.pad,
+		};
+		expect(fitOn(s, main, u, true).overflow).toBe(true);
+		expect(fitOn(s, full.get("runOver")!, u, true).overflow).toBe(true);
 	});
 });
 

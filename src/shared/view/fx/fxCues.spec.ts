@@ -47,7 +47,7 @@ import { BULLET_VIEW, MARKING_VIEW } from "../config";
 import { DECOR_VIEW, decorInputOfLayout, decorScene, planDecor, type DecorScene } from "../decor";
 import { FX_SPRITE_VIEW } from "./config";
 import type { FxEvent } from "./events";
-import { BOSS_IMPACTS, FxCueMapper, type FxCueEventSource } from "./fxCues";
+import { BOSS_IMPACTS, FxCueMapper, fxLabelRotationDeg, type FxCueEventSource } from "./fxCues";
 import { HitTracker } from "./tracker";
 
 const SEED = 1337;
@@ -455,6 +455,31 @@ describe("FxCueMapper sources (synthetic)", () => {
 		expect(FX_SPRITE_VIEW.swingArtHeadingDeg).toBe(270);
 		const r = mapper.cues.at(0).rotationDeg;
 		expect(math.min(r, 360 - r)).toBeLessThan(1e-6);
+	});
+
+	it("a screen-left swing turns the slash a quarter turn clockwise; the floor canvas adds its own turn", () => {
+		const { state, mapper } = fresh();
+		const w = state.combat.weapons;
+		// screen left in sim ground terms at the game camera: minus the camera's right (cos yaw, -sin yaw)
+		const yaw = math.rad(CAMERA_YAW_DEG);
+		state.tick += 1;
+		w.swingTick = state.tick - 1;
+		w.swingDirX = -math.cos(yaw);
+		w.swingDirZ = math.sin(yaw);
+		w.swingRadius = 1;
+		mapper.frame({ now: 1, state, alpha: 1, events: NO_EVENTS, fx: new Events(), settings });
+		const r = mapper.cues.at(0).rotationDeg;
+		expect(r).toBeCloseTo(90, 6);
+		expect(fxLabelRotationDeg(r, "billboard")).toBe(r);
+		expect(fxLabelRotationDeg(r, "floor")).toBeCloseTo(90 + FX_SPRITE_VIEW.floorCanvasTurnDeg, 6);
+	});
+
+	it("fxLabelRotationDeg: floor adds the canvas turn, wrapped to [0, 360); billboard unchanged", () => {
+		expect(FX_SPRITE_VIEW.floorCanvasTurnDeg).toBe(90);
+		expect(fxLabelRotationDeg(0, "floor")).toBe(90);
+		expect(fxLabelRotationDeg(300, "floor")).toBe(30);
+		expect(fxLabelRotationDeg(270, "floor")).toBe(0);
+		expect(fxLabelRotationDeg(300, "billboard")).toBe(300);
 	});
 
 	/**

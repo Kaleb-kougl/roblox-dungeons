@@ -76,6 +76,13 @@ export const FX_SPRITE_VIEW = {
 	 * floor clearance (over the floor markings near it: for comparing in Studio, F0 / F4).
 	 */
 	placement: "floor" as "floor" | "billboard",
+	/**
+	 * Floor placement: added to every effect's ImageLabel.Rotation (degrees clockwise). A Top-face SurfaceGui's canvas
+	 * comes out turned 90 degrees anticlockwise on screen from the camera-yawed Part (an engine quirk: Top-face
+	 * SurfaceGuis do not follow the Decal convention), so a cue's screen rotation alone left the art unturned (owner's
+	 * Studio check 2026-11-01: a slash swung screen-left bulged down, as drawn). This turns the canvas back.
+	 */
+	floorCanvasTurnDeg: 90,
 	/** Floor placement: the top of the effect's Part above the floor, studs (decor flats sit at DECOR_VIEW.flatLiftStuds). */
 	liftStuds: 0.06,
 	/** Effects are spread over this many layers this far apart, studs (no z-fighting between overlapping effects). */

@@ -3,16 +3,21 @@
  * measures a screen's panel and the area it centres in and applies the result. Headlessly tested (fit.spec.ts).
  *
  * One mechanism for every full-screen panel (main menu, lobby browser / room, Options, pause, run over, tutorial
- * outro, objective card, leaderboards), in three steps, all of them on touch only (mouse, keyboard and gamepad keep
- * exactly today's layout at every size: fitMenu is the identity there):
+ * outro, objective card, leaderboards), in three steps, all of them on a touch device only (menuFitDevice: the
+ * last-used device is touch, or the device has a touchscreen, so a phone driven by a keyboard or Studio's device
+ * emulator fits too; a desktop without a touchscreen keeps exactly today's layout at every size: fitMenu is the
+ * identity there):
  *   1. Compact layouts (menuCompact): a safe area shorter than MENU_FIT.compactBelow reference px (a phone in
  *      landscape) makes the screens take their compact arrangement (two button columns, the run-over breakdown beside
- *      the stats, the Options body scrolling, a lobby room's invite list in place of the member list). Decided from
- *      the area alone, never from the panel's measured size, so a layout never flips back and forth.
+ *      the stats, the Options body scrolling, a lobby room's invite list in place of the member list). Narrow layouts
+ *      (menuNarrow): a portrait area (a phone held upright) stacks what sits side by side (the main menu's compact
+ *      column, the run over in one column) and lets the panel shrink to the lower MENU_FIT.narrowMinScale. Both are decided from the area alone, never from the panel's measured size, so a
+ *      layout never flips back and forth.
  *   2. One flexible list per screen (lobby lists, the leaderboard rows, the compact Options body) shrinks first, to
  *      no less than its `min`, so the panel fits without shrinking any text.
  *   3. What still does not fit is scaled down as a whole (a UIScale on the panel, art re-snapped to whole screen px),
- *      never below MENU_FIT.minScale effective scale (the HUD scale times the factor), so tap targets stay usable.
+ *      never below MENU_FIT.minScale effective scale (the HUD scale times the factor; narrow: narrowMinScale), so tap
+ *      targets stay usable.
  * The bone ornament never leaves the area and never costs the panel any size: it shows only when the panel, as
  * fitted, leaves room above it for the ornament's overhang (the panel moves down by up to half the overhang to make
  * that room); otherwise it is skipped.
@@ -57,6 +62,13 @@ export const MENU_FIT = {
 	 */
 	optionsWidth: 760,
 	optionsBodyMax: 330,
+	/**
+	 * The smallest effective scale a narrow (portrait) screen shrinks to: the widest panels (Options 780, the lobbies
+	 * 700) on a 375 pt portrait phone (484 reference px of room at 0.75: 0.47 effective). Body text stays >= 9 pt.
+	 */
+	narrowMinScale: 0.45,
+	/** Narrow run over: one column this wide (the breakdown, 316, and two runOverButton exits side by side fit). */
+	runOverNarrowWidth: 480,
 } as const;
 
 /** A size, reference px. */
@@ -91,9 +103,30 @@ export function menuArea(viewportW: number, viewportH: number, insets: MenuInset
 	};
 }
 
+/**
+ * Whether the menus fit themselves (the `touch` flag of menuCompact / menuNarrow / fitMenu): the last-used device is
+ * touch, or the device has a touchscreen (UserInputService.TouchEnabled). The second keeps a phone fitted after a key
+ * press (a Bluetooth keyboard; Studio's device emulator, where moving with WASD makes the keyboard the last device);
+ * a touchscreen laptop at desktop size fits to the identity anyway (fit.spec.ts).
+ */
+export function menuFitDevice(lastDeviceTouch: boolean, touchScreen: boolean): boolean {
+	return lastDeviceTouch || touchScreen;
+}
+
 /** Whether the screens take their compact layouts: touch, and an area shorter than MENU_FIT.compactBelow. */
 export function menuCompact(areaH: number, touch: boolean): boolean {
 	return touch && areaH > 0 && areaH < MENU_FIT.compactBelow;
+}
+
+/**
+ * Whether the screens take their narrow layouts: touch, and a portrait area (taller than wide). Every portrait phone
+ * is far narrower than the full layouts (375-430 pt: 500-573 reference px at the touch scale, 625-717 at the desktop
+ * floor 0.6), and a landscape phone at any HUD scale stays on its compact layouts (693 x 320 at 125 %: 635 x 279).
+ * Real phones and tablets are held in landscape (TouchControlsController: LandscapeSensor), so this is mostly Studio's
+ * device emulator in portrait.
+ */
+export function menuNarrow(areaW: number, areaH: number, touch: boolean): boolean {
+	return touch && areaW > 0 && areaW < areaH;
 }
 
 /**
@@ -121,8 +154,10 @@ export interface MenuFitInput {
 	readonly areaH: number;
 	/** The HUD scale (the ScreenGui's UIScale). */
 	readonly uiScale: number;
-	/** Touch is the last-used device: only then is anything fitted. */
+	/** A touch device (menuFitDevice): only then is anything fitted. */
 	readonly touch: boolean;
+	/** The narrow layouts are on (menuNarrow): the floor is MENU_FIT.narrowMinScale instead of minScale. */
+	readonly narrow?: boolean;
 	/** The panel draws the bone ornament (asked for, on menu art, the pack has it), and that art's height, art px. */
 	readonly ornament: boolean;
 	readonly ornamentArtH: number;
@@ -147,7 +182,8 @@ export interface MenuFitResult {
  * no offset, the flexible list at its max): every desktop / console layout is exactly today's. Touch:
  *   - flex: `clamp(current + spare, min, max)` where spare = the area's height less the margins less the panel's;
  *   - factor: `min(1, room / size)` per axis (room = area - 2 x margin), never below MENU_FIT.minScale / uiScale
- *     (nor above 1); a panel bigger than its room at that floor overflows (`overflow`);
+ *     (narrow: MENU_FIT.narrowMinScale / uiScale; nor above 1); a panel bigger than its room at that floor overflows
+ *     (`overflow`);
  *   - ornament: shown when `(h + overhang) x factor` fits the room height, the overhang at the fitted scale
  *     (ornamentOverhang); centred as is when `(h + 2 x overhang) x factor` fits, else moved down by `overhang x
  *     factor / 2` so the ornament's top and the panel's bottom sit an equal margin from the area's edges.
@@ -170,7 +206,7 @@ export function fitMenu(input: MenuFitInput): MenuFitResult {
 	const w = input.w;
 	const fitW = w > 0 ? roomW / w : 1;
 	const fitH = h > 0 ? roomH / h : 1;
-	const floor = math.min(1, MENU_FIT.minScale / u);
+	const floor = math.min(1, (input.narrow === true ? MENU_FIT.narrowMinScale : MENU_FIT.minScale) / u);
 	const factor = math.max(floor, math.min(1, fitW, fitH));
 	const overflow = w * factor > roomW + MENU_FIT.epsilon || h * factor > roomH + MENU_FIT.epsilon;
 	let ornament = false;

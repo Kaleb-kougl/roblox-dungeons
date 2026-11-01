@@ -4,7 +4,14 @@ import { RunService, Workspace } from "@rbxts/services";
 import { CAMERA_YAW_DEG, STUDS_PER_TILE } from "shared/config";
 import { FX_IDS, type FxId, type FxSprite, type ThemePack } from "shared/theme";
 import { RENDER_ORDER, degToRad, floorImageSize, floorStudsY, spriteBillboard, studsX, studsZ } from "shared/view";
-import { FX_SPRITE_MAX_TILES, FX_SPRITE_VIEW, FX_VIEW, FxCueMapper, type FxCueFrame } from "shared/view/fx";
+import {
+	FX_SPRITE_MAX_TILES,
+	FX_SPRITE_VIEW,
+	FX_VIEW,
+	FxCueMapper,
+	fxLabelRotationDeg,
+	type FxCueFrame,
+} from "shared/view/fx";
 import { SimController } from "../game/SimController";
 import { ThemeController } from "../game/ThemeController";
 import { DecorController } from "../render/DecorController";
@@ -47,7 +54,7 @@ interface FxSlot {
  * events, summed sim events and state into cues; this draws them with the theme's `fx.*` art (ThemePack.fx): pooled
  * slots (FxSlot), a flipbook through ImageRectOffset / ImageRectSize (FxSprite.frame), ImageColor3 = the tint,
  * `additive`: LightInfluence 0 and FX_SPRITE_VIEW.additiveBrightness, ImageLabel.Rotation from the cue (slash and
- * shield headings), the size from the theme (x the cue's scale). The stairwell loop (`mapper.loop`) has a slot of its
+ * shield headings; fxLabelRotationDeg turns a floor SurfaceGui's canvas back to screen-up), the size from the theme (x the cue's scale). The stairwell loop (`mapper.loop`) has a slot of its
  * own while the stairwell is open.
  *
  * Placement (FX_SPRITE_VIEW.placement). "floor" (default): flat on the floor like the decor flats and the co-op ring
@@ -231,7 +238,7 @@ export class FxSpriteController implements OnStart {
 		const pixelsPerTile = math.max(set.frameW, set.frameH) / tiles;
 		const label = s.label;
 		label.Size = UDim2.fromScale(set.frameW / side, set.frameH / side);
-		label.Rotation = rotationDeg;
+		label.Rotation = fxLabelRotationDeg(rotationDeg, s.surface !== undefined ? "floor" : "billboard");
 		label.ImageColor3 = sprite.color;
 		label.ResampleMode = Enum.ResamplerMode[set.resample];
 		const lightInfluence = sprite.additive ? SELF_LIT : LIT;
