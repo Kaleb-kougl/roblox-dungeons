@@ -354,7 +354,6 @@
 				"run.best.floor",
 				"run.best.target",
 				"score.source.floors",
-				"stage.best.oneToGo",
 				"stage.best.recordFloor",
 				"stage.best.toGo",
 				"stage.bossFloor",
@@ -392,7 +391,6 @@
 				"run.best.floor",
 				"stage.best.deeperYet",
 				"stage.best.newDeepest",
-				"stage.best.oneToGo",
 				"stage.best.recordFloor",
 				"stage.best.toGo"
 			]
@@ -425,6 +423,7 @@
 				"menu.leaveRun",
 				"menu.partyEnded",
 				"menu.starting",
+				"playtest.run.over",
 				"run.best.unsaved",
 				"run.dailyRank.first",
 				"stage.starting",

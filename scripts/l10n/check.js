@@ -7,11 +7,12 @@
 // (src/shared/theme/locales) and l10n/context.json / l10n/glossary.json with the current English
 // (l10n/build/source.json) and prints, per locale: coverage, stale entries (English changed since translating),
 // placeholder / brace / caps problems, over-budget translations (context `max`, in characters), and glossary
-// `translate: false` terms missing verbatim; plus player-facing keys with no context entry and context entries for
-// unknown keys.
+// `translate: false` terms missing verbatim; plus translatable keys with no context entry and context entries for
+// unknown or non-translatable keys. Which keys are translated comes from the dump (shared/l10n isDevOnlyStringKey /
+// isTranslatableStringKey: developer keys and UNTRANSLATED_STRING_KEYS are never exported and need no context).
 //
 // Exit 1 only on a structural problem: an unparseable table, an unknown key in a table, index.ts out of step with the
-// table files, or (once l10n/context.json exists) a player-facing key without a context entry. Coverage, stale,
+// table files, or (once l10n/context.json exists) a translatable key without a context entry. Coverage, stale,
 // problems and budgets are warnings: translation progress never blocks a build.
 "use strict";
 
@@ -30,8 +31,8 @@ function runCheck(opts = {}) {
 	const context = lib.readJsonOptional(paths.context, {}, (m) => warnings.push(m), "l10n/context.json");
 	const glossary = lib.readJsonOptional(paths.glossary, { terms: [] }, (m) => warnings.push(m), "l10n/glossary.json");
 	const targets = lib.targetLocales(source);
-	const keys = lib.playerFacingKeys(source);
-	const playerKeys = new Set(keys);
+	const keys = lib.translatableKeys(source);
+	const translatable = new Set(keys);
 
 	const { tables, errors: parseErrors } = lib.readTables(paths.localesDir, targets);
 	for (const e of parseErrors) errors.push(`unparseable table: ${e}`);
@@ -62,8 +63,14 @@ function runCheck(opts = {}) {
 		locales.push(r);
 		if (!table) continue;
 		for (const [key, [text, hash]] of table) {
-			if (!playerKeys.has(key)) {
-				const why = key in source.strings ? "a developer key" : "not in the English";
+			if (!translatable.has(key)) {
+				const kind = lib.keyKind(source, key);
+				const why =
+					kind === "dev"
+						? "a developer key"
+						: kind === "untranslated"
+						? "an untranslated key"
+						: "not in the English";
 				errors.push(`${l.code}: unknown key "${key}" in the table (${why}): re-import`);
 				continue;
 			}
@@ -86,14 +93,14 @@ function runCheck(opts = {}) {
 
 	const noContext = keys.filter((k) => !context[k]);
 	if (noContext.length > 0) {
-		const msg = `${noContext.length} player-facing key(s) without a context entry: ${noContext.join(", ")}`;
+		const msg = `${noContext.length} translatable key(s) without a context entry: ${noContext.join(", ")}`;
 		if (hasContext) errors.push(msg);
 		else warnings.push(`(no l10n/context.json yet) ${msg}`);
 	}
-	const strayContext = Object.keys(context).filter((k) => !playerKeys.has(k));
+	const strayContext = Object.keys(context).filter((k) => !translatable.has(k));
 	if (strayContext.length > 0) {
 		warnings.push(
-			`${strayContext.length} context entr(ies) for unknown or developer keys: ${strayContext.join(", ")}`,
+			`${strayContext.length} context entr(ies) for unknown or non-translatable keys: ${strayContext.join(", ")}`,
 		);
 	}
 	return { errors, warnings, locales, keyCount: keys.length };
@@ -118,7 +125,7 @@ function main(argv) {
 		verbose || items.length <= LIMIT
 			? items
 			: [...items.slice(0, LIMIT), `... ${items.length - LIMIT} more (--verbose)`];
-	console.log(`l10n:check: ${r.keyCount} player-facing keys`);
+	console.log(`l10n:check: ${r.keyCount} translatable keys`);
 	for (const l of r.locales) {
 		const pct = Math.floor((1000 * l.current) / Math.max(1, r.keyCount)) / 10;
 		console.log(

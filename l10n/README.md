@@ -5,9 +5,13 @@ game. `npm run l10n:export` reads both files to fill the cloud table's Context a
 
 ## Files
 
-- **`context.json`**: one entry for every player-facing key of the placeholder pack's `strings` table
-  (`src/shared/theme/packs/placeholder/manifest.ts`), keys sorted. Developer keys (`DEV_ONLY_STRING_PREFIXES` in
-  `src/shared/l10n/devStrings.ts`: `playtest.*`, `hud.debug*`) have no entry: they are never exported (LD10).
+- **`context.json`**: one entry for every translatable key of the placeholder pack's `strings` table
+  (`src/shared/theme/packs/placeholder/manifest.ts`), keys sorted. A key is translatable when
+  `isTranslatableStringKey` (`src/shared/l10n/devStrings.ts`) says so: developer keys (`isDevOnlyStringKey`:
+  `playtest.*` and `hud.debug*`, except the run-over labels in `DEV_ONLY_STRING_EXCEPTIONS`) and
+  `UNTRANSLATED_STRING_KEYS` (`fx.cap`, drawn with a digit font that only has `0-9 + - C A P !`) have no entry: they
+  always show English and are never exported (LD10). The Lune dump writes the game's own verdict per key
+  (`devOnlyKeys` / `untranslatedKeys` in `l10n/build/source.json`), so the node scripts never re-implement the rule.
 
   ```json
   "hud.best.toGo": {
@@ -35,8 +39,8 @@ game. `npm run l10n:export` reads both files to fill the cloud table's Context a
 3. If it introduces a game term, add the term (or the key to an existing term's `keys`) in `glossary.json`.
 4. Changed the meaning of an English string? Update its note too: the old translation goes stale anyway (design 2).
 
-`npm run l10n:check` (scripts/l10n) enforces coverage: every exported key has a context entry, no entry names an
-unknown or developer key, and every placeholder has an example value.
+`npm run l10n:check` (scripts/l10n) enforces coverage: every exported key has a context entry; it warns when an
+entry names an unknown, developer or untranslated key.
 
 ## Budgets
 

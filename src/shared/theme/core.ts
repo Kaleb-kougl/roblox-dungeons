@@ -19,7 +19,8 @@
  * Roblox port (docs/LOCALIZATION.md L3): `str` reads the active locale through `setLocale`: the manifest's own
  * `locales[code]` (a pack override), then the generated table (shared/theme/locales LOCALE_TABLES) when its entry's
  * srcHash matches this pack's English and its placeholders and braces do too, then English. The pseudo-locale is
- * English through pseudoLocalize. Developer-only keys are always English. `localeReport` lists what fell back.
+ * English through pseudoLocalize. Non-translatable keys (developer-only, `fx.cap`) are always English. `localeReport`
+ * lists what fell back.
  */
 
 import { isHexColor } from "./color";
@@ -66,7 +67,7 @@ import { missingVisual, placeholderVisualFor, type PlaceholderColor, type Placeh
 import {
 	PSEUDO_LOCALE,
 	SOURCE_LOCALE,
-	isDevOnlyStringKey,
+	isTranslatableStringKey,
 	pseudoLocalize,
 	setNumberLocale,
 	sourceHash,
@@ -1473,7 +1474,8 @@ export class ThemeCore {
 	 * Switch the strings to locale `code` (undefined or SOURCE_LOCALE: English) and the number locale with them
 	 * (shared/l10n setNumberLocale). Resolves every key once: the manifest's `locales[code]`, else the generated
 	 * table's entry if its srcHash is sourceHash(this pack's English) and its placeholders and braces match, else
-	 * English; PSEUDO_LOCALE is pseudoLocalize(English). Developer-only keys stay English. Clears no other cache.
+	 * English; PSEUDO_LOCALE is pseudoLocalize(English). Keys that are not translatable (shared/l10n
+	 * isTranslatableStringKey: developer-only, or UNTRANSLATED_STRING_KEYS) stay English. Clears no other cache.
 	 */
 	setLocale(code: string | undefined): void {
 		this.locale = code;
@@ -1487,7 +1489,7 @@ export class ThemeCore {
 		const generated = code !== undefined ? this.localeTables.get(code) : undefined;
 		const pseudo = code === PSEUDO_LOCALE;
 		for (const [key, englishText] of sortedEntries(this.strings)) {
-			if (!typeIs(englishText, "string") || isDevOnlyStringKey(key)) continue;
+			if (!typeIs(englishText, "string") || !isTranslatableStringKey(key)) continue;
 			const own = overrides[key];
 			if (typeIs(own, "string")) {
 				localized.set(key, own);
@@ -1507,7 +1509,7 @@ export class ThemeCore {
 		}
 		// A manifest override for a key the default table lacks still shows (as before: the validator reports it).
 		for (const [key, own] of sortedEntries(overrides)) {
-			if (typeIs(own, "string") && !isDevOnlyStringKey(key) && !localized.has(key)) localized.set(key, own);
+			if (typeIs(own, "string") && isTranslatableStringKey(key) && !localized.has(key)) localized.set(key, own);
 		}
 		if (generated !== undefined) {
 			for (const [key] of sortedEntries(generated)) if (!typeIs(this.strings[key], "string")) unknown.push(key);

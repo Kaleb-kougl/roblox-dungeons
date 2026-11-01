@@ -25,6 +25,7 @@ export { interpolate, placeholderMismatch, placeholders, templateProblem, type S
 export {
 	CASED_SCRIPTS,
 	LOWERCASE_RANGES,
+	breaksAllCaps,
 	hasLowercase,
 	isAllCaps,
 	isLowercaseCodepoint,

@@ -14,6 +14,7 @@ import {
 	type Bindings,
 	type InputLabelStr,
 } from "shared/play";
+import { charCount } from "shared/l10n";
 import type { ColorRole } from "shared/theme";
 import { pauseHint } from "./layout";
 
@@ -275,7 +276,8 @@ export function tutorialPromptVars(
 		actionLabel(b, "kbm", "moveRight", s),
 	];
 	let short = true;
-	for (const d of dirs) if (d.size() !== 1) short = false;
+	// One character, not one byte: a translated key label (input.key.*) may be a non-ASCII letter.
+	for (const d of dirs) if (charCount(d) !== 1) short = false;
 	return {
 		move: dirs.join(short ? "" : s !== undefined ? s(INPUT_SEPARATOR_KEY) : INPUT_SEPARATOR),
 		left: dirs[1],

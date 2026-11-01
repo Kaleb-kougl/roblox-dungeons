@@ -271,6 +271,14 @@ describe("tutorialPromptVars", () => {
 		expect(tutorialLeaderboardHint(b, fake)).toEqual({ keyboard: "B", gamepad: "<input.key.ButtonStart>" });
 	});
 
+	it("runs translated one-character move keys together by characters, not bytes", () => {
+		const b = rebound(DEFAULT_BINDINGS, "kbm", "moveUp", "Up");
+		const arrows = (key: string) => (key === "input.key.Up" ? "↑" : key === "input.separator" ? " · " : key);
+		expect(tutorialPromptVars("keyboard", b, arrows).move).toBe("↑ASD");
+		const word = (key: string) => (key === "input.key.Up" ? "Вверх" : key === "input.separator" ? " · " : key);
+		expect(tutorialPromptVars("keyboard", b, word).move).toBe("Вверх · A · S · D");
+	});
+
 	it("every prompt template is filled: no {placeholder} is left on any device", () => {
 		for (const id of tutorialPromptIds()) {
 			for (const d of TUTORIAL_DEVICES) {

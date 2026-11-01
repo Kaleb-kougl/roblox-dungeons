@@ -1,6 +1,6 @@
 // Shared helpers for the cloud localization pipeline (docs/LOCALIZATION.md design 2-4, task L10): CSV, the source
-// hash, placeholders, the player-facing key filter, the Roblox column -> locale code map and the generated locale
-// tables (src/shared/theme/locales). Plain Node plus the repo's own typescript (to read tables) and prettier (to write
+// hash, placeholders, the all-caps rule, the translatable key filter, the Roblox column -> locale code map and the
+// generated locale tables (src/shared/theme/locales). Plain Node plus the repo's own typescript (to read tables) and prettier (to write
 // them). Used by export.js, import.js and check.js; specs in lib.test.js / pipeline.test.js (npm run test:l10n).
 "use strict";
 
@@ -21,6 +21,7 @@ function defaultPaths(root = REPO) {
 		outDir: path.join(root, "l10n", "out"),
 		report: path.join(root, "l10n", "report.md"),
 		prettierrc: path.join(REPO, ".prettierrc"),
+		localeCheck: path.join(REPO, "src", "shared", "theme", "localeCheck.ts"),
 	};
 }
 
@@ -143,16 +144,80 @@ function placeholderList(text) {
 	return p.length === 0 ? "(none)" : p.map((n) => `{${n}}`).join(" ");
 }
 
+// --- the all-caps rule (the same as shared/theme localeCheck.ts breaksAllCaps) -------------------------------------
+
+/** Scripts with letter case: the all-caps rule applies to them (shared/theme CASED_SCRIPTS). */
+const CASED_SCRIPTS = ["latin", "cyrillic"];
+
+let lowercaseRangeCache;
 /**
- * The all-caps rule of the locale validator (docs/LOCALIZATION.md design 2): for Latin and Cyrillic locales, a
- * translation of an all-caps English string (placeholders aside) must have no lowercase letters.
+ * shared/theme localeCheck.ts LOWERCASE_RANGES, read from the source with the TypeScript parser (never evaluated), so
+ * node and the game classify every code point the same way: [[from, to, "lower" | "none" | "odd" | "even"], ...].
+ */
+function lowercaseRanges(file = defaultPaths().localeCheck) {
+	if (lowercaseRangeCache && lowercaseRangeCache.file === file) return lowercaseRangeCache.ranges;
+	const ts = require("typescript");
+	const sf = ts.createSourceFile(
+		file,
+		fs.readFileSync(file, "utf8"),
+		ts.ScriptTarget.Latest,
+		false,
+		ts.ScriptKind.TS,
+	);
+	let literal;
+	for (const st of sf.statements) {
+		if (!ts.isVariableStatement(st)) continue;
+		for (const d of st.declarationList.declarations) {
+			if (ts.isIdentifier(d.name) && d.name.text === "LOWERCASE_RANGES") literal = d.initializer;
+		}
+	}
+	if (!literal || !ts.isArrayLiteralExpression(literal)) throw new Error(`${file}: no LOWERCASE_RANGES = [ ... ]`);
+	const ranges = literal.elements.map((e) => {
+		const ok =
+			ts.isArrayLiteralExpression(e) &&
+			e.elements.length === 3 &&
+			ts.isNumericLiteral(e.elements[0]) &&
+			ts.isNumericLiteral(e.elements[1]) &&
+			ts.isStringLiteral(e.elements[2]) &&
+			["lower", "none", "odd", "even"].includes(e.elements[2].text);
+		if (!ok) throw new Error(`${file}: LOWERCASE_RANGES entries must be [number, number, "rule"] literals`);
+		return [Number(e.elements[0].text), Number(e.elements[1].text), e.elements[2].text];
+	});
+	lowercaseRangeCache = { file, ranges };
+	return ranges;
+}
+
+/** Is code point `cp` a lowercase letter? (shared/theme isLowercaseCodepoint: the first range holding it decides.) */
+function isLowercaseCodepoint(cp) {
+	for (const [from, to, rule] of lowercaseRanges()) {
+		if (cp < from || cp > to) continue;
+		if (rule === "lower") return true;
+		if (rule === "none") return false;
+		return rule === "odd" ? cp % 2 === 1 : cp % 2 === 0;
+	}
+	return false;
+}
+
+/** An English string with an ASCII capital and no ASCII lowercase letter, placeholders aside (shared/theme isAllCaps). */
+function isAllCaps(english) {
+	const bare = english.replace(PLACEHOLDER_RE, "");
+	return /[A-Z]/.test(bare) && !/[a-z]/.test(bare);
+}
+
+/** Does `text` hold a lowercase letter, placeholders aside? (shared/theme hasLowercase.) */
+function hasLowercase(text) {
+	for (const ch of text.replace(PLACEHOLDER_RE, "")) if (isLowercaseCodepoint(ch.codePointAt(0))) return true;
+	return false;
+}
+
+/**
+ * The all-caps rule of the locale validator (docs/LOCALIZATION.md design 2; shared/theme breaksAllCaps): for Latin
+ * and Cyrillic locales, a translation of an all-caps English string (placeholders aside) must have no lowercase
+ * letters, as classified by LOWERCASE_RANGES (a letter it doesn't list passes, in the game too).
  */
 function capsProblem(english, translation, script) {
-	if (script !== "latin" && script !== "cyrillic") return undefined;
-	const en = english.replace(PLACEHOLDER_RE, "");
-	if (!/[A-Z]/.test(en) || /[a-z]/.test(en)) return undefined;
-	const tr = translation.replace(PLACEHOLDER_RE, "");
-	return tr !== tr.toUpperCase() ? "English is all caps but the translation has lowercase letters" : undefined;
+	if (!CASED_SCRIPTS.includes(script) || !isAllCaps(english) || !hasLowercase(translation)) return undefined;
+	return "English is all caps but the translation has lowercase letters";
 }
 
 /** Every problem that makes a translation unusable (the game would drop it), or [] when it is fine. */
@@ -170,14 +235,23 @@ function translationProblems(english, translation, script) {
 
 // --- keys -----------------------------------------------------------------------------------------------------------
 
-function isDevKey(key, prefixes) {
-	return prefixes.some((p) => key.startsWith(p));
+/**
+ * Why a key of a source dump is or isn't translated: "dev" (shared/l10n isDevOnlyStringKey), "untranslated"
+ * (UNTRANSLATED_STRING_KEYS), "translatable", or undefined when the English has no such key. The flags come from the
+ * dump, computed by the game's own predicates, so node never re-implements the rule.
+ */
+function keyKind(source, key) {
+	if (!Object.prototype.hasOwnProperty.call(source.strings, key)) return undefined;
+	if (source.devOnlyKeys.includes(key)) return "dev";
+	if (source.untranslatedKeys.includes(key)) return "untranslated";
+	return "translatable";
 }
 
-/** The player-facing keys of a source dump (developer keys dropped), sorted. */
-function playerFacingKeys(source) {
+/** The translatable keys of a source dump (shared/l10n isTranslatableStringKey: what is exported), sorted. */
+function translatableKeys(source) {
+	const skip = new Set([...source.devOnlyKeys, ...source.untranslatedKeys]);
 	return Object.keys(source.strings)
-		.filter((k) => !isDevKey(k, source.devOnlyPrefixes || []))
+		.filter((k) => !skip.has(k))
 		.sort(compareKeys);
 }
 
@@ -245,7 +319,12 @@ function readSource(file) {
 	if (!source || typeof source.strings !== "object" || !Array.isArray(source.locales)) {
 		throw new Error(`${file} is not an l10n source dump`);
 	}
-	source.devOnlyPrefixes = source.devOnlyPrefixes || [];
+	for (const field of ["devOnlyKeys", "untranslatedKeys"]) {
+		const list = source[field];
+		if (!Array.isArray(list) || !list.every((k) => typeof k === "string")) {
+			throw new Error(`${file} has no ${field} list (an older dump?): run \`npm run l10n:dump\` again`);
+		}
+	}
 	// The game hashed every English string itself: the node hash must agree, or every srcHash we write is wrong.
 	for (const [key, n] of Object.entries(source.srcHashes || {})) {
 		const text = source.strings[key];
@@ -471,6 +550,11 @@ module.exports = {
 	placeholders,
 	samePlaceholders,
 	braceProblem,
+	CASED_SCRIPTS,
+	lowercaseRanges,
+	isLowercaseCodepoint,
+	isAllCaps,
+	hasLowercase,
 	capsProblem,
 	translationProblems,
 	fillPlaceholders,
@@ -478,8 +562,8 @@ module.exports = {
 	doNotTranslateTerms,
 	contextCell,
 	exampleCell,
-	isDevKey,
-	playerFacingKeys,
+	keyKind,
+	translatableKeys,
 	compareKeys,
 	targetLocales,
 	readJson,

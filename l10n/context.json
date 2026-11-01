@@ -533,7 +533,7 @@
 		}
 	},
 	"daily.board.total": {
-		"note": "Leaderboards panel line: how many players are on this daily board. {total} is a formatted number. Avoid a singular/plural trap (it can be 1): a label form like \"Players: {total}\" is fine.",
+		"note": "Leaderboards panel, Daily tab: how many players are on today's board. {total} is a formatted number (it can be 1). Written as label: value; keep that form rather than a plural sentence.",
 		"example": {
 			"total": "1,204"
 		}
@@ -591,7 +591,7 @@
 			"date": "Sat Nov 1"
 		}
 	},
-	"daily.date": {
+	"daily.date.format": {
 		"note": "Order of today's short date on the Daily card. {weekday} is a short weekday name (daily.date.weekday.*), {month} a short month name (daily.date.month.*), {date} the day of the month (a number). Reorder to the language's usual date order and add any particles it needs (e.g. Japanese \"{month}{date}日({weekday})\").",
 		"example": {
 			"weekday": "Sat",
@@ -705,6 +705,13 @@
 			"score": "9,870"
 		}
 	},
+	"daily.podium.row": {
+		"note": "One row of yesterday's top-3 podium on the main menu. {place} is the already formatted place (daily.standing.rank, e.g. \"#1\"); {name} a player's Roblox display name (never translated). Usually only the order changes.",
+		"example": {
+			"place": "#1",
+			"name": "KnightOwl"
+		}
+	},
 	"daily.podium.title": {
 		"note": "Title of yesterday's top-3 podium on the main menu. {label} is yesterday's daily number.",
 		"example": {
@@ -718,7 +725,7 @@
 		}
 	},
 	"daily.result.entrants": {
-		"note": "Run-over Daily block, under the percentile: how many players took part. {total} is a formatted number.",
+		"note": "Run-over Daily block, under the percentile: how many players took part today. {total} is a formatted number (it can be 1). Written as label: value; keep that form rather than a plural sentence.",
 		"example": {
 			"total": "1,204"
 		}
@@ -943,14 +950,11 @@
 	"enemy.swarmer.name": {
 		"note": "Enemy type name: a small melee enemy that rushes the player in packs; the first enemy of every run. Shown in the stage card's roster line (the enemy kinds of a floor, joined with \" · \") and the main menu's Daily card. Singular noun, title case, used as a proper name; keep it short. Glossary term."
 	},
-	"fx.cap": {
-		"note": "Tiny label shown beside a boss when a hit's damage was capped (limited to a maximum). IMPORTANT: it is drawn with a small pixel font that only contains the characters 0-9 + - C A P !, so any other letters will not render once that font art is in use. Keep \"CAP\" unless that is impossible.",
-		"max": 3
-	},
 	"fx.parry.count": {
-		"note": "Appended after the parry flash with a space: how many bullets the parry erased. {n} is a number; the x means \"times\". Usually unchanged.",
-		"max": 5,
+		"note": "Parry flash written on the floor when a parry erased several bullets: {text} is the parry word (fx.parry.text, e.g. \"PARRY!\", already translated) and {n} the number of bullets erased; the x means \"times\". Usually unchanged.",
+		"max": 13,
 		"example": {
+			"text": "PARRY!",
 			"n": 5
 		}
 	},
@@ -1095,6 +1099,13 @@
 			"combo": "3.4"
 		}
 	},
+	"hud.combo.bestNamed": {
+		"note": "Run-over panel, Max combo line: the run's best combo. {combo} is the peak multiplier already formatted (hud.combo, e.g. \"x3.4\"); {name} the combo tier it reached (hud.combo.rampage ... unstoppable, ALL CAPS, drawn in the tier's colour). Usually only the order changes.",
+		"example": {
+			"combo": "x3.4",
+			"name": "CARNAGE"
+		}
+	},
 	"hud.combo.carnage": {
 		"note": "Combo tier name for a x3 kill-streak multiplier: an arcade-style hype word, ALL CAPS. Shown in the combo row of the score panel (a slot about 98 px wide, text shrinks) and as a big shout written on the floor during combat. Keep it all caps and punchy (one word if possible).",
 		"max": 12
@@ -1110,6 +1121,13 @@
 	"hud.combo.rampage": {
 		"note": "Combo tier name for a x2 kill-streak multiplier: an arcade-style hype word, ALL CAPS. Shown in the combo row of the score panel (a slot about 98 px wide, text shrinks) and as a big shout written on the floor during combat. Keep it all caps and punchy (one word if possible).",
 		"max": 12
+	},
+	"hud.combo.shout": {
+		"note": "Big shout written on the floor during combat when a combo tier is reached. {name} is the tier name (hud.combo.rampage ... unstoppable, ALL CAPS, e.g. \"RAMPAGE\"). Add the exclamation the language uses (e.g. Spanish \"¡{name}!\").",
+		"max": 10,
+		"example": {
+			"name": "RAMPAGE"
+		}
 	},
 	"hud.combo.unstoppable": {
 		"note": "Combo tier name for a x5 kill-streak multiplier: an arcade-style hype word, ALL CAPS. Shown in the combo row of the score panel (a slot about 98 px wide, text shrinks) and as a big shout written on the floor during combat. Keep it all caps and punchy (one word if possible).",
@@ -1251,7 +1269,7 @@
 		"max": 3
 	},
 	"hud.draft.waiting": {
-		"note": "Co-op line on the draft while teammates are still choosing their card (the game stays frozen until all have). {count} is a number (1 to 3). Avoid the \"(s)\" plural trick: reword as \"Teammates still choosing: {count}\" or similar so it reads right for any number.",
+		"note": "Co-op line on the boon draft while teammates are still choosing their card (the game stays frozen until all have). {count} is a number (1 to 3). Written as label: value so it reads right for any number; keep that form rather than a singular / plural sentence.",
 		"example": {
 			"count": 2
 		}
@@ -1541,7 +1559,7 @@
 		}
 	},
 	"hud.toast.fang": {
-		"note": "Toast (top centre) when the Vampire Fang relic heals. {amount} is the number of half hearts healed (always 1 today). Avoid a singular/plural trap: reword like \"Vampire Fang: healed {amount} × ½ heart\" if needed.",
+		"note": "Toast (top centre) when the Vampire Fang relic heals. {amount} is the number of half hearts healed (always 1 today). Written as label +value (\"half hearts +1\") to avoid a singular / plural trap; keep that form.",
 		"example": {
 			"amount": 1
 		}
@@ -1587,6 +1605,13 @@
 			"code": "dev"
 		}
 	},
+	"hud.verdict.withPost": {
+		"note": "The run's status line (info panel and run-over panel) when the run went to the leaderboards: {verdict} is the verdict sentence (hud.verdict.*, already filled), {posted} the leaderboard status (hud.leaderboard.posted.*, lowercase start). Usually unchanged.",
+		"example": {
+			"verdict": "Run 3 (death): verified by the server (1a2b3c4d)",
+			"posted": "submitted to the leaderboard"
+		}
+	},
 	"hud.victory": {
 		"note": "Main line of the run-over panel after beating a boss to win a run. {name} is the boss's name (e.g. \"Mother Bramble\"); {key} is a key or button name such as \"R\", \"E\", \"Space\" or \"D-pad down\" (from the player's bindings; currently always English).",
 		"example": {
@@ -1606,6 +1631,214 @@
 		"example": {
 			"key": "E"
 		}
+	},
+	"input.key.Backspace": {
+		"note": "Label of a control: the Backspace key, shown as {key} in control hints (\"{key} to close\", \"Press {key}\"), in tutorial prompts and on the Options > Controls binding buttons (190 px wide). Use the name printed on keyboards in your language (often unchanged).",
+		"max": 15
+	},
+	"input.key.ButtonSelect": {
+		"note": "Label of a control: the gamepad's Select / View button, shown as {key} in control hints (\"{key} to close\", \"Press {key}\"), in tutorial prompts and on the Options > Controls binding buttons (190 px wide). The button's printed name; usually unchanged.",
+		"max": 10
+	},
+	"input.key.ButtonStart": {
+		"note": "Label of a control: the gamepad's Start / Menu button (it opens the pause menu), shown as {key} in control hints (\"{key} to close\", \"Press {key}\"), in tutorial prompts and on the Options > Controls binding buttons (190 px wide). The button's printed name; usually unchanged.",
+		"max": 9
+	},
+	"input.key.CapsLock": {
+		"note": "Label of a control: the Caps Lock key, shown as {key} in control hints (\"{key} to close\", \"Press {key}\"), in tutorial prompts and on the Options > Controls binding buttons (190 px wide). Use the name printed on keyboards in your language (often unchanged).",
+		"max": 15
+	},
+	"input.key.DPadDown": {
+		"note": "Label of a control: down on the gamepad's directional pad (D-pad), shown as {key} in control hints (\"{key} to close\", \"Press {key}\"), in tutorial prompts and on the Options > Controls binding buttons (190 px wide). Use the usual gamepad term in your language.",
+		"max": 16
+	},
+	"input.key.DPadLeft": {
+		"note": "Label of a control: left on the gamepad's directional pad (D-pad), shown as {key} in control hints (\"{key} to close\", \"Press {key}\"), in tutorial prompts and on the Options > Controls binding buttons (190 px wide). Use the usual gamepad term in your language.",
+		"max": 16
+	},
+	"input.key.DPadRight": {
+		"note": "Label of a control: right on the gamepad's directional pad (D-pad), shown as {key} in control hints (\"{key} to close\", \"Press {key}\"), in tutorial prompts and on the Options > Controls binding buttons (190 px wide). Use the usual gamepad term in your language.",
+		"max": 18
+	},
+	"input.key.DPadUp": {
+		"note": "Label of a control: up on the gamepad's directional pad (D-pad), shown as {key} in control hints (\"{key} to close\", \"Press {key}\"), in tutorial prompts and on the Options > Controls binding buttons (190 px wide). Use the usual gamepad term in your language.",
+		"max": 13
+	},
+	"input.key.Delete": {
+		"note": "Label of a control: the Delete key, shown as {key} in control hints (\"{key} to close\", \"Press {key}\"), in tutorial prompts and on the Options > Controls binding buttons (190 px wide). Use the name printed on keyboards in your language (often unchanged).",
+		"max": 10
+	},
+	"input.key.Down": {
+		"note": "Label of a control: the down arrow key, shown as {key} in control hints (\"{key} to close\", \"Press {key}\"), in tutorial prompts and on the Options > Controls binding buttons (190 px wide). Use the name printed on keyboards in your language (often unchanged).",
+		"max": 16
+	},
+	"input.key.End": {
+		"note": "Label of a control: the End key, shown as {key} in control hints (\"{key} to close\", \"Press {key}\"), in tutorial prompts and on the Options > Controls binding buttons (190 px wide). Use the name printed on keyboards in your language (often unchanged).",
+		"max": 7
+	},
+	"input.key.Escape": {
+		"note": "Label of a control: the Escape key, abbreviated as printed on keyboards, shown as {key} in control hints (\"{key} to close\", \"Press {key}\"), in tutorial prompts and on the Options > Controls binding buttons (190 px wide). Use the name printed on keyboards in your language (often unchanged).",
+		"max": 7
+	},
+	"input.key.Home": {
+		"note": "Label of a control: the Home key, shown as {key} in control hints (\"{key} to close\", \"Press {key}\"), in tutorial prompts and on the Options > Controls binding buttons (190 px wide). Use the name printed on keyboards in your language (often unchanged).",
+		"max": 8
+	},
+	"input.key.Insert": {
+		"note": "Label of a control: the Insert key, shown as {key} in control hints (\"{key} to close\", \"Press {key}\"), in tutorial prompts and on the Options > Controls binding buttons (190 px wide). Use the name printed on keyboards in your language (often unchanged).",
+		"max": 10
+	},
+	"input.key.KeypadDivide": {
+		"note": "Label of a control: the / key of the numeric keypad, shown as {key} in control hints (\"{key} to close\", \"Press {key}\"), in tutorial prompts and on the Options > Controls binding buttons (190 px wide). \"Num\" stands for the numeric keypad; keep the digit or symbol and use your keyboards' usual short prefix.",
+		"max": 9
+	},
+	"input.key.KeypadEight": {
+		"note": "Label of a control: the 8 key of the numeric keypad, shown as {key} in control hints (\"{key} to close\", \"Press {key}\"), in tutorial prompts and on the Options > Controls binding buttons (190 px wide). \"Num\" stands for the numeric keypad; keep the digit or symbol and use your keyboards' usual short prefix.",
+		"max": 9
+	},
+	"input.key.KeypadEnter": {
+		"note": "Label of a control: the Enter key of the numeric keypad, shown as {key} in control hints (\"{key} to close\", \"Press {key}\"), in tutorial prompts and on the Options > Controls binding buttons (190 px wide). \"Num\" stands for the numeric keypad; keep the digit or symbol and use your keyboards' usual short prefix.",
+		"max": 15
+	},
+	"input.key.KeypadFive": {
+		"note": "Label of a control: the 5 key of the numeric keypad, shown as {key} in control hints (\"{key} to close\", \"Press {key}\"), in tutorial prompts and on the Options > Controls binding buttons (190 px wide). \"Num\" stands for the numeric keypad; keep the digit or symbol and use your keyboards' usual short prefix.",
+		"max": 9
+	},
+	"input.key.KeypadFour": {
+		"note": "Label of a control: the 4 key of the numeric keypad, shown as {key} in control hints (\"{key} to close\", \"Press {key}\"), in tutorial prompts and on the Options > Controls binding buttons (190 px wide). \"Num\" stands for the numeric keypad; keep the digit or symbol and use your keyboards' usual short prefix.",
+		"max": 9
+	},
+	"input.key.KeypadMinus": {
+		"note": "Label of a control: the - key of the numeric keypad, shown as {key} in control hints (\"{key} to close\", \"Press {key}\"), in tutorial prompts and on the Options > Controls binding buttons (190 px wide). \"Num\" stands for the numeric keypad; keep the digit or symbol and use your keyboards' usual short prefix.",
+		"max": 9
+	},
+	"input.key.KeypadMultiply": {
+		"note": "Label of a control: the * key of the numeric keypad, shown as {key} in control hints (\"{key} to close\", \"Press {key}\"), in tutorial prompts and on the Options > Controls binding buttons (190 px wide). \"Num\" stands for the numeric keypad; keep the digit or symbol and use your keyboards' usual short prefix.",
+		"max": 9
+	},
+	"input.key.KeypadNine": {
+		"note": "Label of a control: the 9 key of the numeric keypad, shown as {key} in control hints (\"{key} to close\", \"Press {key}\"), in tutorial prompts and on the Options > Controls binding buttons (190 px wide). \"Num\" stands for the numeric keypad; keep the digit or symbol and use your keyboards' usual short prefix.",
+		"max": 9
+	},
+	"input.key.KeypadOne": {
+		"note": "Label of a control: the 1 key of the numeric keypad, shown as {key} in control hints (\"{key} to close\", \"Press {key}\"), in tutorial prompts and on the Options > Controls binding buttons (190 px wide). \"Num\" stands for the numeric keypad; keep the digit or symbol and use your keyboards' usual short prefix.",
+		"max": 9
+	},
+	"input.key.KeypadPeriod": {
+		"note": "Label of a control: the decimal point key of the numeric keypad, shown as {key} in control hints (\"{key} to close\", \"Press {key}\"), in tutorial prompts and on the Options > Controls binding buttons (190 px wide). \"Num\" stands for the numeric keypad; keep the digit or symbol and use your keyboards' usual short prefix.",
+		"max": 9
+	},
+	"input.key.KeypadPlus": {
+		"note": "Label of a control: the + key of the numeric keypad, shown as {key} in control hints (\"{key} to close\", \"Press {key}\"), in tutorial prompts and on the Options > Controls binding buttons (190 px wide). \"Num\" stands for the numeric keypad; keep the digit or symbol and use your keyboards' usual short prefix.",
+		"max": 9
+	},
+	"input.key.KeypadSeven": {
+		"note": "Label of a control: the 7 key of the numeric keypad, shown as {key} in control hints (\"{key} to close\", \"Press {key}\"), in tutorial prompts and on the Options > Controls binding buttons (190 px wide). \"Num\" stands for the numeric keypad; keep the digit or symbol and use your keyboards' usual short prefix.",
+		"max": 9
+	},
+	"input.key.KeypadSix": {
+		"note": "Label of a control: the 6 key of the numeric keypad, shown as {key} in control hints (\"{key} to close\", \"Press {key}\"), in tutorial prompts and on the Options > Controls binding buttons (190 px wide). \"Num\" stands for the numeric keypad; keep the digit or symbol and use your keyboards' usual short prefix.",
+		"max": 9
+	},
+	"input.key.KeypadThree": {
+		"note": "Label of a control: the 3 key of the numeric keypad, shown as {key} in control hints (\"{key} to close\", \"Press {key}\"), in tutorial prompts and on the Options > Controls binding buttons (190 px wide). \"Num\" stands for the numeric keypad; keep the digit or symbol and use your keyboards' usual short prefix.",
+		"max": 9
+	},
+	"input.key.KeypadTwo": {
+		"note": "Label of a control: the 2 key of the numeric keypad, shown as {key} in control hints (\"{key} to close\", \"Press {key}\"), in tutorial prompts and on the Options > Controls binding buttons (190 px wide). \"Num\" stands for the numeric keypad; keep the digit or symbol and use your keyboards' usual short prefix.",
+		"max": 9
+	},
+	"input.key.KeypadZero": {
+		"note": "Label of a control: the 0 key of the numeric keypad, shown as {key} in control hints (\"{key} to close\", \"Press {key}\"), in tutorial prompts and on the Options > Controls binding buttons (190 px wide). \"Num\" stands for the numeric keypad; keep the digit or symbol and use your keyboards' usual short prefix.",
+		"max": 9
+	},
+	"input.key.Left": {
+		"note": "Label of a control: the left arrow key, shown as {key} in control hints (\"{key} to close\", \"Press {key}\"), in tutorial prompts and on the Options > Controls binding buttons (190 px wide). Use the name printed on keyboards in your language (often unchanged).",
+		"max": 16
+	},
+	"input.key.LeftAlt": {
+		"note": "Label of a control: the left Alt key, shown as {key} in control hints (\"{key} to close\", \"Press {key}\"), in tutorial prompts and on the Options > Controls binding buttons (190 px wide). Use the name printed on keyboards in your language (often unchanged).",
+		"max": 13
+	},
+	"input.key.LeftControl": {
+		"note": "Label of a control: the left Ctrl (Control) key, shown as {key} in control hints (\"{key} to close\", \"Press {key}\"), in tutorial prompts and on the Options > Controls binding buttons (190 px wide). Use the name printed on keyboards in your language (often unchanged).",
+		"max": 15
+	},
+	"input.key.LeftShift": {
+		"note": "Label of a control: the left Shift key, shown as {key} in control hints (\"{key} to close\", \"Press {key}\"), in tutorial prompts and on the Options > Controls binding buttons (190 px wide). Use the name printed on keyboards in your language (often unchanged).",
+		"max": 16
+	},
+	"input.key.MouseButton1": {
+		"note": "Label of a control: the left mouse button (a plain click), shown as {key} in control hints (\"{key} to close\", \"Press {key}\"), in tutorial prompts and on the Options > Controls binding buttons (190 px wide). Use the usual name for this mouse action in your language.",
+		"max": 9
+	},
+	"input.key.MouseButton2": {
+		"note": "Label of a control: the right mouse button, shown as {key} in control hints (\"{key} to close\", \"Press {key}\"), in tutorial prompts and on the Options > Controls binding buttons (190 px wide). Use the usual name for this mouse action in your language.",
+		"max": 18
+	},
+	"input.key.MouseButton3": {
+		"note": "Label of a control: the middle mouse button (pressing the wheel), shown as {key} in control hints (\"{key} to close\", \"Press {key}\"), in tutorial prompts and on the Options > Controls binding buttons (190 px wide). Use the usual name for this mouse action in your language.",
+		"max": 20
+	},
+	"input.key.PageDown": {
+		"note": "Label of a control: the Page Down key, shown as {key} in control hints (\"{key} to close\", \"Press {key}\"), in tutorial prompts and on the Options > Controls binding buttons (190 px wide). Use the name printed on keyboards in your language (often unchanged).",
+		"max": 15
+	},
+	"input.key.PageUp": {
+		"note": "Label of a control: the Page Up key, shown as {key} in control hints (\"{key} to close\", \"Press {key}\"), in tutorial prompts and on the Options > Controls binding buttons (190 px wide). Use the name printed on keyboards in your language (often unchanged).",
+		"max": 12
+	},
+	"input.key.Return": {
+		"note": "Label of a control: the Enter (Return) key of the main keyboard, shown as {key} in control hints (\"{key} to close\", \"Press {key}\"), in tutorial prompts and on the Options > Controls binding buttons (190 px wide). Use the name printed on keyboards in your language (often unchanged).",
+		"max": 9
+	},
+	"input.key.Right": {
+		"note": "Label of a control: the right arrow key, shown as {key} in control hints (\"{key} to close\", \"Press {key}\"), in tutorial prompts and on the Options > Controls binding buttons (190 px wide). Use the name printed on keyboards in your language (often unchanged).",
+		"max": 18
+	},
+	"input.key.RightAlt": {
+		"note": "Label of a control: the right Alt key (AltGr on many keyboards), shown as {key} in control hints (\"{key} to close\", \"Press {key}\"), in tutorial prompts and on the Options > Controls binding buttons (190 px wide). Use the name printed on keyboards in your language (often unchanged).",
+		"max": 15
+	},
+	"input.key.RightControl": {
+		"note": "Label of a control: the right Ctrl (Control) key, shown as {key} in control hints (\"{key} to close\", \"Press {key}\"), in tutorial prompts and on the Options > Controls binding buttons (190 px wide). Use the name printed on keyboards in your language (often unchanged).",
+		"max": 16
+	},
+	"input.key.RightShift": {
+		"note": "Label of a control: the right Shift key, shown as {key} in control hints (\"{key} to close\", \"Press {key}\"), in tutorial prompts and on the Options > Controls binding buttons (190 px wide). Use the name printed on keyboards in your language (often unchanged).",
+		"max": 18
+	},
+	"input.key.Space": {
+		"note": "Label of a control: the space bar, shown as {key} in control hints (\"{key} to close\", \"Press {key}\"), in tutorial prompts and on the Options > Controls binding buttons (190 px wide). Use the name printed on keyboards in your language (often unchanged).",
+		"max": 9
+	},
+	"input.key.StickLeft": {
+		"note": "Label of a control: pushing the gamepad's left stick to the left (e.g. to pick the card on the left in the boon draft), shown as {key} in control hints (\"{key} to close\", \"Press {key}\"), in tutorial prompts and on the Options > Controls binding buttons (190 px wide). Use the usual gamepad term in your language.",
+		"max": 16
+	},
+	"input.key.StickRight": {
+		"note": "Label of a control: pushing the gamepad's left stick to the right (e.g. to pick the card on the right in the boon draft), shown as {key} in control hints (\"{key} to close\", \"Press {key}\"), in tutorial prompts and on the Options > Controls binding buttons (190 px wide). Use the usual gamepad term in your language.",
+		"max": 18
+	},
+	"input.key.Tab": {
+		"note": "Label of a control: the Tab key, shown as {key} in control hints (\"{key} to close\", \"Press {key}\"), in tutorial prompts and on the Options > Controls binding buttons (190 px wide). Use the name printed on keyboards in your language (often unchanged).",
+		"max": 7
+	},
+	"input.key.Thumbstick1": {
+		"note": "Label of a control: the gamepad's left analog stick (used to move), shown as {key} in control hints (\"{key} to close\", \"Press {key}\"), in tutorial prompts and on the Options > Controls binding buttons (190 px wide). Use the usual gamepad term in your language.",
+		"max": 16
+	},
+	"input.key.Thumbstick2": {
+		"note": "Label of a control: the gamepad's right analog stick (used to aim), shown as {key} in control hints (\"{key} to close\", \"Press {key}\"), in tutorial prompts and on the Options > Controls binding buttons (190 px wide). Use the usual gamepad term in your language.",
+		"max": 18
+	},
+	"input.key.Up": {
+		"note": "Label of a control: the up arrow key, shown as {key} in control hints (\"{key} to close\", \"Press {key}\"), in tutorial prompts and on the Options > Controls binding buttons (190 px wide). Use the name printed on keyboards in your language (often unchanged).",
+		"max": 13
+	},
+	"input.separator": {
+		"note": "Separator between key names when a hint lists several keys, e.g. the four move keys in tutorial prompts (\"Up arrow / Left arrow / Down arrow / Right arrow\"). Spaces around it are part of the string. Usually unchanged.",
+		"max": 5
 	},
 	"loading.progress": {
 		"note": "Loading screen counter under the progress bar. {done} and {total} are numbers (assets loaded / total).",
@@ -1912,8 +2145,11 @@
 		"max": 12
 	},
 	"lobby.room.you": {
-		"note": "Appended after the player's own name in the member list, after a space. Parenthetical, short.",
-		"max": 7
+		"note": "The player's own row in the lobby member list (a fixed name column): {name} is their Roblox display name (never translated) followed by a short \"(you)\" tag. Keep the tag short.",
+		"max": 16,
+		"example": {
+			"name": "KnightOwl"
+		}
 	},
 	"lobby.visibility.closed": {
 		"note": "Lobby visibility (who can join): nobody new (invite only). Used as a small button label (110 x 30 px) and a tag in the lobby browser's 100 px column.",
@@ -2328,6 +2564,30 @@
 		"note": "Step button (40 x 30 px) that raises a value: a plus sign. Usually unchanged.",
 		"max": 1
 	},
+	"playtest.run.hits": {
+		"note": "Stat label on the run-over panel (a 150 px stat column, the value written below it): how many hits the player took.",
+		"max": 18
+	},
+	"playtest.run.kills": {
+		"note": "Stat label on the run-over panel (a 150 px stat column, the value written below it): how many enemies the player killed.",
+		"max": 18
+	},
+	"playtest.run.over": {
+		"note": "Header of the run-over panel when the run ends without a win (the player died or the party fell). Short title.",
+		"max": 20
+	},
+	"playtest.run.time": {
+		"note": "Stat label on the run-over panel (a 150 px stat column, the value written below it): how long the run lasted (m:ss) before it ended.",
+		"max": 18
+	},
+	"playtest.run.timeVictory": {
+		"note": "Stat label on the run-over panel (a 150 px stat column, the value written below it) after a victory: the clear time (m:ss).",
+		"max": 18
+	},
+	"playtest.run.victory": {
+		"note": "Header of the run-over panel when the player beat the final boss. Short title.",
+		"max": 20
+	},
 	"rarity.glyphword.name": {
 		"note": "Loot rarity tier name: the top tier, an invented word made of glyph + word; translate the idea (rune-word). Reserved: required by the theme contract inherited from the original web build, but not shown in the current Roblox build; translate it as a plain name anyway."
 	},
@@ -2464,6 +2724,10 @@
 			"names": "Bruiser · Imp"
 		}
 	},
+	"roster.separator": {
+		"note": "Separator between enemy names in a list (the stage card's roster line, the Daily card's floor 1 enemies), and between the Daily card's roster and boss lines in its one-line preview (\"Swarmer · Caster\"). Spaces around it are part of the string. Usually unchanged.",
+		"max": 5
+	},
 	"run.best.first": {
 		"note": "Ribbon on the run-over panel for the player's very first recorded run (nothing to beat yet). ALL CAPS in English.",
 		"max": 18
@@ -2580,17 +2844,11 @@
 		"note": "Gold second line of the new-floor card on the first floor past the player's record in this run. ALL CAPS in English; keep capitals if the script has them.",
 		"max": 18
 	},
-	"stage.best.oneToGo": {
-		"note": "Second line of the new-floor card when the record floor is one floor away. {floor} is the record floor number.",
-		"example": {
-			"floor": 14
-		}
-	},
 	"stage.best.recordFloor": {
 		"note": "Second line of the new-floor card when the player stands on their deepest floor ever (ties the record)."
 	},
 	"stage.best.toGo": {
-		"note": "Second line of the new-floor card: the player's deepest floor ever and how many floors are left to reach it. {floor} is the record floor number; {n} the number of floors to go (2 or more; exactly one uses stage.best.oneToGo). Reword as label: value if the plural is awkward.",
+		"note": "Second line of the new-floor card below the record: the player's deepest floor ever and how many floors are left to reach it. {floor} is the record floor number; {n} the number of floors to go (1 or more: one string for every number, so keep the label: value form).",
 		"example": {
 			"floor": 14,
 			"n": 3

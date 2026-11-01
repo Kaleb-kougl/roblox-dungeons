@@ -122,13 +122,76 @@ describe("context cell", () => {
 	});
 });
 
-describe("player-facing keys", () => {
-	it("drops developer prefixes and sorts", () => {
-		const source = {
-			strings: { "b.k": "B", "playtest.x": "P", "hud.debug": "D", "hud.debugger": "D", "a.k": "A" },
-			devOnlyPrefixes: ["playtest.", "hud.debug"],
-		};
-		assert.deepEqual(lib.playerFacingKeys(source), ["a.k", "b.k"]);
+describe("translatable keys", () => {
+	// The dump's flags (shared/l10n isDevOnlyStringKey / isTranslatableStringKey), never a node re-implementation.
+	const source = {
+		strings: { "b.k": "B", "playtest.x": "P", "playtest.run.over": "Run over", "fx.cap": "CAP", "a.k": "A" },
+		devOnlyKeys: ["playtest.x"],
+		untranslatedKeys: ["fx.cap"],
+	};
+
+	it("drops the dump's developer and untranslated keys and sorts", () => {
+		assert.deepEqual(lib.translatableKeys(source), ["a.k", "b.k", "playtest.run.over"]);
+	});
+
+	it("names why a key is not translated", () => {
+		assert.equal(lib.keyKind(source, "playtest.x"), "dev");
+		assert.equal(lib.keyKind(source, "fx.cap"), "untranslated");
+		assert.equal(lib.keyKind(source, "playtest.run.over"), "translatable");
+		assert.equal(lib.keyKind(source, "gone"), undefined);
+	});
+});
+
+describe("all-caps rule", () => {
+	// [English, translation, script, accepted]. Keep this list identical to CAPS_VECTORS in
+	// src/shared/theme/locale.spec.ts (the game's validator runs the same vectors).
+	const CAPS_VECTORS = [
+		["NEW BEST", "NEUER REKORD", "latin", true],
+		["BIG", "GROẞ", "latin", true],
+		["STREET", "STRAßE", "latin", true],
+		["NEW", "Neuer", "latin", false],
+		["STAGE", "ÉTAPE", "latin", true],
+		["STAGE", "étape", "latin", false],
+		["STAGE", "ÉTAPe", "latin", false],
+		["CITY", "İSTANBUL", "latin", true],
+		["CITY", "ıSTANBUL", "latin", false],
+		["MORNING", "BUỔI SÁNG", "latin", true],
+		["MORNING", "BUỔI SÁNg", "latin", false],
+		["RECORD", "РЕКОРД", "cyrillic", true],
+		["RECORD", "Рекорд", "cyrillic", false],
+		["NEW BEST +{points}", "NOUVEAU RECORD +{points}", "latin", true],
+		["CLEAR {n}/{total}!", "ЗАЧИЩЕНО {n}/{total}!", "cyrillic", true],
+		["3 KILLS - 100%", "3 ABATES — 100 %", "latin", true],
+		["3 KILLS", "3 abates", "latin", false],
+		["KRA", "ĸRA", "latin", true],
+		["BIG", "ƀIG", "latin", true],
+		["Run over", "partie finie", "latin", true],
+		["RECORD", "记录 record", "cjk", true],
+	];
+
+	it("accepts and rejects exactly what the game's validator does", () => {
+		for (const [english, text, script, accepted] of CAPS_VECTORS) {
+			assert.equal(lib.capsProblem(english, text, script) === undefined, accepted, `${english} -> ${text}`);
+		}
+	});
+
+	it("reads LOWERCASE_RANGES from shared/theme localeCheck.ts", () => {
+		const ranges = lib.lowercaseRanges();
+		assert.deepEqual(ranges[0], [0x61, 0x7a, "lower"]);
+		assert.ok(ranges.some(([from, to, rule]) => from === 0xdf && to === 0xdf && rule === "none")); // ß
+		assert.equal(lib.isLowercaseCodepoint(0x131), true); // ı
+		assert.equal(lib.isLowercaseCodepoint(0x130), false); // İ
+		assert.equal(lib.isLowercaseCodepoint(0x1e9e), false); // ẞ
+		assert.equal(lib.isLowercaseCodepoint(0x430), true); // а
+	});
+
+	it("is as lenient as the game for letters LOWERCASE_RANGES doesn't list (not Unicode toUpperCase)", () => {
+		// "ß".toUpperCase() is "SS" and "ǆ" (Latin Extended-B) has a capital, but the game passes both.
+		assert.equal(lib.capsProblem("STREET", "STRAßE", "latin"), undefined);
+		assert.equal(lib.capsProblem("DZ", "ǆ", "latin"), undefined);
+		assert.equal(lib.hasLowercase("ABC {points}"), false);
+		assert.equal(lib.isAllCaps("NEW BEST +{points}"), true);
+		assert.equal(lib.isAllCaps("x{n} RAMPAGE"), false);
 	});
 });
 

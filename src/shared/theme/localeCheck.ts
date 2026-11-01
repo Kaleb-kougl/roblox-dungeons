@@ -1,15 +1,27 @@
 /**
  * The generated locale tables' validator (docs/LOCALIZATION.md design 2, L3), in its own module: validate.ts sits at
  * Luau's 200 top-level locals. For each entry of a table (key -> [text, srcHash]):
- *   - the key is in the English table and is not developer-only (LD10: never exported);
+ *   - the key is in the English table and is translatable (shared/l10n isTranslatableStringKey: not developer-only,
+ *     LD10, and not in UNTRANSLATED_STRING_KEYS; the pipeline never exports either);
  *   - the entry is a [string, uint32] pair;
- *   - the braces are well formed (templateProblem);
+ *   - the text is valid UTF-8 and its braces are well formed (templateProblem);
  *   - the placeholder multiset equals the English one (placeholderMismatch);
  *   - for Latin and Cyrillic scripts, a translation of an all-caps English string has no lowercase letters
- *     (translators supply the caps form: code never upper-cases translated text).
- * A stale srcHash is not a problem here (the English moved on; ThemeCore falls back and reports it).
+ *     (translators supply the caps form: code never upper-cases translated text; breaksAllCaps).
+ * A stale entry (srcHash is not sourceHash of the current English) is expected: the pipeline writes the hash of the
+ * Source it was translated from, and ThemeCore shows English instead. Its placeholders and caps are checked against
+ * that old Source on import, so here they are not compared with the current English.
+ *
+ * The all-caps rule is shared with the node pipeline (scripts/l10n lib.js capsProblem reads LOWERCASE_RANGES from
+ * this file), so a table the import accepts always passes this validator.
  */
-import { isDevOnlyStringKey, type LocaleScript, type LocaleTable } from "shared/l10n";
+import {
+	isDevOnlyStringKey,
+	isTranslatableStringKey,
+	sourceHash,
+	type LocaleScript,
+	type LocaleTable,
+} from "shared/l10n";
 import { placeholderMismatch, templateProblem } from "./strings";
 import { hasKey, isInteger, sortedEntries, type Obj } from "./util";
 
@@ -30,7 +42,9 @@ type CaseRule = "lower" | "none" | "odd" | "even";
 
 /**
  * Lowercase letters among the code points Latin and Cyrillic translations use (Unicode data; the first range that
- * holds a code point decides). ß and ĸ have no traditional capital, so they pass in caps text.
+ * holds a code point decides). ß and ĸ have no traditional capital, so they pass in caps text; a code point no range
+ * holds (Latin Extended-B, Cyrillic Supplement, ...) is not lowercase (lenient). The node pipeline parses this literal
+ * (scripts/l10n lib.js lowercaseRanges): keep it a plain array of [number, number, "rule"] literals.
  */
 export const LOWERCASE_RANGES: ReadonlyArray<readonly [from: number, to: number, rule: CaseRule]> = [
 	[0x61, 0x7a, "lower"], // a-z
@@ -93,16 +107,27 @@ export function hasLowercase(text: string): boolean {
 	return false;
 }
 
-/** The problems of one translation of `english` (braces, placeholders, caps, UTF-8); empty when it is fine. */
-export function localeTextProblems(english: string, text: string, writing: LocaleScript): string[] {
+/**
+ * The all-caps rule (the same as scripts/l10n lib.js capsProblem): in a cased script (CASED_SCRIPTS), a translation
+ * of an all-caps English string (isAllCaps) must hold no lowercase letter (hasLowercase), placeholders aside.
+ */
+export function breaksAllCaps(english: string, text: string, writing: LocaleScript): boolean {
+	return CASED_SCRIPTS.includes(writing) && isAllCaps(english) && hasLowercase(text);
+}
+
+/**
+ * The problems of one translation of `english` (UTF-8, braces, placeholders, caps); empty when it is fine. `stale`:
+ * the entry was translated from other English, so only the checks that don't compare with it run (UTF-8, braces).
+ */
+export function localeTextProblems(english: string, text: string, writing: LocaleScript, stale = false): string[] {
 	const out: string[] = [];
 	if (!isValidUtf8(text)) out.push("is not valid UTF-8");
 	const braces = templateProblem(text);
 	if (braces !== undefined) out.push(braces);
+	if (stale) return out;
 	const mismatch = placeholderMismatch(english, text);
 	if (mismatch !== undefined) out.push(mismatch);
-	if (CASED_SCRIPTS.includes(writing) && isAllCaps(english) && hasLowercase(text))
-		out.push("translates an all-caps English string with lowercase letters");
+	if (breaksAllCaps(english, text, writing)) out.push("translates an all-caps English string with lowercase letters");
 	return out;
 }
 
@@ -120,6 +145,8 @@ export function validateLocaleTable(
 	for (const [key, entry] of sortedEntries(entries)) {
 		const push = (message: string) => out.push({ key, message });
 		if (isDevOnlyStringKey(key)) push("is a developer-only key (never translated)");
+		else if (!isTranslatableStringKey(key))
+			push("is an untranslated key (UNTRANSLATED_STRING_KEYS: always English)");
 		const text = typeIs(entry, "table") ? (entry as unknown as ReadonlyArray<unknown>)[0] : undefined;
 		const hash = typeIs(entry, "table") ? (entry as unknown as ReadonlyArray<unknown>)[1] : undefined;
 		if (!typeIs(text, "string") || !isInteger(hash) || hash < 0 || hash > UINT32_MAX) {
@@ -131,7 +158,8 @@ export function validateLocaleTable(
 			push("not in the English string table");
 			continue;
 		}
-		for (const message of localeTextProblems(englishText, text, writing)) push(message);
+		const stale = hash !== sourceHash(englishText);
+		for (const message of localeTextProblems(englishText, text, writing, stale)) push(message);
 	}
 	return out;
 }
