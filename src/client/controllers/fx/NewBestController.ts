@@ -11,7 +11,7 @@ import {
 	selectRecordsStatus,
 	type VerdictView,
 } from "client/store";
-import { NEW_BEST_UI, resetNewBestUi, runOverBest, type RunOverBest } from "client/ui";
+import { NEW_BEST_UI, resetNewBestUi, runOverBest, type RunOverBest, createKvScreenGui } from "client/ui";
 import { DAILY_WORLD_KIND } from "shared/daily";
 import type { JuiceSettings } from "shared/settings";
 import { partySize } from "shared/sim";
@@ -445,8 +445,7 @@ export class NewBestController implements OnStart {
 	// --- confetti ---------------------------------------------------------------------------------------
 
 	private buildConfetti(): ScreenGui {
-		const gui = new Instance("ScreenGui");
-		gui.Name = GUI_NAME;
+		const gui = createKvScreenGui(GUI_NAME);
 		gui.ResetOnSpawn = false;
 		gui.IgnoreGuiInset = true;
 		gui.ScreenInsets = Enum.ScreenInsets.None;

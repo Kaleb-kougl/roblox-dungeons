@@ -1,6 +1,7 @@
 import { Controller, OnStart } from "@flamework/core";
 import { Janitor } from "@rbxts/janitor";
 import { RunService, Workspace } from "@rbxts/services";
+import { createKvBillboardGui } from "client/ui";
 import { CAMERA_PITCH_DEG, CAMERA_YAW_DEG, STUDS_PER_TILE } from "shared/config";
 import { SIM_DT, SIM_HZ, dropsGround, type GroundDrop } from "shared/sim";
 import {
@@ -712,8 +713,7 @@ function buildImage(art: WorldImage, layout: SpriteLayout, parent: Instance): Im
 	anchor.Size = new Vector3(SPRITE_VIEW.anchorStuds, SPRITE_VIEW.anchorStuds, SPRITE_VIEW.anchorStuds);
 	anchor.CFrame = PARKED;
 	const board = spriteBillboard(layout);
-	const gui = new Instance("BillboardGui");
-	gui.Name = "Boost";
+	const gui = createKvBillboardGui("Boost");
 	gui.Size = new UDim2(board.w, 0, board.h, 0);
 	gui.StudsOffset = new Vector3(board.offsetX, board.offsetY, board.offsetZ);
 	gui.LightInfluence = 0;
@@ -745,8 +745,7 @@ function buildBeam(image: ImageRef, color: Color3, parent: Instance): Beam {
 	anchor.Size = new Vector3(SPRITE_VIEW.anchorStuds, SPRITE_VIEW.anchorStuds, SPRITE_VIEW.anchorStuds);
 	anchor.CFrame = PARKED;
 	const b = uprightImageBillboard(image.w, image.h, BOOST_VIEW.beamHeightTiles, image.pivot);
-	const gui = new Instance("BillboardGui");
-	gui.Name = "Beam";
+	const gui = createKvBillboardGui("Beam");
 	gui.Size = new UDim2(b.w, 0, b.h, 0);
 	gui.StudsOffset = new Vector3(b.offsetX, b.offsetY, b.offsetZ);
 	gui.LightInfluence = SELF_LIT;
@@ -772,8 +771,7 @@ function buildGlint(piece: DecorPiece, anchor: Part, board: SpriteBillboard): Gl
 	let anim: string | undefined;
 	let frames = 1;
 	let fps = 0;
-	const gui = new Instance("BillboardGui");
-	gui.Name = "Glint";
+	const gui = createKvBillboardGui("Glint");
 	gui.LightInfluence = SELF_LIT;
 	gui.AlwaysOnTop = false;
 	gui.ResetOnSpawn = false;

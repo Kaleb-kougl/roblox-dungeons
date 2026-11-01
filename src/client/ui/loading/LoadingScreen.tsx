@@ -94,6 +94,7 @@ export function LoadingScreen(props: LoadingScreenProps) {
 		<screengui
 			key="KV_Loading"
 			ResetOnSpawn={false}
+			AutoLocalize={false}
 			DisplayOrder={LOADING_VIEW.displayOrder}
 			IgnoreGuiInset={true}
 			ZIndexBehavior={Enum.ZIndexBehavior.Sibling}

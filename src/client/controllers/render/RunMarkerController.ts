@@ -1,6 +1,7 @@
 import { Controller, OnStart } from "@flamework/core";
 import { Janitor } from "@rbxts/janitor";
 import { RunService, Workspace } from "@rbxts/services";
+import { createKvBillboardGui } from "client/ui";
 import { STUDS_PER_TILE } from "shared/config";
 import type { RunState } from "shared/sim";
 import type { ImageRef } from "shared/theme";
@@ -129,7 +130,7 @@ function buildBeam(folder: Folder, image: ImageRef, top: Vector3): BillboardGui 
 	anchor.Size = new Vector3(SPRITE_VIEW.anchorStuds, SPRITE_VIEW.anchorStuds, SPRITE_VIEW.anchorStuds);
 	anchor.CFrame = new CFrame(top);
 	const b = uprightImageBillboard(image.w, image.h, PROGRESSION_VIEW.pedestalBeamHeightTiles, image.pivot);
-	const gui = new Instance("BillboardGui");
+	const gui = createKvBillboardGui("Beam");
 	gui.Size = new UDim2(b.w, 0, b.h, 0);
 	gui.StudsOffset = new Vector3(b.offsetX, b.offsetY, b.offsetZ);
 	gui.LightInfluence = 0;

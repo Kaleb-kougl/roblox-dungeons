@@ -1,6 +1,7 @@
 import { Controller, OnStart } from "@flamework/core";
 import { Janitor } from "@rbxts/janitor";
 import { RunService } from "@rbxts/services";
+import { createKvBillboardGui } from "client/ui";
 import { HUD_FONT } from "client/ui/theme";
 import { RENDER_ORDER } from "shared/view";
 import {
@@ -45,8 +46,7 @@ class NumberView {
 		this.att = new Instance("Attachment");
 		this.att.Name = `Number${index}`;
 		this.att.Parent = holder;
-		const gui = new Instance("BillboardGui");
-		gui.Name = `Number${index}`;
+		const gui = createKvBillboardGui(`Number${index}`);
 		gui.Adornee = this.att;
 		gui.AlwaysOnTop = true;
 		gui.LightInfluence = 0;

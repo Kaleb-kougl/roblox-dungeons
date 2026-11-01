@@ -1,7 +1,7 @@
 import { Controller, OnStart } from "@flamework/core";
 import { Janitor } from "@rbxts/janitor";
 import { GuiService, Players, RunService, Stats, UserInputService } from "@rbxts/services";
-import { MONO_FONT } from "client/ui";
+import { MONO_FONT, createKvScreenGui } from "client/ui";
 import { TOUCH_SPIKE } from "shared/config";
 import { watchSpikeFlag } from "./spikeFlags";
 
@@ -56,8 +56,7 @@ export class TouchSpikeController implements OnStart {
 		this.session = janitor;
 
 		const playerGui = Players.LocalPlayer.WaitForChild("PlayerGui") as PlayerGui;
-		const gui = new Instance("ScreenGui");
-		gui.Name = GUI_NAME;
+		const gui = createKvScreenGui(GUI_NAME);
 		gui.ResetOnSpawn = false;
 		gui.ScreenInsets = Enum.ScreenInsets.CoreUISafeInsets;
 		gui.DisplayOrder = TOUCH_SPIKE.displayOrder;

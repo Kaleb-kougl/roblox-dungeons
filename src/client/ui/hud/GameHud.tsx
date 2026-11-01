@@ -80,6 +80,7 @@ export function GameHud() {
 				key="KV_GameHud"
 				ref={setHudGui}
 				ResetOnSpawn={false}
+				AutoLocalize={false}
 				DisplayOrder={HUD_VIEW.hudDisplayOrder}
 				ScreenInsets={Enum.ScreenInsets.CoreUISafeInsets}
 				ZIndexBehavior={Enum.ZIndexBehavior.Sibling}
@@ -116,6 +117,7 @@ export function GameHud() {
 				key="KV_GameMenuDim"
 				ref={setDimLayer}
 				ResetOnSpawn={false}
+				AutoLocalize={false}
 				DisplayOrder={HUD_VIEW.menuDimDisplayOrder}
 				IgnoreGuiInset={true}
 				ScreenInsets={Enum.ScreenInsets.None}
@@ -123,6 +125,7 @@ export function GameHud() {
 			<screengui
 				key="KV_GameMenu"
 				ResetOnSpawn={false}
+				AutoLocalize={false}
 				DisplayOrder={HUD_VIEW.menuDisplayOrder}
 				ScreenInsets={Enum.ScreenInsets.CoreUISafeInsets}
 				ZIndexBehavior={Enum.ZIndexBehavior.Sibling}
@@ -138,6 +141,7 @@ export function GameHud() {
 			<screengui
 				key="KV_PauseButton"
 				ResetOnSpawn={false}
+				AutoLocalize={false}
 				DisplayOrder={PAUSE_BUTTON_VIEW.displayOrder}
 				ScreenInsets={Enum.ScreenInsets.None}
 				ZIndexBehavior={Enum.ZIndexBehavior.Sibling}
@@ -149,6 +153,7 @@ export function GameHud() {
 					key={TOUCH_STRIP_GUI.gui}
 					ref={setStripGui}
 					ResetOnSpawn={false}
+					AutoLocalize={false}
 					DisplayOrder={HUD_VIEW.hudDisplayOrder}
 					IgnoreGuiInset={true}
 					ScreenInsets={Enum.ScreenInsets.None}

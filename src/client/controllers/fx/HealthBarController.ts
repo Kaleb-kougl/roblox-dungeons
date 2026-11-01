@@ -1,6 +1,7 @@
 import { Controller, OnStart } from "@flamework/core";
 import { Janitor } from "@rbxts/janitor";
 import { RunService } from "@rbxts/services";
+import { createKvBillboardGui } from "client/ui";
 import { HUD_FONT } from "client/ui/theme";
 import { AffixKind, affixThemeIndex } from "shared/dungeon";
 import { MAX_ACTORS, NO_KIND, archetypeAt, roomAt } from "shared/sim";
@@ -104,8 +105,7 @@ class BarView {
 		this.att = new Instance("Attachment");
 		this.att.Name = `Bar${index}`;
 		this.att.Parent = holder;
-		const gui = new Instance("BillboardGui");
-		gui.Name = `Bar${index}`;
+		const gui = createKvBillboardGui(`Bar${index}`);
 		gui.Adornee = this.att;
 		gui.AlwaysOnTop = true;
 		gui.LightInfluence = 0;

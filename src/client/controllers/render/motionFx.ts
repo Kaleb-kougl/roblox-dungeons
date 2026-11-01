@@ -1,3 +1,4 @@
+import { createKvBillboardGui } from "client/ui";
 import type { JuiceSettings } from "shared/settings";
 import {
 	BOSS_DEMONLORD_ID,
@@ -220,8 +221,7 @@ function buildGhostView(folder: Instance): GhostView {
 	anchor.Transparency = HIDDEN;
 	anchor.Size = new Vector3(SPRITE_VIEW.anchorStuds, SPRITE_VIEW.anchorStuds, SPRITE_VIEW.anchorStuds);
 	anchor.CFrame = PARKED;
-	const gui = new Instance("BillboardGui");
-	gui.Name = "Ghost";
+	const gui = createKvBillboardGui("Ghost");
 	gui.LightInfluence = 0;
 	gui.AlwaysOnTop = false;
 	gui.ResetOnSpawn = false;

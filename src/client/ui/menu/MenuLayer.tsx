@@ -35,6 +35,7 @@ export function MenuLayer() {
 			<screengui
 				key="KV_MenuBackdrop"
 				ResetOnSpawn={false}
+				AutoLocalize={false}
 				DisplayOrder={MENU_VIEW.backdropDisplayOrder}
 				IgnoreGuiInset={true}
 				ScreenInsets={Enum.ScreenInsets.None}
@@ -51,6 +52,7 @@ export function MenuLayer() {
 			<screengui
 				key="KV_MenuShell"
 				ResetOnSpawn={false}
+				AutoLocalize={false}
 				DisplayOrder={MENU_VIEW.displayOrder}
 				ScreenInsets={Enum.ScreenInsets.CoreUISafeInsets}
 				ZIndexBehavior={Enum.ZIndexBehavior.Sibling}
