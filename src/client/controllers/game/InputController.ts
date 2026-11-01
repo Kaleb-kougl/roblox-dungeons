@@ -23,6 +23,7 @@ import {
 	type DriverKeyAction,
 	type GamepadSnapshot,
 	draftStatus,
+	dropDraftGuiMouse,
 	pickAutoTarget,
 	TouchControls,
 	type TouchMode,
@@ -270,6 +271,13 @@ export class InputController implements OnStart {
 		touchCtx?: TouchAimContext,
 	): InputFrame {
 		this.pollKeyboardMouse();
+		// A click on a draft card picks it through the tap path (queueDraftPick, on Activated); its mouse press must not
+		// also reach the sim as the confirm (it would take the card under the stick before the click's column push).
+		if (touchCtx !== undefined && this.mousePressOnGui()) {
+			const guiPressed = new Set<string>();
+			for (const [t, name] of this.mouseTypes) if (this.guiMouse.has(t)) guiPressed.add(name);
+			dropDraftGuiMouse(this.mouse, guiPressed, draftStatus(touchCtx.state, touchCtx.playerIndex).open);
+		}
 		const pad = this.pollGamepad();
 		this.tracker.padSampled(pad);
 		this.publishDevice();

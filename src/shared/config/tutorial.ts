@@ -73,6 +73,15 @@ export interface TutorialTunables {
 	/** The first this many harmless hits also flash the ghost half heart (TutorialView.ghostHeart). */
 	readonly ghostHeartHits: number;
 
+	// --- TutorialMetrics (shared/tutorial metrics.ts, docs/TUTORIAL_FUNNEL.md §5): the funnel's lesson / stuck reports.
+	/**
+	 * A stuck episode (one prompt shown with no progress) reports once it has lasted this many real seconds
+	 * (TutorialStuckReport; the server's TutorialStuck event).
+	 */
+	readonly stuckSeconds: number;
+	/** Reported seconds (lesson time, stuck episodes) are rounded to 1 / this (10: tenths of a second). */
+	readonly metricsResolution: number;
+
 	// --- The client (TutorialController, docs/CLIENT.md "The tutorial run"). Real seconds.
 	/**
 	 * On join the client waits this long for the server's `onboardingStatus` (it also sends `requestOnboarding`).
@@ -98,6 +107,8 @@ export const TUTORIAL: TutorialTunables = table.freeze({
 	objectiveCardMinSeconds: 0.75,
 	calloutHighlightSeconds: 4,
 	ghostHeartHits: 3,
+	stuckSeconds: 20,
+	metricsResolution: 10,
 	statusTimeoutSeconds: 6,
 	outroDelaySeconds: 1.5,
 });

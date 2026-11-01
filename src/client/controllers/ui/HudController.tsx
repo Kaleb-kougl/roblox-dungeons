@@ -96,7 +96,8 @@ export class HudController implements OnStart {
 			setLeaveConfirm: click((open: boolean) => this.menu.setLeaveConfirm(open)),
 			leaveRun: click(() => this.menu.leaveRun()),
 			exitRun: click(() => this.menu.exitRun()),
-			playTutorial: click(() => this.tutorial.playTutorial()),
+			playTutorial: click(() => this.tutorial.playTutorial("again")),
+			restartTutorial: click(() => this.tutorial.playTutorial("restart")),
 			// The outro's "Start my first run" is the main menu's Play solo.
 			startFirstRun: click(() => {
 				this.tutorial.closeOutro();
@@ -104,7 +105,7 @@ export class HudController implements OnStart {
 			}),
 			setTutorialSkipConfirm: click((open: boolean) => this.tutorial.setSkipConfirm(open)),
 			skipTutorial: click(() => this.tutorial.skipTutorial()),
-			// Touch (docs/MOBILE.md MB10): a tapped card is picked by its column, as the stick would push it.
+			// Touch (docs/MOBILE.md MB10) and mouse: a tapped / clicked card is picked by its column, as the stick would push it.
 			draftTap: click((index: number) =>
 				this.input.queueDraftPick(
 					draftColumnForCard(index, clientStore.getState().game.snapshot.draftOffers.size()),
@@ -126,7 +127,7 @@ export class HudController implements OnStart {
 			openOptions: click(() => this.menu.openOptions()),
 			openLeaderboard: click(() => this.menu.openLeaderboard()),
 			inviteFriends: click(() => this.menu.inviteFriends()),
-			playTutorial: click(() => this.tutorial.playTutorial()),
+			playTutorial: click(() => this.tutorial.playTutorial("menu")),
 			back: click(() => this.menu.back()),
 			refreshLobbies: click(() => this.lobby.requestList()),
 			createLobby: click((v: LobbyVisibility) => this.menu.createLobby(v)),

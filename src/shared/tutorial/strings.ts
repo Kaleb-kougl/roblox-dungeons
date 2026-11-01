@@ -51,6 +51,12 @@ export function tutorialPromptIds(): string[] {
 	return out;
 }
 
+/**
+ * Every prompt id the director can show (tutorialPromptIds(), frozen): TutorialStuckReport.prompt is one of them (the
+ * server's tutorialStuck validation, docs/TUTORIAL_FUNNEL.md §6).
+ */
+export const TUTORIAL_PROMPT_IDS: ReadonlyArray<string> = table.freeze(tutorialPromptIds());
+
 /** Every tutorial string key (prompts x devices, callouts, TUTORIAL_STRINGS), each once. */
 export function tutorialStringKeys(): string[] {
 	const out: string[] = [];

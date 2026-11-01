@@ -129,6 +129,10 @@ export type LobbyRunStartResult = { readonly ok: true } | { readonly ok: false; 
  * (OnboardingService `leaveTutorial`), and a late `tutorialStarted` from a member of an unconcluded party run is
  * ignored (`setPartyRunCheck`). The tutorial world itself is never a server run (shared/run SERVER_REFUSED_WORLDS:
  * every session start, lobby starts included, answers `unknown_world`).
+ *
+ * The new-player window (docs/TUTORIAL_FUNNEL.md §7): every created session tells OnboardingService
+ * `newPlayerRunStarted` (all members) and every accepted run `newPlayerRunAccepted` (the credited members, end reason
+ * from the replay's telemetry, the score's floor); OnboardingService decides what counts (never debug / Studio runs).
  */
 @Service({})
 export class RunSessionService implements OnStart {
@@ -342,6 +346,11 @@ export class RunSessionService implements OnStart {
 			);
 			if (!dailyOk) log.warn("DAILY_START_FAILED", `run ${s.runId}: ${tostring(dailyErr)}`);
 		}
+		// The new-player window (docs/TUTORIAL_FUNNEL.md §7): NewPlayerRunStarted per member. Never yields.
+		const [newOk, newErr] = pcall(() =>
+			this.onboarding.newPlayerRunStarted({ worldKind: s.worldKind, debug: s.debug, memberIds: s.members }),
+		);
+		if (!newOk) log.warn("NEW_PLAYER_START_FAILED", `run ${s.runId}: ${tostring(newErr)}`);
 		// A solo lobby run: the player's next solo start in the lobby's world after lobbyRunStart is the lobby's run.
 		if (s.members.size() === 1) {
 			const lobbyId = this.lobbyRuns.soloStarted(s.ownerId, s.runId, s.worldKind);
@@ -741,6 +750,18 @@ export class RunSessionService implements OnStart {
 			);
 			if (recordsOk) records = applied as Map<number, RunRecordsResult>;
 			else log.warn("RECORDS_FAILED", `run ${session.runId}: ${tostring(applied)}`);
+			// The new-player window (docs/TUTORIAL_FUNNEL.md §7): NewPlayerRun per credited member (the replay's end
+			// reason, the score's deepest floor). Never yields.
+			const [newOk, newErr] = pcall(() =>
+				this.onboarding.newPlayerRunAccepted(
+					{ worldKind: session.worldKind, debug: session.debug, memberIds: credited.map((m) => m.userId) },
+					{
+						endReason: result.telemetry?.endReason ?? (s.died ? "death" : "abandoned"),
+						floor: result.score.floor,
+					},
+				),
+			);
+			if (!newOk) log.warn("NEW_PLAYER_RUN_FAILED", `run ${session.runId}: ${tostring(newErr)}`);
 		} else {
 			const code = result.code ?? "replay_error";
 			log.warn(

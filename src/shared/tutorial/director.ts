@@ -30,6 +30,10 @@
  * tutorial is finished on the floor TUTORIAL.lastFloor -> lastFloor + 1 change (step `finish`); anything still open
  * then is skipped too.
  *
+ * Metrics (docs/TUTORIAL_FUNNEL.md §5): every update() ends by feeding its TutorialMetrics (metrics.ts: the lesson
+ * clock and the stuck episode are defined there) the frame and the resolved view; the frame's reports land in
+ * newLessonReports / newStuckReports, and flushMetrics() ends an open stuck episode before a skip.
+ *
  * The view object is reused: update() mutates and returns the same TutorialView (and its arrays) every frame. Copy
  * what you keep; `revision` grows whenever anything but the marker's position changed (push to Reflex on change).
  */
@@ -70,6 +74,12 @@ import {
 	type TutorialSkill,
 	type TutorialStep,
 } from "./steps";
+import {
+	TutorialMetrics,
+	type TutorialLessonReport,
+	type TutorialMetricsOptions,
+	type TutorialStuckReport,
+} from "./metrics";
 
 /** One rendered frame, as the director sees it. */
 export interface TutorialFrame {
@@ -130,9 +140,20 @@ export interface TutorialView {
 	funnelStepReached: number;
 	/** Funnel step numbers newly reached this frame, ascending (send each as tutorialStep). */
 	readonly newFunnelSteps: number[];
-	/** Grows whenever any field other than the marker's x / z changed. */
+	/**
+	 * Metrics (metrics.ts): lessons that latched done and practised this frame, each once per run, with the seconds
+	 * their clock ran and the harmless hits meanwhile (send each as tutorialLesson). Not counted in `revision`: read
+	 * it every update.
+	 */
+	readonly newLessonReports: TutorialLessonReport[];
+	/** Metrics: stuck episodes (>= TUTORIAL.stuckSeconds on one prompt, no progress) that ended this frame. Not in `revision`. */
+	readonly newStuckReports: TutorialStuckReport[];
+	/** Grows whenever any field other than the marker's x / z (and the metrics reports) changed. */
 	revision: number;
 }
+
+/** TutorialDirector construction options (all optional; defaults are the game's). */
+export type TutorialDirectorOptions = TutorialMetricsOptions;
 
 /** Per-step progress (lesson baselines are taken the frame the room is first seen entered). */
 interface StepProgress {
@@ -223,8 +244,10 @@ export class TutorialDirector {
 	/** The boost row's pickup ring (TUTORIAL_BOOST_HIGHLIGHT) has been rung (once per tutorial). */
 	private boostRung = false;
 	private sig = "";
+	private readonly metrics: TutorialMetrics;
 
-	constructor() {
+	constructor(options: TutorialDirectorOptions = {}) {
+		this.metrics = new TutorialMetrics(options);
 		const n = TUTORIAL_STEPS.size();
 		const done: boolean[] = [];
 		const skipped: boolean[] = [];
@@ -253,6 +276,8 @@ export class TutorialDirector {
 			ghostHeart: false,
 			funnelStepReached: 0,
 			newFunnelSteps: [],
+			newLessonReports: this.metrics.newLessonReports,
+			newStuckReports: this.metrics.newStuckReports,
 			revision: 0,
 		};
 	}
@@ -292,7 +317,17 @@ export class TutorialDirector {
 			this.fireCallouts(state, frame.dt);
 		}
 		this.resolve(frame, floor);
+		this.metrics.update(frame, v);
 		return v;
+	}
+
+	/**
+	 * Ends the open stuck episode (metrics.ts) and returns its report when it lasted >= TUTORIAL.stuckSeconds and its
+	 * prompt has not reported yet; else an empty list. The client calls it right before a skip (the finish needs no
+	 * flush: its frame clears the prompt, which ends the episode in that update's newStuckReports).
+	 */
+	flushMetrics(): TutorialStuckReport[] {
+		return this.metrics.flush();
 	}
 
 	// --- steps ------------------------------------------------------------------------------

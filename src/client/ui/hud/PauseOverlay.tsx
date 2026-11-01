@@ -60,7 +60,7 @@ const ITEMS: Record<PauseItem, ItemSpec> = {
 	leave: { text: MENU_STRINGS.leaveRun, sound: SFX.uiClick, run: (a) => a.setLeaveConfirm(true) },
 	settings: { text: HUD_STRINGS.settings, sound: SFX.uiClick, run: (a) => a.setSettingsOpen(true) },
 	leaderboards: { text: LEADERBOARD_STRINGS.open, sound: SFX.uiClick, run: (a) => a.setLeaderboardOpen(true) },
-	restartTutorial: { text: TUTORIAL_STRINGS.pauseRestart, sound: SFX.uiConfirm, run: (a) => a.playTutorial() },
+	restartTutorial: { text: TUTORIAL_STRINGS.pauseRestart, sound: SFX.uiConfirm, run: (a) => a.restartTutorial() },
 	skipTutorial: { text: TUTORIAL_STRINGS.pauseSkip, sound: SFX.uiClick, run: (a) => a.setTutorialSkipConfirm(true) },
 	map: { text: HUD_STRINGS.mapTitle, sound: SFX.uiClick, run: (a) => a.toggleMap() },
 };

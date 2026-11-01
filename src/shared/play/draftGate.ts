@@ -47,6 +47,18 @@ export function draftNeverRevealed(tutorialRun: boolean, floor: number, tutorial
 	return tutorialEnded || (tutorialRun && floor > TUTORIAL.lastFloor);
 }
 
+/**
+ * A mouse click on a draft card belongs to the card (the overlay's button picks it through the tap path, on Activated),
+ * so while the local draft is open, the polled mouse buttons whose press began over a GUI (`guiPressed`, by input
+ * name) are dropped from `mouse` in place: the press never reaches the sim as the confirm, which would take the card
+ * under the stick before the click's column push. A click on the world (not over a GUI) and every press while the
+ * draft is closed pass untouched.
+ */
+export function dropDraftGuiMouse(mouse: Set<string>, guiPressed: ReadonlySet<string>, draftOpen: boolean): void {
+	if (!draftOpen) return;
+	for (const name of guiPressed) mouse.delete(name);
+}
+
 export class DraftRevealGate {
 	/** The confirm was down on the last frame (press edges are judged on the raw input). */
 	private wasDown = false;

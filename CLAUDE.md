@@ -21,6 +21,7 @@ Record every ported module in `PROVENANCE.md` (ported module, source path, sourc
 | `docs/ART.md` | Vertical-slice art: packs, licences, contract v2, atlas pipeline, renderer, status |
 | `docs/TUTORIAL.md` | First-run tutorial ("Practice Descent"): plan, as-built notes, tasks T1-T8, owner decisions |
 | `docs/TUTORIAL_ARROW.md` | Tutorial guidance arrow (floor chevron pointing along the path to the objective): plan, tasks A1-A6, decisions |
+| `docs/TUTORIAL_FUNNEL.md` | Tutorial analytics funnel (once-per-user onboarding funnel join -> lessons -> completed, `TutorialAttempt` funnel, lesson time / hits / stuck, skip / abandon / outro / gate events, new-player runs and return): plan, tasks TF0-TF9, decisions TFD1-TFD10 |
 | `docs/OUTLINE.md` | Enemy outlines: plan, as-built notes, tasks O1-O7, decisions E1-E6 |
 | `docs/PLAYER_OUTLINE.md` | Player outline (rim around the watched player only, `playerOutline` role, 1 px knight sheets, Display setting): plan, as-built, tasks P1-P7, decisions |
 | `docs/FX_AUDIO.md` | Sprite effects and audio (Ninja Adventure FX / Audio): slots, pipelines, cue mappers, tasks X0 / F0-F6 / A0-A5 |
@@ -430,6 +431,17 @@ Decision log (deviations from `PLAN.md`):
   `hud.draft.waiting`, `hud.toast.fang`, `daily.result.entrants`, `daily.board.total`, `stage.best.toGo`
   (`stage.best.oneToGo` removed); display names now draw in the `name` font. Spike `KV_L10nSpike`, debug
   `KV_LocaleAudit`. L0 spike, Creator Hub steps and Studio check pending.
+
+- **Tutorial analytics funnel (docs/TUTORIAL_FUNNEL.md).** Telemetry only (no sim, dungeon, lockstep, hash, replay or
+  fixture change). A once-per-user onboarding funnel (`LogOnboardingFunnelStepEvent`: Joined -> Loaded -> TutorialStarted
+  -> 16 lessons -> Completed, fresh players only, step 1 fields entry / revision) and the attempt funnel `TutorialAttempt`
+  (replaces `tutorial`; `started` = 1, completed = 18) plus custom events for lesson time / hits / stuck, skip,
+  abandon, restart, outro, gate and the new-player window (first 3 runs, return within 7 days). Pure core in
+  `shared/onboarding` (`PlayerTutorialTelemetry`, trackers, `read*` validators, `analyticsCatalog` budget spec) and
+  `shared/tutorial` `TutorialMetrics`; remote payloads `tutorialStarted(info)` / `tutorialFinished(info)`, new
+  `tutorialLesson` / `tutorialStuck` / `onboardingReport`; onboarding doc gains optional `firstDay` / `newRuns` /
+  `returned` (still v1). Per-session cap 3 logged attempts / 240 events. Debug `KV_AnalyticsDebug`. TF0 spike, Studio
+  checks and the dashboard (TF9) pending.
 
 ## Commands
 

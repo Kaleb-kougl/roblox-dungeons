@@ -24,6 +24,8 @@ export interface AnalyticsFields {
 export type AnalyticsEventSpec =
 	| { kind: "custom"; name: string; value: number; fields?: AnalyticsFields }
 	| { kind: "funnel"; funnel: string; step: number; stepName: string; fields?: AnalyticsFields }
+	/** The once-per-user onboarding funnel (LogOnboardingFunnelStepEvent; shared/onboarding onboardingFunnel.ts). */
+	| { kind: "onboarding"; step: number; stepName: string; fields?: AnalyticsFields }
 	| {
 			kind: "progression";
 			status: "Start" | "Complete" | "Fail";
