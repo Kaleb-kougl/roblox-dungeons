@@ -25,6 +25,7 @@ import {
 } from "./tutorial/tutorial";
 import { cloneBreakablesState, createBreakablesState, type BreakablesState } from "./breakables/breakables";
 import { cloneDropsState, createDropsState, type DropsState } from "./drops/drops";
+import { dropsOnFloorPieces } from "./drops/breakLoot";
 import { cloneAffixesState, createAffixesState, type AffixesState } from "./affixes/affixes";
 import { cloneDevState, createDevState, type DevState } from "./dev/dev";
 import { cloneBuildsState, createBuildsState, type BuildsState } from "./builds/builds";
@@ -301,7 +302,8 @@ export interface SimState {
  * With `config.party` (size > 1) every party member starts at the spawn too (party.ts), before the encounter spawns.
  * With `config.tutorial`, `tutorial` state is created and every player starts with its `startHalfHearts` (if set).
  * With `config.breakables`, `breakables` state is created (floor 1's pieces in endless mode, else its `pieces`).
- * With `config.drops`, `drops` state is created (its own rng stream from `seed`, one boost entry per player).
+ * With `config.drops`, `drops` state is created (its own rng stream from `seed`, one boost entry per player); with
+ * its `breakableLoot` too, the first floor's loaded pieces (docs/BREAKABLE_DROPS.md).
  * With `config.affixes`, `affixes` state is created before the encounter spawns (its slots follow the actor pool).
  * With `config.dev`, `dev` state is created (developer mode's god mode, docs/DEV_MODE.md).
  * `config.endless.startFloor` / `startDepth` (developer mode's floor jump) start on that floor and Depth instead of
@@ -345,7 +347,12 @@ export function createSimState(
 		state.breakables = createBreakablesState(breakables, list ?? []);
 	}
 	// Boost drops: their own rng stream (seed ^ DROPS.salt), never state.rngState. No sim rng.
-	if (config.drops !== undefined) state.drops = createDropsState(config.drops, seed, partySize(state));
+	if (config.drops !== undefined) {
+		state.drops = createDropsState(config.drops, seed, partySize(state));
+		// Boosts from breakables (DropsConfig.breakableLoot): the first floor's loot (endless: its world's, dev mode's
+		// startFloor included; else config.breakables.loot). No rng.
+		dropsOnFloorPieces(state, firstFloor !== undefined ? firstFloor.breakableLoot : breakables?.loot);
+	}
 	// Elite affixes: before any spawn, so the slots grow with the pool. No rng.
 	if (config.affixes !== undefined) state.affixes = createAffixesState(config.affixes);
 	// Developer mode (god mode). No rng.

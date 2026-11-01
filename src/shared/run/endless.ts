@@ -4,10 +4,10 @@
  * (validateRun with world "endless") calls the same function, so both get identical floors from the run seed alone.
  *
  *   config   { endless: { runSeed, worldForFloor }, scoring: ENDLESS_SCORING, breakables: BREAKABLES_CONFIG,
- *              drops: DROPS_CONFIG, affixes: AFFIXES_CONFIG, builds: BUILDS_CONFIG }
+ *              drops: ENDLESS_DROPS_CONFIG, affixes: AFFIXES_CONFIG, builds: BUILDS_CONFIG }
  *            (shared/sim endless.ts: every tick runs with the current floor; endless runs are ALWAYS scored, on client
- *            and server alike, and always have breakable barrels and crates (docs/DECOR.md D4), boost drops
- *            (docs/BOOSTS.md B4), elite affixes (docs/ENEMY_VARIANTS.md EV7) and builds (docs/BUILDS.md BU1))
+ *            and server alike, and always have breakable barrels and crates (docs/DECOR.md D4), boost drops, from kills
+ *            and from loaded barrels and crates (docs/BOOSTS.md B4, docs/BREAKABLE_DROPS.md BL4), elite affixes (docs/ENEMY_VARIANTS.md EV7) and builds (docs/BUILDS.md BU1))
  *   floor f  buildEndlessFloor(runSeed, f) (shared/dungeon endless.ts: solid pillars, breakables) + circleMover / bulletBlocker /
  *            actorMover / actorSteerMover (enemies walk around pillars) on its dungeon; built on first use, kept in a
  *            per-config LRU (ENDLESS_FLOOR_CACHE_SIZE), the dungeons in a server-wide LRU (ENDLESS_DUNGEON_CACHE_SIZE)
@@ -36,7 +36,7 @@ import {
 import {
 	BREAKABLES_CONFIG,
 	DEFAULT_PARTY_SIZE,
-	DROPS_CONFIG,
+	ENDLESS_DROPS_CONFIG,
 	AFFIXES_CONFIG,
 	BUILDS_CONFIG,
 	MAX_PARTY_SIZE,
@@ -198,7 +198,7 @@ export function buildEndlessRunConfig(runSeed: number, partySize: number = DEFAU
 					endless: { runSeed, worldForFloor },
 					scoring: ENDLESS_SCORING,
 					breakables: BREAKABLES_CONFIG,
-					drops: DROPS_CONFIG,
+					drops: ENDLESS_DROPS_CONFIG,
 					affixes: AFFIXES_CONFIG,
 					builds: BUILDS_CONFIG,
 			  }
@@ -207,7 +207,7 @@ export function buildEndlessRunConfig(runSeed: number, partySize: number = DEFAU
 					scoring: { partySize },
 					party: { size: partySize },
 					breakables: BREAKABLES_CONFIG,
-					drops: DROPS_CONFIG,
+					drops: ENDLESS_DROPS_CONFIG,
 					affixes: AFFIXES_CONFIG,
 					builds: BUILDS_CONFIG,
 			  };
