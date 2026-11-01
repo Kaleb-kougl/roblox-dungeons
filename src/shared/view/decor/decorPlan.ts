@@ -50,7 +50,10 @@
  *              (on SHOULDER cells near a room, VOID_PIECES): `wall` / `wallBroken` ruin runs on straight shoulder rows
  *              VOID_PIECES.ruinDist from the wall, then `column` / `columnBroken` (or a biome void kind the pack has
  *              art for, decor.void.b<n>.<kind>), then low `curb` runs along the shoulder's outer edge; each passes the
- *              footprint rule at its surface's top (footprintClear(d, f, box, DECOR_CAMERA, top)), at most
+ *              footprint rule at its surface's top (footprintClear(d, f, box, DECOR_CAMERA, top)) and stands only on
+ *              its room's far side (VDD2: the first walkable cell straight screen-down along (+1, +1) is its room's,
+ *              within the cell's field distance + 1 + farSideSlackTiles; no walkable cell screen-up along (-1, -1)
+ *              within nearSideReachTiles), at most
  *              tallPerRoom per room (curbs: curbPerRoom; a void cell's room: the nearest floor cell's, carried out
  *              from the walls by field distance),
  *              tallMinSpacing apart, decorClearTiles from every decor standing and wall piece, maxStanding per floor;
@@ -1356,6 +1359,27 @@ function addVoidPieces(
 	// room of its first neighbour one tile nearer the dungeon (one always exists: the field is a Chebyshev distance), so
 	// cells are worked out nearest first (buckets by distance), each from a few neighbour reads, with no BFS queue.
 	const room = new Array<number>(n, ROOM_UNSET);
+	/** Wall cell j's room: its first floor neighbour's (a room before a corridor: -1), NO_ROOM if none; cached. */
+	const wallRoom = (j: number): number => {
+		let r = room[j];
+		if (r !== ROOM_UNSET) return r;
+		r = NO_ROOM;
+		const x = j % W;
+		const y = (j - x) / W;
+		for (let m = 0; m < DX8.size(); m++) {
+			const wx = x + DX8[m];
+			const wy = y + DY8[m];
+			if (wx < 0 || wy < 0 || wx >= W || wy >= H) continue;
+			const fj = wy * W + wx;
+			const t = grid[fj];
+			if (t !== TileType.FLOOR && t !== TileType.POOL) continue;
+			const fr = d.roomId[fj];
+			r = fr >= 0 && fr < roomCount ? fr : -1;
+			if (r >= 0) break;
+		}
+		room[j] = r;
+		return r;
+	};
 	const byDist: number[][] = [];
 	for (const c of shoulder) {
 		const k = dist[c];
@@ -1379,22 +1403,7 @@ function addVoidPieces(
 					break;
 				}
 				if (grid[j] !== TileType.WALL) continue;
-				let r = room[j];
-				if (r === ROOM_UNSET) {
-					r = NO_ROOM;
-					for (let m = 0; m < DX8.size(); m++) {
-						const wx = nx + DX8[m];
-						const wy = ny + DY8[m];
-						if (wx < 0 || wy < 0 || wx >= W || wy >= H) continue;
-						const fj = wy * W + wx;
-						const t = grid[fj];
-						if (t !== TileType.FLOOR && t !== TileType.POOL) continue;
-						const fr = d.roomId[fj];
-						r = fr >= 0 && fr < roomCount ? fr : -1;
-						if (r >= 0) break;
-					}
-					room[j] = r;
-				}
+				const r = wallRoom(j);
 				if (r >= 0) {
 					best = r;
 					break;
@@ -1518,6 +1527,41 @@ function addVoidPieces(
 	const curbsPerRoom = new Map<number, number>();
 	let standing = 0;
 	const spacing2 = P.tallMinSpacing * P.tallMinSpacing;
+	/**
+	 * VDD2 (docs/VOID_DECOR.md: standing pieces only on a room's far, screen-up side; the camera, at +X +Z, looks toward
+	 * -X -Z): marching screen-down along (+1, +1) from every cell of `f` (across the void and the wall), the first
+	 * walkable cell (floor, pool) is room `roomId`'s, within the cell's field distance + 1 + VOID_PIECES.farSideSlackTiles
+	 * steps (so the room lies in front of it, toward the camera), and no walkable cell lies screen-up of it along
+	 * (-1, -1) within nearSideReachTiles (so it stands on no room's camera side either).
+	 */
+	const farSide = (f: DecorFootprint, len: number, roomId: number): boolean => {
+		for (let i = 0; i < len; i++) {
+			const x = f.x0 + i * f.runX;
+			const y = f.y0 + i * f.runZ;
+			// across the void and the wall: the cell's field distance, one more step onto the floor, and the slack
+			const limit = dist[y * W + x] + 1 + P.farSideSlackTiles;
+			let front = false;
+			for (let k = 1; k <= limit; k++) {
+				const nx = x + k;
+				const ny = y + k;
+				if (nx >= W || ny >= H) break;
+				const j = ny * W + nx;
+				const t = grid[j];
+				if (t !== TileType.FLOOR && t !== TileType.POOL) continue;
+				front = d.roomId[j] === roomId;
+				break;
+			}
+			if (!front) return false;
+			for (let k = 1; k <= P.nearSideReachTiles; k++) {
+				const nx = x - k;
+				const ny = y - k;
+				if (nx < 0 || ny < 0) break;
+				const t = grid[ny * W + nx];
+				if (t === TileType.FLOOR || t === TileType.POOL) return false;
+			}
+		}
+		return true;
+	};
 	/** The surface top `f` stands on if it is legal for `kind` (see the file comment), else undefined; marks it taken. */
 	const tryStand = (f: DecorFootprint, kind: StandingKind, roomId: number): number | undefined => {
 		const counter = kind === "curb" ? curbsPerRoom : perRoom;
@@ -1534,7 +1578,7 @@ function addVoidPieces(
 			if (top === undefined) top = vtop[c];
 			else if (vtop[c] !== top) return undefined;
 		}
-		if (top === undefined) return undefined;
+		if (top === undefined || !farSide(f, len, roomId)) return undefined;
 		const ax0 = math.min(f.x0, f.x1);
 		const ax1 = math.max(f.x0, f.x1);
 		const ay0 = math.min(f.y0, f.y1);

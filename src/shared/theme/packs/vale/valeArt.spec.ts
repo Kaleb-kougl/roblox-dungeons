@@ -174,9 +174,8 @@ describe("vale decor art held to DECOR_BOX (docs/DECOR.md R5)", () => {
 					const fitted = decorPieceLayout(plan, i, own, decorOutline(art, facing));
 					expect([e.kind, fitted !== undefined]).toEqual([e.kind, true]);
 					const scale = own.pixelsPerTile / fitted!.pixelsPerTile;
-					// void ruin runs face either way (a run on a room's near side faces -X / -Z): wall3's renders for
-					// those normals fit their hull at 0.93 (measured: wallBroken 0.93-0.97, wall 0.985), far-wall ones
-					// at >= 0.95 like the decor's
+					// void ruin runs stand on rooms' far sides (VDD2), facing +X / +Z like far-wall dressing (>= 0.95);
+					// the floor keeps a margin for wall3's -X / -Z renders (0.93, measured before the far-side rule)
 					const min = e.kind === "wall" || e.kind === "wallBroken" ? VOID_RUN_MIN_SCALE : 1 - 1e-9;
 					expect([e.kind, e.faceX, e.faceZ, scale >= min]).toEqual([e.kind, e.faceX, e.faceZ, true]);
 				}

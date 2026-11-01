@@ -72,6 +72,14 @@ export const VOID_PIECES = {
 	tallPerRoom: 4,
 	/** ... and low curbs per room on top of them (the per-floor cap maxStanding counts both). */
 	curbPerRoom: 2,
+	/**
+	 * VDD2, far side only: a standing piece's room must lie screen-down of each of its cells: marching along (+1, +1)
+	 * (toward the camera) across the void and the wall, the first walkable cell is that room's, reached within the
+	 * cell's field distance + 1 plus this many steps (the slack lets a piece just past a room's back corner count) ...
+	 */
+	farSideSlackTiles: 2,
+	/** ... and no floor or pool cell lies within this many steps screen-up of it along (-1, -1) (no room's near side). */
+	nearSideReachTiles: 6,
 	/** Standing void pieces stand at least this far apart (Euclidean, between their nearest footprint cells). */
 	tallMinSpacing: 3,
 	/** ... and at least this far from every decor standing piece (Forge tall, far-wall dressing) and wall piece (torch). */

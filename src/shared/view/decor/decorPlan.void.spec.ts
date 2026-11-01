@@ -3,7 +3,8 @@
 // fade box, drop count and light list is exactly the plan without it. No void piece hides a walkable cell: standing
 // pieces by the same independent ray check decorPlan.spec uses (the block under the piece is the void surface, from the
 // floor to its top), flat pieces by a ray from every sampled bullet toward the camera to the decal's height. Caps,
-// spacing, determinism, biome void kinds, and a census line (per-floor void counts and plan timings).
+// spacing, standing pieces only on rooms' far sides (VDD2, by a diagonal march), determinism, biome void kinds, and a
+// census line (per-floor void counts and plan timings).
 // Census: endless floors through buildEndlessFloor (breakables, spawn, stairwell), runs 1-8 x floors 1, 3, 5 (boss),
 // 7, 10 (boss), 12, 15 (boss), 18 (every depth band), plus M1 floors.
 import { describe, expect, it } from "@rbxts/jest-globals";
@@ -102,6 +103,13 @@ for (const seed of [1, 7, 42]) {
 }
 
 const ALL: Floor[] = [...CENSUS, ...M1];
+
+/** The near-side check: no walkable cell this many tiles up-screen of a standing void piece ... */
+const FAR_SIDE_CLEAR_TILES = 6;
+/** ... and its room's floor within this many tiles down-screen (along +X +Z). */
+const FAR_SIDE_FRONT_TILES = 8;
+/** No walkable cell found by the march. */
+const NONE_FOUND = -2;
 
 const isVoidEntry = (e: DecorEntry) => e.source === "void";
 const standing = (e: DecorEntry) => e.layer === "tall" || e.layer === "low";
@@ -288,6 +296,38 @@ describe("decor plan with the void: placement", () => {
 			}
 		}
 		expect(p.list).toEqual([]);
+	});
+
+	it("stands every void piece on a room's far side (VDD2), checked by marching the grid's diagonals", () => {
+		// screen-up is -X -Z (the camera sits at +X +Z): no walkable cell up-screen of any of its cells within
+		// FAR_SIDE_CLEAR_TILES, and its room's floor down-screen within FAR_SIDE_FRONT_TILES
+		const p = new Problems();
+		const walkable = (d: Dungeon, x: number, y: number) => {
+			const t = tileAt(d, x, y);
+			return t === TileType.FLOOR || t === TileType.POOL;
+		};
+		let checked = 0;
+		for (const f of ALL) {
+			const { d, plan } = f;
+			for (const e of plan.entries) {
+				if (!isVoidEntry(e) || !standing(e)) continue;
+				checked++;
+				for (const [x, y] of cellsOf(e)) {
+					for (let k = 1; k <= FAR_SIDE_CLEAR_TILES; k++)
+						p.check(
+							!walkable(d, x - k, y - k),
+							() => `${at(plan, e)}: floor screen-up at ${x - k},${y - k}`,
+						);
+					// the first walkable cell down-screen is its room's
+					let front = NONE_FOUND;
+					for (let k = 1; k <= FAR_SIDE_FRONT_TILES && front === NONE_FOUND; k++)
+						if (walkable(d, x + k, y + k)) front = d.roomId[(y + k) * d.W + x + k];
+					p.check(front === e.roomId, () => `${at(plan, e)}: room ${e.roomId} not screen-down (${front})`);
+				}
+			}
+		}
+		expect(p.list).toEqual([]);
+		expect(checked).toBeGreaterThan(500);
 	});
 
 	it("plans a biome void kind only when the pack has art for it, under the same rules", () => {

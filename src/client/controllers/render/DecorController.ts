@@ -36,7 +36,8 @@ import {
 	studsX,
 	studsY,
 	studsZ,
-	voidInputOfLayout,
+	voidForceBand,
+	voidRunInput,
 	type DecorBody,
 	type DecorEntry,
 	type DecorFrame,
@@ -47,7 +48,6 @@ import {
 	type SpriteLayout,
 	type StandingKind,
 	type VoidPlan,
-	type VoidPlanInput,
 } from "shared/view";
 import { motionScale } from "shared/view/fx";
 import { FxTrackerController } from "../fx/FxTrackerController";
@@ -238,7 +238,7 @@ export class DecorController implements OnStart {
 		const depth = ctx.run.state.endless?.depth ?? 1;
 		const base: DecorPlanInput = layout !== undefined ? decorInputOfLayout(layout, depth) : { dungeon };
 		const forced = Workspace.GetAttribute(DECOR_DEPTH.forceBandAttribute);
-		const forceBand = typeIs(forced, "number") && forced === forced ? forced : undefined;
+		const forceBand = voidForceBand(forced);
 		const profile = decorProfile(base.floor ?? 1, base.depth ?? 1, dungeon.params.themeKey, forceBand);
 		const pack = this.theme.getPack();
 		const variants = new Map<DecorKind, ReadonlyArray<DecorPiece>>();
@@ -261,8 +261,8 @@ export class DecorController implements OnStart {
 		};
 		let voidPlan: VoidPlan | undefined;
 		if (Workspace.GetAttribute(VOID_VIEW.offAttribute) !== true) {
-			const voidBase: VoidPlanInput = layout !== undefined ? voidInputOfLayout(layout, depth) : { dungeon };
-			voidPlan = planVoidCached({ ...voidBase, forceBand });
+			// the same input VoidController builds (voidRunInput), so both read one cached plan
+			voidPlan = planVoidCached(voidRunInput(dungeon, layout, depth, forced));
 		}
 		const input: DecorPlanInput = {
 			...base,
