@@ -71,6 +71,8 @@ import type { RobloxAssetId } from "../../types";
  * 2026-10-31 7:20 AM by k9kbdev, transcribed from an Asset Manager screenshot.
  * The imp (Imp 9) and summoner (Demon Spawn 10) sets (docs/ENEMY_VARIANTS.md EV10: imp-* / summoner-* attack, body and
  * death sheets with their outlines) uploaded 2026-10-31 7:50 AM by k9kbdev, transcribed from an Asset Manager screenshot.
+ * loot-glint.png (the loaded barrel / crate twinkle, docs/BREAKABLE_DROPS.md; original art, scripts/art/gen-loot-glint.js)
+ * uploaded 2026-11-01, ID given by the owner.
  */
 export const VALE_ASSET_IDS: Readonly<Record<string, RobloxAssetId>> = {
 	"amb-b1.ogg": "rbxassetid://91158343621799",
@@ -113,6 +115,7 @@ export const VALE_ASSET_IDS: Readonly<Record<string, RobloxAssetId>> = {
 	"imp-body.png": "rbxassetid://130645679779456",
 	"imp-death-outline.png": "rbxassetid://134104614361499",
 	"imp-death.png": "rbxassetid://84336726009588",
+	"loot-glint.png": "rbxassetid://92133950711891",
 	"music-biome-1.ogg": "rbxassetid://93211571195066",
 	"music-biome-2.ogg": "rbxassetid://119153958408720",
 	"music-biome-3.ogg": "rbxassetid://132935445941795",
