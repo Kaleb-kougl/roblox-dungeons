@@ -31,13 +31,13 @@ import {
 	NEW_BEST_STRINGS,
 	SCORE_SOURCE_KEYS,
 	UI_ART,
+	bestBlockDrawsBestLine,
 	bestTargetKey,
 	bestText,
 	comboBestRichText,
 	comboTier,
 	formatClock,
 	formatCombo,
-	recordSavedKey,
 	runOverRibbonKey,
 } from "shared/view/hud";
 import {
@@ -231,67 +231,65 @@ function BestRibbon(props: { order: number; text: string }) {
  * record row bindings NewBestController rolls; none for a first record, whose ribbon says it) and the save chip
  * (recordSavedKey: `Saved` in gold once the accepted verdict carried the server's records, `Not saved: run not
  * verified` in uiHealth for a rejected one, nothing while waiting). No record: one dim line, the target for next time
- * (`Best 48210 · floor 9`, bestText run.best.target).
+ * (`Best 48210 · floor 9`, bestText run.best.target). What it draws is runOverBest's `lines` (shared/view/hud
+ * runOverBestLines); on a daily run it draws no save chip (the daily block's is the one, docs/DAILY.md DS11).
  */
 function BestBlock(props: { order: number; best: RunOverBest }) {
 	const b = props.best;
 	if (!b.ranked) return undefined;
 	const lines = new Array<React.Element>();
-	if (b.records.record) {
-		if (!b.records.first) {
-			const h = HUD_VIEW.textSize + FOOTPRINT_ESTIMATE.lineSlack;
-			b.records.rows.forEach((_, i) => {
-				const value = NEW_BEST_UI.recordRows[i];
-				if (value === undefined) return;
-				lines.push(
-					<textlabel
-						key={`Record${i}`}
-						LayoutOrder={i + 1}
-						Size={new UDim2(1, 0, 0, h)}
-						BackgroundTransparency={HIDDEN}
-						Font={HUD_FONT}
-						TextScaled={true}
-						TextSize={HUD_VIEW.textSize}
-						TextColor3={role(NEW_BEST_ROLE)}
-						TextStrokeColor3={role("background")}
-						TextStrokeTransparency={HUD_VIEW.panelTransparency}
-						TextXAlignment={Enum.TextXAlignment.Center}
-						Text={value.binding}
-					>
-						<uitextsizeconstraint MaxTextSize={HUD_VIEW.textSize} />
-					</textlabel>,
-				);
-			});
-		}
-		const saved = recordSavedKey(b.records, b.status);
-		if (saved !== undefined) {
+	if (b.lines.rows) {
+		const h = HUD_VIEW.textSize + FOOTPRINT_ESTIMATE.lineSlack;
+		b.records.rows.forEach((_, i) => {
+			const value = NEW_BEST_UI.recordRows[i];
+			if (value === undefined) return;
 			lines.push(
-				<Text
-					key="Saved"
-					order={lines.size() + 1}
-					fill={true}
-					size={HUD_VIEW.smallText}
-					color={saved === NEW_BEST_STRINGS.saved ? NEW_BEST_ROLE : "uiHealth"}
-					align={Enum.TextXAlignment.Center}
-					text={str(saved)}
-				/>,
+				<textlabel
+					key={`Record${i}`}
+					LayoutOrder={i + 1}
+					Size={new UDim2(1, 0, 0, h)}
+					BackgroundTransparency={HIDDEN}
+					Font={HUD_FONT}
+					TextScaled={true}
+					TextSize={HUD_VIEW.textSize}
+					TextColor3={role(NEW_BEST_ROLE)}
+					TextStrokeColor3={role("background")}
+					TextStrokeTransparency={HUD_VIEW.panelTransparency}
+					TextXAlignment={Enum.TextXAlignment.Center}
+					Text={value.binding}
+				>
+					<uitextsizeconstraint MaxTextSize={HUD_VIEW.textSize} />
+				</textlabel>,
 			);
-		}
-	} else {
-		const target = bestText(b.target, bestTargetKey(b.daily), str);
-		if (target !== "") {
-			lines.push(
-				<Text
-					key="Target"
-					order={1}
-					fill={true}
-					size={HUD_VIEW.smallText}
-					color="uiTextDim"
-					align={Enum.TextXAlignment.Center}
-					text={target}
-				/>,
-			);
-		}
+		});
+	}
+	const saved = b.lines.saved;
+	if (saved !== undefined) {
+		lines.push(
+			<Text
+				key="Saved"
+				order={lines.size() + 1}
+				fill={true}
+				size={HUD_VIEW.smallText}
+				color={saved === NEW_BEST_STRINGS.saved ? NEW_BEST_ROLE : "uiHealth"}
+				align={Enum.TextXAlignment.Center}
+				text={str(saved)}
+			/>,
+		);
+	}
+	const target = bestText(b.lines.target, bestTargetKey(b.daily), str);
+	if (target !== "") {
+		lines.push(
+			<Text
+				key="Target"
+				order={lines.size() + 1}
+				fill={true}
+				size={HUD_VIEW.smallText}
+				color="uiTextDim"
+				align={Enum.TextXAlignment.Center}
+				text={target}
+			/>,
+		);
 	}
 	if (lines.size() === 0) return undefined;
 	return (
@@ -440,8 +438,9 @@ export function RunOverPanel() {
 	const ribbon =
 		ribbonKey !== undefined ? <BestRibbon key="Ribbon" order={ROW.ribbon} text={str(ribbonKey)} /> : undefined;
 	const bestBlock = <BestBlock key="Best" order={ROW.best} best={best} />;
-	const recordRowsShown = best.ranked && best.records.record && !best.records.first;
-	const dailyBlock = <DailyResultBlock key="Daily" order={ROW.daily} recordRowsShown={recordRowsShown} />;
+	// One owner per piece (docs/DAILY.md DS11): the daily block's best-today line only when BestBlock draws no best line.
+	const bestLineShown = bestBlockDrawsBestLine(best.lines);
+	const dailyBlock = <DailyResultBlock key="Daily" order={ROW.daily} bestLineShown={bestLineShown} />;
 	const header = (
 		<RunOverHeader
 			key="Header"
@@ -557,7 +556,7 @@ export function RunOverPanel() {
 								</Column>
 								{s.scoring ? (
 									<Column order={2} width={right} gap={MENU_FIT.runOverLineGap}>
-										<DailyResultBlock key="Daily" order={-2} recordRowsShown={recordRowsShown} />
+										<DailyResultBlock key="Daily" order={-2} bestLineShown={bestLineShown} />
 										<DailyPassedRow key="DailyPassed" order={-1} />
 										{best.ranked ? <BestBlock key="Best" order={0} best={best} /> : undefined}
 										{breakdownLines(breakdown)}

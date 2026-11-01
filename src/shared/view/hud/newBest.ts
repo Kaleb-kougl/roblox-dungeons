@@ -25,8 +25,8 @@
  *     cue mapper's `NewBestCueSource` (shared/view/audio): `fanfare`, `recordFloor` (the floor enter of the first floor
  *     past it is replaced by the fanfare) and `recordRun` (the run-over jingle swap).
  *   - Text: `newBestRowText` (target row), `stageBestLine` (stairwell card's second line), `recordRowText` /
- *     `runOverRibbonKey` / `recordSavedKey` / `bestText` (run over, pause, menu). Numbers go through a caller's
- *     formatter (the HUD shows plain digits today; a thousands separator is the caller's choice).
+ *     `runOverRibbonKey` / `recordSavedKey` / `runOverBestLines` / `bestText` (run over, pause, menu). Numbers go
+ *     through a caller's formatter (the HUD shows plain digits today; a thousands separator is the caller's choice).
  *   - `runOverRecords`: the run-over record rows (old -> new, delta) from the baseline and the final score / floor, or
  *     from the server's verdict records once they arrive (they win: the server's replay is the record).
  *   - `confettiPieceAt`: one confetti piece's place at a time, in-run pieces kept outside HUD_CLEAR_ZONE.
@@ -856,6 +856,44 @@ export function bestTargetKey(daily = false): string {
 /** The baseline's record for bestText (known / none with numbers), else undefined. */
 export function baselineRecord(b: RunBaseline): NewBestRecord | undefined {
 	return b.kind === "known" || b.kind === "none" ? { score: b.score, floor: b.floor } : undefined;
+}
+
+/**
+ * What new best's run-over block (the client's BestBlock) draws for a ranked run, decided once so the daily block
+ * (dailyResultBlock's `bestLineShown`) never repeats it (docs/DAILY.md DS11: one owner per piece on a daily run).
+ */
+export interface RunOverBestLines {
+	/** The record rows roll (`Score 48210 -> 61930`): a record over an earlier best (a first record has none). */
+	readonly rows: boolean;
+	/** The dim target line's record (`Best ...` / `Best today ...`): a run with no record, a best above 0; else none. */
+	readonly target: NewBestRecord | undefined;
+	/**
+	 * The save chip (recordSavedKey) on an endless run; never on a daily run, whose single Saved / Not saved chip is the
+	 * daily block's (from `verdict.daily.posted`).
+	 */
+	readonly saved: string | undefined;
+}
+
+/** BestBlock's lines from the run's record, verdict status and target (runOverBest's fields); none when unranked. */
+export function runOverBestLines(
+	ranked: boolean,
+	records: RunOverRecords,
+	status: NewBestVerdictStatus,
+	target: NewBestRecord | undefined,
+	daily: boolean,
+): RunOverBestLines {
+	if (!ranked) return { rows: false, target: undefined, saved: undefined };
+	const shownTarget = !records.record && target !== undefined && whole(target.score) > 0 ? target : undefined;
+	return {
+		rows: records.record && !records.first && records.rows.size() > 0,
+		target: shownTarget,
+		saved: daily ? undefined : recordSavedKey(records, status),
+	};
+}
+
+/** BestBlock draws a best line (record rows or the target line): the daily block then leaves out its best-today line. */
+export function bestBlockDrawsBestLine(lines: RunOverBestLines): boolean {
+	return lines.rows || lines.target !== undefined;
 }
 
 // ---------------------------------------------------------------------------------------------------------------

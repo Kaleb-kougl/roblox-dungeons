@@ -13,8 +13,14 @@
  *   not saved     rejected, skipped (never submitted), accepted without a daily result (an ineligible run: Studio, a
  *                 private server, debug) or accepted with `posted: false` (the write did not land in time): `Not saved`;
  *                 a not-posted result still shows any standing it carries
- * When new best's block already rolls this run's record rows (`recordRowsShown`, its daily baseline = best today: DS10),
- * the best-today line is left to it.
+ *
+ * One owner per piece on a daily run (new best's block, the client's BestBlock, sits above this one): new best keeps
+ * the celebration (ribbon, record rows rolling, the dim `Best today ...` target line of a run with no record); this
+ * block owns the standing, the entrants, the countdown and the ONE save chip (new best draws none on a daily run:
+ * runOverBestLines), and draws its best-today line only when new best's block draws no best line for this run
+ * (`bestLineShown`: bestBlockDrawsBestLine). In practice: an improved run shows new best's `23,410 -> 26,870` row and
+ * no daily best line; a first run of the day shows the FIRST RUN TODAY ribbon (no rows) and `Best today 26,870` here; a
+ * run that did not improve shows new best's `Best today 23,410` target line only.
  */
 import type { DailyRunResult } from "shared/daily";
 import { dailyLabel } from "shared/daily";
@@ -34,8 +40,11 @@ export interface DailyResultInput {
 	readonly score: number;
 	/** The Daily the run counts on, when known without a result (the client's status label for the run's day). */
 	readonly label?: number;
-	/** New best's block already draws this run's record rows (old -> new): the best-today line is left to it. */
-	readonly recordRowsShown?: boolean;
+	/**
+	 * New best's block already draws a best line for this run (its record rows or its `Best today ...` target line:
+	 * bestBlockDrawsBestLine): the best-today line is left to it.
+	 */
+	readonly bestLineShown?: boolean;
 }
 
 export interface DailyResultBlock {
@@ -68,7 +77,7 @@ export function dailyResultBlock(input: DailyResultInput): DailyResultBlock | un
 			: undefined;
 	let best: DailyLine | undefined;
 	let improved = false;
-	if (r.posted && input.recordRowsShown !== true) {
+	if (r.posted && input.bestLineShown !== true) {
 		const now = formatThousands(input.score);
 		if (r.improved && r.previous !== undefined) {
 			improved = true;

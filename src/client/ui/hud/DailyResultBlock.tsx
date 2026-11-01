@@ -13,12 +13,13 @@ const HIDDEN = 1;
 /**
  * The run-over panel's daily block (docs/DAILY.md DS11), daily runs only (nothing otherwise: the endless panel is
  * unchanged). Lines (shared/view/hud dailyResultBlock): `Daily #304`; the standing (`#38 today`, `Top 14%`, `#3 of 12
- * today`) and `of 1,240 players`; `Best today 23,410 -> 26,870` (accent when improved; left to new best's rows when
- * they roll this run's record: `recordRowsShown`); the save chip from `verdict.daily.posted` (`Saved` accent / `Not
- * saved` uiHealth; nothing while the verdict is out: the server may wait up to 15 s for the post); the countdown
+ * today`) and `of 1,240 players`; `Best today 23,410 -> 26,870` (accent when improved; left out when new best's block
+ * draws a best line this run, its record rows or its target line: `bestLineShown`); the run's ONE save chip, from
+ * `verdict.daily.posted` (`Saved` accent / `Not saved` uiHealth; nothing while the verdict is out: the server may
+ * wait up to 15 s for the post; new best's block draws none on a daily run); the countdown
  * (`New daily in 5:10:02`, a per-second binding). Retry Daily is the panel's first exit button (RunOverPanel).
  */
-export function DailyResultBlock(props: { order: number; recordRowsShown: boolean }) {
+export function DailyResultBlock(props: { order: number; bestLineShown: boolean }) {
 	const info = useSelector(selectRunInfo);
 	const verdict = useSelector(selectVerdict);
 	const snapshot = useSelector(selectSnapshot);
@@ -35,7 +36,7 @@ export function DailyResultBlock(props: { order: number; recordRowsShown: boolea
 		result: current ? verdict.daily : undefined,
 		score: (accepted ? verdict.serverScore : undefined) ?? snapshot.score,
 		label: status?.label,
-		recordRowsShown: props.recordRowsShown,
+		bestLineShown: props.bestLineShown,
 	});
 	if (block === undefined) return undefined;
 	// Three short rows so the panel grows by little (a desktop panel is never scaled to fit): the day and the

@@ -3,10 +3,12 @@ import {
 	baselineRecord,
 	dailyServerRecords,
 	isDailyBaseline,
+	runOverBestLines,
 	runOverRecords,
 	type NewBestRecord,
 	type NewBestVerdictStatus,
 	type RunBaseline,
+	type RunOverBestLines,
 	type RunOverRecords,
 } from "shared/view/hud";
 
@@ -20,6 +22,11 @@ export interface RunOverBest {
 	readonly target: NewBestRecord | undefined;
 	/** A daily run (docs/DAILY.md DS10): best today, its strings (ribbon, record row, target line). */
 	readonly daily: boolean;
+	/**
+	 * What BestBlock draws (shared/view/hud runOverBestLines): record rows, the target line, the save chip (none on a
+	 * daily run: the daily block owns it). DailyResultBlock reads it to leave out its best-today line (DS11).
+	 */
+	readonly lines: RunOverBestLines;
 }
 
 const UNRANKED: RunOverBest = {
@@ -28,6 +35,7 @@ const UNRANKED: RunOverBest = {
 	status: "pending",
 	target: undefined,
 	daily: false,
+	lines: { rows: false, target: undefined, saved: undefined },
 };
 
 /**
@@ -59,5 +67,6 @@ export function runOverBest(
 			? runOverRecords(baseline, verdict.serverScore ?? score, verdict.serverFloor ?? floor, server)
 			: runOverRecords(baseline, score, floor);
 	const target = server !== undefined ? server.previous : baselineRecord(baseline);
-	return { ranked: true, records, status, target, daily };
+	const lines = runOverBestLines(true, records, status, target, daily);
+	return { ranked: true, records, status, target, daily, lines };
 }

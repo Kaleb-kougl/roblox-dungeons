@@ -29,8 +29,20 @@ import {
 	leaderboardTabRequest,
 	standingOf,
 	withLeaderboardTab,
+	DAILY_STRINGS,
+	baselineRecord,
+	bestBlockDrawsBestLine,
+	bestTargetKey,
+	bestText,
+	dailyServerRecords,
+	recordRowText,
+	runOverBestLines,
+	runOverRecords,
+	runOverRibbonKey,
 	type DailyLine,
 	type DailyResultInput,
+	type DailyResultStatus,
+	type RunBaseline,
 } from "shared/view/hud";
 
 const quiet = (): void => {};
@@ -246,7 +258,7 @@ describe("run-over daily block", () => {
 			input({ result: { ...RESULT, improved: false, previous: { score: 30000, floor: 12 } } }),
 		);
 		expect([kept?.best, kept?.improved]).toEqual(["Best today 30,000", false]);
-		expect(blockText(input({ recordRowsShown: true }))?.best).toBe(undefined);
+		expect(blockText(input({ bestLineShown: true }))?.best).toBe(undefined);
 	});
 
 	it("not saved: the write did not land, rejected, skipped, or an accepted run without a daily result", () => {
@@ -260,5 +272,131 @@ describe("run-over daily block", () => {
 		expect(blockText(input({ status: "skipped", result: undefined }))?.saved).toBe("unsaved");
 		// (Built without the default result: a spread `undefined` is nil in Luau and keeps the default.)
 		expect(blockText({ daily: true, status: "accepted", score: 26870 })?.saved).toBe("unsaved");
+	});
+});
+
+/**
+ * The run-over panel of a daily run as the client composes it (client/ui runOverBest -> BestBlock, then
+ * DailyResultBlock): every line both blocks draw, in order, with the real placeholder strings.
+ */
+function dailyPanel(
+	baseline: RunBaseline,
+	status: DailyResultStatus,
+	result: DailyRunResult | undefined,
+	score: number,
+) {
+	const accepted = status === "accepted";
+	const server = accepted ? dailyServerRecords(result) : undefined;
+	const records =
+		server !== undefined ? runOverRecords(baseline, score, 9, server) : runOverRecords(baseline, score, 9);
+	const target = server !== undefined ? server.previous : baselineRecord(baseline);
+	const lines = runOverBestLines(true, records, status, target, true);
+	const best: string[] = [];
+	if (lines.rows) for (const row of records.rows) best.push(recordRowText(row, row.to, str, formatThousands, true));
+	if (lines.saved !== undefined) best.push(str(lines.saved));
+	const targetText = bestText(lines.target, bestTargetKey(true), str, formatThousands);
+	if (targetText !== "") best.push(targetText);
+	const block = dailyResultBlock({
+		daily: true,
+		status,
+		result,
+		score,
+		label: 304,
+		bestLineShown: bestBlockDrawsBestLine(lines),
+	});
+	const daily: string[] = [];
+	for (const line of [block?.title, block?.standing, block?.entrants, block?.best]) {
+		const t = text(line);
+		if (t !== undefined) daily.push(t);
+	}
+	if (block?.saved !== undefined) {
+		daily.push(str(block.saved === "saved" ? DAILY_STRINGS.resultSaved : DAILY_STRINGS.resultUnsaved));
+	}
+	const ribbonKey = runOverRibbonKey(records, true);
+	return { ribbon: ribbonKey !== undefined ? str(ribbonKey) : undefined, best, daily };
+}
+
+/** How many of the panel's lines start with `prefix`. */
+function count(panel: { best: string[]; daily: string[] }, prefix: string): number {
+	let n = 0;
+	for (const line of [...panel.best, ...panel.daily]) if (line.sub(1, prefix.size()) === prefix) n++;
+	return n;
+}
+
+describe("run over on a daily run: one owner per piece (new best's block, then the daily block)", () => {
+	const known: RunBaseline = { kind: "known", board: "solo", score: 23410, floor: 0, daily: true };
+	const first: RunBaseline = { kind: "none", board: "solo", score: 0, floor: 0, daily: true };
+
+	it("improved: new best's record row, then the standing and ONE Saved chip (no second best-today line)", () => {
+		const p = dailyPanel(known, "accepted", { ...RESULT, rank: 38, total: 1240 }, 26870);
+		expect(p).toEqual({
+			ribbon: "NEW BEST TODAY!",
+			best: ["Best today 23,410 -> 26,870 (+3,460)"],
+			daily: ["Daily #304", "#38 today", "of 1,240 players", "Saved"],
+		});
+		expect([count(p, "Saved"), count(p, "Best today")]).toEqual([1, 1]);
+	});
+
+	it("first run today: the FIRST RUN TODAY ribbon (no rows), the daily block's Best today line and ONE Saved chip", () => {
+		const p = dailyPanel(first, "accepted", { ...RESULT, previous: undefined, rank: 1, total: 1 }, 26870);
+		expect(p).toEqual({
+			ribbon: "FIRST RUN TODAY",
+			best: [],
+			daily: ["Daily #304", "#1 of 1 today", "Best today 26,870", "Saved"],
+		});
+	});
+
+	it("not improved: new best's dim Best today target line only once, then the standing and Saved", () => {
+		const kept = { ...RESULT, improved: false, previous: { score: 30000, floor: 12 }, rank: 12, total: 1240 };
+		const p = dailyPanel(known, "accepted", kept, 26870);
+		expect(p).toEqual({
+			ribbon: undefined,
+			best: ["Best today 30,000"],
+			daily: ["Daily #304", "#12 today", "of 1,240 players", "Saved"],
+		});
+		expect([count(p, "Saved"), count(p, "Best today")]).toEqual([1, 1]);
+	});
+
+	it("not saved: rejected or not posted, ONE Not saved chip (new best draws no unsaved chip on a daily run)", () => {
+		const rejected = dailyPanel(known, "rejected", undefined, 26870);
+		expect(rejected).toEqual({
+			ribbon: "NEW BEST TODAY!",
+			best: ["Best today 23,410 -> 26,870 (+3,460)"],
+			daily: ["Daily #304", "Not saved"],
+		});
+		const late = dailyPanel(
+			known,
+			"accepted",
+			{ ...RESULT, posted: false, improved: false, previous: undefined },
+			26870,
+		);
+		expect(late).toEqual({ ribbon: undefined, best: [], daily: ["Daily #304", "Not saved"] });
+		expect([count(rejected, "Not saved"), count(late, "Not saved")]).toEqual([1, 1]);
+	});
+
+	it("waiting: new best's guess (rows or target) and the daily title only, no chip anywhere", () => {
+		expect(dailyPanel(known, "pending", undefined, 26870)).toEqual({
+			ribbon: "NEW BEST TODAY!",
+			best: ["Best today 23,410 -> 26,870 (+3,460)"],
+			daily: ["Daily #304"],
+		});
+		expect(dailyPanel(known, "pending", undefined, 100)).toEqual({
+			ribbon: undefined,
+			best: ["Best today 23,410"],
+			daily: ["Daily #304"],
+		});
+	});
+
+	it("the endless save chip is unchanged (new best's own, never on a daily run)", () => {
+		const endless: RunBaseline = { kind: "known", board: "solo", score: 100, floor: 2 };
+		const server = { scoreImproved: true, floorImproved: false, previous: { score: 100, floor: 2 } };
+		const records = runOverRecords(endless, 500, 2, server);
+		expect(runOverBestLines(true, records, "accepted", server.previous, false).saved).toBe("run.best.saved");
+		expect(runOverBestLines(true, records, "accepted", server.previous, true).saved).toBe(undefined);
+		expect(runOverBestLines(false, records, "accepted", server.previous, false)).toEqual({
+			rows: false,
+			target: undefined,
+			saved: undefined,
+		});
 	});
 });
