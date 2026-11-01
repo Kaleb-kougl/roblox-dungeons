@@ -8,9 +8,10 @@
 // l10n/glossary.json (L7; missing ones are a warning), l10n/columns.json (locale column headers) and the generated
 // tables in src/shared/theme/locales. Writes l10n/out/kv-strings.csv, then kv-strings-2.csv, -3, ... (at most 1,000
 // rows each: Roblox's per-upload limit). Columns: Key, Source, Context, Example, then one per target locale holding
-// the current (non-stale) translation, so a re-upload never wipes the cloud's translations. Developer keys
-// (DEV_ONLY_STRING_PREFIXES) are never exported. --changed: only keys whose English changed since the last import
-// (a table's srcHash differs) or that no table has yet.
+// the current (non-stale) translation, so a re-upload never wipes the cloud's translations. Only translatable keys
+// are exported (the dump's flags from shared/l10n isTranslatableStringKey: no developer key, no `fx.cap`).
+// --changed: only keys whose English changed since the last import (a table's srcHash differs) or that no table has
+// yet.
 //
 // Upload the files in the Creator Hub: Localization -> Table Management (docs/LOCALIZATION.md design 4).
 "use strict";
@@ -41,7 +42,7 @@ function runExport(opts = {}) {
 	const { tables, errors } = lib.readTables(paths.localesDir, locales);
 	if (errors.length > 0) throw new Error(`unreadable locale table(s):\n  ${errors.join("\n  ")}`);
 
-	let keys = lib.playerFacingKeys(source);
+	let keys = lib.translatableKeys(source);
 	if (opts.changed) {
 		keys = keys.filter((key) => {
 			const hash = lib.sourceHash(source.strings[key]);

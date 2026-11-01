@@ -1,5 +1,14 @@
 import { describe, expect, it } from "@rbxts/jest-globals";
-import { isDevOnlyStringKey, LOCALES, localeDef, PSEUDO_LOCALE, SOURCE_LOCALE, sourceHash } from "shared/l10n";
+import {
+	isDevOnlyStringKey,
+	isTranslatableStringKey,
+	LOCALES,
+	localeDef,
+	PSEUDO_LOCALE,
+	SOURCE_LOCALE,
+	sourceHash,
+	UNTRANSLATED_STRING_KEYS,
+} from "shared/l10n";
 
 describe("sourceHash", () => {
 	it("is FNV-1a 32 over UTF-8 bytes (published vectors)", () => {
@@ -45,5 +54,17 @@ describe("isDevOnlyStringKey", () => {
 		expect(isDevOnlyStringKey("playtest.run.over")).toBe(false);
 		expect(isDevOnlyStringKey("playtest.run.kills")).toBe(false);
 		expect(isDevOnlyStringKey("playtest.run.attempt")).toBe(true);
+	});
+});
+
+describe("isTranslatableStringKey", () => {
+	it("is neither developer-only nor untranslated", () => {
+		expect(isTranslatableStringKey("hud.score")).toBe(true);
+		expect(isTranslatableStringKey("playtest.run.over")).toBe(true);
+		expect(isTranslatableStringKey("playtest.badge")).toBe(false);
+		expect(isTranslatableStringKey("hud.debug.net")).toBe(false);
+		expect(UNTRANSLATED_STRING_KEYS.includes("fx.cap")).toBe(true);
+		expect(isTranslatableStringKey("fx.cap")).toBe(false);
+		expect(isDevOnlyStringKey("fx.cap")).toBe(false);
 	});
 });

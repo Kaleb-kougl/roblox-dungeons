@@ -20,6 +20,7 @@ import {
 	ThemeCore,
 	ThemePack,
 	THEME_PACKS,
+	breaksAllCaps,
 	hasLowercase,
 	isAllCaps,
 	isLowercaseCodepoint,
@@ -44,6 +45,8 @@ const DE: LocaleTable = {
 	"hud.weaponSet": entry("hud.weaponSet", "Satz {n"),
 	// developer-only: never used
 	"playtest.badge": entry("playtest.badge", "Testversion {version} · {key}"),
+	// untranslated (the digit font has no other letters): never used
+	"fx.cap": entry("fx.cap", "KAPP"),
 	// not in the English table
 	"no.such.key": ["x", 1],
 };
@@ -86,6 +89,14 @@ describe("theme locale lookup", () => {
 	it("keeps developer-only keys English", () => {
 		expect(pack("de").str("playtest.badge")).toBe(EN["playtest.badge"]);
 		expect(pack(PSEUDO_LOCALE).str("hud.debug.replayHint")).toBe(EN["hud.debug.replayHint"]);
+	});
+
+	it("keeps untranslated keys English: no table entry, manifest override or pseudo-locale", () => {
+		expect(pack("de").str("fx.cap")).toBe("CAP");
+		expect(pack(PSEUDO_LOCALE).str("fx.cap")).toBe("CAP");
+		const m = deepClone(PLACEHOLDER_MANIFEST) as unknown as Obj;
+		m.locales = { de: { "fx.cap": "KAPP" } };
+		expect(pack("de", m).str("fx.cap")).toBe("CAP");
 	});
 
 	it("lets the pack's own manifest locales override the generated table", () => {
@@ -152,6 +163,7 @@ describe("validateLocaleTable", () => {
 	it("reports unknown and developer keys, bad entries, braces and placeholder multisets", () => {
 		const problems = validateLocaleTable(EN, DE, "latin");
 		expect(problems.map((p) => `${p.key}: ${p.message}`)).toEqual([
+			"fx.cap: is an untranslated key (UNTRANSLATED_STRING_KEYS: always English)",
 			"hud.dead: placeholders none differ from the English {key}",
 			"hud.weaponSet: has a malformed placeholder (use {name} with letters, digits or _)",
 			"hud.weaponSet: placeholders none differ from the English {n}",
@@ -163,11 +175,43 @@ describe("validateLocaleTable", () => {
 			"must be [text, srcHash] (a string and an unsigned 32-bit integer)",
 		]);
 		expect(validateLocaleTable(EN, { "menu.play": ["Spielen", -1] }, "latin").size()).toBe(1);
-		expect(validateLocaleTable(EN, { "hud.level": ["{level} {level}", 0] }, "cjk").size()).toBe(1);
+		expect(validateLocaleTable(EN, { "hud.level": entry("hud.level", "{level} {level}") }, "cjk").size()).toBe(1);
 	});
 
 	it("does not treat a stale hash as a problem", () => {
 		expect(validateLocaleTable(EN, { "hud.paused": ["Pausiert", 0] }, "latin")).toEqual([]);
+	});
+
+	it("skips the placeholder and caps checks of a stale entry, still flagging unknown keys and malformed entries", () => {
+		// Stale: translated from older English (the pipeline writes the hash of the CSV's Source).
+		const old = (text: string) => sourceHash(text);
+		const stale: LocaleTable = {
+			"hud.level": ["Niveau {lvl}", old("Level {lvl}")],
+			"hud.combo.rampage": ["Randale", old("Rampage")],
+			"hud.paused": ["Pausiert", old("Pause")],
+		};
+		expect(validateLocaleTable(EN, stale, "latin")).toEqual([]);
+		// The same texts translated from the current English are problems.
+		const current: LocaleTable = {
+			"hud.level": entry("hud.level", "Niveau {lvl}"),
+			"hud.combo.rampage": entry("hud.combo.rampage", "Randale"),
+		};
+		expect(validateLocaleTable(EN, current, "latin").map((p) => p.key)).toEqual(["hud.combo.rampage", "hud.level"]);
+		// Braces, UTF-8, unknown and developer keys, and the entry's shape are checked whatever the hash.
+		const bad = {
+			"hud.weaponSet": ["Satz {n", old("Weapon set {n}")],
+			"menu.play": [string.char(0xff), old("Go")],
+			"no.such.key": ["x", old("x")],
+			"playtest.badge": ["Test", old("Playtest")],
+			"hud.score": ["Punkte"],
+		} as unknown as LocaleTable;
+		expect(validateLocaleTable(EN, bad, "latin").map((p) => `${p.key}: ${p.message}`)).toEqual([
+			"hud.score: must be [text, srcHash] (a string and an unsigned 32-bit integer)",
+			"hud.weaponSet: has a malformed placeholder (use {name} with letters, digits or _)",
+			"menu.play: is not valid UTF-8",
+			"no.such.key: not in the English string table",
+			"playtest.badge: is a developer-only key (never translated)",
+		]);
 	});
 
 	it("keeps all-caps English all caps in Latin and Cyrillic, placeholders aside", () => {
@@ -189,10 +233,42 @@ describe("validateLocaleTable", () => {
 		expect(t("БОЙНЯ", "cyrillic")).toBe(0);
 		expect(t("Бойня", "cyrillic")).toBe(1);
 		expect(t("暴れ", "cjk")).toBe(0);
-		expect(validateLocaleTable(EN, { "hud.best.over": ["NOUVEAU RECORD +{points}", 0] }, "latin")).toEqual([]);
+		expect(
+			validateLocaleTable(EN, { "hud.best.over": entry("hud.best.over", "NOUVEAU RECORD +{points}") }, "latin"),
+		).toEqual([]);
 		expect(hasLowercase("ABC {points}")).toBe(false);
 		expect(isLowercaseCodepoint(0x131)).toBe(true); // ı
 		expect(isLowercaseCodepoint(0x130)).toBe(false); // İ
+	});
+
+	it("applies the all-caps rule shared with the node pipeline (scripts/l10n lib.test.js CAPS_VECTORS)", () => {
+		// [English, translation, script, accepted]. Keep this list identical to lib.test.js CAPS_VECTORS.
+		const CAPS_VECTORS: ReadonlyArray<readonly [string, string, "latin" | "cyrillic" | "cjk", boolean]> = [
+			["NEW BEST", "NEUER REKORD", "latin", true],
+			["BIG", "GROẞ", "latin", true],
+			["STREET", "STRAßE", "latin", true],
+			["NEW", "Neuer", "latin", false],
+			["STAGE", "ÉTAPE", "latin", true],
+			["STAGE", "étape", "latin", false],
+			["STAGE", "ÉTAPe", "latin", false],
+			["CITY", "İSTANBUL", "latin", true],
+			["CITY", "ıSTANBUL", "latin", false],
+			["MORNING", "BUỔI SÁNG", "latin", true],
+			["MORNING", "BUỔI SÁNg", "latin", false],
+			["RECORD", "РЕКОРД", "cyrillic", true],
+			["RECORD", "Рекорд", "cyrillic", false],
+			["NEW BEST +{points}", "NOUVEAU RECORD +{points}", "latin", true],
+			["CLEAR {n}/{total}!", "ЗАЧИЩЕНО {n}/{total}!", "cyrillic", true],
+			["3 KILLS - 100%", "3 ABATES — 100 %", "latin", true],
+			["3 KILLS", "3 abates", "latin", false],
+			["KRA", "ĸRA", "latin", true],
+			["BIG", "ƀIG", "latin", true],
+			["Run over", "partie finie", "latin", true],
+			["RECORD", "记录 record", "cjk", true],
+		];
+		for (const [english, text, writing, accepted] of CAPS_VECTORS) {
+			expect([english, text, breaksAllCaps(english, text, writing)]).toEqual([english, text, !accepted]);
+		}
 	});
 
 	it("flags invalid UTF-8", () => {

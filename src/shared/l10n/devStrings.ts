@@ -23,3 +23,19 @@ export function isDevOnlyStringKey(key: string): boolean {
 	if (DEV_ONLY_STRING_EXCEPTIONS.includes(key)) return false;
 	return DEV_ONLY_STRING_PREFIXES.some((p) => key.sub(1, p.size()) === p);
 }
+
+/**
+ * Player-facing keys that stay English in every locale: `fx.cap` (the damage numbers' CAP beside a boss) is drawn
+ * with the digit font (shared/theme DIGIT_FONT), whose glyphs are only `0-9 + - C A P !`. Never exported, never
+ * looked up in a locale table, no translator context.
+ */
+export const UNTRANSLATED_STRING_KEYS: ReadonlyArray<string> = ["fx.cap"];
+
+/**
+ * The one rule for "is this key translated?": neither developer-only (isDevOnlyStringKey) nor in
+ * UNTRANSLATED_STRING_KEYS. The theme's locale lookup, the locale-table validator and the l10n pipeline (through
+ * the Lune dump, scripts/l10n/dump-strings.luau) all use it.
+ */
+export function isTranslatableStringKey(key: string): boolean {
+	return !isDevOnlyStringKey(key) && !UNTRANSLATED_STRING_KEYS.includes(key);
+}

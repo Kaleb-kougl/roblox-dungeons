@@ -37,8 +37,10 @@ const STRINGS = {
 	"room.perfect": "PERFECT",
 	"tutorial.multi": 'Press "{key}",\nthen roll.',
 	"playtest.badge": "PLAYTEST",
+	"playtest.run.over": "Run over",
 	"hud.debug": "fps {fps}",
 	"hud.debug.net": "ping {ms}",
+	"fx.cap": "CAP",
 };
 
 const CONTEXT = {
@@ -51,6 +53,7 @@ const CONTEXT = {
 	"hud.combo": { note: "Combo shout; {n} tier number, {name} tier name", example: { n: 3, name: "Carnage" } },
 	"room.perfect": { note: "Room clear stamp", max: 10 },
 	"tutorial.multi": { note: "Tutorial prompt; {key} is a key name", example: { key: "Space" } },
+	"playtest.run.over": { note: "Run over panel title" },
 };
 
 const GLOSSARY = { terms: [{ term: "Kaleb-Vale", meaning: "the game's name", translate: false }] };
@@ -69,10 +72,18 @@ function makeRoot(strings = STRINGS, extra = {}) {
 	return paths;
 }
 
+/** The dump's key flags, as shared/l10n isDevOnlyStringKey / isTranslatableStringKey would compute them. */
+const DEV_EXCEPTIONS = ["playtest.run.over"];
+const UNTRANSLATED = ["fx.cap"];
+const isDev = (k) => (k.startsWith("playtest.") || k.startsWith("hud.debug")) && !DEV_EXCEPTIONS.includes(k);
+
 function writeSource(paths, strings) {
 	fs.mkdirSync(path.dirname(paths.source), { recursive: true });
 	const srcHashes = Object.fromEntries(Object.entries(strings).map(([k, v]) => [k, lib.sourceHash(v)]));
-	const doc = { strings, srcHashes, devOnlyPrefixes: ["playtest.", "hud.debug"], locales: LOCALES };
+	const keys = Object.keys(strings).sort();
+	const devOnlyKeys = keys.filter(isDev);
+	const untranslatedKeys = keys.filter((k) => !isDev(k) && UNTRANSLATED.includes(k));
+	const doc = { strings, srcHashes, devOnlyKeys, untranslatedKeys, locales: LOCALES };
 	fs.writeFileSync(paths.source, JSON.stringify(doc));
 }
 
@@ -91,6 +102,7 @@ const FILL = {
 		"hud.combo": "¡x{n} {name}!",
 		"room.perfect": "PERFECTO",
 		"tutorial.multi": 'Pulsa "{key}",\nluego rueda.',
+		"playtest.run.over": "Fin de la partida",
 	},
 	ja: {
 		"hud.score": "スコア {score}",
@@ -124,7 +136,7 @@ function snapshot(dir) {
 }
 
 describe("l10n:export", () => {
-	it("writes Key, Source, Context, Example and the locale columns; no developer key, no source or pseudo column", () => {
+	it("writes Key, Source, Context, Example and the locale columns; no developer or untranslated key, no source or pseudo column", () => {
 		const paths = makeRoot();
 		const r = runExport({ paths, ...quiet });
 		assert.deepEqual(r.files, [path.join(paths.outDir, "kv-strings.csv")]);
@@ -132,8 +144,10 @@ describe("l10n:export", () => {
 		assert.deepEqual(rows[0], ["Key", "Source", "Context", "Example", "es", "ja", "pt", "ar"]);
 		const keys = rows.slice(1).map((row) => row[0]);
 		assert.deepEqual(keys, [...keys].sort());
-		assert.equal(keys.length, 9);
-		for (const k of keys) assert.ok(!k.startsWith("playtest.") && !k.startsWith("hud.debug"), k);
+		assert.equal(keys.length, 10);
+		for (const k of keys) assert.ok(k === "playtest.run.over" || !isDev(k), k);
+		assert.ok(keys.includes("playtest.run.over")); // a developer prefix's player-visible exception
+		assert.ok(!keys.includes("fx.cap")); // untranslated
 		const byKey = Object.fromEntries(rows.slice(1).map((row) => [row[0], row]));
 		assert.deepEqual(byKey["hud.score"].slice(1, 4), [
 			"Score {score}",
@@ -210,7 +224,7 @@ describe("export -> edited CSV -> import -> export round trip", () => {
 		const es = lib.parseTable(tables1["es.ts"]);
 		assert.deepEqual(es.get("hud.score"), ["Puntos {score}", lib.sourceHash("Score {score}")]);
 		assert.equal(es.get("tutorial.multi")[0], 'Pulsa "{key}",\nluego rueda.');
-		assert.equal(es.size, 9);
+		assert.equal(es.size, 10);
 
 		const reexport = runExport({ paths, ...quiet }).files[0];
 		assert.equal(fs.readFileSync(reexport, "utf8"), edited);
@@ -292,12 +306,13 @@ describe("l10n:import", () => {
 			[...HEADER, "Klingon", "en"],
 			["gone.key", "Old", "", "", "Viejo", "", "x", "Old"],
 			["playtest.badge", "PLAYTEST", "", "", "PRUEBA", "", "", ""],
+			["fx.cap", "CAP", "", "", "TOPE", "", "", ""],
 			["", "captured text", "", "", "texto", "", "", ""],
 		]);
 		assert.deepEqual(r.written, []);
-		assert.deepEqual(r.stats.get("es").unknown, ["gone.key", "playtest.badge"]);
+		assert.deepEqual(r.stats.get("es").unknown, ["gone.key", "playtest.badge", "fx.cap"]);
 		const report = fs.readFileSync(paths.report, "utf8");
-		assert.match(report, /## Unknown keys[\s\S]*`gone\.key`, `playtest\.badge`/);
+		assert.match(report, /## Unknown keys[\s\S]*`fx\.cap`, `gone\.key`, `playtest\.badge`/);
 		assert.match(report, /unmapped columns.*"Klingon"/);
 		assert.match(report, /ignored columns.*"en" \(en\)/);
 		assert.match(report, /1 row\(s\) without a Key/);
@@ -383,29 +398,53 @@ describe("l10n:check", () => {
 
 	it("fails on an unknown key, a developer key, an unparseable table or an out-of-date index", () => {
 		const paths = makeRoot();
-		writeTable(paths, "es", { "gone.key": ["x", 1], "playtest.badge": ["PRUEBA", 2] });
+		writeTable(paths, "es", { "gone.key": ["x", 1], "playtest.badge": ["PRUEBA", 2], "fx.cap": ["TOPE", 3] });
 		writeTable(paths, "ja", { "hud.saved": ["保存", h("hud.saved")] });
 		fs.writeFileSync(lib.tableFile(paths.localesDir, "ar"), "export const LOCALE_TABLE = {");
 		const errors = runCheck({ paths }).errors.join("\n");
 		assert.match(errors, /es: unknown key "gone\.key"/);
 		assert.match(errors, /es: unknown key "playtest\.badge" in the table \(a developer key\)/);
+		assert.match(errors, /es: unknown key "fx\.cap" in the table \(an untranslated key\)/);
 		assert.match(errors, /unparseable table: .*ar\.ts/);
 		assert.match(errors, /index\.ts does not list exactly the table files/);
 	});
 
-	it("fails on a player-facing key with no context once context.json exists; warns before that", () => {
+	it("fails on a translatable key with no context once context.json exists; warns before that", () => {
 		const partial = { ...CONTEXT };
 		delete partial["hud.saved"];
 		partial["gone.key"] = { note: "stale context" };
 		const paths = makeRoot(STRINGS, { context: partial });
 		const r = runCheck({ paths });
 		assert.equal(r.errors.length, 1);
-		assert.match(r.errors[0], /1 player-facing key\(s\) without a context entry: hud\.saved/);
-		assert.ok(r.warnings.some((w) => /context entr\(ies\) for unknown or developer keys: gone\.key/.test(w)));
+		assert.match(r.errors[0], /1 translatable key\(s\) without a context entry: hud\.saved/);
+		assert.ok(
+			r.warnings.some((w) => /context entr\(ies\) for unknown or non-translatable keys: gone\.key/.test(w)),
+		);
 
 		const none = makeRoot(STRINGS, { context: null });
 		const r2 = runCheck({ paths: none });
 		assert.deepEqual(r2.errors, []);
 		assert.ok(r2.warnings.some((w) => /no l10n\/context\.json yet/.test(w)));
+	});
+});
+
+describe("the dump's key flags", () => {
+	it("export, import and check need no context for untranslated keys and translate the playtest exceptions", () => {
+		const paths = makeRoot();
+		const r = runCheck({ paths });
+		assert.deepEqual(r.errors, []);
+		assert.equal(r.keyCount, 10);
+		const noException = { ...CONTEXT };
+		delete noException["playtest.run.over"];
+		const r2 = runCheck({ paths: makeRoot(STRINGS, { context: noException }) });
+		assert.match(r2.errors[0], /1 translatable key\(s\) without a context entry: playtest\.run\.over/);
+	});
+
+	it("refuses an older dump without the flag lists", () => {
+		const paths = makeRoot();
+		const doc = JSON.parse(fs.readFileSync(paths.source, "utf8"));
+		delete doc.untranslatedKeys;
+		fs.writeFileSync(paths.source, JSON.stringify(doc));
+		assert.throws(() => runExport({ paths, ...quiet }), /no untranslatedKeys list/);
 	});
 });

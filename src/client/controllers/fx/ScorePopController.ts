@@ -3,6 +3,7 @@ import { Janitor } from "@rbxts/janitor";
 import { RunService } from "@rbxts/services";
 import { createKvBillboardGui } from "client/ui";
 import { HUD_FONT } from "client/ui/theme";
+import { charCount } from "shared/l10n";
 import { RENDER_ORDER } from "shared/view";
 import {
 	BUILD_FX_VIEW,
@@ -179,7 +180,8 @@ export class ScorePopController implements OnStart {
 			if (text !== view.text) {
 				view.text = text;
 				view.label.Text = text;
-				const w = math.max(text.size(), 1) * glyphW;
+				// Characters, not bytes: the template is translated (a UTF-8 letter is 2-4 bytes).
+				const w = math.max(charCount(text), 1) * glyphW;
 				view.gui.Size = new UDim2(w * PX, 0, glyphH * PX, 0);
 			}
 			view.att.WorldPosition = floorPoint(pool.x[i], pool.z[i]);

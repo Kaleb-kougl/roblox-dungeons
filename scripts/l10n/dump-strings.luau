@@ -13,7 +13,9 @@
 	    "strings":         { "<key>": "<English>" },   -- the placeholder pack's string table; vale inherits it
 	    "srcHashes":       { "<key>": <n> },           -- shared/l10n sourceHash of each English string (the game's
 	                                                     own hash, so the node scripts can check theirs agrees)
-	    "devOnlyPrefixes": [ ... ],                    -- shared/l10n DEV_ONLY_STRING_PREFIXES (never exported)
+	    "devOnlyKeys":     [ "<key>", ... ],           -- keys shared/l10n isDevOnlyStringKey flags (never exported)
+	    "untranslatedKeys": [ "<key>", ... ],          -- other keys isTranslatableStringKey rejects
+	                                                     (UNTRANSLATED_STRING_KEYS: always English, never exported)
 	    "locales":         [ { "code", "roblox", "script", "pseudo" } ]   -- shared/l10n LOCALES, in order
 	  }
 	Object keys are written sorted, so the file is stable between runs.
@@ -105,10 +107,17 @@ for key, text in strings do
 	count += 1
 end
 
-local prefixes = {}
-for _, p in l10n.DEV_ONLY_STRING_PREFIXES do
-	table.insert(prefixes, p)
+-- The game's own predicates decide which keys are translated; the node scripts only read these lists.
+local devOnly, untranslated = {}, {}
+for key in outStrings do
+	if l10n.isDevOnlyStringKey(key) then
+		table.insert(devOnly, key)
+	elseif not l10n.isTranslatableStringKey(key) then
+		table.insert(untranslated, key)
+	end
 end
+table.sort(devOnly)
+table.sort(untranslated)
 
 local locales = {}
 for _, def in l10n.LOCALES do
@@ -127,7 +136,8 @@ end
 local doc = {
 	strings = outStrings,
 	srcHashes = hashes,
-	devOnlyPrefixes = array(prefixes),
+	devOnlyKeys = array(devOnly),
+	untranslatedKeys = array(untranslated),
 	locales = array(locales),
 }
 
