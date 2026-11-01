@@ -47,12 +47,14 @@ interface Watch {
  *                  API does not work there.
  *   lookups        a friend in the board's top rows is free (or known absent on a complete board); every other friend
  *                  is one GetAsync on the day's ordered store through ONE queue per server, friends in this server
- *                  first, then list order, under DAILY_FRIENDS.readsPerMinute, cached per (board, scope, userId) for
- *                  DAILY_FRIENDS.cacheSeconds and shared by every player here (FriendLookupQueue). Entries this server
- *                  writes are learned for free (LeaderboardService.setDailyEntryListener).
+ *                  first, then list order, under DAILY_FRIENDS.readsPerMinute, cached per (board, scope, userId) and
+ *                  shared by every player here (FriendLookupQueue); an answer older than DAILY_FRIENDS.refreshSeconds
+ *                  keeps showing while it is re-read behind every never-read friend; a leaver's queued lookups nobody
+ *                  else needs are dropped. Entries this server writes are learned for free
+ *                  (LeaderboardService.setDailyEntryListener).
  *   the view       `getLeaderboard({ board, scope: "today" | "yesterday", friends: true })` (LeaderboardService hands
  *                  it here): the caller's friends with an entry, ranked among themselves, the caller included, with
- *                  `pending` = lookups still queued. While it fills in, an updated view is pushed at most every
+ *                  `pending` = friends never read yet. While it fills in, an updated view is pushed at most every
  *                  DAILY_FRIENDS.progressPushSeconds (and when it is complete), for DAILY_FRIENDS.watchSeconds.
  */
 @Service({})
@@ -73,6 +75,8 @@ export class DailyFriendsService implements OnStart {
 			Players.PlayerRemoving.Connect((player) => {
 				this.lists.delete(player.UserId);
 				this.watches.delete(player);
+				// Their queued lookups nobody else here needs are dropped (answers they shared stay until stale).
+				this.queue.forget(player.UserId, os.clock());
 			}),
 		);
 		const pump = task.spawn(() => {
@@ -95,7 +99,7 @@ export class DailyFriendsService implements OnStart {
 		let inServer = 0;
 		for (const id of ids) if (Players.GetPlayerByUserId(id) !== undefined) inServer++;
 		this.queue.learnFromTop(ref, loaded.top, ids, now);
-		const pending = this.queue.request(ref, ids, inServer, now);
+		const pending = this.queue.request(ref, ids, inServer, now, player.UserId);
 		const view = this.build(player, request, ref, ids, pending);
 		if (pending > 0) {
 			this.watches.set(player, { request, ref, ids, since: now, lastPush: now, lastPending: pending });
@@ -115,7 +119,6 @@ export class DailyFriendsService implements OnStart {
 	): LeaderboardView {
 		const loaded = this.leaderboards.loadTopWithStale(ref);
 		if (loaded === undefined) return this.leaderboards.unavailable(request, ref, "leaderboard unavailable");
-		const now = os.clock();
 		const top = loaded.top;
 		const callerValue = this.leaderboards.dailyEntry(ref, player.UserId, top);
 		const rows = friendsRows(
@@ -123,7 +126,7 @@ export class DailyFriendsService implements OnStart {
 			callerValue,
 			ids,
 			(id) => {
-				const a = this.queue.answer(ref, id, now);
+				const a = this.queue.answer(ref, id);
 				return a.known ? a.value : undefined;
 			},
 			(id) => this.leaderboards.nameOf(id),

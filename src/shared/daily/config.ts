@@ -125,14 +125,23 @@ export const DAILY_FRIENDS = table.freeze({
 	 * time, then from the cache. The lever if the budget is tight (with `max`).
 	 */
 	readsPerMinute: 30,
-	/** A looked-up friend's entry (or "no entry") is cached this long per (scope, userId), shared by the server. */
-	cacheSeconds: 300,
+	/**
+	 * A looked-up friend's entry (or "no entry") is cached per (board, scope, userId), shared by the server, and stays
+	 * known (shown, frozen into run baselines) while anyone here needs it; once older than this it is re-read in the
+	 * background, behind every never-read friend (stale-while-revalidate). Kept well above the time a full list takes
+	 * to read, max / readsPerMinute minutes (400 s; friends.spec asserts at least twice that), so the oldest answers
+	 * never come due before the last first reads.
+	 */
+	refreshSeconds: 900,
 	/** The lookup queue is pumped this often (seconds). */
 	pumpSeconds: 0.5,
 	/** While a player's friends view is filling in, an updated view is pushed at most this often (seconds). */
 	progressPushSeconds: 5,
-	/** A friends view keeps being pushed as it fills in for this long after the request (seconds). */
-	watchSeconds: 120,
+	/**
+	 * A friends view keeps being pushed as it fills in for this long after the request (seconds): longer than a full
+	 * list takes to read on an idle budget (max / readsPerMinute minutes; friends.spec).
+	 */
+	watchSeconds: 480,
 	/** The friends list (GetFriendsAsync, paged) is fetched once per player per session; retried after this on failure. */
 	listRetrySeconds: 60,
 	/** Studio only: Workspace attribute with UserIds standing in for the friends list (GetFriendsAsync fails there). */
