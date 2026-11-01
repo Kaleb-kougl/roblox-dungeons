@@ -25,9 +25,19 @@ today, and that stays true. The new code:
 
 ## Status (2026-11-01)
 
-**In progress** on branch `localization` (from `main` @ `62b5263`). Owner answered LD1-LD3 (Kaleb, 2026-11-01) and
-said to proceed: the build follows the proposed defaults LD4-LD14 until the owner revises one. L0's spike, L11-L13
-(Creator Hub steps, native reads) need the owner.
+**Built** on branch `localization` (from `main` @ `62b5263`; merged from `l10n-core`, `l10n-autolocalize`,
+`l10n-pipeline`, `l10n-context`, `l10n-integrate`, `l10n-client`, then an independent review and its fixes): L1-L10 and
+L14, and the code and docs for L0's spike. Owner answered LD1-LD3 (Kaleb, 2026-11-01) and said to proceed: the build
+follows the proposed defaults LD4-LD14 until the owner revises one. Headless: typecheck, lint, both check scripts, the
+node specs (art, checks, l10n: 125) and the whole Lune suite (284 spec files, 3,898 tests) pass; `l10n:check` reports
+0 errors. Every locale but English is **hidden** and has **no table yet**, so players see exactly today's English (apart
+from the reworded strings and display names, below).
+
+**Not done (owner):** L0's spike in Studio and a published place (`KV_L10nSpike`, docs/SPIKES.md: fonts per script, the
+Roblox locale codes and CSV header, AutoLocalize, Arabic), then `L10N_FONTS` / `LOCALES.roblox` / `l10n/columns.json`
+from its results; L11 (first upload, auto-translate, import), L12 (reviews, go-live per locale), L13 (Creator Hub
+settings, store page, invite notification strings); the Studio look (English unchanged, Language row, live switch with
+a gamepad, `en-XA`, `KV_LocaleAudit`). The `max` budgets in `l10n/context.json` are estimates until L9 runs.
 
 ## What the code gives us
 
@@ -352,6 +362,71 @@ Order:
 5. L12 per language. Suggested go-live waves: Latin and Cyrillic (es, pt-BR, fr, de, it, pl, tr, id, vi, ru), then CJK
    (ja, ko, zh-CN, zh-TW), then th, hi, ar.
 6. L13-L15 alongside.
+
+## As built (2026-11-01)
+
+Paths under `src/` unless they start with `docs/`, `l10n/` or `scripts/`.
+
+- **Locales and picking (L2).** `shared/l10n`: `LOCALES` (19: `en`, the 17 targets, `en-XA`; only `en` live; `roblox`
+  ids are guesses until L0), `pickLocale` (override if live or `allowHidden`; exact id; language-only with
+  `LANGUAGE_FALLBACKS` for zh variants; else `en`; ids case-insensitive, `_` = `-`; never auto-picks `en-XA`),
+  `liveLocales`, `resolveLocaleState` (the client's state; `allowHidden` applies to the Options override only: the
+  automatic pick is live-only for everyone, developers included). Numbers: `setNumberLocale` / `numberLocale` (module
+  state, set by the pack's `setLocale`), `formatThousands`, `formatDecimal`, `formatTenths`; the daily texts,
+  `formatCombo` and damage-number decimals use them (`DAILY_VIEW.thousandsSeparator` is gone); fr / pl / ru group with a
+  no-break space. `pseudoLocalize` (accents, ~40 % padding, `⟦ ⟧`, placeholders intact), `charCount` (`utf8.len`).
+  `L10N_FONTS` / `fontsFor` / `scaledTextSize`: provisional (Latin Arcade / Code, names BuilderSans; other scripts
+  BuilderSans) until L0.
+- **Translatable keys.** `DEV_ONLY_STRING_PREFIXES` (`playtest.`, `hud.debug`) minus `DEV_ONLY_STRING_EXCEPTIONS` (the
+  six `playtest.run.*` run-over labels players see), plus `UNTRANSLATED_STRING_KEYS` (`fx.cap`: its pixel font has only
+  `0-9 + - C A P !`); one predicate `isTranslatableStringKey`. Non-translatable keys are English in every locale and
+  never exported. Today: 792 keys, 767 translatable.
+- **Tables in the theme (L3, L8).** `shared/theme/locales/index.ts` (`LOCALE_TABLES`, generated; **static imports**, not
+  the lazy loaders design 2 described); a table is `key -> [text, sourceHash(English)]`. `ThemeCore` / `ThemePack`
+  `setLocale(code | undefined)` resolves every key once (manifest `locales` override, then the table entry if its hash
+  matches the current English and its placeholders match, then English; `en-XA` = pseudo of the English); a bad entry
+  falls back **silently** and is listed by `localeReport()` (`stale`, `mismatched`, `unknown`) instead of warning.
+  `validateLocaleTable` (`localeCheck.ts`): unknown / dev / untranslated keys, entry shape, UTF-8, braces, and for
+  current (non-stale) entries the placeholder multiset and the all-caps rule (`LOWERCASE_RANGES`; ß and ĸ pass); a spec
+  runs it on every generated table. `validate.ts` checks manifest `locales` placeholders too (`validate.luau` 199,
+  `contract.luau` 183 top-level locals).
+- **English cleanup (L1).** New keys: `daily.date.format` (was `daily.date`), `roster.separator`, `input.separator`,
+  `hud.combo.shout`, `hud.combo.bestNamed`, `daily.podium.row`, `hud.verdict.withPost`, 51 `input.key.<KeyCode>` labels
+  (`inputLabel`, `settingsHint`, `pauseHint`, ... take an optional `str`). Reworded (LD7): `hud.draft.waiting` "Teammates
+  choosing: {count}", `hud.toast.fang` "Vampire Fang: half hearts +{amount}", `daily.result.entrants` /
+  `daily.board.total` "Players: {total}", `stage.best.toGo` "Deepest: floor {floor} · floors to go: {n}"
+  (`stage.best.oneToGo` removed); `lobby.room.you` is now "{name} (you)" and `fx.parry.count` "{text} x{n}" (same
+  English output). Score-pop width and the tutorial's one-character key test count characters, not bytes.
+- **AutoLocalize off (L5).** `client/ui/gui.ts` `createKvScreenGui` / `createKvSurfaceGui` / `createKvBillboardGui` (26
+  sites) and `AutoLocalize={false}` on the 9 `<screengui>` roots; `scripts/check-autolocalize.js` (`check:autolocalize`,
+  specs in `test:checks`, both in verify) also bans `.upper(` in client and shared/view; allow comment
+  `// check-autolocalize: allow (reason)`.
+- **Client (L4, L6, L9).** `LocaleController` (loadOrder 0): `[Player.LocaleId, LocalizationService.RobloxLocaleId]` +
+  `DisplaySettings.language` (`"auto"` or a code; only a code stored; doc v2) + developer flag (Studio or
+  `KV_DevAllowed`) -> `resolveLocaleState` -> `pack.setLocale` -> Reflex slice `l10n`; re-resolves on the setting, either
+  id or the attribute. `LocaleRoot` remounts the HUD / menu, loading and stage-card roots on a code change and restores
+  the gamepad selection. Outside React: `onLocaleChanged` in DamageNumber, HealthBar (affix chips), ScorePop, Combo,
+  ParryFlash, TouchControls, NewBest, DailyRank. Fonts: `useHudFont` / `useMonoFont` / `useNameFont` / `currentHudFont`
+  (39 sites + 6 controllers); display names always use the `name` font (BuilderSans today, LD13: **a visible change in
+  English**); `sizeScale` and right alignment for RTL in the shared text primitives only. Options > Display > Language
+  is a `< value >` stepper ("Automatic ({name})", then endonyms; developers also see hidden locales marked " [dev]").
+  `KV_LocaleAudit` (`LocaleAuditController`, `shared/l10n` `fitAudit.ts`): misfit labels and `localeReport()` lines.
+- **Telemetry (L14).** No session-start event exists, so the `RunStarted` funnel step carries field01 = the shown locale
+  (live codes or `other`, resolved like the client) and field02 = the Roblox language bucket (as if every locale were
+  live: demand before go-live). The server reads `Player.LocaleId`, the stored setting (`SettingsService`) and the
+  developer attribute.
+- **Pipeline (L7, L10).** `l10n/context.json` (767 notes, budgets on tight slots, examples for every placeholder),
+  `l10n/glossary.json` (63 terms; `translate: false` for Kaleb-Vale and Roblox), `l10n/README.md`, `l10n/columns.json`
+  (CSV header -> locale code, guesses until L0 f). `scripts/l10n`: `dump-strings.luau` (the built game's own strings,
+  hashes, translatable flags and locales -> `l10n/build/source.json`; needs `npm run build`), `export.js`
+  (`l10n/out/kv-strings[-N].csv`, <= 1,000 rows, Key / Source / Context / Example + locale columns with current
+  translations, `--changed`), `import.js` (always the whole cloud download at once; rejects placeholder / brace / caps
+  problems; writes tables + index + `l10n/report.md`), `check.js` (errors only on structure and missing context;
+  coverage / stale / budget / glossary are warnings). npm: `l10n:dump`, `l10n:export`, `l10n:import`, `l10n:check`,
+  `test:l10n` (in verify).
+- **Spike L0 code.** `L10nSpikeController` (`KV_L10nSpike`): glyph sheet (7 fonts x 18 scripts with TextFits /
+  TextBounds), wrapped text per script, Arabic with TextDirection variants, locale ids and AutoLocalize defaults,
+  AutoLocalize probe labels; data in `shared/spikes/l10nSpike.ts`; how-to and checklist in docs/SPIKES.md.
 
 ## Edge cases
 

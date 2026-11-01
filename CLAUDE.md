@@ -50,6 +50,7 @@ Record every ported module in `PROVENANCE.md` (ported module, source path, sourc
 | `docs/DEV_MODE.md` | Developer mode (jump to any floor, instant R restart, god mode; local `dev` world, server-allowed players only via `DEV_MODE`): usage, access, how it works |
 | `docs/BUILDS.md` | Builds (on-kill boons Chain Spark / Volatile / Soul Shards with chain reactions, boon levels with an evolution at III, duo boons, the boss double draft; gameplay, opt-in `SimConfig.builds` on endless only): plan, tasks BU0-BU14, decisions BUD1-BUD14 |
 | `docs/DAILY.md` | Daily dungeon and seeded rosters (every endless seed picks its enemy kinds: swarmers + 1 on floor 1, one more every 2 floors; a `daily` world with one server-side seed per UTC day, day-scoped solo / co-op boards, percentile, friends, rank climbing, yesterday's podium): plan, tasks DS0-DS14, decisions DSD1-DSD16 |
+| `docs/LOCALIZATION.md` | Language localization (the 17 languages Roblox auto-translates; player's Roblox language by default, a Language override in Options; translations from the Roblox cloud table, imported into validated generated tables; AutoLocalize off on every GUI; fonts per script; pseudo-locale `en-XA`): plan, as built, tasks L0-L15, decisions LD1-LD14 |
 
 Decision log (deviations from `PLAN.md`):
 - **Art (docs/ART.md).** The theme contract gained a `"sprites"` kind (large pre-rendered cells, 1/4/8/16 screen-space
@@ -414,6 +415,21 @@ Decision log (deviations from `PLAN.md`):
   `DAILY_STRING_KEYS` / `DAILY_RANK_STRING_KEYS`, port audio IDs `sfx.rank.up` / `sfx.friend.passed` (SILENT in the
   placeholder). Telemetry `daily_*` and an optional `daily` field in `KV_Records_v1` (still v1). Debug `KV_Daily`,
   `KV_DailyRankDebug`, Studio `KV_FakeFriends`. DS0 spike and Studio check pending.
+- **Localization (docs/LOCALIZATION.md).** Presentation and tooling only (no sim, dungeon, lockstep, hash, replay,
+  fixture or score change). `shared/l10n`: `LOCALES` (English live; the 17 targets and pseudo-locale `en-XA` hidden
+  until each passes the LD12 gate), `pickLocale` / `resolveLocaleState` (Roblox ids `[Player.LocaleId,
+  RobloxLocaleId]`, then Options > Display > Language, `DisplaySettings.language`, overrides-only, doc stays v2; hidden
+  locales only as a developer's explicit pick), locale number formatting (ASCII digits), `L10N_FONTS` (provisional until
+  spike L0). Generated tables `shared/theme/locales/` (`key -> [text, sourceHash(English)]`, FNV-1a 32; never edit by
+  hand): `ThemePack.setLocale` uses an entry only while its hash and placeholders match the current English, else
+  English (listed by `localeReport()`). Developer keys (`playtest.*` but the run-over labels, `hud.debug*`) and `fx.cap`
+  stay English (`isTranslatableStringKey`). Every root GUI is created through `client/ui` `createKv*Gui` or has
+  `AutoLocalize={false}`, and code never upper-cases text (`check:autolocalize`, in verify). New strings need a context
+  entry in `l10n/context.json` (`l10n:check`, in verify via `test:l10n`); the cloud round trip is `npm run build`,
+  `l10n:export`, upload / download in the Creator Hub, `l10n:import` with the whole table. English rewordings (LD7):
+  `hud.draft.waiting`, `hud.toast.fang`, `daily.result.entrants`, `daily.board.total`, `stage.best.toGo`
+  (`stage.best.oneToGo` removed); display names now draw in the `name` font. Spike `KV_L10nSpike`, debug
+  `KV_LocaleAudit`. L0 spike, Creator Hub steps and Studio check pending.
 
 ## Commands
 
@@ -428,6 +444,9 @@ npm run test:plugin # Studio test-runner plugin (same specs under real @rbxts/je
 npm run art:build   # art/vendor -> art/build atlases + packs/vale/layout.ts / fxLayout.ts (art:lock rewrites art/vendor.lock.json)
 npm run test:art    # node:test specs of the atlas pipeline (scripts/art/*.test.js; part of verify)
 npm run audio:build # art/vendor/ninja-adventure/Audio -> art/build/audio/*.ogg + packs/vale/audioLayout.ts (audio:lock, audio:audition)
+npm run l10n:export # (after build) English + l10n/context.json -> l10n/out/kv-strings*.csv for the Roblox cloud table
+npm run l10n:import -- l10n/in/table.csv   # the whole downloaded cloud table -> shared/theme/locales/*.ts + l10n/report.md
+npm run l10n:check  # (after build) translation coverage / stale / context report (test:l10n, check:autolocalize: in verify)
 ```
 
 Tools come from `rokit.toml` (`rokit install`): rojo 7.7.0, lune 0.11.0.
