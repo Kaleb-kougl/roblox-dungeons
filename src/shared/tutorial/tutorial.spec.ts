@@ -3,6 +3,8 @@
 // every step completes in order, hearts never drop (harmless), the funnel counts 1..N, the floor 2 -> 3 change
 // finishes it, and an out-of-order visit still completes. The guidance arrow on the real floors (docs/TUTORIAL_ARROW.md
 // A3): every marker target is reachable, and a run steered by the arrow finishes within GUIDE_SLACK of the bot's walk.
+// TutorialMetrics (docs/TUTORIAL_FUNNEL.md TF4): the bot's lesson reports pinned (in order, out of order), skips and
+// dt-0 frames, scripted stuck episodes, and the guard-late guardHold episode under thresholds around its length.
 import { describe, expect, it } from "@rbxts/jest-globals";
 import { TUTORIAL } from "shared/config";
 import { MAX_TUTORIAL_STEP_NAME_CHARS, TUTORIAL_FUNNEL_MAX_STEP } from "shared/onboarding";
@@ -35,8 +37,10 @@ import {
 	TUTORIAL_CALLOUTS,
 	TUTORIAL_HIGHLIGHTS,
 	TUTORIAL_DEVICES,
+	TUTORIAL_PROMPT_IDS,
 	TUTORIAL_STEPS,
 	TUTORIAL_STEP_COUNT,
+	roundTutorialSeconds,
 	tutorialPromptIds,
 	tutorialPromptKey,
 	tutorialStepByNumber,
@@ -152,6 +156,38 @@ function inOrderRun(): TutorialBotResult {
 		describeRun("in order", inOrder);
 	}
 	return inOrder;
+}
+
+let outOfOrder: TutorialBotResult | undefined;
+/** combatC before combatB, and the flask only after combatA. */
+function outOfOrderRun(): TutorialBotResult {
+	if (outOfOrder === undefined) {
+		const order: TutorialLessonId[] = TUTORIAL_ROOMS.map((x) => x.lesson);
+		const b = order.indexOf("combatB");
+		const c = order.indexOf("combatC");
+		order[b] = "combatC";
+		order[c] = "combatB";
+		outOfOrder = playTutorial({ order, flaskAfter: "combatA", bossDebugEvery: BOSS_DEBUG_EVERY });
+		describeRun("out of order", outOfOrder);
+	}
+	return outOfOrder;
+}
+
+/**
+ * Metrics shadows of the guard-late run (TutorialBotOptions.shadowStuckSeconds): its guardHold episode lasts 8 ticks
+ * (0.133 s), so a 0.1 s threshold reports it and a 0.2 s one does not.
+ */
+const LATE_STUCK_SHADOWS = [0.1, 0.2];
+
+let late: TutorialBotResult | undefined;
+/** Combat D swung first (guardLate): the bruiser held at 1 hp until the block. */
+function lateRun(): TutorialBotResult {
+	if (late === undefined) {
+		late = playTutorial({ guardLate: true, shadowStuckSeconds: LATE_STUCK_SHADOWS });
+		describeRun("guard late", late);
+		print(`  guard lock: held from @${late.guardHeldTick} for ${late.guardHeldTicks} ticks`);
+	}
+	return late;
 }
 
 describe("tutorial steps and strings", () => {
@@ -584,14 +620,7 @@ describe("tutorial bot", () => {
 	});
 
 	it("a later lesson room visited first still completes (out of order)", () => {
-		const order: TutorialLessonId[] = TUTORIAL_ROOMS.map((x) => x.lesson);
-		// combatC before combatB, and the flask only after combatA.
-		const b = order.indexOf("combatB");
-		const c = order.indexOf("combatC");
-		order[b] = "combatC";
-		order[c] = "combatB";
-		const r = playTutorial({ order, flaskAfter: "combatA", bossDebugEvery: BOSS_DEBUG_EVERY });
-		describeRun("out of order", r);
+		const r = outOfOrderRun();
 		expect(r.view.finished).toBe(true);
 		for (let i = 0; i < TUTORIAL_STEPS.size(); i++) {
 			expect([TUTORIAL_STEPS[i].id, r.view.done[i], r.view.skipped[i]]).toEqual([
@@ -614,15 +643,6 @@ describe("tutorial bot", () => {
 
 describe("the block lesson (combat D, the sim's guard lock)", () => {
 	const GUARD = tutorialStepIndex("guard");
-	let late: TutorialBotResult | undefined;
-	const lateRun = (): TutorialBotResult => {
-		if (late === undefined) {
-			late = playTutorial({ guardLate: true });
-			describeRun("guard late", late);
-			print(`  guard lock: held from @${late.guardHeldTick} for ${late.guardHeldTicks} ticks`);
-		}
-		return late;
-	};
 
 	it("swinging first never kills the bruiser: it waits at 1 hp under the guardHold prompt until a block", () => {
 		const r = lateRun();
@@ -729,5 +749,257 @@ describe("guidance arrow on the tutorial floors (docs/TUTORIAL_ARROW.md A3)", ()
 		expect(r.guideUnreachableTicks).toBe(0);
 		expect(bot.guidedTicks).toBe(0);
 		expect(ratio <= GUIDE_SLACK).toBe(true);
+	});
+});
+
+describe("tutorial metrics (docs/TUTORIAL_FUNNEL.md TF4)", () => {
+	/** A report as a [step, seconds, hits] row. */
+	type Row = [number, number, number];
+	const rows = (r: TutorialBotResult): Row[] => r.lessonReports.map((l) => [l.step, l.seconds, l.hits] as Row);
+
+	/** Rounding slack of a sum of n reported seconds (each rounded to 1 / TUTORIAL.metricsResolution). */
+	const roundingSlack = (n: number) => (n * 0.5) / TUTORIAL.metricsResolution + 1e-9;
+
+	/**
+	 * The relations every bot run holds (no step skipped): a lesson clock runs on every frame until the finish, so the
+	 * reported seconds sum to the frames charged (shared frames, an out-of-order prompt step's, count twice) within
+	 * rounding; the hits sum to the run's harmless hits, minus those landed on frames no clock ran, plus those landed
+	 * on shared frames (charged to both steps).
+	 */
+	function checkRelations(r: TutorialBotResult): void {
+		let seconds = 0;
+		let hits = 0;
+		for (const l of r.lessonReports) {
+			seconds += l.seconds;
+			hits += l.hits;
+		}
+		expect(r.clockFrames).toBe(r.ticks);
+		expect(r.unclockedHits).toBe(0);
+		const charged = (r.clockFrames + r.sharedClockFrames) * SIM_DT;
+		expect([seconds, math.abs(seconds - charged) <= roundingSlack(r.lessonReports.size())]).toEqual([
+			seconds,
+			true,
+		]);
+		expect(hits).toBe(r.run.state.tutorial!.harmlessHits - r.unclockedHits + r.sharedHits);
+		print(
+			`[tutorial metrics] ${r.ticks} ticks (${string.format("%.2f", r.ticks / SIM_HZ)} s), lessons sum ` +
+				`${string.format("%.1f", seconds)} s (${r.sharedClockFrames} shared frames), hits ${hits} of ` +
+				`${r.run.state.tutorial!.harmlessHits} (+${r.sharedHits} shared)`,
+		);
+	}
+
+	it("TUTORIAL_PROMPT_IDS lists every prompt the director can show (follow and guardHold too)", () => {
+		expect([...TUTORIAL_PROMPT_IDS]).toEqual(tutorialPromptIds());
+		expect(TUTORIAL_PROMPT_IDS.size()).toBe(TUTORIAL_STEP_COUNT + 2);
+		for (const id of ["follow", "guardHold", "objective", "boost", "finish"]) {
+			expect([id, TUTORIAL_PROMPT_IDS.includes(id)]).toEqual([id, true]);
+		}
+		for (const r of [inOrderRun(), outOfOrderRun(), lateRun()]) {
+			for (const p of r.prompts) expect([p, TUTORIAL_PROMPT_IDS.includes(p)]).toEqual([p, true]);
+		}
+		expect(TUTORIAL.stuckSeconds).toBe(20);
+	});
+
+	it("in order: one report per lesson, in step order, at the bot's fixed dt (pinned)", () => {
+		const r = inOrderRun();
+		// [funnel step, seconds, harmless hits]: the boss fight takes the hits (the player tanks Mother Bramble).
+		expect(rows(r)).toEqual([
+			[1, 0.8, 0], // objective: the card up 47 frames
+			[2, 0.5, 0], // move
+			[3, 0, 0], // flask: drunk on the first frames it is current (under 0.05 s)
+			[4, 4, 0], // attack
+			[5, 2.8, 0], // hits
+			[6, 0.1, 0], // boost: the bot stands next to combat B's last swarmer
+			[7, 5.2, 0], // roll
+			[8, 5.6, 1], // guard
+			[9, 5.5, 2], // bow
+			[10, 9.3, 1], // ember
+			[11, 5, 0], // relic
+			[12, 2.8, 0], // curse
+			[13, 3.3, 0], // stairwell
+			[14, 0.5, 0], // draft
+			[15, 24.1, 26], // boss
+			[16, 0, 0], // finish: done on the boss kill's tick (the stairwell opens under the bot)
+		]);
+		expect(r.sharedClockFrames).toBe(0);
+		checkRelations(r);
+		expect(r.stuckReports).toEqual([]); // the longest episode is 17.8 s (the boss fight between her kills)
+	});
+
+	it("out of order: every practised lesson reports once, in completion order (pinned)", () => {
+		const r = outOfOrderRun();
+		expect(rows(r)).toEqual([
+			[1, 0.8, 0],
+			[2, 0.5, 0],
+			[4, 2.1, 0], // attack before the flask (the flask's clock runs meanwhile: current, attack's prompt shown)
+			[3, 3.5, 0],
+			[7, 3.1, 1], // roll (combat C) before hits (combat B)
+			[5, 13.2, 1], // hits: current from the flask on, so it runs through the walk to and the fight in combat C
+			[6, 0.1, 0],
+			[8, 8.4, 1],
+			[9, 5.5, 2],
+			[10, 9.3, 1],
+			[11, 5, 0],
+			[12, 2.8, 0],
+			[13, 3.3, 0],
+			[14, 0.5, 0],
+			[15, 24.1, 26],
+			[16, 0, 0],
+		]);
+		const steps = r.lessonReports.map((l) => l.step);
+		expect(new Set(steps).size()).toBe(TUTORIAL_STEP_COUNT);
+		expect(r.sharedClockFrames > 0).toBe(true);
+		expect(r.sharedHits).toBe(1);
+		checkRelations(r);
+		expect(r.stuckReports).toEqual([]);
+	});
+
+	it("a step left behind reports nothing; a waived one (the boost faded untaken) reports", () => {
+		const h = pastTheCard();
+		const p = h.run.state.player;
+		lay(h, p.x + 3, p.z);
+		let v = h.step(0);
+		expect([...v.newLessonReports]).toEqual([]);
+		h.run.state.drops!.ground[0].ticksLeft = 3; // test-only: fade soon
+		const waived: number[] = [];
+		const waivedSeconds: number[] = [];
+		for (let n = 0; n < 10 && !v.done[BOOST]; n++) {
+			v = h.step(0);
+			for (const l of v.newLessonReports) {
+				waived.push(l.step);
+				waivedSeconds.push(l.seconds);
+			}
+		}
+		expect([v.done[BOOST], v.skipped[BOOST]]).toEqual([true, false]);
+		// Its clock ran from the first frame its prompt showed (the frame after the lay) until the fade.
+		expect([waived, waivedSeconds]).toEqual([[BOOST + 1], [0.1]]);
+		// The debug floor skip: every open floor-1 step is skipped (no report); the stairwell is done by its rule.
+		v = h.step(DEBUG_FLOOR_BUTTON);
+		expect(h.run.state.endless!.floor).toBe(2);
+		expect([...v.newLessonReports]).toEqual([{ step: tutorialStepIndex("stairwell") + 1, seconds: 0, hits: 0 }]);
+		expect(v.skipped[tutorialStepIndex("move")]).toBe(true);
+	});
+
+	it("a frame with dt 0 (or a paused gap of them) adds nothing", () => {
+		const PAUSE_FRAMES = 2;
+		const LONG_PAUSE = 600;
+		const play = (paused: boolean) => {
+			const h = harness();
+			const lessons: string[] = [];
+			const stuck: string[] = [];
+			const rec = (v: TutorialView) => {
+				for (const l of v.newLessonReports) lessons.push(`${l.step}:${l.seconds}:${l.hits}`);
+				for (const x of v.newStuckReports) stuck.push(`${x.prompt}:${x.seconds}`);
+			};
+			const still = (frames: number) => {
+				if (!paused) return;
+				for (let k = 0; k < frames; k++) {
+					const input = frame(0, 0);
+					h.run.frame(0, input);
+					rec(
+						h.director.update({
+							state: h.run.state,
+							config: h.setup.config,
+							events: h.run.frameEvents,
+							buttons: input.buttons,
+							dt: 0,
+						}),
+					);
+				}
+			};
+			const card = math.ceil(TUTORIAL.objectiveCardMinSeconds * SIM_HZ);
+			for (let i = 0; i <= card; i++) {
+				rec(h.step(0));
+				still(PAUSE_FRAMES);
+			}
+			rec(h.step(Button.FIRE));
+			still(LONG_PAUSE);
+			const door = tutorialRoom("combatA").door;
+			const field = distanceField(h.setup.dungeon!, door.x, door.z);
+			for (let n = 0; n < 600 && !h.director.getView().done[tutorialStepIndex("move")]; n++) {
+				const [mx, mz] = walkDir(field, h.run.state.player.x, h.run.state.player.z);
+				rec(stepMove(h, mx, mz));
+				still(PAUSE_FRAMES);
+			}
+			// Then stand on the flask prompt past the stuck threshold; the flush ends that episode.
+			for (let i = 0; i < (TUTORIAL.stuckSeconds + 1) * SIM_HZ; i++) {
+				rec(h.step(0));
+				still(PAUSE_FRAMES);
+			}
+			for (const x of h.director.flushMetrics()) stuck.push(`${x.prompt}:${x.seconds}`);
+			return { lessons, stuck };
+		};
+		const plain = play(false);
+		expect(play(true)).toEqual(plain);
+		expect(plain.lessons.size()).toBe(2); // objective, move
+		expect(plain.stuck).toEqual([`flask:${TUTORIAL.stuckSeconds + 1}`]);
+	});
+
+	it("stuck (real threshold, scripted): reported when the episode ends; flushMetrics() for an open one; once per prompt", () => {
+		const h = harness();
+		const cardFrames = TUTORIAL.stuckSeconds * SIM_HZ + SIM_HZ; // 21 s on the objective card, no progress
+		let v = h.step(0);
+		for (let i = 1; i < cardFrames; i++) {
+			v = h.step(0);
+			expect(v.newStuckReports.size()).toBe(0);
+		}
+		// Continue: the episode ends with the card (its 21 s plus this frame's dt), and the objective reports too.
+		v = h.step(Button.FIRE);
+		const cardSeconds = roundTutorialSeconds((cardFrames + 1) * SIM_DT);
+		expect([...v.newStuckReports]).toEqual([{ prompt: "objective", seconds: cardSeconds }]);
+		expect([...v.newLessonReports]).toEqual([{ step: 1, seconds: cardSeconds, hits: 0 }]);
+		expect(h.director.flushMetrics()).toEqual([]); // the move prompt just showed
+		// Standing still on the move prompt: nothing until flushed (a skip); a second flush returns nothing.
+		const standFrames = (TUTORIAL.stuckSeconds + 5) * SIM_HZ;
+		for (let i = 0; i < standFrames; i++) {
+			v = h.step(0);
+			expect(v.newStuckReports.size()).toBe(0);
+		}
+		expect(h.director.flushMetrics()).toEqual([{ prompt: "move", seconds: TUTORIAL.stuckSeconds + 5 }]);
+		expect(h.director.flushMetrics()).toEqual([]);
+		// Stuck on `move` again: never a second report for the same prompt id.
+		for (let i = 0; i < standFrames; i++) v = h.step(0);
+		expect(h.director.flushMetrics()).toEqual([]);
+		// A threshold just above an episode reports nothing: the same 21 s card with a 22 s threshold.
+		const strict = new TutorialDirector({ stuckSeconds: TUTORIAL.stuckSeconds + 2 });
+		const h2 = harness();
+		const feed = (buttons: number) => {
+			const input: InputFrame = { ...EMPTY_INPUT, buttons };
+			h2.run.frame(SIM_DT, input);
+			return strict.update({
+				state: h2.run.state,
+				config: h2.setup.config,
+				events: h2.run.frameEvents,
+				buttons,
+				dt: SIM_DT,
+			});
+		};
+		for (let i = 0; i < cardFrames; i++) feed(0);
+		expect([...feed(Button.FIRE).newStuckReports]).toEqual([]);
+	});
+
+	it("guard late (sword first): its 8-tick guardHold reports only under a threshold it outlasts", () => {
+		const r = lateRun();
+		expect(r.guardHeldTicks).toBe(8);
+		expect(r.stuckReports).toEqual([]); // the game's 20 s
+		const hold = (k: number) => r.shadowStuckReports[k].filter((x) => x.prompt === "guardHold");
+		expect(LATE_STUCK_SHADOWS).toEqual([0.1, 0.2]);
+		expect(hold(0)).toEqual([{ prompt: "guardHold", seconds: 0.1 }]); // 8 / 60 s >= 0.1
+		expect(hold(1)).toEqual([]); // 8 / 60 s < 0.2
+		// The guard lesson took 0.6 s less than the tour's (sword first, then the block), same hits.
+		expect(rows(r)[tutorialStepIndex("guard")]).toEqual([8, 5, 1]);
+		checkRelations(r);
+	});
+
+	it("guard late, the block put off 25 s: a guardHold stuck report at the game's threshold (not at 30 s)", () => {
+		const delay = 25 * SIM_HZ;
+		const r = playTutorial({ guardLate: true, guardHoldDelayTicks: delay, shadowStuckSeconds: [30] });
+		expect(r.view.finished).toBe(true);
+		expect(r.guardHeldTicks).toBe(1604); // the delay plus the wait for a bullet to block
+		expect(r.stuckReports).toEqual([{ prompt: "guardHold", seconds: roundTutorialSeconds(1604 * SIM_DT) }]);
+		expect(r.stuckReports[0].seconds).toBe(26.7);
+		expect(r.shadowStuckReports[0]).toEqual([]);
+		expect(rows(r)[tutorialStepIndex("guard")]).toEqual([8, 31.6, 37]);
+		checkRelations(r);
 	});
 });
