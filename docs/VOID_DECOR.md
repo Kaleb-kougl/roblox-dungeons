@@ -12,7 +12,8 @@ replay, a hash or a fixture. VOID cells stay VOID in the grid; bullets and bodie
 ## Status (2026-11-01)
 
 Planned. Owner calls taken on 2026-11-01: VDD1-VDD3 (below). VD0's census is done (`scripts/lune/void-census.luau`,
-numbers below); VD1 (theme contract) and VD7 (void art slots) are built; nothing is drawn yet (VD2 / VD3 next).
+numbers below); VD1 (theme contract), VD7 (void art slots), VD2 (the pure void planner,
+`src/shared/view/voidDecor/`) and VD4's band knobs are built; nothing draws yet (VD3).
 
 ## What the camera sees today (VD0 census)
 
@@ -189,18 +190,41 @@ The shoulder wears down with depth, using the existing `decorProfile` bands (kep
   `validate.luau` 199 -> 196 (the boost ID list inlined, decor layers read from `parseDecorId`'s new `layers` field
   instead of importing DECOR_KIND_LAYERS), `voidColors.luau` 22.
 
-- [ ] **VD2. Void planner.** `voidField`, `planVoid`, `VOID` / `VOID_DEPTH` config.
+- [x] **VD2. Void planner.** `voidField`, `planVoid`, `VOID` / `VOID_DEPTH` config.
   -> Verify: specs: deterministic; non-void cells untouched; every wall-adjacent void cell is shoulder; pocket fill;
   ledge only on the shoulder rim; a ray-cast spec (like decorPlan's) finds no walkable cell hidden by shoulder, ledge or
   outcrop over the census seeds; Part budget (<= 500 rectangles per floor) over the census seeds.
+  As built (`src/shared/view/voidDecor/`: `config.ts`, `field.ts`, `plan.ts`, exported from `shared/view`):
+  `voidField(d)` (Chebyshev distance by a two-pass chamfer transform, enclosed 4-connected pockets with their deepest
+  cell), `planVoid(input)` -> per-cell `layer` (`VoidLayer` NONE / SHOULDER / LEDGE / OUTCROP / ABYSS) and `top`, `rects`
+  (greedy, merged per (layer, top), every raised cell in exactly one), `stats`; `voidInputOfLayout`, `voidBandOf`,
+  `planVoidCached` (memo of the last Dungeon object + floor seed + band). Shoulder = dist <= 1 + the band's extra width,
+  the extra read from value noise on a lattice `VOID.shoulderNoiseTiles` (8) apart (neighbouring widths differ by <= 1),
+  then a cleanup (no detached shoulder cell, no 1-cell hole); pockets with deepest cell <= 4 fill solid. Deviations from
+  the sketch, both to hold the budget and the cost: the ledge breaks per `VOID.ledgeChunkTiles` (3) square chunk, not per
+  cell; outcrop seeds fall at hashed gaps along the scan (one `decorHash` per seed, mean gap = 100 / rate eligible cells),
+  not one roll per cell (`decorHash` costs ~5 us under Lune). Specs `voidDecor/field.spec.ts` (3) and `plan.spec.ts`
+  (20): determinism and the cache, every layer rule, exact rect coverage, the band knobs, and an independent ray march
+  (exact grid traversal from 25 points x 5 bullet-disc rim points per walkable cell toward the camera) that finds 0
+  hidden points over 40 floors and does find them when the void is raised to 3 x the wall height. Census (runs 1-10 x
+  floors 1, 3, 5, 7, 10, 12, 15, 18 = 80 floors), per floor: shoulder 2,052 cells, ledge 323, outcrops 14.3 (35 cells);
+  **rects 290 on average, max 464** (kept 242 / worn 270 / ruined 334 / abyss 314); a wider ad hoc run (runs 1-30 x 15
+  floors up to 25, 450 floors) peaked at 470. `planVoid` ~16 ms per floor under Lune on the loaded 2-core box (the same
+  run timed `planDecor` at 13 ms; the field is ~5 ms of it); expect a fraction of that on a client.
 
 - [ ] **VD3. Geometry.** `VoidController`, the deeper biome-tinted backdrop, cliff faces, materials and tints per biome,
   stage-cover deferral.
   -> Verify: `npm run verify`; in Studio every biome: shoulders meet walls with no gaps or z-fighting, cliffs read on
   the near side, part count and build time written down (PC and phone emulator).
 
-- [ ] **VD4. Depth bands.** `VOID_DEPTH` knobs read through `decorProfile`; `KV_DecorBand` forces them too.
+- [x] **VD4. Depth bands.** `VOID_DEPTH` knobs read through `decorProfile`; `KV_DecorBand` forces them too.
   -> Verify: specs per band; in Studio `N` through floors 1-16.
+  As built: `VOID_DEPTH.bands` (one row per `DECOR_DEPTH` band, names checked by a spec): shoulder extra width 2-3 / 2-3
+  / 1-3 / 1-2 tiles, ledge keep 0.9 / 0.75 / 0.6 / 0.4, outcrops 1.0 / 1.2 / 1.5 / 2.0 per 100 eligible cells.
+  `planVoid` takes `decorProfile(floor, depth, themeKey, forceBand).band` (or `input.profile.band`), so a caller passing
+  `KV_DecorBand` as `forceBand` forces the void too (the client wiring is VD3's `VoidController`). Measured over 27
+  floors planned at each band: shoulder 2,321 / 2,321 / 2,045 / 1,763 cells, ledge kept 0.90 / 0.74 / 0.59 / 0.39,
+  outcrops per 100 eligible cells 0.98 / 1.18 / 1.45 / 2.03. Studio pass through floors 1-16 waits for VD3.
 
 - [ ] **VD5. Piece planner.** Void candidates into `planDecor` (source `"void"`), the footprint rule at the surface's
   height, caps and spacing, kept clear of decor tall pieces and far-wall dressing.
