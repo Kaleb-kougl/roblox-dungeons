@@ -13,7 +13,8 @@ replay, a hash or a fixture. VOID cells stay VOID in the grid; bullets and bodie
 
 Planned. Owner calls taken on 2026-11-01: VDD1-VDD3 (below). VD0's census is done (`scripts/lune/void-census.luau`,
 numbers below); VD1 (theme contract), VD7 (void art slots), VD2 (the pure void planner,
-`src/shared/view/voidDecor/`) and VD4's band knobs are built; nothing draws yet (VD3).
+`src/shared/view/voidDecor/`) and VD4's band knobs are built; VD5 / VD6 (the set pieces in the decor plan and on
+screen) are built (headless only); the geometry is VD3.
 
 ## What the camera sees today (VD0 census)
 
@@ -89,7 +90,8 @@ art fit, outlines and lights are reused.
 | `wall1` (low curb: unused by decor) | shoulder edges | low |
 | `bones` (grim), `mushrooms` (verdant) | shoulder tops | flat |
 
-All of these are already cut into `decor-atlas.png` (docs/DECOR.md R5); they draw once that atlas is uploaded.
+All of these but `tiles` and `wall1` are already cut into `decor-atlas.png` (docs/DECOR.md R5, uploaded); those two
+need its rebuild and re-upload (VD6's owner steps).
 Caps (starting values, VD12 tunes): per room side at most `VOID_PIECES.tallPerRoom` (4), `tallMinSpacing` (3) apart,
 never within 2 tiles of a decor tall piece or far-wall dressing on the wall below; flat pieces on at most
 `flatShare` (25 %) of the shoulder. Target <= 80 tall / low and <= 200 flat pieces per floor.
@@ -226,15 +228,103 @@ The shoulder wears down with depth, using the existing `decorProfile` bands (kep
   floors planned at each band: shoulder 2,321 / 2,321 / 2,045 / 1,763 cells, ledge kept 0.90 / 0.74 / 0.59 / 0.39,
   outcrops per 100 eligible cells 0.98 / 1.18 / 1.45 / 2.03. Studio pass through floors 1-16 waits for VD3.
 
-- [ ] **VD5. Piece planner.** Void candidates into `planDecor` (source `"void"`), the footprint rule at the surface's
+- [x] **VD5. Piece planner.** Void candidates into `planDecor` (source `"void"`), the footprint rule at the surface's
   height, caps and spacing, kept clear of decor tall pieces and far-wall dressing.
   -> Verify: specs: no piece hides a walkable cell (ray casts), caps hold over the census seeds, decor's own plan is
   unchanged when the void is absent (its census and budget specs pass as they are).
+  **As built (2026-11-01).** API: `DecorPlanInput` gains optional `voidPlan?: VoidPlan` and `voidVariants?: (kind:
+  VoidDecorKind) => number`; `DecorSource` gains `"void"`; `DecorEntry` gains optional `voidKind?: VoidDecorKind` (a
+  biome void piece: `id` is voidDecorId, `kind` is the standard kind whose box was checked: `column` tall,
+  `columnBroken` low, `debris` flat) and reuses **`y` as the surface top** a void piece stands / lies on (VoidPlan.top:
+  `VOID.shoulderTopTiles` 0.85 for every standing piece; shoulder or ledge top for flats), no new height field;
+  `DecorPlan` gains `voidCounts` (void entries per layer, inside `counts`, all 0 without a void plan); `StandingKind` /
+  `DECOR_BOX` gain `curb` (8 x 14 px, an estimate: wall1 is not built yet). Void entries are appended after every decor
+  entry (and their fade boxes after every decor fade box), so no earlier index moves. `footprintStencil`'s cache now
+  keys on the surface top too (any top for the game camera; the wall top's stencils are the same values).
+  Without a void plan the plan is **byte-identical**: a digest of every field of every entry, fade box polygon, drop
+  count and count over 96 floors (runs 1-12 x floors 1, 3, 5, 7, 10, 12, 15, 18) is the same before and after
+  (1251236753), and decorPlan.spec / profile.spec / director.spec pass unchanged (census `tall 25.10, low 0.48, flat
+  150.06, wall 67.02`, as before).
+  Rules (tunables `VOID_PIECES` in `shared/view/voidDecor/config.ts`; decorPlan.ts imports that file and `layer.ts`
+  directly, not the voidDecor barrel, because voidDecor/plan.ts imports shared/view/decor: `VoidLayer` moved to its own
+  import-free `voidDecor/layer.ts`, re-exported unchanged). A shoulder cell's room: a dist-1 shoulder cell takes the
+  room of a neighbouring wall (that wall's floor neighbour's room, a room before a corridor), every farther cell the
+  room of its first neighbour one field step nearer (buckets by distance, no BFS queue); corridor-only cells (-1) get
+  no standing piece. Standing pieces stand on SHOULDER cells, in order: (1) ruin runs `wall` / `wallBroken`
+  (DECOR_DRESSING.segmentTiles 4 cells) centred on straight shoulder rows exactly `ruinDist` 2 from the wall (R6's
+  segment layout, longest runs first), (2) `column` / `columnBroken` (or, when the pack has art, a biome void kind,
+  `biomeShare` 0.5 of the spots) on cells `columnMinDist`..`columnMaxDist` (2-3) from the wall at hashed gaps along
+  the scan (mean `columnGap` 4), (3) low `curb` runs (`curbTiles` 3) on straight stretches of the shoulder's outer edge.
+  Each passes `footprintClear` with its box at the surface top, at most `tallPerRoom` 4 per room plus `curbPerRoom` 2
+  curbs, `tallMinSpacing` 3 apart, `decorClearTiles` 2 from every decor standing piece and wall piece (torch), at most
+  `maxStanding` 80 per floor; whole vs broken by the decor profile's `wallBrokenShare` / `columnBrokenShare`. Flat
+  pieces (shoulder and ledge tops) at hashed gaps (mean `flatGap` 6): `debris` everywhere, `bones` in grim, `moss` in
+  verdant, `flagstones` on a room's shoulder at most `flagstoneMaxDist` 3 from its wall, a biome void flat kind (drift)
+  when the pack has art; `flatMinSpacing` 2.5 apart, capped at `maxFlat` 200 and `flatShare` 25 % of the shoulder.
+  **Flat pieces do not use the billboard stencil** (its billboard-plane test does not describe a decal lying flat):
+  each is drawn at most `flatRadiusTiles` 1.25 from its pivot (DecorController scales larger art down,
+  `decorPieceLayout` -> `flatLayoutWithin`; the vale rocks reach ~4.6 tiles at their own size) and only where every
+  cell within that radius is the same surface (layer and top), so by rule 0 it can never lie over floor (or hang over a
+  wall, the abyss or a lower step); the spec's ray check confirms it. Biome void kinds are planned only when the pack
+  has art for them (unlike standard kinds, which are planned regardless of art and skipped by the renderer, as decor
+  does): they are optional extras and would otherwise take every pack's slots. One `decorHash` per placed piece (new
+  salts `VOID_PIECES.salt.variant` / `.gap` / `.biome`): its variant / facing (low bits), whole vs broken and a flat's
+  kind (fraction) and the scan's next gap (middle bits); decorHash costs ~5 us under Lune.
+  Census (`decorPlan.void.spec.ts`, runs 1-8 x floors 1, 3, 5, 7, 10, 12, 15, 18 = 64 floors through
+  buildEndlessFloor), per floor: **tall 36.5, low 13.9, flat 96.2** (max 66 standing, 146 flat); wall 14.3, wallBroken
+  16.0, column 6.2, columnBroken 5.0, curb 9.0, debris 50.6, flagstones 30.0, bones 7.6 (grim), moss 8.1 (verdant). By
+  band (standing / flat): kept 45.8 / 99.9, worn 52.1 / 119.4, ruined 49.4 / 98.8, abyss 54.4 / 66.9 (the abyss band's
+  narrower shoulder fits fewer flat patches). **Timing** on the loaded 2-core box under Lune: planDecor 14.4 ms per
+  floor without the void, 22.5 ms with it (+8.1 ms; a first cut was +19.8 ms: the room BFS, per-cell hashes and closures
+  were the cost), planVoid 15.4 ms (shared with the geometry through planVoidCached); the decor census spec's planDecor
+  13.4 ms (14.0 ms before this change on the same box: no regression). Specs `decorPlan.void.spec.ts` (11): nothing else
+  changes (entries, fade boxes, drops, lights, counts), determinism (also from a regenerated Dungeon), every piece on
+  its surface at its top with a legal id / layer and `footprintClear` at its top, caps and spacing, biome kinds only
+  with art (faked `voidVariants`), decorPlan.spec's independent ray check for standing pieces with the block under the
+  piece from the floor to its top (0 hidden points over 34 floors), a flat-decal ray check (0 hidden; it does flag the
+  same decal laid on a wall next to the floor), the per-top stencil cache, `flatLayoutWithin`, the census line.
+  Finding for the Studio check: the footprint rule lets ruin runs stand on a room's **near** side too (about half of
+  them face -X / -Z): at dist 2 their 1.75-tile box clears the near wall's floor. VDD2 says the rule decides; if they
+  read as clutter between the camera and the room, require a +X / +Z front for tall void pieces.
+  - [ ] Studio check: void pieces stand on the shoulder top (no float, no sinking), ruins line up with the shoulder
+    rows, nothing covers a bullet, near-side ruins read well (see the finding above).
 
-- [ ] **VD6. Pieces on screen.** `DecorController` draws source `"void"`; vale mapping for `tiles` / `wall1` and the
+- [x] **VD6. Pieces on screen.** `DecorController` draws source `"void"`; vale mapping for `tiles` / `wall1` and the
   shoulder variants of existing kinds. Needs the decor atlas upload (docs/DECOR.md R5).
   -> Verify: `valeWorld.spec.ts` / `valeArt.spec.ts` cover the new kinds; in Studio, frames read and nothing covers a
   bullet.
+  **As built (2026-11-01).** `DecorController.build` plans `planVoidCached(voidInputOfLayout(layout, depth) +
+  forceBand)` (M1 / tutorial: `{ dungeon, forceBand }`), the same band inputs as the decor (KV_DecorBand), and passes it
+  with `voidVariants` (pack.voidDecorVariants) into planDecor; Workspace **`KV_VoidOff`** (`VOID_DEBUG.offAttribute`,
+  new `VOID_DEBUG = { offAttribute: "KV_VoidOff", debugAttribute: "KV_VoidDebug" }` in voidDecor/config.ts, boolean,
+  default off) plans without it, and a change rebuilds the floor. Standing void entries need no renderer change (the
+  billboard anchor is already at `studsY(e.y)`); a void flat's Part is raised to `studsY(e.y)` instead of the floor and
+  drawn with the layout `decorPieceLayout` returns (flatLayoutWithin); a biome void kind looks up
+  pack.voidDecorVariants(biome, voidKind); the KV_DecorDebug stencil of a void piece is drawn at its top; the build log
+  adds the void tall / low / flat counts. `curb` and `flagstones` joined `DECOR_VIEW.gridKinds` (grid-aligned
+  facings). The existing kinds' art (column1 / column2 / wall2 / wall3, rocks / bricks, bones, mushrooms) draws the
+  void pieces as it is (decor-atlas.png is uploaded). valeArt.spec fits them on real floors: columns and stumps whole,
+  ruin runs >= 0.9 (wall3's renders for the -X / -Z normals fit their hull at 0.93, the far-wall ones >= 0.95), flats
+  within their reach; valeWorld.spec covers the mapping.
+  **Vale `flagstones` / `curb`: mapping dormant, atlas edit deferred.** `VALE_VOID_DECOR_PIECES` (manifest.ts) maps
+  `flagstones` <- `tiles` (flat) and `curb` <- `wall1` (low, outline) in every biome, but only while
+  `VALE_WORLD_LAYOUTS` has that art, so both switch on by themselves after the rebuild below. The atlas edit was not
+  made: `decor-atlas.png` **is uploaded** (assetIds.ts, 2026-10-26), so adding two pieces repacks it and every decor
+  rect moves until it is re-uploaded, and `art/vendor/` is not in this sandbox to build or check the file names. Until
+  then the planned curbs and flagstones (9 and 30 per floor) are not drawn. Owner steps:
+  1. In `art/atlases.json` `worldArt.pieces`, add (check the file names against `art/vendor/lords-of-pain/prop/`):
+     `"tiles": { "file": "lords-of-pain/prop/tiles/NE/tiles_NE_45.0_0.png", "pivot": "center" }` (flat: keeps its
+     shadow) and `"wall1": { "facings": { "count": 4, "zeroDeg": 45, "artOffsetDeg": 90 }, "animations": { "idle": {
+     "file": "lords-of-pain/prop/wall1/{dir}/wall1_{dir}_{angle}_{f}.png", "frames": [0], "fps": 1, "loop": true } },
+     "shadow": false, "pivot": "run", "outline": true }` (as wall2). At the same rebuild drop the retired `gems-*`
+     pieces (VALE_RETIRED_WORLD_ART, docs/BOOST_ART.md: they were kept only to avoid this repack).
+  2. `npm run art:lock`, then `npm run art:build` (repacks decor-atlas.png; layout.ts gains `tiles` / `wall1`).
+  3. Re-upload `art/upload/decor-atlas.png`, paste its new ID over the old one in `packs/vale/assetIds.ts`.
+  4. Re-measure wall1 on `art/build/contact/decor.wall1.png` and set `DECOR_BOX.curb` (and `VOID_PIECES.curbTiles` to
+     its run length) like wall2 / wall3; flagstones need nothing (flats are held to `flatRadiusTiles`).
+  5. `npm run verify` (valeWorld.spec then expects both kinds in every biome; valeArt.spec fits them).
+  - [ ] Studio check: void pieces draw at the shoulder's height in every biome and band, `KV_VoidOff` removes them,
+    frames read, nothing covers a bullet; after the rebuild, curbs and flagstones.
 
 - [x] **VD7. Biome art slots.** Optional `decor.void.b<n>.<kind>` kinds in the contract and validator; nothing drawn
   without art; this doc lists the wanted art per biome.

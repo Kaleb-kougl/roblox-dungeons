@@ -44,6 +44,21 @@
  *   profile    R8 (./profile.ts): the band's shares swap `pillar` / `column` for `columnBroken` and `wall` for
  *              `wallBroken` on legal spots (the broken boxes lie inside the whole ones, so a legal spot stays legal),
  *              cap and weight the flat clutter, and light torches. It never adds a piece or touches a Forge param.
+ *   void       docs/VOID_DECOR.md VD5, only when the input carries a VoidPlan (absent: the plan is exactly the one
+ *              without it): set pieces on the void's surfaces, appended after everything above (so no earlier entry or
+ *              fade box index moves), source "void", each entry's `y` the surface top it stands / lies on. Standing
+ *              (on SHOULDER cells near a room, VOID_PIECES): `wall` / `wallBroken` ruin runs on straight shoulder rows
+ *              VOID_PIECES.ruinDist from the wall, then `column` / `columnBroken` (or a biome void kind the pack has
+ *              art for, decor.void.b<n>.<kind>), then low `curb` runs along the shoulder's outer edge; each passes the
+ *              footprint rule at its surface's top (footprintClear(d, f, box, DECOR_CAMERA, top)), at most
+ *              tallPerRoom per room (curbs: curbPerRoom; a void cell's room: the nearest floor cell's, carried out
+ *              from the walls by field distance),
+ *              tallMinSpacing apart, decorClearTiles from every decor standing and wall piece, maxStanding per floor;
+ *              whole vs broken by the depth profile's shares (own salts). Flat (shoulder and ledge tops): debris, the
+ *              biome's extras (bones grim, moss verdant), flagstones near rooms, a biome void flat kind the pack has;
+ *              drawn at most VOID_PIECES.flatRadiusTiles from their pivot and only where every cell in that radius is
+ *              the same surface (so, by docs/VOID_DECOR.md rule 0, never over floor; the spec checks with ray casts),
+ *              flatMinSpacing apart, capped at maxFlat and flatShare of the shoulder.
  *
  * Coordinates: grid cell (gx, gy) is world (x, z) = (gx, gy) (TILE_SIZE 1, shared/dungeon collision.ts); heights in
  * tiles above the floor. Entries carry world positions in sim units; the renderer converts with studsX / studsY /
@@ -65,10 +80,22 @@ import {
 	type WorldXZ,
 } from "shared/dungeon";
 import { stableSort } from "shared/jsmath";
-import { decorId, type BiomeId, type DecorKind, type DecorLayer } from "shared/theme";
+import {
+	VOID_DECOR,
+	decorId,
+	voidDecorId,
+	type BiomeId,
+	type DecorKind,
+	type DecorLayer,
+	type VoidDecorKind,
+} from "shared/theme";
 import { BULLET_VIEW, GAME_WORLD } from "../config";
 import { floorClearanceStuds } from "../sprites";
 import type { IsoBasis } from "../iso";
+// The void's config and layers by file, not the voidDecor barrel: voidDecor/plan.ts imports this folder's barrel.
+import { VOID_PIECES } from "../voidDecor/config";
+import { VoidLayer } from "../voidDecor/layer";
+import type { VoidPlan } from "../voidDecor/plan";
 import { DECOR_CLEAR, DECOR_DRESSING, DECOR_PLACE, DECOR_SALT } from "./config";
 import { decorHash, decorHash01 } from "./hash";
 import { decorProfile, flatKindWeight, type DecorProfile } from "./profile";
@@ -126,7 +153,9 @@ export interface DecorBoxPx {
  * and its box keeps room above the bowl for the flame (vfx/flames, held inside it at decorFlameMaxGrow); wall2 / wall3
  * segments fit their run's hull at 0.96-0.99 by their outline. Generous guesses where the pack has no art. Nothing
  * hangs below a wall-top pivot (it would cover bullets hugging the wall's face). Broken variants must fit inside their
- * whole kind's box (a swap keeps a legal spot legal; the spec checks).
+ * whole kind's box (a swap keeps a legal spot legal; the spec checks). `curb` (docs/VOID_DECOR.md VD5: the void's low
+ * Lords of Pain wall1 run along a shoulder edge) is an estimate: wall1 is not in the built atlas yet; re-measure it with
+ * the art (art/build/contact) like the others.
  */
 export const DECOR_BOX: Readonly<Record<StandingKind, DecorBoxPx>> = {
 	brazier: { w: 26, h: 30, below: 0 },
@@ -140,6 +169,7 @@ export const DECOR_BOX: Readonly<Record<StandingKind, DecorBoxPx>> = {
 	wallBroken: { w: 8, h: 22, below: 0 },
 	column: { w: 20, h: 55, below: 0 },
 	columnBroken: { w: 19, h: 22, below: 0 },
+	curb: { w: 8, h: 14, below: 0 },
 };
 
 /** Tall Forge pieces in placement priority (highest first). */
@@ -183,10 +213,14 @@ export type StandingKind =
 	| "wall"
 	| "wallBroken"
 	| "column"
-	| "columnBroken";
+	| "columnBroken"
+	| "curb";
 
-/** Where an entry comes from: a Forge prop, a Forge torch, R6 far-wall dressing, or a solid pillar's stump. */
-export type DecorSource = "forge" | "torch" | "dressing" | "pillar";
+/**
+ * Where an entry comes from: a Forge prop, a Forge torch, R6 far-wall dressing, a solid pillar's stump, or a void set
+ * piece (docs/VOID_DECOR.md VD5: only with DecorPlanInput.voidPlan).
+ */
+export type DecorSource = "forge" | "torch" | "dressing" | "pillar" | "void";
 
 /** Why a Forge piece is not drawn (planDecor's `dropped` counts). */
 export type DecorDropReason =
@@ -240,7 +274,8 @@ export interface DecorEntry {
 	readonly layer: DecorLayer;
 	/**
 	 * The anchor: tall / low the pivot's spot on the wall top (a segment: its middle), flat the floor cell's centre
-	 * (y 0), wall the face's centre at DECOR_PLACE.wallPieceHeightTiles.
+	 * (y 0), wall the face's centre at DECOR_PLACE.wallPieceHeightTiles. Void pieces (source "void"): `y` is the top
+	 * of the void surface they stand or lie on (VoidPlan.top: the shoulder's or the ledge's), not the wall top or floor.
 	 */
 	readonly x: number;
 	readonly y: number;
@@ -276,6 +311,12 @@ export interface DecorEntry {
 	/** The Forge's rotation (radians) and scale; 0 and 1 for dressing. */
 	readonly rot: number;
 	readonly scale: number;
+	/**
+	 * docs/VOID_DECOR.md VD7 / VD5: a biome void art piece (decor.void.b<n>.<kind>): `id` is voidDecorId, `variant`
+	 * indexes pack.voidDecorVariants(biome, voidKind), and `kind` is the standard kind whose box the footprint rule
+	 * checked (`column` tall, `columnBroken` low, `debris` flat). Absent on every other entry.
+	 */
+	readonly voidKind?: VoidDecorKind;
 }
 
 /** A standing piece's screen box for fading (unpadded), and the depth of its billboard plane. */
@@ -304,6 +345,8 @@ export interface DecorPlan {
 	readonly dropped: ReadonlyMap<DecorDropReason, number>;
 	/** Entries per layer. */
 	readonly counts: Readonly<Record<DecorLayer, number>>;
+	/** Void set pieces (source "void", docs/VOID_DECOR.md VD5) per layer, included in `counts`; all 0 without a voidPlan. */
+	readonly voidCounts: Readonly<Record<DecorLayer, number>>;
 }
 
 /** What planDecor reads. Only `dungeon` is required (M1 and tests); endless floors pass their layout's extras. */
@@ -327,6 +370,16 @@ export interface DecorPlanInput {
 	readonly stairwell?: WorldXZ;
 	/** The pack's variant count of a kind (pack.decorVariants(biome, kind).size()); absent: every variant is 0. */
 	readonly variants?: (kind: DecorKind) => number;
+	/**
+	 * docs/VOID_DECOR.md VD5: the floor's void plan (planVoid / planVoidCached of the same Dungeon). Present: void set
+	 * pieces are planned on its surfaces (source "void", appended last). Absent: the plan is exactly the one without it.
+	 */
+	readonly voidPlan?: VoidPlan;
+	/**
+	 * The pack's variant count of a biome void kind (pack.voidDecorVariants(biome, kind).size()). A void kind is only
+	 * planned when the pack has art for it (it is optional extra art, unlike the standard kinds); absent: none.
+	 */
+	readonly voidVariants?: (kind: VoidDecorKind) => number;
 }
 
 /** planDecor's input for an endless floor layout (its seed, floor, breakables, spawn and stairwell). */
@@ -426,11 +479,12 @@ function cellCornerOffsets(cam: IsoBasis): { readonly quad: number[]; readonly m
 
 /**
  * The footprint rule's stencil: the cells, relative to the footprint's first cell, where a bullet would be hidden by
- * box `box` standing on footprint `f`'s wall top if that cell were bullet-open (see the file comment). Exact: each
+ * box `box` standing on footprint `f`'s top (`top`: the wall top, or a void surface's) if that cell were bullet-open
+ * (see the file comment). Exact: each
  * candidate cell's projected square (at BULLET_Y) is clipped against the padded box; a cell hides a bullet when
  * anything is left that is not inside the wall block's silhouette by the pad (or the cell is not behind the block
  * at all). The geometry only depends on the box and the footprint's shape, never on where it stands, so the answer
- * is a fixed list of offsets (cached per shape for the game camera).
+ * is a fixed list of offsets (cached per surface top and shape for the game camera).
  */
 export function footprintStencil(
 	f: DecorFootprint,
@@ -439,8 +493,8 @@ export function footprintStencil(
 	top: number = GAME_WORLD.wallHeightTiles,
 ): ReadonlyArray<number> {
 	const rel: DecorFootprint = { x0: 0, y0: 0, x1: f.x1 - f.x0, y1: f.y1 - f.y0, runX: f.runX, runZ: f.runZ };
-	const shared = cam === DECOR_CAMERA && top === GAME_WORLD.wallHeightTiles;
-	const key = `${box.w}/${box.h}/${box.below}/${box.x ?? 0}/${rel.x1}/${rel.y1}/${rel.runX}/${rel.runZ}`;
+	const shared = cam === DECOR_CAMERA;
+	const key = `${top}/${box.w}/${box.h}/${box.below}/${box.x ?? 0}/${rel.x1}/${rel.y1}/${rel.runX}/${rel.runZ}`;
 	if (shared) {
 		const hit = STENCILS.get(key);
 		if (hit !== undefined) return hit;
@@ -511,7 +565,7 @@ export function footprintStencil(
 	return out;
 }
 
-/** DecorFootprint stencils of the game camera, by box and footprint shape (see footprintStencil). */
+/** DecorFootprint stencils of the game camera, by surface top, box and footprint shape (see footprintStencil). */
 const STENCILS = new Map<string, ReadonlyArray<number>>();
 
 /**
@@ -1067,13 +1121,18 @@ export function planDecor(input: DecorPlanInput): DecorPlan {
 		});
 	}
 
+	// --- void set pieces (docs/VOID_DECOR.md VD5), appended last ---------------------------------
+	if (input.voidPlan !== undefined) addVoidPieces(input, input.voidPlan, seed, profile, entries, fadeBoxes);
+
 	// --- per-room lights, counts ----------------------------------------------------------------
 	const lightsByRoom: number[][] = [];
 	for (let r = 0; r < roomCount; r++) lightsByRoom.push([]);
 	const corridorLights: number[] = [];
 	const counts: Record<DecorLayer, number> = { flat: 0, low: 0, tall: 0, wall: 0 };
+	const voidCounts: Record<DecorLayer, number> = { flat: 0, low: 0, tall: 0, wall: 0 };
 	entries.forEach((e, i) => {
 		counts[e.layer]++;
+		if (e.source === "void") voidCounts[e.layer]++;
 		if (!e.light) return;
 		if (e.roomId >= 0 && e.roomId < roomCount) lightsByRoom[e.roomId].push(i);
 		else corridorLights.push(i);
@@ -1089,6 +1148,7 @@ export function planDecor(input: DecorPlanInput): DecorPlan {
 		corridorLights,
 		dropped,
 		counts,
+		voidCounts,
 	};
 }
 
@@ -1156,4 +1216,535 @@ function farWallRuns(walls: ReadonlyArray<FarWall>): FarWall[][] {
 		if (run.size() > 0) runs.push(run);
 	}
 	return runs;
+}
+
+// ---------------------------------------------------------------------------------------------
+// Void set pieces (docs/VOID_DECOR.md VD5)
+
+/** decorHash's range (2^32): a hash over it is a fraction in [0, 1). */
+const HASH_RANGE = 4294967296;
+/** gapOf reads a hash's bits from this one up (the low bits pick variants, the high bits fractions). */
+const GAP_SHIFT = 8;
+/** The void scans' keys for their first gap's hash (decorHash(seed, key, VOID_PIECES.salt.gap)). */
+const COLUMN_SCAN = 1;
+const FLAT_SCAN = 2;
+
+/** A scan gap in 1..gapMax from hash `h`'s middle bits. */
+function gapOf(h: number, gapMax: number): number {
+	return 1 + (bit32.rshift(h, GAP_SHIFT) % gapMax);
+}
+
+/** The standard kind a biome void flat piece is planned as (its entry's `kind`: a round flat piece). */
+const VOID_FLAT_STAND_IN: DecorKind = "debris";
+/** A cell with no room or corridor in reach. */
+const NO_ROOM = -2;
+/** A cell whose room is not worked out (yet): every value below 0 means "no room" to the placement (-1: a corridor). */
+const ROOM_UNSET = -3;
+const DX8 = [1, -1, 0, 0, 1, -1, 1, -1];
+const DY8 = [0, 0, 1, -1, 1, 1, -1, -1];
+
+/** A straight run of void cells (row-major order along +x or +y), the side its room lies on, and that room. */
+interface VoidRun {
+	readonly cells: number[];
+	readonly alongX: boolean;
+	/** Toward the room: +1 / -1 along z (alongX) or x (along y). */
+	readonly front: number;
+	readonly room: number;
+}
+
+/** Cell offsets (dx, dy pairs) whose square comes nearer than `r` to the centre cell's centre (the centre included). */
+function offsetsWithin(r: number): number[] {
+	const out: number[] = [];
+	const k = math.ceil(r);
+	for (let oy = -k; oy <= k; oy++)
+		for (let ox = -k; ox <= k; ox++) {
+			const nx = math.max(0, math.abs(ox) - HALF);
+			const ny = math.max(0, math.abs(oy) - HALF);
+			if (nx * nx + ny * ny < r * r) out.push(ox, oy);
+		}
+	return out;
+}
+
+/** Cell offsets (dx, dy pairs) whose centre lies nearer than `r` to the centre cell's (the centre included). */
+function centresWithin(r: number): number[] {
+	const out: number[] = [];
+	const k = math.ceil(r);
+	for (let oy = -k; oy <= k; oy++) for (let ox = -k; ox <= k; ox++) if (ox * ox + oy * oy < r * r) out.push(ox, oy);
+	return out;
+}
+
+/**
+ * Straight runs of cells whose `side[c]` is non-zero and the same as their neighbour's (and in the same room), along x
+ * (`alongX`: neighbour c + 1 in the same row) or along y (neighbour c + W). `cells` is row-major; runs come out in their
+ * first cell's order.
+ */
+function voidRuns(
+	cells: ReadonlyArray<number>,
+	side: ReadonlyArray<number>,
+	room: ReadonlyArray<number>,
+	W: number,
+	n: number,
+	alongX: boolean,
+	out: VoidRun[],
+): void {
+	const step = alongX ? 1 : W;
+	const joins = (a: number, b: number): boolean => {
+		if (side[a] === 0 || side[a] !== side[b] || room[a] !== room[b]) return false;
+		return alongX ? b % W !== 0 && a === b - 1 : b >= W;
+	};
+	for (const c of cells) {
+		if (side[c] === 0) continue;
+		const prev = c - step;
+		if (prev >= 0 && joins(prev, c)) continue; // not a run's first cell
+		const run = [c];
+		let at = c;
+		let more = true;
+		while (more) {
+			const nxt = at + step;
+			more = nxt < n && joins(at, nxt);
+			if (more) {
+				run.push(nxt);
+				at = nxt;
+			}
+		}
+		out.push({ cells: run, alongX, front: side[c], room: room[c] });
+	}
+}
+
+/** Appends planDecor's void set pieces (see the file comment's `void` rule) to `entries` / `fadeBoxes`. */
+function addVoidPieces(
+	input: DecorPlanInput,
+	vp: VoidPlan,
+	seed: number,
+	profile: DecorProfile,
+	entries: DecorEntry[],
+	fadeBoxes: DecorFadeBox[],
+): void {
+	const d = input.dungeon;
+	const W = d.W;
+	const H = d.H;
+	const n = W * H;
+	if (vp.W !== W || vp.H !== H) return;
+	const P = VOID_PIECES;
+	const cam = DECOR_CAMERA;
+	const biome = profile.biome;
+	const grid = d.grid;
+	const layer = vp.layer;
+	const vtop = vp.top;
+	const dist = vp.field.dist;
+	const roomCount = d.rooms.size();
+
+	// --- the raised cells, from the plan's rects (rect order; no full-grid scan) -----------------------------
+	const shoulder: number[] = [];
+	const flatCells: number[] = [];
+	for (const r of vp.rects) {
+		const isShoulder = r.layer === VoidLayer.SHOULDER;
+		if (!isShoulder && r.layer !== VoidLayer.LEDGE) continue;
+		const lastY = r.y + r.h - 1;
+		const lastX = r.x + r.w - 1;
+		for (let y = r.y; y <= lastY; y++)
+			for (let x = r.x; x <= lastX; x++) {
+				const c = y * W + x;
+				if (isShoulder) shoulder.push(c);
+				flatCells.push(c);
+			}
+	}
+	if (shoulder.size() === 0) return;
+
+	// --- each shoulder cell's room: the nearest floor cell's. A wall's room is its floor neighbour's (a room before a
+	// corridor); a shoulder cell next to the walls (field distance 1) takes its walls' room, and every farther one the
+	// room of its first neighbour one tile nearer the dungeon (one always exists: the field is a Chebyshev distance), so
+	// cells are worked out nearest first (buckets by distance), each from a few neighbour reads, with no BFS queue.
+	const room = new Array<number>(n, ROOM_UNSET);
+	const byDist: number[][] = [];
+	for (const c of shoulder) {
+		const k = dist[c];
+		while (byDist.size() <= k) byDist.push([]);
+		byDist[k].push(c);
+	}
+	for (let k = 1; k < byDist.size(); k++)
+		for (const c of byDist[k]) {
+			const x = c % W;
+			const y = (c - x) / W;
+			let best = NO_ROOM;
+			for (let i = 0; i < DX8.size(); i++) {
+				const nx = x + DX8[i];
+				const ny = y + DY8[i];
+				if (nx < 0 || ny < 0 || nx >= W || ny >= H) continue;
+				const j = ny * W + nx;
+				if (k > 1) {
+					// copy the first nearer neighbour's room that is worked out (a shoulder cell with a room or corridor)
+					if (dist[j] !== k - 1 || room[j] < -1) continue;
+					best = room[j];
+					break;
+				}
+				if (grid[j] !== TileType.WALL) continue;
+				let r = room[j];
+				if (r === ROOM_UNSET) {
+					r = NO_ROOM;
+					for (let m = 0; m < DX8.size(); m++) {
+						const wx = nx + DX8[m];
+						const wy = ny + DY8[m];
+						if (wx < 0 || wy < 0 || wx >= W || wy >= H) continue;
+						const fj = wy * W + wx;
+						const t = grid[fj];
+						if (t !== TileType.FLOOR && t !== TileType.POOL) continue;
+						const fr = d.roomId[fj];
+						r = fr >= 0 && fr < roomCount ? fr : -1;
+						if (r >= 0) break;
+					}
+					room[j] = r;
+				}
+				if (r >= 0) {
+					best = r;
+					break;
+				}
+				if (r === -1) best = -1;
+			}
+			room[c] = best;
+		}
+
+	// --- keep clear of the decor's standing and wall pieces ----------------------------------------
+	const nearDecor = new Array<boolean>(n, false);
+	const clearOffsets = centresWithin(P.decorClearTiles);
+	for (const e of entries) {
+		if (e.layer === "flat") continue;
+		for (let i = 0; i < math.max(1, e.cells); i++) {
+			const cx = e.cellX + i * e.runX;
+			const cy = e.cellY + i * e.runZ;
+			for (let k = 0; k < clearOffsets.size(); k += 2) {
+				const x = cx + clearOffsets[k];
+				const y = cy + clearOffsets[k + 1];
+				if (x >= 0 && y >= 0 && x < W && y < H) nearDecor[y * W + x] = true;
+			}
+		}
+	}
+
+	// --- biome void kinds the pack has art for ------------------------------------------------------
+	const standKinds: VoidDecorKind[] = [];
+	const flatVoidKinds: VoidDecorKind[] = [];
+	const voidCount = (k: VoidDecorKind) => (input.voidVariants !== undefined ? input.voidVariants(k) : 0);
+	for (const k of VOID_DECOR.kinds) {
+		if (voidCount(k) <= 0) continue;
+		const layers = VOID_DECOR.layers[k] as ReadonlyArray<DecorLayer>;
+		if (layers.includes("flat")) flatVoidKinds.push(k);
+		else standKinds.push(k);
+	}
+
+	// --- entries -----------------------------------------------------------------------------------
+	const variantFor = (kind: DecorKind, voidKind: VoidDecorKind | undefined, hash: number) => {
+		if (voidKind === undefined) return variantOf(input, kind, hash);
+		const count = voidCount(voidKind);
+		return count > 1 ? hash % count : 0;
+	};
+	const ids = new Map<string, string>();
+	const idOf = (kind: DecorKind, voidKind: VoidDecorKind | undefined): string => {
+		const key = voidKind !== undefined ? `void/${voidKind}` : kind;
+		let id = ids.get(key);
+		if (id === undefined) {
+			id = voidKind !== undefined ? voidDecorId(biome, voidKind) : decorId(biome, kind);
+			ids.set(key, id);
+		}
+		return id;
+	};
+	const pushVoid = (
+		kind: DecorKind,
+		voidKind: VoidDecorKind | undefined,
+		lay: DecorLayer,
+		f: DecorFootprint,
+		roomId: number,
+		faceX: number,
+		faceZ: number,
+		top: number,
+		hash: number,
+	) => {
+		let fade = -1;
+		let x = gridToWorld(f.x0);
+		let z = gridToWorld(f.y0);
+		let cells = 1;
+		if (lay !== "flat") {
+			const a = anchorsOf(f, top);
+			x = a.size() === 3 ? a[0] : (a[0] + a[3]) / 2;
+			z = a.size() === 3 ? a[2] : (a[2] + a[5]) / 2;
+			cells = math.max(math.abs(f.x1 - f.x0), math.abs(f.y1 - f.y0)) + 1;
+			const box = DECOR_BOX[kind as StandingKind];
+			fadeBoxes.push({
+				entry: entries.size(),
+				polygon: boxPolygon(cam, f, box, top, 0),
+				depth: planeDepth(cam, f, box, top),
+			});
+			fade = fadeBoxes.size() - 1;
+		}
+		entries.push({
+			kind,
+			id: idOf(kind, voidKind),
+			layer: lay,
+			x,
+			y: top,
+			z,
+			cellX: f.x0,
+			cellY: f.y0,
+			cells,
+			runX: f.runX,
+			runZ: f.runZ,
+			faceX,
+			faceZ,
+			roomId: roomId >= 0 ? roomId : -1,
+			hash,
+			variant: variantFor(kind, voidKind, hash),
+			fade,
+			light: false,
+			lit: false,
+			source: "void",
+			forgeIndex: -1,
+			rot: 0,
+			scale: 1,
+			voidKind,
+		});
+	};
+
+	/**
+	 * A placed piece's one hash (decorHash costs ~5 us under Lune, so one per piece): its variant and facing (low
+	 * bits, as every entry's), whole or broken and a flat piece's kind (its fraction: high bits), and the scan's next gap
+	 * (gapOf: middle bits).
+	 */
+	const pieceHash = (x: number, y: number) => decorHash(seed, cellKey(x, y), P.salt.variant);
+
+	// --- standing pieces ---------------------------------------------------------------------------
+	const taken = new Array<boolean>(n, false);
+	const placed: Placed[] = [];
+	/** Standing void pieces per room, curbs apart (VOID_PIECES.tallPerRoom / curbPerRoom). */
+	const perRoom = new Map<number, number>();
+	const curbsPerRoom = new Map<number, number>();
+	let standing = 0;
+	const spacing2 = P.tallMinSpacing * P.tallMinSpacing;
+	/** The surface top `f` stands on if it is legal for `kind` (see the file comment), else undefined; marks it taken. */
+	const tryStand = (f: DecorFootprint, kind: StandingKind, roomId: number): number | undefined => {
+		const counter = kind === "curb" ? curbsPerRoom : perRoom;
+		const cap = kind === "curb" ? P.curbPerRoom : P.tallPerRoom;
+		if (standing >= P.maxStanding || roomId < 0 || (counter.get(roomId) ?? 0) >= cap) return undefined;
+		const len = math.max(math.abs(f.x1 - f.x0), math.abs(f.y1 - f.y0)) + 1;
+		let top: number | undefined;
+		for (let i = 0; i < len; i++) {
+			const x = f.x0 + i * f.runX;
+			const y = f.y0 + i * f.runZ;
+			if (x < 0 || y < 0 || x >= W || y >= H) return undefined;
+			const c = y * W + x;
+			if (layer[c] !== VoidLayer.SHOULDER || taken[c] || nearDecor[c]) return undefined;
+			if (top === undefined) top = vtop[c];
+			else if (vtop[c] !== top) return undefined;
+		}
+		if (top === undefined) return undefined;
+		const ax0 = math.min(f.x0, f.x1);
+		const ax1 = math.max(f.x0, f.x1);
+		const ay0 = math.min(f.y0, f.y1);
+		const ay1 = math.max(f.y0, f.y1);
+		for (const p of placed) {
+			const dx = math.max(0, p.x0 - ax1, ax0 - p.x1);
+			const dy = math.max(0, p.y0 - ay1, ay0 - p.y1);
+			if (dx * dx + dy * dy < spacing2) return undefined;
+		}
+		// footprintClear(d, f, DECOR_BOX[kind], cam, top), with the stencil's cells read straight off the grid
+		const st = footprintStencil(f, DECOR_BOX[kind], cam, top);
+		for (let i = 0; i < st.size(); i += 2) {
+			const x = f.x0 + st[i];
+			const y = f.y0 + st[i + 1];
+			if (x < 0 || y < 0 || x >= W || y >= H) continue; // outside the grid: VOID, which stops bullets
+			if (!isBulletBlockingTile(grid[y * W + x] as TileType)) return undefined;
+		}
+		for (let i = 0; i < len; i++) taken[(f.y0 + i * f.runZ) * W + f.x0 + i * f.runX] = true;
+		placed.push({ x0: ax0, y0: ay0, x1: ax1, y1: ay1 });
+		counter.set(roomId, (counter.get(roomId) ?? 0) + 1);
+		standing++;
+		return top;
+	};
+	/** Places a run's segments of `len` cells, centred, TALL spacing apart (R6's layout), longest runs first. */
+	const placeRuns = (runs: VoidRun[], len: number, place: (f: DecorFootprint, r: VoidRun) => void) => {
+		stableSort(runs, (a, b) => b.cells.size() - a.cells.size());
+		const gap = P.tallMinSpacing - 1;
+		for (const run of runs) {
+			const size = run.cells.size();
+			if (size < len || run.room < 0) continue;
+			const count = math.floor((size + gap) / (len + gap));
+			const used = count * len + (count - 1) * gap;
+			let at = math.floor((size - used) / 2);
+			for (let k = 0; k < count; k++) {
+				const a = run.cells[at];
+				const b = run.cells[at + len - 1];
+				at += len + gap;
+				const ax = a % W;
+				const bx = b % W;
+				const f: DecorFootprint = {
+					x0: ax,
+					y0: (a - ax) / W,
+					x1: bx,
+					y1: (b - bx) / W,
+					runX: run.alongX ? 1 : 0,
+					runZ: run.alongX ? 0 : 1,
+				};
+				place(f, run);
+			}
+		}
+	};
+
+	// sides: ruinX / ruinY = toward the wall for cells on a straight shoulder row ruinDist from it (rows along x / y);
+	// edgeX / edgeY = toward the shoulder for cells on its outer edge (a ledge or abyss neighbour on the other side)
+	const ruinX = new Array<number>(n, 0);
+	const ruinY = new Array<number>(n, 0);
+	const edgeX = new Array<number>(n, 0);
+	const edgeY = new Array<number>(n, 0);
+	const LEDGE = VoidLayer.LEDGE;
+	const ABYSS = VoidLayer.ABYSS;
+	for (const c of shoulder) {
+		if (room[c] < 0) continue;
+		const x = c % W;
+		const y = (c - x) / W;
+		const hasS = y + 1 < H;
+		const hasN = y > 0;
+		const hasE = x + 1 < W;
+		const hasW = x > 0;
+		if (dist[c] === P.ruinDist) {
+			const lo = dist[c] - 1;
+			const s = hasS && dist[c + W] === lo;
+			const nn = hasN && dist[c - W] === lo;
+			if (s !== nn) ruinX[c] = s ? 1 : -1;
+			const e = hasE && dist[c + 1] === lo;
+			const w = hasW && dist[c - 1] === lo;
+			if (e !== w) ruinY[c] = e ? 1 : -1;
+		}
+		// open: a ledge or abyss neighbour (the shoulder's outer edge)
+		const ls = hasS ? layer[c + W] : VoidLayer.NONE;
+		const ln = hasN ? layer[c - W] : VoidLayer.NONE;
+		const os = ls === LEDGE || ls === ABYSS;
+		const on = ln === LEDGE || ln === ABYSS;
+		if (os !== on) edgeX[c] = os ? -1 : 1;
+		const le = hasE ? layer[c + 1] : VoidLayer.NONE;
+		const lw = hasW ? layer[c - 1] : VoidLayer.NONE;
+		const oe = le === LEDGE || le === ABYSS;
+		const ow = lw === LEDGE || lw === ABYSS;
+		if (oe !== ow) edgeY[c] = oe ? -1 : 1;
+	}
+
+	// 1. ruin runs
+	const ruinRuns: VoidRun[] = [];
+	voidRuns(shoulder, ruinX, room, W, n, true, ruinRuns);
+	voidRuns(shoulder, ruinY, room, W, n, false, ruinRuns);
+	placeRuns(ruinRuns, DECOR_DRESSING.segmentTiles, (f, run) => {
+		const top = tryStand(f, "wall", run.room);
+		if (top === undefined) return;
+		const h = pieceHash(f.x0, f.y0);
+		const broken = h / HASH_RANGE < profile.wallBrokenShare;
+		const [fx, fz] = run.alongX ? [0, run.front] : [run.front, 0];
+		pushVoid(broken ? "wallBroken" : "wall", undefined, "tall", f, run.room, fx, fz, top, h);
+	});
+
+	// 2. columns (or biome void kinds) at hashed gaps along the scan: the first gap from its own hash, each next one
+	// from the piece just placed (no hash on a cell that is skipped or refused)
+	const columnGapMax = math.max(1, 2 * P.columnGap - 1);
+	let gap = gapOf(decorHash(seed, COLUMN_SCAN, P.salt.gap), columnGapMax);
+	for (const c of shoulder) {
+		if (standing >= P.maxStanding) break;
+		const dc = dist[c];
+		if (dc < P.columnMinDist || dc > P.columnMaxDist || room[c] < 0 || taken[c] || nearDecor[c]) continue;
+		gap--;
+		if (gap > 0) continue;
+		const x = c % W;
+		const y = (c - x) / W;
+		let voidKind: VoidDecorKind | undefined;
+		if (standKinds.size() > 0) {
+			const h = decorHash01(seed, c, P.salt.biome);
+			if (h < P.biomeShare) voidKind = standKinds[math.floor((h / P.biomeShare) * standKinds.size())];
+		}
+		const tall =
+			voidKind === undefined || (VOID_DECOR.layers[voidKind] as ReadonlyArray<DecorLayer>).includes("tall");
+		const boxKind: StandingKind = tall ? "column" : "columnBroken";
+		const f: DecorFootprint = { x0: x, y0: y, x1: x, y1: y, runX: 0, runZ: 0 };
+		const top = tryStand(f, boxKind, room[c]);
+		if (top === undefined) continue; // the gap stays spent: the next eligible cell tries
+		const h = pieceHash(x, y);
+		gap = gapOf(h, columnGapMax);
+		// face the wall: the 4-neighbour nearest the dungeon (first on a tie)
+		let fx = 0;
+		let fz = 0;
+		let best = dc;
+		for (let k = 0; k < 4; k++) {
+			const nx = x + DX8[k];
+			const ny = y + DY8[k];
+			if (nx < 0 || ny < 0 || nx >= W || ny >= H) continue;
+			const dn = dist[ny * W + nx];
+			if (dn < best) {
+				best = dn;
+				fx = DX8[k];
+				fz = DY8[k];
+			}
+		}
+		if (voidKind !== undefined) {
+			pushVoid(boxKind, voidKind, tall ? "tall" : "low", f, room[c], fx, fz, top, h);
+			continue;
+		}
+		const broken = h / HASH_RANGE < profile.columnBrokenShare;
+		pushVoid(broken ? "columnBroken" : "column", undefined, broken ? "low" : "tall", f, room[c], fx, fz, top, h);
+	}
+
+	// 3. curbs along the shoulder's outer edge
+	const curbRuns: VoidRun[] = [];
+	voidRuns(shoulder, edgeX, room, W, n, true, curbRuns);
+	voidRuns(shoulder, edgeY, room, W, n, false, curbRuns);
+	placeRuns(curbRuns, P.curbTiles, (f, run) => {
+		const top = tryStand(f, "curb", run.room);
+		if (top === undefined) return;
+		const [fx, fz] = run.alongX ? [0, run.front] : [run.front, 0];
+		pushVoid("curb", undefined, "low", f, run.room, fx, fz, top, pieceHash(f.x0, f.y0));
+	});
+
+	// --- flat pieces at hashed gaps along the scan ---------------------------------------------------
+	const flatLimit = math.min(P.maxFlat, math.floor(P.flatShare * shoulder.size()));
+	const patch = offsetsWithin(P.flatRadiusTiles);
+	const spaced = centresWithin(P.flatMinSpacing);
+	/** Cells a new flat piece may not take: within flatMinSpacing of one placed (and standing cells). */
+	const flatBlocked = taken;
+	const baseKinds = P.flatKinds as ReadonlyArray<DecorKind>;
+	const biomeKinds = (P.biomeFlatKinds[biome] ?? []) as ReadonlyArray<DecorKind>;
+	const flatGapMax = math.max(1, 2 * P.flatGap - 1);
+	let flats = 0;
+	gap = gapOf(decorHash(seed, FLAT_SCAN, P.salt.gap), flatGapMax);
+	const kindsHere: DecorKind[] = [];
+	for (const c of flatCells) {
+		if (flats >= flatLimit) break;
+		if (flatBlocked[c]) continue;
+		gap--;
+		if (gap > 0) continue;
+		const x = c % W;
+		const y = (c - x) / W;
+		const l = layer[c];
+		const t = vtop[c];
+		let fits = true;
+		for (let k = 0; k < patch.size() && fits; k += 2) {
+			const px = x + patch[k];
+			const py = y + patch[k + 1];
+			if (px < 0 || py < 0 || px >= W || py >= H) fits = false;
+			else {
+				const j = py * W + px;
+				fits = layer[j] === l && vtop[j] === t;
+			}
+		}
+		if (!fits) continue; // the gap stays spent: the next eligible cell tries
+		const h = pieceHash(x, y);
+		gap = gapOf(h, flatGapMax);
+		kindsHere.clear();
+		for (const k of baseKinds) kindsHere.push(k);
+		for (const k of biomeKinds) kindsHere.push(k);
+		if (l === VoidLayer.SHOULDER && room[c] >= 0 && dist[c] <= P.flagstoneMaxDist) kindsHere.push("flagstones");
+		// standard kinds first, then the biome void flat kinds (index past the standard ones)
+		const pick = math.floor((h / HASH_RANGE) * (kindsHere.size() + flatVoidKinds.size()));
+		const f: DecorFootprint = { x0: x, y0: y, x1: x, y1: y, runX: 0, runZ: 0 };
+		if (pick < kindsHere.size()) pushVoid(kindsHere[pick], undefined, "flat", f, room[c], 0, 0, t, h);
+		else pushVoid(VOID_FLAT_STAND_IN, flatVoidKinds[pick - kindsHere.size()], "flat", f, room[c], 0, 0, t, h);
+		for (let k = 0; k < spaced.size(); k += 2) {
+			const px = x + spaced[k];
+			const py = y + spaced[k + 1];
+			if (px >= 0 && py >= 0 && px < W && py < H) flatBlocked[py * W + px] = true;
+		}
+		flats++;
+	}
 }
