@@ -1,7 +1,7 @@
 import { Controller, OnStart } from "@flamework/core";
 import { Janitor } from "@rbxts/janitor";
 import { LocalizationService, Players } from "@rbxts/services";
-import { createKvScreenGui, MONO_FONT } from "client/ui";
+import { createKvScreenGui, DEV_MONO_FONT } from "client/ui";
 import { L10N_SPIKE } from "shared/config";
 import {
 	L10N_SPIKE_FONTS,
@@ -173,7 +173,7 @@ export class L10nSpikeController implements OnStart {
 		let order = 0;
 		const heading = (text: string) => {
 			order += 1;
-			const label = textLabel(scroller, `H${order}`, text, MONO_FONT, S.infoTextSize, 0);
+			const label = textLabel(scroller, `H${order}`, text, DEV_MONO_FONT, S.infoTextSize, 0);
 			label.AutomaticSize = Enum.AutomaticSize.XY;
 			label.TextColor3 = CAPTION;
 			label.LayoutOrder = order;
@@ -205,13 +205,13 @@ export class L10nSpikeController implements OnStart {
 		);
 		order += 1;
 		const header = stack(scroller, "Header", order, true);
-		textLabel(header, "Font", "font", MONO_FONT, S.infoTextSize, S.fontColumnWidth).TextColor3 = CAPTION;
+		textLabel(header, "Font", "font", DEV_MONO_FONT, S.infoTextSize, S.fontColumnWidth).TextColor3 = CAPTION;
 		L10N_SPIKE_SAMPLES.forEach((sample, i) => {
 			const label = textLabel(
 				header,
 				sample.id,
 				`${sample.id} (${sample.script})`,
-				MONO_FONT,
+				DEV_MONO_FONT,
 				S.infoTextSize,
 				S.cellWidth,
 			);
@@ -227,7 +227,7 @@ export class L10nSpikeController implements OnStart {
 				row,
 				"Font",
 				font ? fontName : `${fontName} (missing)`,
-				MONO_FONT,
+				DEV_MONO_FONT,
 				S.infoTextSize,
 				S.fontColumnWidth,
 			);
@@ -255,7 +255,15 @@ export class L10nSpikeController implements OnStart {
 					S.cellHeight,
 				);
 				glyph.TextYAlignment = Enum.TextYAlignment.Center;
-				const line = textLabel(cell, "Metrics", "", MONO_FONT, S.metricsTextSize, S.cellWidth, S.metricsHeight);
+				const line = textLabel(
+					cell,
+					"Metrics",
+					"",
+					DEV_MONO_FONT,
+					S.metricsTextSize,
+					S.cellWidth,
+					S.metricsHeight,
+				);
 				line.Position = UDim2.fromOffset(0, S.cellHeight);
 				line.TextColor3 = CAPTION;
 				const update = () => {
@@ -273,14 +281,21 @@ export class L10nSpikeController implements OnStart {
 		// (b) Wrapped text per script, in each wrap font, then the Arabic sample in each TextDirection.
 		heading("(b) Wrapped text (TextWrapped): CJK and Thai line breaks, the long German word, Arabic order");
 		for (const fontName of S.wrapFonts) {
-			const font = fontNamed(fontName) ?? MONO_FONT;
+			const font = fontNamed(fontName) ?? DEV_MONO_FONT;
 			order += 1;
 			const row = stack(scroller, `Wrap_${fontName}`, order, true);
-			textLabel(row, "Font", fontName, MONO_FONT, S.infoTextSize, S.fontColumnWidth).TextColor3 = CAPTION;
+			textLabel(row, "Font", fontName, DEV_MONO_FONT, S.infoTextSize, S.fontColumnWidth).TextColor3 = CAPTION;
 			L10N_SPIKE_WRAP_SAMPLES.forEach((sample, i) => {
 				const box = stack(row, sample.id, i + 1, false);
-				textLabel(box, "Id", sample.id, MONO_FONT, S.metricsTextSize, S.wrapWidth, S.metricsHeight).TextColor3 =
-					CAPTION;
+				textLabel(
+					box,
+					"Id",
+					sample.id,
+					DEV_MONO_FONT,
+					S.metricsTextSize,
+					S.wrapWidth,
+					S.metricsHeight,
+				).TextColor3 = CAPTION;
 				const text = textLabel(box, "Text", sample.text, font, S.wrapTextSize, S.wrapWidth);
 				text.TextWrapped = true;
 				text.LayoutOrder = 1;
@@ -292,17 +307,17 @@ export class L10nSpikeController implements OnStart {
 		if (arabic) {
 			heading("Arabic in each TextDirection (set through pcall; right-aligned)");
 			for (const fontName of S.wrapFonts) {
-				const font = fontNamed(fontName) ?? MONO_FONT;
+				const font = fontNamed(fontName) ?? DEV_MONO_FONT;
 				order += 1;
 				const row = stack(scroller, `Direction_${fontName}`, order, true);
-				textLabel(row, "Font", fontName, MONO_FONT, S.infoTextSize, S.fontColumnWidth).TextColor3 = CAPTION;
+				textLabel(row, "Font", fontName, DEV_MONO_FONT, S.infoTextSize, S.fontColumnWidth).TextColor3 = CAPTION;
 				S.directions.forEach((directionName, i) => {
 					const box = stack(row, directionName, i + 1, false);
 					const caption = textLabel(
 						box,
 						"Id",
 						directionName,
-						MONO_FONT,
+						DEV_MONO_FONT,
 						S.metricsTextSize,
 						S.directionWidth,
 						S.metricsHeight,
@@ -334,7 +349,7 @@ export class L10nSpikeController implements OnStart {
 			offRoot,
 			"Caption",
 			"3. root off, label on: English if a root's false covers its subtree",
-			MONO_FONT,
+			DEV_MONO_FONT,
 			S.metricsTextSize,
 			S.probeWidth,
 			S.metricsHeight,
@@ -343,7 +358,7 @@ export class L10nSpikeController implements OnStart {
 			offRoot,
 			"Probe",
 			L10N_SPIKE_PROBE_SOURCE,
-			MONO_FONT,
+			DEV_MONO_FONT,
 			S.probeTextSize,
 			S.probeWidth,
 			S.probeHeight,
@@ -374,7 +389,7 @@ export class L10nSpikeController implements OnStart {
 				probes,
 				`Caption${i}`,
 				caption,
-				MONO_FONT,
+				DEV_MONO_FONT,
 				S.metricsTextSize,
 				S.probeWidth,
 				S.metricsHeight,
@@ -385,7 +400,7 @@ export class L10nSpikeController implements OnStart {
 				probes,
 				`Probe${i}`,
 				L10N_SPIKE_PROBE_SOURCE,
-				MONO_FONT,
+				DEV_MONO_FONT,
 				S.probeTextSize,
 				S.probeWidth,
 				S.probeHeight,

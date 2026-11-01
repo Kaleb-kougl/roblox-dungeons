@@ -1,7 +1,7 @@
 import React from "@rbxts/react";
 import { useSelector } from "@rbxts/react-reflex";
 import { selectDailyPassed, selectDailyPassedRun, selectRunInfo } from "client/store";
-import { HUD_FONT, role, str } from "client/ui/theme";
+import { role, str, useNameFont } from "client/ui/theme";
 import { DAILY_WORLD_KIND } from "shared/daily";
 import {
 	DAILY_RANK,
@@ -20,6 +20,7 @@ const FULL_ROUND = new UDim(1, 0);
 
 /** One friend passed: the headshot (blank until it loads, or when it fails) over the name. */
 function PassedFriend(props: { readonly order: number; readonly friend: DailyRankEntry }) {
+	const nameFont = useNameFont(); // a display name (LD13)
 	const image = useHeadshot(props.friend.userId);
 	const px = DAILY_RANK.passedHeadshotPx;
 	const nameH = HUD_VIEW.smallText + FOOTPRINT_ESTIMATE.lineSlack;
@@ -46,7 +47,7 @@ function PassedFriend(props: { readonly order: number; readonly friend: DailyRan
 				Position={UDim2.fromOffset(0, px)}
 				Size={new UDim2(1, 0, 0, nameH)}
 				BackgroundTransparency={HIDDEN}
-				Font={HUD_FONT}
+				Font={nameFont}
 				TextScaled={true}
 				TextSize={HUD_VIEW.smallText}
 				TextXAlignment={Enum.TextXAlignment.Center}

@@ -7,6 +7,7 @@ import { clientStore, selectMenuOpen } from "client/store";
 import {
 	GameHud,
 	HudActionsContext,
+	LocaleRoot,
 	MenuActionsContext,
 	MenuLayer,
 	type HudActions,
@@ -154,8 +155,10 @@ export class HudController implements OnStart {
 				<ReflexProvider producer={clientStore}>
 					<HudActionsContext.Provider value={actions}>
 						<MenuActionsContext.Provider value={menuActions}>
-							<GameHud key="Hud" />
-							<MenuLayer key="KV_MenuShell" />
+							<LocaleRoot>
+								<GameHud key="Hud" />
+								<MenuLayer key="KV_MenuShell" />
+							</LocaleRoot>
 						</MenuActionsContext.Provider>
 					</HudActionsContext.Provider>
 				</ReflexProvider>,

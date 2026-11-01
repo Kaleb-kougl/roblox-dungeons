@@ -2,7 +2,7 @@ import { Controller, OnStart } from "@flamework/core";
 import { Janitor } from "@rbxts/janitor";
 import { Players, Workspace } from "@rbxts/services";
 import { clientStore, selectDailyStatus, selectMyLobby, selectScopedLeaderboard, type ClientState } from "client/store";
-import { fetchHeadshot } from "client/ui";
+import { fetchHeadshot, onLocaleChanged } from "client/ui";
 import { DAILY_WORLD_KIND } from "shared/daily";
 import {
 	LEADERBOARD_TOP_COUNT,
@@ -131,6 +131,9 @@ export class DailyRankController implements OnStart, NewBestRankLayer {
 			),
 		);
 		this.sim.onRunExited(() => this.requestMenuBoards());
+		// A locale switch (docs/LOCALIZATION.md L6): the target row's strings are rebuilt on the next frame (NaN never
+		// equals the frame's gap). Toasts store their key and render in React; shouts read str when asked.
+		this.janitor.Add(onLocaleChanged(() => (this.rowGap = 0 / 0)));
 		if (selectDailyStatus(clientStore.getState()) !== undefined) this.requestMenuBoards();
 	}
 

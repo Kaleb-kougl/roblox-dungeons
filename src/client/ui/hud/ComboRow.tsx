@@ -1,5 +1,5 @@
 import React from "@rbxts/react";
-import { HUD_FONT, role } from "client/ui/theme";
+import { useHudFont, role } from "client/ui/theme";
 import { COMBO_DRAW, FOOTPRINT_ESTIMATE, HUD_VIEW, comboShineOffset } from "shared/view/hud";
 import { COMBO_ROW_Z, COMBO_UI } from "./comboUi";
 
@@ -52,6 +52,7 @@ export function shineBand(): NumberSequence {
  * Every per-frame property is a COMBO_UI binding (ComboController writes them); this never re-renders per frame.
  */
 export function ComboRow(props: { readonly order: number; readonly width: number }) {
+	const hudFont = useHudFont();
 	const h = HUD_VIEW.titleText + FOOTPRINT_ESTIMATE.lineSlack;
 	const multW = COMBO_DRAW.multWidth;
 	const slotW = math.max(0, props.width - multW - HUD_VIEW.gap);
@@ -72,7 +73,7 @@ export function ComboRow(props: { readonly order: number; readonly width: number
 					Position={UDim2.fromScale(0, HALF)}
 					Size={new UDim2(0, slotW, 1, 0)}
 					BackgroundTransparency={HIDDEN}
-					Font={HUD_FONT}
+					Font={hudFont}
 					TextScaled={true}
 					TextSize={COMBO_DRAW.slotMaxText}
 					TextColor3={U.slotColor.binding}
@@ -94,7 +95,7 @@ export function ComboRow(props: { readonly order: number; readonly width: number
 					Size={UDim2.fromOffset(0, COMBO_DRAW.dropText + FOOTPRINT_ESTIMATE.lineSlack)}
 					AutomaticSize={Enum.AutomaticSize.X}
 					BackgroundTransparency={HIDDEN}
-					Font={HUD_FONT}
+					Font={hudFont}
 					TextSize={COMBO_DRAW.dropText}
 					TextColor3={role("uiHealth")}
 					TextStrokeColor3={stroke}
@@ -122,6 +123,7 @@ export function ComboMultiplier(props: {
 	readonly height?: number;
 	readonly order?: number;
 }) {
+	const hudFont = useHudFont();
 	const placed = props.placed === true;
 	const stroke = role("background");
 	const U = COMBO_UI;
@@ -140,7 +142,7 @@ export function ComboMultiplier(props: {
 				Position={UDim2.fromScale(1, HALF)}
 				Size={UDim2.fromScale(1, 1)}
 				BackgroundTransparency={HIDDEN}
-				Font={HUD_FONT}
+				Font={hudFont}
 				RichText={true}
 				TextSize={props.textSize}
 				TextColor3={U.multColor.binding}
@@ -154,7 +156,7 @@ export function ComboMultiplier(props: {
 					key="Shine"
 					Size={UDim2.fromScale(1, 1)}
 					BackgroundTransparency={HIDDEN}
-					Font={HUD_FONT}
+					Font={hudFont}
 					TextSize={props.textSize}
 					RichText={true}
 					TextColor3={role("uiText")}

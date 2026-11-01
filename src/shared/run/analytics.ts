@@ -7,6 +7,7 @@
  * field values per experience. Every field value here comes from a small fixed set (end reasons, phase numbers,
  * archetype ids, reject codes). The full name table is in docs/SERVER.md.
  */
+import { LOCALES, SOURCE_LOCALE, liveLocales, pickLocale } from "shared/l10n";
 import { BOSS_ACT1_ID, BOSS_DEMONLORD_ID, SIM_HZ } from "shared/sim";
 import type { RunSessionSummary } from "./session";
 import type { RunTelemetryRecord } from "./telemetry";
@@ -108,11 +109,75 @@ export function runFunnelStepsReached(r: Readonly<RunTelemetryRecord>): number[]
 	return out;
 }
 
-/** Every analytics event for one accepted run, in logging order. */
-export function analyticsForRun(r: Readonly<RunTelemetryRecord>): AnalyticsEventSpec[] {
+/**
+ * The locale fields of the RunStarted funnel step (docs/LOCALIZATION.md L14, LD14): `shown`, the locale the player
+ * reads, bucketed to a live code or LOCALE_OTHER (a developer's hidden pick); `language`, the player's Roblox
+ * language as the locale it would pick if every locale were live (any LOCALES code but the pseudo-locale, or
+ * LOCALE_OTHER), to see demand before a locale goes live. Small fixed sets: at most 19 x 19 combinations.
+ */
+export interface LocaleAnalytics {
+	readonly shown: string;
+	readonly language: string;
+}
+
+/** The bucket of a locale or language that is not listed. */
+export const LOCALE_OTHER = "other";
+
+/** A shown locale's bucket: a live code (English included), else LOCALE_OTHER. */
+export function localeBucket(code: string): string {
+	return liveLocales().some((l) => l.code === code) ? code : LOCALE_OTHER;
+}
+
+/** The Roblox language's bucket: the locale it maps to with every locale live, else LOCALE_OTHER (English only for en-*). */
+export function languageBucket(robloxIds: ReadonlyArray<string>): string {
+	const code = pickLocale(robloxIds, undefined, { allowHidden: true }).code;
+	if (code !== SOURCE_LOCALE) return code;
+	const english = robloxIds.some((id) => string.sub(id.lower(), 1, SOURCE_LOCALE.size()) === SOURCE_LOCALE);
+	return english ? SOURCE_LOCALE : LOCALE_OTHER;
+}
+
+/**
+ * The locale fields for a player (the server reads `Player.LocaleId` and the stored Options > Language override;
+ * `allowHidden` for developers, who may read hidden locales).
+ */
+export function localeAnalytics(
+	robloxIds: ReadonlyArray<string>,
+	override: string | undefined,
+	allowHidden: boolean,
+): LocaleAnalytics {
+	return {
+		shown: localeBucket(pickLocale(robloxIds, override, { allowHidden }).code),
+		language: languageBucket(robloxIds),
+	};
+}
+
+/** Every value each locale field can take (specs: fixed sets within Roblox's field limits). */
+export function localeAnalyticsValues(): { shown: string[]; language: string[] } {
+	const shown = liveLocales().map((l) => l.code);
+	shown.push(LOCALE_OTHER);
+	const language = LOCALES.filter((l) => l.pseudo === undefined).map((l) => l.code);
+	language.push(LOCALE_OTHER);
+	return { shown, language };
+}
+
+/**
+ * Every analytics event for one accepted run, in logging order. With `locale`, the RunStarted funnel step carries
+ * field01 = locale.shown and field02 = locale.language (LocaleAnalytics).
+ */
+export function analyticsForRun(
+	r: Readonly<RunTelemetryRecord>,
+	locale?: Readonly<LocaleAnalytics>,
+): AnalyticsEventSpec[] {
 	const out: AnalyticsEventSpec[] = [];
 	for (const i of runFunnelStepsReached(r)) {
-		out.push({ kind: "funnel", funnel: RUN_FUNNEL, step: i + 1, stepName: RUN_FUNNEL_STEPS[i] });
+		const step: AnalyticsEventSpec = {
+			kind: "funnel",
+			funnel: RUN_FUNNEL,
+			step: i + 1,
+			stepName: RUN_FUNNEL_STEPS[i],
+		};
+		if (i === 0 && locale !== undefined) step.fields = { field01: locale.shown, field02: locale.language };
+		out.push(step);
 	}
 
 	const boss = bossProgressionLevel(r.bossId);

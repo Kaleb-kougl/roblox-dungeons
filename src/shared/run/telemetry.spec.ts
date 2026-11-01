@@ -20,6 +20,7 @@ import {
 	ANALYTICS_EVENT,
 	BOSS_PROGRESSION_LEVELS,
 	BOSS_PROGRESSION_PATH,
+	LOCALE_OTHER,
 	RUN_FUNNEL,
 	analyticsForRejection,
 	analyticsForRun,
@@ -27,6 +28,10 @@ import {
 	bossProgressionLevel,
 	engagedBossId,
 	hitSourceName,
+	languageBucket,
+	localeAnalytics,
+	localeAnalyticsValues,
+	localeBucket,
 	summarizeRunSession,
 } from "shared/run";
 import {
@@ -370,5 +375,69 @@ describe("summarizeRunSession (aggregate.mjs summarizeSession, per player)", () 
 		expect(fields([alive, died])).toBe("quitAfterDeath");
 		expect(fields([alive])).toBe("noDeaths");
 		expect(analyticsForSession(summarizeRunSession([]))).toEqual([]);
+	});
+});
+
+describe("locale analytics (docs/LOCALIZATION.md L14)", () => {
+	/** Roblox AnalyticsService: combinations of the custom field values per experience; this feature's share. */
+	const ROBLOX_MAX_FIELD_COMBINATIONS = 8000;
+	const LOCALE_COMBINATION_BUDGET = 400;
+
+	it("buckets the shown locale to a live code or other", () => {
+		expect(localeBucket("en")).toBe("en");
+		expect(localeBucket("de")).toBe(LOCALE_OTHER); // hidden until its go-live (LD12)
+		expect(localeBucket("en-XA")).toBe(LOCALE_OTHER);
+		expect(localeBucket("xx")).toBe(LOCALE_OTHER);
+	});
+
+	it("buckets the Roblox language as the locale it would pick with every locale live", () => {
+		expect(languageBucket(["es-mx"])).toBe("es");
+		expect(languageBucket(["pt-br"])).toBe("pt-BR");
+		expect(languageBucket(["en-us"])).toBe("en");
+		expect(languageBucket(["en-au"])).toBe("en");
+		expect(languageBucket(["sw-ke"])).toBe(LOCALE_OTHER);
+		expect(languageBucket([])).toBe(LOCALE_OTHER);
+		expect(languageBucket(["en-xa"])).toBe("en"); // never the pseudo-locale
+	});
+
+	it("a player's fields: hidden picks only for developers, and they bucket as other", () => {
+		expect(localeAnalytics(["de-de"], undefined, false)).toEqual({ shown: "en", language: "de" });
+		expect(localeAnalytics(["de-de"], undefined, true)).toEqual({ shown: LOCALE_OTHER, language: "de" });
+		expect(localeAnalytics(["ja-jp"], "en-XA", true)).toEqual({ shown: LOCALE_OTHER, language: "ja" });
+		expect(localeAnalytics(["ja-jp"], "en", false)).toEqual({ shown: "en", language: "ja" });
+	});
+
+	it("every value comes from small fixed sets, within Roblox's field limits", () => {
+		const values = localeAnalyticsValues();
+		const shown = new Set(values.shown);
+		const language = new Set(values.language);
+		for (const ids of [["de-de"], ["ja-jp"], ["en-us"], ["xx-yy"], []] as string[][]) {
+			for (const override of [undefined, "en", "de", "en-XA"]) {
+				for (const dev of [false, true]) {
+					const f = localeAnalytics(ids, override, dev);
+					expect(shown.has(f.shown)).toBe(true);
+					expect(language.has(f.language)).toBe(true);
+				}
+			}
+		}
+		const n = values.shown.size() * values.language.size();
+		expect(n <= LOCALE_COMBINATION_BUDGET).toBe(true);
+		expect(n < ROBLOX_MAX_FIELD_COMBINATIONS).toBe(true);
+	});
+
+	it("rides on the RunStarted funnel step only, and only when given", () => {
+		const rec = fromStream(runFull as unknown as StreamFixture);
+		const plain = analyticsForRun(rec);
+		const tagged = analyticsForRun(rec, { shown: "en", language: "es" });
+		expect(tagged.size()).toBe(plain.size());
+		expect(tagged[0]).toEqual({
+			kind: "funnel",
+			funnel: RUN_FUNNEL,
+			step: 1,
+			stepName: "RunStarted",
+			fields: { field01: "en", field02: "es" },
+		});
+		expect(plain[0]).toEqual({ kind: "funnel", funnel: RUN_FUNNEL, step: 1, stepName: "RunStarted" });
+		for (let i = 1; i < plain.size(); i++) expect(tagged[i]).toEqual(plain[i]);
 	});
 });

@@ -1,7 +1,7 @@
 import { Controller, OnStart } from "@flamework/core";
 import { Janitor } from "@rbxts/janitor";
 import { Workspace } from "@rbxts/services";
-import { HUD_FONT, createKvSurfaceGui } from "client/ui";
+import { createKvSurfaceGui, currentHudFont, onLocaleChanged } from "client/ui";
 import { CAMERA_YAW_DEG, STUDS_PER_TILE } from "shared/config";
 import { MAX_PARTY_SIZE, partySize, playerAt, type SimState } from "shared/sim";
 import type { JuiceSettings } from "shared/settings";
@@ -77,7 +77,7 @@ interface FlashSlot {
  *     shoutDucked over the enemy bullet pool in the text's own box (shoutBoxAt with that size) grown by
  *     COMBO_SHOUT.duckMarginTiles (CD9's rule and numbers, shared with ComboController).
  *     The construction is the combo shout's (CD9): ONE SurfaceGui on the Top face of a thin invisible floor Part per
- *     slot (COMBO_SHOUT's box, shoutCanvasSize's canvas, TextScaled HUD_FONT with the background-coloured stroke),
+ *     slot (COMBO_SHOUT's box, shoutCanvasSize's canvas, TextScaled HUD font with the background-coloured stroke),
  *     yawed by the camera, on FxSpriteController's "floor" placement at the shout's layer
  *     (COMBO_SHOUT_DRAW.layerStepsBelowEffects under the sprite effects), so every bullet, telegraph, marking, effect
  *     and body draws over it. A slot the frame no longer lists is hidden.
@@ -135,6 +135,16 @@ export class ParryFlashController implements OnStart {
 			if (this.sim.getContext() === undefined) this.off();
 		});
 		this.janitor.Add(Workspace.GetAttributeChangedSignal(PARRY_DEBUG.attribute).Connect(() => this.readDebug()));
+		// A locale switch (docs/LOCALIZATION.md L6): each slot's font, and its label rewritten on the next frame.
+		this.janitor.Add(
+			onLocaleChanged(() => {
+				const font = currentHudFont();
+				for (const slot of this.slots) {
+					slot.label.Font = font;
+					slot.shownCount = -1;
+				}
+			}),
+		);
 	}
 
 	// --- the frame ---------------------------------------------------------------------------------
@@ -267,7 +277,7 @@ export class ParryFlashController implements OnStart {
 		label.Size = UDim2.fromScale(1, 1);
 		label.BackgroundTransparency = HIDDEN;
 		label.BorderSizePixel = 0;
-		label.Font = HUD_FONT;
+		label.Font = currentHudFont();
 		label.TextScaled = true;
 		label.TextColor3 = pack.color(PARRY_FLASH_DRAW.role);
 		label.TextStrokeColor3 = pack.color("background");

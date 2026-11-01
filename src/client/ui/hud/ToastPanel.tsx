@@ -41,7 +41,7 @@ function HeadshotToast(props: { readonly order: number; readonly userId: number;
 			>
 				<uicorner CornerRadius={FULL_ROUND} />
 			</imagelabel>
-			<Text key="Line" order={2} color="uiAccent" text={props.text} />
+			<Text key="Line" order={2} color="uiAccent" font="name" text={props.text} />
 		</Row>
 	);
 }

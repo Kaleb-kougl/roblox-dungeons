@@ -35,3 +35,8 @@ export function fontsFor(code: string): LocaleFonts {
 	const def = localeDef(code) ?? localeDef(SOURCE_LOCALE);
 	return L10N_FONTS[def !== undefined ? def.script : "latin"];
 }
+
+/** A text size (reference px) times a script's sizeScale, rounded to whole px (exactly `size` at 1). */
+export function scaledTextSize(size: number, sizeScale: number): number {
+	return sizeScale === 1 ? size : math.max(1, math.round(size * sizeScale));
+}

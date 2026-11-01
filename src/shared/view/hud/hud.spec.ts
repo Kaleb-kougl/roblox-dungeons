@@ -190,7 +190,7 @@ describe("HUD helpers", () => {
 		const pack = quietPack(warnings);
 		const keys = optionsStringKeys(KBM_ACTIONS);
 		expect(keys.size()).toBe(
-			BINDING_REFUSALS.size() + KBM_ACTIONS.size() + OPTIONS_TABS.size() + OPTIONS_DEVICES.size() + 37,
+			BINDING_REFUSALS.size() + KBM_ACTIONS.size() + OPTIONS_TABS.size() + OPTIONS_DEVICES.size() + 41,
 		);
 		for (const key of keys) expect([key, pack.hasString(key)]).toEqual([key, true]);
 		// Every pad action is a keyboard action too (one name table).

@@ -1,5 +1,5 @@
 import React from "@rbxts/react";
-import { HUD_FONT, role } from "client/ui/theme";
+import { useHudFont, role } from "client/ui/theme";
 import { FOOTPRINT_ESTIMATE, HUD_TRANSIENT, HUD_VIEW, ROOM_CLEAR_VIEW } from "shared/view/hud";
 import { ROOM_CLEAR_UI as UI } from "./roomClearBindings";
 import { useTouchStrip } from "./touchStripContext";
@@ -14,6 +14,7 @@ const HIDDEN = 1;
  * score panel: the chips hang at the right under the touch strip's boss slot.
  */
 export function RoomClearChips() {
+	const hudFont = useHudFont();
 	const strip = useTouchStrip();
 	const box = HUD_TRANSIENT.roomClearChip;
 	const edge = strip?.belowTop ?? box.edge;
@@ -27,7 +28,7 @@ export function RoomClearChips() {
 				Position={UI.chipOffset[i].binding.map((x) => new UDim2(1, x, 0, i * (rowH + HUD_VIEW.gap)))}
 				Size={new UDim2(0, box.width, 0, rowH)}
 				BackgroundTransparency={HIDDEN}
-				Font={HUD_FONT}
+				Font={hudFont}
 				TextSize={ROOM_CLEAR_VIEW.chipText}
 				TextColor3={UI.chipPerfect[i].binding.map((p) => role(p ? "ember" : "uiText"))}
 				TextStrokeColor3={role("background")}

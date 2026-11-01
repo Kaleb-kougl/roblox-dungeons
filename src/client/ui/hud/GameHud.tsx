@@ -61,8 +61,8 @@ import { WeaponPanel } from "./WeaponPanel";
  *
  * The first two lay out at the 1280x720 reference size under a UIScale (useHudScale) and sit inside the device's
  * safe area (ScreenInsets = CoreUISafeInsets: notches, the Roblox top bar). Reads only Reflex (the ~10 Hz snapshot, the input
- * device, the verdict, the settings); text from the theme string table, colours from theme roles, the font from the
- * HUD font token (shared/view/hud HUD_FONTS).
+ * device, the verdict, the settings); text from the theme string table, colours from theme roles, the fonts from the
+ * locale shown (client/ui/theme useUiFonts; docs/LOCALIZATION.md L4).
  */
 export function GameHud() {
 	const active = useSelector(selectGameActive);

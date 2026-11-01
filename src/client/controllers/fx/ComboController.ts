@@ -1,7 +1,7 @@
 import { Controller, OnStart } from "@flamework/core";
 import { Janitor } from "@rbxts/janitor";
 import { Workspace } from "@rbxts/services";
-import { COMBO_UI, HUD_FONT, resetComboUi, createKvSurfaceGui } from "client/ui";
+import { COMBO_UI, currentHudFont, onLocaleChanged, resetComboUi, createKvSurfaceGui } from "client/ui";
 import { CAMERA_YAW_DEG, STUDS_PER_TILE } from "shared/config";
 import { COMBO_MIN, TILE_SIZE, partySize, playerAt, teamComboWindowTicks, type SimState } from "shared/sim";
 import type { JuiceSettings } from "shared/settings";
@@ -71,6 +71,8 @@ interface PriorityShout {
 const PRIORITY_SHOUT_TIER = 1;
 /** shownTier while a priority shout's label is up (never a real tier). */
 const PRIORITY_SHOWN = -1;
+/** shownTier after a locale switch: neither a tier nor PRIORITY_SHOWN, so the label is rewritten on the next frame. */
+const RELABEL = -2;
 
 /**
  * The combo's per-frame view (docs/COMBO.md CB7). Once per rendered frame (an FxTrackerController frame handler, after
@@ -188,6 +190,21 @@ export class ComboController implements OnStart {
 		this.fx.onFrame((_, settings, dt) => this.frame(settings, dt));
 		const readDebug = () => this.readDebug();
 		this.janitor.Add(Workspace.GetAttributeChangedSignal(COMBO_DEBUG.attribute).Connect(readDebug));
+		this.janitor.Add(onLocaleChanged(() => this.relocalize()));
+	}
+
+	/**
+	 * A locale switch (docs/LOCALIZATION.md L6): the shout's font, and every cached text (multiplier, slot, drop, the
+	 * shout's label) rewritten on the next frame. A priority shout keeps the text it was asked with.
+	 */
+	private relocalize(): void {
+		if (this.label !== undefined) this.label.Font = currentHudFont();
+		this.multTenths = -1;
+		this.slotKind = "";
+		this.slotTier = -1;
+		this.slotTenths = -1;
+		this.dropTenths = -1;
+		this.shownTier = RELABEL;
 	}
 
 	// --- the frame ---------------------------------------------------------------------------------
@@ -376,7 +393,7 @@ export class ComboController implements OnStart {
 		label.Size = UDim2.fromScale(1, 1);
 		label.BackgroundTransparency = HIDDEN;
 		label.BorderSizePixel = 0;
-		label.Font = HUD_FONT;
+		label.Font = currentHudFont();
 		label.TextScaled = true;
 		label.TextStrokeColor3 = pack.color("background");
 		label.TextTransparency = HIDDEN;

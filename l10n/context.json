@@ -2219,6 +2219,25 @@
 		"note": "Options screen, Display tab: row label for the size of the in-game HUD (percent steps). Label column 210 px.",
 		"max": 24
 	},
+	"options.display.language": {
+		"note": "Options screen, Display tab: row label for the game's language (the choice shows between < and > buttons). Label column 210 px.",
+		"max": 24
+	},
+	"options.display.language.auto": {
+		"note": "Options screen, Display tab, Language row: the choice that follows the player's Roblox language. {name} is that language's own name, untranslated (e.g. \"Deutsch\", \"日本語\"). Shown in a 300 px slot.",
+		"max": 30,
+		"example": {
+			"name": "Deutsch"
+		}
+	},
+	"options.display.language.next": {
+		"note": "Step button (40 x 30 px) right of the Language choice: shows the next language. A single arrow-like symbol (\">\"). Usually unchanged; keep it pointing right even in right-to-left languages (the layout is not mirrored).",
+		"max": 1
+	},
+	"options.display.language.prev": {
+		"note": "Step button (40 x 30 px) left of the Language choice: shows the previous language. A single arrow-like symbol (\"<\"). Usually unchanged; keep it pointing left even in right-to-left languages (the layout is not mirrored).",
+		"max": 1
+	},
 	"options.display.minimap": {
 		"note": "Options screen, Display tab: row label for the small corner map (On / Off). Label column 210 px.",
 		"max": 24
