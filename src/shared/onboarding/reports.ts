@@ -7,15 +7,19 @@
  */
 import {
 	TUTORIAL_DEVICES,
-	TUTORIAL_FOLLOW_PROMPT,
+	TUTORIAL_PROMPT_IDS,
 	TUTORIAL_STEPS,
 	tutorialStepIndex,
 	type TutorialDevice,
+	type TutorialLessonReport,
+	type TutorialStuckReport,
 } from "shared/tutorial";
 import { TUTORIAL_FUNNEL_MAX_STEP, TUTORIAL_TELEMETRY } from "./config";
 import { isTutorialOutcome, type TutorialOutcome } from "./doc";
 
-export type { TutorialDevice } from "shared/tutorial";
+export type { TutorialDevice, TutorialLessonReport, TutorialStuckReport } from "shared/tutorial";
+/** Every prompt id the director can show (shared/tutorial's list): TutorialStuck's field01 values. */
+export { TUTORIAL_PROMPT_IDS } from "shared/tutorial";
 
 /**
  * How an attempt began (the attempt funnel's step 1 field01):
@@ -42,19 +46,6 @@ export const DEFAULT_TUTORIAL_START_INFO: Readonly<TutorialStartInfo> = table.fr
 	entry: "firstJoin" as TutorialEntry,
 	device: "keyboard" as TutorialDevice,
 });
-
-/** `tutorialLesson`'s payload: lesson `step` (1..TUTORIAL_FUNNEL_MAX_STEP) was done after `seconds`, taking `hits`. */
-export interface TutorialLessonReport {
-	step: number;
-	seconds: number;
-	hits: number;
-}
-
-/** `tutorialStuck`'s payload: `prompt` (a prompt id) showed `seconds` with no progress. */
-export interface TutorialStuckReport {
-	prompt: string;
-	seconds: number;
-}
 
 /**
  * `tutorialFinished`'s payload: the outcome and the director's current step id (TutorialView.stepId), or
@@ -109,29 +100,12 @@ export type TutorialAbandonKind = "leave" | "partyRun";
 export const TUTORIAL_ABANDON_KINDS: ReadonlyArray<TutorialAbandonKind> = ["leave", "partyRun"];
 
 // (Helpers come before the constants they build: roblox-ts does not hoist a function called at module load.)
-function collectPromptIds(): ReadonlyArray<string> {
-	const out: string[] = [];
-	const add = (id: string | undefined) => {
-		if (id !== undefined && !out.includes(id)) out.push(id);
-	};
-	for (const s of TUTORIAL_STEPS) add(s.prompt);
-	for (const s of TUTORIAL_STEPS) add(s.holdPrompt);
-	add(TUTORIAL_FOLLOW_PROMPT);
-	return table.freeze(out);
-}
-
 function collectCurrentStepIds(): ReadonlyArray<string> {
 	const out: string[] = [];
 	for (const s of TUTORIAL_STEPS) out.push(s.id);
 	out.push(TUTORIAL_NO_STEP_ID);
 	return table.freeze(out);
 }
-
-/**
- * Every prompt id the director can show (TutorialView.prompt), in a fixed order: each step's `prompt`, each step's
- * `holdPrompt` (`guardHold`), then TUTORIAL_FOLLOW_PROMPT (`follow`); each once. TutorialStuck's field01 values.
- */
-export const TUTORIAL_PROMPT_IDS: ReadonlyArray<string> = collectPromptIds();
 
 /** Every value of a current-step field: the TUTORIAL_STEPS ids, then TUTORIAL_NO_STEP_ID. */
 export const TUTORIAL_CURRENT_STEP_IDS: ReadonlyArray<string> = collectCurrentStepIds();
