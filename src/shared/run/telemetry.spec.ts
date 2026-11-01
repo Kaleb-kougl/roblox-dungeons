@@ -402,7 +402,8 @@ describe("locale analytics (docs/LOCALIZATION.md L14)", () => {
 
 	it("a player's fields: hidden picks only for developers, and they bucket as other", () => {
 		expect(localeAnalytics(["de-de"], undefined, false)).toEqual({ shown: "en", language: "de" });
-		expect(localeAnalytics(["de-de"], undefined, true)).toEqual({ shown: LOCALE_OTHER, language: "de" });
+		expect(localeAnalytics(["de-de"], undefined, true)).toEqual({ shown: "en", language: "de" }); // auto: live only
+		expect(localeAnalytics(["de-de"], "de", true)).toEqual({ shown: LOCALE_OTHER, language: "de" });
 		expect(localeAnalytics(["ja-jp"], "en-XA", true)).toEqual({ shown: LOCALE_OTHER, language: "ja" });
 		expect(localeAnalytics(["ja-jp"], "en", false)).toEqual({ shown: "en", language: "ja" });
 	});

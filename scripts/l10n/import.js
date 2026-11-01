@@ -7,7 +7,8 @@
 // from l10n/build/source.json. Columns are
 // found by header name, case-insensitively: Key, Source (required), then locale columns mapped through
 // l10n/columns.json, LOCALES codes, LOCALES Roblox ids, then the language alone. Several files (export batches) merge;
-// a later file wins a duplicate cell. For every locale with a column it rewrites src/shared/theme/locales/<code>.ts
+// a later file wins a duplicate cell. ALWAYS import the whole cloud table (every batch at once): a locale's table is
+// rebuilt from the given files only, so importing one batch alone drops that locale's translations from the others. For every locale with a column it rewrites src/shared/theme/locales/<code>.ts
 // (sorted keys, entry = [text, sourceHash(the row's Source)], empty cells skipped; a locale with no usable cell gets
 // no table), then regenerates index.ts and writes l10n/report.md. A locale with no column is left as it is.
 // Rejected (never written): a cell whose {placeholders} differ from its Source's, malformed braces, lowercase in an

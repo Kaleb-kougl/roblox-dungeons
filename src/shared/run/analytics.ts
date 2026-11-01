@@ -7,7 +7,7 @@
  * field values per experience. Every field value here comes from a small fixed set (end reasons, phase numbers,
  * archetype ids, reject codes). The full name table is in docs/SERVER.md.
  */
-import { LOCALES, SOURCE_LOCALE, liveLocales, pickLocale } from "shared/l10n";
+import { LOCALES, SOURCE_LOCALE, liveLocales, pickLocale, resolveLocaleState } from "shared/l10n";
 import { BOSS_ACT1_ID, BOSS_DEMONLORD_ID, SIM_HZ } from "shared/sim";
 import type { RunSessionSummary } from "./session";
 import type { RunTelemetryRecord } from "./telemetry";
@@ -138,7 +138,8 @@ export function languageBucket(robloxIds: ReadonlyArray<string>): string {
 
 /**
  * The locale fields for a player (the server reads `Player.LocaleId` and the stored Options > Language override;
- * `allowHidden` for developers, who may read hidden locales).
+ * `allowHidden` for developers, who may pick hidden locales in Options; the automatic pick is live-only for everyone,
+ * exactly as the client resolves it: shared/l10n resolveLocaleState).
  */
 export function localeAnalytics(
 	robloxIds: ReadonlyArray<string>,
@@ -146,7 +147,7 @@ export function localeAnalytics(
 	allowHidden: boolean,
 ): LocaleAnalytics {
 	return {
-		shown: localeBucket(pickLocale(robloxIds, override, { allowHidden }).code),
+		shown: localeBucket(resolveLocaleState(robloxIds, override, { allowHidden }).code),
 		language: languageBucket(robloxIds),
 	};
 }

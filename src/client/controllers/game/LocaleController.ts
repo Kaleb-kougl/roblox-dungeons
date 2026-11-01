@@ -18,7 +18,7 @@ import { ThemeController } from "./ThemeController";
  *   override   Options > Display > Language (DisplaySettings.language; the settings slice: the server's stored
  *              overrides arrive after join, a pick applies at once);
  *   developer  Studio, or the player attribute DEV_MODE.allowedAttribute (DevModeService): may pick hidden locales,
- *              the pseudo-locale en-XA included (and auto-picks hidden ones from the Roblox language).
+ *              the pseudo-locale en-XA included, in Options only (the automatic pick stays live-only).
  *
  * shared/l10n resolveLocaleState -> the theme pack's setLocale (strings and the number locale) -> the `l10n` slice,
  * in that order, so every reader of the slice already gets the new strings. React roots remount under LocaleRoot;
