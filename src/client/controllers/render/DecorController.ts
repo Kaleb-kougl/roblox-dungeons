@@ -37,6 +37,7 @@ import {
 	studsY,
 	studsZ,
 	voidForceBand,
+	voidBiomeOf,
 	voidRunInput,
 	type DecorBody,
 	type DecorEntry,
@@ -260,7 +261,10 @@ export class DecorController implements OnStart {
 			return list;
 		};
 		let voidPlan: VoidPlan | undefined;
-		if (Workspace.GetAttribute(VOID_VIEW.offAttribute) !== true) {
+		if (
+			Workspace.GetAttribute(VOID_VIEW.offAttribute) !== true &&
+			voidBiomeOf(dungeon.params.themeKey) !== undefined
+		) {
 			// the same input VoidController builds (voidRunInput), so both read one cached plan
 			voidPlan = planVoidCached(voidRunInput(dungeon, layout, depth, forced));
 		}

@@ -4,7 +4,7 @@
 // the abyss motes stay under the floor and scale with the ambient emitter (none under reduced motion).
 import { describe, expect, it } from "@rbxts/jest-globals";
 import { STUDS_PER_TILE } from "shared/config";
-import { THEMES, TileType, buildEndlessFloor, generateDungeon, type ThemeKey } from "shared/dungeon";
+import { THEMES, THEME_KEYS, TileType, buildEndlessFloor, generateDungeon, type ThemeKey } from "shared/dungeon";
 import { GAME_WORLD } from "../config";
 import { DECOR_FX, abyssMoteSpec, ambientEmitterSpec, ambientMaxRiseTiles, decorProfile } from "../decor";
 import { floorStudsY, studsX, studsZ } from "../space";
@@ -15,6 +15,7 @@ import {
 	planVoid,
 	planVoidCached,
 	voidBandOf,
+	voidBiomeOf,
 	voidColumnBottomTiles,
 	voidColumnOf,
 	voidForceBand,
@@ -174,5 +175,12 @@ describe("void parts: abyss motes (VD8)", () => {
 			expect(still.rate).toBe(0);
 			expect(abyssMoteSpec(ambientEmitterSpec(themeKey, 1, "off", 1)).rate).toBe(0);
 		}
+	});
+});
+
+describe("void parts: biome", () => {
+	it("every Dungeon Forge theme has a void biome; an unknown theme draws no void", () => {
+		for (const key of THEME_KEYS) expect(voidBiomeOf(key)).toBeDefined();
+		expect(voidBiomeOf("nowhere")).toBeUndefined();
 	});
 });

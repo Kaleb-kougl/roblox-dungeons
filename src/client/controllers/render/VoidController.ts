@@ -2,7 +2,7 @@ import { Controller, OnStart } from "@flamework/core";
 import { Janitor } from "@rbxts/janitor";
 import { Workspace } from "@rbxts/services";
 import type { Dungeon } from "shared/dungeon";
-import { BIOMES, DEFAULT_BIOME_MATERIAL, hexToColor3 } from "shared/theme";
+import { DEFAULT_BIOME_MATERIAL, hexToColor3 } from "shared/theme";
 import {
 	DECOR_DEPTH,
 	VOID_DEPTH,
@@ -12,6 +12,7 @@ import {
 	voidBandOf,
 	voidColumnOf,
 	voidLayerStyle,
+	voidBiomeOf,
 	voidRunInput,
 } from "shared/view";
 import { SimController, type RunContext } from "../game/SimController";
@@ -91,15 +92,15 @@ export class VoidController implements OnStart {
 		this.floorJanitor.Cleanup();
 		this.partCount = 0;
 		if (d === undefined || input === undefined || off) return; // greybox, or KV_VoidOff
-		const biome = BIOMES.find((b) => b.forgeTheme === d.params.themeKey);
-		if (biome === undefined) {
+		const biomeId = voidBiomeOf(d.params.themeKey);
+		if (biomeId === undefined) {
 			print(`[Void] no biome for theme ${d.params.themeKey}: no void drawn`);
 			return;
 		}
 		const started = os.clock();
 		const plan = planVoidCached(input);
 		const planned = os.clock();
-		const colors = this.theme.getPack().biome(biome.id);
+		const colors = this.theme.getPack().biome(biomeId);
 		const folder = new Instance("Folder");
 		folder.Name = VOID_VIEW.folderName;
 		this.floorJanitor.Add(folder);
@@ -130,7 +131,7 @@ export class VoidController implements OnStart {
 		folder.Parent = Workspace;
 		print(
 			`[Void] built ${this.partCount} parts (floor ${input.floor ?? 1}, ${VOID_DEPTH.bands[plan.band].name}, ` +
-				`${biome.id}: shoulder ${shoulder} / ledge ${ledge} / outcrop ${outcrop}${
+				`${biomeId}: shoulder ${shoulder} / ledge ${ledge} / outcrop ${outcrop}${
 					debug ? ", debug tints" : ""
 				}), ` +
 				`plan ${string.format("%.1f", (planned - started) * MS)} ms, ` +

@@ -9,7 +9,7 @@
  * VOID_VIEW.columnSinkTiles past it into the backdrop slab, so the near-side cliff faces meet the abyss with no seam.
  */
 import type { Dungeon, EndlessFloorLayout } from "shared/dungeon";
-import type { BiomeMaterialSurface } from "shared/theme";
+import { BIOMES, type BiomeMaterialSurface } from "shared/theme";
 import { STUDS_PER_TILE } from "shared/config";
 import { floorStudsY, studsX, studsZ } from "../space";
 import { VOID } from "./config";
@@ -18,6 +18,15 @@ import { voidInputOfLayout, type VoidPlanInput, type VoidRect } from "./plan";
 import { VOID_VIEW } from "./viewConfig";
 
 const HALF = 0.5;
+
+/**
+ * The biome id the void of a floor with Dungeon Forge theme `themeKey` is drawn in (WorldController's match), or
+ * undefined: no void at all, neither geometry (VoidController) nor set pieces (DecorController), so no piece ever
+ * hangs over the bare abyss.
+ */
+export function voidBiomeOf(themeKey: string): string | undefined {
+	return BIOMES.find((b) => b.forgeTheme === themeKey)?.id;
+}
 
 /**
  * The plan input of a run's floor, exactly as DecorController builds its decor input: an endless floor's layout (its

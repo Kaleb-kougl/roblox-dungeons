@@ -9,13 +9,11 @@ task ends with a **Verify**.
 **Presentation only.** Nothing here changes `src/shared/sim/**`, `src/shared/dungeon/**`, collision, the minimap, a
 replay, a hash or a fixture. VOID cells stay VOID in the grid; bullets and bodies treat them exactly as today.
 
-## Status (2026-11-01)
+## Status (2026-11-01, branch `void-decor`)
 
-Planned. Owner calls taken on 2026-11-01: VDD1-VDD3 (below). VD0's census is done (`scripts/lune/void-census.luau`,
-numbers below); VD1 (theme contract), VD7 (void art slots), VD2 (the pure void planner,
-`src/shared/view/voidDecor/`) and VD4's band knobs are built; VD3 (the geometry: `VoidController`, the abyss backdrop),
-VD8 (abyss motes), VD9 (debug attributes) and VD5 / VD6 (the set pieces in the decor plan and on screen) are built
-(headless only) and wait for their Studio checks.
+VD0-VD10 are **code-complete and verified headlessly only** (`npm run verify`); **nothing has run in Studio**. Owner
+calls taken on 2026-11-01: VDD1-VDD3. Open: every Studio check (VD3-VD6, VD8, VD9 sub-items, then VD11's playtest),
+VDD5 / VDD6 / VDD8, and the vale `flagstones` / `curb` art (VD6 owner steps: rebuild and re-upload the decor atlas).
 
 ## What the camera sees today (VD0 census)
 
@@ -72,8 +70,8 @@ pits appear between rooms.
    that keeps tall pieces to the screen-up side of rooms (VDD2), and it also rejects a tall piece behind one room that
    would cover another room further up the screen.
 3. **Bullets stay visible.** An enemy bullet hugging a far wall is drawn over the wall top and the shoulder behind it,
-   so enemy-bullet roles keep >= 3:1 against the shoulder and the ledge at every depth band's light, the same rule as
-   walls. Any glow in the void (molten) stays >= 40 CIE76 from the enemy-bullet roles and `telegraph`, and never
+   so `enemyBullet` keeps >= 3:1 against the shoulder and the ledge, the same rule as walls: `validateManifest` checks
+   it at full light (every pack), `profile.spec.ts` at every depth band's light (the bundled packs). Any glow in the void (molten) stays >= 40 CIE76 from the enemy-bullet roles and `telegraph`, and never
    flickers.
 4. **No motion in the void** except the abyss motes (VD8), which scale with `motionScale` and Reduced motion.
 
@@ -415,9 +413,13 @@ The shoulder wears down with depth, using the existing `decorProfile` bands (kep
   `biomeContentIds` then.
   - [ ] Studio check: both attributes toggle live mid-run, and nothing is left behind after a floor change or restart.
 
-- [ ] **VD10. Docs.** `CLAUDE.md` decision log, `docs/CLIENT.md` (VoidController, debug attributes: done with VD3 /
-  VD9, section "Void decoration"),
-  `src/shared/theme/README.md` (the new placeholders and surfaces), a cross-link from `docs/DECOR.md`.
+- [x] **VD10. Docs.** `CLAUDE.md` decision log and docs-table row, `docs/CLIENT.md` (VoidController, debug attributes,
+  section "Void decoration"), `src/shared/theme/README.md` (biome `shoulder` / `abyss`, surfaces `shoulder` / `cliff`,
+  void decor kinds), a cross-link from `docs/DECOR.md`.
+  Review follow-ups (2026-11-01): `voidBiomeOf` (voidDecor/parts.ts) is the one biome match both controllers use, so an
+  unmatched theme gets neither geometry nor set pieces (no piece over the bare abyss); readability rule 3 now says where
+  each band's bullet contrast is checked. Left for the Studio check: the abyss mote volume (30 x 30 tiles, axis-aligned
+  under the focus) misses the screen's top corners, as the floor-level ambient emitter already does.
 
 - [ ] **VD11. Studio check and playtest.** Every biome at every band, solo and co-op, PC and phone emulator: the void
   never reads as floor, bullets stay readable along far walls, the frame helps the room read, fps and part counts.

@@ -445,6 +445,25 @@ Decision log (deviations from `PLAN.md`):
   `returned` (still v1). Per-session cap 3 logged attempts / 240 events. Debug `KV_AnalyticsDebug`. TF0 spike, Studio
   checks and the dashboard (TF9) pending.
 
+- **Void decoration (docs/VOID_DECOR.md).** Presentation only (no sim, dungeon, lockstep, hash, replay, fixture, minimap
+  or collision change; VOID cells stay VOID). Pure core `shared/view/voidDecor` (`voidField`, `planVoid` /
+  `planVoidCached`: per void cell a layer, shoulder / ledge / outcrop / abyss, and a top, greedy-merged into <= 500
+  columns a floor; `VOID`, `VOID_DEPTH` per decor depth band, `VOID_PIECES`, `VOID_VIEW`; salts of its own, never the
+  Forge rng). `VoidController` builds one render-only Part per column (top at 0.85 x wall height, down into the
+  backdrop); the backdrop moved to `VOID.abyssDepthTiles` (5; `GAME_WORLD.backdropDepthTiles` is gone) in the biome's
+  abyss colour; a sparse abyss mote emitter under the floor (`DECOR_FX.abyssMote*`). Theme: every `BiomeDef` requires
+  `shoulder` / `abyss` hex (`BiomeTheme` adds `ledge` = `voidLedgeColor`, `VOID_COLORS.ledgeMix`), surfaces `shoulder` /
+  `cliff` join `BIOME_MATERIAL_SURFACES`, validator `voidReport` (`VOID_CONTRAST.shoulderVsFloor` 4 CIE76 and the
+  shoulder nearer the wall than the floor; luminance shoulder >= ledge >= abyss; `enemyBullet` >= 3:1 on shoulder and
+  ledge; abyss >= 40 CIE76 from `enemyBullet` / `telegraph`); `dimHex` moved to shared/theme `color.ts`. Decor kinds
+  `flagstones` (flat) and `curb` (low) appended to `DECOR_KINDS`; optional `decor.void.b<n>.<kind>` biome kinds
+  (`VOID_DECOR`, `pack.voidDecorVariants`). planDecor takes an optional `voidPlan` (source `"void"`, entries' `y` = the
+  surface top, appended after every decor entry): standing pieces pass the footprint rule at their surface AND the
+  far-side rule (`farSide`: their room screen-down, no walkable cell screen-up; VDD2); without a void plan planDecor is
+  byte-identical. `decorPlan.ts` / `decor.ts` import `voidDecor/config` and `/layer` by file (a require cycle through
+  the barrel). Debug `KV_VoidOff` / `KV_VoidDebug`. Vale `flagstones` / `curb` (`tiles` / `wall1`) stay dormant until
+  the decor atlas is rebuilt and re-uploaded (VD6 owner steps). Studio checks pending.
+
 ## Commands
 
 ```
