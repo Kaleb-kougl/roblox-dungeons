@@ -10,9 +10,14 @@
  *                 bossKindFor(floor seed) from ENDLESS_BOSSES (Mother Bramble or the Demon Lord) on its own stream
  *                 hash(floor seed, BOSS_PICK.salt), one draw, so nothing else on the floor depends on the pick
  *   stairwell     the boss room's center floor tile; on other floors the boss room is empty and holds it from the start
+ *   roster        the room kinds the run meets on the floor (endlessRoster): swarmers plus seeded kinds, one more
+ *                 every ROSTER.floorsPerKind floors, from the run seed's own stream hash(run seed, ROSTER.salt); it
+ *                 only closes kinds in the spender, so the layout, digest, props, boss pick, spawn and stairwell never
+ *                 depend on it
  *   room enemies  per combat / elite room: ENCOUNTER_BUDGET spent by ENCOUNTER_COST from the room's own encounter rng
  *                 (encounterRoomSeed(dungeon seed, room id), as placeEncounter does) on the kinds open on the floor
- *                 (ENDLESS_ROOM_KINDS fromFloor / maxPerRoom, docs/ENEMY_VARIANTS.md EV5), placed on the M1 populator's
+ *                 (ENDLESS_ROOM_KINDS fromFloor / maxPerRoom, docs/ENEMY_VARIANTS.md EV5) that are in the run's
+ *                 seeded roster (endlessRoster(runSeed, floor), docs/DAILY.md DS1), placed on the M1 populator's
  *                 spawn tiles (enemyRooms.ts). They are NOT spawned at floor start: the sim spawns a room's list when
  *                 the player first walks into that room (deferred), which keeps the live actor count under MAX_ACTORS
  *                 however large the budgets grow.
@@ -46,6 +51,7 @@ import {
 	BOSS_FLOOR_EVERY,
 	BOSS_PICK,
 	ELITE_BUDGET_MULTIPLIER,
+	ENDLESS_FIRST_FLOOR,
 	ENCOUNTER_BUDGET_BASE,
 	ENCOUNTER_BUDGET_PER_FLOOR,
 	ENDLESS_BASE_ROOM_COUNT,
@@ -59,6 +65,7 @@ import {
 	ENDLESS_SOLID_PILLARS,
 	FLOOR_SEED_MUL,
 	PARTY_BUDGET_MULTIPLIERS,
+	ROSTER,
 	WIDE_BODY_KINDS,
 	type EndlessRoomKind,
 } from "./endlessData";
@@ -128,19 +135,92 @@ export function roomEncounterBudget(floor: number, roomType: EncounterRoomType, 
 	return budget * m;
 }
 
+/** Seed of the roster's stream: the run seed with ROSTER.salt mixed in (uint32). */
+export function rosterSeed(runSeed: number): number {
+	return bit32.bxor(u32(runSeed), ROSTER.salt);
+}
+
+/**
+ * The order in which the seeded kinds of run `runSeed` join its roster: the room kinds other than ROSTER.always
+ * (ENDLESS_ROOM_KINDS order) after one Fisher-Yates shuffle from new EncounterRng(rosterSeed(runSeed)): for i from
+ * the last index down to 1, j = rng.int(0, i), swap i and j (one draw per step: 4 draws for 5 kinds). Pure.
+ */
+export function rosterOrder(runSeed: number): string[] {
+	const order: string[] = [];
+	for (const k of ENDLESS_ROOM_KINDS) if (k.kind !== ROSTER.always) order.push(k.kind);
+	const rng = new EncounterRng(rosterSeed(runSeed));
+	for (let i = order.size() - 1; i >= 1; i--) {
+		const j = rng.int(0, i);
+		const t = order[i];
+		order[i] = order[j];
+		order[j] = t;
+	}
+	return order;
+}
+
+/** How many seeded kinds the roster wants on `floor`: 1 + floor((floor - 1) / ROSTER.floorsPerKind), capped at `kinds`. */
+export function rosterTargetSize(floor: number, kinds: number): number {
+	return math.min(kinds, 1 + math.floor((floor - ENDLESS_FIRST_FLOOR) / ROSTER.floorsPerKind));
+}
+
+/** The unlock floor of room kind `kind` (EndlessRoomKind.fromFloor; ENDLESS_FIRST_FLOOR without one). */
+function kindUnlockFloor(kind: string): number {
+	for (const k of ENDLESS_ROOM_KINDS) if (k.kind === kind) return k.fromFloor ?? ENDLESS_FIRST_FLOOR;
+	return ENDLESS_FIRST_FLOOR;
+}
+
+/**
+ * The seeded roster of run `runSeed` on `floor` (docs/DAILY.md DS1, DSD2 / DSD9): the room kinds its rooms may buy,
+ * in join order. ROSTER.always (swarmers) first, always in; then, floor by floor from ENDLESS_FIRST_FLOOR, while the
+ * roster holds fewer seeded kinds than rosterTargetSize(f), the first kind of rosterOrder(runSeed) that is not in yet
+ * and is unlocked on f (fromFloor) joins; when none is unlocked the roster waits for a later floor. A kind never
+ * leaves, so roster(f) starts with roster(f - 1) and the kinds past its length joined on f. Floor 1 holds swarmers
+ * and exactly one seeded kind, which is a sniper or a bruiser (the only kinds unlocked there). Pure and cheap (one
+ * shuffle, at most floor x kinds steps, none past a full roster); nothing is cached.
+ */
+export function endlessRoster(runSeed: number, floor: number): string[] {
+	const order = rosterOrder(runSeed);
+	const roster: string[] = [ROSTER.always];
+	for (let f = ENDLESS_FIRST_FLOOR; f <= floor; f++) {
+		if (roster.size() > order.size()) break; // every kind is in
+		const target = rosterTargetSize(f, order.size());
+		while (roster.size() - 1 < target) {
+			let joined: string | undefined;
+			for (const kind of order) {
+				if (!roster.includes(kind) && kindUnlockFloor(kind) <= f) {
+					joined = kind;
+					break;
+				}
+			}
+			if (joined === undefined) break;
+			roster.push(joined);
+		}
+	}
+	return roster;
+}
+
 /**
  * True when a room on `floor` that has already bought `bought` (count per kind) may buy kind `k`: from its unlock floor
- * (EndlessRoomKind.fromFloor) and below its room maximum (maxPerRoom). Draws nothing.
+ * (EndlessRoomKind.fromFloor), below its room maximum (maxPerRoom) and, with a `roster` (endlessRoster), in it.
+ * Draws nothing.
  */
-function roomKindOpen(k: EndlessRoomKind, floor: number, bought: ReadonlyMap<string, number>): boolean {
+function roomKindOpen(
+	k: EndlessRoomKind,
+	floor: number,
+	bought: ReadonlyMap<string, number>,
+	roster: ReadonlyArray<string> | undefined,
+): boolean {
 	if (k.fromFloor !== undefined && floor < k.fromFloor) return false;
+	if (roster !== undefined && !roster.includes(k.kind)) return false;
 	return k.maxPerRoom === undefined || (bought.get(k.kind) ?? 0) < k.maxPerRoom;
 }
 
 /**
  * Spends `budget` on the room enemies of a room on `floor` (archetype ids, in spawn order), at most `cap` of them; the
- * costs never add up to more than the budget. Only the kinds open on the floor take part (roomKindOpen: unlocked and
- * below their room maximum; a closed kind is skipped in both loops below, so it moves no total and no draw). Each pick:
+ * costs never add up to more than the budget. Only the kinds open on the floor take part (roomKindOpen: unlocked, below
+ * their room maximum and in `roster` when one is given; a closed kind is skipped in both loops below, so it moves no
+ * total and no draw). Every endless floor passes its roster (buildEndlessFloor); without one (specs) every unlocked
+ * kind is open, as before the roster. Each pick:
  * the affordable open kinds (ENDLESS_ROOM_KINDS) that cost at least budget-left / slots-left (so a big budget buys
  * dearer enemies instead of running out of slots), drawn by weight with one rng draw; when none of them is that dear,
  * the dearest affordable open kind (no draw). Stops when nothing is affordable or the cap is reached.
@@ -150,6 +230,7 @@ export function spendEncounterBudget(
 	budget: number,
 	floor: number,
 	cap: number = ENDLESS_ROOM_ACTOR_CAP,
+	roster?: ReadonlyArray<string>,
 ): string[] {
 	const out: string[] = [];
 	const bought = new Map<string, number>();
@@ -159,7 +240,7 @@ export function spendEncounterBudget(
 		let total = 0;
 		let dearest: EndlessRoomKind | undefined;
 		for (const k of ENDLESS_ROOM_KINDS) {
-			if (!roomKindOpen(k, floor, bought)) continue;
+			if (!roomKindOpen(k, floor, bought, roster)) continue;
 			const c = encounterCost(k.kind);
 			if (c > left) continue;
 			if (dearest === undefined || c > encounterCost(dearest.kind)) dearest = k;
@@ -170,7 +251,7 @@ export function spendEncounterBudget(
 		if (total > 0) {
 			let r = rng.next() * total;
 			for (const k of ENDLESS_ROOM_KINDS) {
-				if (!roomKindOpen(k, floor, bought)) continue;
+				if (!roomKindOpen(k, floor, bought, roster)) continue;
 				const c = encounterCost(k.kind);
 				if (c > left || c < need) continue;
 				pick = k;
@@ -186,7 +267,7 @@ export function spendEncounterBudget(
 }
 
 /**
- * One endless room's enemies on `floor`: spendEncounterBudget(tools.rng, budget, floor), then placement on
+ * One endless room's enemies on `floor`: spendEncounterBudget(tools.rng, budget, floor, cap, roster), then placement on
  * roomSpawnTiles: swarmers in packs of up to ENDLESS_PACK_SIZE on the free tiles nearest their pack's anchor,
  * everything else (and each new pack's anchor) on a spread-out free tile (spreadTile, same rng). A wide body
  * (WIDE_BODY_KINDS) only takes a tile whose 8 neighbours are FLOOR (isOpenTile); roomSpawnTiles are all such tiles
@@ -198,10 +279,11 @@ export function populateEndlessRoom(
 	tools: RoomTools,
 	budget: number,
 	floor: number,
+	roster?: ReadonlyArray<string>,
 ): ActorSpawn[] {
 	const d = tools.dungeon;
 	const rng = tools.rng;
-	const kinds = spendEncounterBudget(rng, budget, floor);
+	const kinds = spendEncounterBudget(rng, budget, floor, ENDLESS_ROOM_ACTOR_CAP, roster);
 	const spawns: ActorSpawn[] = [];
 	if (kinds.size() === 0) return spawns;
 	const open = roomSpawnTiles(d, room, tools);
@@ -239,9 +321,15 @@ export function populateEndlessRoom(
 
 /**
  * Every room's deferred enemies on `floor` for a party of `partySize` (index = room id; empty for the entrance, the
- * boss room and non-combat rooms).
+ * boss room and non-combat rooms), buying only the kinds in `roster` (endlessRoster of the run and floor; every real
+ * endless floor passes it, buildEndlessFloor; absent, in specs only: every unlocked kind).
  */
-export function endlessRoomSpawns(d: Dungeon, floor: number, partySize = 1): ActorSpawn[][] {
+export function endlessRoomSpawns(
+	d: Dungeon,
+	floor: number,
+	partySize = 1,
+	roster?: ReadonlyArray<string>,
+): ActorSpawn[][] {
 	const rooms = encounterRooms(d);
 	const out: ActorSpawn[][] = [];
 	for (const room of rooms) {
@@ -262,7 +350,7 @@ export function endlessRoomSpawns(d: Dungeon, floor: number, partySize = 1): Act
 				return { x: room.cx, z: room.cz };
 			},
 		};
-		out.push(populateEndlessRoom(room, tools, budget, floor));
+		out.push(populateEndlessRoom(room, tools, budget, floor, roster));
 	}
 	return out;
 }
@@ -319,6 +407,13 @@ export interface EndlessFloorLayout {
 	 * Mother Bramble); undefined: no boss.
 	 */
 	readonly bossKind?: string;
+	/**
+	 * The run's seeded roster on this floor (endlessRoster(runSeed, floor), docs/DAILY.md DS1): the room kinds its rooms
+	 * may buy, in join order (ROSTER.always first; the kinds past endlessRoster(runSeed, floor - 1)'s length joined on
+	 * this floor). The stage card reads it (shared/view/hud rosterLine). Absent: no roster (the tutorial's hand-built
+	 * floors).
+	 */
+	readonly roster?: ReadonlyArray<string>;
 	/** SimConfig.encounter of the floor: rooms, entrance / boss room, and the initial spawns (only the boss, if any). */
 	readonly encounter: EncounterConfig;
 	/** Deferred enemies per room id (see the file comment). */
@@ -359,7 +454,9 @@ export function buildEndlessFloor(
 	const bossRoom = encounter.rooms[d.boss];
 	if (bossRoom === undefined) error(`buildEndlessFloor: floor ${floor} (seed ${params.seed}) has no boss room`, 0);
 	const spawn = entranceSpawn(d);
-	const roomSpawns = endlessRoomSpawns(d, floor, partySize);
+	// The roster comes from the run seed's own stream and only closes kinds in the spender: nothing above moves.
+	const roster = endlessRoster(runSeed, floor);
+	const roomSpawns = endlessRoomSpawns(d, floor, partySize, roster);
 	const stairwell = { x: bossRoom.cx, z: bossRoom.cz };
 	// Breakables run last, on their own rng stream (./breakables.ts): nothing above moves.
 	const breakables = placeBreakables(
@@ -375,6 +472,7 @@ export function buildEndlessFloor(
 		dungeon: d,
 		bossFloor,
 		bossKind,
+		roster,
 		encounter,
 		roomSpawns,
 		roomSpawnTiles: withoutBreakableCells(endlessRoomSpawnTiles(d, roomSpawns), breakables),

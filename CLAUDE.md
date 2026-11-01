@@ -49,6 +49,7 @@ Record every ported module in `PROVENANCE.md` (ported module, source path, sourc
 | `docs/NEW_BEST.md` | New-best celebration (points-to-best in the score panel's label row, a fanfare + NEW BEST stamp / floor shout / edge confetti when the shown score passes your best or you reach a floor past your deepest, a record fanfare and old -> new roll at run over; server-owned personal records doc `KV_Records_v1`; no sim change): plan, as built, tasks NB0-NB11, decisions NBD1-NBD11 |
 | `docs/DEV_MODE.md` | Developer mode (jump to any floor, instant R restart, god mode; local `dev` world, server-allowed players only via `DEV_MODE`): usage, access, how it works |
 | `docs/BUILDS.md` | Builds (on-kill boons Chain Spark / Volatile / Soul Shards with chain reactions, boon levels with an evolution at III, duo boons, the boss double draft; gameplay, opt-in `SimConfig.builds` on endless only): plan, tasks BU0-BU14, decisions BUD1-BUD14 |
+| `docs/DAILY.md` | Daily dungeon and seeded rosters (every endless seed picks its enemy kinds: swarmers + 1 on floor 1, one more every 2 floors; a `daily` world with one server-side seed per UTC day, day-scoped solo / co-op boards, percentile, friends, rank climbing, yesterday's podium): plan, tasks DS0-DS14, decisions DSD1-DSD16 |
 
 Decision log (deviations from `PLAN.md`):
 - **Art (docs/ART.md).** The theme contract gained a `"sprites"` kind (large pre-rendered cells, 1/4/8/16 screen-space
@@ -398,6 +399,21 @@ Decision log (deviations from `PLAN.md`):
   `DisplaySettings.buildFx` (Full / Reduced, only Reduced stored, doc stays v2). No Luau-locals change. M1, every
   fixture and the tutorial replay exactly as before; endless replays and scores changed (boards stay `_v1`, BUD9).
   Studio check, art (BU11) and audio (BU12) pending; tuning measured (BU13, owner calls open).
+- **Daily dungeon and seeded rosters (docs/DAILY.md).** Gameplay (dungeon) plus a server feature. Every endless run's
+  seed picks its room enemy kinds (`shared/dungeon` `endlessRoster`: swarmers + 1 seeded kind on floor 1, one more every 2
+  floors within the unlock floors, own stream `runSeed ^ ROSTER.salt` 0x165667b1; `roomKindOpen` closes the others with
+  no draw); layouts, digests, props and boss picks are unchanged, room spawns (and so breakables and affixes) change:
+  endless replays and scores changed from floor 1 (boards stay `_v1`); M1, every fixture and the tutorial replay exactly
+  as before (`roomPool.lock.spec` keeps the no-roster digests). A `daily` world (`buildEndlessRunConfig`, no sim, hash or
+  lockstep change) seeded by the server only: HMAC-SHA256 with a 256-bit key in `src/server/config/daily.ts`
+  (`shared/crypto`; ESLint blocks shared / client imports of `server/*`), one seed per UTC day, `session.daily = { day,
+  ruleset }`. Day-scoped OrderedDataStores `LB_Daily_Solo_v1` / `LB_Daily_Coop_v1` (scope `d<day>_r<ruleset>`, no details
+  doc), histogram shards `LB_Daily_Hist_v1`, `dailyStatus` (`mine`, `podium`), `RunFinishVerdict.daily`; daily runs never
+  post to the all-time boards and never write endless records (`policy.dailyWorlds`, DSD6). Client: Daily card, podium,
+  lobby world toggle, leaderboard tabs, in-run rank layer, run-over daily block; strings `ROSTER_STRING_KEYS` /
+  `DAILY_STRING_KEYS` / `DAILY_RANK_STRING_KEYS`, port audio IDs `sfx.rank.up` / `sfx.friend.passed` (SILENT in the
+  placeholder). Telemetry `daily_*` and an optional `daily` field in `KV_Records_v1` (still v1). Debug `KV_Daily`,
+  `KV_DailyRankDebug`, Studio `KV_FakeFriends`. DS0 spike and Studio check pending.
 
 ## Commands
 

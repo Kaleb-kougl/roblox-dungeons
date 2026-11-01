@@ -31,7 +31,10 @@
  */
 
 import type { AssetKind, ColorRole, ParticleFlipbookMode, Pivot } from "./types";
+import { DAILY_STRING_KEYS } from "./daily";
+import { DAILY_RANK_STRING_KEYS } from "./dailyRank";
 import { NEW_BEST_STRING_KEYS } from "./newBest";
+import { ROSTER_STRING_KEYS } from "./roster";
 import { startsWith } from "./util";
 import { ENEMY_VARIANT_STRING_KEYS } from "./variants";
 
@@ -652,7 +655,8 @@ export const BOOST_BEAM_IMAGE_ID = "ui.marker.boost";
  * pick stamp. Then the enemy variants' five (docs/ENEMY_VARIANTS.md EV1): an Imp's blink, a Summoner's call, an Ooze's
  * split, a Shielded enemy's shield breaking (the plan's `sfx.affix.shieldBreak`: asset ID segments are lowercase) and a
  * Vengeful corpse's ring. Then the new-best celebration's two (docs/NEW_BEST.md NB4): the in-run fanfare (falls back
- * to the PERFECT jingle while silent) and the run-over record fanfare (falls back to the game-over jingle).
+ * to the PERFECT jingle while silent) and the run-over record fanfare (falls back to the game-over jingle). Then the
+ * Daily's rank layer's two (docs/DAILY.md DS10): a rank threshold's sting and a friend passed.
  */
 export const PORT_AUDIO_EVENTS = [
 	"sfx.player.swing",
@@ -723,6 +727,10 @@ export const PORT_AUDIO_EVENTS = [
 	"sfx.build.evolve",
 	"sfx.build.duo",
 	"sfx.build.jackpot",
+	// docs/DAILY.md DS10 / DS12: a daily run's predicted rank enters the top 100 / 10 / 3 / #1 (with the floor shout);
+	// the shown score passes a friend's best today (with their toast)
+	"sfx.rank.up",
+	"sfx.friend.passed",
 ] as const;
 
 /**
@@ -881,6 +889,12 @@ export const REQUIRED_STRING_KEYS: ReadonlyArray<string> = ((): string[] => [
 	"hud.toast.evolved",
 	"hud.toast.duo",
 	"hud.build.title",
+	// docs/DAILY.md DS9 / DS11: the main menu's Daily card and podium, the leaderboard tabs, the run-over daily block
+	...DAILY_STRING_KEYS,
+	// docs/DAILY.md DS2: the stage card's roster line (floor 1's kinds, a floor's new kinds)
+	...ROSTER_STRING_KEYS,
+	// docs/DAILY.md DS10: new best's "best today" wording, the rank layer's target row, toasts, shouts, run-over row
+	...DAILY_RANK_STRING_KEYS,
 ])();
 
 /**

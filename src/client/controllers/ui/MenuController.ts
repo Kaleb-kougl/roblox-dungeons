@@ -1,6 +1,6 @@
 import { Controller, OnStart } from "@flamework/core";
 import { Janitor } from "@rbxts/janitor";
-import { RunService, TextChatService, UserInputService, Workspace } from "@rbxts/services";
+import { Players, RunService, TextChatService, UserInputService, Workspace } from "@rbxts/services";
 import {
 	clientStore,
 	selectAnyPanelOpen,
@@ -10,10 +10,11 @@ import {
 	selectStageCovered,
 	type ClientState,
 } from "client/store";
+import { DAILY_WORLD_KIND } from "shared/daily";
 import type { LobbyVisibility } from "shared/lobby";
 import type { FirstRunDecision } from "shared/tutorial";
 import { FIXED_INPUTS, RUN_ATTRIBUTES } from "shared/play";
-import { LOBBY_ROOM_PATH, MENU_BACK_KEYS, afterRunPath, lobbyChangePath } from "shared/view/menu";
+import { DAILY_MENU, LOBBY_ROOM_PATH, MENU_BACK_KEYS, afterRunPath, lobbyChangePath } from "shared/view/menu";
 import { SFX } from "shared/view/audio";
 import { AudioController } from "../audio/AudioController";
 import { SimController } from "../game/SimController";
@@ -107,7 +108,8 @@ export class MenuController implements OnStart {
 		if (choice === "tutorial") return; // straight into the tutorial: no main menu first
 		if (Workspace.GetAttribute(RUN_ATTRIBUTES.skipMenu) === true) {
 			print(`[Menu] ${RUN_ATTRIBUTES.skipMenu}: no main menu, starting a solo run`);
-			this.sim.startSolo();
+			const daily = Workspace.GetAttribute(RUN_ATTRIBUTES.daily) === true;
+			this.sim.startSolo(undefined, daily ? DAILY_WORLD_KIND : undefined);
 		} else {
 			// An invite / party arrival may already have put them in a lobby: its room (else the main menu).
 			clientStore.menuNav({ kind: "reset", path: afterRunPath(this.inLobby()) });
@@ -127,8 +129,40 @@ export class MenuController implements OnStart {
 	// --- actions (client/ui/menu MenuActions, the pause overlay, the run-over panel) -------------
 
 	playSolo(): void {
+		if (Workspace.GetAttribute(RUN_ATTRIBUTES.daily) === true) {
+			print(`[Menu] ${RUN_ATTRIBUTES.daily}: Play solo starts the Daily`);
+			this.playDaily();
+			return;
+		}
 		this.sim.startSolo();
 		clientStore.menuNav({ kind: "close" }); // "Starting run..." shows while the server answers
+	}
+
+	/** The Daily (docs/DAILY.md): a ranked solo run in world "daily"; the server picks the day's seed. */
+	playDaily(): void {
+		this.sim.startSolo(undefined, DAILY_WORLD_KIND);
+		clientStore.menuNav({ kind: "close" });
+	}
+
+	/**
+	 * "Daily with friends" (docs/DAILY.md DS9): already in a lobby -> its room, switched to the Daily when this player
+	 * hosts it and it is forming (others cannot change it: the room shows its world); else a new lobby on the daily world
+	 * (DAILY_MENU.partyVisibility: the host's friends see it), whose room opens when the server confirms it.
+	 */
+	playDailyParty(): void {
+		const mine = clientStore.getState().lobby.mine;
+		if (mine === undefined) {
+			this.lobby.create(DAILY_MENU.partyVisibility, DAILY_WORLD_KIND);
+			return;
+		}
+		if (
+			mine.hostId === Players.LocalPlayer.UserId &&
+			mine.phase === "forming" &&
+			mine.worldKind !== DAILY_WORLD_KIND
+		) {
+			this.lobby.setWorld(DAILY_WORLD_KIND);
+		}
+		this.openLobbyRoom();
 	}
 
 	openLobbies(): void {

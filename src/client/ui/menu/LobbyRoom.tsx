@@ -5,7 +5,7 @@ import { Players } from "@rbxts/services";
 import { selectInputDevice, selectLobby } from "client/store";
 import { MenuButton, MenuFit, Panel, Row, Text } from "client/ui/hud";
 import { str } from "client/ui/theme";
-import { LOBBY_VISIBILITIES } from "shared/lobby";
+import { LOBBY_VISIBILITIES, LOBBY_WORLDS, isLobbyWorld } from "shared/lobby";
 import { SFX } from "shared/view/audio";
 import { HUD_VIEW } from "shared/view/hud";
 import {
@@ -20,6 +20,7 @@ import {
 	lobbyRoomModel,
 	lobbyRoomParts,
 	lobbyVisibilityKey,
+	lobbyWorldModel,
 	platformInviteButton,
 	screenSkin,
 } from "shared/view/menu";
@@ -41,6 +42,8 @@ const WIDE = new Vector2(MENU_VIEW.wideButton.x, MENU_VIEW.wideButton.y);
  * lobby cannot take an invite); friends invited that way read "Invited (Roblox)", with their own rows while they are
  * not in this server yet. Fitted into the safe area on touch (MenuFit: the member list is the flexible list); compact
  * (a phone) while inviting, the invite list takes the member list's and the host controls' place (lobbyRoomParts).
+ * Beside the members line, the lobby's world (docs/DAILY.md DS9): the host's Endless / Daily toggle while forming (a
+ * change clears every Ready, server side), `World: Daily` for the others.
  */
 export function LobbyRoom() {
 	const actions = useMenuActions();
@@ -141,6 +144,33 @@ export function LobbyRoom() {
 			</Row>
 		) : undefined;
 
+	// docs/DAILY.md DS9: the lobby's world (Endless / Daily); the host toggles it while forming, the others see it.
+	const world = lobbyWorldModel(view.worldKind, LOBBY_WORLDS, m.isHost, view.phase === "forming", str);
+	const worldRow = world.toggle ? (
+		<>
+			<Text key="WorldLabel" order={2} size={HUD_VIEW.smallText} color="uiTextDim" text={world.label} />
+			{world.options.map((o, i) => (
+				<MenuButton
+					key={o.world}
+					order={i + 3}
+					name={`World_${o.world}`}
+					size={SMALL}
+					textSize={HUD_VIEW.smallText}
+					text={o.text}
+					active={o.active}
+					disabled={!world.canEdit}
+					onActivated={() => {
+						if (!isLobbyWorld(o.world) || o.active) return;
+						actions.playUi(SFX.uiClick);
+						actions.setLobbyWorld(o.world);
+					}}
+				/>
+			))}
+		</>
+	) : (
+		<Text key="World" order={2} size={HUD_VIEW.smallText} color="uiTextDim" text={world.line} />
+	);
+
 	const candidates = inviting ? inviteCandidates(lobby.players, view, me, m.canInvite, nameOf) : [];
 	const platform = platformInviteButton(lobby.inviteEligible, m.canInvite);
 	const invitePanel = (listHeight: number) =>
@@ -216,13 +246,10 @@ export function LobbyRoom() {
 					>
 						<Text fill={true} order={1} size={HUD_VIEW.titleText} color="uiAccent" text={spec(m.title)} />
 						<Text fill={true} order={2} color={m.inRun ? "uiTextDim" : "uiText"} text={spec(m.status)} />
-						<Text
-							fill={true}
-							order={3}
-							size={HUD_VIEW.smallText}
-							color="uiTextDim"
-							text={spec(m.membersLine)}
-						/>
+						<Row key="MembersWorld" order={3}>
+							<Text order={1} size={HUD_VIEW.smallText} color="uiTextDim" text={spec(m.membersLine)} />
+							{worldRow}
+						</Row>
 						{parts.members ? (
 							<ScrollList order={4} height={layout.flex}>
 								{memberRows}

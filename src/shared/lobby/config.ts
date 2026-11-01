@@ -2,7 +2,8 @@
  * Lobby tunables and the preset vocabularies (visibility, phase, name ids). Data only: lobbies.ts and the server
  * service read these (CLAUDE.md "No magic numbers"). Display strings for the name ids come from shared/theme later.
  */
-import { MAX_PARTY_SIZE, isFiniteValue } from "shared/run";
+import { DAILY_WORLD_KIND } from "shared/daily";
+import { ENDLESS_WORLD_KIND, MAX_PARTY_SIZE, isFiniteValue } from "shared/run";
 
 export interface LobbyConfig {
 	/** Most members in one lobby: the largest party a run accepts (shared/run limits.ts, the sim's partyData.ts). */
@@ -25,6 +26,8 @@ export interface LobbyConfig {
 	readonly countdownSeconds: number;
 	/** Visibility of a new lobby when the create request names none. */
 	readonly defaultVisibility: LobbyVisibility;
+	/** World of a new lobby when the create request names none: the endless descent. */
+	readonly defaultWorld: LobbyWorld;
 	/** Longest lobby id accepted on the wire (server GUIDs are 36). */
 	readonly maxIdChars: number;
 }
@@ -46,6 +49,14 @@ export const LOBBY_VISIBILITIES: ReadonlyArray<LobbyVisibility> = ["open", "frie
  */
 export type LobbyInviteSource = "server" | "platform" | "party";
 export const LOBBY_INVITE_SOURCES: ReadonlyArray<LobbyInviteSource> = ["server", "platform", "party"];
+
+/**
+ * The world a lobby's run is played in (docs/DAILY.md "3. World, sessions, remotes"): the endless descent (Play solo's
+ * world, shared/play RANKED_WORLD_KIND) or the Daily (shared/daily DAILY_WORLD_KIND: today's server seed, resolved when
+ * the run starts). The host sets it while the lobby is forming (`setWorld`).
+ */
+export type LobbyWorld = typeof ENDLESS_WORLD_KIND | typeof DAILY_WORLD_KIND;
+export const LOBBY_WORLDS: ReadonlyArray<LobbyWorld> = [ENDLESS_WORLD_KIND, DAILY_WORLD_KIND];
 
 /** forming: members join, ready up and leave. countdown: the host started. inRun: the members are in the run. */
 export type LobbyPhase = "forming" | "countdown" | "inRun";
@@ -75,6 +86,7 @@ export const LOBBY: LobbyConfig = table.freeze({
 	kickCooldownSeconds: 60,
 	countdownSeconds: 3,
 	defaultVisibility: "open" as LobbyVisibility,
+	defaultWorld: ENDLESS_WORLD_KIND as LobbyWorld,
 	maxIdChars: 64,
 });
 
@@ -140,5 +152,11 @@ export function isLobbyNameId(v: unknown): v is LobbyNameId {
 export function isLobbyVisibility(v: unknown): v is LobbyVisibility {
 	if (!typeIs(v, "string")) return false;
 	for (const vis of LOBBY_VISIBILITIES) if (vis === v) return true;
+	return false;
+}
+
+export function isLobbyWorld(v: unknown): v is LobbyWorld {
+	if (!typeIs(v, "string")) return false;
+	for (const w of LOBBY_WORLDS) if (w === v) return true;
 	return false;
 }

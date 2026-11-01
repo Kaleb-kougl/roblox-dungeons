@@ -118,6 +118,17 @@
  *     volume, a teammate's at teammateVolume; outside the voice cap, the pack's jitter.
  *   None is a jingle, ducks the music or has a fallback: a silent ID plays nothing and takes no cap slot.
  *
+ * The Daily's rank layer (docs/DAILY.md DS10) comes from the frame's DailyRankCueSource (the client's
+ * DailyRankController, stepped BEFORE the mapper in the same frame; NO_DAILY_RANK_CUES by default, so every other cue is
+ * as before). The controller raises its edges only off the stage cover and before run over (the tracker holds and
+ * drops them), so neither plays there:
+ *   - `rankUp` (the predicted rank entered the top 100 / 10 / 3 / #1, with its floor shout) -> sfx.rank.up, a short
+ *     sting ranked under the jingles (never one itself, no duck);
+ *   - `friendPassed` (a friend's toast shows) -> sfx.friend.passed, under the rank-up.
+ *   One of the three celebration sounds per frame: the new-best fanfare (`newBest.fanfare`) wins over both, the rank-up
+ *   over the friend sting (new best > rank threshold > friend, as the floor shout's priorities). Silent: nothing (no
+ *   fallback, no cap slot).
+ *
  * Every cue carries a playback speed (AudioCueList.speed): 0 = the pack's jitter (every cue but these), > 0 = that
  * exact PlaybackSpeed (the kill ladder, the tier sting, the graze and the parry).
  *
@@ -141,7 +152,16 @@ import {
 	NO_VARIANT_CUES,
 	type VariantCueSource,
 } from "../fx";
-import { COMBO_VIEW, NO_NEW_BEST_CUES, comboTier, killPitchSpeed, tierStingSpeed, type NewBestCueSource } from "../hud";
+import {
+	COMBO_VIEW,
+	NO_DAILY_RANK_CUES,
+	NO_NEW_BEST_CUES,
+	comboTier,
+	killPitchSpeed,
+	tierStingSpeed,
+	type DailyRankCueSource,
+	type NewBestCueSource,
+} from "../hud";
 import { AUDIO_VIEW } from "./config";
 import { StateWatch, SwingEdge } from "../watch";
 
@@ -257,6 +277,12 @@ export const SFX = {
 	buildEvolve: "sfx.build.evolve",
 	buildDuo: "sfx.build.duo",
 	buildJackpot: "sfx.build.jackpot",
+	/**
+	 * The Daily's rank layer (docs/DAILY.md DS10; the theme's PORT_AUDIO_EVENTS): a predicted rank threshold (top 100 /
+	 * 10 / 3 / #1, with the floor shout) and a friend passed (with their toast). Short stings, not jingles.
+	 */
+	rankUp: "sfx.rank.up",
+	friendPassed: "sfx.friend.passed",
 } as const;
 export type SfxId = (typeof SFX)[keyof typeof SFX];
 
@@ -326,6 +352,8 @@ export const ALL_SFX: ReadonlyArray<SfxId> = [
 	SFX.buildEvolve,
 	SFX.buildDuo,
 	SFX.buildJackpot,
+	SFX.rankUp,
+	SFX.friendPassed,
 ];
 
 /** IDs this port added to the placeholder pack (not in the web contract's AUDIO_EVENTS; theme PORT_AUDIO_EVENTS). */
@@ -381,6 +409,8 @@ export const PORT_SFX: ReadonlyArray<SfxId> = [
 	SFX.buildEvolve,
 	SFX.buildDuo,
 	SFX.buildJackpot,
+	SFX.rankUp,
+	SFX.friendPassed,
 ];
 
 /**
@@ -503,6 +533,9 @@ export const SFX_MIN_INTERVAL: Readonly<Partial<Record<SfxId, number>>> = {
 	[SFX.buildJackpot]: 0.2,
 	[SFX.buildEvolve]: 0.5,
 	[SFX.buildDuo]: 0.5,
+	/** The rank layer (DS10): two thresholds a moment apart (or a friend toast each queue step) never stutter. */
+	[SFX.rankUp]: 0.5,
+	[SFX.friendPassed]: 0.3,
 };
 
 /**
@@ -539,6 +572,12 @@ export const SFX_PRIORITY: Readonly<Record<SfxId, number>> = {
 	[SFX.relicTake]: 70,
 	[SFX.shrineUse]: 70,
 	[SFX.floorEnter]: 68,
+	/**
+	 * The Daily's rank layer (docs/DAILY.md DS10): a rank threshold's sting under the jingles (the new-best fanfare, the
+	 * room clear's) and over the floor enter's neighbours; a friend passed just under it.
+	 */
+	[SFX.rankUp]: 69,
+	[SFX.friendPassed]: 67,
 	/** An Aegis pip took the hit (the hurt sound plays too: it still counts as a hit). */
 	[SFX.boostAegisBreak]: 66,
 	/**
@@ -1048,8 +1087,9 @@ export class AudioCueMapper {
 	 * cues exactly), `variants` the frame's enemy-variant events (the run view's `variantCues` through
 	 * audibleVariantCues, docs/ENEMY_VARIANTS.md; none by default), `newBest` the frame's new-best cues (the client's
 	 * NewBestTracker frame of THIS frame, docs/NEW_BEST.md NB5; none by default), `builds` the frame's build effects (the
-	 * run view's `builds` through audibleBuilds, docs/BUILDS.md BU8; none by default). Appends the cues to start to `out`
-	 * (in table order) and returns it.
+	 * run view's `builds` through audibleBuilds, docs/BUILDS.md BU8; none by default), `rank` the frame's daily rank cues
+	 * (the client's DailyRankController of THIS frame, docs/DAILY.md DS10; none by default). Appends the cues to start to
+	 * `out` (in table order) and returns it.
 	 */
 	frame(
 		now: number,
@@ -1064,6 +1104,7 @@ export class AudioCueMapper {
 		variants: VariantCueSource = NO_VARIANT_CUES,
 		newBest: NewBestCueSource = NO_NEW_BEST_CUES,
 		builds: BuildFxFrameSource = NO_BUILD_FX_EVENTS,
+		rank: DailyRankCueSource = NO_DAILY_RANK_CUES,
 	): AudioCueList {
 		this.now = now;
 		this.pending = 0;
@@ -1127,6 +1168,9 @@ export class AudioCueMapper {
 		// A record run's run over sounds like a win (NB5); the fanfare on the edges (the tracker's, never after run over).
 		if (w.wiped) this.cue(runOverJingle(newBest.recordRun), 1);
 		if (newBest.fanfare) this.cue(SFX.bestNew, 1);
+		// The Daily's rank layer (DS10): one celebration sound per frame, new best > rank threshold > friend passed.
+		else if (rank.rankUp) this.cue(SFX.rankUp, 1);
+		else if (rank.friendPassed) this.cue(SFX.friendPassed, 1);
 
 		// The kill ladder (CD5, CD6): the frame's final score combo pitches every regular kill of the frame (one cue).
 		const scoreCombo = state.score !== undefined ? state.score.combo : COMBO_MIN;

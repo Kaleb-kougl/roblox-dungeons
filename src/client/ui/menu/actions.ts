@@ -1,5 +1,5 @@
 import React, { useContext } from "@rbxts/react";
-import type { LobbyVisibility } from "shared/lobby";
+import type { LobbyVisibility, LobbyWorld } from "shared/lobby";
 
 /**
  * What the menu shell and the lobby screens can do (tasks L3 / L5). HudController builds it from MenuController and
@@ -9,6 +9,13 @@ import type { LobbyVisibility } from "shared/lobby";
 export interface MenuActions {
 	/** Main menu. */
 	readonly playSolo: () => void;
+	/** The Daily (docs/DAILY.md): a ranked solo run in world "daily" on the server's seed of the day. */
+	readonly playDaily: () => void;
+	/**
+	 * "Daily with friends" (docs/DAILY.md DS9): a lobby on the daily world. In a lobby: its room (the host's forming
+	 * lobby switches to the Daily); else a new friends-visible lobby created on the daily world.
+	 */
+	readonly playDailyParty: () => void;
 	/** Lobbies: the browser, or straight to the lobby room while in a lobby. */
 	readonly openLobbies: () => void;
 	readonly openLobbyRoom: () => void;
@@ -31,6 +38,8 @@ export interface MenuActions {
 	readonly kick: (userId: number) => void;
 	readonly makeHost: (userId: number) => void;
 	readonly setVisibility: (visibility: LobbyVisibility) => void;
+	/** Host, while forming: the lobby's world (endless / daily, shared/lobby LobbyWorld). */
+	readonly setLobbyWorld: (worldKind: LobbyWorld) => void;
 	/** Host: the next preset name. */
 	readonly rename: () => void;
 	readonly invite: (userId: number) => void;
@@ -46,6 +55,8 @@ const nothing = () => undefined;
 
 const NOOP: MenuActions = {
 	playSolo: nothing,
+	playDaily: nothing,
+	playDailyParty: nothing,
 	openLobbies: nothing,
 	openLobbyRoom: nothing,
 	playTutorial: nothing,
@@ -62,6 +73,7 @@ const NOOP: MenuActions = {
 	kick: nothing,
 	makeHost: nothing,
 	setVisibility: nothing,
+	setLobbyWorld: nothing,
 	rename: nothing,
 	invite: nothing,
 	inviteFriendsToLobby: nothing,

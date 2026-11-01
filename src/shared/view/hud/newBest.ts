@@ -25,11 +25,17 @@
  *     cue mapper's `NewBestCueSource` (shared/view/audio): `fanfare`, `recordFloor` (the floor enter of the first floor
  *     past it is replaced by the fanfare) and `recordRun` (the run-over jingle swap).
  *   - Text: `newBestRowText` (target row), `stageBestLine` (stairwell card's second line), `recordRowText` /
- *     `runOverRibbonKey` / `recordSavedKey` / `bestText` (run over, pause, menu). Numbers go through a caller's
- *     formatter (the HUD shows plain digits today; a thousands separator is the caller's choice).
+ *     `runOverRibbonKey` / `recordSavedKey` / `runOverBestLines` / `bestText` (run over, pause, menu). Numbers go
+ *     through a caller's formatter (the HUD shows plain digits today; a thousands separator is the caller's choice).
  *   - `runOverRecords`: the run-over record rows (old -> new, delta) from the baseline and the final score / floor, or
  *     from the server's verdict records once they arrive (they win: the server's replay is the record).
  *   - `confettiPieceAt`: one confetti piece's place at a time, in-run pieces kept outside HUD_CLEAR_ZONE.
+ *   - Daily runs (docs/DAILY.md DS10, DSD6): `dailyBaselineFrom` freezes best today (the client's last
+ *     `dailyStatus.mine` for the run's board, earlier daily runs of the day still awaiting their verdict folded in) as
+ *     a baseline flagged `daily`: score only (no deepest-floor target: the daily board's floor is its best score's),
+ *     the same tracker, and the "best today" strings (the text helpers' `daily` argument, DAILY_RANK_STRINGS). Its run
+ *     over reads the server's `verdict.daily` (improved / previous) in place of the records. Endless baselines are
+ *     unchanged (no `daily` flag; `baselineFrom` still answers unranked for the daily world).
  *
  * The records status and the server's verdict records are read through LOCAL structural types (`NewBestRecordsInput`,
  * `NewBestServerRecords`), so this compiles without shared/records; the network types pass as is when their fields
@@ -38,6 +44,7 @@
 import { RANKED_WORLD_KIND } from "shared/play";
 import type { StringVars } from "shared/theme";
 import { easeOutBack } from "shared/view/fx";
+import { DAILY_RANK_STRINGS } from "./dailyRankStrings";
 import type { ScreenRect } from "./footprint";
 import { NEW_BEST } from "./newBestConfig";
 import { NEW_BEST_STRINGS } from "./newBestStrings";
@@ -48,9 +55,22 @@ export type NewBestBoard = "solo" | "coop";
 /** The run's frozen baseline (see the file header). */
 export type RunBaseline =
 	| { readonly kind: "unranked" }
-	| { readonly kind: "unknown"; readonly board: NewBestBoard }
-	| { readonly kind: "none"; readonly board: NewBestBoard; readonly score: number; readonly floor: number }
-	| { readonly kind: "known"; readonly board: NewBestBoard; readonly score: number; readonly floor: number };
+	| { readonly kind: "unknown"; readonly board: NewBestBoard; readonly daily?: boolean }
+	| {
+			readonly kind: "none";
+			readonly board: NewBestBoard;
+			readonly score: number;
+			readonly floor: number;
+			readonly daily?: boolean;
+	  }
+	| {
+			readonly kind: "known";
+			readonly board: NewBestBoard;
+			readonly score: number;
+			readonly floor: number;
+			/** A daily run's baseline (best today, DSD6): score only, the "best today" strings. Absent: endless. */
+			readonly daily?: boolean;
+	  };
 
 /** One board's personal record as the client holds it (shared/records' Rec fits: extra fields are ignored). */
 export interface NewBestRecord {
@@ -110,6 +130,11 @@ export interface PendingRunClaim {
 	readonly board: NewBestBoard;
 	readonly score: number;
 	readonly floor: number;
+	/**
+	 * A daily run's claim (docs/DAILY.md DS10): the day it belongs to. Folded only into that day's daily baseline
+	 * (dailyBaselineFrom), never into the endless records (withPendingRuns skips it). Absent: an endless run.
+	 */
+	readonly daily?: number;
 }
 
 /**
@@ -132,7 +157,7 @@ export function withPendingRuns(
 	let score = baseScore;
 	let floor = baseFloor;
 	for (const claim of pending) {
-		if (claim.board !== board) continue;
+		if (claim.board !== board || claim.daily !== undefined) continue;
 		score = math.max(score, whole(claim.score));
 		floor = math.max(floor, whole(claim.floor));
 	}
@@ -141,6 +166,54 @@ export function withPendingRuns(
 	return board === "coop"
 		? { loaded: true, solo: records.solo, coop: merged }
 		: { loaded: true, solo: merged, coop: records.coop };
+}
+
+/** A board's entry today as the client holds it (shared/daily DailyMineEntry fits). */
+export interface NewBestDailyEntry {
+	readonly score: number;
+}
+
+/**
+ * The client's last `dailyStatus` as dailyBaselineFrom reads it (shared/daily DailyStatus fits): `mine` absent = the
+ * entries are unknown (no answer from the boards); a board missing from `mine` = no entry on it today.
+ */
+export interface NewBestDailyInput {
+	readonly day: number;
+	readonly seed: number;
+	readonly mine?: { readonly solo?: NewBestDailyEntry; readonly coop?: NewBestDailyEntry };
+}
+
+/**
+ * A daily run's baseline at run start (docs/DAILY.md DS10, DSD6): unranked unless `ranked` (a server run session, not
+ * the tutorial, scored); unknown (flagged daily) while the status is missing, belongs to another day's seed than the
+ * run's (`runSeed`: the status of the day this run was seeded for, never yesterday's), or carries no `mine`; else best
+ * today on the run's board (solo / co-op by party size) with this day's pending daily claims folded in (max), as none
+ * under NEW_BEST.minScore or no entry, else known. Score only: floor 0, so no deepest-floor beat or stage line.
+ */
+export function dailyBaselineFrom(
+	status: NewBestDailyInput | undefined,
+	partySize: number,
+	runSeed: number,
+	ranked: boolean,
+	pending: ReadonlyArray<PendingRunClaim> = [],
+): RunBaseline {
+	if (!ranked) return { kind: "unranked" };
+	const board = boardFor(partySize);
+	if (status === undefined || status.seed !== runSeed || status.mine === undefined) {
+		return { kind: "unknown", board, daily: true };
+	}
+	const entry = board === "coop" ? status.mine.coop : status.mine.solo;
+	let score = entry !== undefined ? whole(entry.score) : 0;
+	for (const claim of pending) {
+		if (claim.board === board && claim.daily === status.day) score = math.max(score, whole(claim.score));
+	}
+	if (score < NEW_BEST.minScore) return { kind: "none", board, score, floor: 0, daily: true };
+	return { kind: "known", board, score, floor: 0, daily: true };
+}
+
+/** The baseline is a daily run's (best today). */
+export function isDailyBaseline(b: RunBaseline): boolean {
+	return b.kind !== "unranked" && b.daily === true;
 }
 
 /** KV_NewBestDebug's forced baseline (parseNewBestDebug). */
@@ -180,7 +253,13 @@ export function parseNewBestDebug(attr: unknown): NewBestDebug | undefined {
  * The baseline a debug override forces on `board`: "first" a none with no record, "unknown" unknown, a "set" a known
  * baseline with exactly those numbers (no minScore rule: "score:500" is a target; 0 = no target of that kind).
  */
-export function debugBaseline(debug: NewBestDebug, board: NewBestBoard): RunBaseline {
+export function debugBaseline(debug: NewBestDebug, board: NewBestBoard, daily = false): RunBaseline {
+	if (daily) {
+		// A daily run's baseline is score only (dailyBaselineFrom): the debug floor is ignored.
+		if (debug.kind === "first") return { kind: "none", board, score: 0, floor: 0, daily: true };
+		if (debug.kind === "unknown") return { kind: "unknown", board, daily: true };
+		return { kind: "known", board, score: debug.score, floor: 0, daily: true };
+	}
 	if (debug.kind === "first") return { kind: "none", board, score: 0, floor: 0 };
 	if (debug.kind === "unknown") return { kind: "unknown", board };
 	return { kind: "known", board, score: debug.score, floor: debug.floor };
@@ -204,7 +283,8 @@ export function isRecordRun(b: RunBaseline, score: number, floor: number): boole
 	if (b.kind === "known") {
 		return (b.score > 0 && score > b.score) || (b.floor > 0 && floor > b.floor);
 	}
-	if (b.kind === "none") return score > b.score || floor > b.floor;
+	// A daily baseline is score only (best today): a deeper floor is no record.
+	if (b.kind === "none") return score > b.score || (b.daily !== true && floor > b.floor);
 	return false;
 }
 
@@ -509,11 +589,24 @@ export function newBestRowText(
 	compact: boolean,
 	s: NewBestStr,
 	fmt: NewBestFormat = plainNumber,
+	daily = false,
 ): string {
 	const K = NEW_BEST_STRINGS;
 	if (look.line === "none") return "";
+	if (daily) {
+		// Best today (docs/DAILY.md DS10): "{points} TO BEST TODAY" / "NEW BEST TODAY +{points}"; compact chasing as
+		// endless ("-{points}"), compact passed "BEST TODAY".
+		const D = DAILY_RANK_STRINGS;
+		if (look.line === "passed") return compact ? s(D.newBest) : s(D.over, { points: fmt(look.margin) });
+		return s(compact ? K.toGoShort : D.toGo, { points: fmt(look.gap) });
+	}
 	if (look.line === "passed") return compact ? s(K.newBest) : s(K.over, { points: fmt(look.margin) });
 	return s(compact ? K.toGoShort : K.toGo, { points: fmt(look.gap) });
+}
+
+/** The NEW BEST! floor shout's key: `hud.best.shout`, or for a daily run `hud.dailyRank.shout` (NEW BEST TODAY!). */
+export function newBestShoutKey(daily = false): string {
+	return daily ? DAILY_RANK_STRINGS.shout : NEW_BEST_STRINGS.shout;
 }
 
 /** A string to show: its key, its vars, and whether it is drawn in the newBest gold. */
@@ -557,6 +650,31 @@ export interface NewBestServerRecords {
 	readonly scoreImproved: boolean;
 	readonly floorImproved: boolean;
 	readonly previous: NewBestRecord;
+}
+
+/** A daily run's verdict on its board as dailyServerRecords reads it (shared/daily DailyRunResult fits). */
+export interface NewBestDailyResult {
+	readonly improved: boolean;
+	readonly previous?: NewBestRecord;
+}
+
+/**
+ * A daily run's server records for runOverRecords (docs/DAILY.md DS10): from `verdict.daily` instead of the records
+ * doc (daily runs never write it, DSD6): the score improved when the entry was raised, never the floor (a daily entry
+ * is ranked by score), the previous entry or none (0 / 0: the day's first entry, FIRST RUN TODAY). Undefined in,
+ * undefined out (no daily result: Studio, a failed post, a rejected run).
+ */
+export function dailyServerRecords(d: NewBestDailyResult | undefined): NewBestServerRecords | undefined {
+	if (d === undefined) return undefined;
+	const prev = d.previous;
+	return {
+		scoreImproved: d.improved === true,
+		floorImproved: false,
+		previous: {
+			score: prev !== undefined ? whole(prev.score) : 0,
+			floor: prev !== undefined ? whole(prev.floor) : 0,
+		},
+	};
 }
 
 /** One record row: `Score 48210 -> 61930 (+13720)` / `Deepest floor 9 -> 11 (+2)`. */
@@ -626,13 +744,19 @@ export function runOverRecords(
 	if (baseline.kind === "unknown") return NO_RECORD;
 	const known = baseline.kind === "known";
 	const scoreImproved = known ? baseline.score > 0 && score > baseline.score : score > baseline.score;
-	const floorImproved = known ? baseline.floor > 0 && floor > baseline.floor : floor > baseline.floor;
+	// A daily baseline is score only (best today): its floor never makes a record row.
+	const floors = baseline.daily !== true;
+	const floorImproved = floors && (known ? baseline.floor > 0 && floor > baseline.floor : floor > baseline.floor);
 	return recordOf(baseline.score, baseline.floor, scoreImproved, floorImproved, score, floor, false);
 }
 
-/** The ribbon across the run-over panel's header: FIRST RECORD / NEW BEST!, or undefined (no record). */
-export function runOverRibbonKey(records: RunOverRecords): string | undefined {
+/**
+ * The ribbon across the run-over panel's header: FIRST RECORD / NEW BEST!, or for a daily run (`daily`) FIRST RUN
+ * TODAY / NEW BEST TODAY!; undefined (no record).
+ */
+export function runOverRibbonKey(records: RunOverRecords, daily = false): string | undefined {
 	if (!records.record) return undefined;
+	if (daily) return records.first ? DAILY_RANK_STRINGS.first : DAILY_RANK_STRINGS.ribbon;
 	return records.first ? NEW_BEST_STRINGS.first : NEW_BEST_STRINGS.ribbon;
 }
 
@@ -640,9 +764,17 @@ export function runOverRibbonKey(records: RunOverRecords): string | undefined {
  * A record row's text at a rolled value `shown` (recordRollValue; pass row.to when settled): `run.best.score` with the
  * score formatted by `fmt`, `run.best.floor` with plain floor numbers.
  */
-export function recordRowText(row: RecordRow, shown: number, s: NewBestStr, fmt: NewBestFormat = plainNumber): string {
+export function recordRowText(
+	row: RecordRow,
+	shown: number,
+	s: NewBestStr,
+	fmt: NewBestFormat = plainNumber,
+	daily = false,
+): string {
 	const f = row.kind === "score" ? fmt : plainNumber;
-	const key = row.kind === "score" ? NEW_BEST_STRINGS.scoreRow : NEW_BEST_STRINGS.floorRow;
+	// A daily run's score row is best today's (`run.dailyRank.score`); it has no floor row.
+	const scoreKey = daily ? DAILY_RANK_STRINGS.scoreRow : NEW_BEST_STRINGS.scoreRow;
+	const key = row.kind === "score" ? scoreKey : NEW_BEST_STRINGS.floorRow;
 	return s(key, { old: f(row.from), new: f(shown), delta: f(shown - row.from) });
 }
 
@@ -716,9 +848,52 @@ export function bestText(
 	return s(key, { score: fmt(whole(record.score)), floor: whole(record.floor) });
 }
 
+/** The dim target line's key: `run.best.target`, or for a daily run `run.dailyRank.target` (Best today ...). */
+export function bestTargetKey(daily = false): string {
+	return daily ? DAILY_RANK_STRINGS.target : NEW_BEST_STRINGS.target;
+}
+
 /** The baseline's record for bestText (known / none with numbers), else undefined. */
 export function baselineRecord(b: RunBaseline): NewBestRecord | undefined {
 	return b.kind === "known" || b.kind === "none" ? { score: b.score, floor: b.floor } : undefined;
+}
+
+/**
+ * What new best's run-over block (the client's BestBlock) draws for a ranked run, decided once so the daily block
+ * (dailyResultBlock's `bestLineShown`) never repeats it (docs/DAILY.md DS11: one owner per piece on a daily run).
+ */
+export interface RunOverBestLines {
+	/** The record rows roll (`Score 48210 -> 61930`): a record over an earlier best (a first record has none). */
+	readonly rows: boolean;
+	/** The dim target line's record (`Best ...` / `Best today ...`): a run with no record, a best above 0; else none. */
+	readonly target: NewBestRecord | undefined;
+	/**
+	 * The save chip (recordSavedKey) on an endless run; never on a daily run, whose single Saved / Not saved chip is the
+	 * daily block's (from `verdict.daily.posted`).
+	 */
+	readonly saved: string | undefined;
+}
+
+/** BestBlock's lines from the run's record, verdict status and target (runOverBest's fields); none when unranked. */
+export function runOverBestLines(
+	ranked: boolean,
+	records: RunOverRecords,
+	status: NewBestVerdictStatus,
+	target: NewBestRecord | undefined,
+	daily: boolean,
+): RunOverBestLines {
+	if (!ranked) return { rows: false, target: undefined, saved: undefined };
+	const shownTarget = !records.record && target !== undefined && whole(target.score) > 0 ? target : undefined;
+	return {
+		rows: records.record && !records.first && records.rows.size() > 0,
+		target: shownTarget,
+		saved: daily ? undefined : recordSavedKey(records, status),
+	};
+}
+
+/** BestBlock draws a best line (record rows or the target line): the daily block then leaves out its best-today line. */
+export function bestBlockDrawsBestLine(lines: RunOverBestLines): boolean {
+	return lines.rows || lines.target !== undefined;
 }
 
 // ---------------------------------------------------------------------------------------------------------------

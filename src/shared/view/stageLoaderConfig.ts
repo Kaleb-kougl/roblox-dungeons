@@ -13,6 +13,12 @@ export interface StageLoaderConfig {
 	readonly minCardSec: number;
 	/** A run start's cover shows at least this long, seconds after the server answered (SD3: none, lift when ready). */
 	readonly minStartSec: number;
+	/**
+	 * A run start whose cover shows floor 1's roster line (docs/DAILY.md DS2: "Swarmer · Bruiser") shows at least this
+	 * long, seconds after the server answered, so the line can be read (StageLoad.holdAtLeast; the floor change's card
+	 * already has minCardSec).
+	 */
+	readonly rosterStartSec: number;
 	/** Wait at most this long for the floor's front-lane assets (its music / ambience, a boss floor's sheets), seconds (SD4). */
 	readonly assetCapSec: number;
 	/**
@@ -42,6 +48,7 @@ export interface StageLoaderConfig {
 export const STAGE_LOADER: StageLoaderConfig = {
 	minCardSec: 0.6,
 	minStartSec: 0,
+	rosterStartSec: 1,
 	assetCapSec: 3,
 	maxCoverSec: 8,
 	settleFrames: 2,

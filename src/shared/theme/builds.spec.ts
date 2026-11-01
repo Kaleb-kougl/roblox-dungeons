@@ -85,10 +85,11 @@ describe("builds: contract", () => {
 	});
 
 	it("appends the nine build sounds to PORT_AUDIO_EVENTS: required, sfx, SILENT in the placeholder", () => {
-		const n = PORT_AUDIO_EVENTS.size();
-		const tail = new Array<string>();
-		for (let i = n - BUILD_AUDIO_IDS.size(); i < n; i++) tail.push(PORT_AUDIO_EVENTS[i]);
-		expect(tail).toEqual([...BUILD_AUDIO_IDS]);
+		// right after new best's block (docs/DAILY.md DS10's rank layer two come after them)
+		const first = (PORT_AUDIO_EVENTS as ReadonlyArray<string>).indexOf("sfx.jingle.record") + 1;
+		const block = new Array<string>();
+		for (let i = first; i < first + BUILD_AUDIO_IDS.size(); i++) block.push(PORT_AUDIO_EVENTS[i]);
+		expect(block).toEqual([...BUILD_AUDIO_IDS]);
 		const assets = PLACEHOLDER_MANIFEST.assets as unknown as Record<string, { kind: string }>;
 		for (const id of BUILD_AUDIO_IDS) {
 			expect([id, has(REQUIRED_ASSET_IDS, id), slotFor(id)?.soundGroup, assets[id].kind]).toEqual([

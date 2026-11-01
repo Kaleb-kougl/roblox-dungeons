@@ -20,10 +20,13 @@
  *   partyInvite             the server's invite for a Roblox Party mate (source "party"): no cap, the platform
  *                           TTL, and the invitee may be busy (a mate in a run sees it afterwards).
  *   host only               kick (removes the member, drops their invites here, blocks re-invite and rejoin for
- *                           kickCooldownSeconds), setVisibility, setName (preset ids), transferHost, start.
+ *                           kickCooldownSeconds), setVisibility, setName (preset ids), setWorld (endless / daily,
+ *                           while forming; a change clears every Ready: the members readied for the other world),
+ *                           transferHost, start.
  *   ready / start / tick    start needs every member ready (one member is enough) and begins a countdown; a member
  *                           un-readying or leaving cancels it. tick(ctx) ends due countdowns: the lobby goes
- *                           `inRun` and the result says to start a solo or party run (members in join order).
+ *                           `inRun` and the result says to start a solo or party run (members in join order) in the
+ *                           lobby's world.
  *                           runEnded returns it to `forming` with Ready cleared.
  *   playerRemoving          leaves the lobby and drops the invites the player received (their sent ones stay).
  *   summariesFor            the browse list: lobbies the viewer canAccess (never closed), sorted.
@@ -36,12 +39,14 @@ import {
 	LOBBY,
 	isLobbyNameId,
 	isLobbyVisibility,
+	isLobbyWorld,
 	isWireUserId,
 	type LobbyConfig,
 	type LobbyInviteSource,
 	type LobbyNameId,
 	type LobbyPhase,
 	type LobbyVisibility,
+	type LobbyWorld,
 } from "./config";
 
 export type AreFriends = (a: number, b: number) => boolean;
@@ -54,6 +59,8 @@ export interface Lobby {
 	readonly hostId: number;
 	readonly nameId: LobbyNameId;
 	readonly visibility: LobbyVisibility;
+	/** The world its run is played in (config.ts LobbyWorld). */
+	readonly worldKind: LobbyWorld;
 	readonly phase: LobbyPhase;
 	/** Join order: the run's player order, and who becomes host next. */
 	readonly members: ReadonlyArray<number>;
@@ -72,6 +79,7 @@ interface MutableLobby {
 	hostId: number;
 	nameId: LobbyNameId;
 	visibility: LobbyVisibility;
+	worldKind: LobbyWorld;
 	phase: LobbyPhase;
 	readonly members: number[];
 	readonly ready: number[];
@@ -106,6 +114,7 @@ export interface LobbySummary {
 	readonly count: number;
 	readonly max: number;
 	readonly visibility: LobbyVisibility;
+	readonly worldKind: LobbyWorld;
 	readonly phase: LobbyPhase;
 	/** The viewer is friends with at least one member. */
 	readonly hasFriend: boolean;
@@ -163,10 +172,15 @@ export interface LobbyDeparture {
 	readonly droppedInvites: ReadonlyArray<LobbyInvite>;
 }
 
-/** tick: start this run now. Party members are in join order. */
+/** tick: start this run now, in the lobby's world. Party members are in join order. */
 export type LobbyRunStart =
-	| { readonly kind: "solo"; readonly lobbyId: string; readonly userId: number }
-	| { readonly kind: "party"; readonly lobbyId: string; readonly members: ReadonlyArray<number> };
+	| { readonly kind: "solo"; readonly lobbyId: string; readonly userId: number; readonly worldKind: LobbyWorld }
+	| {
+			readonly kind: "party";
+			readonly lobbyId: string;
+			readonly members: ReadonlyArray<number>;
+			readonly worldKind: LobbyWorld;
+	  };
 
 export interface LobbyTickResult {
 	readonly starts: ReadonlyArray<LobbyRunStart>;
@@ -179,6 +193,8 @@ export interface LobbyTickResult {
 export interface LobbyCreateRequest {
 	readonly visibility?: string;
 	readonly nameId?: string;
+	/** A LOBBY_WORLDS kind (default LOBBY.defaultWorld: endless). */
+	readonly worldKind?: string;
 }
 
 export interface LobbiesDeps {
@@ -239,6 +255,8 @@ export class Lobbies {
 		if (!isLobbyVisibility(visibility)) return refuse("badRequest", "unknown visibility");
 		const nameId = request?.nameId ?? DEFAULT_LOBBY_NAME;
 		if (!isLobbyNameId(nameId)) return refuse("badName", "unknown lobby name");
+		const worldKind = request?.worldKind ?? this.config.defaultWorld;
+		if (!isLobbyWorld(worldKind)) return refuse("badRequest", "unknown world");
 		const busy = ctx.busyReason(hostId);
 		if (busy !== undefined) return refuse("busy", busy);
 		if (this.byUser.has(hostId)) return refuse("alreadyInLobby", "already in a lobby");
@@ -250,6 +268,7 @@ export class Lobbies {
 			hostId,
 			nameId,
 			visibility,
+			worldKind,
 			phase: "forming",
 			members: [hostId],
 			ready: [],
@@ -460,6 +479,23 @@ export class Lobbies {
 		return { ok: true, lobby };
 	}
 
+	/**
+	 * The lobby's world (LOBBY_WORLDS), while forming only (a countdown or a run plays the world it started with). A
+	 * change clears every Ready (the members readied for the other world); the same world changes nothing.
+	 */
+	setWorld(hostId: number, worldKind: string): LobbyResult<{ lobby: Lobby; changed: boolean }> {
+		if (!isLobbyWorld(worldKind)) return refuse("badRequest", "unknown world");
+		const hosted = this.hostedBy(hostId);
+		if (!hosted.ok) return hosted;
+		const lobby = hosted.lobby;
+		if (lobby.phase === "inRun") return refuse("inRun", "the lobby is in a run");
+		if (lobby.phase === "countdown") return refuse("starting", "the lobby is starting");
+		if (lobby.worldKind === worldKind) return { ok: true, lobby, changed: false };
+		lobby.worldKind = worldKind;
+		lobby.ready.clear();
+		return { ok: true, lobby, changed: true };
+	}
+
 	transferHost(hostId: number, toUserId: number): LobbyResult<{ lobby: Lobby }> {
 		if (!isUserId(toUserId)) return refuse("badRequest", "userId must be an integer");
 		const hosted = this.hostedBy(hostId);
@@ -542,10 +578,11 @@ export class Lobbies {
 			lobby.phase = "inRun";
 			lobby.countdownEndsAt = undefined;
 			const members = [...lobby.members];
+			const worldKind = lobby.worldKind;
 			starts.push(
 				members.size() === 1
-					? { kind: "solo", lobbyId: lobby.lobbyId, userId: members[0] }
-					: { kind: "party", lobbyId: lobby.lobbyId, members },
+					? { kind: "solo", lobbyId: lobby.lobbyId, userId: members[0], worldKind }
+					: { kind: "party", lobbyId: lobby.lobbyId, members, worldKind },
 			);
 		}
 		const expiredInvites = this.dropInvites((inv) => ctx.now >= inv.expiresAt);
@@ -586,6 +623,7 @@ export class Lobbies {
 					count: lobby.members.size(),
 					max: this.config.maxSize,
 					visibility: lobby.visibility,
+					worldKind: lobby.worldKind,
 					phase: lobby.phase,
 					hasFriend,
 				},

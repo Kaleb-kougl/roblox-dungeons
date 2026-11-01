@@ -3,19 +3,22 @@
  * owns one and reports what happens to run sessions; every method returns the lobbies whose run just ENDED.
  *
  *   party      the server created the party run itself (`startLobbyRun`): runId -> lobby at once.
- *   solo       the server asked the one member's client to start a ranked run (`lobbyRunStart`). The lobby waits
- *              (pending) for that player's next ranked session start (`soloStarted` binds it); no start within
- *              `soloStartTimeoutSeconds` (`sweep`) ends the lobby run.
+ *   solo       the server asked the one member's client to start a ranked run in the lobby's world (`lobbyRunStart`).
+ *              The lobby waits (pending) for that player's next solo session start in that world (`soloStarted`
+ *              binds it; a start in another world does not); no start within `soloStartTimeoutSeconds` (`sweep`)
+ *              ends the lobby run.
  *   concluded  any outcome of a bound session (accepted, rejected, abandoned by a restart, expired) ends its lobby run.
  *   playerRemoving  a pending or bound SOLO lobby run of the leaving player ends (a party run goes on without them).
  *
  * Pure (the clock is passed in).
  */
-import { LOBBY_SERVICE } from "./config";
+import { LOBBY, LOBBY_SERVICE } from "./config";
 
 interface PendingSolo {
 	readonly lobbyId: string;
 	readonly deadline: number;
+	/** The world the lobby's run must be started in. */
+	readonly worldKind: string;
 }
 
 export class LobbyRunTracker {
@@ -36,16 +39,24 @@ export class LobbyRunTracker {
 	 * A solo lobby run was requested from `userId`'s client. Returns the lobby of an earlier pending start of theirs
 	 * that this replaces (ended), if any.
 	 */
-	expectSolo(userId: number, lobbyId: string, now: number): string | undefined {
+	expectSolo(
+		userId: number,
+		lobbyId: string,
+		now: number,
+		worldKind: string = LOBBY.defaultWorld,
+	): string | undefined {
 		const before = this.pending.get(userId);
-		this.pending.set(userId, { lobbyId, deadline: now + this.soloStartTimeoutSeconds });
+		this.pending.set(userId, { lobbyId, deadline: now + this.soloStartTimeoutSeconds, worldKind });
 		return before !== undefined && before.lobbyId !== lobbyId ? before.lobbyId : undefined;
 	}
 
-	/** `ownerId` started a ranked solo session `runId`: bound to their pending lobby run. Returns that lobby. */
-	soloStarted(ownerId: number, runId: string): string | undefined {
+	/**
+	 * `ownerId` started a solo session `runId` in `worldKind`: bound to their pending lobby run when it is that lobby's
+	 * world (another world's start is not the lobby's run). Returns that lobby.
+	 */
+	soloStarted(ownerId: number, runId: string, worldKind: string = LOBBY.defaultWorld): string | undefined {
 		const p = this.pending.get(ownerId);
-		if (p === undefined) return undefined;
+		if (p === undefined || p.worldKind !== worldKind) return undefined;
 		this.pending.delete(ownerId);
 		this.byRun.set(runId, p.lobbyId);
 		this.soloRunOf.set(ownerId, runId);

@@ -201,7 +201,8 @@ describe("new best: strings and audio IDs", () => {
 	});
 
 	it("appends the in-run fanfare and the record fanfare to the port's audio IDs, silent in the placeholder", () => {
-		// right after the enemy variants' block (only docs/BUILDS.md's sounds come after them)
+		// right after the enemy variants' block (only docs/BUILDS.md's sounds and docs/DAILY.md DS10's rank layer two come
+		// after them)
 		const n = (PORT_AUDIO_EVENTS as ReadonlyArray<string>).indexOf("sfx.jingle.record") + 1;
 		expect([PORT_AUDIO_EVENTS[n - 3], PORT_AUDIO_EVENTS[n - 2], PORT_AUDIO_EVENTS[n - 1]]).toEqual([
 			"sfx.affix.vengeful",

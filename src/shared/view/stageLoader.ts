@@ -12,7 +12,8 @@
  *                      building       the run-start / floor-change listeners rebuild the views ("notify" work), then
  *                                     on a run start the next floor(s) are pre-generated ("pregen" work)
  *                      assets         the floor's front-lane assets (`assetsDone()`), at most `assetCapSec`
- *                      settling       `settleFrames` rendered frames, and the card's / start's minimum time
+ *                      settling       `settleFrames` rendered frames, and the card's / start's minimum time (or
+ *                                     longer: `holdAtLeast`, a run start's roster line, docs/DAILY.md DS2)
  *                      revealing      the fade (`fadeSec`; a cut under reduced motion): the sim runs again, the
  *                                     input stays blocked until the cover is gone
  *                      done
@@ -88,6 +89,7 @@ export class StageLoad {
 	private assetWaitEnd: StageAssetWait = "pending";
 	private overCap = false;
 	private workedThisFrame = false;
+	private heldSec = 0;
 
 	constructor(kind: StageKind, options: StageLoadOptions = {}, cfg: StageLoaderConfig = STAGE_LOADER) {
 		this.kind = kind;
@@ -162,6 +164,17 @@ export class StageLoad {
 		this.pregenDone = true;
 		this.steps.add("pregen");
 		this.workedThisFrame = true;
+		this.advance();
+	}
+
+	/**
+	 * Something worth reading went on the cover (a run start's roster line, docs/DAILY.md DS2): the reveal waits until
+	 * the cover has been up at least `sec` seconds (coverSeconds: from the server's answer, from the cut without one),
+	 * on top of the settle frames; maxCoverSec still lifts it. Only ever lengthens the minimum; a world live under the
+	 * card keeps none.
+	 */
+	holdAtLeast(sec: number): void {
+		this.heldSec = math.max(this.heldSec, sec);
 		this.advance();
 	}
 
@@ -309,7 +322,8 @@ export class StageLoad {
 				this.enter("settling");
 			}
 		} else if (c === "settling") {
-			const minSec = this.worldLive ? 0 : this.kind === "floorChange" ? cfg.minCardSec : cfg.minStartSec;
+			const base = this.kind === "floorChange" ? cfg.minCardSec : cfg.minStartSec;
+			const minSec = this.worldLive ? 0 : math.max(base, this.heldSec);
 			if (this.overCap || (this.settledFrames >= cfg.settleFrames && this.coverSec >= minSec)) {
 				this.steps.add("settle");
 				this.enter("revealing");

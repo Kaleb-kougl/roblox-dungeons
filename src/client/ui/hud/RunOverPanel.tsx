@@ -16,6 +16,7 @@ import {
 } from "client/store";
 import { HUD_FONT, role, str, themePack } from "client/ui/theme";
 import type { ColorRole } from "shared/theme";
+import { DAILY_WORLD_KIND } from "shared/daily";
 import { restartHint } from "shared/play";
 import { SIM_HZ } from "shared/sim";
 import { SFX } from "shared/view/audio";
@@ -23,18 +24,20 @@ import {
 	BUILD_HUD_VIEW,
 	COMBO_DRAW,
 	COMBO_TIERS,
+	DAILY_STRINGS,
 	FOOTPRINT_ESTIMATE,
 	HUD_STRINGS,
 	HUD_VIEW,
 	NEW_BEST_ROLE,
 	NEW_BEST_STRINGS,
 	UI_ART,
+	bestBlockDrawsBestLine,
+	bestTargetKey,
 	bestText,
 	comboBestRichText,
 	comboTier,
 	formatClock,
 	formatCombo,
-	recordSavedKey,
 	runOverRibbonKey,
 	scoreBreakdownRows,
 } from "shared/view/hud";
@@ -49,11 +52,13 @@ import {
 	screenSkin,
 } from "shared/view/menu";
 import { useHudActions } from "./actions";
+import { DailyResultBlock } from "./DailyResultBlock";
 import { MenuFit } from "./MenuFit";
 import { runOverBest, type RunOverBest } from "./newBestRunOver";
 import { NEW_BEST_UI } from "./newBestUi";
 import { ArtImage, MenuButton, Panel, Row, Text, panelIcon } from "./primitives";
 import { BuildList } from "./BuildList";
+import { DailyPassedRow } from "./DailyPassedRow";
 import { RunInfoLine, verdictColor, verdictLine } from "./RunInfoLine";
 
 const HIDDEN = 1;
@@ -67,10 +72,13 @@ const ROW = {
 	alt: 4,
 	stats: 5,
 	best: 6,
-	breakdown: 7,
-	exits: 8,
-	verdict: 9,
-	info: 10,
+	/** docs/DAILY.md DS11: the daily block (daily runs only), then the friends you passed (DailyPassedRow, DS10). */
+	daily: 7,
+	dailyPassed: 8,
+	breakdown: 9,
+	exits: 10,
+	verdict: 11,
+	info: 12,
 } as const;
 
 function Stat(props: { order: number; label: string; value: string }) {
@@ -230,67 +238,65 @@ function BestRibbon(props: { order: number; text: string }) {
  * record row bindings NewBestController rolls; none for a first record, whose ribbon says it) and the save chip
  * (recordSavedKey: `Saved` in gold once the accepted verdict carried the server's records, `Not saved: run not
  * verified` in uiHealth for a rejected one, nothing while waiting). No record: one dim line, the target for next time
- * (`Best 48210 · floor 9`, bestText run.best.target).
+ * (`Best 48210 · floor 9`, bestText run.best.target). What it draws is runOverBest's `lines` (shared/view/hud
+ * runOverBestLines); on a daily run it draws no save chip (the daily block's is the one, docs/DAILY.md DS11).
  */
 function BestBlock(props: { order: number; best: RunOverBest }) {
 	const b = props.best;
 	if (!b.ranked) return undefined;
 	const lines = new Array<React.Element>();
-	if (b.records.record) {
-		if (!b.records.first) {
-			const h = HUD_VIEW.textSize + FOOTPRINT_ESTIMATE.lineSlack;
-			b.records.rows.forEach((_, i) => {
-				const value = NEW_BEST_UI.recordRows[i];
-				if (value === undefined) return;
-				lines.push(
-					<textlabel
-						key={`Record${i}`}
-						LayoutOrder={i + 1}
-						Size={new UDim2(1, 0, 0, h)}
-						BackgroundTransparency={HIDDEN}
-						Font={HUD_FONT}
-						TextScaled={true}
-						TextSize={HUD_VIEW.textSize}
-						TextColor3={role(NEW_BEST_ROLE)}
-						TextStrokeColor3={role("background")}
-						TextStrokeTransparency={HUD_VIEW.panelTransparency}
-						TextXAlignment={Enum.TextXAlignment.Center}
-						Text={value.binding}
-					>
-						<uitextsizeconstraint MaxTextSize={HUD_VIEW.textSize} />
-					</textlabel>,
-				);
-			});
-		}
-		const saved = recordSavedKey(b.records, b.status);
-		if (saved !== undefined) {
+	if (b.lines.rows) {
+		const h = HUD_VIEW.textSize + FOOTPRINT_ESTIMATE.lineSlack;
+		b.records.rows.forEach((_, i) => {
+			const value = NEW_BEST_UI.recordRows[i];
+			if (value === undefined) return;
 			lines.push(
-				<Text
-					key="Saved"
-					order={lines.size() + 1}
-					fill={true}
-					size={HUD_VIEW.smallText}
-					color={saved === NEW_BEST_STRINGS.saved ? NEW_BEST_ROLE : "uiHealth"}
-					align={Enum.TextXAlignment.Center}
-					text={str(saved)}
-				/>,
+				<textlabel
+					key={`Record${i}`}
+					LayoutOrder={i + 1}
+					Size={new UDim2(1, 0, 0, h)}
+					BackgroundTransparency={HIDDEN}
+					Font={HUD_FONT}
+					TextScaled={true}
+					TextSize={HUD_VIEW.textSize}
+					TextColor3={role(NEW_BEST_ROLE)}
+					TextStrokeColor3={role("background")}
+					TextStrokeTransparency={HUD_VIEW.panelTransparency}
+					TextXAlignment={Enum.TextXAlignment.Center}
+					Text={value.binding}
+				>
+					<uitextsizeconstraint MaxTextSize={HUD_VIEW.textSize} />
+				</textlabel>,
 			);
-		}
-	} else {
-		const target = bestText(b.target, NEW_BEST_STRINGS.target, str);
-		if (target !== "") {
-			lines.push(
-				<Text
-					key="Target"
-					order={1}
-					fill={true}
-					size={HUD_VIEW.smallText}
-					color="uiTextDim"
-					align={Enum.TextXAlignment.Center}
-					text={target}
-				/>,
-			);
-		}
+		});
+	}
+	const saved = b.lines.saved;
+	if (saved !== undefined) {
+		lines.push(
+			<Text
+				key="Saved"
+				order={lines.size() + 1}
+				fill={true}
+				size={HUD_VIEW.smallText}
+				color={saved === NEW_BEST_STRINGS.saved ? NEW_BEST_ROLE : "uiHealth"}
+				align={Enum.TextXAlignment.Center}
+				text={str(saved)}
+			/>,
+		);
+	}
+	const target = bestText(b.lines.target, bestTargetKey(b.daily), str);
+	if (target !== "") {
+		lines.push(
+			<Text
+				key="Target"
+				order={lines.size() + 1}
+				fill={true}
+				size={HUD_VIEW.smallText}
+				color="uiTextDim"
+				align={Enum.TextXAlignment.Center}
+				text={target}
+			/>,
+		);
 	}
 	if (lines.size() === 0) return undefined;
 	return (
@@ -384,6 +390,10 @@ function RunOverHeader(props: { order: number; victory: boolean; icon: string | 
  * record rows and the save chip (BestBlock); a run with no record gets the dim `Best ...` line there instead. The
  * record fanfare (the cue mapper's run-over jingle swap), the rows' roll with its tick / land sounds and the
  * full-screen confetti are NewBestController's.
+ *
+ * The Daily (docs/DAILY.md DS11), daily runs only: the daily block (DailyResultBlock: standing, entrants, best today,
+ * the save chip, the countdown) under new best's block (compact: atop the breakdown column), a spot for the friends
+ * you passed right after it (DS10), and the Again button reads Retry Daily (still the first, focused button).
  */
 export function RunOverPanel() {
 	const s = useSelector(selectSnapshot);
@@ -417,7 +427,10 @@ export function RunOverPanel() {
 	const hint = restartHint(bindings);
 	// Touch: the Again button stands in for the restart key (docs/MOBILE.md MB10).
 	const touch = device === "touch";
-	const key = touch ? str(MENU_STRINGS.again) : device === "gamepad" ? padKey : hint.keyboard;
+	// A daily run's Again is Retry Daily (docs/DAILY.md DS11, DSD3: unlimited attempts; the restart keeps the world).
+	const daily = info.world === DAILY_WORLD_KIND;
+	const againText = str(daily ? DAILY_STRINGS.retry : MENU_STRINGS.again);
+	const key = touch ? againText : device === "gamepad" ? padKey : hint.keyboard;
 	const otherKey = device === "gamepad" ? hint.keyboard : padKey;
 	const bossName = lastBoss !== "" ? str(`${lastBoss}.name`) : "";
 	const exits = runOverExits(info.coop, myLobby !== undefined);
@@ -429,10 +442,13 @@ export function RunOverPanel() {
 		? str(HUD_STRINGS.victory, { name: bossName, key })
 		: str(HUD_STRINGS.dead, { key });
 	const best = runOverBest(baseline, baselineRun, info.run, verdict, s.score, s.floor);
-	const ribbonKey = runOverRibbonKey(best.records);
+	const ribbonKey = runOverRibbonKey(best.records, best.daily);
 	const ribbon =
 		ribbonKey !== undefined ? <BestRibbon key="Ribbon" order={ROW.ribbon} text={str(ribbonKey)} /> : undefined;
 	const bestBlock = <BestBlock key="Best" order={ROW.best} best={best} />;
+	// One owner per piece (docs/DAILY.md DS11): the daily block's best-today line only when BestBlock draws no best line.
+	const bestLineShown = bestBlockDrawsBestLine(best.lines);
+	const dailyBlock = <DailyResultBlock key="Daily" order={ROW.daily} bestLineShown={bestLineShown} />;
 	const header = (
 		<RunOverHeader
 			key="Header"
@@ -488,7 +504,7 @@ export function RunOverPanel() {
 					order={1}
 					name="Again"
 					size={size}
-					text={str(MENU_STRINGS.again)}
+					text={againText}
 					onActivated={() => {
 						actions.playUi(SFX.uiConfirm);
 						actions.restart();
@@ -556,6 +572,8 @@ export function RunOverPanel() {
 								</Column>
 								{s.scoring ? (
 									<Column order={2} width={right} gap={MENU_FIT.runOverLineGap}>
+										<DailyResultBlock key="Daily" order={-2} bestLineShown={bestLineShown} />
+										<DailyPassedRow key="DailyPassed" order={-1} />
 										{best.ranked ? <BestBlock key="Best" order={0} best={best} /> : undefined}
 										{breakdownLines(breakdown)}
 									</Column>
@@ -586,6 +604,8 @@ export function RunOverPanel() {
 							))}
 						</Row>
 						{bestBlock}
+						{dailyBlock}
+						<DailyPassedRow key="DailyPassed" order={ROW.dailyPassed} />
 						{/* docs/BUILDS.md BU10: the score breakdown and the Build list side by side. */}
 						<Row order={ROW.breakdown} align={Enum.HorizontalAlignment.Center}>
 							{s.scoring ? <ScoreBreakdown {...breakdown} order={1} /> : undefined}

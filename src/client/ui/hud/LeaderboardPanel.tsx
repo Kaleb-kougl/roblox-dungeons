@@ -1,18 +1,32 @@
 import React, { useEffect, useRef } from "@rbxts/react";
 import { useSelector } from "@rbxts/react-reflex";
 import { GuiService } from "@rbxts/services";
-import { selectBindings, selectInputDevice, selectLeaderboard } from "client/store";
+import { selectBindings, selectInputDevice, selectLeaderboard, type LeaderboardState } from "client/store";
 import { role, str } from "client/ui/theme";
 import {
-	LEADERBOARD_BOARDS,
 	LEADERBOARD_TOP_COUNT,
+	leaderboardRequestKey,
 	type LeaderboardBoard,
 	type LeaderboardRow,
 	type LeaderboardView,
 } from "shared/leaderboard";
 import { SFX } from "shared/view/audio";
 import { leaderboardHint, keyDevice } from "shared/play";
-import { HUD_VIEW, LEADERBOARD_STRINGS, LEADERBOARD_VIEW } from "shared/view/hud";
+import {
+	DAILY_STRINGS,
+	HUD_VIEW,
+	LEADERBOARD_BOARD_TABS,
+	LEADERBOARD_FILTER_TABS,
+	LEADERBOARD_SCOPE_TABS,
+	LEADERBOARD_STRINGS,
+	LEADERBOARD_VIEW,
+	dailyBoardLines,
+	leaderboardFilterShown,
+	leaderboardTabRequest,
+	withLeaderboardTab,
+	type DailyBoardStatus,
+	type LeaderboardTabs,
+} from "shared/view/hud";
 import { useHudActions } from "./actions";
 import { MenuFit } from "./MenuFit";
 import { MenuButton, Panel, Row, Text } from "./primitives";
@@ -82,11 +96,60 @@ function mineLine(view: LeaderboardView | undefined): string {
 	return str(LEADERBOARD_STRINGS.mine, { score: mine.score, floor: mine.floor, count: LEADERBOARD_TOP_COUNT });
 }
 
+/** A daily tab's status key (shared/view/hud dailyBoardLines), as text ("" for none). */
+function dailyStatusText(status: DailyBoardStatus): string {
+	switch (status) {
+		case "loading":
+			return str(LEADERBOARD_STRINGS.loading);
+		case "unavailable":
+			return str(LEADERBOARD_STRINGS.unavailable);
+		case "stale":
+			return str(LEADERBOARD_STRINGS.stale);
+		case "empty":
+			return str(DAILY_STRINGS.boardEmpty);
+		case "friendsEmpty":
+			return str(DAILY_STRINGS.boardFriendsEmpty);
+		default:
+			return "";
+	}
+}
+
+/** The panel's text for the shown tabs: the all-time lines exactly as before, or the daily tab's lines. */
+interface BoardText {
+	readonly view: LeaderboardView | undefined;
+	readonly status: string;
+	readonly pending: string;
+	readonly total: string;
+	readonly mine: string;
+}
+
+function boardText(lb: LeaderboardState, tabs: LeaderboardTabs): BoardText {
+	if (tabs.scope === "alltime") {
+		const view = tabs.board === "coop" ? lb.coop : lb.solo;
+		return { view, status: statusLine(view, lb.loading), pending: "", total: "", mine: mineLine(view) };
+	}
+	const view = lb.scoped[leaderboardRequestKey(leaderboardTabRequest(tabs))];
+	const lines = dailyBoardLines(view, lb.loading, str);
+	return {
+		view,
+		status: dailyStatusText(lines.status),
+		pending: lines.pending,
+		total: lines.total,
+		mine: lines.mine,
+	};
+}
+
+const SCOPE_TAB = new Vector2(LEADERBOARD_VIEW.scopeTab.x, LEADERBOARD_VIEW.scopeTab.y);
+const BOARD_TAB = new Vector2(LEADERBOARD_VIEW.boardTab.x, LEADERBOARD_VIEW.boardTab.y);
+
 /**
- * The leaderboard panel (M5): Solo / Co-op tabs, the top LEADERBOARD_TOP_COUNT verified runs (rank, name, score,
- * floor; the player's own row highlighted), and the player's personal best with its rank when it is in the top.
- * Opened with B (LEADERBOARD_KEY) or from the pause overlay; B, pad B or Close closes it. The run is paused while it is
- * open. Text from theme strings (hud.leaderboard.*), colours from theme roles.
+ * The leaderboard panel (M5; docs/DAILY.md DS9): scope tabs Today / Yesterday / All time, then Solo / Co-op and, on
+ * the daily scopes, Global / Friends; the top LEADERBOARD_TOP_COUNT verified runs (rank, name, score, floor; the
+ * player's own row highlighted), and the player's best with its rank (daily: `#41`, `top 9%` or `#3 of 12`, against
+ * the board's entrants, `1,240 players`). A friends view fills in as the server looks friends up (`finding friends...
+ * (12)`). The all-time tab is exactly the old panel. Opened with B (LEADERBOARD_KEY) or from the pause overlay; B, pad
+ * B or Close closes it. The run is paused while it is open. Text from theme strings (hud.leaderboard.*, daily.tab.*,
+ * daily.board.*), colours from theme roles.
  */
 export function LeaderboardPanel(props: { localUserId: number }) {
 	const lb = useSelector(selectLeaderboard);
@@ -105,24 +168,56 @@ export function LeaderboardPanel(props: { localUserId: number }) {
 	}, [lb.open, device]);
 
 	if (!lb.open) return undefined;
-	const view = lb.board === "coop" ? lb.coop : lb.solo;
-	const status = statusLine(view, lb.loading);
-	const rows = view?.rows ?? [];
+	const tabs: LeaderboardTabs = { scope: lb.scope, board: lb.board, friends: lb.friends };
+	const t = boardText(lb, tabs);
+	const rows = t.view?.rows ?? [];
 	const listHeight = math.min(LEADERBOARD_VIEW.listHeight, rows.size() * (LEADERBOARD_VIEW.rowHeight + HUD_VIEW.gap));
-	const tabs = LEADERBOARD_BOARDS.map((board, i) => (
+	const show = (patch: Partial<LeaderboardTabs>) => {
+		actions.playUi(SFX.uiClick);
+		actions.showLeaderboardTabs(withLeaderboardTab(tabs, patch));
+	};
+	const scopeTabs = LEADERBOARD_SCOPE_TABS.map((tab, i) => (
 		<MenuButton
-			key={board}
+			key={tab.scope}
 			ref={i === 0 ? firstRef : undefined}
 			order={i + 1}
-			name={`Tab_${board}`}
-			text={str(TAB_LABEL[board])}
-			active={board === lb.board}
-			onActivated={() => {
-				actions.playUi(SFX.uiClick);
-				actions.showLeaderboard(board);
-			}}
+			name={`Scope_${tab.scope}`}
+			size={SCOPE_TAB}
+			text={str(tab.key)}
+			active={tab.scope === tabs.scope}
+			onActivated={() => show({ scope: tab.scope })}
 		/>
 	));
+	const boardTabs = LEADERBOARD_BOARD_TABS.map((board, i) => (
+		<MenuButton
+			key={board}
+			order={i + 1}
+			name={`Tab_${board}`}
+			size={BOARD_TAB}
+			textSize={HUD_VIEW.smallText}
+			text={str(TAB_LABEL[board])}
+			active={board === tabs.board}
+			onActivated={() => show({ board })}
+		/>
+	));
+	const filterTabs = leaderboardFilterShown(tabs)
+		? LEADERBOARD_FILTER_TABS.map((tab, i) => (
+				<MenuButton
+					key={tab.friends ? "friends" : "global"}
+					order={LEADERBOARD_BOARD_TABS.size() + i + 1}
+					name={tab.friends ? "Filter_friends" : "Filter_global"}
+					size={BOARD_TAB}
+					textSize={HUD_VIEW.smallText}
+					text={str(tab.key)}
+					active={tab.friends === tabs.friends}
+					onActivated={() => show({ friends: tab.friends })}
+				/>
+		  ))
+		: undefined;
+	const small = (order: number, text: string, color: "uiTextDim" | "uiText" = "uiTextDim") =>
+		text !== "" ? (
+			<Text fill={true} order={order} size={HUD_VIEW.smallText} color={color} text={text} />
+		) : undefined;
 	return (
 		<frame key="LeaderboardOverlay" Size={UDim2.fromScale(1, 1)} BackgroundTransparency={1} BorderSizePixel={0}>
 			<ScreenDim key="Dim" name="LeaderboardDim" transparency={HUD_VIEW.overlayTransparency} />
@@ -144,14 +239,20 @@ export function LeaderboardPanel(props: { localUserId: number }) {
 							color="uiAccent"
 							text={str(LEADERBOARD_STRINGS.title)}
 						/>
-						<Row order={2}>{tabs}</Row>
-						{status !== "" ? (
-							<Text fill={true} order={3} size={HUD_VIEW.smallText} color="uiTextDim" text={status} />
-						) : undefined}
+						<Row key="Scopes" order={2}>
+							{scopeTabs}
+						</Row>
+						<Row key="Boards" order={3}>
+							{boardTabs}
+							{filterTabs}
+						</Row>
+						{small(4, t.status)}
+						{small(5, t.pending)}
+						{small(6, t.total)}
 						{rows.size() > 0 ? (
 							<scrollingframe
 								key="Rows"
-								LayoutOrder={4}
+								LayoutOrder={7}
 								Size={new UDim2(1, 0, 0, layout.flex)}
 								CanvasSize={new UDim2(0, 0, 0, 0)}
 								AutomaticCanvasSize={Enum.AutomaticSize.Y}
@@ -171,9 +272,9 @@ export function LeaderboardPanel(props: { localUserId: number }) {
 								))}
 							</scrollingframe>
 						) : undefined}
-						<Text fill={true} order={5} size={HUD_VIEW.smallText} color="uiText" text={mineLine(view)} />
+						{small(8, t.mine, "uiText")}
 						<MenuButton
-							order={6}
+							order={9}
 							name="Close"
 							text={str(LEADERBOARD_STRINGS.close)}
 							onActivated={() => {
@@ -184,7 +285,7 @@ export function LeaderboardPanel(props: { localUserId: number }) {
 						{device === "touch" ? undefined : (
 							<Text
 								fill={true}
-								order={7}
+								order={10}
 								size={HUD_VIEW.smallText}
 								color="uiTextDim"
 								text={str(LEADERBOARD_STRINGS.hint, {

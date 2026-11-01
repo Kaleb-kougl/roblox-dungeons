@@ -1,13 +1,14 @@
 import { OnStart, Service } from "@flamework/core";
 import { Janitor } from "@rbxts/janitor";
 import { HttpService, Players, RunService } from "@rbxts/services";
+import { dailyClockNow, dailySeed } from "server/config";
 import { serverLogger } from "server/log";
 import { Events } from "server/network";
-import { partyContributors, type LeaderboardMember } from "shared/leaderboard";
+import { DAILY_VERDICT, DAILY_WORLD_KIND, type DailyRunResult } from "shared/daily";
+import { boardForParty, dailyRunResult, partyContributors, type LeaderboardMember } from "shared/leaderboard";
 import { LobbyRunTracker, type LobbyRunStart } from "shared/lobby";
 import type { LeaderboardPostStatus, RunFinishVerdict } from "shared/network";
 import type { RunRecordsResult } from "shared/records";
-import { RANKED_WORLD_KIND } from "shared/play";
 import {
 	DEFAULT_RUN_SCORE,
 	MAX_RUN_ID_CHARS,
@@ -42,6 +43,7 @@ import {
 	LockstepSession,
 	type LockstepStepResult,
 } from "shared/lockstep";
+import { DailyService } from "./DailyService";
 import { LeaderboardService } from "./LeaderboardService";
 import { OnboardingService } from "./OnboardingService";
 import { RecordsService } from "./RecordsService";
@@ -65,9 +67,20 @@ interface SessionMeta {
 
 const NOT_LEFT = -1;
 
-/** `verdict` with one recipient's personal records result (a copy; the verdict itself when there is none). */
-function withRecords(verdict: RunFinishVerdict, records: RunRecordsResult | undefined): RunFinishVerdict {
-	return records === undefined ? verdict : { ...verdict, records };
+/**
+ * `verdict` with one recipient's personal records result and daily board result (a copy; the verdict itself when
+ * there is neither).
+ */
+function forRecipient(
+	verdict: RunFinishVerdict,
+	records: RunRecordsResult | undefined,
+	daily: DailyRunResult | undefined,
+): RunFinishVerdict {
+	if (records === undefined && daily === undefined) return verdict;
+	const out: RunFinishVerdict = { ...verdict };
+	if (records !== undefined) out.records = records;
+	if (daily !== undefined) out.daily = daily;
+	return out;
 }
 
 /** A lobby's run is over (`reason` is for the log). */
@@ -104,9 +117,10 @@ export type LobbyRunStartResult = { readonly ok: true } | { readonly ok: false; 
  * A member leaving (the server, or the run with `lockstepLeave`) makes them dead for the rest of the run (the owner
  * leaving does not abandon it). A desync ends the run unranked (`runFinished` code "desync" to every member).
  *
- * Lobby runs (shared/lobby LobbyRunTracker): a one-member lobby's run is the next ranked session its player starts
- * after `lobbyRunStart`. Whenever a lobby's run ends (its session concluded with any outcome, its solo player left,
- * or no solo start came in time) the `onLobbyRunEnded` listeners hear the lobbyId (LobbyService -> `runEnded`).
+ * Lobby runs (shared/lobby LobbyRunTracker): a one-member lobby's run is the next solo session its player starts in
+ * the lobby's world (endless or the Daily) after `lobbyRunStart`. Whenever a lobby's run ends (its session concluded
+ * with any outcome, its solo player left, or no solo start came in time) the `onLobbyRunEnded` listeners hear the
+ * lobbyId (LobbyService -> `runEnded`). A lobby's party run is created in the lobby's world too.
  *
  * A player playing the first-run tutorial (OnboardingService `isInTutorial`) is busy for lobbies too
  * (`busyReason` adds `tutorialBusyReason`): they cannot create or join a lobby or be invited, a lobby Start or a due
@@ -123,6 +137,8 @@ export class RunSessionService implements OnStart {
 	private readonly registry = new RunSessionRegistry({
 		newRunId: () => HttpService.GenerateGUID(false),
 		pickSeed: () => this.random.NextInteger(0, MAX_RUN_SEED),
+		// The Daily (docs/DAILY.md): one seed per UTC day from the server-only secret (DSD8).
+		dailySeed: (day) => dailySeed(day),
 	});
 	private readonly meta = new Map<RunSession, SessionMeta>();
 	private readonly startLimiter = new SlidingWindowLimiter<Player>(
@@ -160,6 +176,7 @@ export class RunSessionService implements OnStart {
 		private readonly leaderboards: LeaderboardService,
 		private readonly onboarding: OnboardingService,
 		private readonly records: RecordsService,
+		private readonly daily: DailyService,
 	) {}
 
 	onStart(): void {
@@ -270,6 +287,7 @@ export class RunSessionService implements OnStart {
 			worldKind: s.worldKind,
 			atBossDoor: s.atBossDoor,
 			members: [...s.members],
+			daily: s.daily !== undefined ? { day: s.daily.day, ruleset: s.daily.ruleset } : undefined,
 		};
 	}
 
@@ -277,6 +295,7 @@ export class RunSessionService implements OnStart {
 		const limits = this.runs.limits();
 		return {
 			now: os.clock(),
+			unixNow: dailyClockNow(),
 			isInServer: (id) => Players.GetPlayerByUserId(id) !== undefined,
 			allowBossDoorSpawn: limits.allowBossDoorSpawn,
 			allowDebugInput: limits.allowDebugInput,
@@ -309,14 +328,29 @@ export class RunSessionService implements OnStart {
 			return m;
 		});
 		this.meta.set(s, { members, pumping: false });
-		// A solo lobby run: the player's next ranked start after lobbyRunStart is the lobby's run.
-		if (s.members.size() === 1 && s.worldKind === RANKED_WORLD_KIND) {
-			const lobbyId = this.lobbyRuns.soloStarted(s.ownerId, s.runId);
+		// The Daily's activity (docs/DAILY.md DS13): an attempt per member, `daily_start` / `daily_retry`. Never yields.
+		const day = s.daily?.day;
+		if (day !== undefined) {
+			const [dailyOk, dailyErr] = pcall(() =>
+				this.records.dailyStarted({
+					runId: s.runId,
+					day,
+					memberIds: s.members,
+					partySize: s.members.size(),
+					debug: s.debug,
+				}),
+			);
+			if (!dailyOk) log.warn("DAILY_START_FAILED", `run ${s.runId}: ${tostring(dailyErr)}`);
+		}
+		// A solo lobby run: the player's next solo start in the lobby's world after lobbyRunStart is the lobby's run.
+		if (s.members.size() === 1) {
+			const lobbyId = this.lobbyRuns.soloStarted(s.ownerId, s.runId, s.worldKind);
 			if (lobbyId !== undefined) log.info("LOBBY_RUN", `run ${s.runId} is lobby ${lobbyId}'s solo run`);
 		}
 		log.info(
 			"STARTED",
 			`${player.UserId} run ${s.runId} world ${s.worldKind} seed ${s.seed} party ${s.members.size()}` +
+				(s.daily !== undefined ? ` day ${s.daily.day} ruleset ${s.daily.ruleset}` : "") +
 				(s.debug ? " (debug)" : ""),
 		);
 		return { ok: true, session: s };
@@ -348,7 +382,8 @@ export class RunSessionService implements OnStart {
 	 * A lobby's countdown ended (LobbyService, `Lobbies.tick`). Party: the run is created with the members (join
 	 * order, the first is the owner) as consent, each member's open SOLO session is concluded first ("abandoned":
 	 * they chose to leave it), and the lockstep run is announced (`partyRunStarted` with the lobbyId). Solo: the one
-	 * member's client is told to start a ranked run (`lobbyRunStart`); that start is bound to the lobby.
+	 * member's client is told to start a ranked run (`lobbyRunStart`); that start is bound to the lobby. Both in the
+	 * lobby's world (`start.worldKind`: endless or the Daily, whose seed is resolved now, at start time, like solo).
 	 */
 	startLobbyRun(start: LobbyRunStart): LobbyRunStartResult {
 		// A member who readied and then started the tutorial is not pulled out of it (Lobbies.tick checks busyReason
@@ -360,10 +395,13 @@ export class RunSessionService implements OnStart {
 		if (start.kind === "solo") {
 			const player = Players.GetPlayerByUserId(start.userId);
 			if (player === undefined) return { ok: false, reason: "the player left" };
-			const replaced = this.lobbyRuns.expectSolo(start.userId, start.lobbyId, os.clock());
+			const replaced = this.lobbyRuns.expectSolo(start.userId, start.lobbyId, os.clock(), start.worldKind);
 			if (replaced !== undefined) this.lobbyRunEnded(replaced, "another lobby run was requested");
-			Events.lobbyRunStart.fire(player, { lobbyId: start.lobbyId, kind: "solo" });
-			log.info("LOBBY_SOLO", `${start.userId} lobby ${start.lobbyId}: solo run requested`);
+			Events.lobbyRunStart.fire(player, { lobbyId: start.lobbyId, kind: "solo", worldKind: start.worldKind });
+			log.info(
+				"LOBBY_SOLO",
+				`${start.userId} lobby ${start.lobbyId}: solo run requested (world ${start.worldKind})`,
+			);
 			return { ok: true };
 		}
 		const members = start.members;
@@ -371,7 +409,7 @@ export class RunSessionService implements OnStart {
 		if (owner === undefined) return { ok: false, reason: "a member left" };
 		const others: number[] = [];
 		for (let i = 1; i < members.size(); i++) others.push(members[i]);
-		const r = this.createSession(owner, { requestId: 0, worldKind: RANKED_WORLD_KIND, party: others }, members);
+		const r = this.createSession(owner, { requestId: 0, worldKind: start.worldKind, party: others }, members);
 		if (!r.ok) return { ok: false, reason: `could not start: ${r.reason}` };
 		const s = r.session;
 		this.lobbyRuns.party(s.runId, start.lobbyId);
@@ -680,6 +718,7 @@ export class RunSessionService implements OnStart {
 					debug: session.debug,
 					died: s.died,
 					bossDefeated: s.bossDefeated,
+					daily: session.daily,
 				}),
 			);
 			leaderboard = ok ? (status as LeaderboardPostStatus) : "failed";
@@ -697,6 +736,7 @@ export class RunSessionService implements OnStart {
 					debug: session.debug,
 					died: s.died,
 					bossDefeated: s.bossDefeated,
+					daily: session.daily,
 				}),
 			);
 			if (recordsOk) records = applied as Map<number, RunRecordsResult>;
@@ -729,14 +769,48 @@ export class RunSessionService implements OnStart {
 			leaderboard,
 		};
 		// Co-op: every member still here hears the verdict (owner included), each with their own records result.
-		if (session.members.size() > 1) {
-			for (const p of this.memberPlayers(session)) {
-				Events.runFinished.fire(p, withRecords(verdict, records?.get(p.UserId)));
+		const recipients = (): Player[] => {
+			if (session.members.size() > 1) return this.memberPlayers(session);
+			return player !== undefined && player.Parent !== undefined ? [player] : [];
+		};
+		const deliver = (daily: Map<number, DailyRunResult> | undefined) => {
+			for (const p of recipients()) {
+				if (p.Parent === undefined) continue;
+				Events.runFinished.fire(p, forRecipient(verdict, records?.get(p.UserId), daily?.get(p.UserId)));
 			}
+		};
+		const key = session.daily;
+		if (!result.ok || key === undefined || session.worldKind !== DAILY_WORLD_KIND) {
+			deliver(undefined);
 			return;
 		}
-		if (player === undefined || player.Parent === undefined) return;
-		Events.runFinished.fire(player, withRecords(verdict, records?.get(player.UserId)));
+		// A daily run (docs/DAILY.md DS5): each recipient's daily board result. A posting run's verdict waits for its
+		// writes (up to DAILY_VERDICT.waitSeconds) and reads the board, so it goes out from its own thread; then every
+		// member's daily status is refreshed (their entry and rank today).
+		const board = boardForParty(session.members.size());
+		if (leaderboard !== "queued") {
+			const notPosted = new Map<number, DailyRunResult>();
+			for (const id of session.members) notPosted.set(id, dailyRunResult(key, undefined));
+			deliver(notPosted);
+			return;
+		}
+		task.spawn(() => {
+			const [ok, results] = pcall(() =>
+				this.leaderboards.dailyResults(
+					session.runId,
+					board,
+					key,
+					session.members,
+					DAILY_VERDICT.waitSeconds,
+					DAILY_VERDICT.pollSeconds,
+				),
+			);
+			if (!ok) log.warn("DAILY_RESULT_FAILED", `run ${session.runId}: ${tostring(results)}`);
+			const daily = ok ? (results as Map<number, DailyRunResult>) : new Map<number, DailyRunResult>();
+			for (const id of session.members) if (!daily.has(id)) daily.set(id, dailyRunResult(key, undefined));
+			deliver(daily);
+			for (const p of recipients()) this.daily.refresh(p);
+		});
 	}
 
 	private fireSegment(player: Player | undefined, verdict: SegmentVerdict): void {

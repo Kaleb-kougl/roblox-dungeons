@@ -10,6 +10,7 @@ import {
 	encounterRooms,
 	endlessFloorParams,
 	endlessRoomSpawns,
+	endlessRoster,
 	generateDungeon,
 	isAffixExcluded,
 } from "shared/dungeon";
@@ -36,7 +37,7 @@ describe("affix census (run seeds 1-60 x floors 1-20, solo)", () => {
 				const params = endlessFloorParams(run, floor);
 				const d = generateDungeon(params);
 				const rooms = encounterRooms(d);
-				const spawns = endlessRoomSpawns(d, floor);
+				const spawns = endlessRoomSpawns(d, floor, 1, endlessRoster(run, floor));
 				const out = assignAffixes(params.seed, floor, rooms, spawns);
 				for (let id = 0; id < spawns.size(); id++) {
 					const roomType = rooms[id].type;

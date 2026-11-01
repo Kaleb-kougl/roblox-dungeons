@@ -8,11 +8,14 @@ import type { OrderedScoreStore } from "shared/leaderboard";
  * OrderedDataStore writes take no `userIds` (no metadata on ordered stores); the key itself is `u_<UserId>`, so an
  * erasure request finds the entry by key. Resolved on first use, inside the caller's retry (GetOrderedDataStore
  * throws in a Studio place without API access).
+ *
+ * `scope`: the daily boards' day-and-ruleset scope (shared/leaderboard orderedStoreOf); undefined for the all-time
+ * boards, which stay unscoped (`GetOrderedDataStore(name)`, scope "global", exactly as before).
  */
 export class OrderedDataStoreScores implements OrderedScoreStore {
 	private store?: OrderedDataStore;
 
-	constructor(private readonly name: string) {}
+	constructor(private readonly name: string, private readonly scope?: string) {}
 
 	update(key: string, transform: (old: unknown) => number | undefined): void {
 		this.resolve().UpdateAsync(key, (old) => transform(old));
@@ -30,7 +33,12 @@ export class OrderedDataStoreScores implements OrderedScoreStore {
 	}
 
 	private resolve(): OrderedDataStore {
-		if (this.store === undefined) this.store = DataStoreService.GetOrderedDataStore(this.name);
+		if (this.store === undefined) {
+			this.store =
+				this.scope === undefined
+					? DataStoreService.GetOrderedDataStore(this.name)
+					: DataStoreService.GetOrderedDataStore(this.name, this.scope);
+		}
 		return this.store;
 	}
 }

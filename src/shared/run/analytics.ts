@@ -84,6 +84,12 @@ export const ANALYTICS_EVENT = {
 	sessionRuns: "SessionRuns",
 	sessionRetriesAfterDeath: "SessionRetriesAfterDeath",
 	sessionLongestRetryStreak: "SessionLongestRetryStreak",
+	/** The Daily (docs/DAILY.md DS13; dailyAnalytics.ts): an accepted daily session start, per member. */
+	dailyStart: "daily_start",
+	/** An accepted daily run, per credited member. */
+	dailyFinish: "daily_finish",
+	/** A daily start that is not the player's first daily start of that day, per member. */
+	dailyRetry: "daily_retry",
 } as const;
 
 /** Decimal places kept on second values. */

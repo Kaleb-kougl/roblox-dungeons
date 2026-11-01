@@ -6,6 +6,7 @@ import {
 	DEFAULT_LOBBY_NAME,
 	LOBBY,
 	LOBBY_NAMES,
+	LOBBY_WORLDS,
 	Lobbies,
 	MAX_USER_ID_MAGNITUDE,
 	canAccess,
@@ -71,6 +72,7 @@ function fakeLobby(visibility: Lobby["visibility"]): Lobby {
 		hostId: HOST,
 		nameId: DEFAULT_LOBBY_NAME,
 		visibility,
+		worldKind: "endless",
 		phase: "forming",
 		members: [HOST],
 		ready: [],
@@ -335,6 +337,52 @@ describe("Lobbies: host-only actions", () => {
 		expect(code(l.join(B, lobby.lobbyId, ctx()))).toBe("ok"); // the invite is still valid
 	});
 
+	it("the world: endless by default, daily on create or by the host while forming; a change clears Ready", () => {
+		const l = lobbies();
+		const lobby = create(l, HOST);
+		expect(lobby.worldKind).toBe("endless");
+		expect(LOBBY.defaultWorld).toBe("endless");
+		expect(LOBBY_WORLDS).toEqual(["endless", "daily"]);
+		expect(code(l.create(A, { worldKind: "tutorial" }, ctx()))).toBe("badRequest");
+		expect(code(l.create(A, { worldKind: "game" }, ctx()))).toBe("badRequest");
+		const daily = create(l, A, { worldKind: "daily" });
+		expect(daily.worldKind).toBe("daily");
+		join(l, B, lobby);
+		l.setReady(HOST, true);
+		l.setReady(B, true);
+		// Host only, known worlds only.
+		expect(code(l.setWorld(B, "daily"))).toBe("notHost");
+		expect(code(l.setWorld(STRANGER, "daily"))).toBe("notMember");
+		expect(code(l.setWorld(HOST, "greybox"))).toBe("badRequest");
+		expect(code(l.setWorld(HOST, 3 as never))).toBe("badRequest");
+		// The same world changes nothing (Ready kept); another clears every Ready.
+		const same = l.setWorld(HOST, "endless");
+		expect(same.ok && same.changed).toBe(false);
+		expect(lobby.ready.size()).toBe(2);
+		const changed = l.setWorld(HOST, "daily");
+		expect(changed.ok && changed.changed).toBe(true);
+		expect([lobby.worldKind, lobby.ready.size()]).toEqual(["daily", 0]);
+		expect(l.summariesFor(STRANGER, NO_FRIENDS).map((x) => [x.lobbyId, x.worldKind])).toEqual([
+			[lobby.lobbyId, "daily"],
+			[daily.lobbyId, "daily"],
+		]);
+		// Not while starting or in a run: the countdown plays the world it started with.
+		l.setReady(HOST, true);
+		l.setReady(B, true);
+		expect(code(l.start(HOST, ctx(0)))).toBe("ok");
+		expect(code(l.setWorld(HOST, "endless"))).toBe("starting");
+		expect(l.tick(ctx(LOBBY.countdownSeconds)).starts).toEqual([
+			{ kind: "party", lobbyId: lobby.lobbyId, members: [HOST, B], worldKind: "daily" },
+		]);
+		expect(code(l.setWorld(HOST, "endless"))).toBe("inRun");
+		// A one-member daily lobby starts a solo daily run.
+		l.setReady(A, true);
+		expect(code(l.start(A, ctx(10)))).toBe("ok");
+		expect(l.tick(ctx(10 + LOBBY.countdownSeconds)).starts).toEqual([
+			{ kind: "solo", lobbyId: daily.lobbyId, userId: A, worldKind: "daily" },
+		]);
+	});
+
 	it("transferHost hands the lobby to a member; refuses outsiders and self", () => {
 		const l = lobbies();
 		const lobby = create(l, HOST);
@@ -362,7 +410,7 @@ describe("Lobbies: ready, countdown and run", () => {
 		expect(code(l.start(HOST, ctx(101)))).toBe("starting");
 		expect(l.tick(ctx(100 + LOBBY.countdownSeconds - 1)).starts).toEqual([]);
 		expect(l.tick(ctx(100 + LOBBY.countdownSeconds)).starts).toEqual([
-			{ kind: "solo", lobbyId: lobby.lobbyId, userId: HOST },
+			{ kind: "solo", lobbyId: lobby.lobbyId, userId: HOST, worldKind: "endless" },
 		]);
 		expect(lobby.phase).toBe("inRun");
 		expect(lobby.countdownEndsAt).toBe(undefined);
@@ -381,7 +429,7 @@ describe("Lobbies: ready, countdown and run", () => {
 		l.setReady(B, true);
 		expect(code(l.start(B, ctx()))).toBe("ok");
 		expect(l.tick(ctx(LOBBY.countdownSeconds)).starts).toEqual([
-			{ kind: "party", lobbyId: lobby.lobbyId, members: [HOST, A, B] },
+			{ kind: "party", lobbyId: lobby.lobbyId, members: [HOST, A, B], worldKind: "endless" },
 		]);
 	});
 
@@ -565,6 +613,7 @@ describe("Lobbies: summaries", () => {
 				count: 2,
 				max: LOBBY.maxSize,
 				visibility: "open",
+				worldKind: "endless",
 				phase: "forming",
 				hasFriend: true,
 			},

@@ -4,7 +4,7 @@ import { Players, RunService, SocialService } from "@rbxts/services";
 import { Events } from "client/network";
 import { clientStore } from "client/store";
 import { INVITE } from "shared/invite";
-import { LOBBY, type LobbyVisibility } from "shared/lobby";
+import { LOBBY, type LobbyVisibility, type LobbyWorld } from "shared/lobby";
 import type { InvitePromptOptions, LobbyNotice } from "shared/network";
 import {
 	MENU_VIEW,
@@ -24,9 +24,9 @@ import { SimController } from "../game/SimController";
  * invite list and every display name (the Player in this server, no web lookups). Sends the lobby requests for the
  * menu screens.
  *
- * Run handoff (L6): `lobbyRunStart` (a one-player lobby's countdown ended) starts a ranked solo run for the lobby this
- * client is in; `partyRunStarted` is taken by SimController under the same rule (lobbyStartAccepted). Neither takes
- * over a tutorial run being played (SimController.inRunningTutorial).
+ * Run handoff (L6): `lobbyRunStart` (a one-player lobby's countdown ended) starts a ranked solo run in the lobby's
+ * world (endless or the Daily) for the lobby this client is in; `partyRunStarted` is taken by SimController under the
+ * same rule (lobbyStartAccepted). Neither takes over a tutorial run being played (SimController.inRunningTutorial).
  *
  * Roblox invites (docs/INVITES.md I5): `invitePrompt` for the lobby room's "Invite friends (Roblox)" and the main
  * menu's "Invite friends"; `inviteEligibility` once at start (the server also answers it with `joinIntent` when this
@@ -90,8 +90,8 @@ export class LobbyController implements OnStart {
 					warn(`[Lobby] ignored the solo start of lobby ${start.lobbyId}: in the tutorial`);
 					return;
 				}
-				print(`[Lobby] lobby ${start.lobbyId}: starting a ranked solo run`);
-				this.sim.startSolo(start.lobbyId);
+				print(`[Lobby] lobby ${start.lobbyId}: starting a ranked solo run (world ${start.worldKind})`);
+				this.sim.startSolo(start.lobbyId, start.worldKind);
 			}),
 		);
 
@@ -190,8 +190,9 @@ export class LobbyController implements OnStart {
 		Events.lobbyRequestList.fire();
 	}
 
-	create(visibility: LobbyVisibility): void {
-		Events.lobbyCreate.fire({ visibility });
+	/** A new lobby; `worldKind` names its world (default the server's: endless; the Daily: docs/DAILY.md DS9). */
+	create(visibility: LobbyVisibility, worldKind?: LobbyWorld): void {
+		Events.lobbyCreate.fire(worldKind !== undefined ? { visibility, worldKind } : { visibility });
 	}
 
 	join(lobbyId: string): void {
@@ -212,6 +213,11 @@ export class LobbyController implements OnStart {
 
 	setVisibility(visibility: LobbyVisibility): void {
 		Events.lobbySetVisibility.fire(visibility);
+	}
+
+	/** Host, while forming: the lobby's world (endless / the Daily); a change clears every Ready. */
+	setWorld(worldKind: LobbyWorld): void {
+		Events.lobbySetWorld.fire(worldKind);
 	}
 
 	/** Host: the next preset name (LOBBY_NAMES order). */

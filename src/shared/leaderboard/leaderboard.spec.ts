@@ -34,6 +34,7 @@ import {
 	type DetailsStore,
 	type LeaderboardBoard,
 	type LeaderboardStores,
+	boardRefKey,
 	type OrderedScoreStore,
 	type PostContext,
 	type PostJob,
@@ -97,13 +98,25 @@ class MemoryDetails implements DetailsStore {
 	}
 }
 
+/** One in-memory ordered store per board and scope, keyed by boardRefKey ("solo", "coop", "solo_d303_r1", ...). */
 function memoryStores() {
-	const ordered = new Map<LeaderboardBoard, MemoryOrdered>([
+	const ordered = new Map<string, MemoryOrdered>([
 		["solo", new MemoryOrdered()],
 		["coop", new MemoryOrdered()],
 	]);
 	const details = new MemoryDetails();
-	const stores: LeaderboardStores = { ordered: (b) => ordered.get(b)!, details };
+	const stores: LeaderboardStores = {
+		ordered: (ref) => {
+			const key = boardRefKey(ref);
+			let store = ordered.get(key);
+			if (store === undefined) {
+				store = new MemoryOrdered();
+				ordered.set(key, store);
+			}
+			return store;
+		},
+		details,
+	};
 	return { stores, ordered, details };
 }
 
@@ -118,8 +131,12 @@ function run(score: number, floor: number, members: number[], at = T0, runId = "
 	};
 }
 
+/** Posts every job of a run; the outcomes without `previous` (checked on its own below). */
 function postAll(stores: LeaderboardStores, r: VerifiedRunPost) {
-	return planPosts(r).map((job) => postPersonalBest(stores, job));
+	return planPosts(r).map((job) => {
+		const o = postPersonalBest(stores, job);
+		return { improved: o.improved, detailsWritten: o.detailsWritten };
+	});
 }
 
 describe("ordered value encoding", () => {
@@ -178,7 +195,7 @@ describe("who posts where", () => {
 	it("only validated runs of an eligible world, never debug / Studio / VIP servers / abandoned", () => {
 		expect(leaderboardEligibility(ok)).toBe(undefined);
 		// Endless runs end only in death: a boss kill is a floor of the run, so R after it is an abandoned run.
-		expect(LEADERBOARD_POLICY.deathOnlyWorlds).toEqual(["endless"]);
+		expect(LEADERBOARD_POLICY.deathOnlyWorlds).toEqual(["endless", "daily"]);
 		expect(leaderboardEligibility({ ...ok, died: false, bossDefeated: true })).toBe("abandoned");
 		expect(leaderboardEligibility({ ...ok, partySize: 3, died: false, bossDefeated: true })).toBe("abandoned");
 		// A world whose run ENDS at the boss (the M1 run, were it eligible) still posts a boss kill.
@@ -227,8 +244,8 @@ describe("who posts where", () => {
 			["coop", 7],
 			["coop", 9],
 		]);
-		expect(jobs[0].details.partySize).toBe(3);
-		expect(jobs[0].details.members.map((m) => m.userId)).toEqual([7, 9]);
+		expect(jobs[0].details!.partySize).toBe(3);
+		expect(jobs[0].details!.members.map((m) => m.userId)).toEqual([7, 9]);
 	});
 
 	it("solo for one player, co-op from two; one job per member with the same value and details", () => {
@@ -244,8 +261,8 @@ describe("who posts where", () => {
 			["coop", 9],
 		]);
 		expect(coop[0].value).toBe(coop[2].value);
-		expect(coop[1].details.partySize).toBe(3);
-		expect(coop[1].details.members.map((m) => m.userId)).toEqual([7, 8, 9]);
+		expect(coop[1].details!.partySize).toBe(3);
+		expect(coop[1].details!.members.map((m) => m.userId)).toEqual([7, 8, 9]);
 		expect(orderedKey(7)).toBe("u_7");
 		expect(detailsKey("coop", 7)).toBe("coop_u_7");
 		expect(userIdFromKey("u_7")).toBe(7);
@@ -301,16 +318,18 @@ describe("personal bests (in-memory stores)", () => {
 		details.failNext = 1;
 		expect(() => postPersonalBest(stores, job)).toThrow();
 		expect(details.docs.get("solo_u_7")).toBe(undefined);
-		expect(postPersonalBest(stores, job)).toEqual({ improved: false, detailsWritten: true });
+		expect(postPersonalBest(stores, job)).toMatchObject({ improved: false, detailsWritten: true });
 		expect(decodeDetails(details.docs.get("solo_u_7"))?.score).toBe(100);
-		expect(postPersonalBest(stores, job)).toEqual({ improved: false, detailsWritten: false });
+		expect(postPersonalBest(stores, job)).toMatchObject({ improved: false, detailsWritten: false });
 	});
 
 	it("never lowers a best another server wrote meanwhile (the check runs inside UpdateAsync)", () => {
 		const { stores, ordered } = memoryStores();
 		const [job] = planPosts(run(100, 2, [7]));
 		ordered.get("solo")!.values.set("u_7", encodeOrderedValue({ score: 900, floor: 1, at: T0 }));
-		expect(postPersonalBest(stores, job).improved).toBe(false);
+		const outcome = postPersonalBest(stores, job);
+		expect(outcome.improved).toBe(false);
+		expect(outcome.previous).toBe(encodeOrderedValue({ score: 900, floor: 1, at: T0 })); // what the transform found
 		expect(isBetterValue(5, undefined)).toBe(true);
 		expect(isBetterValue(5, "garbage")).toBe(true);
 		expect(isBetterValue(5, 5)).toBe(false);
@@ -454,6 +473,46 @@ describe("SharedTtlCache", () => {
 		expect(fetches).toBe(2);
 		expect(c.load("mine", 2, slow)).toEqual({ ok: true, value: 2, stale: false });
 		expect(fetches).toBe(2);
+	});
+});
+
+describe("SharedTtlCache patches", () => {
+	it("a patch during a load (a histogram flush racing a shard read): the load is not cached as fresh", () => {
+		const c = new SharedTtlCache<string, number>(60, (w) => coroutine.resume(w));
+		let stored = 10; // the summed shards in the store
+		let fetches = 0;
+		const slow = () => {
+			fetches++;
+			const v = stored; // the shards are read before this server's flush lands
+			if (fetches === 1) coroutine.yield();
+			return v;
+		};
+		let first: CacheLoad<number> | undefined;
+		const a = coroutine.create(() => (first = c.load("hist", 0, slow)));
+		coroutine.resume(a);
+		stored += 5; // the flush writes 5 counts...
+		c.patch("hist", (v) => v + 5); // ...and patches the cached sum (nothing cached yet: a no-op on the value)
+		coroutine.resume(a);
+		expect(first).toEqual({ ok: true, value: 10, stale: false });
+		// The next read within the TTL fetches again, so the flushed counts are not left out until it expires.
+		expect(c.load("hist", 1, slow)).toEqual({ ok: true, value: 15, stale: false });
+		expect(fetches).toBe(2);
+	});
+
+	it("a patch with no load in flight updates the value in place and keeps its age", () => {
+		const c = new SharedTtlCache<string, number>(60, (w) => coroutine.resume(w));
+		let fetches = 0;
+		const fetch = () => {
+			fetches++;
+			return 10;
+		};
+		c.load("hist", 0, fetch);
+		c.patch("hist", (v) => v + 5);
+		expect(c.load("hist", 59, fetch)).toEqual({ ok: true, value: 15, stale: false });
+		expect(fetches).toBe(1);
+		expect(c.load("hist", 60, fetch)).toEqual({ ok: true, value: 10, stale: false });
+		c.patch("missing", (v) => v + 1); // no slot: nothing happens
+		expect(c.size()).toBe(1);
 	});
 });
 

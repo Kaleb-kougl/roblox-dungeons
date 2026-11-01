@@ -1,4 +1,6 @@
 import { combineProducers, InferState } from "@rbxts/reflex";
+import { dailySlice } from "./daily";
+import { dailyRankSlice } from "./dailyRank";
 import { gameSlice } from "./game";
 import { leaderboardSlice } from "./leaderboard";
 import { loadingSlice } from "./loading";
@@ -22,10 +24,14 @@ import { tutorialSlice } from "./tutorial";
  * HUD state (prompt, highlight, outro) and whether the first-run gate is still deciding; the `loading` slice the join
  * loading screen (released, core progress, Skip shown: docs/PRELOAD.md P4); the `stage` slice the stage loader's cover
  * (shown / revealing, its label, the card's lines, the run-start bar: docs/STAGE_LOADER.md SL5); the `records` slice the
- * personal records the server sent and the run's frozen new-best baseline (docs/NEW_BEST.md NB7).
+ * personal records the server sent and the run's frozen new-best baseline (docs/NEW_BEST.md NB7); the `daily` slice the
+ * Daily's status (today's day, label, seed, ruleset, reset time: docs/DAILY.md DS4); the `dailyRank` slice the friends a
+ * daily run passed (docs/DAILY.md DS10).
  *
  * Import through the directory (`client/store`), never the file.
  */
+export * from "./daily";
+export * from "./dailyRank";
 export * from "./game";
 export * from "./leaderboard";
 export * from "./loading";
@@ -51,6 +57,8 @@ export const clientStore = combineProducers({
 	loading: loadingSlice,
 	stage: stageSlice,
 	records: recordsSlice,
+	daily: dailySlice,
+	dailyRank: dailyRankSlice,
 });
 
 export type ClientStore = typeof clientStore;
