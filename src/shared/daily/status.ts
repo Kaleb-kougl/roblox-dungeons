@@ -32,6 +32,32 @@ export interface DailyMine {
 	coop?: DailyMineEntry;
 }
 
+/** One board's read of a player's entry today (the server's LeaderboardService.dailyMineOf). */
+export type DailyMineRead =
+	/** The board holds an entry of the player. */
+	| { readonly kind: "entry"; readonly entry: DailyMineEntry }
+	/** The board was read and holds no entry of the player today. */
+	| { readonly kind: "none" }
+	/** The board (or the player's entry on it) could not be read: unknown. */
+	| { readonly kind: "unreadable" };
+
+/**
+ * `dailyStatus.mine` from one read per board: undefined (unknown) when any board was unreadable, else the entries
+ * found, `{}` when there are none. Readers rely on it: `mine` absent = unknown, a board missing from `mine` = no entry
+ * today (new best's daily baseline, the rank layer, the menu's `Not played yet`).
+ */
+export function dailyMineFrom(
+	reads: ReadonlyArray<{ readonly board: "solo" | "coop"; readonly read: DailyMineRead }>,
+): DailyMine | undefined {
+	const mine: DailyMine = {};
+	for (const r of reads) {
+		const read = r.read;
+		if (read.kind === "unreadable") return undefined;
+		if (read.kind === "entry") mine[r.board] = read.entry;
+	}
+	return mine;
+}
+
 /** One row of yesterday's podium. */
 export interface DailyPodiumEntry {
 	userId: number;
@@ -81,7 +107,10 @@ export interface DailyStatus {
 	ruleset: number;
 	/** Unix seconds (UTC) of the next midnight, when this Daily ends (compare with Workspace:GetServerTimeNow()). */
 	resetsAt: number;
-	/** This player's entries today (per board, with rank / percentile); absent when unknown. */
+	/**
+	 * This player's entries today (per board, with rank / percentile): `{}` when both boards were read and hold no entry
+	 * of theirs (dailyMineFrom); absent when unknown (a board could not be read).
+	 */
 	mine?: DailyMine;
 	/** Yesterday's podium (top 3 solo and the caller's final entry); absent when unknown. */
 	podium?: DailyPodium;

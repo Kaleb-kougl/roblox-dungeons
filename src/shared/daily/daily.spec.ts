@@ -15,6 +15,7 @@ import {
 	dailyDay,
 	dailyDayStart,
 	dailyLabel,
+	dailyMineFrom,
 	dailyResetsAt,
 	dailyRunKeyAt,
 	dailyScope,
@@ -92,6 +93,42 @@ describe("day math", () => {
 			ruleset: DAILY.ruleset,
 			resetsAt: OCT_31 + 86400,
 		});
+	});
+});
+
+describe("dailyStatus.mine from the board reads", () => {
+	const entry = { score: 23410, floor: 9, rank: 41, total: 1240 };
+	it("is {} when both boards were read and hold no entry: known, not played today", () => {
+		expect(
+			dailyMineFrom([
+				{ board: "solo", read: { kind: "none" } },
+				{ board: "coop", read: { kind: "none" } },
+			]),
+		).toEqual({});
+	});
+
+	it("holds the boards with an entry; a board without one is absent", () => {
+		expect(
+			dailyMineFrom([
+				{ board: "solo", read: { kind: "entry", entry } },
+				{ board: "coop", read: { kind: "none" } },
+			]),
+		).toEqual({ solo: entry });
+	});
+
+	it("is undefined (unknown) when any board could not be read, even with an entry on the other", () => {
+		expect(
+			dailyMineFrom([
+				{ board: "solo", read: { kind: "entry", entry } },
+				{ board: "coop", read: { kind: "unreadable" } },
+			]),
+		).toBe(undefined);
+		expect(
+			dailyMineFrom([
+				{ board: "solo", read: { kind: "unreadable" } },
+				{ board: "coop", read: { kind: "none" } },
+			]),
+		).toBe(undefined);
 	});
 });
 

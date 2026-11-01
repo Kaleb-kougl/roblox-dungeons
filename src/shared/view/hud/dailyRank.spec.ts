@@ -203,6 +203,29 @@ describe("daily rank tracker: the target row", () => {
 		});
 	});
 
+	it("a first run of the day (best 0): every friend passed and rung entered is news, from the first point", () => {
+		const friends = view([300, 40], { friends: true, ids: [2, 4] });
+		const t = new DailyRankTracker(baseline(0, view([500, 300, 100, 40]), friends));
+		expect(t.friendsAhead().map((f) => f.userId)).toEqual([4, 2]);
+		expect(step(t, 0)).toEqual({
+			row: "none",
+			from: 0,
+			to: 0,
+			gap: 0,
+			friend: "",
+			rank: 0,
+			threshold: 0,
+			passed: "",
+		});
+		const a = step(t, 41);
+		expect([a.row, a.from, a.to, a.passed, a.threshold]).toEqual(["rung", 4, 3, "P4", 0]);
+		const b = step(t, 101);
+		expect([b.from, b.passed, b.threshold]).toEqual([3, "", 3]); // entering the top 3
+		const c = step(t, 301);
+		expect([c.from, c.passed, c.threshold]).toEqual([2, "P2", 0]);
+		expect(step(t, 501).threshold).toBe(1);
+	});
+
 	it("beyond the rows read: the nearer of the next friend and the top-rows cut-off", () => {
 		const rows = ladder(TOP, 100); // 10000 .. 100
 		// a friend outside the top rows at 60, another at 95

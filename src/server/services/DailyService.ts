@@ -9,8 +9,10 @@ import {
 	DAILY_REQUEST_RATE,
 	DAILY_SERVICE,
 	dailyDay,
+	dailyMineFrom,
 	dailyStatusFor,
 	type DailyMine,
+	type DailyMineRead,
 	type DailyPodium,
 	type DailyStatus,
 } from "shared/daily";
@@ -133,23 +135,25 @@ export class DailyService implements OnStart {
 		});
 	}
 
-	/** Reads (through LeaderboardService's caches; yields) and stores `player`'s board parts for today. */
+	/**
+	 * Reads (through LeaderboardService's caches; yields) and stores `player`'s board parts for today. `mine` is `{}`
+	 * plus their entries once both boards were read (dailyMineFrom: a board missing from it = no entry today), and
+	 * unknown (absent) when a board could not be read: never an older copy, which could sit below a run just posted and
+	 * replay a false NEW BEST TODAY.
+	 */
 	private readPersonal(player: Player): void {
 		const day = this.status().day;
 		const key = { day, ruleset: DAILY.ruleset };
-		let mine: DailyMine | undefined;
+		const reads: Array<{ board: "solo" | "coop"; read: DailyMineRead }> = [];
 		for (const board of LEADERBOARD_BOARDS) {
-			const entry = this.leaderboards.dailyMineOf(dailyBoard(board, key), player.UserId);
-			if (entry === undefined) continue;
-			mine = mine ?? {};
-			mine[board] = entry;
+			reads.push({ board, read: this.leaderboards.dailyMineOf(dailyBoard(board, key), player.UserId) });
 		}
 		const podium = this.leaderboards.podiumOf(
 			dailyBoard("solo", { day: day - 1, ruleset: DAILY.ruleset }),
 			player.UserId,
 		);
 		if (player.Parent === undefined || this.status().day !== day) return;
-		this.personal.set(player, { day, mine, podium });
+		this.personal.set(player, { day, mine: dailyMineFrom(reads), podium });
 	}
 
 	/** The midnight push: when the UTC day turned since the last status, every player hears the new one. */

@@ -188,6 +188,28 @@ describe("new best on a daily run: beats and text", () => {
 		expect(isRecordRun({ kind: "none", board: "solo", score: 0, floor: 0 }, 0, 12)).toBe(true);
 	});
 
+	it("a first run of the day (mine {}: known, no entry) mirrors the first record: quiet in-run, FIRST RUN TODAY", () => {
+		const b = dailyBaselineFrom(status({}), 1, SEED, true);
+		expect(b).toEqual({ kind: "none", board: "solo", score: 0, floor: 0, daily: true });
+		const t = new NewBestTracker(b);
+		for (const shown of [1, 5000, 50000]) {
+			const look = t.frame({
+				dt: 0.016,
+				shownScore: shown,
+				score: shown,
+				floor: 3,
+				underCover: false,
+				runOver: false,
+				reducedMotion: false,
+			});
+			expect([shown, look.scoreCrossed, look.fanfare, look.recordRun]).toEqual([shown, false, false, true]);
+		}
+		// Run over: the client's guess, then the server's verdict (improved, no previous entry) both say first.
+		expect(runOverRibbonKey(runOverRecords(b, 50000, 3), true)).toBe(DAILY_RANK_STRINGS.first);
+		const server = dailyServerRecords({ improved: true });
+		expect(runOverRibbonKey(runOverRecords(b, 50000, 3, server), true)).toBe(DAILY_RANK_STRINGS.first);
+	});
+
 	it("the run over reads verdict.daily: improved -> a score row from the previous entry, never a floor row", () => {
 		const b = dailyBaselineFrom(status({ solo: { score: 2000 } }), 1, SEED, true);
 		expect(dailyServerRecords(undefined)).toBe(undefined);

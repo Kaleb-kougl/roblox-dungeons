@@ -8,7 +8,7 @@ import {
 	DAILY,
 	DAILY_HIST,
 	dailyDay,
-	type DailyMineEntry,
+	type DailyMineRead,
 	type DailyPodium,
 	type DailyRunKey,
 	type DailyRunResult,
@@ -301,13 +301,21 @@ export class LeaderboardService implements OnStart {
 		return out;
 	}
 
-	/** This player's entry on a daily board with its standing (undefined: no entry, or the board could not be read). */
-	dailyMineOf(ref: BoardRef, userId: number): DailyMineEntry | undefined {
+	/**
+	 * This player's entry on a daily board with its standing: `entry`, `none` (the board was read and holds no entry
+	 * of theirs) or `unreadable` (the rows or their entry could not be read: unknown, never "no entry").
+	 */
+	dailyMineOf(ref: BoardRef, userId: number): DailyMineRead {
 		const top = this.loadTop(ref);
-		if (top === undefined) return undefined;
-		const value = this.dailyEntry(ref, userId, top);
-		if (value === undefined) return undefined;
-		return dailyMineEntry(userId, value, mergeEntry(top, userId, value), this.histogram(ref));
+		if (top === undefined) return { kind: "unreadable" };
+		const read = this.readDailyEntry(ref, userId, top);
+		if (!read.ok) return { kind: "unreadable" };
+		const value = read.value;
+		const entry =
+			value !== undefined
+				? dailyMineEntry(userId, value, mergeEntry(top, userId, value), this.histogram(ref))
+				: undefined;
+		return entry !== undefined ? { kind: "entry", entry } : { kind: "none" };
 	}
 
 	/** Yesterday's podium of `ref` (a settled daily board) for `userId`; undefined when the board cannot be read. */
@@ -341,12 +349,22 @@ export class LeaderboardService implements OnStart {
 
 	/**
 	 * `userId`'s ordered value on a daily board: free from the rows (their row, or none on a complete board), else one
-	 * cached GetAsync. Undefined: no entry (or the read failed).
+	 * cached GetAsync. Undefined: no entry (or the read failed; readDailyEntry tells the two apart).
 	 */
 	dailyEntry(ref: BoardRef, userId: number, top: BoardTop | undefined): number | undefined {
+		const read = this.readDailyEntry(ref, userId, top);
+		return read.ok ? read.value : undefined;
+	}
+
+	/** dailyEntry with the failure kept apart: `ok` false when the entry could not be read (no stale copy either). */
+	readDailyEntry(
+		ref: BoardRef,
+		userId: number,
+		top: BoardTop | undefined,
+	): { readonly ok: true; readonly value: number | undefined } | { readonly ok: false } {
 		if (top !== undefined) {
 			const fromRows = entryValue(top, userId);
-			if (fromRows !== undefined || top.complete) return fromRows;
+			if (fromRows !== undefined || top.complete) return { ok: true, value: fromRows };
 		}
 		const key = `${boardRefKey(ref)}:${userId}`;
 		let keys = this.dailyMineKeys.get(userId);
@@ -356,7 +374,7 @@ export class LeaderboardService implements OnStart {
 		}
 		keys.add(key);
 		const r = this.cacheFor(this.dailyMine, ref).load(key, os.clock(), () => this.readEntry(ref, userId));
-		return r.ok ? r.value : undefined;
+		return r.ok ? { ok: true, value: r.value } : { ok: false };
 	}
 
 	/** One uncached read of `userId`'s entry on a board (the friends queue caches its own); throws on failure. */
