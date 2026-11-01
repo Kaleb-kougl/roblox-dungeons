@@ -37,3 +37,11 @@ export const RECORDS_FAKE_KEYWORDS = table.freeze({ none: "none", unknown: "unkn
 
 /** The runId stamped on a fake record (RECORDS_FAKE_ATTRIBUTE). */
 export const RECORDS_FAKE_RUN_ID = "fake";
+
+/**
+ * DailyActivityLedger: attempt numbers remembered per player for runs started but not yet concluded (oldest dropped
+ * past this). A run that never concludes accepted (abandoned unvalidated, rejected, the server lost it) leaves its
+ * entry behind until a later start pushes it out, so the map stays small however long the player stays; a finish whose
+ * entry was dropped falls back to the day's start count (the ledger's rule for a start it never saw).
+ */
+export const DAILY_LEDGER_OPEN_ATTEMPTS = 8;

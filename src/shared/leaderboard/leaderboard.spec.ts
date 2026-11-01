@@ -476,6 +476,46 @@ describe("SharedTtlCache", () => {
 	});
 });
 
+describe("SharedTtlCache patches", () => {
+	it("a patch during a load (a histogram flush racing a shard read): the load is not cached as fresh", () => {
+		const c = new SharedTtlCache<string, number>(60, (w) => coroutine.resume(w));
+		let stored = 10; // the summed shards in the store
+		let fetches = 0;
+		const slow = () => {
+			fetches++;
+			const v = stored; // the shards are read before this server's flush lands
+			if (fetches === 1) coroutine.yield();
+			return v;
+		};
+		let first: CacheLoad<number> | undefined;
+		const a = coroutine.create(() => (first = c.load("hist", 0, slow)));
+		coroutine.resume(a);
+		stored += 5; // the flush writes 5 counts...
+		c.patch("hist", (v) => v + 5); // ...and patches the cached sum (nothing cached yet: a no-op on the value)
+		coroutine.resume(a);
+		expect(first).toEqual({ ok: true, value: 10, stale: false });
+		// The next read within the TTL fetches again, so the flushed counts are not left out until it expires.
+		expect(c.load("hist", 1, slow)).toEqual({ ok: true, value: 15, stale: false });
+		expect(fetches).toBe(2);
+	});
+
+	it("a patch with no load in flight updates the value in place and keeps its age", () => {
+		const c = new SharedTtlCache<string, number>(60, (w) => coroutine.resume(w));
+		let fetches = 0;
+		const fetch = () => {
+			fetches++;
+			return 10;
+		};
+		c.load("hist", 0, fetch);
+		c.patch("hist", (v) => v + 5);
+		expect(c.load("hist", 59, fetch)).toEqual({ ok: true, value: 15, stale: false });
+		expect(fetches).toBe(1);
+		expect(c.load("hist", 60, fetch)).toEqual({ ok: true, value: 10, stale: false });
+		c.patch("missing", (v) => v + 1); // no slot: nothing happens
+		expect(c.size()).toBe(1);
+	});
+});
+
 // ---------------------------------------------------------------------------------------------
 // The shutdown flush, against a fake clock: task.wait advances it one frame and resumes writes whose DataStore call
 // "returned"; validations finishing mid-flush post into the queue.

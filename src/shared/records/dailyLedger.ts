@@ -14,6 +14,7 @@
  * Starts are therefore written once per accepted daily run (folded into its finish write) plus at most once on leave,
  * never per start. A start of a later day drops the older day's unwritten starts (only today's count matters).
  */
+import { DAILY_LEDGER_OPEN_ATTEMPTS } from "./config";
 import { addDailyActivity, dailyStartsOn, finishedDailyOn, type DailyActivity, type DailyActivityDelta } from "./daily";
 
 /** The player's stored activity as this server knows it. */
@@ -45,8 +46,11 @@ interface LedgerEntry {
 	added: DailyActivity | undefined;
 	/** Starts on `added.day` not written yet. */
 	pending: number;
-	/** runId -> its attempt number, from its start until its finish. */
-	readonly attempts: Map<string, number>;
+	/**
+	 * Runs started and not concluded yet with their attempt numbers, oldest first, at most DAILY_LEDGER_OPEN_ATTEMPTS
+	 * (a run that never concludes accepted is pushed out by later starts).
+	 */
+	readonly attempts: Array<{ readonly runId: string; readonly attempt: number }>;
 }
 
 /** The smallest attempt number (a finish whose start this server never counted is at least an attempt). */
@@ -79,7 +83,9 @@ export class DailyActivityLedger {
 		}
 		const view = this.view(userId, base);
 		const attempt = math.max(FIRST_ATTEMPT, dailyStartsOn(view, day));
-		entry.attempts.set(runId, attempt);
+		takeAttempt(entry.attempts, runId);
+		entry.attempts.push({ runId, attempt });
+		while (entry.attempts.size() > DAILY_LEDGER_OPEN_ATTEMPTS) entry.attempts.remove(0);
 		return { attempt, returning: returningOf(view, day, base.known) };
 	}
 
@@ -87,8 +93,7 @@ export class DailyActivityLedger {
 	finished(userId: number, day: number, runId: string, base: DailyBase): DailyFinishNote {
 		const entry = this.entry(userId);
 		const view = this.view(userId, base);
-		const attempt = entry.attempts.get(runId) ?? math.max(FIRST_ATTEMPT, dailyStartsOn(view, day));
-		entry.attempts.delete(runId);
+		const attempt = takeAttempt(entry.attempts, runId) ?? math.max(FIRST_ATTEMPT, dailyStartsOn(view, day));
 		const returning = returningOf(view, day, base.known);
 		const addedDay = entry.added?.day ?? day;
 		const delta: DailyActivityDelta = { day: addedDay, starts: entry.pending, finishedDay: day };
@@ -111,6 +116,11 @@ export class DailyActivityLedger {
 		this.entries.delete(userId);
 	}
 
+	/** Runs whose attempt number is still remembered for the player (for leak checks). */
+	openAttempts(userId: number): number {
+		return this.entries.get(userId)?.attempts.size() ?? 0;
+	}
+
 	/** UserIds with an entry (shutdown flush). */
 	userIds(): number[] {
 		const out: number[] = [];
@@ -121,11 +131,19 @@ export class DailyActivityLedger {
 	private entry(userId: number): LedgerEntry {
 		let entry = this.entries.get(userId);
 		if (entry === undefined) {
-			entry = { added: undefined, pending: 0, attempts: new Map() };
+			entry = { added: undefined, pending: 0, attempts: [] };
 			this.entries.set(userId, entry);
 		}
 		return entry;
 	}
+}
+
+/** Removes `runId` from the open attempts and returns its attempt number, or undefined when it is not there. */
+function takeAttempt(attempts: Array<{ readonly runId: string; readonly attempt: number }>, runId: string) {
+	for (let i = 0; i < attempts.size(); i++) {
+		if (attempts[i].runId === runId) return attempts.remove(i)!.attempt;
+	}
+	return undefined;
 }
 
 /** Finished on `day - 1`: true / false, or undefined when the base is unknown and nothing here says true. */

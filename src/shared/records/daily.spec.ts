@@ -3,6 +3,7 @@
 // numbers, returning flag, what each write carries).
 import { describe, expect, it } from "@rbxts/jest-globals";
 import {
+	DAILY_LEDGER_OPEN_ATTEMPTS,
 	DAILY_ACTIVITY_POLICY,
 	DailyActivityLedger,
 	RECORDS_CODEC,
@@ -314,6 +315,17 @@ describe("DailyActivityLedger", () => {
 		expect(ledger.started(1, DAY + 1, "again", known()).attempt).toBe(2);
 		// Next day, it counts as returning (finished on DAY).
 		expect(ledger.started(1, DAY + 1, "x", known()).returning).toBe(true);
+	});
+
+	it("remembers at most DAILY_LEDGER_OPEN_ATTEMPTS unfinished runs: abandoned starts are pushed out", () => {
+		expect(DAILY_LEDGER_OPEN_ATTEMPTS).toBe(8);
+		const ledger = new DailyActivityLedger();
+		for (let i = 1; i <= 20; i++) ledger.started(1, DAY, `abandoned${i}`, known());
+		expect(ledger.openAttempts(1)).toBe(DAILY_LEDGER_OPEN_ATTEMPTS);
+		// The newest are still answered exactly; a pushed-out one falls back to the day's start count.
+		expect(ledger.finished(1, DAY, "abandoned20", known()).attempt).toBe(20);
+		expect(ledger.finished(1, DAY, "abandoned1", known()).attempt).toBe(20);
+		expect(ledger.openAttempts(1)).toBe(DAILY_LEDGER_OPEN_ATTEMPTS - 1);
 	});
 
 	it("a finish whose start was never counted here is attempt >= 1", () => {

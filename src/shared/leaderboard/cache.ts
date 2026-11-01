@@ -76,11 +76,19 @@ export class SharedTtlCache<K, V> {
 
 	/**
 	 * Replaces the value a key holds, in place: its age is unchanged (it expires when it would have) and a key with no
-	 * value is left alone. The daily verdict merges a player's new entry into the cached top rows this way.
+	 * value is left alone. The daily verdict merges a player's new entry into the cached top rows this way, and a
+	 * histogram flush its written counts into the cached sums. A load in flight may have read the store before the
+	 * patched write landed, so (as with invalidate) its value is served to its callers but not cached as fresh: the
+	 * next load reads again instead of dropping the patch for a whole TTL.
 	 */
 	patch(key: K, fn: (value: V) => V): void {
 		const slot = this.slots.get(key);
-		if (slot === undefined || !slot.has) return;
+		if (slot === undefined) return;
+		if (slot.loading) {
+			slot.generation += 1;
+			slot.at = -math.huge;
+		}
+		if (!slot.has) return;
 		slot.value = fn(slot.value as V);
 	}
 
