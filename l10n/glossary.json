@@ -1,0 +1,840 @@
+{
+	"terms": [
+		{
+			"term": "Kaleb-Vale",
+			"meaning": "The game's brand name, part of the title \"Project Kaleb-Vale\". Never translate, transliterate or re-spell it. \"Project\" in the title may be translated and may move to fit the language's word order.",
+			"translate": false,
+			"keys": [
+				"game.title",
+				"loading.title"
+			]
+		},
+		{
+			"term": "Ember",
+			"meaning": "The screen-clearing resource: a limited charge (2 per floor) that burns to wipe every enemy bullet. One fixed word everywhere (status panel label, Options action, touch button, tutorial). Not the same as the \"embers\" (burning floor patches) of the Fire Arrows / Blazing Trail duo boons, which may use an ordinary word for embers.",
+			"translate": true,
+			"keys": [
+				"ember.name",
+				"hud.ember",
+				"options.action.ember",
+				"touch.ember",
+				"tutorial.prompt.ember.gamepad",
+				"tutorial.prompt.ember.keyboard",
+				"tutorial.prompt.ember.touch"
+			]
+		},
+		{
+			"term": "embers (floor patches)",
+			"meaning": "Burning patches left on the floor by the Fire Arrows and Blazing Trail duo boons. An ordinary word for glowing coals; keep it distinct from the Ember resource if the language allows.",
+			"translate": true,
+			"keys": [
+				"duo.blazingTrail.desc",
+				"duo.fireArrows.desc"
+			]
+		},
+		{
+			"term": "Flask",
+			"meaning": "The healing potion bottle: 3 charges per floor, refilled on each new floor. Same word in the status panel, Options, the touch button and the tutorial.",
+			"translate": true,
+			"keys": [
+				"boon.deepFlask.desc",
+				"boon.deepFlask.desc.2",
+				"boon.deepFlask.name",
+				"curse.thirst.desc",
+				"hud.flask",
+				"options.action.flask",
+				"touch.flask",
+				"tutorial.prompt.flask.gamepad",
+				"tutorial.prompt.flask.keyboard",
+				"tutorial.prompt.flask.touch"
+			]
+		},
+		{
+			"term": "heart / half heart",
+			"meaning": "The unit of health: the player has a row of hearts; a hit costs half a heart.",
+			"translate": true,
+			"keys": [
+				"boon.hearty.desc",
+				"boon.hearty.desc.2",
+				"boon.hearty.evo.desc",
+				"curse.frailty.desc",
+				"hud.toast.fang",
+				"relic.vampireFang.desc",
+				"tutorial.callout.harmlessHit",
+				"tutorial.objective.body",
+				"tutorial.prompt.hits.gamepad",
+				"tutorial.prompt.hits.keyboard",
+				"tutorial.prompt.hits.touch"
+			]
+		},
+		{
+			"term": "armor pip",
+			"meaning": "A small pip that absorbs one hit before the hearts do (from the Warding boon, Aegis boost).",
+			"translate": true,
+			"keys": [
+				"boon.warding.desc",
+				"boon.warding.desc.2",
+				"boost.aegis.desc",
+				"duo.unshaken.desc",
+				"hud.armor"
+			]
+		},
+		{
+			"term": "boon",
+			"meaning": "A power-up kept for the rest of the run, chosen from a draft of three cards after each floor (\"Choose a boon\", \"Pick again\"). Not an item and not a skill; one word for the whole system.",
+			"translate": true,
+			"keys": [
+				"hud.draft.evolve",
+				"hud.draft.title",
+				"hud.toast.boon",
+				"hud.toast.evolved",
+				"touch.hint.draft",
+				"tutorial.prompt.draft.gamepad",
+				"tutorial.prompt.draft.keyboard",
+				"tutorial.prompt.draft.touch"
+			]
+		},
+		{
+			"term": "boss",
+			"meaning": "The big enemy that ends every 5th floor (Mother Bramble or The Demon Lord), with a health bar and phases.",
+			"translate": true,
+			"keys": [
+				"boss.1.name",
+				"boss.2.name",
+				"boss.3.name",
+				"boss.4.name",
+				"boss.5.name",
+				"daily.card.boss",
+				"lobby.name.bossPractice",
+				"score.source.boss",
+				"stage.bossFloor",
+				"tutorial.prompt.boss.gamepad",
+				"tutorial.prompt.boss.keyboard",
+				"tutorial.prompt.boss.touch"
+			]
+		},
+		{
+			"term": "build",
+			"meaning": "The set of boons a player has collected in this run (\"Build\" list, \"Build effects\" option).",
+			"translate": true,
+			"keys": [
+				"hud.build.title",
+				"options.display.buildFx"
+			]
+		},
+		{
+			"term": "Mirror Cloak / Hourglass / Vampire Fang / Second Wind",
+			"meaning": "The four relic names. Second Wind and Vampire Fang also appear in their trigger toasts: use the same words there.",
+			"translate": true,
+			"keys": [
+				"hud.toast.fang",
+				"hud.toast.secondWind",
+				"relic.hourglass.name",
+				"relic.mirrorCloak.name",
+				"relic.secondWind.name",
+				"relic.vampireFang.name"
+			]
+		},
+		{
+			"term": "Frailty / Haste / Impatience / Thirst",
+			"meaning": "The four curse names (one-word handicaps).",
+			"translate": true,
+			"keys": [
+				"curse.frailty.name",
+				"curse.haste.name",
+				"curse.impatience.name",
+				"curse.thirst.name"
+			]
+		},
+		{
+			"term": "relic",
+			"meaning": "A permanent item for the rest of the run, found on a pedestal.",
+			"translate": true,
+			"keys": [
+				"hud.toast.relic",
+				"tutorial.prompt.relic.gamepad",
+				"tutorial.prompt.relic.keyboard",
+				"tutorial.prompt.relic.touch"
+			]
+		},
+		{
+			"term": "curse",
+			"meaning": "A handicap the player may accept at a shrine; it makes the run harder and raises the score multiplier.",
+			"translate": true,
+			"keys": [
+				"hud.shrine.hint",
+				"hud.toast.curse",
+				"touch.hint.shrine",
+				"tutorial.prompt.curse.gamepad",
+				"tutorial.prompt.curse.keyboard",
+				"tutorial.prompt.curse.touch"
+			]
+		},
+		{
+			"term": "shrine",
+			"meaning": "The place in a room where a curse is offered (accept with skill 1 / Accept).",
+			"translate": true,
+			"keys": [
+				"options.action.skill1"
+			]
+		},
+		{
+			"term": "Duo (boon)",
+			"meaning": "A special boon offered when the player owns two boons that combine. The DUO banner is all caps.",
+			"translate": true,
+			"keys": [
+				"hud.draft.duo",
+				"hud.toast.duo"
+			]
+		},
+		{
+			"term": "evolve / evolution",
+			"meaning": "A boon at level III turns into a stronger, renamed form (EVOLVE banner on the draft card).",
+			"translate": true,
+			"keys": [
+				"hud.draft.evolve",
+				"hud.toast.evolved"
+			]
+		},
+		{
+			"term": "Common / Rare / Legendary",
+			"meaning": "The three boon rarities shown on draft cards (bone, blood-red, gold cards).",
+			"translate": true,
+			"keys": [
+				"boon.rarity.common",
+				"boon.rarity.legendary",
+				"boon.rarity.rare"
+			]
+		},
+		{
+			"term": "boost",
+			"meaning": "A temporary power-up dropped by a killed enemy, picked up by walking over it (Fury, Quickstep, Frenzy, Aegis).",
+			"translate": true,
+			"keys": [
+				"tutorial.prompt.boost.gamepad",
+				"tutorial.prompt.boost.keyboard",
+				"tutorial.prompt.boost.touch"
+			]
+		},
+		{
+			"term": "Fury / Quickstep / Frenzy / Aegis",
+			"meaning": "The four boost names: Fury (+damage), Quickstep (+walk speed), Frenzy (faster attacks), Aegis (an armor pip). Names, title case; translate meaningfully and keep them distinct.",
+			"translate": true,
+			"keys": [
+				"boost.aegis.name",
+				"boost.frenzy.name",
+				"boost.fury.name",
+				"boost.quickstep.name"
+			]
+		},
+		{
+			"term": "combo",
+			"meaning": "The kill-streak score multiplier (x1.0 to x5.0). It grows with kills, grazes and guard cancels and is cut by hits.",
+			"translate": true,
+			"keys": [
+				"boon.composure.desc",
+				"boon.lingering.desc",
+				"boon.lingering.desc.2",
+				"boon.lingering.evo.desc",
+				"curse.impatience.desc",
+				"duo.goldRush.desc",
+				"duo.unshaken.desc",
+				"hud.combo.best",
+				"hud.combo.lost",
+				"hud.score.combo",
+				"hud.score.maxCombo",
+				"tutorial.callout.score"
+			]
+		},
+		{
+			"term": "RAMPAGE / CARNAGE / DOMINATING / UNSTOPPABLE",
+			"meaning": "The named combo tiers at x2 / x3 / x4 / x5: arcade hype words, always ALL CAPS, shouted on the floor. Keep four distinct, escalating words.",
+			"translate": true,
+			"keys": [
+				"hud.combo.carnage",
+				"hud.combo.dominating",
+				"hud.combo.rampage",
+				"hud.combo.unstoppable"
+			]
+		},
+		{
+			"term": "graze",
+			"meaning": "A bullet that skims past the player without hitting; it scores points and feeds the combo.",
+			"translate": true,
+			"keys": [
+				"boon.daredevil.desc",
+				"boon.daredevil.desc.2",
+				"boon.daredevil.evo.desc",
+				"duo.closeCall.desc",
+				"score.source.grazes",
+				"tutorial.callout.graze",
+				"tutorial.callout.score"
+			]
+		},
+		{
+			"term": "guard / block",
+			"meaning": "The sword's secondary action: holding it as a shot arrives erases bullets (and shockwaves). \"Guard\" and \"block\" are the same action.",
+			"translate": true,
+			"keys": [
+				"options.action.alt",
+				"relic.mirrorCloak.desc",
+				"score.source.guard",
+				"tutorial.callout.score",
+				"tutorial.prompt.guard.gamepad",
+				"tutorial.prompt.guard.keyboard",
+				"tutorial.prompt.guard.touch",
+				"tutorial.prompt.guardHold.gamepad",
+				"tutorial.prompt.guardHold.keyboard",
+				"tutorial.prompt.guardHold.touch"
+			]
+		},
+		{
+			"term": "guard cancel",
+			"meaning": "A bullet erased by guarding; a score source.",
+			"translate": true,
+			"keys": [
+				"score.source.guard",
+				"tutorial.callout.score"
+			]
+		},
+		{
+			"term": "parry",
+			"meaning": "A well-timed guard that erases bullets; flashes PARRY! on the floor.",
+			"translate": true,
+			"keys": [
+				"fx.parry.text"
+			]
+		},
+		{
+			"term": "dodge roll",
+			"meaning": "A quick roll during which the player can't be hit.",
+			"translate": true,
+			"keys": [
+				"boon.emberWake.desc",
+				"boon.slippery.desc",
+				"boon.slippery.desc.2",
+				"boon.slippery.evo.desc",
+				"duo.blazingTrail.desc",
+				"options.action.roll",
+				"touch.roll",
+				"tutorial.prompt.roll.gamepad",
+				"tutorial.prompt.roll.keyboard",
+				"tutorial.prompt.roll.touch"
+			]
+		},
+		{
+			"term": "finisher",
+			"meaning": "The stronger third swing of a sword combo (and a heavy hit in general).",
+			"translate": true,
+			"keys": [
+				"boon.swiftStrikes.evo.desc",
+				"duo.stormBlade.desc",
+				"tutorial.prompt.attack.gamepad",
+				"tutorial.prompt.attack.keyboard",
+				"tutorial.prompt.attack.touch"
+			]
+		},
+		{
+			"term": "floor",
+			"meaning": "One level of the dungeon; the run goes down floor by floor via stairwells. Every 5th floor ends with a boss.",
+			"translate": true,
+			"keys": [
+				"daily.board.mine",
+				"daily.board.mineScore",
+				"daily.card.boss",
+				"daily.card.roster",
+				"hud.floor",
+				"hud.leaderboard.floor",
+				"hud.leaderboard.mine",
+				"hud.leaderboard.mineRanked",
+				"hud.notice.fallback",
+				"hud.spectate.back",
+				"menu.best",
+				"relic.secondWind.desc",
+				"run.best.floor",
+				"run.best.target",
+				"score.source.floors",
+				"stage.best.oneToGo",
+				"stage.best.recordFloor",
+				"stage.best.toGo",
+				"stage.bossFloor",
+				"stage.floorCard",
+				"stage.forging",
+				"tutorial.objective.body",
+				"tutorial.outro.body",
+				"tutorial.prompt.boss.gamepad",
+				"tutorial.prompt.boss.keyboard",
+				"tutorial.prompt.boss.touch",
+				"tutorial.prompt.ember.gamepad",
+				"tutorial.prompt.ember.keyboard",
+				"tutorial.prompt.ember.touch",
+				"tutorial.prompt.flask.gamepad",
+				"tutorial.prompt.flask.keyboard",
+				"tutorial.prompt.flask.touch",
+				"tutorial.prompt.stairwell.gamepad",
+				"tutorial.prompt.stairwell.keyboard",
+				"tutorial.prompt.stairwell.touch"
+			]
+		},
+		{
+			"term": "Depth",
+			"meaning": "A difficulty tier: 1 + the bosses beaten; it rises every 5 floors. Shown beside the floor number.",
+			"translate": true,
+			"keys": [
+				"hud.floor"
+			]
+		},
+		{
+			"term": "deepest floor / record floor",
+			"meaning": "The player's personal record of the deepest floor reached.",
+			"translate": true,
+			"keys": [
+				"run.best.floor",
+				"stage.best.deeperYet",
+				"stage.best.newDeepest",
+				"stage.best.oneToGo",
+				"stage.best.recordFloor",
+				"stage.best.toGo"
+			]
+		},
+		{
+			"term": "run",
+			"meaning": "One playthrough from floor 1 until death (or victory). Also \"Leave run\", \"Start run\".",
+			"translate": true,
+			"keys": [
+				"daily.board.empty",
+				"hud.leaderboard.empty",
+				"hud.leaderboard.mineNone",
+				"hud.verdict.accepted",
+				"hud.verdict.pending",
+				"hud.verdict.rejected",
+				"hud.verdict.skipped",
+				"lobby.browser.inRun",
+				"lobby.err.busy",
+				"lobby.err.inRun",
+				"lobby.err.notInRun",
+				"lobby.name.chill",
+				"lobby.name.quickRun",
+				"lobby.room.inRun",
+				"lobby.room.start",
+				"lobby.room.startSolo",
+				"menu.coopHint",
+				"menu.coopTitle",
+				"menu.leaveConfirm",
+				"menu.leaveConfirmCoop",
+				"menu.leaveRun",
+				"menu.partyEnded",
+				"menu.starting",
+				"run.best.unsaved",
+				"run.dailyRank.first",
+				"stage.starting",
+				"tutorial.callout.harmlessHit",
+				"tutorial.objective.body",
+				"tutorial.outro.body",
+				"tutorial.outro.start",
+				"tutorial.prompt.curse.gamepad",
+				"tutorial.prompt.curse.keyboard",
+				"tutorial.prompt.curse.touch",
+				"tutorial.prompt.hits.gamepad",
+				"tutorial.prompt.hits.keyboard",
+				"tutorial.prompt.hits.touch",
+				"tutorial.prompt.relic.gamepad",
+				"tutorial.prompt.relic.keyboard",
+				"tutorial.prompt.relic.touch"
+			]
+		},
+		{
+			"term": "descent",
+			"meaning": "Flavour word for a run (going down through the dungeon). Used in the tutorial's name \"Practice Descent\" and the default lobby name.",
+			"translate": true,
+			"keys": [
+				"lobby.name.hostDescent",
+				"tutorial.objective.title",
+				"tutorial.outro.title"
+			]
+		},
+		{
+			"term": "stairwell",
+			"meaning": "The exit of a floor leading down to the next floor.",
+			"translate": true,
+			"keys": [
+				"tutorial.prompt.finish.gamepad",
+				"tutorial.prompt.finish.keyboard",
+				"tutorial.prompt.finish.touch",
+				"tutorial.prompt.stairwell.gamepad",
+				"tutorial.prompt.stairwell.keyboard",
+				"tutorial.prompt.stairwell.touch"
+			]
+		},
+		{
+			"term": "room / CLEAR / PERFECT",
+			"meaning": "Rooms are the arenas of a floor. Killing the last enemy stamps CLEAR; clearing without a hit stamps PERFECT (ALL CAPS stamps).",
+			"translate": true,
+			"keys": [
+				"room.clear.stamp.clear",
+				"room.clear.stamp.perfect"
+			]
+		},
+		{
+			"term": "Daily",
+			"meaning": "The Daily dungeon: one shared seeded dungeon per UTC day, the same for everyone, with day-scoped boards. A proper name for the mode; keep it consistent (DAILY is all caps on the card title).",
+			"translate": true,
+			"keys": [
+				"daily.board.empty",
+				"daily.board.friendsEmpty",
+				"daily.card.loading",
+				"daily.card.play",
+				"daily.card.playParty",
+				"daily.card.resetsIn",
+				"daily.card.title",
+				"daily.lobby.world.daily",
+				"daily.podium.title",
+				"daily.result.retry",
+				"daily.result.title"
+			]
+		},
+		{
+			"term": "Endless",
+			"meaning": "The normal mode: a new random dungeon each run, as deep as you can go.",
+			"translate": true,
+			"keys": [
+				"daily.lobby.world.endless"
+			]
+		},
+		{
+			"term": "lobby",
+			"meaning": "A group of players in the menu that starts a run together (host, ready, visibility).",
+			"translate": true,
+			"keys": [
+				"lobby.browser.create",
+				"lobby.browser.empty",
+				"lobby.browser.newVisibility",
+				"lobby.browser.title",
+				"lobby.err.alreadyInLobby",
+				"lobby.err.full",
+				"lobby.err.inRun",
+				"lobby.err.inviteGone",
+				"lobby.err.noAccess",
+				"lobby.err.notMember",
+				"lobby.err.partyFull",
+				"lobby.err.starting",
+				"lobby.err.unknownLobby",
+				"lobby.invite.received",
+				"lobby.notice.followed",
+				"lobby.notice.inviteDropped",
+				"lobby.notice.inviteExpired",
+				"lobby.notice.kicked",
+				"lobby.notice.partyLobby",
+				"lobby.notice.partyLobbyAny",
+				"lobby.room.leave",
+				"menu.backToLobby",
+				"menu.invitesBadge",
+				"menu.lobbies",
+				"menu.yourLobby"
+			]
+		},
+		{
+			"term": "host",
+			"meaning": "The lobby member who controls its settings and starts the run.",
+			"translate": true,
+			"keys": [
+				"lobby.err.notHost",
+				"lobby.name.hostDescent",
+				"lobby.notice.hostChanged",
+				"lobby.room.host",
+				"lobby.room.makeHost"
+			]
+		},
+		{
+			"term": "party / co-op",
+			"meaning": "Playing a run together in a lobby (co-operative multiplayer). \"Roblox party\" means Roblox's own party feature: keep \"Roblox\".",
+			"translate": true,
+			"keys": [
+				"hud.leaderboard.coop",
+				"lobby.err.partyFull",
+				"lobby.notice.partyLobby",
+				"lobby.notice.partyLobbyAny",
+				"menu.coopTitle",
+				"menu.leaveConfirmCoop",
+				"menu.partyDown"
+			]
+		},
+		{
+			"term": "Roblox",
+			"meaning": "The platform's name. Never translate.",
+			"translate": false,
+			"keys": [
+				"lobby.invite.invitedPlatform",
+				"lobby.invite.platform",
+				"lobby.notice.partyLobby",
+				"lobby.notice.partyLobbyAny"
+			]
+		},
+		{
+			"term": "leaderboard",
+			"meaning": "The score boards (solo, co-op, daily scopes).",
+			"translate": true,
+			"keys": [
+				"hud.leaderboard.posted.failed",
+				"hud.leaderboard.posted.ineligible",
+				"hud.leaderboard.posted.queued",
+				"hud.leaderboard.title",
+				"hud.leaderboard.unavailable",
+				"hud.pause.leaderboard",
+				"menu.leaderboard",
+				"options.action.leaderboard",
+				"tutorial.outro.body"
+			]
+		},
+		{
+			"term": "NEW BEST",
+			"meaning": "Celebration when the score passes the player's personal best (ALL CAPS stamp / shout).",
+			"translate": true,
+			"keys": [
+				"hud.best.new",
+				"hud.best.over",
+				"hud.best.shout",
+				"hud.dailyRank.new",
+				"hud.dailyRank.over",
+				"hud.dailyRank.shout",
+				"hud.dailyRank.toGo",
+				"run.best.ribbon",
+				"run.dailyRank.ribbon"
+			]
+		},
+		{
+			"term": "score",
+			"meaning": "Points earned in a run.",
+			"translate": true,
+			"keys": [
+				"daily.board.mine",
+				"daily.board.mineScore",
+				"daily.card.best",
+				"daily.card.bestScore",
+				"daily.podium.mineScore",
+				"daily.result.best",
+				"duo.goldRush.desc",
+				"hud.dailyRank.passed",
+				"hud.leaderboard.mine",
+				"hud.leaderboard.mineRanked",
+				"hud.score",
+				"hud.shrine.hint",
+				"lobby.name.scoreChasing",
+				"menu.best",
+				"menu.leaveConfirm",
+				"run.best.score",
+				"run.best.target",
+				"run.dailyRank.target",
+				"tutorial.callout.graze",
+				"tutorial.callout.score",
+				"tutorial.outro.body",
+				"tutorial.prompt.curse.gamepad",
+				"tutorial.prompt.curse.keyboard",
+				"tutorial.prompt.curse.touch"
+			]
+		},
+		{
+			"term": "Juice",
+			"meaning": "Game-design slang for feedback effects (screen shake, flashes, particles). The Options tab / panel name; translate the idea (Effects), not the fruit.",
+			"translate": true,
+			"keys": [
+				"fx.settings.title",
+				"options.tab.juice"
+			]
+		},
+		{
+			"term": "Swarmer",
+			"meaning": "Enemy: small melee enemy rushing in packs.",
+			"translate": true,
+			"keys": [
+				"enemy.swarmer.name"
+			]
+		},
+		{
+			"term": "Sprayer",
+			"meaning": "Enemy: stationary turret spraying bullets.",
+			"translate": true,
+			"keys": [
+				"enemy.sprayer.name"
+			]
+		},
+		{
+			"term": "Sniper",
+			"meaning": "Enemy: aims a long telegraphed shot (orange line).",
+			"translate": true,
+			"keys": [
+				"enemy.sniper.name"
+			]
+		},
+		{
+			"term": "Bruiser",
+			"meaning": "Enemy: heavy melee brute with shockwaves.",
+			"translate": true,
+			"keys": [
+				"enemy.bruiser.name"
+			]
+		},
+		{
+			"term": "Caster",
+			"meaning": "Enemy: stationary turret casting bullet patterns.",
+			"translate": true,
+			"keys": [
+				"enemy.caster.name"
+			]
+		},
+		{
+			"term": "Summoner",
+			"meaning": "Enemy: support that calls minions; kill it and its summons wither.",
+			"translate": true,
+			"keys": [
+				"bestiary.summoner",
+				"enemy.summoner.name"
+			]
+		},
+		{
+			"term": "Imp",
+			"meaning": "Enemy: small demon that blinks next to the player inside a warning ring.",
+			"translate": true,
+			"keys": [
+				"bestiary.imp",
+				"enemy.imp.name"
+			]
+		},
+		{
+			"term": "Ooze / slimelet",
+			"meaning": "Enemy (internal id slime): leaves harmful goo and splits into small slimelets when it dies. \"Goo\" is its floor puddle.",
+			"translate": true,
+			"keys": [
+				"bestiary.slime",
+				"enemy.slime.name"
+			]
+		},
+		{
+			"term": "Training Dummy",
+			"meaning": "The tutorial's stationary practice target.",
+			"translate": true,
+			"keys": [
+				"enemy.dummy.name"
+			]
+		},
+		{
+			"term": "Mother Bramble",
+			"meaning": "First boss: a huge thorny plant-demon mother (\"her\"). Translate the meaning consistently.",
+			"translate": true,
+			"keys": [
+				"boss.act1.name"
+			]
+		},
+		{
+			"term": "The Demon Lord",
+			"meaning": "Alternate boss of endless boss floors: a demon king.",
+			"translate": true,
+			"keys": [
+				"boss.demonlord.name"
+			]
+		},
+		{
+			"term": "Hulking / Swift / Shielded / Vengeful",
+			"meaning": "Elite affixes (adjectives on stronger enemies): bigger and tougher / faster / shield that refills / bursts on death. Same adjective in the name chip and the first-sighting toast.",
+			"translate": true,
+			"keys": [
+				"affix.hulking.name",
+				"affix.shielded.name",
+				"affix.swift.name",
+				"affix.vengeful.name",
+				"bestiary.affix.hulking",
+				"bestiary.affix.shielded",
+				"bestiary.affix.swift",
+				"bestiary.affix.vengeful"
+			]
+		},
+		{
+			"term": "Chain Spark / Volatile / Soul Shards",
+			"meaning": "The three on-kill boons (builds): a spark arcing to the next enemy / a ring of bolts on kill / shards that seek enemies. Their words (spark, bolts, shards) recur in other boons; keep them consistent.",
+			"translate": true,
+			"keys": [
+				"boon.chainSpark.desc",
+				"boon.chainSpark.desc.2",
+				"boon.chainSpark.evo.desc",
+				"boon.chainSpark.name",
+				"boon.daredevil.evo.desc",
+				"boon.emberWake.desc",
+				"boon.lingering.evo.desc",
+				"boon.soulShards.desc",
+				"boon.soulShards.desc.2",
+				"boon.soulShards.evo.desc",
+				"boon.soulShards.name",
+				"boon.swiftStrikes.evo.desc",
+				"boon.volatile.desc",
+				"boon.volatile.desc.2",
+				"boon.volatile.evo.desc",
+				"boon.volatile.name",
+				"duo.chainReaction.desc",
+				"duo.closeCall.desc",
+				"duo.conductor.desc",
+				"duo.shrapnel.desc",
+				"duo.stormBlade.desc"
+			]
+		},
+		{
+			"term": "nova",
+			"meaning": "A burst around the player that clears enemy bullets (Overflowing, Bulwark).",
+			"translate": true,
+			"keys": [
+				"boon.deepFlask.evo.desc",
+				"boon.warding.evo.desc"
+			]
+		},
+		{
+			"term": "Ancient Halls / Molten Depths / Frost Reach / Grim Vaults / Verdant Ruin",
+			"meaning": "The five biome (area) names: stone halls / lava caverns / ice lands / crypts / overgrown ruins. Place names, title case.",
+			"translate": true,
+			"keys": [
+				"biome.1.name",
+				"biome.2.name",
+				"biome.3.name",
+				"biome.4.name",
+				"biome.5.name"
+			]
+		},
+		{
+			"term": "Vanguard / Ranger / Pyromancer / Tinkerer / Hexblade",
+			"meaning": "Character class names (reserved, not shown in the current build).",
+			"translate": true,
+			"keys": [
+				"class.hexblade.name",
+				"class.pyromancer.name",
+				"class.ranger.name",
+				"class.tinkerer.name",
+				"class.vanguard.name"
+			]
+		},
+		{
+			"term": "Practice Descent",
+			"meaning": "The first-run tutorial's name.",
+			"translate": true,
+			"keys": [
+				"tutorial.objective.title"
+			]
+		},
+		{
+			"term": "phase",
+			"meaning": "A boss's attack stage, numbered with Roman numerals I-III.",
+			"translate": true,
+			"keys": [
+				"boss.hud.phase",
+				"tutorial.callout.bossPhase2",
+				"tutorial.callout.bossPhase3"
+			]
+		},
+		{
+			"term": "seed",
+			"meaning": "The number that generates a dungeon; technical.",
+			"translate": true,
+			"keys": [
+				"hud.info",
+				"hud.seed"
+			]
+		}
+	]
+}
