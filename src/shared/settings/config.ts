@@ -70,3 +70,10 @@ export const DEFAULT_TOUCH_AUTO_TARGET = true;
 
 /** Left-handed touch layout: the controls mirror to the left side (docs/MOBILE.md MB7): Off. */
 export const DEFAULT_TOUCH_LEFT_HANDED = false;
+
+/**
+ * Options > Display > Language (docs/LOCALIZATION.md L6, LD3): "auto" follows the player's Roblox language (the
+ * default, never stored); otherwise a shared/l10n LOCALES code (the override).
+ */
+export const LANGUAGE_AUTO = "auto";
+export const DEFAULT_LANGUAGE = LANGUAGE_AUTO;

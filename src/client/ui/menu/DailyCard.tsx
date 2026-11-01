@@ -2,9 +2,9 @@ import React from "@rbxts/react";
 import { useSelector } from "@rbxts/react-reflex";
 import { selectDailyStatus } from "client/store";
 import { MenuButton, Panel, Row, Text, useDailyClock, useHeadshot } from "client/ui/hud";
-import { HUD_FONT, role, str } from "client/ui/theme";
+import { fontFor, role, str, textSizeFor, useUiFonts, type FontRole } from "client/ui/theme";
 import { SFX } from "shared/view/audio";
-import { DAILY_STRINGS, FOOTPRINT_ESTIMATE, HUD_VIEW, ROSTER_VIEW } from "shared/view/hud";
+import { DAILY_STRINGS, FOOTPRINT_ESTIMATE, HUD_VIEW } from "shared/view/hud";
 import { DAILY_MENU, dailyCardModel, dailyPodiumModel, type DailyPodiumRow } from "shared/view/menu";
 import { useMenuActions } from "./actions";
 
@@ -12,14 +12,23 @@ const HIDDEN = 1;
 const CARD_BUTTON = new Vector2(DAILY_MENU.cardButton.x, DAILY_MENU.cardButton.y);
 
 /** A one-line label cut with "..." at `width` (player names). */
-function Clipped(props: { order: number; width: number; text: string; color?: "uiText" | "uiAccent" | "uiTextDim" }) {
+function Clipped(props: {
+	order: number;
+	width: number;
+	text: string;
+	color?: "uiText" | "uiAccent" | "uiTextDim";
+	/** "name" for a player's display name (LD13). */
+	font?: FontRole;
+}) {
+	const fonts = useUiFonts();
+	const size = textSizeFor(fonts, HUD_VIEW.smallText);
 	return (
 		<textlabel
 			LayoutOrder={props.order}
-			Size={new UDim2(0, props.width, 0, HUD_VIEW.smallText + FOOTPRINT_ESTIMATE.lineSlack)}
+			Size={new UDim2(0, props.width, 0, size + FOOTPRINT_ESTIMATE.lineSlack)}
 			BackgroundTransparency={HIDDEN}
-			Font={HUD_FONT}
-			TextSize={HUD_VIEW.smallText}
+			Font={fontFor(fonts, props.font)}
+			TextSize={size}
 			TextColor3={role(props.color ?? "uiText")}
 			TextStrokeColor3={role("background")}
 			TextStrokeTransparency={HUD_VIEW.panelTransparency}
@@ -114,9 +123,7 @@ export function DailyCard(props: { order: number; width: number; compact: boolea
 			text={m.title}
 		/>
 	);
-	const preview = props.compact
-		? small("Preview", 3, m.known ? `${m.roster}${ROSTER_VIEW.separator}${m.boss}` : "")
-		: undefined;
+	const preview = props.compact ? small("Preview", 3, m.known ? m.preview : "") : undefined;
 	return (
 		<Panel
 			order={props.order}
@@ -178,7 +185,7 @@ function PodiumCell(props: { row: DailyPodiumRow; compact: boolean }) {
 			<Row order={r.place}>
 				<Headshot order={1} userId={r.userId} size={DAILY_MENU.headshotCompact} />
 				<Stack order={2} width={w} gap={0}>
-					<Clipped order={1} width={w} text={`${r.placeText} ${r.name}`} />
+					<Clipped order={1} width={w} text={r.line} font="name" />
 					<Clipped order={2} width={w} text={r.score} color="uiAccent" />
 				</Stack>
 			</Row>
@@ -189,7 +196,7 @@ function PodiumCell(props: { row: DailyPodiumRow; compact: boolean }) {
 		<Stack order={r.place} width={w} gap={DAILY_MENU.podiumLineGap}>
 			<Clipped order={1} width={w} text={r.placeText} color="uiAccent" />
 			<Headshot order={2} userId={r.userId} size={DAILY_MENU.headshotSize} />
-			<Clipped order={3} width={w} text={r.name} />
+			<Clipped order={3} width={w} text={r.name} font="name" />
 			<Clipped order={4} width={w} text={r.score} color="uiAccent" />
 		</Stack>
 	);

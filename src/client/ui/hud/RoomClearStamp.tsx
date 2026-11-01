@@ -1,5 +1,5 @@
 import React, { useMemo } from "@rbxts/react";
-import { HUD_FONT, role } from "client/ui/theme";
+import { useHudFont, role } from "client/ui/theme";
 import { smoothstep01 } from "shared/view/fx";
 import { FOOTPRINT_ESTIMATE, HUD_TRANSIENT, HUD_VIEW, ROOM_CLEAR_VIEW } from "shared/view/hud";
 import { ROOM_CLEAR_UI as UI } from "./roomClearBindings";
@@ -17,6 +17,7 @@ const WHITE = new Color3(1, 1, 1);
  * "Phones") it hangs in the touch strip's boss slot and the chip flies to the strip's score.
  */
 export function RoomClearStamp() {
+	const hudFont = useHudFont();
 	const strip = useTouchStrip();
 	const box = HUD_TRANSIENT.roomClear;
 	const edge = strip?.bossTop ?? box.edge;
@@ -66,7 +67,7 @@ export function RoomClearStamp() {
 					Position={new UDim2(HALF, 0, 0, stampH * HALF)}
 					Size={new UDim2(1, 0, 0, stampH)}
 					BackgroundTransparency={HIDDEN}
-					Font={HUD_FONT}
+					Font={hudFont}
 					TextSize={ROOM_CLEAR_VIEW.stampText}
 					TextColor3={WHITE}
 					TextStrokeColor3={role("background")}
@@ -85,7 +86,7 @@ export function RoomClearStamp() {
 					Position={new UDim2(0, 0, 0, stampH + ROOM_CLEAR_VIEW.rowGap)}
 					Size={new UDim2(1, 0, 0, tallyH)}
 					BackgroundTransparency={HIDDEN}
-					Font={HUD_FONT}
+					Font={hudFont}
 					TextScaled={true}
 					TextColor3={role("uiText")}
 					TextStrokeColor3={role("background")}
@@ -102,7 +103,7 @@ export function RoomClearStamp() {
 				Position={UI.flyProgress.binding.map((p) => look.flyFrom.Lerp(look.flyTo, smoothstep01(p)))}
 				Size={new UDim2(0, ROOM_CLEAR_VIEW.flyWidth, 0, ROOM_CLEAR_VIEW.flyText + slack)}
 				BackgroundTransparency={HIDDEN}
-				Font={HUD_FONT}
+				Font={hudFont}
 				TextSize={ROOM_CLEAR_VIEW.flyText}
 				TextColor3={role("uiAccent")}
 				TextStrokeColor3={role("background")}

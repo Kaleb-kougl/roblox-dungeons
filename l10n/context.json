@@ -1,0 +1,3266 @@
+{
+	"act.1.name": {
+		"note": "Name of act 1 of a campaign (Roman numeral). Reserved: required by the theme contract inherited from the original web build, but not shown in the current Roblox build; translate it as a plain name anyway."
+	},
+	"act.2.name": {
+		"note": "Name of act 2 of a campaign (Roman numeral). Reserved: required by the theme contract inherited from the original web build, but not shown in the current Roblox build; translate it as a plain name anyway."
+	},
+	"act.3.name": {
+		"note": "Name of act 3 of a campaign (Roman numeral). Reserved: required by the theme contract inherited from the original web build, but not shown in the current Roblox build; translate it as a plain name anyway."
+	},
+	"act.4.name": {
+		"note": "Name of act 4 of a campaign (Roman numeral). Reserved: required by the theme contract inherited from the original web build, but not shown in the current Roblox build; translate it as a plain name anyway."
+	},
+	"act.endgame.name": {
+		"note": "Name of the final, endgame act of a campaign. Reserved: required by the theme contract inherited from the original web build, but not shown in the current Roblox build; translate it as a plain name anyway."
+	},
+	"affix.hulking.name": {
+		"note": "Elite affix: an adjective describing a stronger elite enemy that bigger, tougher and slower. Shown in a tiny name chip above that enemy's health bar, in the game world. Keep it one short word. Glossary term; must match the name at the start of bestiary.affix.hulking.",
+		"max": 10
+	},
+	"affix.shielded.name": {
+		"note": "Elite affix: an adjective describing a stronger elite enemy that carries a shield that refills when left alone. Shown in a tiny name chip above that enemy's health bar, in the game world. Keep it one short word. Glossary term; must match the name at the start of bestiary.affix.shielded.",
+		"max": 11
+	},
+	"affix.swift.name": {
+		"note": "Elite affix: an adjective describing a stronger elite enemy that moves and attacks faster. Shown in a tiny name chip above that enemy's health bar, in the game world. Keep it one short word. Glossary term; must match the name at the start of bestiary.affix.swift.",
+		"max": 10
+	},
+	"affix.vengeful.name": {
+		"note": "Elite affix: an adjective describing a stronger elite enemy that bursts into a ring of bullets when it dies. Shown in a tiny name chip above that enemy's health bar, in the game world. Keep it one short word. Glossary term; must match the name at the start of bestiary.affix.vengeful.",
+		"max": 11
+	},
+	"bestiary.affix.hulking": {
+		"note": "First-sighting toast, shown once per account (top centre, during combat) the first time the player meets the Hulking elite affix (affix.hulking.name). Format \"Name: short survival tip\"; the name before the colon must be the same word as that name string. Brief, direct, second person."
+	},
+	"bestiary.affix.shielded": {
+		"note": "First-sighting toast, shown once per account (top centre, during combat) the first time the player meets the Shielded elite affix (affix.shielded.name). Format \"Name: short survival tip\"; the name before the colon must be the same word as that name string. Brief, direct, second person."
+	},
+	"bestiary.affix.swift": {
+		"note": "First-sighting toast, shown once per account (top centre, during combat) the first time the player meets the Swift elite affix (affix.swift.name). Format \"Name: short survival tip\"; the name before the colon must be the same word as that name string. Brief, direct, second person."
+	},
+	"bestiary.affix.vengeful": {
+		"note": "First-sighting toast, shown once per account (top centre, during combat) the first time the player meets the Vengeful elite affix (affix.vengeful.name). Format \"Name: short survival tip\"; the name before the colon must be the same word as that name string. Brief, direct, second person."
+	},
+	"bestiary.imp": {
+		"note": "First-sighting toast, shown once per account (top centre, during combat) the first time the player meets the Imp (enemy.imp.name). Format \"Name: short survival tip\"; the name before the colon must be the same word as that name string. Brief, direct, second person."
+	},
+	"bestiary.slime": {
+		"note": "First-sighting toast, shown once per account (top centre, during combat) the first time the player meets the Ooze (enemy.slime.name). Format \"Name: short survival tip\"; the name before the colon must be the same word as that name string. Brief, direct, second person."
+	},
+	"bestiary.summoner": {
+		"note": "First-sighting toast, shown once per account (top centre, during combat) the first time the player meets the Summoner (enemy.summoner.name). Format \"Name: short survival tip\"; the name before the colon must be the same word as that name string. Brief, direct, second person."
+	},
+	"biome.1.name": {
+		"note": "Dungeon area (biome) name: old stone halls. Shown on the stage card under the floor number when a floor loads, and in the run info line of the pause menu. Evocative place name, title case."
+	},
+	"biome.2.name": {
+		"note": "Dungeon area (biome) name: deep caverns full of lava. Shown on the stage card under the floor number when a floor loads, and in the run info line of the pause menu. Evocative place name, title case."
+	},
+	"biome.3.name": {
+		"note": "Dungeon area (biome) name: icy, frozen lands. Shown on the stage card under the floor number when a floor loads, and in the run info line of the pause menu. Evocative place name, title case."
+	},
+	"biome.4.name": {
+		"note": "Dungeon area (biome) name: dark crypts and vaults. Shown on the stage card under the floor number when a floor loads, and in the run info line of the pause menu. Evocative place name, title case."
+	},
+	"biome.5.name": {
+		"note": "Dungeon area (biome) name: overgrown, plant-covered ruins. Shown on the stage card under the floor number when a floor loads, and in the run info line of the pause menu. Evocative place name, title case."
+	},
+	"boon.bounty.desc": {
+		"note": "Effect line of the boon \"Bounty\" on its draft card (wraps over two or three lines of a 240 px card) and in the build list. Terse game-rules style: keep numbers, % and units (\"s\" = seconds) exactly. A \"heart\" is one unit of health; \"combo\" the kill-streak multiplier; \"graze\" a bullet skimming past without hitting."
+	},
+	"boon.bounty.desc.2": {
+		"note": "Effect line of the boon \"Bounty\" at level II (shown on its Upgrade draft card, with the level I line under it as \"was: ...\"). Same terse style as boon.bounty.desc; keep numbers exactly."
+	},
+	"boon.bounty.evo.desc": {
+		"note": "Effect line of \"Jackpot\", the evolved form of the boon \"Bounty\" (Evolution draft card, build list). Terse game-rules style; keep numbers exactly. A \"nova\" is a burst that wipes nearby enemy bullets; \"bolts\", \"shards\" and \"sparks\" are small projectiles."
+	},
+	"boon.bounty.evo.name": {
+		"note": "Name of the evolved form of the boon \"Bounty\" (at level III it turns into this stronger version; effect: \"+30% kill points; every 15th kill pays a gold bonus\"). Shown on the Evolution draft card and in toasts. Short and dramatic, title case; glossary term.",
+		"max": 20
+	},
+	"boon.bounty.icon": {
+		"note": "Icon label of the boon \"Bounty\": 3-letter abbreviation drawn inside a tiny 26 px icon square (12 px text) in the owned-items row and the build list. Use at most 3 Latin letters, or 1-2 characters in Chinese / Japanese / Korean / Thai / Hindi / Arabic; any short, recognisable abbreviation of the name works (it doesn't have to match the English letters).",
+		"max": 3
+	},
+	"boon.bounty.name": {
+		"note": "Name of a boon (a power-up kept for the rest of the run, picked from a draft of cards); its effect: \"+10% kill points\". Shown as a draft card's one-line title (24 px text on a 240 px card, no wrapping), in toasts, and in the build list. Short and flavourful, title case; glossary term.",
+		"max": 20
+	},
+	"boon.chainSpark.desc": {
+		"note": "Effect line of the boon \"Chain Spark\" on its draft card (wraps over two or three lines of a 240 px card) and in the build list. Terse game-rules style: keep numbers, % and units (\"s\" = seconds) exactly. A \"heart\" is one unit of health; \"combo\" the kill-streak multiplier; \"graze\" a bullet skimming past without hitting."
+	},
+	"boon.chainSpark.desc.2": {
+		"note": "Effect line of the boon \"Chain Spark\" at level II (shown on its Upgrade draft card, with the level I line under it as \"was: ...\"). Same terse style as boon.chainSpark.desc; keep numbers exactly."
+	},
+	"boon.chainSpark.evo.desc": {
+		"note": "Effect line of \"Storm Crown\", the evolved form of the boon \"Chain Spark\" (Evolution draft card, build list). Terse game-rules style; keep numbers exactly. A \"nova\" is a burst that wipes nearby enemy bullets; \"bolts\", \"shards\" and \"sparks\" are small projectiles."
+	},
+	"boon.chainSpark.evo.name": {
+		"note": "Name of the evolved form of the boon \"Chain Spark\" (at level III it turns into this stronger version; effect: \"Sparks hop 4 times, hit harder and fork\"). Shown on the Evolution draft card and in toasts. Short and dramatic, title case; glossary term.",
+		"max": 20
+	},
+	"boon.chainSpark.icon": {
+		"note": "Icon label of the boon \"Chain Spark\": 3-letter abbreviation drawn inside a tiny 26 px icon square (12 px text) in the owned-items row and the build list. Use at most 3 Latin letters, or 1-2 characters in Chinese / Japanese / Korean / Thai / Hindi / Arabic; any short, recognisable abbreviation of the name works (it doesn't have to match the English letters).",
+		"max": 3
+	},
+	"boon.chainSpark.name": {
+		"note": "Name of a boon (a power-up kept for the rest of the run, picked from a draft of cards); its effect: \"Kills arc a spark to the nearest enemy\". Shown as a draft card's one-line title (24 px text on a 240 px card, no wrapping), in toasts, and in the build list. Short and flavourful, title case; glossary term.",
+		"max": 20
+	},
+	"boon.composure.desc": {
+		"note": "Effect line of the boon \"Composure\" on its draft card (wraps over two or three lines of a 240 px card) and in the build list. Terse game-rules style: keep numbers, % and units (\"s\" = seconds) exactly. A \"heart\" is one unit of health; \"combo\" the kill-streak multiplier; \"graze\" a bullet skimming past without hitting."
+	},
+	"boon.composure.icon": {
+		"note": "Icon label of the boon \"Composure\": 3-letter abbreviation drawn inside a tiny 26 px icon square (12 px text) in the owned-items row and the build list. Use at most 3 Latin letters, or 1-2 characters in Chinese / Japanese / Korean / Thai / Hindi / Arabic; any short, recognisable abbreviation of the name works (it doesn't have to match the English letters).",
+		"max": 3
+	},
+	"boon.composure.name": {
+		"note": "Name of a boon (a power-up kept for the rest of the run, picked from a draft of cards); its effect: \"Hits cut your combo half as much\". Shown as a draft card's one-line title (24 px text on a 240 px card, no wrapping), in toasts, and in the build list. Short and flavourful, title case; glossary term.",
+		"max": 20
+	},
+	"boon.daredevil.desc": {
+		"note": "Effect line of the boon \"Daredevil\" on its draft card (wraps over two or three lines of a 240 px card) and in the build list. Terse game-rules style: keep numbers, % and units (\"s\" = seconds) exactly. A \"heart\" is one unit of health; \"combo\" the kill-streak multiplier; \"graze\" a bullet skimming past without hitting."
+	},
+	"boon.daredevil.desc.2": {
+		"note": "Effect line of the boon \"Daredevil\" at level II (shown on its Upgrade draft card, with the level I line under it as \"was: ...\"). Same terse style as boon.daredevil.desc; keep numbers exactly."
+	},
+	"boon.daredevil.evo.desc": {
+		"note": "Effect line of \"Thrill Seeker\", the evolved form of the boon \"Daredevil\" (Evolution draft card, build list). Terse game-rules style; keep numbers exactly. A \"nova\" is a burst that wipes nearby enemy bullets; \"bolts\", \"shards\" and \"sparks\" are small projectiles."
+	},
+	"boon.daredevil.evo.name": {
+		"note": "Name of the evolved form of the boon \"Daredevil\" (at level III it turns into this stronger version; effect: \"Every 8 grazes release a ring of bolts\"). Shown on the Evolution draft card and in toasts. Short and dramatic, title case; glossary term.",
+		"max": 20
+	},
+	"boon.daredevil.icon": {
+		"note": "Icon label of the boon \"Daredevil\": 3-letter abbreviation drawn inside a tiny 26 px icon square (12 px text) in the owned-items row and the build list. Use at most 3 Latin letters, or 1-2 characters in Chinese / Japanese / Korean / Thai / Hindi / Arabic; any short, recognisable abbreviation of the name works (it doesn't have to match the English letters).",
+		"max": 3
+	},
+	"boon.daredevil.name": {
+		"note": "Name of a boon (a power-up kept for the rest of the run, picked from a draft of cards); its effect: \"Grazes count from farther away\". Shown as a draft card's one-line title (24 px text on a 240 px card, no wrapping), in toasts, and in the build list. Short and flavourful, title case; glossary term.",
+		"max": 20
+	},
+	"boon.deepFlask.desc": {
+		"note": "Effect line of the boon \"Deep Flask\" on its draft card (wraps over two or three lines of a 240 px card) and in the build list. Terse game-rules style: keep numbers, % and units (\"s\" = seconds) exactly. A \"heart\" is one unit of health; \"combo\" the kill-streak multiplier; \"graze\" a bullet skimming past without hitting."
+	},
+	"boon.deepFlask.desc.2": {
+		"note": "Effect line of the boon \"Deep Flask\" at level II (shown on its Upgrade draft card, with the level I line under it as \"was: ...\"). Same terse style as boon.deepFlask.desc; keep numbers exactly."
+	},
+	"boon.deepFlask.evo.desc": {
+		"note": "Effect line of \"Overflowing\", the evolved form of the boon \"Deep Flask\" (Evolution draft card, build list). Terse game-rules style; keep numbers exactly. A \"nova\" is a burst that wipes nearby enemy bullets; \"bolts\", \"shards\" and \"sparks\" are small projectiles."
+	},
+	"boon.deepFlask.evo.name": {
+		"note": "Name of the evolved form of the boon \"Deep Flask\" (at level III it turns into this stronger version; effect: \"Drinking releases a nova that clears bullets\"). Shown on the Evolution draft card and in toasts. Short and dramatic, title case; glossary term.",
+		"max": 20
+	},
+	"boon.deepFlask.icon": {
+		"note": "Icon label of the boon \"Deep Flask\": 3-letter abbreviation drawn inside a tiny 26 px icon square (12 px text) in the owned-items row and the build list. Use at most 3 Latin letters, or 1-2 characters in Chinese / Japanese / Korean / Thai / Hindi / Arabic; any short, recognisable abbreviation of the name works (it doesn't have to match the English letters).",
+		"max": 3
+	},
+	"boon.deepFlask.name": {
+		"note": "Name of a boon (a power-up kept for the rest of the run, picked from a draft of cards); its effect: \"+1 flask charge\". Shown as a draft card's one-line title (24 px text on a 240 px card, no wrapping), in toasts, and in the build list. Short and flavourful, title case; glossary term.",
+		"max": 20
+	},
+	"boon.emberWake.desc": {
+		"note": "Effect line of the boon \"Ember Wake\" on its draft card (wraps over two or three lines of a 240 px card) and in the build list. Terse game-rules style: keep numbers, % and units (\"s\" = seconds) exactly. A \"heart\" is one unit of health; \"combo\" the kill-streak multiplier; \"graze\" a bullet skimming past without hitting."
+	},
+	"boon.emberWake.icon": {
+		"note": "Icon label of the boon \"Ember Wake\": 3-letter abbreviation drawn inside a tiny 26 px icon square (12 px text) in the owned-items row and the build list. Use at most 3 Latin letters, or 1-2 characters in Chinese / Japanese / Korean / Thai / Hindi / Arabic; any short, recognisable abbreviation of the name works (it doesn't have to match the English letters).",
+		"max": 3
+	},
+	"boon.emberWake.name": {
+		"note": "Name of a boon (a power-up kept for the rest of the run, picked from a draft of cards); its effect: \"Rolling fires a ring of bolts\". Shown as a draft card's one-line title (24 px text on a 240 px card, no wrapping), in toasts, and in the build list. Short and flavourful, title case; glossary term.",
+		"max": 20
+	},
+	"boon.hearty.desc": {
+		"note": "Effect line of the boon \"Hearty\" on its draft card (wraps over two or three lines of a 240 px card) and in the build list. Terse game-rules style: keep numbers, % and units (\"s\" = seconds) exactly. A \"heart\" is one unit of health; \"combo\" the kill-streak multiplier; \"graze\" a bullet skimming past without hitting."
+	},
+	"boon.hearty.desc.2": {
+		"note": "Effect line of the boon \"Hearty\" at level II (shown on its Upgrade draft card, with the level I line under it as \"was: ...\"). Same terse style as boon.hearty.desc; keep numbers exactly."
+	},
+	"boon.hearty.evo.desc": {
+		"note": "Effect line of \"Lionheart\", the evolved form of the boon \"Hearty\" (Evolution draft card, build list). Terse game-rules style; keep numbers exactly. A \"nova\" is a burst that wipes nearby enemy bullets; \"bolts\", \"shards\" and \"sparks\" are small projectiles."
+	},
+	"boon.hearty.evo.name": {
+		"note": "Name of the evolved form of the boon \"Hearty\" (at level III it turns into this stronger version; effect: \"+3 hearts; a perfect room heals half a heart\"). Shown on the Evolution draft card and in toasts. Short and dramatic, title case; glossary term.",
+		"max": 20
+	},
+	"boon.hearty.icon": {
+		"note": "Icon label of the boon \"Hearty\": 3-letter abbreviation drawn inside a tiny 26 px icon square (12 px text) in the owned-items row and the build list. Use at most 3 Latin letters, or 1-2 characters in Chinese / Japanese / Korean / Thai / Hindi / Arabic; any short, recognisable abbreviation of the name works (it doesn't have to match the English letters).",
+		"max": 3
+	},
+	"boon.hearty.name": {
+		"note": "Name of a boon (a power-up kept for the rest of the run, picked from a draft of cards); its effect: \"+1 heart\". Shown as a draft card's one-line title (24 px text on a 240 px card, no wrapping), in toasts, and in the build list. Short and flavourful, title case; glossary term.",
+		"max": 20
+	},
+	"boon.lingering.desc": {
+		"note": "Effect line of the boon \"Lingering\" on its draft card (wraps over two or three lines of a 240 px card) and in the build list. Terse game-rules style: keep numbers, % and units (\"s\" = seconds) exactly. A \"heart\" is one unit of health; \"combo\" the kill-streak multiplier; \"graze\" a bullet skimming past without hitting."
+	},
+	"boon.lingering.desc.2": {
+		"note": "Effect line of the boon \"Lingering\" at level II (shown on its Upgrade draft card, with the level I line under it as \"was: ...\"). Same terse style as boon.lingering.desc; keep numbers exactly."
+	},
+	"boon.lingering.evo.desc": {
+		"note": "Effect line of \"Momentum\", the evolved form of the boon \"Lingering\" (Evolution draft card, build list). Terse game-rules style; keep numbers exactly. A \"nova\" is a burst that wipes nearby enemy bullets; \"bolts\", \"shards\" and \"sparks\" are small projectiles."
+	},
+	"boon.lingering.evo.name": {
+		"note": "Name of the evolved form of the boon \"Lingering\" (at level III it turns into this stronger version; effect: \"Combo lasts 12 s; each combo tier fires soul shards\"). Shown on the Evolution draft card and in toasts. Short and dramatic, title case; glossary term.",
+		"max": 20
+	},
+	"boon.lingering.icon": {
+		"note": "Icon label of the boon \"Lingering\": 3-letter abbreviation drawn inside a tiny 26 px icon square (12 px text) in the owned-items row and the build list. Use at most 3 Latin letters, or 1-2 characters in Chinese / Japanese / Korean / Thai / Hindi / Arabic; any short, recognisable abbreviation of the name works (it doesn't have to match the English letters).",
+		"max": 3
+	},
+	"boon.lingering.name": {
+		"note": "Name of a boon (a power-up kept for the rest of the run, picked from a draft of cards); its effect: \"Combo lasts 9 s instead of 6 s\". Shown as a draft card's one-line title (24 px text on a 240 px card, no wrapping), in toasts, and in the build list. Short and flavourful, title case; glossary term.",
+		"max": 20
+	},
+	"boon.piercingArrows.desc": {
+		"note": "Effect line of the boon \"Piercing Arrows\" on its draft card (wraps over two or three lines of a 240 px card) and in the build list. Terse game-rules style: keep numbers, % and units (\"s\" = seconds) exactly. A \"heart\" is one unit of health; \"combo\" the kill-streak multiplier; \"graze\" a bullet skimming past without hitting."
+	},
+	"boon.piercingArrows.desc.2": {
+		"note": "Effect line of the boon \"Piercing Arrows\" at level II (shown on its Upgrade draft card, with the level I line under it as \"was: ...\"). Same terse style as boon.piercingArrows.desc; keep numbers exactly."
+	},
+	"boon.piercingArrows.evo.desc": {
+		"note": "Effect line of \"Ricochet\", the evolved form of the boon \"Piercing Arrows\" (Evolution draft card, build list). Terse game-rules style; keep numbers exactly. A \"nova\" is a burst that wipes nearby enemy bullets; \"bolts\", \"shards\" and \"sparks\" are small projectiles."
+	},
+	"boon.piercingArrows.evo.name": {
+		"note": "Name of the evolved form of the boon \"Piercing Arrows\" (at level III it turns into this stronger version; effect: \"An arrow's last pierce on a kill splits it in two\"). Shown on the Evolution draft card and in toasts. Short and dramatic, title case; glossary term.",
+		"max": 20
+	},
+	"boon.piercingArrows.icon": {
+		"note": "Icon label of the boon \"Piercing Arrows\": 3-letter abbreviation drawn inside a tiny 26 px icon square (12 px text) in the owned-items row and the build list. Use at most 3 Latin letters, or 1-2 characters in Chinese / Japanese / Korean / Thai / Hindi / Arabic; any short, recognisable abbreviation of the name works (it doesn't have to match the English letters).",
+		"max": 3
+	},
+	"boon.piercingArrows.name": {
+		"note": "Name of a boon (a power-up kept for the rest of the run, picked from a draft of cards); its effect: \"Arrows pierce one more enemy\". Shown as a draft card's one-line title (24 px text on a 240 px card, no wrapping), in toasts, and in the build list. Short and flavourful, title case; glossary term.",
+		"max": 20
+	},
+	"boon.rarity.common": {
+		"note": "Boon rarity shown on a draft card: the most frequent tier (bone-coloured cards).",
+		"max": 12
+	},
+	"boon.rarity.legendary": {
+		"note": "Boon rarity shown on a draft card: the top tier (gold cards with a special reveal).",
+		"max": 12
+	},
+	"boon.rarity.rare": {
+		"note": "Boon rarity shown on a draft card: the middle tier (blood-red cards).",
+		"max": 12
+	},
+	"boon.sharpened.desc": {
+		"note": "Effect line of the boon \"Sharpened\" on its draft card (wraps over two or three lines of a 240 px card) and in the build list. Terse game-rules style: keep numbers, % and units (\"s\" = seconds) exactly. A \"heart\" is one unit of health; \"combo\" the kill-streak multiplier; \"graze\" a bullet skimming past without hitting."
+	},
+	"boon.sharpened.desc.2": {
+		"note": "Effect line of the boon \"Sharpened\" at level II (shown on its Upgrade draft card, with the level I line under it as \"was: ...\"). Same terse style as boon.sharpened.desc; keep numbers exactly."
+	},
+	"boon.sharpened.evo.desc": {
+		"note": "Effect line of \"Executioner\", the evolved form of the boon \"Sharpened\" (Evolution draft card, build list). Terse game-rules style; keep numbers exactly. A \"nova\" is a burst that wipes nearby enemy bullets; \"bolts\", \"shards\" and \"sparks\" are small projectiles."
+	},
+	"boon.sharpened.evo.name": {
+		"note": "Name of the evolved form of the boon \"Sharpened\" (at level III it turns into this stronger version; effect: \"+75% damage; enemies at 20% health die on the next hit\"). Shown on the Evolution draft card and in toasts. Short and dramatic, title case; glossary term.",
+		"max": 20
+	},
+	"boon.sharpened.icon": {
+		"note": "Icon label of the boon \"Sharpened\": 3-letter abbreviation drawn inside a tiny 26 px icon square (12 px text) in the owned-items row and the build list. Use at most 3 Latin letters, or 1-2 characters in Chinese / Japanese / Korean / Thai / Hindi / Arabic; any short, recognisable abbreviation of the name works (it doesn't have to match the English letters).",
+		"max": 3
+	},
+	"boon.sharpened.name": {
+		"note": "Name of a boon (a power-up kept for the rest of the run, picked from a draft of cards); its effect: \"+25% weapon damage\". Shown as a draft card's one-line title (24 px text on a 240 px card, no wrapping), in toasts, and in the build list. Short and flavourful, title case; glossary term.",
+		"max": 20
+	},
+	"boon.slippery.desc": {
+		"note": "Effect line of the boon \"Slippery\" on its draft card (wraps over two or three lines of a 240 px card) and in the build list. Terse game-rules style: keep numbers, % and units (\"s\" = seconds) exactly. A \"heart\" is one unit of health; \"combo\" the kill-streak multiplier; \"graze\" a bullet skimming past without hitting."
+	},
+	"boon.slippery.desc.2": {
+		"note": "Effect line of the boon \"Slippery\" at level II (shown on its Upgrade draft card, with the level I line under it as \"was: ...\"). Same terse style as boon.slippery.desc; keep numbers exactly."
+	},
+	"boon.slippery.evo.desc": {
+		"note": "Effect line of \"Phantom Step\", the evolved form of the boon \"Slippery\" (Evolution draft card, build list). Terse game-rules style; keep numbers exactly. A \"nova\" is a burst that wipes nearby enemy bullets; \"bolts\", \"shards\" and \"sparks\" are small projectiles."
+	},
+	"boon.slippery.evo.name": {
+		"note": "Name of the evolved form of the boon \"Slippery\" (at level III it turns into this stronger version; effect: \"Double roll invulnerability; bullets you roll through vanish\"). Shown on the Evolution draft card and in toasts. Short and dramatic, title case; glossary term.",
+		"max": 20
+	},
+	"boon.slippery.icon": {
+		"note": "Icon label of the boon \"Slippery\": 3-letter abbreviation drawn inside a tiny 26 px icon square (12 px text) in the owned-items row and the build list. Use at most 3 Latin letters, or 1-2 characters in Chinese / Japanese / Korean / Thai / Hindi / Arabic; any short, recognisable abbreviation of the name works (it doesn't have to match the English letters).",
+		"max": 3
+	},
+	"boon.slippery.name": {
+		"note": "Name of a boon (a power-up kept for the rest of the run, picked from a draft of cards); its effect: \"+50% roll invulnerability\". Shown as a draft card's one-line title (24 px text on a 240 px card, no wrapping), in toasts, and in the build list. Short and flavourful, title case; glossary term.",
+		"max": 20
+	},
+	"boon.soulShards.desc": {
+		"note": "Effect line of the boon \"Soul Shards\" on its draft card (wraps over two or three lines of a 240 px card) and in the build list. Terse game-rules style: keep numbers, % and units (\"s\" = seconds) exactly. A \"heart\" is one unit of health; \"combo\" the kill-streak multiplier; \"graze\" a bullet skimming past without hitting."
+	},
+	"boon.soulShards.desc.2": {
+		"note": "Effect line of the boon \"Soul Shards\" at level II (shown on its Upgrade draft card, with the level I line under it as \"was: ...\"). Same terse style as boon.soulShards.desc; keep numbers exactly."
+	},
+	"boon.soulShards.evo.desc": {
+		"note": "Effect line of \"Soul Swarm\", the evolved form of the boon \"Soul Shards\" (Evolution draft card, build list). Terse game-rules style; keep numbers exactly. A \"nova\" is a burst that wipes nearby enemy bullets; \"bolts\", \"shards\" and \"sparks\" are small projectiles."
+	},
+	"boon.soulShards.evo.name": {
+		"note": "Name of the evolved form of the boon \"Soul Shards\" (at level III it turns into this stronger version; effect: \"4 shards that seek and pierce\"). Shown on the Evolution draft card and in toasts. Short and dramatic, title case; glossary term.",
+		"max": 20
+	},
+	"boon.soulShards.icon": {
+		"note": "Icon label of the boon \"Soul Shards\": 3-letter abbreviation drawn inside a tiny 26 px icon square (12 px text) in the owned-items row and the build list. Use at most 3 Latin letters, or 1-2 characters in Chinese / Japanese / Korean / Thai / Hindi / Arabic; any short, recognisable abbreviation of the name works (it doesn't have to match the English letters).",
+		"max": 3
+	},
+	"boon.soulShards.name": {
+		"note": "Name of a boon (a power-up kept for the rest of the run, picked from a draft of cards); its effect: \"Kills release 2 shards at the nearest enemies\". Shown as a draft card's one-line title (24 px text on a 240 px card, no wrapping), in toasts, and in the build list. Short and flavourful, title case; glossary term.",
+		"max": 20
+	},
+	"boon.swiftStrikes.desc": {
+		"note": "Effect line of the boon \"Swift Strikes\" on its draft card (wraps over two or three lines of a 240 px card) and in the build list. Terse game-rules style: keep numbers, % and units (\"s\" = seconds) exactly. A \"heart\" is one unit of health; \"combo\" the kill-streak multiplier; \"graze\" a bullet skimming past without hitting."
+	},
+	"boon.swiftStrikes.desc.2": {
+		"note": "Effect line of the boon \"Swift Strikes\" at level II (shown on its Upgrade draft card, with the level I line under it as \"was: ...\"). Same terse style as boon.swiftStrikes.desc; keep numbers exactly."
+	},
+	"boon.swiftStrikes.evo.desc": {
+		"note": "Effect line of \"Flurry\", the evolved form of the boon \"Swift Strikes\" (Evolution draft card, build list). Terse game-rules style; keep numbers exactly. A \"nova\" is a burst that wipes nearby enemy bullets; \"bolts\", \"shards\" and \"sparks\" are small projectiles."
+	},
+	"boon.swiftStrikes.evo.name": {
+		"note": "Name of the evolved form of the boon \"Swift Strikes\" (at level III it turns into this stronger version; effect: \"40% faster; finishers release a crescent of bolts\"). Shown on the Evolution draft card and in toasts. Short and dramatic, title case; glossary term.",
+		"max": 20
+	},
+	"boon.swiftStrikes.icon": {
+		"note": "Icon label of the boon \"Swift Strikes\": 3-letter abbreviation drawn inside a tiny 26 px icon square (12 px text) in the owned-items row and the build list. Use at most 3 Latin letters, or 1-2 characters in Chinese / Japanese / Korean / Thai / Hindi / Arabic; any short, recognisable abbreviation of the name works (it doesn't have to match the English letters).",
+		"max": 3
+	},
+	"boon.swiftStrikes.name": {
+		"note": "Name of a boon (a power-up kept for the rest of the run, picked from a draft of cards); its effect: \"Attacks recover 20% faster\". Shown as a draft card's one-line title (24 px text on a 240 px card, no wrapping), in toasts, and in the build list. Short and flavourful, title case; glossary term.",
+		"max": 20
+	},
+	"boon.volatile.desc": {
+		"note": "Effect line of the boon \"Volatile\" on its draft card (wraps over two or three lines of a 240 px card) and in the build list. Terse game-rules style: keep numbers, % and units (\"s\" = seconds) exactly. A \"heart\" is one unit of health; \"combo\" the kill-streak multiplier; \"graze\" a bullet skimming past without hitting."
+	},
+	"boon.volatile.desc.2": {
+		"note": "Effect line of the boon \"Volatile\" at level II (shown on its Upgrade draft card, with the level I line under it as \"was: ...\"). Same terse style as boon.volatile.desc; keep numbers exactly."
+	},
+	"boon.volatile.evo.desc": {
+		"note": "Effect line of \"Cataclysm\", the evolved form of the boon \"Volatile\" (Evolution draft card, build list). Terse game-rules style; keep numbers exactly. A \"nova\" is a burst that wipes nearby enemy bullets; \"bolts\", \"shards\" and \"sparks\" are small projectiles."
+	},
+	"boon.volatile.evo.name": {
+		"note": "Name of the evolved form of the boon \"Volatile\" (at level III it turns into this stronger version; effect: \"16 piercing bolts\"). Shown on the Evolution draft card and in toasts. Short and dramatic, title case; glossary term.",
+		"max": 20
+	},
+	"boon.volatile.icon": {
+		"note": "Icon label of the boon \"Volatile\": 3-letter abbreviation drawn inside a tiny 26 px icon square (12 px text) in the owned-items row and the build list. Use at most 3 Latin letters, or 1-2 characters in Chinese / Japanese / Korean / Thai / Hindi / Arabic; any short, recognisable abbreviation of the name works (it doesn't have to match the English letters).",
+		"max": 3
+	},
+	"boon.volatile.name": {
+		"note": "Name of a boon (a power-up kept for the rest of the run, picked from a draft of cards); its effect: \"Enemies you kill burst into a ring of 8 bolts\". Shown as a draft card's one-line title (24 px text on a 240 px card, no wrapping), in toasts, and in the build list. Short and flavourful, title case; glossary term.",
+		"max": 20
+	},
+	"boon.warding.desc": {
+		"note": "Effect line of the boon \"Warding\" on its draft card (wraps over two or three lines of a 240 px card) and in the build list. Terse game-rules style: keep numbers, % and units (\"s\" = seconds) exactly. A \"heart\" is one unit of health; \"combo\" the kill-streak multiplier; \"graze\" a bullet skimming past without hitting."
+	},
+	"boon.warding.desc.2": {
+		"note": "Effect line of the boon \"Warding\" at level II (shown on its Upgrade draft card, with the level I line under it as \"was: ...\"). Same terse style as boon.warding.desc; keep numbers exactly."
+	},
+	"boon.warding.evo.desc": {
+		"note": "Effect line of \"Bulwark\", the evolved form of the boon \"Warding\" (Evolution draft card, build list). Terse game-rules style; keep numbers exactly. A \"nova\" is a burst that wipes nearby enemy bullets; \"bolts\", \"shards\" and \"sparks\" are small projectiles."
+	},
+	"boon.warding.evo.name": {
+		"note": "Name of the evolved form of the boon \"Warding\" (at level III it turns into this stronger version; effect: \"A breaking pip releases a nova that clears bullets\"). Shown on the Evolution draft card and in toasts. Short and dramatic, title case; glossary term.",
+		"max": 20
+	},
+	"boon.warding.icon": {
+		"note": "Icon label of the boon \"Warding\": 3-letter abbreviation drawn inside a tiny 26 px icon square (12 px text) in the owned-items row and the build list. Use at most 3 Latin letters, or 1-2 characters in Chinese / Japanese / Korean / Thai / Hindi / Arabic; any short, recognisable abbreviation of the name works (it doesn't have to match the English letters).",
+		"max": 3
+	},
+	"boon.warding.name": {
+		"note": "Name of a boon (a power-up kept for the rest of the run, picked from a draft of cards); its effect: \"1 armor pip, refilled in every room\". Shown as a draft card's one-line title (24 px text on a 240 px card, no wrapping), in toasts, and in the build list. Short and flavourful, title case; glossary term.",
+		"max": 20
+	},
+	"boost.aegis.desc": {
+		"note": "Effect line of the boost \"Aegis\" in its pickup toast. Terse; keep numbers, % and \"s\" (seconds) exactly. An \"armor pip\" absorbs one hit."
+	},
+	"boost.aegis.icon": {
+		"note": "Icon label of the boost \"Aegis\": drawn in a small square of the in-run boost row (top left) beside its timer bar. At most 3 Latin letters, or 1-2 characters in other scripts.",
+		"max": 3
+	},
+	"boost.aegis.name": {
+		"note": "Name of a boost (a temporary power-up dropped by killed enemies, picked up by walking over it); its effect: \"+1 armor pip for 45 s or one hit\". Shown in the pickup toast \"{name}: {desc}\". One word, title case; glossary term."
+	},
+	"boost.frenzy.desc": {
+		"note": "Effect line of the boost \"Frenzy\" in its pickup toast. Terse; keep numbers, % and \"s\" (seconds) exactly. An \"armor pip\" absorbs one hit."
+	},
+	"boost.frenzy.icon": {
+		"note": "Icon label of the boost \"Frenzy\": drawn in a small square of the in-run boost row (top left) beside its timer bar. At most 3 Latin letters, or 1-2 characters in other scripts.",
+		"max": 3
+	},
+	"boost.frenzy.name": {
+		"note": "Name of a boost (a temporary power-up dropped by killed enemies, picked up by walking over it); its effect: \"30% faster attacks for 30 s\". Shown in the pickup toast \"{name}: {desc}\". One word, title case; glossary term."
+	},
+	"boost.fury.desc": {
+		"note": "Effect line of the boost \"Fury\" in its pickup toast. Terse; keep numbers, % and \"s\" (seconds) exactly. An \"armor pip\" absorbs one hit."
+	},
+	"boost.fury.icon": {
+		"note": "Icon label of the boost \"Fury\": drawn in a small square of the in-run boost row (top left) beside its timer bar. At most 3 Latin letters, or 1-2 characters in other scripts.",
+		"max": 3
+	},
+	"boost.fury.name": {
+		"note": "Name of a boost (a temporary power-up dropped by killed enemies, picked up by walking over it); its effect: \"+50% damage for 30 s\". Shown in the pickup toast \"{name}: {desc}\". One word, title case; glossary term."
+	},
+	"boost.quickstep.desc": {
+		"note": "Effect line of the boost \"Quickstep\" in its pickup toast. Terse; keep numbers, % and \"s\" (seconds) exactly. An \"armor pip\" absorbs one hit."
+	},
+	"boost.quickstep.icon": {
+		"note": "Icon label of the boost \"Quickstep\": drawn in a small square of the in-run boost row (top left) beside its timer bar. At most 3 Latin letters, or 1-2 characters in other scripts.",
+		"max": 3
+	},
+	"boost.quickstep.name": {
+		"note": "Name of a boost (a temporary power-up dropped by killed enemies, picked up by walking over it); its effect: \"+30% walk speed for 30 s\". Shown in the pickup toast \"{name}: {desc}\". One word, title case; glossary term."
+	},
+	"boss.1.name": {
+		"note": "Generic name for the boss of act 1 (Roman numeral act number). Reserved: required by the theme contract inherited from the original web build, but not shown in the current Roblox build; translate it as a plain name anyway."
+	},
+	"boss.2.name": {
+		"note": "Generic name for the boss of act 2 (Roman numeral act number). Reserved: required by the theme contract inherited from the original web build, but not shown in the current Roblox build; translate it as a plain name anyway."
+	},
+	"boss.3.name": {
+		"note": "Generic name for the boss of act 3 (Roman numeral act number). Reserved: required by the theme contract inherited from the original web build, but not shown in the current Roblox build; translate it as a plain name anyway."
+	},
+	"boss.4.name": {
+		"note": "Generic name for the boss of act 4 (Roman numeral act number). Reserved: required by the theme contract inherited from the original web build, but not shown in the current Roblox build; translate it as a plain name anyway."
+	},
+	"boss.5.name": {
+		"note": "Generic name for the boss of the endgame act. Reserved: required by the theme contract inherited from the original web build, but not shown in the current Roblox build; translate it as a plain name anyway."
+	},
+	"boss.act1.name": {
+		"note": "Proper name of the first boss: a huge, thorny plant demon, a mother figure (the tutorial calls the boss \"her\"). Shown in title-size text in the boss health bar at the top centre of the screen and in the run-over line \"{name} defeated\". Translate the meaning (a creature name), not phonetically; keep it consistent with the glossary."
+	},
+	"boss.demonlord.name": {
+		"note": "Proper name of the alternate boss of endless boss floors: a towering demon king. Shown in the boss health bar at the top centre and in the run-over line \"{name} defeated\". Keep the definite article if the language has one; keep it consistent with the glossary."
+	},
+	"boss.hud.phase": {
+		"note": "Boss health bar label beside the boss's name, showing which attack phase the boss is in. {phase} is a Roman numeral (I, II, III).",
+		"max": 18,
+		"example": {
+			"phase": "II"
+		}
+	},
+	"breakable.barrel.name": {
+		"note": "Name of a breakable decor object (a wooden barrel the player can smash for a few points). Reserved: required by the theme contract inherited from the original web build, but not shown in the current Roblox build; translate it as a plain name anyway."
+	},
+	"breakable.crate.name": {
+		"note": "Name of a breakable decor object (a wooden crate the player can smash for a few points). Reserved: required by the theme contract inherited from the original web build, but not shown in the current Roblox build; translate it as a plain name anyway."
+	},
+	"class.hexblade.name": {
+		"note": "Character class name: a sword-fighter who uses curses. Title case. Reserved: required by the theme contract inherited from the original web build, but not shown in the current Roblox build; translate it as a plain name anyway."
+	},
+	"class.pyromancer.name": {
+		"note": "Character class name: a fire mage. Title case. Reserved: required by the theme contract inherited from the original web build, but not shown in the current Roblox build; translate it as a plain name anyway."
+	},
+	"class.ranger.name": {
+		"note": "Character class name: a bow-wielding scout. Title case. Reserved: required by the theme contract inherited from the original web build, but not shown in the current Roblox build; translate it as a plain name anyway."
+	},
+	"class.tinkerer.name": {
+		"note": "Character class name: a gadget-building inventor. Title case. Reserved: required by the theme contract inherited from the original web build, but not shown in the current Roblox build; translate it as a plain name anyway."
+	},
+	"class.vanguard.name": {
+		"note": "Character class name: a armored front-line fighter. Title case. Reserved: required by the theme contract inherited from the original web build, but not shown in the current Roblox build; translate it as a plain name anyway."
+	},
+	"curse.frailty.desc": {
+		"note": "Effect line of the curse \"Frailty\". Terse game-rules style; keep numbers and signs exactly (\"-1 heart\" = one heart less; \"s\" = seconds)."
+	},
+	"curse.frailty.icon": {
+		"note": "Icon label of the curse \"Frailty\": 3-letter abbreviation drawn inside a tiny 26 px icon square (12 px text) in the owned-items row and the build list. Use at most 3 Latin letters, or 1-2 characters in Chinese / Japanese / Korean / Thai / Hindi / Arabic; any short, recognisable abbreviation of the name works (it doesn't have to match the English letters).",
+		"max": 3
+	},
+	"curse.frailty.name": {
+		"note": "Name of a curse (a handicap the player may accept at a shrine to raise the score multiplier); its effect: \"-1 heart\". Shown in a toast and the owned-items list. One word, title case; glossary term."
+	},
+	"curse.haste.desc": {
+		"note": "Effect line of the curse \"Haste\". Terse game-rules style; keep numbers and signs exactly (\"-1 heart\" = one heart less; \"s\" = seconds)."
+	},
+	"curse.haste.icon": {
+		"note": "Icon label of the curse \"Haste\": 3-letter abbreviation drawn inside a tiny 26 px icon square (12 px text) in the owned-items row and the build list. Use at most 3 Latin letters, or 1-2 characters in Chinese / Japanese / Korean / Thai / Hindi / Arabic; any short, recognisable abbreviation of the name works (it doesn't have to match the English letters).",
+		"max": 3
+	},
+	"curse.haste.name": {
+		"note": "Name of a curse (a handicap the player may accept at a shrine to raise the score multiplier); its effect: \"Enemy bullets 15% faster\". Shown in a toast and the owned-items list. One word, title case; glossary term."
+	},
+	"curse.impatience.desc": {
+		"note": "Effect line of the curse \"Impatience\". Terse game-rules style; keep numbers and signs exactly (\"-1 heart\" = one heart less; \"s\" = seconds)."
+	},
+	"curse.impatience.icon": {
+		"note": "Icon label of the curse \"Impatience\": 3-letter abbreviation drawn inside a tiny 26 px icon square (12 px text) in the owned-items row and the build list. Use at most 3 Latin letters, or 1-2 characters in Chinese / Japanese / Korean / Thai / Hindi / Arabic; any short, recognisable abbreviation of the name works (it doesn't have to match the English letters).",
+		"max": 3
+	},
+	"curse.impatience.name": {
+		"note": "Name of a curse (a handicap the player may accept at a shrine to raise the score multiplier); its effect: \"Combo lasts 2 s less\". Shown in a toast and the owned-items list. One word, title case; glossary term."
+	},
+	"curse.thirst.desc": {
+		"note": "Effect line of the curse \"Thirst\". Terse game-rules style; keep numbers and signs exactly (\"-1 heart\" = one heart less; \"s\" = seconds)."
+	},
+	"curse.thirst.icon": {
+		"note": "Icon label of the curse \"Thirst\": 3-letter abbreviation drawn inside a tiny 26 px icon square (12 px text) in the owned-items row and the build list. Use at most 3 Latin letters, or 1-2 characters in Chinese / Japanese / Korean / Thai / Hindi / Arabic; any short, recognisable abbreviation of the name works (it doesn't have to match the English letters).",
+		"max": 3
+	},
+	"curse.thirst.name": {
+		"note": "Name of a curse (a handicap the player may accept at a shrine to raise the score multiplier); its effect: \"-1 flask charge\". Shown in a toast and the owned-items list. One word, title case; glossary term."
+	},
+	"daily.board.empty": {
+		"note": "Leaderboards panel line when nobody has played this daily yet."
+	},
+	"daily.board.friendsEmpty": {
+		"note": "Leaderboards panel line (Friends filter) when none of the player's friends has played this daily."
+	},
+	"daily.board.mine": {
+		"note": "The player's own line under a daily board. {score} is a formatted score, {floor} a floor number, {standing} is the player's already formatted standing on today's board (e.g. \"#37\", \"top 5%\" or \"#37 of 1,204\").",
+		"example": {
+			"score": "12,040",
+			"floor": 9,
+			"standing": "#37 of 1,204"
+		}
+	},
+	"daily.board.mineNone": {
+		"note": "The player's own line under a daily board when they haven't played it."
+	},
+	"daily.board.mineScore": {
+		"note": "The player's own line under a daily board (standing unknown). {score} is a formatted score, {floor} a floor number.",
+		"example": {
+			"score": "12,040",
+			"floor": 9
+		}
+	},
+	"daily.board.pending": {
+		"note": "Leaderboards panel status while friends' scores are still being looked up. {n} is how many are left (a number). Lowercase start in English.",
+		"example": {
+			"n": 4
+		}
+	},
+	"daily.board.total": {
+		"note": "Leaderboards panel, Daily tab: how many players are on today's board. {total} is a formatted number (it can be 1). Written as label: value; keep that form rather than a plural sentence.",
+		"example": {
+			"total": "1,204"
+		}
+	},
+	"daily.card.best": {
+		"note": "Daily card line: the player's best score today and standing. {score} is a formatted score; {standing} is the player's already formatted standing on today's board (e.g. \"#37\", \"top 5%\" or \"#37 of 1,204\").",
+		"example": {
+			"score": "12,040",
+			"standing": "#37"
+		}
+	},
+	"daily.card.bestScore": {
+		"note": "Daily card line: the player's best score today (standing unknown). {score} is a formatted score.",
+		"example": {
+			"score": "12,040"
+		}
+	},
+	"daily.card.boss": {
+		"note": "Daily card line: which boss waits on the first boss floor. {floor} is a floor number (5); {name} the boss's name.",
+		"example": {
+			"floor": 5,
+			"name": "The Demon Lord"
+		}
+	},
+	"daily.card.loading": {
+		"note": "Daily card line while today's daily is being fetched from the server."
+	},
+	"daily.card.notPlayed": {
+		"note": "Daily card line: the player hasn't played today's daily yet."
+	},
+	"daily.card.play": {
+		"note": "Daily card button (162 x 40 px): play today's daily alone.",
+		"max": 14
+	},
+	"daily.card.playParty": {
+		"note": "Daily card button (162 x 40 px): create a friends lobby to play today's daily together.",
+		"max": 18
+	},
+	"daily.card.resetsIn": {
+		"note": "Daily card line: countdown until the next daily. {time} is a formatted countdown like 5:42:10 (hours:minutes:seconds).",
+		"example": {
+			"time": "5:42:10"
+		}
+	},
+	"daily.card.roster": {
+		"note": "Daily card line: the enemy kinds of today's floor 1. {names} is a list of enemy names joined with \" · \".",
+		"example": {
+			"names": "Swarmer · Caster"
+		}
+	},
+	"daily.card.title": {
+		"note": "Title of the main menu's Daily card for the Daily dungeon (one shared dungeon per day, the same for every player, with its own day-scoped leaderboards). {label} is the daily's running number (e.g. 312) and {date} today's short date, already formatted by daily.date (e.g. \"Sat Nov 1\"). \"DAILY\" is all caps in English; keep capitals if the script has them.",
+		"example": {
+			"label": 312,
+			"date": "Sat Nov 1"
+		}
+	},
+	"daily.date.format": {
+		"note": "Order of today's short date on the Daily card. {weekday} is a short weekday name (daily.date.weekday.*), {month} a short month name (daily.date.month.*), {date} the day of the month (a number). Reorder to the language's usual date order and add any particles it needs (e.g. Japanese \"{month}{date}日({weekday})\").",
+		"example": {
+			"weekday": "Sat",
+			"month": "Nov",
+			"date": 1
+		}
+	},
+	"daily.date.month.apr": {
+		"note": "Short (abbreviated) month name for April, used inside the Daily card's date (daily.date). Use the language's standard short form (or the month number style if that is usual).",
+		"max": 6
+	},
+	"daily.date.month.aug": {
+		"note": "Short (abbreviated) month name for August, used inside the Daily card's date (daily.date). Use the language's standard short form (or the month number style if that is usual).",
+		"max": 6
+	},
+	"daily.date.month.dec": {
+		"note": "Short (abbreviated) month name for December, used inside the Daily card's date (daily.date). Use the language's standard short form (or the month number style if that is usual).",
+		"max": 6
+	},
+	"daily.date.month.feb": {
+		"note": "Short (abbreviated) month name for February, used inside the Daily card's date (daily.date). Use the language's standard short form (or the month number style if that is usual).",
+		"max": 6
+	},
+	"daily.date.month.jan": {
+		"note": "Short (abbreviated) month name for January, used inside the Daily card's date (daily.date). Use the language's standard short form (or the month number style if that is usual).",
+		"max": 6
+	},
+	"daily.date.month.jul": {
+		"note": "Short (abbreviated) month name for July, used inside the Daily card's date (daily.date). Use the language's standard short form (or the month number style if that is usual).",
+		"max": 6
+	},
+	"daily.date.month.jun": {
+		"note": "Short (abbreviated) month name for June, used inside the Daily card's date (daily.date). Use the language's standard short form (or the month number style if that is usual).",
+		"max": 6
+	},
+	"daily.date.month.mar": {
+		"note": "Short (abbreviated) month name for March, used inside the Daily card's date (daily.date). Use the language's standard short form (or the month number style if that is usual).",
+		"max": 6
+	},
+	"daily.date.month.may": {
+		"note": "Short (abbreviated) month name for May, used inside the Daily card's date (daily.date). Use the language's standard short form (or the month number style if that is usual).",
+		"max": 6
+	},
+	"daily.date.month.nov": {
+		"note": "Short (abbreviated) month name for November, used inside the Daily card's date (daily.date). Use the language's standard short form (or the month number style if that is usual).",
+		"max": 6
+	},
+	"daily.date.month.oct": {
+		"note": "Short (abbreviated) month name for October, used inside the Daily card's date (daily.date). Use the language's standard short form (or the month number style if that is usual).",
+		"max": 6
+	},
+	"daily.date.month.sep": {
+		"note": "Short (abbreviated) month name for September, used inside the Daily card's date (daily.date). Use the language's standard short form (or the month number style if that is usual).",
+		"max": 6
+	},
+	"daily.date.weekday.fri": {
+		"note": "Short (abbreviated) weekday name for Friday, used inside the Daily card's date (daily.date). Use the language's standard short form.",
+		"max": 5
+	},
+	"daily.date.weekday.mon": {
+		"note": "Short (abbreviated) weekday name for Monday, used inside the Daily card's date (daily.date). Use the language's standard short form.",
+		"max": 5
+	},
+	"daily.date.weekday.sat": {
+		"note": "Short (abbreviated) weekday name for Saturday, used inside the Daily card's date (daily.date). Use the language's standard short form.",
+		"max": 5
+	},
+	"daily.date.weekday.sun": {
+		"note": "Short (abbreviated) weekday name for Sunday, used inside the Daily card's date (daily.date). Use the language's standard short form.",
+		"max": 5
+	},
+	"daily.date.weekday.thu": {
+		"note": "Short (abbreviated) weekday name for Thursday, used inside the Daily card's date (daily.date). Use the language's standard short form.",
+		"max": 5
+	},
+	"daily.date.weekday.tue": {
+		"note": "Short (abbreviated) weekday name for Tuesday, used inside the Daily card's date (daily.date). Use the language's standard short form.",
+		"max": 5
+	},
+	"daily.date.weekday.wed": {
+		"note": "Short (abbreviated) weekday name for Wednesday, used inside the Daily card's date (daily.date). Use the language's standard short form.",
+		"max": 5
+	},
+	"daily.lobby.world": {
+		"note": "Label of the lobby screen's mode toggle (endless dungeon or today's daily).",
+		"max": 10
+	},
+	"daily.lobby.world.daily": {
+		"note": "Lobby mode button (110 x 30 px) / name: today's Daily dungeon. Same word as the Daily used elsewhere (glossary).",
+		"max": 10
+	},
+	"daily.lobby.world.endless": {
+		"note": "Lobby mode button (110 x 30 px) / name: the normal endless dungeon (a new random dungeon each run, as deep as you can go).",
+		"max": 10
+	},
+	"daily.lobby.worldShown": {
+		"note": "Lobby screen line for non-hosts: the lobby's mode. {world} is daily.lobby.world.endless or .daily (already translated).",
+		"example": {
+			"world": "Daily"
+		}
+	},
+	"daily.podium.mine": {
+		"note": "Line under yesterday's podium: where the player finished. {standing} is the player's already formatted standing on yesterday's board (e.g. \"#37\", \"top 5%\" or \"#37 of 1,204\").",
+		"example": {
+			"standing": "top 12%"
+		}
+	},
+	"daily.podium.mineScore": {
+		"note": "Line under yesterday's podium: the player's score yesterday (standing unknown). {score} is a formatted score.",
+		"example": {
+			"score": "9,870"
+		}
+	},
+	"daily.podium.row": {
+		"note": "One row of yesterday's top-3 podium on the main menu. {place} is the already formatted place (daily.standing.rank, e.g. \"#1\"); {name} a player's Roblox display name (never translated). Usually only the order changes.",
+		"example": {
+			"place": "#1",
+			"name": "KnightOwl"
+		}
+	},
+	"daily.podium.title": {
+		"note": "Title of yesterday's top-3 podium on the main menu. {label} is yesterday's daily number.",
+		"example": {
+			"label": 311
+		}
+	},
+	"daily.result.best": {
+		"note": "Run-over Daily block: today's best (unchanged by this run). {score} is a formatted score.",
+		"example": {
+			"score": "12,040"
+		}
+	},
+	"daily.result.entrants": {
+		"note": "Run-over Daily block, under the percentile: how many players took part today. {total} is a formatted number (it can be 1). Written as label: value; keep that form rather than a plural sentence.",
+		"example": {
+			"total": "1,204"
+		}
+	},
+	"daily.result.firstBest": {
+		"note": "Run-over Daily block: the player's first score of the day. {new} is a formatted score.",
+		"example": {
+			"new": "12,040"
+		}
+	},
+	"daily.result.improved": {
+		"note": "Run-over Daily block: today's best went from old to new. {old} and {new} are formatted scores. \"->\" means \"changed to\".",
+		"example": {
+			"old": "9,800",
+			"new": "12,040"
+		}
+	},
+	"daily.result.percentile": {
+		"note": "Run-over Daily block: the player's percentile today. {percent} is a number; use the language's percent format.",
+		"example": {
+			"percent": 5
+		}
+	},
+	"daily.result.rank": {
+		"note": "Run-over Daily block: the player's rank today. {rank} is a number.",
+		"example": {
+			"rank": 37
+		}
+	},
+	"daily.result.rankOf": {
+		"note": "Run-over Daily block: rank out of all players today. {rank} and {total} are numbers.",
+		"example": {
+			"rank": 37,
+			"total": "1,204"
+		}
+	},
+	"daily.result.retry": {
+		"note": "Run-over button: play today's daily again.",
+		"max": 18
+	},
+	"daily.result.saved": {
+		"note": "Run-over Daily block chip: the score was saved on today's board.",
+		"max": 10
+	},
+	"daily.result.title": {
+		"note": "Heading of the Daily block on the run-over panel. {label} is the daily's number. \"Daily\" refers to the Daily dungeon.",
+		"example": {
+			"label": 312
+		}
+	},
+	"daily.result.unsaved": {
+		"note": "Run-over Daily block chip: the score was not saved.",
+		"max": 14
+	},
+	"daily.standing.percentile": {
+		"note": "A standing as a percentile (\"in the top 5 %\"), inserted into other lines as {standing}; lowercase in English because it sits mid-line. {percent} is a number. Use the language's percent format.",
+		"example": {
+			"percent": 5
+		}
+	},
+	"daily.standing.rank": {
+		"note": "A standing on the Daily board as a rank, inserted into other lines as {standing}. Usually unchanged.",
+		"max": 8,
+		"example": {
+			"rank": 37
+		}
+	},
+	"daily.standing.rankOf": {
+		"note": "A standing as rank out of total players, inserted into other lines as {standing}. {rank} and {total} are numbers ({total} formatted).",
+		"example": {
+			"rank": 37,
+			"total": "1,204"
+		}
+	},
+	"daily.tab.alltime": {
+		"note": "Leaderboards panel scope tab (170 px): the all-time endless board.",
+		"max": 14
+	},
+	"daily.tab.friends": {
+		"note": "Leaderboards panel filter tab (126 px): only the player's Roblox friends.",
+		"max": 10
+	},
+	"daily.tab.global": {
+		"note": "Leaderboards panel filter tab (126 px): everyone's scores.",
+		"max": 10
+	},
+	"daily.tab.today": {
+		"note": "Leaderboards panel scope tab (170 px): today's daily board.",
+		"max": 14
+	},
+	"daily.tab.yesterday": {
+		"note": "Leaderboards panel scope tab (170 px): yesterday's daily board.",
+		"max": 14
+	},
+	"duo.blazingTrail.desc": {
+		"note": "Effect line of the Duo boon \"Blazing Trail\" on its draft card (wraps) and in the build list. Terse game-rules style; keep numbers exactly. \"Embers\" here are burning patches on the floor; a \"spark\" jumps between enemies; a \"burst\" is a ring of bolts."
+	},
+	"duo.blazingTrail.icon": {
+		"note": "Icon label of the Duo boon \"Blazing Trail\": 3-letter abbreviation drawn inside a tiny 26 px icon square (12 px text) in the owned-items row and the build list. Use at most 3 Latin letters, or 1-2 characters in Chinese / Japanese / Korean / Thai / Hindi / Arabic; any short, recognisable abbreviation of the name works (it doesn't have to match the English letters).",
+		"max": 3
+	},
+	"duo.blazingTrail.name": {
+		"note": "Name of a Duo boon (a special boon offered when the player owns two boons that combine); its effect: \"Rolls leave a trail of embers\". Shown as a draft card's one-line title (24 px text on a 240 px card, no wrapping), in toasts and the build list. Title case; glossary term.",
+		"max": 20
+	},
+	"duo.chainReaction.desc": {
+		"note": "Effect line of the Duo boon \"Chain Reaction\" on its draft card (wraps) and in the build list. Terse game-rules style; keep numbers exactly. \"Embers\" here are burning patches on the floor; a \"spark\" jumps between enemies; a \"burst\" is a ring of bolts."
+	},
+	"duo.chainReaction.icon": {
+		"note": "Icon label of the Duo boon \"Chain Reaction\": 3-letter abbreviation drawn inside a tiny 26 px icon square (12 px text) in the owned-items row and the build list. Use at most 3 Latin letters, or 1-2 characters in Chinese / Japanese / Korean / Thai / Hindi / Arabic; any short, recognisable abbreviation of the name works (it doesn't have to match the English letters).",
+		"max": 3
+	},
+	"duo.chainReaction.name": {
+		"note": "Name of a Duo boon (a special boon offered when the player owns two boons that combine); its effect: \"Spark kills burst; burst kills spark\". Shown as a draft card's one-line title (24 px text on a 240 px card, no wrapping), in toasts and the build list. Title case; glossary term.",
+		"max": 20
+	},
+	"duo.closeCall.desc": {
+		"note": "Effect line of the Duo boon \"Close Call\" on its draft card (wraps) and in the build list. Terse game-rules style; keep numbers exactly. \"Embers\" here are burning patches on the floor; a \"spark\" jumps between enemies; a \"burst\" is a ring of bolts."
+	},
+	"duo.closeCall.icon": {
+		"note": "Icon label of the Duo boon \"Close Call\": 3-letter abbreviation drawn inside a tiny 26 px icon square (12 px text) in the owned-items row and the build list. Use at most 3 Latin letters, or 1-2 characters in Chinese / Japanese / Korean / Thai / Hindi / Arabic; any short, recognisable abbreviation of the name works (it doesn't have to match the English letters).",
+		"max": 3
+	},
+	"duo.closeCall.name": {
+		"note": "Name of a Duo boon (a special boon offered when the player owns two boons that combine); its effect: \"Every 3rd graze releases a shard\". Shown as a draft card's one-line title (24 px text on a 240 px card, no wrapping), in toasts and the build list. Title case; glossary term.",
+		"max": 20
+	},
+	"duo.conductor.desc": {
+		"note": "Effect line of the Duo boon \"Conductor\" on its draft card (wraps) and in the build list. Terse game-rules style; keep numbers exactly. \"Embers\" here are burning patches on the floor; a \"spark\" jumps between enemies; a \"burst\" is a ring of bolts."
+	},
+	"duo.conductor.icon": {
+		"note": "Icon label of the Duo boon \"Conductor\": 3-letter abbreviation drawn inside a tiny 26 px icon square (12 px text) in the owned-items row and the build list. Use at most 3 Latin letters, or 1-2 characters in Chinese / Japanese / Korean / Thai / Hindi / Arabic; any short, recognisable abbreviation of the name works (it doesn't have to match the English letters).",
+		"max": 3
+	},
+	"duo.conductor.name": {
+		"note": "Name of a Duo boon (a special boon offered when the player owns two boons that combine); its effect: \"Arrows passing through an enemy spark\". Shown as a draft card's one-line title (24 px text on a 240 px card, no wrapping), in toasts and the build list. Title case; glossary term.",
+		"max": 20
+	},
+	"duo.fireArrows.desc": {
+		"note": "Effect line of the Duo boon \"Fire Arrows\" on its draft card (wraps) and in the build list. Terse game-rules style; keep numbers exactly. \"Embers\" here are burning patches on the floor; a \"spark\" jumps between enemies; a \"burst\" is a ring of bolts."
+	},
+	"duo.fireArrows.icon": {
+		"note": "Icon label of the Duo boon \"Fire Arrows\": 3-letter abbreviation drawn inside a tiny 26 px icon square (12 px text) in the owned-items row and the build list. Use at most 3 Latin letters, or 1-2 characters in Chinese / Japanese / Korean / Thai / Hindi / Arabic; any short, recognisable abbreviation of the name works (it doesn't have to match the English letters).",
+		"max": 3
+	},
+	"duo.fireArrows.name": {
+		"note": "Name of a Duo boon (a special boon offered when the player owns two boons that combine); its effect: \"Arrows leave burning embers on the floor\". Shown as a draft card's one-line title (24 px text on a 240 px card, no wrapping), in toasts and the build list. Title case; glossary term.",
+		"max": 20
+	},
+	"duo.goldRush.desc": {
+		"note": "Effect line of the Duo boon \"Gold Rush\" on its draft card (wraps) and in the build list. Terse game-rules style; keep numbers exactly. \"Embers\" here are burning patches on the floor; a \"spark\" jumps between enemies; a \"burst\" is a ring of bolts."
+	},
+	"duo.goldRush.icon": {
+		"note": "Icon label of the Duo boon \"Gold Rush\": 3-letter abbreviation drawn inside a tiny 26 px icon square (12 px text) in the owned-items row and the build list. Use at most 3 Latin letters, or 1-2 characters in Chinese / Japanese / Korean / Thai / Hindi / Arabic; any short, recognisable abbreviation of the name works (it doesn't have to match the English letters).",
+		"max": 3
+	},
+	"duo.goldRush.name": {
+		"note": "Name of a Duo boon (a special boon offered when the player owns two boons that combine); its effect: \"Kills at combo x3 or more score 25% more\". Shown as a draft card's one-line title (24 px text on a 240 px card, no wrapping), in toasts and the build list. Title case; glossary term.",
+		"max": 20
+	},
+	"duo.shrapnel.desc": {
+		"note": "Effect line of the Duo boon \"Shrapnel\" on its draft card (wraps) and in the build list. Terse game-rules style; keep numbers exactly. \"Embers\" here are burning patches on the floor; a \"spark\" jumps between enemies; a \"burst\" is a ring of bolts."
+	},
+	"duo.shrapnel.icon": {
+		"note": "Icon label of the Duo boon \"Shrapnel\": 3-letter abbreviation drawn inside a tiny 26 px icon square (12 px text) in the owned-items row and the build list. Use at most 3 Latin letters, or 1-2 characters in Chinese / Japanese / Korean / Thai / Hindi / Arabic; any short, recognisable abbreviation of the name works (it doesn't have to match the English letters).",
+		"max": 3
+	},
+	"duo.shrapnel.name": {
+		"note": "Name of a Duo boon (a special boon offered when the player owns two boons that combine); its effect: \"Burst bolts hit harder and pierce\". Shown as a draft card's one-line title (24 px text on a 240 px card, no wrapping), in toasts and the build list. Title case; glossary term.",
+		"max": 20
+	},
+	"duo.stormBlade.desc": {
+		"note": "Effect line of the Duo boon \"Storm Blade\" on its draft card (wraps) and in the build list. Terse game-rules style; keep numbers exactly. \"Embers\" here are burning patches on the floor; a \"spark\" jumps between enemies; a \"burst\" is a ring of bolts."
+	},
+	"duo.stormBlade.icon": {
+		"note": "Icon label of the Duo boon \"Storm Blade\": 3-letter abbreviation drawn inside a tiny 26 px icon square (12 px text) in the owned-items row and the build list. Use at most 3 Latin letters, or 1-2 characters in Chinese / Japanese / Korean / Thai / Hindi / Arabic; any short, recognisable abbreviation of the name works (it doesn't have to match the English letters).",
+		"max": 3
+	},
+	"duo.stormBlade.name": {
+		"note": "Name of a Duo boon (a special boon offered when the player owns two boons that combine); its effect: \"Finishers and every 5th arrow hit spark\". Shown as a draft card's one-line title (24 px text on a 240 px card, no wrapping), in toasts and the build list. Title case; glossary term.",
+		"max": 20
+	},
+	"duo.unshaken.desc": {
+		"note": "Effect line of the Duo boon \"Unshaken\" on its draft card (wraps) and in the build list. Terse game-rules style; keep numbers exactly. \"Embers\" here are burning patches on the floor; a \"spark\" jumps between enemies; a \"burst\" is a ring of bolts."
+	},
+	"duo.unshaken.icon": {
+		"note": "Icon label of the Duo boon \"Unshaken\": 3-letter abbreviation drawn inside a tiny 26 px icon square (12 px text) in the owned-items row and the build list. Use at most 3 Latin letters, or 1-2 characters in Chinese / Japanese / Korean / Thai / Hindi / Arabic; any short, recognisable abbreviation of the name works (it doesn't have to match the English letters).",
+		"max": 3
+	},
+	"duo.unshaken.name": {
+		"note": "Name of a Duo boon (a special boon offered when the player owns two boons that combine); its effect: \"Hits on armor never cut your combo\". Shown as a draft card's one-line title (24 px text on a 240 px card, no wrapping), in toasts and the build list. Title case; glossary term.",
+		"max": 20
+	},
+	"ember.name": {
+		"note": "Name of the Ember resource: a limited charge (2 per floor) that the player burns to wipe every enemy bullet off the screen. Here it is the row label in the in-run status panel (top left), in an 86 px label column beside the charge pips. Glossary term: use the same word everywhere.",
+		"max": 8
+	},
+	"enemy.bruiser.name": {
+		"note": "Enemy type name: a big, heavy melee brute that slams the ground and sends shockwaves. Shown in the stage card's roster line (the enemy kinds of a floor, joined with \" · \") and the main menu's Daily card. Singular noun, title case, used as a proper name; keep it short. Glossary term."
+	},
+	"enemy.caster.name": {
+		"note": "Enemy type name: a stationary turret enemy that casts bullet patterns. Shown in the stage card's roster line (the enemy kinds of a floor, joined with \" · \") and the main menu's Daily card. Singular noun, title case, used as a proper name; keep it short. Glossary term."
+	},
+	"enemy.dummy.name": {
+		"note": "Enemy type name: the stationary practice target of the tutorial (a straw training dummy). Shown in the stage card's roster line (the enemy kinds of a floor, joined with \" · \") and the main menu's Daily card. Singular noun, title case, used as a proper name; keep it short. Glossary term."
+	},
+	"enemy.imp.name": {
+		"note": "Enemy type name: a small, quick demon that blinks (teleports) next to the player, landing inside a warning ring. Shown in the stage card's roster line (the enemy kinds of a floor, joined with \" · \") and the main menu's Daily card. Singular noun, title case, used as a proper name; keep it short. Glossary term."
+	},
+	"enemy.slime.name": {
+		"note": "Enemy type name: a blob enemy that leaves harmful goo on the floor and splits into small slimelets when it dies (internal id slime, English name Ooze). Shown in the stage card's roster line (the enemy kinds of a floor, joined with \" · \") and the main menu's Daily card. Singular noun, title case, used as a proper name; keep it short. Glossary term."
+	},
+	"enemy.sniper.name": {
+		"note": "Enemy type name: an enemy that aims a long, telegraphed shot (an orange aim line) and then fires. Shown in the stage card's roster line (the enemy kinds of a floor, joined with \" · \") and the main menu's Daily card. Singular noun, title case, used as a proper name; keep it short. Glossary term."
+	},
+	"enemy.sprayer.name": {
+		"note": "Enemy type name: a stationary turret enemy that sprays waves of bullets. Shown in the stage card's roster line (the enemy kinds of a floor, joined with \" · \") and the main menu's Daily card. Singular noun, title case, used as a proper name; keep it short. Glossary term."
+	},
+	"enemy.summoner.name": {
+		"note": "Enemy type name: a support enemy that calls in minions; killing it makes its summons wither. Shown in the stage card's roster line (the enemy kinds of a floor, joined with \" · \") and the main menu's Daily card. Singular noun, title case, used as a proper name; keep it short. Glossary term."
+	},
+	"enemy.swarmer.name": {
+		"note": "Enemy type name: a small melee enemy that rushes the player in packs; the first enemy of every run. Shown in the stage card's roster line (the enemy kinds of a floor, joined with \" · \") and the main menu's Daily card. Singular noun, title case, used as a proper name; keep it short. Glossary term."
+	},
+	"fx.parry.count": {
+		"note": "Parry flash written on the floor when a parry erased several bullets: {text} is the parry word (fx.parry.text, e.g. \"PARRY!\", already translated) and {n} the number of bullets erased; the x means \"times\". Usually unchanged.",
+		"max": 13,
+		"example": {
+			"text": "PARRY!",
+			"n": 5
+		}
+	},
+	"fx.parry.text": {
+		"note": "Flash written on the floor when the player parries (blocks bullets with a well-timed guard). ALL CAPS exclamation, one word; keep capitals if the script has them. The game may append \" x5\" (fx.parry.count) after it.",
+		"max": 10
+	},
+	"fx.settings.close": {
+		"note": "Button that closes the settings panel.",
+		"max": 12
+	},
+	"fx.settings.damageNumbers": {
+		"note": "Options screen, Juice tab: row label for floating damage numbers over hit enemies (On / Off). Label column 210 px; the row's choice buttons sit to its right.",
+		"max": 24
+	},
+	"fx.settings.freezeFrame": {
+		"note": "Options screen, Juice tab: row label for a brief freeze of the action when an enemy is killed (On / Off). Label column 210 px; the row's choice buttons sit to its right.",
+		"max": 24
+	},
+	"fx.settings.healthBars": {
+		"note": "Options screen, Juice tab: row label for when enemy health bars are shown. Label column 210 px; the row's choice buttons sit to its right.",
+		"max": 24
+	},
+	"fx.settings.healthBars.always": {
+		"note": "Options screen: a choice button (about 92 x 30 px) for enemy health bars: always visible. One short word.",
+		"max": 10
+	},
+	"fx.settings.healthBars.off": {
+		"note": "Options screen: a choice button (about 92 x 30 px) for enemy health bars: hidden. One short word.",
+		"max": 10
+	},
+	"fx.settings.healthBars.onDamage": {
+		"note": "Options screen: a choice button (about 92 x 30 px) for enemy health bars: visible only after the enemy is hit. One short word.",
+		"max": 10
+	},
+	"fx.settings.hint": {
+		"note": "Hint at the bottom of the effects settings panel. {key} is a key or button name such as \"O\" or \"B\" (from the player's bindings; currently always English).",
+		"example": {
+			"key": "O"
+		}
+	},
+	"fx.settings.off": {
+		"note": "Options screen: a choice button (about 92 x 30 px) that turns a setting off (shared by many rows). One short word.",
+		"max": 10
+	},
+	"fx.settings.offline": {
+		"note": "Warning line in the settings screen when changes can't be saved yet because the game server hasn't answered."
+	},
+	"fx.settings.on": {
+		"note": "Options screen: a choice button (about 92 x 30 px) that turns a setting on (shared by many rows). One short word.",
+		"max": 10
+	},
+	"fx.settings.particles": {
+		"note": "Options screen, Juice tab: row label for the amount of particle effects. Label column 210 px; the row's choice buttons sit to its right.",
+		"max": 24
+	},
+	"fx.settings.particles.high": {
+		"note": "Options screen: a choice button (about 92 x 30 px) for particle effects: many. One short word.",
+		"max": 10
+	},
+	"fx.settings.particles.low": {
+		"note": "Options screen: a choice button (about 92 x 30 px) for particle effects: few. One short word.",
+		"max": 10
+	},
+	"fx.settings.particles.normal": {
+		"note": "Options screen: a choice button (about 92 x 30 px) for particle effects: the default amount. One short word.",
+		"max": 10
+	},
+	"fx.settings.particles.off": {
+		"note": "Options screen: a choice button (about 92 x 30 px) for particle effects: none. One short word.",
+		"max": 10
+	},
+	"fx.settings.reducedMotion": {
+		"note": "Options screen, Juice tab: row label for the accessibility option that reduces flashing, shaking and moving effects (On / Off). Label column 210 px; the row's choice buttons sit to its right.",
+		"max": 24
+	},
+	"fx.settings.reset": {
+		"note": "Button that resets all effects settings to their default values.",
+		"max": 24
+	},
+	"fx.settings.roomClear": {
+		"note": "Options screen, Juice tab: row label for the short celebration (slow motion and a CLEAR stamp) when a room is cleared of enemies. Label column 210 px; the row's choice buttons sit to its right.",
+		"max": 24
+	},
+	"fx.settings.screenShake": {
+		"note": "Options screen, Juice tab: row label for camera shake on hits and explosions. Label column 210 px; the row's choice buttons sit to its right.",
+		"max": 24
+	},
+	"fx.settings.system": {
+		"note": "Small note beside the Reduced motion row showing the device's own accessibility setting. {value} is the word On or Off (fx.settings.on / off, already translated).",
+		"example": {
+			"value": "On"
+		}
+	},
+	"fx.settings.title": {
+		"note": "Title of the visual-effects settings panel. \"Juice\" is game-design slang for screen shake, flashes, particles and similar feedback effects; translate the idea (\"Effects\", \"Game feel\") rather than the fruit. Same term as options.tab.juice."
+	},
+	"game.title": {
+		"note": "The game's title, shown large on the main menu header and in the run info line of the pause menu. Keep \"Kaleb-Vale\" exactly as written (the brand: never translate or transliterate it); \"Project\" may be translated, and may move to fit the language's word order."
+	},
+	"hud.armor": {
+		"note": "Label for armor pips (extra hit protection shown as small pips). Reserved: kept in the theme contract from the original web build; the current Roblox build does not show it.",
+		"max": 8
+	},
+	"hud.best.new": {
+		"note": "Compact (phone) score-panel target row once the personal best is beaten. ALL CAPS in English; keep capitals if the script has them. Very short.",
+		"max": 12
+	},
+	"hud.best.over": {
+		"note": "Score panel target row (about 138 px, shrinks to fit) once the player has beaten their personal best: by how many points. {points} is a formatted number. ALL CAPS in English.",
+		"max": 24,
+		"example": {
+			"points": "3,120"
+		}
+	},
+	"hud.best.shout": {
+		"note": "Celebration shout written large on the floor (and stamped) the moment the player beats their personal best score. ALL CAPS exclamation; keep capitals if the script has them.",
+		"max": 14
+	},
+	"hud.best.toGo": {
+		"note": "Score panel target row (top right, a slot about 138 px wide; the text shrinks to fit): how many points the player still needs to beat their personal best. {points} is a formatted number. ALL CAPS in English; keep capitals if the script has them.",
+		"max": 22,
+		"example": {
+			"points": "12,340"
+		}
+	},
+	"hud.best.toGoShort": {
+		"note": "Compact form of the points-to-best row on phones (120 px): a minus sign and the points gap. No words: normally unchanged.",
+		"max": 9,
+		"example": {
+			"points": "12,340"
+		}
+	},
+	"hud.build.title": {
+		"note": "Title of the list of boons the player owns (pause menu and run-over panel): their \"build\" for this run.",
+		"max": 12
+	},
+	"hud.combo.best": {
+		"note": "Shown in the combo tier slot (score panel) after a combo lapses: the streak's peak multiplier. {combo} is a decimal like 3.4. ALL CAPS in English.",
+		"max": 18,
+		"example": {
+			"combo": "3.4"
+		}
+	},
+	"hud.combo.bestNamed": {
+		"note": "Run-over panel, Max combo line: the run's best combo. {combo} is the peak multiplier already formatted (hud.combo, e.g. \"x3.4\"); {name} the combo tier it reached (hud.combo.rampage ... unstoppable, ALL CAPS, drawn in the tier's colour). Usually only the order changes.",
+		"example": {
+			"combo": "x3.4",
+			"name": "CARNAGE"
+		}
+	},
+	"hud.combo.carnage": {
+		"note": "Combo tier name for a x3 kill-streak multiplier: an arcade-style hype word, ALL CAPS. Shown in the combo row of the score panel (a slot about 98 px wide, text shrinks) and as a big shout written on the floor during combat. Keep it all caps and punchy (one word if possible).",
+		"max": 12
+	},
+	"hud.combo.dominating": {
+		"note": "Combo tier name for a x4 kill-streak multiplier: an arcade-style hype word, ALL CAPS. Shown in the combo row of the score panel (a slot about 98 px wide, text shrinks) and as a big shout written on the floor during combat. Keep it all caps and punchy (one word if possible).",
+		"max": 13
+	},
+	"hud.combo.lost": {
+		"note": "Shown in the combo tier slot (score panel, about 98 px wide) when the player gets hit and the combo breaks. ALL CAPS in English; keep capitals if the script has them.",
+		"max": 14
+	},
+	"hud.combo.rampage": {
+		"note": "Combo tier name for a x2 kill-streak multiplier: an arcade-style hype word, ALL CAPS. Shown in the combo row of the score panel (a slot about 98 px wide, text shrinks) and as a big shout written on the floor during combat. Keep it all caps and punchy (one word if possible).",
+		"max": 12
+	},
+	"hud.combo.shout": {
+		"note": "Big shout written on the floor during combat when a combo tier is reached. {name} is the tier name (hud.combo.rampage ... unstoppable, ALL CAPS, e.g. \"RAMPAGE\"). Add the exclamation the language uses (e.g. Spanish \"¡{name}!\").",
+		"max": 10,
+		"example": {
+			"name": "RAMPAGE"
+		}
+	},
+	"hud.combo.unstoppable": {
+		"note": "Combo tier name for a x5 kill-streak multiplier: an arcade-style hype word, ALL CAPS. Shown in the combo row of the score panel (a slot about 98 px wide, text shrinks) and as a big shout written on the floor during combat. Keep it all caps and punchy (one word if possible).",
+		"max": 14
+	},
+	"hud.dailyRank.chaseShort": {
+		"note": "Compact (phone) form: a minus sign and the points needed. Usually unchanged.",
+		"max": 9,
+		"example": {
+			"points": "820"
+		}
+	},
+	"hud.dailyRank.cutoff": {
+		"note": "Daily score panel target row: points needed to enter the top N of today's board. {n} is a number (e.g. 100); {points} a formatted number. ALL CAPS in English.",
+		"max": 25,
+		"example": {
+			"n": 100,
+			"points": "1,950"
+		}
+	},
+	"hud.dailyRank.friend": {
+		"note": "Daily score panel target row: the next friend ahead on today's board and the points needed to pass them. {name} is a player's display name (never translated); {points} a formatted number.",
+		"example": {
+			"name": "Alex",
+			"points": "820"
+		}
+	},
+	"hud.dailyRank.new": {
+		"note": "Compact (phone) daily target row once today's best is beaten. ALL CAPS in English; very short.",
+		"max": 13
+	},
+	"hud.dailyRank.over": {
+		"note": "Daily-run score panel target row once today's best is beaten, with the margin. {points} is a formatted number. ALL CAPS in English.",
+		"max": 31,
+		"example": {
+			"points": "910"
+		}
+	},
+	"hud.dailyRank.passed": {
+		"note": "Toast during a Daily run when the player's score passes a friend's best today. {name} is the friend's display name (never translated); {score} their formatted score.",
+		"example": {
+			"name": "Alex",
+			"score": "18,250"
+		}
+	},
+	"hud.dailyRank.rung": {
+		"note": "Daily score panel target row: the next rank to climb on today's board. {from} is the current rank, {to} the next rank (numbers after #), {points} the formatted points needed. The arrow \"->\" means \"to\". Mostly symbols: usually unchanged.",
+		"max": 35,
+		"example": {
+			"from": 41,
+			"to": 40,
+			"points": "310"
+		}
+	},
+	"hud.dailyRank.rungShort": {
+		"note": "Compact (phone) form of the next-rank row: target rank and points needed. Usually unchanged.",
+		"max": 16,
+		"example": {
+			"to": 40,
+			"points": "310"
+		}
+	},
+	"hud.dailyRank.shout": {
+		"note": "Celebration shout written on the floor when the player beats today's personal best on the Daily dungeon. ALL CAPS exclamation.",
+		"max": 20
+	},
+	"hud.dailyRank.shout.1": {
+		"note": "Shout written on the floor when the player reaches first place on today's Daily board. ALL CAPS exclamation; keep \"#1\" (or the language's short \"No. 1\").",
+		"max": 14
+	},
+	"hud.dailyRank.shout.10": {
+		"note": "Shout written on the floor when the player enters the top 10 of today's Daily board. ALL CAPS exclamation; keep the number.",
+		"max": 12
+	},
+	"hud.dailyRank.shout.100": {
+		"note": "Shout written on the floor when the player enters the top 100 of today's Daily board. ALL CAPS exclamation; keep the number.",
+		"max": 12
+	},
+	"hud.dailyRank.shout.3": {
+		"note": "Shout written on the floor when the player enters the top 3 of today's Daily board. ALL CAPS exclamation; keep the number.",
+		"max": 12
+	},
+	"hud.dailyRank.toGo": {
+		"note": "Daily-run version of the score panel target row (about 138 px, shrinks): points still needed to beat today's personal best on the Daily dungeon. {points} is a formatted number. ALL CAPS in English.",
+		"max": 29,
+		"example": {
+			"points": "4,200"
+		}
+	},
+	"hud.dailyRank.top": {
+		"note": "Daily score panel target row when the player is first on today's board. ALL CAPS in English.",
+		"max": 12
+	},
+	"hud.dailyRank.topShort": {
+		"note": "Compact (phone) form: first place. Usually unchanged.",
+		"max": 4
+	},
+	"hud.dead": {
+		"note": "Main line of the run-over panel after a solo death. {key} is a key or button name such as \"R\", \"E\", \"Space\" or \"D-pad down\" (from the player's bindings; currently always English) that starts a new run. Sentence; the dash may be replaced by the language's usual punctuation.",
+		"example": {
+			"key": "R"
+		}
+	},
+	"hud.draft.again": {
+		"note": "Line under the draft title on the second deal after a boss floor (the player gets two picks in a row).",
+		"max": 16
+	},
+	"hud.draft.duo": {
+		"note": "Banner on a Duo draft card: a special boon that combines two boons the player owns. All caps in English: keep capitals if the script has them. Very short.",
+		"max": 6
+	},
+	"hud.draft.evolve": {
+		"note": "Banner on an Evolution draft card (a boon at its top level turns into a stronger form). {boon} is the boon's name. English is all caps (EVOLVE): keep the label in capitals if the script has them.",
+		"max": 23,
+		"example": {
+			"boon": "Chain Spark"
+		}
+	},
+	"hud.draft.hint": {
+		"note": "Key hint under the draft cards. {left} and {right} are key or stick-direction names that move the selection (e.g. \"A\" / \"D\", \"Stick left\" / \"Stick right\"); {confirm} the key that takes the card (e.g. \"Click\", \"A\").",
+		"example": {
+			"left": "A",
+			"right": "D",
+			"confirm": "Click"
+		}
+	},
+	"hud.draft.level": {
+		"note": "Banner on an Upgrade draft card: the level the boon reaches. {level} is a Roman numeral (II or III).",
+		"max": 20,
+		"example": {
+			"level": "II"
+		}
+	},
+	"hud.draft.title": {
+		"note": "Title above the boon draft: after each floor the player picks one of three cards (boons = run-long power-ups). Imperative."
+	},
+	"hud.draft.wait": {
+		"note": "Placeholder shown on the draft while the cards are not dealt yet: an ellipsis. Usually unchanged.",
+		"max": 3
+	},
+	"hud.draft.waiting": {
+		"note": "Co-op line on the boon draft while teammates are still choosing their card (the game stays frozen until all have). {count} is a number (1 to 3). Written as label: value so it reads right for any number; keep that form rather than a singular / plural sentence.",
+		"example": {
+			"count": 2
+		}
+	},
+	"hud.draft.was": {
+		"note": "Small line on an Upgrade draft card under the new effect, showing the old effect. {desc} is the boon's previous effect text (e.g. \"+25% weapon damage\"). Lowercase start in English.",
+		"example": {
+			"desc": "+25% weapon damage"
+		}
+	},
+	"hud.ember": {
+		"note": "Ember charges counter. {count} is a number. Ember is the screen-clearing resource (glossary). Reserved: kept in the theme contract from the original web build; the current Roblox build does not show it.",
+		"example": {
+			"count": 2
+		}
+	},
+	"hud.ending.abandoned": {
+		"note": "How a run ended (the player quit or restarted), inserted lowercase inside the verdict line \"Run 3 (abandoned): ...\" in the info panel."
+	},
+	"hud.ending.death": {
+		"note": "How a run ended, inserted lowercase inside the verdict line \"Run 3 (death): ...\" in the info panel (bottom right). One word, lowercase if the language allows mid-sentence."
+	},
+	"hud.ending.ended": {
+		"note": "How a co-op run ended (the server stopped it), inserted lowercase inside the verdict line \"Run 3 (ended by the server): ...\" in the info panel."
+	},
+	"hud.ending.victory": {
+		"note": "How a run ended (the boss was beaten), inserted lowercase inside the verdict line \"Run 3 (victory): ...\" in the info panel."
+	},
+	"hud.flask": {
+		"note": "Row label of the healing flask charges in the in-run status panel (top left), in a fixed 86 px label column. A flask is a healing potion bottle (3 per floor). Glossary term.",
+		"max": 8
+	},
+	"hud.floor": {
+		"note": "Line under the score in the in-run score panel (top right, about 160 px wide) and in the pause menu. {floor} is the current floor number; {depth} is the difficulty tier number (1 + the bosses beaten, it rises every 5 floors). Keep both labels short.",
+		"max": 36,
+		"example": {
+			"floor": 12,
+			"depth": 3
+		}
+	},
+	"hud.gold": {
+		"note": "Amount of gold coins. {amount} is a number. Reserved: kept in the theme contract from the original web build; the current Roblox build does not show it.",
+		"example": {
+			"amount": 340
+		}
+	},
+	"hud.health": {
+		"note": "Row label of the player's hearts in the in-run status panel (top left), in a fixed 86 px label column. Standard abbreviation for hit points / health; a short word is fine.",
+		"max": 6
+	},
+	"hud.info": {
+		"note": "Run info line in the pause menu and the run-over panel; the parts are filled by the game and joined with \" · \". {title} is the game title, {place} the biome name, {seed} the already-formatted seed text (\"seed 48213\"), {dungeon} a generated dungeon name. Usually keep the order and separators.",
+		"example": {
+			"title": "Project Kaleb-Vale",
+			"place": "Ancient Halls",
+			"seed": "seed 48213",
+			"dungeon": "Hollow Keep"
+		}
+	},
+	"hud.items.more": {
+		"note": "Last cell of the owned-items row (top left) when more boons / relics than fit are owned: a plus sign and the number of hidden items. Usually unchanged.",
+		"max": 10,
+		"example": {
+			"count": 3
+		}
+	},
+	"hud.leaderboard.close": {
+		"note": "Button that closes the leaderboards panel.",
+		"max": 12
+	},
+	"hud.leaderboard.coop": {
+		"note": "Tab of the leaderboards panel (126 px wide): the board for party (co-operative multiplayer) runs.",
+		"max": 10
+	},
+	"hud.leaderboard.empty": {
+		"note": "Status line in the leaderboards panel when the board has no verified runs yet."
+	},
+	"hud.leaderboard.floor": {
+		"note": "Floor cell of a leaderboard row (80 px column): the deepest floor reached. {floor} is a number. Lowercase in English.",
+		"max": 16,
+		"example": {
+			"floor": 17
+		}
+	},
+	"hud.leaderboard.hint": {
+		"note": "Hint at the bottom of the leaderboards panel. {key} is a key or button name such as \"R\", \"E\", \"Space\" or \"D-pad down\" (from the player's bindings; currently always English) (default B).",
+		"example": {
+			"key": "B"
+		}
+	},
+	"hud.leaderboard.loading": {
+		"note": "Status line in the leaderboards panel while the board loads."
+	},
+	"hud.leaderboard.mine": {
+		"note": "The player's own line under the board when they are outside the top rows shown. {score} is a formatted score, {floor} a floor number, {count} the number of top rows shown (e.g. 50).",
+		"example": {
+			"score": "23,410",
+			"floor": 14,
+			"count": 50
+		}
+	},
+	"hud.leaderboard.mineNone": {
+		"note": "The player's own line under the board when they have no verified run yet."
+	},
+	"hud.leaderboard.mineRanked": {
+		"note": "The player's own line under the board with their rank. {score} is a formatted score, {floor} a floor number, {rank} their position.",
+		"example": {
+			"score": "23,410",
+			"floor": 14,
+			"rank": 37
+		}
+	},
+	"hud.leaderboard.posted.failed": {
+		"note": "Suffix appended after \" · \" to the run's verdict line: sending the score to the leaderboard failed. Lowercase start, no final period."
+	},
+	"hud.leaderboard.posted.ineligible": {
+		"note": "Suffix appended after \" · \" to the run's verdict line: this run doesn't count for the leaderboard. Lowercase start, no final period."
+	},
+	"hud.leaderboard.posted.queued": {
+		"note": "Suffix appended after \" · \" to the run's verdict line: the score was sent to the leaderboard. Lowercase start, no final period."
+	},
+	"hud.leaderboard.rank": {
+		"note": "Rank cell of a leaderboard row (52 px column): a number sign and the rank. Usually unchanged; use the language's ordinal convention only if it stays as short.",
+		"max": 7,
+		"example": {
+			"rank": 4
+		}
+	},
+	"hud.leaderboard.solo": {
+		"note": "Tab of the leaderboards panel (126 px wide): the board for single-player runs.",
+		"max": 10
+	},
+	"hud.leaderboard.stale": {
+		"note": "Note in the leaderboards panel when an older, cached copy of the board is shown. Parenthetical."
+	},
+	"hud.leaderboard.title": {
+		"note": "Title of the leaderboards panel."
+	},
+	"hud.leaderboard.unavailable": {
+		"note": "Status line in the leaderboards panel when the board can't be read."
+	},
+	"hud.level": {
+		"note": "Short character-level label (\"Lv\" = level). {level} is a number. Reserved: kept in the theme contract from the original web build; the current Roblox build does not show it.",
+		"example": {
+			"level": 12
+		}
+	},
+	"hud.mana": {
+		"note": "Abbreviation for mana / magic points. Reserved: kept in the theme contract from the original web build; the current Roblox build does not show it.",
+		"max": 6
+	},
+	"hud.map.hint": {
+		"note": "Hint on the full map overlay telling which key toggles the map. {key} is a key or button name such as \"R\", \"E\", \"Space\" or \"D-pad down\" (from the player's bindings; currently always English).",
+		"example": {
+			"key": "M"
+		}
+	},
+	"hud.map.title": {
+		"note": "Title of the full-screen dungeon map overlay, and the pause menu button that opens it. One word.",
+		"max": 10
+	},
+	"hud.notice.fallback": {
+		"note": "Technical notice in the bottom-right info lines when enemies failed to load and the floor plays without them. {reason} is a short technical reason from the game (English, not translated). Lowercase start because it is a status line; a plain sentence.",
+		"example": {
+			"reason": "asset timeout"
+		}
+	},
+	"hud.pause.hint": {
+		"note": "Hint at the bottom of the pause menu. {key} is a key or button name such as \"R\", \"E\", \"Space\" or \"D-pad down\" (from the player's bindings; currently always English) (default P / Start).",
+		"example": {
+			"key": "P"
+		}
+	},
+	"hud.pause.leaderboard": {
+		"note": "Button (pause menu, tutorial outro) that opens the leaderboards panel. Plural.",
+		"max": 16
+	},
+	"hud.pause.restart": {
+		"note": "Pause menu button: abandon this run and start a new one.",
+		"max": 16
+	},
+	"hud.pause.resume": {
+		"note": "Pause menu button: close the menu and continue playing.",
+		"max": 16
+	},
+	"hud.pause.settings": {
+		"note": "Pause menu button that opens the Options screen (settings).",
+		"max": 16
+	},
+	"hud.paused": {
+		"note": "Title of the pause menu overlay."
+	},
+	"hud.restartAlt": {
+		"note": "Second, alternative key hint on the run-over panel, shown after the main \"press {key} to retry\" line. {key} is a key or button name such as \"R\", \"E\", \"Space\" or \"D-pad down\" (from the player's bindings; currently always English). Means \"or press this other key\".",
+		"example": {
+			"key": "D-pad down"
+		}
+	},
+	"hud.score": {
+		"note": "The score label: right-aligned in the in-run score panel's first row (top right), in a slot only about 56 px wide, and as a row label on the run-over panel. One very short word.",
+		"max": 7
+	},
+	"hud.score.combo": {
+		"note": "Combo multiplier as shown in the combo row, the run-over panel and a floor flash. {combo} is a decimal number like 1.3. The x means \"times\"; usually unchanged.",
+		"max": 10,
+		"example": {
+			"combo": "1.3"
+		}
+	},
+	"hud.score.maxCombo": {
+		"note": "Run-over panel row label: the highest combo multiplier reached in the run. Label column 200 px.",
+		"max": 18
+	},
+	"hud.score.pop": {
+		"note": "Points popping up in the game world over a killed enemy: a plus sign and a number. Usually unchanged (no letters).",
+		"max": 9,
+		"example": {
+			"points": 120
+		}
+	},
+	"hud.seed": {
+		"note": "Part of the run info line (pause menu and run-over panel): the dungeon's random seed. {seed} is a number. Lowercase in English because it sits mid-line.",
+		"example": {
+			"seed": 48213
+		}
+	},
+	"hud.shrine.hint": {
+		"note": "Toast hint when standing at a curse shrine. {key} is a key or button name such as \"R\", \"E\", \"Space\" or \"D-pad down\" (from the player's bindings; currently always English) (default 1 / A). A curse makes the run harder and multiplies the score by +25 %; keep \"+25%\" as is.",
+		"example": {
+			"key": "1"
+		}
+	},
+	"hud.spectate.back": {
+		"note": "Co-op spectate bar: reassures the dead player they rejoin the run when the party reaches the next floor."
+	},
+	"hud.spectate.hint": {
+		"note": "Co-op spectate bar hint: keys that switch to the next / previous living teammate. {next} and {previous} are key names (e.g. \"Click\" / \"Right click\", \"RT\" / \"LT\").",
+		"example": {
+			"next": "Click",
+			"previous": "Right click"
+		}
+	},
+	"hud.spectate.watching": {
+		"note": "Co-op spectate bar (bottom centre, 420 px) after the player died: which teammate they are watching. {name} is a player's display name (never translated); {pos} and {count} are numbers (which of the living teammates). The double spaces around the dot are deliberate spacing.",
+		"example": {
+			"name": "Alex",
+			"pos": 1,
+			"count": 3
+		}
+	},
+	"hud.spectate.watchingName": {
+		"note": "Co-op spectate bar (bottom centre): which teammate the player is watching. {name} is a player's display name (never translated).",
+		"example": {
+			"name": "Alex"
+		}
+	},
+	"hud.toast.boon": {
+		"note": "Toast (top centre) after taking a boon. {name} is the boon's name (e.g. \"Chain Spark\").",
+		"example": {
+			"name": "Chain Spark"
+		}
+	},
+	"hud.toast.boost": {
+		"note": "Toast (top centre) when the player picks up a boost (a temporary power-up). {name} is the boost's name and {desc} its effect line. Usually unchanged.",
+		"example": {
+			"name": "Fury",
+			"desc": "+50% damage for 30 s"
+		}
+	},
+	"hud.toast.curse": {
+		"note": "Toast (top centre) after accepting a curse at a shrine. {name} is the curse's name.",
+		"example": {
+			"name": "Frailty"
+		}
+	},
+	"hud.toast.duo": {
+		"note": "Toast (top centre) after taking a Duo boon. {name} is the duo's name.",
+		"example": {
+			"name": "Chain Reaction"
+		}
+	},
+	"hud.toast.evolved": {
+		"note": "Toast (top centre) after evolving a boon. {boon} is the boon's name, {evo} the name of its evolved form.",
+		"example": {
+			"boon": "Chain Spark",
+			"evo": "Storm Crown"
+		}
+	},
+	"hud.toast.fang": {
+		"note": "Toast (top centre) when the Vampire Fang relic heals. {amount} is the number of half hearts healed (always 1 today). Written as label +value (\"half hearts +1\") to avoid a singular / plural trap; keep that form.",
+		"example": {
+			"amount": 1
+		}
+	},
+	"hud.toast.relic": {
+		"note": "Toast (top centre) after picking up a relic (a permanent item for this run). {name} is the relic's name.",
+		"example": {
+			"name": "Mirror Cloak"
+		}
+	},
+	"hud.toast.secondWind": {
+		"note": "Toast (top centre) when the Second Wind relic saves the player from a lethal hit. Name of the relic as an exclamation; must match relic.secondWind.name."
+	},
+	"hud.verdict.accepted": {
+		"note": "Status line (info panel, bottom right): the server replayed and verified the run. {run} is the run number; {ending} a word from hud.ending.*; {hash} is 8 hexadecimal characters (a checksum, never translated). The game may append \" · \" and a leaderboard status.",
+		"example": {
+			"run": 3,
+			"ending": "death",
+			"hash": "9f3a61c2"
+		}
+	},
+	"hud.verdict.pending": {
+		"note": "Status line (info panel, bottom right) after a run: the score was sent to the server for checking. {run} is the run number; {ending} is a word from hud.ending.* (death, victory...). The game may append \" · \" and a leaderboard status after it.",
+		"example": {
+			"run": 3,
+			"ending": "death"
+		}
+	},
+	"hud.verdict.rejected": {
+		"note": "Status line (info panel, bottom right): the server rejected the run. {run} is the run number; {ending} a word from hud.ending.*; {code} a technical code and {reason} a technical reason, both English from the server.",
+		"example": {
+			"run": 3,
+			"ending": "death",
+			"code": "hash_mismatch",
+			"reason": "replay diverged"
+		}
+	},
+	"hud.verdict.skipped": {
+		"note": "Status line (info panel, bottom right): the run was not sent to the server. {run} is the run number; {ending} a word from hud.ending.*; {code} a technical English code (e.g. dev).",
+		"example": {
+			"run": 3,
+			"ending": "abandoned",
+			"code": "dev"
+		}
+	},
+	"hud.verdict.withPost": {
+		"note": "The run's status line (info panel and run-over panel) when the run went to the leaderboards: {verdict} is the verdict sentence (hud.verdict.*, already filled), {posted} the leaderboard status (hud.leaderboard.posted.*, lowercase start). Usually unchanged.",
+		"example": {
+			"verdict": "Run 3 (death): verified by the server (1a2b3c4d)",
+			"posted": "submitted to the leaderboard"
+		}
+	},
+	"hud.victory": {
+		"note": "Main line of the run-over panel after beating a boss to win a run. {name} is the boss's name (e.g. \"Mother Bramble\"); {key} is a key or button name such as \"R\", \"E\", \"Space\" or \"D-pad down\" (from the player's bindings; currently always English).",
+		"example": {
+			"name": "Mother Bramble",
+			"key": "R"
+		}
+	},
+	"hud.weaponSet": {
+		"note": "Label of a weapon set slot. {n} is a number (1 or 2). Reserved: kept in the theme contract from the original web build; the current Roblox build does not show it.",
+		"example": {
+			"n": 1
+		}
+	},
+	"hud.weaponSwap": {
+		"note": "Short hint under the weapon panel (bottom left) telling which key swaps weapons. {key} is a key or button name such as \"R\", \"E\", \"Space\" or \"D-pad down\" (from the player's bindings; currently always English). Very short: key name plus one word.",
+		"max": 15,
+		"example": {
+			"key": "E"
+		}
+	},
+	"input.key.Backspace": {
+		"note": "Label of a control: the Backspace key, shown as {key} in control hints (\"{key} to close\", \"Press {key}\"), in tutorial prompts and on the Options > Controls binding buttons (190 px wide). Use the name printed on keyboards in your language (often unchanged).",
+		"max": 15
+	},
+	"input.key.ButtonSelect": {
+		"note": "Label of a control: the gamepad's Select / View button, shown as {key} in control hints (\"{key} to close\", \"Press {key}\"), in tutorial prompts and on the Options > Controls binding buttons (190 px wide). The button's printed name; usually unchanged.",
+		"max": 10
+	},
+	"input.key.ButtonStart": {
+		"note": "Label of a control: the gamepad's Start / Menu button (it opens the pause menu), shown as {key} in control hints (\"{key} to close\", \"Press {key}\"), in tutorial prompts and on the Options > Controls binding buttons (190 px wide). The button's printed name; usually unchanged.",
+		"max": 9
+	},
+	"input.key.CapsLock": {
+		"note": "Label of a control: the Caps Lock key, shown as {key} in control hints (\"{key} to close\", \"Press {key}\"), in tutorial prompts and on the Options > Controls binding buttons (190 px wide). Use the name printed on keyboards in your language (often unchanged).",
+		"max": 15
+	},
+	"input.key.DPadDown": {
+		"note": "Label of a control: down on the gamepad's directional pad (D-pad), shown as {key} in control hints (\"{key} to close\", \"Press {key}\"), in tutorial prompts and on the Options > Controls binding buttons (190 px wide). Use the usual gamepad term in your language.",
+		"max": 16
+	},
+	"input.key.DPadLeft": {
+		"note": "Label of a control: left on the gamepad's directional pad (D-pad), shown as {key} in control hints (\"{key} to close\", \"Press {key}\"), in tutorial prompts and on the Options > Controls binding buttons (190 px wide). Use the usual gamepad term in your language.",
+		"max": 16
+	},
+	"input.key.DPadRight": {
+		"note": "Label of a control: right on the gamepad's directional pad (D-pad), shown as {key} in control hints (\"{key} to close\", \"Press {key}\"), in tutorial prompts and on the Options > Controls binding buttons (190 px wide). Use the usual gamepad term in your language.",
+		"max": 18
+	},
+	"input.key.DPadUp": {
+		"note": "Label of a control: up on the gamepad's directional pad (D-pad), shown as {key} in control hints (\"{key} to close\", \"Press {key}\"), in tutorial prompts and on the Options > Controls binding buttons (190 px wide). Use the usual gamepad term in your language.",
+		"max": 13
+	},
+	"input.key.Delete": {
+		"note": "Label of a control: the Delete key, shown as {key} in control hints (\"{key} to close\", \"Press {key}\"), in tutorial prompts and on the Options > Controls binding buttons (190 px wide). Use the name printed on keyboards in your language (often unchanged).",
+		"max": 10
+	},
+	"input.key.Down": {
+		"note": "Label of a control: the down arrow key, shown as {key} in control hints (\"{key} to close\", \"Press {key}\"), in tutorial prompts and on the Options > Controls binding buttons (190 px wide). Use the name printed on keyboards in your language (often unchanged).",
+		"max": 16
+	},
+	"input.key.End": {
+		"note": "Label of a control: the End key, shown as {key} in control hints (\"{key} to close\", \"Press {key}\"), in tutorial prompts and on the Options > Controls binding buttons (190 px wide). Use the name printed on keyboards in your language (often unchanged).",
+		"max": 7
+	},
+	"input.key.Escape": {
+		"note": "Label of a control: the Escape key, abbreviated as printed on keyboards, shown as {key} in control hints (\"{key} to close\", \"Press {key}\"), in tutorial prompts and on the Options > Controls binding buttons (190 px wide). Use the name printed on keyboards in your language (often unchanged).",
+		"max": 7
+	},
+	"input.key.Home": {
+		"note": "Label of a control: the Home key, shown as {key} in control hints (\"{key} to close\", \"Press {key}\"), in tutorial prompts and on the Options > Controls binding buttons (190 px wide). Use the name printed on keyboards in your language (often unchanged).",
+		"max": 8
+	},
+	"input.key.Insert": {
+		"note": "Label of a control: the Insert key, shown as {key} in control hints (\"{key} to close\", \"Press {key}\"), in tutorial prompts and on the Options > Controls binding buttons (190 px wide). Use the name printed on keyboards in your language (often unchanged).",
+		"max": 10
+	},
+	"input.key.KeypadDivide": {
+		"note": "Label of a control: the / key of the numeric keypad, shown as {key} in control hints (\"{key} to close\", \"Press {key}\"), in tutorial prompts and on the Options > Controls binding buttons (190 px wide). \"Num\" stands for the numeric keypad; keep the digit or symbol and use your keyboards' usual short prefix.",
+		"max": 9
+	},
+	"input.key.KeypadEight": {
+		"note": "Label of a control: the 8 key of the numeric keypad, shown as {key} in control hints (\"{key} to close\", \"Press {key}\"), in tutorial prompts and on the Options > Controls binding buttons (190 px wide). \"Num\" stands for the numeric keypad; keep the digit or symbol and use your keyboards' usual short prefix.",
+		"max": 9
+	},
+	"input.key.KeypadEnter": {
+		"note": "Label of a control: the Enter key of the numeric keypad, shown as {key} in control hints (\"{key} to close\", \"Press {key}\"), in tutorial prompts and on the Options > Controls binding buttons (190 px wide). \"Num\" stands for the numeric keypad; keep the digit or symbol and use your keyboards' usual short prefix.",
+		"max": 15
+	},
+	"input.key.KeypadFive": {
+		"note": "Label of a control: the 5 key of the numeric keypad, shown as {key} in control hints (\"{key} to close\", \"Press {key}\"), in tutorial prompts and on the Options > Controls binding buttons (190 px wide). \"Num\" stands for the numeric keypad; keep the digit or symbol and use your keyboards' usual short prefix.",
+		"max": 9
+	},
+	"input.key.KeypadFour": {
+		"note": "Label of a control: the 4 key of the numeric keypad, shown as {key} in control hints (\"{key} to close\", \"Press {key}\"), in tutorial prompts and on the Options > Controls binding buttons (190 px wide). \"Num\" stands for the numeric keypad; keep the digit or symbol and use your keyboards' usual short prefix.",
+		"max": 9
+	},
+	"input.key.KeypadMinus": {
+		"note": "Label of a control: the - key of the numeric keypad, shown as {key} in control hints (\"{key} to close\", \"Press {key}\"), in tutorial prompts and on the Options > Controls binding buttons (190 px wide). \"Num\" stands for the numeric keypad; keep the digit or symbol and use your keyboards' usual short prefix.",
+		"max": 9
+	},
+	"input.key.KeypadMultiply": {
+		"note": "Label of a control: the * key of the numeric keypad, shown as {key} in control hints (\"{key} to close\", \"Press {key}\"), in tutorial prompts and on the Options > Controls binding buttons (190 px wide). \"Num\" stands for the numeric keypad; keep the digit or symbol and use your keyboards' usual short prefix.",
+		"max": 9
+	},
+	"input.key.KeypadNine": {
+		"note": "Label of a control: the 9 key of the numeric keypad, shown as {key} in control hints (\"{key} to close\", \"Press {key}\"), in tutorial prompts and on the Options > Controls binding buttons (190 px wide). \"Num\" stands for the numeric keypad; keep the digit or symbol and use your keyboards' usual short prefix.",
+		"max": 9
+	},
+	"input.key.KeypadOne": {
+		"note": "Label of a control: the 1 key of the numeric keypad, shown as {key} in control hints (\"{key} to close\", \"Press {key}\"), in tutorial prompts and on the Options > Controls binding buttons (190 px wide). \"Num\" stands for the numeric keypad; keep the digit or symbol and use your keyboards' usual short prefix.",
+		"max": 9
+	},
+	"input.key.KeypadPeriod": {
+		"note": "Label of a control: the decimal point key of the numeric keypad, shown as {key} in control hints (\"{key} to close\", \"Press {key}\"), in tutorial prompts and on the Options > Controls binding buttons (190 px wide). \"Num\" stands for the numeric keypad; keep the digit or symbol and use your keyboards' usual short prefix.",
+		"max": 9
+	},
+	"input.key.KeypadPlus": {
+		"note": "Label of a control: the + key of the numeric keypad, shown as {key} in control hints (\"{key} to close\", \"Press {key}\"), in tutorial prompts and on the Options > Controls binding buttons (190 px wide). \"Num\" stands for the numeric keypad; keep the digit or symbol and use your keyboards' usual short prefix.",
+		"max": 9
+	},
+	"input.key.KeypadSeven": {
+		"note": "Label of a control: the 7 key of the numeric keypad, shown as {key} in control hints (\"{key} to close\", \"Press {key}\"), in tutorial prompts and on the Options > Controls binding buttons (190 px wide). \"Num\" stands for the numeric keypad; keep the digit or symbol and use your keyboards' usual short prefix.",
+		"max": 9
+	},
+	"input.key.KeypadSix": {
+		"note": "Label of a control: the 6 key of the numeric keypad, shown as {key} in control hints (\"{key} to close\", \"Press {key}\"), in tutorial prompts and on the Options > Controls binding buttons (190 px wide). \"Num\" stands for the numeric keypad; keep the digit or symbol and use your keyboards' usual short prefix.",
+		"max": 9
+	},
+	"input.key.KeypadThree": {
+		"note": "Label of a control: the 3 key of the numeric keypad, shown as {key} in control hints (\"{key} to close\", \"Press {key}\"), in tutorial prompts and on the Options > Controls binding buttons (190 px wide). \"Num\" stands for the numeric keypad; keep the digit or symbol and use your keyboards' usual short prefix.",
+		"max": 9
+	},
+	"input.key.KeypadTwo": {
+		"note": "Label of a control: the 2 key of the numeric keypad, shown as {key} in control hints (\"{key} to close\", \"Press {key}\"), in tutorial prompts and on the Options > Controls binding buttons (190 px wide). \"Num\" stands for the numeric keypad; keep the digit or symbol and use your keyboards' usual short prefix.",
+		"max": 9
+	},
+	"input.key.KeypadZero": {
+		"note": "Label of a control: the 0 key of the numeric keypad, shown as {key} in control hints (\"{key} to close\", \"Press {key}\"), in tutorial prompts and on the Options > Controls binding buttons (190 px wide). \"Num\" stands for the numeric keypad; keep the digit or symbol and use your keyboards' usual short prefix.",
+		"max": 9
+	},
+	"input.key.Left": {
+		"note": "Label of a control: the left arrow key, shown as {key} in control hints (\"{key} to close\", \"Press {key}\"), in tutorial prompts and on the Options > Controls binding buttons (190 px wide). Use the name printed on keyboards in your language (often unchanged).",
+		"max": 16
+	},
+	"input.key.LeftAlt": {
+		"note": "Label of a control: the left Alt key, shown as {key} in control hints (\"{key} to close\", \"Press {key}\"), in tutorial prompts and on the Options > Controls binding buttons (190 px wide). Use the name printed on keyboards in your language (often unchanged).",
+		"max": 13
+	},
+	"input.key.LeftControl": {
+		"note": "Label of a control: the left Ctrl (Control) key, shown as {key} in control hints (\"{key} to close\", \"Press {key}\"), in tutorial prompts and on the Options > Controls binding buttons (190 px wide). Use the name printed on keyboards in your language (often unchanged).",
+		"max": 15
+	},
+	"input.key.LeftShift": {
+		"note": "Label of a control: the left Shift key, shown as {key} in control hints (\"{key} to close\", \"Press {key}\"), in tutorial prompts and on the Options > Controls binding buttons (190 px wide). Use the name printed on keyboards in your language (often unchanged).",
+		"max": 16
+	},
+	"input.key.MouseButton1": {
+		"note": "Label of a control: the left mouse button (a plain click), shown as {key} in control hints (\"{key} to close\", \"Press {key}\"), in tutorial prompts and on the Options > Controls binding buttons (190 px wide). Use the usual name for this mouse action in your language.",
+		"max": 9
+	},
+	"input.key.MouseButton2": {
+		"note": "Label of a control: the right mouse button, shown as {key} in control hints (\"{key} to close\", \"Press {key}\"), in tutorial prompts and on the Options > Controls binding buttons (190 px wide). Use the usual name for this mouse action in your language.",
+		"max": 18
+	},
+	"input.key.MouseButton3": {
+		"note": "Label of a control: the middle mouse button (pressing the wheel), shown as {key} in control hints (\"{key} to close\", \"Press {key}\"), in tutorial prompts and on the Options > Controls binding buttons (190 px wide). Use the usual name for this mouse action in your language.",
+		"max": 20
+	},
+	"input.key.PageDown": {
+		"note": "Label of a control: the Page Down key, shown as {key} in control hints (\"{key} to close\", \"Press {key}\"), in tutorial prompts and on the Options > Controls binding buttons (190 px wide). Use the name printed on keyboards in your language (often unchanged).",
+		"max": 15
+	},
+	"input.key.PageUp": {
+		"note": "Label of a control: the Page Up key, shown as {key} in control hints (\"{key} to close\", \"Press {key}\"), in tutorial prompts and on the Options > Controls binding buttons (190 px wide). Use the name printed on keyboards in your language (often unchanged).",
+		"max": 12
+	},
+	"input.key.Return": {
+		"note": "Label of a control: the Enter (Return) key of the main keyboard, shown as {key} in control hints (\"{key} to close\", \"Press {key}\"), in tutorial prompts and on the Options > Controls binding buttons (190 px wide). Use the name printed on keyboards in your language (often unchanged).",
+		"max": 9
+	},
+	"input.key.Right": {
+		"note": "Label of a control: the right arrow key, shown as {key} in control hints (\"{key} to close\", \"Press {key}\"), in tutorial prompts and on the Options > Controls binding buttons (190 px wide). Use the name printed on keyboards in your language (often unchanged).",
+		"max": 18
+	},
+	"input.key.RightAlt": {
+		"note": "Label of a control: the right Alt key (AltGr on many keyboards), shown as {key} in control hints (\"{key} to close\", \"Press {key}\"), in tutorial prompts and on the Options > Controls binding buttons (190 px wide). Use the name printed on keyboards in your language (often unchanged).",
+		"max": 15
+	},
+	"input.key.RightControl": {
+		"note": "Label of a control: the right Ctrl (Control) key, shown as {key} in control hints (\"{key} to close\", \"Press {key}\"), in tutorial prompts and on the Options > Controls binding buttons (190 px wide). Use the name printed on keyboards in your language (often unchanged).",
+		"max": 16
+	},
+	"input.key.RightShift": {
+		"note": "Label of a control: the right Shift key, shown as {key} in control hints (\"{key} to close\", \"Press {key}\"), in tutorial prompts and on the Options > Controls binding buttons (190 px wide). Use the name printed on keyboards in your language (often unchanged).",
+		"max": 18
+	},
+	"input.key.Space": {
+		"note": "Label of a control: the space bar, shown as {key} in control hints (\"{key} to close\", \"Press {key}\"), in tutorial prompts and on the Options > Controls binding buttons (190 px wide). Use the name printed on keyboards in your language (often unchanged).",
+		"max": 9
+	},
+	"input.key.StickLeft": {
+		"note": "Label of a control: pushing the gamepad's left stick to the left (e.g. to pick the card on the left in the boon draft), shown as {key} in control hints (\"{key} to close\", \"Press {key}\"), in tutorial prompts and on the Options > Controls binding buttons (190 px wide). Use the usual gamepad term in your language.",
+		"max": 16
+	},
+	"input.key.StickRight": {
+		"note": "Label of a control: pushing the gamepad's left stick to the right (e.g. to pick the card on the right in the boon draft), shown as {key} in control hints (\"{key} to close\", \"Press {key}\"), in tutorial prompts and on the Options > Controls binding buttons (190 px wide). Use the usual gamepad term in your language.",
+		"max": 18
+	},
+	"input.key.Tab": {
+		"note": "Label of a control: the Tab key, shown as {key} in control hints (\"{key} to close\", \"Press {key}\"), in tutorial prompts and on the Options > Controls binding buttons (190 px wide). Use the name printed on keyboards in your language (often unchanged).",
+		"max": 7
+	},
+	"input.key.Thumbstick1": {
+		"note": "Label of a control: the gamepad's left analog stick (used to move), shown as {key} in control hints (\"{key} to close\", \"Press {key}\"), in tutorial prompts and on the Options > Controls binding buttons (190 px wide). Use the usual gamepad term in your language.",
+		"max": 16
+	},
+	"input.key.Thumbstick2": {
+		"note": "Label of a control: the gamepad's right analog stick (used to aim), shown as {key} in control hints (\"{key} to close\", \"Press {key}\"), in tutorial prompts and on the Options > Controls binding buttons (190 px wide). Use the usual gamepad term in your language.",
+		"max": 18
+	},
+	"input.key.Up": {
+		"note": "Label of a control: the up arrow key, shown as {key} in control hints (\"{key} to close\", \"Press {key}\"), in tutorial prompts and on the Options > Controls binding buttons (190 px wide). Use the name printed on keyboards in your language (often unchanged).",
+		"max": 13
+	},
+	"input.separator": {
+		"note": "Separator between key names when a hint lists several keys, e.g. the four move keys in tutorial prompts (\"Up arrow / Left arrow / Down arrow / Right arrow\"). Spaces around it are part of the string. Usually unchanged.",
+		"max": 5
+	},
+	"loading.progress": {
+		"note": "Loading screen counter under the progress bar. {done} and {total} are numbers (assets loaded / total).",
+		"example": {
+			"done": 42,
+			"total": 120
+		}
+	},
+	"loading.skip": {
+		"note": "Loading screen button that skips waiting for the remaining assets.",
+		"max": 10
+	},
+	"loading.title": {
+		"note": "Heading of the loading screen when joining the game: the game title. Keep \"Kaleb-Vale\" exactly as written (brand); \"Project\" may be translated. Should match game.title."
+	},
+	"lobby.browser.count": {
+		"note": "Players in a lobby (60 px column): {count} players of {max}. Usually unchanged.",
+		"max": 13,
+		"example": {
+			"count": 2,
+			"max": 4
+		}
+	},
+	"lobby.browser.create": {
+		"note": "Lobby browser button (180 x 30 px) that creates a new lobby.",
+		"max": 16
+	},
+	"lobby.browser.empty": {
+		"note": "Lobby browser line when there are no lobbies; invites the player to create one."
+	},
+	"lobby.browser.friend": {
+		"note": "Tag (100 px column) on a lobby row: one of the player's friends is in this lobby.",
+		"max": 14
+	},
+	"lobby.browser.inRun": {
+		"note": "Tag (100 px column) on a lobby row: this lobby is currently playing a run.",
+		"max": 12
+	},
+	"lobby.browser.join": {
+		"note": "Small button (110 x 30 px) on a lobby row: join this lobby.",
+		"max": 10
+	},
+	"lobby.browser.newVisibility": {
+		"note": "Label before the visibility buttons for a lobby about to be created (120 px column). Ends with a colon.",
+		"max": 14
+	},
+	"lobby.browser.refresh": {
+		"note": "Small button (110 x 30 px) that reloads the lobby list.",
+		"max": 10
+	},
+	"lobby.browser.starting": {
+		"note": "Tag (100 px column) on a lobby row: the lobby's run is about to start.",
+		"max": 12
+	},
+	"lobby.browser.title": {
+		"note": "Title of the lobby browser: the list of multiplayer lobbies (groups that start a run together)."
+	},
+	"lobby.err.alreadyInLobby": {
+		"note": "Error notice (top centre, 520 px) after a lobby action was refused: the player must leave their current lobby first. Short sentence, neutral tone."
+	},
+	"lobby.err.alreadyInvited": {
+		"note": "Error notice (top centre, 520 px) after a lobby action was refused: that player already has an invitation. Short sentence, neutral tone."
+	},
+	"lobby.err.badName": {
+		"note": "Error notice (top centre, 520 px) after a lobby action was refused: that lobby name can't be used. Short sentence, neutral tone."
+	},
+	"lobby.err.badRequest": {
+		"note": "Error notice (top centre, 520 px) after a lobby action was refused: the request was malformed (rare, technical). Short sentence, neutral tone."
+	},
+	"lobby.err.busy": {
+		"note": "Error notice (top centre, 520 px) after a lobby action was refused: the player is still in a run. Short sentence, neutral tone."
+	},
+	"lobby.err.full": {
+		"note": "Error notice (top centre, 520 px) after a lobby action was refused: the lobby has no free place. Short sentence, neutral tone."
+	},
+	"lobby.err.generic": {
+		"note": "Error notice (top centre, 520 px) after a lobby action was refused: any refusal without its own message. Short sentence, neutral tone."
+	},
+	"lobby.err.inRun": {
+		"note": "Error notice (top centre, 520 px) after a lobby action was refused: the lobby is playing a run right now. Short sentence, neutral tone."
+	},
+	"lobby.err.inviteCap": {
+		"note": "Error notice (top centre, 520 px) after a lobby action was refused: too many invitations are waiting for an answer. Short sentence, neutral tone."
+	},
+	"lobby.err.inviteGone": {
+		"note": "Error notice (top centre, 520 px) after a lobby action was refused: arriving from an invite, the lobby has closed in the meantime. Short sentence, neutral tone."
+	},
+	"lobby.err.kickCooldown": {
+		"note": "Error notice (top centre, 520 px) after a lobby action was refused: the player was removed from that lobby a short while ago and must wait. Short sentence, neutral tone."
+	},
+	"lobby.err.noAccess": {
+		"note": "Error notice (top centre, 520 px) after a lobby action was refused: the lobby's visibility does not let this player join. Short sentence, neutral tone."
+	},
+	"lobby.err.notHost": {
+		"note": "Error notice (top centre, 520 px) after a lobby action was refused: only the lobby's host may do this. Short sentence, neutral tone."
+	},
+	"lobby.err.notInRun": {
+		"note": "Error notice (top centre, 520 px) after a lobby action was refused: the player is not part of that run. Short sentence, neutral tone."
+	},
+	"lobby.err.notInvited": {
+		"note": "Error notice (top centre, 520 px) after a lobby action was refused: the invitation is no longer valid. Short sentence, neutral tone."
+	},
+	"lobby.err.notMember": {
+		"note": "Error notice (top centre, 520 px) after a lobby action was refused: the player is not a member of that lobby. Short sentence, neutral tone."
+	},
+	"lobby.err.notReady": {
+		"note": "Error notice (top centre, 520 px) after a lobby action was refused: the host tried to start but not every member is ready. Short sentence, neutral tone."
+	},
+	"lobby.err.partyFull": {
+		"note": "Error notice (top centre, 520 px) after a lobby action was refused: arriving with a Roblox party, the party's lobby is already full. Short sentence, neutral tone."
+	},
+	"lobby.err.starting": {
+		"note": "Error notice (top centre, 520 px) after a lobby action was refused: the lobby's run is about to start. Short sentence, neutral tone."
+	},
+	"lobby.err.unknownLobby": {
+		"note": "Error notice (top centre, 520 px) after a lobby action was refused: the lobby no longer exists. Short sentence, neutral tone."
+	},
+	"lobby.invite.accept": {
+		"note": "Small button (110 x 30 px) on an invite toast: accept and join the lobby.",
+		"max": 10
+	},
+	"lobby.invite.decline": {
+		"note": "Small button (110 x 30 px) on an invite toast: refuse the invitation.",
+		"max": 10
+	},
+	"lobby.invite.invited": {
+		"note": "Small button / tag (110 x 30 px) after the player was invited.",
+		"max": 10
+	},
+	"lobby.invite.invitedPlatform": {
+		"note": "Tag for a friend invited through Roblox's prompt. Keep \"Roblox\" as is.",
+		"max": 18
+	},
+	"lobby.invite.none": {
+		"note": "Invite list line when nobody else is in the server."
+	},
+	"lobby.invite.platform": {
+		"note": "Button at the top of the invite list (180 px) that opens Roblox's own invite-friends prompt. Keep \"Roblox\" as is.",
+		"max": 26
+	},
+	"lobby.invite.platformUnavailable": {
+		"note": "Small grey line under that button when Roblox invites are not available for this account or device."
+	},
+	"lobby.invite.received": {
+		"note": "Invite toast (top right, 380 px). {from} is the inviting player's display name (never translated); {lobby} the lobby's name (already translated, e.g. \"Chill run\").",
+		"example": {
+			"from": "Alex",
+			"lobby": "Chill run"
+		}
+	},
+	"lobby.invite.send": {
+		"note": "Small button (110 x 30 px) beside a player: invite them to the lobby.",
+		"max": 10
+	},
+	"lobby.invite.title": {
+		"note": "Title of the invite list (players in this server who can be invited to the lobby)."
+	},
+	"lobby.name.bossPractice": {
+		"note": "Preset lobby name the host can pick (no free text): a run to practise boss fights. Shown as the lobby's title in the lobby browser (220 px name column, cut off with \"...\" if too long) and the lobby screen.",
+		"max": 22
+	},
+	"lobby.name.chill": {
+		"note": "Preset lobby name the host can pick (no free text): a relaxed, casual run. Shown as the lobby's title in the lobby browser (220 px name column, cut off with \"...\" if too long) and the lobby screen.",
+		"max": 22
+	},
+	"lobby.name.friendsOnly": {
+		"note": "Preset lobby name the host can pick (no free text): only for the host's friends. Shown as the lobby's title in the lobby browser (220 px name column, cut off with \"...\" if too long) and the lobby screen.",
+		"max": 22
+	},
+	"lobby.name.hostDescent": {
+		"note": "Default lobby name: the host's run (a \"descent\" is a run down through the dungeon floors). {host} is the host player's display name (never translated). Shown in the lobby browser's 220 px name column (cut off if too long) and the lobby screen. Adapt the possessive to the language.",
+		"max": 22,
+		"example": {
+			"host": "Alex"
+		}
+	},
+	"lobby.name.newPlayers": {
+		"note": "Preset lobby name the host can pick (no free text): beginners are welcome. Shown as the lobby's title in the lobby browser (220 px name column, cut off with \"...\" if too long) and the lobby screen.",
+		"max": 22
+	},
+	"lobby.name.pushingDeep": {
+		"note": "Preset lobby name the host can pick (no free text): a run that tries to reach very deep floors. Shown as the lobby's title in the lobby browser (220 px name column, cut off with \"...\" if too long) and the lobby screen.",
+		"max": 22
+	},
+	"lobby.name.quickRun": {
+		"note": "Preset lobby name the host can pick (no free text): a short run. Shown as the lobby's title in the lobby browser (220 px name column, cut off with \"...\" if too long) and the lobby screen.",
+		"max": 22
+	},
+	"lobby.name.scoreChasing": {
+		"note": "Preset lobby name the host can pick (no free text): a run going for a high score. Shown as the lobby's title in the lobby browser (220 px name column, cut off with \"...\" if too long) and the lobby screen.",
+		"max": 22
+	},
+	"lobby.notice.countdownCancelled": {
+		"note": "Notice (top centre) when the start countdown stopped. {reason} is a short reason sent by the server, currently in English and untranslated (\"a member left\", \"a member is not ready\").",
+		"example": {
+			"reason": "a member left"
+		}
+	},
+	"lobby.notice.followed": {
+		"note": "Notice (top centre): a friend followed the player into this server but can't join the closed lobby. {name} is the friend's display name (never translated).",
+		"example": {
+			"name": "Alex"
+		}
+	},
+	"lobby.notice.hostChanged": {
+		"note": "Notice (top centre) when the player became the lobby's host."
+	},
+	"lobby.notice.inviteArrived": {
+		"note": "Notice (top centre) with an Invite button: a friend joined the game from the player's Roblox invite. {name} is the friend's display name (never translated).",
+		"example": {
+			"name": "Alex"
+		}
+	},
+	"lobby.notice.inviteDropped": {
+		"note": "Notice (top centre): a lobby invitation was taken back by the sender."
+	},
+	"lobby.notice.inviteExpired": {
+		"note": "Notice (top centre): a lobby invitation the player received ran out of time."
+	},
+	"lobby.notice.kicked": {
+		"note": "Notice (top centre) when the host removed the player from the lobby."
+	},
+	"lobby.notice.partyLobby": {
+		"note": "Notice (top centre): the player's Roblox party was gathered into one lobby. {lobby} is the lobby's name (already translated). Keep \"Roblox\".",
+		"example": {
+			"lobby": "Alex's descent"
+		}
+	},
+	"lobby.notice.partyLobbyAny": {
+		"note": "Same notice as lobby.notice.partyLobby before the lobby's name is known. Keep \"Roblox\"."
+	},
+	"lobby.room.allReady": {
+		"note": "Lobby screen status: every member is ready; the host can start."
+	},
+	"lobby.room.countdown": {
+		"note": "Lobby screen status: the run starts in a few seconds. {seconds} is a number counting down.",
+		"example": {
+			"seconds": 3
+		}
+	},
+	"lobby.room.forming": {
+		"note": "Lobby screen status: waiting until every member marks themselves ready."
+	},
+	"lobby.room.host": {
+		"note": "Tag (60 px column) beside the lobby host's name in the member list. One short word.",
+		"max": 7
+	},
+	"lobby.room.inRun": {
+		"note": "Lobby screen status: the lobby's run is being played right now."
+	},
+	"lobby.room.invite": {
+		"note": "Small button (110 x 30 px) that opens the invite list.",
+		"max": 10
+	},
+	"lobby.room.kick": {
+		"note": "Host's small button (110 x 30 px) on a member row: remove this player from the lobby.",
+		"max": 10
+	},
+	"lobby.room.leave": {
+		"note": "Small button (110 x 30 px) that leaves the lobby.",
+		"max": 12
+	},
+	"lobby.room.makeHost": {
+		"note": "Host's small button (110 x 30 px) on a member row: give this player the host role.",
+		"max": 12
+	},
+	"lobby.room.members": {
+		"note": "Lobby screen line: players in the lobby. {count} of {max} (numbers).",
+		"example": {
+			"count": 3,
+			"max": 4
+		}
+	},
+	"lobby.room.notReady": {
+		"note": "Member status tag (100 px column): this player is not ready yet.",
+		"max": 12
+	},
+	"lobby.room.ready": {
+		"note": "Member status tag (100 px column): this player is ready to start.",
+		"max": 12
+	},
+	"lobby.room.readyUp": {
+		"note": "Small button (110 x 30 px) the player presses to mark themselves ready.",
+		"max": 10
+	},
+	"lobby.room.rename": {
+		"note": "Host's small button (110 x 30 px): pick another preset lobby name.",
+		"max": 10
+	},
+	"lobby.room.start": {
+		"note": "Host's button (180 x 30 px) that starts the party's run.",
+		"max": 16
+	},
+	"lobby.room.startSolo": {
+		"note": "Host's button (180 x 30 px) that starts the run when the host is alone in the lobby.",
+		"max": 18
+	},
+	"lobby.room.unready": {
+		"note": "Small button (110 x 30 px) the player presses to take back their ready mark.",
+		"max": 10
+	},
+	"lobby.room.visibility": {
+		"note": "Label (100 px) before the host's visibility buttons (Open / Friends / Closed).",
+		"max": 12
+	},
+	"lobby.room.you": {
+		"note": "The player's own row in the lobby member list (a fixed name column): {name} is their Roblox display name (never translated) followed by a short \"(you)\" tag. Keep the tag short.",
+		"max": 16,
+		"example": {
+			"name": "KnightOwl"
+		}
+	},
+	"lobby.visibility.closed": {
+		"note": "Lobby visibility (who can join): nobody new (invite only). Used as a small button label (110 x 30 px) and a tag in the lobby browser's 100 px column.",
+		"max": 10
+	},
+	"lobby.visibility.friends": {
+		"note": "Lobby visibility (who can join): only the host's friends. Used as a small button label (110 x 30 px) and a tag in the lobby browser's 100 px column.",
+		"max": 10
+	},
+	"lobby.visibility.open": {
+		"note": "Lobby visibility (who can join): anyone in the server. Used as a small button label (110 x 30 px) and a tag in the lobby browser's 100 px column.",
+		"max": 10
+	},
+	"menu.again": {
+		"note": "Run-over panel button that immediately starts another run. One short word.",
+		"max": 12
+	},
+	"menu.back": {
+		"note": "Small button (110 x 30 px) that goes back one menu screen.",
+		"max": 10
+	},
+	"menu.backHint": {
+		"note": "Small hint under the lobby screens. {key} is a key or button name such as \"R\", \"B\" or \"Backspace\" (currently always English) (Backspace or B).",
+		"example": {
+			"key": "Backspace"
+		}
+	},
+	"menu.backToLobby": {
+		"note": "Button on the run-over panel that returns the party to their lobby.",
+		"max": 18
+	},
+	"menu.best": {
+		"note": "Main menu line under Play solo: the player's best score and deepest floor. {score} is a formatted number; {floor} a floor number.",
+		"example": {
+			"score": "23,410",
+			"floor": 14
+		}
+	},
+	"menu.coopHint": {
+		"note": "Hint at the bottom of the co-op run menu. {key} is a key or button name such as \"R\", \"B\" or \"Backspace\" (currently always English); the second part warns the game keeps running.",
+		"example": {
+			"key": "P"
+		}
+	},
+	"menu.coopTitle": {
+		"note": "Title of the menu opened during a co-op (party) run; the game doesn't pause in co-op."
+	},
+	"menu.inviteFriends": {
+		"note": "Main menu button (260 x 40 px): opens Roblox's invite-a-friend prompt.",
+		"max": 22
+	},
+	"menu.invitesBadge": {
+		"note": "Small badge (bottom centre, during a run) counting pending lobby invitations. {count} is a number.",
+		"example": {
+			"count": 2
+		}
+	},
+	"menu.leaderboard": {
+		"note": "Main menu button (260 x 40 px): open the leaderboards.",
+		"max": 22
+	},
+	"menu.leaveConfirm": {
+		"note": "Confirmation text (solo run) before leaving: leaving counts as a death and the score is still submitted. Two short sentences."
+	},
+	"menu.leaveConfirmCoop": {
+		"note": "Confirmation text (co-op run) before leaving: the player's character falls and the party continues without them. Two short sentences."
+	},
+	"menu.leaveNo": {
+		"note": "Confirmation dialog button: cancel and stay in the run.",
+		"max": 14
+	},
+	"menu.leaveRun": {
+		"note": "Pause menu button that ends the current run (asks for confirmation).",
+		"max": 18
+	},
+	"menu.leaveYes": {
+		"note": "Confirmation dialog button: leave the run.",
+		"max": 14
+	},
+	"menu.lobbies": {
+		"note": "Main menu button (260 x 40 px): open the list of multiplayer lobbies (groups that play a run together).",
+		"max": 22
+	},
+	"menu.mainMenu": {
+		"note": "Button on the run-over panel and pause menu that returns to the main menu.",
+		"max": 18
+	},
+	"menu.options": {
+		"note": "Main menu button (260 x 40 px): opens the Options (settings) screen.",
+		"max": 22
+	},
+	"menu.partyDown": {
+		"note": "Run-over line when every member of a co-op party has died. {key} is a key or button name such as \"R\", \"B\" or \"Backspace\" (currently always English).",
+		"example": {
+			"key": "R"
+		}
+	},
+	"menu.partyEnded": {
+		"note": "Run-over line when the server stopped a co-op run. {reason} is a short technical reason from the server (English); {key} is a key or button name such as \"R\", \"B\" or \"Backspace\" (currently always English).",
+		"example": {
+			"reason": "desync",
+			"key": "R"
+		}
+	},
+	"menu.play": {
+		"note": "Generic \"Play\" button (main menu of the original web build; the Roblox main menu uses menu.playSolo).",
+		"max": 16
+	},
+	"menu.playSolo": {
+		"note": "Main menu button (260 x 40 px): start a single-player run.",
+		"max": 22
+	},
+	"menu.quit": {
+		"note": "Generic \"Quit\" button (original web build; not shown on Roblox, which has its own leave menu).",
+		"max": 16
+	},
+	"menu.starting": {
+		"note": "Status line while a run is being started. Ellipsis at the end."
+	},
+	"menu.yourLobby": {
+		"note": "Button (main menu 260 px; lobby browser 180 px) that returns to the lobby the player is already in.",
+		"max": 16
+	},
+	"options.action.alt": {
+		"note": "Action name in the Controls list (230 px column), in the input test strip (88 px chips, small text, cut off with \"...\" when too long) and inserted as {action} in binding messages: the secondary action: block bullets with the sword (guard) or charge a heavy bow shot.",
+		"max": 16
+	},
+	"options.action.ember": {
+		"note": "Action name in the Controls list (230 px column), in the input test strip (88 px chips, small text, cut off with \"...\" when too long) and inserted as {action} in binding messages: burn an Ember to clear all enemy bullets. Same word as ember.name (glossary).",
+		"max": 16
+	},
+	"options.action.fire": {
+		"note": "Action name in the Controls list (230 px column), in the input test strip (88 px chips, small text, cut off with \"...\" when too long) and inserted as {action} in binding messages: attack (swing the sword / shoot the bow).",
+		"max": 16
+	},
+	"options.action.flask": {
+		"note": "Action name in the Controls list (230 px column), in the input test strip (88 px chips, small text, cut off with \"...\" when too long) and inserted as {action} in binding messages: drink the healing flask. Same word as hud.flask (glossary).",
+		"max": 16
+	},
+	"options.action.leaderboard": {
+		"note": "Action name in the Controls list (230 px column), in the input test strip (88 px chips, small text, cut off with \"...\" when too long) and inserted as {action} in binding messages: open the leaderboards.",
+		"max": 16
+	},
+	"options.action.map": {
+		"note": "Action name in the Controls list (230 px column), in the input test strip (88 px chips, small text, cut off with \"...\" when too long) and inserted as {action} in binding messages: open the full dungeon map.",
+		"max": 16
+	},
+	"options.action.moveDown": {
+		"note": "Action name in the Controls list (230 px column), in the input test strip (88 px chips, small text, cut off with \"...\" when too long) and inserted as {action} in binding messages: move the character down.",
+		"max": 16
+	},
+	"options.action.moveLeft": {
+		"note": "Action name in the Controls list (230 px column), in the input test strip (88 px chips, small text, cut off with \"...\" when too long) and inserted as {action} in binding messages: move the character left.",
+		"max": 16
+	},
+	"options.action.moveRight": {
+		"note": "Action name in the Controls list (230 px column), in the input test strip (88 px chips, small text, cut off with \"...\" when too long) and inserted as {action} in binding messages: move the character right.",
+		"max": 16
+	},
+	"options.action.moveUp": {
+		"note": "Action name in the Controls list (230 px column), in the input test strip (88 px chips, small text, cut off with \"...\" when too long) and inserted as {action} in binding messages: move the character up.",
+		"max": 16
+	},
+	"options.action.restart": {
+		"note": "Action name in the Controls list (230 px column), in the input test strip (88 px chips, small text, cut off with \"...\" when too long) and inserted as {action} in binding messages: restart the run (only when paused or after a run).",
+		"max": 16
+	},
+	"options.action.roll": {
+		"note": "Action name in the Controls list (230 px column), in the input test strip (88 px chips, small text, cut off with \"...\" when too long) and inserted as {action} in binding messages: a quick dodge roll during which the player can't be hit.",
+		"max": 16
+	},
+	"options.action.skill1": {
+		"note": "Action name in the Controls list (230 px column), in the input test strip (88 px chips, small text, cut off with \"...\" when too long) and inserted as {action} in binding messages: skill 1; also accepts a curse at a shrine.",
+		"max": 16
+	},
+	"options.action.skill2": {
+		"note": "Action name in the Controls list (230 px column), in the input test strip (88 px chips, small text, cut off with \"...\" when too long) and inserted as {action} in binding messages: skill 2.",
+		"max": 16
+	},
+	"options.action.skill3": {
+		"note": "Action name in the Controls list (230 px column), in the input test strip (88 px chips, small text, cut off with \"...\" when too long) and inserted as {action} in binding messages: skill 3.",
+		"max": 16
+	},
+	"options.action.skill4": {
+		"note": "Action name in the Controls list (230 px column), in the input test strip (88 px chips, small text, cut off with \"...\" when too long) and inserted as {action} in binding messages: skill 4.",
+		"max": 16
+	},
+	"options.action.swap": {
+		"note": "Action name in the Controls list (230 px column), in the input test strip (88 px chips, small text, cut off with \"...\" when too long) and inserted as {action} in binding messages: swap between sword and bow.",
+		"max": 16
+	},
+	"options.audio.master": {
+		"note": "Audio tab row label: overall volume.",
+		"max": 24
+	},
+	"options.audio.music": {
+		"note": "Audio tab row label: music volume.",
+		"max": 24
+	},
+	"options.audio.sfx": {
+		"note": "Audio tab row label: sound effects volume.",
+		"max": 24
+	},
+	"options.capture.button": {
+		"note": "Dialog while waiting for the player to press the new controller button for an action. {seconds} is a countdown number.",
+		"example": {
+			"seconds": 5
+		}
+	},
+	"options.capture.cancel": {
+		"note": "Small line under the key-capture dialog: Esc cancels, or wait for the countdown. \"Esc\" is the key name; keep it."
+	},
+	"options.capture.key": {
+		"note": "Dialog while waiting for the player to press the new key for an action. {seconds} is a countdown number (seconds left).",
+		"example": {
+			"seconds": 5
+		}
+	},
+	"options.close": {
+		"note": "Button that closes the Options screen.",
+		"max": 12
+	},
+	"options.conflict": {
+		"note": "Dialog when the pressed key is already bound. {input} is a key name (e.g. \"Space\"); {action} an action name from options.action.* (e.g. \"Dodge roll\").",
+		"example": {
+			"input": "Space",
+			"action": "Dodge roll"
+		}
+	},
+	"options.conflict.swap": {
+		"note": "Dialog button (160 x 36 px): swap the two bindings.",
+		"max": 14
+	},
+	"options.controls.button": {
+		"note": "Column heading in the Controls list for game controllers: the button bound to an action.",
+		"max": 14
+	},
+	"options.controls.cancel": {
+		"note": "Dialog button (160 x 36 px) that cancels.",
+		"max": 14
+	},
+	"options.controls.clear": {
+		"note": "Small button (80 x 28 px) that removes a key binding.",
+		"max": 8
+	},
+	"options.controls.empty": {
+		"note": "Shown in an empty binding slot: a dash. Usually unchanged.",
+		"max": 2
+	},
+	"options.controls.primary": {
+		"note": "Column heading in the Controls list: the main key bound to an action.",
+		"max": 14
+	},
+	"options.controls.reset": {
+		"note": "Button that resets all bindings of one device. {device} is the device name (options.device.kbm / pad, already translated, e.g. \"Gamepad\").",
+		"max": 26,
+		"example": {
+			"device": "Gamepad"
+		}
+	},
+	"options.controls.resetConfirm": {
+		"note": "Confirmation question in a dialog before resetting bindings. {device} is the device name (options.device.*, already translated). Mid-sentence, so the device name may need the right grammatical case.",
+		"example": {
+			"device": "Keyboard & mouse"
+		}
+	},
+	"options.controls.resetYes": {
+		"note": "Dialog button (160 x 36 px) that confirms resetting bindings.",
+		"max": 14
+	},
+	"options.controls.secondary": {
+		"note": "Column heading in the Controls list: an optional second key bound to an action.",
+		"max": 14
+	},
+	"options.controls.test": {
+		"note": "Label of the input test strip in the Controls tab: press any control and its action lights up."
+	},
+	"options.device.kbm": {
+		"note": "Sub-tab of the Controls tab: bindings for keyboard and mouse. Also inserted as {device} in other lines.",
+		"max": 18
+	},
+	"options.device.pad": {
+		"note": "Sub-tab of the Controls tab: bindings for a game controller. Also inserted as {device} in other lines.",
+		"max": 12
+	},
+	"options.display.buildFx": {
+		"note": "Options screen, Display tab: row label for how strong the effects of boons such as Chain Spark look (Full / Reduced). Label column 210 px.",
+		"max": 24
+	},
+	"options.display.buildFx.full": {
+		"note": "Options screen: a choice button (about 92 x 30 px) for build effects: shown in full. One short word.",
+		"max": 10
+	},
+	"options.display.buildFx.reduced": {
+		"note": "Options screen: a choice button (about 92 x 30 px) for build effects: toned down. One short word.",
+		"max": 10
+	},
+	"options.display.hudFade": {
+		"note": "Options screen, Display tab: row label for corner HUD panels fading out when action passes under them (On / Off). Label column 210 px.",
+		"max": 24
+	},
+	"options.display.hudScale": {
+		"note": "Options screen, Display tab: row label for the size of the in-game HUD (percent steps). Label column 210 px.",
+		"max": 24
+	},
+	"options.display.language": {
+		"note": "Options screen, Display tab: row label for the game's language (the choice shows between < and > buttons). Label column 210 px.",
+		"max": 24
+	},
+	"options.display.language.auto": {
+		"note": "Options screen, Display tab, Language row: the choice that follows the player's Roblox language. {name} is that language's own name, untranslated (e.g. \"Deutsch\", \"日本語\"). Shown in a 300 px slot.",
+		"max": 30,
+		"example": {
+			"name": "Deutsch"
+		}
+	},
+	"options.display.language.next": {
+		"note": "Step button (40 x 30 px) right of the Language choice: shows the next language. A single arrow-like symbol (\">\"). Usually unchanged; keep it pointing right even in right-to-left languages (the layout is not mirrored).",
+		"max": 1
+	},
+	"options.display.language.prev": {
+		"note": "Step button (40 x 30 px) left of the Language choice: shows the previous language. A single arrow-like symbol (\"<\"). Usually unchanged; keep it pointing left even in right-to-left languages (the layout is not mirrored).",
+		"max": 1
+	},
+	"options.display.minimap": {
+		"note": "Options screen, Display tab: row label for the small corner map (On / Off). Label column 210 px.",
+		"max": 24
+	},
+	"options.display.playerOutline": {
+		"note": "Options screen, Display tab: row label for a coloured outline around the player's character (On / Off). Label column 210 px.",
+		"max": 24
+	},
+	"options.display.roomEdges": {
+		"note": "Options screen, Display tab: row label for the dashed lines drawn where corridors meet rooms (On / Off). Label column 210 px.",
+		"max": 24
+	},
+	"options.display.touchAutoTarget": {
+		"note": "Options screen, Display tab: row label for touch controls automatically aiming at the nearest enemy (On / Off). Label column 210 px.",
+		"max": 24
+	},
+	"options.display.touchLeftHanded": {
+		"note": "Options screen, Display tab: row label for mirroring the touch controls for left-handed players (On / Off). Label column 210 px.",
+		"max": 24
+	},
+	"options.display.touchOpacity": {
+		"note": "Options screen, Display tab: row label for how opaque the on-screen touch controls are. Label column 210 px.",
+		"max": 24
+	},
+	"options.display.touchSize": {
+		"note": "Options screen, Display tab: row label for the size of the on-screen touch controls (phones and tablets). Label column 210 px.",
+		"max": 24
+	},
+	"options.down": {
+		"note": "Step button (40 x 30 px) that lowers a value: a minus sign. Usually unchanged.",
+		"max": 1
+	},
+	"options.hint": {
+		"note": "Hint at the bottom of the Options screen. {key} is a key or button name such as \"O\" or \"B\" (from the player's bindings; currently always English).",
+		"example": {
+			"key": "O"
+		}
+	},
+	"options.percent": {
+		"note": "A percentage value (volume, HUD scale, touch size). {value} is a number. Use the language's percent format (e.g. \"{value} %\" in French and German).",
+		"max": 10,
+		"example": {
+			"value": 80
+		}
+	},
+	"options.refused.badSlot": {
+		"note": "Note when an action has no such binding slot (rare, technical). {action} is an action name.",
+		"example": {
+			"action": "Map"
+		}
+	},
+	"options.refused.notRebindable": {
+		"note": "Note when an action can't be changed here. {action} is an action name (options.action.*).",
+		"example": {
+			"action": "Map"
+		}
+	},
+	"options.refused.onlyInput": {
+		"note": "Note when the key is the only key of another action. {input} is a key name; {action} an action name. Tells the player to bind it over a filled slot to swap.",
+		"example": {
+			"input": "Space",
+			"action": "Dodge roll"
+		}
+	},
+	"options.refused.primaryRequired": {
+		"note": "Note when the player tries to clear an action's only main key. {action} is an action name.",
+		"example": {
+			"action": "Attack"
+		}
+	},
+	"options.refused.reserved": {
+		"note": "Note after the player tries to bind a reserved key. {input} is a key name.",
+		"example": {
+			"input": "Esc"
+		}
+	},
+	"options.refused.unknown": {
+		"note": "Note after the player tries to bind an unsupported key. {input} is a key name.",
+		"example": {
+			"input": "Print Screen"
+		}
+	},
+	"options.reset": {
+		"note": "Button that resets the current tab's settings to default values.",
+		"max": 24
+	},
+	"options.tab.audio": {
+		"note": "Options screen tab (150 px wide) for sound volume settings.",
+		"max": 12
+	},
+	"options.tab.controls": {
+		"note": "Options screen tab (150 px wide) for key and button bindings.",
+		"max": 12
+	},
+	"options.tab.display": {
+		"note": "Options screen tab (150 px wide) for HUD and screen settings.",
+		"max": 12
+	},
+	"options.tab.juice": {
+		"note": "Options screen tab (150 px wide) for visual-effects settings (screen shake, particles, flashes): \"juice\" is game-design slang for feedback effects. Use the same term as fx.settings.title.",
+		"max": 12
+	},
+	"options.title": {
+		"note": "Title of the Options (settings) screen."
+	},
+	"options.up": {
+		"note": "Step button (40 x 30 px) that raises a value: a plus sign. Usually unchanged.",
+		"max": 1
+	},
+	"playtest.run.hits": {
+		"note": "Stat label on the run-over panel (a 150 px stat column, the value written below it): how many hits the player took.",
+		"max": 18
+	},
+	"playtest.run.kills": {
+		"note": "Stat label on the run-over panel (a 150 px stat column, the value written below it): how many enemies the player killed.",
+		"max": 18
+	},
+	"playtest.run.over": {
+		"note": "Header of the run-over panel when the run ends without a win (the player died or the party fell). Short title.",
+		"max": 20
+	},
+	"playtest.run.time": {
+		"note": "Stat label on the run-over panel (a 150 px stat column, the value written below it): how long the run lasted (m:ss) before it ended.",
+		"max": 18
+	},
+	"playtest.run.timeVictory": {
+		"note": "Stat label on the run-over panel (a 150 px stat column, the value written below it) after a victory: the clear time (m:ss).",
+		"max": 18
+	},
+	"playtest.run.victory": {
+		"note": "Header of the run-over panel when the player beat the final boss. Short title.",
+		"max": 20
+	},
+	"rarity.glyphword.name": {
+		"note": "Loot rarity tier name: the top tier, an invented word made of glyph + word; translate the idea (rune-word). Reserved: required by the theme contract inherited from the original web build, but not shown in the current Roblox build; translate it as a plain name anyway."
+	},
+	"rarity.magic.name": {
+		"note": "Loot rarity tier name: second tier. Reserved: required by the theme contract inherited from the original web build, but not shown in the current Roblox build; translate it as a plain name anyway."
+	},
+	"rarity.normal.name": {
+		"note": "Loot rarity tier name: the plainest tier. Reserved: required by the theme contract inherited from the original web build, but not shown in the current Roblox build; translate it as a plain name anyway."
+	},
+	"rarity.rare.name": {
+		"note": "Loot rarity tier name: third tier. Reserved: required by the theme contract inherited from the original web build, but not shown in the current Roblox build; translate it as a plain name anyway."
+	},
+	"rarity.set.name": {
+		"note": "Loot rarity tier name: an item belonging to a matching set. Reserved: required by the theme contract inherited from the original web build, but not shown in the current Roblox build; translate it as a plain name anyway."
+	},
+	"rarity.unique.name": {
+		"note": "Loot rarity tier name: a one-of-a-kind item. Reserved: required by the theme contract inherited from the original web build, but not shown in the current Roblox build; translate it as a plain name anyway."
+	},
+	"relic.hourglass.desc": {
+		"note": "Effect line of the relic \"Hourglass\" (owned-items tooltip / list). Terse game-rules style; keep numbers exactly. A \"heart\" is one unit of health; \"guarded\" bullets are ones blocked with the sword."
+	},
+	"relic.hourglass.icon": {
+		"note": "Icon label of the relic \"Hourglass\": 3-letter abbreviation drawn inside a tiny 26 px icon square (12 px text) in the owned-items row and the build list. Use at most 3 Latin letters, or 1-2 characters in Chinese / Japanese / Korean / Thai / Hindi / Arabic; any short, recognisable abbreviation of the name works (it doesn't have to match the English letters).",
+		"max": 3
+	},
+	"relic.hourglass.name": {
+		"note": "Name of a relic (a permanent item for the rest of the run, picked up from a pedestal); its effect: \"Bullets slow for 1 s after you are hit\". Shown in a toast and the owned-items list. Title case; glossary term."
+	},
+	"relic.mirrorCloak.desc": {
+		"note": "Effect line of the relic \"Mirror Cloak\" (owned-items tooltip / list). Terse game-rules style; keep numbers exactly. A \"heart\" is one unit of health; \"guarded\" bullets are ones blocked with the sword."
+	},
+	"relic.mirrorCloak.icon": {
+		"note": "Icon label of the relic \"Mirror Cloak\": 3-letter abbreviation drawn inside a tiny 26 px icon square (12 px text) in the owned-items row and the build list. Use at most 3 Latin letters, or 1-2 characters in Chinese / Japanese / Korean / Thai / Hindi / Arabic; any short, recognisable abbreviation of the name works (it doesn't have to match the English letters).",
+		"max": 3
+	},
+	"relic.mirrorCloak.name": {
+		"note": "Name of a relic (a permanent item for the rest of the run, picked up from a pedestal); its effect: \"Guarded bullets fly back at your foes\". Shown in a toast and the owned-items list. Title case; glossary term."
+	},
+	"relic.secondWind.desc": {
+		"note": "Effect line of the relic \"Second Wind\" (owned-items tooltip / list). Terse game-rules style; keep numbers exactly. A \"heart\" is one unit of health; \"guarded\" bullets are ones blocked with the sword."
+	},
+	"relic.secondWind.icon": {
+		"note": "Icon label of the relic \"Second Wind\": 3-letter abbreviation drawn inside a tiny 26 px icon square (12 px text) in the owned-items row and the build list. Use at most 3 Latin letters, or 1-2 characters in Chinese / Japanese / Korean / Thai / Hindi / Arabic; any short, recognisable abbreviation of the name works (it doesn't have to match the English letters).",
+		"max": 3
+	},
+	"relic.secondWind.name": {
+		"note": "Name of a relic (a permanent item for the rest of the run, picked up from a pedestal); its effect: \"Once per floor, survive a lethal hit\". Shown in a toast and the owned-items list. Title case; glossary term."
+	},
+	"relic.vampireFang.desc": {
+		"note": "Effect line of the relic \"Vampire Fang\" (owned-items tooltip / list). Terse game-rules style; keep numbers exactly. A \"heart\" is one unit of health; \"guarded\" bullets are ones blocked with the sword."
+	},
+	"relic.vampireFang.icon": {
+		"note": "Icon label of the relic \"Vampire Fang\": 3-letter abbreviation drawn inside a tiny 26 px icon square (12 px text) in the owned-items row and the build list. Use at most 3 Latin letters, or 1-2 characters in Chinese / Japanese / Korean / Thai / Hindi / Arabic; any short, recognisable abbreviation of the name works (it doesn't have to match the English letters).",
+		"max": 3
+	},
+	"relic.vampireFang.name": {
+		"note": "Name of a relic (a permanent item for the rest of the run, picked up from a pedestal); its effect: \"Every 25 kills heal half a heart\". Shown in a toast and the owned-items list. Title case; glossary term."
+	},
+	"room.clear.chip": {
+		"note": "Small chip under the score panel (top right) when a teammate far away clears a room in co-op. {stamp} is CLEAR or PERFECT (already translated); {points} a number. Usually unchanged.",
+		"max": 22,
+		"example": {
+			"stamp": "CLEAR",
+			"points": 640
+		}
+	},
+	"room.clear.fly": {
+		"note": "Bonus chip that flies from the stamp into the score panel: a plus sign and the room's points. Usually unchanged.",
+		"max": 9,
+		"example": {
+			"points": 1290
+		}
+	},
+	"room.clear.line.clear": {
+		"note": "Tally segment under the room-clear stamp: the bonus for clearing the room. {points} is a number.",
+		"max": 23,
+		"example": {
+			"points": 200
+		}
+	},
+	"room.clear.line.fast": {
+		"note": "Tally segment under the room-clear stamp: the bonus for clearing the room quickly. {points} is a number.",
+		"max": 23,
+		"example": {
+			"points": 150
+		}
+	},
+	"room.clear.line.kills": {
+		"note": "Segment of the one-row score tally under the room-clear stamp (360 px row, text shrinks; segments joined by the game). {points} is a number. Points for kills.",
+		"max": 21,
+		"example": {
+			"points": 640
+		}
+	},
+	"room.clear.line.perfect": {
+		"note": "Tally segment under the room-clear stamp: the bonus for taking no hits in the room. {points} is a number.",
+		"max": 26,
+		"example": {
+			"points": 300
+		}
+	},
+	"room.clear.stamp.clear": {
+		"note": "Big stamp (top centre, large text) when the player kills the last enemy of a room. ALL CAPS, one word meaning the room is cleared; keep capitals if the script has them. Glossary term.",
+		"max": 10
+	},
+	"room.clear.stamp.multi": {
+		"note": "Stamp when several rooms clear at the same moment. {stamp} is CLEAR or PERFECT (already translated); {rooms} the number of rooms. Usually unchanged.",
+		"max": 21,
+		"example": {
+			"stamp": "PERFECT",
+			"rooms": 2
+		}
+	},
+	"room.clear.stamp.perfect": {
+		"note": "Big stamp when a room is cleared without taking a hit. ALL CAPS, one word; keep capitals if the script has them. Glossary term.",
+		"max": 12
+	},
+	"room.clear.total": {
+		"note": "Last segment of the room-clear tally: the total. {points} is a number. Usually unchanged.",
+		"max": 10,
+		"example": {
+			"points": 1290
+		}
+	},
+	"roster.line": {
+		"note": "Stage card line at the start of a run, listing the enemy kinds of floor 1. {names} is a list of enemy names already joined by the game with \" · \". Normally leave it as just {names}.",
+		"example": {
+			"names": "Swarmer · Sniper"
+		}
+	},
+	"roster.new": {
+		"note": "Stage card line on a floor where new enemy kinds join the run. {names} is a list of enemy names already joined with \" · \". \"New\" is a short label meaning these enemies appear from this floor on.",
+		"example": {
+			"names": "Bruiser · Imp"
+		}
+	},
+	"roster.separator": {
+		"note": "Separator between enemy names in a list (the stage card's roster line, the Daily card's floor 1 enemies), and between the Daily card's roster and boss lines in its one-line preview (\"Swarmer · Caster\"). Spaces around it are part of the string. Usually unchanged.",
+		"max": 5
+	},
+	"run.best.first": {
+		"note": "Ribbon on the run-over panel for the player's very first recorded run (nothing to beat yet). ALL CAPS in English.",
+		"max": 18
+	},
+	"run.best.floor": {
+		"note": "Run-over record row: the old and new deepest floor. {old} and {new} are floor numbers, {delta} the number of extra floors.",
+		"example": {
+			"old": 11,
+			"new": 14,
+			"delta": 3
+		}
+	},
+	"run.best.ribbon": {
+		"note": "Ribbon across the top of the run-over panel when the run set a new personal best. ALL CAPS exclamation.",
+		"max": 14
+	},
+	"run.best.saved": {
+		"note": "Small chip on the run-over panel: the record was saved by the server.",
+		"max": 10
+	},
+	"run.best.score": {
+		"note": "Run-over record row: the old and new best score. {old} and {new} are formatted scores, {delta} the formatted gain. \"->\" means \"changed to\".",
+		"example": {
+			"old": "18,250",
+			"new": "23,410",
+			"delta": "5,160"
+		}
+	},
+	"run.best.target": {
+		"note": "Dim line on the run-over panel and the pause menu: the best to beat. {score} is a formatted score; {floor} a floor number.",
+		"example": {
+			"score": "23,410",
+			"floor": 14
+		}
+	},
+	"run.best.unsaved": {
+		"note": "Small chip on the run-over panel: the record was not saved because the server did not verify the run."
+	},
+	"run.dailyRank.first": {
+		"note": "Run-over ribbon for the player's first Daily run today. ALL CAPS in English.",
+		"max": 20
+	},
+	"run.dailyRank.more": {
+		"note": "End of the run-over row of friends passed when there are more than fit. {n} is a number.",
+		"example": {
+			"n": 2
+		}
+	},
+	"run.dailyRank.passed": {
+		"note": "Run-over row label on a Daily run, followed by the friends' names whose scores the player passed. Short label like \"You passed:\"."
+	},
+	"run.dailyRank.ribbon": {
+		"note": "Run-over ribbon on a Daily run that beat today's personal best. ALL CAPS exclamation.",
+		"max": 20
+	},
+	"run.dailyRank.score": {
+		"note": "Run-over record row on a Daily run. {old} and {new} are formatted scores, {delta} the gain. \"->\" means \"changed to\".",
+		"example": {
+			"old": "9,800",
+			"new": "12,040",
+			"delta": "2,240"
+		}
+	},
+	"run.dailyRank.target": {
+		"note": "Dim line on the run-over panel / pause menu of a Daily run: today's best to beat. {score} is a formatted score.",
+		"example": {
+			"score": "12,040"
+		}
+	},
+	"score.source.boss": {
+		"note": "Run-over panel: score breakdown row label (200 px label column, the points sit to the right) for points from defeating bosses.",
+		"max": 20
+	},
+	"score.source.breakables": {
+		"note": "Run-over panel: score breakdown row label (200 px label column, the points sit to the right) for points from smashing barrels and crates.",
+		"max": 20
+	},
+	"score.source.fast": {
+		"note": "Run-over panel: score breakdown row label (200 px label column, the points sit to the right) for points from rooms cleared quickly.",
+		"max": 20
+	},
+	"score.source.floors": {
+		"note": "Run-over panel: score breakdown row label (200 px label column, the points sit to the right) for points from floors completed.",
+		"max": 20
+	},
+	"score.source.grazes": {
+		"note": "Run-over panel: score breakdown row label (200 px label column, the points sit to the right) for points from grazes (bullets that skim past the player without hitting).",
+		"max": 20
+	},
+	"score.source.guard": {
+		"note": "Run-over panel: score breakdown row label (200 px label column, the points sit to the right) for points from guard cancels (bullets erased by blocking with the sword).",
+		"max": 20
+	},
+	"score.source.jackpot": {
+		"note": "Run-over panel: score breakdown row label (200 px label column, the points sit to the right) for bonus points from the Jackpot boon (every 15th kill pays a bonus).",
+		"max": 20
+	},
+	"score.source.kills": {
+		"note": "Run-over panel: score breakdown row label (200 px label column, the points sit to the right) for points from killing enemies.",
+		"max": 20
+	},
+	"score.source.perfect": {
+		"note": "Run-over panel: score breakdown row label (200 px label column, the points sit to the right) for points from rooms cleared without taking a hit.",
+		"max": 20
+	},
+	"score.source.rooms": {
+		"note": "Run-over panel: score breakdown row label (200 px label column, the points sit to the right) for points from rooms cleared of enemies.",
+		"max": 20
+	},
+	"stage.best.deeperYet": {
+		"note": "Gold second line of the new-floor card on each further floor past the record (the run keeps setting a new record)."
+	},
+	"stage.best.newDeepest": {
+		"note": "Gold second line of the new-floor card on the first floor past the player's record in this run. ALL CAPS in English; keep capitals if the script has them.",
+		"max": 18
+	},
+	"stage.best.recordFloor": {
+		"note": "Second line of the new-floor card when the player stands on their deepest floor ever (ties the record)."
+	},
+	"stage.best.toGo": {
+		"note": "Second line of the new-floor card below the record: the player's deepest floor ever and how many floors are left to reach it. {floor} is the record floor number; {n} the number of floors to go (1 or more: one string for every number, so keep the label: value form).",
+		"example": {
+			"floor": 14,
+			"n": 3
+		}
+	},
+	"stage.bossFloor": {
+		"note": "Extra line on the new-floor card when this floor ends with a boss fight.",
+		"max": 18
+	},
+	"stage.building": {
+		"note": "Line on the loading cover while the floor's visuals are built. Ellipsis at the end."
+	},
+	"stage.floorCard": {
+		"note": "Big title of the card shown when the player reaches a new floor (the biome name shows under it). {floor} is the floor number.",
+		"max": 21,
+		"example": {
+			"floor": 4
+		}
+	},
+	"stage.forging": {
+		"note": "Line on the loading cover while a dungeon floor is being generated. {floor} is the floor number. \"Forging\" is flavourful for \"building\". Ellipsis at the end.",
+		"example": {
+			"floor": 1
+		}
+	},
+	"stage.starting": {
+		"note": "Line on the loading cover while a run starts and the server answers. Ellipsis at the end."
+	},
+	"touch.alt": {
+		"note": "Label on an on-screen touch control (phones / tablets): the secondary-action stick (guard with the sword, or charge a heavy bow shot). \"Alt\" is short for alternate; any short word for \"secondary\" works. Drawn inside a round button about 60-100 px wide (text shrinks); the tutorial's touch prompts name this button by this exact word.",
+		"max": 8
+	},
+	"touch.attack": {
+		"note": "Label on an on-screen touch control (phones / tablets): the attack stick (hold to attack; drag to aim). Drawn inside a round button about 60-100 px wide (text shrinks); the tutorial's touch prompts name this button by this exact word.",
+		"max": 8
+	},
+	"touch.ember": {
+		"note": "Label on an on-screen touch control (phones / tablets): burn an Ember to clear all enemy bullets; same word as ember.name. Drawn inside a round button about 60-100 px wide (text shrinks); the tutorial's touch prompts name this button by this exact word.",
+		"max": 8
+	},
+	"touch.flask": {
+		"note": "Label on an on-screen touch control (phones / tablets): drink the healing flask; same word as hud.flask. Drawn inside a round button about 60-100 px wide (text shrinks); the tutorial's touch prompts name this button by this exact word.",
+		"max": 8
+	},
+	"touch.hint.draft": {
+		"note": "Touch hint under the boon draft cards (replaces the keyboard hint on phones)."
+	},
+	"touch.hint.mapClose": {
+		"note": "Touch hint on the full map overlay."
+	},
+	"touch.hint.shrine": {
+		"note": "Touch hint at a curse shrine; \"Accept\" must be the same word as touch.shrine."
+	},
+	"touch.hint.spectate": {
+		"note": "Touch hint on the co-op spectate bar; \"Next\" / \"Prev\" must be the same words as touch.spectateNext / touch.spectatePrev."
+	},
+	"touch.roll": {
+		"note": "Label on an on-screen touch control (phones / tablets): dodge roll. Drawn inside a round button about 60-100 px wide (text shrinks); the tutorial's touch prompts name this button by this exact word.",
+		"max": 8
+	},
+	"touch.shrine": {
+		"note": "Label on an on-screen touch control (phones / tablets): accept the curse offered at a curse shrine. Drawn inside a round button about 60-100 px wide (text shrinks); the tutorial's touch prompts name this button by this exact word.",
+		"max": 8
+	},
+	"touch.spectateNext": {
+		"note": "Label on an on-screen touch control (phones / tablets): when spectating after death in co-op, watch the next teammate. Drawn inside a round button about 60-100 px wide (text shrinks); the tutorial's touch prompts name this button by this exact word.",
+		"max": 8
+	},
+	"touch.spectatePrev": {
+		"note": "Label on an on-screen touch control (phones / tablets): when spectating, watch the previous teammate. Abbreviation of \"previous\". Drawn inside a round button about 60-100 px wide (text shrinks); the tutorial's touch prompts name this button by this exact word.",
+		"max": 8
+	},
+	"touch.swap": {
+		"note": "Label on an on-screen touch control (phones / tablets): swap between sword and bow. Drawn inside a round button about 60-100 px wide (text shrinks); the tutorial's touch prompts name this button by this exact word.",
+		"max": 8
+	},
+	"tutorial.callout.bossPhase2": {
+		"note": "Tutorial callout toast when the practice boss enters phase II (Roman numeral) and uses new bullet patterns."
+	},
+	"tutorial.callout.bossPhase3": {
+		"note": "Tutorial callout toast when the practice boss (female, \"her\") enters phase III with her hardest patterns."
+	},
+	"tutorial.callout.graze": {
+		"note": "Tutorial callout toast on the first graze: a bullet passing very close without hitting, which scores points. \"Graze\" is a glossary term."
+	},
+	"tutorial.callout.harmlessHit": {
+		"note": "Tutorial callout toast when the player is hit in the tutorial (which costs nothing there)."
+	},
+	"tutorial.callout.score": {
+		"note": "Tutorial callout toast (top centre, a few seconds) the first time the player scores: kills, grazes (bullets skimming past) and guard cancels (bullets blocked with the sword) give points; chaining them builds the combo multiplier."
+	},
+	"tutorial.menu.open": {
+		"note": "Main menu button (260 x 40 px) that replays the tutorial.",
+		"max": 22
+	},
+	"tutorial.objective.body": {
+		"note": "Body of the tutorial's opening card (560 px, wraps): the goal of the game in two sentences. \"Hearts\" are the player's health."
+	},
+	"tutorial.objective.title": {
+		"note": "Title of the tutorial's opening card: the tutorial's name, a practice run down the dungeon (\"descent\" = a run going down floor by floor). Title case."
+	},
+	"tutorial.outro.body": {
+		"note": "Body of the tutorial's closing card (560 px, wraps): what changes in a real run. {key} is the key that opens the leaderboards (default B).",
+		"example": {
+			"key": "B"
+		}
+	},
+	"tutorial.outro.replay": {
+		"note": "Button (300 x 40 px) on the tutorial's closing card: replay the tutorial.",
+		"max": 26
+	},
+	"tutorial.outro.start": {
+		"note": "Button (300 x 40 px) on the tutorial's closing card: start the first real run.",
+		"max": 24
+	},
+	"tutorial.outro.title": {
+		"note": "Title of the card shown when the tutorial ends: a short, warm wrap-up (\"that's how a descent works\")."
+	},
+	"tutorial.panel.hint": {
+		"note": "Hint in the tutorial prompt panel: the key that pauses (where the tutorial can be skipped). {key} is a key or button name (P / Start).",
+		"example": {
+			"key": "P"
+		}
+	},
+	"tutorial.panel.progress": {
+		"note": "Tutorial step counter in the prompt panel. {step} and {count} are numbers. Usually unchanged.",
+		"max": 18,
+		"example": {
+			"step": 3,
+			"count": 14
+		}
+	},
+	"tutorial.pause.restart": {
+		"note": "Pause menu button during the tutorial: start the tutorial over.",
+		"max": 22
+	},
+	"tutorial.pause.skip": {
+		"note": "Pause menu button during the tutorial: skip it (asks for confirmation).",
+		"max": 22
+	},
+	"tutorial.pause.skipConfirm": {
+		"note": "Confirmation question before skipping the tutorial."
+	},
+	"tutorial.pause.skipNo": {
+		"note": "Confirmation dialog button: no, continue the tutorial.",
+		"max": 16
+	},
+	"tutorial.pause.skipYes": {
+		"note": "Confirmation dialog button: yes, skip the tutorial.",
+		"max": 14
+	},
+	"tutorial.prompt.attack.gamepad": {
+		"note": "First-run tutorial prompt for gamepad players, in the prompt panel (lower centre, 480 px wide; on touch at the top centre, 360 px; text wraps). Step: attacking a training dummy; the third swing of a combo is a stronger finisher. Friendly, short instructional sentences in second person. Placeholders {fire} are the player's bound key or button names (e.g. \"RT\"; currently English).",
+		"example": {
+			"fire": "RT"
+		}
+	},
+	"tutorial.prompt.attack.keyboard": {
+		"note": "First-run tutorial prompt for keyboard and mouse players, in the prompt panel (lower centre, 480 px wide; on touch at the top centre, 360 px; text wraps). Step: attacking a training dummy; the third swing of a combo is a stronger finisher. Friendly, short instructional sentences in second person. Placeholders {fire} are the player's bound key or button names (e.g. \"Click\"; currently English).",
+		"example": {
+			"fire": "Click"
+		}
+	},
+	"tutorial.prompt.attack.touch": {
+		"note": "First-run tutorial prompt for phone / tablet players; on-screen button names (Attack, Alt, Roll, Flask, Swap, Ember, Accept) must use exactly the words of the touch.* button labels, in the prompt panel (lower centre, 480 px wide; on touch at the top centre, 360 px; text wraps). Step: attacking a training dummy; the third swing of a combo is a stronger finisher. Friendly, short instructional sentences in second person."
+	},
+	"tutorial.prompt.boost.gamepad": {
+		"note": "First-run tutorial prompt for gamepad players, in the prompt panel (lower centre, 480 px wide; on touch at the top centre, 360 px; text wraps). Step: a boost (a temporary power-up dropped by an enemy) lies on the floor and must be walked over before it fades. Friendly, short instructional sentences in second person."
+	},
+	"tutorial.prompt.boost.keyboard": {
+		"note": "First-run tutorial prompt for keyboard and mouse players, in the prompt panel (lower centre, 480 px wide; on touch at the top centre, 360 px; text wraps). Step: a boost (a temporary power-up dropped by an enemy) lies on the floor and must be walked over before it fades. Friendly, short instructional sentences in second person."
+	},
+	"tutorial.prompt.boost.touch": {
+		"note": "First-run tutorial prompt for phone / tablet players; on-screen button names (Attack, Alt, Roll, Flask, Swap, Ember, Accept) must use exactly the words of the touch.* button labels, in the prompt panel (lower centre, 480 px wide; on touch at the top centre, 360 px; text wraps). Step: a boost (a temporary power-up dropped by an enemy) lies on the floor and must be walked over before it fades. Friendly, short instructional sentences in second person."
+	},
+	"tutorial.prompt.boss.gamepad": {
+		"note": "First-run tutorial prompt for gamepad players, in the prompt panel (lower centre, 480 px wide; on touch at the top centre, 360 px; text wraps). Step: the practice boss (Mother Bramble, referred to as \"her\"); orange previews show where her bullets will go. Friendly, short instructional sentences in second person."
+	},
+	"tutorial.prompt.boss.keyboard": {
+		"note": "First-run tutorial prompt for keyboard and mouse players, in the prompt panel (lower centre, 480 px wide; on touch at the top centre, 360 px; text wraps). Step: the practice boss (Mother Bramble, referred to as \"her\"); orange previews show where her bullets will go. Friendly, short instructional sentences in second person."
+	},
+	"tutorial.prompt.boss.touch": {
+		"note": "First-run tutorial prompt for phone / tablet players; on-screen button names (Attack, Alt, Roll, Flask, Swap, Ember, Accept) must use exactly the words of the touch.* button labels, in the prompt panel (lower centre, 480 px wide; on touch at the top centre, 360 px; text wraps). Step: the practice boss (Mother Bramble, referred to as \"her\"); orange previews show where her bullets will go. Friendly, short instructional sentences in second person."
+	},
+	"tutorial.prompt.bow.gamepad": {
+		"note": "First-run tutorial prompt for gamepad players, in the prompt panel (lower centre, 480 px wide; on touch at the top centre, 360 px; text wraps). Step: swapping to the bow and holding the secondary action to charge a heavy arrow. Friendly, short instructional sentences in second person. Placeholders {swap}, {alt} are the player's bound key or button names (e.g. \"Y\", \"LT\"; currently English).",
+		"example": {
+			"swap": "Y",
+			"alt": "LT"
+		}
+	},
+	"tutorial.prompt.bow.keyboard": {
+		"note": "First-run tutorial prompt for keyboard and mouse players, in the prompt panel (lower centre, 480 px wide; on touch at the top centre, 360 px; text wraps). Step: swapping to the bow and holding the secondary action to charge a heavy arrow. Friendly, short instructional sentences in second person. Placeholders {swap}, {alt} are the player's bound key or button names (e.g. \"E\", \"Right click\"; currently English).",
+		"example": {
+			"swap": "E",
+			"alt": "Right click"
+		}
+	},
+	"tutorial.prompt.bow.touch": {
+		"note": "First-run tutorial prompt for phone / tablet players; on-screen button names (Attack, Alt, Roll, Flask, Swap, Ember, Accept) must use exactly the words of the touch.* button labels, in the prompt panel (lower centre, 480 px wide; on touch at the top centre, 360 px; text wraps). Step: swapping to the bow and holding the secondary action to charge a heavy arrow. Friendly, short instructional sentences in second person."
+	},
+	"tutorial.prompt.curse.gamepad": {
+		"note": "First-run tutorial prompt for gamepad players, in the prompt panel (lower centre, 480 px wide; on touch at the top centre, 360 px; text wraps). Step: a curse shrine: accepting a curse makes the run harder and the score multiplier bigger; the player may also walk away. Friendly, short instructional sentences in second person. Placeholders {skill1} are the player's bound key or button names (e.g. \"A\"; currently English).",
+		"example": {
+			"skill1": "A"
+		}
+	},
+	"tutorial.prompt.curse.keyboard": {
+		"note": "First-run tutorial prompt for keyboard and mouse players, in the prompt panel (lower centre, 480 px wide; on touch at the top centre, 360 px; text wraps). Step: a curse shrine: accepting a curse makes the run harder and the score multiplier bigger; the player may also walk away. Friendly, short instructional sentences in second person. Placeholders {skill1} are the player's bound key or button names (e.g. \"1\"; currently English).",
+		"example": {
+			"skill1": "1"
+		}
+	},
+	"tutorial.prompt.curse.touch": {
+		"note": "First-run tutorial prompt for phone / tablet players; on-screen button names (Attack, Alt, Roll, Flask, Swap, Ember, Accept) must use exactly the words of the touch.* button labels, in the prompt panel (lower centre, 480 px wide; on touch at the top centre, 360 px; text wraps). Step: a curse shrine: accepting a curse makes the run harder and the score multiplier bigger; the player may also walk away. Friendly, short instructional sentences in second person."
+	},
+	"tutorial.prompt.draft.gamepad": {
+		"note": "First-run tutorial prompt for gamepad players, in the prompt panel (lower centre, 480 px wide; on touch at the top centre, 360 px; text wraps). Step: choosing a boon (a run-long power-up) from a draft of cards. Friendly, short instructional sentences in second person. Placeholders {move}, {fire} are the player's bound key or button names (e.g. \"Left stick\", \"RT\"; currently English).",
+		"example": {
+			"move": "Left stick",
+			"fire": "RT"
+		}
+	},
+	"tutorial.prompt.draft.keyboard": {
+		"note": "First-run tutorial prompt for keyboard and mouse players, in the prompt panel (lower centre, 480 px wide; on touch at the top centre, 360 px; text wraps). Step: choosing a boon (a run-long power-up) from a draft of cards. Friendly, short instructional sentences in second person. Placeholders {left}, {right}, {fire} are the player's bound key or button names (e.g. \"A\", \"D\", \"Click\"; currently English).",
+		"example": {
+			"left": "A",
+			"right": "D",
+			"fire": "Click"
+		}
+	},
+	"tutorial.prompt.draft.touch": {
+		"note": "First-run tutorial prompt for phone / tablet players; on-screen button names (Attack, Alt, Roll, Flask, Swap, Ember, Accept) must use exactly the words of the touch.* button labels, in the prompt panel (lower centre, 480 px wide; on touch at the top centre, 360 px; text wraps). Step: choosing a boon (a run-long power-up) from a draft of cards. Friendly, short instructional sentences in second person."
+	},
+	"tutorial.prompt.ember.gamepad": {
+		"note": "First-run tutorial prompt for gamepad players, in the prompt panel (lower centre, 480 px wide; on touch at the top centre, 360 px; text wraps). Step: burning an Ember (the screen-clearing resource, 2 per floor) to clear every enemy bullet. Friendly, short instructional sentences in second person. Placeholders {ember} are the player's bound key or button names (e.g. \"RB\"; currently English).",
+		"example": {
+			"ember": "RB"
+		}
+	},
+	"tutorial.prompt.ember.keyboard": {
+		"note": "First-run tutorial prompt for keyboard and mouse players, in the prompt panel (lower centre, 480 px wide; on touch at the top centre, 360 px; text wraps). Step: burning an Ember (the screen-clearing resource, 2 per floor) to clear every enemy bullet. Friendly, short instructional sentences in second person. Placeholders {ember} are the player's bound key or button names (e.g. \"Q\"; currently English).",
+		"example": {
+			"ember": "Q"
+		}
+	},
+	"tutorial.prompt.ember.touch": {
+		"note": "First-run tutorial prompt for phone / tablet players; on-screen button names (Attack, Alt, Roll, Flask, Swap, Ember, Accept) must use exactly the words of the touch.* button labels, in the prompt panel (lower centre, 480 px wide; on touch at the top centre, 360 px; text wraps). Step: burning an Ember (the screen-clearing resource, 2 per floor) to clear every enemy bullet. Friendly, short instructional sentences in second person."
+	},
+	"tutorial.prompt.finish.gamepad": {
+		"note": "First-run tutorial prompt for gamepad players, in the prompt panel (lower centre, 480 px wide; on touch at the top centre, 360 px; text wraps). Step: the last step: taking the stairwell ends the tutorial. Friendly, short instructional sentences in second person."
+	},
+	"tutorial.prompt.finish.keyboard": {
+		"note": "First-run tutorial prompt for keyboard and mouse players, in the prompt panel (lower centre, 480 px wide; on touch at the top centre, 360 px; text wraps). Step: the last step: taking the stairwell ends the tutorial. Friendly, short instructional sentences in second person."
+	},
+	"tutorial.prompt.finish.touch": {
+		"note": "First-run tutorial prompt for phone / tablet players; on-screen button names (Attack, Alt, Roll, Flask, Swap, Ember, Accept) must use exactly the words of the touch.* button labels, in the prompt panel (lower centre, 480 px wide; on touch at the top centre, 360 px; text wraps). Step: the last step: taking the stairwell ends the tutorial. Friendly, short instructional sentences in second person."
+	},
+	"tutorial.prompt.flask.gamepad": {
+		"note": "First-run tutorial prompt for gamepad players, in the prompt panel (lower centre, 480 px wide; on touch at the top centre, 360 px; text wraps). Step: the player is hurt; drinking the healing flask (3 charges per floor, refilled each new floor). Friendly, short instructional sentences in second person. Placeholders {flask} are the player's bound key or button names (e.g. \"D-pad up\"; currently English).",
+		"example": {
+			"flask": "D-pad up"
+		}
+	},
+	"tutorial.prompt.flask.keyboard": {
+		"note": "First-run tutorial prompt for keyboard and mouse players, in the prompt panel (lower centre, 480 px wide; on touch at the top centre, 360 px; text wraps). Step: the player is hurt; drinking the healing flask (3 charges per floor, refilled each new floor). Friendly, short instructional sentences in second person. Placeholders {flask} are the player's bound key or button names (e.g. \"F\"; currently English).",
+		"example": {
+			"flask": "F"
+		}
+	},
+	"tutorial.prompt.flask.touch": {
+		"note": "First-run tutorial prompt for phone / tablet players; on-screen button names (Attack, Alt, Roll, Flask, Swap, Ember, Accept) must use exactly the words of the touch.* button labels, in the prompt panel (lower centre, 480 px wide; on touch at the top centre, 360 px; text wraps). Step: the player is hurt; drinking the healing flask (3 charges per floor, refilled each new floor). Friendly, short instructional sentences in second person."
+	},
+	"tutorial.prompt.follow.gamepad": {
+		"note": "First-run tutorial prompt for gamepad players, in the prompt panel (lower centre, 480 px wide; on touch at the top centre, 360 px; text wraps). Step: the player walks to the next room, following a guidance arrow (the marker) on the floor. Friendly, short instructional sentences in second person."
+	},
+	"tutorial.prompt.follow.keyboard": {
+		"note": "First-run tutorial prompt for keyboard and mouse players, in the prompt panel (lower centre, 480 px wide; on touch at the top centre, 360 px; text wraps). Step: the player walks to the next room, following a guidance arrow (the marker) on the floor. Friendly, short instructional sentences in second person."
+	},
+	"tutorial.prompt.follow.touch": {
+		"note": "First-run tutorial prompt for phone / tablet players; on-screen button names (Attack, Alt, Roll, Flask, Swap, Ember, Accept) must use exactly the words of the touch.* button labels, in the prompt panel (lower centre, 480 px wide; on touch at the top centre, 360 px; text wraps). Step: the player walks to the next room, following a guidance arrow (the marker) on the floor. Friendly, short instructional sentences in second person."
+	},
+	"tutorial.prompt.guard.gamepad": {
+		"note": "First-run tutorial prompt for gamepad players, in the prompt panel (lower centre, 480 px wide; on touch at the top centre, 360 px; text wraps). Step: blocking (guarding) with the sword just as a shot arrives; it erases bullets and shockwaves. Friendly, short instructional sentences in second person. Placeholders {alt} are the player's bound key or button names (e.g. \"LT\"; currently English).",
+		"example": {
+			"alt": "LT"
+		}
+	},
+	"tutorial.prompt.guard.keyboard": {
+		"note": "First-run tutorial prompt for keyboard and mouse players, in the prompt panel (lower centre, 480 px wide; on touch at the top centre, 360 px; text wraps). Step: blocking (guarding) with the sword just as a shot arrives; it erases bullets and shockwaves. Friendly, short instructional sentences in second person. Placeholders {alt} are the player's bound key or button names (e.g. \"Right click\"; currently English).",
+		"example": {
+			"alt": "Right click"
+		}
+	},
+	"tutorial.prompt.guard.touch": {
+		"note": "First-run tutorial prompt for phone / tablet players; on-screen button names (Attack, Alt, Roll, Flask, Swap, Ember, Accept) must use exactly the words of the touch.* button labels, in the prompt panel (lower centre, 480 px wide; on touch at the top centre, 360 px; text wraps). Step: blocking (guarding) with the sword just as a shot arrives; it erases bullets and shockwaves. Friendly, short instructional sentences in second person."
+	},
+	"tutorial.prompt.guardHold.gamepad": {
+		"note": "First-run tutorial prompt for gamepad players, in the prompt panel (lower centre, 480 px wide; on touch at the top centre, 360 px; text wraps). Step: shown again when the enemy keeps standing: it only goes down after the player blocks one of its shots. Friendly, short instructional sentences in second person. Placeholders {alt} are the player's bound key or button names (e.g. \"LT\"; currently English).",
+		"example": {
+			"alt": "LT"
+		}
+	},
+	"tutorial.prompt.guardHold.keyboard": {
+		"note": "First-run tutorial prompt for keyboard and mouse players, in the prompt panel (lower centre, 480 px wide; on touch at the top centre, 360 px; text wraps). Step: shown again when the enemy keeps standing: it only goes down after the player blocks one of its shots. Friendly, short instructional sentences in second person. Placeholders {alt} are the player's bound key or button names (e.g. \"Right click\"; currently English).",
+		"example": {
+			"alt": "Right click"
+		}
+	},
+	"tutorial.prompt.guardHold.touch": {
+		"note": "First-run tutorial prompt for phone / tablet players; on-screen button names (Attack, Alt, Roll, Flask, Swap, Ember, Accept) must use exactly the words of the touch.* button labels, in the prompt panel (lower centre, 480 px wide; on touch at the top centre, 360 px; text wraps). Step: shown again when the enemy keeps standing: it only goes down after the player blocks one of its shots. Friendly, short instructional sentences in second person."
+	},
+	"tutorial.prompt.hits.gamepad": {
+		"note": "First-run tutorial prompt for gamepad players, in the prompt panel (lower centre, 480 px wide; on touch at the top centre, 360 px; text wraps). Step: a group of enemies rushes the player; a hit makes the character flash red and normally costs half a heart (here it costs nothing). Friendly, short instructional sentences in second person."
+	},
+	"tutorial.prompt.hits.keyboard": {
+		"note": "First-run tutorial prompt for keyboard and mouse players, in the prompt panel (lower centre, 480 px wide; on touch at the top centre, 360 px; text wraps). Step: a group of enemies rushes the player; a hit makes the character flash red and normally costs half a heart (here it costs nothing). Friendly, short instructional sentences in second person."
+	},
+	"tutorial.prompt.hits.touch": {
+		"note": "First-run tutorial prompt for phone / tablet players; on-screen button names (Attack, Alt, Roll, Flask, Swap, Ember, Accept) must use exactly the words of the touch.* button labels, in the prompt panel (lower centre, 480 px wide; on touch at the top centre, 360 px; text wraps). Step: a group of enemies rushes the player; a hit makes the character flash red and normally costs half a heart (here it costs nothing). Friendly, short instructional sentences in second person."
+	},
+	"tutorial.prompt.move.gamepad": {
+		"note": "First-run tutorial prompt for gamepad players, in the prompt panel (lower centre, 480 px wide; on touch at the top centre, 360 px; text wraps). Step: first lesson: moving the character. Friendly, short instructional sentences in second person. Placeholders {move} are the player's bound key or button names (e.g. \"Left stick\"; currently English).",
+		"example": {
+			"move": "Left stick"
+		}
+	},
+	"tutorial.prompt.move.keyboard": {
+		"note": "First-run tutorial prompt for keyboard and mouse players, in the prompt panel (lower centre, 480 px wide; on touch at the top centre, 360 px; text wraps). Step: first lesson: moving the character. Friendly, short instructional sentences in second person. Placeholders {move} are the player's bound key or button names (e.g. \"WASD\"; currently English).",
+		"example": {
+			"move": "WASD"
+		}
+	},
+	"tutorial.prompt.move.touch": {
+		"note": "First-run tutorial prompt for phone / tablet players; on-screen button names (Attack, Alt, Roll, Flask, Swap, Ember, Accept) must use exactly the words of the touch.* button labels, in the prompt panel (lower centre, 480 px wide; on touch at the top centre, 360 px; text wraps). Step: first lesson: moving the character. Friendly, short instructional sentences in second person."
+	},
+	"tutorial.prompt.objective.gamepad": {
+		"note": "First-run tutorial prompt for gamepad players, in the prompt panel (lower centre, 480 px wide; on touch at the top centre, 360 px; text wraps). Step: the opening objective card; the prompt tells which control closes it. Friendly, short instructional sentences in second person. Placeholders {fire} are the player's bound key or button names (e.g. \"RT\"; currently English).",
+		"example": {
+			"fire": "RT"
+		}
+	},
+	"tutorial.prompt.objective.keyboard": {
+		"note": "First-run tutorial prompt for keyboard and mouse players, in the prompt panel (lower centre, 480 px wide; on touch at the top centre, 360 px; text wraps). Step: the opening objective card; the prompt tells which control closes it. Friendly, short instructional sentences in second person. Placeholders {fire} are the player's bound key or button names (e.g. \"Click\"; currently English).",
+		"example": {
+			"fire": "Click"
+		}
+	},
+	"tutorial.prompt.objective.touch": {
+		"note": "First-run tutorial prompt for phone / tablet players; on-screen button names (Attack, Alt, Roll, Flask, Swap, Ember, Accept) must use exactly the words of the touch.* button labels, in the prompt panel (lower centre, 480 px wide; on touch at the top centre, 360 px; text wraps). Step: the opening objective card; the prompt tells which control closes it. Friendly, short instructional sentences in second person."
+	},
+	"tutorial.prompt.relic.gamepad": {
+		"note": "First-run tutorial prompt for gamepad players, in the prompt panel (lower centre, 480 px wide; on touch at the top centre, 360 px; text wraps). Step: a relic (a permanent item for the run) waits on a pedestal. Friendly, short instructional sentences in second person."
+	},
+	"tutorial.prompt.relic.keyboard": {
+		"note": "First-run tutorial prompt for keyboard and mouse players, in the prompt panel (lower centre, 480 px wide; on touch at the top centre, 360 px; text wraps). Step: a relic (a permanent item for the run) waits on a pedestal. Friendly, short instructional sentences in second person."
+	},
+	"tutorial.prompt.relic.touch": {
+		"note": "First-run tutorial prompt for phone / tablet players; on-screen button names (Attack, Alt, Roll, Flask, Swap, Ember, Accept) must use exactly the words of the touch.* button labels, in the prompt panel (lower centre, 480 px wide; on touch at the top centre, 360 px; text wraps). Step: a relic (a permanent item for the run) waits on a pedestal. Friendly, short instructional sentences in second person."
+	},
+	"tutorial.prompt.roll.gamepad": {
+		"note": "First-run tutorial prompt for gamepad players, in the prompt panel (lower centre, 480 px wide; on touch at the top centre, 360 px; text wraps). Step: a sniper enemy shows its aim as an orange line; dodge-rolling through the shot (the player can't be hit mid-roll). Friendly, short instructional sentences in second person. Placeholders {roll} are the player's bound key or button names (e.g. \"LB\"; currently English).",
+		"example": {
+			"roll": "LB"
+		}
+	},
+	"tutorial.prompt.roll.keyboard": {
+		"note": "First-run tutorial prompt for keyboard and mouse players, in the prompt panel (lower centre, 480 px wide; on touch at the top centre, 360 px; text wraps). Step: a sniper enemy shows its aim as an orange line; dodge-rolling through the shot (the player can't be hit mid-roll). Friendly, short instructional sentences in second person. Placeholders {roll} are the player's bound key or button names (e.g. \"Space\"; currently English).",
+		"example": {
+			"roll": "Space"
+		}
+	},
+	"tutorial.prompt.roll.touch": {
+		"note": "First-run tutorial prompt for phone / tablet players; on-screen button names (Attack, Alt, Roll, Flask, Swap, Ember, Accept) must use exactly the words of the touch.* button labels, in the prompt panel (lower centre, 480 px wide; on touch at the top centre, 360 px; text wraps). Step: a sniper enemy shows its aim as an orange line; dodge-rolling through the shot (the player can't be hit mid-roll). Friendly, short instructional sentences in second person."
+	},
+	"tutorial.prompt.stairwell.gamepad": {
+		"note": "First-run tutorial prompt for gamepad players, in the prompt panel (lower centre, 480 px wide; on touch at the top centre, 360 px; text wraps). Step: the stairwell that leads down to the next, more dangerous floor. Friendly, short instructional sentences in second person."
+	},
+	"tutorial.prompt.stairwell.keyboard": {
+		"note": "First-run tutorial prompt for keyboard and mouse players, in the prompt panel (lower centre, 480 px wide; on touch at the top centre, 360 px; text wraps). Step: the stairwell that leads down to the next, more dangerous floor. Friendly, short instructional sentences in second person."
+	},
+	"tutorial.prompt.stairwell.touch": {
+		"note": "First-run tutorial prompt for phone / tablet players; on-screen button names (Attack, Alt, Roll, Flask, Swap, Ember, Accept) must use exactly the words of the touch.* button labels, in the prompt panel (lower centre, 480 px wide; on touch at the top centre, 360 px; text wraps). Step: the stairwell that leads down to the next, more dangerous floor. Friendly, short instructional sentences in second person."
+	},
+	"tutorial.verdict": {
+		"note": "Status line (info panel, bottom right) after a tutorial run: it was a practice and its score was not sent to the server."
+	},
+	"weapon.bow.name": {
+		"note": "Weapon name, shown inside a compact weapon slot of the in-run weapon panel (bottom left, 108 x 30 px, small text). One short word.",
+		"max": 9
+	},
+	"weapon.sword.name": {
+		"note": "Weapon name, shown inside a compact weapon slot of the in-run weapon panel (bottom left, 108 x 30 px, small text). One short word.",
+		"max": 9
+	}
+}

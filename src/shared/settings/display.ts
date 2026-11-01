@@ -2,14 +2,16 @@
  * Display settings (Options screen, task L4): the HUD scale, a percent of the automatic scale (shared/view/hud
  * computeHudScale; the client's useHudScale multiplies it in), and the room-edge lines on the floor
  * (docs/ROOM_EDGES.md RE6), the corner panels' occlusion fade (docs/HUD_LAYOUT.md H7), the corner minimap
- * (docs/MINIMAP.md M10), the player outline (docs/PLAYER_OUTLINE.md P4), the build effects (docs/BUILDS.md BUD13) and the touch controls (docs/MOBILE.md MB7: size,
- * opacity, auto-target, left-handed). Presentation only; stored overrides-only (a new optional field needs no migration).
+ * (docs/MINIMAP.md M10), the player outline (docs/PLAYER_OUTLINE.md P4), the build effects (docs/BUILDS.md BUD13), the touch controls (docs/MOBILE.md MB7: size,
+ * opacity, auto-target, left-handed) and the language (docs/LOCALIZATION.md L6). Presentation only; stored overrides-only (a new optional field needs no migration).
  */
+import { localeDef } from "shared/l10n";
 import {
 	BUILD_FX_LEVELS,
 	DEFAULT_BUILD_FX,
 	DEFAULT_HUD_FADE,
 	DEFAULT_HUD_SCALE_PERCENT,
+	DEFAULT_LANGUAGE,
 	DEFAULT_MINIMAP,
 	DEFAULT_PLAYER_OUTLINE,
 	DEFAULT_ROOM_EDGES,
@@ -18,6 +20,7 @@ import {
 	DEFAULT_TOUCH_OPACITY_PERCENT,
 	DEFAULT_TOUCH_SIZE_PERCENT,
 	HUD_SCALE_PERCENTS,
+	LANGUAGE_AUTO,
 	TOUCH_OPACITY_PERCENTS,
 	TOUCH_SIZE_PERCENTS,
 	type BuildFxLevel,
@@ -44,6 +47,11 @@ export interface DisplaySettings {
 	touchAutoTarget: boolean;
 	/** Mirror the touch controls to the left side (docs/MOBILE.md MB7). Default false: only On (true) is stored. */
 	touchLeftHanded: boolean;
+	/**
+	 * The language override (docs/LOCALIZATION.md L6): LANGUAGE_AUTO (default, never stored) or a shared/l10n LOCALES code
+	 * (hidden ones too: whether a hidden pick is honoured is decided when it is read, languageOverride).
+	 */
+	language: string;
 }
 
 export type DisplayOverrides = Partial<DisplaySettings>;
@@ -59,6 +67,7 @@ export const DISPLAY_SETTING_KEYS: ReadonlyArray<keyof DisplaySettings> = [
 	"touchOpacity",
 	"touchAutoTarget",
 	"touchLeftHanded",
+	"language",
 ];
 
 export function defaultDisplaySettings(): DisplaySettings {
@@ -73,6 +82,7 @@ export function defaultDisplaySettings(): DisplaySettings {
 		touchOpacity: DEFAULT_TOUCH_OPACITY_PERCENT,
 		touchAutoTarget: DEFAULT_TOUCH_AUTO_TARGET,
 		touchLeftHanded: DEFAULT_TOUCH_LEFT_HANDED,
+		language: DEFAULT_LANGUAGE,
 	};
 }
 
@@ -80,8 +90,8 @@ export function defaultDisplaySettings(): DisplaySettings {
  * Keeps only a hudScale that is one of HUD_SCALE_PERCENTS (and not the default) and a roomEdges that is a boolean other
  * than the default (so only `false`), and the same for hudFade, minimap and playerOutline; a buildFx from
  * BUILD_FX_LEVELS other than the default (so only "reduced"); a touchSize / touchOpacity
- * from its list and not the default; a touchAutoTarget / touchLeftHanded that is a boolean other than the default. Never
- * throws.
+ * from its list and not the default; a touchAutoTarget / touchLeftHanded that is a boolean other than the default; a
+ * language that is a known locale code (stored as LOCALES spells it; "auto" and unknown codes are dropped). Never throws.
  */
 export function sanitizeDisplayOverrides(raw: unknown): DisplayOverrides {
 	const out: DisplayOverrides = {};
@@ -125,6 +135,11 @@ export function sanitizeDisplayOverrides(raw: unknown): DisplayOverrides {
 	if (typeIs(autoTarget, "boolean") && autoTarget !== DEFAULT_TOUCH_AUTO_TARGET) out.touchAutoTarget = autoTarget;
 	const leftHanded = t.touchLeftHanded;
 	if (typeIs(leftHanded, "boolean") && leftHanded !== DEFAULT_TOUCH_LEFT_HANDED) out.touchLeftHanded = leftHanded;
+	const language = t.language;
+	if (typeIs(language, "string") && language !== LANGUAGE_AUTO) {
+		const def = localeDef(language);
+		if (def !== undefined) out.language = def.code;
+	}
 	return out;
 }
 
@@ -135,4 +150,15 @@ export function resolveDisplaySettings(overrides: unknown): DisplaySettings {
 export function sameDisplayOverrides(a: Readonly<DisplayOverrides>, b: Readonly<DisplayOverrides>): boolean {
 	for (const k of DISPLAY_SETTING_KEYS) if (a[k] !== b[k]) return false;
 	return true;
+}
+
+/**
+ * The locale override a language setting asks for (shared/l10n pickLocale's `override`): undefined for automatic, an
+ * unknown code, or a hidden locale when the player may not pick hidden ones (`allowHidden`: developers, Studio).
+ */
+export function languageOverride(language: string, allowHidden: boolean): string | undefined {
+	if (language === LANGUAGE_AUTO) return undefined;
+	const def = localeDef(language);
+	if (def === undefined) return undefined;
+	return def.status === "live" || allowHidden ? def.code : undefined;
 }

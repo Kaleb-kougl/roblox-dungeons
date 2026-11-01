@@ -2,10 +2,20 @@
 // overrides sanitizer, labels, and that a rebound layout gives the same sim bits as the default one.
 import { describe, expect, it } from "@rbxts/jest-globals";
 import { Button, DEBUG_DROP_BUTTON, DEBUG_FLOOR_BUTTON } from "shared/sim";
-import { LEADERBOARD_KEY, PAUSE_HINT, SETTINGS_HINT, SETTINGS_KEY, SETTINGS_PAD_CLOSE_KEY } from "shared/view/hud";
+import { INPUT_KEY_STRING_KEYS, PLACEHOLDER_MANIFEST, ThemePack } from "shared/theme";
+import {
+	LEADERBOARD_KEY,
+	PAUSE_INPUTS,
+	SETTINGS_INPUTS,
+	SETTINGS_KEY,
+	SETTINGS_PAD_CLOSE_KEY,
+	pauseHint,
+	settingsHint,
+} from "shared/view/hud";
 import {
 	DEFAULT_BINDINGS,
 	FIXED_INPUTS,
+	INPUT_KEY_STRING_NAMES,
 	InputDeviceTracker,
 	KBM_ACTIONS,
 	KBM_KEY_NAMES,
@@ -32,6 +42,7 @@ import {
 	diffControlsOverrides,
 	draftHint,
 	driverKeyAction,
+	inputKeyStringKey,
 	inputLabel,
 	inputsFor,
 	isMapInput,
@@ -164,14 +175,46 @@ describe("DEFAULT_BINDINGS", () => {
 			keyboard: { next: "Click", previous: "Right click" },
 			gamepad: { next: "RT", previous: "LT" },
 		});
-		expect(PAUSE_HINT).toEqual({
-			keyboard: inputLabel(FIXED_INPUTS.pause),
-			gamepad: inputLabel(FIXED_INPUTS.padPause),
-		});
-		expect(SETTINGS_HINT).toEqual({
-			keyboard: inputLabel(FIXED_INPUTS.settings),
-			gamepad: inputLabel(FIXED_INPUTS.padMenuClose),
-		});
+		expect(PAUSE_INPUTS).toEqual({ keyboard: FIXED_INPUTS.pause, gamepad: FIXED_INPUTS.padPause });
+		expect(SETTINGS_INPUTS).toEqual({ keyboard: FIXED_INPUTS.settings, gamepad: FIXED_INPUTS.padMenuClose });
+		expect(pauseHint()).toEqual({ keyboard: "P", gamepad: "Start" });
+		expect(settingsHint()).toEqual({ keyboard: "O", gamepad: "B" });
+	});
+
+	it("labels named keys through input.key.* strings, English identical to INPUT_LABELS (docs/LOCALIZATION.md L1)", () => {
+		const pack = new ThemePack(PLACEHOLDER_MANIFEST, { warn: () => undefined });
+		const s = (key: string) => pack.str(key);
+		const seen = new Set<string>();
+		for (const name of INPUT_KEY_STRING_NAMES) {
+			expect(seen.has(name)).toBe(false);
+			seen.add(name);
+			expect([name, pack.hasString(inputKeyStringKey(name))]).toEqual([name, true]);
+			expect([name, inputLabel(name, s)]).toEqual([name, inputLabel(name)]);
+		}
+		// Every input a player can bind or see, and the theme's required list, agree with the names.
+		expect([...INPUT_KEY_STRING_KEYS]).toEqual([
+			...INPUT_KEY_STRING_NAMES.map(inputKeyStringKey),
+			"input.separator",
+		]);
+		for (const name of [...KBM_KEY_NAMES, ...KBM_MOUSE_NAMES, ...PAD_BUTTON_NAMES]) {
+			const label = inputLabel(name);
+			// A label that is a word (two letters or more, not an F-key or pad shorthand) must be translatable.
+			const wordy = label.match("%a%a%a")[0] !== undefined && label.match("^F%d+$")[0] === undefined;
+			if (wordy) expect([name, seen.has(name)]).toEqual([name, true]);
+		}
+		// A lookup that translates: named keys follow it, letters and digits never ask.
+		const asked: string[] = [];
+		const fake = (key: string) => {
+			asked.push(key);
+			return `<${key}>`;
+		};
+		expect(inputLabel("LeftShift", fake)).toBe("<input.key.LeftShift>");
+		expect(inputLabel("Q", fake)).toBe("Q");
+		expect(inputLabel("One", fake)).toBe("1");
+		expect(pauseHint(fake)).toEqual({ keyboard: "P", gamepad: "<input.key.ButtonStart>" });
+		expect(draftHint(DEFAULT_BINDINGS, fake).gamepad.left).toBe("<input.key.StickLeft>");
+		expect(spectateHint(DEFAULT_BINDINGS, fake).keyboard.next).toBe("<input.key.MouseButton1>");
+		expect(asked.includes("input.key.Q")).toBe(false);
 	});
 
 	it("the fixed keys match the HUD's and are all reserved", () => {

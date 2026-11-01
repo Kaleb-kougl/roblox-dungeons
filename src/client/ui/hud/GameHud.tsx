@@ -61,8 +61,8 @@ import { WeaponPanel } from "./WeaponPanel";
  *
  * The first two lay out at the 1280x720 reference size under a UIScale (useHudScale) and sit inside the device's
  * safe area (ScreenInsets = CoreUISafeInsets: notches, the Roblox top bar). Reads only Reflex (the ~10 Hz snapshot, the input
- * device, the verdict, the settings); text from the theme string table, colours from theme roles, the font from the
- * HUD font token (shared/view/hud HUD_FONTS).
+ * device, the verdict, the settings); text from the theme string table, colours from theme roles, the fonts from the
+ * locale shown (client/ui/theme useUiFonts; docs/LOCALIZATION.md L4).
  */
 export function GameHud() {
 	const active = useSelector(selectGameActive);
@@ -80,6 +80,7 @@ export function GameHud() {
 				key="KV_GameHud"
 				ref={setHudGui}
 				ResetOnSpawn={false}
+				AutoLocalize={false}
 				DisplayOrder={HUD_VIEW.hudDisplayOrder}
 				ScreenInsets={Enum.ScreenInsets.CoreUISafeInsets}
 				ZIndexBehavior={Enum.ZIndexBehavior.Sibling}
@@ -116,6 +117,7 @@ export function GameHud() {
 				key="KV_GameMenuDim"
 				ref={setDimLayer}
 				ResetOnSpawn={false}
+				AutoLocalize={false}
 				DisplayOrder={HUD_VIEW.menuDimDisplayOrder}
 				IgnoreGuiInset={true}
 				ScreenInsets={Enum.ScreenInsets.None}
@@ -123,6 +125,7 @@ export function GameHud() {
 			<screengui
 				key="KV_GameMenu"
 				ResetOnSpawn={false}
+				AutoLocalize={false}
 				DisplayOrder={HUD_VIEW.menuDisplayOrder}
 				ScreenInsets={Enum.ScreenInsets.CoreUISafeInsets}
 				ZIndexBehavior={Enum.ZIndexBehavior.Sibling}
@@ -138,6 +141,7 @@ export function GameHud() {
 			<screengui
 				key="KV_PauseButton"
 				ResetOnSpawn={false}
+				AutoLocalize={false}
 				DisplayOrder={PAUSE_BUTTON_VIEW.displayOrder}
 				ScreenInsets={Enum.ScreenInsets.None}
 				ZIndexBehavior={Enum.ZIndexBehavior.Sibling}
@@ -149,6 +153,7 @@ export function GameHud() {
 					key={TOUCH_STRIP_GUI.gui}
 					ref={setStripGui}
 					ResetOnSpawn={false}
+					AutoLocalize={false}
 					DisplayOrder={HUD_VIEW.hudDisplayOrder}
 					IgnoreGuiInset={true}
 					ScreenInsets={Enum.ScreenInsets.None}

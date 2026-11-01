@@ -5,7 +5,8 @@
  * Ported pieces (project-kaleb-vale @ 42897e2): heartFills (src/player/PlayerHud.tsx), formatClock
  * (src/playtest/PlaytestOverlay.tsx), the boss phase in Roman numerals (src/boss/BossHud.tsx). The rest is new.
  */
-import { COMBO_DENOMINATOR } from "shared/sim";
+import { formatTenths } from "shared/l10n";
+import { deviceHintOf, type DeviceHint, type InputLabelStr } from "shared/play";
 import { TUTORIAL_STRINGS } from "shared/tutorial";
 
 /**
@@ -27,9 +28,19 @@ const PERCENT = 100;
 export const SETTINGS_KEY = "O";
 /** Gamepad button that closes the Options screen (B: GUI "back"). */
 export const SETTINGS_PAD_CLOSE_KEY = "ButtonB";
-/** Key names the menus show, per last-used device. */
-export const SETTINGS_HINT = { keyboard: SETTINGS_KEY, gamepad: "B" } as const;
-export const PAUSE_HINT = { keyboard: "P", gamepad: "Start" } as const;
+/** Input names (Enum.KeyCode) the menus' close / resume hints name, per last-used device: label them with *Hint. */
+export const SETTINGS_INPUTS = { keyboard: SETTINGS_KEY, gamepad: SETTINGS_PAD_CLOSE_KEY } as const;
+export const PAUSE_INPUTS = { keyboard: "P", gamepad: "ButtonStart" } as const;
+
+/** The Options screen's close hint labels ("O" / "B"), through `input.key.*` when given a string lookup. */
+export function settingsHint(s?: InputLabelStr): DeviceHint {
+	return deviceHintOf(SETTINGS_INPUTS, s);
+}
+
+/** The pause / resume hint labels ("P" / "Start"), through `input.key.*` when given a string lookup. */
+export function pauseHint(s?: InputLabelStr): DeviceHint {
+	return deviceHintOf(PAUSE_INPUTS, s);
+}
 
 /** HUD layout tunables, in reference pixels (the UIScale maps them to the screen). */
 export const HUD_VIEW = {
@@ -197,9 +208,9 @@ export function bossFraction(hp: number, hpMax: number): number {
 	return hpMax > 0 ? math.clamp(hp / hpMax, 0, 1) : 0;
 }
 
-/** Combo tenths as the HUD shows it: one decimal (13 -> "1.3"). */
+/** Combo tenths as the HUD shows it: one decimal in the number locale's separator (13 -> "1.3" / "1,3"). */
 export function formatCombo(tenths: number): string {
-	return string.format("%d.%d", math.floor(tenths / COMBO_DENOMINATOR), tenths % COMBO_DENOMINATOR);
+	return formatTenths(tenths);
 }
 
 /** Combo meter fill: ticks left over the window, clamped to [0, 1]. */

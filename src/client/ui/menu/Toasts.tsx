@@ -3,7 +3,7 @@ import { useSelector } from "@rbxts/react-reflex";
 import { Players } from "@rbxts/services";
 import { selectLobby, selectLobbyNotices, type LobbyNoticeToast } from "client/store";
 import { MenuButton, Panel, Row, Text } from "client/ui/hud";
-import { role, str } from "client/ui/theme";
+import { role, str, type FontRole } from "client/ui/theme";
 import { SFX } from "shared/view/audio";
 import { HUD_VIEW } from "shared/view/hud";
 import {
@@ -113,6 +113,13 @@ export function InviteBadge() {
 }
 
 /** A notice's line: its vars, plus the partyLobby notice's lobby title as `{lobby}`. */
+/** A notice that names a player or a lobby (`{name}`, `{host}`, `{lobby}`): shown in the display-name font (LD13). */
+function noticeFont(n: LobbyNoticeToast): FontRole {
+	const vars = n.vars as Record<string, unknown> | undefined;
+	const named = vars !== undefined && (vars.name !== undefined || vars.host !== undefined);
+	return n.lobby !== undefined || named ? "name" : "text";
+}
+
 function noticeText(n: LobbyNoticeToast): string {
 	const lobby = n.lobby;
 	return lobby !== undefined ? str(n.key, { ...(n.vars ?? {}), lobby: spec(lobby) }) : str(n.key, n.vars);
@@ -148,13 +155,14 @@ export function NoticeToasts() {
 							color="uiAccent"
 							align={Enum.TextXAlignment.Center}
 							wrap={true}
+							font={noticeFont(n)}
 							text={noticeText(n)}
 						/>
 					);
 				}
 				return (
 					<Row key={`n${n.id}`} order={i + 1} align={Enum.HorizontalAlignment.Center}>
-						<Text order={1} color="uiAccent" text={noticeText(n)} />
+						<Text order={1} color="uiAccent" font={noticeFont(n)} text={noticeText(n)} />
 						<MenuButton
 							order={2}
 							name={`InviteArrived_${inviteId}`}

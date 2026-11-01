@@ -5,7 +5,7 @@ import { ReflexProvider } from "@rbxts/react-reflex";
 import { createPortal, createRoot } from "@rbxts/react-roblox";
 import { GuiService, Players, RunService } from "@rbxts/services";
 import { clientStore, selectBaselineRun, selectJuice, selectRunBaseline } from "client/store";
-import { StageCard } from "client/ui";
+import { LocaleRoot, StageCard } from "client/ui";
 import { TUTORIAL } from "shared/config";
 import { ENDLESS_FIRST_FLOOR, endlessRoster } from "shared/dungeon";
 import type { ContentRef } from "shared/theme";
@@ -144,13 +144,15 @@ export class StageController implements OnStart, StageDriver {
 		root.render(
 			createPortal(
 				<ReflexProvider producer={clientStore}>
-					<StageCard
-						visible={visible}
-						opacity={opacity}
-						serial={serial}
-						onCovered={(s) => this.onCovered(s)}
-						onGui={(gui) => (this.gui = gui)}
-					/>
+					<LocaleRoot>
+						<StageCard
+							visible={visible}
+							opacity={opacity}
+							serial={serial}
+							onCovered={(s) => this.onCovered(s)}
+							onGui={(gui) => (this.gui = gui)}
+						/>
+					</LocaleRoot>
 				</ReflexProvider>,
 				playerGui,
 			),

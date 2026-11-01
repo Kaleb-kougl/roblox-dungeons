@@ -187,8 +187,8 @@ describe("nearMiss: strings and audio IDs", () => {
 			for (const key of NEAR_MISS_STRING_KEYS) expect([id, key, pack.hasString(key)]).toEqual([id, key, true]);
 		}
 		const pack = new ThemePack(PLACEHOLDER_MANIFEST, { warn: quiet });
-		expect(NEAR_MISS_STRING_KEYS.map((k) => pack.str(k))).toEqual(["PARRY!", "x{n}"]);
-		expect(`${pack.str("fx.parry.text")} ${pack.str("fx.parry.count", { n: 5 })}`).toBe("PARRY! x5");
+		expect(NEAR_MISS_STRING_KEYS.map((k) => pack.str(k))).toEqual(["PARRY!", "{text} x{n}"]);
+		expect(pack.str("fx.parry.count", { text: pack.str("fx.parry.text"), n: 5 })).toBe("PARRY! x5");
 	});
 
 	it("appends the graze and the parry to the port's audio IDs, silent in the placeholder", () => {

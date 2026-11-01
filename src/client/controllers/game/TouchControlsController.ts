@@ -11,7 +11,7 @@ import {
 	selectRobloxMenuOpen,
 	selectSnapshot,
 } from "client/store";
-import { HUD_FONT, role, str, themePack } from "client/ui";
+import { currentHudFont, onLocaleChanged, role, str, themePack, createKvScreenGui } from "client/ui";
 import { STUDS_PER_TILE, TOUCH } from "shared/config";
 import type { DisplaySettings } from "shared/settings";
 import type { ImageRef } from "shared/theme";
@@ -83,8 +83,8 @@ interface Control {
 	readonly counted: boolean;
 	/** The face the last layout gave it (what the label shows: word, word and count, or the count by the icon). */
 	face: TouchFace["kind"];
-	/** The label without the count (the theme string of touch.<id>). */
-	readonly name: string;
+	/** The label without the count (the theme string of touch.<id>; re-read on a locale switch). */
+	name: string;
 	/** Placed by the current layout (the mode's buttons). */
 	placed: boolean;
 	fillT: number;
@@ -187,7 +187,7 @@ function makeLabel(button: TextButton, name: string): [TextLabel, UITextSizeCons
 	label.Active = false;
 	label.Text = name;
 	label.TextScaled = true;
-	label.Font = HUD_FONT;
+	label.Font = currentHudFont();
 	label.TextColor3 = role("uiText");
 	label.TextStrokeColor3 = role("uiPanel");
 	label.ZIndex = ART_Z.label;
@@ -344,7 +344,19 @@ export class TouchControlsController implements OnStart {
 
 	onStart(): void {
 		if (!UserInputService.TouchEnabled) return;
-		this.ui = this.build();
+		const ui = this.build();
+		this.ui = ui;
+		// A locale switch (docs/LOCALIZATION.md L6): every control's word and font; the frame writes the label again.
+		this.janitor.Add(
+			onLocaleChanged(() => {
+				const font = currentHudFont();
+				for (const [id, c] of ui.controls) {
+					c.name = str(touchButtonLabelKey(id));
+					c.text.Font = font;
+					c.label = "";
+				}
+			}),
+		);
 		RunService.BindToRenderStep(RENDER_STEP, Enum.RenderPriority.Input.Value + RENDER_ORDER.touchBeforeSim, () =>
 			this.frame(),
 		);
@@ -389,8 +401,7 @@ export class TouchControlsController implements OnStart {
 		const playerGui = Players.LocalPlayer.WaitForChild("PlayerGui") as PlayerGui;
 		playerGui.ScreenOrientation = Enum.ScreenOrientation.LandscapeSensor;
 
-		const gui = new Instance("ScreenGui");
-		gui.Name = GUI_NAME;
+		const gui = createKvScreenGui(GUI_NAME);
 		gui.ResetOnSpawn = false;
 		gui.ScreenInsets = Enum.ScreenInsets.CoreUISafeInsets;
 		gui.DisplayOrder = TOUCH_LAYOUT.displayOrder;

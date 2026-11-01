@@ -14,7 +14,7 @@ import {
 	selectSystemReducedMotion,
 	type OptionsState,
 } from "client/store";
-import { HUD_FONT, role, str } from "client/ui/theme";
+import { role, str, useHudFont, useLocale } from "client/ui/theme";
 import {
 	KBM_ACTIONS,
 	PAD_ACTIONS,
@@ -40,17 +40,22 @@ import {
 import { SFX } from "shared/view/audio";
 import {
 	HUD_VIEW,
+	LANGUAGE_ROW,
 	OPTIONS_DEVICES,
 	OPTIONS_STRINGS,
 	OPTIONS_TABS,
 	OPTIONS_VIEW,
-	SETTINGS_HINT,
+	settingsHint,
 	SETTINGS_STRINGS,
 	UI_ART,
 	actionNameKey,
+	currentLanguageChoice,
+	languageChoiceLabel,
+	languageChoices,
 	optionsDeviceKey,
 	optionsTabKey,
 	refusalKey,
+	stepLanguageChoice,
 	volumeIcon,
 } from "shared/view/hud";
 import { MENU_FIT, screenDividers, screenSkin } from "shared/view/menu";
@@ -214,7 +219,7 @@ function JuiceTab(props: { order: number; actions: HudActions; selectable: boole
 
 function slotText(b: Bindings, device: BindingDevice, action: GameAction, slot: 0 | 1): string {
 	const input = slotInput(b, device, action, slot);
-	return input !== undefined ? inputLabel(input) : str(OPTIONS_STRINGS.emptySlot);
+	return input !== undefined ? inputLabel(input, str) : str(OPTIONS_STRINGS.emptySlot);
 }
 
 function BindingRow(props: {
@@ -273,6 +278,7 @@ function BindingRow(props: {
 }
 
 function TestStrip(props: { order: number; device: BindingDevice; pressed: ReadonlyArray<GameAction> }) {
+	const hudFont = useHudFont();
 	const actions = props.device === "kbm" ? KBM_ACTIONS : PAD_ACTIONS;
 	const chips = actions.map((action, i) => {
 		const lit = props.pressed.includes(action);
@@ -283,7 +289,7 @@ function TestStrip(props: { order: number; device: BindingDevice; pressed: Reado
 				BackgroundColor3={role(lit ? "uiAccent" : "uiPanel")}
 				BackgroundTransparency={lit ? 0 : HUD_VIEW.panelTransparency}
 				BorderSizePixel={0}
-				Font={HUD_FONT}
+				Font={hudFont}
 				TextSize={OPTIONS_VIEW.chipText}
 				TextColor3={role(lit ? "uiPanel" : "uiTextDim")}
 				TextTruncate={Enum.TextTruncate.AtEnd}
@@ -428,7 +434,7 @@ function ControlsTab(props: {
 					color="telegraph"
 					wrap={true}
 					text={str(refusalKey(notice.reason), {
-						input: inputLabel(notice.input),
+						input: inputLabel(notice.input, str),
 						action: str(actionNameKey(notice.action)),
 					})}
 				/>
@@ -532,12 +538,59 @@ function AudioTab(props: { order: number; actions: HudActions; selectable: boole
 	);
 }
 
+/**
+ * Options > Display > Language (docs/LOCALIZATION.md L6): `< value >` like the audio rows (the choices don't fit a row
+ * of option buttons: up to 19 for a developer), the value in the display-name font (endonyms in their own script,
+ * LD13). Automatic ({name}) first, then the listed locales (shared/view/hud language.ts). A pick applies at once: the
+ * HUD remounts in the new locale (LocaleRoot) and the gamepad selection stays on the arrow that was pressed.
+ */
+function LanguageRow(props: { order: number; actions: HudActions; selectable: boolean }) {
+	const l10n = useLocale();
+	const choices = languageChoices(l10n.allowHidden);
+	const current = currentLanguageChoice(l10n);
+	const choice = choices.find((c) => c.value === current) ?? choices[0];
+	const step = new Vector2(OPTIONS_VIEW.stepSize.x, OPTIONS_VIEW.stepSize.y);
+	const pick = (direction: 1 | -1) => {
+		props.actions.playUi(SFX.uiClick);
+		props.actions.updateDisplay({ language: stepLanguageChoice(choices, current, direction) });
+	};
+	return (
+		<Row order={props.order}>
+			<Text order={0} width={HUD_VIEW.settingsLabelWidth} text={str(OPTIONS_STRINGS.language)} />
+			<MenuButton
+				order={1}
+				name="language_prev"
+				text={str(OPTIONS_STRINGS.languagePrev)}
+				size={step}
+				selectable={props.selectable}
+				onActivated={() => pick(-1)}
+			/>
+			<Text
+				order={2}
+				width={LANGUAGE_ROW.valueWidth}
+				align={Enum.TextXAlignment.Center}
+				font="name"
+				text={languageChoiceLabel(choice, l10n.autoCode, str)}
+			/>
+			<MenuButton
+				order={3}
+				name="language_next"
+				text={str(OPTIONS_STRINGS.languageNext)}
+				size={step}
+				selectable={props.selectable}
+				onActivated={() => pick(1)}
+			/>
+		</Row>
+	);
+}
+
 function DisplayTab(props: { order: number; actions: HudActions; selectable: boolean }) {
 	const display = useSelector(selectDisplay);
 	/** Touch devices only: the touch rows (docs/MOBILE.md MB11). Read once, when the tab opens. */
 	const touch = UserInputService.TouchEnabled;
 	return (
 		<Panel position={new UDim2()} anchor={new Vector2()} order={props.order} transparency={HIDDEN} padding={0}>
+			<LanguageRow order={0} actions={props.actions} selectable={props.selectable} />
 			<SettingRow
 				order={1}
 				name="hudScale"
@@ -791,7 +844,7 @@ function OptionsModal(props: { options: OptionsState; actions: HudActions; devic
 				device={props.device}
 				lines={[
 					str(OPTIONS_STRINGS.conflict, {
-						input: inputLabel(c.input),
+						input: inputLabel(c.input, str),
 						action: str(actionNameKey(c.holder.action)),
 					}),
 				]}
@@ -1012,7 +1065,7 @@ export function OptionsScreen() {
 								order={8}
 								size={HUD_VIEW.smallText}
 								color="uiTextDim"
-								text={str(OPTIONS_STRINGS.hint, { key: SETTINGS_HINT[keyDevice(device)] })}
+								text={str(OPTIONS_STRINGS.hint, { key: settingsHint(str)[keyDevice(device)] })}
 							/>
 						)}
 					</Panel>

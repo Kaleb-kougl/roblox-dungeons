@@ -1,5 +1,5 @@
 import React from "@rbxts/react";
-import { HUD_FONT, role, str } from "client/ui/theme";
+import { useHudFont, role, str } from "client/ui/theme";
 import type { ColorRole } from "shared/theme";
 import {
 	BUILD_HUD_VIEW,
@@ -53,6 +53,7 @@ function ItemCell(props: {
 	bare?: boolean;
 	position?: UDim2;
 }) {
+	const hudFont = useHudFont();
 	const size = props.look.size;
 	const max = props.maxLevel ?? 0;
 	const pips = itemPipLayout(size);
@@ -98,7 +99,7 @@ function ItemCell(props: {
 				ZIndex={CELL_Z.label}
 				Size={max > 0 ? new UDim2(1, 0, 0, pips.labelHeight) : UDim2.fromScale(1, 1)}
 				BackgroundTransparency={HIDDEN}
-				Font={HUD_FONT}
+				Font={hudFont}
 				TextSize={props.look.text}
 				TextColor3={role(props.textColor)}
 				Text={props.text}

@@ -5,7 +5,7 @@ import { ReflexProvider } from "@rbxts/react-reflex";
 import { createRoot } from "@rbxts/react-roblox";
 import { Players } from "@rbxts/services";
 import { clientStore } from "client/store";
-import { UiArtSpike, useHudScale } from "client/ui";
+import { UiArtSpike, useHudScale, createKvScreenGui } from "client/ui";
 import { UI_ART_SPIKE } from "shared/config";
 import { watchSpikeFlag } from "./spikeFlags";
 
@@ -47,8 +47,7 @@ export class UiArtSpikeController implements OnStart {
 		if (this.session !== undefined) return;
 		const janitor = new Janitor();
 		this.session = janitor;
-		const gui = new Instance("ScreenGui");
-		gui.Name = GUI_NAME;
+		const gui = createKvScreenGui(GUI_NAME);
 		gui.ResetOnSpawn = false;
 		gui.DisplayOrder = UI_ART_SPIKE.displayOrder;
 		gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling;

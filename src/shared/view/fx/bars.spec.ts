@@ -1,6 +1,7 @@
 // Health bar layout and state, and the damage number pool (port of project-kaleb-vale src/fx/bars/barLayout.test.ts,
 // barState.test.ts and src/fx/numbers/numberPool.test.ts @ 42897e2), plus the Roblox placeholder screen size.
 import { describe, expect, it } from "@rbxts/jest-globals";
+import { SOURCE_LOCALE, setNumberLocale } from "shared/l10n";
 import {
 	ActorSizeCache,
 	BAR_GAP,
@@ -373,6 +374,9 @@ describe("damage numbers", () => {
 		expect(numberBaseY(60, true)).toBe(18);
 		expect(numberText(NumberStyle.NORMAL, 6, "CAP")).toBe("6");
 		expect(numberText(NumberStyle.NORMAL, 2.5, "CAP")).toBe("2.5");
+		setNumberLocale("fr");
+		expect(numberText(NumberStyle.NORMAL, 2.5, "CAP")).toBe("2,5");
+		setNumberLocale(SOURCE_LOCALE);
 		expect(numberText(NumberStyle.CAP, 0, "CAP")).toBe("CAP");
 	});
 });

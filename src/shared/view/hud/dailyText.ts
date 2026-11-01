@@ -2,24 +2,22 @@
  * The Daily's text helpers (docs/DAILY.md DS9 / DS11), shared by the main menu's Daily card and podium, the
  * leaderboard panel's daily tabs and the run-over daily block. Pure (headlessly tested, daily.spec.ts):
  *
- *   formatThousands   23410 -> "23,410" (DAILY_VIEW.thousandsSeparator)
  *   dailySecondsLeft  whole seconds to the Daily's end on the server clock: the status's `resetsAt` while it is
  *                     ahead, else the next UTC midnight from day math (a stale status past midnight never reads 0)
  *   formatCountdown   "5:12:33" (h:mm:ss)
  *   dailyCivilDate    a day index's UTC date (year, month, date, weekday): Howard Hinnant's civil_from_days
- *   dailyDateLine     "Sat Oct 31" (`daily.date` with the weekday / month name strings)
+ *   dailyDateText     "Sat Oct 31" (`daily.date.format` with the weekday / month name strings)
  *   standingLine      where an entry stands (rank exact / "top N%" / "#n of m" under 20 entrants, DSD15)
+ *
+ * Numbers are grouped by shared/l10n formatThousands (the number locale's separator, docs/LOCALIZATION.md L2).
  */
 import { DAILY, dailyDay, dailyResetsAt, type DailyStanding } from "shared/daily";
+import { formatThousands } from "shared/l10n";
 import type { StringVars } from "shared/theme";
 import { DAILY_STRINGS, dailyMonthKey, dailyWeekdayKey } from "./dailyStrings";
 
-/** How the Daily's numbers and clock are printed. */
+/** How the Daily's clock is printed (numbers: shared/l10n formatThousands). */
 export const DAILY_VIEW = {
-	/** Between groups of three digits ("23,410"). */
-	thousandsSeparator: ",",
-	/** Digits per group. */
-	groupDigits: 3,
 	/** Seconds per minute / hour (the countdown's fields). */
 	secondsPerMinute: 60,
 	secondsPerHour: 3600,
@@ -37,20 +35,6 @@ export type DailyStr = (key: string, vars?: StringVars) => string;
 /** The text of a line through a lookup. */
 export function dailyText(line: DailyLine, s: DailyStr): string {
 	return s(line.key, line.vars);
-}
-
-/** A whole number with a separator every three digits ("1,240"; negatives keep their sign; fractions are floored). */
-export function formatThousands(n: number): string {
-	const whole = math.floor(math.abs(n));
-	const digits = tostring(whole);
-	const size = digits.size();
-	let out = "";
-	for (let i = 1; i <= size; i++) {
-		out += string.sub(digits, i, i);
-		const left = size - i;
-		if (left > 0 && left % DAILY_VIEW.groupDigits === 0) out += DAILY_VIEW.thousandsSeparator;
-	}
-	return n < 0 && whole > 0 ? `-${out}` : out;
 }
 
 /**
@@ -131,7 +115,7 @@ export function dailyCivilDate(day: number): DailyCivilDate {
 	return { year, month, date, weekday };
 }
 
-/** "Sat Oct 31": `daily.date` with the weekday and month name strings looked up through `s`. */
+/** "Sat Oct 31": `daily.date.format` (the order translatable) with the weekday and month names looked up through `s`. */
 export function dailyDateText(day: number, s: DailyStr): string {
 	const d = dailyCivilDate(day);
 	return s(DAILY_STRINGS.date, {

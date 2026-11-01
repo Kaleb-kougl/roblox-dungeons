@@ -1,7 +1,7 @@
 import React from "@rbxts/react";
 import { useSelector } from "@rbxts/react-reflex";
 import { selectSnapshot } from "client/store";
-import { HUD_FONT, role, str, themePack } from "client/ui/theme";
+import { useHudFont, role, str, themePack } from "client/ui/theme";
 import {
 	HUD_SKIN,
 	HUD_STRINGS,
@@ -147,6 +147,7 @@ function SlimBossBar(props: {
 	phase: string;
 	highlight?: boolean;
 }) {
+	const hudFont = useHudFont();
 	const B = TOUCH_STRIP.boss;
 	const L = props.layout;
 	const width = L.boss.w / L.hudScale;
@@ -172,7 +173,7 @@ function SlimBossBar(props: {
 				LayoutOrder={1}
 				Size={new UDim2(0, nameW, 0, B.height)}
 				BackgroundTransparency={HIDDEN}
-				Font={HUD_FONT}
+				Font={hudFont}
 				TextScaled={true}
 				TextColor3={role("uiText")}
 				TextStrokeColor3={stroke}
@@ -203,7 +204,7 @@ function SlimBossBar(props: {
 				LayoutOrder={3}
 				Size={new UDim2(0, B.phaseWidth, 0, B.height)}
 				BackgroundTransparency={HIDDEN}
-				Font={HUD_FONT}
+				Font={hudFont}
 				TextScaled={true}
 				TextColor3={role("uiAccent")}
 				TextStrokeColor3={stroke}

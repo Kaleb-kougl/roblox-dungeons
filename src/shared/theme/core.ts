@@ -15,6 +15,12 @@
  *
  * Roblox port (docs/FX_AUDIO.md A2, F1): `sound` resolves variants, pitch jitter and minimum intervals (cached);
  * `fx` resolves an optional sprite effect (never warns for an ID the pack leaves out).
+ *
+ * Roblox port (docs/LOCALIZATION.md L3): `str` reads the active locale through `setLocale`: the manifest's own
+ * `locales[code]` (a pack override), then the generated table (shared/theme/locales LOCALE_TABLES) when its entry's
+ * srcHash matches this pack's English and its placeholders and braces do too, then English. The pseudo-locale is
+ * English through pseudoLocalize. Non-translatable keys (developer-only, `fx.cap`) are always English. `localeReport`
+ * lists what fell back.
  */
 
 import { isHexColor } from "./color";
@@ -58,7 +64,17 @@ import {
 	type SoundGroupName,
 } from "./contract";
 import { missingVisual, placeholderVisualFor, type PlaceholderColor, type PlaceholderVisual } from "./placeholders";
-import { interpolate, type StringVars } from "./strings";
+import {
+	PSEUDO_LOCALE,
+	SOURCE_LOCALE,
+	isTranslatableStringKey,
+	pseudoLocalize,
+	setNumberLocale,
+	sourceHash,
+	type LocaleTable,
+} from "shared/l10n";
+import { LOCALE_TABLES } from "./locales";
+import { interpolate, placeholderMismatch, templateProblem, type StringVars } from "./strings";
 import {
 	COLOR_ROLES,
 	type AnimationDef,
@@ -578,8 +594,10 @@ function collectContentIds(v: unknown, media: PreloadMedia, seen: Set<string>, o
 const COLOR_ROLE_SET: ReadonlySet<string> = new Set<string>(COLOR_ROLES);
 
 export interface ThemeCoreOptions {
-	/** Active locale; strings fall back to the default table. */
+	/** Active locale (setLocale); strings fall back to the default table. */
 	locale?: string;
+	/** Generated locale tables by code (default: LOCALE_TABLES; specs pass synthetic ones). */
+	localeTables?: ReadonlyMap<string, LocaleTable>;
 	/** Validator errors found at load (kept for debug overlays). */
 	problems?: ReadonlyArray<string>;
 	/** Where warnings go (default: Roblox `warn`). Each distinct problem is reported once. */
@@ -588,15 +606,32 @@ export interface ThemeCoreOptions {
 
 const defaultWarn = (message: string) => warn(message);
 
+/** What the active locale's generated table could not supply (ThemeCore.localeReport), keys sorted. */
+export interface LocaleReport {
+	/** Entries translated from English this pack no longer has (srcHash differs): English shows. */
+	readonly stale: ReadonlyArray<string>;
+	/** Entries whose placeholders or braces differ from the English: English shows. */
+	readonly mismatched: ReadonlyArray<string>;
+	/** Entries for keys the pack's English table lacks (ignored). */
+	readonly unknown: ReadonlyArray<string>;
+}
+
+const EMPTY_REPORT: LocaleReport = { stale: [], mismatched: [], unknown: [] };
+
 export class ThemeCore {
 	readonly id: string;
 	readonly name: string;
-	readonly locale: string | undefined;
+	/** Active locale code (undefined: the default table). Read-only: change it with setLocale. */
+	locale: string | undefined;
 	readonly problems: ReadonlyArray<string>;
 
 	private readonly assets: Obj;
 	private readonly strings: Obj;
-	private readonly localeStrings: Obj;
+	private readonly manifestLocales: Obj;
+	private readonly localeTables: ReadonlyMap<string, LocaleTable>;
+	/** The active locale's text per key (only keys that differ from English). */
+	private localized = new Map<string, string>();
+	private report: LocaleReport = EMPTY_REPORT;
 	private readonly colorHex: Partial<Record<ColorRole, HexColor>> = {};
 	private readonly biomes: Obj;
 	private readonly sheets = new Map<string, SheetLayout>();
@@ -617,14 +652,14 @@ export class ThemeCore {
 		const m: Obj = isObj(manifest) ? manifest : {};
 		this.id = typeIs(m.id, "string") ? m.id : "unknown";
 		this.name = typeIs(m.name, "string") ? m.name : this.id;
-		this.locale = opts.locale;
 		this.problems = opts.problems ?? [];
 		this.warnSink = opts.warn ?? defaultWarn;
 		this.assets = isObj(m.assets) ? m.assets : {};
 		this.strings = isObj(m.strings) ? m.strings : {};
-		const locales = isObj(m.locales) ? m.locales : {};
-		const localeTable = opts.locale !== undefined ? locales[opts.locale] : undefined;
-		this.localeStrings = isObj(localeTable) ? localeTable : {};
+		this.manifestLocales = isObj(m.locales) ? m.locales : {};
+		this.localeTables = opts.localeTables ?? LOCALE_TABLES;
+		// The number locale is global: only an explicit locale moves it (a pack built for a preview or a spec doesn't).
+		if (opts.locale !== undefined) this.setLocale(opts.locale);
 		this.biomes = isObj(m.biomes) ? m.biomes : {};
 		const colors = isObj(m.colors) ? m.colors : {};
 		for (const r of COLOR_ROLES) {
@@ -1435,10 +1470,62 @@ export class ThemeCore {
 		return typeIs(this.strings[key], "string");
 	}
 
+	/**
+	 * Switch the strings to locale `code` (undefined or SOURCE_LOCALE: English) and the number locale with them
+	 * (shared/l10n setNumberLocale). Resolves every key once: the manifest's `locales[code]`, else the generated
+	 * table's entry if its srcHash is sourceHash(this pack's English) and its placeholders and braces match, else
+	 * English; PSEUDO_LOCALE is pseudoLocalize(English). Keys that are not translatable (shared/l10n
+	 * isTranslatableStringKey: developer-only, or UNTRANSLATED_STRING_KEYS) stay English. Clears no other cache.
+	 */
+	setLocale(code: string | undefined): void {
+		this.locale = code;
+		setNumberLocale(code ?? SOURCE_LOCALE);
+		const localized = new Map<string, string>();
+		const stale: string[] = [];
+		const mismatched: string[] = [];
+		const unknown: string[] = [];
+		const override = code !== undefined ? this.manifestLocales[code] : undefined;
+		const overrides: Obj = isObj(override) ? override : {};
+		const generated = code !== undefined ? this.localeTables.get(code) : undefined;
+		const pseudo = code === PSEUDO_LOCALE;
+		for (const [key, englishText] of sortedEntries(this.strings)) {
+			if (!typeIs(englishText, "string") || !isTranslatableStringKey(key)) continue;
+			const own = overrides[key];
+			if (typeIs(own, "string")) {
+				localized.set(key, own);
+				continue;
+			}
+			if (pseudo) {
+				localized.set(key, pseudoLocalize(englishText));
+				continue;
+			}
+			const entry = generated?.[key];
+			if (entry === undefined) continue;
+			const [text, srcHash] = entry;
+			if (srcHash !== sourceHash(englishText)) stale.push(key);
+			else if (templateProblem(text) !== undefined || placeholderMismatch(englishText, text) !== undefined)
+				mismatched.push(key);
+			else localized.set(key, text);
+		}
+		// A manifest override for a key the default table lacks still shows (as before: the validator reports it).
+		for (const [key, own] of sortedEntries(overrides)) {
+			if (typeIs(own, "string") && isTranslatableStringKey(key) && !localized.has(key)) localized.set(key, own);
+		}
+		if (generated !== undefined) {
+			for (const [key] of sortedEntries(generated)) if (!typeIs(this.strings[key], "string")) unknown.push(key);
+		}
+		this.localized = localized;
+		this.report = { stale, mismatched, unknown };
+	}
+
+	/** What the active locale's generated table could not supply: stale, mismatched and unknown keys (sorted). */
+	localeReport(): LocaleReport {
+		return this.report;
+	}
+
 	/** Localized text for a key with {name} placeholders filled from vars. Missing: warn once, return the key. */
 	str(key: string, vars?: StringVars): string {
-		const localized = this.localeStrings[key];
-		const text = typeIs(localized, "string") ? localized : this.strings[key];
+		const text = this.localized.get(key) ?? this.strings[key];
 		if (!typeIs(text, "string")) {
 			this.warnOnce(`str:${key}`, `missing string "${key}"`);
 			return key;

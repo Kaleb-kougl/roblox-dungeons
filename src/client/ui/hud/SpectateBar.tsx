@@ -54,7 +54,7 @@ function SpectateBarBody(props: { name: string; position: number; count: number 
 		});
 		return () => handle.connection?.Disconnect();
 	}, [motion]);
-	const keys = spectateHint(bindings)[keyDevice(device)];
+	const keys = spectateHint(bindings, str)[keyDevice(device)];
 	const skin = screenSkin("spectate");
 	const ghost = UI_ART.iconBox.ghost;
 	return (
@@ -81,6 +81,7 @@ function SpectateBarBody(props: { name: string; position: number; count: number 
 					order={1}
 					color={SPECTATE_BAR_VIEW.nameRole}
 					align={Enum.TextXAlignment.Center}
+					font="name"
 					text={str(spectateWatchingKey(props.position), {
 						name: props.name,
 						pos: props.position,

@@ -1,6 +1,7 @@
 import { Controller, OnStart } from "@flamework/core";
 import { Janitor } from "@rbxts/janitor";
 import { RunService, Workspace } from "@rbxts/services";
+import { createKvBillboardGui, createKvSurfaceGui } from "client/ui";
 import { CAMERA_PITCH_DEG, CAMERA_YAW_DEG } from "shared/config";
 import { BREAKABLE_KINDS, gridToWorld, type Dungeon } from "shared/dungeon";
 import { SIM_HZ } from "shared/sim";
@@ -549,8 +550,7 @@ function buildImage(art: WorldImage, layout: SpriteLayout, parent: Instance): Im
 	anchor.Size = new Vector3(SPRITE_VIEW.anchorStuds, SPRITE_VIEW.anchorStuds, SPRITE_VIEW.anchorStuds);
 	anchor.CFrame = PARKED;
 	const b = spriteBillboard(layout);
-	const gui = new Instance("BillboardGui");
-	gui.Name = "Breakable";
+	const gui = createKvBillboardGui("Breakable");
 	gui.Size = new UDim2(b.w, 0, b.h, 0);
 	gui.StudsOffset = new Vector3(b.offsetX, b.offsetY, b.offsetZ);
 	gui.LightInfluence = 0;
@@ -614,7 +614,7 @@ function buildDebris(piece: DecorPiece, at: Vector3, parent: Instance): BasePart
 	part.CFrame = new CFrame(at.X, at.Y + v.debrisLiftStuds - v.debrisThicknessStuds / 2, at.Z)
 		.mul(CAMERA_YAW)
 		.mul(new CFrame(ox, 0, oz));
-	const gui = new Instance("SurfaceGui");
+	const gui = createKvSurfaceGui("Debris");
 	gui.Face = Enum.NormalId.Top;
 	gui.SizingMode = Enum.SurfaceGuiSizingMode.FixedSize;
 	gui.CanvasSize = size;

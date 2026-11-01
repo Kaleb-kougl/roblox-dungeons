@@ -1,7 +1,7 @@
 import React from "@rbxts/react";
 import { useSelector } from "@rbxts/react-reflex";
 import { selectBindings, selectGameActive, selectInputDevice, selectRunInfo, selectSnapshot } from "client/store";
-import { HUD_FONT, role, str, themePack } from "client/ui/theme";
+import { useHudFont, role, str, themePack } from "client/ui/theme";
 import { swapHint, keyDevice } from "shared/play";
 import { HUD_HINTS, HUD_SKIN, HUD_STRINGS, HUD_VIEW } from "shared/view/hud";
 import { Panel, Row, SlicedImage, Text } from "./primitives";
@@ -30,6 +30,7 @@ function weaponName(id: string): string {
  * the flat slot.
  */
 function WeaponSlot(props: { order: number; index: number; id: string; active: boolean }) {
+	const hudFont = useHudFont();
 	const size = HUD_VIEW.weaponSlotSize;
 	const slotT = props.active ? 0 : HUD_VIEW.weaponInactiveTransparency;
 	const art = themePack()?.image(HUD_SKIN.ids.slot) !== undefined;
@@ -61,7 +62,7 @@ function WeaponSlot(props: { order: number; index: number; id: string; active: b
 			<textlabel
 				Size={new UDim2(0, NUMBER_WIDTH, 1, 0)}
 				BackgroundTransparency={1}
-				Font={HUD_FONT}
+				Font={hudFont}
 				TextSize={HUD_VIEW.weaponTextSize}
 				TextColor3={role(props.active ? "uiAccent" : "uiTextDim")}
 				Text={tostring(props.index + 1)}
@@ -72,7 +73,7 @@ function WeaponSlot(props: { order: number; index: number; id: string; active: b
 				Position={new UDim2(0, NUMBER_WIDTH, HALF, 0)}
 				Size={new UDim2(1, -NUMBER_WIDTH, 1, 0)}
 				BackgroundTransparency={1}
-				Font={HUD_FONT}
+				Font={hudFont}
 				TextSize={HUD_VIEW.weaponTextSize}
 				TextXAlignment={Enum.TextXAlignment.Left}
 				TextColor3={role(props.active ? "uiText" : "uiTextDim")}
@@ -127,7 +128,7 @@ export function WeaponPanel(props: { readonly highlight?: boolean }) {
 			<SwapHint
 				order={1}
 				forced={props.highlight === true}
-				text={str(HUD_STRINGS.weaponSwap, { key: swapHint(bindings)[keyDevice(device)] })}
+				text={str(HUD_STRINGS.weaponSwap, { key: swapHint(bindings, str)[keyDevice(device)] })}
 			/>
 			<Row order={2}>{slots}</Row>
 		</Panel>

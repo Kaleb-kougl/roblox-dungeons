@@ -15,7 +15,7 @@ import { PLACEHOLDER_MANIFEST, ThemePack } from "shared/theme";
 import { TUTORIAL_DEVICES, TUTORIAL_STRINGS, tutorialPromptIds, tutorialPromptKey } from "shared/tutorial";
 import { MARKING_VIEW } from "shared/view";
 import {
-	PAUSE_HINT,
+	pauseHint,
 	TUTORIAL_VERDICT_CODE,
 	TUTORIAL_VIEW,
 	ghostHeartTransparency,
@@ -205,7 +205,8 @@ describe("the tutorial verdict line", () => {
 
 	it("the outro names where the leaderboard opens on each device", () => {
 		expect(tutorialLeaderboardHint().keyboard).toBe("B");
-		expect(tutorialLeaderboardHint().gamepad).toBe(PAUSE_HINT.gamepad);
+		expect(tutorialLeaderboardHint().gamepad).toBe(pauseHint().gamepad);
+		expect(pauseHint().gamepad).toBe("Start");
 		expect(tutorialLeaderboardHint(rebound(DEFAULT_BINDINGS, "kbm", "leaderboard", "G")).keyboard).toBe("G");
 	});
 });
@@ -255,6 +256,27 @@ describe("tutorialPromptVars", () => {
 			"You're wounded. Drink your flask: tap Flask. You get 3 per floor, refilled on every new floor.",
 		);
 		expect(tutorialPromptVars("gamepad", rebound(DEFAULT_BINDINGS, "pad", "roll", "ButtonX")).roll).toBe("X");
+	});
+
+	it("with a string lookup, named keys and the list separator come from input.* strings (docs/LOCALIZATION.md L1)", () => {
+		const b = rebound(DEFAULT_BINDINGS, "kbm", "moveUp", "Up");
+		const s = (key: string) => pack.str(key);
+		// The placeholder pack's English reads exactly as without a lookup.
+		for (const d of TUTORIAL_DEVICES) expect(tutorialPromptVars(d, b, s)).toEqual(tutorialPromptVars(d, b));
+		const fake = (key: string) => `<${key}>`;
+		const kb = tutorialPromptVars("keyboard", b, fake);
+		expect(kb.move).toBe("<input.key.Up><input.separator>A<input.separator>S<input.separator>D");
+		expect(kb.fire).toBe("<input.key.MouseButton1>");
+		expect(tutorialPromptVars("gamepad", b, fake).move).toBe("<input.key.Thumbstick1>");
+		expect(tutorialLeaderboardHint(b, fake)).toEqual({ keyboard: "B", gamepad: "<input.key.ButtonStart>" });
+	});
+
+	it("runs translated one-character move keys together by characters, not bytes", () => {
+		const b = rebound(DEFAULT_BINDINGS, "kbm", "moveUp", "Up");
+		const arrows = (key: string) => (key === "input.key.Up" ? "↑" : key === "input.separator" ? " · " : key);
+		expect(tutorialPromptVars("keyboard", b, arrows).move).toBe("↑ASD");
+		const word = (key: string) => (key === "input.key.Up" ? "Вверх" : key === "input.separator" ? " · " : key);
+		expect(tutorialPromptVars("keyboard", b, word).move).toBe("Вверх · A · S · D");
 	});
 
 	it("every prompt template is filled: no {placeholder} is left on any device", () => {

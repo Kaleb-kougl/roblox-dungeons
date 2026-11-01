@@ -6,8 +6,9 @@
 
 /**
  * Every roster string (shared/view/hud ROSTER_STRINGS, same order), all REQUIRED: the stage card's run-start line
- * (`roster.line`, "{names}": every kind of floor 1's roster) and the line of a floor where kinds join (`roster.new`,
- * "New: {names}"). `{names}` is the kinds' `enemy.<id>.name` strings joined by the view (" · "). The theme imports
- * nothing outside shared/theme, so the list is repeated here.
+ * (`roster.line`, "{names}": every kind of floor 1's roster), the line of a floor where kinds join (`roster.new`,
+ * "New: {names}") and the separator between two names (`roster.separator`, " · "; docs/LOCALIZATION.md L1).
+ * `{names}` is the kinds' `enemy.<id>.name` strings joined by the view. The theme imports nothing outside
+ * shared/theme, so the list is repeated here.
  */
-export const ROSTER_STRING_KEYS: ReadonlyArray<string> = ["roster.line", "roster.new"];
+export const ROSTER_STRING_KEYS: ReadonlyArray<string> = ["roster.line", "roster.new", "roster.separator"];

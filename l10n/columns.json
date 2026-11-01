@@ -1,0 +1,22 @@
+{
+	"_note": "Roblox cloud localization table CSV: locale column header -> our locale code (src/shared/l10n LOCALES). l10n:export writes the first header listed for each locale; l10n:import matches headers case-insensitively here first, then by LOCALES code, Roblox id and language. These headers are GUESSES (Roblox language codes) until spike L0 (f) records the exact header of a Creator Hub download (docs/LOCALIZATION.md L0, L10): fix them here, one line each.",
+	"columns": {
+		"ar": "ar",
+		"de": "de",
+		"es": "es",
+		"fr": "fr",
+		"hi": "hi",
+		"id": "id",
+		"it": "it",
+		"ja": "ja",
+		"ko": "ko",
+		"pl": "pl",
+		"pt": "pt-BR",
+		"ru": "ru",
+		"th": "th",
+		"tr": "tr",
+		"vi": "vi",
+		"zh-cn": "zh-CN",
+		"zh-tw": "zh-TW"
+	}
+}

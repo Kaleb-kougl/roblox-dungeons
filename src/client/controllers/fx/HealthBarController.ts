@@ -1,7 +1,8 @@
 import { Controller, OnStart } from "@flamework/core";
 import { Janitor } from "@rbxts/janitor";
 import { RunService } from "@rbxts/services";
-import { HUD_FONT } from "client/ui/theme";
+import { createKvBillboardGui } from "client/ui";
+import { currentHudFont, onLocaleChanged } from "client/ui/theme";
 import { AffixKind, affixThemeIndex } from "shared/dungeon";
 import { MAX_ACTORS, NO_KIND, archetypeAt, roomAt } from "shared/sim";
 import { AFFIX_IDS, ENEMY_SHIELD_ROLE, affixRole, type ThemePack } from "shared/theme";
@@ -104,8 +105,7 @@ class BarView {
 		this.att = new Instance("Attachment");
 		this.att.Name = `Bar${index}`;
 		this.att.Parent = holder;
-		const gui = new Instance("BillboardGui");
-		gui.Name = `Bar${index}`;
+		const gui = createKvBillboardGui(`Bar${index}`);
 		gui.Adornee = this.att;
 		gui.AlwaysOnTop = true;
 		gui.LightInfluence = 0;
@@ -136,7 +136,7 @@ class BarView {
 		label.Name = "Affix";
 		label.BackgroundTransparency = HIDDEN;
 		label.BorderSizePixel = 0;
-		label.Font = HUD_FONT;
+		label.Font = currentHudFont();
 		label.TextScaled = true;
 		label.TextStrokeColor3 = colors.back;
 		label.ZIndex = 6;
@@ -227,6 +227,12 @@ class BarView {
 		this.lastAffix = -2;
 		this.lastShieldW = -1;
 		this.lastAffixVis = -1;
+	}
+
+	/** A locale switch (docs/LOCALIZATION.md L6): the chip's font, and its text rewritten on the next draw. */
+	relocalize(font: Enum.Font): void {
+		this.affixLabel.Font = font;
+		this.lastAffix = -2;
 	}
 
 	draw(
@@ -355,6 +361,14 @@ export class HealthBarController implements OnStart {
 		const folder = this.janitor.Add(fxFolder(FX_VIEW.barFolder));
 		const holder = attachmentHolder(folder, "Anchors");
 		for (let i = 0; i < MAX_ACTORS; i++) this.views.push(new BarView(holder, folder, i, colors));
+		// A locale switch: the affix names again, and every chip's font (docs/LOCALIZATION.md L6).
+		this.janitor.Add(
+			onLocaleChanged(() => {
+				this.affixTexts = AFFIX_IDS.map((_, i) => pack.str(affixChipKey(i + 1)!));
+				const font = currentHudFont();
+				for (const view of this.views) view.relocalize(font);
+			}),
+		);
 
 		this.fx.onEvent((e) => {
 			switch (e.type) {

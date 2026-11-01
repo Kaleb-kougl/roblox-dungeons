@@ -1,7 +1,7 @@
 import React from "@rbxts/react";
 import { useSelector } from "@rbxts/react-reflex";
 import { selectJuice } from "client/store";
-import { HUD_FONT, role, str } from "client/ui/theme";
+import { useHudFont, role, str } from "client/ui/theme";
 import {
 	BOOST_VIEW,
 	boostBlinkTransparency,
@@ -40,6 +40,7 @@ export function boostCellWidth(look: BoostLook): number {
  * motion).
  */
 function BoostEntry(props: { order: number; entry: BoostHudEntry; motion: number; look: BoostLook }) {
+	const hudFont = useHudFont();
 	const e = props.entry;
 	const v = props.look;
 	const tint = BOOST_VIEW;
@@ -68,7 +69,7 @@ function BoostEntry(props: { order: number; entry: BoostHudEntry; motion: number
 				<textlabel
 					Size={UDim2.fromScale(1, 1)}
 					BackgroundTransparency={HIDDEN}
-					Font={HUD_FONT}
+					Font={hudFont}
 					TextSize={v.iconTextSize}
 					TextColor3={role(tint.iconTextRole)}
 					TextTransparency={fade}

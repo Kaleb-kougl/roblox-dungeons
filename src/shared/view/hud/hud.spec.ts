@@ -1,6 +1,7 @@
 // HUD helpers, and every HUD / settings / tutorial string key in the placeholder pack. (The audio mapping's specs live in
 // shared/view/audio/audio.spec.ts.)
 import { describe, expect, it } from "@rbxts/jest-globals";
+import { NUMBER_FORMAT, SOURCE_LOCALE, setNumberLocale } from "shared/l10n";
 import {
 	KBM_ACTIONS,
 	KBM_KEY_NAMES,
@@ -12,6 +13,7 @@ import {
 	mapHint,
 } from "shared/play";
 import { HEALTH_BARS_MODES, HUD_SCALE_PERCENTS, PARTICLES_LEVELS } from "shared/settings";
+import { COMBO_DENOMINATOR } from "shared/sim";
 import { BOON_RARITY_ROLES, PLACEHOLDER_MANIFEST, ThemePack } from "shared/theme";
 import { tutorialStringKeys } from "shared/tutorial";
 import {
@@ -188,7 +190,7 @@ describe("HUD helpers", () => {
 		const pack = quietPack(warnings);
 		const keys = optionsStringKeys(KBM_ACTIONS);
 		expect(keys.size()).toBe(
-			BINDING_REFUSALS.size() + KBM_ACTIONS.size() + OPTIONS_TABS.size() + OPTIONS_DEVICES.size() + 37,
+			BINDING_REFUSALS.size() + KBM_ACTIONS.size() + OPTIONS_TABS.size() + OPTIONS_DEVICES.size() + 41,
 		);
 		for (const key of keys) expect([key, pack.hasString(key)]).toEqual([key, true]);
 		// Every pad action is a keyboard action too (one name table).
@@ -241,6 +243,11 @@ describe("HUD helpers", () => {
 
 	it("formats the combo with one decimal and the combo meter fraction", () => {
 		expect([formatCombo(10), formatCombo(13), formatCombo(50)]).toEqual(["1.0", "1.3", "5.0"]);
+		// docs/LOCALIZATION.md L2: the number locale's decimal separator; tenths are the sim's combo denominator.
+		expect(COMBO_DENOMINATOR).toBe(NUMBER_FORMAT.tenthsPerUnit);
+		setNumberLocale("de");
+		expect(formatCombo(13)).toBe("1,3");
+		setNumberLocale(SOURCE_LOCALE);
 		expect([comboFraction(180, 180), comboFraction(90, 180), comboFraction(0, 180), comboFraction(5, 0)]).toEqual([
 			1, 0.5, 0, 0,
 		]);

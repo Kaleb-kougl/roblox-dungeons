@@ -17,7 +17,6 @@ describe("the new best's strings", () => {
 			K.over,
 			K.shout,
 			K.stageToGo,
-			K.stageOneToGo,
 			K.stageRecordFloor,
 			K.stageNewDeepest,
 			K.stageDeeperYet,

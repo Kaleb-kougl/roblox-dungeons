@@ -67,7 +67,7 @@ export function TutorialOutro() {
 								key:
 									device === "touch"
 										? str(LEADERBOARD_STRINGS.open)
-										: tutorialLeaderboardHint(bindings)[keyDevice(device)],
+										: tutorialLeaderboardHint(bindings, str)[keyDevice(device)],
 							})}
 						/>
 						<MenuButton

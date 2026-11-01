@@ -2,7 +2,7 @@ import React, { useMemo } from "@rbxts/react";
 import { useSelector } from "@rbxts/react-reflex";
 import { selectBindings, selectInputDevice, selectTutorialEnded, type GameState } from "client/store";
 import { draftHint, keyDevice } from "shared/play";
-import { HUD_FONT, hudText, role, str, themePack } from "client/ui/theme";
+import { useHudFont, hudText, role, str, themePack } from "client/ui/theme";
 import { BOON_MAX_LEVEL, CardKind, DRAFT_OFFER_COUNT } from "shared/sim";
 import type { ColorRole } from "shared/theme";
 import {
@@ -160,6 +160,7 @@ function CardText(props: {
 	transparency: React.Binding<number>;
 	wrap?: boolean;
 }) {
+	const hudFont = useHudFont();
 	return (
 		<textlabel
 			AnchorPoint={new Vector2(HALF, 0)}
@@ -170,7 +171,7 @@ function CardText(props: {
 			}
 			Size={props.height}
 			BackgroundTransparency={HIDDEN}
-			Font={HUD_FONT}
+			Font={hudFont}
 			TextSize={props.size}
 			TextWrapped={props.wrap === true}
 			TextYAlignment={props.wrap === true ? Enum.TextYAlignment.Top : Enum.TextYAlignment.Center}
@@ -189,6 +190,7 @@ function CardText(props: {
  * Faded with the card's text.
  */
 function BannerRow(props: { ui: DraftCardUi; nudge: React.Binding<number> }) {
+	const hudFont = useHudFont();
 	const ui = props.ui;
 	const look = useMemo(() => {
 		const m = ui.model.binding;
@@ -252,7 +254,7 @@ function BannerRow(props: { ui: DraftCardUi; nudge: React.Binding<number> }) {
 						BackgroundColor3={c.color}
 						BackgroundTransparency={look.textT}
 						BorderSizePixel={0}
-						Font={HUD_FONT}
+						Font={hudFont}
 						TextSize={V.chipText}
 						TextColor3={role("uiPanel")}
 						TextTransparency={look.textT}
@@ -274,7 +276,7 @@ function BannerRow(props: { ui: DraftCardUi; nudge: React.Binding<number> }) {
 				Size={new UDim2(0, 0, 0, HUD_VIEW.smallText + 4)}
 				AutomaticSize={Enum.AutomaticSize.X}
 				BackgroundTransparency={HIDDEN}
-				Font={HUD_FONT}
+				Font={hudFont}
 				TextSize={HUD_VIEW.smallText}
 				TextColor3={look.textColor}
 				TextTransparency={look.textT}
@@ -682,6 +684,7 @@ const AGAIN_SLACK = 4;
  * a device, bindings, tutorial or waiting-count change only, never per frame.
  */
 export function DraftOverlay() {
+	const hudFont = useHudFont();
 	const device = useSelector(selectInputDevice);
 	const bindings = useSelector(selectBindings);
 	const tutorialEnded = useSelector(selectTutorialEnded);
@@ -690,7 +693,7 @@ export function DraftOverlay() {
 	const actions = useHudActions();
 	const touch = device === "touch";
 	const hintText = useMemo(() => {
-		const hint = draftHint(bindings)[keyDevice(device)];
+		const hint = draftHint(bindings, str)[keyDevice(device)];
 		const ready = touch
 			? str(TOUCH_STRINGS.hintDraft)
 			: str(PROGRESSION_STRINGS.draftHint, { left: hint.left, right: hint.right, confirm: hint.confirm });
@@ -732,7 +735,7 @@ export function DraftOverlay() {
 					LayoutOrder={2}
 					Size={new UDim2(1, 0, 0, HUD_VIEW.textSize + AGAIN_SLACK)}
 					BackgroundTransparency={HIDDEN}
-					Font={HUD_FONT}
+					Font={hudFont}
 					TextSize={HUD_VIEW.textSize}
 					TextColor3={role("uiAccent")}
 					TextStrokeColor3={role("background")}

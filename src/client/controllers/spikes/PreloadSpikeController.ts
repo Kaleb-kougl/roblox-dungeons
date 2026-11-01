@@ -1,6 +1,7 @@
 import { Controller, OnStart } from "@flamework/core";
 import { Janitor } from "@rbxts/janitor";
 import { ContentProvider, Players, RunService, Workspace } from "@rbxts/services";
+import { createKvScreenGui } from "client/ui";
 import { PRELOAD_SPIKE, SPIKE_ATTRIBUTES } from "shared/config";
 import type { ContentRef, PreloadMedia } from "shared/theme";
 import { PreloadController } from "../game/PreloadController";
@@ -134,8 +135,7 @@ export class PreloadSpikeController implements OnStart {
 
 	/** The first-draw probe: baseline frame times, then the sheet on screen for holdFrames frames. */
 	private probe(session: Janitor, sheet: ContentRef): void {
-		const gui = session.Add(new Instance("ScreenGui"));
-		gui.Name = "KV_SpikePreload";
+		const gui = session.Add(createKvScreenGui("KV_SpikePreload"));
 		gui.ResetOnSpawn = false;
 		gui.DisplayOrder = PRELOAD_SPIKE.displayOrder;
 		const label = new Instance("ImageLabel");

@@ -41,7 +41,7 @@ function HeadshotToast(props: { readonly order: number; readonly userId: number;
 			>
 				<uicorner CornerRadius={FULL_ROUND} />
 			</imagelabel>
-			<Text key="Line" order={2} color="uiAccent" text={props.text} />
+			<Text key="Line" order={2} color="uiAccent" font="name" text={props.text} />
 		</Row>
 	);
 }
@@ -93,7 +93,7 @@ export function ToastPanel() {
 					text={
 						device === "touch"
 							? str(TOUCH_STRINGS.hintShrine)
-							: str(PROGRESSION_STRINGS.shrineHint, { key: shrineHint(bindings)[keyDevice(device)] })
+							: str(PROGRESSION_STRINGS.shrineHint, { key: shrineHint(bindings, str)[keyDevice(device)] })
 					}
 				/>
 			) : undefined}

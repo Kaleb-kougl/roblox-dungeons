@@ -2,6 +2,7 @@
 import { describe, expect, it } from "@rbxts/jest-globals";
 import { CAMERA_PITCH_DEG, CAMERA_YAW_DEG } from "shared/config";
 import { degToRad, isoBasis } from "../iso";
+import { PLACEHOLDER_MANIFEST, ThemePack } from "shared/theme";
 import { COMBO_SHOUT, COMBO_VIEW } from "./comboConfig";
 import {
 	COMBO_DRAW,
@@ -23,6 +24,8 @@ import {
 } from "./comboDraw";
 
 const STEP = 1 / 60;
+const pack = new ThemePack(PLACEHOLDER_MANIFEST, { warn: () => undefined });
+const str = (key: string, vars?: Readonly<Record<string, string | number>>) => pack.str(key, vars);
 const EPS = 1e-9;
 
 function shard(): ComboShardLook {
@@ -102,7 +105,7 @@ describe("combo row helpers", () => {
 		expect(out.transparency).toBeCloseTo(0.5, 9);
 		expect(comboDropAt(2, false, out)).toEqual({ fallPx: COMBO_DRAW.dropFallPx, transparency: 1 });
 		expect(comboDropText("x1.2")).toBe("-x1.2");
-		expect(comboShoutText("RAMPAGE")).toBe(`RAMPAGE${COMBO_SHOUT_DRAW.bang}`);
+		expect(comboShoutText("RAMPAGE", str)).toBe("RAMPAGE!");
 	});
 
 	it("reduced motion: the crack's drop fades in place, never falls", () => {
@@ -122,11 +125,14 @@ describe("combo row helpers", () => {
 	});
 
 	it("the run-over best combo carries its tier name in its colour, nothing below x2", () => {
-		expect(comboBestRichText("x3.4", "CARNAGE", "#ff2050")).toBe('x3.4 <font color="#ff2050">CARNAGE</font>');
-		expect(comboBestRichText("x1.6", undefined, "#ff2050")).toBe("x1.6");
-		expect(comboBestRichText("x3.4", "CARNAGE", "")).toBe("x3.4 CARNAGE");
-		expect(comboBestRichText("x1.6", "", "#ff2050")).toBe("x1.6");
-		expect(comboBestRichText("x2.0", "A&B", "#f88088")).toBe('x2.0 <font color="#f88088">A&amp;B</font>');
+		expect(comboBestRichText("x3.4", "CARNAGE", "#ff2050", str)).toBe('x3.4 <font color="#ff2050">CARNAGE</font>');
+		expect(comboBestRichText("x1.6", undefined, "#ff2050", str)).toBe("x1.6");
+		expect(comboBestRichText("x3.4", "CARNAGE", "", str)).toBe("x3.4 CARNAGE");
+		expect(comboBestRichText("x1.6", "", "#ff2050", str)).toBe("x1.6");
+		expect(comboBestRichText("x2.0", "A&B", "#f88088", str)).toBe('x2.0 <font color="#f88088">A&amp;B</font>');
+		// A translated order, its own text escaped and the parts placed (docs/LOCALIZATION.md L1).
+		const reorder = (key: string) => (key === "hud.combo.bestNamed" ? "{name} <{combo}>" : key);
+		expect(comboBestRichText("x3.4", "C", "", reorder)).toBe("C &lt;x3.4&gt;");
 	});
 });
 

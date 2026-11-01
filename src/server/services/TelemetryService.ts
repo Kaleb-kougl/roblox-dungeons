@@ -2,6 +2,7 @@ import { OnStart, Service } from "@flamework/core";
 import { Janitor } from "@rbxts/janitor";
 import { AnalyticsService, Players, Workspace } from "@rbxts/services";
 import { serverLogger } from "server/log";
+import { DEV_MODE } from "shared/config";
 import { ANALYTICS_DEBUG_ATTRIBUTE, TUTORIAL_FUNNEL, describeAnalyticsSpec } from "shared/onboarding";
 import {
 	RUN_FUNNEL,
@@ -10,13 +11,17 @@ import {
 	analyticsForRejection,
 	analyticsForRun,
 	analyticsForSession,
+	localeAnalytics,
 	summarizeRunSession,
 	type AnalyticsEventSpec,
 	type AnalyticsFields,
+	type LocaleAnalytics,
 	type RunTelemetryRecord,
 } from "shared/run";
+import { languageOverride, resolveDisplaySettings } from "shared/settings";
 import { RecordsService } from "./RecordsService";
 import { RunValidationService } from "./RunValidationService";
+import { SettingsService } from "./SettingsService";
 
 const log = serverLogger("Telemetry");
 
@@ -45,6 +50,10 @@ const log = serverLogger("Telemetry");
  * The Daily's events (`daily_start` / `daily_retry` / `daily_finish`, shared/run dailyAnalytics.ts) come from
  * RecordsService `onDailyActivity`: server-side session starts and accepted runs, with the attempt number and the
  * returning flag kept in the records doc.
+ *
+ * Locale (docs/LOCALIZATION.md L14): each run's RunStarted funnel step carries the player's bucketed locale
+ * (shared/run localeAnalytics), from the server's own view: `Player.LocaleId`, the stored Options > Language override
+ * (SettingsService) and the developer attribute (DevModeService). The client reports nothing.
  */
 @Service({})
 export class TelemetryService implements OnStart {
@@ -53,7 +62,11 @@ export class TelemetryService implements OnStart {
 	/** Players between PlayerRemoving and their session summary: their late runs still join the session. */
 	private readonly leaving = new Set<Player>();
 
-	constructor(private readonly runs: RunValidationService, private readonly records: RecordsService) {}
+	constructor(
+		private readonly runs: RunValidationService,
+		private readonly records: RecordsService,
+		private readonly settings: SettingsService,
+	) {}
 
 	onStart(): void {
 		this.janitor.Add(
@@ -63,7 +76,7 @@ export class TelemetryService implements OnStart {
 					list.push(run.telemetry);
 					this.sessions.set(player, list);
 				}
-				this.logAll(player, analyticsForRun(run.telemetry), run.runId);
+				this.logAll(player, analyticsForRun(run.telemetry, this.localeOf(player)), run.runId);
 			}),
 		);
 		// The Daily (docs/DAILY.md DS13): RecordsService reports each daily start and accepted daily run with the
@@ -94,6 +107,13 @@ export class TelemetryService implements OnStart {
 	 */
 	logEvents(player: Player, specs: ReadonlyArray<AnalyticsEventSpec>): void {
 		this.logAll(player, specs, undefined);
+	}
+
+	/** The player's locale fields (LocaleAnalytics) as the server sees them. */
+	private localeOf(player: Player): LocaleAnalytics {
+		const language = resolveDisplaySettings(this.settings.getOverrides(player)?.display).language;
+		const dev = player.GetAttribute(DEV_MODE.allowedAttribute) === true;
+		return localeAnalytics([player.LocaleId], languageOverride(language, dev), dev);
 	}
 
 	/** Waits for the player's runs still validating, then logs the session summary and forgets the player. */

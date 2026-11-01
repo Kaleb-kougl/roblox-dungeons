@@ -1,6 +1,6 @@
 import React from "@rbxts/react";
 import { SlicedImage, useArtScale } from "client/ui/hud";
-import { HUD_FONT, role, themePack } from "client/ui/theme";
+import { alignFor, fontFor, role, textSizeFor, themePack, useUiFonts, type FontRole } from "client/ui/theme";
 import type { ColorRole } from "shared/theme";
 import {
 	HUD_VIEW,
@@ -119,7 +119,10 @@ function SkinnedListRow(props: { row: ListRowProps; skinId: string }) {
 	);
 }
 
-/** A single-line text cell of a fixed width (truncated, never wrapped). */
+/**
+ * A single-line text cell of a fixed width (truncated, never wrapped), in the locale's font (`font` "name" for a player
+ * display name or a lobby name a player typed, LD13), size scaled and left alignment flipped for right to left (L4).
+ */
 export function Cell(props: {
 	order: number;
 	width: number;
@@ -127,18 +130,20 @@ export function Cell(props: {
 	color?: ColorRole;
 	size?: number;
 	align?: Enum.TextXAlignment;
+	font?: FontRole;
 }) {
-	const size = props.size ?? HUD_VIEW.smallText;
+	const fonts = useUiFonts();
+	const size = textSizeFor(fonts, props.size ?? HUD_VIEW.smallText);
 	return (
 		<textlabel
 			LayoutOrder={props.order}
 			Size={new UDim2(0, props.width, 1, 0)}
 			BackgroundTransparency={HIDDEN}
-			Font={HUD_FONT}
+			Font={fontFor(fonts, props.font)}
 			TextSize={size}
 			TextTruncate={Enum.TextTruncate.AtEnd}
 			TextColor3={role(props.color ?? "uiText")}
-			TextXAlignment={props.align ?? Enum.TextXAlignment.Left}
+			TextXAlignment={alignFor(fonts, props.align ?? Enum.TextXAlignment.Left)}
 			Text={props.text}
 		/>
 	);

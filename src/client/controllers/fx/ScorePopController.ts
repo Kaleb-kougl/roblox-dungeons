@@ -1,7 +1,9 @@
 import { Controller, OnStart } from "@flamework/core";
 import { Janitor } from "@rbxts/janitor";
 import { RunService } from "@rbxts/services";
-import { HUD_FONT } from "client/ui/theme";
+import { createKvBillboardGui } from "client/ui";
+import { currentHudFont, onLocaleChanged } from "client/ui/theme";
+import { charCount } from "shared/l10n";
 import { RENDER_ORDER } from "shared/view";
 import {
 	BUILD_FX_VIEW,
@@ -43,8 +45,7 @@ class PopView {
 		this.att = new Instance("Attachment");
 		this.att.Name = name;
 		this.att.Parent = holder;
-		const gui = new Instance("BillboardGui");
-		gui.Name = name;
+		const gui = createKvBillboardGui(name);
 		gui.Adornee = this.att;
 		gui.AlwaysOnTop = true;
 		gui.LightInfluence = 0;
@@ -53,7 +54,7 @@ class PopView {
 		const label = new Instance("TextLabel");
 		label.BackgroundTransparency = HIDDEN;
 		label.Size = UDim2.fromScale(1, 1);
-		label.Font = HUD_FONT;
+		label.Font = currentHudFont();
 		label.TextScaled = true;
 		label.TextColor3 = color;
 		label.TextStrokeColor3 = stroke;
@@ -129,6 +130,13 @@ export class ScorePopController implements OnStart {
 		jackpots.colors.push(gold);
 		for (let i = 0; i < jackpots.pool.capacity; i++)
 			jackpots.views.push(new PopView(holder, folder, `Jackpot${i}`, gold, stroke));
+		// A locale switch (docs/LOCALIZATION.md L6): every label's font (the text is read on each show).
+		this.janitor.Add(
+			onLocaleChanged(() => {
+				const font = currentHudFont();
+				for (const view of [...kills.views, ...jackpots.views]) view.label.Font = font;
+			}),
+		);
 
 		this.sim.onRunStarted(() => {
 			kills.pool.clear();
@@ -179,7 +187,8 @@ export class ScorePopController implements OnStart {
 			if (text !== view.text) {
 				view.text = text;
 				view.label.Text = text;
-				const w = math.max(text.size(), 1) * glyphW;
+				// Characters, not bytes: the template is translated (a UTF-8 letter is 2-4 bytes).
+				const w = math.max(charCount(text), 1) * glyphW;
 				view.gui.Size = new UDim2(w * PX, 0, glyphH * PX, 0);
 			}
 			view.att.WorldPosition = floorPoint(pool.x[i], pool.z[i]);

@@ -10,7 +10,7 @@
  * Every new-best string (shared/view/hud NEW_BEST_STRINGS, same order), all REQUIRED: the score panel's target row
  * (`hud.best.toGo` "{points} TO BEST", compact `hud.best.toGoShort` "-{points}", `hud.best.new` "NEW BEST",
  * `hud.best.over` "NEW BEST +{points}"), the floor shout (`hud.best.shout`), the stairwell card's second line
- * (`stage.best.toGo` with `{floor}` / `{n}`, `stage.best.oneToGo` with `{floor}`, `stage.best.recordFloor`,
+ * (`stage.best.toGo` with `{floor}` / `{n}` floors to go, `stage.best.recordFloor`,
  * `stage.best.newDeepest`, `stage.best.deeperYet`), the run-over panel (`run.best.ribbon`, `run.best.first`, the record
  * rows `run.best.score` / `run.best.floor` with `{old}` / `{new}` / `{delta}`, the save chip `run.best.saved` /
  * `run.best.unsaved`, the dim target `run.best.target` with `{score}` / `{floor}`, also the pause overlay's) and the main
@@ -24,7 +24,6 @@ export const NEW_BEST_STRING_KEYS: ReadonlyArray<string> = [
 	"hud.best.over",
 	"hud.best.shout",
 	"stage.best.toGo",
-	"stage.best.oneToGo",
 	"stage.best.recordFloor",
 	"stage.best.newDeepest",
 	"stage.best.deeperYet",

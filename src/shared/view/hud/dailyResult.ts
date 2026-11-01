@@ -25,7 +25,8 @@
 import type { DailyRunResult } from "shared/daily";
 import { dailyLabel } from "shared/daily";
 import { DAILY_STRINGS } from "./dailyStrings";
-import { RESULT_STANDING_KEYS, formatThousands, standingOf, type DailyLine } from "./dailyText";
+import { formatThousands } from "shared/l10n";
+import { RESULT_STANDING_KEYS, standingOf, type DailyLine } from "./dailyText";
 
 /** The run's verdict as the block reads it (client VerdictView.status for this run; "pending" until it arrives). */
 export type DailyResultStatus = "pending" | "accepted" | "rejected" | "skipped";

@@ -506,11 +506,11 @@ describe("new best: text", () => {
 		expect(newBestRowText({ line: "chasing", gap: 7, margin: 0 }, false, str)).toBe(`${K.toGo}|points=7`);
 	});
 
-	it("the stairwell card's line: N to go, 1 to go, record floor, NEW DEEPEST then Deepest yet (gold); none without a floor target", () => {
+	it("the stairwell card's line: floors to go (one key for every n), record floor, NEW DEEPEST then Deepest yet (gold); none without a floor target", () => {
 		const K = NEW_BEST_STRINGS;
 		const b = known(5000, 9);
 		expect(stageBestLine(7, b, false)).toEqual({ key: K.stageToGo, args: { floor: 9, n: 2 }, gold: false });
-		expect(stageBestLine(8, b, false)).toEqual({ key: K.stageOneToGo, args: { floor: 9 }, gold: false });
+		expect(stageBestLine(8, b, false)).toEqual({ key: K.stageToGo, args: { floor: 9, n: 1 }, gold: false });
 		expect(stageBestLine(9, b, false)).toEqual({ key: K.stageRecordFloor, args: undefined, gold: false });
 		expect(stageBestLine(10, b, false)).toEqual({ key: K.stageNewDeepest, args: undefined, gold: true });
 		expect(stageBestLine(11, b, true)).toEqual({ key: K.stageDeeperYet, args: undefined, gold: true });

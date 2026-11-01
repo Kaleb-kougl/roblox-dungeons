@@ -1,7 +1,8 @@
 import { Controller, OnStart } from "@flamework/core";
 import { Janitor } from "@rbxts/janitor";
 import { RunService } from "@rbxts/services";
-import { HUD_FONT } from "client/ui/theme";
+import { createKvBillboardGui } from "client/ui";
+import { currentHudFont, onLocaleChanged } from "client/ui/theme";
 import { RENDER_ORDER } from "shared/view";
 import {
 	CAP_HEIGHT,
@@ -45,8 +46,7 @@ class NumberView {
 		this.att = new Instance("Attachment");
 		this.att.Name = `Number${index}`;
 		this.att.Parent = holder;
-		const gui = new Instance("BillboardGui");
-		gui.Name = `Number${index}`;
+		const gui = createKvBillboardGui(`Number${index}`);
 		gui.Adornee = this.att;
 		gui.AlwaysOnTop = true;
 		gui.LightInfluence = 0;
@@ -55,7 +55,7 @@ class NumberView {
 		const label = new Instance("TextLabel");
 		label.BackgroundTransparency = 1;
 		label.Size = UDim2.fromScale(1, 1);
-		label.Font = HUD_FONT;
+		label.Font = currentHudFont();
 		label.TextScaled = true;
 		label.TextStrokeColor3 = stroke;
 		label.Parent = gui;
@@ -110,6 +110,14 @@ export class DamageNumberController implements OnStart {
 		const holder = attachmentHolder(folder, "Anchors");
 		const stroke = pack.color("background");
 		for (let i = 0; i < this.pool.capacity; i++) this.views.push(new NumberView(holder, folder, i, stroke));
+		// A locale switch (docs/LOCALIZATION.md L6): CAP's text and every label's font.
+		this.janitor.Add(
+			onLocaleChanged(() => {
+				this.capText = pack.str(HUD_STRINGS.cap);
+				const font = currentHudFont();
+				for (const view of this.views) view.label.Font = font;
+			}),
+		);
 
 		this.fx.onEvent((e, settings) => {
 			if (e.type === "reset") {

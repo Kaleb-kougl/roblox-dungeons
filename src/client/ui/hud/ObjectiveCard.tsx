@@ -51,7 +51,7 @@ export function ObjectiveCard() {
 							size={HUD_VIEW.smallText}
 							color="uiTextDim"
 							align={Enum.TextXAlignment.Center}
-							text={str(promptKey, tutorialPromptVars(tutorialDeviceFor(device), bindings))}
+							text={str(promptKey, tutorialPromptVars(tutorialDeviceFor(device), bindings, str))}
 						/>
 					) : undefined}
 				</Panel>

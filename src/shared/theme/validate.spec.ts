@@ -291,6 +291,14 @@ describe("validateManifest: rejects bad manifests", () => {
 		const n = clone();
 		n.locales = { FR: { "game.title": "x" }, "pt-BR": { "game.title": "y" } };
 		expect(validateManifest(n)).toEqual(['locales.FR: bad locale code (use e.g. "fr" or "pt-BR")']);
+		// docs/LOCALIZATION.md L3: a translation keeps the English placeholder multiset.
+		const o = clone();
+		o.locales = { fr: { "hud.level": "Niveau", "hud.dead": "Mort : {key} {key}", "hud.paused": "{x}" } };
+		expect(validateManifest(o)).toEqual([
+			'locales.fr["hud.dead"]: placeholders {key} {key} differ from the English {key}',
+			'locales.fr["hud.level"]: placeholders none differ from the English {level}',
+			'locales.fr["hud.paused"]: placeholders {x} differ from the English none',
+		]);
 	});
 
 	it("checks the pack id against its folder", () => {

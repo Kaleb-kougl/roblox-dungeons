@@ -70,6 +70,14 @@ export const OPTIONS_STRINGS = {
 	touchOpacity: "options.display.touchOpacity",
 	touchAutoTarget: "options.display.touchAutoTarget",
 	touchLeftHanded: "options.display.touchLeftHanded",
+	/**
+	 * Language (docs/LOCALIZATION.md L6): the row label, "Automatic ({name})" ({name}: the endonym Automatic picks), and
+	 * the previous / next buttons around the value (language.ts; the endonyms are not strings).
+	 */
+	language: "options.display.language",
+	languageAuto: "options.display.language.auto",
+	languagePrev: "options.display.language.prev",
+	languageNext: "options.display.language.next",
 	/** Prefixes: `options.tab.<tab>`, `options.device.<kbm|pad>`, `options.action.<action>`, `options.refused.<reason>`. */
 	tabPrefix: "options.tab.",
 	devicePrefix: "options.device.",

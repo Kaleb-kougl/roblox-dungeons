@@ -1,6 +1,7 @@
 import { Controller, OnStart } from "@flamework/core";
 import { Janitor } from "@rbxts/janitor";
 import { RunService, Workspace } from "@rbxts/services";
+import { createKvBillboardGui, createKvSurfaceGui } from "client/ui";
 import { CAMERA_YAW_DEG, STUDS_PER_TILE } from "shared/config";
 import { FX_IDS, type FxId, type FxSprite, type ThemePack } from "shared/theme";
 import { RENDER_ORDER, degToRad, floorImageSize, floorStudsY, spriteBillboard, studsX, studsZ } from "shared/view";
@@ -192,7 +193,7 @@ export class FxSpriteController implements OnStart {
 		let surface: SurfaceGui | undefined;
 		let billboard: BillboardGui | undefined;
 		if (V.placement === "floor") {
-			surface = new Instance("SurfaceGui");
+			surface = createKvSurfaceGui("Surface");
 			surface.Face = Enum.NormalId.Top;
 			surface.SizingMode = Enum.SurfaceGuiSizingMode.FixedSize;
 			surface.AlwaysOnTop = false;
@@ -201,7 +202,7 @@ export class FxSpriteController implements OnStart {
 			label.Parent = surface;
 			surface.Parent = part;
 		} else {
-			billboard = new Instance("BillboardGui");
+			billboard = createKvBillboardGui("Billboard");
 			billboard.AlwaysOnTop = false;
 			billboard.ResetOnSpawn = false;
 			billboard.Enabled = false;

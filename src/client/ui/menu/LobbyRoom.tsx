@@ -66,7 +66,8 @@ export function LobbyRoom() {
 				order={1}
 				width={MENU_VIEW.nameWidth}
 				color={r.me ? "uiAccent" : "uiText"}
-				text={r.me ? `${r.name} ${str(LOBBY_STRINGS.you)}` : r.name}
+				font="name"
+				text={r.me ? str(LOBBY_STRINGS.you, { name: r.name }) : r.name}
 			/>
 			<Cell
 				order={2}
@@ -208,6 +209,7 @@ export function LobbyRoom() {
 									order={1}
 									width={MENU_VIEW.nameWidth}
 									color={c.here ? "uiText" : "uiTextDim"}
+									font="name"
 									text={c.name}
 								/>
 								<MenuButton
@@ -244,7 +246,14 @@ export function LobbyRoom() {
 						skin={screenSkin("lobbyRoom")}
 						name="LobbyRoom"
 					>
-						<Text fill={true} order={1} size={HUD_VIEW.titleText} color="uiAccent" text={spec(m.title)} />
+						<Text
+							fill={true}
+							order={1}
+							size={HUD_VIEW.titleText}
+							color="uiAccent"
+							font="name"
+							text={spec(m.title)}
+						/>
 						<Text fill={true} order={2} color={m.inRun ? "uiTextDim" : "uiText"} text={spec(m.status)} />
 						<Row key="MembersWorld" order={3}>
 							<Text order={1} size={HUD_VIEW.smallText} color="uiTextDim" text={spec(m.membersLine)} />
