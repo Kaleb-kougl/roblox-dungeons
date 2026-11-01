@@ -172,6 +172,10 @@ describe("analytics catalog limits", () => {
 		);
 		expect(firstAttemptEventBound()).toBe(tutorialAttemptEventBound() + lessons + 4 + 1);
 		expect(firstAttemptEventBound() <= TUTORIAL_TELEMETRY.maxEventsPerAttempt).toBe(true);
+		// The session backstop is the attempt cap's worth of full attempts.
+		expect(TUTORIAL_TELEMETRY.maxEventsPerSession).toBe(
+			TUTORIAL_TELEMETRY.maxAttemptsLoggedPerSession * TUTORIAL_TELEMETRY.maxEventsPerAttempt,
+		);
 		print(
 			`[analyticsCatalog] events per attempt: ${tutorialAttemptEventBound()}, first attempt ${firstAttemptEventBound()} of ${
 				TUTORIAL_TELEMETRY.maxEventsPerAttempt
@@ -193,7 +197,14 @@ describe("tutorial builders stay inside the catalog", () => {
 				for (const prompt of TUTORIAL_PROMPT_IDS)
 					expectInCatalog(tutorialStuckEvents({ prompt, seconds: 20 }, info));
 				for (const stepId of TUTORIAL_CURRENT_STEP_IDS) {
-					const ended: TutorialAttemptEnd = { attemptId: "a", lastStep: 3, entry, device, stepId };
+					const ended: TutorialAttemptEnd = {
+						attemptId: "a",
+						lastStep: 3,
+						entry,
+						device,
+						stepId,
+						logged: true,
+					};
 					expectInCatalog(tutorialFinishEvents("completed", ended));
 					expectInCatalog(tutorialFinishEvents("skipped", ended));
 					expectInCatalog(tutorialRestartedEvents(ended));

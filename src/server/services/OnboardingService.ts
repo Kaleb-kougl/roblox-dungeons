@@ -17,6 +17,7 @@ import {
 	SECONDS_PER_DAY,
 	TUTORIAL_FINISH_RATE,
 	TUTORIAL_REPORT_RATE,
+	TUTORIAL_START_RATE,
 	TUTORIAL_STEP_RATE,
 	emptyOnboardingDoc,
 	finishedOnboardingDoc,
@@ -38,6 +39,7 @@ import {
 import { SlidingWindowLimiter, type AnalyticsEventSpec } from "shared/run";
 import { PlayerDocCache, playerDataKey, type KeyValueStore } from "shared/settings";
 import { DataStoreKeyValue } from "./data/DataStoreKeyValue";
+import { RunValidationService } from "./RunValidationService";
 import { TelemetryService } from "./TelemetryService";
 
 const log = serverLogger("Onboarding");
@@ -78,14 +80,22 @@ export interface NewPlayerRunSubmission {
  * through TelemetryService: the join load (`join`), the join intent (`joinIntent`, called by InviteService whenever it
  * sends `joinIntent`; the entry settles at the latest ONBOARDING_ENTRY_WAIT_SECONDS after join via a delayed `poll`),
  * the tutorial remotes, `leaveTutorial` (TutorialAbandoned `partyRun`) and the leave (PlayerRemoving, before the
- * player's state is dropped: Joined if still owed, TutorialAbandoned `leave` or the outro's `left`).
+ * player's state is dropped: Joined if still owed, TutorialAbandoned `leave` or the outro's `left`). The per-player
+ * telemetry state is created by whichever comes first, PlayerAdded or InviteService's `joinIntent` (its PlayerAdded
+ * handler may run before this service's), so an early intent is kept.
  *
  * New-player window (TF7, shared/onboarding newPlayer.ts): on a successful join load, `newPlayerJoin` (firstDay for a
  * fresh doc, NewPlayerReturned when due) is logged and written; RunSessionService calls `newPlayerRunStarted` per
  * session start (every member) and `newPlayerRunAccepted` per accepted run (the credited members), counted only for
  * NEW_PLAYER_RUN_POLICY's worlds, never debug runs, never Studio unless the KV_AnalyticsDebug echo is on (the explicit
  * Studio test path, as RecordsService's fake). Writes go through the cache like every change and never after a failed
- * join load; a member not in the server (no cached doc) is skipped.
+ * join load; a member with no cached doc is skipped. A run can validate AFTER its player left (RunSessionService keeps
+ * a finishing run's replay going), so the leave does not drop the doc at once: it saves it, then HOLDS the cached doc
+ * and the Player (`departed`) until RunValidationService `waitUntilIdle(player)` (TelemetryService's session summary
+ * rule), and only then releases it (saved again when dirty). A run accepted meanwhile logs NewPlayerRun against the held
+ * Player and writes the held doc. A rejoin to this server while held reuses the held entry (the newer session owns it:
+ * the old hold then leaves it in place). Party members who left are not counted as validating by RunValidationService
+ * (only a solo run's finishing owner is), so a party run concluding after a member left still skips that member.
  *
  * Studio only: Workspace attribute ONBOARDING_RESET_ATTRIBUTE (`KV_ResetOnboarding`) = true resets a joining
  * player's loaded doc to empty (saved like any change), so every Studio join is a first join.
@@ -100,11 +110,13 @@ export interface NewPlayerRunSubmission {
  *
  * Remotes are re-validated (types, step range; a step's funnel name comes from the shared step list, never from the
  * client; a sighting id against SIGHTING_IDS) and rate limited per player
- * (ONBOARDING_REQUEST_RATE for request / started, TUTORIAL_FINISH_RATE for finished, TUTORIAL_STEP_RATE for steps,
- * TUTORIAL_REPORT_RATE for `tutorialLesson` / `tutorialStuck` / `onboardingReport` together, BESTIARY_SEEN_RATE for
- * sightings); a
- * rate-limited request or finish still answers with the cached status when loaded, and a rate-limited finish still
- * closes the open attempt (no telemetry, nothing written). Races as in SettingsService: the join load and
+ * (ONBOARDING_REQUEST_RATE for requests, TUTORIAL_START_RATE for starts, TUTORIAL_FINISH_RATE for finished,
+ * TUTORIAL_STEP_RATE for steps, TUTORIAL_REPORT_RATE for `tutorialLesson` / `tutorialStuck` / `onboardingReport`
+ * together, BESTIARY_SEEN_RATE for sightings); a rate-limited request or finish still answers with the cached status
+ * when loaded, a rate-limited finish still closes the open attempt (no telemetry, nothing written), and a
+ * rate-limited start still opens one, unlogged (busy for lobbies, no telemetry). Telemetry volume per player per
+ * session is also capped in the pure layer (TUTORIAL_TELEMETRY.maxAttemptsLoggedPerSession / maxEventsPerSession), so
+ * a client looping restarts cannot drain the game-wide AnalyticsService budget. Races as in SettingsService: the join load and
  * an early request share one read, and a player who left while a handler yielded is dropped, not cached.
  */
 @Service({})
@@ -114,6 +126,10 @@ export class OnboardingService implements OnStart {
 	private readonly requestLimiter = new SlidingWindowLimiter<Player>(
 		ONBOARDING_REQUEST_RATE.count,
 		ONBOARDING_REQUEST_RATE.windowSeconds,
+	);
+	private readonly startLimiter = new SlidingWindowLimiter<Player>(
+		TUTORIAL_START_RATE.count,
+		TUTORIAL_START_RATE.windowSeconds,
 	);
 	private readonly stepLimiter = new SlidingWindowLimiter<Player>(
 		TUTORIAL_STEP_RATE.count,
@@ -137,9 +153,11 @@ export class OnboardingService implements OnStart {
 	private readonly trackers = new Map<Player, PlayerTutorialTelemetry>();
 	/** Players whose doc is reset to empty once it is loaded (Studio, KV_ResetOnboarding at join). */
 	private readonly resetPending = new Set<Player>();
+	/** Players who left, by UserId, whose cached doc is held until their runs finished validating (see above). */
+	private readonly departed = new Map<number, Player>();
 	private closing = false;
 
-	constructor(private readonly telemetry: TelemetryService) {
+	constructor(private readonly telemetry: TelemetryService, private readonly runs: RunValidationService) {
 		this.cache = new PlayerDocCache(
 			this.createStore(),
 			ONBOARDING_CODEC,
@@ -166,13 +184,15 @@ export class OnboardingService implements OnStart {
 		);
 		this.janitor.Add(
 			Events.tutorialStarted.connect((player, info) => {
-				if (player.Parent === undefined || !this.allow(this.requestLimiter, player, "tutorialStarted")) return;
+				if (player.Parent === undefined) return;
 				if (this.inPartyRun(player)) {
 					log.info("TUTORIAL_START_IGNORED", `${player.UserId}: in a party run`);
 					return;
 				}
+				// Over the start budget: the attempt still opens (busy for lobbies), unlogged.
+				const silent = !this.allow(this.startLimiter, player, "tutorialStarted telemetry");
 				const attemptId = HttpService.GenerateGUID(false);
-				const r = this.trackerFor(player).start(attemptId, info);
+				const r = this.trackerFor(player).start(attemptId, info, silent);
 				if (r.defaulted) log.warn("BAD_START_INFO", `${player.UserId}: tutorialStarted info defaulted`);
 				const replaced = r.replacedUnlogged;
 				if (replaced !== undefined) {
@@ -184,7 +204,8 @@ export class OnboardingService implements OnStart {
 				this.logBatches(player, r.batches);
 				log.info(
 					"TUTORIAL_STARTED",
-					`${player.UserId} attempt ${attemptId} (${r.info.entry}, ${r.info.device})`,
+					`${player.UserId} attempt ${attemptId} (${r.info.entry}, ${r.info.device}` +
+						`${r.logged ? "" : ", unlogged"})`,
 				);
 			}),
 		);
@@ -283,8 +304,9 @@ export class OnboardingService implements OnStart {
 	 */
 	joinIntent(player: Player, intent: ArrivalJoinIntent): void {
 		if (player.Parent === undefined) return;
-		const tracker = this.trackers.get(player);
-		if (tracker !== undefined) this.logBatches(player, tracker.joinIntent(intent, this.now()));
+		// InviteService's PlayerAdded handler may run before ours: create the state so the intent is kept (playerAdded
+		// then finds it and schedules the entry deadline from it).
+		this.logBatches(player, this.trackerFor(player).joinIntent(intent, this.now()));
 	}
 
 	/**
@@ -309,7 +331,8 @@ export class OnboardingService implements OnStart {
 	newPlayerRunAccepted(run: NewPlayerRunSubmission, facts: NewPlayerRunFacts): void {
 		if (!this.newPlayerRunCounts(run)) return;
 		for (const userId of run.memberIds) {
-			const player = Players.GetPlayerByUserId(userId);
+			// A member who left while the run validated: the held Player and doc (release / holdUntilIdle).
+			const player = Players.GetPlayerByUserId(userId) ?? this.departed.get(userId);
 			if (player === undefined) continue;
 			const doc = this.knownDoc(player);
 			if (doc === undefined) continue;
@@ -488,20 +511,46 @@ export class OnboardingService implements OnStart {
 		Events.onboardingStatus.fire(player, onboardingStatusOf(this.cache.get(key), !this.cache.loadFailed(key)));
 	}
 
+	/**
+	 * The player left (PlayerRemoving, or a load that resumed after the leave): the leave-time telemetry now (Joined if
+	 * owed, TutorialAbandoned `leave` / the outro's `left`), the per-player state dropped, and the cached doc saved and
+	 * held until their runs finished validating (holdUntilIdle).
+	 */
 	private release(player: Player): void {
 		const tracker = this.trackers.get(player);
 		if (tracker !== undefined) this.logBatches(player, tracker.leaving(this.now()));
 		this.requestLimiter.forget(player);
+		this.startLimiter.forget(player);
 		this.stepLimiter.forget(player);
 		this.finishLimiter.forget(player);
 		this.seenLimiter.forget(player);
 		this.reportLimiter.forget(player);
 		this.trackers.delete(player);
 		this.resetPending.delete(player);
-		const key = playerDataKey(player.UserId);
-		if (this.cache.get(key) === undefined) return;
-		const outcome = this.cache.release(key);
-		if (outcome === "failed") log.warn("SAVE_FAILED", `${player.UserId}: onboarding not saved on leave`);
+		this.holdUntilIdle(player);
+	}
+
+	/**
+	 * Saves the departed player's cached doc now (a rejoin elsewhere reads the latest), keeps it and the Player in
+	 * `departed` while RunValidationService still validates one of their runs (NewPlayerRun, newPlayerRunAccepted), then
+	 * releases it (saved again when dirty). Once per Player. A rejoin to this server meanwhile: the new session owns the
+	 * entry (its own leave holds it again), so this hold leaves it in place.
+	 */
+	private holdUntilIdle(player: Player): void {
+		const userId = player.UserId;
+		const key = playerDataKey(userId);
+		if (this.cache.get(key) === undefined || this.departed.get(userId) === player) return;
+		this.departed.set(userId, player);
+		task.spawn(() => {
+			if (this.cache.save(key) === "failed") log.warn("SAVE_FAILED", `${userId}: onboarding not saved on leave`);
+			this.runs.waitUntilIdle(player);
+			if (this.departed.get(userId) !== player) return; // a newer session of this user holds it now
+			this.departed.delete(userId);
+			if (Players.GetPlayerByUserId(userId) !== undefined) return; // back in this server: their entry again
+			if (this.cache.release(key) === "failed") {
+				log.warn("SAVE_FAILED", `${userId}: onboarding not saved after the leave`);
+			}
+		});
 	}
 
 	private saveKey(key: string): void {

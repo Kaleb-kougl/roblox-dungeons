@@ -109,7 +109,7 @@ attempt entry; `device` the attempt's device.
 | `TutorialSkipped` (kept) | last step reached | current step id when skipped | entry | device | skip (server, on `tutorialFinished("skipped")`) |
 | `TutorialAbandoned` | last step reached | current step id | entry | `leave` / `partyRun` | the attempt was open when the player left the game, or a party run took it over (`leaveTutorial`) (server) |
 | `TutorialRestarted` | last step reached | current step id | | | `tutorialStarted({ entry: "restart" })` while an attempt is open (server) |
-| `TutorialOutroChoice` | seconds on the outro | `firstRun` / `again` / `menu` / `left` (left the game on the outro) | entry | | the outro closed (client report; `left` server-side on leave) |
+| `TutorialOutroChoice` | seconds on the outro: a choice uses the client's seconds the card was open (clamped 0..3600); `left` uses the server's time from the `completed` finish, which includes the outro beat before the card, so a `left` can fire before the card was seen | `firstRun` / `again` / `menu` / `left` (left the game on the outro) | entry | | the outro closed (client report; `left` server-side on leave) |
 | `OnboardingGate` | 1 | `tutorial` / `invited` / `party` / `done` / `loadFailed` / `timeout` / `forced` | | | the first-join choice dispatched, once per session (client report; reason checked against the server's own doc and intent where it can) |
 | `NewPlayerRun` | run number (1..`NEW_PLAYER.runs`, 3) | tutorial outcome (`completed` / `skipped` / `none`) | run end (`death` / `abandoned` / `victory`) | floor bucket (the Daily's: `1` / `2-4` / `5-9` / `10-14` / `15-19` / `20+`) | an accepted ranked run of a player still in the new-player window (server-derived, TFD8) |
 | `NewPlayerRunStarted` | run number | tutorial outcome | | | a ranked session start in that window (server; catches runs that never validate) |
@@ -137,13 +137,21 @@ sequence, so the tutorial bot pins the numbers (fixed dt).
 | client -> server | `tutorialFinished` (changed) | `{ outcome, stepId }` | as today, plus the skip / completed events |
 | client -> server | `onboardingReport` (new) | `{ kind: "loaded" }` / `{ kind: "gate", reason }` / `{ kind: "outro", choice, seconds }` | once each per session (outro once per attempt) |
 
-All share a new `TUTORIAL_REPORT_RATE` (40 per 10 s) apart from the finish budget. Trust (TFD7): the server records
-what the client says within these bounds, as the funnel does today; nothing here touches rewards or boards.
+The reports share a new `TUTORIAL_REPORT_RATE` (40 per 10 s) apart from the finish budget; `tutorialStarted` has its
+own `TUTORIAL_START_RATE` (3 per 10 s: over it the attempt still opens, unlogged, so the player stays busy for
+lobbies). Trust (TFD7): the server records what the client says within these bounds, as the funnel does today;
+nothing here touches rewards or boards. Lesson reports are taken once per step per attempt in any order (lessons finish
+out of order, and the attempt funnel stops at the first skipped lesson, so a "step already reached" rule would drop
+honest reports).
 
 Per-player events per first attempt: about 20 onboarding + 18 attempt + ~25 lesson / stuck + 3 = ~66 over ~5 min.
 The game-wide budget is `120 + 20 x CCU` per minute, so ~13 per player-minute uses two thirds of one player's share
 for those 5 minutes, and run telemetry only fires at run end. TF1's spec caps one attempt at
-`TUTORIAL_FUNNEL.maxEventsPerAttempt` (80).
+`TUTORIAL_TELEMETRY.maxEventsPerAttempt` (80). That cap resets with every attempt, so a client looping restarts could
+still log hundreds a minute: per player per server session only the first `maxAttemptsLoggedPerSession` (3) attempts
+are logged and all attempt events together stay within `maxEventsPerSession` (240, the exit reserve kept); later
+attempts open and close unlogged (the once-per-user onboarding funnel, bounded by its once-each rule, still takes their
+steps).
 
 ### 7. New-player window (server-derived)
 

@@ -182,7 +182,7 @@ The client side is `src/client/network.ts` (`GlobalEvents.createClient`); `SimCo
 | `REPLAY_BUDGET_SECONDS` | 4 ms | The replay yields (`task.wait()`) whenever 4 ms of `os.clock()` work piled up since the last yield (was: every 2,000 ticks, ~160 ms blocks). The check runs in the replay's `onCheckpoint` hook (`ReplayBudget`, clock injected), so validate.ts and the sim never read a clock. At ~80 us per tick (an M1 floor) a 20-minute run takes ~25 s of wall time; deep endless floors cost far more per tick ("Replay capacity" below). Segmented replays check it every `SEGMENT_BUDGET_CHECK_TICKS` = 4 ticks (was 16: at ~1.1 ms per tick a check could overshoot by ~18 ms). |
 | `REPLAY_CONCURRENCY` | 1 | Server-wide replay queue (`WorkQueue`, FIFO): concurrent players' replays run one after another instead of stacking CPU time on the same frames. The log line shows the queue wait. |
 | `SETTINGS_REQUEST_RATE` | 20 per 10 s per player | Settings remotes. |
-| `ONBOARDING_REQUEST_RATE` / `TUTORIAL_STEP_RATE` / `TUTORIAL_FINISH_RATE` / `TUTORIAL_REPORT_RATE` | 10 / 30 / 10 / 40 per 10 s per player | Onboarding remotes (`shared/onboarding/config.ts`): request + started / steps / finish (its own budget) / lesson + stuck + onboardingReport together. |
+| `ONBOARDING_REQUEST_RATE` / `TUTORIAL_START_RATE` / `TUTORIAL_STEP_RATE` / `TUTORIAL_FINISH_RATE` / `TUTORIAL_REPORT_RATE` | 10 / 3 / 30 / 10 / 40 per 10 s per player | Onboarding remotes (`shared/onboarding/config.ts`): request / started (over it the attempt still opens, unlogged) / steps / finish (its own budget) / lesson + stuck + onboardingReport together. Tutorial telemetry is also capped per player per session (`TUTORIAL_TELEMETRY.maxAttemptsLoggedPerSession` 3, `maxEventsPerSession` 240), see "Onboarding (tutorial)". |
 | `RECORDS_REQUEST_RATE` | 10 per 10 s per player | `requestRecords` (`shared/records/config.ts`); a dropped request still answers with the cached status. |
 | `INVITE_PROMPT_RATE` / `INVITE_RECIPIENTS_RATE` / `INVITE_ELIGIBILITY_RATE` | 5 / 10 / 10 per 60 s per player | Roblox invite remotes (`shared/invite/config.ts`); a spent prompt budget is a `rateLimited` refusal, the others drop quietly. |
 | Seeds | integers in [0, 2^32) | What the web build's `seedFromQuery` produces. |
@@ -762,7 +762,7 @@ Custom events (`LogCustomEvent`; fields are `CustomField01..03`):
 | `TutorialSkipped` | last lesson step reached in the attempt (0 = none) | current step id (`TUTORIAL_STEPS` id or `none`) | attempt entry | attempt device | `tutorialFinished` skipped (an open attempt) |
 | `TutorialAbandoned` | last lesson step reached | current step id | attempt entry | `leave` / `partyRun` | the player left the game with an attempt open, or a party run took it (`leaveTutorial`) |
 | `TutorialRestarted` | last lesson step reached | current step id of the replaced attempt | | | `tutorialStarted({ entry: "restart" })` while an attempt was open |
-| `TutorialOutroChoice` | seconds on the outro, measured by the server (completed finish -> report or leave; 0..3600) | `firstRun` / `again` / `menu` / `left` | entry of the finished attempt | | the outro closed (`onboardingReport` outro, once per completed attempt), or `left` when the player left on it |
+| `TutorialOutroChoice` | seconds on the outro (0..3600): a choice reports the client's seconds the card was open; `left` is the server's time from the completed finish to the leave (the beat before the card included; may fire before the card showed) | `firstRun` / `again` / `menu` / `left` | entry of the finished attempt | | the outro closed (`onboardingReport` outro, once per completed attempt), or `left` when the player left on it |
 | `OnboardingGate` | 1 | `tutorial` / `invited` / `party` / `done` / `loadFailed` / `timeout` / `forced` | | | `onboardingReport` gate, once per session, any player (a reason contradicting the server's doc / intent is logged anyway, with a `GATE_CONTRADICTS` warning) |
 | `NewPlayerRunStarted` | run number (counted runs + 1, 1..3) | tutorial outcome (`completed` / `skipped` / `none`) | | | a ranked (endless) or daily session start, per member in the new-player window (not debug; not Studio unless `KV_AnalyticsDebug`) |
 | `NewPlayerRun` | run number (1..3) | tutorial outcome | run end (`death` / `abandoned` / `victory`) | floor bucket (the Daily's) | an accepted ranked or daily run, per credited member in the window (same rules); counts the run in the doc |
@@ -800,20 +800,29 @@ funnels and events, keeps the new-player window, and marks players in it as busy
 | --- | --- | --- | --- | --- |
 | server -> client | `onboardingStatus` | `{ loaded: boolean, tutorialDone: boolean, seen? }` | sent once the join load ends (success or failure) | |
 | client -> server | `requestOnboarding` | none | loads if needed (shares the join read) | `onboardingStatus` |
-| client -> server | `tutorialStarted` | `{ entry: "firstJoin" \| "restart" \| "menu" \| "again", device: "keyboard" \| "gamepad" \| "touch" }` | opens a new attempt (server GUID = funnel session id); `isInTutorial` = true; logs attempt step 1 `started` (entry / revision / device), onboarding `TutorialStarted` for a `firstJoin` while the onboarding funnel is open, `TutorialRestarted` for an attempt a `restart` replaced. A malformed payload is read as `{ firstJoin, keyboard }` (`DEFAULT_TUTORIAL_START_INFO`, warned `BAD_START_INFO`). Ignored from a member of an unconcluded party run (a late message) | none |
+| client -> server | `tutorialStarted` | `{ entry: "firstJoin" \| "restart" \| "menu" \| "again", device: "keyboard" \| "gamepad" \| "touch" }` | opens a new attempt (server GUID = funnel session id); `isInTutorial` = true; logs attempt step 1 `started` (entry / revision / device), onboarding `TutorialStarted` for a `firstJoin` while the onboarding funnel is open, `TutorialRestarted` for a logged attempt a `restart` replaced. A malformed payload would be read as `{ firstJoin, keyboard }` (`DEFAULT_TUTORIAL_START_INFO`, warned `BAD_START_INFO`; defensive only, Flamework's guard drops it first). Over `TUTORIAL_START_RATE`, or past the session budget, the attempt opens UNLOGGED (busy for lobbies, no attempt telemetry). Ignored from a member of an unconcluded party run (a late message) | none |
 | client -> server | `tutorialStep` | `step: number` | integer 1..`TUTORIAL_FUNNEL_MAX_STEP` (16, = shared/tutorial `TUTORIAL_STEP_COUNT`), strictly above the attempt's last: attempt step `step + 1`, and onboarding step `step + 3` while it is open. The step name is the server's: that step's id in the shared step list (`tutorialStepName`), never a client string | none |
-| client -> server | `tutorialLesson` | `{ step, seconds, hits }` | `readLessonReport` (step 1..16, hits an integer >= 0, seconds finite; clamped to 900 s / 500 hits, rounded to 0.1 s), once per lesson per open attempt: `TutorialLessonTime`, plus `TutorialLessonHits` when hits > 0 | none |
+| client -> server | `tutorialLesson` | `{ step, seconds, hits }` | `readLessonReport` (step 1..16, hits an integer >= 0, seconds finite; clamped to 900 s / 500 hits, rounded to 0.1 s), once per lesson per open attempt, in any order (lessons finish out of order and the attempt funnel stops at the first skipped lesson, so no "reached" rule applies): `TutorialLessonTime`, plus `TutorialLessonHits` when hits > 0 | none |
 | client -> server | `tutorialStuck` | `{ prompt, seconds }` | `readStuckReport` (a `TUTORIAL_PROMPT_IDS` id, seconds clamped to 900), once per prompt per open attempt, at most 6: `TutorialStuck` | none |
-| client -> server | `onboardingReport` | `{ kind: "loaded" }` / `{ kind: "gate", reason }` / `{ kind: "outro", choice, seconds }` | `readOnboardingReport`. `loaded`: onboarding `Loaded`. `gate`: `OnboardingGate` once per session (any player; a reason the server's doc or intent contradicts, e.g. `done` for a fresh doc, is logged anyway with a `GATE_CONTRADICTS` warning). `outro`: `TutorialOutroChoice` once per completed attempt, valued with the SERVER's seconds since the completion (the client's `seconds` is ignored) | none |
-| client -> server | `tutorialFinished` | `{ outcome: "completed" \| "skipped", stepId }` (a bare outcome string from an older client is accepted, without a step id) | notes the current step id (`TUTORIAL_STEPS` id or `none`), closes the attempt (`isInTutorial` = false; a completion opens the outro), logs attempt step 18 `completed` or `TutorialSkipped`, onboarding `Completed` (completed, while open) and closes the onboarding funnel either way, writes the doc (keeping `seen` and the new-player fields). The client sends `completed` the moment the run freezes (before the outro beat) | `onboardingStatus` |
+| client -> server | `onboardingReport` | `{ kind: "loaded" }` / `{ kind: "gate", reason }` / `{ kind: "outro", choice, seconds }` | `readOnboardingReport`. `loaded`: onboarding `Loaded`. `gate`: `OnboardingGate` once per session (any player; a reason the server's doc or intent contradicts, e.g. `done` for a fresh doc, is logged anyway with a `GATE_CONTRADICTS` warning). `outro`: `TutorialOutroChoice` once per completed (logged) attempt, valued with the CLIENT's `seconds` (the time the card was open, clamped to 0..3600 and rounded to 0.1 s): the server's clock starts at the `completed` finish, before the outro beat, so it cannot see when the card showed | none |
+| client -> server | `tutorialFinished` | `{ outcome: "completed" \| "skipped", stepId }` (anything else, a bare outcome string included, is dropped) | notes the current step id (`TUTORIAL_STEPS` id or `none`), closes the attempt (`isInTutorial` = false; a completion opens the outro), logs attempt step 18 `completed` or `TutorialSkipped`, onboarding `Completed` (completed, while open) and closes the onboarding funnel either way, writes the doc (keeping `seen` and the new-player fields). The client sends `completed` the moment the run freezes (before the outro beat) | `onboardingStatus` |
 
 Every value is re-checked on the server (Flamework's guard checks only the shape), and the remotes are rate limited
-per player: `ONBOARDING_REQUEST_RATE` (10 per 10 s for request / started together), `TUTORIAL_FINISH_RATE` (10 per
-10 s, its own budget so other traffic never drops the finish), `TUTORIAL_STEP_RATE` (30 per 10 s) and
-`TUTORIAL_REPORT_RATE` (40 per 10 s for `tutorialLesson` / `tutorialStuck` / `onboardingReport` together). A dropped
-request or finish still answers with the cached status; a dropped finish still closes the attempt (not recorded, no
-telemetry). On top of the rates, one attempt logs at most `TUTORIAL_TELEMETRY.maxEventsPerAttempt` (80) events, the
-last 2 kept for its exit and outro.
+per player: `ONBOARDING_REQUEST_RATE` (10 per 10 s for requests), `TUTORIAL_START_RATE` (3 per 10 s for starts),
+`TUTORIAL_FINISH_RATE` (10 per 10 s, its own budget so other traffic never drops the finish), `TUTORIAL_STEP_RATE` (30
+per 10 s) and `TUTORIAL_REPORT_RATE` (40 per 10 s for `tutorialLesson` / `tutorialStuck` / `onboardingReport`
+together). A dropped request or finish still answers with the cached status; a dropped finish still closes the attempt
+(not recorded, no telemetry); a start over its rate still opens the attempt, unlogged. On top of the rates, one attempt
+logs at most `TUTORIAL_TELEMETRY.maxEventsPerAttempt` (80) events, the last 2 kept for its exit and outro.
+
+**Session budget.** The game-wide AnalyticsService budget is 120 + 20 x CCU events per minute, and the per-attempt cap
+alone resets on every `tutorialStarted`: a client looping restart + steps + reports could log hundreds of events a
+minute. So, per player per server session (`TutorialFunnelTracker`, never reset): only the first
+`TUTORIAL_TELEMETRY.maxAttemptsLoggedPerSession` (3) attempts are logged, and every attempt's events together stay
+within `maxEventsPerSession` (240 = 3 x 80; the exit reserve kept, so a logged attempt's exit and outro always fit). A
+later (or rate-limited) attempt still opens and closes like any (busy for lobbies, current step) but logs nothing of
+the attempt funnel or its custom events (no step, lesson, stuck, skip / completed, abandoned, restarted or outro event);
+the once-per-user onboarding funnel still takes its steps from it (bounded by its own once-each rule).
 
 **Doc** (DataStore `KV_Onboarding_v1`, key `u_<UserId>`, `PlayerDocCache` like settings: load on join with 3 retries,
 save when dirty on leave / `BindToClose` / every 120 s, writes tagged with the UserId):
@@ -868,8 +877,18 @@ Filter `entry = organic` for the clean tutorial funnel. `TutorialStarted` is log
 menu replay never touches this funnel.
 
 **Leaving.** On PlayerRemoving (before the player's state is dropped): `Joined` if still owed, then an open attempt
-logs `TutorialAbandoned` (`leave`), else an open outro logs `TutorialOutroChoice` `left` (server seconds). A party run
-taking an open attempt (`leaveTutorial`) logs `TutorialAbandoned` (`partyRun`).
+logs `TutorialAbandoned` (`leave`), else an open outro logs `TutorialOutroChoice` `left` with the SERVER's seconds,
+counted from the `completed` finish: they include the outro beat (`TUTORIAL.outroDelaySeconds`) before the card, and a
+`left` can fire during the beat, before the card was ever seen (the choices use the client's seconds on the card). A
+party run taking an open attempt (`leaveTutorial`) logs `TutorialAbandoned` (`partyRun`). The doc is saved at the
+leave, then HELD in the cache (with the Player) until `RunValidationService.waitUntilIdle(player)` returns, as
+TelemetryService does for its session summary, and only then released (saved again when dirty): a solo run whose final
+arrived before the leave keeps validating, and its acceptance still logs `NewPlayerRun` and writes `newRuns`. A rejoin
+to this server meanwhile reuses the held entry. A party member who left is not counted as validating
+(RunValidationService tracks the finishing owner only), so a party run concluding later still skips them.
+
+**Join intent order.** `OnboardingService.joinIntent` creates the player's telemetry state when InviteService's
+PlayerAdded handler runs first, so an early intent is kept (the join load and the entry deadline then use that state).
 
 **New-player window** (TF7, TFD8; `shared/onboarding` `newPlayer.ts`, `playerTelemetry.ts`). A successful join load
 of a fresh doc without `firstDay` sets it to today; a join on a later UTC day within 7 days logs `NewPlayerReturned`

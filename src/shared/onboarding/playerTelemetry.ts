@@ -18,19 +18,29 @@
  *     message, a client bug) logs NOTHING for the replaced attempt: it was not a leave or a party run, so neither
  *     TutorialAbandoned kind fits; the attempt funnel still shows where it stopped. `start` reports it
  *     (`replacedUnlogged`) so the service can warn.
- *   - The outro's TutorialOutroChoice value is the SERVER-measured seconds (TutorialFunnelTracker.takeOutro from the
- *     completed finish to the report, on the service's clock), never the client's number: the report's own seconds
- *     are ignored (they include nothing the server cannot see, and cannot be inflated).
- *   - A leave: an open attempt logs TutorialAbandoned `leave`; else an open outro logs TutorialOutroChoice `left`.
- *     A party run taking the player (`partyRun`) logs TutorialAbandoned `partyRun` for an open attempt only.
+ *   - The outro's TutorialOutroChoice value for a CLIENT choice (firstRun / again / menu) is the report's own seconds
+ *     (the time the card was open, measured by the client from when it showed; re-read and clamped to
+ *     maxOutroSeconds by readOnboardingReport). The server cannot see when the card shows: its clock starts at the
+ *     `completed` finish, which comes TUTORIAL.outroDelaySeconds (the beat) before the card.
+ *   - A leave: an open attempt logs TutorialAbandoned `leave`; else an open outro logs TutorialOutroChoice `left`
+ *     with the SERVER-measured seconds (TutorialFunnelTracker.takeOutro), which count from the finish, beat included:
+ *     a `left` can fire during the beat, before the card was ever seen. A party run taking the player (`partyRun`)
+ *     logs TutorialAbandoned `partyRun` for an open attempt only.
+ *   - The session budget (TutorialFunnelTracker; TUTORIAL_TELEMETRY.maxAttemptsLoggedPerSession /
+ *     maxEventsPerSession) and a `silent` start (the service's rate-limited `tutorialStarted`): such an attempt opens
+ *     and closes like any (busy for lobbies) but logs nothing of the attempt funnel or its custom events; the
+ *     once-per-user onboarding funnel still takes its steps (bounded by its own once-each rule).
+ *   - Lesson reports: each lesson once per attempt (TutorialFunnelTracker), in ANY order, also past the attempt
+ *     funnel's last step: lessons finish out of order and the funnel stops at the first skipped lesson, so a rule
+ *     such as `step <= lastStep + 1` would drop honest reports. The bound is the per-attempt dedupe (at most
+ *     TUTORIAL_FUNNEL_MAX_STEP reports of 1-2 events) under the attempt and session budgets.
  *   - The gate report logs OnboardingGate once per session; `gateContradiction` names a reason that contradicts what
  *     the server knows (the service warns but logs it anyway: the client saw what it saw).
- *   - A finish payload that is a bare outcome string (an older client during a rollout) is accepted without a step id.
  */
 import { INVITE, type ArrivalJoinIntent } from "shared/invite";
 import { LEADERBOARD_DAILY_WORLDS, LEADERBOARD_ELIGIBLE_WORLDS } from "shared/leaderboard";
 import type { AnalyticsEventSpec } from "shared/run";
-import { isTutorialOutcome, type OnboardingDoc, type TutorialOutcome } from "./doc";
+import type { OnboardingDoc, TutorialOutcome } from "./doc";
 import {
 	TutorialFunnelTracker,
 	tutorialAbandonedEvents,
@@ -84,7 +94,9 @@ export interface TutorialStartResult {
 	readonly info: TutorialStartInfo;
 	/** The payload was unusable and the default was assumed. */
 	readonly defaulted: boolean;
-	/** An open attempt was replaced by a non-restart start and logged nothing (see the module comment). */
+	/** The new attempt is logged (false: a silent start, or past the session budget). */
+	readonly logged: boolean;
+	/** An open LOGGED attempt was replaced by a non-restart start and logged nothing (see the module comment). */
 	readonly replacedUnlogged?: TutorialAttemptEnd;
 }
 
@@ -208,27 +220,39 @@ export class PlayerTutorialTelemetry {
 		return this.sendEntry(this.intent !== undefined ? onboardingEntryOfIntent(this.intent) : "unknown");
 	}
 
-	/** `tutorialStarted(raw)` with the server-generated attempt id (the caller checked busy / party run / budget). */
-	start(attemptId: string, raw: unknown): TutorialStartResult {
+	/**
+	 * `tutorialStarted(raw)` with the server-generated attempt id (the caller checked party run). `silent`: the caller's
+	 * rate limit was exceeded: the attempt opens unlogged (the module comment's session budget).
+	 */
+	start(attemptId: string, raw: unknown, silent = false): TutorialStartResult {
+		// Defensive only: Flamework's generated guard drops a payload without a valid entry / device before the handler.
 		const read = readTutorialStartInfo(raw);
 		const info = read ?? { entry: DEFAULT_TUTORIAL_START_INFO.entry, device: DEFAULT_TUTORIAL_START_INFO.device };
-		const replaced = this.attempt.start(attemptId, info);
+		const replaced = this.attempt.start(attemptId, info, silent);
+		const logged = this.attempt.isLogged();
 		const batches: TelemetryBatch[] = [];
 		let replacedUnlogged: TutorialAttemptEnd | undefined;
-		if (replaced !== undefined) {
+		if (replaced !== undefined && replaced.logged) {
 			if (info.entry === "restart") append(batches, batch(tutorialRestartedEvents(replaced), replaced.attemptId));
 			else replacedUnlogged = replaced;
 		}
-		append(batches, batch(tutorialAttemptStartEvents(info), attemptId));
+		if (logged) append(batches, batch(tutorialAttemptStartEvents(info), attemptId));
 		append(batches, batch(this.onboarding.tutorialStarted(info.entry)));
-		return { batches, info, defaulted: read === undefined, replacedUnlogged };
+		return { batches, info, defaulted: read === undefined, logged, replacedUnlogged };
 	}
 
-	/** `tutorialStep(step)`: the attempt funnel step (step + 1) when accepted, and the onboarding lesson (step + 3). */
+	/**
+	 * `tutorialStep(step)`: the attempt funnel step (step + 1) when accepted on a logged attempt, and the onboarding
+	 * lesson (step + 3; also for an unlogged attempt's progress).
+	 */
 	step(step: unknown): TelemetryBatch[] {
 		const attemptId = this.attempt.getAttemptId();
-		if (attemptId === undefined || !typeIs(step, "number") || !this.attempt.accept(step)) return [];
-		return [...batch([tutorialStepEvent(step)], attemptId), ...batch(this.onboarding.lesson(step))];
+		if (attemptId === undefined || !typeIs(step, "number")) return [];
+		const accepted = this.attempt.acceptStep(step);
+		if (accepted === undefined) return [];
+		const onboarding = batch(this.onboarding.lesson(step));
+		if (accepted === "silent") return onboarding;
+		return [...batch([tutorialStepEvent(step)], attemptId), ...onboarding];
 	}
 
 	/** `tutorialLesson(raw)`: TutorialLessonTime / TutorialLessonHits, once per lesson per attempt. */
@@ -260,9 +284,10 @@ export class PlayerTutorialTelemetry {
 			const contradiction = gateContradiction(r.reason, { join: this.joinFacts, intent: this.intent });
 			return { kind: "gate", batches: batch(this.onboarding.gate(r.reason)), contradiction };
 		}
+		// A client choice: the client's own seconds on the card (the server's clock would include the beat before it).
 		const outro = this.attempt.takeOutro(now);
 		if (outro === undefined) return { kind: "outro", batches: [] };
-		return { kind: "outro", batches: batch(tutorialOutroEvents(r.choice, outro.seconds, outro.entry)) };
+		return { kind: "outro", batches: batch(tutorialOutroEvents(r.choice, r.seconds, outro.entry)) };
 	}
 
 	/**
@@ -271,19 +296,15 @@ export class PlayerTutorialTelemetry {
 	 * (nothing changes).
 	 */
 	finish(raw: unknown, now: number): TutorialFinishResult | undefined {
-		let outcome: TutorialOutcome;
 		const info = readFinishInfo(raw);
-		if (info !== undefined) {
-			outcome = info.outcome;
-			this.attempt.noteStepId(info.stepId);
-		} else if (isTutorialOutcome(raw)) {
-			outcome = raw;
-		} else {
-			return undefined;
-		}
+		if (info === undefined) return undefined;
+		const outcome = info.outcome;
+		this.attempt.noteStepId(info.stepId);
 		const ended = this.attempt.finish(outcome, now);
 		const batches: TelemetryBatch[] = [];
-		if (ended !== undefined) append(batches, batch(tutorialFinishEvents(outcome, ended), ended.attemptId));
+		if (ended !== undefined && ended.logged) {
+			append(batches, batch(tutorialFinishEvents(outcome, ended), ended.attemptId));
+		}
 		if (outcome === "completed") append(batches, batch(this.onboarding.completed()));
 		else this.onboarding.skipped();
 		return { outcome, batches, ended };
@@ -297,7 +318,9 @@ export class PlayerTutorialTelemetry {
 	/** A party run took the player: an open attempt logs TutorialAbandoned `partyRun`. */
 	partyRun(): TelemetryBatch[] {
 		const ended = this.attempt.abandon();
-		return ended !== undefined ? batch(tutorialAbandonedEvents(ended, "partyRun"), ended.attemptId) : [];
+		return ended !== undefined && ended.logged
+			? batch(tutorialAbandonedEvents(ended, "partyRun"), ended.attemptId)
+			: [];
 	}
 
 	/**
@@ -314,8 +337,9 @@ export class PlayerTutorialTelemetry {
 		this.left = true;
 		const ended = this.attempt.abandon();
 		if (ended !== undefined) {
-			append(out, batch(tutorialAbandonedEvents(ended, "leave"), ended.attemptId));
+			if (ended.logged) append(out, batch(tutorialAbandonedEvents(ended, "leave"), ended.attemptId));
 		} else {
+			// Server seconds from the completed finish: the beat before the card included (it may never have shown).
 			const outro = this.attempt.takeOutro(now);
 			if (outro !== undefined)
 				append(out, batch(tutorialOutroEvents(TUTORIAL_OUTRO_LEFT, outro.seconds, outro.entry)));

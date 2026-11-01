@@ -72,10 +72,12 @@ function sendStuck(report: Readonly<TutorialStuckReport>): void {
  * - **Telemetry (docs/TUTORIAL_FUNNEL.md TF6; docs/CLIENT.md "The tutorial run").** `tutorialStarted({ entry,
  *   device })` per tutorial run (the entry threaded through `playTutorial(entry)`, `firstJoin` for the gate's start;
  *   the store's input device at the start); every director update's `newLessonReports` / `newStuckReports` as
- *   `tutorialLesson` / `tutorialStuck` (before the finish on the finish frame); a skip flushes the open stuck episode
- *   first; `tutorialFinished` carries the director's current step id. `onboardingReport` `gate` once per session at
- *   the dispatch (firstJoinGateReason), `outro` once per attempt when the outro card closes (choice, real seconds
- *   open). `loaded` is PreloadController's (the release).
+ *   `tutorialLesson` / `tutorialStuck` (before the finish on the finish frame); a skip, a restart (or any run replacing
+ *   an unfinished tutorial run, before its `tutorialStarted`) and leaving an unfinished tutorial run flush the open
+ *   stuck episode first (flushOpenAttempt); `tutorialFinished` carries the director's current step id.
+ *   `onboardingReport` `gate` once per session at the dispatch (firstJoinGateReason), `outro` once per attempt when the
+ *   outro card closes (choice, real seconds the card was open: the server logs these, not its own clock, which starts
+ *   at the finish before the beat). `loaded` is PreloadController's (the release).
  */
 @Controller({})
 export class TutorialController implements OnStart {
@@ -165,7 +167,7 @@ export class TutorialController implements OnStart {
 		if (!this.sim.isTutorialRun() || this.beat !== undefined) return; // already finished: the outro handles it
 		// The open stuck episode ends here (a long one reports), then the skip with the current step.
 		const director = this.director;
-		if (director !== undefined) for (const report of director.flushMetrics()) sendStuck(report);
+		this.flushOpenAttempt();
 		const stepId = finishStepId(director?.getView());
 		Events.tutorialFinished.fire({ outcome: "skipped", stepId });
 		print(`[Tutorial] skipped at ${stepId}`);
@@ -182,6 +184,9 @@ export class TutorialController implements OnStart {
 	// --- per run / per frame ---------------------------------------------------------------------
 
 	private onRunStarted(ctx: RunContext): void {
+		// A run replacing a tutorial run still being played (Restart tutorial, a lobby start): its open stuck episode
+		// reports first, while the server still has its attempt open (before this run's tutorialStarted closes it).
+		this.flushOpenAttempt();
 		// Another run took the player off the outro card (a lobby start): `menu`. Play again / Start my first run
 		// reported their own choice before this.
 		this.reportOutro("menu");
@@ -208,6 +213,8 @@ export class TutorialController implements OnStart {
 
 	/** The run was left for the menu (Skip tutorial, or any Leave run / exit): no tutorial on screen any more. */
 	private onRunExited(): void {
+		// Left while the tutorial was still being played (not Skip: that flushed and cleared the director already).
+		this.flushOpenAttempt();
 		this.reportOutro("menu");
 		this.director = undefined;
 		this.runCounter = -1;
@@ -339,6 +346,18 @@ export class TutorialController implements OnStart {
 		const seconds = math.max(0, os.clock() - openedAt);
 		Events.onboardingReport.fire({ kind: "outro", choice, seconds });
 		print(`[Tutorial] outro closed: ${choice} after ${string.format("%.1f", seconds)} s`);
+	}
+
+	/**
+	 * Ends the director's open stuck episode (a long one reports as `tutorialStuck`) while its attempt is still open:
+	 * a director exists and its run has not finished (no beat; after the finish the server's attempt is closed). Call it
+	 * before the director is discarded mid-attempt (skip, a restart or another run replacing it, the run left).
+	 * flushMetrics is idempotent, so a second call sends nothing.
+	 */
+	private flushOpenAttempt(): void {
+		const director = this.director;
+		if (director === undefined || this.beat !== undefined) return;
+		for (const report of director.flushMetrics()) sendStuck(report);
 	}
 
 	/** Every tutorial start goes through here: the entry for onRunStarted's `tutorialStarted`, then the run. */

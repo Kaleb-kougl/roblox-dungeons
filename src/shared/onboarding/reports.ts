@@ -39,8 +39,8 @@ export interface TutorialStartInfo {
 }
 
 /**
- * The start info the server assumes when a `tutorialStarted` carries none or a malformed one (an older client during a
- * rollout): a first join on keyboard, the most common case.
+ * The start info the server assumes when a `tutorialStarted` carries none or a malformed one: a first join on
+ * keyboard, the most common case. Defensive only: Flamework's generated guard drops such a payload before the handler.
  */
 export const DEFAULT_TUTORIAL_START_INFO: Readonly<TutorialStartInfo> = table.freeze({
 	entry: "firstJoin" as TutorialEntry,

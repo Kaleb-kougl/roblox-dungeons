@@ -27,8 +27,15 @@ export const ONBOARDING_RETRY: RetryPolicy = SETTINGS_RETRY;
 /** Dirty onboarding docs are also written every this many seconds (besides leave / shutdown). */
 export const ONBOARDING_AUTOSAVE_SECONDS = SETTINGS_AUTOSAVE_SECONDS;
 
-/** Per-player budget for `requestOnboarding` and `tutorialStarted` together. */
+/** Per-player budget for `requestOnboarding`. */
 export const ONBOARDING_REQUEST_RATE = table.freeze({ count: 10, windowSeconds: 10 });
+
+/**
+ * Per-player budget for `tutorialStarted` (an honest client sends one per tutorial run; a restart passes the stage
+ * loader's cover first). Over it the start still opens an attempt, UNLOGGED (TutorialFunnelTracker `silent`), so the
+ * player is still busy for lobbies while their client plays the tutorial.
+ */
+export const TUTORIAL_START_RATE = table.freeze({ count: 3, windowSeconds: 10 });
 
 /**
  * Per-player budget for `tutorialFinished`, its own so request / start traffic can never starve the one message that
@@ -122,6 +129,19 @@ export const TUTORIAL_TELEMETRY = table.freeze({
 	 * lesson steps and lesson / stuck reports never use these.
 	 */
 	exitEventReserve: 2,
+	/**
+	 * Per player per server session: only the first this many tutorial attempts are logged (the attempt funnel and its
+	 * custom events). Later attempts still open and close (busy for lobbies) but log nothing, so a client looping
+	 * Restart cannot drain the game-wide AnalyticsService budget (120 + 20 x CCU events per minute). The once-per-user
+	 * onboarding funnel (bounded by its own once-each rule) is not affected.
+	 */
+	maxAttemptsLoggedPerSession: 3,
+	/**
+	 * Per player per server session: attempt events of every attempt together (starts, steps, reports, exits, outros)
+	 * stay within this, exitEventReserve kept for a logged attempt's exit and outro. 3 x maxEventsPerAttempt: a backstop
+	 * to the attempt cap.
+	 */
+	maxEventsPerSession: 240,
 	/** Report seconds are rounded to a multiple of this (0.1 s). */
 	secondsStep: 0.1,
 });

@@ -274,6 +274,7 @@ describe("tutorial attempt funnel filter", () => {
 			entry: "firstJoin",
 			device: "keyboard",
 			stepId: TUTORIAL_STEPS[0].id,
+			logged: true,
 		});
 		expect(t.accept(1)).toBe(false);
 	});
@@ -347,7 +348,14 @@ describe("tutorial attempt funnel filter", () => {
 			step: 4,
 			stepName: TUTORIAL_STEPS[2].id,
 		});
-		const ended = { attemptId: "a", lastStep: 4, entry: "menu" as const, device: "touch" as const, stepId: "roll" };
+		const ended = {
+			attemptId: "a",
+			lastStep: 4,
+			entry: "menu" as const,
+			device: "touch" as const,
+			stepId: "roll",
+			logged: true,
+		};
 		expect(tutorialFinishEvents("completed", ended)).toEqual([
 			{ kind: "funnel", funnel: TUTORIAL_FUNNEL, step: TUTORIAL_FUNNEL_COMPLETED_STEP, stepName: "completed" },
 		]);

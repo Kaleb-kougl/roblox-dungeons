@@ -23,6 +23,14 @@
  * attempt's events stay within TUTORIAL_TELEMETRY.maxEventsPerAttempt, the last exitEventReserve of them kept for the
  * exit (completed / skipped / abandoned / restarted) and the outro, which are never refused. After a completion the
  * outro is open: one TutorialOutroChoice (a client choice, or `left` when the player leaves on it) until the next start.
+ *
+ * SESSION budget (one tracker per player per server session, so these never reset): only the first
+ * TUTORIAL_TELEMETRY.maxAttemptsLoggedPerSession attempts are LOGGED, and all attempt events together stay within
+ * maxEventsPerSession (the exit reserve kept there too, so a logged attempt's exit and outro always fit). A start past
+ * either cap, or a `silent` one (the service's rate-limited start), opens an UNLOGGED attempt: it still opens and
+ * closes (the lobby-busy flag, the current step) but nothing of it is logged (`logged: false` on its end; no step,
+ * report, exit or outro accepted for logging; `acceptStep` returns "silent" for its progress). A client looping
+ * restarts therefore logs at most maxEventsPerSession attempt events per session.
  */
 import type { AnalyticsEventSpec } from "shared/run";
 import { TUTORIAL_STEPS, tutorialStepIndex, tutorialStepName } from "shared/tutorial";
@@ -61,7 +69,20 @@ export interface TutorialAttemptEnd extends TutorialStartInfo {
 	readonly lastStep: number;
 	/** Its current step id when it closed (a TUTORIAL_STEPS id, or TUTORIAL_NO_STEP_ID). */
 	readonly stepId: string;
+	/** It was a logged attempt (false past the session budget, or a silent start): log nothing for its end. */
+	readonly logged: boolean;
 }
+
+/** The tracker's budgets (TUTORIAL_TELEMETRY's; a spec may pass smaller ones). */
+export interface TutorialTelemetryLimits {
+	readonly maxEventsPerAttempt: number;
+	readonly exitEventReserve: number;
+	readonly maxAttemptsLoggedPerSession: number;
+	readonly maxEventsPerSession: number;
+}
+
+/** What `acceptStep` decided: log the funnel step, progress recorded on an unlogged attempt, or undefined (dropped). */
+export type TutorialStepAcceptance = "log" | "silent" | undefined;
 
 /** What `takeOutro` returns: the finished attempt's entry and the seconds since its outro opened (0 when unknown). */
 export interface TutorialOutroContext {
@@ -88,21 +109,46 @@ export class TutorialFunnelTracker {
 	private readonly stuckPrompts = new Set<string>();
 	private events = 0;
 	private outro: { entry: TutorialEntry; openedAt: number | undefined } | undefined;
+	/** The open attempt is logged (see the module comment's session budget). */
+	private logged = false;
+	/** Session counters (never reset): attempts logged, and attempt events logged (starts, steps, reports, exits, outros). */
+	private attemptsLogged = 0;
+	private sessionEvents = 0;
 
-	constructor(private readonly maxStep: number = TUTORIAL_FUNNEL_MAX_STEP) {}
+	constructor(
+		private readonly maxStep: number = TUTORIAL_FUNNEL_MAX_STEP,
+		private readonly limits: TutorialTelemetryLimits = TUTORIAL_TELEMETRY,
+	) {}
 
 	/**
-	 * Begins a new attempt (replacing any open one, which it returns closed: a `restart` logs it as restarted). Steps
-	 * count from 0 again, the report dedupe and the event counter reset (the start event counts as one), any open
-	 * outro closes.
+	 * Begins a new attempt (replacing any open one, which it returns closed: a logged `restart` logs it as restarted).
+	 * Steps count from 0 again, the report dedupe and the event counter reset (the start event counts as one), any
+	 * open outro closes. The attempt is logged unless `silent` or past the session budget (the session counters never
+	 * reset).
 	 */
-	start(attemptId: string, info: TutorialStartInfo): TutorialAttemptEnd | undefined {
+	start(attemptId: string, info: TutorialStartInfo, silent = false): TutorialAttemptEnd | undefined {
 		const replaced = this.close();
 		this.reset();
 		this.attemptId = attemptId;
 		this.info = { entry: info.entry, device: info.device };
-		this.events = 1;
+		const room = this.sessionEvents + 1 + this.limits.exitEventReserve <= this.limits.maxEventsPerSession;
+		this.logged = !silent && room && this.attemptsLogged < this.limits.maxAttemptsLoggedPerSession;
+		if (this.logged) {
+			this.attemptsLogged++;
+			this.events = 1;
+			this.sessionEvents++;
+		}
 		return replaced;
+	}
+
+	/** True while the open attempt is logged (false with none open). */
+	isLogged(): boolean {
+		return this.attemptId !== undefined && this.logged;
+	}
+
+	/** Attempt events logged this session (every attempt: starts, steps, reports, exits, outros). */
+	getSessionEventCount(): number {
+		return this.sessionEvents;
 	}
 
 	/** True between `start` and `finish` / `abandon` / `clear`. */
@@ -146,14 +192,28 @@ export class TutorialFunnelTracker {
 	}
 
 	/**
-	 * True (and records it) when lesson `step` should be logged: an attempt is open, step is an integer in
+	 * True (and records it) when lesson `step` should be logged: a logged attempt is open, step is an integer in
 	 * lastStep+1..max, and the event budget has room for its one event.
 	 */
 	accept(step: number): boolean {
-		if (this.attemptId === undefined || !isTutorialStepNumber(step, this.maxStep)) return false;
-		if (step <= this.lastStep || !this.charge(1)) return false;
+		return this.acceptStep(step) === "log";
+	}
+
+	/**
+	 * Lesson `step` (an integer in lastStep+1..max, an attempt open): "log" when the attempt is logged and the budget
+	 * has room for its one event, "silent" on an unlogged attempt (the progress is recorded, nothing logged; the
+	 * once-per-user onboarding funnel, bounded by its own once-each rule, may still log it), else undefined.
+	 */
+	acceptStep(step: number): TutorialStepAcceptance {
+		if (this.attemptId === undefined || !isTutorialStepNumber(step, this.maxStep)) return undefined;
+		if (step <= this.lastStep) return undefined;
+		if (!this.logged) {
+			this.lastStep = step;
+			return "silent";
+		}
+		if (!this.charge(1)) return undefined;
 		this.lastStep = step;
-		return true;
+		return "log";
 	}
 
 	/**
@@ -181,12 +241,14 @@ export class TutorialFunnelTracker {
 	}
 
 	/**
-	 * Closes the open attempt and returns it, or undefined when none was open. A `completed` finish opens the outro
-	 * (`at`: the caller's clock in seconds, for the `left` outro's value; omitted = 0 seconds then).
+	 * Closes the open attempt and returns it, or undefined when none was open. A `completed` finish of a logged attempt
+	 * opens the outro (`at`: the caller's clock in seconds, for the `left` outro's value; omitted = 0 seconds then).
 	 */
 	finish(outcome?: TutorialOutcome, at?: number): TutorialAttemptEnd | undefined {
 		const ended = this.close();
-		if (ended !== undefined && outcome === "completed") this.outro = { entry: ended.entry, openedAt: at };
+		if (ended !== undefined && ended.logged && outcome === "completed") {
+			this.outro = { entry: ended.entry, openedAt: at };
+		}
 		return ended;
 	}
 
@@ -198,12 +260,15 @@ export class TutorialFunnelTracker {
 	/**
 	 * The open outro, once (closing it), or undefined: the entry of the attempt it follows and the seconds since it
 	 * opened at `now` (same clock as `finish`'s `at`; clamped to maxOutroSeconds, rounded; 0 when either is unknown).
+	 * They count from the `completed` finish, so they include the beat before the client shows the card: only the
+	 * `left` outro uses them (a client choice reports its own seconds on the card).
 	 */
 	takeOutro(now?: number): TutorialOutroContext | undefined {
 		const outro = this.outro;
 		if (outro === undefined) return undefined;
 		this.outro = undefined;
 		this.events++;
+		this.sessionEvents++;
 		const opened = outro.openedAt;
 		const elapsed = now !== undefined && opened !== undefined ? now - opened : 0;
 		return { entry: outro.entry, seconds: reportSeconds(elapsed, TUTORIAL_TELEMETRY.maxOutroSeconds) ?? 0 };
@@ -214,11 +279,17 @@ export class TutorialFunnelTracker {
 		this.reset();
 	}
 
-	/** Spends `n` in-attempt events when they fit under the budget minus the exit reserve. */
+	/**
+	 * Spends `n` in-attempt events of a logged attempt when they fit under the attempt and the session budgets, each
+	 * minus the exit reserve.
+	 */
 	private charge(n: number): boolean {
-		const cap = TUTORIAL_TELEMETRY.maxEventsPerAttempt - TUTORIAL_TELEMETRY.exitEventReserve;
-		if (this.events + n > cap) return false;
+		if (!this.logged) return false;
+		const reserve = this.limits.exitEventReserve;
+		if (this.events + n > this.limits.maxEventsPerAttempt - reserve) return false;
+		if (this.sessionEvents + n > this.limits.maxEventsPerSession - reserve) return false;
 		this.events += n;
+		this.sessionEvents += n;
 		return true;
 	}
 
@@ -233,12 +304,17 @@ export class TutorialFunnelTracker {
 			device: info.device,
 			lastStep: this.lastStep,
 			stepId: this.getStepId() ?? TUTORIAL_NO_STEP_ID,
+			logged: this.logged,
 		};
 		this.attemptId = undefined;
 		this.info = undefined;
 		this.lastStep = 0;
 		this.notedStepId = undefined;
-		this.events++;
+		if (this.logged) {
+			this.events++;
+			this.sessionEvents++;
+		}
+		this.logged = false;
 		return ended;
 	}
 
@@ -251,6 +327,7 @@ export class TutorialFunnelTracker {
 		this.stuckPrompts.clear();
 		this.events = 0;
 		this.outro = undefined;
+		this.logged = false;
 	}
 }
 

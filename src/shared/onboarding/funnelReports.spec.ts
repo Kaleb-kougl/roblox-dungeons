@@ -215,10 +215,100 @@ describe("attempt tracker: entry, device, current step, dedupe, budget, outro", 
 		expect(t.takeOutro(20)).toBe(undefined);
 		expect(t.abandon()?.attemptId).toBe("d");
 		expect(t.takeOutro(20)).toBe(undefined);
-		// The left-on-outro value is clamped.
-		t.start("e", INFO);
+		// The left-on-outro value is clamped (a fresh tracker: `t` is past the session's logged-attempt cap).
+		const u = new TutorialFunnelTracker();
+		u.start("e", INFO);
+		u.finish("completed", 0);
+		expect(u.takeOutro(1e9)?.seconds).toBe(TUTORIAL_TELEMETRY.maxOutroSeconds);
+	});
+});
+
+describe("attempt tracker: session budget", () => {
+	/** One honest-looking attempt: every step and lesson report, then a completion and its outro. */
+	function fullAttempt(t: TutorialFunnelTracker, id: string): void {
+		t.start(id, INFO);
+		for (let s = 1; s <= TUTORIAL_FUNNEL_MAX_STEP; s++) {
+			t.accept(s);
+			t.acceptLessonReport({ step: s, seconds: 5, hits: 1 });
+		}
 		t.finish("completed", 0);
-		expect(t.takeOutro(1e9)?.seconds).toBe(TUTORIAL_TELEMETRY.maxOutroSeconds);
+		t.takeOutro(1);
+	}
+
+	it("logs the first maxAttemptsLoggedPerSession attempts; later ones open and close unlogged", () => {
+		const t = new TutorialFunnelTracker();
+		for (let i = 1; i <= TUTORIAL_TELEMETRY.maxAttemptsLoggedPerSession; i++) {
+			const replaced = t.start(`a${i}`, { entry: "restart", device: "keyboard" });
+			if (i > 1) expect(replaced?.logged).toBe(true);
+			expect(t.isLogged()).toBe(true);
+			expect(t.accept(1)).toBe(true);
+		}
+		const logged = t.getSessionEventCount();
+		const replaced = t.start("x", { entry: "restart", device: "keyboard" });
+		expect(replaced?.logged).toBe(true); // the last logged attempt's exit still counts
+		expect(t.getSessionEventCount()).toBe(logged + 1);
+		// Past the cap: open (busy for lobbies), progress kept, nothing accepted for logging.
+		expect(t.isActive()).toBe(true);
+		expect(t.isLogged()).toBe(false);
+		expect(t.acceptStep(1)).toBe("silent");
+		expect(t.acceptStep(1)).toBe(undefined);
+		expect(t.acceptStep(3)).toBe("silent");
+		expect(t.accept(4)).toBe(false);
+		expect(t.getLastStep()).toBe(4);
+		expect(t.acceptLessonReport({ step: 2, seconds: 1, hits: 0 })).toBe(false);
+		expect(t.acceptStuckReport({ prompt: TUTORIAL_PROMPT_IDS[0], seconds: 20 })).toBe(false);
+		const ended = t.finish("completed", 10);
+		expect(ended?.logged).toBe(false);
+		expect(ended?.lastStep).toBe(4);
+		expect(t.isActive()).toBe(false);
+		expect(t.takeOutro(20)).toBe(undefined); // no outro after an unlogged attempt
+		expect(t.getSessionEventCount()).toBe(logged + 1);
+	});
+
+	it("a silent start opens an unlogged attempt without using the attempt cap", () => {
+		const t = new TutorialFunnelTracker();
+		t.start("s", INFO, true);
+		expect(t.isActive()).toBe(true);
+		expect(t.isLogged()).toBe(false);
+		expect(t.getSessionEventCount()).toBe(0);
+		expect(t.abandon()?.logged).toBe(false);
+		for (let i = 1; i <= TUTORIAL_TELEMETRY.maxAttemptsLoggedPerSession; i++) {
+			t.start(`a${i}`, INFO);
+			expect(t.isLogged()).toBe(true);
+		}
+	});
+
+	it("an endless restart loop logs at most maxEventsPerSession attempt events", () => {
+		const t = new TutorialFunnelTracker();
+		for (let i = 0; i < 50; i++) fullAttempt(t, `a${i}`);
+		expect(t.getSessionEventCount() <= TUTORIAL_TELEMETRY.maxEventsPerSession).toBe(true);
+		expect(t.getSessionEventCount()).toBe(
+			TUTORIAL_TELEMETRY.maxAttemptsLoggedPerSession * (1 + TUTORIAL_FUNNEL_MAX_STEP * 3 + 2),
+		);
+	});
+
+	it("the session event cap keeps the exit reserve: a logged attempt's exit and outro always fit", () => {
+		const limits = {
+			maxEventsPerAttempt: 80,
+			exitEventReserve: 2,
+			maxAttemptsLoggedPerSession: 10,
+			maxEventsPerSession: 12,
+		};
+		const t = new TutorialFunnelTracker(TUTORIAL_FUNNEL_MAX_STEP, limits);
+		t.start("a", INFO);
+		let accepted = 0;
+		for (let s = 1; s <= TUTORIAL_FUNNEL_MAX_STEP; s++) if (t.accept(s)) accepted++;
+		// 12 - 2 reserved = 10: the start and 9 steps.
+		expect(accepted).toBe(9);
+		expect(t.getSessionEventCount()).toBe(10);
+		expect(t.finish("completed", 0)?.logged).toBe(true);
+		expect(t.takeOutro(5)).toEqual({ entry: "firstJoin", seconds: 5 });
+		expect(t.getSessionEventCount()).toBe(12);
+		// No room for another logged start (1 + the reserve).
+		t.start("b", INFO);
+		expect(t.isLogged()).toBe(false);
+		expect(t.abandon()?.logged).toBe(false);
+		expect(t.getSessionEventCount()).toBe(12);
 	});
 });
 
@@ -229,6 +319,7 @@ describe("attempt event builders", () => {
 		entry: "restart" as const,
 		device: "gamepad" as const,
 		stepId: "guard",
+		logged: true,
 	};
 
 	it("start: funnel step 1 with entry / revision / device", () => {

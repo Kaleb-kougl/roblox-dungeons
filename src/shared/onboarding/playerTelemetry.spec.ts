@@ -1,7 +1,8 @@
 // Per-player tutorial / onboarding telemetry (docs/TUTORIAL_FUNNEL.md TF5, TF7, TF8): which tracker gets which
 // message, the join entry from the server's join intent (with its deadline and the leave fallback), what a leave and a
-// party run log, restarts, the server-measured outro, gate contradictions, the new-player window's run rule and join
-// helper, and the debug echo's lines.
+// party run log, restarts, the outro's seconds (the client's for a choice, the server's for `left`), the session
+// budget and silent starts, gate contradictions, the new-player window's run rule and join helper, and the debug echo's
+// lines.
 import { describe, expect, it } from "@rbxts/jest-globals";
 import type { AnalyticsEventSpec } from "shared/run";
 import { TUTORIAL_PROMPT_IDS, TUTORIAL_STEPS, TUTORIAL_STEP_COUNT } from "shared/tutorial";
@@ -14,6 +15,7 @@ import {
 	TUTORIAL_ANALYTICS_EVENT,
 	TUTORIAL_FUNNEL,
 	TUTORIAL_FUNNEL_COMPLETED_STEP,
+	TUTORIAL_TELEMETRY,
 	describeAnalyticsSpec,
 	emptyOnboardingDoc,
 	finishedOnboardingDoc,
@@ -168,13 +170,14 @@ describe("attempt and onboarding together", () => {
 		]);
 		expect(TUTORIAL_FUNNEL_COMPLETED_STEP).toBe(TUTORIAL_STEP_COUNT + 2);
 		expect(t.isInTutorial()).toBe(false);
-		// The outro's value is the server's seconds since the completion, not the client's.
-		const outro = specs(t.report({ kind: "outro", choice: "firstRun", seconds: 999 }, 212.34).batches);
+		// A client choice's value is the client's seconds on the card (read and rounded), not the server's time since
+		// the completion (which includes the beat before the card).
+		const outro = specs(t.report({ kind: "outro", choice: "firstRun", seconds: 8.46 }, 212.34).batches);
 		expect(outro).toEqual([
 			{
 				kind: "custom",
 				name: TUTORIAL_ANALYTICS_EVENT.outroChoice,
-				value: 12.3,
+				value: 8.5,
 				fields: { field01: "firstRun", field02: "firstJoin" },
 			},
 		]);
@@ -279,13 +282,14 @@ describe("attempt and onboarding together", () => {
 		expect(labels(t.stuck({ prompt: "invented", seconds: 40 }))).toEqual([]);
 	});
 
-	it("finish payloads: a bare outcome is accepted (rollout), junk is dropped and changes nothing", () => {
+	it("finish payloads: junk (a bare outcome included) is dropped and changes nothing", () => {
 		const t = freshOrganic();
 		t.start("A", START);
 		expect(t.finish({ outcome: "won", stepId: "none" }, 120)).toBe(undefined);
 		expect(t.finish({ outcome: "skipped", stepId: "invented" }, 120)).toBe(undefined);
+		expect(t.finish("skipped", 120)).toBe(undefined);
 		expect(t.isInTutorial()).toBe(true);
-		const fin = t.finish("skipped", 121)!;
+		const fin = t.finish({ outcome: "skipped", stepId: "none" }, 121)!;
 		expect(fin.ended?.attemptId).toBe("A");
 		expect(labels(fin.batches)).toEqual([TUTORIAL_ANALYTICS_EVENT.skipped]);
 		// A finish with no open attempt still closes the onboarding funnel (Completed while it is open).
@@ -293,6 +297,60 @@ describe("attempt and onboarding together", () => {
 		expect(labels(u.finish({ outcome: "completed", stepId: "none" }, 130)!.batches)).toEqual([
 			`o${ONBOARDING_FUNNEL.completed.step}`,
 		]);
+	});
+
+	it("lesson reports are accepted out of order and past the funnel's last step (lessons finish in any order)", () => {
+		const t = freshOrganic();
+		t.start("A", START);
+		t.step(1);
+		// Lesson 5 done before 2..4 (an out-of-order lesson room), lesson 9 after a skipped lesson stopped the funnel.
+		expect(labels(t.lesson({ step: 5, seconds: 4, hits: 0 }))).toEqual([TUTORIAL_ANALYTICS_EVENT.lessonTime]);
+		expect(labels(t.lesson({ step: 9, seconds: 4, hits: 0 }))).toEqual([TUTORIAL_ANALYTICS_EVENT.lessonTime]);
+		expect(labels(t.lesson({ step: 5, seconds: 4, hits: 0 }))).toEqual([]);
+	});
+
+	it("session budget: attempts past the cap log nothing but still open, close and feed the onboarding funnel", () => {
+		const t = freshOrganic();
+		for (let i = 1; i <= TUTORIAL_TELEMETRY.maxAttemptsLoggedPerSession; i++) {
+			const r = t.start(`A${i}`, { entry: i === 1 ? "firstJoin" : "restart", device: "keyboard" });
+			expect(r.logged).toBe(true);
+			expect(labels(t.step(1))[0]).toBe("a2");
+		}
+		const r = t.start("X", { entry: "restart", device: "keyboard" });
+		expect(r.logged).toBe(false);
+		// The last logged attempt's exit is still logged; the new one's start is not.
+		expect(labels(r.batches)).toEqual([TUTORIAL_ANALYTICS_EVENT.restarted]);
+		expect(t.isInTutorial()).toBe(true);
+		// Its steps feed only the once-per-user onboarding funnel (past its last step: lesson 1 was already logged).
+		expect(labels(t.step(1))).toEqual([]);
+		expect(labels(t.step(2))).toEqual(["o5"]);
+		expect(labels(t.lesson({ step: 2, seconds: 3, hits: 1 }))).toEqual([]);
+		expect(labels(t.stuck({ prompt: TUTORIAL_PROMPT_IDS[0], seconds: 30 }))).toEqual([]);
+		// A restart replacing an unlogged attempt logs nothing for it, nor is it reported as replaced.
+		const again = t.start("Y", { entry: "menu", device: "keyboard" });
+		expect(again.replacedUnlogged).toBe(undefined);
+		expect(labels(again.batches)).toEqual([]);
+		// Its completion still closes the onboarding funnel (Completed); no attempt events, no outro.
+		const fin = t.finish({ outcome: "completed", stepId: "none" }, 300)!;
+		expect(fin.ended?.logged).toBe(false);
+		expect(labels(fin.batches)).toEqual([`o${ONBOARDING_FUNNEL.completed.step}`]);
+		expect(t.isInTutorial()).toBe(false);
+		expect(labels(t.report({ kind: "outro", choice: "menu", seconds: 2 }, 301).batches)).toEqual([]);
+		t.start("Z", START);
+		expect(labels(t.leaving(400))).toEqual([]);
+	});
+
+	it("a silent (rate-limited) start opens the attempt unlogged; it does not use the attempt cap", () => {
+		const t = freshOrganic();
+		const r = t.start("S", START, true);
+		expect(r.logged).toBe(false);
+		expect(labels(r.batches)).toEqual(["o3"]); // the once-per-user funnel's TutorialStarted
+		expect(t.isInTutorial()).toBe(true);
+		expect(labels(t.partyRun())).toEqual([]);
+		expect(t.isInTutorial()).toBe(false);
+		for (let i = 1; i <= TUTORIAL_TELEMETRY.maxAttemptsLoggedPerSession; i++) {
+			expect(t.start(`A${i}`, { entry: "menu", device: "keyboard" }).logged).toBe(true);
+		}
 	});
 
 	it("a rate-limited finish drops the attempt unlogged", () => {

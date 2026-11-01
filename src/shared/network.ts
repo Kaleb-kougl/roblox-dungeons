@@ -46,7 +46,8 @@ import type { SettingsOverrides } from "shared/settings";
  * Request / reply as an event pair (the pattern of the user's other Flamework project): the client fires a request,
  * the server answers with its own event. Every client -> server event is rate limited per player in its service
  * (limits in shared/run `RUN_SUBMIT_RATE`, shared/settings `SETTINGS_REQUEST_RATE` and shared/onboarding
- * `ONBOARDING_REQUEST_RATE` / `TUTORIAL_FINISH_RATE` / `TUTORIAL_STEP_RATE`, shared/records `RECORDS_REQUEST_RATE`,
+ * `ONBOARDING_REQUEST_RATE` / `TUTORIAL_START_RATE` / `TUTORIAL_FINISH_RATE` / `TUTORIAL_STEP_RATE` /
+ * `TUTORIAL_REPORT_RATE`, shared/records `RECORDS_REQUEST_RATE`,
  * shared/daily `DAILY_REQUEST_RATE`).
  *
  * Bind side-specific handlers with `GlobalEvents.createServer` (src/server/network.ts) and `GlobalEvents.createClient`
