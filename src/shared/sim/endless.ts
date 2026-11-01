@@ -39,7 +39,7 @@
  * Scaling (endlessData.ts) is applied where things are made: actor hp in spawnActor, enemy bullet speed in
  * SimCtx.fireEnemy. Both read state.endless, so they follow the floor and Depth at that moment.
  */
-import type { BreakablePlacement } from "shared/dungeon";
+import type { BreakableLoot, BreakablePlacement } from "shared/dungeon";
 import type { InputFrame } from "./input";
 import type { SimState } from "./state";
 import type { SimConfig } from "./step";
@@ -99,6 +99,12 @@ export interface EndlessFloorWorld {
 	 * is set (affixes/affixes.ts). Absent: none (the tutorial, hand-built test worlds).
 	 */
 	readonly roomAffixes?: ReadonlyArray<ReadonlyArray<number>>;
+	/**
+	 * The breakables that hold a boost (shared/dungeon placeBreakableLoot, docs/BREAKABLE_DROPS.md): { slot into
+	 * `breakables`, Boost index }. Read only when the run's DropsConfig.breakableLoot is set (docs/BREAKABLE_DROPS.md BL2).
+	 * Absent: none.
+	 */
+	readonly breakableLoot?: ReadonlyArray<BreakableLoot>;
 }
 
 /** SimConfig.endless. */

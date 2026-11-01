@@ -136,6 +136,7 @@ export function endlessFloorWorld(layout: EndlessFloorLayout): EndlessRunFloor {
 		roomIdAt: (x, z) => roomIdAt(d, x, z),
 		breakables: layout.breakables,
 		roomAffixes: layout.roomAffixes,
+		breakableLoot: layout.breakableLoot,
 		layout,
 		dungeon: d,
 	};

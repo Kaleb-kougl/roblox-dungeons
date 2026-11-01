@@ -24,8 +24,10 @@
  *   breakables    barrels and crates in combat / elite / treasure rooms (./breakables.ts, docs/DECOR.md D4), placed
  *                 from their own stream hash(floor seed, BREAKABLE.salt) and kept clear of the room spawns
  *                 (which depend on the party size, so the pieces do too); their cells leave roomSpawnTiles
- *   affixes       elite affixes per planned room spawn (./affixes.ts, docs/ENEMY_VARIANTS.md EV6), last, from their
- *                 own stream hash(floor seed, AFFIXES.salt); nothing above reads them
+ *   affixes       elite affixes per planned room spawn (./affixes.ts, docs/ENEMY_VARIANTS.md EV6), from their own
+ *                 stream hash(floor seed, AFFIXES.salt); nothing above reads them
+ *   loot          the breakables that hold a boost (./breakableLoot.ts, docs/BREAKABLE_DROPS.md BL1), last, from their
+ *                 own stream hash(floor seed, BREAKABLE_LOOT.salt), reading the placed pieces; nothing above reads it
  *
  * Generating the dungeon is left to the caller (`dungeonFor`), so shared/run can cache it (LRU).
  */
@@ -46,6 +48,7 @@ import { SPREAD_TRIES, SWARMER_KIND, isOpenTile, nearestFree, roomSpawnTiles, sp
 import { encounterCost } from "./encounterCost";
 import { placeBreakables, withoutBreakableCells, type BreakablePlacement } from "./breakables";
 import { assignAffixes } from "./affixes";
+import { placeBreakableLoot, type BreakableLoot } from "./breakableLoot";
 import type { ActorSpawn, EncounterConfig, EncounterRoom, EncounterRoomType } from "./encounterTypes";
 import {
 	BOSS_FLOOR_EVERY,
@@ -434,6 +437,11 @@ export interface EndlessFloorLayout {
 	 * none) per planned room spawn, same shape as roomSpawns. Absent: none (the tutorial's hand-built floors).
 	 */
 	readonly roomAffixes?: ReadonlyArray<ReadonlyArray<number>>;
+	/**
+	 * The breakables that hold a boost (./breakableLoot.ts placeBreakableLoot, docs/BREAKABLE_DROPS.md BL1): { slot into
+	 * `breakables`, Boost index }, slot order. Absent: none (the tutorial's hand-built floors).
+	 */
+	readonly breakableLoot?: ReadonlyArray<BreakableLoot>;
 }
 
 /**
@@ -465,6 +473,8 @@ export function buildEndlessFloor(
 	);
 	// Affixes run after everything else, on their own rng stream (./affixes.ts): nothing above moves.
 	const roomAffixes = assignAffixes(params.seed, floor, encounter.rooms, roomSpawns);
+	// Loot reads the placed pieces, on its own rng stream (./breakableLoot.ts): nothing above moves.
+	const breakableLoot = placeBreakableLoot(params.seed, floor, breakables, encounter);
 	return {
 		floor,
 		seed: params.seed,
@@ -480,5 +490,6 @@ export function buildEndlessFloor(
 		stairwell,
 		breakables,
 		roomAffixes,
+		breakableLoot,
 	};
 }

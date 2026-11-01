@@ -16,6 +16,8 @@ export * from "./endlessData";
 export * from "./endless";
 export * from "./breakablesData";
 export * from "./breakables";
+export * from "./breakableLootData";
+export * from "./breakableLoot";
 export * from "./affixesData";
 export * from "./affixes";
 export * from "./pathField";
