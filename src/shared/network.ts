@@ -2,7 +2,14 @@ import { Networking } from "@flamework/networking";
 import type { DailyRunResult, DailyStatus } from "shared/daily";
 import type { LeaderboardRequest, LeaderboardView } from "shared/leaderboard";
 import type { ArrivalJoinIntent, ArrivalToastKey } from "shared/invite";
-import type { OnboardingStatus, TutorialOutcome } from "shared/onboarding";
+import type {
+	OnboardingReport,
+	OnboardingStatus,
+	TutorialFinishInfo,
+	TutorialLessonReport,
+	TutorialStartInfo,
+	TutorialStuckReport,
+} from "shared/onboarding";
 import type { RecordsStatus, RunRecordsResult } from "shared/records";
 import type {
 	LobbyCreateRequest,
@@ -339,17 +346,35 @@ export interface ClientToServerEvents {
 	/**
 	 * Onboarding: the client started a Practice Descent (first run, Restart tutorial, or a replay). Begins a new
 	 * funnel attempt and marks the player in-tutorial (busy for lobby run starts) until `tutorialFinished` or leave.
-	 * No reply.
+	 * No reply. `info` (docs/TUTORIAL_FUNNEL.md §6): how the attempt began (`entry`) and the input device then; the
+	 * server re-reads it (shared/onboarding readTutorialStartInfo) and falls back to DEFAULT_TUTORIAL_START_INFO.
 	 */
-	tutorialStarted(): void;
+	tutorialStarted(info: TutorialStartInfo): void;
 	/**
 	 * Onboarding telemetry: lesson `step` (an integer 1..TUTORIAL_FUNNEL_MAX_STEP, the shared/tutorial step number:
 	 * TutorialView.newFunnelSteps) has been reached. The server names it from the shared step list (the step's id).
 	 * Only strictly increasing steps within the current attempt are logged. No reply.
 	 */
 	tutorialStep(step: number): void;
-	/** Onboarding: the tutorial was completed or skipped. Recorded as done; answered with `onboardingStatus`. */
-	tutorialFinished(outcome: TutorialOutcome): void;
+	/**
+	 * Onboarding: the tutorial was completed or skipped (`info.outcome`), with the director's current step id
+	 * (`info.stepId`, TUTORIAL_NO_STEP_ID when none). Recorded as done; answered with `onboardingStatus`.
+	 */
+	tutorialFinished(info: TutorialFinishInfo): void;
+	/**
+	 * Tutorial telemetry (docs/TUTORIAL_FUNNEL.md §4, §6): one lesson's time and harmless hits (TutorialView
+	 * .newLessonReports), once per lesson per attempt. Re-read with readLessonReport, rate limited
+	 * (TUTORIAL_REPORT_RATE). No reply.
+	 */
+	tutorialLesson(report: TutorialLessonReport): void;
+	/** Tutorial telemetry: one stuck episode (TutorialView.newStuckReports / flushMetrics), once per prompt per attempt. No reply. */
+	tutorialStuck(report: TutorialStuckReport): void;
+	/**
+	 * Onboarding telemetry: `loaded` (the join loading screen released), `gate` (the first-join choice dispatched, with
+	 * its reason) once per session, `outro` (the tutorial outro closed: the choice and seconds on it) once per attempt.
+	 * Re-read with readOnboardingReport, rate limited (TUTORIAL_REPORT_RATE). No reply.
+	 */
+	onboardingReport(report: OnboardingReport): void;
 	/**
 	 * First sightings (docs/ENEMY_VARIANTS.md EV12): this client showed the first-sighting toast for `id` (a
 	 * shared/onboarding SIGHTING_IDS entry). Recorded in this player's onboarding doc: unknown ids are ignored, a known

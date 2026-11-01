@@ -2,6 +2,7 @@ import { Controller, OnStart } from "@flamework/core";
 import { RunService, Workspace } from "@rbxts/services";
 import { Events } from "client/network";
 import { clientStore } from "client/store";
+import { DEFAULT_TUTORIAL_START_INFO, TUTORIAL_NO_STEP_ID } from "shared/onboarding";
 import { RUN_ATTRIBUTES } from "shared/play";
 import {
 	TutorialDirector,
@@ -123,7 +124,7 @@ export class TutorialController implements OnStart {
 	skipTutorial(): void {
 		clientStore.setTutorialSkipConfirm(false);
 		if (!this.sim.isTutorialRun() || this.beat !== undefined) return; // already finished: the outro handles it
-		Events.tutorialFinished.fire("skipped");
+		Events.tutorialFinished.fire({ outcome: "skipped", stepId: TUTORIAL_NO_STEP_ID }); // TF6 wires the real step id
 		print("[Tutorial] skipped");
 		this.director = undefined;
 		clientStore.endTutorial();
@@ -150,7 +151,7 @@ export class TutorialController implements OnStart {
 		this.director = director;
 		this.runCounter = ctx.counter;
 		// Every tutorial start is a new funnel attempt (and marks the player busy for lobbies).
-		Events.tutorialStarted.fire();
+		Events.tutorialStarted.fire(DEFAULT_TUTORIAL_START_INFO); // TF6 wires entry / device
 		clientStore.beginTutorial(tutorialHudFrom(director.getView()));
 		print(`[Tutorial] run ${ctx.counter}: practice descent started`);
 	}
@@ -246,7 +247,7 @@ export class TutorialController implements OnStart {
 	/** The floor 2 -> 3 change: freeze the run and report the completion now, the outro after the beat. */
 	private finish(ctx: RunContext): void {
 		this.sim.freezeTutorialRun();
-		Events.tutorialFinished.fire("completed");
+		Events.tutorialFinished.fire({ outcome: "completed", stepId: TUTORIAL_NO_STEP_ID }); // TF6 wires the real step id
 		clientStore.endTutorial();
 		this.beat = new TutorialOutroBeat();
 		print(`[Tutorial] run ${ctx.counter}: completed; the outro follows`);
