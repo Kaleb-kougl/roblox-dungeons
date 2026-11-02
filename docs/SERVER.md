@@ -801,11 +801,11 @@ funnels and events, keeps the new-player window, and marks players in it as busy
 | server -> client | `onboardingStatus` | `{ loaded: boolean, tutorialDone: boolean, seen? }` | sent once the join load ends (success or failure) | |
 | client -> server | `requestOnboarding` | none | loads if needed (shares the join read) | `onboardingStatus` |
 | client -> server | `tutorialStarted` | `{ entry: "firstJoin" \| "restart" \| "menu" \| "again", device: "keyboard" \| "gamepad" \| "touch" }` | opens a new attempt (server GUID = funnel session id); `isInTutorial` = true; logs attempt step 1 `started` (entry / revision / device), onboarding `TutorialStarted` for a `firstJoin` while the onboarding funnel is open, `TutorialRestarted` for a logged attempt a `restart` replaced. A malformed payload would be read as `{ firstJoin, keyboard }` (`DEFAULT_TUTORIAL_START_INFO`, warned `BAD_START_INFO`; defensive only, Flamework's guard drops it first). Over `TUTORIAL_START_RATE`, or past the session budget, the attempt opens UNLOGGED (busy for lobbies, no attempt telemetry). Ignored from a member of an unconcluded party run (a late message) | none |
-| client -> server | `tutorialStep` | `step: number` | integer 1..`TUTORIAL_FUNNEL_MAX_STEP` (16, = shared/tutorial `TUTORIAL_STEP_COUNT`), strictly above the attempt's last: attempt step `step + 1`, and onboarding step `step + 3` while it is open. The step name is the server's: that step's id in the shared step list (`tutorialStepName`), never a client string | none |
-| client -> server | `tutorialLesson` | `{ step, seconds, hits }` | `readLessonReport` (step 1..16, hits an integer >= 0, seconds finite; clamped to 900 s / 500 hits, rounded to 0.1 s), once per lesson per open attempt, in any order (lessons finish out of order and the attempt funnel stops at the first skipped lesson, so no "reached" rule applies): `TutorialLessonTime`, plus `TutorialLessonHits` when hits > 0 | none |
+| client -> server | `tutorialStep` | `step: number` | integer 1..`TUTORIAL_FUNNEL_MAX_STEP` (17, = shared/tutorial `TUTORIAL_STEP_COUNT`), strictly above the attempt's last: attempt step `step + 1`, and onboarding step `step + 3` while it is open. The step name is the server's: that step's id in the shared step list (`tutorialStepName`), never a client string | none |
+| client -> server | `tutorialLesson` | `{ step, seconds, hits }` | `readLessonReport` (step 1..17, hits an integer >= 0, seconds finite; clamped to 900 s / 500 hits, rounded to 0.1 s), once per lesson per open attempt, in any order (lessons finish out of order and the attempt funnel stops at the first skipped lesson, so no "reached" rule applies): `TutorialLessonTime`, plus `TutorialLessonHits` when hits > 0 | none |
 | client -> server | `tutorialStuck` | `{ prompt, seconds }` | `readStuckReport` (a `TUTORIAL_PROMPT_IDS` id, seconds clamped to 900), once per prompt per open attempt, at most 6: `TutorialStuck` | none |
 | client -> server | `onboardingReport` | `{ kind: "loaded" }` / `{ kind: "gate", reason }` / `{ kind: "outro", choice, seconds }` | `readOnboardingReport`. `loaded`: onboarding `Loaded`. `gate`: `OnboardingGate` once per session (any player; a reason the server's doc or intent contradicts, e.g. `done` for a fresh doc, is logged anyway with a `GATE_CONTRADICTS` warning). `outro`: `TutorialOutroChoice` once per completed (logged) attempt, valued with the CLIENT's `seconds` (the time the card was open, clamped to 0..3600 and rounded to 0.1 s): the server's clock starts at the `completed` finish, before the outro beat, so it cannot see when the card showed | none |
-| client -> server | `tutorialFinished` | `{ outcome: "completed" \| "skipped", stepId }` (anything else, a bare outcome string included, is dropped) | notes the current step id (`TUTORIAL_STEPS` id or `none`), closes the attempt (`isInTutorial` = false; a completion opens the outro), logs attempt step 18 `completed` or `TutorialSkipped`, onboarding `Completed` (completed, while open) and closes the onboarding funnel either way, writes the doc (keeping `seen` and the new-player fields). The client sends `completed` the moment the run freezes (before the outro beat) | `onboardingStatus` |
+| client -> server | `tutorialFinished` | `{ outcome: "completed" \| "skipped", stepId }` (anything else, a bare outcome string included, is dropped) | notes the current step id (`TUTORIAL_STEPS` id or `none`), closes the attempt (`isInTutorial` = false; a completion opens the outro), logs attempt step 19 `completed` or `TutorialSkipped`, onboarding `Completed` (completed, while open) and closes the onboarding funnel either way, writes the doc (keeping `seen` and the new-player fields). The client sends `completed` the moment the run freezes (before the outro beat) | `onboardingStatus` |
 
 Every value is re-checked on the server (Flamework's guard checks only the shape), and the remotes are rate limited
 per player: `ONBOARDING_REQUEST_RATE` (10 per 10 s for requests), `TUTORIAL_START_RATE` (3 per 10 s for starts),
@@ -813,13 +813,13 @@ per player: `ONBOARDING_REQUEST_RATE` (10 per 10 s for requests), `TUTORIAL_STAR
 per 10 s) and `TUTORIAL_REPORT_RATE` (40 per 10 s for `tutorialLesson` / `tutorialStuck` / `onboardingReport`
 together). A dropped request or finish still answers with the cached status; a dropped finish still closes the attempt
 (not recorded, no telemetry); a start over its rate still opens the attempt, unlogged. On top of the rates, one attempt
-logs at most `TUTORIAL_TELEMETRY.maxEventsPerAttempt` (80) events, the last 2 kept for its exit and outro.
+logs at most `TUTORIAL_TELEMETRY.maxEventsPerAttempt` (84) events, the last 2 kept for its exit and outro.
 
 **Session budget.** The game-wide AnalyticsService budget is 120 + 20 x CCU events per minute, and the per-attempt cap
 alone resets on every `tutorialStarted`: a client looping restart + steps + reports could log hundreds of events a
 minute. So, per player per server session (`TutorialFunnelTracker`, never reset): only the first
 `TUTORIAL_TELEMETRY.maxAttemptsLoggedPerSession` (3) attempts are logged, and every attempt's events together stay
-within `maxEventsPerSession` (240 = 3 x 80; the exit reserve kept, so a logged attempt's exit and outro always fit). A
+within `maxEventsPerSession` (252 = 3 x 84; the exit reserve kept, so a logged attempt's exit and outro always fit). A
 later (or rate-limited) attempt still opens and closes like any (busy for lobbies, current step) but logs nothing of
 the attempt funnel or its custom events (no step, lesson, stuck, skip / completed, abandoned, restarted or outro event);
 the once-per-user onboarding funnel still takes its steps from it (bounded by its own once-each rule).
@@ -849,21 +849,22 @@ feeds rewards or boards.
 **Attempt funnel** `TutorialAttempt` (`LogFunnelStepEvent`, session id = the attempt id; replaces the old `tutorial`
 funnel, which no longer logs, TFD5): step 1 `started` (custom fields: field01 entry, field02 revision
 `t<ONBOARDING_TUTORIAL_VERSION>r<TUTORIAL_FUNNEL_REVISION>`, field03 device; Roblox filters apply to step 1 only),
-steps 2..17 the lessons (lesson n = step n + 1), named by their ids in `shared/tutorial` `TUTORIAL_STEPS` (objective,
-move, flask, attack, hits, boost, roll, guard, bow, ember, relic, curse, stairwell, draft, boss, finish; the client
-sends only the number), step 18 `completed`. Each `tutorialStarted` (first run, Restart tutorial, a menu replay, Play
+steps 2..18 the lessons (lesson n = step n + 1), named by their ids in `shared/tutorial` `TUTORIAL_STEPS` (objective,
+move, flask, attack, hits, boost, roll, guard, bow, ember, map, relic, curse, stairwell, draft, boss, finish; the client
+sends only the number), step 19 `completed`. Each `tutorialStarted` (first run, Restart tutorial, a menu replay, Play
 again) is a new attempt counting from 1; steps outside an attempt are dropped. A **skip is not a funnel step** (Roblox
 counts every lower step number as reached, which would credit a skipper with every lesson): it logs `TutorialSkipped`
 and the funnel shows the drop-off where they stopped. The client reports only leading lessons it PRACTISED
 (`TutorialDirector` `funnelStepReached`), so a lesson left behind stops the attempt's funnel there for good; only
 `completed` then counts the rest. Never rename or reorder shipped step ids; inserting a lesson bumps
-`TUTORIAL_FUNNEL_REVISION` (filter by the revision field instead of reading dates). A start that replaces an open
+`TUTORIAL_FUNNEL_REVISION` (2, `t1r2`, since the `map` lesson on 2026-11-01; filter by the revision field instead of
+reading dates). A start that replaces an open
 attempt logs `TutorialRestarted` for it when its entry is `restart`; any other entry replacing an open attempt (a
 client that lost it without a finish) logs nothing for it (warned `ATTEMPT_REPLACED`): it was neither a leave nor a
 party run.
 
 **Onboarding funnel** (`LogOnboardingFunnelStepEvent`, once per user, TFD1): 1 `Joined`, 2 `Loaded`, 3
-`TutorialStarted`, 4..19 the lessons (lesson n = step n + 3), 20 `Completed`. Open only for a FRESH player (the doc
+`TutorialStarted`, 4..20 the lessons (lesson n = step n + 3), 21 `Completed`. Open only for a FRESH player (the doc
 loaded and `tutorialVersion` 0, TFD2) and only until the tutorial is completed or skipped (a leave does not close it:
 the next join, still fresh, keeps filling the same once-per-user funnel; repeated steps count once). `Joined` carries
 field01 entry (`organic` / `invited` / `party` / `unknown`), field02 revision, field03 `none` (a reserved experiment

@@ -102,7 +102,7 @@ export function GameHud() {
 						<RoomClearStamp key="RoomClearStamp" />
 						<RoomClearChips key="RoomClearChips" />
 						<RunOverPanel key="RunOver" />
-						<MinimapPanel key="Minimap" />
+						<MinimapPanel key="Minimap" highlight={highlight === "minimap"} />
 						<FullMapOverlay key="FullMap" />
 						<InfoPanel key="Info" />
 						<ToastPanel key="Toasts" />

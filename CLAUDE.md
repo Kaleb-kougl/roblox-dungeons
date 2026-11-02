@@ -21,6 +21,7 @@ Record every ported module in `PROVENANCE.md` (ported module, source path, sourc
 | `docs/ART.md` | Vertical-slice art: packs, licences, contract v2, atlas pipeline, renderer, status |
 | `docs/TUTORIAL.md` | First-run tutorial ("Practice Descent"): plan, as-built notes, tasks T1-T8, owner decisions |
 | `docs/TUTORIAL_ARROW.md` | Tutorial guidance arrow (floor chevron pointing along the path to the objective): plan, tasks A1-A6, decisions |
+| `docs/TUTORIAL_MAP.md` | Tutorial map lesson (step `map`, 11 of 17, after combat F: open the full map; waived if ignored, marker `next`, funnel revision 2): plan, tasks TM1-TM7, decisions TMD1-TMD8 |
 | `docs/TUTORIAL_FUNNEL.md` | Tutorial analytics funnel (once-per-user onboarding funnel join -> lessons -> completed, `TutorialAttempt` funnel, lesson time / hits / stuck, skip / abandon / outro / gate events, new-player runs and return): plan, tasks TF0-TF9, decisions TFD1-TFD10 |
 | `docs/OUTLINE.md` | Enemy outlines: plan, as-built notes, tasks O1-O7, decisions E1-E6 |
 | `docs/PLAYER_OUTLINE.md` | Player outline (rim around the watched player only, `playerOutline` role, 1 px knight sheets, Display setting): plan, as-built, tasks P1-P7, decisions |
@@ -435,15 +436,16 @@ Decision log (deviations from `PLAN.md`):
   `KV_LocaleAudit`. L0 spike, Creator Hub steps and Studio check pending.
 
 - **Tutorial analytics funnel (docs/TUTORIAL_FUNNEL.md).** Telemetry only (no sim, dungeon, lockstep, hash, replay or
-  fixture change). A once-per-user onboarding funnel (`LogOnboardingFunnelStepEvent`: Joined -> Loaded -> TutorialStarted
-  -> 16 lessons -> Completed, fresh players only, step 1 fields entry / revision) and the attempt funnel `TutorialAttempt`
-  (replaces `tutorial`; `started` = 1, completed = 18) plus custom events for lesson time / hits / stuck, skip,
-  abandon, restart, outro, gate and the new-player window (first 3 runs, return within 7 days). Pure core in
-  `shared/onboarding` (`PlayerTutorialTelemetry`, trackers, `read*` validators, `analyticsCatalog` budget spec) and
-  `shared/tutorial` `TutorialMetrics`; remote payloads `tutorialStarted(info)` / `tutorialFinished(info)`, new
-  `tutorialLesson` / `tutorialStuck` / `onboardingReport`; onboarding doc gains optional `firstDay` / `newRuns` /
-  `returned` (still v1). Per-session cap 3 logged attempts / 240 events. Debug `KV_AnalyticsDebug`. TF0 spike, Studio
-  checks and the dashboard (TF9) pending.
+  fixture change). A once-per-user onboarding funnel (`LogOnboardingFunnelStepEvent`: Joined -> Loaded ->
+  TutorialStarted -> 16 lessons (17 since the map lesson) -> Completed, fresh players only, step 1 fields entry /
+  revision) and the attempt funnel `TutorialAttempt` (replaces `tutorial`; `started` = 1, completed = 18, now 19) plus
+  custom events for lesson time / hits / stuck, skip, abandon, restart, outro, gate and the new-player window (first 3
+  runs, return within 7 days). Pure core in `shared/onboarding` (`PlayerTutorialTelemetry`, trackers, `read*`
+  validators, `analyticsCatalog` budget spec) and `shared/tutorial` `TutorialMetrics`; remote payloads
+  `tutorialStarted(info)` / `tutorialFinished(info)`, new `tutorialLesson` / `tutorialStuck` / `onboardingReport`;
+  onboarding doc gains optional `firstDay` / `newRuns` / `returned` (still v1). Per-session cap 3 logged attempts / 240
+  events (252 since the map lesson). Debug `KV_AnalyticsDebug`. TF0 spike, Studio checks and the dashboard (TF9)
+  pending.
 - **Boosts from breakables (docs/BREAKABLE_DROPS.md).** Gameplay. Some barrels and crates hold a boost: shared/dungeon
   `placeBreakableLoot` picks them per floor after breakables from their own stream (`floorSeed ^ BREAKABLE_LOOT.salt`
   0xe6546b64; per depth band 0-2 / 1-2 / 1-3 / 1-3, at most one per room, crates weighted 2 : 1, kinds by the `BOOSTS`
@@ -481,6 +483,16 @@ Decision log (deviations from `PLAN.md`):
   byte-identical. `decorPlan.ts` / `decor.ts` import `voidDecor/config` and `/layer` by file (a require cycle through
   the barrel). Debug `KV_VoidOff` / `KV_VoidDebug`. Vale `flagstones` / `curb` (`tiles` / `wall1`) stay dormant until
   the decor atlas is rebuilt and re-uploaded (VD6 owner steps). Studio checks pending.
+
+- **Tutorial map lesson (docs/TUTORIAL_MAP.md).** Tutorial script, HUD and telemetry only (no sim, dungeon, lockstep,
+  hash, replay or fixture change). Step `map` (11 of 17, after `ember`: open the full map), rule / marker `next` (the
+  next open lesson's marker, reported as its own kind) / highlight `minimap` (the corner minimap; nothing on touch),
+  `TutorialFrame.mapSeen` / `mapAvailable` (client facts: `game.map.open`, or on touch the solo pause overlay's map,
+  latched only while the map prompt shows (`tutorialMapPromptShown`); `game.map.available`), `TutorialView.waived`
+  (waived, not skipped, on the floor change or with the map unavailable, so the funnel keeps counting; no lesson
+  report). A rule's "current" now counts steps latched earlier in the same frame. `{map}` template, three strings
+  `tutorial.prompt.map.*`. Funnel renumbered (`relic` .. `finish` 12..17, `TUTORIAL_FUNNEL_REVISION` 2 = `t1r2`), event
+  cap 84 / 252. Bot option `map`. Studio check and playtest pending.
 
 ## Commands
 

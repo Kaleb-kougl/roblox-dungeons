@@ -21,6 +21,10 @@ cloud box (`forge.spec` `EncounterRng ... seedToState`: a NaN sign bit on x86_64
 `LogOnboardingFunnelStepEvent` take custom fields, do they filter), the Studio checks of TF5-TF7 (nothing on the server
 or client runs headlessly), and TF9 (dashboard). See "As built".
 
+2026-11-01 (headless, docs/TUTORIAL_MAP.md): the `map` lesson makes 17 lessons. `TUTORIAL_FUNNEL_REVISION` 2 (`t1r2`);
+onboarding lessons 4-20, `Completed` 21; attempt lessons 2-18, `completed` 19; `maxEventsPerAttempt` 84 (first-attempt
+bound 82, was 78 of 80), `maxEventsPerSession` 252.
+
 ## What the code gives us today (read on `main` @ `62b5263`)
 
 | Fact | Where | Consequence |
@@ -43,7 +47,7 @@ or client runs headlessly), and TF9 (dashboard). See "As built".
 | Question | Chart (Creator Hub) |
 |---|---|
 | Of new players who join, how many start the tutorial, finish it, quit mid-way, skip? | Onboarding funnel, filter `entry = organic` |
-| Which lesson loses the most new players? | Onboarding funnel steps 4-19 (step-to-step conversion) |
+| Which lesson loses the most new players? | Onboarding funnel steps 4-20 (step-to-step conversion) |
 | How long does each lesson take? Which run long? | `TutorialLessonTime`, Average value, breakdown field01 (lesson) |
 | Where do players get stuck (prompt shown, nothing happening)? | `TutorialStuck`, Count unique user + Average value by field01 |
 | Do players struggle in a lesson (many harmless hits)? | `TutorialLessonHits`, Average value by field01 |
@@ -59,8 +63,8 @@ or client runs headlessly), and TF9 (dashboard). See "As built".
 ### 1. Three layers
 
 ```
-Onboarding funnel (once per user, first-join only)   Joined -> Loaded -> TutorialStarted -> 16 lessons -> Completed
-Attempt funnel  `TutorialAttempt` (every attempt)    started -> 16 lessons -> completed           (replaces `tutorial`)
+Onboarding funnel (once per user, first-join only)   Joined -> Loaded -> TutorialStarted -> 17 lessons -> Completed
+Attempt funnel  `TutorialAttempt` (every attempt)    started -> 17 lessons -> completed           (replaces `tutorial`)
 Custom events                                        lesson time / hits / stuck, skip, abandon, restart, outro,
                                                      gate, new-player runs and return
 ```
@@ -78,10 +82,10 @@ Steps (`ONBOARDING_FUNNEL_STEPS` in `shared/onboarding`; names <= 32 chars):
 | 1 | `Joined` | server | a **fresh** player (onboarding doc loaded, empty: TFD2) joined, once the server knows the entry (`joinIntent` resolved, or the player left first: `unknown`). Fields below |
 | 2 | `Loaded` | client report | the join loading screen released (`LoadingController`: core tier, Skip or timeout) |
 | 3 | `TutorialStarted` | server | `tutorialStarted({ entry: "firstJoin" })` while the doc is not done |
-| 4-19 | the 16 lesson ids (`objective` .. `finish`) | client report (as today) | lesson step n reached = onboarding step n + 3 |
-| 20 | `Completed` | server | `tutorialFinished("completed")` while the doc is not done |
+| 4-20 | the 17 lesson ids (`objective` .. `finish`) | client report (as today) | lesson step n reached = onboarding step n + 3 |
+| 21 | `Completed` | server | `tutorialFinished("completed")` while the doc is not done |
 
-- **Open while not done.** Steps 2-20 are logged only while the player's doc says the tutorial is not done (the same
+- **Open while not done.** Steps 2-21 are logged only while the player's doc says the tutorial is not done (the same
   test as the gate). A skip or a completion closes it for good; a leave does not (they get the tutorial again next
   join, and that session keeps filling the same once-per-user funnel; repeated steps count once). A later replay from
   the main menu never touches it.
@@ -96,7 +100,7 @@ Steps (`ONBOARDING_FUNNEL_STEPS` in `shared/onboarding`; names <= 32 chars):
 ### 3. Attempt funnel `TutorialAttempt` (replaces `tutorial`, TFD5)
 
 `LogFunnelStepEvent`, session id = the attempt GUID (as today). Step 1 `started` (server, on `tutorialStarted`), steps
-2-17 the lessons, 18 `completed`. Step 1 fields: field01 `entry` = `firstJoin` / `restart` / `menu` / `again`
+2-18 the lessons, 19 `completed`. Step 1 fields: field01 `entry` = `firstJoin` / `restart` / `menu` / `again`
 (the outro's Play again), field02 `revision`, field03 `device` (`keyboard` / `gamepad` / `touch`, the
 `InputDeviceKind` at start). `TutorialFunnelTracker` keeps its filter; it gains the step offset and the start fields.
 The old `tutorial` funnel stops logging (its tab can be removed; history stays 90 days).
@@ -149,12 +153,12 @@ nothing here touches rewards or boards. Lesson reports are taken once per step p
 out of order, and the attempt funnel stops at the first skipped lesson, so a "step already reached" rule would drop
 honest reports).
 
-Per-player events per first attempt: about 20 onboarding + 18 attempt + ~25 lesson / stuck + 3 = ~66 over ~5 min.
+Per-player events per first attempt: about 21 onboarding + 19 attempt + ~26 lesson / stuck + 3 = ~69 over ~5 min.
 The game-wide budget is `120 + 20 x CCU` per minute, so ~13 per player-minute uses two thirds of one player's share
 for those 5 minutes, and run telemetry only fires at run end. TF1's spec caps one attempt at
-`TUTORIAL_TELEMETRY.maxEventsPerAttempt` (80). That cap resets with every attempt, so a client looping restarts could
+`TUTORIAL_TELEMETRY.maxEventsPerAttempt` (84). That cap resets with every attempt, so a client looping restarts could
 still log hundreds a minute: per player per server session only the first `maxAttemptsLoggedPerSession` (3) attempts
-are logged and all attempt events together stay within `maxEventsPerSession` (240, the exit reserve kept); later
+are logged and all attempt events together stay within `maxEventsPerSession` (252, the exit reserve kept); later
 attempts open and close unlogged (the once-per-user onboarding funnel, bounded by its once-each rule, still takes their
 steps).
 
@@ -176,7 +180,7 @@ window.
 - [x] **TF1. Event catalog.** `shared/onboarding` `analyticsCatalog.ts`: every funnel name, onboarding / attempt step
   list, custom event name and field value set, plus a registry of the existing run / lobby / invite / daily names.
   -> Verify: spec: <= 100 custom event names game-wide, <= 10 funnels, step names <= 32 chars and unique, every field
-  value set bounded and the product of every event's sets <= 8,000, the tutorial bot's attempt <= 80 events.
+  value set bounded and the product of every event's sets <= 8,000, the tutorial bot's attempt <= 84 events.
 - [x] **TF2. Doc fields.** `firstDay` / `newRuns` / `returned` in the onboarding codec. -> Verify: codec spec (old docs
   decode, a malformed field decodes empty, round trip).
 - [x] **TF3. Trackers (pure).** `OnboardingFunnelTracker` (open-while-not-done, step offsets, step-1 fields, once per
@@ -210,8 +214,9 @@ Where the build differs from, or pins down, the design above:
 
 - **Names.** Tunables are `TUTORIAL_TELEMETRY` (`shared/onboarding` config; `TUTORIAL_FUNNEL` stays the attempt funnel's
   name, now `"TutorialAttempt"`), event names `TUTORIAL_ANALYTICS_EVENT`, steps `ONBOARDING_FUNNEL` /
-  `TUTORIAL_ATTEMPT_FUNNEL_STEPS` (`started` 1, lessons n + 1, `completed` 18; onboarding `Joined` 1, `Loaded` 2,
-  `TutorialStarted` 3, lessons n + 3, `Completed` 20), revision `t1r1` (`tutorialFunnelRevision()`). The stuck threshold
+  `TUTORIAL_ATTEMPT_FUNNEL_STEPS` (`started` 1, lessons n + 1, `completed` 19; onboarding `Joined` 1, `Loaded` 2,
+  `TutorialStarted` 3, lessons n + 3, `Completed` 21), revision `t1r2` (`tutorialFunnelRevision()`; `t1r1` before the
+  `map` lesson, 2026-11-01). The stuck threshold
   is client side, `TUTORIAL.stuckSeconds` (20, shared/config), because shared/tutorial cannot import shared/onboarding.
 - **Pure layer** (all specced): `reports.ts` (payload types and `read*` validators), `funnel.ts`
   (`TutorialFunnelTracker` + builders), `onboardingFunnel.ts` (`OnboardingFunnelTracker`), `newPlayer.ts`,
@@ -221,15 +226,15 @@ Where the build differs from, or pins down, the design above:
   `shared/tutorial` `metrics.ts` (`TutorialMetrics`, driven by the director; `TUTORIAL_PROMPT_IDS`, the one prompt list
   the server validates against).
 - **Lesson clock.** A frame's dt and the harmless hits its ticks landed go to what the previous frame showed: the
-  current step and the prompt step (both, when they differ). Bot pins (fixed dt): in order 69.5 s over the 16 lessons,
-  the boss lesson 24.1 s / 26 hits; no stuck report (longest episode 17.8 s). A completion's `stepId` is always `none`
-  (the director clears it on the finish frame).
+  current step and the prompt step (both, when they differ). Bot pins (fixed dt, before `map`): in order 69.5 s over the
+  16 lessons, the boss lesson 24.1 s / 26 hits; no stuck report (longest episode 17.8 s). A completion's `stepId` is
+  always `none` (the director clears it on the finish frame).
 - **Join entry.** InviteService calls `OnboardingService.joinIntent` for every `joinIntent` it sends (no DI cycle:
   Invite -> Onboarding -> Telemetry). lobby / party settle at once; `none` becomes `organic` only when it can no longer
   be upgraded (15 s after join: `INVITE.launchDataWaitSeconds` + the upgrade margin); nothing by then, or a leave
   before, logs `unknown`. The intent may arrive before the join load (state created on first touch).
 - **Budget** (review fix): per player per server session only the first `maxAttemptsLoggedPerSession` (3) attempts log,
-  within `maxEventsPerSession` (240); later attempts open and close unlogged. `tutorialStarted` has its own
+  within `maxEventsPerSession` (252); later attempts open and close unlogged. `tutorialStarted` has its own
   `TUTORIAL_START_RATE` (3 per 10 s).
 - **Outro seconds:** a choice uses the client's card-open seconds; `left` uses the server's time since the `completed`
   finish (beat included).
@@ -256,7 +261,7 @@ Where the build differs from, or pins down, the design above:
 
 ## Decisions (accepted 2026-11-01)
 
-1. **TFD1. Onboarding funnel = the first-join tutorial, every lesson in it.** Not a short macro funnel: 20 steps is far
+1. **TFD1. Onboarding funnel = the first-join tutorial, every lesson in it.** Not a short macro funnel: 21 steps is far
    under 100 and the per-lesson drop-off is the main question.
 2. **TFD2. Fresh = onboarding doc loaded and empty** (`tutorialVersion` 0). Not also "no personal record": simpler, and
    every pre-tutorial account is already past onboarding in practice.

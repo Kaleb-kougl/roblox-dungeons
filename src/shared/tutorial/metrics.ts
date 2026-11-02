@@ -15,12 +15,13 @@
  * lesson room the player stands in, or the waiting `boost` step). Both may run on one frame (each gets the dt and the
  * hits). No clock runs under the objective card but `objective`'s: the card is up exactly while `objective` is
  * current, and it is then also the prompt step. No clock runs once the tutorial finished. A step's report:
- *   step     its funnel number (TUTORIAL_STEPS number, 1..16)
+ *   step     its funnel number (TUTORIAL_STEPS number, 1..TUTORIAL_STEP_COUNT)
  *   seconds  the sum of dt over the frames its clock ran, rounded to 1 / TUTORIAL.metricsResolution s
  *   hits     the harmless hits (state.tutorial.harmlessHits deltas) landed on frames its clock ran
  * reported once per step per run, on the frame it latches done and practised: a step done by its rule (a `boost`
  * that faded untaken and an `ember` waived with none left count: they are done, not skipped), never a skipped one
- * (left behind on a floor change, or still open at the finish). A step done while its clock never ran (the flask
+ * (left behind on a floor change, or still open at the finish) and never a waived one (TutorialView.waived: the `map`
+ * step left unopened or unavailable, docs/TUTORIAL_MAP.md §4, so its reports count real opens). A step done while its clock never ran (the flask
  * drunk under the objective card) reports 0 seconds.
  *
  * Stuck episode. An episode is a stretch of frames showing the same prompt id (TutorialView.prompt, never "") with no
@@ -68,6 +69,8 @@ export interface TutorialMetricsView {
 	readonly finished: boolean;
 	readonly done: ReadonlyArray<boolean>;
 	readonly skipped: ReadonlyArray<boolean>;
+	/** Per step: waived (TutorialView.waived): done without a lesson report. */
+	readonly waived: ReadonlyArray<boolean>;
 }
 
 /** What one metrics frame reads from the frame itself. */
@@ -147,7 +150,7 @@ export class TutorialMetrics {
 		for (let i = 0; i < n; i++) {
 			if (this.reported[i] || !view.done[i]) continue;
 			this.reported[i] = true;
-			if (view.skipped[i]) continue;
+			if (view.skipped[i] || view.waived[i]) continue;
 			this.newLessonReports.push({
 				step: TUTORIAL_STEPS[i].number,
 				seconds: roundTutorialSeconds(this.seconds[i]),

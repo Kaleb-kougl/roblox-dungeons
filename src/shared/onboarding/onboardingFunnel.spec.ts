@@ -35,6 +35,9 @@ describe("onboarding funnel steps", () => {
 			expect(ONBOARDING_FUNNEL_STEPS[onboardingLessonStep(s.number) - 1]).toBe(s.id);
 		}
 		expect(ONBOARDING_FUNNEL.completed.step).toBe(TUTORIAL_STEP_COUNT + 4);
+		// Pinned for the 17-lesson tutorial (revision 2, docs/TUTORIAL_MAP.md §7): lessons are steps 4..20.
+		expect(TUTORIAL_STEP_COUNT).toBe(17);
+		expect(ONBOARDING_FUNNEL.completed.step).toBe(21);
 		expect(ONBOARDING_FUNNEL_STEPS[ONBOARDING_FUNNEL.completed.step - 1]).toBe("Completed");
 		const seen = new Set<string>();
 		for (const n of ONBOARDING_FUNNEL_STEPS) {
@@ -49,7 +52,7 @@ describe("onboarding funnel steps", () => {
 			kind: "onboarding",
 			step: 1,
 			stepName: "Joined",
-			fields: { field01: "organic", field02: "t1r1", field03: "none" },
+			fields: { field01: "organic", field02: "t1r2", field03: "none" },
 		});
 	});
 });

@@ -242,7 +242,7 @@ const INPUT_SEPARATOR = " / ";
 
 /**
  * The key names the tutorial prompts' templates read (`{move}`, `{fire}`, `{alt}`, `{roll}`, `{flask}`, `{swap}`,
- * `{ember}`, `{skill1}`, `{left}`, `{right}`), from the player's bindings (shared/play, Options > Controls) for the
+ * `{ember}`, `{skill1}`, `{left}`, `{right}`, `{map}`: the full-map toggle, docs/TUTORIAL_MAP.md), from the player's bindings (shared/play, Options > Controls) for the
  * HUD's last-used device, so a rebound key shows in every prompt. Keyboard: each action's primary input
  * (`{move}` = the four move keys, run together when each is one character: "WASD", else joined by
  * `input.separator`: "Up arrow / Left arrow / Down arrow / Right arrow"); gamepad: the pad binding, `{move}` /
@@ -267,6 +267,7 @@ export function tutorialPromptVars(
 			swap: actionLabel(b, "pad", "swap", s),
 			ember: actionLabel(b, "pad", "ember", s),
 			skill1: actionLabel(b, "pad", "skill1", s),
+			map: actionLabel(b, "pad", "map", s),
 		};
 	}
 	const dirs = [
@@ -289,6 +290,7 @@ export function tutorialPromptVars(
 		swap: actionLabel(b, "kbm", "swap", s),
 		ember: actionLabel(b, "kbm", "ember", s),
 		skill1: actionLabel(b, "kbm", "skill1", s),
+		map: actionLabel(b, "kbm", "map", s),
 	};
 }
 

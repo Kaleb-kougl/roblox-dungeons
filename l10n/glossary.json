@@ -370,6 +370,7 @@
 				"tutorial.prompt.flask.gamepad",
 				"tutorial.prompt.flask.keyboard",
 				"tutorial.prompt.flask.touch",
+				"tutorial.prompt.map.touch",
 				"tutorial.prompt.stairwell.gamepad",
 				"tutorial.prompt.stairwell.keyboard",
 				"tutorial.prompt.stairwell.touch"

@@ -1000,6 +1000,11 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 			"Too many bullets? {ember} burns an Ember and clears every enemy bullet. 2 per floor.",
 		"tutorial.prompt.ember.touch":
 			"Too many bullets? Tap Ember: it burns an Ember and clears every enemy bullet. 2 per floor.",
+		"tutorial.prompt.map.keyboard":
+			"The map in the corner fills in as you explore. Open the full map: {map}. Press it again to close.",
+		"tutorial.prompt.map.gamepad":
+			"The map in the corner fills in as you explore. Open the full map: {map}. Press it again to close.",
+		"tutorial.prompt.map.touch": "Your map fills in as you explore. Tap the pause button to see the whole floor.",
 		"tutorial.prompt.relic.keyboard": "Relics are permanent for the run. Walk onto the pedestal.",
 		"tutorial.prompt.relic.gamepad": "Relics are permanent for the run. Walk onto the pedestal.",
 		"tutorial.prompt.relic.touch": "Relics are permanent for the run. Walk onto the pedestal.",

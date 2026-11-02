@@ -4,7 +4,9 @@
 // finishes it, and an out-of-order visit still completes. The guidance arrow on the real floors (docs/TUTORIAL_ARROW.md
 // A3): every marker target is reachable, and a run steered by the arrow finishes within GUIDE_SLACK of the bot's walk.
 // TutorialMetrics (docs/TUTORIAL_FUNNEL.md TF4): the bot's lesson reports pinned (in order, out of order), skips and
-// dt-0 frames, scripted stuck episodes, and the guard-late guardHold episode under thresholds around its length.
+// dt-0 frames, scripted stuck episodes, and the guard-late guardHold episode under thresholds around its length. The
+// map lesson (docs/TUTORIAL_MAP.md TM1 / TM2): opened when current, early, never (waived on the floor change) or
+// unavailable (waived when current), its `next` marker and its prompt around the treasure room.
 import { describe, expect, it } from "@rbxts/jest-globals";
 import { TUTORIAL } from "shared/config";
 import { MAX_TUTORIAL_STEP_NAME_CHARS, TUTORIAL_FUNNEL_MAX_STEP } from "shared/onboarding";
@@ -62,6 +64,8 @@ function stepMove(h: ReturnType<typeof harness>, mx: number, mz: number): Tutori
 		events: h.run.frameEvents,
 		buttons: input.buttons,
 		dt: SIM_DT,
+		mapSeen: false,
+		mapAvailable: true,
 	});
 }
 
@@ -87,6 +91,8 @@ function harness() {
 			events: run.frameEvents,
 			buttons,
 			dt: SIM_DT,
+			mapSeen: false,
+			mapAvailable: true,
 		});
 	};
 	return { setup, run, director, step, frames };
@@ -125,6 +131,9 @@ function describeRun(name: string, r: TutorialBotResult): void {
 
 /** The boost step's index (funnel number 6: docs/BOOSTS.md B9, after `hits`). */
 const BOOST = tutorialStepIndex("boost");
+
+/** The map step's index (funnel number 11: docs/TUTORIAL_MAP.md TMD1, after `ember`). */
+const MAP = tutorialStepIndex("map");
 
 /** The callout key the boost lesson used before it became a step: gone from the callouts and the pack. */
 const OLD_BOOST_CALLOUT_KEY = "tutorial.callout.boost";
@@ -204,7 +213,7 @@ describe("tutorial steps and strings", () => {
 			expect(tutorialStepName(s.number)).toBe(s.id);
 			expect(tutorialStepIndex(s.id)).toBe(i);
 		}
-		expect(TUTORIAL_STEP_COUNT).toBe(16);
+		expect(TUTORIAL_STEP_COUNT).toBe(17);
 		expect(TUTORIAL_FUNNEL_MAX_STEP).toBe(TUTORIAL_STEP_COUNT);
 		expect(MAX_TUTORIAL_STEP_ID_CHARS).toBe(MAX_TUTORIAL_STEP_NAME_CHARS);
 		expect([tutorialStepName(0), tutorialStepName(TUTORIAL_STEP_COUNT + 1), tutorialStepName(1.5)]).toEqual([
@@ -230,6 +239,7 @@ describe("tutorial steps and strings", () => {
 			"guard",
 			"bow",
 			"ember",
+			"map",
 			"relic",
 			"curse",
 			"stairwell",
@@ -252,7 +262,8 @@ describe("tutorial steps and strings", () => {
 		]);
 		expect(s.marker).toEqual({ kind: "drop" });
 		expect(s.rule).toEqual({ kind: "boost" });
-		// The funnel numbers before it are the old ones; everything after moved up by one (6..15 -> 7..16).
+		// The funnel numbers before it are the old ones; everything after moved up by one (6..15 -> 7..16; then the map
+		// step, docs/TUTORIAL_MAP.md, moved relic .. finish on to 12..17).
 		expect([1, 2, 3, 4, 5].map((n) => tutorialStepName(n))).toEqual([
 			"objective",
 			"move",
@@ -260,7 +271,7 @@ describe("tutorial steps and strings", () => {
 			"attack",
 			"hits",
 		]);
-		expect([7, 16].map((n) => tutorialStepName(n))).toEqual(["roll", "finish"]);
+		expect([7, 17].map((n) => tutorialStepName(n))).toEqual(["roll", "finish"]);
 	});
 
 	it("every prompt (each device), callout and UI string key exists in the placeholder pack", () => {
@@ -286,6 +297,7 @@ describe("tutorial steps and strings", () => {
 			"guardHold",
 			"bow",
 			"ember",
+			"map",
 			"curse",
 			"draft",
 		]) {
@@ -384,6 +396,9 @@ describe("tutorial director", () => {
 		]);
 		expect(v.done[tutorialStepIndex("stairwell")]).toBe(true);
 		expect(v.skipped[tutorialStepIndex("stairwell")]).toBe(false);
+		// The map lesson is waived, not skipped (docs/TUTORIAL_MAP.md TMD3); here an earlier skip stops the funnel anyway.
+		expect([v.done[MAP], v.skipped[MAP], v.waived[MAP]]).toEqual([true, false, true]);
+		expect(TUTORIAL_STEPS.filter((_s, i) => v.waived[i]).map((s) => s.id)).toEqual(["map"]);
 		// Skipped lessons are never credited, and the stairwell done after them does not jump past them.
 		expect([...v.newFunnelSteps]).toEqual([]);
 		expect(v.funnelStepReached).toBe(1);
@@ -667,6 +682,133 @@ describe("the block lesson (combat D, the sim's guard lock)", () => {
 	});
 });
 
+describe("the map lesson (docs/TUTORIAL_MAP.md TM1 / TM2)", () => {
+	const EMBER = tutorialStepIndex("ember");
+	const RELIC = tutorialStepIndex("relic");
+	const STAIRWELL = tutorialStepIndex("stairwell");
+	const reportsFor = (r: TutorialBotResult, index: number) =>
+		r.lessonReports.filter((l) => l.step === TUTORIAL_STEPS[index].number);
+
+	/** The funnel reached every step, one at a time (1..N), and the tutorial finished harmlessly. */
+	function checkFunnel(r: TutorialBotResult): void {
+		expect(r.view.finished).toBe(true);
+		for (let i = 0; i < r.funnelSteps.size(); i++) expect(r.funnelSteps[i]).toBe(i + 1);
+		expect(r.funnelSteps.size()).toBe(TUTORIAL_STEP_COUNT);
+		expect(r.view.funnelStepReached).toBe(TUTORIAL_STEP_COUNT);
+		for (let i = 0; i < TUTORIAL_STEPS.size(); i++) {
+			expect([TUTORIAL_STEPS[i].id, r.view.done[i], r.view.skipped[i]]).toEqual([
+				TUTORIAL_STEPS[i].id,
+				true,
+				false,
+			]);
+		}
+		expect(r.heartProblems).toEqual([]);
+	}
+
+	it("the step: number 11, between ember and relic, floor 1, no room, the minimap ring, the next marker", () => {
+		const s = TUTORIAL_STEPS[MAP];
+		expect([s.number, TUTORIAL_STEPS[MAP - 1].id, TUTORIAL_STEPS[MAP + 1].id, s.floor, s.lesson]).toEqual([
+			11,
+			"ember",
+			"relic",
+			1,
+			undefined,
+		]);
+		expect([s.prompt, s.highlight, s.card, s.holdPrompt]).toEqual(["map", "minimap", undefined, undefined]);
+		expect(s.marker).toEqual({ kind: "next" });
+		expect(s.rule).toEqual({ kind: "map" });
+		expect(TUTORIAL_HIGHLIGHTS.includes("minimap")).toBe(true);
+		expect([11, 12, 17].map((n) => tutorialStepName(n))).toEqual(["map", "relic", "finish"]);
+		expect(TUTORIAL_PROMPT_IDS.includes("map")).toBe(true);
+	});
+
+	it("the tour bot opens it on its first current frame: practised, not waived, its prompt shown, one report", () => {
+		const r = inOrderRun();
+		expect(r.mapSeenTick).toBe(r.stepDoneTicks[EMBER] + 1);
+		expect(r.stepDoneTicks[MAP]).toBe(r.mapSeenTick);
+		expect([r.view.done[MAP], r.view.skipped[MAP], r.view.waived[MAP]]).toEqual([true, false, false]);
+		expect(r.prompts.includes("map")).toBe(true);
+		expect(r.highlights.includes("minimap")).toBe(true);
+		expect(reportsFor(r, MAP).size()).toBe(1);
+		checkFunnel(r);
+	});
+
+	it("opened early (combat B): latched out of order, its prompt never shown, still reported", () => {
+		const r = playTutorial({ map: "early" });
+		describeRun("map early", r);
+		expect(r.mapSeenTick > 0).toBe(true);
+		expect(r.stepDoneTicks[MAP]).toBe(r.mapSeenTick);
+		expect(r.stepDoneTicks[MAP] < r.stepDoneTicks[tutorialStepIndex("hits")]).toBe(true);
+		expect([r.view.waived[MAP], r.view.skipped[MAP]]).toEqual([false, false]);
+		expect(r.prompts.includes("map")).toBe(false);
+		expect(reportsFor(r, MAP).size()).toBe(1);
+		checkFunnel(r);
+	});
+
+	it("never opened: waived (done, not skipped) on the floor 1 -> 2 change, no report; the funnel still reaches N", () => {
+		const floor1 = buildTutorialRunConfig().endlessFloor(1);
+		const treasure = tutorialRoom("treasure");
+		let mapFrames = 0;
+		let markerMismatch = 0;
+		let doorFrames = 0;
+		let pedestalFrames = 0;
+		let relicPromptFrames = 0;
+		let promptMismatch = 0;
+		let mapAgainFrames = 0;
+		const r = playTutorial({
+			map: "never",
+			onFrame: (v: Readonly<TutorialView>, run: LiveRun) => {
+				const st = run.state;
+				if (v.stepId !== "map" || st.endless!.floor !== 1) return;
+				mapFrames++;
+				const entered = st.endless!.roomsEntered[treasure.roomId] !== 0;
+				const inside = floor1.roomIdAt(st.player.x, st.player.z) === treasure.roomId;
+				if (!v.done[RELIC]) {
+					// The relic step's marker: the treasure room's door until entered, then the pedestal.
+					const at = entered ? treasure.center : treasure.door;
+					const m = v.marker;
+					if (m === undefined || m.kind !== "pedestal" || m.x !== at.x || m.z !== at.z) markerMismatch++;
+					if (entered) pedestalFrames++;
+					else doorFrames++;
+					if (inside && entered) {
+						if (v.prompt === "relic") relicPromptFrames++;
+						else promptMismatch++;
+					}
+				} else if (inside) {
+					// The relic taken, the map still open: its own prompt again.
+					if (v.prompt === "map") mapAgainFrames++;
+					else promptMismatch++;
+				}
+			},
+		});
+		describeRun("map never", r);
+		expect(r.mapSeenTick).toBe(-1);
+		expect(r.stepDoneTicks[MAP]).toBe(r.stepDoneTicks[STAIRWELL]);
+		expect([r.view.done[MAP], r.view.skipped[MAP], r.view.waived[MAP]]).toEqual([true, false, true]);
+		expect(TUTORIAL_STEPS.filter((_s, i) => r.view.waived[i]).map((s) => s.id)).toEqual(["map"]);
+		expect(r.prompts.includes("map")).toBe(true);
+		expect(reportsFor(r, MAP)).toEqual([]);
+		expect(r.lessonReports.size()).toBe(TUTORIAL_STEP_COUNT - 1);
+		checkFunnel(r);
+		expect(mapFrames > 0).toBe(true);
+		expect([markerMismatch, promptMismatch]).toEqual([0, 0]);
+		expect(doorFrames > 0 && pedestalFrames > 0).toBe(true);
+		expect(relicPromptFrames > 0 && mapAgainFrames > 0).toBe(true);
+	});
+
+	it("unavailable: waived on the frame it becomes current (its prompt and ring never shown), no report", () => {
+		const r = playTutorial({ map: "unavailable" });
+		describeRun("map unavailable", r);
+		expect(r.mapSeenTick).toBe(-1);
+		expect(r.stepDoneTicks[MAP]).toBe(r.stepDoneTicks[EMBER]);
+		expect([r.view.done[MAP], r.view.skipped[MAP], r.view.waived[MAP]]).toEqual([true, false, true]);
+		expect(r.prompts.includes("map")).toBe(false);
+		expect(r.highlights.includes("minimap")).toBe(false);
+		expect(reportsFor(r, MAP)).toEqual([]);
+		checkFunnel(r);
+	});
+});
+
 describe("guidance arrow on the tutorial floors (docs/TUTORIAL_ARROW.md A3)", () => {
 	/**
 	 * pathField to `target` over `d`: the FLOOR tiles of rooms `rooms` it does not reach ("x,z"), how many it checked,
@@ -814,12 +956,13 @@ describe("tutorial metrics (docs/TUTORIAL_FUNNEL.md TF4)", () => {
 			[8, 5.6, 1], // guard
 			[9, 5.5, 2], // bow
 			[10, 9.3, 1], // ember
-			[11, 5, 0], // relic
-			[12, 2.8, 0], // curse
-			[13, 3.3, 0], // stairwell
-			[14, 0.5, 0], // draft
-			[15, 24.1, 26], // boss
-			[16, 0, 0], // finish: done on the boss kill's tick (the stairwell opens under the bot)
+			[11, 0, 0], // map: opened on the first frame it is current (docs/TUTORIAL_MAP.md)
+			[12, 5, 0], // relic
+			[13, 2.8, 0], // curse
+			[14, 3.3, 0], // stairwell
+			[15, 0.5, 0], // draft
+			[16, 24.1, 26], // boss
+			[17, 0, 0], // finish: done on the boss kill's tick (the stairwell opens under the bot)
 		]);
 		expect(r.sharedClockFrames).toBe(0);
 		checkRelations(r);
@@ -839,12 +982,13 @@ describe("tutorial metrics (docs/TUTORIAL_FUNNEL.md TF4)", () => {
 			[8, 8.4, 1],
 			[9, 5.5, 2],
 			[10, 9.3, 1],
-			[11, 5, 0],
-			[12, 2.8, 0],
-			[13, 3.3, 0],
-			[14, 0.5, 0],
-			[15, 24.1, 26],
-			[16, 0, 0],
+			[11, 0, 0],
+			[12, 5, 0],
+			[13, 2.8, 0],
+			[14, 3.3, 0],
+			[15, 0.5, 0],
+			[16, 24.1, 26],
+			[17, 0, 0],
 		]);
 		const steps = r.lessonReports.map((l) => l.step);
 		expect(new Set(steps).size()).toBe(TUTORIAL_STEP_COUNT);
@@ -903,6 +1047,8 @@ describe("tutorial metrics (docs/TUTORIAL_FUNNEL.md TF4)", () => {
 							events: h.run.frameEvents,
 							buttons: input.buttons,
 							dt: 0,
+							mapSeen: false,
+							mapAvailable: true,
 						}),
 					);
 				}
@@ -972,6 +1118,8 @@ describe("tutorial metrics (docs/TUTORIAL_FUNNEL.md TF4)", () => {
 				events: h2.run.frameEvents,
 				buttons,
 				dt: SIM_DT,
+				mapSeen: false,
+				mapAvailable: true,
 			});
 		};
 		for (let i = 0; i < cardFrames; i++) feed(0);
