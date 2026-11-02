@@ -143,6 +143,10 @@ export interface SimEvents {
 	// --- Enemy variants (docs/ENEMY_VARIANTS.md EVD14; always 0 without goo). Not in SIM_EVENT_FIELDS.
 	/** Goo puddles (BulletKind.GOO) fired this tick; also in combat.enemySpawned, so the enemy-shoot sound skips them. */
 	gooSpawned: number;
+
+	// --- New enemies (docs/NEW_ENEMIES.md; always 0 without them). Not in SIM_EVENT_FIELDS.
+	/** Strikes (BulletKind.STRIKE) fired this tick; also in combat.enemySpawned, so the enemy-shoot sound skips them. */
+	strikes: number;
 }
 
 /**
@@ -181,15 +185,19 @@ export const BREAKABLE_EVENT_FIELDS = ["breakableHits", "breakablesBroken"] as c
 /** The enemy variants' event fields (Roblox port, docs/ENEMY_VARIANTS.md), in declaration order. All default to 0. */
 export const ENEMY_VARIANT_EVENT_FIELDS = ["gooSpawned"] as const;
 
+/** The new enemies' event fields (Roblox port, docs/NEW_ENEMIES.md), in declaration order. All default to 0. */
+export const NEW_ENEMY_EVENT_FIELDS = ["strikes"] as const;
+
 /**
  * Every SimEvents field: SIM_EVENT_FIELDS, then ENDLESS_EVENT_FIELDS, then BREAKABLE_EVENT_FIELDS, then
- * ENEMY_VARIANT_EVENT_FIELDS.
+ * ENEMY_VARIANT_EVENT_FIELDS, then NEW_ENEMY_EVENT_FIELDS.
  */
 export const ALL_EVENT_FIELDS: ReadonlyArray<keyof SimEvents> = [
 	...SIM_EVENT_FIELDS,
 	...ENDLESS_EVENT_FIELDS,
 	...BREAKABLE_EVENT_FIELDS,
 	...ENEMY_VARIANT_EVENT_FIELDS,
+	...NEW_ENEMY_EVENT_FIELDS,
 ];
 
 /** Default value of an event field: 0, except lastHitSource (-1). */
@@ -230,6 +238,7 @@ function emptyEvents(): SimEvents {
 		breakableHits: 0,
 		breakablesBroken: 0,
 		gooSpawned: 0,
+		strikes: 0,
 	};
 }
 
