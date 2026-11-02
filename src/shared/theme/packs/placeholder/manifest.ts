@@ -66,6 +66,15 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		// every other enemy colour and >= 47 from the pink enemy bullet, its outline, the telegraph and the outline red.
 		"enemy.imp": "#e098b8",
 		"enemy.slime": "#3080a0",
+		// Roblox port (docs/NEW_ENEMIES.md NE1): the second endless set, muted like the rest of the enemy palette: a pale
+		// mint Bomber, a dusky mauve Charger, a storm periwinkle Stormcaller, a banner cream Warbanner, a grave sage
+		// Reaper. Each is >= 28.9 CIE76 from every other enemy colour, the boss accent and the player outline, and >= 40
+		// from the pink enemy bullet, its outline, the telegraph orange and the outline red.
+		"enemy.bomber": "#b0f0b0",
+		"enemy.charger": "#806070",
+		"enemy.stormcaller": "#b0c0f0",
+		"enemy.warbanner": "#f0e0a0",
+		"enemy.reaper": "#507060",
 		boss: "#d9c24a",
 		telegraph: "#ff8a3d",
 		// Roblox port (enemy outline plan E1): hostile red, >= 3.4:1 on every biome floor and wall, CIE76 63 from
@@ -161,6 +170,10 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		"affix.shielded": "#00a0f0",
 		"affix.vengeful": "#9070f0",
 		enemyShield: "#d8ecff",
+		// Roblox port (docs/NEW_ENEMIES.md NE1, NED8): the Warbanner's aura, a dusky war-banner rose: >= 3.2:1 on every
+		// biome floor and >= 46 CIE76 from the enemy bullet roles, the telegraph, every boost and every affix colour
+		// (nearest: boost.aegis 46.5, enemyBullet 47.6) (auraReport).
+		enemyAura: "#a86078",
 		// Roblox port (docs/NEW_BEST.md NB4): the new-best gold, a deep pure gold (the plan's #ffd75e was 14.8 CIE76 from
 		// ember, too close to the reach state's colour): 12.1:1 on uiPanel, >= 38 CIE76 from ember and every combo tier
 		// (nearest: ember) and >= 52 from the pink enemy bullet, its outline and the telegraph orange (nearest: the
@@ -247,6 +260,13 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		// Roblox port (docs/ENEMY_VARIANTS.md EV1): the Imp (a small cone) and the Ooze (a low dome).
 		"enemy.imp": PLACEHOLDER,
 		"enemy.slime": PLACEHOLDER,
+		// Roblox port (docs/NEW_ENEMIES.md NE1): Bomber (a small cone), Charger (a long wedge), Stormcaller (a tall slim
+		// drum), Warbanner (a thin post), Reaper (a flat disc).
+		"enemy.bomber": PLACEHOLDER,
+		"enemy.charger": PLACEHOLDER,
+		"enemy.stormcaller": PLACEHOLDER,
+		"enemy.warbanner": PLACEHOLDER,
+		"enemy.reaper": PLACEHOLDER,
 		"boss.1": PLACEHOLDER,
 		"boss.2": PLACEHOLDER,
 		"boss.3": PLACEHOLDER,
@@ -262,6 +282,8 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		"bullet.player.heavy": PLACEHOLDER,
 		// Roblox port (docs/ENEMY_VARIANTS.md EVD5): the Ooze's goo puddle, a flat disc on the floor.
 		"bullet.enemy.goo": PLACEHOLDER,
+		// Roblox port (docs/NEW_ENEMIES.md NE1): the Stormcaller's strike, a flat neon disc on the floor.
+		"bullet.enemy.strike": PLACEHOLDER,
 		// Roblox port (docs/BUILDS.md BU1): the build effects' bullets (neon bolts; the ember a flat disc).
 		"bullet.player.burst": PLACEHOLDER,
 		"bullet.player.shard": PLACEHOLDER,
@@ -393,6 +415,14 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		// Roblox port (docs/BREAKABLE_DROPS.md BL5): a boost hops out of a broken barrel / crate (sfx.boost.drop plays
 		// while it is silent); silent until the vale pack's clip is picked, built and uploaded (BL7)
 		"sfx.breakable.loot": SILENT,
+		// Roblox port (docs/NEW_ENEMIES.md NE1): a Bomber's fuse and blast, a Charger's charge and stun, a Stormcaller's
+		// strike, a Reaper's spin; silent until the vale pack's clips are picked, built and uploaded (NE10)
+		"sfx.enemy.fuse": SILENT,
+		"sfx.enemy.blast": SILENT,
+		"sfx.enemy.charge": SILENT,
+		"sfx.enemy.stun": SILENT,
+		"sfx.enemy.strike": SILENT,
+		"sfx.enemy.spin": SILENT,
 		"music.menu": SILENT,
 		"music.biome.1": SILENT,
 		"music.biome.2": SILENT,
@@ -427,6 +457,11 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		"enemy.dummy.name": "Training Dummy",
 		"enemy.imp.name": "Imp",
 		"enemy.slime.name": "Ooze",
+		"enemy.bomber.name": "Bomber",
+		"enemy.charger.name": "Charger",
+		"enemy.stormcaller.name": "Stormcaller",
+		"enemy.warbanner.name": "Warbanner",
+		"enemy.reaper.name": "Reaper",
 		"breakable.barrel.name": "Barrel",
 		"breakable.crate.name": "Crate",
 		"boss.1.name": "Act I Boss",
@@ -1108,6 +1143,11 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		"bestiary.imp": "Imp: watch the ring where it lands",
 		"bestiary.slime": "Ooze: its goo hurts, and it splits when it dies",
 		"bestiary.summoner": "Summoner: kill it and its summons wither",
+		"bestiary.bomber": "Bomber: kill it early or roll out of its ring",
+		"bestiary.charger": "Charger: sidestep the lane and it hits the wall",
+		"bestiary.stormcaller": "Stormcaller: keep moving, never along the row",
+		"bestiary.warbanner": "Warbanner: its banner speeds up its pack, cut it down first",
+		"bestiary.reaper": "Reaper: back off through the spiral, punish the dizzy",
 		"bestiary.affix.hulking": "Hulking: bigger, tougher and slower",
 		"bestiary.affix.swift": "Swift: moves and attacks faster, same warnings",
 		"bestiary.affix.shielded": "Shielded: its shield refills if you let it rest",

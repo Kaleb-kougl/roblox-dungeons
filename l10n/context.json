@@ -42,14 +42,29 @@
 	"bestiary.affix.vengeful": {
 		"note": "First-sighting toast, shown once per account (top centre, during combat) the first time the player meets the Vengeful elite affix (affix.vengeful.name). Format \"Name: short survival tip\"; the name before the colon must be the same word as that name string. Brief, direct, second person."
 	},
+	"bestiary.bomber": {
+		"note": "First-sighting toast, shown once per account (top centre, during combat) the first time the player meets the Bomber (enemy.bomber.name). Format \"Name: short survival tip\"; the name before the colon must be the same word as that name string. Brief, direct, second person."
+	},
+	"bestiary.charger": {
+		"note": "First-sighting toast, shown once per account (top centre, during combat) the first time the player meets the Charger (enemy.charger.name). Format \"Name: short survival tip\"; the name before the colon must be the same word as that name string. Brief, direct, second person."
+	},
 	"bestiary.imp": {
 		"note": "First-sighting toast, shown once per account (top centre, during combat) the first time the player meets the Imp (enemy.imp.name). Format \"Name: short survival tip\"; the name before the colon must be the same word as that name string. Brief, direct, second person."
+	},
+	"bestiary.reaper": {
+		"note": "First-sighting toast, shown once per account (top centre, during combat) the first time the player meets the Reaper (enemy.reaper.name). Format \"Name: short survival tip\"; the name before the colon must be the same word as that name string. Brief, direct, second person."
 	},
 	"bestiary.slime": {
 		"note": "First-sighting toast, shown once per account (top centre, during combat) the first time the player meets the Ooze (enemy.slime.name). Format \"Name: short survival tip\"; the name before the colon must be the same word as that name string. Brief, direct, second person."
 	},
+	"bestiary.stormcaller": {
+		"note": "First-sighting toast, shown once per account (top centre, during combat) the first time the player meets the Stormcaller (enemy.stormcaller.name). Format \"Name: short survival tip\"; the name before the colon must be the same word as that name string. Brief, direct, second person."
+	},
 	"bestiary.summoner": {
 		"note": "First-sighting toast, shown once per account (top centre, during combat) the first time the player meets the Summoner (enemy.summoner.name). Format \"Name: short survival tip\"; the name before the colon must be the same word as that name string. Brief, direct, second person."
+	},
+	"bestiary.warbanner": {
+		"note": "First-sighting toast, shown once per account (top centre, during combat) the first time the player meets the Warbanner (enemy.warbanner.name). Format \"Name: short survival tip\"; the name before the colon must be the same word as that name string. Brief, direct, second person."
 	},
 	"biome.1.name": {
 		"note": "Dungeon area (biome) name: old stone halls. Shown on the stage card under the floor number when a floor loads, and in the run info line of the pause menu. Evocative place name, title case."
@@ -923,17 +938,26 @@
 		"note": "Name of the Ember resource: a limited charge (2 per floor) that the player burns to wipe every enemy bullet off the screen. Here it is the row label in the in-run status panel (top left), in an 86 px label column beside the charge pips. Glossary term: use the same word everywhere.",
 		"max": 8
 	},
+	"enemy.bomber.name": {
+		"note": "Enemy type name: a small, fast imp that sprints at the player and explodes into a ring of bullets next to them; shot first, it just falls apart. Shown in the stage card's roster line (the enemy kinds of a floor, joined with \" · \") and the main menu's Daily card. Singular noun, title case, used as a proper name; keep it short. Glossary term."
+	},
 	"enemy.bruiser.name": {
 		"note": "Enemy type name: a big, heavy melee brute that slams the ground and sends shockwaves. Shown in the stage card's roster line (the enemy kinds of a floor, joined with \" · \") and the main menu's Daily card. Singular noun, title case, used as a proper name; keep it short. Glossary term."
 	},
 	"enemy.caster.name": {
 		"note": "Enemy type name: a stationary turret enemy that casts bullet patterns. Shown in the stage card's roster line (the enemy kinds of a floor, joined with \" · \") and the main menu's Daily card. Singular noun, title case, used as a proper name; keep it short. Glossary term."
 	},
+	"enemy.charger.name": {
+		"note": "Enemy type name: a heavy blade-armed beast that charges in a straight line and is stunned when it hits a wall. Shown in the stage card's roster line (the enemy kinds of a floor, joined with \" · \") and the main menu's Daily card. Singular noun, title case, used as a proper name; keep it short. Glossary term."
+	},
 	"enemy.dummy.name": {
 		"note": "Enemy type name: the stationary practice target of the tutorial (a straw training dummy). Shown in the stage card's roster line (the enemy kinds of a floor, joined with \" · \") and the main menu's Daily card. Singular noun, title case, used as a proper name; keep it short. Glossary term."
 	},
 	"enemy.imp.name": {
 		"note": "Enemy type name: a small, quick demon that blinks (teleports) next to the player, landing inside a warning ring. Shown in the stage card's roster line (the enemy kinds of a floor, joined with \" · \") and the main menu's Daily card. Singular noun, title case, used as a proper name; keep it short. Glossary term."
+	},
+	"enemy.reaper.name": {
+		"note": "Enemy type name: a demon with two sickles that closes in and spins, firing a spiral of bullets, then stands dizzy. Shown in the stage card's roster line (the enemy kinds of a floor, joined with \" · \") and the main menu's Daily card. Singular noun, title case, used as a proper name; keep it short. Glossary term."
 	},
 	"enemy.slime.name": {
 		"note": "Enemy type name: a blob enemy that leaves harmful goo on the floor and splits into small slimelets when it dies (internal id slime, English name Ooze). Shown in the stage card's roster line (the enemy kinds of a floor, joined with \" · \") and the main menu's Daily card. Singular noun, title case, used as a proper name; keep it short. Glossary term."
@@ -944,11 +968,17 @@
 	"enemy.sprayer.name": {
 		"note": "Enemy type name: a stationary turret enemy that sprays waves of bullets. Shown in the stage card's roster line (the enemy kinds of a floor, joined with \" · \") and the main menu's Daily card. Singular noun, title case, used as a proper name; keep it short. Glossary term."
 	},
+	"enemy.stormcaller.name": {
+		"note": "Enemy type name: a robed caster that marks three circles on the floor and calls lightning down on them. Shown in the stage card's roster line (the enemy kinds of a floor, joined with \" · \") and the main menu's Daily card. Singular noun, title case, used as a proper name; keep it short. Glossary term."
+	},
 	"enemy.summoner.name": {
 		"note": "Enemy type name: a support enemy that calls in minions; killing it makes its summons wither. Shown in the stage card's roster line (the enemy kinds of a floor, joined with \" · \") and the main menu's Daily card. Singular noun, title case, used as a proper name; keep it short. Glossary term."
 	},
 	"enemy.swarmer.name": {
 		"note": "Enemy type name: a small melee enemy that rushes the player in packs; the first enemy of every run. Shown in the stage card's roster line (the enemy kinds of a floor, joined with \" · \") and the main menu's Daily card. Singular noun, title case, used as a proper name; keep it short. Glossary term."
+	},
+	"enemy.warbanner.name": {
+		"note": "Enemy type name: an imp carrying a war banner that stays behind other enemies and makes those near it faster. Shown in the stage card's roster line (the enemy kinds of a floor, joined with \" · \") and the main menu's Daily card. Singular noun, title case, used as a proper name; keep it short. Glossary term."
 	},
 	"fx.parry.count": {
 		"note": "Parry flash written on the floor when a parry erased several bullets: {text} is the parry word (fx.parry.text, e.g. \"PARRY!\", already translated) and {n} the number of bullets erased; the x means \"times\". Usually unchanged.",

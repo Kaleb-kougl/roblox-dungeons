@@ -25,7 +25,8 @@ replays and scores change (all-time boards stay `_v1`; `DAILY.ruleset` 2 -> 3).
 
 Planned. Scope chosen by the owner (below, "Decisions"): five new room archetypes (Bomber, Charger, Stormcaller,
 Warbanner, Reaper), unlocking from floor 2 like the others so the seeded roster decides which a run meets. NED1-NED14
-taken by the owner on 2026-11-02, every one as recommended (rigs included, so NE0's owner pick is done). Nothing built.
+taken by the owner on 2026-11-02, every one as recommended (rigs included, so NE0's owner pick is done). NE0 audit
+done and NE1 skeleton built on `ne-skeleton` (below); NE2-NE14 not started.
 
 Contact sheets made for this plan (gitignored `art/build/contact/`, scratch PIL script, not committed; dark `#1a1619`):
 `ne-imps.png`, `ne-spawns.png`, `ne-beasts.png`, `ne-elites.png` (every rig: Idle / Walk / Attack 1-4 / Taunt, the used
@@ -64,16 +65,91 @@ Run like the turrets' rig), reaper **Spawn 3** (winged, one scythe).
 | `contactDamage` is one static number per archetype | `actors.ts` `contactDamageOn` | The Charger's heavy hit only while charging is its own overlap check in its step (`ctx.hurtPlayerAt`), contact 0 otherwise |
 | A stationary enemy bullet with its own hit radius exists (`BulletKind.GOO`, `enemyBulletHitRadius`, no grazes, guard / swing rules) | `combat/patterns.ts`, `combat.ts` | The lightning strike is a stationary bullet of a new kind `STRIKE` (12) with a short life and a large radius: no area-damage system, roll i-frames and co-op hits work as for every bullet |
 | `BulletKind` takes 4 bits; 0-11 are used (web 0-6, `GOO` 7, build kinds 8-11) | `combat/payload.ts` | `STRIKE` = 12 leaves 13-15 free |
-| Port arc rows: 7 @ 2.4, 8 @ hellfire, 5 @ 0.7, **8 and 12 @ FULL_RING** | `combat/arcTablePort.ts` | The Bomber's blast reuses 12 @ FULL_RING; the Reaper's spiral needs one new row **16 @ FULL_RING** (it fires two entries of it per volley) |
+| Port arc rows: 7 @ 2.4, 8 @ hellfire, 5 @ 0.7, **8 and 12 @ FULL_RING**; **16 @ FULL_RING is a WEB row** (the turret sprayer's ring, `fixtures/arc-table.json`) | `combat/arcTablePort.ts`, `arcTable.ts` | The Bomber's blast reuses the port 12 @ FULL_RING; the Reaper's spiral reads the web 16 @ FULL_RING. **No new row**: a port row that keys like a web shape errors at load (`projectilePatterns.ts`). (NE0 correction: the plan had "one new row 16 @ FULL_RING".) |
 | Walk and cooldown choke points `actorWalkPercent` / `actorCooldownPercent` (affixes today, Respite planned); `combinedPercent` | `combat/actors/actorMods.ts`, `progression/runMods.ts` | The Warbanner's aura is a third percent source here; telegraphs never go through it (EVD9) |
 | `ActorFxHints` has `aimLine` (with length), `shockwave`, `ring` (one point from two v slots) | `archetypes/enemyShared.ts` | Charger lane = `aimLine`; fuse / spin = `ring` at the feet; the Stormcaller needs one new hint `strikeRow` (centre + offset slots, count 3) |
 | `spendEncounterBudget` walks `ENDLESS_ROOM_KINDS` in order; `roomKindOpen(k, floor, bought, roster)` filters with no draw; `maxPerRoom` exists | `dungeon/endless.ts`, `endlessData.ts` | Kinds with `fromFloor: 2` leave floor 1's spend draw for draw as today. "Never a room's first buy" (Warbanner) is one more filter in `roomKindOpen` on `bought` |
 | `rosterOrder` shuffles every kind but swarmer (5 today, 10 after) with one Fisher-Yates from the run seed; one more seeded kind every 2 floors | `dungeon/endless.ts`, `ROSTER` | Appending kinds **reshuffles every run's roster**: floor 1's seeded kind (still a sniper or a bruiser) changes for many seeds; a full roster now arrives on floor 19 instead of 9. Owner accepted early-floor change ("spread in everywhere") |
-| `slamBreakables` breaks every piece in a radius | `breakables/breakables.ts` | The Bomber's blast and the Charger's charge break barrels / crates with the existing helper |
-| Kills proc builds only on `damageActor`'s kill line, never in `killActor` | docs/BUILDS.md | A self-detonating Bomber (killed by its own fuse) never procs Chain Spark / Volatile and scores nothing; a shot Bomber is an ordinary kill |
+| `slamBreakables` breaks every piece within `config.slamRadius` (3 tiles, fixed) | `breakables/breakables.ts` | NE0 correction: the radius was not a parameter. NE1 added an optional trailing `radius` (absent: the boss's slam exactly), so the Bomber's 1.5 and the Charger's sweep use the existing helper |
+| Kills proc builds only on `damageActor`'s kill line, never in `killActor`; but `killActor` itself scores (`scoreKill`), runs Vampire Fang, rolls drops and arms Vengeful | docs/BUILDS.md, `actors/actors.ts` | A self-detonating Bomber never procs builds, but **through `killActor` it would still score, roll a drop and fire a Vengeful ring**. NE0 correction: NE2 needs its own quiet death path (see findings) |
 | First sighting: `BESTIARY_ARCHETYPES` / `BESTIARY_STRING_KEYS`, remote `bestiarySeen` | `theme/variants.ts`, `network.ts` | Five ids and five `bestiary.<id>` lines appended |
-| `contract.luau` 179 / `validate.luau` 199 of Luau's 200 top-level locals | CLAUDE.md (New best) | Adding to `ENEMY_ARCHETYPES` costs no locals; any new validator report must fold into a module (NE1 compiles both under Lune first) |
+| `contract.luau` / `validate.luau` top-level locals: CLAUDE.md says 179 / 199; **counted on out/ @ `480afbe`: 185 / 196** (NE1: unchanged) | CLAUDE.md (New best) | Adding to `ENEMY_ARCHETYPES` costs no locals; any new validator report must fold into a module (NE1's `auraReport` is in `variantColors.ts`) |
 | `KILL_POINTS`, `DROPS.chanceByArchetype`, `ENCOUNTER_COST` are per-id maps | `scoreData.ts`, `dropsData.ts`, `encounterCost.ts` | Data rows; no code |
+
+## NE0 findings (2026-11-02)
+
+Read on `new-enemies` @ `480afbe` (main @ `fa6bb8c` + this plan). Paths under `src/shared/sim/combat/` unless they
+say otherwise. Every row of "What the code gives us" holds except the three corrected in the table (the 16-row is a
+web row, `slamBreakables` had no radius, `killActor` scores and drops) and the locals count (185 / 196, not 179 / 199).
+
+**Templates per kind** (copy, never import, the shape; each kind owns its file):
+
+| Kind | Movement | Attack | Shared bits it calls |
+|---|---|---|---|
+| `bomber` | `swarmer.ts` `chase` (stop at `chaseStop`; `separate` optional) | fuse = `summoner.ts` telegraph + `ring` hint at the feet; blast = `ctx.fireEnemy(a, dir, BOMBER.data.blast)` (12 @ FULL_RING, `radius` 0.6 is the spawn offset) | `slamBreakables(state, x, z, radius)` (NE1 param); a quiet death (below) |
+| `charger` | `sniper.ts` `reposition` (approach / back off / strafe; its v slots differ) | lane = `sniper.ts` `aimAtPlayer` with the `aimLine` hint (`length` fixed, `boldTicks` = lane); charge = `swarmer.ts` LUNGE (`moveActor` WITHOUT steer, `blocked` = moved < half the step) like `boss/demonlord.ts` CHARGE (395-406); hit = `actors.ts` `contactDamageOn`'s loop with `ctx.hurtPlayerAt(k, chargeDamage, a.kind)` per party index and a bit in v6 | `slamBreakables` every charge tick |
+| `stormcaller` | `sniper.ts` `reposition` (keep 7-10, strafe flips draw like the sniper's) | cast = telegraph + `strikeRow` (centre v3-4 = target at cast start, offset v5-6 = (-dirZ, dirX) x 2.2: exact, no Pythagorean turn needed); strike = `ctx.fireEnemy(a, 0, 1, strike, px, pz)` (fireEnemy takes an origin) per open point | `imp.ts` `impBlinkValid`-style cell test (`ctx.isBlocked`, `solidCells`) per point; STRIKE rules in `combat.ts` / `weapons/melee.ts` / `ctx.ts` (GOO's exclusions, minus the guard erase) |
+| `warbanner` | `summoner.ts` `keepRange` (+ centroid pull) and `backingOff` | panic = `summoner.ts` panic (`BRUISER.data.ring`, `GAP_TURNS` draw) | aura mask on `SimCtx` (`ctx.ts`) rebuilt at the start of `stepActors` (`actors.ts`); `actorMods.ts` `auraWalkPercent` / `auraCooldownPercent` bodies |
+| `reaper` | `bruiser.ts` chase (closes to 3-4) | wind = telegraph + `ring` at the feet; spin volleys: rotate the aim by entry k of `arcTrig(16, FULL_RING)` and fire `spiralShot` (1 @ 0, a web row) twice, k and k + 8 (or one 2-bullet burst: 2 @ FULL_RING is in NO table, so not that) | none |
+
+**v[] plan** (0-2 shared; NE1 constants in each file): bomber 3 `BOMBER_FUSED`; charger 3-4 `CHARGER_DIR_X/Z`, 5
+`CHARGER_LEFT`, 6 `CHARGER_HIT_BITS` (7 free: a `lost` counter if wanted); stormcaller 3-4 `STORMCALLER_CENTRE_X/Z`, 5-6
+`STORMCALLER_OFFSET_X/Z`, 7 `STORMCALLER_STRAFE` (no slot for a `lost` counter: it keeps range by `shouldLeash` only, or
+packs the strafe sign into aiTicks' sign); warbanner 3 `WARBANNER_STRAFE`, 4 `WARBANNER_PANIC`; reaper 3
+`REAPER_PHASE_TICKS`, 4 `REAPER_SPIRAL_INDEX`, 5 `REAPER_TURN`.
+
+**Draws per attack loop** (the plan's "one documented draw per attack"): bomber 0 (the fuse is a distance test; a
+first cooldown is not needed); charger 1 (cooldown); stormcaller 1 (cooldown) plus the sniper's strafe-flip draws and a
+side coin in `init`; warbanner 2 per panic (cooldown, `GAP_TURNS`) plus strafe flips; reaper 2 per cast (cooldown, turn
+sign). Every first cooldown drawn in `init` goes through `enemyCooldown` (EV plan change 7). No point, lane end or
+blast is placed by a draw.
+
+**Aura and the view.** No view reads a room enemy's cooldown; telegraph timelines (`view/sprites.ts` `*Attack`) read
+telegraph ticks, which the aura never touches. The move loops scale by measured speed (`tickSpeed`) over `refSpeed`
+(`data.speed`), so a buffed walk plays its loop 1.25x faster, as Swift already does. Nothing to fix.
+
+**Charger vs movers and breakables.** `moveActor` without `steer` uses `config.actorMover` with `solidCells`: an intact
+barrel stops the body like a wall, so a charge must `slamBreakables` around (and ahead of) itself BEFORE the move of
+the tick or every barrel reads as "blocked" and stuns it. `moveActor` never clamps to the room: "room bound -> stun" is
+the charger's own check (`roomAt` / the encounter's room rect of its home). Use the plain mover (no `STEER`): the steer
+mover rounds pillars and would hide the block.
+
+**Plan items that do not fit the code as written:**
+1. Reaper row (above): no new arc row; NE1's spec pins the web 16-row and the port 12-row.
+2. Bomber detonation: `killActor` (and `ctx.killActor`) always scores, runs Vampire Fang, rolls drops and arms
+   Vengeful before `onDeath`. NE2 adds a quiet path in `actors/actors.ts` (e.g. `killActor(ctx, a, quiet)`: events and
+   `onDeath` only; the score room still sees it dead), owned by the bomber agent alone.
+3. `combinedPercent` is integer only for the cooldown side: Swift 75 x aura 80 = 60, Hulking 100 x 80 = 80; the walk
+   side is not (Swift 135 x 125 / 100 = 168.75, Hulking 106.25). `scalePercent` takes any number, so walks are fine;
+   the "integer percent" comments on `actorWalkPercent` stop being true once NE6 fills the aura (say so there).
+4. Hourglass: there is no GOO-specific Hourglass rule. The enemy pool steps by `SIM_DT x scale`, so every enemy
+   bullet's life (goo and strikes too) stretches under the slow; a 6-tick strike lasts ~6 / scale ticks. NE5 decides
+   (a tick-counted life for STRIKE, or accept it).
+5. `strikeRow` (`archetypes/enemyShared.ts`): one centre + one offset + count draws the row; NE1 added the type
+   (`state`, `centreX/Z`, `offsetX/Z`, `count`, `radius`, `fillTicks`, `attack`).
+6. First sighting: `shared/onboarding` `SIGHTING_IDS` must equal `BESTIARY_STRING_KEYS` (a spec), so NE1 inserted the
+   five archetype ids before the affix ids there and in `view/sighting` `ARCHETYPE_SIGHTINGS` (canonical order is
+   re-derived on every load, nothing stores indices). `BESTIARY_SEEN_RATE` (10 per 10 s) still covers 12 ids.
+
+## NE1 skeleton (as built, 2026-11-02)
+
+- Registry: `PORT_BAND_ENEMIES_2` = 4; `bomber` 13, `charger` 14, `reaper` 15, `stormcaller` 16, `warbanner` 17; every
+  older index unchanged (`sim/newEnemies.spec.ts` and the id-list specs).
+- `archetypes/{bomber,charger,reaper,stormcaller,warbanner}.ts`: full `data` blocks (Design tables as named fields and
+  constants, `fx` hints wired to the v slots above) and stub steps: calm / leash / engage, then the bomber chases and
+  the others keep their band straight along the bearing (no strafe, no attack, no draw).
+- Rows: `ENCOUNTER_COST`, `KILL_POINTS`, `DROPS.chanceByArchetype` (plan numbers). `ENDLESS_ROOM_KINDS` untouched (NE7),
+  so endless rooms spend exactly as before.
+- `BulletKind.STRIKE` = 12, `STRIKE_BULLET_RADIUS` 1.1 in `enemyBulletHitRadius` (no rules yet: NE5).
+- `actorMods.ts`: `auraWalkPercent` / `auraCooldownPercent` (PERCENT) combined into `actorWalkPercent` /
+  `actorCooldownPercent` by `combinedPercent` (the affix percent exactly).
+- `slamBreakables(state, x, z, radius?)`.
+- Theme: `ENEMY_ARCHETYPES` + five (placeholder cone / wedge / tall drum / thin post / flat disc; colours `#b0f0b0`,
+  `#806070`, `#b0c0f0`, `#f0e0a0`, `#507060`), `enemy.<id>.name`, `bullet.enemy.strike` (flat neon disc), role
+  `enemyAura` `#a86078` (`auraReport` in `variantColors.ts`: >= 3:1 on every floor, >= 40 CIE76 from the enemy-bullet
+  roles, telegraph, boosts, affixes and the shield; placeholder 3.21:1, nearest boost.aegis 46.5), six SILENT sounds,
+  `bestiary.<id>` lines, `l10n/context.json` entries. Vale inherits every entry from the placeholder (placeholder
+  visuals, silent sounds). `contract.luau` / `validate.luau` stay at 185 / 196 top-level locals.
 
 ## Player experience
 

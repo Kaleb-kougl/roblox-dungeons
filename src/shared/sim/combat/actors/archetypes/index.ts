@@ -32,3 +32,11 @@ export * from "./boss/demonlord";
 export * from "./imp";
 export * from "./slime";
 export * from "./summoner";
+
+// --- Roblox port: the second set of endless room enemies (band PORT_BAND_ENEMIES_2: numbered after band 3;
+// docs/NEW_ENEMIES.md)
+export * from "./bomber";
+export * from "./charger";
+export * from "./reaper";
+export * from "./stormcaller";
+export * from "./warbanner";

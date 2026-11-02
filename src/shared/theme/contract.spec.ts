@@ -180,7 +180,8 @@ describe("required IDs and strings", () => {
 		// audio events. + docs/NEW_BEST.md NB4: 2 port audio events (sfx.best.new, sfx.jingle.record).
 		// + docs/BUILDS.md BU1: 4 effect bullet visuals and 9 port audio events. + docs/DAILY.md DS10: 2 port audio
 		// events (sfx.rank.up, sfx.friend.passed). + docs/BREAKABLE_DROPS.md BL5: 1 port audio event (sfx.breakable.loot).
-		expect(REQUIRED_ASSET_IDS.size()).toBe(60 + 1 + 2 + 2 + 37 + 5 + 4 + 2 + 1 + 5 + 2 + 4 + 9 + 2 + 1);
+		// + docs/NEW_ENEMIES.md NE1: 5 enemy archetypes, 1 bullet visual (bullet.enemy.strike), 6 port audio events.
+		expect(REQUIRED_ASSET_IDS.size()).toBe(60 + 1 + 2 + 2 + 37 + 5 + 4 + 2 + 1 + 5 + 2 + 4 + 9 + 2 + 1 + 5 + 1 + 6);
 		expect(AUDIO_EVENTS.size()).toBe(20);
 		expect(new Set(REQUIRED_ASSET_IDS).size()).toBe(REQUIRED_ASSET_IDS.size());
 		for (const id of REQUIRED_ASSET_IDS) {
@@ -197,8 +198,9 @@ describe("required IDs and strings", () => {
 		// + docs/DAILY.md DS9 / DS11 / DS12: DAILY_STRING_KEYS (64, with the podium row)
 		// + docs/DAILY.md DS10: DAILY_RANK_STRING_KEYS (22)
 		// + docs/LOCALIZATION.md L1: INPUT_KEY_STRING_KEYS (51 key labels + input.separator)
+		// + docs/NEW_ENEMIES.md NE1: 5 enemy.<id>.name, 5 bestiary.<id> (BESTIARY_STRING_KEYS)
 		expect(REQUIRED_STRING_KEYS.size()).toBe(
-			41 + 1 + 2 + 4 * 3 + 1 + 3 + 5 + 13 + 10 + 8 + 2 + 2 + 4 + 7 + 17 + 7 + 3 + 64 + 22 + 52,
+			41 + 1 + 2 + 4 * 3 + 1 + 3 + 5 + 13 + 10 + 8 + 2 + 2 + 4 + 7 + 17 + 7 + 3 + 64 + 22 + 52 + 5 + 5,
 		);
 		expect(new Set(REQUIRED_STRING_KEYS).size()).toBe(REQUIRED_STRING_KEYS.size());
 		expect(BIOMES.map((b) => b.forgeTheme)).toEqual(["ancient", "molten", "frost", "grim", "verdant"]);

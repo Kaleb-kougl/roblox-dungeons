@@ -29,6 +29,12 @@ export const ARCHETYPE_SIGHTINGS: ReadonlyMap<string, string> = new Map([
 	["slime", "slime"],
 	["slime.small", "slime"],
 	["summoner", "summoner"],
+	// docs/NEW_ENEMIES.md NED13
+	["bomber", "bomber"],
+	["charger", "charger"],
+	["stormcaller", "stormcaller"],
+	["warbanner", "warbanner"],
+	["reaper", "reaper"],
 ]);
 
 /** Archetype index -> sighting id, built once (an unregistered id is left out). */

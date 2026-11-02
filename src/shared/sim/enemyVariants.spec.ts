@@ -69,6 +69,11 @@ describe("registry: PORT_BAND_ENEMIES", () => {
 			"slime",
 			"slime.small",
 			"summoner",
+			"bomber", // band PORT_BAND_ENEMIES_2 (docs/NEW_ENEMIES.md): indices 13-17
+			"charger",
+			"reaper",
+			"stormcaller",
+			"warbanner",
 		]);
 	});
 });
