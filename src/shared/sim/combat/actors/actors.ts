@@ -272,6 +272,8 @@ export function freeActor(ctx: SimCtx, a: ActorState): void {
  * (the new slots are skipped anyway: spawnTick === tick).
  */
 export function stepActors(ctx: SimCtx): void {
+	// The Warbanner aura (docs/NEW_ENEMIES.md NE6): one mask per tick from tick-start positions (empty without a banner).
+	ctx.rebuildAura();
 	const actors = ctx.combat.actors;
 	const tick = ctx.tick;
 	// Co-op: each actor's hooks see its own target (the nearest living player) as ctx.player.
