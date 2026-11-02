@@ -62,6 +62,10 @@ function arenaOf(enc: EncounterConfig, a: Readonly<ActorState>): EncounterRoom |
  *     picks which of two telegraphs it belongs to, so the imp's aim line shows only during its landing aim). The aim line stops where it first enters an intact breakable's cell
  *     (shared/view clipToSolidCells over shared/sim solidCells): a crate stops the shot, though not the sniper's sight
  *     (docs/DECOR.md B2)
+ *   - the second endless set (docs/NEW_ENEMIES.md NE8) through the same hints: the Bomber's fuse ring and the Reaper's
+ *     wind ring at their feet (`ring`, filling), the Charger's lane (`aimLine`, its chargeRange, bold from the start,
+ *     never clipped by breakables: its charge breaks them, viewFxHints), the Stormcaller's three strike circles
+ *     (`strikeRow`, filling, centred where the strikes land); the Warbanner's panic gets the generic ring
  *   - any other actor winding up (aiState TELEGRAPH) without a preview: a ring around it
  *   - Mother Bramble (boss.act1) while winding up: exactly where the attack's bullets will go (fan lanes, ring arcs
  *     with gaps, spiral arms, the slam lane + impact + shockwave), dim early, bright late, blinking at the end; the
