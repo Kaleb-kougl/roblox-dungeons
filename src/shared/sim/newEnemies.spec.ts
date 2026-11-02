@@ -234,8 +234,8 @@ describe("aura hook points (NE1: PERCENT, a pure refactor)", () => {
 describe("stub steps (NE1)", () => {
 	function run(): SimState {
 		const w = world(false);
-		// Player at the origin; each new kind 6 units out on its own spoke, inside every aggro range.
-		spawn(w, BOMBER.id, 6, 0);
+		// Player at the origin; each new kind 6 units out on its own spoke, inside every aggro range. The Bomber is built
+		// (NE2: it fuses and blasts inside 120 ticks): bomber.spec.ts covers it.
 		spawn(w, CHARGER.id, -6, 0);
 		spawn(w, REAPER.id, 0, 6);
 		spawn(w, STORMCALLER.id, 0, -6);
@@ -252,9 +252,11 @@ describe("stub steps (NE1)", () => {
 		expect(s.combat.enemyBullets.activeCount).toBe(0);
 		const by = (id: string) => s.combat.actors.find((a) => a.kind === archetypeIndex(id))!;
 		const dist = (a: ActorState) => math.sqrt(a.x * a.x + a.z * a.z);
-		for (const id of NEW_IDS) expect([id, by(id).alive, by(id).v[0]]).toEqual([id, 1, 1]); // alive, engaged
-		// Bomber chases in; Reaper closes to <= keepMax; Charger / Warbanner keep their minimum; Stormcaller backs off.
-		expect(dist(by("bomber")) < 1).toBe(true);
+		for (const id of NEW_IDS) {
+			if (id === BOMBER.id) continue;
+			expect([id, by(id).alive, by(id).v[0]]).toEqual([id, 1, 1]); // alive, engaged
+		}
+		// Reaper closes to <= keepMax; Charger / Warbanner keep their minimum; Stormcaller backs off.
 		expect(dist(by("reaper")) <= REAPER.data.keepMax + 1e-9).toBe(true);
 		expect(dist(by("charger"))).toBeCloseTo(6, 9);
 		expect(dist(by("stormcaller")) >= STORMCALLER.data.keepMin - 1e-9).toBe(true);
