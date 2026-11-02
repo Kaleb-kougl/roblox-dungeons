@@ -1,13 +1,14 @@
 /**
  * The endless room pool census (docs/ENEMY_VARIANTS.md EV5), shared by the census specs (split over several files:
  * each Forge floor takes about a tenth of a second headless). Per floor: populated rooms, enemies per room by kind,
- * the budget the placed enemies spend, the most summoners in one room, the affixed share (assignAffixes over the same
- * spawns), and rule breaks (a kind below its unlock floor, more of a kind in a room than its maxPerRoom, a wide body
- * on a tile with a non-FLOOR neighbour). Seeded rosters (docs/DAILY.md DS1): every floor spends with its run's roster
- * (endlessRoster, as buildEndlessFloor does); the rows count the runs whose roster holds each kind, the rooms the
- * actor cap left with budget unspent, and the rooms of "cheap" rosters (no kind of the dearest room cost), and the
- * roster rules break a row too (a spawn outside its roster, a roster that is not swarmers first + the expected size,
- * or that drops a kind of the floor before). Test support only.
+ * distinct kinds per room, the budget the placed enemies spend, the most summoners in one room, the affixed share
+ * (assignAffixes over the same spawns), and rule breaks (a kind below its unlock floor, more of a kind in a room than its maxPerRoom, a wide body
+ * on a tile with a non-FLOOR neighbour, a kind that needs company as a room's first spawn). Seeded rosters
+ * (docs/DAILY.md DS1): every floor spends with its run's roster (endlessRoster, as buildEndlessFloor does); the rows
+ * count the runs whose roster holds each kind, the rooms the actor cap left with budget unspent, and the rooms of
+ * "cheap" rosters (no kind of the dearest room cost), and the roster rules break a row too (a spawn outside its
+ * roster, a roster that is not swarmers first + the expected size, or that drops a kind of the floor before). Test
+ * support only.
  */
 import {
 	ENDLESS_FIRST_FLOOR,
@@ -37,6 +38,8 @@ export interface PoolCensusRow {
 	/** Rooms with a budget (combat / elite, not the entrance or the boss room). */
 	rooms: number;
 	enemies: number;
+	/** Distinct kinds per room, summed over the rooms. */
+	distinct: number;
 	/** Enemies per kind, in ENDLESS_ROOM_KINDS order. */
 	readonly byKind: number[];
 	/** Encounter cost of the placed enemies, and the rooms' budgets. */
@@ -66,6 +69,7 @@ export function newCensusRow(floor: number, party: number): PoolCensusRow {
 		runs: 0,
 		rooms: 0,
 		enemies: 0,
+		distinct: 0,
 		byKind: ENDLESS_ROOM_KINDS.map(() => 0),
 		cost: 0,
 		budget: 0,
@@ -175,6 +179,9 @@ export function censusFloor(row: PoolCensusRow, run: number): void {
 			if (!isAffixExcluded(s.kind)) row.eligible++;
 			if (affixes[room.id][i] !== 0) row.affixed++;
 		}
+		const firstKind = list.size() > 0 ? kindIndex(list[0].kind) : -1;
+		if (firstKind >= 0 && ENDLESS_ROOM_KINDS[firstKind].needsCompany === true)
+			row.breaks.push(`run ${run} floor ${floor} room ${room.id}: '${list[0].kind}' is the room's first buy`);
 		if (list.size() >= ENDLESS_ROOM_ACTOR_CAP && budget - roomCost >= cheapest) row.capBound++;
 		if (cheapRoster) {
 			row.cheapRooms++;
@@ -182,6 +189,7 @@ export function censusFloor(row: PoolCensusRow, run: number): void {
 			row.cheapBudget += budget;
 		}
 		for (let k = 0; k < counts.size(); k++) {
+			if (counts[k] > 0) row.distinct++;
 			row.maxPerRoom[k] = math.max(row.maxPerRoom[k], counts[k]);
 			const max = ENDLESS_ROOM_KINDS[k].maxPerRoom;
 			if (max !== undefined && counts[k] > max)
@@ -242,7 +250,7 @@ const f2 = (x: number) => string.format("%.2f", x);
 /** The census table's header (a Markdown table row; kinds in ENDLESS_ROOM_KINDS order). */
 export function censusHeader(): string {
 	const kinds = ENDLESS_ROOM_KINDS.map((k) => k.kind).join(" | ");
-	return `| floor | rooms | enemies / room | ${kinds} | spent / budget | max summoners | affixed | cap-bound | cheap rosters |`;
+	return `| floor | rooms | enemies / room | kinds / room | ${kinds} | spent / budget | max summoners | affixed | cap-bound | cheap rosters |`;
 }
 
 /** One row as a Markdown table row: means per room, the spent share of the budget, the affixed share. */
@@ -258,7 +266,9 @@ export function formatCensusRow(row: PoolCensusRow): string {
 			? `${row.cheapRooms} rooms, ${string.format("%.0f", (row.cheapCost * 100) / row.cheapBudget)} % spent`
 			: "-";
 	return (
-		`| ${row.floor} | ${row.rooms} | ${f2(row.enemies / n)} | ${kinds} | ${f2(row.cost / n)} / ` +
+		`| ${row.floor} | ${row.rooms} | ${f2(row.enemies / n)} | ${f2(row.distinct / n)} | ${kinds} | ${f2(
+			row.cost / n,
+		)} / ` +
 		`${f2(row.budget / n)} (${string.format("%.0f", spent * 100)} %) | ${row.maxPerRoom[summoner]} | ` +
 		`${string.format("%.1f", affixed)} % | ${string.format("%.1f", capBound)} % | ${cheap} |`
 	);

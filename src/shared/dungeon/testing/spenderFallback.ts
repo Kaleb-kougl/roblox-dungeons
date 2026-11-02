@@ -31,8 +31,9 @@ export interface SpendTrace {
 	readonly fallbackKinds: Map<string, number>;
 }
 
-function open(k: EndlessRoomKind, floor: number, bought: ReadonlyMap<string, number>): boolean {
+function open(k: EndlessRoomKind, floor: number, bought: ReadonlyMap<string, number>, boughtTotal: number): boolean {
 	if (k.fromFloor !== undefined && floor < k.fromFloor) return false;
+	if (k.needsCompany === true && boughtTotal < 1) return false;
 	return k.maxPerRoom === undefined || (bought.get(k.kind) ?? 0) < k.maxPerRoom;
 }
 
@@ -47,7 +48,7 @@ function spend(rng: DungeonRng, budget: number, floor: number, cap: number, brea
 		let dearest: EndlessRoomKind | undefined;
 		let poolDearest = 0;
 		for (const k of ENDLESS_ROOM_KINDS) {
-			if (!open(k, floor, bought)) continue;
+			if (!open(k, floor, bought, out.size())) continue;
 			const c = encounterCost(k.kind);
 			poolDearest = math.max(poolDearest, c);
 			if (c > left) continue;
@@ -59,7 +60,7 @@ function spend(rng: DungeonRng, budget: number, floor: number, cap: number, brea
 		if (total > 0) {
 			let r = rng.next() * total;
 			for (const k of ENDLESS_ROOM_KINDS) {
-				if (!open(k, floor, bought)) continue;
+				if (!open(k, floor, bought, out.size())) continue;
 				const c = encounterCost(k.kind);
 				if (c > left || c < need) continue;
 				pick = k;
@@ -71,7 +72,7 @@ function spend(rng: DungeonRng, budget: number, floor: number, cap: number, brea
 			let tiedWeight = 0;
 			let tiedCount = 0;
 			for (const k of ENDLESS_ROOM_KINDS) {
-				if (!open(k, floor, bought) || encounterCost(k.kind) !== top) continue;
+				if (!open(k, floor, bought, out.size()) || encounterCost(k.kind) !== top) continue;
 				tiedWeight += k.weight;
 				tiedCount++;
 			}
@@ -82,7 +83,7 @@ function spend(rng: DungeonRng, budget: number, floor: number, cap: number, brea
 				if (breakTies) {
 					let r = rng.next() * tiedWeight;
 					for (const k of ENDLESS_ROOM_KINDS) {
-						if (!open(k, floor, bought) || encounterCost(k.kind) !== top) continue;
+						if (!open(k, floor, bought, out.size()) || encounterCost(k.kind) !== top) continue;
 						pick = k;
 						if (r < k.weight) break;
 						r -= k.weight;

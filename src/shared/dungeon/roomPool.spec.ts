@@ -53,15 +53,23 @@ function count(kinds: ReadonlyArray<string>, kind: string): number {
 }
 
 describe("ENDLESS_ROOM_KINDS", () => {
-	it("keeps the original three and their weights first, then imp / slime / summoner (EVD2)", () => {
-		expect(ENDLESS_ROOM_KINDS.map((k) => [k.kind, k.weight, k.fromFloor ?? 1, k.maxPerRoom ?? 0])).toEqual([
+	it("keeps the original three and their weights first, then imp / slime / summoner (EVD2), then the NE7 five", () => {
+		const rows = ENDLESS_ROOM_KINDS.map((k) => [k.kind, k.weight, k.fromFloor ?? 1, k.maxPerRoom ?? 0]);
+		expect(rows).toEqual([
 			["swarmer", 3, 1, 0],
 			["sniper", 2, 1, 0],
 			["bruiser", 1, 1, 0],
 			["imp", 2, 2, 0],
 			["slime", 1, 4, 0],
 			["summoner", 1, 6, 1],
+			// docs/NEW_ENEMIES.md NED3 / NED9: all from floor 2, appended in this order.
+			["bomber", 2, 2, 4],
+			["charger", 1, 2, 2],
+			["stormcaller", 1, 2, 2],
+			["warbanner", 1, 2, 1],
+			["reaper", 1, 2, 2],
 		]);
+		expect(ENDLESS_ROOM_KINDS.filter((k) => k.needsCompany === true).map((k) => k.kind)).toEqual(["warbanner"]);
 		expect([ROOM_KIND_UNLOCK_FLOOR.imp, ROOM_KIND_UNLOCK_FLOOR.slime, ROOM_KIND_UNLOCK_FLOOR.summoner]).toEqual([
 			2, 4, 6,
 		]);
@@ -93,7 +101,28 @@ describe("spendEncounterBudget by floor", () => {
 					if (k.fromFloor !== undefined && floor < k.fromFloor)
 						expect([floor, k.kind, count(a, k.kind)]).toEqual([floor, k.kind, 0]);
 				expect(count(a, "summoner") <= SUMMONERS_PER_ROOM).toBe(true);
+				for (const k of ENDLESS_ROOM_KINDS)
+					if (k.maxPerRoom !== undefined)
+						expect([k.kind, count(a, k.kind) <= k.maxPerRoom]).toEqual([k.kind, true]);
 			}
+	});
+
+	it("a kind that needs company (the Warbanner, NED9) is never a room's first buy, even when nothing else is open", () => {
+		let banners = 0;
+		for (let floor = 2; floor <= 20; floor++)
+			for (let seed = 1; seed <= 100; seed++) {
+				const a = spendEncounterBudget(new EncounterRng(seed), 6 + (seed % 30) * 1.3, floor);
+				if (a.size() > 0) expect([floor, seed, a[0]]).never.toEqual([floor, seed, "warbanner"]);
+				banners += count(a, "warbanner");
+			}
+		expect(banners > 100).toBe(true);
+		// A roster of Warbanners alone buys nothing (no company to join), and with swarmers the first buy is a swarmer.
+		for (let seed = 1; seed <= 20; seed++) {
+			expect(spendEncounterBudget(new EncounterRng(seed), 12, 4, undefined, ["warbanner"])).toEqual([]);
+			const two = spendEncounterBudget(new EncounterRng(seed), 2, 4, undefined, ["swarmer", "warbanner"]);
+			expect(two[0]).toBe("swarmer");
+			expect(count(two, "warbanner") <= 1).toBe(true);
+		}
 	});
 
 	it("a budget the cap cannot hold buys the dearest open kinds: one summoner at most, the rest bruisers / oozes", () => {

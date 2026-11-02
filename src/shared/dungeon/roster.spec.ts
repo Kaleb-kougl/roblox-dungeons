@@ -1,7 +1,7 @@
 // Seeded rosters (docs/DAILY.md DS1, DSD1 / DSD2 / DSD9): every endless run picks which room kinds it meets per floor
 // from its run seed. Swarmers always; floor 1 holds swarmers and exactly one seeded kind (a sniper or a bruiser, the
 // only kinds unlocked there); one more seeded kind every ROSTER.floorsPerKind floors, never before its unlock floor,
-// never leaving. The roster closes kinds in the spender only, so the layout, its digest, the props, the boss pick, the
+// never leaving. Ten seeded kinds since docs/NEW_ENEMIES.md NE7, so a roster is full on floor 19. The roster closes kinds in the spender only, so the layout, its digest, the props, the boss pick, the
 // spawn and the stairwell are the floor built without it; room spawns (and the breakables and affixes placed from
 // them) change by design.
 import { describe, expect, it } from "@rbxts/jest-globals";
@@ -45,6 +45,8 @@ function dungeonFor(p: ForgeParams): Dungeon {
 const SEEDED = ENDLESS_ROOM_KINDS.filter((k) => k.kind !== ROSTER.always).map((k) => k.kind);
 const SEEDS = 500;
 const FLOORS = 24;
+/** The first floor every roster is full (10 seeded kinds, one every 2 floors: docs/NEW_ENEMIES.md NED11). */
+const FULL_FLOOR = 19;
 
 function unlockOf(kind: string): number {
 	for (const k of ENDLESS_ROOM_KINDS) if (k.kind === kind) return k.fromFloor ?? ENDLESS_FIRST_FLOOR;
@@ -54,14 +56,25 @@ function unlockOf(kind: string): number {
 describe("seeded roster: data and order", () => {
 	it("ROSTER: swarmers always, one kind every 2 floors, its own salt (PRIME32_5, apart from every other stream)", () => {
 		expect([ROSTER.always, ROSTER.floorsPerKind, ROSTER.salt]).toEqual(["swarmer", 2, 0x165667b1]);
-		expect(SEEDED).toEqual(["sniper", "bruiser", "imp", "slime", "summoner"]);
+		expect(SEEDED).toEqual([
+			"sniper",
+			"bruiser",
+			"imp",
+			"slime",
+			"summoner",
+			"bomber",
+			"charger",
+			"stormcaller",
+			"warbanner",
+			"reaper",
+		]);
 		for (const other of [BOSS_PICK.salt, BREAKABLE.salt, AFFIXES.salt, DROPS.salt])
 			expect(ROSTER.salt).never.toBe(other);
 		expect(rosterSeed(1337)).toBe(bit32.bxor(1337, 0x165667b1));
 		expect(rosterSeed(-1)).toBe(bit32.bxor(4294967295, 0x165667b1));
 	});
 
-	it("rosterOrder is one Fisher-Yates shuffle of the seeded kinds (4 draws, j = int(0, i) from the last index)", () => {
+	it("rosterOrder is one Fisher-Yates shuffle of the seeded kinds (9 draws, j = int(0, i) from the last index)", () => {
 		// Failures collect into one list (one expect per check would take most of a minute headless).
 		const bad: string[] = [];
 		for (let seed = 0; seed < SEEDS; seed++) {
@@ -77,20 +90,57 @@ describe("seeded roster: data and order", () => {
 			if (got.join(",") !== want.join(",")) bad.push(`run ${seed}: ${got.join(", ")}`);
 		}
 		expect(bad).toEqual([]);
-		// Pinned, so a change to the stream or the shuffle shows up here first.
-		expect(rosterOrder(1)).toEqual(["sniper", "slime", "summoner", "imp", "bruiser"]);
-		expect(rosterOrder(1337)).toEqual(["sniper", "imp", "slime", "summoner", "bruiser"]);
-		expect(endlessRoster(1337, 1)).toEqual(["swarmer", "sniper"]);
-		expect(endlessRoster(1337, 3)).toEqual(["swarmer", "sniper", "imp"]);
-		expect(endlessRoster(1337, 9)).toEqual(["swarmer", "sniper", "imp", "slime", "summoner", "bruiser"]);
-		// Run 1: slime comes before imp in the order but is locked on floor 3, so imp joins there and slime on 5.
-		expect(endlessRoster(1, 3)).toEqual(["swarmer", "sniper", "imp"]);
-		expect(endlessRoster(1, 5)).toEqual(["swarmer", "sniper", "imp", "slime"]);
-		expect(endlessRoster(1, 7)).toEqual(["swarmer", "sniper", "imp", "slime", "summoner"]);
+		// Pinned, so a change to the stream or the shuffle shows up here first. Re-recorded for docs/NEW_ENEMIES.md NE7
+		// (10 seeded kinds: every run's order reshuffled; before: run 1 sniper, slime, summoner, imp, bruiser).
+		expect(rosterOrder(1)).toEqual([
+			"bruiser",
+			"slime",
+			"charger",
+			"warbanner",
+			"sniper",
+			"stormcaller",
+			"summoner",
+			"reaper",
+			"bomber",
+			"imp",
+		]);
+		expect(rosterOrder(1337)).toEqual([
+			"bomber",
+			"stormcaller",
+			"bruiser",
+			"charger",
+			"reaper",
+			"sniper",
+			"warbanner",
+			"summoner",
+			"slime",
+			"imp",
+		]);
+		// Run 1337: bomber and stormcaller come first but are locked on floor 1, so the bruiser is its floor-1 kind.
+		expect(endlessRoster(1337, 1)).toEqual(["swarmer", "bruiser"]);
+		expect(endlessRoster(1337, 3)).toEqual(["swarmer", "bruiser", "bomber"]);
+		expect(endlessRoster(1337, 9)).toEqual(["swarmer", "bruiser", "bomber", "stormcaller", "charger", "reaper"]);
+		expect(endlessRoster(1337, FULL_FLOOR)).toEqual([
+			"swarmer",
+			"bruiser",
+			"bomber",
+			"stormcaller",
+			"charger",
+			"reaper",
+			"sniper",
+			"warbanner",
+			"summoner",
+			"slime",
+			"imp",
+		]);
+		// Run 1: slime comes before charger in the order but is locked on floor 3, so charger joins there and slime on 5.
+		expect(endlessRoster(1, 3)).toEqual(["swarmer", "bruiser", "charger"]);
+		expect(endlessRoster(1, 5)).toEqual(["swarmer", "bruiser", "charger", "slime"]);
+		expect(endlessRoster(1, 7)).toEqual(["swarmer", "bruiser", "charger", "slime", "warbanner"]);
 	});
 
-	it("target sizes: 1 + floor((f - 1) / 2) seeded kinds, capped at 5", () => {
-		const want = [1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 5, 5];
+	it("target sizes: 1 + floor((f - 1) / 2) seeded kinds, capped at 10 (full on floor 19, NED11)", () => {
+		const want = [1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 10, 10];
 		for (let f = 1; f <= want.size(); f++)
 			expect([f, rosterTargetSize(f, SEEDED.size())]).toEqual([f, want[f - 1]]);
 		expect(rosterTargetSize(100, SEEDED.size())).toBe(SEEDED.size());
@@ -124,8 +174,10 @@ describe("seeded roster: rules (run seeds 0-499, floors 1-24)", () => {
 			if (one.size() !== 2 || (one[1] !== "sniper" && one[1] !== "bruiser"))
 				bad.push(`run ${seed}: floor 1 is ${one.join(", ")}`);
 			firstKinds.set(one[1], (firstKinds.get(one[1]) ?? 0) + 1);
-			if (endlessRoster(seed, 9).size() !== ENDLESS_ROOM_KINDS.size())
-				bad.push(`run ${seed}: not full on floor 9`);
+			if (endlessRoster(seed, FULL_FLOOR).size() !== ENDLESS_ROOM_KINDS.size())
+				bad.push(`run ${seed}: not full on floor ${FULL_FLOOR}`);
+			if (endlessRoster(seed, FULL_FLOOR - 1).size() === ENDLESS_ROOM_KINDS.size())
+				bad.push(`run ${seed}: full before floor ${FULL_FLOOR}`);
 		}
 		expect(bad).toEqual([]);
 		const sniper = firstKinds.get("sniper") ?? 0;
@@ -158,8 +210,8 @@ describe("seeded roster: rules (run seeds 0-499, floors 1-24)", () => {
 		expect(endlessRoster(7, 0)).toEqual([ROSTER.always]);
 	});
 
-	it("prints how often each kind is in on floors 1-9 (run seeds 0-499)", () => {
-		for (let f = 1; f <= 9; f++) {
+	it("prints how often each kind is in on floors 1-19 (run seeds 0-499)", () => {
+		for (let f = 1; f <= FULL_FLOOR; f++) {
 			const counts = SEEDED.map(() => 0);
 			for (let seed = 0; seed < SEEDS; seed++) {
 				const r = endlessRoster(seed, f);
