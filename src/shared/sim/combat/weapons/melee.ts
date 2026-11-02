@@ -72,7 +72,10 @@ function inCone(dx: number, dz: number, dist: number): boolean {
 function bulletInArc(i: number, pos: Readonly<Vec3>, payload: number): boolean {
 	// Goo (docs/ENEMY_VARIANTS.md EVD14): an ordinary swing leaves it on the floor; a guard erases it quietly (not in
 	// `deleted`, so no events.bulletsDeleted, no guard points, no erase sink entry, never reflected).
-	const goo = BulletPayload.get(payload, "kind") === BulletKind.GOO;
+	const kind = BulletPayload.get(payload, "kind");
+	// Strikes (docs/NEW_ENEMIES.md NED7): no sweep erases them, the guard included.
+	if (kind === BulletKind.STRIKE) return false;
+	const goo = kind === BulletKind.GOO;
 	if (goo && !arc.eraseGoo) return false;
 	const dx = pos.x - arc.x;
 	const dz = pos.z - arc.z;
@@ -109,6 +112,7 @@ function bulletInArc(i: number, pos: Readonly<Vec3>, payload: number): boolean {
  *  - Goo puddles (BulletKind.GOO, docs/ENEMY_VARIANTS.md EVD14) are erased only with `eraseGoo` (the sword's guard):
  *    then quietly, outside events.bulletsDeleted and the erase sink, never reflected (sweepGooErased counts them).
  *    Without it a sweep leaves them on the floor.
+ *  - Strikes (BulletKind.STRIKE, docs/NEW_ENEMIES.md NED7) are never erased: every sweep, the guard included, leaves them.
  * Returns the number of actors hit.
  */
 export function sweepArc(

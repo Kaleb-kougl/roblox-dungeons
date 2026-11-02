@@ -209,6 +209,7 @@ export class SimCtx {
 		c.enemySpawned += n;
 		c.dropped += spec.count - n;
 		if (spec.kind === BulletKind.GOO) this.state.events.gooSpawned += n; // the enemy-shoot sound skips goo
+		else if (spec.kind === BulletKind.STRIKE) this.state.events.strikes += n; // and strikes (NE5)
 		return n;
 	}
 
