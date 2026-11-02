@@ -10,11 +10,19 @@
  * TOUCH_LAYOUT.minScale; where `play` cannot keep clear at minScale (a short safe area under the corner panels at a
  * large HUD scale) it takes the lower `compact` cluster, and only below that the scale drops under minScale (never
  * under the smallest tappable circle); last of all the corner rules give way (TouchLayoutResult.inCorner).
+ *
+ * Upright (a safe area taller than wide, docs/PORTRAIT.md PT5) the corner rules are a band instead: the action side's
+ * controls within PORTRAIT.actionShare of the width from its side, the move side's (the move home, spectate's Prev)
+ * within the rest, all within PORTRAIT.controlBandShare of the height from the bottom; no centre-band rule (the player
+ * stands above the band, shared/view cameraFraming's lift). The move zone starts PORTRAIT.moveZoneShare of the height
+ * from the bottom. Landscape keeps every rule.
  */
 import { TOUCH } from "shared/config";
 import { cornerRect, HUD_FOOTPRINT, TOUCH_ALWAYS_ON_PANELS } from "./footprint";
 import type { FootprintBox, ScreenRect } from "./footprint";
 import { computeHudScale } from "./layout";
+// By file, as ../iso: the shared/view barrel is the parent of this one.
+import { PORTRAIT } from "../portrait";
 
 export type TouchButtonId =
 	| "attack"
@@ -279,12 +287,34 @@ function clusterInCorner(
 	safeW: number,
 	safeH: number,
 ): boolean {
+	if (safeH > safeW) return clusterInBand(spec, home, s, safeW, safeH);
 	const maxW = TOUCH_LAYOUT.cornerBox.w * safeW + CLEAR_EPS;
 	const maxH = TOUCH_LAYOUT.cornerBox.h * safeH + CLEAR_EPS;
 	const maxCentre = (safeW - viewportW * TOUCH_LAYOUT.centreBand) * HALF + CLEAR_EPS;
 	const ok = (c: HomeSpec) => (c.x + c.r) * s <= maxW && (c.y + c.r) * s <= maxH && c.x * s <= maxCentre;
 	for (const list of [spec, TOUCH_LAYOUT.spectate]) for (const c of list) if (!ok(c)) return false;
 	return ok(home);
+}
+
+/**
+ * Upright (docs/PORTRAIT.md PT5): every control within the bottom PORTRAIT.controlBandShare of the safe height, the
+ * action side's within PORTRAIT.actionShare of the width from its side, the move side's (home, spectate's Prev)
+ * within the rest from theirs, so the two hands never meet.
+ */
+function clusterInBand(
+	spec: ReadonlyArray<CircleSpec>,
+	home: HomeSpec,
+	s: number,
+	safeW: number,
+	safeH: number,
+): boolean {
+	const maxH = PORTRAIT.controlBandShare * safeH + CLEAR_EPS;
+	const maxAction = PORTRAIT.actionShare * safeW + CLEAR_EPS;
+	const maxMove = (1 - PORTRAIT.actionShare) * safeW + CLEAR_EPS;
+	const ok = (c: HomeSpec, maxW: number) => (c.x + c.r) * s <= maxW && (c.y + c.r) * s <= maxH;
+	for (const list of [spec, TOUCH_LAYOUT.spectate])
+		for (const c of list) if (!ok(c, c.side === "action" ? maxAction : maxMove)) return false;
+	return ok(home, maxMove);
 }
 
 /** What a fit must hold: the screen, and whether the corner rules (clusterInCorner) apply. */
@@ -396,7 +426,9 @@ export function touchLayout(
 			safeW * TOUCH_LAYOUT.moveZoneWidthShare,
 			safeW - clusterLeft - TOUCH_LAYOUT.clusterGap * s,
 		);
-		const zoneTop = math.min(topBand, safeH);
+		// Upright the zone is the lower part only (docs/PORTRAIT.md PT5): a thumb on the world above never walks.
+		const floorTop = safeH > safeW ? safeH * (1 - PORTRAIT.moveZoneShare) : 0;
+		const zoneTop = math.min(math.max(topBand, floorTop), safeH);
 		moveZone = { x: actionRight ? 0 : safeW - zoneW, y: zoneTop, w: zoneW, h: safeH - zoneTop };
 		moveHome = { cx: moveX(home.x), cy: safeH - home.y * s, r: home.r * s };
 	}

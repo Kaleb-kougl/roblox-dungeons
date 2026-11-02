@@ -4,6 +4,7 @@
 import { describe, expect, it } from "@rbxts/jest-globals";
 import { TOUCH } from "shared/config";
 import { HUD_SCALE_PERCENTS } from "shared/settings";
+import { PORTRAIT } from "shared/view";
 import { pauseButtonSlot } from "shared/view/menu";
 import {
 	HUD_FOOTPRINT,
@@ -482,5 +483,105 @@ describe("pickTouchTarget", () => {
 		expect(pickTouchTarget(layout, ["roll"], 0, 0)).toBe("roll");
 		expect(pickTouchTarget(layout, ["move"], 0, 0)).toBe("move");
 		expect(pickTouchTarget(layout, [], 0, 0)).toBe(undefined);
+	});
+});
+
+/** Phones and a tablet held upright (pt; docs/PORTRAIT.md PT5). */
+const UPRIGHT_SCREENS: ReadonlyArray<{ readonly x: number; readonly y: number }> = [
+	{ x: 360, y: 640 },
+	{ x: 375, y: 667 },
+	{ x: 360, y: 800 },
+	{ x: 390, y: 844 },
+	{ x: 430, y: 932 },
+	{ x: 768, y: 1024 },
+];
+/** Upright insets (pt): none; an iPhone's top bar under the notch and home indicator; an Android's status bar. */
+const UPRIGHT_INSETS: ReadonlyArray<{ readonly side: number; readonly top: number; readonly bottom: number }> = [
+	{ side: 0, top: 0, bottom: 0 },
+	{ side: 0, top: HUD_TEST_TOP_INSET, bottom: 34 },
+	{ side: 0, top: 24, bottom: 0 },
+];
+
+describe("touch controls upright (docs/PORTRAIT.md PT5)", () => {
+	it("keeps every control clear, in the bottom band, each hand in its own share, at minScale or above", () => {
+		for (const v of UPRIGHT_SCREENS) {
+			for (const ins of UPRIGHT_INSETS) {
+				const safeW = v.x - ins.side * 2;
+				const safeH = v.y - ins.top - ins.bottom;
+				for (const percent of HUD_PERCENTS) {
+					const boxes = stripBoxes(v.x, v.y, percent, ins.side, ins.top, ins.bottom);
+					for (const size of SIZE_PERCENTS) {
+						for (const hand of HANDS) {
+							for (const mode of MODES) {
+								const where = string.format(
+									"%dx%d top %d bottom %d hud %d size %d %s %s",
+									v.x,
+									v.y,
+									ins.top,
+									ins.bottom,
+									percent,
+									size,
+									hand ? "left" : "right",
+									mode,
+								);
+								const r = touchLayout(
+									v.x,
+									v.y,
+									safeW,
+									safeH,
+									percent,
+									size,
+									hand,
+									mode,
+									undefined,
+									boxes,
+								);
+								expectOk(where, "clear", r.clear);
+								expectOk(where, "in its band", r.inCorner);
+								expectOk(where, "at minScale or above", r.scale >= TOUCH_LAYOUT.minScale - EPS);
+								const bandTop = safeH * (1 - PORTRAIT.controlBandShare) - EPS;
+								const inward = (p: TouchPoint) => (hand ? p.cx : safeW - p.cx);
+								for (const b of r.buttons) {
+									expectOk(where, `${b.id} in the band`, b.cy - b.r >= bandTop);
+									if (b.id === "spectatePrev") continue;
+									expectOk(
+										where,
+										`${b.id} in the action share`,
+										inward(b) + b.r <= PORTRAIT.actionShare * safeW + EPS,
+									);
+								}
+								if (mode === "play") {
+									const home = r.moveHome!;
+									const zone = r.moveZone!;
+									expectOk(where, "move home in the band", home.cy - home.r >= bandTop);
+									expectOk(
+										where,
+										"move home in its share",
+										safeW - inward(home) + home.r <= (1 - PORTRAIT.actionShare) * safeW + EPS,
+									);
+									expectOk(
+										where,
+										"move zone in the lower part",
+										zone.y >= safeH * (1 - PORTRAIT.moveZoneShare) - EPS,
+									);
+									expectOk(where, "move zone reaches the bottom", zone.y + zone.h >= safeH - EPS);
+									for (const b of r.buttons)
+										expectOk(where, `${b.id} off the move zone`, !circleHitsRect(b, zone));
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	});
+
+	it("leaves landscape exactly as before (the band rule only upright)", () => {
+		for (const v of CORNER_SCREENS) {
+			const boxes = stripBoxes(v.x, v.y, PERCENT, 0, 0, 0);
+			const r = touchLayout(v.x, v.y, v.x, v.y, PERCENT, PERCENT, false, "play", undefined, boxes);
+			expect(r.inCorner).toBe(true);
+			expect(r.moveZone!.y).toBe(math.min(r.topBand, v.y));
+		}
 	});
 });

@@ -38,8 +38,12 @@ export const GAME_WORLD = {
 	// The backdrop's depth under the floor is the abyss's: voidDecor VOID.abyssDepthTiles (docs/VOID_DECOR.md VD3).
 	/** Backdrop thickness, tiles. */
 	backdropThicknessTiles: 0.25,
-	/** The backdrop extends this far past the dungeon on every side, tiles (more than half the view's width). */
-	backdropMarginTiles: 24,
+	/**
+	 * The backdrop extends this far past the dungeon on every side, tiles: past the screen corners' reach on its plane
+	 * (shared/view portrait backdropReachTiles: 23.7 for a 21:9 landscape, 26.8 upright at PORTRAIT.maxAspect with the
+	 * lift; docs/PORTRAIT.md PT4, was 24).
+	 */
+	backdropMarginTiles: 28,
 	/**
 	 * How a floor Texture's U / V map to world axes on a Top face (floorTexture.ts). Assumed: U along +X, V along +Z,
 	 * OffsetStuds added. Check in Studio (S0 / S5): if slab joins show seams, flip the sign that is wrong.

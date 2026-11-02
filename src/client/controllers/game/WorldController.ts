@@ -244,8 +244,8 @@ export class WorldController implements OnStart {
 
 	/**
 	 * The backdrop (the abyss): one slab whose top face lies VOID.abyssDepthTiles below the floor, past the floor's
-	 * edges by GAME_WORLD.backdropMarginTiles (24: covers the view's half depth, ~10.3 tiles on the floor plane, plus the
-	 * ~3.5 tiles a plane 5 tiles down shifts up the screen at the camera's 55 degree pitch).
+	 * edges by GAME_WORLD.backdropMarginTiles (28: past the screen corners' reach on its plane for a 21:9 landscape and
+	 * the tallest portrait view, shared/view backdropReachTiles; docs/PORTRAIT.md PT4).
 	 */
 	private backdrop(color: Color3, folder: Folder, minX: number, minZ: number, maxX: number, maxZ: number): number {
 		const S = STUDS_PER_TILE;

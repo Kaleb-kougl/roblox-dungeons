@@ -1,4 +1,4 @@
-import React, { useMemo } from "@rbxts/react";
+import React, { joinBindings, useMemo } from "@rbxts/react";
 import { useSelector } from "@rbxts/react-reflex";
 import { selectBindings, selectInputDevice, selectTutorialEnded, type GameState } from "client/store";
 import { draftHint, keyDevice } from "shared/play";
@@ -29,6 +29,7 @@ import {
 import { useHudActions } from "./actions";
 import { DraftRays } from "./DraftRays";
 import { DRAFT_UI, type DraftCardUi } from "./draftUi";
+import { usePortrait } from "./usePortrait";
 import { Panel, SlicedImage, Text } from "./primitives";
 
 const HALF = 0.5;
@@ -610,7 +611,9 @@ function SlotRays(props: { index: number }) {
 	const ui = DRAFT_UI.cards[props.index];
 	const look = useMemo(
 		() => ({
-			position: ui.rayX.binding.map((x) => new UDim2(HALF, x, HALF, 0)),
+			position: joinBindings({ x: ui.rayX.binding, y: ui.rayY.binding }).map(
+				({ x, y }) => new UDim2(HALF, x, HALF, y),
+			),
 			// The legendary beat's rays in the card's colour: gold, or boon.evolved / boon.duo (docs/BUILDS.md BU9).
 			gold: ui.tone.binding.map(toneColor),
 		}),
@@ -650,6 +653,9 @@ function SlotRays(props: { index: number }) {
 const SIDES = 2;
 const DRAFT_ROW_WIDTH = PROGRESSION_VIEW.cardWidth * DRAFT_OFFER_COUNT + HUD_VIEW.gap * (DRAFT_OFFER_COUNT - 1);
 const DRAFT_CARDS_WIDTH = DRAFT_ROW_WIDTH + PROGRESSION_VIEW.cardGap * SIDES;
+/** Upright (docs/PORTRAIT.md PT7): the cards in a column, one card wide. */
+const DRAFT_COLUMN_HEIGHT = PROGRESSION_VIEW.cardHeight * DRAFT_OFFER_COUNT + HUD_VIEW.gap * (DRAFT_OFFER_COUNT - 1);
+const DRAFT_COLUMN_PANEL_WIDTH = PROGRESSION_VIEW.cardWidth + PROGRESSION_VIEW.cardGap * SIDES;
 
 /** Co-op: "waiting for N teammates" while others still choose (the world stays frozen until all confirmed). */
 function WaitingLine(props: { order: number; count: number; transparency?: React.Binding<number> }) {
@@ -692,6 +698,8 @@ export function DraftOverlay() {
 	const waiting = useSelector(selectDraftWaiting);
 	const actions = useHudActions();
 	const touch = device === "touch";
+	const column = usePortrait();
+	const panelWidth = column ? DRAFT_COLUMN_PANEL_WIDTH : DRAFT_CARDS_WIDTH;
 	const hintText = useMemo(() => {
 		const hint = draftHint(bindings, str)[keyDevice(device)];
 		const ready = touch
@@ -714,7 +722,7 @@ export function DraftOverlay() {
 				key="Draft"
 				position={UDim2.fromScale(HALF, HALF)}
 				anchor={new Vector2(HALF, HALF)}
-				width={DRAFT_CARDS_WIDTH}
+				width={panelWidth}
 				align={Enum.HorizontalAlignment.Center}
 				padding={PROGRESSION_VIEW.cardGap}
 				transparency={DRAFT_UI.panelT.binding}
@@ -747,7 +755,11 @@ export function DraftOverlay() {
 				<frame
 					key="CardRow"
 					LayoutOrder={3}
-					Size={UDim2.fromOffset(DRAFT_ROW_WIDTH, PROGRESSION_VIEW.cardHeight)}
+					Size={
+						column
+							? UDim2.fromOffset(PROGRESSION_VIEW.cardWidth, DRAFT_COLUMN_HEIGHT)
+							: UDim2.fromOffset(DRAFT_ROW_WIDTH, PROGRESSION_VIEW.cardHeight)
+					}
 					BackgroundTransparency={HIDDEN}
 				>
 					<frame key="Rays" Size={UDim2.fromScale(1, 1)} BackgroundTransparency={HIDDEN} ZIndex={ROW_Z.rays}>
@@ -760,7 +772,7 @@ export function DraftOverlay() {
 						ZIndex={ROW_Z.cards}
 					>
 						<uilistlayout
-							FillDirection={Enum.FillDirection.Horizontal}
+							FillDirection={column ? Enum.FillDirection.Vertical : Enum.FillDirection.Horizontal}
 							HorizontalAlignment={Enum.HorizontalAlignment.Center}
 							VerticalAlignment={Enum.VerticalAlignment.Center}
 							SortOrder={Enum.SortOrder.LayoutOrder}
@@ -787,7 +799,7 @@ export function DraftOverlay() {
 					key="DraftWaiting"
 					position={UDim2.fromScale(HALF, HALF)}
 					anchor={new Vector2(HALF, HALF)}
-					width={DRAFT_CARDS_WIDTH}
+					width={panelWidth}
 					align={Enum.HorizontalAlignment.Center}
 					padding={PROGRESSION_VIEW.cardGap}
 					visible={NOT_VISIBLE}

@@ -55,6 +55,7 @@ Record every ported module in `PROVENANCE.md` (ported module, source path, sourc
 | `docs/BUILDS.md` | Builds (on-kill boons Chain Spark / Volatile / Soul Shards with chain reactions, boon levels with an evolution at III, duo boons, the boss double draft; gameplay, opt-in `SimConfig.builds` on endless only): plan, tasks BU0-BU14, decisions BUD1-BUD14 |
 | `docs/DAILY.md` | Daily dungeon and seeded rosters (every endless seed picks its enemy kinds: swarmers + 1 on floor 1, one more every 2 floors; a `daily` world with one server-side seed per UTC day, day-scoped solo / co-op boards, percentile, friends, rank climbing, yesterday's podium): plan, tasks DS0-DS14, decisions DSD1-DSD16 |
 | `docs/LOCALIZATION.md` | Language localization (the 17 languages Roblox auto-translates; player's Roblox language by default, a Language override in Options; translations from the Roblox cloud table, imported into validated generated tables; AutoLocalize off on every GUI; fonts per script; pseudo-locale `en-XA`): plan, as built, tasks L0-L15, decisions LD1-LD14 |
+| `docs/PORTRAIT.md` | Portrait play (phones turn either way, `Sensor`; upright the view keeps the short side at `VIEW_TILES_HIGH` with the player lifted above the thumbs, touch controls in a bottom band, pause map on top, the draft in a column, the HUD scale capped to the width): plan, tasks PT1-PT9, decisions PD1-PD7 |
 
 Decision log (deviations from `PLAN.md`):
 - **Art (docs/ART.md).** The theme contract gained a `"sprites"` kind (large pre-rendered cells, 1/4/8/16 screen-space
@@ -493,6 +494,16 @@ Decision log (deviations from `PLAN.md`):
   report). A rule's "current" now counts steps latched earlier in the same frame. `{map}` template, three strings
   `tutorial.prompt.map.*`. Funnel renumbered (`relic` .. `finish` 12..17, `TUTORIAL_FUNNEL_REVISION` 2 = `t1r2`), event
   cap 84 / 252. Bot option `map`. Studio check and playtest pending.
+- **Portrait play (docs/PORTRAIT.md).** Presentation and client input only (no sim, dungeon, lockstep, hash, replay,
+  fixture or score change). Touch devices set `ScreenOrientation.Sensor` (`PORTRAIT.screenOrientation`; MOBILE.md MBD4's
+  LandscapeSensor superseded). `shared/view/portrait.ts`: `cameraFraming` (the short side shows `VIEW_TILES_HIGH`,
+  `PORTRAIT.maxAspect` 2.4; the camera moves back at 7 degrees, `maxDistanceStuds` caps it; upright on touch the player
+  is lifted `controlBandShare / 2` of the view), read from the viewport every frame by `CameraController`;
+  `backdropReachTiles` (`GAME_WORLD.backdropMarginTiles` 24 -> 28). Landscape framing is exactly as before. Upright:
+  `touchLayout` keeps the controls in a bottom band (action share 0.62, move zone the lower half), `computeHudScale`
+  caps touch at `HUD_VIEW.touchUprightWidth` (452) over the width, the pause map is a square on top with the panel
+  under it (`pausePanelArea`, no Build list), the draft is a column (`draftSlotOffset`, `DRAFT_UI.rayY`). No new strings.
+  Studio / phone check (PT9) pending.
 
 ## Commands
 

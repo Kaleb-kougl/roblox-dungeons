@@ -13,6 +13,7 @@ import {
 	draftSkullPlacement,
 	draftSliceCenter,
 	draftBodyBox,
+	draftSlotOffset,
 	draftSlotOffsetX,
 	draftSurfaceImageId,
 	draftSurfaceOf,
@@ -271,5 +272,18 @@ describe("draft overlay look (exit)", () => {
 		stepTo(reveal, 1);
 		expect(reveal.frame.done).toBe(true);
 		expect(draftOverlayLook(reveal.frame).visible).toBe(false);
+	});
+});
+
+describe("draft slots upright (docs/PORTRAIT.md PT7)", () => {
+	it("a row keeps draftSlotOffsetX; a column stacks the cards a card height and a gap apart, centred", () => {
+		for (const count of [1, 2, 3]) {
+			for (let i = 0; i < count; i++) {
+				expect(draftSlotOffset(i, count, false)).toEqual({ x: draftSlotOffsetX(i, count), y: 0 });
+				const c = draftSlotOffset(i, count, true);
+				expect(c.x).toBe(0);
+				expect(c.y).toBe((i - (count - 1) / 2) * (PROGRESSION_VIEW.cardHeight + HUD_VIEW.gap));
+			}
+		}
 	});
 });

@@ -16,7 +16,7 @@ import { STUDS_PER_TILE, TOUCH } from "shared/config";
 import type { DisplaySettings } from "shared/settings";
 import type { ImageRef } from "shared/theme";
 import { stickVector, touchMode, type GameSnapshot, type TouchControls, type TouchMode } from "shared/play";
-import { RENDER_ORDER, floorStudsY, studsX, studsZ } from "shared/view";
+import { PORTRAIT, RENDER_ORDER, floorStudsY, studsX, studsZ } from "shared/view";
 import {
 	HUD_SKIN,
 	TOUCH_LAYOUT,
@@ -399,7 +399,8 @@ export class TouchControlsController implements OnStart {
 	private build(): Ui {
 		GuiService.TouchControlsEnabled = false;
 		const playerGui = Players.LocalPlayer.WaitForChild("PlayerGui") as PlayerGui;
-		playerGui.ScreenOrientation = Enum.ScreenOrientation.LandscapeSensor;
+		// Follow the device either way, mid-run too (docs/PORTRAIT.md PD1; was LandscapeSensor).
+		playerGui.ScreenOrientation = Enum.ScreenOrientation[PORTRAIT.screenOrientation];
 
 		const gui = createKvScreenGui(GUI_NAME);
 		gui.ResetOnSpawn = false;

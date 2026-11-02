@@ -434,7 +434,7 @@ Touch is a third input device. `mapDevicesToInput` merges `DeviceSnapshot.touch`
 touch control becomes an ordinary `InputFrame` (no sim change). The pure core is `shared/play/touch/` (`TouchControls`,
 `pickAutoTarget` (MBD6), the draft helpers, `touchMode`); the placement is `shared/view/hud/touchLayout.ts`
 (`TOUCH_LAYOUT`), and the tunables are `TOUCH` in `shared/config/touch.ts`. `TouchControlsController` draws the sticks
-and buttons (one ScreenGui, `KV_TouchControls`), turns off the stock touch GUI and locks `LandscapeSensor`.
+and buttons (one ScreenGui, `KV_TouchControls`), turns off the stock touch GUI and sets `Sensor` (either way up: docs/PORTRAIT.md).
 
 `touchMode` gives `play` (move and action controls), `spectate` (only Next / Prev) or `hidden` (under the pause overlay,
 any other menu, the full map, the boon draft and a frozen tutorial). The last device used wins: a keyboard or pad hides

@@ -4,6 +4,7 @@ import { Workspace } from "@rbxts/services";
 import { clientStore, selectTutorialEnded } from "client/store";
 import { DRAFT_SLOT_Z_RAISED, DRAFT_SLOT_Z_REST, DRAFT_UI, resetDraftUi } from "client/ui";
 import { draftConfirmHeld, draftNeverRevealed } from "shared/play";
+import { isPortrait } from "shared/view";
 import { DRAFT_MIN_OPEN_TICKS, DRAFT_OFFER_COUNT } from "shared/sim";
 import type { JuiceSettings } from "shared/settings";
 import {
@@ -18,7 +19,7 @@ import {
 	type DraftBeatId,
 	type DraftTone,
 	draftOverlayLook,
-	draftSlotOffsetX,
+	draftSlotOffset,
 	newDraftCardLook,
 	parseDraftRevealDebug,
 } from "shared/view/hud";
@@ -288,6 +289,9 @@ export class DraftRevealController implements OnStart, DraftRevealDriver {
 		const ready = me !== undefined && me.draftTicks + 1 >= DRAFT_MIN_OPEN_TICKS;
 		U.hintReady.write(fr.leaving || (fr.settled && ready));
 		const selected = !fr.settled ? NONE : fr.leaving ? this.chosen : me !== undefined ? me.draftSelected : NONE;
+		// Upright the cards stack in a column (docs/PORTRAIT.md PT7; DraftOverlay reads the same viewport rule).
+		const vp = Workspace.CurrentCamera?.ViewportSize;
+		const column = vp !== undefined && isPortrait(vp.X, vp.Y);
 		for (let i = 0; i < DRAFT_OFFER_COUNT; i++) {
 			const ui = U.cards[i];
 			const look = draftCardLook(fr.cards[i], fr.overlayAlpha, i === selected, this.look);
@@ -316,7 +320,9 @@ export class DraftRevealController implements OnStart, DraftRevealDriver {
 			ui.haloVisible.write(look.haloAlpha > 0);
 			ui.haloT.write(1 - look.haloAlpha);
 			ui.rayAngle.write(look.rayAngle);
-			ui.rayX.write(draftSlotOffsetX(i, fr.count));
+			const slot = draftSlotOffset(i, fr.count, column);
+			ui.rayX.write(slot.x);
+			ui.rayY.write(slot.y);
 			ui.selected.write(look.selected);
 			ui.z.write(look.raised ? DRAFT_SLOT_Z_RAISED : DRAFT_SLOT_Z_REST);
 		}

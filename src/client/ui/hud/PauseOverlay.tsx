@@ -8,6 +8,7 @@ import {
 	selectCoopOverlay,
 	selectInputDevice,
 	selectLeaveConfirm,
+	selectMapView,
 	selectRobloxMenuOpen,
 	selectRunBaseline,
 	selectRunInfo,
@@ -17,6 +18,7 @@ import {
 import { str } from "client/ui/theme";
 import { swapHint, keyDevice } from "shared/play";
 import { TUTORIAL_STRINGS } from "shared/tutorial";
+import { PORTRAIT } from "shared/view";
 import { SFX } from "shared/view/audio";
 import {
 	HUD_STRINGS,
@@ -44,6 +46,7 @@ import { PauseMap } from "./FullMapOverlay";
 import { MenuFit } from "./MenuFit";
 import { Divider, MenuButton, Panel, Row, Text } from "./primitives";
 import { ScreenDim } from "./ScreenDim";
+import { usePortrait } from "./usePortrait";
 import { RunInfoLine } from "./RunInfoLine";
 
 const CONFIRM_BUTTON = new Vector2(HUD_VIEW.buttonSize.x / 2, HUD_VIEW.buttonSize.y);
@@ -128,6 +131,8 @@ export function PauseOverlay() {
 	const actions = useHudActions();
 	const firstRef = useRef<TextButton>();
 	const coop = info.coop;
+	const portrait = usePortrait();
+	const mapAvailable = useSelector(selectMapView).available;
 	const view = {
 		active: true,
 		coop,
@@ -219,78 +224,95 @@ export function PauseOverlay() {
 		});
 		body = <>{buttons}</>;
 	}
+	const split = portrait && !coop && mapAvailable;
+	const menuFit = (
+		<MenuFit
+			ornament={screenOrnament("pause")}
+			render={(layout) => (
+				<Panel
+					width={HUD_VIEW.panelWidth}
+					align={Enum.HorizontalAlignment.Center}
+					padding={HUD_VIEW.pad * 2}
+					skin={screenSkin("pause")}
+					ornament={layout.ornament}
+				>
+					<Text
+						fill={true}
+						order={1}
+						size={HUD_VIEW.bigText}
+						color="uiAccent"
+						align={Enum.TextXAlignment.Center}
+						text={str(coop ? MENU_STRINGS.coopTitle : HUD_STRINGS.paused)}
+					/>
+					{body}
+					{screenDividers("pause") ? (
+						<Divider key="Divider" order={17} skin={screenSkin("pause")} />
+					) : undefined}
+					{best !== "" ? (
+						<Text
+							key="Best"
+							fill={true}
+							order={18}
+							size={HUD_VIEW.smallText}
+							color="uiTextDim"
+							align={Enum.TextXAlignment.Center}
+							text={best}
+						/>
+					) : undefined}
+					{s.weapons.size() > 0 && !touch ? (
+						<Text
+							fill={true}
+							order={19}
+							size={HUD_VIEW.smallText}
+							color="uiTextDim"
+							align={Enum.TextXAlignment.Center}
+							text={str(HUD_STRINGS.weaponSwap, { key: swapHint(bindings, str)[keyDevice(device)] })}
+						/>
+					) : undefined}
+					{touch && s.floor > 0 ? (
+						<Text
+							fill={true}
+							order={19}
+							size={HUD_VIEW.smallText}
+							color="uiText"
+							align={Enum.TextXAlignment.Center}
+							text={str(HUD_STRINGS.floor, { floor: s.floor, depth: s.depth })}
+						/>
+					) : undefined}
+					<RunInfoLine order={20} />
+					{touch ? undefined : (
+						<Text
+							fill={true}
+							order={21}
+							size={HUD_VIEW.smallText}
+							color="uiTextDim"
+							align={Enum.TextXAlignment.Center}
+							text={str(hintKey, { key: pauseHint(str)[keyDevice(device)] })}
+						/>
+					)}
+				</Panel>
+			)}
+		/>
+	);
 	return (
 		<frame key="PauseOverlay" Size={UDim2.fromScale(1, 1)} BackgroundTransparency={1} BorderSizePixel={0}>
 			{coop ? undefined : <ScreenDim key="Dim" name="PauseDim" transparency={HUD_VIEW.overlayTransparency} />}
-			{coop ? undefined : <PauseMap key="Map" />}
-			<PauseBuild key="Build" />
-			<MenuFit
-				ornament={screenOrnament("pause")}
-				render={(layout) => (
-					<Panel
-						width={HUD_VIEW.panelWidth}
-						align={Enum.HorizontalAlignment.Center}
-						padding={HUD_VIEW.pad * 2}
-						skin={screenSkin("pause")}
-						ornament={layout.ornament}
-					>
-						<Text
-							fill={true}
-							order={1}
-							size={HUD_VIEW.bigText}
-							color="uiAccent"
-							align={Enum.TextXAlignment.Center}
-							text={str(coop ? MENU_STRINGS.coopTitle : HUD_STRINGS.paused)}
-						/>
-						{body}
-						{screenDividers("pause") ? (
-							<Divider key="Divider" order={17} skin={screenSkin("pause")} />
-						) : undefined}
-						{best !== "" ? (
-							<Text
-								key="Best"
-								fill={true}
-								order={18}
-								size={HUD_VIEW.smallText}
-								color="uiTextDim"
-								align={Enum.TextXAlignment.Center}
-								text={best}
-							/>
-						) : undefined}
-						{s.weapons.size() > 0 && !touch ? (
-							<Text
-								fill={true}
-								order={19}
-								size={HUD_VIEW.smallText}
-								color="uiTextDim"
-								align={Enum.TextXAlignment.Center}
-								text={str(HUD_STRINGS.weaponSwap, { key: swapHint(bindings, str)[keyDevice(device)] })}
-							/>
-						) : undefined}
-						{touch && s.floor > 0 ? (
-							<Text
-								fill={true}
-								order={19}
-								size={HUD_VIEW.smallText}
-								color="uiText"
-								align={Enum.TextXAlignment.Center}
-								text={str(HUD_STRINGS.floor, { floor: s.floor, depth: s.depth })}
-							/>
-						) : undefined}
-						<RunInfoLine order={20} />
-						{touch ? undefined : (
-							<Text
-								fill={true}
-								order={21}
-								size={HUD_VIEW.smallText}
-								color="uiTextDim"
-								align={Enum.TextXAlignment.Center}
-								text={str(hintKey, { key: pauseHint(str)[keyDevice(device)] })}
-							/>
-						)}
-					</Panel>
-				)}
-			/>
+			{coop ? undefined : <PauseMap key="Map" portrait={portrait} />}
+			{portrait ? undefined : <PauseBuild key="Build" />}
+			{split ? (
+				// Upright with the map (docs/PORTRAIT.md PT6): the panel fits into the frame under it (MenuFit measures its
+				// parent; shared/view/menu pausePanelArea is the formula).
+				<frame
+					key="PanelArea"
+					Position={new UDim2(0, 0, PORTRAIT.pauseMapShare, HUD_VIEW.gap)}
+					Size={new UDim2(1, 0, 1 - PORTRAIT.pauseMapShare, -HUD_VIEW.gap)}
+					BackgroundTransparency={1}
+				>
+					{menuFit}
+				</frame>
+			) : (
+				menuFit
+			)}
 		</frame>
 	);
 }

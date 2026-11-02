@@ -89,6 +89,7 @@ Recommended defaults (open):
 - **MBD3. No sim change, firm.** Every touch behaviour, auto-target and draft taps included, produces ordinary
   `InputFrame`s on the client. Auto-target reads sim state read-only and never runs inside `step()`.
 - **MBD4. Landscape only, phones and tablets.** `ScreenOrientation = LandscapeSensor`. Portrait is out of scope.
+  **Superseded 2026-11-02 by docs/PORTRAIT.md PD1:** `Sensor`, upright or landscape, mid-run too.
 - **MBD5. Camera unchanged.** The same 16.875 tiles high on every device: everyone sees the same room. No touch zoom.
 - **MBD6. Auto-target rule.** Living hostile actors (bosses, turrets and the tutorial dummy included; corpses,
   teammates and breakables not) within `TOUCH.autoTarget.rangeTiles` (start at 9) and in line of sight on the grid
@@ -172,7 +173,8 @@ Implementer steps (MB1-MB13) are spelled out in **docs/MOBILE_IMPL.md**; [owner]
 
 - **Thumbs hide the bottom of the screen.** Bullets coming from below are partly covered. Mitigations: opacity, the
   dead space between the sticks, and checking in MB12 whether the player should sit slightly above centre on touch (a
-  view-only offset; it would change what a touch player sees, so it needs an owner call).
+  view-only offset; it would change what a touch player sees, so it needs an owner call). Upright the player is lifted
+  above the controls' band (docs/PORTRAIT.md PD5, `PORTRAIT.controlBandShare`; 0 turns it off); landscape is unchanged.
 - **Small tap targets in menus.** At the touch HUD scale (0.75) the menu rows are 22-27 pt tall, under Apple's 44 pt
   guideline. MB14 decides whether menus need their own larger scale on phones.
 - **Auto-target as an edge.** Same boards (MBD2). The hysteresis and LOS rules keep it close to what a careful player

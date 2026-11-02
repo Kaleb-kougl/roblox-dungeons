@@ -50,8 +50,12 @@ export interface DraftCardUi {
 	readonly haloVisible: ComboUiValue<boolean>;
 	readonly haloT: ComboUiValue<number>;
 	readonly rayAngle: ComboUiValue<number>;
-	/** The slot's centre, reference px right of the card row's centre (the ray layer under the row draws there). */
+	/**
+	 * The slot's centre, reference px right of (and, upright, below: docs/PORTRAIT.md PT7) the card row's centre (the
+	 * ray layer under the row draws there).
+	 */
 	readonly rayX: ComboUiValue<number>;
+	readonly rayY: ComboUiValue<number>;
 	readonly selected: ComboUiValue<boolean>;
 	/** The slot's ZIndex in the row (a card drawn larger than its slot draws over the others). */
 	readonly z: ComboUiValue<number>;
@@ -99,6 +103,7 @@ function newCardUi(): DraftCardUi {
 		haloT: new ComboUiValue(HIDDEN),
 		rayAngle: new ComboUiValue(0),
 		rayX: new ComboUiValue(0),
+		rayY: new ComboUiValue(0),
 		selected: new ComboUiValue(false),
 		z: new ComboUiValue(DRAFT_SLOT_Z_REST),
 	};
