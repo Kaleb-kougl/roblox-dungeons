@@ -6,16 +6,19 @@ import {
 	EMBER_BURST,
 	GOO_BULLET_RADIUS,
 	SLIME,
+	STORMCALLER,
+	STRIKE_BULLET_RADIUS,
 	partySize,
 	type BulletSimulation,
 	type Vec3 as SimVec3,
 } from "shared/sim";
-import { GOO_BULLET_ID, type PlaceholderVisual, type ThemePack } from "shared/theme";
+import { GOO_BULLET_ID, STRIKE_BULLET_ID, type PlaceholderVisual, type ThemePack } from "shared/theme";
 import {
 	BUILD_BULLET_VIEW,
 	BULLET_VIEW,
 	GOO_VIEW,
 	PLAYER_BULLET_LOOK_IDS,
+	STRIKE_VIEW,
 	PlayerBulletLook,
 	emberDecalLook,
 	lookHasTrail,
@@ -26,11 +29,13 @@ import {
 	floorStudsY,
 	gooDecalLook,
 	isGooPayload,
+	isStrikePayload,
 	lerp,
 	playerBulletTransparency,
 	studsX,
 	studsY,
 	studsZ,
+	strikeDecalLook,
 	type GooLook,
 } from "shared/view";
 import { buildTrailsOn, isEmberPayload } from "shared/view/fx";
@@ -282,6 +287,19 @@ const GOO_DECAL: DecalSpec = {
 	quantum: GOO_VIEW.quantum,
 };
 
+/**
+ * The Stormcaller's strikes (docs/NEW_ENEMIES.md NE8): a short flash on the floor, over the goo, under the aura / affix
+ * rings and every marking (it lands where the strike row's circle was).
+ */
+const STRIKE_DECAL: DecalSpec = {
+	name: "Strike",
+	accepts: isStrikePayload,
+	look: strikeDecalLook,
+	liftStuds: STRIKE_VIEW.liftStuds,
+	thicknessStuds: STRIKE_VIEW.thicknessStuds,
+	quantum: STRIKE_VIEW.quantum,
+};
+
 /** The embers' decal spec (docs/BUILDS.md BU8): under the goo, every marking and every moving bullet. */
 const EMBER_DECAL: DecalSpec = {
 	name: "Ember",
@@ -437,6 +455,9 @@ function trailLook(look: BulletLook): TrailLook {
  * Goo puddles (docs/ENEMY_VARIANTS.md EVD5): while GOO_VIEW.decal is on, the enemy pool skips BulletKind.GOO and a
  * second pool on the same simulation (DecalPool) draws them as flat floor decals under everything that moves; off (the
  * fallback), goo is drawn like every enemy bullet.
+ * Strikes (docs/NEW_ENEMIES.md NE8): while STRIKE_VIEW.decal is on, the enemy pool skips BulletKind.STRIKE too and a
+ * third pool on the enemy simulation (DecalPool, the goo's code path) draws each as a short flat flash
+ * (`bullet.enemy.strike`'s colour, Neon) of the strike's hit radius; off, strikes are drawn like every enemy bullet.
  * Build effects (docs/BUILDS.md BU8): player bullets take their look by payload kind (shared/view playerBulletLookOf:
  * `bullet.player.burst` / `.shard` / `.bolt` in the build.* roles), burst and shard bolts trail a faint part while
  * buildFx is Full and reduced motion is off (buildTrailsOn, read every frame); embers go to a decal pool on the player
@@ -447,6 +468,7 @@ export class BulletRenderController implements OnStart {
 	private enemy: BulletPool | undefined;
 	private player: BulletPool | undefined;
 	private goo: DecalPool | undefined;
+	private strike: DecalPool | undefined;
 	private ember: DecalPool | undefined;
 
 	constructor(private readonly sim: SimController, private readonly theme: ThemeController) {}
@@ -460,13 +482,31 @@ export class BulletRenderController implements OnStart {
 		const enemyDiameter = 2 * BULLET_VIEW.enemyDrawRadius * S;
 		const playerLength = 2 * BULLET_VIEW.playerDrawHalfLength * S;
 		const decal = GOO_VIEW.decal;
+		const strikeDecal = STRIKE_VIEW.decal;
+		const skip =
+			decal || strikeDecal
+				? (payload: number) => (decal && isGooPayload(payload)) || (strikeDecal && isStrikePayload(payload))
+				: undefined;
 		const enemy = new BulletPool(
 			folder,
 			"EnemyBullet",
 			[bulletLook(pack, BULLET_VIEW.enemyVisualId, enemyDiameter, 0)],
 			false,
-			decal ? isGooPayload : undefined,
+			skip,
 		);
+		let strike: DecalPool | undefined;
+		if (strikeDecal) {
+			const visual = pack.placeholder(STRIKE_BULLET_ID);
+			strike = new DecalPool(
+				subFolder(folder, STRIKE_VIEW.folderName),
+				STRIKE_DECAL,
+				pack.visualColor(visual.color),
+				Enum.Material[visual.material],
+				2 * STRIKE_BULLET_RADIUS * S,
+				STORMCALLER.data.strike.life,
+			);
+		}
+		this.strike = strike;
 		let goo: DecalPool | undefined;
 		if (decal) {
 			const visual = pack.placeholder(GOO_BULLET_ID);
@@ -518,6 +558,7 @@ export class BulletRenderController implements OnStart {
 				const alpha = this.sim.getAlpha();
 				enemy.frame(state.combat.enemyBullets, alpha);
 				goo?.frame(state.combat.enemyBullets);
+				strike?.frame(state.combat.enemyBullets);
 				ember?.frame(state.combat.playerBullets);
 				const n = partySize(state);
 				const me = this.sim.getViewPlayerIndex(); // spectating: the watched teammate's bullets stay opaque
@@ -541,6 +582,11 @@ export class BulletRenderController implements OnStart {
 	/** Pooled goo decal parts (0 with the decal look off). */
 	getGooPoolSize(): number {
 		return this.goo?.poolSize() ?? 0;
+	}
+
+	/** Pooled strike flash parts (0 with the strike decal off; docs/NEW_ENEMIES.md NE8). */
+	getStrikePoolSize(): number {
+		return this.strike?.poolSize() ?? 0;
 	}
 
 	/** Pooled ember decal parts and burst / shard trail parts (docs/BUILDS.md BU8). */

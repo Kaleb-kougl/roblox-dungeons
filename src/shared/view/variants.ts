@@ -22,6 +22,7 @@ import {
 	AiState,
 	BulletKind,
 	BulletPayload,
+	CHARGER,
 	IMP_ATTACK_BLINK,
 	IMP_ATTACK_FAN,
 	NO_KIND,
@@ -34,6 +35,7 @@ import { ACTOR_VIEW } from "./config";
 import type { ActorFxHintsView, SegmentSink } from "./markings";
 import type { ActorLook } from "./sprites";
 import { AFFIX_VIEW, GOO_VIEW } from "./variantsConfig";
+import { STRIKE_VIEW } from "./newEnemiesConfig";
 
 const TAU = 2 * math.pi;
 
@@ -247,17 +249,29 @@ export class ShieldFlashWatch {
 	}
 }
 
-/** An actor's tint state with the affix looks: "shield" = a shield hit's flash in `enemyShield`. */
-export type VariantLook = ActorLook | "shield";
+/**
+ * An actor's tint state with the affix looks: "shield" = a shield hit's flash in `enemyShield`; "aura" = inside a
+ * Warbanner's aura (docs/NEW_ENEMIES.md NE8: placeholders lerp their body toward `enemyAura`, sprites tint the rim).
+ */
+export type VariantLook = ActorLook | "shield" | "aura";
 
 /**
  * An actor's look with its affix: a corpse whose Vengeful ring is pending pulses in the telegraph look while
  * `vengefulPulse` (vengefulArmed and vengefulPulseOn); a living actor whose shield was just hit shows "shield" unless
- * the hit flash itself shows ("flash" wins: hp was lost too). Everyone else keeps `base` (shared/view actorLook).
+ * the hit flash itself shows ("flash" wins: hp was lost too); a living actor inside a Warbanner's aura (`aura`, shared/view
+ * AuraView) shows "aura" while nothing else would show (flash, telegraph and shield win). Everyone else keeps `base`
+ * (shared/view actorLook).
  */
-export function variantLook(base: ActorLook, alive: number, vengefulPulse: boolean, shieldFlash: boolean): VariantLook {
+export function variantLook(
+	base: ActorLook,
+	alive: number,
+	vengefulPulse: boolean,
+	shieldFlash: boolean,
+	aura = false,
+): VariantLook {
 	if (alive === 0) return vengefulPulse ? "telegraph" : base;
 	if (shieldFlash && base !== "flash") return "shield";
+	if (aura && base === "normal") return "aura";
 	return base;
 }
 
@@ -301,9 +315,19 @@ export function isGooPayload(payload: number): boolean {
 	return BulletPayload.get(payload, "kind") === BulletKind.GOO;
 }
 
-/** Which enemy bullet pool draws a bullet with `payload`: goo goes to the decal pool while GOO_VIEW.decal is on. */
-export function enemyBulletPool(payload: number, decal: boolean = GOO_VIEW.decal): "goo" | "enemy" {
-	return decal && isGooPayload(payload) ? "goo" : "enemy";
+/**
+ * Which enemy bullet pool draws a bullet with `payload`: goo goes to the decal pool while GOO_VIEW.decal is on, a
+ * strike (docs/NEW_ENEMIES.md NE8, BulletKind.STRIKE) to the strike flash pool while STRIKE_VIEW.decal is on.
+ */
+export function enemyBulletPool(
+	payload: number,
+	decal: boolean = GOO_VIEW.decal,
+	strikeDecal: boolean = STRIKE_VIEW.decal,
+): "goo" | "strike" | "enemy" {
+	const kind = BulletPayload.get(payload, "kind");
+	if (decal && kind === BulletKind.GOO) return "goo";
+	if (strikeDecal && kind === BulletKind.STRIKE) return "strike";
+	return "enemy";
 }
 
 /** A puddle's look this frame: drawn scale (0..1) and transparency (0 opaque .. 1 gone). */
@@ -419,17 +443,33 @@ export class BlinkWatch {
  * during the summon (the panic wind-up gets the generic ring instead).
  */
 const RING_ATTACK_FILTERS: ReadonlyMap<string, number> = new Map([[SUMMONER.id, SUMMONER_ATTACK_SUMMON]]);
+/**
+ * Archetypes whose aim line is drawn at its full length past intact breakables (docs/NEW_ENEMIES.md NE8): the
+ * Charger's lane, since its charge breaks every piece it passes (charger.ts).
+ */
+const UNCLIPPED_AIM_IDS: ReadonlyArray<string> = [CHARGER.id];
 const patchedHints = new Map<string, ActorFxHintsView>();
 
-/** Archetype `id`'s fx hints as the markings draw them (RING_ATTACK_FILTERS applied; cached; the hint itself else). */
+/**
+ * Archetype `id`'s fx hints as the markings draw them (RING_ATTACK_FILTERS and UNCLIPPED_AIM_IDS applied; cached; the
+ * hint itself when neither applies).
+ */
 export function viewFxHints(id: string, fx: ActorFxHintsView | undefined): ActorFxHintsView | undefined {
 	if (fx === undefined) return undefined;
 	const attack = RING_ATTACK_FILTERS.get(id);
 	const ring = fx.ring;
-	if (attack === undefined || ring === undefined || ring.attack !== undefined) return fx;
+	const patchRing = attack !== undefined && ring !== undefined && ring.attack === undefined;
+	const aim = fx.aimLine;
+	const patchAim = aim !== undefined && aim.clip === undefined && UNCLIPPED_AIM_IDS.includes(id);
+	if (!patchRing && !patchAim) return fx;
 	let p = patchedHints.get(id);
 	if (p === undefined) {
-		p = { aimLine: fx.aimLine, shockwave: fx.shockwave, ring: { ...ring, attack } };
+		p = {
+			aimLine: patchAim ? { ...aim!, clip: false } : aim,
+			shockwave: fx.shockwave,
+			ring: patchRing ? { ...ring!, attack } : ring,
+			strikeRow: fx.strikeRow,
+		};
 		patchedHints.set(id, p);
 	}
 	return p;

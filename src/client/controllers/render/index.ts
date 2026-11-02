@@ -15,6 +15,7 @@ export * from "./ActorRenderController";
 export * from "./WeaponViewController";
 export * from "./TelegraphController";
 export * from "./AffixRingController";
+export * from "./NewEnemyMarksController";
 export * from "./RunMarkerController";
 export * from "./TutorialMarkerController";
 export * from "./TutorialArrowController";

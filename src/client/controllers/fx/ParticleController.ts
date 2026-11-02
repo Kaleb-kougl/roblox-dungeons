@@ -11,12 +11,16 @@ import {
 	BREAKABLE_LOOT_VIEW,
 	BREAKABLE_VIEW,
 	BlinkWatch,
+	DETONATION_VIEW,
+	DetonationWatch,
 	RENDER_ORDER,
 	degToRad,
 	floorStudsY,
 	studsX,
+	newEnemyKinds,
 	studsZ,
 	type BlinkWatchState,
+	type DetonationWatchState,
 } from "shared/view";
 import {
 	BUILD_FX_VIEW,
@@ -83,6 +87,8 @@ interface ParticlePart {
  * Boosts from breakables (docs/BREAKABLE_DROPS.md BL6; called by BoostDropRenderController): `lootFizzle` (a loaded
  * piece's boost lost on a full floor: BREAKABLE_LOOT_VIEW.fizzleBurst in its fizzleRole, appended after the builds').
  *
+ * Bomber detonations (docs/NEW_ENEMIES.md NE8; shared/view DetonationWatch, a per-frame diff): DETONATION_VIEW.burst
+ * chips in the Bomber's colour where it blew up (on top of its death particles); a fizzle gets the death particles only.
  * Budget: at most particleBudget(settings) live particles (128 / 320 / 512; one level lower under reducedMotion) plus
  * the ring dots, PARTICLE_QUAD_CAPACITY parts at most; the pool grows lazily and never shrinks (unused parts parked).
  * Time: real frame time (clamped to FX_VIEW.maxParticleDt) x the hitstop clock's time scale (0 frozen, the slow-mo
@@ -118,6 +124,9 @@ export class ParticleController implements OnStart, ParticleWriter {
 	private readonly blinks = new BlinkWatch(MAX_ACTORS);
 	private readonly blinkPuff: ChipBurst = BLINK_VIEW.puff;
 	private impKind = -1;
+	/** Bomber detonations (docs/NEW_ENEMIES.md NE8): a burst in the Bomber's colour where it blew up. */
+	private readonly detonations = new DetonationWatch(MAX_ACTORS);
+	private readonly blastBurst: ChipBurst = DETONATION_VIEW.burst;
 	private readonly moveParts = new Array<BasePart>();
 	private readonly moveCFrames = new Array<CFrame>();
 	private folder: Folder | undefined;
@@ -320,6 +329,7 @@ export class ParticleController implements OnStart, ParticleWriter {
 				? 0
 				: math.min(math.max(rawDt, 0), FX_VIEW.maxParticleDt) * this.sim.hitstop.timeScale();
 		this.blinkPuffs(ctx.run.state, settings);
+		this.detonationBursts(ctx.run.state, settings);
 		this.system.update(dt, settings);
 		this.used = 0;
 		this.moveParts.clear();
@@ -360,6 +370,25 @@ export class ParticleController implements OnStart, ParticleWriter {
 				color,
 				this.blinkPuff,
 				burstSeed(p.actorId, state.tick, salt + 1),
+				settings,
+			);
+		}
+	}
+
+	/** Bomber detonations this frame (shared/view DetonationWatch): one burst each, in the Bomber's colour. */
+	private detonationBursts(state: DetonationWatchState, settings: Readonly<JuiceSettings>): void {
+		const kind = newEnemyKinds().bomber;
+		if (kind < 0) return;
+		const n = this.detonations.update(state, kind);
+		const color = PALETTE_KIND_BASE + kind;
+		for (let i = 0; i < n; i++) {
+			const d = this.detonations.at(i);
+			this.system.chips(
+				d.x,
+				d.z,
+				color,
+				this.blastBurst,
+				burstSeed(d.actorId, state.tick, DETONATION_VIEW.seedSalt),
 				settings,
 			);
 		}
