@@ -124,6 +124,14 @@ export const ROOM_KIND_UNLOCK_FLOOR = table.freeze({
 export const SUMMONERS_PER_ROOM = 1;
 
 /**
+ * Oozes one room buys at most (docs/NEW_ENEMIES.md NE7, the Ooze cap of the docs/ENEMY_VARIANTS.md "Owner calls from
+ * EV13"): with ten seeded kinds a roster can hold the Ooze without the Bruiser deep into a run, and then a saturated
+ * party room's no-draw fallback bought 16 Oozes (48 actor slots with their splits). Unlocked from floor 4, so floor 1
+ * spends as before.
+ */
+export const OOZES_PER_ROOM = 8;
+
+/**
  * Room maxima of the docs/NEW_ENEMIES.md room enemies (NE7): Bombers 4, Chargers / Stormcallers / Reapers 2, one
  * Warbanner (NED9: one support per room, like the summoner).
  */
@@ -141,7 +149,7 @@ export const ENDLESS_ROOM_KINDS: ReadonlyArray<EndlessRoomKind> = [
 	{ kind: "sniper", weight: 2 },
 	{ kind: "bruiser", weight: 1 },
 	{ kind: "imp", weight: 2, fromFloor: ROOM_KIND_UNLOCK_FLOOR.imp },
-	{ kind: "slime", weight: 1, fromFloor: ROOM_KIND_UNLOCK_FLOOR.slime },
+	{ kind: "slime", weight: 1, fromFloor: ROOM_KIND_UNLOCK_FLOOR.slime, maxPerRoom: OOZES_PER_ROOM },
 	{ kind: "summoner", weight: 1, fromFloor: ROOM_KIND_UNLOCK_FLOOR.summoner, maxPerRoom: SUMMONERS_PER_ROOM },
 	// docs/NEW_ENEMIES.md NE7 (NED3 weights 2 / 1 / 1 / 1 / 1, NED9 the Warbanner never a room's first buy).
 	{ kind: "bomber", weight: 2, fromFloor: ROOM_KIND_UNLOCK_FLOOR.bomber, maxPerRoom: NEW_KIND_MAX_PER_ROOM.bomber },

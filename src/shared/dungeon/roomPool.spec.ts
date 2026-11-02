@@ -5,6 +5,7 @@ import { describe, expect, it } from "@rbxts/jest-globals";
 import {
 	ENDLESS_ROOM_ACTOR_CAP,
 	ENDLESS_ROOM_KINDS,
+	OOZES_PER_ROOM,
 	ROOM_KIND_UNLOCK_FLOOR,
 	SUMMONERS_PER_ROOM,
 	WIDE_BODY_KINDS,
@@ -60,7 +61,7 @@ describe("ENDLESS_ROOM_KINDS", () => {
 			["sniper", 2, 1, 0],
 			["bruiser", 1, 1, 0],
 			["imp", 2, 2, 0],
-			["slime", 1, 4, 0],
+			["slime", 1, 4, 8],
 			["summoner", 1, 6, 1],
 			// docs/NEW_ENEMIES.md NED3 / NED9: all from floor 2, appended in this order.
 			["bomber", 2, 2, 4],
@@ -74,6 +75,7 @@ describe("ENDLESS_ROOM_KINDS", () => {
 			2, 4, 6,
 		]);
 		expect(SUMMONERS_PER_ROOM).toBe(1);
+		expect(OOZES_PER_ROOM).toBe(8);
 	});
 
 	it("WIDE_BODY_KINDS are exactly the room kinds whose sim radius is over half a tile", () => {
