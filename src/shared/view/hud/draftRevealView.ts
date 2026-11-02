@@ -142,6 +142,21 @@ export function draftSlotOffsetX(index: number, count: number): number {
 	return (index - (count - 1) * HALF) * pitch;
 }
 
+/**
+ * Card slot `index`'s centre from the card row's centre, reference px, with `count` shown: along the row
+ * (draftSlotOffsetX), or down a column upright (`column`, docs/PORTRAIT.md PT7: the cards stack
+ * PROGRESSION_VIEW.cardHeight tall, HUD_VIEW.gap apart; +y is down the screen).
+ */
+export function draftSlotOffset(
+	index: number,
+	count: number,
+	column: boolean,
+): { readonly x: number; readonly y: number } {
+	if (!column) return { x: draftSlotOffsetX(index, count), y: 0 };
+	const pitch = PROGRESSION_VIEW.cardHeight + HUD_VIEW.gap;
+	return { x: 0, y: (index - (count - 1) * HALF) * pitch };
+}
+
 /** The face art of a beat: common -> the plain panel; rare and legendary (evolution, duo) -> the studded panel. */
 export function draftFaceImageId(beat: DraftBeatId): string {
 	return beat === DraftBeat.COMMON ? DRAFT_SKIN.common : DRAFT_SKIN.rare;

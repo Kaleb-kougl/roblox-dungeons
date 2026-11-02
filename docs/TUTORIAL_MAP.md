@@ -86,6 +86,8 @@ rings when `highlight === "minimap"`.
   kind `next`, TMD4), so the lesson never stalls the walk.
 - **Done** the first frame the full map is open (keyboard / gamepad), or the pause overlay's map has been shown (touch)
   (TMD2). The full map is see-through and play goes on; the prompt moves on to "Follow the marker to the next room."
+  Upright (docs/PORTRAIT.md PT6) the pause overlay's map is a square at the top with the pause menu under it (it was
+  left of the menu, ~20 pt wide on an upright phone); the rule and the text are unchanged.
 - **Not blocking:** entering the treasure room shows the relic prompt as today. If the map is still unopened, its
   prompt comes back on the walks treasure -> shrine -> stairwell room.
 - **Already found it:** a player who opened the full map earlier on floor 1 (a curious M in combat B) has the step

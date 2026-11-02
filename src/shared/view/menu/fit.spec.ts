@@ -1,5 +1,6 @@
 // Fitting the menu screens into the safe area on phones (shared/view/menu fit.ts, docs/UI_ART.md "Phones").
 import { describe, expect, it } from "@rbxts/jest-globals";
+import { PORTRAIT } from "shared/view";
 import {
 	HUD_VIEW,
 	LEADERBOARD_VIEW,
@@ -22,6 +23,7 @@ import {
 	menuCompact,
 	menuFitDevice,
 	menuNarrow,
+	pausePanelArea,
 	ornamentOverhang,
 	type MenuFitInput,
 	type MenuFitResult,
@@ -342,8 +344,8 @@ describe("menu fit on phones (docs/UI_ART.md Phones)", () => {
 });
 
 /**
- * Portrait phones (pt; the top bar plus the notch under CoreUISafeInsets, the home indicator at the bottom). Real phones
- * are held in landscape (LandscapeSensor); Studio's device emulator shows them upright.
+ * Portrait phones (pt; the top bar plus the notch under CoreUISafeInsets, the home indicator at the bottom): phones turn
+ * either way (Sensor, docs/PORTRAIT.md PD1).
  */
 const PORTRAITS: ReadonlyArray<Screen> = [
 	{ name: "390x844", x: 390, y: 844, insets: { top: TOP, left: 0, right: 0, bottom: 34 } },
@@ -607,5 +609,43 @@ describe("fitMenu rules", () => {
 		expect(lobbyRoomParts(true, true)).toEqual({ members: false, hostControls: false });
 		expect(lobbyRoomParts(true, false)).toEqual({ members: true, hostControls: true });
 		expect(lobbyRoomParts(false, true)).toEqual({ members: true, hostControls: true });
+	});
+});
+
+describe("the upright pause (docs/PORTRAIT.md PT6)", () => {
+	it("the pause panel fits under the map on every portrait phone, at no less than the narrow floor", () => {
+		for (const s of PORTRAITS) {
+			for (const percent of [70, 100, 125]) {
+				const u = computeHudScale(s.x, s.y, false, percent, true);
+				const e = narrowEstimates(u).get("pause")!;
+				const area = pausePanelArea(menuArea(s.x, s.y, s.insets, u), HUD_VIEW.gap);
+				const fit = fitMenu({
+					w: e.w,
+					h: e.h,
+					areaW: area.w,
+					areaH: area.h,
+					uiScale: u,
+					touch: true,
+					narrow: true,
+					ornament: e.ornament,
+					ornamentArtH: ORNAMENT_ART_H,
+					flex: undefined,
+				});
+				expect([s.name, percent, fit.overflow]).toEqual([s.name, percent, false]);
+				expect([s.name, percent, u * fit.factor >= MENU_FIT.narrowMinScale - 1e-9]).toEqual([
+					s.name,
+					percent,
+					true,
+				]);
+			}
+		}
+	});
+
+	it("leaves the panel the area under the map", () => {
+		const area = { w: 500, h: 1000 };
+		const under = pausePanelArea(area, 10);
+		expect(under.w).toBe(500);
+		expect(under.h).toBeCloseTo(1000 * (1 - PORTRAIT.pauseMapShare) - 10, 9);
+		expect(pausePanelArea({ w: 10, h: 0 }, 10).h).toBe(0);
 	});
 });

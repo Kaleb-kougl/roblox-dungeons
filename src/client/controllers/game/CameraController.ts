@@ -1,15 +1,15 @@
 import { Controller, OnStart } from "@flamework/core";
 import { RunService, Workspace } from "@rbxts/services";
-import { CAMERA_PITCH_DEG, CAMERA_YAW_DEG, PIXELS_PER_TILE, STUDS_PER_TILE, VIEW_TILES_HIGH } from "shared/config";
+import { CAMERA_PITCH_DEG, CAMERA_YAW_DEG, PIXELS_PER_TILE, STUDS_PER_TILE } from "shared/config";
 import { playerAt } from "shared/sim";
-import { clientStore, selectJuice } from "client/store";
+import { clientStore, selectInputDevice, selectJuice } from "client/store";
 import {
 	GAME_CAMERA,
 	RENDER_ORDER,
 	SPECTATE,
+	cameraFraming,
 	cameraPosition,
 	degToRad,
-	distanceForFov,
 	floorStudsY,
 	followAlpha,
 	isoBasis,
@@ -28,7 +28,9 @@ const RENDER_STEP = "KV_GameCamera";
 
 /**
  * The iso camera rig from spike B (docs/SPIKES.md), on the live run: a Scriptable camera at the web build's yaw /
- * pitch with a narrow FOV (GAME_CAMERA.fovDeg) placed far enough away to show VIEW_TILES_HIGH tiles top to bottom,
+ * pitch with a narrow FOV (GAME_CAMERA.fovDeg) placed far enough away to show VIEW_TILES_HIGH tiles on the screen's
+ * short side (docs/PORTRAIT.md: shared/view cameraFraming, read from the viewport every frame, so a phone turning
+ * reframes at once; upright on touch the player is lifted above the thumbs' band),
  * following the player's INTERPOLATED sim position with exponential damping and snapping to the render-texel grid
  * (web IsoCamera). Snaps straight to the player at every run start. Stands down while spike B runs (KV_SpikeCamera).
  * The freeze frame's whole-render-pixel nudge (boss phase / death, player hurt, heavy hits; off when screenShakeOn is
@@ -50,7 +52,6 @@ export class CameraController implements OnStart {
 
 	onStart(): void {
 		const basis = isoBasis(degToRad(CAMERA_YAW_DEG), degToRad(CAMERA_PITCH_DEG));
-		const distance = distanceForFov(GAME_CAMERA.fovDeg, VIEW_TILES_HIGH * STUDS_PER_TILE);
 		const grid = GAME_CAMERA.snapTexels * (STUDS_PER_TILE / PIXELS_PER_TILE);
 		const right = new Vector3(basis.right[0], basis.right[1], basis.right[2]);
 		const up = new Vector3(basis.up[0], basis.up[1], basis.up[2]);
@@ -90,7 +91,16 @@ export class CameraController implements OnStart {
 					focus = [focus[0] + (tx - focus[0]) * a, y, focus[2] + (tz - focus[2]) * a];
 				}
 				this.focus = focus;
-				let eye = cameraPosition(focus, basis, distance);
+				const vp = camera.ViewportSize;
+				const touch = selectInputDevice(clientStore.getState()) === "touch";
+				const framing = cameraFraming(vp.X, vp.Y, touch);
+				let eye = cameraPosition(focus, basis, framing.distance);
+				if (framing.liftTiles > 0) {
+					// Down the camera's up axis: the followed player shows liftTiles above the screen's centre (PD5).
+					const lift = framing.liftTiles * STUDS_PER_TILE;
+					const u = basis.up;
+					eye = [eye[0] - u[0] * lift, eye[1] - u[1] * lift, eye[2] - u[2] * lift];
+				}
 				if (grid > 0) eye = snapToGrid(eye, basis, grid);
 				const nudge = this.freeze.getNudge();
 				if (nudge.x !== 0 || nudge.y !== 0) {
@@ -103,7 +113,7 @@ export class CameraController implements OnStart {
 					eye = [eye[0] + ox, eye[1] + oy, eye[2] + oz];
 				}
 				camera.CameraType = Enum.CameraType.Scriptable;
-				camera.FieldOfView = GAME_CAMERA.fovDeg;
+				camera.FieldOfView = framing.fovDeg;
 				camera.CFrame = CFrame.fromMatrix(new Vector3(eye[0], eye[1], eye[2]), right, up);
 				camera.Focus = new CFrame(focus[0], focus[1], focus[2]);
 			},

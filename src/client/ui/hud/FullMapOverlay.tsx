@@ -14,6 +14,7 @@ import {
 	sliceBorder,
 	snappedSliceScale,
 } from "shared/view/hud";
+import { PORTRAIT } from "shared/view";
 import { MINIMAP_VIEW } from "shared/view/minimap";
 import { useHudActions } from "./actions";
 import { minimapHostRef, type MinimapHost } from "./minimapHosts";
@@ -32,7 +33,7 @@ const FRAME_Z = 0;
  * the backdrop is the hud panel skin instead (snapped, at the same transparency), grown outward by its border so the
  * frame rings the map and the map image (fitted to the host) never covers it; without the art, the flat backdrop.
  */
-function MapHost(props: { host: MinimapHost; position: UDim2; anchor: Vector2; size: UDim2 }) {
+function MapHost(props: { host: MinimapHost; position: UDim2; anchor: Vector2; size: UDim2; square?: boolean }) {
 	const uiScale = useHudScale();
 	const pack = themePack();
 	const skinId = pack !== undefined ? skinFor(skinHasOf(pack), "panel", "hud") : undefined;
@@ -50,6 +51,7 @@ function MapHost(props: { host: MinimapHost; position: UDim2; anchor: Vector2; s
 			BackgroundTransparency={skinId !== undefined ? HIDDEN : MINIMAP_VIEW.fullMap.transparency}
 			BorderSizePixel={0}
 		>
+			{props.square === true ? <uiaspectratioconstraint key="Square" AspectRatio={1} /> : undefined}
 			{skinId !== undefined ? (
 				<SlicedImage
 					key="Frame"
@@ -138,11 +140,25 @@ export function FullMapOverlay() {
 
 /**
  * The solo pause overlay's map (MD5): the same full map, left of the pause menu (its panel is HUD_VIEW.panelWidth wide
- * and centred), `fullMap.heightShare` of the safe area high. Nothing on a floor without a map.
+ * and centred), `fullMap.heightShare` of the safe area high. Upright (`portrait`, docs/PORTRAIT.md PT6) it is a square
+ * at the top instead, PORTRAIT.pauseMapShare of the safe area high inside the width (the panel fits under it,
+ * PauseOverlay). Nothing on a floor without a map.
  */
-export function PauseMap() {
+export function PauseMap(props: { portrait?: boolean }) {
 	const map = useSelector(selectMapView);
 	if (!map.available) return undefined;
+	if (props.portrait === true) {
+		const m = HUD_VIEW.margin;
+		return (
+			<MapHost
+				host="pause"
+				position={new UDim2(HALF, 0, 0, m)}
+				anchor={new Vector2(HALF, 0)}
+				size={new UDim2(1, -2 * m, PORTRAIT.pauseMapShare, -m)}
+				square={true}
+			/>
+		);
+	}
 	const side = HUD_VIEW.panelWidth / 2 + HUD_VIEW.gap;
 	return (
 		<MapHost

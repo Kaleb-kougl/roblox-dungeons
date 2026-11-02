@@ -10,6 +10,8 @@
  *   party.ts      co-op presentation rules (teammates' bullets faded in large parties)
  *   spectate.ts   co-op spectating (docs/SPECTATE.md): whose player the views follow after the local player died, the
  *                 switch command, SpectateTracker (tunables: SPECTATE in spectateConfig.ts)
+ *   portrait.ts   portrait play (docs/PORTRAIT.md): the view's framing on any aspect (the short side keeps
+ *                 VIEW_TILES_HIGH), the upright lift, the backdrop's reach (tunables: PORTRAIT)
  *   floorTexture.ts  world-anchored Texture offsets so merged floor slabs show one continuous pattern
  *   sprites.ts    sprite renderer logic: world facing -> screen facing, animation + frame from sim state, billboard
  *   variants.ts   enemy variants on screen (docs/ENEMY_VARIANTS.md EV9): affix reads / looks (ring, chip, shield row,
@@ -60,6 +62,7 @@ export * from "./markings";
 export * from "./party";
 export * from "./spectateConfig";
 export * from "./spectate";
+export * from "./portrait";
 export * from "./sprites";
 export * from "./variantsConfig";
 export * from "./buildBulletsConfig";

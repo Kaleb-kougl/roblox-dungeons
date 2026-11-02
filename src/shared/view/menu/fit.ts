@@ -23,6 +23,8 @@
  * that room); otherwise it is skipped.
  */
 import { UI_ART, artDensityBox } from "shared/view/hud";
+// By file: the shared/view barrel is this one's parent.
+import { PORTRAIT } from "../portrait";
 
 export const MENU_FIT = {
 	/** Clear space kept from each edge of the safe area, reference px (at the fitted scale). */
@@ -104,6 +106,15 @@ export function menuArea(viewportW: number, viewportH: number, insets: MenuInset
 }
 
 /**
+ * Upright pause (docs/PORTRAIT.md PT6): the map takes the top PORTRAIT.pauseMapShare of the area (square inside the
+ * width), and the pause panel fits into the rest, `gap` reference px under it. Reference px, like menuArea. The client
+ * draws it as scale + offset (PauseOverlay); this is its formula for the spec.
+ */
+export function pausePanelArea(area: MenuSize, gap: number): MenuSize {
+	return { w: area.w, h: math.max(0, area.h * (1 - PORTRAIT.pauseMapShare) - gap) };
+}
+
+/**
  * Whether the menus fit themselves (the `touch` flag of menuCompact / menuNarrow / fitMenu): the last-used device is
  * touch, or the device has a touchscreen (UserInputService.TouchEnabled). The second keeps a phone fitted after a key
  * press (a Bluetooth keyboard; Studio's device emulator, where moving with WASD makes the keyboard the last device);
@@ -122,8 +133,7 @@ export function menuCompact(areaH: number, touch: boolean): boolean {
  * Whether the screens take their narrow layouts: touch, and a portrait area (taller than wide). Every portrait phone
  * is far narrower than the full layouts (375-430 pt: 500-573 reference px at the touch scale, 625-717 at the desktop
  * floor 0.6), and a landscape phone at any HUD scale stays on its compact layouts (693 x 320 at 125 %: 635 x 279).
- * Real phones and tablets are held in landscape (TouchControlsController: LandscapeSensor), so this is mostly Studio's
- * device emulator in portrait.
+ * Phones and tablets turn either way (TouchControlsController: Sensor, docs/PORTRAIT.md PD1).
  */
 export function menuNarrow(areaW: number, areaH: number, touch: boolean): boolean {
 	return touch && areaW > 0 && areaW < areaH;

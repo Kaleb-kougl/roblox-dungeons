@@ -27,3 +27,4 @@ export * from "./primitives";
 export * from "./roomClearBindings";
 export * from "./ScreenDim";
 export * from "./useHudScale";
+export * from "./usePortrait";
