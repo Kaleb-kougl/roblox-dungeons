@@ -18,6 +18,8 @@
  *                     boost row's ring on the pickup)
  *   events            flaskUsed, rollStarted, emberUsed
  *   buttons           the FIRE press edge (the objective card's Continue), like the draft's confirm
+ *   mapSeen /         client facts (docs/TUTORIAL_MAP.md §2): the full map was seen this frame (flow.ts tutorialMapSeen)
+ *   mapAvailable      and the full map can be shown at all; the `map` step's rule. The map is not a sim button
  *
  * Steps (steps.ts TUTORIAL_STEPS) latch done the first frame their rule holds, in any order; a lesson-room step can
  * only complete once its room has been entered, and its skills count from that frame. The CURRENT step is the lowest
@@ -26,9 +28,14 @@
  * step's, except inside an entered, unfinished lesson room (that lesson's: lessons hold up out of order) and before a
  * lesson room is entered (the follow-the-marker prompt). The `boost` step also holds up out of order: while a drop
  * lies and it is open but not current, its prompt and `drop` marker show (outside an entered, unfinished lesson room;
- * never under the objective card). A step still unfinished when the run leaves its floor is marked skipped. The
- * tutorial is finished on the floor TUTORIAL.lastFloor -> lastFloor + 1 change (step `finish`); anything still open
- * then is skipped too.
+ * never under the objective card). A step still unfinished when the run leaves its floor is marked skipped, except
+ * the `map` step (docs/TUTORIAL_MAP.md TMD3): it is WAIVED (done, not skipped, TutorialView.waived) when floor 1 is left
+ * unopened, or while it is current with the map unavailable, so the funnel keeps counting the later steps. Its
+ * `next` marker borrows the marker of the next open lesson (TMD4); it has no lesson room, so its prompt shows while it
+ * is current outside an entered, unfinished lesson room. A step's rule sees it as current when every step before it
+ * is done, counting the ones latched earlier in the same frame (so the map waives on the frame combat F completes
+ * when it is unavailable, never showing its prompt). The tutorial is finished on the floor TUTORIAL.lastFloor ->
+ * lastFloor + 1 change (step `finish`); anything still open then is skipped too.
  *
  * Metrics (docs/TUTORIAL_FUNNEL.md §5): every update() ends by feeding its TutorialMetrics (metrics.ts: the lesson
  * clock and the stuck episode are defined there) the frame and the resolved view; the frame's reports land in
@@ -93,6 +100,18 @@ export interface TutorialFrame {
 	readonly buttons: number;
 	/** Real seconds since the previous frame (card and highlight timers). */
 	readonly dt: number;
+	/**
+	 * The full map was seen this frame (docs/TUTORIAL_MAP.md §3, flow.ts tutorialMapSeen: the full map open; on touch
+	 * also the solo pause overlay's map, latched by the client while paused and handed over on the next update). The
+	 * `map` step's rule.
+	 */
+	readonly mapSeen: boolean;
+	/**
+	 * The full map can be shown (the client's Reflex `game.map.available`: false until the floor's map image exists,
+	 * and where it cannot be created). While false, a current `map` step is waived instead of asking for the
+	 * impossible.
+	 */
+	readonly mapAvailable: boolean;
 }
 
 /** The world marker, resolved. */
@@ -124,9 +143,15 @@ export interface TutorialView {
 	highlight: TutorialHighlight | undefined;
 	/** Where the world marker points (the current step's target; the out-of-order `boost` step's drop), or undefined. */
 	marker: TutorialMarker | undefined;
-	/** Per step (TUTORIAL_STEPS order): done (practised or skipped), and skipped (left behind unfinished). */
+	/** Per step (TUTORIAL_STEPS order): done (practised, waived or skipped), and skipped (left behind unfinished). */
 	readonly done: boolean[];
 	readonly skipped: boolean[];
+	/**
+	 * Per step: waived (done by its rule without being practised: the `map` step left unopened on a floor change or
+	 * unavailable while current, docs/TUTORIAL_MAP.md TMD3). Never skipped, so the funnel counts past it; no lesson
+	 * report (metrics.ts). The `boost` fade and the `ember` none-left waivers do not set it.
+	 */
+	readonly waived: boolean[];
 	/** Steps done (progress dots). */
 	stepsDone: number;
 	/** Callout string keys that fired this frame, in order (toasts). */
@@ -251,12 +276,14 @@ export class TutorialDirector {
 		const n = TUTORIAL_STEPS.size();
 		const done: boolean[] = [];
 		const skipped: boolean[] = [];
+		const waived: boolean[] = [];
 		for (let i = 0; i < n; i++) {
 			const s = TUTORIAL_STEPS[i];
 			this.progress.push(newProgress());
 			if (s.lesson !== undefined) this.rooms.set(i, tutorialRoom(s.lesson));
 			done.push(false);
 			skipped.push(false);
+			waived.push(false);
 		}
 		this.view = {
 			active: true,
@@ -271,6 +298,7 @@ export class TutorialDirector {
 			marker: undefined,
 			done,
 			skipped,
+			waived,
 			stepsDone: 0,
 			callouts: [],
 			ghostHeart: false,
@@ -303,15 +331,19 @@ export class TutorialDirector {
 		if (!v.finished) {
 			const world = frame.config.endless?.worldForFloor(floor);
 			const n = TUTORIAL_STEPS.size();
+			// Current for its rule: every step before it done (those latched earlier in this loop included).
+			let lowestOpen = true;
 			for (let i = 0; i < n; i++) {
 				if (v.done[i]) continue;
 				const step = TUTORIAL_STEPS[i];
-				if (this.evaluate(i, step, frame, floor, world, fireEdge, i === v.stepIndex)) {
+				// The rule first, so a rule that waives on a floor change (`map`) wins over the generic skip.
+				if (this.evaluate(i, step, frame, floor, world, fireEdge, lowestOpen)) {
 					v.done[i] = true;
 				} else if (floor > step.floor) {
 					v.done[i] = true;
 					v.skipped[i] = true;
 				}
+				if (!v.done[i]) lowestOpen = false;
 			}
 			if (floor > TUTORIAL.lastFloor) this.finish();
 			this.fireCallouts(state, frame.dt);
@@ -463,6 +495,15 @@ export class TutorialDirector {
 				const lying = nearestDrop(state) !== undefined;
 				if (lying) pr.sawDrop = true;
 				return pr.sawDrop && !lying; // faded untaken: waived
+			}
+			case "map": {
+				if (frame.mapSeen) return true;
+				// Left behind unopened, or nothing to open while it is the lesson: waived (done, never skipped).
+				if (floor > step.floor || (current && !frame.mapAvailable)) {
+					this.view.waived[i] = true;
+					return true;
+				}
+				return false;
 			}
 		}
 	}
@@ -625,6 +666,16 @@ export class TutorialDirector {
 		const step = TUTORIAL_STEPS[i];
 		const kind = step.marker.kind;
 		if (kind === "none") return undefined;
+		if (kind === "next") {
+			// The next open step with a marker of its own, resolved as for that step (docs/TUTORIAL_MAP.md TMD4).
+			const v = this.view;
+			for (let j = i + 1; j < TUTORIAL_STEPS.size(); j++) {
+				const k = TUTORIAL_STEPS[j].marker.kind;
+				if (v.done[j] || k === "none" || k === "next") continue;
+				return this.markerFor(j, frame, floor, world);
+			}
+			return undefined;
+		}
 		if (kind === "drop") {
 			const drop = nearestDrop(frame.state);
 			return drop !== undefined ? { kind, x: drop.x, z: drop.z } : undefined;

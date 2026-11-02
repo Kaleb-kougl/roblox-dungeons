@@ -9,17 +9,21 @@
  * current step is the lowest unfinished one.
  *
  * Funnel numbering: the `boost` step (6, docs/BOOSTS.md B9, reversing P8) was inserted on 2026-10-26, so `roll` ..
- * `finish` moved from 6..15 to 7..16 (docs/TUTORIAL.md §6). Never insert or reorder steps lightly: every number after
- * the change point moves, and the dashboard funnel is not comparable across the change.
+ * `finish` moved from 6..15 to 7..16 (docs/TUTORIAL.md §6). The `map` step (11, docs/TUTORIAL_MAP.md TMD1) was inserted
+ * after `ember` on 2026-11-01, so `relic` .. `finish` moved from 11..16 to 12..17 (shared/onboarding
+ * TUTORIAL_FUNNEL_REVISION marks the change). Never insert or reorder steps lightly: every number after the change
+ * point moves, and the dashboard funnel is not comparable across the change.
  */
 import type { TutorialLessonId } from "shared/run";
 
 /**
  * The HUD element a step (or a callout) rings with the pulsing `uiAccent` highlight. `boosts` is the boost row
  * (docs/BOOSTS.md B9): rung when the tutorial's guaranteed boost is picked up (TUTORIAL_BOOST_HIGHLIGHT; not the
- * `boost` step's own highlight: the row is empty until the pickup).
+ * `boost` step's own highlight: the row is empty until the pickup). `minimap` is the corner minimap panel (the `map`
+ * step, docs/TUTORIAL_MAP.md TMD6): nothing is rung where there is no corner panel (touch, Minimap Off, the full map
+ * open).
  */
-export type TutorialHighlight = "flask" | "weapons" | "score" | "bossBar" | "hearts" | "boosts";
+export type TutorialHighlight = "flask" | "weapons" | "score" | "bossBar" | "hearts" | "boosts" | "minimap";
 
 /** Every highlight target (the client's ring wiring covers each). */
 export const TUTORIAL_HIGHLIGHTS: ReadonlyArray<TutorialHighlight> = [
@@ -29,6 +33,7 @@ export const TUTORIAL_HIGHLIGHTS: ReadonlyArray<TutorialHighlight> = [
 	"bossBar",
 	"hearts",
 	"boosts",
+	"minimap",
 ];
 
 /**
@@ -44,8 +49,12 @@ export const TUTORIAL_HIGHLIGHTS: ReadonlyArray<TutorialHighlight> = [
  *              floor (the `boost` step, docs/BOOSTS.md B9). While a drop lies and the `boost` step is still open but
  *              not current (an earlier step unfinished), the director shows it out of order too: its prompt and this
  *              marker, except inside an entered, unfinished lesson room and under the objective card
+ *   next       the marker of the lowest open step AFTER this one whose marker kind is neither `none` nor `next`,
+ *              resolved exactly as for that step (its kind, its door / pedestal / stairwell logic); nothing when there
+ *              is none. For a step with no room of its own that must not drop the guidance (the `map` step,
+ *              docs/TUTORIAL_MAP.md TMD4: relic's door then pedestal, then the shrine, then the stairwell)
  */
-export type TutorialMarkerKind = "door" | "pedestal" | "shrine" | "stairwell" | "boss" | "none" | "drop";
+export type TutorialMarkerKind = "door" | "pedestal" | "shrine" | "stairwell" | "boss" | "none" | "drop" | "next";
 
 export interface TutorialMarkerTarget {
 	readonly kind: TutorialMarkerKind;
@@ -88,9 +97,15 @@ export type TutorialSkill =
  *   boost      a boost runs on the player (the drop picked up, on its landing frame too); waived (done, not skipped)
  *              once a drop has been seen on the step's floor and none lies there any more while no boost ran (it
  *              faded untaken)
+ *   map        the full map seen (TutorialFrame.mapSeen: the full map open; on touch also the pause overlay's map,
+ *              flow.ts tutorialMapSeen; docs/TUTORIAL_MAP.md TMD2). Waived (done, not skipped, TutorialView.waived)
+ *              when the run is past the step's floor, or while it is current and the map is unavailable
+ *              (TutorialFrame.mapAvailable false): an ignorable prompt must not cut the later steps out of the funnel
+ *              (TMD3). Latches from the first frame of the floor, so an early open counts (TMD7)
  *
  * Any step still unfinished when the run leaves its floor (`floor` below) is marked skipped (done, never practised):
- * a player who takes the stairwell early is not stuck behind a lesson they can no longer reach.
+ * a player who takes the stairwell early is not stuck behind a lesson they can no longer reach. (Rule `map` is waived
+ * instead: see above.)
  */
 export type TutorialRule =
 	| { readonly kind: "objective" }
@@ -102,7 +117,8 @@ export type TutorialRule =
 	| { readonly kind: "floor"; readonly floor: number }
 	| { readonly kind: "boon" }
 	| { readonly kind: "boss" }
-	| { readonly kind: "boost" };
+	| { readonly kind: "boost" }
+	| { readonly kind: "map" };
 
 export interface TutorialStep {
 	/** Stable id and funnel step name (`[A-Za-z0-9_]`, <= MAX_TUTORIAL_STEP_ID_CHARS). */
@@ -210,6 +226,8 @@ const STEP_DEFS: ReadonlyArray<StepDef> = [
 		marker: { kind: "door", lesson: "combatF" },
 		rule: { kind: "clear", skills: ["ember"] },
 	},
+	// --- Floor 1, after combat F: the map (docs/TUTORIAL_MAP.md). No room: its marker borrows the next lesson's.
+	{ id: "map", floor: 1, prompt: "map", highlight: "minimap", marker: { kind: "next" }, rule: { kind: "map" } },
 	// --- Floor 1, treasure, shrine, stairwell (lessons 9, 10, 12; 11 is the score callout)
 	{
 		id: "relic",

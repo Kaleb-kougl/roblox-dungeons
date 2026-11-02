@@ -16,6 +16,7 @@ import {
 } from "shared/view/hud";
 import { minimapHostRef } from "./minimapHosts";
 import { Panel } from "./primitives";
+import { HighlightRing } from "./TutorialFx";
 import { useHudScale } from "./useHudScale";
 
 const HIDDEN = 1;
@@ -52,8 +53,12 @@ function hostSize(uiScale: number): ArtSlot {
  * shrinks by the frame's border (the same snapped SliceScale the Panel pads by), so the framed panel keeps
  * MINIMAP_PANEL's footprint; MinimapController sizes the map from the host's AbsoluteSize. Without the art (or with
  * minimapFramed off: skin "none"), exactly the flat panel.
+ *
+ * `highlight`: the tutorial's ring (the map lesson, docs/TUTORIAL_MAP.md TMD6), drawn as the Panel's overlay (outside
+ * the CanvasGroup, which would clip it) so it shows and hides with the corner panel: never on touch, with Minimap Off
+ * or while the full map is open.
  */
-export function MinimapPanel() {
+export function MinimapPanel(props: { readonly highlight?: boolean }) {
 	const map = useSelector(selectMapView);
 	const display = useSelector(selectDisplay);
 	const s = useSelector(selectSnapshot);
@@ -68,6 +73,7 @@ export function MinimapPanel() {
 			name="Minimap"
 			visible={cornerMapShown(map, display.minimap, s.outcome, touch)}
 			skin={HUD_SKIN.minimapFramed ? "hud" : "none"}
+			overlay={props.highlight === true ? <HighlightRing /> : undefined}
 		>
 			<frame
 				key="MapHost"

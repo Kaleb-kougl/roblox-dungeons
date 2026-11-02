@@ -1,5 +1,6 @@
 // The client's tutorial flow (docs/TUTORIAL.md §4): the first-run gate (KV_Tutorial, the server's onboarding status,
-// the timeout), the TutorialView -> HUD state copy the Reflex slice keeps, and the beat before the outro card.
+// the timeout), the TutorialView -> HUD state copy the Reflex slice keeps, the beat before the outro card, and the map
+// lesson's "seen" per device (docs/TUTORIAL_MAP.md §3).
 import { describe, expect, it } from "@rbxts/jest-globals";
 import { TUTORIAL } from "shared/config";
 import { LiveRun } from "shared/play";
@@ -16,7 +17,11 @@ import {
 	tutorialDeviceFor,
 	tutorialHudEqual,
 	tutorialHudFrom,
+	tutorialMapPromptShown,
+	tutorialMapSeen,
 	tutorialProgress,
+	tutorialStepIndex,
+	type TutorialDevice,
 	type TutorialView,
 } from ".";
 
@@ -115,6 +120,8 @@ function harness() {
 			events: run.frameEvents,
 			buttons,
 			dt: SIM_DT,
+			mapSeen: false,
+			mapAvailable: true,
 		});
 	};
 	return { step };
@@ -190,5 +197,39 @@ describe("TutorialOutroBeat", () => {
 	it("one long frame is enough", () => {
 		const beat = new TutorialOutroBeat();
 		expect(beat.update(TUTORIAL.outroDelaySeconds * 2)).toBe(true);
+	});
+});
+
+describe("tutorialMapSeen (docs/TUTORIAL_MAP.md §3, TMD2)", () => {
+	it("the full map open counts on every device; the pause overlay's map only on touch", () => {
+		// [device, fullMapOpen, pauseMapShown, seen]
+		const cases: Array<[TutorialDevice, boolean, boolean, boolean]> = [
+			["keyboard", false, false, false],
+			["keyboard", true, false, true],
+			["keyboard", false, true, false],
+			["keyboard", true, true, true],
+			["gamepad", false, false, false],
+			["gamepad", true, false, true],
+			["gamepad", false, true, false],
+			["gamepad", true, true, true],
+			["touch", false, false, false],
+			["touch", true, false, true],
+			["touch", false, true, true],
+			["touch", true, true, true],
+		];
+		for (const [device, open, paused, seen] of cases) {
+			expect([device, open, paused, tutorialMapSeen(device, open, paused)]).toEqual([device, open, paused, seen]);
+		}
+	});
+});
+
+describe("tutorialMapPromptShown (docs/TUTORIAL_MAP.md TMD2)", () => {
+	it("is true only while the map step's prompt is the one shown", () => {
+		const mapIndex = tutorialStepIndex("map");
+		expect(mapIndex >= 0).toBe(true);
+		expect(tutorialMapPromptShown({ promptStepIndex: mapIndex })).toBe(true);
+		expect(tutorialMapPromptShown({ promptStepIndex: mapIndex - 1 })).toBe(false);
+		expect(tutorialMapPromptShown({ promptStepIndex: mapIndex + 1 })).toBe(false);
+		expect(tutorialMapPromptShown({ promptStepIndex: -1 })).toBe(false);
 	});
 });

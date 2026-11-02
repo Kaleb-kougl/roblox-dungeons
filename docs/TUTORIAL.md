@@ -12,6 +12,8 @@ linear chain of the lesson rooms (a new opt-in Forge option, `chain`) and the fl
 real step, `boost` (funnel step 6 of 16; the funnel was renumbered, §6); see "Decisions" 8. 2026-10-26 (headless
 only): blocking is mandatory: the `guard` step (combat D) is never waived, because the sim holds the bruiser at 1 hp
 until a sword guard erases a bullet (`TutorialSimConfig.guardLock`), and its prompt says "block"; see "Decisions" 9.
+2026-11-01 (headless only; Studio check pending): a map lesson, step `map` (funnel step 11 of 17, after `ember`: open
+the full map), was added and the funnel renumbered again (§6); see "Decisions" 10 and docs/TUTORIAL_MAP.md.
 
 ## Goal
 
@@ -65,6 +67,7 @@ up even if the player wanders off. A world marker (beam or arrow) always points 
 | 6 | Combat D | 1 bruiser | "**Block** with the sword: **Right click** / LT as a shot reaches you. It deletes bullets, and shockwaves too." (the guard is a press, 0.3 s). While the bruiser waits at 1 hp: "It won't go down until you block one of its shots" | >= 1 guard cancel (score `guard` source) and room cleared. **Never waived** (Decisions 9): the sim holds the bruiser at 1 hp until the first block (`guardLock`), so the room cannot be cleared without one |
 | 7 | Combat E | 1 turretSniper behind cover | "Swap to the bow: **E** / Y. Hold Right click / LT to charge a heavy arrow, then release." (pulse on WeaponPanel) | Weapon swapped, a heavy arrow fired, room cleared |
 | 8 | Combat F | turretSprayer x2 (a bullet storm) | "Too many bullets? **Q** / RB burns an Ember and clears every enemy bullet. 2 per floor." | `emberUsed`, room cleared (the Ember waived if none is left) |
+| (M) | Combat F's exit, then the walks to the treasure, shrine and stairwell rooms | none | Step `map` (funnel step 11, docs/TUTORIAL_MAP.md): "The map in the corner fills in as you explore. Open the full map: **M** / D-pad left. Press it again to close." (touch: "Tap the pause button to see the whole floor."). Rings the corner minimap; the marker keeps leading to the treasure room; inside a lesson room that room's prompt wins | The full map open (touch: the pause overlay's map shown; an earlier open counts); waived (done, not skipped) when floor 1 is left unopened or the map is unavailable |
 | 9 | Treasure | pedestal (existing M2 logic) | "Relics are permanent for the run. Walk onto the pedestal." | Pedestal taken |
 | 10 | Shrine | curse shrine | "Curses make the run harder and your **score multiplier** bigger. **1** / A to accept, or walk away." | Accepted, or left the zone after seeing it |
 | 11 | (any time, first kill) | | Callout on ScorePanel: "Kills, grazes and guard cancels score. Chain them for combo." | Shown once |
@@ -240,11 +243,11 @@ registerRunWorld("tutorial", (_seed, o) => buildTutorialRunConfig(o.partySize));
 
 ### 3. Tutorial script: `shared/tutorial/` (pure, headless-tested) (built, T4)
 
-- `steps.ts` `TUTORIAL_STEPS` (16 steps, funnel numbers 1..16; `TUTORIAL_STEP_COUNT`, `tutorialStepName(n)`): per step
+- `steps.ts` `TUTORIAL_STEPS` (17 steps, funnel numbers 1..17; `TUTORIAL_STEP_COUNT`, `tutorialStepName(n)`): per step
   a stable `id` (= funnel step name), `number`, `floor`, the floor-1 `lesson` room, a `prompt` id (theme keys
   `tutorial.prompt.<prompt>.<keyboard|gamepad|touch>`, `tutorialPromptKey(step | promptId, device)`; touch holds the
-  keyboard text for now), an optional `highlight` (`flask | weapons | score | bossBar | hearts | boosts`), the `marker` target
-  and the completion `rule`:
+  keyboard text for now), an optional `highlight` (`flask | weapons | score | bossBar | hearts | boosts | minimap`),
+  the `marker` target and the completion `rule`:
 
   | # | id | Room / floor | Done when |
   |---|---|---|---|
@@ -258,12 +261,13 @@ registerRunWorld("tutorial", (_seed, o) => buildTutorialRunConfig(o.partySize));
   | 8 | `guard` | combatD (hold prompt `guardHold`) | room cleared and >= 1 guard cancel since entering (or the sim's guard lock released); never waived: the room cannot clear without a block (§2 "Guard lock") |
   | 9 | `bow` | combatE (highlight: weapons) | room cleared, the bow in hand and a heavy arrow released since entering |
   | 10 | `ember` | combatF | room cleared and an Ember burnt since entering (waived when cleared with none left) |
-  | 11 | `relic` | treasure | a relic taken |
-  | 12 | `curse` | shrine (highlight: score) | a curse accepted, or the shrine zone left after standing in it |
-  | 13 | `stairwell` | stairwell room (prompt shown on the way) | floor >= 2 |
-  | 14 | `draft` | floor 2 | a boon confirmed |
-  | 15 | `boss` | floor 2 (highlight: boss bar; marker: the boss) | Mother Bramble dead (Depth grew) |
-  | 16 | `finish` | floor 2 (marker: its stairwell) | floor >= 3: `finished` |
+  | 11 | `map` | floor 1, no room (highlight: minimap; marker `next`: the next open lesson's) | the full map seen (`TutorialFrame.mapSeen`; touch: the pause overlay's map too); waived (done, not skipped, `waived`) when floor 1 is left unopened, or while current with `mapAvailable` false (docs/TUTORIAL_MAP.md) |
+  | 12 | `relic` | treasure | a relic taken |
+  | 13 | `curse` | shrine (highlight: score) | a curse accepted, or the shrine zone left after standing in it |
+  | 14 | `stairwell` | stairwell room (prompt shown on the way) | floor >= 2 |
+  | 15 | `draft` | floor 2 | a boon confirmed |
+  | 16 | `boss` | floor 2 (highlight: boss bar; marker: the boss) | Mother Bramble dead (Depth grew) |
+  | 17 | `finish` | floor 2 (marker: its stairwell) | floor >= 3: `finished` |
 
   Callouts (`TUTORIAL_CALLOUTS`, one-shot toasts `tutorial.callout.<id>`, not funnel steps): `score` on the first kill
   (rings the score panel for `TUTORIAL.calloutHighlightSeconds`; this is lesson 11), `harmlessHit` on the first harmless
@@ -288,20 +292,23 @@ registerRunWorld("tutorial", (_seed, o) => buildTutorialRunConfig(o.partySize));
   objective card. While `boost` is current its marker shows wherever the player stands (a current step's marker is
   never hidden by an out-of-order room). The marker controller only reads x / z, so the client needed no change.
   A KV_Debug drop (key Semicolon; M before docs/MINIMAP.md MD11) also counts: taken, it completes the step; left to fade, it waives it (debug only).
-- `director.ts` `TutorialDirector`: `new TutorialDirector()`, then `update({ state, config, events, buttons, dt })`
-  once per rendered frame (state read only, `LiveRun.frameEvents`, the frame's raw InputFrame buttons, real dt) ->
+- `director.ts` `TutorialDirector`: `new TutorialDirector()`, then `update({ state, config, events, buttons, dt,
+  mapSeen, mapAvailable })` once per rendered frame (state read only, `LiveRun.frameEvents`, the frame's raw InputFrame
+  buttons, real dt, and two client facts for the `map` step: the full map seen this frame and the map available) ->
   `TutorialView` (reused object: `active`, `finished`, `stepIndex` / `stepCount` / `stepId`, `promptStepIndex`,
-  `prompt`, `card`, `highlight`, `marker { kind, x, z }`, `done[]` / `skipped[]` / `stepsDone`, `callouts[]`,
-  `ghostHeart`, `funnelStepReached` / `newFunnelSteps[]`, `revision`). It reads facts from the state wherever the state
-  keeps them (rooms entered, score room clears and source counts, relics / curses / boons, the shrine zone,
-  harmlessHits, the weapon in hand and the bow's heavy-arrow tick, the boss, floor and Depth), events only for
+  `prompt`, `card`, `highlight`, `marker { kind, x, z }`, `done[]` / `skipped[]` / `waived[]` / `stepsDone`,
+  `callouts[]`, `ghostHeart`, `funnelStepReached` / `newFunnelSteps[]`, `revision`). It reads facts from the state
+  wherever the state keeps them (rooms entered, score room clears and source counts, relics / curses / boons, the shrine
+  zone, harmlessHits, the weapon in hand and the bow's heavy-arrow tick, the boss, floor and Depth), events only for
   flask / roll / Ember. Never writes the sim; deterministic for a frame sequence.
-- Lessons latch done in any order (a room lesson only once its room is entered; its skills count from then). The
-  current step is the lowest unfinished one: the marker points at it (a room's door until entered, then nothing while
-  inside / the room centre after wandering out; pedestal, shrine, stairwell, the live boss). The prompt is the current
-  step's, except inside an entered, unfinished lesson room (that lesson's) and before a lesson room is entered
-  (`follow`: "Follow the marker to the next room."). A step still open when its floor is left is marked skipped, so an
-  early stairwell never strands the player; the floor 2 -> 3 change finishes the tutorial and skips anything left.
+- Lessons latch done in any order (a room lesson only once its room is entered; its skills count from then). The current
+  step is the lowest unfinished one: the marker points at it (a room's door until entered, then nothing while inside /
+  the room centre after wandering out; pedestal, shrine, stairwell, the live boss; `next`, the `map` step's: the marker
+  of the next open step that has one, reported as that step's kind). The prompt is the current step's, except inside an
+  entered, unfinished lesson room (that lesson's) and before a lesson room is entered (`follow`: "Follow the marker to
+  the next room."). A step still open when its floor is left is marked skipped, so an early stairwell never strands the
+  player (the `map` step is waived instead, docs/TUTORIAL_MAP.md TMD3); the floor 2 -> 3 change finishes the tutorial
+  and skips anything left.
 - Funnel: `funnelStepReached` = leading steps PRACTISED (done and not skipped); `newFunnelSteps` lists the numbers
   reached this frame (send each with `tutorialStep(n)`). Strictly increasing by construction. It stops for good at the
   first skipped step: a lesson left behind when its floor was left is never credited, and steps done after it (the
@@ -317,7 +324,10 @@ registerRunWorld("tutorial", (_seed, o) => buildTutorialRunConfig(o.partySize));
   B9 on the same build), out of order 78.2 s (78.0 s). With `boost` as a step (2026-10-26) the bot times are
   unchanged (the director never drives the sim, and the route is the same): in order 4246 ticks (70.8 s; `boost` done
   @491, current 6 frames, marker on the drop every one), out of order 4690 ticks (78.2 s; `boost` @1084, 7 frames),
-  guide-steered 4292 ticks (71.5 s; 8 frames); both bot runs report the funnel 1..16 in order. Bot time (on `tutorial-linear`): **69.8 s** of sim (4187 ticks;
+  guide-steered 4292 ticks (71.5 s; 8 frames); both bot runs report the funnel 1..16 in order.
+  With `map` as a step (2026-11-01) the ticks are unchanged and the runs report 1..17; option `map` (`current` /
+  `early` / `never` / `unavailable`) picks when the bot opens the full map (docs/TUTORIAL_MAP.md §8).
+  Bot time (on `tutorial-linear`): **69.8 s** of sim (4187 ticks;
   was 151 s): floor 1 ~45 s on the chain, the Mother Bramble fight
   **21.3 s** from engage to death at 20 % hp (was ~100 s); the out-of-order run (combat C before B, walking through B)
   76.4 s. It records the boss milestones (engage, each phase with the HUD bar's fill, death), and the director spec
@@ -374,12 +384,12 @@ As built (T6; code-complete, Studio check pending; ported onto the main menu / l
   `ghostHeart` (a pulse token).
 - **HUD**: `TutorialPanel`, `ObjectiveCard`, `TutorialOutro`, `HighlightRing` / `GhostHeart` (`TutorialFx.tsx`), the
   `highlight` props; tunables `TUTORIAL_VIEW`. Callouts are toasts (`TUTORIAL_VIEW.calloutSeconds`, wrapped).
-- **Key names follow the player's bindings** (main's Options > Controls rebinding): the prompts are templates
-  (`{move}`, `{fire}`, `{alt}`, `{roll}`, `{flask}`, `{swap}`, `{ember}`, `{skill1}`, `{left}`, `{right}`) filled by
+- **Key names follow the player's bindings** (main's Options > Controls rebinding): the prompts are templates (`{move}`,
+  `{fire}`, `{alt}`, `{roll}`, `{flask}`, `{swap}`, `{ember}`, `{skill1}`, `{left}`, `{right}`, `{map}`) filled by
   `shared/view/hud` `tutorialPromptVars(device, selectBindings)` (each action's primary on the last-used device; the
   pad's move / draft stick is fixed), so a rebound key shows in every prompt and the objective card. The outro's
-  leaderboard key is the bound one (`tutorialLeaderboardHint`; `Start` on a pad: the pause menu's Leaderboards).
-  `P` / `Start` in the panel's pause hint are fixed keys.
+  leaderboard key is the bound one (`tutorialLeaderboardHint`; `Start` on a pad: the pause menu's Leaderboards). `P` /
+  `Start` in the panel's pause hint are fixed keys.
 - **Marker**: a `uiAccent` Neon Cylinder; `ui.marker.tutorial` is optional (`ThemePack.image` returns undefined in the
   placeholder pack, so no contract or pack change was needed).
 
@@ -413,14 +423,18 @@ As built (T6; code-complete, Studio check pending; ported onto the main menu / l
 ### 6. Telemetry
 
 **Superseded by docs/TUTORIAL_FUNNEL.md (2026-11-01):** the `tutorial` funnel is now `TutorialAttempt` (`started` = 1,
-lessons 2..17, `completed` = 18) next to a once-per-user onboarding funnel and the lesson / skip / abandon / outro /
+lessons 2..18, `completed` = 19) next to a once-per-user onboarding funnel and the lesson / skip / abandon / outro /
 gate / new-player events. The text below describes the original T7 build.
 
 `tutorialStep(step)` -> `TelemetryService` -> `AnalyticsService.LogFunnelStepEvent(player, "tutorial", sessionId, step,
-stepName)`, `stepName` = the step's id in `shared/tutorial` `TUTORIAL_STEPS` (1..16; `completed` is 17).
+stepName)`, `stepName` = the step's id in `shared/tutorial` `TUTORIAL_STEPS` (1..17; `completed` is 18).
 **Renumbered on 2026-10-26**: the `boost` step was inserted as step 6, so `roll` .. `finish` moved from 6..15 to 7..16
 and `completed` from 16 to 17 (step ids unchanged). Funnel data recorded before that date is **not comparable past
 step 5** (`hits`): compare by step name, not number, or start a fresh dashboard window from the change.
+**Renumbered again on 2026-11-01**: the `map` step was inserted as step 11 (docs/TUTORIAL_MAP.md), so `relic` ..
+`finish` moved from 11..16 to 12..17 and `completed` from 17 to 18 (`TutorialAttempt`: lessons 2..18, `completed` 19).
+Funnel data recorded before 2026-11-01 is **not comparable past step 10** (`ember`): filter by revision `t1r2`
+(`TUTORIAL_FUNNEL_REVISION` 2, step 1's field02) or compare by step name.
 It logs only increasing steps per attempt (each `tutorialStarted` is a new funnel session), plus `completed` as the
 last step. The client reports only the leading lessons practised (§3: the funnel stops at the first skipped one), so a
 player who took the stairwell early drops off at the first lesson they left behind. As built (T7), a skip is the custom event `TutorialSkipped` instead of a funnel step, because Roblox counts
@@ -477,6 +491,8 @@ Critical path: T1 -> T2 -> T4 -> T6. T5 can run alongside T2-T4.
    Invite on them answers `Finish your current run first`. Rejoin both; Player1 joins Player2's lobby, readies, goes
    back to the main menu and picks Tutorial: Player2's Start answers the same until Player1 finished or skipped, and
    no lobby run ever replaces Player1's running tutorial.
+9. Map lesson: after combat F the prompt names the map key and the corner minimap rings; M opens the full map and the
+   step completes (full list: docs/TUTORIAL_MAP.md "Studio check").
 
 ## Edge cases
 
@@ -534,3 +550,7 @@ Critical path: T1 -> T2 -> T4 -> T6. T5 can run alongside T2-T4.
    "Guard lock", a hashed `TutorialSimConfig` field, so tutorial replays changed; no fixture did). While it waits at
    1 hp the prompt switches to `guardHold` ("It won't go down until you block one of its shots"). The prompts say
    "block"; the action name (Options "Guard / charge") and the score source ("Guard cancels") are unchanged.
+10. **The map is a step** (owner, 2026-11-01; reverses the lesson half of docs/MINIMAP.md MD13): `map`, step 11 of 17,
+   after `ember`; done on opening the full map (touch: the pause overlay's map), waived (not skipped) when ignored or
+   unavailable. The funnel was renumbered (§6). Tutorial script, HUD and telemetry only. Plan, as-built notes and
+   decisions: docs/TUTORIAL_MAP.md.

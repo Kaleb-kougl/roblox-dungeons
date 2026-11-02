@@ -74,7 +74,7 @@ export const TUTORIAL_FUNNEL_LESSON_OFFSET = TUTORIAL_FUNNEL_STARTED_STEP;
 
 /**
  * The attempt funnel step logged when the tutorial is completed (named TUTORIAL_FUNNEL_COMPLETED_NAME): right after
- * the last lesson's step, so TUTORIAL_FUNNEL_MAX_STEP + 2 (18 with 16 lessons).
+ * the last lesson's step, so TUTORIAL_FUNNEL_MAX_STEP + 2 (19 with 17 lessons).
  */
 export const TUTORIAL_FUNNEL_COMPLETED_STEP = TUTORIAL_FUNNEL_MAX_STEP + TUTORIAL_FUNNEL_LESSON_OFFSET + 1;
 /** The attempt funnel's `completed` step name. */
@@ -86,14 +86,15 @@ export const MAX_TUTORIAL_STEP_NAME_CHARS = 32;
 /**
  * Bump whenever lesson steps are added, removed or reordered (docs/TUTORIAL_FUNNEL.md §2): the funnels' step 1
  * `revision` field (tutorialFunnelRevision: `t<ONBOARDING_TUTORIAL_VERSION>r<this>`) then splits the charts instead of
- * dates. Never rename a shipped step id.
+ * dates. Never rename a shipped step id. 1: the 16-lesson tutorial; 2: the `map` lesson (step 11, 17 lessons;
+ * 2026-11-01, docs/TUTORIAL_MAP.md).
  */
-export const TUTORIAL_FUNNEL_REVISION = 1;
+export const TUTORIAL_FUNNEL_REVISION = 2;
 
 /**
  * The once-per-user onboarding funnel (`LogOnboardingFunnelStepEvent`, docs/TUTORIAL_FUNNEL.md §2): fixed step numbers
  * and names. Lesson n is step n + `lessonOffset` (named by its TUTORIAL_STEPS id); `completed` follows the last lesson
- * (TUTORIAL_STEP_COUNT + 4). The whole ordered list is funnel.ts ONBOARDING_FUNNEL_STEPS.
+ * (TUTORIAL_STEP_COUNT + 4: 21 with 17 lessons). The whole ordered list is funnel.ts ONBOARDING_FUNNEL_STEPS.
  */
 export const ONBOARDING_FUNNEL = table.freeze({
 	joined: table.freeze({ step: 1, name: "Joined" }),
@@ -120,10 +121,10 @@ export const TUTORIAL_TELEMETRY = table.freeze({
 	maxOutroSeconds: 3600,
 	/**
 	 * Events one attempt may log (TutorialFunnelTracker's counter). The computed worst case of a FIRST attempt (the
-	 * attempt's own events plus the onboarding funnel and the gate: analyticsCatalog.ts firstAttemptEventBound, 78)
+	 * attempt's own events plus the onboarding funnel and the gate: analyticsCatalog.ts firstAttemptEventBound, 82 with 17 lessons)
 	 * fits, so the counter never bites an honest client; it bounds a misbehaving one.
 	 */
-	maxEventsPerAttempt: 80,
+	maxEventsPerAttempt: 84,
 	/**
 	 * Of maxEventsPerAttempt, kept for the attempt's exit (completed / skipped / abandoned / restarted) and its outro:
 	 * lesson steps and lesson / stuck reports never use these.
@@ -141,7 +142,7 @@ export const TUTORIAL_TELEMETRY = table.freeze({
 	 * stay within this, exitEventReserve kept for a logged attempt's exit and outro. 3 x maxEventsPerAttempt: a backstop
 	 * to the attempt cap.
 	 */
-	maxEventsPerSession: 240,
+	maxEventsPerSession: 252,
 	/** Report seconds are rounded to a multiple of this (0.1 s). */
 	secondsStep: 0.1,
 });

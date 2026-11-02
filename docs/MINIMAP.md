@@ -10,7 +10,8 @@ endless and the tutorial (not the greybox, which has no rooms). Owner answers (2
 whole room on entry (MD2), one shared party map in co-op (MD3), the stairwell stays hidden until someone sees it (MD4),
 a full map on a toggle key and in the pause overlay (MD5). Owner answers to the open questions (2026-10-27): start at
 about 35 tiles across and tune in M11 (MD12), the minimap shows from the first tutorial floor (MD13), boost drops in
-sight show on the map (MD14).
+sight show on the map (MD14). 2026-11-01: the tutorial now teaches the full map (step `map`, docs/TUTORIAL_MAP.md),
+superseding MD13's "no lesson" half.
 
 ## Why
 
@@ -419,7 +420,8 @@ Critical path: M0 -> M8 -> M9. M1-M6 are pure and headless and can go alongside 
 2. Endless floor: unentered rooms, seen through a doorway, are tinted waiting; they turn live on entry and safe on the
    clear; the stairwell mark appears only once seen and changes when it opens. Next floor: fresh fog.
 3. Enemies and boost drops show only in sight, never through walls; the boss mark on a boss floor. Tutorial floor 1
-   has the minimap from its first frame.
+   has the minimap from its first frame. (The map lesson after combat F is checked in docs/TUTORIAL_MAP.md "Studio
+   check".)
 4. Co-op (two clients): both maps reveal what either player sees; teammate dots in class colours; a dead player's map
    keeps updating while spectating and centres on the watched teammate.
 5. M / D-pad left: the full map opens over play and closes again; the solo pause overlay shows it; run over closes it.
@@ -451,5 +453,6 @@ Critical path: M0 -> M8 -> M9. M1-M6 are pure and headless and can go alongside 
 
 - **MD12. About 35 tiles across** (owner, 2026-10-27): `pxPerTile` 4 in a 140 px panel as the start; M11 tunes it.
 - **MD13. On from the first tutorial floor** (owner, 2026-10-27): the tutorial's floors are endless floors and get
-  the same minimap; no tutorial lesson about it in v1.
+  the same minimap; no tutorial lesson about it in v1. (Superseded 2026-11-01 for the lesson: docs/TUTORIAL_MAP.md
+  adds step `map`, 11 of 17, open the full map; the minimap still shows from the first frame.)
 - **MD14. Boost drops in sight show on the map** (owner, 2026-10-27), as glints in `minimap.boost`. Breakables do not.

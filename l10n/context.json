@@ -3189,6 +3189,21 @@
 	"tutorial.prompt.hits.touch": {
 		"note": "First-run tutorial prompt for phone / tablet players; on-screen button names (Attack, Alt, Roll, Flask, Swap, Ember, Accept) must use exactly the words of the touch.* button labels, in the prompt panel (lower centre, 480 px wide; on touch at the top centre, 360 px; text wraps). Step: a group of enemies rushes the player; a hit makes the character flash red and normally costs half a heart (here it costs nothing). Friendly, short instructional sentences in second person."
 	},
+	"tutorial.prompt.map.gamepad": {
+		"note": "First-run tutorial prompt for gamepad players, in the prompt panel (lower centre, 480 px wide; on touch at the top centre, 360 px; text wraps). Step: the minimap in the screen corner reveals the dungeon as the player explores; the prompt says which button opens the full-floor map and that pressing it again closes it. Friendly, short instructional sentences in second person. Placeholders {map} are the player's bound key or button names (e.g. \"D-pad left\"; currently English).",
+		"example": {
+			"map": "D-pad left"
+		}
+	},
+	"tutorial.prompt.map.keyboard": {
+		"note": "First-run tutorial prompt for keyboard and mouse players, in the prompt panel (lower centre, 480 px wide; on touch at the top centre, 360 px; text wraps). Step: the minimap in the screen corner reveals the dungeon as the player explores; the prompt says which key opens the full-floor map and that pressing it again closes it. Friendly, short instructional sentences in second person. Placeholders {map} are the player's bound key or button names (e.g. \"M\"; currently English).",
+		"example": {
+			"map": "M"
+		}
+	},
+	"tutorial.prompt.map.touch": {
+		"note": "First-run tutorial prompt for phone / tablet players; on-screen button names (Attack, Alt, Roll, Flask, Swap, Ember, Accept) must use exactly the words of the touch.* button labels, in the prompt panel (lower centre, 480 px wide; on touch at the top centre, 360 px; text wraps). Step: the map reveals the dungeon as the player explores; tapping the on-screen pause button shows the map of the whole floor. Friendly, short instructional sentences in second person."
+	},
 	"tutorial.prompt.move.gamepad": {
 		"note": "First-run tutorial prompt for gamepad players, in the prompt panel (lower centre, 480 px wide; on touch at the top centre, 360 px; text wraps). Step: first lesson: moving the character. Friendly, short instructional sentences in second person. Placeholders {move} are the player's bound key or button names (e.g. \"Left stick\"; currently English).",
 		"example": {

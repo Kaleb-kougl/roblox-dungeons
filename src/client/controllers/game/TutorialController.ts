@@ -1,7 +1,7 @@
 import { Controller, OnStart } from "@flamework/core";
 import { RunService, Workspace } from "@rbxts/services";
 import { Events } from "client/network";
-import { clientStore } from "client/store";
+import { clientStore, selectAnyPanelOpen, selectMapView, type ClientState } from "client/store";
 import {
 	TUTORIAL_NO_STEP_ID,
 	type OnboardingStatus,
@@ -15,6 +15,8 @@ import {
 	tutorialAttribute,
 	tutorialDeviceFor,
 	tutorialHudFrom,
+	tutorialMapPromptShown,
+	tutorialMapSeen,
 	type FirstRunDecision,
 	type TutorialMarker,
 	type TutorialStuckReport,
@@ -22,7 +24,7 @@ import {
 } from "shared/tutorial";
 import { JoinGate, RENDER_ORDER } from "shared/view";
 import { PROGRESSION_VIEW, TUTORIAL_VIEW } from "shared/view/hud";
-import { FirstJoinGate, firstJoinDispatchChoice, firstJoinGateReason } from "shared/view/menu";
+import { FirstJoinGate, firstJoinDispatchChoice, firstJoinGateReason, pauseOverlayShown } from "shared/view/menu";
 import { PreloadController } from "./PreloadController";
 import { SimController, type RunContext } from "./SimController";
 
@@ -37,6 +39,28 @@ function finishStepId(view: Readonly<TutorialView> | undefined): string {
 /** One stuck report as a fresh table (the director's report arrays are reused every frame). */
 function sendStuck(report: Readonly<TutorialStuckReport>): void {
 	Events.tutorialStuck.fire({ prompt: report.prompt, seconds: report.seconds });
+}
+
+/**
+ * The solo pause overlay is on screen with its full map (PauseOverlay: `pauseOverlayShown` and not co-op, then
+ * FullMapOverlay PauseMap: `game.map.available`). The same store fields the overlay renders from, so the tutorial's
+ * map step counts exactly what the player saw (docs/TUTORIAL_MAP.md §5).
+ */
+function pauseMapShowing(state: ClientState): boolean {
+	const s = state.game.snapshot;
+	const coop = state.game.run.coop;
+	const shown = pauseOverlayShown({
+		active: state.game.active,
+		coop,
+		playing: s.outcome === "playing",
+		paused: s.paused,
+		coopOverlay: state.menu.coopOverlay,
+		panelOpen: selectAnyPanelOpen(state),
+		menuScreen: false,
+		robloxMenuOpen: state.menu.robloxMenuOpen,
+		tutorialEnded: state.tutorial.ended,
+	});
+	return shown && !coop && selectMapView(state).available;
 }
 
 /**
@@ -61,7 +85,11 @@ function sendStuck(report: Readonly<TutorialStuckReport>): void {
  *   Once per rendered frame, right after the FX tracker (RENDER_ORDER.tutorialAfterFx), the director reads the
  *   frame's state, events and raw buttons (not while paused); its view goes to the Reflex `tutorial` slice when its
  *   revision moved, each newly reached funnel step to `tutorialStep`, callouts to the toasts, the ghost half heart
- *   to the status panel. The world marker reads `getMarker()`.
+ *   to the status panel. The world marker reads `getMarker()`. The `map` step's client facts (docs/TUTORIAL_MAP.md
+ *   §5): `mapAvailable` is Reflex `game.map.available`, `mapSeen` is tutorialMapSeen over the input device, the full
+ *   map open, or a latch set on a paused frame where the player was on touch, the map prompt was on screen
+ *   (tutorialMapPromptShown) and the solo pause overlay showed its map (pauseMapShowing); handed over on the next
+ *   unpaused update and then cleared.
  * - **The end** (the floor 2 -> 3 change): the run freezes and `tutorialFinished("completed")` goes out at once
  *   (SimController.freezeTutorialRun: no floor 3 draft; the slice's `ended` hides the panel and the draft overlay),
  *   then after TUTORIAL.outroDelaySeconds the outro card. Outro: Start my first run (HudController: the main menu's
@@ -104,6 +132,8 @@ export class TutorialController implements OnStart {
 	private pendingEntry: TutorialEntry = "firstJoin";
 	/** os.clock() when this attempt's outro card opened; undefined: not open (or already reported). */
 	private outroOpenedAt: number | undefined;
+	/** The solo pause overlay showed its map while paused; read and cleared by the next unpaused update. */
+	private pauseMapLatch = false;
 
 	constructor(private readonly sim: SimController, private readonly preload: PreloadController) {}
 
@@ -192,6 +222,7 @@ export class TutorialController implements OnStart {
 		this.reportOutro("menu");
 		this.beat = undefined;
 		this.lastRevision = -1;
+		this.pauseMapLatch = false;
 		if (!ctx.tutorial) {
 			this.director = undefined;
 			this.runCounter = -1;
@@ -220,6 +251,7 @@ export class TutorialController implements OnStart {
 		this.runCounter = -1;
 		this.beat = undefined;
 		this.lastRevision = -1;
+		this.pauseMapLatch = false;
 		clientStore.clearTutorial();
 	}
 
@@ -289,14 +321,30 @@ export class TutorialController implements OnStart {
 		}
 		// Paused (P, the Roblox menu, a panel): nothing happens in the run, and a click on a menu button must not
 		// count as the objective card's Continue. Held under the stage loader's run-start cover: not started yet.
-		if (live.isPaused() || this.sim.isFrozen() || this.sim.isHeldByLoader()) return;
+		// The pause overlay's map is latched first: the director only hears of it on the next unpaused update.
+		const store = clientStore.getState();
+		const paused = live.isPaused();
+		// Decided at pause time (docs/TUTORIAL_MAP.md TMD2): the device then (touch only) and the map prompt on screen.
+		const device = tutorialDeviceFor(store.game.inputDevice);
+		if (
+			paused &&
+			tutorialMapPromptShown(director.getView()) &&
+			tutorialMapSeen(device, false, pauseMapShowing(store))
+		)
+			this.pauseMapLatch = true;
+		if (paused || this.sim.isFrozen() || this.sim.isHeldByLoader()) return;
 
+		const map = selectMapView(store);
+		const mapSeen = map.open || this.pauseMapLatch;
+		this.pauseMapLatch = false;
 		const view = director.update({
 			state: live.state,
 			config: live.setup.config,
 			events: live.frameEvents,
 			buttons: this.sim.getFrameButtons(),
 			dt,
+			mapSeen,
+			mapAvailable: map.available,
 		});
 		for (const step of view.newFunnelSteps) Events.tutorialStep.fire(step);
 		// Metrics (not in `revision`: read every update). On the finish frame these go out before tutorialFinished;

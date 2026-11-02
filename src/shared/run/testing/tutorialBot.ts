@@ -19,6 +19,11 @@
  * only shoots with a line of sight (else it walks the field round the pillar). Every tick checks the harmless rule: hearts never fall below the start, and never fall at
  * all except when the max falls (a curse).
  *
+ * The map lesson (docs/TUTORIAL_MAP.md §8): the frames carry `mapSeen` / `mapAvailable` as the client's would; `map`
+ * picks when the bot "opens the full map" (one frame of mapSeen): "current" (default) on the first frame the `map`
+ * step is current, "early" on a frame during combat B (latched out of order), "never", or "unavailable" (mapAvailable
+ * false throughout, never seen). The bot's ticks are the same in every mode (the director never drives the sim).
+ *
  * `steer: "guide"` (docs/TUTORIAL_ARROW.md A3) walks by the guidance arrow's heading (shared/tutorial TutorialGuide)
  * instead, while the arrow shows: the proof that the arrow never sends a player into a wall.
  */
@@ -96,7 +101,14 @@ export interface TutorialBotOptions {
 	 * the bot): one run compares thresholds (TutorialBotResult.shadowStuckReports, same order).
 	 */
 	readonly shadowStuckSeconds?: ReadonlyArray<number>;
+	/** When the bot opens the full map (see the file comment; default "current"). */
+	readonly map?: TutorialBotMapMode;
+	/** Called after every director update with the bot's view and run (a spec's per-frame checks). */
+	readonly onFrame?: (view: Readonly<TutorialView>, run: LiveRun) => void;
 }
+
+/** When the tutorial bot opens the full map (TutorialBotOptions.map). */
+export type TutorialBotMapMode = "current" | "early" | "never" | "unavailable";
 
 export interface TutorialBotResult {
 	readonly setup: EndlessRunSetup;
@@ -105,6 +117,8 @@ export interface TutorialBotResult {
 	readonly view: Readonly<TutorialView>;
 	/** Per step (TUTORIAL_STEPS order): the tick it was first reported done, -1 never. */
 	readonly stepDoneTicks: ReadonlyArray<number>;
+	/** The tick the bot fed mapSeen on (its one frame of the full map open), -1 never. */
+	readonly mapSeenTick: number;
 	/** Every TutorialView.newFunnelSteps entry, in the order reported. */
 	readonly funnelSteps: ReadonlyArray<number>;
 	/** Every callout key fired, in order, and the tick each fired on. */
@@ -251,6 +265,9 @@ class TutorialBot {
 	private prevMax: number;
 	private readonly fields = new Map<string, Field>();
 	private readonly bowIndex = weaponIndex(BOW.id);
+	mapMode: TutorialBotMapMode = "current";
+	mapSeenTick = -1;
+	onFrame: ((view: Readonly<TutorialView>, run: LiveRun) => void) | undefined;
 	walkTicks = 0;
 	guidedTicks = 0;
 	guideUnreachableTicks = 0;
@@ -314,9 +331,12 @@ class TutorialBot {
 			events: this.run.frameEvents,
 			buttons: input.buttons,
 			dt: SIM_DT,
+			mapSeen: this.mapSeenNow(),
+			mapAvailable: this.mapMode !== "unavailable",
 		};
 		const v = this.director.update(f);
 		this.view = v;
+		this.onFrame?.(v, this.run);
 		this.watchClocks(v);
 		for (const r of v.newLessonReports) this.lessonReports.push({ ...r });
 		for (const r of v.newStuckReports) this.stuckReports.push({ ...r });
@@ -357,6 +377,17 @@ class TutorialBot {
 			if (g.unreachable) this.guideUnreachableTicks++;
 		}
 		this.watchDrops();
+	}
+
+	/** This frame's mapSeen (TutorialBotOptions.map): true on one frame at most. */
+	private mapSeenNow(): boolean {
+		if (this.mapSeenTick >= 0) return false;
+		let open = false;
+		if (this.mapMode === "current") open = this.view.stepId === "map";
+		else if (this.mapMode === "early")
+			open = this.floor() === 1 && this.roomEntered("combatB") && !this.roomCleared("combatB");
+		if (open) this.mapSeenTick = this.state.tick;
+		return open;
 	}
 
 	/** The lesson clocks re-derived from the views (TutorialBotResult.clockFrames ...). */
@@ -821,6 +852,8 @@ export function playTutorial(options: TutorialBotOptions = {}): TutorialBotResul
 	);
 	bot.guardLate = options.guardLate === true;
 	bot.guardHoldDelayTicks = options.guardHoldDelayTicks ?? 0;
+	bot.mapMode = options.map ?? "current";
+	bot.onFrame = options.onFrame;
 	const order = options.order ?? TUTORIAL_ROOMS.map((r) => r.lesson);
 	bot.objective();
 	bot.walkABit();
@@ -838,6 +871,7 @@ export function playTutorial(options: TutorialBotOptions = {}): TutorialBotResul
 		director: bot.director,
 		view: bot.view,
 		stepDoneTicks: bot.stepDoneTicks,
+		mapSeenTick: bot.mapSeenTick,
 		funnelSteps: bot.funnelSteps,
 		callouts: bot.callouts,
 		calloutTicks: bot.calloutTicks,

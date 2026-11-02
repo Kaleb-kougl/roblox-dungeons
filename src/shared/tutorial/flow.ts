@@ -9,7 +9,7 @@ import { TUTORIAL } from "shared/config";
 import type { OnboardingStatus } from "shared/onboarding";
 import type { InputDeviceKind } from "shared/play";
 import type { TutorialView } from "./director";
-import type { TutorialDevice, TutorialHighlight, TutorialMarkerKind } from "./steps";
+import { TUTORIAL_STEPS, type TutorialDevice, type TutorialHighlight, type TutorialMarkerKind } from "./steps";
 
 // ---------------------------------------------------------------------------------------------
 // The first-run gate
@@ -155,6 +155,27 @@ export function tutorialHudEqual(a: Readonly<TutorialHudState>, b: Readonly<Tuto
  */
 export function tutorialDeviceFor(device: InputDeviceKind): TutorialDevice {
 	return device;
+}
+
+/**
+ * The `map` step's "the full map was seen" (docs/TUTORIAL_MAP.md §3, TMD2), per device: keyboard / gamepad, the full
+ * map open (`fullMapOpen`: Reflex `game.map.open`); the pause overlay's map does not count there (pausing does not
+ * teach the key). Touch: the full map open OR the solo pause overlay's map shown (`pauseMapShown`, latched by the
+ * client while paused): on touch there is no map key, the pause overlay is the route the prompt teaches.
+ */
+export function tutorialMapSeen(device: TutorialDevice, fullMapOpen: boolean, pauseMapShown: boolean): boolean {
+	return device === "touch" ? fullMapOpen || pauseMapShown : fullMapOpen;
+}
+
+/**
+ * True while the `map` step's prompt is the one on screen (`view.promptStepIndex` is the map step). The client only
+ * latches a touch player's pause-overlay map while this holds (docs/TUTORIAL_MAP.md TMD2): a pause for any other
+ * reason (Options, the Roblox menu) before the lesson must not complete it untaught. A full-map open counts at any
+ * time (TMD7).
+ */
+export function tutorialMapPromptShown(view: Readonly<Pick<TutorialView, "promptStepIndex">>): boolean {
+	const i = view.promptStepIndex;
+	return i >= 0 && TUTORIAL_STEPS[i]?.rule.kind === "map";
 }
 
 /** The panel's progress numbers: steps done (capped at the count) over the step count. */

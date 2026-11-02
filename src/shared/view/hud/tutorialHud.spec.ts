@@ -244,6 +244,11 @@ describe("tutorialPromptVars", () => {
 		);
 		expect(pack.str(tutorialPromptKey("draft", "gamepad"), pad)).toBe("Pick a boon: Left stick, then RT.");
 		expect(pack.str(tutorialPromptKey("draft", "keyboard"), kb)).toBe("Pick a boon: A / D, then Click.");
+		// The map lesson (docs/TUTORIAL_MAP.md): the full-map toggle, M / D-pad left.
+		expect([kb.map, pad.map]).toEqual(["M", "D-pad left"]);
+		expect(pack.str(tutorialPromptKey("map", "gamepad"), pad)).toBe(
+			"The map in the corner fills in as you explore. Open the full map: D-pad left. Press it again to close.",
+		);
 	});
 
 	it("a rebound key shows in the prompts; multi-character move keys are listed", () => {
@@ -256,6 +261,15 @@ describe("tutorialPromptVars", () => {
 			"You're wounded. Drink your flask: tap Flask. You get 3 per floor, refilled on every new floor.",
 		);
 		expect(tutorialPromptVars("gamepad", rebound(DEFAULT_BINDINGS, "pad", "roll", "ButtonX")).roll).toBe("X");
+		// Rebinding the full-map toggle (docs/TUTORIAL_MAP.md): the map prompt names the new key.
+		const mapG = tutorialPromptVars("keyboard", rebound(DEFAULT_BINDINGS, "kbm", "map", "G"));
+		expect(mapG.map).toBe("G");
+		expect(pack.str(tutorialPromptKey("map", "keyboard"), mapG)).toBe(
+			"The map in the corner fills in as you explore. Open the full map: G. Press it again to close.",
+		);
+		expect(pack.str(tutorialPromptKey("map", "touch"), tutorialPromptVars("touch", b))).toBe(
+			"Your map fills in as you explore. Tap the pause button to see the whole floor.",
+		);
 	});
 
 	it("with a string lookup, named keys and the list separator come from input.* strings (docs/LOCALIZATION.md L1)", () => {
