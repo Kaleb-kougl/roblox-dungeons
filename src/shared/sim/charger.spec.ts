@@ -652,6 +652,8 @@ describe("charger: determinism", () => {
 });
 
 const PIN_COUNTS = [3, 1, 1, 3, 0];
-const PIN_HASH = "f77607dc";
+// Re-recorded for docs/NEW_ENEMIES.md NE7: the reshuffled roster moves floor 3's room spawns and so its breakables
+// (they keep clear of planned spawns); the counts did not move. Before: f77607dc.
+const PIN_HASH = "69817698"; // check-asset-ids: allow (state hash)
 const PIN_ARENA = [12, STATE_RETURN, 11.062568325627446, 8, 3663131635];
-const PIN_ARENA_HASH = "80069968";
+const PIN_ARENA_HASH = "80069968"; // check-asset-ids: allow (state hash)
