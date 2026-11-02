@@ -1,7 +1,7 @@
 // docs/NEW_ENEMIES.md NE1 skeleton: band 4 for the second set of room enemies (indices 13-17; every older index
 // unchanged), their data blocks and rows, BulletKind.STRIKE and its hit radius, the arc rows they will fire (none new),
 // the Warbanner aura hook points (PERCENT today: actorWalkPercent / actorCooldownPercent are exactly the affix percent),
-// and the stub steps (they engage and move, fire nothing and draw nothing).
+// and that every kind spawns and engages (each kind's behaviour has its own spec).
 import { describe, expect, it } from "@rbxts/jest-globals";
 import { AffixKind, encounterCost } from "shared/dungeon";
 import {
@@ -231,11 +231,10 @@ describe("aura hook points (NE1: PERCENT, a pure refactor)", () => {
 	});
 });
 
-describe("stub steps (NE1)", () => {
+describe("spawn and engage (NE1)", () => {
 	function run(): SimState {
 		const w = world(false);
-		// Player at the origin; each new kind 6 units out on its own spoke, inside every aggro range. The Bomber is built
-		// (NE2: it fuses and blasts inside 120 ticks): bomber.spec.ts covers it.
+		// Player at the origin; each new kind 6 units out on its own spoke, inside every aggro range.
 		spawn(w, CHARGER.id, -6, 0);
 		spawn(w, REAPER.id, 0, 6);
 		spawn(w, STORMCALLER.id, 0, -6);
@@ -244,23 +243,13 @@ describe("stub steps (NE1)", () => {
 		return w.s;
 	}
 
-	it("they engage and move by their bands, fire nothing and draw nothing", () => {
-		const w = world(false);
-		const rng0 = w.s.rngState;
+	it("they spawn and engage (behaviour is covered by each kind's own spec)", () => {
 		const s = run();
-		expect(s.rngState).toBe(rng0); // init + 120 steps: no draw on the main stream
-		expect(s.combat.enemyBullets.activeCount).toBe(0);
 		const by = (id: string) => s.combat.actors.find((a) => a.kind === archetypeIndex(id))!;
-		const dist = (a: ActorState) => math.sqrt(a.x * a.x + a.z * a.z);
 		for (const id of NEW_IDS) {
-			if (id === BOMBER.id) continue;
+			if (id === BOMBER.id) continue; // it fuses and blasts inside 120 ticks: bomber.spec.ts
 			expect([id, by(id).alive, by(id).v[0]]).toEqual([id, 1, 1]); // alive, engaged
 		}
-		// Reaper closes to <= keepMax; Charger / Warbanner keep their minimum; Stormcaller backs off.
-		expect(dist(by("reaper")) <= REAPER.data.keepMax + 1e-9).toBe(true);
-		expect(dist(by("charger"))).toBeCloseTo(6, 9);
-		expect(dist(by("stormcaller")) >= STORMCALLER.data.keepMin - 1e-9).toBe(true);
-		expect(dist(by("warbanner")) >= WARBANNER.data.keepMin - 1e-9).toBe(true);
 	});
 
 	it("replays bit for bit", () => {
