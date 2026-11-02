@@ -35,6 +35,8 @@ import { lineOfSight } from "./actors/helpers";
 import { teamEnemyBulletSpeedMultiplier } from "../progression/runMods";
 import type { WeaponSlotState, WeaponsState } from "./weapons/types";
 import { nearestLivingPlayer, playerAt, weaponsAt } from "../party";
+import { PERCENT } from "../progression/progressionData";
+import { WARBANNER, warbannerAuraMask } from "./actors/archetypes/warbanner";
 
 export class SimCtx {
 	/** The live state (mutable). */
@@ -71,6 +73,14 @@ export class SimCtx {
 	 * buildsOnKill (Chain Reaction); never hashed.
 	 */
 	procCause = 0;
+	/**
+	 * The Warbanner aura mask (docs/NEW_ENEMIES.md NE6, NED8): buffed actor -> its actor id when the mask was built.
+	 * Transient, never hashed: rebuildAura fills it at the START of stepActors from the tick-start actor pool
+	 * (`warbannerAuraMask`, a pure function of hashed state), it holds for the rest of that tick, and bind() empties it,
+	 * so before stepActors (or on a ctx that never steps actors: initial / endless room spawns) nobody is buffed. The
+	 * id check makes a slot freed and reused mid-tick read as unbuffed (actor ids are unique for the run).
+	 */
+	readonly auraMask = new Map<ActorState, number>();
 
 	bind(state: SimState, config: Readonly<SimConfig>, input: Readonly<InputFrame>): this {
 		this.state = state;
@@ -86,7 +96,30 @@ export class SimCtx {
 		this.actors = state.combat.actors;
 		this.procGen = 0;
 		this.procCause = 0;
+		this.auraMask.clear();
 		return this;
+	}
+
+	// --- The Warbanner's aura (NE6; read through actorMods.ts auraWalkPercent / auraCooldownPercent) ------------
+
+	/** stepActors, first thing: the aura mask from the actor pool as the tick starts. */
+	rebuildAura(): void {
+		warbannerAuraMask(this.actors, this.auraMask);
+	}
+
+	/** True when `a` stood inside a living Warbanner's aura at this tick's rebuild (one aura at most: no stacking). */
+	inAura(a: Readonly<ActorState>): boolean {
+		return this.auraMask.get(a as ActorState) === a.id;
+	}
+
+	/** The aura's walk percent on `a`: WARBANNER auraWalkPercent (125) inside the mask, else PERCENT. */
+	auraWalk(a: Readonly<ActorState>): number {
+		return this.inAura(a) ? WARBANNER.data.auraWalkPercent : PERCENT;
+	}
+
+	/** The aura's attack cooldown percent on `a`: WARBANNER auraCooldownPercent (80) inside the mask, else PERCENT. */
+	auraCooldown(a: Readonly<ActorState>): number {
+		return this.inAura(a) ? WARBANNER.data.auraCooldownPercent : PERCENT;
 	}
 
 	// --- Co-op player binding (see the class comment) --------------------------------------------

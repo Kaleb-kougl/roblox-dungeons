@@ -21,6 +21,8 @@ import {
 	actorWalkPercent,
 	archetypeIds,
 	archetypeIndex,
+	auraCooldownPercent,
+	auraWalkPercent,
 	createSimState,
 	enemyCooldown,
 	enemyCooldownFixed,
@@ -85,6 +87,21 @@ describe("actor modifier choke points (a pure refactor today)", () => {
 		for (const a of actors) {
 			expect(actorWalkPercent(ctx, a)).toBe(PERCENT);
 			expect(actorCooldownPercent(ctx, a)).toBe(PERCENT);
+		}
+	});
+
+	it("without a Warbanner the per-tick aura mask is empty: every helper still returns the raw value (NE6)", () => {
+		const a = setup();
+		const b = setup();
+		a.ctx.rebuildAura(); // what stepActors does first every tick
+		for (const actor of a.actors) {
+			expect(a.ctx.inAura(actor)).toBe(false);
+			expect([auraWalkPercent(a.ctx, actor), auraCooldownPercent(a.ctx, actor)]).toEqual([PERCENT, PERCENT]);
+			expect([actorWalkPercent(a.ctx, actor), actorCooldownPercent(a.ctx, actor)]).toEqual([PERCENT, PERCENT]);
+			expect(walkStep(a.ctx, actor)).toBe(a.ctx.data(actor).speed * SIM_DT);
+			expect(enemyCooldown(a.ctx, actor, 60, 144)).toBe(b.ctx.randomInt(60, 144));
+			expect(enemyCooldownFixed(a.ctx, actor, 90)).toBe(90);
+			expect(a.s.rngState).toBe(b.s.rngState);
 		}
 	});
 
