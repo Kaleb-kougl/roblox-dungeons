@@ -2,7 +2,9 @@
 // DEBUG_HIT) land like real hits (playerHits, hurtTicks, lastHitSource, the bullet consumed, the combo cut, Hourglass)
 // but never take armor or hearts, never trigger Second Wind and never kill; startHalfHearts (solo, a party, the clamp);
 // the flask heals back up; floor changes keep hearts; the appended "tutorial" hash group, clone and replay; the
-// block lesson's guard lock (its room's spawns held at TUTORIAL_GUARD_HOLD_HP until a block).
+// block lesson's guard lock (its room's spawns held at TUTORIAL_GUARD_HOLD_HP until a block); the pellet lesson's
+// sweep lock (docs/PELLETS.md PL12: its twin, released by the room's last pellet; the real-world run with weapons, the
+// pickups and the last pickup on a lethal hit's tick is in shared/run tutorial.spec.ts).
 import { describe, expect, it } from "@rbxts/jest-globals";
 import { TEST_CHASER } from "shared/sim/testing";
 import {
@@ -37,8 +39,16 @@ import {
 	NO_GUARD_LOCK_FLOOR,
 	NO_GUARD_LOCK_ROOM,
 	TUTORIAL_GUARD_HOLD_HP,
+	NO_PELLET_LOCK_FLOOR,
+	NO_PELLET_LOCK_ROOM,
+	PELLET_LOCK_ARMED,
+	PELLET_LOCK_RELEASED,
+	PELLET_LOCK_WAITING,
 	isTutorialGuardHolding,
 	isTutorialGuardReleased,
+	isTutorialPelletHolding,
+	isTutorialPelletReleased,
+	tutorialOnPelletsSwept,
 	tutorialHeldDamage,
 	tutorialOnGuardCancels,
 	tutorialOnRoomSpawned,
@@ -81,6 +91,11 @@ function tutorialStateOf(harmless: number) {
 		guardLock: GUARD_LOCK_WAITING,
 		guardLockFirstId: 0,
 		guardLockEndId: 0,
+		pelletLockFloor: NO_PELLET_LOCK_FLOOR,
+		pelletLockRoom: NO_PELLET_LOCK_ROOM,
+		pelletLock: PELLET_LOCK_WAITING,
+		pelletLockFirstId: 0,
+		pelletLockEndId: 0,
 	};
 }
 
@@ -568,6 +583,111 @@ describe("guardLock (the block lesson)", () => {
 			tutorialOnRoomSpawned(s, 1, NO_GUARD_LOCK_ROOM, [a]);
 			expect(tutorialHeldDamage(s, a, a.hp)).toBe(a.hp);
 			expect([isTutorialGuardHolding(s), isTutorialGuardReleased(s)]).toEqual([false, false]);
+		}
+	});
+});
+
+describe("pelletLock (the pellet lesson, docs/PELLETS.md PL12)", () => {
+	const LOCK: SimConfig["tutorial"] = { harmless: true, pelletLock: { floor: 1, room: 7 } };
+	const BOTH: SimConfig["tutorial"] = {
+		harmless: true,
+		guardLock: { floor: 1, room: 4 },
+		pelletLock: { floor: 1, room: 7 },
+	};
+	const twoChasers = (tutorial: SimConfig["tutorial"]): SimState =>
+		createSimState(1, 0, 0, {
+			encounter: enc([
+				{ kind: TEST_CHASER.id, x: 6, z: 6 },
+				{ kind: TEST_CHASER.id, x: -6, z: -6 },
+			]),
+			tutorial,
+		});
+	const chasers = (s: SimState) => s.combat.actors.filter((a) => a.kind === archetypeIndex(TEST_CHASER.id));
+
+	it("is stored and hashed (appended after the guard lock's fields); a bad floor or room throws", () => {
+		const s = createSimState(1, 0, 0, { tutorial: LOCK });
+		const t = s.tutorial!;
+		expect([t.pelletLockFloor, t.pelletLockRoom, t.pelletLock]).toEqual([1, 7, PELLET_LOCK_WAITING]);
+		expect([t.guardLockFloor, t.guardLockRoom]).toEqual([NO_GUARD_LOCK_FLOOR, NO_GUARD_LOCK_ROOM]);
+		expect(hashState(s)).never.toBe(hashState(createSimState(1, 0, 0, HARMLESS)));
+		const tail = TUTORIAL_HASH_FIELDS.size();
+		expect([
+			TUTORIAL_HASH_FIELDS[tail - 5],
+			TUTORIAL_HASH_FIELDS[tail - 4],
+			TUTORIAL_HASH_FIELDS[tail - 3],
+			TUTORIAL_HASH_FIELDS[tail - 2],
+			TUTORIAL_HASH_FIELDS[tail - 1],
+		]).toEqual(["pelletLockFloor", "pelletLockRoom", "pelletLock", "pelletLockFirstId", "pelletLockEndId"]);
+		expect(TUTORIAL_HASH_FIELDS[tail - 6]).toBe("guardLockEndId");
+		for (const bad of [
+			{ floor: 0, room: 7 },
+			{ floor: 1.5, room: 7 },
+			{ floor: 1, room: -1 },
+			{ floor: 1, room: 0.5 },
+		]) {
+			expect(() => createSimState(1, 0, 0, { tutorial: { harmless: true, pelletLock: bad } })).toThrow(
+				"pelletLock",
+			);
+		}
+	});
+
+	it("an armed lock holds its spawns at the hold hp (the guard lock's path); the swept room releases it for good", () => {
+		const s = twoChasers(LOCK);
+		const [a, b] = chasers(s);
+		const t = s.tutorial!;
+		// Test-only surgery: armed on `a` (arming needs a scored endless room with pellets: shared/run tutorial.spec).
+		t.pelletLock = PELLET_LOCK_ARMED;
+		t.pelletLockFirstId = a.id;
+		t.pelletLockEndId = a.id + 1;
+		expect(tutorialHeldDamage(s, a, a.hp)).toBe(a.hp - TUTORIAL_GUARD_HOLD_HP);
+		expect(tutorialHeldDamage(s, a, 0.5)).toBe(0.5);
+		expect(tutorialHeldDamage(s, b, b.hp)).toBe(b.hp);
+		expect(isTutorialPelletHolding(s)).toBe(false);
+		a.hp = TUTORIAL_GUARD_HOLD_HP;
+		expect(tutorialHeldDamage(s, a, 1)).toBe(0);
+		expect([isTutorialPelletHolding(s), isTutorialGuardHolding(s)]).toEqual([true, false]);
+		// Not a scored endless floor: tutorialOnPelletsSwept finds no floor / record and keeps it.
+		tutorialOnPelletsSwept(s, 0);
+		expect(t.pelletLock).toBe(PELLET_LOCK_ARMED);
+		t.pelletLock = PELLET_LOCK_RELEASED;
+		expect([isTutorialPelletHolding(s), isTutorialPelletReleased(s)]).toEqual([false, true]);
+		expect(tutorialHeldDamage(s, a, 1)).toBe(1);
+	});
+
+	it("arms only on its floor and room; with no untaken pellet there (no pellets in the run) or no spawn it releases", () => {
+		const s = twoChasers(LOCK);
+		const [a] = chasers(s);
+		tutorialOnRoomSpawned(s, 2, 7, [a]); // wrong floor
+		tutorialOnRoomSpawned(s, 1, 4, [a]); // wrong room
+		expect(s.tutorial!.pelletLock).toBe(PELLET_LOCK_WAITING);
+		expect(tutorialHeldDamage(s, a, a.hp)).toBe(a.hp);
+		tutorialOnRoomSpawned(s, 1, 7, [a]); // no state.pellets: nothing to sweep
+		expect([s.tutorial!.pelletLock, isTutorialPelletReleased(s)]).toEqual([PELLET_LOCK_RELEASED, true]);
+		expect(tutorialHeldDamage(s, a, a.hp)).toBe(a.hp);
+		const e = twoChasers(LOCK);
+		tutorialOnRoomSpawned(e, 1, 7, []);
+		expect(e.tutorial!.pelletLock).toBe(PELLET_LOCK_RELEASED);
+	});
+
+	it("the guard lock is unchanged beside it: each arms on its own room and holds its own spawns", () => {
+		const s = twoChasers(BOTH);
+		const [a, b] = chasers(s);
+		tutorialOnRoomSpawned(s, 1, 4, [a]);
+		expect([s.tutorial!.guardLock, s.tutorial!.pelletLock]).toEqual([GUARD_LOCK_ARMED, PELLET_LOCK_WAITING]);
+		expect(tutorialHeldDamage(s, a, a.hp)).toBe(a.hp - TUTORIAL_GUARD_HOLD_HP);
+		expect(tutorialHeldDamage(s, b, b.hp)).toBe(b.hp);
+		tutorialOnGuardCancels(s, 1);
+		expect([s.tutorial!.guardLock, s.tutorial!.pelletLock]).toEqual([GUARD_LOCK_RELEASED, PELLET_LOCK_WAITING]);
+		expect(tutorialHeldDamage(s, a, a.hp)).toBe(a.hp);
+	});
+
+	it("without a lock (or outside the tutorial) nothing is ever held", () => {
+		for (const s of [twoChasers({ harmless: true }), twoChasers(undefined)]) {
+			const [a] = chasers(s);
+			tutorialOnRoomSpawned(s, 1, 7, [a]);
+			tutorialOnPelletsSwept(s, 0);
+			expect(tutorialHeldDamage(s, a, a.hp)).toBe(a.hp);
+			expect([isTutorialPelletHolding(s), isTutorialPelletReleased(s)]).toEqual([false, false]);
 		}
 	});
 });

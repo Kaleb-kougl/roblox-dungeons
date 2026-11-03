@@ -5,8 +5,10 @@
  *
  *   config   { endless: { runSeed: TUTORIAL.runSeed, worldForFloor }, scoring: ENDLESS_SCORING,
  *              tutorial: { harmless: true, startHalfHearts: TUTORIAL.startHalfHearts,
- *              bossHpPercent: TUTORIAL.bossHpPercent, guardLock: TUTORIAL_GUARD_LOCK }, drops: TUTORIAL_DROPS_CONFIG };
- *            no `breakables`
+ *              bossHpPercent: TUTORIAL.bossHpPercent, guardLock: TUTORIAL_GUARD_LOCK, pelletLock: TUTORIAL_PELLET_LOCK },
+ *              drops: TUTORIAL_DROPS_CONFIG, pellets: PELLETS_CONFIG };
+ *            pellets only in combat G on floor 1 (tutorialPellets, docs/PELLETS.md PL11: not placePellets, no power
+ *            pellet); no `breakables`
  *            (docs/DECOR.md B7: no barrels or crates in the tutorial, and its hand-built layouts carry none); drops
  *            only as the one guaranteed Fury from combat B's last swarmer (docs/BOOSTS.md B9)
  *   layouts  tutorialForgeParams: an endless floor's Forge params (endlessFloorParams: solid pillars, double-size
@@ -28,8 +30,9 @@
  * Enemy hp and bullet speed scale as on endless floor 1 / Depth 1 on every floor (shared/sim tutorialScalingFloor),
  * so the training dummy has its 8 hp; Mother Bramble is the Depth 1 fight at TUTORIAL.bossHpPercent of her hp (the
  * sim's TutorialSimConfig.bossHpPercent), so the practice boss falls fast. The block lesson's bruiser (combat D) cannot
- * die until the player has blocked a bullet with the sword's guard (TutorialSimConfig.guardLock: TUTORIAL_GUARD_LOCK).
- * Solo only: a party throws.
+ * die until the player has blocked a bullet with the sword's guard (TutorialSimConfig.guardLock: TUTORIAL_GUARD_LOCK);
+ * the pellet lesson's sniper (combat G) cannot die until every pellet of its room is taken (TutorialSimConfig.pelletLock:
+ * TUTORIAL_PELLET_LOCK, docs/PELLETS.md PL12). Solo only: a party throws.
  */
 import { TUTORIAL } from "shared/config";
 import { stableSort } from "shared/jsmath";
@@ -37,22 +40,28 @@ import {
 	BOSS_ACT1_KIND,
 	BRUISER_KIND,
 	ENDLESS_FIRST_FLOOR,
+	NO_POWER_PELLET,
 	SNIPER_KIND,
 	SWARMER_KIND,
+	cellKey,
 	encounterRooms,
 	endlessFloorParams,
 	entranceSpawn,
 	generateDungeon,
+	pelletPatternCells,
 	placeEncounter,
 	roomSpawnTiles,
+	worldToGrid,
 	type ActorSpawn,
 	type Dungeon,
 	type EncounterRoom,
 	type EncounterRoomType,
 	type EndlessFloorLayout,
+	type FloorPellets,
 	type ForgeChainDir,
 	type ForgeChainRoom,
 	type ForgeParams,
+	type PelletPattern,
 	type RoomShape,
 	type TileXZ,
 	type WorldXZ,
@@ -61,9 +70,11 @@ import {
 	Boost,
 	DEFAULT_PARTY_SIZE,
 	DUMMY_KIND,
+	PELLETS_CONFIG,
 	guaranteedDropsConfig,
 	type DropsConfig,
 	type TutorialGuardLock,
+	type TutorialPelletLock,
 	type SimConfig,
 } from "shared/sim";
 import { ENDLESS_SCORING, endlessFloorWorld, type EndlessRunFloor, type EndlessRunSetup } from "./endless";
@@ -76,7 +87,10 @@ export const TUTORIAL_WORLD_KIND = "tutorial";
 export const TURRET_SNIPER_KIND = "turret.sniper";
 export const TURRET_SPRAYER_KIND = "turret.sprayer";
 
-/** Floor 1's rooms in lesson order (docs/TUTORIAL.md "Floor 1" table: combat A-F are lessons 3-8). */
+/**
+ * Floor 1's rooms in lesson order (docs/TUTORIAL.md "Floor 1" table: combat A-F are lessons 3-8; combat G, the pellet
+ * lesson, follows F: docs/PELLETS.md PL11, PD13).
+ */
 export type TutorialLessonId =
 	| "entrance"
 	| "combatA"
@@ -85,6 +99,7 @@ export type TutorialLessonId =
 	| "combatD"
 	| "combatE"
 	| "combatF"
+	| "combatG"
 	| "treasure"
 	| "shrine"
 	| "stairwell";
@@ -120,13 +135,19 @@ export interface TutorialRoomPlan {
 	/** Archetype ids spawned when the player first walks in (deferred), in spawn order. */
 	readonly kinds: ReadonlyArray<string>;
 	readonly placement: TutorialPlacement;
+	/**
+	 * The room's pellet pattern (docs/PELLETS.md PL11: combat G only), laid by tutorialPellets at TUTORIAL.pellets'
+	 * inset and cap. Absent: no pellets (every other room).
+	 */
+	readonly pellets?: PelletPattern;
 }
 
 /**
- * Floor 1's rooms in tour order: the entrance, combat A-F, the treasure room, the shrine and the boss room (the open
+ * Floor 1's rooms in tour order: the entrance, combat A-G, the treasure room, the shrine and the boss room (the open
  * stairwell). Floor 1 IS this list: a Forge chain floor (ForgeParams.chain, tutorialChain) with one short corridor
  * from each room to the next and nothing else, laid out as a snake of three rows (entrance -> A -> B east, down to C,
- * C -> D -> E west, down to F, F -> treasure -> shrine -> boss east).
+ * C -> D -> E west, down to F, F -> G -> treasure -> shrine -> boss east). Combat G (docs/PELLETS.md PL11, PD13 / PD15):
+ * one sniper over a ring of pellets, held by the sweep lock until every pellet is taken.
  */
 export const TUTORIAL_ROOMS: ReadonlyArray<TutorialRoomPlan> = table.freeze([
 	{
@@ -207,8 +228,20 @@ export const TUTORIAL_ROOMS: ReadonlyArray<TutorialRoomPlan> = table.freeze([
 		placement: "far",
 	},
 	{
-		lesson: "treasure",
+		lesson: "combatG",
 		roomId: 7,
+		roomType: "combat",
+		w: 9,
+		h: 9,
+		shape: "rect",
+		next: "e",
+		kinds: [SNIPER_KIND],
+		placement: "far",
+		pellets: "ring",
+	},
+	{
+		lesson: "treasure",
+		roomId: 8,
 		roomType: "treasure",
 		w: 6,
 		h: 6,
@@ -219,7 +252,7 @@ export const TUTORIAL_ROOMS: ReadonlyArray<TutorialRoomPlan> = table.freeze([
 	},
 	{
 		lesson: "shrine",
-		roomId: 8,
+		roomId: 9,
 		roomType: "shrine",
 		w: 6,
 		h: 6,
@@ -228,7 +261,7 @@ export const TUTORIAL_ROOMS: ReadonlyArray<TutorialRoomPlan> = table.freeze([
 		kinds: [],
 		placement: "far",
 	},
-	{ lesson: "stairwell", roomId: 9, roomType: "boss", w: 9, h: 9, shape: "rect", kinds: [], placement: "far" },
+	{ lesson: "stairwell", roomId: 10, roomType: "boss", w: 9, h: 9, shape: "rect", kinds: [], placement: "far" },
 ]);
 
 function planOf(lesson: TutorialLessonId): TutorialRoomPlan {
@@ -265,6 +298,18 @@ export const TUTORIAL_GUARD_ROOM = planOf(TUTORIAL_GUARD_LESSON).roomId;
 export const TUTORIAL_GUARD_LOCK: TutorialGuardLock = table.freeze({
 	floor: ENDLESS_FIRST_FLOOR,
 	room: TUTORIAL_GUARD_ROOM,
+});
+
+/**
+ * The pellet lesson (docs/PELLETS.md PL11 / PL12, PD13 / PD14): combat G's pellets (tutorialPellets) and its sniper,
+ * held at 1 hp until every pellet is taken (the sim's TutorialSimConfig.pelletLock), so the `pellets` step's `sweep`
+ * skill is never waived.
+ */
+export const TUTORIAL_PELLET_LESSON: TutorialLessonId = "combatG";
+export const TUTORIAL_PELLET_ROOM = planOf(TUTORIAL_PELLET_LESSON).roomId;
+export const TUTORIAL_PELLET_LOCK: TutorialPelletLock = table.freeze({
+	floor: ENDLESS_FIRST_FLOOR,
+	room: TUTORIAL_PELLET_ROOM,
 });
 
 /** A floor-1 room with its geometry: what the director (T4) and the world marker (T6) read. */
@@ -410,6 +455,7 @@ interface Floor1Plan {
 	readonly rooms: ReadonlyArray<TutorialRoom>;
 	readonly roomSpawns: ReadonlyArray<ReadonlyArray<ActorSpawn>>;
 	readonly roomSpawnTiles: ReadonlyArray<ReadonlyArray<TileXZ>>;
+	readonly pellets: FloorPellets;
 }
 
 let floor1Plan: Floor1Plan | undefined;
@@ -446,7 +492,43 @@ function buildFloor1Plan(): Floor1Plan {
 		}
 		out.push({ ...plan, center, door: { x: door.x, z: door.z }, spawns });
 	}
-	return { rooms: out, roomSpawns, roomSpawnTiles: spawnTiles };
+	return { rooms: out, roomSpawns, roomSpawnTiles: spawnTiles, pellets: tutorialPellets(d, rooms, roomSpawns) };
+}
+
+/**
+ * Floor 1's pellets (docs/PELLETS.md PL11): every TUTORIAL_ROOMS room with a `pellets` pattern (combat G) lays it with
+ * the endless pattern walker (shared/dungeon pelletPatternCells) at TUTORIAL.pellets.insetTiles, capped at
+ * TUTORIAL.pellets.max, on the room's FLOOR cells but its spawns' cells (the room's floor is one region,
+ * checkTutorialChain, so every pellet is reachable). Not placePellets: no pattern or inset draw, no minimum, no power
+ * pellet (PD16). Rooms in TUTORIAL_ROOMS order (room id order). Pure.
+ */
+export function tutorialPellets(
+	d: Dungeon,
+	rooms: ReadonlyArray<EncounterRoom>,
+	roomSpawns: ReadonlyArray<ReadonlyArray<ActorSpawn>>,
+): FloorPellets {
+	const tiles: TileXZ[] = [];
+	const ids: number[] = [];
+	for (const plan of TUTORIAL_ROOMS) {
+		const pattern = plan.pellets;
+		const room = rooms[plan.roomId];
+		if (pattern === undefined || room === undefined) continue;
+		const spawnCells = new Set<number>();
+		for (const s of roomSpawns[plan.roomId] ?? []) spawnCells.add(cellKey(worldToGrid(s.x), worldToGrid(s.z)));
+		const cells = pelletPatternCells(
+			d,
+			room,
+			pattern,
+			TUTORIAL.pellets.insetTiles,
+			TUTORIAL.pellets.max,
+			(gx, gy) => !spawnCells.has(cellKey(gx, gy)),
+		);
+		for (const c of cells) {
+			tiles.push(c);
+			ids.push(plan.roomId);
+		}
+	}
+	return { tiles, room: ids, power: NO_POWER_PELLET };
 }
 
 function plan1(): Floor1Plan {
@@ -498,6 +580,8 @@ function buildTutorialFloor(floor: number): EndlessRunFloor {
 		roomSpawnTiles: spawnTiles,
 		spawn: { x: spawn.x, z: spawn.z },
 		stairwell: { x: bossRoom.cx, z: bossRoom.cz },
+		// Combat G's pellets on floor 1 (tutorialPellets); none on any later floor.
+		pellets: plan !== undefined ? plan.pellets : undefined,
 	};
 	// The endless floor's world (movers, bullet blocker, the enemies' steering mover, ...) on the tutorial layout.
 	return endlessFloorWorld(layout);
@@ -537,8 +621,10 @@ export function buildTutorialRunConfig(partySize: number = DEFAULT_PARTY_SIZE): 
 			startHalfHearts: TUTORIAL.startHalfHearts,
 			bossHpPercent: TUTORIAL.bossHpPercent,
 			guardLock: TUTORIAL_GUARD_LOCK,
+			pelletLock: TUTORIAL_PELLET_LOCK,
 		},
 		drops: TUTORIAL_DROPS_CONFIG,
+		pellets: PELLETS_CONFIG,
 	};
 	return {
 		config,

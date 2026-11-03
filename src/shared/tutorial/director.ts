@@ -11,7 +11,9 @@
  *   state.score       per-room clear records (room cleared), per-source award counts (kills, grazes, guard cancels)
  *   state.run         relics, curses and boons owned; the shrine zone (atShrine)
  *   state.tutorial    harmlessHits (the harmless-hit callout and the ghost half heart); the guard lock (the block
- *                     lesson's hold prompt while its bruiser waits at 1 hp, and the `guard` skill once released)
+ *                     lesson's hold prompt while its bruiser waits at 1 hp, and the `guard` skill once released); the
+ *                     pellet lock (the pellet lesson's hold prompt while its sniper waits at 1 hp for the last pellets,
+ *                     and the `sweep` skill once released; docs/PELLETS.md PL13)
  *   state.combat      the weapon set in hand (the bow), the bow slot's heavy-arrow tick, the boss actor
  *   state.drops       the ground drops and the player's running boosts (docs/BOOSTS.md B9: the `boost` step, done
  *                     when combat B's guaranteed Fury is picked up or waived when it fades, its `drop` marker, and the
@@ -62,6 +64,8 @@ import {
 	dropsGround,
 	isTutorialGuardHolding,
 	isTutorialGuardReleased,
+	isTutorialPelletHolding,
+	isTutorialPelletReleased,
 	weaponIndex,
 	weaponsAt,
 	type ActorState,
@@ -190,6 +194,9 @@ interface StepProgress {
 	heavyBase: number;
 	heavy: boolean;
 	embered: boolean;
+	/** Skill `sweep`: the score's SWEEP count when the room was entered, and a Sweep counted since. */
+	sweepBase: number;
+	swept: boolean;
 	relicsBase: number;
 	cursesBase: number;
 	sawShrine: boolean;
@@ -207,6 +214,8 @@ function newProgress(): StepProgress {
 		heavyBase: 0,
 		heavy: false,
 		embered: false,
+		sweepBase: 0,
+		swept: false,
 		relicsBase: 0,
 		cursesBase: 0,
 		sawShrine: false,
@@ -410,6 +419,7 @@ export class TutorialDirector {
 		if (!pr.entered) {
 			pr.entered = true;
 			pr.guardBase = scoreCount(state, ScoreSource.GUARD);
+			pr.sweepBase = scoreCount(state, ScoreSource.SWEEP);
 			pr.heavyBase = this.heavyTick(state);
 			pr.relicsBase = me?.relics.size() ?? 0;
 			pr.cursesBase = me?.curses.size() ?? 0;
@@ -418,6 +428,7 @@ export class TutorialDirector {
 		if (e.rollStarted > 0) pr.rolled = true;
 		if (e.emberUsed > 0) pr.embered = true;
 		if (scoreCount(state, ScoreSource.GUARD) > pr.guardBase) pr.guarded = true;
+		if (scoreCount(state, ScoreSource.SWEEP) > pr.sweepBase) pr.swept = true;
 		if (this.bowInHand(state)) pr.sawBow = true;
 		if (this.heavyTick(state) !== pr.heavyBase) pr.heavy = true;
 	}
@@ -435,7 +446,21 @@ export class TutorialDirector {
 				return pr.heavy;
 			case "ember":
 				return pr.embered || (cleared && state.player.embers === 0); // none left to burn
+			case "sweep":
+				// Never waived: the sim holds the room's enemies until its last pellet is taken (pellet lock).
+				return pr.swept || isTutorialPelletReleased(state);
 		}
+	}
+
+	/**
+	 * True while the sim holds `step`'s lesson enemies at 1 hp (its holdPrompt shows): the block lesson's guard lock
+	 * (a `guard` skill) or the pellet lesson's sweep lock (a `sweep` skill).
+	 */
+	private holding(step: TutorialStep, state: Readonly<SimState>): boolean {
+		const rule = step.rule;
+		if (rule.kind !== "clear") return false;
+		if (rule.skills.includes("guard") && isTutorialGuardHolding(state)) return true;
+		return rule.skills.includes("sweep") && isTutorialPelletHolding(state);
 	}
 
 	private evaluate(
@@ -638,9 +663,13 @@ export class TutorialDirector {
 					prompt = TUTORIAL_FOLLOW_PROMPT;
 				}
 			}
-			// The block lesson's bruiser held at 1 hp, waiting for a block: say why it will not fall.
+			// The block lesson's bruiser (or the pellet lesson's sniper) held at 1 hp: say why it will not fall.
 			const hold = TUTORIAL_STEPS[shown].holdPrompt;
-			if (hold !== undefined && prompt === TUTORIAL_STEPS[shown].prompt && isTutorialGuardHolding(frame.state)) {
+			if (
+				hold !== undefined &&
+				prompt === TUTORIAL_STEPS[shown].prompt &&
+				this.holding(TUTORIAL_STEPS[shown], frame.state)
+			) {
 				prompt = hold;
 			}
 			v.promptStepIndex = shown;

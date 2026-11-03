@@ -18,6 +18,9 @@
  *             picker, each erased bullet's position and the points. Delayed (not yet fired) bullets are not on screen
  *             and stay, as for sweepArc.
  * Neither feeds the combo or refills its timer (PD1).
+ *
+ * In a tutorial run (state.tutorial) a room's last regular pickup calls tutorialOnPelletsSwept (tutorial/tutorial.ts, a
+ * leaf: no require cycle), which releases the pellet lesson's sweep lock (docs/PELLETS.md PL12).
  */
 import { cellKey, worldToGrid } from "shared/dungeon";
 import type { SimState } from "../state";
@@ -25,6 +28,7 @@ import type { Vec3 } from "../combat/bullets";
 import { BulletKind, BulletPayload } from "../combat/patterns";
 import { partySize, playerAt } from "../party";
 import { scorePellet, scorePowerBullets } from "../score/score";
+import { tutorialOnPelletsSwept } from "../tutorial/tutorial";
 import { PelletPhase } from "./pelletsData";
 import { NO_PELLET_RECORD, type PelletsState } from "./pellets";
 
@@ -113,6 +117,8 @@ export function stepPellets(state: SimState): void {
 			room.left -= 1;
 			const points = scorePellet(state);
 			p.events.eaten.push({ index: k, x: p.x[k], z: p.z[k], player: i, points });
+			// The tutorial's pellet lesson (docs/PELLETS.md PL12): the room's last pellet releases its sweep lock.
+			if (room.left === 0 && state.tutorial !== undefined) tutorialOnPelletsSwept(state, rec);
 		}
 	}
 }

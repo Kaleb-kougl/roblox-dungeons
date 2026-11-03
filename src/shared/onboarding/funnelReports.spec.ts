@@ -324,14 +324,14 @@ describe("attempt event builders", () => {
 
 	it("start: funnel step 1 with entry / revision / device", () => {
 		expect(tutorialFunnelRevision()).toBe(`t${ONBOARDING_TUTORIAL_VERSION}r${TUTORIAL_FUNNEL_REVISION}`);
-		expect(tutorialFunnelRevision()).toBe("t1r2");
+		expect(tutorialFunnelRevision()).toBe("t1r3");
 		expect(tutorialAttemptStartEvents(INFO)).toEqual([
 			{
 				kind: "funnel",
 				funnel: TUTORIAL_FUNNEL,
 				step: 1,
 				stepName: "started",
-				fields: { field01: "firstJoin", field02: "t1r2", field03: "touch" },
+				fields: { field01: "firstJoin", field02: "t1r3", field03: "touch" },
 			},
 		]);
 		expect(tutorialStepEvent(TUTORIAL_FUNNEL_MAX_STEP)).toEqual({
