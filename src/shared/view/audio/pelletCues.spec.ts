@@ -1,11 +1,18 @@
-// Pellet sounds (docs/PELLETS.md PL7): the chomp alternates two pitches and plays once per frame however many pellets
+// Pellet sounds (docs/PELLETS.md PL7): the chomp climbs the room's ladder (pelletEatSpeed) and plays once per frame however many pellets
 // were eaten, never inside its minimum interval; a teammate's chomp is quieter; a sweep plays its sting; the power pellet
 // is a player sound of its picker. The three IDs are the theme's port audio events.
 import { describe, expect, it } from "@rbxts/jest-globals";
-import { ALL_EVENT_FIELDS, createSimState, eventDefault, type SimEvents, type SimState } from "shared/sim";
+import {
+	ALL_EVENT_FIELDS,
+	createSimState,
+	eventDefault,
+	type PelletsState,
+	type SimEvents,
+	type SimState,
+} from "shared/sim";
 import { PELLET_AUDIO_IDS } from "shared/theme";
 import { FxEventBuffer } from "shared/view/fx";
-import { PELLETS_VIEW, PelletFrameEvents } from "shared/view/pellets";
+import { PELLETS_VIEW, PelletFrameEvents, pelletEatSpeed } from "shared/view/pellets";
 import {
 	ALL_SFX,
 	AUDIO_VIEW,
@@ -64,6 +71,14 @@ function eaten(players: number[]): PelletFrameEvents {
 	return ev;
 }
 
+/** `s` with one pellet room of `count` regular pellets, `left` of them still on the floor (pellets 0..count-1). */
+function withRoom(s: SimState, count: number, left: number): SimState {
+	const rec: number[] = [];
+	for (let i = 0; i < count; i++) rec.push(0);
+	s.pellets = { rec, rooms: [{ first: 0, span: count, count, left, phase: 1, swept: 0 }] } as unknown as PelletsState;
+	return s;
+}
+
 describe("audio: pellets (docs/PELLETS.md PL7)", () => {
 	it("the three IDs are the theme's port audio events, ranked, in ALL_SFX and PORT_SFX", () => {
 		const ids = [SFX.pelletEat, SFX.pelletSweep, SFX.pelletPower];
@@ -78,42 +93,58 @@ describe("audio: pellets (docs/PELLETS.md PL7)", () => {
 		}
 	});
 
-	it("the chomp: once per frame for several pellets, alternating the two speeds, never inside its interval", () => {
-		const s = createSimState(1, 0, 0);
+	it("the chomp: once per frame for several pellets, climbing the room's ladder, never inside its interval", () => {
+		const n = PELLETS_VIEW.audio.ladderSemitones.size();
+		const s = withRoom(createSimState(1, 0, 0), n, n);
 		const m = new AudioCueMapper();
-		const [a, b] = [PELLETS_VIEW.audio.eatSpeeds[0], PELLETS_VIEW.audio.eatSpeeds[1]];
-		expect(a).never.toBe(b);
 		const gap = PELLETS_VIEW.audio.eatMinIntervalSec;
 		expect(m.intervalOf(SFX.pelletEat)).toBe(gap);
-		expect(frame(m, 0, s, eaten([0, 0, 0]))).toEqual([[SFX.pelletEat, 1, a]]);
-		// Inside the interval: nothing, and the toggle stays.
+		// Three pellets on one frame: one chomp at the room's progress after the frame (3 of n taken).
+		s.pellets!.rooms[0].left = n - 3;
+		expect(frame(m, 0, s, eaten([0, 0, 0]))).toEqual([[SFX.pelletEat, 1, pelletEatSpeed(3, n)]]);
+		// Inside the interval: nothing.
+		s.pellets!.rooms[0].left = n - 4;
 		expect(frame(m, gap / 2, s, eaten([0]))).toEqual([]);
-		expect(frame(m, gap, s, eaten([0]))).toEqual([[SFX.pelletEat, 1, b]]);
-		expect(frame(m, 2 * gap, s, eaten([0]))).toEqual([[SFX.pelletEat, 1, a]]);
-		// No pellet, no chomp; a new run starts on the first speed again.
-		expect(frame(m, 3 * gap, s, new PelletFrameEvents())).toEqual([]);
-		frame(m, 4 * gap, s, eaten([0]));
-		m.reset();
-		expect(frame(m, 5 * gap, s, eaten([0]))).toEqual([[SFX.pelletEat, 1, a]]);
+		// Every later pellet a step higher, the last one the octave.
+		let prev = pelletEatSpeed(3, n);
+		for (let k = 5; k <= n; k++) {
+			s.pellets!.rooms[0].left = n - k;
+			const out = frame(m, k * gap, s, eaten([0]));
+			expect(out).toEqual([[SFX.pelletEat, 1, pelletEatSpeed(k, n)]]);
+			expect(out[0][2] > prev).toBe(true);
+			prev = out[0][2];
+		}
+		expect(prev).toBe(2);
+		// No pellet, no chomp; without pellet state (an unknown room) the root.
+		expect(frame(m, 100, s, new PelletFrameEvents())).toEqual([]);
+		expect(frame(m, 101, createSimState(1, 0, 0), eaten([0]))).toEqual([[SFX.pelletEat, 1, 1]]);
 	});
 
 	it("co-op: a teammate's chomp is quieter and lower-ranked; one of the local player's is full volume", () => {
 		const s = createSimState(1, 0, 0, { party: { size: 2 } });
 		const m = new AudioCueMapper();
 		const quiet = frame(m, 0, s, eaten([1]), 0);
-		expect(quiet).toEqual([[SFX.pelletEat, AUDIO_VIEW.teammateVolume, PELLETS_VIEW.audio.eatSpeeds[0]]]);
+		expect(quiet).toEqual([[SFX.pelletEat, AUDIO_VIEW.teammateVolume, 1]]);
 		expect(SFX_PRIORITY[SFX.pelletEat] - TEAMMATE_PRIORITY_DROP < SFX_PRIORITY[SFX.pelletEat]).toBe(true);
 		const loud = frame(m, 1, s, eaten([1, 0]), 0);
 		expect(loud[0][1]).toBe(1);
 	});
 
-	it("a silent chomp (no clip) queues nothing and keeps the toggle", () => {
+	it("co-op: a teammate's pellet climbs the shared room's ladder; the local player's pellet sets the pitch", () => {
+		const s = withRoom(createSimState(1, 0, 0, { party: { size: 2 } }), 10, 6);
+		const m = new AudioCueMapper();
+		expect(frame(m, 0, s, eaten([1]), 0)).toEqual([
+			[SFX.pelletEat, AUDIO_VIEW.teammateVolume, pelletEatSpeed(4, 10)],
+		]);
+	});
+
+	it("a silent chomp (no clip) queues nothing", () => {
 		const s = createSimState(1, 0, 0);
 		let on = false;
 		const m = new AudioCueMapper((id) => id !== SFX.pelletEat || on);
 		expect(frame(m, 0, s, eaten([0]))).toEqual([]);
 		on = true;
-		expect(frame(m, 1, s, eaten([0]))).toEqual([[SFX.pelletEat, 1, PELLETS_VIEW.audio.eatSpeeds[0]]]);
+		expect(frame(m, 1, s, eaten([0]))).toEqual([[SFX.pelletEat, 1, 1]]);
 	});
 
 	it("a sweep plays its sting once; the power pellet is its picker's player sound", () => {

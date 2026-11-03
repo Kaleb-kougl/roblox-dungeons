@@ -577,12 +577,13 @@ Decision log (deviations from `PLAN.md`):
   ring, `tutorialPellets` (no power pellet), the sweep lock `TutorialSimConfig.pelletLock` (five hashed fields appended
   to the `tutorial` group; the guard lock's hold), floor-1 seed 7500 -> 7574, step `pellets` 12, funnel revision 3
   (`t1r3`, caps 88 / 264). Theme: `pellet.normal` / `pellet.power` (assets and colour roles, placeholder `Block`,
-  `pelletReport`), strings `score.source.pellets` / `.sweep`, `room.clear.line.pellets` / `.sweep`,
+  `pelletReport`: yellow `#ffff00`, >= 40 CIE76 from danger / build / player-outline roles, >= 30 from boosts), strings `score.source.pellets` / `.sweep`, `room.clear.line.pellets` / `.sweep`,
   `bestiary.pellet.power`, `tutorial.prompt.pellets*`, port audio IDs `sfx.pellet.eat` / `.sweep` / `.power` (SILENT in
   both packs); `contract.luau` / `validate.luau` at 186 / 196 top-level locals. View: `PelletRenderController`, pops,
   the power fly-in, tally segments `pellets` / `sweep` (a fold on the smallest phone), `KV_PelletDebug`. M1, every
   fixture and every replay without the flag replay exactly as before; endless and tutorial replays and scores changed
-  (boards stay `_v1`, `DAILY.ruleset` 3 -> 4). Studio check, the vale art upload, sounds, playtests (PL9 / PL15) and
+  (boards stay `_v1`, `DAILY.ruleset` 3 -> 5 with main merged). The chomp `sfx.pellet.eat` climbs the major scale over
+  a room's pellets (`pelletEatSpeed`). Studio check, the vale art upload, sounds, playtests (PL9 / PL15) and
   four owner calls pending.
 
 ## Commands

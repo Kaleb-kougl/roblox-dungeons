@@ -118,7 +118,14 @@ export {
 } from "./buildColors";
 // Roblox port (docs/PELLETS.md PL6): the pellet kinds, roles, sounds and strings, and their colour rules.
 export * from "./pellets";
-export { PELLET_COLOR_RULES, pelletReport, type PelletColorEntry, type PelletColorRules } from "./pelletColors";
+export {
+	MIN_PELLET_BOOST_DIFFERENCE,
+	PELLET_BOOST_COLOR_RULES,
+	PELLET_COLOR_RULES,
+	pelletReport,
+	type PelletColorEntry,
+	type PelletColorRules,
+} from "./pelletColors";
 export * from "./placeholders";
 export {
 	DEFAULT_PACK_ID,

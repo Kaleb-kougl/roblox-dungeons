@@ -171,7 +171,14 @@ import {
 } from "../hud";
 import { AUDIO_VIEW } from "./config";
 import { StateWatch, SwingEdge } from "../watch";
-import { NO_PELLET_EVENTS, PELLETS_VIEW, deflectedBullets, type PelletFrameSource } from "../pellets";
+import {
+	NO_PELLET_EVENTS,
+	PELLETS_VIEW,
+	deflectedBullets,
+	pelletEatSpeed,
+	pelletRoomProgress,
+	type PelletFrameSource,
+} from "../pellets";
 
 /** Every sound effect the game plays, by logical ID (theme manifest). */
 export const SFX = {
@@ -944,9 +951,6 @@ export class AudioCueMapper {
 	/** buildCue's scan of its lists: the highest generation, and whether the local player set one off. */
 	private scanGen = 0;
 	private scanMine = false;
-	/** docs/PELLETS.md PL7: which of PELLETS_VIEW.audio.eatSpeeds the next chomp plays (alternates per start). */
-	private chomp = 0;
-
 	/** `playable`: whether an ID has a clip (silent IDs and their fallbacks; default: every ID plays). */
 	constructor(private readonly playable: Playable = EVERY_ID) {}
 
@@ -963,7 +967,6 @@ export class AudioCueMapper {
 	/** A new run: forget the enemy-shot counter and the watched state (cooldowns keep running on real time). */
 	reset(): void {
 		this.lastEnemySpawned = -1;
-		this.chomp = 0;
 		this.watch.reset();
 	}
 
@@ -1104,20 +1107,25 @@ export class AudioCueMapper {
 
 	/**
 	 * The frame's pellet cues (docs/PELLETS.md PL7): one chomp for every pellet eaten this frame (full volume when the
-	 * local player took one, else a teammate's quieter, lower-ranked cue) at the next of the two alternating speeds (the
-	 * toggle moves only when a chomp is queued: a silent clip or its interval keeps it); the sweep sting for any room
+	 * local player took one, else a teammate's quieter, lower-ranked cue), pitched up the room's ladder
+	 * (pelletEatSpeed: the frame's last pellet, the local player's when they took one, against its room's progress
+	 * after the frame's ticks, so a teammate's pellets climb the shared room's ladder too); the sweep sting for any room
 	 * swept; the power pellet as a player sound of its picker.
 	 */
-	private pelletCues(pellets: PelletFrameSource, localIndex: number): void {
+	private pelletCues(pellets: PelletFrameSource, localIndex: number, state: Readonly<SimState>): void {
 		const eaten = pellets.eaten;
 		if (eaten.size() > 0) {
 			let mine = false;
-			for (const e of eaten) if (e.player === localIndex) mine = true;
-			const speeds = PELLETS_VIEW.audio.eatSpeeds;
-			const before = this.pending;
+			let last = eaten[eaten.size() - 1].index;
+			for (const e of eaten) {
+				if (e.player !== localIndex) continue;
+				mine = true;
+				last = e.index;
+			}
+			const progress = pelletRoomProgress(state, last);
+			const speed = progress !== undefined ? pelletEatSpeed(progress[0], progress[1]) : 1;
 			const rank = priorityOf(SFX.pelletEat) - (mine ? 0 : TEAMMATE_PRIORITY_DROP);
-			this.cue(SFX.pelletEat, mine ? 1 : AUDIO_VIEW.teammateVolume, rank, speeds[this.chomp % speeds.size()]);
-			if (this.pending > before) this.chomp = (this.chomp + 1) % speeds.size();
+			this.cue(SFX.pelletEat, mine ? 1 : AUDIO_VIEW.teammateVolume, rank, speed);
 		}
 		if (pellets.swept.size() > 0) this.cue(SFX.pelletSweep, 1);
 		for (const p of pellets.power) this.playerCue(SFX.pelletPower, p.player, localIndex);
@@ -1360,7 +1368,7 @@ export class AudioCueMapper {
 		// Build effects (docs/BUILDS.md BU8): generation pitch, intervals and the voice cap.
 		this.buildCues(builds, localIndex);
 		// Pellets (docs/PELLETS.md PL7): the chomp, the sweep sting, the power pellet.
-		this.pelletCues(pellets, localIndex);
+		this.pelletCues(pellets, localIndex, state);
 
 		this.keepOneJingle();
 		this.applyCap();

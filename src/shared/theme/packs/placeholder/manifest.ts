@@ -195,13 +195,13 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		"build.burst": "#f8c8a0",
 		"build.shard": "#f4e8f8",
 		"build.ember": "#f4f4b0",
-		// Roblox port (docs/PELLETS.md PL6, PD3): the pellets, a vivid green (the one hue left between the boosts' lime and
-		// aqua, the builds' blue and the danger pinks and oranges); the power pellet the same green, brighter. Each is >=
-		// 40 CIE76 from the enemy bullet, its outline, the telegraph, every boost and build effect colour and the player
-		// outline (nearest: normal vs quickstep 42.8, power vs frenzy 40.2) and >= 6.6:1 (normal) / 10.9:1 (power) on every
+		// Roblox port (docs/PELLETS.md PL6, PD3; yellow by the owner, 2026-11-03): the pellets are Pac-Man yellow, the power
+		// pellet the same yellow (it reads by its size, pulse and glow). >= 40 CIE76 from the enemy bullet (82), its
+		// outline, the telegraph (76), every build effect colour (nearest build.ember 63) and the player outline; >= 30 from
+		// every boost (nearest: frenzy 34.4, fury 38.7: MIN_PELLET_BOOST_DIFFERENCE, pelletColors.ts) and >= 3:1 on every
 		// biome floor and vale's textured floor (pelletReport, printed by theme/pellets.spec.ts).
-		"pellet.normal": "#00c868",
-		"pellet.power": "#00ff80",
+		"pellet.normal": "#ffff00",
+		"pellet.power": "#ffff00",
 	},
 	// Roblox port (docs/VOID_DECOR.md VD1): `shoulder` is the wall darkened in linear light (ancient x0.95, molten x0.75,
 	// frost x0.9, grim x0.8, verdant x0.9: as far as the "nearer the wall than the floor" rule lets each go; the ancient

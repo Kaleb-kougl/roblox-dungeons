@@ -14,9 +14,12 @@ code-complete (PL8 short of its `art:build` confirmation and upload) and verifie
 build; Lune 316 / 317 suites, 4408 / 4409 tests, the one failure the known base `forge.spec` seedToState NaN, which
 also fails on `4f041f1`); see "As built". **Pending:** every Studio check (PL7, PL14), the vale art upload (PL8), the
 vale sounds (`audio:build`, upload), the playtests PL9 / PL15, and four **owner calls** ("As built", "Open owner
-calls"). The parked `wip-2026-11-02` branch (solid decor, 3D kits, credits) is NOT under this one, and both bump
-`DAILY.ruleset` (solid decor 2 -> 3 there; New enemies 2 -> 3 and pellets 3 -> 4 here): the merged build needs a
-ruleset of its own (5), not one of the numbers either branch already used.
+calls").
+
+Update (2026-11-03): `main` (now with the parked work: solid decor, room themes, 3D kits, credits) is merged into
+`pellets`; `DAILY.ruleset` is 5 (main 3, this branch's earlier 4). Owner changes: the pellets are **yellow** (`#ffff00`,
+both kinds; the boost colour bar lowered to 30, "As built" > Theme) and the chomp **climbs the major scale** as a room's
+pellets are eaten (root to octave, the Sweep's sting after it; "As built" > View).
 
 Owner answers (2026-11-02, Kaleb): pellets do **not** feed the combo (PD1); the
 tension with the speed bonus is accepted (PD2); squares / cubes, not dots (PD3); the power pellet is **rare** (PD4).
@@ -55,7 +58,8 @@ server's validation and a daily seed see the same pellets.
    out from the room's centre (0.4 s, presentation only: they are all collectable at once). Small square cubes in
    their own colour, flat under every bullet, no bob (bobbing reads as alive; it is not an enemy).
 2. **Walk over them** (walk or roll) while you fight. Each one disappears with a tiny score pop (`+5`, smaller and
-   shorter than a kill's) and a short "chomp" whose pitch alternates, Pac-Man style (`sfx.pellet.eat`, rate-limited).
+   shorter than a kill's) and a short "chomp" that climbs a note with every pellet of the room, from the root to the octave
+   on the last one (`sfx.pellet.eat`, rate-limited).
 3. **The last few glow.** With `PELLETS_VIEW.lastFewHint` (3) or fewer left in the room, the rest pulse brighter so you
    can find them in a doubled room.
 4. **Sweep.** Collect every pellet before the last enemy dies: the room clear's tally shows `Pellets 120` and
@@ -122,7 +126,7 @@ pre-generation builds it with the rest of the floor.
 |---|---|
 | M1, every fixture | none: unchanged |
 | Tutorial | only in its pellet lesson room (combat G, floor 1; no power pellet): see "Tutorial lesson". Tutorial replays and its lock spec change |
-| Endless solo / co-op, daily, dev | `PELLETS_CONFIG`: endless replays and scores change from floor 1. All-time boards stay `_v1` (PD10); `DAILY.ruleset` 3 -> 4 |
+| Endless solo / co-op, daily, dev | `PELLETS_CONFIG`: endless replays and scores change from floor 1. All-time boards stay `_v1` (PD10); `DAILY.ruleset` 3 -> 5 (4 on this branch before main merged) |
 
 ### 4. Client and theme (presentation only)
 
@@ -134,7 +138,7 @@ pre-generation builds it with the rest of the floor.
 | `shared/view/pellets` | `PelletEvents` collected per tick like `BoostFrameEvents`; pure pop-in / pulse curves with specs |
 | Room clear tally | `TallyKind` gains `pellets` (points earned in the room, shown like Kills) and `sweep` (a bonus: it flies with clear / perfect / fast). `RoomClear` gains `pelletPoints` / `sweepPoints`; killPoints subtracts the pellets. `ROOM_CLEAR_SEGMENTS` 4 -> 6; segments with 0 still hidden. PL7 checks the row fits the transient slot on the smallest phone (fallback: pellets fold into the first segment, renamed "Room") |
 | Results screen | Two source rows `score.source.pellets` / `score.source.sweep` |
-| Audio cue mapper | `sfx.pellet.eat` (two alternating pitches, `minInterval` 0.06 s, several on one frame play once), `sfx.pellet.sweep`, `sfx.pellet.power`: three port audio IDs in `PORT_AUDIO_EVENTS`, SILENT in the placeholder |
+| Audio cue mapper | `sfx.pellet.eat` (climbing the room's ladder, `minInterval` 0.06 s, several on one frame play once), `sfx.pellet.sweep`, `sfx.pellet.power`: three port audio IDs in `PORT_AUDIO_EVENTS`, SILENT in the placeholder |
 | Theme | Required: assets + colour roles `pellet` / `pellet.power` (`PELLET_ROLES`; placeholder kind `"Block"`); validator `pelletReport`: >= 3:1 on every biome floor, >= 40 CIE76 from the enemy-bullet roles, `telegraph`, every boost and build role and `playerOutline`. Strings: the two source names, `room.clear.pellets` / `.sweep`, with `l10n/context.json` entries. `contract.luau` / `validate.luau` sit near Luau's 200 top-level locals: array entries and function-scoped constants only (count on `out/`) |
 | Vale art | Original, like the loot glint: `scripts/art/gen-pellet.js` draws a small pixel cube in 3/4 view (and a larger power cube with a highlight), run by `art:build` / `art:lock` into `art/vendor/kaleb-vale/pellets/`, its own sheet via `own` (no atlas repack) |
 | Debug | `KV_PelletDebug` (Studio / KV_Debug): the room's left / count over each live room |
@@ -350,9 +354,12 @@ pellets only keep off WALL (pillars included), pieces and spawn cells.
 - Ids `pellet.normal` / `pellet.power` (asset and colour role: the validator needs two segments), slot `PELLET`,
   exports `PELLET_KINDS`, `pelletId`, `isPelletId`, `PELLET_IDS`, `PELLET_ROLES`, `PELLET_AUDIO_IDS`,
   `PELLET_COLOR_RULES`, `pelletReport` and the generic `floorAndDifferenceReport` (pulled out of `buildColors.ts`).
-  Colours `#00c868` / `#00ff80`: green is the only hue >= 40 CIE76 from every required role (power nearest Frenzy
-  40.2, normal nearest Quickstep 42.8; 23.9 from the Swift affix colour, which is not in the rule); floor contrast
-  >= 6.6:1 / 10.9:1. Placeholder `Block` cubes 0.25 / 0.45 tile. The core preload tier includes `pellet.`.
+  Colours (owner, 2026-11-03): Pac-Man yellow `#ffff00` for both kinds (the power pellet reads by size, pulse and glow).
+  Yellow sits between the boosts' gold and lime, so the rule was split: >= 40 CIE76 from the enemy bullet (82), its
+  outline, the telegraph (76), every build effect colour (nearest build.ember 63) and the player outline
+  (`PELLET_COLOR_RULES`), >= 30 from every boost (`PELLET_BOOST_COLOR_RULES`, `MIN_PELLET_BOOST_DIFFERENCE`; nearest
+  frenzy 34.4, fury 38.7): a boost is a coin or gem with a halo and beam, a pellet a cube, and mixing them up costs
+  nothing. Floor contrast >= 13.6:1. (Before: green `#00c868` / `#00ff80`, the only hue clearing 40 from every role.) Placeholder `Block` cubes 0.25 / 0.45 tile. The core preload tier includes `pellet.`.
 - Strings: `score.source.pellets` "Pellets" / `score.source.sweep` "Sweeps"; tally `room.clear.line.pellets`
   "Pellets {points}" / `room.clear.line.sweep` "Sweep +{points}"; `bestiary.pellet.power` "Power pellet: grab it to
   turn every enemy bullet into points" (the bestiary's "Name: tip" format); the tutorial prompts below. Audio
@@ -372,7 +379,11 @@ pellets only keep off WALL (pillars included), pieces and spawn cells.
   rescaled one), art flat at 0.03 studs (over floor effects, under markings and bullets), `KV_PelletDebug`.
 - Pops: a third layer in `ScorePopController`, 0.6 of a kill pop, 0.4 s, merged per player per frame; the power
   pellet's points join its picker's pop (the plan did not say).
-- Audio: `sfx.pellet.eat` alternates speeds 1 / 1.122, once per frame, `minInterval` 0.06 s, quieter for teammates.
+- Audio: `sfx.pellet.eat` climbs (owner, 2026-11-03): the k-th of a room's n regular pellets plays
+  `PELLETS_VIEW.audio.ladderSemitones` [0, 2, 4, 5, 7, 9, 11, 12] at floor((k - 1) / (n - 1) x 7) (`pelletEatSpeed`,
+  from the room's progress after the frame: `pelletRoomProgress`), so the major scale rises from the root to the octave
+  on the pellet that earns the Sweep, and a teammate's pellets climb the shared room's ladder too. Once per frame,
+  `minInterval` 0.06 s, quieter for teammates. (Before: two alternating speeds 1 / 1.122.)
 - The power pellet's erases are no deflect: they are taken out of `bulletsDeleted` for the deflect cue, the guard
   effect (`FxCueFrame.pellets`) and WeaponViewController's guard fan flash (`deflectedBullets` /
   `tickDeflectedBullets` in `view/pellets/events.ts`, imported by file against a require cycle).
@@ -454,7 +465,7 @@ choice, then the alternative.
   bonus. Alternative: it counts like any pellet.
 - **PD9. Enemy rooms only; no pellets in boss rooms** [PL1]. Boss rooms have no room record and their own score
   (no-hit bonus). Alternative: a ring of pellets per boss phase.
-- **PD10. Leaderboards stay `_v1`** [PL5], as for Builds, Enemy variants and breakable loot; `DAILY.ruleset` 3 -> 4.
+- **PD10. Leaderboards stay `_v1`** [PL5], as for Builds, Enemy variants and breakable loot; `DAILY.ruleset` 3 -> 5 (with main merged).
 - **PD11. A tiny score pop per pellet, plus the chomp sound** (owner, flipped from the recommendation) [PL7]. Pops
   on one frame merge. Alternative turned down: the chomp alone.
 - **PD12. Pellets are not on the minimap** [PL7]. Alternative: dots on the full map only.

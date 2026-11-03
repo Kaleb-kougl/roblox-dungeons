@@ -438,3 +438,36 @@ export class PelletFlyIns {
 export function pelletDebugText(left: number, count: number): string {
 	return `pellets ${left} / ${count}`;
 }
+
+/** Semitones in an octave (pelletEatSpeed's pitch to playback speed). */
+const SEMITONES_PER_OCTAVE = 12;
+/** Keeps an exact ladder step (k - 1) / (n - 1) x (size - 1) from flooring one below through float error. */
+const LADDER_EPSILON = 1e-9;
+
+/**
+ * The chomp's playback speed for the `taken`-th of a room's `count` regular pellets (1-based; PELLETS_VIEW.audio
+ * ladderSemitones): the root for the first, the octave (2x) for the last. Out-of-range input clamps; a room of one
+ * pellet plays the root.
+ */
+export function pelletEatSpeed(taken: number, count: number): number {
+	const ladder = PELLETS_VIEW.audio.ladderSemitones;
+	const last = ladder.size() - 1;
+	let step = 0;
+	if (count > 1) {
+		const u = math.clamp((taken - 1) / (count - 1), 0, 1);
+		step = math.floor(u * last + LADDER_EPSILON);
+	}
+	return math.pow(2, ladder[math.clamp(step, 0, last)] / SEMITONES_PER_OCTAVE);
+}
+
+/**
+ * The ladder position of an eaten pellet after the frame's ticks: [taken, count] of its room's regular pellets
+ * (count - left, count), or undefined when the pellet or its room is unknown.
+ */
+export function pelletRoomProgress(state: Readonly<SimState>, index: number): [number, number] | undefined {
+	const p = state.pellets;
+	if (p === undefined || index < 0 || index >= p.rec.size()) return undefined;
+	const room = p.rooms[p.rec[index]];
+	if (room === undefined || room.count <= 0) return undefined;
+	return [room.count - room.left, room.count];
+}

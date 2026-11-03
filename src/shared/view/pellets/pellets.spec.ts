@@ -20,6 +20,7 @@ import {
 	mergePelletPops,
 	newPelletLook,
 	pelletDebugText,
+	pelletEatSpeed,
 	pelletGoneLook,
 	pelletPopAlpha,
 	pelletPopInScale,
@@ -68,7 +69,7 @@ describe("pellets view: config", () => {
 		expect([V.artTiles.normal, V.artTiles.power]).toEqual([0.25, 0.45]);
 		expect(V.poolSize).toBe(64);
 		expect(V.debugAttribute).toBe("KV_PelletDebug");
-		expect(V.audio.eatSpeeds.size()).toBe(2);
+		expect([...V.audio.ladderSemitones]).toEqual([0, 2, 4, 5, 7, 9, 11, 12]);
 		expect(V.audio.eatMinIntervalSec).toBe(0.06);
 		// Floor art sits over the floor effects (0.02) and under every floor marking (0.04 tiles = 0.16 studs).
 		expect(V.artLiftStuds > 0.02 && V.artLiftStuds < 0.16).toBe(true);
@@ -490,5 +491,28 @@ describe("pellets view: debug label, theme and wiring", () => {
 		expect(run.pellets.count()).toBe(1);
 		run.frame(1 / 30, EMPTY_INPUT);
 		expect(run.pellets.swept.size()).toBe(0);
+	});
+});
+
+describe("pellets view: the chomp's ladder (owner, 2026-11-03)", () => {
+	it("the first pellet plays the root, the last the octave, never falling between", () => {
+		expect(pelletEatSpeed(1, 20)).toBe(1);
+		expect(pelletEatSpeed(20, 20)).toBe(2);
+		expect(pelletEatSpeed(1, 1)).toBe(1);
+		expect(pelletEatSpeed(0, 20)).toBe(1);
+		expect(pelletEatSpeed(25, 20)).toBe(2);
+		for (const n of [2, 3, 8, 12, 28]) {
+			let prev = 0;
+			for (let k = 1; k <= n; k++) {
+				const v = pelletEatSpeed(k, n);
+				expect([n, k, v >= prev]).toEqual([n, k, true]);
+				prev = v;
+			}
+			expect([n, prev]).toEqual([n, 2]);
+		}
+		// A room of the ladder's size steps one scale degree per pellet: the major scale.
+		const ladder = V.audio.ladderSemitones;
+		for (let k = 1; k <= ladder.size(); k++)
+			expect(pelletEatSpeed(k, ladder.size())).toBeCloseTo(math.pow(2, ladder[k - 1] / 12), 12);
 	});
 });

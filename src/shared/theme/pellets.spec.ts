@@ -24,7 +24,12 @@ import { THEME_PACKS } from "./packs";
 import { PLACEHOLDER_MANIFEST } from "./packs/placeholder";
 import { VALE_FLOOR_HEX, buildValeManifest } from "./packs/vale";
 import { PLACEHOLDER_PROPORTIONS, PLACEHOLDER_VISUALS, pxToStuds } from "./placeholders";
-import { PELLET_COLOR_RULES, pelletReport } from "./pelletColors";
+import {
+	MIN_PELLET_BOOST_DIFFERENCE,
+	PELLET_BOOST_COLOR_RULES,
+	PELLET_COLOR_RULES,
+	pelletReport,
+} from "./pelletColors";
 import {
 	PELLET_AUDIO_IDS,
 	PELLET_BESTIARY_KEY,
@@ -176,11 +181,14 @@ describe("pellets: pelletReport", () => {
 		expect([...PELLET_COLOR_RULES.against]).toEqual([
 			...ENEMY_BULLET_ROLES,
 			"telegraph",
-			...BOOST_ROLES,
 			...BUILD_EFFECT_ROLES,
 			"playerOutline",
 		]);
 		expect([PELLET_COLOR_RULES.minFloorContrast, PELLET_COLOR_RULES.minDifference]).toEqual([3, 40]);
+		// The boosts: a lower bar (owner, 2026-11-03: yellow pellets; a cube never reads as a coin or gem).
+		expect([...PELLET_BOOST_COLOR_RULES.roles]).toEqual([...PELLET_ROLES]);
+		expect([...PELLET_BOOST_COLOR_RULES.against]).toEqual([...BOOST_ROLES]);
+		expect([PELLET_BOOST_COLOR_RULES.minDifference, MIN_PELLET_BOOST_DIFFERENCE]).toEqual([30, 30]);
 	});
 
 	it("passes for every bundled pack (and vale's textured floor), every check in the report (numbers printed)", () => {
@@ -191,7 +199,7 @@ describe("pellets: pelletReport", () => {
 			expect([id, count("floor"), count("difference")]).toEqual([
 				id,
 				rules.roles.size() * BIOMES.size(),
-				rules.roles.size() * rules.against.size(),
+				rules.roles.size() * (rules.against.size() + PELLET_BOOST_COLOR_RULES.against.size()),
 			]);
 			for (const e of report) {
 				expect([id, e.role, e.check, e.against, e.ok]).toEqual([id, e.role, e.check, e.against, true]);

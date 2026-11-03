@@ -66,10 +66,16 @@ export const PELLETS_VIEW = {
 
 	// --- sounds (shared/view/audio AudioCueMapper) ---------------------------------------------------------------------
 	/**
-	 * sfx.pellet.eat alternates between these two playback speeds (the Pac-Man chomp: up, down), one per start; several
-	 * pellets on one frame are one start. eatMinIntervalSec is its default minimum gap (a pack's minInterval wins).
+	 * sfx.pellet.eat climbs as a room's pellets are eaten (owner, 2026-11-03): the k-th of a room's n pellets plays
+	 * ladder[floor((k - 1) / (n - 1) x (size - 1))] semitones up, the major scale over one octave, so the first pellet is
+	 * the root and the last (the one that earns the Sweep) the octave; the Sweep's sting follows it. One start per frame
+	 * (at the frame's last pellet, the local player's first), never inside eatMinIntervalSec (a pack's minInterval wins).
 	 */
-	audio: { eatSpeeds: [1, 1.122] as ReadonlyArray<number>, eatMinIntervalSec: 0.06, stingMinIntervalSec: 0.3 },
+	audio: {
+		ladderSemitones: [0, 2, 4, 5, 7, 9, 11, 12] as ReadonlyArray<number>,
+		eatMinIntervalSec: 0.06,
+		stingMinIntervalSec: 0.3,
+	},
 
 	// --- KV_PelletDebug (Studio check aid, off by default) -----------------------------------------------------------
 	/**
