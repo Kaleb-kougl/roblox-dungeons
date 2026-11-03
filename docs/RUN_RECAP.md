@@ -240,10 +240,10 @@ Each step is a commit; `npm run verify` before each.
 
 ### Part A
 
-- [ ] **RR0. Remaining facts.** Boss hp readable at the death tick from the snapshot (`bossFraction`); telling the
+- [x] **RR0. Remaining facts.** Boss hp readable at the death tick from the snapshot (`bossFraction`); telling the
   no-hit award from boss kills in `counts[BOSS]`; FAST counts per room; the custom-event budget for `run_retry`; press
   -> control time today, split (a)-(d). -> Verify: each written here.
-- [ ] **RR1. Tally.** `RecapTally` + spec: one guard erasing 5 bullets = 1 parry; two guards = 2; per player; reset on
+- [x] **RR1. Tally.** `RecapTally` + spec: one guard erasing 5 bullets = 1 parry; two guards = 2; per player; reset on
   a new run. Every golden / replay / hash spec unchanged.
 - [ ] **RR2. Recap core.** Pure + spec: each candidate at its edge (25 / 26 % boss, 15 % gap, deepest floor, 10 / 11
   path tiles, 2 / 3 rooms left, pre-boss floor), order, record-run drops and the dim line, FIRST RECORD none,

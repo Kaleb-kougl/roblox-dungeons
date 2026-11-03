@@ -294,6 +294,15 @@ export function parryFlashFade(ageSec: number): number {
 	return left <= 0 ? 0 : left / f.fadeSec;
 }
 
+/**
+ * The parry grouping rule (GPD5), shared with the run-over tally (recapTally.ts, docs/RUN_RECAP.md RR1): a guard erase
+ * at `tick` starts a NEW group for its player unless that player has a group (`hasGroup`) whose first erase tick
+ * `groupFirstTick` is at most SWORD_DATA.guardTicks - 1 ticks before it (an earlier tick, a new run's, starts one too).
+ */
+export function parryStartsGroup(hasGroup: boolean, groupFirstTick: number, tick: number): boolean {
+	return !hasGroup || tick < groupFirstTick || tick - groupFirstTick >= SWORD_DATA.guardTicks;
+}
+
 /** The grazes and parries' per-frame director (see the file comment). One per run view consumer. */
 export class NearMissDirector {
 	/** The last frame's output (also returned by frame()). */
@@ -430,12 +439,11 @@ export class NearMissDirector {
 		clockSec: number,
 		sparksOn: boolean,
 	): void {
-		const window = SWORD_DATA.guardTicks;
 		for (const e of erases) {
 			if (e.player < 0 || e.player >= n) continue;
 			const t = this.track(e.player);
 			const tick = e.tick;
-			if (!t.hasGroup || tick < t.groupFirstTick || tick - t.groupFirstTick >= window) {
+			if (parryStartsGroup(t.hasGroup, t.groupFirstTick, tick)) {
 				t.hasGroup = true;
 				t.groupFirstTick = tick;
 				t.groupStartSec = clockSec;
