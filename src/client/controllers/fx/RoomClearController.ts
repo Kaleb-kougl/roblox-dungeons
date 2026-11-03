@@ -5,7 +5,7 @@ import type { JuiceSettings } from "shared/settings";
 import { isPartyWiped, partySize, playerAt, type SimState } from "shared/sim";
 import type { StringVars } from "shared/theme";
 import { StateWatch } from "shared/view";
-import { SFX } from "shared/view/audio";
+import { SFX, roomClearChipJingle, roomClearStampJingle } from "shared/view/audio";
 import {
 	ROOM_CLEAR,
 	RoomClearSequence,
@@ -61,7 +61,9 @@ export type ShownScoreHandler = (shown: number, settings: Readonly<JuiceSettings
  * Co-op team perfects (docs/RUN_RECAP.md CM2, CMD1 / CMD2): TeamMomentsController steps the frame's TEAM PERFECTs in an
  * earlier phase (FX_FRAME_PHASE.teamMoments); a clear that is one starts its stamp reading TEAM PERFECT (its streak from
  * TEAM_MOMENTS.streakShowFrom) or a far client's chip reading TEAM PERFECT, and pulses a gold spark ring on every
- * living party member (ParticleController.teamPulse, near or far). Solo is unchanged.
+ * living party member (ParticleController.teamPulse, near or far); its jingle is sfx.room.teamperfect, on the stamp at
+ * full volume and on a far chip at the chip's (shared/view/audio roomClearStampJingle / roomClearChipJingle, CM4).
+ * Solo is unchanged.
  */
 @Controller({})
 export class RoomClearController implements OnStart {
@@ -185,11 +187,14 @@ export class RoomClearController implements OnStart {
 	private cues(look: Readonly<RoomClearLook>, settings: Readonly<JuiceSettings>): void {
 		const jingle = !this.jingleDropped;
 		if (look.landed) {
-			if (jingle) this.audio.play(look.perfect ? SFX.roomPerfect : SFX.roomClear, 1);
+			// docs/RUN_RECAP.md CM4: a team perfect's jingle replaces PERFECT's (falling back to it while silent).
+			if (jingle) this.audio.play(roomClearStampJingle(look.perfect, look.team), 1);
 			this.freeze.requestNudge(stampNudgeFor(settings));
 		}
 		if (look.ticks > 0) this.audio.play(SFX.scoreTick, 1);
-		if (look.chipsStarted > 0 && jingle) this.audio.play(SFX.roomClear, ROOM_CLEAR.chip.jingleVolume);
+		if (look.chipsStarted > 0 && jingle) {
+			this.audio.play(roomClearChipJingle(look.teamChipsStarted), ROOM_CLEAR.chip.jingleVolume);
+		}
 		if (look.bonusLanded > 0) this.audio.play(SFX.scoreLand, 1);
 	}
 

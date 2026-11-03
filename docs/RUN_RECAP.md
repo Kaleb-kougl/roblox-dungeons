@@ -191,7 +191,7 @@ version feel shared:
   player), so each player sees their teammates light up too, near or far (when on screen).
 - **Streak:** consecutive team perfects (by clear order, reset by any non-perfect clear) add `x{n}` to the stamp from 2
   (`TEAM PERFECT x3`); the best streak feeds the recap highlight.
-- **Sound:** a new optional port audio ID `sfx.room.teamPerfect` (falls back to `sfx.room.perfect`), played on every
+- **Sound:** a new optional port audio ID `sfx.room.teamperfect` (falls back to `sfx.room.perfect`), played on every
   client; the far client hears it at the chip's volume.
 - A dead teammate does not stop it (the dead cannot be hit); the label stays TEAM while the party started with >= 2.
 
@@ -202,7 +202,7 @@ version feel shared:
 - **Callout:** `SYNC!` floor text on the combo shout's construction (under every bullet, <= 55 % opaque, ducking near
   enemy bullets) at the midpoint of the two parry points, with a bright tether between them for 0.25 s when they are
   within `tetherMaxTiles` 10; farther apart, a small `SYNC!` at each.
-- **Sound:** the parry cue again at +5 semitones, or a new optional `sfx.player.syncParry` (falls back to that).
+- **Sound:** the parry cue again at +5 semitones, or a new optional `sfx.player.syncparry` (falls back to that).
 - **No freeze** (co-op has none). At most one callout per `syncCooldownSec` 1.0, so a dense wave never spams.
 - Deterministic on every client (same guard events), counted in `TeamMoments` for the recap.
 
@@ -224,7 +224,7 @@ grazes, duos). Exit stays Back to lobby.
 | `RecapTally`: parries per player (the director's grouping, `parryStartsGroup`), grazes per player; on `RunView.recapTally` (LiveRun, LockstepClient), collected every tick, never reset per frame (a new run is a new view) | shared/view/fx/recapTally.ts | RR1 |
 | `RECAP` / `RECAP_HIGHLIGHTS` tunables; `RunRecapInput`; `nearMissFor(input)`; `pickHighlights(input)`; `RecapTimeline` (rows, counted values, sound edges, `skip()`, `armed`); `stairsPathTiles({ dungeon, stairX, stairZ, stairsOpen, blocked? }, x, z)` (BFS, run over only); `RECAP_STRINGS`; `bossNoHitAwards` | shared/view/hud/recap.ts, recapConfig.ts | RR2 |
 | Strings `RECAP_STRING_KEYS` (`run.recap.*`), `room.clear.teamPerfect` / `.teamStreak`, `fx.parry.sync`, `fx.parry.syncCount`; context entries in `l10n/context.json`; lists built inside functions (contract.luau / validate.luau near Luau's 200 locals) | shared/theme, packs, l10n | RR3 / CM3 |
-| Cue mapper: recap ticks / land via `sfx.score.tick` / `land`; `sfx.room.teamPerfect`, `sfx.player.syncParry` with fallbacks | shared/view/audio/cues.ts | RR4 / CM4 |
+| Cue mapper: recap ticks / land via `sfx.score.tick` / `land`; `sfx.room.teamperfect`, `sfx.player.syncparry` with fallbacks | shared/view/audio/cues.ts | RR4 / CM4 |
 | `NearMissLine`, `HighlightGrid`, `DetailsToggle` (breakdown + Build list behind it), three layouts | client/ui/hud/RunOverPanel.tsx + new files | RR5 |
 | `RecapController`: builds the input after NewBestController freezes its result, steps the timeline, writes bindings, re-derives on the verdict | client/controllers/fx | RR6 |
 | Again focus (keyboard), arm guard, skip | RunOverPanel, input layer | RR7 |
@@ -276,7 +276,17 @@ Each step is a commit; `npm run verify` before each.
   (a long translation or `TEAM PERFECT x3` shrinks instead of overflowing). Debug `KV_TeamMomentsDebug = "perfect[:n]"`
   (the next PERFECT clear, solo too, is a team perfect with streak n; never in the totals).
 - [ ] **CM3. Strings** (with RR3 if built together).
-- [ ] **CM4. Sounds.** Two port audio IDs, SILENT in the placeholder, fallbacks; mapper spec.
+- [x] **CM4. Sounds.** Two port audio IDs, SILENT in the placeholder, fallbacks; mapper spec.
+  As built (IDs lowercase: asset ID segments are): `sfx.room.teamperfect` / `sfx.player.syncparry` registered in the
+  first half. Playback: TEAM PERFECT is RoomClearController's, not a mapper cue (it already plays the room clear's
+  jingles): `roomClearStampJingle(perfect, team)` on the stamp at full volume, `roomClearChipJingle(teamChipsStarted)` on
+  a far client's chip at `ROOM_CLEAR.chip.jingleVolume` (CMD2), both through `AudioController.play` (one fallback step:
+  silent -> `sfx.room.perfect`, both silent -> nothing; the new-best fanfare still drops it, NBD7). SYNC! is the mapper's
+  (`frame(..., syncs)`, the last parameter: `TeamMomentsController.syncs()` of the same near-miss frame): one cue per
+  formed sync (a `grew` record plays nothing more; the joining player's parry plays), full volume when the view player is
+  in it, else teammate volume and `TEAMMATE_PRIORITY_DROP` lower, rank 58; silent it resolves to `sfx.player.parry` at
+  +`TEAM_MOMENTS_VIEW.syncAudio.fallbackSemitones` (5), merged with the frame's parry cue into one higher sound; both
+  silent: nothing. Caps / jingle / interval rules as every cue. Spec: teamMomentCues.spec.ts.
 - [ ] **CM5. SYNC! callout.** Floor text, tether, ducking, cooldown.
 - [ ] **CM6. Recap rows** (team highlights 4 and 7).
 - [ ] **CM7. [owner] Vale sounds** for the two IDs (audition, lock, upload).

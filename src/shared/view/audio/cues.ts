@@ -74,6 +74,13 @@
  *     plays today's deflect exactly (its volume, rank, jitter and co-op guess).
  * Neither ID is a jingle or ducks the music.
  *
+ * Co-op moments (docs/RUN_RECAP.md CM4, CMD5): a SYNC! formed this frame (the client's TeamMomentsController.syncs(),
+ * NO_SYNC_CUES by default) plays sfx.player.syncparry once per sync (not again when it grows), the view player's at full
+ * volume, a teammate pair's quieter; while silent, the parry at +fallbackSemitones (merged with the frame's parry), and
+ * nothing with both silent. TEAM PERFECT's jingle is RoomClearController's (roomClearStampJingle /
+ * roomClearChipJingle: sfx.room.teamperfect in place of sfx.room.perfect on the stamp, and at the chip's volume on a far
+ * client's chip), never a mapper cue.
+ *
  * The boon draft reveal's five IDs (docs/DRAFT_REVEAL.md DR4: SFX.draftFlip .. draftPick) are never mapper cues: the
  * client's reveal controller plays them straight through AudioController.play(id, volume, speed) on the reveal's own
  * clock (the world is frozen under the draft). They are ranked, timed (SFX_MIN_INTERVAL) and listed (ALL_SFX, so the
@@ -157,6 +164,8 @@ import {
 	type NearMissFrame,
 	type ParryCue,
 	NO_VARIANT_CUES,
+	TEAM_MOMENTS_VIEW,
+	type SyncParryMoment,
 	type VariantCueSource,
 } from "../fx";
 import {
@@ -165,6 +174,7 @@ import {
 	NO_NEW_BEST_CUES,
 	comboTier,
 	killPitchSpeed,
+	semitonesToSpeed,
 	tierStingSpeed,
 	type DailyRankCueSource,
 	type NewBestCueSource,
@@ -877,6 +887,29 @@ export function runOverJingle(recordSet: boolean): SfxId {
 	return recordSet ? SFX.jingleRecord : SFX.gameOver;
 }
 
+/**
+ * The room clear stamp's jingle (docs/ROOM_CLEAR.md RC4; docs/RUN_RECAP.md CM4): a co-op team perfect (CMD1: `team`,
+ * only with `perfect`) plays sfx.room.teamperfect in place of sfx.room.perfect (its SFX_FALLBACK while silent, one
+ * step: with both silent, nothing); otherwise PERFECT / CLEAR as before. RoomClearController plays it at full volume
+ * when the stamp lands.
+ */
+export function roomClearStampJingle(perfect: boolean, team: boolean): SfxId {
+	if (!perfect) return SFX.roomClear;
+	return team ? SFX.roomTeamPerfect : SFX.roomPerfect;
+}
+
+/**
+ * A far co-op clear's corner chip jingle (RCD12; CM4, CMD2): sfx.room.teamperfect when one of the frame's new chips is
+ * a team perfect (`teamChips` > 0), else sfx.room.clear as before; RoomClearController plays it at
+ * ROOM_CLEAR.chip.jingleVolume (the far-chip rule), every client the same tick.
+ */
+export function roomClearChipJingle(teamChips: number): SfxId {
+	return teamChips > 0 ? SFX.roomTeamPerfect : SFX.roomClear;
+}
+
+/** No SYNC! this frame (the mapper's default: every other cue as before). */
+export const NO_SYNC_CUES: ReadonlyArray<Pick<SyncParryMoment, "grew" | "points">> = [];
+
 /** Whether a sound ID has a clip in the theme pack (the controller passes `pack.sound(id).assetId !== undefined`). */
 export type Playable = (id: string) => boolean;
 
@@ -1093,6 +1126,30 @@ export class AudioCueMapper {
 		else this.cue(SFX.playerParry, AUDIO_VIEW.teammateVolume, rank - TEAMMATE_PRIORITY_DROP, best.speed);
 	}
 
+	/**
+	 * SYNC! (docs/RUN_RECAP.md CM4, CMD5): at most one sfx.player.syncparry per frame, for a sync FORMED this frame (a
+	 * record that `grew` adds a player to an earlier one: no second cue, that player's own parry plays); the view
+	 * player's sync (a point of `localIndex`) at full volume, anyone else's at AUDIO_VIEW.teammateVolume and
+	 * TEAMMATE_PRIORITY_DROP lower. While silent it resolves to sfx.player.parry at
+	 * TEAM_MOMENTS_VIEW.syncAudio.fallbackSemitones up: that merges into the frame's parry cue (one sound, the higher
+	 * pitch); with the parry silent too, nothing.
+	 */
+	private syncCue(syncs: ReadonlyArray<Pick<SyncParryMoment, "grew" | "points">>, localIndex: number): void {
+		let found = false;
+		let mine = false;
+		for (const s of syncs) {
+			if (s.grew) continue;
+			found = true;
+			for (const p of s.points) if (p.player === localIndex) mine = true;
+		}
+		if (!found) return;
+		const id = this.resolve(SFX.playerSyncParry);
+		if (id === undefined) return;
+		const speed = id === SFX.playerSyncParry ? 0 : semitonesToSpeed(TEAM_MOMENTS_VIEW.syncAudio.fallbackSemitones);
+		const rank = priorityOf(SFX.playerSyncParry) - (mine ? 0 : TEAMMATE_PRIORITY_DROP);
+		this.cue(SFX.playerSyncParry, mine ? 1 : AUDIO_VIEW.teammateVolume, rank, speed);
+	}
+
 	/** Build voices in use: starts within BUILD_FX_VIEW.audio.voiceWindowSec of `now` plus this frame's queued ones. */
 	private buildVoices(): number {
 		const window = BUILD_FX_VIEW.audio.voiceWindowSec;
@@ -1250,8 +1307,9 @@ export class AudioCueMapper {
 	 * NewBestTracker frame of THIS frame, docs/NEW_BEST.md NB5; none by default), `builds` the frame's build effects (the
 	 * run view's `builds` through audibleBuilds, docs/BUILDS.md BU8; none by default), `rank` the frame's daily rank cues
 	 * (the client's DailyRankController of THIS frame, docs/DAILY.md DS10; none by default), `pellets` the frame's pellet
-	 * events (the run view's `pellets`, docs/PELLETS.md PL7; none by default). Appends the cues to start to `out` (in
-	 * table order) and returns it.
+	 * events (the run view's `pellets`, docs/PELLETS.md PL7; none by default), `syncs` the frame's SYNC! records (the
+	 * client's TeamMomentsController.syncs() of THIS near-miss frame, docs/RUN_RECAP.md CM4; none by default). Appends
+	 * the cues to start to `out` (in table order) and returns it.
 	 */
 	frame(
 		now: number,
@@ -1268,6 +1326,7 @@ export class AudioCueMapper {
 		builds: BuildFxFrameSource = NO_BUILD_FX_EVENTS,
 		rank: DailyRankCueSource = NO_DAILY_RANK_CUES,
 		pellets: PelletFrameSource = NO_PELLET_EVENTS,
+		syncs: ReadonlyArray<Pick<SyncParryMoment, "grew" | "points">> = NO_SYNC_CUES,
 	): AudioCueList {
 		this.now = now;
 		this.pending = 0;
@@ -1398,6 +1457,8 @@ export class AudioCueMapper {
 			this.cue(SFX.playerGraze, NEAR_MISS_VIEW.graze.volume, priorityOf(SFX.playerGraze), graze.speed);
 		}
 		if (parries !== undefined) this.parryCue(parries);
+		// SYNC! (docs/RUN_RECAP.md CM4): after the parry, so a silent sync's fallback merges into it.
+		this.syncCue(syncs, localIndex);
 		// Build effects (docs/BUILDS.md BU8): generation pitch, intervals and the voice cap.
 		this.buildCues(builds, localIndex);
 		// Pellets (docs/PELLETS.md PL7): the chomp, the sweep sting, the power pellet.
