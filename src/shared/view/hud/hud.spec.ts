@@ -134,15 +134,24 @@ describe("HUD helpers", () => {
 			"Run 2 (victory): verified by the server (abcd1234)",
 		);
 		// ... breakables (docs/DECOR.md D4), then the build-only jackpot (docs/BUILDS.md BU5, builds runs only), then the
-		// pellet-only pellets / sweep (docs/PELLETS.md PL7, pellet runs only).
-		expect(SCORE_SOURCE_KEYS.size()).toBe(12);
-		expect([SCORE_SOURCE_KEYS[8], SCORE_SOURCE_KEYS[9], SCORE_SOURCE_KEYS[10], SCORE_SOURCE_KEYS[11]]).toEqual([
+		// pellet-only pellets / sweep (docs/PELLETS.md PL7, pellet runs only), then the vault-only treasure
+		// (docs/TREASURE.md TR6, ScoreSource.TREASURE 12, vault runs only).
+		expect(SCORE_SOURCE_KEYS.size()).toBe(13);
+		expect([
+			SCORE_SOURCE_KEYS[8],
+			SCORE_SOURCE_KEYS[9],
+			SCORE_SOURCE_KEYS[10],
+			SCORE_SOURCE_KEYS[11],
+			SCORE_SOURCE_KEYS[12],
+		]).toEqual([
 			"score.source.breakables",
 			"score.source.jackpot",
 			"score.source.pellets",
 			"score.source.sweep",
+			"score.source.treasure",
 		]);
 		expect(pack.str(SCORE_SOURCE_KEYS[9], {})).toBe("Jackpot");
+		expect(pack.str(SCORE_SOURCE_KEYS[12], {})).toBe("Vaults");
 		expect(pack.str(HUD_STRINGS.combo, { combo: "1.3" })).toBe("x1.3");
 		expect(warnings).toEqual([]);
 	});
@@ -164,8 +173,16 @@ describe("HUD helpers", () => {
 			[10, "score.source.pellets", 120],
 			[11, "score.source.sweep", 250],
 		]);
+		// A vault run (docs/TREASURE.md TR6): Vaults 12 after Sweep.
+		const vaults = scoreBreakdownRows([...pellets, 1500]);
+		expect([vaults.size(), vaults[12].index, vaults[12].key, vaults[12].points]).toEqual([
+			13,
+			12,
+			"score.source.treasure",
+			1500,
+		]);
 		// An index past every key (a future source without a label) is skipped, never a blank row.
-		expect(scoreBreakdownRows([...pellets, 5]).size()).toBe(12);
+		expect(scoreBreakdownRows([...pellets, 5, 7]).size()).toBe(13);
 		// The port-only rows show only when they scored: a pellet run without builds (Jackpot padded 0), no Sweep.
 		expect(scoreBreakdownRows([...plain, 0, 120, 0]).map((r) => r.index)).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 8, 10]);
 		// The nine classic sources always show, 0 or not.

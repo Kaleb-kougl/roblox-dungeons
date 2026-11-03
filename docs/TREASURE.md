@@ -64,6 +64,8 @@ tree). Paths are under `src/shared/` unless they start with `src/client/`, `docs
   (TR6 prints the validator's real numbers first).
   **Owner answer (Kaleb, 2026-11-03): floor-only `treasure.*` roles** if the validator confirms the draft colours fail on
   the floor (hues nudged to pass, UI keeps `boon.*`). TR6 builds this.
+  **TR6 (2026-11-03): confirmed by the validator** (`boon.rare` 36.8, `boon.legendary` 34.2 from `telegraph`; every
+  other check passes): the floor roles are built. Numbers and values in "As built (TR6)".
 
 TRD10 (Respite eases the lock) is **not** a conflict but is **dormant**: Respite (docs/DIFFICULTY.md) is planned, not
 built (no `SimConfig.respite`, no `state.respite`; only comments in `sim/combat/actors/actorMods.ts`). The tables go in
@@ -563,6 +565,95 @@ read per tick on vault floors and a few draws per open. TR5 re-runs `run/replay.
 scores change, so: **`DAILY.ruleset` 5 -> 6** (DSD11), and the all-time boards stay `_v1` (TRD13; nothing has launched,
 the BLD9 / BUD9 / Pellets precedent).
 
+## As built (TR6, 2026-11-03)
+
+Theme only (no sim, dungeon, hash, replay or fixture change). Files: `src/shared/theme/treasure.ts` (new, pure data:
+`TREASURE_TIERS` / `TREASURE_LOCKS` in VaultTier / VaultLock order, `TREASURE_IDS`, `TREASURE_CHEST_ID` /
+`TREASURE_CHEST_OPEN_ID` / `TREASURE_CAGE_ID`, `TREASURE_COLUMN_FX_ID`, `TREASURE_PIECE_ROLES`, `TREASURE_FLOOR_ROLES`,
+`TREASURE_UI_ROLES`, `treasureFloorRole` / `treasureUiRole` / `treasureTierNameKey` / `treasureLockNameKey`,
+`TREASURE_AUDIO_IDS`, `TREASURE_STRING_KEYS`, `TREASURE_SCORE_SOURCE_KEY`), `treasureColors.ts` (new:
+`TREASURE_COLOR_RULES`, `treasureReport`), `contract.ts` (slot `TREASURE`, in `SLOTS` and `WORLD_ART_SLOTS`; IDs inline in
+`REQUIRED_ASSET_IDS`, `PORT_AUDIO_EVENTS`, `FX_IDS`, `REQUIRED_STRING_KEYS`), `validate.ts` (`treasure.` prefix, inline
+unknown-ID check, the pivot message), `variantColors.ts` (folds `treasureReport` into `variantColorProblems`, with "map"
+and "bullet" message forms), `types.ts` (5 roles), `placeholders.ts`, the placeholder manifest (vale clones it),
+`packs/vale/fx.ts` (`fx.treasure.column` pending), `index.ts`; `shared/view/hud/strings.ts` (`SCORE_SOURCE_KEYS`),
+`shared/view/audio/cues.ts`; `l10n/context.json` (17 entries). Spec: `theme/treasure.spec.ts` (16 tests).
+
+### C2: the validator's numbers
+
+The draft's colours measured as floor colours (`treasureReport` with `treasure.*` = `boon.*`; the same in the
+placeholder pack, vale, and vale with its textured floor `#1a1619`):
+
+| Role | vs `enemyBullet` `#ff3fa4` | vs `enemyBulletOutline` `#1a0610` | vs `telegraph` `#ff8a3d` | Lowest biome floor | `minimap.floor` `#36342f` |
+|---|---|---|---|---|---|
+| `boon.common` `#d7d0c0` | 84.0 | 81.3 | 65.2 | 9.53:1 (biome.3) | 8.09:1 |
+| `boon.rare` `#f46669` | 43.5 | 79.0 | **36.8 (fails 40)** | 4.85:1 (biome.3) | 4.12:1 |
+| `boon.legendary` `#f1bd44` | 105.5 | 101.1 | **34.2 (fails 40)** | 8.44:1 (biome.3) | 7.17:1 |
+
+TR0's estimate was right to the decimal. So, per the owner's answer, the floor takes its own roles; UI uses keep `boon.*`
+(their `minimap.floor` numbers above all pass). Each floor colour is the nearest sRGB colour to the draft's (by CIE76,
+searched over every colour within 70 per channel) that clears every bar by at least 0.5 (rare sits between the pink
+bullet and the orange telegraph, so it can't move far either way):
+
+| Floor role | Value | From the draft's | vs `enemyBullet` | vs outline | vs `telegraph` | Lowest biome floor | vale textured | `minimap.floor` |
+|---|---|---|---|---|---|---|---|---|
+| `treasure.common` | `#d7d0c0` (= `boon.common`) | 0.0 | 84.0 | 81.3 | 65.2 | 9.53:1 | 11.66:1 | 8.09:1 |
+| `treasure.rare` | `#ea5c66` | 4.5 | 40.5 | 76.1 | 40.6 | 4.34:1 | 5.30:1 | 3.68:1 |
+| `treasure.legendary` | `#ebc444` | 6.4 | 110.6 | 102.9 | 40.5 | 8.72:1 | 10.67:1 | 7.41:1 |
+
+The tiers stay >= 25 CIE76 apart step to step (the draft's ladder rule). Not a rule, for TR7 / TR11: `treasure.legendary`
+is about 8 CIE76 from `boost.fury` `#ffc83d` (the draft's gold already was), and a Legendary chest drops a boost in front
+of itself; the sparkle and the coin read apart by shape.
+
+Two more roles (a TR6 addition: the placeholders need colours, and colours are roles): `treasure.chest` `#663418`, a dark
+red-brown wood (the enemy bullet is 3.14:1 on it, the breakables' rule: bullets stop on the chest; 15 CIE76 from the
+crate) and `treasure.cage` `#a8adb5`, light iron (>= 6.49:1 on every biome floor, 7.94:1 on vale's textured floor). The
+open chest uses `treasure.chest`. `treasureReport`'s checks, in order: per floor role "floor" (every biome), "map"
+(`minimap.floor`), "difference" (`ROOM_EDGE_DIFFERENCE_ROLES`, >= 40); per UI role "map"; the cage's "floor"; the
+chest's "bullet" (`enemyBullet` on it, >= 3:1). Every check passes in every bundled pack (printed by the spec).
+
+### Names the view tasks use (TR7 / TR8)
+
+- **Assets** (required, slot `TREASURE`, free-size world art like `pellet.*`): `treasure.chest`, `treasure.chestopen`
+  (the plan's `chestOpen`: asset ID segments are lowercase), `treasure.cage`. Placeholders (`PLACEHOLDER_VISUALS`): the
+  chest a Block 3.5 x 2.25 x 2.5 studs, the open chest a Wedge with the same footprint (2.75 studs tall, slope = the lid),
+  both `faces` (turn to the vault's facing); the cage ONE bar (0.25 x 3 x 0.25 studs) with `dash` (`length` = the bar,
+  `gap` = `CAGE_BAR_GAP_PX` 3 px): the treasure renderer repeats it along the cage's sides (a generic placeholder
+  renderer would draw one bar). Optional effect `fx.treasure.column` (last in `FX_IDS`; vale pending until TR9), to tint
+  with the tier's floor role.
+- **Colours**: floor `treasureFloorRole(tier)` (`treasure.common` / `.rare` / `.legendary`); UI `treasureUiRole(tier)`
+  (`boon.*`); tier names `treasureTierNameKey(tier)` (`boon.rarity.*`); lock names `treasureLockNameKey(lock)`.
+- **Strings** (required, `TREASURE_STRING_KEYS`, every one with an `l10n/context.json` entry): `hud.toast.vault`;
+  `hud.toast.vaultLock.untouched` (solo), `.untouchedParty` (`{hits}`, the party's allowance), `.swift` (`{time}`, m:ss);
+  `treasure.lock.untouched` / `.swift` ("UNTOUCHED" / "SWIFT"); the unlock line `treasure.unlocked` (`{lock}`: nothing to
+  spare), `treasure.spareTime` (`{lock}`, `{seconds}` one decimal), `treasure.spareHits` (`{lock}`, `{hits}`); the open's
+  `treasure.kept` (`{tier}`); `treasure.nearMiss.time` (`{seconds}`) / `.hits` (`{hits}`); the cards
+  `treasure.reward.relic` (`{name}`), `.draft`, `.boosts` (`{count}`), `.points` (`{points}`, preformatted). The run-over
+  row `score.source.treasure` ("Vaults") is in `SCORE_SOURCE_KEYS` at index 12, not required by the contract.
+- **Audio** (`PORT_AUDIO_EVENTS`, SILENT in both packs): `sfx.treasure.crack` (priority 66, fallback `sfx.combo.break`),
+  `sfx.treasure.unlock` (65, `sfx.stairwell.open`), `sfx.treasure.open` (70, `sfx.relic.take`), `sfx.jingle.treasure`
+  (73, `sfx.room.perfect`; in `JINGLE_SFX` between `sfx.best.new` and the room clear's, and in `DUCKING_SFX`). Crack /
+  unlock / open have a 0.5 s minimum interval. `SFX` names: `treasureCrack`, `treasureUnlock`, `treasureOpen`,
+  `jingleTreasure`. Nothing plays them yet (TR8's cue mapper).
+
+### Deviations from the plan (none touches an owner decision)
+
+- **Strings.** Three additions: `hud.toast.vaultLock.untouchedParty` ("clear without a hit" is wrong for a party, TRD7),
+  `treasure.unlocked` (a kept UNTOUCHED lock solo has nothing to spare) and `treasure.reward.points` (the card's number
+  goes through a string, like `room.clear.fly`). The plan's check mark is spelled "kept" (`UNTOUCHED kept`,
+  `SWIFT kept · 4.2 s to spare`): no string uses a non-ASCII glyph beyond the middle dot, and the per-script fonts
+  (docs/LOCALIZATION.md) are not checked for it.
+- **`FX_IDS` is built inside a function** (like `REQUIRED_ASSET_IDS`): an entry after its `...BOOST_FX_IDS` spread cost a
+  top-level length local. That also moved its two array temporaries off the top level.
+- **`SCORE_SOURCE_KEYS`** names `"treasure"` literally: shared/sim `TREASURE_SCORE_SOURCE_NAMES` is TR2's, on the sim
+  branch. On merge, replace the literal with `...TREASURE_SCORE_SOURCE_NAMES` (same key, same index 12).
+- `boonRarity.spec.ts`'s dark-rare case now expects one more message (the `minimap.floor` rule on the UI roles).
+
+### Luau locals (counted on `out/`, top-level names)
+
+`contract.luau` 186 -> **185** (+1 `TREASURE`, -2 `FX_IDS`' temporaries); `validate.luau` **196** unchanged (191 `local`
+lines; no new name: the prefix string and the inline check only).
+
 ## Implementation map (TR1-TR8)
 
 `npm run test:only` runs the compiled specs in `out/`: rebuild first (`npm run build`, or `npx rbxtsc` after the
@@ -735,9 +826,10 @@ Each step is a commit. Specs next to the code; `npm run verify` before each.
 - [ ] **TR5. Worlds.** `ENDLESS_TREASURE_CONFIG` on endless; the dev override and `KV_TreasureDebug`. Re-record and check
   the endless / party / partyProgression / daily / dev specs replay and validate segmented. Extend the census bot.
   `DAILY.ruleset` 5 -> 6. → Verify: `npm run verify`; numbers into this doc.
-- [ ] **TR6. Theme.** Assets, strings, audio IDs, fallbacks, `treasureReport`, the placeholder pack. (C2 answered: floor-only `treasure.*`
+- [x] **TR6. Theme.** Assets, strings, audio IDs, fallbacks, `treasureReport`, the placeholder pack. (C2 answered: floor-only `treasure.*`
   roles if the report confirms the draft colours fail.) → Verify: contract / validator / `audio.spec.ts` / `hud.spec.ts`; Luau locals
-  still under 200 on `out/`.
+  still under 200 on `out/`. → Done 2026-11-03: "As built (TR6)" (C2 confirmed, floor roles built; `contract.luau` /
+  `validate.luau` 185 / 196).
 - [ ] **TR7. World view.** `TreasureRenderController`, the pure timelines, the cards, freeze and shake. → Verify:
   headless specs for every timeline and text helper; `npm run build:place`.
 - [ ] **TR8. HUD, minimap, audio.** Toasts, the minimap mark, the cue mapper, the recap summary export. → Verify: cue

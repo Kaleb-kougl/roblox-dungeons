@@ -16,7 +16,8 @@
  * Decor (`decor.*`, docs/DECOR.md R2) has no placeholders: decor is optional, and an ID with no art is not drawn.
  * Breakables (`breakable.*`) do: they are gameplay objects, drawn as low boxes until art exists. So do boost drops
  * (`boost.*`, docs/BOOSTS.md B5): a small gem (a Diamond) per kind in its identity colour. So do pellets (`pellet.*`,
- * docs/PELLETS.md PL6): a small Block cube per kind in its colour role.
+ * docs/PELLETS.md PL6): a small Block cube per kind in its colour role. So does a vault's chest (`treasure.*`,
+ * docs/TREASURE.md TR6): a low box, an open chest's lid wedge, and a row of thin bars for the cage.
  */
 
 import { PIXELS_PER_TILE, STUDS_PER_TILE } from "shared/config";
@@ -45,6 +46,7 @@ import type { BiomeTileKey, ColorRole } from "./types";
 import { startsWith } from "./util";
 import { GOO_BULLET_ID, STRIKE_BULLET_ID } from "./variants";
 import { pelletId } from "./pellets";
+import { TREASURE_CAGE_ID, TREASURE_CHEST_ID, TREASURE_CHEST_OPEN_ID } from "./treasure";
 
 /**
  * Part shapes. Ball/Block/Cylinder/Wedge are Enum.PartType names; Capsule = a Cylinder capped by two Balls;
@@ -177,6 +179,18 @@ export const PLACEHOLDER_PROPORTIONS = {
 	 */
 	pellet: [0.25, 0.25, 0.25],
 	pelletPower: [0.45, 0.45, 0.45],
+	/**
+	 * A vault's chest (docs/TREASURE.md TR6), on its 16 px tile: a low box wider than deep (3.5 x 2.25 x 2.5 studs),
+	 * under a barrel's height (5/8 of a tile), so it never hides a bullet; turned to face into its room.
+	 */
+	chest: [0.875, 0.5625, 0.625],
+	/** The open chest: a wedge with the chest's footprint, its slope (the Front) the lid thrown back, a little taller. */
+	chestOpen: [0.875, 0.75, 0.625],
+	/**
+	 * The cage: ONE bar (1 px square, 3/4 of a tile tall: the bars stand over the chest but are see-through), repeated
+	 * CAGE_BAR_GAP_PX apart along the cage's sides (`dash`, like a telegraph's dashes) by the treasure renderer.
+	 */
+	cageBar: [1 / 16, 0.75, 1 / 16],
 	/** UI: flat, as big as its pixel size. */
 	ui: [1, 1, 0],
 	/** Missing IDs: a block filling the cell. */
@@ -228,6 +242,10 @@ const BREAKABLE_CELL = TILE_CELL;
 const BOOST_CELL = TILE_CELL;
 /** Pellets are free-size art; their placeholder cube is sized from one tile. */
 const PELLET_CELL = TILE_CELL;
+/** A vault's chest and cage are free-size art; their placeholders are sized from one tile. */
+const TREASURE_CELL = TILE_CELL;
+/** The cage placeholder's gap between two bars, render pixels (1 px bars, so a bar every 4 px along its sides). */
+export const CAGE_BAR_GAP_PX = 3;
 /** Free-size UI cells: the web placeholder pack's sizes, in pixels. */
 const UI_CELLS = {
 	cursor: { w: 9, h: 9 },
@@ -455,6 +473,33 @@ function buildTable(): Record<string, PlaceholderVisual> {
 		proportions: PLACEHOLDER_PROPORTIONS.pelletPower,
 		color: role(pelletId("power")),
 	});
+	// A vault's chest (Roblox port, docs/TREASURE.md TR6): a low box and an open lid wedge in the chest's wood colour,
+	// turned to face into the room; the cage a row of thin iron bars (one bar, repeated: `dash`).
+	t[TREASURE_CHEST_ID] = visual({
+		shape: "Block",
+		cell: TREASURE_CELL,
+		proportions: PLACEHOLDER_PROPORTIONS.chest,
+		color: role(TREASURE_CHEST_ID),
+		faces: true,
+	});
+	t[TREASURE_CHEST_OPEN_ID] = visual({
+		shape: "Wedge",
+		cell: TREASURE_CELL,
+		proportions: PLACEHOLDER_PROPORTIONS.chestOpen,
+		color: role(TREASURE_CHEST_ID),
+		faces: true,
+	});
+	const bar = PLACEHOLDER_PROPORTIONS.cageBar;
+	t[TREASURE_CAGE_ID] = {
+		...visual({
+			shape: "Block",
+			cell: TREASURE_CELL,
+			proportions: bar,
+			color: role(TREASURE_CAGE_ID),
+			faces: true,
+		}),
+		dash: { length: pxToStuds(TREASURE_CELL.w * bar[0]), gap: pxToStuds(CAGE_BAR_GAP_PX) },
+	};
 	return t;
 }
 

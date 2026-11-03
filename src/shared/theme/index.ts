@@ -126,6 +126,14 @@ export {
 	type PelletColorEntry,
 	type PelletColorRules,
 } from "./pelletColors";
+// Roblox port (docs/TREASURE.md TR6): the vault's chest IDs, tier roles, sounds and strings, and their colour rules.
+export * from "./treasure";
+export {
+	TREASURE_COLOR_RULES,
+	treasureReport,
+	type TreasureColorEntry,
+	type TreasureColorRules,
+} from "./treasureColors";
 export * from "./placeholders";
 export {
 	DEFAULT_PACK_ID,

@@ -91,12 +91,17 @@ describe("boon rarity: validator", () => {
 		]);
 	});
 
-	it("a rarity too dark for the panel fails the panel rule", () => {
+	it("a rarity too dark for the panel fails the panel rule (and treasureReport's minimap rule)", () => {
 		const panel = PLACEHOLDER_MANIFEST.colors.uiPanel;
+		const map = PLACEHOLDER_MANIFEST.colors["minimap.floor"];
 		expect(errorsWith("boon.rare", "#601818")).toEqual([
 			`colors["boon.rare"]: contrast: boon.rare #601818 on uiPanel ${panel} is ${fixed2(
 				contrastRatio("#601818", panel),
 			)}:1, needs >= 3.0:1: a boon rarity must read on the draft card`,
+			// docs/TREASURE.md TR6: the rarities are a vault's UI tier colours, the minimap mark among them
+			`colors["boon.rare"]: contrast: boon.rare #601818 on minimap.floor ${map} is ${fixed2(
+				contrastRatio("#601818", map),
+			)}:1, needs >= 3.0:1: a vault's tier colour must read on the minimap`,
 		]);
 	});
 

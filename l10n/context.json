@@ -1635,6 +1635,28 @@
 	"hud.toast.secondWind": {
 		"note": "Toast (top centre) when the Second Wind relic saves the player from a lethal hit. Name of the relic as an exclamation; must match relic.secondWind.name."
 	},
+	"hud.toast.vault": {
+		"note": "Toast (top centre, 2 s) on arriving on a dungeon floor that holds a vault. A vault is a fight room on some dungeon floors holding a caged treasure chest; clearing the room unlocks the chest, and meeting the room's lock condition (UNTOUCHED: no hits; SWIFT: under a time limit) keeps its full rarity. Says only that one exists on this floor, not where. \"Vault\" is a glossary term: the same word in every vault string.",
+		"max": 40
+	},
+	"hud.toast.vaultLock.swift": {
+		"note": "Toast (top centre, 2.5 s) on entering a vault room with the SWIFT lock: clear it within the time. A vault is a fight room on some dungeon floors holding a caged treasure chest; clearing the room unlocks the chest, and meeting the room's lock condition (UNTOUCHED: no hits; SWIFT: under a time limit) keeps its full rarity. {time} is minutes:seconds. Same format as hud.toast.vaultLock.untouched; the lock name must be the same word as treasure.lock.swift.",
+		"max": 60,
+		"example": {
+			"time": "0:42"
+		}
+	},
+	"hud.toast.vaultLock.untouched": {
+		"note": "Toast (top centre, 2.5 s) on entering a vault room, solo: the lock condition. A vault is a fight room on some dungeon floors holding a caged treasure chest; clearing the room unlocks the chest, and meeting the room's lock condition (UNTOUCHED: no hits; SWIFT: under a time limit) keeps its full rarity. Format \"VAULT · LOCK NAME: what to do\"; VAULT and the lock name in capitals; the lock name must be the same word as treasure.lock.untouched.",
+		"max": 60
+	},
+	"hud.toast.vaultLock.untouchedParty": {
+		"note": "Toast (top centre, 2.5 s) on entering a vault room in a co-op party: the lock condition, where the party may take a few hits in total. A vault is a fight room on some dungeon floors holding a caged treasure chest; clearing the room unlocks the chest, and meeting the room's lock condition (UNTOUCHED: no hits; SWIFT: under a time limit) keeps its full rarity. {hits} is a number (1-3). Same format as hud.toast.vaultLock.untouched; the lock name must be the same word as treasure.lock.untouched.",
+		"max": 70,
+		"example": {
+			"hits": 2
+		}
+	},
 	"hud.verdict.accepted": {
 		"note": "Status line (info panel, bottom right): the server replayed and verified the run. {run} is the run number; {ending} a word from hud.ending.*; {hash} is 8 hexadecimal characters (a checksum, never translated). The game may append \" · \" and a leaderboard status.",
 		"example": {
@@ -2944,6 +2966,10 @@
 		"note": "Run-over panel: score breakdown row label (200 px label column, the points sit to the right) for Sweep bonuses (every pellet of a room collected before its last enemy died). Plural: the bonuses of the whole run.",
 		"max": 20
 	},
+	"score.source.treasure": {
+		"note": "Run-over panel: score breakdown row label (200 px label column, the points sit to the right) for points from vault chests opened (treasure chests in caged fight rooms). Plural: every vault of the whole run.",
+		"max": 20
+	},
 	"stage.best.deeperYet": {
 		"note": "Gold second line of the new-floor card on each further floor past the record (the run keeps setting a new record)."
 	},
@@ -3031,6 +3057,83 @@
 	"touch.swap": {
 		"note": "Label on an on-screen touch control (phones / tablets): swap between sword and bow. Drawn inside a round button about 60-100 px wide (text shrinks); the tutorial's touch prompts name this button by this exact word.",
 		"max": 8
+	},
+	"treasure.kept": {
+		"note": "Line under the reward cards when a vault's chest opens at the rarity it started with (the lock condition was met). {tier} is the rarity's name (boon.rarity.*: Common / Rare / Legendary).",
+		"max": 24,
+		"example": {
+			"tier": "Legendary"
+		}
+	},
+	"treasure.lock.swift": {
+		"note": "Name of a vault lock, on the small plate on the floor in front of the chest and inside other vault lines ({lock}): clear the room within a time limit. Capitals, one short word.",
+		"max": 12
+	},
+	"treasure.lock.untouched": {
+		"note": "Name of a vault lock, on the small plate on the floor in front of the chest and inside other vault lines ({lock}): clear the room without taking a hit. Capitals, one short word.",
+		"max": 12
+	},
+	"treasure.nearMiss.hits": {
+		"note": "Encouraging line under the reward cards when a vault's chest opens after the party took more hits than its lock allowed (it dropped one rarity). {hits} is how many hits over the allowance (1 or more). Tone: \"nearly made it, next time\", never blame.",
+		"max": 34,
+		"example": {
+			"hits": 1
+		}
+	},
+	"treasure.nearMiss.time": {
+		"note": "Encouraging line under the reward cards when a vault's chest opens after its time limit ran out (it dropped one rarity). {seconds} is how far over the limit, with one decimal. Tone: \"nearly made it, next time\", never blame.",
+		"max": 32,
+		"example": {
+			"seconds": "2.1"
+		}
+	},
+	"treasure.reward.boosts": {
+		"note": "Reward card floating above an opened vault chest: boosts (temporary power-ups) that hop out of it. {count} is how many (1-2). Capitals for the label.",
+		"max": 18,
+		"example": {
+			"count": 2
+		}
+	},
+	"treasure.reward.draft": {
+		"note": "Reward card floating above an opened Legendary vault chest: the next floor's boon draft deals one extra round of cards. Capitals for the label.",
+		"max": 28
+	},
+	"treasure.reward.points": {
+		"note": "Reward card floating above an opened vault chest: the points it paid. A plus sign and a number. Usually unchanged.",
+		"max": 12,
+		"example": {
+			"points": "1,200"
+		}
+	},
+	"treasure.reward.relic": {
+		"note": "Reward card floating above an opened vault chest: a relic (a permanent item for this run). Capital label, then {name}, the relic's name.",
+		"max": 28,
+		"example": {
+			"name": "Hourglass"
+		}
+	},
+	"treasure.spareHits": {
+		"note": "Short line rising from a vault's chest when a co-op party cleared the room with hits to spare. {lock} is the lock's name (treasure.lock.untouched), {hits} the number of hits the party could still have taken.",
+		"max": 36,
+		"example": {
+			"lock": "UNTOUCHED",
+			"hits": 1
+		}
+	},
+	"treasure.spareTime": {
+		"note": "Short line rising from a vault's chest when the room is cleared under the time limit. {lock} is the lock's name (treasure.lock.swift), {seconds} the seconds left with one decimal.",
+		"max": 36,
+		"example": {
+			"lock": "SWIFT",
+			"seconds": "4.2"
+		}
+	},
+	"treasure.unlocked": {
+		"note": "Short line rising from a vault's chest when the room is cleared and its lock condition was met (nothing to spare). {lock} is the lock's name (treasure.lock.*).",
+		"max": 24,
+		"example": {
+			"lock": "UNTOUCHED"
+		}
 	},
 	"tutorial.callout.bossPhase2": {
 		"note": "Tutorial callout toast when the practice boss enters phase II (Roman numeral) and uses new bullet patterns."

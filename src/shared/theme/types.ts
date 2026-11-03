@@ -200,6 +200,16 @@ export const COLOR_ROLES = [
 	// telegraph, every boost and build effect colour and playerOutline.
 	"pellet.normal",
 	"pellet.power",
+	// Roblox port (docs/TREASURE.md TR6): the vault chest's and cage's placeholder colours (treasure.ts
+	// TREASURE_PIECE_ROLES; the open chest uses the chest's), then the floor-only tier colours (TREASURE_FLOOR_ROLES,
+	// conflict C2: the sparkle, plate, shards, tier line and column; UI keeps boon.*). Held to TREASURE_COLOR_RULES by
+	// treasureReport (treasureColors.ts): the enemy bullet >= 3:1 on the chest, the cage >= 3:1 on every biome floor,
+	// each tier >= 3:1 on every biome floor and minimap.floor and (CIE76) away from the enemy-bullet roles and telegraph.
+	"treasure.chest",
+	"treasure.cage",
+	"treasure.common",
+	"treasure.rare",
+	"treasure.legendary",
 ] as const;
 
 export type ColorRole = (typeof COLOR_ROLES)[number];

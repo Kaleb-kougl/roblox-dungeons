@@ -62,12 +62,15 @@ function packsToCheck(): Array<[string, Obj]> {
 	return out;
 }
 
-/** The last `n` entries of `list`, in order. */
-function tail(list: ReadonlyArray<string>, n: number): string[] {
+/** The last `n` entries of `list` before its last `skip` (later features' entries), in order. */
+function tail(list: ReadonlyArray<string>, n: number, skip = 0): string[] {
 	const out = new Array<string>();
-	for (let i = list.size() - n; i < list.size(); i++) out.push(list[i]);
+	for (let i = list.size() - skip - n; i < list.size() - skip; i++) out.push(list[i]);
 	return out;
 }
+
+/** Entries docs/TREASURE.md TR6 appended after the pellets': 3 asset IDs, 5 colour roles, 4 sounds. */
+const TREASURE_AFTER = { assets: 3, roles: 5, audio: 4 };
 
 describe("pellets: contract", () => {
 	it("two kinds, normal and power; their asset and colour role IDs are `pellet.<kind>`", () => {
@@ -91,19 +94,20 @@ describe("pellets: contract", () => {
 		expect(SLOTS.includes(PELLET)).toBe(true);
 		expect(WORLD_ART_SLOTS.includes(PELLET)).toBe(true);
 		expect(requiredBaseAnimations(PELLET)).toEqual(["idle"]);
-		expect(tail(REQUIRED_ASSET_IDS, PELLET_IDS.size())).toEqual([...PELLET_IDS]);
+		expect(tail(REQUIRED_ASSET_IDS, PELLET_IDS.size(), TREASURE_AFTER.assets)).toEqual([...PELLET_IDS]);
 		for (const id of PELLET_IDS) expect([id, slotFor(id)]).toEqual([id, PELLET]);
 		// the pellet sounds stay in the sfx slot
 		for (const id of PELLET_AUDIO_IDS) expect([id, slotFor(id)?.slot]).toEqual([id, "sfx"]);
 	});
 
-	it("the colour roles are COLOR_ROLES' last two", () => {
-		expect(tail(COLOR_ROLES as unknown as ReadonlyArray<string>, PELLET_ROLES.size())).toEqual([...PELLET_ROLES]);
+	it("the colour roles are COLOR_ROLES' last two (before the treasure rooms')", () => {
+		const roles = COLOR_ROLES as unknown as ReadonlyArray<string>;
+		expect(tail(roles, PELLET_ROLES.size(), TREASURE_AFTER.roles)).toEqual([...PELLET_ROLES]);
 	});
 
 	it("appends the three sounds to PORT_AUDIO_EVENTS: required, sfx, SILENT in every bundled pack", () => {
 		expect([...PELLET_AUDIO_IDS]).toEqual(["sfx.pellet.eat", "sfx.pellet.sweep", "sfx.pellet.power"]);
-		expect(tail(PORT_AUDIO_EVENTS, PELLET_AUDIO_IDS.size())).toEqual([...PELLET_AUDIO_IDS]);
+		expect(tail(PORT_AUDIO_EVENTS, PELLET_AUDIO_IDS.size(), TREASURE_AFTER.audio)).toEqual([...PELLET_AUDIO_IDS]);
 		for (const id of PELLET_AUDIO_IDS) {
 			expect([id, has(REQUIRED_ASSET_IDS, id), slotFor(id)?.soundGroup]).toEqual([id, true, "sfx"]);
 			for (const p of sortedKeys(THEME_PACKS)) {

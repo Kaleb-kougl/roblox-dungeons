@@ -138,6 +138,11 @@ describe("audio contract: port IDs and ambience", () => {
 			"sfx.pellet.eat",
 			"sfx.pellet.sweep",
 			"sfx.pellet.power",
+			// docs/TREASURE.md TR6: a vault's lock cracks, its cage unlocks, its chest opens, a Legendary's jingle
+			"sfx.treasure.crack",
+			"sfx.treasure.unlock",
+			"sfx.treasure.open",
+			"sfx.jingle.treasure",
 		]);
 		const web = new Set<string>([...AUDIO_EVENTS, ...BREAKABLE_AUDIO_EVENTS]);
 		for (const id of PORT_AUDIO_EVENTS) {

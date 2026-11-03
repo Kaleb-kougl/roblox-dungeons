@@ -27,11 +27,17 @@ export interface ValeFxLook {
 /** Neutral grey for dust, smoke and splinters (breakable.crate is too dark for the enemy-bullet rule). */
 const DUST: ColorRole = "uiTextDim";
 
-/** The fx IDs vale draws: every FX_IDS entry but the boost drops' effects (no art yet: docs/BOOSTS.md B8). */
-export type ValeFxId = Exclude<FxId, BoostFxId>;
+/**
+ * The fx IDs vale draws: every FX_IDS entry but the boost drops' effects (no art yet: docs/BOOSTS.md B8) and a vault
+ * chest's light column (no art yet: docs/TREASURE.md TR9).
+ */
+export type ValeFxId = Exclude<FxId, BoostFxId | "fx.treasure.column">;
 
-/** FX_IDS that vale has no art for yet (absent from the pack: not drawn). docs/BOOSTS.md B8 vendors and maps them. */
-export const VALE_FX_PENDING: ReadonlyArray<FxId> = BOOST_FX_IDS;
+/**
+ * FX_IDS that vale has no art for yet (absent from the pack: not drawn). docs/BOOSTS.md B8 vendors and maps the boost
+ * effects; docs/TREASURE.md TR9 the treasure column (until then the open's column is the particle burst alone).
+ */
+export const VALE_FX_PENDING: ReadonlyArray<FxId> = [...BOOST_FX_IDS, "fx.treasure.column"];
 
 /** VALE_FX's IDs in FX_IDS order (FX_IDS without VALE_FX_PENDING). */
 export const VALE_FX_IDS: ReadonlyArray<ValeFxId> = FX_IDS.filter(

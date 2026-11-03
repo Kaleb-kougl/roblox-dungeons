@@ -202,6 +202,18 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		// biome floor and vale's textured floor (pelletReport, printed by theme/pellets.spec.ts).
 		"pellet.normal": "#ffff00",
 		"pellet.power": "#ffff00",
+		// Roblox port (docs/TREASURE.md TR6): a vault's chest, a dark red-brown wood apart from the crate and barrel (the
+		// enemy bullet is 3.14:1 on it, like on a breakable), and its cage's light iron (>= 6.49:1 on every biome floor and
+		// vale's textured floor). Then the floor-only tier colours (conflict C2): the draft's boon.* hues, nudged only as
+		// far as the 40 CIE76 telegraph / enemy-bullet bar needs: common is boon.common (65.2 from the telegraph), rare
+		// #f46669 -> #ea5c66 (4.5 CIE76 away; 40.5 from the enemy bullet, 40.6 from the telegraph; was 43.5 / 36.8),
+		// legendary #f1bd44 -> #ebc444 (6.4 away; 40.5 from the telegraph, was 34.2). Each >= 3.68:1 on every biome floor,
+		// vale's textured floor and minimap.floor (treasureReport, every check printed by theme/treasure.spec.ts).
+		"treasure.chest": "#663418",
+		"treasure.cage": "#a8adb5",
+		"treasure.common": "#d7d0c0",
+		"treasure.rare": "#ea5c66",
+		"treasure.legendary": "#ebc444",
 	},
 	// Roblox port (docs/VOID_DECOR.md VD1): `shoulder` is the wall darkened in linear light (ancient x0.95, molten x0.75,
 	// frost x0.9, grim x0.8, verdant x0.9: as far as the "nearer the wall than the floor" rule lets each go; the ancient
@@ -339,6 +351,10 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		// Roblox port (docs/PELLETS.md PL6): pellets, a small cube each (the power pellet a bigger one) until art exists.
 		"pellet.normal": PLACEHOLDER,
 		"pellet.power": PLACEHOLDER,
+		// Roblox port (docs/TREASURE.md TR6): a vault's chest (a low box), the open chest (a lid wedge), its cage (thin bars).
+		"treasure.chest": PLACEHOLDER,
+		"treasure.chestopen": PLACEHOLDER,
+		"treasure.cage": PLACEHOLDER,
 		"sfx.player.shoot": SILENT,
 		"sfx.player.roll": SILENT,
 		"sfx.player.hurt": SILENT,
@@ -438,6 +454,13 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		"sfx.pellet.eat": SILENT,
 		"sfx.pellet.sweep": SILENT,
 		"sfx.pellet.power": SILENT,
+		// Roblox port (docs/TREASURE.md TR6): a vault's lock cracks, its cage unlocks, its chest opens, a Legendary's jingle;
+		// silent until the vale clips (TR9): the cue mapper falls back to the combo break, the stairwell, the relic and the
+		// PERFECT jingle (shared/view/audio SFX_FALLBACK).
+		"sfx.treasure.crack": SILENT,
+		"sfx.treasure.unlock": SILENT,
+		"sfx.treasure.open": SILENT,
+		"sfx.jingle.treasure": SILENT,
 		"music.menu": SILENT,
 		"music.biome.1": SILENT,
 		"music.biome.2": SILENT,
@@ -689,6 +712,8 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		// Roblox port (docs/PELLETS.md PL6): the pellet sources (pellets and the power pellet's bullets; sweep bonuses).
 		"score.source.pellets": "Pellets",
 		"score.source.sweep": "Sweeps",
+		// Roblox port (docs/TREASURE.md TR6): the vault chests opened.
+		"score.source.treasure": "Vaults",
 		// M5: leaderboards.
 		"hud.pause.leaderboard": "Leaderboards",
 		"hud.leaderboard.title": "Leaderboards",
@@ -1355,5 +1380,23 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		"input.key.StickLeft": "Stick left",
 		"input.key.StickRight": "Stick right",
 		"input.separator": " / ",
+		// --- treasure.* (docs/TREASURE.md TR6: a vault's toasts, lock plate, unlock / open / near-miss lines, reward cards;
+		// the tier names are the draft's boon.rarity.*) ---
+		"hud.toast.vault": "A vault lies on this floor",
+		"hud.toast.vaultLock.untouched": "VAULT · UNTOUCHED: clear the room without a hit",
+		"hud.toast.vaultLock.untouchedParty": "VAULT · UNTOUCHED: clear the room · party hits allowed: {hits}",
+		"hud.toast.vaultLock.swift": "VAULT · SWIFT: clear the room in {time}",
+		"treasure.lock.untouched": "UNTOUCHED",
+		"treasure.lock.swift": "SWIFT",
+		"treasure.unlocked": "{lock} kept",
+		"treasure.spareTime": "{lock} kept · {seconds} s to spare",
+		"treasure.spareHits": "{lock} kept · spare hits: {hits}",
+		"treasure.kept": "Kept {tier}",
+		"treasure.nearMiss.time": "So close: {seconds} s over",
+		"treasure.nearMiss.hits": "So close: {hits} too many hits",
+		"treasure.reward.relic": "RELIC · {name}",
+		"treasure.reward.draft": "BONUS DRAFT next floor",
+		"treasure.reward.boosts": "BOOSTS +{count}",
+		"treasure.reward.points": "+{points}",
 	},
 };

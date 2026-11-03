@@ -29,6 +29,7 @@ import {
 	REQUIRED_STRING_KEYS,
 	WORLD_ART_SLOTS,
 	PELLET,
+	TREASURE,
 	breakableId,
 	decorAmbientId,
 	decorAmbientRole,
@@ -148,8 +149,9 @@ describe("decor contract", () => {
 			["image", "sprites", "placeholder"],
 			undefined,
 		]);
+		// (and the treasure rooms' chest and cage, docs/TREASURE.md TR6: treasure.spec.ts)
 		// (and the boost drops' slot, docs/BOOSTS.md B5: boosts.spec.ts; the pellets', docs/PELLETS.md PL6: pellets.spec.ts)
-		expect(WORLD_ART_SLOTS).toEqual([DECOR, BREAKABLE, BOOST, PELLET]);
+		expect(WORLD_ART_SLOTS).toEqual([DECOR, BREAKABLE, BOOST, PELLET, TREASURE]);
 		expect(slotFor("decor.delve.b1.pillar")).toBe(DECOR);
 		expect(slotFor("decor.fx.torch")).toBe(DECOR);
 		expect(slotFor("breakable.crate")).toBe(BREAKABLE);

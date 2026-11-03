@@ -31,6 +31,10 @@
  *
  * Roblox-port slot (docs/PELLETS.md PL6): PELLET (`pellet.normal` / `pellet.power`, required: a pellet is a gameplay
  * object), free-size world art like BOOST; its roles, sounds and strings: pellets.ts (named inline here).
+ *
+ * Roblox-port slot (docs/TREASURE.md TR6): TREASURE (`treasure.chest` / `treasure.chestopen` / `treasure.cage`,
+ * required: the vault's chest is a gameplay object), free-size world art like PELLET; its effect, roles, sounds and
+ * strings: treasure.ts (named inline here).
  */
 
 import type { AssetKind, ColorRole, ParticleFlipbookMode, Pivot } from "./types";
@@ -244,6 +248,21 @@ export const PELLET: SlotContract = {
 	baseAnimations: ["idle"],
 };
 
+/**
+ * Roblox port (docs/TREASURE.md TR6, Design §5): a vault's chest, closed and open, and the cage over it until the vault
+ * unlocks (treasure.ts TREASURE_IDS: `treasure.chest`, `treasure.chestopen`, `treasure.cage`). A gameplay object (the
+ * chest blocks movement and bullets), so every pack must draw all three, with placeholder primitives (a low box, a lid
+ * wedge, a row of thin bars) until art exists. Free-size world art like PELLET: `image` (with `pixelsPerTile`) or
+ * `sprites` (`idle`). Any other `treasure.` ID is an error. One top-level local here (contract.luau's 200 limit).
+ */
+export const TREASURE: SlotContract = {
+	slot: "treasure",
+	prefix: "treasure.",
+	kinds: ["image", "sprites", "placeholder"],
+	facings: [],
+	baseAnimations: ["idle"],
+};
+
 /** The one animation a sprite effect (fx.*) defines: its flipbook (`fps`, `loop` and `frames` live on it). */
 export const FX_ANIMATION = "play";
 
@@ -277,10 +296,14 @@ export const SLOTS: ReadonlyArray<SlotContract> = [
 	FX,
 	BOOST,
 	PELLET,
+	TREASURE,
 ];
 
-/** Slots whose images are free-size world art drawn at `pixelsPerTile` (decor pieces, breakables, boost drops, pellets). */
-export const WORLD_ART_SLOTS: ReadonlyArray<SlotContract> = [DECOR, BREAKABLE, BOOST, PELLET];
+/**
+ * Slots whose images are free-size world art drawn at `pixelsPerTile` (decor pieces, breakables, boost drops, pellets,
+ * the vault's chest and cage).
+ */
+export const WORLD_ART_SLOTS: ReadonlyArray<SlotContract> = [DECOR, BREAKABLE, BOOST, PELLET, TREASURE];
 
 /** The slot an asset ID belongs to, by prefix. */
 export function slotFor(id: string): SlotContract | undefined {
@@ -695,7 +718,9 @@ export const BOOST_BEAM_IMAGE_ID = "ui.marker.boost";
  * drops' one (docs/BREAKABLE_DROPS.md BL5): a boost hops out of a broken barrel / crate (sfx.boost.drop plays while it
  * is silent). Then the new enemies' six (docs/NEW_ENEMIES.md NE1): a Bomber's fuse and blast, a Charger's charge and
  * stun, a Stormcaller's strike, a Reaper's spin. Then the pellets' three (docs/PELLETS.md PL6, pellets.ts
- * PELLET_AUDIO_IDS): a pellet eaten, a room swept, the power pellet taken.
+ * PELLET_AUDIO_IDS): a pellet eaten, a room swept, the power pellet taken. Then the treasure rooms' four
+ * (docs/TREASURE.md TR6, treasure.ts TREASURE_AUDIO_IDS): a vault's lock cracks, its cage unlocks, its chest opens, a
+ * Legendary chest's jingle.
  */
 export const PORT_AUDIO_EVENTS = [
 	"sfx.player.swing",
@@ -787,6 +812,13 @@ export const PORT_AUDIO_EVENTS = [
 	"sfx.pellet.eat",
 	"sfx.pellet.sweep",
 	"sfx.pellet.power",
+	// docs/TREASURE.md TR6 (treasure.ts TREASURE_AUDIO_IDS, the same list): a vault's lock cracks (a metal snap), its
+	// cage unlocks (a rattle), its chest opens (the sting, pitched per tier by the cue mapper), a Legendary chest opens
+	// (a jingle: it ducks the music)
+	"sfx.treasure.crack",
+	"sfx.treasure.unlock",
+	"sfx.treasure.open",
+	"sfx.jingle.treasure",
 ] as const;
 
 /**
@@ -817,6 +849,10 @@ export const REQUIRED_ASSET_IDS: ReadonlyArray<string> = ((): string[] => [
 	// docs/PELLETS.md PL6: pellets.ts PELLET_IDS, written out (an import would be one more top-level local)
 	"pellet.normal",
 	"pellet.power",
+	// docs/TREASURE.md TR6: treasure.ts TREASURE_IDS, written out (an import would be one more top-level local)
+	"treasure.chest",
+	"treasure.chestopen",
+	"treasure.cage",
 ])();
 
 /**
@@ -962,6 +998,24 @@ export const REQUIRED_STRING_KEYS: ReadonlyArray<string> = ((): string[] => [
 	...DAILY_RANK_STRING_KEYS,
 	// docs/LOCALIZATION.md L1: named keys' labels (`input.key.<name>`) and the key list joiner
 	...INPUT_KEY_STRING_KEYS,
+	// docs/TREASURE.md TR6: treasure.ts TREASURE_STRING_KEYS, written out (an import would be one more top-level local):
+	// the floor-reveal and arm toasts, the lock names, the unlock / open / near-miss lines, the reward cards
+	"hud.toast.vault",
+	"hud.toast.vaultLock.untouched",
+	"hud.toast.vaultLock.untouchedParty",
+	"hud.toast.vaultLock.swift",
+	"treasure.lock.untouched",
+	"treasure.lock.swift",
+	"treasure.unlocked",
+	"treasure.spareTime",
+	"treasure.spareHits",
+	"treasure.kept",
+	"treasure.nearMiss.time",
+	"treasure.nearMiss.hits",
+	"treasure.reward.relic",
+	"treasure.reward.draft",
+	"treasure.reward.boosts",
+	"treasure.reward.points",
 ])();
 
 /**
@@ -1755,28 +1809,32 @@ export const SOUND_PITCH_LIMITS = { min: 0.5, max: 2 } as const;
  * The sprite effects (fx.*), each optional. Hit marks (`hit.light` / `hit.heavy`), the sword's swing trails (`swing.1`
  * .. `swing.3`, the 3rd is the finisher), the kill puff, roll dust, the guard shield, the Ember ring, the flask, the
  * boss's phase change / slam / death, relic and shrine, the open-stairwell loop and a breakable's splinters; then the
- * boost drops' pickup burst and per-kind aura (BOOST_FX_IDS, docs/BOOSTS.md B5).
+ * boost drops' pickup burst and per-kind aura (BOOST_FX_IDS, docs/BOOSTS.md B5); then a vault chest's light column
+ * (docs/TREASURE.md TR6, treasure.ts TREASURE_COLUMN_FX_ID; tinted by the opened tier's floor role). Built inside a
+ * function like REQUIRED_ASSET_IDS: an entry after the spread costs a top-level length local in contract.luau.
  */
-export const FX_IDS = [
-	"fx.hit.light",
-	"fx.hit.heavy",
-	"fx.swing.1",
-	"fx.swing.2",
-	"fx.swing.3",
-	"fx.death.puff",
-	"fx.roll.dust",
-	"fx.guard.shield",
-	"fx.ember.ring",
-	"fx.flask",
-	"fx.boss.phase",
-	"fx.boss.slam",
-	"fx.boss.death",
-	"fx.relic.take",
-	"fx.shrine.use",
-	"fx.stairwell",
-	"fx.breakable.splinter",
-	...BOOST_FX_IDS,
-] as const;
+export const FX_IDS = (() =>
+	[
+		"fx.hit.light",
+		"fx.hit.heavy",
+		"fx.swing.1",
+		"fx.swing.2",
+		"fx.swing.3",
+		"fx.death.puff",
+		"fx.roll.dust",
+		"fx.guard.shield",
+		"fx.ember.ring",
+		"fx.flask",
+		"fx.boss.phase",
+		"fx.boss.slam",
+		"fx.boss.death",
+		"fx.relic.take",
+		"fx.shrine.use",
+		"fx.stairwell",
+		"fx.breakable.splinter",
+		...BOOST_FX_IDS,
+		"fx.treasure.column",
+	] as const)();
 export type FxId = (typeof FX_IDS)[number];
 
 /** Is `id` one of FX_IDS? */

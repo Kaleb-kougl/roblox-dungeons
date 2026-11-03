@@ -321,6 +321,15 @@ export const SFX = {
 	pelletEat: "sfx.pellet.eat",
 	pelletSweep: "sfx.pellet.sweep",
 	pelletPower: "sfx.pellet.power",
+	/**
+	 * Treasure rooms (docs/TREASURE.md TR6; the theme's PORT_AUDIO_EVENTS, TREASURE_AUDIO_IDS): a vault's lock cracks
+	 * (a metal snap), its cage unlocks (a rattle), its chest opens (the sting; TR8 pitches it by tier), a Legendary
+	 * chest's jingle (ducks the music). The cue mapper plays them from TR8 on.
+	 */
+	treasureCrack: "sfx.treasure.crack",
+	treasureUnlock: "sfx.treasure.unlock",
+	treasureOpen: "sfx.treasure.open",
+	jingleTreasure: "sfx.jingle.treasure",
 } as const;
 export type SfxId = (typeof SFX)[keyof typeof SFX];
 
@@ -402,6 +411,10 @@ export const ALL_SFX: ReadonlyArray<SfxId> = [
 	SFX.pelletEat,
 	SFX.pelletSweep,
 	SFX.pelletPower,
+	SFX.treasureCrack,
+	SFX.treasureUnlock,
+	SFX.treasureOpen,
+	SFX.jingleTreasure,
 ];
 
 /** IDs this port added to the placeholder pack (not in the web contract's AUDIO_EVENTS; theme PORT_AUDIO_EVENTS). */
@@ -469,6 +482,10 @@ export const PORT_SFX: ReadonlyArray<SfxId> = [
 	SFX.pelletEat,
 	SFX.pelletSweep,
 	SFX.pelletPower,
+	SFX.treasureCrack,
+	SFX.treasureUnlock,
+	SFX.treasureOpen,
+	SFX.jingleTreasure,
 ];
 
 /**
@@ -610,6 +627,10 @@ export const SFX_MIN_INTERVAL: Readonly<Partial<Record<SfxId, number>>> = {
 	[SFX.pelletEat]: PELLETS_VIEW.audio.eatMinIntervalSec,
 	[SFX.pelletSweep]: PELLETS_VIEW.audio.stingMinIntervalSec,
 	[SFX.pelletPower]: PELLETS_VIEW.audio.stingMinIntervalSec,
+	/** docs/TREASURE.md TR6: one vault a floor, so these only guard a doubled start (a lockstep catch-up frame). */
+	[SFX.treasureCrack]: 0.5,
+	[SFX.treasureUnlock]: 0.5,
+	[SFX.treasureOpen]: 0.5,
 };
 
 /**
@@ -637,6 +658,12 @@ export const SFX_PRIORITY: Readonly<Record<SfxId, number>> = {
 	 * frame the clear jingle is dropped (one jingle per frame); under the depth jingle and the victory.
 	 */
 	[SFX.bestNew]: 74,
+	/**
+	 * A Legendary chest's jingle (docs/TREASURE.md Design §4): under the new-best fanfare, over the room clear's jingles
+	 * (one jingle per frame: an open never shares the clear's frame in play, the unlock waits 0.6 s, but a fanfare
+	 * passing the best on the open's points wins).
+	 */
+	[SFX.jingleTreasure]: 73,
 	/** The break: the loss you hear, above the room clear (they do not share a frame in practice). */
 	[SFX.comboBreak]: 73,
 	[SFX.roomClear]: 72,
@@ -671,6 +698,14 @@ export const SFX_PRIORITY: Readonly<Record<SfxId, number>> = {
 	[SFX.pelletPower]: 64,
 	[SFX.pelletSweep]: 65,
 	[SFX.pelletEat]: 53,
+	/**
+	 * Treasure rooms (docs/TREASURE.md TR6): the open's sting with the relic take (it is the reward you walked to); the
+	 * unlock's rattle with the tier-up sting (it follows the room clear's stamp); the crack mid-fight under the hurt and
+	 * the telegraph but over the kill ladder and the boost sounds, so a busy frame keeps the "so close" moment.
+	 */
+	[SFX.treasureOpen]: 70,
+	[SFX.treasureCrack]: 66,
+	[SFX.treasureUnlock]: 65,
 	/**
 	 * A boost out of a broken piece (docs/BREAKABLE_DROPS.md BL6): just over a kill drop's landing (the rarer, chosen
 	 * reward), under the pickup; over the piece's own break (40), which plays on the same frame.
@@ -781,6 +816,7 @@ export const DUCKING_SFX: ReadonlyArray<SfxId> = [
 	SFX.gameOver,
 	SFX.jingleRecord,
 	SFX.bestNew,
+	SFX.jingleTreasure,
 	SFX.roomClear,
 	SFX.roomPerfect,
 	SFX.shrineUse,
@@ -795,7 +831,8 @@ export const DUCKING_SFX: ReadonlyArray<SfxId> = [
  * no depth, so its boss kill keeps the victory). sfx.relic.take is a short power-up sound, not a jingle. The draft's
  * legendary flare (docs/DRAFT_REVEAL.md DR4) is a jingle too, but the reveal controller plays it itself (the world is
  * frozen under the draft, so no mapper jingle shares its frame). The new-best fanfare outranks the room clear's
- * (docs/NEW_BEST.md NBD7); the record fanfare takes the game-over jingle's place.
+ * (docs/NEW_BEST.md NBD7); the record fanfare takes the game-over jingle's place. A Legendary chest's jingle
+ * (docs/TREASURE.md TR6) ranks between the new-best fanfare and the room clear's.
  */
 export const JINGLE_SFX: ReadonlyArray<SfxId> = [
 	SFX.gameOver,
@@ -803,6 +840,7 @@ export const JINGLE_SFX: ReadonlyArray<SfxId> = [
 	SFX.depthUp,
 	SFX.victory,
 	SFX.bestNew,
+	SFX.jingleTreasure,
 	SFX.roomClear,
 	SFX.roomPerfect,
 	SFX.draftLegendary,
@@ -841,6 +879,15 @@ export const SFX_FALLBACK: Readonly<Partial<Record<SfxId, SfxId>>> = {
 	[SFX.pelletEat]: SFX.scoreTick,
 	[SFX.pelletSweep]: SFX.comboTier,
 	[SFX.pelletPower]: SFX.playerParry,
+	/**
+	 * docs/TREASURE.md TR6 (Design §5): until the treasure clips are uploaded (TR9), the crack plays the combo break's
+	 * shatter, the unlock the stairwell opening, the open the relic take and a Legendary's jingle the PERFECT jingle.
+	 * One step each, like every entry here.
+	 */
+	[SFX.treasureCrack]: SFX.comboBreak,
+	[SFX.treasureUnlock]: SFX.stairwellOpen,
+	[SFX.treasureOpen]: SFX.relicTake,
+	[SFX.jingleTreasure]: SFX.roomPerfect,
 };
 
 /**

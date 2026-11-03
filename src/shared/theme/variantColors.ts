@@ -11,7 +11,9 @@
  *   - and, folded in here so validate.ts takes no new name (docs/BUILDS.md BU1), buildColors.ts `buildReport`: the
  *     builds effect colours read on every floor and never as danger;
  *   - likewise (docs/PELLETS.md PL6), pelletColors.ts `pelletReport`: the pellets read on every floor and never as a
- *     bullet, a telegraph, a boost, a build effect or the player's outline.
+ *     bullet, a telegraph, a boost, a build effect or the player's outline;
+ *   - likewise (docs/TREASURE.md TR6), treasureColors.ts `treasureReport`: a vault's tier colours read on every floor
+ *     and the minimap and never as a bullet or a telegraph, its cage reads on every floor, a bullet reads on its chest.
  */
 
 import { colorDifference, contrastRatio, isHexColor } from "./color";
@@ -21,6 +23,7 @@ import { isObj, sortedEntries } from "./util";
 import { AFFIX_ROLES, ENEMY_AURA_ROLE, ENEMY_GOO_ROLE, ENEMY_SHIELD_ROLE } from "./variants";
 import { buildReport } from "./buildColors";
 import { pelletReport } from "./pelletColors";
+import { treasureReport } from "./treasureColors";
 
 /** What a variant colour report checks against what, and the bars (AFFIX_COLOR_RULES, GOO_COLOR_RULES). */
 export interface VariantColorRules {
@@ -203,33 +206,61 @@ const WHY = {
 			"a pellet must never read as an enemy bullet, a telegraph, a boost drop, a build effect or the player's outline",
 		apart: "",
 	},
+	treasure: {
+		floor: "a vault's tier colour and its cage must read on the floor",
+		map: "a vault's tier colour must read on the minimap",
+		difference: "a vault's tier colour on the floor must never read as an enemy bullet or a telegraph",
+		bullet: "an enemy bullet must read on the vault's chest",
+	},
 } as const;
 
+/** A report entry variantColorProblems words: the floor / difference checks, plus treasureReport's map / bullet. */
+interface ProblemEntry {
+	role: string;
+	check: string;
+	color: string;
+	against: string;
+	againstColor: string;
+	value: number;
+	min: number;
+	ok: boolean;
+}
+
 /**
- * Every failed affix, goo, aura, build effect and pellet check as a validator message (validateManifest adds them to its errors, path
- * `colors.<role>`). `suffix(biome)` is the validator's forge-theme suffix for a biome ID (" (crypt)").
+ * Every failed affix, goo, aura, build effect, pellet and treasure check as a validator message (validateManifest adds
+ * them to its errors, path `colors.<role>`). `suffix(biome)` is the validator's forge-theme suffix for a biome ID
+ * (" (crypt)").
  */
 export function variantColorProblems(manifest: unknown, suffix: (biome: string) => string): Array<VariantColorProblem> {
 	const out = new Array<VariantColorProblem>();
-	const reports = [
+	const reports: Array<{ entries: ReadonlyArray<ProblemEntry>; why: Readonly<Record<string, string>> }> = [
 		{ entries: affixReport(manifest), why: WHY.affix },
 		{ entries: gooReport(manifest), why: WHY.goo },
 		{ entries: auraReport(manifest), why: WHY.aura },
 		{ entries: buildReport(manifest), why: WHY.build },
 		{ entries: pelletReport(manifest), why: WHY.pellet },
+		{ entries: treasureReport(manifest), why: WHY.treasure },
 	];
 	for (const report of reports) {
 		for (const c of report.entries) {
 			if (c.ok) {
 				continue;
 			}
-			const msg =
-				c.check === "floor"
-					? `contrast: ${c.role} ${c.color} on ${c.against}${suffix(c.against)} floor ${c.againstColor} is ` +
-					  `${fixed2(c.value)}:1, needs >= ${fixed1(c.min)}:1: ${report.why.floor}`
-					: `colour difference: ${c.role} ${c.color} vs ${c.against} ${c.againstColor} is ${fixed1(
-							c.value,
-					  )} (CIE76), needs >= ${fixed1(c.min)}: ${report.why[c.check]}`;
+			const ratio = `${fixed2(c.value)}:1, needs >= ${fixed1(c.min)}:1: ${report.why[c.check]}`;
+			let msg: string;
+			if (c.check === "floor") {
+				msg = `contrast: ${c.role} ${c.color} on ${c.against}${suffix(c.against)} floor ${
+					c.againstColor
+				} is ${ratio}`;
+			} else if (c.check === "map") {
+				msg = `contrast: ${c.role} ${c.color} on ${c.against} ${c.againstColor} is ${ratio}`;
+			} else if (c.check === "bullet") {
+				msg = `contrast: ${c.against} ${c.againstColor} on ${c.role} ${c.color} is ${ratio}`;
+			} else {
+				msg =
+					`colour difference: ${c.role} ${c.color} vs ${c.against} ${c.againstColor} is ${fixed1(c.value)} ` +
+					`(CIE76), needs >= ${fixed1(c.min)}: ${report.why[c.check]}`;
+			}
 			out.push({ path: ["colors", c.role], msg });
 		}
 	}

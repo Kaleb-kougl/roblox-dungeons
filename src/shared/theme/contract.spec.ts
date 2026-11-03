@@ -182,8 +182,9 @@ describe("required IDs and strings", () => {
 		// events (sfx.rank.up, sfx.friend.passed). + docs/BREAKABLE_DROPS.md BL5: 1 port audio event (sfx.breakable.loot).
 		// + docs/NEW_ENEMIES.md NE1: 5 enemy archetypes, 1 bullet visual (bullet.enemy.strike), 6 port audio events.
 		// + docs/PELLETS.md PL6: 3 port audio events (sfx.pellet.*), 2 pellets (pellet.normal / .power).
+		// + docs/TREASURE.md TR6: 4 port audio events (sfx.treasure.*, sfx.jingle.treasure), 3 treasure looks.
 		expect(REQUIRED_ASSET_IDS.size()).toBe(
-			60 + 1 + 2 + 2 + 37 + 5 + 4 + 2 + 1 + 5 + 2 + 4 + 9 + 2 + 1 + 5 + 1 + 6 + 3 + 2,
+			60 + 1 + 2 + 2 + 37 + 5 + 4 + 2 + 1 + 5 + 2 + 4 + 9 + 2 + 1 + 5 + 1 + 6 + 3 + 2 + 4 + 3,
 		);
 		expect(AUDIO_EVENTS.size()).toBe(20);
 		expect(new Set(REQUIRED_ASSET_IDS).size()).toBe(REQUIRED_ASSET_IDS.size());
@@ -203,7 +204,8 @@ describe("required IDs and strings", () => {
 		// + docs/LOCALIZATION.md L1: INPUT_KEY_STRING_KEYS (51 key labels + input.separator)
 		// + docs/NEW_ENEMIES.md NE1: 5 enemy.<id>.name, 5 bestiary.<id> (BESTIARY_STRING_KEYS)
 		// + docs/PELLETS.md PL6: 2 room clear tally segments (ROOM_CLEAR_STRING_KEYS), bestiary.pellet.power
-		expect(REQUIRED_STRING_KEYS.size()).toBe(
+		// + docs/TREASURE.md TR6: TREASURE_STRING_KEYS (16, taken off the left side)
+		expect(REQUIRED_STRING_KEYS.size() - 16).toBe(
 			41 + 1 + 2 + 4 * 3 + 1 + 3 + 5 + 13 + 10 + 8 + 2 + 2 + 4 + 7 + 17 + 7 + 3 + 64 + 22 + 52 + 5 + 5 + 2 + 1,
 		);
 		expect(new Set(REQUIRED_STRING_KEYS).size()).toBe(REQUIRED_STRING_KEYS.size());
