@@ -21,6 +21,9 @@ export const ROOM_CLEAR_STRINGS = {
 	total: "room.clear.total",
 	chip: "room.clear.chip",
 	fly: "room.clear.fly",
+	/** docs/PELLETS.md PL6: the tally's pellet points (like `kills`) and its Sweep bonus (like `clearLine`). */
+	pellets: "room.clear.line.pellets",
+	sweep: "room.clear.line.sweep",
 } as const;
 
 export const ROOM_CLEAR_VIEW = {

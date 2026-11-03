@@ -74,7 +74,8 @@ export const BESTIARY_ARCHETYPES = [
 
 /**
  * The first-sighting toast lines (EVD10, EV12): one short tell per new archetype (`bestiary.<archetype>`,
- * BESTIARY_ARCHETYPES order), then one per affix (`bestiary.affix.<id>`, AFFIX_IDS order).
+ * BESTIARY_ARCHETYPES order), then one per affix (`bestiary.affix.<id>`, AFFIX_IDS order), then the power pellet's
+ * (`bestiary.pellet.power`, docs/PELLETS.md PL14).
  */
 export const BESTIARY_STRING_KEYS: ReadonlyArray<string> = [
 	"bestiary.imp",
@@ -89,6 +90,8 @@ export const BESTIARY_STRING_KEYS: ReadonlyArray<string> = [
 	"bestiary.affix.swift",
 	"bestiary.affix.shielded",
 	"bestiary.affix.vengeful",
+	// docs/PELLETS.md PL14: the power pellet (pellets.ts PELLET_BESTIARY_KEY; shared/onboarding sighting `pellet.power`)
+	"bestiary.pellet.power",
 ];
 
 /** Every enemy-variant string key a pack must define (AFFIX_STRING_KEYS then BESTIARY_STRING_KEYS), for contract.ts. */

@@ -28,6 +28,9 @@
  *
  * Roblox-port slot (docs/BOOSTS.md B5): BOOST (`boost.<kind>`, required: a boost drop is a gameplay object), free-size
  * world art like BREAKABLE; its colour roles, strings, sounds and optional effects: the Boosts section below.
+ *
+ * Roblox-port slot (docs/PELLETS.md PL6): PELLET (`pellet.normal` / `pellet.power`, required: a pellet is a gameplay
+ * object), free-size world art like BOOST; its roles, sounds and strings: pellets.ts (named inline here).
  */
 
 import type { AssetKind, ColorRole, ParticleFlipbookMode, Pivot } from "./types";
@@ -227,6 +230,20 @@ export const BOOST: SlotContract = {
 	baseAnimations: ["idle"],
 };
 
+/**
+ * Roblox port (docs/PELLETS.md PL6, PD3): a pellet, the small cube a fight lays on its room's floor, and the rare power
+ * pellet (pellets.ts PELLET_IDS: `pellet.normal`, `pellet.power`). A gameplay object, so every pack must draw both, with
+ * a placeholder primitive (a small Block cube in its colour role) until art exists. Free-size world art like BOOST:
+ * `image` (with `pixelsPerTile`) or `sprites` (`idle`). Any other `pellet.` ID is an error.
+ */
+export const PELLET: SlotContract = {
+	slot: "pellet",
+	prefix: "pellet.",
+	kinds: ["image", "sprites", "placeholder"],
+	facings: [],
+	baseAnimations: ["idle"],
+};
+
 /** The one animation a sprite effect (fx.*) defines: its flipbook (`fps`, `loop` and `frames` live on it). */
 export const FX_ANIMATION = "play";
 
@@ -259,10 +276,11 @@ export const SLOTS: ReadonlyArray<SlotContract> = [
 	AMBIENCE,
 	FX,
 	BOOST,
+	PELLET,
 ];
 
-/** Slots whose images are free-size world art drawn at `pixelsPerTile` (decor pieces, breakables, boost drops). */
-export const WORLD_ART_SLOTS: ReadonlyArray<SlotContract> = [DECOR, BREAKABLE, BOOST];
+/** Slots whose images are free-size world art drawn at `pixelsPerTile` (decor pieces, breakables, boost drops, pellets). */
+export const WORLD_ART_SLOTS: ReadonlyArray<SlotContract> = [DECOR, BREAKABLE, BOOST, PELLET];
 
 /** The slot an asset ID belongs to, by prefix. */
 export function slotFor(id: string): SlotContract | undefined {
@@ -676,7 +694,8 @@ export const BOOST_BEAM_IMAGE_ID = "ui.marker.boost";
  * Daily's rank layer's two (docs/DAILY.md DS10): a rank threshold's sting and a friend passed. Then the breakable
  * drops' one (docs/BREAKABLE_DROPS.md BL5): a boost hops out of a broken barrel / crate (sfx.boost.drop plays while it
  * is silent). Then the new enemies' six (docs/NEW_ENEMIES.md NE1): a Bomber's fuse and blast, a Charger's charge and
- * stun, a Stormcaller's strike, a Reaper's spin.
+ * stun, a Stormcaller's strike, a Reaper's spin. Then the pellets' three (docs/PELLETS.md PL6, pellets.ts
+ * PELLET_AUDIO_IDS): a pellet eaten, a room swept, the power pellet taken.
  */
 export const PORT_AUDIO_EVENTS = [
 	"sfx.player.swing",
@@ -762,6 +781,12 @@ export const PORT_AUDIO_EVENTS = [
 	"sfx.enemy.stun",
 	"sfx.enemy.strike",
 	"sfx.enemy.spin",
+	// docs/PELLETS.md PL6 (pellets.ts PELLET_AUDIO_IDS, the same list): a pellet eaten (the chomp, two alternating
+	// pitches from the cue mapper), every pellet of a room taken before its last enemy died (the sweep sting), the power
+	// pellet taken (every enemy bullet becomes points)
+	"sfx.pellet.eat",
+	"sfx.pellet.sweep",
+	"sfx.pellet.power",
 ] as const;
 
 /**
@@ -789,6 +814,9 @@ export const REQUIRED_ASSET_IDS: ReadonlyArray<string> = ((): string[] => [
 	...PORT_AUDIO_EVENTS,
 	...AMBIENCE_IDS,
 	...BOOST_KINDS.map((k) => boostId(k)),
+	// docs/PELLETS.md PL6: pellets.ts PELLET_IDS, written out (an import would be one more top-level local)
+	"pellet.normal",
+	"pellet.power",
 ])();
 
 /**
@@ -835,7 +863,8 @@ export const TOUCH_STRING_KEYS = [
  * Roblox port (docs/ROOM_CLEAR.md RC3): the room clear celebration's strings (shared/view ROOM_CLEAR_STRINGS): the
  * two stamps, the stamp for several rooms on one tick (`{stamp}`, `{rooms}`), the tally segments (`{points}`), the
  * running total, the corner chip (`{stamp}`, `{points}`) and the flying bonus (`{points}`). The theme imports nothing
- * outside shared/theme, so the list is repeated here.
+ * outside shared/theme, so the list is repeated here. Then the pellets' two tally segments (docs/PELLETS.md PL6,
+ * pellets.ts PELLET_ROOM_CLEAR_KEYS): the pellet points earned in the room and the Sweep bonus.
  */
 export const ROOM_CLEAR_STRING_KEYS = [
 	"room.clear.stamp.clear",
@@ -848,6 +877,8 @@ export const ROOM_CLEAR_STRING_KEYS = [
 	"room.clear.total",
 	"room.clear.chip",
 	"room.clear.fly",
+	"room.clear.line.pellets",
+	"room.clear.line.sweep",
 ] as const;
 
 /**

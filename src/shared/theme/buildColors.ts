@@ -48,12 +48,19 @@ export interface BuildColorEntry {
 
 /** Every check of BUILD_COLOR_RULES on `manifest` (see BuildColorEntry). */
 export function buildReport(manifest: unknown): Array<BuildColorEntry> {
+	return floorAndDifferenceReport(manifest, BUILD_COLOR_RULES);
+}
+
+/**
+ * Every check of `rules` on `manifest`, as buildReport describes (per role: "floor" vs every biome floor, then
+ * "difference" vs every `against` colour). Shared with pelletColors.ts' `pelletReport` (docs/PELLETS.md PL6).
+ */
+export function floorAndDifferenceReport(manifest: unknown, rules: BuildColorRules): Array<BuildColorEntry> {
 	const out = new Array<BuildColorEntry>();
 	if (!isObj(manifest) || !isObj(manifest.colors)) {
 		return out;
 	}
 	const colors = manifest.colors;
-	const rules = BUILD_COLOR_RULES;
 	const biomes = isObj(manifest.biomes) ? sortedEntries(manifest.biomes) : [];
 	for (const role of rules.roles) {
 		const color = colors[role];

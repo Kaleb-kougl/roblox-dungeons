@@ -194,6 +194,12 @@ export const COLOR_ROLES = [
 	"build.burst",
 	"build.shard",
 	"build.ember",
+	// Roblox port (docs/PELLETS.md PL6, PD3): one colour per pellet kind (pellets.ts PELLET_ROLES: the room's pellets,
+	// the rare power pellet), the placeholder cube's colour and the vale art's tint. Held to PELLET_COLOR_RULES by
+	// pelletReport (pelletColors.ts): >= 3:1 on every biome floor and (CIE76) away from the enemy-bullet roles,
+	// telegraph, every boost and build effect colour and playerOutline.
+	"pellet.normal",
+	"pellet.power",
 ] as const;
 
 export type ColorRole = (typeof COLOR_ROLES)[number];

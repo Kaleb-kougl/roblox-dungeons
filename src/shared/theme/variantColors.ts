@@ -9,7 +9,9 @@
  *   - `auraReport` (AURA_COLOR_RULES, docs/NEW_ENEMIES.md NE1): the Warbanner's aura ring and tint read on every biome
  *     floor and never as a bullet, a telegraph, a pickup or an affix;
  *   - and, folded in here so validate.ts takes no new name (docs/BUILDS.md BU1), buildColors.ts `buildReport`: the
- *     builds effect colours read on every floor and never as danger.
+ *     builds effect colours read on every floor and never as danger;
+ *   - likewise (docs/PELLETS.md PL6), pelletColors.ts `pelletReport`: the pellets read on every floor and never as a
+ *     bullet, a telegraph, a boost, a build effect or the player's outline.
  */
 
 import { colorDifference, contrastRatio, isHexColor } from "./color";
@@ -18,6 +20,7 @@ import type { ColorRole } from "./types";
 import { isObj, sortedEntries } from "./util";
 import { AFFIX_ROLES, ENEMY_AURA_ROLE, ENEMY_GOO_ROLE, ENEMY_SHIELD_ROLE } from "./variants";
 import { buildReport } from "./buildColors";
+import { pelletReport } from "./pelletColors";
 
 /** What a variant colour report checks against what, and the bars (AFFIX_COLOR_RULES, GOO_COLOR_RULES). */
 export interface VariantColorRules {
@@ -194,10 +197,16 @@ const WHY = {
 			"a build effect must never read as an enemy bullet, a telegraph, goo, the enemy outline or a boost drop",
 		apart: "",
 	},
+	pellet: {
+		floor: "a pellet must read on the floor",
+		difference:
+			"a pellet must never read as an enemy bullet, a telegraph, a boost drop, a build effect or the player's outline",
+		apart: "",
+	},
 } as const;
 
 /**
- * Every failed affix, goo, aura and build effect check as a validator message (validateManifest adds them to its errors, path
+ * Every failed affix, goo, aura, build effect and pellet check as a validator message (validateManifest adds them to its errors, path
  * `colors.<role>`). `suffix(biome)` is the validator's forge-theme suffix for a biome ID (" (crypt)").
  */
 export function variantColorProblems(manifest: unknown, suffix: (biome: string) => string): Array<VariantColorProblem> {
@@ -207,6 +216,7 @@ export function variantColorProblems(manifest: unknown, suffix: (biome: string) 
 		{ entries: gooReport(manifest), why: WHY.goo },
 		{ entries: auraReport(manifest), why: WHY.aura },
 		{ entries: buildReport(manifest), why: WHY.build },
+		{ entries: pelletReport(manifest), why: WHY.pellet },
 	];
 	for (const report of reports) {
 		for (const c of report.entries) {
