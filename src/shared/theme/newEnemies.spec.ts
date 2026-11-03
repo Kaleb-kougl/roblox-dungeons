@@ -73,11 +73,14 @@ function packsToCheck(): Array<[string, Obj]> {
 
 describe("new enemies: contract", () => {
 	it("appends the five to ENEMY_ARCHETYPES (existing order kept), each a required asset, role and name", () => {
+		// docs/FORTUNE.md FD9's Goldling (`golden`) comes after them.
+		const after = 1;
 		const tail: string[] = [];
-		for (let i = ENEMY_ARCHETYPES.size() - NEW.size(); i < ENEMY_ARCHETYPES.size(); i++)
+		for (let i = ENEMY_ARCHETYPES.size() - after - NEW.size(); i < ENEMY_ARCHETYPES.size() - after; i++)
 			tail.push(ENEMY_ARCHETYPES[i]);
 		expect(tail).toEqual([...NEW]);
-		expect(ENEMY_ARCHETYPES.size()).toBe(9 + NEW.size());
+		expect(ENEMY_ARCHETYPES[ENEMY_ARCHETYPES.size() - 1]).toBe("golden");
+		expect(ENEMY_ARCHETYPES.size()).toBe(9 + NEW.size() + after);
 		for (const a of NEW) {
 			expect([a, REQUIRED_ASSET_IDS.includes(`enemy.${a}`), slotFor(`enemy.${a}`)?.slot]).toEqual([
 				a,

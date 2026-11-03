@@ -27,6 +27,7 @@ import { affixesHashNames, writeAffixesHash } from "./affixes/affixes";
 import { devHashNames, writeDevHash } from "./dev/dev";
 import { buildsHashNames, writeBuildsHash } from "./builds/builds";
 import { pelletsHashNames, writePelletsHash } from "./pellets/pellets";
+import { goldenHashNames, writeGoldenHash } from "./golden/golden";
 
 /** The fixtures' subsystem groups, in hash order. */
 export const HASH_SUBSYSTEMS = ["core", "combatHeader", "actors", "weapons", "enemyBullets", "playerBullets"] as const;
@@ -50,7 +51,10 @@ export type HashSubsystem = (typeof HASH_SUBSYSTEMS)[number];
  *   builds   builds (docs/BUILDS.md BU1: per player boon levels, duos, counters, deals left; the proc queue), when
  *            state.builds exists
  *   pellets  pellets (docs/PELLETS.md PL2: the pellet count, taken per pellet, the power pellet, per score record left /
- *            phase / swept), when state.pellets exists; the LAST group
+ *            phase / swept), when state.pellets exists
+ *   golden   the Goldling (docs/FORTUNE.md GE2: its stream, status, room / record, engage / appear ticks, actor slot / id,
+ *            coins, hits, the run counters, the flee field's source tick and cells), when state.golden exists; the LAST
+ *            group (docs/FORTUNE.md: pacts goes before it once merged)
  */
 export const ENDLESS_HASH_SUBSYSTEM = "endless";
 export const SCORE_SUBSYSTEM = "score";
@@ -63,6 +67,7 @@ export const AFFIXES_SUBSYSTEM = "affixes";
 export const DEV_SUBSYSTEM = "dev";
 export const BUILDS_SUBSYSTEM = "builds";
 export const PELLETS_SUBSYSTEM = "pellets";
+export const GOLDEN_SUBSYSTEM = "golden";
 /** Every group name a layout can have. */
 export type HashGroupName =
 	| HashSubsystem
@@ -76,7 +81,8 @@ export type HashGroupName =
 	| typeof AFFIXES_SUBSYSTEM
 	| typeof DEV_SUBSYSTEM
 	| typeof BUILDS_SUBSYSTEM
-	| typeof PELLETS_SUBSYSTEM;
+	| typeof PELLETS_SUBSYSTEM
+	| typeof GOLDEN_SUBSYSTEM;
 
 export interface HashGroup {
 	readonly name: HashGroupName;
@@ -215,6 +221,13 @@ export function hashLayout(state: Readonly<SimState>, withNames = false): HashLa
 		writePelletsHash(pellets, values);
 		if (withNames) pelletsHashNames(pellets, names);
 		close(PELLETS_SUBSYSTEM);
+	}
+
+	const golden = state.golden;
+	if (golden !== undefined) {
+		writeGoldenHash(golden, values);
+		if (withNames) goldenHashNames(golden, names);
+		close(GOLDEN_SUBSYSTEM);
 	}
 
 	return { values, names, groups };

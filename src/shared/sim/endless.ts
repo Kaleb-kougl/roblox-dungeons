@@ -22,7 +22,8 @@
  *      dropsOnFloorPieces, with DropsConfig.breakableLoot), the floor's initial spawns (the boss on
  *      boss floors), scoring's room records rebuilt for the new floor
  *      (rebuildScoreRooms, deferred), then the floor's pellets on those records (pellets/pellets.ts pelletsOnFloor,
- *      with SimConfig.pellets), events.floorChanged = the new floor. Stop.
+ *      with SimConfig.pellets) and its Goldling room (golden/golden.ts goldenOnFloor, with SimConfig.golden: a
+ *      Goldling still out was freed with every other actor), events.floorChanged = the new floor. Stop.
  *   4. the player stands on a room's floor for the first time this floor: events.roomEntered = id + 1, and that room's
  *      deferred enemies spawn (EndlessFloorWorld.roomSpawns, in order, each at least SPAWN_SAFE_RADIUS from every
  *      living player: see safeRoomSpawns; a full pool drops the rest, counted in
@@ -41,7 +42,7 @@
  * Scaling (endlessData.ts) is applied where things are made: actor hp in spawnActor, enemy bullet speed in
  * SimCtx.fireEnemy. Both read state.endless, so they follow the floor and Depth at that moment.
  */
-import type { BreakableLoot, BreakablePlacement, FloorPellets } from "shared/dungeon";
+import type { BreakableLoot, BreakablePlacement, FloorGolden, FloorPellets } from "shared/dungeon";
 import type { InputFrame } from "./input";
 import type { SimState } from "./state";
 import type { SimConfig } from "./step";
@@ -63,6 +64,7 @@ import { dropsOnFloorPieces } from "./drops/breakLoot";
 import { tutorialOnRoomSpawned } from "./tutorial/tutorial";
 import { clearBuildProcs } from "./builds/builds";
 import { pelletsOnFloor } from "./pellets/pellets";
+import { goldenOnFloor } from "./golden/golden";
 
 /** A candidate spawn position (structurally shared/dungeon's TileXZ). */
 export interface SpawnTile {
@@ -115,6 +117,12 @@ export interface EndlessFloorWorld {
 	 * Absent: none (the tutorial, hand-built test worlds).
 	 */
 	readonly pellets?: FloorPellets;
+	/**
+	 * The floor's Goldling room (shared/dungeon placeGolden, docs/FORTUNE.md GE1): room id, floor rectangle and walk
+	 * mask. Read only when the run's SimConfig.golden is set (golden/golden.ts goldenOnFloor). Absent: no Goldling on
+	 * this floor (the tutorial, hand-built test worlds, a floor that did not roll one).
+	 */
+	readonly golden?: FloorGolden;
 }
 
 /** SimConfig.endless. */
@@ -271,6 +279,8 @@ function nextFloor(state: SimState, input: Readonly<InputFrame>, endless: Endles
 	rebuildScoreRooms(state, world.config.encounter, world.roomSpawns, world.roomAffixes);
 	// Pellets (docs/PELLETS.md): the new floor's, after the room records they hang off (no-op without them). No rng.
 	pelletsOnFloor(state, world.pellets);
+	// The Goldling (docs/FORTUNE.md GE2): the new floor's room, after the records (no-op without it). No rng.
+	goldenOnFloor(state, world.golden);
 	state.events.floorChanged = e.floor;
 }
 

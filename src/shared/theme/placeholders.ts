@@ -133,6 +133,8 @@ export const PLACEHOLDER_PROPORTIONS = {
 	warbanner: [0.25, 1, 0.25],
 	/** Reaper (NE1): a wide flat disc, a spinning blade (3.5 x 1 x 3.5 studs). */
 	reaper: [0.875, 0.25, 0.875],
+	/** Goldling (docs/FORTUNE.md FD9): a small gold block, smaller than the bomber (1.5 x 1.5 x 1.5 studs). */
+	golden: [0.375, 0.375, 0.375],
 	/** Bosses: a large block, the full 48 x 48 cell wide, 3/4 tall (Mother Bramble, boss.act1, and boss.1..5). */
 	boss: [1, 0.75, 1],
 	/**
@@ -260,6 +262,7 @@ const ENEMY_SHAPES: Record<EnemyArchetype, { shape: PlaceholderShape; proportion
 	stormcaller: { shape: "Cylinder", proportions: PLACEHOLDER_PROPORTIONS.stormcaller },
 	warbanner: { shape: "Cylinder", proportions: PLACEHOLDER_PROPORTIONS.warbanner },
 	reaper: { shape: "Cylinder", proportions: PLACEHOLDER_PROPORTIONS.reaper },
+	golden: { shape: "Block", proportions: PLACEHOLDER_PROPORTIONS.golden },
 };
 
 const enemyVisual = (archetype: EnemyArchetype): PlaceholderVisual =>

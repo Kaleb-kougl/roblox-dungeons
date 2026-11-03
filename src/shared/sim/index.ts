@@ -63,3 +63,4 @@ export * from "./affixes";
 export * from "./dev";
 export * from "./builds";
 export * from "./pellets";
+export * from "./golden";

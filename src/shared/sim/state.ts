@@ -36,6 +36,7 @@ import { cloneAffixesState, createAffixesState, type AffixesState } from "./affi
 import { cloneDevState, createDevState, type DevState } from "./dev/dev";
 import { cloneBuildsState, createBuildsState, type BuildsState } from "./builds/builds";
 import { clonePelletsState, createPelletsState, pelletsOnFloor, type PelletsState } from "./pellets/pellets";
+import { cloneGoldenState, createGoldenState, goldenOnFloor, type GoldenState } from "./golden/golden";
 
 export interface PlayerState {
 	x: number;
@@ -313,6 +314,13 @@ export interface SimState {
 	 * as the "pellets" subsystem, appended after every other group (after "builds"). See pellets/pellets.ts.
 	 */
 	pellets?: PelletsState;
+	/**
+	 * The Goldling (docs/FORTUNE.md GE2), only when SimConfig.golden is set: its own rng stream, this floor's status
+	 * (none / waiting / running / caught / escaped / skipped), room and record, engage / appear ticks, actor slot and id,
+	 * coins, hits, the run counters and the flee field's sources. Hashed as the "golden" subsystem, appended after every
+	 * other group (after "pellets"). See golden/golden.ts.
+	 */
+	golden?: GoldenState;
 }
 
 /**
@@ -334,6 +342,8 @@ export interface SimState {
  * With `config.pellets`, `pellets` state is created after the score state (its rooms hang off the score's room
  * records): the first floor's pellets (endless: its world's, dev mode's startFloor included; else
  * `config.pellets.floor`), and a scored run's points / counts gain the pellet sources (addPelletScoreSources).
+ * With `config.golden`, `golden` state is created after the score state (its own stream from `seed`; the first floor's
+ * Goldling room in endless mode, none otherwise).
  */
 export function createSimState(
 	seed: number,
@@ -410,6 +420,13 @@ export function createSimState(
 		// The pellet-only score sources (PELLETS, SWEEP; JACKPOT padded without builds), so they hash only here.
 		if (state.score !== undefined) addPelletScoreSources(state.score);
 	}
+	// The Goldling (docs/FORTUNE.md GE2): its own stream (seed ^ GOLDEN_SIM_SALT), after the score state (its record).
+	// No sim rng.
+	const golden = config.golden;
+	if (golden !== undefined) {
+		state.golden = createGoldenState(golden, seed);
+		goldenOnFloor(state, firstFloor?.golden);
+	}
 	return state;
 }
 
@@ -440,6 +457,7 @@ export function cloneSimState(s: Readonly<SimState>): SimState {
 		dev: s.dev !== undefined ? cloneDevState(s.dev) : undefined,
 		builds: s.builds !== undefined ? cloneBuildsState(s.builds) : undefined,
 		pellets: s.pellets !== undefined ? clonePelletsState(s.pellets) : undefined,
+		golden: s.golden !== undefined ? cloneGoldenState(s.golden) : undefined,
 	};
 	if (s.party !== undefined) clone.party = cloneParty(s.party, clone);
 	return clone;

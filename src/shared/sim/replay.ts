@@ -25,6 +25,7 @@ import { writeAffixesHash } from "./affixes/affixes";
 import { writeDevHash } from "./dev/dev";
 import { writeBuildsHash } from "./builds/builds";
 import { writePelletsHash } from "./pellets/pellets";
+import { writeGoldenHash } from "./golden/golden";
 import { isFiniteNumber, isIntegerNumber, numberToJsString } from "./jsnum";
 import { isJsonArray, isJsonObject, jsonToJsString, parseJson, type JsonValue } from "./json";
 import { jsMin } from "shared/jsmath";
@@ -191,8 +192,10 @@ export function writeHashFields(state: Readonly<SimState>, out: number[]): numbe
 	if (state.dev !== undefined) writeDevHash(state.dev, out);
 	// Builds (docs/BUILDS.md BU1), only when the run has them, appended after dev.
 	if (state.builds !== undefined) writeBuildsHash(state.builds, out);
-	// Pellets (docs/PELLETS.md PL2), only when the run has them, appended last (after builds).
+	// Pellets (docs/PELLETS.md PL2), only when the run has them, appended after builds.
 	if (state.pellets !== undefined) writePelletsHash(state.pellets, out);
+	// The Goldling (docs/FORTUNE.md GE2), only when the run has it, appended last (after pellets).
+	if (state.golden !== undefined) writeGoldenHash(state.golden, out);
 	return out;
 }
 

@@ -378,7 +378,8 @@ export type ClassId = (typeof CLASS_IDS)[number];
  * smaller) of docs/ENEMY_VARIANTS.md EV1: `enemy.imp` / `enemy.slime` and their `.name` the same way (placeholders: a
  * small cone and a low dome). The Summoner fills the web build's existing `summoner`. Then the second endless set of
  * docs/NEW_ENEMIES.md NE1: `bomber`, `charger`, `stormcaller`, `warbanner`, `reaper` (placeholders: a small cone, a
- * long wedge, a tall slim drum, a thin post, a flat disc).
+ * long wedge, a tall slim drum, a thin post, a flat disc). Then the Goldling of docs/FORTUNE.md (`golden`, a rare
+ * harmless gold runner; placeholder: a small gold block).
  */
 export const ENEMY_ARCHETYPES = [
 	"swarmer",
@@ -395,6 +396,7 @@ export const ENEMY_ARCHETYPES = [
 	"stormcaller",
 	"warbanner",
 	"reaper",
+	"golden",
 ] as const;
 export type EnemyArchetype = (typeof ENEMY_ARCHETYPES)[number];
 

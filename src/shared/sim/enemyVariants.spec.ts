@@ -76,6 +76,7 @@ describe("registry: PORT_BAND_ENEMIES", () => {
 			"reaper",
 			"stormcaller",
 			"warbanner",
+			"golden", // band PORT_BAND_FORTUNE (docs/FORTUNE.md): index 18
 		]);
 	});
 });
