@@ -1,8 +1,8 @@
 /**
- * Roblox port (docs/RUN_RECAP.md RR3 / CM3): the run-over recap's and the co-op moments' theme keys. Pure data with
+ * Roblox port (docs/RUN_RECAP.md RR3 / CM3 / CM4): the run-over recap's and the co-op moments' theme keys. Pure data with
  * no runtime import. contract.ts writes both string lists out inside REQUIRED_STRING_KEYS (an import would be one more
- * top-level local in contract.luau, which sits near Luau's 200-locals-per-function limit); runRecap.spec.ts checks they
- * stay the same lists.
+ * top-level local in contract.luau, which sits near Luau's 200-locals-per-function limit) and the two sounds inside
+ * PORT_AUDIO_EVENTS; runRecap.spec.ts checks they stay the same lists.
  */
 
 /**
@@ -56,3 +56,11 @@ export const TEAM_MOMENT_STRING_KEYS: ReadonlyArray<string> = [
 	"fx.parry.sync",
 	"fx.parry.syncCount",
 ];
+
+/**
+ * The co-op moments' two optional port audio IDs (docs/RUN_RECAP.md CM4, CMD5; the plan's `sfx.room.teamPerfect` /
+ * `sfx.player.syncParry`: asset ID segments are lowercase), in contract.ts PORT_AUDIO_EVENTS (the same list): TEAM
+ * PERFECT's jingle (shared/view/audio SFX_FALLBACK: sfx.room.perfect while silent) and a SYNC! parry
+ * (sfx.player.parry while silent). SILENT in the placeholder and in vale until clips exist (CM7).
+ */
+export const TEAM_MOMENT_AUDIO_IDS: ReadonlyArray<string> = ["sfx.room.teamperfect", "sfx.player.syncparry"];

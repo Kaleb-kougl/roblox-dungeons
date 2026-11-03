@@ -695,7 +695,8 @@ export const BOOST_BEAM_IMAGE_ID = "ui.marker.boost";
  * drops' one (docs/BREAKABLE_DROPS.md BL5): a boost hops out of a broken barrel / crate (sfx.boost.drop plays while it
  * is silent). Then the new enemies' six (docs/NEW_ENEMIES.md NE1): a Bomber's fuse and blast, a Charger's charge and
  * stun, a Stormcaller's strike, a Reaper's spin. Then the pellets' three (docs/PELLETS.md PL6, pellets.ts
- * PELLET_AUDIO_IDS): a pellet eaten, a room swept, the power pellet taken.
+ * PELLET_AUDIO_IDS): a pellet eaten, a room swept, the power pellet taken. Then the co-op moments' two
+ * (docs/RUN_RECAP.md CM4, runRecap.ts TEAM_MOMENT_AUDIO_IDS): TEAM PERFECT and a SYNC! parry.
  */
 export const PORT_AUDIO_EVENTS = [
 	"sfx.player.swing",
@@ -787,6 +788,10 @@ export const PORT_AUDIO_EVENTS = [
 	"sfx.pellet.eat",
 	"sfx.pellet.sweep",
 	"sfx.pellet.power",
+	// docs/RUN_RECAP.md CM4 (runRecap.ts TEAM_MOMENT_AUDIO_IDS, the same list): a party run's TEAM PERFECT jingle (the
+	// PERFECT jingle while silent) and a SYNC! parry (the parry while silent)
+	"sfx.room.teamperfect",
+	"sfx.player.syncparry",
 ] as const;
 
 /**

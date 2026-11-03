@@ -321,6 +321,14 @@ export const SFX = {
 	pelletEat: "sfx.pellet.eat",
 	pelletSweep: "sfx.pellet.sweep",
 	pelletPower: "sfx.pellet.power",
+	/**
+	 * Co-op moments (docs/RUN_RECAP.md CM4; the theme's PORT_AUDIO_EVENTS, TEAM_MOMENT_AUDIO_IDS): a party run's TEAM
+	 * PERFECT jingle (in PERFECT's place; sfx.room.perfect while silent) and a SYNC! parry (two or three players' guards
+	 * within the sync window; sfx.player.parry while silent). Registered only: the cue mapper's rules come with CM4's
+	 * second half.
+	 */
+	roomTeamPerfect: "sfx.room.teamperfect",
+	playerSyncParry: "sfx.player.syncparry",
 } as const;
 export type SfxId = (typeof SFX)[keyof typeof SFX];
 
@@ -402,6 +410,8 @@ export const ALL_SFX: ReadonlyArray<SfxId> = [
 	SFX.pelletEat,
 	SFX.pelletSweep,
 	SFX.pelletPower,
+	SFX.roomTeamPerfect,
+	SFX.playerSyncParry,
 ];
 
 /** IDs this port added to the placeholder pack (not in the web contract's AUDIO_EVENTS; theme PORT_AUDIO_EVENTS). */
@@ -469,6 +479,8 @@ export const PORT_SFX: ReadonlyArray<SfxId> = [
 	SFX.pelletEat,
 	SFX.pelletSweep,
 	SFX.pelletPower,
+	SFX.roomTeamPerfect,
+	SFX.playerSyncParry,
 ];
 
 /**
@@ -641,6 +653,8 @@ export const SFX_PRIORITY: Readonly<Record<SfxId, number>> = {
 	[SFX.comboBreak]: 73,
 	[SFX.roomClear]: 72,
 	[SFX.roomPerfect]: 72,
+	/** docs/RUN_RECAP.md CM4: TEAM PERFECT is PERFECT's jingle in a party run, so it ranks with it. */
+	[SFX.roomTeamPerfect]: 72,
 	[SFX.scoreLand]: 60,
 	[SFX.scoreTick]: 30,
 	[SFX.relicTake]: 70,
@@ -685,6 +699,8 @@ export const SFX_PRIORITY: Readonly<Record<SfxId, number>> = {
 	 * player's hurt and the telegraph.
 	 */
 	[SFX.playerParry]: 57,
+	/** docs/RUN_RECAP.md CM4: a SYNC! parry, just over the parry it rides on (one per sync cooldown). */
+	[SFX.playerSyncParry]: 58,
 	[SFX.playerFinisher]: 56,
 	[SFX.playerCharged]: 55,
 	[SFX.draftRare]: 55,
@@ -783,6 +799,7 @@ export const DUCKING_SFX: ReadonlyArray<SfxId> = [
 	SFX.bestNew,
 	SFX.roomClear,
 	SFX.roomPerfect,
+	SFX.roomTeamPerfect,
 	SFX.shrineUse,
 	SFX.draftLegendary,
 	SFX.ember,
@@ -805,6 +822,7 @@ export const JINGLE_SFX: ReadonlyArray<SfxId> = [
 	SFX.bestNew,
 	SFX.roomClear,
 	SFX.roomPerfect,
+	SFX.roomTeamPerfect,
 	SFX.draftLegendary,
 	SFX.shrineUse,
 ];
@@ -841,6 +859,13 @@ export const SFX_FALLBACK: Readonly<Partial<Record<SfxId, SfxId>>> = {
 	[SFX.pelletEat]: SFX.scoreTick,
 	[SFX.pelletSweep]: SFX.comboTier,
 	[SFX.pelletPower]: SFX.playerParry,
+	/**
+	 * docs/RUN_RECAP.md CM4 (CMD5): until their clips exist, TEAM PERFECT plays the PERFECT jingle and a SYNC! parry the
+	 * parry's ring-out. One step each: a pack where the parry is silent too has no SYNC! sound (the plan's +5 semitone
+	 * parry is the mapper's, CM4's second half).
+	 */
+	[SFX.roomTeamPerfect]: SFX.roomPerfect,
+	[SFX.playerSyncParry]: SFX.playerParry,
 };
 
 /**

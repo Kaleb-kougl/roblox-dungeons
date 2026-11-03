@@ -103,7 +103,11 @@ describe("pellets: contract", () => {
 
 	it("appends the three sounds to PORT_AUDIO_EVENTS: required, sfx; SILENT in the placeholder, on in vale", () => {
 		expect([...PELLET_AUDIO_IDS]).toEqual(["sfx.pellet.eat", "sfx.pellet.sweep", "sfx.pellet.power"]);
-		expect(tail(PORT_AUDIO_EVENTS, PELLET_AUDIO_IDS.size())).toEqual([...PELLET_AUDIO_IDS]);
+		// the pellets' block ends at sfx.pellet.power (docs/RUN_RECAP.md CM4's two come after it)
+		const blockEnd = (PORT_AUDIO_EVENTS as ReadonlyArray<string>).indexOf("sfx.pellet.power") + 1;
+		const block = new Array<string>();
+		for (let i = blockEnd - PELLET_AUDIO_IDS.size(); i < blockEnd; i++) block.push(PORT_AUDIO_EVENTS[i]);
+		expect(block).toEqual([...PELLET_AUDIO_IDS]);
 		// vale (owner, 2026-11-03): the Pixabay chomp, swoosh and power-up are uploaded
 		const valeOn = new Set<string>(["sfx.pellet.eat", "sfx.pellet.sweep", "sfx.pellet.power"]);
 		for (const id of PELLET_AUDIO_IDS) {

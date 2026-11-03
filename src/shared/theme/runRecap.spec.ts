@@ -1,14 +1,17 @@
-// Roblox port (docs/RUN_RECAP.md RR3 / CM3): the run-over recap's and the co-op moments' strings are in the contract's
-// list and every bundled pack fills them with well-formed templates. contract.ts names the keys inline (its compiled
-// Luau sits near the 200-locals limit), so these specs are what keeps runRecap.ts and contract.ts in step.
+// Roblox port (docs/RUN_RECAP.md RR3 / CM3 / CM4): the run-over recap's and the co-op moments' strings and sounds are
+// in the contract's lists, every bundled pack fills them with well-formed templates, and the two sounds are required,
+// silent everywhere until clips exist. contract.ts names the keys inline (its compiled Luau sits near the 200-locals
+// limit), so these specs are what keeps runRecap.ts and contract.ts in step.
 import { describe, expect, it } from "@rbxts/jest-globals";
-import { REQUIRED_STRING_KEYS } from "./contract";
+import { PORT_AUDIO_EVENTS, REQUIRED_ASSET_IDS, REQUIRED_STRING_KEYS, slotFor } from "./contract";
 import { THEME_PACKS } from "./packs";
 import { PLACEHOLDER_MANIFEST } from "./packs/placeholder";
-import { RECAP_STRING_KEYS, TEAM_MOMENT_STRING_KEYS } from "./runRecap";
+import { RECAP_STRING_KEYS, TEAM_MOMENT_AUDIO_IDS, TEAM_MOMENT_STRING_KEYS } from "./runRecap";
 import { placeholders, templateProblem } from "./strings";
 import { deepClone, sortedKeys, type Obj } from "./util";
 import { validateManifest } from "./validate";
+
+const has = (list: ReadonlyArray<string>, id: string) => list.includes(id);
 
 function tail(list: ReadonlyArray<string>, n: number): string[] {
 	const out = new Array<string>();
@@ -67,6 +70,17 @@ describe("run recap and co-op moments: contract", () => {
 		expect(tail(REQUIRED_STRING_KEYS, all.size())).toEqual(all);
 		expect(new Set(REQUIRED_STRING_KEYS).size()).toBe(REQUIRED_STRING_KEYS.size());
 	});
+
+	it("appends the two sounds to PORT_AUDIO_EVENTS: required, sfx; SILENT in every bundled pack (no clip yet)", () => {
+		expect([...TEAM_MOMENT_AUDIO_IDS]).toEqual(["sfx.room.teamperfect", "sfx.player.syncparry"]);
+		expect(tail(PORT_AUDIO_EVENTS, TEAM_MOMENT_AUDIO_IDS.size())).toEqual([...TEAM_MOMENT_AUDIO_IDS]);
+		for (const id of TEAM_MOMENT_AUDIO_IDS) {
+			expect([id, has(REQUIRED_ASSET_IDS, id), slotFor(id)?.soundGroup]).toEqual([id, true, "sfx"]);
+			for (const p of sortedKeys(THEME_PACKS)) {
+				expect([p, id, THEME_PACKS[p].assets[id].kind]).toEqual([p, id, "silent"]);
+			}
+		}
+	});
 });
 
 describe("run recap and co-op moments: packs", () => {
@@ -93,5 +107,12 @@ describe("run recap and co-op moments: packs", () => {
 			(m.strings as Obj)[k] = undefined;
 			expect([k, validateManifest(m).some((e) => e.find(`"${k}"`, 1, true)[0] !== undefined)]).toEqual([k, true]);
 		}
+		const missingSound = deepClone(PLACEHOLDER_MANIFEST) as unknown as Obj;
+		(missingSound.assets as Obj)["sfx.player.syncparry"] = undefined;
+		expect(
+			validateManifest(missingSound).some(
+				(e) => e.find('missing required asset "sfx.player.syncparry"', 1, true)[0] !== undefined,
+			),
+		).toBe(true);
 	});
 });

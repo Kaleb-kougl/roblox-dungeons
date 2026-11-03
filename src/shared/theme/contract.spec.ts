@@ -182,8 +182,9 @@ describe("required IDs and strings", () => {
 		// events (sfx.rank.up, sfx.friend.passed). + docs/BREAKABLE_DROPS.md BL5: 1 port audio event (sfx.breakable.loot).
 		// + docs/NEW_ENEMIES.md NE1: 5 enemy archetypes, 1 bullet visual (bullet.enemy.strike), 6 port audio events.
 		// + docs/PELLETS.md PL6: 3 port audio events (sfx.pellet.*), 2 pellets (pellet.normal / .power).
+		// + docs/RUN_RECAP.md CM4: 2 port audio events (sfx.room.teamperfect, sfx.player.syncparry).
 		expect(REQUIRED_ASSET_IDS.size()).toBe(
-			60 + 1 + 2 + 2 + 37 + 5 + 4 + 2 + 1 + 5 + 2 + 4 + 9 + 2 + 1 + 5 + 1 + 6 + 3 + 2,
+			60 + 1 + 2 + 2 + 37 + 5 + 4 + 2 + 1 + 5 + 2 + 4 + 9 + 2 + 1 + 5 + 1 + 6 + 3 + 2 + 2,
 		);
 		expect(AUDIO_EVENTS.size()).toBe(20);
 		expect(new Set(REQUIRED_ASSET_IDS).size()).toBe(REQUIRED_ASSET_IDS.size());

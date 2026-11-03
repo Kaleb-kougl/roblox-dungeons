@@ -438,6 +438,10 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		"sfx.pellet.eat": SILENT,
 		"sfx.pellet.sweep": SILENT,
 		"sfx.pellet.power": SILENT,
+		// Roblox port (docs/RUN_RECAP.md CM4): a party run's TEAM PERFECT jingle (sfx.room.perfect plays while silent) and
+		// a SYNC! parry (sfx.player.parry plays while silent); silent until the vale clips are picked (CM7)
+		"sfx.room.teamperfect": SILENT,
+		"sfx.player.syncparry": SILENT,
 		"music.menu": SILENT,
 		"music.biome.1": SILENT,
 		"music.biome.2": SILENT,
