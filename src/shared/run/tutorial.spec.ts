@@ -148,9 +148,10 @@ describe("tutorial world: the lock", () => {
 		// And the run config the same top-level fields as an endless run's, plus the tutorial's own, minus breakables
 		// (docs/DECOR.md B7: the tutorial's lessons are tuned to rooms without barrels and crates) and elite affixes
 		// (docs/ENEMY_VARIANTS.md: never in the tutorial) and builds (docs/BUILDS.md BUD8: the tutorial keeps today's
-		// draft). Drops are set, but not the endless defaults: only combat B's guaranteed Fury (docs/BOOSTS.md B9).
+		// draft) and pellets (docs/PELLETS.md PL5: endless worlds only; the tutorial's own room-G pellets are PL11).
+		// Drops are set, but not the endless defaults: only combat B's guaranteed Fury (docs/BOOSTS.md B9).
 		const keys = configKeys(buildEndlessRunConfig(1).config).filter(
-			(k) => k !== "breakables" && k !== "affixes" && k !== "builds",
+			(k) => k !== "breakables" && k !== "affixes" && k !== "builds" && k !== "pellets",
 		);
 		keys.push("tutorial");
 		keys.sort();

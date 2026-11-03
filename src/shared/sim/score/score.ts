@@ -83,6 +83,7 @@ import {
 	buildsOnPerfectRoom,
 	buildsUnshakenKept,
 } from "../builds/hooks";
+import { pelletRoomClear, pelletRoomLive } from "../pellets/pelletRooms";
 import { SOLO_PLAYER, runMods, teamComboCutDivisorMultiplier, teamComboWindowTicks } from "../progression/runMods";
 import {
 	BOSS_FINAL_PHASE,
@@ -905,9 +906,12 @@ export function scoreRoomDown(state: Readonly<SimState>, r: Readonly<RoomScore>)
 	return true;
 }
 
-function clearRoom(state: SimState, s: ScoreState, r: RoomScore): void {
+function clearRoom(state: SimState, s: ScoreState, r: RoomScore, k: number): void {
 	r.cleared = 1;
 	s.events.roomsCleared += 1;
+	// Pellets (docs/PELLETS.md PL3, opt-in): before the other awards, the room's pellets go and its Sweep pays when every
+	// regular pellet was taken (this tick's pickups included: stepPellets runs before stepScore).
+	if (state.pellets !== undefined && pelletRoomClear(state, k)) scoreSweep(state);
 	award(state, s, ScoreSource.ROOMS, ROOM_CLEAR_POINTS);
 	if (s.hitsTaken === r.hitsAtEngage) {
 		award(state, s, ScoreSource.PERFECT, ROOM_PERFECT_POINTS);
@@ -938,7 +942,8 @@ function markBossFinalPhase(state: Readonly<SimState>, s: ScoreState): void {
  *   1. a boss's final phase began -> open its no-hit window
  *   2. this tick's landed hits: cut the combo once per hit, hitsTaken += hits
  *   3. combo timer (only on ticks without a kill / graze): count down, reset at 0
- *   4. rooms, by room id: engagement, then clear (+ perfect, + fast)
+ *   4. rooms, by room id: engagement (pellet runs: the record's pellets go live), then clear (pellet runs: the
+ *      pellets go, + sweep; then + rooms, + perfect, + fast)
  */
 export function stepScore(state: SimState): void {
 	const s = state.score;
@@ -965,7 +970,9 @@ export function stepScore(state: SimState): void {
 		}
 	}
 
-	for (const r of s.rooms) {
+	const pellets = state.pellets !== undefined;
+	for (let k = 0; k < s.rooms.size(); k++) {
+		const r = s.rooms[k];
 		// Cleared, or a deferred room whose enemies have not spawned yet (attachScoreRoomMembers).
 		if (r.cleared !== 0 || r.memberSlots.size() === 0) continue;
 		if (r.engageTick < 0) {
@@ -973,7 +980,10 @@ export function stepScore(state: SimState): void {
 			r.engageTick = state.tick;
 			r.hitsAtEngage = hitsBefore;
 		}
-		if (scoreRoomDown(state, r)) clearRoom(state, s, r);
+		// Pellets (docs/PELLETS.md PL3, opt-in): an engaged record's pellets go live (once; endless records engage in
+		// attachScoreRoomMembers, so this is their first pass here).
+		if (pellets) pelletRoomLive(state, k);
+		if (scoreRoomDown(state, r)) clearRoom(state, s, r, k);
 	}
 
 	e.comboChanged = s.combo !== e.comboStart ? 1 : 0;

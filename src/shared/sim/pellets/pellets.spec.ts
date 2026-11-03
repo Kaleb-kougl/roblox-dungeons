@@ -46,6 +46,8 @@ import { buildDevRunConfig, buildEndlessRunConfig, type EndlessRunSetup } from "
 const SEED = 4242;
 const SETUP: EndlessRunSetup = buildEndlessRunConfig(SEED);
 const WITH: SimConfig = { ...SETUP.config, pellets: PELLETS_CONFIG };
+/** The endless config without pellets (every endless world sets them since PL5). */
+const WITHOUT: SimConfig = { ...SETUP.config, pellets: undefined };
 
 function fresh(config: SimConfig = WITH, setup: { spawn?: { x: number; z: number } } = SETUP): SimState {
 	return createSimState(SEED, setup.spawn!.x, setup.spawn!.z, config);
@@ -123,8 +125,11 @@ describe("pellets: config and tunables", () => {
 		expect(PELLETS.salt).never.toBe(DROPS.salt);
 	});
 
-	it("no world sets it yet: an endless run has no pellets state, no pellets group, the same score sources", () => {
-		const s = fresh(SETUP.config);
+	it("every endless world sets it (PL5); without it: no pellets state, no pellets group, the same score sources", () => {
+		expect(SETUP.config.pellets).toBe(PELLETS_CONFIG);
+		expect(buildEndlessRunConfig(SEED, 3).config.pellets).toBe(PELLETS_CONFIG);
+		expect(buildDevRunConfig(SEED, { startFloor: 3, invulnerable: true }).config.pellets).toBe(PELLETS_CONFIG);
+		const s = fresh(WITHOUT);
 		expect(s.pellets).toBe(undefined);
 		const l = hashLayout(s);
 		expect(l.groups[l.groups.size() - 1].name).toBe(BUILDS_SUBSYSTEM);
@@ -239,13 +244,13 @@ describe("pellets: clone and hash", () => {
 		expect(hashState(s)).toBe(base);
 	});
 
-	it("with the config nothing else moves: every other group and the rng replay as without it (600 ticks)", () => {
+	it("with the config nothing else moves: every other group, the rng and the other score sources (600 ticks)", () => {
 		const a = fresh();
-		const b = fresh(SETUP.config);
+		const b = fresh(WITHOUT);
 		for (let t = 0; t < 600; t++) {
 			const input = wander(t);
 			step(a, input, WITH);
-			step(b, input, SETUP.config);
+			step(b, input, WITHOUT);
 		}
 		expect(a.rngState).toBe(b.rngState);
 		const ga = groupsByName(a);
@@ -253,18 +258,11 @@ describe("pellets: clone and hash", () => {
 		for (const [name, values] of gb) if (name !== SCORE_SUBSYSTEM) expect(ga.get(name)).toEqual(values);
 		const sa = a.score!;
 		const sb = b.score!;
-		expect([sa.total, sa.combo, sa.comboTimer, sa.hitsTaken]).toEqual([
-			sb.total,
-			sb.combo,
-			sb.comboTimer,
-			sb.hitsTaken,
-		]);
+		expect([sa.combo, sa.comboTimer, sa.hitsTaken]).toEqual([sb.combo, sb.comboTimer, sb.hitsTaken]);
 		for (let k = 0; k < sb.points.size(); k++)
 			expect([sa.points[k], sa.counts[k]]).toEqual([sb.points[k], sb.counts[k]]);
-		expect([sa.points[ScoreSource.PELLETS], sa.points[ScoreSource.SWEEP]]).toEqual([0, 0]);
-		// Nothing goes live yet (PL3): every pellet untaken, every room dormant.
-		for (const t of a.pellets!.taken) expect(t).toBe(0);
-		for (const r of a.pellets!.rooms) expect(r.phase).toBe(PelletPhase.DORMANT);
+		// Pellet points (PL3) are the only difference in the total.
+		expect(sa.total).toBe(sb.total + sa.points[ScoreSource.PELLETS] + sa.points[ScoreSource.SWEEP]);
 	});
 });
 
@@ -288,7 +286,7 @@ describe("pellets: score sources", () => {
 		const s = fresh(noBuilds);
 		expect(s.score!.points.size()).toBe(12);
 		expect(s.score!.points[ScoreSource.JACKPOT]).toBe(0);
-		const plain = fresh({ ...SETUP.config, builds: undefined });
+		const plain = fresh({ ...WITHOUT, builds: undefined });
 		expect(plain.score!.points.size()).toBe(SCORE_SOURCE_COUNT);
 		// No scoring at all: pellets state but no sources to pad.
 		const unscored = fresh({ ...WITH, scoring: undefined });
@@ -368,7 +366,7 @@ describe("pellets: the award functions (PD1: the combo is never fed)", () => {
 	});
 
 	it("pay nothing without the pellets state or without the pellet sources", () => {
-		const off = fresh(SETUP.config);
+		const off = fresh(WITHOUT);
 		expect([scorePellet(off), scoreSweep(off), scorePowerBullets(off, 5)]).toEqual([0, 0, 0]);
 		expect(off.score!.total).toBe(0);
 		const s = fresh();
