@@ -11,8 +11,10 @@
  * Funnel numbering: the `boost` step (6, docs/BOOSTS.md B9, reversing P8) was inserted on 2026-10-26, so `roll` ..
  * `finish` moved from 6..15 to 7..16 (docs/TUTORIAL.md §6). The `map` step (11, docs/TUTORIAL_MAP.md TMD1) was inserted
  * after `ember` on 2026-11-01, so `relic` .. `finish` moved from 11..16 to 12..17 (shared/onboarding
- * TUTORIAL_FUNNEL_REVISION marks the change). Never insert or reorder steps lightly: every number after the change
- * point moves, and the dashboard funnel is not comparable across the change.
+ * TUTORIAL_FUNNEL_REVISION marks the change). The `pellets` step (12, combat G, docs/PELLETS.md PL13 / PD13) was
+ * inserted after `map` on 2026-11-02, so `relic` .. `finish` moved from 12..17 to 13..18 (revision 3). Never insert or
+ * reorder steps lightly: every number after the change point moves, and the dashboard funnel is not comparable across
+ * the change.
  */
 import type { TutorialLessonId } from "shared/run";
 
@@ -81,7 +83,13 @@ export type TutorialSkill =
 	/** A heavy arrow released (the bow slot's BOW_V_HEAVY_TICK moved). */
 	| "heavyArrow"
 	/** An Ember burnt (events.emberUsed). Waived once the room is cleared with no Ember left to burn. */
-	| "ember";
+	| "ember"
+	/**
+	 * A Sweep (score source `sweep` counted since the room was entered, or the sim's pellet lock released: the room's
+	 * last pellet taken). Never waived: the room cannot be cleared before every pellet is taken (the sim holds the
+	 * lesson's enemies at 1 hp: TutorialSimConfig.pelletLock, docs/PELLETS.md PD14).
+	 */
+	| "sweep";
 
 /**
  * How a step completes (TutorialDirector evaluates it every frame, latching it done):
@@ -132,8 +140,9 @@ export interface TutorialStep {
 	/** Prompt id: theme keys `tutorial.prompt.<prompt>.<device>` (tutorialPromptKey). */
 	readonly prompt: string;
 	/**
-	 * Shown instead of `prompt` while the sim holds the lesson's enemies waiting for a block (shared/sim
-	 * isTutorialGuardHolding: the block lesson's bruiser at 1 hp). Theme keys as `prompt`.
+	 * Shown instead of `prompt` while the sim holds the lesson's enemies at 1 hp: waiting for a block (a step with the
+	 * `guard` skill: shared/sim isTutorialGuardHolding) or for the room's last pellets (the `sweep` skill:
+	 * isTutorialPelletHolding). Theme keys as `prompt`.
 	 */
 	readonly holdPrompt?: string;
 	/**
@@ -170,7 +179,7 @@ const STEP_DEFS: ReadonlyArray<StepDef> = [
 	},
 	{ id: "move", floor: 1, prompt: "move", marker: NO_MARKER, rule: { kind: "move" } },
 	{ id: "flask", floor: 1, prompt: "flask", highlight: "flask", marker: NO_MARKER, rule: { kind: "flask" } },
-	// --- Floor 1, combat A-F (lessons 3-8), and the boost combat B drops
+	// --- Floor 1, combat A-F (lessons 3-8), and the boost combat B drops (combat G follows the map step)
 	{
 		id: "attack",
 		floor: 1,
@@ -228,6 +237,17 @@ const STEP_DEFS: ReadonlyArray<StepDef> = [
 	},
 	// --- Floor 1, after combat F: the map (docs/TUTORIAL_MAP.md). No room: its marker borrows the next lesson's.
 	{ id: "map", floor: 1, prompt: "map", highlight: "minimap", marker: { kind: "next" }, rule: { kind: "map" } },
+	// --- Floor 1, combat G: the pellets (docs/PELLETS.md PL13). The map prompt plays on the walk F -> G and its `next`
+	// marker points at G's door. No highlight: the room clear's tally shows the Sweep.
+	{
+		id: "pellets",
+		floor: 1,
+		lesson: "combatG",
+		prompt: "pellets",
+		holdPrompt: "pelletsHold",
+		marker: { kind: "door", lesson: "combatG" },
+		rule: { kind: "clear", skills: ["sweep"] },
+	},
 	// --- Floor 1, treasure, shrine, stairwell (lessons 9, 10, 12; 11 is the score callout)
 	{
 		id: "relic",

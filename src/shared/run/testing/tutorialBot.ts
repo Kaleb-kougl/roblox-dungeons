@@ -8,7 +8,8 @@
  * with the sword (and after each fight walk over any boost drop lying on the floor: combat B's guaranteed Fury, the
  * `boost` step, docs/BOOSTS.md B9), roll once for the sniper, guard the bruiser's ring (ALT when a bullet comes close; with `guardLate`
  * only once the sim holds it at 1 hp), swap to the bow
- * and release a heavy arrow at the turret sniper, burn an Ember in the sprayer storm, take the relic, accept the curse
+ * and release a heavy arrow at the turret sniper, burn an Ember in the sprayer storm, sweep combat G's pellets (option
+ * `pellets`) and cut down its sniper, take the relic, accept the curse
  * (SHRINE_BUTTON), take the stairwell, confirm the centre draft card, then melee Mother Bramble on floor 2 (the player
  * is harmless, so it tanks; optionally with the debug boss damage, J) and take the stairwell she opens. It records the
  * boss fight's milestones (engaged, phases with the HUD bar's fill, dead) for the fast-boss spec.
@@ -23,6 +24,11 @@
  * picks when the bot "opens the full map" (one frame of mapSeen): "current" (default) on the first frame the `map`
  * step is current, "early" on a frame during combat B (latched out of order), "never", or "unavailable" (mapAvailable
  * false throughout, never seen). The bot's ticks are the same in every mode (the director never drives the sim).
+ *
+ * The pellet lesson (docs/PELLETS.md PL13): `pellets` "first" (default) walks combat G's pellets in index order (the
+ * ring's path) as soon as they are live, then fights the sniper; "late" fights first until the sim holds the sniper at
+ * 1 hp waiting for the last pellets (TutorialSimConfig.pelletLock: the `pelletsHold` prompt), then walks the pellets and
+ * finishes the fight.
  *
  * `steer: "guide"` (docs/TUTORIAL_ARROW.md A3) walks by the guidance arrow's heading (shared/tutorial TutorialGuide)
  * instead, while the arrow shows: the proof that the arrow never sends a player into a wall.
@@ -51,6 +57,7 @@ import {
 	dropsGround,
 	isDraftOpen,
 	isTutorialGuardHolding,
+	isTutorialPelletHolding,
 	weaponIndex,
 	type ActorState,
 	type InputFrame,
@@ -103,12 +110,17 @@ export interface TutorialBotOptions {
 	readonly shadowStuckSeconds?: ReadonlyArray<number>;
 	/** When the bot opens the full map (see the file comment; default "current"). */
 	readonly map?: TutorialBotMapMode;
+	/** Combat G: sweep its pellets before the fight or once the sim holds the sniper (see the file comment; default "first"). */
+	readonly pellets?: TutorialBotPelletMode;
 	/** Called after every director update with the bot's view and run (a spec's per-frame checks). */
 	readonly onFrame?: (view: Readonly<TutorialView>, run: LiveRun) => void;
 }
 
 /** When the tutorial bot opens the full map (TutorialBotOptions.map). */
 export type TutorialBotMapMode = "current" | "early" | "never" | "unavailable";
+
+/** When the tutorial bot walks combat G's pellets (TutorialBotOptions.pellets). */
+export type TutorialBotPelletMode = "first" | "late";
 
 export interface TutorialBotResult {
 	readonly setup: EndlessRunSetup;
@@ -170,6 +182,12 @@ export interface TutorialBotResult {
 	/** The first tick the block lesson's bruiser was held at 1 hp waiting for a block (-1 never), and ticks held. */
 	readonly guardHeldTick: number;
 	readonly guardHeldTicks: number;
+	/** The first tick the pellet lesson's sniper was held at 1 hp waiting for the last pellets (-1 never), and ticks held. */
+	readonly pelletHeldTick: number;
+	readonly pelletHeldTicks: number;
+	/** Combat G: pellets the bot took, and the tick it took the room's last one (-1 never). */
+	readonly pelletsTaken: number;
+	readonly pelletsSweptTick: number;
 	/** Every TutorialView.newLessonReports / newStuckReports entry (docs/TUTORIAL_FUNNEL.md TF4), in the order reported. */
 	readonly lessonReports: ReadonlyArray<TutorialLessonReport>;
 	readonly stuckReports: ReadonlyArray<TutorialStuckReport>;
@@ -259,6 +277,11 @@ class TutorialBot {
 	guardHeldTicks = 0;
 	guardLate = false;
 	guardHoldDelayTicks = 0;
+	pelletHeldTick = -1;
+	pelletHeldTicks = 0;
+	pelletMode: TutorialBotPelletMode = "first";
+	pelletsTaken = 0;
+	pelletsSweptTick = -1;
 	dropsLanded = 0;
 	dropsTaken = 0;
 	private prevHearts: number;
@@ -365,6 +388,12 @@ class TutorialBot {
 			if (this.guardHeldTick < 0) this.guardHeldTick = t;
 			this.guardHeldTicks++;
 		}
+		if (isTutorialPelletHolding(this.state)) {
+			if (this.pelletHeldTick < 0) this.pelletHeldTick = t;
+			this.pelletHeldTicks++;
+		}
+		const pe = this.state.pellets?.events;
+		if (pe !== undefined) this.pelletsTaken += pe.eaten.size();
 		if (this.guide !== undefined) {
 			const g = this.guide.update({
 				dungeon: this.world().dungeon,
@@ -648,11 +677,16 @@ class TutorialBot {
 	 * FIRE; bow: hold BOW_RANGE and hold FIRE. `extra(target, n)` may return buttons to add this tick (guard, ...),
 	 * or undefined to fight normally.
 	 */
-	fight(lesson: TutorialLessonId, extra?: (a: ActorState, n: number) => number | undefined): void {
+	fight(
+		lesson: TutorialLessonId,
+		extra?: (a: ActorState, n: number) => number | undefined,
+		stopWhen?: () => boolean,
+	): void {
 		const roomId = tutorialRoom(lesson).roomId;
 		const room = tutorialRoom(lesson);
 		let n = 0;
 		while (n < FIGHT_BUDGET && !this.out() && !this.roomCleared(lesson) && this.floor() === 1) {
+			if (stopWhen !== undefined && stopWhen()) return;
 			const a = this.target(roomId);
 			const p = this.state.player;
 			if (a === undefined) {
@@ -677,6 +711,34 @@ class TutorialBot {
 			n++;
 		}
 		this.note(`${lesson} ${this.roomCleared(lesson) ? "cleared" : "NOT cleared"}`);
+	}
+
+	/** The untaken pellets of floor-1 room `roomId`, in pellet index order. */
+	private pelletsLeft(roomId: number): number[] {
+		const p = this.state.pellets;
+		const out: number[] = [];
+		if (p === undefined) return out;
+		const records = this.state.score?.rooms ?? [];
+		for (let k = 0; k < p.taken.size(); k++) {
+			const rec = p.rec[k];
+			if (p.taken[k] === 0 && rec >= 0 && records[rec]?.room === roomId) out.push(k);
+		}
+		return out;
+	}
+
+	/** Walks over the lesson room's untaken pellets in index order (each until taken), noting the last pickup's tick. */
+	collectPellets(lesson: TutorialLessonId): void {
+		const roomId = tutorialRoom(lesson).roomId;
+		const p = this.state.pellets;
+		if (p === undefined) return;
+		for (const k of this.pelletsLeft(roomId)) {
+			if (this.out() || this.floor() !== 1) return;
+			this.walkTo(p.x[k], p.z[k], () => p.taken[k] !== 0);
+		}
+		if (this.pelletsLeft(roomId).size() === 0 && this.pelletsSweptTick < 0) {
+			this.pelletsSweptTick = this.state.tick;
+			this.note(`${lesson} pellets swept`);
+		}
 	}
 
 	// --- lessons ----------------------------------------------------------------------------
@@ -782,6 +844,14 @@ class TutorialBot {
 			this.note("heavy arrow");
 			this.fight(lesson);
 			this.wield(false);
+		} else if (lesson === "combatG") {
+			this.wield(false);
+			if (this.pelletMode === "late") {
+				// Fight until the sim holds the sniper at 1 hp for the last pellets, then sweep, then finish it.
+				this.fight(lesson, undefined, () => isTutorialPelletHolding(this.state));
+			}
+			this.collectPellets(lesson);
+			this.fight(lesson);
 		} else if (lesson === "combatF") {
 			this.wield(false);
 			let embered = false;
@@ -853,6 +923,7 @@ export function playTutorial(options: TutorialBotOptions = {}): TutorialBotResul
 	bot.guardLate = options.guardLate === true;
 	bot.guardHoldDelayTicks = options.guardHoldDelayTicks ?? 0;
 	bot.mapMode = options.map ?? "current";
+	bot.pelletMode = options.pellets ?? "first";
 	bot.onFrame = options.onFrame;
 	const order = options.order ?? TUTORIAL_ROOMS.map((r) => r.lesson);
 	bot.objective();
@@ -900,6 +971,10 @@ export function playTutorial(options: TutorialBotOptions = {}): TutorialBotResul
 		boostCurrentOnDrop: bot.boostCurrentOnDrop,
 		guardHeldTick: bot.guardHeldTick,
 		guardHeldTicks: bot.guardHeldTicks,
+		pelletHeldTick: bot.pelletHeldTick,
+		pelletHeldTicks: bot.pelletHeldTicks,
+		pelletsTaken: bot.pelletsTaken,
+		pelletsSweptTick: bot.pelletsSweptTick,
 		lessonReports: bot.lessonReports,
 		stuckReports: bot.stuckReports,
 		shadowStuckReports: bot.shadowStuckReports,
