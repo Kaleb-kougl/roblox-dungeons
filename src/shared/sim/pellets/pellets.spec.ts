@@ -45,9 +45,13 @@ import { buildDevRunConfig, buildEndlessRunConfig, type EndlessRunSetup } from "
 
 const SEED = 4242;
 const SETUP: EndlessRunSetup = buildEndlessRunConfig(SEED);
-const WITH: SimConfig = { ...SETUP.config, pellets: PELLETS_CONFIG };
-/** The endless config without pellets (every endless world sets them since PL5). */
-const WITHOUT: SimConfig = { ...SETUP.config, pellets: undefined };
+/**
+ * The endless config with pellets, and without pacts (docs/FORTUNE.md PS5: every endless world sets them too; their
+ * group is appended after this one and their HORDE source pads the score after these): what pellets add, alone.
+ */
+const WITH: SimConfig = { ...SETUP.config, pellets: PELLETS_CONFIG, pacts: undefined };
+/** The endless config without pellets (every endless world sets them since PL5), and without pacts. */
+const WITHOUT: SimConfig = { ...SETUP.config, pellets: undefined, pacts: undefined };
 
 function fresh(config: SimConfig = WITH, setup: { spawn?: { x: number; z: number } } = SETUP): SimState {
 	return createSimState(SEED, setup.spawn!.x, setup.spawn!.z, config);

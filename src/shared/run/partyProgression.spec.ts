@@ -1,6 +1,8 @@
 // Phase B integration (M2 progression x M4 co-op): a scripted 2-player endless run on seed 1337 where the players
 // draft different boons after every floor (own offers, own input, the world frozen until both confirmed), player 0
-// takes a relic from a TREASURE pedestal and player 1 accepts a curse at the SHRINE. It replays deterministically
+// takes a relic from a TREASURE pedestal and player 1 accepts a curse at the SHRINE (endless worlds have pacts,
+// docs/FORTUNE.md: where the altars stand, the Pact of Greed: its curse, then its Legendary deal, player 1's own draft
+// mid-floor with the world frozen for both). It replays deterministically
 // (twice), through the party codec, and through SegmentedValidator (segments cut as the server's log would) to the
 // live hash and score; the hash has the run group (two players) before the party group.
 import { describe, expect, it } from "@rbxts/jest-globals";
@@ -8,6 +10,8 @@ import {
 	AFFIXES_SUBSYSTEM,
 	BUILDS_SUBSYSTEM,
 	PELLETS_SUBSYSTEM,
+	PACTS_SUBSYSTEM,
+	PactKind,
 	BREAKABLES_SUBSYSTEM,
 	DROPS_SUBSYSTEM,
 	ENDLESS_HASH_SUBSYSTEM,
@@ -68,6 +72,9 @@ function recordRun() {
 		);
 	const run = drv.state.run!;
 	let relicFloor = 0;
+	/** Greed's deal (pacts): player 1's pick and where it falls among their drafted cards; -1: none. */
+	let greedAt = -1;
+	let greedCard = -1;
 	while (drv.floor() < 5 && !isPartyWiped(drv.state)) {
 		const rooms = drv.world().config.encounter?.rooms ?? [];
 		const t = rooms.find((x) => x.type === "treasure");
@@ -79,13 +86,22 @@ function recordRun() {
 			drv.walkOne(0, t.cx, t.cz, () => run.players[0].relics.size() > 0, 3000, stair);
 			note("relic");
 			const p1 = playerAt(drv.state, 1);
+			// the classic shrine's centre, or (pacts) the Greed altar where the altars stand
+			const greed = w.pactAltars?.altars[PactKind.GREED];
+			const gx = greed !== undefined ? greed.x : sh.cx;
+			const gz = greed !== undefined ? greed.z : sh.cz;
 			const near = () => {
-				const dx = p1.x - sh.cx;
-				const dz = p1.z - sh.cz;
+				const dx = p1.x - gx;
+				const dz = p1.z - gz;
 				return dx * dx + dz * dz < SHRINE_RADIUS * SHRINE_RADIUS * 0.25;
 			};
-			drv.walkOne(1, sh.cx, sh.cz, near, 3000, stair);
+			drv.walkOne(1, gx, gz, near, 3000, stair);
 			if (near()) drv.press(1, SHRINE_BUTTON);
+			if (greed !== undefined) {
+				greedAt = drv.drafted[1].size();
+				drv.resolveDrafts();
+				if (drv.drafted[1].size() > greedAt) greedCard = drv.drafted[1].remove(greedAt)!;
+			}
 			note("curse");
 		}
 		drv.skipFloor();
@@ -93,7 +109,16 @@ function recordRun() {
 	const w5 = drv.world();
 	drv.walkAll(w5.stairX, w5.stairZ, 900);
 	note("floor 5 walked");
-	return { setup, drv, log, relicFloor, recording: drv.recorder.getRecording(), finalHash: hashState(drv.state) };
+	return {
+		setup,
+		drv,
+		log,
+		relicFloor,
+		greedAt,
+		greedCard,
+		recording: drv.recorder.getRecording(),
+		finalHash: hashState(drv.state),
+	};
 }
 
 const run = recordRun();
@@ -206,9 +231,17 @@ describe("a 2-player endless run with per-player progression", () => {
 		for (let k = 0; k < rounds; k++) expect(run.drv.drafted[0][k]).never.toBe(run.drv.drafted[1][k]);
 		// Builds (docs/BUILDS.md BU2): a card may level an owned boon, so the owned boons are the distinct ones in the
 		// order first taken.
+		// Pacts: player 1's Greed pick (taken out of drafted[1]) goes back in where it fell, for the boons' order.
+		const picks: number[][] = [];
+		for (let i = 0; i < N; i++) picks.push([...run.drv.drafted[i]]);
+		if (run.greedAt >= 0) {
+			expect(run.greedCard >= 0).toBe(true);
+			picks[1].insert(run.greedAt, run.greedCard);
+			expect(live.pacts!.taken[PactKind.GREED]).toBe(1);
+		}
 		for (let i = 0; i < N; i++) {
 			const distinct: number[] = [];
-			for (const card of run.drv.drafted[i]) {
+			for (const card of picks[i]) {
 				const b = cardBoon(card);
 				if (b >= 0 && !distinct.includes(b)) distinct.push(b);
 			}
@@ -222,7 +255,7 @@ describe("a 2-player endless run with per-player progression", () => {
 		for (let i = 0; i < N; i++) expect(runMods(live, i)).toEqual(computeRunMods(rp[i], live.builds!.players[i]));
 	});
 
-	it("hashes run (two players) after score, then party, breakables, drops, affixes, builds, then pellets last", () => {
+	it("hashes run (two players) after score, then party, breakables, drops, affixes, builds, pellets, then pacts last", () => {
 		const layout = hashLayout(live, true);
 		const names = layout.groups.map((g) => g.name);
 		expect(names).toEqual([
@@ -236,6 +269,7 @@ describe("a 2-player endless run with per-player progression", () => {
 			AFFIXES_SUBSYSTEM,
 			BUILDS_SUBSYSTEM,
 			PELLETS_SUBSYSTEM,
+			PACTS_SUBSYSTEM,
 		]);
 		const runGroup = layout.groups[names.indexOf(RUN_SUBSYSTEM)];
 		expect([layout.names[runGroup.start], layout.values[runGroup.start]]).toEqual(["run.players.length", N]);

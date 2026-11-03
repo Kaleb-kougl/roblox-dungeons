@@ -29,22 +29,15 @@ import {
 	type ForgeParams,
 } from "shared/dungeon";
 
-const dungeons = new Map<string, Dungeon>();
+/** Generated per call: the census keeps no dungeon (400 floors' grids held at once ran the headless runner out of memory). */
 function dungeonFor(params: ForgeParams): Dungeon {
-	const key = `${params.seed}/${params.roomCount}`;
-	let d = dungeons.get(key);
-	if (d === undefined) {
-		d = generateDungeon(params);
-		dungeons.set(key, d);
-	}
-	return d;
+	return generateDungeon(params);
 }
 
 const CENSUS_RUNS = 20;
 const CENSUS_FLOORS = 20;
-const CENSUS: EndlessFloorLayout[] = [];
-for (let run = 1; run <= CENSUS_RUNS; run++)
-	for (let floor = 1; floor <= CENSUS_FLOORS; floor++) CENSUS.push(buildEndlessFloor(run, floor, dungeonFor));
+/** Every SAMPLE_EVERY-th census floor is kept for the purity checks. */
+const SAMPLE_EVERY = 23;
 
 function inputOf(l: EndlessFloorLayout): BreakableFloorInput {
 	return {
@@ -59,7 +52,7 @@ function inputOf(l: EndlessFloorLayout): BreakableFloorInput {
 
 /**
  * An altar's place relative to the crystal in steps: [along PACTS.screenRight, along PACTS.screenDown]. Both steps are
- * diagonal grid steps, so a cell offset (ex, ey) = k x right + m x down. Throws on an offset off that lattice.
+ * diagonal grid steps, so a cell offset (ex, ey) = k x right + m x down; NaN off that lattice.
  */
 function lineOf(cx: number, cz: number, x: number, z: number): [number, number] {
 	const [rx, ry] = PACTS.screenRight;
@@ -68,60 +61,64 @@ function lineOf(cx: number, cz: number, x: number, z: number): [number, number] 
 	const ey = z - cz;
 	const k = (ex * rx + ey * ry) / 2;
 	const m = (ex * dx + ey * dy) / 2;
-	expect(k * rx + m * dx).toBe(ex);
-	expect(k * ry + m * dy).toBe(ey);
+	if (k * rx + m * dx !== ex || k * ry + m * dy !== ey) return [0 / 0, 0 / 0];
 	return [k, m];
 }
 
-/** The floors whose encounter has a shrine room. */
-function shrineFloors(): EndlessFloorLayout[] {
-	return CENSUS.filter((l) => pactShrineRoom(l.encounter.rooms) !== undefined);
+interface Census {
+	floors: number;
+	shrines: number;
+	placed: number;
+	mirrored: number;
+	shifted: number;
+	offsets: Map<number, number>;
+	/** Rule breaks found ("run r floor f: what"), the first few. */
+	problems: string[];
+	problemCount: number;
+	samples: Array<{ run: number; layout: EndlessFloorLayout }>;
 }
 
-describe("pact altars (PS1)", () => {
-	it("census: every floor with a shrine room gets both altars (fallback rate 0); none without one", () => {
-		let shrines = 0;
-		let placed = 0;
-		let mirrored = 0;
-		let shifted = 0;
-		const offsets = new Map<number, number>();
-		for (const l of CENSUS) {
+let census: Census | undefined;
+
+/** Builds every census floor once and checks each as it goes (see the file comment); keeps only a few samples. */
+function getCensus(): Census {
+	if (census !== undefined) return census;
+	const c: Census = {
+		floors: 0,
+		shrines: 0,
+		placed: 0,
+		mirrored: 0,
+		shifted: 0,
+		offsets: new Map(),
+		problems: [],
+		problemCount: 0,
+		samples: [],
+	};
+	const zone = PACTS.clearCells; // the sim's SHRINE_RADIUS in tiles (a sim spec checks it)
+	const apart = (ax: number, az: number, bx: number, bz: number) =>
+		(ax - bx) * (ax - bx) + (az - bz) * (az - bz) > 4 * zone * zone;
+	for (let run = 1; run <= CENSUS_RUNS; run++)
+		for (let floor = 1; floor <= CENSUS_FLOORS; floor++) {
+			const l = buildEndlessFloor(run, floor, dungeonFor);
+			const bad = (what: string) => {
+				c.problemCount++;
+				if (c.problems.size() < 10) c.problems.push(`run ${run} floor ${floor}: ${what}`);
+			};
+			if (c.floors % SAMPLE_EVERY === 0) c.samples.push({ run, layout: l });
+			c.floors++;
 			const room = pactShrineRoom(l.encounter.rooms);
+			const p = l.pactAltars;
 			if (room === undefined) {
-				expect(l.pactAltars).toBe(undefined);
+				if (p !== undefined) bad("altars without a shrine room");
 				continue;
 			}
-			shrines++;
-			const p = l.pactAltars;
+			c.shrines++;
 			if (p === undefined) continue;
-			placed++;
-			const [kG, mG] = lineOf(room.cx, room.cz, p.altars[PactKind.GREED].x, p.altars[PactKind.GREED].z);
-			const [kH] = lineOf(room.cx, room.cz, p.altars[PactKind.HORDE].x, p.altars[PactKind.HORDE].z);
-			if (-kG === kH) mirrored++;
-			if (mG !== 0) shifted++;
-			offsets.set(-kG, (offsets.get(-kG) ?? 0) + 1);
-			offsets.set(kH, (offsets.get(kH) ?? 0) + 1);
-		}
-		const parts: string[] = [];
-		for (const k of PACTS.offsetSteps) parts.push(`${k}: ${offsets.get(k) ?? 0}`);
-		print(
-			`[PS1 census] ${CENSUS.size()} floors (runs 1-${CENSUS_RUNS} x floors 1-${CENSUS_FLOORS}): ${shrines} with a ` +
-				`shrine room, ${placed} with both altars (${shrines - placed} keep the classic shrine), ${mirrored} ` +
-				`mirrored pairs, ${shifted} shifted off the crystal's line; altar offsets (steps): ${parts.join(", ")}`,
-		);
-		expect(shrines > 0).toBe(true);
-		expect(placed).toBe(shrines);
-	});
-
-	it("each altar: FLOOR of the shrine room, its zone on open floor with no piece or pellet, reachable", () => {
-		for (const l of shrineFloors()) {
-			const p = l.pactAltars;
-			if (p === undefined) continue;
+			c.placed++;
+			if (p.room !== room.id || p.seed !== l.seed || p.altars.size() !== PACT_KIND_COUNT)
+				bad("room / seed / count");
+			// each altar: its zone on open FLOOR of the shrine room, no piece or pellet in it, reachable
 			const d = l.dungeon;
-			const room = pactShrineRoom(l.encounter.rooms)!;
-			expect(p.room).toBe(room.id);
-			expect(p.seed).toBe(l.seed);
-			expect(p.altars.size()).toBe(PACT_KIND_COUNT);
 			const pieces = new Set<number>();
 			for (const b of l.breakables ?? []) pieces.add(cellKey(b.x, b.y));
 			const pellets = new Set<number>();
@@ -130,51 +127,67 @@ describe("pact altars (PS1)", () => {
 			for (const a of p.altars) {
 				const gx = worldToGrid(a.x);
 				const gy = worldToGrid(a.z);
-				expect(a.x).toBe(gx);
-				expect(a.z).toBe(gy);
-				expect(reach[gy * d.W + gx]).toBe(true);
-				const c = PACTS.clearCells;
-				for (let y = gy - c; y <= gy + c; y++)
-					for (let x = gx - c; x <= gx + c; x++) {
-						expect(tileAt(d, x, y)).toBe(TileType.FLOOR); // never solid decor, a pillar or a wall
-						expect(d.roomId[y * d.W + x]).toBe(room.id);
-						expect(pieces.has(cellKey(x, y))).toBe(false);
-						expect(pellets.has(cellKey(x, y))).toBe(false);
+				if (a.x !== gx || a.z !== gy) bad("not a cell centre");
+				if (!reach[gy * d.W + gx]) bad("unreachable");
+				const k = PACTS.clearCells;
+				for (let y = gy - k; y <= gy + k; y++)
+					for (let x = gx - k; x <= gx + k; x++) {
+						// never solid decor, a pillar or a wall; never another room's floor
+						if (tileAt(d, x, y) !== TileType.FLOOR || d.roomId[y * d.W + x] !== room.id)
+							bad("zone off floor");
+						if (pieces.has(cellKey(x, y))) bad("a piece in the zone");
+						if (pellets.has(cellKey(x, y))) bad("a pellet in the zone");
 					}
 			}
-		}
-	});
-
-	it("on one screen-horizontal line through (or shifted from) the crystal, Greed left, Horde right; zones apart", () => {
-		const zone = PACTS.clearCells; // the sim's SHRINE_RADIUS in tiles (a sim spec checks it)
-		for (const l of shrineFloors()) {
-			const p = l.pactAltars;
-			if (p === undefined) continue;
-			const room = pactShrineRoom(l.encounter.rooms)!;
+			// one screen-horizontal line through (or shifted from) the crystal, Greed left, Horde right; zones apart
 			const g = p.altars[PactKind.GREED];
 			const h = p.altars[PactKind.HORDE];
 			const [gk, gm] = lineOf(room.cx, room.cz, g.x, g.z);
 			const [hk, hm] = lineOf(room.cx, room.cz, h.x, h.z);
-			expect(gk < 0).toBe(true);
-			expect(hk > 0).toBe(true);
-			expect(gm).toBe(hm);
-			expect(PACTS.shiftSteps.includes(gm)).toBe(true);
-			expect(PACTS.offsetSteps.includes(-gk)).toBe(true);
-			expect(PACTS.offsetSteps.includes(hk)).toBe(true);
-			const apart = (ax: number, az: number, bx: number, bz: number) =>
-				(ax - bx) * (ax - bx) + (az - bz) * (az - bz) > 4 * zone * zone;
-			expect(apart(g.x, g.z, h.x, h.z)).toBe(true);
-			expect(apart(g.x, g.z, room.cx, room.cz)).toBe(true);
-			expect(apart(h.x, h.z, room.cx, room.cz)).toBe(true);
+			if (!(gk < 0) || !(hk > 0)) bad("sides");
+			if (gm !== hm || !PACTS.shiftSteps.includes(gm)) bad("shift");
+			if (!PACTS.offsetSteps.includes(-gk) || !PACTS.offsetSteps.includes(hk)) bad("offsets");
+			if (!apart(g.x, g.z, h.x, h.z) || !apart(g.x, g.z, room.cx, room.cz) || !apart(h.x, h.z, room.cx, room.cz))
+				bad("zones overlap");
+			if (-gk === hk) c.mirrored++;
+			if (gm !== 0) c.shifted++;
+			c.offsets.set(-gk, (c.offsets.get(-gk) ?? 0) + 1);
+			c.offsets.set(hk, (c.offsets.get(hk) ?? 0) + 1);
 		}
+	census = c;
+	return c;
+}
+
+describe("pact altars (PS1)", () => {
+	it("census: every floor with a shrine room gets both altars (fallback rate 0); none without one", () => {
+		const c = getCensus();
+		const parts: string[] = [];
+		for (const k of PACTS.offsetSteps) parts.push(`${k}: ${c.offsets.get(k) ?? 0}`);
+		print(
+			`[PS1 census] ${c.floors} floors (runs 1-${CENSUS_RUNS} x floors 1-${CENSUS_FLOORS}): ${c.shrines} with a ` +
+				`shrine room, ${c.placed} with both altars (${c.shrines - c.placed} keep the classic shrine), ${
+					c.mirrored
+				} ` +
+				`mirrored pairs, ${c.shifted} shifted off the crystal's line; altar offsets (steps): ${parts.join(
+					", ",
+				)}`,
+		);
+		expect(c.floors).toBe(CENSUS_RUNS * CENSUS_FLOORS);
+		expect(c.shrines > 0).toBe(true);
+		expect(c.placed).toBe(c.shrines);
+	});
+
+	it("each altar: its zone on open FLOOR of the shrine room, no piece or pellet in it, reachable; one line, Greed left, Horde right, zones apart", () => {
+		const c = getCensus();
+		expect(c.problems).toEqual([]);
+		expect(c.problemCount).toBe(0);
 	});
 
 	it("pure and draws nothing: the same floor gets the same altars, and the rest of the floor is the same", () => {
-		for (let i = 0; i < CENSUS.size(); i += 7) {
-			const l = CENSUS[i];
+		for (const { run, layout: l } of getCensus().samples) {
 			const again = placePactAltars(inputOf(l), l.breakables ?? [], l.pellets);
 			expect(again).toEqual(l.pactAltars);
-			const rebuilt = buildEndlessFloor(math.floor(i / CENSUS_FLOORS) + 1, l.floor, dungeonFor);
+			const rebuilt = buildEndlessFloor(run, l.floor, dungeonFor);
 			expect(rebuilt.seed).toBe(l.seed);
 			expect(rebuilt.pactAltars).toEqual(l.pactAltars);
 			expect(rebuilt.roomSpawns).toEqual(l.roomSpawns);
@@ -187,7 +200,11 @@ describe("pact altars (PS1)", () => {
 	});
 
 	it("no shrine room or no fit: undefined (the classic shrine stays)", () => {
-		const l = shrineFloors()[0];
+		let l: EndlessFloorLayout | undefined;
+		for (const smp of getCensus().samples)
+			if (l === undefined && smp.layout.pactAltars !== undefined) l = smp.layout;
+		expect(l).never.toBe(undefined);
+		if (l === undefined) return;
 		const noShrine = l.encounter.rooms.map((r) => (r.type === "shrine" ? { ...r, type: "combat" as const } : r));
 		expect(placePactAltars({ ...inputOf(l), encounter: { ...l.encounter, rooms: noShrine } }, [], undefined)).toBe(
 			undefined,

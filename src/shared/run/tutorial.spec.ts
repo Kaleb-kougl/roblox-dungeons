@@ -177,9 +177,10 @@ describe("tutorial world: the lock", () => {
 		// (docs/DECOR.md B7: the tutorial's lessons are tuned to rooms without barrels and crates) and elite affixes
 		// (docs/ENEMY_VARIANTS.md: never in the tutorial) and builds (docs/BUILDS.md BUD8: the tutorial keeps today's
 		// draft). Drops are set, but not the endless defaults: only combat B's guaranteed Fury (docs/BOOSTS.md B9).
-		// Pellets are the endless rules (docs/PELLETS.md PL11), but only combat G's floor-1 pellets lie anywhere.
+		// Pellets are the endless rules (docs/PELLETS.md PL11), but only combat G's floor-1 pellets lie anywhere. Pacts
+		// (docs/FORTUNE.md): never in the tutorial, which keeps the classic shrine (no altars on its floors either).
 		const keys = configKeys(buildEndlessRunConfig(1).config).filter(
-			(k) => k !== "breakables" && k !== "affixes" && k !== "builds",
+			(k) => k !== "breakables" && k !== "affixes" && k !== "builds" && k !== "pacts",
 		);
 		keys.push("tutorial");
 		keys.sort();
@@ -192,6 +193,8 @@ describe("tutorial world: the lock", () => {
 		expect(setup.config.builds).toBe(undefined);
 		for (const f of [1, 2, 3]) expect(setup.endlessFloor(f).roomAffixes).toBe(undefined);
 		expect(setup.config.pellets).toBe(PELLETS_CONFIG);
+		expect(setup.config.pacts).toBe(undefined);
+		for (const f of [1, 2, 3]) expect(setup.endlessFloor(f).pactAltars).toBe(undefined);
 	});
 
 	it("floor layouts are the chosen Forge seeds, byte for byte (layout digest)", () => {

@@ -4,11 +4,13 @@
  * (validateRun with world "endless") calls the same function, so both get identical floors from the run seed alone.
  *
  *   config   { endless: { runSeed, worldForFloor }, scoring: ENDLESS_SCORING, breakables: BREAKABLES_CONFIG,
- *              drops: ENDLESS_DROPS_CONFIG, affixes: AFFIXES_CONFIG, builds: BUILDS_CONFIG, pellets: PELLETS_CONFIG }
+ *              drops: ENDLESS_DROPS_CONFIG, affixes: AFFIXES_CONFIG, builds: BUILDS_CONFIG, pellets: PELLETS_CONFIG,
+ *              pacts: ENDLESS_PACTS_CONFIG }
  *            (shared/sim endless.ts: every tick runs with the current floor; endless runs are ALWAYS scored, on client
  *            and server alike, and always have breakable barrels and crates (docs/DECOR.md D4), boost drops, from kills
  *            and from loaded barrels and crates (docs/BOOSTS.md B4, docs/BREAKABLE_DROPS.md BL4), elite affixes (docs/ENEMY_VARIANTS.md EV7), builds (docs/BUILDS.md BU1) and pellets (docs/PELLETS.md PL5:
- *            each floor's pellets come from its world, EndlessFloorWorld.pellets))
+ *            each floor's pellets come from its world, EndlessFloorWorld.pellets) and pacts (docs/FORTUNE.md PS5: each
+ *            floor's altars come from its world, EndlessFloorWorld.pactAltars; the tutorial keeps the classic shrine))
  *   floor f  buildEndlessFloor(runSeed, f) (shared/dungeon endless.ts: solid pillars, breakables) + circleMover / bulletBlocker /
  *            actorMover / actorSteerMover (enemies walk around pillars) on its dungeon; built on first use, kept in a
  *            per-config LRU (ENDLESS_FLOOR_CACHE_SIZE), the dungeons in a server-wide LRU (ENDLESS_DUNGEON_CACHE_SIZE)
@@ -38,6 +40,7 @@ import {
 	BREAKABLES_CONFIG,
 	DEFAULT_PARTY_SIZE,
 	ENDLESS_DROPS_CONFIG,
+	ENDLESS_PACTS_CONFIG,
 	AFFIXES_CONFIG,
 	BUILDS_CONFIG,
 	MAX_PARTY_SIZE,
@@ -206,6 +209,7 @@ export function buildEndlessRunConfig(runSeed: number, partySize: number = DEFAU
 					affixes: AFFIXES_CONFIG,
 					builds: BUILDS_CONFIG,
 					pellets: PELLETS_CONFIG,
+					pacts: ENDLESS_PACTS_CONFIG,
 			  }
 			: {
 					endless: { runSeed, worldForFloor },
@@ -216,6 +220,7 @@ export function buildEndlessRunConfig(runSeed: number, partySize: number = DEFAU
 					affixes: AFFIXES_CONFIG,
 					builds: BUILDS_CONFIG,
 					pellets: PELLETS_CONFIG,
+					pacts: ENDLESS_PACTS_CONFIG,
 			  };
 	return {
 		config,

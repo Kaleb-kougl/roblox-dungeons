@@ -6,7 +6,10 @@
  * stairwell walked, floor 6 walked to its stairwell, floor 7 skipped, ending on floor 8 at Depth 2. M2: every floor
  * change opens a boon draft, which the bot resolves (resolveDraft: the stick on a card for DRAFT_MIN_OPEN_TICKS, then
  * a FIRE press); before skipping the first floor with both a TREASURE and a SHRINE room it walks onto the relic
- * pedestal and into the shrine and accepts the curse (SHRINE_BUTTON).
+ * pedestal and into the shrine and accepts the curse (SHRINE_BUTTON). Pacts (docs/FORTUNE.md PS5: endless worlds have
+ * them): on a shrine floor with pact altars the classic shrine is off, so it walks onto the Pact of Greed's altar instead
+ * (the curse it shows, then the Legendary deal, resolved like a draft), then onto the Horde's and takes it too (it lapses
+ * at the floor skip: no room is entered after it).
  *
  * The bot: a BFS distance field over FLOOR tiles to a target tile; each tick steps toward the lowest neighbour.
  */
@@ -22,6 +25,7 @@ import {
 	DRAFT_SCREEN_RIGHT_Z,
 	NO_KIND,
 	NO_SELECTION,
+	PactKind,
 	SHRINE_BUTTON,
 	SHRINE_RADIUS,
 	SOLO_PLAYER,
@@ -313,7 +317,10 @@ function pedestalAndShrine(drv: Driver): { pedestal?: [number, number]; shrine?:
 	};
 }
 
-/** Walks onto the floor's first pedestal (a relic), then into the shrine and accepts its curse. */
+/**
+ * Walks onto the floor's first pedestal (a relic), then into the shrine and accepts its curse; on a floor with pact
+ * altars, takes Greed (the curse and its deal) and the Horde instead.
+ */
 function takeRelicAndCurse(drv: Driver, note: (what: string) => void): void {
 	const { pedestal, shrine } = pedestalAndShrine(drv);
 	const run = drv.state.run!;
@@ -325,7 +332,23 @@ function takeRelicAndCurse(drv: Driver, note: (what: string) => void): void {
 		drv.walkTo(pedestal[0], pedestal[1], () => me.relics.size() > before, 3000, stair);
 		note("relic");
 	}
-	if (shrine !== undefined) {
+	const altars = drv.state.pacts !== undefined ? w.pactAltars : undefined;
+	if (altars !== undefined) {
+		// Pacts: Greed (its curse and the Legendary deal), then the Horde.
+		for (const kind of [PactKind.GREED, PactKind.HORDE]) {
+			const a = altars.altars[kind];
+			const p = drv.state.player;
+			const near = () => {
+				const dx = p.x - a.x;
+				const dz = p.z - a.z;
+				return dx * dx + dz * dz < SHRINE_RADIUS * SHRINE_RADIUS * 0.25;
+			};
+			drv.walkTo(a.x, a.z, near, 3000, stair);
+			if (near()) drv.pressShrine();
+			drv.resolveDraft();
+		}
+		note("curse");
+	} else if (shrine !== undefined) {
 		const p = drv.state.player;
 		const near = () => {
 			const dx = p.x - shrine[0];
