@@ -41,6 +41,15 @@ const AUDIO = [
 	"sfx.enemy.strike",
 	"sfx.enemy.spin",
 ];
+// Uploaded 2026-11-03 (packs/vale/assetIds.ts). Stormcaller and Warbanner wait for their ids; the strike has no clip.
+const VALE_UPLOADED_SETS: ReadonlyArray<string> = ["bomber", "charger", "reaper"];
+const VALE_UPLOADED_AUDIO: ReadonlyArray<string> = [
+	"sfx.enemy.fuse",
+	"sfx.enemy.blast",
+	"sfx.enemy.charge",
+	"sfx.enemy.stun",
+	"sfx.enemy.spin",
+];
 const SHAPES: ReadonlyArray<[string, string]> = [
 	["bomber", "Cone"],
 	["charger", "Wedge"],
@@ -124,11 +133,12 @@ describe("new enemies: contract", () => {
 });
 
 describe("new enemies: bundled packs", () => {
-	it("every bundled pack fills every new slot (placeholder-backed, sounds silent) and validates", () => {
+	it("every bundled pack fills every new slot and validates (vale: the uploaded sets and sounds are on)", () => {
 		for (const id of sortedKeys(THEME_PACKS)) {
 			const pack = THEME_PACKS[id];
 			for (const a of NEW) {
-				expect([id, a, pack.assets[`enemy.${a}`].kind]).toEqual([id, a, "placeholder"]);
+				const kind = id === "vale" && VALE_UPLOADED_SETS.includes(a) ? "sprites" : "placeholder";
+				expect([id, a, pack.assets[`enemy.${a}`].kind]).toEqual([id, a, kind]);
 				expect([id, a, typeIs(pack.colors[`enemy.${a}`], "string")]).toEqual([id, a, true]);
 				const name = pack.strings[`enemy.${a}.name`];
 				const line = pack.strings[`bestiary.${a}`];
@@ -137,7 +147,10 @@ describe("new enemies: bundled packs", () => {
 				expect([id, a, (line as string).sub(1, (name as string).size() + 1)]).toEqual([id, a, `${name}:`]);
 			}
 			expect([id, pack.assets[STRIKE_BULLET_ID]]).toEqual([id, { kind: "placeholder" }]);
-			for (const sfx of AUDIO) expect([id, sfx, pack.assets[sfx].kind]).toEqual([id, sfx, "silent"]);
+			for (const sfx of AUDIO) {
+				const kind = id === "vale" && VALE_UPLOADED_AUDIO.includes(sfx) ? "sound" : "silent";
+				expect([id, sfx, pack.assets[sfx].kind]).toEqual([id, sfx, kind]);
+			}
 			expect([id, validateManifest(pack, { packId: id })]).toEqual([id, []]);
 		}
 	});

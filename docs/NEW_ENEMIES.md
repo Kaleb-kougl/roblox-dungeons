@@ -35,10 +35,11 @@ Mac). M1, every golden fixture and the tutorial replay exactly as before; endles
 
 Open:
 
-- **Upload (NE13, owner):** 30 PNGs in `art/build/` (`{bomber,charger,stormcaller,warbanner,reaper}-{attack,body,
-  death}.png` each with `-outline.png`) and 5 clips `art/build/audio/sfx-enemy-{fuse,blast,charge,stun,spin}.ogg`; run
-  `npm run audio:build` on the Mac first (the .ogg bytes were built with a different ffmpeg). Until ids are in
-  `packs/vale/assetIds.ts` the five draw as placeholders and the sounds are silent.
+- **Upload (NE13, owner):** uploaded 2026-11-03 9:01 AM. The bomber, charger and reaper sets (attack / body / death
+  + rims) and the five clips (`sfx-enemy-fuse` / `-charge` / `-blast` / `-stun` / `-spin`) have ids in
+  `packs/vale/assetIds.ts`, so the bundled vale pack draws those three and plays the five sounds. The stormcaller and
+  warbanner sheets are uploaded too, but the Asset Manager screenshot cut their names short (`stormcaller-at...` twice
+  and so on), so which id is the outline is not known: their sets stay placeholders until the full names are read.
 - **`sfx.enemy.strike`:** no Ninja Adventure clip sounds like lightning; owner picks one (Pixabay, like the combo break).
 - **Studio check (NE13):** the checklist under "NE8 view (as built)".
 - **Tuning (NE12):** not run beyond NE7's census. Measure room times, TTK and hits per kind.

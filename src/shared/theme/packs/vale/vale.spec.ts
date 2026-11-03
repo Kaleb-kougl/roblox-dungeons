@@ -1915,16 +1915,19 @@ describe("vale new enemies (NE9: Imp 5 / Beast 1 / Spawn 7 / Imp 3 / Spawn 5, pe
 		});
 	});
 
-	it("as bundled (nothing uploaded yet) each is its placeholder", () => {
+	it("as bundled: the uploaded sets (bomber, charger, reaper; 2026-11-03) draw sprites, the rest their placeholder", () => {
+		const uploaded = ["enemy.bomber", "enemy.charger", "enemy.reaper"];
 		for (const [id, prefix] of SETS) {
+			const on = uploaded.includes(id);
 			for (const file of sheetsOf(prefix)) {
-				expect([file, VALE_ASSET_IDS[file], VALE_ASSET_IDS[outlineOf(file)]]).toEqual([
+				expect([
 					file,
-					undefined,
-					undefined,
-				]);
+					VALE_ASSET_IDS[file] !== undefined,
+					VALE_ASSET_IDS[outlineOf(file)] !== undefined,
+				]).toEqual([file, on, on]);
 			}
-			expect([id, VALE_MANIFEST.assets[id]]).toEqual([id, { kind: "placeholder" }]);
+			if (on) expect([id, VALE_MANIFEST.assets[id].kind]).toEqual([id, "sprites"]);
+			else expect([id, VALE_MANIFEST.assets[id]]).toEqual([id, { kind: "placeholder" }]);
 		}
 	});
 

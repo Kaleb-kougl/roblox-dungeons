@@ -453,11 +453,13 @@ describe("stun and dizzy marker", () => {
 });
 
 describe("sprite inputs per state", () => {
-	it("registers the five; every bundled pack still draws them as placeholders (their sets land in NE9)", () => {
+	it("registers the five; vale draws the uploaded sets (bomber, charger, reaper), every other one is a placeholder", () => {
+		const uploaded = [BOMBER.id, CHARGER.id, REAPER.id];
 		for (const packId of listThemePacks()) {
 			const pack = loadThemePack(packId, { warn: () => undefined });
 			for (const def of [BOMBER, CHARGER, STORMCALLER, WARBANNER, REAPER]) {
-				expect([packId, def.id, pack.sprites(def.data.spriteId)]).toEqual([packId, def.id, undefined]);
+				const on = packId === "vale" && uploaded.includes(def.id);
+				expect([packId, def.id, pack.sprites(def.data.spriteId) !== undefined]).toEqual([packId, def.id, on]);
 			}
 		}
 		expect(ACTOR_SPRITE_INPUTS.get(BOMBER.id)).toBe(bomberSpriteInput);
