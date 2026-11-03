@@ -14,6 +14,8 @@ import {
 	decorFxId,
 	decorId,
 	parseDecorId,
+	voidDecorId,
+	VOID_DECOR,
 } from "../../contract";
 import { ThemeCore } from "../../core";
 import type { ImageAsset, SpriteSetAsset } from "../../types";
@@ -28,6 +30,7 @@ import {
 	VALE_DECOR_PIECES,
 	VALE_RETIRED_WORLD_ART,
 	VALE_VOID_DECOR_PIECES,
+	VALE_VOID_KIND_PIECES,
 	buildValeManifest,
 } from "./manifest";
 
@@ -72,6 +75,7 @@ describe("vale world art (docs/DECOR.md R5)", () => {
 		const used = new Set<string>([VALE_AMBIENT_ART.art]);
 		for (const p of VALE_DECOR_PIECES) used.add(p.art);
 		for (const p of VALE_VOID_DECOR_PIECES) used.add(p.art);
+		for (const p of VALE_VOID_KIND_PIECES) used.add(p.art);
 		for (const name of DECOR_FX_NAMES) used.add(VALE_DECOR_FX[name]);
 		for (const kind of BREAKABLE_KINDS) used.add(VALE_BREAKABLE_ART[kind]);
 		// the void pieces' art may still be missing from the built atlas (docs/VOID_DECOR.md VD6): dormant until built
@@ -92,8 +96,35 @@ describe("vale world art (docs/DECOR.md R5)", () => {
 			expect([id, (DECOR_KIND_LAYERS[p.kind] as ReadonlyArray<string>).includes(p.layer)]).toEqual([id, true]);
 			expect(parseDecorId(id)).toBeDefined();
 		}
-		// one shared atlas, the particle texture and the loot twinkle's own sheet (docs/BREAKABLE_DROPS.md): three uploads
-		expect(worldFiles()).toEqual(["decor-atlas.png", "decor-mote.png", "loot-glint.png"]);
+		// biome void kinds: a layer the kind allows, variants in range, no ID twice
+		const seenVoid = new Set<string>();
+		for (const p of VALE_VOID_KIND_PIECES) {
+			const id = voidDecorId("biome.1", p.voidKind, p.variant);
+			expect([id, seenVoid.has(id)]).toEqual([id, false]);
+			seenVoid.add(id);
+			expect([id, (VOID_DECOR.layers[p.voidKind] as ReadonlyArray<string>).includes(p.layer)]).toEqual([
+				id,
+				true,
+			]);
+			expect(parseDecorId(id)).toBeDefined();
+		}
+		// one shared atlas, the particle texture, the loot twinkle's own sheet (docs/BREAKABLE_DROPS.md) and the trial
+		// 3D kit's own PNGs (docs/DECOR.md "3D kits")
+		expect(worldFiles()).toEqual([
+			"decor-atlas.png",
+			"decor-mote.png",
+			"kit-banner.png",
+			"kit-cage-1.png",
+			"kit-cage-2.png",
+			"kit-candle-stand.png",
+			"kit-chains-1.png",
+			"kit-chains-2.png",
+			"kit-chandelier-1.png",
+			"kit-sarcophagus.png",
+			"kit-tomb-x.png",
+			"kit-tomb-z.png",
+			"loot-glint.png",
+		]);
 	});
 
 	it("with every world file uploaded validates with zero problems, every ID mapped", () => {
@@ -152,7 +183,7 @@ describe("vale world art (docs/DECOR.md R5)", () => {
 		expect(core.decorVariants("biome.4", "grave").size()).toBe(0); // no Lords of Pain art: not drawn
 	});
 
-	it("void pieces (docs/VOID_DECOR.md VD6): flagstones / curb map once the atlas has their art, every biome alike", () => {
+	it("void pieces (docs/VOID_DECOR.md VD6): flagstones map once the atlas has their art, every biome alike", () => {
 		const m = buildValeManifest(worldIds());
 		const core = new ThemeCore(m, { warn: quiet });
 		for (const p of VALE_VOID_DECOR_PIECES) {
@@ -163,8 +194,22 @@ describe("vale world art (docs/DECOR.md R5)", () => {
 				if (built) expect([id, core.decor(id)?.layer]).toEqual([id, p.layer]);
 			}
 		}
-		// the void's other pieces reuse the decor kinds' art: ruin runs, columns, stumps, debris
-		for (const kind of ["wall", "wallBroken", "column", "columnBroken", "debris"] as const)
+		// the trial 3D kit (docs/DECOR.md "3D kits"): cages stand low and chains lie flat on the shoulder, two turns each,
+		// every biome; absent until their PNGs have IDs
+		const none = buildValeManifest(
+			worldIds("kit-cage-1.png", "kit-cage-2.png", "kit-chains-1.png", "kit-chains-2.png"),
+		);
+		for (const b of BIOMES) {
+			for (const p of VALE_VOID_KIND_PIECES) {
+				const id = voidDecorId(b.id, p.voidKind, p.variant);
+				expect([id, core.decor(id)?.layer]).toEqual([id, p.layer]);
+				expect([id, none.assets[id]]).toEqual([id, undefined]);
+			}
+			expect(core.voidDecorVariants(b.id, "cage").size()).toBe(2);
+			expect(core.voidDecorVariants(b.id, "chains").size()).toBe(2);
+		}
+		// the void's other pieces reuse the decor kinds' art: columns, stumps, debris (no wall props: VDD10)
+		for (const kind of ["column", "columnBroken", "debris"] as const)
 			expect([kind, core.decorVariants("biome.2", kind).size() > 0]).toEqual([kind, true]);
 	});
 

@@ -18,8 +18,17 @@ import { MENU_VIEW } from "shared/view/menu";
 
 const HIDDEN = 1;
 
-/** A vertical scrolling list `height` reference px tall (rows grow its canvas). */
-export function ScrollList(props: { order: number; height: number; width?: number; children?: React.ReactNode }) {
+/**
+ * A vertical scrolling list `height` reference px tall (rows grow its canvas). `selectable`: a gamepad can select the
+ * list itself and scroll it with the stick (a list of text with no buttons in it, like the Credits).
+ */
+export function ScrollList(props: {
+	order: number;
+	height: number;
+	width?: number;
+	selectable?: boolean;
+	children?: React.ReactNode;
+}) {
 	return (
 		<scrollingframe
 			LayoutOrder={props.order}
@@ -35,7 +44,7 @@ export function ScrollList(props: { order: number; height: number; width?: numbe
 			ScrollingDirection={Enum.ScrollingDirection.Y}
 			ScrollBarThickness={MENU_VIEW.scrollBarThickness}
 			ScrollBarImageColor3={role("uiTextDim")}
-			Selectable={false}
+			Selectable={props.selectable === true}
 		>
 			<uilistlayout
 				FillDirection={Enum.FillDirection.Vertical}

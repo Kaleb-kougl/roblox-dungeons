@@ -1,5 +1,5 @@
 /**
- * The menu shell's screen + back stack (task L3), as a pure reducer: the client's Reflex `menu` slice wraps it and
+ * The menu shell's screen + back stack (task L3; "credits": main menu > Credits), as a pure reducer: the client's Reflex `menu` slice wraps it and
  * MenuController dispatches into it. "none" is no menu (a run, or the wait for one).
  *
  *   open     go to `screen`, pushing the current one (from "none": a fresh root). Opening a screen already on the
@@ -9,7 +9,7 @@
  *   reset    a whole path, root first (["main", "lobbies", "lobby"]: the lobby room with back -> browser -> main)
  *   close    no menu
  */
-export type MenuScreen = "none" | "main" | "lobbies" | "lobby";
+export type MenuScreen = "none" | "main" | "lobbies" | "lobby" | "credits";
 
 export interface MenuNav {
 	readonly screen: MenuScreen;

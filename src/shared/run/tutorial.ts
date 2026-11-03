@@ -295,7 +295,13 @@ export function tutorialForgeParams(
 	roomCount: number,
 	chain?: ReadonlyArray<ForgeChainRoom>,
 ): ForgeParams {
-	const params: ForgeParams = { ...endlessFloorParams(TUTORIAL.runSeed, ENDLESS_FIRST_FLOOR), seed, roomCount };
+	// no solid decor: the tutorial's rooms are lessons with scripted paths (docs/DECOR.md "Solid decor")
+	const params: ForgeParams = {
+		...endlessFloorParams(TUTORIAL.runSeed, ENDLESS_FIRST_FLOOR),
+		seed,
+		roomCount,
+		solidDecor: false,
+	};
 	if (chain !== undefined) params.chain = chain;
 	return params;
 }

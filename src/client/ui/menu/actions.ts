@@ -23,6 +23,8 @@ export interface MenuActions {
 	readonly playTutorial: () => void;
 	readonly openOptions: () => void;
 	readonly openLeaderboard: () => void;
+	/** The Credits screen (shared/view/menu credits.ts). */
+	readonly openCredits: () => void;
 	/** Roblox's invite prompt without a lobby (docs/INVITES.md ID7). */
 	readonly inviteFriends: () => void;
 	/** One screen back (also pad B / Backspace). */
@@ -62,6 +64,7 @@ const NOOP: MenuActions = {
 	playTutorial: nothing,
 	openOptions: nothing,
 	openLeaderboard: nothing,
+	openCredits: nothing,
 	inviteFriends: nothing,
 	back: nothing,
 	refreshLobbies: nothing,

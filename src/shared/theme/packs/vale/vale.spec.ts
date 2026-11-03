@@ -1735,10 +1735,11 @@ describe("vale decor has no gemstones (docs/BOOST_ART.md decision 2)", () => {
 		}
 	});
 
-	it("keeps the four gems-* pieces in the uploaded decor atlas until its next rebuild (unused)", () => {
-		expect([...VALE_RETIRED_WORLD_ART]).toEqual(["gems-blue", "gems-green", "gems-red", "gems-white"]);
-		for (const name of VALE_RETIRED_WORLD_ART) {
-			expect([name, VALE_WORLD_LAYOUTS[name] !== undefined]).toEqual([name, true]);
+	it("drops the four gems-* pieces from the decor atlas (rebuilt for docs/VOID_DECOR.md VD6)", () => {
+		// kept until the next rebuild: wall1 (docs/VOID_DECOR.md VDD10), bones1-sw (bones .4 is the trial kit's chains)
+		expect([...VALE_RETIRED_WORLD_ART]).toEqual(["wall1", "bones1-sw"]);
+		for (const name of ["gems-blue", "gems-green", "gems-red", "gems-white"]) {
+			expect([name, VALE_WORLD_LAYOUTS[name] !== undefined]).toEqual([name, false]);
 		}
 	});
 });

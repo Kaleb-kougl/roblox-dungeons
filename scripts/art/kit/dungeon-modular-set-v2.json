@@ -1,0 +1,60 @@
+{
+	"$comment": "Pieces of the Dungeon Modular Set V2 (C. Anastasiadis, CC-BY 4.0; THIRD_PARTY_NOTICES.md) for scripts/art/kit/render_kit.py. Sizes at the Lords of Pain decor scale (29.6 px per tile), inside the decor plan's boxes (DECOR_BOX.candle 10 x 18 and .sarco 34 x 22 render px, x 1.85 to art px): the candle stand and the sarcophagus stand on far-wall tops; the banner hangs on a wall face (about the wall torch's size: the wall is one tile tall), rendered for the two faces the camera sees (rotZ: normal +X is facing 3 = SE 315, normal +Z is facing 2 = SW 225), the hidden facings copied. The tomb is the sarcophagus at world scale (unitsPerTile: its 225-unit length is 2 tiles), for solid decor (docs/DECOR.md \"Solid decor\"): tomb_x lies along X (rotZ 90), tomb_z along Z, each with its footprint centre written as the pivot.",
+	"grade": {
+		"saturation": 0.6,
+		"brightness": 0.6,
+		"contrast": 1.15,
+		"tint": [1.06, 0.97, 0.92]
+	},
+	"pieces": {
+		"candle": {
+			"objects": [
+				"Holder Candle.000_Holder Candle_0",
+				"CAndle A.267_Flame2_0",
+				"CAndle B.159_Candle A_0",
+				"CAndle B.160_Candle A_0",
+				"CAndle B.161_Candle A_0"
+			],
+			"az": [-45],
+			"fit": "box",
+			"sizePx": [14, 27],
+			"grade": {
+				"brightness": 0.8
+			}
+		},
+		"sarco": {
+			"objects": ["Grave.000_Floor D_0"],
+			"az": [-45],
+			"fit": "box",
+			"sizePx": [52, 33]
+		},
+		"banner": {
+			"objects": ["Banner.001_Banner A_0"],
+			"az": [-45, -45],
+			"rotZ": [90, 0],
+			"fit": "long",
+			"sizePx": 18,
+			"files": ["SE/banner_SE_315.0_0.png", "SW/banner_SW_225.0_0.png"],
+			"copies": {
+				"NE/banner_NE_45.0_0.png": "SW/banner_SW_225.0_0.png",
+				"NW/banner_NW_135.0_0.png": "SE/banner_SE_315.0_0.png"
+			},
+			"grade": {
+				"saturation": 0.7,
+				"brightness": 0.7
+			}
+		},
+		"tomb": {
+			"objects": ["Grave.000_Floor D_0"],
+			"az": [-45, -45],
+			"rotZ": [90, 0],
+			"fit": "world",
+			"unitsPerTile": 112.5,
+			"pivotOut": true,
+			"files": ["tomb_x.png", "tomb_z.png"],
+			"grade": {
+				"brightness": 0.8
+			}
+		}
+	}
+}

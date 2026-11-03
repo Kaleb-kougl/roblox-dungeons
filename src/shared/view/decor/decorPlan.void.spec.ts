@@ -204,6 +204,8 @@ describe("decor plan with the void: placement", () => {
 				p.check(e.id === decorId(plan.biome, e.kind), () => `${at(plan, e)}: id ${e.id}`);
 				p.check((DECOR_KIND_LAYERS[e.kind] as ReadonlyArray<string>).includes(e.layer), () => at(plan, e));
 				p.check(e.layer !== "wall" && !e.light && e.forgeIndex === -1, () => at(plan, e));
+				// docs/VOID_DECOR.md VDD10: wall props are far-wall dressing only, never void decoration
+				p.check(e.kind !== "wall" && e.kind !== "wallBroken", () => `${at(plan, e)}: wall prop in the void`);
 				for (const [x, y] of cellsOf(e)) {
 					const c = y * d.W + x;
 					p.check(tileAt(d, x, y) === TileType.VOID, () => `${at(plan, e)}: not on void`);
@@ -242,15 +244,11 @@ describe("decor plan with the void: placement", () => {
 				() => `seed ${plan.floorSeed}: ${flats.size()} flat`,
 			);
 			const perRoom = new Map<number, number>();
-			const curbs = new Map<number, number>();
 			for (const e of stand) {
 				p.check(e.roomId >= 0, () => `${at(plan, e)}: no room`);
-				const m = e.kind === "curb" ? curbs : perRoom;
-				m.set(e.roomId, (m.get(e.roomId) ?? 0) + 1);
+				perRoom.set(e.roomId, (perRoom.get(e.roomId) ?? 0) + 1);
 			}
 			for (const [r, k] of perRoom) p.check(k <= P.tallPerRoom, () => `seed ${plan.floorSeed} room ${r}: ${k}`);
-			for (const [r, k] of curbs)
-				p.check(k <= P.curbPerRoom, () => `seed ${plan.floorSeed} room ${r}: ${k} curbs`);
 			// standing: tallMinSpacing apart, decorClearTiles from every decor standing / wall piece
 			const decorCells: Array<readonly [number, number]> = [];
 			for (const e of plan.entries)
@@ -562,7 +560,7 @@ describe("decor plan with the void: nothing hides a bullet", () => {
 		expect(footprintClear(d, at44, DECOR_BOX.column, DECOR_CAMERA, top)).toBe(false);
 		// the cached stencil at this top is the uncached one (a copy of the camera skips the cache)
 		const copy = { ...DECOR_CAMERA };
-		for (const box of [DECOR_BOX.column, DECOR_BOX.wall, DECOR_BOX.curb]) {
+		for (const box of [DECOR_BOX.column, DECOR_BOX.columnBroken, DECOR_BOX.wall]) {
 			const run: DecorFootprint = { x0: 4, y0: 4, x1: 7, y1: 4, runX: 1, runZ: 0 };
 			expect(footprintStencil(at44, box, DECOR_CAMERA, top)).toEqual(footprintStencil(at44, box, copy, top));
 			expect(footprintStencil(run, box, DECOR_CAMERA, top)).toEqual(footprintStencil(run, box, copy, top));
@@ -638,9 +636,9 @@ describe("decor plan with the void: census", () => {
 		expect(flat).toBeGreaterThan(0);
 		expect(maxStand <= VOID_PIECES.maxStanding).toBe(true);
 		expect(maxFlat <= VOID_PIECES.maxFlat).toBe(true);
-		expect(kinds.get("wall") ?? 0).toBeGreaterThan(0);
 		expect(kinds.get("column") ?? 0).toBeGreaterThan(0);
-		expect(kinds.get("curb") ?? 0).toBeGreaterThan(0);
 		expect(kinds.get("flagstones") ?? 0).toBeGreaterThan(0);
+		// docs/VOID_DECOR.md VDD10: no wall props in the void
+		expect([kinds.get("wall") ?? 0, kinds.get("wallBroken") ?? 0]).toEqual([0, 0]);
 	});
 });

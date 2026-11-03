@@ -4,7 +4,8 @@
  *
  *   floor seed    floorSeed(runSeed, floor) = ((runSeed >>> 0) ^ Math.imul(floor, 0x85ebca6b)) >>> 0
  *   layout        generateDungeon({ ...KALEB_VALE_MVP_PARAMS, seed: floorSeed, roomCount: floorRoomCount(floor),
- *                 solidPillars: true, roomScale: 2 }): pillars are real 1-tile walls (cover), and every room is
+ *                 solidPillars: true, solidDecor: true, roomScale: 2 }): pillars are real 1-tile walls (cover), combat
+ *                 and elite rooms get solid tombs and candle stands (docs/DECOR.md "Solid decor"), and every room is
  *                 twice as wide and tall as M1's (ENDLESS_ROOM_SCALE); endless floors only, never in M1
  *   boss floors   every BOSS_FLOOR_EVERY-th floor: a boss in the boss room (the floor's only initial spawn), picked by
  *                 bossKindFor(floor seed) from ENDLESS_BOSSES (Mother Bramble or the Demon Lord) on its own stream
@@ -64,6 +65,7 @@ import {
 	ENDLESS_PACK_SIZE,
 	ENDLESS_ROOM_ACTOR_CAP,
 	ENDLESS_ROOM_KINDS,
+	ENDLESS_SOLID_DECOR,
 	ENDLESS_ROOM_SCALE,
 	ENDLESS_SOLID_PILLARS,
 	FLOOR_SEED_MUL,
@@ -112,8 +114,8 @@ export function bossKindFor(floorSeed: number): string {
 }
 
 /**
- * The Forge params of `floor` of the run `runSeed`: the M1 preset plus solid pillars (ENDLESS_SOLID_PILLARS) and
- * rooms ENDLESS_ROOM_SCALE times as large.
+ * The Forge params of `floor` of the run `runSeed`: the M1 preset plus solid pillars (ENDLESS_SOLID_PILLARS), solid
+ * decor (ENDLESS_SOLID_DECOR) and rooms ENDLESS_ROOM_SCALE times as large.
  */
 export function endlessFloorParams(runSeed: number, floor: number): ForgeParams {
 	return {
@@ -121,6 +123,7 @@ export function endlessFloorParams(runSeed: number, floor: number): ForgeParams 
 		seed: floorSeed(runSeed, floor),
 		roomCount: floorRoomCount(floor),
 		solidPillars: ENDLESS_SOLID_PILLARS,
+		solidDecor: ENDLESS_SOLID_DECOR,
 		roomScale: ENDLESS_ROOM_SCALE,
 	};
 }

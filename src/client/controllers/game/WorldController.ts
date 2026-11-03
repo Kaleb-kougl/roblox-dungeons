@@ -141,11 +141,16 @@ export class WorldController implements OnStart {
 		const floorThick = floor.visual.size[1];
 		const wallHeight = GAME_WORLD.wallHeightTiles * S;
 		const y0 = floorStudsY();
+		// solid decor (docs/DECOR.md "Solid decor"): WALL for the sim, drawn as floor under its art (DecorController)
+		const grid = [...d.grid];
+		for (const piece of d.solidDecor ?? [])
+			for (let gy = piece.y; gy < piece.y + piece.h; gy++)
+				for (let gx = piece.x; gx < piece.x + piece.w; gx++) grid[gy * d.W + gx] = TileType.FLOOR;
 		let n = 0;
 		n += this.slabs(
 			folder,
 			"Floor",
-			greedyRectsOf(d.grid, d.W, d.H, TileType.FLOOR),
+			greedyRectsOf(grid, d.W, d.H, TileType.FLOOR),
 			floor,
 			y0 - floorThick / 2,
 			floorThick,
@@ -154,7 +159,7 @@ export class WorldController implements OnStart {
 		n += this.slabs(
 			folder,
 			"Wall",
-			greedyRectsOf(d.grid, d.W, d.H, TileType.WALL),
+			greedyRectsOf(grid, d.W, d.H, TileType.WALL),
 			wall,
 			y0 + wallHeight / 2,
 			wallHeight,

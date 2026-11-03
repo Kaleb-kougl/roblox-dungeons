@@ -57,11 +57,13 @@ import {
 	requiredBaseAnimations,
 	uiSkinIds,
 	slotFor,
+	voidDecorId,
 	type BiomeId,
 	type BreakableKind,
 	type DecorFxName,
 	type DecorKind,
 	type DecorLayer,
+	type VoidDecorKind,
 } from "../../contract";
 import type {
 	BiomeMaterials,
@@ -208,20 +210,29 @@ export interface ValeDecorPiece {
 }
 
 /**
- * The decor pieces (decor.delve.b<n>.<kind>[.<v>], every biome alike). Kinds without Lords of Pain art (sarco, grave,
- * candle, icicle, shardIce, crack, ring, bossCrystal, shrineCrystal, banner) stay undrawn. Round flat pieces take a few
+ * The decor pieces (decor.delve.b<n>.<kind>[.<v>], every biome alike). Kinds without art (grave, icicle, shardIce,
+ * crack, ring, bossCrystal, shrineCrystal) stay undrawn; the scattered `chandelier` is the first trial 3D kit's candle
+ * chandelier lying fallen, and `sarco` / `candle` / `banner` the second kit's sarcophagus, candle stand and wall banner
+ * (docs/DECOR.md "3D kits"). Round flat pieces take a few
  * of the pack's facings as variants, picked by cell hash. No gemstones (docs/BOOST_ART.md decision 2): a gem cluster on
  * the floor always means a boost drop, so the four `gems-*` world art pieces in layout.ts are unused (they stay in the
  * uploaded decor atlas until its next rebuild).
  */
 export const VALE_DECOR_PIECES: ReadonlyArray<ValeDecorPiece> = [
 	{ kind: "brazier", art: "brazier", layer: "tall", glow: true },
+	{ kind: "sarco", art: "kit-sarcophagus", layer: "tall" }, // trial 3D kit 2 (docs/DECOR.md "3D kits")
+	{ kind: "candle", art: "kit-candle-stand", layer: "tall" }, // trial 3D kit 2
 	{ kind: "pillar", art: "column1", layer: "tall" },
 	{ kind: "column", art: "column1", layer: "tall" },
 	{ kind: "columnBroken", art: "column2", layer: "low" },
 	{ kind: "wall", art: "wall2", layer: "tall" },
 	{ kind: "wallBroken", art: "wall3", layer: "tall" },
 	{ kind: "torch", art: "torch", layer: "wall", glow: true },
+	{ kind: "banner", art: "kit-banner", layer: "wall" }, // trial 3D kit 2
+	// solid decor (docs/DECOR.md "Solid decor"): the tomb along X / along Z, the candle stand
+	{ kind: "tomb", variant: 1, art: "kit-tomb-x", layer: "low" },
+	{ kind: "tomb", variant: 2, art: "kit-tomb-z", layer: "low" },
+	{ kind: "candelabrum", art: "kit-candle-stand", layer: "low" },
 	{ kind: "debris", variant: 1, art: "bricks-e", layer: "flat" },
 	{ kind: "debris", variant: 2, art: "rocks-e", layer: "flat" },
 	{ kind: "debris", variant: 3, art: "bricks-sw", layer: "flat" },
@@ -229,7 +240,7 @@ export const VALE_DECOR_PIECES: ReadonlyArray<ValeDecorPiece> = [
 	{ kind: "bones", variant: 1, art: "bones1-e", layer: "flat" },
 	{ kind: "bones", variant: 2, art: "bones2-e", layer: "flat" },
 	{ kind: "bones", variant: 3, art: "bones3-e", layer: "flat" },
-	{ kind: "bones", variant: 4, art: "bones1-sw", layer: "flat" },
+	{ kind: "bones", variant: 4, art: "kit-chains-1", layer: "flat" }, // trial 3D kit (docs/DECOR.md "3D kits")
 	{ kind: "moss", variant: 1, art: "mushrooms-e", layer: "flat" },
 	{ kind: "moss", variant: 2, art: "mushrooms-nnw", layer: "flat" },
 	{ kind: "moss", variant: 3, art: "mushrooms-sw", layer: "flat" },
@@ -238,28 +249,49 @@ export const VALE_DECOR_PIECES: ReadonlyArray<ValeDecorPiece> = [
 	{ kind: "roots", variant: 2, art: "mushrooms-nnw", layer: "flat" },
 	{ kind: "roots", variant: 3, art: "mushrooms-sw", layer: "flat" },
 	{ kind: "roots", variant: 4, art: "mushrooms-sse", layer: "flat" },
+	{ kind: "chandelier", art: "kit-chandelier-1", layer: "flat" }, // trial 3D kit: fallen, scattered over rooms
 	{ kind: "brokenBarrel", art: "barrel-broken", layer: "flat" },
 	{ kind: "brokenCrate", art: "crate-broken", layer: "flat" },
 ];
 
 /**
- * docs/VOID_DECOR.md VD6: the void's two standard kinds, the Lords of Pain `tiles` flagstone patch (flat) and the `wall1`
- * low curb. Neither is in the built decor atlas yet (art/atlases.json worldArt lacks them: adding them repacks the
- * uploaded decor-atlas.png, so the owner adds them at its next rebuild, steps in docs/VOID_DECOR.md VD6). Mapped like
- * VALE_DECOR_PIECES, but each only while VALE_WORLD_LAYOUTS has its art: dormant until then, on by itself after the
- * rebuild (layout.ts) and the re-upload (assetIds.ts).
+ * docs/VOID_DECOR.md VD6: the void's own standard kind, the Lords of Pain `tiles` flagstone patch (flat). Mapped like
+ * VALE_DECOR_PIECES, but only while VALE_WORLD_LAYOUTS has its art.
  */
 export const VALE_VOID_DECOR_PIECES: ReadonlyArray<ValeDecorPiece> = [
 	{ kind: "flagstones", art: "tiles", layer: "flat" },
-	{ kind: "curb", art: "wall1", layer: "low" },
+];
+
+/** A biome void art piece of the pack: decor.void.b<n>.<voidKind>.<variant>, every biome alike. */
+export interface ValeVoidKindPiece {
+	readonly voidKind: VoidDecorKind;
+	/** 1..DECOR_MAX_VARIANTS. */
+	readonly variant: number;
+	/** A VALE_WORLD_LAYOUTS name. */
+	readonly art: string;
+	readonly layer: DecorLayer;
+}
+
+/**
+ * Trial 3D kit (docs/DECOR.md "3D kits"): the Dungeon Essential Kit's cage (standing low on the void's shoulder, two
+ * turns) and its chains (lying flat, two turns) as biome void kinds in every biome. The chains also lie in rooms as
+ * `bones` variant 4 (VALE_DECOR_PIECES). Each is its own PNG; a piece switches on once its PNG has an ID.
+ */
+export const VALE_VOID_KIND_PIECES: ReadonlyArray<ValeVoidKindPiece> = [
+	{ voidKind: "cage", variant: 1, art: "kit-cage-1", layer: "low" },
+	{ voidKind: "cage", variant: 2, art: "kit-cage-2", layer: "low" },
+	{ voidKind: "chains", variant: 1, art: "kit-chains-1", layer: "flat" },
+	{ voidKind: "chains", variant: 2, art: "kit-chains-2", layer: "flat" },
 ];
 
 /**
- * World art pieces in layout.ts that no ID maps onto: the four gemstone clusters, decor until docs/BOOST_ART.md
- * decision 2 (gems are boost drops now). They stay in art/atlases.json and the uploaded decor-atlas.png only so that
- * atlas does not repack and need a re-upload; remove them (here and in atlases.json) at the next decor atlas rebuild.
+ * World art pieces in layout.ts that no ID maps onto: `wall1`, the void's low curb until docs/VOID_DECOR.md VDD10 (wall
+ * props are not void decoration), and `bones1-sw`, bones variant 4 until the trial 3D kit's chains took it (docs/DECOR.md
+ * "3D kits"). They stay in art/atlases.json and the uploaded decor-atlas.png only so that atlas does not repack and
+ * need a re-upload; remove them (here and in atlases.json) at the next decor atlas rebuild. (The four
+ * gemstone clusters, retired by docs/BOOST_ART.md decision 2, already left at the VD6 rebuild.)
  */
-export const VALE_RETIRED_WORLD_ART: ReadonlyArray<string> = ["gems-blue", "gems-green", "gems-red", "gems-white"];
+export const VALE_RETIRED_WORLD_ART: ReadonlyArray<string> = ["wall1", "bones1-sw"];
 
 /** The decor effects (decor.fx.*): Lords of Pain vfx, all self-lit. */
 export const VALE_DECOR_FX: Readonly<Record<DecorFxName, string>> = {
@@ -369,6 +401,13 @@ function addWorldArt(manifest: ThemeManifest, ids: AssetIds): void {
 				outline: piece.layer === "tall" || piece.layer === "low",
 			});
 			if (asset !== undefined) manifest.assets[decorId(b.id, piece.kind, piece.variant)] = asset;
+		}
+		for (const piece of VALE_VOID_KIND_PIECES) {
+			const asset = worldAsset(worldLayout(piece.art), ids, {
+				layer: piece.layer,
+				outline: piece.layer === "tall" || piece.layer === "low",
+			});
+			if (asset !== undefined) manifest.assets[voidDecorId(b.id, piece.voidKind, piece.variant)] = asset;
 		}
 		const mote = worldLayout(VALE_AMBIENT_ART.art);
 		const assetId = mote.kind === "image" ? ids[mote.file] : undefined;

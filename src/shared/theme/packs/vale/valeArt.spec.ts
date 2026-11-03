@@ -1,7 +1,6 @@
 // The vale pack's Lords of Pain decor art (docs/DECOR.md R5) on real endless floors (shared/view's decor plan and fit): every standing piece is drawn
-// inside its DECOR_BOX at full size (the boxes were measured on this art), wall segments by their outline (their cell's
-// rectangle would shrink them to a seventh), grid pieces take the facing whose render runs along their wall, and the
-// brazier's flame and glow fit its box.
+// inside its DECOR_BOX at full size (the boxes were measured on this art; no wall segments are planned since 2026-11-02),
+// grid pieces take the facing whose render runs along their wall, and the brazier's flame and glow fit its box.
 import { describe, expect, it } from "@rbxts/jest-globals";
 import { buildEndlessFloor, generateDungeon, type Dungeon, type ForgeParams } from "shared/dungeon";
 import {
@@ -29,9 +28,6 @@ import { ThemeCore, type DecorArt } from "../../core";
 import { sortedKeys } from "../../util";
 import { VALE_WORLD_LAYOUTS } from "./layout";
 import { buildValeManifest } from "./manifest";
-
-/** A void ruin run's art is drawn at least this share of its size (any facing; see the void pieces' test). */
-const VOID_RUN_MIN_SCALE = 0.9;
 
 const dungeons = new Map<string, Dungeon>();
 function dungeonFor(params: ForgeParams): Dungeon {
@@ -94,8 +90,7 @@ describe("vale decor art held to DECOR_BOX (docs/DECOR.md R5)", () => {
 				const fitted = decorPieceLayout(plan, i, layout, outline);
 				expect([e.kind, fitted !== undefined]).toEqual([e.kind, true]);
 				const scale = layout.pixelsPerTile / fitted!.pixelsPerTile;
-				const min = e.kind === "wall" || e.kind === "wallBroken" ? 0.95 : 1 - 1e-9;
-				expect([e.kind, scale >= min]).toEqual([e.kind, true]);
+				expect([e.kind, scale >= 1 - 1e-9]).toEqual([e.kind, true]);
 				// the outline really lies inside the box, as drawn
 				const poly = plan.fadeBoxes[e.fade].polygon;
 				const s = 1 / fitted!.pixelsPerTile;
@@ -107,16 +102,10 @@ describe("vale decor art held to DECOR_BOX (docs/DECOR.md R5)", () => {
 					expect([e.kind, insideBy(poly, px, py, -1e-9)]).toEqual([e.kind, true]);
 				}
 				drawn.set(e.kind, (drawn.get(e.kind) ?? 0) + 1);
-				// a wall segment's cell rectangle could not be drawn near full size: the outline is what makes it fit
-				if (e.cells > 1) {
-					const rect = decorPieceLayout(plan, i, layout);
-					expect(rect === undefined || layout.pixelsPerTile / rect.pixelsPerTile < 0.5).toBe(true);
-				}
 			});
 		}
-		for (const kind of ["wall", "wallBroken", "column", "columnBroken"]) {
-			expect([kind, (drawn.get(kind) ?? 0) > 0]).toEqual([kind, true]);
-		}
+		for (const kind of ["column", "columnBroken"]) expect([kind, (drawn.get(kind) ?? 0) > 0]).toEqual([kind, true]);
+		for (const kind of ["wall", "wallBroken"]) expect([kind, drawn.get(kind) ?? 0]).toEqual([kind, 0]);
 	});
 
 	it("wall pieces take the render along their wall: segments run across their normal, torches point along it", () => {
@@ -160,7 +149,7 @@ describe("vale decor art held to DECOR_BOX (docs/DECOR.md R5)", () => {
 				if (e.source !== "void") return;
 				const list = core.decorVariants(plan.biome, e.kind);
 				const art = list[e.variant] ?? list[0];
-				if (art === undefined) return; // curb / flagstones: not in the built atlas yet
+				if (art === undefined) return; // flagstones: only once the built atlas has them
 				const own = layoutOf(art);
 				if (e.layer === "flat") {
 					const held = decorPieceLayout(plan, i, own)!;
@@ -174,16 +163,14 @@ describe("vale decor art held to DECOR_BOX (docs/DECOR.md R5)", () => {
 					const fitted = decorPieceLayout(plan, i, own, decorOutline(art, facing));
 					expect([e.kind, fitted !== undefined]).toEqual([e.kind, true]);
 					const scale = own.pixelsPerTile / fitted!.pixelsPerTile;
-					// void ruin runs stand on rooms' far sides (VDD2), facing +X / +Z like far-wall dressing (>= 0.95);
-					// the floor keeps a margin for wall3's -X / -Z renders (0.93, measured before the far-side rule)
-					const min = e.kind === "wall" || e.kind === "wallBroken" ? VOID_RUN_MIN_SCALE : 1 - 1e-9;
-					expect([e.kind, e.faceX, e.faceZ, scale >= min]).toEqual([e.kind, e.faceX, e.faceZ, true]);
+					// columns and stumps (the void's only standing pieces: no wall props, VDD10) draw whole
+					expect([e.kind, e.faceX, e.faceZ, scale >= 1 - 1e-9]).toEqual([e.kind, e.faceX, e.faceZ, true]);
 				}
 				drawn.set(e.kind, (drawn.get(e.kind) ?? 0) + 1);
 			});
 		}
-		for (const kind of ["wall", "column", "debris"])
-			expect([kind, (drawn.get(kind) ?? 0) > 0]).toEqual([kind, true]);
+		for (const kind of ["column", "debris"]) expect([kind, (drawn.get(kind) ?? 0) > 0]).toEqual([kind, true]);
+		for (const kind of ["wall", "wallBroken"]) expect([kind, drawn.get(kind) ?? 0]).toEqual([kind, 0]);
 	});
 
 	it("the brazier's flame and glow fit its box at their largest", () => {

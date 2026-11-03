@@ -239,7 +239,7 @@ describe("decor art held to DECOR_BOX", () => {
 		expect(held.pivot).toBe(diag.pivot);
 	});
 
-	it("draws every standing piece of real floors inside its box (points and wall segments)", () => {
+	it("draws every standing piece of real floors inside its box (all points: no wall segments since 2026-11-02)", () => {
 		let standing = 0;
 		let segments = 0;
 		for (const plan of plans) {
@@ -250,7 +250,7 @@ describe("decor art held to DECOR_BOX", () => {
 					return;
 				}
 				standing++;
-				if (e.cells > 1) segments++;
+				if (e.cells > 1 && e.source !== "solid") segments++; // a solid tomb spans 2 cells, not a wall segment
 				expect(layout).toBeDefined();
 				const poly = plan.fadeBoxes[e.fade].polygon;
 				const x = screenX(DECOR_CAMERA, e.x, e.y, e.z);
@@ -268,7 +268,7 @@ describe("decor art held to DECOR_BOX", () => {
 			});
 		}
 		expect(standing).toBeGreaterThan(0);
-		expect(segments).toBeGreaterThan(0);
+		expect(segments).toBe(0); // wall props are not decoration (docs/DECOR.md R6)
 	});
 
 	it("holds flames at their largest growth and glows inside the piece's box", () => {

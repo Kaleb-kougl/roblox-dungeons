@@ -477,13 +477,16 @@ Decision log (deviations from `PLAN.md`):
   `cliff` join `BIOME_MATERIAL_SURFACES`, validator `voidReport` (`VOID_CONTRAST.shoulderVsFloor` 4 CIE76 and the
   shoulder nearer the wall than the floor; luminance shoulder >= ledge >= abyss; `enemyBullet` >= 3:1 on shoulder and
   ledge; abyss >= 40 CIE76 from `enemyBullet` / `telegraph`); `dimHex` moved to shared/theme `color.ts`. Decor kinds
-  `flagstones` (flat) and `curb` (low) appended to `DECOR_KINDS`; optional `decor.void.b<n>.<kind>` biome kinds
+  `flagstones` (flat) appended to `DECOR_KINDS`; optional `decor.void.b<n>.<kind>` biome kinds
   (`VOID_DECOR`, `pack.voidDecorVariants`). planDecor takes an optional `voidPlan` (source `"void"`, entries' `y` = the
   surface top, appended after every decor entry): standing pieces pass the footprint rule at their surface AND the
   far-side rule (`farSide`: their room screen-down, no walkable cell screen-up; VDD2); without a void plan planDecor is
   byte-identical. `decorPlan.ts` / `decor.ts` import `voidDecor/config` and `/layer` by file (a require cycle through
-  the barrel). Debug `KV_VoidOff` / `KV_VoidDebug`. Vale `flagstones` / `curb` (`tiles` / `wall1`) stay dormant until
-  the decor atlas is rebuilt and re-uploaded (VD6 owner steps). Studio checks pending.
+  the barrel). Debug `KV_VoidOff` / `KV_VoidDebug`. Studio checks pending.
+  **VDD10 (2026-11-02): wall props are not void decoration.** The void's ruin runs (`wall` / `wallBroken`) and the
+  `curb` kind (wall1) are removed, and so are R6's far-wall segments (docs/DECOR.md R6: columns only; the depth bands'
+  `wallBrokenShare` gone; the `wall` / `wallBroken` kinds and vale wall2 / wall3 mapping stay, unplanned); `wall1` is
+  retired art (`VALE_RETIRED_WORLD_ART`) until the next decor atlas rebuild.
 
 - **Tutorial map lesson (docs/TUTORIAL_MAP.md).** Tutorial script, HUD and telemetry only (no sim, dungeon, lockstep,
   hash, replay or fixture change). Step `map` (11 of 17, after `ember`: open the full map), rule / marker `next` (the
@@ -504,6 +507,34 @@ Decision log (deviations from `PLAN.md`):
   caps touch at `HUD_VIEW.touchUprightWidth` (452) over the width, the pause map is a square on top with the panel
   under it (`pausePanelArea`, no Build list), the draft is a column (`draftSlotOffset`, `DRAFT_UI.rayY`). No new strings.
   Studio / phone check (PT9) pending.
+- **3D kit decor, trial (docs/DECOR.md "3D kits").** Presentation only (no sim, dungeon, lockstep, hash, replay or
+  fixture change). Props can come from 3D models rendered to sprites from the game camera by
+  `scripts/art/kit/render_kit.py` (Blender `bpy`, outside npm) into `art/vendor/<kit>/`, then ordinary world art with
+  `own` PNGs (the decor atlas never repacks). First kit: the Dungeon Essential Kit (Rakshaan, **CC-BY 4.0: credit
+  required where players see it**, THIRD_PARTY_NOTICES.md). Two void kinds appended to `VOID_DECOR` (`cage` low,
+  `chains` flat; vale `VALE_VOID_KIND_PIECES`, every biome) and the vale `bones` variant 4 is the kit's chains
+  (`bones1-sw` joins `VALE_RETIRED_WORLD_ART`); the kit's candle chandelier lies fallen in rooms (`keepHeight` cuts its chain off): a
+  new decor kind `chandelier` (flat, appended last to DECOR_KINDS) that no Forge piece places, laid by planDecor's
+  `scatter` step (DECOR_SCATTER: one per room in about a third of the rooms, never the boss room, at most 4 per floor,
+  entries appended after the void) only when the pack has its art. All five `kit-*.png` uploaded 2026-11-02; the Studio check pending.
+- **3D kit decor, second kit (docs/DECOR.md "3D kits").** Presentation only. The Dungeon Modular Set V2 (C.
+  Anastasiadis, **CC-BY 4.0**, on the Credits screen) gives the vale pack's `sarco` (sarcophagus), `candle` (candle
+  stand) and `banner` (wall banner, 4 facings like the torch) their first art, each its own PNG; no planner change
+  (the plan already placed them). Uploaded 2026-11-02; the Studio check pending.
+- **Solid decor (docs/DECOR.md "Solid decor").** Gameplay (dungeon). Forge option `solidDecor` (endless only,
+  `ENDLESS_SOLID_DECOR`; M1, the fixtures and the tutorial off): after solid pillars, combat / elite rooms get tombs (2
+  x 1) flanked by candle stands (1 x 1) whose cells become WALL (Dungeon.solidDecor), from their own stream
+  (`SOLID_DECOR.salt`), with a clear ring that keeps the floor in one piece. WorldController draws their cells as
+  floor; the decor plan's `solid` step stands kinds `tomb` / `candelabrum` on them (fade box, no footprint rule).
+  Endless layouts, spawns, replays and scores changed (boards stay `_v1`); `DAILY.ruleset` 2 -> 3. The endless test
+  bot quantizes its axes (`quantizeAxis`: no -0, which the recording codec cannot carry). With banner art the decor
+  plan also hangs up to 2 more banners per room on far walls (`DECOR_BANNERS`, presentation only). Tomb upload and
+  Studio check pending.
+- **Credits screen.** Presentation only. Main menu > Credits (MenuScreen `credits`, `CreditsScreen`, Back returns to
+  the menu): every work in THIRD_PARTY_NOTICES.md, by section, from shared/view/menu `CREDITS` (titles, names and
+  licence lines are data in every language; section labels, "by {author}" and the change note are strings
+  `menu.credits` / `credits.*`). Required by the CC BY kit and the Dungeon Forge's MIT notice. On a phone the button
+  is a small one beside the invite reason (its own row would cost the smallest phone the ornament, fit.spec.ts).
 
 ## Commands
 

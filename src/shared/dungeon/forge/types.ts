@@ -6,6 +6,7 @@
  * Roblox port of project-kaleb-vale src/dungeon/forge/types.ts @ 42897e2. Typed arrays became plain number arrays
  * (0-based in TypeScript, same indexing: y * W + x).
  */
+import type { SolidDecorPiece } from "./solidDecor";
 
 /** Tile values in Dungeon.grid (indexed y * W + x). */
 export const TileType = { VOID: 0, FLOOR: 1, WALL: 2, POOL: 3 } as const;
@@ -183,6 +184,14 @@ export interface ForgeParams {
 	 */
 	solidPillars?: boolean;
 	/**
+	 * Kaleb-Vale: solid decor (./solidDecor.ts, docs/DECOR.md "Solid decor"). After solid pillars, combat and elite rooms
+	 * get tombs and candle stands whose cells become WALL (Dungeon.solidDecor lists them), from their own stream: every
+	 * other prop, spawn, torch, arch, pool and the name are the option-off floor's. `bfs`, `maxBfs`, the floor stats and
+	 * `valid` describe the walled grid. Endless floors only (`endlessFloorParams`); M1, the fixtures and the tutorial
+	 * leave it off.
+	 */
+	solidDecor?: boolean;
+	/**
 	 * Kaleb-Vale: a fixed linear floor (the tutorial's floor 1, docs/TUTORIAL.md). The rooms are these, in walk order
 	 * (room id = index; the first is the entrance, the last the boss room), laid out by ./chain.ts with exactly one
 	 * straight corridor between each room and the next and nothing else: no scatter, separation, Delaunay graph, MST,
@@ -249,5 +258,7 @@ export interface Dungeon {
 	lakeCells: Cell[];
 	lakeMask: number[];
 	arches: Arch[];
+	/** Solid decor (ForgeParams.solidDecor): tombs and candle stands standing on WALL cells; empty when off. */
+	solidDecor: SolidDecorPiece[];
 	stats: DungeonStats;
 }

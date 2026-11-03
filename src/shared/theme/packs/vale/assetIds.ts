@@ -26,6 +26,7 @@ import type { RobloxAssetId } from "../../types";
 /**
  * Uploaded 2026-10-25 by k9kbdev (Studio Asset Manager, Bulk Import), transcribed from Asset Manager screenshots.
  * vanguard-attack3.png's ID is by elimination: it was the only remaining truncated "vanguard-atta..." row.
+ * decor-atlas.png re-uploaded 2026-11-01 3:40 PM after its rebuild for docs/VOID_DECOR.md VD6 (+ tiles / wall1, - gems-*).
  * decor-atlas.png and decor-mote.png uploaded 2026-10-26 (docs/DECOR.md R5); that batch also re-uploaded the 13 files
  * above as duplicates with new IDs, which are not used (the images are byte-identical to the ones listed here).
  * swarmer-move.png / swarmer-death.png re-uploaded 2026-10-26 9:25 after the enemy-outline pad change (docs/OUTLINE.md
@@ -73,6 +74,9 @@ import type { RobloxAssetId } from "../../types";
  * death sheets with their outlines) uploaded 2026-10-31 7:50 AM by k9kbdev, transcribed from an Asset Manager screenshot.
  * loot-glint.png (the loaded barrel / crate twinkle, docs/BREAKABLE_DROPS.md; original art, scripts/art/gen-loot-glint.js)
  * uploaded 2026-11-01, ID given by the owner.
+ * kit-cage-1 / -2 and kit-chains-1 / -2 (the trial 3D kit, docs/DECOR.md "3D kits") uploaded 2026-11-02 2:00 PM by
+ * k9kbdev, transcribed from an Asset Manager screenshot; kit-chandelier-1.png 2026-11-02 2:28 PM; the second kit's
+ * kit-banner / kit-sarcophagus / kit-candle-stand (docs/DECOR.md "3D kits") 2026-11-02 3:05 PM.
  */
 export const VALE_ASSET_IDS: Readonly<Record<string, RobloxAssetId>> = {
 	"amb-b1.ogg": "rbxassetid://91158343621799",
@@ -107,7 +111,7 @@ export const VALE_ASSET_IDS: Readonly<Record<string, RobloxAssetId>> = {
 	"caster-body.png": "rbxassetid://94738405031552",
 	"caster-death-outline.png": "rbxassetid://128357725222665",
 	"caster-death.png": "rbxassetid://78384490395919",
-	"decor-atlas.png": "rbxassetid://107968620179940",
+	"decor-atlas.png": "rbxassetid://115064942223814",
 	"decor-mote.png": "rbxassetid://108281638823690",
 	"imp-attack-outline.png": "rbxassetid://87826495349638",
 	"imp-attack.png": "rbxassetid://106802821695726",
@@ -115,6 +119,14 @@ export const VALE_ASSET_IDS: Readonly<Record<string, RobloxAssetId>> = {
 	"imp-body.png": "rbxassetid://130645679779456",
 	"imp-death-outline.png": "rbxassetid://134104614361499",
 	"imp-death.png": "rbxassetid://84336726009588",
+	"kit-banner.png": "rbxassetid://116783891005736",
+	"kit-cage-1.png": "rbxassetid://120653442756216",
+	"kit-cage-2.png": "rbxassetid://131457766065364",
+	"kit-candle-stand.png": "rbxassetid://82067548860168",
+	"kit-chains-1.png": "rbxassetid://78196216486149",
+	"kit-chains-2.png": "rbxassetid://132113945005181",
+	"kit-chandelier-1.png": "rbxassetid://135009681923399",
+	"kit-sarcophagus.png": "rbxassetid://71399333921022",
 	"loot-glint.png": "rbxassetid://92133950711891",
 	"music-biome-1.ogg": "rbxassetid://93211571195066",
 	"music-biome-2.ogg": "rbxassetid://119153958408720",

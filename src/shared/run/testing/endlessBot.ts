@@ -11,7 +11,6 @@
  * The bot: a BFS distance field over FLOOR tiles to a target tile; each tick steps toward the lowest neighbour.
  */
 import {
-	AXIS_MAX,
 	Button,
 	DEBUG_FLOOR_BUTTON,
 	DRAFT_COLUMN_CENTRE,
@@ -37,9 +36,9 @@ import {
 	type Recording,
 	type SimConfig,
 	type SimState,
+	quantizeAxis,
 } from "shared/sim";
 import { gridToWorld, pathField, pathStep, worldToGrid, type PathField } from "shared/dungeon";
-import { jsRound } from "shared/jsmath";
 import { buildEndlessRunConfig, type EndlessRunSetup } from "../endless";
 
 /** A BFS distance field to a target (exported for the party bot): shared/dungeon pathField's. */
@@ -60,11 +59,13 @@ export function walkDir(f: Field, x: number, z: number): [number, number] {
 }
 
 export function frame(mx: number, mz: number, buttons = 0, ax = 0, az = 0): InputFrame {
+	// quantizeAxis, as a real client's input goes: it also turns -0 into 0, which the recording codec cannot carry (a
+	// -0 the live sim stepped on but the server's decoded segment no longer has once split the hashes)
 	return {
-		moveX: jsRound(mx * AXIS_MAX),
-		moveZ: jsRound(mz * AXIS_MAX),
-		aimX: jsRound(ax * AXIS_MAX),
-		aimZ: jsRound(az * AXIS_MAX),
+		moveX: quantizeAxis(mx),
+		moveZ: quantizeAxis(mz),
+		aimX: quantizeAxis(ax),
+		aimZ: quantizeAxis(az),
 		buttons,
 	};
 }

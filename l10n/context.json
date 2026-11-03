@@ -462,6 +462,35 @@
 	"class.vanguard.name": {
 		"note": "Character class name: a armored front-line fighter. Title case. Reserved: required by the theme contract inherited from the original web build, but not shown in the current Roblox build; translate it as a plain name anyway."
 	},
+	"credits.by": {
+		"note": "Credits screen: the author of a credited work, shown after the work's title. {author} is a person's or studio's name (never translated), sometimes with the store in brackets, e.g. \"Rakshaan (Sketchfab)\".",
+		"example": {
+			"author": "Rakshaan (Sketchfab)"
+		}
+	},
+	"credits.modified": {
+		"note": "Credits screen: a note under a 3D model pack, required by its licence (CC BY 4.0), saying the game changed the work: it turned the 3D models into 2D pictures and adjusted them. One short sentence."
+	},
+	"credits.section.art": {
+		"note": "Credits screen section heading: the drawn art (sprites, characters, interface art) by other artists.",
+		"max": 24
+	},
+	"credits.section.audio": {
+		"note": "Credits screen section heading: sound effects and music by other artists.",
+		"max": 24
+	},
+	"credits.section.code": {
+		"note": "Credits screen section heading: program code by other developers that the game uses (a dungeon generator).",
+		"max": 24
+	},
+	"credits.section.models": {
+		"note": "Credits screen section heading: 3D models by other artists (the game renders them into 2D pictures).",
+		"max": 24
+	},
+	"credits.title": {
+		"note": "Title of the Credits screen, which lists the third-party art, 3D models, sound and code the game uses.",
+		"max": 24
+	},
 	"curse.frailty.desc": {
 		"note": "Effect line of the curse \"Frailty\". Terse game-rules style; keep numbers and signs exactly (\"-1 heart\" = one heart less; \"s\" = seconds)."
 	},
@@ -2196,6 +2225,10 @@
 	},
 	"menu.coopTitle": {
 		"note": "Title of the menu opened during a co-op (party) run; the game doesn't pause in co-op."
+	},
+	"menu.credits": {
+		"note": "Main menu button (260 x 40 px): opens the Credits screen (the artists, musicians and code the game uses).",
+		"max": 22
 	},
 	"menu.inviteFriends": {
 		"note": "Main menu button (260 x 40 px): opens Roblox's invite-a-friend prompt.",

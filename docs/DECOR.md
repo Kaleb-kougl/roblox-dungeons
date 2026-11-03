@@ -50,8 +50,8 @@ As built, differing from the text below:
   piece centre, not the contact point), the sniper aim line clipped at intact pieces; art capped at 5/8 tile tall.
 - **Void set pieces (docs/VOID_DECOR.md VD5 / VD6).** With `DecorPlanInput.voidPlan` (DecorController passes
   `planVoidCached` unless Workspace `KV_VoidOff`), planDecor appends source `"void"` entries standing / lying on the
-  void's shoulder and ledge tops (entry `y` = the surface top; ruin runs, columns, curbs, flat clutter, flagstones,
-  optional biome `decor.void.*` kinds), each under the footprint rule at its surface's height (`footprintStencil` now
+  void's shoulder and ledge tops (entry `y` = the surface top; columns, stumps, flat clutter, flagstones, optional
+  biome `decor.void.*` kinds; no wall props, VDD10), each under the footprint rule at its surface's height (`footprintStencil` now
   caches per top). Without a void plan the plan is byte-identical; the census and budget specs here are unchanged.
 - **Gems are not decor (docs/BOOST_ART.md BA2, decision 2).** A gem cluster on the floor always means a boost drop,
   so the contract has no `gems` decor kind any more (`decor.delve.*.gems` is an unknown decor ID) and the vale pack
@@ -165,6 +165,84 @@ the sim expects. Dress them in layers:
 **Biomes.** The Lords of Pain set is dark dungeon stone: it fits ancient and grim, and is passable tinted for the
 others. Biome-specific kinds (icicle, moss, grave) have no art and stay undrawn for now.
 
+## 3D kits (trial, 2026-11-02)
+
+Prop art can also come from 3D models rendered to sprites from the game camera, so it sits on the grid with no warp
+(2D isometric packs drawn from another angle never quite do). `scripts/art/kit/render_kit.py` (Blender's `bpy` module,
+`pip install bpy==5.2.3` on Python 3.13; not part of `npm run`) imports a .glb, renders each piece listed in a kit
+file (`scripts/art/kit/<kit>.json`: mesh objects, camera turns `az`, size in pixels, `flatten`, a colour grade toward
+Lords of Pain) with an orthographic camera at the game's 55 degree pitch, and writes single-frame PNGs at this pack's
+decor scale (29.6 px per tile, matched on the barrel) into `art/vendor/<kit>/`. From there they are ordinary world art
+in `art/atlases.json`, each its own PNG (`own`), so the uploaded decor-atlas.png never repacks.
+
+First kit: the **Dungeon Essential Kit** (Rakshaan, Sketchfab, **CC-BY 4.0: credit required where players see it**,
+THIRD_PARTY_NOTICES.md), in `art/vendor/dungeon-essential-kit/` (put `dungeon_essential_kit.glb` there to re-render):
+
+| Art | Draws | Where |
+|---|---|---|
+| `kit-cage-1` / `-2` (the floor cage with its door open, two turns) | `decor.void.b<n>.cage.1` / `.2`, new void kind `cage` (low) | standing on the void's shoulder behind rooms' far walls, half the void's standing spots (`VOID_PIECES.biomeShare`) |
+| `kit-chains-1` / `-2` (the kit's draped chain, flattened, two turns) | `decor.void.b<n>.chains.1` / `.2`, new void kind `chains` (flat) | lying on the shoulder among the void's flat pieces |
+| `kit-chains-1` | `decor.delve.b<n>.bones.4` (was Lords of Pain `bones1-sw`, now retired art) | in rooms wherever the Forge drops bones |
+| `kit-chandelier-1` (the candle chandelier, its chain cut off by `keepHeight`: lying fallen) | `decor.delve.b<n>.chandelier`, new decor kind `chandelier` (flat, scattered) | on open floor in rooms: planDecor's `scatter` step (DECOR_SCATTER: about a third of the rooms with 40+ floor tiles, never the boss room, one per room, at most 4 per floor; census 3.4 per floor), only when the pack has its art |
+
+Second kit: the **Dungeon Modular Set V2** (C. Anastasiadis, Sketchfab, **CC-BY 4.0**, on the Credits screen), in
+`art/vendor/dungeon-modular-set-v2/` (the .glb is there), `scripts/art/kit/dungeon-modular-set-v2.json`. It fills three
+kinds the plan already places but no pack had art for:
+
+| Art | Draws | Where |
+|---|---|---|
+| `kit-sarcophagus` (the stone sarcophagus) | `decor.delve.b<n>.sarco` | far-wall tops (tall, priority after the brazier), where the Forge puts sarcophagi; inside DECOR_BOX.sarco |
+| `kit-candle-stand` (the candle stand with its lit candles) | `decor.delve.b<n>.candle` | far-wall tops, where the Forge puts candles (grim graveyard rooms); inside DECOR_BOX.candle |
+| `kit-banner` (the red banner, 4 facings like the torch: SE for wall normal +X, SW for +Z, the hidden two copied) | `decor.delve.b<n>.banner` | on the wall faces the camera sees, where the Forge hangs banners (~7 a floor) |
+
+The renderer gained `fit: "box"`, `rotZ` (turn the piece, not the camera: a wall piece per normal), `files` and
+`copies` for this. The box fit is checked by valeArt.spec on real floors (drawn whole).
+
+No sim, dungeon, hash or replay change: two void kinds in the theme contract (`VOID_DECOR`), one scattered decor kind
+(`chandelier`, appended last to DECOR_KINDS; planDecor's `scatter` step appends its entries after the void, so no
+earlier entry moves) and vale mappings; the decor plan already places any void kind a pack has art for. Every biome alike for the trial. The credit the licence asks
+for is on the main menu's Credits screen (shared/view/menu `CREDITS`, with every other third-party work). Every
+`kit-*.png` of both kits uploaded 2026-11-02 (IDs in `packs/vale/assetIds.ts`); open: Studio
+check (cages read at the camera and never cover a bullet; how many cages the void shows; chains read on every biome
+floor), then decide which biomes keep them and what else from the kit to render (hanging cage, statue, lectern,
+bookcase, wall torch).
+
+## Solid decor (2026-11-02, owner: "solid, anywhere")
+
+Diablo-style obstacles in rooms: **gameplay, not just presentation.** With the Forge option `solidDecor`
+(`shared/dungeon/forge/solidDecor.ts`, `ENDLESS_SOLID_DECOR`, endless floors only), after solid pillars, combat and
+elite rooms get **tombs** (a 2 x 1 sarcophagus, along X or Z) flanked by **candle stands** (1 x 1, one floor cell past
+each end) whose cells become WALL: they block movement, bullets and sight like the pillars. Dungeon.solidDecor lists
+them.
+
+- **Placement** (`SOLID_DECOR`): its own stream `makeRng(seed ^ salt)`, so every room, prop, spawn, torch and the name are
+  the option-off floor's. Rooms in id order; 55 % of combat / elite rooms get a cluster, rooms of 320+ floor tiles a
+  second one at 50 %. A tomb needs every cell within 2 tiles to be floor of its room and none within 3 of a doorway;
+  a candle every cell within 1. Nothing walled touches another wall, so the floor stays one piece (re-flooded; if a
+  flood ever disagreed, the pieces would be taken back rather than cost a reroll). Census (72 floors): 3.5 tombs and
+  4.8 candle stands per floor.
+- **What follows from the grid:** room spawn tiles, breakables and the chandelier scatter all avoid the cells; enemies
+  steer round them like pillars (`actorSteerMover`); the minimap shows them as walls.
+- **Drawing:** WorldController draws their cells as floor (no wall block); the decor plan's `solid` step (after the
+  wall pieces, before the void) stands their art on them at floor level, layer low, with a fade box (a player behind
+  one fades it). They are exempt from the footprint rule: an obstacle's art may cover the strip just behind it. New
+  decor kinds `tomb` (variant 1 along X, 2 along Z) and `candelabrum`; vale art `kit-tomb-x` / `kit-tomb-z` (the
+  Dungeon Modular Set V2 sarcophagus rendered at world scale, `unitsPerTile` 112.5, its pivot the footprint's centre on
+  the floor: render_kit.py `pivotOut`, atlases.json `pivot: [x, y]`) and the candle stand (`kit-candle-stand`, shared
+  with `candle`).
+- **Off:** M1, every fixture and the tutorial (`tutorialForgeParams` sets `solidDecor: false`: its rooms are lessons).
+- **Changed:** endless layouts, spawns, replays and scores from floor 1 (all-time boards stay `_v1`, as with earlier
+  endless changes); `DAILY.ruleset` 2 -> 3. `roomPool.lock.spec`'s roster digests re-recorded (its no-roster spender
+  locks run with `solidDecor: false` and still match).
+- Found on the way: the endless test bot sent `-0` move axes (`jsRound` of a negative zero), which the recording codec
+  cannot carry, so a segmented replay split from the live hash once a walk round a tomb produced one. The bot now
+  quantizes like a real client (`quantizeAxis`, which already turns -0 into 0).
+- **Room banners** (presentation only, with the solid decor): when the pack has banner art, the decor plan hangs up to
+  `DECOR_BANNERS.perRoom` (2) more banners per room (never the boss room) on its far-wall faces, 3+ tiles from every
+  wall piece; census about 20 a floor on top of the Forge's.
+- Open: upload `kit-tomb-x.png` / `kit-tomb-z.png`, Studio check (tombs read at the camera, enemies don't snag, cover
+  feels fair), tuning (shares, sizes, which biomes).
+
 ## Decisions
 
 - **D1. The full Lords of Pain pack:** bought (2026-10-25). Every task below is unblocked.
@@ -276,6 +354,12 @@ others. Biome-specific kinds (icicle, moss, grave) have no art and stay undrawn 
   column or nothing. Same footprint rule and caps as the other tall pieces.
   → Verify: in Studio the segments line up with the 3D walls under them in every room shape (rect, ellipse, oct), and
   no bullet is hidden.
+  **Segments removed (owner, 2026-11-02): wall props are not decoration** (with docs/VOID_DECOR.md VDD10). planDecor's
+  R6 step places only columns (back corners, doorway jambs, the middle of runs shorter than `minRunTiles`); long runs
+  get none. Gone with it: `DECOR_DRESSING.segmentTiles`, `DECOR_SALT.wall` and the depth bands' `wallBrokenShare`.
+  The `wall` / `wallBroken` decor kinds (contract, `DECOR_BOX`) and the vale wall2 / wall3 mapping stay but nothing
+  plans them. Census (100 floors): tall 17.6 per floor (was ~25: the ~9 segments gone), torches 71.8 (cells that
+  carried a segment take torches now).
 
 - [ ] **R7. Docs.** `THIRD_PARTY_NOTICES.md` (the full pack replaces the demo entry; same licence), `art/README.md`
   (download and folder), `PROVENANCE.md` rows (web `35307022`), the `CLAUDE.md` decision log (D3; D2 is logged),

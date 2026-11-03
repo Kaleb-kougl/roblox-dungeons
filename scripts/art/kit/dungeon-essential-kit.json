@@ -1,0 +1,27 @@
+{
+	"$comment": "Pieces of the Dungeon Essential Kit (Rakshaan, CC-BY 4.0; THIRD_PARTY_NOTICES.md) for scripts/art/kit/render_kit.py. sizePx at the Lords of Pain decor scale (29.6 px per tile): the cage about 1.2 tiles across (the void's low box, DECOR_BOX.columnBroken), the chains about 1.7 tiles long, the candle chandelier (its chain cut off by keepHeight, so it lies fallen on the floor) about 2 tiles across. flatten: lying chains (the kit's are draped up a wall). Iron keeps more of its brightness than stone and wood, or a 2 px chain vanishes on the dark floors.",
+	"grade": { "saturation": 0.75, "brightness": 0.62, "contrast": 1.15, "tint": [1.06, 0.97, 0.92] },
+	"pieces": {
+		"cage": {
+			"objects": ["Cage_Set2.001_0", "Cage_Door_Set2.001_0"],
+			"az": [-45, 45],
+			"sizePx": 36,
+			"grade": { "brightness": 0.85 }
+		},
+		"chains": {
+			"objects": ["Chain_Set2.001_0"],
+			"az": [-45, 45],
+			"sizePx": 50,
+			"fit": "long",
+			"flatten": 0.12,
+			"grade": { "saturation": 0.4, "brightness": 0.95, "tint": [1, 1, 1] }
+		},
+		"chandelier": {
+			"objects": ["Chandelier_Set5_0"],
+			"az": [-45],
+			"sizePx": 60,
+			"keepHeight": 140,
+			"grade": { "brightness": 0.8 }
+		}
+	}
+}

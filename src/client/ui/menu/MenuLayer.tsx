@@ -4,6 +4,7 @@ import { selectAwaitingFirstRun, selectGameActive, selectMenuScreen, selectTutor
 import { useHudScale } from "client/ui/hud";
 import { role } from "client/ui/theme";
 import { MENU_VIEW } from "shared/view/menu";
+import { CreditsScreen } from "./CreditsScreen";
 import { LobbyBrowser } from "./LobbyBrowser";
 import { LobbyRoom } from "./LobbyRoom";
 import { MainMenu } from "./MainMenu";
@@ -11,7 +12,7 @@ import { InviteBadge, InviteToasts, NoticeToasts } from "./Toasts";
 
 /**
  * The menu shell (tasks L3 / L5), its own ScreenGui between the HUD and the pause / settings layer
- * (MENU_VIEW.displayOrder): while a menu screen is up, the screen (main menu, lobby browser, lobby room) with the
+ * (MENU_VIEW.displayOrder): while a menu screen is up, the screen (main menu, lobby browser, lobby room, credits) with the
  * invite toasts, over a backdrop that covers the whole screen (its own ScreenGui KV_MenuBackdrop just under the shell,
  * ScreenInsets None: under the Roblox top bar and into a phone's notch insets, docs/UI_ART.md "Phones"); during a
  * run, the invite badge; always, the lobby notices. (A run start waiting for the server shows the stage loader's
@@ -29,6 +30,7 @@ export function MenuLayer() {
 	if (screen === "main") body = <MainMenu key="Main" />;
 	else if (screen === "lobbies") body = <LobbyBrowser key="Lobbies" />;
 	else if (screen === "lobby") body = <LobbyRoom key="Lobby" />;
+	else if (screen === "credits") body = <CreditsScreen key="Credits" />;
 	const backdrop = body !== undefined || (awaitingFirstRun && !active);
 	return (
 		<>

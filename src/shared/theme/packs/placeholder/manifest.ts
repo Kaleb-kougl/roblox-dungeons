@@ -661,6 +661,15 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		"menu.yourLobby": "Your lobby",
 		// (menu.options: the contract's required key, above)
 		"menu.leaderboard": "Leaderboard",
+		"menu.credits": "Credits",
+		// --- credits.* (main menu > Credits: shared/view/menu credits.ts; titles and names are data) ----------
+		"credits.title": "Credits",
+		"credits.by": "by {author}",
+		"credits.modified": "Rendered to sprites and modified for this game.",
+		"credits.section.art": "Art",
+		"credits.section.models": "3D models",
+		"credits.section.audio": "Sound and music",
+		"credits.section.code": "Code",
 		"menu.back": "Back",
 		"menu.backHint": "{key} to go back",
 		"menu.starting": "Starting run...",

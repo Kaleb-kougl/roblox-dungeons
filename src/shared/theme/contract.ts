@@ -1010,11 +1010,16 @@ export const DECOR_KIND_LAYERS = {
 	// wall pieces
 	torch: WALL_SPOT,
 	banner: WALL_SPOT,
-	// void dressing (docs/VOID_DECOR.md VD7): the Lords of Pain `tiles` flagstone patch on shoulder tops near rooms, the
-	// `wall1` low curb along shoulder edges (low only: a curb is never a tall piece). Inline arrays: this module's
-	// compiled Luau sits near the 200-locals limit.
+	// void dressing (docs/VOID_DECOR.md VD7): the Lords of Pain `tiles` flagstone patch on shoulder tops near rooms. No
+	// wall prop dresses the void (VDD10: the `curb` kind, wall1, was removed).
 	flagstones: FLAT_SPOT,
-	curb: ["low"] as const,
+	// scattered (docs/DECOR.md "3D kits"): no Forge piece; the decor plan lays at most one per room on open floor,
+	// only when the pack has art for it (a fallen chandelier)
+	chandelier: FLAT_SPOT,
+	// solid decor (docs/DECOR.md "Solid decor"): standing on their own WALL cells in rooms (Dungeon.solidDecor), low
+	// only; a tomb's variant 1 lies along X, 2 along Z
+	tomb: ["low"] as const,
+	candelabrum: ["low"] as const,
 } as const satisfies Record<string, ReadonlyArray<DecorLayer>>;
 export type DecorKind = keyof typeof DECOR_KIND_LAYERS;
 
@@ -1044,7 +1049,9 @@ export const DECOR_KINDS: ReadonlyArray<DecorKind> = [
 	"torch",
 	"banner",
 	"flagstones",
-	"curb",
+	"chandelier",
+	"tomb",
+	"candelabrum",
 ];
 
 /**
@@ -1053,12 +1060,13 @@ export const DECOR_KINDS: ReadonlyArray<DecorKind> = [
  * piece. No pack has to; any kind is accepted in any biome (the plan's biome wishes, frost spire / drift, molten vent /
  * crag, grim grave / deadtree, verdant root / bush, ancient statue, are art direction, not rules). Layers per kind
  * (`layers`): the standing tall shapes (spire, crag, deadtree, statue, grave) may be drawn tall or low, like the decor
- * plan's far-wall pieces; the short ones (vent, bush, root) low only; a snow drift lies flat. One table (kinds in
+ * plan's far-wall pieces; the short ones (vent, bush, root) low only; a snow drift lies flat. Trial 3D kit (docs/DECOR.md
+ * "3D kits"): a `cage` stands low (the box of a column stump), lying `chains` are flat. One table (kinds in
  * declaration order, layers, ID prefix), so this module's compiled Luau gains one local (it sits near Luau's 200).
  */
 export const VOID_DECOR = {
 	prefix: "decor.void.",
-	kinds: ["spire", "drift", "vent", "crag", "grave", "deadtree", "root", "bush", "statue"],
+	kinds: ["spire", "drift", "vent", "crag", "grave", "deadtree", "root", "bush", "statue", "cage", "chains"],
 	layers: {
 		spire: TALL_SPOT,
 		drift: FLAT_SPOT,
@@ -1069,6 +1077,8 @@ export const VOID_DECOR = {
 		root: ["low"],
 		bush: ["low"],
 		statue: TALL_SPOT,
+		cage: ["low"],
+		chains: FLAT_SPOT,
 	},
 } as const satisfies {
 	prefix: string;

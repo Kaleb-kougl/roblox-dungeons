@@ -81,7 +81,6 @@ describe("decor profile: bands", () => {
 		const b = DECOR_DEPTH.bands[2];
 		expect(p.flatShare).toBe(b.flatShare);
 		expect(p.columnBrokenShare).toBe(b.columnBrokenShare);
-		expect(p.wallBrokenShare).toBe(b.wallBrokenShare);
 		expect(p.litTorchShare).toBe(b.litTorchShare);
 		expect(p.light).toBe(b.light);
 		expect(p.floor).toBe(12);
@@ -101,7 +100,6 @@ describe("decor profile: bands", () => {
 			expect(bands[i].fromFloor > bands[i - 1].fromFloor).toBe(true);
 			expect(bands[i].light <= bands[i - 1].light).toBe(true);
 			expect(bands[i].columnBrokenShare >= bands[i - 1].columnBrokenShare).toBe(true);
-			expect(bands[i].wallBrokenShare >= bands[i - 1].wallBrokenShare).toBe(true);
 			expect(bands[i].litTorchShare <= bands[i - 1].litTorchShare).toBe(true);
 		}
 		expect(DECOR_DEPTH.bands[darkestDecorBand()].name).toBe("abyss");
@@ -120,7 +118,7 @@ describe("decor profile: applied by the plan", () => {
 				const tall = new Map<number, number>();
 				const flat = new Map<number, number>();
 				for (const e of plan.entries) {
-					if ((e.layer === "tall" || e.layer === "low") && e.source !== "pillar")
+					if ((e.layer === "tall" || e.layer === "low") && e.source !== "pillar" && e.source !== "solid")
 						tall.set(e.roomId, (tall.get(e.roomId) ?? 0) + 1);
 					if (e.layer === "flat") flat.set(e.roomId, (flat.get(e.roomId) ?? 0) + 1);
 				}
@@ -143,7 +141,7 @@ describe("decor profile: applied by the plan", () => {
 		);
 		let torches = 0;
 		let lit = 0;
-		let walls = 0;
+		const walls = 0;
 		let broken = 0;
 		for (let i = 0; i < floors.size(); i++) {
 			const a = base[i].entries.filter((e) => e.layer !== "flat");
@@ -152,10 +150,6 @@ describe("decor profile: applied by the plan", () => {
 			for (let k = 0; k < a.size(); k++) {
 				expect(b[k].cellX).toBe(a[k].cellX);
 				expect(b[k].cellY).toBe(a[k].cellY);
-				if (a[k].kind === "wall") {
-					walls++;
-					expect(b[k].kind).toBe("wallBroken"); // abyss: every segment broken
-				}
 				if (a[k].kind === "torch") {
 					expect(a[k].lit).toBe(true); // kept: every torch lit
 					torches++;
@@ -164,7 +158,6 @@ describe("decor profile: applied by the plan", () => {
 				if (a[k].kind === "column" && b[k].kind === "columnBroken") broken++;
 			}
 		}
-		expect(walls).toBeGreaterThan(0);
 		expect(torches).toBeGreaterThan(50);
 		const share = lit / torches;
 		const want = DECOR_DEPTH.bands[DECOR_DEPTH.bands.size() - 1].litTorchShare;

@@ -8,6 +8,9 @@
 // spawns change from floor 1 by design). Real floors spend with their run's roster (endlessRoster, as
 // buildEndlessFloor does): those digests are pinned as built below. The spender itself did not change: without a
 // roster (every unlocked kind open) floor 1 still gives exactly the pre-EV5 spawns, and floors 2-6 the EV5 ones.
+//
+// Solid decor (docs/DECOR.md "Solid decor") walls tomb and candle cells, so real floors' spawn tiles move: the roster
+// digests are re-recorded with it on; the no-roster spender locks run on the floors without it (solidDecor: false).
 import { describe, expect, it } from "@rbxts/jest-globals";
 import { imul } from "shared/jsmath";
 import { endlessFloorParams, endlessRoomSpawns, endlessRoster, generateDungeon, type ActorSpawn } from "shared/dungeon";
@@ -36,11 +39,12 @@ function digests(
 	last: number,
 	parties: ReadonlyArray<number>,
 	roster: boolean,
+	solid = true,
 ): string[] {
 	const h = parties.map(() => FNV_OFFSET);
 	const n = parties.map(() => 0);
 	for (let run = first; run <= last; run++) {
-		const d = generateDungeon(endlessFloorParams(run, floor));
+		const d = generateDungeon({ ...endlessFloorParams(run, floor), solidDecor: solid });
 		for (let p = 0; p < parties.size(); p++) {
 			const rooms = endlessRoomSpawns(d, floor, parties[p], roster ? endlessRoster(run, floor) : undefined);
 			h[p] = foldFloor(h[p], rooms);
@@ -52,7 +56,7 @@ function digests(
 
 describe("endless room pool lock (EV5)", () => {
 	it("no roster: floor 1, run seeds 1-200, party 1-4: the spawns are exactly the pre-EV5 ones", () => {
-		const got = digests(1, 1, 200, [1, 2, 3, 4], false);
+		const got = digests(1, 1, 200, [1, 2, 3, 4], false, false);
 		for (const line of got) print(`[room pool lock] ${line}`);
 		expect(got).toEqual([
 			"floor 1 party 1: 6504 spawns, 45049506", // check-asset-ids: allow (FNV-1a digest)
@@ -72,7 +76,7 @@ describe("endless room pool lock (EV5)", () => {
 			"floor 6 party 1: 2651 spawns, cd348b55",
 		];
 		const got: string[] = [];
-		for (let floor = 2; floor <= 6; floor++) got.push(digests(floor, 1, 40, [1], false)[0]);
+		for (let floor = 2; floor <= 6; floor++) got.push(digests(floor, 1, 40, [1], false, false)[0]);
 		for (const line of got) print(`[room pool lock] ${line}`);
 		for (let i = 0; i < got.size(); i++) expect(got[i]).never.toBe(before[i]);
 		expect(got).toEqual([
@@ -84,27 +88,27 @@ describe("endless room pool lock (EV5)", () => {
 		]);
 	});
 
-	it("seeded roster: floor 1, run seeds 1-200, party 1-4 (re-recorded for docs/DAILY.md DSD1)", () => {
+	it("seeded roster: floor 1, run seeds 1-200, party 1-4 (re-recorded for DSD1 and solid decor)", () => {
 		const got = digests(1, 1, 200, [1, 2, 3, 4], true);
 		for (const line of got) print(`[room pool lock] roster ${line}`);
 		expect(got).toEqual([
-			"floor 1 party 1: 7384 spawns, 1f360722",
-			"floor 1 party 2: 9703 spawns, 7a7ec6d3",
-			"floor 1 party 3: 12003 spawns, 826822f6",
-			"floor 1 party 4: 13885 spawns, 47d57a83",
+			"floor 1 party 1: 7384 spawns, 8dd7b33a",
+			"floor 1 party 2: 9703 spawns, dacb0e59",
+			"floor 1 party 3: 12003 spawns, 83b91256",
+			"floor 1 party 4: 13885 spawns, 2503856d", // check-asset-ids: allow (FNV-1a digest)
 		]);
 	});
 
-	it("seeded roster: floors 2-6, run seeds 1-40, solo (re-recorded for docs/DAILY.md DSD1)", () => {
+	it("seeded roster: floors 2-6, run seeds 1-40, solo (re-recorded for DSD1 and solid decor)", () => {
 		const got: string[] = [];
 		for (let floor = 2; floor <= 6; floor++) got.push(digests(floor, 1, 40, [1], true)[0]);
 		for (const line of got) print(`[room pool lock] roster ${line}`);
 		expect(got).toEqual([
-			"floor 2 party 1: 1719 spawns, 3e64316b",
-			"floor 3 party 1: 1681 spawns, 15183218", // check-asset-ids: allow (FNV-1a digest)
-			"floor 4 party 1: 1910 spawns, 84135ed2",
-			"floor 5 party 1: 1930 spawns, 72673e2a",
-			"floor 6 party 1: 2466 spawns, b3c017ef",
+			"floor 2 party 1: 1719 spawns, 69f6876b",
+			"floor 3 party 1: 1681 spawns, eaa0210a",
+			"floor 4 party 1: 1910 spawns, 0a4b3e48",
+			"floor 5 party 1: 1930 spawns, bef06483",
+			"floor 6 party 1: 2466 spawns, 16aad4e8",
 		]);
 	});
 });

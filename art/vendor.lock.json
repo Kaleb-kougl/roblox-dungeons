@@ -302,6 +302,71 @@
 			"bytes": 55506
 		},
 		{
+			"path": "dungeon-essential-kit/cage/cage_1.png",
+			"sha256": "fb00508ec9b0c1b0d2b8ea18dc0559b977fbf304a2e4298c524c58e0332d4569",
+			"bytes": 3371
+		},
+		{
+			"path": "dungeon-essential-kit/cage/cage_2.png",
+			"sha256": "6cc3c9d698fdac8750f3fedbce89e43c45d9d07fe9e698def208962846240133",
+			"bytes": 4017
+		},
+		{
+			"path": "dungeon-essential-kit/chains/chains_1.png",
+			"sha256": "dee4836d15a9fb3f83cecc16b9fa206da40cb30084883e55f8febdf0fa0aec80",
+			"bytes": 1666
+		},
+		{
+			"path": "dungeon-essential-kit/chains/chains_2.png",
+			"sha256": "6105c560fa447f54e22da9b677044c56f3253ab674eb5f8a46ef6e39fceb886b",
+			"bytes": 1990
+		},
+		{
+			"path": "dungeon-essential-kit/chandelier/chandelier_1.png",
+			"sha256": "12a25a9a490471743afbfbdc687eb12b6be710e00f6ecd2c38770ac4aa05a53e",
+			"bytes": 8459
+		},
+		{
+			"path": "dungeon-modular-set-v2/banner/NE/banner_NE_45.0_0.png",
+			"sha256": "09e31b0a95aa57dc7e627e24f2dd5875b3745c323326cbed65504847410d7006",
+			"bytes": 709
+		},
+		{
+			"path": "dungeon-modular-set-v2/banner/NW/banner_NW_135.0_0.png",
+			"sha256": "e0a7088bbeecbf874cfd614e1e123a34d5cb2e491087c5b2d9fbe7e3cf8cf92e",
+			"bytes": 732
+		},
+		{
+			"path": "dungeon-modular-set-v2/banner/SE/banner_SE_315.0_0.png",
+			"sha256": "e0a7088bbeecbf874cfd614e1e123a34d5cb2e491087c5b2d9fbe7e3cf8cf92e",
+			"bytes": 732
+		},
+		{
+			"path": "dungeon-modular-set-v2/banner/SW/banner_SW_225.0_0.png",
+			"sha256": "09e31b0a95aa57dc7e627e24f2dd5875b3745c323326cbed65504847410d7006",
+			"bytes": 709
+		},
+		{
+			"path": "dungeon-modular-set-v2/candle/candle_1.png",
+			"sha256": "c4b06c29002fd4690d94b7bfe6e604fa0842e09c6b67f56081396693a9c72d47",
+			"bytes": 1308
+		},
+		{
+			"path": "dungeon-modular-set-v2/sarco/sarco_1.png",
+			"sha256": "d932be39b30d46df01de8f383e7e2b8b6c400a3a03e0344f3e6022104cc7b5e1",
+			"bytes": 2408
+		},
+		{
+			"path": "dungeon-modular-set-v2/tomb/tomb_x.png",
+			"sha256": "58a2f220e44214c5483ed682aed9341f03ccadd135b7d94ce544da74f99c88fe",
+			"bytes": 6576
+		},
+		{
+			"path": "dungeon-modular-set-v2/tomb/tomb_z.png",
+			"sha256": "11a654e9612088f8bb5c243aaaea605f6b182d0c55255a6047f92097e81eb986",
+			"bytes": 6541
+		},
+		{
 			"path": "kaleb-vale/loot-glint/loot_glint_0.png",
 			"sha256": "14b3a0328651b9b4c19ff9808431b2365e073a5dd565d9d6c0c6d1ec23716a13",
 			"bytes": 145
@@ -8852,34 +8917,14 @@
 			"bytes": 4537
 		},
 		{
-			"path": "lords-of-pain/prop/gemstones_blue/E/gemstones_blue_E_0.0_0.png",
-			"sha256": "99cad763ffdb5fd4ceb03c2e84c434d9b6848ebbd0a006bac5487b9c728833bf",
-			"bytes": 2152
-		},
-		{
 			"path": "lords-of-pain/prop/gemstones_blue/S/gemstones_blue_S_270.0_0.png",
 			"sha256": "d8ac65d089a38b72ae8368ae9f43b8ff4b813efc108556c32ea7966b7565edb9",
 			"bytes": 2187
 		},
 		{
-			"path": "lords-of-pain/prop/gemstones_green/E/gemstones_green_E_0.0_0.png",
-			"sha256": "90dafd6b92dc34a274d21bbc92fd17cf298c84794318082b89a2023d6294674f",
-			"bytes": 2162
-		},
-		{
 			"path": "lords-of-pain/prop/gemstones_green/S/gemstones_green_S_270.0_0.png",
 			"sha256": "4dcf5e86ed4ff999da6ebde931789c9c1f6a5827ddf6ee3430dbf14516fa0be0",
 			"bytes": 2185
-		},
-		{
-			"path": "lords-of-pain/prop/gemstones_red/E/gemstones_red_E_0.0_0.png",
-			"sha256": "4635566964fe20f1239d43ee23ab3f52dc986bb644f5e8534393063dae95720d",
-			"bytes": 2136
-		},
-		{
-			"path": "lords-of-pain/prop/gemstones_white/E/gemstones_white_E_0.0_0.png",
-			"sha256": "7cee7424d4d78ba167d7969e5345b7c8f9e6f71eddb261a4e1522aba9bf4ac66",
-			"bytes": 2160
 		},
 		{
 			"path": "lords-of-pain/prop/gemstones_white/S/gemstones_white_S_270.0_0.png",
@@ -8922,6 +8967,11 @@
 			"bytes": 16889
 		},
 		{
+			"path": "lords-of-pain/prop/tiles/NE/tiles_NE_45.0_0.png",
+			"sha256": "d66df0965635a98eda12c42bd85192c06982c1a611a314e544a0a5c1fd4822ff",
+			"bytes": 30701
+		},
+		{
 			"path": "lords-of-pain/prop/torch/NE/torch_NE_45.0_0.png",
 			"sha256": "5f1cb524a40f930b9774e1ffb60c110f4df14360ef30fa3cee3f8ecb3f7a0903",
 			"bytes": 12542
@@ -8940,6 +8990,26 @@
 			"path": "lords-of-pain/prop/torch/SW/torch_SW_225.0_0.png",
 			"sha256": "b20548b0af765899f4e78ad097c8698a87b381701f1107317bf70c02c89fcf2f",
 			"bytes": 12664
+		},
+		{
+			"path": "lords-of-pain/prop/wall1/NE/wall1_NE_45.0_0.png",
+			"sha256": "2dea9ef94ca1a977e2944dad43944b60ab37b47c719c212370a580380a4a9dd2",
+			"bytes": 18307
+		},
+		{
+			"path": "lords-of-pain/prop/wall1/NW/wall1_NW_135.0_0.png",
+			"sha256": "957fae1a12c4007eb921f63b999d9e26a712332853f23099fea22060b45ae9e3",
+			"bytes": 17454
+		},
+		{
+			"path": "lords-of-pain/prop/wall1/SE/wall1_SE_315.0_0.png",
+			"sha256": "e3ef06e4c63aa45f53160eaa18e9b97c6d03e30d802d41a61e4ce90c00f72f8c",
+			"bytes": 17476
+		},
+		{
+			"path": "lords-of-pain/prop/wall1/SW/wall1_SW_225.0_0.png",
+			"sha256": "ab3d1b227f52ec4f93fe8582049b570927b82068545ad89fbe491a5016e72ad0",
+			"bytes": 18274
 		},
 		{
 			"path": "lords-of-pain/prop/wall2/NE/wall2_NE_45.0_0.png",

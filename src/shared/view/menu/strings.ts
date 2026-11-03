@@ -4,6 +4,7 @@
  * placeholder pack (`menuStringKeys`), so a missing key fails the build instead of showing the raw key in game.
  */
 import { ARRIVAL_TOAST } from "shared/invite";
+import { creditStringKeys } from "./credits";
 import {
 	LOBBY_NAMES,
 	LOBBY_VISIBILITIES,
@@ -166,5 +167,6 @@ export function menuStringKeys(): string[] {
 	for (const c of LOBBY_REFUSALS) keys.push(lobbyErrorKey(c));
 	// Arrival toasts: most are refusal strings already (full, inRun, ...); inviteGone / partyFull are their own.
 	for (const [, k] of pairs(ARRIVAL_TOAST as unknown as Map<string, string>)) if (!keys.includes(k)) keys.push(k);
+	for (const k of creditStringKeys()) keys.push(k);
 	return keys;
 }

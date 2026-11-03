@@ -22,6 +22,8 @@ export const MENU_VIEW = {
 	mainWidth: 420,
 	/** Lobby browser and lobby room panels. */
 	screenWidth: 700,
+	/** The Credits screen's panel (main menu > Credits; long titles wrap). */
+	creditsWidth: 520,
 	/** Scrolling lists (browser rows, members, the invite list). */
 	listHeight: 300,
 	inviteListHeight: 180,
