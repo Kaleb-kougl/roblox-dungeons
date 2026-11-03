@@ -90,6 +90,8 @@ export const VAULT_CRACK_TIERS = 1;
 export const TREASURE_SWIFT_PAR_PERCENT = 100;
 /** Open reach (TR4). */
 export const TREASURE_REACH_TILES = 1.5 * TILE_SIZE;
+/** The Respite level without Respite (docs/DIFFICULTY.md, not built): respite.ts returns it, the tables' first entry. */
+export const TREASURE_RESPITE_NONE = 0;
 /** TRD10: Respite levels 0 / I / II / III. */
 export const TREASURE_RESPITE_ALLOWANCE: ReadonlyArray<number> = [0, 0, 1, 1];
 export const TREASURE_RESPITE_SWIFT_PERCENT: ReadonlyArray<number> = [0, 10, 20, 30];

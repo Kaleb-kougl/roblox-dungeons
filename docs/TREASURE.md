@@ -10,7 +10,8 @@ floor. Work it task by task, like `PLAN.md`; each task ends with a **Verify**.
 
 Status (2026-11-03): **TR0 done (plan checked against the code, below). TR1 done (the dungeon roll, behind the
 option `EndlessFloorOptions.vaults`, off everywhere until TR5; "As built (TR1)" below). TR2 done (the sim state, hash
-group and chest piece behind `SimConfig.treasure`, unset everywhere until TR5; "As built (TR2)").** The owner (Kaleb)
+group and chest piece behind `SimConfig.treasure`, unset everywhere until TR5; "As built (TR2)"). TR3 done (the lock:
+arm, crack, unlock; "As built (TR3)").** The owner (Kaleb)
 confirmed every decision (TRD1-TRD14) on 2026-11-03. This file is the project doc `claude/treasure-rooms-plan.md` with
 every "(assumed; TR0 verifies)" item checked against branch `treasure-rooms` @ `82f0ff9` (a snapshot of `main` @
 `288a33b`, which already has Pellets, solid decor, room themes and the new enemies merged). Sibling plans: BO
@@ -283,6 +284,45 @@ Verify (2026-11-03, this host): `npm run typecheck` and `npm run lint` clean; `n
 play/liveRun`: 107 suites, **1322 passed, 0 failed** (891 s; golden runs, M1 hash, `run/tutorial` lock, endless /
 party / partyProgression / segments / validate replays, `sim/hash`, clone and score specs among them), so with the
 config absent every fixture, the M1 hash, the tutorial lock and every endless replay are bit-identical.
+
+## As built (TR3, 2026-11-03)
+
+Files: `src/shared/sim/treasure/stepTreasure.ts` (steps 1-3, `vaultAllowance(present, level, config)`,
+`swiftTicks(par, level, config)`), `respite.ts` (`treasureRespiteLevel(state)`: `TREASURE_RESPITE_NONE` 0 until
+docs/DIFFICULTY.md's Respite exists), `treasureData.ts` (`TREASURE_RESPITE_NONE`, `VAULT_LOWEST_TIER`,
+`VAULT_CRACK_TIERS`). Specs: `stepTreasure.spec.ts` (20 tests, ~6 s) and `stepTreasure.bot.spec.ts` (the 200 bot
+rooms, ~65 s).
+
+As planned, with these details (none touches an owner decision):
+
+- **Arm:** `armTick = state.tick`, which is always the record's `engageTick` (endless records engage in stepEndless's
+  `attachScoreRoomMembers`, M1-style ones inside stepScore, both before stepTreasure on the same tick). The allowance
+  uses `presentPlayerCount(state) ?? 1` at arm time and stays fixed.
+- **UNTOUCHED** is checked on the arm tick too (a hit landed on the entry tick cracks there, as it spoils PERFECT);
+  **SWIFT** first counts down on the tick after arming. A cracked SWIFT stops at `ticksLeft` 0.
+- **Clear:** `spare` = SWIFT `ticksLeft` (exactly FAST's `under` at 100 %) / UNTOUCHED `allowance - hits`; `missBy` =
+  SWIFT `clear tick - crackTick` (0 when the countdown ends on the clear tick) / UNTOUCHED `hits - allowance`.
+- **Respite tables** are read with the level clamped into the table (`byLevel`), so a future level past the table
+  reads its last entry.
+- **Events** (`armed` / `cracked` / `unlocked`, 0 / 1 per tick) are cleared with the others and never hashed.
+- **Worlds in the specs:** real endless floors with forced vaults (`buildVaultRunConfig`, seed 4242 floor 2 for most;
+  seeds 1-20 floors 2-11 for the bot), no hand-built `EndlessFloorWorld`: the real floors cover every rule, and the
+  slime test finds a real vault room with a slime (seeds 1-30, floors 4-9). Hits are landed through `damagePlayer` in a
+  score-and-treasure-only tick (score.spec.ts's pattern), except the entry-tick hit (an enemy bullet in a real step).
+- **Bot rooms:** 200 UNTOUCHED vault rooms solo, the pellet census's sword fight (20 s cap, then the rest killed): 29
+  kept, 171 cracked; kept exactly when the clear paid PERFECT in every room.
+
+For TR4: step 4 goes in `stepTreasure` after step 3 (today the early return only lets SEALED / ARMED / CRACKED
+through, so let UNLOCKED reach step 4; an unlock and an open on the same tick are fine); `TreasureEvents` gains
+`opened` (and `clearTreasureEvents` / `cloneTreasureState` with it); `bonusDeals`, `opened` / `kept` / `legendary`
+and the stream (`rngState`, an `RngHolder`) are already hashed, and `scoreTreasure(state, config.points[tier])` is
+ready. `TREASURE.boostOffsets` are `{ forward, side }` tiles: forward along `(fx, fz)`, side along a perpendicular TR4
+picks (`(-fz, fx)` suggested), from the chest centre `(x, z)`.
+
+Verify (2026-11-03): `npm run test:only -- sim/treasure`: 3 suites, 33 passed. Regression: `npm run test:only --
+sim/treasure sim/hash sim/runFull sim/determinism sim/step sim/score sim/breakables sim/pellets sim/drops sim/party
+run/tutorial run/endless run/party run/partyProgression run/segments run/validate run/dev lockstep/`: 30 suites, **449
+passed, 0 failed** (222 s); typecheck and lint clean.
 
 ## Player experience (target)
 
@@ -820,7 +860,8 @@ Each step is a commit. Specs next to the code; `npm run verify` before each.
   `ScoreSource.TREASURE` gated, the chest's `damageBreakable` early return. → Verify: every golden fixture, the M1
   hash, the tutorial lock spec and every endless replay unchanged with the config absent; clone and hash specs. → Done
   2026-11-03: "As built (TR2)".
-- [ ] **TR3. The lock.** `stepTreasure` steps 1-3. → Verify: TR3 specs above.
+- [x] **TR3. The lock.** `stepTreasure` steps 1-3. → Verify: TR3 specs above. → Done 2026-11-03: "As built (TR3)"
+  (UNLOCKED stays UNLOCKED until TR4).
 - [ ] **TR4. Opening and rewards.** Step 4, the grants, the landing offsets. (C1 answered: overflow goes to the player.) → Verify:
   TR4 specs above.
 - [ ] **TR5. Worlds.** `ENDLESS_TREASURE_CONFIG` on endless; the dev override and `KV_TreasureDebug`. Re-record and check
