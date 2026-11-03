@@ -106,8 +106,8 @@ function estimates(uiScale: number, compact: boolean): ReadonlyMap<string, Estim
 	out.set("mainMenu", {
 		w: compact ? MENU_FIT.mainCompactWidth : MENU_VIEW.mainWidth,
 		h: compact
-			? column([big, BUTTON, BUTTON, BUTTON, TWO_SMALL_LINES], BIG, uiScale)
-			: column([big, BUTTON, BUTTON, BUTTON, TWO_SMALL_LINES, BUTTON, BUTTON, BUTTON], BIG, uiScale),
+			? column([big, BUTTON, BUTTON, BUTTON, TWO_SMALL_LINES], BIG, uiScale) // Credits beside the invite reason
+			: column([big, BUTTON, BUTTON, BUTTON, TWO_SMALL_LINES, BUTTON, BUTTON, BUTTON, BUTTON], BIG, uiScale),
 		ornament: true,
 	});
 	// Solo pause on touch: title, five buttons, the divider, the info line (two lines); no key hints.
@@ -201,6 +201,13 @@ function estimates(uiScale: number, compact: boolean): ReadonlyMap<string, Estim
 	});
 	// Ten rows on the board.
 	const board = math.min(LEADERBOARD_VIEW.listHeight, 10 * (LEADERBOARD_VIEW.rowHeight + HUD_VIEW.gap));
+	// Credits: title, the list, Back, the back hint (none on touch).
+	out.set("credits", {
+		w: MENU_VIEW.creditsWidth,
+		h: column([title, MENU_VIEW.listHeight, MENU_VIEW.smallButton.y], BIG, uiScale),
+		ornament: false,
+		flex: { min: MENU_FIT.listMin, max: MENU_VIEW.listHeight },
+	});
 	out.set("leaderboard", {
 		w: LEADERBOARD_VIEW.width,
 		h: column([title, BUTTON, LINE(HUD_VIEW.smallText), board, LINE(HUD_VIEW.smallText), BUTTON], BIG, uiScale),
@@ -255,6 +262,7 @@ const SCREENS = [
 	"runOver",
 	"options",
 	"lobbyBrowser",
+	"credits",
 	"lobbyRoom",
 	"lobbyRoomInviting",
 	"tutorialOutro",

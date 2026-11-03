@@ -12,6 +12,7 @@ import { MENU_STRINGS } from "./strings";
 export type UiScreen =
 	| "mainMenu"
 	| "lobbyBrowser"
+	| "credits"
 	| "lobbyRoom"
 	| "lobbyInvites"
 	| "inviteToast"
@@ -49,6 +50,7 @@ const HUD: UiScreenSkin = { skin: "hud", ornament: false, dividers: false };
 export const UI_SCREEN_SKINS: Readonly<Record<UiScreen, UiScreenSkin>> = {
 	mainMenu: { skin: "menu", ornament: true, dividers: false },
 	lobbyBrowser: MENU,
+	credits: MENU,
 	lobbyRoom: MENU,
 	lobbyInvites: { skin: "list", ornament: false, dividers: false },
 	inviteToast: HUD,

@@ -19,8 +19,6 @@ export interface DecorDepthBand {
 	readonly flatShare: number;
 	/** Share of legal `column` / tall `pillar` spots drawn as the broken stump `columnBroken` (Lords of Pain column2). */
 	readonly columnBrokenShare: number;
-	/** Share of far-wall segments drawn broken (`wallBroken`, wall3) instead of whole (`wall`, wall2). */
-	readonly wallBrokenShare: number;
 	/** Weight of the clutter kinds (bones, debris: rocks / bricks) against the other flat kinds when a room is thinned. */
 	readonly clutterWeight: number;
 	/** Share of wall torches that start lit. */
@@ -41,7 +39,6 @@ export const DECOR_DEPTH = {
 			fromFloor: 1,
 			flatShare: 0.2,
 			columnBrokenShare: 0,
-			wallBrokenShare: 0,
 			clutterWeight: 1,
 			litTorchShare: 1,
 			light: 1,
@@ -51,7 +48,6 @@ export const DECOR_DEPTH = {
 			fromFloor: 5,
 			flatShare: 0.28,
 			columnBrokenShare: 0.3,
-			wallBrokenShare: 0.4,
 			clutterWeight: 1.3,
 			litTorchShare: 0.85,
 			light: 0.9,
@@ -61,7 +57,6 @@ export const DECOR_DEPTH = {
 			fromFloor: 10,
 			flatShare: 0.34,
 			columnBrokenShare: 0.6,
-			wallBrokenShare: 0.7,
 			clutterWeight: 1.7,
 			litTorchShare: 0.65,
 			light: 0.8,
@@ -71,7 +66,6 @@ export const DECOR_DEPTH = {
 			fromFloor: 15,
 			flatShare: 0.4,
 			columnBrokenShare: 0.85,
-			wallBrokenShare: 1,
 			clutterWeight: 2,
 			litTorchShare: 0.45,
 			light: 0.7,
@@ -104,10 +98,8 @@ export const DECOR_CLEAR = {
 
 /** Far-wall dressing (docs/DECOR.md R6): wall segments on straight far-wall runs, columns at corners and jambs. */
 export const DECOR_DRESSING = {
-	/** A far-wall run this many tiles long or more gets wall segments; shorter runs get a column or nothing. */
+	/** A far-wall run shorter than this gets a column in its middle (no wall segments on any run: not decoration). */
 	minRunTiles: 4,
-	/** Wall cells one segment covers (Lords of Pain wall2 / wall3 are about 4 tiles long). */
-	segmentTiles: 4,
 } as const;
 
 /** Placement details of the port (where pieces sit on their cell). */
@@ -124,6 +116,36 @@ export const DECOR_SALT = {
 	variant: 0x1b873593,
 	flat: 0x2c1b3c6d,
 	column: 0x297a2d39,
-	wall: 0x6b43a9b5,
 	torch: 0x3d4d51cb,
+	scatterRoom: 0x5bd1e995,
+	scatterCell: 0x68e31da4,
+	banner: 0x1b56c4e9,
+} as const;
+
+/**
+ * Room banners (docs/DECOR.md "Solid decor": banners on room walls like Diablo's): besides the Forge's, each room hangs
+ * up to `perRoom` banners on its far-wall faces (the ones the camera sees), on cells no other wall piece or tall piece
+ * holds, at least `spacingTiles` (Chebyshev) from every wall piece, lowest cell hash first; only when the pack has
+ * banner art. Never in the boss room.
+ */
+export const DECOR_BANNERS = {
+	perRoom: 2,
+	spacingTiles: 3,
+} as const;
+
+/**
+ * Scattered pieces (docs/DECOR.md "3D kits"): decor kinds no Forge piece places, laid by the decor plan itself on open
+ * floor, at most one per room, only when the pack has art for the kind. The fallen chandelier: about a third of the
+ * rooms big enough for it, never the boss room, a few per floor.
+ */
+export const DECOR_SCATTER = {
+	kinds: ["chandelier"],
+	/** Share of eligible rooms that get one (by room hash). */
+	roomShare: 0.35,
+	/** A room needs at least this many floor tiles. */
+	minRoomTiles: 40,
+	/** Every cell within this many tiles (Chebyshev) of the spot is floor: the art never lies over a wall or pool. */
+	clearTiles: 1,
+	/** At most this many per floor (rooms in index order). */
+	maxPerFloor: 4,
 } as const;

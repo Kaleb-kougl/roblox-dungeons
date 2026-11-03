@@ -1,0 +1,498 @@
+/**
+ * Kaleb-Vale (not in the original Dungeon Forge): solid decor and room themes, Diablo-style dressing that is also
+ * gameplay (docs/DECOR.md "Solid decor" and "Room themes"). With ForgeParams.solidDecor, after all decoration and solid
+ * pillars, every room draws a theme and its set pieces' cells become WALL: they block movement, bullets and sight like
+ * any wall, and the decor plan draws their art on them instead of a wall block.
+ *
+ *   boss       "throne": the throne on its dais (4 x 2) against a far wall, as centred as it gets at least
+ *              centreDoorTiles from the doors, a candle stand each side of it, a 2-wide red carpet (flat, walkable:
+ *              Dungeon.carpets) up to 16 tiles from the dais toward the arena, candle pairs along the carpet outside the arena's middle, and a brazier each side of every
+ *              doorway, inside.
+ *   shrine     "shrine": the statue on its round base (3 x 3) against a far wall, clear of the shrine, candles each
+ *              side.
+ *   entrance   "entrance": a brazier each side of every doorway, inside.
+ *   combat /   one of (themeWeights; graveyard rooms are always crypts, frozen-lake rooms are left bare):
+ *   elite        crypt   3-4 tombs (2 x 1; 5-6 in big rooms) lying along the walls, each with a candle stand at one or both ends, and
+ *                        in big rooms maybe one free-standing tomb in the middle, candles past both ends;
+ *                hall    candle stands lining the walls every few tiles, and in big rooms maybe a statue on a far wall;
+ *                store   nothing solid: the breakables cluster in its corners (breakables.ts);
+ *                plain   maybe one tomb along a wall, and in big rooms maybe a free-standing one.
+ *
+ * Every piece against a wall sits flush with it (all cells behind its back row are non-floor) and keeps every cell
+ * within clearTiles of its open sides floor of its room (past its ends the back line may be wall too, where the wall
+ * curves or steps: the piece then touches it), so it only ever widens the wall: paths beside and in front stay at
+ * least two tiles wide. Free-standing pieces keep the ring on every side. Nothing stands within doorTiles of a
+ * doorway except the door braziers, which flank the opening in the wall's own row. The caller re-floods and takes every
+ * piece back if the floor ever split (the spec checks it never does on the census floors).
+ *
+ * Its own stream (makeRng(seed ^ SOLID_DECOR.salt)), so the main stream, and with it every room, corridor, prop,
+ * spawn, torch, pool and the name, are exactly the option-off floor's. Rooms in id order.
+ */
+import { makeRng, type Rng } from "./rng";
+import { RoomType, TileType, type Room } from "./types";
+
+export type SolidDecorKind = "tomb" | "candelabrum" | "throne" | "statue" | "brazier";
+
+/** A room's dressing theme (Dungeon.roomThemes, by room id). "none": treasure rooms, lakes, option off. */
+export type RoomTheme = "none" | "entrance" | "throne" | "shrine" | "crypt" | "hall" | "store" | "plain";
+
+/** One solid decor piece: its kind and its cells (x .. x + w - 1, y .. y + h - 1), all WALL on the floor. */
+export interface SolidDecorPiece {
+	readonly kind: SolidDecorKind;
+	readonly x: number;
+	readonly y: number;
+	readonly w: number;
+	readonly h: number;
+	readonly room: number;
+	/** Facing into the room for a piece against a wall ((1, 0) / (0, 1) on far walls, negative on near walls), else 0. */
+	readonly fx: number;
+	readonly fz: number;
+}
+
+/** A carpet run (flat, walkable): its cells, laid as 2 x 2 segments from the throne along (fx, fz), the last the end. */
+export interface DecorCarpet {
+	readonly x: number;
+	readonly y: number;
+	readonly w: number;
+	readonly h: number;
+	readonly fx: number;
+	readonly fz: number;
+	readonly room: number;
+}
+
+export interface SolidDecorLayout {
+	readonly pieces: SolidDecorPiece[];
+	readonly carpets: DecorCarpet[];
+	/** By room id. */
+	readonly themes: RoomTheme[];
+}
+
+export const SOLID_DECOR = {
+	salt: 0x7f4a7c15,
+	/** Random spots tried per free-standing cluster. */
+	tries: 24,
+	/** Every cell within this many tiles of a piece's open sides is floor of its room. */
+	clearTiles: 2,
+	/** No piece cell within this many tiles of a doorway (door braziers excepted). */
+	doorTiles: 3,
+	/** A throne or a statue goes to the most centred wall spot at least this far from every doorway (if any). */
+	centreDoorTiles: 6,
+	/** Rooms with at least this many floor tiles are big: a free-standing tomb, a hall's statue. */
+	bigRoomTiles: 320,
+	/** The tomb's length; a free-standing tomb's candles stand candleGap cells of floor past each end. */
+	tombLength: 2,
+	candleGap: 1,
+	/** Every cell within this many tiles of a free-standing candle is floor of its room (but its own tomb's). */
+	candleClearTiles: 2,
+	/** Combat / elite room themes by biome (grim favours crypts). */
+	themeWeights: {
+		grim: { crypt: 0.45, hall: 0.2, store: 0.15, plain: 0.2 },
+		other: { crypt: 0.2, hall: 0.25, store: 0.25, plain: 0.3 },
+	},
+	crypt: { tombsMin: 3, tombsMax: 4, bigExtra: 2, bothCandles: 0.5, centreShare: 0.5 },
+	plain: { wallShare: 0.55, centreShare: 0.3 },
+	hall: { candleSpacing: 5, maxCandles: 16, statueShare: 0.5 },
+	throne: { length: 4, depth: 2, carpetWidth: 2, carpetMaxSegments: 8, candleRowStep: 5, arenaClear: 7 },
+	statue: { size: 3, shrineClear: 3 },
+} as const;
+
+const { FLOOR } = TileType;
+const WALL = TileType.WALL;
+
+/** A wall-attached spot: the rect and its facing. */
+interface Spot {
+	readonly x: number;
+	readonly y: number;
+	readonly w: number;
+	readonly h: number;
+	readonly fx: number;
+	readonly fz: number;
+}
+
+const FACES_FAR: ReadonlyArray<readonly [number, number]> = [
+	[1, 0],
+	[0, 1],
+];
+const FACES_ALL: ReadonlyArray<readonly [number, number]> = [
+	[1, 0],
+	[0, 1],
+	[-1, 0],
+	[0, -1],
+];
+
+/**
+ * Places the solid decor and room themes, writing WALL into `grid` for every piece (see the file comment). `grid`,
+ * `roomId` and `doorway` are the Forge's arrays (y * W + x).
+ */
+export function placeSolidDecor(
+	seed: number,
+	W: number,
+	H: number,
+	grid: number[],
+	roomId: ReadonlyArray<number>,
+	doorway: ReadonlyArray<number>,
+	rooms: ReadonlyArray<Room>,
+	grim: boolean,
+	boss: number,
+): SolidDecorLayout {
+	const rng = makeRng((seed ^ SOLID_DECOR.salt) >>> 0);
+	const pieces: SolidDecorPiece[] = [];
+	const carpets: DecorCarpet[] = [];
+	const themes = new Array<RoomTheme>(rooms.size(), "none");
+	const inB = (x: number, y: number) => x >= 0 && y >= 0 && x < W && y < H;
+	const floorOf = (x: number, y: number, rid: number) =>
+		inB(x, y) && grid[y * W + x] === FLOOR && roomId[y * W + x] === rid;
+	const solid = (x: number, y: number) => !inB(x, y) || grid[y * W + x] !== FLOOR;
+	/** Every cell of x0..x1, y0..y1 is floor of room `rid`. */
+	const allFloor = (x0: number, y0: number, x1: number, y1: number, rid: number) => {
+		for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) if (!floorOf(x, y, rid)) return false;
+		return true;
+	};
+	const doorDist = (x0: number, y0: number, x1: number, y1: number, r: number) => {
+		for (let d = 0; d <= r; d++)
+			for (let y = y0 - d; y <= y1 + d; y++)
+				for (let x = x0 - d; x <= x1 + d; x++) if (inB(x, y) && doorway[y * W + x] !== 0) return d;
+		return r + 1;
+	};
+	const wall = (kind: SolidDecorKind, s: Spot, rid: number) => {
+		for (let yy = s.y; yy < s.y + s.h; yy++) for (let xx = s.x; xx < s.x + s.w; xx++) grid[yy * W + xx] = WALL;
+		pieces.push({ kind, x: s.x, y: s.y, w: s.w, h: s.h, room: rid, fx: s.fx, fz: s.fz });
+	};
+	/** The spot with its back row flush against a wall: `len` cells along the wall, `depth` into the room. */
+	const spotAt = (x: number, y: number, len: number, depth: number, fx: number, fz: number): Spot =>
+		fx !== 0 ? { x, y, w: depth, h: len, fx, fz } : { x, y, w: len, h: depth, fx, fz };
+	/** Every cell behind the spot's back row is solid (it stands flush), and the open sides keep `clear` of floor. */
+	const flushOk = (s: Spot, clear: number, rid: number, doorR: number) => {
+		const x1 = s.x + s.w - 1;
+		const y1 = s.y + s.h - 1;
+		if (s.fx === 1) {
+			for (let y = s.y; y <= y1; y++) if (!solid(s.x - 1, y)) return false;
+		} else if (s.fx === -1) {
+			for (let y = s.y; y <= y1; y++) if (!solid(x1 + 1, y)) return false;
+		} else if (s.fz === 1) {
+			for (let x = s.x; x <= x1; x++) if (!solid(x, s.y - 1)) return false;
+		} else {
+			for (let x = s.x; x <= x1; x++) if (!solid(x, y1 + 1)) return false;
+		}
+		const xa = s.fx === 1 ? s.x : s.x - clear;
+		const xb = s.fx === -1 ? x1 : x1 + clear;
+		const ya = s.fz === 1 ? s.y : s.y - clear;
+		const yb = s.fz === -1 ? y1 : y1 + clear;
+		for (let y = ya; y <= yb; y++)
+			for (let x = xa; x <= xb; x++) {
+				if (floorOf(x, y, rid)) continue;
+				// past the ends, the back line may be wall (a curved or stepped wall): the piece touches it, no gap
+				const inSpan = x >= s.x && x <= x1 && y >= s.y && y <= y1;
+				const backLine =
+					(s.fx === 1 && x === s.x) ||
+					(s.fx === -1 && x === x1) ||
+					(s.fz === 1 && y === s.y) ||
+					(s.fz === -1 && y === y1);
+				if (inSpan || !backLine) return false;
+				// ... but only as one solid run from the piece's end: floor between them would be a one-tile pinch
+				if (s.fx !== 0) {
+					const from = y < s.y ? y + 1 : y1 + 1;
+					const to = y < s.y ? s.y - 1 : y - 1;
+					for (let yy = from; yy <= to; yy++) if (floorOf(x, yy, rid)) return false;
+				} else {
+					const from = x < s.x ? x + 1 : x1 + 1;
+					const to = x < s.x ? s.x - 1 : x - 1;
+					for (let xx = from; xx <= to; xx++) if (floorOf(xx, y, rid)) return false;
+				}
+			}
+		return doorR < 0 || doorDist(s.x, s.y, x1, y1, doorR) > doorR;
+	};
+	/** Every wall-attached spot of a room for a len x depth piece facing one of `faces`, in cell order. */
+	const spotsOf = (
+		r: Room,
+		len: number,
+		depth: number,
+		faces: ReadonlyArray<readonly [number, number]>,
+		clear: number,
+	): Spot[] => {
+		const out: Spot[] = [];
+		const x0 = math.ceil(r.cx - r.w / 2) - 1;
+		const x1 = math.floor(r.cx + r.w / 2) + 1;
+		const y0 = math.ceil(r.cy - r.h / 2) - 1;
+		const y1 = math.floor(r.cy + r.h / 2) + 1;
+		for (let y = y0; y <= y1; y++)
+			for (let x = x0; x <= x1; x++)
+				for (const [fx, fz] of faces) {
+					const s = spotAt(x, y, len, depth, fx, fz);
+					if (flushOk(s, clear, r.id, SOLID_DECOR.doorTiles)) out.push(s);
+				}
+		return out;
+	};
+	/** The cell `along` cells along the wall from the spot's first back cell (negative: before it), in its back row. */
+	const alongCell = (s: Spot, along: number): readonly [number, number] => {
+		const bx = s.fx === -1 ? s.x + s.w - 1 : s.x;
+		const by = s.fz === -1 ? s.y + s.h - 1 : s.y;
+		return s.fx !== 0 ? [bx, s.y + along] : [s.x + along, by];
+	};
+	/**
+	 * The candle stands flush against the same wall beside a piece, at each `along` that fits: checked BEFORE the piece
+	 * is walled (its cells still floor), with the full clearance on the candle's own open sides, so the candle touches
+	 * the piece and leaves no pinch anywhere else.
+	 */
+	const flankSpots = (s: Spot, alongs: ReadonlyArray<number>, rid: number): Spot[] => {
+		const out: Spot[] = [];
+		for (const along of alongs) {
+			const [cx, cy] = alongCell(s, along);
+			const c = spotAt(cx, cy, 1, 1, s.fx, s.fz);
+			if (flushOk(c, SOLID_DECOR.clearTiles, rid, SOLID_DECOR.doorTiles)) out.push(c);
+		}
+		return out;
+	};
+	const placeFlanks = (spots: Spot[], rid: number) => {
+		for (const c of spots) wall("candelabrum", c, rid);
+	};
+	/**
+	 * The wall spot best centred on its wall's middle among those at least centreDoorTiles from every doorway (else
+	 * the one farthest from the doors), first in cell order on ties (deterministic).
+	 */
+	const centredSpot = (r: Room, spots: Spot[], minFromCentre: number): Spot | undefined => {
+		const want = SOLID_DECOR.centreDoorTiles;
+		let best: Spot | undefined;
+		let bestScore = -math.huge;
+		for (const s of spots) {
+			const midX = s.x + (s.w - 1) / 2;
+			const midY = s.y + (s.h - 1) / 2;
+			const fromCentre = math.max(math.abs(midX - r.cx), math.abs(midY - r.cy));
+			if (fromCentre < minFromCentre) continue;
+			const off = s.fx !== 0 ? math.abs(midY - r.cy) : math.abs(midX - r.cx);
+			const door = doorDist(s.x, s.y, s.x + s.w - 1, s.y + s.h - 1, want);
+			// far enough from the doors: as centred as it gets; else the farther from the doors, the better
+			const score = door > want ? 1000 - off : door * 10 - off;
+			if (score > bestScore) {
+				bestScore = score;
+				best = s;
+			}
+		}
+		return best;
+	};
+	/** A free-standing tomb with candles past both ends (the first solid decor rule), somewhere in the room. */
+	const centreTomb = (r: Room) => {
+		const L = SOLID_DECOR.tombLength;
+		const ct = SOLID_DECOR.clearTiles;
+		const alongX = rng.chance(0.5);
+		const w = alongX ? L : 1;
+		const h = alongX ? 1 : L;
+		const xMin = math.ceil(r.cx - r.w / 2) + ct;
+		const xMax = math.floor(r.cx + r.w / 2) - ct - (w - 1);
+		const yMin = math.ceil(r.cy - r.h / 2) + ct;
+		const yMax = math.floor(r.cy + r.h / 2) - ct - (h - 1);
+		if (xMax < xMin || yMax < yMin) return;
+		const step = SOLID_DECOR.candleGap + 1;
+		for (let t = 0; t < SOLID_DECOR.tries; t++) {
+			const x = rng.i(xMin, xMax);
+			const y = rng.i(yMin, yMax);
+			if (!allFloor(x - ct, y - ct, x + w - 1 + ct, y + h - 1 + ct, r.id)) continue;
+			if (doorDist(x, y, x + w - 1, y + h - 1, SOLID_DECOR.doorTiles) <= SOLID_DECOR.doorTiles) continue;
+			wall("tomb", { x, y, w, h, fx: 0, fz: 0 }, r.id);
+			const ends = alongX
+				? [
+						[x - step, y],
+						[x + w - 1 + step, y],
+				  ]
+				: [
+						[x, y - step],
+						[x, y + h - 1 + step],
+				  ];
+			const cr = SOLID_DECOR.candleClearTiles;
+			const ownTomb = (xx: number, yy: number) => xx >= x && xx < x + w && yy >= y && yy < y + h;
+			for (const [cx, cy] of ends) {
+				let ok = doorDist(cx, cy, cx, cy, SOLID_DECOR.doorTiles) > SOLID_DECOR.doorTiles;
+				for (let yy = cy - cr; yy <= cy + cr && ok; yy++)
+					for (let xx = cx - cr; xx <= cx + cr && ok; xx++)
+						if (!floorOf(xx, yy, r.id) && !ownTomb(xx, yy)) ok = false;
+				if (ok) wall("candelabrum", { x: cx, y: cy, w: 1, h: 1, fx: 0, fz: 0 }, r.id);
+			}
+			return;
+		}
+	};
+	/** A tomb lying along a wall (random spot), with a candle stand at one or both ends. */
+	const wallTomb = (r: Room, bothShare: number): boolean => {
+		const spots = spotsOf(r, SOLID_DECOR.tombLength, 1, FACES_ALL, SOLID_DECOR.clearTiles);
+		if (spots.size() === 0) return false;
+		const s = rng.pick(spots);
+		const both = rng.chance(bothShare);
+		const first = rng.chance(0.5);
+		const alongs: number[] = [];
+		if (both || first) alongs.push(-1);
+		if (both || !first) alongs.push(SOLID_DECOR.tombLength);
+		const flanks = flankSpots(s, alongs, r.id);
+		wall("tomb", s, r.id);
+		placeFlanks(flanks, r.id);
+		return true;
+	};
+	/** The statue on its base against a far wall, best centred, candles each side; false when nothing fits. */
+	const statue = (r: Room, minFromCentre: number): boolean => {
+		const n = SOLID_DECOR.statue.size;
+		const s = centredSpot(r, spotsOf(r, n, n, FACES_FAR, SOLID_DECOR.clearTiles), minFromCentre);
+		if (s === undefined) return false;
+		const flanks = flankSpots(s, [-1, n], r.id);
+		wall("statue", s, r.id);
+		placeFlanks(flanks, r.id);
+		return true;
+	};
+	/** A brazier each side of every doorway of the room, flush with the wall beside the opening. */
+	const doorBraziers = (r: Room) => {
+		const taken = new Set<number>();
+		const x0 = math.ceil(r.cx - r.w / 2) - 1;
+		const x1 = math.floor(r.cx + r.w / 2) + 1;
+		const y0 = math.ceil(r.cy - r.h / 2) - 1;
+		const y1 = math.floor(r.cy + r.h / 2) + 1;
+		for (let y = y0; y <= y1; y++)
+			for (let x = x0; x <= x1; x++) {
+				if (!floorOf(x, y, r.id)) continue;
+				for (const [ox, oy] of FACES_ALL) {
+					// (x, y) is a threshold cell when the cell outward is a doorway
+					const dx = x + ox;
+					const dy = y + oy;
+					if (!inB(dx, dy) || doorway[dy * W + dx] === 0) continue;
+					for (const side of [-1, 1]) {
+						const bx = x + side * oy;
+						const by = y + side * ox;
+						const key = by * W + bx;
+						if (taken.has(key) || !floorOf(bx, by, r.id)) continue;
+						// flush: the cell outward of it is wall (not the opening), and it is no threshold itself
+						const wx = bx + ox;
+						const wy = by + oy;
+						if (!solid(wx, wy) || (inB(wx, wy) && doorway[wy * W + wx] !== 0)) continue;
+						let threshold = false;
+						for (const [px, py] of FACES_ALL) {
+							const nx = bx + px;
+							const ny = by + py;
+							if (inB(nx, ny) && doorway[ny * W + nx] !== 0) threshold = true;
+						}
+						if (threshold) continue;
+						// the room side of it stays floor (no pinch against another piece or a jog of the wall)
+						const s = spotAt(bx, by, 1, 1, ox === 0 ? 0 : -ox, oy === 0 ? 0 : -oy);
+						if (!flushOk(s, SOLID_DECOR.clearTiles, r.id, -1)) continue;
+						taken.add(key);
+						wall("brazier", s, r.id);
+					}
+				}
+			}
+	};
+	/** The boss room's throne, carpet and candles; false when no wall spot fits. */
+	const throne = (r: Room): boolean => {
+		const T = SOLID_DECOR.throne;
+		const s = centredSpot(r, spotsOf(r, T.length, T.depth, FACES_FAR, SOLID_DECOR.clearTiles), T.arenaClear);
+		if (s === undefined) return false;
+		const flanks = flankSpots(s, [-1, T.length], r.id);
+		wall("throne", s, r.id);
+		placeFlanks(flanks, r.id);
+		// the carpet: 2 x 2 segments from the dais front along the facing, while the floor holds and a row is left
+		const off = (T.length - T.carpetWidth) / 2;
+		const [ax, ay] = alongCell(s, off);
+		// first carpet cell: the dais front row + 1
+		const fx0 = ax + s.fx * T.depth;
+		const fy0 = ay + s.fz * T.depth;
+		let segs = 0;
+		while (segs < T.carpetMaxSegments) {
+			let ok = true;
+			for (let d = 0; d < 2 + 2 && ok; d++)
+				for (let a = 0; a < T.carpetWidth && ok; a++) {
+					const k = segs * 2 + d;
+					const cx = fx0 + s.fx * k + (s.fx !== 0 ? 0 : a);
+					const cy = fy0 + s.fz * k + (s.fx !== 0 ? a : 0);
+					// the segment's two rows are floor, and so are the two rows past it (a row of floor at the end)
+					if (!floorOf(cx, cy, r.id)) ok = false;
+				}
+			if (!ok) break;
+			segs++;
+		}
+		if (segs > 0) {
+			const len = segs * 2;
+			const cx0 = s.fx === -1 ? fx0 - (len - 1) : fx0;
+			const cy0 = s.fz === -1 ? fy0 - (len - 1) : fy0;
+			const w = s.fx !== 0 ? len : T.carpetWidth;
+			const h = s.fx !== 0 ? T.carpetWidth : len;
+			carpets.push({ x: cx0, y: cy0, w, h, fx: s.fx, fz: s.fz, room: r.id });
+			// candle pairs one cell outside the carpet's edges, every candleRowStep rows, outside the arena's middle
+			for (let k = T.candleRowStep - T.depth; k < len; k += T.candleRowStep) {
+				for (const a of [-2, T.carpetWidth + 1]) {
+					const cx = fx0 + s.fx * k + (s.fx !== 0 ? 0 : a);
+					const cy = fy0 + s.fz * k + (s.fx !== 0 ? a : 0);
+					if (math.max(math.abs(cx - r.cx), math.abs(cy - r.cy)) < T.arenaClear) continue;
+					const cr = SOLID_DECOR.clearTiles;
+					if (!allFloor(cx - cr, cy - cr, cx + cr, cy + cr, r.id)) continue;
+					if (doorDist(cx, cy, cx, cy, SOLID_DECOR.doorTiles) <= SOLID_DECOR.doorTiles) continue;
+					wall("candelabrum", { x: cx, y: cy, w: 1, h: 1, fx: 0, fz: 0 }, r.id);
+				}
+			}
+		}
+		return true;
+	};
+	/** Candle stands flush against the walls, at least candleSpacing apart, in cell order. */
+	const hallCandles = (r: Room) => {
+		const H2 = SOLID_DECOR.hall;
+		const placed: Array<readonly [number, number]> = [];
+		for (const s of spotsOf(r, 1, 1, FACES_ALL, SOLID_DECOR.clearTiles)) {
+			if (placed.size() >= H2.maxCandles) break;
+			if (!flushOk(s, SOLID_DECOR.clearTiles, r.id, SOLID_DECOR.doorTiles)) continue;
+			let near = false;
+			for (const [px, py] of placed)
+				if (math.max(math.abs(px - s.x), math.abs(py - s.y)) < H2.candleSpacing) near = true;
+			if (near) continue;
+			wall("candelabrum", s, r.id);
+			placed.push([s.x, s.y]);
+		}
+	};
+
+	const area = new Array<number>(rooms.size(), 0);
+	for (let c = 0; c < W * H; c++) {
+		const rid = roomId[c];
+		if (rid >= 0 && rid < rooms.size() && grid[c] === FLOOR) area[rid]++;
+	}
+	const weights = grim ? SOLID_DECOR.themeWeights.grim : SOLID_DECOR.themeWeights.other;
+	for (const r of rooms) {
+		const big = area[r.id] >= SOLID_DECOR.bigRoomTiles;
+		if (r.lake === true) continue;
+		if (r.id === boss || r.type === RoomType.BOSS) {
+			themes[r.id] = "throne";
+			throne(r);
+			doorBraziers(r);
+			continue;
+		}
+		if (r.type === RoomType.ENTRANCE) {
+			themes[r.id] = "entrance";
+			doorBraziers(r);
+			continue;
+		}
+		if (r.type === RoomType.SHRINE) {
+			themes[r.id] = "shrine";
+			statue(r, SOLID_DECOR.statue.shrineClear + 1);
+			continue;
+		}
+		if (r.type !== RoomType.COMBAT && r.type !== RoomType.ELITE) continue;
+		const theme = r.grave === true ? "crypt" : pickTheme(rng, weights);
+		themes[r.id] = theme;
+		if (theme === "crypt") {
+			const C = SOLID_DECOR.crypt;
+			const n = rng.i(C.tombsMin, C.tombsMax) + (big ? C.bigExtra : 0);
+			for (let k = 0; k < n; k++) if (!wallTomb(r, C.bothCandles)) break;
+			if (big && rng.chance(C.centreShare)) centreTomb(r);
+		} else if (theme === "hall") {
+			if (big && rng.chance(SOLID_DECOR.hall.statueShare)) statue(r, 0);
+			hallCandles(r);
+		} else if (theme === "plain") {
+			const P = SOLID_DECOR.plain;
+			if (rng.chance(P.wallShare)) wallTomb(r, 0);
+			if (big && rng.chance(P.centreShare)) centreTomb(r);
+		}
+	}
+	return { pieces, carpets, themes };
+}
+
+function pickTheme(
+	rng: Rng,
+	w: { readonly crypt: number; readonly hall: number; readonly store: number; readonly plain: number },
+): RoomTheme {
+	const t = rng.f(0, w.crypt + w.hall + w.store + w.plain);
+	if (t < w.crypt) return "crypt";
+	if (t < w.crypt + w.hall) return "hall";
+	if (t < w.crypt + w.hall + w.store) return "store";
+	return "plain";
+}

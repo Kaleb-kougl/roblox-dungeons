@@ -126,6 +126,7 @@ export class HudController implements OnStart {
 			openLobbyRoom: click(() => this.menu.openLobbyRoom()),
 			openOptions: click(() => this.menu.openOptions()),
 			openLeaderboard: click(() => this.menu.openLeaderboard()),
+			openCredits: click(() => this.menu.openCredits()),
 			inviteFriends: click(() => this.menu.inviteFriends()),
 			playTutorial: click(() => this.tutorial.playTutorial("menu")),
 			back: click(() => this.menu.back()),

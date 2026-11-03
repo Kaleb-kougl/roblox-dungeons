@@ -183,6 +183,11 @@ export class MenuController implements OnStart {
 		this.leaderboard.setOpen(true);
 	}
 
+	/** Credits: a menu screen over the main menu (Back returns to it). */
+	openCredits(): void {
+		clientStore.menuNav({ kind: "open", screen: "credits" });
+	}
+
 	back(): void {
 		clientStore.menuNav({ kind: "back" });
 	}

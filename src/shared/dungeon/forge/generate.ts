@@ -19,6 +19,7 @@ import { hypot2, jsRound, stableSort, u32, imul, jsRem } from "shared/jsmath";
 import { chainGraph, validateChain, type ForgeGraph } from "./chain";
 import { delaunay } from "./delaunay";
 import { makeRng, type Rng } from "./rng";
+import { placeSolidDecor, type DecorCarpet, type RoomTheme, type SolidDecorPiece } from "./solidDecor";
 import { THEMES, resolveAutoTheme, type ForgeTheme } from "./themes";
 import { dcos, dsin } from "./trig";
 import {
@@ -1245,8 +1246,8 @@ export function tryGenerate(seed: number, params: ForgeParams): Dungeon | undefi
 	   is still re-derived from the new BFS (a false here would be a generator bug: generateDungeon rerolls on it).
 	   No torch sits on a pillar (torches are placed on the walls of the option-off grid); a flat prop could in theory
 	   share a pillar's cell (verdant breach moss does not check occupancy), none does in 300 endless floors. */
+	let walled = 0;
 	if (p.solidPillars === true) {
-		let walled = 0;
 		for (const pr of props) {
 			if (pr.kind !== "pillar") continue;
 			const c = idx(pr.x, pr.y);
@@ -1254,14 +1255,39 @@ export function tryGenerate(seed: number, params: ForgeParams): Dungeon | undefi
 			grid[c] = WALL;
 			walled++;
 		}
-		if (walled > 0) {
-			for (let i = 0; i < total; i++) bfs[i] = -1;
-			const f2 = floodFloor(grid, W, ei, bfs);
-			floorTotal = f2.floorTotal;
-			reach = f2.reach;
-			maxBfs = f2.maxBfs;
-			valid = valid && reach === floorTotal && floorTotal > 0;
+	}
+
+	/* -- 9. Kaleb-Vale solidDecor (not in the original; ./solidDecor.ts) --
+	   After solid pillars, from its own stream: room themes, and their set pieces (thrones, statues, tombs, candle
+	   stands, door braziers) become WALL. They stand flush with walls or keep a clearance ring, so the floor stays in
+	   one piece; if a re-flood ever finds otherwise, the pieces are taken back (the floor is then exactly the
+	   option-off one), so they never cost a reroll. */
+	let solidDecor: SolidDecorPiece[] = [];
+	let carpets: DecorCarpet[] = [];
+	let roomThemes: RoomTheme[] = [];
+	if (p.solidDecor === true) {
+		const before = [...grid];
+		const laid = placeSolidDecor(seed, W, H, grid, roomId, doorway, rooms, p.themeKey === "grim", boss);
+		solidDecor = laid.pieces;
+		carpets = laid.carpets;
+		roomThemes = laid.themes;
+		if (solidDecor.size() > 0) {
+			const probe = new Array<number>(total, -1);
+			const f3 = floodFloor(grid, W, ei, probe);
+			if (f3.reach !== f3.floorTotal) {
+				for (let i = 0; i < total; i++) grid[i] = before[i];
+				solidDecor = [];
+				carpets = [];
+			} else walled += solidDecor.size();
 		}
+	}
+	if (walled > 0) {
+		for (let i = 0; i < total; i++) bfs[i] = -1;
+		const f2 = floodFloor(grid, W, ei, bfs);
+		floorTotal = f2.floorTotal;
+		reach = f2.reach;
+		maxBfs = f2.maxBfs;
+		valid = valid && reach === floorTotal && floorTotal > 0;
 	}
 	return {
 		valid,
@@ -1288,6 +1314,9 @@ export function tryGenerate(seed: number, params: ForgeParams): Dungeon | undefi
 		lakeCells,
 		lakeMask,
 		arches,
+		solidDecor,
+		carpets,
+		roomThemes,
 		stats: {
 			rooms: N,
 			edges: edges.size(),

@@ -1199,6 +1199,20 @@
 				"pivot": "run",
 				"outline": true
 			},
+			"wall1": {
+				"facings": { "count": 4, "zeroDeg": 45, "artOffsetDeg": 90 },
+				"animations": {
+					"idle": {
+						"file": "lords-of-pain/prop/wall1/{dir}/wall1_{dir}_{angle}_{f}.png",
+						"frames": [0],
+						"fps": 1,
+						"loop": true
+					}
+				},
+				"shadow": false,
+				"pivot": "run",
+				"outline": true
+			},
 			"wall3": {
 				"facings": { "count": 4, "zeroDeg": 45, "artOffsetDeg": 90 },
 				"animations": {
@@ -1261,16 +1275,100 @@
 			"mushrooms-nnw": { "file": "lords-of-pain/prop/mushrooms/NNW/mushrooms_NNW_112.5_0.png", "pivot": "center" },
 			"mushrooms-sw": { "file": "lords-of-pain/prop/mushrooms/SW/mushrooms_SW_225.0_0.png", "pivot": "center" },
 			"mushrooms-sse": { "file": "lords-of-pain/prop/mushrooms/SSE/mushrooms_SSE_292.5_0.png", "pivot": "center" },
-			"$comment-gems": "gems-blue / -green / -red / -white are UNUSED since docs/BOOST_ART.md decision 2 (gems leave the floor decor: a gem cluster on the floor always means a boost pickup; packs/vale/manifest.ts maps no decor ID onto them). Kept only so the uploaded decor-atlas.png does not repack and need a re-upload; delete them at the next decor atlas rebuild.",
-			"gems-blue": { "file": "lords-of-pain/prop/gemstones_blue/E/gemstones_blue_E_0.0_0.png", "pivot": "center" },
-			"gems-green": {
-				"file": "lords-of-pain/prop/gemstones_green/E/gemstones_green_E_0.0_0.png",
-				"pivot": "center"
+			"tiles": { "file": "lords-of-pain/prop/tiles/NE/tiles_NE_45.0_0.png", "pivot": "center" },
+			"$comment-kit": "Trial 3D kit (docs/DECOR.md \"3D kits\"): the Dungeon Essential Kit (Rakshaan, CC-BY 4.0, THIRD_PARTY_NOTICES.md) rendered from the game camera at this pack's scale by scripts/art/kit/render_kit.py into art/vendor/dungeon-essential-kit/. Each its own PNG (`own`), so the uploaded decor-atlas.png does not repack.",
+			"kit-cage-1": { "file": "dungeon-essential-kit/cage/cage_1.png", "pivot": "bottom", "outline": true, "own": "kit-cage-1" },
+			"kit-cage-2": { "file": "dungeon-essential-kit/cage/cage_2.png", "pivot": "bottom", "outline": true, "own": "kit-cage-2" },
+			"kit-chains-1": { "file": "dungeon-essential-kit/chains/chains_1.png", "pivot": "center", "own": "kit-chains-1" },
+			"kit-chains-2": { "file": "dungeon-essential-kit/chains/chains_2.png", "pivot": "center", "own": "kit-chains-2" },
+			"kit-chandelier-1": {
+				"file": "dungeon-essential-kit/chandelier/chandelier_1.png",
+				"pivot": "center",
+				"own": "kit-chandelier-1"
 			},
-			"gems-red": { "file": "lords-of-pain/prop/gemstones_red/E/gemstones_red_E_0.0_0.png", "pivot": "center" },
-			"gems-white": {
-				"file": "lords-of-pain/prop/gemstones_white/E/gemstones_white_E_0.0_0.png",
-				"pivot": "center"
+			"$comment-kit2": "Second trial 3D kit: the Dungeon Modular Set V2 (C. Anastasiadis, CC-BY 4.0) rendered by scripts/art/kit/render_kit.py into art/vendor/dungeon-modular-set-v2/: the candle stand and the sarcophagus (far-wall tops), the banner (wall faces, 4 facings as the torch: SE / SW shown, NE / NW copies). Own PNGs.",
+			"kit-candle-stand": {
+				"file": "dungeon-modular-set-v2/candle/candle_1.png",
+				"pivot": "bottom",
+				"outline": true,
+				"own": "kit-candle-stand"
+			},
+			"kit-sarcophagus": {
+				"file": "dungeon-modular-set-v2/sarco/sarco_1.png",
+				"pivot": "bottom",
+				"outline": true,
+				"own": "kit-sarcophagus"
+			},
+			"$comment-solid": "Solid decor (docs/DECOR.md \"Solid decor\"): the tomb at world scale along X and along Z, pivot = its footprint's centre on the floor (render_kit.py pivotOut).",
+			"kit-tomb-x": {
+				"file": "dungeon-modular-set-v2/tomb/tomb_x.png",
+				"pivot": [36.4, 39.99],
+				"outline": true,
+				"own": "kit-tomb-x"
+			},
+			"kit-tomb-z": {
+				"file": "dungeon-modular-set-v2/tomb/tomb_z.png",
+				"pivot": [36.4, 39.99],
+				"outline": true,
+				"own": "kit-tomb-z"
+			},
+			"$comment-themes": "Room themes (docs/DECOR.md \"Room themes\"): the throne on its dais and the statue on its base at world scale, facing +X (_x) and +Z (_z), pivot = the footprint's centre on the floor (render_kit.py pivotOut); the red carpet's 2 x 2 segment along X / Z and its end, flat, pivot = its centre.",
+			"kit-throne-x": {
+				"file": "dungeon-modular-set-v2/throne/throne_x.png",
+				"pivot": [73.08, 95.86],
+				"outline": true,
+				"own": "kit-throne-x"
+			},
+			"kit-throne-z": {
+				"file": "dungeon-modular-set-v2/throne/throne_z.png",
+				"pivot": [69.04, 95.83],
+				"outline": true,
+				"own": "kit-throne-z"
+			},
+			"kit-statue-x": {
+				"file": "dungeon-modular-set-v2/statue/statue_x.png",
+				"pivot": [48.83, 54.78],
+				"outline": true,
+				"own": "kit-statue-x"
+			},
+			"kit-statue-z": {
+				"file": "dungeon-modular-set-v2/statue/statue_z.png",
+				"pivot": [47.07, 54.89],
+				"outline": true,
+				"own": "kit-statue-z"
+			},
+			"kit-carpet-x": {
+				"file": "dungeon-modular-set-v2/carpet/carpet_x.png",
+				"pivot": [45.64, 38.07],
+				"own": "kit-carpet-x"
+			},
+			"kit-carpet-z": {
+				"file": "dungeon-modular-set-v2/carpet/carpet_z.png",
+				"pivot": [45.64, 38.07],
+				"own": "kit-carpet-z"
+			},
+			"kit-carpet-end-x": {
+				"file": "dungeon-modular-set-v2/carpetEnd/carpet_end_x.png",
+				"pivot": [45.64, 38.07],
+				"own": "kit-carpet-end-x"
+			},
+			"kit-carpet-end-z": {
+				"file": "dungeon-modular-set-v2/carpetEnd/carpet_end_z.png",
+				"pivot": [45.64, 38.07],
+				"own": "kit-carpet-end-z"
+			},
+			"kit-banner": {
+				"facings": { "count": 4, "zeroDeg": 45 },
+				"animations": {
+					"idle": {
+						"file": "dungeon-modular-set-v2/banner/{dir}/banner_{dir}_{angle}_{f}.png",
+						"frames": [0],
+						"fps": 1,
+						"loop": true
+					}
+				},
+				"pivot": "hang",
+				"own": "kit-banner"
 			},
 			"barrel-broken": {
 				"file": "lords-of-pain/prop/barrel_break/NE/barrel_break_NE_45.0_7.png",

@@ -68,10 +68,8 @@ export const VOID = {
  * the footprint rule at its surface's height (standing pieces) or lies wholly on one surface (flat pieces, `flatRadiusTiles`).
  */
 export const VOID_PIECES = {
-	/** Standing void pieces (ruin runs, columns, stumps, biome kinds) per room, at most ... */
+	/** Standing void pieces (columns, stumps, biome kinds; never a wall prop, VDD10) per room, at most. */
 	tallPerRoom: 4,
-	/** ... and low curbs per room on top of them (the per-floor cap maxStanding counts both). */
-	curbPerRoom: 2,
 	/**
 	 * VDD2, far side only: a standing piece's room must lie screen-down of each of its cells: marching along (+1, +1)
 	 * (toward the camera) across the void and the wall, the first walkable cell is that room's, reached within the
@@ -103,16 +101,12 @@ export const VOID_PIECES = {
 	 * eligible cells. Larger = sparser.
 	 */
 	flatGap: 6,
-	/** Ruin runs (`wall` / `wallBroken`) stand on straight shoulder rows exactly this far from the wall (field distance). */
-	ruinDist: 2,
 	/** Columns stand on shoulder cells this far from the wall, at least ... */
 	columnMinDist: 2,
 	/** ... and at most. */
 	columnMaxDist: 3,
 	/** Column candidates are tried at hashed gaps along the scan: the mean gap, in eligible cells. */
 	columnGap: 4,
-	/** A curb (`curb`, low) covers this many cells along a straight outer shoulder edge. */
-	curbTiles: 3,
 	/** Flagstone patches lie only on shoulder cells of a room (not a corridor) at most this far from its wall. */
 	flagstoneMaxDist: 3,
 	/** Share of column spots that take a biome void kind (decor.void.b<n>.<kind>) when the pack has art for one. */
@@ -127,8 +121,8 @@ export const VOID_PIECES = {
 	 */
 	salt: {
 		/**
-		 * A placed piece's one hash: its variant and facing, whole vs broken (the depth profile's columnBrokenShare /
-		 * wallBrokenShare), a flat piece's kind, and the scan's next gap.
+		 * A placed piece's one hash: its variant and facing, whole vs broken (the depth profile's
+		 * columnBrokenShare), a flat piece's kind, and the scan's next gap.
 		 */
 		variant: 0x4cf5ad43,
 		/** The column and flat scans' first gaps. */

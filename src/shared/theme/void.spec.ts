@@ -1,7 +1,7 @@
 // Roblox port (docs/VOID_DECOR.md VD1, VD7): the void's biome colours (shoulder, abyss, the derived ledge), the shoulder
 // / cliff materials, the validator's void rules (voidReport: shoulder vs floor and wall, luminance order, enemy bullets
 // on shoulder and ledge, the abyss vs the danger colours), the bundled packs' values, and the optional void art
-// (`decor.void.b<n>.<kind>[.<v>]`) plus the void dressing decor kinds (flagstones, curb).
+// (`decor.void.b<n>.<kind>[.<v>]`) plus the void dressing decor kind (flagstones; no curb since VDD10).
 import { describe, expect, it } from "@rbxts/jest-globals";
 import { contrastRatio, mixRgb, parseHex, relativeLuminance, toHex } from "./color";
 import {
@@ -263,7 +263,7 @@ describe("void decor (docs/VOID_DECOR.md VD7)", () => {
 		return validateManifest(m);
 	};
 
-	it("lists every void kind once with layers from DECOR_LAYERS (tall shapes tall or low, short ones low, drift flat)", () => {
+	it("lists every void kind once with layers from DECOR_LAYERS (tall shapes tall or low, short ones low, drift / chains flat)", () => {
 		expect([...VOID_DECOR.kinds]).toEqual([
 			"spire",
 			"drift",
@@ -274,6 +274,8 @@ describe("void decor (docs/VOID_DECOR.md VD7)", () => {
 			"root",
 			"bush",
 			"statue",
+			"cage",
+			"chains",
 		]);
 		expect([...VOID_DECOR.kinds].sort()).toEqual(sortedKeys(VOID_DECOR.layers));
 		for (const k of VOID_DECOR.kinds) {
@@ -284,8 +286,9 @@ describe("void decor (docs/VOID_DECOR.md VD7)", () => {
 		}
 		for (const k of ["spire", "crag", "grave", "deadtree", "statue"] as const)
 			expect([k, [...VOID_DECOR.layers[k]]]).toEqual([k, ["tall", "low"]]);
-		for (const k of ["vent", "root", "bush"] as const) expect([k, [...VOID_DECOR.layers[k]]]).toEqual([k, ["low"]]);
-		expect([...VOID_DECOR.layers.drift]).toEqual(["flat"]);
+		for (const k of ["vent", "root", "bush", "cage"] as const)
+			expect([k, [...VOID_DECOR.layers[k]]]).toEqual([k, ["low"]]);
+		for (const k of ["drift", "chains"] as const) expect([k, [...VOID_DECOR.layers[k]]]).toEqual([k, ["flat"]]);
 	});
 
 	it("names void pieces decor.void.b<n>.<kind>[.<v>], round-tripping through parseDecorId", () => {
@@ -393,11 +396,15 @@ describe("void decor (docs/VOID_DECOR.md VD7)", () => {
 });
 
 describe("void dressing decor kinds (docs/VOID_DECOR.md VD7)", () => {
-	it("flagstones (flat) and curb (low) are standard decor kinds, appended last", () => {
+	it("flagstones (flat) is a standard decor kind, appended after the Forge's; curb is not one (VDD10: no wall props)", () => {
 		const n = DECOR_KINDS.size();
-		expect([DECOR_KINDS[n - 2], DECOR_KINDS[n - 1]]).toEqual(["flagstones", "curb"]);
+		expect(DECOR_KINDS[n - 7]).toBe("flagstones");
+		expect(DECOR_KINDS[n - 6]).toBe("chandelier"); // scattered (docs/DECOR.md "3D kits")
+		expect([DECOR_KINDS[n - 5], DECOR_KINDS[n - 4]]).toEqual(["tomb", "candelabrum"]); // solid decor
+		// room themes (docs/DECOR.md "Room themes"), last
+		expect([DECOR_KINDS[n - 3], DECOR_KINDS[n - 2], DECOR_KINDS[n - 1]]).toEqual(["throne", "statue", "carpet"]);
+		expect(DECOR_KINDS.includes("curb" as never)).toBe(false);
 		expect(decorId("biome.1", "flagstones")).toBe("decor.delve.b1.flagstones");
-		expect(decorId("biome.2", "curb", 1)).toBe("decor.delve.b2.curb.1");
 	});
 
 	it("validate with their layers and reject the others", () => {
@@ -412,13 +419,10 @@ describe("void dressing decor kinds (docs/VOID_DECOR.md VD7)", () => {
 		const m = clone();
 		const a = m.assets as Obj;
 		a["decor.delve.b1.flagstones"] = image("flat");
-		a["decor.delve.b4.curb.2"] = image("low");
 		expect(validateManifest(m)).toEqual([]);
 		a["decor.delve.b1.flagstones"] = image("low");
-		a["decor.delve.b4.curb.2"] = image("tall");
 		expect(validateManifest(m)).toEqual([
 			'assets["decor.delve.b1.flagstones"].layer: "low" is not allowed for "flagstones" (allowed: flat)',
-			'assets["decor.delve.b4.curb.2"].layer: "tall" is not allowed for "curb" (allowed: low)',
 		]);
 	});
 });

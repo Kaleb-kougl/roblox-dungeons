@@ -40,7 +40,6 @@ export interface DecorProfile {
 	/** Flat clutter cap per room, share of its floor tiles (the plan never goes above MAX_DECOR_SHARE). */
 	readonly flatShare: number;
 	readonly columnBrokenShare: number;
-	readonly wallBrokenShare: number;
 	readonly clutterWeight: number;
 	readonly litTorchShare: number;
 	/** Ambient light multiplier (and ambient particle rate, R9). */
@@ -79,7 +78,6 @@ export function decorProfile(floor: number, depth: number, themeKey: ThemeKey, f
 		biome: biomeOfTheme(themeKey),
 		flatShare: math.clamp(b.flatShare, 0, 1),
 		columnBrokenShare: math.clamp(b.columnBrokenShare, 0, 1),
-		wallBrokenShare: math.clamp(b.wallBrokenShare, 0, 1),
 		clutterWeight: math.max(b.clutterWeight, 0),
 		litTorchShare: math.clamp(b.litTorchShare, 0, 1),
 		light: math.clamp(b.light, 0, 1),

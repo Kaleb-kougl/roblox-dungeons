@@ -312,7 +312,10 @@ describe("breakable placement: the rules (every census floor)", () => {
 						}
 				}
 				const tag = `${l.seed}:${list[k].x},${list[k].y}`;
-				if (members.size() > BREAKABLE.clusterMax) bad.push(`${tag} cluster of ${members.size()}`);
+				// a storeroom's clusters are bigger (docs/DECOR.md "Room themes")
+				const store = (d.roomThemes ?? [])[roomOf(l, list[k]).id] === "store";
+				const most = store ? BREAKABLE.store.clusterMax : BREAKABLE.clusterMax;
+				if (members.size() > most) bad.push(`${tag} cluster of ${members.size()}`);
 				const hugs = members.some((j) => {
 					const b = list[j];
 					return [
@@ -373,7 +376,7 @@ describe("breakable placement: counts per depth band", () => {
 		expect(breakableRoomCount(0, 10000)).toBe(0);
 	});
 
-	it("no room gets more than its band's max x area (capped); averages grow band by band", () => {
+	it("no room gets more than its band's max x area (capped; a storeroom x countScale + countExtra); averages grow band by band", () => {
 		const perBand = new Map<string, { rooms: number; pieces: number }>();
 		let over = 0;
 		for (const l of ALL) {
@@ -387,7 +390,10 @@ describe("breakable placement: counts per depth band", () => {
 				if (!["combat", "elite", "treasure"].includes(room.type)) continue;
 				if (room.id === l.dungeon.entrance || room.id === l.dungeon.boss) continue;
 				const n = byRoom.get(room.id) ?? 0;
-				if (n > breakableRoomCount(band.max, room.floorTiles)) over++;
+				const most = breakableRoomCount(band.max, room.floorTiles);
+				const S = BREAKABLE.store;
+				const store = (l.dungeon.roomThemes ?? [])[room.id] === "store";
+				if (n > (store ? math.min(BREAKABLE.maxPerRoom, most * S.countScale + S.countExtra) : most)) over++;
 				const e = perBand.get(band.name) ?? { rooms: 0, pieces: 0 };
 				e.rooms++;
 				e.pieces += n;

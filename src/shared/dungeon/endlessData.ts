@@ -20,6 +20,12 @@ export const FLOOR_SEED_MUL = 0x85ebca6b;
 export const ENDLESS_SOLID_PILLARS = true;
 
 /**
+ * Endless floors get solid decor (ForgeParams.solidDecor, docs/DECOR.md "Solid decor"): tombs flanked by candle stands
+ * in combat and elite rooms, real obstacles like the pillars. M1, the fixtures and the tutorial leave it off.
+ */
+export const ENDLESS_SOLID_DECOR = true;
+
+/**
  * Endless floors' room size multiplier (ForgeParams.roomScale): every room is this many times as wide and as tall as
  * the M1 floor's (2 = four times the floor area). M1 floors and the golden fixtures stay at 1.
  */

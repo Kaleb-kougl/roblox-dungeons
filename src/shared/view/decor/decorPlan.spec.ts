@@ -24,7 +24,9 @@ import {
 	DECOR_BOX,
 	DECOR_CAMERA,
 	DECOR_CLEAR,
+	DECOR_BANNERS,
 	DECOR_DROP_REASONS,
+	DECOR_SCATTER,
 	MAX_DECOR_SHARE,
 	MAX_TALL_PER_ROOM,
 	TALL_MIN_SPACING,
@@ -86,7 +88,8 @@ function cellsOf(e: DecorEntry): Array<readonly [number, number]> {
 	return out;
 }
 
-const standing = (e: DecorEntry) => e.layer === "tall" || e.layer === "low";
+/** A standing piece under the wall-top and footprint rules (solid decor stands on its own cells: its own spec). */
+const standing = (e: DecorEntry) => (e.layer === "tall" || e.layer === "low") && e.source !== "solid";
 
 function serialize(p: DecorPlan): string {
 	const parts: string[] = [];
@@ -150,10 +153,12 @@ describe("decor plan: keep-out", () => {
 			const dr = DECOR_CLEAR.doorTiles;
 			for (const e of plan.entries) {
 				const column = e.kind === "column" || e.kind === "columnBroken";
+				// the door braziers (docs/DECOR.md "Room themes") flank an opening by design
+				const doorBrazier = e.source === "solid" && e.kind === "brazier";
 				for (const [x, y] of cellsOf(e)) {
 					p.check(d.doorway[y * d.W + x] === 0, () => `${at(plan, e)}: on a doorway`);
 					p.check(!breakables.has(y * d.W + x), () => `${at(plan, e)}: on a breakable`);
-					if (!column)
+					if (!column && !doorBrazier)
 						for (let oy = -dr; oy <= dr; oy++)
 							for (let ox = -dr; ox <= dr; ox++)
 								if (tileAt(d, x + ox, y + oy) !== TileType.VOID)
@@ -441,6 +446,8 @@ function hiddenBullets(d: Dungeon, plan: DecorPlan): number {
 	let bad = 0;
 	for (const box of plan.fadeBoxes) {
 		const e = plan.entries[box.entry];
+		// solid decor is an obstacle on its own cells, drawn over what stands behind it (docs/DECOR.md "Solid decor")
+		if (e.source === "solid") continue;
 		const cells = cellsOf(e);
 		let bx0 = math.huge;
 		let bx1 = -math.huge;
@@ -526,8 +533,9 @@ describe("decor plan: census (runs 1-20 x floors 1-5)", () => {
 		expect(totals.get("tall") ?? 0).toBeGreaterThan(0);
 		expect(totals.get("flat") ?? 0).toBeGreaterThan(0);
 		expect(totals.get("wall") ?? 0).toBeGreaterThan(0);
-		expect(kinds.get("wall") ?? 0).toBeGreaterThan(0);
 		expect(kinds.get("column") ?? 0).toBeGreaterThan(0);
+		// wall props are not decoration (docs/DECOR.md R6, 2026-11-02): no wall segment anywhere
+		expect([kinds.get("wall") ?? 0, kinds.get("wallBroken") ?? 0]).toEqual([0, 0]);
 		expect(kinds.get("brazier") ?? 0).toBeGreaterThan(0);
 		expect(kinds.get("torch") ?? 0).toBeGreaterThan(0);
 	});
@@ -546,5 +554,215 @@ describe("decor plan: census (runs 1-20 x floors 1-5)", () => {
 			}
 		expect(bad).toBe(0);
 		expect(pillars).toBeGreaterThan(0);
+	});
+});
+
+describe('scattered pieces (docs/DECOR.md "3D kits": the fallen chandelier)', () => {
+	const withArt = (kind: string) => (kind === "chandelier" ? 1 : 0);
+
+	it("lays nothing without the pack's art, and with it only appends: every earlier entry stays put", () => {
+		for (const f of CENSUS) expect(f.plan.entries.filter((e) => e.source === "scatter").size()).toBe(0);
+		for (const f of CENSUS.filter((_, i) => i % 10 === 0)) {
+			const plan = planDecor({ ...decorInputOfLayout(f.layout), variants: withArt });
+			const prefix = { ...plan, entries: plan.entries.filter((e) => e.source !== "scatter") };
+			const again = planDecor({ ...decorInputOfLayout(f.layout), variants: withArt });
+			expect(serialize(again)).toBe(serialize(plan)); // deterministic
+			const plain = f.plan.entries.map((e) => `${e.kind}|${e.cellX},${e.cellY}|${e.layer}`);
+			expect(prefix.entries.map((e) => `${e.kind}|${e.cellX},${e.cellY}|${e.layer}`)).toEqual(plain);
+		}
+	});
+
+	it("one per room at most, never the boss room, on clear floor away from doorways, interactables and flats", () => {
+		const problems = new Problems();
+		let laid = 0;
+		let floorsWithOne = 0;
+		for (const f of CENSUS) {
+			const d = f.layout.dungeon;
+			const plan = planDecor({ ...decorInputOfLayout(f.layout), variants: withArt });
+			const scattered = plan.entries.filter((e) => e.source === "scatter");
+			laid += scattered.size();
+			if (scattered.size() > 0) floorsWithOne++;
+			problems.check(
+				scattered.size() <= DECOR_SCATTER.maxPerFloor,
+				() => `floor seed ${plan.floorSeed}: too many`,
+			);
+			const rooms = new Set<number>();
+			const flats = new Set<string>();
+			for (const e of plan.entries)
+				if (e.layer === "flat" && e.source !== "scatter") flats.add(`${e.cellX},${e.cellY}`);
+			for (const e of scattered) {
+				problems.check(e.kind === "chandelier" && e.layer === "flat", () => at(plan, e));
+				problems.check(e.roomId >= 0 && e.roomId !== d.boss, () => `${at(plan, e)}: room ${e.roomId}`);
+				problems.check(!rooms.has(e.roomId), () => `${at(plan, e)}: second in room ${e.roomId}`);
+				rooms.add(e.roomId);
+				problems.check(!flats.has(`${e.cellX},${e.cellY}`), () => `${at(plan, e)}: on a flat piece`);
+				const ct = DECOR_SCATTER.clearTiles;
+				for (let oy = -ct; oy <= ct; oy++)
+					for (let ox = -ct; ox <= ct; ox++)
+						problems.check(
+							tileAt(d, e.cellX + ox, e.cellY + oy) === TileType.FLOOR,
+							() => `${at(plan, e)}: not clear`,
+						);
+				const dr = DECOR_CLEAR.doorTiles;
+				for (let oy = -dr; oy <= dr; oy++)
+					for (let ox = -dr; ox <= dr; ox++) {
+						const x = e.cellX + ox;
+						const y = e.cellY + oy;
+						if (x < 0 || y < 0 || x >= d.W || y >= d.H) continue;
+						problems.check(d.doorway[y * d.W + x] === 0, () => `${at(plan, e)}: by a doorway`);
+					}
+				const spawn = decorInputOfLayout(f.layout).spawn ?? entranceSpawn(d);
+				const dx = e.x - spawn.x;
+				const dz = e.z - spawn.z;
+				problems.check(
+					dx * dx + dz * dz >= DECOR_CLEAR.entranceTiles * DECOR_CLEAR.entranceTiles,
+					() => `${at(plan, e)}: on the spawn`,
+				);
+			}
+		}
+		expect(problems.list).toEqual([]);
+		// a few per floor on most floors (printed for tuning)
+		print(`[decor scatter] chandeliers: ${laid} over ${CENSUS.size()} floors, ${floorsWithOne} floors with one`);
+		expect(floorsWithOne).toBeGreaterThan(CENSUS.size() / 2);
+	});
+});
+
+describe('solid decor (docs/DECOR.md "Solid decor", "Room themes": set pieces on their own cells)', () => {
+	it("draws every Dungeon.solidDecor piece once, standing on its cells at floor level with a fade box", () => {
+		let n = 0;
+		for (const f of CENSUS) {
+			const d = f.layout.dungeon;
+			const solid = f.plan.entries.filter((e) => e.source === "solid" && e.layer !== "flat");
+			expect(solid.size()).toBe(d.solidDecor.size());
+			d.solidDecor.forEach((p, i) => {
+				const e = solid[i];
+				expect([e.kind, e.layer, e.y, e.cellX, e.cellY]).toEqual([p.kind, "low", 0, p.x, p.y]);
+				expect(e.cells).toBe(math.max(p.w, p.h));
+				expect([e.runX, e.runZ]).toEqual([p.w > 1 ? 1 : 0, p.h > 1 ? 1 : 0]);
+				expect(e.roomId).toBe(p.room);
+				expect(e.fade >= 0 && f.plan.fadeBoxes[e.fade].entry === f.plan.entries.indexOf(e)).toBe(true);
+				// centred on its footprint
+				expect(e.x).toBeCloseTo(p.x + (p.w - 1) / 2, 9);
+				expect(e.z).toBeCloseTo(p.y + (p.h - 1) / 2, 9);
+				n++;
+			});
+		}
+		expect(n).toBeGreaterThan(0);
+	});
+
+	it("takes the tomb's axis as its variant when the pack has both", () => {
+		const f = CENSUS.find((c) => c.layout.dungeon.solidDecor.some((p) => p.kind === "tomb"))!;
+		const plan = planDecor({ ...decorInputOfLayout(f.layout), variants: (k) => (k === "tomb" ? 2 : 0) });
+		for (const e of plan.entries)
+			if (e.source === "solid" && e.kind === "tomb") expect(e.variant).toBe(e.runX === 1 ? 0 : 1);
+	});
+
+	it("takes a throne's and a statue's facing as its variant (docs/DECOR.md \"Room themes\")", () => {
+		let n = 0;
+		for (const f of CENSUS.filter((_, i) => i % 5 === 0)) {
+			const plan = planDecor({
+				...decorInputOfLayout(f.layout),
+				variants: (k) => (k === "throne" || k === "statue" ? 2 : 0),
+			});
+			for (const e of plan.entries)
+				if (e.source === "solid" && (e.kind === "throne" || e.kind === "statue")) {
+					expect(e.faceX === 1 || e.faceZ === 1).toBe(true);
+					expect(e.variant).toBe(e.faceX !== 0 ? 0 : 1);
+					n++;
+				}
+		}
+		expect(n).toBeGreaterThan(0);
+	});
+
+	it("lays the throne's carpet in 2 x 2 segments from the dais, its end last, only with the pack's art", () => {
+		let runs = 0;
+		for (const f of CENSUS.filter((_, i) => i % 5 === 0)) {
+			const d = f.layout.dungeon;
+			expect(f.plan.entries.some((e) => e.kind === "carpet")).toBe(false);
+			const plan = planDecor({ ...decorInputOfLayout(f.layout), variants: (k) => (k === "carpet" ? 4 : 0) });
+			const segs = plan.entries.filter((e) => e.kind === "carpet");
+			let k = 0;
+			for (const cp of d.carpets ?? []) {
+				runs++;
+				const len = cp.fx !== 0 ? cp.w : cp.h;
+				for (let a = 0; a < len; a += 2) {
+					const e = segs[k++];
+					const last = a + 2 >= len;
+					expect([e.layer, e.source, e.roomId]).toEqual(["flat", "solid", cp.room]);
+					expect(e.variant).toBe((cp.fx !== 0 ? 0 : 1) + (last ? 2 : 0));
+					// the segment's centre: between its 2 x 2 cells, `a` cells from the dais
+					expect(e.x).toBeCloseTo(cp.fx !== 0 ? cp.x + a + 0.5 : cp.x + 0.5, 9);
+					expect(e.z).toBeCloseTo(cp.fx !== 0 ? cp.y + 0.5 : cp.y + a + 0.5, 9);
+				}
+				// no Forge flat piece lies on it
+				for (const e of plan.entries)
+					if (e.layer === "flat" && e.source === "forge")
+						expect(
+							e.cellX >= cp.x && e.cellX < cp.x + cp.w && e.cellY >= cp.y && e.cellY < cp.y + cp.h,
+						).toBe(false);
+			}
+			expect(k).toBe(segs.size());
+		}
+		expect(runs).toBeGreaterThan(0);
+	});
+});
+
+describe('room banners (docs/DECOR.md "Solid decor": banners on room walls)', () => {
+	it("hangs more banners only with the pack's art: on far walls of their room, spaced, never two on a cell", () => {
+		const problems = new Problems();
+		let added = 0;
+		for (const f of CENSUS.filter((_, i) => i % 4 === 0)) {
+			const d = f.layout.dungeon;
+			const plan = planDecor({ ...decorInputOfLayout(f.layout), variants: (k) => (k === "banner" ? 1 : 0) });
+			const extra = plan.entries.filter((e) => e.kind === "banner" && e.source === "dressing");
+			expect(f.plan.entries.filter((e) => e.kind === "banner" && e.source === "dressing").size()).toBe(0);
+			added += extra.size();
+			const perRoom = new Map<number, number>();
+			const cells = new Set<string>();
+			for (const e of plan.entries)
+				if (e.layer === "wall") {
+					const key = `${e.cellX},${e.cellY}`;
+					problems.check(!cells.has(key), () => `${at(plan, e)}: two wall pieces`);
+					cells.add(key);
+				}
+			// the boss room's are the throne's pair: on its back wall, two cells past each end of the dais
+			const flanks = new Set<string>();
+			for (const t of d.solidDecor)
+				if (t.kind === "throne") {
+					const len = t.fx !== 0 ? t.h : t.w;
+					for (const along of [-2, len + 1])
+						flanks.add(t.fx !== 0 ? `${t.x - t.fx},${t.y + along}` : `${t.x + along},${t.y - t.fz}`);
+				}
+			for (const e of extra) {
+				if (e.roomId === d.boss) {
+					problems.check(
+						flanks.has(`${e.cellX},${e.cellY}`),
+						() => `${at(plan, e)}: boss room, not by the throne`,
+					);
+					continue;
+				}
+				perRoom.set(e.roomId, (perRoom.get(e.roomId) ?? 0) + 1);
+				problems.check(tileAt(d, e.cellX, e.cellY) === TileType.WALL, () => `${at(plan, e)}: not a wall`);
+				const fx = e.cellX + e.faceX;
+				const fz = e.cellY + e.faceZ;
+				problems.check(
+					(e.faceX === 1 || e.faceZ === 1) &&
+						tileAt(d, fx, fz) === TileType.FLOOR &&
+						d.roomId[fz * d.W + fx] === e.roomId,
+					() => `${at(plan, e)}: not a far wall of its room`,
+				);
+				for (const o of plan.entries)
+					if (o !== e && o.layer === "wall" && !(o.roomId === d.boss && o.source === "dressing"))
+						problems.check(
+							math.max(math.abs(o.cellX - e.cellX), math.abs(o.cellY - e.cellY)) >=
+								DECOR_BANNERS.spacingTiles,
+							() => `${at(plan, e)}: too near ${o.kind}`,
+						);
+			}
+			for (const [, n] of perRoom) problems.check(n <= DECOR_BANNERS.perRoom, () => "too many in a room");
+		}
+		expect(problems.list).toEqual([]);
+		print(`[decor banners] ${added} more banners over ${CENSUS.size() / 4} floors`);
+		expect(added).toBeGreaterThan(0);
 	});
 });

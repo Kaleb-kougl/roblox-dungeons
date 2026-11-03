@@ -13,7 +13,8 @@ replay, a hash or a fixture. VOID cells stay VOID in the grid; bullets and bodie
 
 VD0-VD10 are **code-complete and verified headlessly only** (`npm run verify`); **nothing has run in Studio**. Owner
 calls taken on 2026-11-01: VDD1-VDD3. Open: every Studio check (VD3-VD6, VD8, VD9 sub-items, then VD11's playtest),
-VDD5 / VDD6 / VDD8, and the vale `flagstones` / `curb` art (VD6 owner steps: rebuild and re-upload the decor atlas).
+VDD5 / VDD6 / VDD8. **2026-11-02 (VDD10): wall props are no longer void decoration**: the ruin runs (`wall` /
+`wallBroken`) and the `curb` kind are gone; the void's standing pieces are columns, stumps and biome kinds only.
 
 ## What the camera sees today (VD0 census)
 
@@ -82,15 +83,14 @@ art fit, outlines and lights are reused.
 
 | Piece (vale, Lords of Pain) | Where | Layer |
 |---|---|---|
-| `wall2` / `wall3` ruin runs, `column1` | far side, on the shoulder, along the room | tall |
+| `column1` | far side, on the shoulder, along the room | tall |
 | `column2` stumps | anywhere the footprint passes | low |
 | `rocks`, `bricks` | shoulder tops, ledges | flat |
 | `tiles` (flagstone patch: an old floor, now unused by decor) | shoulder tops near rooms | flat |
-| `wall1` (low curb: unused by decor) | shoulder edges | low |
 | `bones` (grim), `mushrooms` (verdant) | shoulder tops | flat |
 
-All of these but `tiles` and `wall1` are already cut into `decor-atlas.png` (docs/DECOR.md R5, uploaded); those two
-need its rebuild and re-upload (VD6's owner steps).
+No wall props (`wall1` / `wall2` / `wall3`) in the void (VDD10), nor on the far walls since 2026-11-02 (docs/DECOR.md R6).
+All of these are cut into `decor-atlas.png` (`tiles` since the VD6 rebuild).
 Caps (starting values, VD12 tunes): per room side at most `VOID_PIECES.tallPerRoom` (4), `tallMinSpacing` (3) apart,
 never within 2 tiles of a decor tall piece or far-wall dressing on the wall below; flat pieces on at most
 `flatShare` (25 %) of the shoulder. Target <= 80 tall / low and <= 200 flat pieces per floor.
@@ -121,7 +121,6 @@ The shoulder wears down with depth, using the existing `decorProfile` bands (kep
 | shoulder width (tiles past the 1-tile minimum) | 2-3 | 2-3 | 1-3 | 1-2 |
 | ledge breakup (share of rim cells kept) | 90 % | 75 % | 60 % | 40 % |
 | outcrops per 100 mid-band cells | 1.0 | 1.2 | 1.5 | 2.0 |
-| ruin runs whole vs broken (`wall2` / `wall3`) | as the decor profile's far-wall split | | | |
 
 ## Code layout
 
@@ -155,6 +154,13 @@ The shoulder wears down with depth, using the existing `decorProfile` bands (kep
 - **VDD8. No setting.** One budget, measured on the phone emulator. If phones fall short, add a Reduced tier on touch
   (no outcrops, no flat clutter) rather than a menu option. Open until VD12.
 - **VDD9. No PROVENANCE row.** Port-only feature; nothing is ported from the web build.
+- **VDD10. No wall props in the void (owner, 2026-11-02).** The Lords of Pain wall segments (`wall1` / `wall2` /
+  `wall3`) are not void decoration: VD5's ruin runs (`wall` / `wallBroken` on shoulder rows `ruinDist` 2 from the wall)
+  and low `curb` runs (wall1) are removed, with `VOID_PIECES.ruinDist` / `curbTiles` / `curbPerRoom`, `DECOR_BOX.curb`
+  and the `curb` decor kind. Far-wall dressing lost its segments too (docs/DECOR.md R6, same day). The void's columns take
+  the freed spots. `wall1` stays in the uploaded decor-atlas.png as `VALE_RETIRED_WORLD_ART` until the next rebuild.
+  Census after (64 floors): tall 15.3, low 11.6, flat 104.5 per floor (column 15.3, columnBroken 11.6); planDecor +4.0
+  ms with the void (was +8 ms).
 
 ## Tasks
 
@@ -358,11 +364,14 @@ The shoulder wears down with depth, using the existing `decorProfile` bands (kep
      pieces (VALE_RETIRED_WORLD_ART, docs/BOOST_ART.md: they were kept only to avoid this repack).
   2. `npm run art:lock`, then `npm run art:build` (repacks decor-atlas.png; layout.ts gains `tiles` / `wall1`).
   3. Re-upload `art/upload/decor-atlas.png`, paste its new ID over the old one in `packs/vale/assetIds.ts`.
+  Steps 1-3 done 2026-11-01: wall1 / tiles added and gems-* dropped (VALE_RETIRED_WORLD_ART is now empty),
+  decor-atlas.png 1024x1012 (29 pieces), re-uploaded as rbxassetid://115064942223814. Steps 4-5 dropped for the curb
+  (VDD10: the curb kind is gone; wall1 is retired art until the next rebuild); flagstones draw now.
   4. Re-measure wall1 on `art/build/contact/decor.wall1.png` and set `DECOR_BOX.curb` (and `VOID_PIECES.curbTiles` to
      its run length) like wall2 / wall3; flagstones need nothing (flats are held to `flatRadiusTiles`).
   5. `npm run verify` (valeWorld.spec then expects both kinds in every biome; valeArt.spec fits them).
   - [ ] Studio check: void pieces draw at the shoulder's height in every biome and band, `KV_VoidOff` removes them,
-    frames read, nothing covers a bullet; after the rebuild, curbs and flagstones.
+    frames read, nothing covers a bullet; flagstones; no wall segment anywhere in the void (VDD10).
 
 - [x] **VD7. Biome art slots.** Optional `decor.void.b<n>.<kind>` kinds in the contract and validator; nothing drawn
   without art; this doc lists the wanted art per biome.

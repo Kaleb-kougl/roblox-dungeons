@@ -103,6 +103,11 @@ interface ReplayResult {
 	/** Frames the stairwell loop was active with the stairwell closed, or inactive with it open. */
 	loopWrong: number;
 	loopFrames: number;
+	/**
+	 * Frames whose ticks both drank a flask and changed floor: the new floor drops every cue of the old one, by design,
+	 * so that flask's cue is never shown.
+	 */
+	flaskFloorDrops: number;
 	readonly mapper: FxCueMapper;
 }
 
@@ -132,6 +137,7 @@ function replay(
 		chargeImpacts: 0,
 		loopWrong: 0,
 		loopFrames: 0,
+		flaskFloorDrops: 0,
 		mapper,
 	};
 	const total = r.recording.frames.size();
@@ -141,6 +147,8 @@ function replay(
 	while (t < total) {
 		const k = math.max(1, ticksPerFrame(frameNo));
 		resetFrameEvents(events);
+		const floorBefore = state.endless!.floor;
+		const flaskBefore = state.player.flask;
 		let ran = 0;
 		while (ran < k && t < total) {
 			stepRecorded(state, r.recording, t, setup.config);
@@ -149,6 +157,7 @@ function replay(
 			ran++;
 		}
 		now += ran * SIM_DT;
+		if (state.endless!.floor !== floorBefore && state.player.flask < flaskBefore) res.flaskFloorDrops++;
 		tracker.update(state, 1, setup.config.encounter);
 		const scene = sceneOf(state);
 		const n = mapper.frame({ now, state, alpha: 1, events, fx: tracker.events, settings, spots: scene });
@@ -294,8 +303,11 @@ describe("FxCueMapper over the recorded endless run", () => {
 		// A cue landing on a telegraph's first frame is dropped by design (FX_SPRITE_VIEW.telegraphClearTiles), and a
 		// frame of several ticks can hold a telegraph start the 1-tick replay sees a tick apart: since the endless room
 		// pool's new kinds (docs/ENEMY_VARIANTS.md EV5) the bot drinks its flask on floor 5 beside a swarmer whose lunge
-		// telegraph starts inside the same paced frame. Every missing cue must be one of those drops.
-		expect(short <= math.max(0, paced.mapper.stats.telegraph - one.mapper.stats.telegraph)).toBe(true);
+		// telegraph starts inside the same paced frame. And a frame that drinks a flask and changes floor drops that
+		// flask's cue with the old floor's (the recorded run has one since the room themes, docs/DECOR.md "Room
+		// themes"). Every missing cue must be one of those drops.
+		const telegraphDrops = math.max(0, paced.mapper.stats.telegraph - one.mapper.stats.telegraph);
+		expect(short <= telegraphDrops + paced.flaskFloorDrops - one.flaskFloorDrops).toBe(true);
 		expect(paced.onTelegraph).toBe(0);
 		expect(paced.loopWrong).toBe(0);
 	});

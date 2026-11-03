@@ -23,6 +23,8 @@ export interface PathField {
 	/** The target as given (world): where the last step of a walk aims (pathStep returns -1 on the seed). */
 	readonly tx: number;
 	readonly tz: number;
+	/** Cells (y * W + x) left out like walls, e.g. a floor's breakables for the test bots; absent: none. */
+	readonly blocked?: ReadonlySet<number>;
 }
 
 /** Neighbour order (also the tie-break: the first lowest wins). The BFS uses the first four; walking uses all eight. */
@@ -78,9 +80,16 @@ function snapSeed(d: Dungeon, gx0: number, gy0: number): number | undefined {
 /**
  * 4-neighbour BFS over FLOOR tiles from the tile of world (tx, tz), snapped to the nearest FLOOR tile within
  * PATH_SNAP_TILES when it is not FLOOR. With `avoid` (world XZ), tiles within PATH_AVOID_RADIUS of it are left out
- * (the seed itself is always in). Allocates the field (one array of W * H); build it once per target tile.
+ * (the seed itself is always in); cells in `blocked` are left out like walls. Allocates the field (one array of W * H);
+ * build it once per target tile.
  */
-export function pathField(d: Dungeon, tx: number, tz: number, avoid?: readonly [number, number]): PathField {
+export function pathField(
+	d: Dungeon,
+	tx: number,
+	tz: number,
+	avoid?: readonly [number, number],
+	blocked?: ReadonlySet<number>,
+): PathField {
 	const dist = new Array<number>(d.W * d.H, math.huge);
 	const avoided = (gx: number, gy: number) => {
 		if (avoid === undefined) return false;
@@ -103,12 +112,13 @@ export function pathField(d: Dungeon, tx: number, tz: number, avoid?: readonly [
 			const ny = gy + oy;
 			if (!isFloor(d, nx, ny) || avoided(nx, ny)) continue;
 			const j = ny * d.W + nx;
+			if (blocked !== undefined && blocked.has(j)) continue;
 			if (dist[j] <= dist[i] + 1) continue;
 			dist[j] = dist[i] + 1;
 			queue.push(j);
 		}
 	}
-	return { d, dist, gx: seed % d.W, gy: math.floor(seed / d.W), tx, tz };
+	return { d, dist, gx: seed % d.W, gy: math.floor(seed / d.W), tx, tz, blocked };
 }
 
 /** Path distance (BFS steps, tiles) from the tile of world (x, z) to the field's seed; math.huge when unreachable. */
@@ -119,10 +129,17 @@ export function pathDistance(f: PathField, x: number, z: number): number {
 	return f.dist[gy * f.d.W + gx];
 }
 
+/** FLOOR and not one of the field's blocked cells (no closure: pathStep runs every frame, garbage-free). */
+function openCell(f: PathField, x: number, y: number): boolean {
+	if (!isFloor(f.d, x, y)) return false;
+	const b = f.blocked;
+	return b === undefined || !b.has(y * f.d.W + x);
+}
+
 /**
- * One step downhill from grid (gx, gy): the cell index (y * W + x) of the 8-neighbour FLOOR tile with the lowest
- * distance below this tile's (diagonals only past open corners; ties to the first in neighbour order), or -1 on the
- * seed, where no neighbour is lower, or where nothing is reachable.
+ * One step downhill from grid (gx, gy): the cell index (y * W + x) of the 8-neighbour open tile (FLOOR, not blocked)
+ * with the lowest distance below this tile's (diagonals only past open corners; ties to the first in neighbour order),
+ * or -1 on the seed, where no neighbour is lower, or where nothing is reachable.
  */
 export function pathStep(f: PathField, gx: number, gy: number): number {
 	const d = f.d;
@@ -132,9 +149,9 @@ export function pathStep(f: PathField, gx: number, gy: number): number {
 		for (const [ox, oy] of NEIGHBOURS) {
 			const nx = gx + ox;
 			const ny = gy + oy;
-			if (!isFloor(d, nx, ny)) continue;
+			if (!openCell(f, nx, ny)) continue;
 			// Diagonals only past open corners.
-			if (ox !== 0 && oy !== 0 && (!isFloor(d, gx + ox, gy) || !isFloor(d, gx, gy + oy))) continue;
+			if (ox !== 0 && oy !== 0 && (!openCell(f, gx + ox, gy) || !openCell(f, gx, gy + oy))) continue;
 			const v = f.dist[ny * d.W + nx];
 			if (v < best) {
 				best = v;

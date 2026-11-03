@@ -1253,6 +1253,8 @@ function buildImages(images, sets) {
 //   root    the bottom edge at the body box's centre (a flame: its faint flickering lowest rows are off to one side)
 //   center  the body box's centre (flat pieces, effects)
 //   union   sprites: the centre of the union box of every frame (a loop whose frames move about: the glint)
+//   [x, y]  images: a point given in the source frame's pixels (a 3D kit render's footprint centre on the floor,
+//           written by scripts/art/kit/render_kit.py: solid decor stands centred on its cells)
 // `outline` (standing pieces): per facing, the convex hull of every opaque pixel over all frames, cell pixels, so the
 // footprint fit (shared/view decor.ts fitArtLayout) can hold the real shape inside its box instead of the cell's
 // rectangle (a diagonal wall's rectangle is mostly empty). `glowAt: { animation, bright }`: the top edge / horizontal
@@ -1513,6 +1515,15 @@ function buildWorldPieces(world, sets) {
 	return { pieces, ppt };
 }
 
+/** A world image's explicit pivot [x, y] in its source frame's pixels (inside the frame). */
+function worldPivotAt(name, pivot, img) {
+	const [x, y] = pivot;
+	if (pivot.length !== 2 || !Number.isFinite(x) || !Number.isFinite(y) || x < 0 || y < 0 || x > img.w || y > img.h) {
+		throw new Error(`${name}: pivot ${JSON.stringify(pivot)} must be [x, y] inside the ${img.w}x${img.h} source frame`);
+	}
+	return { x, y };
+}
+
 function buildWorldImage(world, name, def, ppt, pad) {
 	let img = worldFrame(world, def, def.file);
 	const box = boundsWhere(img, (i) => isOpaque(img, i));
@@ -1532,8 +1543,9 @@ function buildWorldImage(world, name, def, ppt, pad) {
 	if (def.rgb === "white") for (let i = 0; i < crop.w * crop.h; i++) crop.data.fill(255, i * 4, i * 4 + 3);
 	const out = raster(crop.w + 2 * pad, crop.h + 2 * pad);
 	blit(crop, 0, 0, crop.w, crop.h, out, pad, pad, 0);
-	// the pivot on the original pixels (body: never the baked shadow), into the cell
-	const p = measurePivot(world, img, def.pivot, name);
+	// the pivot on the original pixels (body: never the baked shadow), into the cell; [x, y]: given in the source
+	// frame's pixels (a render that knows where its footprint's centre lies, scripts/art/kit/render_kit.py)
+	const p = Array.isArray(def.pivot) ? worldPivotAt(name, def.pivot, img) : measurePivot(world, img, def.pivot, name);
 	const pivot = { x: (p.x - box[0]) / k + pad, y: (p.y - box[1]) / k + pad };
 	let outline;
 	if (def.outline) {

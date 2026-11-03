@@ -7,6 +7,7 @@ import { SFX } from "shared/view/audio";
 import { HUD_STRINGS, HUD_VIEW, NEW_BEST_STRINGS, UI_ART, bestText } from "shared/view/hud";
 import { TUTORIAL_STRINGS } from "shared/tutorial";
 import {
+	CREDIT_STRINGS,
 	DAILY_MENU,
 	MENU_FIT,
 	MENU_STRINGS,
@@ -20,11 +21,14 @@ import { useMenuActions } from "./actions";
 import { DailyCard, DailyPodiumStrip } from "./DailyCard";
 import { useGamepadFocus } from "./hooks";
 
+const SMALL = new Vector2(MENU_VIEW.smallButton.x, MENU_VIEW.smallButton.y);
+
 /**
  * The main menu (task L3), shown on join instead of a run: the game title, Play solo (a ranked solo run), Lobbies
  * (the browser; "Your lobby" goes straight to the room while in one), Invite friends (Roblox's invite prompt, no
  * lobby attached: docs/INVITES.md ID7; disabled with the reason when the server says this player cannot), Tutorial (the first-run Practice Descent again,
- * docs/TUTORIAL.md), Options (the Options screen) and Leaderboard (the leaderboard panel). With a gamepad the
+ * docs/TUTORIAL.md), Options (the Options screen), Leaderboard (the leaderboard panel) and Credits (the Credits screen,
+ * shared/view/menu credits.ts). With a gamepad the
  * selection starts on Play solo. Fitted into the safe area on touch (MenuFit); compact or narrow (a phone, landscape
  * or portrait): the buttons in two columns, the invite reason under them. Under Play solo (compact: under its row), once the server's records loaded
  * and the solo board has one, the player's solo best (`Best 48210 · floor 9`, docs/NEW_BEST.md NB9: menu.best).
@@ -144,6 +148,22 @@ export function MainMenu() {
 			}}
 		/>
 	);
+	// Credits: a full button in the desktop column; on a phone a small one beside the invite reason (its own row
+	// would cost the smallest phone the ornament, fit.spec.ts).
+	const credits = (small: boolean, order: number) => (
+		<MenuButton
+			key="Credits"
+			order={order}
+			name="Credits"
+			size={small ? SMALL : undefined}
+			textSize={small ? HUD_VIEW.smallText : undefined}
+			text={str(CREDIT_STRINGS.open)}
+			onActivated={() => {
+				actions.playUi(SFX.uiClick);
+				actions.openCredits();
+			}}
+		/>
+	);
 	// The menu's button column (desktop: beside the Daily column) and the Daily column (card, then the podium).
 	const columnWidth = MENU_VIEW.mainWidth - HUD_VIEW.pad * 4;
 	const compactInner = MENU_FIT.mainCompactWidth - HUD_VIEW.pad * 4;
@@ -191,7 +211,21 @@ export function MainMenu() {
 									{options}
 									{leaderboard}
 								</Row>
-								{reason(8)}
+								<Row key="Row4" order={8}>
+									{invite.reasonKey !== undefined ? (
+										<Text
+											key="InviteReason"
+											order={1}
+											width={compactInner - MENU_VIEW.smallButton.x - HUD_VIEW.gap}
+											size={HUD_VIEW.smallText}
+											color="uiTextDim"
+											align={Enum.TextXAlignment.Center}
+											wrap={true}
+											text={str(invite.reasonKey)}
+										/>
+									) : undefined}
+									{credits(true, 2)}
+								</Row>
 							</>
 						) : (
 							<Columns key="Columns" order={2}>
@@ -204,6 +238,7 @@ export function MainMenu() {
 									{tutorial}
 									{options}
 									{leaderboard}
+									{credits(false, 10)}
 								</Column>
 								<Column key="Daily" order={2} width={DAILY_MENU.cardWidth}>
 									<DailyCard key="Card" order={1} width={DAILY_MENU.cardWidth} compact={false} />

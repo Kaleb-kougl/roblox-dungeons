@@ -10,6 +10,7 @@ import {
 	spriteBillboard,
 	type SpriteLayout,
 } from "shared/view";
+import { FX_SPRITE_VIEW } from "shared/view/fx";
 import { renderPart } from "./placeholders";
 
 /**
@@ -23,6 +24,14 @@ const HIDDEN = 1;
 const WHITE = new Color3(1, 1, 1);
 /** Flat floor images turn with the camera, so their x axis is the screen's right. */
 const CAMERA_YAW = CFrame.Angles(0, degToRad(CAMERA_YAW_DEG), 0);
+/**
+ * A Top-face SurfaceGui's canvas comes out turned 90 degrees anticlockwise on screen from its Part (an engine quirk:
+ * Top-face SurfaceGuis do not follow the Decal convention; FX_SPRITE_VIEW.floorCanvasTurnDeg, owner's Studio check
+ * 2026-11-01). The flat Part is turned back the same amount (clockwise on screen: negative about +Y) and its x / z
+ * sizes swapped, so the image reads screen-up as drawn. Without it, the throne carpet's segments (docs/DECOR.md "Room
+ * themes") drew turned a quarter, running across the carpet instead of along it.
+ */
+const FLOOR_CANVAS_TURN = CFrame.Angles(0, -degToRad(FX_SPRITE_VIEW.floorCanvasTurnDeg), 0);
 /** A scale change smaller than this is not written (flames ease every frame). */
 const SCALE_EPSILON = 0.005;
 
@@ -213,8 +222,12 @@ export function buildFloorArt(
 	const part = renderPart("Part", false);
 	part.Name = name;
 	part.Transparency = HIDDEN;
-	part.Size = new Vector3(w, thickness, d);
-	part.CFrame = new CFrame(at.X, at.Y + lift - thickness / 2, at.Z).mul(CAMERA_YAW).mul(new CFrame(ox, 0, oz));
+	// the turned Part: its x runs screen-down (the canvas's height, d), its z screen-left (the canvas's width, w)
+	part.Size = new Vector3(d, thickness, w);
+	part.CFrame = new CFrame(at.X, at.Y + lift - thickness / 2, at.Z)
+		.mul(CAMERA_YAW)
+		.mul(new CFrame(ox, 0, oz))
+		.mul(FLOOR_CANVAS_TURN);
 	const gui = createKvSurfaceGui("Floor");
 	gui.Face = Enum.NormalId.Top;
 	gui.SizingMode = Enum.SurfaceGuiSizingMode.FixedSize;

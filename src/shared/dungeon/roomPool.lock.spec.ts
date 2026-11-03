@@ -12,6 +12,10 @@
 // Re-recorded for docs/NEW_ENEMIES.md NE7: five more kinds from floor 2 (NED3) and a reshuffled roster (10 seeded
 // kinds). Floor 1 without a roster is untouched (the new kinds are closed there, so it spends draw for draw as before);
 // floors 2-6 without a roster and every roster digest are re-pinned, each checked to differ from its NE7-before pin.
+//
+// Solid decor (docs/DECOR.md "Solid decor") walls tomb and candle cells, so real floors' spawn tiles move: the roster
+// digests are re-recorded with it on (together with NE7); the no-roster spender locks run on the floors without it
+// (solidDecor: false).
 import { describe, expect, it } from "@rbxts/jest-globals";
 import { imul } from "shared/jsmath";
 import { endlessFloorParams, endlessRoomSpawns, endlessRoster, generateDungeon, type ActorSpawn } from "shared/dungeon";
@@ -40,11 +44,12 @@ function digests(
 	last: number,
 	parties: ReadonlyArray<number>,
 	roster: boolean,
+	solid = true,
 ): string[] {
 	const h = parties.map(() => FNV_OFFSET);
 	const n = parties.map(() => 0);
 	for (let run = first; run <= last; run++) {
-		const d = generateDungeon(endlessFloorParams(run, floor));
+		const d = generateDungeon({ ...endlessFloorParams(run, floor), solidDecor: solid });
 		for (let p = 0; p < parties.size(); p++) {
 			const rooms = endlessRoomSpawns(d, floor, parties[p], roster ? endlessRoster(run, floor) : undefined);
 			h[p] = foldFloor(h[p], rooms);
@@ -56,7 +61,7 @@ function digests(
 
 describe("endless room pool lock (EV5)", () => {
 	it("no roster: floor 1, run seeds 1-200, party 1-4: the spawns are exactly the pre-EV5 ones", () => {
-		const got = digests(1, 1, 200, [1, 2, 3, 4], false);
+		const got = digests(1, 1, 200, [1, 2, 3, 4], false, false);
 		for (const line of got) print(`[room pool lock] ${line}`);
 		expect(got).toEqual([
 			"floor 1 party 1: 6504 spawns, 45049506", // check-asset-ids: allow (FNV-1a digest)
@@ -84,7 +89,7 @@ describe("endless room pool lock (EV5)", () => {
 			"floor 6 party 1: 2281 spawns, 1cde5ea7",
 		];
 		const got: string[] = [];
-		for (let floor = 2; floor <= 6; floor++) got.push(digests(floor, 1, 40, [1], false)[0]);
+		for (let floor = 2; floor <= 6; floor++) got.push(digests(floor, 1, 40, [1], false, false)[0]);
 		for (const line of got) print(`[room pool lock] ${line}`);
 		for (let i = 0; i < got.size(); i++) expect(got[i]).never.toBe(before[i]);
 		for (let i = 0; i < got.size(); i++) expect(got[i]).never.toBe(ev5[i]);
@@ -98,29 +103,29 @@ describe("endless room pool lock (EV5)", () => {
 		]);
 	});
 
-	it("seeded roster: floor 1, run seeds 1-200, party 1-4 (re-recorded for docs/NEW_ENEMIES.md NE7)", () => {
+	it("seeded roster: floor 1, run seeds 1-200, party 1-4 (re-recorded for docs/NEW_ENEMIES.md NE7, solid decor and room themes)", () => {
 		// Floor 1 still buys swarmers and one sniper or bruiser, but the reshuffled order picks the other one for many
 		// run seeds. Before NE7 (docs/DAILY.md DSD1): party 1 7384 spawns 1f360722, party 4 13885 spawns 47d57a83.
 		const got = digests(1, 1, 200, [1, 2, 3, 4], true);
 		for (const line of got) print(`[room pool lock] roster ${line}`);
 		expect(got).toEqual([
-			"floor 1 party 1: 7421 spawns, 682b145f",
-			"floor 1 party 2: 9724 spawns, 04307ec9",
-			"floor 1 party 3: 11991 spawns, 3ffce9ff",
-			"floor 1 party 4: 13912 spawns, 098b28e4",
+			"floor 1 party 1: 7421 spawns, ea4f8dce",
+			"floor 1 party 2: 9724 spawns, 1c8edb8c",
+			"floor 1 party 3: 11991 spawns, bb22fed2",
+			"floor 1 party 4: 13912 spawns, adaa330b",
 		]);
 	});
 
-	it("seeded roster: floors 2-6, run seeds 1-40, solo (re-recorded for docs/NEW_ENEMIES.md NE7)", () => {
+	it("seeded roster: floors 2-6, run seeds 1-40, solo (re-recorded for docs/NEW_ENEMIES.md NE7, solid decor and room themes)", () => {
 		const got: string[] = [];
 		for (let floor = 2; floor <= 6; floor++) got.push(digests(floor, 1, 40, [1], true)[0]);
 		for (const line of got) print(`[room pool lock] roster ${line}`);
 		expect(got).toEqual([
-			"floor 2 party 1: 1734 spawns, 9adc9248",
-			"floor 3 party 1: 1699 spawns, 7d428886",
-			"floor 4 party 1: 1929 spawns, 31e21761",
-			"floor 5 party 1: 1920 spawns, 30365e99",
-			"floor 6 party 1: 2471 spawns, 2129d46b",
+			"floor 2 party 1: 1734 spawns, 84ad548f",
+			"floor 3 party 1: 1699 spawns, f10b3098",
+			"floor 4 party 1: 1929 spawns, 5c5135c9",
+			"floor 5 party 1: 1920 spawns, 1fc5f3e2",
+			"floor 6 party 1: 2471 spawns, c55e41c6",
 		]);
 	});
 });

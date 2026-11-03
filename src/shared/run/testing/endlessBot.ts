@@ -11,7 +11,6 @@
  * The bot: a BFS distance field over FLOOR tiles to a target tile; each tick steps toward the lowest neighbour.
  */
 import {
-	AXIS_MAX,
 	Button,
 	DEBUG_FLOOR_BUTTON,
 	DRAFT_COLUMN_CENTRE,
@@ -37,9 +36,9 @@ import {
 	type Recording,
 	type SimConfig,
 	type SimState,
+	quantizeAxis,
 } from "shared/sim";
 import { gridToWorld, pathField, pathStep, worldToGrid, type PathField } from "shared/dungeon";
-import { jsRound } from "shared/jsmath";
 import { buildEndlessRunConfig, type EndlessRunSetup } from "../endless";
 
 /** A BFS distance field to a target (exported for the party bot): shared/dungeon pathField's. */
@@ -60,17 +59,26 @@ export function walkDir(f: Field, x: number, z: number): [number, number] {
 }
 
 export function frame(mx: number, mz: number, buttons = 0, ax = 0, az = 0): InputFrame {
+	// quantizeAxis, as a real client's input goes: it also turns -0 into 0, which the recording codec cannot carry (a
+	// -0 the live sim stepped on but the server's decoded segment no longer has once split the hashes)
 	return {
-		moveX: jsRound(mx * AXIS_MAX),
-		moveZ: jsRound(mz * AXIS_MAX),
-		aimX: jsRound(ax * AXIS_MAX),
-		aimZ: jsRound(az * AXIS_MAX),
+		moveX: quantizeAxis(mx),
+		moveZ: quantizeAxis(mz),
+		aimX: quantizeAxis(ax),
+		aimZ: quantizeAxis(az),
 		buttons,
 	};
 }
 
 /** resolveDraft answers at most this many deals of one draft (builds' boss double draft deals 2). */
 const RESOLVE_DRAFT_MAX_DEALS = 4;
+
+/** walkTo: ticks under a move input without moving (more than WALK_STUCK_EPS) before the bot attacks its way on. */
+const WALK_STUCK_TICKS = 20;
+/** walkTo: ticks of attacking (FIRE held, aimed along the walk) once stuck. */
+const WALK_STUCK_ATTACK_TICKS = 30;
+/** walkTo: a tick that moves the player less than this (|dx| + |dz|, world units) counts as not moving. */
+const WALK_STUCK_EPS = 1e-3;
 
 /**
  * Test-only: closes every open boon draft WITHOUT a pick (state surgery; the game has no way to decline). For specs
@@ -200,15 +208,42 @@ export class Driver {
 		this.tick(frame(0, 0));
 	}
 
-	/** Walks to world (tx, tz) until `done()` or the tick budget runs out; rolls now and then. Returns ticks used. */
+	/**
+	 * Walks to world (tx, tz) until `done()` or the tick budget runs out; rolls now and then. Returns ticks used. The
+	 * distance field only knows the grid, so a body in the way (an intact breakable, an enemy) can pin the bot against
+	 * it: after WALK_STUCK_TICKS without moving it attacks along its walk for WALK_STUCK_ATTACK_TICKS, as a player would
+	 * (a walk that never stalls plays exactly as before).
+	 */
 	walkTo(tx: number, tz: number, done: () => boolean, maxTicks: number, avoid?: readonly [number, number]): number {
-		const field = distanceField(this.world().dungeon, tx, tz, avoid);
+		// round the floor's breakables like a player would (solid decor is already wall in the grid)
+		const w = this.world();
+		const blocked = new Set<number>();
+		for (const b of w.breakables ?? []) blocked.add(b.y * w.dungeon.W + b.x);
+		const field = distanceField(w.dungeon, tx, tz, avoid, blocked);
 		const startFloor = this.floor();
 		let n = 0;
+		let lastX = this.state.player.x;
+		let lastZ = this.state.player.z;
+		let still = 0;
+		let attack = 0;
 		while (n < maxTicks && !done() && this.state.player.dead === 0 && this.floor() === startFloor) {
 			const p = this.state.player;
 			const [mx, mz] = walkDir(field, p.x, p.z);
-			this.tick(frame(mx, mz, this.assisted(n % 50 === 25 ? Button.ROLL : 0)));
+			if (still >= WALK_STUCK_TICKS) {
+				attack = WALK_STUCK_ATTACK_TICKS;
+				still = 0;
+			}
+			let buttons: number = n % 50 === 25 ? Button.ROLL : 0;
+			const attacking = attack > 0;
+			if (attacking) {
+				buttons = bit32.bor(buttons, Button.FIRE);
+				attack--;
+			}
+			this.tick(frame(mx, mz, this.assisted(buttons), attacking ? mx : 0, attacking ? mz : 0));
+			const moved = math.abs(p.x - lastX) + math.abs(p.z - lastZ) > WALK_STUCK_EPS;
+			still = moved || (mx === 0 && mz === 0) ? 0 : still + 1;
+			lastX = p.x;
+			lastZ = p.z;
 			n++;
 		}
 		return n;

@@ -42,8 +42,9 @@ for (let run = 1; run <= RUNS; run++)
 		const params = endlessFloorParams(run * 7919, floor);
 		floorPairs.push({
 			params,
-			off: generateDungeon({ ...params, solidPillars: false }),
-			on: generateDungeon(params),
+			// solid decor off in both: it reads the walled grid (./solidDecor.spec.ts has its own)
+			off: generateDungeon({ ...params, solidPillars: false, solidDecor: false }),
+			on: generateDungeon({ ...params, solidDecor: false }),
 		});
 	}
 

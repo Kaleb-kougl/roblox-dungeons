@@ -18,6 +18,7 @@ import {
 const MENU_SCREENS: ReadonlyArray<UiScreen> = [
 	"mainMenu",
 	"lobbyBrowser",
+	"credits",
 	"lobbyRoom",
 	"options",
 	"optionsPrompt",

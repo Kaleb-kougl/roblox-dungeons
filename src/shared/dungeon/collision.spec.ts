@@ -149,6 +149,7 @@ function asciiDungeon(rows: ReadonlyArray<string>): Dungeon {
 		lakeCells: [],
 		lakeMask: new Array<number>(W * H, 0),
 		arches: [],
+		solidDecor: [],
 		stats: { rooms: 1, edges: 0, loops: 0, critLen: 0, floorTiles: 0, reach: 0, genMs: 0, attempts: 1 },
 	};
 }

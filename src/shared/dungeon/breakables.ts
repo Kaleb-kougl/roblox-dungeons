@@ -25,6 +25,10 @@
  *            clusterMin..clusterMax pieces hugging a wall: a seed cell 4-adjacent to a WALL, then each next piece
  *            4-adjacent to the cluster (preferring cells that hug a wall too). No piece is an 8-neighbour of another
  *            group's (clusters never merge). A room stops after seedTries rejected seed draws.
+ *   store    a storeroom (the Forge's room theme "store", docs/DECOR.md "Room themes") gets count x store.countScale
+ *            + store.countExtra pieces (at most maxPerRoom), no lone piece, and clusters of store.clusterMin..Max
+ *            seeded in its corners first (inCorner: a wall along X and along Z; store.cornerTries rejected corner
+ *            seeds, then any wall-hugging cell).
  *   kind     one draw per piece: crate with crateShare, else barrel.
  *
  * Output order is placement order (rooms by id). Tile coordinates (grid x, y; world x = x, z = y).
@@ -205,6 +209,12 @@ class Placer {
 		return false;
 	}
 
+	/** A WALL on one side along X and one along Z (a room corner, or beside a set piece's corner). */
+	inCorner(gx: number, gy: number): boolean {
+		const wall = (x: number, y: number) => tileAt(this.d, x, y) === TileType.WALL;
+		return (wall(gx + 1, gy) || wall(gx - 1, gy)) && (wall(gx, gy + 1) || wall(gx, gy - 1));
+	}
+
 	/** No non-FLOOR cell within Chebyshev distance `r`. */
 	clearOfWalls(gx: number, gy: number, r: number): boolean {
 		for (let oy = -r; oy <= r; oy++)
@@ -338,7 +348,10 @@ function pick(rng: EncounterRng, cells: ReadonlyArray<TileXZ>): TileXZ | undefin
 function placeRoom(p: Placer, input: BreakableFloorInput, room: EncounterRoom, floor: number, prep: FloorPrep): void {
 	const rng = p.rng;
 	const band = breakableBand(floor);
-	const count = breakableRoomCount(rng.int(band.min, band.max), room.floorTiles);
+	const S = BREAKABLE.store;
+	const store = (input.dungeon.roomThemes ?? [])[room.id] === "store";
+	const drawn = breakableRoomCount(rng.int(band.min, band.max), room.floorTiles);
+	const count = store ? math.min(BREAKABLE.maxPerRoom, drawn * S.countScale + S.countExtra) : drawn;
 	if (count <= 0) return;
 	const cands = candidatesOf(input, room, prep);
 	if (cands.size() === 0) return;
@@ -351,7 +364,7 @@ function placeRoom(p: Placer, input: BreakableFloorInput, room: EncounterRoom, f
 	// The one optional lone mid-room piece (combat rooms that are large enough both ways).
 	const sideX = room.maxX - room.minX;
 	const sideZ = room.maxZ - room.minZ;
-	if (room.type === "combat" && sideX >= BREAKABLE.loneMinRoomSide && sideZ >= BREAKABLE.loneMinRoomSide) {
+	if (!store && room.type === "combat" && sideX >= BREAKABLE.loneMinRoomSide && sideZ >= BREAKABLE.loneMinRoomSide) {
 		if (rng.next() < BREAKABLE.loneChance) {
 			const mids = cands.filter((c) => p.clearOfWalls(c.x, c.z, BREAKABLE.loneWallClearTiles));
 			const group = p.nextGroup++;
@@ -368,19 +381,26 @@ function placeRoom(p: Placer, input: BreakableFloorInput, room: EncounterRoom, f
 		}
 	}
 
-	// Wall clusters.
+	// Wall clusters (a storeroom's from its corners first).
 	const hugs = cands.filter((c) => p.hugsWall(c.x, c.z));
+	const corners = store ? cands.filter((c) => p.inCorner(c.x, c.z)) : [];
+	let cornerFails = 0;
 	while (placed < count && failures < BREAKABLE.seedTries) {
-		const seedCell = pick(rng, hugs);
+		const fromCorner = store && cornerFails < S.cornerTries && corners.size() > 0;
+		const seedCell = pick(rng, fromCorner ? corners : hugs);
 		if (seedCell === undefined) break;
 		const group = p.nextGroup;
 		if (!p.valid(seedCell.x, seedCell.z, group)) {
-			failures++;
+			if (fromCorner) cornerFails++;
+			else failures++;
 			continue;
 		}
 		p.nextGroup++;
 		const left = count - placed;
-		const want = math.min(rng.int(BREAKABLE.clusterMin, BREAKABLE.clusterMax), left);
+		const want = math.min(
+			store ? rng.int(S.clusterMin, S.clusterMax) : rng.int(BREAKABLE.clusterMin, BREAKABLE.clusterMax),
+			left,
+		);
 		const members: TileXZ[] = [seedCell];
 		p.place(seedCell.x, seedCell.z, group);
 		placed++;

@@ -141,13 +141,16 @@ function teleport(s: SimState, x: number, z: number, setup: EndlessRunSetup): vo
 
 describe("tutorial world: the lock", () => {
 	it("tutorial floors are endless floors: the endless Forge options and the endless floor world, only the seed fixed", () => {
-		// Every Forge param but seed / room count is the endless floor's (solid pillars, the room scale, ...).
+		// Every Forge param but seed / room count is the endless floor's (solid pillars, the room scale, ...), except solid
+		// decor: the lessons keep their rooms clear (docs/DECOR.md "Solid decor").
 		for (const f of [1, 2, 3]) {
 			const p = tutorialFloorParams(f);
+			expect(p.solidDecor).toBe(false);
 			expect({ ...p, seed: 0, roomCount: 0, chain: undefined }).toEqual({
 				...endlessFloorParams(TUTORIAL.runSeed, f),
 				seed: 0,
 				roomCount: 0,
+				solidDecor: false,
 			});
 		}
 		// Floor 1 is the lesson chain; floor 2 (and every later floor) a rolled Forge floor.
@@ -159,6 +162,7 @@ describe("tutorial world: the lock", () => {
 			...endlessFloorParams(TUTORIAL.runSeed, 1),
 			seed: 7,
 			roomCount: 9,
+			solidDecor: false,
 		});
 		expect(tutorialFloorParams(1).solidPillars).toBe(ENDLESS_SOLID_PILLARS);
 		expect(tutorialFloorParams(1).roomScale).toBe(ENDLESS_ROOM_SCALE);

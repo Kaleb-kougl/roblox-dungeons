@@ -31,10 +31,11 @@ export interface DailyConfig {
 export const DAILY: DailyConfig = table.freeze({
 	epochSeconds: KV_EPOCH_UNIX_SECONDS,
 	secondsPerDay: SECONDS_PER_DAY,
-	// 2: breakable loot (docs/BREAKABLE_DROPS.md) changes endless play.
-	// 3: five new room enemies and a reshuffled seeded roster (docs/NEW_ENEMIES.md NE7, NED12).
-	// 4: pellets in every endless fight room, the Sweep and the power pellet (docs/PELLETS.md PL5, PD10).
-	ruleset: 4,
+	// 2: breakable loot (docs/BREAKABLE_DROPS.md) changes endless play. 3: solid decor and room themes (docs/DECOR.md
+	// "Solid decor", "Room themes") change endless layouts and breakables, and five new room enemies with a reshuffled
+	// seeded roster (docs/NEW_ENEMIES.md NE7, NED12) change endless rooms (one bump: none of them has shipped).
+	// 4 (branch pellets only, never on main): pellets. 5: pellets merged onto main's 3 (docs/PELLETS.md PL5, PD10).
+	ruleset: 5,
 	labelOffset: 1,
 	yesterdayCacheSeconds: 600,
 	minEntrantsForPercentile: 20,

@@ -14,11 +14,15 @@
 import { describe, expect, it } from "@rbxts/jest-globals";
 import {
 	AXIS_MAX,
+	BOMBER,
+	BOMBER_DETONATED,
+	BOMBER_FUSED,
 	Button,
 	DEBUG_FLOOR_BUTTON,
 	EMPTY_INPUT,
 	NO_KIND,
 	START_HALF_HEARTS,
+	archetypeIndex,
 	countActors,
 	createSimState,
 	hashState,
@@ -156,6 +160,11 @@ function bench(players: number, wholeFloor: boolean): BenchResult {
 	expect(s.endless!.roomsEntered[room]).toBe(1);
 	const before = countActors(s.combat).alive;
 	const startIds = s.combat.actors.map((a) => (a.kind !== NO_KIND && a.alive !== 0 ? a.id : -1));
+	// Slots whose Bomber blew itself up during the measurement (docs/NEW_ENEMIES.md NE2: its blast is its own quiet
+	// death, no player kill; seen on the busiest room's bombers since the merge of solid decor). Read every tick: the
+	// corpse may be reaped before the end.
+	const bomber = archetypeIndex(BOMBER.id);
+	const detonated = new Set<number>();
 	const times: number[] = [];
 	let actors = 0;
 	let enemyBullets = 0;
@@ -176,22 +185,28 @@ function bench(players: number, wholeFloor: boolean): BenchResult {
 			hashes++;
 		}
 		actors += countActors(s.combat).present;
+		for (let i = 0; i < startIds.size(); i++) {
+			const a = s.combat.actors[i];
+			if (startIds[i] >= 0 && a.id === startIds[i] && a.kind === bomber && a.v[BOMBER_FUSED] === BOMBER_DETONATED)
+				detonated.add(i);
+		}
 		enemyBullets += s.combat.enemyBullets.activeCount;
 		playerBullets += s.combat.playerBullets.activeCount;
 	}
 	const mean = times.reduce((a, b) => a + b, 0) / times.size();
 	times.sort();
 	const hashUs = (hashTime / hashes) * 1e6;
-	// Nobody killed: every actor alive at the start still is, so the fight stayed at full size. The count itself may
-	// grow: a summoner (docs/ENEMY_VARIANTS.md EV4, in the room pool from floor 6 since EV5) calls swarmers mid-fight.
-	// Counted alive, not present: a corpse from the warm-up (a Bomber that blew itself up, docs/NEW_ENEMIES.md NE2; in
-	// the room pool since NE7) may be reaped during the measurement.
+	// Nobody killed: every actor alive at the start still is, so the fight stayed at full size, except a Bomber that blew
+	// itself up (its own death, not a kill). The count itself may grow: a summoner (docs/ENEMY_VARIANTS.md EV4, in the
+	// room pool from floor 6 since EV5) calls swarmers mid-fight. Counted alive, not present: a corpse from the warm-up
+	// (a Bomber that blew itself up, docs/NEW_ENEMIES.md NE2; in the room pool since NE7) may be reaped during the
+	// measurement.
 	for (let i = 0; i < startIds.size(); i++) {
-		if (startIds[i] < 0) continue;
+		if (startIds[i] < 0 || detonated.has(i)) continue;
 		const a = s.combat.actors[i];
 		expect([i, a.id, a.alive !== 0]).toEqual([i, startIds[i], true]);
 	}
-	expect(countActors(s.combat).alive >= before).toBe(true);
+	expect(countActors(s.combat).alive + detonated.size() >= before).toBe(true);
 	return {
 		stepUs: mean * 1e6,
 		p99Us: times[math.min(times.size() - 1, math.floor(times.size() * 0.99))] * 1e6,

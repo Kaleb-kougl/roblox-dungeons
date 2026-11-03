@@ -120,3 +120,35 @@ SOFTWARE.
   Not redistribute or resell this assets. - It can be used for game development and other productions."; **Paid
   License** "For commercial or personal use." with the same other terms. No attribution required. A published Roblox
   experience is not personal use, so the build uses the paid file under the Paid License.
+
+## Dungeon Essential Kit (3D models, CC-BY 4.0) - ATTRIBUTION REQUIRED
+
+- Author: Rakshaan (https://sketchfab.com/rakshaan). Source:
+  https://sketchfab.com/3d-models/dungeon-essential-kit-b22fc89609b44d21961f1212286e1867 (`dungeon_essential_kit.glb`,
+  glTF from Sketchfab; author, licence and source as recorded in the file's `asset.extras`).
+- Used for: the trial 3D kit decor (docs/DECOR.md "3D kits"): the floor cage (`decor.void.b<n>.cage.1` / `.2`) and the
+  chains (`decor.void.b<n>.chains.1` / `.2`, and `decor.delve.b<n>.bones.4`), the candle chandelier lying fallen in
+  rooms (`decor.delve.b<n>.chandelier`, its chain removed). **Changes made:** rendered to 2D sprites
+  from the game camera by `scripts/art/kit/render_kit.py` (Blender), scaled down, colour graded, the chains flattened
+  to lie on the floor; the renders are packed by `scripts/art/build-atlases.js` and uploaded to Roblox.
+- Raw files: `art/vendor/dungeon-essential-kit/` (gitignored; the .glb and its renders).
+- License: Creative Commons Attribution 4.0 International (https://creativecommons.org/licenses/by/4.0/). Commercial
+  use and changes are allowed. **Attribution is required where players can see it**: the main menu's Credits screen
+  (shared/view/menu `CREDITS`) shows the title, "by Rakshaan (Sketchfab)", "CC BY 4.0 -
+  creativecommons.org/licenses/by/4.0" and the change note. Every work in this file is listed there; keep both in step.
+
+## Dungeon Modular Set V2 (3D models, CC-BY 4.0) - ATTRIBUTION REQUIRED
+
+- Author: C. Anastasiadis (https://sketchfab.com/bagatir). Source:
+  https://sketchfab.com/3d-models/dungeon-modular-set-v2-174d66bb2ba6434b91da333aa055dc77
+  (`dungeon_modular_set_v2.glb`, glTF from Sketchfab; author, licence and source as recorded in its `asset.extras`).
+- Used for: the second trial 3D kit (docs/DECOR.md "3D kits"): the sarcophagus (`decor.delve.b<n>.sarco`), the candle
+  stand with its candles (`decor.delve.b<n>.candle` and the solid `decor.delve.b<n>.candelabrum`), the wall banner
+  (`decor.delve.b<n>.banner`) and the sarcophagus again as the solid tomb (`decor.delve.b<n>.tomb.1` / `.2`). **Changes
+  made:** rendered to 2D sprites from the game camera by `scripts/art/kit/render_kit.py` (Blender), scaled down and
+  colour graded; packed by `scripts/art/build-atlases.js` and uploaded to Roblox.
+- Raw files: `art/vendor/dungeon-modular-set-v2/` (gitignored; the .glb and its renders).
+- License: Creative Commons Attribution 4.0 International (https://creativecommons.org/licenses/by/4.0/).
+  **Attribution is required where players can see it**: the main menu's Credits screen (shared/view/menu `CREDITS`)
+  shows the title, "by C. Anastasiadis (Sketchfab)", "CC BY 4.0 - creativecommons.org/licenses/by/4.0" and the change
+  note.
