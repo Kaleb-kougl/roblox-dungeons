@@ -162,9 +162,19 @@
 			"bytes": 58928
 		},
 		{
+			"path": "ninja-adventure/Audio/Sounds/Elemental/Explosion5.wav",
+			"sha256": "3e23968cce244b0a280ae2206f0170c352d4751e9dea3f2d4e68a990428f13ca",
+			"bytes": 139160
+		},
+		{
 			"path": "ninja-adventure/Audio/Sounds/Elemental/Explosion6.wav",
 			"sha256": "01a254a81b96eefb2c56c8927c759365fb397382231c09645083c3fe9d689cd8",
 			"bytes": 175604
+		},
+		{
+			"path": "ninja-adventure/Audio/Sounds/Elemental/Fire.wav",
+			"sha256": "3be772c559fff04e7532719816a5c6ad1af1d0773869620f18e3c20dde277cdb",
+			"bytes": 157644
 		},
 		{
 			"path": "ninja-adventure/Audio/Sounds/Elemental/Fire3.wav",
@@ -190,6 +200,11 @@
 			"path": "ninja-adventure/Audio/Sounds/Hit & Impact/Hit3.wav",
 			"sha256": "88e36c1fd255e62dfdac53dc1cbae5af4d3daefdcff0606fac49b9560e7e8ff8",
 			"bytes": 70604
+		},
+		{
+			"path": "ninja-adventure/Audio/Sounds/Hit & Impact/Hit5.wav",
+			"sha256": "d5dc7a7e6f711fefc73544ab9e50567bc0c140ef31f7767e43e731de8a0964e3",
+			"bytes": 58264
 		},
 		{
 			"path": "ninja-adventure/Audio/Sounds/Hit & Impact/Hit6.wav",
@@ -360,6 +375,11 @@
 			"path": "ninja-adventure/Audio/Sounds/Whoosh & Slash/Sword2.wav",
 			"sha256": "779c2e934b7dd714ff068fd5c371e6848d4a1d940c6936ed42368a13df352daf",
 			"bytes": 37772
+		},
+		{
+			"path": "ninja-adventure/Audio/Sounds/Whoosh & Slash/Whoosh.wav",
+			"sha256": "2e9d4e4095ad0cddcee6ec69a1f55fe75b2793286910b3c574ef1d205d0e0154",
+			"bytes": 58520
 		},
 		{
 			"path": "ninja-adventure/Audio/Sounds/Whoosh & Slash/Whoosh2.wav",
