@@ -201,6 +201,8 @@ describe("enemy variants: contract", () => {
 		expect([...BESTIARY_STRING_KEYS]).toEqual([
 			...BESTIARY_ARCHETYPES.map((a) => bestiaryArchetypeKey(a)),
 			...AFFIX_IDS.map((a) => bestiaryAffixKey(a)),
+			// docs/PELLETS.md PL14: the power pellet's first sighting, appended last
+			"bestiary.pellet.power",
 		]);
 		expect([...BESTIARY_STRING_KEYS]).toEqual([
 			"bestiary.imp",
@@ -215,6 +217,7 @@ describe("enemy variants: contract", () => {
 			"bestiary.affix.swift",
 			"bestiary.affix.shielded",
 			"bestiary.affix.vengeful",
+			"bestiary.pellet.power",
 		]);
 		expect([...ENEMY_VARIANT_STRING_KEYS]).toEqual([...AFFIX_STRING_KEYS, ...BESTIARY_STRING_KEYS]);
 		for (const k of ENEMY_VARIANT_STRING_KEYS) expect([k, has(REQUIRED_STRING_KEYS, k)]).toEqual([k, true]);

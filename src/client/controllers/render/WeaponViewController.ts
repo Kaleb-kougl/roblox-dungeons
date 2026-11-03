@@ -23,6 +23,7 @@ import {
 } from "shared/sim";
 import type { ColorRole } from "shared/theme";
 import { MARKING_VIEW, RENDER_ORDER, WEAPON_VIEW, arc, heading, lerp, ray, sector } from "shared/view";
+import { tickDeflectedBullets } from "shared/view/pellets";
 import { SimController } from "../game/SimController";
 import { ThemeController } from "../game/ThemeController";
 import { DashLayer } from "./DashLayer";
@@ -47,7 +48,8 @@ function indexOrNone(id: string): number {
  *   swing     the last melee swing (combat.weapons.swing*, recorded by sweepArc): its fan, a blade sweeping across it
  *             (combo swings alternate direction), the finisher in the accent colour for longer
  *   wind-up   the sword finisher's arc in front of the player, growing as the lunge winds up
- *   guard     the sword guard's wide fan while it is up (flashing on its first ticks and when it deletes bullets)
+ *   guard     the sword guard's wide fan while it is up (flashing on its first ticks and when it deletes bullets; a power
+ *             pellet's erases, docs/PELLETS.md PL4, are not the guard's: tickDeflectedBullets)
  *   charge    the bow's charge: a ring filling around the player plus an aim line, accent colour when full; a heavy
  *             arrow's release flashes an expanding ring
  * Colours are theme roles: playerBullet (swings, charge), uiAccent (finisher, wind-up, full charge), uiMana (guard),
@@ -173,7 +175,7 @@ export class WeaponViewController implements OnStart {
 		}
 		const g = swordInHand ? swordGuard(active) : 0;
 		if (g > 0) {
-			const flash = g > WEAPON_VIEW.guardFlashFrom || s.events.bulletsDeleted > 0;
+			const flash = g > WEAPON_VIEW.guardFlashFrom || tickDeflectedBullets(s) > 0;
 			sector(
 				flash ? L.flash : L.guard,
 				px,

@@ -22,7 +22,8 @@
  * only. The deflect (summed bulletsDeleted: the sim keeps no per-player count) is the local player's at full volume
  * when the local player could have deleted them this frame (guard up, this frame or the last, or a swing:
  * StateWatch.mayDeflect), else a teammate's. A solo run reads the summed events exactly as before (the watch only
- * picks swing vs finisher).
+ * picks swing vs finisher). The power pellet's erases (docs/PELLETS.md PL4: in bulletsDeleted too) are no deflect: the
+ * deflect reads deflectedBullets (bulletsDeleted without them), and the power pellet plays sfx.pellet.power.
  *
  * Boost drops (docs/BOOSTS.md B7) come from the frame's collected drop events (shared/view/boosts BoostEventSource,
  * the run view's `boostEvents`, every tick of the frame): a landing plays sfx.boost.drop (a landing out of a broken
@@ -170,6 +171,14 @@ import {
 } from "../hud";
 import { AUDIO_VIEW } from "./config";
 import { StateWatch, SwingEdge } from "../watch";
+import {
+	NO_PELLET_EVENTS,
+	PELLETS_VIEW,
+	deflectedBullets,
+	pelletEatSpeed,
+	pelletRoomProgress,
+	type PelletFrameSource,
+} from "../pellets";
 
 /** Every sound effect the game plays, by logical ID (theme manifest). */
 export const SFX = {
@@ -305,6 +314,13 @@ export const SFX = {
 	 * plays while this one is silent (SFX_FALLBACK).
 	 */
 	breakableLoot: "sfx.breakable.loot",
+	/**
+	 * Pellets (docs/PELLETS.md PL7; the theme's PORT_AUDIO_EVENTS, PELLET_AUDIO_IDS): a pellet eaten (the chomp, two
+	 * alternating pitches), a room swept (the sting with the clear), the power pellet taken.
+	 */
+	pelletEat: "sfx.pellet.eat",
+	pelletSweep: "sfx.pellet.sweep",
+	pelletPower: "sfx.pellet.power",
 } as const;
 export type SfxId = (typeof SFX)[keyof typeof SFX];
 
@@ -383,6 +399,9 @@ export const ALL_SFX: ReadonlyArray<SfxId> = [
 	SFX.rankUp,
 	SFX.friendPassed,
 	SFX.breakableLoot,
+	SFX.pelletEat,
+	SFX.pelletSweep,
+	SFX.pelletPower,
 ];
 
 /** IDs this port added to the placeholder pack (not in the web contract's AUDIO_EVENTS; theme PORT_AUDIO_EVENTS). */
@@ -447,6 +466,9 @@ export const PORT_SFX: ReadonlyArray<SfxId> = [
 	SFX.rankUp,
 	SFX.friendPassed,
 	SFX.breakableLoot,
+	SFX.pelletEat,
+	SFX.pelletSweep,
+	SFX.pelletPower,
 ];
 
 /**
@@ -584,6 +606,10 @@ export const SFX_MIN_INTERVAL: Readonly<Partial<Record<SfxId, number>>> = {
 	[SFX.friendPassed]: 0.3,
 	/** Two loaded pieces broken by one swing / one ring are one sound (the boost drop's interval). */
 	[SFX.breakableLoot]: 0.1,
+	/** docs/PELLETS.md PL7: a line of pellets is a chomp every interval, never a buzz; two sweeps on one tick one sting. */
+	[SFX.pelletEat]: PELLETS_VIEW.audio.eatMinIntervalSec,
+	[SFX.pelletSweep]: PELLETS_VIEW.audio.stingMinIntervalSec,
+	[SFX.pelletPower]: PELLETS_VIEW.audio.stingMinIntervalSec,
 };
 
 /**
@@ -637,6 +663,14 @@ export const SFX_PRIORITY: Readonly<Record<SfxId, number>> = {
 	[SFX.comboTier]: 65,
 	[SFX.draftCharge]: 62,
 	[SFX.boostCollect]: 64,
+	/**
+	 * Pellets (docs/PELLETS.md PL7): the power pellet with the boost pickup; the sweep's sting just over it (it shares
+	 * the clear's frame with the jingle, which it never replaces: it is not a jingle); the chomp with the graze, the
+	 * smallest rewards (a busy frame keeps the hurt, the telegraph and the kill ladder over it).
+	 */
+	[SFX.pelletPower]: 64,
+	[SFX.pelletSweep]: 65,
+	[SFX.pelletEat]: 53,
 	/**
 	 * A boost out of a broken piece (docs/BREAKABLE_DROPS.md BL6): just over a kill drop's landing (the rarer, chosen
 	 * reward), under the pickup; over the piece's own break (40), which plays on the same frame.
@@ -917,7 +951,6 @@ export class AudioCueMapper {
 	/** buildCue's scan of its lists: the highest generation, and whether the local player set one off. */
 	private scanGen = 0;
 	private scanMine = false;
-
 	/** `playable`: whether an ID has a clip (silent IDs and their fallbacks; default: every ID plays). */
 	constructor(private readonly playable: Playable = EVERY_ID) {}
 
@@ -1072,6 +1105,32 @@ export class AudioCueMapper {
 		if (this.pending > before) this.buildQueued++;
 	}
 
+	/**
+	 * The frame's pellet cues (docs/PELLETS.md PL7): one chomp for every pellet eaten this frame (full volume when the
+	 * local player took one, else a teammate's quieter, lower-ranked cue), pitched up the room's ladder
+	 * (pelletEatSpeed: the frame's last pellet, the local player's when they took one, against its room's progress
+	 * after the frame's ticks, so a teammate's pellets climb the shared room's ladder too); the sweep sting for any room
+	 * swept; the power pellet as a player sound of its picker.
+	 */
+	private pelletCues(pellets: PelletFrameSource, localIndex: number, state: Readonly<SimState>): void {
+		const eaten = pellets.eaten;
+		if (eaten.size() > 0) {
+			let mine = false;
+			let last = eaten[eaten.size() - 1].index;
+			for (const e of eaten) {
+				if (e.player !== localIndex) continue;
+				mine = true;
+				last = e.index;
+			}
+			const progress = pelletRoomProgress(state, last);
+			const speed = progress !== undefined ? pelletEatSpeed(progress[0], progress[1]) : 1;
+			const rank = priorityOf(SFX.pelletEat) - (mine ? 0 : TEAMMATE_PRIORITY_DROP);
+			this.cue(SFX.pelletEat, mine ? 1 : AUDIO_VIEW.teammateVolume, rank, speed);
+		}
+		if (pellets.swept.size() > 0) this.cue(SFX.pelletSweep, 1);
+		for (const p of pellets.power) this.playerCue(SFX.pelletPower, p.player, localIndex);
+	}
+
 	/** The frame's build cues (BU8; see the file comment). */
 	private buildCues(builds: BuildFxFrameSource, localIndex: number): void {
 		const sparks = builds.sparks;
@@ -1157,8 +1216,9 @@ export class AudioCueMapper {
 	 * audibleVariantCues, docs/ENEMY_VARIANTS.md; none by default), `newBest` the frame's new-best cues (the client's
 	 * NewBestTracker frame of THIS frame, docs/NEW_BEST.md NB5; none by default), `builds` the frame's build effects (the
 	 * run view's `builds` through audibleBuilds, docs/BUILDS.md BU8; none by default), `rank` the frame's daily rank cues
-	 * (the client's DailyRankController of THIS frame, docs/DAILY.md DS10; none by default). Appends the cues to start to
-	 * `out` (in table order) and returns it.
+	 * (the client's DailyRankController of THIS frame, docs/DAILY.md DS10; none by default), `pellets` the frame's pellet
+	 * events (the run view's `pellets`, docs/PELLETS.md PL7; none by default). Appends the cues to start to `out` (in
+	 * table order) and returns it.
 	 */
 	frame(
 		now: number,
@@ -1174,6 +1234,7 @@ export class AudioCueMapper {
 		newBest: NewBestCueSource = NO_NEW_BEST_CUES,
 		builds: BuildFxFrameSource = NO_BUILD_FX_EVENTS,
 		rank: DailyRankCueSource = NO_DAILY_RANK_CUES,
+		pellets: PelletFrameSource = NO_PELLET_EVENTS,
 	): AudioCueList {
 		this.now = now;
 		this.pending = 0;
@@ -1191,9 +1252,11 @@ export class AudioCueMapper {
 		// The first floor past the deepest (NB5): its floor enter makes way for the fanfare at the card's reveal.
 		const silentFloorEnter = this.deepestEntered(events, state, newBest);
 
+		// The power pellet's erases are in bulletsDeleted but are nobody's deflect (docs/PELLETS.md PL4).
+		const deflected = deflectedBullets(events.bulletsDeleted, pellets);
 		for (const [field, id] of SIM_EVENT_SOUNDS) {
 			if (party && PLAYER_EVENT_FIELDS.includes(field)) continue;
-			if (!(events[field] > 0)) continue;
+			if (!((field === "bulletsDeleted" ? deflected : events[field]) > 0)) continue;
 			// Solo: the frame's deletes were the guard's (the parry plays instead).
 			if (id === SFX.playerDeflect && guarded !== GUARD_NONE) continue;
 			if (id === SFX.floorEnter && silentFloorEnter) continue;
@@ -1219,7 +1282,7 @@ export class AudioCueMapper {
 			if (events.shotsFired > 0 && w.localShot) this.cue(SFX.playerShoot, 1);
 			// Deflects: the local player's when they could have made them, else a teammate's (quiet).
 			// A guard's erases are the parry's (GP6), never also a deflect.
-			if (events.bulletsDeleted > 0) {
+			if (deflected > 0) {
 				if (w.mayDeflect[localIndex]) {
 					if ((guarded & GUARD_LOCAL) === 0) this.cue(SFX.playerDeflect, 1);
 				} else if ((guarded & GUARD_TEAMMATE) === 0)
@@ -1304,6 +1367,8 @@ export class AudioCueMapper {
 		if (parries !== undefined) this.parryCue(parries);
 		// Build effects (docs/BUILDS.md BU8): generation pitch, intervals and the voice cap.
 		this.buildCues(builds, localIndex);
+		// Pellets (docs/PELLETS.md PL7): the chomp, the sweep sting, the power pellet.
+		this.pelletCues(pellets, localIndex, state);
 
 		this.keepOneJingle();
 		this.applyCap();

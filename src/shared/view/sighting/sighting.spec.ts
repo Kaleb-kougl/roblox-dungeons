@@ -2,11 +2,13 @@
 // the view player; a slimelet is an Ooze; affixes by kind), and the one-toast-at-a-time queue over the account's seen
 // set (nothing before a loaded status, a later status never forgets, a run exit drops what was never shown).
 import { describe, expect, it } from "@rbxts/jest-globals";
-import { AffixKind } from "shared/dungeon";
+import { AffixKind, type FloorPellets } from "shared/dungeon";
 import { SIGHTING_IDS } from "shared/onboarding";
 import {
 	AFFIXES_CONFIG,
 	NO_KIND,
+	PELLETS_CONFIG,
+	PelletPhase,
 	affixesOnSpawn,
 	archetypeAt,
 	createSimState,
@@ -15,7 +17,14 @@ import {
 	type SimConfig,
 	type SimState,
 } from "shared/sim";
-import { ARCHETYPE_SIGHTINGS, SIGHTING_VIEW, SightingQueue, affixSighting, sightingsInView } from ".";
+import {
+	ARCHETYPE_SIGHTINGS,
+	POWER_PELLET_SIGHTING,
+	SIGHTING_VIEW,
+	SightingQueue,
+	affixSighting,
+	sightingsInView,
+} from ".";
 
 function config(spawns: ActorSpawn[], extra: Partial<SimConfig> = {}): SimConfig {
 	return { encounter: { spawns, rooms: [], entranceRoom: -1, bossRoom: -1 }, ...extra };
@@ -32,6 +41,33 @@ const NEAR = SIGHTING_VIEW.radius - 1;
 const FAR = SIGHTING_VIEW.radius + 1;
 
 describe("sightingsInView", () => {
+	it("the power pellet (docs/PELLETS.md PL14): only untaken in a live room, within the radius", () => {
+		expect(SIGHTING_IDS).toContain(POWER_PELLET_SIGHTING);
+		const floor: FloorPellets = {
+			tiles: [
+				{ x: NEAR, z: 0 },
+				{ x: 1, z: 1 },
+			],
+			room: [0, 0],
+			power: 0,
+		};
+		const s = createSimState(1, 0, 0, { pellets: { ...PELLETS_CONFIG, floor } });
+		const p = s.pellets!;
+		// A sandbox has no score records: give the two pellets one room by hand.
+		p.rec[0] = 0;
+		p.rec[1] = 0;
+		p.rooms.push({ first: 0, span: 2, count: 1, left: 1, phase: PelletPhase.DORMANT, swept: 0 });
+		expect(sightingsInView(s, 0, [])).toEqual([]);
+		p.rooms[0].phase = PelletPhase.LIVE;
+		expect(sightingsInView(s, 0, [])).toEqual([POWER_PELLET_SIGHTING]);
+		expect(sightingsInView(s, 0, [], NEAR - 1)).toEqual([]);
+		p.taken[0] = 1;
+		expect(sightingsInView(s, 0, [])).toEqual([]);
+		p.taken[0] = 0;
+		p.rooms[0].phase = PelletPhase.GONE;
+		expect(sightingsInView(s, 0, [])).toEqual([]);
+	});
+
 	it("names the living new archetypes near the view player, canonical order, each once", () => {
 		const s = createSimState(
 			1,

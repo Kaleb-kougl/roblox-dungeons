@@ -1511,6 +1511,22 @@ export const VALE_WORLD_LAYOUTS: Record<string, ValeWorldLayout> = {
 		pivot: { x: 20.5, y: 19 },
 		pixelsPerTile: 29.6,
 	},
+	pellet: {
+		kind: "image",
+		file: "pellet.png",
+		w: 11,
+		h: 11,
+		pivot: { x: 5.5, y: 5.5 },
+		pixelsPerTile: 29.6,
+	},
+	pelletpower: {
+		kind: "image",
+		file: "pellet-power.png",
+		w: 17,
+		h: 17,
+		pivot: { x: 8.5, y: 8.5 },
+		pixelsPerTile: 29.6,
+	},
 	"rocks-e": {
 		kind: "image",
 		file: "decor-atlas.png",

@@ -6,7 +6,9 @@
 // TutorialMetrics (docs/TUTORIAL_FUNNEL.md TF4): the bot's lesson reports pinned (in order, out of order), skips and
 // dt-0 frames, scripted stuck episodes, and the guard-late guardHold episode under thresholds around its length. The
 // map lesson (docs/TUTORIAL_MAP.md TM1 / TM2): opened when current, early, never (waived on the floor change) or
-// unavailable (waived when current), its `next` marker and its prompt around the treasure room.
+// unavailable (waived when current), its `next` marker and its prompt around the treasure room. The pellet lesson
+// (docs/PELLETS.md PL13): step 12 in combat G, the sweep lock's hold prompt when the bot fights first, the Sweep, the
+// map's `next` marker on G's door, and the bot's recording replaying to the same hash.
 import { describe, expect, it } from "@rbxts/jest-globals";
 import { TUTORIAL } from "shared/config";
 import { MAX_TUTORIAL_STEP_NAME_CHARS, TUTORIAL_FUNNEL_MAX_STEP } from "shared/onboarding";
@@ -21,6 +23,7 @@ import {
 	DEBUG_FLOOR_BUTTON,
 	EMPTY_INPUT,
 	GUARD_LOCK_RELEASED,
+	PELLET_LOCK_RELEASED,
 	SIM_DT,
 	SIM_HZ,
 	ScoreSource,
@@ -29,6 +32,8 @@ import {
 	archetypeIndex,
 	boostTicks,
 	dropsGround,
+	hashState,
+	runReplay,
 	type BossAct1Data,
 	type InputFrame,
 } from "shared/sim";
@@ -199,6 +204,17 @@ function lateRun(): TutorialBotResult {
 	return late;
 }
 
+let pelletsLate: TutorialBotResult | undefined;
+/** Combat G fought first (pellets "late"): the sniper held at 1 hp until the last pellet. */
+function pelletsLateRun(): TutorialBotResult {
+	if (pelletsLate === undefined) {
+		pelletsLate = playTutorial({ pellets: "late" });
+		describeRun("pellets late", pelletsLate);
+		print(`  pellet lock: held from @${pelletsLate.pelletHeldTick} for ${pelletsLate.pelletHeldTicks} ticks`);
+	}
+	return pelletsLate;
+}
+
 describe("tutorial steps and strings", () => {
 	it("steps: numbered 1..N, unique funnel-safe ids, the funnel's max step is N", () => {
 		const ids = new Set<string>();
@@ -213,7 +229,7 @@ describe("tutorial steps and strings", () => {
 			expect(tutorialStepName(s.number)).toBe(s.id);
 			expect(tutorialStepIndex(s.id)).toBe(i);
 		}
-		expect(TUTORIAL_STEP_COUNT).toBe(17);
+		expect(TUTORIAL_STEP_COUNT).toBe(18);
 		expect(TUTORIAL_FUNNEL_MAX_STEP).toBe(TUTORIAL_STEP_COUNT);
 		expect(MAX_TUTORIAL_STEP_ID_CHARS).toBe(MAX_TUTORIAL_STEP_NAME_CHARS);
 		expect([tutorialStepName(0), tutorialStepName(TUTORIAL_STEP_COUNT + 1), tutorialStepName(1.5)]).toEqual([
@@ -240,6 +256,7 @@ describe("tutorial steps and strings", () => {
 			"bow",
 			"ember",
 			"map",
+			"pellets",
 			"relic",
 			"curse",
 			"stairwell",
@@ -263,7 +280,8 @@ describe("tutorial steps and strings", () => {
 		expect(s.marker).toEqual({ kind: "drop" });
 		expect(s.rule).toEqual({ kind: "boost" });
 		// The funnel numbers before it are the old ones; everything after moved up by one (6..15 -> 7..16; then the map
-		// step, docs/TUTORIAL_MAP.md, moved relic .. finish on to 12..17).
+		// step, docs/TUTORIAL_MAP.md, moved relic .. finish on to 12..17; then the pellets step, docs/PELLETS.md PL13, on
+		// to 13..18).
 		expect([1, 2, 3, 4, 5].map((n) => tutorialStepName(n))).toEqual([
 			"objective",
 			"move",
@@ -271,7 +289,7 @@ describe("tutorial steps and strings", () => {
 			"attack",
 			"hits",
 		]);
-		expect([7, 17].map((n) => tutorialStepName(n))).toEqual(["roll", "finish"]);
+		expect([7, 18].map((n) => tutorialStepName(n))).toEqual(["roll", "finish"]);
 	});
 
 	it("every prompt (each device), callout and UI string key exists in the placeholder pack", () => {
@@ -317,8 +335,11 @@ describe("tutorial steps and strings", () => {
 		expect(pack.str(tutorialPromptKey("move", "keyboard"), { move: "WASD" })).toBe("Move: WASD");
 		expect(pack.str(tutorialPromptKey("move", "gamepad"), { move: "Left stick" })).toBe("Move: Left stick");
 		expect(pack.str("tutorial.verdict")).toBe("Practice: not submitted (tutorial)");
-		expect(tutorialPromptIds().size()).toBe(TUTORIAL_STEP_COUNT + 2); // + follow, + the block lesson's guardHold
+		// + follow, + the block lesson's guardHold, + the pellet lesson's pelletsHold (docs/PELLETS.md PL13).
+		expect(tutorialPromptIds().size()).toBe(TUTORIAL_STEP_COUNT + 3);
 		expect(TUTORIAL_STEPS[tutorialStepIndex("guard")].holdPrompt).toBe("guardHold");
+		expect(TUTORIAL_STEPS[tutorialStepIndex("pellets")].holdPrompt).toBe("pelletsHold");
+		expect(tutorialStringKeys().includes(tutorialPromptKey("pelletsHold", "touch"))).toBe(true);
 		expect(tutorialStringKeys().includes(tutorialPromptKey("guardHold", "keyboard"))).toBe(true);
 		expect(warnings).toEqual([]);
 	});
@@ -391,6 +412,7 @@ describe("tutorial director", () => {
 			"guard",
 			"bow",
 			"ember",
+			"pellets",
 			"relic",
 			"curse",
 		]);
@@ -682,9 +704,67 @@ describe("the block lesson (combat D, the sim's guard lock)", () => {
 	});
 });
 
+describe("the pellet lesson (combat G, the sim's sweep lock; docs/PELLETS.md PL13)", () => {
+	const PELLETS = tutorialStepIndex("pellets");
+
+	it("the step: number 12, between map and relic, floor 1, combat G, the hold prompt, G's door, clear + sweep", () => {
+		const s = TUTORIAL_STEPS[PELLETS];
+		expect([s.number, TUTORIAL_STEPS[PELLETS - 1].id, TUTORIAL_STEPS[PELLETS + 1].id, s.floor, s.lesson]).toEqual([
+			12,
+			"map",
+			"relic",
+			1,
+			"combatG",
+		]);
+		expect([s.prompt, s.holdPrompt, s.highlight, s.card, s.promptBeforeEntry]).toEqual([
+			"pellets",
+			"pelletsHold",
+			undefined,
+			undefined,
+			undefined,
+		]);
+		expect(s.marker).toEqual({ kind: "door", lesson: "combatG" });
+		expect(s.rule).toEqual({ kind: "clear", skills: ["sweep"] });
+	});
+
+	it("the tour bot sweeps first: every pellet taken, one Sweep, the step practised, no hold; its run replays", () => {
+		const r = inOrderRun();
+		const st = r.run.state;
+		expect(r.pelletsTaken).toBe(TUTORIAL.pellets.max);
+		expect(r.pelletsSweptTick > 0 && r.pelletsSweptTick < r.stepDoneTicks[PELLETS]).toBe(true);
+		expect(st.score!.counts[ScoreSource.SWEEP]).toBe(1);
+		expect(st.tutorial!.pelletLock).toBe(PELLET_LOCK_RELEASED);
+		expect([r.pelletHeldTick, r.pelletHeldTicks]).toEqual([-1, 0]);
+		expect([r.view.done[PELLETS], r.view.skipped[PELLETS], r.view.waived[PELLETS]]).toEqual([true, false, false]);
+		expect(r.prompts.includes("pellets")).toBe(true);
+		expect(r.prompts.includes("pelletsHold")).toBe(false);
+		// The live run's recording (every frame the bot played) replays to the same state.
+		const replayed = runReplay(r.run.recorder.getRecording(), buildTutorialRunConfig().config);
+		expect(hashState(replayed)).toBe(hashState(st));
+		expect(replayed.tutorial).toEqual(st.tutorial);
+		expect(replayed.pellets!.taken).toEqual(st.pellets!.taken);
+	});
+
+	it("fighting first never kills the sniper: it waits at 1 hp under the pelletsHold prompt until the last pellet", () => {
+		const r = pelletsLateRun();
+		const st = r.run.state;
+		expect(r.pelletHeldTick > 0 && r.pelletHeldTicks > 0).toBe(true);
+		expect(r.prompts.includes("pelletsHold")).toBe(true);
+		expect(r.pelletsSweptTick > r.pelletHeldTick).toBe(true);
+		expect(r.stepDoneTicks[PELLETS] > r.pelletsSweptTick).toBe(true);
+		expect([r.view.done[PELLETS], r.view.skipped[PELLETS], r.view.waived[PELLETS]]).toEqual([true, false, false]);
+		expect(st.score!.counts[ScoreSource.SWEEP]).toBe(1);
+		expect(st.tutorial!.pelletLock).toBe(PELLET_LOCK_RELEASED);
+		expect(r.view.finished).toBe(true);
+		expect(r.view.funnelStepReached).toBe(TUTORIAL_STEP_COUNT);
+		expect(r.heartProblems).toEqual([]);
+	});
+});
+
 describe("the map lesson (docs/TUTORIAL_MAP.md TM1 / TM2)", () => {
 	const EMBER = tutorialStepIndex("ember");
 	const RELIC = tutorialStepIndex("relic");
+	const PELLETS = tutorialStepIndex("pellets");
 	const STAIRWELL = tutorialStepIndex("stairwell");
 	const reportsFor = (r: TutorialBotResult, index: number) =>
 		r.lessonReports.filter((l) => l.step === TUTORIAL_STEPS[index].number);
@@ -705,12 +785,12 @@ describe("the map lesson (docs/TUTORIAL_MAP.md TM1 / TM2)", () => {
 		expect(r.heartProblems).toEqual([]);
 	}
 
-	it("the step: number 11, between ember and relic, floor 1, no room, the minimap ring, the next marker", () => {
+	it("the step: number 11, between ember and pellets, floor 1, no room, the minimap ring, the next marker", () => {
 		const s = TUTORIAL_STEPS[MAP];
 		expect([s.number, TUTORIAL_STEPS[MAP - 1].id, TUTORIAL_STEPS[MAP + 1].id, s.floor, s.lesson]).toEqual([
 			11,
 			"ember",
-			"relic",
+			"pellets",
 			1,
 			undefined,
 		]);
@@ -718,7 +798,7 @@ describe("the map lesson (docs/TUTORIAL_MAP.md TM1 / TM2)", () => {
 		expect(s.marker).toEqual({ kind: "next" });
 		expect(s.rule).toEqual({ kind: "map" });
 		expect(TUTORIAL_HIGHLIGHTS.includes("minimap")).toBe(true);
-		expect([11, 12, 17].map((n) => tutorialStepName(n))).toEqual(["map", "relic", "finish"]);
+		expect([11, 12, 13, 18].map((n) => tutorialStepName(n))).toEqual(["map", "pellets", "relic", "finish"]);
 		expect(TUTORIAL_PROMPT_IDS.includes("map")).toBe(true);
 	});
 
@@ -748,8 +828,12 @@ describe("the map lesson (docs/TUTORIAL_MAP.md TM1 / TM2)", () => {
 	it("never opened: waived (done, not skipped) on the floor 1 -> 2 change, no report; the funnel still reaches N", () => {
 		const floor1 = buildTutorialRunConfig().endlessFloor(1);
 		const treasure = tutorialRoom("treasure");
+		const g = tutorialRoom("combatG");
 		let mapFrames = 0;
 		let markerMismatch = 0;
+		let gDoorFrames = 0;
+		let gInsideFrames = 0;
+		let gPromptFrames = 0;
 		let doorFrames = 0;
 		let pedestalFrames = 0;
 		let relicPromptFrames = 0;
@@ -763,7 +847,25 @@ describe("the map lesson (docs/TUTORIAL_MAP.md TM1 / TM2)", () => {
 				mapFrames++;
 				const entered = st.endless!.roomsEntered[treasure.roomId] !== 0;
 				const inside = floor1.roomIdAt(st.player.x, st.player.z) === treasure.roomId;
-				if (!v.done[RELIC]) {
+				if (!v.done[PELLETS]) {
+					// The map's `next` marker is the pellet lesson's (docs/PELLETS.md PL13): combat G's door until entered,
+					// then nothing inside it; its prompt (or the hold prompt) inside the entered room.
+					const gEntered = st.endless!.roomsEntered[g.roomId] !== 0;
+					const gInside = floor1.roomIdAt(st.player.x, st.player.z) === g.roomId;
+					const m = v.marker;
+					if (!gEntered) {
+						gDoorFrames++;
+						if (m === undefined || m.kind !== "door" || m.x !== g.door.x || m.z !== g.door.z)
+							markerMismatch++;
+					} else if (gInside) {
+						gInsideFrames++;
+						if (m !== undefined) markerMismatch++;
+						if (v.prompt === "pellets" || v.prompt === "pelletsHold") gPromptFrames++;
+						else promptMismatch++;
+					} else if (m === undefined || m.kind !== "door" || m.x !== g.center.x || m.z !== g.center.z) {
+						markerMismatch++;
+					}
+				} else if (!v.done[RELIC]) {
 					// The relic step's marker: the treasure room's door until entered, then the pedestal.
 					const at = entered ? treasure.center : treasure.door;
 					const m = v.marker;
@@ -794,6 +896,7 @@ describe("the map lesson (docs/TUTORIAL_MAP.md TM1 / TM2)", () => {
 		expect([markerMismatch, promptMismatch]).toEqual([0, 0]);
 		expect(doorFrames > 0 && pedestalFrames > 0).toBe(true);
 		expect(relicPromptFrames > 0 && mapAgainFrames > 0).toBe(true);
+		expect(gDoorFrames > 0 && gInsideFrames > 0 && gPromptFrames === gInsideFrames).toBe(true);
 	});
 
 	it("unavailable: waived on the frame it becomes current (its prompt and ring never shown), no report", () => {
@@ -855,7 +958,7 @@ describe("guidance arrow on the tutorial floors (docs/TUTORIAL_ARROW.md A3)", ()
 				checked++;
 			}
 		}
-		expect(checked).toBe(2 * 9 + 1); // nine lesson steps (combat A-F, relic, curse, stairwell) + the stairwell
+		expect(checked).toBe(2 * 10 + 1); // ten lesson steps (combat A-G, relic, curse, stairwell) + the stairwell
 	});
 
 	it("floor 2's stairwell (the boss step's fallback, the finish) is reachable from every FLOOR tile of every room", () => {
@@ -930,13 +1033,13 @@ describe("tutorial metrics (docs/TUTORIAL_FUNNEL.md TF4)", () => {
 		);
 	}
 
-	it("TUTORIAL_PROMPT_IDS lists every prompt the director can show (follow and guardHold too)", () => {
+	it("TUTORIAL_PROMPT_IDS lists every prompt the director can show (follow, guardHold and pelletsHold too)", () => {
 		expect([...TUTORIAL_PROMPT_IDS]).toEqual(tutorialPromptIds());
-		expect(TUTORIAL_PROMPT_IDS.size()).toBe(TUTORIAL_STEP_COUNT + 2);
-		for (const id of ["follow", "guardHold", "objective", "boost", "finish"]) {
+		expect(TUTORIAL_PROMPT_IDS.size()).toBe(TUTORIAL_STEP_COUNT + 3);
+		for (const id of ["follow", "guardHold", "pelletsHold", "objective", "boost", "pellets", "finish"]) {
 			expect([id, TUTORIAL_PROMPT_IDS.includes(id)]).toEqual([id, true]);
 		}
-		for (const r of [inOrderRun(), outOfOrderRun(), lateRun()]) {
+		for (const r of [inOrderRun(), outOfOrderRun(), lateRun(), pelletsLateRun()]) {
 			for (const p of r.prompts) expect([p, TUTORIAL_PROMPT_IDS.includes(p)]).toEqual([p, true]);
 		}
 		expect(TUTORIAL.stuckSeconds).toBe(20);
@@ -957,12 +1060,13 @@ describe("tutorial metrics (docs/TUTORIAL_FUNNEL.md TF4)", () => {
 			[9, 5.5, 2], // bow
 			[10, 9.3, 1], // ember
 			[11, 0, 0], // map: opened on the first frame it is current (docs/TUTORIAL_MAP.md)
-			[12, 5, 0], // relic
-			[13, 2.8, 0], // curse
-			[14, 3.3, 0], // stairwell
-			[15, 0.5, 0], // draft
-			[16, 24.1, 26], // boss
-			[17, 0, 0], // finish: done on the boss kill's tick (the stairwell opens under the bot)
+			[12, 15.1, 1], // pellets: the walk F -> G, the ring, then the sniper (docs/PELLETS.md PL13)
+			[13, 2.9, 0], // relic
+			[14, 2.8, 0], // curse
+			[15, 3.3, 0], // stairwell
+			[16, 0.5, 0], // draft
+			[17, 24.1, 26], // boss
+			[18, 0, 0], // finish: done on the boss kill's tick (the stairwell opens under the bot)
 		]);
 		expect(r.sharedClockFrames).toBe(0);
 		checkRelations(r);
@@ -983,12 +1087,13 @@ describe("tutorial metrics (docs/TUTORIAL_FUNNEL.md TF4)", () => {
 			[9, 5.5, 2],
 			[10, 9.3, 1],
 			[11, 0, 0],
-			[12, 5, 0],
+			[12, 15.1, 0],
 			[13, 2.8, 0],
-			[14, 3.3, 0],
-			[15, 0.5, 0],
-			[16, 24.1, 26],
-			[17, 0, 0],
+			[14, 2.8, 0],
+			[15, 3.3, 0],
+			[16, 0.5, 0],
+			[17, 24.1, 26],
+			[18, 0, 0],
 		]);
 		const steps = r.lessonReports.map((l) => l.step);
 		expect(new Set(steps).size()).toBe(TUTORIAL_STEP_COUNT);

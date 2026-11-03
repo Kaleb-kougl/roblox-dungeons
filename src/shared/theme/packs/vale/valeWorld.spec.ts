@@ -22,12 +22,15 @@ import type { ImageAsset, SpriteSetAsset } from "../../types";
 import { sortedKeys } from "../../util";
 import { breakableContrastReport, decorFxReport, validateManifest } from "../../validate";
 import { PLACEHOLDER_MANIFEST } from "../placeholder";
+import { PELLET_KINDS, pelletId } from "../../pellets";
+import { pelletReport } from "../../pelletColors";
 import { VALE_WORLD_LAYOUTS } from "./layout";
 import {
 	VALE_AMBIENT_ART,
 	VALE_BREAKABLE_ART,
 	VALE_DECOR_FX,
 	VALE_DECOR_PIECES,
+	VALE_PELLET_ART,
 	VALE_RETIRED_WORLD_ART,
 	VALE_VOID_DECOR_PIECES,
 	VALE_VOID_KIND_PIECES,
@@ -78,6 +81,7 @@ describe("vale world art (docs/DECOR.md R5)", () => {
 		for (const p of VALE_VOID_KIND_PIECES) used.add(p.art);
 		for (const name of DECOR_FX_NAMES) used.add(VALE_DECOR_FX[name]);
 		for (const kind of BREAKABLE_KINDS) used.add(VALE_BREAKABLE_ART[kind]);
+		for (const kind of PELLET_KINDS) used.add(VALE_PELLET_ART[kind]);
 		// the void pieces' art may still be missing from the built atlas (docs/VOID_DECOR.md VD6): dormant until built
 		const pending = new Set<string>();
 		for (const p of VALE_VOID_DECOR_PIECES) if (VALE_WORLD_LAYOUTS[p.art] === undefined) pending.add(p.art);
@@ -109,7 +113,8 @@ describe("vale world art (docs/DECOR.md R5)", () => {
 			expect(parseDecorId(id)).toBeDefined();
 		}
 		// one shared atlas, the particle texture, the loot twinkle's own sheet (docs/BREAKABLE_DROPS.md) and the trial
-		// 3D kit's own PNGs (docs/DECOR.md "3D kits")
+		// 3D kit's own PNGs (docs/DECOR.md "3D kits") and the
+		// two pellet cubes (docs/PELLETS.md PL8)
 		expect(worldFiles()).toEqual([
 			"decor-atlas.png",
 			"decor-mote.png",
@@ -132,6 +137,8 @@ describe("vale world art (docs/DECOR.md R5)", () => {
 			"kit-tomb-x.png",
 			"kit-tomb-z.png",
 			"loot-glint.png",
+			"pellet-power.png",
+			"pellet.png",
 		]);
 	});
 
@@ -140,6 +147,19 @@ describe("vale world art (docs/DECOR.md R5)", () => {
 		expect(validateManifest(m, { packId: "vale" })).toEqual([]);
 		for (const id of decorIds()) expect([id, m.assets[id] !== undefined]).toEqual([id, true]);
 		for (const kind of BREAKABLE_KINDS) expect(m.assets[breakableId(kind)].kind).toBe("sprites");
+		// the pellets (docs/PELLETS.md PL8): images of their own PNGs at the pack's scale, tinted by their roles
+		for (const kind of PELLET_KINDS) {
+			const a = m.assets[pelletId(kind)] as ImageAsset;
+			const l = VALE_WORLD_LAYOUTS[VALE_PELLET_ART[kind]];
+			expect([kind, a.kind, l.kind === "image" ? a.assetId === worldIds()[l.file] : false]).toEqual([
+				kind,
+				"image",
+				true,
+			]);
+			expect([kind, a.pixelsPerTile, a.rect]).toEqual([kind, 29.6, undefined]);
+		}
+		for (const e of pelletReport(m))
+			expect([e.role, e.check, e.against, e.ok]).toEqual([e.role, e.check, e.against, true]);
 		// colour rules still hold (the art changes no role): decor fx never read as enemy bullets, bullets read on
 		// breakables
 		for (const e of decorFxReport(m)) expect([e.role, e.against, e.ok]).toEqual([e.role, e.against, true]);
@@ -152,6 +172,14 @@ describe("vale world art (docs/DECOR.md R5)", () => {
 		for (const kind of BREAKABLE_KINDS) {
 			expect(none.assets[breakableId(kind)]).toEqual(PLACEHOLDER_MANIFEST.assets[breakableId(kind)]);
 		}
+		// a pellet keeps its placeholder cube until its own PNG has an ID (each kind on its own)
+		for (const kind of PELLET_KINDS) expect(none.assets[pelletId(kind)]).toEqual({ kind: "placeholder" });
+		const normalOnly = buildValeManifest(worldIds("pellet-power.png"));
+		expect([normalOnly.assets["pellet.normal"].kind, normalOnly.assets["pellet.power"].kind]).toEqual([
+			"image",
+			"placeholder",
+		]);
+		expect(validateManifest(normalOnly, { packId: "vale" })).toEqual([]);
 		const atlasOnly = buildValeManifest(worldIds("decor-mote.png"));
 		expect(validateManifest(atlasOnly, { packId: "vale" })).toEqual([]);
 		for (const b of BIOMES) {

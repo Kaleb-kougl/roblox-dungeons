@@ -12,6 +12,7 @@ import {
 	BOON_MAX_LEVEL,
 	BUILDS_CONFIG,
 	BUILDS_SUBSYSTEM,
+	PELLETS_SUBSYSTEM,
 	BUILD_RULES,
 	BUILD_SOURCE_BASE,
 	BULLET_KIND_COUNT,
@@ -256,20 +257,24 @@ describe("opt-in state and the builds hash group (BU1)", () => {
 		expect(createSimState(1, f1.spawnX, f1.spawnZ, t.config).builds).toBe(undefined);
 	});
 
-	it("an endless run hashes a builds group last (after affixes), a name per value, = writeHashFields", () => {
+	it("an endless run hashes a builds group after affixes (pellets after it, last), a name per value, = writeHashFields", () => {
 		for (const n of [1, 3]) {
 			const setup = buildEndlessRunConfig(1337, n);
 			const f1 = setup.endlessFloor(1);
 			const s = createSimState(1337, f1.spawnX, f1.spawnZ, setup.config);
 			const layout = hashLayout(s, true);
 			const names = layout.groups.map((g) => g.name);
-			expect([names[names.size() - 2], names[names.size() - 1]]).toEqual([AFFIXES_SUBSYSTEM, BUILDS_SUBSYSTEM]);
-			const g = layout.groups[layout.groups.size() - 1];
+			expect([names[names.size() - 3], names[names.size() - 2], names[names.size() - 1]]).toEqual([
+				AFFIXES_SUBSYSTEM,
+				BUILDS_SUBSYSTEM,
+				PELLETS_SUBSYSTEM,
+			]);
+			const g = layout.groups[layout.groups.size() - 2];
 			expect([layout.names[g.start], layout.values[g.start]]).toEqual(["builds.players.length", n]);
 			expect(layout.names[g.start + 1]).toBe("builds.players[0].levels.length");
 			expect(layout.values[g.start + 1]).toBe(BOON_COUNT);
 			expect(layout.names.size()).toBe(layout.values.size());
-			expect(layout.names[layout.names.size() - 1]).toBe("builds.procs.length");
+			expect(layout.names[g.finish - 1]).toBe("builds.procs.length");
 			expect(layout.values).toEqual(writeHashFields(s, []));
 			// 1 + per player (1 + 15 levels + 1 duos length + 7 scalars: BU5 appended bulwarkPending, BU6 closeGrazes)
 			// + 1 procs length.
@@ -280,8 +285,9 @@ describe("opt-in state and the builds hash group (BU1)", () => {
 	it("without SimConfig.builds nothing is created or hashed; with it only the appended last group and the score's build-only source differ", () => {
 		const setup = buildEndlessRunConfig(SEED);
 		const spawn = setup.spawn!;
-		const withConfig = setup.config;
-		const without: SimConfig = { ...setup.config, builds: undefined };
+		// Pellets (docs/PELLETS.md PL5) left out of both: they would pad the Jackpot source without builds too.
+		const withConfig: SimConfig = { ...setup.config, pellets: undefined };
+		const without: SimConfig = { ...setup.config, builds: undefined, pellets: undefined };
 		const a = createSimState(SEED, spawn.x, spawn.z, without);
 		const b = createSimState(SEED, spawn.x, spawn.z, withConfig);
 		expect(a.builds).toBe(undefined);

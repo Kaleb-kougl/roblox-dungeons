@@ -25,6 +25,11 @@ or client runs headlessly), and TF9 (dashboard). See "As built".
 onboarding lessons 4-20, `Completed` 21; attempt lessons 2-18, `completed` 19; `maxEventsPerAttempt` 84 (first-attempt
 bound 82, was 78 of 80), `maxEventsPerSession` 252.
 
+2026-11-02 (headless, docs/PELLETS.md PL13): the `pellets` lesson (combat G, step 12) makes 18 lessons.
+`TUTORIAL_FUNNEL_REVISION` 3 (`t1r3`); `relic` .. `finish` 12..17 -> 13..18; onboarding lessons 4-21, `Completed` 22;
+attempt lessons 2-19, `completed` 20; `maxEventsPerAttempt` 88, `maxEventsPerSession` 264 (3 x 88), measured by the
+`analyticsCatalog` budget spec. Data before `t1r3` is not comparable past lesson 11 (`map`).
+
 ## What the code gives us today (read on `main` @ `62b5263`)
 
 | Fact | Where | Consequence |
@@ -63,8 +68,8 @@ bound 82, was 78 of 80), `maxEventsPerSession` 252.
 ### 1. Three layers
 
 ```
-Onboarding funnel (once per user, first-join only)   Joined -> Loaded -> TutorialStarted -> 17 lessons -> Completed
-Attempt funnel  `TutorialAttempt` (every attempt)    started -> 17 lessons -> completed           (replaces `tutorial`)
+Onboarding funnel (once per user, first-join only)   Joined -> Loaded -> TutorialStarted -> 18 lessons -> Completed
+Attempt funnel  `TutorialAttempt` (every attempt)    started -> 18 lessons -> completed           (replaces `tutorial`)
 Custom events                                        lesson time / hits / stuck, skip, abandon, restart, outro,
                                                      gate, new-player runs and return
 ```
@@ -82,10 +87,10 @@ Steps (`ONBOARDING_FUNNEL_STEPS` in `shared/onboarding`; names <= 32 chars):
 | 1 | `Joined` | server | a **fresh** player (onboarding doc loaded, empty: TFD2) joined, once the server knows the entry (`joinIntent` resolved, or the player left first: `unknown`). Fields below |
 | 2 | `Loaded` | client report | the join loading screen released (`LoadingController`: core tier, Skip or timeout) |
 | 3 | `TutorialStarted` | server | `tutorialStarted({ entry: "firstJoin" })` while the doc is not done |
-| 4-20 | the 17 lesson ids (`objective` .. `finish`) | client report (as today) | lesson step n reached = onboarding step n + 3 |
-| 21 | `Completed` | server | `tutorialFinished("completed")` while the doc is not done |
+| 4-21 | the 18 lesson ids (`objective` .. `finish`) | client report (as today) | lesson step n reached = onboarding step n + 3 |
+| 22 | `Completed` | server | `tutorialFinished("completed")` while the doc is not done |
 
-- **Open while not done.** Steps 2-21 are logged only while the player's doc says the tutorial is not done (the same
+- **Open while not done.** Steps 2-22 are logged only while the player's doc says the tutorial is not done (the same
   test as the gate). A skip or a completion closes it for good; a leave does not (they get the tutorial again next
   join, and that session keeps filling the same once-per-user funnel; repeated steps count once). A later replay from
   the main menu never touches it.
@@ -100,7 +105,7 @@ Steps (`ONBOARDING_FUNNEL_STEPS` in `shared/onboarding`; names <= 32 chars):
 ### 3. Attempt funnel `TutorialAttempt` (replaces `tutorial`, TFD5)
 
 `LogFunnelStepEvent`, session id = the attempt GUID (as today). Step 1 `started` (server, on `tutorialStarted`), steps
-2-18 the lessons, 19 `completed`. Step 1 fields: field01 `entry` = `firstJoin` / `restart` / `menu` / `again`
+2-19 the lessons, 20 `completed`. Step 1 fields: field01 `entry` = `firstJoin` / `restart` / `menu` / `again`
 (the outro's Play again), field02 `revision`, field03 `device` (`keyboard` / `gamepad` / `touch`, the
 `InputDeviceKind` at start). `TutorialFunnelTracker` keeps its filter; it gains the step offset and the start fields.
 The old `tutorial` funnel stops logging (its tab can be removed; history stays 90 days).
@@ -156,9 +161,9 @@ honest reports).
 Per-player events per first attempt: about 21 onboarding + 19 attempt + ~26 lesson / stuck + 3 = ~69 over ~5 min.
 The game-wide budget is `120 + 20 x CCU` per minute, so ~13 per player-minute uses two thirds of one player's share
 for those 5 minutes, and run telemetry only fires at run end. TF1's spec caps one attempt at
-`TUTORIAL_TELEMETRY.maxEventsPerAttempt` (84). That cap resets with every attempt, so a client looping restarts could
+`TUTORIAL_TELEMETRY.maxEventsPerAttempt` (88). That cap resets with every attempt, so a client looping restarts could
 still log hundreds a minute: per player per server session only the first `maxAttemptsLoggedPerSession` (3) attempts
-are logged and all attempt events together stay within `maxEventsPerSession` (252, the exit reserve kept); later
+are logged and all attempt events together stay within `maxEventsPerSession` (264, the exit reserve kept); later
 attempts open and close unlogged (the once-per-user onboarding funnel, bounded by its once-each rule, still takes their
 steps).
 
@@ -214,9 +219,9 @@ Where the build differs from, or pins down, the design above:
 
 - **Names.** Tunables are `TUTORIAL_TELEMETRY` (`shared/onboarding` config; `TUTORIAL_FUNNEL` stays the attempt funnel's
   name, now `"TutorialAttempt"`), event names `TUTORIAL_ANALYTICS_EVENT`, steps `ONBOARDING_FUNNEL` /
-  `TUTORIAL_ATTEMPT_FUNNEL_STEPS` (`started` 1, lessons n + 1, `completed` 19; onboarding `Joined` 1, `Loaded` 2,
-  `TutorialStarted` 3, lessons n + 3, `Completed` 21), revision `t1r2` (`tutorialFunnelRevision()`; `t1r1` before the
-  `map` lesson, 2026-11-01). The stuck threshold
+  `TUTORIAL_ATTEMPT_FUNNEL_STEPS` (`started` 1, lessons n + 1, `completed` 20; onboarding `Joined` 1, `Loaded` 2,
+  `TutorialStarted` 3, lessons n + 3, `Completed` 22), revision `t1r3` (`tutorialFunnelRevision()`; `t1r1` before the
+  `map` lesson, 2026-11-01; `t1r2` before the `pellets` lesson, 2026-11-02). The stuck threshold
   is client side, `TUTORIAL.stuckSeconds` (20, shared/config), because shared/tutorial cannot import shared/onboarding.
 - **Pure layer** (all specced): `reports.ts` (payload types and `read*` validators), `funnel.ts`
   (`TutorialFunnelTracker` + builders), `onboardingFunnel.ts` (`OnboardingFunnelTracker`), `newPlayer.ts`,
@@ -234,7 +239,7 @@ Where the build differs from, or pins down, the design above:
   be upgraded (15 s after join: `INVITE.launchDataWaitSeconds` + the upgrade margin); nothing by then, or a leave
   before, logs `unknown`. The intent may arrive before the join load (state created on first touch).
 - **Budget** (review fix): per player per server session only the first `maxAttemptsLoggedPerSession` (3) attempts log,
-  within `maxEventsPerSession` (252); later attempts open and close unlogged. `tutorialStarted` has its own
+  within `maxEventsPerSession` (264 since the pellet lesson, was 252); later attempts open and close unlogged. `tutorialStarted` has its own
   `TUTORIAL_START_RATE` (3 per 10 s).
 - **Outro seconds:** a choice uses the client's card-open seconds; `left` uses the server's time since the `completed`
   finish (beat included).

@@ -717,6 +717,16 @@
 			"bytes": 164
 		},
 		{
+			"path": "kaleb-vale/pellets/pellet.png",
+			"sha256": "e0b02d7f0ea60b02612cbc8c371e2e5663874c46c92ab0653fb07bab99bbd769",
+			"bytes": 109
+		},
+		{
+			"path": "kaleb-vale/pellets/pellet_power.png",
+			"sha256": "5c14a0ffd1d2e3a1684cef77b714e70b7dcf863a264a2844bc64c3d997abda2d",
+			"bytes": 146
+		},
+		{
 			"path": "lords-of-pain-demo/enemy/skeleton/skeleton_default_walk/E/skeleton_default_walk_E_0.0_0.png",
 			"sha256": "eaaf1ea383e0d5b159d1cc787610413cbb00258d64a2fd5a1fd91364e6d578f6",
 			"bytes": 17145

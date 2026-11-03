@@ -19,7 +19,13 @@ import {
 	stampNudgeFor,
 	type RoomClearLook,
 } from "shared/view/fx";
-import { ROOM_CLEAR_STRINGS, roomClearStampText, roomClearTallyText } from "shared/view/hud";
+import {
+	ROOM_CLEAR_STRINGS,
+	roomClearFoldPellets,
+	roomClearStampText,
+	roomClearTallyText,
+	type RoomClearStr,
+} from "shared/view/hud";
 import { AudioController } from "../audio/AudioController";
 import { SimController } from "../game/SimController";
 import { ThemeController } from "../game/ThemeController";
@@ -122,9 +128,12 @@ export class RoomClearController implements OnStart {
 		if (settings.roomClear) {
 			const solo = partySize(state) <= 1;
 			const me = playerAt(state, view);
+			const pack = this.theme.getPack();
+			const s: RoomClearStr = (key, vars) => pack.str(key, vars);
 			for (const c of clears.clears) {
 				const style = roomClearStyle(c, me.x, me.z, solo);
-				seq.start(c, style, motionScale(settings));
+				// docs/PELLETS.md PL7: a row too long for the slot folds the pellet points into Kills.
+				seq.start(c, style, motionScale(settings), roomClearFoldPellets(c, s));
 				if (solo) applyRoomClearSlowMo(c, this.sim.hitstop, settings);
 				else if (freezeFrameOn(settings) && c.slot >= 0) {
 					this.actors.holdActor(c.slot, c.actorId, ROOM_CLEAR.coopHoldSec);

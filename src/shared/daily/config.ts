@@ -34,7 +34,8 @@ export const DAILY: DailyConfig = table.freeze({
 	// 2: breakable loot (docs/BREAKABLE_DROPS.md) changes endless play. 3: solid decor and room themes (docs/DECOR.md
 	// "Solid decor", "Room themes") change endless layouts and breakables, and five new room enemies with a reshuffled
 	// seeded roster (docs/NEW_ENEMIES.md NE7, NED12) change endless rooms (one bump: none of them has shipped).
-	ruleset: 3,
+	// 4 (branch pellets only, never on main): pellets. 5: pellets merged onto main's 3 (docs/PELLETS.md PL5, PD10).
+	ruleset: 5,
 	labelOffset: 1,
 	yesterdayCacheSeconds: 600,
 	minEntrantsForPercentile: 20,

@@ -7,6 +7,7 @@ import { describe, expect, it } from "@rbxts/jest-globals";
 import {
 	AFFIXES_SUBSYSTEM,
 	BUILDS_SUBSYSTEM,
+	PELLETS_SUBSYSTEM,
 	BREAKABLES_SUBSYSTEM,
 	DROPS_SUBSYSTEM,
 	ENDLESS_HASH_SUBSYSTEM,
@@ -221,7 +222,7 @@ describe("a 2-player endless run with per-player progression", () => {
 		for (let i = 0; i < N; i++) expect(runMods(live, i)).toEqual(computeRunMods(rp[i], live.builds!.players[i]));
 	});
 
-	it("hashes run (two players) after score, then party, breakables, drops, affixes, then builds last", () => {
+	it("hashes run (two players) after score, then party, breakables, drops, affixes, builds, then pellets last", () => {
 		const layout = hashLayout(live, true);
 		const names = layout.groups.map((g) => g.name);
 		expect(names).toEqual([
@@ -234,6 +235,7 @@ describe("a 2-player endless run with per-player progression", () => {
 			DROPS_SUBSYSTEM,
 			AFFIXES_SUBSYSTEM,
 			BUILDS_SUBSYSTEM,
+			PELLETS_SUBSYSTEM,
 		]);
 		const runGroup = layout.groups[names.indexOf(RUN_SUBSYSTEM)];
 		expect([layout.names[runGroup.start], layout.values[runGroup.start]]).toEqual(["run.players.length", N]);

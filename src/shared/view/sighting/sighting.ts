@@ -7,7 +7,9 @@
  *   - sightingsInView: every living actor within SIGHTING_VIEW.radius of the watched player (the view index: the
  *     spectated teammate after a co-op death) whose archetype has a sighting (ARCHETYPE_SIGHTINGS: `imp`, `slime` and
  *     `slime.small` (as `slime`), `summoner`) or who carries an affix (`affix.<id>` by shared/dungeon AffixKind). The
- *     ids come out in canonical order (shared/onboarding SIGHTING_IDS), each once.
+ *     ids come out in canonical order (shared/onboarding SIGHTING_IDS), each once. The power pellet (`pellet.power`,
+ *     docs/PELLETS.md PL14) counts while it lies untaken in a live room within the same radius (shared/view/pellets
+ *     livePowerPellet); the tutorial never shows one (its caller skips the tutorial anyway).
  *   - SightingQueue: the account's seen set (every `onboardingStatus.seen`, unioned: a later status never forgets a
  *     local sighting), the queue of ids found but not shown yet, and the one-at-a-time clock. Nothing is queued before a
  *     LOADED status arrived (`loaded: false` = the stored set is unknown, so no toast at all rather than repeat them all
@@ -21,7 +23,11 @@
 import { affixThemeIndex } from "shared/dungeon";
 import { AFFIX_SIGHTING_IDS, SIGHTING_IDS, type OnboardingStatus } from "shared/onboarding";
 import { NO_KIND, affixSlotAt, archetypeIndex, partySize, playerAt, type SimState } from "shared/sim";
+import { livePowerPellet } from "../pellets";
 import { SIGHTING_VIEW } from "./config";
+
+/** The power pellet's sighting id (shared/onboarding SIGHTING_IDS, docs/PELLETS.md PL14). */
+export const POWER_PELLET_SIGHTING = "pellet.power";
 
 /** Archetype id -> its sighting id (the archetypes a first sighting announces; a slimelet is an Ooze). */
 export const ARCHETYPE_SIGHTINGS: ReadonlyMap<string, string> = new Map([
@@ -84,6 +90,13 @@ export function sightingsInView(
 		const slot = affixSlotAt(state, i, a);
 		const affix = slot !== undefined ? affixSighting(slot.affix) : undefined;
 		if (affix !== undefined) found.add(affix);
+	}
+	const power = livePowerPellet(state);
+	const pellets = state.pellets;
+	if (power >= 0 && pellets !== undefined) {
+		const dx = pellets.x[power] - viewer.x;
+		const dz = pellets.z[power] - viewer.z;
+		if (dx * dx + dz * dz <= r2) found.add(POWER_PELLET_SIGHTING);
 	}
 	for (const id of SIGHTING_IDS) if (found.has(id)) out.push(id);
 	return out;

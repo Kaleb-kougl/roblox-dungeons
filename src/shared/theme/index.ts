@@ -109,7 +109,23 @@ export {
 	type VoidEntry,
 } from "./voidColors";
 export * from "./builds";
-export { BUILD_COLOR_RULES, buildReport, type BuildColorEntry, type BuildColorRules } from "./buildColors";
+export {
+	BUILD_COLOR_RULES,
+	buildReport,
+	floorAndDifferenceReport,
+	type BuildColorEntry,
+	type BuildColorRules,
+} from "./buildColors";
+// Roblox port (docs/PELLETS.md PL6): the pellet kinds, roles, sounds and strings, and their colour rules.
+export * from "./pellets";
+export {
+	MIN_PELLET_BOOST_DIFFERENCE,
+	PELLET_BOOST_COLOR_RULES,
+	PELLET_COLOR_RULES,
+	pelletReport,
+	type PelletColorEntry,
+	type PelletColorRules,
+} from "./pelletColors";
 export * from "./placeholders";
 export {
 	DEFAULT_PACK_ID,
@@ -125,6 +141,7 @@ export {
 	type BiomeTheme,
 	type BoostTheme,
 	type BreakableTheme,
+	type PelletTheme,
 	type DecorArt,
 	type FrameUV,
 	type FxArt,
@@ -152,6 +169,7 @@ export {
 	type BiomeColors,
 	type Boost,
 	type Breakable,
+	type Pellet,
 	type DecorPiece,
 	type FrameRect,
 	type FxSprite,

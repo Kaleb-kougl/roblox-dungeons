@@ -195,6 +195,13 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		"build.burst": "#f8c8a0",
 		"build.shard": "#f4e8f8",
 		"build.ember": "#f4f4b0",
+		// Roblox port (docs/PELLETS.md PL6, PD3; yellow by the owner, 2026-11-03): the pellets are Pac-Man yellow, the power
+		// pellet the same yellow (it reads by its size, pulse and glow). >= 40 CIE76 from the enemy bullet (82), its
+		// outline, the telegraph (76), every build effect colour (nearest build.ember 63) and the player outline; >= 30 from
+		// every boost (nearest: frenzy 34.4, fury 38.7: MIN_PELLET_BOOST_DIFFERENCE, pelletColors.ts) and >= 3:1 on every
+		// biome floor and vale's textured floor (pelletReport, printed by theme/pellets.spec.ts).
+		"pellet.normal": "#ffff00",
+		"pellet.power": "#ffff00",
 	},
 	// Roblox port (docs/VOID_DECOR.md VD1): `shoulder` is the wall darkened in linear light (ancient x0.95, molten x0.75,
 	// frost x0.9, grim x0.8, verdant x0.9: as far as the "nearer the wall than the floor" rule lets each go; the ancient
@@ -329,6 +336,9 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		"boost.quickstep": PLACEHOLDER,
 		"boost.frenzy": PLACEHOLDER,
 		"boost.aegis": PLACEHOLDER,
+		// Roblox port (docs/PELLETS.md PL6): pellets, a small cube each (the power pellet a bigger one) until art exists.
+		"pellet.normal": PLACEHOLDER,
+		"pellet.power": PLACEHOLDER,
 		"sfx.player.shoot": SILENT,
 		"sfx.player.roll": SILENT,
 		"sfx.player.hurt": SILENT,
@@ -423,6 +433,11 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		"sfx.enemy.stun": SILENT,
 		"sfx.enemy.strike": SILENT,
 		"sfx.enemy.spin": SILENT,
+		// Roblox port (docs/PELLETS.md PL6): a pellet eaten, a room swept, the power pellet taken; silent until the vale
+		// pack's clips are picked, built and uploaded (audio:build)
+		"sfx.pellet.eat": SILENT,
+		"sfx.pellet.sweep": SILENT,
+		"sfx.pellet.power": SILENT,
 		"music.menu": SILENT,
 		"music.biome.1": SILENT,
 		"music.biome.2": SILENT,
@@ -671,6 +686,9 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		"score.source.breakables": "Breakables",
 		// Roblox port (docs/BUILDS.md BU8 follow-up): the build-only Jackpot source (Bounty III), builds runs only.
 		"score.source.jackpot": "Jackpot",
+		// Roblox port (docs/PELLETS.md PL6): the pellet sources (pellets and the power pellet's bullets; sweep bonuses).
+		"score.source.pellets": "Pellets",
+		"score.source.sweep": "Sweeps",
 		// M5: leaderboards.
 		"hud.pause.leaderboard": "Leaderboards",
 		"hud.leaderboard.title": "Leaderboards",
@@ -1049,6 +1067,13 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		"tutorial.prompt.map.gamepad":
 			"The map in the corner fills in as you explore. Open the full map: {map}. Press it again to close.",
 		"tutorial.prompt.map.touch": "Your map fills in as you explore. Tap the pause button to see the whole floor.",
+		// The `pellets` step (docs/PELLETS.md PL13): combat G's ring of pellets, then its sweep lock's hold prompt.
+		"tutorial.prompt.pellets.keyboard": "Grab the pellets while enemies are alive. Get them all for a Sweep!",
+		"tutorial.prompt.pellets.gamepad": "Grab the pellets while enemies are alive. Get them all for a Sweep!",
+		"tutorial.prompt.pellets.touch": "Grab the pellets while enemies are alive. Get them all for a Sweep!",
+		"tutorial.prompt.pelletsHold.keyboard": "Grab the last pellets to finish the fight.",
+		"tutorial.prompt.pelletsHold.gamepad": "Grab the last pellets to finish the fight.",
+		"tutorial.prompt.pelletsHold.touch": "Grab the last pellets to finish the fight.",
 		"tutorial.prompt.relic.keyboard": "Relics are permanent for the run. Walk onto the pedestal.",
 		"tutorial.prompt.relic.gamepad": "Relics are permanent for the run. Walk onto the pedestal.",
 		"tutorial.prompt.relic.touch": "Relics are permanent for the run. Walk onto the pedestal.",
@@ -1132,6 +1157,9 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		"room.clear.total": "= {points}",
 		"room.clear.chip": "{stamp} +{points}",
 		"room.clear.fly": "+{points}",
+		// docs/PELLETS.md PL6: the pellet points earned in the room (like Kills), the Sweep bonus (like the other bonuses)
+		"room.clear.line.pellets": "Pellets {points}",
+		"room.clear.line.sweep": "Sweep +{points}",
 		// --- hud.combo.* (docs/COMBO.md CB3: the combo's tier names, the break and the lapse's best) -------------
 		"hud.combo.rampage": "RAMPAGE",
 		"hud.combo.carnage": "CARNAGE",
@@ -1161,6 +1189,8 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		"bestiary.affix.swift": "Swift: moves and attacks faster, same warnings",
 		"bestiary.affix.shielded": "Shielded: its shield refills if you let it rest",
 		"bestiary.affix.vengeful": "Vengeful: bursts into a ring when it dies",
+		// docs/PELLETS.md PL14 (PD16): the power pellet's first sighting in a real run
+		"bestiary.pellet.power": "Power pellet: grab it to turn every enemy bullet into points",
 		// --- daily.* (docs/DAILY.md DS9 / DS11 / DS12: the main menu's Daily card and podium, the leaderboard tabs, the
 		// run-over daily block, the lobby world toggle; numbers arrive formatted by the view) ---------------------------
 		"daily.card.title": "DAILY #{label} · {date}",

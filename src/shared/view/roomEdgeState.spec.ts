@@ -356,7 +356,7 @@ describe("RoomEdgeStates: tutorial floor 1 (tutorial bot)", () => {
 			expect(tr[1][0] > lastSafe).toBe(true);
 			lastSafe = tr[2][0];
 		}
-		expect(lessons).toBe(6);
+		expect(lessons).toBe(7); // combat A-G (combat G, the pellet lesson: docs/PELLETS.md PL11)
 	});
 
 	it("every tutorial floor's rooms follow the room rules", () => {

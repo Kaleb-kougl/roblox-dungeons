@@ -95,9 +95,10 @@ describe("new enemies: contract", () => {
 		expect(REQUIRED_ASSET_IDS.includes(STRIKE_BULLET_ID)).toBe(true);
 		expect(ENEMY_AURA_ROLE).toBe("enemyAura");
 		expect((COLOR_ROLES as ReadonlyArray<string>).includes(ENEMY_AURA_ROLE)).toBe(true);
+		// the six end the new enemies' block (docs/PELLETS.md PL6's three come after it)
+		const blockEnd = (PORT_AUDIO_EVENTS as ReadonlyArray<string>).indexOf("sfx.enemy.spin") + 1;
 		const tail: string[] = [];
-		for (let i = PORT_AUDIO_EVENTS.size() - AUDIO.size(); i < PORT_AUDIO_EVENTS.size(); i++)
-			tail.push(PORT_AUDIO_EVENTS[i]);
+		for (let i = blockEnd - AUDIO.size(); i < blockEnd; i++) tail.push(PORT_AUDIO_EVENTS[i]);
 		expect(tail).toEqual(AUDIO);
 		for (const id of AUDIO)
 			expect([id, REQUIRED_ASSET_IDS.includes(id), slotFor(id)?.soundGroup]).toEqual([id, true, "sfx"]);

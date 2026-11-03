@@ -85,6 +85,8 @@ import type { RobloxAssetId } from "../../types";
  * their names short, so which id is the outline is not known yet: their sets stay placeholders until added.
  * sfx-enemy-strike (the Stormcaller's strike: "Lightning strike" by DRAGON-STUDIO, Pixabay 386161) uploaded 2026-11-03
  * 11:28 AM by k9kbdev as the downloaded MP3, transcribed from an Asset Manager screenshot.
+ * Not uploaded yet: pellet.png and pellet-power.png (the pellet cubes, docs/PELLETS.md PL8; original art,
+ * scripts/art/gen-pellet.js, built by `npm run art:build` into art/upload/). Until then both pellets stay placeholders.
  */
 export const VALE_ASSET_IDS: Readonly<Record<string, RobloxAssetId>> = {
 	"amb-b1.ogg": "rbxassetid://91158343621799",

@@ -122,8 +122,8 @@ describe("boosts: contract", () => {
 	});
 
 	it("appends sfx.breakable.loot last (docs/BREAKABLE_DROPS.md BL5): required, sfx, SILENT in the placeholder and vale", () => {
-		// Last before docs/NEW_ENEMIES.md NE1's six enemy sounds.
-		const n = PORT_AUDIO_EVENTS.size() - 6;
+		// Last before docs/NEW_ENEMIES.md NE1's six enemy sounds (then docs/PELLETS.md PL6's three).
+		const n = PORT_AUDIO_EVENTS.size() - 6 - 3;
 		expect([PORT_AUDIO_EVENTS[n - 2], PORT_AUDIO_EVENTS[n - 1]]).toEqual([
 			"sfx.friend.passed",
 			"sfx.breakable.loot",

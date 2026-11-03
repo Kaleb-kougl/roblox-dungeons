@@ -37,7 +37,7 @@
  * floor entry is dropped): a patterned material under the image would fight it.
  *
  * World art (docs/DECOR.md R5): the Lords of Pain props, effects and breakables (VALE_WORLD_LAYOUTS, one shared atlas
- * plus the ambient particle texture). VALE_DECOR_PIECES / VALE_DECOR_FX / VALE_AMBIENT_ART / VALE_BREAKABLE_ART say
+ * plus the ambient particle texture), and the pellets' own cubes (VALE_PELLET_ART, docs/PELLETS.md PL8). VALE_DECOR_PIECES / VALE_DECOR_FX / VALE_AMBIENT_ART / VALE_BREAKABLE_ART say
  * which art each ID draws; the same piece serves all five biomes (the pack has no per-biome art). An ID appears only
  * once its file has an ID (decor is optional: absent = not drawn); a breakable stays its placeholder box until then.
  *
@@ -76,6 +76,7 @@ import type {
 	ThemeManifest,
 } from "../../types";
 import { deepClone, sortedKeys } from "../../util";
+import { PELLET_KINDS, pelletId, type PelletKind } from "../../pellets";
 import { PLACEHOLDER_MANIFEST } from "../placeholder";
 import { VALE_ASSET_IDS } from "./assetIds";
 import { VALE_SOUND_LAYOUTS, type ValeSoundLayout } from "./audioLayout";
@@ -325,6 +326,13 @@ export const VALE_AMBIENT_ART = {
 /** The breakables (breakable.<kind>): `idle` plus the one-shot `shatter` (the pack's 8-frame _break loop). */
 export const VALE_BREAKABLE_ART: Readonly<Record<BreakableKind, string>> = { barrel: "barrel", crate: "crate" };
 
+/**
+ * The pellets (pellet.<kind>, docs/PELLETS.md PL8): original greyscale cubes (scripts/art/gen-pellet.js), each its own
+ * PNG (pellet.png, pellet-power.png), tinted by the kind's colour role. A kind keeps its placeholder cube until its file
+ * has an ID.
+ */
+export const VALE_PELLET_ART: Readonly<Record<PelletKind, string>> = { normal: "pellet", power: "pelletpower" };
+
 /** Decor fields of a world asset (none for breakables). */
 interface WorldFields {
 	readonly layer?: DecorLayer;
@@ -439,6 +447,10 @@ function addWorldArt(manifest: ThemeManifest, ids: AssetIds): void {
 	for (const kind of BREAKABLE_KINDS) {
 		const asset = worldAsset(worldLayout(VALE_BREAKABLE_ART[kind]), ids, {});
 		if (asset !== undefined) manifest.assets[breakableId(kind)] = asset;
+	}
+	for (const kind of PELLET_KINDS) {
+		const asset = worldAsset(worldLayout(VALE_PELLET_ART[kind]), ids, {});
+		if (asset !== undefined) manifest.assets[pelletId(kind)] = asset;
 	}
 }
 

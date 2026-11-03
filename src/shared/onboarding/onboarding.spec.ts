@@ -360,9 +360,9 @@ describe("tutorial attempt funnel filter", () => {
 			{ kind: "funnel", funnel: TUTORIAL_FUNNEL, step: TUTORIAL_FUNNEL_COMPLETED_STEP, stepName: "completed" },
 		]);
 		expect(TUTORIAL_FUNNEL_COMPLETED_STEP).toBe(TUTORIAL_FUNNEL_MAX_STEP + 2);
-		// Pinned for the 17-lesson tutorial (revision 2, docs/TUTORIAL_MAP.md §7): lessons are steps 2..18.
-		expect(TUTORIAL_FUNNEL_MAX_STEP).toBe(17);
-		expect(TUTORIAL_FUNNEL_COMPLETED_STEP).toBe(19);
+		// Pinned for the 18-lesson tutorial (revision 3, docs/PELLETS.md PL13): lessons are steps 2..19.
+		expect(TUTORIAL_FUNNEL_MAX_STEP).toBe(18);
+		expect(TUTORIAL_FUNNEL_COMPLETED_STEP).toBe(20);
 		expect(tutorialFinishEvents("skipped", ended)).toEqual([
 			{
 				kind: "custom",

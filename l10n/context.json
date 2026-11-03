@@ -51,6 +51,9 @@
 	"bestiary.imp": {
 		"note": "First-sighting toast, shown once per account (top centre, during combat) the first time the player meets the Imp (enemy.imp.name). Format \"Name: short survival tip\"; the name before the colon must be the same word as that name string. Brief, direct, second person."
 	},
+	"bestiary.pellet.power": {
+		"note": "First-sighting toast, shown once per account (top centre, during combat) the first time a power pellet (a rare, bigger green cube on the floor; walking over it turns every enemy bullet on the floor into points) appears in a run. Format \"Name: short tip\"; brief, direct, second person."
+	},
 	"bestiary.reaper": {
 		"note": "First-sighting toast, shown once per account (top centre, during combat) the first time the player meets the Reaper (enemy.reaper.name). Format \"Name: short survival tip\"; the name before the colon must be the same word as that name string. Brief, direct, second person."
 	},
@@ -2764,11 +2767,25 @@
 			"points": 640
 		}
 	},
+	"room.clear.line.pellets": {
+		"note": "Segment of the one-row score tally under the room-clear stamp (360 px row, text shrinks; segments joined by the game). {points} is a number. Points for pellets (small cubes on the floor collected during the fight).",
+		"max": 21,
+		"example": {
+			"points": 120
+		}
+	},
 	"room.clear.line.perfect": {
 		"note": "Tally segment under the room-clear stamp: the bonus for taking no hits in the room. {points} is a number.",
 		"max": 26,
 		"example": {
 			"points": 300
+		}
+	},
+	"room.clear.line.sweep": {
+		"note": "Tally segment under the room-clear stamp: the Sweep bonus for collecting every pellet in the room before its last enemy died. {points} is a number.",
+		"max": 23,
+		"example": {
+			"points": 250
 		}
 	},
 	"room.clear.stamp.clear": {
@@ -2911,12 +2928,20 @@
 		"note": "Run-over panel: score breakdown row label (200 px label column, the points sit to the right) for points from killing enemies.",
 		"max": 20
 	},
+	"score.source.pellets": {
+		"note": "Run-over panel: score breakdown row label (200 px label column, the points sit to the right) for points from pellets (small cubes collected on the floor during fights, and enemy bullets turned into points by a power pellet).",
+		"max": 20
+	},
 	"score.source.perfect": {
 		"note": "Run-over panel: score breakdown row label (200 px label column, the points sit to the right) for points from rooms cleared without taking a hit.",
 		"max": 20
 	},
 	"score.source.rooms": {
 		"note": "Run-over panel: score breakdown row label (200 px label column, the points sit to the right) for points from rooms cleared of enemies.",
+		"max": 20
+	},
+	"score.source.sweep": {
+		"note": "Run-over panel: score breakdown row label (200 px label column, the points sit to the right) for Sweep bonuses (every pellet of a room collected before its last enemy died). Plural: the bonuses of the whole run.",
 		"max": 20
 	},
 	"stage.best.deeperYet": {
@@ -3296,6 +3321,24 @@
 	},
 	"tutorial.prompt.objective.touch": {
 		"note": "First-run tutorial prompt for phone / tablet players; on-screen button names (Attack, Alt, Roll, Flask, Swap, Ember, Accept) must use exactly the words of the touch.* button labels, in the prompt panel (lower centre, 480 px wide; on touch at the top centre, 360 px; text wraps). Step: the opening objective card; the prompt tells which control closes it. Friendly, short instructional sentences in second person."
+	},
+	"tutorial.prompt.pellets.gamepad": {
+		"note": "First-run tutorial prompt for gamepad players, in the prompt panel (lower centre, 480 px wide; on touch at the top centre, 360 px; text wraps). Step: a ring of pellets (small green cubes on the floor) appears when the fight starts; walking over them while enemies are alive collects them for points, and collecting every one before the last enemy dies earns a Sweep bonus (\"Sweep\" is the same word as score.source.sweep / room.clear.line.sweep). Friendly, short instructional sentences in second person."
+	},
+	"tutorial.prompt.pellets.keyboard": {
+		"note": "First-run tutorial prompt for keyboard and mouse players, in the prompt panel (lower centre, 480 px wide; on touch at the top centre, 360 px; text wraps). Step: a ring of pellets (small green cubes on the floor) appears when the fight starts; walking over them while enemies are alive collects them for points, and collecting every one before the last enemy dies earns a Sweep bonus (\"Sweep\" is the same word as score.source.sweep / room.clear.line.sweep). Friendly, short instructional sentences in second person."
+	},
+	"tutorial.prompt.pellets.touch": {
+		"note": "First-run tutorial prompt for phone / tablet players; on-screen button names (Attack, Alt, Roll, Flask, Swap, Ember, Accept) must use exactly the words of the touch.* button labels, in the prompt panel (lower centre, 480 px wide; on touch at the top centre, 360 px; text wraps). Step: a ring of pellets (small green cubes on the floor) appears when the fight starts; walking over them while enemies are alive collects them for points, and collecting every one before the last enemy dies earns a Sweep bonus (\"Sweep\" is the same word as score.source.sweep / room.clear.line.sweep). Friendly, short instructional sentences in second person."
+	},
+	"tutorial.prompt.pelletsHold.gamepad": {
+		"note": "First-run tutorial prompt for gamepad players, in the prompt panel (lower centre, 480 px wide; on touch at the top centre, 360 px; text wraps). Step: shown while the enemy refuses to go down: it only falls once the player has collected the room's last pellets (small green cubes on the floor). Friendly, short instructional sentences in second person."
+	},
+	"tutorial.prompt.pelletsHold.keyboard": {
+		"note": "First-run tutorial prompt for keyboard and mouse players, in the prompt panel (lower centre, 480 px wide; on touch at the top centre, 360 px; text wraps). Step: shown while the enemy refuses to go down: it only falls once the player has collected the room's last pellets (small green cubes on the floor). Friendly, short instructional sentences in second person."
+	},
+	"tutorial.prompt.pelletsHold.touch": {
+		"note": "First-run tutorial prompt for phone / tablet players; on-screen button names (Attack, Alt, Roll, Flask, Swap, Ember, Accept) must use exactly the words of the touch.* button labels, in the prompt panel (lower centre, 480 px wide; on touch at the top centre, 360 px; text wraps). Step: shown while the enemy refuses to go down: it only falls once the player has collected the room's last pellets (small green cubes on the floor). Friendly, short instructional sentences in second person."
 	},
 	"tutorial.prompt.relic.gamepad": {
 		"note": "First-run tutorial prompt for gamepad players, in the prompt panel (lower centre, 480 px wide; on touch at the top centre, 360 px; text wraps). Step: a relic (a permanent item for the run) waits on a pedestal. Friendly, short instructional sentences in second person."
