@@ -109,7 +109,9 @@ export function pelletGoneLook(sinceGone: number, motion: number, out: PelletLoo
 /**
  * Per room record: when its pellets went live and gone (sim seconds; NOT_SEEN when this view did not see it happen: a
  * live room is then fully shown, a gone one hidden). Fed once per frame with the run view's PelletFrameEvents; a new
- * floor (the endless floor, the pellet count or the record count changed) or `reset` (a new run) forgets everything.
+ * floor (the endless floor, the pellet count or the record count changed), the tick going back (a new run on the same
+ * floor: the dev world's instant restart) or `reset` (a new run) forgets everything. A room that clears before its
+ * pop-in wave finished shrinks from the size each pellet had reached (one that never showed stays hidden).
  */
 export class PelletViewTracker {
 	static readonly NOT_SEEN = -1;
@@ -118,11 +120,13 @@ export class PelletViewTracker {
 	private floor = -1;
 	private pellets = -1;
 	private records = -1;
+	private lastTick = -1;
 
 	reset(): void {
 		this.floor = -1;
 		this.pellets = -1;
 		this.records = -1;
+		this.lastTick = -1;
 		this.liveAt.clear();
 		this.goneAt.clear();
 	}
@@ -132,7 +136,12 @@ export class PelletViewTracker {
 		const p = state.pellets;
 		const pellets = p !== undefined ? p.x.size() : 0;
 		const records = p !== undefined ? p.rooms.size() : 0;
-		return (state.endless?.floor ?? 0) !== this.floor || pellets !== this.pellets || records !== this.records;
+		return (
+			(state.endless?.floor ?? 0) !== this.floor ||
+			pellets !== this.pellets ||
+			records !== this.records ||
+			state.tick < this.lastTick
+		);
 	}
 
 	/** Once per frame, after the frame's ticks. Returns true when it took a new floor (everything forgotten). */
@@ -150,6 +159,7 @@ export class PelletViewTracker {
 				this.goneAt.push(PelletViewTracker.NOT_SEEN);
 			}
 		}
+		this.lastTick = state.tick;
 		for (const e of events.live) if (e.rec >= 0 && e.rec < this.records) this.liveAt[e.rec] = e.tick / SIM_HZ;
 		for (const e of events.gone) if (e.rec >= 0 && e.rec < this.records) this.goneAt[e.rec] = e.tick / SIM_HZ;
 		return fresh;
@@ -164,6 +174,13 @@ export class PelletViewTracker {
 		return this.goneAt[rec] ?? PelletViewTracker.NOT_SEEN;
 	}
 
+	/** Pellet `i`'s pop-in delay in its record's room (0 without the record). */
+	private waveDelay(state: Readonly<SimState>, rec: number, i: number): number {
+		const p = state.pellets!;
+		const r = state.score?.rooms[rec];
+		return r !== undefined ? pelletWaveDelay(p.x[i], p.z[i], r.minX, r.maxX, r.minZ, r.maxZ) : 0;
+	}
+
 	/** Pellet `i`'s look at sim time `now` (see the file comment). Writes `out` and returns it. */
 	look(state: Readonly<SimState>, i: number, now: number, motion: number, out: PelletLook): PelletLook {
 		out.shown = false;
@@ -175,17 +192,24 @@ export class PelletViewTracker {
 		const rec = p.rec[i];
 		const room = rec >= 0 ? p.rooms[rec] : undefined;
 		if (room === undefined) return out;
+		const liveAt = this.liveTime(rec);
 		if (room.phase === PelletPhase.GONE) {
-			const at = this.goneTime(rec);
-			return at === PelletViewTracker.NOT_SEEN ? out : pelletGoneLook(now - at, motion, out);
+			const goneAt = this.goneTime(rec);
+			if (goneAt === PelletViewTracker.NOT_SEEN) return out;
+			// The size it had reached when the room cleared (a clear inside the pop-in wave).
+			const from =
+				liveAt !== PelletViewTracker.NOT_SEEN
+					? pelletPopInScale(goneAt - liveAt, this.waveDelay(state, rec, i), motion)
+					: 1;
+			if (from <= 0) return out;
+			pelletGoneLook(now - goneAt, motion, out);
+			out.scale *= from;
+			return out;
 		}
 		if (room.phase !== PelletPhase.LIVE) return out;
 		let scale = 1;
-		const at = this.liveTime(rec);
-		if (at !== PelletViewTracker.NOT_SEEN) {
-			const r = state.score?.rooms[rec];
-			const delay = r !== undefined ? pelletWaveDelay(p.x[i], p.z[i], r.minX, r.maxX, r.minZ, r.maxZ) : 0;
-			scale = pelletPopInScale(now - at, delay, motion);
+		if (liveAt !== PelletViewTracker.NOT_SEEN) {
+			scale = pelletPopInScale(now - liveAt, this.waveDelay(state, rec, i), motion);
 			if (scale <= 0) return out;
 		}
 		if (i === p.power) {
@@ -212,24 +236,29 @@ export interface PelletPop {
 	x: number;
 	z: number;
 	points: number;
-	/** Pellets merged into it. */
+	/** Regular pellets merged into it (the power pellet is not counted: it is not an `eaten` pellet). */
 	count: number;
 }
 
+function popOf(out: PelletPop[], player: number): PelletPop | undefined {
+	for (const o of out) if (o.player === player) return o;
+	return undefined;
+}
+
 /**
- * The frame's pellet pops: one per player (first-eaten order), points summed, at the player's LAST pellet of the frame
- * (nearest to where they are now). Clears `out`, fills it and returns it.
+ * The frame's pellet pops: one per player (first-taken order), points summed, at the player's LAST pellet of the frame
+ * (nearest to where they are now). `power` (the frame's power pellet pickups, docs/PELLETS.md PL4: no `eaten` event,
+ * only the bullets' points) joins its picker's pop, or makes one at the power pellet's spot; a pickup that paid
+ * nothing (no bullet on screen) adds no pop. Clears `out`, fills it and returns it.
  */
-export function mergePelletPops(eaten: ReadonlyArray<PelletEaten>, out: PelletPop[]): PelletPop[] {
+export function mergePelletPops(
+	eaten: ReadonlyArray<PelletEaten>,
+	out: PelletPop[],
+	power: ReadonlyArray<PelletPowerTaken> = [],
+): PelletPop[] {
 	out.clear();
 	for (const e of eaten) {
-		let pop: PelletPop | undefined;
-		for (const o of out) {
-			if (o.player === e.player) {
-				pop = o;
-				break;
-			}
-		}
+		const pop = popOf(out, e.player);
 		if (pop === undefined) out.push({ player: e.player, x: e.x, z: e.z, points: e.points, count: 1 });
 		else {
 			pop.x = e.x;
@@ -237,6 +266,12 @@ export function mergePelletPops(eaten: ReadonlyArray<PelletEaten>, out: PelletPo
 			pop.points += e.points;
 			pop.count += 1;
 		}
+	}
+	for (const p of power) {
+		if (!(p.points > 0)) continue;
+		const pop = popOf(out, p.player);
+		if (pop === undefined) out.push({ player: p.player, x: p.px, z: p.pz, points: p.points, count: 0 });
+		else pop.points += p.points;
 	}
 	return out;
 }

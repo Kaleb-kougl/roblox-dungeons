@@ -22,7 +22,8 @@
  * only. The deflect (summed bulletsDeleted: the sim keeps no per-player count) is the local player's at full volume
  * when the local player could have deleted them this frame (guard up, this frame or the last, or a swing:
  * StateWatch.mayDeflect), else a teammate's. A solo run reads the summed events exactly as before (the watch only
- * picks swing vs finisher).
+ * picks swing vs finisher). The power pellet's erases (docs/PELLETS.md PL4: in bulletsDeleted too) are no deflect: the
+ * deflect reads deflectedBullets (bulletsDeleted without them), and the power pellet plays sfx.pellet.power.
  *
  * Boost drops (docs/BOOSTS.md B7) come from the frame's collected drop events (shared/view/boosts BoostEventSource,
  * the run view's `boostEvents`, every tick of the frame): a landing plays sfx.boost.drop (a landing out of a broken
@@ -170,7 +171,7 @@ import {
 } from "../hud";
 import { AUDIO_VIEW } from "./config";
 import { StateWatch, SwingEdge } from "../watch";
-import { NO_PELLET_EVENTS, PELLETS_VIEW, type PelletFrameSource } from "../pellets";
+import { NO_PELLET_EVENTS, PELLETS_VIEW, deflectedBullets, type PelletFrameSource } from "../pellets";
 
 /** Every sound effect the game plays, by logical ID (theme manifest). */
 export const SFX = {
@@ -1243,9 +1244,11 @@ export class AudioCueMapper {
 		// The first floor past the deepest (NB5): its floor enter makes way for the fanfare at the card's reveal.
 		const silentFloorEnter = this.deepestEntered(events, state, newBest);
 
+		// The power pellet's erases are in bulletsDeleted but are nobody's deflect (docs/PELLETS.md PL4).
+		const deflected = deflectedBullets(events.bulletsDeleted, pellets);
 		for (const [field, id] of SIM_EVENT_SOUNDS) {
 			if (party && PLAYER_EVENT_FIELDS.includes(field)) continue;
-			if (!(events[field] > 0)) continue;
+			if (!((field === "bulletsDeleted" ? deflected : events[field]) > 0)) continue;
 			// Solo: the frame's deletes were the guard's (the parry plays instead).
 			if (id === SFX.playerDeflect && guarded !== GUARD_NONE) continue;
 			if (id === SFX.floorEnter && silentFloorEnter) continue;
@@ -1271,7 +1274,7 @@ export class AudioCueMapper {
 			if (events.shotsFired > 0 && w.localShot) this.cue(SFX.playerShoot, 1);
 			// Deflects: the local player's when they could have made them, else a teammate's (quiet).
 			// A guard's erases are the parry's (GP6), never also a deflect.
-			if (events.bulletsDeleted > 0) {
+			if (deflected > 0) {
 				if (w.mayDeflect[localIndex]) {
 					if ((guarded & GUARD_LOCAL) === 0) this.cue(SFX.playerDeflect, 1);
 				} else if ((guarded & GUARD_TEAMMATE) === 0)
