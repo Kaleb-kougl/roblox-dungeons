@@ -83,6 +83,8 @@ import type { RobloxAssetId } from "../../types";
  * their outlines; sfx-enemy-fuse / -charge / -blast / -stun / -spin) uploaded 2026-11-03 9:01 AM by k9kbdev,
  * transcribed from an Asset Manager screenshot. stormcaller-* / warbanner-* are uploaded too, but the screenshot cut
  * their names short, so which id is the outline is not known yet: their sets stay placeholders until added.
+ * sfx-enemy-strike (the Stormcaller's strike: "Lightning strike" by DRAGON-STUDIO, Pixabay 386161) uploaded 2026-11-03
+ * 11:28 AM by k9kbdev as the downloaded MP3, transcribed from an Asset Manager screenshot.
  */
 export const VALE_ASSET_IDS: Readonly<Record<string, RobloxAssetId>> = {
 	"amb-b1.ogg": "rbxassetid://91158343621799",
@@ -202,6 +204,7 @@ export const VALE_ASSET_IDS: Readonly<Record<string, RobloxAssetId>> = {
 	"sfx-enemy-hurt-6.ogg": "rbxassetid://85101791814178",
 	"sfx-enemy-shoot.ogg": "rbxassetid://117798043671657",
 	"sfx-enemy-spin.ogg": "rbxassetid://93754810963439",
+	"sfx-enemy-strike.ogg": "rbxassetid://100378513065418",
 	"sfx-enemy-split.ogg": "rbxassetid://114706012715735",
 	"sfx-enemy-stun.ogg": "rbxassetid://119936963078837",
 	"sfx-enemy-summon.ogg": "rbxassetid://84041560036469",

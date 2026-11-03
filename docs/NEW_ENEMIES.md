@@ -40,7 +40,9 @@ Open:
   `packs/vale/assetIds.ts`, so the bundled vale pack draws those three and plays the five sounds. The stormcaller and
   warbanner sheets are uploaded too, but the Asset Manager screenshot cut their names short (`stormcaller-at...` twice
   and so on), so which id is the outline is not known: their sets stay placeholders until the full names are read.
-- **`sfx.enemy.strike`:** no Ninja Adventure clip sounds like lightning; owner picks one (Pixabay, like the combo break).
+- **`sfx.enemy.strike`:** "Lightning strike" by DRAGON-STUDIO (Pixabay 386161), the owner's pick, mapped in
+  `art/audio.json` (used whole, volume 0.7) and credited (THIRD_PARTY_NOTICES.md, the Credits screen); uploaded
+  2026-11-03 11:28 AM as the downloaded MP3 (id in `assetIds.ts`), so the bundled vale pack plays it.
 - **Studio check (NE13):** the checklist under "NE8 view (as built)".
 - **Tuning (NE12):** not run beyond NE7's census. Measure room times, TTK and hits per kind.
 - **Owner calls:** (1) a strike hurts at most ONE player in co-op (consumed by the first landed hit; NE5's Verify said

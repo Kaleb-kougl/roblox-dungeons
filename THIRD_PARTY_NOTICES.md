@@ -104,6 +104,19 @@ SOFTWARE.
   non-commercial use, no attribution required, modification allowed; the content may not be sold or distributed on
   its own (unmodified, as a standalone file), which is why the raw file is kept out of the repo.
 
+## "Lightning strike" (Pixabay sound effect)
+
+- Author: DRAGON-STUDIO. Source: Pixabay (https://pixabay.com/sound-effects/, id 386161; credited by the owner as
+  "Sound Effect by DRAGON-STUDIO from Pixabay"), downloaded by the owner as
+  `dragon-studio-lightning-strike-386161.mp3` (1.10 s, 44.1 kHz stereo MP3).
+- Used for: `sfx.enemy.strike`, the Stormcaller's lightning strike (docs/NEW_ENEMIES.md NE10): silence-trimmed,
+  downmixed to mono, peak-normalised and encoded to OGG by `scripts/audio/build-audio.js`; only that built OGG is
+  uploaded to Roblox as an audio asset.
+- Raw file: `art/vendor/pixabay/` (gitignored, not redistributed).
+- License: Pixabay Content License (https://pixabay.com/service/license-summary/): free for commercial and
+  non-commercial use, no attribution required, modification allowed; the content may not be sold or distributed on
+  its own (unmodified, as a standalone file), which is why the raw file is kept out of the repo.
+
 ## UI User Interface Pack - Horror
 
 - Author: ToffeeCraft. Source: https://toffeecraft.itch.io/ui-user-interface-pack-horror ("a 32x32 pixel horror UI

@@ -46,6 +46,7 @@ export const CREDITS: ReadonlyArray<CreditEntry> = [
 	},
 	{ section: "audio", work: "Ninja Adventure (sound and music)", author: "AAA", license: "CC0" },
 	{ section: "audio", work: "Glass breaking", author: "DRAGON-STUDIO (Pixabay)" },
+	{ section: "audio", work: "Lightning strike", author: "DRAGON-STUDIO (Pixabay)" },
 	{
 		section: "code",
 		work: "Dungeon Forge (threejs-procedural-dungeon)",

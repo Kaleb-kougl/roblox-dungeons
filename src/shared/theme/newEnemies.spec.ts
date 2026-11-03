@@ -41,7 +41,7 @@ const AUDIO = [
 	"sfx.enemy.strike",
 	"sfx.enemy.spin",
 ];
-// Uploaded 2026-11-03 (packs/vale/assetIds.ts). Stormcaller and Warbanner wait for their ids; the strike has no clip.
+// Uploaded 2026-11-03 (packs/vale/assetIds.ts). Stormcaller and Warbanner wait for their ids.
 const VALE_UPLOADED_SETS: ReadonlyArray<string> = ["bomber", "charger", "reaper"];
 const VALE_UPLOADED_AUDIO: ReadonlyArray<string> = [
 	"sfx.enemy.fuse",
@@ -49,6 +49,7 @@ const VALE_UPLOADED_AUDIO: ReadonlyArray<string> = [
 	"sfx.enemy.charge",
 	"sfx.enemy.stun",
 	"sfx.enemy.spin",
+	"sfx.enemy.strike",
 ];
 const SHAPES: ReadonlyArray<[string, string]> = [
 	["bomber", "Cone"],

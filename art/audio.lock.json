@@ -390,6 +390,11 @@
 			"path": "pixabay/dragon-studio-glass-breaking-504033.mp3",
 			"sha256": "660b1795067c7b84cedb1bb497faab4b8ec8d6543c90fa199bc5b4e417ff634f",
 			"bytes": 105662
+		},
+		{
+			"path": "pixabay/dragon-studio-lightning-strike-386161.mp3",
+			"sha256": "c427264785238e0ec56f073c8979c1af78b4134b11a9dfb5c0ecfc51de3bab23",
+			"bytes": 40930
 		}
 	]
 }

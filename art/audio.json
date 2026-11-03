@@ -734,12 +734,17 @@
 			"confirmed": false
 		},
 		"sfx.enemy.strike": {
-			"silent": true,
+			"category": "sfx",
+			"clips": [
+				"pixabay/dragon-studio-lightning-strike-386161.mp3"
+			],
+			"volume": 0.7,
+			"minInterval": 0.12,
 			"alternates": [
 				"ninja-adventure/Audio/Sounds/Elemental/Explosion.wav",
 				"ninja-adventure/Audio/Sounds/Elemental/Explosion2.wav"
 			],
-			"notes": "docs/NEW_ENEMIES.md NE10: a Stormcaller's lightning strike lands. Silent: the pack has no thunder clip and no Explosion reads as a lightning crack (Explosion is a 0.37 s dull pop, Explosion2 a 0.63 s boom, both kept as alternates). The owner picks a thunder crack (Pixabay, like sfx.combo.break) and sets clips.",
+			"notes": "docs/NEW_ENEMIES.md NE10: a Stormcaller's lightning strike lands (one cue per tick for the row's three strikes, minInterval 0.12 s as the cue row). \"Lightning strike\" by DRAGON-STUDIO (Pixabay, id 386161), the owner's pick: 1.10 s, 44.1 kHz stereo MP3: 113 ms lead (the silence trim takes it), the crack 0.11 - 0.3 s, the rumble fading to silence by 0.98 s; used whole. No pitch jitter. The Explosion alternates were the stand-ins while it was silent.",
 			"confirmed": false
 		},
 		"sfx.enemy.spin": {
