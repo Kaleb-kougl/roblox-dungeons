@@ -144,6 +144,8 @@ describe("RoomClearEvents", () => {
 		expect(c.perfectPoints).toBe(500);
 		expect(c.fastPoints).toBe(90);
 		expect(c.killPoints).toBe(300);
+		// No pellet sources in this run: no pellet or sweep points.
+		expect([c.pelletPoints, c.sweepPoints]).toEqual([0, 0]);
 		expect(c.x).toBe(7);
 		expect(c.z).toBe(5);
 		expect(c.slot).toBe(1);
@@ -253,5 +255,38 @@ describe("RoomClearEvents", () => {
 		ev.collect(bare);
 		expect(ev.clears.size()).toBe(0);
 		expect(ev.engaged).toBe(0);
+	});
+
+	it("a pellet run: pellet points since the engagement leave the kills, the clear tick's Sweep is a bonus (PL7)", () => {
+		const ev = new RoomClearEvents();
+		const f = fakeState();
+		// A pellet run's score sources: the nine, Jackpot (padded), Pellets 10 and Sweep 11.
+		while (f.score.points.size() <= ScoreSource.SWEEP) {
+			f.score.points.push(0);
+			f.score.counts.push(0);
+		}
+		step(ev, f, 0);
+		// Pellets taken before the engagement (another room's) never count for this one.
+		f.score.points[ScoreSource.PELLETS] = 40;
+		f.score.total = 140;
+		step(ev, f, 1);
+		f.score.rooms[0].engageTick = 2;
+		step(ev, f, 2);
+
+		f.score.points[ScoreSource.PELLETS] += 120;
+		f.score.total += 120 + 300; // 120 in pellets, 300 in kills
+		kill(f, 0, 1);
+		kill(f, 1, 0);
+		f.score.rooms[0].cleared = 1;
+		f.score.points[ScoreSource.ROOMS] += 250;
+		f.score.points[ScoreSource.SWEEP] += 250;
+		f.score.counts[ScoreSource.SWEEP] += 1;
+		f.score.total += 500;
+		step(ev, f, 3);
+
+		expect(ev.clears.size()).toBe(1);
+		const c = ev.clears[0];
+		expect([c.killPoints, c.pelletPoints, c.clearPoints, c.sweepPoints]).toEqual([300, 120, 250, 250]);
+		expect([c.perfectPoints, c.fastPoints]).toEqual([0, 0]);
 	});
 });

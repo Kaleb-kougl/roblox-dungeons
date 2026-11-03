@@ -101,6 +101,7 @@ import {
 } from "./types";
 import { describeValue, isArrayLike, isInteger, isObj, sortedEntries, sortedKeys, startsWith, type Obj } from "./util";
 import { voidLedgeColor } from "./voidColors";
+import type { PelletKind } from "./pellets";
 
 export const DEFAULT_PACK_ID = "placeholder";
 export const MISSING_COLOR: HexColor = "#ff00ff";
@@ -509,6 +510,18 @@ export interface BoostTheme {
 	/** Uploaded art, or undefined: draw `placeholder`. */
 	readonly art: WorldArt | undefined;
 	/** The placeholder primitive (a small gem; magenta when the pack lacks the ID). */
+	readonly placeholder: PlaceholderVisual;
+}
+
+/** A pellet kind (docs/PELLETS.md PL6 / PL7): its asset (and colour role) ID, art and placeholder cube. */
+export interface PelletTheme {
+	readonly kind: PelletKind;
+	/** Asset ID, also the colour role: `pellet.normal`, `pellet.power`. */
+	readonly id: string;
+	readonly role: ColorRole;
+	/** Uploaded art, or undefined: draw `placeholder`. */
+	readonly art: WorldArt | undefined;
+	/** The placeholder primitive (a small Block cube; magenta when the pack lacks the ID). */
 	readonly placeholder: PlaceholderVisual;
 }
 
@@ -1158,6 +1171,18 @@ export class ThemeCore {
 			art,
 			placeholder: this.placeholder(id),
 		};
+	}
+
+	/**
+	 * A pellet kind (docs/PELLETS.md PL7, the view's accessor): its uploaded art (an image with pixelsPerTile, or a
+	 * sprite set with `idle`), else its placeholder cube. Missing ID (required in every pack): warn once, the magenta
+	 * block. The ID is written out (pellets.ts pelletId's), not imported.
+	 */
+	pellet(kind: PelletKind): PelletTheme {
+		const id = `pellet.${kind}`;
+		const def = this.asset(id);
+		const art = def !== undefined ? this.worldArt(id, def, false) : undefined;
+		return { kind, id, role: id as ColorRole, art, placeholder: this.placeholder(id) };
 	}
 
 	/**

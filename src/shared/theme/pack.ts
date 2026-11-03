@@ -26,6 +26,7 @@ import {
 	type AmbientParticleArt,
 	type BiomeTheme,
 	type BoostTheme,
+	type PelletTheme,
 	type BreakableTheme,
 	type DecorArt,
 	type FxArt,
@@ -38,6 +39,7 @@ import {
 } from "./core";
 import type { LocaleTable } from "shared/l10n";
 import { THEME_PACKS } from "./packs";
+import type { PelletKind } from "./pellets";
 import type { PlaceholderColor, PlaceholderVisual } from "./placeholders";
 import type { StringVars } from "./strings";
 import type {
@@ -221,6 +223,16 @@ export interface Boost {
 	readonly core: BoostTheme;
 }
 
+/** A pellet kind (ThemeCore.pellet) with Roblox types (docs/PELLETS.md PL7). */
+export interface Pellet {
+	readonly kind: PelletKind;
+	readonly id: string;
+	readonly color: Color3;
+	readonly art: WorldVisual | undefined;
+	readonly placeholder: PlaceholderVisual;
+	readonly core: PelletTheme;
+}
+
 /**
  * A sprite effect (ThemeCore.fx) with Roblox types: a one-facing SpriteSet, its flipbook and how to draw it. Drawn
  * widthTiles x heightTiles; `ImageColor3 = color`; `additive`: LightInfluence 0.
@@ -285,6 +297,7 @@ export class ThemePack {
 	private readonly decorPieces = new Map<string, DecorPiece | false>();
 	private readonly breakables = new Map<BreakableKind, Breakable>();
 	private readonly boosts = new Map<BoostKind, Boost>();
+	private readonly pellets = new Map<PelletKind, Pellet>();
 	private readonly fxSprites = new Map<string, FxSprite | false>();
 
 	/** Defensive: a manifest that failed validation still loads; bad entries fall back individually. */
@@ -481,6 +494,25 @@ export class ThemePack {
 		};
 		this.boosts.set(kind, b);
 		return b;
+	}
+
+	/** A pellet kind (required in every pack, docs/PELLETS.md PL7): its art, or no art and the placeholder cube. Cached. */
+	pellet(kind: PelletKind): Pellet {
+		const cached = this.pellets.get(kind);
+		if (cached !== undefined) {
+			return cached;
+		}
+		const core = this.core.pellet(kind);
+		const p: Pellet = {
+			kind,
+			id: core.id,
+			color: this.color(core.role),
+			art: core.art !== undefined ? this.worldVisual(core.art) : undefined,
+			placeholder: core.placeholder,
+			core,
+		};
+		this.pellets.set(kind, p);
+		return p;
 	}
 
 	/** What to build while an ID has no art. Missing ID: warn once, a magenta block. */

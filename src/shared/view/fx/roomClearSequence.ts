@@ -10,10 +10,15 @@ import { ROOM_CLEAR } from "./roomClearConfig";
 import type { RoomClear } from "./roomClears";
 
 export type RoomClearStyle = "full" | "chip";
-export type TallyKind = "kills" | "clear" | "perfect" | "fast";
+/**
+ * A tally segment. `kills` and `pellets` (docs/PELLETS.md PL7: the pellet points earned in the room) are points already
+ * scored, shown as they are; `clear` / `perfect` / `fast` / `sweep` (the Sweep bonus) are the bonus that flies to the
+ * score panel.
+ */
+export type TallyKind = "kills" | "pellets" | "clear" | "perfect" | "fast" | "sweep";
 
-/** Tally segments at most (kills, clear, perfect, fast). */
-export const ROOM_CLEAR_SEGMENTS = 4;
+/** Tally segments at most (kills, pellets, clear, perfect, fast, sweep). */
+export const ROOM_CLEAR_SEGMENTS = 6;
 
 function clamp01(u: number): number {
 	return u <= 0 ? 0 : u >= 1 ? 1 : u;
@@ -27,9 +32,32 @@ export function easeOutBack(u: number): number {
 	return 1 + c3 * v * v * v + c1 * v * v;
 }
 
-/** The clear's bonus points (what flies to the score panel). */
+/** The clear's bonus points (what flies to the score panel): ROOMS / PERFECT / FAST and the Sweep. */
 export function roomClearBonus(c: RoomClear): number {
-	return c.clearPoints + c.perfectPoints + c.fastPoints;
+	return c.clearPoints + c.perfectPoints + c.fastPoints + c.sweepPoints;
+}
+
+/** One tally segment as the clear's numbers give it (kind and final value), before any counting. */
+export interface TallyEntry {
+	readonly kind: TallyKind;
+	readonly value: number;
+}
+
+/**
+ * The tally's segments for a clear, in order: kills, pellets, clear, perfect, fast, sweep; every one but `clear` only
+ * when it is not 0. `foldPellets` (the row would not fit, docs/PELLETS.md PL7: shared/view/hud roomClearFoldPellets)
+ * adds the pellet points to the kills segment instead of a segment of their own.
+ */
+export function roomClearSegments(c: RoomClear, foldPellets = false): TallyEntry[] {
+	const out: TallyEntry[] = [];
+	const kills = foldPellets ? c.killPoints + c.pelletPoints : c.killPoints;
+	if (kills > 0) out.push({ kind: "kills", value: kills });
+	if (!foldPellets && c.pelletPoints > 0) out.push({ kind: "pellets", value: c.pelletPoints });
+	out.push({ kind: "clear", value: c.clearPoints });
+	if (c.perfectPoints > 0) out.push({ kind: "perfect", value: c.perfectPoints });
+	if (c.fastPoints > 0) out.push({ kind: "fast", value: c.fastPoints });
+	if (c.sweepPoints > 0) out.push({ kind: "sweep", value: c.sweepPoints });
+	return out;
 }
 
 /** Full sequence or corner chip (RCD12): solo always full; co-op full when the view position is near the room. */
@@ -163,7 +191,11 @@ export class RoomClearSequence {
 		L.bonusLanded = 0;
 	}
 
-	start(c: RoomClear, style: RoomClearStyle, motion: number): void {
+	/**
+	 * A clear: its full sequence (replacing a running one, whose bonus is released at once) or a corner chip.
+	 * `foldPellets`: the pellet points join the kills segment (see roomClearSegments).
+	 */
+	start(c: RoomClear, style: RoomClearStyle, motion: number, foldPellets = false): void {
 		if (style === "chip") {
 			this.startChip(c, motion);
 			return;
@@ -180,20 +212,15 @@ export class RoomClearSequence {
 		L.perfect = c.perfect;
 		L.rooms = c.rooms;
 		L.flyPoints = this.bonus;
-		let n = 0;
-		const put = (kind: TallyKind, value: number) => {
+		const entries = roomClearSegments(c, foldPellets);
+		for (let n = 0; n < entries.size(); n++) {
 			const s = L.segments[n];
-			s.kind = kind;
-			s.value = value;
+			s.kind = entries[n].kind;
+			s.value = entries[n].value;
 			s.shown = 0;
 			s.started = false;
-			n += 1;
-		};
-		if (c.killPoints > 0) put("kills", c.killPoints);
-		put("clear", c.clearPoints);
-		if (c.perfectPoints > 0) put("perfect", c.perfectPoints);
-		if (c.fastPoints > 0) put("fast", c.fastPoints);
-		L.segmentCount = n;
+		}
+		L.segmentCount = entries.size();
 	}
 
 	/**

@@ -5,7 +5,7 @@
  * prompt; the corner chips sit under the score panel (footprint.ts HUD_TRANSIENT.roomClear / roomClearChip).
  */
 import type { StringVars } from "shared/theme";
-import type { RoomClearLook, TallyKind } from "shared/view/fx";
+import { roomClearSegments, type RoomClear, type RoomClearLook, type TallyEntry, type TallyKind } from "shared/view/fx";
 import { HUD_VIEW } from "./layout";
 import { TUTORIAL_VIEW } from "./tutorial";
 
@@ -46,15 +46,25 @@ export const ROOM_CLEAR_VIEW = {
 	/** Corner chips: text size, and how many (must equal ROOM_CLEAR.chip.max; the spec checks). */
 	chipText: HUD_VIEW.textSize,
 	maxChips: 2,
+	/**
+	 * The tally row's fit (docs/PELLETS.md PL7): TextScaled shrinks a long row to `width`, so a row is estimated at
+	 * `glyphAspect` (the HUD font's average advance per px of text size; Arcade, provisional until the Studio check
+	 * measures TextBounds) per byte. A row whose estimate falls under `minText` reference px (today's full four-segment
+	 * row, Kills / Clear / No hits / Speed, sits at it; x HUD_VIEW.touchMinScale on the smallest phone) folds the pellet
+	 * points into the kills segment (roomClearFoldPellets).
+	 */
+	tallyFit: { glyphAspect: 0.62, minText: 10 },
 } as const;
 
 export type RoomClearStr = (key: string, vars?: StringVars) => string;
 
 const SEGMENT_KEYS: Readonly<Record<TallyKind, string>> = {
 	kills: ROOM_CLEAR_STRINGS.kills,
+	pellets: ROOM_CLEAR_STRINGS.pellets,
 	clear: ROOM_CLEAR_STRINGS.clearLine,
 	perfect: ROOM_CLEAR_STRINGS.perfectLine,
 	fast: ROOM_CLEAR_STRINGS.fast,
+	sweep: ROOM_CLEAR_STRINGS.sweep,
 };
 
 /** CLEAR / PERFECT, or "PERFECT x2" for several rooms on one tick. */
@@ -77,4 +87,33 @@ export function roomClearTallyText(
 	if (parts.size() === 0) return "";
 	parts.push(s(ROOM_CLEAR_STRINGS.total, { points: look.total }));
 	return parts.join(ROOM_CLEAR_VIEW.separator);
+}
+
+/** The tally row as it ends (every segment counted up), for `entries` (shared/view/fx roomClearSegments). */
+export function roomClearFinalTallyText(entries: ReadonlyArray<TallyEntry>, s: RoomClearStr): string {
+	let total = 0;
+	const segments = entries.map((e) => {
+		total += e.value;
+		return { kind: e.kind, value: e.value, shown: e.value, started: true };
+	});
+	return roomClearTallyText({ segments, segmentCount: segments.size(), total }, s);
+}
+
+/**
+ * The text size (reference px) TextScaled settles at for the tally row `text` in ROOM_CLEAR_VIEW.width: tallyText, or
+ * less for a row too long for it (see ROOM_CLEAR_VIEW.tallyFit; bytes, so a non-Latin row is over-estimated).
+ */
+export function roomClearTallyTextSize(text: string): number {
+	const em = text.size() * ROOM_CLEAR_VIEW.tallyFit.glyphAspect;
+	return em <= 0 ? ROOM_CLEAR_VIEW.tallyText : math.min(ROOM_CLEAR_VIEW.tallyText, ROOM_CLEAR_VIEW.width / em);
+}
+
+/**
+ * Should clear `c`'s pellet points join the kills segment (docs/PELLETS.md PL7)? Only when it has pellet points and
+ * its full row (its own Pellets segment) would shrink under ROOM_CLEAR_VIEW.tallyFit.minText.
+ */
+export function roomClearFoldPellets(c: RoomClear, s: RoomClearStr): boolean {
+	if (!(c.pelletPoints > 0)) return false;
+	const text = roomClearFinalTallyText(roomClearSegments(c, false), s);
+	return roomClearTallyTextSize(text) < ROOM_CLEAR_VIEW.tallyFit.minText;
 }
