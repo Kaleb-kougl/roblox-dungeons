@@ -441,7 +441,7 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		"amb.b5": SILENT,
 	},
 	strings: {
-		"game.title": "Project Kaleb-Vale",
+		"game.title": "Roblox Dungeons",
 		"ember.name": "Ember",
 		"class.vanguard.name": "Vanguard",
 		"class.ranger.name": "Ranger",
@@ -1098,7 +1098,7 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		"tutorial.menu.open": "Tutorial",
 		"tutorial.verdict": "Practice: not submitted (tutorial)",
 		// --- loading.* (docs/PRELOAD.md P4: the join loading screen) -----------------------------------
-		"loading.title": "Project Kaleb-Vale",
+		"loading.title": "Roblox Dungeons",
 		"loading.progress": "Loading {done} / {total}",
 		"loading.skip": "Skip",
 		// --- stage.* (docs/STAGE_LOADER.md SL2: the stage loader's cover) ----------------------------------

@@ -67,7 +67,7 @@ describe("loadThemePack", () => {
 		const p = loadThemePack("placeholder", { warn: w.warn });
 		expect(p.id).toBe("placeholder");
 		expect(p.problems).toEqual([]);
-		expect(p.str("game.title")).toBe("Project Kaleb-Vale");
+		expect(p.str("game.title")).toBe("Roblox Dungeons");
 		expect(w.messages).toEqual([]);
 	});
 

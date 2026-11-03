@@ -192,7 +192,7 @@ export const INVITE_SPIKE = {
 	launchDataPollSec: 1,
 	launchDataWatchSec: 15,
 	/** `ExperienceInviteOptions.PromptMessage` of the spike's prompts. */
-	promptMessage: "Invite spike (I0): pick friends to invite to Kaleb-Vale",
+	promptMessage: "Invite spike (I0): pick friends to invite to Roblox Dungeons",
 	/** First field of the spike's LaunchData (`kvspike|<side>|<ISO time>|<inviter UserId>`). */
 	launchDataTag: "kvspike",
 	/** LaunchData's documented maximum length, characters (the spike warns past it). */

@@ -1112,7 +1112,7 @@
 		"note": "Title of the visual-effects settings panel. \"Juice\" is game-design slang for screen shake, flashes, particles and similar feedback effects; translate the idea (\"Effects\", \"Game feel\") rather than the fruit. Same term as options.tab.juice."
 	},
 	"game.title": {
-		"note": "The game's title, shown large on the main menu header and in the run info line of the pause menu. Keep \"Kaleb-Vale\" exactly as written (the brand: never translate or transliterate it); \"Project\" may be translated, and may move to fit the language's word order."
+		"note": "The game's title, shown large on the main menu header and in the run info line of the pause menu. Keep \"Roblox Dungeons\" exactly as written (the brand: never translate or transliterate any part of it)."
 	},
 	"hud.armor": {
 		"note": "Label for armor pips (extra hit protection shown as small pips). Reserved: kept in the theme contract from the original web build; the current Roblox build does not show it.",
@@ -1382,7 +1382,7 @@
 	"hud.info": {
 		"note": "Run info line in the pause menu and the run-over panel; the parts are filled by the game and joined with \" · \". {title} is the game title, {place} the biome name, {seed} the already-formatted seed text (\"seed 48213\"), {dungeon} a generated dungeon name. Usually keep the order and separators.",
 		"example": {
-			"title": "Project Kaleb-Vale",
+			"title": "Roblox Dungeons",
 			"place": "Ancient Halls",
 			"seed": "seed 48213",
 			"dungeon": "Hollow Keep"
@@ -1911,7 +1911,7 @@
 		"max": 10
 	},
 	"loading.title": {
-		"note": "Heading of the loading screen when joining the game: the game title. Keep \"Kaleb-Vale\" exactly as written (brand); \"Project\" may be translated. Should match game.title."
+		"note": "Heading of the loading screen when joining the game: the game title. Keep \"Roblox Dungeons\" exactly as written (brand, never translated). Should match game.title."
 	},
 	"lobby.browser.count": {
 		"note": "Players in a lobby (60 px column): {count} players of {max}. Usually unchanged.",

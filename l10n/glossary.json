@@ -1,8 +1,8 @@
 {
 	"terms": [
 		{
-			"term": "Kaleb-Vale",
-			"meaning": "The game's brand name, part of the title \"Project Kaleb-Vale\". Never translate, transliterate or re-spell it. \"Project\" in the title may be translated and may move to fit the language's word order.",
+			"term": "Roblox Dungeons",
+			"meaning": "The game's title and brand name. Never translate, transliterate or re-spell any part of it (\"Dungeons\" included).",
 			"translate": false,
 			"keys": [
 				"game.title",
