@@ -46,6 +46,8 @@ tree). Paths are under `src/shared/` unless they start with `src/client/`, `docs
   free slot, and any that doesn't fit is **given straight to the player whose share it is** (the pickup's own effect:
   `bp.ticks[kind] = boostTicks(kind)`, Aegis pips; `DropsEvents.collected`), so nothing is lost. Alternative: cap the
   spill at the free slots and pay the rest as `TREASURE` points.
+  **Owner answer (Kaleb, 2026-11-03): the recommended rule.** Boosts that fit land in the lowest free slots; the rest
+  go straight to the player whose share they are (nothing is lost). TR4 builds this.
 - **C2. Rarity colours on the floor vs "no new colour role" (TRD5 and design §5).** TRD5 says chests use "the draft's
   rarity names and colours". The draft's colours are **`boon.common` / `boon.rare` / `boon.legendary`** (`#d7d0c0`
   bone, `#f46669` blood red, `#f1bd44` candle gold; `theme/contract.ts` `BOON_RARITY_ROLES`, `view/hud/progression.ts`
@@ -59,6 +61,8 @@ tree). Paths are under `src/shared/` unless they start with `src/client/`, `docs
   the draft's hues nudged to >= 40 from the telegraph, and keeps `boon.*` for UI-only uses (toasts, reward cards,
   minimap mark). That is a new colour role, which design §5 had ruled out. **Owner to confirm the floor roles at TR6**
   (TR6 prints the validator's real numbers first).
+  **Owner answer (Kaleb, 2026-11-03): floor-only `treasure.*` roles** if the validator confirms the draft colours fail on
+  the floor (hues nudged to pass, UI keeps `boon.*`). TR6 builds this.
 
 TRD10 (Respite eases the lock) is **not** a conflict but is **dormant**: Respite (docs/DIFFICULTY.md) is planned, not
 built (no `SimConfig.respite`, no `state.respite`; only comments in `sim/combat/actors/actorMods.ts`). The tables go in
@@ -682,13 +686,13 @@ Each step is a commit. Specs next to the code; `npm run verify` before each.
   `ScoreSource.TREASURE` gated, the chest's `damageBreakable` early return. → Verify: every golden fixture, the M1
   hash, the tutorial lock spec and every endless replay unchanged with the config absent; clone and hash specs.
 - [ ] **TR3. The lock.** `stepTreasure` steps 1-3. → Verify: TR3 specs above.
-- [ ] **TR4. Opening and rewards.** Step 4, the grants, the landing offsets. **Needs owner call C1 first.** → Verify:
+- [ ] **TR4. Opening and rewards.** Step 4, the grants, the landing offsets. (C1 answered: overflow goes to the player.) → Verify:
   TR4 specs above.
 - [ ] **TR5. Worlds.** `ENDLESS_TREASURE_CONFIG` on endless; the dev override and `KV_TreasureDebug`. Re-record and check
   the endless / party / partyProgression / daily / dev specs replay and validate segmented. Extend the census bot.
   `DAILY.ruleset` 5 -> 6. → Verify: `npm run verify`; numbers into this doc.
-- [ ] **TR6. Theme.** Assets, strings, audio IDs, fallbacks, `treasureReport`, the placeholder pack. **Owner confirms C2's
-  floor roles once the report prints.** → Verify: contract / validator / `audio.spec.ts` / `hud.spec.ts`; Luau locals
+- [ ] **TR6. Theme.** Assets, strings, audio IDs, fallbacks, `treasureReport`, the placeholder pack. (C2 answered: floor-only `treasure.*`
+  roles if the report confirms the draft colours fail.) → Verify: contract / validator / `audio.spec.ts` / `hud.spec.ts`; Luau locals
   still under 200 on `out/`.
 - [ ] **TR7. World view.** `TreasureRenderController`, the pure timelines, the cards, freeze and shake. → Verify:
   headless specs for every timeline and text helper; `npm run build:place`.
