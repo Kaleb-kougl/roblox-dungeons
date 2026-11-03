@@ -298,7 +298,7 @@ Each step is a commit; `npm run verify` before each.
 
 ### Part B
 
-- [ ] **CM1. TeamMoments core.** Pure + spec: TEAM PERFECT only when the sim awarded perfect and party >= 2; streak
+- [x] **CM1. TeamMoments core.** Pure + spec: TEAM PERFECT only when the sim awarded perfect and party >= 2; streak
   order and reset; sync window 12 / 13 ticks; same player twice is not a sync; three players = x3; cooldown; identical
   output from two clients stepping the same log.
 - [x] **CM2. TEAM PERFECT presentation.** Stamp / chip text and streak, pulse rings on every living member.
@@ -313,7 +313,7 @@ Each step is a commit; `npm run verify` before each.
   `ember`), seed salt 19 (`TEAM_MOMENTS_VIEW.pulse`). Stamp and chip labels are TextScaled under their old text size
   (a long translation or `TEAM PERFECT x3` shrinks instead of overflowing). Debug `KV_TeamMomentsDebug = "perfect[:n]"`
   (the next PERFECT clear, solo too, is a team perfect with streak n; never in the totals).
-- [ ] **CM3. Strings** (with RR3 if built together).
+- [x] **CM3. Strings** (built with RR3: `TEAM_MOMENT_STRING_KEYS` in shared/theme/runRecap.ts).
 - [x] **CM4. Sounds.** Two port audio IDs, SILENT in the placeholder, fallbacks; mapper spec.
   As built (IDs lowercase: asset ID segments are): `sfx.room.teamperfect` / `sfx.player.syncparry` registered in the
   first half. Playback: TEAM PERFECT is RoomClearController's, not a mapper cue (it already plays the room clear's
@@ -337,7 +337,8 @@ Each step is a commit; `npm run verify` before each.
   at most 85 % opaque); untethered: a small text at each point. Reduced motion: no pop, no snap (thin bar), both fade.
   No freeze. Cooldown is TeamMoments' (1 s). Tunables `TEAM_MOMENTS_VIEW.callout` / `.tether` (role `nearMiss.parry`).
   Debug `KV_TeamMomentsDebug = "sync"` / `"sync:far"` / `"sync:3"` (a fake SYNC! at the view player, with its sound).
-- [ ] **CM6. Recap rows** (team highlights 4 and 7).
+- [x] **CM6. Recap rows** (team highlights 4 and 7). As built: `pickHighlights` reads `RunRecapInput.team`;
+  RecapController's provider is `TeamMomentsController.totals()` (set in its onStart).
 - [ ] **CM7. [owner] Vale sounds** for the two IDs (audition, lock, upload).
 
 ### Both

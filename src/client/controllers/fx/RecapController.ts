@@ -49,6 +49,7 @@ import { InputController } from "../game/InputController";
 import { SimController, type RunContext } from "../game/SimController";
 import { ThemeController } from "../game/ThemeController";
 import { FX_FRAME_PHASE, FxTrackerController } from "./FxTrackerController";
+import { TeamMomentsController } from "./TeamMomentsController";
 
 /**
  * Part B's seam (docs/RUN_RECAP.md CM6): the co-op moments of the run (`TeamMoments`: best TEAM PERFECT streak, sync
@@ -149,9 +150,12 @@ export class RecapController implements OnStart {
 		private readonly audio: AudioController,
 		private readonly fx: FxTrackerController,
 		private readonly input: InputController,
+		private readonly teamMoments: TeamMomentsController,
 	) {}
 
 	onStart(): void {
+		// docs/RUN_RECAP.md CM6: the run's co-op moments (zero outside party runs; debug moments never count).
+		this.setTeamMomentsProvider(() => this.teamMoments.totals());
 		this.fx.onFrame((_, settings, dt) => this.frame(settings, dt), FX_FRAME_PHASE.normal);
 		this.sim.onRunStarted(() => this.close());
 		this.sim.onRunExited(() => this.close());
