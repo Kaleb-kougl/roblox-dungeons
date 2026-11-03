@@ -376,6 +376,25 @@ describe("bomber: breakables", () => {
 	});
 });
 
+describe("bomber: a vault's chest (docs/TREASURE.md TR2)", () => {
+	it("the blast never breaks a chest within blastBreakRadius (the breakables test's layout, its inner crate a chest)", () => {
+		const pieces: BreakablePlacement[] = [
+			{ x: worldToGrid(2), y: worldToGrid(0), kind: "chest" },
+			{ x: worldToGrid(4), y: worldToGrid(0), kind: "crate" },
+			{ x: worldToGrid(2), y: worldToGrid(2.5), kind: "crate" },
+		];
+		const config: SimConfig = { ...DEFAULT_SIM_CONFIG, breakables: { ...BREAKABLES_CONFIG, pieces } };
+		const s = createSimState(SEED, 0, 0, config);
+		ghost(s);
+		const a = bomber(s, config, 7, 0);
+		runUntil(s, config, 400, () => a.alive === 0);
+		expect(a.alive).toBe(0);
+		const chest = s.breakables!.pieces[0];
+		expect(dist(a, gridToWorld(chest.x), gridToWorld(chest.y)) <= BOMBER.data.blastBreakRadius).toBe(true);
+		expect(s.breakables!.pieces.map((p) => p.brokenTick)).toEqual([NOT_BROKEN, NOT_BROKEN, NOT_BROKEN]);
+	});
+});
+
 describe("bomber: determinism", () => {
 	interface Played {
 		hashes: string[];

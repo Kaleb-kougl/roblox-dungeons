@@ -9,7 +9,8 @@ happens. It never drops to nothing, so a miss reads as "so close", not as a loss
 floor. Work it task by task, like `PLAN.md`; each task ends with a **Verify**.
 
 Status (2026-11-03): **TR0 done (plan checked against the code, below). TR1 done (the dungeon roll, behind the
-option `EndlessFloorOptions.vaults`, off everywhere until TR5; "As built (TR1)" below).** The owner (Kaleb)
+option `EndlessFloorOptions.vaults`, off everywhere until TR5; "As built (TR1)" below). TR2 done (the sim state, hash
+group and chest piece behind `SimConfig.treasure`, unset everywhere until TR5; "As built (TR2)").** The owner (Kaleb)
 confirmed every decision (TRD1-TRD14) on 2026-11-03. This file is the project doc `claude/treasure-rooms-plan.md` with
 every "(assumed; TR0 verifies)" item checked against branch `treasure-rooms` @ `82f0ff9` (a snapshot of `main` @
 `288a33b`, which already has Pellets, solid decor, room themes and the new enemies merged). Sibling plans: BO
@@ -238,6 +239,48 @@ The rates sit within binomial noise of the bands (the chance draw decides alone,
 spec on floor 6 gives 486 vaults for 50 %, 29 % Legendary for 29 %, 50 % SWIFT, 24.7 % in elite rooms). Crypt rooms
 lose the most cells (wall tombs), as TR0 predicted, but they still hold their share of vaults. Party 4 has fewer cells
 (more spawns, so more pieces' clear zones) but the same vaults on these seeds.
+
+## As built (TR2, 2026-11-03)
+
+Files: `src/shared/sim/treasure/treasureData.ts` (`TreasureConfig`, `TREASURE` with salt `0x4b565452` and the four
+`boostOffsets` (forward 0.9 / 1.7, side -0.3 / +0.3 tiles: in the two FLOOR cells straight in front, one per ground
+slot), `VaultStatus`, `TREASURE_UNSET` -1, `CHEST_HP` 1, `VAULT_TIER_COUNT` / `VAULT_LOCK_COUNT`, the tunables and
+`ENDLESS_TREASURE_CONFIG`), `treasure.ts` (`TreasureState`, `TreasureEvents { armed, cracked, unlocked }`,
+`treasureSeedState`, `createTreasureState`, `treasureOnFloor`, `clearTreasureEvents`, `cloneTreasureState`,
+`treasureRunSummary`, `TREASURE_HASH_FIELDS`, `writeTreasureHash`, `treasureHashNames`), `stepTreasure.ts` (a no-op
+stub in TR2), `index.ts`; `sim/breakables` (`BreakableKind.CHEST` 2, `kindIndex` over `BREAKABLE_PIECE_KINDS`, the chest's
+hp `CHEST_HP` by kind, `damageBreakable` returns false for a chest before any bookkeeping, `meleeHitBreakables` /
+`slamBreakables` skip it), `sim/score` (`ScoreSource.TREASURE` 12, `TREASURE_SCORE_SOURCE_NAMES`,
+`addTreasureScoreSources`, `treasureAwardPoints`, `scoreTreasure`, `sourceName` past the pellet names; `award` books
+through a new private `credit`, same arithmetic), `step.ts` (`SimConfig.treasure`, the clears, `stepTreasure` after
+`stepScore` in both), `state.ts`, `endless.ts` (`treasureOnFloor` after `pelletsOnFloor`), `hashLayout.ts` /
+`replay.ts` (`TREASURE_SUBSYSTEM`, last). Test support: `src/shared/run/testing/vaultRun.ts` `buildVaultRunConfig(seed,
+party, { override, treasure, startFloor })` (the endless config with `{ vaults: true }` floors and the treasure config;
+TR5 replaces it with the real worlds).
+
+Deviations and details (none touches an owner decision):
+
+- **The record lookup.** `treasureOnFloor` looks the plan's room up in `state.score.rooms`; a room without a record (no
+  scoring) gives `NONE`, not a vault that could never arm. With breakables it throws when piece `plan.slot` is not an
+  intact chest on the plan's cell (floor data out of step with the plan).
+- **Unset values are -1** (`TREASURE_UNSET`) for room / record / slot / lock / tiers / ticks / allowance / missBy / spare
+  on `NONE` and before they apply; `x` / `z` / `fx` / `fz` are 0 then.
+- **Hash group `treasure`:** `TREASURE_HASH_FIELDS` (21 scalars: `rngState`, `status`, `room`, `record`, `slot`, `x`, `z`,
+  `fx`, `fz`, `lock`, `startTier`, `tier`, `armTick`, `ticksLeft`, `allowance`, `crackTick`, `missBy`, `spare`, `opened`,
+  `kept`, `legendary`), then `bonusDeals.length` and values; dump names `treasure.<field>`, `treasure.bonusDeals[i]`.
+  `bonusDeals` and the run counters exist from TR2 so TR4 adds no hash field.
+- **Score:** `scoreTreasure` is gated by size like JACKPOT; `treasureAwardPoints` = `floor(base x depth x (4 + curses) /
+  4)`. Padding per subset of builds / pellets / treasure: 9 / 10 / 12 / 12 / 13 (any with treasure), pinned in
+  `score.spec.ts`. `scoreJackpot` is gated by size alone, so in a treasure run without builds it would pay if called;
+  it is only called from build procs, as TR0 said.
+- **The chest piece in breakables:** every bullet still stops on it (an enemy bullet is consumed, a player bullet's
+  `damageBreakable` is false, so a heavy arrow stops too); a Charger stuns on it (its break pass skips the chest, the
+  mover stops it); goo is never laid on it. Specs in `breakables.spec.ts`, `charger.spec.ts`, `bomber.spec.ts`.
+
+Verify (2026-11-03, this host): `npm run typecheck` and `npm run lint` clean; `npm run test:only -- sim/ run/ lockstep/
+play/liveRun`: 107 suites, **1322 passed, 0 failed** (891 s; golden runs, M1 hash, `run/tutorial` lock, endless /
+party / partyProgression / segments / validate replays, `sim/hash`, clone and score specs among them), so with the
+config absent every fixture, the M1 hash, the tutorial lock and every endless replay are bit-identical.
 
 ## Player experience (target)
 
@@ -682,9 +725,10 @@ Each step is a commit. Specs next to the code; `npm run verify` before each.
 - [x] **TR1. Dungeon.** `vaultData.ts`, `placeVault`, `BREAKABLE_PIECE_KINDS`, the chest appended last, `vault` on
   layout and world. → Verify: TR1 specs and census above. → Done 2026-11-03: "As built (TR1)" (option-gated, off
   until TR5; census numbers there).
-- [ ] **TR2. Sim state and hash.** `SimConfig.treasure`, `TreasureState`, create, clone, the hash group, dump names,
+- [x] **TR2. Sim state and hash.** `SimConfig.treasure`, `TreasureState`, create, clone, the hash group, dump names,
   `ScoreSource.TREASURE` gated, the chest's `damageBreakable` early return. → Verify: every golden fixture, the M1
-  hash, the tutorial lock spec and every endless replay unchanged with the config absent; clone and hash specs.
+  hash, the tutorial lock spec and every endless replay unchanged with the config absent; clone and hash specs. → Done
+  2026-11-03: "As built (TR2)".
 - [ ] **TR3. The lock.** `stepTreasure` steps 1-3. → Verify: TR3 specs above.
 - [ ] **TR4. Opening and rewards.** Step 4, the grants, the landing offsets. (C1 answered: overflow goes to the player.) → Verify:
   TR4 specs above.

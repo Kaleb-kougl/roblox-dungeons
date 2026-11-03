@@ -158,6 +158,13 @@ export const ScoreSource = {
 	PELLETS: 10,
 	/** The Sweep (docs/PELLETS.md): every pellet of a room taken before its clear. Pellet runs only, like PELLETS. */
 	SWEEP: 11,
+	/**
+	 * Treasure (docs/TREASURE.md TR2): a vault's chest opened, once per open, combo-neutral (score.ts scoreTreasure).
+	 * Appended after SWEEP, and ONLY in runs with SimConfig.treasure (TREASURE_SCORE_SOURCE_NAMES; createSimState pads
+	 * points / counts to it, JACKPOT / PELLETS / SWEEP included, addTreasureScoreSources). Every other scored run's
+	 * "score" hash group is unchanged.
+	 */
+	TREASURE: 12,
 } as const;
 export type ScoreSourceId = (typeof ScoreSource)[keyof typeof ScoreSource];
 /** Source names in index order (dump names, results screen string keys `score.source.<name>`). */
@@ -185,3 +192,9 @@ export const BUILD_SCORE_SOURCE_NAMES = ["jackpot"] as const;
  * (a pellets run without builds pads JACKPOT, always 0 there).
  */
 export const PELLET_SCORE_SOURCE_NAMES = ["pellets", "sweep"] as const;
+/**
+ * Sources only a treasure run has (docs/TREASURE.md TR2), appended after PELLET_SCORE_SOURCE_NAMES (ScoreSource.TREASURE
+ * = SCORE_SOURCE_COUNT + BUILD_SCORE_SOURCE_NAMES.size() + PELLET_SCORE_SOURCE_NAMES.size()). A treasure run's points /
+ * counts hold every source up to these (without builds or pellets the padded JACKPOT / PELLETS / SWEEP stay 0).
+ */
+export const TREASURE_SCORE_SOURCE_NAMES = ["treasure"] as const;

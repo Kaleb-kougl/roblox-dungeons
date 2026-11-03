@@ -4,7 +4,15 @@
 // floor rebuilds on an endless run, co-op and replays.
 import { describe, expect, it } from "@rbxts/jest-globals";
 import "shared/sim/testing";
-import { TileType, gridToWorld, tileAt, worldToGrid, type BreakablePlacement, type Dungeon } from "shared/dungeon";
+import {
+	TileType,
+	gridToWorld,
+	tileAt,
+	worldToGrid,
+	type BreakablePieceKindName,
+	type BreakablePlacement,
+	type Dungeon,
+} from "shared/dungeon";
 import {
 	AXIS_MAX,
 	BOW_DATA,
@@ -20,7 +28,9 @@ import {
 	BossAttack,
 	BossState,
 	BreakableKind,
+	BreakableSource,
 	BulletKind,
+	CHEST_HP,
 	Button,
 	COMBO_MIN,
 	DEBUG_FLOOR_BUTTON,
@@ -37,10 +47,12 @@ import {
 	START_HALF_HEARTS,
 	cloneSimState,
 	createSimState,
+	damageBreakable,
 	engage,
 	fireBurstRaw,
 	hashLayout,
 	hashState,
+	meleeHitBreakables,
 	packPayload,
 	runReplay,
 	slamBreakables,
@@ -80,7 +92,7 @@ const PATCH = openPatch();
 const CX = gridToWorld(PATCH.gx);
 const CZ = gridToWorld(PATCH.gy);
 
-function piece(ox: number, oy: number, kind: "barrel" | "crate" = "crate"): BreakablePlacement {
+function piece(ox: number, oy: number, kind: BreakablePieceKindName = "crate"): BreakablePlacement {
 	return { x: PATCH.gx + ox, y: PATCH.gy + oy, kind };
 }
 
@@ -393,6 +405,107 @@ describe("breakables: player damage (B3)", () => {
 		expect(tough.s.breakables!.pieces[0].hp).toBe(BOW_DATA.heavyDamage * 2);
 		expect(tough.dummy.hp).toBe(10);
 		expect(tough.s.combat.playerBullets.activeCount).toBe(0);
+	});
+});
+
+describe("breakables: a vault's chest (docs/TREASURE.md TR2, correction 3)", () => {
+	const scoring = { scoring: { partySize: 1 } };
+
+	it("is BreakableKind.CHEST with CHEST_HP, intact and solid (it blocks the player like any piece)", () => {
+		const config = world([piece(0, 2, "chest")]);
+		const s = createSimState(1, CX, CZ, config);
+		const b = s.breakables!;
+		expect(b.pieces).toEqual([
+			{ kind: BreakableKind.CHEST, x: PATCH.gx, y: PATCH.gy + 2, hp: CHEST_HP, brokenTick: NOT_BROKEN },
+		]);
+		expect([b.intact, solidCells(s)!.size()]).toEqual([1, 1]);
+		run(s, config, frame({ moveZ: AXIS_MAX }), 90);
+		expect(s.player.z).toBeLessThanOrEqual(CZ + 2 - 0.5 - PLAYER_RADIUS + 1e-9);
+	});
+
+	it("damageBreakable: false before any bookkeeping, for every source (no hit event, hit slot, score or break)", () => {
+		const config = world([piece(0, 2, "chest")], scoring);
+		const s = createSimState(1, CX, CZ, config);
+		for (const src of [
+			BreakableSource.MELEE,
+			BreakableSource.PLAYER_BULLET,
+			BreakableSource.ENEMY_BULLET,
+			BreakableSource.SLAM,
+		]) {
+			expect(damageBreakable(s, 0, 1000, src)).toBe(false);
+		}
+		expect([s.events.breakableHits, s.events.breakablesBroken]).toEqual([0, 0]);
+		expect([s.breakables!.hitSlots.size(), s.breakables!.brokenSlots.size()]).toEqual([0, 0]);
+		expect([s.breakables!.pieces[0].hp, s.breakables!.intact, s.score!.total]).toEqual([CHEST_HP, 1, 0]);
+	});
+
+	it("the sword: swings never hit it (meleeHitBreakables counts it out) and score nothing", () => {
+		const config = world([piece(0, 1, "chest"), piece(-1, 1, "barrel")], { loadout: ["weapon.sword"], ...scoring });
+		const s = createSimState(1, CX, CZ, config);
+		expect(meleeHitBreakables(s, CX, CZ, 0, 1, 3, -1, 1000)).toBe(1); // the barrel only
+		let hits = 0;
+		for (let t = 0; t < 60; t++) {
+			step(s, FIRE, config);
+			hits += s.events.breakableHits;
+		}
+		const chest = s.breakables!.pieces[0];
+		expect([chest.hp, chest.brokenTick, hits]).toEqual([CHEST_HP, NOT_BROKEN, 0]);
+		expect(s.score!.counts[ScoreSource.BREAKABLES]).toBe(1); // the barrel's break
+	});
+
+	it("arrows stop on it (a plain arrow and a piercing heavy arrow alike): it shields the dummy behind it", () => {
+		const c = PATCH.fl.config;
+		const config = world([piece(0, 2, "chest")], {
+			loadout: ["weapon.bow"],
+			encounter: { ...c.encounter!, spawns: [{ kind: "test.dummy", x: CX, z: CZ + 4 }] },
+			...scoring,
+		});
+		for (const [input, ticks] of [
+			[FIRE, 120],
+			[ALT, BOW_DATA.chargeTicks + 1],
+		] as const) {
+			const s = createSimState(1, CX, CZ, config);
+			const dummy = s.combat.actors.find((o) => o.alive !== 0)!;
+			let hits = 0;
+			for (let t = 0; t < ticks; t++) {
+				step(s, input, config);
+				hits += s.events.breakableHits;
+			}
+			for (let t = 0; t < 60; t++) step(s, IDLE, config);
+			expect([dummy.hp, hits, s.combat.playerBullets.activeCount]).toEqual([10, 0, 0]);
+			expect(s.breakables!.pieces[0].brokenTick).toBe(NOT_BROKEN);
+			expect(s.score!.total).toBe(0);
+		}
+	});
+
+	it("enemy bullets: consumed on it, no damage and no event", () => {
+		const config = world([piece(2, 0, "chest")]);
+		const s = createSimState(1, CX, CZ - 5, config);
+		const em = s.combat.enemyBullets.acquireEmitter();
+		s.combat.enemyEmitters += 1;
+		let hits = 0;
+		for (let shot = 1; shot <= 6; shot++) {
+			enemyShot(s, em, CX, CZ, 1, 0);
+			for (let t = 0; t < 30; t++) {
+				step(s, IDLE, config);
+				hits += s.events.breakableHits;
+			}
+			expect(s.combat.enemyBullets.activeCount).toBe(0);
+		}
+		expect([hits, s.breakables!.pieces[0].hp, s.breakables!.pieces[0].brokenTick]).toEqual([
+			0,
+			CHEST_HP,
+			NOT_BROKEN,
+		]);
+	});
+
+	it("the slam (boss, and the Bomber's / Charger's radius) never breaks it; the pieces round it still break", () => {
+		const config = world([piece(0, 0, "chest"), piece(1, 0, "barrel"), piece(-1, 0)]);
+		const s = createSimState(1, CX, CZ - 5, config);
+		expect(slamBreakables(s, CX, CZ)).toBe(2);
+		expect(slamBreakables(s, CX, CZ, 10)).toBe(0);
+		expect(s.breakables!.pieces.map((p) => p.brokenTick !== NOT_BROKEN)).toEqual([false, true, true]);
+		expect([s.events.breakablesBroken, s.breakables!.intact]).toEqual([2, 1]);
 	});
 });
 

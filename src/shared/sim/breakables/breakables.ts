@@ -24,20 +24,30 @@
  *            any source (dropsOnBreak, after the score); only with DropsConfig.breakableLoot.
  *   events   SimEvents.breakableHits (every hit, the breaking one included) and .breakablesBroken; per tick (cleared
  *            by step(), presentation only, not hashed) `hitSlots` and `brokenSlots` (slot per hit / break, in order).
+ *   chest    a vault's chest (docs/TREASURE.md, BreakableKind.CHEST, hp CHEST_HP) blocks like any piece but is never
+ *            damaged: no hit, event, score, loot or break from any source (bullets that reach it still stop).
  *
  * Co-op: the same rules for every player (bullets carry their owner; the team score gets the points). Everything here
  * is deterministic: fixed slot order, no rng, no trig.
  */
-import { BREAKABLE_KINDS, cellKey, gridToWorld, type BreakableLoot, type BreakablePlacement } from "shared/dungeon";
+import {
+	BREAKABLE_PIECE_KINDS,
+	cellKey,
+	gridToWorld,
+	type BreakableLoot,
+	type BreakablePlacement,
+} from "shared/dungeon";
 import type { SimState } from "../state";
 import { breakableSlotAt } from "./cells";
 import { scoreBreakable } from "../score/score";
 import { dropsOnBreak } from "../drops/breakLoot";
+import { CHEST_HP } from "../treasure/treasureData";
 import {
 	BREAKABLE_ENEMY_BULLET_DAMAGE,
 	BREAKABLE_HIT_RADIUS,
 	BREAKABLE_HP,
 	BREAKABLE_SLAM_RADIUS,
+	BreakableKind,
 	BreakableSource,
 	NOT_BROKEN,
 	type BreakableSourceId,
@@ -45,7 +55,7 @@ import {
 
 /** SimConfig.breakables: presence turns breakables on; the tunables (BREAKABLES_CONFIG is the game's). */
 export interface BreakablesConfig {
-	/** hp per kind (BreakableKind order). */
+	/** hp per clutter kind (BreakableKind order; the chest's is CHEST_HP, never read from here). */
 	readonly hp: ReadonlyArray<number>;
 	/** Damage one enemy bullet deals to a piece. */
 	readonly enemyBulletDamage: number;
@@ -103,7 +113,7 @@ export interface BreakablesState {
 }
 
 function kindIndex(kind: string): number {
-	const i = (BREAKABLE_KINDS as ReadonlyArray<string>).indexOf(kind);
+	const i = (BREAKABLE_PIECE_KINDS as ReadonlyArray<string>).indexOf(kind);
 	if (i < 0) error(`breakables: unknown kind ${kind}`, 0);
 	return i;
 }
@@ -112,7 +122,8 @@ function piecesFrom(config: Readonly<BreakablesConfig>, list: ReadonlyArray<Brea
 	const out: BreakablePiece[] = [];
 	for (const p of list) {
 		const kind = kindIndex(p.kind);
-		const hp = config.hp[kind];
+		// The vault's chest (docs/TREASURE.md correction 3) has a fixed hp by kind: it never takes damage.
+		const hp = kind === BreakableKind.CHEST ? CHEST_HP : config.hp[kind];
 		if (hp === undefined || !(hp > 0)) error(`breakables: no hp for kind ${p.kind}`, 0);
 		out.push({ kind, x: p.x, y: p.y, hp, brokenTick: NOT_BROKEN });
 	}
@@ -177,7 +188,9 @@ export function clearBreakableEvents(b: BreakablesState): void {
 }
 
 /**
- * Damages the intact piece in `slot` by `amount` from `source` (BreakableSource). events.breakableHits += 1 and the
+ * Damages the intact piece in `slot` by `amount` from `source` (BreakableSource). A vault's chest (BreakableKind.CHEST,
+ * docs/TREASURE.md correction 3) returns false before any of this: no hit event, hit slot, score, loot or break (a
+ * bullet that reached it still stops: the callers consume it). Otherwise events.breakableHits += 1 and the
  * slot joins hitSlots; at hp <= 0 it breaks this tick: hp 0, brokenTick = state.tick, out of the lookup,
  * events.breakablesBroken += 1, brokenSlots; a player's break (MELEE / PLAYER_BULLET) scores (scoreBreakable); a
  * loaded piece releases its boost (dropsOnBreak, every source). Returns true when it broke. A broken (or missing) slot: nothing, false.
@@ -186,7 +199,7 @@ export function damageBreakable(state: SimState, slot: number, amount: number, s
 	const b = state.breakables;
 	if (b === undefined) return false;
 	const p = b.pieces[slot];
-	if (p === undefined || p.brokenTick !== NOT_BROKEN) return false;
+	if (p === undefined || p.brokenTick !== NOT_BROKEN || p.kind === BreakableKind.CHEST) return false;
 	const ev = state.events;
 	ev.breakableHits += 1;
 	b.hitSlots.push(slot);
@@ -206,7 +219,10 @@ export function damageBreakable(state: SimState, slot: number, amount: number, s
 	return true;
 }
 
-/** An enemy bullet whose centre is at (x, z): true when a piece stopped it (consumed; the piece took the damage). */
+/**
+ * An enemy bullet whose centre is at (x, z): true when a piece stopped it (consumed; the piece took the damage, but a
+ * chest takes none).
+ */
 export function enemyBulletHitsBreakable(state: SimState, b: Readonly<BreakablesState>, x: number, z: number): boolean {
 	const slot = breakableSlotAt(b, x, z);
 	if (slot < 0) return false;
@@ -215,7 +231,7 @@ export function enemyBulletHitsBreakable(state: SimState, b: Readonly<Breakables
 }
 
 /**
- * The melee pass (sweepArc, after the actors): every intact piece, in slot order, whose circle (hitRadius round its
+ * The melee pass (sweepArc, after the actors): every intact piece but a chest, in slot order, whose circle (hitRadius round its
  * cell centre) reaches into the arc from (x, z) toward (dirX, dirZ), `radius` long, half-angle cosine `halfAngleCos`
  * (the actors' test: in reach, and in the cone unless the arc's origin is inside the circle), takes `damage`.
  * Returns the pieces hit.
@@ -236,7 +252,8 @@ export function meleeHitBreakables(
 	let hits = 0;
 	for (let i = 0; i < b.pieces.size(); i++) {
 		const p = b.pieces[i];
-		if (p.brokenTick !== NOT_BROKEN) continue;
+		// A vault's chest is never hit (docs/TREASURE.md correction 3): not counted either.
+		if (p.brokenTick !== NOT_BROKEN || p.kind === BreakableKind.CHEST) continue;
 		const dx = gridToWorld(p.x) - x;
 		const dz = gridToWorld(p.y) - z;
 		const d2 = dx * dx + dz * dz;
@@ -251,9 +268,9 @@ export function meleeHitBreakables(
 }
 
 /**
- * The boss's slam at (x, z): breaks every intact piece whose cell centre is within config.slamRadius. `radius`
- * (docs/NEW_ENEMIES.md NE1: the Bomber's blast, the Charger's charge) replaces config.slamRadius when given; absent,
- * exactly the boss's slam.
+ * The boss's slam at (x, z): breaks every intact piece but a chest whose cell centre is within config.slamRadius.
+ * `radius` (docs/NEW_ENEMIES.md NE1: the Bomber's blast, the Charger's charge) replaces config.slamRadius when given;
+ * absent, exactly the boss's slam. A Charger's charge stops at a chest like at a wall (the mover), so it stuns.
  */
 export function slamBreakables(state: SimState, x: number, z: number, radius?: number): number {
 	const b = state.breakables;
@@ -263,7 +280,8 @@ export function slamBreakables(state: SimState, x: number, z: number, radius?: n
 	let broken = 0;
 	for (let i = 0; i < b.pieces.size(); i++) {
 		const p = b.pieces[i];
-		if (p.brokenTick !== NOT_BROKEN) continue;
+		// A vault's chest never breaks (docs/TREASURE.md correction 3).
+		if (p.brokenTick !== NOT_BROKEN || p.kind === BreakableKind.CHEST) continue;
 		const dx = gridToWorld(p.x) - x;
 		const dz = gridToWorld(p.y) - z;
 		if (dx * dx + dz * dz > r2) continue;

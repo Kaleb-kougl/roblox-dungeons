@@ -25,6 +25,8 @@
  *            config.powerMaxBullets); neither feeds the combo nor refills its timer (PD1)
  *   sweep    (pellet runs only) scoreSweep: config.sweepPoints when a room clears with every regular pellet taken; no
  *            combo either
+ *   treasure (treasure runs only, docs/TREASURE.md) scoreTreasure: the open's tier points x Depth x curses, once per
+ *            open, combo-neutral (the combo is neither applied, x1.0, nor fed)
  *   floors   awardFloorClear(state, floor, ...), called by the floor transition (endless mode): 1000 x floor x (rooms
  *            cleared / rooms with enemies on that floor; a boss floor's boss is one more room), rounded down before
  *            the multipliers (floorClearBase); a floor without enemy rooms pays the full 1000 x floor.
@@ -118,6 +120,7 @@ import {
 	ROOM_PERFECT_POINTS,
 	BUILD_SCORE_SOURCE_NAMES,
 	PELLET_SCORE_SOURCE_NAMES,
+	TREASURE_SCORE_SOURCE_NAMES,
 	SCORE_SOURCE_COUNT,
 	SCORE_SOURCE_NAMES,
 	ScoreSource,
@@ -585,7 +588,11 @@ function award(
 	bonusPercent?: number,
 	extraPercent?: number,
 ): number {
-	const pts = awardPoints(state, s, base, scalePercent, bonusPercent, extraPercent);
+	return credit(s, source, awardPoints(state, s, base, scalePercent, bonusPercent, extraPercent));
+}
+
+/** Books `pts` under `source`: the total, the source's points and count, this tick's points event. Returns `pts`. */
+function credit(s: ScoreState, source: ScoreSourceId, pts: number): number {
 	s.total += pts;
 	s.points[source] += pts;
 	s.counts[source] += 1;
@@ -698,6 +705,41 @@ export function scoreJackpot(state: SimState): number {
 	const s = state.score;
 	if (s === undefined || s.points.size() <= ScoreSource.JACKPOT) return 0;
 	return award(state, s, ScoreSource.JACKPOT, JACKPOT_POINTS * scoreFloor(state));
+}
+
+/**
+ * Treasure runs (docs/TREASURE.md TR2, state.ts createSimState, after the builds and pellets padding): pads points /
+ * counts to every source up to TREASURE_SCORE_SOURCE_NAMES (JACKPOT / PELLETS / SWEEP included when the run lacks
+ * builds or pellets: they stay 0), so TREASURE hashes only in treasure runs. Idempotent.
+ */
+export function addTreasureScoreSources(s: ScoreState): void {
+	const total =
+		SCORE_SOURCE_COUNT +
+		BUILD_SCORE_SOURCE_NAMES.size() +
+		PELLET_SCORE_SOURCE_NAMES.size() +
+		TREASURE_SCORE_SOURCE_NAMES.size();
+	while (s.points.size() < total) s.points.push(0);
+	while (s.counts.size() < total) s.counts.push(0);
+}
+
+/**
+ * The TREASURE award for `base` (docs/TREASURE.md TRD11, correction 5): floor(base x depth x (4 + curses) / 4), the
+ * room bonuses' multipliers without the combo (fixed at COMBO_MIN, x1.0), as exact integer arithmetic. Pure.
+ */
+export function treasureAwardPoints(state: Readonly<SimState>, s: Readonly<ScoreState>, base: number): number {
+	const num = base * scoreDepth(state) * (CURSE_BASE + s.curses * CURSE_STEP);
+	return (num - (num % CURSE_DENOMINATOR)) / CURSE_DENOMINATOR;
+}
+
+/**
+ * Treasure hook (sim/treasure, a chest's open, TR4): treasureAwardPoints(base) into ScoreSource.TREASURE, once per
+ * open; never feeds the combo or its timer, touches no room record. Returns the points (0 without scoring or without
+ * the treasure sources: addTreasureScoreSources).
+ */
+export function scoreTreasure(state: SimState, base: number): number {
+	const s = state.score;
+	if (s === undefined || s.points.size() <= ScoreSource.TREASURE) return 0;
+	return credit(s, ScoreSource.TREASURE, treasureAwardPoints(state, s, base));
 }
 
 /**
@@ -1030,12 +1072,17 @@ export function writeScoreHash(s: Readonly<ScoreState>, out: number[]): void {
 	}
 }
 
-/** The dump name of source index `k` (SCORE_SOURCE_NAMES, then BUILD_SCORE_SOURCE_NAMES, then PELLET_...). */
+/**
+ * The dump name of source index `k` (SCORE_SOURCE_NAMES, then BUILD_SCORE_SOURCE_NAMES, then PELLET_..., then
+ * TREASURE_...).
+ */
 function sourceName(k: number): string {
 	if (k < SCORE_SOURCE_COUNT) return SCORE_SOURCE_NAMES[k];
 	const build = k - SCORE_SOURCE_COUNT;
 	if (build < BUILD_SCORE_SOURCE_NAMES.size()) return BUILD_SCORE_SOURCE_NAMES[build];
-	return PELLET_SCORE_SOURCE_NAMES[build - BUILD_SCORE_SOURCE_NAMES.size()];
+	const pellet = build - BUILD_SCORE_SOURCE_NAMES.size();
+	if (pellet < PELLET_SCORE_SOURCE_NAMES.size()) return PELLET_SCORE_SOURCE_NAMES[pellet];
+	return TREASURE_SCORE_SOURCE_NAMES[pellet - PELLET_SCORE_SOURCE_NAMES.size()];
 }
 
 /** Dump names for writeScoreHash, same order (`score.total`, `score.points.kills`, `score.rooms[0].cleared`, ...). */

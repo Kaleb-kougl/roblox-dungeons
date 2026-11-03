@@ -16,6 +16,7 @@ import { cloneEndlessState, createEndlessState, endlessStartFloor, type EndlessS
 import {
 	addBuildScoreSources,
 	addPelletScoreSources,
+	addTreasureScoreSources,
 	cloneScoreState,
 	createScoreState,
 	type ScoreState,
@@ -36,6 +37,7 @@ import { cloneAffixesState, createAffixesState, type AffixesState } from "./affi
 import { cloneDevState, createDevState, type DevState } from "./dev/dev";
 import { cloneBuildsState, createBuildsState, type BuildsState } from "./builds/builds";
 import { clonePelletsState, createPelletsState, pelletsOnFloor, type PelletsState } from "./pellets/pellets";
+import { cloneTreasureState, createTreasureState, treasureOnFloor, type TreasureState } from "./treasure/treasure";
 
 export interface PlayerState {
 	x: number;
@@ -313,6 +315,13 @@ export interface SimState {
 	 * as the "pellets" subsystem, appended after every other group (after "builds"). See pellets/pellets.ts.
 	 */
 	pellets?: PelletsState;
+	/**
+	 * Treasure rooms (docs/TREASURE.md TR2), only when SimConfig.treasure is set: the treasure stream, the current
+	 * floor's vault (status, room, record, chest slot and centre, lock, tiers, arm / crack ticks, countdown, allowance,
+	 * miss / spare), per player bonus deals, the run's chest counters. Hashed as the "treasure" subsystem, appended after
+	 * every other group (after "pellets"). See treasure/treasure.ts.
+	 */
+	treasure?: TreasureState;
 }
 
 /**
@@ -334,6 +343,9 @@ export interface SimState {
  * With `config.pellets`, `pellets` state is created after the score state (its rooms hang off the score's room
  * records): the first floor's pellets (endless: its world's, dev mode's startFloor included; else
  * `config.pellets.floor`), and a scored run's points / counts gain the pellet sources (addPelletScoreSources).
+ * With `config.treasure`, `treasure` state is created after the pellets (its vault hangs off a score record and a
+ * breakables slot): the first floor's vault (endless: its world's, dev mode's startFloor included; floor 1 never has
+ * one), and a scored run's points / counts gain TREASURE (addTreasureScoreSources, after the builds and pellet padding).
  */
 export function createSimState(
 	seed: number,
@@ -410,6 +422,15 @@ export function createSimState(
 		// The pellet-only score sources (PELLETS, SWEEP; JACKPOT padded without builds), so they hash only here.
 		if (state.score !== undefined) addPelletScoreSources(state.score);
 	}
+	// Treasure rooms (docs/TREASURE.md): after the score's room records and the breakables (the vault's record and
+	// chest). Its own stream (seed ^ TREASURE.salt), never state.rngState. No rng drawn.
+	const treasure = config.treasure;
+	if (treasure !== undefined) {
+		state.treasure = createTreasureState(treasure, seed, partySize(state));
+		treasureOnFloor(state, firstFloor?.vault);
+		// The treasure-only score source (TREASURE; JACKPOT / PELLETS / SWEEP padded without them), so it hashes only here.
+		if (state.score !== undefined) addTreasureScoreSources(state.score);
+	}
 	return state;
 }
 
@@ -440,6 +461,7 @@ export function cloneSimState(s: Readonly<SimState>): SimState {
 		dev: s.dev !== undefined ? cloneDevState(s.dev) : undefined,
 		builds: s.builds !== undefined ? cloneBuildsState(s.builds) : undefined,
 		pellets: s.pellets !== undefined ? clonePelletsState(s.pellets) : undefined,
+		treasure: s.treasure !== undefined ? cloneTreasureState(s.treasure) : undefined,
 	};
 	if (s.party !== undefined) clone.party = cloneParty(s.party, clone);
 	return clone;

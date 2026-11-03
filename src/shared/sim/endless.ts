@@ -22,7 +22,8 @@
  *      dropsOnFloorPieces, with DropsConfig.breakableLoot), the floor's initial spawns (the boss on
  *      boss floors), scoring's room records rebuilt for the new floor
  *      (rebuildScoreRooms, deferred), then the floor's pellets on those records (pellets/pellets.ts pelletsOnFloor,
- *      with SimConfig.pellets), events.floorChanged = the new floor. Stop.
+ *      with SimConfig.pellets), then its vault (treasure/treasure.ts treasureOnFloor, with SimConfig.treasure),
+ *      events.floorChanged = the new floor. Stop.
  *   4. the player stands on a room's floor for the first time this floor: events.roomEntered = id + 1, and that room's
  *      deferred enemies spawn (EndlessFloorWorld.roomSpawns, in order, each at least SPAWN_SAFE_RADIUS from every
  *      living player: see safeRoomSpawns; a full pool drops the rest, counted in
@@ -63,6 +64,7 @@ import { dropsOnFloorPieces } from "./drops/breakLoot";
 import { tutorialOnRoomSpawned } from "./tutorial/tutorial";
 import { clearBuildProcs } from "./builds/builds";
 import { pelletsOnFloor } from "./pellets/pellets";
+import { treasureOnFloor } from "./treasure/treasure";
 
 /** A candidate spawn position (structurally shared/dungeon's TileXZ). */
 export interface SpawnTile {
@@ -117,8 +119,8 @@ export interface EndlessFloorWorld {
 	readonly pellets?: FloorPellets;
 	/**
 	 * The floor's vault (shared/dungeon placeVault, docs/TREASURE.md TR1): its room, chest cell (= breakables[slot]),
-	 * facing, lock and tier. Absent: none (no vault rolled, the tutorial, hand-built test worlds). Not read by the sim
-	 * yet (TR2).
+	 * facing, lock and tier. Read only when the run's SimConfig.treasure is set (treasure/treasure.ts treasureOnFloor).
+	 * Absent: none (no vault rolled, the tutorial, hand-built test worlds).
 	 */
 	readonly vault?: VaultPlan;
 }
@@ -277,6 +279,9 @@ function nextFloor(state: SimState, input: Readonly<InputFrame>, endless: Endles
 	rebuildScoreRooms(state, world.config.encounter, world.roomSpawns, world.roomAffixes);
 	// Pellets (docs/PELLETS.md): the new floor's, after the room records they hang off (no-op without them). No rng.
 	pelletsOnFloor(state, world.pellets);
+	// Treasure rooms (docs/TREASURE.md): the new floor's vault on those records and pieces; an unopened one is lost
+	// (no-op without them). No rng.
+	treasureOnFloor(state, world.vault);
 	state.events.floorChanged = e.floor;
 }
 

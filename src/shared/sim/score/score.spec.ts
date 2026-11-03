@@ -2,8 +2,19 @@
 // for a dead player), guard cancels vs swing deletes, room clear / perfect / fast, floor clear, curses, the opt-in
 // hash subsystem.
 import { describe, expect, it } from "@rbxts/jest-globals";
+import { buildEndlessRunConfig } from "shared/run";
 import {
 	BOSS_NO_HIT_BONUS,
+	BUILD_SCORE_SOURCE_NAMES,
+	ENDLESS_TREASURE_CONFIG,
+	PELLET_SCORE_SOURCE_NAMES,
+	SCORE_SOURCE_COUNT,
+	TREASURE_SCORE_SOURCE_NAMES,
+	scorePellet,
+	scorePowerBullets,
+	scoreSweep,
+	scoreTreasure,
+	treasureAwardPoints,
 	BULLET_Y,
 	BulletKind,
 	BulletPayload,
@@ -557,5 +568,98 @@ describe("hash", () => {
 		const la = hashLayout(a).values;
 		const lb = hashLayout(b).values;
 		for (let i = 0; i < la.size(); i++) expect(lb[i]).toBe(la[i]);
+	});
+});
+
+describe("treasure score source (docs/TREASURE.md TR2, TRD11 / correction 5)", () => {
+	const SEED = 4242;
+	const setup = buildEndlessRunConfig(SEED);
+	/** The endless config with each of builds / pellets / treasure on or off. */
+	function subset(builds: boolean, pellets: boolean, treasure: boolean): SimConfig {
+		return {
+			...setup.config,
+			builds: builds ? setup.config.builds : undefined,
+			pellets: pellets ? setup.config.pellets : undefined,
+			treasure: treasure ? ENDLESS_TREASURE_CONFIG : undefined,
+		};
+	}
+	const make = (config: SimConfig) => createSimState(SEED, setup.spawn!.x, setup.spawn!.z, config);
+
+	it("TREASURE is source 12, named `treasure`, after the pellet sources", () => {
+		expect(ScoreSource.TREASURE).toBe(12);
+		expect(TREASURE_SCORE_SOURCE_NAMES).toEqual(["treasure"]);
+		expect(
+			SCORE_SOURCE_COUNT +
+				BUILD_SCORE_SOURCE_NAMES.size() +
+				PELLET_SCORE_SOURCE_NAMES.size() +
+				TREASURE_SCORE_SOURCE_NAMES.size(),
+		).toBe(13);
+	});
+
+	it("padding for every subset of builds / pellets / treasure: sizes and the dump names' tail", () => {
+		const cases: Array<[boolean, boolean, boolean, number, string]> = [
+			[false, false, false, 9, "breakables"],
+			[true, false, false, 10, "jackpot"],
+			[false, true, false, 12, "sweep"],
+			[true, true, false, 12, "sweep"],
+			[false, false, true, 13, "treasure"],
+			[true, false, true, 13, "treasure"],
+			[false, true, true, 13, "treasure"],
+			[true, true, true, 13, "treasure"],
+		];
+		for (const [b, p, t, size, last] of cases) {
+			const st = make(subset(b, p, t));
+			const sc = st.score!;
+			expect([b, p, t, sc.points.size(), sc.counts.size()]).toEqual([b, p, t, size, size]);
+			const names = hashLayout(st, true).names;
+			expect(names.includes(`score.points.${last}`)).toBe(true);
+			expect(names.includes(`score.counts.${last}`)).toBe(true);
+			expect(names.includes("score.points.treasure")).toBe(t);
+			for (const n of sc.points) expect(n).toBe(0);
+		}
+	});
+
+	it("the award: floor(base x Depth x (4 + curses) / 4), the combo neither applied nor fed", () => {
+		const st = make(subset(true, true, true));
+		const sc = st.score!;
+		sc.combo = 37;
+		sc.comboTimer = COMBO_WINDOW_TICKS / 2;
+		const cases: Array<[number, number, number, number]> = [
+			// [base, depth, curses, points]
+			[300, 1, 0, 300],
+			[800, 3, 1, 3000],
+			[1500, 2, 3, 5250],
+			[301, 1, 1, 376], // 376.25
+			[300, 1, 3, 525],
+		];
+		for (const [base, depth, curses, pts] of cases) {
+			st.endless!.depth = depth;
+			sc.curses = curses;
+			expect([base, depth, curses, treasureAwardPoints(st, sc, base)]).toEqual([base, depth, curses, pts]);
+		}
+		st.endless!.depth = 2;
+		sc.curses = 1;
+		const total = sc.total;
+		expect(scoreTreasure(st, 800)).toBe(2000);
+		expect(scoreTreasure(st, 300)).toBe(750);
+		expect([sc.points[ScoreSource.TREASURE], sc.counts[ScoreSource.TREASURE]]).toEqual([2750, 2]);
+		expect([sc.total - total, sc.events.points]).toEqual([2750, 2750]);
+		expect([sc.combo, sc.comboTimer, sc.events.comboFed]).toEqual([37, COMBO_WINDOW_TICKS / 2, 0]);
+	});
+
+	it("gated: no treasure sources -> 0 and nothing booked; treasure alone keeps the padded JACKPOT / PELLETS / SWEEP at 0", () => {
+		const none = make(subset(true, true, false));
+		expect(scoreTreasure(none, 800)).toBe(0);
+		expect([none.score!.total, none.score!.points.size()]).toEqual([0, 12]);
+		const unscored = make({ ...subset(true, true, true), scoring: undefined });
+		expect(scoreTreasure(unscored, 800)).toBe(0);
+		const alone = make(subset(false, false, true));
+		expect(scoreTreasure(alone, 800)).toBe(800);
+		// The pellet awards need state.pellets: absent here, so they pay nothing into the padded sources.
+		expect([scorePellet(alone), scoreSweep(alone), scorePowerBullets(alone, 5)]).toEqual([0, 0, 0]);
+		const sc = alone.score!;
+		for (const k of [ScoreSource.JACKPOT, ScoreSource.PELLETS, ScoreSource.SWEEP])
+			expect([k, sc.points[k], sc.counts[k]]).toEqual([k, 0, 0]);
+		expect(sc.total).toBe(800);
 	});
 });

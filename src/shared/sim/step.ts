@@ -28,6 +28,9 @@ import { stepDevToggle, type DevSimConfig } from "./dev/dev";
 import { clearBuildEvents, type BuildsConfig } from "./builds/builds";
 import { clearPelletsEvents, type PelletsConfig } from "./pellets/pellets";
 import { stepPellets } from "./pellets/stepPellets";
+import { clearTreasureEvents } from "./treasure/treasure";
+import type { TreasureConfig } from "./treasure/treasureData";
+import { stepTreasure } from "./treasure/stepTreasure";
 import type { SolidCells } from "shared/dungeon";
 
 export { PLAYER_RADIUS, PLAYER_SPEED } from "./playerData";
@@ -182,6 +185,15 @@ export interface SimConfig {
 	 * appended after every other group (after "builds"), and a scored run's points / counts gain PELLETS / SWEEP.
 	 */
 	pellets?: PelletsConfig;
+	/**
+	 * Treasure rooms (docs/TREASURE.md TR2, treasure/treasure.ts): the rules (ENDLESS_TREASURE_CONFIG is the game's:
+	 * SWIFT par percent, open reach, Respite tables, points and boosts by tier); where the vault is, its lock and tier
+	 * come from each endless floor's world (EndlessFloorWorld.vault, its chest a breakables piece). Absent: no treasure
+	 * state, nothing extra hashed, no treasure score source (every fixture, M1, the tutorial, every world until TR5).
+	 * Present: state.treasure is created, stepped (stepTreasure, after stepScore) and hashed as the "treasure"
+	 * subsystem, appended after every other group (after "pellets"), and a scored run's points / counts gain TREASURE.
+	 */
+	treasure?: TreasureConfig;
 }
 
 /** Matches the 16x16 greybox room: inner wall faces at +/-7.75, minus the 0.4 player half-width (rounded). */
@@ -206,7 +218,8 @@ const partyPrev: number[] = [];
  * Advances `state` by exactly one tick of SIM_DT, in place. Solo runs only (a party state needs stepParty).
  *
  * Tick order (fixed; part of the determinism contract):
- *   1. clear per-tick events (and the score's, the breakables', the drops', the affixes', the builds', the pellets'); then FORFEIT_BUTTON ("Leave run") -> forfeitSoloRun:
+ *   1. clear per-tick events (and the score's, the breakables', the drops', the affixes', the builds', the pellets',
+ *      the treasure's); then FORFEIT_BUTTON ("Leave run") -> forfeitSoloRun:
  *      the player dies at this tick; then (dev runs only) a DEV_GOD_BUTTON edge toggles god mode (stepDevToggle)
  *   2. stepPlayer  (movement, facing, roll, hearts, flask, Ember)
  *   3. stepCombat   (Ember clear, actors act, the player's weapons, bullets step, hits, contact damage)
@@ -219,6 +232,9 @@ const partyPrev: number[] = [];
  *                    Sweep)
  *   8. stepScore    (only with config.scoring: hit cuts, combo timer, rooms; kills / grazes / guard score inside 3;
  *                    pellet runs: an engaged room's pellets go live, a clear takes them and pays the Sweep first)
+ *   8b. stepTreasure (only with config.treasure: the vault arms on its room's engagement, cracks on a hit past the
+ *                    allowance or the SWIFT countdown's end, unlocks on the clear; after 8, so this tick's engagement,
+ *                    hits and clear are known)
  *   9. tick += 1
  * While a boon draft is open (endless mode, progression/progression.ts) the world is frozen: after the event clears
  * only stepDraft runs (the stick selects, a FIRE press confirms), then tick += 1 (a forfeit on such a tick closes the
@@ -244,6 +260,7 @@ export function step(
 	if (state.affixes !== undefined) clearAffixEvents(state.affixes);
 	if (state.builds !== undefined) clearBuildEvents(state.builds);
 	if (state.pellets !== undefined) clearPelletsEvents(state.pellets);
+	if (state.treasure !== undefined) clearTreasureEvents(state.treasure);
 	const run = state.run;
 	// Read before the forfeit, which closes an open draft: that tick stays a frozen draft tick.
 	const frozen = run !== undefined && isDraftOpen(state);
@@ -264,6 +281,7 @@ export function step(
 	if (drops !== undefined) stepDrops(state, soloInputs, soloPrev);
 	if (state.pellets !== undefined) stepPellets(state);
 	if (score !== undefined) stepScore(state);
+	if (state.treasure !== undefined) stepTreasure(state);
 	state.tick += 1;
 }
 
@@ -301,6 +319,7 @@ export function forfeitSoloRun(state: SimState): boolean {
  *   7. stepDrops (drops: per slot the first living player in reach takes it; timers per player)
  *   8. stepPellets (pellets: per player in index order, the live pellets in reach)
  *   9. stepScore
+ *   9b. stepTreasure (treasure: the vault's lock, after 9)
  *  10. tick += 1
  * A solo state (no party) is stepped exactly as step(state, inputs[0], config) would.
  */
@@ -326,6 +345,7 @@ export function stepParty(
 	if (state.affixes !== undefined) clearAffixEvents(state.affixes);
 	if (state.builds !== undefined) clearBuildEvents(state.builds);
 	if (state.pellets !== undefined) clearPelletsEvents(state.pellets);
+	if (state.treasure !== undefined) clearTreasureEvents(state.treasure);
 	for (let i = 0; i < n; i++) if (hasLeftBit(inputs[i].buttons)) markPlayerLeft(state, i);
 	if (state.dev !== undefined) stepDevToggle(state, inputs, partyPrev);
 	const run = state.run;
@@ -344,5 +364,6 @@ export function stepParty(
 	if (drops !== undefined) stepDrops(state, inputs, partyPrev);
 	if (state.pellets !== undefined) stepPellets(state);
 	if (score !== undefined) stepScore(state);
+	if (state.treasure !== undefined) stepTreasure(state);
 	state.tick += 1;
 }

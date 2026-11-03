@@ -379,6 +379,19 @@ describe("charger: breakables", () => {
 	});
 });
 
+describe("charger: a vault's chest (docs/TREASURE.md TR2)", () => {
+	it("stops it like a wall: stunned at the chest's face, the chest intact (the charge's break pass skips it)", () => {
+		const pieces = [{ x: 11, y: 7, kind: "chest" as const }];
+		const config = arena(11, 3, true, { breakables: { ...BREAKABLES_CONFIG, pieces } });
+		const { run, s } = firstCharge(config, 11, 9);
+		expect(s.breakables!.pieces[0].brokenTick).toBe(NOT_BROKEN);
+		expect(s.events.breakableHits).toBe(0);
+		expect(run.end).toBe(CHARGER_STUN);
+		expect(run.endTicks).toBe(D.stunTicks);
+		expect(run.endZ).toBeCloseTo(7 - 0.5 - D.radius, 6);
+	});
+});
+
 describe("charger: one heavy hit per player per charge (co-op 2)", () => {
 	it("each living player in the lane loses HIT_HEAVY exactly once, even with post-hit invulnerability cleared", () => {
 		const config = arena(11, 3, true, { party: { size: 2 } });

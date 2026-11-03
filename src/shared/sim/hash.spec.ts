@@ -1,8 +1,23 @@
 import { describe, expect, it } from "@rbxts/jest-globals";
 import hashFixture from "shared/fixtures-generated/hash";
+import { buildVaultRunConfig } from "shared/run/testing";
 import {
 	AFFIXES_CONFIG,
 	AFFIXES_SUBSYSTEM,
+	BREAKABLES_SUBSYSTEM,
+	BUILDS_SUBSYSTEM,
+	DEV_SUBSYSTEM,
+	DROPS_SUBSYSTEM,
+	ENDLESS_HASH_SUBSYSTEM,
+	HASH_SUBSYSTEMS,
+	PARTY_SUBSYSTEM,
+	PELLETS_SUBSYSTEM,
+	RUN_SUBSYSTEM,
+	SCORE_SUBSYSTEM,
+	TREASURE_SUBSYSTEM,
+	TUTORIAL_SUBSYSTEM,
+	stepParty,
+	type InputFrame,
 	AFFIX_SLOT_HASH_FIELDS,
 	BRUISER,
 	DEFAULT_SIM_CONFIG,
@@ -103,6 +118,38 @@ describe("elite affixes are opt-in (docs/ENEMY_VARIANTS.md EV7)", () => {
 			expect(b.values).toEqual(writeHashFields(withAffixes, []));
 			step(plain, EMPTY_INPUT, plainConfig);
 			step(withAffixes, EMPTY_INPUT, affixConfig);
+		}
+	});
+});
+
+describe("hash group order with every port group (docs/TREASURE.md TR2)", () => {
+	it("the six fixture groups, then endless .. pellets, treasure LAST; the values are writeHashFields'", () => {
+		const setup = buildVaultRunConfig(4242, 2, { override: { every: true }, startFloor: 2 });
+		const config: SimConfig = { ...setup.config, tutorial: { harmless: false }, dev: { invulnerable: false } };
+		const s = createSimState(4242, setup.spawn!.x, setup.spawn!.z, config);
+		const want: string[] = [
+			...HASH_SUBSYSTEMS,
+			ENDLESS_HASH_SUBSYSTEM,
+			SCORE_SUBSYSTEM,
+			RUN_SUBSYSTEM,
+			PARTY_SUBSYSTEM,
+			TUTORIAL_SUBSYSTEM,
+			BREAKABLES_SUBSYSTEM,
+			DROPS_SUBSYSTEM,
+			AFFIXES_SUBSYSTEM,
+			DEV_SUBSYSTEM,
+			BUILDS_SUBSYSTEM,
+			PELLETS_SUBSYSTEM,
+			TREASURE_SUBSYSTEM,
+		];
+		const frames: InputFrame[] = [EMPTY_INPUT, EMPTY_INPUT];
+		for (let t = 0; t < 30; t++) {
+			const l = hashLayout(s, true);
+			expect(l.groups.map((g) => g.name)).toEqual(want);
+			expect(l.groups[l.groups.size() - 1].finish).toBe(l.values.size());
+			expect(l.names.size()).toBe(l.values.size());
+			expect(l.values).toEqual(writeHashFields(s, []));
+			stepParty(s, frames, config);
 		}
 	});
 });

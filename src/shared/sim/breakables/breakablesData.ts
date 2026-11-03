@@ -17,8 +17,11 @@
 import { TILE_SIZE } from "../units";
 import { BOW_DATA } from "../combat/weapons/defs/bow";
 
-/** Kind index of a piece (shared/dungeon BREAKABLE_KINDS order). Hashed. */
-export const BreakableKind = { BARREL: 0, CRATE: 1 } as const;
+/**
+ * Kind index of a piece (shared/dungeon BREAKABLE_PIECE_KINDS order: the clutter BREAKABLE_KINDS, then the vault's
+ * chest, docs/TREASURE.md correction 2). Hashed. The CHEST is unbreakable (breakables.ts damageBreakable).
+ */
+export const BreakableKind = { BARREL: 0, CRATE: 1, CHEST: 2 } as const;
 export type BreakableKindId = (typeof BreakableKind)[keyof typeof BreakableKind];
 
 /** What dealt a piece's damage (presentation and scoring: only players' breaks score). */
