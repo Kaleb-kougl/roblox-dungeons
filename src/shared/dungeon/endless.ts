@@ -29,9 +29,12 @@
  *                 stream hash(floor seed, AFFIXES.salt); nothing above reads them
  *   loot          the breakables that hold a boost (./breakableLoot.ts, docs/BREAKABLE_DROPS.md BL1), from their
  *                 own stream hash(floor seed, BREAKABLE_LOOT.salt), reading the placed pieces; nothing above reads it
- *   pellets       the room pellets and the rare power pellet (./pellets.ts, docs/PELLETS.md PL1), LAST, from their
- *                 own stream hash(floor seed, PELLETS.salt), reading the layout, spawns and placed pieces; nothing
- *                 above reads it
+ *   pellets       the room pellets and the rare power pellet (./pellets.ts, docs/PELLETS.md PL1), from their own
+ *                 stream hash(floor seed, PELLETS.salt), reading the layout, spawns and placed pieces; nothing above
+ *                 reads it
+ *   golden        the Goldling's room, if any (./golden.ts, docs/FORTUNE.md GE1), LAST, from its own stream
+ *                 hash(floor seed, GOLDEN_PLACE.salt), reading the encounter rooms and the room spawns; nothing above
+ *                 reads it
  *
  * Generating the dungeon is left to the caller (`dungeonFor`), so shared/run can cache it (LRU).
  */
@@ -54,6 +57,7 @@ import { placeBreakables, withoutBreakableCells, type BreakablePlacement } from 
 import { assignAffixes } from "./affixes";
 import { placeBreakableLoot, type BreakableLoot } from "./breakableLoot";
 import { placePellets, type FloorPellets } from "./pellets";
+import { placeGolden, type FloorGolden } from "./golden";
 import type { ActorSpawn, EncounterConfig, EncounterRoom, EncounterRoomType } from "./encounterTypes";
 import {
 	BOSS_FLOOR_EVERY,
@@ -457,6 +461,11 @@ export interface EndlessFloorLayout {
 	 * (the tutorial's hand-built floors).
 	 */
 	readonly pellets?: FloorPellets;
+	/**
+	 * The floor's Goldling room, if it rolled one (./golden.ts placeGolden, docs/FORTUNE.md GE1): the room id, its floor
+	 * rectangle and walk mask. Absent: no Goldling on this floor (and always on the tutorial's hand-built floors).
+	 */
+	readonly golden?: FloorGolden;
 }
 
 /**
@@ -497,6 +506,9 @@ export function buildEndlessFloor(
 		floor,
 		breakables,
 	);
+	// The Goldling runs last, on its own rng stream (./golden.ts), reading the encounter rooms and the room spawns:
+	// nothing above moves.
+	const golden = placeGolden({ seed: params.seed, dungeon: d, encounter, roomSpawns }, floor);
 	return {
 		floor,
 		seed: params.seed,
@@ -514,5 +526,6 @@ export function buildEndlessFloor(
 		roomAffixes,
 		breakableLoot,
 		pellets,
+		golden,
 	};
 }

@@ -22,4 +22,6 @@ export * from "./affixesData";
 export * from "./affixes";
 export * from "./pelletsData";
 export * from "./pellets";
+export * from "./goldenData";
+export * from "./golden";
 export * from "./pathField";
