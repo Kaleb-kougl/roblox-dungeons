@@ -387,6 +387,11 @@
 			"bytes": 78332
 		},
 		{
+			"path": "pixabay/cryptologymedia-chomp-155392.mp3",
+			"sha256": "3f20791c6441379b60a51a9ed4a040b61bf915a25f90e62c5c151e312c2558b0",
+			"bytes": 37586
+		},
+		{
 			"path": "pixabay/dragon-studio-glass-breaking-504033.mp3",
 			"sha256": "660b1795067c7b84cedb1bb497faab4b8ec8d6543c90fa199bc5b4e417ff634f",
 			"bytes": 105662
@@ -395,6 +400,11 @@
 			"path": "pixabay/dragon-studio-lightning-strike-386161.mp3",
 			"sha256": "c427264785238e0ec56f073c8979c1af78b4134b11a9dfb5c0ecfc51de3bab23",
 			"bytes": 40930
+		},
+		{
+			"path": "pixabay/stereogenicstudio-swish-swoosh-woosh-sfx-27-357164.mp3",
+			"sha256": "2c33bc64f8db0d542d8ab75d7d3be7c2905bad26a2bcff2d1aaab212b6daeb4a",
+			"bytes": 176318
 		}
 	]
 }

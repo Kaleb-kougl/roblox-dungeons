@@ -386,6 +386,12 @@ pellets only keep off WALL (pillars included), pieces and spawn cells.
   `minInterval` 0.06 s, quieter for teammates. (Before: two alternating speeds 1 / 1.122.) Until the vale clips are
   uploaded the three pellet sounds fall back (`SFX_FALLBACK`): the chomp to the room tally's `sfx.score.tick` (the
   ladder's speed carries over), the Sweep to `sfx.combo.tier`, the power pellet to `sfx.player.parry`.
+- Vale clips (owner, 2026-11-03): `sfx.pellet.eat` = "Chomp" by Barnaby (cryptologymedia, Pixabay 155392), trimmed
+  [0.12, 0.38] to its first bite (0.25 s built); `sfx.pellet.sweep` = "Swish swoosh woosh SFX 27" by Stereogenic Studio
+  (Pixabay 357164), trimmed [0, 1.2] (1.147 s built); raw files in gitignored `art/vendor/pixabay/`, credited in
+  THIRD_PARTY_NOTICES.md and on the Credits screen. The owner uploaded the raw MP3s (untrimmed, not normalised: the
+  chomp's raw peak is -17 dBFS, so it plays quieter and 0.12 s late, both bites); uploading the built OGGs from
+  `art/upload/` and pasting their IDs fixes that. The power pellet has no clip yet (falls back to the parry).
 - The power pellet's erases are no deflect: they are taken out of `bulletsDeleted` for the deflect cue, the guard
   effect (`FxCueFrame.pellets`) and WeaponViewController's guard fan flash (`deflectedBullets` /
   `tickDeflectedBullets` in `view/pellets/events.ts`, imported by file against a require cycle).

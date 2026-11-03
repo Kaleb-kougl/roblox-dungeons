@@ -85,6 +85,9 @@ import type { RobloxAssetId } from "../../types";
  * their names short, so which id is the outline is not known yet: their sets stay placeholders until added.
  * sfx-enemy-strike (the Stormcaller's strike: "Lightning strike" by DRAGON-STUDIO, Pixabay 386161) uploaded 2026-11-03
  * 11:28 AM by k9kbdev as the downloaded MP3, transcribed from an Asset Manager screenshot.
+ * sfx-pellet-eat ("Chomp" by Barnaby / cryptologymedia, Pixabay 155392) and sfx-pellet-sweep ("Swish swoosh woosh SFX
+ * 27" by Stereogenic Studio, Pixabay 357164; docs/PELLETS.md PL7) uploaded 2026-11-03 by k9kbdev as the downloaded MP3s
+ * (untrimmed, not normalised), transcribed from an Asset Manager screenshot; the built OGGs (art/upload) can replace them.
  * Not uploaded yet: pellet.png and pellet-power.png (the pellet cubes, docs/PELLETS.md PL8; original art,
  * scripts/art/gen-pellet.js, built by `npm run art:build` into art/upload/). Until then both pellets stay placeholders.
  */
@@ -215,6 +218,8 @@ export const VALE_ASSET_IDS: Readonly<Record<string, RobloxAssetId>> = {
 	"sfx-friend-passed.ogg": "rbxassetid://118874523894435",
 	"sfx-jingle-gameover.ogg": "rbxassetid://100204013637893",
 	"sfx-jingle-record.ogg": "rbxassetid://136565259970905",
+	"sfx-pellet-eat.ogg": "rbxassetid://140235243025020",
+	"sfx-pellet-sweep.ogg": "rbxassetid://91831138556237",
 	"sfx-player-charged.ogg": "rbxassetid://134000846415949",
 	"sfx-player-death.ogg": "rbxassetid://116272723028955",
 	"sfx-player-deflect.ogg": "rbxassetid://111196234749460",

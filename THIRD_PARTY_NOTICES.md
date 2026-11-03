@@ -117,6 +117,30 @@ SOFTWARE.
   non-commercial use, no attribution required, modification allowed; the content may not be sold or distributed on
   its own (unmodified, as a standalone file), which is why the raw file is kept out of the repo.
 
+## "Chomp" (Pixabay sound effect)
+
+- Author: Barnaby (cryptologymedia). Source: Pixabay (https://pixabay.com/sound-effects/, id 155392; credited by the
+  owner as "Sound Effect by Barnaby from Pixabay"), downloaded by the owner as `cryptologymedia-chomp-155392.mp3`
+  (0.99 s, 44.1 kHz mono MP3).
+- Used for: `sfx.pellet.eat`, a pellet eaten (docs/PELLETS.md PL7): the first bite trimmed out, peak-normalised and
+  encoded to OGG by `scripts/audio/build-audio.js`.
+- Raw file: `art/vendor/pixabay/` (gitignored, not redistributed).
+- License: Pixabay Content License (https://pixabay.com/service/license-summary/): free for commercial and
+  non-commercial use, no attribution required, modification allowed; the content may not be sold or distributed on
+  its own (unmodified, as a standalone file), which is why the raw file is kept out of the repo.
+
+## "Swish swoosh woosh SFX 27" (Pixabay sound effect)
+
+- Author: Stereogenic Studio. Source: Pixabay (https://pixabay.com/sound-effects/, id 357164; credited by the owner as
+  "Sound Effect by Stereogenic Studio from Pixabay"), downloaded by the owner as
+  `stereogenicstudio-swish-swoosh-woosh-sfx-27-357164.mp3` (5.33 s, 48 kHz stereo MP3).
+- Used for: `sfx.pellet.sweep`, a room swept (docs/PELLETS.md PL7): trimmed to its first 1.2 s, silence-trimmed,
+  downmixed to mono, peak-normalised and encoded to OGG by `scripts/audio/build-audio.js`.
+- Raw file: `art/vendor/pixabay/` (gitignored, not redistributed).
+- License: Pixabay Content License (https://pixabay.com/service/license-summary/): free for commercial and
+  non-commercial use, no attribution required, modification allowed; the content may not be sold or distributed on
+  its own (unmodified, as a standalone file), which is why the raw file is kept out of the repo.
+
 ## UI User Interface Pack - Horror
 
 - Author: ToffeeCraft. Source: https://toffeecraft.itch.io/ui-user-interface-pack-horror ("a 32x32 pixel horror UI
