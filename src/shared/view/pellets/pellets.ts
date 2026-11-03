@@ -72,20 +72,41 @@ export function pelletPopInScale(sinceLive: number, delay: number, motion: numbe
 	return u >= 1 ? 1 : easeOutBack(u);
 }
 
-/** The last-few hint at time t: glow and scale. Reduced motion: a steady glowMax, scale 1. */
-export function pelletLastFew(t: number, motion: number): { glow: number; scale: number } {
-	const L = PELLETS_VIEW.lastFew;
-	if (motion <= 0) return { glow: L.glowMax, scale: 1 };
-	const w = pulse01(t, L.periodSec);
-	return { glow: L.glowMax * w, scale: 1 + L.scaleAmp * w * motion };
+/** A pulse's glow and scale (pelletLastFew / powerPelletPulse). */
+export interface PelletPulse {
+	glow: number;
+	scale: number;
 }
 
-/** The power pellet's slow pulse at time t: glow and scale. Reduced motion: still (glow 0, scale 1). */
-export function powerPelletPulse(t: number, motion: number): { glow: number; scale: number } {
+/** The tracker's scratch for the pulses (one look at a time: no object per pellet per frame). */
+const PULSE_SCRATCH: PelletPulse = { glow: 0, scale: 1 };
+
+function writePulse(out: PelletPulse, glow: number, scale: number): PelletPulse {
+	out.glow = glow;
+	out.scale = scale;
+	return out;
+}
+
+/**
+ * The last-few hint at time t: glow and scale. Reduced motion: a steady glowMax, scale 1. Writes `out` (a new object
+ * when omitted) and returns it.
+ */
+export function pelletLastFew(t: number, motion: number, out: PelletPulse = { glow: 0, scale: 1 }): PelletPulse {
+	const L = PELLETS_VIEW.lastFew;
+	if (motion <= 0) return writePulse(out, L.glowMax, 1);
+	const w = pulse01(t, L.periodSec);
+	return writePulse(out, L.glowMax * w, 1 + L.scaleAmp * w * motion);
+}
+
+/**
+ * The power pellet's slow pulse at time t: glow and scale. Reduced motion: still (glow 0, scale 1). Writes `out` (a new
+ * object when omitted) and returns it.
+ */
+export function powerPelletPulse(t: number, motion: number, out: PelletPulse = { glow: 0, scale: 1 }): PelletPulse {
 	const P = PELLETS_VIEW.power;
-	if (motion <= 0) return { glow: 0, scale: 1 };
+	if (motion <= 0) return writePulse(out, 0, 1);
 	const w = pulse01(t, P.periodSec);
-	return { glow: P.glowMax * w, scale: 1 + P.scaleAmp * w * motion };
+	return writePulse(out, P.glowMax * w, 1 + P.scaleAmp * w * motion);
 }
 
 /**
@@ -213,11 +234,11 @@ export class PelletViewTracker {
 			if (scale <= 0) return out;
 		}
 		if (i === p.power) {
-			const w = powerPelletPulse(now, motion);
+			const w = powerPelletPulse(now, motion, PULSE_SCRATCH);
 			scale *= w.scale;
 			out.glow = w.glow;
 		} else if (room.left > 0 && room.left <= PELLETS_VIEW.lastFewHint) {
-			const w = pelletLastFew(now, motion);
+			const w = pelletLastFew(now, motion, PULSE_SCRATCH);
 			scale *= w.scale;
 			out.glow = w.glow;
 		}
