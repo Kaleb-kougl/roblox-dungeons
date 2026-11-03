@@ -107,6 +107,7 @@ function nearMiss(grazeSemitones?: number, parryCues: ParryCue[] = [], flashes: 
 		parryCues,
 		flashes,
 		freezeMs: 0,
+		parryGroups: [],
 	};
 }
 

@@ -19,6 +19,9 @@
  *     burstsPerFrame per frame, the rest merged into the nearest kept burst (its weight counts them).
  *   - freezeMs (GPD7): NEAR_MISS_VIEW.freezeMs when a VIEW player's group starts, in a solo run, with freezeFrameOn
  *     (Freeze frame on, not reduced motion); else 0. The caller hands it to the hitstop clock.
+ *   - Group starts (docs/RUN_RECAP.md CM1): every group that started this frame as a ParryGroupStart (player, first
+ *     erase tick and position), in start order, for consumers that need the groups themselves (shared/view/fx
+ *     TeamMoments' SYNC! parries). The grouping rule is startsParryGroup.
  *
  * Gates: `quiet` (the stage cover or run over: comboQuiet) puts nothing out and resets every chain and group. A new
  * run (another state object, or the tick going back) resets everything. Particles off: no sparks or bursts (cues and
@@ -74,6 +77,27 @@ export interface ParryCue {
 	readonly speed: number;
 }
 
+/**
+ * A parry group that started this frame (docs/RUN_RECAP.md CM1): one guard's first erase. Plain numbers, so a consumer
+ * that keeps groups across frames copies them (the director reuses the objects).
+ */
+export interface ParryGroupStart {
+	readonly player: number;
+	/** The first erase's tick (GuardEraseRecord.tick). */
+	readonly tick: number;
+	/** The first erased bullet's position (sim units). */
+	readonly x: number;
+	readonly z: number;
+}
+
+/**
+ * Whether an erase at `tick` starts a new parry group for a player whose current group (`hasGroup`) began at
+ * `groupFirstTick` (GPD5): no group yet, a tick before it (a new run's), or SWORD_DATA.guardTicks or more after it.
+ */
+export function startsParryGroup(hasGroup: boolean, groupFirstTick: number, tick: number): boolean {
+	return !hasGroup || tick < groupFirstTick || tick - groupFirstTick >= SWORD_DATA.guardTicks;
+}
+
 /** A live PARRY! flash (one per player at most). */
 export interface ParryFlash {
 	readonly player: number;
@@ -110,6 +134,8 @@ export interface NearMissFrame {
 	readonly flashes: ReadonlyArray<ParryFlash>;
 	/** Solo freeze to request this frame (0: none). */
 	readonly freezeMs: number;
+	/** Every parry group that started this frame, in start order (docs/RUN_RECAP.md CM1). */
+	readonly parryGroups: ReadonlyArray<ParryGroupStart>;
 }
 
 /** Fallback spray direction when a bullet has no velocity and sits on the player (never in practice). */
@@ -153,6 +179,13 @@ interface FlashSlot {
 	z: number;
 }
 
+interface GroupStartSlot {
+	player: number;
+	tick: number;
+	x: number;
+	z: number;
+}
+
 interface FrameSlot {
 	readonly grazeSparks: SparkSlot[];
 	readonly parryBursts: BurstSlot[];
@@ -160,6 +193,7 @@ interface FrameSlot {
 	readonly parryCues: ParryCueSlot[];
 	readonly flashes: FlashSlot[];
 	freezeMs: number;
+	readonly parryGroups: GroupStartSlot[];
 }
 
 /** Per-player state that spans frames. */
@@ -306,8 +340,10 @@ export class NearMissDirector {
 		parryCues: [],
 		flashes: [],
 		freezeMs: 0,
+		parryGroups: [],
 	};
 	private readonly sparkPool: SparkSlot[] = [];
+	private readonly groupPool: GroupStartSlot[] = [];
 	private readonly burstPool: BurstSlot[] = [];
 	private readonly parryCuePool: ParryCueSlot[] = [];
 	private readonly cue: CueSlot = { semitones: 0, speed: 1 };
@@ -348,6 +384,7 @@ export class NearMissDirector {
 		out.parryCues.clear();
 		out.flashes.clear();
 		out.freezeMs = 0;
+		out.parryGroups.clear();
 
 		if (state !== this.lastState || state.tick < this.lastTick) this.resetAll();
 		this.lastState = state;
@@ -430,23 +467,39 @@ export class NearMissDirector {
 		clockSec: number,
 		sparksOn: boolean,
 	): void {
-		const window = SWORD_DATA.guardTicks;
 		for (const e of erases) {
 			if (e.player < 0 || e.player >= n) continue;
 			const t = this.track(e.player);
 			const tick = e.tick;
-			if (!t.hasGroup || tick < t.groupFirstTick || tick - t.groupFirstTick >= window) {
+			if (startsParryGroup(t.hasGroup, t.groupFirstTick, tick)) {
 				t.hasGroup = true;
 				t.groupFirstTick = tick;
 				t.groupStartSec = clockSec;
 				t.startedFrame = this.frameId;
 				t.flashOn = true;
 				t.flash.count = 0;
+				this.groupStart(e);
 			}
 			t.flash.count += 1;
 			t.grewFrame = this.frameId;
 			if (sparksOn) this.burst(e, playerAt(state, e.player));
 		}
+	}
+
+	/** Records a group's start (its first erase) in the frame's parryGroups. */
+	private groupStart(e: GuardEraseRecord): void {
+		const out = this.slot.parryGroups;
+		const i = out.size();
+		let g = this.groupPool[i];
+		if (g === undefined) {
+			g = { player: 0, tick: 0, x: 0, z: 0 };
+			this.groupPool.push(g);
+		}
+		g.player = e.player;
+		g.tick = e.tick;
+		g.x = e.x;
+		g.z = e.z;
+		out.push(g);
 	}
 
 	private burst(e: GuardEraseRecord, guard: Readonly<PlayerState>): void {
