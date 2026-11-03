@@ -15,7 +15,8 @@
  *
  * Decor (`decor.*`, docs/DECOR.md R2) has no placeholders: decor is optional, and an ID with no art is not drawn.
  * Breakables (`breakable.*`) do: they are gameplay objects, drawn as low boxes until art exists. So do boost drops
- * (`boost.*`, docs/BOOSTS.md B5): a small gem (a Diamond) per kind in its identity colour.
+ * (`boost.*`, docs/BOOSTS.md B5): a small gem (a Diamond) per kind in its identity colour. So do pellets (`pellet.*`,
+ * docs/PELLETS.md PL6): a small Block cube per kind in its colour role.
  */
 
 import { PIXELS_PER_TILE, STUDS_PER_TILE } from "shared/config";
@@ -43,6 +44,7 @@ import {
 import type { BiomeTileKey, ColorRole } from "./types";
 import { startsWith } from "./util";
 import { GOO_BULLET_ID, STRIKE_BULLET_ID } from "./variants";
+import { pelletId } from "./pellets";
 
 /**
  * Part shapes. Ball/Block/Cylinder/Wedge are Enum.PartType names; Capsule = a Cylinder capped by two Balls;
@@ -169,6 +171,12 @@ export const PLACEHOLDER_PROPORTIONS = {
 	 * taller than a barrel (5/8 of a tile), so it never hides a bullet.
 	 */
 	boost: [0.5, 0.625, 0.5],
+	/**
+	 * Pellets (docs/PELLETS.md PL6, PD3): a small axis-aligned cube, a quarter tile a side (1 stud), standing on the
+	 * floor; the power pellet a bigger cube, 0.45 tile (1.8 studs). Both far under a barrel, so neither hides a bullet.
+	 */
+	pellet: [0.25, 0.25, 0.25],
+	pelletPower: [0.45, 0.45, 0.45],
 	/** UI: flat, as big as its pixel size. */
 	ui: [1, 1, 0],
 	/** Missing IDs: a block filling the cell. */
@@ -218,6 +226,8 @@ const ITEM_CELL = ITEM.cell as Cell;
 const BREAKABLE_CELL = TILE_CELL;
 /** Boost drops are free-size art; their placeholder gem is sized from one tile. */
 const BOOST_CELL = TILE_CELL;
+/** Pellets are free-size art; their placeholder cube is sized from one tile. */
+const PELLET_CELL = TILE_CELL;
 /** Free-size UI cells: the web placeholder pack's sizes, in pixels. */
 const UI_CELLS = {
 	cursor: { w: 9, h: 9 },
@@ -432,6 +442,19 @@ function buildTable(): Record<string, PlaceholderVisual> {
 	for (const kind of BOOST_KINDS) {
 		t[boostId(kind)] = boostVisual(kind);
 	}
+	// Pellets (Roblox port, docs/PELLETS.md PL6): a small Block cube in its colour role; the power pellet a bigger one.
+	t[pelletId("normal")] = visual({
+		shape: "Block",
+		cell: PELLET_CELL,
+		proportions: PLACEHOLDER_PROPORTIONS.pellet,
+		color: role(pelletId("normal")),
+	});
+	t[pelletId("power")] = visual({
+		shape: "Block",
+		cell: PELLET_CELL,
+		proportions: PLACEHOLDER_PROPORTIONS.pelletPower,
+		color: role(pelletId("power")),
+	});
 	return t;
 }
 

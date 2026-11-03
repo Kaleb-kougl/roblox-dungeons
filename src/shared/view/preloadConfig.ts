@@ -52,6 +52,7 @@ export const PRELOAD: PreloadConfig = {
 		"sfx.",
 		"breakable.",
 		"boost.",
+		"pellet.",
 		"fx.",
 		"decor.",
 		`${PRELOAD_BIOME_PREFIX}biome.1`,

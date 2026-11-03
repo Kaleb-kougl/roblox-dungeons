@@ -1137,7 +1137,7 @@ type UnknownKeys = (obj: Obj, path: ReadonlyArray<string>, allowed: ReadonlyArra
 
 const TOP_LEVEL_KEYS = ["format", "id", "name", "version", "colors", "biomes", "assets", "strings", "locales"];
 const SLOT_PREFIXES =
-	"class., enemy., boss., bullet., tile., item., ui., sfx., music., decor., breakable., amb., fx., boost.";
+	"class., enemy., boss., bullet., tile., item., ui., sfx., music., decor., breakable., amb., fx., boost., pellet.";
 const AMBIENCE_ID_LIST = AMBIENCE_IDS.join(", ");
 const FX_ID_LIST = FX_IDS.join(", ");
 
@@ -1293,6 +1293,11 @@ export function validateManifest(manifest: unknown, opts: ValidateOptions = {}):
 		}
 		if (slot === BOOST && !isBoostId(assetId)) {
 			err(path, `unknown boost ID (known: ${BOOST_KINDS.map((k) => boostId(k)).join(", ")})`);
+			continue;
+		}
+		// docs/PELLETS.md PL6: the two pellet IDs (pellets.ts PELLET_IDS), written out: no new top-level local here
+		if (slot.slot === "pellet" && assetId !== "pellet.normal" && assetId !== "pellet.power") {
+			err(path, "unknown pellet ID (known: pellet.normal, pellet.power)");
 			continue;
 		}
 		validateAsset(def, path, slot, err, unknownKeys);
@@ -1845,7 +1850,7 @@ function validateAsset(def: unknown, path: Array<string>, slot: SlotContract, er
 				if (slot !== UI) {
 					err(
 						pp,
-						`only ui.*, decor.*, breakable.* and boost.* images have a pivot; slot "${slot.slot}" has none`,
+						`only ui.*, decor.*, breakable.*, boost.* and pellet.* images have a pivot; slot "${slot.slot}" has none`,
 					);
 				} else if (!isObj(imagePivot) || !isFiniteNumber(imagePivot.x) || !isFiniteNumber(imagePivot.y)) {
 					err(pp, `must be { "x": number, "y": number } in pixels from the ${pivotWhat} top-left`);

@@ -134,6 +134,10 @@ describe("audio contract: port IDs and ambience", () => {
 			"sfx.enemy.stun",
 			"sfx.enemy.strike",
 			"sfx.enemy.spin",
+			// docs/PELLETS.md PL6: a pellet eaten, a room swept, the power pellet taken
+			"sfx.pellet.eat",
+			"sfx.pellet.sweep",
+			"sfx.pellet.power",
 		]);
 		const web = new Set<string>([...AUDIO_EVENTS, ...BREAKABLE_AUDIO_EVENTS]);
 		for (const id of PORT_AUDIO_EVENTS) {
