@@ -15,6 +15,7 @@ import {
 	PelletFlyIns,
 	PelletFrameEvents,
 	PelletViewTracker,
+	deflectedBullets,
 	livePowerPellet,
 	mergePelletPops,
 	newPelletLook,
@@ -23,9 +24,11 @@ import {
 	pelletPopAlpha,
 	pelletPopInScale,
 	pelletPopRise,
+	pelletPowerErased,
 	pelletPowerFreezeMs,
 	pelletWaveDelay,
 	pulse01,
+	tickDeflectedBullets,
 	type PelletPop,
 } from ".";
 
@@ -257,6 +260,94 @@ describe("PelletViewTracker", () => {
 	});
 });
 
+describe("pellets on the floor: clears inside the wave, restarts", () => {
+	it("a room that clears inside its pop-in wave shrinks from the size reached; one never shown stays hidden", () => {
+		const look = newPelletLook();
+		const s = sandbox(3);
+		const t = new PelletViewTracker();
+		// A fake score record spanning x 0..4, z -1..1: pellet 1 (x 2) at the centre (no delay), pellet 0 later.
+		(s as unknown as { score: unknown }).score = { rooms: [{ minX: 0, maxX: 4, minZ: -1, maxZ: 1 }] };
+		// A quarter of the pop (ease-out-back has not overshot yet), on a whole tick.
+		const ticks = math.floor((V.popIn.popSec / 4) * SIM_HZ);
+		const goneAt = ticks / SIM_HZ;
+		t.sync(
+			s,
+			eventsWith((e) => {
+				e.live.push({ rec: 0, tick: 0 });
+				e.gone.push({ rec: 0, tick: ticks });
+			}),
+		);
+		s.pellets!.rooms[0].phase = PelletPhase.GONE;
+		const reached = pelletPopInScale(goneAt, 0, 1);
+		expect(reached > 0 && reached < 1).toBe(true);
+		t.look(s, 1, goneAt, 1, look);
+		expect(look.shown).toBe(true);
+		expect(look.scale).toBeCloseTo(reached, 9);
+		t.look(s, 1, goneAt + V.shrinkSec / 2, 1, look);
+		expect(look.scale).toBeCloseTo(reached * 0.5, 9);
+		// Pellet 0's turn in the wave had not come: it never showed, so it does not shrink either.
+		expect(pelletWaveDelay(1, 0, 0, 4, -1, 1) > goneAt).toBe(true);
+		expect(t.look(s, 0, goneAt, 1, look).shown).toBe(false);
+		// Live and gone on ONE tick (a clear on its engagement tick): nothing to shrink.
+		const same = new PelletViewTracker();
+		same.sync(
+			s,
+			eventsWith((e) => {
+				e.live.push({ rec: 0, tick: 30 });
+				e.gone.push({ rec: 0, tick: 30 });
+			}),
+		);
+		expect(same.look(s, 1, 0.5, 1, look).shown).toBe(false);
+		// Reduced motion: no wave, so every pellet fades from full size.
+		t.look(s, 0, goneAt + V.shrinkSec / 2, 0, look);
+		expect([look.shown, look.scale]).toEqual([true, 1]);
+		expect(look.transparency).toBeCloseTo(0.5, 9);
+	});
+
+	it("the tick going back (a new run on the same floor) forgets the times", () => {
+		const s = sandbox(3);
+		const t = new PelletViewTracker();
+		s.tick = 100;
+		t.sync(
+			s,
+			eventsWith((e) => e.live.push({ rec: 0, tick: 90 })),
+		);
+		expect(t.liveTime(0)).toBe(90 / SIM_HZ);
+		expect(t.isNewFloor(s)).toBe(false);
+		s.tick = 5;
+		expect(t.isNewFloor(s)).toBe(true);
+		expect(t.sync(s, new PelletFrameEvents())).toBe(true);
+		expect(t.liveTime(0)).toBe(PelletViewTracker.NOT_SEEN);
+	});
+});
+
+describe("the power pellet's erases are no deflect", () => {
+	it("deflectedBullets takes the frame's power erases out of bulletsDeleted (never below 0)", () => {
+		const ev = new PelletFrameEvents();
+		expect([pelletPowerErased(ev), deflectedBullets(4, ev)]).toEqual([0, 4]);
+		ev.power.push({ player: 0, px: 0, pz: 0, x: [1, 2, 3], z: [1, 2, 3], points: 15, tick: 1 });
+		expect([pelletPowerErased(ev), deflectedBullets(3, ev), deflectedBullets(5, ev)]).toEqual([3, 0, 2]);
+		expect(deflectedBullets(1, ev)).toBe(0);
+	});
+
+	it("tickDeflectedBullets reads one tick's SimEvents and pellet events", () => {
+		const s = sandbox(3, true);
+		s.events.bulletsDeleted = 5;
+		expect(tickDeflectedBullets(s)).toBe(5);
+		s.pellets!.events.power = { player: 0, x: [1, 2, 3, 4], z: [1, 2, 3, 4], points: 20 };
+		expect(tickDeflectedBullets(s)).toBe(1);
+		expect(tickDeflectedBullets(createSimState(1, 0, 0))).toBe(0);
+	});
+
+	it("PelletFrameEvents.collect records the power pellet's own spot", () => {
+		const s = sandbox(3, true);
+		s.pellets!.events.power = { player: 0, x: [7], z: [8], points: 5 };
+		const ev = new PelletFrameEvents();
+		ev.collect(s);
+		expect([ev.power[0].px, ev.power[0].pz, ev.power[0].x[0], ev.power[0].points]).toEqual([3, 0, 7, 5]);
+	});
+});
+
 describe("pellet pops (PD11)", () => {
 	it("merge per player per frame: summed points at the player's last pellet, first-eaten order", () => {
 		const out: PelletPop[] = [];
@@ -273,6 +364,25 @@ describe("pellet pops (PD11)", () => {
 			[0, 2, 5, 1],
 		]);
 		expect(mergePelletPops([], out).size()).toBe(0);
+	});
+
+	it("the power pellet's points join its picker's pop, or pop at the power pellet; nothing paid, no pop", () => {
+		const out: PelletPop[] = [];
+		const power = (player: number, points: number) => ({
+			player,
+			px: 9,
+			pz: 4,
+			x: [1],
+			z: [1],
+			points,
+			tick: 1,
+		});
+		mergePelletPops([{ index: 0, x: 1, z: 0, player: 0, points: 5 }], out, [power(0, 20), power(1, 15)]);
+		expect(out.map((p) => [p.player, p.x, p.z, p.points, p.count])).toEqual([
+			[0, 1, 0, 25, 1],
+			[1, 9, 4, 15, 0],
+		]);
+		expect(mergePelletPops([], out, [power(0, 0)]).size()).toBe(0);
 	});
 
 	it("live pop.lifeSec, fade at the end, rise risePx; reduced motion: no rise, a fade over the whole life", () => {
@@ -318,7 +428,7 @@ describe("the power pellet", () => {
 				pushed.push([x, z, hop, size, color, alpha]);
 			},
 		};
-		f.add({ player: 0, x: [10, 0], z: [0, 10], points: 10, tick: 1 }, 1);
+		f.add({ player: 0, px: 0, pz: 0, x: [10, 0], z: [0, 10], points: 10, tick: 1 }, 1);
 		expect(f.size()).toBe(2);
 		f.update(V.flyIn.sec / 2);
 		const target = { x: 2, z: 2 };
@@ -335,7 +445,7 @@ describe("the power pellet", () => {
 		f.update(V.flyIn.sec);
 		expect(f.size()).toBe(0);
 		// Reduced motion: in place, fading.
-		f.add({ player: 0, x: [3], z: [4], points: 5, tick: 2 }, 0);
+		f.add({ player: 0, px: 0, pz: 0, x: [3], z: [4], points: 5, tick: 2 }, 0);
 		f.update(V.flyIn.sec / 2);
 		pushed.clear();
 		f.draw(writer, 7, () => target);
@@ -345,7 +455,7 @@ describe("the power pellet", () => {
 		f.clear();
 		const many: number[] = [];
 		for (let i = 0; i < V.flyIn.maxCubes + 10; i++) many.push(i);
-		f.add({ player: 0, x: many, z: many, points: 0, tick: 3 }, 1);
+		f.add({ player: 0, px: 0, pz: 0, x: many, z: many, points: 0, tick: 3 }, 1);
 		expect(f.size()).toBe(V.flyIn.maxCubes);
 	});
 });

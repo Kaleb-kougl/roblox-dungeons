@@ -98,9 +98,10 @@ const KILL_POP_ALPHA = (age: number): number => scorePopAlpha(age);
  * small pool (BUILD_FX_VIEW.jackpot: maxAlive, glyph scale, extra lift, boon.legendary's gold), with the same life,
  * fade, rise and damageNumbers gate.
  *
- * Pellets (docs/PELLETS.md PL7, PD11): RunView.pellets.eaten merged per player per frame (mergePelletPops) pops the
- * same "+points" in a third pool (PELLETS_VIEW.pop: maxAlive, pop.scale of a kill pop's glyphs, a shorter life and
- * rise; reduced motion: a fade in place), uiAccent like a kill, with the same damageNumbers gate.
+ * Pellets (docs/PELLETS.md PL7, PD11): RunView.pellets.eaten (and the power pellet's bullet points, RunView.pellets.power)
+ * merged per player per frame (mergePelletPops) pops the same "+points" in a third pool (PELLETS_VIEW.pop: maxAlive,
+ * pop.scale of a kill pop's glyphs, a shorter life and rise; reduced motion: a fade in place), uiAccent like a kill,
+ * with the same damageNumbers gate.
  *
  * Gold Rush (docs/BUILDS.md BU6): a kill pop that matches a RunView.builds.goldRush record (scorePopTones) is that
  * kill's own pop, in the kill pool, coloured BUILD_FX_VIEW.goldRush.role instead of uiAccent (never a second pop).
@@ -203,7 +204,7 @@ export class ScorePopController implements OnStart {
 			const tones = scorePopTones(pops, run.builds.goldRush, this.tones);
 			for (let i = 0; i < pops.size(); i++) kills.pool.add(pops[i].x, pops[i].z, pops[i].points, now, tones[i]);
 			for (const j of run.builds.jackpots) jackpots.pool.add(j.x, j.z, j.amount, now);
-			for (const p of mergePelletPops(run.pellets.eaten, this.pelletPops))
+			for (const p of mergePelletPops(run.pellets.eaten, this.pelletPops, run.pellets.power))
 				pellets.pool.add(p.x, p.z, p.points, now);
 		}
 		const motion = motionScale(settings);

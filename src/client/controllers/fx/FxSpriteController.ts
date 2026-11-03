@@ -147,6 +147,7 @@ export class FxSpriteController implements OnStart {
 				state: ctx.run.state,
 				alpha: ctx.run.getAlpha(),
 				events: ctx.run.frameEvents,
+				pellets: ctx.run.pellets,
 				fx: this.fx.tracker.events,
 				settings: this.fx.settings(),
 				spots: this.decor.getScene(),
@@ -157,6 +158,7 @@ export class FxSpriteController implements OnStart {
 			f.state = ctx.run.state;
 			f.alpha = ctx.run.getAlpha();
 			f.events = ctx.run.frameEvents;
+			f.pellets = ctx.run.pellets;
 			f.fx = this.fx.tracker.events;
 			f.settings = this.fx.settings();
 			f.spots = this.decor.getScene();

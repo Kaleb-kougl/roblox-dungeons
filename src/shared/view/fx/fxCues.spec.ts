@@ -45,6 +45,7 @@ import { defaultJuiceSettings, type JuiceSettings } from "shared/settings";
 import { FX_IDS, type FxId } from "shared/theme";
 import { BULLET_VIEW, MARKING_VIEW } from "../config";
 import { DECOR_VIEW, decorInputOfLayout, decorScene, planDecor, type DecorScene } from "../decor";
+import { PelletFrameEvents } from "../pellets";
 import { FX_SPRITE_VIEW } from "./config";
 import type { FxEvent } from "./events";
 import { BOSS_IMPACTS, FxCueMapper, fxLabelRotationDeg, type FxCueEventSource } from "./fxCues";
@@ -585,6 +586,37 @@ describe("FxCueMapper sources (synthetic)", () => {
 		expect(step(8, 3, 1.02)).toBe(0); // deflect inside guardMinSec of the raise
 		expect(step(7, 3, 1 + 2 * FX_SPRITE_VIEW.guardMinSec)).toBe(1);
 		expect(step(0, 3, 2)).toBe(0);
+	});
+
+	it("a power pellet's erases (docs/PELLETS.md PL4, in bulletsDeleted) never re-flash the shield", () => {
+		const { state, mapper } = fresh();
+		const slot = state.combat.weapons.sets[0];
+		const pellets = new PelletFrameEvents();
+		const step = (deleted: number, power: number, now: number) => {
+			state.tick += 1;
+			slot.v[SWORD_V_GUARD] = 10;
+			pellets.reset();
+			const x: number[] = [];
+			for (let i = 0; i < power; i++) x.push(i);
+			if (power > 0)
+				pellets.power.push({ player: 0, px: 0, pz: 0, x, z: x, points: 5 * power, tick: state.tick });
+			mapper.frame({
+				now,
+				state,
+				alpha: 1,
+				events: { bulletsDeleted: deleted },
+				pellets,
+				fx: new Events(),
+				settings,
+			});
+			let n = 0;
+			for (let i = 0; i < mapper.cues.count(); i++) if (mapper.cues.at(i).id === "fx.guard.shield") n++;
+			return n;
+		};
+		const gap = 2 * FX_SPRITE_VIEW.guardMinSec;
+		expect(step(0, 0, 1)).toBe(1); // the raise
+		expect(step(3, 3, 1 + gap)).toBe(0); // every delete the power pellet's
+		expect(step(4, 3, 1 + 2 * gap)).toBe(1); // one more: the guard's
 	});
 
 	it("co-op: a deflect re-flashes the shield only on the one player who could have made it", () => {

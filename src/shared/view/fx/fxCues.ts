@@ -19,7 +19,8 @@
  *                    the facing. bulletsDeleted is the party's sum (the sim keeps no per-player count, and swings
  *                    delete bullets too), so the re-flash goes to the guarding player only when no one else could
  *                    have made the deletes: no other player's guard up (this frame or the last) and no other swing
- *                    this frame. Solo: always the player.
+ *                    this frame. Solo: always the player. The power pellet's erases (docs/PELLETS.md PL4, in
+ *                    bulletsDeleted too; FxCueFrame.pellets) are nobody's deflect: they never re-flash a shield.
  *   fx.roll.dust     a player's rollTicks grew (a roll started), at the player
  *   fx.swing.<n>     a player's WeaponsState.swingTick moved: n = the sword slot's v[SWORD_V_LAST] (1, 2, 3 = finisher),
  *                    swingAheadFraction of the swing radius ahead of its origin, turned to the swing direction
@@ -74,6 +75,8 @@ import {
 import type { JuiceSettings } from "shared/settings";
 import type { FxId } from "shared/theme";
 import { degToRad, isoBasis, type IsoBasis } from "../iso";
+// By file, not the barrel: shared/view/pellets requires shared/view/fx (a cycle); events.ts is a leaf.
+import { deflectedBullets, type PelletFrameSource } from "../pellets/events";
 import { screenAngleFromBasis } from "../sprites";
 import { FX_SPRITE_VIEW } from "./config";
 import type { FxEvent } from "./events";
@@ -126,6 +129,11 @@ export interface FxCueFrame {
 	readonly alpha: number;
 	/** The frame's summed SimEvents (LiveRun.frameEvents). */
 	readonly events: Readonly<Pick<SimEvents, "bulletsDeleted">>;
+	/**
+	 * The frame's pellet events (the run view's `pellets`, docs/PELLETS.md PL7): the power pellet's erases leave
+	 * bulletsDeleted's deflects. Absent: none (every deleted bullet a deflect, as before pellets).
+	 */
+	readonly pellets?: PelletFrameSource;
 	/** The hit tracker's events of this frame. */
 	readonly fx: FxCueEventSource;
 	readonly settings: Readonly<JuiceSettings>;
@@ -573,7 +581,9 @@ export class FxCueMapper {
 		const state = f.state;
 		const n = partySize(state);
 		const V = FX_SPRITE_VIEW;
-		const deflector = f.events.bulletsDeleted > 0 ? this.soleDeflector(state, n) : -1;
+		const deleted =
+			f.pellets !== undefined ? deflectedBullets(f.events.bulletsDeleted, f.pellets) : f.events.bulletsDeleted;
+		const deflector = deleted > 0 ? this.soleDeflector(state, n) : -1;
 		for (let i = 0; i < n; i++) {
 			if (hasLeft(state, i) || i >= this.pEmbers.size()) continue;
 			const p = playerAt(state, i);

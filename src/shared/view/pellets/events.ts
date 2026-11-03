@@ -4,6 +4,12 @@
  * shared/lockstep LockstepClient) `collect` them after every tick into one PelletFrameEvents and `reset` it at the start
  * of every frame, as they do BoostFrameEvents. The pellet renderer (pop-in, shrink, the power fly-in), the score pops and
  * the audio cue mapper read it once per frame. Presentation only: plain numbers, read-only on the sim, tested headlessly.
+ *
+ * The power pellet (docs/PELLETS.md PL4) is not an `eaten` pellet: the sim pushes no eaten event for it and pays it no
+ * pellet points, only `events.power` (the picker, each erased bullet's position, the bullets' points) and taken = 1. Its
+ * erases are counted in SimEvents.bulletsDeleted like a guard's, so every view that reads bulletsDeleted as "a player
+ * deflected bullets" (the deflect sound, the guard shield's re-flash, the guard fan's flash) takes them out through
+ * deflectedBullets / tickDeflectedBullets. A leaf (types only from shared/sim): shared/view/fx imports it by file.
  */
 import type { PelletEaten, SimState } from "shared/sim";
 
@@ -13,9 +19,14 @@ export interface PelletRoomEvent {
 	readonly tick: number;
 }
 
-/** The power pellet's conversion on one tick: the picker, each erased bullet's position and the points paid. */
+/**
+ * The power pellet's conversion on one tick: the picker, the power pellet's own spot (`px` / `pz`, read from the state on
+ * that tick), each erased bullet's position and the points paid.
+ */
 export interface PelletPowerTaken {
 	readonly player: number;
+	readonly px: number;
+	readonly pz: number;
 	readonly x: ReadonlyArray<number>;
 	readonly z: ReadonlyArray<number>;
 	readonly points: number;
@@ -69,9 +80,42 @@ export class PelletFrameEvents implements PelletFrameSource {
 		for (const rec of ev.swept) this.swept.push(rec);
 		const power = ev.power;
 		if (power !== undefined) {
-			this.power.push({ player: power.player, x: [...power.x], z: [...power.z], points: power.points, tick });
+			const at = p.power;
+			const px = at >= 0 && at < p.x.size() ? p.x[at] : 0;
+			const pz = at >= 0 && at < p.z.size() ? p.z[at] : 0;
+			this.power.push({
+				player: power.player,
+				px,
+				pz,
+				x: [...power.x],
+				z: [...power.z],
+				points: power.points,
+				tick,
+			});
 		}
 	}
+}
+
+/** Enemy bullets the power pellet erased during the frame's ticks (they are in the frame's SimEvents.bulletsDeleted). */
+export function pelletPowerErased(pellets: PelletFrameSource): number {
+	let n = 0;
+	for (const p of pellets.power) n += p.x.size();
+	return n;
+}
+
+/**
+ * The frame's summed SimEvents.bulletsDeleted without the power pellet's erases: the bullets a player's guard or swing
+ * (or a build's sweep) deleted, which the deflect sound and the guard effects stand for. Never below 0.
+ */
+export function deflectedBullets(bulletsDeleted: number, pellets: PelletFrameSource): number {
+	return math.max(0, bulletsDeleted - pelletPowerErased(pellets));
+}
+
+/** One tick's version (the state's own SimEvents and pellet events, as the guard fan reads them). */
+export function tickDeflectedBullets(state: Readonly<SimState>): number {
+	const power = state.pellets?.events.power;
+	const erased = power !== undefined ? power.x.size() : 0;
+	return math.max(0, state.events.bulletsDeleted - erased);
 }
 
 /** No events (a run view without pellets, the specs' default). */

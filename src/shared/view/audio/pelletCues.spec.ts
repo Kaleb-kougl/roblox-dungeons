@@ -35,10 +35,11 @@ function frame(
 	s: SimState,
 	pellets: PelletFrameEvents,
 	me = 0,
+	events: SimEvents = noEvents(),
 ): Array<[string, number, number]> {
 	const out = m.frame(
 		now,
-		noEvents(),
+		events,
 		NO_FX,
 		s,
 		me,
@@ -120,7 +121,7 @@ describe("audio: pellets (docs/PELLETS.md PL7)", () => {
 		const m = new AudioCueMapper();
 		const ev = new PelletFrameEvents();
 		ev.swept.push(0, 3);
-		ev.power.push({ player: 1, x: [1], z: [1], points: 5, tick: 3 });
+		ev.power.push({ player: 1, px: 0, pz: 0, x: [1], z: [1], points: 5, tick: 3 });
 		const out = frame(m, 0, s, ev, 0);
 		expect(out).toEqual([
 			[SFX.pelletSweep, 1, 0],
@@ -128,7 +129,36 @@ describe("audio: pellets (docs/PELLETS.md PL7)", () => {
 		]);
 		const solo = createSimState(1, 0, 0);
 		const own = new PelletFrameEvents();
-		own.power.push({ player: 0, x: [], z: [], points: 0, tick: 1 });
+		own.power.push({ player: 0, px: 0, pz: 0, x: [], z: [], points: 0, tick: 1 });
 		expect(frame(new AudioCueMapper(), 0, solo, own)).toEqual([[SFX.pelletPower, 1, 0]]);
+	});
+
+	it("the power pellet's erases (in bulletsDeleted, docs/PELLETS.md PL4) never play the deflect, solo or co-op", () => {
+		const deleted = (n: number): SimEvents => {
+			const e = noEvents();
+			e.bulletsDeleted = n;
+			return e;
+		};
+		const power = (n: number): PelletFrameEvents => {
+			const ev = new PelletFrameEvents();
+			const x: number[] = [];
+			for (let i = 0; i < n; i++) x.push(i);
+			ev.power.push({ player: 0, px: 0, pz: 0, x, z: x, points: 5 * n, tick: 1 });
+			return ev;
+		};
+		const ids = (out: Array<[string, number, number]>) => out.map((c) => c[0]);
+		const solo = createSimState(1, 0, 0);
+		expect(ids(frame(new AudioCueMapper(), 0, solo, power(3), 0, deleted(3)))).toEqual([SFX.pelletPower]);
+		// One more deleted than the power pellet erased: a real deflect on the same frame.
+		expect(ids(frame(new AudioCueMapper(), 0, solo, power(3), 0, deleted(4)))).toEqual([
+			SFX.playerDeflect,
+			SFX.pelletPower,
+		]);
+		// Co-op (the deflect is placed by the watch): no deflect, the local player's nor a teammate's.
+		const party = createSimState(1, 0, 0, { party: { size: 2 } });
+		expect(ids(frame(new AudioCueMapper(), 0, party, power(2), 0, deleted(2)))).toEqual([SFX.pelletPower]);
+		expect(ids(frame(new AudioCueMapper(), 0, party, new PelletFrameEvents(), 0, deleted(2)))).toEqual([
+			SFX.playerDeflect,
+		]);
 	});
 });
