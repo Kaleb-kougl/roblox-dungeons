@@ -24,6 +24,7 @@ import { EncounterRng } from "./encounter";
 import { roomAt, type EncounterConfig } from "./encounterTypes";
 import type { BreakablePlacement } from "./breakables";
 import { BREAKABLE_LOOT, type BreakableLootBand } from "./breakableLootData";
+import type { BreakablePieceKindName } from "./breakablesData";
 
 /** One loaded piece: its breakable slot (placement index) and the boost kind it holds (shared/sim Boost index). */
 export interface BreakableLoot {
@@ -45,6 +46,14 @@ export function breakableLootBand(floor: number): BreakableLootBand {
 	let out = bands[0];
 	for (const b of bands) if (floor >= b.fromFloor) out = b;
 	return out;
+}
+
+/**
+ * The piece pick's weight of a piece of `kind` (BREAKABLE_LOOT.pieceWeight); 0 for a kind it has no entry for (a
+ * vault's chest, docs/TREASURE.md: never loaded, and appended after the loot is picked anyway).
+ */
+export function lootPieceWeight(kind: BreakablePieceKindName): number {
+	return (BREAKABLE_LOOT.pieceWeight as Readonly<Partial<Record<BreakablePieceKindName, number>>>)[kind] ?? 0;
 }
 
 /** The sum of BREAKABLE_LOOT.kindWeights (the kind draw's range). */
@@ -82,7 +91,7 @@ export function placeBreakableLoot(
 	const weights: number[] = [];
 	for (const p of pieces) {
 		rooms.push(roomAt(encounter, gridToWorld(p.x), gridToWorld(p.y))?.id ?? NO_ROOM);
-		weights.push(BREAKABLE_LOOT.pieceWeight[p.kind]);
+		weights.push(lootPieceWeight(p.kind));
 	}
 	const loaded = new Map<number, number>(); // slot -> kind
 	const perRoom = new Map<number, number>();

@@ -8,7 +8,8 @@ happens. It never drops to nothing, so a miss reads as "so close", not as a loss
 **bursts open** with a rarity-coloured column, a sting and its reward: a relic, boosts, or a **bonus draft** on the next
 floor. Work it task by task, like `PLAN.md`; each task ends with a **Verify**.
 
-Status (2026-11-03): **TR0 done (plan checked against the code, below). Nothing else built.** The owner (Kaleb)
+Status (2026-11-03): **TR0 done (plan checked against the code, below). TR1 done (the dungeon roll, behind the
+option `EndlessFloorOptions.vaults`, off everywhere until TR5; "As built (TR1)" below).** The owner (Kaleb)
 confirmed every decision (TRD1-TRD14) on 2026-11-03. This file is the project doc `claude/treasure-rooms-plan.md` with
 every "(assumed; TR0 verifies)" item checked against branch `treasure-rooms` @ `82f0ff9` (a snapshot of `main` @
 `288a33b`, which already has Pellets, solid decor, room themes and the new enemies merged). Sibling plans: BO
@@ -181,6 +182,58 @@ Every endless world sets builds **and** pellets, so its score arrays already hol
 - `sourceName(k)` gains the treasure names after the pellet names. `SCORE_SOURCE_KEYS` gains `score.source.treasure`
   (string in TR6; `hud.spec.ts` checks every key exists, so the key is added in TR6, not TR2). The run-over breakdown
   already shows port-only rows only when they scored.
+
+## As built (TR1, 2026-11-03)
+
+Files: `src/shared/dungeon/vaultData.ts` (`VAULT`, `VaultLock`, `VaultTier`, `CHEST_KIND`, `VAULT_PERCENT_RANGE` 100,
+`vaultChancePercent`, `legendaryPercent`), `src/shared/dungeon/vault.ts` (`vaultSeed`, `VaultPlan`, `VaultOverride`,
+`VaultCell`, `VaultRoom`, `vaultRoomOpen`, `vaultCandidates`, `vaultRooms`, `placeVault`, `vaultChest`,
+`vaultCentre`, `isFarWallFacing`), `breakablesData.ts` (`BREAKABLE_PIECE_KINDS`, `BreakablePieceKindName`;
+`BREAKABLE_KINDS` unchanged), `breakables.ts` (`BreakablePlacement.kind` widened; `pieceFitsAt`, `pieceFitter`,
+`breakableCandidateFinder`; no placement change), `breakableLoot.ts` (`lootPieceWeight`: 0 for the chest, so the
+widened kind still types; no draw change), `endless.ts`, `sim/endless.ts` (`EndlessFloorWorld.vault?`, type only),
+`run/endless.ts` (`endlessFloorWorld` passes `vault`). Specs: `dungeon/vault.spec.ts` (18 tests, ~50 s headless) and
+`dungeon/vault.census.spec.ts` (2 tests, ~70 s).
+
+Deviations from the implementation map (none touches an owner decision):
+
+- **The option gate.** `buildEndlessFloor(runSeed, floor, dungeonFor, partySize, options?)` takes
+  `EndlessFloorOptions { vaults?, vaultOverride? }` instead of a positional `vaultOverride`. Without `vaults: true` no
+  draw is made and the layout is exactly the old one (`vault` absent; spec "the option gate"), so **every endless
+  world, the tutorial, M1 and every fixture are unchanged by TR1** (the sim's `kindIndex` would refuse a `chest` until
+  TR2 anyway). `endlessRunFloor` does not pass it yet: **TR5 passes `{ vaults: true }` in `endlessRunFloor` /
+  `buildEndlessRunConfig`'s floor cache and the dev world's floor cache (with `vaultOverride`)**.
+- **Doorways** come from the existing `enemyRooms.ts` `roomDoorways(d, roomId)` (grid cells; already exported, so no new
+  `roomDoorways` in `breakables.ts`: the name was taken).
+- **Two cell rules made stricter**: the back row must be **WALL** (the plan said non-FLOOR: a pool or the void is not
+  "against a wall"), and a new **`VAULT.sideClearTiles` 1**: the cells beside the chest along its wall are FLOOR of the
+  room and free of pieces, so a chest never stands tucked into a corner or wedged against a set piece, and reads
+  front-on. `pellets` is an optional parameter of `placeVault` (absent: no pellet cells to avoid).
+- `placeVault` draws are as planned: 0 below `fromFloor`, 1 on a miss (or a hit on a floor with no eligible room), 4 on a
+  hit. Weighted picks use `rng.int(0, total - 1)` walked in order (the loot's style). The chance draw is made before any
+  cell is computed, so a miss costs nothing; a hit floor's `vaultRooms` costs ~15 ms headless.
+- No tunable changed: every chance hit in the census found an eligible room.
+
+Census (`vault.census.spec.ts`, run seeds 1-10 x floors 2-20, 190 floors; party 1 / party 4):
+
+| | Party 1 | Party 4 |
+|---|---|---|
+| Vault floors, floors 2-4 (40 %) | 9 / 30 = 30.0 % | same |
+| Vault floors, floors 5-9 (50 %) | 25 / 50 = 50.0 % | same |
+| Vault floors, floors 10-20 (55 %) | 51 / 110 = 46.4 % | same |
+| Chance hits lost (no eligible room) | 0 | 0 |
+| Open rooms (combat / elite, spawns, >= 120 tiles) with no valid cell | 381 / 1720 = 22.2 % (crypt 134 / 482, store 85 / 357, hall 81 / 384, plain 78 / 429) | 441 / 1720 = 25.6 % (crypt 157, store 93, hall 96, plain 88) |
+| Mean valid cells per open room | 8.1 | 7.0 |
+| Legendary | 23 / 85 = 27.1 % (want 33.8 % on these floors) | same |
+| SWIFT | 47 / 85 = 55.3 % | same |
+| Elite vault rooms | 14 / 85 = 16.5 % (eligible rooms 13.1 % elite) | 12 / 85 = 14.1 % (13.3 %) |
+| Chest on a far wall | 76 / 85 = 89.4 % | 70 / 85 = 82.4 % |
+| Vault rooms by theme | crypt 23, plain 23, hall 19, store 19, none 1 | crypt 25, plain 23, hall 19, store 17, none 1 |
+
+The rates sit within binomial noise of the bands (the chance draw decides alone, since no hit was lost; the 1000-stream
+spec on floor 6 gives 486 vaults for 50 %, 29 % Legendary for 29 %, 50 % SWIFT, 24.7 % in elite rooms). Crypt rooms
+lose the most cells (wall tombs), as TR0 predicted, but they still hold their share of vaults. Party 4 has fewer cells
+(more spawns, so more pieces' clear zones) but the same vaults on these seeds.
 
 ## Player experience (target)
 
@@ -622,8 +675,9 @@ Each step is a commit. Specs next to the code; `npm run verify` before each.
 
 - [x] **TR0. Confirm the code assumptions.** → Done 2026-11-03: "TR0 findings" above (every row confirmed or
   corrected, two flagged conflicts C1 / C2, the implementation map).
-- [ ] **TR1. Dungeon.** `vaultData.ts`, `placeVault`, `BREAKABLE_PIECE_KINDS`, the chest appended last, `vault` on
-  layout and world. → Verify: TR1 specs and census above.
+- [x] **TR1. Dungeon.** `vaultData.ts`, `placeVault`, `BREAKABLE_PIECE_KINDS`, the chest appended last, `vault` on
+  layout and world. → Verify: TR1 specs and census above. → Done 2026-11-03: "As built (TR1)" (option-gated, off
+  until TR5; census numbers there).
 - [ ] **TR2. Sim state and hash.** `SimConfig.treasure`, `TreasureState`, create, clone, the hash group, dump names,
   `ScoreSource.TREASURE` gated, the chest's `damageBreakable` early return. → Verify: every golden fixture, the M1
   hash, the tutorial lock spec and every endless replay unchanged with the config absent; clone and hash specs.

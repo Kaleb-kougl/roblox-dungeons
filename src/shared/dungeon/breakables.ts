@@ -38,13 +38,22 @@ import { TileType, type Dungeon } from "./forge";
 import { gridToWorld, tileAt, worldToGrid, type WorldXZ } from "./collision";
 import { EncounterRng, type TileXZ } from "./encounter";
 import type { ActorSpawn, EncounterConfig, EncounterRoom } from "./encounterTypes";
-import { BREAKABLE, BREAKABLE_KINDS, type BreakableBand, type BreakableKindName } from "./breakablesData";
+import {
+	BREAKABLE,
+	BREAKABLE_KINDS,
+	type BreakableBand,
+	type BreakableKindName,
+	type BreakablePieceKindName,
+} from "./breakablesData";
 
-/** One placed piece: tile coordinates and kind. */
+/**
+ * One placed piece: tile coordinates and kind. placeBreakables only lays the clutter kinds (BREAKABLE_KINDS); a vault
+ * floor's list ends with its chest (kind `chest`, ./vault.ts).
+ */
 export interface BreakablePlacement {
 	readonly x: number;
 	readonly y: number;
-	readonly kind: BreakableKindName;
+	readonly kind: BreakablePieceKindName;
 }
 
 /** What placement reads of a built floor (EndlessFloorLayout has all of it). */
@@ -296,6 +305,12 @@ export function breakableCandidates(input: BreakableFloorInput, room: EncounterR
 	return candidatesOf(input, room, prepFloor(input));
 }
 
+/** breakableCandidates for many rooms of one floor: the floor's zones and doorways are computed once. Pure. */
+export function breakableCandidateFinder(input: BreakableFloorInput): (room: EncounterRoom) => TileXZ[] {
+	const prep = prepFloor(input);
+	return (room) => candidatesOf(input, room, prep);
+}
+
 function candidatesOf(input: BreakableFloorInput, room: EncounterRoom, prep: FloorPrep): TileXZ[] {
 	const d = input.dungeon;
 	const z: Zone[] = [...prep.zones];
@@ -440,6 +455,27 @@ export function placeBreakables(input: BreakableFloorInput, floor: number): Brea
 		placeRoom(p, input, room, floor, prep);
 	}
 	return p.out;
+}
+
+/**
+ * True when one more piece at grid (gx, gy) keeps every placement rule against the floor's `pieces` (the file comment's
+ * gap rule and reachability test, on a FLOOR cell no piece stands on, not an 8-neighbour of any piece): what a piece
+ * appended after placeBreakables (a vault's chest, ./vault.ts) must pass. The static "where" rules are
+ * breakableCandidates'. Pure; draws nothing.
+ */
+export function pieceFitsAt(d: Dungeon, pieces: ReadonlyArray<BreakablePlacement>, gx: number, gy: number): boolean {
+	return pieceFitter(d, pieces)(gx, gy);
+}
+
+/** pieceFitsAt for many cells of one floor: the pieces are indexed once. Pure; draws nothing. */
+export function pieceFitter(
+	d: Dungeon,
+	pieces: ReadonlyArray<BreakablePlacement>,
+): (gx: number, gy: number) => boolean {
+	const p = new Placer(d, new EncounterRng(0));
+	for (const b of pieces) p.taken.set(b.y * d.W + b.x, p.nextGroup++);
+	const group = p.nextGroup;
+	return (gx, gy) => p.valid(gx, gy, group);
 }
 
 /**

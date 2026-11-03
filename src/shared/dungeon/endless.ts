@@ -29,9 +29,14 @@
  *                 stream hash(floor seed, AFFIXES.salt); nothing above reads them
  *   loot          the breakables that hold a boost (./breakableLoot.ts, docs/BREAKABLE_DROPS.md BL1), from their
  *                 own stream hash(floor seed, BREAKABLE_LOOT.salt), reading the placed pieces; nothing above reads it
- *   pellets       the room pellets and the rare power pellet (./pellets.ts, docs/PELLETS.md PL1), LAST, from their
- *                 own stream hash(floor seed, PELLETS.salt), reading the layout, spawns and placed pieces; nothing
- *                 above reads it
+ *   pellets       the room pellets and the rare power pellet (./pellets.ts, docs/PELLETS.md PL1), from their own
+ *                 stream hash(floor seed, PELLETS.salt), reading the layout, spawns and placed pieces; nothing above
+ *                 reads it
+ *   vault         opt-in (EndlessFloorOptions.vaults; off: no draw, nothing below happens): the floor's vault, if any
+ *                 (./vault.ts, docs/TREASURE.md TR1), LAST, from its own stream hash(floor seed, VAULT.salt), reading
+ *                 the layout, spawns, pieces and pellets; its chest is appended to `breakables` after every piece
+ *                 (slot = the pieces before it) and its cell leaves roomSpawnTiles; nothing above reads it, so every
+ *                 room, prop, spawn, piece, loot slot, affix, pellet and the boss pick are the option-off floor's
  *
  * Generating the dungeon is left to the caller (`dungeonFor`), so shared/run can cache it (LRU).
  */
@@ -54,6 +59,7 @@ import { placeBreakables, withoutBreakableCells, type BreakablePlacement } from 
 import { assignAffixes } from "./affixes";
 import { placeBreakableLoot, type BreakableLoot } from "./breakableLoot";
 import { placePellets, type FloorPellets } from "./pellets";
+import { placeVault, vaultChest, type VaultOverride, type VaultPlan } from "./vault";
 import type { ActorSpawn, EncounterConfig, EncounterRoom, EncounterRoomType } from "./encounterTypes";
 import {
 	BOSS_FLOOR_EVERY,
@@ -457,17 +463,32 @@ export interface EndlessFloorLayout {
 	 * (the tutorial's hand-built floors).
 	 */
 	readonly pellets?: FloorPellets;
+	/**
+	 * The floor's vault (./vault.ts placeVault, docs/TREASURE.md TR1): its chest is `breakables[vault.slot]` (the last
+	 * piece). Absent: no vault (option off, below VAULT.fromFloor, a miss, no eligible room, the tutorial's floors).
+	 */
+	readonly vault?: VaultPlan;
+}
+
+/** Opt-in parts of an endless floor (buildEndlessFloor). Absent or empty: the floor exactly as before them. */
+export interface EndlessFloorOptions {
+	/** Roll the floor's vault (docs/TREASURE.md): the endless worlds with SimConfig.treasure (TR5) set it. */
+	readonly vaults?: boolean;
+	/** With `vaults`: the dev world's KV_TreasureDebug override (correction 12). Ignored without `vaults`. */
+	readonly vaultOverride?: VaultOverride;
 }
 
 /**
  * Builds floor `floor` of the run `runSeed` for a party of `partySize` (room budgets scale with it; the layout does
- * not); `dungeonFor` generates (or returns the cached) layout for the params.
+ * not); `dungeonFor` generates (or returns the cached) layout for the params. `options` turns on the opt-in parts
+ * (vaults); without them the floor is exactly what it was before they existed.
  */
 export function buildEndlessFloor(
 	runSeed: number,
 	floor: number,
 	dungeonFor: (params: ForgeParams) => Dungeon,
 	partySize = 1,
+	options?: EndlessFloorOptions,
 ): EndlessFloorLayout {
 	const params = endlessFloorParams(runSeed, floor);
 	const d = dungeonFor(params);
@@ -492,11 +513,13 @@ export function buildEndlessFloor(
 	const breakableLoot = placeBreakableLoot(params.seed, floor, breakables, encounter);
 	// Pellets run last, on their own rng stream (./pellets.ts), reading the layout and the placed pieces: nothing
 	// above moves.
-	const pellets = placePellets(
-		{ seed: params.seed, dungeon: d, encounter, roomSpawns, spawn, stairwell },
-		floor,
-		breakables,
-	);
+	const input = { seed: params.seed, dungeon: d, encounter, roomSpawns, spawn, stairwell };
+	const pellets = placePellets(input, floor, breakables);
+	// The vault runs last, on its own rng stream (./vault.ts), reading everything above: nothing above moves. Its chest
+	// is appended after every piece, so loot slots and pellet cells never include it.
+	const vault =
+		options?.vaults === true ? placeVault(input, floor, breakables, pellets, options.vaultOverride) : undefined;
+	const pieces = vault !== undefined ? [...breakables, vaultChest(vault)] : breakables;
 	return {
 		floor,
 		seed: params.seed,
@@ -507,12 +530,13 @@ export function buildEndlessFloor(
 		roster,
 		encounter,
 		roomSpawns,
-		roomSpawnTiles: withoutBreakableCells(endlessRoomSpawnTiles(d, roomSpawns), breakables),
+		roomSpawnTiles: withoutBreakableCells(endlessRoomSpawnTiles(d, roomSpawns), pieces),
 		spawn: { x: spawn.x, z: spawn.z },
 		stairwell,
-		breakables,
+		breakables: pieces,
 		roomAffixes,
 		breakableLoot,
 		pellets,
+		vault,
 	};
 }

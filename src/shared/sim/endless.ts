@@ -41,7 +41,7 @@
  * Scaling (endlessData.ts) is applied where things are made: actor hp in spawnActor, enemy bullet speed in
  * SimCtx.fireEnemy. Both read state.endless, so they follow the floor and Depth at that moment.
  */
-import type { BreakableLoot, BreakablePlacement, FloorPellets } from "shared/dungeon";
+import type { BreakableLoot, BreakablePlacement, FloorPellets, VaultPlan } from "shared/dungeon";
 import type { InputFrame } from "./input";
 import type { SimState } from "./state";
 import type { SimConfig } from "./step";
@@ -115,6 +115,12 @@ export interface EndlessFloorWorld {
 	 * Absent: none (the tutorial, hand-built test worlds).
 	 */
 	readonly pellets?: FloorPellets;
+	/**
+	 * The floor's vault (shared/dungeon placeVault, docs/TREASURE.md TR1): its room, chest cell (= breakables[slot]),
+	 * facing, lock and tier. Absent: none (no vault rolled, the tutorial, hand-built test worlds). Not read by the sim
+	 * yet (TR2).
+	 */
+	readonly vault?: VaultPlan;
 }
 
 /** SimConfig.endless. */

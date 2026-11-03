@@ -22,6 +22,7 @@ import {
 	buildEndlessFloor,
 	generateDungeon,
 	gridToWorld,
+	lootPieceWeight,
 	placeBreakableLoot,
 	placeBreakables,
 	roomAt,
@@ -104,14 +105,14 @@ function twin(
 			const room = roomIdOf(encounter, list[i]);
 			if (chosen.has(i) || (room >= 0 && (used.get(room) ?? 0) >= BREAKABLE_LOOT.maxPerRoom)) continue;
 			cands.push(i);
-			total += BREAKABLE_LOOT.pieceWeight[list[i].kind];
+			total += lootPieceWeight(list[i].kind);
 		}
 		if (cands.size() === 0) break;
 		let roll = rng.int(0, total - 1);
 		draws++;
 		let slot = cands[0];
 		for (const i of cands) {
-			const w = BREAKABLE_LOOT.pieceWeight[list[i].kind];
+			const w = lootPieceWeight(list[i].kind);
 			if (roll < w) {
 				slot = i;
 				break;
