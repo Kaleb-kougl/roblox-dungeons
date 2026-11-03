@@ -13,7 +13,13 @@ import { newPlayerState } from "./player";
 import { cloneCombatState, createCombatState, startCombat, type CombatState } from "./combat/combat";
 import type { SimConfig } from "./step";
 import { cloneEndlessState, createEndlessState, endlessStartFloor, type EndlessState } from "./endless";
-import { addBuildScoreSources, cloneScoreState, createScoreState, type ScoreState } from "./score/score";
+import {
+	addBuildScoreSources,
+	addPelletScoreSources,
+	cloneScoreState,
+	createScoreState,
+	type ScoreState,
+} from "./score/score";
 import { cloneRunState, createRunState } from "./progression/progression";
 import { refreshRunMods, type RunState } from "./progression/runMods";
 import { cloneParty, createPartyState, partySize, playerAt, type PartyState } from "./party";
@@ -29,6 +35,7 @@ import { dropsOnFloorPieces } from "./drops/breakLoot";
 import { cloneAffixesState, createAffixesState, type AffixesState } from "./affixes/affixes";
 import { cloneDevState, createDevState, type DevState } from "./dev/dev";
 import { cloneBuildsState, createBuildsState, type BuildsState } from "./builds/builds";
+import { clonePelletsState, createPelletsState, pelletsOnFloor, type PelletsState } from "./pellets/pellets";
 
 export interface PlayerState {
 	x: number;
@@ -300,6 +307,12 @@ export interface SimState {
 	 * (after "dev"). See builds/builds.ts.
 	 */
 	builds?: BuildsState;
+	/**
+	 * Pellets (docs/PELLETS.md PL2), only when SimConfig.pellets is set: the current floor's pellets (position, score
+	 * record, taken), the power pellet, per score record its range, regular count, pellets left, phase and Sweep. Hashed
+	 * as the "pellets" subsystem, appended after every other group (after "builds"). See pellets/pellets.ts.
+	 */
+	pellets?: PelletsState;
 }
 
 /**
@@ -318,6 +331,9 @@ export interface SimState {
  * `config.endless.startFloor` / `startDepth` (developer mode's floor jump) start on that floor and Depth instead of
  * floor 1 / Depth 1; absent, exactly as before.
  * With `config.builds`, `builds` state is created (an empty build per player).
+ * With `config.pellets`, `pellets` state is created after the score state (its rooms hang off the score's room
+ * records): the first floor's pellets (endless: its world's, dev mode's startFloor included; else
+ * `config.pellets.floor`), and a scored run's points / counts gain the pellet sources (addPelletScoreSources).
  */
 export function createSimState(
 	seed: number,
@@ -386,6 +402,14 @@ export function createSimState(
 		// The build-only score sources (BU5: Jackpot), so they hash only in builds runs.
 		if (state.score !== undefined) addBuildScoreSources(state.score);
 	}
+	// Pellets (docs/PELLETS.md): after the score state (the room records). No rng.
+	const pellets = config.pellets;
+	if (pellets !== undefined) {
+		state.pellets = createPelletsState(pellets);
+		pelletsOnFloor(state, firstFloor !== undefined ? firstFloor.pellets : pellets.floor);
+		// The pellet-only score sources (PELLETS, SWEEP; JACKPOT padded without builds), so they hash only here.
+		if (state.score !== undefined) addPelletScoreSources(state.score);
+	}
 	return state;
 }
 
@@ -415,6 +439,7 @@ export function cloneSimState(s: Readonly<SimState>): SimState {
 		affixes: s.affixes !== undefined ? cloneAffixesState(s.affixes) : undefined,
 		dev: s.dev !== undefined ? cloneDevState(s.dev) : undefined,
 		builds: s.builds !== undefined ? cloneBuildsState(s.builds) : undefined,
+		pellets: s.pellets !== undefined ? clonePelletsState(s.pellets) : undefined,
 	};
 	if (s.party !== undefined) clone.party = cloneParty(s.party, clone);
 	return clone;

@@ -24,6 +24,7 @@ import { writeDropsHash } from "./drops/drops";
 import { writeAffixesHash } from "./affixes/affixes";
 import { writeDevHash } from "./dev/dev";
 import { writeBuildsHash } from "./builds/builds";
+import { writePelletsHash } from "./pellets/pellets";
 import { isFiniteNumber, isIntegerNumber, numberToJsString } from "./jsnum";
 import { isJsonArray, isJsonObject, jsonToJsString, parseJson, type JsonValue } from "./json";
 import { jsMin } from "shared/jsmath";
@@ -188,8 +189,10 @@ export function writeHashFields(state: Readonly<SimState>, out: number[]): numbe
 	if (state.affixes !== undefined) writeAffixesHash(state.affixes, out);
 	// Developer mode (docs/DEV_MODE.md), only in local dev runs, appended after affixes.
 	if (state.dev !== undefined) writeDevHash(state.dev, out);
-	// Builds (docs/BUILDS.md BU1), only when the run has them, appended last (after dev).
+	// Builds (docs/BUILDS.md BU1), only when the run has them, appended after dev.
 	if (state.builds !== undefined) writeBuildsHash(state.builds, out);
+	// Pellets (docs/PELLETS.md PL2), only when the run has them, appended last (after builds).
+	if (state.pellets !== undefined) writePelletsHash(state.pellets, out);
 	return out;
 }
 

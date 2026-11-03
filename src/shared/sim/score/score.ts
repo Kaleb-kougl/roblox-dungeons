@@ -20,6 +20,11 @@
  *   fast     ... + (par - clear time) ticks, par = 6 s + 1.5 s x the room's encounter cost.
  *   breakables  a player breaks a barrel / crate (docs/DECOR.md D4; scoreBreakable from breakables/breakables.ts):
  *            BREAKABLE_POINTS[kind] x floor; never feeds the combo, never touches a room record.
+ *   pellets  (pellet runs only, docs/PELLETS.md) scorePellet: config.pelletPoints x the kills' floor scaling per pellet
+ *            taken; scorePowerBullets: config.powerBulletPoints per enemy bullet the power pellet converted (at most
+ *            config.powerMaxBullets); neither feeds the combo nor refills its timer (PD1)
+ *   sweep    (pellet runs only) scoreSweep: config.sweepPoints when a room clears with every regular pellet taken; no
+ *            combo either
  *   floors   awardFloorClear(state, floor, ...), called by the floor transition (endless mode): 1000 x floor x (rooms
  *            cleared / rooms with enemies on that floor; a boss floor's boss is one more room), rounded down before
  *            the multipliers (floorClearBase); a floor without enemy rooms pays the full 1000 x floor.
@@ -111,6 +116,7 @@ import {
 	ROOM_PAR_TICKS_PER_COST,
 	ROOM_PERFECT_POINTS,
 	BUILD_SCORE_SOURCE_NAMES,
+	PELLET_SCORE_SOURCE_NAMES,
 	SCORE_SOURCE_COUNT,
 	SCORE_SOURCE_NAMES,
 	ScoreSource,
@@ -693,6 +699,56 @@ export function scoreJackpot(state: SimState): number {
 	return award(state, s, ScoreSource.JACKPOT, JACKPOT_POINTS * scoreFloor(state));
 }
 
+/**
+ * Pellet runs (docs/PELLETS.md PL2, state.ts createSimState): pads points / counts to every source up to
+ * PELLET_SCORE_SOURCE_NAMES (JACKPOT included when the run has no builds: it stays 0), so they hash only in pellet runs.
+ * Idempotent.
+ */
+export function addPelletScoreSources(s: ScoreState): void {
+	const total = SCORE_SOURCE_COUNT + BUILD_SCORE_SOURCE_NAMES.size() + PELLET_SCORE_SOURCE_NAMES.size();
+	while (s.points.size() < total) s.points.push(0);
+	while (s.counts.size() < total) s.counts.push(0);
+}
+
+/**
+ * Pellet hook (docs/PELLETS.md PL3, sim/pellets): one pellet taken. The run's PelletsConfig.pelletPoints at the kills'
+ * floor scaling (floorScalePercent) into ScoreSource.PELLETS, through the usual multipliers; it NEVER feeds the combo or
+ * refills its timer (PD1) and touches no room record. Returns the points (0 without scoring, pellets or their sources).
+ * Reads state.pellets through the state types only (this module never requires sim/pellets).
+ */
+export function scorePellet(state: SimState): number {
+	const s = state.score;
+	const p = state.pellets;
+	if (s === undefined || p === undefined || s.points.size() <= ScoreSource.PELLETS) return 0;
+	return award(state, s, ScoreSource.PELLETS, p.config.pelletPoints, floorScalePercent(scoreFloor(state)));
+}
+
+/**
+ * Sweep hook (PL3, from a room's clear): PelletsConfig.sweepPoints, flat, into ScoreSource.SWEEP, through the usual
+ * multipliers; never feeds the combo (PD1). Returns the points (0 without scoring, pellets or their sources).
+ */
+export function scoreSweep(state: SimState): number {
+	const s = state.score;
+	const p = state.pellets;
+	if (s === undefined || p === undefined || s.points.size() <= ScoreSource.SWEEP) return 0;
+	return award(state, s, ScoreSource.SWEEP, p.config.sweepPoints);
+}
+
+/**
+ * Power pellet hook (PL4): `n` enemy bullets converted. One award of PelletsConfig.powerBulletPoints (flat) per bullet
+ * into ScoreSource.PELLETS, at most PelletsConfig.powerMaxBullets of them; never feeds the combo (PD1). Returns the
+ * points (0 without scoring, pellets or their sources, or for n <= 0).
+ */
+export function scorePowerBullets(state: SimState, n: number): number {
+	const s = state.score;
+	const p = state.pellets;
+	if (s === undefined || p === undefined || s.points.size() <= ScoreSource.PELLETS) return 0;
+	const paid = n < p.config.powerMaxBullets ? n : p.config.powerMaxBullets;
+	let pts = 0;
+	for (let k = 0; k < paid; k++) pts += award(state, s, ScoreSource.PELLETS, p.config.powerBulletPoints);
+	return pts;
+}
+
 /** Sword guard hook: `n` enemy bullets erased by this tick's guard sweep. One award per bullet. */
 export function scoreGuardCancels(state: SimState, n: number): void {
 	const s = state.score;
@@ -964,9 +1020,12 @@ export function writeScoreHash(s: Readonly<ScoreState>, out: number[]): void {
 	}
 }
 
-/** The dump name of source index `k` (SCORE_SOURCE_NAMES, then BUILD_SCORE_SOURCE_NAMES). */
+/** The dump name of source index `k` (SCORE_SOURCE_NAMES, then BUILD_SCORE_SOURCE_NAMES, then PELLET_...). */
 function sourceName(k: number): string {
-	return k < SCORE_SOURCE_COUNT ? SCORE_SOURCE_NAMES[k] : BUILD_SCORE_SOURCE_NAMES[k - SCORE_SOURCE_COUNT];
+	if (k < SCORE_SOURCE_COUNT) return SCORE_SOURCE_NAMES[k];
+	const build = k - SCORE_SOURCE_COUNT;
+	if (build < BUILD_SCORE_SOURCE_NAMES.size()) return BUILD_SCORE_SOURCE_NAMES[build];
+	return PELLET_SCORE_SOURCE_NAMES[build - BUILD_SCORE_SOURCE_NAMES.size()];
 }
 
 /** Dump names for writeScoreHash, same order (`score.total`, `score.points.kills`, `score.rooms[0].cleared`, ...). */

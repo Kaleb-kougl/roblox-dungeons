@@ -21,7 +21,8 @@
  *      the new floor's breakables (state.breakables, when the run has them) and their loot (drops/breakLoot.ts
  *      dropsOnFloorPieces, with DropsConfig.breakableLoot), the floor's initial spawns (the boss on
  *      boss floors), scoring's room records rebuilt for the new floor
- *      (rebuildScoreRooms, deferred), events.floorChanged = the new floor. Stop.
+ *      (rebuildScoreRooms, deferred), then the floor's pellets on those records (pellets/pellets.ts pelletsOnFloor,
+ *      with SimConfig.pellets), events.floorChanged = the new floor. Stop.
  *   4. the player stands on a room's floor for the first time this floor: events.roomEntered = id + 1, and that room's
  *      deferred enemies spawn (EndlessFloorWorld.roomSpawns, in order, each at least SPAWN_SAFE_RADIUS from every
  *      living player: see safeRoomSpawns; a full pool drops the rest, counted in
@@ -40,7 +41,7 @@
  * Scaling (endlessData.ts) is applied where things are made: actor hp in spawnActor, enemy bullet speed in
  * SimCtx.fireEnemy. Both read state.endless, so they follow the floor and Depth at that moment.
  */
-import type { BreakableLoot, BreakablePlacement } from "shared/dungeon";
+import type { BreakableLoot, BreakablePlacement, FloorPellets } from "shared/dungeon";
 import type { InputFrame } from "./input";
 import type { SimState } from "./state";
 import type { SimConfig } from "./step";
@@ -61,6 +62,7 @@ import { dropsOnRoomSpawned } from "./drops/drops";
 import { dropsOnFloorPieces } from "./drops/breakLoot";
 import { tutorialOnRoomSpawned } from "./tutorial/tutorial";
 import { clearBuildProcs } from "./builds/builds";
+import { pelletsOnFloor } from "./pellets/pellets";
 
 /** A candidate spawn position (structurally shared/dungeon's TileXZ). */
 export interface SpawnTile {
@@ -107,6 +109,12 @@ export interface EndlessFloorWorld {
 	 * Absent: none.
 	 */
 	readonly breakableLoot?: ReadonlyArray<BreakableLoot>;
+	/**
+	 * The floor's pellets (shared/dungeon placePellets, docs/PELLETS.md): world tile centres, encounter room ids, the
+	 * power pellet's index. Read only when the run's SimConfig.pellets is set (pellets/pellets.ts pelletsOnFloor).
+	 * Absent: none (the tutorial, hand-built test worlds).
+	 */
+	readonly pellets?: FloorPellets;
 }
 
 /** SimConfig.endless. */
@@ -261,6 +269,8 @@ function nextFloor(state: SimState, input: Readonly<InputFrame>, endless: Endles
 	spawnAll(world.config.encounter?.spawns ?? []);
 	// Scoring: the new floor's room records (deferred: members join when each room's enemies spawn).
 	rebuildScoreRooms(state, world.config.encounter, world.roomSpawns, world.roomAffixes);
+	// Pellets (docs/PELLETS.md): the new floor's, after the room records they hang off (no-op without them). No rng.
+	pelletsOnFloor(state, world.pellets);
 	state.events.floorChanged = e.floor;
 }
 
