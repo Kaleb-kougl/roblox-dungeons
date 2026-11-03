@@ -1,6 +1,6 @@
 # Run-over recap and co-op moments (plan)
 
-Status (2026-11-03): **proposed**. Nothing built. Supersedes the first draft in the project (`claude/run-recap-plan.md`,
+Status (2026-11-03): **in progress**. Part A's client side RR4-RR7 built (branch `rr-ui`); RR8-RR11 and the Studio check pending. Supersedes the first draft in the project (`claude/run-recap-plan.md`,
 written without the repo): this version was checked against the code at `82c2af6`, and three of that draft's
 assumptions were wrong (see "What the code says"). Owner answers (2026-11-03): RRD6 (0.6 s arm) and RRD8 (thresholds)
 confirmed; everything else is proposed.
@@ -250,11 +250,49 @@ Each step is a commit; `npm run verify` before each.
   `unknown` / `unranked`, daily best today; highlights: priority, cap 4, fill to 2, Team / You; timeline, skip before
   arm, reduced motion; verdict re-derive.
 - [ ] **RR3. Theme strings** (contract, placeholder, vale, l10n context); contract / validate specs and Luau locals.
-- [ ] **RR4. Audio mapper** spec: tick cap per frame, one land, reduced motion.
-- [ ] **RR5. Panel.** Blocks, Details toggle, three layouts; fit at 1080p, phone landscape, portrait, HUD 70 %
-  (fit.spec.ts); `npm run build:place`.
-- [ ] **RR6. RecapController** wiring, after NewBestController.
-- [ ] **RR7. Again**: keyboard focus, arm guard, skip, touch; Retry Daily.
+- [x] **RR4. Audio mapper** spec: tick cap per frame, one land, reduced motion. As built: not in the cue mapper's
+  frame (the recap runs on the panel's real clock, not sim events): shared/view/audio `recapCue(edges, jingleFrame)`
+  turns the timeline's edges into at most ONE sound a frame (a landing wins: one `sfx.score.land` however many rows
+  landed, else one `sfx.score.tick`), nothing on the run-over jingle's frame, at `RECAP_AUDIO` volumes (tick 0.6, land
+  0.85) and SFX_PRIORITY's ranks (60 / 30, under the jingles); RecapController forwards it to `AudioController.play`
+  (silent IDs fall back). Spec `recapCues.spec.ts` (60 / 5 fps, reduced motion one land, skip one land).
+- [x] **RR5. Panel.** Blocks, Details toggle, three layouts; fit at 1080p, phone landscape, portrait, HUD 70 %
+  (fit.spec.ts); `npm run build:place`. As built: client/ui/hud RecapBlocks.tsx `NearMissLine` (ember, TextScaled
+  20 / min 12; the record run's dim sub-line 16 / min 10 at `dimTransparency` under BestBlock's rows; it hides
+  BestBlock's dim `Best ...` line, `recapHidesBestLine`, while the daily block still treats that line as drawn),
+  `HighlightGrid` (UIGridLayout 2 x 155 x 48 = the breakdown's 316 width; label TextScaled 14 / min 9, value RichText 24
+  / min 12 with the combo tier's name tinted, `Team` / `You` chip), `DetailsToggle` (exits row, `Details` /
+  `Highlights`). Layout numbers `RECAP_UI` (shared/view/hud recapUi.ts, with `recapNearMissText`,
+  `recapHighlightValue`, `recapRowTransparency`, `recapRecordRowsSec`, `recapExitSizes`). Wide: near-miss under the
+  main line, highlights in the breakdown's slot (now before the daily block); compact: near-miss in the left column,
+  the dim one / grid in the right column, the Build list's third column only behind Details; narrow: one column.
+  Exits with a recap: Again 260 / 176 / 196 wide, the others 200 / 106 / 120 at text 20 / 16 / 16. Store slice
+  `recap` (run, nearMiss, highlights, details, armed); per-frame texts / fades `RECAP_BINDINGS`. Runs without a recap
+  (tutorial, M1, unscored): exactly the old panel. Fit (shared/view/menu fit.spec.ts): the record daily worst case
+  fits every landscape phone (compact) and portrait phone (narrow) at 100 % and 70 %, and is no taller than today's
+  record daily panel on desktop; a plain run's recap fits every desktop at full size. Known: on desktop 720 p
+  equivalents a record DAILY run (with or without the recap) is taller than the room, as before (MenuFit is the
+  identity off touch).
+- [x] **RR6. RecapController** wiring, after NewBestController. As built: client/controllers/fx RecapController, an
+  `FX_FRAME_PHASE.normal` frame handler (after RoomClearController's scoreRoll phase where NewBestController steps).
+  Opens when the snapshot's outcome leaves "playing" (RunOverPanel's test) and builds `RunRecapInput` once: world from
+  the run's world kind (endless / daily / dev; tutorial and others: no recap), the boss from the snapshot
+  (`bossVisible` / `bossId` / `bossFraction`), the next boss `bossKindFor(floorSeed(seed, floor + 1))`, the stairs'
+  path from the floor's cached world and the view player's position (once a run over; breakables not blocked), rooms
+  `floorRoomTally`, the view player's duos / boons at BOON_MAX_LEVEL, baseline / records from the store and
+  `runOverBest` (the panel's own), a daily run's best today from an accepted verdict's `daily.previous`,
+  `RunView.recapTally`, and Part B's moments through `setTeamMomentsProvider(provider: RecapTeamMomentsProvider |
+  undefined)`, `RecapTeamMomentsProvider = (ctx: RunContext) => RecapTeamInput` (none: NO_TEAM_MOMENTS). A record run's timeline starts after NB's rows
+  (`recapRecordRowsSec`). The clock holds under the stage cover; a new verdict / final numbers re-derive (new timeline
+  at the old clock, settled stays settled) only when the content's signature differs; a run start / exit resets.
+- [x] **RR7. Again**: keyboard focus, arm guard, skip, touch; Retry Daily. As built: shared/play `RunOverRetryGate`
+  (spec): Again (`HudActions.again`), Enter / Space on a keyboard (a ContextActionService binding above the input
+  sink, only while the panel is up with nothing over it; a key bound to `restart` is left to it) and FIRE press edges
+  (SimController.getFrameButtons; not a press that began over a GUI; a FIRE held at the open must be released first)
+  go through `RecapTimeline.press()`: before 0.6 s skip, after it restart (`SimController.requestRestart`), once per
+  run over. The bound `restart` key is unchanged (SimController's driver action, at once). Keyboard focus: Again draws
+  `active` once armed (the pad's selection starts on it as before); touch: Again is the largest exit. Party runs: a
+  press only skips (Back to lobby unchanged). Retry Daily is the same button.
 - [ ] **RR8. Faster retry.** Levers only where RR0's split points. -> Verify: before / after times written here.
 - [ ] **RR9. Telemetry** spec.
 
