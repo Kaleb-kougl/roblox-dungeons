@@ -57,6 +57,7 @@ Record every ported module in `PROVENANCE.md` (ported module, source path, sourc
 | `docs/LOCALIZATION.md` | Language localization (the 17 languages Roblox auto-translates; player's Roblox language by default, a Language override in Options; translations from the Roblox cloud table, imported into validated generated tables; AutoLocalize off on every GUI; fonts per script; pseudo-locale `en-XA`): plan, as built, tasks L0-L15, decisions LD1-LD14 |
 | `docs/PORTRAIT.md` | Portrait play (phones turn either way, `Sensor`; upright the view keeps the short side at `VIEW_TILES_HIGH` with the player lifted above the thumbs, touch controls in a bottom band, pause map on top, the draft in a column, the HUD scale capped to the width): plan, tasks PT1-PT9, decisions PD1-PD7 |
 | `docs/NEW_ENEMIES.md` | New enemies (five endless room archetypes from floor 2: Bomber rusher that blows up, Charger lane charge stunned by walls, Stormcaller lightning strike rows, Warbanner aura support, Reaper bullet spiral; band 4, `BulletKind.STRIKE`, the Warbanner aura in `actorMods`; gameplay): plan, NE0 findings, tasks NE0-NE14, decisions NED1-NED14 |
+| `docs/PELLETS.md` | Pellets (Pac-Man lines of small cubes laid on a fight's floor, collected while enemies live, a Sweep bonus for every one, a rare power pellet that turns every enemy bullet on the floor into points; tutorial room G with a sweep lock; gameplay): plan, as built, open owner calls, tasks PL0-PL15, decisions PD1-PD16 |
 
 Decision log (deviations from `PLAN.md`):
 - **Art (docs/ART.md).** The theme contract gained a `"sprites"` kind (large pre-rendered cells, 1/4/8/16 screen-space
@@ -522,6 +523,29 @@ Decision log (deviations from `PLAN.md`):
   `.spin` (SILENT in the placeholder), optional enemy animations `death.2` / `move.back`, `bestiary.<id>` toasts. Vale:
   Imp 5, Demon Beast 1, Demon Spawn 7, Imp 3, Demon Spawn 5 sets built (`art:build`), upload and the strike clip
   pending; Studio check and tuning (NE12-NE13) pending.
+- **Pellets (docs/PELLETS.md).** Gameplay. Floor-built: shared/dungeon `placePellets` lays each enemy room's pattern
+  (ring / cross / lanes / zigzag, `PELLETS.patterns`) on reachable FLOOR cells off pieces and planned spawns, and a
+  power pellet on about a third of the floors from floor 2, from its own stream (`floorSeed ^ PELLETS.salt`
+  0x27220a95), stored as `EndlessFloorLayout` / `EndlessFloorWorld.pellets`; layouts, digests, props, spawns, pieces,
+  loot, affixes and boss picks are unchanged. Opt-in `SimConfig.pellets` (`PELLETS_CONFIG`: every endless world, and the
+  tutorial for its room G) creates `state.pellets` (`pelletsOnFloor` at createSimState and nextFloor; one `PelletRoom`
+  per score record) with its own hash group `pellets` appended LAST (after `builds`); the sim draws no rng. A room's
+  pellets go live when its record engages and go at its clear (`pelletRooms.ts`, from stepScore); `stepPellets`
+  (between stepDrops and stepScore, so a pickup on the clear tick counts) gives each to the first living player within
+  0.45 tiles. Score sources `PELLETS` (10, x the kills' floor scale) and `SWEEP` (11, flat: every regular pellet of the
+  room taken before its clear) exist only with the flag (`addPelletScoreSources` pads JACKPOT); neither feeds the combo.
+  The power pellet (not a Sweep pellet) erases every enemy bullet on the floor but goo and strikes and pays per bullet
+  (cap `powerMaxBullets` 100). Tutorial: combat G (room 7; treasure / shrine / stairwell 8-10) with one sniper over a
+  ring, `tutorialPellets` (no power pellet), the sweep lock `TutorialSimConfig.pelletLock` (five hashed fields appended
+  to the `tutorial` group; the guard lock's hold), floor-1 seed 7500 -> 7574, step `pellets` 12, funnel revision 3
+  (`t1r3`, caps 88 / 264). Theme: `pellet.normal` / `pellet.power` (assets and colour roles, placeholder `Block`,
+  `pelletReport`), strings `score.source.pellets` / `.sweep`, `room.clear.line.pellets` / `.sweep`,
+  `bestiary.pellet.power`, `tutorial.prompt.pellets*`, port audio IDs `sfx.pellet.eat` / `.sweep` / `.power` (SILENT in
+  both packs); `contract.luau` / `validate.luau` at 186 / 196 top-level locals. View: `PelletRenderController`, pops,
+  the power fly-in, tally segments `pellets` / `sweep` (a fold on the smallest phone), `KV_PelletDebug`. M1, every
+  fixture and every replay without the flag replay exactly as before; endless and tutorial replays and scores changed
+  (boards stay `_v1`, `DAILY.ruleset` 3 -> 4). Studio check, the vale art upload, sounds, playtests (PL9 / PL15) and
+  four owner calls pending.
 
 ## Commands
 

@@ -52,7 +52,7 @@
 		"note": "First-sighting toast, shown once per account (top centre, during combat) the first time the player meets the Imp (enemy.imp.name). Format \"Name: short survival tip\"; the name before the colon must be the same word as that name string. Brief, direct, second person."
 	},
 	"bestiary.pellet.power": {
-		"note": "First-sighting toast, shown once per account (top centre, during combat) the first time a power pellet (a rare, bigger green cube on the floor; walking over it turns every enemy bullet on screen into points) appears in a run. Format \"Name: short tip\"; brief, direct, second person."
+		"note": "First-sighting toast, shown once per account (top centre, during combat) the first time a power pellet (a rare, bigger green cube on the floor; walking over it turns every enemy bullet on the floor into points) appears in a run. Format \"Name: short tip\"; brief, direct, second person."
 	},
 	"bestiary.reaper": {
 		"note": "First-sighting toast, shown once per account (top centre, during combat) the first time the player meets the Reaper (enemy.reaper.name). Format \"Name: short survival tip\"; the name before the colon must be the same word as that name string. Brief, direct, second person."

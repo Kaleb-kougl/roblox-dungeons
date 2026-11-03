@@ -83,6 +83,17 @@ most two chips; a third merges the oldest at once. A full sequence and chips may
 | `ROOM_CLEAR_UI` bindings, `RoomClearStamp`, `RoomClearChips`, `Text` takes a binding, ScorePanel shows the rolled score | client/ui/hud | RC7 |
 | `RoomClearController`: collapse rules, starts, slow motion / hold / sparks, sounds, kick, roller, bindings | client/controllers/fx | RC8 |
 
+### Pellets and the Sweep (docs/PELLETS.md PL7, 2026-11-02)
+
+In pellet runs the tally has six segments (`ROOM_CLEAR_SEGMENTS` 6, zeros still hidden): `TallyKind` `pellets`
+(`RoomClear.pelletPoints`: the points of the room's OWN pellets and power pellet since its engagement, from the sim's
+per-tick pellet events, so a second live room keeps its own; shown like Kills, so `killPoints` = room points - own
+pellets - bonus) and `sweep` (`sweepPoints`, the clear tick's SWEEP delta: a bonus in `roomClearBonus`, flying with
+Clear / Perfect / Speed). Strings `room.clear.line.pellets` / `.sweep`. **The fold:** a row whose estimated text size
+(`ROOM_CLEAR_VIEW.tallyFit`, glyph aspect 0.62, provisional) falls under `minText` 10 ref px folds the pellets into the
+first segment (`roomClearFoldPellets`; the label stays "Kills"). On the smallest phone (HUD 0.73) today's four segments
+draw at 7.3 px, six at 5.0, folded 6.0: still under today's row, an open owner call (two rows or a wider slot).
+
 ### Not changed
 
 - **The sim and the score rules.** No new hashed field, no new award. Every number on screen is read from the records.
