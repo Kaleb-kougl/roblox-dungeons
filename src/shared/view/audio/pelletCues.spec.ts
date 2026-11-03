@@ -20,6 +20,7 @@ import {
 	AudioCueMapper,
 	PORT_SFX,
 	SFX,
+	SFX_FALLBACK,
 	SFX_PRIORITY,
 	TEAMMATE_PRIORITY_DROP,
 } from ".";
@@ -138,13 +139,26 @@ describe("audio: pellets (docs/PELLETS.md PL7)", () => {
 		]);
 	});
 
-	it("a silent chomp (no clip) queues nothing", () => {
-		const s = createSimState(1, 0, 0);
-		let on = false;
-		const m = new AudioCueMapper((id) => id !== SFX.pelletEat || on);
+	it("a silent chomp plays the tally tick at the ladder's speed; with neither clip, nothing", () => {
+		expect([SFX_FALLBACK[SFX.pelletEat], SFX_FALLBACK[SFX.pelletSweep], SFX_FALLBACK[SFX.pelletPower]]).toEqual([
+			SFX.scoreTick,
+			SFX.comboTier,
+			SFX.playerParry,
+		]);
+		const s = withRoom(createSimState(1, 0, 0), 8, 2);
+		let tick = false;
+		const m = new AudioCueMapper((id) => id !== SFX.pelletEat && (id !== SFX.scoreTick || tick));
 		expect(frame(m, 0, s, eaten([0]))).toEqual([]);
-		on = true;
-		expect(frame(m, 1, s, eaten([0]))).toEqual([[SFX.pelletEat, 1, 1]]);
+		tick = true;
+		expect(frame(m, 1, s, eaten([0]))).toEqual([[SFX.scoreTick, 1, pelletEatSpeed(6, 8)]]);
+		const ev = new PelletFrameEvents();
+		ev.swept.push(0);
+		ev.power.push({ player: 0, px: 0, pz: 0, x: [], z: [], points: 0, tick: 1 });
+		const silent = new AudioCueMapper((id) => id !== SFX.pelletSweep && id !== SFX.pelletPower);
+		expect(frame(silent, 0, createSimState(1, 0, 0), ev)).toEqual([
+			[SFX.comboTier, 1, 0],
+			[SFX.playerParry, 1, 0],
+		]);
 	});
 
 	it("a sweep plays its sting once; the power pellet is its picker's player sound", () => {

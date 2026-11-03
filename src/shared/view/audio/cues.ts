@@ -833,6 +833,14 @@ export const SFX_FALLBACK: Readonly<Partial<Record<SfxId, SfxId>>> = {
 	 * kill drop and a piece drop is one sfx.boost.drop: `cue` merges by the resolved ID).
 	 */
 	[SFX.breakableLoot]: SFX.boostDrop,
+	/**
+	 * docs/PELLETS.md PL7: until the pellet clips are uploaded, the chomp plays the room tally's tick (short and dry, so
+	 * the room's ladder still climbs on it: the speed carries over), the Sweep the combo's tier sting and the power
+	 * pellet the parry's bonus chime. One step each, like every entry here.
+	 */
+	[SFX.pelletEat]: SFX.scoreTick,
+	[SFX.pelletSweep]: SFX.comboTier,
+	[SFX.pelletPower]: SFX.playerParry,
 };
 
 /**

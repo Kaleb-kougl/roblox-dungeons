@@ -383,7 +383,9 @@ pellets only keep off WALL (pillars included), pieces and spawn cells.
   `PELLETS_VIEW.audio.ladderSemitones` [0, 2, 4, 5, 7, 9, 11, 12] at floor((k - 1) / (n - 1) x 7) (`pelletEatSpeed`,
   from the room's progress after the frame: `pelletRoomProgress`), so the major scale rises from the root to the octave
   on the pellet that earns the Sweep, and a teammate's pellets climb the shared room's ladder too. Once per frame,
-  `minInterval` 0.06 s, quieter for teammates. (Before: two alternating speeds 1 / 1.122.)
+  `minInterval` 0.06 s, quieter for teammates. (Before: two alternating speeds 1 / 1.122.) Until the vale clips are
+  uploaded the three pellet sounds fall back (`SFX_FALLBACK`): the chomp to the room tally's `sfx.score.tick` (the
+  ladder's speed carries over), the Sweep to `sfx.combo.tier`, the power pellet to `sfx.player.parry`.
 - The power pellet's erases are no deflect: they are taken out of `bulletsDeleted` for the deflect cue, the guard
   effect (`FxCueFrame.pellets`) and WeaponViewController's guard fan flash (`deflectedBullets` /
   `tickDeflectedBullets` in `view/pellets/events.ts`, imported by file against a require cycle).
