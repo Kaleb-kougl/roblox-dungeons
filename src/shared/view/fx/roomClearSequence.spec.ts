@@ -346,6 +346,46 @@ describe("corner chips", () => {
 	});
 });
 
+describe("team perfects (docs/RUN_RECAP.md CM2)", () => {
+	const perfect = makeClear({ perfect: true, perfectPoints: 300 });
+
+	it("a team perfect's stamp carries TEAM and its streak once shown; a plain or solo clear does not", () => {
+		const d = new Driver();
+		let L = d.frame(() => d.seq.start(perfect, "full", 1, false, { streak: 1, showStreak: false }));
+		expect([L.active, L.perfect, L.team, L.teamStreak]).toEqual([true, true, true, 0]);
+		L = d.frame(() => d.seq.start(perfect, "full", 1, false, { streak: 3, showStreak: true }));
+		expect([L.team, L.teamStreak]).toEqual([true, 3]);
+		// no team facts (solo, or the sim did not award PERFECT): the plain stamp
+		L = d.frame(() => d.seq.start(perfect, "full", 1));
+		expect([L.perfect, L.team, L.teamStreak]).toEqual([true, false, 0]);
+		L = d.frame(() => d.seq.start(makeClear(), "full", 1, false, { streak: 2, showStreak: true }));
+		expect([L.perfect, L.team, L.teamStreak]).toEqual([false, false, 0]);
+	});
+
+	it("a team perfect's chip reads TEAM and counts as a team chip start; the timeline is unchanged", () => {
+		const team = new Driver();
+		const plain = new Driver();
+		let T = team.frame(() => team.seq.start(perfect, "chip", 1, false, { streak: 2, showStreak: true }));
+		let P = plain.frame(() => plain.seq.start(perfect, "chip", 1));
+		expect([T.chipsStarted, T.teamChipsStarted, T.chips[0].team]).toEqual([1, 1, true]);
+		expect([P.chipsStarted, P.teamChipsStarted, P.chips[0].team]).toEqual([1, 0, false]);
+		// the next frame's one-shot is cleared; the chip keeps its look
+		T = team.frame();
+		P = plain.frame();
+		expect([T.teamChipsStarted, T.chips[0].team, T.chips[0].shown]).toEqual([0, true, true]);
+		for (let n = 0; n < 120; n++) {
+			T = team.frame();
+			P = plain.frame();
+			expect([T.held, T.chips[0].shown, T.chips[0].transparency]).toEqual([
+				P.held,
+				P.chips[0].shown,
+				P.chips[0].transparency,
+			]);
+		}
+		expect(team.bonusLanded).toBe(plain.bonusLanded);
+	});
+});
+
 describe("ScoreRoller", () => {
 	it("rolls up to trueScore - held over killSec, never shows a held bonus and only shows whole numbers", () => {
 		const r = new ScoreRoller();

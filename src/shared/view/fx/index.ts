@@ -3,7 +3,7 @@
  * events, the shared juice rules (reduced motion, particle budget), the hitstop clock and freeze-frame rules, health
  * bar layout and state, the damage number pool, the death particle system, the render-side PRNG and the sprite-effect
  * cues (fxCues), the per-tick collectors the run views fill (roomClears, comboEvents, nearMissEvents, variantCueEvents, buildFxEvents; the run-long recapTally), the grazes and
- * parries rules (nearMissRules, nearMissConfig), the co-op moments (teamMoments, teamMomentsConfig) and the build effects' rules (buildFxRules, buildFxConfig). No Roblox API: every module is tested headlessly. The client controllers in src/client/controllers/fx
+ * parries rules (nearMissRules, nearMissConfig), the co-op moments (teamMoments, teamMomentsConfig, teamMomentsView, syncCallout) and the build effects' rules (buildFxRules, buildFxConfig). No Roblox API: every module is tested headlessly. The client controllers in src/client/controllers/fx
  * draw them.
  */
 export * from "./events";
@@ -38,6 +38,8 @@ export * from "./nearMissRules";
 export * from "./recapTally";
 export * from "./teamMomentsConfig";
 export * from "./teamMoments";
+export * from "./teamMomentsView";
+export * from "./syncCallout";
 export * from "./variantCueEvents";
 export * from "./buildFxConfig";
 export * from "./buildFxEvents";

@@ -282,25 +282,48 @@ export class TeamMoments {
 	/**
 	 * One rendered frame, after its ticks. `clears`: the frame's room clears (RunView.roomClears.clears). `groups`: the
 	 * parry groups that started this frame (NearMissDirector's frame output, parryGroups). Returns `out`. A run without
-	 * scoring or of one player has no moments.
+	 * scoring or of one player has no moments. The same as clearsFrame then parriesFrame on the same state.
 	 */
 	frame(
 		state: Readonly<SimState>,
 		clears: ReadonlyArray<RoomClear>,
 		groups: ReadonlyArray<ParryGroupStart>,
 	): TeamMomentsFrame {
-		if (state !== this.lastState || state.tick < this.lastTick) this.reset();
-		this.lastState = state;
-		this.lastTick = state.tick;
+		this.clearsFrame(state, clears);
+		return this.parriesFrame(state, groups);
+	}
+
+	/**
+	 * The room-clear half of a frame (docs/RUN_RECAP.md CM2: the client steps it before the room clear celebration, whose
+	 * stamp reads the streak): refills `out.teamPerfects` only. Returns `out`.
+	 */
+	clearsFrame(state: Readonly<SimState>, clears: ReadonlyArray<RoomClear>): TeamMomentsFrame {
+		this.begin(state);
 		this.teamPerfects.clear();
-		this.syncs.clear();
-		const size = state.score?.partySize ?? 0;
-		if (!isTeamRun(size)) return this.out;
+		if (!isTeamRun(state.score?.partySize ?? 0)) return this.out;
 		for (const c of clears) this.clear(c);
+		return this.out;
+	}
+
+	/**
+	 * The parry half of a frame (CM4 / CM5: after the near-miss director stepped): refills `out.syncs` only. Returns
+	 * `out`.
+	 */
+	parriesFrame(state: Readonly<SimState>, groups: ReadonlyArray<ParryGroupStart>): TeamMomentsFrame {
+		this.begin(state);
+		this.syncs.clear();
+		if (!isTeamRun(state.score?.partySize ?? 0)) return this.out;
 		for (const g of groups) this.sync.add(g.player, g.tick, g.x, g.z);
 		this.sync.drain(this.syncs);
 		this.sum.syncParries = this.sync.count;
 		return this.out;
+	}
+
+	/** A new run (another state object, or the tick going back) resets everything. */
+	private begin(state: Readonly<SimState>): void {
+		if (state !== this.lastState || state.tick < this.lastTick) this.reset();
+		this.lastState = state;
+		this.lastTick = state.tick;
 	}
 
 	private clear(c: RoomClear): void {

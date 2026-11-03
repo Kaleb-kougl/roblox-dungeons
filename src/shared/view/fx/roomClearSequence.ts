@@ -10,6 +10,15 @@ import { ROOM_CLEAR } from "./roomClearConfig";
 import type { RoomClear } from "./roomClears";
 
 export type RoomClearStyle = "full" | "chip";
+
+/**
+ * A co-op team perfect's stamp facts (docs/RUN_RECAP.md CM2: shared/view/fx TeamPerfectMoment fits): the stamp reads
+ * TEAM PERFECT, with its streak once `showStreak`; a chip reads TEAM PERFECT.
+ */
+export interface RoomClearTeam {
+	readonly streak: number;
+	readonly showStreak: boolean;
+}
 /**
  * A tally segment. `kills` and `pellets` (docs/PELLETS.md PL7: the pellet points earned in the room) are points already
  * scored, shown as they are; `clear` / `perfect` / `fast` / `sweep` (the Sweep bonus) are the bonus that flies to the
@@ -79,6 +88,8 @@ export interface TallySegment {
 export interface RoomClearChipLook {
 	shown: boolean;
 	perfect: boolean;
+	/** A team perfect (CM2): the chip reads TEAM PERFECT. */
+	team: boolean;
 	rooms: number;
 	points: number;
 	/** Reference px to the right of its resting place (the slide in). */
@@ -90,6 +101,9 @@ export interface RoomClearLook {
 	/** A full sequence is running (the stamp / tally are drawn). */
 	active: boolean;
 	perfect: boolean;
+	/** A team perfect (CM2): the stamp reads TEAM PERFECT; `teamStreak` > 0 adds its streak ("TEAM PERFECT x3"). */
+	team: boolean;
+	teamStreak: number;
 	rooms: number;
 	stampScale: number;
 	stampTransparency: number;
@@ -113,6 +127,8 @@ export interface RoomClearLook {
 	ticks: number;
 	/** Chips started (the half-volume jingle). */
 	chipsStarted: number;
+	/** Of those, team perfects (CM4: the team jingle at the chip's volume). */
+	teamChipsStarted: number;
 	/** Bonus points released this frame (the land sound, the slower roll). */
 	bonusLanded: number;
 }
@@ -123,6 +139,7 @@ class Chip {
 	t = 0;
 	points = 0;
 	perfect = false;
+	team = false;
 	rooms = 1;
 	motion = 1;
 }
@@ -144,12 +161,22 @@ export class RoomClearSequence {
 			segments.push({ kind: "clear", value: 0, shown: 0, started: false });
 		const chips: RoomClearChipLook[] = [];
 		for (let i = 0; i < ROOM_CLEAR.chip.max; i++) {
-			chips.push({ shown: false, perfect: false, rooms: 1, points: 0, offsetPx: 0, transparency: 1 });
+			chips.push({
+				shown: false,
+				perfect: false,
+				team: false,
+				rooms: 1,
+				points: 0,
+				offsetPx: 0,
+				transparency: 1,
+			});
 			this.chipState.push(new Chip());
 		}
 		this.look = {
 			active: false,
 			perfect: false,
+			team: false,
+			teamStreak: 0,
 			rooms: 1,
 			stampScale: 1,
 			stampTransparency: 1,
@@ -165,6 +192,7 @@ export class RoomClearSequence {
 			landed: false,
 			ticks: 0,
 			chipsStarted: 0,
+			teamChipsStarted: 0,
 			bonusLanded: 0,
 		};
 	}
@@ -188,16 +216,25 @@ export class RoomClearSequence {
 		L.landed = false;
 		L.ticks = 0;
 		L.chipsStarted = 0;
+		L.teamChipsStarted = 0;
 		L.bonusLanded = 0;
 	}
 
 	/**
 	 * A clear: its full sequence (replacing a running one, whose bonus is released at once) or a corner chip.
-	 * `foldPellets`: the pellet points join the kills segment (see roomClearSegments).
+	 * `foldPellets`: the pellet points join the kills segment (see roomClearSegments). `team`: the clear is a co-op team
+	 * perfect (docs/RUN_RECAP.md CM2; only with c.perfect).
 	 */
-	start(c: RoomClear, style: RoomClearStyle, motion: number, foldPellets = false): void {
+	start(
+		c: RoomClear,
+		style: RoomClearStyle,
+		motion: number,
+		foldPellets = false,
+		team: RoomClearTeam | undefined = undefined,
+	): void {
+		const isTeam = team !== undefined && c.perfect;
 		if (style === "chip") {
-			this.startChip(c, motion);
+			this.startChip(c, motion, isTeam);
 			return;
 		}
 		if (this.active) this.release();
@@ -210,6 +247,8 @@ export class RoomClearSequence {
 		this.bonus = roomClearBonus(c);
 		const L = this.look;
 		L.perfect = c.perfect;
+		L.team = isTeam;
+		L.teamStreak = isTeam && team.showStreak ? team.streak : 0;
 		L.rooms = c.rooms;
 		L.flyPoints = this.bonus;
 		const entries = roomClearSegments(c, foldPellets);
@@ -299,7 +338,7 @@ export class RoomClearSequence {
 		}
 	}
 
-	private startChip(c: RoomClear, motion: number): void {
+	private startChip(c: RoomClear, motion: number, team: boolean): void {
 		let slot = -1;
 		let oldest = 0;
 		for (let i = 0; i < this.chipState.size(); i++) {
@@ -320,9 +359,11 @@ export class RoomClearSequence {
 		ch.t = 0;
 		ch.points = roomClearBonus(c);
 		ch.perfect = c.perfect;
+		ch.team = team;
 		ch.rooms = c.rooms;
 		ch.motion = motion;
 		this.look.chipsStarted += 1;
+		if (team) this.look.teamChipsStarted += 1;
 	}
 
 	private mergeChip(ch: Chip): void {
@@ -358,6 +399,7 @@ export class RoomClearSequence {
 			const out = clamp01((ch.t - ROOM_CLEAR.fadeStartSec) / (ROOM_CLEAR.totalSec - ROOM_CLEAR.fadeStartSec));
 			L.shown = true;
 			L.perfect = ch.perfect;
+			L.team = ch.team;
 			L.rooms = ch.rooms;
 			L.points = ch.points;
 			L.offsetPx = ch.motion > 0 ? C.slidePx * (1 - slide) : 0;

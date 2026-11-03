@@ -6,7 +6,8 @@
  * of equal cells (wrap.ts), the corner panels' occlusion fade (occlusion.ts, H7) and the combo's tiers, kill pitch,
  * display state machine and floor shout test (comboConfig.ts, combo.ts; docs/COMBO.md CB2), and how the combo row, meter
  * and floor shout are drawn (comboDraw.ts, CB6 / CB7), the PARRY! floor flash's placement, size, opacity and label
- * (parryFlash.ts, docs/GRAZE_PARRY.md GP7), and the boon draft reveal's tunables and state machine
+ * (parryFlash.ts, docs/GRAZE_PARRY.md GP7), the SYNC! callout's label, size and tether opacity (syncCallout.ts,
+ * docs/RUN_RECAP.md CM5), and the boon draft reveal's tunables and state machine
  * (draftRevealConfig.ts, draftReveal.ts; docs/DRAFT_REVEAL.md DR1) and how it is drawn (draftRevealView.ts, DR5), and the
  * UI skin's pixel scales, icon fit and part-to-image chains (skinConfig.ts, skin.ts; docs/UI_ART.md UA5), and the
  * new-best celebration's tunables, strings, frozen run baseline, per-frame tracker, text / roll helpers and confetti
@@ -43,6 +44,7 @@ export * from "./combo";
 export * from "./comboStrings";
 export * from "./comboDraw";
 export * from "./parryFlash";
+export * from "./syncCallout";
 export * from "./draftRevealConfig";
 export * from "./draftReveal";
 export * from "./draftRevealView";
