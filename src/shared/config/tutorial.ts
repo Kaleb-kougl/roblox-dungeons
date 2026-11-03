@@ -26,6 +26,14 @@ export interface TutorialChainLayout {
 	readonly corridorTiles: number;
 }
 
+/** TutorialTunables.pellets (shared/run tutorialPellets). */
+export interface TutorialPelletTunables {
+	/** Inset of the room's pattern from its floor bounds, tiles (shared/dungeon pelletPatternCells). */
+	readonly insetTiles: number;
+	/** At most this many pellets (trimmed evenly along the pattern). */
+	readonly max: number;
+}
+
 export interface TutorialTunables {
 	/**
 	 * The run's seed (the sim rng and EndlessConfig.runSeed). The layouts below do not depend on it; the client
@@ -33,13 +41,14 @@ export interface TutorialTunables {
 	 */
 	readonly runSeed: number;
 	/**
-	 * Floor 1, "The Training Halls" (the lesson rooms): a strict chain, entrance -> combat A-F -> treasure -> shrine ->
+	 * Floor 1, "The Training Halls" (the lesson rooms): a strict chain, entrance -> combat A-G -> treasure -> shrine ->
 	 * boss room (the open stairwell), each joined to the next by one short straight corridor and to nothing else
 	 * (shared/run TUTORIAL_ROOMS has the rooms; tutorial.spec.ts checks the chain with checkTutorialChain). The seed
-	 * only picks the theme and the decoration: 7500 is frost (the floor-1 biome of the old seed-searched layout) with
-	 * its two frozen lakes in rooms 4 and 6 (combat D and F), so lesson E keeps its solid pillars (`node
-	 * scripts/find-tutorial-seed.js --floor 1 --from 7500 --to 7700` lists the seeds that work: 40 of the first 48).
-	 * Corridors are corridorTiles long (5 by the ellipse treasure room's rim); the tour is 198 tiles.
+	 * only picks the theme and the decoration: 7574 is frost (the floor-1 biome of the old seed-searched layout) with
+	 * its two frozen lakes in rooms 4 and 6 (combat D and F), so lesson E keeps its solid pillars and combat G (room 7,
+	 * the pellet lesson) its open floor (`node scripts/find-tutorial-seed.js --floor 1 --from 7500 --to 7700` lists the
+	 * seeds that work: 176 of 201 with combat G; 7500, the seed before combat G, lost lesson E's cover, docs/PELLETS.md
+	 * PL11). Corridors are corridorTiles long (5 by the ellipse treasure room's rim); the tour is 225 tiles.
 	 */
 	readonly floor1: TutorialChainLayout;
 	/**
@@ -61,6 +70,11 @@ export interface TutorialTunables {
 	readonly moveTiles: number;
 	/** Lesson spawns that stand in a group (dummies, swarmers) keep at least this many tiles apart. */
 	readonly clusterSpacingTiles: number;
+	/**
+	 * The pellet lesson (combat G, docs/PELLETS.md PL11): its pattern's distance from the room's floor bounds and the
+	 * most pellets it lays (a short lesson: every one must be taken before the sniper can fall, PD14).
+	 */
+	readonly pellets: TutorialPelletTunables;
 
 	// --- The director (shared/tutorial TutorialDirector): the step script's timing. Real seconds (frame dt).
 	/**
@@ -97,13 +111,14 @@ export interface TutorialTunables {
 
 export const TUTORIAL: TutorialTunables = table.freeze({
 	runSeed: 4242,
-	floor1: table.freeze({ seed: 7500, corridorTiles: 4 }),
+	floor1: table.freeze({ seed: 7574, corridorTiles: 4 }),
 	floor2: table.freeze({ seed: 905, roomCount: 2 }),
 	lastFloor: 2,
 	bossHpPercent: 20,
 	startHalfHearts: TUTORIAL_START_HALF_HEARTS,
 	moveTiles: 3,
 	clusterSpacingTiles: 2,
+	pellets: table.freeze({ insetTiles: 2, max: 12 }),
 	objectiveCardMinSeconds: 0.75,
 	calloutHighlightSeconds: 4,
 	ghostHeartHits: 3,

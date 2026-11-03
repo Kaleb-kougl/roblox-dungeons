@@ -39,3 +39,19 @@ export const GUARD_LOCK_RELEASED = 2;
 export const NO_GUARD_LOCK_FLOOR = 0;
 /** TutorialState.guardLockRoom without a lock. */
 export const NO_GUARD_LOCK_ROOM = -1;
+
+/**
+ * TutorialState.pelletLock phases (TutorialSimConfig.pelletLock, the pellet lesson, docs/PELLETS.md PL12). Held actors
+ * keep TUTORIAL_GUARD_HOLD_HP, shared with the guard lock.
+ */
+/** No lock configured, or its room not entered yet. */
+export const PELLET_LOCK_WAITING = 0;
+/** The room's enemies spawned and are held while any of its regular pellets is untaken. */
+export const PELLET_LOCK_ARMED = 1;
+/** The room's last pellet was taken (or there was nothing to hold): its enemies die as anywhere else. Final. */
+export const PELLET_LOCK_RELEASED = 2;
+
+/** TutorialState.pelletLockFloor without a lock. */
+export const NO_PELLET_LOCK_FLOOR = 0;
+/** TutorialState.pelletLockRoom without a lock. */
+export const NO_PELLET_LOCK_ROOM = -1;
