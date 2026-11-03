@@ -15,15 +15,17 @@
  *   rooms         one PelletRoom per score record (same index as state.score.rooms); without scoring there are none.
  *                 phase DORMANT -> LIVE on the record's engagement -> GONE at its clear (docs/PELLETS.md PL3).
  *
- * Behaviour (live / pickup / sweep / gone, PL3; the power pellet, PL4) is not here yet: this module holds the state,
- * its floor fill, clone and hash. Score awards (scorePellet / scoreSweep / scorePowerBullets) live in score/score.ts,
- * which reads `state.pellets.config` through the state types only (never requires this module).
+ * This module holds the state, its floor fill, clone and hash. Behaviour: pickups and the power pellet in
+ * stepPellets.ts (PL3 / PL4, a tick step between stepDrops and stepScore); live / gone / sweep in the leaf
+ * pelletRooms.ts, called from stepScore. Score awards (scorePellet / scoreSweep / scorePowerBullets) live in
+ * score/score.ts, which reads `state.pellets.config` through the state types only (never requires this module).
  */
 import { NO_POWER_PELLET, cellKey, worldToGrid, type FloorPellets } from "shared/dungeon";
 import type { SimState } from "../state";
 import {
 	PELLET_PICKUP_RADIUS,
 	PELLET_POINTS,
+	PelletPhase,
 	POWER_BULLET_POINTS,
 	POWER_MAX_BULLETS,
 	SWEEP_POINTS,
@@ -56,16 +58,6 @@ export const PELLETS_CONFIG: PelletsConfig = table.freeze({
 	powerBulletPoints: POWER_BULLET_POINTS,
 	powerMaxBullets: POWER_MAX_BULLETS,
 });
-
-/** PelletRoom.phase. */
-export const PelletPhase = {
-	/** Not engaged yet: its pellets lie there but cannot be taken (and the view hides them). */
-	DORMANT: 0,
-	/** Engaged, not cleared: its pellets can be taken. */
-	LIVE: 1,
-	/** Cleared: what was left is gone. */
-	GONE: 2,
-} as const;
 
 /** PelletsState.rec of a pellet whose room has no score record. */
 export const NO_PELLET_RECORD = -1;

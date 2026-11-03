@@ -33,7 +33,8 @@ export const DAILY: DailyConfig = table.freeze({
 	secondsPerDay: SECONDS_PER_DAY,
 	// 2: breakable loot (docs/BREAKABLE_DROPS.md) changes endless play.
 	// 3: five new room enemies and a reshuffled seeded roster (docs/NEW_ENEMIES.md NE7, NED12).
-	ruleset: 3,
+	// 4: pellets in every endless fight room, the Sweep and the power pellet (docs/PELLETS.md PL5, PD10).
+	ruleset: 4,
 	labelOffset: 1,
 	yesterdayCacheSeconds: 600,
 	minEntrantsForPercentile: 20,

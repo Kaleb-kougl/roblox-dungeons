@@ -27,6 +27,7 @@ import { clearAffixEvents, type AffixesConfig } from "./affixes/affixes";
 import { stepDevToggle, type DevSimConfig } from "./dev/dev";
 import { clearBuildEvents, type BuildsConfig } from "./builds/builds";
 import { clearPelletsEvents, type PelletsConfig } from "./pellets/pellets";
+import { stepPellets } from "./pellets/stepPellets";
 import type { SolidCells } from "shared/dungeon";
 
 export { PLAYER_RADIUS, PLAYER_SPEED } from "./playerData";
@@ -213,8 +214,12 @@ const partyPrev: number[] = [];
  *   5. stepRun      (endless mode only: a new floor opens the boon draft; Warding, relic pedestals, the curse shrine)
  *   6. stepDrops    (only with config.drops: floor clear, debug drops, boost timers, ground life, pickups; kills
  *                    drop inside 3)
- *   7. stepScore    (only with config.scoring: hit cuts, combo timer, rooms; kills / grazes / guard score inside 3)
- *   8. tick += 1
+ *   7. stepPellets  (only with config.pellets: living players in index order take the live rooms' pellets in reach;
+ *                    the power pellet erases enemy bullets; before 8 so a pickup on a room's clear tick counts for its
+ *                    Sweep)
+ *   8. stepScore    (only with config.scoring: hit cuts, combo timer, rooms; kills / grazes / guard score inside 3;
+ *                    pellet runs: an engaged room's pellets go live, a clear takes them and pays the Sweep first)
+ *   9. tick += 1
  * While a boon draft is open (endless mode, progression/progression.ts) the world is frozen: after the event clears
  * only stepDraft runs (the stick selects, a FIRE press confirms), then tick += 1 (a forfeit on such a tick closes the
  * draft without a pick and the tick stays frozen, like a co-op leaver's).
@@ -257,6 +262,7 @@ export function step(
 	if (state.endless !== undefined) stepEndless(state, soloInputs, config, soloPrev);
 	if (run !== undefined) stepRun(state, soloInputs, config, soloPrev);
 	if (drops !== undefined) stepDrops(state, soloInputs, soloPrev);
+	if (state.pellets !== undefined) stepPellets(state);
 	if (score !== undefined) stepScore(state);
 	state.tick += 1;
 }
@@ -293,8 +299,9 @@ export function forfeitSoloRun(state: SimState): boolean {
  *   5. stepEndless (every living player in the stairwell; any player's debug skip; revive the dead on a new floor)
  *   6. stepRun (endless: a new floor opens every present player's draft; Warding, pedestals, the shrine per player)
  *   7. stepDrops (drops: per slot the first living player in reach takes it; timers per player)
- *   8. stepScore
- *   9. tick += 1
+ *   8. stepPellets (pellets: per player in index order, the live pellets in reach)
+ *   9. stepScore
+ *  10. tick += 1
  * A solo state (no party) is stepped exactly as step(state, inputs[0], config) would.
  */
 export function stepParty(
@@ -335,6 +342,7 @@ export function stepParty(
 	if (state.endless !== undefined) stepEndless(state, inputs, config, partyPrev);
 	if (run !== undefined) stepRun(state, inputs, config, partyPrev);
 	if (drops !== undefined) stepDrops(state, inputs, partyPrev);
+	if (state.pellets !== undefined) stepPellets(state);
 	if (score !== undefined) stepScore(state);
 	state.tick += 1;
 }
