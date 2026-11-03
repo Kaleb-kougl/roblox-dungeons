@@ -25,16 +25,57 @@ in sync for free: lockstep means every client steps the same ticks, so every cli
 | Run-over panel: header, ribbon (NB), main line, alt key line, stats **Time / Hits / Kills**, BestBlock or the dim `Best` line, DailyResultBlock, DailyPassedRow, the **score breakdown with the Build list beside it**, verdict, RunInfoLine, exits. Three layouts: wide, `compact` (phone landscape, 2-3 columns), `narrow` (portrait, one column) | client/ui/hud/RunOverPanel.tsx | The recap fits into three layouts; the breakdown has a home already |
 | Gamepad already focuses the first button (Again) on open; keyboard / mouse do not | RunOverPanel `useEffect` -> `GuiService.SelectedObject` | RR7 only adds keyboard focus and the arm guard |
 | **A party run has no Again**: R and the button go back to the lobby once the verdict is in | `runOverExits(info.coop, ...)` | Co-op "one press" means Back to lobby (+ the existing Auto-ready); no co-op retry in this plan |
-| Again -> `actions.restart()` -> `handleReset` -> (forfeit if live) -> `beginRun` -> `Events.startRun` -> wait for `runStarted` -> forge floor 1 behind the stage cover (`minStartSec`) | SimController.ts 849-900, 1544-1576 | The retry wait is: server round trip + floor generation + the cover's minimum. RR8 measures each |
+| Again -> `actions.restart()` -> `handleReset` -> (forfeit if live) -> `beginRun` -> `Events.startRun` -> wait for `runStarted` -> forge floor 1 behind the stage cover (the roster line's `rosterStartSec` hold; `minStartSec` is 0, RR0 5) | SimController.ts 849-900, 1544-1576 | The retry wait is: server round trip + floor generation + the cover's roster hold and fade. RR8 measures each |
 | **The stairwell is open from the start on every non-boss floor** (`stairsOpen: world.bossFloor ? 0 : 1`); only a boss floor's opens on the boss's death. The floor clear pays by the *share* of rooms cleared | sim/endless.ts 183, 247; score.ts `awardFloorClear` | The first draft's `2 rooms from floor 9` is **not true** (rooms never gate the stairs). Replaced by distance to the stairs and "rooms from a full clear" |
 | `ScoreState.maxCombo` (run peak, tenths) | score.ts | Best combo highlight reads it directly |
 | `hitsTaken` sums `events.playerHits` of **the whole party**; PERFECT = no hit since the room engaged (score.ts 916). An Aegis / armor absorb still counts as a hit | score.ts, player.ts `damagePlayer` | **TEAM PERFECT is already what the sim scores in co-op** (RCD2). Part B only presents it |
-| Boss no-hit: a second `BOSS` award (+2500) when no hit landed in the final phase | score.ts 654 | `counts[BOSS]` = boss kills + no-hit awards; the recap tells them apart by points (RR0) |
+| Boss no-hit: a second `BOSS` award (+2500) when no hit landed in the final phase | score.ts 654 | `counts[BOSS]` = boss kills + no-hit awards; boss kills = Depth gained, so no-hits = `counts[BOSS] - (depth - startDepth)` (RR0 2; points cannot split them) |
 | Score sources: KILLS, GRAZES, GUARD (bullets erased), ROOMS, PERFECT, FAST, FLOORS, BOSS, BREAKABLES; JACKPOT (builds runs); PELLETS, SWEEP (pellet runs) | scoreData.ts `ScoreSource` | Highlights read counts; GUARD is bullets, not parries |
 | Parries are grouped per player already: one group per guard, `SWORD_DATA.guardTicks` (18) from its first erase; one parry cue per group | shared/view/fx/nearMissRules.ts | Parry counts and the SYNC rule reuse these groups; no new grouping |
 | `ScoreEvents.guardPlayer` / `grazePlayer` per bullet (co-op: the guarding / nearest player) | score.ts | Per-player rows in co-op |
 | Room clear in co-op: no slow motion, a 0.2 s kill hold on every client, the full stamp near the room, a corner chip when > `nearTiles` away (RCD12) | docs/ROOM_CLEAR.md | TEAM PERFECT rides the stamp and the chip |
 | Silent sounds fall back (`SFX_FALLBACK`) | shared/view/audio/cues.ts | New port audio IDs can ship silent and still sound |
+
+### RR0 findings (read from the code at `bb0ba92`, 2026-11-03; nothing measured, no Studio)
+
+1. **Boss hp at the death tick: yes.** The run stops stepping at the party wipe, so the final state is the death
+   tick's. `HudSnapshot` (shared/play snapshot.ts, built from that state through `findBoss`) carries `bossVisible`
+   (= a boss present, alive and `phase > 0`: engaged), `bossId`, `bossHp` (rounded UP to 0.1 hp, `HP_DECIMALS`) and
+   `bossHpMax`; the fraction is shared/view/hud `bossFraction(s.bossHp, s.bossHpMax)`, the boss bar's own. With
+   `bossVisible` false the snapshot zeroes hp (hpMax 1), so "engaged and alive" is exactly `bossVisible`. Name:
+   theme string `<bossId>.name` (BossBar's).
+2. **No-hit awards vs boss kills.** Both go through the full multiplier (`award(..., BOSS, ...)`: combo x Depth x
+   curses), so `points[BOSS]` cannot be split exactly. `counts[BOSS]` = boss kills + no-hit awards, and every boss kill
+   raises Depth by one (sim/endless.ts step 1, `events.bossDefeated` from the boss's `onDeath`), so
+   **boss kills = `depth - startDepth`** (`startDepth` = ENDLESS_FIRST_DEPTH 1, or a dev run's `EndlessConfig.startDepth`)
+   and **no-hit awards = `counts[BOSS] - (depth - startDepth)`** (`bossNoHitAwards` in recap.ts). This replaces "tells
+   them apart by points".
+3. **FAST: one award per room under par.** `clearRoom` awards FAST once per cleared room when `par - clear time > 0`
+   (two rooms clearing on one tick get two awards), so `counts[FAST]` = rooms cleared under par and `points[FAST]` =
+   the ticks beaten, through the multipliers. Highlight 11's ">= 3 rooms under par" reads `counts[FAST] >= 3`.
+4. **Telemetry budget.** Custom event names live in shared/run analytics.ts `ANALYTICS_EVENT` (PascalCase,
+   e.g. `RunEnded`; the daily ones `daily_*`), shared/lobby `LOBBY_ANALYTICS_EVENT` and shared/onboarding
+   `TUTORIAL_ANALYTICS_EVENT`, gathered in shared/onboarding analyticsCatalog.ts, whose spec pins **36 custom event
+   names (Roblox limit 100)**, 3 funnels (limit 10) and the field-combination total (limit 8,000). Every event is
+   logged by the server's TelemetryService from its own replay, never from the client: a `run_retry` with "seconds on
+   panel / near-miss kind" is client knowledge, so RR9 needs a remote (or folds into the existing `SessionEnded`
+   `retried` / `SessionRetriesAfterDeath`, which already count retries after a death). One more name fits easily.
+5. **Press -> control today (Again on a dead solo endless / daily run).** `actions.restart()` -> `handleReset`: the run
+   is over, so no forfeit (`restartForfeits` is ranked AND playing only) and `submit` is a no-op (the death was
+   submitted on the death frame) -> `beginRun` the same frame. Then: (a) forfeit / submit: **0** after a death (a
+   forfeit only for R during a live ranked run: one forfeit tick, the submit, `beginRun` on the next frame);
+   (b) `startRun` -> `runStarted`: one remote round trip plus the server's `registry.start` (rate limit
+   `RUN_START_RATE` 10 / 60 s, then it builds floor 1's world itself); answered `busy` when
+   `RUN_PENDING_PER_PLAYER` 2 earlier runs are still validating (retried every `RUN_START_BUSY_RETRY_SECONDS` 2 s, up
+   to `RUN_START_BUSY_RETRIES` 15), no answer in `RUN_START_TIMEOUT_SECONDS` 5 s plays unranked; (c) forge: the stage
+   cover's covered work runs one item per frame after `coverDrawFrames` 1 drawn frame: `forge` (makeRun, floor 1),
+   then `notify` (listeners, view rebuild), then `pregen` (floor 2) = at least 3 frames plus their costs; then the
+   assets wait (floor 1's beds, already loaded on a retry; cap `assetCapSec` 3 s) and `settleFrames` 2; (d) the
+   minimum and fade: **`minStartSec` is 0**, but every endless / daily start shows floor 1's roster line, which holds
+   the cover **`rosterStartSec` 1 s from the server's answer** (`holdAtLeast`), then `fadeSec` 0.25 s (input blocked
+   through the fade). So today's floor is about 1.25 s + round trip + ~6 frames of work; the roster hold is the largest
+   fixed wait, and the first lever for RR8 (`RECAP.retryStartSec` would lower `rosterStartSec` on a retry, not
+   `minStartSec`).
 
 ## Part A: the run-over screen
 
@@ -66,8 +107,8 @@ settled state instead of retrying (the draft reveal's rule, DRD6).
 | 0 | game-over jingle, header, main line | record jingle, ribbon (NB) |
 | 0.3 | **Near-miss line** fades up; its number counts over 0.3 s with `sfx.score.tick`, lands with `sfx.score.land` | NB's rows roll (to ~1.3 s) |
 | 0.6 | Again armed (focus ring brightens) | Again armed |
-| 0.7 / rows + 0.2 | **Highlights** one every 0.15 s, each counting over 0.25 s (at most one tick sound a frame), the last landing with `sfx.score.land` | same after NB's rows; the dim sub-line with the first highlight |
-| settled | ~1.6 s | ~2.3 s |
+| 0.7 / rows + 0.2 | **Highlights** one every 0.15 s, each counting over 0.25 s (at most one tick sound a frame), each landing with `sfx.score.land` | same after NB's rows; the dim sub-line with the first highlight |
+| settled | ~1.4 s (4 highlights) | ~2.2 s (rows to ~1.3 s) |
 
 ### The near-miss line ("so close")
 
@@ -97,7 +138,7 @@ cleared so a short run never has an empty grid.
 
 | P | Highlight | Source | Notable when |
 |---|---|---|---|
-| 1 | `Boss felled · no hits` / `Bosses felled 2` | `counts` / `points[BOSS]` | >= 1 |
+| 1 | `Boss felled · no hits` / `Bosses felled 2` | `counts[BOSS]` and Depth gained (RR0 2) | >= 1 |
 | 2 | `Best combo x4.2 DOMINATING` (tier colour) | `score.maxCombo` | >= x2 (RAMPAGE) |
 | 3 | `PERFECT rooms 7 of 11` (co-op: `TEAM PERFECT rooms`) | `counts[PERFECT]` / `counts[ROOMS]` | >= 3, or >= 50 % |
 | 4 | `Best team streak x4` (co-op only, Part B) | `TeamMoments` | >= 2 |
@@ -107,7 +148,7 @@ cleared so a short run never has an empty grid.
 | 8 | `Sweeps 3` | `counts[SWEEP]` (pellet runs) | >= 1 |
 | 9 | `Grazes 120` | `counts[GRAZES]` (co-op: per player from `grazePlayer`) | >= 50 |
 | 10 | `Jackpots 3` | `counts[JACKPOT]` | >= 1 |
-| 11 | `Speed bonus 1,240` | `points[FAST]` | >= 3 rooms under par |
+| 11 | `Speed bonus 1,240` | `points[FAST]` | >= 3 rooms under par (`counts[FAST]`, RR0 3) |
 | fill | `Kills 214`, `Rooms cleared 11` | sim | - |
 
 Thresholds are `RECAP_HIGHLIGHTS` tunables, tuned in RR10. Co-op labels team values `Team` and the view player's own
@@ -122,8 +163,8 @@ Thresholds are `RECAP_HIGHLIGHTS` tunables, tuned in RR10. Co-op labels team val
 - **Fast start (RR8):** measure press -> first controllable tick in a published place, split into (a) forfeit /
   submit, (b) `startRun` -> `runStarted` round trip, (c) floor 1 forge, (d) the cover's `minStartSec` and fade. Target
   <= 1.5 s. Levers, used only where the measurement points: forge floor 1 the moment `runStarted` lands (already
-  deferred one item per frame: check nothing waits on a frame it need not); lower `minStartSec` for a retry
-  (`RECAP.retryStartSec`) when the core preload is done; behind `RECAP.prefetchSession`, request the next solo session
+  deferred one item per frame: check nothing waits on a frame it need not); lower the roster line's `rosterStartSec`
+  hold (1 s; `minStartSec` is already 0, RR0 5) for a retry (`RECAP.retryStartSec`) when the core preload is done; behind `RECAP.prefetchSession`, request the next solo session
   when the panel opens and use it on Again (the server expires it unused).
 - **Party runs:** unchanged (Back to lobby, `Auto-ready on run end`). Daily: Retry Daily, same focus and arm.
 
@@ -191,7 +232,7 @@ grazes, duos). Exit stays Back to lobby.
 | `TeamMoments` (pure): TEAM PERFECT flag + streak from `RoomClearEvents`, sync parries from the director's parry groups; `syncParry` records on the `NearMissDirector`'s frame output | shared/view/fx/teamMoments.ts, nearMissRules.ts | CM1 |
 | Stamp / chip text and streak, team pulse rings | roomClearSequence, RoomClearStamp / Chips, ParticleController | CM2 |
 | `SYNC!` floor text and tether | ParryFlashController (shared construction with the combo shout) | CM5 |
-| Telemetry: `run_retry` (seconds on panel, near-miss kind, record run) and co-op fields (team perfects, best streak, sync parries) on the party run-end event | shared/run/analytics.ts | RR9 |
+| Telemetry: a retry event (`RunRetry`, PascalCase like `ANALYTICS_EVENT`; seconds on panel, near-miss kind, record run: client facts, so a remote to the server's TelemetryService, RR0 4) and co-op fields (team perfects, best streak, sync parries) on the party run-end event | shared/run/analytics.ts, shared/onboarding analyticsCatalog.ts | RR9 |
 
 ## Tasks
 
@@ -238,7 +279,7 @@ Each step is a commit; `npm run verify` before each.
 
 ## Studio check
 
-1. Die with the stairs ~8 tiles away on floor 4: `8 tiles from floor 5`; highlights count up; settled by ~1.6 s.
+1. Die with the stairs ~8 tiles away on floor 4: `8 tiles from floor 5`; highlights count up; settled by ~1.4 s.
 2. `KV_NewBestDebug = "score:5000"`, die near 4,500: `500 short of your best` replaces the dim Best line.
 3. Die to the Demon Lord at low hp: `The Demon Lord had 9% left` beats everything.
 4. Record run: NB's ribbon and rows first, at most one dim sub-line, highlights after.
