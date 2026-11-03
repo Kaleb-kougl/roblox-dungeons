@@ -2,13 +2,14 @@ import { Controller, OnStart } from "@flamework/core";
 import { clientStore, selectStageCovered } from "client/store";
 import { ROOM_CLEAR_UI as UI } from "client/ui";
 import type { JuiceSettings } from "shared/settings";
-import { isPartyWiped, partySize, playerAt } from "shared/sim";
+import { isPartyWiped, partySize, playerAt, type SimState } from "shared/sim";
 import type { StringVars } from "shared/theme";
 import { StateWatch } from "shared/view";
 import { SFX } from "shared/view/audio";
 import {
 	ROOM_CLEAR,
 	RoomClearSequence,
+	TEAM_MOMENTS_VIEW,
 	ScoreRoller,
 	applyRoomClearSlowMo,
 	burstSeed,
@@ -17,6 +18,7 @@ import {
 	motionScale,
 	roomClearStyle,
 	stampNudgeFor,
+	teamPulsePlayers,
 	type RoomClearLook,
 } from "shared/view/fx";
 import {
@@ -33,6 +35,7 @@ import { ActorRenderController } from "../render/ActorRenderController";
 import { FreezeFrameController } from "./FreezeFrameController";
 import { FX_FRAME_PHASE, FxTrackerController } from "./FxTrackerController";
 import { ParticleController } from "./ParticleController";
+import { TeamMomentsController } from "./TeamMomentsController";
 
 /**
  * Called once per frame on a scored run with the score panel's shown score (the roller's), the juice settings and
@@ -54,6 +57,11 @@ export type ShownScoreHandler = (shown: number, settings: Readonly<JuiceSettings
  * onShownScore subscribers (NewBestController steps the new-best tracker there), then plays its sounds: a subscriber
  * that calls dropClearJingle on that frame (the new-best fanfare, NBD7) silences this frame's clear / perfect / chip
  * jingle (the stamp, its kick and the tally still play).
+ *
+ * Co-op team perfects (docs/RUN_RECAP.md CM2, CMD1 / CMD2): TeamMomentsController steps the frame's TEAM PERFECTs in an
+ * earlier phase (FX_FRAME_PHASE.teamMoments); a clear that is one starts its stamp reading TEAM PERFECT (its streak from
+ * TEAM_MOMENTS.streakShowFrom) or a far client's chip reading TEAM PERFECT, and pulses a gold spark ring on every
+ * living party member (ParticleController.teamPulse, near or far). Solo is unchanged.
  */
 @Controller({})
 export class RoomClearController implements OnStart {
@@ -61,6 +69,8 @@ export class RoomClearController implements OnStart {
 	private readonly roller = new ScoreRoller();
 	private readonly watch = new StateWatch();
 	private readonly shownHandlers = new Array<ShownScoreHandler>();
+	/** teamPulsePlayers' output (reused). */
+	private readonly pulsed = new Array<number>();
 	private jingleDropped = false;
 
 	constructor(
@@ -71,6 +81,7 @@ export class RoomClearController implements OnStart {
 		private readonly freeze: FreezeFrameController,
 		private readonly particles: ParticleController,
 		private readonly actors: ActorRenderController,
+		private readonly team: TeamMomentsController,
 	) {}
 
 	onStart(): void {
@@ -132,8 +143,11 @@ export class RoomClearController implements OnStart {
 			const s: RoomClearStr = (key, vars) => pack.str(key, vars);
 			for (const c of clears.clears) {
 				const style = roomClearStyle(c, me.x, me.z, solo);
+				// docs/RUN_RECAP.md CM2: a co-op team perfect (or the KV_TeamMomentsDebug fake one).
+				const team = this.team.teamPerfectOf(c);
 				// docs/PELLETS.md PL7: a row too long for the slot folds the pellet points into Kills.
-				seq.start(c, style, motionScale(settings), roomClearFoldPellets(c, s));
+				seq.start(c, style, motionScale(settings), roomClearFoldPellets(c, s), team);
+				if (team !== undefined && c.perfect) this.teamPulse(state, c.tick);
 				if (solo) applyRoomClearSlowMo(c, this.sim.hitstop, settings);
 				else if (freezeFrameOn(settings) && c.slot >= 0) {
 					this.actors.holdActor(c.slot, c.actorId, ROOM_CLEAR.coopHoldSec);
@@ -160,6 +174,14 @@ export class RoomClearController implements OnStart {
 		this.write(look, shown);
 	}
 
+	/** CM2's team pulse: the room clear's spark ring, in gold, on every living party member. */
+	private teamPulse(state: Readonly<SimState>, tick: number): void {
+		for (const i of teamPulsePlayers(state, this.pulsed)) {
+			const p = playerAt(state, i);
+			this.particles.teamPulse(p.x, p.z, burstSeed(i, tick, TEAM_MOMENTS_VIEW.pulse.seedSalt));
+		}
+	}
+
 	private cues(look: Readonly<RoomClearLook>, settings: Readonly<JuiceSettings>): void {
 		const jingle = !this.jingleDropped;
 		if (look.landed) {
@@ -176,7 +198,7 @@ export class RoomClearController implements OnStart {
 		const s = (key: string, vars?: StringVars) => pack.str(key, vars);
 		UI.visible.set(look.active);
 		if (look.active) {
-			UI.stampText.set(roomClearStampText(look.perfect, look.rooms, s));
+			UI.stampText.set(roomClearStampText(look.perfect, look.rooms, s, look.team, look.teamStreak));
 			UI.perfect.set(look.perfect);
 			UI.stampScale.set(look.stampScale);
 			UI.stampTransparency.set(look.stampTransparency);
@@ -190,7 +212,7 @@ export class RoomClearController implements OnStart {
 			const c = look.chips[i];
 			UI.chipTransparency[i].set(c.shown ? c.transparency : 1);
 			if (!c.shown) continue;
-			const stamp = roomClearStampText(c.perfect, c.rooms, s);
+			const stamp = roomClearStampText(c.perfect, c.rooms, s, c.team);
 			UI.chipText[i].set(s(ROOM_CLEAR_STRINGS.chip, { stamp, points: c.points }));
 			UI.chipPerfect[i].set(c.perfect);
 			UI.chipOffset[i].set(c.offsetPx);

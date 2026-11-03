@@ -260,6 +260,30 @@ describe("TeamMoments: determinism and runs", () => {
 		expect(a.totals).toEqual({ teamPerfects: 3, bestTeamStreak: 2, syncParries: 3 });
 	});
 
+	it("clearsFrame then parriesFrame (the client's two phases) equal frame(); each refills only its own half", () => {
+		const s = scored(3);
+		const whole = new TeamMoments();
+		const split = new TeamMoments();
+		for (const [c, g] of LOG) {
+			const ow = whole.frame(s, c, g);
+			const wp = ow.teamPerfects.map((p) => [p.tick, p.streak, p.showStreak]);
+			const ws = syncs(ow.syncs);
+			const perfects = split.clearsFrame(s, c).teamPerfects.map((p) => [p.tick, p.streak, p.showStreak]);
+			const os = split.parriesFrame(s, g);
+			// the parry half leaves the frame's team perfects alone
+			expect([perfects, os.teamPerfects.map((p) => [p.tick, p.streak, p.showStreak]), syncs(os.syncs)]).toEqual([
+				wp,
+				wp,
+				ws,
+			]);
+		}
+		expect(split.totals).toEqual(whole.totals);
+		// solo: neither half has moments
+		const solo = new TeamMoments();
+		expect(solo.clearsFrame(scored(1), [clear(true, 5)]).teamPerfects.size()).toBe(0);
+		expect(solo.parriesFrame(scored(1), [group(0, 6), group(1, 7)]).syncs.size()).toBe(0);
+	});
+
 	it("frame boundaries do not change which syncs form (only whether a later frame's record reads `grew`)", () => {
 		const s = scored(3);
 		const perFrame = new TeamMoments();

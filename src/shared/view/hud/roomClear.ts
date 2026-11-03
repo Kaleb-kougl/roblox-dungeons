@@ -67,8 +67,33 @@ const SEGMENT_KEYS: Readonly<Record<TallyKind, string>> = {
 	sweep: ROOM_CLEAR_STRINGS.sweep,
 };
 
-/** CLEAR / PERFECT, or "PERFECT x2" for several rooms on one tick. */
-export function roomClearStampText(perfect: boolean, rooms: number, s: RoomClearStr): string {
+/**
+ * The co-op team perfect's strings (docs/RUN_RECAP.md CM2 / CM3; required: the contract's TEAM_MOMENT_STRING_KEYS).
+ * `teamStreak` reads "TEAM PERFECT x{n}", `n` the streak (TeamPerfectMoment.streak, which counts every room of a
+ * multi-room clear, so it replaces the "x{rooms}" form).
+ */
+export const TEAM_PERFECT_STRINGS = {
+	teamPerfect: "room.clear.teamPerfect",
+	teamStreak: "room.clear.teamStreak",
+} as const;
+
+/**
+ * CLEAR / PERFECT, or "PERFECT x2" for several rooms on one tick. A co-op team perfect (CM2, CMD1: `team`, only with
+ * `perfect`) reads TEAM PERFECT instead, and "TEAM PERFECT x{streak}" once `teamStreak` > 0 (the stamp's
+ * RoomClearLook.teamStreak; a chip passes 0); its multi-room form is the streak's, which counts those rooms.
+ */
+export function roomClearStampText(
+	perfect: boolean,
+	rooms: number,
+	s: RoomClearStr,
+	team = false,
+	teamStreak = 0,
+): string {
+	if (perfect && team) {
+		if (teamStreak > 0) return s(TEAM_PERFECT_STRINGS.teamStreak, { n: teamStreak });
+		const stamp = s(TEAM_PERFECT_STRINGS.teamPerfect);
+		return rooms > 1 ? s(ROOM_CLEAR_STRINGS.multi, { stamp, rooms }) : stamp;
+	}
 	const stamp = s(perfect ? ROOM_CLEAR_STRINGS.perfect : ROOM_CLEAR_STRINGS.clear);
 	return rooms > 1 ? s(ROOM_CLEAR_STRINGS.multi, { stamp, rooms }) : stamp;
 }

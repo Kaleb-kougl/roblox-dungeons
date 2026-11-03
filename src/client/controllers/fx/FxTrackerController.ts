@@ -19,8 +19,10 @@ export type FxFrameHandler = (events: FxEventBuffer, settings: Readonly<JuiceSet
  * score roller produces the frame's shown score, with NewBestController's tracker stepped inside it (docs/NEW_BEST.md
  * NB7), so the new-best frame is ready before every `normal` handler: NearMissController (and AudioController's sound
  * frame, its subscriber, which hands the new-best cues to the cue mapper) and ComboController (the NEW BEST! shout).
+ * `teamMoments` (before scoreRoll): TeamMomentsController steps the co-op moments' room-clear half (docs/RUN_RECAP.md
+ * CM2), so RoomClearController's stamp reads this frame's TEAM PERFECT streak.
  */
-export const FX_FRAME_PHASE = { scoreRoll: -1, normal: 0 } as const;
+export const FX_FRAME_PHASE = { teamMoments: -2, scoreRoll: -1, normal: 0 } as const;
 
 interface PhasedFrameHandler {
 	readonly phase: number;

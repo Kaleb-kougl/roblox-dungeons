@@ -263,7 +263,18 @@ Each step is a commit; `npm run verify` before each.
 - [ ] **CM1. TeamMoments core.** Pure + spec: TEAM PERFECT only when the sim awarded perfect and party >= 2; streak
   order and reset; sync window 12 / 13 ticks; same player twice is not a sync; three players = x3; cooldown; identical
   output from two clients stepping the same log.
-- [ ] **CM2. TEAM PERFECT presentation.** Stamp / chip text and streak, pulse rings on every living member.
+- [x] **CM2. TEAM PERFECT presentation.** Stamp / chip text and streak, pulse rings on every living member.
+  As built: client `TeamMomentsController` owns the ONE `TeamMoments` and steps it in two halves
+  (`clearsFrame` / `parriesFrame`, same result as `frame`): the clears in a new `FX_FRAME_PHASE.teamMoments` (-2, before
+  RoomClearController's `scoreRoll`), the parry groups on the first `syncs()` call of a NearMissController frame (or its
+  own near-miss subscriber); `totals(): TeamMomentTotals` (a copy) for the recap. `RoomClearSequence.start(..., team)`
+  (`RoomClearTeam`: streak / showStreak) sets `look.team` / `teamStreak` and the chip's `team`;
+  `roomClearStampText(perfect, rooms, s, team, teamStreak)` reads `room.clear.teamPerfect` / `.teamStreak` (the
+  streak's form replaces "x{rooms}"; a chip shows no streak). The pulse: `teamPulsePlayers` (every living member) ->
+  `ParticleController.teamPulse`, the room clear's spark ring in `newBest` gold (the kill's own PERFECT ring stays
+  `ember`), seed salt 19 (`TEAM_MOMENTS_VIEW.pulse`). Stamp and chip labels are TextScaled under their old text size
+  (a long translation or `TEAM PERFECT x3` shrinks instead of overflowing). Debug `KV_TeamMomentsDebug = "perfect[:n]"`
+  (the next PERFECT clear, solo too, is a team perfect with streak n; never in the totals).
 - [ ] **CM3. Strings** (with RR3 if built together).
 - [ ] **CM4. Sounds.** Two port audio IDs, SILENT in the placeholder, fallbacks; mapper spec.
 - [ ] **CM5. SYNC! callout.** Floor text, tether, ducking, cooldown.
