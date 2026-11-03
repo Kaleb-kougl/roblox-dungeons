@@ -665,6 +665,9 @@ describe("stormcaller: strikes on real endless floors", () => {
 		// around them); strike and skip counts are unchanged.
 		// Re-recorded for the merge of solid decor and docs/NEW_ENEMIES.md: floor 3's tombs / candle stands (WALL cells)
 		// move its room spawn tiles and breakables; strike and skip counts are unchanged. Before: b86ecbd6 / 8f7c3348.
-		expect(pins).toEqual(["2/1/08f85cd2", "6/0/5cfa0ffb"]); // check-asset-ids: allow (state hashes)
+		// Re-recorded for the merge of room themes (docs/DECOR.md "Room themes"): floor 3 lays out differently; run 4 now
+		// casts 3 strikes, and run 23's co-op scene no longer casts within 600 ticks (strikes in co-op stay covered by
+		// the "co-op (2)" case above). Before: 2/1/08f85cd2, 6/0/5cfa0ffb.
+		expect(pins).toEqual(["3/0/49e332ac", "0/0/7c9c4b5e"]); // check-asset-ids: allow (state hashes)
 	});
 });
