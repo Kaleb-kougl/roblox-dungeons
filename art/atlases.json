@@ -1123,6 +1123,51 @@
 				"outline": true,
 				"own": "kit-tomb-z"
 			},
+			"$comment-themes": "Room themes (docs/DECOR.md \"Room themes\"): the throne on its dais and the statue on its base at world scale, facing +X (_x) and +Z (_z), pivot = the footprint's centre on the floor (render_kit.py pivotOut); the red carpet's 2 x 2 segment along X / Z and its end, flat, pivot = its centre.",
+			"kit-throne-x": {
+				"file": "dungeon-modular-set-v2/throne/throne_x.png",
+				"pivot": [73.08, 95.86],
+				"outline": true,
+				"own": "kit-throne-x"
+			},
+			"kit-throne-z": {
+				"file": "dungeon-modular-set-v2/throne/throne_z.png",
+				"pivot": [69.04, 95.83],
+				"outline": true,
+				"own": "kit-throne-z"
+			},
+			"kit-statue-x": {
+				"file": "dungeon-modular-set-v2/statue/statue_x.png",
+				"pivot": [48.83, 54.78],
+				"outline": true,
+				"own": "kit-statue-x"
+			},
+			"kit-statue-z": {
+				"file": "dungeon-modular-set-v2/statue/statue_z.png",
+				"pivot": [47.07, 54.89],
+				"outline": true,
+				"own": "kit-statue-z"
+			},
+			"kit-carpet-x": {
+				"file": "dungeon-modular-set-v2/carpet/carpet_x.png",
+				"pivot": [45.64, 38.07],
+				"own": "kit-carpet-x"
+			},
+			"kit-carpet-z": {
+				"file": "dungeon-modular-set-v2/carpet/carpet_z.png",
+				"pivot": [45.64, 38.07],
+				"own": "kit-carpet-z"
+			},
+			"kit-carpet-end-x": {
+				"file": "dungeon-modular-set-v2/carpetEnd/carpet_end_x.png",
+				"pivot": [45.64, 38.07],
+				"own": "kit-carpet-end-x"
+			},
+			"kit-carpet-end-z": {
+				"file": "dungeon-modular-set-v2/carpetEnd/carpet_end_z.png",
+				"pivot": [45.64, 38.07],
+				"own": "kit-carpet-end-z"
+			},
 			"kit-banner": {
 				"facings": { "count": 4, "zeroDeg": 45 },
 				"animations": {

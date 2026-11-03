@@ -185,6 +185,10 @@ export const DECOR_BOX: Readonly<Record<StandingKind, DecorBoxPx>> = {
 	// base); `below`: they stand on the floor, so art reaches below the anchor line
 	tomb: { w: 20, h: 33, below: 27 },
 	candelabrum: { w: 12, h: 19, below: 2 },
+	// room themes (docs/DECOR.md "Room themes"): a box at each of the footprint's four corners, hulled (the throne's
+	// 4 x 2 dais, the statue's 3 x 3 base; art measured on the world-scale renders)
+	throne: { w: 12, h: 26, below: 7 },
+	statue: { w: 6, h: 10, below: 4 },
 };
 
 /** Tall Forge pieces in placement priority (highest first). */
@@ -230,7 +234,9 @@ export type StandingKind =
 	| "column"
 	| "columnBroken"
 	| "tomb"
-	| "candelabrum";
+	| "candelabrum"
+	| "throne"
+	| "statue";
 
 /**
  * Where an entry comes from: a Forge prop, a Forge torch, R6 far-wall dressing, a solid pillar's stump, or a void set
@@ -429,9 +435,19 @@ export interface DecorFootprint {
 	readonly runZ: number;
 }
 
-/** The anchors a footprint's box stands on: its cell's top centre, or a segment's two outer ends. */
+/**
+ * The anchors a footprint's box stands on: its cell's top centre, a segment's two outer ends, or a rectangle's four
+ * outer corners (runX and runZ both set: a set piece of solid decor).
+ */
 function anchorsOf(f: DecorFootprint, top: number): number[] {
 	if (f.x0 === f.x1 && f.y0 === f.y1) return [f.x0, top, f.y0];
+	if (f.runX > 0 && f.runZ > 0 && f.x0 !== f.x1 && f.y0 !== f.y1) {
+		const xa = f.x0 - HALF;
+		const xb = f.x1 + HALF;
+		const za = f.y0 - HALF;
+		const zb = f.y1 + HALF;
+		return [xa, top, za, xb, top, za, xb, top, zb, xa, top, zb];
+	}
 	return [f.x0 - HALF * f.runX, top, f.y0 - HALF * f.runZ, f.x1 + HALF * f.runX, top, f.y1 + HALF * f.runZ];
 }
 
@@ -937,6 +953,11 @@ export function planDecor(input: DecorPlanInput): DecorPlan {
 		readonly key: number;
 	}
 	const flatTaken = new Set<number>();
+	// a carpet's cells (docs/DECOR.md "Room themes", drawn with the solid decor) carry no Forge flat piece
+	if (input.variants !== undefined && input.variants("carpet") > 0)
+		for (const cp of d.carpets ?? [])
+			for (let yy = cp.y; yy < cp.y + cp.h; yy++)
+				for (let xx = cp.x; xx < cp.x + cp.w; xx++) flatTaken.add(yy * W + xx);
 	const groups = new Map<number, FlatPiece[]>();
 	d.props.forEach((p, index) => {
 		if (p.kind === "chest") {
@@ -1116,6 +1137,8 @@ export function planDecor(input: DecorPlanInput): DecorPlan {
 	}
 
 	// --- room banners (docs/DECOR.md "Solid decor"): more banners on far walls, only with the pack's art ---------
+	// First a banner each side of every throne (docs/DECOR.md "Room themes"), on the wall two cells past its dais' ends
+	// (past the candle stands), then up to DECOR_BANNERS.perRoom per other room, spaced from every wall piece.
 	if (input.variants !== undefined && input.variants("banner") > 0) {
 		const sp = DECOR_BANNERS.spacingTiles;
 		const hung: Array<readonly [number, number]> = [];
@@ -1123,12 +1146,57 @@ export function planDecor(input: DecorPlanInput): DecorPlan {
 			const gx = c % W;
 			hung.push([gx, (c - gx) / W]);
 		}
+		const hang = (fw: FarWall, r: number) => {
+			const c = fw.y * W + fw.x;
+			wallTaken.add(c);
+			hung.push([fw.x, fw.y]);
+			const hash = decorHash(seed, cellKey(fw.x, fw.y), DECOR_SALT.variant);
+			entries.push({
+				kind: "banner",
+				id: decorId(biome, "banner"),
+				layer: "wall",
+				x: gridToWorld(fw.x) + HALF * fw.fx,
+				y: DECOR_PLACE.wallPieceHeightTiles,
+				z: gridToWorld(fw.y) + HALF * fw.fz,
+				cellX: fw.x,
+				cellY: fw.y,
+				cells: 1,
+				runX: 0,
+				runZ: 0,
+				faceX: fw.fx,
+				faceZ: fw.fz,
+				roomId: r,
+				hash,
+				variant: variantOf(input, "banner", hash),
+				fade: -1,
+				light: false,
+				lit: false,
+				source: "dressing",
+				forgeIndex: -1,
+				rot: 0,
+				scale: 1,
+			});
+		};
+		const free = (fw: FarWall) => {
+			const c = fw.y * W + fw.x;
+			return !wallTaken.has(c) && !tallCell.has(c) && keptOut(fw.x, fw.y, false, false) === undefined;
+		};
+		for (const piece of d.solidDecor ?? []) {
+			if (piece.kind !== "throne" || piece.room < 0 || piece.room >= roomCount) continue;
+			const len = piece.fx !== 0 ? piece.h : piece.w;
+			for (const along of [-2, len + 1]) {
+				// the wall cell behind the dais' back row, `along` cells along it
+				const wx = piece.fx !== 0 ? piece.x - piece.fx : piece.x + along;
+				const wy = piece.fx !== 0 ? piece.y + along : piece.y - piece.fz;
+				const fw = farWalls[piece.room].find(
+					(f) => f.x === wx && f.y === wy && f.fx === piece.fx && f.fz === piece.fz,
+				);
+				if (fw !== undefined && free(fw)) hang(fw, piece.room);
+			}
+		}
 		for (let r = 0; r < roomCount; r++) {
 			if (r === d.boss) continue;
-			const spots = farWalls[r].filter((fw) => {
-				const c = fw.y * W + fw.x;
-				return !wallTaken.has(c) && !tallCell.has(c) && keptOut(fw.x, fw.y, false, false) === undefined;
-			});
+			const spots = farWalls[r].filter(free);
 			const keyed = spots.map((fw) => ({ fw, h: decorHash(seed, cellKey(fw.x, fw.y), DECOR_SALT.banner) }));
 			stableSort(keyed, (a, b) => (a.h < b.h ? -1 : a.h > b.h ? 1 : 0));
 			let added = 0;
@@ -1143,45 +1211,19 @@ export function planDecor(input: DecorPlanInput): DecorPlan {
 						break;
 					}
 				if (near) continue;
-				wallTaken.add(c);
-				hung.push([fw.x, fw.y]);
+				hang(fw, r);
 				added++;
-				const hash = decorHash(seed, cellKey(fw.x, fw.y), DECOR_SALT.variant);
-				entries.push({
-					kind: "banner",
-					id: decorId(biome, "banner"),
-					layer: "wall",
-					x: gridToWorld(fw.x) + HALF * fw.fx,
-					y: DECOR_PLACE.wallPieceHeightTiles,
-					z: gridToWorld(fw.y) + HALF * fw.fz,
-					cellX: fw.x,
-					cellY: fw.y,
-					cells: 1,
-					runX: 0,
-					runZ: 0,
-					faceX: fw.fx,
-					faceZ: fw.fz,
-					roomId: r,
-					hash,
-					variant: variantOf(input, "banner", hash),
-					fade: -1,
-					light: false,
-					lit: false,
-					source: "dressing",
-					forgeIndex: -1,
-					rot: 0,
-					scale: 1,
-				});
 			}
 		}
 	}
 
-	// --- solid decor (docs/DECOR.md "Solid decor"), after the wall pieces ---------------------------
-	// Dungeon.solidDecor's tombs and candle stands stand on their own WALL cells (real obstacles: the footprint rule
-	// does not apply, nothing can stand behind them inside their cells), at floor level, faded like any standing piece.
+	// --- solid decor (docs/DECOR.md "Solid decor", "Room themes"), after the wall pieces ---------------------------
+	// Dungeon.solidDecor's set pieces stand on their own WALL cells (real obstacles: the footprint rule does not apply,
+	// nothing can stand behind them inside their cells), at floor level, faded like any standing piece. A 2 x 1 tomb's
+	// box stands at both ends of its run, a rectangle's (throne, statue) at its four corners. Then the carpets, flat.
 	for (const piece of d.solidDecor ?? []) {
 		const kind: StandingKind = piece.kind;
-		const alongX = piece.w > 1;
+		const rect = piece.w > 1 && piece.h > 1;
 		const f: DecorFootprint = {
 			x0: piece.x,
 			y0: piece.y,
@@ -1191,9 +1233,8 @@ export function planDecor(input: DecorPlanInput): DecorPlan {
 			runZ: piece.h > 1 ? 1 : 0,
 		};
 		const box = DECOR_BOX[kind];
-		const a = anchorsOf(f, 0);
-		const x = a.size() === 3 ? a[0] : (a[0] + a[3]) / 2;
-		const z = a.size() === 3 ? a[2] : (a[2] + a[5]) / 2;
+		const x = (f.x0 + f.x1) / 2;
+		const z = (f.y0 + f.y1) / 2;
 		fadeBoxes.push({
 			entry: entries.size(),
 			polygon: boxPolygon(cam, f, box, 0, 0),
@@ -1201,6 +1242,11 @@ export function planDecor(input: DecorPlanInput): DecorPlan {
 		});
 		const hash = decorHash(seed, cellKey(piece.x, piece.y), DECOR_SALT.variant);
 		const count = input.variants !== undefined ? input.variants(kind) : 0;
+		// a tomb's variants: 1 along X, 2 along Z; a throne's / statue's: 1 facing +X, 2 facing +Z (when the pack has both)
+		let axisVariant = -1;
+		if (kind === "tomb") axisVariant = piece.w > 1 ? 0 : 1;
+		else if (rect && (kind === "throne" || kind === "statue")) axisVariant = piece.fx !== 0 ? 0 : 1;
+		const light = LIGHTS.has(kind);
 		entries.push({
 			kind,
 			id: decorId(biome, kind),
@@ -1213,21 +1259,60 @@ export function planDecor(input: DecorPlanInput): DecorPlan {
 			cells: math.max(piece.w, piece.h),
 			runX: f.runX,
 			runZ: f.runZ,
-			faceX: 0,
-			faceZ: 0,
+			faceX: piece.fx,
+			faceZ: piece.fz,
 			roomId: piece.room,
 			hash,
-			// a tomb's variants: 1 along X, 2 along Z (when the pack has both)
-			variant: kind === "tomb" && count > 1 ? (alongX ? 0 : 1) : variantOf(input, kind, hash),
+			variant: axisVariant >= 0 && count > 1 ? axisVariant : variantOf(input, kind, hash),
 			fade: fadeBoxes.size() - 1,
-			light: false,
-			lit: false,
+			light,
+			lit: light,
 			source: "solid",
 			forgeIndex: -1,
 			rot: 0,
 			scale: 1,
 		});
 	}
+	if (input.variants !== undefined && input.variants("carpet") > 0)
+		for (const cp of d.carpets ?? []) {
+			// 2 x 2 segments from the throne outward; variants: 1 along X, 2 along Z, 3 / 4 the end along X / Z
+			const len = cp.fx !== 0 ? cp.w : cp.h;
+			const count = input.variants("carpet");
+			for (let k = 0; k < len; k += 2) {
+				// segment k's first cell along the run, counted from the throne
+				const along = cp.fx === -1 || cp.fz === -1 ? len - 2 - k : k;
+				const sx = cp.fx !== 0 ? cp.x + along : cp.x;
+				const sy = cp.fx !== 0 ? cp.y : cp.y + along;
+				const last = k + 2 >= len;
+				const v = (cp.fx !== 0 ? 0 : 1) + (last ? 2 : 0);
+				const hash = decorHash(seed, cellKey(sx, sy), DECOR_SALT.variant);
+				entries.push({
+					kind: "carpet",
+					id: decorId(biome, "carpet"),
+					layer: "flat",
+					x: sx + HALF,
+					y: 0,
+					z: sy + HALF,
+					cellX: sx,
+					cellY: sy,
+					cells: 2,
+					runX: cp.fx !== 0 ? 1 : 0,
+					runZ: cp.fx !== 0 ? 0 : 1,
+					faceX: cp.fx,
+					faceZ: cp.fz,
+					roomId: cp.room,
+					hash,
+					variant: count > v ? v : variantOf(input, "carpet", hash),
+					fade: -1,
+					light: false,
+					lit: false,
+					source: "solid",
+					forgeIndex: -1,
+					rot: 0,
+					scale: 1,
+				});
+			}
+		}
 
 	// --- void set pieces (docs/VOID_DECOR.md VD5) -------------------------------------------------
 	if (input.voidPlan !== undefined) addVoidPieces(input, input.voidPlan, seed, profile, entries, fadeBoxes);

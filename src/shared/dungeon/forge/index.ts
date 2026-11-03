@@ -18,4 +18,12 @@ export { THEMES, THEME_KEYS, ROOM_TINT, resolveAutoTheme, type ForgeTheme, type 
 export { KALEB_VALE_MVP_PARAMS, FORGE_DEMO_DEFAULT_PARAMS } from "./presets";
 export { dsin, dcos } from "./trig";
 export * from "./types";
-export { SOLID_DECOR, placeSolidDecor, type SolidDecorKind, type SolidDecorPiece } from "./solidDecor";
+export {
+	SOLID_DECOR,
+	placeSolidDecor,
+	type DecorCarpet,
+	type RoomTheme,
+	type SolidDecorKind,
+	type SolidDecorLayout,
+	type SolidDecorPiece,
+} from "./solidDecor";

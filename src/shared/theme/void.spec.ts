@@ -398,9 +398,11 @@ describe("void decor (docs/VOID_DECOR.md VD7)", () => {
 describe("void dressing decor kinds (docs/VOID_DECOR.md VD7)", () => {
 	it("flagstones (flat) is a standard decor kind, appended after the Forge's; curb is not one (VDD10: no wall props)", () => {
 		const n = DECOR_KINDS.size();
-		expect(DECOR_KINDS[n - 4]).toBe("flagstones");
-		expect(DECOR_KINDS[n - 3]).toBe("chandelier"); // scattered (docs/DECOR.md "3D kits")
-		expect([DECOR_KINDS[n - 2], DECOR_KINDS[n - 1]]).toEqual(["tomb", "candelabrum"]); // solid decor, last
+		expect(DECOR_KINDS[n - 7]).toBe("flagstones");
+		expect(DECOR_KINDS[n - 6]).toBe("chandelier"); // scattered (docs/DECOR.md "3D kits")
+		expect([DECOR_KINDS[n - 5], DECOR_KINDS[n - 4]]).toEqual(["tomb", "candelabrum"]); // solid decor
+		// room themes (docs/DECOR.md "Room themes"), last
+		expect([DECOR_KINDS[n - 3], DECOR_KINDS[n - 2], DECOR_KINDS[n - 1]]).toEqual(["throne", "statue", "carpet"]);
 		expect(DECOR_KINDS.includes("curb" as never)).toBe(false);
 		expect(decorId("biome.1", "flagstones")).toBe("decor.delve.b1.flagstones");
 	});

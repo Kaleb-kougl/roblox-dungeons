@@ -64,6 +64,18 @@ export interface BreakableTunables {
 	readonly seedTries: number;
 	/** Chance that a piece is a crate (else a barrel), one draw per piece. */
 	readonly crateShare: number;
+	/**
+	 * Storerooms (rooms whose Forge theme is "store", docs/DECOR.md "Room themes"): count x countScale + countExtra
+	 * (still at most maxPerRoom), no lone piece, bigger clusters seeded in the room's corners first (a cell with a wall
+	 * on two sides; up to cornerTries rejected corner seeds, then any wall cell).
+	 */
+	readonly store: {
+		readonly countScale: number;
+		readonly countExtra: number;
+		readonly clusterMin: number;
+		readonly clusterMax: number;
+		readonly cornerTries: number;
+	};
 }
 
 export const BREAKABLE: BreakableTunables = table.freeze({
@@ -92,4 +104,5 @@ export const BREAKABLE: BreakableTunables = table.freeze({
 	loneWallClearTiles: 3,
 	seedTries: 12,
 	crateShare: 0.5,
+	store: table.freeze({ countScale: 2, countExtra: 3, clusterMin: 3, clusterMax: 5, cornerTries: 8 }),
 });

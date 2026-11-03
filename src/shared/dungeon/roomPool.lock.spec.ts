@@ -88,27 +88,27 @@ describe("endless room pool lock (EV5)", () => {
 		]);
 	});
 
-	it("seeded roster: floor 1, run seeds 1-200, party 1-4 (re-recorded for DSD1 and solid decor)", () => {
+	it("seeded roster: floor 1, run seeds 1-200, party 1-4 (re-recorded for DSD1, solid decor and room themes)", () => {
 		const got = digests(1, 1, 200, [1, 2, 3, 4], true);
 		for (const line of got) print(`[room pool lock] roster ${line}`);
 		expect(got).toEqual([
-			"floor 1 party 1: 7384 spawns, 8dd7b33a",
-			"floor 1 party 2: 9703 spawns, dacb0e59",
-			"floor 1 party 3: 12003 spawns, 83b91256",
-			"floor 1 party 4: 13885 spawns, 2503856d", // check-asset-ids: allow (FNV-1a digest)
+			"floor 1 party 1: 7384 spawns, a8cf7f36",
+			"floor 1 party 2: 9703 spawns, 57e14ec9",
+			"floor 1 party 3: 12003 spawns, ab6b646f",
+			"floor 1 party 4: 13885 spawns, fd44a8d2", // check-asset-ids: allow (FNV-1a digest)
 		]);
 	});
 
-	it("seeded roster: floors 2-6, run seeds 1-40, solo (re-recorded for DSD1 and solid decor)", () => {
+	it("seeded roster: floors 2-6, run seeds 1-40, solo (re-recorded for DSD1, solid decor and room themes)", () => {
 		const got: string[] = [];
 		for (let floor = 2; floor <= 6; floor++) got.push(digests(floor, 1, 40, [1], true)[0]);
 		for (const line of got) print(`[room pool lock] roster ${line}`);
 		expect(got).toEqual([
-			"floor 2 party 1: 1719 spawns, 69f6876b",
-			"floor 3 party 1: 1681 spawns, eaa0210a",
-			"floor 4 party 1: 1910 spawns, 0a4b3e48",
-			"floor 5 party 1: 1930 spawns, bef06483",
-			"floor 6 party 1: 2466 spawns, 16aad4e8",
+			"floor 2 party 1: 1719 spawns, 3c4d5cbc",
+			"floor 3 party 1: 1681 spawns, fceb0f0e",
+			"floor 4 party 1: 1910 spawns, d3ba2aae",
+			"floor 5 party 1: 1930 spawns, a8146f51",
+			"floor 6 party 1: 2466 spawns, 6f1cca84",
 		]);
 	});
 });

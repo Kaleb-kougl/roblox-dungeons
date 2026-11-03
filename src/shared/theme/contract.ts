@@ -1020,6 +1020,12 @@ export const DECOR_KIND_LAYERS = {
 	// only; a tomb's variant 1 lies along X, 2 along Z
 	tomb: ["low"] as const,
 	candelabrum: ["low"] as const,
+	// room themes (docs/DECOR.md "Room themes"): the boss room's throne on its dais and the statue on its base (solid,
+	// low; variant 1 faces +X, 2 faces +Z), and the throne's carpet (flat, walkable; variants 1 / 2 a 2 x 2 segment
+	// along X / Z, 3 / 4 the end along X / Z)
+	throne: ["low"] as const,
+	statue: ["low"] as const,
+	carpet: FLAT_SPOT,
 } as const satisfies Record<string, ReadonlyArray<DecorLayer>>;
 export type DecorKind = keyof typeof DECOR_KIND_LAYERS;
 
@@ -1052,6 +1058,9 @@ export const DECOR_KINDS: ReadonlyArray<DecorKind> = [
 	"chandelier",
 	"tomb",
 	"candelabrum",
+	"throne",
+	"statue",
+	"carpet",
 ];
 
 /**

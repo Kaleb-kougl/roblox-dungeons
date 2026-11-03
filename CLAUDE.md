@@ -528,8 +528,15 @@ Decision log (deviations from `PLAN.md`):
   floor; the decor plan's `solid` step stands kinds `tomb` / `candelabrum` on them (fade box, no footprint rule).
   Endless layouts, spawns, replays and scores changed (boards stay `_v1`); `DAILY.ruleset` 2 -> 3. The endless test
   bot quantizes its axes (`quantizeAxis`: no -0, which the recording codec cannot carry). With banner art the decor
-  plan also hangs up to 2 more banners per room on far walls (`DECOR_BANNERS`, presentation only). Tomb upload and
-  Studio check pending.
+  plan also hangs up to 2 more banners per room on far walls (`DECOR_BANNERS`, presentation only). Tombs uploaded
+  2026-11-02; Studio check pending.
+- **Room themes (docs/DECOR.md "Room themes").** Gameplay, same option as solid decor. Every room gets a theme
+  (`Dungeon.roomThemes`): the boss room a throne on its dais (4 x 2, solid) against a far wall with a red carpet (flat,
+  `Dungeon.carpets`), candles and door braziers; the entrance door braziers; shrines a statue (3 x 3, solid); combat /
+  elite rooms a crypt (tombs along the walls), hall (candles lining walls), store (more breakables, corner clusters) or
+  plain. Wall pieces sit flush and keep 2 tiles of floor on their open sides; solidDecor.spec checks no new pinch. The
+  test bots path round breakables (`pathField` `blocked`). Throne / statue / carpet art uploads and Studio check
+  pending.
 - **Credits screen.** Presentation only. Main menu > Credits (MenuScreen `credits`, `CreditsScreen`, Back returns to
   the menu): every work in THIRD_PARTY_NOTICES.md, by section, from shared/view/menu `CREDITS` (titles, names and
   licence lines are data in every language; section labels, "by {author}" and the change note are strings

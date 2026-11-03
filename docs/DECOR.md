@@ -240,8 +240,51 @@ them.
 - **Room banners** (presentation only, with the solid decor): when the pack has banner art, the decor plan hangs up to
   `DECOR_BANNERS.perRoom` (2) more banners per room (never the boss room) on its far-wall faces, 3+ tiles from every
   wall piece; census about 20 a floor on top of the Forge's.
-- Open: upload `kit-tomb-x.png` / `kit-tomb-z.png`, Studio check (tombs read at the camera, enemies don't snag, cover
+- Tombs uploaded 2026-11-02. Open: Studio check (tombs read at the camera, enemies don't snag, cover
   feels fair), tuning (shares, sizes, which biomes).
+
+## Room themes (2026-11-02, owner: "follow this example", the Dungeon Modular Set V2 sample scene)
+
+The kit's own sample scene dresses each room as one idea: a throne room with its carpet and banners, a statue
+shrine, a crypt of sarcophagi along the walls, stores in the corners, candle stands lining walls, braziers at the
+entrance. Owner's choices: tombs **mostly against walls, some in the middle**; all four combat themes; **big set
+pieces solid** (throne dais, statue base), carpet and wall art walk-through. Gameplay, from the same Forge option as
+solid decor (`ForgeParams.solidDecor`, endless only, its own stream): `shared/dungeon/forge/solidDecor.ts` now gives
+every room a theme (`Dungeon.roomThemes`, by room id) and places its set pieces.
+
+| Room | Theme | Set pieces (solid unless noted) |
+|---|---|---|
+| boss | `throne` | the throne on its dais (4 x 2, `throne`) against a far wall, the most centred spot at least `centreDoorTiles` (6) from every doorway; a candle stand each side; the red carpet (flat, walkable, `Dungeon.carpets`: 2 wide, up to 16 tiles toward the arena); candle pairs along it outside the arena's middle (`arenaClear` 7); a brazier each side of every doorway, inside |
+| entrance | `entrance` | a brazier each side of every doorway, inside |
+| shrine | `shrine` | the statue on its round base (3 x 3, `statue`; candles and lectern in the art) against a far wall, 3+ tiles clear of the shrine; a candle each side (fits in 56 of 72 census shrine rooms; small ones stay bare) |
+| combat / elite | `crypt` (grim 45 %, else 20 %; graveyard rooms always) | 3-4 tombs (5-6 in big rooms) lying along any wall, a candle stand at one or both ends; big rooms maybe one free-standing tomb, candles past both ends |
+| | `hall` (20 / 25 %) | candle stands flush against the walls every 5+ tiles (at most 16); big rooms maybe a statue on a far wall |
+| | `store` (15 / 25 %) | nothing solid: the breakables (breakables.ts) get x2 + 3 pieces, clusters of 3-5, seeded in the corners first |
+| | `plain` (20 / 30 %) | maybe one tomb along a wall (55 %), big rooms maybe a free-standing one (30 %) |
+| treasure, frozen lake | `none` | nothing |
+
+- **Rules** (`SOLID_DECOR`): a wall piece sits flush (every cell behind its back row is non-floor) and keeps every cell
+  within `clearTiles` (2) of its open sides floor of its room; past its ends the back line may be wall only as one solid
+  run from the piece (a curved or stepped wall), never with floor between. Candles beside a piece are checked before
+  the piece is walled, so they touch it and leave no gap elsewhere. Door braziers are the only pieces within
+  `doorTiles` of a doorway: flush with the wall in the opening's own row. solidDecor.spec checks it on 72 floors: the
+  floor stays one piece and **no piece makes a new one-tile pinch** (the one by-design exception: a free-standing
+  tomb's candle one cell past its end).
+- **Census** (72 floors, per floor): 1 throne and carpet, 0.9 statues, 9.8 tombs, 29 candle stands, 4.2 braziers.
+- **Drawing** (decor plan `solid` step): new kinds `throne` and `statue` (low; variant 1 faces +X, 2 faces +Z; a box at
+  each of the footprint's four corners, hulled: `anchorsOf` takes rectangles) and `carpet` (flat; 2 x 2 segments,
+  variants 1 / 2 along X / Z, 3 / 4 the end; no Forge flat piece on its cells), solid braziers with the pack's brazier
+  (lit). With banner art, a banner hangs two cells past each end of the dais (the boss room's only extra banners).
+- **Art** (`scripts/art/kit/dungeon-modular-set-v2.json`, render_kit.py's new `region` / `moves` / `pivotAt`): the
+  throne seated on its dais (`unitsPerTile` 98: 4 tiles wide), the statue with its base, candle ring and lectern (135:
+  3 x 3), the carpet segment and end (100: 2 x 2 tiles), each turned to +X and +Z. Vale art `kit-throne-x/-z`,
+  `kit-statue-x/-z`, `kit-carpet-x/-z`, `kit-carpet-end-x/-z` (own PNGs).
+- **Changed with it**: the test bots walk round breakables (`pathField`'s new `blocked` cells: the endless bot used to
+  stand stuck on a storeroom crate); roomPool.lock's roster digests re-recorded; fxCues.spec allows a flask cue lost
+  to a floor change inside one paced frame. `DAILY.ruleset` stays 3 (solid decor has not shipped).
+- Open: **upload the eight `kit-throne-*`, `kit-statue-*`, `kit-carpet-*` PNGs** (until then thrones and statues
+  block as walls but draw nothing); Studio check (throne room reads, enemies and the boss round the pieces, storerooms
+  read as storerooms); tuning (theme shares, hall spacing, carpet length).
 
 ## Decisions
 

@@ -76,7 +76,8 @@ import type { RobloxAssetId } from "../../types";
  * uploaded 2026-11-01, ID given by the owner.
  * kit-cage-1 / -2 and kit-chains-1 / -2 (the trial 3D kit, docs/DECOR.md "3D kits") uploaded 2026-11-02 2:00 PM by
  * k9kbdev, transcribed from an Asset Manager screenshot; kit-chandelier-1.png 2026-11-02 2:28 PM; the second kit's
- * kit-banner / kit-sarcophagus / kit-candle-stand (docs/DECOR.md "3D kits") 2026-11-02 3:05 PM.
+ * kit-banner / kit-sarcophagus / kit-candle-stand (docs/DECOR.md "3D kits") 2026-11-02 3:05 PM; kit-tomb-x / kit-tomb-z
+ * (solid decor, docs/DECOR.md "Solid decor") 2026-11-02 6:07 PM.
  */
 export const VALE_ASSET_IDS: Readonly<Record<string, RobloxAssetId>> = {
 	"amb-b1.ogg": "rbxassetid://91158343621799",
@@ -127,6 +128,8 @@ export const VALE_ASSET_IDS: Readonly<Record<string, RobloxAssetId>> = {
 	"kit-chains-2.png": "rbxassetid://132113945005181",
 	"kit-chandelier-1.png": "rbxassetid://135009681923399",
 	"kit-sarcophagus.png": "rbxassetid://71399333921022",
+	"kit-tomb-x.png": "rbxassetid://137283582236805",
+	"kit-tomb-z.png": "rbxassetid://137140622390095",
 	"loot-glint.png": "rbxassetid://92133950711891",
 	"music-biome-1.ogg": "rbxassetid://93211571195066",
 	"music-biome-2.ogg": "rbxassetid://119153958408720",

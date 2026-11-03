@@ -6,7 +6,7 @@
  * Roblox port of project-kaleb-vale src/dungeon/forge/types.ts @ 42897e2. Typed arrays became plain number arrays
  * (0-based in TypeScript, same indexing: y * W + x).
  */
-import type { SolidDecorPiece } from "./solidDecor";
+import type { DecorCarpet, RoomTheme, SolidDecorPiece } from "./solidDecor";
 
 /** Tile values in Dungeon.grid (indexed y * W + x). */
 export const TileType = { VOID: 0, FLOOR: 1, WALL: 2, POOL: 3 } as const;
@@ -258,7 +258,11 @@ export interface Dungeon {
 	lakeCells: Cell[];
 	lakeMask: number[];
 	arches: Arch[];
-	/** Solid decor (ForgeParams.solidDecor): tombs and candle stands standing on WALL cells; empty when off. */
+	/** Solid decor (ForgeParams.solidDecor): set pieces standing on WALL cells; empty when off. */
 	solidDecor: SolidDecorPiece[];
+	/** Carpet runs (ForgeParams.solidDecor, the boss room's throne): flat, walkable presentation; absent or empty when off. */
+	carpets?: DecorCarpet[];
+	/** Each room's dressing theme by room id (ForgeParams.solidDecor); absent or empty when off. */
+	roomThemes?: RoomTheme[];
 	stats: DungeonStats;
 }

@@ -203,7 +203,11 @@ export class Driver {
 
 	/** Walks to world (tx, tz) until `done()` or the tick budget runs out; rolls now and then. Returns ticks used. */
 	walkTo(tx: number, tz: number, done: () => boolean, maxTicks: number, avoid?: readonly [number, number]): number {
-		const field = distanceField(this.world().dungeon, tx, tz, avoid);
+		// round the floor's breakables like a player would (solid decor is already wall in the grid)
+		const w = this.world();
+		const blocked = new Set<number>();
+		for (const b of w.breakables ?? []) blocked.add(b.y * w.dungeon.W + b.x);
+		const field = distanceField(w.dungeon, tx, tz, avoid, blocked);
 		const startFloor = this.floor();
 		let n = 0;
 		while (n < maxTicks && !done() && this.state.player.dead === 0 && this.floor() === startFloor) {

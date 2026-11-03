@@ -70,8 +70,12 @@ describe("vale decor art held to DECOR_BOX (docs/DECOR.md R5)", () => {
 		[7, 11],
 		[12, 3],
 		[4, 16],
-	])
-		plans.push(planDecor(decorInputOfLayout(buildEndlessFloor(runSeed, floor, dungeonFor))));
+	]) {
+		// planned as the game does, with the pack's variant counts (a throne's / tomb's variant is its facing / axis)
+		const input = decorInputOfLayout(buildEndlessFloor(runSeed, floor, dungeonFor));
+		const biome = planDecor(input).biome;
+		plans.push(planDecor({ ...input, variants: (k) => core.decorVariants(biome, k).size() }));
+	}
 	const basis = DECOR_CAMERA;
 
 	it("draws every standing piece the pack has art for, columns and braziers whole, walls at >= 95 %", () => {

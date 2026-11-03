@@ -352,9 +352,49 @@
 			"bytes": 1308
 		},
 		{
+			"path": "dungeon-modular-set-v2/carpet/carpet_x.png",
+			"sha256": "cf2918075cc3194c10927624a645edce78edc984f00da7b15c152b641b9a0f18",
+			"bytes": 6152
+		},
+		{
+			"path": "dungeon-modular-set-v2/carpet/carpet_z.png",
+			"sha256": "20d187d1f901a6a63faefdaa68d3020b32488ebe28a2a17a5fbaccce8f602f01",
+			"bytes": 6301
+		},
+		{
+			"path": "dungeon-modular-set-v2/carpetEnd/carpet_end_x.png",
+			"sha256": "6f56ad0017d7cb8f77acc7ac6d5ff817e0ce3714cf670523e332834b59920994",
+			"bytes": 6506
+		},
+		{
+			"path": "dungeon-modular-set-v2/carpetEnd/carpet_end_z.png",
+			"sha256": "2835177243ffcd4aefa787acc7a233a5ac4339f90efef7a95e63d969dbc8532f",
+			"bytes": 6545
+		},
+		{
 			"path": "dungeon-modular-set-v2/sarco/sarco_1.png",
 			"sha256": "d932be39b30d46df01de8f383e7e2b8b6c400a3a03e0344f3e6022104cc7b5e1",
 			"bytes": 2408
+		},
+		{
+			"path": "dungeon-modular-set-v2/statue/statue_x.png",
+			"sha256": "b8141ee6693fb5ef54c569a803248ac3b3c648e4ead054fca62dfddde4eef88e",
+			"bytes": 15906
+		},
+		{
+			"path": "dungeon-modular-set-v2/statue/statue_z.png",
+			"sha256": "4d6c903cc345c94eb7bb88fd010b33d672fd2953805d4e84185ac13c01838013",
+			"bytes": 16064
+		},
+		{
+			"path": "dungeon-modular-set-v2/throne/throne_x.png",
+			"sha256": "48feea236285bd2af3e153453596ca34107d93c3f4c5df9ad2c70c09f107bb23",
+			"bytes": 23005
+		},
+		{
+			"path": "dungeon-modular-set-v2/throne/throne_z.png",
+			"sha256": "d3b9fea57700833392bb9d7bd8ea6fd5d79d019beb039d6b441b2cc5f84e614f",
+			"bytes": 23025
 		},
 		{
 			"path": "dungeon-modular-set-v2/tomb/tomb_x.png",

@@ -233,6 +233,16 @@ export const VALE_DECOR_PIECES: ReadonlyArray<ValeDecorPiece> = [
 	{ kind: "tomb", variant: 1, art: "kit-tomb-x", layer: "low" },
 	{ kind: "tomb", variant: 2, art: "kit-tomb-z", layer: "low" },
 	{ kind: "candelabrum", art: "kit-candle-stand", layer: "low" },
+	// room themes (docs/DECOR.md "Room themes"): the throne and the statue facing +X / +Z, the carpet's segment along
+	// X / Z and its end along X / Z
+	{ kind: "throne", variant: 1, art: "kit-throne-x", layer: "low" },
+	{ kind: "throne", variant: 2, art: "kit-throne-z", layer: "low" },
+	{ kind: "statue", variant: 1, art: "kit-statue-x", layer: "low" },
+	{ kind: "statue", variant: 2, art: "kit-statue-z", layer: "low" },
+	{ kind: "carpet", variant: 1, art: "kit-carpet-x", layer: "flat" },
+	{ kind: "carpet", variant: 2, art: "kit-carpet-z", layer: "flat" },
+	{ kind: "carpet", variant: 3, art: "kit-carpet-end-x", layer: "flat" },
+	{ kind: "carpet", variant: 4, art: "kit-carpet-end-z", layer: "flat" },
 	{ kind: "debris", variant: 1, art: "bricks-e", layer: "flat" },
 	{ kind: "debris", variant: 2, art: "rocks-e", layer: "flat" },
 	{ kind: "debris", variant: 3, art: "bricks-sw", layer: "flat" },

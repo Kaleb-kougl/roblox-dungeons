@@ -1,6 +1,7 @@
-// Solid decor on endless floors (ForgeParams.solidDecor, docs/DECOR.md "Solid decor"): tombs and candle stands in combat
-// and elite rooms become WALL from their own stream, so every other piece of the floor is the option-off one; the floor
-// stays one piece, paths round them stay clear, nothing stands by a doorway, and M1 and the tutorial have none.
+// Solid decor and room themes on endless floors (ForgeParams.solidDecor, docs/DECOR.md "Solid decor", "Room themes"):
+// set pieces become WALL from their own stream, so every other piece of the floor is the option-off one; the floor
+// stays one piece, no piece makes a new pinch, nothing but the door braziers stands by a doorway, and M1 and the
+// tutorial have none.
 import { describe, expect, it } from "@rbxts/jest-globals";
 import {
 	KALEB_VALE_MVP_PARAMS,
@@ -85,44 +86,144 @@ describe("solidDecor (Forge option)", () => {
 		expect(pieces).toBeGreaterThan(onOff.size()); // a few per floor
 	});
 
-	it("walls only open floor of combat / elite rooms, keeps clear of doorways and leaves the floor in one piece", () => {
+	it("walls only open floor of each piece's own room, by theme, and leaves the floor in one piece", () => {
 		const problems: string[] = [];
-		let tombs = 0;
-		let candles = 0;
+		const kindsByType: Record<string, ReadonlyArray<string>> = {
+			[RoomType.BOSS]: ["throne", "candelabrum", "brazier"],
+			[RoomType.ENTRANCE]: ["brazier"],
+			[RoomType.SHRINE]: ["statue", "candelabrum"],
+			[RoomType.COMBAT]: ["tomb", "candelabrum", "statue"],
+			[RoomType.ELITE]: ["tomb", "candelabrum", "statue"],
+		};
+		const counts = new Map<string, number>();
 		for (const { off, on } of onOff) {
 			expect(on.valid).toBe(true);
 			expect(connected(on)).toBe(true);
 			expect(on.stats.reach).toBe(on.stats.floorTiles);
+			expect((on.roomThemes ?? []).size()).toBe(on.rooms.size());
 			for (const p of on.solidDecor) {
 				const room = on.rooms[p.room];
-				if (room.type !== RoomType.COMBAT && room.type !== RoomType.ELITE)
-					problems.push(`room ${p.room} ${room.type}`);
-				if (p.kind === "tomb") tombs++;
-				else candles++;
-				const r = p.kind === "tomb" ? SOLID_DECOR.clearTiles : SOLID_DECOR.candleClearTiles;
+				counts.set(p.kind, (counts.get(p.kind) ?? 0) + 1);
+				if (!(kindsByType[room.type] ?? []).includes(p.kind)) problems.push(`${p.kind} in ${room.type}`);
 				for (let y = p.y; y < p.y + p.h; y++)
 					for (let x = p.x; x < p.x + p.w; x++) {
 						const c = y * on.W + x;
-						if (on.grid[c] !== TileType.WALL || on.roomId[c] !== p.room)
-							problems.push(`${x},${y} not walled`);
+						if (off.grid[c] !== TileType.FLOOR || off.roomId[c] !== p.room)
+							problems.push(`${x},${y} not floor`);
+						if (on.grid[c] !== TileType.WALL) problems.push(`${x},${y} not walled`);
 					}
-				// the ring round it was open floor of the room before (off), and only solid decor is walled there now
-				for (let y = p.y - r; y < p.y + p.h + r; y++)
-					for (let x = p.x - r; x < p.x + p.w + r; x++) {
-						const c = y * on.W + x;
-						if (off.grid[c] !== TileType.FLOOR || off.roomId[c] !== p.room) problems.push(`${x},${y} ring`);
-					}
-				const dr = SOLID_DECOR.doorTiles;
+				// near a doorway: only the door braziers, which flank an opening (a doorway cell diagonal to them)
+				const dr = p.kind === "brazier" ? 0 : SOLID_DECOR.doorTiles;
 				for (let y = p.y - dr; y < p.y + p.h + dr; y++)
 					for (let x = p.x - dr; x < p.x + p.w + dr; x++)
 						if (x >= 0 && y >= 0 && x < on.W && y < on.H && on.doorway[y * on.W + x] !== 0)
-							problems.push(`${x},${y} doorway`);
+							problems.push(`${p.kind} ${x},${y} doorway`);
+				if (p.kind === "brazier") {
+					let flank = false;
+					for (let y = p.y - 1; y <= p.y + 1; y++)
+						for (let x = p.x - 1; x <= p.x + 1; x++) if (on.doorway[y * on.W + x] !== 0) flank = true;
+					if (!flank) problems.push(`brazier ${p.x},${p.y} flanks no doorway`);
+				}
+				// flush: every cell behind a wall-attached piece's back row is solid
+				if (p.fx !== 0 || p.fz !== 0) {
+					const n = p.fx !== 0 ? p.h : p.w;
+					for (let k = 0; k < n; k++) {
+						const bx = p.fx === 1 ? p.x - 1 : p.fx === -1 ? p.x + p.w : p.x + k;
+						const by = p.fx !== 0 ? p.y + k : p.fz === 1 ? p.y - 1 : p.y + p.h;
+						if (tileAt(on, bx, by) === TileType.FLOOR) problems.push(`${p.kind} ${p.x},${p.y} not flush`);
+					}
+				}
 			}
 		}
 		expect(problems.filter((_, i) => i < 10)).toEqual([]);
-		print(`[solid decor] ${onOff.size()} floors: ${tombs} tombs, ${candles} candle stands`);
-		expect(tombs).toBeGreaterThan(0);
-		expect(candles).toBeGreaterThan(0);
+		const line: string[] = [];
+		counts.forEach((v, k) => line.push(`${k} ${string.format("%.1f", v / onOff.size())}`));
+		print(`[solid decor] ${onOff.size()} floors, per floor: ${line.join(", ")}`);
+		for (const k of ["tomb", "candelabrum", "throne", "statue", "brazier"])
+			expect(counts.get(k) ?? 0).toBeGreaterThan(0);
+	});
+
+	it("makes no new pinch: a floor cell walled in on two opposite sides by a piece was not so before", () => {
+		// (the one exception by design: a free-standing tomb's candle stands one floor cell past its ends)
+		const problems: string[] = [];
+		for (const { off, on } of onOff) {
+			const pieceAt = new Map<number, number>();
+			on.solidDecor.forEach((p, i) => {
+				for (let y = p.y; y < p.y + p.h; y++)
+					for (let x = p.x; x < p.x + p.w; x++) pieceAt.set(y * on.W + x, i);
+			});
+			const freeCandle = (c: number | undefined) => {
+				if (c === undefined) return false;
+				const p = on.solidDecor[c];
+				return p.kind === "candelabrum" && p.fx === 0 && p.fz === 0;
+			};
+			const tomb = (c: number | undefined) => c !== undefined && on.solidDecor[c].kind === "tomb";
+			for (let y = 1; y < on.H - 1; y++)
+				for (let x = 1; x < on.W - 1; x++) {
+					const c = y * on.W + x;
+					if (on.grid[c] !== TileType.FLOOR) continue;
+					for (const [dx, dy] of [
+						[1, 0],
+						[0, 1],
+					]) {
+						const a = c - dy * on.W - dx;
+						const b = c + dy * on.W + dx;
+						if (on.grid[a] === TileType.FLOOR || on.grid[b] === TileType.FLOOR) continue;
+						if (off.grid[a] !== TileType.FLOOR && off.grid[b] !== TileType.FLOOR) continue; // pinched already
+						const pa = pieceAt.get(a);
+						const pb = pieceAt.get(b);
+						if (pa === undefined && pb === undefined) continue;
+						if ((freeCandle(pa) && tomb(pb)) || (freeCandle(pb) && tomb(pa))) continue;
+						problems.push(`${x},${y}`);
+					}
+				}
+		}
+		expect(problems.filter((_, i) => i < 10)).toEqual([]);
+	});
+
+	it("gives every room a theme by its type; the boss room's carpet lies on its floor in front of the throne", () => {
+		const problems: string[] = [];
+		let thrones = 0;
+		let carpets = 0;
+		for (const { on } of onOff) {
+			const themes = on.roomThemes ?? [];
+			for (const r of on.rooms) {
+				const t = themes[r.id];
+				const want =
+					r.id === on.boss
+						? ["throne"]
+						: r.type === RoomType.ENTRANCE
+						? ["entrance"]
+						: r.type === RoomType.SHRINE
+						? ["shrine"]
+						: r.type === RoomType.COMBAT || r.type === RoomType.ELITE
+						? r.lake === true
+							? ["none"]
+							: r.grave === true
+							? ["crypt"]
+							: ["crypt", "hall", "store", "plain"]
+						: ["none"];
+				if (!want.includes(t)) problems.push(`room ${r.id} ${r.type} theme ${t}`);
+			}
+			const throne = on.solidDecor.find((p) => p.kind === "throne");
+			if (throne !== undefined) thrones++;
+			for (const cp of on.carpets ?? []) {
+				carpets++;
+				if (throne === undefined || cp.room !== throne.room) problems.push("carpet without its throne");
+				if (cp.fx !== throne?.fx || cp.fz !== throne?.fz) problems.push("carpet not along the throne's facing");
+				for (let y = cp.y; y < cp.y + cp.h; y++)
+					for (let x = cp.x; x < cp.x + cp.w; x++) {
+						const c = y * on.W + x;
+						if (on.grid[c] !== TileType.FLOOR || on.roomId[c] !== cp.room)
+							problems.push(`carpet ${x},${y}`);
+					}
+				if ((cp.fx !== 0 ? cp.w : cp.h) % 2 !== 0) problems.push("carpet of odd length");
+			}
+		}
+		expect(problems.filter((_, i) => i < 10)).toEqual([]);
+		// every boss room of the census fits its throne
+		expect(thrones).toBe(onOff.size());
+		expect(carpets).toBe(thrones);
 	});
 
 	it("reaches the endless layout: no room spawn, breakable or party spawn stands on a solid cell", () => {

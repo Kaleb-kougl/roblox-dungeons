@@ -18,6 +18,10 @@ warm tint; a piece's own `grade` overrides the kit's fields; `fit` "box" with `s
 A piece's variants are its `az` list (camera turns); `rotZ` (same length) turns the piece itself instead, about its
 centre, for a wall piece that must face a wall normal; `files` names each variant's PNG (default <piece>_<v>.png),
 and `copies` adds files copied from rendered ones (a sprite set's never-shown facings).
+Set pieces built from several meshes (docs/DECOR.md "Room themes"): `region` {"min": [x, y, z], "max": [x, y, z]}
+adds every mesh whose box centre lies inside (kit world units; `exclude` drops names starting with any listed prefix),
+`moves` {object: [dx, dy, dz]} shifts objects first (a throne seated on its dais), and `pivotAt` [x, y] is the
+footprint's centre on the floor (after the moves, before `rotZ`; default the group box's centre) for `pivotOut`.
 """
 import bpy, json, math, os, shutil, sys
 import bmesh  # after bpy: the module only exists once bpy has loaded
@@ -74,7 +78,20 @@ def trim_above(objs, names, keep):
     bpy.context.view_layer.update()
 
 
-def render_variant(sc, sun, cam, names, az_deg, flatten, path, keep=None, rot_z=0.0):
+def region_objects(region, exclude):
+    """Mesh objects whose world box centre lies inside region's min / max (kit units), minus `exclude` prefixes."""
+    out = []
+    for o in bpy.data.objects:
+        if o.type != "MESH" or len(o.data.vertices) == 0 or any(o.name.startswith(e) for e in exclude):
+            continue
+        pts = [o.matrix_world @ v.co for v in o.data.vertices]
+        c = [(min(p[i] for p in pts) + max(p[i] for p in pts)) / 2 for i in range(3)]
+        if all(region["min"][i] <= c[i] <= region["max"][i] for i in range(3)):
+            out.append(o.name)
+    return sorted(out)
+
+
+def render_variant(sc, sun, cam, names, az_deg, flatten, path, keep=None, rot_z=0.0, moves=None, pivot_at=None):
     objs = {o.name: o for o in bpy.data.objects if o.type == "MESH"}
     for n in names:
         if n not in objs:
@@ -84,16 +101,24 @@ def render_variant(sc, sun, cam, names, az_deg, flatten, path, keep=None, rot_z=
     if keep is not None:
         trim_above(objs, names, keep)
     saved = {}
-    # rot_z: turn the group about its centre in world space (a wall piece facing another wall normal; the camera
-    # stays put). glTF imports nest objects under a converted root, so this works on matrix_world, restored after.
+    # moves, then rot_z: glTF imports nest objects under a converted root, so both work on matrix_world, restored
+    # after. rot_z turns the group about its centre in world space (a wall piece facing another wall normal; the camera
+    # stays put).
     turned = {}
+    for n in names:
+        turned[n] = objs[n].matrix_world.copy()
+    for n, d in (moves or {}).items():
+        if n not in turned:
+            raise SystemExit(f"moved object {n!r} is not in the piece")
+        objs[n].matrix_world = Matrix.Translation(Vector(d)) @ objs[n].matrix_world
+    bpy.context.view_layer.update()
+    pts0 = [objs[n].matrix_world @ v.co for n in names for v in objs[n].data.vertices]
+    c = Vector(((min(p.x for p in pts0) + max(p.x for p in pts0)) / 2, (min(p.y for p in pts0) + max(p.y for p in pts0)) / 2, 0))
+    turn = Matrix.Translation(c) @ Matrix.Rotation(math.radians(rot_z), 4, "Z") @ Matrix.Translation(-c)
+    foot = turn @ Vector((pivot_at[0], pivot_at[1], 0)) if pivot_at is not None else None
     if rot_z:
-        pts0 = [objs[n].matrix_world @ v.co for n in names for v in objs[n].data.vertices]
-        c = Vector(((min(p.x for p in pts0) + max(p.x for p in pts0)) / 2, (min(p.y for p in pts0) + max(p.y for p in pts0)) / 2, 0))
-        turn = Matrix.Translation(c) @ Matrix.Rotation(math.radians(rot_z), 4, "Z") @ Matrix.Translation(-c)
         for n in names:
-            turned[n] = objs[n].matrix_world.copy()
-            objs[n].matrix_world = turn @ turned[n]
+            objs[n].matrix_world = turn @ objs[n].matrix_world
         bpy.context.view_layer.update()
     # flatten (lying chains): squash the group's height about its lowest point
     if flatten is not None:
@@ -131,6 +156,8 @@ def render_variant(sc, sun, cam, names, az_deg, flatten, path, keep=None, rot_z=
     bpy.ops.render.render(write_still=True)
     # the footprint's centre on the floor (group box centre, lowest point), in render pixels
     base = Vector(((min(p.x for p in pts) + max(p.x for p in pts)) / 2, (min(p.y for p in pts) + max(p.y for p in pts)) / 2, min(p.z for p in pts)))
+    if foot is not None:
+        base = Vector((foot.x, foot.y, base.z))
     pivot = ((base.dot(right) - (min(rs) - pad)) * RENDER_PPU, ((max(us) + pad) - base.dot(up)) * RENDER_PPU)
     for n, (loc, scale) in saved.items():
         objs[n].location = loc
@@ -184,10 +211,13 @@ def main():
         os.makedirs(os.path.join(out, name), exist_ok=True)
         turns = piece.get("rotZ", [0] * len(piece["az"]))
         files = piece.get("files", [f"{name}_{i + 1}.png" for i in range(len(piece["az"]))])
+        names = list(piece.get("objects", []))
+        if "region" in piece:
+            names += [n for n in region_objects(piece["region"], piece.get("exclude", [])) if n not in names]
         for i, az in enumerate(piece["az"]):
             path = os.path.join(out, name, files[i])
             os.makedirs(os.path.dirname(path), exist_ok=True)
-            pv = render_variant(sc, sun, cam, piece["objects"], az, piece.get("flatten"), path, piece.get("keepHeight"), turns[i])
+            pv = render_variant(sc, sun, cam, names, az, piece.get("flatten"), path, piece.get("keepHeight"), turns[i], piece.get("moves"), piece.get("pivotAt"))
             k = reduce(path, piece.get("sizePx"), piece.get("fit", "width"), {**spec["grade"], **piece.get("grade", {})}, piece.get("unitsPerTile"))
             if piece.get("pivotOut"):
                 # the floor centre in the written PNG (scaled, 2 px margin): atlases.json's `pivot: [x, y]`
