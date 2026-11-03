@@ -77,7 +77,8 @@ import type { RobloxAssetId } from "../../types";
  * kit-cage-1 / -2 and kit-chains-1 / -2 (the trial 3D kit, docs/DECOR.md "3D kits") uploaded 2026-11-02 2:00 PM by
  * k9kbdev, transcribed from an Asset Manager screenshot; kit-chandelier-1.png 2026-11-02 2:28 PM; the second kit's
  * kit-banner / kit-sarcophagus / kit-candle-stand (docs/DECOR.md "3D kits") 2026-11-02 3:05 PM; kit-tomb-x / kit-tomb-z
- * (solid decor, docs/DECOR.md "Solid decor") 2026-11-02 6:07 PM.
+ * (solid decor, docs/DECOR.md "Solid decor") 2026-11-02 6:07 PM; kit-carpet-x / -z, kit-carpet-end-x / -z, kit-statue-x
+ * / -z and kit-throne-x / -z 2026-11-02 9:00 PM by k9kbdev, transcribed from an Asset Manager screenshot.
  */
 export const VALE_ASSET_IDS: Readonly<Record<string, RobloxAssetId>> = {
 	"amb-b1.ogg": "rbxassetid://91158343621799",
@@ -124,10 +125,18 @@ export const VALE_ASSET_IDS: Readonly<Record<string, RobloxAssetId>> = {
 	"kit-cage-1.png": "rbxassetid://120653442756216",
 	"kit-cage-2.png": "rbxassetid://131457766065364",
 	"kit-candle-stand.png": "rbxassetid://82067548860168",
+	"kit-carpet-end-x.png": "rbxassetid://98404179034343",
+	"kit-carpet-end-z.png": "rbxassetid://89651999047190",
+	"kit-carpet-x.png": "rbxassetid://100324360941554",
+	"kit-carpet-z.png": "rbxassetid://135285538764706",
 	"kit-chains-1.png": "rbxassetid://78196216486149",
 	"kit-chains-2.png": "rbxassetid://132113945005181",
 	"kit-chandelier-1.png": "rbxassetid://135009681923399",
 	"kit-sarcophagus.png": "rbxassetid://71399333921022",
+	"kit-statue-x.png": "rbxassetid://78332468478600",
+	"kit-statue-z.png": "rbxassetid://98306419255246",
+	"kit-throne-x.png": "rbxassetid://76830723915108",
+	"kit-throne-z.png": "rbxassetid://115285373007373",
 	"kit-tomb-x.png": "rbxassetid://137283582236805",
 	"kit-tomb-z.png": "rbxassetid://137140622390095",
 	"loot-glint.png": "rbxassetid://92133950711891",

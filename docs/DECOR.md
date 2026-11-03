@@ -282,8 +282,10 @@ every room a theme (`Dungeon.roomThemes`, by room id) and places its set pieces.
 - **Changed with it**: the test bots walk round breakables (`pathField`'s new `blocked` cells: the endless bot used to
   stand stuck on a storeroom crate); roomPool.lock's roster digests re-recorded; fxCues.spec allows a flask cue lost
   to a floor change inside one paced frame. `DAILY.ruleset` stays 3 (solid decor has not shipped).
-- Open: **upload the eight `kit-throne-*`, `kit-statue-*`, `kit-carpet-*` PNGs** (until then thrones and statues
-  block as walls but draw nothing); Studio check (throne room reads, enemies and the boss round the pieces, storerooms
+- Uploaded 2026-11-02 9:00 PM: the eight `kit-throne-*`, `kit-statue-*`, `kit-carpet-*` PNGs (IDs in
+  `packs/vale/assetIds.ts`). First Studio look: the carpet segments ran across the carpet (the Top-face SurfaceGui
+  canvas turns 90 degrees anticlockwise on screen, FX_SPRITE_VIEW.floorCanvasTurnDeg); `buildFloorArt` (decorParts.ts)
+  now turns every flat floor image's Part back (decor flats, decor fx glows, boost halos). Open: Studio check (throne room reads, enemies and the boss round the pieces, storerooms
   read as storerooms); tuning (theme shares, hall spacing, carpet length).
 
 ## Decisions
