@@ -2,7 +2,15 @@ import { describe, expect, it } from "@rbxts/jest-globals";
 import { TILE_SIZE } from "shared/sim";
 import { ROOM_CLEAR } from "./roomClearConfig";
 import type { RoomClear } from "./roomClears";
-import { RoomClearSequence, ScoreRoller, roomClearStyle, type RoomClearLook } from "./roomClearSequence";
+import {
+	ROOM_CLEAR_SEGMENTS,
+	RoomClearSequence,
+	ScoreRoller,
+	roomClearBonus,
+	roomClearSegments,
+	roomClearStyle,
+	type RoomClearLook,
+} from "./roomClearSequence";
 
 const STEP = 1 / 60;
 
@@ -16,6 +24,8 @@ function makeClear(over: Partial<RoomClear> = {}): RoomClear {
 		clearPoints: 250,
 		perfectPoints: 0,
 		fastPoints: 0,
+		pelletPoints: 0,
+		sweepPoints: 0,
 		x: 7,
 		z: 5,
 		slot: 1,
@@ -131,6 +141,79 @@ describe("RoomClearSequence timeline", () => {
 		expect(e.seq.look.segments[0].kind).toBe("kills");
 		expect(e.seq.look.segments[1].kind).toBe("clear");
 		expect(e.seq.look.segments[2].kind).toBe("fast");
+	});
+
+	it("pellets (docs/PELLETS.md PL7): six segments in order, ticked in order, the Sweep flies once with the bonus", () => {
+		expect(ROOM_CLEAR_SEGMENTS).toBe(6);
+		const d = new Driver();
+		const c = makeClear({ perfect: true, perfectPoints: 500, fastPoints: 90, pelletPoints: 120, sweepPoints: 250 });
+		expect(roomClearBonus(c)).toBe(250 + 500 + 90 + 250);
+		const tickAt: number[] = [];
+		let L = d.seq.look;
+		let held = 0;
+		for (let n = 1; n <= 100; n++) {
+			L = d.frame(n === 1 ? () => d.seq.start(c, "full", 1) : undefined);
+			for (let k = 0; k < L.ticks; k++) tickAt.push(d.now);
+			if (n === 30) held = L.held;
+		}
+		expect(L.segmentCount).toBe(6);
+		const got: [string, number, number][] = [];
+		for (let i = 0; i < 6; i++) got.push([L.segments[i].kind, L.segments[i].value, L.segments[i].shown]);
+		expect(got).toEqual([
+			["kills", 300, 300],
+			["pellets", 120, 120],
+			["clear", 250, 250],
+			["perfect", 500, 500],
+			["fast", 90, 90],
+			["sweep", 250, 250],
+		]);
+		expect(L.total).toBe(1510);
+		// Every segment starts counting before the fade.
+		expect(tickAt.size()).toBe(6);
+		expect(tickAt[5] < ROOM_CLEAR.fadeStartSec).toBe(true);
+		// The pellets were scored already (shown, not held); the Sweep is held with the bonus and released once.
+		expect(held).toBe(1090);
+		expect(d.bonusLanded).toBe(1090);
+		expect(L.held).toBe(0);
+	});
+
+	it("pellets: zero pellet / sweep segments are hidden; a fold adds the pellets to the kills; a chip carries the Sweep", () => {
+		expect(roomClearSegments(makeClear({ pelletPoints: 0, sweepPoints: 0 })).map((e) => e.kind)).toEqual([
+			"kills",
+			"clear",
+		]);
+		expect(roomClearSegments(makeClear({ pelletPoints: 60 })).map((e) => e.kind)).toEqual([
+			"kills",
+			"pellets",
+			"clear",
+		]);
+		expect(roomClearSegments(makeClear({ killPoints: 0, sweepPoints: 250 })).map((e) => e.kind)).toEqual([
+			"clear",
+			"sweep",
+		]);
+		const folded = roomClearSegments(makeClear({ pelletPoints: 120, sweepPoints: 250 }), true);
+		expect(folded.map((e) => [e.kind, e.value])).toEqual([
+			["kills", 420],
+			["clear", 250],
+			["sweep", 250],
+		]);
+		// Pellets only (no kill points seen): the fold still shows them, as Kills.
+		expect(roomClearSegments(makeClear({ killPoints: 0, pelletPoints: 30 }), true)[0]).toEqual({
+			kind: "kills",
+			value: 30,
+		});
+
+		const d = new Driver();
+		d.frame(() => d.seq.start(makeClear({ pelletPoints: 120, sweepPoints: 250 }), "full", 1, true));
+		expect(d.seq.look.segmentCount).toBe(3);
+		d.run(2);
+		expect(d.bonusLanded).toBe(500);
+
+		const e = new Driver();
+		e.frame(() => e.seq.start(makeClear({ killPoints: 0, sweepPoints: 250 }), "chip", 1));
+		expect(e.seq.look.held).toBe(500);
+		e.run(2);
+		expect(e.bonusLanded).toBe(500);
 	});
 
 	it("holds the bonus until the fly lands, then nothing is held", () => {
