@@ -23,10 +23,32 @@ replays and scores change (all-time boards stay `_v1`; `DAILY.ruleset` 2 -> 3).
 
 ## Status (2026-11-02)
 
-Planned. Scope chosen by the owner (below, "Decisions"): five new room archetypes (Bomber, Charger, Stormcaller,
-Warbanner, Reaper), unlocking from floor 2 like the others so the seeded roster decides which a run meets. NED1-NED14
-taken by the owner on 2026-11-02, every one as recommended (rigs included, so NE0's owner pick is done). NE0 audit
-done and NE1 skeleton built on `ne-skeleton` (below); NE2-NE14 not started.
+**Built (NE0-NE11, NE14) on branch `new-enemies`; not merged to `main`.** Scope and NED1-NED14 taken by the owner on
+2026-11-02, every one as recommended. Built by subagents, one per task, each on its own branch merged into
+`new-enemies`: `ne-skeleton` (NE0 + NE1), `ne-bomber` / `ne-charger` / `ne-reaper` / `ne-stormcaller` /
+`ne-warbanner` (NE2-NE6), `ne-pool` (NE7), `ne-view` (NE8 + NE11), `ne-art` (NE9 + NE10). An independent read-only
+review of `main..new-enemies` found no serious defect (three low-severity items under "Open").
+
+Headless: `npm run verify` passes except `dungeon/forge/forge.spec.ts` "EncounterRng ... seedToState vectors" (a NaN
+sign bit; it fails the same way on `main` on the x86 container the work ran on, and is expected to pass on the owner's
+Mac). M1, every golden fixture and the tutorial replay exactly as before; endless replays and scores changed.
+
+Open:
+
+- **Upload (NE13, owner):** 30 PNGs in `art/build/` (`{bomber,charger,stormcaller,warbanner,reaper}-{attack,body,
+  death}.png` each with `-outline.png`) and 5 clips `art/build/audio/sfx-enemy-{fuse,blast,charge,stun,spin}.ogg`; run
+  `npm run audio:build` on the Mac first (the .ogg bytes were built with a different ffmpeg). Until ids are in
+  `packs/vale/assetIds.ts` the five draw as placeholders and the sounds are silent.
+- **`sfx.enemy.strike`:** no Ninja Adventure clip sounds like lightning; owner picks one (Pixabay, like the combo break).
+- **Studio check (NE13):** the checklist under "NE8 view (as built)".
+- **Tuning (NE12):** not run beyond NE7's census. Measure room times, TTK and hits per kind.
+- **Owner calls:** (1) a strike hurts at most ONE player in co-op (consumed by the first landed hit; NE5's Verify said
+  "once per player"); (2) the strike row draws all three circles, but the sim skips points on wall / void / intact
+  breakable cells; (3) the Reaper's cooldown only counts down while closing in, so cast-to-cast is ~3.1 s + 3.5-4.5 s;
+  (4) the Bomber's `Crouch` starts already crouched, so the body jumps into the fuse pose; (5) the Reaper stands 1.31
+  tiles (smaller than the knight); (6) spin shares `Whoosh2` with the imp's blink, pitched lower; (7) the Ooze cap of 8
+  per room (below, NE7) is EV13's proposal, now applied.
+- New kinds first appear on floor 3 in practice: with one seeded kind every 2 floors, floor 2's roster is floor 1's.
 
 Contact sheets made for this plan (gitignored `art/build/contact/`, scratch PIL script, not committed; dark `#1a1619`):
 `ne-imps.png`, `ne-spawns.png`, `ne-beasts.png`, `ne-elites.png` (every rig: Idle / Walk / Attack 1-4 / Taunt, the used
@@ -150,6 +172,100 @@ mover rounds pillars and would hide the block.
   roles, telegraph, boosts, affixes and the shield; placeholder 3.21:1, nearest boost.aegis 46.5), six SILENT sounds,
   `bestiary.<id>` lines, `l10n/context.json` entries. Vale inherits every entry from the placeholder (placeholder
   visuals, silent sounds). `contract.luau` / `validate.luau` stay at 185 / 196 top-level locals.
+
+## As built (2026-11-02)
+
+### NE2 Bomber
+Fuse when its target is a living player within 1.6: stops, faces it, `ctx.telegraph` 42 ticks, ring 2.0 filling; once
+lit the fuse runs before calm / leash. Blast: 12 @ FULL_RING (port row) aimed so one bullet points at the target,
+speed 3, life 2.6 s, `HIT_NORMAL`, spawned 0.6 out; `slamBreakables(state, x, z, 1.5)` (new optional radius; absent =
+the boss's `config.slamRadius`); then `killActor(ctx, a, true)`. The quiet death raises `actorsKilled` /
+`enemiesKilled` and runs `onDeath` but skips `scoreKill`, `runOnKill` (Fang), the drop roll and `affixesOnKill`
+(Vengeful); it settles a guaranteed-drop room's guard through `dropsOnKill(ctx, a, true)` (the reviver path), so a
+detonating last member still pays the room's drop. No rng draws, no cooldown. View marker `v[3]`: 0 never lit, 1 lit
+(or shot mid-fuse), 2 detonated (the corpse plays `death.2`). Blast bullets graze like any bullet.
+
+### NE3 Charger
+Keeps 5-9 with sight (no strafe); without sight steers toward its target, leashes after `lostTicks` (v7). Lane when the
+cooldown is out, it has sight, the target is within 9 and its body is inside its home room's box: 45 ticks, heading
+locked, next cooldown drawn there (the first in `init`). Charge tick: `slamBreakables` around the step's middle
+(radius = body + half a cell diagonal + half the step) BEFORE moving, step clipped at the room box, plain mover; each
+living player hurt `HIT_HEAVY` once per charge on first overlap (the bit is set even if a roll dodges it). Box cut or
+gained < `CHARGE_BLOCKED` 0.5 of the step -> stun 84 ticks; a full 9 units -> recover 36. States `AiState.CUSTOM` + 1
+/ + 2 / + 3. v: 3-4 heading, 5 distance left, 6 hit bits, 7 lost counter.
+
+### NE4 Reaper
+16 @ FULL_RING is a WEB arc row (the sprayer's ring), so no port row. Closes to 3-4; casts only with its target in
+sight within 5 (`spinTrigger`); first spin after 72 ticks (no draw). Cast: cooldown draw (210-270), one turn-sign coin,
+wind 36 ticks (ring 3). Spin 96 ticks: every 8 ticks entries k and k + 8 (k starts nearest the target's bearing, no
+draw), speed 4, life 1.6 s; drift 1.4 through `actorWalkPercent`. Dizzy 54 ticks. v: 3 spin ticks, 4 k, 5 sign, 6 lost.
+
+### NE5 Stormcaller and `STRIKE`
+Imp-style reposition; the strafe side flips on walls and after every cast (first side from the actor id parity, no
+coin), `castRange` 12. Draws: first cooldown in `init`, one per cast. Row: centre = the target's position at cast start,
+offset (-dirZ, dirX) x 2.2, radius 1.1; v 3-4 centre, 5-6 offset, 7 strafe sign. `STRIKE`: speed 0, a 6-pass hold
+carried in the payload's `pierce` field (unused on enemy bullets; `strikeHoldSpent`), so the Hourglass never stretches
+it; skipped on wall / void / intact-breakable cells; no grazes, ignores breakables, never erased by the guard, swings,
+Nova or Phantom Step; consumed by the first landed hit (one player at most); `events.strikes` (`NEW_ENEMY_EVENT_FIELDS`
+appended to `ALL_EVENT_FIELDS`).
+
+### NE6 Warbanner and the aura
+Keep-away 5-8 from every living player, pulled toward its allies' centroid (`allyRange` 10, `centroidSlack` 2,
+`centroidWeight` 0.6); panic within 2.5 (30-tick telegraph, the bruiser's gapped ring, 48-tick back-off, cooldown
+120-168). Aura: `SimCtx.rebuildAura()` at the start of `stepActors` builds a transient actor -> id map (never hashed;
+`bind()` clears it every tick, so it is a pure function of tick-start hashed state); `auraWalkPercent` /
+`auraCooldownPercent` give 125 / 80 inside, combined with affixes through `combinedPercent` (walk may be fractional,
+cooldowns stay integer). Targets: room enemies, not bosses or Warbanners. `warbannerAuraMask` (pure) is exported for
+the view.
+
+### NE7 Room pool and roster
+Five rows appended to `ENDLESS_ROOM_KINDS` (weights 2 / 1 / 1 / 1 / 1, all from floor 2, `maxPerRoom` 4 / 2 / 2 / 1 / 2;
+`needsCompany` on the Warbanner: `roomKindOpen` takes the room's bought total, no draw). `rosterOrder` shuffles 10
+kinds (9 draws); full roster on floor 19. **Ooze cap `OOZES_PER_ROOM` = 8** (EV13's proposal): without it party-4 rooms
+on floors 9-18 reached the 48-slot pool target (16 Oozes when the roster held no Bruiser); with it the party-4 worst
+is 37 slots, solo 31. `DAILY.ruleset` 3. Re-pinned (comment "re-recorded for docs/NEW_ENEMIES.md NE7"):
+`roomPool.lock` floors 2-6 and both roster blocks (floor 1 without a roster unchanged), `roster.spec`,
+`rosterLine.spec`, `daily.spec`, the charger's and the stormcaller's endless-floor determinism pins;
+`replay.bench.spec` counts alive actors. New `run/enemyBullets.census.spec.ts` (floors 2-20, the dearest room, 20 s,
+passive and sword bots): peak enemy bullets 105 (floor 14, passive), never near the 2048 pool.
+
+Census (solo, run seeds 1-60, per populated room):
+
+| floor | enemies | kinds | bom | cha | sto | ban | rea | cost / budget |
+|---|---|---|---|---|---|---|---|---|
+| 3 | 5.68 | 2.45 | 0.47 | 0.18 | 0.06 | 0.10 | 0.05 | 8.67 / 9.10 |
+| 6 | 7.55 | 3.26 | 0.73 | 0.19 | 0.15 | 0.16 | 0.15 | 12.85 / 12.85 |
+| 10 | 8.88 | 4.57 | 1.19 | 0.45 | 0.34 | 0.26 | 0.35 | 17.49 / 18.19 |
+| 15 | 10.69 | 6.43 | 1.57 | 0.74 | 0.57 | 0.47 | 0.76 | 23.97 / 24.67 |
+| 20 | 12.53 | 7.55 | 1.69 | 0.91 | 0.95 | 0.54 | 0.97 | 29.92 / 30.64 |
+
+### NE8 View (as built)
+Pure rules in `shared/view/newEnemies.ts` / `newEnemiesConfig.ts` (fuse flash, `bomberDetonated`,
+`detonationCorpseView`, `DetonationWatch`, `dizzyMarked`, `AuraView`, `isStrikePayload`, `strikeDecalLook`);
+`markings.ts` draws `strikeRow` and an aim-line `clip` flag (the Charger's lane is never clipped by breakables);
+`variantLook` gains an `aura` look (flash, telegraph and shield win over it); `enemyBulletPool` a `strike` pool (the goo
+decal code path). Sprite inputs for the five live in `newEnemySprites.ts` (sprites.luau hit the 200-locals limit; now
+173); `ActorSpriteInput` gained `deathAnim` / `moveAnim` / `idleRate`; the enemy slot's optional animations are
+`attack.2`, `death.2`, `move.back`. Cues: `fx/variantCueEvents.ts` detects fuse / blast / charge / stun / spin starts
+from per-slot changes; six cue rows (ranks 42-48; spin 0.3 s, strike 0.12 s minimum intervals); the enemy-shoot cue
+subtracts `gooSpawned + strikes`. Client: `ActorRenderController` (fuse look, detonated corpse, aura rim tint over the
+affix rim, a 0.4 body lerp on placeholders), `BulletRenderController` (strike flash), `ParticleController`
+(detonation burst), new `NewEnemyMarksController` (aura ring, dizzy stars). NE11: the first-sighting path already
+covered the five (spec added). Studio checklist: the fuse flash rhythm vs a hit flash; whether the 0.1 s strike flash
+reads (`STRIKE_VIEW`); the aura ring and placeholder lerp on every biome, and that buffed placeholders still read as
+hostile; the Charger lane past barrels; dizzy star size / colour; the detonated placeholder vanishing with its burst;
+layering of strike flash, goo, aura and affix rings; six cues silent in the placeholder pack; mobile frame time with
+two Warbanners.
+
+### NE9 / NE10 Art and audio (as built)
+Five sets in `art/atlases.json` (EV10's recipe; `vendor.lock.json` + 54 files), `layout.ts` additions only, two builds
+byte-identical, `test:art` 86/86, contact sheets checked by eye. Measured marks (`newEnemiesConfig.ts`): Charger `lane`
+3 / 9 (Slide 1 f0-f8: rear-back 56-64 px, lunge 48-54 px from f3), Stormcaller `raise` 6 / 10 with `holdTicks` 12
+(staff overhead 68-70 px over f8-f11), Reaper `spin` 3 / 9 (sickles 65-70 px wide over f5-f10, loop f10 -> f5).
+`bodyTiles`: Bomber 0.9 (0.75 of the imp), Charger 1.55 (the knight's density, like the bruiser), Stormcaller 1.5 and
+Reaper 1.31 (the summoner's density), Warbanner 1.8 with the banner (the imp's). Audio (`art/audio.json`): fuse Fire,
+blast Explosion5, charge Whoosh, stun Hit5 pitched down, spin Whoosh2 at 0.8-0.88; strike unmapped. No `fx.enemy.*`
+ids were added (nothing references them). The VM's 4 GB needed a memory cap for `art:build` (output unchanged).
 
 ## Player experience
 

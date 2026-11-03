@@ -505,6 +505,23 @@ Decision log (deviations from `PLAN.md`):
   caps touch at `HUD_VIEW.touchUprightWidth` (452) over the width, the pause map is a square on top with the panel
   under it (`pausePanelArea`, no Build list), the draft is a column (`draftSlotOffset`, `DRAFT_UI.rayY`). No new strings.
   Studio / phone check (PT9) pending.
+- **New enemies (docs/NEW_ENEMIES.md).** Gameplay. Five port archetypes in band 4 (`PORT_BAND_ENEMIES_2`, indices
+  13-17; no older index moves): `bomber` (rushes, 0.7 s fuse ring, blasts 12 @ FULL_RING and dies through
+  `killActor(ctx, a, true)`: no score, Fang, drop roll, Vengeful or build procs; a shot Bomber always fizzles), `charger`
+  (locked lane, breaks pieces before each step, stunned by walls / its room's box, one `HIT_HEAVY` per player per
+  charge), `reaper` (spin: entries k / k + 8 of the WEB 16 @ FULL_RING row every 8 ticks), `stormcaller` (a row of
+  three `BulletKind.STRIKE` = 12 bullets: speed 0, a 6-pass hold in the payload's `pierce` field so the Hourglass never
+  stretches it, no grazes, never erased by guard / swings / Nova / Phantom Step, one player at most, `events.strikes`),
+  `warbanner` (aura 125 % walk / 80 % cooldowns within 4.5 through `actorMods`, from a transient `SimCtx` mask rebuilt
+  at the start of every `stepActors`: never hashed, a pure function of hashed state). `slamBreakables` takes an optional
+  radius. Endless rooms buy them from floor 2 (weights 2 / 1 / 1 / 1 / 1, caps 4 / 2 / 2 / 1 / 2, `needsCompany` on the
+  Warbanner) and the Ooze gained `OOZES_PER_ROOM` 8; `rosterOrder` shuffles 10 kinds (full roster on floor 19), so
+  endless rosters, replays and scores changed from floor 1 (boards stay `_v1`, `DAILY.ruleset` 2 -> 3). M1, every
+  fixture and the tutorial replay exactly as before. Theme: five `ENEMY_ARCHETYPES`, colour role `enemyAura`, bullet
+  visual `bullet.enemy.strike`, port audio IDs `sfx.enemy.fuse` / `.blast` / `.charge` / `.stun` / `.strike` /
+  `.spin` (SILENT in the placeholder), optional enemy animations `death.2` / `move.back`, `bestiary.<id>` toasts. Vale:
+  Imp 5, Demon Beast 1, Demon Spawn 7, Imp 3, Demon Spawn 5 sets built (`art:build`), upload and the strike clip
+  pending; Studio check and tuning (NE12-NE13) pending.
 
 ## Commands
 
