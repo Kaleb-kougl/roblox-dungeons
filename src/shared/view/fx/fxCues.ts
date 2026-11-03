@@ -25,7 +25,8 @@
  *   fx.swing.<n>     a player's WeaponsState.swingTick moved: n = the sword slot's v[SWORD_V_LAST] (1, 2, 3 = finisher),
  *                    swingAheadFraction of the swing radius ahead of its origin, turned to the swing direction
  *   fx.relic.take    RunState.pedestalTaken[k] 0 -> 1, at that pedestal (spots.pedestals by room)
- *   fx.shrine.use    RunState.shrineUsed 0 -> 1, at the shrine (spots.shrine)
+ *   fx.shrine.use    RunState.shrineUsed 0 -> 1, at the shrine (spots.shrine); pacts (docs/FORTUNE.md): one more Pact
+ *                    of Greed taken on the spots' shrine room (greedTakes rose), at the Greed altar (until FO8's own)
  *   fx.death.puff    FxEvent killed (not a boss: bossDefeated owns it)
  *   fx.breakable.splinter  `breakableSplinter(x, z)` (called by the breakable renderer when a piece breaks)
  *   fx.boost.collect `boostCollect(x, z)` (called by the boost drop renderer on a pickup, docs/BOOSTS.md B6)
@@ -61,7 +62,9 @@ import {
 	V_AUX_X,
 	V_AUX_Z,
 	V_MARK,
+	PactKind,
 	archetypeIndex,
+	greedTakes,
 	hasLeft,
 	partySize,
 	playerAt,
@@ -283,6 +286,7 @@ export class FxCueMapper {
 	private readonly aHitAt: number[] = [];
 	// run
 	private shrineUsed = 0;
+	private greedTakes = 0;
 	private readonly pedestals: number[] = [];
 	// pending boss-death bursts: time, x, z, scale, burst index (parallel; fixed capacity)
 	private readonly pendAt: number[] = [];
@@ -646,6 +650,14 @@ export class FxCueMapper {
 		) {
 			this.emit("fx.shrine.use", shrine.x, shrine.z, 0, 1);
 		}
+		const pacts = f.state.pacts;
+		if (
+			pacts !== undefined &&
+			pacts.room >= 0 &&
+			pacts.room === spots.shrineRoom &&
+			greedTakes(f.state) > this.greedTakes
+		)
+			this.emit("fx.shrine.use", pacts.altarX[PactKind.GREED], pacts.altarZ[PactKind.GREED], 0, 1);
 	}
 
 	private hitCues(f: FxCueFrame): void {
@@ -696,6 +708,7 @@ export class FxCueMapper {
 		}
 		const run = state.run;
 		this.shrineUsed = run !== undefined ? run.shrineUsed : 0;
+		this.greedTakes = greedTakes(state);
 		const taken = run !== undefined ? run.pedestalTaken : undefined;
 		const count = taken !== undefined ? taken.size() : 0;
 		for (let k = 0; k < count; k++) this.pedestals[k] = (taken as ReadonlyArray<number>)[k];

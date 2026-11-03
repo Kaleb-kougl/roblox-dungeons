@@ -29,7 +29,7 @@
  *             spawned = how many got a slot. From then on the record may clear (pactRooms.ts pactHoldsRoom).
  *
  * The view's queries (pure reads of hashed state): pactAltarAt, pactAvailability, greedCurseFor, hordePhase,
- * pactDraftKind.
+ * pactAltarOffered, pactDraftKind, greedTakes, pactsSpent.
  */
 import { encounterCost, pactCurseIndex } from "shared/dungeon";
 import { rngInt } from "../rng";
@@ -124,6 +124,42 @@ function hordeRoomLeft(state: Readonly<SimState>, config: Readonly<SimConfig>): 
 	return false;
 }
 
+/** pactAvailability for Greed (it needs no config). */
+function greedAvailability(state: Readonly<SimState>, playerIndex: number): PactDimId {
+	const p = state.pacts;
+	if (p === undefined || p.room < 0) return PactDim.UNABLE;
+	const me = p.players[playerIndex];
+	if (me === undefined || playerAt(state, playerIndex).dead !== 0 || hasLeft(state, playerIndex))
+		return PactDim.UNABLE;
+	if (me.greedTaken !== 0) return PactDim.TAKEN;
+	if (unusedCurses(state, playerIndex).size() === 0) return PactDim.NO_CURSE;
+	if (greedPool(state, playerIndex).size() === 0) return PactDim.NO_LEGENDARY;
+	return PactDim.NONE;
+}
+
+/** How many players took Greed at this floor's altars (0 without pacts). Pure; the view's "shrine used" cue. */
+export function greedTakes(state: Readonly<SimState>): number {
+	const p = state.pacts;
+	if (p === undefined) return 0;
+	let n = 0;
+	for (const q of p.players) if (q.greedTaken !== 0) n++;
+	return n;
+}
+
+/**
+ * True when this floor's altars stand and nothing is left at them: the Horde taken, and no player can take Greed any
+ * more (taken, nothing to give, dead or gone). Pure; the view dims the shrine's crystal then.
+ */
+export function pactsSpent(state: Readonly<SimState>): boolean {
+	const p = state.pacts;
+	if (p === undefined || p.room < 0) return false;
+	let horde = false;
+	for (const q of p.players) if (q.hordeTaken !== 0) horde = true;
+	if (!horde) return false;
+	for (let i = 0; i < p.players.size(); i++) if (greedAvailability(state, i) === PactDim.NONE) return false;
+	return true;
+}
+
 /**
  * Whether pact `kind` (PactKind) at this floor's altar is available to player `playerIndex` (PactDim.NONE) or why not
  * (the altar's grey-out line): UNABLE without altars on this floor, or for a dead / departed player; Greed: TAKEN (this
@@ -138,15 +174,10 @@ export function pactAvailability(
 ): PactDimId {
 	const p = state.pacts;
 	if (p === undefined || p.room < 0 || kind < 0 || kind >= PACT_KIND_COUNT) return PactDim.UNABLE;
+	if (kind === PactKind.GREED) return greedAvailability(state, playerIndex);
 	const me = p.players[playerIndex];
 	if (me === undefined || playerAt(state, playerIndex).dead !== 0 || hasLeft(state, playerIndex))
 		return PactDim.UNABLE;
-	if (kind === PactKind.GREED) {
-		if (me.greedTaken !== 0) return PactDim.TAKEN;
-		if (unusedCurses(state, playerIndex).size() === 0) return PactDim.NO_CURSE;
-		if (greedPool(state, playerIndex).size() === 0) return PactDim.NO_LEGENDARY;
-		return PactDim.NONE;
-	}
 	for (const q of p.players) if (q.hordeTaken !== 0) return PactDim.TAKEN;
 	if (!hordeRoomLeft(state, config)) return PactDim.NO_ROOM;
 	return PactDim.NONE;
@@ -170,6 +201,15 @@ export function pactAltarAt(state: Readonly<SimState>, playerIndex: number): Pac
 	for (let k = 0; k < p.altarX.size(); k++)
 		if (within(pl.x, pl.z, p.altarX[k], p.altarZ[k], SHRINE_RADIUS)) return k as PactKindId;
 	return -1;
+}
+
+/**
+ * True when living player `playerIndex` stands on an altar whose pact is available to them (a SHRINE_BUTTON press there
+ * takes it). Pure; the HUD's shrine hint and the touch shrine button.
+ */
+export function pactAltarOffered(state: Readonly<SimState>, config: Readonly<SimConfig>, playerIndex: number): boolean {
+	const kind = pactAltarAt(state, playerIndex);
+	return kind >= 0 && pactAvailability(state, config, playerIndex, kind) === PactDim.NONE;
 }
 
 /**

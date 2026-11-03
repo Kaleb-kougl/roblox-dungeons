@@ -17,6 +17,7 @@ import {
 	archetypeAt,
 	atShrine,
 	countActors,
+	pactAltarOffered,
 	playerAt,
 	teamComboWindowTicks,
 	teammatesDrafting,
@@ -101,7 +102,11 @@ export interface GameSnapshot {
 	 */
 	readonly boonLevels: ReadonlyArray<number>;
 	readonly duos: ReadonlyArray<number>;
-	/** The player stands in an unused curse shrine's zone (the HUD shows the accept hint). */
+	/**
+	 * The player stands in an unused curse shrine's zone, or (pacts, docs/FORTUNE.md: the classic zone is off where the
+	 * altars stand) on an altar whose pact is theirs to take (shared/sim pactAltarOffered): the HUD shows the accept
+	 * hint and touch the shrine button (SKILL1). Until the altars' own cards (FO7) the hint is the classic one.
+	 */
 	readonly atShrine: boolean;
 	/** Co-op spectating (docs/SPECTATE.md): the local player is dead and watches a teammate (the spectate bar shows). */
 	readonly spectating: boolean;
@@ -289,7 +294,9 @@ export function takeSnapshot(state: Readonly<SimState>, extras: SnapshotExtras):
 		curses: mine !== undefined ? [...mine.curses] : NONE,
 		boonLevels: mine !== undefined && build !== undefined ? mine.boons.map((b) => build.levels[b] ?? 0) : NONE,
 		duos: build !== undefined ? [...build.duos] : NONE,
-		atShrine: extras.config !== undefined && atShrine(state, extras.config, me),
+		atShrine:
+			extras.config !== undefined &&
+			(atShrine(state, extras.config, me) || pactAltarOffered(state, extras.config, me)),
 		spectating: spectate !== undefined,
 		spectateName: spectate !== undefined ? spectate.name : "",
 		spectatePosition: spectate !== undefined ? spectate.position : 0,
