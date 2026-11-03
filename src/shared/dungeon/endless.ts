@@ -26,8 +26,11 @@
  *                 (which depend on the party size, so the pieces do too); their cells leave roomSpawnTiles
  *   affixes       elite affixes per planned room spawn (./affixes.ts, docs/ENEMY_VARIANTS.md EV6), from their own
  *                 stream hash(floor seed, AFFIXES.salt); nothing above reads them
- *   loot          the breakables that hold a boost (./breakableLoot.ts, docs/BREAKABLE_DROPS.md BL1), last, from their
+ *   loot          the breakables that hold a boost (./breakableLoot.ts, docs/BREAKABLE_DROPS.md BL1), from their
  *                 own stream hash(floor seed, BREAKABLE_LOOT.salt), reading the placed pieces; nothing above reads it
+ *   pellets       the room pellets and the rare power pellet (./pellets.ts, docs/PELLETS.md PL1), LAST, from their
+ *                 own stream hash(floor seed, PELLETS.salt), reading the layout, spawns and placed pieces; nothing
+ *                 above reads it
  *
  * Generating the dungeon is left to the caller (`dungeonFor`), so shared/run can cache it (LRU).
  */
@@ -49,6 +52,7 @@ import { encounterCost } from "./encounterCost";
 import { placeBreakables, withoutBreakableCells, type BreakablePlacement } from "./breakables";
 import { assignAffixes } from "./affixes";
 import { placeBreakableLoot, type BreakableLoot } from "./breakableLoot";
+import { placePellets, type FloorPellets } from "./pellets";
 import type { ActorSpawn, EncounterConfig, EncounterRoom, EncounterRoomType } from "./encounterTypes";
 import {
 	BOSS_FLOOR_EVERY,
@@ -445,6 +449,11 @@ export interface EndlessFloorLayout {
 	 * `breakables`, Boost index }, slot order. Absent: none (the tutorial's hand-built floors).
 	 */
 	readonly breakableLoot?: ReadonlyArray<BreakableLoot>;
+	/**
+	 * The floor's pellets and its power pellet, if any (./pellets.ts placePellets, docs/PELLETS.md PL1). Absent: none
+	 * (the tutorial's hand-built floors).
+	 */
+	readonly pellets?: FloorPellets;
 }
 
 /**
@@ -478,6 +487,13 @@ export function buildEndlessFloor(
 	const roomAffixes = assignAffixes(params.seed, floor, encounter.rooms, roomSpawns);
 	// Loot reads the placed pieces, on its own rng stream (./breakableLoot.ts): nothing above moves.
 	const breakableLoot = placeBreakableLoot(params.seed, floor, breakables, encounter);
+	// Pellets run last, on their own rng stream (./pellets.ts), reading the layout and the placed pieces: nothing
+	// above moves.
+	const pellets = placePellets(
+		{ seed: params.seed, dungeon: d, encounter, roomSpawns, spawn, stairwell },
+		floor,
+		breakables,
+	);
 	return {
 		floor,
 		seed: params.seed,
@@ -494,5 +510,6 @@ export function buildEndlessFloor(
 		breakables,
 		roomAffixes,
 		breakableLoot,
+		pellets,
 	};
 }

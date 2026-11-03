@@ -20,4 +20,6 @@ export * from "./breakableLootData";
 export * from "./breakableLoot";
 export * from "./affixesData";
 export * from "./affixes";
+export * from "./pelletsData";
+export * from "./pellets";
 export * from "./pathField";
