@@ -19,6 +19,7 @@ export * from "./session";
 export * from "./validate";
 export * from "./analytics";
 export * from "./dailyAnalytics";
+export * from "./recapAnalytics";
 export * from "./rateLimit";
 export * from "./queue";
 export * from "./worlds";

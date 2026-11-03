@@ -59,6 +59,15 @@ export const RECAP: RecapConfig = {
 	retryStartSec: undefined,
 };
 
+/** Studio / playtest aids (client only, off by default). */
+export const RECAP_DEBUG = {
+	/**
+	 * RR8's measurement: a Workspace attribute; true makes a run-over retry print `[Recap] retry: press -> control
+	 * <s> s` once the next run takes input (RecapController; read at the press).
+	 */
+	retryTimingAttribute: "KV_RetryTiming",
+} as const;
+
 /**
  * Every recap string key (the theme contract's `run.recap.*`, added by RR3; plain strings here, not the theme's key
  * union). Variables in braces; numbers are passed as numbers, `{boss}` as the boss's display name.

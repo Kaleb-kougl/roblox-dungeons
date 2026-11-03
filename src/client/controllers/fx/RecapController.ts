@@ -1,6 +1,7 @@
 import { Controller, OnStart } from "@flamework/core";
 import { Janitor } from "@rbxts/janitor";
-import { ContextActionService } from "@rbxts/services";
+import { ContextActionService, Workspace } from "@rbxts/services";
+import { Events } from "client/network";
 import {
 	clientStore,
 	selectAnyPanelOpen,
@@ -13,7 +14,13 @@ import { RECAP_BINDINGS, onLocaleChanged, resetRecapBindings, runOverBest } from
 import { DAILY_WORLD_KIND } from "shared/daily";
 import { bossKindFor, floorSeed, isBossFloor } from "shared/dungeon";
 import { RunOverRetryGate, inputsFor, type RunOverPressSource } from "shared/play";
-import { DEV_WORLD_KIND, ENDLESS_WORLD_KIND } from "shared/run";
+import {
+	DEV_WORLD_KIND,
+	ENDLESS_WORLD_KIND,
+	RUN_RECAP_NO_NEAR_MISS,
+	type RunRecapClose,
+	type RunRecapReport,
+} from "shared/run";
 import type { JuiceSettings } from "shared/settings";
 import { BOON_MAX_LEVEL, floorRoomTally, partySize, playerAt } from "shared/sim";
 import type { ColorRole, StringVars } from "shared/theme";
@@ -21,6 +28,7 @@ import { SFX, recapCue, type RecapCue } from "shared/view/audio";
 import {
 	NEW_BEST_DRAW,
 	NO_TEAM_MOMENTS,
+	RECAP_DEBUG,
 	RECAP_UI,
 	RecapTimeline,
 	bossFraction,
@@ -73,6 +81,21 @@ function recapWorldOf(ctx: RunContext): RecapWorld {
 	return "other";
 }
 
+/**
+ * What the run-over's telemetry report (docs/RUN_RECAP.md RR9) needs beyond the recap's content: the run session, when
+ * the panel opened, whether a press skipped the recap, the record flag and the team moments as last derived.
+ */
+interface ReportFacts {
+	/** The server's run session (RunContext.runId); undefined: an unranked / dev run, nothing is sent. */
+	readonly runId: string | undefined;
+	readonly openedAt: number;
+	readonly coop: boolean;
+	skipped: boolean;
+	record: boolean;
+	team: RecapTeamInput;
+	sent: boolean;
+}
+
 /** What decides a re-derive (docs/RUN_RECAP.md "Rules": a verdict with other numbers re-derives silently). */
 interface DeriveKey {
 	readonly verdict: VerdictView;
@@ -120,6 +143,15 @@ function recapSignature(nearMiss: RecapNearMiss | undefined, highlights: Readonl
  *              before RECAP.retryArmSec and restart after it (SimController.requestRestart); the bound `restart` key
  *              is SimController's own driver action and restarts at once. Party runs: a press only skips.
  *   reset      a run start or exit drops everything (store, bindings, the confirm binding).
+ *   telemetry  (RR9) once per run over with a recap, when the panel is left: `runRecap` (shared/run RunRecapReport) with
+ *              the close (`retry`: Again / Retry Daily / the restart key, seen as our own retry, the run context going
+ *              away under a ranked restart, or the next run starting; `exit`: the run left for the menu; `lobby`: any
+ *              close of a party run), the seconds since the open (os.clock), the near-miss kind shown (or `none`), the
+ *              record flag, whether a press skipped the timeline first, and a party run's team moments. Ranked runs
+ *              only (the server takes one per run session it issued); the server logs it as `RunRecap`.
+ *   timing     (RR8 aid) with the Workspace attribute RECAP_DEBUG.retryTimingAttribute (`KV_RetryTiming`, off by
+ *              default, read at the press) a retry prints `[Recap] retry: press -> control <s> s` once the next run takes
+ *              input (its stage cover gone, the fade included). Nothing is connected for it.
  */
 @Controller({})
 export class RecapController implements OnStart {
@@ -140,6 +172,9 @@ export class RecapController implements OnStart {
 	/** The panel's first frame: the run-over jingle's (no recap sound). */
 	private firstFrame = true;
 	private confirmBound = false;
+	private facts: ReportFacts | undefined;
+	/** RR8 aid: a retry press waiting for the next run's first controllable frame (KV_RetryTiming). */
+	private retryTiming: { readonly at: number; readonly run: number } | undefined;
 	// --- what the bindings were last written from (NaN: rewrite, e.g. after a locale switch) ---
 	private shownNearMiss = 0 / 0;
 	private readonly shownCells: number[] = [];
@@ -157,8 +192,15 @@ export class RecapController implements OnStart {
 		// docs/RUN_RECAP.md CM6: the run's co-op moments (zero outside party runs; debug moments never count).
 		this.setTeamMomentsProvider(() => this.teamMoments.totals());
 		this.fx.onFrame((_, settings, dt) => this.frame(settings, dt), FX_FRAME_PHASE.normal);
-		this.sim.onRunStarted(() => this.close());
-		this.sim.onRunExited(() => this.close());
+		this.sim.onRunStarted(() => {
+			this.reportClose("retry");
+			this.close();
+		});
+		this.sim.onRunExited(() => {
+			this.retryTiming = undefined;
+			this.reportClose("exit");
+			this.close();
+		});
 		this.janitor.Add(onLocaleChanged(() => this.invalidateTexts()));
 		this.janitor.Add(() => this.unbindConfirm());
 	}
@@ -186,10 +228,18 @@ export class RecapController implements OnStart {
 
 	private frame(settings: Readonly<JuiceSettings>, dt: number): void {
 		const ctx = this.sim.getContext();
-		if (ctx === undefined) return;
+		if (ctx === undefined) {
+			// A ranked restart drops the run context on the press frame (SimController.beginRun): the restart key's too.
+			if (this.openRun !== 0) this.reportClose("retry");
+			return;
+		}
 		const st = clientStore.getState();
+		this.stepRetryTiming(st);
 		if (st.game.snapshot.outcome === "playing") {
-			if (this.openRun !== 0) this.close();
+			if (this.openRun !== 0) {
+				this.reportClose("retry");
+				this.close();
+			}
 			return;
 		}
 		const run = st.game.run.run;
@@ -231,6 +281,15 @@ export class RecapController implements OnStart {
 		this.signature = recapSignature(this.nearMiss, this.highlights);
 		this.timeline = new RecapTimeline(this.timelineOptions(st));
 		clientStore.showRecap(run, this.nearMiss, this.highlights, this.timeline.isArmed());
+		this.facts = {
+			runId: ctx.runId,
+			openedAt: os.clock(),
+			coop: st.game.run.coop,
+			skipped: false,
+			record: this.runOverBestOf(st).records.record,
+			team: input.team ?? NO_TEAM_MOMENTS,
+			sent: false,
+		};
 	}
 
 	/** A new verdict / other final numbers: rebuild, and swap the content silently when it differs. */
@@ -251,6 +310,11 @@ export class RecapController implements OnStart {
 		this.key = key;
 		const input = this.inputOf(ctx, st);
 		if (input === undefined) return;
+		const facts = this.facts;
+		if (facts !== undefined) {
+			facts.record = this.runOverBestOf(st).records.record;
+			facts.team = input.team ?? NO_TEAM_MOMENTS;
+		}
 		const nearMiss = nearMissFor(input);
 		const highlights = pickHighlights(input);
 		const signature = recapSignature(nearMiss, highlights);
@@ -279,6 +343,7 @@ export class RecapController implements OnStart {
 		this.signature = "";
 		this.key = undefined;
 		this.stairsTiles = undefined;
+		this.facts = undefined;
 		this.invalidateTexts();
 		resetRecapBindings();
 		clientStore.clearRecap();
@@ -320,12 +385,57 @@ export class RecapController implements OnStart {
 		}
 		const exits = runOverExits(st.game.run.coop, st.lobby.mine !== undefined);
 		const result = this.gate.press(source, this.timeline, exits.again);
+		if (result === "skip" && this.facts !== undefined) this.facts.skipped = true;
 		if (result === "retry") this.retry();
 	}
 
 	private retry(): void {
 		this.audio.playUi(SFX.uiConfirm);
+		this.reportClose("retry");
 		this.sim.requestRestart();
+	}
+
+	// --- telemetry (RR9) and the retry timing aid (RR8) -------------------------------------------------
+
+	/** The run-over panel is being left (see the class comment): one `runRecap` per run over, ranked runs only. */
+	private reportClose(close: RunRecapClose): void {
+		const f = this.facts;
+		if (f === undefined || f.sent) return;
+		f.sent = true;
+		const how: RunRecapClose = f.coop ? "lobby" : close;
+		if (how === "retry" && Workspace.GetAttribute(RECAP_DEBUG.retryTimingAttribute) === true) {
+			this.retryTiming = { at: os.clock(), run: this.openRun };
+		}
+		if (f.runId === undefined) return;
+		const report: RunRecapReport = {
+			runId: f.runId,
+			close: how,
+			seconds: os.clock() - f.openedAt,
+			nearMiss: this.nearMiss?.kind ?? RUN_RECAP_NO_NEAR_MISS,
+			record: f.record,
+			skipped: f.skipped,
+		};
+		Events.runRecap.fire(
+			how === "lobby"
+				? {
+						...report,
+						team: {
+							teamPerfects: f.team.teamPerfects,
+							bestTeamStreak: f.team.bestTeamStreak,
+							syncParries: f.team.syncParries,
+						},
+				  }
+				: report,
+		);
+	}
+
+	/** KV_RetryTiming: the next run's first frame that takes input after a retry press prints the wait. */
+	private stepRetryTiming(st: ClientState): void {
+		const t = this.retryTiming;
+		if (t === undefined || st.game.run.run === t.run || st.game.snapshot.outcome !== "playing") return;
+		if (this.sim.isInputCovered() || this.sim.isHeldByLoader()) return;
+		this.retryTiming = undefined;
+		print(`[Recap] retry: press -> control ${string.format("%.2f", os.clock() - t.at)} s (run ${st.game.run.run})`);
 	}
 
 	/** Enter / Space on a keyboard press the focused Again while the panel is up and nothing is over it (RR7). */

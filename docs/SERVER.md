@@ -747,6 +747,7 @@ Custom events (`LogCustomEvent`; fields are `CustomField01..03`):
 | `SessionRuns` | runs | | | | player leaves |
 | `SessionRetriesAfterDeath` | deaths followed by another run | | | | player leaves |
 | `SessionLongestRetryStreak` | longest died -> retried streak | | | | player leaves |
+| `RunRecap` | `retry` / `exit` / `lobby` rows: seconds the run-over panel was open (0..600, 0.1 s); team rows: that team total (0..999) | how the panel was left (`retry` = Again / Retry Daily / the restart key, `exit` = Main menu, `lobby` = a party run's close), or a team row `teamPerfects` / `bestTeamStreak` / `syncParries` | near-miss kind shown (`boss` / `score` / `recordFloor` / `stairs` / `fullClear` / `nextBoss` / `none`; close rows) | `plain` / `plainSkipped` / `record` / `recordSkipped` (record run, a press skipped the recap first; close rows) | a CLIENT fact (docs/RUN_RECAP.md RR9): remote `runRecap(report)`, re-read by shared/run `readRunRecapReport`, rate limited `RUN_RECAP_RATE` (10 / 60 s), at most one per run session the server issued to the player (`RunRecapGate`); a `lobby` report adds the three team rows. Analytics only |
 | `LobbyCreated` | 1 | visibility (`open` / `friends` / `closed`) | | | a lobby is created (host) |
 | `LobbyStarted` | lobby size | `solo` / `party` | | | a countdown ends and the run is handed off (host) |
 | `LobbyInviteSent` | recipients | `server` / `platform` | | | lobby invites are sent: one in-server invite, or one Roblox prompt's invites (sender) |
