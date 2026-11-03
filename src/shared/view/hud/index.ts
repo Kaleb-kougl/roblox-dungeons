@@ -16,8 +16,9 @@
  * strings, text helpers (countdown, UTC date, standing), leaderboard tabs and run-over daily block (dailyStrings.ts,
  * dailyText.ts, dailyBoard.ts, dailyResult.ts; docs/DAILY.md DS9 / DS11), and the Daily's in-run rank layer:
  * tunables, strings, frozen rank baseline, tracker and text helpers (dailyRankConfig.ts, dailyRankStrings.ts,
- * dailyRank.ts; docs/DAILY.md DS10), and Options > Display > Language's choices and labels (language.ts,
- * docs/LOCALIZATION.md L6).
+ * dailyRank.ts; docs/DAILY.md DS10), Options > Display > Language's choices and labels (language.ts,
+ * docs/LOCALIZATION.md L6), and the run-over recap's tunables, highlight table, strings, near-miss line, highlights,
+ * stairs distance and timeline (recapConfig.ts, recap.ts; docs/RUN_RECAP.md RR2).
  */
 export * from "./layout";
 export * from "./strings";
@@ -60,3 +61,5 @@ export * from "./dailyResult";
 export * from "./dailyRankConfig";
 export * from "./dailyRankStrings";
 export * from "./dailyRank";
+export * from "./recapConfig";
+export * from "./recap";

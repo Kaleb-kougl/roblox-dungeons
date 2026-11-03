@@ -221,8 +221,8 @@ grazes, duos). Exit stays Back to lobby.
 
 | Piece | Where | Step |
 |---|---|---|
-| `RecapTally`: parries per player (from the director's groups), grazes per player; reset on run start | shared/view/fx/recapTally.ts | RR1 |
-| `RECAP` / `RECAP_HIGHLIGHTS` tunables; `RunRecapInput`; `nearMissFor(input)`; `pickHighlights(input)`; `RecapTimeline` (rows, counted values, sound edges, `skip()`, `armed`); `stairsPathTiles(world, x, z)` (BFS, run over only) | shared/view/hud/recap.ts, recapConfig.ts | RR2 |
+| `RecapTally`: parries per player (the director's grouping, `parryStartsGroup`), grazes per player; on `RunView.recapTally` (LiveRun, LockstepClient), collected every tick, never reset per frame (a new run is a new view) | shared/view/fx/recapTally.ts | RR1 |
+| `RECAP` / `RECAP_HIGHLIGHTS` tunables; `RunRecapInput`; `nearMissFor(input)`; `pickHighlights(input)`; `RecapTimeline` (rows, counted values, sound edges, `skip()`, `armed`); `stairsPathTiles({ dungeon, stairX, stairZ, stairsOpen, blocked? }, x, z)` (BFS, run over only); `RECAP_STRINGS`; `bossNoHitAwards` | shared/view/hud/recap.ts, recapConfig.ts | RR2 |
 | Strings `RECAP_STRING_KEYS` (`run.recap.*`), `room.clear.teamPerfect` / `.teamStreak`, `fx.parry.sync`, `fx.parry.syncCount`; context entries in `l10n/context.json`; lists built inside functions (contract.luau / validate.luau near Luau's 200 locals) | shared/theme, packs, l10n | RR3 / CM3 |
 | Cue mapper: recap ticks / land via `sfx.score.tick` / `land`; `sfx.room.teamPerfect`, `sfx.player.syncParry` with fallbacks | shared/view/audio/cues.ts | RR4 / CM4 |
 | `NearMissLine`, `HighlightGrid`, `DetailsToggle` (breakdown + Build list behind it), three layouts | client/ui/hud/RunOverPanel.tsx + new files | RR5 |
@@ -245,7 +245,7 @@ Each step is a commit; `npm run verify` before each.
   -> control time today, split (a)-(d). -> Verify: each written here.
 - [x] **RR1. Tally.** `RecapTally` + spec: one guard erasing 5 bullets = 1 parry; two guards = 2; per player; reset on
   a new run. Every golden / replay / hash spec unchanged.
-- [ ] **RR2. Recap core.** Pure + spec: each candidate at its edge (25 / 26 % boss, 15 % gap, deepest floor, 10 / 11
+- [x] **RR2. Recap core.** Pure + spec: each candidate at its edge (25 / 26 % boss, 15 % gap, deepest floor, 10 / 11
   path tiles, 2 / 3 rooms left, pre-boss floor), order, record-run drops and the dim line, FIRST RECORD none,
   `unknown` / `unranked`, daily best today; highlights: priority, cap 4, fill to 2, Team / You; timeline, skip before
   arm, reduced motion; verdict re-derive.
