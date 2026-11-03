@@ -663,6 +663,8 @@ describe("stormcaller: strikes on real endless floors", () => {
 		}
 		// Re-recorded for docs/NEW_ENEMIES.md NE7: the reshuffled roster moves floor 3's room spawns (and the breakables
 		// around them); strike and skip counts are unchanged.
-		expect(pins).toEqual(["2/1/b86ecbd6", "6/0/8f7c3348"]); // check-asset-ids: allow (state hashes)
+		// Re-recorded for the merge of solid decor and docs/NEW_ENEMIES.md: floor 3's tombs / candle stands (WALL cells)
+		// move its room spawn tiles and breakables; strike and skip counts are unchanged. Before: b86ecbd6 / 8f7c3348.
+		expect(pins).toEqual(["2/1/08f85cd2", "6/0/5cfa0ffb"]); // check-asset-ids: allow (state hashes)
 	});
 });

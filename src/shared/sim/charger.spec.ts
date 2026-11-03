@@ -654,6 +654,9 @@ describe("charger: determinism", () => {
 const PIN_COUNTS = [3, 1, 1, 3, 0];
 // Re-recorded for docs/NEW_ENEMIES.md NE7: the reshuffled roster moves floor 3's room spawns and so its breakables
 // (they keep clear of planned spawns); the counts did not move. Before: f77607dc.
-const PIN_HASH = "69817698"; // check-asset-ids: allow (state hash)
+// Re-recorded for the merge of solid decor and docs/NEW_ENEMIES.md: floor 3's tombs / candle stands (WALL cells) move
+// its room spawn tiles and breakables; lanes / stuns / recovers / draws / broken (PIN_COUNTS) did not move. Before:
+// 69817698.
+const PIN_HASH = "30bf1d50"; // check-asset-ids: allow (state hash)
 const PIN_ARENA = [12, STATE_RETURN, 11.062568325627446, 8, 3663131635];
 const PIN_ARENA_HASH = "80069968"; // check-asset-ids: allow (state hash)
