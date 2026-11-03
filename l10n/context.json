@@ -1020,6 +1020,17 @@
 			"n": 5
 		}
 	},
+	"fx.parry.sync": {
+		"note": "Flash written on the floor in co-op when two players parry (block bullets with a well-timed guard) at almost the same moment. ALL CAPS exclamation, one short word meaning \"in sync / together\"; keep capitals if the script has them.",
+		"max": 10
+	},
+	"fx.parry.syncCount": {
+		"note": "Floor flash in co-op when three players parry at almost the same moment: the sync word (fx.parry.sync, without its exclamation mark) and {n} the number of players; the x means \"times\". ALL CAPS.",
+		"max": 13,
+		"example": {
+			"n": 3
+		}
+	},
 	"fx.parry.text": {
 		"note": "Flash written on the floor when the player parries (blocks bullets with a well-timed guard). ALL CAPS exclamation, one word; keep capitals if the script has them. The game may append \" x5\" (fx.parry.count) after it.",
 		"max": 10
@@ -2804,6 +2815,17 @@
 		"note": "Big stamp when a room is cleared without taking a hit. ALL CAPS, one word; keep capitals if the script has them. Glossary term.",
 		"max": 12
 	},
+	"room.clear.teamPerfect": {
+		"note": "Big stamp (top centre, large text) in co-op when the party clears a room with no one taking a hit; also in the far teammate's corner chip (room.clear.chip). ALL CAPS; keep capitals if the script has them. PERFECT is the same word as room.clear.stamp.perfect. Glossary term.",
+		"max": 16
+	},
+	"room.clear.teamStreak": {
+		"note": "Big stamp in co-op for the second, third... TEAM PERFECT room in a row: room.clear.teamPerfect followed by the streak. {n} is a number (2 or more); the x means \"times\". ALL CAPS; keep the same words as room.clear.teamPerfect.",
+		"max": 20,
+		"example": {
+			"n": 3
+		}
+	},
 	"room.clear.total": {
 		"note": "Last segment of the room-clear tally: the total. {points} is a number. Usually unchanged.",
 		"max": 10,
@@ -2895,6 +2917,139 @@
 		"example": {
 			"score": "12,040"
 		}
+	},
+	"run.recap.details": {
+		"note": "Run-over panel (after death), button that opens the detailed score breakdown and the build list in place of the highlights.",
+		"max": 14
+	},
+	"run.recap.detailsHide": {
+		"note": "Run-over panel (after death), the same button while the details are open: goes back to the highlights (run.recap.hl.* cells). A noun naming what it shows.",
+		"max": 14
+	},
+	"run.recap.hl.bossNoHit": {
+		"note": "Run-over panel (after death), a highlight cell label (2 x 2 grid of cells about 200 px wide; the value is drawn beside or under it, text shrinks): a boss was killed without the player taking a hit in its final phase. Short.",
+		"max": 24
+	},
+	"run.recap.hl.bosses": {
+		"note": "Run-over panel (after death), a highlight cell label (2 x 2 grid of cells about 200 px wide; the value is drawn beside or under it, text shrinks): how many bosses were killed this run (the number is drawn beside it).",
+		"max": 20
+	},
+	"run.recap.hl.combo": {
+		"note": "Run-over panel (after death), a highlight cell label (2 x 2 grid of cells about 200 px wide; the value is drawn beside or under it, text shrinks): the run's highest combo multiplier (drawn beside it, e.g. \"x4.2 DOMINATING\").",
+		"max": 20
+	},
+	"run.recap.hl.duos": {
+		"note": "Run-over panel (after death), a highlight cell label (2 x 2 grid of cells about 200 px wide; the value is drawn beside or under it, text shrinks): how many duo boons (a powerful card that combines two of the player's boons) the player took this run.",
+		"max": 20
+	},
+	"run.recap.hl.evolved": {
+		"note": "Run-over panel (after death), a highlight cell label (2 x 2 grid of cells about 200 px wide; the value is drawn beside or under it, text shrinks): how many of the player's boons reached their evolved form (level III) this run. Past participle used as a count label.",
+		"max": 20
+	},
+	"run.recap.hl.grazes": {
+		"note": "Run-over panel (after death), a highlight cell label (2 x 2 grid of cells about 200 px wide; the value is drawn beside or under it, text shrinks): how many enemy bullets the player grazed (passed very close to without being hit).",
+		"max": 20
+	},
+	"run.recap.hl.jackpots": {
+		"note": "Run-over panel (after death), a highlight cell label (2 x 2 grid of cells about 200 px wide; the value is drawn beside or under it, text shrinks): how many Jackpot bonuses the run earned (score.source.jackpot: same word).",
+		"max": 20
+	},
+	"run.recap.hl.kills": {
+		"note": "Run-over panel (after death), a highlight cell label (2 x 2 grid of cells about 200 px wide; the value is drawn beside or under it, text shrinks): enemies killed this run.",
+		"max": 20
+	},
+	"run.recap.hl.ofTotal": {
+		"note": "Run-over panel (after death), a highlight cell's value: {n} out of {total} (e.g. PERFECT rooms out of rooms cleared). Both numbers. Usually short.",
+		"max": 12,
+		"example": {
+			"n": 7,
+			"total": 11
+		}
+	},
+	"run.recap.hl.parries": {
+		"note": "Run-over panel (after death), a highlight cell label (2 x 2 grid of cells about 200 px wide; the value is drawn beside or under it, text shrinks): how many parries (well-timed sword guards that erased enemy bullets; fx.parry.text) the player made.",
+		"max": 20
+	},
+	"run.recap.hl.perfect": {
+		"note": "Run-over panel (after death), a highlight cell label (2 x 2 grid of cells about 200 px wide; the value is drawn beside or under it, text shrinks): rooms cleared without taking a hit (PERFECT is the room-clear stamp, room.clear.stamp.perfect: keep the same word, in capitals if the script has them). The value is run.recap.hl.ofTotal (\"7 of 11\").",
+		"max": 20
+	},
+	"run.recap.hl.rooms": {
+		"note": "Run-over panel (after death), a highlight cell label (2 x 2 grid of cells about 200 px wide; the value is drawn beside or under it, text shrinks): rooms cleared of enemies this run.",
+		"max": 20
+	},
+	"run.recap.hl.speed": {
+		"note": "Run-over panel (after death), a highlight cell label (2 x 2 grid of cells about 200 px wide; the value is drawn beside or under it, text shrinks): points earned for clearing rooms fast (the formatted points are drawn beside it).",
+		"max": 20
+	},
+	"run.recap.hl.sweeps": {
+		"note": "Run-over panel (after death), a highlight cell label (2 x 2 grid of cells about 200 px wide; the value is drawn beside or under it, text shrinks): how many Sweep bonuses (every pellet of a room collected before its last enemy died) the run earned. \"Sweep\" is the same word as score.source.sweep.",
+		"max": 20
+	},
+	"run.recap.hl.syncParries": {
+		"note": "Run-over panel (after death), a highlight cell label (2 x 2 grid of cells about 200 px wide; the value is drawn beside or under it, text shrinks): co-op: how many times two or three players parried at almost the same moment (SYNC!, fx.parry.sync).",
+		"max": 20
+	},
+	"run.recap.hl.teamPerfect": {
+		"note": "Run-over panel (after death), a highlight cell label (2 x 2 grid of cells about 200 px wide; the value is drawn beside or under it, text shrinks): co-op: rooms cleared without anyone in the party taking a hit (TEAM PERFECT is the co-op stamp, room.clear.teamPerfect: keep the same words). The value is run.recap.hl.ofTotal (\"7 of 11\").",
+		"max": 20
+	},
+	"run.recap.hl.teamStreak": {
+		"note": "Run-over panel (after death), a highlight cell label (2 x 2 grid of cells about 200 px wide; the value is drawn beside or under it, text shrinks): co-op: the longest run of TEAM PERFECT rooms in a row (drawn beside it as \"x4\").",
+		"max": 20
+	},
+	"run.recap.near.boss": {
+		"note": "Run-over panel (after death), the one \"so close\" line under the main line (one line, ember colour, text shrinks to fit about 420 px): the boss was nearly dead when the run ended. {boss} is the boss's name (already translated, e.g. \"Mother Bramble\"), {pct} a whole number of percent of its health left. Encouraging, a next target, never a reproach.",
+		"max": 40,
+		"example": {
+			"boss": "The Demon Lord",
+			"pct": 9
+		}
+	},
+	"run.recap.near.fullClear": {
+		"note": "Run-over panel (after death), the one \"so close\" line under the main line (one line, ember colour, text shrinks to fit about 420 px): only a few rooms of the floor were left uncleared. {rooms} is a number, 2 or more (the one-room form is run.recap.near.fullClearOne). A full clear = every room of the floor cleared of enemies.",
+		"max": 34,
+		"example": {
+			"rooms": 2
+		}
+	},
+	"run.recap.near.fullClearOne": {
+		"note": "Run-over panel (after death), the one \"so close\" line under the main line (one line, ember colour, text shrinks to fit about 420 px): only one room of the floor was left uncleared (the singular form of run.recap.near.fullClear). A full clear = every room of the floor cleared of enemies.",
+		"max": 34
+	},
+	"run.recap.near.nextBoss": {
+		"note": "Run-over panel (after death), the one \"so close\" line under the main line (one line, ember colour, text shrinks to fit about 420 px): the next floor is a boss floor. {boss} is that boss's name (already translated, e.g. \"Mother Bramble\").",
+		"max": 34,
+		"example": {
+			"boss": "Mother Bramble"
+		}
+	},
+	"run.recap.near.recordFloor": {
+		"note": "Run-over panel (after death), the one \"so close\" line under the main line (one line, ember colour, text shrinks to fit about 420 px): the player died on their deepest floor ever; reaching the next floor would set a new deepest-floor record. Encouraging.",
+		"max": 40
+	},
+	"run.recap.near.score": {
+		"note": "Run-over panel (after death), the one \"so close\" line under the main line (one line, ember colour, text shrinks to fit about 420 px): the score was just short of the player's best. {gap} is a formatted number of points. Encouraging, a next target, never a reproach.",
+		"max": 34,
+		"example": {
+			"gap": "500"
+		}
+	},
+	"run.recap.near.stairs": {
+		"note": "Run-over panel (after death), the one \"so close\" line under the main line (one line, ember colour, text shrinks to fit about 420 px): the stairs down to the next floor were close (walking distance). {tiles} is a number of floor tiles (squares), {next} the next floor's number.",
+		"max": 34,
+		"example": {
+			"tiles": 8,
+			"next": 5
+		}
+	},
+	"run.recap.team": {
+		"note": "Run-over panel (after death), co-op: small tag on a highlight cell whose value is the whole party's. One short word.",
+		"max": 8
+	},
+	"run.recap.you": {
+		"note": "Run-over panel (after death), co-op: small tag on a highlight cell whose value is only this player's own. One short word (the player, second person).",
+		"max": 8
 	},
 	"score.source.boss": {
 		"note": "Run-over panel: score breakdown row label (200 px label column, the points sit to the right) for points from defeating bosses.",

@@ -962,6 +962,42 @@ export const REQUIRED_STRING_KEYS: ReadonlyArray<string> = ((): string[] => [
 	...DAILY_RANK_STRING_KEYS,
 	// docs/LOCALIZATION.md L1: named keys' labels (`input.key.<name>`) and the key list joiner
 	...INPUT_KEY_STRING_KEYS,
+	// docs/RUN_RECAP.md RR3: runRecap.ts RECAP_STRING_KEYS, written out (an import would be one more top-level local):
+	// the near-miss line, the highlight labels, the co-op tags and the Details toggle
+	"run.recap.near.boss",
+	"run.recap.near.score",
+	"run.recap.near.recordFloor",
+	"run.recap.near.stairs",
+	"run.recap.near.fullClear",
+	"run.recap.near.fullClearOne",
+	"run.recap.near.nextBoss",
+	"run.recap.hl.bossNoHit",
+	"run.recap.hl.bosses",
+	"run.recap.hl.combo",
+	"run.recap.hl.perfect",
+	"run.recap.hl.teamPerfect",
+	"run.recap.hl.ofTotal",
+	"run.recap.hl.teamStreak",
+	"run.recap.hl.duos",
+	"run.recap.hl.evolved",
+	"run.recap.hl.parries",
+	"run.recap.hl.syncParries",
+	"run.recap.hl.sweeps",
+	"run.recap.hl.grazes",
+	"run.recap.hl.jackpots",
+	"run.recap.hl.speed",
+	"run.recap.hl.kills",
+	"run.recap.hl.rooms",
+	"run.recap.team",
+	"run.recap.you",
+	"run.recap.details",
+	"run.recap.detailsHide",
+	// docs/RUN_RECAP.md CM3: runRecap.ts TEAM_MOMENT_STRING_KEYS, written out: the TEAM PERFECT stamp and its streak,
+	// SYNC! and its three-player count
+	"room.clear.teamPerfect",
+	"room.clear.teamStreak",
+	"fx.parry.sync",
+	"fx.parry.syncCount",
 ])();
 
 /**

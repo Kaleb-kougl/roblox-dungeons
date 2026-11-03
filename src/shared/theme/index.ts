@@ -126,6 +126,8 @@ export {
 	type PelletColorEntry,
 	type PelletColorRules,
 } from "./pelletColors";
+// Roblox port (docs/RUN_RECAP.md RR3 / CM3 / CM4): the run-over recap's and the co-op moments' strings and sounds.
+export * from "./runRecap";
 export * from "./placeholders";
 export {
 	DEFAULT_PACK_ID,

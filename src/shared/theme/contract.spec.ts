@@ -203,9 +203,10 @@ describe("required IDs and strings", () => {
 		// + docs/LOCALIZATION.md L1: INPUT_KEY_STRING_KEYS (51 key labels + input.separator)
 		// + docs/NEW_ENEMIES.md NE1: 5 enemy.<id>.name, 5 bestiary.<id> (BESTIARY_STRING_KEYS)
 		// + docs/PELLETS.md PL6: 2 room clear tally segments (ROOM_CLEAR_STRING_KEYS), bestiary.pellet.power
-		expect(REQUIRED_STRING_KEYS.size()).toBe(
-			41 + 1 + 2 + 4 * 3 + 1 + 3 + 5 + 13 + 10 + 8 + 2 + 2 + 4 + 7 + 17 + 7 + 3 + 64 + 22 + 52 + 5 + 5 + 2 + 1,
-		);
+		// + docs/RUN_RECAP.md RR3 / CM3: RECAP_STRING_KEYS (28), TEAM_MOMENT_STRING_KEYS (4)
+		const before =
+			41 + 1 + 2 + 4 * 3 + 1 + 3 + 5 + 13 + 10 + 8 + 2 + 2 + 4 + 7 + 17 + 7 + 3 + 64 + 22 + 52 + 5 + 5 + 2 + 1;
+		expect(REQUIRED_STRING_KEYS.size()).toBe(before + 28 + 4);
 		expect(new Set(REQUIRED_STRING_KEYS).size()).toBe(REQUIRED_STRING_KEYS.size());
 		expect(BIOMES.map((b) => b.forgeTheme)).toEqual(["ancient", "molten", "frost", "grim", "verdant"]);
 	});
