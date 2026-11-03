@@ -63,6 +63,7 @@ import {
 	type RunSummary,
 } from "shared/run";
 import { BoostFrameEvents, type BoostEventSource } from "shared/view/boosts";
+import { PelletFrameEvents, type PelletFrameSource } from "shared/view/pellets";
 import {
 	BuildFxEvents,
 	ComboEvents,
@@ -171,6 +172,8 @@ export interface RunView {
 	readonly variantCues: VariantCueSource;
 	/** The build effects of the last frame's ticks, every player's (docs/BUILDS.md BU8). */
 	readonly builds: BuildFxFrameSource;
+	/** The pellet events of the last frame's ticks, every player's (docs/PELLETS.md PL7). */
+	readonly pellets: PelletFrameSource;
 	getAlpha(): number;
 }
 
@@ -322,6 +325,8 @@ export class LiveRun implements RunView {
 	readonly variantCues = new VariantCueEvents();
 	/** The build effects of the ticks run by the last frame() (docs/BUILDS.md BU8; reset every frame). */
 	readonly builds = new BuildFxEvents();
+	/** The pellet events of the ticks run by the last frame() (docs/PELLETS.md PL7; reset every frame). */
+	readonly pellets = new PelletFrameEvents();
 	/** What the pacer made of the last unpaused frame (frozen, time scale); a plain pass-through without a pacer. */
 	readonly lastAdvance: FrameAdvance = newFrameAdvance();
 	/** Run totals for the HUD's post-run panel (the telemetry's kill / hit counts, read without finishing it). */
@@ -375,6 +380,7 @@ export class LiveRun implements RunView {
 		this.nearMiss.reset();
 		this.variantCues.reset();
 		this.builds.reset();
+		this.pellets.reset();
 		this.ticksThisFrame = 0;
 		if (this.forfeitPending) {
 			this.forfeitPending = false;
@@ -458,6 +464,7 @@ export class LiveRun implements RunView {
 		this.nearMiss.collect(state);
 		this.variantCues.collect(state);
 		this.builds.collect(state);
+		this.pellets.collect(state);
 		if (this.victoryTick === undefined && e.bossDefeated !== 0) this.victoryTick = state.tick;
 		if (this.deathTick === undefined && (e.playerDied !== 0 || state.player.dead !== 0)) {
 			this.deathTick = state.tick;
