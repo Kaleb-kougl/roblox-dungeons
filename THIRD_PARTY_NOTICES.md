@@ -141,6 +141,17 @@ SOFTWARE.
   non-commercial use, no attribution required, modification allowed; the content may not be sold or distributed on
   its own (unmodified, as a standalone file), which is why the raw file is kept out of the repo.
 
+## "Power up 01a" (Pixabay sound effect)
+
+- Author: EdR. Source: Pixabay (https://pixabay.com/sound-effects/, id 484722; credited by the owner as "Sound Effect
+  by EdR from Pixabay"), downloaded by the owner as `edr-power-up-01a-484722.mp3` (1.04 s, 44.1 kHz mono MP3).
+- Used for: `sfx.pellet.power`, the power pellet taken (docs/PELLETS.md PL7): silence-trimmed, peak-normalised and
+  encoded to OGG by `scripts/audio/build-audio.js`.
+- Raw file: `art/vendor/pixabay/` (gitignored, not redistributed).
+- License: Pixabay Content License (https://pixabay.com/service/license-summary/): free for commercial and
+  non-commercial use, no attribution required, modification allowed; the content may not be sold or distributed on
+  its own (unmodified, as a standalone file), which is why the raw file is kept out of the repo.
+
 ## UI User Interface Pack - Horror
 
 - Author: ToffeeCraft. Source: https://toffeecraft.itch.io/ui-user-interface-pack-horror ("a 32x32 pixel horror UI

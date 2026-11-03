@@ -101,11 +101,11 @@ describe("pellets: contract", () => {
 		expect(tail(COLOR_ROLES as unknown as ReadonlyArray<string>, PELLET_ROLES.size())).toEqual([...PELLET_ROLES]);
 	});
 
-	it("appends the three sounds to PORT_AUDIO_EVENTS: required, sfx; SILENT in the placeholder, vale's chomp and Sweep on", () => {
+	it("appends the three sounds to PORT_AUDIO_EVENTS: required, sfx; SILENT in the placeholder, on in vale", () => {
 		expect([...PELLET_AUDIO_IDS]).toEqual(["sfx.pellet.eat", "sfx.pellet.sweep", "sfx.pellet.power"]);
 		expect(tail(PORT_AUDIO_EVENTS, PELLET_AUDIO_IDS.size())).toEqual([...PELLET_AUDIO_IDS]);
-		// vale (owner, 2026-11-03): the Pixabay chomp and swoosh are uploaded; the power pellet has no clip yet
-		const valeOn = new Set<string>(["sfx.pellet.eat", "sfx.pellet.sweep"]);
+		// vale (owner, 2026-11-03): the Pixabay chomp, swoosh and power-up are uploaded
+		const valeOn = new Set<string>(["sfx.pellet.eat", "sfx.pellet.sweep", "sfx.pellet.power"]);
 		for (const id of PELLET_AUDIO_IDS) {
 			expect([id, has(REQUIRED_ASSET_IDS, id), slotFor(id)?.soundGroup]).toEqual([id, true, "sfx"]);
 			for (const p of sortedKeys(THEME_PACKS)) {

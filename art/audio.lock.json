@@ -402,6 +402,11 @@
 			"bytes": 40930
 		},
 		{
+			"path": "pixabay/edr-power-up-01a-484722.mp3",
+			"sha256": "9d1cd717625f9fff77797d23b9c471fbf6333a51e820e49971746530d4f6422f",
+			"bytes": 39258
+		},
+		{
 			"path": "pixabay/stereogenicstudio-swish-swoosh-woosh-sfx-27-357164.mp3",
 			"sha256": "2c33bc64f8db0d542d8ab75d7d3be7c2905bad26a2bcff2d1aaab212b6daeb4a",
 			"bytes": 176318

@@ -391,7 +391,8 @@ pellets only keep off WALL (pillars included), pieces and spawn cells.
   (Pixabay 357164), trimmed [0, 1.2] (1.147 s built); raw files in gitignored `art/vendor/pixabay/`, credited in
   THIRD_PARTY_NOTICES.md and on the Credits screen. The owner uploaded the raw MP3s (untrimmed, not normalised: the
   chomp's raw peak is -17 dBFS, so it plays quieter and 0.12 s late, both bites); uploading the built OGGs from
-  `art/upload/` and pasting their IDs fixes that. The power pellet has no clip yet (falls back to the parry).
+  `art/upload/` and pasting their IDs fixes that. `sfx.pellet.power` = "Power up 01a" by EdR (Pixabay 484722), used whole (0.413 s built; raw peak -15.6 dBFS), uploaded
+  the same way.
 - The power pellet's erases are no deflect: they are taken out of `bulletsDeleted` for the deflect cue, the guard
   effect (`FxCueFrame.pellets`) and WeaponViewController's guard fan flash (`deflectedBullets` /
   `tickDeflectedBullets` in `view/pellets/events.ts`, imported by file against a require cycle).

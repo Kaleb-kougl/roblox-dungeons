@@ -49,6 +49,7 @@ export const CREDITS: ReadonlyArray<CreditEntry> = [
 	{ section: "audio", work: "Lightning strike", author: "DRAGON-STUDIO (Pixabay)" },
 	{ section: "audio", work: "Chomp", author: "Barnaby (Pixabay)" },
 	{ section: "audio", work: "Swish swoosh woosh SFX 27", author: "Stereogenic Studio (Pixabay)" },
+	{ section: "audio", work: "Power up 01a", author: "EdR (Pixabay)" },
 	{
 		section: "code",
 		work: "Dungeon Forge (threejs-procedural-dungeon)",
