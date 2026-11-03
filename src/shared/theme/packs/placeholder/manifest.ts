@@ -438,6 +438,10 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		"sfx.pellet.eat": SILENT,
 		"sfx.pellet.sweep": SILENT,
 		"sfx.pellet.power": SILENT,
+		// Roblox port (docs/RUN_RECAP.md CM4): a party run's TEAM PERFECT jingle (sfx.room.perfect plays while silent) and
+		// a SYNC! parry (sfx.player.parry plays while silent); silent until the vale clips are picked (CM7)
+		"sfx.room.teamperfect": SILENT,
+		"sfx.player.syncparry": SILENT,
 		"music.menu": SILENT,
 		"music.biome.1": SILENT,
 		"music.biome.2": SILENT,
@@ -1160,6 +1164,9 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		// docs/PELLETS.md PL6: the pellet points earned in the room (like Kills), the Sweep bonus (like the other bonuses)
 		"room.clear.line.pellets": "Pellets {points}",
 		"room.clear.line.sweep": "Sweep +{points}",
+		// docs/RUN_RECAP.md CM3: a party run's stamp in place of PERFECT, and with a team perfect streak from 2
+		"room.clear.teamPerfect": "TEAM PERFECT",
+		"room.clear.teamStreak": "TEAM PERFECT x{n}",
 		// --- hud.combo.* (docs/COMBO.md CB3: the combo's tier names, the break and the lapse's best) -------------
 		"hud.combo.rampage": "RAMPAGE",
 		"hud.combo.carnage": "CARNAGE",
@@ -1172,6 +1179,9 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		// --- fx.parry.* (docs/GRAZE_PARRY.md GP3: the parry flash and its count from 3 erases, "PARRY! x5") ------
 		"fx.parry.text": "PARRY!",
 		"fx.parry.count": "{text} x{n}",
+		// docs/RUN_RECAP.md CM3: two (or three) players' parries landing together in co-op
+		"fx.parry.sync": "SYNC!",
+		"fx.parry.syncCount": "SYNC x{n}",
 		// --- affix.* / bestiary.* (docs/ENEMY_VARIANTS.md EV1: the affix name chips and the first-sighting toasts) -----
 		"affix.hulking.name": "Hulking",
 		"affix.swift.name": "Swift",
@@ -1275,6 +1285,35 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		"run.best.unsaved": "Not saved: run not verified",
 		"run.best.target": "Best {score} · floor {floor}",
 		"menu.best": "Best {score} · floor {floor}",
+		// --- run.recap.* (docs/RUN_RECAP.md RR3: the run-over near-miss line, highlight labels, co-op tags, Details) -----
+		"run.recap.near.boss": "{boss} had {pct}% left",
+		"run.recap.near.score": "{gap} short of your best",
+		"run.recap.near.recordFloor": "One more floor for a new deepest",
+		"run.recap.near.stairs": "{tiles} tiles from floor {next}",
+		"run.recap.near.fullClear": "{rooms} rooms from a full clear",
+		"run.recap.near.fullClearOne": "1 room from a full clear",
+		"run.recap.near.nextBoss": "1 floor from {boss}",
+		"run.recap.hl.bossNoHit": "Boss felled · no hits",
+		"run.recap.hl.bosses": "Bosses felled",
+		"run.recap.hl.combo": "Best combo",
+		"run.recap.hl.perfect": "PERFECT rooms",
+		"run.recap.hl.teamPerfect": "TEAM PERFECT rooms",
+		"run.recap.hl.ofTotal": "{n} of {total}",
+		"run.recap.hl.teamStreak": "Best team streak",
+		"run.recap.hl.duos": "Duos",
+		"run.recap.hl.evolved": "Evolved",
+		"run.recap.hl.parries": "Parries",
+		"run.recap.hl.syncParries": "Sync parries",
+		"run.recap.hl.sweeps": "Sweeps",
+		"run.recap.hl.grazes": "Grazes",
+		"run.recap.hl.jackpots": "Jackpots",
+		"run.recap.hl.speed": "Speed bonus",
+		"run.recap.hl.kills": "Kills",
+		"run.recap.hl.rooms": "Rooms cleared",
+		"run.recap.team": "Team",
+		"run.recap.you": "You",
+		"run.recap.details": "Details",
+		"run.recap.detailsHide": "Highlights",
 		// --- hud.dailyRank.* / run.dailyRank.* (docs/DAILY.md DS10: new best's best today, the in-run rank layer) -------
 		"hud.dailyRank.toGo": "{points} TO BEST TODAY",
 		"hud.dailyRank.over": "NEW BEST TODAY +{points}",

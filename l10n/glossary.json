@@ -468,11 +468,15 @@
 		},
 		{
 			"term": "room / CLEAR / PERFECT",
-			"meaning": "Rooms are the arenas of a floor. Killing the last enemy stamps CLEAR; clearing without a hit stamps PERFECT (ALL CAPS stamps).",
+			"meaning": "Rooms are the arenas of a floor. Killing the last enemy stamps CLEAR; clearing without a hit stamps PERFECT (ALL CAPS stamps). In co-op the party's no-hit stamp is TEAM PERFECT (same PERFECT word).",
 			"translate": true,
 			"keys": [
 				"room.clear.stamp.clear",
-				"room.clear.stamp.perfect"
+				"room.clear.stamp.perfect",
+				"room.clear.teamPerfect",
+				"room.clear.teamStreak",
+				"run.recap.hl.perfect",
+				"run.recap.hl.teamPerfect"
 			]
 		},
 		{
