@@ -15,6 +15,7 @@ import type { SimConfig } from "./step";
 import { cloneEndlessState, createEndlessState, endlessStartFloor, type EndlessState } from "./endless";
 import {
 	addBuildScoreSources,
+	addPactScoreSources,
 	addPelletScoreSources,
 	cloneScoreState,
 	createScoreState,
@@ -36,6 +37,7 @@ import { cloneAffixesState, createAffixesState, type AffixesState } from "./affi
 import { cloneDevState, createDevState, type DevState } from "./dev/dev";
 import { cloneBuildsState, createBuildsState, type BuildsState } from "./builds/builds";
 import { clonePelletsState, createPelletsState, pelletsOnFloor, type PelletsState } from "./pellets/pellets";
+import { clonePactsState, createPactsState, pactsOnFloor, type PactsState } from "./pacts/pacts";
 
 export interface PlayerState {
 	x: number;
@@ -313,6 +315,12 @@ export interface SimState {
 	 * as the "pellets" subsystem, appended after every other group (after "builds"). See pellets/pellets.ts.
 	 */
 	pellets?: PelletsState;
+	/**
+	 * Pacts (docs/FORTUNE.md PS2), only when SimConfig.pacts is set: the current floor's altars, every player's takes and
+	 * draft kind, the Horde (armed, its room and record, the second wave), the run counters. Hashed as the "pacts"
+	 * subsystem, appended after every other group (after "pellets"). See pacts/pacts.ts.
+	 */
+	pacts?: PactsState;
 }
 
 /**
@@ -334,6 +342,8 @@ export interface SimState {
  * With `config.pellets`, `pellets` state is created after the score state (its rooms hang off the score's room
  * records): the first floor's pellets (endless: its world's, dev mode's startFloor included; else
  * `config.pellets.floor`), and a scored run's points / counts gain the pellet sources (addPelletScoreSources).
+ * With `config.pacts`, `pacts` state is created after the pellet state: the first floor's altars (endless: its world's;
+ * else `config.pacts.floor`), and a scored run's points / counts gain the pact source (addPactScoreSources).
  */
 export function createSimState(
 	seed: number,
@@ -410,6 +420,14 @@ export function createSimState(
 		// The pellet-only score sources (PELLETS, SWEEP; JACKPOT padded without builds), so they hash only here.
 		if (state.score !== undefined) addPelletScoreSources(state.score);
 	}
+	// Pacts (docs/FORTUNE.md): the first floor's altars. No rng.
+	const pacts = config.pacts;
+	if (pacts !== undefined) {
+		state.pacts = createPactsState(pacts, partySize(state));
+		pactsOnFloor(state, firstFloor !== undefined ? firstFloor.pactAltars : pacts.floor);
+		// The pact-only score source (HORDE; the gated ones before it padded), so it hashes only here.
+		if (state.score !== undefined) addPactScoreSources(state.score);
+	}
 	return state;
 }
 
@@ -440,6 +458,7 @@ export function cloneSimState(s: Readonly<SimState>): SimState {
 		dev: s.dev !== undefined ? cloneDevState(s.dev) : undefined,
 		builds: s.builds !== undefined ? cloneBuildsState(s.builds) : undefined,
 		pellets: s.pellets !== undefined ? clonePelletsState(s.pellets) : undefined,
+		pacts: s.pacts !== undefined ? clonePactsState(s.pacts) : undefined,
 	};
 	if (s.party !== undefined) clone.party = cloneParty(s.party, clone);
 	return clone;

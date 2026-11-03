@@ -28,6 +28,8 @@ import { stepDevToggle, type DevSimConfig } from "./dev/dev";
 import { clearBuildEvents, type BuildsConfig } from "./builds/builds";
 import { clearPelletsEvents, type PelletsConfig } from "./pellets/pellets";
 import { stepPellets } from "./pellets/stepPellets";
+import { clearPactsEvents, type PactsConfig } from "./pacts/pacts";
+import { stepPacts, stepPactsWave } from "./pacts/stepPacts";
 import type { SolidCells } from "shared/dungeon";
 
 export { PLAYER_RADIUS, PLAYER_SPEED } from "./playerData";
@@ -182,6 +184,15 @@ export interface SimConfig {
 	 * appended after every other group (after "builds"), and a scored run's points / counts gain PELLETS / SWEEP.
 	 */
 	pellets?: PelletsConfig;
+	/**
+	 * Pacts (docs/FORTUNE.md PS2, pacts/pacts.ts): the rules (ENDLESS_PACTS_CONFIG is the game's); where the altars stand
+	 * comes from each endless floor's world (EndlessFloorWorld.pactAltars), or from `pacts.floor` without endless mode.
+	 * Absent: no pacts state, the classic shrine everywhere, nothing extra hashed, no pact score source (every fixture,
+	 * M1, the tutorial). Present: state.pacts is created and hashed as the "pacts" subsystem, appended after every other
+	 * group (after "pellets"); on a floor whose altars stand the classic shrine zone is off and the altars take its place
+	 * (stepPacts, right after stepRun), and the Horde's second wave runs in stepPactsWave (before stepScore).
+	 */
+	pacts?: PactsConfig;
 }
 
 /** Matches the 16x16 greybox room: inner wall faces at +/-7.75, minus the 0.4 player half-width (rounded). */
@@ -206,17 +217,21 @@ const partyPrev: number[] = [];
  * Advances `state` by exactly one tick of SIM_DT, in place. Solo runs only (a party state needs stepParty).
  *
  * Tick order (fixed; part of the determinism contract):
- *   1. clear per-tick events (and the score's, the breakables', the drops', the affixes', the builds', the pellets'); then FORFEIT_BUTTON ("Leave run") -> forfeitSoloRun:
+ *   1. clear per-tick events (and the score's, the breakables', the drops', the affixes', the builds', the pellets', the pacts'); then FORFEIT_BUTTON ("Leave run") -> forfeitSoloRun:
  *      the player dies at this tick; then (dev runs only) a DEV_GOD_BUTTON edge toggles god mode (stepDevToggle)
  *   2. stepPlayer  (movement, facing, roll, hearts, flask, Ember)
  *   3. stepCombat   (Ember clear, actors act, the player's weapons, bullets step, hits, contact damage)
  *   4. stepEndless  (endless mode only: Depth, floor clear points + stairwell / next floor, deferred room spawns)
  *   5. stepRun      (endless mode only: a new floor opens the boon draft; Warding, relic pedestals, the curse shrine)
+ *   5b. stepPacts   (only with config.pacts: the altars, stepRun's slot 5 where they stand: Greed's curse and Legendary
+ *                    deal, Horde's take)
  *   6. stepDrops    (only with config.drops: floor clear, debug drops, boost timers, ground life, pickups; kills
  *                    drop inside 3)
  *   7. stepPellets  (only with config.pellets: living players in index order take the live rooms' pellets in reach;
  *                    the power pellet erases enemy bullets; before 8 so a pickup on a room's clear tick counts for its
  *                    Sweep)
+ *   7b. stepPactsWave (only with config.pacts: the horde room's second wave, its trigger and spawn; before 8 so the
+ *                    record it holds never clears between the waves)
  *   8. stepScore    (only with config.scoring: hit cuts, combo timer, rooms; kills / grazes / guard score inside 3;
  *                    pellet runs: an engaged room's pellets go live, a clear takes them and pays the Sweep first)
  *   9. tick += 1
@@ -244,6 +259,7 @@ export function step(
 	if (state.affixes !== undefined) clearAffixEvents(state.affixes);
 	if (state.builds !== undefined) clearBuildEvents(state.builds);
 	if (state.pellets !== undefined) clearPelletsEvents(state.pellets);
+	if (state.pacts !== undefined) clearPactsEvents(state.pacts);
 	const run = state.run;
 	// Read before the forfeit, which closes an open draft: that tick stays a frozen draft tick.
 	const frozen = run !== undefined && isDraftOpen(state);
@@ -261,8 +277,10 @@ export function step(
 	stepCombat(state, input, world);
 	if (state.endless !== undefined) stepEndless(state, soloInputs, config, soloPrev);
 	if (run !== undefined) stepRun(state, soloInputs, config, soloPrev);
+	if (state.pacts !== undefined) stepPacts(state, soloInputs, config, soloPrev);
 	if (drops !== undefined) stepDrops(state, soloInputs, soloPrev);
 	if (state.pellets !== undefined) stepPellets(state);
+	if (state.pacts !== undefined) stepPactsWave(state, soloInputs, config);
 	if (score !== undefined) stepScore(state);
 	state.tick += 1;
 }
@@ -299,7 +317,9 @@ export function forfeitSoloRun(state: SimState): boolean {
  *   5. stepEndless (every living player in the stairwell; any player's debug skip; revive the dead on a new floor)
  *   6. stepRun (endless: a new floor opens every present player's draft; Warding, pedestals, the shrine per player)
  *   7. stepDrops (drops: per slot the first living player in reach takes it; timers per player)
+ *   6b. stepPacts (pacts: the altars, per player in index order)
  *   8. stepPellets (pellets: per player in index order, the live pellets in reach)
+ *   8b. stepPactsWave (pacts: the horde room's second wave)
  *   9. stepScore
  *  10. tick += 1
  * A solo state (no party) is stepped exactly as step(state, inputs[0], config) would.
@@ -326,6 +346,7 @@ export function stepParty(
 	if (state.affixes !== undefined) clearAffixEvents(state.affixes);
 	if (state.builds !== undefined) clearBuildEvents(state.builds);
 	if (state.pellets !== undefined) clearPelletsEvents(state.pellets);
+	if (state.pacts !== undefined) clearPactsEvents(state.pacts);
 	for (let i = 0; i < n; i++) if (hasLeftBit(inputs[i].buttons)) markPlayerLeft(state, i);
 	if (state.dev !== undefined) stepDevToggle(state, inputs, partyPrev);
 	const run = state.run;
@@ -341,8 +362,10 @@ export function stepParty(
 	stepCombat(state, inputs[0], world, inputs);
 	if (state.endless !== undefined) stepEndless(state, inputs, config, partyPrev);
 	if (run !== undefined) stepRun(state, inputs, config, partyPrev);
+	if (state.pacts !== undefined) stepPacts(state, inputs, config, partyPrev);
 	if (drops !== undefined) stepDrops(state, inputs, partyPrev);
 	if (state.pellets !== undefined) stepPellets(state);
+	if (state.pacts !== undefined) stepPactsWave(state, inputs, config);
 	if (score !== undefined) stepScore(state);
 	state.tick += 1;
 }

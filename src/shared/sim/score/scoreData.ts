@@ -158,6 +158,8 @@ export const ScoreSource = {
 	PELLETS: 10,
 	/** The Sweep (docs/PELLETS.md): every pellet of a room taken before its clear. Pellet runs only, like PELLETS. */
 	SWEEP: 11,
+	/** Pacts' Horde (docs/FORTUNE.md): pacts runs only. */
+	HORDE: 12,
 } as const;
 export type ScoreSourceId = (typeof ScoreSource)[keyof typeof ScoreSource];
 /** Source names in index order (dump names, results screen string keys `score.source.<name>`). */
@@ -185,3 +187,9 @@ export const BUILD_SCORE_SOURCE_NAMES = ["jackpot"] as const;
  * (a pellets run without builds pads JACKPOT, always 0 there).
  */
 export const PELLET_SCORE_SOURCE_NAMES = ["pellets", "sweep"] as const;
+/**
+ * Sources only a pacts run has (docs/FORTUNE.md PS4: the Horde's extra half, every x2 award's second half), appended
+ * after PELLET_SCORE_SOURCE_NAMES (ScoreSource.HORDE). A pacts run's points / counts hold every source up to these (a
+ * pacts run without builds or pellets pads JACKPOT / PELLETS / SWEEP, always 0 there).
+ */
+export const PACT_SCORE_SOURCE_NAMES = ["horde"] as const;
