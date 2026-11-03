@@ -73,6 +73,8 @@ import type { RobloxAssetId } from "../../types";
  * death sheets with their outlines) uploaded 2026-10-31 7:50 AM by k9kbdev, transcribed from an Asset Manager screenshot.
  * loot-glint.png (the loaded barrel / crate twinkle, docs/BREAKABLE_DROPS.md; original art, scripts/art/gen-loot-glint.js)
  * uploaded 2026-11-01, ID given by the owner.
+ * Not uploaded yet: pellet.png and pellet-power.png (the pellet cubes, docs/PELLETS.md PL8; original art,
+ * scripts/art/gen-pellet.js, built by `npm run art:build` into art/upload/). Until then both pellets stay placeholders.
  */
 export const VALE_ASSET_IDS: Readonly<Record<string, RobloxAssetId>> = {
 	"amb-b1.ogg": "rbxassetid://91158343621799",
