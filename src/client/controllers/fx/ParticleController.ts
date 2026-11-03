@@ -3,8 +3,8 @@ import { Janitor } from "@rbxts/janitor";
 import { RunService, Workspace } from "@rbxts/services";
 import { CAMERA_PITCH_DEG } from "shared/config";
 import type { JuiceSettings } from "shared/settings";
-import { IMP, MAX_ACTORS, archetypeAt, archetypeIds, archetypeIndex } from "shared/sim";
-import { BOOST_KINDS, BREAKABLE_KINDS, type ColorRole } from "shared/theme";
+import { IMP, MAX_ACTORS, archetypeAt, archetypeIds, archetypeIndex, partySize, playerAt } from "shared/sim";
+import { BOOST_KINDS, BREAKABLE_KINDS, pelletId, type ColorRole } from "shared/theme";
 import { BOOST_VIEW, type BoostBurstView } from "shared/view/boosts";
 import {
 	BLINK_VIEW,
@@ -30,6 +30,7 @@ import {
 	PALETTE_KIND_BASE,
 	PAL_SPARK,
 	PARTICLE_QUAD_CAPACITY,
+	RING_SEGMENTS,
 	ROOM_CLEAR,
 	burstSeed,
 	particleColorRole,
@@ -37,6 +38,7 @@ import {
 	type NearMissFrame,
 	type ParticleWriter,
 } from "shared/view/fx";
+import { PELLETS_VIEW, PelletFlyIns, type PelletPowerTaken } from "shared/view/pellets";
 import { SimController } from "../game/SimController";
 import { ThemeController } from "../game/ThemeController";
 import { renderPart } from "../render/placeholders";
@@ -87,6 +89,10 @@ interface ParticlePart {
  * Boosts from breakables (docs/BREAKABLE_DROPS.md BL6; called by BoostDropRenderController): `lootFizzle` (a loaded
  * piece's boost lost on a full floor: BREAKABLE_LOOT_VIEW.fizzleBurst in its fizzleRole, appended after the builds').
  *
+ * The power pellet (docs/PELLETS.md PL7; called by PelletRenderController): `pelletPower` turns each erased bullet into a
+ * cube flying into the picker (shared/view/pellets PelletFlyIns, drawn through the same parts after the bursts) and
+ * spawns one ring from the picker, both in pellet.power, appended to the palette after the loot fizzle's.
+ *
  * Bomber detonations (docs/NEW_ENEMIES.md NE8; shared/view DetonationWatch, a per-frame diff): DETONATION_VIEW.burst
  * chips in the Bomber's colour where it blew up (on top of its death particles); a fizzle gets the death particles only.
  * Budget: at most particleBudget(settings) live particles (128 / 320 / 512; one level lower under reducedMotion) plus
@@ -127,6 +133,9 @@ export class ParticleController implements OnStart, ParticleWriter {
 	/** Bomber detonations (docs/NEW_ENEMIES.md NE8): a burst in the Bomber's colour where it blew up. */
 	private readonly detonations = new DetonationWatch(MAX_ACTORS);
 	private readonly blastBurst: ChipBurst = DETONATION_VIEW.burst;
+	/** The power pellet's fly-in cubes and ring (docs/PELLETS.md PL7): pellet.power's palette index. */
+	private readonly flyIns = new PelletFlyIns();
+	private pelletPowerColor = PAL_SPARK;
 	private readonly moveParts = new Array<BasePart>();
 	private readonly moveCFrames = new Array<CFrame>();
 	private folder: Folder | undefined;
@@ -183,6 +192,8 @@ export class ParticleController implements OnStart, ParticleWriter {
 		this.fizzleColor = this.palette.size();
 		this.palette.push(pack.color(BREAKABLE_LOOT_VIEW.fizzleRole));
 		this.fizzleBurst = chipBurstOf(BREAKABLE_LOOT_VIEW.fizzleBurst);
+		this.pelletPowerColor = this.palette.size();
+		this.palette.push(pack.color(pelletId("power")));
 
 		this.nearMiss.onFrame((frame, settings) => this.nearMissFrame(frame, settings));
 		const [impOk, impKind] = pcall(() => archetypeIndex(IMP.id));
@@ -192,6 +203,7 @@ export class ParticleController implements OnStart, ParticleWriter {
 			switch (e.type) {
 				case "reset":
 					this.system.clear();
+					this.flyIns.clear();
 					break;
 				case "killed": {
 					if (e.boss) break; // bossDefeated follows and owns the boss's death
@@ -260,6 +272,32 @@ export class ParticleController implements OnStart, ParticleWriter {
 		const burst = this.fizzleBurst;
 		if (burst === undefined) return;
 		this.system.chips(x, z, this.fizzleColor, burst, seed, this.fx.settings());
+	}
+
+	/**
+	 * The power pellet taken (docs/PELLETS.md PL7): every erased bullet a cube flying into the picker over
+	 * PELLETS_VIEW.flyIn.sec (in place and fading under reduced motion), and one ring from the picker (fixed radius under
+	 * reduced motion), in pellet.power. Unlike the bursts the cubes draw at every particle level (they are the
+	 * conversion's readout; capped by flyIn.maxCubes).
+	 */
+	pelletPower(taken: Readonly<PelletPowerTaken>): void {
+		const settings = this.fx.settings();
+		const reduced = settings.reducedMotion;
+		this.flyIns.add(taken, reduced ? 0 : 1);
+		const state = this.sim.getContext()?.run.state;
+		if (state === undefined || taken.player < 0 || taken.player >= partySize(state)) return;
+		const me = playerAt(state, taken.player);
+		const r = PELLETS_VIEW.ring;
+		this.system.rings.spawn(
+			me.x,
+			me.z,
+			r.r0Tiles,
+			r.r1Tiles,
+			r.lifeSec,
+			this.pelletPowerColor,
+			!reduced,
+			RING_SEGMENTS,
+		);
 	}
 
 	/** The room clear spark ring at sim (x, z) (docs/ROOM_CLEAR.md RC5): uiAccent, or ember for PERFECT. */
@@ -331,10 +369,18 @@ export class ParticleController implements OnStart, ParticleWriter {
 		this.blinkPuffs(ctx.run.state, settings);
 		this.detonationBursts(ctx.run.state, settings);
 		this.system.update(dt, settings);
+		this.flyIns.update(dt);
 		this.used = 0;
 		this.moveParts.clear();
 		this.moveCFrames.clear();
 		this.system.draw(this);
+		const state = ctx.run.state;
+		if (this.flyIns.size() > 0) {
+			const party = partySize(state);
+			this.flyIns.draw(this, this.pelletPowerColor, (player) =>
+				player >= 0 && player < party ? playerAt(state, player) : undefined,
+			);
+		}
 		for (let i = this.used; i < this.lastUsed; i++) {
 			this.moveParts.push(this.parts[i].part);
 			this.moveCFrames.push(PARKED);

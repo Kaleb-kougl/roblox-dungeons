@@ -20,6 +20,7 @@ import {
 	type ScorePopTone,
 } from "shared/view/fx";
 import { HUD_STRINGS } from "shared/view/hud";
+import { PELLETS_VIEW, mergePelletPops, pelletPopAlpha, pelletPopRise, type PelletPop } from "shared/view/pellets";
 import { SimController } from "../game/SimController";
 import { ThemeController } from "../game/ThemeController";
 import { FxTrackerController } from "./FxTrackerController";
@@ -71,7 +72,7 @@ class PopView {
 	}
 }
 
-/** One pool of pops and its views: the kill pops, or the Jackpot's big gold ones. */
+/** One pool of pops and its views: the kill pops, the Jackpot's big gold ones, or the pellets' tiny ones. */
 interface PopLayer {
 	readonly pool: ScorePopPool;
 	readonly views: PopView[];
@@ -80,7 +81,12 @@ interface PopLayer {
 	/** Glyph scale and extra start height (render px) of this layer. */
 	readonly scale: number;
 	readonly liftPx: number;
+	/** Opacity and rise (render px) at an age (seconds) and motion scale: the kill pops' curves unless given. */
+	readonly alpha: (age: number, motion: number) => number;
+	readonly rise: (age: number, motion: number) => number;
 }
+
+const KILL_POP_ALPHA = (age: number): number => scorePopAlpha(age);
 
 /**
  * Floating score pops (M2 scoring): "+points" (theme string hud.score.pop, uiAccent) over the spot each enemy died,
@@ -92,6 +98,10 @@ interface PopLayer {
  * small pool (BUILD_FX_VIEW.jackpot: maxAlive, glyph scale, extra lift, boon.legendary's gold), with the same life,
  * fade, rise and damageNumbers gate.
  *
+ * Pellets (docs/PELLETS.md PL7, PD11): RunView.pellets.eaten merged per player per frame (mergePelletPops) pops the
+ * same "+points" in a third pool (PELLETS_VIEW.pop: maxAlive, pop.scale of a kill pop's glyphs, a shorter life and
+ * rise; reduced motion: a fade in place), uiAccent like a kill, with the same damageNumbers gate.
+ *
  * Gold Rush (docs/BUILDS.md BU6): a kill pop that matches a RunView.builds.goldRush record (scorePopTones) is that
  * kill's own pop, in the kill pool, coloured BUILD_FX_VIEW.goldRush.role instead of uiAccent (never a second pop).
  */
@@ -99,14 +109,35 @@ interface PopLayer {
 export class ScorePopController implements OnStart {
 	private readonly janitor = new Janitor();
 	private readonly clock = new SimClock();
-	private readonly kills: PopLayer = { pool: new ScorePopPool(), views: [], colors: [], scale: 1, liftPx: 0 };
+	private readonly kills: PopLayer = {
+		pool: new ScorePopPool(),
+		views: [],
+		colors: [],
+		scale: 1,
+		liftPx: 0,
+		alpha: KILL_POP_ALPHA,
+		rise: scorePopRise,
+	};
 	private readonly jackpots: PopLayer = {
 		pool: new ScorePopPool(BUILD_FX_VIEW.jackpot.maxAlive),
 		views: [],
 		colors: [],
 		scale: BUILD_FX_VIEW.jackpot.scale,
 		liftPx: BUILD_FX_VIEW.jackpot.liftPx,
+		alpha: KILL_POP_ALPHA,
+		rise: scorePopRise,
 	};
+	private readonly pellets: PopLayer = {
+		pool: new ScorePopPool(PELLETS_VIEW.pop.maxAlive),
+		views: [],
+		colors: [],
+		scale: PELLETS_VIEW.pop.scale,
+		liftPx: 0,
+		alpha: pelletPopAlpha,
+		rise: pelletPopRise,
+	};
+	/** The frame's merged pellet pops (mergePelletPops, reused). */
+	private readonly pelletPops: PelletPop[] = [];
 	/** The kill pops' tones this frame (scorePopTones, reused). */
 	private readonly tones: ScorePopTone[] = [];
 
@@ -130,17 +161,22 @@ export class ScorePopController implements OnStart {
 		jackpots.colors.push(gold);
 		for (let i = 0; i < jackpots.pool.capacity; i++)
 			jackpots.views.push(new PopView(holder, folder, `Jackpot${i}`, gold, stroke));
+		const pellets = this.pellets;
+		pellets.colors.push(kills.colors[0]);
+		for (let i = 0; i < pellets.pool.capacity; i++)
+			pellets.views.push(new PopView(holder, folder, `Pellet${i}`, pellets.colors[0], stroke));
 		// A locale switch (docs/LOCALIZATION.md L6): every label's font (the text is read on each show).
 		this.janitor.Add(
 			onLocaleChanged(() => {
 				const font = currentHudFont();
-				for (const view of [...kills.views, ...jackpots.views]) view.label.Font = font;
+				for (const view of [...kills.views, ...jackpots.views, ...pellets.views]) view.label.Font = font;
 			}),
 		);
 
 		this.sim.onRunStarted(() => {
 			kills.pool.clear();
 			jackpots.pool.clear();
+			pellets.pool.clear();
 			this.clock.reset();
 		});
 		RunService.BindToRenderStep(RENDER_STEP, Enum.RenderPriority.Camera.Value + RENDER_ORDER.viewsAfterCamera, () =>
@@ -157,18 +193,23 @@ export class ScorePopController implements OnStart {
 		const settings = this.fx.settings();
 		const kills = this.kills;
 		const jackpots = this.jackpots;
+		const pellets = this.pellets;
 		if (!settings.damageNumbers) {
 			kills.pool.clear();
 			jackpots.pool.clear();
+			pellets.pool.clear();
 		} else {
 			const pops = run.scorePops;
 			const tones = scorePopTones(pops, run.builds.goldRush, this.tones);
 			for (let i = 0; i < pops.size(); i++) kills.pool.add(pops[i].x, pops[i].z, pops[i].points, now, tones[i]);
 			for (const j of run.builds.jackpots) jackpots.pool.add(j.x, j.z, j.amount, now);
+			for (const p of mergePelletPops(run.pellets.eaten, this.pelletPops))
+				pellets.pool.add(p.x, p.z, p.points, now);
 		}
 		const motion = motionScale(settings);
 		this.drawLayer(kills, now, motion);
 		this.drawLayer(jackpots, now, motion);
+		this.drawLayer(pellets, now, motion);
 	}
 
 	private drawLayer(layer: PopLayer, now: number, motion: number): void {
@@ -178,7 +219,7 @@ export class ScorePopController implements OnStart {
 		const glyphH = SCORE_POP_GLYPH_PX.h * layer.scale;
 		for (let i = 0; i < pool.capacity; i++) {
 			const view = layer.views[i];
-			const alpha = pool.live[i] !== 0 ? scorePopAlpha(now - pool.born[i]) : 0;
+			const alpha = pool.live[i] !== 0 ? layer.alpha(now - pool.born[i], motion) : 0;
 			if (alpha <= 0) {
 				view.hide();
 				continue;
@@ -192,7 +233,7 @@ export class ScorePopController implements OnStart {
 				view.gui.Size = new UDim2(w * PX, 0, glyphH * PX, 0);
 			}
 			view.att.WorldPosition = floorPoint(pool.x[i], pool.z[i]);
-			const rise = scorePopRise(now - pool.born[i], motion);
+			const rise = layer.rise(now - pool.born[i], motion);
 			if (!view.shown || rise !== view.rise) {
 				view.rise = rise;
 				view.gui.StudsOffset = new Vector3(0, (SCORE_POP_BASE_PX + layer.liftPx + rise + glyphH / 2) * PX, 0);
