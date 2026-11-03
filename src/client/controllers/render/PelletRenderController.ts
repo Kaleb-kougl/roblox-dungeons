@@ -35,6 +35,8 @@ const HIDDEN = 1;
 const ART_THICKNESS = 0.02;
 const NORMAL = 0;
 const POWER = 1;
+/** Undoes the placeholder lift for the art (its own lift is in its floor frame). */
+const UNLIFT = new Vector3(0, -PELLETS_VIEW.liftStuds, 0);
 
 /** One pooled pellet body: the placeholder cube (model) or the art laid flat on the floor (part + label). */
 interface PelletBody {
@@ -52,8 +54,10 @@ interface PelletBody {
 
 interface PelletView {
 	readonly body: PelletBody;
-	/** The floor point under the pellet (the placeholder's base / the art's anchor). */
-	readonly rest: CFrame;
+	/** The floor point under the pellet lifted by PELLETS_VIEW.liftStuds (the placeholder's base; the art undoes it). */
+	readonly lifted: CFrame;
+	/** Placed at its spot since it was attached (false: the next apply moves it whatever its scale). */
+	placed: boolean;
 }
 
 /**
@@ -71,7 +75,8 @@ interface PelletView {
  * Bodies by what the pack has for `pellet.<kind>` (ThemePack.pellet): the art laid flat on the floor at
  * PELLETS_VIEW.artTiles wide (FX floor placement: over floor effects, under every marking and bullet), tinted by the
  * kind's colour role; else the placeholder Block cube in that role, standing on the floor. Pooled per kind
- * (PELLETS_VIEW.poolSize built ahead), parked far below when unused; every move in one workspace:BulkMoveTo per frame.
+ * (PELLETS_VIEW.poolSize built ahead), parked far below when unused; every move in one workspace:BulkMoveTo per frame,
+ * and a pellet is re-placed only when it was just attached or its scale changed (a still one costs nothing).
  *
  * The power pellet taken (`RunView.pellets.power`): ParticleController.pelletPower (the fly-in cubes and the ring) and
  * the solo freeze through the hitstop clock (pelletPowerFreezeMs: the view player's own pickup, freezeFrameOn, like the
@@ -194,8 +199,8 @@ export class PelletRenderController implements OnStart {
 
 	private attach(i: number, x: number, z: number, kind: number): PelletView {
 		const body = this.free[kind].pop() ?? this.build(kind);
-		const rest = new CFrame(studsX(x), floorStudsY(), studsZ(z));
-		const view = { body, rest };
+		const lifted = new CFrame(studsX(x), floorStudsY() + PELLETS_VIEW.liftStuds, studsZ(z));
+		const view: PelletView = { body, lifted, placed: false };
 		this.views.set(i, view);
 		if (body.art !== undefined) body.art.label.Visible = true;
 		return view;
@@ -254,7 +259,10 @@ export class PelletRenderController implements OnStart {
 		return { ...base, model, sizes, art: undefined };
 	}
 
-	/** This frame's look: scale (pop-in, pulse, shrink), transparency (the reduced fade), glow; then the move. */
+	/**
+	 * This frame's look: scale (pop-in, pulse, shrink), transparency (the reduced fade), glow; then the move, only when
+	 * the scale changed or the body was just attached (a still pellet costs no CFrame and no BulkMoveTo entry).
+	 */
 	private apply(view: PelletView, look: Readonly<PelletLook>): void {
 		const body = view.body;
 		const kindColor = (this.looks[body.kind] ?? this.looks[NORMAL]).color;
@@ -269,8 +277,10 @@ export class PelletRenderController implements OnStart {
 			if (body.model !== undefined) setModelTransparency(body.model, look.transparency);
 			if (body.art !== undefined) body.art.label.ImageTransparency = look.transparency;
 		}
+		let moved = !view.placed;
 		if (body.scale !== look.scale) {
 			body.scale = look.scale;
+			moved = true;
 			const s = math.max(look.scale, 0);
 			if (body.model !== undefined) {
 				for (let k = 0; k < body.model.pieces.size(); k++)
@@ -279,7 +289,9 @@ export class PelletRenderController implements OnStart {
 			const art = body.art;
 			if (art !== undefined) art.part.Size = new Vector3(art.size.X * s, art.size.Y, art.size.Z * s);
 		}
-		this.place(body, view.rest.add(new Vector3(0, PELLETS_VIEW.liftStuds, 0)));
+		if (!moved) return;
+		view.placed = true;
+		this.place(body, view.lifted);
 	}
 
 	/** Moves the body to `origin` (the model's pieces at their offsets scaled with it; the art at its floor frame). */
@@ -303,8 +315,7 @@ export class PelletRenderController implements OnStart {
 			else {
 				const r = art.rel;
 				const rel = s === 1 ? r : new CFrame(r.X * s, r.Y, r.Z * s).mul(r.Rotation);
-				// the art's own lift is in rel: undo the placeholder lift for it
-				this.moves.set(art.part, origin.add(new Vector3(0, -PELLETS_VIEW.liftStuds, 0)).mul(rel));
+				this.moves.set(art.part, origin.add(UNLIFT).mul(rel));
 			}
 		}
 	}

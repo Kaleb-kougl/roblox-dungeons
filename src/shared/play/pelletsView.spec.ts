@@ -276,13 +276,15 @@ class Viewer {
 			expect(c.sweepPoints > 0).toBe(p.rooms[rec].swept === 1);
 			// pelletPoints: what the room's own pellets (and its power pellet) paid since it went live.
 			expect(c.pelletPoints).toBe(this.recPellets.get(rec) ?? 0);
-			// killPoints: every other point since the engagement, never the pellets or a bonus.
+			// killPoints: every other point since the engagement, never the room's own pellets or a bonus.
 			const pre = this.atLive.get(rec)!;
 			const preTotal = this.totalAtLive.get(rec)!;
 			let bonusDelta = 0;
 			for (const src of BONUS_SOURCES) bonusDelta += (sc.points[src] ?? 0) - (before[src] ?? 0);
-			const pelletsSince = sc.points[ScoreSource.PELLETS] - pre[ScoreSource.PELLETS];
-			expect(c.killPoints).toBe(sc.total - preTotal - pelletsSince - bonusDelta);
+			// (Another room's pellets taken meanwhile are in this room's points, like its kills.)
+			const own = this.recPellets.get(rec) ?? 0;
+			expect(own <= sc.points[ScoreSource.PELLETS] - pre[ScoreSource.PELLETS]).toBe(true);
+			expect(c.killPoints).toBe(sc.total - preTotal - own - bonusDelta);
 			expect(roomClearBonus(c)).toBe(bonusDelta);
 			// The tally: the Sweep is in the flying bonus exactly once, the pellets are a segment of their own.
 			const segments = roomClearSegments(c);
@@ -567,6 +569,68 @@ describe("pellets on screen against the real sim (solo LiveRun, dev world in god
 		// The power pellet's bullets plus the pellet the engaging teleport stood on (and any other taken there).
 		expect(powerClear!.pelletPoints).toBe(v.recPellets.get(powerRec));
 		expect(powerClear!.pelletPoints > powerEvent.points).toBe(true);
+		expect(v.landed).toBe(v.started);
+		expect(v.roller.shown).toBe(s.score!.total);
+	});
+
+	// --- Rooms 3 and 4 live at once: each clear counts its own room's pellets only ---------------------------------------
+	const pair: number[] = [];
+	for (let k = 0; k < p.rooms.size() && pair.size() < 2; k++) {
+		const r = p.rooms[k];
+		if (k !== sweepRec && k !== powerRec && r.count >= 3 && r.phase === PelletPhase.DORMANT) pair.push(k);
+	}
+	const [recA, recB] = [pair[0] ?? -1, pair[1] ?? -1];
+	const listA = recA >= 0 ? regular(s, recA) : [];
+	const listB = recB >= 0 ? regular(s, recB) : [];
+	let pelletsAtA = 0;
+	let bothLive = false;
+	let clearA: RoomClear | undefined;
+	let clearB: RoomClear | undefined;
+	let ownA = 0;
+	let ownB = 0;
+	if (recA >= 0 && recB >= 0) {
+		engage(recA, listA[0]);
+		pelletsAtA = s.score!.points[ScoreSource.PELLETS];
+		step(EMPTY_INPUT, 1); // takes the pellet under the engaging teleport
+		engage(recB, listB[0]);
+		step(EMPTY_INPUT, 1);
+		bothLive = p.rooms[recA].phase === PelletPhase.LIVE && p.rooms[recB].phase === PelletPhase.LIVE;
+		// One more pellet in each room, B's last.
+		place(s, p.x[listA[1]], p.z[listA[1]]);
+		step(EMPTY_INPUT, 1);
+		place(s, p.x[listB[1]], p.z[listB[1]]);
+		step(EMPTY_INPUT, 1);
+		ownA = v.recPellets.get(recA) ?? 0;
+		ownB = v.recPellets.get(recB) ?? 0;
+		for (let n = 0; n < 20 && clearA === undefined; n++) {
+			killRoom(s, config, recA);
+			const r = step(EMPTY_INPUT, 1);
+			if (r.clears.size() > 0) clearA = r.clears[0];
+		}
+		for (let n = 0; n < 20 && clearB === undefined; n++) {
+			killRoom(s, config, recB);
+			const r = step(EMPTY_INPUT, 1);
+			if (r.clears.size() > 0) clearB = r.clears[0];
+		}
+		for (let n = 0; n < SETTLE_SEC * SIM_HZ; n++) step(EMPTY_INPUT, 1);
+	}
+	const pelletsSinceA = s.score!.points[ScoreSource.PELLETS] - pelletsAtA;
+	print(
+		`[pellets view] two rooms: records ${recA} / ${recB}, own ${ownA} / ${ownB}, pellets since A ${pelletsSinceA}`,
+	);
+
+	it("two rooms live at once: each clear's pellet points are its own room's, not the other's", () => {
+		expect(recA >= 0 && recB >= 0).toBe(true);
+		expect(bothLive).toBe(true);
+		expect(ownA > 0 && ownB > 0).toBe(true);
+		expect(clearA).never.toBe(undefined);
+		expect(clearB).never.toBe(undefined);
+		expect(clearA!.room).toBe(s.score!.rooms[recA].room);
+		expect(clearA!.pelletPoints).toBe(ownA);
+		expect(clearB!.pelletPoints).toBe(ownB);
+		// Every pellet point since A went live is A's or B's: B's stay out of A's tally (the old diff counted both).
+		expect(pelletsSinceA).toBe(ownA + ownB);
+		expect(clearA!.pelletPoints < pelletsSinceA).toBe(true);
 		expect(v.landed).toBe(v.started);
 		expect(v.roller.shown).toBe(s.score!.total);
 		print(`[pellets view] solo: ${v.frames} frames checked, ${v.clears.size()} clears`);

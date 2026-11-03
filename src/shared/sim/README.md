@@ -40,7 +40,7 @@ import from inside would create require cycles).
 | `replay.ts` | `src/sim/replay.ts` | `Recorder`, `runReplay`, `writeHashFields`, `hashNumbers` (FNV-1a over `buffer.writef64` bytes), `hashState`, `serializeRecording` / `deserializeRecording` (same messages), `float64Hex` / `float64FromHex` |
 | `recordingCodec.ts` | (Roblox only) | `encodeRecording` / `decodeRecording`: the compact binary recording (`buffer`) the `submitRun` remote carries; hostile-input-safe decode (docs/SERVER.md "The wire format") |
 | `observer.ts` | `src/sim/observer.ts` | `SimObserver` / `SimControls` types |
-| `hashLayout.ts` | (port helper) | the hash split into the fixtures' six subsystems, with dump names (plus `endless`, then `score`, then `run`, then `party`, then `tutorial`, then `breakables`, then `drops`, each appended only when present) |
+| `hashLayout.ts` | (port helper) | the hash split into the fixtures' six subsystems, with dump names (plus `endless`, then `score`, then `run`, then `party`, then `tutorial`, then `breakables`, then `drops`, then `affixes`, `dev`, `builds` and `pellets` (last), each appended only when present) |
 | `endless.ts` | (Roblox only) | endless mode: `SimConfig.endless` (`worldForFloor`), `SimState.endless` (floor, Depth, stairwell, rooms entered), `stepEndless` (Depth on a boss kill, floor clear points + stairwell / `DEBUG_FLOOR_BUTTON` -> next floor, deferred room spawns attached to score rooms), `writeEndlessHash` |
 | `endlessData.ts` | (Roblox only) | endless tunables: hp scaling by floor / Depth, enemy bullet speed scaling (speed only, never the burst shape), stairwell radius, the debug floor-skip bit |
 | `parity.ts` | (port helper) | `firstFieldMismatch`, `subsystemHashes`, `checkRunFixture` (whole-run parity), `replaySummary` (totals / firstTick / hitsBySource), `fixtureNumber` |
@@ -52,6 +52,7 @@ import from inside would create require cycles).
 | `tutorial/` | (Roblox only) | first-run tutorial (docs/TUTORIAL.md): `tutorialData.ts` tunables (`TUTORIAL_START_HALF_HEARTS`, the start clamp), `tutorial.ts` `SimConfig.tutorial` (`TutorialSimConfig`: `harmless`, `startHalfHearts`, `bossHpPercent`), `SimState.tutorial` (`TutorialState`: `harmless`, `harmlessHits`, `bossHpPercent`), `tutorialBossHp`, `isTutorialHarmless`, `writeTutorialHash` (the "tutorial" group, last); see "Tutorial" below |
 | `breakables/` | (Roblox only) | breakable barrels and crates (docs/DECOR.md D4): `breakablesData.ts` tunables (B4 toughness as hp = arrow hits x the bow's damage, the enemy bullet's share, hit / slam radii, `BreakableKind`, `BreakableSource`), `breakables.ts` `SimConfig.breakables` (`BreakablesConfig`, the game's `BREAKABLES_CONFIG`), `SimState.breakables` (pieces: kind, cell, hp, brokenTick; the derived cell -> slot lookup and intact count, never hashed), `damageBreakable`, the melee pass, the slam, `writeBreakablesHash` (the "breakables" group, last); `cells.ts` the leaf lookups (`solidCells`, `breakableSlotAt`) the movement code reads; see "Breakables" below |
 | `drops/` | (Roblox only) | boost drops (docs/BOOSTS.md B1-B3): `dropsData.ts` tunables (a leaf: `Boost` / `BOOSTS` Fury / Quickstep / Frenzy / Aegis, the percents, `DROPS` chance / pity / ground life / pickup radius / slots, `DEBUG_DROP_BUTTON`), `drops.ts` `SimConfig.drops` (`DropsConfig`, the game's `DROPS_CONFIG`, the tutorial's `guaranteedDropsConfig`), `SimState.drops` (`DropsState`: its own rng word, pity, ground slots, guards, per-player timers and Aegis pips; presentation `events`), `dropsOnKill` (killActor), `dropsOnRoomSpawned` (enterRoom), `stepDrops`, `ENDLESS_DROPS_CONFIG` (+ `breakableLoot`), the client's read helpers, `writeDropsHash` (the "drops" group, last); `boostMods.ts` the effect reads (a leaf: Fury / Frenzy percents for runMods, Quickstep's walk percent, `absorbWithAegis`, `boostsOnPlayerDied`); `breakLoot.ts` boosts from breakables (a leaf, docs/BREAKABLE_DROPS.md: `dropsOnFloorPieces` from createSimState / nextFloor fills `pieceLoot` from the floor's `breakableLoot`, `dropsOnBreak` from `damageBreakable`'s break line lands it; `landDrop` / `lowestFreeDropSlot`, which drops.ts uses); see "Boost drops" below |
+| `pellets/` | (Roblox only) | pellets (docs/PELLETS.md): `pelletsData.ts` tunables (a leaf: points, pickup radius, `PelletPhase`), `pellets.ts` `SimConfig.pellets` (`PelletsConfig`, the game's `PELLETS_CONFIG`), `SimState.pellets` (per pellet x / z / record / taken, the power pellet, one `PelletRoom` per score record; the cell lookup and per-tick `events`, never hashed), `pelletsOnFloor`, `writePelletsHash` (the "pellets" group, last); `stepPellets.ts` pickups and `pelletsPower`; `pelletRooms.ts` the leaf stepScore calls (live / gone / Sweep); see "Pellets" below |
 | `testing/` | `src/sim/actors/__test__/testArchetypes.ts` | test-only archetypes for specs (never imported by the game) |
 
 `SimConfig.moveResolver` has the source's signature and call contract (sub-steps of at most `MAX_MOVE_STEP`, one call
@@ -197,8 +198,9 @@ the party's leave bits handled right after the event clears):
 | 5 | `stepEndless`: boss kill -> Depth + 1; dead -> stop; stairwell / debug skip -> `awardFloorClear(floor, bossFloor, bossDead)` (floor(1000 x floor x rooms cleared / enemy rooms), the boss one more room on a boss floor, the full 1000 x floor without enemy rooms; then the multipliers), next floor, `resetBreakables` (the new floor's pieces), `rebuildScoreRooms`; first room entry -> deferred spawns -> `attachScoreRoomMembers` | `state.endless` |
 | 6 | `stepRun` (M2): a floor change -> the new floor's pedestals / shrine, Second Wind re-armed, a boon draft opens for every present player (offers from the sim rng, player index order); nobody alive -> stop; a room's spawns -> Warding refills each living owner's armor; pedestals (first living player on one, relic from the sim rng); the shrine (first living player in the zone with a SKILL1 edge -> their curse from the sim rng + `addCurse`) | `state.run` |
 | 7 | `stepDrops`: a floor change frees every ground slot and guard; DEBUG_DROP_BUTTON drops; boost timers (player, kind order); ground life (slot order); pickups (per slot the first living player in reach) | `state.drops` |
-| 8 | `stepScore`: final-phase window, hit cuts, combo timer, room engagement / clears | `state.score` |
-| 9 | `tick += 1` | |
+| 8 | `stepPellets`: per living player (index order) the live rooms' pellets in reach (3 x 3 cells, ascending index) are taken; the power pellet erases every enemy bullet but goo and strikes (`pelletsPower`) | `state.pellets` |
+| 9 | `stepScore`: final-phase window, hit cuts, combo timer, room engagement / clears (pellet runs: an engaged room's pellets go live, a clear pays the Sweep first, then they go) | `state.score` |
+| 10 | `tick += 1` | |
 
 While a boon draft is open (`isDraftOpen`: ANY player's) a tick is only: `clearEvents`, `clearScoreEvents`,
 `clearRunEvents` (co-op: then the leave bits), `stepDraft` (per player with an open draft: the stick's
@@ -262,7 +264,9 @@ Opt-in through `SimConfig.tutorial` (`TutorialSimConfig`, tutorial/tutorial.ts; 
 Without it there is no `state.tutorial`, nothing extra runs and nothing extra is hashed, so every fixture and every
 solo, endless and party hash is unchanged. With it createSimState creates `state.tutorial` (`harmless` 0/1,
 `harmlessHits`, `bossHpPercent`, the guard lock's `guardLockFloor` / `guardLockRoom` / `guardLock` / `guardLockFirstId`
-/ `guardLockEndId`), hashed as the **tutorial** group, appended after `party` (only `breakables` and `drops` come after it, and a tutorial run has no breakables).
+/ `guardLockEndId`, then the sweep lock's `pelletLockFloor` / `pelletLockRoom` / `pelletLock` / `pelletLockFirstId` /
+`pelletLockEndId`, docs/PELLETS.md PL12), hashed as the **tutorial** group, appended after `party` (a tutorial run also
+has `drops` and `pellets` groups after it, no breakables).
 
 | Rule | Where |
 | --- | --- |
@@ -323,3 +327,24 @@ draw from `state.rngState`, so no boon offer, relic, curse or archetype roll mov
 Client reads (shared/sim barrel): `dropsGround(state)`, `dropGroundTicks(state)`, `dropsEvents(state)`,
 `activeBoosts(state, i)`, `boostTicksLeft(state, i, kind)`, `aegisPips(state, i)`, `isBoostActive`. Specs:
 `drops/drops.spec.ts`, `drops/boosts.spec.ts`.
+
+## Pellets (Roblox port, docs/PELLETS.md)
+
+Opt-in through `SimConfig.pellets` (`PelletsConfig`; `PELLETS_CONFIG` is the game's: every endless world and the
+tutorial). Without it there is no `state.pellets`, `stepPellets` never runs, the score has no `PELLETS` / `SWEEP`
+sources and no `pellets` group is hashed, so M1, every fixture and every replay without it is unchanged. Where pellets
+lie is floor data (shared/dungeon `placePellets`, its own stream; the tutorial's `tutorialPellets`): the sim draws no
+rng for them. `pelletsOnFloor` fills the state at createSimState (after score and builds) and at the floor change
+(after `rebuildScoreRooms`).
+
+| Rule | Where |
+| --- | --- |
+| A record's pellets go LIVE on its engagement and GONE at its clear; the clear pays the Sweep first when every regular pellet was taken (`count > 0`) | `pelletRooms.ts` (from stepScore) |
+| Pickups: per living player in index order, the live pellets of its 3 x 3 cells within `pickupRadius`; a regular one `scorePellet` (x floor scale), the power pellet `pelletsPower` (not a Sweep pellet, PD8) | `stepPellets` (after stepDrops, before stepScore) |
+| The power pellet erases every active enemy bullet on the floor but goo and strikes (delayed ones stay), counts them in `bulletsDeleted`, pays `powerBulletPoints` each up to `powerMaxBullets` | `pelletsPower` |
+| No pellet award feeds the combo or refills its timer (PD1) | score.ts `scorePellet` / `scoreSweep` / `scorePowerBullets` |
+| Tutorial: the sweep lock holds room G's actors at 1 hp until its last pellet (`tutorialOnPelletsSwept`) | stepPellets, tutorial.ts |
+
+Hashed (group `pellets`, last): the pellet count, `taken` per pellet, `power`, the record count, per record `left` /
+`phase` / `swept`. Specs: `pellets/pellets.spec.ts`, `pellets/stepPellets.spec.ts`, placement
+`../dungeon/pellets.spec.ts`, the census `../run/pelletsCensus.spec.ts`.
