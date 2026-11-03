@@ -588,6 +588,31 @@ Decision log (deviations from `PLAN.md`):
   (boards stay `_v1`, `DAILY.ruleset` 3 -> 5 with main merged). The chomp `sfx.pellet.eat` climbs the major scale over
   a room's pellets (`pelletEatSpeed`). Studio check, the vale art upload, sounds, playtests (PL9 / PL15) and
   four owner calls pending.
+- **Run-over recap and co-op moments (docs/RUN_RECAP.md).** Presentation plus telemetry only (no sim, dungeon, lockstep,
+  hash, replay, fixture or score change; boards and records untouched). `RunView.recapTally` (shared/view/fx
+  `RecapTally`, on LiveRun and LockstepClient, collected every tick: parries per player by the director's grouping,
+  grazes per player). Recap core in shared/view/hud `recap.ts` / `recapConfig.ts` (`RECAP` / `RECAP_HIGHLIGHTS` /
+  `RECAP_STRINGS`, `nearMissFor`: one line, boss > score > record floor > stairs by walking path (`stairsPathTiles`,
+  rooms never gate the stairs, RRD10) > full clear > next boss; `pickHighlights`: max 4, filled to 2, Team / You;
+  `RecapTimeline`; `bossNoHitAwards` = `counts[BOSS] - (depth - startDepth)`) and `recapUi.ts` (`RECAP_UI`), shared/view
+  audio `recapCue` (one `sfx.score.tick` / `.land` a frame), shared/play `RunOverRetryGate`. `RecapController`
+  (`FX_FRAME_PHASE.normal`, after new best's `scoreRoll` step) builds the input once at run over, steps the timeline on
+  real time, writes the store's `recap` slice and `RECAP_BINDINGS`, re-derives silently on a verdict. Again is focused
+  and armed at 0.6 s through `RunOverRetryGate` (Again / Enter / Space / FIRE skip before, retry after; the `restart`
+  key at once; party runs only skip, Back to lobby unchanged); Details hides the breakdown + Build list behind the
+  highlights (RRD5). Strings `RECAP_STRING_KEYS` / `TEAM_MOMENT_STRING_KEYS` (shared/theme runRecap.ts, inside
+  `REQUIRED_STRING_KEYS`); port audio IDs `sfx.room.teamperfect` / `sfx.player.syncparry` (`PORT_AUDIO_EVENTS`, SILENT
+  in the placeholder; fallbacks `sfx.room.perfect` / `sfx.player.parry` at +5 semitones). Part B: the sim's PERFECT in a
+  party run is TEAM PERFECT (CMD1; stamp / chip text and streak, gold pulse rings on every living member, RCD12's chip
+  kept) and two players' parry groups starting within 12 ticks are SYNC! (`NearMissDirector` frame output
+  `out.parryGroups`; `TeamMomentsController` steps the ONE `TeamMoments`, clears in the new `FX_FRAME_PHASE.teamMoments`
+  (-2), parries on the first `syncs()` of a near-miss frame; `SyncCalloutController` floor text + tether). Revives
+  reserved only. contract.luau / validate.luau stay at 186 / 196 top-level locals (counted on out/). Telemetry: one new
+  custom event `RunRecap` (37 of 100 names; seconds the panel was open by close `retry` / `exit` / `lobby`, near-miss
+  kind, record x skipped; a party run's team totals as rows on the same event) from the client remote `runRecap`,
+  re-read by shared/run `readRunRecapReport`, rate limited (`RUN_RECAP_RATE`) and taken once per run session the server
+  issued (`RunRecapGate`) by TelemetryService; analytics only. Debug `KV_TeamMomentsDebug`, `KV_RetryTiming` (RR8's
+  press -> control print). Studio check (RR10), the retry measurement (RR8) and the vale sounds (CM7) pending.
 
 ## Commands
 

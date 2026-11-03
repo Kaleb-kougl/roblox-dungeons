@@ -1,6 +1,9 @@
 # Run-over recap and co-op moments (plan)
 
-Status (2026-11-03): **in progress**. Part A's client side RR4-RR7 built (branch `rr-ui`); RR8-RR11 and the Studio check pending. Supersedes the first draft in the project (`claude/run-recap-plan.md`,
+Status (2026-11-03): **built** (branch `run-recap`: RR0-RR7, RR9, RR11 and CM1-CM6; headless checks only, nothing has
+run in Studio). Pending: **RR8** (measure press -> control in a published place, then the levers it points to; "How to
+measure" under RR8), **RR10** (the owner's Studio check and tuning) and **CM7** (the vale sounds for the two port audio
+IDs, silent until then with their fallbacks). Supersedes the first draft in the project (`claude/run-recap-plan.md`,
 written without the repo): this version was checked against the code at `82c2af6`, and three of that draft's
 assumptions were wrong (see "What the code says"). Owner answers (2026-11-03): RRD6 (0.6 s arm) and RRD8 (thresholds)
 confirmed; everything else is proposed.
@@ -232,7 +235,7 @@ grazes, duos). Exit stays Back to lobby.
 | `TeamMoments` (pure): TEAM PERFECT flag + streak from `RoomClearEvents`, sync parries from the director's parry groups; `syncParry` records on the `NearMissDirector`'s frame output | shared/view/fx/teamMoments.ts, nearMissRules.ts | CM1 |
 | Stamp / chip text and streak, team pulse rings | roomClearSequence, RoomClearStamp / Chips, ParticleController | CM2 |
 | `SYNC!` floor text and tether | SyncCalloutController (the PARRY! flash's construction, fxHelpers `floorText`) | CM5 |
-| Telemetry: a retry event (`RunRetry`, PascalCase like `ANALYTICS_EVENT`; seconds on panel, near-miss kind, record run: client facts, so a remote to the server's TelemetryService, RR0 4) and co-op fields (team perfects, best streak, sync parries) on the party run-end event | shared/run/analytics.ts, shared/onboarding analyticsCatalog.ts | RR9 |
+| Telemetry: one event `RunRecap` (as built; the draft's `RunRetry` would misname an exit): close rows (seconds on the panel; retry / exit / lobby; near-miss kind; record x skipped) and, for a party run, team rows on the same event (no party run-end event exists, and the moments are client facts); remote `runRecap` to the server's TelemetryService (RR0 4) | shared/run recapAnalytics.ts, analytics.ts, shared/onboarding analyticsCatalog.ts, shared/network, TelemetryService, RecapController | RR9 |
 
 ## Tasks
 
@@ -249,7 +252,12 @@ Each step is a commit; `npm run verify` before each.
   path tiles, 2 / 3 rooms left, pre-boss floor), order, record-run drops and the dim line, FIRST RECORD none,
   `unknown` / `unranked`, daily best today; highlights: priority, cap 4, fill to 2, Team / You; timeline, skip before
   arm, reduced motion; verdict re-derive.
-- [ ] **RR3. Theme strings** (contract, placeholder, vale, l10n context); contract / validate specs and Luau locals.
+- [x] **RR3. Theme strings** (contract, placeholder, vale, l10n context); contract / validate specs and Luau locals.
+  As built: `RECAP_STRING_KEYS` (28: `run.recap.near.*`, `run.recap.hl.*`, the Team / You tags, the Details toggle)
+  and `TEAM_MOMENT_STRING_KEYS` (CM3) in shared/theme runRecap.ts, written out inside `REQUIRED_STRING_KEYS` (no new
+  top-level local); placeholder English as worded here (vale clones it), an `l10n/context.json` entry per key, the
+  PERFECT glossary term covers TEAM PERFECT; runRecap.spec. contract.luau / validate.luau stay at 186 / 196 top-level
+  locals (counted on out/ after the RR9 build).
 - [x] **RR4. Audio mapper** spec: tick cap per frame, one land, reduced motion. As built: not in the cue mapper's
   frame (the recap runs on the panel's real clock, not sim events): shared/view/audio `recapCue(edges, jingleFrame)`
   turns the timeline's edges into at most ONE sound a frame (a landing wins: one `sfx.score.land` however many rows
@@ -294,7 +302,42 @@ Each step is a commit; `npm run verify` before each.
   `active` once armed (the pad's selection starts on it as before); touch: Again is the largest exit. Party runs: a
   press only skips (Back to lobby unchanged). Retry Daily is the same button.
 - [ ] **RR8. Faster retry.** Levers only where RR0's split points. -> Verify: before / after times written here.
-- [ ] **RR9. Telemetry** spec.
+  **How to measure** (a published place, solo endless, die, press Again after the arm; five tries; F9 client log):
+  set the Workspace attribute `KV_RetryTiming = true` (RECAP_DEBUG.retryTimingAttribute, client only, read at the
+  press, nothing connected; off by default): RecapController prints `[Recap] retry: press -> control <s> s (run <n>)`
+  on the next run's first frame that takes input (the stage cover and its fade gone: `SimController.isInputCovered` /
+  `isHeldByLoader` false). The split comes from the stage loader's own line, printed on every run start:
+  `[Stage] run <n>: forged in <ms> ms, built in <ms> ms, revealed at <s> s` (the cover went up on the press, so
+  `revealed at` = (b) round trip + (c) forge / build / assets / settle + (d) the roster hold, and press -> control minus
+  `revealed at` = the 0.25 s fade); (b) alone is `revealed at` minus the roster hold (`rosterStartSec` 1 s from the
+  answer) when the forge and build finish under it. `KV_Debug` adds the per-listener `[Stage] listeners (...)` line.
+  Write the five times here before choosing a lever (`RECAP.retryStartSec`, `RECAP.prefetchSession`).
+- [x] **RR9. Telemetry** spec. As built (the smallest honest addition): **one** new custom event name `RunRecap`
+  (`ANALYTICS_EVENT.runRecap`; the catalog spec now pins 37 of Roblox's 100, field combinations 2599 of 8,000; no
+  funnel). `SessionEnded` "retried" / `SessionRetriesAfterDeath` keep counting retries from the server's replays;
+  `RunRecap` splits run-over closes by what the panel showed. Rows (shared/run recapAnalytics.ts
+  `analyticsForRunRecap`): a **close row** per report, value = seconds the panel was open (0..600, tenths), field01
+  `retry` (Again / Retry Daily / the restart key) / `exit` (Main menu) / `lobby` (any close of a party run), field02 the
+  near-miss kind shown (`RUN_RECAP_NEAR_MISS_KINDS`, pinned by spec to `RECAP_NEAR_MISS_ORDER`, or `none`), field03
+  `plain` / `plainSkipped` / `record` / `recordSkipped` (new best's record run x a press skipped the timeline first);
+  a `lobby` report adds three **team rows** on the same event, field01 `teamPerfects` / `bestTeamStreak` /
+  `syncParries`, value = the total (each member's report; there is no party run-end event to extend: RunEnded is the
+  owner's and server-derived). Remote `runRecap(report: RunRecapReport)` (shared/network: runId, close, seconds,
+  nearMiss, record, skipped, team?). Server (TelemetryService): `RUN_RECAP_RATE` 10 / 60 s, `readRunRecapReport`
+  (types, finite numbers, seconds clamped and rounded, counts non-negative integers clamped to 999 with the streak <=
+  the perfects, kinds from the list, run id 1..64 chars; a team on a solo close dropped, a malformed one rejects),
+  then `RunRecapGate`: one report per run session the server issued to that player (RunSessionService `createSession`
+  -> `TelemetryService.runIssued(runId, members)`, the last 4 remembered, so a report that lands after the next start
+  still counts; forged / repeated ids are dropped). Logged through `logAll` (the `KV_AnalyticsDebug` echo included);
+  read by nothing else. Client (RecapController): once per run over with a recap, ranked runs only (a `runId`; dev /
+  unranked send nothing), at the moment the panel is left: our own retry (before `requestRestart`), the run context
+  dropping under a ranked restart (the restart key's path), the next run starting (unranked), or the run exit (`exit`,
+  `lobby` for a party run, which waits for the party's verdict, so its seconds include that wait); seconds from the
+  panel's open (os.clock), the near-miss kind as last derived, the record flag and team totals as last derived, skipped
+  = a `RunOverRetryGate` "skip" in this run over. Not sent: a player who quits the game on the panel. Specs:
+  shared/run recapAnalytics.spec.ts (accept / clamp / reject cases, kinds = RECAP_NEAR_MISS_ORDER, solo and party rows,
+  the gate), analyticsCatalog.spec.ts (37 names, every RunRecap row in the catalog's sets, the entry's 240
+  combinations). docs/SERVER.md lists the event.
 
 ### Part B
 
@@ -345,8 +388,12 @@ Each step is a commit; `npm run verify` before each.
 
 - [ ] **RR10. [owner] Studio check and tuning** (below); tune `RECAP`, `RECAP_HIGHLIGHTS`, `syncWindowTicks` from five
   solo and three co-op runs.
-- [ ] **RR11. Docs.** As-built here, docs/CLIENT.md, ROOM_CLEAR.md / GRAZE_PARRY.md cross-links, the CLAUDE.md row and
-  decision log entry.
+- [x] **RR11. Docs.** As-built here, docs/CLIENT.md, ROOM_CLEAR.md / GRAZE_PARRY.md cross-links, the CLAUDE.md row and
+  decision log entry. As built: this Status line and RR3 / RR9; docs/CLIENT.md's controller map (RecapController,
+  TeamMomentsController, SyncCalloutController) and a "Run-over recap and co-op moments" juice section; one cross-link
+  line each in docs/ROOM_CLEAR.md (TEAM PERFECT on the stamp / chip, RCD12 kept) and docs/GRAZE_PARRY.md (the
+  director's `parryGroups`, SYNC!); docs/SERVER.md's `RunRecap` row; the CLAUDE.md decision log entry (the docs table
+  row was already there).
 
 ## Studio check
 
