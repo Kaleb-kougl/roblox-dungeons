@@ -22,6 +22,11 @@ export const ENEMY_BULLET_RADIUS = 0.12;
  * enemyBulletHitRadius).
  */
 export const GOO_BULLET_RADIUS = 0.35;
+/**
+ * Hit radius of a lightning strike (BulletKind.STRIKE, docs/NEW_ENEMIES.md NE1 / NE5), world units: the Stormcaller's
+ * marked circle (its `strikeRow` hint radius), so the strike lands exactly where the ring was drawn.
+ */
+export const STRIKE_BULLET_RADIUS = 1.1;
 /** Enemy bullet lifetime, seconds (walls cull almost all of them first). */
 export const ENEMY_BULLET_LIFE = 6;
 /** Enemy bullet damage, half hearts (a normal hit). */

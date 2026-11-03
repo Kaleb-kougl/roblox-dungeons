@@ -17,6 +17,10 @@
  *   variants.ts   enemy variants on screen (docs/ENEMY_VARIANTS.md EV9): affix reads / looks (ring, chip, shield row,
  *                 shield flash, Hulking scale, elite), the Vengeful corpse, the goo pool split and decal look, imp
  *                 landings (BlinkWatch), the summoner's ring filter (tunables: variantsConfig.ts)
+ *   newEnemies.ts the second endless set on screen (docs/NEW_ENEMIES.md NE8): the Bomber's fuse flash and detonation
+ *                 (DetonationWatch, the quick corpse), the stun / dizzy stars, the Warbanner's aura (AuraView, its
+ *                 ring), the strike flash's pool filter and look (tunables: newEnemiesConfig.ts; sprite inputs in
+ *                 sprites.ts, the strike row in markings.ts)
  *   buildBullets.ts  build effect bullets (docs/BUILDS.md BU8): player bullet look by payload kind (burst / shard /
  *                 bolt), trails, the ember decal pool split and look (tunables: BUILD_BULLET_VIEW in buildBulletsConfig.ts)
  *   spriteCell.ts per-sheet cells (docs/DEMON_ART.md DD4): the billboard layout of one sheet's own cell and pivot
@@ -68,6 +72,9 @@ export * from "./variantsConfig";
 export * from "./buildBulletsConfig";
 export * from "./buildBullets";
 export * from "./variants";
+export * from "./newEnemiesConfig";
+export * from "./newEnemies";
+export * from "./newEnemySprites";
 export * from "./spriteCell";
 export * from "./floorTexture";
 export * from "./breakablesConfig";

@@ -14,6 +14,12 @@ export const ENCOUNTER_COST: ReadonlyMap<string, number> = new Map<string, numbe
 	["imp", 2],
 	["slime", 3],
 	["summoner", 3],
+	// Roblox port: the second set of endless room enemies (docs/NEW_ENEMIES.md NE1; bought from floor 2 since NE7).
+	["bomber", 2],
+	["charger", 3],
+	["stormcaller", 3],
+	["warbanner", 2],
+	["reaper", 3],
 ]);
 /** Cost of an archetype id not in the table (never 0, so every spawn counts). */
 export const DEFAULT_ENCOUNTER_COST = 1;

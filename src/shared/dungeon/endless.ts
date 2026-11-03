@@ -149,7 +149,8 @@ export function rosterSeed(runSeed: number): number {
 /**
  * The order in which the seeded kinds of run `runSeed` join its roster: the room kinds other than ROSTER.always
  * (ENDLESS_ROOM_KINDS order) after one Fisher-Yates shuffle from new EncounterRng(rosterSeed(runSeed)): for i from
- * the last index down to 1, j = rng.int(0, i), swap i and j (one draw per step: 4 draws for 5 kinds). Pure.
+ * the last index down to 1, j = rng.int(0, i), swap i and j (one draw per step: 9 draws for the 10 seeded kinds since
+ * docs/NEW_ENEMIES.md NE7, which reshuffled every run's order). Pure.
  */
 export function rosterOrder(runSeed: number): string[] {
 	const order: string[] = [];
@@ -206,17 +207,19 @@ export function endlessRoster(runSeed: number, floor: number): string[] {
 }
 
 /**
- * True when a room on `floor` that has already bought `bought` (count per kind) may buy kind `k`: from its unlock floor
- * (EndlessRoomKind.fromFloor), below its room maximum (maxPerRoom) and, with a `roster` (endlessRoster), in it.
- * Draws nothing.
+ * True when a room on `floor` that has already bought `bought` (count per kind; `boughtTotal` enemies in all) may buy
+ * kind `k`: from its unlock floor (EndlessRoomKind.fromFloor), below its room maximum (maxPerRoom), not as the room's
+ * first buy when it needsCompany (docs/NEW_ENEMIES.md NED9) and, with a `roster` (endlessRoster), in it. Draws nothing.
  */
 function roomKindOpen(
 	k: EndlessRoomKind,
 	floor: number,
 	bought: ReadonlyMap<string, number>,
+	boughtTotal: number,
 	roster: ReadonlyArray<string> | undefined,
 ): boolean {
 	if (k.fromFloor !== undefined && floor < k.fromFloor) return false;
+	if (k.needsCompany === true && boughtTotal < 1) return false;
 	if (roster !== undefined && !roster.includes(k.kind)) return false;
 	return k.maxPerRoom === undefined || (bought.get(k.kind) ?? 0) < k.maxPerRoom;
 }
@@ -224,9 +227,9 @@ function roomKindOpen(
 /**
  * Spends `budget` on the room enemies of a room on `floor` (archetype ids, in spawn order), at most `cap` of them; the
  * costs never add up to more than the budget. Only the kinds open on the floor take part (roomKindOpen: unlocked, below
- * their room maximum and in `roster` when one is given; a closed kind is skipped in both loops below, so it moves no
- * total and no draw). Every endless floor passes its roster (buildEndlessFloor); without one (specs) every unlocked
- * kind is open, as before the roster. Each pick:
+ * their room maximum, not first when it needs company, and in `roster` when one is given; a closed kind is skipped in
+ * both loops below, so it moves no total and no draw). Every endless floor passes its roster (buildEndlessFloor);
+ * without one (specs) every unlocked kind is open, as before the roster. Each pick:
  * the affordable open kinds (ENDLESS_ROOM_KINDS) that cost at least budget-left / slots-left (so a big budget buys
  * dearer enemies instead of running out of slots), drawn by weight with one rng draw; when none of them is that dear,
  * the dearest affordable open kind (no draw). Stops when nothing is affordable or the cap is reached.
@@ -246,7 +249,7 @@ export function spendEncounterBudget(
 		let total = 0;
 		let dearest: EndlessRoomKind | undefined;
 		for (const k of ENDLESS_ROOM_KINDS) {
-			if (!roomKindOpen(k, floor, bought, roster)) continue;
+			if (!roomKindOpen(k, floor, bought, out.size(), roster)) continue;
 			const c = encounterCost(k.kind);
 			if (c > left) continue;
 			if (dearest === undefined || c > encounterCost(dearest.kind)) dearest = k;
@@ -257,7 +260,7 @@ export function spendEncounterBudget(
 		if (total > 0) {
 			let r = rng.next() * total;
 			for (const k of ENDLESS_ROOM_KINDS) {
-				if (!roomKindOpen(k, floor, bought, roster)) continue;
+				if (!roomKindOpen(k, floor, bought, out.size(), roster)) continue;
 				const c = encounterCost(k.kind);
 				if (c > left || c < need) continue;
 				pick = k;

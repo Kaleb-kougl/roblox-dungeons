@@ -32,7 +32,8 @@ export const DAILY: DailyConfig = table.freeze({
 	epochSeconds: KV_EPOCH_UNIX_SECONDS,
 	secondsPerDay: SECONDS_PER_DAY,
 	// 2: breakable loot (docs/BREAKABLE_DROPS.md) changes endless play. 3: solid decor (docs/DECOR.md "Solid decor")
-	// changes endless layouts.
+	// changes endless layouts, and five new room enemies with a reshuffled seeded roster (docs/NEW_ENEMIES.md NE7,
+	// NED12) change endless rooms (both unpublished before 3, so they share one bump).
 	ruleset: 3,
 	labelOffset: 1,
 	yesterdayCacheSeconds: 600,

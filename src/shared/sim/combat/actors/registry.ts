@@ -13,8 +13,10 @@
  * The port's own archetypes take a higher band so they number AFTER every web id instead of sorting in between and
  * shifting them: `dummy` (the tutorial's training dummy) is band PORT_BAND_TUTORIAL = 1, index 7; `boss.demonlord`
  * (the second endless boss, docs/BOSS_DEMONLORD.md) is band PORT_BAND_BOSSES = 2, index 8; the endless room enemies
- * of docs/ENEMY_VARIANTS.md are band PORT_BAND_ENEMIES = 3 (indices 9..12). A later addition takes the
- * next band, so no index that a recording or fixture already holds ever moves. Specs may add test archetypes
+ * of docs/ENEMY_VARIANTS.md are band PORT_BAND_ENEMIES = 3 (indices 9..12); the five of docs/NEW_ENEMIES.md are band
+ * PORT_BAND_ENEMIES_2 = 4 (indices 13..17: `bomber, charger, reaper, stormcaller, warbanner`; in band 3 they would
+ * have sorted between `imp` and the rest). A later addition takes the next band, so no index that a recording or
+ * fixture already holds ever moves. Specs may add test archetypes
  * (shared/sim/testing, band 0) in their own module world.
  */
 
@@ -35,6 +37,11 @@ export const PORT_BAND_BOSSES = 2;
  * index moves.
  */
 export const PORT_BAND_ENEMIES = 3;
+/**
+ * ArchetypeDef.band of the second set of port room enemies (docs/NEW_ENEMIES.md NED1): numbered after band 3, so
+ * `bomber`, `charger`, `reaper`, `stormcaller`, `warbanner` take indices 13..17 and no recorded index moves.
+ */
+export const PORT_BAND_ENEMIES_2 = 4;
 
 const byId = new Map<string, ArchetypeDef>();
 let sorted: ArchetypeDef[] | undefined;

@@ -102,6 +102,11 @@ export interface EndlessRoomKind {
 	readonly fromFloor?: number;
 	/** Most of this kind one room buys (absent: only ENDLESS_ROOM_ACTOR_CAP limits it). */
 	readonly maxPerRoom?: number;
+	/**
+	 * True: never a room's first buy (docs/NEW_ENEMIES.md NED9, the Warbanner buffs its room's other enemies). The
+	 * spender opens the kind only once the room has bought at least one enemy (of any kind); no draw.
+	 */
+	readonly needsCompany?: boolean;
 }
 
 /**
@@ -109,15 +114,40 @@ export interface EndlessRoomKind {
  * Floor 1 buys only the original three, draw for draw as before (dungeon/roomPool.lock.spec.ts, without a roster); the
  * seeded roster (ROSTER) closes more kinds on top of these and never lets one in before its unlock floor.
  */
-export const ROOM_KIND_UNLOCK_FLOOR = table.freeze({ imp: 2, slime: 4, summoner: 6 });
+export const ROOM_KIND_UNLOCK_FLOOR = table.freeze({
+	imp: 2,
+	slime: 4,
+	summoner: 6,
+	// docs/NEW_ENEMIES.md NED3: the second set of room enemies, all from floor 2 (floor 1 spends as before).
+	bomber: 2,
+	charger: 2,
+	stormcaller: 2,
+	warbanner: 2,
+	reaper: 2,
+});
 
 /** Summoners one room buys at most (EVD3: one support per room, whatever the budget or the party size). */
 export const SUMMONERS_PER_ROOM = 1;
 
 /**
+ * Oozes one room buys at most (docs/NEW_ENEMIES.md NE7, the Ooze cap of the docs/ENEMY_VARIANTS.md "Owner calls from
+ * EV13"): with ten seeded kinds a roster can hold the Ooze without the Bruiser deep into a run, and then a saturated
+ * party room's no-draw fallback bought 16 Oozes (48 actor slots with their splits). Unlocked from floor 4, so floor 1
+ * spends as before.
+ */
+export const OOZES_PER_ROOM = 8;
+
+/**
+ * Room maxima of the docs/NEW_ENEMIES.md room enemies (NE7): Bombers 4, Chargers / Stormcallers / Reapers 2, one
+ * Warbanner (NED9: one support per room, like the summoner).
+ */
+export const NEW_KIND_MAX_PER_ROOM = table.freeze({ bomber: 4, charger: 2, stormcaller: 2, warbanner: 1, reaper: 2 });
+
+/**
  * The room enemies of endless floors, in draw order. Turrets and the boss are not bought with room budgets. The first
  * three (and their weights 3 / 2 / 1) are the original pool and never change; the docs/ENEMY_VARIANTS.md kinds are
- * appended after them (EVD2) and join only from their unlock floor, so floors below every unlock spend as before.
+ * appended after them (EVD2), then the docs/NEW_ENEMIES.md kinds (NE7), and join only from their unlock floor, so
+ * floors below every unlock spend as before.
  * Endless floors buy only the kinds of the run's seeded roster (ROSTER, ./endless.ts endlessRoster; docs/DAILY.md DS1).
  */
 export const ENDLESS_ROOM_KINDS: ReadonlyArray<EndlessRoomKind> = [
@@ -125,8 +155,30 @@ export const ENDLESS_ROOM_KINDS: ReadonlyArray<EndlessRoomKind> = [
 	{ kind: "sniper", weight: 2 },
 	{ kind: "bruiser", weight: 1 },
 	{ kind: "imp", weight: 2, fromFloor: ROOM_KIND_UNLOCK_FLOOR.imp },
-	{ kind: "slime", weight: 1, fromFloor: ROOM_KIND_UNLOCK_FLOOR.slime },
+	{ kind: "slime", weight: 1, fromFloor: ROOM_KIND_UNLOCK_FLOOR.slime, maxPerRoom: OOZES_PER_ROOM },
 	{ kind: "summoner", weight: 1, fromFloor: ROOM_KIND_UNLOCK_FLOOR.summoner, maxPerRoom: SUMMONERS_PER_ROOM },
+	// docs/NEW_ENEMIES.md NE7 (NED3 weights 2 / 1 / 1 / 1 / 1, NED9 the Warbanner never a room's first buy).
+	{ kind: "bomber", weight: 2, fromFloor: ROOM_KIND_UNLOCK_FLOOR.bomber, maxPerRoom: NEW_KIND_MAX_PER_ROOM.bomber },
+	{
+		kind: "charger",
+		weight: 1,
+		fromFloor: ROOM_KIND_UNLOCK_FLOOR.charger,
+		maxPerRoom: NEW_KIND_MAX_PER_ROOM.charger,
+	},
+	{
+		kind: "stormcaller",
+		weight: 1,
+		fromFloor: ROOM_KIND_UNLOCK_FLOOR.stormcaller,
+		maxPerRoom: NEW_KIND_MAX_PER_ROOM.stormcaller,
+	},
+	{
+		kind: "warbanner",
+		weight: 1,
+		fromFloor: ROOM_KIND_UNLOCK_FLOOR.warbanner,
+		maxPerRoom: NEW_KIND_MAX_PER_ROOM.warbanner,
+		needsCompany: true,
+	},
+	{ kind: "reaper", weight: 1, fromFloor: ROOM_KIND_UNLOCK_FLOOR.reaper, maxPerRoom: NEW_KIND_MAX_PER_ROOM.reaper },
 ];
 
 /** Tunables of the seeded roster (docs/DAILY.md DS1, DSD1 / DSD2 / DSD9): which room kinds a run meets per floor. */
@@ -153,7 +205,8 @@ export const ROSTER: RosterTunables = table.freeze({ always: "swarmer", floorsPe
  * body that size spawned on a tile centre beside a wall overlaps the wall and can stick, so the endless placer gives
  * them only tiles whose 8 neighbours are all FLOOR (./enemyRooms.ts isOpenTile); roomSpawnTiles already holds to
  * that except in a tiny room's fallback. Kept here as data so the dungeon need not read the sim's archetype table
- * (dungeon/roomPool.spec.ts checks it against the registered radii). Affix radii (Hulking) are applied after
+ * (dungeon/roomPool.spec.ts checks it against the registered radii; the docs/NEW_ENEMIES.md kinds are 0.3-0.5, none
+ * over half a tile, NE7). Affix radii (Hulking) are applied after
  * placement and are not covered.
  */
 export const WIDE_BODY_KINDS: ReadonlySet<string> = new Set<string>(["slime"]);

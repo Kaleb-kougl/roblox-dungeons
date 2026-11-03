@@ -8,6 +8,7 @@ import {
 	EMPTY_INPUT,
 	MAX_ACTORS,
 	PORT_BAND_ENEMIES,
+	PORT_BAND_ENEMIES_2,
 	SIM_DT,
 	SUMMONER,
 	SUMMONER_ATTACK_PANIC,
@@ -18,6 +19,7 @@ import {
 	SUMMONER_SUMMON_SLOTS,
 	SimCtx,
 	V_AGGRO,
+	archetypeAt,
 	archetypeIds,
 	archetypeIndex,
 	createSimState,
@@ -84,12 +86,14 @@ function runUntil(s: SimState, config: SimConfig, max: number, done: () => boole
 
 describe("summoner: registry and data", () => {
 	it("is band PORT_BAND_ENEMIES, after the Demon Lord, and the last band-3 id (index 12 with imp / slime)", () => {
-		// In this branch alone the band holds only the summoner; with imp, slime and slime.small registered it is
-		// index 12 (compareIds: "slime.small" < "summoner").
+		// With imp, slime and slime.small registered it is index 12 (compareIds: "slime.small" < "summoner"); band 4
+		// (docs/NEW_ENEMIES.md, PORT_BAND_ENEMIES_2) numbers after it.
 		expect(SUMMONER.band).toBe(PORT_BAND_ENEMIES);
 		expect(archetypeIndex(SUMMONER.id)).toBeGreaterThan(archetypeIndex("boss.demonlord"));
+		expect(archetypeIndex(SUMMONER.id)).toBe(12);
 		const ids = archetypeIds();
-		expect(ids[ids.size() - 1]).toBe(SUMMONER.id);
+		expect(ids[12]).toBe(SUMMONER.id);
+		expect(archetypeAt(13).band).toBe(PORT_BAND_ENEMIES_2);
 	});
 
 	it("has the plan's body and EVD3 limits, and fires the bruiser's own ring spec", () => {

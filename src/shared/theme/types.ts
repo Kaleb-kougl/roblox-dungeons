@@ -68,6 +68,12 @@ export const COLOR_ROLES = [
 	// Roblox port (docs/ENEMY_VARIANTS.md EV1): the endless Imp (flanker) and Ooze (zone-denier, `slime`)
 	"enemy.imp",
 	"enemy.slime",
+	// Roblox port (docs/NEW_ENEMIES.md NE1): the second endless set (contract.ts ENEMY_ARCHETYPES)
+	"enemy.bomber",
+	"enemy.charger",
+	"enemy.stormcaller",
+	"enemy.warbanner",
+	"enemy.reaper",
 	// Bosses share one accent
 	"boss",
 	// Enemy attack warnings (telegraph lines, slam shockwaves): hot like enemy bullets, but not a bullet
@@ -169,6 +175,10 @@ export const COLOR_ROLES = [
 	"affix.shielded",
 	"affix.vengeful",
 	"enemyShield",
+	// Roblox port (docs/NEW_ENEMIES.md NE1, NED8): the Warbanner's aura (the ring under the banner, the faint rim tint on
+	// every enemy it buffs; variants.ts ENEMY_AURA_ROLE). Held to AURA_COLOR_RULES by auraReport (variantColors.ts):
+	// >= 3:1 on every biome floor and (CIE76) away from the enemy-bullet roles, telegraph, every boost and affix colour.
+	"enemyAura",
 	// Roblox port (docs/NEW_BEST.md NB4): the new-best gold (the passed target row, the gold score number, the NEW BEST!
 	// floor shout, the confetti, NEW DEEPEST on the stairwell card, the run-over ribbon). Held to NEW_BEST_COLOR_RULES by
 	// newBestReport (newBestColors.ts): >= 3:1 on uiPanel, (CIE76) apart from ember and every combo tier, and away from

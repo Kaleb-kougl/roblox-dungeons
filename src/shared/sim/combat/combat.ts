@@ -340,23 +340,27 @@ function computePhantom(state: SimState): void {
 function enemyBulletHit(i: number, pos: Readonly<Vec3>, payload: number): boolean {
 	if (hitBlocked !== undefined && hitBlocked(pos.x, pos.z)) return true;
 	const kind = BulletPayload.get(payload, "kind");
-	// Goo (docs/ENEMY_VARIANTS.md EVD14) ignores breakables and never grazes.
+	// Goo (docs/ENEMY_VARIANTS.md EVD14) and strikes (docs/NEW_ENEMIES.md NE5) ignore breakables and never graze.
 	const goo = kind === BulletKind.GOO;
-	if (!goo && hitPieces !== undefined && enemyBulletHitsBreakable(ctx.state, hitPieces, pos.x, pos.z)) return true;
+	const strike = kind === BulletKind.STRIKE;
+	const quiet = goo || strike;
+	if (!quiet && hitPieces !== undefined && enemyBulletHitsBreakable(ctx.state, hitPieces, pos.x, pos.z)) return true;
 	const p = ctx.state.player;
 	const dx = pos.x - p.x;
 	const dz = pos.z - p.z;
 	const d2 = dx * dx + dz * dz;
 	const inHit = d2 < ENEMY_HIT_R2_BY_KIND[kind];
-	if (grazeOn && !goo) scoreBulletVisit(ctx.state, ctx.state.combat.enemyBullets, i, payload, d2, inHit, grazeR2);
-	if (!inHit) return false;
-	// Builds (BU5): Phantom Step erases it (no hit, no score, no parry feed; goo quietly).
-	if (phantomAny && phantom[SOLO_PLAYER]) {
+	if (grazeOn && !quiet) scoreBulletVisit(ctx.state, ctx.state.combat.enemyBullets, i, payload, d2, inHit, grazeR2);
+	if (!inHit) return strike && strikeHoldSpent(i, payload);
+	// Builds (BU5): Phantom Step erases it (no hit, no score, no parry feed; goo quietly; never a strike: the roll's
+	// i-frames already avoid it).
+	if (phantomAny && phantom[SOLO_PLAYER] && !strike) {
 		phantomStepErased(ctx.state, SOLO_PLAYER, goo, pos.x, pos.z);
 		return true;
 	}
 	// Consumed only if the hit landed: i-frames, post-hit invulnerability, death and 0-damage bullets pass through.
-	return ctx.hurtPlayer(BulletPayload.get(payload, "damage"), BulletPayload.get(payload, "source") - 1);
+	const landed = ctx.hurtPlayer(BulletPayload.get(payload, "damage"), BulletPayload.get(payload, "source") - 1);
+	return landed || (strike && strikeHoldSpent(i, payload));
 }
 
 /**
@@ -366,13 +370,15 @@ function enemyBulletHit(i: number, pos: Readonly<Vec3>, payload: number): boolea
 function enemyBulletHitParty(i: number, pos: Readonly<Vec3>, payload: number): boolean {
 	if (hitBlocked !== undefined && hitBlocked(pos.x, pos.z)) return true;
 	const kind = BulletPayload.get(payload, "kind");
-	// Goo (docs/ENEMY_VARIANTS.md EVD14) ignores breakables and never grazes.
+	// Goo (docs/ENEMY_VARIANTS.md EVD14) and strikes (docs/NEW_ENEMIES.md NE5) ignore breakables and never graze.
 	const goo = kind === BulletKind.GOO;
-	if (!goo && hitPieces !== undefined && enemyBulletHitsBreakable(ctx.state, hitPieces, pos.x, pos.z)) return true;
+	const strike = kind === BulletKind.STRIKE;
+	const quiet = goo || strike;
+	if (!quiet && hitPieces !== undefined && enemyBulletHitsBreakable(ctx.state, hitPieces, pos.x, pos.z)) return true;
 	const state = ctx.state;
 	const n = partySize(state);
 	const hitR2 = ENEMY_HIT_R2_BY_KIND[kind];
-	if (grazeOn && !goo) {
+	if (grazeOn && !quiet) {
 		const ti = nearestLivingPlayer(state, pos.x, pos.z);
 		const target = playerAt(state, ti);
 		const gx = pos.x - target.x;
@@ -396,8 +402,8 @@ function enemyBulletHitParty(i: number, pos: Readonly<Vec3>, payload: number): b
 		const dx = pos.x - p.x;
 		const dz = pos.z - p.z;
 		if (dx * dx + dz * dz >= hitR2) continue;
-		// Builds (BU5): Phantom Step erases it over the first rolling owner it overlaps (index order).
-		if (phantomAny && phantom[k]) {
+		// Builds (BU5): Phantom Step erases it over the first rolling owner it overlaps (index order); never a strike.
+		if (phantomAny && phantom[k] && !strike) {
 			phantomStepErased(state, k, goo, pos.x, pos.z);
 			return true;
 		}
@@ -405,6 +411,18 @@ function enemyBulletHitParty(i: number, pos: Readonly<Vec3>, payload: number): b
 			return true;
 		}
 	}
+	return strike && strikeHoldSpent(i, payload);
+}
+
+/**
+ * A strike (BulletKind.STRIKE, docs/NEW_ENEMIES.md NE5) that did not land this pass: spends one hold tick from its
+ * payload's `pierce` field (the Stormcaller fires it with its hold; pierce is unused on enemy bullets). True (consume)
+ * on the last one, so a strike holds that many collision passes whatever the Hourglass does to its float life.
+ */
+function strikeHoldSpent(i: number, payload: number): boolean {
+	const left = BulletPayload.get(payload, "pierce");
+	if (left <= 1) return true;
+	ctx.state.combat.enemyBullets.setPayload(i, BulletPayload.with(payload, "pierce", left - 1));
 	return false;
 }
 

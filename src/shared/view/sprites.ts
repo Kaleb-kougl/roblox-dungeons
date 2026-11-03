@@ -108,6 +108,13 @@ import {
 import type { Pivot, SpriteAnimationDef, SpriteFacings } from "shared/theme";
 import { ACTOR_VIEW, SPRITE_ANIM_MARKS, SPRITE_VIEW } from "./config";
 import { VARIANT_ANIM_MARKS, VARIANT_SPRITE_VIEW } from "./variantsConfig";
+import {
+	bomberSpriteInput,
+	chargerSpriteInput,
+	reaperSpriteInput,
+	stormcallerSpriteInput,
+	warbannerSpriteInput,
+} from "./newEnemySprites";
 import { degToRad, isoBasis, type IsoBasis } from "./iso";
 
 const FULL_TURN = 360;
@@ -457,6 +464,18 @@ export interface ActorSpriteInput {
 	readonly refSpeed: number;
 	/** The sim's render alpha. */
 	readonly alpha: number;
+	/**
+	 * Roblox port (docs/NEW_ENEMIES.md NE8): a named death played instead of `death` when the set has it (the Bomber's
+	 * detonation `death.2`); unset or absent from the set: `death`.
+	 */
+	readonly deathAnim?: string;
+	/**
+	 * Roblox port (NE8): a named move loop played instead of `move` when the set has it (the Warbanner's `move.back`
+	 * while it backs away); unset or absent from the set: `move`.
+	 */
+	readonly moveAnim?: string;
+	/** Roblox port (NE8): the idle loop's rate (the Reaper's dizzy plays it slowed). Unset: 1. */
+	readonly idleRate?: number;
 }
 
 /**
@@ -1036,9 +1055,11 @@ function attackChoice(anim: string, def: SpriteAnimationDef, attack: ActorAttack
 /** An actor's animation: death > special > attack > hit > move > idle (file comment), skipping absent animations. */
 export function chooseActorAnim(input: ActorSpriteInput, anims: SpriteAnimSource): SpriteAnimChoice {
 	if (!input.alive) {
-		if (anims.animation("death") !== undefined) {
+		const named = input.deathAnim;
+		const death = named !== undefined && anims.animation(named) !== undefined ? named : "death";
+		if (anims.animation(death) !== undefined) {
 			const span = input.deathTicks ?? input.corpseTicks * SPRITE_VIEW.deathCorpseFraction;
-			return span > 0 ? stretched("death", input.deadTicks + input.alpha, span) : clocked("death", 1);
+			return span > 0 ? stretched(death, input.deadTicks + input.alpha, span) : clocked(death, 1);
 		}
 		return IDLE;
 	}
@@ -1058,11 +1079,14 @@ export function chooseActorAnim(input: ActorSpriteInput, anims: SpriteAnimSource
 	if (input.flinch !== false && input.flashTicks > 0 && hit !== undefined && hit.frames > 1) {
 		return stretched("hit", elapsedOf(HIT_FLASH_TICKS, input.flashTicks, input.alpha), HIT_FLASH_TICKS);
 	}
-	if (anims.animation("move") !== undefined) {
-		const move = moveChoice("move", input.speed, input.refSpeed);
+	const namedMove = input.moveAnim;
+	const moveName = namedMove !== undefined && anims.animation(namedMove) !== undefined ? namedMove : "move";
+	if (anims.animation(moveName) !== undefined) {
+		const move = moveChoice(moveName, input.speed, input.refSpeed);
 		if (move !== undefined) return move;
 	}
-	return IDLE;
+	const idleRate = input.idleRate;
+	return idleRate !== undefined && idleRate !== 1 ? clocked(IDLE.anim, idleRate) : IDLE;
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -1311,8 +1335,9 @@ export function bossSpriteLayout(layout: SpriteLayout, minDrawPx: number): Sprit
  * Archetypes drawn as sprites when the pack has a sprite set for their spriteId: archetype ID -> input builder. The
  * swarmer, the sniper, the tutorial's turret.sniper (same spriteId "enemy.sniper", docs/SNIPER_ART.md D3), M1's
  * turret.sprayer / turret.caster ("enemy.sprayer" / "enemy.caster", docs/DEMON_ART.md Phase 2), the bruiser, Mother
- * Bramble (boss.act1), the Demon Lord (boss.demonlord) and the enemy variants (docs/ENEMY_VARIANTS.md EV9: imp, slime,
- * slime.small, summoner); every other archetype stays a placeholder. A builder alone
+ * Bramble (boss.act1), the Demon Lord (boss.demonlord), the enemy variants (docs/ENEMY_VARIANTS.md EV9: imp, slime,
+ * slime.small, summoner) and the second endless set (docs/NEW_ENEMIES.md NE8: bomber, charger, stormcaller,
+ * warbanner, reaper; their sets land in NE9); every other archetype stays a placeholder. A builder alone
  * draws nothing: ActorRenderController takes the sprite path only when the pack's `sprites(spriteId)` is a set too, so
  * each stays a placeholder until its set lands (docs/DEMON_ART.md DA5 and Phase 2, docs/BRAMBLE_ART.md BR6,
  * docs/BOSS_DEMONLORD.md D7).
@@ -1331,4 +1356,10 @@ export const ACTOR_SPRITE_INPUTS: ReadonlyMap<string, (a: Readonly<ActorState>, 
 		[SLIME.id, slimeSpriteInput],
 		[SLIME_SMALL.id, slimeSmallSpriteInput],
 		[SUMMONER.id, summonerSpriteInput],
+		// docs/NEW_ENEMIES.md NE8 (newEnemySprites.ts: sprites.luau sits near Luau's 200 top-level locals)
+		["bomber", bomberSpriteInput],
+		["charger", chargerSpriteInput],
+		["stormcaller", stormcallerSpriteInput],
+		["warbanner", warbannerSpriteInput],
+		["reaper", reaperSpriteInput],
 	]);

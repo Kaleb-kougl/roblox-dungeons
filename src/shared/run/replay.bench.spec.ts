@@ -154,7 +154,7 @@ function bench(players: number, wholeFloor: boolean): BenchResult {
 		tickAll(s, setup.config, frames());
 	}
 	expect(s.endless!.roomsEntered[room]).toBe(1);
-	const before = countActors(s.combat).present;
+	const before = countActors(s.combat).alive;
 	const startIds = s.combat.actors.map((a) => (a.kind !== NO_KIND && a.alive !== 0 ? a.id : -1));
 	const times: number[] = [];
 	let actors = 0;
@@ -184,12 +184,14 @@ function bench(players: number, wholeFloor: boolean): BenchResult {
 	const hashUs = (hashTime / hashes) * 1e6;
 	// Nobody killed: every actor alive at the start still is, so the fight stayed at full size. The count itself may
 	// grow: a summoner (docs/ENEMY_VARIANTS.md EV4, in the room pool from floor 6 since EV5) calls swarmers mid-fight.
+	// Counted alive, not present: a corpse from the warm-up (a Bomber that blew itself up, docs/NEW_ENEMIES.md NE2; in
+	// the room pool since NE7) may be reaped during the measurement.
 	for (let i = 0; i < startIds.size(); i++) {
 		if (startIds[i] < 0) continue;
 		const a = s.combat.actors[i];
 		expect([i, a.id, a.alive !== 0]).toEqual([i, startIds[i], true]);
 	}
-	expect(countActors(s.combat).present >= before).toBe(true);
+	expect(countActors(s.combat).alive >= before).toBe(true);
 	return {
 		stepUs: mean * 1e6,
 		p99Us: times[math.min(times.size() - 1, math.floor(times.size() * 0.99))] * 1e6,

@@ -148,6 +148,12 @@ describe("enemy variants: contract", () => {
 			"dummy",
 			"imp",
 			"slime",
+			// docs/NEW_ENEMIES.md NE1 (newEnemies.spec.ts)
+			"bomber",
+			"charger",
+			"stormcaller",
+			"warbanner",
+			"reaper",
 		]);
 		for (const a of NEW_ARCHETYPES) {
 			expect([a, has(REQUIRED_ASSET_IDS, `enemy.${a}`), slotFor(`enemy.${a}`)?.slot]).toEqual([a, true, "enemy"]);
@@ -158,8 +164,9 @@ describe("enemy variants: contract", () => {
 
 	it("adds the goo puddle: a required bullet visual and the enemyGoo colour role", () => {
 		expect(GOO_BULLET_ID).toBe("bullet.enemy.goo");
-		// After the web build's six; only docs/BUILDS.md's effect bullets come after it.
-		expect(BULLET_IDS[BULLET_IDS.size() - 1 - BUILD_BULLET_IDS.size()]).toBe(GOO_BULLET_ID);
+		// After the web build's six; only docs/NEW_ENEMIES.md's strike and docs/BUILDS.md's effect bullets come after it.
+		expect(BULLET_IDS[BULLET_IDS.size() - 2 - BUILD_BULLET_IDS.size()]).toBe(GOO_BULLET_ID);
+		expect(BULLET_IDS[BULLET_IDS.size() - 1 - BUILD_BULLET_IDS.size()]).toBe("bullet.enemy.strike");
 		expect([has(REQUIRED_ASSET_IDS, GOO_BULLET_ID), slotFor(GOO_BULLET_ID)?.slot]).toEqual([true, "bullet"]);
 		expect([ENEMY_GOO_ROLE, has(COLOR_ROLES, ENEMY_GOO_ROLE)]).toEqual(["enemyGoo", true]);
 	});
@@ -180,7 +187,17 @@ describe("enemy variants: contract", () => {
 			"affix.shielded.name",
 			"affix.vengeful.name",
 		]);
-		expect([...BESTIARY_ARCHETYPES]).toEqual(["imp", "slime", "summoner"]);
+		expect([...BESTIARY_ARCHETYPES]).toEqual([
+			"imp",
+			"slime",
+			"summoner",
+			// docs/NEW_ENEMIES.md NE1
+			"bomber",
+			"charger",
+			"stormcaller",
+			"warbanner",
+			"reaper",
+		]);
 		expect([...BESTIARY_STRING_KEYS]).toEqual([
 			...BESTIARY_ARCHETYPES.map((a) => bestiaryArchetypeKey(a)),
 			...AFFIX_IDS.map((a) => bestiaryAffixKey(a)),
@@ -189,6 +206,11 @@ describe("enemy variants: contract", () => {
 			"bestiary.imp",
 			"bestiary.slime",
 			"bestiary.summoner",
+			"bestiary.bomber",
+			"bestiary.charger",
+			"bestiary.stormcaller",
+			"bestiary.warbanner",
+			"bestiary.reaper",
 			"bestiary.affix.hulking",
 			"bestiary.affix.swift",
 			"bestiary.affix.shielded",

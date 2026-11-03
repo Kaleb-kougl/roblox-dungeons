@@ -250,11 +250,16 @@ export function meleeHitBreakables(
 	return hits;
 }
 
-/** The boss's slam at (x, z): breaks every intact piece whose cell centre is within config.slamRadius. */
-export function slamBreakables(state: SimState, x: number, z: number): number {
+/**
+ * The boss's slam at (x, z): breaks every intact piece whose cell centre is within config.slamRadius. `radius`
+ * (docs/NEW_ENEMIES.md NE1: the Bomber's blast, the Charger's charge) replaces config.slamRadius when given; absent,
+ * exactly the boss's slam.
+ */
+export function slamBreakables(state: SimState, x: number, z: number, radius?: number): number {
 	const b = state.breakables;
 	if (b === undefined || b.intact === 0) return 0;
-	const r2 = b.config.slamRadius * b.config.slamRadius;
+	const r = radius ?? b.config.slamRadius;
+	const r2 = r * r;
 	let broken = 0;
 	for (let i = 0; i < b.pieces.size(); i++) {
 		const p = b.pieces[i];

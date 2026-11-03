@@ -8,6 +8,10 @@
  * The rest of the enemy-variant contract lives where its kind already does: `imp` / `slime` in ENEMY_ARCHETYPES
  * (`enemy.imp` / `enemy.slime` assets, colour roles and `.name` strings), `bullet.enemy.goo` in BULLET_IDS, the five
  * sounds in PORT_AUDIO_EVENTS, every colour role in types.ts COLOR_ROLES.
+ *
+ * docs/NEW_ENEMIES.md NE1 adds the second endless set the same way: `bomber` .. `reaper` in ENEMY_ARCHETYPES and
+ * BESTIARY_ARCHETYPES, `bullet.enemy.strike` (STRIKE_BULLET_ID) in BULLET_IDS, the six sounds in PORT_AUDIO_EVENTS and
+ * the Warbanner's aura role `enemyAura` (ENEMY_AURA_ROLE, held by variantColors.ts `auraReport`).
  */
 
 import type { ColorRole } from "./types";
@@ -36,6 +40,15 @@ export const ENEMY_GOO_ROLE: ColorRole = "enemyGoo";
 /** The goo puddle's bullet visual (EVD5): a flat floor decal, drawn from the renderer's second enemy-bullet pool. */
 export const GOO_BULLET_ID = "bullet.enemy.goo";
 
+/**
+ * The Warbanner's aura colour (docs/NEW_ENEMIES.md NED8: the ring under the banner, the faint rim tint on every enemy it
+ * buffs), held to AURA_COLOR_RULES by `auraReport`.
+ */
+export const ENEMY_AURA_ROLE: ColorRole = "enemyAura";
+
+/** The Stormcaller's lightning strike (docs/NEW_ENEMIES.md NE1, BulletKind.STRIKE): drawn as a bolt flash (NE8). */
+export const STRIKE_BULLET_ID = "bullet.enemy.strike";
+
 /** The affix names on the health bar's chip (`affix.<id>.name`, AFFIX_IDS order): "Hulking", "Swift", ... */
 export const AFFIX_STRING_KEYS: ReadonlyArray<string> = [
 	"affix.hulking.name",
@@ -44,8 +57,20 @@ export const AFFIX_STRING_KEYS: ReadonlyArray<string> = [
 	"affix.vengeful.name",
 ];
 
-/** The new archetypes a first sighting announces (EVD10): the Imp, the Ooze and the Summoner. */
-export const BESTIARY_ARCHETYPES = ["imp", "slime", "summoner"] as const;
+/**
+ * The new archetypes a first sighting announces (EVD10): the Imp, the Ooze and the Summoner, then the second endless set
+ * (docs/NEW_ENEMIES.md NED13): Bomber, Charger, Stormcaller, Warbanner, Reaper.
+ */
+export const BESTIARY_ARCHETYPES = [
+	"imp",
+	"slime",
+	"summoner",
+	"bomber",
+	"charger",
+	"stormcaller",
+	"warbanner",
+	"reaper",
+] as const;
 
 /**
  * The first-sighting toast lines (EVD10, EV12): one short tell per new archetype (`bestiary.<archetype>`,
@@ -55,6 +80,11 @@ export const BESTIARY_STRING_KEYS: ReadonlyArray<string> = [
 	"bestiary.imp",
 	"bestiary.slime",
 	"bestiary.summoner",
+	"bestiary.bomber",
+	"bestiary.charger",
+	"bestiary.stormcaller",
+	"bestiary.warbanner",
+	"bestiary.reaper",
 	"bestiary.affix.hulking",
 	"bestiary.affix.swift",
 	"bestiary.affix.shielded",

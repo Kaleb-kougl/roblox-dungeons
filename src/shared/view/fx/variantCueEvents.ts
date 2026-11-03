@@ -20,15 +20,34 @@
  *   - shieldBreaks / vengefulFired: the sim's AffixEvents `shieldBroke` / `vengefulFired` (runs with affixes only).
  *     `vengefulArmed` (the kill that starts the corpse's telegraph) is not a cue: the kill plays the death sound.
  *
+ *   - The second endless set (docs/NEW_ENEMIES.md NE8), from per-slot transitions between consecutive ticks ((slot,
+ *     actor id) -> aiState / alive, kept across frames; a new state or the tick going back only snapshots, so nothing
+ *     sounds on its first tick; a new actor id counts as coming from no state): `fuses` a Bomber entering its fuse
+ *     (TELEGRAPH, BOMBER_ATTACK_FUSE), `blasts` a Bomber alive last tick and a detonated corpse now (v[BOMBER_FUSED] =
+ *     BOMBER_DETONATED: a fizzle is the death sound only), `charges` a Charger leaving its lane telegraph into the
+ *     charge (or straight into a stun / recover when the first step is blocked), `stuns` a Charger entering
+ *     CHARGER_STUN, `spins` a Reaper entering REAPER_SPIN; `strikes` the tick's SimEvents.strikes (strike bullets
+ *     fired, NE5). A frozen tick (a boon draft) changes no state, so no transition repeats.
+ *
  * Counts per frame (the mapper only asks > 0: several imps landing on one frame are one sound). Read-only on the sim,
  * no allocation per tick. Presentation only: nothing here is hashed or written back.
  */
 import {
 	AiState,
+	BOMBER,
+	BOMBER_ATTACK_FUSE,
+	BOMBER_DETONATED,
+	BOMBER_FUSED,
+	CHARGER,
+	CHARGER_CHARGE,
+	CHARGER_RECOVER,
+	CHARGER_STUN,
 	IMP,
 	IMP_ATTACK_FAN,
 	IMP_LAND_AIM_TICKS,
 	NO_KIND,
+	REAPER,
+	REAPER_SPIN,
 	SLIME_SMALL_ID,
 	SUMMONER,
 	SUMMONER_SUMMON_FIRST,
@@ -51,6 +70,14 @@ export interface VariantCueSource {
 	readonly shieldBreaks: number;
 	/** Vengeful rings fired this frame (AffixEvents.vengefulFired). */
 	readonly vengefulFired: number;
+	/** docs/NEW_ENEMIES.md NE8: Bomber fuses lit, Bomber detonations, Charger charges and stuns, Reaper spins started. */
+	readonly fuses: number;
+	readonly blasts: number;
+	readonly charges: number;
+	readonly stuns: number;
+	readonly spins: number;
+	/** Strike bullets fired this frame (SimEvents.strikes). */
+	readonly strikes: number;
 }
 
 /** Nothing happened (no run, or audibleVariantCues while quiet). */
@@ -60,7 +87,16 @@ export const NO_VARIANT_CUES: VariantCueSource = table.freeze({
 	splits: 0,
 	shieldBreaks: 0,
 	vengefulFired: 0,
+	fuses: 0,
+	blasts: 0,
+	charges: 0,
+	stuns: 0,
+	spins: 0,
+	strikes: 0,
 });
+
+/** A slot's previous state when it held another actor (or none): no state at all. */
+const NO_STATE = -1;
 
 /** Archetype index of `id`, or NO_KIND when it is not registered. */
 function kindOf(id: string): number {
@@ -90,22 +126,98 @@ export class VariantCueEvents implements VariantCueSource {
 	splits = 0;
 	shieldBreaks = 0;
 	vengefulFired = 0;
+	fuses = 0;
+	blasts = 0;
+	charges = 0;
+	stuns = 0;
+	spins = 0;
+	strikes = 0;
 	private readonly impKind = kindOf(IMP.id);
 	private readonly smallKind = kindOf(SLIME_SMALL_ID);
 	private readonly summonerKind = kindOf(SUMMONER.id);
+	private readonly bomberKind = kindOf(BOMBER.id);
+	private readonly chargerKind = kindOf(CHARGER.id);
+	private readonly reaperKind = kindOf(REAPER.id);
+	/** Per slot, the previous tick's actor id, aiState and liveness (the NE8 transitions). */
+	private readonly slotIds: number[] = [];
+	private readonly slotStates: number[] = [];
+	private readonly slotAlive: boolean[] = [];
+	private lastState: Readonly<SimState> | undefined;
+	private lastTick = -1;
 
-	/** A new frame: forget the last one's counts. */
+	/** A new frame: forget the last one's counts (the per-slot memory stays: a frame boundary is no transition). */
 	reset(): void {
 		this.blinks = 0;
 		this.summons = 0;
 		this.splits = 0;
 		this.shieldBreaks = 0;
 		this.vengefulFired = 0;
+		this.fuses = 0;
+		this.blasts = 0;
+		this.charges = 0;
+		this.stuns = 0;
+		this.spins = 0;
+		this.strikes = 0;
 	}
 
 	/** Every event of this frame (0: nothing happened). */
 	count(): number {
-		return this.blinks + this.summons + this.splits + this.shieldBreaks + this.vengefulFired;
+		return (
+			this.blinks +
+			this.summons +
+			this.splits +
+			this.shieldBreaks +
+			this.vengefulFired +
+			this.fuses +
+			this.blasts +
+			this.charges +
+			this.stuns +
+			this.spins +
+			this.strikes
+		);
+	}
+
+	/** The NE8 transitions of the tick just stepped (file comment); updates the per-slot memory. */
+	private collectTransitions(state: Readonly<SimState>): void {
+		const fresh = state !== this.lastState || state.tick < this.lastTick;
+		this.lastState = state;
+		this.lastTick = state.tick;
+		const actors = state.combat.actors;
+		for (let i = 0; i < actors.size(); i++) {
+			const a = actors[i];
+			while (this.slotIds.size() <= i) {
+				this.slotIds.push(0);
+				this.slotStates.push(NO_STATE);
+				this.slotAlive.push(false);
+			}
+			const known = a.id !== 0 && this.slotIds[i] === a.id;
+			const prev = known ? this.slotStates[i] : NO_STATE;
+			const wasAlive = known && this.slotAlive[i];
+			const alive = a.alive !== 0;
+			if (!fresh && a.kind !== NO_KIND) {
+				const st = a.aiState;
+				if (a.kind === this.bomberKind) {
+					if (
+						alive &&
+						st === AiState.TELEGRAPH &&
+						a.attack === BOMBER_ATTACK_FUSE &&
+						prev !== AiState.TELEGRAPH
+					)
+						this.fuses++;
+					if (wasAlive && !alive && a.v[BOMBER_FUSED] === BOMBER_DETONATED) this.blasts++;
+				} else if (a.kind === this.chargerKind && alive) {
+					const charged = st === CHARGER_CHARGE || st === CHARGER_STUN || st === CHARGER_RECOVER;
+					if (prev === AiState.TELEGRAPH && charged) this.charges++;
+					if (st === CHARGER_STUN && prev !== CHARGER_STUN) this.stuns++;
+				} else if (a.kind === this.reaperKind && alive) {
+					if (st === REAPER_SPIN && prev !== REAPER_SPIN) this.spins++;
+				}
+			}
+			this.slotIds[i] = a.kind !== NO_KIND ? a.id : 0;
+			this.slotStates[i] = a.aiState;
+			this.slotAlive[i] = alive;
+		}
+		this.strikes += state.events.strikes;
 	}
 
 	/** Adds the tick just stepped (call after every step / stepParty). */
@@ -127,6 +239,7 @@ export class VariantCueEvents implements VariantCueSource {
 			this.shieldBreaks += affixes.events.shieldBroke.size();
 			this.vengefulFired += affixes.events.vengefulFired.size();
 		}
+		this.collectTransitions(state);
 	}
 }
 

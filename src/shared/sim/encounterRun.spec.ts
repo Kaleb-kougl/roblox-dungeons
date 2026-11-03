@@ -35,6 +35,11 @@ describe("encounter kinds are registered archetypes", () => {
 			"slime",
 			"slime.small",
 			"summoner",
+			"bomber", // band PORT_BAND_ENEMIES_2 (docs/NEW_ENEMIES.md): indices 13-17
+			"charger",
+			"reaper",
+			"stormcaller",
+			"warbanner",
 		]);
 		for (const k of TEST_TURRET_KINDS) expect([k, hasArchetype(k)]).toEqual([k, true]);
 		expect(hasArchetype(DEFAULT_ENCOUNTER.boss!)).toBe(true);

@@ -226,8 +226,14 @@ export function damageActor(ctx: SimCtx, a: ActorState, amount: number): number 
 	return dmg;
 }
 
-/** Kills a live actor; see SimCtx.killActor. */
-export function killActor(ctx: SimCtx, a: ActorState): void {
+/**
+ * Kills a live actor; see SimCtx.killActor. `quiet` (docs/NEW_ENEMIES.md NE2: the Bomber's own detonation) is a death
+ * nobody earned: events and onDeath only. No score (no points, no combo), no Vampire Fang, no drop roll and no Vengeful
+ * ring; a guaranteed drop room still counts the member as gone (dropsOnKill's reviver path: the guard step, never the
+ * roll). Builds never proc here either way (damageActor's kill line does). The score room sees it dead (alive 0) as
+ * usual.
+ */
+export function killActor(ctx: SimCtx, a: ActorState, quiet = false): void {
 	if (a.kind === NO_KIND || a.alive === 0) return;
 	a.alive = 0;
 	a.hp = 0;
@@ -235,16 +241,20 @@ export function killActor(ctx: SimCtx, a: ActorState): void {
 	a.flashTicks = 0;
 	ctx.events.actorsKilled += 1;
 	ctx.events.enemiesKilled += 1;
-	// M2 scoring (opt-in), before onDeath's own kills. The killer is the bound player (ctx.playerIndex: the bullet's
-	// owner or the swinging player; solo: 0) for Bounty and Vampire Fang.
-	if (ctx.state.score !== undefined) scoreKill(ctx.state, a, ctx.playerIndex);
 	const def = archetypeAt(a.kind);
-	// M2 Vampire Fang (endless runs): reviving archetypes (turrets) never count.
-	if (ctx.state.run !== undefined) runOnKill(ctx.state, ctx.playerIndex, def.stepDead !== undefined);
-	// Boost drops (docs/BOOSTS.md, opt-in): the kill may drop a boost (its own rng stream), before onDeath's own kills.
-	if (ctx.state.drops !== undefined) dropsOnKill(ctx, a, def.stepDead !== undefined);
-	// Elite affixes (opt-in): a Vengeful corpse arms its ring (fired by stepAffixes).
-	if (ctx.state.affixes !== undefined) affixesOnKill(ctx.state, a);
+	if (quiet) {
+		if (ctx.state.drops !== undefined) dropsOnKill(ctx, a, true);
+	} else {
+		// M2 scoring (opt-in), before onDeath's own kills. The killer is the bound player (ctx.playerIndex: the bullet's
+		// owner or the swinging player; solo: 0) for Bounty and Vampire Fang.
+		if (ctx.state.score !== undefined) scoreKill(ctx.state, a, ctx.playerIndex);
+		// M2 Vampire Fang (endless runs): reviving archetypes (turrets) never count.
+		if (ctx.state.run !== undefined) runOnKill(ctx.state, ctx.playerIndex, def.stepDead !== undefined);
+		// Boost drops (docs/BOOSTS.md, opt-in): the kill may drop a boost (its own rng stream), before onDeath's own kills.
+		if (ctx.state.drops !== undefined) dropsOnKill(ctx, a, def.stepDead !== undefined);
+		// Elite affixes (opt-in): a Vengeful corpse arms its ring (fired by stepAffixes).
+		if (ctx.state.affixes !== undefined) affixesOnKill(ctx.state, a);
+	}
 	if (def.onDeath !== undefined) def.onDeath(ctx, a);
 }
 
@@ -272,6 +282,8 @@ export function freeActor(ctx: SimCtx, a: ActorState): void {
  * (the new slots are skipped anyway: spawnTick === tick).
  */
 export function stepActors(ctx: SimCtx): void {
+	// The Warbanner aura (docs/NEW_ENEMIES.md NE6): one mask per tick from tick-start positions (empty without a banner).
+	ctx.rebuildAura();
 	const actors = ctx.combat.actors;
 	const tick = ctx.tick;
 	// Co-op: each actor's hooks see its own target (the nearest living player) as ctx.player.
