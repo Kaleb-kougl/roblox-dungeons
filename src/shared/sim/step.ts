@@ -26,6 +26,7 @@ import { boostsOnPlayerDied } from "./drops/boostMods";
 import { clearAffixEvents, type AffixesConfig } from "./affixes/affixes";
 import { stepDevToggle, type DevSimConfig } from "./dev/dev";
 import { clearBuildEvents, type BuildsConfig } from "./builds/builds";
+import { clearPelletsEvents, type PelletsConfig } from "./pellets/pellets";
 import type { SolidCells } from "shared/dungeon";
 
 export { PLAYER_RADIUS, PLAYER_SPEED } from "./playerData";
@@ -172,6 +173,14 @@ export interface SimConfig {
 	 * (after "dev"); the draft deals cards (levels, evolutions, duos) and a boss floor's draft is dealt twice.
 	 */
 	builds?: BuildsConfig;
+	/**
+	 * Pellets (docs/PELLETS.md PL2, pellets/pellets.ts): the rules (PELLETS_CONFIG is the game's: pickup radius, points);
+	 * where the pellets lie comes from each endless floor's world (EndlessFloorWorld.pellets), or from `pellets.floor`
+	 * without endless mode. Absent: no pellets state, nothing extra hashed, no pellet score sources (every fixture, M1,
+	 * the tutorial, every world today). Present: state.pellets is created and hashed as the "pellets" subsystem,
+	 * appended after every other group (after "builds"), and a scored run's points / counts gain PELLETS / SWEEP.
+	 */
+	pellets?: PelletsConfig;
 }
 
 /** Matches the 16x16 greybox room: inner wall faces at +/-7.75, minus the 0.4 player half-width (rounded). */
@@ -196,7 +205,7 @@ const partyPrev: number[] = [];
  * Advances `state` by exactly one tick of SIM_DT, in place. Solo runs only (a party state needs stepParty).
  *
  * Tick order (fixed; part of the determinism contract):
- *   1. clear per-tick events (and the score's, the breakables', the drops', the affixes', the builds'); then FORFEIT_BUTTON ("Leave run") -> forfeitSoloRun:
+ *   1. clear per-tick events (and the score's, the breakables', the drops', the affixes', the builds', the pellets'); then FORFEIT_BUTTON ("Leave run") -> forfeitSoloRun:
  *      the player dies at this tick; then (dev runs only) a DEV_GOD_BUTTON edge toggles god mode (stepDevToggle)
  *   2. stepPlayer  (movement, facing, roll, hearts, flask, Ember)
  *   3. stepCombat   (Ember clear, actors act, the player's weapons, bullets step, hits, contact damage)
@@ -229,6 +238,7 @@ export function step(
 	if (drops !== undefined) clearDropsEvents(drops);
 	if (state.affixes !== undefined) clearAffixEvents(state.affixes);
 	if (state.builds !== undefined) clearBuildEvents(state.builds);
+	if (state.pellets !== undefined) clearPelletsEvents(state.pellets);
 	const run = state.run;
 	// Read before the forfeit, which closes an open draft: that tick stays a frozen draft tick.
 	const frozen = run !== undefined && isDraftOpen(state);
@@ -308,6 +318,7 @@ export function stepParty(
 	if (drops !== undefined) clearDropsEvents(drops);
 	if (state.affixes !== undefined) clearAffixEvents(state.affixes);
 	if (state.builds !== undefined) clearBuildEvents(state.builds);
+	if (state.pellets !== undefined) clearPelletsEvents(state.pellets);
 	for (let i = 0; i < n; i++) if (hasLeftBit(inputs[i].buttons)) markPlayerLeft(state, i);
 	if (state.dev !== undefined) stepDevToggle(state, inputs, partyPrev);
 	const run = state.run;

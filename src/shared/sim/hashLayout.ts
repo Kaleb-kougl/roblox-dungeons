@@ -26,6 +26,7 @@ import { dropsHashNames, writeDropsHash } from "./drops/drops";
 import { affixesHashNames, writeAffixesHash } from "./affixes/affixes";
 import { devHashNames, writeDevHash } from "./dev/dev";
 import { buildsHashNames, writeBuildsHash } from "./builds/builds";
+import { pelletsHashNames, writePelletsHash } from "./pellets/pellets";
 
 /** The fixtures' subsystem groups, in hash order. */
 export const HASH_SUBSYSTEMS = ["core", "combatHeader", "actors", "weapons", "enemyBullets", "playerBullets"] as const;
@@ -47,7 +48,9 @@ export type HashSubsystem = (typeof HASH_SUBSYSTEMS)[number];
  *   dev      developer mode (docs/DEV_MODE.md: god mode, blocked hits, toggles), when state.dev exists (local dev runs
  *            only)
  *   builds   builds (docs/BUILDS.md BU1: per player boon levels, duos, counters, deals left; the proc queue), when
- *            state.builds exists; the LAST group
+ *            state.builds exists
+ *   pellets  pellets (docs/PELLETS.md PL2: the pellet count, taken per pellet, the power pellet, per score record left /
+ *            phase / swept), when state.pellets exists; the LAST group
  */
 export const ENDLESS_HASH_SUBSYSTEM = "endless";
 export const SCORE_SUBSYSTEM = "score";
@@ -59,6 +62,7 @@ export const DROPS_SUBSYSTEM = "drops";
 export const AFFIXES_SUBSYSTEM = "affixes";
 export const DEV_SUBSYSTEM = "dev";
 export const BUILDS_SUBSYSTEM = "builds";
+export const PELLETS_SUBSYSTEM = "pellets";
 /** Every group name a layout can have. */
 export type HashGroupName =
 	| HashSubsystem
@@ -71,7 +75,8 @@ export type HashGroupName =
 	| typeof DROPS_SUBSYSTEM
 	| typeof AFFIXES_SUBSYSTEM
 	| typeof DEV_SUBSYSTEM
-	| typeof BUILDS_SUBSYSTEM;
+	| typeof BUILDS_SUBSYSTEM
+	| typeof PELLETS_SUBSYSTEM;
 
 export interface HashGroup {
 	readonly name: HashGroupName;
@@ -203,6 +208,13 @@ export function hashLayout(state: Readonly<SimState>, withNames = false): HashLa
 		writeBuildsHash(builds, values);
 		if (withNames) buildsHashNames(builds, names);
 		close(BUILDS_SUBSYSTEM);
+	}
+
+	const pellets = state.pellets;
+	if (pellets !== undefined) {
+		writePelletsHash(pellets, values);
+		if (withNames) pelletsHashNames(pellets, names);
+		close(PELLETS_SUBSYSTEM);
 	}
 
 	return { values, names, groups };

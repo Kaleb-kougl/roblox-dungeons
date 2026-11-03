@@ -150,6 +150,14 @@ export const ScoreSource = {
 	 * Every other scored run keeps SCORE_SOURCE_COUNT sources, so its "score" hash group is unchanged.
 	 */
 	JACKPOT: 9,
+	/**
+	 * Pellets (docs/PELLETS.md PL2): every pellet taken and every enemy bullet the power pellet converts. Appended after
+	 * JACKPOT, and ONLY in runs with SimConfig.pellets (PELLET_SCORE_SOURCE_NAMES; createSimState pads points / counts to
+	 * them, JACKPOT included, addPelletScoreSources). Every other scored run's "score" hash group is unchanged.
+	 */
+	PELLETS: 10,
+	/** The Sweep (docs/PELLETS.md): every pellet of a room taken before its clear. Pellet runs only, like PELLETS. */
+	SWEEP: 11,
 } as const;
 export type ScoreSourceId = (typeof ScoreSource)[keyof typeof ScoreSource];
 /** Source names in index order (dump names, results screen string keys `score.source.<name>`). */
@@ -171,3 +179,9 @@ export const SCORE_SOURCE_COUNT = SCORE_SOURCE_NAMES.size();
  * run's points / counts hold SCORE_SOURCE_COUNT + BUILD_SCORE_SOURCE_NAMES.size() entries.
  */
 export const BUILD_SCORE_SOURCE_NAMES = ["jackpot"] as const;
+/**
+ * Sources only a pellets run has (docs/PELLETS.md PL2), appended after BUILD_SCORE_SOURCE_NAMES (ScoreSource.PELLETS =
+ * SCORE_SOURCE_COUNT + BUILD_SCORE_SOURCE_NAMES.size()). A pellets run's points / counts hold every source up to these
+ * (a pellets run without builds pads JACKPOT, always 0 there).
+ */
+export const PELLET_SCORE_SOURCE_NAMES = ["pellets", "sweep"] as const;
