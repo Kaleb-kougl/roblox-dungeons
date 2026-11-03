@@ -91,6 +91,10 @@
  *   Quiet: the controller passes the source through shared/view/fx audibleVariantCues(source, comboQuiet(covered,
  *   runOver)), so under the stage cover or once the run is over none of the five plays. None is a jingle, ducks the
  *   music or has a fallback: a silent ID (the placeholder pack's) plays nothing and takes no cap slot.
+ *   The second endless set (docs/NEW_ENEMIES.md NE8) rides on the same source and rules: sfx.enemy.fuse (a Bomber's
+ *   fuse lit), .blast (its detonation; a fizzle plays the death only), .charge (a Charger leaves its lane), .stun (it
+ *   hit a wall), .strike (strike bullets fired: SimEvents.strikes; strikes never raise the enemy shot, like goo),
+ *   .spin (a Reaper's spin starts).
  *
  * The new-best celebration (docs/NEW_BEST.md NB5) comes from the frame's NewBestCueSource (shared/view/hud: the
  * client's NewBestTracker frame, stepped BEFORE the mapper in the same frame; NO_NEW_BEST_CUES by default, so every
@@ -260,6 +264,16 @@ export const SFX = {
 	affixShieldBreak: "sfx.affix.shieldbreak",
 	affixVengeful: "sfx.affix.vengeful",
 	/**
+	 * The second endless set (docs/NEW_ENEMIES.md NE8; the theme's PORT_AUDIO_EVENTS): a Bomber's fuse lit and its
+	 * detonation, a Charger's charge and its stun on a wall, a Stormcaller's strikes landing, a Reaper's spin.
+	 */
+	enemyFuse: "sfx.enemy.fuse",
+	enemyBlast: "sfx.enemy.blast",
+	enemyCharge: "sfx.enemy.charge",
+	enemyStun: "sfx.enemy.stun",
+	enemyStrike: "sfx.enemy.strike",
+	enemySpin: "sfx.enemy.spin",
+	/**
 	 * The new-best celebration (docs/NEW_BEST.md NB5; the theme's PORT_AUDIO_EVENTS): the in-run fanfare (the shown
 	 * score passes the best, or the first floor past the deepest; a jingle, the PERFECT jingle while silent) and a
 	 * record run's run-over fanfare (in place of the game-over jingle, which plays while it is silent).
@@ -349,6 +363,12 @@ export const ALL_SFX: ReadonlyArray<SfxId> = [
 	SFX.enemySplit,
 	SFX.affixShieldBreak,
 	SFX.affixVengeful,
+	SFX.enemyFuse,
+	SFX.enemyBlast,
+	SFX.enemyCharge,
+	SFX.enemyStun,
+	SFX.enemyStrike,
+	SFX.enemySpin,
 	SFX.bestNew,
 	SFX.jingleRecord,
 	SFX.buildSpark,
@@ -407,6 +427,12 @@ export const PORT_SFX: ReadonlyArray<SfxId> = [
 	SFX.enemySplit,
 	SFX.affixShieldBreak,
 	SFX.affixVengeful,
+	SFX.enemyFuse,
+	SFX.enemyBlast,
+	SFX.enemyCharge,
+	SFX.enemyStun,
+	SFX.enemyStrike,
+	SFX.enemySpin,
 	SFX.bestNew,
 	SFX.jingleRecord,
 	SFX.buildSpark,
@@ -533,6 +559,16 @@ export const SFX_MIN_INTERVAL: Readonly<Partial<Record<SfxId, number>>> = {
 	[SFX.enemySplit]: 0.1,
 	[SFX.affixShieldBreak]: 0.1,
 	[SFX.affixVengeful]: 0.15,
+	/**
+	 * The second endless set (NE8): a pack of Bombers lighting together is one fuse; a two-Reaper room's spins and a
+	 * Stormcaller pair's strikes never stutter.
+	 */
+	[SFX.enemyFuse]: 0.12,
+	[SFX.enemyBlast]: 0.1,
+	[SFX.enemyCharge]: 0.15,
+	[SFX.enemyStun]: 0.15,
+	[SFX.enemyStrike]: 0.12,
+	[SFX.enemySpin]: 0.3,
 	/** Build effects (BU8): a cascade's sparks / rings / volleys are one climbing sound per interval, never a stutter. */
 	[SFX.buildSpark]: 0.06,
 	[SFX.buildBurst]: 0.08,
@@ -638,6 +674,17 @@ export const SFX_PRIORITY: Readonly<Record<SfxId, number>> = {
 	[SFX.enemyBlink]: 46,
 	[SFX.enemySummon]: 42,
 	[SFX.enemySplit]: 41,
+	/**
+	 * The second endless set (NE8), in the enemy variants' band: a detonation (a ring at point blank) and the strikes
+	 * (they hurt where they land) are danger now; the stun is the player's opening; the fuse, charge and spin follow a
+	 * telegraph that already sounded (rank 90).
+	 */
+	[SFX.enemyBlast]: 48,
+	[SFX.enemyStrike]: 46,
+	[SFX.enemyStun]: 45,
+	[SFX.enemyCharge]: 44,
+	[SFX.enemyFuse]: 43,
+	[SFX.enemySpin]: 42,
 	[SFX.boostExpire]: 48,
 	/**
 	 * Build effects (BU8): the evolve / duo stings with the tier sting; the Jackpot with the drops; an execute with the
@@ -1221,9 +1268,9 @@ export class AudioCueMapper {
 		for (const p of boosts.aegisBroke) this.playerCue(SFX.boostAegisBreak, p, localIndex);
 		for (const e of boosts.ended) if (e.player === localIndex) this.cue(SFX.boostExpire, 1);
 		const enemySpawned = state.combat.enemySpawned;
-		// Goo puddles (docs/ENEMY_VARIANTS.md EVD14) count in enemySpawned but never play the shot: only a rise beyond
-		// the frame's gooSpawned does.
-		if (this.lastEnemySpawned >= 0 && enemySpawned - this.lastEnemySpawned > events.gooSpawned) {
+		// Goo puddles (docs/ENEMY_VARIANTS.md EVD14) and strikes (docs/NEW_ENEMIES.md NE5 / NE8: sfx.enemy.strike) count
+		// in enemySpawned but never play the shot: only a rise beyond the frame's gooSpawned + strikes does.
+		if (this.lastEnemySpawned >= 0 && enemySpawned - this.lastEnemySpawned > events.gooSpawned + events.strikes) {
 			this.cue(SFX.enemyShoot, 1);
 		}
 		this.lastEnemySpawned = enemySpawned;
@@ -1233,6 +1280,13 @@ export class AudioCueMapper {
 		if (variants.splits > 0) this.cue(SFX.enemySplit, 1);
 		if (variants.shieldBreaks > 0) this.cue(SFX.affixShieldBreak, 1);
 		if (variants.vengefulFired > 0) this.cue(SFX.affixVengeful, 1);
+		// The second endless set (NE8): starts from the run view's per-tick transitions, strikes from SimEvents.strikes.
+		if (variants.fuses > 0) this.cue(SFX.enemyFuse, 1);
+		if (variants.blasts > 0) this.cue(SFX.enemyBlast, 1);
+		if (variants.charges > 0) this.cue(SFX.enemyCharge, 1);
+		if (variants.stuns > 0) this.cue(SFX.enemyStun, 1);
+		if (variants.strikes > 0) this.cue(SFX.enemyStrike, 1);
+		if (variants.spins > 0) this.cue(SFX.enemySpin, 1);
 		// The combo's tier sting and break (docs/COMBO.md CB4; a cut is silent, CD4).
 		const peakTier = comboTier(combo.peak);
 		if (peakTier > comboTier(combo.startCombo)) {

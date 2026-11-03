@@ -13,7 +13,14 @@
  */
 
 import { jsMax } from "shared/jsmath";
-import { BULLET_Y, ENEMY_BULLET_RADIUS, GOO_BULLET_RADIUS, TURN_COS, TURN_SIN } from "./combatData";
+import {
+	BULLET_Y,
+	ENEMY_BULLET_RADIUS,
+	GOO_BULLET_RADIUS,
+	STRIKE_BULLET_RADIUS,
+	TURN_COS,
+	TURN_SIN,
+} from "./combatData";
 import { BulletPayload } from "./payload";
 import { compose, gen } from "./projectilePatterns";
 import { releaseSpawnData, type BulletModifier, type BulletSimulation, type BulletSpawnData } from "./bullets";
@@ -49,13 +56,24 @@ export const BulletKind = {
 	SHARD: 9,
 	EMBER: 10,
 	SPARK_BOLT: 11,
+	/**
+	 * A lightning strike (Roblox port, docs/NEW_ENEMIES.md NE1 / NE5, NED7): the Stormcaller's stationary enemy bullet,
+	 * one per marked point, with a short life and a wide hit radius (enemyBulletHitRadius, STRIKE_BULLET_RADIUS). NE1
+	 * only reserves the kind and its radius; NE5 adds its rules (GOO's exclusions: no grazes, no shoot cue, but the
+	 * sword guard does NOT erase it). 13..15 stay free.
+	 */
+	STRIKE: 12,
 } as const;
 
 /**
- * Enemy bullet hit radius by BulletKind where it differs from ENEMY_BULLET_RADIUS (docs/ENEMY_VARIANTS.md EVD13).
+ * Enemy bullet hit radius by BulletKind where it differs from ENEMY_BULLET_RADIUS (docs/ENEMY_VARIANTS.md EVD13; the
+ * Stormcaller's STRIKE, docs/NEW_ENEMIES.md NE1).
  * Every kind without a row (every web kind) hits at ENEMY_BULLET_RADIUS exactly.
  */
-const ENEMY_BULLET_KIND_RADIUS: ReadonlyMap<number, number> = new Map([[BulletKind.GOO, GOO_BULLET_RADIUS]]);
+const ENEMY_BULLET_KIND_RADIUS: ReadonlyMap<number, number> = new Map([
+	[BulletKind.GOO, GOO_BULLET_RADIUS],
+	[BulletKind.STRIKE, STRIKE_BULLET_RADIUS],
+]);
 
 /** The hit radius of an enemy bullet of kind `kind` (BulletKind), world units. */
 export function enemyBulletHitRadius(kind: number): number {

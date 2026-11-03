@@ -56,6 +56,7 @@ Record every ported module in `PROVENANCE.md` (ported module, source path, sourc
 | `docs/DAILY.md` | Daily dungeon and seeded rosters (every endless seed picks its enemy kinds: swarmers + 1 on floor 1, one more every 2 floors; a `daily` world with one server-side seed per UTC day, day-scoped solo / co-op boards, percentile, friends, rank climbing, yesterday's podium): plan, tasks DS0-DS14, decisions DSD1-DSD16 |
 | `docs/LOCALIZATION.md` | Language localization (the 17 languages Roblox auto-translates; player's Roblox language by default, a Language override in Options; translations from the Roblox cloud table, imported into validated generated tables; AutoLocalize off on every GUI; fonts per script; pseudo-locale `en-XA`): plan, as built, tasks L0-L15, decisions LD1-LD14 |
 | `docs/PORTRAIT.md` | Portrait play (phones turn either way, `Sensor`; upright the view keeps the short side at `VIEW_TILES_HIGH` with the player lifted above the thumbs, touch controls in a bottom band, pause map on top, the draft in a column, the HUD scale capped to the width): plan, tasks PT1-PT9, decisions PD1-PD7 |
+| `docs/NEW_ENEMIES.md` | New enemies (five endless room archetypes from floor 2: Bomber rusher that blows up, Charger lane charge stunned by walls, Stormcaller lightning strike rows, Warbanner aura support, Reaper bullet spiral; band 4, `BulletKind.STRIKE`, the Warbanner aura in `actorMods`; gameplay): plan, NE0 findings, tasks NE0-NE14, decisions NED1-NED14 |
 
 Decision log (deviations from `PLAN.md`):
 - **Art (docs/ART.md).** The theme contract gained a `"sprites"` kind (large pre-rendered cells, 1/4/8/16 screen-space
@@ -542,6 +543,23 @@ Decision log (deviations from `PLAN.md`):
   licence lines are data in every language; section labels, "by {author}" and the change note are strings
   `menu.credits` / `credits.*`). Required by the CC BY kit and the Dungeon Forge's MIT notice. On a phone the button
   is a small one beside the invite reason (its own row would cost the smallest phone the ornament, fit.spec.ts).
+- **New enemies (docs/NEW_ENEMIES.md).** Gameplay. Five port archetypes in band 4 (`PORT_BAND_ENEMIES_2`, indices
+  13-17; no older index moves): `bomber` (rushes, 0.7 s fuse ring, blasts 12 @ FULL_RING and dies through
+  `killActor(ctx, a, true)`: no score, Fang, drop roll, Vengeful or build procs; a shot Bomber always fizzles), `charger`
+  (locked lane, breaks pieces before each step, stunned by walls / its room's box, one `HIT_HEAVY` per player per
+  charge), `reaper` (spin: entries k / k + 8 of the WEB 16 @ FULL_RING row every 8 ticks), `stormcaller` (a row of
+  three `BulletKind.STRIKE` = 12 bullets: speed 0, a 6-pass hold in the payload's `pierce` field so the Hourglass never
+  stretches it, no grazes, never erased by guard / swings / Nova / Phantom Step, one player at most, `events.strikes`),
+  `warbanner` (aura 125 % walk / 80 % cooldowns within 4.5 through `actorMods`, from a transient `SimCtx` mask rebuilt
+  at the start of every `stepActors`: never hashed, a pure function of hashed state). `slamBreakables` takes an optional
+  radius. Endless rooms buy them from floor 2 (weights 2 / 1 / 1 / 1 / 1, caps 4 / 2 / 2 / 1 / 2, `needsCompany` on the
+  Warbanner) and the Ooze gained `OOZES_PER_ROOM` 8; `rosterOrder` shuffles 10 kinds (full roster on floor 19), so
+  endless rosters, replays and scores changed from floor 1 (boards stay `_v1`; `DAILY.ruleset` 3, shared with solid decor). M1, every
+  fixture and the tutorial replay exactly as before. Theme: five `ENEMY_ARCHETYPES`, colour role `enemyAura`, bullet
+  visual `bullet.enemy.strike`, port audio IDs `sfx.enemy.fuse` / `.blast` / `.charge` / `.stun` / `.strike` /
+  `.spin` (SILENT in the placeholder), optional enemy animations `death.2` / `move.back`, `bestiary.<id>` toasts. Vale:
+  Imp 5, Demon Beast 1, Demon Spawn 7, Imp 3, Demon Spawn 5 sets built (`art:build`), upload and the strike clip
+  pending; Studio check and tuning (NE12-NE13) pending.
 
 ## Commands
 

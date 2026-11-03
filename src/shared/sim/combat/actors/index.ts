@@ -4,6 +4,7 @@ export type { ActorScalarField, ActorState, ArchetypeData, ArchetypeDef } from "
 export {
 	PORT_BAND_BOSSES,
 	PORT_BAND_ENEMIES,
+	PORT_BAND_ENEMIES_2,
 	PORT_BAND_TUTORIAL,
 	WEB_ARCHETYPE_BAND,
 	archetypeAt,
@@ -13,7 +14,15 @@ export {
 	registerArchetype,
 	webArchetypeIds,
 } from "./registry";
-export { actorCooldownPercent, actorWalkPercent, enemyCooldown, enemyCooldownFixed, walkStep } from "./actorMods";
+export {
+	actorCooldownPercent,
+	actorWalkPercent,
+	auraCooldownPercent,
+	auraWalkPercent,
+	enemyCooldown,
+	enemyCooldownFixed,
+	walkStep,
+} from "./actorMods";
 export { faceToward, lineOfSight, moveActor, toPlayer, walkToward, type ToPlayer } from "./helpers";
 export { EMPTY_ENCOUNTER, roomAt } from "./encounter";
 export type { ActorSpawn, EncounterConfig, EncounterRoom, EncounterRoomType } from "./encounter";

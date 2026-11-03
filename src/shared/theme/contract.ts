@@ -133,9 +133,11 @@ export const ENEMY: SlotContract = {
 	facings: FACINGS,
 	perSheetCells: true,
 	// docs/ENEMY_VARIANTS.md EV10: `attack.2`, a second named attack (falls back to `attack`): the summoner's summon
-	// cast (shared/view variantsConfig VARIANT_SPRITE_VIEW.summonerAnims). Inline, not a top-level constant: the
-	// compiled contract.luau sits at Luau's 200-locals limit.
-	optionalAnimations: ["attack.2"],
+	// cast (shared/view variantsConfig VARIANT_SPRITE_VIEW.summonerAnims). docs/NEW_ENEMIES.md NE8: `death.2`, a second
+	// death (falls back to `death`): the Bomber's detonation (Explode); `move.back`, a second move loop (falls back to
+	// `move`): the Warbanner backing away (Run Backwards) (shared/view newEnemiesConfig NEW_ENEMY_SPRITE_VIEW.anims).
+	// Inline, not a top-level constant: the compiled contract.luau sits near Luau's 200-locals limit.
+	optionalAnimations: ["attack.2", "death.2", "move.back"],
 };
 
 export const BOSS: SlotContract = {
@@ -324,7 +326,7 @@ export function requiredBaseAnimations(slot: SlotContract): Array<string> {
 
 /**
  * Named optional animations a `sprites` asset in this slot may define (`optionalAnimations`, in contract order): class
- * attack.1..3, enemy attack.2, boss attack.2 / attack.3 / attack.4 / intro / taunt; empty for the other slots. A copy. Never required
+ * attack.1..3, enemy attack.2 / death.2 / move.back, boss attack.2 / attack.3 / attack.4 / intro / taunt; empty for the other slots. A copy. Never required
  * (requiredBaseAnimations is the required list); any other extra name stays allowed (the validator checks every
  * animation a set defines, required or not).
  */
@@ -356,7 +358,9 @@ export type ClassId = (typeof CLASS_IDS)[number];
  * pack fills `enemy.dummy` (asset and colour role) and `enemy.dummy.name` like the others. Then the endless roster's
  * `imp` (the Imp, a flanker) and `slime` (the Ooze, a zone-denier; its slimelets `slime.small` draw `enemy.slime`
  * smaller) of docs/ENEMY_VARIANTS.md EV1: `enemy.imp` / `enemy.slime` and their `.name` the same way (placeholders: a
- * small cone and a low dome). The Summoner fills the web build's existing `summoner`.
+ * small cone and a low dome). The Summoner fills the web build's existing `summoner`. Then the second endless set of
+ * docs/NEW_ENEMIES.md NE1: `bomber`, `charger`, `stormcaller`, `warbanner`, `reaper` (placeholders: a small cone, a
+ * long wedge, a tall slim drum, a thin post, a flat disc).
  */
 export const ENEMY_ARCHETYPES = [
 	"swarmer",
@@ -368,6 +372,11 @@ export const ENEMY_ARCHETYPES = [
 	"dummy",
 	"imp",
 	"slime",
+	"bomber",
+	"charger",
+	"stormcaller",
+	"warbanner",
+	"reaper",
 ] as const;
 export type EnemyArchetype = (typeof ENEMY_ARCHETYPES)[number];
 
@@ -455,6 +464,9 @@ export const BULLET_IDS = [
 	// Roblox port (docs/ENEMY_VARIANTS.md EV1, EVD5): the Ooze's goo puddle (variants.ts GOO_BULLET_ID), drawn flat on
 	// the floor under every moving bullet, tinted `enemyGoo`
 	"bullet.enemy.goo",
+	// Roblox port (docs/NEW_ENEMIES.md NE1): the Stormcaller's lightning strike (variants.ts STRIKE_BULLET_ID,
+	// BulletKind.STRIKE), a stationary bullet drawn as a short bolt flash on its marked circle (NE8)
+	"bullet.enemy.strike",
 	// Roblox port (docs/BUILDS.md BU1): the build effects' player bullets (builds.ts BUILD_BULLET_IDS, the same list):
 	// Volatile's bolts, Soul Shards, embers (a flat floor flame), Flurry / Thrill Seeker bolts
 	"bullet.player.burst",
@@ -663,7 +675,8 @@ export const BOOST_BEAM_IMAGE_ID = "ui.marker.boost";
  * to the PERFECT jingle while silent) and the run-over record fanfare (falls back to the game-over jingle). Then the
  * Daily's rank layer's two (docs/DAILY.md DS10): a rank threshold's sting and a friend passed. Then the breakable
  * drops' one (docs/BREAKABLE_DROPS.md BL5): a boost hops out of a broken barrel / crate (sfx.boost.drop plays while it
- * is silent).
+ * is silent). Then the new enemies' six (docs/NEW_ENEMIES.md NE1): a Bomber's fuse and blast, a Charger's charge and
+ * stun, a Stormcaller's strike, a Reaper's spin.
  */
 export const PORT_AUDIO_EVENTS = [
 	"sfx.player.swing",
@@ -741,6 +754,14 @@ export const PORT_AUDIO_EVENTS = [
 	// docs/BREAKABLE_DROPS.md BL5: a loaded barrel / crate breaks and its boost hops out (in place of sfx.boost.drop for
 	// that landing, which plays while this one is silent)
 	"sfx.breakable.loot",
+	// docs/NEW_ENEMIES.md NE1: a Bomber's fuse starts / it blasts; a Charger charges / staggers on a wall; lightning
+	// strikes a Stormcaller's row; a Reaper starts spinning
+	"sfx.enemy.fuse",
+	"sfx.enemy.blast",
+	"sfx.enemy.charge",
+	"sfx.enemy.stun",
+	"sfx.enemy.strike",
+	"sfx.enemy.spin",
 ] as const;
 
 /**

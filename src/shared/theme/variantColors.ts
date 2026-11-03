@@ -6,6 +6,8 @@
  *   - `affixReport` (AFFIX_COLOR_RULES): the affix rings and the shield segment read on every biome floor and never as
  *     a bullet, a telegraph, the enemy rim or another affix;
  *   - `gooReport` (GOO_COLOR_RULES): the goo puddles read on every biome floor and never as decor or a pickup;
+ *   - `auraReport` (AURA_COLOR_RULES, docs/NEW_ENEMIES.md NE1): the Warbanner's aura ring and tint read on every biome
+ *     floor and never as a bullet, a telegraph, a pickup or an affix;
  *   - and, folded in here so validate.ts takes no new name (docs/BUILDS.md BU1), buildColors.ts `buildReport`: the
  *     builds effect colours read on every floor and never as danger.
  */
@@ -14,7 +16,7 @@ import { colorDifference, contrastRatio, isHexColor } from "./color";
 import { BOOST_ROLES, DECOR_FX_ROLES, ENEMY_BULLET_ROLES, MIN_DECOR_FX_BULLET_DIFFERENCE } from "./contract";
 import type { ColorRole } from "./types";
 import { isObj, sortedEntries } from "./util";
-import { AFFIX_ROLES, ENEMY_GOO_ROLE, ENEMY_SHIELD_ROLE } from "./variants";
+import { AFFIX_ROLES, ENEMY_AURA_ROLE, ENEMY_GOO_ROLE, ENEMY_SHIELD_ROLE } from "./variants";
 import { buildReport } from "./buildColors";
 
 /** What a variant colour report checks against what, and the bars (AFFIX_COLOR_RULES, GOO_COLOR_RULES). */
@@ -59,6 +61,20 @@ export const GOO_COLOR_RULES: VariantColorRules = {
 };
 
 /**
+ * The aura colour rules (`auraReport`, docs/NEW_ENEMIES.md NE1 / NED8): `enemyAura` (the ring under a Warbanner and
+ * the faint rim tint on every enemy it buffs) >= 3:1 on every biome floor and >= MIN_DECOR_FX_BULLET_DIFFERENCE (40
+ * CIE76) from the enemy-bullet roles, `telegraph`, every boost colour and every affix colour (with the shield
+ * segment's), so a buffed enemy never reads as a threat cue, a pickup or an elite.
+ */
+export const AURA_COLOR_RULES: VariantColorRules = {
+	roles: [ENEMY_AURA_ROLE],
+	minFloorContrast: 3.0,
+	against: [...ENEMY_BULLET_ROLES, "telegraph", ...BOOST_ROLES, ...AFFIX_ROLES, ENEMY_SHIELD_ROLE],
+	minDifference: MIN_DECOR_FX_BULLET_DIFFERENCE,
+	minApart: 0,
+};
+
+/**
  * One check of a variant colour report, for each role in `rules.roles` order:
  * - check "floor": the role vs every biome's floor (WCAG contrast, >= minFloorContrast; `against` = the biome ID,
  *   biomes in sorted order);
@@ -80,6 +96,7 @@ export interface VariantColorEntry {
 
 export type AffixEntry = VariantColorEntry;
 export type GooEntry = VariantColorEntry;
+export type AuraEntry = VariantColorEntry;
 
 function variantReport(manifest: unknown, rules: VariantColorRules): Array<VariantColorEntry> {
 	const out = new Array<VariantColorEntry>();
@@ -140,6 +157,11 @@ export function gooReport(manifest: unknown): Array<GooEntry> {
 	return variantReport(manifest, GOO_COLOR_RULES);
 }
 
+/** The Warbanner's aura (AURA_COLOR_RULES); see VariantColorEntry. */
+export function auraReport(manifest: unknown): Array<AuraEntry> {
+	return variantReport(manifest, AURA_COLOR_RULES);
+}
+
 /** A validator message: where (a manifest path) and what. */
 export interface VariantColorProblem {
 	path: Array<string>;
@@ -161,6 +183,11 @@ const WHY = {
 		difference: "goo must read as danger, never as decor or a boost drop",
 		apart: "",
 	},
+	aura: {
+		floor: "a Warbanner's aura must read on the floor",
+		difference: "the aura colour must never read as an enemy bullet, a telegraph, a boost drop or an affix",
+		apart: "",
+	},
 	build: {
 		floor: "a build effect must read on the floor",
 		difference:
@@ -170,7 +197,7 @@ const WHY = {
 } as const;
 
 /**
- * Every failed affix, goo and build effect check as a validator message (validateManifest adds them to its errors, path
+ * Every failed affix, goo, aura and build effect check as a validator message (validateManifest adds them to its errors, path
  * `colors.<role>`). `suffix(biome)` is the validator's forge-theme suffix for a biome ID (" (crypt)").
  */
 export function variantColorProblems(manifest: unknown, suffix: (biome: string) => string): Array<VariantColorProblem> {
@@ -178,6 +205,7 @@ export function variantColorProblems(manifest: unknown, suffix: (biome: string) 
 	const reports = [
 		{ entries: affixReport(manifest), why: WHY.affix },
 		{ entries: gooReport(manifest), why: WHY.goo },
+		{ entries: auraReport(manifest), why: WHY.aura },
 		{ entries: buildReport(manifest), why: WHY.build },
 	];
 	for (const report of reports) {

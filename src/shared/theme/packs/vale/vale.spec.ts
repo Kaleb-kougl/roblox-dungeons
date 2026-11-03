@@ -854,8 +854,20 @@ describe("vale per-sheet cells (docs/DEMON_ART.md DA2 / DD4)", () => {
 		expect([g.offset.X, g.offset.Y, g.size.X, g.size.Y, g.pivot]).toEqual([693, 791, 99, 113, { x: 51, y: 89 }]);
 	});
 
-	it('only the `cells: "perSheet"` sets (enemy.bruiser, boss.act1, the turrets, the imp, the summoner) give their sheets their own cells', () => {
-		const perSheet = ["boss.act1", "enemy.bruiser", "enemy.caster", "enemy.imp", "enemy.sprayer", "enemy.summoner"];
+	it('only the `cells: "perSheet"` sets (enemy.bruiser, boss.act1, the turrets, the imp, the summoner, the NE9 five) give their sheets their own cells', () => {
+		const perSheet = [
+			"boss.act1",
+			"enemy.bomber",
+			"enemy.bruiser",
+			"enemy.caster",
+			"enemy.charger",
+			"enemy.imp",
+			"enemy.reaper",
+			"enemy.sprayer",
+			"enemy.stormcaller",
+			"enemy.summoner",
+			"enemy.warbanner",
+		];
 		for (const id of sortedKeys(VALE_SPRITE_LAYOUTS)) {
 			const own = perSheet.includes(id);
 			for (const sheet of VALE_SPRITE_LAYOUTS[id].sheets) {
@@ -1840,6 +1852,96 @@ describe("vale draft skin (docs/DRAFT_REVEAL.md DR3: the ToffeeCraft Horror UI s
 		expect(validateManifest(one, { packId: "vale" })).toEqual([]);
 		for (const id of ids) {
 			expect([id, one.assets[id]?.kind]).toEqual([id, id === "ui.draft.card.rare" ? "image" : undefined]);
+		}
+	});
+});
+
+/**
+ * The NE9 sets (docs/NEW_ENEMIES.md NE9, rigs NED2): enemy.bomber (Imp 5; its death sheet also holds `death.2`, the
+ * detonation), enemy.charger (Demon Beast 1), enemy.stormcaller (Demon Spawn 7), enemy.warbanner (Imp 3; its body sheet
+ * also holds `move.back`, the retreat) and enemy.reaper (Demon Spawn 5), per-sheet cells, three sheets and three rims
+ * each. Not uploaded yet: the bundled pack draws all five as their placeholders until their 30 files have IDs.
+ */
+describe("vale new enemies (NE9: Imp 5 / Beast 1 / Spawn 7 / Imp 3 / Spawn 5, per-sheet cells)", () => {
+	/** [id, sheet prefix, pixelsPerTile, the set it takes its density from (undefined: its own bodyTiles), animations]. */
+	const SETS: ReadonlyArray<[string, string, number, string | undefined, Array<string>]> = [
+		["enemy.bomber", "bomber", 35.6, undefined, ["attack", "death", "death.2", "hit", "idle", "move"]],
+		["enemy.charger", "charger", 38, "class.vanguard", ["attack", "death", "hit", "idle", "move"]],
+		["enemy.stormcaller", "stormcaller", 31.3, "enemy.summoner", ["attack", "death", "hit", "idle", "move"]],
+		["enemy.warbanner", "warbanner", 28.3, "enemy.imp", ["attack", "death", "hit", "idle", "move", "move.back"]],
+		["enemy.reaper", "reaper", 31.3, "enemy.summoner", ["attack", "death", "hit", "idle", "move"]],
+	];
+	const sheetsOf = (prefix: string) => [`${prefix}-attack.png`, `${prefix}-body.png`, `${prefix}-death.png`];
+	const outlineOf = (file: string) => `${file.sub(1, -5)}-outline.png`;
+
+	it("the layouts: 8 facings, three per-sheet cells each <= 1024 and a whole number of cells, the measured density", () => {
+		for (const [id, prefix, ppt, from] of SETS) {
+			const l = VALE_SPRITE_LAYOUTS[id];
+			expect([id, l.facings, l.resample, l.pixelsPerTile]).toEqual([
+				id,
+				{ count: 8, zeroDeg: 0, ccw: true },
+				"Default",
+				ppt,
+			]);
+			if (from !== undefined)
+				expect([id, from, VALE_SPRITE_LAYOUTS[from].pixelsPerTile]).toEqual([id, from, ppt]);
+			expect([id, l.sheets.map((s) => s.file)]).toEqual([id, sheetsOf(prefix)]);
+			for (const s of l.sheets) {
+				const c = s as unknown as { frameW: number; frameH: number; pivot?: unknown };
+				expect([s.file, s.outlineFile, c.pivot !== undefined]).toEqual([s.file, outlineOf(s.file), true]);
+				expect([s.file, s.w <= 1024, s.h <= 1024, s.w % c.frameW, s.h % c.frameH]).toEqual([
+					s.file,
+					true,
+					true,
+					0,
+					0,
+				]);
+			}
+		}
+		// the optional animations share a sheet: Explode after Die 1 (6 x 8 cells), Run Backwards after Walk
+		expect(VALE_SPRITE_LAYOUTS["enemy.bomber"].animations["death.2"]).toEqual({
+			sheet: 2,
+			start: 48,
+			frames: 9,
+			fps: 12,
+			loop: false,
+		});
+		expect(VALE_SPRITE_LAYOUTS["enemy.warbanner"].animations["move.back"]).toEqual({
+			sheet: 1,
+			start: 96,
+			frames: 8,
+			fps: 10,
+			loop: true,
+		});
+	});
+
+	it("as bundled (nothing uploaded yet) each is its placeholder", () => {
+		for (const [id, prefix] of SETS) {
+			for (const file of sheetsOf(prefix)) {
+				expect([file, VALE_ASSET_IDS[file], VALE_ASSET_IDS[outlineOf(file)]]).toEqual([
+					file,
+					undefined,
+					undefined,
+				]);
+			}
+			expect([id, VALE_MANIFEST.assets[id]]).toEqual([id, { kind: "placeholder" }]);
+		}
+	});
+
+	it("each switches to sprites with all three sheets; any sheet missing keeps it a placeholder; rims alone never do", () => {
+		const theme = new ThemeCore(buildValeManifest(fakeIds()), { warn: quiet });
+		for (const [id, prefix, , , names] of SETS) {
+			const m = buildValeManifest(fakeIds());
+			expect(validateManifest(m, { packId: "vale" })).toEqual([]);
+			expect([id, m.assets[id].kind]).toEqual([id, "sprites"]);
+			expect([id, theme.sprites(id)!.animationNames]).toEqual([id, names]);
+			for (const file of sheetsOf(prefix)) {
+				const without = buildValeManifest(fakeIds(file));
+				expect(validateManifest(without, { packId: "vale" })).toEqual([]);
+				expect([id, file, without.assets[id]]).toEqual([id, file, { kind: "placeholder" }]);
+			}
+			const outlinesOnly = buildValeManifest(fakeIds(...sheetsOf(prefix)));
+			expect([id, outlinesOnly.assets[id]]).toEqual([id, { kind: "placeholder" }]);
 		}
 	});
 });

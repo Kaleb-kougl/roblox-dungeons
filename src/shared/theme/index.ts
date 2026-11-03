@@ -73,11 +73,14 @@ export {
 export * from "./variants";
 export {
 	AFFIX_COLOR_RULES,
+	AURA_COLOR_RULES,
 	GOO_COLOR_RULES,
 	affixReport,
+	auraReport,
 	gooReport,
 	variantColorProblems,
 	type AffixEntry,
+	type AuraEntry,
 	type GooEntry,
 	type VariantColorEntry,
 	type VariantColorProblem,

@@ -180,6 +180,11 @@ export interface ActorFxHintsView {
 		readonly boldTicks: number;
 		/** Roblox port (docs/ENEMY_VARIANTS.md): drawn only while ActorState.attack equals it. */
 		readonly attack?: number;
+		/**
+		 * Roblox port (docs/NEW_ENEMIES.md NE8, view only): false draws the full length past intact breakables (the
+		 * Charger's lane: its charge breaks them). Unset: clipped like a bullet's line.
+		 */
+		readonly clip?: boolean;
 	};
 	readonly shockwave?: {
 		readonly state: number;
@@ -203,7 +208,45 @@ export interface ActorFxHintsView {
 		readonly fillTicks?: number;
 		readonly attack?: number;
 	};
+	/**
+	 * Roblox port (docs/NEW_ENEMIES.md NE1 / NE8; the Stormcaller's cast): `count` filling circles of `radius` while
+	 * aiState === state (and attack, when set), circle i centred on (v[centreX], v[centreZ]) + (i - (count - 1) / 2) x
+	 * (v[offsetX], v[offsetZ]) (strikeRowPoint), each filling over fillTicks like `ring`.
+	 */
+	readonly strikeRow?: {
+		readonly state: number;
+		readonly centreX: number;
+		readonly centreZ: number;
+		readonly offsetX: number;
+		readonly offsetZ: number;
+		readonly count: number;
+		readonly radius: number;
+		readonly fillTicks?: number;
+		readonly attack?: number;
+	};
 }
+
+/** The v[] slots and count of a `strikeRow` hint (ActorFxHintsView.strikeRow). */
+export type StrikeRowHint = NonNullable<ActorFxHintsView["strikeRow"]>;
+
+/**
+ * Circle `i` (0 .. count - 1) of a `strikeRow` hint on actor `a`, world units: the centre slots plus (i - (count - 1) /
+ * 2) times the offset slots, so the row runs through the centre (the middle circle on it for an odd count) and the
+ * sim's strike points land exactly there (stormcaller.ts). Writes `out` ([x, z]) and returns it.
+ */
+export function strikeRowPoint(
+	hint: StrikeRowHint,
+	a: Readonly<ActorState>,
+	i: number,
+	out: [number, number],
+): [number, number] {
+	const k = i - (hint.count - 1) / 2;
+	out[0] = a.v[hint.centreX] + k * a.v[hint.offsetX];
+	out[1] = a.v[hint.centreZ] + k * a.v[hint.offsetZ];
+	return out;
+}
+
+const rowScratch: [number, number] = [0, 0];
 
 /** True when a hint with an optional `attack` filter applies to an actor whose ActorState.attack is `attack`. */
 export function hintAttackMatches(hintAttack: number | undefined, attack: number): boolean {
@@ -245,8 +288,8 @@ export function ringMarkings(
 export type AimClip = (x: number, z: number, dx: number, dz: number, len: number) => number;
 
 /**
- * The aim line (while winding up), the expanding shockwave and the filling floor ring (Roblox port) of one actor at its
- * drawn position (x, z); a hint with `attack` draws only while ActorState.attack equals it. Bold / young markings go
+ * The aim line (while winding up), the expanding shockwave, the filling floor ring and the strike row (Roblox port) of
+ * one actor at its drawn position (x, z); a hint with `attack` draws only while ActorState.attack equals it. Bold / young markings go
  * to `bright`, the rest to `dim`; `clip` (optional) shortens the aim line. Returns true when it drew anything.
  */
 export function actorFxMarkings(
@@ -265,7 +308,7 @@ export function actorFxMarkings(
 		const dx = a.v[aim.dirX];
 		const dz = a.v[aim.dirZ];
 		const full = aim.lenSlot !== undefined ? a.v[aim.lenSlot] : aim.length ?? 1;
-		const len = clip !== undefined ? clip(x, z, dx, dz, full) : full;
+		const len = clip !== undefined && aim.clip !== false ? clip(x, z, dx, dz, full) : full;
 		const sink = a.aiTicks < aim.boldTicks ? bright : dim;
 		sink.seg(x, z, x + dx * len, z + dz * len);
 		drew = true;
@@ -288,6 +331,15 @@ export function actorFxMarkings(
 		const cz = at ? a.v[ring.zSlot!] : z;
 		ringMarkings(bright, dim, cx, cz, ring.radius, ringFill(a.aiTicks, ring.fillTicks, alpha));
 		drew = true;
+	}
+	const row = fx.strikeRow;
+	if (row !== undefined && a.aiState === row.state && hintAttackMatches(row.attack, a.attack)) {
+		const fill = ringFill(a.aiTicks, row.fillTicks, alpha);
+		for (let i = 0; i < row.count; i++) {
+			const p = strikeRowPoint(row, a, i, rowScratch);
+			ringMarkings(bright, dim, p[0], p[1], row.radius, fill);
+		}
+		if (row.count > 0) drew = true;
 	}
 	return drew;
 }

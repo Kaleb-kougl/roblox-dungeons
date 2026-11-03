@@ -42,7 +42,7 @@ import {
 } from "./contract";
 import type { BiomeTileKey, ColorRole } from "./types";
 import { startsWith } from "./util";
-import { GOO_BULLET_ID } from "./variants";
+import { GOO_BULLET_ID, STRIKE_BULLET_ID } from "./variants";
 
 /**
  * Part shapes. Ball/Block/Cylinder/Wedge are Enum.PartType names; Capsule = a Cylinder capped by two Balls;
@@ -121,6 +121,16 @@ export const PLACEHOLDER_PROPORTIONS = {
 	imp: [0.5, 0.625, 0.5],
 	/** Ooze (`slime`, EV1): a low dome, nearly the cell wide and half as tall (3.5 x 1.75 x 3.5 studs). */
 	slime: [0.875, 0.4375, 0.875],
+	/** Bomber (docs/NEW_ENEMIES.md NE1): a smaller cone than the imp's (1.5 x 2 x 1.5 studs). */
+	bomber: [0.375, 0.5, 0.375],
+	/** Charger (NE1): a long low wedge pointing along its facing (3.5 x 2.5 x 4 studs). */
+	charger: [0.875, 0.625, 1],
+	/** Stormcaller (NE1): a tall slim drum (2 x 4 x 2 studs). */
+	stormcaller: [0.5, 1, 0.5],
+	/** Warbanner (NE1): a thin flag post, taller than the cell is wide (1 x 4 x 1 studs). */
+	warbanner: [0.25, 1, 0.25],
+	/** Reaper (NE1): a wide flat disc, a spinning blade (3.5 x 1 x 3.5 studs). */
+	reaper: [0.875, 0.25, 0.875],
 	/** Bosses: a large block, the full 48 x 48 cell wide, 3/4 tall (Mother Bramble, boss.act1, and boss.1..5). */
 	boss: [1, 0.75, 1],
 	/**
@@ -235,6 +245,11 @@ const ENEMY_SHAPES: Record<EnemyArchetype, { shape: PlaceholderShape; proportion
 	dummy: { shape: "Cylinder", proportions: PLACEHOLDER_PROPORTIONS.dummy },
 	imp: { shape: "Cone", proportions: PLACEHOLDER_PROPORTIONS.imp },
 	slime: { shape: "Dome", proportions: PLACEHOLDER_PROPORTIONS.slime },
+	bomber: { shape: "Cone", proportions: PLACEHOLDER_PROPORTIONS.bomber },
+	charger: { shape: "Wedge", proportions: PLACEHOLDER_PROPORTIONS.charger },
+	stormcaller: { shape: "Cylinder", proportions: PLACEHOLDER_PROPORTIONS.stormcaller },
+	warbanner: { shape: "Cylinder", proportions: PLACEHOLDER_PROPORTIONS.warbanner },
+	reaper: { shape: "Cylinder", proportions: PLACEHOLDER_PROPORTIONS.reaper },
 };
 
 const enemyVisual = (archetype: EnemyArchetype): PlaceholderVisual =>
@@ -356,6 +371,16 @@ function buildTable(): Record<string, PlaceholderVisual> {
 	t["bullet.enemy.large"] = enemyBulletVisual("Ball", PLACEHOLDER_PROPORTIONS.enemyBullet);
 	t["bullet.enemy.needle"] = enemyBulletVisual("Block", PLACEHOLDER_PROPORTIONS.needle);
 	t[GOO_BULLET_ID] = gooVisual();
+	// docs/NEW_ENEMIES.md NE1: the lightning strike, a flat neon disc on the floor in the enemy bullet's colour (the goo
+	// puddle's construction; the bolt flash is NE8's)
+	t[STRIKE_BULLET_ID] = visual({
+		shape: "Cylinder",
+		cell: BULLET_CELL,
+		proportions: PLACEHOLDER_PROPORTIONS.goo,
+		color: role("enemyBullet"),
+		outline: "enemyBulletOutline",
+		material: "Neon",
+	});
 	t["bullet.player.basic"] = playerBulletVisual(PLACEHOLDER_PROPORTIONS.playerBolt);
 	t["bullet.player.heavy"] = playerBulletVisual(PLACEHOLDER_PROPORTIONS.playerHeavyBolt);
 	// Build effects (Roblox port, docs/BUILDS.md BU1): small neon bolts in their effect colours; the ember a flat disc

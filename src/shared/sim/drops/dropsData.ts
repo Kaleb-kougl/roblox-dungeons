@@ -69,6 +69,12 @@ export const DROPS = {
 		["slime", 8],
 		["slime.small", 2],
 		["summoner", 10],
+		// Roblox port: the second set of endless room enemies (docs/NEW_ENEMIES.md NE1).
+		["bomber", 3],
+		["charger", 10],
+		["stormcaller", 8],
+		["warbanner", 10],
+		["reaper", 8],
 	]) as ReadonlyMap<string, number>,
 	pityKills: 20,
 	groundSeconds: 10,

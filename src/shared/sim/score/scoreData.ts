@@ -29,6 +29,13 @@ export const KILL_POINTS: ReadonlyMap<string, number> = new Map<string, number>(
 	["slime", 150],
 	["slime.small", 40],
 	["summoner", 200],
+	// Roblox port: the second set of endless room enemies (docs/NEW_ENEMIES.md NE1). A detonated Bomber scores nothing
+	// (NE2); a shot one scores its row.
+	["bomber", 80],
+	["charger", 220],
+	["stormcaller", 180],
+	["warbanner", 160],
+	["reaper", 200],
 ]);
 /** Kill points of an archetype id not in the table (test archetypes). */
 export const DEFAULT_KILL_POINTS = 50;

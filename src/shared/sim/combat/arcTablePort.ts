@@ -31,6 +31,10 @@ const FULL_RING_THRESHOLD = TAU - 1e-9;
  * Every port-only burst shape. Spreads are written with the same expression (and constants) as the archetype's
  * BurstSpec so the float is the same one: boss/demonlord.ts CLEAVE_SPREAD = 2.4, HELLFIRE_GAP = 1.0 (FULL_RING = 2 PI);
  * archetypes/imp.ts IMP_FAN_SPREAD = 0.7 (docs/ENEMY_VARIANTS.md EV2).
+ *
+ * docs/NEW_ENEMIES.md NE1: the new archetypes need no row. The Bomber's blast (12 @ FULL_RING) is the builds' row
+ * below; the Reaper's spiral reads 16 @ FULL_RING, which is a WEB row (fixtures/arc-table.json: the turret sprayer's
+ * ring), so a port row for it would shadow V8's values and fail at load (projectilePatterns.ts).
  */
 export const PORT_ARC_SOURCES: ReadonlyArray<PortArcSource> = [
 	{ count: 7, spread: 2.4, source: "boss/demonlord.ts CLEAVE (and DOUBLE_CLEAVE's two arcs)" },

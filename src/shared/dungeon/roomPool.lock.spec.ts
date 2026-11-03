@@ -9,8 +9,13 @@
 // buildEndlessFloor does): those digests are pinned as built below. The spender itself did not change: without a
 // roster (every unlocked kind open) floor 1 still gives exactly the pre-EV5 spawns, and floors 2-6 the EV5 ones.
 //
+// Re-recorded for docs/NEW_ENEMIES.md NE7: five more kinds from floor 2 (NED3) and a reshuffled roster (10 seeded
+// kinds). Floor 1 without a roster is untouched (the new kinds are closed there, so it spends draw for draw as before);
+// floors 2-6 without a roster and every roster digest are re-pinned, each checked to differ from its NE7-before pin.
+//
 // Solid decor (docs/DECOR.md "Solid decor") walls tomb and candle cells, so real floors' spawn tiles move: the roster
-// digests are re-recorded with it on; the no-roster spender locks run on the floors without it (solidDecor: false).
+// digests are re-recorded with it on (together with NE7); the no-roster spender locks run on the floors without it
+// (solidDecor: false).
 import { describe, expect, it } from "@rbxts/jest-globals";
 import { imul } from "shared/jsmath";
 import { endlessFloorParams, endlessRoomSpawns, endlessRoster, generateDungeon, type ActorSpawn } from "shared/dungeon";
@@ -66,7 +71,7 @@ describe("endless room pool lock (EV5)", () => {
 		]);
 	});
 
-	it("no roster: floors 2-6, run seeds 1-40, solo: each differs from its pre-EV5 digest, pinned as built at EV5", () => {
+	it("no roster: floors 2-6, run seeds 1-40, solo: each differs from its pre-EV5 and its EV5 digest, pinned at NE7", () => {
 		// Before EV5 (commit f3e92ca); the new kinds join from floor 2 (imp), so every one of these floors moves.
 		const before = [
 			"floor 2 party 1: 1517 spawns, a3403803",
@@ -75,40 +80,52 @@ describe("endless room pool lock (EV5)", () => {
 			"floor 5 party 1: 2051 spawns, 96505152", // check-asset-ids: allow (FNV-1a digest)
 			"floor 6 party 1: 2651 spawns, cd348b55",
 		];
-		const got: string[] = [];
-		for (let floor = 2; floor <= 6; floor++) got.push(digests(floor, 1, 40, [1], false, false)[0]);
-		for (const line of got) print(`[room pool lock] ${line}`);
-		for (let i = 0; i < got.size(); i++) expect(got[i]).never.toBe(before[i]);
-		expect(got).toEqual([
+		// As built at EV5 (before docs/NEW_ENEMIES.md NE7): the NE7 kinds join from floor 2, so every one moves again.
+		const ev5 = [
 			"floor 2 party 1: 1458 spawns, 16d8c4d9",
 			"floor 3 party 1: 1557 spawns, 57452b5c",
 			"floor 4 party 1: 1692 spawns, ef3fc224",
 			"floor 5 party 1: 1830 spawns, ecb0f584",
 			"floor 6 party 1: 2281 spawns, 1cde5ea7",
+		];
+		const got: string[] = [];
+		for (let floor = 2; floor <= 6; floor++) got.push(digests(floor, 1, 40, [1], false, false)[0]);
+		for (const line of got) print(`[room pool lock] ${line}`);
+		for (let i = 0; i < got.size(); i++) expect(got[i]).never.toBe(before[i]);
+		for (let i = 0; i < got.size(); i++) expect(got[i]).never.toBe(ev5[i]);
+		// Re-recorded for docs/NEW_ENEMIES.md NE7.
+		expect(got).toEqual([
+			"floor 2 party 1: 1270 spawns, 43633cac",
+			"floor 3 party 1: 1332 spawns, 0dff5771",
+			"floor 4 party 1: 1507 spawns, 0aca402b",
+			"floor 5 party 1: 1647 spawns, cf874727",
+			"floor 6 party 1: 2077 spawns, a11ca8e2",
 		]);
 	});
 
-	it("seeded roster: floor 1, run seeds 1-200, party 1-4 (re-recorded for DSD1, solid decor and room themes)", () => {
+	it("seeded roster: floor 1, run seeds 1-200, party 1-4 (re-recorded for docs/NEW_ENEMIES.md NE7, solid decor and room themes)", () => {
+		// Floor 1 still buys swarmers and one sniper or bruiser, but the reshuffled order picks the other one for many
+		// run seeds. Before NE7 (docs/DAILY.md DSD1): party 1 7384 spawns 1f360722, party 4 13885 spawns 47d57a83.
 		const got = digests(1, 1, 200, [1, 2, 3, 4], true);
 		for (const line of got) print(`[room pool lock] roster ${line}`);
 		expect(got).toEqual([
-			"floor 1 party 1: 7384 spawns, a8cf7f36",
-			"floor 1 party 2: 9703 spawns, 57e14ec9",
-			"floor 1 party 3: 12003 spawns, ab6b646f",
-			"floor 1 party 4: 13885 spawns, fd44a8d2", // check-asset-ids: allow (FNV-1a digest)
+			"floor 1 party 1: 7421 spawns, ea4f8dce",
+			"floor 1 party 2: 9724 spawns, 1c8edb8c",
+			"floor 1 party 3: 11991 spawns, bb22fed2",
+			"floor 1 party 4: 13912 spawns, adaa330b",
 		]);
 	});
 
-	it("seeded roster: floors 2-6, run seeds 1-40, solo (re-recorded for DSD1, solid decor and room themes)", () => {
+	it("seeded roster: floors 2-6, run seeds 1-40, solo (re-recorded for docs/NEW_ENEMIES.md NE7, solid decor and room themes)", () => {
 		const got: string[] = [];
 		for (let floor = 2; floor <= 6; floor++) got.push(digests(floor, 1, 40, [1], true)[0]);
 		for (const line of got) print(`[room pool lock] roster ${line}`);
 		expect(got).toEqual([
-			"floor 2 party 1: 1719 spawns, 3c4d5cbc",
-			"floor 3 party 1: 1681 spawns, fceb0f0e",
-			"floor 4 party 1: 1910 spawns, d3ba2aae",
-			"floor 5 party 1: 1930 spawns, a8146f51",
-			"floor 6 party 1: 2466 spawns, 6f1cca84",
+			"floor 2 party 1: 1734 spawns, 84ad548f",
+			"floor 3 party 1: 1699 spawns, f10b3098",
+			"floor 4 party 1: 1929 spawns, 5c5135c9",
+			"floor 5 party 1: 1920 spawns, 1fc5f3e2",
+			"floor 6 party 1: 2471 spawns, c55e41c6",
 		]);
 	});
 });

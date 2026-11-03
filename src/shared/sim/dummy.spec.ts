@@ -66,7 +66,12 @@ describe("dummy: registry", () => {
 			"slime",
 			"slime.small",
 			"summoner",
-		]); // band-3 room enemies (docs/ENEMY_VARIANTS.md)
+			"bomber", // band PORT_BAND_ENEMIES_2 (docs/NEW_ENEMIES.md): indices 13-17
+			"charger",
+			"reaper",
+			"stormcaller",
+			"warbanner",
+		]); // band-3 room enemies (docs/ENEMY_VARIANTS.md), then band 4
 		for (let i = 0; i < WEB_TABLE.size(); i++)
 			expect([WEB_TABLE[i], archetypeIndex(WEB_TABLE[i])]).toEqual([WEB_TABLE[i], i]);
 		expect(archetypeIndex(DUMMY_KIND)).toBe(WEB_TABLE.size());

@@ -59,25 +59,26 @@ describe("roster line: strings", () => {
 
 describe("roster line per floor", () => {
 	it("run start: every kind of floor 1's roster (swarmers first)", () => {
-		expect(cardText(1337, 1)).toBe("Swarmer · Sniper");
+		expect(cardText(1337, 1)).toBe("Swarmer · Bruiser");
 		const line = stageRosterLine(["swarmer", "bruiser"], undefined, str);
 		expect(line).toEqual({ key: ROSTER_STRINGS.line, args: { names: "Swarmer · Bruiser" }, gold: false });
 	});
 
 	it("a floor where kinds joined: New: <names>; other floors: none (run 1337, floors 1-12)", () => {
-		// Run 1337's order: sniper, imp, slime, summoner, bruiser (shared/dungeon roster.spec).
+		// Run 1337's order: bomber, stormcaller, bruiser, charger, reaper, sniper, ... (shared/dungeon roster.spec;
+		// re-recorded for docs/NEW_ENEMIES.md NE7: 10 seeded kinds reshuffled every run's roster).
 		const want: Array<string | undefined> = [
-			"Swarmer · Sniper",
+			"Swarmer · Bruiser",
 			undefined,
-			"New: Imp",
+			"New: Bomber",
 			undefined,
-			"New: Ooze",
+			"New: Stormcaller",
 			undefined,
-			"New: Summoner",
+			"New: Charger",
 			undefined,
-			"New: Bruiser",
+			"New: Reaper",
 			undefined,
-			undefined,
+			"New: Sniper",
 			undefined,
 		];
 		for (let f = 1; f <= want.size(); f++) expect([f, cardText(1337, f)]).toEqual([f, want[f - 1]]);
@@ -99,7 +100,7 @@ describe("roster line per floor", () => {
 	it("reads the built floor's roster (EndlessFloorLayout.roster)", () => {
 		const l = buildEndlessFloor(1337, 3, generateDungeon);
 		const line = stageRosterLine(l.roster, endlessRoster(1337, 2), str);
-		expect(line === undefined ? undefined : str(line.key, line.args)).toBe("New: Imp");
+		expect(line === undefined ? undefined : str(line.key, line.args)).toBe("New: Bomber");
 	});
 });
 

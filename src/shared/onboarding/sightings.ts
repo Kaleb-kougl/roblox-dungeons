@@ -1,7 +1,8 @@
 /**
  * First sightings (docs/ENEMY_VARIANTS.md EV12, EVD10): the ids an account can have "seen", once each, stored in the
  * onboarding document's optional `seen` list (doc.ts) and named by the client's first-sighting toast. A sighting id is a
- * new archetype's id (`imp`, `slime`, `summoner`; a `slime.small` counts as `slime`) or `affix.<id>` for an elite affix
+ * new archetype's id (`imp`, `slime`, `summoner`; a `slime.small` counts as `slime`; docs/NEW_ENEMIES.md's `bomber`,
+ * `charger`, `stormcaller`, `warbanner`, `reaper`) or `affix.<id>` for an elite affix
  * (`affix.hulking`, ...). Its toast line is the theme string `bestiary.<sighting id>` (shared/theme
  * BESTIARY_STRING_KEYS; a spec keeps the two lists equal). Plain data, no Roblox API and no theme import, so the server's
  * OnboardingService can validate a client's report with it cheaply.
@@ -12,6 +13,12 @@ export const SIGHTING_IDS: ReadonlyArray<string> = [
 	"imp",
 	"slime",
 	"summoner",
+	// docs/NEW_ENEMIES.md NED13: the second endless set
+	"bomber",
+	"charger",
+	"stormcaller",
+	"warbanner",
+	"reaper",
 	"affix.hulking",
 	"affix.swift",
 	"affix.shielded",

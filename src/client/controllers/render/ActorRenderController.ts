@@ -21,13 +21,16 @@ import {
 	type PlayerState,
 	type SimState,
 } from "shared/sim";
-import { AFFIX_IDS, ENEMY_SHIELD_ROLE, affixRole, type SpriteSet, type ThemePack } from "shared/theme";
+import { AFFIX_IDS, ENEMY_AURA_ROLE, ENEMY_SHIELD_ROLE, affixRole, type SpriteSet, type ThemePack } from "shared/theme";
 import {
 	ACTOR_OUTLINE,
 	ACTOR_SPRITE_INPUTS,
 	ACTOR_VIEW,
 	AFFIX_VIEW,
+	AURA_VIEW,
+	AuraView,
 	BULLET_VIEW,
+	NEW_ENEMY_SPRITE_VIEW,
 	PLAYER_OUTLINE,
 	RENDER_ORDER,
 	SPRITE_VIEW,
@@ -37,16 +40,21 @@ import {
 	actorSpriteScale,
 	affixDrawScale,
 	animDtSec,
+	bomberDetonated,
+	bomberFuseFlashOn,
+	bomberFusing,
 	bossSpriteLayout,
 	chooseActorAnim,
 	choosePlayerAnim,
 	corpseTransparency,
 	degToRad,
+	detonationCorpseView,
 	floorImageOffset,
 	floorImageSize,
 	floorStudsY,
 	isoBasis,
 	lerp,
+	newEnemyKinds,
 	outlineSwitchOn,
 	playerBlinkVisible,
 	playerLook,
@@ -65,6 +73,7 @@ import {
 	type ActorGroup,
 	type ActorLook,
 	type ActorSpriteInput,
+	type CorpseView,
 	type IsoBasis,
 	type VariantLook,
 } from "shared/view";
@@ -202,6 +211,15 @@ interface ActorView {
  * (ShieldFlashWatch) tints the body / flashes the rim in enemyShield; a Vengeful corpse (EVD16) is drawn as long as the
  * sim holds it (vengefulCorpseView: opaque, then a short fade) and pulses in the telegraph look while its ring is
  * pending. The floor ring is AffixRingController's.
+ *
+ * The second endless set (docs/NEW_ENEMIES.md NE8; rules in shared/view newEnemies.ts): the five draw through the same
+ * two paths (their placeholder visuals; ACTOR_SPRITE_INPUTS once their sets land in NE9). A fusing Bomber flashes
+ * between the flash and telegraph looks, ever faster (bomberFuseFlashOn); a detonated Bomber corpse plays `death.2`
+ * when its set has it, else it is gone fast (detonationCorpseView; ParticleController adds the burst). Actors inside a
+ * Warbanner's aura (AuraView: shared/sim warbannerAuraMask on the view's state, once per frame): a sprite's rim is
+ * tinted `enemyAura` (over the affix colour), a placeholder's body is lerped AURA_VIEW.placeholderTint toward it
+ * while no other look shows (the "aura" look). Never a Highlight (EVD12). The aura ring and the stun stars are
+ * NewEnemyMarksController's.
  */
 @Controller({})
 export class ActorRenderController implements OnStart {
@@ -262,6 +280,11 @@ export class ActorRenderController implements OnStart {
 	private shieldColor = SPRITE_TINT_NONE;
 	private outlineColor = SPRITE_TINT_NONE;
 
+	// --- the second endless set (docs/NEW_ENEMIES.md NE8) -----------------------------------------
+	/** Who stands in a Warbanner's aura this frame (rebuilt once per frame from the view's state). */
+	private readonly aura = new AuraView();
+	private auraColor = SPRITE_TINT_NONE;
+
 	constructor(
 		private readonly sim: SimController,
 		private readonly theme: ThemeController,
@@ -274,6 +297,7 @@ export class ActorRenderController implements OnStart {
 		this.affixColors = AFFIX_IDS.map((id) => pack.color(affixRole(id)));
 		this.shieldColor = pack.color(ENEMY_SHIELD_ROLE);
 		this.outlineColor = pack.color(ACTOR_OUTLINE.role);
+		this.auraColor = pack.color(ENEMY_AURA_ROLE);
 		const folder = new Instance("Folder");
 		folder.Name = ACTOR_VIEW.folderName;
 		folder.Parent = Workspace;
@@ -318,6 +342,7 @@ export class ActorRenderController implements OnStart {
 		this.motion?.beginFrame(state, this.dtSec, this.fx.settings());
 		this.drawPlayers(state, alpha);
 		this.shieldWatch.update(state);
+		this.aura.update(state);
 
 		const actors = state.combat.actors;
 		const n = actors.size();
@@ -372,8 +397,10 @@ export class ActorRenderController implements OnStart {
 		return set === false ? undefined : set;
 	}
 
+	/** A look's body colour (undefined: the base colour / no tint). "aura" tints no sprite body (its rim carries it). */
 	private lookColor(pack: ThemePack, look: VariantLook): Color3 | undefined {
 		if (look === "shield") return this.shieldColor;
+		if (look === "aura") return undefined;
 		return look === "normal" ? undefined : pack.color(ACTOR_VIEW.lookRoles[look]);
 	}
 
@@ -494,16 +521,31 @@ export class ActorRenderController implements OnStart {
 		// Elite affixes (docs/ENEMY_VARIANTS.md EV9): the rim's tint, the shield-hit flash, a Vengeful corpse's length
 		// (EVD16: held while its ring is pending, then a short fade) and its telegraph pulse.
 		const affix = viewAffix(state, slot, a.id);
-		const vengefulCorpse = a.alive === 0 && affix === AffixKind.VENGEFUL && state.affixes !== undefined;
-		const corpse = vengefulCorpse
-			? vengefulCorpseView(
-					view.corpseTicks,
-					state.affixes!.config.vengefulTelegraphTicks,
-					AFFIX_VIEW.vengefulFadeTicks,
-			  )
-			: undefined;
+		const bomber = a.kind === newEnemyKinds().bomber;
+		// A detonated Bomber (NE8): its own corpse length (a quick fade without `death.2`); it never arms Vengeful.
+		const detonated = bomber && bomberDetonated(a);
+		const vengefulCorpse =
+			!detonated && a.alive === 0 && affix === AffixKind.VENGEFUL && state.affixes !== undefined;
+		let corpse: CorpseView | undefined;
+		if (detonated) {
+			const set = view.sprite?.set;
+			const hasAnim = set !== undefined && set.animation(NEW_ENEMY_SPRITE_VIEW.anims.detonation) !== undefined;
+			corpse = detonationCorpseView(view.corpseTicks, hasAnim);
+		} else if (vengefulCorpse) {
+			corpse = vengefulCorpseView(
+				view.corpseTicks,
+				state.affixes!.config.vengefulTelegraphTicks,
+				AFFIX_VIEW.vengefulFadeTicks,
+			);
+		}
 		const pulse = vengefulCorpse && vengefulArmed(state, slot, a.id) && vengefulPulseOn(tick);
-		const look = variantLook(actorLook(a.alive, a.flashTicks, a.aiState, tick), a.alive, pulse, shieldFlash);
+		let base = actorLook(a.alive, a.flashTicks, a.aiState, tick);
+		// The fuse flash (NE8): flash / telegraph, quickening over the fuse (a real hit flash still wins).
+		if (bomber && base !== "flash" && bomberFusing(a)) {
+			base = bomberFuseFlashOn(a.aiTicks, alpha) ? "flash" : "telegraph";
+		}
+		const buffed = this.aura.buffed(a);
+		const look = variantLook(base, a.alive, pulse, shieldFlash, buffed);
 
 		const sprite = view.sprite;
 		if (sprite !== undefined) {
@@ -527,8 +569,10 @@ export class ActorRenderController implements OnStart {
 			}
 			sprite.setTransparency(transparency);
 			if (view.hasOutline) {
+				// The aura's tint wins on the rim (the affix keeps its floor ring and name chip).
 				const k = affixThemeIndex(affix);
-				sprite.setRimColor(k >= 0 ? this.affixColors[k] ?? this.outlineColor : this.outlineColor);
+				const rim = k >= 0 ? this.affixColors[k] ?? this.outlineColor : this.outlineColor;
+				sprite.setRimColor(buffed ? this.auraColor : rim);
 			}
 			// The rim goes the frame the actor dies (the corpse fades without it) and with KV_EnemyOutline = false.
 			sprite.setOutlineShown(actorOutlined(view.hasOutline, a.alive !== 0, this.outlineOn));
@@ -553,7 +597,12 @@ export class ActorRenderController implements OnStart {
 		this.place(model, view.pushX === 0 && view.pushY === 0 ? origin : origin.add(view.push));
 		if (look !== view.look) {
 			view.look = look;
-			setModelColor(model, this.lookColor(pack, look) ?? model.baseColor);
+			setModelColor(
+				model,
+				look === "aura"
+					? model.baseColor.Lerp(this.auraColor, AURA_VIEW.placeholderTint)
+					: this.lookColor(pack, look) ?? model.baseColor,
+			);
 		}
 		if (transparency !== view.transparency) {
 			view.transparency = transparency;

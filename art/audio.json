@@ -661,6 +661,105 @@
 			"notes": "docs/ENEMY_VARIANTS.md EV11: an Ooze dies and splits into two slimelets. Bubble2 is a 0.43 s wet bubble pop (not Bubble.wav, sfx.player.graze's 1.5 s alternate). It plays over the kill's sfx.enemy.death, so it stays quieter. Alternates: Water4 (0.41 s splash, sharper onset), Water9 (0.54 s, a slower slosh). Pitch jitter: a guard sweep can kill two at once.",
 			"confirmed": false
 		},
+		"sfx.enemy.fuse": {
+			"category": "sfx",
+			"clips": [
+				"ninja-adventure/Audio/Sounds/Elemental/Fire.wav"
+			],
+			"volume": 0.5,
+			"pitch": [
+				0.95,
+				1.05
+			],
+			"minInterval": 0.12,
+			"alternates": [
+				"ninja-adventure/Audio/Sounds/Elemental/Fire3.wav",
+				"ninja-adventure/Audio/Sounds/Elemental/Fireball2.wav"
+			],
+			"notes": "docs/NEW_ENEMIES.md NE10: a Bomber lights its fuse (the 0.7 s fuse ring). Fire is a short flare and crackle (0.89 s, audible 0.81 s, peak at 0.11 s), unused as a pick (amb.b2's alternate): it burns through the fuse and the blast covers its tail. Alternates: Fire3 (0.65 s, sfx.affix.vengeful's pick), Fireball2 (0.49 s whoosh-flare, unused). Bombers come in groups: pitch jitter.",
+			"confirmed": false
+		},
+		"sfx.enemy.blast": {
+			"category": "sfx",
+			"clips": [
+				"ninja-adventure/Audio/Sounds/Elemental/Explosion5.wav"
+			],
+			"volume": 0.7,
+			"pitch": [
+				0.95,
+				1.05
+			],
+			"minInterval": 0.1,
+			"alternates": [
+				"ninja-adventure/Audio/Sounds/Elemental/Explosion2.wav",
+				"ninja-adventure/Audio/Sounds/Elemental/Explosion4.wav"
+			],
+			"notes": "docs/NEW_ENEMIES.md NE10: a Bomber detonates (the ring of bullets). Explosion5 is the one Explosion unused anywhere (0.79 s, audible 0.68 s, immediate onset): a full boom, longer than sfx.affix.shieldbreak's Explosion3 crunch and shorter than sfx.boss.death's Explosion6. Alternates: Explosion2 (0.63 s, sfx.breakable.break's alternate), Explosion4 (0.73 s, sfx.boss.death's alternate). It plays over the kill's sfx.enemy.death.",
+			"confirmed": false
+		},
+		"sfx.enemy.charge": {
+			"category": "sfx",
+			"clips": [
+				"ninja-adventure/Audio/Sounds/Whoosh & Slash/Whoosh.wav"
+			],
+			"volume": 0.55,
+			"pitch": [
+				0.9,
+				1
+			],
+			"minInterval": 0.15,
+			"alternates": [
+				"ninja-adventure/Audio/Sounds/Whoosh & Slash/Slash5.wav",
+				"ninja-adventure/Audio/Sounds/Whoosh & Slash/Whoosh2.wav"
+			],
+			"notes": "docs/NEW_ENEMIES.md NE10: a Charger launches down its lane. Whoosh is a short air rush (0.33 s, audible 0.22 s, peak at 0.10 s), unused as a pick (sfx.player.shoot's alternate); pitched a little down for the beast's weight. Alternates: Slash5, Whoosh2 (sfx.enemy.blink's pick: avoid, an Imp can share the room).",
+			"confirmed": false
+		},
+		"sfx.enemy.stun": {
+			"category": "sfx",
+			"clips": [
+				"ninja-adventure/Audio/Sounds/Hit & Impact/Hit5.wav"
+			],
+			"volume": 0.6,
+			"pitch": [
+				0.85,
+				0.95
+			],
+			"minInterval": 0.15,
+			"alternates": [
+				"ninja-adventure/Audio/Sounds/Hit & Impact/Impact4.wav",
+				"ninja-adventure/Audio/Sounds/Hit & Impact/Impact5.wav"
+			],
+			"notes": "docs/NEW_ENEMIES.md NE10: a Charger slams into a wall and is stunned. Hit5 is a 0.33 s punch (peak at 0.11 s), the one Hit & Impact clip unused as a pick (sfx.player.hurt's and sfx.affix.shieldbreak's alternate); pitched down to a heavier thud so it does not read as the player being hit (check at the audition). Alternates: Impact4 (sfx.enemy.death's and sfx.breakable.hit's), Impact5 (sfx.player.death's and sfx.breakable.break's).",
+			"confirmed": false
+		},
+		"sfx.enemy.strike": {
+			"silent": true,
+			"alternates": [
+				"ninja-adventure/Audio/Sounds/Elemental/Explosion.wav",
+				"ninja-adventure/Audio/Sounds/Elemental/Explosion2.wav"
+			],
+			"notes": "docs/NEW_ENEMIES.md NE10: a Stormcaller's lightning strike lands. Silent: the pack has no thunder clip and no Explosion reads as a lightning crack (Explosion is a 0.37 s dull pop, Explosion2 a 0.63 s boom, both kept as alternates). The owner picks a thunder crack (Pixabay, like sfx.combo.break) and sets clips.",
+			"confirmed": false
+		},
+		"sfx.enemy.spin": {
+			"category": "sfx",
+			"clips": [
+				"ninja-adventure/Audio/Sounds/Whoosh & Slash/Whoosh2.wav"
+			],
+			"volume": 0.5,
+			"pitch": [
+				0.8,
+				0.88
+			],
+			"minInterval": 0.3,
+			"alternates": [
+				"ninja-adventure/Audio/Sounds/Whoosh & Slash/Slash4.wav",
+				"ninja-adventure/Audio/Sounds/Whoosh & Slash/Whoosh.wav"
+			],
+			"notes": "docs/NEW_ENEMIES.md NE10: a Reaper starts its spin (the 1.6 s spiral). Whoosh2 is a short air cut (0.44 s, audible 0.25 s), also sfx.enemy.blink's pick: pitched well down (0.8-0.88 against the blink's 0.95-1.08) so the sickles' sweep reads lower and heavier. Alternates: Slash4, Whoosh (sfx.enemy.charge's pick).",
+			"confirmed": false
+		},
 		"sfx.affix.shieldbreak": {
 			"category": "sfx",
 			"clips": [

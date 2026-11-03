@@ -30,8 +30,13 @@
  *    Measured per tick: player bullets alive, effect bullets alive per player (effectBulletsAlive), each player's own
  *    weapon bullets (their emitter's count minus their effects), effect bullets refused (BuildEvents.effectDropped)
  *    and every other drop (combat.dropped's rise minus those: a weapon shot, as long as the enemy pool never fills).
+ * 4. Enemy bullet peak (dearestRoom / enemyBulletPeak; docs/NEW_ENEMIES.md NE7's census): the dearest room (encounter
+ *    cost) of a floor over solo run seeds as an arena fight, solo at that floor's hp, `seconds` in god mode with a bot
+ *    that never attacks (aims at the nearest enemy, strafes, rolls every TUNE_POOL_ROLL_TICKS) and one that fights
+ *    (the sword bot): the enemy bullets alive per tick, their peak and mean, and combat.dropped's rise (the enemy
+ *    pool full; the passive bot fires nothing). The passive bot's peak is the room's worst case: nothing dies.
  */
-import { AffixKind, isBossFloor } from "shared/dungeon";
+import { AffixKind, encounterCost, isBossFloor } from "shared/dungeon";
 import {
 	AFFIXES_CONFIG,
 	BOSS_ACT1_ID,
@@ -871,4 +876,119 @@ export function poolHeader(): string {
 		"| build | party | room | max player bullets | max effects all / one | max weapon one | effect drops | " +
 		"other drops | max enemy bullets | kills | cleared s | queue |"
 	);
+}
+
+/** One floor's dearest room (encounter cost) over solo runs (item 4), as an arena fight. */
+export interface DearRoom {
+	readonly run: number;
+	readonly room: number;
+	readonly cost: number;
+	readonly kinds: string;
+	readonly fight: TuneFight;
+}
+
+/**
+ * The dearest room (summed encounter cost of its planned spawns) of floor `floor` over solo run seeds
+ * `firstRun`..`lastRun`; ties: more distinct kinds, then the lower run, then the lower room id. Planned affixes kept.
+ */
+export function dearestRoom(floor: number, firstRun: number, lastRun: number): DearRoom {
+	let best: { run: number; room: number; cost: number; distinct: number; spawns: TuneSpawn[] } | undefined;
+	for (let run = firstRun; run <= lastRun; run++) {
+		const world = buildEndlessRunConfig(run, 1).endlessFloor(floor);
+		for (let id = 0; id < world.roomSpawns.size(); id++) {
+			const planned = world.roomSpawns[id];
+			if (planned.size() === 0) continue;
+			let cost = 0;
+			for (const sp of planned) cost += encounterCost(sp.kind);
+			const distinct = distinctKinds(planned);
+			if (best !== undefined && (cost < best.cost || (cost === best.cost && distinct <= best.distinct))) continue;
+			const affixes = world.roomAffixes?.[id];
+			const spawns = planned.map(
+				(sp, i): TuneSpawn => ({ kind: sp.kind, x: sp.x, z: sp.z, affix: affixes?.[i] ?? 0 }),
+			);
+			best = { run, room: id, cost, distinct, spawns };
+		}
+	}
+	if (best === undefined) error(`dearestRoom: no room on floor ${floor}`, 0);
+	const kinds = kindsOf(best.spawns);
+	return {
+		run: best.run,
+		room: best.room,
+		cost: best.cost,
+		kinds,
+		fight: centredFight(`run ${best.run} floor ${floor} room ${best.room} (${kinds})`, best.spawns),
+	};
+}
+
+/** Strafe side of the passive bot: flips every this many ticks. */
+const PASSIVE_STRAFE_TICKS = 60;
+
+/** Item 4's result: enemy bullets alive per tick (peak, mean), enemy-pool drops, kills, the clear time (-1: none). */
+export interface BulletPeak {
+	readonly peak: number;
+	readonly mean: number;
+	readonly dropped: number;
+	readonly kills: number;
+	readonly cleared: number;
+}
+
+/**
+ * Item 4: `fight` solo at floor `floor`'s hp (Depth tuneDepthAt), `seconds` in god mode, the passive bot (`fights`
+ * false) or the sword bot (true).
+ */
+export function enemyBulletPeak(
+	fight: TuneFight,
+	floor: number,
+	seed: number,
+	seconds: number,
+	fights: boolean,
+): BulletPeak {
+	const config = arenaConfig(seed, "weapon.sword", fight);
+	const s = createSimState(seed, fight.startX, fight.startZ, config);
+	s.endless!.floor = floor;
+	s.endless!.depth = tuneDepthAt(floor);
+	const ctx = new SimCtx().bind(s, simWorldConfig(s, config), EMPTY_INPUT);
+	for (const sp of fight.spawns) spawnActor(ctx, archetypeIndex(sp.kind), sp.x, sp.z, sp.affix);
+	const droppedBefore = s.combat.dropped;
+	let peak = 0;
+	let sum = 0;
+	let kills = 0;
+	let cleared = -1;
+	const ticks = seconds * SIM_HZ;
+	for (let k = 0; k < ticks; k++) {
+		const p = s.player;
+		const t = nearestLiving(s, p);
+		const roll = s.tick % TUNE_POOL_ROLL_TICKS === 0 ? Button.ROLL : 0;
+		let f: InputFrame;
+		if (fights) f = tuneBotFrame(p, t, "weapon.sword", s.tick, fight.half, roll);
+		else if (t === undefined) f = frame(0, 0, roll);
+		else {
+			const dx = t.x - p.x;
+			const dz = t.z - p.z;
+			const d = math.sqrt(dx * dx + dz * dz);
+			const ux = d > 1e-9 ? dx / d : 1;
+			const uz = d > 1e-9 ? dz / d : 0;
+			const side = math.floor(s.tick / PASSIVE_STRAFE_TICKS) % 2 === 0 ? 1 : -1;
+			let mx = -uz * side;
+			let mz = ux * side;
+			if (p.x > fight.half - TUNE_EDGE_MARGIN) mx -= 1;
+			if (p.x < -fight.half + TUNE_EDGE_MARGIN) mx += 1;
+			if (p.z > fight.half - TUNE_EDGE_MARGIN) mz -= 1;
+			if (p.z < -fight.half + TUNE_EDGE_MARGIN) mz += 1;
+			const mlen = math.sqrt(mx * mx + mz * mz);
+			if (mlen > 1) {
+				mx /= mlen;
+				mz /= mlen;
+			}
+			f = frame(mx, mz, roll, ux, uz);
+		}
+		step(s, f, config);
+		s.player.hearts = s.player.heartsMax;
+		kills += s.events.enemiesKilled;
+		const n = s.combat.enemyBullets.activeCount;
+		peak = math.max(peak, n);
+		sum += n;
+		if (cleared < 0 && !anyLiving(s)) cleared = (k + 1) / SIM_HZ;
+	}
+	return { peak, mean: sum / ticks, dropped: s.combat.dropped - droppedBefore, kills, cleared };
 }

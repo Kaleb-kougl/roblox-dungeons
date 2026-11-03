@@ -51,8 +51,14 @@ const WATCH_RANGE2_FACTOR = 2.25;
  *               (both absent, e.g. a summoner's casting circle), `radius` world units; with fillTicks it fills from
  *               empty to full as aiTicks counts down from fillTicks to 0 (the telegraph's own countdown), else it is
  *               drawn full.
- *   attack      (Roblox port, on aimLine and ring) when set, the hint is drawn only while ActorState.attack equals it:
- *               an archetype with two telegraphs (the imp's blink ring, then its landing aim) shows each with its own.
+ *   strikeRow   (Roblox port, docs/NEW_ENEMIES.md NE1; the Stormcaller's cast) `count` flat circles of `radius` on the
+ *               floor while aiState === state: circle i (0 .. count - 1) is centred on
+ *               (v[centreX], v[centreZ]) + (i - (count - 1) / 2) * (v[offsetX], v[offsetZ]), i.e. a row through the
+ *               centre point spaced by the offset vector (the middle circle on the centre for an odd count); fillTicks
+ *               fills them as `ring` does. Type only in NE1: the view draws it from NE8.
+ *   attack      (Roblox port, on aimLine, ring and strikeRow) when set, the hint is drawn only while ActorState.attack
+ *               equals it: an archetype with two telegraphs (the imp's blink ring, then its landing aim) shows each with
+ *               its own.
  */
 export interface ActorFxHints {
 	readonly aimLine?: {
@@ -77,6 +83,17 @@ export interface ActorFxHints {
 		readonly state: number;
 		readonly xSlot?: number;
 		readonly zSlot?: number;
+		readonly radius: number;
+		readonly fillTicks?: number;
+		readonly attack?: number;
+	};
+	readonly strikeRow?: {
+		readonly state: number;
+		readonly centreX: number;
+		readonly centreZ: number;
+		readonly offsetX: number;
+		readonly offsetZ: number;
+		readonly count: number;
 		readonly radius: number;
 		readonly fillTicks?: number;
 		readonly attack?: number;
