@@ -8,6 +8,7 @@
  *   walkToAltar  the endless bot (Driver.walkTo) walks onto an altar without pressing (no surgery)
  */
 import {
+	DEBUG_FLOOR_BUTTON,
 	ENDLESS_PACTS_CONFIG,
 	SHRINE_BUTTON,
 	SHRINE_RADIUS,
@@ -21,7 +22,7 @@ import {
 } from "shared/sim";
 import type { FloorPacts } from "shared/dungeon";
 import { buildEndlessRunConfig, type EndlessRunSetup } from "../endless";
-import { frame, type Driver } from "./endlessBot";
+import { dismissDraft, frame, skipToFloor, type Driver } from "./endlessBot";
 
 /** The endless run `seed` for a party of `partySize`, with the game's pacts config (`on`) or without it. */
 export function pactsSetup(seed: number, partySize = 1, on = true): EndlessRunSetup {
@@ -60,6 +61,22 @@ export function stepWith(s: SimState, config: Readonly<SimConfig>, i: number, bu
 	const inputs: InputFrame[] = [];
 	for (let k = 0; k < n; k++) inputs.push(frame(0, 0, k === i ? buttons : 0));
 	stepParty(s, inputs, config);
+}
+
+/**
+ * Test-only: debug-skips floors until `floor` (player 0's press, a release), every draft dismissed (endlessBot
+ * dismissDraft); solo or co-op.
+ */
+export function skipToFloorAny(s: SimState, config: Readonly<SimConfig>, floor: number): void {
+	if (s.party === undefined) {
+		skipToFloor(s, config, floor);
+		return;
+	}
+	while (s.endless!.floor < floor) {
+		stepWith(s, config, 0, DEBUG_FLOOR_BUTTON);
+		dismissDraft(s);
+		stepWith(s, config, 0, 0);
+	}
 }
 
 /** Test surgery + input: player `i` put on altar `kind` (PactKind) of the floor, one SHRINE_BUTTON press, a release. */
