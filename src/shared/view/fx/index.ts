@@ -39,6 +39,7 @@ export * from "./recapTally";
 export * from "./teamMomentsConfig";
 export * from "./teamMoments";
 export * from "./teamMomentsView";
+export * from "./syncCallout";
 export * from "./variantCueEvents";
 export * from "./buildFxConfig";
 export * from "./buildFxEvents";

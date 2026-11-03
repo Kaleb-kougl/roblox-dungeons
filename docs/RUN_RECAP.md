@@ -231,7 +231,7 @@ grazes, duos). Exit stays Back to lobby.
 | Retry timing and levers | SimController, StageController, server RunSessionService | RR8 |
 | `TeamMoments` (pure): TEAM PERFECT flag + streak from `RoomClearEvents`, sync parries from the director's parry groups; `syncParry` records on the `NearMissDirector`'s frame output | shared/view/fx/teamMoments.ts, nearMissRules.ts | CM1 |
 | Stamp / chip text and streak, team pulse rings | roomClearSequence, RoomClearStamp / Chips, ParticleController | CM2 |
-| `SYNC!` floor text and tether | ParryFlashController (shared construction with the combo shout) | CM5 |
+| `SYNC!` floor text and tether | SyncCalloutController (the PARRY! flash's construction, fxHelpers `floorText`) | CM5 |
 | Telemetry: a retry event (`RunRetry`, PascalCase like `ANALYTICS_EVENT`; seconds on panel, near-miss kind, record run: client facts, so a remote to the server's TelemetryService, RR0 4) and co-op fields (team perfects, best streak, sync parries) on the party run-end event | shared/run/analytics.ts, shared/onboarding analyticsCatalog.ts | RR9 |
 
 ## Tasks
@@ -287,7 +287,18 @@ Each step is a commit; `npm run verify` before each.
   in it, else teammate volume and `TEAMMATE_PRIORITY_DROP` lower, rank 58; silent it resolves to `sfx.player.parry` at
   +`TEAM_MOMENTS_VIEW.syncAudio.fallbackSemitones` (5), merged with the frame's parry cue into one higher sound; both
   silent: nothing. Caps / jingle / interval rules as every cue. Spec: teamMomentCues.spec.ts.
-- [ ] **CM5. SYNC! callout.** Floor text, tether, ducking, cooldown.
+- [x] **CM5. SYNC! callout.** Floor text, tether, ducking, cooldown.
+  As built: client `SyncCalloutController` (a NearMissController subscriber reading `TeamMomentsController.syncs()`)
+  on the PARRY! flash's construction, now shared as fxHelpers `floorText` / `floorTextTopStuds` (ParryFlashController
+  uses them too): a SurfaceGui on a thin floor Part at the combo shout's layer, under every bullet, capped at
+  `COMBO_SHOUT.maxOpacity` (55 %) x the fade and ducking per text through `ShoutDuck` / `shoutDucked` (CD9). Pure
+  timeline shared/view/fx `SyncCallout` (`syncCalloutPop` / `Fade`, `syncTetherFade` / `Width`; a new or grown sync
+  restarts it), drawing pieces shared/view/hud syncCallout.ts (`syncCalloutLabel`: `fx.parry.sync`, `fx.parry.syncCount`
+  from 3 players; `syncCalloutSize`; `syncTetherOpacity`). Tethered: one text at the points' mean plus ONE pooled Neon
+  bar between the first and latest points for 0.25 s (snaps 0.3 -> 0.1 tiles over 0.08 s, fades over the last 0.12 s,
+  at most 85 % opaque); untethered: a small text at each point. Reduced motion: no pop, no snap (thin bar), both fade.
+  No freeze. Cooldown is TeamMoments' (1 s). Tunables `TEAM_MOMENTS_VIEW.callout` / `.tether` (role `nearMiss.parry`).
+  Debug `KV_TeamMomentsDebug = "sync"` / `"sync:far"` / `"sync:3"` (a fake SYNC! at the view player, with its sound).
 - [ ] **CM6. Recap rows** (team highlights 4 and 7).
 - [ ] **CM7. [owner] Vale sounds** for the two IDs (audition, lock, upload).
 
