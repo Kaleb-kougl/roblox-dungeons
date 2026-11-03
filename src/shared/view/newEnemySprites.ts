@@ -225,8 +225,8 @@ export function warbannerSpriteInput(a: Readonly<ActorState>, alpha: number): Ac
 
 /**
  * The Reaper's attack timeline (reaper.ts view contract): the wind (TELEGRAPH, REAPER_ATTACK_WIND, windTicks; the ring
- * fills) plays [0, spin) of `attack` (Spawn 5's Taunt f0-4); the spin (REAPER_SPIN, spinTicks counting down) loops
- * [spin, 1] (sickles out wide). The dizzy is no attack (the slowed idle: reaperSpriteInput).
+ * fills) plays [0, spin) of `attack` (Spawn 5's Taunt f0-f4); the spin (REAPER_SPIN, spinTicks counting down) loops
+ * [spin, 1] (Taunt f5-f10, sickles out wide). The dizzy is no attack (the slowed idle: reaperSpriteInput).
  */
 export function reaperAttack(aiState: number, attack: number, aiTicks: number, alpha: number): ActorAttack | undefined {
 	const d = REAPER.data;

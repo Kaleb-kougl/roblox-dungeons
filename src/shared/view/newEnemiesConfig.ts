@@ -31,19 +31,31 @@ export const NEW_ENEMY_SPRITE_VIEW = {
 } as const;
 
 /**
- * Frame marks inside the five's attack animations (fractions of the frame count, like SPRITE_ANIM_MARKS). NAMED
- * PLACEHOLDERS from the plan's frame counts on `ne-strips.png`: NE9 measures them on the built sets.
+ * Frame marks inside the five's attack animations (fractions of the kept frame count, like SPRITE_ANIM_MARKS), measured
+ * in NE9 on the built sets (art/atlases.json; body height = alpha > 250 pixels facing the camera, source row 2).
  */
 export const NEW_ENEMY_ANIM_MARKS = {
-	/** The Charger's `attack` (Beast 1 Slide 1, 9 frames): the rear back [0, lane) over the lane, [lane, 1] looped while charging. */
+	/**
+	 * The Charger's `attack` (Beast 1 Slide 1, kept f0-f8, 9 frames): the rear back [0, lane) over the lane, [lane, 1]
+	 * looped while charging. Measured: body 56 64 62 px over f0-f2 (standing, rearing), 54 50 48 48 49 52 over f3-f8
+	 * (the low lunge; blades out to 65-70 px wide in profile), rising again from f9 (not kept): the lunge starts at kept
+	 * index 3.
+	 */
 	charger: { lane: 3 / 9 },
 	/**
-	 * The Stormcaller's `attack` (Spawn 7 Attack 4): the staff rising [0, raise) over the cast but its last holdTicks,
-	 * then held overhead [raise, 1] over the last holdTicks (the strike lands as the cast runs out).
+	 * The Stormcaller's `attack` (Spawn 7 Attack 4, kept 0 2 4 5 6 7 8 9 10 11): the staff rising [0, raise) over the cast
+	 * but its last holdTicks, then held overhead [raise, 1] over the last holdTicks (the strike lands as the cast runs
+	 * out). Measured: body 52-58 px over f0-f6 (the wind-up), 68 at f7 (thrown up), 70 69 69 68 over f8-f11 with the top
+	 * edge within 2 px (held straight overhead), back to 56 from f13: the hold starts at kept index 6 (source f8).
 	 */
-	stormcaller: { raise: 0.6, holdTicks: 12 },
-	/** The Reaper's `attack` (Spawn 5 Taunt, 12 frames): the wind f0-4 [0, spin) over the wind, f5-11 [spin, 1] looped over the spin. */
-	reaper: { spin: 5 / 12 },
+	stormcaller: { raise: 6 / 10, holdTicks: 12 },
+	/**
+	 * The Reaper's `attack` (Spawn 5 Taunt, kept 0 2 4 5 6 7 8 9 10, 9 frames): the wind [0, spin) over the wind, the
+	 * sickles out [spin, 1] looped over the spin. Measured: body 28-29 px wide over f0-f4 (standing, sickles at the
+	 * hips), 66 65 66 67 66 70 over f5-f10 (sickles held out wide; f10 loops back to f5), 53 at f11 (drawing in, not
+	 * kept): the sickles open at kept index 3 (source f5).
+	 */
+	reaper: { spin: 3 / 9 },
 } as const;
 
 /** The Bomber's fuse flash (the whole fuse; the ring at its feet is the telegraph hint). */
