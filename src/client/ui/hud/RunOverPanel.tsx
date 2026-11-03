@@ -9,6 +9,7 @@ import {
 	selectLastBossId,
 	selectMyLobbyId,
 	selectRunBaseline,
+	selectRecap,
 	selectRunInfo,
 	selectSnapshot,
 	selectStageCovered,
@@ -38,8 +39,11 @@ import {
 	comboTier,
 	formatClock,
 	formatCombo,
+	recapExitSizes,
+	recapHidesBestLine,
 	runOverRibbonKey,
 	scoreBreakdownRows,
+	type RecapLayout,
 } from "shared/view/hud";
 import {
 	MENU_FIT,
@@ -60,6 +64,7 @@ import { ArtImage, MenuButton, Panel, Row, Text, panelIcon } from "./primitives"
 import { BuildList } from "./BuildList";
 import { DailyPassedRow } from "./DailyPassedRow";
 import { RunInfoLine, verdictColor, verdictLine } from "./RunInfoLine";
+import { DetailsToggle, HighlightGrid, NearMissLine } from "./RecapBlocks";
 
 const HIDDEN = 1;
 const STAT_WIDTH = 150;
@@ -70,17 +75,22 @@ const ROW = {
 	ribbon: 2,
 	main: 3,
 	alt: 4,
-	stats: 5,
-	best: 6,
-	/** docs/DAILY.md DS11: the daily block (daily runs only), then the friends you passed (DailyPassedRow, DS10). */
-	daily: 7,
-	dailyPassed: 8,
+	/** docs/RUN_RECAP.md RR5: the near-miss line under the main line (a record run's dim one: nearMissDim). */
+	nearMiss: 5,
+	stats: 6,
+	best: 7,
+	/** A record run's dim near-miss sub-line, under new best's rows (RRD3). */
+	nearMissDim: 8,
+	/** The highlights (RR5), or behind Details the score breakdown and the Build list in their place (RRD5). */
 	breakdown: 9,
 	/** Narrow (portrait) only: the Build list under the breakdown (beside it elsewhere). */
 	build: 10,
-	exits: 11,
-	verdict: 12,
-	info: 13,
+	/** docs/DAILY.md DS11: the daily block (daily runs only), then the friends you passed (DailyPassedRow, DS10). */
+	daily: 11,
+	dailyPassed: 12,
+	exits: 13,
+	verdict: 14,
+	info: 15,
 } as const;
 
 function Stat(props: { order: number; label: string; value: string }) {
@@ -245,7 +255,7 @@ function BestRibbon(props: { order: number; text: string }) {
  * (`Best 48210 · floor 9`, bestText run.best.target). What it draws is runOverBest's `lines` (shared/view/hud
  * runOverBestLines); on a daily run it draws no save chip (the daily block's is the one, docs/DAILY.md DS11).
  */
-function BestBlock(props: { order: number; best: RunOverBest }) {
+function BestBlock(props: { order: number; best: RunOverBest; hideTarget?: boolean }) {
 	const hudFont = useHudFont();
 	const b = props.best;
 	if (!b.ranked) return undefined;
@@ -289,7 +299,8 @@ function BestBlock(props: { order: number; best: RunOverBest }) {
 			/>,
 		);
 	}
-	const target = bestText(b.lines.target, bestTargetKey(b.daily), str);
+	// docs/RUN_RECAP.md RR5: the near-miss line says the same thing, closer, so the dim target line steps aside for it.
+	const target = props.hideTarget === true ? "" : bestText(b.lines.target, bestTargetKey(b.daily), str);
 	if (target !== "") {
 		lines.push(
 			<Text
@@ -400,6 +411,15 @@ function RunOverHeader(props: { order: number; victory: boolean; icon: string | 
  * The Daily (docs/DAILY.md DS11), daily runs only: the daily block (DailyResultBlock: standing, entrants, best today,
  * the save chip, the countdown) under new best's block (compact: atop the breakdown column), a spot for the friends
  * you passed right after it (DS10), and the Again button reads Retry Daily (still the first, focused button).
+ *
+ * The recap (docs/RUN_RECAP.md RR5 / RR7), endless, daily and dev runs (the store's `recap` slice for this run;
+ * RecapController draws its counting numbers and fades through RECAP_BINDINGS): the near-miss line under the main
+ * line (it replaces BestBlock's dim `Best ...` line; a record run's is a dim sub-line under new best's rows), the
+ * highlights (2 x 2) in the score breakdown's place, and Details in the exits row, which swaps the breakdown and the
+ * Build list back in (RRD5; compact: the Build list's third column only then). Again is the largest button
+ * (recapExitSizes), the gamepad's selection starts on it, a keyboard's Enter / Space press it (RecapController) and its
+ * focus brightens once armed; it goes through the recap's retry gate (HudActions.again: before the 0.6 s arm a press
+ * skips the timeline). Runs without a recap keep exactly the old panel.
  */
 export function RunOverPanel() {
 	const s = useSelector(selectSnapshot);
@@ -414,6 +434,7 @@ export function RunOverPanel() {
 	const verdict = useSelector(selectVerdict);
 	const baseline = useSelector(selectRunBaseline);
 	const baselineRun = useSelector(selectBaselineRun);
+	const recap = useSelector(selectRecap);
 	const actions = useHudActions();
 	const firstRef = useRef<TextButton>();
 	const over = s.outcome !== "playing";
@@ -447,12 +468,20 @@ export function RunOverPanel() {
 		: victory
 		? str(HUD_STRINGS.victory, { name: bossName, key })
 		: str(HUD_STRINGS.dead, { key });
+	// docs/RUN_RECAP.md RR5: this run's recap (none: the old panel exactly).
+	const recapOn = recap.run !== 0 && recap.run === info.run;
+	const nearMiss = recapOn ? recap.nearMiss : undefined;
+	const highlightsOn = recapOn && recap.highlights.size() > 0;
+	// The breakdown and the Build list: behind Details while there are highlights (RRD5), else as before.
+	const details = !highlightsOn || recap.details;
 	const best = runOverBest(baseline, baselineRun, info.run, verdict, s.score, s.floor);
 	const ribbonKey = runOverRibbonKey(best.records, best.daily);
 	const ribbon =
 		ribbonKey !== undefined ? <BestRibbon key="Ribbon" order={ROW.ribbon} text={str(ribbonKey)} /> : undefined;
-	const bestBlock = <BestBlock key="Best" order={ROW.best} best={best} />;
-	// One owner per piece (docs/DAILY.md DS11): the daily block's best-today line only when BestBlock draws no best line.
+	const hideTarget = recapHidesBestLine(nearMiss);
+	const bestBlock = <BestBlock key="Best" order={ROW.best} best={best} hideTarget={hideTarget} />;
+	// One owner per piece (docs/DAILY.md DS11): the daily block's best-today line only when BestBlock draws no best line
+	// (a near-miss line in its place counts as drawn: the daily block never brings it back).
 	const bestLineShown = bestBlockDrawsBestLine(best.lines);
 	const dailyBlock = <DailyResultBlock key="Daily" order={ROW.daily} bestLineShown={bestLineShown} />;
 	const header = (
@@ -485,6 +514,18 @@ export function RunOverPanel() {
 			text={str(HUD_STRINGS.restartAlt, { key: otherKey })}
 		/>
 	);
+	const nearMissLine =
+		nearMiss !== undefined && !nearMiss.dim ? (
+			<NearMissLine key="NearMiss" order={ROW.nearMiss} dim={false} />
+		) : undefined;
+	const nearMissDim = (order: number) =>
+		nearMiss !== undefined && nearMiss.dim ? (
+			<NearMissLine key="NearMissDim" order={order} dim={true} />
+		) : undefined;
+	const grid = (order: number) =>
+		highlightsOn && !details ? (
+			<HighlightGrid key="Highlights" order={order} cells={recap.highlights} />
+		) : undefined;
 	const stats = [
 		{ label: str(victory ? HUD_STRINGS.timeVictory : HUD_STRINGS.time), value: formatClock(s.endTick / SIM_HZ) },
 		{ label: str(HUD_STRINGS.hits), value: tostring(s.hitsTaken) },
@@ -502,47 +543,67 @@ export function RunOverPanel() {
 				text={verdictText}
 			/>
 		) : undefined;
-	const exitButtons = (size?: Vector2) => (
-		<Row key="Exits" order={ROW.exits} align={Enum.HorizontalAlignment.Center}>
-			{exits.again ? (
+	/**
+	 * The exits. With a recap (RR7): Again the largest (recapExitSizes), Details beside the exit when there are
+	 * highlights, Again's keyboard focus brightening once armed (the gamepad's selection is the ring otherwise), Again
+	 * through the retry gate. Without: exactly the old row (`legacy`: the layout's old button size).
+	 */
+	const exitButtons = (layout: RecapLayout, legacy?: Vector2) => {
+		const sizes = recapExitSizes(layout);
+		const againSize = recapOn ? new Vector2(sizes.again.x, sizes.again.y) : legacy;
+		const otherSize = recapOn ? new Vector2(sizes.other.x, sizes.other.y) : legacy;
+		const otherText = recapOn ? sizes.otherTextSize : undefined;
+		return (
+			<Row key="Exits" order={ROW.exits} align={Enum.HorizontalAlignment.Center}>
+				{exits.again ? (
+					<MenuButton
+						ref={firstRef}
+						order={1}
+						name="Again"
+						size={againSize}
+						active={recapOn && device === "keyboard" && recap.armed}
+						text={againText}
+						onActivated={() => actions.again()}
+					/>
+				) : undefined}
 				<MenuButton
-					ref={firstRef}
-					order={1}
-					name="Again"
-					size={size}
-					text={againText}
+					ref={exits.again ? undefined : firstRef}
+					order={2}
+					name="Exit"
+					size={otherSize}
+					textSize={otherText}
+					text={str(exits.exitKey)}
+					icon={runOverExitIcon(exits.exitKey)}
 					onActivated={() => {
-						actions.playUi(SFX.uiConfirm);
-						actions.restart();
+						actions.playUi(SFX.uiClick);
+						actions.exitRun();
 					}}
 				/>
-			) : undefined}
-			<MenuButton
-				ref={exits.again ? undefined : firstRef}
-				order={2}
-				name="Exit"
-				size={size}
-				text={str(exits.exitKey)}
-				icon={runOverExitIcon(exits.exitKey)}
-				onActivated={() => {
-					actions.playUi(SFX.uiClick);
-					actions.exitRun();
-				}}
-			/>
-		</Row>
-	);
+				{highlightsOn ? (
+					<DetailsToggle
+						order={3}
+						details={recap.details}
+						size={sizes.other}
+						textSize={sizes.otherTextSize}
+					/>
+				) : undefined}
+			</Row>
+		);
+	};
 	const breakdown = { order: ROW.breakdown, score: s.score, points: s.scorePoints, maxCombo: s.maxCombo };
 	const breakdownWidth = HUD_VIEW.breakdownLabelWidth + HUD_VIEW.gap + HUD_VIEW.breakdownValueWidth;
-	const hasBuild = s.boons.size() > 0 || s.duos.size() > 0;
+	const hasBuild = (s.boons.size() > 0 || s.duos.size() > 0) && details;
+	const legacyButton = new Vector2(MENU_FIT.runOverButton.x, MENU_FIT.runOverButton.y);
 	return (
 		<MenuFit
 			render={(layout) => {
 				if (layout.compact) {
 					// A phone (docs/UI_ART.md "Phones"): the header, stats, exits and verdict on the left, the
-					// score breakdown beside them, so the panel is about half as tall.
+					// score breakdown (or the highlights) beside them, so the panel is about half as tall.
 					const left = MENU_FIT.runOverLeftWidth;
 					const right = s.scoring ? breakdownWidth : 0;
-					// docs/BUILDS.md BU10: the Build list as a third column (a phone's panel is wide, not tall).
+					// docs/BUILDS.md BU10: the Build list as a third column (a phone's panel is wide, not tall); with
+					// highlights only behind Details (RRD5).
 					const build = hasBuild ? BUILD_HUD_VIEW.listCompactWidth : 0;
 					return (
 						<Panel
@@ -562,6 +623,7 @@ export function RunOverPanel() {
 									{ribbon}
 									{mainLine}
 									{altLine}
+									{nearMissLine}
 									<Column order={ROW.stats} width={breakdownWidth} gap={HUD_VIEW.gap}>
 										{stats.map((st, i) => (
 											<BreakdownLine
@@ -572,16 +634,20 @@ export function RunOverPanel() {
 											/>
 										))}
 									</Column>
-									{exitButtons(new Vector2(MENU_FIT.runOverButton.x, MENU_FIT.runOverButton.y))}
+									{exitButtons("compact", legacyButton)}
 									{verdictRow}
 									<RunInfoLine order={ROW.info} />
 								</Column>
 								{s.scoring ? (
 									<Column order={2} width={right} gap={MENU_FIT.runOverLineGap}>
-										<DailyResultBlock key="Daily" order={-2} bestLineShown={bestLineShown} />
-										<DailyPassedRow key="DailyPassed" order={-1} />
-										{best.ranked ? <BestBlock key="Best" order={0} best={best} /> : undefined}
-										{breakdownLines(breakdown)}
+										<DailyResultBlock key="Daily" order={-4} bestLineShown={bestLineShown} />
+										<DailyPassedRow key="DailyPassed" order={-3} />
+										{best.ranked ? (
+											<BestBlock key="Best" order={-2} best={best} hideTarget={hideTarget} />
+										) : undefined}
+										{nearMissDim(-1)}
+										{grid(0)}
+										{details ? breakdownLines(breakdown) : undefined}
 									</Column>
 								) : undefined}
 								{hasBuild ? (
@@ -606,6 +672,7 @@ export function RunOverPanel() {
 						{ribbon}
 						{mainLine}
 						{altLine}
+						{nearMissLine}
 						{narrow ? (
 							<Column order={ROW.stats} width={breakdownWidth} gap={HUD_VIEW.gap}>
 								{stats.map((st, i) => (
@@ -620,19 +687,23 @@ export function RunOverPanel() {
 							</Row>
 						)}
 						{bestBlock}
+						{nearMissDim(ROW.nearMissDim)}
 						{dailyBlock}
 						<DailyPassedRow key="DailyPassed" order={ROW.dailyPassed} />
+						{grid(ROW.breakdown)}
 						{/* docs/BUILDS.md BU10: the score breakdown and the Build list side by side (narrow: stacked). */}
-						<Row order={ROW.breakdown} align={Enum.HorizontalAlignment.Center}>
-							{s.scoring ? <ScoreBreakdown {...breakdown} order={1} /> : undefined}
-							{hasBuild && !narrow ? (
-								<BuildList
-									order={2}
-									width={BUILD_HUD_VIEW.listWidth}
-									maxRows={BUILD_HUD_VIEW.listMaxRows}
-								/>
-							) : undefined}
-						</Row>
+						{details ? (
+							<Row order={ROW.breakdown} align={Enum.HorizontalAlignment.Center}>
+								{s.scoring ? <ScoreBreakdown {...breakdown} order={1} /> : undefined}
+								{hasBuild && !narrow ? (
+									<BuildList
+										order={2}
+										width={BUILD_HUD_VIEW.listWidth}
+										maxRows={BUILD_HUD_VIEW.listMaxRows}
+									/>
+								) : undefined}
+							</Row>
+						) : undefined}
 						{hasBuild && narrow ? (
 							<BuildList
 								order={ROW.build}
@@ -642,9 +713,7 @@ export function RunOverPanel() {
 						) : undefined}
 						{verdictRow}
 						<RunInfoLine order={ROW.info} />
-						{exitButtons(
-							narrow ? new Vector2(MENU_FIT.runOverButton.x, MENU_FIT.runOverButton.y) : undefined,
-						)}
+						{exitButtons(narrow ? "narrow" : "wide", narrow ? legacyButton : undefined)}
 					</Panel>
 				);
 			}}

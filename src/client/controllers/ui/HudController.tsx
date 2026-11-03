@@ -96,6 +96,9 @@ export class HudController implements OnStart {
 			setLeaveConfirm: click((open: boolean) => this.menu.setLeaveConfirm(open)),
 			leaveRun: click(() => this.menu.leaveRun()),
 			exitRun: click(() => this.menu.exitRun()),
+			// docs/RUN_RECAP.md RR5: wired to RecapController's retry gate in RR6 / RR7.
+			again: click(() => this.sim.requestRestart()),
+			toggleRecapDetails: click(() => clientStore.toggleRecapDetails()),
 			playTutorial: click(() => this.tutorial.playTutorial("again")),
 			restartTutorial: click(() => this.tutorial.playTutorial("restart")),
 			// The outro's "Start my first run" is the main menu's Play solo.

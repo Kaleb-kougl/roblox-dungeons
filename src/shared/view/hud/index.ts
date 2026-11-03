@@ -18,7 +18,8 @@
  * tunables, strings, frozen rank baseline, tracker and text helpers (dailyRankConfig.ts, dailyRankStrings.ts,
  * dailyRank.ts; docs/DAILY.md DS10), Options > Display > Language's choices and labels (language.ts,
  * docs/LOCALIZATION.md L6), and the run-over recap's tunables, highlight table, strings, near-miss line, highlights,
- * stairs distance and timeline (recapConfig.ts, recap.ts; docs/RUN_RECAP.md RR2).
+ * stairs distance and timeline (recapConfig.ts, recap.ts; docs/RUN_RECAP.md RR2) and how the recap is drawn (recapUi.ts,
+ * RR5).
  */
 export * from "./layout";
 export * from "./strings";
@@ -63,3 +64,4 @@ export * from "./dailyRankStrings";
 export * from "./dailyRank";
 export * from "./recapConfig";
 export * from "./recap";
+export * from "./recapUi";

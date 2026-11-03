@@ -45,6 +45,13 @@ export interface HudActions {
 	/** Run-over "Main menu" / "Back to lobby": leave the finished run for the menu. */
 	readonly exitRun: () => void;
 	/**
+	 * Run-over "Again" / "Retry Daily" (docs/RUN_RECAP.md RR7): through the recap's retry gate (RecapController):
+	 * before the arm it skips the recap's timeline, after it it restarts (as `restart`).
+	 */
+	readonly again: () => void;
+	/** Run-over "Details" / "Highlights" (RRD5): the score breakdown and Build list in the highlights' place, and back. */
+	readonly toggleRecapDetails: () => void;
+	/**
 	 * First-run tutorial (TutorialController): a new tutorial run (`playTutorial`: the outro's Play the tutorial again;
 	 * `restartTutorial`: the pause overlay's Restart tutorial; two actions so the funnel's attempt entry tells them
 	 * apart), the outro's Start my first run (the main menu's Play solo), the pause overlay's skip question and the
@@ -84,6 +91,8 @@ const NOOP: HudActions = {
 	setLeaveConfirm: () => undefined,
 	leaveRun: () => undefined,
 	exitRun: () => undefined,
+	again: () => undefined,
+	toggleRecapDetails: () => undefined,
 	playTutorial: () => undefined,
 	restartTutorial: () => undefined,
 	startFirstRun: () => undefined,
