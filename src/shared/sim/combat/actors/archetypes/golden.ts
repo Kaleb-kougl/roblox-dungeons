@@ -1,6 +1,6 @@
 /**
  * 'golden', the Goldling (Roblox port, docs/FORTUNE.md "The Goldling", Design §3, FD9-FD11; no web source): a small
- * harmless gold creature that appears in a room's fight and runs. Band PORT_BAND_FORTUNE (index 18). 10 hp (endless and
+ * harmless gold creature that appears in a room's fight and runs. Band PORT_BAND_FORTUNE (index 18). GOLDEN_HP 24 (endless and
  * party hp scaling apply), radius 0.3, runs at 5.1 u/s, NO contact damage and no attack. It is not a room enemy
  * (data.roomEnemy unset): never a score-record member (the room clears without it), never aggroed, alerted or alerting,
  * never in a Warbanner's aura (`isWarbannerAuraTarget` reads roomEnemy), and its walk never goes through actorMods
