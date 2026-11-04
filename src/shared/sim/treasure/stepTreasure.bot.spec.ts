@@ -1,7 +1,8 @@
 // The UNTOUCHED lock and PERFECT agree in real fights (docs/TREASURE.md TR3 Verify): a sword bot (the pellet census's
 // "ignore" fight: walk at the nearest member of the room, swing) fights the vault room of every floor 2-11 of 20 run
 // seeds solo (200 rooms; every floor holds an UNTOUCHED vault through the dev override), the enemies free to hit it.
-// For each room: the chest is kept (UNLOCKED, never cracked) exactly when the clear paid PERFECT. Test-only shortcuts:
+// For each room: the chest is kept (unlocked, and opened when the bot ends next to it, never cracked) exactly when the
+// clear paid PERFECT. Test-only shortcuts:
 // hearts topped up every tick, a teleport into the vault room, members still alive after FIGHT_TICKS killed through
 // SimCtx, the debug floor skip with its draft dismissed.
 import { describe, expect, it } from "@rbxts/jest-globals";
@@ -112,7 +113,7 @@ function fightVault(setup: EndlessRunSetup, s: SimState): [boolean, boolean] {
 			for (const a of liveMembers(s)) if (a.alive !== 0) ctx.killActor(a);
 		tick(s, config, EMPTY_INPUT);
 	}
-	expect([rec.cleared, t.status]).toEqual([1, VaultStatus.UNLOCKED]);
+	expect([rec.cleared, t.status === VaultStatus.UNLOCKED || t.status === VaultStatus.OPENED]).toEqual([1, true]);
 	const kept = t.crackTick === TREASURE_UNSET;
 	const perfect = s.score!.counts[ScoreSource.PERFECT] > perfect0;
 	return [kept, perfect];

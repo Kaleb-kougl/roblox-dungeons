@@ -77,6 +77,8 @@ import {
 	stepParty,
 	teamComboWindowTicks,
 	writeHashFields,
+	createTreasureState,
+	ENDLESS_TREASURE_CONFIG,
 	type BuildRules,
 	type EndlessFloorWorld,
 	type InputFrame,
@@ -663,6 +665,27 @@ describe("the draft with builds (BU2)", () => {
 		step(s, frame(0, 0), ARENA);
 		step(s, frame(0, 0, DEBUG_FLOOR_BUTTON), ARENA);
 		expect([s.endless!.floor, bp(s).draftsLeft]).toEqual([7, 1]);
+	});
+
+	it("a treasure bonus deal (docs/TREASURE.md TR4): one more deal, so the first guarantees a duo; taken once", () => {
+		const s = createSimState(SEED, 0, 0, ARENA);
+		s.treasure = createTreasureState(ENDLESS_TREASURE_CONFIG, SEED, 1);
+		skipToFloor(s, ARENA, 2);
+		grantCard(s, 0, Boon.EMBER_WAKE);
+		grantCard(s, 0, Boon.PIERCING_ARROWS);
+		s.treasure.bonusDeals[0] = 1;
+		const before = s.rngState;
+		step(s, frame(0, 0, DEBUG_FLOOR_BUTTON), ARENA);
+		const first = drawCardOffers({ rngState: before }, BUILD_RULES, bp(s).levels, [], 2, true);
+		expect(rp(s).draftOffers).toEqual(first);
+		expect([first[0], bp(s).draftsLeft, s.treasure.bonusDeals[0]]).toEqual([duoCard(Duo.FIRE_ARROWS), 2, 0]);
+		confirmSolo(s, ARENA, frame(-0.8, 0.8));
+		expect([isDraftOpen(s), bp(s).draftsLeft]).toEqual([true, 1]);
+		confirmSolo(s, ARENA);
+		expect([isDraftOpen(s), bp(s).draftsLeft]).toEqual([false, 0]);
+		step(s, frame(0, 0), ARENA);
+		step(s, frame(0, 0, DEBUG_FLOOR_BUTTON), ARENA);
+		expect(bp(s).draftsLeft).toBe(1);
 	});
 
 	it("replays identically: two runs with the same inputs hash the same through a double draft", () => {

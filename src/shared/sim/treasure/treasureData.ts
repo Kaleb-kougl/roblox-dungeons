@@ -23,6 +23,8 @@ export interface TreasureConfig {
 	readonly points: ReadonlyArray<number>;
 	/** Boosts per living present player by tier (VaultTier order; Rare's 0 means a relic instead; TR4). */
 	readonly boosts: ReadonlyArray<number>;
+	/** A relic share (Rare, or Legendary without builds) whose player owns every relic: this many boosts instead (TR4). */
+	readonly relicFallbackBoosts: number;
 }
 
 /** A forward / side offset from the chest's centre, in tiles along its facing (forward) and across it (side). */
@@ -65,9 +67,9 @@ export const VaultStatus = {
 	ARMED: 2,
 	/** The lock cracked (one tier down, once); the room still needs clearing. */
 	CRACKED: 3,
-	/** Its room cleared: the chest can be opened (TR4). */
+	/** Its room cleared: the chest can be opened (the first living player in reach opens it). */
 	UNLOCKED: 4,
-	/** Opened (TR4). */
+	/** Opened: the grants are given; the open chest stays for the rest of the floor. */
 	OPENED: 5,
 } as const;
 
@@ -99,6 +101,8 @@ export const TREASURE_RESPITE_SWIFT_PERCENT: ReadonlyArray<number> = [0, 10, 20,
 export const TREASURE_POINTS: ReadonlyArray<number> = [300, 800, 1500];
 /** Common 2 boosts, Rare a relic (0 boosts), Legendary 1 boost (plus the bonus deal). */
 export const TREASURE_BOOSTS: ReadonlyArray<number> = [2, 0, 1];
+/** A relic share with no relic left: two boosts (a Common's worth). */
+export const TREASURE_RELIC_FALLBACK_BOOSTS = 2;
 
 /** The game's treasure rules (endless worlds from TR5). */
 export const ENDLESS_TREASURE_CONFIG: TreasureConfig = table.freeze({
@@ -108,4 +112,5 @@ export const ENDLESS_TREASURE_CONFIG: TreasureConfig = table.freeze({
 	respiteSwiftPercent: TREASURE_RESPITE_SWIFT_PERCENT,
 	points: TREASURE_POINTS,
 	boosts: TREASURE_BOOSTS,
+	relicFallbackBoosts: TREASURE_RELIC_FALLBACK_BOOSTS,
 });

@@ -3,7 +3,7 @@
 // god-mode hits do not), SWIFT cracks when its countdown reaches 0 exactly S ticks after arming and so agrees with
 // FAST at 100 %, a draft holds the countdown, a lock cracks once, a hit on the clear tick cracks, the clear unlocks
 // (only once adopted children are down too) with missBy / spare, the Respite tables through the pure helpers, a floor
-// change drops the vault, and UNLOCKED stays UNLOCKED until TR4. Worlds: real endless floors built with vaults
+// change drops the vault, and UNLOCKED stays UNLOCKED while nobody living is in reach (the open: open.spec.ts). Worlds: real endless floors built with vaults
 // (shared/run/testing buildVaultRunConfig; the override fixes the lock and tier), seed 4242 (a TR1 census floor range).
 //
 // Test-only surgery: players are made unhittable between ticks (hurtTicks) so only the hits a spec lands count;
@@ -139,7 +139,13 @@ function hurt(r: Run, n = 1, i = 0, prep?: (s: SimState) => void): void {
 	});
 }
 
-/** Player 0 onto the cell in front of the chest; one real tick: the room spawns, its record engages. */
+/** Forward cells from the chest's centre where enter() leaves player 0: FLOOR (VAULT.wallClearTiles), out of reach. */
+const OUT_OF_REACH = 2;
+
+/**
+ * Player 0 onto the cell in front of the chest; one real tick: the room spawns, its record engages. Then a step back
+ * to the second cell in front, out of the chest's reach, so a clear only unlocks it (the open is open.spec.ts's).
+ */
 function enter(r: Run): void {
 	const t = T(r);
 	const p = r.s.player;
@@ -147,6 +153,9 @@ function enter(r: Run): void {
 	p.z = t.z + t.fz;
 	tick(r);
 	expect(rec(r).engageTick).toBe(r.s.tick - 1);
+	p.x = t.x + t.fx * OUT_OF_REACH;
+	p.z = t.z + t.fz * OUT_OF_REACH;
+	expect(OUT_OF_REACH > t.config.reachTiles).toBe(true);
 }
 
 function liveMembers(r: Run): ActorState[] {
@@ -470,7 +479,7 @@ describe("treasure lock: the clear (step 3)", () => {
 		expect([rec(r).cleared, T(r).status, T(r).spare]).toEqual([1, VaultStatus.UNLOCKED, 0]);
 	});
 
-	it("UNLOCKED stays UNLOCKED (the open is TR4), whoever stands on the chest's front", () => {
+	it("UNLOCKED stays UNLOCKED while nobody living is in reach; the first tick someone is, it opens", () => {
 		const r = vaultRun(VaultLock.UNTOUCHED);
 		enter(r);
 		killRoom(r);
@@ -480,9 +489,18 @@ describe("treasure lock: the clear (step 3)", () => {
 		const spare = t.spare;
 		for (let k = 0; k < 120; k++) {
 			tick(r);
-			expect([t.events.armed, t.events.cracked, t.events.unlocked]).toEqual([0, 0, 0]);
+			expect([t.events.armed, t.events.cracked, t.events.unlocked, t.events.opened === undefined]).toEqual([
+				0,
+				0,
+				0,
+				true,
+			]);
 		}
 		expect([t.status, t.opened, t.spare]).toEqual([VaultStatus.UNLOCKED, 0, spare]);
+		r.s.player.x = t.x + t.fx;
+		r.s.player.z = t.z + t.fz;
+		tick(r);
+		expect([t.status, t.opened, t.events.opened !== undefined]).toEqual([VaultStatus.OPENED, 1, true]);
 	});
 });
 

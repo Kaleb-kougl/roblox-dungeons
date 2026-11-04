@@ -45,7 +45,7 @@
  *
  * Co-op: per player state in party index order (solo: one); only the picker is boosted.
  */
-import { rngInt, seedToState } from "../rng";
+import { rngInt, seedToState, type RngHolder } from "../rng";
 import type { InputFrame } from "../input";
 import type { SimState } from "../state";
 import type { SimCtx } from "../combat/ctx";
@@ -55,9 +55,8 @@ import { bossEngaged } from "../combat/actors/archetypes/boss/shared";
 import type { EncounterConfig } from "../combat/actors/encounter";
 import { partySize, playerAt } from "../party";
 import { affixDropBonus } from "../affixes/affixes";
-import { landDrop, lowestFreeDropSlot } from "./breakLoot";
+import { applyBoost, landDrop, lowestFreeDropSlot } from "./breakLoot";
 import {
-	AEGIS_PIPS,
 	BOOSTS,
 	BOOST_COUNT,
 	BOOST_TOTAL_WEIGHT,
@@ -200,7 +199,10 @@ export interface BoostEnded {
 export interface DropsEvents {
 	/** Slots a drop landed in this tick, in order. */
 	dropped: number[];
-	/** Pickups this tick, in order (slot order). */
+	/**
+	 * Pickups this tick, in order (slot order), then any chest boosts given straight to a player (slot
+	 * GIVEN_DROP_SLOT, docs/TREASURE.md C1: stepTreasure runs after stepDrops).
+	 */
 	collected: DropCollected[];
 	/** Drops that faded this tick (slot order). */
 	expired: DropExpired[];
@@ -215,6 +217,11 @@ export interface DropsEvents {
 	fromPiece: number[];
 	/** Loaded breakables that broke with every ground slot taken this tick: the boost is lost (a fizzle in the view). */
 	lostLoot: DropLostLoot[];
+	/**
+	 * Ground slots whose drop came out of an opened treasure chest this tick (docs/TREASURE.md TR4), a subset of
+	 * `dropped`, in landing order (the view's hop out of the chest).
+	 */
+	fromChest: number[];
 }
 
 /** A loaded breakable's boost that found no free ground slot (docs/BREAKABLE_DROPS.md BLD5). World position. */
@@ -268,7 +275,16 @@ function newBoostPlayer(): BoostPlayerState {
 }
 
 function emptyEvents(): DropsEvents {
-	return { dropped: [], collected: [], expired: [], ended: [], aegisBroke: [], fromPiece: [], lostLoot: [] };
+	return {
+		dropped: [],
+		collected: [],
+		expired: [],
+		ended: [],
+		aegisBroke: [],
+		fromPiece: [],
+		lostLoot: [],
+		fromChest: [],
+	};
 }
 
 /** The drop stream's first word for a run seeded `seed` (seedToState(seed) XOR DROPS.salt). */
@@ -315,6 +331,7 @@ export function cloneDropsState(d: Readonly<DropsState>): DropsState {
 			aegisBroke: [...d.events.aegisBroke],
 			fromPiece: [...d.events.fromPiece],
 			lostLoot: d.events.lostLoot.map((e) => ({ ...e })),
+			fromChest: [...d.events.fromChest],
 		},
 	};
 }
@@ -329,6 +346,7 @@ export function clearDropsEvents(d: DropsState): void {
 	e.aegisBroke.clear();
 	e.fromPiece.clear();
 	e.lostLoot.clear();
+	e.fromChest.clear();
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -337,9 +355,12 @@ export function clearDropsEvents(d: DropsState): void {
 // lowestFreeDropSlot / landDrop live in the leaf ./breakLoot.ts (shared with the breakables' release,
 // docs/BREAKABLE_DROPS.md).
 
-/** The weighted kind pick: ONE rngInt(0, BOOST_TOTAL_WEIGHT - 1) from the drop stream. */
-export function pickBoostKind(d: DropsState): number {
-	let roll = rngInt(d, 0, BOOST_TOTAL_WEIGHT - 1);
+/**
+ * The weighted kind pick: ONE rngInt(0, BOOST_TOTAL_WEIGHT - 1) from `rng`: the drop stream (DropsState) for kills,
+ * the treasure stream (TreasureState) for a chest's boosts (docs/TREASURE.md TR4).
+ */
+export function pickBoostKind(rng: RngHolder): number {
+	let roll = rngInt(rng, 0, BOOST_TOTAL_WEIGHT - 1);
 	for (let k = 0; k < BOOST_COUNT; k++) {
 		const w = BOOSTS[k].weight;
 		if (roll < w) return k;
@@ -557,8 +578,7 @@ export function stepDrops(
 			const bp = d.players[i];
 			if (p.dead !== 0 || bp === undefined || !within(p.x, p.z, g.x, g.z, r)) continue;
 			const kind = g.kind;
-			bp.ticks[kind] = boostTicks(kind);
-			if (kind === Boost.AEGIS) bp.aegisPips = AEGIS_PIPS;
+			applyBoost(d, i, kind);
 			ev.collected.push({ player: i, kind, slot: s, x: g.x, z: g.z });
 			clearSlot(g);
 			break;

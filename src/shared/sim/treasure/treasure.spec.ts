@@ -219,7 +219,7 @@ describe("treasure: create and floor changes", () => {
 		expectSealed(s, plan!);
 	});
 
-	it("every floor change loads the new floor's vault (or none) and keeps the stream, counters and bonus deals", () => {
+	it("every floor change loads the new floor's vault (or none), keeps the stream and counters; the draft takes the bonus deals", () => {
 		for (const override of [EVERY, undefined]) {
 			const setup = buildVaultRunConfig(SEED, 1, { override });
 			const s = fresh(setup);
@@ -227,7 +227,7 @@ describe("treasure: create and floor changes", () => {
 			let vaults = 0;
 			let nones = 0;
 			for (let f = 2; f <= 7; f++) {
-				t.bonusDeals[0] = f; // test-only: carried, never reset by a floor change
+				t.bonusDeals[0] = 1; // test-only: as after a Legendary open; stepRun step 1 deals it (TR4)
 				const rng = t.rngState;
 				skipFloor(s, setup.config);
 				expect(s.endless!.floor).toBe(f);
@@ -239,7 +239,7 @@ describe("treasure: create and floor changes", () => {
 					expectNone(s);
 					nones++;
 				}
-				expect([t.rngState, t.bonusDeals[0]]).toEqual([rng, f]);
+				expect([t.rngState, t.bonusDeals[0]]).toEqual([rng, 0]);
 			}
 			expect(vaults + nones).toBe(6);
 			if (override === EVERY) expect(nones).toBe(0);

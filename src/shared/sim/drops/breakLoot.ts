@@ -24,7 +24,7 @@
 import { gridToWorld, type BreakableLoot } from "shared/dungeon";
 import type { SimState } from "../state";
 import type { DropsState } from "./drops";
-import { BOOST_COUNT, NO_BOOST } from "./dropsData";
+import { AEGIS_PIPS, BOOST_COUNT, Boost, GIVEN_DROP_SLOT, NO_BOOST, boostTicks } from "./dropsData";
 
 /** The lowest free ground slot, -1 when every slot is taken. */
 export function lowestFreeDropSlot(d: Readonly<DropsState>): number {
@@ -41,6 +41,27 @@ export function landDrop(d: DropsState, slot: number, kind: number, x: number, z
 	g.spawnTick = tick;
 	g.ticksLeft = d.config.groundTicks;
 	d.events.dropped.push(slot);
+}
+
+/**
+ * Player `player` gets boost `kind`: the pickup's own effect (ticks = the boost's full duration, a repeat refreshes
+ * it; Aegis also its pips). stepDrops' pickups and a chest's boosts given straight to a player (docs/TREASURE.md C1)
+ * both go through it. No event, no rng; no-op for a player index out of range.
+ */
+export function applyBoost(d: DropsState, player: number, kind: number): void {
+	const bp = d.players[player];
+	if (bp === undefined) return;
+	bp.ticks[kind] = boostTicks(kind);
+	if (kind === Boost.AEGIS) bp.aegisPips = AEGIS_PIPS;
+}
+
+/**
+ * A chest's boost that found no free ground slot (docs/TREASURE.md C1): given straight to player `player` (standing at
+ * (x, z)), as if picked up: applyBoost plus events.collected with slot GIVEN_DROP_SLOT at (x, z). No rng.
+ */
+export function giveBoost(d: DropsState, player: number, kind: number, x: number, z: number): void {
+	applyBoost(d, player, kind);
+	d.events.collected.push({ player, kind, slot: GIVEN_DROP_SLOT, x, z });
 }
 
 /**

@@ -14,8 +14,9 @@
  *                 record (no scoring): NONE. An unopened vault of the floor before is lost silently. The run counters
  *                 (opened / kept / legendary), bonusDeals and the treasure stream carry over.
  *   the lock      stepTreasure.ts (TR3, after stepScore): SEALED -> ARMED -> (CRACKED) -> UNLOCKED.
- *   the open      TR4: UNLOCKED -> OPENED, the grants, drawn from this state's own stream (rngState: an RngHolder,
- *                 seedToState(seed) XOR TREASURE.salt, never state.rngState).
+ *   the open      stepTreasure.ts step 4 (TR4): UNLOCKED -> OPENED, the grants, drawn from this state's own stream
+ *                 (rngState: an RngHolder, seedToState(seed) XOR TREASURE.salt, never state.rngState); a Legendary's
+ *                 bonus deal waits in bonusDeals until the next floor's draft (bonus.ts takeTreasureBonusDeals).
  *
  * This module holds the state, its floor fill, clone and hash. Score: score.ts scoreTreasure (ScoreSource.TREASURE,
  * combo-neutral), padded in by addTreasureScoreSources.
@@ -26,7 +27,43 @@ import type { SimState } from "../state";
 import { BreakableKind } from "../breakables/breakablesData";
 import { TREASURE, TREASURE_UNSET, VaultStatus, type TreasureConfig } from "./treasureData";
 
-/** Per-tick treasure events for presentation (toasts, the crack, the unlock). Cleared every tick; NOT hashed. */
+/** One living present player's share of an opened chest (TreasureOpened.grants, index order). */
+export interface TreasureGrant {
+	/** Party index. */
+	readonly player: number;
+	/** The relic granted (a Rare share, or a Legendary without builds), TREASURE_UNSET for none. */
+	relic: number;
+	/** 1 when a bonus deal was added for the next floor's draft (a Legendary with builds), else 0. */
+	bonusDeal: number;
+	/** Boost kinds drawn for this player, in draw order. */
+	readonly boosts: number[];
+	/**
+	 * Per boost (same order): the ground slot it landed in (DropsEvents.fromChest), GIVEN_DROP_SLOT when every slot was
+	 * taken and it went straight to the player (C1), TREASURE_UNSET without drops.
+	 */
+	readonly slots: number[];
+}
+
+/** TreasureEvents.opened: what the chest gave, for the view (cards, near-miss line, sting). */
+export interface TreasureOpened {
+	/** The party index of the player who opened it (for the whole party). */
+	readonly opener: number;
+	/** VaultTier opened (after any crack), the tier it started at, and VaultLock. */
+	readonly tier: number;
+	readonly startTier: number;
+	readonly lock: number;
+	/** 1 when the lock was kept (never cracked). */
+	readonly kept: number;
+	/** The vault's missBy / spare at the unlock (TREASURE_UNSET when they do not apply). */
+	readonly missBy: number;
+	readonly spare: number;
+	/** TREASURE points scored (0 without scoring). */
+	readonly points: number;
+	/** One per living present player, index order. */
+	readonly grants: TreasureGrant[];
+}
+
+/** Per-tick treasure events for presentation (toasts, the crack, the unlock, the open). Cleared every tick; NOT hashed. */
 export interface TreasureEvents {
 	/** 1 on the tick the vault armed (its room engaged). */
 	armed: number;
@@ -34,6 +71,8 @@ export interface TreasureEvents {
 	cracked: number;
 	/** 1 on the tick its room cleared and the chest unlocked. */
 	unlocked: number;
+	/** The open, on the tick it happened (TR4); undefined otherwise. */
+	opened: TreasureOpened | undefined;
 }
 
 /** SimState.treasure: plain numbers, every field but `config` and `events` hashed. */
@@ -88,7 +127,14 @@ export interface TreasureRunSummary {
 }
 
 function emptyEvents(): TreasureEvents {
-	return { armed: 0, cracked: 0, unlocked: 0 };
+	return { armed: 0, cracked: 0, unlocked: 0, opened: undefined };
+}
+
+function cloneOpened(o: Readonly<TreasureOpened>): TreasureOpened {
+	return {
+		...o,
+		grants: o.grants.map((g) => ({ ...g, boosts: [...g.boosts], slots: [...g.slots] })),
+	};
 }
 
 /** The treasure stream's first word for a run seeded `seed` (seedToState(seed) XOR TREASURE.salt). */
@@ -193,10 +239,16 @@ export function clearTreasureEvents(t: TreasureState): void {
 	e.armed = 0;
 	e.cracked = 0;
 	e.unlocked = 0;
+	e.opened = undefined;
 }
 
 export function cloneTreasureState(t: Readonly<TreasureState>): TreasureState {
-	return { ...t, bonusDeals: [...t.bonusDeals], events: { ...t.events } };
+	const e = t.events;
+	return {
+		...t,
+		bonusDeals: [...t.bonusDeals],
+		events: { ...e, opened: e.opened !== undefined ? cloneOpened(e.opened) : undefined },
+	};
 }
 
 /** The run's chest tally (zeros without treasure). */

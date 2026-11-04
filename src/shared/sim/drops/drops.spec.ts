@@ -388,6 +388,12 @@ describe("drops: the stream and the draws", () => {
 			expect(pickBoostKind(d)).toBe(expected);
 			expect(d.rngState).toBe(twin.rngState);
 		}
+		// Any RngHolder (a chest's treasure stream, docs/TREASURE.md TR4) draws exactly as the drop stream does.
+		for (let i = 0; i < 50; i++) {
+			const holder = { rngState: d.rngState };
+			expect(pickBoostKind(holder)).toBe(pickBoostKind(d));
+			expect(holder.rngState).toBe(d.rngState);
+		}
 		const counts = [0, 0, 0, 0];
 		const n = 22000;
 		for (let i = 0; i < n; i++) counts[pickBoostKind(d)]++;

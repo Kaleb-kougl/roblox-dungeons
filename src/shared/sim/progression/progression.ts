@@ -15,7 +15,8 @@
  * stepRun order (every per-player loop in player index order; a solo run has one player, SOLO_PLAYER):
  *   1. the floor changed this tick (events.floorChanged): the new floor's pedestals / shrine, Second Wind re-armed
  *      for everyone, then a draft opens for the floor just cleared for EVERY player who has not left (openDraft, the
- *      offers drawn from the sim rng in player index order). Stop.
+ *      offers drawn from the sim rng in player index order), dealt the floor's deals plus the player's treasure bonus
+ *      deals (a Legendary chest, docs/TREASURE.md TR4; taken here). Stop.
  *   2. nobody alive: stop (a dead player collects nothing)
  *   3. a room's enemies spawned this tick (events.roomEntered, a room with deferred spawns): Warding refills the armor
  *      of every living player who owns it
@@ -57,6 +58,7 @@ import { addCurse } from "../score/score";
 import { hasLeft, partySize, playerAt, weaponsAt } from "../party";
 import { buildPlayer } from "../builds/builds";
 import { drawPlayerCardOffers, grantCard } from "../builds/cards";
+import { takeTreasureBonusDeals } from "../treasure/bonus";
 import { rarityForRoll } from "./rarity";
 import {
 	ARMOR_BOON_PIPS,
@@ -403,6 +405,16 @@ function unowned(owned: ReadonlyArray<number>, count: number): number[] {
 	return out;
 }
 
+/**
+ * The relics player `playerIndex` does not own yet, in relic index order (the pedestal's pool; a Rare chest draws from
+ * it too, docs/TREASURE.md TR4). Empty without run state.
+ */
+export function unownedRelics(state: Readonly<SimState>, playerIndex: number): number[] {
+	const me = state.run?.players[playerIndex];
+	if (me === undefined) return [];
+	return unowned(me.relics, RELIC_COUNT);
+}
+
 // ---------------------------------------------------------------------------------------------
 // The run phase of a tick
 
@@ -443,7 +455,9 @@ export function stepRun(
 				: isBossFloor(floorCleared)
 				? builds.config.bossFloorDrafts
 				: builds.config.floorDrafts;
-		for (let i = 0; i < n; i++) if (!hasLeft(state, i)) openDraft(state, i, floorCleared, deals);
+		// A Legendary chest's bonus deals (docs/TREASURE.md TR4): one more each, so the first deal guarantees a duo.
+		for (let i = 0; i < n; i++)
+			if (!hasLeft(state, i)) openDraft(state, i, floorCleared, deals + takeTreasureBonusDeals(state, i));
 		return;
 	}
 

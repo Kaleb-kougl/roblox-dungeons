@@ -58,6 +58,8 @@ import {
 	SimCtx,
 	acceptCurse,
 	cloneSimState,
+	takeTreasureBonusDeals,
+	unownedRelics,
 	createSimState,
 	curseMultiplier,
 	draftCardFor,
@@ -609,6 +611,20 @@ describe("relics", () => {
 		s.player.z = TREASURE.cz;
 		tick(r);
 		expect([s.run!.events.relicCollected, s.run!.pedestalTaken[0]]).toEqual([0, 0]);
+	});
+
+	it("unownedRelics (the pedestal's pool, a Rare chest's too): relic index order; empty without run state", () => {
+		const r = arena([], [Relic.MIRROR_CLOAK]);
+		expect(unownedRelics(r.s, SOLO_PLAYER)).toEqual([Relic.HOURGLASS, Relic.VAMPIRE_FANG, Relic.SECOND_WIND]);
+		expect(unownedRelics(r.s, 1)).toEqual([]);
+		const m1 = createSimState(SEED, 0, 0, {});
+		expect(unownedRelics(m1, SOLO_PLAYER)).toEqual([]);
+	});
+
+	it("no treasure bonus deal: a floor's draft deals as before (takeTreasureBonusDeals 0 without treasure)", () => {
+		const r = arena([], []);
+		expect(r.s.treasure).toBe(undefined);
+		expect(takeTreasureBonusDeals(r.s, SOLO_PLAYER)).toBe(0);
 	});
 
 	it("Mirror Cloak: a bullet the guard erases comes back as a player bullet, the opposite way, same speed", () => {

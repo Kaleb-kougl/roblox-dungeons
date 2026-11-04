@@ -11,7 +11,7 @@ floor. Work it task by task, like `PLAN.md`; each task ends with a **Verify**.
 Status (2026-11-03): **TR0 done (plan checked against the code, below). TR1 done (the dungeon roll, behind the
 option `EndlessFloorOptions.vaults`, off everywhere until TR5; "As built (TR1)" below). TR2 done (the sim state, hash
 group and chest piece behind `SimConfig.treasure`, unset everywhere until TR5; "As built (TR2)"). TR3 done (the lock:
-arm, crack, unlock; "As built (TR3)").** The owner (Kaleb)
+arm, crack, unlock; "As built (TR3)"). TR4 done (the open and its rewards; "As built (TR4)").** The owner (Kaleb)
 confirmed every decision (TRD1-TRD14) on 2026-11-03. This file is the project doc `claude/treasure-rooms-plan.md` with
 every "(assumed; TR0 verifies)" item checked against branch `treasure-rooms` @ `82f0ff9` (a snapshot of `main` @
 `288a33b`, which already has Pellets, solid decor, room themes and the new enemies merged). Sibling plans: BO
@@ -324,6 +324,60 @@ sim/treasure sim/hash sim/runFull sim/determinism sim/step sim/score sim/breakab
 run/tutorial run/endless run/party run/partyProgression run/segments run/validate run/dev lockstep/`: 30 suites, **449
 passed, 0 failed** (222 s); typecheck and lint clean.
 
+## As built (TR4, 2026-11-03)
+
+Files: `src/shared/sim/treasure/stepTreasure.ts` (step 4: `openerOf`, `openChest`, `grantBoosts`, `grantRelicShare`;
+steps 1-3 moved into `stepLock`, unchanged), `bonus.ts` (new leaf: `takeTreasureBonusDeals(state, i)`), `treasure.ts`
+(`TreasureGrant`, `TreasureOpened`, `TreasureEvents.opened`, cleared and deep-cloned), `treasureData.ts`
+(`TreasureConfig.relicFallbackBoosts`, `TREASURE_RELIC_FALLBACK_BOOSTS` 2), `progression/progression.ts`
+(`unownedRelics(state, i)`; `stepRun` step 1 deals `deals + takeTreasureBonusDeals(state, i)`), `drops/drops.ts`
+(`pickBoostKind(rng: RngHolder)`; `DropsEvents.fromChest`, cleared and cloned; the pickup goes through `applyBoost`),
+`drops/breakLoot.ts` (`applyBoost`, `giveBoost`), `drops/dropsData.ts` (`GIVEN_DROP_SLOT` -1),
+`view/hud/strings.ts` (`SCORE_SOURCE_KEYS` spreads `TREASURE_SCORE_SOURCE_NAMES`, TR6's literal gone; same key, index 12).
+Specs: new `sim/treasure/open.spec.ts` (18 tests); `stepTreasure.spec.ts` (`enter` now steps back out of reach, the last
+clear test opens), `stepTreasure.bot.spec.ts` (an unlocked chest may be opened by the bot), `treasure.spec.ts` (the
+draft takes the bonus deals), `builds.spec.ts` (a bonus deal re-deals), `progression.spec.ts` (`unownedRelics`, no bonus
+without treasure), `drops.spec.ts` (`pickBoostKind` on any `RngHolder`).
+
+As planned, with these details (none touches an owner decision):
+
+- **Opener:** the first player in index order with `dead === 0`, not left, whose centre is within `reachTiles` of the
+  chest's centre (`<=`). An unlock and an open on the same tick are fine (stepLock, then step 4). "Living present" (dead
+  0, not left) is also who gets a share.
+- **Draw order:** players in index order; per player its relic (or bonus deal) first, then its boosts. Fixed counts:
+  Common 2 per player; Rare 1 (a relic) or 2 (pool empty); Legendary 1 with builds, 2 (relic + boost) or 3 (pool empty:
+  2 + 1) without. All on `state.treasure` (`pickBoostKind(t)`, `rngInt(t, ...)`), never `state.rngState` or the drop
+  stream; the ground never changes a draw.
+- **Landing:** the k-th boost that lands in this open takes `TREASURE.boostOffsets[k]` (mod 4) at `(x + fx * forward -
+  fz * side, z + fz * forward + fx * side)` (side along `(-fz, fx)`), in the lowest free slot (`landDrop`, spawnTick =
+  this tick; `events.dropped` and `events.fromChest`). stepDrops ran earlier in the tick, so a landed chest boost can be
+  picked up from the next tick. **C1:** with no free slot the boost is given at once (`giveBoost`: the pickup's own
+  effect, ticks = full duration, Aegis its pip) and reported as `DropsEvents.collected` with `slot = GIVEN_DROP_SLOT`
+  (-1) at the player's position, so liveRun's boost toast and the collect cue fire as for a pickup. The view's slot
+  lookups only read `dropped` slots, which never hold -1.
+- **The relic** goes through `grantRelic` (no `relicCollected` run event, correction 14); the pool is
+  `unownedRelics(state, i)` (the pedestal's, relic index order).
+- **The bonus deal:** `bonusDeals[i] += 1` (Legendary, builds present); stepRun step 1 takes it (zeroed) into
+  `openDraft`, so an ordinary floor deals 2 (first deal a guaranteed duo when one is available) and a boss floor 3 (one
+  duo guaranteed). A player who left keeps an untaken bonus (never dealt).
+- **Score / counters:** `scoreTreasure(state, points[tier])` once per open (0 without scoring); `opened += 1`, `kept += 1`
+  when `crackTick` is unset, `legendary += 1` for a Legendary tier. `treasureRunSummary` (TR2) reads them.
+
+**For the view (TR7 / TR8):** `state.treasure.events.opened: TreasureOpened | undefined` on the open's tick only:
+`{ opener, tier, startTier, lock, kept (0/1), missBy, spare, points, grants }`, `grants` one `TreasureGrant` per living
+present player in index order: `{ player, relic (TREASURE_UNSET none), bonusDeal (0/1), boosts: kinds[], slots: ground
+slot | GIVEN_DROP_SLOT | TREASURE_UNSET (no drops)[] }`. The hop out of the chest: `DropsEvents.fromChest` (landed slots,
+a subset of `dropped`). Other per-tick events: `armed`, `cracked`, `unlocked` (0 / 1). State the view reads:
+`status` (VaultStatus), `x` / `z` (chest centre), `fx` / `fz`, `lock`, `startTier`, `tier`, `armTick`, `ticksLeft`
+(SWIFT), `allowance` (UNTOUCHED) with the record's hits (`score.hitsTaken - rooms[record].hitsAtEngage`), `crackTick`,
+`missBy`, `spare`, `slot` (the chest's breakables slot), `room`, `bonusDeals`; the run counters through
+`treasureRunSummary(state)`.
+
+Verify (2026-11-03, this host, worlds still without `SimConfig.treasure`): `npm run typecheck` and `npm run lint` clean;
+`npm run test:only -- sim/treasure sim/drops sim/progression sim/builds/builds`: all passed (open.spec 18 / 18);
+regression `npm run test:only -- sim/ run/ lockstep/ play/liveRun`: 110 suites, **1364 passed, 0 failed** (948 s), so
+every fixture, the M1 hash, the tutorial lock and every endless replay stay bit-identical with the config absent.
+
 ## Player experience (target)
 
 ### Finding the room
@@ -400,8 +454,8 @@ The open chest stays there for the rest of the floor, lid up, no sparkle. The mi
 | **Common** | rolled Rare, cracked | **Two boosts** for you | 300 |
 
 Score is `floor(points x depth x curse)`, without combo (TRD11, correction 5). In co-op the boosts are spilled (party
-size x the count) and picked up first-touch, like every drop; what doesn't fit the 4 ground slots is pending owner call
-C1.
+size x the count) and picked up first-touch, like every drop; what doesn't fit the 4 ground slots goes straight to the
+player whose share it is (owner answer C1).
 
 ## Rules
 
@@ -538,7 +592,7 @@ the new floor's plan (`SEALED`, record index looked up by room id) or `NONE`. Th
 | Common | 2 `pickBoostKind(treasure)` -> landed |
 
 Boosts land at `TREASURE.boostOffsets` (constant table, front half-plane, correction 9) in the lowest free ground
-slots (`landDrop`, `DropsEvents.fromChest`). What doesn't fit: owner call C1. `scoreTreasure(state, points[tier])` once
+slots (`landDrop`, `DropsEvents.fromChest`). What doesn't fit goes straight to the player whose share it is (C1). `scoreTreasure(state, points[tier])` once
 per open (not per player), combo-neutral (correction 5).
 
 **What touches what:** `drawCardOffers` sees one more deal only after a Legendary open, so from that draft on the run's
@@ -862,8 +916,8 @@ Each step is a commit. Specs next to the code; `npm run verify` before each.
   2026-11-03: "As built (TR2)".
 - [x] **TR3. The lock.** `stepTreasure` steps 1-3. → Verify: TR3 specs above. → Done 2026-11-03: "As built (TR3)"
   (UNLOCKED stays UNLOCKED until TR4).
-- [ ] **TR4. Opening and rewards.** Step 4, the grants, the landing offsets. (C1 answered: overflow goes to the player.) → Verify:
-  TR4 specs above.
+- [x] **TR4. Opening and rewards.** Step 4, the grants, the landing offsets. (C1 answered: overflow goes to the player.) → Verify:
+  TR4 specs above. → Done 2026-11-03: "As built (TR4)".
 - [ ] **TR5. Worlds.** `ENDLESS_TREASURE_CONFIG` on endless; the dev override and `KV_TreasureDebug`. Re-record and check
   the endless / party / partyProgression / daily / dev specs replay and validate segmented. Extend the census bot.
   `DAILY.ruleset` 5 -> 6. → Verify: `npm run verify`; numbers into this doc.

@@ -32,6 +32,11 @@ export const BOOST_COUNT = BOOSTS.size();
 
 /** A free ground slot's kind; also "no kind" in guards and events. */
 export const NO_BOOST = -1;
+/**
+ * DropCollected.slot of a boost that never lay on the ground: a chest's boost given straight to the player whose share
+ * it is because every ground slot was taken (docs/TREASURE.md C1). Its x / z are that player's position.
+ */
+export const GIVEN_DROP_SLOT = -1;
 
 /** Percents below are integers over this (the same scale as progressionData PERCENT; a spec checks they agree). */
 export const BOOST_PERCENT = 100;
