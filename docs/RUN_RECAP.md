@@ -5,8 +5,8 @@ run in Studio). Pending: **RR8** (measure press -> control in a published place,
 measure" under RR8) and **RR10** (the owner's Studio check and tuning). CM7's vale sounds were uploaded 2026-11-03 (not yet
 confirmed by ear). Supersedes the first draft in the project (`claude/run-recap-plan.md`,
 written without the repo): this version was checked against the code at `82c2af6`, and three of that draft's
-assumptions were wrong (see "What the code says"). Owner answers (2026-11-03): RRD6 (0.6 s arm) and RRD8 (thresholds)
-confirmed; everything else is proposed.
+assumptions were wrong (see "What the code says"). Owner answers (2026-11-03): RRD5 (breakdown behind Details), RRD6 (0.6 s arm), RRD8 (thresholds),
+CMD2 (far clients: chip, sound, rings) and CMD4 (sync by timing only) confirmed; the rest are proposed.
 
 Goal: more "one more run". Two parts:
 
@@ -416,14 +416,13 @@ Each step is a commit; `npm run verify` before each.
 
 ## Decisions
 
-RRD6 and RRD8 are the owner's (2026-11-03); the rest are proposed, recommendation first.
+RRD5, RRD6, RRD8, CMD2 and CMD4 are the owner's (2026-11-03); the rest are proposed, recommendation first.
 
 - **RRD1. Presentation only** (final state, NB's baseline, view collectors).
 - **RRD2. One near-miss headline**, fixed order boss > score > record floor > stairs close > full clear > next boss.
 - **RRD3. Record runs:** NB owns the moment; at most one dim sub-line; nothing on FIRST RECORD.
 - **RRD4. Highlights:** max 4, notable-first, filled to 2; fixed thresholds (stat bests are Later).
-- **RRD5. Breakdown and Build list behind Details**, not deleted. Alternative: keep them and shrink the highlights to
-  one row.
+- **RRD5. Breakdown and Build list behind Details**, not deleted (owner, 2026-11-03).
 - **RRD6. Again focused; confirm / FIRE armed at 0.6 s** (owner); the `restart` key retries at once.
 - **RRD7. Faster retry is measured first**; session prefetch is flagged and used only if the round trip is the gap.
 - **RRD8. Thresholds:** boss <= 25 %, score gap <= 15 %, <= 2 rooms (owner). Added: stairs <= 10 path tiles.
@@ -432,10 +431,10 @@ RRD6 and RRD8 are the owner's (2026-11-03); the rest are proposed, recommendatio
   would be false; the line uses path distance to the open stairwell instead.
 - **RRD11. Daily:** near-miss against best today; rank stays in the daily block.
 - **CMD1. TEAM PERFECT is the sim's PERFECT relabelled** in party runs; no view rule of its own (as RCD2).
-- **CMD2. Far clients get the chip, the sound and the rings, not the stamp** (keeps RCD12: the far player may be
-  fighting). Alternative: the full stamp on every screen.
+- **CMD2. Far clients get the chip, the sound and the rings, not the stamp** (owner, 2026-11-03; keeps RCD12: the far
+  player may be fighting).
 - **CMD3. Streaks count clear order**, reset by any non-perfect clear (a far room counts too).
-- **CMD4. SYNC is time only** (0.2 s), distance only decides the tether. Alternative: also require <= 10 tiles.
+- **CMD4. SYNC is time only** (0.2 s), distance only decides the tether (owner, 2026-11-03).
 - **CMD5. Two optional port audio IDs** with fallbacks, so nothing waits on art.
 - **CMD6. No co-op retry button** (party runs return to the lobby); a party "run it back" vote is Later.
 - **CMD7. Revives out of scope**; a reserved kind and highlight slot only.
