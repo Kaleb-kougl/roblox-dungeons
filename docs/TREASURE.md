@@ -38,7 +38,7 @@ codex category later).
 
 Without `SimConfig.treasure` nothing changes: M1, every golden fixture and the tutorial replay exactly as before.
 Endless replays and scores change (every vault floor gains a breakables slot and the run gains a hash group), so the
-leaderboard rule applies (TRD13) and `DAILY.ruleset` goes 5 -> 6 (7 with main's bookcases merged, "As built (merge
+leaderboard rule applies (TRD13) and `DAILY.ruleset` goes 5 -> 6 (7 with main's bookcases merged, kept at 7 with main's reading area: "As built (merge
 with main)").
 
 ## TR0 findings (2026-11-03)
@@ -1044,6 +1044,65 @@ covers the gate, the threshold, the priority and the co-op label. Locals unchang
 
 Verify (merged tree, this host): typecheck, lint, check:assets, check:autolocalize, test:art, test:checks, test:l10n,
 build and `build:place` clean; headless tests **347 suites, 4756 passed, 1 failed** (2523 s): the known host-only
+`dungeon/forge/forge.spec.ts` seedToState vectors (NaN sign bit, `fff8...` for `7ff8...`).
+
+### Second merge (main @ `3ef2de7`, reading area, 2026-11-04)
+
+`main` @ `3ef2de7` (Bookshelves "Reading area", docs/BOOKSHELVES.md RA1-RA6 / BKD11-BKD14: a 2 x 1 table with a chair
+at each end, solid, in every library, clearing the solid pillars under it and its ring; vale `kit-table-*` /
+`kit-chair-*` ids; the Dungeon Assets Pack by zver.3d credited) merged into `treasure-rooms` under the same rules.
+Conflicts and resolutions:
+
+- **CLAUDE.md**: main's BOOKSHELVES row (RA1-RA6 / BKD14), then the TREASURE row; the treasure decision-log entry
+  states the ruleset below. **THIRD_PARTY_NOTICES.md** / **`CREDITS`**: every work kept, main's "Dungeon Assets Pack"
+  (zver.3d) first, then the Old Chest.
+- **`DAILY.ruleset` stays 7**: main kept 6 for the reading area (bookshelves has not shipped), so one above main is
+  still 7; the history comment in `daily/config.ts`, docs/DAILY.md and CLAUDE.md say so (`daily.spec` unchanged).
+- **`stormcaller.spec.ts`** -> **2/1/f21b6834, 6/0/07335c64**: the two changes compose, nothing new to record. Run 4's
+  floor 3 holds the vault and the reading area left it untouched (main kept run 4 at 2/1/d5a796ef), so it keeps the
+  first merge's vault pin; run 23's floor 3 has no vault, so it takes main's reading-area pin.
+- **Nothing else moved**: `charger.spec` stays **e54ef63f** / [4, 2, 2, 4, 3] (main's reading area did not move its
+  pin either); main's re-pins (roomPool.lock roster digests, solidPillars' cleared-pillar counting, the pellets
+  census's honest power-pellet run, seed 2 again) pass as main left them; every recorded endless / party / daily / dev
+  replay and the honest vault run validate as they are.
+- **Luau locals (out/)**: `contract.luau` **185**, `validate.luau` **196**, unchanged (main's `table` / `chair` decor
+  kinds are array entries).
+
+**Vaults vs the reading area.** The table and chairs are `Dungeon.solidDecor` pieces (WALL cells), so the vault cell
+filter already keeps chests off and clear of them: `solidDecorCells` walks each piece's whole footprint (the table is
+2 x 1), no back-row cell may be solid decor, no solid-decor cell may lie within `decorClearTiles` (1, Chebyshev) of the
+chest, and the front / side cells must be open FLOOR. A cleared pillar is FLOOR again, and its `pillar` prop stays in
+`Dungeon.props` but draws nothing, so a chest could stand there (none does in the sample). New case in
+`dungeon/vault.spec.ts` (every vault floor of its sample, natural and forced): every table / chair footprint > 1 tile
+from the chest, the back row real WALL; `[vault x reading areas] 52 vaults: 5 in a room with a reading area, 0 on a
+cleared pillar cell; nearest table / chair 4 tiles (Chebyshev)` (the bookcase case unchanged: 7 shelved, 5 library,
+nearest case 3).
+
+**Vault census** (`dungeon/vault.census.spec.ts`, run seeds 1-10 x floors 2-20; first merge -> second merge):
+
+| | Party 1 | Party 4 |
+|---|---|---|
+| Vault floors by band (2-4 / 5-9 / 10-20) | 9 / 25 / 51 (unchanged; own stream) | same |
+| Open rooms with no valid cell | 389 -> 382 / 1720 (22.6 -> 22.2 %); library 24 -> 21 of 218 | 425 -> 438 (24.7 -> 25.5 %); library 29 -> 36 |
+| Mean valid cells per open room | 7.7 -> 7.7 | 6.6 -> 6.6 |
+| Legendary / SWIFT | 23 / 47 of 85 (unchanged) | same |
+| Elite vault rooms | 18 -> 19 | 11 -> 13 |
+| Chest on a far wall | 66 -> 66 / 85 (77.6 %) | 64 -> 69 (75.3 -> 81.2 %) |
+| Vault rooms by theme | crypt 17, hall 15 -> 13, library 14 -> 13, none 0 -> 1, plain 23 -> 24, store 16 -> 17 | crypt 19, hall 14, library 11 -> 13, none 1, plain 22, store 18 -> 16 |
+
+Libraries keep their vaults (13 of 85); the shifts outside libraries come from the room pick (its weights walk only
+eligible rooms) and the floor-wide breakables stream, both of which see the moved library cells.
+
+**Treasure census** (`run/treasureCensus.spec.ts`, the same 132 floors): vaults seen 62 / 132 (47.0 %), opened 59
+(95.2 %), SWIFT kept 31 / 31, all unchanged; **UNTOUCHED kept 2 / 28 -> 4 / 28 (14.3 %)** (floors 10-12: 1 / 12 ->
+3 / 12; floors 2-4 / 5-9 unchanged), mean tier opened 0.85 -> 0.88 (started 1.29), Legendary opened 10 -> 9, SWIFT
+clear / par 0.32 -> 0.33. The honest run (seed 5, floor 2) now cracks its UNTOUCHED Rare (Common, 300 points; was kept,
+800): its floor 2 fight changed with the reading area; the spec only requires the open, the replay and the segmented
+validation, which pass. TR11's open item stands: UNTOUCHED still under its 30-50 % target for this bot, SWIFT far too
+easy.
+
+Verify (merged tree, this host): typecheck, lint, check:assets, check:autolocalize, test:art, test:checks, test:l10n,
+build and `build:place` clean; headless tests **347 suites, 4760 passed, 1 failed** (3100 s): the known host-only
 `dungeon/forge/forge.spec.ts` seedToState vectors (NaN sign bit, `fff8...` for `7ff8...`).
 
 ## Implementation map (TR1-TR8)

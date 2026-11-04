@@ -180,9 +180,14 @@ describe("nothing on an endless floor stands on a pillar", () => {
 		for (let floor = 1; floor <= FLOORS; floor++)
 			layouts.push(buildEndlessFloor(run * 7919, floor, generateDungeon));
 
-	const onFloor = (d: Dungeon, x: number, z: number) =>
-		tileAt(d, worldToGrid(x), worldToGrid(z)) === TileType.FLOOR &&
-		!isPillarCell(d, worldToGrid(x), worldToGrid(z));
+	// a pillar a library's reading area cleared (Dungeon.clearedPillars, docs/BOOKSHELVES.md) is floor again: its prop
+	// stays in `props`, but nothing stands there any more
+	const onFloor = (d: Dungeon, x: number, z: number) => {
+		const gx = worldToGrid(x);
+		const gy = worldToGrid(z);
+		const cleared = (d.clearedPillars ?? []).some((c) => c.x === gx && c.y === gy);
+		return tileAt(d, gx, gy) === TileType.FLOOR && (cleared || !isPillarCell(d, gx, gy));
+	};
 
 	it("entrance spawn, stairwell, boss, pedestals (treasure centres) and the shrine are FLOOR, never a pillar", () => {
 		for (const fl of layouts) {

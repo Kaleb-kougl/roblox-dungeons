@@ -698,6 +698,55 @@ describe('solid decor (docs/DECOR.md "Solid decor", "Room themes": set pieces on
 		expect(n).toBeGreaterThan(0);
 	});
 
+	it("takes a reading area's table axis and chair facing as their variants, low, with a fade box, and draws no pillar it cleared (docs/BOOKSHELVES.md)", () => {
+		let tables = 0;
+		let chairs = 0;
+		let cleared = 0;
+		const floors = CENSUS.filter((c) => c.layout.dungeon.solidDecor.some((p) => p.kind === "table"));
+		for (const f of floors) {
+			const plan = planDecor({
+				...decorInputOfLayout(f.layout),
+				variants: (k) => (k === "table" ? 2 : k === "chair" ? 4 : 0),
+			});
+			const gone = new Set<number>();
+			for (const cp of f.layout.dungeon.clearedPillars ?? []) gone.add(cp.y * f.layout.dungeon.W + cp.x);
+			cleared += gone.size();
+			for (const e of plan.entries) {
+				// a cleared pillar's prop draws nothing: no stump, no column moved to a far wall
+				if (e.forgeIndex >= 0 && (e.source === "pillar" || e.source === "forge")) {
+					const pr = f.layout.dungeon.props[e.forgeIndex];
+					if (pr.kind === "pillar")
+						expect([pr.x, pr.y, gone.has(pr.y * f.layout.dungeon.W + pr.x)]).toEqual([pr.x, pr.y, false]);
+				}
+				if (e.source !== "solid" || (e.kind !== "table" && e.kind !== "chair")) continue;
+				expect([e.kind, e.layer, e.y]).toEqual([e.kind, "low", 0]);
+				expect(e.fade >= 0 && plan.fadeBoxes[e.fade].entry === plan.entries.indexOf(e)).toBe(true);
+				if (e.kind === "table") {
+					// 2 x 1: one run axis, no facing; variant 1 along X, 2 along Z
+					expect([e.cells, e.runX + e.runZ, e.faceX, e.faceZ]).toEqual([2, 1, 0, 0]);
+					expect(e.variant).toBe(e.runX === 1 ? 0 : 1);
+					tables++;
+				} else {
+					// 1 x 1, facing its table: variant 1 +X, 2 +Z, 3 -X, 4 -Z
+					expect([e.cells, e.runX, e.runZ, math.abs(e.faceX) + math.abs(e.faceZ)]).toEqual([1, 0, 0, 1]);
+					const want = e.faceX === 1 ? 0 : e.faceZ === 1 ? 1 : e.faceX === -1 ? 2 : 3;
+					expect(e.variant).toBe(want);
+					chairs++;
+				}
+			}
+			// a pack with fewer chair variants than facings: the hash picks, as for any kind
+			const few = planDecor({ ...decorInputOfLayout(f.layout), variants: (k) => (k === "chair" ? 2 : 0) });
+			for (const e of few.entries)
+				if (e.source === "solid" && e.kind === "chair") expect(e.variant >= 0 && e.variant < 2).toBe(true);
+		}
+		print(
+			`[decor reading area] ${floors.size()} of ${CENSUS.size()} floors: ${tables} tables, ${chairs} chairs, ` +
+				`${cleared} pillars cleared`,
+		);
+		expect(tables).toBeGreaterThan(0);
+		expect(chairs).toBe(tables * 2);
+	});
+
 	it("lays the throne's carpet in 2 x 2 segments from the dais, its end last, only with the pack's art", () => {
 		let runs = 0;
 		for (const f of CENSUS.filter((_, i) => i % 5 === 0)) {

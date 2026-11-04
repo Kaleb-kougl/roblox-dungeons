@@ -6,6 +6,8 @@ aarch64, the art uploaded. Bookcases are solid in endless floors and drew nothin
 (BK6, done the same evening). BK0 switched the piece to 1 x 1 (BKD4) and set the scale (BKD9).
 Owner answers (2026-11-03): bookshelves are **solid** (BKD1); a **new `library` room theme plus a few in `hall`
 rooms** (BKD2). Everything else is proposed.
+Reading area (2026-11-04, owner: "the library reads as partially done; add a table and chair"): built on branch
+`reading-area`, see "Reading area" below (tasks RA1-RA6, decisions BKD11-BKD14).
 
 Goal: rooms that read as libraries. Bookcases from the **Dungeon Essential Kit** (Rakshaan, CC-BY 4.0, already on the
 Credits screen) stand flush against a room's walls, end to end in runs, the way real bookshelves line a wall. They
@@ -213,6 +215,64 @@ halls / plains).
 | BKD8 | `DAILY.ruleset` 5 -> 6, all-time boards stay `_v1` (proposed) | As every earlier endless layout change |
 | BKD9 | **125 kit units a tile** (proposed after the BK0 mock; 150 is the barrel's scale) | At 150 a case is 0.76 x 1.48 tiles and a run shows gaps; at 125 (0.91 x 1.78) neighbours nearly touch and a run reads as one bookshelf wall. 20 % larger than the barrel's scale, unnoticeable side by side in the mock |
 | BKD10 | **A library where no run fits is dressed as plain** (as built, 2026-11-03) | About a third of rolled libraries are rooms with no straight far wall; a bare "library" helps nobody. Costs one theme's draws in those rooms only |
+
+## Reading area (2026-11-04)
+
+Every library gets a reading area: a **table (2 x 1) with a chair at each end facing it**, one solid line of 4 cells
+on open floor in front of the shelves. Art from the **Dungeon Assets Pack by zver.3d** (v1.0.0, free for video games,
+credit to "zver.3d" requested: THIRD_PARTY_NOTICES.md, the Credits screen), in `art/vendor/zver-dungeon-assets/`.
+
+- **Forge** (`solidDecor.ts` `readingArea`, after the library's runs, before its statue roll; no rng draw): new
+  `SolidDecorKind`s `table` (2 x 1 along X or Z, fx = fz = 0) and `chair` (1 x 1, fx / fz = the way it faces: toward
+  the table). The line lies parallel to the room's first run. A spot is valid when every cell of the line and of its
+  2-tile ring is floor of the room **or a solid pillar of the room**, no cell is within `doorTiles` of a doorway, and its
+  nearest bookcase (Chebyshev) is within `SOLID_DECOR.reading.maxDist` (8). Ranking: closest to `readingDist` (4),
+  then fewer pillars cleared, then nearest the room centre, then cell order. Pillars under the line or in the ring
+  are **cleared**: their cells go back to FLOOR (or become the piece) and are listed in the new
+  `Dungeon.clearedPillars` (always present); `Dungeon.props` keeps the pillar props, so every prop index is the
+  option-off floor's, and the decor plan draws nothing for a cleared pillar (no stump, no Forge column). Only floor is
+  added, so the one-piece and no-pinch checks pass unchanged. `SOLID_DECOR.reading = { tableLength: 2, readingDist: 4,
+  maxDist: 8 }`.
+- **Census** (72 floors): 72 of 72 libraries have a reading area (23 before pillars could be cleared: every pillared
+  library had no gap for the line and its ring); 1.0 table and 2.0 chairs a floor; 1.26 pillars cleared a floor (libraries
+  lose about that much cover); nearest bookcase 4 tiles in 71 libraries, 3 in one.
+- **Decor plan:** kinds `table` (low; variant 1 along X, 2 along Z) and `chair` (low; variants 1-4 facing +X / +Z / -X /
+  -Z), appended last to DECOR_KINDS after `bookcase`; the variant applies when the pack has all of a kind's variants.
+  `DECOR_BOX.table` `{ w: 14, h: 10, below: 2 }` (a box at both footprint ends, hulled), `.chair` `{ w: 11, h: 11, below:
+  4 }`, measured on the built outlines.
+- **Art** (`scripts/art/kit/zver_to_glb.py`: the FBX files + their TGA base colours -> one glb, scaled x100;
+  `scripts/art/kit/zver-dungeon-assets.json`, `unitsPerTile` 220 = 2.2 FBX units a tile, matched on the pack's barrel):
+  `kit-table-x` / `-z` (64 x 56, the table with the pack's stack of fabrics as papers and its round candlestick on
+  top) and `kit-chair-px` / `-pz` / `-nx` / `-nz` (21 x 29 / 21 x 21: the -X / -Z chairs show their backs). `sunSide`
+  -1 for every X piece, so an X reading area is lit as the mirror of a Z one. Grade `{ saturation 0.75, brightness 0.85,
+  contrast 1.25 }` with the kits' warm tint. The pack has no books and no flame.
+- **Changed:** endless layouts, spawns, replays and scores again; `DAILY.ruleset` stays 6 (bookshelves has not
+  shipped). Re-pins: roomPool.lock roster digests (floor 1 a74a7abe / 08a7ee67 / 05962732 / 2d0f27a6, floors 2-6 a5d6f0a0
+  / 79e8d2f7 / 27f499ad / 4d99fd04 / 7f0114b5; spawn counts unchanged), stormcaller run 23 (6/0/ae2b2503 -> 6/0/07335c64);
+  solidPillars.spec counts a cleared pillar's cell as floor. M1, every fixture and the tutorial unchanged.
+
+Tasks:
+
+- [x] **RA1. Art** (2026-11-04): glb, renders, vendor files, atlases.json, art:build (re-run on the Mac: layout.ts
+  unchanged) / art:lock, valeWorld.spec's file list, THIRD_PARTY_NOTICES.md and `CREDITS`.
+- [x] **RA2. Forge** (2026-11-04): `table` / `chair`, `readingArea`, pillar clearing, `Dungeon.clearedPillars`.
+- [x] **RA3. Decor plan and theme** (2026-11-04): kinds, variants, boxes, cleared pillars draw nothing, vale manifest.
+- [x] **RA4. Verify** (2026-11-04, the Mac's aarch64 VM): typecheck, lint, check:assets, build, test:art, and every
+  spec file one by one: 331 files, 4572 tests, 0 failures.
+- [x] **RA5. [owner] Upload** (2026-11-04 6:04 AM): `kit-table-x` 127976474422668, `kit-table-z` 96818770768214,
+  `kit-chair-px` 108393511672563, `kit-chair-pz` 101694939623100, `kit-chair-nx` 133067783649615, `kit-chair-nz`
+  122253624249089 in `packs/vale/assetIds.ts`, so the bundled vale pack draws the reading area (the vale pack specs
+  pass).
+- [ ] **RA6. [owner] Studio check:** the reading area reads as a desk with chairs (the props shrink to 2-3 px spots; the
+  chairs stand ~0.3-0.5 tiles off the table ends; the pack's seat is low against its table), the X / Z lighting, the
+  lost pillar cover.
+
+| | Decision | Why |
+|---|---|---|
+| BKD11 | **Table and chairs solid** (owner, 2026-11-04) | As every other solid set piece |
+| BKD12 | **Free-standing in front of the shelves** (owner) | A reading area faces the books; one line of 4 with the usual 2-tile ring never pinches a path |
+| BKD13 | **Clear pillars for it, in libraries only** (owner) | Pillars left room in only 23 of 72 libraries; clearing adds floor only, so no pinch, and keeps prop indices |
+| BKD14 | **Within 8 tiles of a bookcase or none** (owner) | Before the cap, 8 of 23 sat 16-32 tiles away, by the opposite wall |
 
 ## Risks
 

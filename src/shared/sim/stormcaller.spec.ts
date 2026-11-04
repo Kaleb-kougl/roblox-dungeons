@@ -673,6 +673,11 @@ describe("stormcaller: strikes on real endless floors", () => {
 		// Re-recorded for the merge of main (bookcases) into docs/TREASURE.md: run 4's floor 3 holds a vault on the
 		// bookcase layout (its chest a breakables piece), run 23's does not (unchanged); strike and skip counts (main's)
 		// are unchanged. Before: 2/1/d5a796ef (main, no vaults), 3/0/e303e3be (treasure rooms, no bookcases).
-		expect(pins).toEqual(["2/1/f21b6834", "6/0/ae2b2503"]); // check-asset-ids: allow (state hashes)
+		// Re-recorded for the libraries' reading area (docs/BOOKSHELVES.md): a table and chairs move run 23's floor 3
+		// (strike and skip counts unchanged; run 4 untouched). Before: 6/0/ae2b2503.
+		// Re-derived on the second merge of main (reading area) into docs/TREASURE.md: both compose: run 4 keeps the
+		// vault pin (the reading area left it untouched on main too), run 23 takes main's reading-area pin (no vault on
+		// its floor 3).
+		expect(pins).toEqual(["2/1/f21b6834", "6/0/07335c64"]); // check-asset-ids: allow (state hashes)
 	});
 });

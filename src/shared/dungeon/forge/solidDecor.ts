@@ -17,20 +17,24 @@
  *                hall    candle stands lining the walls every few tiles, maybe a run of bookcases on a far wall, and in
  *                        big rooms maybe a statue on a far wall;
  *                library runs of bookcases (1 x 1 each) end to end against the far walls, candle stands at their ends,
- *                        and in big rooms maybe a statue on a far wall (docs/BOOKSHELVES.md); a room where no run
- *                        fits is dressed as plain instead;
+ *                        then a reading area where one fits (a free-standing table, 2 x 1, with a chair right at
+ *                        each end facing it, parallel to the first run, about reading.readingDist and at most
+ *                        reading.maxDist from the nearest case, clearing the solid pillars under it and its ring back
+ *                        to floor; no draw), and in big rooms maybe a statue on a far wall (docs/BOOKSHELVES.md); a
+ *                        room where no run fits is dressed as plain instead;
  *                store   nothing solid: the breakables cluster in its corners (breakables.ts);
  *                plain   maybe one tomb along a wall, and in big rooms maybe a free-standing one.
  *
  * Every piece against a wall sits flush with it (all cells behind its back row are non-floor) and keeps every cell
  * within clearTiles of its open sides floor of its room (past its ends the back line may be wall too, where the wall
  * curves or steps: the piece then touches it), so it only ever widens the wall: paths beside and in front stay at
- * least two tiles wide. Free-standing pieces keep the ring on every side. Nothing stands within doorTiles of a
- * doorway except the door braziers, which flank the opening in the wall's own row. A bookcase stands only on a far wall
- * (its front to the camera), with `bookcase.backTiles` of non-walkable cells behind it (its top rises over the wall on
- * screen and must never stand over another floor) and never in front of a wall cell holding a torch or a banner (the
- * `hangs` the Forge placed before). The caller re-floods and takes every
- * piece back if the floor ever split (the spec checks it never does on the census floors).
+ * least two tiles wide. Free-standing pieces (a centre tomb; a reading area's table and chairs, as one line of four
+ * cells) keep the ring on every side. Nothing stands within doorTiles of a doorway except the door braziers, which
+ * flank the opening in the wall's own row. A bookcase stands only on a far wall (its front to the camera), with
+ * `bookcase.backTiles` of non-walkable cells behind it (its top rises over the wall on screen and must never stand over
+ * another floor) and never in front of a wall cell holding a torch or a banner (the `hangs` the Forge placed before).
+ * The caller re-floods and takes every piece back if the floor ever split (the spec checks it never does on the census
+ * floors).
  *
  * Its own stream (makeRng(seed ^ SOLID_DECOR.salt)), so the main stream, and with it every room, corridor, prop,
  * spawn, torch, pool and the name, are exactly the option-off floor's. Rooms in id order.
@@ -38,7 +42,7 @@
 import { makeRng, type Rng } from "./rng";
 import { RoomType, TileType, type Room } from "./types";
 
-export type SolidDecorKind = "tomb" | "candelabrum" | "throne" | "statue" | "brazier" | "bookcase";
+export type SolidDecorKind = "tomb" | "candelabrum" | "throne" | "statue" | "brazier" | "bookcase" | "table" | "chair";
 
 /** A room's dressing theme (Dungeon.roomThemes, by room id). "none": treasure rooms, lakes, option off. */
 export type RoomTheme = "none" | "entrance" | "throne" | "shrine" | "crypt" | "hall" | "store" | "plain" | "library";
@@ -51,7 +55,10 @@ export interface SolidDecorPiece {
 	readonly w: number;
 	readonly h: number;
 	readonly room: number;
-	/** Facing into the room for a piece against a wall ((1, 0) / (0, 1) on far walls, negative on near walls), else 0. */
+	/**
+	 * Facing into the room for a piece against a wall ((1, 0) / (0, 1) on far walls, negative on near walls); a reading
+	 * area's chair: the way it faces, toward its table; else 0.
+	 */
 	readonly fx: number;
 	readonly fz: number;
 }
@@ -70,6 +77,11 @@ export interface DecorCarpet {
 export interface SolidDecorLayout {
 	readonly pieces: SolidDecorPiece[];
 	readonly carpets: DecorCarpet[];
+	/**
+	 * Solid pillar cells a reading area took (docs/BOOKSHELVES.md): back to FLOOR in its ring, or under one of its
+	 * pieces. Their pillar props stay in Dungeon.props; the decor plan draws nothing for them.
+	 */
+	readonly clearedPillars: Array<{ readonly x: number; readonly y: number }>;
 	/** By room id. */
 	readonly themes: RoomTheme[];
 }
@@ -117,6 +129,15 @@ export const SOLID_DECOR = {
 		bothCandles: 0.5,
 		statueShare: 0.3,
 	},
+	/**
+	 * A library's reading area: a table tableLength x 1 with a chair (1 x 1) right at each end facing it, one line of
+	 * tableLength + 2 cells parallel to the room's first run, free-standing (clearTiles of floor all round, doorTiles from
+	 * every doorway), where the line and its ring may cover the room's solid pillars (they go back to floor). Its nearest
+	 * bookcase (Chebyshev, cell to cell) at most maxDist away; its spot: the one whose nearest case is closest to
+	 * readingDist away, then the one clearing the fewest pillars, then the one nearest the room centre, first in cell
+	 * order on ties (no draw).
+	 */
+	reading: { tableLength: 2, readingDist: 4, maxDist: 8 },
 	throne: { length: 4, depth: 2, carpetWidth: 2, carpetMaxSegments: 8, candleRowStep: 5, arenaClear: 7 },
 	statue: { size: 3, shrineClear: 3 },
 } as const;
@@ -160,11 +181,16 @@ export function placeSolidDecor(
 	grim: boolean,
 	boss: number,
 	hangs: ReadonlyArray<{ readonly x: number; readonly y: number }> = [],
+	pillars: ReadonlyArray<{ readonly x: number; readonly y: number }> = [],
 ): SolidDecorLayout {
 	const rng = makeRng((seed ^ SOLID_DECOR.salt) >>> 0);
 	/** Wall cells holding a torch or a banner: no bookcase stands in front of them. */
 	const hung = new Set<number>();
 	for (const h of hangs) hung.add(h.y * W + h.x);
+	/** Solid pillar cells (WALL, in their room's footprint): a reading area may clear them. */
+	const pillarAt = new Set<number>();
+	for (const p of pillars) pillarAt.add(p.y * W + p.x);
+	const clearedPillars: Array<{ readonly x: number; readonly y: number }> = [];
 	const pieces: SolidDecorPiece[] = [];
 	const carpets: DecorCarpet[] = [];
 	const themes = new Array<RoomTheme>(rooms.size(), "none");
@@ -524,7 +550,91 @@ export function placeSolidDecor(
 		}
 		return 0;
 	};
-	/** A library: runs of bookcases on the far walls, then maybe a statue in a big room. Returns the cases placed. */
+	/**
+	 * A library's reading area (SOLID_DECOR.reading): a table with a chair at each end facing it, parallel to the first
+	 * run, in front of the shelves; the solid pillars under it and its ring go back to floor. No draw. False when no spot
+	 * fits.
+	 */
+	const readingArea = (r: Room, firstRun: Spot): boolean => {
+		const R = SOLID_DECOR.reading;
+		const ct = SOLID_DECOR.clearTiles;
+		const dr = SOLID_DECOR.doorTiles;
+		// a run facing +X / -X lies along Z: so does the table
+		const alongX = firstRun.fx === 0;
+		const n = R.tableLength + 2;
+		const w = alongX ? n : 1;
+		const h = alongX ? 1 : n;
+		const cases: Array<readonly [number, number]> = [];
+		for (const p of pieces) if (p.room === r.id && p.kind === "bookcase") cases.push([p.x, p.y]);
+		const x0 = math.ceil(r.cx - r.w / 2) - 1;
+		const x1 = math.floor(r.cx + r.w / 2) + 1;
+		const y0 = math.ceil(r.cy - r.h / 2) - 1;
+		const y1 = math.floor(r.cy + r.h / 2) + 1;
+		/** A solid pillar of this room (still standing): clearable. */
+		const pillarOf = (x: number, y: number) =>
+			inB(x, y) && pillarAt.has(y * W + x) && grid[y * W + x] === WALL && roomId[y * W + x] === r.id;
+		let best: readonly [number, number] | undefined;
+		let bestOff = math.huge;
+		let bestCleared = math.huge;
+		let bestCentre = math.huge;
+		for (let y = y0; y <= y1; y++)
+			for (let x = x0; x <= x1; x++) {
+				const xe = x + w - 1;
+				const ye = y + h - 1;
+				let near = math.huge;
+				for (const [px, py] of cases) {
+					const d = math.max(math.max(x - px, px - xe, 0), math.max(y - py, py - ye, 0));
+					if (d < near) near = d;
+				}
+				if (near > R.maxDist) continue;
+				// the line and its ring: floor of the room, or a solid pillar of it (cleared)
+				let cleared = 0;
+				let ok = true;
+				for (let yy = y - ct; yy <= ye + ct && ok; yy++)
+					for (let xx = x - ct; xx <= xe + ct && ok; xx++) {
+						if (floorOf(xx, yy, r.id)) continue;
+						if (pillarOf(xx, yy)) cleared++;
+						else ok = false;
+					}
+				if (!ok || doorDist(x, y, xe, ye, dr) <= dr) continue;
+				const off = math.abs(near - R.readingDist);
+				const mx = x + (w - 1) / 2 - r.cx;
+				const my = y + (h - 1) / 2 - r.cy;
+				const centre = mx * mx + my * my;
+				if (
+					off < bestOff ||
+					(off === bestOff && (cleared < bestCleared || (cleared === bestCleared && centre < bestCentre)))
+				) {
+					best = [x, y];
+					bestOff = off;
+					bestCleared = cleared;
+					bestCentre = centre;
+				}
+			}
+		if (best === undefined) return false;
+		const [bx, by] = best;
+		for (let yy = by - ct; yy <= by + h - 1 + ct; yy++)
+			for (let xx = bx - ct; xx <= bx + w - 1 + ct; xx++)
+				if (pillarOf(xx, yy)) {
+					grid[yy * W + xx] = FLOOR;
+					clearedPillars.push({ x: xx, y: yy });
+				}
+		const ax = alongX ? 1 : 0;
+		const az = alongX ? 0 : 1;
+		const last = n - 1;
+		wall("chair", { x: bx, y: by, w: 1, h: 1, fx: ax, fz: az }, r.id);
+		wall(
+			"table",
+			{ x: bx + ax, y: by + az, w: alongX ? R.tableLength : 1, h: alongX ? 1 : R.tableLength, fx: 0, fz: 0 },
+			r.id,
+		);
+		wall("chair", { x: bx + ax * last, y: by + az * last, w: 1, h: 1, fx: -ax, fz: -az }, r.id);
+		return true;
+	};
+	/**
+	 * A library: runs of bookcases on the far walls, then its reading area, then maybe a statue in a big room. Returns
+	 * the cases placed.
+	 */
 	const library = (r: Room, big: boolean): number => {
 		const L = SOLID_DECOR.library;
 		const runs: Spot[] = [];
@@ -537,6 +647,7 @@ export function placeSolidDecor(
 			if (placed === 0) break;
 			cases += placed;
 		}
+		if (cases > 0) readingArea(r, runs[0]);
 		if (cases > 0 && big && rng.chance(L.statueShare)) statue(r, 0);
 		return cases;
 	};
@@ -588,7 +699,7 @@ export function placeSolidDecor(
 			if (big && rng.chance(P.centreShare)) centreTomb(r);
 		}
 	}
-	return { pieces, carpets, themes };
+	return { pieces, carpets, themes, clearedPillars };
 }
 
 function pickTheme(

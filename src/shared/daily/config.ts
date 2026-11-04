@@ -35,9 +35,10 @@ export const DAILY: DailyConfig = table.freeze({
 	// "Solid decor", "Room themes") change endless layouts and breakables, and five new room enemies with a reshuffled
 	// seeded roster (docs/NEW_ENEMIES.md NE7, NED12) change endless rooms (one bump: none of them has shipped).
 	// 4 (branch pellets only, never on main): pellets. 5: pellets merged onto main's 3 (docs/PELLETS.md PL5, PD10).
-	// 6: bookcases and the library room theme (docs/BOOKSHELVES.md) change endless layouts (on main; treasure rooms'
-	// own 6, branch treasure-rooms only, never on main). 7: treasure rooms merged onto main's 6 (docs/TREASURE.md TR5:
-	// vaults, their chest piece and rewards change endless floors and play).
+	// 6: bookcases, the library room theme and its reading area (docs/BOOKSHELVES.md) change endless layouts (on
+	// main; treasure rooms' own 6, branch treasure-rooms only, never on main). 7: treasure rooms merged onto main's 6
+	// (docs/TREASURE.md TR5: vaults, their chest piece and rewards change endless floors and play; kept at 7 on the
+	// second merge, which brought the reading area: main stayed at 6).
 	ruleset: 7,
 	labelOffset: 1,
 	yesterdayCacheSeconds: 600,

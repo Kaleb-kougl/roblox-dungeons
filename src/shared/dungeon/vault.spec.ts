@@ -466,6 +466,51 @@ describe("vault: rooms and cells (every vault floor)", () => {
 		);
 	});
 
+	it("reading areas (docs/BOOKSHELVES.md, second merge with main): no table or chair on, behind or beside a chest", () => {
+		let vaults = 0;
+		let reading = 0;
+		let onCleared = 0;
+		let nearest = 1e9;
+		for (const { on } of VAULTED) {
+			const d = on.dungeon;
+			const v = vaultOf(on);
+			vaults++;
+			const sets = d.solidDecor.filter((p) => p.kind === "table" || p.kind === "chair");
+			let inRoom = false;
+			for (const p of sets) {
+				// footprint to cell (a table is 2 x 1): the chest's cell, its back row and its 8 neighbours never hold one
+				const dx = math.max(p.x - v.x, v.x - (p.x + p.w - 1), 0);
+				const dy = math.max(p.y - v.y, v.y - (p.y + p.h - 1), 0);
+				const cheb = math.max(dx, dy);
+				expect(cheb > VAULT.decorClearTiles).toBe(true);
+				if (p.room === v.room) {
+					inRoom = true;
+					nearest = math.min(nearest, cheb);
+				}
+			}
+			// the back row is still the room's real wall: never a table, a chair or a cleared pillar (now FLOOR)
+			const decor = decorCells(d);
+			const px = math.abs(v.fz);
+			const pz = math.abs(v.fx);
+			for (let k = -1; k <= 1; k++) {
+				const bx = v.x - v.fx + k * px;
+				const by = v.y - v.fz + k * pz;
+				expect([tileAt(d, bx, by), decor.has(cellKey(bx, by))]).toEqual([TileType.WALL, false]);
+			}
+			// a cleared pillar is FLOOR again: a chest may stand there (the decor plan draws nothing for it)
+			for (const c of d.clearedPillars ?? []) if (c.x === v.x && c.y === v.y) onCleared++;
+			if (inRoom) reading++;
+		}
+		// every library gets a reading area, and the sample holds library vaults, so the rule above is exercised
+		expect(reading > 0).toBe(true);
+		print(
+			`[vault x reading areas] ${vaults} vaults: ${reading} in a room with a reading area, ` +
+				`${onCleared} on a cleared pillar cell; nearest table / chair ${
+					reading > 0 ? nearest : "-"
+				} tiles (Chebyshev)`,
+		);
+	});
+
 	it("far wall first: a near-wall chest only in a room with no far-wall cell; the first cell of the room", () => {
 		let far = 0;
 		for (const { off, on } of VAULTED) {

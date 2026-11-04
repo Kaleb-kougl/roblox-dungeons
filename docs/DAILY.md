@@ -130,9 +130,10 @@ a dearer kind joins. The census reports it; tuning is an owner call.
   History: 1 at launch of the feature; 2 with boosts from breakables (docs/BREAKABLE_DROPS.md, 2026-11-01); 3 with
   solid decor, room themes and the new enemies (docs/DECOR.md, docs/NEW_ENEMIES.md: one bump); 4 the pellets branch
   only (never on main); 5 pellets merged onto main's 3 (docs/PELLETS.md PL5, PD10); 6 bookcases and the library
-  theme on main (docs/BOOKSHELVES.md BKD8; treasure rooms also took 6 on their own branch, never on main); 7 treasure
+  theme on main, then its reading area on the same number (docs/BOOKSHELVES.md BKD8, "Reading area"; treasure rooms also took 6 on their own branch, never on main); 7 treasure
   rooms merged onto main's 6 (docs/TREASURE.md TR5 and "As built (merge with main)", 2026-11-04: vaults, their chest
-  piece and rewards change endless floors and play; the all-time boards stay `_v1`, TRD13). The history is also the comment on `DAILY.ruleset` (`shared/daily/config.ts`).
+  piece and rewards change endless floors and play; the all-time boards stay `_v1`, TRD13), kept at 7 on the second
+  merge (main's reading area, still at main's 6). The history is also the comment on `DAILY.ruleset` (`shared/daily/config.ts`).
 
 ### 3. World, sessions, remotes
 
@@ -302,7 +303,7 @@ Paths under `src/`. Pure logic lives in shared modules with specs; services and 
   best's other lines), strings `roster.line` / `roster.new`; the run start shows floor 1's roster and holds the cover at
   least `STAGE_LOADER.rosterStartSec` (1 s; 0 removes the hold).
 - **Day, seed, world, sessions (DS3, DS4).** `shared/daily`: `dailyDay`, `dailyDayStart`, `dailyResetsAt`, `dailyLabel`
-  (= day + 1), `dailyScope` (`d<day>_r<ruleset>`), `DAILY.ruleset` 1 (7 since treasure rooms merged with bookshelves: "Ruleset" above); the
+  (= day + 1), `dailyScope` (`d<day>_r<ruleset>`), `DAILY.ruleset` 1 (7 since treasure rooms merged with bookshelves and the reading area: "Ruleset" above); the
   epoch is `shared/config` `KV_EPOCH_UNIX_SECONDS` (shared with the leaderboard's ordered value). The `daily` world is `buildEndlessRunConfig`;
   `isEndlessWorld` (endless, daily) replaced the descent checks in SimController; `RANKED_WORLD_KIND` stays endless.
   `RunSessionRegistry` seeds a daily start from `dailySeed(dailyDay(ctx.unixNow))` (`StartContext.unixNow` =

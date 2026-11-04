@@ -46,6 +46,13 @@ export const CREDITS: ReadonlyArray<CreditEntry> = [
 	},
 	{
 		section: "models",
+		work: "Dungeon Assets Pack",
+		author: "zver.3d",
+		license: "Free for games; credit to zver.3d requested",
+		modified: true,
+	},
+	{
+		section: "models",
 		work: "Old Chest",
 		author: "SebastianSosnowski (Sketchfab)",
 		license: "CC BY 4.0 - creativecommons.org/licenses/by/4.0",

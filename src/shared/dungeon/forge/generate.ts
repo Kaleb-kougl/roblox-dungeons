@@ -1265,15 +1265,32 @@ export function tryGenerate(seed: number, params: ForgeParams): Dungeon | undefi
 	let solidDecor: SolidDecorPiece[] = [];
 	let carpets: DecorCarpet[] = [];
 	let roomThemes: RoomTheme[] = [];
+	let clearedPillars: Array<{ x: number; y: number }> = [];
 	if (p.solidDecor === true) {
 		const before = [...grid];
 		// torches and banners hang on wall cells: no bookcase stands in front of one (docs/BOOKSHELVES.md BKD6)
 		const hangs: Array<{ x: number; y: number }> = [...torches];
 		for (const pr of props) if (pr.kind === "banner") hangs.push({ x: pr.x, y: pr.y });
-		const laid = placeSolidDecor(seed, W, H, grid, roomId, doorway, rooms, p.themeKey === "grim", boss, hangs);
+		// a library's reading area may clear solid pillars (docs/BOOKSHELVES.md): the pillar props on WALL cells
+		const pillars: Array<{ x: number; y: number }> = [];
+		for (const pr of props) if (pr.kind === "pillar" && grid[idx(pr.x, pr.y)] === WALL) pillars.push(pr);
+		const laid = placeSolidDecor(
+			seed,
+			W,
+			H,
+			grid,
+			roomId,
+			doorway,
+			rooms,
+			p.themeKey === "grim",
+			boss,
+			hangs,
+			pillars,
+		);
 		solidDecor = laid.pieces;
 		carpets = laid.carpets;
 		roomThemes = laid.themes;
+		clearedPillars = laid.clearedPillars;
 		if (solidDecor.size() > 0) {
 			const probe = new Array<number>(total, -1);
 			const f3 = floodFloor(grid, W, ei, probe);
@@ -1281,6 +1298,7 @@ export function tryGenerate(seed: number, params: ForgeParams): Dungeon | undefi
 				for (let i = 0; i < total; i++) grid[i] = before[i];
 				solidDecor = [];
 				carpets = [];
+				clearedPillars = [];
 			} else walled += solidDecor.size();
 		}
 	}
@@ -1320,6 +1338,7 @@ export function tryGenerate(seed: number, params: ForgeParams): Dungeon | undefi
 		solidDecor,
 		carpets,
 		roomThemes,
+		clearedPillars,
 		stats: {
 			rooms: N,
 			edges: edges.size(),
