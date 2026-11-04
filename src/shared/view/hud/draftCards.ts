@@ -14,7 +14,9 @@ import {
 	BOONS,
 	CardKind,
 	DUOS,
+	NO_PACT,
 	Rarity,
+	pactDraftKind,
 	boonMaxLevel,
 	cardBoon,
 	cardDuo,
@@ -246,13 +248,16 @@ export function draftCardKinds(
 
 /**
  * The draft on screen is a builds re-deal (the boss double draft's second deal, BUD4): the "Pick again" line. True when
- * the player's draft is open and fewer deals are left than the floor just cleared deals (2 after a boss floor).
+ * the player's draft is open and fewer deals are left than the floor just cleared deals (2 after a boss floor). Never
+ * for a pact's draft opened mid-floor (docs/FORTUNE.md: Greed's one-deal Legendary deal, shared/sim pactDraftKind): its
+ * one deal on the floor after a boss floor is not a re-deal.
  */
 export function draftRedealt(state: Readonly<SimState>, playerIndex: number): boolean {
 	const builds = state.builds;
 	const p = state.run?.players[playerIndex];
 	const bp = builds?.players[playerIndex];
 	if (builds === undefined || p === undefined || bp === undefined || p.draftOpen === 0) return false;
+	if (pactDraftKind(state, playerIndex) !== NO_PACT) return false;
 	const floorCleared = (state.endless?.floor ?? 1) - 1;
 	const deals = isBossFloor(floorCleared) ? builds.config.bossFloorDrafts : builds.config.floorDrafts;
 	return bp.draftsLeft > 0 && bp.draftsLeft < deals;

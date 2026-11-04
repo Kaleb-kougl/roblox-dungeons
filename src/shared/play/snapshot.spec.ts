@@ -31,6 +31,7 @@ import {
 	type SimConfig,
 	type SimState,
 } from "shared/sim";
+import { PactKind } from "shared/sim";
 import { EMPTY_SNAPSHOT, bossPhaseMarks, findBoss, snapshotsEqual, takeSnapshot, type GameSnapshot } from "shared/play";
 import { buildEndlessRunConfig } from "shared/run";
 
@@ -184,12 +185,15 @@ describe("takeSnapshot: co-op vitals and spectating (docs/SPECTATE.md S2)", () =
 		mate.embers = me.embers - 1;
 		mate.emberMax = me.emberMax + 1;
 		weaponsAt(st, 1).activeSet = 1;
-		// Player 0 stands in floor 1's shrine zone, player 1 does not.
+		// Player 0 stands where SKILL1 takes something on floor 1, player 1 does not: the Pact of Greed's altar (endless
+		// worlds have pacts, docs/FORTUNE.md; the classic zone is off where the altars stand), else the shrine zone.
 		const r = st.run!;
 		expect(r.shrineRoom).toBeGreaterThanOrEqual(0);
-		const shrine = endlessFloorWorld(st, config)!.config.encounter!.rooms[r.shrineRoom];
-		me.x = shrine.cx;
-		me.z = shrine.cz;
+		const world = endlessFloorWorld(st, config)!;
+		const shrine = world.config.encounter!.rooms[r.shrineRoom];
+		const greed = world.pactAltars?.altars[PactKind.GREED];
+		me.x = greed !== undefined ? greed.x : shrine.cx;
+		me.z = greed !== undefined ? greed.z : shrine.cz;
 		const extras = { ...EXTRAS, config };
 
 		const watching = takeSnapshot(st, { ...extras, playerIndex: 0, vitalsIndex: 1 });

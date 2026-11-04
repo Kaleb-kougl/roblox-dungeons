@@ -27,6 +27,7 @@ import { affixesHashNames, writeAffixesHash } from "./affixes/affixes";
 import { devHashNames, writeDevHash } from "./dev/dev";
 import { buildsHashNames, writeBuildsHash } from "./builds/builds";
 import { pelletsHashNames, writePelletsHash } from "./pellets/pellets";
+import { pactsHashNames, writePactsHash } from "./pacts/pacts";
 
 /** The fixtures' subsystem groups, in hash order. */
 export const HASH_SUBSYSTEMS = ["core", "combatHeader", "actors", "weapons", "enemyBullets", "playerBullets"] as const;
@@ -50,7 +51,9 @@ export type HashSubsystem = (typeof HASH_SUBSYSTEMS)[number];
  *   builds   builds (docs/BUILDS.md BU1: per player boon levels, duos, counters, deals left; the proc queue), when
  *            state.builds exists
  *   pellets  pellets (docs/PELLETS.md PL2: the pellet count, taken per pellet, the power pellet, per score record left /
- *            phase / swept), when state.pellets exists; the LAST group
+ *            phase / swept), when state.pellets exists
+ *   pacts    pacts (docs/FORTUNE.md PS2: the floor's altars, per player takes and draft kind, the Horde and its second
+ *            wave, the run counters), when state.pacts exists; the LAST group
  */
 export const ENDLESS_HASH_SUBSYSTEM = "endless";
 export const SCORE_SUBSYSTEM = "score";
@@ -63,6 +66,7 @@ export const AFFIXES_SUBSYSTEM = "affixes";
 export const DEV_SUBSYSTEM = "dev";
 export const BUILDS_SUBSYSTEM = "builds";
 export const PELLETS_SUBSYSTEM = "pellets";
+export const PACTS_SUBSYSTEM = "pacts";
 /** Every group name a layout can have. */
 export type HashGroupName =
 	| HashSubsystem
@@ -76,7 +80,8 @@ export type HashGroupName =
 	| typeof AFFIXES_SUBSYSTEM
 	| typeof DEV_SUBSYSTEM
 	| typeof BUILDS_SUBSYSTEM
-	| typeof PELLETS_SUBSYSTEM;
+	| typeof PELLETS_SUBSYSTEM
+	| typeof PACTS_SUBSYSTEM;
 
 export interface HashGroup {
 	readonly name: HashGroupName;
@@ -215,6 +220,13 @@ export function hashLayout(state: Readonly<SimState>, withNames = false): HashLa
 		writePelletsHash(pellets, values);
 		if (withNames) pelletsHashNames(pellets, names);
 		close(PELLETS_SUBSYSTEM);
+	}
+
+	const pacts = state.pacts;
+	if (pacts !== undefined) {
+		writePactsHash(pacts, values);
+		if (withNames) pactsHashNames(pacts, names);
+		close(PACTS_SUBSYSTEM);
 	}
 
 	return { values, names, groups };

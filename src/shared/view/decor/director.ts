@@ -24,7 +24,8 @@
  *                          the boss ring (DecorScene.bossRing: flat fire pits, see scene.ts) lights one more
  *                          1 / bossPhases on each phase; everything lit and steady after the kill (its braziers flare)
  *   stairwell open         stairGlow -> 1 (a boss floor: after the kill; other floors: from the start)
- *   shrine used            shrineDim -> 1 (its crystal dims; the shrine's fixed lights dim)
+ *   shrine used            shrineDim -> 1 (its crystal dims; the shrine's fixed lights dim); pacts (docs/FORTUNE.md):
+ *                          once nothing is left at the floor's altars (shared/sim pactsSpent)
  *   pedestal taken         that pedestal's glint -> 0
  *   Ember                  gutter: 1 -> 0 over emberGutterSeconds (x motionScale), every flame on screen
  *   run over (all down)    cold: 0 -> 1 over coldFadeSeconds (lights fade to the cold palette)
@@ -42,6 +43,7 @@ import {
 	isDraftOpen,
 	isPartyWiped,
 	nearestLivingPlayer,
+	pactsSpent,
 	partySize,
 	playerAt,
 	type ActorState,
@@ -337,7 +339,8 @@ export class DecorDirector {
 		v.stairOpen = endless !== undefined && endless.stairsOpen === 1 && scene.stairwell !== undefined;
 		v.stairGlow = snap ? (v.stairOpen ? 1 : 0) : approach(v.stairGlow, v.stairOpen ? 1 : 0, dt, R.stairGlowSeconds);
 		const run = state.run;
-		const shrineUsed = run !== undefined && run.shrineUsed === 1 && run.shrineRoom === scene.shrineRoom;
+		const shrineUsed =
+			run !== undefined && run.shrineRoom === scene.shrineRoom && (run.shrineUsed === 1 || pactsSpent(state));
 		v.shrineDim = snap ? (shrineUsed ? 1 : 0) : approach(v.shrineDim, shrineUsed ? 1 : 0, dt, R.shrineDimSeconds);
 		for (let i = 0; i < entries.size(); i++) v.dim[i] = entries[i].kind === "shrineCrystal" ? v.shrineDim : 0;
 		for (let j = 0; j < scene.pedestals.size(); j++) {

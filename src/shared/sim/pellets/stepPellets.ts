@@ -115,7 +115,7 @@ export function stepPellets(state: SimState): void {
 				continue;
 			}
 			room.left -= 1;
-			const points = scorePellet(state);
+			const points = scorePellet(state, rec); // pacts' Horde: a pellet of the horde record pays x2
 			p.events.eaten.push({ index: k, x: p.x[k], z: p.z[k], player: i, points });
 			// The tutorial's pellet lesson (docs/PELLETS.md PL12): the room's last pellet releases its sweep lock.
 			if (room.left === 0 && state.tutorial !== undefined) tutorialOnPelletsSwept(state, rec);

@@ -27,7 +27,9 @@
  *              only, so a switch never plays the new player's earlier shot or full charge)
  *   room clear state.score room records: the count of cleared rooms rose on the same floor
  *   relic      state.run.pedestalTaken: the count of taken pedestals rose on the same floor
- *   shrine     state.run.shrineUsed went 0 -> 1 on the same floor
+ *   shrine     state.run.shrineUsed went 0 -> 1 on the same floor, or (pacts, docs/FORTUNE.md: the classic shrine is
+ *              off where the altars stand) one more player took the Pact of Greed there (shared/sim greedTakes: the
+ *              shrine's curse accepted; until the pacts' own cues, FO9)
  *   wiped      isPartyWiped went false -> true (solo: the player died; co-op: the last living player died)
  *
  * A new run (another SimState object) or reset() takes a fresh baseline: no edges on that frame. Presentation only:
@@ -42,6 +44,7 @@ import {
 	SWORD_FINISHER,
 	SWORD_V_LAST,
 	aegisPips,
+	greedTakes,
 	isPartyWiped,
 	swordGuard,
 	partySize,
@@ -215,10 +218,10 @@ export class StateWatch {
 
 		const cleared = countCleared(state);
 		const taken = countTaken(state);
-		const shrine = state.run !== undefined ? state.run.shrineUsed : 0;
+		const shrine = (state.run !== undefined ? state.run.shrineUsed : 0) + greedTakes(state);
 		this.roomCleared = sameFloor && cleared > this.cleared;
 		this.relicTaken = sameFloor && taken > this.taken;
-		this.shrineUsed = sameFloor && shrine !== 0 && this.shrine === 0;
+		this.shrineUsed = sameFloor && shrine > this.shrine;
 		this.floor = floor;
 		this.cleared = cleared;
 		this.taken = taken;

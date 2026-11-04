@@ -34,6 +34,7 @@ import {
 	BOON_MAX_LEVEL,
 	Boon,
 	DRAFT_OFFER_COUNT,
+	Rarity,
 	FLASK_BOON_CHARGES_TOTAL,
 	HEART_BOON_HALF_HEARTS_TOTAL,
 	RARITY_ROLL_RANGE,
@@ -153,6 +154,48 @@ export function drawCardOffers(
 	// Upgrade pity: an owned upgradable boon always shows up in a full draft.
 	if (upgradable && !hasUpgrade && out.size() >= rules.upgradePityCards && upgrades.size() > 0) {
 		out[out.size() - 1] = pickUpgrade();
+	}
+	return out;
+}
+
+/**
+ * Pacts' Greed (docs/FORTUNE.md PS3, FD4): the legendary cards a player with builds `levels` / `duos` can be dealt, in
+ * pool order: unowned legendary boons (Boon order: new, level I is their only level), available duos (Duo order), owned
+ * common / rare boons at level II (Boon order: the card is their evolution, level III). Pure.
+ */
+export function legendaryPool(levels: ReadonlyArray<number>, duos: ReadonlyArray<number>): number[] {
+	const out: number[] = [];
+	for (let b = 0; b < BOON_COUNT; b++)
+		if (BOONS[b].rarity === Rarity.LEGENDARY && (levels[b] ?? 0) <= 0) out.push(boonCard(b));
+	for (let d = 0; d < DUO_COUNT; d++) if (duoAvailable(levels, duos, d)) out.push(duoCard(d));
+	for (let b = 0; b < BOON_COUNT; b++)
+		if (boonMaxLevel(b) === BOON_MAX_LEVEL && (levels[b] ?? 0) === BOON_MAX_LEVEL - 1) out.push(boonCard(b));
+	return out;
+}
+
+/**
+ * Greed's Legendary deal (PS3, FD4): up to `count` cards. Per card, in card order, one rngInt pick among the legendary
+ * pool's cards not dealt yet (legendaryPool); once that pool is empty, one rngInt pick among the ordinary upgrades not
+ * dealt yet (owned common / rare boons at level I, Boon order: level II), so the deal holds `count` cards whenever
+ * enough is upgradable. Fewer when both run out (an empty legendary pool: Greed is not offered, pacts/stepPacts.ts).
+ * Card ids, card order.
+ */
+export function drawLegendaryOffers(
+	rng: RngHolder,
+	levels: ReadonlyArray<number>,
+	duos: ReadonlyArray<number>,
+	count: number,
+): number[] {
+	const pool = legendaryPool(levels, duos);
+	const fill: number[] = [];
+	for (let b = 0; b < BOON_COUNT; b++)
+		if (boonMaxLevel(b) === BOON_MAX_LEVEL && (levels[b] ?? 0) > 0 && (levels[b] ?? 0) < BOON_MAX_LEVEL - 1)
+			fill.push(boonCard(b));
+	const out: number[] = [];
+	while (out.size() < count) {
+		const from = pool.size() > 0 ? pool : fill;
+		if (from.size() === 0) break;
+		out.push(from.remove(rngInt(rng, 0, from.size() - 1))!);
 	}
 	return out;
 }

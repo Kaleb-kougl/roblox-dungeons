@@ -17,6 +17,8 @@ import {
 	DROPS_SUBSYSTEM,
 	PELLETS_CONFIG,
 	PELLETS_SUBSYSTEM,
+	ENDLESS_PACTS_CONFIG,
+	PACTS_SUBSYSTEM,
 	ENDLESS_DROPS_CONFIG,
 	ENDLESS_HASH_SUBSYSTEM,
 	RUN_SUBSYSTEM,
@@ -83,7 +85,7 @@ describe("buildEndlessRunConfig", () => {
 		const f1 = setup.endlessFloor(1);
 		const s = createSimState(1337, f1.spawnX, f1.spawnZ, setup.config);
 		const layout = hashLayout(s, true);
-		expect(layout.groups.size()).toBe(14);
+		expect(layout.groups.size()).toBe(15);
 		expect(layout.groups[9].name).toBe(BREAKABLES_SUBSYSTEM);
 		expect(layout.names[layout.groups[9].start]).toBe("breakables.length");
 		expect(layout.values[layout.groups[9].start]).toBe(f1.breakables!.size());
@@ -111,10 +113,14 @@ describe("buildEndlessRunConfig", () => {
 		expect(setup.config.builds).toBe(BUILDS_CONFIG);
 		expect(layout.groups[12].name).toBe(BUILDS_SUBSYSTEM);
 		expect(layout.names[layout.groups[12].start]).toBe("builds.players.length");
-		// docs/PELLETS.md PL5: endless runs have pellets (PELLETS_CONFIG), hashed after builds (last).
+		// docs/PELLETS.md PL5: endless runs have pellets (PELLETS_CONFIG), hashed after builds.
 		expect(setup.config.pellets).toBe(PELLETS_CONFIG);
 		expect(layout.groups[13].name).toBe(PELLETS_SUBSYSTEM);
 		expect(layout.names[layout.groups[13].start]).toBe("pellets.length");
+		// docs/FORTUNE.md PS5: endless runs have pacts (ENDLESS_PACTS_CONFIG), hashed after pellets (last).
+		expect(setup.config.pacts).toBe(ENDLESS_PACTS_CONFIG);
+		expect(layout.groups[14].name).toBe(PACTS_SUBSYSTEM);
+		expect(layout.names[layout.groups[14].start]).toBe("pacts.room");
 		const g = layout.groups[6];
 		expect(g.name).toBe(ENDLESS_HASH_SUBSYSTEM);
 		expect(layout.groups[7].name).toBe(SCORE_SUBSYSTEM);

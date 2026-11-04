@@ -29,9 +29,11 @@
  *                 stream hash(floor seed, AFFIXES.salt); nothing above reads them
  *   loot          the breakables that hold a boost (./breakableLoot.ts, docs/BREAKABLE_DROPS.md BL1), from their
  *                 own stream hash(floor seed, BREAKABLE_LOOT.salt), reading the placed pieces; nothing above reads it
- *   pellets       the room pellets and the rare power pellet (./pellets.ts, docs/PELLETS.md PL1), LAST, from their
+ *   pellets       the room pellets and the rare power pellet (./pellets.ts, docs/PELLETS.md PL1), from their
  *                 own stream hash(floor seed, PELLETS.salt), reading the layout, spawns and placed pieces; nothing
  *                 above reads it
+ *   pacts         the shrine room's two pact altars (./pacts.ts, docs/FORTUNE.md PS1), LAST: no draw, reading the
+ *                 layout, the placed pieces and the pellets; nothing above reads it
  *
  * Generating the dungeon is left to the caller (`dungeonFor`), so shared/run can cache it (LRU).
  */
@@ -54,6 +56,7 @@ import { placeBreakables, withoutBreakableCells, type BreakablePlacement } from 
 import { assignAffixes } from "./affixes";
 import { placeBreakableLoot, type BreakableLoot } from "./breakableLoot";
 import { placePellets, type FloorPellets } from "./pellets";
+import { placePactAltars, type FloorPacts } from "./pacts";
 import type { ActorSpawn, EncounterConfig, EncounterRoom, EncounterRoomType } from "./encounterTypes";
 import {
 	BOSS_FLOOR_EVERY,
@@ -457,6 +460,11 @@ export interface EndlessFloorLayout {
 	 * (the tutorial's hand-built floors).
 	 */
 	readonly pellets?: FloorPellets;
+	/**
+	 * The shrine room's pact altars (./pacts.ts placePactAltars, docs/FORTUNE.md PS1). Absent: no shrine room, no fit
+	 * (the classic shrine stays), or the tutorial's hand-built floors.
+	 */
+	readonly pactAltars?: FloorPacts;
 }
 
 /**
@@ -497,6 +505,12 @@ export function buildEndlessFloor(
 		floor,
 		breakables,
 	);
+	// Pact altars last, drawing nothing, reading the layout, the pieces and the pellets: nothing above moves.
+	const pactAltars = placePactAltars(
+		{ seed: params.seed, dungeon: d, encounter, roomSpawns, spawn, stairwell },
+		breakables,
+		pellets,
+	);
 	return {
 		floor,
 		seed: params.seed,
@@ -514,5 +528,6 @@ export function buildEndlessFloor(
 		roomAffixes,
 		breakableLoot,
 		pellets,
+		pactAltars,
 	};
 }

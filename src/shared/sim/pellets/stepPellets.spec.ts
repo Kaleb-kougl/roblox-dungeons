@@ -424,10 +424,13 @@ describe("pellets: the clear, the Sweep", () => {
 
 describe("pellets: determinism", () => {
 	it("pickups move only the score and pellets groups: the rng and every other group match a run without pellets", () => {
-		const a = devRun();
+		// Both without pacts (docs/FORTUNE.md PS5: their group follows this one; nobody takes a pact here anyway).
+		const dev = devRun();
+		const withPellets: SimConfig = { ...dev.config, pacts: undefined };
+		const a: Run = { config: withPellets, s: createSimState(SEED, dev.s.player.x, dev.s.player.z, withPellets) };
 		const b: Run = {
-			config: { ...a.config, pellets: undefined },
-			s: createSimState(SEED, a.s.player.x, a.s.player.z, { ...a.config, pellets: undefined }),
+			config: { ...withPellets, pellets: undefined },
+			s: createSimState(SEED, a.s.player.x, a.s.player.z, { ...withPellets, pellets: undefined }),
 		};
 		const k = recordWith(a.s, 8);
 		const list = regular(a.s, k);

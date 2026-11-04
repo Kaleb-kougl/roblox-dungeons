@@ -25,6 +25,7 @@ import { writeAffixesHash } from "./affixes/affixes";
 import { writeDevHash } from "./dev/dev";
 import { writeBuildsHash } from "./builds/builds";
 import { writePelletsHash } from "./pellets/pellets";
+import { writePactsHash } from "./pacts/pacts";
 import { isFiniteNumber, isIntegerNumber, numberToJsString } from "./jsnum";
 import { isJsonArray, isJsonObject, jsonToJsString, parseJson, type JsonValue } from "./json";
 import { jsMin } from "shared/jsmath";
@@ -193,6 +194,8 @@ export function writeHashFields(state: Readonly<SimState>, out: number[]): numbe
 	if (state.builds !== undefined) writeBuildsHash(state.builds, out);
 	// Pellets (docs/PELLETS.md PL2), only when the run has them, appended last (after builds).
 	if (state.pellets !== undefined) writePelletsHash(state.pellets, out);
+	// Pacts (docs/FORTUNE.md PS2), only when the run has them, appended last (after pellets).
+	if (state.pacts !== undefined) writePactsHash(state.pacts, out);
 	return out;
 }
 

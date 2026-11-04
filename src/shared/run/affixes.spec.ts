@@ -13,6 +13,7 @@ import {
 	Button,
 	DROPS_SUBSYSTEM,
 	PELLETS_SUBSYSTEM,
+	PACTS_SUBSYSTEM,
 	NO_KIND,
 	ROOM_PAR_BASE_TICKS,
 	ROOM_PAR_TICKS_PER_COST,
@@ -49,11 +50,13 @@ describe("endless worlds carry affixes", () => {
 			expect(f1.roomAffixes).toBe(f1.layout.roomAffixes);
 			const s = createSimState(1337, f1.spawnX, f1.spawnZ, setup.config);
 			const names = hashLayout(s).groups.map((g) => g.name);
-			// docs/BUILDS.md BU1: builds is appended after it; docs/PELLETS.md PL5: pellets after builds (last).
-			expect(names[names.size() - 1]).toBe(PELLETS_SUBSYSTEM);
-			expect(names[names.size() - 2]).toBe(BUILDS_SUBSYSTEM);
-			expect(names[names.size() - 3]).toBe(AFFIXES_SUBSYSTEM);
-			expect(names[names.size() - 4]).toBe(DROPS_SUBSYSTEM);
+			// docs/BUILDS.md BU1: builds is appended after it; docs/PELLETS.md PL5: pellets after builds; docs/FORTUNE.md
+			// PS5: pacts after pellets (last).
+			expect(names[names.size() - 1]).toBe(PACTS_SUBSYSTEM);
+			expect(names[names.size() - 2]).toBe(PELLETS_SUBSYSTEM);
+			expect(names[names.size() - 3]).toBe(BUILDS_SUBSYSTEM);
+			expect(names[names.size() - 4]).toBe(AFFIXES_SUBSYSTEM);
+			expect(names[names.size() - 5]).toBe(DROPS_SUBSYSTEM);
 		}
 	});
 
