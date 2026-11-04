@@ -149,13 +149,15 @@ cleared so a short run never has an empty grid.
 | 6 | `Parries 14` | parry groups (`RecapTally`) | >= 5 |
 | 7 | `Sync parries 3` (co-op only, Part B) | `TeamMoments` | >= 1 |
 | 8 | `Sweeps 3` | `counts[SWEEP]` (pellet runs) | >= 1 |
-| 9 | `Grazes 120` | `counts[GRAZES]` (co-op: per player from `grazePlayer`) | >= 50 |
-| 10 | `Jackpots 3` | `counts[JACKPOT]` | >= 1 |
-| 11 | `Speed bonus 1,240` | `points[FAST]` | >= 3 rooms under par (`counts[FAST]`, RR0 3) |
+| 9 | `Chests opened 2` (treasure runs; the reserved slot, filled with docs/TREASURE.md merged) | shared/sim `treasureRunSummary(state).opened` (`RunRecapInput.chests`; absent without `state.treasure`) | >= 1 |
+| 10 | `Grazes 120` | `counts[GRAZES]` (co-op: per player from `grazePlayer`) | >= 50 |
+| 11 | `Jackpots 3` | `counts[JACKPOT]` | >= 1 |
+| 12 | `Speed bonus 1,240` | `points[FAST]` | >= 3 rooms under par (`counts[FAST]`, RR0 3) |
 | fill | `Kills 214`, `Rooms cleared 11` | sim | - |
 
 Thresholds are `RECAP_HIGHLIGHTS` tunables, tuned in RR10. Co-op labels team values `Team` and the view player's own
-(parries, grazes, duos) `You`. Reserved slots: `Chests opened` (treasure rooms plan), a codex line (codex plan).
+(parries, grazes, duos) `You`. Reserved slots: `Chests opened` (treasure rooms plan: filled, P9, string
+`run.recap.hl.chests`, a Team value in co-op), a codex line (codex plan).
 
 ### Again in one press, fast
 

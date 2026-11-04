@@ -1024,6 +1024,7 @@ export const REQUIRED_STRING_KEYS: ReadonlyArray<string> = ((): string[] => [
 	"run.recap.hl.parries",
 	"run.recap.hl.syncParries",
 	"run.recap.hl.sweeps",
+	"run.recap.hl.chests",
 	"run.recap.hl.grazes",
 	"run.recap.hl.jackpots",
 	"run.recap.hl.speed",

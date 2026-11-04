@@ -2956,6 +2956,10 @@
 		"note": "Run-over panel (after death), a highlight cell label (2 x 2 grid of cells about 200 px wide; the value is drawn beside or under it, text shrinks): how many bosses were killed this run (the number is drawn beside it).",
 		"max": 20
 	},
+	"run.recap.hl.chests": {
+		"note": "Run-over panel (after death), a highlight cell label (2 x 2 grid of cells about 200 px wide; the value is drawn beside or under it, text shrinks): how many treasure chests (the caged chests in vault rooms, unlocked by clearing the room) were opened this run (the number is drawn beside it).",
+		"max": 20
+	},
 	"run.recap.hl.combo": {
 		"note": "Run-over panel (after death), a highlight cell label (2 x 2 grid of cells about 200 px wide; the value is drawn beside or under it, text shrinks): the run's highest combo multiplier (drawn beside it, e.g. \"x4.2 DOMINATING\").",
 		"max": 20

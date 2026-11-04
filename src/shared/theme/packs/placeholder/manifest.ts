@@ -1330,6 +1330,7 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		"run.recap.hl.parries": "Parries",
 		"run.recap.hl.syncParries": "Sync parries",
 		"run.recap.hl.sweeps": "Sweeps",
+		"run.recap.hl.chests": "Chests opened",
 		"run.recap.hl.grazes": "Grazes",
 		"run.recap.hl.jackpots": "Jackpots",
 		"run.recap.hl.speed": "Speed bonus",

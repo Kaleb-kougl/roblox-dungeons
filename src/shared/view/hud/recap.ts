@@ -82,6 +82,13 @@ export interface RecapTeamInput {
 
 export const NO_TEAM_MOMENTS: RecapTeamInput = table.freeze({ teamPerfects: 0, bestTeamStreak: 0, syncParries: 0 });
 
+/** The run's vault chests (docs/TREASURE.md, shared/sim treasureRunSummary: the party's opens, kept locks, Legendaries). */
+export interface RecapChestsInput {
+	readonly opened: number;
+	readonly kept: number;
+	readonly legendary: number;
+}
+
 /** Everything the recap reads, gathered once at run over (and again on a verdict with other numbers). */
 export interface RunRecapInput {
 	readonly world: RecapWorld;
@@ -119,6 +126,8 @@ export interface RunRecapInput {
 	readonly tally: RecapTallySource;
 	/** Part B's team moments; default NO_TEAM_MOMENTS. */
 	readonly team?: RecapTeamInput;
+	/** The run's chests (treasureRunSummary); undefined: a run without treasure rooms (no Chests highlight at all). */
+	readonly chests?: RecapChestsInput;
 }
 
 /** A score source's count, 0 when the run has no such source (JACKPOT / PELLETS / SWEEP exist in some runs only). */
@@ -353,6 +362,8 @@ function evaluate(def: RecapHighlightDef, input: RunRecapInput, coop: boolean): 
 			return plain(team.syncParries, def.min);
 		case "sweeps":
 			return hasSource(s, ScoreSource.SWEEP) ? plain(countOf(s, ScoreSource.SWEEP), def.min) : undefined;
+		case "chests":
+			return input.chests !== undefined ? plain(input.chests.opened, def.min) : undefined;
 		case "grazes":
 			return plain(coop ? input.tally.grazes[input.viewIndex] ?? 0 : countOf(s, ScoreSource.GRAZES), def.min);
 		case "jackpots":

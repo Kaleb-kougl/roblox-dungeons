@@ -22,7 +22,7 @@ import {
 	type RunRecapReport,
 } from "shared/run";
 import type { JuiceSettings } from "shared/settings";
-import { BOON_MAX_LEVEL, floorRoomTally, partySize, playerAt } from "shared/sim";
+import { BOON_MAX_LEVEL, floorRoomTally, partySize, playerAt, treasureRunSummary } from "shared/sim";
 import type { ColorRole, StringVars } from "shared/theme";
 import { SFX, recapCue, type RecapCue } from "shared/view/audio";
 import {
@@ -600,6 +600,8 @@ export class RecapController implements OnStart {
 			dailyBestToday: world === "daily" ? prevToday : undefined,
 			tally: ctx.run.recapTally,
 			team: this.teamProvider?.(ctx) ?? NO_TEAM_MOMENTS,
+			// docs/TREASURE.md: the reserved Chests highlight, only in runs with treasure rooms (presentation only)
+			chests: state.treasure !== undefined ? treasureRunSummary(state) : undefined,
 		};
 	}
 }

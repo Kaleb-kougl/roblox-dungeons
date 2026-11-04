@@ -338,6 +338,23 @@ describe("pickHighlights", () => {
 		expect(ids(pickHighlights(input()))).toEqual(["kills", "rooms"]);
 	});
 
+	it("Chests (docs/TREASURE.md, the reserved slot): only in treasure runs, from 1 opened, after Sweeps, a Team value", () => {
+		const chests = (opened: number) => ({ opened, kept: 0, legendary: 0 });
+		// no treasure rooms in the run: never a Chests row, whatever else is notable
+		expect(ids(pickHighlights(input()))).toEqual(["kills", "rooms"]);
+		expect(ids(pickHighlights(input({ chests: chests(0) })))).toEqual(["kills", "rooms"]);
+		const h = pickHighlights(input({ chests: { opened: 3, kept: 1, legendary: 1 } }));
+		expect(ids(h)).toEqual(["chests", "kills"]);
+		expect([h[0].value, h[0].key, h[0].scope]).toEqual([3, RECAP_STRINGS.hlChests, undefined]);
+		// its priority sits between Sweeps and Grazes
+		const counts = sources({ [ScoreSource.SWEEP]: 1, [ScoreSource.GRAZES]: 60 }, FULL_SOURCES);
+		const score = { total: 1, maxCombo: 10, points: sources({}, FULL_SOURCES), counts };
+		expect(ids(pickHighlights(input({ score, chests: chests(2) })))).toEqual(["sweeps", "chests", "grazes"]);
+		// co-op: the party's opens, labelled Team
+		const coop = pickHighlights(input({ partySize: 2, chests: chests(2) }));
+		expect([coop[0].id, coop[0].scope]).toEqual(["chests", "team"]);
+	});
+
 	it("co-op: Team and You labels, the view player's tally, TEAM PERFECT, the team rows", () => {
 		const h = pickHighlights(
 			input({
@@ -382,7 +399,7 @@ describe("pickHighlights", () => {
 			expect(keys.includes(d.key)).toBe(true);
 		}
 		expect(keys.includes("run.recap.near.fullClearOne")).toBe(true);
-		expect(keys.size()).toBe(28);
+		expect(keys.size()).toBe(29);
 	});
 });
 

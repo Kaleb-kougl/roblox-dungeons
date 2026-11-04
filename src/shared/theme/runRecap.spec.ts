@@ -42,6 +42,7 @@ const ENGLISH: ReadonlyArray<[string, string, string[]]> = [
 	["run.recap.hl.parries", "Parries", []],
 	["run.recap.hl.syncParries", "Sync parries", []],
 	["run.recap.hl.sweeps", "Sweeps", []],
+	["run.recap.hl.chests", "Chests opened", []],
 	["run.recap.hl.grazes", "Grazes", []],
 	["run.recap.hl.jackpots", "Jackpots", []],
 	["run.recap.hl.speed", "Speed bonus", []],
@@ -67,7 +68,7 @@ describe("run recap and co-op moments: contract", () => {
 	it("requires the recap strings and the co-op moment strings (written out in REQUIRED_STRING_KEYS, in order)", () => {
 		const all = [...RECAP_STRING_KEYS, ...TEAM_MOMENT_STRING_KEYS];
 		expect(all).toEqual(ENGLISH.map(([k]) => k));
-		expect(RECAP_STRING_KEYS.size()).toBe(28);
+		expect(RECAP_STRING_KEYS.size()).toBe(29);
 		expect(TEAM_MOMENT_STRING_KEYS.size()).toBe(4);
 		// docs/TREASURE.md TR6's strings come after them
 		expect(tail(REQUIRED_STRING_KEYS, all.size(), TREASURE_STRING_KEYS.size())).toEqual(all);

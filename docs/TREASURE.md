@@ -1035,6 +1035,13 @@ every combat room (BOOKSHELVES.md BK2), so these are 28 different fights; the ho
 UNTOUCHED Rare (800 points). For TR11 it sharpens the open item: UNTOUCHED is now under its 30-50 % target for this
 bot, SWIFT still far too easy.
 
+**The recap's Chests highlight** (follow-up commit): RUN_RECAP.md reserved a `Chests opened` slot for this plan; it
+is filled. `RECAP_HIGHLIGHTS` P9 `chests` (between Sweeps and Grazes; Grazes .. the fill rows renumbered 10-14), min
+1, `coop: "team"`; `RunRecapInput.chests?` (`RecapChestsInput`, `treasureRunSummary(state)` from RecapController when
+`state.treasure` exists, else absent: no row at all); string `run.recap.hl.chests` "Chests opened" (in
+`RECAP_STRING_KEYS`, 29; written out in `REQUIRED_STRING_KEYS`; `l10n/context.json`). Presentation only; recap.spec
+covers the gate, the threshold, the priority and the co-op label. Locals unchanged (185 / 196).
+
 Verify (merged tree, this host): typecheck, lint, check:assets, check:autolocalize, test:art, test:checks, test:l10n,
 build and `build:place` clean; headless tests **347 suites, 4756 passed, 1 failed** (2523 s): the known host-only
 `dungeon/forge/forge.spec.ts` seedToState vectors (NaN sign bit, `fff8...` for `7ff8...`).
