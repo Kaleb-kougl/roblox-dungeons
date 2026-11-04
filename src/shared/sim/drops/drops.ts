@@ -55,12 +55,10 @@ import { bossEngaged } from "../combat/actors/archetypes/boss/shared";
 import type { EncounterConfig } from "../combat/actors/encounter";
 import { partySize, playerAt } from "../party";
 import { affixDropBonus } from "../affixes/affixes";
-import { landDrop, lowestFreeDropSlot } from "./breakLoot";
+import { landDrop, lowestFreeDropSlot, weightedBoostKind } from "./breakLoot";
 import {
 	AEGIS_PIPS,
-	BOOSTS,
 	BOOST_COUNT,
-	BOOST_TOTAL_WEIGHT,
 	Boost,
 	DEBUG_DROP_AHEAD,
 	DEBUG_DROP_BUTTON,
@@ -339,13 +337,7 @@ export function clearDropsEvents(d: DropsState): void {
 
 /** The weighted kind pick: ONE rngInt(0, BOOST_TOTAL_WEIGHT - 1) from the drop stream. */
 export function pickBoostKind(d: DropsState): number {
-	let roll = rngInt(d, 0, BOOST_TOTAL_WEIGHT - 1);
-	for (let k = 0; k < BOOST_COUNT; k++) {
-		const w = BOOSTS[k].weight;
-		if (roll < w) return k;
-		roll -= w;
-	}
-	return BOOST_COUNT - 1; // unreachable: the roll is below the total weight
+	return weightedBoostKind(d);
 }
 
 /** The drop percent of archetype `id` under `config`. */

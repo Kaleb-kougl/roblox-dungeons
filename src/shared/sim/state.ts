@@ -15,6 +15,7 @@ import type { SimConfig } from "./step";
 import { cloneEndlessState, createEndlessState, endlessStartFloor, type EndlessState } from "./endless";
 import {
 	addBuildScoreSources,
+	addGoldenScoreSources,
 	addPelletScoreSources,
 	cloneScoreState,
 	createScoreState,
@@ -343,7 +344,8 @@ export interface SimState {
  * records): the first floor's pellets (endless: its world's, dev mode's startFloor included; else
  * `config.pellets.floor`), and a scored run's points / counts gain the pellet sources (addPelletScoreSources).
  * With `config.golden`, `golden` state is created after the score state (its own stream from `seed`; the first floor's
- * Goldling room in endless mode, none otherwise).
+ * Goldling room in endless mode, none otherwise), and a scored run's points / counts gain the GOLDEN source
+ * (addGoldenScoreSources).
  */
 export function createSimState(
 	seed: number,
@@ -426,6 +428,8 @@ export function createSimState(
 	if (golden !== undefined) {
 		state.golden = createGoldenState(golden, seed);
 		goldenOnFloor(state, firstFloor?.golden);
+		// The Goldling's score source (GOLDEN; the earlier gated ones padded), so it hashes only here.
+		if (state.score !== undefined) addGoldenScoreSources(state.score);
 	}
 	return state;
 }

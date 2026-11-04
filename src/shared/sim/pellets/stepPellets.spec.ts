@@ -445,14 +445,16 @@ describe("pellets: determinism", () => {
 		for (let g = 0; g < lb.groups.size(); g++) {
 			const gb = lb.groups[g];
 			if (gb.name === SCORE_SUBSYSTEM) continue;
-			const ga = la.groups[g];
+			// By name: the Goldling's group (docs/FORTUNE.md GE3) follows pellets in `a` only.
+			const ga = la.groups.find((x) => x.name === gb.name)!;
 			const va: number[] = [];
 			const vb: number[] = [];
 			for (let i = ga.start; i < ga.finish; i++) va.push(la.values[i]);
 			for (let i = gb.start; i < gb.finish; i++) vb.push(lb.values[i]);
 			expect([ga.name, ...va]).toEqual([gb.name, ...vb]);
 		}
-		expect(la.groups[la.groups.size() - 1].name).toBe(PELLETS_SUBSYSTEM);
+		expect(la.groups.size()).toBe(lb.groups.size() + 1);
+		expect(la.groups.map((x) => x.name).includes(PELLETS_SUBSYSTEM)).toBe(true);
 		const sa = a.s.score!;
 		const sb = b.s.score!;
 		expect([sa.combo, sa.comboTimer]).toEqual([sb.combo, sb.comboTimer]);

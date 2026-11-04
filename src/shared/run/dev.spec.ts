@@ -26,6 +26,7 @@ import {
 	Button,
 	DEV_GOD_BUTTON,
 	DEV_SUBSYSTEM,
+	GOLDEN_SUBSYSTEM,
 	PELLETS_SUBSYSTEM,
 	EMPTY_INPUT,
 	ENDLESS_FIRST_DEPTH,
@@ -183,16 +184,17 @@ describe("god mode", () => {
 		expect(state.player.armor + state.player.hearts).toBeLessThan(armorHearts);
 	});
 
-	it("is hashed as the `dev` group, after affixes and before builds and pellets (the endless world's, the last group), and replays bit for bit", () => {
+	it("is hashed as the `dev` group, after affixes and before builds, pellets and golden (the endless world's, the last group), and replays bit for bit", () => {
 		const a = devState(3, true);
 		const layout = hashLayout(a, true);
 		const names = layout.groups.map((g) => g.name);
-		expect(names[names.size() - 1]).toBe(PELLETS_SUBSYSTEM);
-		expect(names[names.size() - 2]).toBe(BUILDS_SUBSYSTEM);
-		expect(names[names.size() - 3]).toBe(DEV_SUBSYSTEM);
-		expect(names[names.size() - 4]).toBe(AFFIXES_SUBSYSTEM);
+		expect(names[names.size() - 1]).toBe(GOLDEN_SUBSYSTEM);
+		expect(names[names.size() - 2]).toBe(PELLETS_SUBSYSTEM);
+		expect(names[names.size() - 3]).toBe(BUILDS_SUBSYSTEM);
+		expect(names[names.size() - 4]).toBe(DEV_SUBSYSTEM);
+		expect(names[names.size() - 5]).toBe(AFFIXES_SUBSYSTEM);
 		expect(layout.values).toEqual(writeHashFields(a, []));
-		const dev = layout.groups[layout.groups.size() - 3];
+		const dev = layout.groups[layout.groups.size() - 4];
 		expect(layout.names[dev.finish - 1]).toBe("dev.toggles");
 		const b = devState(3, true);
 		const run = (s: SimState) => {

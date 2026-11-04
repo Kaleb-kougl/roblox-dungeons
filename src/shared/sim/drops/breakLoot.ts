@@ -5,7 +5,7 @@
  * hash group widened (drops.ts writeDropsHash). The tutorial (drops without breakables) and every other world keep it
  * empty.
  *
- * A LEAF module (state types, dropsData and shared/dungeon only): breakables.ts calls dropsOnBreak from its break line,
+ * A LEAF module (state types, rng, dropsData and shared/dungeon only): breakables.ts calls dropsOnBreak from its break line,
  * and breakables.ts is imported by combat.ts while drops.ts imports combat, so a hook in drops.ts would close the
  * require cycle breakables -> drops -> combat -> breakables. drops.ts imports the landing helpers from here instead.
  *
@@ -22,9 +22,24 @@
  *                 ages it, a player can take it on the landing tick, a floor change frees it.
  */
 import { gridToWorld, type BreakableLoot } from "shared/dungeon";
+import { rngInt, type RngHolder } from "../rng";
 import type { SimState } from "../state";
 import type { DropsState } from "./drops";
-import { BOOST_COUNT, NO_BOOST } from "./dropsData";
+import { BOOSTS, BOOST_COUNT, BOOST_TOTAL_WEIGHT, NO_BOOST } from "./dropsData";
+
+/**
+ * The weighted boost kind pick over the BOOSTS weights: ONE rngInt(0, BOOST_TOTAL_WEIGHT - 1) from `h`'s stream (the
+ * drops' own for a kill's drop, drops.ts pickBoostKind; the Goldling's own for its catch, sim/golden goldenHooks.ts).
+ */
+export function weightedBoostKind(h: RngHolder): number {
+	let roll = rngInt(h, 0, BOOST_TOTAL_WEIGHT - 1);
+	for (let k = 0; k < BOOST_COUNT; k++) {
+		const w = BOOSTS[k].weight;
+		if (roll < w) return k;
+		roll -= w;
+	}
+	return BOOST_COUNT - 1; // unreachable: the roll is below the total weight
+}
 
 /** The lowest free ground slot, -1 when every slot is taken. */
 export function lowestFreeDropSlot(d: Readonly<DropsState>): number {

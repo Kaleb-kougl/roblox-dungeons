@@ -105,6 +105,8 @@ export interface GoldenEvents {
 	appeared: number;
 	/** 1 on the tick it was due but the pool was full. */
 	skipped: number;
+	/** The catch's kill points this tick (score.ts scoreKill writes it just before onDeath; 0 otherwise). */
+	jackpot: number;
 	hits: GoldenHitEvent[];
 	caught?: GoldenCaughtEvent;
 	/** Where it escaped from, on the tick it did (its coins: GoldenState.coins). */
@@ -165,7 +167,7 @@ export interface GoldenState {
 }
 
 function emptyEvents(): GoldenEvents {
-	return { appeared: 0, skipped: 0, hits: [], caught: undefined, escaped: undefined };
+	return { appeared: 0, skipped: 0, jackpot: 0, hits: [], caught: undefined, escaped: undefined };
 }
 
 function emptyCache(): GoldenFieldCache {
@@ -239,6 +241,7 @@ export function clearGoldenEvents(g: GoldenState): void {
 	const e = g.events;
 	e.appeared = 0;
 	e.skipped = 0;
+	e.jackpot = 0;
 	e.hits.clear();
 	e.caught = undefined;
 	e.escaped = undefined;
@@ -270,6 +273,7 @@ export function cloneGoldenState(g: Readonly<GoldenState>): GoldenState {
 		events: {
 			appeared: e.appeared,
 			skipped: e.skipped,
+			jackpot: e.jackpot,
 			hits: e.hits.map((h) => ({ ...h })),
 			caught: caught !== undefined ? { ...caught, boosts: [...caught.boosts] } : undefined,
 			escaped: e.escaped !== undefined ? { ...e.escaped } : undefined,
