@@ -32,6 +32,7 @@ import {
 	PARTICLE_QUAD_CAPACITY,
 	RING_SEGMENTS,
 	ROOM_CLEAR,
+	TEAM_MOMENTS_VIEW,
 	burstSeed,
 	particleColorRole,
 	type ChipBurst,
@@ -92,6 +93,8 @@ interface ParticlePart {
  * The power pellet (docs/PELLETS.md PL7; called by PelletRenderController): `pelletPower` turns each erased bullet into a
  * cube flying into the picker (shared/view/pellets PelletFlyIns, drawn through the same parts after the bursts) and
  * spawns one ring from the picker, both in pellet.power, appended to the palette after the loot fizzle's.
+ * The co-op team pulse (docs/RUN_RECAP.md CM2; called by RoomClearController): `teamPulse`, the room clear's spark ring
+ * on a party member at a team perfect, in TEAM_MOMENTS_VIEW.pulse.role, appended to the palette after pellet.power.
  *
  * Bomber detonations (docs/NEW_ENEMIES.md NE8; shared/view DetonationWatch, a per-frame diff): DETONATION_VIEW.burst
  * chips in the Bomber's colour where it blew up (on top of its death particles); a fizzle gets the death particles only.
@@ -120,6 +123,8 @@ export class ParticleController implements OnStart, ParticleWriter {
 	/** The room clear spark ring (docs/ROOM_CLEAR.md RC5): CLEAR's colour index, PERFECT's is the next one. */
 	private roomClearBase = PAL_SPARK;
 	private roomClearShape: ChipBurst | undefined;
+	/** The co-op team pulse's colour index (docs/RUN_RECAP.md CM2: TEAM_MOMENTS_VIEW.pulse.role; the room clear's shape). */
+	private teamPulseColor = PAL_SPARK;
 	/** nearMiss.graze's palette index; nearMiss.parry's is the next one (docs/GRAZE_PARRY.md GP5). */
 	private nearMissBase = PAL_SPARK;
 	/** build.spark's palette index (docs/BUILDS.md BU8: the spark burst at each spark target). */
@@ -194,6 +199,8 @@ export class ParticleController implements OnStart, ParticleWriter {
 		this.fizzleBurst = chipBurstOf(BREAKABLE_LOOT_VIEW.fizzleBurst);
 		this.pelletPowerColor = this.palette.size();
 		this.palette.push(pack.color(pelletId("power")));
+		this.teamPulseColor = this.palette.size();
+		this.palette.push(pack.color(TEAM_MOMENTS_VIEW.pulse.role));
 
 		this.nearMiss.onFrame((frame, settings) => this.nearMissFrame(frame, settings));
 		const [impOk, impKind] = pcall(() => archetypeIndex(IMP.id));
@@ -305,6 +312,16 @@ export class ParticleController implements OnStart, ParticleWriter {
 		const shape = this.roomClearShape;
 		if (shape === undefined) return;
 		this.system.chips(x, z, this.roomClearBase + (perfect ? 1 : 0), shape, seed, this.fx.settings());
+	}
+
+	/**
+	 * The co-op team pulse (docs/RUN_RECAP.md CM2; RoomClearController calls it at a team perfect, once per living party
+	 * member): the room clear's spark ring (ROOM_CLEAR.burst) around a player, in TEAM_MOMENTS_VIEW.pulse.role.
+	 */
+	teamPulse(x: number, z: number, seed: number): void {
+		const shape = this.roomClearShape;
+		if (shape === undefined) return;
+		this.system.chips(x, z, this.teamPulseColor, shape, seed, this.fx.settings());
 	}
 
 	/**

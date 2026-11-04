@@ -7,6 +7,10 @@ machine; its rbxtsc step passed). Owner answers (2026-10-29): RCD10-RCD13. RCD1-
 are proposed. Built from `docs/ROOM_CLEAR_IMPL.md` on branch `room-clear-impl` (in the git worktree `.wtr/room-clear`,
 because another session was working in the main folder), branched from `room-clear`.
 
+Co-op TEAM PERFECT (docs/RUN_RECAP.md CM2 / CM4): in a party run the PERFECT stamp and the far client's corner chip
+read `TEAM PERFECT` (with a `x{n}` streak on the stamp), gold pulse rings light every living member and
+`sfx.room.teamperfect` plays; the near / far split is unchanged (RCD12 kept: far clients get the chip, never the stamp).
+
 Goal: make clearing a room the best moment of the loop. On the last kill the game eases into slow motion, a **CLEAR**
 stamp (or **PERFECT**, when the room was cleared without a hit) slams onto the screen, then the room's points count up
 segment by segment under it and the bonus flies into the score panel, which rolls up to its new total. **1.5 s** from

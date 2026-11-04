@@ -9,6 +9,7 @@ import {
 	HUD_VIEW,
 	ROOM_CLEAR_STRINGS,
 	ROOM_CLEAR_VIEW,
+	TEAM_PERFECT_STRINGS,
 	TOUCH_TEST_VIEWPORTS,
 	computeHudScale,
 	roomClearFinalTallyText,
@@ -51,6 +52,24 @@ describe("the room clear celebration's strings", () => {
 		expect(roomClearStampText(false, 1, s)).toBe("CLEAR");
 		expect(roomClearStampText(true, 1, s)).toBe("PERFECT");
 		expect(roomClearStampText(true, 2, s)).toBe("PERFECT x2");
+	});
+
+	it("a co-op team perfect (docs/RUN_RECAP.md CM2) reads TEAM PERFECT, its streak from teamStreak, only with perfect", () => {
+		for (const manifest of [PLACEHOLDER_MANIFEST, VALE_MANIFEST]) {
+			const pack = new ThemePack(manifest, { warn: quiet });
+			for (const key of [TEAM_PERFECT_STRINGS.teamPerfect, TEAM_PERFECT_STRINGS.teamStreak]) {
+				expect([key, REQUIRED_STRING_KEYS.includes(key), pack.hasString(key)]).toEqual([key, true, true]);
+			}
+		}
+		const pack = new ThemePack(PLACEHOLDER_MANIFEST, { warn: quiet });
+		const s: RoomClearStr = (key, vars) => pack.str(key, vars);
+		expect(roomClearStampText(true, 1, s, true)).toBe("TEAM PERFECT");
+		expect(roomClearStampText(true, 1, s, true, 3)).toBe("TEAM PERFECT x3");
+		// a chip (no streak) of two rooms; the stamp's streak counts those rooms
+		expect(roomClearStampText(true, 2, s, true)).toBe("TEAM PERFECT x2");
+		expect(roomClearStampText(true, 2, s, true, 4)).toBe("TEAM PERFECT x4");
+		// never on a plain clear
+		expect(roomClearStampText(false, 1, s, true, 3)).toBe("CLEAR");
 	});
 
 	it("the tally lists the started segments and then the total", () => {

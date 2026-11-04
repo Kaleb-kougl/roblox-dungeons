@@ -138,6 +138,9 @@ describe("audio contract: port IDs and ambience", () => {
 			"sfx.pellet.eat",
 			"sfx.pellet.sweep",
 			"sfx.pellet.power",
+			// docs/RUN_RECAP.md CM4: a party run's TEAM PERFECT, a SYNC! parry
+			"sfx.room.teamperfect",
+			"sfx.player.syncparry",
 		]);
 		const web = new Set<string>([...AUDIO_EVENTS, ...BREAKABLE_AUDIO_EVENTS]);
 		for (const id of PORT_AUDIO_EVENTS) {

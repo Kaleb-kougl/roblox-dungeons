@@ -29,14 +29,17 @@ export function RoomClearChips() {
 				Size={new UDim2(0, box.width, 0, rowH)}
 				BackgroundTransparency={HIDDEN}
 				Font={hudFont}
-				TextSize={ROOM_CLEAR_VIEW.chipText}
+				TextScaled={true}
 				TextColor3={UI.chipPerfect[i].binding.map((p) => role(p ? "ember" : "uiText"))}
 				TextStrokeColor3={role("background")}
 				TextTransparency={UI.chipTransparency[i].binding}
 				TextStrokeTransparency={UI.chipTransparency[i].binding}
 				TextXAlignment={Enum.TextXAlignment.Right}
 				Text={UI.chipText[i].binding}
-			/>,
+			>
+				{/* docs/RUN_RECAP.md CM2: "TEAM PERFECT +1,250" shrinks to the chip's width, never past chipText. */}
+				<uitextsizeconstraint MaxTextSize={ROOM_CLEAR_VIEW.chipText} />
+			</textlabel>,
 		);
 	}
 	return (

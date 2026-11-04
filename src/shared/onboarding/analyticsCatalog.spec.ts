@@ -3,7 +3,15 @@
 // bound under maxEventsPerAttempt, and the tutorial builders' output inside the catalog's sets.
 import { describe, expect, it } from "@rbxts/jest-globals";
 import { LOBBY_ANALYTICS_EVENT } from "shared/lobby";
-import { ANALYTICS_EVENT, type AnalyticsEventSpec } from "shared/run";
+import {
+	ANALYTICS_EVENT,
+	RUN_RECAP_CLOSES,
+	RUN_RECAP_NEAR_MISS_KINDS,
+	RUN_RECAP_NO_NEAR_MISS,
+	analyticsForRunRecap,
+	type AnalyticsEventSpec,
+	type RunRecapNearMiss,
+} from "shared/run";
 import { TUTORIAL_DEVICES, TUTORIAL_STEPS } from "shared/tutorial";
 import {
 	ANALYTICS_CATALOG,
@@ -99,7 +107,8 @@ describe("analytics catalog limits", () => {
 		for (const [, n] of pairs(ANALYTICS_EVENT)) expect(names.has(n)).toBe(true);
 		for (const [, n] of pairs(LOBBY_ANALYTICS_EVENT)) expect(names.has(n)).toBe(true);
 		for (const [, n] of pairs(TUTORIAL_ANALYTICS_EVENT)) expect(names.has(n)).toBe(true);
-		expect(custom.size()).toBe(36);
+		// 36 before the run-over recap's RunRecap (docs/RUN_RECAP.md RR9).
+		expect(custom.size()).toBe(37);
 		expect(custom.size() <= ROBLOX_MAX_CUSTOM_EVENT_NAMES).toBe(true);
 	});
 
@@ -187,6 +196,31 @@ describe("analytics catalog limits", () => {
 				TUTORIAL_TELEMETRY.maxEventsPerAttempt
 			}`,
 		);
+	});
+});
+
+describe("run-over recap events stay inside the catalog", () => {
+	it("every close, near-miss kind, flag pair and a party run's team rows", () => {
+		const kinds: RunRecapNearMiss[] = [...RUN_RECAP_NEAR_MISS_KINDS, RUN_RECAP_NO_NEAR_MISS];
+		for (const close of RUN_RECAP_CLOSES)
+			for (const nearMiss of kinds)
+				for (const record of [false, true])
+					for (const skipped of [false, true]) {
+						const team = { teamPerfects: 3, bestTeamStreak: 2, syncParries: 1 };
+						const specs = analyticsForRunRecap({
+							runId: "r",
+							close,
+							seconds: 2,
+							nearMiss,
+							record,
+							skipped,
+							team,
+						});
+						expect(specs.size()).toBe(close === "lobby" ? 4 : 1);
+						expectInCatalog(specs);
+					}
+		// 6 field01 values x (7 kinds + absent) x (4 flags + absent).
+		expect(analyticsEntryCombinations(analyticsCatalogEntry("custom", ANALYTICS_EVENT.runRecap)!)).toBe(6 * 8 * 5);
 	});
 });
 

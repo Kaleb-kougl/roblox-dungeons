@@ -2,16 +2,22 @@ import { OnStart, Service } from "@flamework/core";
 import { Janitor } from "@rbxts/janitor";
 import { AnalyticsService, Players, Workspace } from "@rbxts/services";
 import { serverLogger } from "server/log";
+import { Events } from "server/network";
 import { DEV_MODE } from "shared/config";
 import { ANALYTICS_DEBUG_ATTRIBUTE, TUTORIAL_FUNNEL, describeAnalyticsSpec } from "shared/onboarding";
 import {
 	RUN_FUNNEL,
+	RUN_RECAP_RATE,
+	RunRecapGate,
+	SlidingWindowLimiter,
 	analyticsForDailyFinish,
 	analyticsForDailyStart,
 	analyticsForRejection,
 	analyticsForRun,
+	analyticsForRunRecap,
 	analyticsForSession,
 	localeAnalytics,
+	readRunRecapReport,
 	summarizeRunSession,
 	type AnalyticsEventSpec,
 	type AnalyticsFields,
@@ -54,6 +60,12 @@ const log = serverLogger("Telemetry");
  * Locale (docs/LOCALIZATION.md L14): each run's RunStarted funnel step carries the player's bucketed locale
  * (shared/run localeAnalytics), from the server's own view: `Player.LocaleId`, the stored Options > Language override
  * (SettingsService) and the developer attribute (DevModeService). The client reports nothing.
+ *
+ * The run-over recap (docs/RUN_RECAP.md RR9, shared/run recapAnalytics.ts), the second client fact: `runRecap(report)`
+ * says how the player left a run-over panel (retry / exit / lobby, seconds open, the near-miss shown, record /
+ * skipped, a party run's team moments). Rate limited (RUN_RECAP_RATE), re-read (readRunRecapReport) and taken at most
+ * once per run session RunSessionService issued to the player (`runIssued` -> RunRecapGate), then logged as `RunRecap`.
+ * Analytics only: nothing else reads it.
  */
 @Service({})
 export class TelemetryService implements OnStart {
@@ -61,6 +73,12 @@ export class TelemetryService implements OnStart {
 	private readonly sessions = new Map<Player, RunTelemetryRecord[]>();
 	/** Players between PlayerRemoving and their session summary: their late runs still join the session. */
 	private readonly leaving = new Set<Player>();
+	/** Run sessions issued per player, one recap report each (RR9). */
+	private readonly recapGate = new RunRecapGate<Player>();
+	private readonly recapLimiter = new SlidingWindowLimiter<Player>(
+		RUN_RECAP_RATE.count,
+		RUN_RECAP_RATE.windowSeconds,
+	);
 
 	constructor(
 		private readonly runs: RunValidationService,
@@ -93,8 +111,11 @@ export class TelemetryService implements OnStart {
 		this.janitor.Add(
 			this.runs.onRunRejected((player, code) => this.logAll(player, [analyticsForRejection(code)], undefined)),
 		);
+		this.janitor.Add(Events.runRecap.connect((player, report) => this.runRecap(player, report)));
 		this.janitor.Add(
 			Players.PlayerRemoving.Connect((player) => {
+				this.recapGate.forget(player);
+				this.recapLimiter.forget(player);
 				this.leaving.add(player);
 				task.spawn(() => this.endSession(player));
 			}),
@@ -107,6 +128,29 @@ export class TelemetryService implements OnStart {
 	 */
 	logEvents(player: Player, specs: ReadonlyArray<AnalyticsEventSpec>): void {
 		this.logAll(player, specs, undefined);
+	}
+
+	/**
+	 * RunSessionService: run session `runId` started with these members (solo: the owner). Each may send one
+	 * `runRecap` for it (RR9).
+	 */
+	runIssued(runId: string, memberIds: ReadonlyArray<number>): void {
+		for (const id of memberIds) {
+			const player = Players.GetPlayerByUserId(id);
+			if (player !== undefined) this.recapGate.issue(player, runId);
+		}
+	}
+
+	/** `runRecap` (RR9): rate limit, re-read, one per issued run session, then `RunRecap`. */
+	private runRecap(player: Player, raw: unknown): void {
+		if (player.Parent === undefined || !this.recapLimiter.tryAcquire(player, os.clock())) return;
+		const report = readRunRecapReport(raw);
+		if (report === undefined) {
+			log.warn("BAD_RECAP_REPORT", `${player.UserId}: runRecap dropped`);
+			return;
+		}
+		if (!this.recapGate.take(player, report.runId)) return; // not this player's run, or already reported
+		this.logAll(player, analyticsForRunRecap(report), undefined);
 	}
 
 	/** The player's locale fields (LocaleAnalytics) as the server sees them. */

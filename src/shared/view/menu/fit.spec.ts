@@ -2,13 +2,17 @@
 import { describe, expect, it } from "@rbxts/jest-globals";
 import { PORTRAIT } from "shared/view";
 import {
+	DAILY_RANK,
 	HUD_VIEW,
 	LEADERBOARD_VIEW,
+	RECAP_UI,
 	OPTIONS_VIEW,
 	TUTORIAL_VIEW,
 	UI_ART,
 	artDensityBox,
 	computeHudScale,
+	recapExitsWidth,
+	recapGridSize,
 	skinPadding,
 	snappedSliceScale,
 	uniformPadding,
@@ -294,7 +298,8 @@ describe("menu fit on phones (docs/UI_ART.md Phones)", () => {
 				const e = all.get(name)!;
 				const fit = fitOn(s, e, u, true);
 				expect([s.name, name, fit.overflow]).toEqual([s.name, name, false]);
-				expect(u * fit.factor).toBeGreaterThanOrEqual(MENU_FIT.minScale - 1e-9);
+				// A HUD scale already under the floor (70 %) is never shrunk: the floor is the lower of the two.
+				expect(u * fit.factor).toBeGreaterThanOrEqual(math.min(u, MENU_FIT.minScale) - 1e-9);
 				expectInside(s, e, fit, u);
 			}
 		}
@@ -655,5 +660,131 @@ describe("the upright pause (docs/PORTRAIT.md PT6)", () => {
 		expect(under.w).toBe(500);
 		expect(under.h).toBeCloseTo(1000 * (1 - PORTRAIT.pauseMapShare) - 10, 9);
 		expect(pausePanelArea({ w: 10, h: 0 }, 10).h).toBe(0);
+	});
+});
+
+/**
+ * docs/RUN_RECAP.md RR5: the run-over recap's worst case, a record daily run with highlights (the ribbon, the main line
+ * on two lines, the stats, the record row and the dim near-miss sub-line under it, four highlights, the daily block and
+ * the friends passed, the verdict and info lines, the exits with Again, Main menu and Details), still fits the smallest
+ * landscape phone, every portrait phone and the HUD 70 % step (Details shows the breakdown and Build list in the
+ * highlights' place: the panel as before). A run without a record draws the plain near-miss line under the main line
+ * instead of the ribbon (compact: the taller of the two is counted in the left column).
+ */
+function recapWorst(uiScale: number, layout: "compact" | "narrow" | "wide"): Estimate {
+	const title = LINE(HUD_VIEW.titleText);
+	const small = LINE(HUD_VIEW.smallText);
+	const lineH = LINE(HUD_VIEW.textSize);
+	const header = UI_ART.iconBox.header;
+	const nearMiss = RECAP_UI.nearMiss.height;
+	const dim = RECAP_UI.nearMiss.dimHeight;
+	const grid = recapGridSize(4, HUD_VIEW.gap).h;
+	// DailyResultBlock: its title / countdown row, the standing, best today, the save chip; DailyPassedRow: the label
+	// and the headshot cells.
+	const dailyRows = [small, title, small, small];
+	const passed = small + DAILY_RANK.passedHeadshotPx + small;
+	const stats = 3 * lineH + 2 * HUD_VIEW.gap;
+	const main = 2 * HUD_VIEW.titleText + 4;
+	const button = RECAP_UI.exits[layout].again.y;
+	if (layout === "compact") {
+		const leftRows = [header, math.max(title, nearMiss), main, stats, button, small, TWO_SMALL_LINES];
+		let left = 0;
+		for (const r of leftRows) left += r;
+		left += (leftRows.size() - 1) * HUD_VIEW.gap;
+		const rightRows = [...dailyRows, passed, lineH, dim, grid];
+		let right = 0;
+		for (const r of rightRows) right += r;
+		right += (rightRows.size() - 1) * MENU_FIT.runOverLineGap;
+		const breakdownW = HUD_VIEW.breakdownLabelWidth + HUD_VIEW.gap + HUD_VIEW.breakdownValueWidth;
+		const p = menuPad(HUD_VIEW.pad, uiScale);
+		return {
+			w: MENU_FIT.runOverLeftWidth + HUD_VIEW.gap + breakdownW + HUD_VIEW.pad * 4,
+			h: math.max(left, right) + p.top + p.bottom,
+			ornament: false,
+		};
+	}
+	const rows = [header, title, main, stats, lineH, dim, grid, ...dailyRows, passed, small, TWO_SMALL_LINES];
+	rows.push(button);
+	return {
+		w: layout === "narrow" ? MENU_FIT.runOverNarrowWidth : HUD_VIEW.panelWidth * 2,
+		h: column(rows, HUD_VIEW.pad, uiScale),
+		ornament: false,
+	};
+}
+
+describe("run-over recap fit (docs/RUN_RECAP.md RR5)", () => {
+	it("the highlight grid takes the breakdown's width, and the exits row fits every layout's column", () => {
+		const breakdownW = HUD_VIEW.breakdownLabelWidth + HUD_VIEW.gap + HUD_VIEW.breakdownValueWidth;
+		expect(recapGridSize(4, HUD_VIEW.gap).w).toBe(breakdownW);
+		expect(recapGridSize(2, HUD_VIEW.gap).h).toBe(RECAP_UI.cellHeight);
+		const inner = HUD_VIEW.pad * 4; // the run-over panel's padding, both sides
+		expect(recapExitsWidth("compact", 3, HUD_VIEW.gap)).toBeLessThanOrEqual(MENU_FIT.runOverLeftWidth);
+		expect(recapExitsWidth("narrow", 3, HUD_VIEW.gap)).toBeLessThanOrEqual(MENU_FIT.runOverNarrowWidth - inner);
+		expect(recapExitsWidth("wide", 3, HUD_VIEW.gap)).toBeLessThanOrEqual(HUD_VIEW.panelWidth * 2 - inner);
+		for (const layout of ["wide", "compact", "narrow"] as const) {
+			const e = RECAP_UI.exits[layout];
+			// Again is the largest button (RR7: touch's first target).
+			expect([layout, e.again.x > e.other.x, e.again.y >= e.other.y]).toEqual([layout, true, true]);
+			expect(e.otherTextSize).toBeLessThanOrEqual(HUD_VIEW.textSize);
+		}
+	});
+
+	it("a record daily run with highlights fits the landscape phones (compact) at 100 % and 70 %", () => {
+		for (const s of PHONES) {
+			for (const percent of [70, 100]) {
+				const u = touchScale(s, percent);
+				const e = recapWorst(u, "compact");
+				const fit = fitOn(s, e, u, true);
+				expect([s.name, percent, fit.overflow]).toEqual([s.name, percent, false]);
+				// A HUD scale already under the floor (70 %) is never shrunk: the floor is the lower of the two.
+				expect(u * fit.factor).toBeGreaterThanOrEqual(math.min(u, MENU_FIT.minScale) - 1e-9);
+				expectInside(s, e, fit, u);
+			}
+		}
+	});
+
+	it("... and every portrait phone (narrow) at 100 % and 70 %, at no less than the full floor", () => {
+		for (const s of PORTRAITS) {
+			for (const percent of [70, 100]) {
+				const u = computeHudScale(s.x, s.y, false, percent, true);
+				const e = recapWorst(u, "narrow");
+				const fit = narrowFit(s, e, u);
+				expect([s.name, percent, fit.overflow]).toEqual([s.name, percent, false]);
+				// A HUD scale already under the floor (70 %) is never shrunk: the floor is the lower of the two.
+				expect(u * fit.factor).toBeGreaterThanOrEqual(math.min(u, MENU_FIT.minScale) - 1e-9);
+				expectInside(s, e, fit, u);
+			}
+		}
+	});
+
+	it("... and on desktop is no taller than today's record daily run with its breakdown (never fitted there)", () => {
+		for (const s of DESKTOPS) {
+			const u = computeHudScale(s.x, s.y, false);
+			const worst = recapWorst(u, "wide");
+			// Today's panel for the same run: the breakdown, plus the record row and the daily block it already draws.
+			const small = LINE(HUD_VIEW.smallText);
+			const daily = small + LINE(HUD_VIEW.titleText) + 2 * small + small + DAILY_RANK.passedHeadshotPx + small;
+			const today = estimates(u, false).get("runOver")!.h + LINE(HUD_VIEW.textSize) + daily + 3 * HUD_VIEW.gap;
+			expect([s.name, worst.h <= today]).toEqual([s.name, true]);
+		}
+	});
+
+	it("a plain endless run's recap (near-miss line, four highlights) fits every desktop at full size", () => {
+		for (const s of DESKTOPS) {
+			const u = computeHudScale(s.x, s.y, false);
+			const rows = [
+				UI_ART.iconBox.header,
+				2 * HUD_VIEW.titleText + 4,
+				LINE(HUD_VIEW.smallText),
+				RECAP_UI.nearMiss.height,
+				HUD_VIEW.pad * 2 + LINE(HUD_VIEW.smallText) + HUD_VIEW.gap + LINE(HUD_VIEW.titleText),
+				recapGridSize(4, HUD_VIEW.gap).h,
+				LINE(HUD_VIEW.smallText),
+				TWO_SMALL_LINES,
+				RECAP_UI.exits.wide.again.y,
+			];
+			const room = menuArea(s.x, s.y, s.insets, u).h - 2 * MENU_FIT.margin;
+			expect([s.name, column(rows, HUD_VIEW.pad, u) <= room]).toEqual([s.name, true]);
+		}
 	});
 });

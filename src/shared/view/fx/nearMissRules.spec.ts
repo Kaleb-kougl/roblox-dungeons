@@ -5,6 +5,7 @@
 //   - parry groups across frames and players, the +3 st rule, burst caps and the merge, flash records (count, pop,
 //     fade, teammate scale, reduced motion, life, a dead player)
 //   - freeze gating (solo / co-op / reduced motion / the setting), quiet, new-run resets, players outside the party
+//   - the frame's parry group starts (docs/RUN_RECAP.md CM1) and the grouping rule parryStartsGroup
 import { describe, expect, it } from "@rbxts/jest-globals";
 import { buildRunConfig } from "shared/run";
 import { defaultJuiceSettings, type JuiceSettings } from "shared/settings";
@@ -12,7 +13,7 @@ import { SWORD_DATA, createSimState, playerAt, type SimState } from "shared/sim"
 import { semitonesToSpeed } from "../hud/comboConfig";
 import { NEAR_MISS_VIEW } from "./nearMissConfig";
 import type { GrazeRecord, GuardEraseRecord, NearMissFrameSource } from "./nearMissEvents";
-import { NearMissDirector, grazeClosestPoint, parryFlashFade, parryFlashPop } from "./nearMissRules";
+import { NearMissDirector, grazeClosestPoint, parryFlashFade, parryFlashPop, parryStartsGroup } from "./nearMissRules";
 
 const SEED = 1337;
 const G = NEAR_MISS_VIEW.graze;
@@ -263,6 +264,47 @@ describe("NearMissDirector: parries", () => {
 			[0, 1, F.teammateScale],
 			[2, 2, 1],
 		]);
+	});
+
+	it("parryGroups (docs/RUN_RECAP.md CM1): each group's start once, in start order, with its first erase's tick and position", () => {
+		const s = scoredState(3);
+		const d = new NearMissDirector();
+		const a = d.frame(
+			src([], [erase(2, 50, 4, 5), erase(0, 51, 1, 2), erase(2, 52, 9, 9)]),
+			s,
+			0,
+			false,
+			SETTINGS,
+			0,
+		);
+		expect(a.parryGroups.map((g) => [g.player, g.tick, g.x, g.z])).toEqual([
+			[2, 50, 4, 5],
+			[0, 51, 1, 2],
+		]);
+		// later erases of the same guards start nothing; a guard window later is a new group
+		const b = d.frame(
+			src([], [erase(0, 60), erase(2, 50 + SWORD_DATA.guardTicks, 7, 0)]),
+			s,
+			0,
+			false,
+			SETTINGS,
+			0.1,
+		);
+		expect(b.parryGroups.map((g) => [g.player, g.tick, g.x])).toEqual([[2, 50 + SWORD_DATA.guardTicks, 7]]);
+		expect(d.frame(src(), s, 0, false, SETTINGS, 0.2).parryGroups.size()).toBe(0);
+		// quiet: none
+		expect(d.frame(src([], [erase(1, 200)]), s, 0, true, SETTINGS, 0.3).parryGroups.size()).toBe(0);
+	});
+
+	it("parryStartsGroup: no group, a tick before the group's, or SWORD_DATA.guardTicks or more after it", () => {
+		const w = SWORD_DATA.guardTicks;
+		expect([
+			parryStartsGroup(false, 100, 100),
+			parryStartsGroup(true, 100, 100),
+			parryStartsGroup(true, 100, 99 + w),
+			parryStartsGroup(true, 100, 100 + w),
+			parryStartsGroup(true, 100, 99),
+		]).toEqual([true, false, false, true, true]);
 	});
 
 	it("+3 semitones only when the guard's first frame erased bigFrom or more", () => {

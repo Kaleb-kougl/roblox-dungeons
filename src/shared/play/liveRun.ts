@@ -68,6 +68,7 @@ import {
 	BuildFxEvents,
 	ComboEvents,
 	NearMissEvents,
+	RecapTally,
 	RoomClearEvents,
 	VariantCueEvents,
 	newFrameAdvance,
@@ -76,6 +77,7 @@ import {
 	type FrameAdvance,
 	type FramePacer,
 	type NearMissFrameSource,
+	type RecapTallySource,
 	type RoomClearSource,
 	type VariantCueSource,
 } from "shared/view/fx";
@@ -174,6 +176,8 @@ export interface RunView {
 	readonly builds: BuildFxFrameSource;
 	/** The pellet events of the last frame's ticks, every player's (docs/PELLETS.md PL7). */
 	readonly pellets: PelletFrameSource;
+	/** Parries and grazes per player over the WHOLE run so far (docs/RUN_RECAP.md RR1; never reset per frame). */
+	readonly recapTally: RecapTallySource;
 	getAlpha(): number;
 }
 
@@ -327,6 +331,8 @@ export class LiveRun implements RunView {
 	readonly builds = new BuildFxEvents();
 	/** The pellet events of the ticks run by the last frame() (docs/PELLETS.md PL7; reset every frame). */
 	readonly pellets = new PelletFrameEvents();
+	/** Parries and grazes per player over the whole run (docs/RUN_RECAP.md RR1; collected every tick, never reset). */
+	readonly recapTally = new RecapTally();
 	/** What the pacer made of the last unpaused frame (frozen, time scale); a plain pass-through without a pacer. */
 	readonly lastAdvance: FrameAdvance = newFrameAdvance();
 	/** Run totals for the HUD's post-run panel (the telemetry's kill / hit counts, read without finishing it). */
@@ -465,6 +471,7 @@ export class LiveRun implements RunView {
 		this.variantCues.collect(state);
 		this.builds.collect(state);
 		this.pellets.collect(state);
+		this.recapTally.collect(state);
 		if (this.victoryTick === undefined && e.bossDefeated !== 0) this.victoryTick = state.tick;
 		if (this.deathTick === undefined && (e.playerDied !== 0 || state.player.dead !== 0)) {
 			this.deathTick = state.tick;

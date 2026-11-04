@@ -842,6 +842,8 @@ describe("audio: one jingle per frame", () => {
 			SFX.bestNew,
 			SFX.roomClear,
 			SFX.roomPerfect,
+			// docs/RUN_RECAP.md CM4: TEAM PERFECT, PERFECT's jingle in a party run
+			SFX.roomTeamPerfect,
 			SFX.draftLegendary,
 			SFX.shrineUse,
 		];

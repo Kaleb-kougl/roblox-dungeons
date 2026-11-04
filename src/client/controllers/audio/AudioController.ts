@@ -43,6 +43,7 @@ import { ThemeController } from "../game/ThemeController";
 import { ComboController } from "../fx/ComboController";
 import { FxTrackerController } from "../fx/FxTrackerController";
 import { NearMissController } from "../fx/NearMissController";
+import { TeamMomentsController } from "../fx/TeamMomentsController";
 
 /** One clip of a sound's pool: its pooled Sounds (round-robin; a busy clip restarts its oldest voice). */
 interface ClipVoices {
@@ -177,6 +178,7 @@ export class AudioController implements OnStart {
 		private readonly preloader: PreloadController,
 		private readonly combo: ComboController,
 		private readonly nearMiss: NearMissController,
+		private readonly team: TeamMomentsController,
 	) {}
 
 	onStart(): void {
@@ -225,6 +227,8 @@ export class AudioController implements OnStart {
 				audibleBuilds(ctx.run.builds, quiet),
 				this.rankCues(),
 				ctx.run.pellets,
+				// docs/RUN_RECAP.md CM4: this near-miss frame's SYNC! (steps the co-op moments' parry half on first call).
+				this.team.syncs(),
 			);
 			for (let i = 0; i < this.cues.size(); i++) {
 				this.play(this.cues.id(i), this.cues.volume(i), this.cues.speed(i));

@@ -1,9 +1,10 @@
 /**
  * The game's AnalyticsService catalog (docs/TUTORIAL_FUNNEL.md TF1): every funnel and custom event name the server
  * logs, with each event's custom field value sets, gathered from their owners (shared/run analytics.ts and
- * dailyAnalytics.ts, shared/lobby analytics.ts, which also carries shared/invite's arrival events, and this module's
- * tutorial / onboarding events). Pure data plus counting; analyticsCatalog.spec.ts holds it to Roblox's limits:
- * 10 funnels, 100 custom event names, 8,000 field value combinations per experience, step names <= 32 chars.
+ * dailyAnalytics.ts and recapAnalytics.ts, shared/lobby analytics.ts, which also carries shared/invite's arrival
+ * events, and this module's tutorial / onboarding events). Pure data plus counting; analyticsCatalog.spec.ts holds it
+ * to Roblox's limits: 10 funnels, 100 custom event names, 8,000 field value combinations per experience, step names
+ * <= 32 chars.
  *
  * COUNTING RULE (analyticsEntryCombinations): an entry's combinations are the product, over its three field slots, of
  * the slot's value count, where an unused slot counts 1 and a slot that is sometimes left out counts its values + 1
@@ -25,6 +26,11 @@ import {
 	FORFEIT_DEATH_CAUSE,
 	RUN_FUNNEL,
 	RUN_FUNNEL_STEPS,
+	RUN_RECAP_CLOSES,
+	RUN_RECAP_FLAGS,
+	RUN_RECAP_NEAR_MISS_KINDS,
+	RUN_RECAP_NO_NEAR_MISS,
+	RUN_RECAP_TEAM_ROWS,
 	type AnalyticsBucket,
 	type RunEndReason,
 	type RunRejectCode,
@@ -181,6 +187,14 @@ function bossPhases(): string[] {
 	return out;
 }
 
+/** RunRecap's field03 values (RUN_RECAP_FLAGS). */
+function flagValues(): string[] {
+	const out: string[] = [];
+	for (const [, v] of pairs(RUN_RECAP_FLAGS)) out.push(v);
+	out.sort((a, b) => a < b);
+	return out;
+}
+
 function lessonIds(): string[] {
 	return TUTORIAL_STEPS.map((s) => s.id);
 }
@@ -232,6 +246,12 @@ function buildCatalog(): ReadonlyArray<AnalyticsCatalogEntry> {
 		custom(ANALYTICS_EVENT.sessionRuns, run),
 		custom(ANALYTICS_EVENT.sessionRetriesAfterDeath, run),
 		custom(ANALYTICS_EVENT.sessionLongestRetryStreak, run),
+		// --- The run-over recap (docs/RUN_RECAP.md RR9): close rows carry fields 2 / 3, team rows field01 only
+		custom(ANALYTICS_EVENT.runRecap, "shared/run recapAnalytics.ts", {
+			field01: set([...RUN_RECAP_CLOSES, ...RUN_RECAP_TEAM_ROWS]),
+			field02: set([...RUN_RECAP_NEAR_MISS_KINDS, RUN_RECAP_NO_NEAR_MISS], true),
+			field03: set(flagValues(), true),
+		}),
 		// --- The Daily
 		custom(ANALYTICS_EVENT.dailyStart, daily, {
 			field01: set(boards),

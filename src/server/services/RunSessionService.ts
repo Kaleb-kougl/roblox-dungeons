@@ -48,6 +48,7 @@ import { LeaderboardService } from "./LeaderboardService";
 import { OnboardingService } from "./OnboardingService";
 import { RecordsService } from "./RecordsService";
 import { RunValidationService } from "./RunValidationService";
+import { TelemetryService } from "./TelemetryService";
 
 const log = serverLogger("RunSession");
 
@@ -181,6 +182,7 @@ export class RunSessionService implements OnStart {
 		private readonly onboarding: OnboardingService,
 		private readonly records: RecordsService,
 		private readonly daily: DailyService,
+		private readonly telemetry: TelemetryService,
 	) {}
 
 	onStart(): void {
@@ -332,6 +334,8 @@ export class RunSessionService implements OnStart {
 			return m;
 		});
 		this.meta.set(s, { members, pumping: false });
+		// The run-over recap's telemetry (docs/RUN_RECAP.md RR9): each member may report this session's run over once.
+		this.telemetry.runIssued(s.runId, s.members);
 		// The Daily's activity (docs/DAILY.md DS13): an attempt per member, `daily_start` / `daily_retry`. Never yields.
 		const day = s.daily?.day;
 		if (day !== undefined) {

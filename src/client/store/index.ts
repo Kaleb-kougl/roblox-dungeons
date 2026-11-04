@@ -8,6 +8,7 @@ import { loadingSlice } from "./loading";
 import { lobbySlice } from "./lobby";
 import { menuSlice } from "./menu";
 import { optionsSlice } from "./options";
+import { recapSlice } from "./recap";
 import { recordsSlice } from "./records";
 import { settingsSlice } from "./settings";
 import { spikesSlice } from "./spikes";
@@ -27,7 +28,8 @@ import { tutorialSlice } from "./tutorial";
  * (shown / revealing, its label, the card's lines, the run-start bar: docs/STAGE_LOADER.md SL5); the `records` slice the
  * personal records the server sent and the run's frozen new-best baseline (docs/NEW_BEST.md NB7); the `daily` slice the
  * Daily's status (today's day, label, seed, ruleset, reset time: docs/DAILY.md DS4); the `dailyRank` slice the friends a
- * daily run passed (docs/DAILY.md DS10); the `l10n` slice the locale shown (docs/LOCALIZATION.md L6).
+ * daily run passed (docs/DAILY.md DS10); the `l10n` slice the locale shown (docs/LOCALIZATION.md L6); the `recap` slice the
+ * run-over recap's near-miss line, highlights, Details toggle and arm (docs/RUN_RECAP.md RR5).
  *
  * Import through the directory (`client/store`), never the file.
  */
@@ -40,6 +42,7 @@ export * from "./loading";
 export * from "./lobby";
 export * from "./menu";
 export * from "./options";
+export * from "./recap";
 export * from "./records";
 export * from "./selectors";
 export * from "./settings";
@@ -59,6 +62,7 @@ export const clientStore = combineProducers({
 	loading: loadingSlice,
 	stage: stageSlice,
 	records: recordsSlice,
+	recap: recapSlice,
 	daily: dailySlice,
 	dailyRank: dailyRankSlice,
 	l10n: l10nSlice,

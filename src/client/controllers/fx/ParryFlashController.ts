@@ -1,12 +1,12 @@
 import { Controller, OnStart } from "@flamework/core";
 import { Janitor } from "@rbxts/janitor";
 import { Workspace } from "@rbxts/services";
-import { createKvSurfaceGui, currentHudFont, onLocaleChanged } from "client/ui";
-import { CAMERA_YAW_DEG, STUDS_PER_TILE } from "shared/config";
+import { currentHudFont, onLocaleChanged } from "client/ui";
+import { CAMERA_YAW_DEG } from "shared/config";
 import { MAX_PARTY_SIZE, partySize, playerAt, type SimState } from "shared/sim";
 import type { JuiceSettings } from "shared/settings";
 import type { ThemePack } from "shared/theme";
-import { degToRad, floorStudsY, lerp, studsX, studsZ } from "shared/view";
+import { degToRad, lerp, studsX, studsZ } from "shared/view";
 import {
 	FX_SPRITE_VIEW,
 	FX_VIEW,
@@ -18,7 +18,6 @@ import {
 	type ParryFlash,
 } from "shared/view/fx";
 import {
-	COMBO_SHOUT,
 	COMBO_SHOUT_DRAW,
 	PARRY_DEBUG,
 	PARRY_FLASH_DRAW,
@@ -29,23 +28,20 @@ import {
 	parryFlashOpacity,
 	parryFlashSize,
 	shoutBoxAt,
-	shoutCanvasSize,
 	shoutDucked,
 	type ParryFlashPoint,
 	type ShoutBox,
 } from "shared/view/hud";
 import { SimController } from "../game/SimController";
 import { ThemeController } from "../game/ThemeController";
-import { renderPart } from "../render/placeholders";
 import { FxTrackerController } from "./FxTrackerController";
 import { NearMissController } from "./NearMissController";
-import { fxFolder } from "./fxHelpers";
+import { floorText, floorTextTopStuds, fxFolder } from "./fxHelpers";
 
 const HIDDEN = 1;
 const PARKED = new CFrame(FX_VIEW.parkedStuds[0], FX_VIEW.parkedStuds[1], FX_VIEW.parkedStuds[2]);
 const CAMERA_YAW = CFrame.Angles(0, degToRad(CAMERA_YAW_DEG), 0);
 const AXES = floorAxes();
-const CENTRE = new Vector2(0.5, 0.5);
 
 type Mutable<T> = { -readonly [K in keyof T]: T[K] };
 
@@ -199,9 +195,8 @@ export class ParryFlashController implements OnStart {
 			label.TextTransparency = HIDDEN - opacity;
 			label.TextStrokeTransparency = HIDDEN - opacity * (HIDDEN - COMBO_SHOUT_DRAW.strokeTransparency);
 		}
-		const V = FX_SPRITE_VIEW;
-		const top = floorStudsY() + V.liftStuds - COMBO_SHOUT_DRAW.layerStepsBelowEffects * V.layerStepStuds;
-		slot.part.CFrame = new CFrame(studsX(c.x), top - V.thicknessStuds / 2, studsZ(c.z)).mul(CAMERA_YAW);
+		const y = floorTextTopStuds() - FX_SPRITE_VIEW.thicknessStuds / 2;
+		slot.part.CFrame = new CFrame(studsX(c.x), y, studsZ(c.z)).mul(CAMERA_YAW);
 		if (!slot.visible) {
 			slot.visible = true;
 			slot.surface.Enabled = true;
@@ -252,44 +247,17 @@ export class ParryFlashController implements OnStart {
 		const pack = this.pack;
 		const folder = this.folder;
 		if (pack === undefined || folder === undefined) return undefined;
-		const part = renderPart("Part", false);
-		part.Name = `Flash${index}`;
-		part.Transparency = HIDDEN;
-		part.Size = new Vector3(
-			COMBO_SHOUT.widthTiles * STUDS_PER_TILE,
-			FX_SPRITE_VIEW.thicknessStuds,
-			COMBO_SHOUT.depthTiles * STUDS_PER_TILE,
+		const text = floorText(
+			`Flash${index}`,
+			folder,
+			pack.color(PARRY_FLASH_DRAW.role),
+			pack.color("background"),
+			PARKED,
 		);
-		part.CFrame = PARKED;
-		const [w, h] = shoutCanvasSize();
-		const surface = createKvSurfaceGui("Shout");
-		surface.Face = Enum.NormalId.Top;
-		surface.SizingMode = Enum.SurfaceGuiSizingMode.FixedSize;
-		surface.CanvasSize = new Vector2(w, h);
-		surface.AlwaysOnTop = false;
-		surface.LightInfluence = COMBO_SHOUT_DRAW.lightInfluence;
-		surface.ResetOnSpawn = false;
-		surface.Enabled = false;
-		const label = new Instance("TextLabel");
-		label.Name = "Text";
-		label.AnchorPoint = CENTRE;
-		label.Position = UDim2.fromScale(CENTRE.X, CENTRE.Y);
-		label.Size = UDim2.fromScale(1, 1);
-		label.BackgroundTransparency = HIDDEN;
-		label.BorderSizePixel = 0;
-		label.Font = currentHudFont();
-		label.TextScaled = true;
-		label.TextColor3 = pack.color(PARRY_FLASH_DRAW.role);
-		label.TextStrokeColor3 = pack.color("background");
-		label.TextTransparency = HIDDEN;
-		label.TextStrokeTransparency = HIDDEN;
-		label.Parent = surface;
-		surface.Parent = part;
-		part.Parent = folder;
 		return {
-			part,
-			surface,
-			label,
+			part: text.part,
+			surface: text.surface,
+			label: text.label,
 			duck: new ShoutDuck(),
 			visible: false,
 			seen: false,
