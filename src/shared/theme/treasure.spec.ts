@@ -246,10 +246,12 @@ describe("treasure: placeholder", () => {
 		expect(cage.size[1] > PLACEHOLDER_VISUALS[TREASURE_CHEST_ID].size[1]).toBe(true);
 	});
 
-	it("every bundled pack draws the three looks as placeholders until art exists (TR9)", () => {
+	it("the placeholder pack draws the three looks as placeholders; vale draws the chest's art, the cage's bars (TR9)", () => {
 		for (const id of sortedKeys(THEME_PACKS)) {
-			for (const tid of TREASURE_IDS)
-				expect([id, tid, THEME_PACKS[id].assets[tid]]).toEqual([id, tid, { kind: "placeholder" }]);
+			for (const tid of TREASURE_IDS) {
+				const art = id === "vale" && tid !== "treasure.cage";
+				expect([id, tid, THEME_PACKS[id].assets[tid].kind]).toEqual([id, tid, art ? "sprites" : "placeholder"]);
+			}
 		}
 	});
 });
