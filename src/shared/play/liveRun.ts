@@ -64,6 +64,7 @@ import {
 } from "shared/run";
 import { BoostFrameEvents, type BoostEventSource } from "shared/view/boosts";
 import { PelletFrameEvents, type PelletFrameSource } from "shared/view/pellets";
+import { TreasureFrameEvents, type TreasureFrameSource } from "shared/view/treasure";
 import {
 	BuildFxEvents,
 	ComboEvents,
@@ -174,6 +175,8 @@ export interface RunView {
 	readonly builds: BuildFxFrameSource;
 	/** The pellet events of the last frame's ticks, every player's (docs/PELLETS.md PL7). */
 	readonly pellets: PelletFrameSource;
+	/** The vault events of the last frame's ticks: arm, crack, unlock, open (docs/TREASURE.md TR7). */
+	readonly treasure: TreasureFrameSource;
 	getAlpha(): number;
 }
 
@@ -327,6 +330,8 @@ export class LiveRun implements RunView {
 	readonly builds = new BuildFxEvents();
 	/** The pellet events of the ticks run by the last frame() (docs/PELLETS.md PL7; reset every frame). */
 	readonly pellets = new PelletFrameEvents();
+	/** The vault events of the ticks run by the last frame() (docs/TREASURE.md TR7; reset every frame). */
+	readonly treasure = new TreasureFrameEvents();
 	/** What the pacer made of the last unpaused frame (frozen, time scale); a plain pass-through without a pacer. */
 	readonly lastAdvance: FrameAdvance = newFrameAdvance();
 	/** Run totals for the HUD's post-run panel (the telemetry's kill / hit counts, read without finishing it). */
@@ -381,6 +386,7 @@ export class LiveRun implements RunView {
 		this.variantCues.reset();
 		this.builds.reset();
 		this.pellets.reset();
+		this.treasure.reset();
 		this.ticksThisFrame = 0;
 		if (this.forfeitPending) {
 			this.forfeitPending = false;
@@ -465,6 +471,7 @@ export class LiveRun implements RunView {
 		this.variantCues.collect(state);
 		this.builds.collect(state);
 		this.pellets.collect(state);
+		this.treasure.collect(state);
 		if (this.victoryTick === undefined && e.bossDefeated !== 0) this.victoryTick = state.tick;
 		if (this.deathTick === undefined && (e.playerDied !== 0 || state.player.dead !== 0)) {
 			this.deathTick = state.tick;

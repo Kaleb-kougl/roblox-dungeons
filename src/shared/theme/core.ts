@@ -102,6 +102,7 @@ import {
 import { describeValue, isArrayLike, isInteger, isObj, sortedEntries, sortedKeys, startsWith, type Obj } from "./util";
 import { voidLedgeColor } from "./voidColors";
 import type { PelletKind } from "./pellets";
+import { TREASURE_CHEST_ID, TREASURE_CHEST_OPEN_ID } from "./treasure";
 
 export const DEFAULT_PACK_ID = "placeholder";
 export const MISSING_COLOR: HexColor = "#ff00ff";
@@ -522,6 +523,21 @@ export interface PelletTheme {
 	/** Uploaded art, or undefined: draw `placeholder`. */
 	readonly art: WorldArt | undefined;
 	/** The placeholder primitive (a small Block cube; magenta when the pack lacks the ID). */
+	readonly placeholder: PlaceholderVisual;
+}
+
+/**
+ * One look of a vault's chest (docs/TREASURE.md TR7, the view's accessor `treasurePiece`): `treasure.chest`,
+ * `treasure.chestopen` or `treasure.cage`. The colour role is the chest's (`treasure.chest`, the open chest shares it)
+ * or the cage's.
+ */
+export interface TreasurePieceTheme {
+	/** Asset ID. */
+	readonly id: string;
+	readonly role: ColorRole;
+	/** Uploaded art, or undefined: draw `placeholder`. */
+	readonly art: WorldArt | undefined;
+	/** The placeholder primitive (a box, a lid wedge, one cage bar with `dash`; magenta when the pack lacks the ID). */
 	readonly placeholder: PlaceholderVisual;
 }
 
@@ -1183,6 +1199,18 @@ export class ThemeCore {
 		const def = this.asset(id);
 		const art = def !== undefined ? this.worldArt(id, def, false) : undefined;
 		return { kind, id, role: id as ColorRole, art, placeholder: this.placeholder(id) };
+	}
+
+	/**
+	 * A vault chest look (docs/TREASURE.md TR7): `id` one of shared/theme treasure.ts TREASURE_IDS; its uploaded art (an
+	 * image with pixelsPerTile, or a sprite set with `idle`), else its placeholder. The open chest takes the closed
+	 * chest's colour role. Missing ID (required in every pack): warn once, the magenta block.
+	 */
+	treasurePiece(id: string): TreasurePieceTheme {
+		const def = this.asset(id);
+		const art = def !== undefined ? this.worldArt(id, def, false) : undefined;
+		const role = (id === TREASURE_CHEST_OPEN_ID ? TREASURE_CHEST_ID : id) as ColorRole;
+		return { id, role, art, placeholder: this.placeholder(id) };
 	}
 
 	/**

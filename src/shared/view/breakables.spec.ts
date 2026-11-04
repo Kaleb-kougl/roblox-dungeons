@@ -33,6 +33,7 @@ import {
 	clipToSolidCells,
 	debrisVariant,
 	floorStudsY,
+	isChestPiece,
 	oneShotSec,
 	studsX,
 	studsZ,
@@ -62,6 +63,19 @@ describe("BreakableTracker", () => {
 		expect([t.kindAt(0), t.cellX(0), t.cellY(0), t.isIntact(0)]).toEqual([BreakableKind.BARREL, 4, 5, true]);
 		expect([t.kindAt(1), t.cellX(1), t.cellY(1)]).toEqual([BreakableKind.CRATE, 6, 5]);
 		expect(t.update(b, 1)).toBe(false);
+		expect([[...t.hits], [...t.broken], [...t.restored]]).toEqual([[], [], []]);
+	});
+
+	it("keeps a vault's chest in the layout but never lists it (docs/TREASURE.md TR7: the treasure view draws it)", () => {
+		const b = fresh([...PIECES, { x: 12, y: 3, kind: "chest" }]);
+		const t = new BreakableTracker();
+		expect(t.update(b, 0)).toBe(true);
+		expect([t.count(), t.kindAt(3), isChestPiece(t.kindAt(3))]).toEqual([4, BreakableKind.CHEST, true]);
+		expect([isChestPiece(BreakableKind.BARREL), isChestPiece(BreakableKind.CRATE)]).toEqual([false, false]);
+		// Defensive: even a chest whose hp / brokenTick moved is never hit, broken or restored.
+		b.pieces[3].hp = 0;
+		b.pieces[3].brokenTick = 1;
+		expect(t.update(b, 2)).toBe(false);
 		expect([[...t.hits], [...t.broken], [...t.restored]]).toEqual([[], [], []]);
 	});
 

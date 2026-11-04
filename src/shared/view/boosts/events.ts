@@ -9,6 +9,10 @@
  * broken barrel / crate (a subset of `dropped`, collected in the same pass, so a landing `dropped` skips is skipped here
  * too) with their landing tick (the renderer's hop matches it to the slot's drop); `lostLoot` the loaded pieces that
  * broke with every ground slot taken (the renderer's fizzle).
+ *
+ * Treasure rooms (docs/TREASURE.md TR7): `fromChest` lists the frame's landings that came out of an opened chest
+ * (DropsEvents.fromChest; a subset of `dropped`, collected the same way): the renderer holds them inside the chest until
+ * the lid pops, then hops them out (chestLandingAt). Not in `fromPiece`: the loot sound is a breakable's.
  */
 import {
 	NO_BOOST,
@@ -51,6 +55,8 @@ export interface BoostEventSource {
 	readonly fromPiece: ReadonlyArray<PieceLanding>;
 	/** Loaded breakables that broke with every ground slot taken: the boost is lost (kind, sim position). */
 	readonly lostLoot: ReadonlyArray<DropLostLoot>;
+	/** The landings out of an opened chest (a subset of `dropped`, same order; docs/TREASURE.md TR7). */
+	readonly fromChest: ReadonlyArray<PieceLanding>;
 }
 
 /** The boost-drop events of every tick a frame ran, in tick order. */
@@ -62,6 +68,7 @@ export class BoostFrameEvents implements BoostEventSource {
 	readonly aegisBroke: number[] = [];
 	readonly fromPiece: PieceLanding[] = [];
 	readonly lostLoot: DropLostLoot[] = [];
+	readonly fromChest: PieceLanding[] = [];
 
 	/** A new frame: forget the last one's events. */
 	reset(): void {
@@ -72,6 +79,7 @@ export class BoostFrameEvents implements BoostEventSource {
 		this.aegisBroke.clear();
 		this.fromPiece.clear();
 		this.lostLoot.clear();
+		this.fromChest.clear();
 	}
 
 	/** Every event of this frame (0: nothing happened). */
@@ -97,6 +105,7 @@ export class BoostFrameEvents implements BoostEventSource {
 		if (ev === undefined) return;
 		const ground = dropsGround(state);
 		const pieces = ev.fromPiece;
+		const chests = ev.fromChest;
 		for (const slot of ev.dropped) {
 			const g = ground[slot];
 			let landing: BoostLanding | undefined;
@@ -119,6 +128,9 @@ export class BoostFrameEvents implements BoostEventSource {
 					spawnTick,
 				});
 			}
+			if (chests.includes(slot)) {
+				this.fromChest.push({ slot, kind: landing.kind, x: landing.x, z: landing.z, spawnTick });
+			}
 		}
 		for (const c of ev.collected) this.collected.push(c);
 		for (const e of ev.expired) this.expired.push(e);
@@ -135,6 +147,12 @@ export class BoostFrameEvents implements BoostEventSource {
  */
 export function pieceLandingAt(source: BoostEventSource, slot: number, spawnTick: number): PieceLanding | undefined {
 	for (const p of source.fromPiece) if (p.slot === slot && p.spawnTick === spawnTick) return p;
+	return undefined;
+}
+
+/** The frame's landing out of an opened chest in ground slot `slot` landed on `spawnTick` (pieceLandingAt's rule). */
+export function chestLandingAt(source: BoostEventSource, slot: number, spawnTick: number): PieceLanding | undefined {
+	for (const p of source.fromChest) if (p.slot === slot && p.spawnTick === spawnTick) return p;
 	return undefined;
 }
 

@@ -27,6 +27,7 @@ import {
 	type BiomeTheme,
 	type BoostTheme,
 	type PelletTheme,
+	type TreasurePieceTheme,
 	type BreakableTheme,
 	type DecorArt,
 	type FxArt,
@@ -233,6 +234,15 @@ export interface Pellet {
 	readonly core: PelletTheme;
 }
 
+/** A vault chest look (ThemeCore.treasurePiece): art (or undefined: build `placeholder`) and its colour. */
+export interface TreasurePiece {
+	readonly id: string;
+	readonly color: Color3;
+	readonly art: WorldVisual | undefined;
+	readonly placeholder: PlaceholderVisual;
+	readonly core: TreasurePieceTheme;
+}
+
 /**
  * A sprite effect (ThemeCore.fx) with Roblox types: a one-facing SpriteSet, its flipbook and how to draw it. Drawn
  * widthTiles x heightTiles; `ImageColor3 = color`; `additive`: LightInfluence 0.
@@ -298,6 +308,7 @@ export class ThemePack {
 	private readonly breakables = new Map<BreakableKind, Breakable>();
 	private readonly boosts = new Map<BoostKind, Boost>();
 	private readonly pellets = new Map<PelletKind, Pellet>();
+	private readonly treasurePieces = new Map<string, TreasurePiece>();
 	private readonly fxSprites = new Map<string, FxSprite | false>();
 
 	/** Defensive: a manifest that failed validation still loads; bad entries fall back individually. */
@@ -512,6 +523,24 @@ export class ThemePack {
 			core,
 		};
 		this.pellets.set(kind, p);
+		return p;
+	}
+
+	/** A vault chest look (`treasure.chest` / `.chestopen` / `.cage`, docs/TREASURE.md TR7): its art or placeholder. Cached. */
+	treasurePiece(id: string): TreasurePiece {
+		const cached = this.treasurePieces.get(id);
+		if (cached !== undefined) {
+			return cached;
+		}
+		const core = this.core.treasurePiece(id);
+		const p: TreasurePiece = {
+			id: core.id,
+			color: this.color(core.role),
+			art: core.art !== undefined ? this.worldVisual(core.art) : undefined,
+			placeholder: core.placeholder,
+			core,
+		};
+		this.treasurePieces.set(id, p);
 		return p;
 	}
 
