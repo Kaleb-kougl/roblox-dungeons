@@ -2,8 +2,8 @@
 
 Status (2026-11-03): **BK0-BK5 and BK7 done** on branch `bookshelves` (BK0-BK4 in `caa1ef3`): kit facts, the Forge
 piece and the library theme, the re-pins, the decor plan, the rendered art wired into vale, the full suite green on
-aarch64. Bookcases are solid in endless floors and **draw nothing** until `kit-bookcase-x.png` / `-z.png` are uploaded
-(BK6), as the throne was. BK0 switched the piece to 1 x 1 (BKD4) and set the scale (BKD9).
+aarch64, the art uploaded. Bookcases are solid in endless floors and drew nothing until `kit-bookcase-x.png` / `-z.png` were uploaded
+(BK6, done the same evening). BK0 switched the piece to 1 x 1 (BKD4) and set the scale (BKD9).
 Owner answers (2026-11-03): bookshelves are **solid** (BKD1); a **new `library` room theme plus a few in `hall`
 rooms** (BKD2). Everything else is proposed.
 
@@ -176,7 +176,8 @@ halls / plains).
   typecheck, lint, test:art, check:assets, and the vale pack / void / decor specs (valeArt, valeWorld, void,
   decorPlan, decorPlan.void, decor, decorFx) pass. The vendor PNGs on the Mac carry a content-credentials chunk the
   bridge added (pixels identical; the lock hashes them as on disk).
-- [ ] **BK6. [owner] Upload** `kit-bookcase-x.png` / `-z.png`; paste the ids into `assetIds.ts`.
+- [x] **BK6. [owner] Upload** (2026-11-03 6:20 PM): `kit-bookcase-x.png` 84780192220821, `kit-bookcase-z.png`
+  106394405354637 in `packs/vale/assetIds.ts`, so the bundled vale pack draws them (the vale pack specs pass).
 - [x] **BK7. Verify** (2026-11-03). On `caa1ef3` in the Mac's Linux VM (aarch64, Lune 0.11.0 linux-aarch64 in the
   VM's `$HOME/bin`): typecheck, lint, check:assets, check:autolocalize, test:art, test:checks, test:l10n and build
   pass, and **all 319 suites / 4433 tests pass** (run one spec file at a time: the VM's shell stops after ~180 s; log
@@ -185,9 +186,9 @@ halls / plains).
 - [ ] **BK8. [owner] Studio check** (below), then tuning: theme weights, run lengths, `shelfShare`, height.
 - [ ] **BK9. Later / optional.** The Essential Kit's `Pedestal_Set5_0` or the Modular Set V2's lectern ("Book And
   Base") in big libraries; a near-wall low shelf (half height) if near walls look bare.
-- [ ] **BK10. Docs.** Done: docs/DECOR.md's "Room themes" table (the `library` row, the hall line, the new shares),
-  THIRD_PARTY_NOTICES.md's Essential Kit "Used for" (the bookcase), the CLAUDE.md decision log entry. Left: the
-  DECOR.md "3D kits" table row for the bookcase once uploaded (BK6).
+- [x] **BK10. Docs.** docs/DECOR.md's "Room themes" table (the `library` row, the hall line, the new shares),
+  THIRD_PARTY_NOTICES.md's Essential Kit "Used for" (the bookcase), the CLAUDE.md decision log entry, the DECOR.md
+  "3D kits" table row.
 
 ## Studio check
 

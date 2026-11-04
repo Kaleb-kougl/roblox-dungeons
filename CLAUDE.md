@@ -586,8 +586,8 @@ Decision log (deviations from `PLAN.md`):
   the power fly-in, tally segments `pellets` / `sweep` (a fold on the smallest phone), `KV_PelletDebug`. M1, every
   fixture and every replay without the flag replay exactly as before; endless and tutorial replays and scores changed
   (boards stay `_v1`, `DAILY.ruleset` 3 -> 5 with main merged). The chomp `sfx.pellet.eat` climbs the major scale over
-  a room's pellets (`pelletEatSpeed`). Studio check, the vale art upload, sounds, playtests (PL9 / PL15) and
-  four owner calls pending.
+  a room's pellets (`pelletEatSpeed`). Studio check, playtests (PL9 / PL15) and
+  four owner calls pending (vale pellet art uploaded 2026-11-03).
 
 - **Bookshelves (docs/BOOKSHELVES.md).** Gameplay (dungeon), same Forge option as solid decor (endless only). A new
   solid kind `bookcase` (1 x 1, the Dungeon Essential Kit's case at 125 kit units a tile) stands flush in runs of
@@ -598,8 +598,8 @@ Decision log (deviations from `PLAN.md`):
   `bookcase` (appended last to DECOR_KINDS, low, variant 1 / 2 by facing), drop reason `behindShelf` on a case's back
   cell. Endless layouts, spawns, replays and scores changed (boards stay `_v1`); `DAILY.ruleset` 5 -> 6. M1, every
   fixture and the tutorial replay exactly as before. Art rendered (BK5: render_kit.py `sunSide`, the +X case lit
-  from the mirrored side; vale `kit-bookcase-x` / `-z`, `DECOR_BOX.bookcase` 23 / 24 / 4); upload (BK6) and Studio
-  check pending.
+  from the mirrored side; vale `kit-bookcase-x` / `-z`, `DECOR_BOX.bookcase` 23 / 24 / 4), uploaded 2026-11-03 (BK6);
+  Studio check pending.
 
 ## Commands
 

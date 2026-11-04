@@ -183,6 +183,7 @@ THIRD_PARTY_NOTICES.md), in `art/vendor/dungeon-essential-kit/` (put `dungeon_es
 | `kit-cage-1` / `-2` (the floor cage with its door open, two turns) | `decor.void.b<n>.cage.1` / `.2`, new void kind `cage` (low) | standing on the void's shoulder behind rooms' far walls, half the void's standing spots (`VOID_PIECES.biomeShare`) |
 | `kit-chains-1` / `-2` (the kit's draped chain, flattened, two turns) | `decor.void.b<n>.chains.1` / `.2`, new void kind `chains` (flat) | lying on the shoulder among the void's flat pieces |
 | `kit-chains-1` | `decor.delve.b<n>.bones.4` (was Lords of Pain `bones1-sw`, now retired art) | in rooms wherever the Forge drops bones |
+| `kit-bookcase-x` / `-z` (the bookcase at world scale, 125 kit units a tile, facing +X / +Z; the +X one lit by a mirrored sun, render_kit.py `sunSide`) | `decor.delve.b<n>.bookcase.1` / `.2`, solid decor kind `bookcase` | flush against rooms' far walls in library and hall rooms (docs/BOOKSHELVES.md); uploaded 2026-11-03 |
 | `kit-chandelier-1` (the candle chandelier, its chain cut off by `keepHeight`: lying fallen) | `decor.delve.b<n>.chandelier`, new decor kind `chandelier` (flat, scattered) | on open floor in rooms: planDecor's `scatter` step (DECOR_SCATTER: about a third of the rooms with 40+ floor tiles, never the boss room, one per room, at most 4 per floor; census 3.4 per floor), only when the pack has its art |
 
 Second kit: the **Dungeon Modular Set V2** (C. Anastasiadis, Sketchfab, **CC-BY 4.0**, on the Credits screen), in
