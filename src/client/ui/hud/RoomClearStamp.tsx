@@ -13,7 +13,9 @@ const WHITE = new Color3(1, 1, 1);
 /**
  * The room clear stamp and its tally row (docs/ROOM_CLEAR.md RC7), top centre in the boss bar's slot
  * (HUD_TRANSIENT.roomClear), and the bonus chip flying to the score panel. Every changing property is a
- * ROOM_CLEAR_UI binding written by RoomClearController; this component renders once per run. On touch (docs/UI_ART.md
+ * ROOM_CLEAR_UI binding written by RoomClearController; this component renders once per run. The tally is RichText
+ * (every part escaped by roomClearTallyText; docs/FORTUNE.md FO7: a Horde room's last segment in `pact.horde`, the row
+ * scaled by its slam). On touch (docs/UI_ART.md
  * "Phones") it hangs in the touch strip's boss slot and the chip flies to the strip's score.
  */
 export function RoomClearStamp() {
@@ -92,9 +94,11 @@ export function RoomClearStamp() {
 					TextStrokeColor3={role("background")}
 					TextTransparency={UI.tallyTransparency.binding}
 					TextStrokeTransparency={UI.tallyTransparency.binding}
+					RichText={true}
 					Text={UI.tallyText.binding}
 				>
 					<uitextsizeconstraint MaxTextSize={ROOM_CLEAR_VIEW.tallyText} />
+					<uiscale Scale={UI.tallyScale.binding} />
 				</textlabel>
 			</frame>
 			<textlabel

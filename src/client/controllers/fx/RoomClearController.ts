@@ -26,6 +26,7 @@ import {
 	roomClearTallyText,
 	type RoomClearStr,
 } from "shared/view/hud";
+import { PACTS_VIEW } from "shared/view/pacts";
 import { AudioController } from "../audio/AudioController";
 import { SimController } from "../game/SimController";
 import { ThemeController } from "../game/ThemeController";
@@ -62,6 +63,8 @@ export class RoomClearController implements OnStart {
 	private readonly watch = new StateWatch();
 	private readonly shownHandlers = new Array<ShownScoreHandler>();
 	private jingleDropped = false;
+	private hexPack: unknown;
+	private hex = "#ffffff";
 
 	constructor(
 		private readonly sim: SimController,
@@ -169,6 +172,18 @@ export class RoomClearController implements OnStart {
 		if (look.ticks > 0) this.audio.play(SFX.scoreTick, 1);
 		if (look.chipsStarted > 0 && jingle) this.audio.play(SFX.roomClear, ROOM_CLEAR.chip.jingleVolume);
 		if (look.bonusLanded > 0) this.audio.play(SFX.scoreLand, 1);
+		// docs/FORTUNE.md FO7: the Horde segment slams in (falls back to the bonus landing while silent).
+		if (look.hordeSlammed) this.audio.play(SFX.hordeDouble, 1);
+	}
+
+	/** `#rrggbb` of the Horde segment's colour (PACTS_VIEW.horde.popRole, `pact.horde`), cached per pack. */
+	private hordeHex(): string {
+		const pack = this.theme.getPack();
+		if (this.hexPack !== pack) {
+			this.hexPack = pack;
+			this.hex = `#${pack.color(PACTS_VIEW.horde.popRole).ToHex()}`;
+		}
+		return this.hex;
 	}
 
 	private write(look: Readonly<RoomClearLook>, shown: number): void {
@@ -181,8 +196,9 @@ export class RoomClearController implements OnStart {
 			UI.stampScale.set(look.stampScale);
 			UI.stampTransparency.set(look.stampTransparency);
 			UI.shineOffset.set(look.shineOffset);
-			UI.tallyText.set(roomClearTallyText(look, s));
+			UI.tallyText.set(roomClearTallyText(look, s, this.hordeHex()));
 			UI.tallyTransparency.set(look.tallyTransparency);
+			UI.tallyScale.set(look.tallyScale);
 		}
 		UI.flyProgress.set(look.flyProgress);
 		if (look.flyProgress >= 0) UI.flyText.set(s(ROOM_CLEAR_STRINGS.fly, { points: look.flyPoints }));

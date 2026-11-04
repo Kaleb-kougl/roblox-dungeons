@@ -7,6 +7,7 @@ import { DAILY_RANK, HUD_VIEW, PROGRESSION_STRINGS, PROGRESSION_VIEW, TOUCH_STRI
 import { useHeadshot } from "./headshots";
 import { Panel, Row, Text } from "./primitives";
 import { screenSkin } from "shared/view/menu";
+import { pactHintText, pactRole } from "shared/view/pacts";
 
 const HALF = 0.5;
 const FULL_ROUND = new UDim(1, 0);
@@ -47,11 +48,20 @@ function HeadshotToast(props: { readonly order: number; readonly userId: number;
 }
 
 /**
+ * The shrine hint's line: on a pact altar (docs/FORTUNE.md FO7: `pact` a PactKind) the pact's title and accept line
+ * (the title alone on touch, where the shrine button reads Accept), else the classic curse shrine's line.
+ */
+function shrineHintText(pact: number, touch: boolean, key: string): string {
+	if (pact >= 0) return pactHintText(pact, touch ? undefined : key, str);
+	return touch ? str(TOUCH_STRINGS.hintShrine) : str(PROGRESSION_STRINGS.shrineHint, { key });
+}
+
+/**
  * Top centre, M2 progression: the toasts of the last few seconds (boon taken, relic found, curse accepted, Second
  * Wind, Vampire Fang, a boost picked up (`{name}: {desc}`), with builds an evolution or a duo taken; the tutorial's
  * callouts; a Daily friend passed, led by their headshot: docs/DAILY.md DS10) and, while the player stands in an
- * unused curse shrine's zone, the accept hint. Item names are theme strings themselves (`<id>.name`); a player's
- * name comes in the toast's literal `args`.
+ * unused curse shrine's zone, the accept hint (on a pact altar the pact's own line, shrineHintText). Item names are
+ * theme strings themselves (`<id>.name`); a player's name comes in the toast's literal `args`.
  */
 export function ToastPanel() {
 	const toasts = useSelector(selectToasts);
@@ -88,13 +98,13 @@ export function ToastPanel() {
 					fill={true}
 					order={toasts.size() + 1}
 					size={HUD_VIEW.smallText}
-					color="uiMana"
+					color={s.shrinePact >= 0 ? pactRole(s.shrinePact) : "uiMana"}
 					align={Enum.TextXAlignment.Center}
-					text={
-						device === "touch"
-							? str(TOUCH_STRINGS.hintShrine)
-							: str(PROGRESSION_STRINGS.shrineHint, { key: shrineHint(bindings, str)[keyDevice(device)] })
-					}
+					text={shrineHintText(
+						s.shrinePact,
+						device === "touch",
+						shrineHint(bindings, str)[keyDevice(device)],
+					)}
 				/>
 			) : undefined}
 		</Panel>

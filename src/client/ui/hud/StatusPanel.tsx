@@ -3,7 +3,8 @@ import { useSelector } from "@rbxts/react-reflex";
 import { selectSnapshot } from "client/store";
 import { role, str, themePack } from "client/ui/theme";
 import type { ThemePack } from "shared/theme";
-import { BOOST_VIEW } from "shared/view/boosts";
+import { HORDE_CHIP, hordeChipWidth } from "shared/view/pacts";
+import { BOOST_VIEW, type BoostHudEntry } from "shared/view/boosts";
 import {
 	HUD_STRINGS,
 	HUD_VIEW,
@@ -13,10 +14,12 @@ import {
 	pipArtSlot,
 	skinFor,
 	skinHasOf,
+	statusRowMaxWidth,
 	type HudPipKind,
 	type SkinHas,
 } from "shared/view/hud";
-import { BoostRow } from "./BoostRow";
+import { BoostRow, boostCellWidth } from "./BoostRow";
+import { HordeChip } from "./HordeChip";
 import { ArtImage, Panel, Pip, Row, Text, type PipArtProps } from "./primitives";
 import { RunItems } from "./RunItems";
 import { GhostHeart, HighlightRing } from "./TutorialFx";
@@ -131,6 +134,27 @@ export function aegisPips(count: number, after: number, skin: StatusSkin | undef
 	return out;
 }
 
+/**
+ * The boost row while the Pact of the Horde is armed (docs/FORTUNE.md FO7): the Horde chip, then the running boosts in
+ * what is left of the row (shared/view/pacts hordeChipWidth: one boost cell beside the chip; more boosts wrap under
+ * it), so the chip shares the boost row's line instead of adding a panel or a row of its own.
+ */
+function HordeBoostRow(props: { order: number; boosts: ReadonlyArray<BoostHudEntry>; highlight?: boolean }) {
+	const cell = boostCellWidth(BOOST_VIEW);
+	const chipW = hordeChipWidth(statusRowMaxWidth(), cell, HUD_VIEW.gap);
+	return (
+		<Row order={props.order}>
+			<HordeChip order={1} width={chipW} height={BOOST_VIEW.iconSize} textSize={HORDE_CHIP.textSize} />
+			<BoostRow
+				order={2}
+				boosts={props.boosts}
+				highlight={props.highlight}
+				maxWidth={math.max(cell, statusRowMaxWidth() - chipW - HUD_VIEW.gap)}
+			/>
+		</Row>
+	);
+}
+
 export interface StatusPanelProps {
 	/** The tutorial rings the hearts row or the flask row (TutorialView.highlight). */
 	readonly highlight?: "hearts" | "flask";
@@ -144,7 +168,8 @@ export interface StatusPanelProps {
  * Top left (web PlayerHud): hearts (full / half / empty) with armor pips, flask charges and Ember pips, each row
  * labelled from the theme string table (labels in a column of HUD_VIEW.statusLabelWidth so the rows line up); with
  * boost drops (docs/BOOSTS.md B7) the Aegis pip after the armor pips (its own colour, BOOST_VIEW.aegisPipRole) and the
- * running boosts (BoostRow); on an unscored endless run a line with the floor and Depth (a scored run shows it under
+ * running boosts (BoostRow; while the Pact of the Horde is armed, docs/FORTUNE.md FO7, the Horde chip leads the row:
+ * HordeBoostRow); on an unscored endless run a line with the floor and Depth (a scored run shows it under
  * the score, docs/HUD_LAYOUT.md H4); the owned boons, relics and curses (M2, RunItems). Reads only the ~10 Hz
  * snapshot. In the tutorial: the highlight ring on the hearts or the flask row or the boost row, and the ghost half
  * heart after a harmless hit. With the UI art (docs/UI_ART.md UA10) hearts, potions, candles and chips replace the
@@ -183,7 +208,11 @@ export function StatusPanel(props: StatusPanelProps) {
 				<Text order={0} width={HUD_VIEW.statusLabelWidth} color="uiTextDim" text={str(HUD_STRINGS.ember)} />
 				{pips(s.embers, s.emberMax, "ember", true, "ember", skin)}
 			</Row>
-			<BoostRow order={4} boosts={s.boosts} highlight={props.boostsHighlight} />
+			{s.hordeArmed ? (
+				<HordeBoostRow order={4} boosts={s.boosts} highlight={props.boostsHighlight} />
+			) : (
+				<BoostRow order={4} boosts={s.boosts} highlight={props.boostsHighlight} />
+			)}
 			{s.floor > 0 && !s.scoring ? (
 				<Text order={5} color="uiText" text={str(HUD_STRINGS.floor, { floor: s.floor, depth: s.depth })} />
 			) : undefined}
