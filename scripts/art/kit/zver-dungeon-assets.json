@@ -1,0 +1,28 @@
+{
+	"$comment": "Pieces of the Dungeon Assets Pack by zver.3d (v1.0.0, free for games, credit \"zver.3d\" asked; THIRD_PARTY_NOTICES.md) for scripts/art/kit/render_kit.py, from the .glb that scripts/art/kit/zver_to_glb.py builds (art/vendor/zver-dungeon-assets/zver_dungeon_assets.glb: the pack's FBX x 100, so 100 glb units are one FBX unit). The reading area of library rooms, at world scale: unitsPerTile 220 (2.2 FBX units a tile, matched on the barrel: the pack's 1.305-unit barrel is the game's 5/8-tile one at ~2.09), so the table (206 x 440 x 125) fills its 2 x 1 cells (0.94 x 2.0 tiles, 0.57 tall) and the chair (94 x 77 x 160) stands on one cell. The table lies along X (rotZ 90, _x) and along Z (rotZ 0, _z), dressed with the fabric stack (halved by zver_to_glb.py: a pile of pages) and the round candlestick moved onto its top (z 125), pivot its footprint's centre. The chair faces +X / +Z / -X / -Z (rotZ 0 / 270 / 180 / 90: its back points the other way), pivot its cell's centre under the seat (pivotAt: the legs' centre, the back leaning 0.17 tiles past it). sunSide: the X pieces (table_x, chair_px, chair_nx) take the mirrored sun, so the faces the camera sees on them (+X: the px chair's front, the nx chair's back) are lit like the Z pieces' +Z faces; a reading area along X is the mirror image of one along Z.",
+	"grade": { "saturation": 0.75, "brightness": 0.85, "contrast": 1.25, "tint": [1.06, 0.97, 0.92] },
+	"pieces": {
+		"table": {
+			"objects": ["Table", "StackOfFabrics", "RoundCandlestick"],
+			"moves": { "StackOfFabrics": [10, 25, 125], "RoundCandlestick": [-35, -140, 125] },
+			"az": [-45, -45],
+			"rotZ": [90, 0],
+			"sunSide": [-1, 1],
+			"fit": "world",
+			"unitsPerTile": 220,
+			"pivotOut": true,
+			"files": ["table_x.png", "table_z.png"]
+		},
+		"chair": {
+			"objects": ["Chair"],
+			"pivotAt": [8.7, 0],
+			"az": [-45, -45, -45, -45],
+			"rotZ": [0, 270, 180, 90],
+			"sunSide": [-1, 1, -1, 1],
+			"fit": "world",
+			"unitsPerTile": 220,
+			"pivotOut": true,
+			"files": ["chair_px.png", "chair_pz.png", "chair_nx.png", "chair_nz.png"]
+		}
+	}
+}

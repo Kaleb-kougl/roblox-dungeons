@@ -20,6 +20,11 @@
 // Bookcases and the library theme (docs/BOOKSHELVES.md) wall more cells (and move which rooms get which theme), so the
 // roster digests were re-recorded again (2026-11-03); spawn counts are unchanged, only tiles moved. Before:
 // floor 1 ea4f8dce / 1c8edb8c / bb22fed2 / adaa330b, floors 2-6 84ad548f / f10b3098 / 5c5135c9 / 1fc5f3e2 / c55e41c6.
+//
+// The libraries' reading area (a table and two chairs, docs/BOOKSHELVES.md) walls more cells and clears the solid
+// pillars under it and its ring, so the roster digests were re-recorded again (2026-11-03); spawn counts are unchanged,
+// only tiles moved. Before: floor 1 e0714c04 / 0c0e1ae4 / 6fadfaf6 / 167c1283, floors 2-6 4394ee58 / fc8dd040 /
+// e84e39b6 / 7c2da881 / 7cfc6fc7.
 import { describe, expect, it } from "@rbxts/jest-globals";
 import { imul } from "shared/jsmath";
 import { endlessFloorParams, endlessRoomSpawns, endlessRoster, generateDungeon, type ActorSpawn } from "shared/dungeon";
@@ -107,29 +112,29 @@ describe("endless room pool lock (EV5)", () => {
 		]);
 	});
 
-	it("seeded roster: floor 1, run seeds 1-200, party 1-4 (re-recorded for docs/NEW_ENEMIES.md NE7, solid decor, room themes and bookcases)", () => {
+	it("seeded roster: floor 1, run seeds 1-200, party 1-4 (re-recorded for docs/NEW_ENEMIES.md NE7, solid decor, room themes, bookcases and reading areas)", () => {
 		// Floor 1 still buys swarmers and one sniper or bruiser, but the reshuffled order picks the other one for many
 		// run seeds. Before NE7 (docs/DAILY.md DSD1): party 1 7384 spawns 1f360722, party 4 13885 spawns 47d57a83.
 		const got = digests(1, 1, 200, [1, 2, 3, 4], true);
 		for (const line of got) print(`[room pool lock] roster ${line}`);
 		expect(got).toEqual([
-			"floor 1 party 1: 7421 spawns, e0714c04",
-			"floor 1 party 2: 9724 spawns, 0c0e1ae4",
-			"floor 1 party 3: 11991 spawns, 6fadfaf6",
-			"floor 1 party 4: 13912 spawns, 167c1283",
+			"floor 1 party 1: 7421 spawns, a74a7abe",
+			"floor 1 party 2: 9724 spawns, 08a7ee67",
+			"floor 1 party 3: 11991 spawns, 05962732",
+			"floor 1 party 4: 13912 spawns, 2d0f27a6",
 		]);
 	});
 
-	it("seeded roster: floors 2-6, run seeds 1-40, solo (re-recorded for docs/NEW_ENEMIES.md NE7, solid decor, room themes and bookcases)", () => {
+	it("seeded roster: floors 2-6, run seeds 1-40, solo (re-recorded for docs/NEW_ENEMIES.md NE7, solid decor, room themes, bookcases and reading areas)", () => {
 		const got: string[] = [];
 		for (let floor = 2; floor <= 6; floor++) got.push(digests(floor, 1, 40, [1], true)[0]);
 		for (const line of got) print(`[room pool lock] roster ${line}`);
 		expect(got).toEqual([
-			"floor 2 party 1: 1734 spawns, 4394ee58",
-			"floor 3 party 1: 1699 spawns, fc8dd040",
-			"floor 4 party 1: 1929 spawns, e84e39b6",
-			"floor 5 party 1: 1920 spawns, 7c2da881",
-			"floor 6 party 1: 2471 spawns, 7cfc6fc7",
+			"floor 2 party 1: 1734 spawns, a5d6f0a0",
+			"floor 3 party 1: 1699 spawns, 79e8d2f7",
+			"floor 4 party 1: 1929 spawns, 27f499ad",
+			"floor 5 party 1: 1920 spawns, 4d99fd04",
+			"floor 6 party 1: 2471 spawns, 7f0114b5",
 		]);
 	});
 });

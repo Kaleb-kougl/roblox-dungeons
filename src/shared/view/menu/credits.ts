@@ -44,6 +44,13 @@ export const CREDITS: ReadonlyArray<CreditEntry> = [
 		license: "CC BY 4.0 - creativecommons.org/licenses/by/4.0",
 		modified: true,
 	},
+	{
+		section: "models",
+		work: "Dungeon Assets Pack",
+		author: "zver.3d",
+		license: "Free for games; credit to zver.3d requested",
+		modified: true,
+	},
 	{ section: "audio", work: "Ninja Adventure (sound and music)", author: "AAA", license: "CC0" },
 	{ section: "audio", work: "Glass breaking", author: "DRAGON-STUDIO (Pixabay)" },
 	{ section: "audio", work: "Lightning strike", author: "DRAGON-STUDIO (Pixabay)" },

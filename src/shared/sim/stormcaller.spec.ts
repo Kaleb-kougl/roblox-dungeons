@@ -670,6 +670,8 @@ describe("stormcaller: strikes on real endless floors", () => {
 		// the "co-op (2)" case above). Before: 2/1/08f85cd2, 6/0/5cfa0ffb.
 		// Re-recorded for bookcases and the library theme (docs/BOOKSHELVES.md): floor 3 lays out differently again;
 		// run 4 casts 2 strikes (1 skipped) and run 23's co-op scene casts 6 again. Before: 3/0/49e332ac, 0/0/7c9c4b5e.
-		expect(pins).toEqual(["2/1/d5a796ef", "6/0/ae2b2503"]); // check-asset-ids: allow (state hashes)
+		// Re-recorded for the libraries' reading area (docs/BOOKSHELVES.md): a table and chairs move run 23's floor 3
+		// (strike and skip counts unchanged; run 4 untouched). Before: 6/0/ae2b2503.
+		expect(pins).toEqual(["2/1/d5a796ef", "6/0/07335c64"]); // check-asset-ids: allow (state hashes)
 	});
 });

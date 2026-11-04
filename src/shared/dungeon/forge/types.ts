@@ -264,5 +264,11 @@ export interface Dungeon {
 	carpets?: DecorCarpet[];
 	/** Each room's dressing theme by room id (ForgeParams.solidDecor); absent or empty when off. */
 	roomThemes?: RoomTheme[];
+	/**
+	 * Solid pillar cells a library's reading area took (ForgeParams.solidDecor, docs/BOOKSHELVES.md): FLOOR again, or
+	 * under one of its pieces. Their `pillar` props stay in `props` (so every prop index is the option-off floor's); the
+	 * decor plan draws nothing for them. Absent or empty when off.
+	 */
+	clearedPillars?: Array<{ x: number; y: number }>;
 	stats: DungeonStats;
 }

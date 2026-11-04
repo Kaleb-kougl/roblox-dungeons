@@ -33,7 +33,8 @@
  *              R6, 2026-11-02; docs/VOID_DECOR.md VDD10).
  *   pillars    D2: a solid pillar (an endless floor's `pillar` prop on a WALL cell) is a real wall: it never moves
  *              to a far wall and is never a floor prop. It gets the low `columnBroken` stump on its own top where the
- *              footprint rule allows (with the stump's box), else only the wall material (dropped here).
+ *              footprint rule allows (with the stump's box), else only the wall material (dropped here). A pillar a
+ *              library's reading area cleared (Dungeon.clearedPillars, docs/BOOKSHELVES.md) draws nothing at all.
  *   flat       debris, bones, crack, moss, roots (moved onto the floor cell its breach faces), ring, bossCrystal,
  *              shrineCrystal lie where the Forge put them, on FLOOR, one per cell, at most profile.flatShare (never
  *              above MAX_DECOR_SHARE) of their room's floor tiles (corridors count as one group); a full room keeps
@@ -66,7 +67,8 @@
  *              spacingTiles from every wall piece), lowest cell hash first; source "dressing".
  *   solid      docs/DECOR.md "Solid decor", after the wall pieces (before the void): Dungeon.solidDecor's tombs (2 x 1) and candle
  *              stands stand on their own WALL cells at floor level (source "solid", layer low, a fade box like every
- *              standing piece); obstacles, so the footprint rule does not apply. A tomb's variant is its axis.
+ *              standing piece); obstacles, so the footprint rule does not apply. A tomb's variant is its axis, and so
+ *              is a reading area's table's (docs/BOOKSHELVES.md); a chair's is its facing (+X, +Z, -X, -Z).
  *   scatter    docs/DECOR.md "3D kits", appended after the void (so no earlier entry or fade box index moves), only
  *              for a DECOR_SCATTER kind the pack has art for (input.variants; absent: nothing): per room in index
  *              order, never the boss room, at least minRoomTiles of floor, roomShare of them by room hash, one flat
@@ -194,6 +196,11 @@ export const DECOR_BOX: Readonly<Record<StandingKind, DecorBoxPx>> = {
 	// the left of the pivot facing +X and 20.9 to the right facing +Z (w covers both facings, x 0), 43.1 above it (23.3)
 	// and 5.9 below (3.2)
 	bookcase: { w: 23, h: 24, below: 4 },
+	// a library's reading area (docs/BOOKSHELVES.md), measured on the built outlines (render px = art px / 1.85), the
+	// worst case over the facings: the table's box at both ends of its 2 x 1 footprint, hulled (as the tomb's), the
+	// chair's at its cell
+	table: { w: 14, h: 10, below: 2 },
+	chair: { w: 11, h: 11, below: 4 },
 };
 
 /** Tall Forge pieces in placement priority (highest first). */
@@ -242,7 +249,9 @@ export type StandingKind =
 	| "candelabrum"
 	| "throne"
 	| "statue"
-	| "bookcase";
+	| "bookcase"
+	| "table"
+	| "chair";
 
 /**
  * Where an entry comes from: a Forge prop, a Forge torch, R6 far-wall dressing, a solid pillar's stump, or a void set
@@ -726,9 +735,13 @@ export function planDecor(input: DecorPlanInput): DecorPlan {
 	};
 
 	// --- solid pillars and far walls --------------------------------------------------------------
+	/** Solid pillars a library's reading area cleared (docs/BOOKSHELVES.md): their props draw nothing. */
+	const clearedPillar = new Set<number>();
+	for (const c of d.clearedPillars ?? []) clearedPillar.add(c.y * W + c.x);
 	const solidPillar = new Set<number>();
 	for (const p of d.props)
-		if (p.kind === "pillar" && tileAt(d, p.x, p.y) === TileType.WALL) solidPillar.add(p.y * W + p.x);
+		if (p.kind === "pillar" && tileAt(d, p.x, p.y) === TileType.WALL && !clearedPillar.has(p.y * W + p.x))
+			solidPillar.add(p.y * W + p.x);
 	/** A wall cell that dresses: WALL, outside every room (so not a solid pillar or an interior wall). */
 	const outerWall = (gx: number, gy: number) =>
 		tileAt(d, gx, gy) === TileType.WALL && d.roomId[gy * W + gx] < 0 && !solidPillar.has(gy * W + gx);
@@ -869,6 +882,7 @@ export function planDecor(input: DecorPlanInput): DecorPlan {
 	d.props.forEach((p, index) => {
 		if (!STANDING.has(p.kind)) return;
 		if (p.kind === "pillar" && solidPillar.has(p.y * W + p.x)) return; // step 3
+		if (p.kind === "pillar" && clearedPillar.has(p.y * W + p.x)) return; // gone (a reading area's)
 		tall.push({ index, kind: p.kind as StandingKind, rank: TALL_PRIORITY.indexOf(p.kind as StandingKind) });
 	});
 	stableSort(tall, (a, b) => a.rank - b.rank);
@@ -1255,12 +1269,17 @@ export function planDecor(input: DecorPlanInput): DecorPlan {
 		});
 		const hash = decorHash(seed, cellKey(piece.x, piece.y), DECOR_SALT.variant);
 		const count = input.variants !== undefined ? input.variants(kind) : 0;
-		// a tomb's variants: 1 along X, 2 along Z; a throne's / statue's / bookcase's: 1 facing +X, 2 facing +Z (when the
-		// pack has both)
+		// a tomb's / table's variants: 1 along X, 2 along Z; a throne's / statue's / bookcase's: 1 facing +X, 2 facing +Z;
+		// a chair's: 1 facing +X, 2 +Z, 3 -X, 4 -Z (each only when the pack has them all)
 		let axisVariant = -1;
-		if (kind === "tomb") axisVariant = piece.w > 1 ? 0 : 1;
+		let axisVariants = 2;
+		if (kind === "tomb" || kind === "table") axisVariant = piece.w > 1 ? 0 : 1;
 		else if (rect && (kind === "throne" || kind === "statue")) axisVariant = piece.fx !== 0 ? 0 : 1;
 		else if (kind === "bookcase") axisVariant = piece.fx !== 0 ? 0 : 1;
+		else if (kind === "chair") {
+			axisVariants = 4;
+			axisVariant = piece.fx > 0 ? 0 : piece.fz > 0 ? 1 : piece.fx < 0 ? 2 : 3;
+		}
 		const light = LIGHTS.has(kind);
 		entries.push({
 			kind,
@@ -1278,7 +1297,7 @@ export function planDecor(input: DecorPlanInput): DecorPlan {
 			faceZ: piece.fz,
 			roomId: piece.room,
 			hash,
-			variant: axisVariant >= 0 && count > 1 ? axisVariant : variantOf(input, kind, hash),
+			variant: axisVariant >= 0 && count >= axisVariants ? axisVariant : variantOf(input, kind, hash),
 			fade: fadeBoxes.size() - 1,
 			light,
 			lit: light,
