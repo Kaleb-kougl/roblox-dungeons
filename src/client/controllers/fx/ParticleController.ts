@@ -4,7 +4,7 @@ import { RunService, Workspace } from "@rbxts/services";
 import { CAMERA_PITCH_DEG } from "shared/config";
 import type { JuiceSettings } from "shared/settings";
 import { IMP, MAX_ACTORS, archetypeAt, archetypeIds, archetypeIndex, partySize, playerAt } from "shared/sim";
-import { BOOST_KINDS, BREAKABLE_KINDS, pelletId, type ColorRole } from "shared/theme";
+import { BOOST_KINDS, BREAKABLE_KINDS, TREASURE_FLOOR_ROLES, pelletId, type ColorRole } from "shared/theme";
 import { BOOST_VIEW, type BoostBurstView } from "shared/view/boosts";
 import {
 	BLINK_VIEW,
@@ -33,12 +33,14 @@ import {
 	RING_SEGMENTS,
 	ROOM_CLEAR,
 	burstSeed,
+	effectiveParticles,
 	particleColorRole,
 	type ChipBurst,
 	type NearMissFrame,
 	type ParticleWriter,
 } from "shared/view/fx";
 import { PELLETS_VIEW, PelletFlyIns, type PelletPowerTaken } from "shared/view/pellets";
+import { TREASURE_VIEW } from "shared/view/treasure";
 import { SimController } from "../game/SimController";
 import { ThemeController } from "../game/ThemeController";
 import { renderPart } from "../render/placeholders";
@@ -93,6 +95,10 @@ interface ParticlePart {
  * cube flying into the picker (shared/view/pellets PelletFlyIns, drawn through the same parts after the bursts) and
  * spawns one ring from the picker, both in pellet.power, appended to the palette after the loot fizzle's.
  *
+ * A chest's pop (docs/TREASURE.md TR7; called by TreasureRenderController): `treasureBurst`, one ring and a chip burst
+ * (TREASURE_VIEW.open.ring / burst) in the opened tier's floor role (treasure.*, appended after pellet.power); nothing
+ * with Particles off (the ring too).
+ *
  * Bomber detonations (docs/NEW_ENEMIES.md NE8; shared/view DetonationWatch, a per-frame diff): DETONATION_VIEW.burst
  * chips in the Bomber's colour where it blew up (on top of its death particles); a fizzle gets the death particles only.
  * Budget: at most particleBudget(settings) live particles (128 / 320 / 512; one level lower under reducedMotion) plus
@@ -136,6 +142,9 @@ export class ParticleController implements OnStart, ParticleWriter {
 	/** The power pellet's fly-in cubes and ring (docs/PELLETS.md PL7): pellet.power's palette index. */
 	private readonly flyIns = new PelletFlyIns();
 	private pelletPowerColor = PAL_SPARK;
+	/** A chest's pop (docs/TREASURE.md TR7): treasure.common's palette index (rare / legendary follow), and the burst. */
+	private treasureBase = PAL_SPARK;
+	private treasureShape: ChipBurst | undefined;
 	private readonly moveParts = new Array<BasePart>();
 	private readonly moveCFrames = new Array<CFrame>();
 	private folder: Folder | undefined;
@@ -194,6 +203,9 @@ export class ParticleController implements OnStart, ParticleWriter {
 		this.fizzleBurst = chipBurstOf(BREAKABLE_LOOT_VIEW.fizzleBurst);
 		this.pelletPowerColor = this.palette.size();
 		this.palette.push(pack.color(pelletId("power")));
+		this.treasureBase = this.palette.size();
+		for (const r of TREASURE_FLOOR_ROLES) this.palette.push(pack.color(r));
+		this.treasureShape = chipBurstOf(TREASURE_VIEW.open.burst);
 
 		this.nearMiss.onFrame((frame, settings) => this.nearMissFrame(frame, settings));
 		const [impOk, impKind] = pcall(() => archetypeIndex(IMP.id));
@@ -298,6 +310,22 @@ export class ParticleController implements OnStart, ParticleWriter {
 			!reduced,
 			RING_SEGMENTS,
 		);
+	}
+
+	/**
+	 * A chest popped open at sim (x, z) (docs/TREASURE.md TR7): a ring (fixed radius under reduced motion) and
+	 * TREASURE_VIEW.open.burst's chips, both in tier `tier`'s floor colour. Nothing with Particles off.
+	 */
+	treasureBurst(x: number, z: number, tier: number, seed: number): void {
+		const shape = this.treasureShape;
+		const settings = this.fx.settings();
+		if (shape === undefined || tier < 0 || tier >= TREASURE_FLOOR_ROLES.size()) return;
+		if (effectiveParticles(settings) === "off") return;
+		const color = this.treasureBase + tier;
+		const r = TREASURE_VIEW.open.ring;
+		const reduced = settings.reducedMotion;
+		this.system.rings.spawn(x, z, r.r0Tiles, r.r1Tiles, r.lifeSec, color, !reduced, RING_SEGMENTS);
+		this.system.chips(x, z, color, shape, seed, settings);
 	}
 
 	/** The room clear spark ring at sim (x, z) (docs/ROOM_CLEAR.md RC5): uiAccent, or ember for PERFECT. */

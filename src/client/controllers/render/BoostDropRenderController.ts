@@ -58,9 +58,11 @@ import {
 	dropBobStuds,
 	dropPopScale,
 	dropSecondsLeft,
+	chestLandingAt,
 	pieceLandingAt,
 } from "shared/view/boosts";
 import { burstSeed, motionScale } from "shared/view/fx";
+import { chestHopAge } from "shared/view/treasure";
 import { SimController } from "../game/SimController";
 import { ThemeController } from "../game/ThemeController";
 import { FxTrackerController } from "../fx/FxTrackerController";
@@ -156,6 +158,8 @@ interface DropView {
 	readonly body: DropBody;
 	/** It came out of a broken breakable (docs/BREAKABLE_DROPS.md BL6): it hops in instead of popping. */
 	readonly hopped: boolean;
+	/** It came out of an opened chest (docs/TREASURE.md TR7): hidden until the lid pops, then the same hop. */
+	readonly chest: boolean;
 }
 
 /** A pickup flash (BA-P4): a halo flash and the glint played once, at the pickup point. Pooled. */
@@ -202,7 +206,9 @@ interface Flash {
  * (BREAKABLE_LOOT_VIEW.hopFromTiles) to the floor in an arc hopTiles high over hopSeconds (lootHopStuds, sim time; none
  * under reduced motion), its bob and halo pulse counted from the touch-down (lootSettledAgeSec). A loaded piece lost on
  * a full floor (`lostLoot`) leaves a small grey fizzle at the piece (ParticleController.lootFizzle). Sounds are not played
- * here: AudioController maps the same events (shared/view/audio cues.ts). All moves in one workspace:BulkMoveTo per
+ * here: AudioController maps the same events (shared/view/audio cues.ts). Treasure rooms (docs/TREASURE.md TR7): a
+ * landing out of an opened chest (`fromChest`, chestLandingAt) stays hidden inside it until open.hopDelaySec after its
+ * landing tick (the lid's pop, shared/view/treasure chestHopAge), then takes the same hop. All moves in one workspace:BulkMoveTo per
  * frame (one CFrame per part, the last written). Read-only on the sim.
  */
 @Controller({})
@@ -290,7 +296,13 @@ export class BoostDropRenderController implements OnStart {
 		for (const slot of t.cleared) this.release(slot);
 		for (const slot of t.landed) {
 			const g = ground[slot];
-			this.attach(slot, g, g !== undefined && pieceLandingAt(ev, slot, g.spawnTick) !== undefined);
+			const chest = g !== undefined && chestLandingAt(ev, slot, g.spawnTick) !== undefined;
+			this.attach(
+				slot,
+				g,
+				chest || (g !== undefined && pieceLandingAt(ev, slot, g.spawnTick) !== undefined),
+				chest,
+			);
 		}
 
 		for (const c of ev.collected) {
@@ -340,7 +352,14 @@ export class BoostDropRenderController implements OnStart {
 		motion: number,
 	): void {
 		const body = view.body;
-		const age = dropAgeSec(tick, alpha, g.spawnTick);
+		const landed = dropAgeSec(tick, alpha, g.spawnTick);
+		// Out of a chest (docs/TREASURE.md TR7): inside it until the lid pops (chestHopAge), then the BL hop from there.
+		const age = view.chest ? chestHopAge(landed) : landed;
+		if (age === undefined) {
+			this.setTransparency(body, HIDDEN);
+			this.hideLayers(body);
+			return;
+		}
 		const settled = lootSettledAgeSec(age, view.hopped);
 		const lift = dropBobStuds(settled, motion) + (view.hopped ? lootHopStuds(age, motion) : 0);
 		const blink = boostBlinkTransparency(dropSecondsLeft(g.ticksLeft), motion);
@@ -389,12 +408,12 @@ export class BoostDropRenderController implements OnStart {
 		return look !== undefined && look.board !== undefined;
 	}
 
-	private attach(slot: number, g: Readonly<GroundDrop> | undefined, hopped: boolean): void {
+	private attach(slot: number, g: Readonly<GroundDrop> | undefined, hopped: boolean, chest: boolean): void {
 		if (g === undefined) return;
 		if (this.views.has(slot)) this.release(slot);
 		const body = this.acquire(g.kind);
 		const rest = new CFrame(studsX(g.x), floorStudsY() + BOOST_VIEW.liftStuds, studsZ(g.z));
-		this.views.set(slot, { slot, rest, body, hopped });
+		this.views.set(slot, { slot, rest, body, hopped, chest });
 		body.sprite?.update(IDLE, 0, 0, this.basis, 0);
 		this.place(body, rest);
 		this.placeLayers(body, new CFrame(studsX(g.x), floorStudsY(), studsZ(g.z)), rest);
@@ -548,6 +567,15 @@ export class BoostDropRenderController implements OnStart {
 			setHaloTransparency(layers.halo, HIDDEN);
 			if (layers.beam !== undefined) setBeamTransparency(layers.beam, HIDDEN);
 		}
+	}
+
+	/** Every art layer of a body hidden for this frame (a chest's boost still inside the chest). */
+	private hideLayers(body: DropBody): void {
+		const layers = body.layers;
+		if (layers === undefined) return;
+		setHaloTransparency(layers.halo, HIDDEN);
+		if (layers.beam !== undefined) setBeamTransparency(layers.beam, HIDDEN);
+		if (layers.glint !== undefined) setGlintTransparency(layers.glint, HIDDEN);
 	}
 
 	/** The landing pop's scale (placeholder pieces and the image billboard with its glint; a sprite set keeps its size). */

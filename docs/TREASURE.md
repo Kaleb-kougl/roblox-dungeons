@@ -12,7 +12,9 @@ Status (2026-11-03): **TR0 done (plan checked against the code, below). TR1 done
 option `EndlessFloorOptions.vaults`, off everywhere until TR5; "As built (TR1)" below). TR2 done (the sim state, hash
 group and chest piece behind `SimConfig.treasure`, unset everywhere until TR5; "As built (TR2)"). TR3 done (the lock:
 arm, crack, unlock; "As built (TR3)"). TR4 done (the open and its rewards; "As built (TR4)"). TR5 done (every endless
-world has vaults and `SimConfig.treasure`, the dev override, the census; "As built (TR5)").** The owner (Kaleb)
+world has vaults and `SimConfig.treasure`, the dev override, the census; "As built (TR5)"). TR6 done (theme; "As
+built (TR6)"). TR7 done (the world view: chest, cage, sparkle, plate, crack / unlock / open timelines, cards, freeze and
+shake; presentation only; "As built (TR7)").** The owner (Kaleb)
 confirmed every decision (TRD1-TRD14) on 2026-11-03. This file is the project doc `claude/treasure-rooms-plan.md` with
 every "(assumed; TR0 verifies)" item checked against branch `treasure-rooms` @ `82f0ff9` (a snapshot of `main` @
 `288a33b`, which already has Pellets, solid decor, room themes and the new enemies merged). Sibling plans: BO
@@ -823,6 +825,94 @@ chest's "bullet" (`enemyBullet` on it, >= 3:1). Every check passes in every bund
 `contract.luau` 186 -> **185** (+1 `TREASURE`, -2 `FX_IDS`' temporaries); `validate.luau` **196** unchanged (191 `local`
 lines; no new name: the prefix string and the inline check only).
 
+## As built (TR7, 2026-11-04)
+
+Presentation only (no sim, dungeon, lockstep, hash, replay, fixture or score change). Files:
+
+- `src/shared/view/treasure/` (new sub-barrel; never imports the `shared/view/hud` barrel, which imports `shared/play`,
+  which imports this one): `config.ts` (`TREASURE_VIEW`: every tunable below), `events.ts` (`TreasureFrameEvents` /
+  `TreasureFrameSource`, `NO_TREASURE_EVENTS`, `vaultOnFloor(state)`, `vaultHits(state)`, `crackedFromTier`),
+  `timeline.ts` (every animation as a pure function of sim time), `vault.ts` (`TreasureViewTracker` -> one mutable
+  `TreasureLook` per frame, with its edges), `text.ts` (`TREASURE_TEXT_KEYS`, `vaultClock`, `ticksToTenths`,
+  `lockToastText`, `lockPlateText`, `platePips`, `unlockLineText`, `nearMissText`, `keptText`, `openLineText`,
+  `tierNameText`, `lockNameText`, `rewardCardTexts`, `grantOf`, `relicNameKey`, `treasureDebugText`), `layout.ts`
+  (`forwardPoint`, `cageBarOffsets`, `floorTextBoxAt` / `FloorTextBox`, `floorTextCanvas`, `pipCentres`). Specs:
+  `timeline.spec.ts`, `vault.spec.ts`, `text.spec.ts`, `layout.spec.ts` (51 tests).
+- `src/shared/play/liveRun.ts`, `src/shared/lockstep/client.ts`: `RunView.treasure` (reset per frame, collected after
+  every tick). Spec: new `src/shared/play/treasureView.spec.ts` (the real sim through LiveRun and a 2-player
+  LockstepClient: a forced SWIFT Rare vault on seed 4242 floor 2 armed, cracked, cleared and opened; each event once, on
+  the tick the state shows it; the look and the pop edge (once) follow; the open's landed boosts are `fromChest`).
+- `src/shared/view/breakables.ts`: `isChestPiece(kind)`; `BreakableTracker` never lists a chest slot as hit / broken /
+  restored (it stays in the layout). `BreakableRenderController` gives a chest slot no view at all (no body, glint,
+  debris; today's barrel look is gone). Spec case in `view/breakables.spec.ts`.
+- `src/shared/view/boosts/events.ts`: `BoostEventSource.fromChest` (the open's landings, `DropsEvents.fromChest`, NOT in
+  `fromPiece`, so the breakable loot sound never plays for them) and `chestLandingAt`. `BoostDropRenderController`
+  keeps a chest's boost hidden until `open.hopDelaySec` (0.3 s) after its landing tick (`chestHopAge`), then the BL hop.
+- `src/shared/theme/core.ts`, `pack.ts`, `index.ts`: `ThemeCore.treasurePiece(id)` / `ThemePack.treasurePiece(id)`
+  (`TreasurePiece`: art or placeholder and colour; the open chest takes `treasure.chest`'s role), the pellet accessor's
+  pattern. No contract, validator or Luau-locals change.
+- `src/client/controllers/fx/ParticleController.ts`: `treasureBurst(x, z, tier, seed)` (one ring and
+  `open.burst`'s 24 bits + 6 sparks in the tier's floor role, `treasure.*` appended to the palette; nothing with
+  Particles off).
+- `src/client/controllers/render/TreasureRenderController.ts` (new; the header comment lists every piece).
+
+What the view does (times are sim seconds: pause and the hitstop hold them):
+
+| Moment | On screen |
+|---|---|
+| Sealed | The closed chest (art or the placeholder box, turned into the room), the cage (the placeholder's one bar repeated round the chest's footprint grown 0.25 studs, `cageBarOffsets` at the bar's `dash` spacing: 14 bars; art: one billboard), the sparkle (`decor.fx.loot`, else `decor.fx.glint`, tinted by `treasureFloorRole(tier)`; one pass every 3 s, Legendary every 1.5 s at 1.5x; no glint art: a self-lit Neon diamond, peaking during a pass). Ducks within 1.25 tiles of an enemy bullet (`lootGlintDucked`) |
+| Arm | The lock plate fades in over 0.15 s, 1.3 tiles in front of the chest: the lock's name over pips (UNTOUCHED: allowance + 1, the last outlined, spent ones dimmed) or the m:ss countdown (SWIFT: `ember` in the last 10 s, a 1 Hz pulse down to 0.45 in the last 5 s; colour only under reduced motion). The combo shout's construction and layer, at most 55 % opaque, `ShoutDuck` + `shoutDucked` over its 2.6 x 0.9 tile box grown by 1 tile |
+| Crack | The sparkle mixes to white (1 -> 0 over 0.18 s) and shows the lost tier until 0.09 s; the plate's body goes and 6 shards (`comboShardAt`, flight x3 px) fly in the lost tier's colour over 0.45 s (in place under reduced motion); the new tier's name (`boon.rarity.*`) rises 0.8 tiles up-screen and fades over 0.6 s (a floor line, same construction and duck) |
+| Unlock | At +0.6 s the bars sink (ease in) over 0.35 s, or fade under reduced motion; a kept lock's plate fades with them and its line (`treasure.unlocked` / `.spareTime` / `.spareHits`) shows 0.9 s; a cracked one stays quiet; the sparkle runs at 2x; once the bars are down the closed chest wobbles every 1.2 s (6 degrees, 2 cycles over 0.3 s; placeholder: a roll about its base, image art: the label's rotation, sprites: none; never under reduced motion) |
+| Open | The whole chest hops twice over 0.25 s (0.35 studs; the placeholder has no separate lid; none under reduced motion); at 0.25 s the pop (`TreasureLook.popEdge`, once): the open art, solo the 40 ms freeze (`hitstop.request`, so `freezeFrameOn`), the `stamp` nudge (`requestNudge`: Screen shake, solo and co-op), `treasureBurst`, and the column (Particles off: none) rising 5 tiles over 0.12 s, holding 0.35 s, fading 0.5 s, at most 65 % (`fx.treasure.column` upright and tinted when a pack has it, else a Neon block 0.9 tiles wide, 35 % toward white). From 0.3 s the view player's cards (`rewardCardTexts`: relic / bonus draft / boosts in the opened tier's UI role, then the party's points in `uiAccent`), staggered 0.06 s, rising 1 tile and fading by 1.6 s; from 0.6 s for 1.4 s the line under them (`Kept <tier>` in the UI role, or `So close: ...` in `uiTextDim`). Boosts hop out at 0.3 s |
+| Opened | The open chest stays, no sparkle, no cage |
+
+A vault the view meets mid-way (a spectator's first frame, a restart, a missed event) shows its state settled: no
+flash, shards, lines, column, cards or edges. A new vault (another room / slot / centre, the tick going back) forgets
+every time; a frame's events of another vault (a floor change) are ignored. Debug: `KV_TreasureLabel` (Workspace
+boolean, Studio or KV_Debug, off by default): `untouched legendary armed hits 0/0` / `swift rare cracked t=1234` over
+the chest (developer English).
+
+**For TR8:** `RunView.treasure` (`TreasureFrameSource`: `armed` {allowance, ticksLeft at the arm}, `cracked`
+{fromTier}, `unlocked` {kept, spare, missBy}, `opened` {opener, tier, startTier, lock, kept, missBy, spare, points,
+grants}, each with room / slot / tick / x / z / lock / tier) and `NO_TREASURE_EVENTS`; `lockToastText(str, lock,
+allowance, ticksLeft)` for the arm toast; `vaultOnFloor(state)` for the floor-reveal toast; `TreasureLook.crackEdge` /
+`unlockEdge` (the bars start: the rattle) / `popEdge` (the sting and jingle) if the cue mapper wants the view's timing
+rather than the tick's (an `unlockEdge` is 0.6 s after `unlocked`, a `popEdge` 0.25 s after `opened`); the tier's UI
+roles `treasureUiRole`. The open's landings are `boostEvents.fromChest` (today they still count in `dropped`, so
+`sfx.boost.drop` plays on the open tick; TR8 decides). `vaultMarkStyle` (minimap) is not written.
+
+Deviations (none touches an owner decision): the lid jolt moves the whole chest (no separate lid part or art); the
+sparkle has no cell phase (one vault per floor); the plate is visible only while ARMED (a cracked lock shows no plate,
+as the plan's "it shatters"); a sprite-set chest does not wobble; a chest's boosts are hidden 0.3 s after landing
+(the sim lands them on the open tick, before the view's pop).
+
+Verify (2026-11-04, this host): `npm run typecheck`, `npm run lint`, `npm run check:autolocalize`, `npm run
+check:assets` clean; `npm run build` and `npm run build:place` clean; `npm run test:only -- view/ play/ theme/
+lockstep/`: **166 suites, 2439 passed, 0 failed** (557 s).
+
+### Studio-only assumptions to check first
+
+1. The placeholder cage (14 bars, 0.25 studs, 3 studs tall round a 3.5 x 2.5 stud chest) reads as "closed" against
+   every biome wall and does not hide a bullet behind it (the bars are taller than the BREAKABLE_VIEW height cap).
+2. Sinking parts and an art cage's billboard moved below the floor are hidden by the floor slab (the sink relies on it;
+   the reduced-motion fade does not).
+3. The Neon diamond star (no glint art in the placeholder pack) and the tinted glint are visible at the far wall of a
+   2x room through the doorway, and the 1.25-tile duck hides them before a bullet passes over.
+4. The plate's SurfaceGui: `ClipsDescendants = false` lets the shards fly outside the plate's canvas; if Roblox clips
+   SurfaceGui content to the face anyway, the shards are cut at the plate's edge (then widen the plate or shrink
+   `crack.shardPxScale`).
+5. `UIStroke` on the pips inside a SurfaceGui draws at the canvas scale (3 px of 166 px canvas); check it is not lost
+   at the camera's distance.
+6. The chest placeholder faces into the room with `CFrame.lookAt` (the wedge's slope, the open lid, toward the room):
+   check the open wedge is not backwards.
+7. The cards are `AlwaysOnTop` BillboardGuis (score pops' style) 4 studs up: check they never cover the player when
+   they open the chest from the room side, on the smallest phone and at 70 % HUD.
+8. The 40 ms pop freeze and the boost hop delay (0.3 s) together: a boost under the opener's feet is picked up on the
+   tick after the open, before it is shown (the toast still says what was taken).
+9. A floor change on the frame of an open (walking into the stairwell at once) drops the cards (the tracker forgets
+   the vault): acceptable, but confirm nothing stays parked visibly.
+
 ## Implementation map (TR1-TR8)
 
 `npm run test:only` runs the compiled specs in `out/`: rebuild first (`npm run build`, or `npx rbxtsc` after the
@@ -1000,8 +1090,9 @@ Each step is a commit. Specs next to the code; `npm run verify` before each.
   roles if the report confirms the draft colours fail.) → Verify: contract / validator / `audio.spec.ts` / `hud.spec.ts`; Luau locals
   still under 200 on `out/`. → Done 2026-11-03: "As built (TR6)" (C2 confirmed, floor roles built; `contract.luau` /
   `validate.luau` 185 / 196).
-- [ ] **TR7. World view.** `TreasureRenderController`, the pure timelines, the cards, freeze and shake. → Verify:
-  headless specs for every timeline and text helper; `npm run build:place`.
+- [x] **TR7. World view.** `TreasureRenderController`, the pure timelines, the cards, freeze and shake. → Verify:
+  headless specs for every timeline and text helper; `npm run build:place`. → Done 2026-11-04: "As built (TR7)"
+  (presentation only; Studio check pending, the assumptions to check first listed there).
 - [ ] **TR8. HUD, minimap, audio.** Toasts, the minimap mark, the cue mapper, the recap summary export. → Verify: cue
   spec (tier pitch, jingle priority, fallbacks), minimap marker spec (colour by tier, hollow when opened, hidden until
   revealed).

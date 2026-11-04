@@ -39,6 +39,7 @@ import {
 	breakableShakeStuds,
 	debrisVariant,
 	degToRad,
+	isChestPiece,
 	floorImageOffset,
 	floorImageSize,
 	isoBasis,
@@ -173,6 +174,8 @@ const EMPTY_BOARD: SpriteBillboard = { w: 0, h: 0, offsetX: 0, offsetY: 0, offse
  * (lootGlintDucked), so it is never drawn over a bullet. It goes the frame the piece breaks (or its loot is released) and
  * with every new layout (floor change, restart, run end). Debug: KV_LootDebug (Workspace boolean, Studio or KV_Debug,
  * off by default) labels every loaded intact piece with its boost kind (lootDebugText, developer English).
+ *
+ * A vault's chest slot (isChestPiece, docs/TREASURE.md TR7) gets no view at all: TreasureRenderController draws it.
  *
  * Bodies are pooled per kind and reused across floors (parked far below when unused); debris decals belong to the
  * floor's Janitor (cleaned on every new layout and when the run ends). Static pieces are placed once; only shaking
@@ -351,6 +354,9 @@ export class BreakableRenderController implements OnStart {
 		this.resolveDebris(dungeon);
 		const t = this.tracker;
 		for (let slot = 0; slot < t.count(); slot++) {
+			// A vault's chest (docs/TREASURE.md TR7): TreasureRenderController draws it; no view here (so no hit, break,
+			// glint or debris either).
+			if (isChestPiece(t.kindAt(slot))) continue;
 			const [x, y, z] = breakableBaseStuds(t.cellX(slot), t.cellY(slot));
 			const view: PieceView = {
 				slot,
