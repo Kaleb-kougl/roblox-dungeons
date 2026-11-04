@@ -631,8 +631,8 @@ Decision log (deviations from `PLAN.md`):
   (`readingArea`, no rng draw); the solid pillars under it and its 2-tile ring are cleared (FLOOR again, listed in the
   new `Dungeon.clearedPillars`; `Dungeon.props` unchanged, the decor plan draws nothing for them). Decor kinds `table`
   / `chair` appended after `bookcase`. Art from the Dungeon Assets Pack by zver.3d (free, credit requested;
-  `scripts/art/kit/zver_to_glb.py`). `DAILY.ruleset` stays 6. Upload of the six `kit-table-*` / `kit-chair-*` PNGs
-  pending.
+  `scripts/art/kit/zver_to_glb.py`). `DAILY.ruleset` stays 6. The six `kit-table-*` / `kit-chair-*` PNGs uploaded
+  2026-11-04; Studio check pending.
 
 ## Commands
 

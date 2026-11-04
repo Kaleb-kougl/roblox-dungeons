@@ -94,6 +94,8 @@ import type { RobloxAssetId } from "../../types";
  * 6:20 PM, transcribed from an Asset Manager screenshot.
  * sfx-room-teamperfect (Success2 + Bonus/Gold1) and sfx-player-syncparry (Bonus/Bonus3; docs/RUN_RECAP.md CM7, built by
  * audio:build with ffmpeg 6.1.1) uploaded 2026-11-03 6:33 PM by k9kbdev, transcribed from an Asset Manager screenshot.
+ * kit-table-x / -z and kit-chair-px / -pz / -nx / -nz (the library's reading area, docs/BOOKSHELVES.md RA5; Dungeon
+ * Assets Pack by zver.3d) uploaded 2026-11-04 6:04 AM by k9kbdev, transcribed from an Asset Manager screenshot.
  */
 export const VALE_ASSET_IDS: Readonly<Record<string, RobloxAssetId>> = {
 	"amb-b1.ogg": "rbxassetid://91158343621799",
@@ -158,12 +160,18 @@ export const VALE_ASSET_IDS: Readonly<Record<string, RobloxAssetId>> = {
 	"kit-carpet-end-z.png": "rbxassetid://89651999047190",
 	"kit-carpet-x.png": "rbxassetid://100324360941554",
 	"kit-carpet-z.png": "rbxassetid://135285538764706",
+	"kit-chair-nx.png": "rbxassetid://133067783649615",
+	"kit-chair-nz.png": "rbxassetid://122253624249089",
+	"kit-chair-px.png": "rbxassetid://108393511672563",
+	"kit-chair-pz.png": "rbxassetid://101694939623100",
 	"kit-chains-1.png": "rbxassetid://78196216486149",
 	"kit-chains-2.png": "rbxassetid://132113945005181",
 	"kit-chandelier-1.png": "rbxassetid://135009681923399",
 	"kit-sarcophagus.png": "rbxassetid://71399333921022",
 	"kit-statue-x.png": "rbxassetid://78332468478600",
 	"kit-statue-z.png": "rbxassetid://98306419255246",
+	"kit-table-x.png": "rbxassetid://127976474422668",
+	"kit-table-z.png": "rbxassetid://96818770768214",
 	"kit-throne-x.png": "rbxassetid://76830723915108",
 	"kit-throne-z.png": "rbxassetid://115285373007373",
 	"kit-tomb-x.png": "rbxassetid://137283582236805",

@@ -259,9 +259,10 @@ Tasks:
 - [x] **RA3. Decor plan and theme** (2026-11-04): kinds, variants, boxes, cleared pillars draw nothing, vale manifest.
 - [x] **RA4. Verify** (2026-11-04, the Mac's aarch64 VM): typecheck, lint, check:assets, build, test:art, and every
   spec file one by one: 331 files, 4572 tests, 0 failures.
-- [ ] **RA5. [owner] Upload** `art/upload/kit-table-x.png`, `kit-table-z.png`, `kit-chair-px.png`, `kit-chair-pz.png`,
-  `kit-chair-nx.png`, `kit-chair-nz.png` (from the `worktrees/reading-area` checkout) and paste the ids. Until then
-  tables and chairs block but draw nothing.
+- [x] **RA5. [owner] Upload** (2026-11-04 6:04 AM): `kit-table-x` 127976474422668, `kit-table-z` 96818770768214,
+  `kit-chair-px` 108393511672563, `kit-chair-pz` 101694939623100, `kit-chair-nx` 133067783649615, `kit-chair-nz`
+  122253624249089 in `packs/vale/assetIds.ts`, so the bundled vale pack draws the reading area (the vale pack specs
+  pass).
 - [ ] **RA6. [owner] Studio check:** the reading area reads as a desk with chairs (the props shrink to 2-3 px spots; the
   chairs stand ~0.3-0.5 tiles off the table ends; the pack's seat is low against its table), the X / Z lighting, the
   lost pillar cover.
