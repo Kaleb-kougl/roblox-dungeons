@@ -7,7 +7,7 @@ import { DevPanel, type DevPanelProps, createKvScreenGui } from "client/ui";
 import { DEV_MODE, DEV_PANEL_VIEW } from "shared/config";
 import { isBossFloor } from "shared/dungeon";
 import { RUN_ATTRIBUTES } from "shared/play";
-import { clampDevFloor, isValidRunSeed } from "shared/run";
+import { TREASURE_DEBUG_ATTRIBUTE, clampDevFloor, isValidRunSeed, parseTreasureDebug } from "shared/run";
 import { SimController } from "../game/SimController";
 
 const GUI_NAME = "KV_DevMode";
@@ -30,6 +30,8 @@ interface Shown {
  * seed, local, never submitted); in a dev run R / Restart restart it at once (SimController.handleReset) and the god
  * toggle goes through the sim (DEV_GOD_BUTTON). Nothing exists for other players: no GUI, no input connection.
  * Seed: KV_Seed when set, else a random one (New draws another). The run is not paused while the panel is open.
+ * Treasure rooms (docs/TREASURE.md TR5): Go reads the Workspace string KV_TreasureDebug ("every,legendary,untouched",
+ * shared/run parseTreasureDebug) into the dev run's vault override; R / Restart keep it. Dev runs are never counted.
  */
 @Controller({})
 export class DevModeController implements OnStart {
@@ -113,7 +115,9 @@ export class DevModeController implements OnStart {
 	private go(): void {
 		const god = this.currentGod();
 		this.god = god;
-		this.sim.startDev({ startFloor: this.floor, invulnerable: god }, this.seed);
+		const raw = Workspace.GetAttribute(TREASURE_DEBUG_ATTRIBUTE);
+		const vault = parseTreasureDebug(typeIs(raw, "string") ? raw : undefined);
+		this.sim.startDev({ startFloor: this.floor, invulnerable: god, vault }, this.seed);
 		this.render();
 	}
 

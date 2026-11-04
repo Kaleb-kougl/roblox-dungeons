@@ -16,6 +16,8 @@ import {
 	DROPS_CONFIG,
 	DROPS_SUBSYSTEM,
 	PELLETS_CONFIG,
+	ENDLESS_TREASURE_CONFIG,
+	TREASURE_SUBSYSTEM,
 	PELLETS_SUBSYSTEM,
 	ENDLESS_DROPS_CONFIG,
 	ENDLESS_HASH_SUBSYSTEM,
@@ -83,7 +85,7 @@ describe("buildEndlessRunConfig", () => {
 		const f1 = setup.endlessFloor(1);
 		const s = createSimState(1337, f1.spawnX, f1.spawnZ, setup.config);
 		const layout = hashLayout(s, true);
-		expect(layout.groups.size()).toBe(14);
+		expect(layout.groups.size()).toBe(15);
 		expect(layout.groups[9].name).toBe(BREAKABLES_SUBSYSTEM);
 		expect(layout.names[layout.groups[9].start]).toBe("breakables.length");
 		expect(layout.values[layout.groups[9].start]).toBe(f1.breakables!.size());
@@ -115,6 +117,10 @@ describe("buildEndlessRunConfig", () => {
 		expect(setup.config.pellets).toBe(PELLETS_CONFIG);
 		expect(layout.groups[13].name).toBe(PELLETS_SUBSYSTEM);
 		expect(layout.names[layout.groups[13].start]).toBe("pellets.length");
+		// docs/TREASURE.md TR5: endless runs have treasure rooms (ENDLESS_TREASURE_CONFIG), hashed after pellets (last).
+		expect(setup.config.treasure).toBe(ENDLESS_TREASURE_CONFIG);
+		expect(layout.groups[14].name).toBe(TREASURE_SUBSYSTEM);
+		expect(layout.names[layout.groups[14].start]).toBe("treasure.rngState");
 		const g = layout.groups[6];
 		expect(g.name).toBe(ENDLESS_HASH_SUBSYSTEM);
 		expect(layout.groups[7].name).toBe(SCORE_SUBSYSTEM);

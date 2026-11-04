@@ -673,6 +673,8 @@ const PIN_COUNTS = [3, 0, 2, 3, 0];
 // Re-recorded for the merge of room themes (docs/DECOR.md "Room themes"): floor 3 lays out differently, so the pinned
 // charger meets other walls: lanes and draws are unchanged, one stun became a clean recover. Before: 30bf1d50, counts
 // [3, 1, 1, 3, 0].
-const PIN_HASH = "4860eb56"; // check-asset-ids: allow (state hash)
+// Re-recorded for docs/TREASURE.md TR5: endless floors are built with vaults, and run 4's floor 3 holds one (its chest
+// is a breakables piece: one more slot in the breakables group); the counts did not move. Before: 4860eb56.
+const PIN_HASH = "c5df44a4"; // check-asset-ids: allow (state hash)
 const PIN_ARENA = [12, STATE_RETURN, 11.062568325627446, 8, 3663131635];
 const PIN_ARENA_HASH = "80069968"; // check-asset-ids: allow (state hash)

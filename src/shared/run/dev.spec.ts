@@ -4,7 +4,15 @@
 import { describe, expect, it } from "@rbxts/jest-globals";
 import { DEV_MODE } from "shared/config";
 import { devModeAllowed, type DevAccessPolicy } from "shared/devmode";
-import { BOSS_FLOOR_EVERY, ENDLESS_FIRST_FLOOR, floorSeed, isBossFloor } from "shared/dungeon";
+import {
+	BOSS_FLOOR_EVERY,
+	ENDLESS_FIRST_FLOOR,
+	VAULT,
+	VaultLock,
+	VaultTier,
+	floorSeed,
+	isBossFloor,
+} from "shared/dungeon";
 import { LEADERBOARD_ELIGIBLE_WORLDS } from "shared/leaderboard";
 import { unsubmittedReason } from "shared/play";
 import {
@@ -18,6 +26,7 @@ import {
 	devStartDepth,
 	isRunWorldKind,
 	isServerRunWorld,
+	parseTreasureDebug,
 } from "shared/run";
 import {
 	ALL_BUTTONS,
@@ -27,6 +36,7 @@ import {
 	DEV_GOD_BUTTON,
 	DEV_SUBSYSTEM,
 	PELLETS_SUBSYSTEM,
+	TREASURE_SUBSYSTEM,
 	EMPTY_INPUT,
 	ENDLESS_FIRST_DEPTH,
 	PORT_BUTTONS,
@@ -142,6 +152,42 @@ describe("dev world", () => {
 	});
 });
 
+describe("dev world: KV_TreasureDebug (docs/TREASURE.md TR5)", () => {
+	it("parseTreasureDebug: every / legendary / rare / untouched / swift, any case and separator; last wins", () => {
+		expect(parseTreasureDebug(undefined)).toBe(undefined);
+		expect(parseTreasureDebug("")).toBe(undefined);
+		expect(parseTreasureDebug("nonsense, 42")).toBe(undefined);
+		expect(parseTreasureDebug("every,legendary,untouched")).toEqual({
+			every: true,
+			tier: VaultTier.LEGENDARY,
+			lock: VaultLock.UNTOUCHED,
+		});
+		expect(parseTreasureDebug(" Rare  SWIFT ")).toEqual({ tier: VaultTier.RARE, lock: VaultLock.SWIFT });
+		expect(parseTreasureDebug("legendary;rare|swift,untouched")).toEqual({
+			tier: VaultTier.RARE,
+			lock: VaultLock.UNTOUCHED,
+		});
+		expect(parseTreasureDebug("EVERY")).toEqual({ every: true });
+	});
+
+	it("a vault override reaches the dev world's floors; without one they are the endless run's", () => {
+		const forced = buildDevRunConfig(SEED, {
+			startFloor: 2,
+			invulnerable: false,
+			vault: parseTreasureDebug("every,legendary,swift"),
+		});
+		const plain = buildDevRunConfig(SEED, { startFloor: 2, invulnerable: false });
+		const endless = buildEndlessRunConfig(SEED);
+		for (let f = VAULT.fromFloor; f <= VAULT.fromFloor + 5; f++) {
+			const v = forced.endlessFloor!(f).vault;
+			expect([f, v?.tier, v?.lock]).toEqual([f, VaultTier.LEGENDARY, VaultLock.SWIFT]);
+			expect(plain.endlessFloor!(f).vault).toEqual(endless.endlessFloor(f).vault);
+		}
+		expect(forced.config.treasure).toBe(endless.config.treasure);
+		expect(forced.config.treasure).never.toBe(undefined);
+	});
+});
+
 describe("god mode", () => {
 	it("blocks every hit while on: no armor, hearts, hit event or i-frames; counted in dev.blockedHits", () => {
 		const state = devState(2, true);
@@ -183,16 +229,17 @@ describe("god mode", () => {
 		expect(state.player.armor + state.player.hearts).toBeLessThan(armorHearts);
 	});
 
-	it("is hashed as the `dev` group, after affixes and before builds and pellets (the endless world's, the last group), and replays bit for bit", () => {
+	it("is hashed as the `dev` group, after affixes and before builds, pellets and treasure (the endless world's, the last group), and replays bit for bit", () => {
 		const a = devState(3, true);
 		const layout = hashLayout(a, true);
 		const names = layout.groups.map((g) => g.name);
-		expect(names[names.size() - 1]).toBe(PELLETS_SUBSYSTEM);
-		expect(names[names.size() - 2]).toBe(BUILDS_SUBSYSTEM);
-		expect(names[names.size() - 3]).toBe(DEV_SUBSYSTEM);
-		expect(names[names.size() - 4]).toBe(AFFIXES_SUBSYSTEM);
+		expect(names[names.size() - 1]).toBe(TREASURE_SUBSYSTEM);
+		expect(names[names.size() - 2]).toBe(PELLETS_SUBSYSTEM);
+		expect(names[names.size() - 3]).toBe(BUILDS_SUBSYSTEM);
+		expect(names[names.size() - 4]).toBe(DEV_SUBSYSTEM);
+		expect(names[names.size() - 5]).toBe(AFFIXES_SUBSYSTEM);
 		expect(layout.values).toEqual(writeHashFields(a, []));
-		const dev = layout.groups[layout.groups.size() - 3];
+		const dev = layout.groups[layout.groups.size() - 4];
 		expect(layout.names[dev.finish - 1]).toBe("dev.toggles");
 		const b = devState(3, true);
 		const run = (s: SimState) => {

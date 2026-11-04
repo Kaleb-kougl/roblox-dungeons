@@ -20,6 +20,7 @@ import {
 	AFFIXES_SUBSYSTEM,
 	BUILDS_SUBSYSTEM,
 	PELLETS_SUBSYSTEM,
+	TREASURE_SUBSYSTEM,
 	BREAKABLES_SUBSYSTEM,
 	DROPS_SUBSYSTEM,
 	BREAKABLE_ENEMY_BULLET_DAMAGE,
@@ -588,11 +589,12 @@ describe("breakables: endless runs, co-op, replays", () => {
 		// Breakables come last but for drops (docs/BOOSTS.md B4: endless runs drop boosts too), elite affixes
 		// (docs/ENEMY_VARIANTS.md EV7), builds (docs/BUILDS.md BU1) and pellets (docs/PELLETS.md PL5).
 		const groups = hashLayout(s).groups.map((g) => g.name);
-		expect(groups[groups.size() - 5]).toBe(BREAKABLES_SUBSYSTEM);
-		expect(groups[groups.size() - 4]).toBe(DROPS_SUBSYSTEM);
-		expect(groups[groups.size() - 3]).toBe(AFFIXES_SUBSYSTEM);
-		expect(groups[groups.size() - 2]).toBe(BUILDS_SUBSYSTEM);
-		expect(groups[groups.size() - 1]).toBe(PELLETS_SUBSYSTEM);
+		expect(groups[groups.size() - 6]).toBe(BREAKABLES_SUBSYSTEM);
+		expect(groups[groups.size() - 5]).toBe(DROPS_SUBSYSTEM);
+		expect(groups[groups.size() - 4]).toBe(AFFIXES_SUBSYSTEM);
+		expect(groups[groups.size() - 3]).toBe(BUILDS_SUBSYSTEM);
+		expect(groups[groups.size() - 2]).toBe(PELLETS_SUBSYSTEM);
+		expect(groups[groups.size() - 1]).toBe(TREASURE_SUBSYSTEM);
 	});
 
 	it("co-op: every player's bullets and swings break them, deterministically (stepParty twice, same hashes)", () => {

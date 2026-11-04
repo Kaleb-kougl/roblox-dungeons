@@ -9,6 +9,11 @@
  * pedestal and into the shrine and accepts the curse (SHRINE_BUTTON).
  *
  * The bot: a BFS distance field over FLOOR tiles to a target tile; each tick steps toward the lowest neighbour.
+ *
+ * Treasure rooms (docs/TREASURE.md TR5): `Driver.openVault` detours into the floor's vault room (walks to the chest's
+ * front, which engages the room), fights its members with the sword (the nearest one; a flask when hurt) and walks onto
+ * the unlocked chest to open it, returning what happened (VaultVisit). recordEndlessRun does not call it: its descent
+ * is unchanged (a vault room it crosses on the way engages and fights like any room).
  */
 import {
 	Button,
@@ -37,8 +42,19 @@ import {
 	type SimConfig,
 	type SimState,
 	quantizeAxis,
+	TREASURE_UNSET,
+	VaultStatus,
+	type ActorState,
 } from "shared/sim";
-import { gridToWorld, pathField, pathStep, worldToGrid, type PathField } from "shared/dungeon";
+import {
+	bulletBlocker,
+	gridToWorld,
+	lineOfSight,
+	pathField,
+	pathStep,
+	worldToGrid,
+	type PathField,
+} from "shared/dungeon";
 import { buildEndlessRunConfig, type EndlessRunSetup } from "../endless";
 
 /** A BFS distance field to a target (exported for the party bot): shared/dungeon pathField's. */
@@ -79,6 +95,34 @@ const WALK_STUCK_TICKS = 20;
 const WALK_STUCK_ATTACK_TICKS = 30;
 /** walkTo: a tick that moves the player less than this (|dx| + |dz|, world units) counts as not moving. */
 const WALK_STUCK_EPS = 1e-3;
+/** openVault: the walk to the vault room, the fight, and the walk onto the unlocked chest (ticks). */
+const VAULT_WALK_TICKS = 4000;
+const VAULT_FIGHT_TICKS = 3600;
+const VAULT_OPEN_TICKS = 600;
+/** openVault: sword reach for the fight (world units: the bot stops and swings inside it). */
+const VAULT_MELEE_RANGE = 1.2;
+/** openVault: the chest's front cells the bot walks to (2: engage the room; 1: open it). */
+const VAULT_APPROACH_CELLS = 2;
+const VAULT_OPEN_CELLS = 1;
+
+/** What Driver.openVault saw on one floor's vault. */
+export interface VaultVisit {
+	readonly floor: number;
+	readonly lock: number;
+	readonly startTier: number;
+	/** The tier at the end (after any crack). */
+	readonly tier: number;
+	/** Its room engaged / cleared, the chest opened, the lock kept (never cracked). */
+	readonly engaged: boolean;
+	readonly cleared: boolean;
+	readonly opened: boolean;
+	readonly kept: boolean;
+	/** Ticks from the engagement to the clear (-1 if not cleared in the fight loop); the room's par. */
+	readonly clearTicks: number;
+	readonly parTicks: number;
+	/** The bot died on the way or in the fight. */
+	readonly died: boolean;
+}
 
 /**
  * Test-only: closes every open boon draft WITHOUT a pick (state surgery; the game has no way to decline). For specs
@@ -120,7 +164,11 @@ export class Driver {
 	maxActors = 0;
 	private lastAssist = 0;
 
-	constructor(readonly setup: EndlessRunSetup, readonly seed: number) {
+	/**
+	 * `immortal` (census specs only, never a replay path): hearts topped up before every tick, so a long census never
+	 * ends in a death. Off by default: every recorded run is honest.
+	 */
+	constructor(readonly setup: EndlessRunSetup, readonly seed: number, readonly immortal = false) {
 		const spawn = setup.spawn!;
 		this.state = createSimState(seed, spawn.x, spawn.z, setup.config);
 		this.recorder = new Recorder(seed, spawn.x, spawn.z);
@@ -141,6 +189,7 @@ export class Driver {
 		const p = s.player;
 		const ddx = p.x - stair.stairX;
 		const ddz = p.z - stair.stairZ;
+		if (this.immortal) p.hearts = p.heartsMax;
 		this.recorder.record(input);
 		step(s, input, this.setup.config);
 		const e = s.events;
@@ -247,6 +296,101 @@ export class Driver {
 			n++;
 		}
 		return n;
+	}
+
+	/** The living members of the vault room's score record. */
+	private vaultMembers(): ActorState[] {
+		const s = this.state;
+		const t = s.treasure!;
+		const r = s.score!.rooms[t.record];
+		const out: ActorState[] = [];
+		if (r === undefined) return out;
+		for (let k = 0; k < r.memberSlots.size(); k++) {
+			const a: ActorState | undefined = s.combat.actors[r.memberSlots[k]];
+			if (a !== undefined && a.kind !== NO_KIND && a.id === r.memberIds[k] && a.alive !== 0) out.push(a);
+		}
+		return out;
+	}
+
+	/**
+	 * Detours into the floor's vault room, fights it and opens the chest (see the file comment). Undefined without a
+	 * vault on this floor (or without treasure state). Honest input only (recorded; a flask when hurt); the open
+	 * stairwell is avoided on the way.
+	 */
+	openVault(fightTicks = VAULT_FIGHT_TICKS): VaultVisit | undefined {
+		const s = this.state;
+		const t = s.treasure;
+		if (t === undefined || t.status === VaultStatus.NONE) return undefined;
+		const floor = this.floor();
+		const w = this.world();
+		const stair: [number, number] = [w.stairX, w.stairZ];
+		const front = (cells: number): [number, number] => [t.x + t.fx * cells, t.z + t.fz * cells];
+		const [ex, ez] = front(VAULT_APPROACH_CELLS);
+		this.walkTo(ex, ez, () => t.status !== VaultStatus.SEALED, VAULT_WALK_TICKS, stair);
+		const r = s.score!.rooms[t.record];
+		const engaged = t.status !== VaultStatus.SEALED;
+		// The fight: the nearest living member, straight at it in sight, else along the grid; swing in reach.
+		const blocked = bulletBlocker(w.dungeon);
+		const fields = new Map<number, Field>();
+		const fieldTo = (x: number, z: number): Field => {
+			const gx = worldToGrid(x);
+			const gz = worldToGrid(z);
+			const key = gz * w.dungeon.W + gx;
+			let f = fields.get(key);
+			if (f === undefined) {
+				f = distanceField(w.dungeon, gridToWorld(gx), gridToWorld(gz));
+				fields.set(key, f);
+			}
+			return f;
+		};
+		let clearAt = -1;
+		for (let n = 0; engaged && n < fightTicks && r.cleared === 0; n++) {
+			if (s.player.dead !== 0 || this.floor() !== floor) break;
+			const p = s.player;
+			let best: ActorState | undefined;
+			let bestD = math.huge;
+			for (const a of this.vaultMembers()) {
+				const d = (a.x - p.x) * (a.x - p.x) + (a.z - p.z) * (a.z - p.z);
+				if (d < bestD) {
+					bestD = d;
+					best = a;
+				}
+			}
+			if (best === undefined) {
+				this.tick(frame(0, 0, this.assisted(0)));
+				if (r.cleared !== 0) clearAt = s.tick - 1;
+				continue;
+			}
+			const len = math.max(1e-9, math.sqrt(bestD));
+			const ax = (best.x - p.x) / len;
+			const az = (best.z - p.z) / len;
+			let move: [number, number] = [0, 0];
+			if (bestD > VAULT_MELEE_RANGE * VAULT_MELEE_RANGE)
+				move = lineOfSight(blocked, p.x, p.z, best.x, best.z)
+					? [ax, az]
+					: walkDir(fieldTo(best.x, best.z), p.x, p.z);
+			this.tick(frame(move[0], move[1], this.assisted(Button.FIRE), ax, az));
+			if (r.cleared !== 0) clearAt = s.tick - 1;
+		}
+		const cleared = r.cleared !== 0;
+		const clearTicks = clearAt >= 0 ? clearAt - r.engageTick : -1;
+		if (cleared && t.status === VaultStatus.UNLOCKED) {
+			const [ox, oz] = front(VAULT_OPEN_CELLS);
+			this.walkTo(ox, oz, () => t.status === VaultStatus.OPENED, VAULT_OPEN_TICKS, stair);
+		}
+		return {
+			floor,
+			lock: t.lock,
+			startTier: t.startTier,
+			tier: t.tier,
+			engaged,
+			cleared,
+			opened: t.status === VaultStatus.OPENED,
+			kept: engaged && t.crackTick === TREASURE_UNSET,
+			clearTicks,
+			parTicks: r.parTicks,
+			died: s.player.dead !== 0,
+		};
 	}
 }
 

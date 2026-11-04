@@ -648,7 +648,11 @@ export class SimController implements OnStart {
 		this.clearExits();
 		if (this.ctx?.live !== undefined) this.submit("abandoned");
 		this.nextRunLobbyId = "";
-		this.devRun = { startFloor: clampDevFloor(options.startFloor), invulnerable: options.invulnerable };
+		this.devRun = {
+			startFloor: clampDevFloor(options.startFloor),
+			invulnerable: options.invulnerable,
+			vault: options.vault,
+		};
 		this.devSeed = seed;
 		this.beginDev();
 	}

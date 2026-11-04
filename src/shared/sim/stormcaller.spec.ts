@@ -668,6 +668,8 @@ describe("stormcaller: strikes on real endless floors", () => {
 		// Re-recorded for the merge of room themes (docs/DECOR.md "Room themes"): floor 3 lays out differently; run 4 now
 		// casts 3 strikes, and run 23's co-op scene no longer casts within 600 ticks (strikes in co-op stay covered by
 		// the "co-op (2)" case above). Before: 2/1/08f85cd2, 6/0/5cfa0ffb.
-		expect(pins).toEqual(["3/0/49e332ac", "0/0/7c9c4b5e"]); // check-asset-ids: allow (state hashes)
+		// Re-recorded for docs/TREASURE.md TR5: endless floors are built with vaults; run 4's floor 3 holds one (its chest
+		// a breakables piece), run 23's does not (unchanged); strike and skip counts are unchanged. Before: 3/0/49e332ac.
+		expect(pins).toEqual(["3/0/e303e3be", "0/0/7c9c4b5e"]); // check-asset-ids: allow (state hashes)
 	});
 });

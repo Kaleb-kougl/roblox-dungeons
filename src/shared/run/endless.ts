@@ -4,12 +4,15 @@
  * (validateRun with world "endless") calls the same function, so both get identical floors from the run seed alone.
  *
  *   config   { endless: { runSeed, worldForFloor }, scoring: ENDLESS_SCORING, breakables: BREAKABLES_CONFIG,
- *              drops: ENDLESS_DROPS_CONFIG, affixes: AFFIXES_CONFIG, builds: BUILDS_CONFIG, pellets: PELLETS_CONFIG }
+ *              drops: ENDLESS_DROPS_CONFIG, affixes: AFFIXES_CONFIG, builds: BUILDS_CONFIG, pellets: PELLETS_CONFIG,
+ *              treasure: ENDLESS_TREASURE_CONFIG }
  *            (shared/sim endless.ts: every tick runs with the current floor; endless runs are ALWAYS scored, on client
  *            and server alike, and always have breakable barrels and crates (docs/DECOR.md D4), boost drops, from kills
  *            and from loaded barrels and crates (docs/BOOSTS.md B4, docs/BREAKABLE_DROPS.md BL4), elite affixes (docs/ENEMY_VARIANTS.md EV7), builds (docs/BUILDS.md BU1) and pellets (docs/PELLETS.md PL5:
- *            each floor's pellets come from its world, EndlessFloorWorld.pellets))
- *   floor f  buildEndlessFloor(runSeed, f) (shared/dungeon endless.ts: solid pillars, breakables) + circleMover / bulletBlocker /
+ *            each floor's pellets come from its world, EndlessFloorWorld.pellets) and treasure rooms (docs/TREASURE.md TR5:
+ *            each floor's vault, if any, from its world, EndlessFloorWorld.vault, its chest a breakables piece))
+ *   floor f  buildEndlessFloor(runSeed, f, ..., { vaults: true }) (shared/dungeon endless.ts: solid pillars, breakables,
+ *            the vault; the dev world's KV_TreasureDebug adds a VaultOverride, run/dev.ts) + circleMover / bulletBlocker /
  *            actorMover / actorSteerMover (enemies walk around pillars) on its dungeon; built on first use, kept in a
  *            per-config LRU (ENDLESS_FLOOR_CACHE_SIZE), the dungeons in a server-wide LRU (ENDLESS_DUNGEON_CACHE_SIZE)
  *            keyed by seed and room count
@@ -33,6 +36,7 @@ import {
 	type Dungeon,
 	type EndlessFloorLayout,
 	type ForgeParams,
+	type VaultOverride,
 } from "shared/dungeon";
 import {
 	BREAKABLES_CONFIG,
@@ -42,6 +46,7 @@ import {
 	BUILDS_CONFIG,
 	MAX_PARTY_SIZE,
 	PELLETS_CONFIG,
+	ENDLESS_TREASURE_CONFIG,
 	PLAYER_RADIUS,
 	isValidPartySize,
 	type EndlessFloorWorld,
@@ -101,14 +106,18 @@ export interface EndlessRunFloor extends EndlessFloorWorld {
 
 /**
  * Builds floor `floor` of the run `runSeed` for a party of `partySize` (uncached; the dungeon comes from
- * endlessDungeon's cache). Pure.
+ * endlessDungeon's cache), vaults on (docs/TREASURE.md TR5); `vaultOverride`: the dev world's KV_TreasureDebug only.
+ * Pure.
  */
 export function endlessRunFloor(
 	runSeed: number,
 	floor: number,
 	partySize: number = DEFAULT_PARTY_SIZE,
+	vaultOverride?: VaultOverride,
 ): EndlessRunFloor {
-	return endlessFloorWorld(buildEndlessFloor(runSeed, floor, endlessDungeon, partySize));
+	return endlessFloorWorld(
+		buildEndlessFloor(runSeed, floor, endlessDungeon, partySize, { vaults: true, vaultOverride }),
+	);
 }
 
 /**
@@ -153,7 +162,11 @@ export interface EndlessRunSetup extends RunSetup {
 }
 
 /** A per-run floor cache: the last floor asked for is returned at once (step() asks every tick). */
-function floorCache(runSeed: number, partySize: number): (floor: number) => EndlessRunFloor {
+function floorCache(
+	runSeed: number,
+	partySize: number,
+	vaultOverride: VaultOverride | undefined,
+): (floor: number) => EndlessRunFloor {
 	const floors: number[] = [];
 	const worlds = new Map<number, EndlessRunFloor>();
 	let lastFloor = -1;
@@ -162,7 +175,7 @@ function floorCache(runSeed: number, partySize: number): (floor: number) => Endl
 		if (floor === lastFloor && last !== undefined) return last;
 		let w = worlds.get(floor);
 		if (w === undefined) {
-			w = endlessRunFloor(runSeed, floor, partySize);
+			w = endlessRunFloor(runSeed, floor, partySize, vaultOverride);
 			worlds.set(floor, w);
 			floors.push(floor);
 			while (floors.size() > ENDLESS_FLOOR_CACHE_SIZE) {
@@ -183,18 +196,31 @@ function floorCache(runSeed: number, partySize: number): (floor: number) => Endl
 /** M2 scoring of every endless run: solo (party size 1). Part of the config, so the server's replay is scored too. */
 export const ENDLESS_SCORING: ScoringConfig = table.freeze({ partySize: DEFAULT_PARTY_SIZE });
 
+/** Options of buildEndlessRunConfig that only tools and the dev world pass (every game world passes none). */
+export interface EndlessRunOptions {
+	/**
+	 * Forces / fixes every floor's vault (shared/dungeon VaultOverride): the dev world's KV_TreasureDebug (run/dev.ts)
+	 * and specs only. Absent: placeVault's own draws.
+	 */
+	readonly vaultOverride?: VaultOverride;
+}
+
 /**
  * Builds the endless run's SimConfig and spawn for `runSeed` and a party of `partySize` (see the file comment). Throws
  * on an invalid seed or party size.
  */
-export function buildEndlessRunConfig(runSeed: number, partySize: number = DEFAULT_PARTY_SIZE): EndlessRunSetup {
+export function buildEndlessRunConfig(
+	runSeed: number,
+	partySize: number = DEFAULT_PARTY_SIZE,
+	options: Readonly<EndlessRunOptions> = {},
+): EndlessRunSetup {
 	if (!isValidRunSeed(runSeed)) {
 		error(`buildEndlessRunConfig: seed must be an integer in [0, 2^32), got ${tostring(runSeed)}`, 0);
 	}
 	if (!isValidPartySize(partySize)) {
 		error(`buildEndlessRunConfig: party size must be an integer in [1, ${MAX_PARTY_SIZE}], got ${partySize}`, 0);
 	}
-	const worldForFloor = floorCache(runSeed, partySize);
+	const worldForFloor = floorCache(runSeed, partySize, options.vaultOverride);
 	const first = worldForFloor(ENDLESS_FIRST_FLOOR);
 	const config: SimConfig =
 		partySize === DEFAULT_PARTY_SIZE
@@ -206,6 +232,7 @@ export function buildEndlessRunConfig(runSeed: number, partySize: number = DEFAU
 					affixes: AFFIXES_CONFIG,
 					builds: BUILDS_CONFIG,
 					pellets: PELLETS_CONFIG,
+					treasure: ENDLESS_TREASURE_CONFIG,
 			  }
 			: {
 					endless: { runSeed, worldForFloor },
@@ -216,6 +243,7 @@ export function buildEndlessRunConfig(runSeed: number, partySize: number = DEFAU
 					affixes: AFFIXES_CONFIG,
 					builds: BUILDS_CONFIG,
 					pellets: PELLETS_CONFIG,
+					treasure: ENDLESS_TREASURE_CONFIG,
 			  };
 	return {
 		config,

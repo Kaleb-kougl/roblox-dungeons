@@ -17,6 +17,7 @@ import {
 	NO_KIND,
 	PELLETS_CONFIG,
 	PELLETS_SUBSYSTEM,
+	TREASURE_SUBSYSTEM,
 	PelletPhase,
 	SCORE_SUBSYSTEM,
 	ScoreSource,
@@ -442,17 +443,20 @@ describe("pellets: determinism", () => {
 		expect(a.s.rngState).toBe(b.s.rngState);
 		const la = hashLayout(a.s);
 		const lb = hashLayout(b.s);
+		// Matched by name: the pellets group sits before treasure (docs/TREASURE.md TR5, last).
 		for (let g = 0; g < lb.groups.size(); g++) {
 			const gb = lb.groups[g];
 			if (gb.name === SCORE_SUBSYSTEM) continue;
-			const ga = la.groups[g];
+			const ga = la.groups.find((x) => x.name === gb.name)!;
 			const va: number[] = [];
 			const vb: number[] = [];
 			for (let i = ga.start; i < ga.finish; i++) va.push(la.values[i]);
 			for (let i = gb.start; i < gb.finish; i++) vb.push(lb.values[i]);
 			expect([ga.name, ...va]).toEqual([gb.name, ...vb]);
 		}
-		expect(la.groups[la.groups.size() - 1].name).toBe(PELLETS_SUBSYSTEM);
+		expect(la.groups[la.groups.size() - 2].name).toBe(PELLETS_SUBSYSTEM);
+		expect(la.groups[la.groups.size() - 1].name).toBe(TREASURE_SUBSYSTEM);
+		expect(la.groups.size()).toBe(lb.groups.size() + 1);
 		const sa = a.s.score!;
 		const sb = b.s.score!;
 		expect([sa.combo, sa.comboTimer]).toEqual([sb.combo, sb.comboTimer]);

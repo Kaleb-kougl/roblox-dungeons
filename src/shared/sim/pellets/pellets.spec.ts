@@ -45,9 +45,13 @@ import { buildDevRunConfig, buildEndlessRunConfig, type EndlessRunSetup } from "
 
 const SEED = 4242;
 const SETUP: EndlessRunSetup = buildEndlessRunConfig(SEED);
-const WITH: SimConfig = { ...SETUP.config, pellets: PELLETS_CONFIG };
-/** The endless config without pellets (every endless world sets them since PL5). */
-const WITHOUT: SimConfig = { ...SETUP.config, pellets: undefined };
+/**
+ * The endless config with pellets, without treasure rooms (docs/TREASURE.md TR5 appends their group and their score
+ * source after the pellets'; this spec pins pellets as the last of each, as before treasure).
+ */
+const WITH: SimConfig = { ...SETUP.config, pellets: PELLETS_CONFIG, treasure: undefined };
+/** The endless config without pellets (every endless world sets them since PL5), nor treasure. */
+const WITHOUT: SimConfig = { ...SETUP.config, pellets: undefined, treasure: undefined };
 
 function fresh(config: SimConfig = WITH, setup: { spawn?: { x: number; z: number } } = SETUP): SimState {
 	return createSimState(SEED, setup.spawn!.x, setup.spawn!.z, config);

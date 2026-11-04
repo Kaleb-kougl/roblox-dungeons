@@ -11,7 +11,8 @@ floor. Work it task by task, like `PLAN.md`; each task ends with a **Verify**.
 Status (2026-11-03): **TR0 done (plan checked against the code, below). TR1 done (the dungeon roll, behind the
 option `EndlessFloorOptions.vaults`, off everywhere until TR5; "As built (TR1)" below). TR2 done (the sim state, hash
 group and chest piece behind `SimConfig.treasure`, unset everywhere until TR5; "As built (TR2)"). TR3 done (the lock:
-arm, crack, unlock; "As built (TR3)"). TR4 done (the open and its rewards; "As built (TR4)").** The owner (Kaleb)
+arm, crack, unlock; "As built (TR3)"). TR4 done (the open and its rewards; "As built (TR4)"). TR5 done (every endless
+world has vaults and `SimConfig.treasure`, the dev override, the census; "As built (TR5)").** The owner (Kaleb)
 confirmed every decision (TRD1-TRD14) on 2026-11-03. This file is the project doc `claude/treasure-rooms-plan.md` with
 every "(assumed; TR0 verifies)" item checked against branch `treasure-rooms` @ `82f0ff9` (a snapshot of `main` @
 `288a33b`, which already has Pellets, solid decor, room themes and the new enemies merged). Sibling plans: BO
@@ -377,6 +378,80 @@ Verify (2026-11-03, this host, worlds still without `SimConfig.treasure`): `npm 
 `npm run test:only -- sim/treasure sim/drops sim/progression sim/builds/builds`: all passed (open.spec 18 / 18);
 regression `npm run test:only -- sim/ run/ lockstep/ play/liveRun`: 110 suites, **1364 passed, 0 failed** (948 s), so
 every fixture, the M1 hash, the tutorial lock and every endless replay stay bit-identical with the config absent.
+
+## As built (TR5, 2026-11-04)
+
+Files: `src/shared/run/endless.ts` (`treasure: ENDLESS_TREASURE_CONFIG` in both branches of `buildEndlessRunConfig`;
+every floor built with `{ vaults: true }` in `endlessRunFloor` and the per-run floor cache; new `EndlessRunOptions {
+vaultOverride? }` as the third parameter, passed by the dev world and specs only), `run/dev.ts` (`DevRunOptions.vault?:
+VaultOverride` into `buildEndlessRunConfig`; `TREASURE_DEBUG_ATTRIBUTE` "KV_TreasureDebug" and the pure
+`parseTreasureDebug(text)`), `src/client/controllers/ui/DevModeController.tsx` (Go reads the Workspace string into
+`vault`), `src/client/controllers/game/SimController.ts` (`startDev` keeps `vault`, so R / Restart keep it),
+`daily/config.ts` (`ruleset` 6, history comment) and `daily.spec.ts`, `run/testing/vaultRun.ts` (no longer builds its
+own floors: a thin wrapper over `buildEndlessRunConfig(seed, party, { vaultOverride })` with `startFloor` and an optional
+`treasure` replacement or `false`; the treasure specs keep it for the forced vaults and the start floor at any party
+size), `run/testing/endlessBot.ts` (`Driver.openVault`, `VaultVisit`, the census-only `immortal` flag), new
+`run/treasureCensus.spec.ts`. Spec updates: `run/endless.spec.ts` (15 groups, `treasure` last), `run/dev.spec.ts` (the
+group order; `parseTreasureDebug`; the override reaches the dev floors, without one they are the endless run's),
+`run/affixes.spec.ts`, `run/partyProgression.spec.ts`, `sim/breakables/breakables.spec.ts`, `sim/builds/builds.spec.ts`,
+`sim/progression/progression.spec.ts` (group order, `treasure` last; builds' "only the appended group" case leaves treasure
+out of both runs, as it did pellets), `sim/pellets/pellets.spec.ts` (its configs leave treasure out, so pellets stay the
+last group and source it pins), `sim/pellets/stepPellets.spec.ts` (groups matched by name), `run/tutorial.spec.ts` (the
+tutorial has no `treasure` and no vaults), `sim/treasure/treasure.spec.ts` (the "absent" case strips the config from the
+endless world), and two determinism pins re-recorded (below).
+
+Details (none touches an owner decision):
+
+- **Who gets vaults:** endless solo, co-op, daily (the same builder) and dev. The tutorial builds its own layouts and M1 /
+  the fixtures never call the endless builder, so all three replay exactly as before (their lock and golden specs pass
+  untouched).
+- **KV_TreasureDebug** words (any case, any separator; last of a kind wins): `every`, `legendary` / `rare`, `untouched`
+  / `swift`. Read when Go starts a dev run (dev runs are never submitted, so never counted: `unsubmittedReason` `dev`,
+  `SERVER_REFUSED_WORLDS`). The server never sees an override (the dev world is client-only).
+- **Replays:** the endless / party / partyProgression / daily / dev / segments / validate specs record their runs live and
+  compare against the server's own replay, so they changed and still agree: seed 1337's descent, the party runs and the
+  new honest vault run replay and validate segmented with the vaults in (validate's pinned `03c59442` is the web build's
+  M1 `run-player.json`, unchanged). Two determinism pins on real endless floors moved, because run 4's floor 3 now holds
+  a vault (one more breakables slot, its chest): `charger.spec.ts` `PIN_HASH` 4860eb56 -> c5df44a4 (counts unchanged)
+  and `stormcaller.spec.ts` run 4 3/0/49e332ac -> 3/0/e303e3be (strikes unchanged; run 23's pin unchanged).
+- **Replay bench** (`run/replay.bench.spec.ts`, budget 10 ms per replayed tick): room solo 0.224 ms, room 8 players
+  0.646 ms, floor solo 0.540 ms, floor 8 players 1.293 ms (TR4's run on the same host: 0.281 / 0.805 / 0.468 / 1.412;
+  host noise either way). The cost of a vault floor is one record read per tick and a few draws per open.
+- **The census bot** (`Driver.openVault`): walks to the chest's second front cell (engaging the room; the open stairwell
+  avoided), fights the room's members with the sword (nearest one, straight at it in sight, else along the grid; 60 s
+  cap), then walks onto the first front cell to open. It does not change `recordEndlessRun` (no spec descent detours).
+  **Deviation:** `partyBot.ts` is not extended (the map listed it): `recordPartyRun` debug-skips floors 2+, so its runs
+  never meet an armed vault; co-op opens are covered by `open.spec.ts` (party 1-4 grants, allowance, C1 overflow per
+  player) and TR3's party lock cases. A co-op census is left to TR11's playtest.
+
+### Census (`run/treasureCensus.spec.ts`, run seeds 1-12 x floors 2-12, solo, 132 floors)
+
+Hearts topped up (census only), floors ended by the debug skip with the draft answered like a player.
+
+| Floors | Vaults seen | Opened | UNTOUCHED kept | SWIFT kept | Mean tier opened (started) | Legendary opened | SWIFT clear / par |
+|---|---|---|---|---|---|---|---|
+| 2-4 (40 %) | 13 / 36 = 36.1 % | 11 (84.6 %) | 1 / 2 | 9 / 9 | 1.27 (1.36) | 3 | 0.32 |
+| 5-9 (50 %) | 29 / 60 = 48.3 % | 28 (96.6 %) | 5 / 13 (38.5 %) | 15 / 15 | 1.00 (1.29) | 7 | 0.27 |
+| 10-12 (55 %) | 20 / 36 = 55.6 % | 16 (80.0 %) | 2 / 10 (20.0 %) | 6 / 6 | 0.81 (1.31) | 3 | 0.22 |
+| **2-12** | **62 / 132 = 47.0 %** | **55 (88.7 %)** | **8 / 25 (32.0 %)** | **30 / 30 (100 %)** | **1.00 (1.31)** | **13** | **0.28** |
+
+Tier: 0 Common, 1 Rare, 2 Legendary. The 7 vaults not opened: 2 rooms the walk never reached (engaged false), 5 fights
+past the 60 s cap. **For TR11:** UNTOUCHED sits at the bottom of its 30-50 % target for this bot (a sword bot that walks
+into every bullet; a careful player should do better), and gets harder with depth. **SWIFT is far too easy at
+`swiftParPercent` 100:** the bot clears vault rooms in 22-32 % of par and kept all 30, against a 40-60 % target. Par is
+tuned as FAST's bonus window, not as a target (the Risk named in this plan); a SWIFT percent around 30-40 would put this
+bot near the target. Not changed here (TR11 is the owner's tuning task).
+
+The honest run (no surgery, flask when hurt, drafts with the stick): seed 5, floor 1 walked, floor 2's UNTOUCHED Rare
+vault fought (cracked to Common) and opened (300 TREASURE points), floor 2's stairwell walked, the draft picked: 2296
+ticks; it replays to the live hash and validates through `SegmentedValidator` in 1200-tick segments, same hash and
+score.
+
+Verify (2026-11-04, this host): **`npm run verify`**: typecheck, lint, check:assets, check:autolocalize, test:art,
+test:checks, test:l10n and the build clean; headless tests **327 suites, 4539 passed, 1 failed** (2345 s). The one
+failure is the known host-only `dungeon/forge/forge.spec.ts` "EncounterRng is the sim's new Rng(seed): seedToState
+vectors and streams" (fails on `main` too). M1 (golden runs, the M1 hash), every golden fixture and the tutorial lock
+pass untouched.
 
 ## Player experience (target)
 
@@ -918,9 +993,9 @@ Each step is a commit. Specs next to the code; `npm run verify` before each.
   (UNLOCKED stays UNLOCKED until TR4).
 - [x] **TR4. Opening and rewards.** Step 4, the grants, the landing offsets. (C1 answered: overflow goes to the player.) → Verify:
   TR4 specs above. → Done 2026-11-03: "As built (TR4)".
-- [ ] **TR5. Worlds.** `ENDLESS_TREASURE_CONFIG` on endless; the dev override and `KV_TreasureDebug`. Re-record and check
+- [x] **TR5. Worlds.** `ENDLESS_TREASURE_CONFIG` on endless; the dev override and `KV_TreasureDebug`. Re-record and check
   the endless / party / partyProgression / daily / dev specs replay and validate segmented. Extend the census bot.
-  `DAILY.ruleset` 5 -> 6. → Verify: `npm run verify`; numbers into this doc.
+  `DAILY.ruleset` 5 -> 6. → Verify: `npm run verify`; numbers into this doc. → Done 2026-11-04: "As built (TR5)".
 - [x] **TR6. Theme.** Assets, strings, audio IDs, fallbacks, `treasureReport`, the placeholder pack. (C2 answered: floor-only `treasure.*`
   roles if the report confirms the draft colours fail.) → Verify: contract / validator / `audio.spec.ts` / `hud.spec.ts`; Luau locals
   still under 200 on `out/`. → Done 2026-11-03: "As built (TR6)" (C2 confirmed, floor roles built; `contract.luau` /

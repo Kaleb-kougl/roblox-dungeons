@@ -126,7 +126,8 @@ describe("treasure: data shared with the dungeon", () => {
 
 describe("treasure: opt-in", () => {
 	it("absent without SimConfig.treasure: no state, no group; the run hashes exactly as before", () => {
-		const setup = buildEndlessRunConfig(SEED);
+		const endless = buildEndlessRunConfig(SEED);
+		const setup = { ...endless, config: { ...endless.config, treasure: undefined } };
 		const s = fresh(setup);
 		expect(s.treasure).toBe(undefined);
 		expect(hashLayout(s).groups[hashLayout(s).groups.size() - 1].name).toBe(PELLETS_SUBSYSTEM);
