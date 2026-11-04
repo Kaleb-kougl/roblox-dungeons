@@ -196,6 +196,12 @@ kinds the plan already places but no pack had art for:
 | `kit-candle-stand` (the candle stand with its lit candles) | `decor.delve.b<n>.candle` | far-wall tops, where the Forge puts candles (grim graveyard rooms); inside DECOR_BOX.candle |
 | `kit-banner` (the red banner, 4 facings like the torch: SE for wall normal +X, SW for +Z, the hidden two copied) | `decor.delve.b<n>.banner` | on the wall faces the camera sees, where the Forge hangs banners (~7 a floor) |
 
+Third model: **Old Chest** (SebastianSosnowski, Sketchfab, **CC-BY 4.0**, on the Credits screen) in
+`art/vendor/old-chest/`, `scripts/art/kit/old-chest.json`: the vault chest (docs/TREASURE.md TR9), `kit-chest` closed
+and `kit-chest-open` open, four facings each at world scale. The renderer gained `importScale` (a model in metres) and
+`lid` (open a box with no separate lid: cut, fill, turn the top on its hinge, hollow the box); world sprite sets take a
+per-facing `pivot: [[x, y], ...]`.
+
 The renderer gained `fit: "box"`, `rotZ` (turn the piece, not the camera: a wall piece per normal), `files` and
 `copies` for this. The box fit is checked by valeArt.spec on real floors (drawn whole).
 

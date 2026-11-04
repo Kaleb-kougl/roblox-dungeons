@@ -1,0 +1,105 @@
+{
+	"$comment": "\"Old Chest\" (SebastianSosnowski, Sketchfab, CC-BY 4.0; THIRD_PARTY_NOTICES.md) for scripts/art/kit/render_kit.py: the vault chest (docs/TREASURE.md TR9), closed (treasure.chest) and open (treasure.chestopen). The model is in metres, so importScale 200 (its 0.94 m length is 188 units); at world scale (unitsPerTile 200) it is 0.94 x 0.58 tiles and 0.58 tall in one cell. Four facings like the wall banner (SE = front toward +X, SW = +Z, NE = -Z, NW = -X; the model's front, the lock plate, faces Blender -Y, which is the game's +Z, so SW is rotZ 0), each with its footprint centre written as the pivot (pivotAt: the closed chest's box centre, so the open lid never moves the pivot); the SE front is lit by the mirrored sun (sunSide -1) like the bookcase's +X face. The open chest cuts the box at z -57 (the lid is the top third), turns the lid 110 degrees back about its rear edge and hollows the wooden box (lid.cavity).",
+	"importScale": 200,
+	"grade": {
+		"saturation": 0.8,
+		"brightness": 1.1,
+		"contrast": 1.15,
+		"tint": [
+			1.06,
+			0.97,
+			0.92
+		]
+	},
+	"pieces": {
+		"chest": {
+			"objects": [
+				"defaultMaterial",
+				"defaultMaterial.001"
+			],
+			"az": [
+				-45,
+				-45,
+				-45,
+				-45
+			],
+			"rotZ": [
+				180,
+				270,
+				0,
+				90
+			],
+			"sunSide": [
+				1,
+				1,
+				1,
+				-1
+			],
+			"pivotAt": [
+				-151.9,
+				17.1
+			],
+			"fit": "world",
+			"unitsPerTile": 200,
+			"pivotOut": true,
+			"files": [
+				"NE/chest_NE_45.0_0.png",
+				"NW/chest_NW_135.0_0.png",
+				"SW/chest_SW_225.0_0.png",
+				"SE/chest_SE_315.0_0.png"
+			]
+		},
+		"chestopen": {
+			"objects": [
+				"defaultMaterial",
+				"defaultMaterial.001"
+			],
+			"lid": {
+				"cutZ": -57,
+				"hingeY": 75,
+				"deg": -110,
+				"interior": [
+					0.008,
+					0.005,
+					0.003
+				],
+				"cavity": {
+					"object": "defaultMaterial.001",
+					"inset": 5,
+					"depth": 55
+				}
+			},
+			"az": [
+				-45,
+				-45,
+				-45,
+				-45
+			],
+			"rotZ": [
+				180,
+				270,
+				0,
+				90
+			],
+			"sunSide": [
+				1,
+				1,
+				1,
+				-1
+			],
+			"pivotAt": [
+				-151.9,
+				17.1
+			],
+			"fit": "world",
+			"unitsPerTile": 200,
+			"pivotOut": true,
+			"files": [
+				"NE/chestopen_NE_45.0_0.png",
+				"NW/chestopen_NW_135.0_0.png",
+				"SW/chestopen_SW_225.0_0.png",
+				"SE/chestopen_SE_315.0_0.png"
+			]
+		}
+	}
+}

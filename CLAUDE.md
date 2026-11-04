@@ -664,7 +664,9 @@ Decision log (deviations from `PLAN.md`):
   override: `every`, tier, lock) and `KV_TreasureLabel`. Open for TR11: SWIFT at 100 % par was kept 30 / 30 in the TR5
   census (the bot clears vault rooms at ~28 % of par; target 40-60 %), and since the merge with bookcases (new room
   layouts) UNTOUCHED only 2 / 28 (was 8 / 25). A chest never stands on, against or beside a bookcase (the cell filter's
-  solid-decor rules). Vale art and audio (TR9), Studio check and playtest (TR11) pending.
+  solid-decor rules). Vale chest art rendered from the owner's "Old Chest" model (SebastianSosnowski, CC-BY 4.0, Credits screen;
+  `kit-chest` / `kit-chest-open`, four facings, render_kit.py `importScale` / `lid`, per-facing sprite pivots), upload
+  pending; cage art, sounds (TR9), Studio check and playtest (TR11) pending.
 
 ## Commands
 

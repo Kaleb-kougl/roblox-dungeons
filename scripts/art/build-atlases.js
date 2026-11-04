@@ -1255,6 +1255,7 @@ function buildImages(images, sets) {
 //   union   sprites: the centre of the union box of every frame (a loop whose frames move about: the glint)
 //   [x, y]  images: a point given in the source frame's pixels (a 3D kit render's footprint centre on the floor,
 //           written by scripts/art/kit/render_kit.py: solid decor stands centred on its cells)
+//   [[x, y], ...]  sprites: the same, one point per output facing d (the vault chest's four facings, docs/TREASURE.md TR9)
 // `outline` (standing pieces): per facing, the convex hull of every opaque pixel over all frames, cell pixels, so the
 // footprint fit (shared/view decor.ts fitArtLayout) can hold the real shape inside its box instead of the cell's
 // rectangle (a diagonal wall's rectangle is mostly empty). `glowAt: { animation, bright }`: the top edge / horizontal
@@ -1565,7 +1566,15 @@ function buildWorldSprites(world, name, def, ppt, pad) {
 	const refs = [];
 	for (const fc of facings) {
 		let p;
-		if (def.pivot === "union") {
+		if (Array.isArray(def.pivot)) {
+			// [[x, y] per output facing d]: a 3D kit render's footprint centre per facing (render_kit.py pivotOut)
+			const at = def.pivot[fc.d];
+			if (!Array.isArray(at) || def.pivot.length !== facings.length) {
+				throw new Error(`${name}: a sprite set's pivot array needs one [x, y] per facing (${facings.length})`);
+			}
+			const pa = def.animations[pivotFrom.animation];
+			p = worldPivotAt(`${name} ${fc.dir}`, at, worldFrame(world, def, expandFile(pa.file, fc.dir, fc.angle, pa.frames[pivotFrom.frame])));
+		} else if (def.pivot === "union") {
 			// the centre of the union box of every frame (a loop whose frames move about, e.g. a sparkle)
 			let u = null;
 			for (const an of animNames) {

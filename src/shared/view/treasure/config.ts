@@ -14,8 +14,14 @@ export const TREASURE_VIEW = {
 	profileLabel: "KV Treasure",
 	/** The chest and cage bases stand this far above the floor, studs (BREAKABLE_VIEW.liftStuds' value). */
 	liftStuds: 0.02,
-	/** Art (image / sprites) for the chest and cage is capped at this height above its pivot (BREAKABLE_VIEW's cap). */
-	maxHeightTiles: 0.75,
+	/**
+	 * Art (image / sprites) for the closed chest and the cage is capped at this height above its pivot (a taller frame is
+	 * drawn smaller; breakableArtLayout). 0.9: the vale chest (docs/TREASURE.md TR9) stands 0.83 tiles above its
+	 * footprint centre at the game's pitch (BREAKABLE_VIEW's 0.75 would shrink it by a tenth).
+	 */
+	maxHeightTiles: 0.9,
+	/** The same cap for the open chest, whose lid stands up behind it (the vale art: 1.2 tiles), so it is never shrunk. */
+	openMaxHeightTiles: 1.35,
 	/** The placeholder cage's bars stand this far outside the chest's footprint, studs (cageBarOffsets). */
 	cageMarginStuds: 0.25,
 

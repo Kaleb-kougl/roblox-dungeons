@@ -24,6 +24,13 @@ Set pieces built from several meshes (docs/DECOR.md "Room themes"): `region` {"m
 adds every mesh whose box centre lies inside (kit world units; `exclude` drops names starting with any listed prefix),
 `moves` {object: [dx, dy, dz]} shifts objects first (a throne seated on its dais), and `pivotAt` [x, y] is the
 footprint's centre on the floor (after the moves, before `rotZ`; default the group box's centre) for `pivotOut`.
+A kit's `importScale` multiplies the imported model about the origin and bakes it into the meshes (a model in metres,
+the old chest: the renderer's pad and RENDER_PPU are tuned for the centimetre kits). A piece's `lid` opens a box that
+has no separate lid (docs/TREASURE.md TR9, the open chest): every object of the piece is copied and cut at `cutZ`,
+the cut faces filled in `interior` (linear RGB; the copies are welded first, `weld` kit units, default 0.01), the part above turned about the hinge line along X at (`hingeY`,
+`cutZ`) by `deg` (negative: the front edge rises over the back), and the `cavity` object's lower part (the wooden
+box) hollowed: its fill inset by `inset` and pushed down `depth` kit units. The copies stand in for the piece's
+objects, so other pieces still render the untouched model.
 """
 import bpy, json, math, os, shutil, sys
 import bmesh  # after bpy: the module only exists once bpy has loaded
@@ -91,6 +98,79 @@ def region_objects(region, exclude):
         if all(region["min"][i] <= c[i] <= region["max"][i] for i in range(3)):
             out.append(o.name)
     return sorted(out)
+
+
+def apply_import_scale(k):
+    """Scale the imported model by k about the origin and bake every mesh's world matrix into its data (no parents)."""
+    meshes = [o for o in bpy.data.objects if o.type == "MESH"]
+    for o in meshes:
+        mw = Matrix.Scale(k, 4) @ o.matrix_world
+        o.parent = None
+        o.data.transform(mw)
+        o.matrix_world = Matrix.Identity(4)
+    for o in [o for o in bpy.data.objects if o.type == "EMPTY"]:
+        bpy.data.objects.remove(o)
+    bpy.context.view_layer.update()
+
+
+def interior_material(rgb):
+    m = bpy.data.materials.get("kit-interior") or bpy.data.materials.new("kit-interior")
+    m.use_nodes = True
+    bsdf = m.node_tree.nodes.get("Principled BSDF")
+    bsdf.inputs["Base Color"].default_value = (rgb[0], rgb[1], rgb[2], 1)
+    bsdf.inputs["Roughness"].default_value = 1.0
+    return m
+
+
+def open_lid(names, lid):
+    """Copies of `names` cut at lid.cutZ, holes filled, the top turned about the hinge; returns the copies' names."""
+    cut = lid["cutZ"]
+    mat = interior_material(lid.get("interior", [0.03, 0.02, 0.015]))
+    hinge = Matrix.Translation(Vector((0, lid["hingeY"], cut))) @ Matrix.Rotation(math.radians(lid["deg"]), 4, "X") @ Matrix.Translation(Vector((0, -lid["hingeY"], -cut)))
+    cav = lid.get("cavity", {})
+    out = []
+    for n in names:
+        src = bpy.data.objects[n]
+        for part in ("top", "box"):
+            o = src.copy()
+            o.data = src.data.copy()
+            o.name = f"{n}|{part}"
+            bpy.context.scene.collection.objects.link(o)
+            if mat.name not in [m.name for m in o.data.materials if m is not None]:
+                o.data.materials.append(mat)
+            mi = [m.name if m is not None else "" for m in o.data.materials].index(mat.name)
+            bm = bmesh.new()
+            bm.from_mesh(o.data)
+            # the kit splits faces at UV seams: weld them first, or the cut leaves open edge chains that never fill
+            bmesh.ops.remove_doubles(bm, verts=bm.verts[:], dist=lid.get("weld", 0.01))
+            geom = bm.verts[:] + bm.edges[:] + bm.faces[:]
+            bmesh.ops.bisect_plane(bm, geom=geom, plane_co=(0, 0, cut), plane_no=(0, 0, 1), clear_inner=part == "top", clear_outer=part == "box")
+            edges = [e for e in bm.edges if e.is_boundary and all(abs(v.co.z - cut) < 1e-3 for v in e.verts)]
+            filled = bmesh.ops.holes_fill(bm, edges=edges, sides=0)["faces"]
+            for f in filled:
+                f.material_index = mi
+            if part == "box" and cav.get("object") == n and filled:
+                # the rim (the inset ring) keeps the box's own material: the walls' top edge
+                rim = bmesh.ops.inset_region(bm, faces=filled, thickness=cav["inset"], depth=0)["faces"]
+                for f in rim:
+                    f.material_index = src.data.polygons[0].material_index if len(src.data.polygons) > 0 else 0
+                ext = bmesh.ops.extrude_face_region(bm, geom=filled)
+                moved = [v for v in ext["geom"] if isinstance(v, bmesh.types.BMVert)]
+                bmesh.ops.translate(bm, verts=moved, vec=(0, 0, -cav["depth"]))
+                for f in [g for g in ext["geom"] if isinstance(g, bmesh.types.BMFace)]:
+                    f.material_index = mi
+                movedset = set(moved)
+                for f in bm.faces:
+                    if any(v in movedset for v in f.verts):
+                        f.material_index = mi
+            bm.to_mesh(o.data)
+            bm.free()
+            if part == "top":
+                o.data.transform(hinge)
+            o.data.update()
+            out.append(o.name)
+    bpy.context.view_layer.update()
+    return out
 
 
 def render_variant(sc, sun, cam, names, az_deg, flatten, path, keep=None, rot_z=0.0, moves=None, pivot_at=None, sun_side=1):
@@ -212,6 +292,8 @@ def main():
     glb, out, spec_file = sys.argv[1:4]
     spec = json.load(open(spec_file))
     sc, sun, cam = setup(glb)
+    if spec.get("importScale"):
+        apply_import_scale(spec["importScale"])
     for name, piece in spec["pieces"].items():
         os.makedirs(os.path.join(out, name), exist_ok=True)
         turns = piece.get("rotZ", [0] * len(piece["az"]))
@@ -220,6 +302,8 @@ def main():
         names = list(piece.get("objects", []))
         if "region" in piece:
             names += [n for n in region_objects(piece["region"], piece.get("exclude", [])) if n not in names]
+        if "lid" in piece:
+            names = open_lid(names, piece["lid"])
         for i, az in enumerate(piece["az"]):
             path = os.path.join(out, name, files[i])
             os.makedirs(os.path.dirname(path), exist_ok=True)

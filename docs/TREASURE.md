@@ -1233,6 +1233,21 @@ Each step is a commit. Specs next to the code; `npm run verify` before each.
   Modular Set, or a `scripts/art` generator like the loot glint); audition crack / unlock / open / jingle (Ninja
   Adventure `Hit & Impact`, `Bonus`, `Jingles/LevelUp*` not yet primary); `audio:lock`, `audio:build`, upload, IDs into
   `packs/vale/assetIds.ts`.
+  **Chest art rendered (2026-11-04).** The owner's model "Old Chest" (SebastianSosnowski, Sketchfab, CC-BY 4.0;
+  THIRD_PARTY_NOTICES.md and the Credits screen) in `art/vendor/old-chest/` (the .glb and its renders), rendered by
+  `scripts/art/kit/render_kit.py` with `scripts/art/kit/old-chest.json`: closed (`kit-chest`) and open
+  (`kit-chest-open`), four facings each like the wall banner (output d = NE, NW, SW, SE = the chest's front toward -Z,
+  -X, +Z, +X; the SE front lit by the mirrored sun), at world scale (0.94 x 0.58 tiles, 0.58 tall), each facing's
+  pivot its footprint centre (the open lid never moves it). The renderer gained a kit-level `importScale` (the model
+  is in metres) and a piece-level `lid` (the box has no separate lid: copies cut at `cutZ`, welded first, the cut
+  filled dark, the lid turned 110 degrees back on its rear edge, the wooden box hollowed); the atlas pipeline takes a
+  per-facing `pivot: [[x, y], ...]` on world sprite sets. Vale maps `treasure.chest` / `.chestopen` to them
+  (`VALE_TREASURE_ART`); TreasureRenderController now turns a sprite chest to the vault's facing (`fx`, `fz`) and caps
+  the closed chest at `maxHeightTiles` 0.9 (it stands 0.84 tiles above its pivot) and the open one at
+  `openMaxHeightTiles` 1.35 (1.22), so neither is shrunk. The wobble rotates image and placeholder chests only (a
+  sprite view has no rotation). **Pending:** upload `kit-chest.png` / `kit-chest-open.png` (art/upload after
+  `npm run art:build`) and paste their IDs into `packs/vale/assetIds.ts` (until then vale draws the placeholder box);
+  the cage keeps its placeholder bars; the four sounds; the Studio check of the chest's facings on every wall.
 - [x] **TR10. Docs.** This file as built, the `CLAUDE.md` decision log, `src/shared/sim/README.md` (module, tick order,
   hash group), docs/CLIENT.md (controller, debug attributes), docs/DECOR.md (the chest piece kind), docs/DAILY.md (the
   ruleset). → Verify: `npm run verify`. → Done 2026-11-04: the Documents row and decision-log entry in `CLAUDE.md`;

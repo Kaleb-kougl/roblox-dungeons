@@ -1383,6 +1383,33 @@
 				"pivot": "hang",
 				"own": "kit-banner"
 			},
+			"$comment-chest": "The vault chest (docs/TREASURE.md TR9): \"Old Chest\" (SebastianSosnowski, CC-BY 4.0) at world scale, closed and open, four facings like the banner (output d = NE, NW, SW, SE: the chest's front toward -Z, -X, +Z, +X), each facing's pivot its footprint centre on the floor (render_kit.py pivotOut, scripts/art/kit/old-chest.json), so the chest stands centred on its cell and the open lid never moves it.",
+			"kit-chest": {
+				"facings": { "count": 4, "zeroDeg": 45 },
+				"animations": {
+					"idle": {
+						"file": "old-chest/chest/{dir}/chest_{dir}_{angle}_{f}.png",
+						"frames": [0],
+						"fps": 1,
+						"loop": true
+					}
+				},
+				"pivot": [[18.05, 24.33], [17.47, 24.19], [17.43, 24.67], [17.91, 24.78]],
+				"own": "kit-chest"
+			},
+			"kit-chest-open": {
+				"facings": { "count": 4, "zeroDeg": 45 },
+				"animations": {
+					"idle": {
+						"file": "old-chest/chestopen/{dir}/chestopen_{dir}_{angle}_{f}.png",
+						"frames": [0],
+						"fps": 1,
+						"loop": true
+					}
+				},
+				"pivot": [[25.57, 20.81], [16.97, 20.71], [16.83, 35.52], [25.48, 35.6]],
+				"own": "kit-chest-open"
+			},
 			"barrel-broken": {
 				"file": "lords-of-pain/prop/barrel_break/NE/barrel_break_NE_45.0_7.png",
 				"pivot": "center"

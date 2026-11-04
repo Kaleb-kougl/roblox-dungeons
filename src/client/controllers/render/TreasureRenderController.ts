@@ -357,7 +357,7 @@ export class TreasureRenderController implements OnStart {
 		if (look.liftStuds !== 0) origin = origin.add(new Vector3(0, look.liftStuds, 0));
 		const wobble = degToRad(look.wobbleDeg);
 		if (show.model !== undefined && wobble !== 0) origin = origin.mul(CFrame.Angles(0, 0, wobble));
-		this.placeBody(show, origin, dtSec);
+		this.placeBody(show, origin, dtSec, look.fx, look.fz);
 		if (show.image !== undefined) show.image.label.Rotation = look.wobbleDeg;
 	}
 
@@ -784,7 +784,8 @@ export class TreasureRenderController implements OnStart {
 
 	// --- bodies ----------------------------------------------------------------------------------------
 
-	private placeBody(body: PieceBody, origin: CFrame, dtSec: number): void {
+	/** `faceX` / `faceZ`: the way a sprite chest faces (into its room: the vale art's four facings); 0, 0 keeps its row. */
+	private placeBody(body: PieceBody, origin: CFrame, dtSec: number, faceX = 0, faceZ = 0): void {
 		if (!body.shown) {
 			body.shown = true;
 			if (body.sprite !== undefined) {
@@ -799,7 +800,7 @@ export class TreasureRenderController implements OnStart {
 		}
 		if (body.sprite !== undefined) {
 			body.sprite.anchor.CFrame = new CFrame(origin.Position);
-			body.sprite.update(IDLE, 0, 0, this.basis, dtSec);
+			body.sprite.update(IDLE, faceX, faceZ, this.basis, dtSec);
 		}
 		if (body.image !== undefined) body.image.anchor.CFrame = new CFrame(origin.Position);
 	}
@@ -846,8 +847,8 @@ export class TreasureRenderController implements OnStart {
 		this.chestLook = pack.treasurePiece(TREASURE_CHEST_ID);
 		this.openLook = pack.treasurePiece(TREASURE_CHEST_OPEN_ID);
 		this.cageLook = pack.treasurePiece(TREASURE_CAGE_ID);
-		this.closed = this.buildBody(this.chestLook, folder);
-		this.opened = this.buildBody(this.openLook, folder);
+		this.closed = this.buildBody(this.chestLook, folder, V.maxHeightTiles);
+		this.opened = this.buildBody(this.openLook, folder, V.openMaxHeightTiles);
 		this.hideBody(this.closed);
 		this.hideBody(this.opened);
 		this.buildCage(pack, folder);
@@ -859,10 +860,10 @@ export class TreasureRenderController implements OnStart {
 		this.openLine = this.buildCard(pack, "Line");
 	}
 
-	private buildBody(look: TreasurePiece, folder: Folder): PieceBody {
+	private buildBody(look: TreasurePiece, folder: Folder, maxHeightTiles: number): PieceBody {
 		const art = look.art;
 		if (art !== undefined && art.kind === "sprites") {
-			const layout = breakableArtLayout(art.set, V.maxHeightTiles);
+			const layout = breakableArtLayout(art.set, maxHeightTiles);
 			const sprite = new SpriteView(art.set, folder, layout);
 			return {
 				model: undefined,
@@ -877,7 +878,7 @@ export class TreasureRenderController implements OnStart {
 		if (art !== undefined && art.kind === "image") {
 			const layout = breakableArtLayout(
 				{ frameW: art.size.X, frameH: art.size.Y, pivot: art.pivot, pixelsPerTile: art.pixelsPerTile },
-				V.maxHeightTiles,
+				maxHeightTiles,
 			);
 			return {
 				model: undefined,
@@ -905,7 +906,7 @@ export class TreasureRenderController implements OnStart {
 	private buildCage(pack: ThemePack, folder: Folder): void {
 		const look = this.cageLook!;
 		if (look.art !== undefined) {
-			this.cageArt = this.buildBody(look, folder);
+			this.cageArt = this.buildBody(look, folder, V.maxHeightTiles);
 			this.hideBody(this.cageArt);
 			return;
 		}

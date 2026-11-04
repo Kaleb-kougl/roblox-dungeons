@@ -1289,6 +1289,32 @@ export const VALE_WORLD_LAYOUTS: Record<string, ValeWorldLayout> = {
 		pivot: { x: 33.5, y: 30 },
 		pixelsPerTile: 29.6,
 	},
+	"kit-chest": {
+		kind: "sprites",
+		frameW: 36,
+		frameH: 40,
+		pivot: { x: 18, y: 25 },
+		pixelsPerTile: 29.6,
+		resample: "Default",
+		facings: { count: 4, zeroDeg: 45, ccw: true },
+		sheets: [{ file: "kit-chest.png", w: 144, h: 40 }],
+		animations: {
+			idle: { sheet: 0, start: 0, frames: 1, fps: 1, loop: true },
+		},
+	},
+	"kit-chest-open": {
+		kind: "sprites",
+		frameW: 51,
+		frameH: 51,
+		pivot: { x: 26, y: 36 },
+		pixelsPerTile: 29.6,
+		resample: "Default",
+		facings: { count: 4, zeroDeg: 45, ccw: true },
+		sheets: [{ file: "kit-chest-open.png", w: 204, h: 51 }],
+		animations: {
+			idle: { sheet: 0, start: 0, frames: 1, fps: 1, loop: true },
+		},
+	},
 	"kit-sarcophagus": {
 		kind: "image",
 		file: "kit-sarcophagus.png",

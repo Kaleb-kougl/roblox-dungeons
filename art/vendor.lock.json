@@ -9622,6 +9622,46 @@
 			"bytes": 673
 		},
 		{
+			"path": "old-chest/chest/NE/chest_NE_45.0_0.png",
+			"sha256": "9de2a6eba07ca570842a1b3658cef51eca1a50c26aa18363ea666508a077f15b",
+			"bytes": 2623
+		},
+		{
+			"path": "old-chest/chest/NW/chest_NW_135.0_0.png",
+			"sha256": "d8749be23bed0d60b9015290f8af88cb1629945c240066fc60a20089b1a83223",
+			"bytes": 2562
+		},
+		{
+			"path": "old-chest/chest/SE/chest_SE_315.0_0.png",
+			"sha256": "12b8580f613853675bf24b47e0023f384965d8752b226237c7225f500805a924",
+			"bytes": 2649
+		},
+		{
+			"path": "old-chest/chest/SW/chest_SW_225.0_0.png",
+			"sha256": "6e519d68a7869c4e0c97fb318bf1cecdce0ca581c06275517557c993bb9e906b",
+			"bytes": 2651
+		},
+		{
+			"path": "old-chest/chestopen/NE/chestopen_NE_45.0_0.png",
+			"sha256": "a7ea588f643cbac5245c0dc46771d672d4eeb5893085175b99eb8d6b6453051e",
+			"bytes": 2386
+		},
+		{
+			"path": "old-chest/chestopen/NW/chestopen_NW_135.0_0.png",
+			"sha256": "aa3dc09e9b9dfd3d4512b1c5ee587f5d5fafb91d4bb986367857b371be44a490",
+			"bytes": 2336
+		},
+		{
+			"path": "old-chest/chestopen/SE/chestopen_SE_315.0_0.png",
+			"sha256": "6fe58e153031c8e8b0f43dea065c646f156a030bba53df7065196bace82f1477",
+			"bytes": 3150
+		},
+		{
+			"path": "old-chest/chestopen/SW/chestopen_SW_225.0_0.png",
+			"sha256": "cefb2bd416db03773f9ea6d3a7b1ba269fc0c24d4b795e0ce47f76b42a2ddeee",
+			"bytes": 3213
+		},
+		{
 			"path": "smallscale-knight/Spritesheets/With shadows/Die.png",
 			"sha256": "21d6c27199e3573abafa15acc83b165abef057cf36807f50cd726b0f67902751",
 			"bytes": 492341

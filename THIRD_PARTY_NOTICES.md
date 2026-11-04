@@ -201,3 +201,18 @@ docs/BOOKSHELVES.md). **Changes made:** rendered to 2D sprites
   **Attribution is required where players can see it**: the main menu's Credits screen (shared/view/menu `CREDITS`)
   shows the title, "by C. Anastasiadis (Sketchfab)", "CC BY 4.0 - creativecommons.org/licenses/by/4.0" and the change
   note.
+
+## Old Chest (3D model, CC-BY 4.0) - ATTRIBUTION REQUIRED
+
+- "Old Chest" (https://skfb.ly/6CWsK) by SebastianSosnowski (https://sketchfab.com/SebastianSosnowski). Source:
+  https://sketchfab.com/3d-models/old-chest-d280b6c1a64d4fd2a1872e232ea1581a (`old_chest.glb`, glTF from Sketchfab;
+  author, licence and source as recorded in its `asset.extras`).
+- Used for: the vault chest (docs/TREASURE.md TR9): `treasure.chest` (closed) and `treasure.chestopen` (open), four
+  facings each. **Changes made:** rendered to 2D sprites from the game camera by `scripts/art/kit/render_kit.py`
+  (Blender), scaled, colour graded, and for the open chest cut at the lid line with the lid turned open on its back edge
+  and the box hollowed (`scripts/art/kit/old-chest.json`); packed by `scripts/art/build-atlases.js` and uploaded to Roblox.
+- Raw files: `art/vendor/old-chest/` (gitignored; the .glb and its renders).
+- License: Creative Commons Attribution 4.0 International (https://creativecommons.org/licenses/by/4.0/).
+  **Attribution is required where players can see it**: the main menu's Credits screen (shared/view/menu `CREDITS`)
+  shows the title, "by SebastianSosnowski (Sketchfab)", "CC BY 4.0 - creativecommons.org/licenses/by/4.0" and the
+  change note.

@@ -24,6 +24,7 @@ import { breakableContrastReport, decorFxReport, validateManifest } from "../../
 import { PLACEHOLDER_MANIFEST } from "../placeholder";
 import { PELLET_KINDS, pelletId } from "../../pellets";
 import { pelletReport } from "../../pelletColors";
+import { TREASURE_IDS } from "../../treasure";
 import { VALE_WORLD_LAYOUTS } from "./layout";
 import {
 	VALE_AMBIENT_ART,
@@ -32,6 +33,7 @@ import {
 	VALE_DECOR_PIECES,
 	VALE_PELLET_ART,
 	VALE_RETIRED_WORLD_ART,
+	VALE_TREASURE_ART,
 	VALE_VOID_DECOR_PIECES,
 	VALE_VOID_KIND_PIECES,
 	buildValeManifest,
@@ -82,6 +84,7 @@ describe("vale world art (docs/DECOR.md R5)", () => {
 		for (const name of DECOR_FX_NAMES) used.add(VALE_DECOR_FX[name]);
 		for (const kind of BREAKABLE_KINDS) used.add(VALE_BREAKABLE_ART[kind]);
 		for (const kind of PELLET_KINDS) used.add(VALE_PELLET_ART[kind]);
+		for (const id of TREASURE_IDS) if (VALE_TREASURE_ART[id] !== undefined) used.add(VALE_TREASURE_ART[id]);
 		// the void pieces' art may still be missing from the built atlas (docs/VOID_DECOR.md VD6): dormant until built
 		const pending = new Set<string>();
 		for (const p of VALE_VOID_DECOR_PIECES) if (VALE_WORLD_LAYOUTS[p.art] === undefined) pending.add(p.art);
@@ -114,7 +117,7 @@ describe("vale world art (docs/DECOR.md R5)", () => {
 		}
 		// one shared atlas, the particle texture, the loot twinkle's own sheet (docs/BREAKABLE_DROPS.md) and the trial
 		// 3D kit's own PNGs (docs/DECOR.md "3D kits") and the
-		// two pellet cubes (docs/PELLETS.md PL8)
+		// two pellet cubes (docs/PELLETS.md PL8) and the vault chest's two sheets (docs/TREASURE.md TR9)
 		expect(worldFiles()).toEqual([
 			"decor-atlas.png",
 			"decor-mote.png",
@@ -131,6 +134,8 @@ describe("vale world art (docs/DECOR.md R5)", () => {
 			"kit-chains-1.png",
 			"kit-chains-2.png",
 			"kit-chandelier-1.png",
+			"kit-chest-open.png",
+			"kit-chest.png",
 			"kit-sarcophagus.png",
 			"kit-statue-x.png",
 			"kit-statue-z.png",
@@ -149,6 +154,15 @@ describe("vale world art (docs/DECOR.md R5)", () => {
 		expect(validateManifest(m, { packId: "vale" })).toEqual([]);
 		for (const id of decorIds()) expect([id, m.assets[id] !== undefined]).toEqual([id, true]);
 		for (const kind of BREAKABLE_KINDS) expect(m.assets[breakableId(kind)].kind).toBe("sprites");
+		// the vault chest (docs/TREASURE.md TR9): four-facing sprite sets, closed and open; the cage keeps its bars
+		for (const [id, art] of [
+			["treasure.chest", "kit-chest"],
+			["treasure.chestopen", "kit-chest-open"],
+		]) {
+			const asset = m.assets[id];
+			const l = VALE_WORLD_LAYOUTS[art];
+			expect([id, asset.kind, l.kind === "sprites" ? l.facings.count : 0]).toEqual([id, "sprites", 4]);
+		}
 		// the pellets (docs/PELLETS.md PL8): images of their own PNGs at the pack's scale, tinted by their roles
 		for (const kind of PELLET_KINDS) {
 			const a = m.assets[pelletId(kind)] as ImageAsset;
