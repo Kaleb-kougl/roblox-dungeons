@@ -225,6 +225,7 @@ export class AudioController implements OnStart {
 				audibleBuilds(ctx.run.builds, quiet),
 				this.rankCues(),
 				ctx.run.pellets,
+				ctx.run.golden,
 			);
 			for (let i = 0; i < this.cues.size(); i++) {
 				this.play(this.cues.id(i), this.cues.volume(i), this.cues.speed(i));
