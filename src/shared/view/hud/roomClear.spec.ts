@@ -36,6 +36,7 @@ describe("the room clear celebration's strings", () => {
 			ROOM_CLEAR_STRINGS.fly,
 			ROOM_CLEAR_STRINGS.pellets,
 			ROOM_CLEAR_STRINGS.sweep,
+			ROOM_CLEAR_STRINGS.horde,
 		];
 		expect(keys).toEqual([...ROOM_CLEAR_STRING_KEYS]);
 		for (const key of keys) expect([key, REQUIRED_STRING_KEYS.includes(key)]).toEqual([key, true]);

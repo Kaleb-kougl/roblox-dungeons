@@ -949,7 +949,7 @@ describe("validateManifest: image pivots", () => {
 				pivot: { x: 8, y: 8 },
 			}),
 		).toEqual([
-			'assets["item.gold"].pivot: only ui.*, decor.*, breakable.*, boost.* and pellet.* images have a pivot; slot "item" has none',
+			'assets["item.gold"].pivot: only ui.*, decor.*, breakable.*, boost.*, pellet.* and pact.* images have a pivot; slot "item" has none',
 		]);
 	});
 });

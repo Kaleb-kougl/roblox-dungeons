@@ -48,6 +48,10 @@
 	"bestiary.charger": {
 		"note": "First-sighting toast, shown once per account (top centre, during combat) the first time the player meets the Charger (enemy.charger.name). Format \"Name: short survival tip\"; the name before the colon must be the same word as that name string. Brief, direct, second person."
 	},
+	"bestiary.golden": {
+		"note": "First-sighting toast, shown once per account (top centre, during combat) the first time a Goldling (enemy.golden.name: a rare harmless gold creature that runs away; every hit gives coins and catching it within 10 seconds gives a jackpot) appears in a run. Two short exclamations; the name must be the same word as enemy.golden.name. Brief, direct, second person.",
+		"max": 48
+	},
 	"bestiary.imp": {
 		"note": "First-sighting toast, shown once per account (top centre, during combat) the first time the player meets the Imp (enemy.imp.name). Format \"Name: short survival tip\"; the name before the colon must be the same word as that name string. Brief, direct, second person."
 	},
@@ -1015,6 +1019,25 @@
 	"enemy.warbanner.name": {
 		"note": "Enemy type name: an imp carrying a war banner that stays behind other enemies and makes those near it faster. Shown in the stage card's roster line (the enemy kinds of a floor, joined with \" · \") and the main menu's Daily card. Singular noun, title case, used as a proper name; keep it short. Glossary term."
 	},
+	"fx.golden.escaped": {
+		"note": "Short line written where the Goldling vanished when it escapes before being caught. {points} is a number: the coins (points) already won from hitting it, which the player keeps. The two spaces before the plus are a visual gap; keep them or use the language's equivalent.",
+		"max": 36,
+		"example": {
+			"points": 350
+		}
+	},
+	"fx.golden.shout": {
+		"note": "Big shout written on the floor when a Goldling (enemy.golden.name: a rare harmless gold creature that runs away; catch it for a jackpot) pops out during a fight. ALL CAPS exclamation of its name; must match enemy.golden.name.",
+		"max": 14
+	},
+	"fx.horde.shout": {
+		"note": "Big shout written on the floor when the party enters the Pact of the Horde's room (twice the enemies, x2 score). ALL CAPS; keep \"x2\" as is. Glossary: Horde as in pact.horde.title.",
+		"max": 12
+	},
+	"fx.horde.wave": {
+		"note": "Big shout written on the floor when the second wave of enemies of a Horde room arrives. ALL CAPS; keep the digit 2.",
+		"max": 12
+	},
 	"fx.parry.count": {
 		"note": "Parry flash written on the floor when a parry erased several bullets: {text} is the parry word (fx.parry.text, e.g. \"PARRY!\", already translated) and {n} the number of bullets erased; the x means \"times\". Usually unchanged.",
 		"max": 13,
@@ -1156,6 +1179,10 @@
 	"hud.build.title": {
 		"note": "Title of the list of boons the player owns (pause menu and run-over panel): their \"build\" for this run.",
 		"max": 12
+	},
+	"hud.chip.horde": {
+		"note": "Small chip in the status corner of the HUD while the Pact of the Horde is armed: the next enemy room the party enters fights twice the enemies for twice (x2) the score. \"HORDE\" in capitals, then a short reminder; keep \"x2\" as is.",
+		"max": 26
 	},
 	"hud.combo.best": {
 		"note": "Shown in the combo tier slot (score panel) after a combo lapses: the streak's peak multiplier. {combo} is a decimal like 3.4. ALL CAPS in English.",
@@ -1328,6 +1355,10 @@
 	},
 	"hud.draft.title": {
 		"note": "Title above the boon draft: after each floor the player picks one of three cards (boons = run-long power-ups). Imperative."
+	},
+	"hud.draft.title.greed": {
+		"note": "Title above the card draft that the Pact of Greed opens (three legendary power-up cards to choose from, right after accepting the pact), in place of hud.draft.title. ALL CAPS; must match pact.greed.title.",
+		"max": 24
 	},
 	"hud.draft.wait": {
 		"note": "Placeholder shown on the draft while the cards are not dealt yet: an ellipsis. Usually unchanged.",
@@ -2652,6 +2683,60 @@
 		"note": "Step button (40 x 30 px) that raises a value: a plus sign. Usually unchanged.",
 		"max": 1
 	},
+	"pact.accept": {
+		"note": "Last line of a pact altar card: how to accept the pact. {key} is a key or button name such as \"1\", \"E\" or \"A\" (from the player's bindings; currently always English). Verb: take the deal.",
+		"max": 20,
+		"example": {
+			"key": "1"
+		}
+	},
+	"pact.dim.noCurse": {
+		"note": "Line on the greyed-out Pact of Greed altar card: you already carry every curse (handicap), so there is none left to take. Short.",
+		"max": 24
+	},
+	"pact.dim.noLegendary": {
+		"note": "Line on the greyed-out Pact of Greed altar card: there is no legendary (the rarest) power-up left to offer you. Short.",
+		"max": 28
+	},
+	"pact.dim.noRoom": {
+		"note": "Line on the greyed-out Pact of the Horde altar card: every enemy room on this floor has already been entered, so there is no room left for a second wave. \"Rouse\" = wake and stir up. Short.",
+		"max": 28
+	},
+	"pact.dim.taken": {
+		"note": "Line on a greyed-out pact altar card: this pact was already accepted at this shrine (Greed: by you; the Horde: by anyone in the party). Short.",
+		"max": 24
+	},
+	"pact.dim.unable": {
+		"note": "Line on a greyed-out pact altar card when you cannot take any pact right now (for example while dead and spectating). Short.",
+		"max": 24
+	},
+	"pact.greed.gain": {
+		"note": "Line on the Pact of Greed altar card: the reward, picking one card from a deal of legendary (the rarest) power-ups right now. Keep LEGENDARY in capitals (it echoes the legendary card rarity); the rest in sentence case.",
+		"max": 36
+	},
+	"pact.greed.take": {
+		"note": "Line on the Pact of Greed altar card: the cost. {curse} is the name of the curse the player will take (curse.<id>.name, e.g. \"Frailty\"), already translated. Imperative or a short label.",
+		"max": 32,
+		"example": {
+			"curse": "Frailty"
+		}
+	},
+	"pact.greed.title": {
+		"note": "Title of the Pact of Greed card, drawn on the floor in front of one of two altars in the shrine room (risk shrines: a pact gives a reward for a cost the card states up front; the player walks onto the altar and presses the shrine key to accept). Greed: take a curse (a handicap) and pick a legendary power-up right away. ALL CAPS; keep capitals if the script has them. Glossary term: must match hud.draft.title.greed.",
+		"max": 24
+	},
+	"pact.horde.gain": {
+		"note": "Line on the Pact of the Horde altar card: the reward. That room pays double score. Short label style, like \"Gain: ...\" on the Greed card.",
+		"max": 32
+	},
+	"pact.horde.take": {
+		"note": "Line on the Pact of the Horde altar card: the cost. The next enemy room the party enters spawns twice the enemies (a second wave). Short label style, like \"Take: ...\" on the Greed card.",
+		"max": 36
+	},
+	"pact.horde.title": {
+		"note": "Title of the Pact of the Horde card, drawn on the floor in front of one of two altars in the shrine room (risk shrines: a pact gives a reward for a cost the card states up front; the player walks onto the altar and presses the shrine key to accept). Horde: the next room the party enters fights a second wave of enemies and pays double score. ALL CAPS; keep capitals if the script has them.",
+		"max": 24
+	},
 	"playtest.run.hits": {
 		"note": "Stat label on the run-over panel (a 150 px stat column, the value written below it): how many hits the player took.",
 		"max": 18
@@ -2761,6 +2846,13 @@
 		"max": 23,
 		"example": {
 			"points": 150
+		}
+	},
+	"room.clear.line.horde": {
+		"note": "Last segment of the one-row score tally under the room-clear stamp, only in a Pact of the Horde room: the bonus that doubles the room's points. {points} is a number. Keep \"x2\" as is.",
+		"max": 23,
+		"example": {
+			"points": 420
 		}
 	},
 	"room.clear.line.kills": {
@@ -2915,12 +3007,20 @@
 		"note": "Run-over panel: score breakdown row label (200 px label column, the points sit to the right) for points from floors completed.",
 		"max": 20
 	},
+	"score.source.golden": {
+		"note": "Run-over panel: score breakdown row label (200 px label column, the points sit to the right) for points from the Goldling (enemy.golden.name: a rare gold creature; coins per hit, a jackpot if caught). Use the same word as enemy.golden.name.",
+		"max": 20
+	},
 	"score.source.grazes": {
 		"note": "Run-over panel: score breakdown row label (200 px label column, the points sit to the right) for points from grazes (bullets that skim past the player without hitting).",
 		"max": 20
 	},
 	"score.source.guard": {
 		"note": "Run-over panel: score breakdown row label (200 px label column, the points sit to the right) for points from guard cancels (bullets erased by blocking with the sword).",
+		"max": 20
+	},
+	"score.source.horde": {
+		"note": "Run-over panel: score breakdown row label (200 px label column, the points sit to the right) for the extra points earned in Pact of the Horde rooms (their doubled half).",
 		"max": 20
 	},
 	"score.source.jackpot": {

@@ -199,6 +199,8 @@ describe("enemy variants: contract", () => {
 			"stormcaller",
 			"warbanner",
 			"reaper",
+			// docs/FORTUNE.md FO6: the Goldling
+			"golden",
 		]);
 		expect([...BESTIARY_STRING_KEYS]).toEqual([
 			...BESTIARY_ARCHETYPES.map((a) => bestiaryArchetypeKey(a)),
@@ -215,6 +217,7 @@ describe("enemy variants: contract", () => {
 			"bestiary.stormcaller",
 			"bestiary.warbanner",
 			"bestiary.reaper",
+			"bestiary.golden",
 			"bestiary.affix.hulking",
 			"bestiary.affix.swift",
 			"bestiary.affix.shielded",

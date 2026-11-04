@@ -202,6 +202,14 @@ export const COLOR_ROLES = [
 	// telegraph, every boost and build effect colour and playerOutline.
 	"pellet.normal",
 	"pellet.power",
+	// Roblox port (docs/FORTUNE.md FO6): Fortune's colours (fortune.ts FORTUNE_ROLES): a Horde room's flashing edge, the
+	// two pact altars' cards and flames (Greed, the Horde), the Goldling's coins. Held to FORTUNE_COLOR_RULES by
+	// fortuneReport (fortuneColors.ts): >= 3:1 on every biome floor and (CIE76) away from the enemy-bullet roles and
+	// telegraph; the coins also away from pellet.normal.
+	"roomEdge.horde",
+	"pact.greed",
+	"pact.horde",
+	"golden.coin",
 ] as const;
 
 export type ColorRole = (typeof COLOR_ROLES)[number];

@@ -321,6 +321,20 @@ export const SFX = {
 	pelletEat: "sfx.pellet.eat",
 	pelletSweep: "sfx.pellet.sweep",
 	pelletPower: "sfx.pellet.power",
+	/**
+	 * Fortune (docs/FORTUNE.md FO6; the theme's PORT_AUDIO_EVENTS, FORTUNE_AUDIO_IDS): a pact taken at an altar; the
+	 * Horde room's horn on entry, its second wave, the x2 landing in the tally; the Goldling appearing, each hit on it,
+	 * the jackpot of a catch, its escape. Each plays its SFX_FALLBACK while silent. Not mapped to any event yet: the
+	 * cue mapper's Fortune cues are docs/FORTUNE.md FO9.
+	 */
+	pactTake: "sfx.pact.take",
+	hordeHorn: "sfx.horde.horn",
+	hordeWave: "sfx.horde.wave",
+	hordeDouble: "sfx.horde.double",
+	goldenAppear: "sfx.golden.appear",
+	goldenHit: "sfx.golden.hit",
+	goldenJackpot: "sfx.golden.jackpot",
+	goldenEscape: "sfx.golden.escape",
 } as const;
 export type SfxId = (typeof SFX)[keyof typeof SFX];
 
@@ -402,6 +416,14 @@ export const ALL_SFX: ReadonlyArray<SfxId> = [
 	SFX.pelletEat,
 	SFX.pelletSweep,
 	SFX.pelletPower,
+	SFX.pactTake,
+	SFX.hordeHorn,
+	SFX.hordeWave,
+	SFX.hordeDouble,
+	SFX.goldenAppear,
+	SFX.goldenHit,
+	SFX.goldenJackpot,
+	SFX.goldenEscape,
 ];
 
 /** IDs this port added to the placeholder pack (not in the web contract's AUDIO_EVENTS; theme PORT_AUDIO_EVENTS). */
@@ -469,6 +491,14 @@ export const PORT_SFX: ReadonlyArray<SfxId> = [
 	SFX.pelletEat,
 	SFX.pelletSweep,
 	SFX.pelletPower,
+	SFX.pactTake,
+	SFX.hordeHorn,
+	SFX.hordeWave,
+	SFX.hordeDouble,
+	SFX.goldenAppear,
+	SFX.goldenHit,
+	SFX.goldenJackpot,
+	SFX.goldenEscape,
 ];
 
 /**
@@ -672,6 +702,20 @@ export const SFX_PRIORITY: Readonly<Record<SfxId, number>> = {
 	[SFX.pelletSweep]: 65,
 	[SFX.pelletEat]: 53,
 	/**
+	 * Fortune (docs/FORTUNE.md FO6): provisional ranks, each its fallback clip's (the sound it stands in for while
+	 * silent), but the Goldling's hit, ranked with the graze and the chomp (a small reward, never over the hurt, the
+	 * telegraph or the kill ladder), and the second wave, ranked with the danger cues of the enemy variants (new bodies
+	 * arriving, over a summon). The cue mapper (FO9) settles them.
+	 */
+	[SFX.pactTake]: 70,
+	[SFX.hordeHorn]: 65,
+	[SFX.hordeWave]: 46,
+	[SFX.hordeDouble]: 60,
+	[SFX.goldenAppear]: 64,
+	[SFX.goldenHit]: 53,
+	[SFX.goldenJackpot]: 72,
+	[SFX.goldenEscape]: 73,
+	/**
 	 * A boost out of a broken piece (docs/BREAKABLE_DROPS.md BL6): just over a kill drop's landing (the rarer, chosen
 	 * reward), under the pickup; over the piece's own break (40), which plays on the same frame.
 	 */
@@ -841,6 +885,20 @@ export const SFX_FALLBACK: Readonly<Partial<Record<SfxId, SfxId>>> = {
 	[SFX.pelletEat]: SFX.scoreTick,
 	[SFX.pelletSweep]: SFX.comboTier,
 	[SFX.pelletPower]: SFX.playerParry,
+	/**
+	 * docs/FORTUNE.md FO6: until Fortune's clips are picked (FO10), a pact plays the curse shrine's sound; the Horde's
+	 * horn the combo's tier sting, its second wave a Summoner's call, its x2 the bonus landing in the score; the
+	 * Goldling's appearance the power pellet's power-up, each hit the tally's tick (short, so a hit ladder still climbs
+	 * on it), the jackpot the PERFECT jingle and the escape the combo break's shatter. One step each.
+	 */
+	[SFX.pactTake]: SFX.shrineUse,
+	[SFX.hordeHorn]: SFX.comboTier,
+	[SFX.hordeWave]: SFX.enemySummon,
+	[SFX.hordeDouble]: SFX.scoreLand,
+	[SFX.goldenAppear]: SFX.pelletPower,
+	[SFX.goldenHit]: SFX.scoreTick,
+	[SFX.goldenJackpot]: SFX.roomPerfect,
+	[SFX.goldenEscape]: SFX.comboBreak,
 };
 
 /**

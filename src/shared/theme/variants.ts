@@ -59,7 +59,7 @@ export const AFFIX_STRING_KEYS: ReadonlyArray<string> = [
 
 /**
  * The new archetypes a first sighting announces (EVD10): the Imp, the Ooze and the Summoner, then the second endless set
- * (docs/NEW_ENEMIES.md NED13): Bomber, Charger, Stormcaller, Warbanner, Reaper.
+ * (docs/NEW_ENEMIES.md NED13): Bomber, Charger, Stormcaller, Warbanner, Reaper, then the Goldling (docs/FORTUNE.md FO6).
  */
 export const BESTIARY_ARCHETYPES = [
 	"imp",
@@ -70,6 +70,7 @@ export const BESTIARY_ARCHETYPES = [
 	"stormcaller",
 	"warbanner",
 	"reaper",
+	"golden",
 ] as const;
 
 /**
@@ -86,6 +87,8 @@ export const BESTIARY_STRING_KEYS: ReadonlyArray<string> = [
 	"bestiary.stormcaller",
 	"bestiary.warbanner",
 	"bestiary.reaper",
+	// docs/FORTUNE.md FO6: the Goldling (fortune.ts GOLDEN_BESTIARY_KEY; shared/onboarding sighting `golden`)
+	"bestiary.golden",
 	"bestiary.affix.hulking",
 	"bestiary.affix.swift",
 	"bestiary.affix.shielded",

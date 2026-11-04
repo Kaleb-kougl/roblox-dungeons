@@ -3,7 +3,13 @@
  * components take their keys from here, and hud.spec.ts checks each one exists in the placeholder pack, so a missing
  * key fails the build instead of showing the raw key in game.
  */
-import { BUILD_SCORE_SOURCE_NAMES, PELLET_SCORE_SOURCE_NAMES, SCORE_SOURCE_NAMES } from "shared/sim";
+import {
+	BUILD_SCORE_SOURCE_NAMES,
+	GOLDEN_SCORE_SOURCE_NAMES,
+	PACT_SCORE_SOURCE_NAMES,
+	PELLET_SCORE_SOURCE_NAMES,
+	SCORE_SOURCE_NAMES,
+} from "shared/sim";
 export const HUD_STRINGS = {
 	title: "game.title",
 	health: "hud.health",
@@ -56,12 +62,15 @@ export const HUD_STRINGS = {
  * Results breakdown label per score source index, `score.source.<name>`: shared/sim SCORE_SOURCE_NAMES (every scored
  * run's), then BUILD_SCORE_SOURCE_NAMES (docs/BUILDS.md BU5: `jackpot`, index 9, only in builds runs' points, so the
  * run-over breakdown shows its row there and nowhere else), then PELLET_SCORE_SOURCE_NAMES (docs/PELLETS.md PL7:
- * `pellets` 10 / `sweep` 11, only in pellet runs' points).
+ * `pellets` 10 / `sweep` 11, only in pellet runs' points), then PACT_SCORE_SOURCE_NAMES (docs/FORTUNE.md FO6: `horde`
+ * 12, pacts runs only) and GOLDEN_SCORE_SOURCE_NAMES (`golden` 13, Goldling runs only).
  */
 export const SCORE_SOURCE_KEYS: ReadonlyArray<string> = [
 	...SCORE_SOURCE_NAMES,
 	...BUILD_SCORE_SOURCE_NAMES,
 	...PELLET_SCORE_SOURCE_NAMES,
+	...PACT_SCORE_SOURCE_NAMES,
+	...GOLDEN_SCORE_SOURCE_NAMES,
 ].map((n) => `score.source.${n}`);
 
 /** One run-over breakdown row: the score source's index, its label key and its points. */
@@ -74,9 +83,10 @@ export interface ScoreBreakdownRow {
 /**
  * The run-over breakdown's source rows for a snapshot's `scorePoints` (ScoreSource order): one per index that has a
  * label (SCORE_SOURCE_KEYS), in order. A builds run's 10th entry (Jackpot) has one, a pellet run's 11th / 12th
- * (Pellets / Sweep) too; an index past the keys is skipped. The port-only sources (every index past SCORE_SOURCE_NAMES:
- * Jackpot, Pellets, Sweep) show only when they scored (docs/PELLETS.md PL7: a pellet run without builds pads Jackpot
- * with 0, and every row costs the run-over panel height on phones).
+ * (Pellets / Sweep) too, a pacts run's 13th (Horde) and a Goldling run's 14th (Goldling); an index past the keys is
+ * skipped. The port-only sources (every index past SCORE_SOURCE_NAMES: Jackpot, Pellets, Sweep, Horde, Goldling) show
+ * only when they scored (docs/PELLETS.md PL7: a pellet run without builds pads Jackpot with 0, a Goldling run without
+ * pacts pads Horde, and every row costs the run-over panel height on phones).
  */
 export function scoreBreakdownRows(points: ReadonlyArray<number>): ScoreBreakdownRow[] {
 	const rows: ScoreBreakdownRow[] = [];

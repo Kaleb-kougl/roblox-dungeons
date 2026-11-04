@@ -31,6 +31,10 @@
  *
  * Roblox-port slot (docs/PELLETS.md PL6): PELLET (`pellet.normal` / `pellet.power`, required: a pellet is a gameplay
  * object), free-size world art like BOOST; its roles, sounds and strings: pellets.ts (named inline here).
+ *
+ * Roblox-port slot (docs/FORTUNE.md FO6): PACT (`pact.altar`, required: a pact altar is a gameplay object), free-size
+ * world art like PELLET, inline in SLOTS; Fortune's roles, sounds, strings and optional coin effect: fortune.ts (named
+ * inline here, like the pellets').
  */
 
 import type { AssetKind, ColorRole, ParticleFlipbookMode, Pivot } from "./types";
@@ -277,10 +281,28 @@ export const SLOTS: ReadonlyArray<SlotContract> = [
 	FX,
 	BOOST,
 	PELLET,
+	/**
+	 * Roblox port (docs/FORTUNE.md FO6): PACT, a pact altar in the shrine room (fortune.ts PACT_ALTAR_ID: `pact.altar`).
+	 * A gameplay object, so every pack must draw it, with a placeholder primitive (a stone plinth) until art exists.
+	 * Free-size world art like PELLET: `image` (with `pixelsPerTile`) or `sprites` (`idle`). Any other `pact.` ID is an
+	 * error. Written inline, not as a named constant: this module's compiled Luau sits near the 200-locals limit
+	 * (fortune.ts exports it as `PACT`, found by its prefix).
+	 */
+	{
+		slot: "pact",
+		prefix: "pact.",
+		kinds: ["image", "sprites", "placeholder"],
+		facings: [],
+		baseAnimations: ["idle"],
+	},
 ];
 
-/** Slots whose images are free-size world art drawn at `pixelsPerTile` (decor pieces, breakables, boost drops, pellets). */
-export const WORLD_ART_SLOTS: ReadonlyArray<SlotContract> = [DECOR, BREAKABLE, BOOST, PELLET];
+/**
+ * Slots whose images are free-size world art drawn at `pixelsPerTile` (decor pieces, breakables, boost drops, pellets,
+ * pact altars), in SLOTS order. Built inside a function: the filter's Luau temporaries would be top-level locals.
+ */
+export const WORLD_ART_SLOTS: ReadonlyArray<SlotContract> = ((): SlotContract[] =>
+	SLOTS.filter((s) => s === DECOR || s === BREAKABLE || s === BOOST || s === PELLET || s.slot === "pact"))();
 
 /** The slot an asset ID belongs to, by prefix. */
 export function slotFor(id: string): SlotContract | undefined {
@@ -697,7 +719,9 @@ export const BOOST_BEAM_IMAGE_ID = "ui.marker.boost";
  * drops' one (docs/BREAKABLE_DROPS.md BL5): a boost hops out of a broken barrel / crate (sfx.boost.drop plays while it
  * is silent). Then the new enemies' six (docs/NEW_ENEMIES.md NE1): a Bomber's fuse and blast, a Charger's charge and
  * stun, a Stormcaller's strike, a Reaper's spin. Then the pellets' three (docs/PELLETS.md PL6, pellets.ts
- * PELLET_AUDIO_IDS): a pellet eaten, a room swept, the power pellet taken.
+ * PELLET_AUDIO_IDS): a pellet eaten, a room swept, the power pellet taken. Then Fortune's eight (docs/FORTUNE.md FO6,
+ * fortune.ts FORTUNE_AUDIO_IDS): a pact taken, the Horde's horn / second wave / doubling, the Goldling's appearance /
+ * hit / jackpot / escape (each falls back to an existing clip while silent: shared/view/audio SFX_FALLBACK).
  */
 export const PORT_AUDIO_EVENTS = [
 	"sfx.player.swing",
@@ -789,6 +813,17 @@ export const PORT_AUDIO_EVENTS = [
 	"sfx.pellet.eat",
 	"sfx.pellet.sweep",
 	"sfx.pellet.power",
+	// docs/FORTUNE.md FO6 (fortune.ts FORTUNE_AUDIO_IDS, the same list): a pact taken at an altar (a low bell); the Horde
+	// room's horn on entry, its second wave arriving, the x2 landing in the tally; the Goldling popping out, each hit on
+	// it (a ladder), the catch (a jingle), the escape
+	"sfx.pact.take",
+	"sfx.horde.horn",
+	"sfx.horde.wave",
+	"sfx.horde.double",
+	"sfx.golden.appear",
+	"sfx.golden.hit",
+	"sfx.golden.jackpot",
+	"sfx.golden.escape",
 ] as const;
 
 /**
@@ -819,6 +854,8 @@ export const REQUIRED_ASSET_IDS: ReadonlyArray<string> = ((): string[] => [
 	// docs/PELLETS.md PL6: pellets.ts PELLET_IDS, written out (an import would be one more top-level local)
 	"pellet.normal",
 	"pellet.power",
+	// docs/FORTUNE.md FO6: fortune.ts PACT_ALTAR_ID, written out
+	"pact.altar",
 ])();
 
 /**
@@ -866,7 +903,8 @@ export const TOUCH_STRING_KEYS = [
  * two stamps, the stamp for several rooms on one tick (`{stamp}`, `{rooms}`), the tally segments (`{points}`), the
  * running total, the corner chip (`{stamp}`, `{points}`) and the flying bonus (`{points}`). The theme imports nothing
  * outside shared/theme, so the list is repeated here. Then the pellets' two tally segments (docs/PELLETS.md PL6,
- * pellets.ts PELLET_ROOM_CLEAR_KEYS): the pellet points earned in the room and the Sweep bonus.
+ * pellets.ts PELLET_ROOM_CLEAR_KEYS): the pellet points earned in the room and the Sweep bonus. Then the Horde's
+ * (docs/FORTUNE.md FO6, fortune.ts HORDE_ROOM_CLEAR_KEY): the last segment that doubles a Horde room's tally.
  */
 export const ROOM_CLEAR_STRING_KEYS = [
 	"room.clear.stamp.clear",
@@ -881,6 +919,7 @@ export const ROOM_CLEAR_STRING_KEYS = [
 	"room.clear.fly",
 	"room.clear.line.pellets",
 	"room.clear.line.sweep",
+	"room.clear.line.horde",
 ] as const;
 
 /**
@@ -964,6 +1003,27 @@ export const REQUIRED_STRING_KEYS: ReadonlyArray<string> = ((): string[] => [
 	...DAILY_RANK_STRING_KEYS,
 	// docs/LOCALIZATION.md L1: named keys' labels (`input.key.<name>`) and the key list joiner
 	...INPUT_KEY_STRING_KEYS,
+	// docs/FORTUNE.md FO6: fortune.ts FORTUNE_STRING_KEYS, written out (an import would be one more top-level local):
+	// the two altar cards and their accept line, the dimmed altar's lines (fortune.ts PACT_DIM_STRING_KEYS), the Greed
+	// deal's draft title, the Horde chip and shouts, the Goldling's shout and escape line
+	"pact.greed.title",
+	"pact.greed.take",
+	"pact.greed.gain",
+	"pact.horde.title",
+	"pact.horde.take",
+	"pact.horde.gain",
+	"pact.accept",
+	"pact.dim.taken",
+	"pact.dim.noCurse",
+	"pact.dim.noLegendary",
+	"pact.dim.noRoom",
+	"pact.dim.unable",
+	"hud.draft.title.greed",
+	"hud.chip.horde",
+	"fx.horde.shout",
+	"fx.horde.wave",
+	"fx.golden.shout",
+	"fx.golden.escaped",
 ])();
 
 /**
@@ -1757,7 +1817,8 @@ export const SOUND_PITCH_LIMITS = { min: 0.5, max: 2 } as const;
  * The sprite effects (fx.*), each optional. Hit marks (`hit.light` / `hit.heavy`), the sword's swing trails (`swing.1`
  * .. `swing.3`, the 3rd is the finisher), the kill puff, roll dust, the guard shield, the Ember ring, the flask, the
  * boss's phase change / slam / death, relic and shrine, the open-stairwell loop and a breakable's splinters; then the
- * boost drops' pickup burst and per-kind aura (BOOST_FX_IDS, docs/BOOSTS.md B5).
+ * Goldling's coin burst on every hit (docs/FORTUNE.md FO6, fortune.ts GOLDEN_COIN_FX_ID; tinted by `golden.coin` under
+ * the fx tint rule); then the boost drops' pickup burst and per-kind aura (BOOST_FX_IDS, docs/BOOSTS.md B5).
  */
 export const FX_IDS = [
 	"fx.hit.light",
@@ -1777,6 +1838,9 @@ export const FX_IDS = [
 	"fx.shrine.use",
 	"fx.stairwell",
 	"fx.breakable.splinter",
+	// docs/FORTUNE.md FO6: before the boost drops' spread, which stays last (an entry after it costs a top-level Luau
+	// local for the spread's length)
+	"fx.golden.coin",
 	...BOOST_FX_IDS,
 ] as const;
 export type FxId = (typeof FX_IDS)[number];

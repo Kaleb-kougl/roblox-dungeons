@@ -5,6 +5,7 @@ import { STUDS_PER_TILE } from "shared/config";
 import { BREAKABLE_KINDS as SIM_BREAKABLE_KINDS } from "shared/dungeon";
 import { BULLET_VIEW } from "shared/view";
 import { colorDifference, contrastRatio } from "./color";
+import { PACT } from "./fortune";
 import {
 	BIOMES,
 	BOOST,
@@ -148,8 +149,9 @@ describe("decor contract", () => {
 			["image", "sprites", "placeholder"],
 			undefined,
 		]);
-		// (and the boost drops' slot, docs/BOOSTS.md B5: boosts.spec.ts; the pellets', docs/PELLETS.md PL6: pellets.spec.ts)
-		expect(WORLD_ART_SLOTS).toEqual([DECOR, BREAKABLE, BOOST, PELLET]);
+		// (and the boost drops' slot, docs/BOOSTS.md B5: boosts.spec.ts; the pellets', docs/PELLETS.md PL6: pellets.spec.ts;
+		// the pact altar's, docs/FORTUNE.md FO6: fortune.spec.ts)
+		expect(WORLD_ART_SLOTS).toEqual([DECOR, BREAKABLE, BOOST, PELLET, PACT]);
 		expect(slotFor("decor.delve.b1.pillar")).toBe(DECOR);
 		expect(slotFor("decor.fx.torch")).toBe(DECOR);
 		expect(slotFor("breakable.crate")).toBe(BREAKABLE);

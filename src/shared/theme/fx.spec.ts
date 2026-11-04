@@ -108,6 +108,8 @@ describe("fx contract", () => {
 			"fx.shrine.use",
 			"fx.stairwell",
 			"fx.breakable.splinter",
+			// docs/FORTUNE.md FO6: the Goldling's coin burst (before the boost drops' spread)
+			"fx.golden.coin",
 			"fx.boost.collect",
 			"fx.boost.aura.fury",
 			"fx.boost.aura.quickstep",
