@@ -25,6 +25,11 @@ export const TOUCH = {
 		/** Distance multipliers (lower wins): inside the facing cone, and the current target (hysteresis). */
 		coneFactor: 0.75,
 		stickyFactor: 0.7,
+		/**
+		 * docs/FORTUNE.md FD16: the Goldling is a target, ranked after every other visible actor within this many tiles
+		 * (a fleeing coin bag never pulls the aim off a threat at arm's length); with none that close it ranks as usual.
+		 */
+		goldenYieldTiles: 3,
 	},
 	draft: {
 		/** A tapped card's FIRE pulse length, and the wait before another pulse while the draft is still open. */

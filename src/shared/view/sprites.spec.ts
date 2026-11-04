@@ -1606,8 +1606,9 @@ describe("boss.act1 sprite timeline on a real fight (seed 1337)", () => {
 describe("ACTOR_SPRITE_INPUTS", () => {
 	it("has builders for the swarmer, the sniper, turret.sniper, turret.sprayer, turret.caster, the bruiser, boss.act1, boss.demonlord and the enemy variants (other archetypes: none)", () => {
 		// The enemy variants' four (imp, slime, slime.small, summoner) are checked in variants.spec.ts, the second endless
-		// set's five (docs/NEW_ENEMIES.md NE8) in newEnemies.spec.ts.
-		expect(ACTOR_SPRITE_INPUTS.size()).toBe(17);
+		// set's five (docs/NEW_ENEMIES.md NE8) in newEnemies.spec.ts, the Goldling (docs/FORTUNE.md FO8) in
+		// golden/golden.spec.ts.
+		expect(ACTOR_SPRITE_INPUTS.size()).toBe(18);
 		expect(ACTOR_SPRITE_INPUTS.get(SWARMER.id)).toBe(swarmerSpriteInput);
 		expect(ACTOR_SPRITE_INPUTS.get(SNIPER.id)).toBe(sniperSpriteInput);
 		expect(ACTOR_SPRITE_INPUTS.get(TURRET_SNIPER.id)).toBe(turretSniperSpriteInput);
