@@ -54,6 +54,11 @@ export const MINIMAP_VIEW = {
 		boost: 5,
 		/** A treasure / shrine room's mark, once the room is revealed. */
 		room: 6,
+		/**
+		 * The vault's chest (docs/TREASURE.md TR8: shared/view/treasure vaultMarkStyle), at its cell once revealed: a
+		 * square in the tier's floor colour, a ring once opened. A step over the room marks: it is the floor's prize.
+		 */
+		vault: 7,
 		/** Stroke of the hollow marks (a dead teammate's ring, the closed stairwell), reference px. */
 		ringStroke: 1.5,
 		/**

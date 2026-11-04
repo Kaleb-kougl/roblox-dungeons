@@ -37,6 +37,8 @@ import {
 } from "shared/view/audio";
 import { audibleBuilds, audibleCombo, audibleVariantCues, comboQuiet } from "shared/view/fx";
 import { NO_DAILY_RANK_CUES, NO_NEW_BEST_CUES, type DailyRankCueSource, type NewBestCueSource } from "shared/view/hud";
+import { TreasureCueTracker } from "shared/view/treasure";
+import { SIM_HZ } from "shared/sim";
 import { PreloadController } from "../game/PreloadController";
 import { SimController, type RunContext } from "../game/SimController";
 import { ThemeController } from "../game/ThemeController";
@@ -124,7 +126,10 @@ class LoopChannel {
  *                onStart). Enemy variants (docs/ENEMY_VARIANTS.md): the run view's `variantCues` (blink landing,
  *                summons, split, shield break, Vengeful ring) through audibleVariantCues with the same quiet gate, and
  *                the build effects (docs/BUILDS.md BU8: spark / burst / shard / ember pitched by proc generation under
- *                a voice cap, evolve / duo stings) from the run view's `builds` through audibleBuilds. The mapper is given `playable` (the ID has an assetId): a silent
+ *                a voice cap, evolve / duo stings) from the run view's `builds` through audibleBuilds. Treasure rooms
+ *                (docs/TREASURE.md TR8): a shared/view/treasure TreasureCueTracker of its own turns the run view's
+ *                `treasure` events into the look's edges on the sim clock (the crack, the bars' sink 0.6 s after the
+ *                clear, the lid's pop 0.25 s after the open), reset on run start / floor change / exit. The mapper is given `playable` (the ID has an assetId): a silent
  *                ID with an SFX_FALLBACK cues that instead (no finisher clip: the swing), one without never becomes a
  *                cue (no cap slot, no cooldown).
  *   duck         a DUCKING_SFX sound (jingles, the Ember) dips the music group to AUDIO_VIEW.duck.level for the
@@ -169,6 +174,8 @@ export class AudioController implements OnStart {
 	private newBestCues: () => NewBestCueSource = () => NO_NEW_BEST_CUES;
 	/** This frame's daily rank cues (setRankCues; none until DailyRankController registers). */
 	private rankCues: () => DailyRankCueSource = () => NO_DAILY_RANK_CUES;
+	/** The vault's sound edges (docs/TREASURE.md TR8): its own look of the run view's vault events, stepped here. */
+	private readonly treasure = new TreasureCueTracker();
 
 	constructor(
 		private readonly sim: SimController,
@@ -210,6 +217,10 @@ export class AudioController implements OnStart {
 			this.mapper.celebratesRoomClears = this.fx.settings().roomClear;
 			// One quiet gate for the combo's, the enemy variants' and the build effects' sounds: the stage cover, run over.
 			const quiet = comboQuiet(this.sim.isInputCovered(), this.sim.isRunOver());
+			// The vault's edges on the look's timing (the crack's frame, the bars' sink, the lid's pop), sim seconds.
+			const state = ctx.run.state;
+			const simSec = (state.tick + this.sim.getAlpha()) / SIM_HZ;
+			const treasure = this.treasure.update(state, ctx.run.treasure, simSec);
 			this.mapper.frame(
 				os.clock(),
 				ctx.run.frameEvents,
@@ -225,6 +236,7 @@ export class AudioController implements OnStart {
 				audibleBuilds(ctx.run.builds, quiet),
 				this.rankCues(),
 				ctx.run.pellets,
+				treasure,
 			);
 			for (let i = 0; i < this.cues.size(); i++) {
 				this.play(this.cues.id(i), this.cues.volume(i), this.cues.speed(i));
@@ -264,8 +276,15 @@ export class AudioController implements OnStart {
 		this.janitor.Add(RunService.Heartbeat.Connect((dt) => this.applyDuck(dt)));
 
 		// Preload: every run start (all sound effects + the floor's beds) and every floor change (its beds).
-		this.sim.onRunStarted((ctx) => this.preload(ctx, true));
-		this.sim.onFloorChanged((ctx) => this.preload(ctx, false));
+		this.sim.onRunStarted((ctx) => {
+			this.treasure.reset();
+			this.preload(ctx, true);
+		});
+		this.sim.onFloorChanged((ctx) => {
+			this.treasure.reset();
+			this.preload(ctx, false);
+		});
+		this.sim.onRunExited(() => this.treasure.reset());
 
 		// Gamepad focus moves: a quiet, rate-limited tick.
 		let selected = GuiService.SelectedObject;

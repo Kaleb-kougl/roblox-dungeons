@@ -136,11 +136,24 @@
  *   over the friend sting (new best > rank threshold > friend, as the floor shout's priorities). Silent: nothing (no
  *   fallback, no cap slot).
  *
+ * Treasure rooms (docs/TREASURE.md TR8) come from the frame's TreasureCueSource (shared/view/treasure
+ * TreasureCueTracker: the vault look's edges, stepped by the client in the same sound frame from the run view's
+ * `treasure` and the sim clock; NO_TREASURE_CUES by default, so every other cue is as before). The edges follow the
+ * look, not the ticks: `crack` on the crack's frame -> sfx.treasure.crack; `unlock` when the bars start to sink (0.6 s
+ * after the clear, once the room clear's stamp has landed) -> sfx.treasure.unlock; `openTier` on the lid's pop (0.25 s
+ * after the open) -> sfx.treasure.open at the exact speed treasureOpenSpeed(tier) (Common 0 / Rare +3 / Legendary +7
+ * semitones, TREASURE_VIEW.audio), and for a Legendary sfx.jingle.treasure (a jingle that ducks the music, ranked 73:
+ * under the new-best fanfare, over the room clear's jingles). World sounds, the same for every player of a party. The
+ * open's boosts (`fromChest` landings, a subset of `dropped`) play no sfx.boost.drop: the sting is their sound (they
+ * hop out 0.3 s after the open's tick). Silent: crack -> sfx.combo.break, unlock -> sfx.stairwell.open, open ->
+ * sfx.relic.take (still pitched by tier), jingle -> sfx.room.perfect (SFX_FALLBACK, one step each).
+ *
  * Every cue carries a playback speed (AudioCueList.speed): 0 = the pack's jitter (every cue but these), > 0 = that
- * exact PlaybackSpeed (the kill ladder, the tier sting, the graze and the parry).
+ * exact PlaybackSpeed (the kill ladder, the tier sting, the graze, the parry and the chest's sting).
  *
  * Presentation only: reads sim state, never writes it.
  */
+import { VaultTier } from "shared/dungeon";
 import { BOSS_DEMONLORD_ID, COMBO_MIN, archetypeIndex, partySize, type SimEvents, type SimState } from "shared/sim";
 import { AMBIENCE_IDS } from "shared/theme";
 import { NO_BOOST_EVENTS, type BoostEventSource } from "../boosts";
@@ -165,6 +178,7 @@ import {
 	NO_NEW_BEST_CUES,
 	comboTier,
 	killPitchSpeed,
+	semitonesToSpeed,
 	tierStingSpeed,
 	type DailyRankCueSource,
 	type NewBestCueSource,
@@ -179,6 +193,8 @@ import {
 	pelletRoomProgress,
 	type PelletFrameSource,
 } from "../pellets";
+import { TREASURE_VIEW } from "../treasure/config";
+import { NO_TREASURE_CUES, NO_TREASURE_OPEN, type TreasureCueSource } from "../treasure/cues";
 
 /** Every sound effect the game plays, by logical ID (theme manifest). */
 export const SFX = {
@@ -899,6 +915,14 @@ export function runOverJingle(recordSet: boolean): SfxId {
 	return recordSet ? SFX.jingleRecord : SFX.gameOver;
 }
 
+/**
+ * sfx.treasure.open's PlaybackSpeed for an opened VaultTier (TREASURE_VIEW.audio.openSemitones: Common 0, Rare +3,
+ * Legendary +7 semitones; 1 for a tier out of range).
+ */
+export function treasureOpenSpeed(tier: number): number {
+	return semitonesToSpeed(TREASURE_VIEW.audio.openSemitones[tier] ?? 0);
+}
+
 /** Whether a sound ID has a clip in the theme pack (the controller passes `pack.sound(id).assetId !== undefined`). */
 export type Playable = (id: string) => boolean;
 
@@ -1186,6 +1210,19 @@ export class AudioCueMapper {
 		for (const p of pellets.power) this.playerCue(SFX.pelletPower, p.player, localIndex);
 	}
 
+	/**
+	 * The frame's vault cues (docs/TREASURE.md TR8; see the file comment): the crack, the rattle, the sting pitched by
+	 * the opened tier and a Legendary's jingle.
+	 */
+	private treasureCues(treasure: TreasureCueSource): void {
+		if (treasure.crack) this.cue(SFX.treasureCrack, 1);
+		if (treasure.unlock) this.cue(SFX.treasureUnlock, 1);
+		const tier = treasure.openTier;
+		if (tier === NO_TREASURE_OPEN) return;
+		this.cue(SFX.treasureOpen, 1, priorityOf(SFX.treasureOpen), treasureOpenSpeed(tier));
+		if (tier === VaultTier.LEGENDARY) this.cue(SFX.jingleTreasure, 1);
+	}
+
 	/** The frame's build cues (BU8; see the file comment). */
 	private buildCues(builds: BuildFxFrameSource, localIndex: number): void {
 		const sparks = builds.sparks;
@@ -1272,8 +1309,9 @@ export class AudioCueMapper {
 	 * NewBestTracker frame of THIS frame, docs/NEW_BEST.md NB5; none by default), `builds` the frame's build effects (the
 	 * run view's `builds` through audibleBuilds, docs/BUILDS.md BU8; none by default), `rank` the frame's daily rank cues
 	 * (the client's DailyRankController of THIS frame, docs/DAILY.md DS10; none by default), `pellets` the frame's pellet
-	 * events (the run view's `pellets`, docs/PELLETS.md PL7; none by default). Appends the cues to start to `out` (in
-	 * table order) and returns it.
+	 * events (the run view's `pellets`, docs/PELLETS.md PL7; none by default), `treasure` the frame's vault sound edges
+	 * (the client's TreasureCueTracker of THIS frame, docs/TREASURE.md TR8; none by default). Appends the cues to start
+	 * to `out` (in table order) and returns it.
 	 */
 	frame(
 		now: number,
@@ -1290,6 +1328,7 @@ export class AudioCueMapper {
 		builds: BuildFxFrameSource = NO_BUILD_FX_EVENTS,
 		rank: DailyRankCueSource = NO_DAILY_RANK_CUES,
 		pellets: PelletFrameSource = NO_PELLET_EVENTS,
+		treasure: TreasureCueSource = NO_TREASURE_CUES,
 	): AudioCueList {
 		this.now = now;
 		this.pending = 0;
@@ -1378,9 +1417,10 @@ export class AudioCueMapper {
 		if (events.breakablesBroken > 0) this.cue(SFX.breakableBreak, 1);
 		if (events.breakableHits > events.breakablesBroken) this.cue(SFX.breakableHit, 1);
 		// Boost drops (every tick of the frame): landings, pickups and Aegis breaks by player, the local player's ends.
-		// A landing out of a broken piece (fromPiece, a subset of dropped) plays the loot sound instead of the drop's.
+		// A landing out of a broken piece (fromPiece, a subset of dropped) plays the loot sound instead of the drop's; one
+		// out of an opened chest (fromChest, another subset) plays none: the chest's sting is its sound (TR8).
 		const fromPieces = boosts.fromPiece.size();
-		if (boosts.dropped.size() > fromPieces) this.cue(SFX.boostDrop, 1);
+		if (boosts.dropped.size() > fromPieces + boosts.fromChest.size()) this.cue(SFX.boostDrop, 1);
 		if (fromPieces > 0) this.cue(SFX.breakableLoot, 1);
 		for (const c of boosts.collected) this.playerCue(SFX.boostCollect, c.player, localIndex);
 		for (const p of boosts.aegisBroke) this.playerCue(SFX.boostAegisBreak, p, localIndex);
@@ -1424,6 +1464,8 @@ export class AudioCueMapper {
 		this.buildCues(builds, localIndex);
 		// Pellets (docs/PELLETS.md PL7): the chomp, the sweep sting, the power pellet.
 		this.pelletCues(pellets, localIndex, state);
+		// Treasure rooms (docs/TREASURE.md TR8): the look's edges (the crack, the bars' sink, the lid's pop).
+		this.treasureCues(treasure);
 
 		this.keepOneJingle();
 		this.applyCap();

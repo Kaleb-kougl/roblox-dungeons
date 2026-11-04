@@ -173,6 +173,27 @@ export const TREASURE_VIEW = {
 	/** The column's fallback block material is self-lit; this is its colour mix toward white at its core. */
 	columnCoreMix: 0.35,
 
+	// --- the HUD (TR8: toasts, minimap mark, sounds) ------------------------------------------------------------------
+	/**
+	 * Toasts (ToastPanel, top centre; TreasureToastController): the floor reveal's `hud.toast.vault` (floorSec, once per
+	 * floor, shown only once the stage cover is gone, no boon draft is open and the solo run is not paused, so it never
+	 * stacks on the stairwell card's new-best line, and only while the vault is still sealed) and the arm toast per lock
+	 * (`hud.toast.vaultLock.*`, lockSec). Ids count down from idBase (apart from the progression toasts, the sightings'
+	 * SIGHTING_VIEW.toastIdBase and the Daily's DAILY_RANK.toastIdBase).
+	 */
+	toast: {
+		floorSec: 2,
+		lockSec: 2.5,
+		idBase: -(2 ** 22),
+	},
+	/**
+	 * Sounds (shared/view/audio cue mapper, TreasureCueTracker): sfx.treasure.open's pitch by VaultTier (Common 0, Rare
+	 * +3, Legendary +7 semitones; an exact PlaybackSpeed, no pack jitter).
+	 */
+	audio: {
+		openSemitones: [0, 3, 7] as ReadonlyArray<number>,
+	},
+
 	// --- KV_TreasureLabel (Studio check aid, off by default) ---------------------------------------------------------
 	/**
 	 * Workspace boolean attribute (Studio, or with KV_Debug): a label over the chest with its lock, tier, status and

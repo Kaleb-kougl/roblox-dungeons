@@ -12,7 +12,16 @@ import {
 import { cornerMapShown, minimapHostFrame, MINIMAP_HOSTS, type MinimapHost } from "client/ui";
 import { CAMERA_YAW_DEG } from "shared/config";
 import { RoomType, TILE_SIZE, worldToGrid, type WorldXZ } from "shared/dungeon";
-import { NO_BOOST, NO_KIND, archetypeAt, buildScoreRooms, partySize, playerAt, type SimState } from "shared/sim";
+import {
+	NO_BOOST,
+	NO_KIND,
+	VaultStatus,
+	archetypeAt,
+	buildScoreRooms,
+	partySize,
+	playerAt,
+	type SimState,
+} from "shared/sim";
 import { ROOM_EDGE_ROLES, type ColorRole, type ThemePack } from "shared/theme";
 import { RENDER_ORDER, RoomEdgeState, RoomEdgeStates, lerp } from "shared/view";
 import {
@@ -35,6 +44,7 @@ import {
 	type MinimapRgb,
 	type MinimapTiles,
 } from "shared/view/minimap";
+import { vaultMarkStyle } from "shared/view/treasure";
 import { InputController } from "../game/InputController";
 import { SimController, type RunContext } from "../game/SimController";
 import { ThemeController } from "../game/ThemeController";
@@ -46,7 +56,7 @@ const HIDDEN = 1;
 /** A square turned this far is a diamond (corner up). */
 const DIAMOND_DEG = 45;
 /** Draw order inside a map layer (ZIndex, Sibling behaviour): the image under every marker, the watched player on top. */
-const LAYER_Z = { image: 1, room: 2, stairs: 3, drop: 4, enemy: 5, teammate: 6, self: 7 } as const;
+const LAYER_Z = { image: 1, room: 2, vault: 3, stairs: 4, drop: 5, enemy: 6, teammate: 7, self: 8 } as const;
 
 type MarkerShape = "dot" | "diamond" | "square";
 
@@ -200,6 +210,12 @@ interface FrameMarks {
 	readonly dropZ: number[];
 	stairShown: boolean;
 	stairOpen: boolean;
+	/** The vault's chest mark (vaultMarkStyle): shown, where, its colour role and style. */
+	vaultShown: boolean;
+	vaultX: number;
+	vaultZ: number;
+	vaultRole: ColorRole;
+	vaultStyle: "fill" | "hollow";
 }
 
 /**
@@ -218,6 +234,7 @@ class MapLayer {
 	private readonly drops: Marker[] = [];
 	private readonly rooms: Marker[] = [];
 	private readonly stairs: Marker;
+	private readonly vault: Marker;
 	private readonly layout: GridImageLayout = {
 		centreU: 0,
 		centreV: 0,
@@ -252,6 +269,7 @@ class MapLayer {
 		image.Parent = root;
 		this.image = image;
 		for (let i = 0; i < floor.marks.size(); i++) this.rooms.push(makeMarker(root, LAYER_Z.room, "square"));
+		this.vault = makeMarker(root, LAYER_Z.vault, "square");
 		this.stairs = makeMarker(root, LAYER_Z.stairs, "diamond");
 		for (let i = 0; i < MINIMAP_VIEW.markerPool; i++) this.enemies.push(makeMarker(root, LAYER_Z.enemy, "dot"));
 		this.selfBody = makeMarker(root, LAYER_Z.self, "square");
@@ -313,6 +331,12 @@ class MapLayer {
 			worldToMap(basis, mark.x, mark.z, cx, cz, ppt, pt);
 			showMarker(marker, pt.u, pt.v, invW, invH, m.room, colors.role(mark.role), "fill", edge);
 		}
+		// The vault's chest once revealed (docs/TREASURE.md TR8): the tier's floor colour, a ring once opened.
+		if (marks.vaultShown) {
+			worldToMap(basis, marks.vaultX, marks.vaultZ, cx, cz, ppt, pt);
+			const color = colors.role(marks.vaultRole);
+			showMarker(this.vault, pt.u, pt.v, invW, invH, m.vault, color, marks.vaultStyle, edge);
+		} else hideMarker(this.vault);
 		// The stairwell once seen (MD4): filled (with the dark edge) when open, hollow while closed.
 		if (marks.stairShown && floor.stair !== undefined) {
 			worldToMap(basis, floor.stair.x, floor.stair.z, cx, cz, ppt, pt);
@@ -434,7 +458,9 @@ class MinimapColors {
  * `getViewPlayerIndex()` at MINIMAP_VIEW.pxPerTile; the full map centres on the floor, fitted so the turned floor fits
  * its host. Markers (plain Frames, MD8): the watched player's arrow, teammates (MINIMAP_VIEW.teammateRoles by index;
  * dead: hollow), enemies and bosses on IN_SIGHT cells only (nearest first, MINIMAP_VIEW.markerPool), boost drops in
- * sight, the stairwell once its cell is not UNKNOWN (hollow while closed), treasure / shrine marks once revealed.
+ * sight, the stairwell once its cell is not UNKNOWN (hollow while closed), treasure / shrine marks once revealed, the
+ * vault's chest once revealed (docs/TREASURE.md TR8: shared/view/treasure vaultMarkStyle, the tier's floor colour,
+ * recoloured by a crack, hollow once opened).
  *
  * The full map: `InputController.onMapAction` toggles Reflex `game.map.open` (opening needs a playing run with no menu
  * open, client/store selectMenuOpen, and an unfrozen sim; closing always works); it closes on a floor change, run over
@@ -471,6 +497,11 @@ export class MinimapController implements OnStart {
 		dropZ: [],
 		stairShown: false,
 		stairOpen: false,
+		vaultShown: false,
+		vaultX: 0,
+		vaultZ: 0,
+		vaultRole: "minimap.floor",
+		vaultStyle: "fill",
 	};
 	private readonly hostSize = { w: 0, h: 0 };
 	private floor: FloorMap | undefined;
@@ -821,6 +852,29 @@ export class MinimapController implements OnStart {
 
 		marks.stairShown = tiles.stairCell !== MAP_NO_CELL && fog.state(tiles.stairCell) !== FogState.UNKNOWN;
 		marks.stairOpen = state.endless !== undefined && state.endless.stairsOpen !== 0;
+		this.gatherVault(fog, tiles, state);
+	}
+
+	/**
+	 * The vault's chest mark (docs/TREASURE.md TR8, correction 13): at the chest's cell, revealed by the room marks'
+	 * rule (its cell no longer UNKNOWN, or its room revealed whole), styled by shared/view/treasure vaultMarkStyle.
+	 */
+	private gatherVault(fog: FogOfWar, tiles: MinimapTiles, state: SimState): void {
+		const marks = this.marks;
+		const t = state.treasure;
+		marks.vaultShown = false;
+		if (t === undefined || t.status === VaultStatus.NONE) return;
+		const gx = worldToGrid(t.x);
+		const gy = worldToGrid(t.z);
+		const inGrid = gx >= 0 && gy >= 0 && gx < tiles.W && gy < tiles.H;
+		const revealed = fog.roomRevealed(t.room) || (inGrid && fog.state(gy * tiles.W + gx) !== FogState.UNKNOWN);
+		const look = vaultMarkStyle(t.status, t.tier, revealed);
+		if (look === undefined) return;
+		marks.vaultShown = true;
+		marks.vaultX = t.x;
+		marks.vaultZ = t.z;
+		marks.vaultRole = look.role;
+		marks.vaultStyle = look.style;
 	}
 
 	private inSight(fog: FogOfWar, tiles: MinimapTiles, x: number, z: number): boolean {

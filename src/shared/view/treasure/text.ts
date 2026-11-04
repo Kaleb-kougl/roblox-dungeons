@@ -17,6 +17,7 @@ export type TreasureStr = (key: string, vars?: Readonly<Record<string, string | 
 
 /** The strings these helpers read (TREASURE_STRING_KEYS, by name). */
 export const TREASURE_TEXT_KEYS = {
+	toastFloor: "hud.toast.vault",
 	toastUntouched: "hud.toast.vaultLock.untouched",
 	toastUntouchedParty: "hud.toast.vaultLock.untouchedParty",
 	toastSwift: "hud.toast.vaultLock.swift",
@@ -60,14 +61,29 @@ export function tierNameText(s: TreasureStr, tier: number): string {
 	return s(treasureTierNameKey(tier));
 }
 
+/** A toast line as the HUD's toast store keeps it: a string key and its literal vars (looked up when drawn). */
+export interface TreasureToastLine {
+	readonly key: string;
+	readonly args: Readonly<Record<string, string | number>> | undefined;
+}
+
 /**
- * The arm toast (TR8): UNTOUCHED solo (allowance 0) "clear the room without a hit", in a party the allowance
- * (`untouchedParty`, `{hits}`); SWIFT the countdown at the arm (`{time}`, m:ss).
+ * The arm toast's key and vars (TR8, the client store's ToastView): UNTOUCHED solo (allowance 0) "clear the room
+ * without a hit", in a party the allowance (`untouchedParty`, `{hits}`); SWIFT the countdown at the arm (`{time}`,
+ * m:ss).
  */
-export function lockToastText(s: TreasureStr, lock: number, allowance: number, ticksLeft: number): string {
+export function lockToastLine(lock: number, allowance: number, ticksLeft: number): TreasureToastLine {
 	const K = TREASURE_TEXT_KEYS;
-	if (lock === VaultLock.SWIFT) return s(K.toastSwift, { time: vaultClock(ticksLeft) });
-	return allowance > 0 ? s(K.toastUntouchedParty, { hits: allowance }) : s(K.toastUntouched);
+	if (lock === VaultLock.SWIFT) return { key: K.toastSwift, args: { time: vaultClock(ticksLeft) } };
+	return allowance > 0
+		? { key: K.toastUntouchedParty, args: { hits: allowance } }
+		: { key: K.toastUntouched, args: undefined };
+}
+
+/** The arm toast's text (lockToastLine through the theme's lookup). */
+export function lockToastText(s: TreasureStr, lock: number, allowance: number, ticksLeft: number): string {
+	const line = lockToastLine(lock, allowance, ticksLeft);
+	return s(line.key, line.args);
 }
 
 /** What the plate shows: the lock's name, and for SWIFT the countdown (undefined for UNTOUCHED: it shows pips). */

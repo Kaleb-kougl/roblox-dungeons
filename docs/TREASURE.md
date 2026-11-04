@@ -8,13 +8,14 @@ happens. It never drops to nothing, so a miss reads as "so close", not as a loss
 **bursts open** with a rarity-coloured column, a sting and its reward: a relic, boosts, or a **bonus draft** on the next
 floor. Work it task by task, like `PLAN.md`; each task ends with a **Verify**.
 
-Status (2026-11-03): **TR0 done (plan checked against the code, below). TR1 done (the dungeon roll, behind the
+Status (2026-11-04): **TR0 done (plan checked against the code, below). TR1 done (the dungeon roll, behind the
 option `EndlessFloorOptions.vaults`, off everywhere until TR5; "As built (TR1)" below). TR2 done (the sim state, hash
 group and chest piece behind `SimConfig.treasure`, unset everywhere until TR5; "As built (TR2)"). TR3 done (the lock:
 arm, crack, unlock; "As built (TR3)"). TR4 done (the open and its rewards; "As built (TR4)"). TR5 done (every endless
 world has vaults and `SimConfig.treasure`, the dev override, the census; "As built (TR5)"). TR6 done (theme; "As
 built (TR6)"). TR7 done (the world view: chest, cage, sparkle, plate, crack / unlock / open timelines, cards, freeze and
-shake; presentation only; "As built (TR7)").** The owner (Kaleb)
+shake; presentation only; "As built (TR7)"). TR8 done (the toasts, the minimap mark, the sounds; presentation only;
+"As built (TR8)").** The owner (Kaleb)
 confirmed every decision (TRD1-TRD14) on 2026-11-03. This file is the project doc `claude/treasure-rooms-plan.md` with
 every "(assumed; TR0 verifies)" item checked against branch `treasure-rooms` @ `82f0ff9` (a snapshot of `main` @
 `288a33b`, which already has Pellets, solid decor, room themes and the new enemies merged). Sibling plans: BO
@@ -913,6 +914,66 @@ lockstep/`: **166 suites, 2439 passed, 0 failed** (557 s).
 9. A floor change on the frame of an open (walking into the stairwell at once) drops the cards (the tracker forgets
    the vault): acceptable, but confirm nothing stays parked visibly.
 
+## As built (TR8, 2026-11-04)
+
+Presentation only (no sim, dungeon, lockstep, hash, replay, fixture, score or theme contract change; no new string,
+colour role or audio ID: TR6 made them all). Files:
+
+- `src/shared/view/treasure/toasts.ts` (new): `VaultToastTracker` (pure), `VaultToast`, `VaultToastInput`.
+  `text.ts`: `lockToastLine(lock, allowance, ticksLeft)` (`TreasureToastLine`: the key and literal vars the toast store
+  keeps, so the line is looked up when drawn and follows a language change; `lockToastText` now goes through it) and
+  `TREASURE_TEXT_KEYS.toastFloor`. `config.ts`: `TREASURE_VIEW.toast` (`floorSec` 2, `lockSec` 2.5, `idBase`
+  -(2^22)) and `TREASURE_VIEW.audio.openSemitones` [0, 3, 7].
+- `src/shared/view/treasure/minimap.ts` (new): `vaultMarkStyle(status, tier, revealed)` -> `{ role, style }` or
+  undefined. `src/shared/view/minimap/config.ts`: `MINIMAP_VIEW.markers.vault` 7 (a step over the room marks' 6).
+- `src/shared/view/treasure/cues.ts` (new): `TreasureCueSource { crack, unlock, openTier }`, `NO_TREASURE_CUES`,
+  `NO_TREASURE_OPEN`, `TreasureCueTracker` (its own `TreasureViewTracker`; the look's `crackEdge` / `unlockEdge` /
+  `popEdge`).
+- `src/shared/view/audio/cues.ts`: `AudioCueMapper.frame(..., pellets, treasure = NO_TREASURE_CUES)` (a trailing
+  parameter: every existing call is unchanged), private `treasureCues`, exported `treasureOpenSpeed(tier)`; a frame's
+  `boosts.fromChest` landings no longer count toward `sfx.boost.drop`. The IDs, ranks, fallbacks, `DUCKING_SFX` and
+  `JINGLE_SFX` entries are TR6's, unchanged.
+- `src/client/controllers/ui/TreasureToastController.ts` (new; render step `KV_TreasureToasts` after the FX tracker,
+  the SightingController's slot), `MinimapController.ts` (the vault marker: `LAYER_Z.vault` 3 between the room marks
+  and the stairwell, `FrameMarks.vault*`, `gatherVault`), `AudioController.ts` (owns a `TreasureCueTracker`, stepped in
+  its sound frame on the sim clock `(tick + alpha) / SIM_HZ`; reset on run start, floor change and exit).
+- `treasureRunSummary` / `TreasureRunSummary` (TR2) are exported from the `shared/sim` barrel, which is what
+  `claude/run-recap-plan.md`'s "Chests opened" slot imports; a spec pins the barrel path.
+
+Specs: new `view/audio/treasureCues.spec.ts` (12 tests), `view/treasure/minimap.spec.ts` (4), `view/treasure/toasts.spec.ts`
+(7).
+
+What it does:
+
+| Piece | Behaviour |
+|---|---|
+| Floor toast | `hud.toast.vault` for 2 s, once per (run, floor), on the first frame with no stage cover (`isInputCovered` false: the fade is over), no open boon draft and no solo pause, so it never shares the screen with the stairwell card's new-best line or hides under the draft. Only while the vault is SEALED: a floor met with its vault already armed (a spectator, a dev start) is settled silently. None in the tutorial or after run over |
+| Arm toast | One per armed event, on its frame, for 2.5 s: `hud.toast.vaultLock.untouched` (solo), `.untouchedParty` (`{hits}` = the allowance, TRD7), `.swift` (`{time}`, m:ss at the arm). ToastPanel's line (uiAccent, top centre), ids from `TREASURE_VIEW.toast.idBase` down |
+| Minimap | A square at the chest's centre once its cell is not UNKNOWN to the party's fog or its room was revealed (the room marks' rule), in the CURRENT tier's floor role (`treasureFloorRole`: the sparkle's colour, so a crack recolours it), filled until OPENED, then a ring (`ringStroke`) |
+| Crack | `sfx.treasure.crack` on the crack's frame (the look's `crackEdge`) |
+| Unlock | `sfx.treasure.unlock` when the bars start to sink (`unlockEdge`, 0.6 s after the clear's tick) |
+| Open | `sfx.treasure.open` on the lid's pop (`popEdge`, 0.25 s after the open's tick) at the exact speed 2^(st / 12), st = 0 / 3 / 7 by the opened tier; a Legendary also cues `sfx.jingle.treasure` (one jingle a frame: it beats a room clear's jingle, 72, and yields to the new-best fanfare, 74; it ducks the music). The chest's boosts play no `sfx.boost.drop` (they land on the open's tick, hop out 0.3 s later, and the sting is their sound). Silent IDs fall back as TR6 set them (the sting's tier pitch carries over to `sfx.relic.take`) |
+
+Deviations (none touches an owner decision):
+
+- **The minimap mark uses the floor roles**, not the UI roles Design §4 named: the map shows what the doorway shows (the
+  sparkle is drawn in the floor role), and TR6's `treasureReport` holds every floor role to 3:1 on `minimap.floor`
+  (`treasure.rare` 3.68:1 is the lowest). Mark size 7 reference px.
+- **No lock icon in the toast** ("with the lock's icon"): the toast store is text-only (ToastPanel draws a Text line,
+  or a headshot row); the lock's name leads the line (`VAULT · UNTOUCHED: ...`). An icon is a ToastPanel change for later
+  (UI art, docs/UI_ART.md).
+- **The audio keeps its own look** (`TreasureCueTracker`) instead of reading TreasureRenderController's: the sound frame
+  (a NearMissController subscriber inside FxTrackerController's dispatch) and the renderer's step (after the camera)
+  run in different render steps, so a shared look would make the sounds depend on the order they run in. The two
+  trackers read the same frame events and sim clock, so their edges land on the same frame.
+- **The world sounds are not gated** by the stage cover or run over (like the room clear and the relic take): a vault
+  cannot arm under a solo cover, and a co-op cover is short.
+- **A boost given straight to a player** (C1's overflow, `DropsEvents.collected` with `GIVEN_DROP_SLOT`) still plays
+  `sfx.boost.collect` on the open's tick, 0.25 s before the sting: it is the pickup's own sound and toast (TR4).
+
+Verify (2026-11-04, this host): `npm run typecheck`, `npm run lint`, `npm run check:autolocalize`, `npm run build`,
+`npm run build:place` clean; `npm run test:only -- view/ theme/ play/`: **167 suites, 2426 passed, 0 failed** (532 s).
+
 ## Implementation map (TR1-TR8)
 
 `npm run test:only` runs the compiled specs in `out/`: rebuild first (`npm run build`, or `npx rbxtsc` after the
@@ -1093,9 +1154,9 @@ Each step is a commit. Specs next to the code; `npm run verify` before each.
 - [x] **TR7. World view.** `TreasureRenderController`, the pure timelines, the cards, freeze and shake. → Verify:
   headless specs for every timeline and text helper; `npm run build:place`. → Done 2026-11-04: "As built (TR7)"
   (presentation only; Studio check pending, the assumptions to check first listed there).
-- [ ] **TR8. HUD, minimap, audio.** Toasts, the minimap mark, the cue mapper, the recap summary export. → Verify: cue
+- [x] **TR8. HUD, minimap, audio.** Toasts, the minimap mark, the cue mapper, the recap summary export. → Verify: cue
   spec (tier pitch, jingle priority, fallbacks), minimap marker spec (colour by tier, hollow when opened, hidden until
-  revealed).
+  revealed). → Done 2026-11-04: "As built (TR8)" (presentation only; Studio check pending).
 - [ ] **TR9. [owner] Vale art and audio.** A chest and a cage that read at the camera (Ninja Adventure Items / Dungeon
   Modular Set, or a `scripts/art` generator like the loot glint); audition crack / unlock / open / jingle (Ninja
   Adventure `Hit & Impact`, `Bonus`, `Jingles/LevelUp*` not yet primary); `audio:lock`, `audio:build`, upload, IDs into
