@@ -58,6 +58,7 @@ Record every ported module in `PROVENANCE.md` (ported module, source path, sourc
 | `docs/PORTRAIT.md` | Portrait play (phones turn either way, `Sensor`; upright the view keeps the short side at `VIEW_TILES_HIGH` with the player lifted above the thumbs, touch controls in a bottom band, pause map on top, the draft in a column, the HUD scale capped to the width): plan, tasks PT1-PT9, decisions PD1-PD7 |
 | `docs/NEW_ENEMIES.md` | New enemies (five endless room archetypes from floor 2: Bomber rusher that blows up, Charger lane charge stunned by walls, Stormcaller lightning strike rows, Warbanner aura support, Reaper bullet spiral; band 4, `BulletKind.STRIKE`, the Warbanner aura in `actorMods`; gameplay): plan, NE0 findings, tasks NE0-NE14, decisions NED1-NED14 |
 | `docs/PELLETS.md` | Pellets (Pac-Man lines of small cubes laid on a fight's floor, collected while enemies live, a Sweep bonus for every one, a rare power pellet that turns every enemy bullet on the floor into points; tutorial room G with a sweep lock; gameplay): plan, as built, open owner calls, tasks PL0-PL15, decisions PD1-PD16 |
+| `docs/TREASURE.md` | Treasure rooms (vaults: about one endless floor in two from floor 2 has a caged chest in a combat / elite room, seen through the doorway; clearing the room unlocks it, its lock (UNTOUCHED / SWIFT) kept or cracked one tier down; walk up to open it: a relic, boosts or a bonus draft; gameplay, opt-in `SimConfig.treasure`): plan, TR0 findings, as built TR1-TR8, tasks TR0-TR11, decisions TRD1-TRD14 |
 
 Decision log (deviations from `PLAN.md`):
 - **Art (docs/ART.md).** The theme contract gained a `"sprites"` kind (large pre-rendered cells, 1/4/8/16 screen-space
@@ -586,6 +587,40 @@ Decision log (deviations from `PLAN.md`):
   (boards stay `_v1`, `DAILY.ruleset` 3 -> 5 with main merged). The chomp `sfx.pellet.eat` climbs the major scale over
   a room's pellets (`pelletEatSpeed`). Studio check, the vale art upload, sounds, playtests (PL9 / PL15) and
   four owner calls pending.
+- **Treasure rooms (docs/TREASURE.md).** Gameplay. Floor-built: shared/dungeon `placeVault` (after pellets, its own
+  stream `floorSeed ^ VAULT.salt` 0xb5297a4d, 0 / 1 / 4 draws: 40 / 50 / 55 % of floors by band from floor 2, elite
+  rooms x2, Legendary 25 % + 1 per floor up to 40 % else Rare, UNTOUCHED / SWIFT 50 / 50) picks a combat / elite room
+  with planned spawns and a cell against a real wall (far wall first, `doorFarTiles` 6), stored as `EndlessFloorLayout` /
+  `EndlessFloorWorld.vault`; the chest is appended LAST to the floor's breakables as kind `chest`
+  (`BREAKABLE_PIECE_KINDS`, `BreakableKind.CHEST` 2; `BREAKABLE_KINDS` and its theme mirror stay the two clutter kinds),
+  unbreakable (`damageBreakable` returns before any bookkeeping; slams skip it, a Charger stuns on it), so layouts,
+  digests, props, spawns, loot, affixes, pellets and boss picks are unchanged and only `roomSpawnTiles` loses its cell.
+  Opt-in `SimConfig.treasure` (`ENDLESS_TREASURE_CONFIG`: every endless world, solo / co-op / daily / dev) creates
+  `state.treasure` with its own hash group `treasure` appended LAST (after `pellets`) and its OWN rng word
+  (`seedToState(seed) ^ TREASURE.salt` 0x4b565452, "KVTR"), so no sim or drop stream draw moves on a floor without an
+  open; `stepTreasure` (after stepScore) arms on the room record's engagement, cracks once (one tier down, never below
+  Common) on party hits past present players - 1 (UNTOUCHED, TRD7) or at the end of the SWIFT countdown
+  (`swiftParPercent` 100: exactly FAST), unlocks on the clear and opens on reach (TRD12) for every living present
+  player: a relic (Rare), a bonus deal on the next floor's draft plus a boost (Legendary; `takeTreasureBonusDeals` in
+  stepRun step 1), or two boosts (Common); boosts land in front of the chest and what the 4 ground slots cannot hold
+  goes straight to its player (owner answer C1). `ScoreSource.TREASURE` (12, only with the flag, combo-neutral: depth x
+  curse). Respite's levers are dormant until Respite exists (TRD10). M1, every fixture and the tutorial (its own layouts,
+  no config) replay exactly as before; endless replays and scores changed (the charger / stormcaller run-4 determinism
+  pins re-recorded), the all-time boards stay `_v1` (TRD13), `DAILY.ruleset` 5 -> 6. Theme: slot `TREASURE`
+  (`treasure.chest` / `.chestopen` / `.cage`, required; optional `fx.treasure.column`), floor-only colour roles
+  `treasure.common` / `.rare` / `.legendary` (owner answer C2: the draft's `boon.rare` / `.legendary` measured 36.8 /
+  34.2 CIE76 from `telegraph`; UI keeps `boon.*`) and `treasure.chest` / `.cage` (`treasureReport`), 16 strings
+  `TREASURE_STRING_KEYS` plus `score.source.treasure`, port audio IDs `sfx.treasure.crack` / `.unlock` / `.open` and
+  `sfx.jingle.treasure` (SILENT in both packs; fallbacks combo break / stairwell open / relic take / PERFECT jingle);
+  `contract.luau` / `validate.luau` at 185 / 196 top-level locals (counted on out/). View, presentation only:
+  `shared/view/treasure` (pure timelines, look, texts, toasts, minimap mark, sound edges), `TreasureRenderController`
+  (chest, cage, tier sparkle, lock plate, crack / unlock / open, reward cards, solo 40 ms freeze, `stamp` nudge),
+  `TreasureToastController` (floor toast once the stage cover is gone, arm toast per lock), the minimap's vault mark
+  (tier floor colour, hollow once opened), the cue mapper on the look's edges (sting +0 / +3 / +7 semitones by tier, the
+  Legendary jingle ranked 73: under `sfx.best.new`, over the room clear's). Debug `KV_TreasureDebug` (dev world vault
+  override: `every`, tier, lock) and `KV_TreasureLabel`. Open for TR11: SWIFT at 100 % par was kept 30 / 30 in the TR5
+  census (the bot clears vault rooms at ~28 % of par; target 40-60 %). Vale art and audio (TR9), Studio check and
+  playtest (TR11) pending.
 
 ## Commands
 

@@ -578,6 +578,19 @@ build's Delve floor handles breakable walls at `35307022` (D3) and reuse what fi
 - Readability: drawn no taller than `BREAKABLE_VIEW.maxHeightTiles`, so nothing hides behind one; a bullet stopped by
   a crate ends in a visible spark.
 
+**The chest piece (treasure rooms, docs/TREASURE.md TR1 / TR2 / TR7).** A vault's chest is a third piece kind, but not a
+clutter kind: shared/dungeon `BREAKABLE_PIECE_KINDS = ["barrel", "crate", "chest"]` is the sim's kind index table
+(`BreakableKind.CHEST` 2), while `BREAKABLE_KINDS` (mirrored by the theme's `BREAKABLE_KINDS`, `theme/decor.spec.ts`)
+stays the two clutter kinds, so no `breakable.chest` asset, role, name, look, chip or particle entry exists. The
+floor build appends the chest LAST to the floor's breakables (after loot and pellets: `breakableLoot` slots and pellet
+cells never include it; `roomSpawnTiles` leaves its cell) from `placeVault`'s own stream (`VAULT.salt`), against a
+real wall of its combat / elite room, facing in. In the sim it is unbreakable (`CHEST_HP` 1 by kind; `damageBreakable`
+returns before any bookkeeping, the melee pass and the slam skip it): it blocks movement and every bullet like any
+piece (low cover), not sight, stuns a Charger and is never laid with goo. On screen BreakableRenderController gives a
+chest slot no view; the treasure renderer draws it from its own `treasure.*` slot (`treasure.chest` /
+`treasure.chestopen` / `treasure.cage`). The decor plan draws nothing on its cell (planDecor's `breakables` input is
+the floor's full piece list), as for a crate.
+
 ### Tasks
 
 - [x] **R8. Depth profile.** (needs R3) `decorProfile`, `DECOR_DEPTH`, band swaps and thinning inside the R3 plan, the

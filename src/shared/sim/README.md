@@ -40,7 +40,7 @@ import from inside would create require cycles).
 | `replay.ts` | `src/sim/replay.ts` | `Recorder`, `runReplay`, `writeHashFields`, `hashNumbers` (FNV-1a over `buffer.writef64` bytes), `hashState`, `serializeRecording` / `deserializeRecording` (same messages), `float64Hex` / `float64FromHex` |
 | `recordingCodec.ts` | (Roblox only) | `encodeRecording` / `decodeRecording`: the compact binary recording (`buffer`) the `submitRun` remote carries; hostile-input-safe decode (docs/SERVER.md "The wire format") |
 | `observer.ts` | `src/sim/observer.ts` | `SimObserver` / `SimControls` types |
-| `hashLayout.ts` | (port helper) | the hash split into the fixtures' six subsystems, with dump names (plus `endless`, then `score`, then `run`, then `party`, then `tutorial`, then `breakables`, then `drops`, then `affixes`, `dev`, `builds` and `pellets` (last), each appended only when present) |
+| `hashLayout.ts` | (port helper) | the hash split into the fixtures' six subsystems, with dump names (plus `endless`, then `score`, then `run`, then `party`, then `tutorial`, then `breakables`, then `drops`, then `affixes`, `dev`, `builds`, `pellets` and `treasure` (last), each appended only when present) |
 | `endless.ts` | (Roblox only) | endless mode: `SimConfig.endless` (`worldForFloor`), `SimState.endless` (floor, Depth, stairwell, rooms entered), `stepEndless` (Depth on a boss kill, floor clear points + stairwell / `DEBUG_FLOOR_BUTTON` -> next floor, deferred room spawns attached to score rooms), `writeEndlessHash` |
 | `endlessData.ts` | (Roblox only) | endless tunables: hp scaling by floor / Depth, enemy bullet speed scaling (speed only, never the burst shape), stairwell radius, the debug floor-skip bit |
 | `parity.ts` | (port helper) | `firstFieldMismatch`, `subsystemHashes`, `checkRunFixture` (whole-run parity), `replaySummary` (totals / firstTick / hitsBySource), `fixtureNumber` |
@@ -53,6 +53,7 @@ import from inside would create require cycles).
 | `breakables/` | (Roblox only) | breakable barrels and crates (docs/DECOR.md D4): `breakablesData.ts` tunables (B4 toughness as hp = arrow hits x the bow's damage, the enemy bullet's share, hit / slam radii, `BreakableKind`, `BreakableSource`), `breakables.ts` `SimConfig.breakables` (`BreakablesConfig`, the game's `BREAKABLES_CONFIG`), `SimState.breakables` (pieces: kind, cell, hp, brokenTick; the derived cell -> slot lookup and intact count, never hashed), `damageBreakable`, the melee pass, the slam, `writeBreakablesHash` (the "breakables" group, last); `cells.ts` the leaf lookups (`solidCells`, `breakableSlotAt`) the movement code reads; see "Breakables" below |
 | `drops/` | (Roblox only) | boost drops (docs/BOOSTS.md B1-B3): `dropsData.ts` tunables (a leaf: `Boost` / `BOOSTS` Fury / Quickstep / Frenzy / Aegis, the percents, `DROPS` chance / pity / ground life / pickup radius / slots, `DEBUG_DROP_BUTTON`), `drops.ts` `SimConfig.drops` (`DropsConfig`, the game's `DROPS_CONFIG`, the tutorial's `guaranteedDropsConfig`), `SimState.drops` (`DropsState`: its own rng word, pity, ground slots, guards, per-player timers and Aegis pips; presentation `events`), `dropsOnKill` (killActor), `dropsOnRoomSpawned` (enterRoom), `stepDrops`, `ENDLESS_DROPS_CONFIG` (+ `breakableLoot`), the client's read helpers, `writeDropsHash` (the "drops" group, last); `boostMods.ts` the effect reads (a leaf: Fury / Frenzy percents for runMods, Quickstep's walk percent, `absorbWithAegis`, `boostsOnPlayerDied`); `breakLoot.ts` boosts from breakables (a leaf, docs/BREAKABLE_DROPS.md: `dropsOnFloorPieces` from createSimState / nextFloor fills `pieceLoot` from the floor's `breakableLoot`, `dropsOnBreak` from `damageBreakable`'s break line lands it; `landDrop` / `lowestFreeDropSlot`, which drops.ts uses); see "Boost drops" below |
 | `pellets/` | (Roblox only) | pellets (docs/PELLETS.md): `pelletsData.ts` tunables (a leaf: points, pickup radius, `PelletPhase`), `pellets.ts` `SimConfig.pellets` (`PelletsConfig`, the game's `PELLETS_CONFIG`), `SimState.pellets` (per pellet x / z / record / taken, the power pellet, one `PelletRoom` per score record; the cell lookup and per-tick `events`, never hashed), `pelletsOnFloor`, `writePelletsHash` (the "pellets" group, last); `stepPellets.ts` pickups and `pelletsPower`; `pelletRooms.ts` the leaf stepScore calls (live / gone / Sweep); see "Pellets" below |
+| `treasure/` | (Roblox only) | treasure rooms (docs/TREASURE.md): `treasureData.ts` tunables (a leaf: `TreasureConfig`, the game's `ENDLESS_TREASURE_CONFIG`, `TREASURE` salt `0x4b565452` and `boostOffsets`, `VaultStatus`, `TREASURE_UNSET`, `CHEST_HP`), `treasure.ts` `SimConfig.treasure`, `SimState.treasure` (`TreasureState`: its own rng word, the floor's vault: status, room / record / slot, centre, facing, lock, tiers, the lock's counters, bonus deals per player, the run counters; per-tick `events` armed / cracked / unlocked / opened, never hashed), `treasureOnFloor`, `treasureRunSummary`, `writeTreasureHash` (the "treasure" group, last); `stepTreasure.ts` the lock (arm, crack, unlock) and the open with its grants; `respite.ts` the Respite level (0 until docs/DIFFICULTY.md exists); `bonus.ts` the leaf stepRun calls for a Legendary's bonus deals; see "Treasure rooms" below |
 | `testing/` | `src/sim/actors/__test__/testArchetypes.ts` | test-only archetypes for specs (never imported by the game) |
 
 `SimConfig.moveResolver` has the source's signature and call contract (sub-steps of at most `MAX_MOVE_STEP`, one call
@@ -200,6 +201,7 @@ the party's leave bits handled right after the event clears):
 | 7 | `stepDrops`: a floor change frees every ground slot and guard; DEBUG_DROP_BUTTON drops; boost timers (player, kind order); ground life (slot order); pickups (per slot the first living player in reach) | `state.drops` |
 | 8 | `stepPellets`: per living player (index order) the live rooms' pellets in reach (3 x 3 cells, ascending index) are taken; the power pellet erases every enemy bullet but goo and strikes (`pelletsPower`) | `state.pellets` |
 | 9 | `stepScore`: final-phase window, hit cuts, combo timer, room engagement / clears (pellet runs: an engaged room's pellets go live, a clear pays the Sweep first, then they go) | `state.score` |
+| 9b | `stepTreasure`: the floor's vault arms on its room record's engagement, cracks (one tier down, once) on a party hit past the allowance or the SWIFT countdown's end, unlocks on the record's clear, opens for the first living player (index order) within reach (grants from its own rng word, `TREASURE` points) | `state.treasure` |
 | 10 | `tick += 1` | |
 
 While a boon draft is open (`isDraftOpen`: ANY player's) a tick is only: `clearEvents`, `clearScoreEvents`,
@@ -226,11 +228,12 @@ per pedestal, shrineRoom, shrineUsed; dump names `run.players[0].boons[1]`, `run
 (tutorial runs only: harmless, harmlessHits, bossHpPercent, guardLockFloor, guardLockRoom, guardLock, guardLockFirstId,
 guardLockEndId; dump names `tutorial.<field>`), then
 `breakables` (runs with SimConfig.breakables, i.e. every endless run: pieces.length, then per piece kind,
-x, y, hp, brokenTick; dump names `breakables.length`, `breakables[0].hp`, ...), then `drops` (runs with SimConfig.drops;
-always last: rngState, killsSinceDrop, debugNextKind, ground.length, per slot kind / x / z / spawnTick / ticksLeft,
+x, y, hp, brokenTick; dump names `breakables.length`, `breakables[0].hp`, ...), then `drops` (runs with SimConfig.drops:
+rngState, killsSinceDrop, debugNextKind, ground.length, per slot kind / x / z / spawnTick / ticksLeft,
 guards.length, per guard kind / ids.length / ids, players.length, per player ticks.length / ticks / aegisPips, and only
 with `DropsConfig.breakableLoot` (endless: docs/BREAKABLE_DROPS.md) pieceLoot.length / pieceLoot; dump names
-`drops.rngState`, `drops.ground[0].kind`, `drops.players[0].ticks[1]`, ...). The
+`drops.rngState`, `drops.ground[0].kind`, `drops.players[0].ticks[1]`, ...), then `affixes`, `dev`, `builds`, `pellets`
+and `treasure` (last), each only when present (pellets and treasure: their sections below). The
 per-tick `SimState.run.events` (draftOpened, draftChosen, relicCollected, curseAccepted, secondWind, fangHealed) and
 each player's `run.players[i].events` are presentation only and not hashed. New per-tick events (not in `SIM_EVENT_FIELDS`, which stays the web build's list; see
 `ENDLESS_EVENT_FIELDS` / `BREAKABLE_EVENT_FIELDS` / `ALL_EVENT_FIELDS`): `floorChanged`, `depthChanged`,
@@ -348,3 +351,31 @@ rng for them. `pelletsOnFloor` fills the state at createSimState (after score an
 Hashed (group `pellets`, last): the pellet count, `taken` per pellet, `power`, the record count, per record `left` /
 `phase` / `swept`. Specs: `pellets/pellets.spec.ts`, `pellets/stepPellets.spec.ts`, placement
 `../dungeon/pellets.spec.ts`, the census `../run/pelletsCensus.spec.ts`.
+
+## Treasure rooms (Roblox port, docs/TREASURE.md)
+
+Opt-in through `SimConfig.treasure` (`TreasureConfig`; `ENDLESS_TREASURE_CONFIG` is the game's: every endless world,
+solo, co-op, daily and dev). Without it there is no `state.treasure`, `stepTreasure` never runs, the score has no
+`TREASURE` source and no `treasure` group is hashed, so M1, every fixture and the tutorial replay exactly as before.
+Where the vault is, its lock and its starting tier are floor data (shared/dungeon `placeVault`, its own stream
+`floorSeed ^ VAULT.salt` 0xb5297a4d; the chest is appended LAST to the floor's breakables as kind `chest`,
+`BreakableKind.CHEST` 2, unbreakable). `treasureOnFloor(state, world.vault)` fills the state at createSimState (after
+the pellets block) and at the floor change (`nextFloor`, right after `pelletsOnFloor`); the run counters and bonus deals
+stay across floors.
+
+| Rule | Where |
+| --- | --- |
+| SEALED -> ARMED on the record's engagement (`armTick` = that tick); UNTOUCHED allowance = present players - 1 (+ Respite), SWIFT `ticksLeft` = `scaleTicks(parTicks, swiftParPercent + Respite)` | `stepTreasure` step 1 |
+| A crack (tier - 1, at least Common; once): UNTOUCHED `hitsTaken - hitsAtEngage > allowance` (the arm tick counts), SWIFT `ticksLeft` reaching 0 (it counts down from the tick after the arm) | step 2 |
+| The record's clear (adopted children included) unlocks: `spare` / `missBy` | step 3 (after step 2: a cracking hit on the clear tick cracks) |
+| The first living present player within `reachTiles` opens it: per living present player (index order) a relic (Rare; none left: 2 boosts), a bonus deal (Legendary with builds; else a relic) + 1 boost, or 2 boosts (Common); boosts land at `TREASURE.boostOffsets` in the lowest free ground slots, else go straight to the player (C1); `scoreTreasure(points[tier])` once, combo-neutral | step 4 (draws from `state.treasure` only, never the sim or drop stream) |
+| The next floor's draft deals `deals + takeTreasureBonusDeals(state, i)` | progression.ts stepRun step 1 (`bonus.ts`) |
+
+Hashed (group `treasure`, last, after `pellets`): `rngState`, `status`, `room`, `record`, `slot`, `x`, `z`, `fx`, `fz`,
+`lock`, `startTier`, `tier`, `armTick`, `ticksLeft`, `allowance`, `crackTick`, `missBy`, `spare`, `opened`, `kept`,
+`legendary` (`TREASURE_HASH_FIELDS`), then `bonusDeals.length` and values; dump names `treasure.<field>`,
+`treasure.bonusDeals[i]`. Score source `ScoreSource.TREASURE` (12, `TREASURE_SCORE_SOURCE_NAMES`) exists only with the
+flag (`addTreasureScoreSources` pads JACKPOT / PELLETS / SWEEP). Client reads (shared/sim barrel): `state.treasure`,
+`treasureRunSummary(state)` (`{ opened, kept, legendary }`, the run recap's), the per-tick `events`. Specs:
+`treasure/treasure.spec.ts`, `treasure/stepTreasure.spec.ts` (+ `.bot`), `treasure/open.spec.ts`, placement
+`../dungeon/vault.spec.ts` (+ `.census`), the census `../run/treasureCensus.spec.ts`.

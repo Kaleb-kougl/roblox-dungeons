@@ -1,4 +1,4 @@
-# Treasure rooms: vaults and locked chests (plan)
+# Treasure rooms: vaults and locked chests (plan and as built)
 
 Some endless floors get a **vault**: a combat or elite room holds a **chest in a cage**, sparkling in its rarity colour.
 You can see it through the doorway before the fight starts. Clearing the room **unlocks** it. If you meet the vault's
@@ -8,19 +8,23 @@ happens. It never drops to nothing, so a miss reads as "so close", not as a loss
 **bursts open** with a rarity-coloured column, a sting and its reward: a relic, boosts, or a **bonus draft** on the next
 floor. Work it task by task, like `PLAN.md`; each task ends with a **Verify**.
 
-Status (2026-11-04): **TR0 done (plan checked against the code, below). TR1 done (the dungeon roll, behind the
-option `EndlessFloorOptions.vaults`, off everywhere until TR5; "As built (TR1)" below). TR2 done (the sim state, hash
-group and chest piece behind `SimConfig.treasure`, unset everywhere until TR5; "As built (TR2)"). TR3 done (the lock:
-arm, crack, unlock; "As built (TR3)"). TR4 done (the open and its rewards; "As built (TR4)"). TR5 done (every endless
-world has vaults and `SimConfig.treasure`, the dev override, the census; "As built (TR5)"). TR6 done (theme; "As
-built (TR6)"). TR7 done (the world view: chest, cage, sparkle, plate, crack / unlock / open timelines, cards, freeze and
-shake; presentation only; "As built (TR7)"). TR8 done (the toasts, the minimap mark, the sounds; presentation only;
-"As built (TR8)").** The owner (Kaleb)
-confirmed every decision (TRD1-TRD14) on 2026-11-03. This file is the project doc `claude/treasure-rooms-plan.md` with
-every "(assumed; TR0 verifies)" item checked against branch `treasure-rooms` @ `82f0ff9` (a snapshot of `main` @
-`288a33b`, which already has Pellets, solid decor, room themes and the new enemies merged). Sibling plans: BO
-(`claude/build-online-plan.md`), RR (`claude/run-recap-plan.md`: its optional "chests opened" highlight reads this plan's
-run summary), CX (`claude/codex-plan.md`: vaults could become a codex category later).
+Status (2026-11-04): **built; every task done but the owner's TR9 (vale art and audio) and TR11 (playtest and tuning),
+and the Studio check is pending ("Studio check" below). Open for TR11: SWIFT at `swiftParPercent` 100 is far too easy
+(kept 30 / 30 in the TR5 census, the bot clearing vault rooms at ~28 % of par; target 40-60 %), and UNTOUCHED sits at
+the bottom of its 30-50 % target (8 / 25).** **TR0 done (plan checked against the code, below). TR1 done (the dungeon
+roll, behind the option `EndlessFloorOptions.vaults`, off everywhere until TR5; "As built (TR1)" below). TR2 done (the
+sim state, hash group and chest piece behind `SimConfig.treasure`, unset everywhere until TR5; "As built (TR2)"). TR3
+done (the lock: arm, crack, unlock; "As built (TR3)"). TR4 done (the open and its rewards; "As built (TR4)"). TR5 done
+(every endless world has vaults and `SimConfig.treasure`, the dev override, the census; "As built (TR5)"). TR6 done
+(theme; "As built (TR6)"). TR7 done (the world view: chest, cage, sparkle, plate, crack / unlock / open timelines,
+cards, freeze and shake; presentation only; "As built (TR7)"). TR8 done (the toasts, the minimap mark, the sounds;
+presentation only; "As built (TR8)"). TR10 done (this file as built; CLAUDE.md, src/shared/sim/README.md,
+docs/CLIENT.md, docs/DECOR.md, docs/DAILY.md).** The owner (Kaleb) confirmed every decision (TRD1-TRD14) on 2026-11-03.
+This file is the project doc `claude/treasure-rooms-plan.md` with every "(assumed; TR0 verifies)" item checked against
+branch `treasure-rooms` @ `82f0ff9` (a snapshot of `main` @ `288a33b`, which already has Pellets, solid decor, room
+themes and the new enemies merged). Sibling plans: BO (`claude/build-online-plan.md`), RR (`claude/run-recap-plan.md`:
+its optional "chests opened" highlight reads this plan's run summary), CX (`claude/codex-plan.md`: vaults could become a
+codex category later).
 
 **Sim impact: yes, this is gameplay.** It follows the opt-in pattern of boosts (docs/BOOSTS.md), breakable loot
 (docs/BREAKABLE_DROPS.md) and pellets (docs/PELLETS.md):
@@ -1161,36 +1165,59 @@ Each step is a commit. Specs next to the code; `npm run verify` before each.
   Modular Set, or a `scripts/art` generator like the loot glint); audition crack / unlock / open / jingle (Ninja
   Adventure `Hit & Impact`, `Bonus`, `Jingles/LevelUp*` not yet primary); `audio:lock`, `audio:build`, upload, IDs into
   `packs/vale/assetIds.ts`.
-- [ ] **TR10. Docs.** This file as built, the `CLAUDE.md` decision log, `src/shared/sim/README.md` (module, tick order,
+- [x] **TR10. Docs.** This file as built, the `CLAUDE.md` decision log, `src/shared/sim/README.md` (module, tick order,
   hash group), docs/CLIENT.md (controller, debug attributes), docs/DECOR.md (the chest piece kind), docs/DAILY.md (the
-  ruleset). → Verify: `npm run verify`.
+  ruleset). → Verify: `npm run verify`. → Done 2026-11-04: the Documents row and decision-log entry in `CLAUDE.md`;
+  the README's `treasure/` row, tick phase 9b, hash order and "Treasure rooms" section; docs/CLIENT.md's
+  `TreasureRenderController` / `TreasureToastController` rows, the minimap / audio notes, `KV_TreasureDebug` /
+  `KV_TreasureLabel` and a Studio pointer; docs/DECOR.md's chest piece; docs/DAILY.md's ruleset history (6); the
+  "Studio check" below brought up to date. `npm run verify` (2026-11-04, this host, with TR8):
+  typecheck, lint, check:assets, check:autolocalize, test:art, test:checks, test:l10n and the build clean; headless
+  tests **335 suites, 4616 passed, 1 failed** (2347 s), the one failure the known host-only `dungeon/forge/forge.spec.ts`
+  seedToState vectors case (fails on `main` too).
 - [ ] **TR11. [owner] Playtest.** Solo and co-op 2 / 4, PC and phone: is the chest noticed from the doorway; do players
   understand the lock from the toast and plate; how often is each lock kept (target: UNTOUCHED 30-50 % solo, SWIFT
   40-60 %); does the crack read mid-fight without drowning the bullets; does the near-miss line feel like "next time"
   or "unfair"; Legendary power spike vs the boss floors. Tune `VAULT` and `TreasureConfig`.
+  **Open tuning item (TR5 census):** SWIFT at `swiftParPercent` 100 was kept 30 / 30 (the sword bot clears vault rooms
+  at 22-32 % of par, mean ~28 %), far above the 40-60 % target: par is tuned as FAST's bonus window, not as a target.
+  A `swiftParPercent` around 30-40 would put that bot near the target; measure real players first. UNTOUCHED was kept
+  8 / 25 (32 %, at the target's bottom, falling with depth). A co-op census is part of this task too (TR5's deviation).
 
 Critical path: TR0 -> TR1 -> TR2 -> TR3 -> TR4 -> TR5. TR6 can start after TR0; TR7 and TR8 after TR3 and TR6; TR9
 any time after TR6.
 
 ## Studio check
 
-1. `KV_Debug`, `KV_TreasureDebug = "every,legendary,untouched"`, dev world floor 2: the floor toast; the caged chest
-   sparkles gold through the doorway; the minimap mark appears on sight.
-2. Enter: the toast and plate; take a hit: snap, shards, sparkle flashes and turns red, `Rare` rises; the mark
-   recolours. Clear: the stamp first, then the bars sink and the chest wobbles. Walk up: jolt, pop, column, sting, a
-   relic card, `So close: 1 hit`.
-3. `swift`: the countdown on the plate turns ember at 10 s and pulses at 5 s; let it run out, then clear:
-   `So close: 3.4 s over`. (A draft can't open mid-room in play, correction 4; the freeze is covered by the TR3 spec.)
-4. A kept Legendary: `UNTOUCHED ✓`, the jingle ducks the music, `BONUS DRAFT next floor`, one boost hops out; the next
-   floor deals the extra round with a duo at card 0 (when one is available).
+Pending (nothing here has run in Studio yet). Before step 1, TR7's "Studio-only assumptions to check first". With the
+placeholder pack every vault sound is its fallback (combo break, stairwell open, relic take pitched by tier, PERFECT
+jingle) until TR9 uploads the clips.
+
+1. `KV_Debug`, `KV_TreasureDebug = "every,legendary,untouched"`, `KV_TreasureLabel` on, dev world (F2, Go) floor 2:
+   once the stairwell card has faded (and the draft is closed) the toast `A vault lies on this floor` (2 s, once); the
+   caged chest sparkles gold through the doorway (Legendary: bigger, twice as often); the minimap's gold square
+   appears once the chest's cell is seen or its room revealed, not before.
+2. Enter: `VAULT · UNTOUCHED: clear the room without a hit` (2.5 s) and the plate (one outlined pip); take a hit: the
+   snap, shards in gold, the sparkle flashes white and turns red, `Rare` rises; the minimap square turns red. Clear: the
+   stamp first, then (0.6 s) the rattle and the bars sink, the chest wobbles. Walk up: two jolts, the pop (solo
+   freeze, shake), column, sting (+3 semitones for a Rare), the `RELIC · <name>` card and `+<points>`, then
+   `So close: 1 too many hits`; the minimap mark becomes a ring.
+3. `swift`: `VAULT · SWIFT: clear the room in 0:42`-style toast; the countdown on the plate turns ember at 10 s and
+   pulses at 5 s; let it run out, then clear: `So close: 3.4 s over`. (A draft can't open mid-room in play, correction
+   4; the freeze is covered by the TR3 spec.)
+4. A kept Legendary: `UNTOUCHED kept` at the unlock, at the pop the sting (+7) with the jingle ducking the music,
+   `BONUS DRAFT next floor`, `BOOSTS +1`, `Kept Legendary`; one boost hops out (no boost-drop sound); the next floor
+   deals the extra round with a duo at card 0 (when one is available).
 5. Bullets over the plate and the sparkle stay fully readable (both duck); the chest blocks bullets (cover) and isn't
    breakable by sword, arrows, the slam, a Bomber or a Charger (which stuns on it).
-6. Co-op (2 and 4 clients): the same lock, crack and open on every client; party allowance pips; every living player's
-   reward card; the spilled boosts per C1; a spectating dead player sees the watched player's cards.
-7. Reduced motion, Particles off, Freeze frame off, Screen shake off; touch HUD scale; 70 % HUD.
+6. Co-op (2 and 4 clients): the same lock, crack and open on every client; `party hits allowed: <n>` in the arm toast
+   and the party's pips; every living player's reward card; the spilled boosts per C1 (a given boost's pickup toast);
+   a spectating dead player sees the watched player's cards; every client hears the crack, rattle and sting.
+7. Reduced motion, Particles off, Freeze frame off, Screen shake off; touch HUD scale; 70 % HUD; the toast line fits
+   the smallest phone (it wraps).
 8. Risks to check first: the sparkle visible enough at the far wall of a 2x room; the open sequence on the same frame as
    a boost pickup or a combo tier-up (the floor shout slot); the reward cards' crispness; the cage art reading as
-   "closed" against every biome wall.
+   "closed" against every biome wall; the minimap mark's red on a live (tinted) room floor.
 
 ## Decisions (all confirmed by the owner, Kaleb, 2026-11-03; each is the recommended option)
 
