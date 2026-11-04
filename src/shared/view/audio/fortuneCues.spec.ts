@@ -1,6 +1,6 @@
 // Fortune's sounds (docs/FORTUNE.md FO6): the eight IDs are the theme's port audio events, listed and ranked here, and
-// each falls back to an existing clip while silent (SFX_FALLBACK, one step). The cues that play them are FO9's (the
-// pacts' four: pactCues.spec.ts); none ducks the music or is a jingle so far.
+// each falls back to an existing clip while silent (SFX_FALLBACK, one step). The cues that play them are FO9's: the
+// pacts' four (pactCues.spec.ts) and the Goldling's (goldenCues.spec.ts).
 import { describe, expect, it } from "@rbxts/jest-globals";
 import { FORTUNE_AUDIO_IDS, PORT_AUDIO_EVENTS, REQUIRED_ASSET_IDS } from "shared/theme";
 import {
@@ -67,8 +67,10 @@ describe("audio: Fortune's IDs (docs/FORTUNE.md FO6)", () => {
 		}
 	});
 
-	it("none is a jingle or ducks the music yet (the jackpot's duck is the cue mapper's, FO9)", () => {
-		for (const id of FORTUNE)
-			expect([id, JINGLE_SFX.includes(id), DUCKING_SFX.includes(id)]).toEqual([id, false, false]);
+	it("only the Goldling's jackpot is a jingle and ducks the music (FO9; goldenCues.spec.ts)", () => {
+		for (const id of FORTUNE) {
+			const jingle = id === SFX.goldenJackpot;
+			expect([id, JINGLE_SFX.includes(id), DUCKING_SFX.includes(id)]).toEqual([id, jingle, jingle]);
+		}
 	});
 });

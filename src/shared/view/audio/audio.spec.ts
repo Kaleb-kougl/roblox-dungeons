@@ -867,12 +867,14 @@ describe("audio: one jingle per frame", () => {
 		// docs/ROOM_CLEAR.md RC4: PERFECT's jingle ranks with the CLEAR one (72)
 		// docs/DRAFT_REVEAL.md DR4: the draft's legendary flare is a jingle too (played by the reveal controller)
 		// docs/NEW_BEST.md NB5: the record fanfare in the game-over jingle's slot, the new-best fanfare over the room's
+		// docs/FORTUNE.md FO9: the Goldling's jackpot between the new-best fanfare and the room clear's
 		const order = [
 			SFX.gameOver,
 			SFX.jingleRecord,
 			SFX.depthUp,
 			SFX.victory,
 			SFX.bestNew,
+			SFX.goldenJackpot,
 			SFX.roomClear,
 			SFX.roomPerfect,
 			SFX.draftLegendary,

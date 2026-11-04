@@ -4,7 +4,7 @@ import { RunService, Workspace } from "@rbxts/services";
 import { CAMERA_PITCH_DEG } from "shared/config";
 import type { JuiceSettings } from "shared/settings";
 import { IMP, MAX_ACTORS, archetypeAt, archetypeIds, archetypeIndex, partySize, playerAt } from "shared/sim";
-import { BOOST_KINDS, BREAKABLE_KINDS, pelletId, type ColorRole } from "shared/theme";
+import { BOOST_KINDS, BREAKABLE_KINDS, GOLDEN_COIN_ROLE, pelletId, type ColorRole } from "shared/theme";
 import { BOOST_VIEW, type BoostBurstView } from "shared/view/boosts";
 import {
 	BLINK_VIEW,
@@ -33,12 +33,14 @@ import {
 	RING_SEGMENTS,
 	ROOM_CLEAR,
 	burstSeed,
+	effectiveParticles,
 	particleColorRole,
 	type ChipBurst,
 	type NearMissFrame,
 	type ParticleWriter,
 } from "shared/view/fx";
 import { PELLETS_VIEW, PelletFlyIns, type PelletPowerTaken } from "shared/view/pellets";
+import { GOLDEN_VIEW, goldenKind, type GoldenBurstView } from "shared/view/golden";
 import { SimController } from "../game/SimController";
 import { ThemeController } from "../game/ThemeController";
 import { renderPart } from "../render/placeholders";
@@ -93,6 +95,10 @@ interface ParticlePart {
  * cube flying into the picker (shared/view/pellets PelletFlyIns, drawn through the same parts after the bursts) and
  * spawns one ring from the picker, both in pellet.power, appended to the palette after the loot fizzle's.
  *
+ * The Goldling (docs/FORTUNE.md FO8; called by GoldenRenderController): `goldenBurst` (GOLDEN_VIEW's appear flash,
+ * hit coins, catch fountain in golden.coin, appended to the palette after pellet.power; the escape's dive puff in the
+ * archetype's own colour) and `goldenAppearRing` (one ring from its spawn, fixed under reduced motion).
+ *
  * Bomber detonations (docs/NEW_ENEMIES.md NE8; shared/view DetonationWatch, a per-frame diff): DETONATION_VIEW.burst
  * chips in the Bomber's colour where it blew up (on top of its death particles); a fizzle gets the death particles only.
  * Budget: at most particleBudget(settings) live particles (128 / 320 / 512; one level lower under reducedMotion) plus
@@ -136,6 +142,8 @@ export class ParticleController implements OnStart, ParticleWriter {
 	/** The power pellet's fly-in cubes and ring (docs/PELLETS.md PL7): pellet.power's palette index. */
 	private readonly flyIns = new PelletFlyIns();
 	private pelletPowerColor = PAL_SPARK;
+	/** golden.coin's palette index (docs/FORTUNE.md FO8: the Goldling's flash, coins and fountain). */
+	private goldenCoinColor = PAL_SPARK;
 	private readonly moveParts = new Array<BasePart>();
 	private readonly moveCFrames = new Array<CFrame>();
 	private folder: Folder | undefined;
@@ -194,6 +202,8 @@ export class ParticleController implements OnStart, ParticleWriter {
 		this.fizzleBurst = chipBurstOf(BREAKABLE_LOOT_VIEW.fizzleBurst);
 		this.pelletPowerColor = this.palette.size();
 		this.palette.push(pack.color(pelletId("power")));
+		this.goldenCoinColor = this.palette.size();
+		this.palette.push(pack.color(GOLDEN_COIN_ROLE));
 
 		this.nearMiss.onFrame((frame, settings) => this.nearMissFrame(frame, settings));
 		const [impOk, impKind] = pcall(() => archetypeIndex(IMP.id));
@@ -296,6 +306,37 @@ export class ParticleController implements OnStart, ParticleWriter {
 			r.lifeSec,
 			this.pelletPowerColor,
 			!reduced,
+			RING_SEGMENTS,
+		);
+	}
+
+	/**
+	 * One of the Goldling's bursts at sim (x, z) (docs/FORTUNE.md FO8): `burst` a GOLDEN_VIEW shape, in golden.coin, or
+	 * with `body` in the archetype's own colour (the escape's dive puff). Particles setting and reduced motion as every
+	 * chip burst (none at Off).
+	 */
+	goldenBurst(x: number, z: number, burst: GoldenBurstView, body: boolean, seed: number): void {
+		const kind = goldenKind();
+		const color = body && kind >= 0 ? PALETTE_KIND_BASE + kind : this.goldenCoinColor;
+		this.system.chips(x, z, color, chipBurstOf(burst), seed, this.fx.settings());
+	}
+
+	/**
+	 * The Goldling's appearance ring at sim (x, z) (GOLDEN_VIEW.appear.ring; in place, no growth, under reduced motion;
+	 * none with Particles Off: the shout, the minimap blip and the sound still tell).
+	 */
+	goldenAppearRing(x: number, z: number): void {
+		const r = GOLDEN_VIEW.appear.ring;
+		const settings = this.fx.settings();
+		if (effectiveParticles(settings) === "off") return;
+		this.system.rings.spawn(
+			x,
+			z,
+			r.r0Tiles,
+			r.r1Tiles,
+			r.lifeSec,
+			this.goldenCoinColor,
+			!settings.reducedMotion,
 			RING_SEGMENTS,
 		);
 	}
@@ -481,8 +522,8 @@ export class ParticleController implements OnStart, ParticleWriter {
 	}
 }
 
-/** A BOOST_VIEW (or BREAKABLE_LOOT_VIEW fizzle) burst as the particle system's chip burst. */
-function chipBurstOf(b: BoostBurstView): ChipBurst {
+/** A BOOST_VIEW (or BREAKABLE_LOOT_VIEW fizzle, GOLDEN_VIEW) burst as the particle system's chip burst. */
+function chipBurstOf(b: BoostBurstView | GoldenBurstView): ChipBurst {
 	return {
 		chunks: b.chunks,
 		bits: b.bits,

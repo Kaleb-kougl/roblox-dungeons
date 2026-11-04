@@ -45,6 +45,7 @@ import {
 import { BoostFrameEvents } from "shared/view/boosts";
 import { PelletFrameEvents } from "shared/view/pellets";
 import { PactFrameEvents } from "shared/view/pacts";
+import { GoldenFrameEvents } from "shared/view/golden";
 import { BuildFxEvents, ComboEvents, NearMissEvents, RoomClearEvents, VariantCueEvents } from "shared/view/fx";
 import { DEFAULT_LOCKSTEP, type LockstepTunables } from "./config";
 import { MergedDecoder, encodeInputBatch } from "./wire";
@@ -106,6 +107,8 @@ export class LockstepClient implements RunView {
 	readonly pellets = new PelletFrameEvents();
 	/** The pact events of the ticks run by the last frame (docs/FORTUNE.md FO7; reset every frame). */
 	readonly pacts = new PactFrameEvents();
+	/** The Goldling events of the ticks the last pump stepped (docs/FORTUNE.md FO8; reset every pump). */
+	readonly golden = new GoldenFrameEvents();
 	/** Run totals for the HUD (kills, landed hits on the party). */
 	kills = 0;
 	hitsTaken = 0;
@@ -255,6 +258,7 @@ export class LockstepClient implements RunView {
 		this.builds.reset();
 		this.pellets.reset();
 		this.pacts.reset();
+		this.golden.reset();
 		const inputs: OutgoingInputs[] = [];
 		const hashes: Array<{ tick: number; hash: string }> = [];
 		let final: RunFinal | undefined;
@@ -299,6 +303,7 @@ export class LockstepClient implements RunView {
 			this.builds.collect(state);
 			this.pellets.collect(state);
 			this.pacts.collect(state);
+			this.golden.collect(state);
 			stepped++;
 			if (state.tick % this.tunables.hashEvery === 0 && !this.stopped) {
 				this.unackedTicks.push(state.tick);

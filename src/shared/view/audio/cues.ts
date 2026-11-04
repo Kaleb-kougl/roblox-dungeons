@@ -194,6 +194,7 @@ import {
 	type PelletFrameSource,
 } from "../pellets";
 import { NO_PACT_EVENTS, type PactFrameSource } from "../pacts/events";
+import { GOLDEN_VIEW, NO_GOLDEN_EVENTS, goldenFrameHitCount, goldenHitSpeed, type GoldenFrameSource } from "../golden";
 
 /** Every sound effect the game plays, by logical ID (theme manifest). */
 export const SFX = {
@@ -340,7 +341,7 @@ export const SFX = {
 	 * Fortune (docs/FORTUNE.md FO6; the theme's PORT_AUDIO_EVENTS, FORTUNE_AUDIO_IDS): a pact taken at an altar; the
 	 * Horde room's horn on entry, its second wave, the x2 landing in the tally; the Goldling appearing, each hit on it,
 	 * the jackpot of a catch, its escape. Each plays its SFX_FALLBACK while silent. The pacts' four are mapped from the
-	 * run view's pact events (pactCues, docs/FORTUNE.md FO9); the Goldling's are FO9's too.
+	 * run view's pact events (pactCues), the Goldling's four from its golden events (goldenCues; docs/FORTUNE.md FO9).
 	 */
 	pactTake: "sfx.pact.take",
 	hordeHorn: "sfx.horde.horn",
@@ -655,6 +656,8 @@ export const SFX_MIN_INTERVAL: Readonly<Partial<Record<SfxId, number>>> = {
 	[SFX.pelletEat]: PELLETS_VIEW.audio.eatMinIntervalSec,
 	[SFX.pelletSweep]: PELLETS_VIEW.audio.stingMinIntervalSec,
 	[SFX.pelletPower]: PELLETS_VIEW.audio.stingMinIntervalSec,
+	/** docs/FORTUNE.md FO9: a flurry of hits on the Goldling is one climbing coin sound per interval, never a buzz. */
+	[SFX.goldenHit]: GOLDEN_VIEW.audio.hitMinIntervalSec,
 };
 
 /**
@@ -717,21 +720,27 @@ export const SFX_PRIORITY: Readonly<Record<SfxId, number>> = {
 	[SFX.pelletSweep]: 65,
 	[SFX.pelletEat]: 53,
 	/**
-	 * Fortune (docs/FORTUNE.md FO6, the pacts' settled by FO9): a pact taken ranks with the shrine it replaced (a chosen
+	 * Fortune (docs/FORTUNE.md FO6, settled by FO9). A pact taken ranks with the shrine it replaced (a chosen
 	 * reward in a quiet room). The Horde's horn is the room's fight starting: over the room clear's jingles and the
 	 * stairwell, under the boss roar. Its second wave is danger information (new bodies at the rings): just under the
 	 * telegraph and the Ember, over the jingles. The x2 landing in the tally just over the bonus landing it falls back
-	 * to (the RoomClearController plays it, or the mapper while Room clear is Off). The Goldling's (FO8): provisional,
-	 * each its fallback clip's but the hit, ranked with the graze and the chomp.
+	 * to (the RoomClearController plays it, or the mapper while Room clear is Off).
 	 */
 	[SFX.pactTake]: 70,
 	[SFX.hordeHorn]: 77,
 	[SFX.hordeWave]: 87,
 	[SFX.hordeDouble]: 61,
-	[SFX.goldenAppear]: 64,
+	/**
+	 * The Goldling (docs/FORTUNE.md FO9). Its appearance is a call to act within 10 s: with the floor enter, over the
+	 * tier sting and the pickups. Each hit is a small reward: with the graze and the chomp (never over the hurt, the
+	 * telegraph or the kill ladder). The jackpot is a jingle (JINGLE_SFX, it ducks the music): over the room clear's
+	 * jingles (a catch on a clear's frame keeps the jackpot), under the new-best fanfare (a catch that sets the best
+	 * plays the fanfare). The escape is a loss you hear, with the relic / shrine stings, under the combo break.
+	 */
+	[SFX.goldenAppear]: 68,
 	[SFX.goldenHit]: 53,
-	[SFX.goldenJackpot]: 72,
-	[SFX.goldenEscape]: 73,
+	[SFX.goldenJackpot]: 73,
+	[SFX.goldenEscape]: 70,
 	/**
 	 * A boost out of a broken piece (docs/BREAKABLE_DROPS.md BL6): just over a kill drop's landing (the rarer, chosen
 	 * reward), under the pickup; over the piece's own break (40), which plays on the same frame.
@@ -847,6 +856,8 @@ export const DUCKING_SFX: ReadonlyArray<SfxId> = [
 	SFX.shrineUse,
 	SFX.draftLegendary,
 	SFX.ember,
+	/** docs/FORTUNE.md FO9: the Goldling's jackpot, like the other jingles. */
+	SFX.goldenJackpot,
 ];
 
 /**
@@ -856,7 +867,8 @@ export const DUCKING_SFX: ReadonlyArray<SfxId> = [
  * no depth, so its boss kill keeps the victory). sfx.relic.take is a short power-up sound, not a jingle. The draft's
  * legendary flare (docs/DRAFT_REVEAL.md DR4) is a jingle too, but the reveal controller plays it itself (the world is
  * frozen under the draft, so no mapper jingle shares its frame). The new-best fanfare outranks the room clear's
- * (docs/NEW_BEST.md NBD7); the record fanfare takes the game-over jingle's place.
+ * (docs/NEW_BEST.md NBD7); the record fanfare takes the game-over jingle's place. The Goldling's jackpot
+ * (docs/FORTUNE.md FO9) ranks between the new-best fanfare and the room clear's.
  */
 export const JINGLE_SFX: ReadonlyArray<SfxId> = [
 	SFX.gameOver,
@@ -864,6 +876,8 @@ export const JINGLE_SFX: ReadonlyArray<SfxId> = [
 	SFX.depthUp,
 	SFX.victory,
 	SFX.bestNew,
+	/** docs/FORTUNE.md FO9: the Goldling's catch, in rank order: over the room clear's, under the new-best fanfare. */
+	SFX.goldenJackpot,
 	SFX.roomClear,
 	SFX.roomPerfect,
 	SFX.draftLegendary,
@@ -1232,6 +1246,27 @@ export class AudioCueMapper {
 		for (const p of pellets.power) this.playerCue(SFX.pelletPower, p.player, localIndex);
 	}
 
+	/**
+	 * The frame's Goldling cues (docs/FORTUNE.md FO9; every client sees the same Goldling, so these are world sounds
+	 * like the enemy variants' and the pellets', not positional): its appearance; ONE hit sound for the frame's damaging
+	 * hits, pitched up the ladder by the highest hit count of the frame (goldenHitSpeed: the hits are the Goldling's, so
+	 * a teammate's climb the same ladder), at full volume when the local player landed one, else a teammate's quieter,
+	 * lower-ranked cue; the jackpot of a catch (anyone's: a jingle, it ducks the music); its escape.
+	 */
+	private goldenCues(golden: GoldenFrameSource, localIndex: number): void {
+		if (golden.appeared.size() > 0) this.cue(SFX.goldenAppear, 1);
+		const hits = golden.hits;
+		if (hits.size() > 0) {
+			let mine = false;
+			for (const h of hits) if (h.player === localIndex) mine = true;
+			const rank = priorityOf(SFX.goldenHit) - (mine ? 0 : TEAMMATE_PRIORITY_DROP);
+			const speed = goldenHitSpeed(goldenFrameHitCount(golden));
+			this.cue(SFX.goldenHit, mine ? 1 : AUDIO_VIEW.teammateVolume, rank, speed);
+		}
+		if (golden.caught.size() > 0) this.cue(SFX.goldenJackpot, 1);
+		if (golden.escaped.size() > 0) this.cue(SFX.goldenEscape, 1);
+	}
+
 	/** The frame's build cues (BU8; see the file comment). */
 	private buildCues(builds: BuildFxFrameSource, localIndex: number): void {
 		const sparks = builds.sparks;
@@ -1319,7 +1354,8 @@ export class AudioCueMapper {
 	 * run view's `builds` through audibleBuilds, docs/BUILDS.md BU8; none by default), `rank` the frame's daily rank cues
 	 * (the client's DailyRankController of THIS frame, docs/DAILY.md DS10; none by default), `pellets` the frame's pellet
 	 * events (the run view's `pellets`, docs/PELLETS.md PL7; none by default), `pacts` the frame's pact events (the run
-	 * view's `pacts`, docs/FORTUNE.md FO9; none by default). Appends the cues to start to `out` (in table order) and
+	 * view's `pacts`, docs/FORTUNE.md FO9; none by default), `golden` the frame's Goldling events (the run view's
+	 * `golden`, docs/FORTUNE.md FO9; none by default). Appends the cues to start to `out` (in table order) and
 	 * returns it.
 	 */
 	frame(
@@ -1338,6 +1374,7 @@ export class AudioCueMapper {
 		rank: DailyRankCueSource = NO_DAILY_RANK_CUES,
 		pellets: PelletFrameSource = NO_PELLET_EVENTS,
 		pacts: PactFrameSource = NO_PACT_EVENTS,
+		golden: GoldenFrameSource = NO_GOLDEN_EVENTS,
 	): AudioCueList {
 		this.now = now;
 		this.pending = 0;
@@ -1474,6 +1511,8 @@ export class AudioCueMapper {
 		this.pelletCues(pellets, localIndex, state);
 		// Pacts (docs/FORTUNE.md FO9): a pact taken, the Horde's horn and second wave (and its x2 while Room clear is Off).
 		this.pactCues(pacts, localIndex);
+		// The Goldling (docs/FORTUNE.md FO9): its appearance, the hit ladder, the jackpot, the escape.
+		this.goldenCues(golden, localIndex);
 
 		this.keepOneJingle();
 		this.applyCap();

@@ -87,6 +87,23 @@ describe("sightingsInView", () => {
 		expect(sightingsInView(s, 0, [])).toEqual(["imp"]);
 	});
 
+	it("the Goldling (docs/FORTUNE.md FO8): its first sighting is `golden`, in canonical order before the affixes", () => {
+		expect(ARCHETYPE_SIGHTINGS.get("golden")).toBe("golden");
+		const s = createSimState(
+			1,
+			0,
+			0,
+			config([
+				{ kind: "golden", x: NEAR, z: 0 },
+				{ kind: "reaper", x: 1, z: 0 },
+			]),
+		);
+		expect(sightingsInView(s, 0, [])).toEqual(["reaper", "golden"]);
+		s.combat.actors[slotOf(s, "golden")].alive = 0;
+		expect(sightingsInView(s, 0, [])).toEqual(["reaper"]);
+		expect(SIGHTING_IDS.indexOf("golden") < SIGHTING_IDS.indexOf("affix.hulking")).toBe(true);
+	});
+
 	it("a slimelet is an Ooze; the radius is a circle", () => {
 		const d = NEAR / math.sqrt(2);
 		const s = createSimState(1, 0, 0, config([{ kind: "slime.small", x: d, z: -d }]));

@@ -115,6 +115,7 @@ import {
 	stormcallerSpriteInput,
 	warbannerSpriteInput,
 } from "./newEnemySprites";
+import { goldenSpriteInput } from "./golden/sprite";
 import { degToRad, isoBasis, type IsoBasis } from "./iso";
 
 const FULL_TURN = 360;
@@ -1337,7 +1338,8 @@ export function bossSpriteLayout(layout: SpriteLayout, minDrawPx: number): Sprit
  * turret.sprayer / turret.caster ("enemy.sprayer" / "enemy.caster", docs/DEMON_ART.md Phase 2), the bruiser, Mother
  * Bramble (boss.act1), the Demon Lord (boss.demonlord), the enemy variants (docs/ENEMY_VARIANTS.md EV9: imp, slime,
  * slime.small, summoner) and the second endless set (docs/NEW_ENEMIES.md NE8: bomber, charger, stormcaller,
- * warbanner, reaper; their sets land in NE9); every other archetype stays a placeholder. A builder alone
+ * warbanner, reaper; their sets land in NE9) and the Goldling (docs/FORTUNE.md FO8: `enemy.golden`, the owner's FO10
+ * recolour); every other archetype stays a placeholder. A builder alone
  * draws nothing: ActorRenderController takes the sprite path only when the pack's `sprites(spriteId)` is a set too, so
  * each stays a placeholder until its set lands (docs/DEMON_ART.md DA5 and Phase 2, docs/BRAMBLE_ART.md BR6,
  * docs/BOSS_DEMONLORD.md D7).
@@ -1362,4 +1364,6 @@ export const ACTOR_SPRITE_INPUTS: ReadonlyMap<string, (a: Readonly<ActorState>, 
 		["stormcaller", stormcallerSpriteInput],
 		["warbanner", warbannerSpriteInput],
 		["reaper", reaperSpriteInput],
+		// docs/FORTUNE.md FO8: the Goldling (golden/sprite.ts, by file: sprites.luau sits near Luau's 200 top-level locals)
+		["golden", goldenSpriteInput],
 	]);
