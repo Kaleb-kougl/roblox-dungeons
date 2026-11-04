@@ -597,7 +597,9 @@ Decision log (deviations from `PLAN.md`):
   run fits is dressed as plain) and a run of 2-3 in half the `hall` rooms; census 6.0 cases a floor. Decor plan: kind
   `bookcase` (appended last to DECOR_KINDS, low, variant 1 / 2 by facing), drop reason `behindShelf` on a case's back
   cell. Endless layouts, spawns, replays and scores changed (boards stay `_v1`); `DAILY.ruleset` 5 -> 6. M1, every
-  fixture and the tutorial replay exactly as before. Art (BK5 render, BK6 upload) and Studio check pending.
+  fixture and the tutorial replay exactly as before. Art rendered (BK5: render_kit.py `sunSide`, the +X case lit
+  from the mirrored side; vale `kit-bookcase-x` / `-z`, `DECOR_BOX.bookcase` 23 / 24 / 4); upload (BK6) and Studio
+  check pending.
 
 ## Commands
 

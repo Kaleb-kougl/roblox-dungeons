@@ -1,5 +1,5 @@
 {
-	"$comment": "Pieces of the Dungeon Essential Kit (Rakshaan, CC-BY 4.0; THIRD_PARTY_NOTICES.md) for scripts/art/kit/render_kit.py. sizePx at the Lords of Pain decor scale (29.6 px per tile): the cage about 1.2 tiles across (the void's low box, DECOR_BOX.columnBroken), the chains about 1.7 tiles long, the candle chandelier (its chain cut off by keepHeight, so it lies fallen on the floor) about 2 tiles across. flatten: lying chains (the kit's are draped up a wall). Iron keeps more of its brightness than stone and wood, or a 2 px chain vanishes on the dark floors.",
+	"$comment": "Pieces of the Dungeon Essential Kit (Rakshaan, CC-BY 4.0; THIRD_PARTY_NOTICES.md) for scripts/art/kit/render_kit.py. sizePx at the Lords of Pain decor scale (29.6 px per tile): the cage about 1.2 tiles across (the void's low box, DECOR_BOX.columnBroken), the chains about 1.7 tiles long, the candle chandelier (its chain cut off by keepHeight, so it lies fallen on the floor) about 2 tiles across. flatten: lying chains (the kit's are draped up a wall). Iron keeps more of its brightness than stone and wood, or a 2 px chain vanishes on the dark floors. The bookcase (docs/BOOKSHELVES.md) at world scale (unitsPerTile 125: 0.91 x 0.38 tiles, 1.78 tall), facing +X (rotZ 180, _x) and +Z (rotZ 90, _z), pivot the cell centre half a tile in front of its back (pivotAt); sunSide mirrors the sun for the +X facing, whose shelves the usual sun leaves in shadow, so both facings read alike.",
 	"grade": { "saturation": 0.75, "brightness": 0.62, "contrast": 1.15, "tint": [1.06, 0.97, 0.92] },
 	"pieces": {
 		"cage": {
@@ -21,6 +21,18 @@
 			"az": [-45],
 			"sizePx": 60,
 			"keepHeight": 140,
+			"grade": { "brightness": 0.8 }
+		},
+		"bookcase": {
+			"objects": ["BookCase_Set5_0"],
+			"az": [-45, -45],
+			"rotZ": [180, 90],
+			"sunSide": [-1, 1],
+			"pivotAt": [-39.8, 0],
+			"fit": "world",
+			"unitsPerTile": 125,
+			"pivotOut": true,
+			"files": ["bookcase_x.png", "bookcase_z.png"],
 			"grade": { "brightness": 0.8 }
 		}
 	}

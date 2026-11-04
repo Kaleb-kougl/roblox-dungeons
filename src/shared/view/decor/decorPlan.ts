@@ -189,10 +189,11 @@ export const DECOR_BOX: Readonly<Record<StandingKind, DecorBoxPx>> = {
 	// 4 x 2 dais, the statue's 3 x 3 base; art measured on the world-scale renders)
 	throne: { w: 12, h: 26, below: 7 },
 	statue: { w: 6, h: 10, below: 4 },
-	// bookcases (docs/BOOKSHELVES.md): one cell each, the case against the cell's back edge; from the BK0 test render (art
-	// body 27 x 48 px at 125 kit units a tile, pivot the cell centre, 6.5 art px off the body's centre either way by
-	// facing: w covers both facings, x 0)
-	bookcase: { w: 22, h: 24, below: 3 },
+	// bookcases (docs/BOOKSHELVES.md): one cell each, the case against the cell's back edge; measured on the BK5 renders
+	// (art 29 x 50 px at 125 kit units a tile, pivot the cell centre): the outline reaches 21.1 art px (11.4 render px) to
+	// the left of the pivot facing +X and 20.9 to the right facing +Z (w covers both facings, x 0), 43.1 above it (23.3)
+	// and 5.9 below (3.2)
+	bookcase: { w: 23, h: 24, below: 4 },
 };
 
 /** Tall Forge pieces in placement priority (highest first). */

@@ -17,7 +17,9 @@ warm tint; a piece's own `grade` overrides the kit's fields; `fit` "box" with `s
 <png>.pivot.json, the footprint's centre on the floor in the PNG's pixels (atlases.json `pivot: [x, y]`).
 A piece's variants are its `az` list (camera turns); `rotZ` (same length) turns the piece itself instead, about its
 centre, for a wall piece that must face a wall normal; `files` names each variant's PNG (default <piece>_<v>.png),
-and `copies` adds files copied from rendered ones (a sprite set's never-shown facings).
+and `copies` adds files copied from rendered ones (a sprite set's never-shown facings). `sunSide` (same length, default
+1 each) places each variant's sun: 1 from the camera's upper left (as every piece), -1 mirrored to its upper right (a
+facing whose front the usual sun leaves in shadow: the bookcase facing +X), 0 straight from behind the camera.
 Set pieces built from several meshes (docs/DECOR.md "Room themes"): `region` {"min": [x, y, z], "max": [x, y, z]}
 adds every mesh whose box centre lies inside (kit world units; `exclude` drops names starting with any listed prefix),
 `moves` {object: [dx, dy, dz]} shifts objects first (a throne seated on its dais), and `pivotAt` [x, y] is the
@@ -91,7 +93,7 @@ def region_objects(region, exclude):
     return sorted(out)
 
 
-def render_variant(sc, sun, cam, names, az_deg, flatten, path, keep=None, rot_z=0.0, moves=None, pivot_at=None):
+def render_variant(sc, sun, cam, names, az_deg, flatten, path, keep=None, rot_z=0.0, moves=None, pivot_at=None, sun_side=1):
     objs = {o.name: o for o in bpy.data.objects if o.type == "MESH"}
     for n in names:
         if n not in objs:
@@ -137,7 +139,10 @@ def render_variant(sc, sun, cam, names, az_deg, flatten, path, keep=None, rot_z=
     up = right.cross(fwd).normalized()
     cam.rotation_mode = "QUATERNION"
     cam.rotation_quaternion = fwd.to_track_quat("-Z", "Y")
+    # sun_side 1 (the default, every piece): the sun from the camera's upper left; -1 mirrors it, 0 is frontal
     sd = (back * 0.6 - right * 0.8 + Vector((0, 0, 1.2))).normalized()
+    if sun_side != 1:
+        sd = (back * 0.6 - right * (0.8 * sun_side) + Vector((0, 0, 1.2))).normalized()
     sun.rotation_mode = "QUATERNION"
     sun.rotation_quaternion = (-sd).to_track_quat("-Z", "Y")
     pts = [objs[n].matrix_world @ v.co for n in names for v in objs[n].data.vertices]
@@ -210,6 +215,7 @@ def main():
     for name, piece in spec["pieces"].items():
         os.makedirs(os.path.join(out, name), exist_ok=True)
         turns = piece.get("rotZ", [0] * len(piece["az"]))
+        sides = piece.get("sunSide", [1] * len(piece["az"]))
         files = piece.get("files", [f"{name}_{i + 1}.png" for i in range(len(piece["az"]))])
         names = list(piece.get("objects", []))
         if "region" in piece:
@@ -217,7 +223,7 @@ def main():
         for i, az in enumerate(piece["az"]):
             path = os.path.join(out, name, files[i])
             os.makedirs(os.path.dirname(path), exist_ok=True)
-            pv = render_variant(sc, sun, cam, names, az, piece.get("flatten"), path, piece.get("keepHeight"), turns[i], piece.get("moves"), piece.get("pivotAt"))
+            pv = render_variant(sc, sun, cam, names, az, piece.get("flatten"), path, piece.get("keepHeight"), turns[i], piece.get("moves"), piece.get("pivotAt"), sides[i])
             k = reduce(path, piece.get("sizePx"), piece.get("fit", "width"), {**spec["grade"], **piece.get("grade", {})}, piece.get("unitsPerTile"))
             if piece.get("pivotOut"):
                 # the floor centre in the written PNG (scaled, 2 px margin): atlases.json's `pivot: [x, y]`

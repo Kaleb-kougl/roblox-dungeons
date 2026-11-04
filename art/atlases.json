@@ -1357,6 +1357,19 @@
 				"pivot": [45.64, 38.07],
 				"own": "kit-carpet-end-z"
 			},
+			"$comment-bookcase": "Bookshelves (docs/BOOKSHELVES.md): the Dungeon Essential Kit's bookcase at world scale, one cell, facing +X (_x) and +Z (_z), pivot = the cell's centre on the floor, the case's back on the cell's back edge (render_kit.py pivotOut).",
+			"kit-bookcase-x": {
+				"file": "dungeon-essential-kit/bookcase/bookcase_x.png",
+				"pivot": [23.14, 46.11],
+				"outline": true,
+				"own": "kit-bookcase-x"
+			},
+			"kit-bookcase-z": {
+				"file": "dungeon-essential-kit/bookcase/bookcase_z.png",
+				"pivot": [10.15, 46.11],
+				"outline": true,
+				"own": "kit-bookcase-z"
+			},
 			"kit-banner": {
 				"facings": { "count": 4, "zeroDeg": 45 },
 				"animations": {

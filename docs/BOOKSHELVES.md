@@ -1,8 +1,9 @@
 # Bookshelves (plan, as built)
 
-Status (2026-11-03): **BK0-BK4 built** (uncommitted on main `82c2af6`): kit facts, the Forge piece and the library
-theme, the re-pins, the decor plan. Bookcases are solid in endless floors now but **draw nothing** until the art is
-rendered and uploaded (BK5 / BK6), as the throne was. BK0 switched the piece to 1 x 1 (BKD4) and set the scale (BKD9).
+Status (2026-11-03): **BK0-BK5 and BK7 done** on branch `bookshelves` (BK0-BK4 in `caa1ef3`): kit facts, the Forge
+piece and the library theme, the re-pins, the decor plan, the rendered art wired into vale, the full suite green on
+aarch64. Bookcases are solid in endless floors and **draw nothing** until `kit-bookcase-x.png` / `-z.png` are uploaded
+(BK6), as the throne was. BK0 switched the piece to 1 x 1 (BKD4) and set the scale (BKD9).
 Owner answers (2026-11-03): bookshelves are **solid** (BKD1); a **new `library` room theme plus a few in `hall`
 rooms** (BKD2). Everything else is proposed.
 
@@ -156,24 +157,37 @@ halls / plains).
   and the tutorial specs untouched.
 - [x] **BK4. Decor plan** (2026-11-03). `bookcase` in `StandingKind`, `DECOR_BOX` (`{ w: 22, h: 24, below: 3 }` from
   the BK0 test render; BK5 re-measures), the contract's `DECOR_KIND_LAYERS` (`["low"]`) and `DECOR_KINDS` (last;
-  void.spec's order check); the solid step's variant by facing. Found: banners and far-wall-top pieces skip the wall
+  void.spec's order check); the solid step's variant by facing (BK5 re-measured the box to `{ w: 23, h: 24, below: 4 }`). Found: banners and far-wall-top pieces skip the wall
   behind a case by themselves (the case's cell is WALL, so that wall is no far wall); R6's corner / jamb columns did
   not, so `keptOut` drops anything on a case's back cell with the new reason `behindShelf` (appended to
   `DECOR_DROP_REASONS`; ~0.00 a floor in the census). decorPlan.spec: variant by facing, low, one cell, a fade box,
   nothing standing or hanging on a back cell.
-- [ ] **BK5. Render.** The kit entry (as tested in BK0), the +X grade fix, the two PNGs, atlases.json, vale manifest. -> Verify: `npm run art:build`,
-  `test:art`, valeArt.spec's box fit on real floors (drawn whole, back on the wall line).
+- [x] **BK5. Render** (2026-11-03). The +X front no longer sits in shadow: render_kit.py gained `sunSide` (a list
+  parallel to `az`; 1 the usual sun from the camera's upper left, -1 mirrored to its upper right, 0 behind the camera;
+  default 1, so every other kit piece renders byte-identically), and the bookcase renders with `[-1, 1]`: the +X case
+  gets exactly the +Z case's shading (front and shelves lit, side panel shaded). A per-file brightness was rejected: it
+  over-brightens the already lit side. Trade-off for the Studio check: the +X case is lit from the other side than the
+  rest of the decor. The kit entry is in `scripts/art/kit/dungeon-essential-kit.json`; renders `bookcase_x.png` /
+  `bookcase_z.png` (33 x 54, pivots [23.14, 46.11] / [10.15, 46.11]) in `art/vendor/dungeon-essential-kit/bookcase/`;
+  `art/atlases.json` `kit-bookcase-x` / `-z` (own PNGs, outline, as the throne); vale `manifest.ts` variants 1 / 2;
+  `art:build` (layout.ts: only the two entries) and `art:lock` (vendor.lock.json +2 files); valeWorld.spec's world
+  file list. `DECOR_BOX.bookcase` re-measured from the built outline (half-width 11.43 / 11.27, height 23.3, below
+  3.18 render px): `{ w: 23, h: 24, below: 4 }` (22 / 3 would have scaled the art down). Verified on the Mac's VM:
+  typecheck, lint, test:art, check:assets, and the vale pack / void / decor specs (valeArt, valeWorld, void,
+  decorPlan, decorPlan.void, decor, decorFx) pass. The vendor PNGs on the Mac carry a content-credentials chunk the
+  bridge added (pixels identical; the lock hashes them as on disk).
 - [ ] **BK6. [owner] Upload** `kit-bookcase-x.png` / `-z.png`; paste the ids into `assetIds.ts`.
-- [ ] **BK7. Verify.** `npm run verify` on the Mac. Done in a Linux clone (2026-11-03): typecheck, lint,
-  check:assets, check:autolocalize, test:art, test:checks, test:l10n pass; the whole headless suite (319 suites,
-  4433 tests) passes but one test that fails the same on the clean checkout there: forge.spec "EncounterRng ...
-  seedToState vectors" expects the NaN bit pattern 7ff8000000000000 and x86-64 Lune gives fff8000000000000 (platform
-  NaN sign, not this change). Still to run on the Mac.
+- [x] **BK7. Verify** (2026-11-03). On `caa1ef3` in the Mac's Linux VM (aarch64, Lune 0.11.0 linux-aarch64 in the
+  VM's `$HOME/bin`): typecheck, lint, check:assets, check:autolocalize, test:art, test:checks, test:l10n and build
+  pass, and **all 319 suites / 4433 tests pass** (run one spec file at a time: the VM's shell stops after ~180 s; log
+  `Claude outputs/bk-verify-caa1ef3-aarch64.log`). forge.spec's NaN bit-pattern vector, which fails on x86-64 Lune
+  (fff8... for 7ff8...) on the clean checkout too, passes on aarch64: a platform NaN sign, not this change.
 - [ ] **BK8. [owner] Studio check** (below), then tuning: theme weights, run lengths, `shelfShare`, height.
 - [ ] **BK9. Later / optional.** The Essential Kit's `Pedestal_Set5_0` or the Modular Set V2's lectern ("Book And
   Base") in big libraries; a near-wall low shelf (half height) if near walls look bare.
-- [ ] **BK10. Docs.** As-built in docs/DECOR.md ("Room themes" table row for `library`, the hall line, the 3D kits
-  table), THIRD_PARTY_NOTICES.md's Essential Kit pieces, the CLAUDE.md decision log entry.
+- [ ] **BK10. Docs.** Done: docs/DECOR.md's "Room themes" table (the `library` row, the hall line, the new shares),
+  THIRD_PARTY_NOTICES.md's Essential Kit "Used for" (the bookcase), the CLAUDE.md decision log entry. Left: the
+  DECOR.md "3D kits" table row for the bookcase once uploaded (BK6).
 
 ## Studio check
 
