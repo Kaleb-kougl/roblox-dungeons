@@ -127,7 +127,10 @@ a dearer kind joins. The census reports it; tuning is an owner call.
 - **Ruleset (DSD11).** `DAILY.ruleset` (an integer in `shared/config`) joins the board scope. Bump it with any change
   that alters endless play; after an update, servers still on the old build keep posting to the old ruleset's board
   and new servers to the new one, so no daily board mixes two rulesets.
-  History: 1 at launch of the feature; 2 with boosts from breakables (docs/BREAKABLE_DROPS.md, 2026-11-01).
+  History: 1 at launch of the feature; 2 with boosts from breakables (docs/BREAKABLE_DROPS.md, 2026-11-01); 3 with
+  solid decor, room themes and the new enemies' roster (docs/DECOR.md, docs/NEW_ENEMIES.md NED12, one bump); 4 on the
+  pellets branch only; 5 with pellets merged onto main's 3 (docs/PELLETS.md PD10); 6 with pacts and the Goldling
+  (docs/FORTUNE.md FD15, one bump for both).
 
 ### 3. World, sessions, remotes
 

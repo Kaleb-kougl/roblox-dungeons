@@ -1,7 +1,9 @@
 # Fortune: risk shrines (pacts) and the Goldling
 
-Status (2026-11-03): **plan; the owner (Kaleb) confirmed every decision (FD1-FD16) on 2026-11-03, each the recommended
-option.** Planned against `main` @ `82c2af6`. Work it task by task like `PLAN.md`; each task ends with a **Verify**.
+Status (2026-11-04): **built on branch `fortune` (FO0, PS1-PS5, GE1-GE4, FO6-FO9, FO12); owner tasks FO10 (art and
+audio), FO11 (telemetry), FO13 (playtest), the Studio check and the open owner calls pending** (see "As built"). Plan:
+the owner (Kaleb) confirmed every decision (FD1-FD16) on 2026-11-03, each the recommended option. Planned against
+`main` @ `82c2af6`. Work it task by task like `PLAN.md`; each task ends with a **Verify**.
 Project copy: `claude/fortune-plan.md`. Sibling plan (unbuilt): `claude/treasure-rooms-plan.md` (vaults); whichever lands
 second takes the next hash slot, salt and daily ruleset.
 
@@ -74,8 +76,9 @@ Step on an altar for the existing shrine hint (`Press 1 / A`; touch: the shrine 
 you is greyed out with one line (`No curses left` / `No legendary to draw` / `No room left to rouse`).
 
 - **Greed:** `sfx.pact.take` (a low bell); the curse icon **brands** into your owned-items row (0.4 s); the multiplier
-  ticks up (+0.25). At 0.5 s the **Legendary deal** opens: the draft overlay titled `PACT OF GREED`; every card is
-  legendary so the draft reveal plays its full beat by itself. Pick, the world resumes.
+  ticks up (+0.25). *(As built: no brand flight, the HUD's item row has no world anchor; a dark disc pulse at the
+  altar and the curse toast carry the take.)* At 0.5 s the **Legendary deal** opens: the draft overlay titled
+  `PACT OF GREED`; every card is legendary so the draft reveal plays its full beat by itself. Pick, the world resumes.
 - **Horde:** `sfx.pact.take`, the altar's flame turns red, a chip in the status corner's boost row
   `HORDE · next room x2`. Entering the next enemy room: edges flash `roomEdge.horde`, `sfx.horde.horn`, floor shout
   `HORDE x2`, score pops drawn in the horde colour with `x2`. Half the first wave down: spawn rings at the wave-2 tiles
@@ -87,7 +90,7 @@ you is greyed out with one line (`No curses left` / `No legendary to draw` / `No
 | When | What happens |
 |---|---|
 | Room engages + 3 s | A gold flash on the tile farthest from you, `sfx.golden.appear`, floor shout `GOLDLING!`, gold minimap blip in sight; first ever sighting: toast `A Goldling! Catch it before it escapes!` |
-| Running (10 s) | Flees within the room, jinks sideways when you get within 2.5 tiles, slips past you rather than cornering itself. A gold ring under it shrinks with its time. A positional coin-jingle loop |
+| Running (10 s) | Flees within the room, jinks sideways when you get within 2.5 tiles, slips past you rather than cornering itself. A gold ring under it shrinks with its time. A positional coin-jingle loop *(as built: no loop, the theme contract has no optional positional ambience; GE4 found a 6 u/s chaser corners it anyway, see "Open owner calls")* |
 | Each hit | A coin burst, a `+50` pop, `sfx.golden.hit` climbing a scale |
 | Last 3 s | Flicker, squeak, ring pulse (reduced motion: colour only) |
 | Caught | Coin fountain, 40 ms freeze (solo, Freeze frame setting), `sfx.golden.jackpot` (ducks music), `+1,500` pop, boosts hop out |
@@ -124,7 +127,8 @@ It never attacks and does no contact damage.
 
 - **Endless only**, from floor 2. `placeGolden` on its own salt: one chance draw (30 % floors 2-4, 35 % 5-9, 40 % 10+),
   one weighted room pick over combat / elite rooms with planned spawns and >= `minRoomTiles` floor cells, never the boss
-  room. `EndlessFloorLayout.golden?` / `EndlessFloorWorld.golden?` (`{ room }`).
+  room. `EndlessFloorLayout.golden?` / `EndlessFloorWorld.golden?` (`{ room }`; as built `FloorGolden`: the room plus
+  its floor rectangle and walk mask, so the sim keeps it in the room without a Dungeon).
 - **Appears** `appearTicks` (180) after its room's record engages, on the room's spawn tile farthest from every living
   player; a full pool skips it. **Not a room member** (the room clears without it; no PERFECT effect; no affixes); it
   keeps running after the clear until its time is up.
@@ -133,6 +137,7 @@ It never attacks and does no contact damage.
   slips past. **Jink:** a player within 2.5 and a 1.5 s cooldown ready -> 0.25 s sidestep at 9 u/s perpendicular to the
   nearest player's bearing, side from the golden stream. No Warbanner aura.
 - **hp** `GOLDEN.hp` (start 10) through endless and party hp scaling; about 6-8 sword hits on floor 2 (GE4 tunes).
+  *As built: `GOLDEN_HP` 24 (the archetype's data); 10 took 3 port-sword hits on floor 2, 24 takes 7.*
 - **Payouts** (`ScoreSource.GOLDEN`, usual multipliers): each damaging hit `hitPoints` (50) x floor scale, no combo
   feed; kill `killPoints` (1500) x floor scale (the kill feeds the combo once) and `partySize + 1` boosts (kinds from
   the golden stream with the BOOSTS weights, a fixed ring of offsets, lowest free slots; full ground loses one).
@@ -144,25 +149,33 @@ It never attacks and does no contact damage.
 1. **Dungeon (pure).** `shared/dungeon/pacts.ts` + `pactsData.ts` (`PACTS`, `placePactAltars`, `pactCurseIndex`), run
    after solid decor, breakables and pellets. `shared/dungeon/golden.ts` + `goldenData.ts` (`GOLDEN_PLACE`,
    `placeGolden`, `fleeField(d, box, sources, blocked, out)` allocation-free). Layout / world gain `pactAltars?`,
-   `golden?`; stage pre-gen builds them with the floor.
+   `golden?`; stage pre-gen builds them with the floor. *(As built: `fleeField(open, w, h, sources, sourceCount, out,
+   scratch, factor)` over a box mask the caller builds, plus `fleeStep`; altars and the Goldling both run last in
+   `buildEndlessFloor`.)*
 2. **Sim pacts** `shared/sim/pacts/`: `PactsConfig` (`legendaryCards` 3, `hordeMaxWave` 10, `waveTelegraphTicks` 60,
    `hordePercent` 200, `debug?`), `PactKind { GREED: 0, HORDE: 1 }` (append only), `PactsState` (per-player
    `greedTaken`, `hordeTaken`, per-player `draftKind`, `horde { armed, room, record, firstWave, waveDueTick, waveX[],
    waveZ[], waveKinds[], spawned }`, run counters `taken[]`, unhashed `events`). `stepPacts` in stepRun slot 5; Horde's
    room-entered hook in `enterRoom`; `stepPactsWave` just before `stepScore`; `pactHoldsRoom` / `pactRoomPercent` hooks
-   in score.ts; `openLegendaryDraft` reuses `dealOffers`.
+   in score.ts; `openLegendaryDraft` reuses `dealOffers`. *(As built: `PactsConfig.floor?` (specs without endless)
+   instead of `debug?`; step.ts calls `stepPacts` right after `stepRun`, not inside it (stepPacts requires
+   progression: a require cycle); the draft opens through `openDealtDraft`; plus `holdAbsoluteTimers`, see "As
+   built".)*
 3. **Sim golden:** `combat/actors/archetypes/golden.ts` (band 5, index 18, states `GOLDEN_RUN` / `GOLDEN_JINK`, v slots
    ticksLeft / jinkCooldown / hitsTaken, `onHit` method books coins, no contact damage, not a room enemy for
    engagement, in `DROP_INELIGIBLE_ARCHETYPES`, no aura). `shared/sim/golden/` `GoldenState` (own `rngState`, status
    NONE / WAITING / RUNNING / CAUGHT / ESCAPED, room, record, appearTick, actorSlot, actorId, coins, run counters
-   `seen` / `caught`, unhashed events), `stepGolden` after `stepScore`.
+   `seen` / `caught`, unhashed events), `stepGolden` after `stepScore`. *(As built: status SKIPPED appended (a full
+   pool); also engageTick, hits, `escaped`, the field's `fieldTick` / `src`; v slots add the jink's direction.)*
 4. **Worlds:** absent in M1 / fixtures / tutorial; `ENDLESS_PACTS_CONFIG` / `ENDLESS_GOLDEN_CONFIG` in
-   `buildEndlessRunConfig`; dev world the same plus `KV_FortuneDebug` overrides (debug runs never count).
+   `buildEndlessRunConfig`; dev world the same plus `KV_FortuneDebug` overrides (debug runs never count). *(As built:
+   the dev world spreads the endless config; `KV_FortuneDebug` is not built.)*
 5. **View** (presentation only): `shared/view/pacts/`, `shared/view/golden/` (frame events on `RunView`, text, timelines),
    `PactRenderController`, `GoldenRenderController`, room-clear `horde` segment, draft title from `draftKind`,
    `roomEdge.horde`, minimap gold blip, `bestiary.golden` sighting, touch auto-target (after any enemy within 3 tiles),
    cue mapper (`sfx.pact.take`, `sfx.horde.horn` / `.wave` / `.double`, `sfx.golden.appear` / `.hit` (ladder) /
-   `.jackpot` (ducking) / `.escape`, `amb.golden.loop`), debug labels.
+   `.jackpot` (ducking) / `.escape`, `amb.golden.loop`), debug labels. *(As built: no `amb.golden.loop`, so eight
+   sounds, not nine.)*
 6. **Theme:** `pact.altar` (required, placeholder plinth), `enemy.golden` in `ENEMY_ARCHETYPES` (+ `.name` "Goldling",
    placeholder gold block), optional `fx.golden.coin`; roles `roomEdge.horde`, `pact.greed`, `pact.horde`,
    `golden.coin` (`fortuneReport` folded into an existing report: >= 3:1 on biome floors, >= 40 CIE76 from enemy-bullet
@@ -172,27 +185,29 @@ It never attacks and does no contact damage.
 
 ## Tasks
 
-- [ ] **FO0. Confirm the code assumptions** (mid-floor draft path, aura shape, auto-target ranking, room cell iteration,
+- [x] **FO0. Confirm the code assumptions** (mid-floor draft path, aura shape, auto-target ranking, room cell iteration,
   altar geometry, salts, fallback audio IDs, Luau locals).
-- [ ] **PS1. Altars (dungeon).** → Verify: pure, FLOOR, not solid, not on pellets, reachable, zones apart; every other
+- [x] **PS1. Altars (dungeon).** → Verify: pure, FLOOR, not solid, not on pellets, reachable, zones apart; every other
   floor output identical; census (fallback rate 0).
-- [ ] **PS2. Pacts sim state and hash.** → Verify: fixtures, M1, tutorial unchanged without the config; a pacts run
+- [x] **PS2. Pacts sim state and hash.** → Verify: fixtures, M1, tutorial unchanged without the config; a pacts run
   without presses draws exactly as a no-pacts run.
-- [ ] **PS3. Greed.** → Verify: once per player; dim cases; the shown curse is applied; deal composition; freeze and
+- [x] **PS3. Greed.** → Verify: once per player; dim cases; the shown curse is applied; deal composition; freeze and
   resume; co-op 2-4.
-- [ ] **PS4. Horde.** → Verify: 1- and 8-enemy rooms; no clear between waves; PERFECT over both waves; pool cap;
+- [x] **PS4. Horde.** → Verify: 1- and 8-enemy rooms; no clear between waves; PERFECT over both waves; pool cap;
   affix-free; lapse on floor change; never the boss room; exact x2 totals with Bounty, affixes and Gold Rush.
-- [ ] **PS5. Pacts worlds and bot census.** → Verify: `npm run verify`; numbers in this doc.
-- [ ] **GE1. Goldling roll and flee field.** → Verify: pure; rate per band; never boss room.
-- [ ] **GE2. Goldling archetype and state.** → Verify: appears at engage + 180 farthest; not a member; stays in its
+- [x] **PS5. Pacts worlds and bot census.** → Verify: `npm run verify`; numbers in this doc.
+- [x] **GE1. Goldling roll and flee field.** → Verify: pure; rate per band; never boss room.
+- [x] **GE2. Goldling archetype and state.** → Verify: appears at engage + 180 farthest; not a member; stays in its
   room; slips out of a corner; escapes at 600; replays bit-identically; absent config unchanged.
-- [ ] **GE3. Goldling payouts.** → Verify: no combo feed per hit; one on the kill; party 1-4 boosts; full ground; main
+- [x] **GE3. Goldling payouts.** → Verify: no combo feed per hit; one on the kill; party 1-4 boosts; full ground; main
   and drops rng identical to a no-golden twin.
-- [ ] **GE4. Goldling tuning census** (sword / bow, solo / party, floors 2 / 6 / 12; target catch 50-65 % solo).
-- [ ] **FO6. Theme.** **FO7. Pacts view.** **FO8. Goldling view.** **FO9. Audio cue mapper.**
-- [ ] **FO10. [owner] Art and audio** (gold recolour via a pipeline `recolor` option, altar art, nine sounds).
-- [ ] **FO11. Telemetry (optional).** **FO12. Docs** (this doc as built, CLAUDE.md log, sim README, CLIENT.md, DAILY.md).
-- [ ] **FO13. [owner] Playtest.**
+- [x] **GE4. Goldling tuning census** (sword / bow, solo / party, floors 2 / 6 / 12; target catch 50-65 % solo).
+- [x] **FO6. Theme.** **FO7. Pacts view.** **FO8. Goldling view.** **FO9. Audio cue mapper.**
+- [ ] **FO10. [owner] Art and audio** (gold recolour via a pipeline `recolor` option, altar art, nine sounds; eight as
+  built, no `amb.golden.loop`). Pending.
+- [ ] **FO11. Telemetry (optional).** Pending.
+- [x] **FO12. Docs** (this doc as built, CLAUDE.md log, sim README, CLIENT.md, DAILY.md).
+- [ ] **FO13. [owner] Playtest.** Pending.
 
 ## Decisions (all confirmed by the owner, Kaleb, 2026-11-03)
 
@@ -219,6 +234,230 @@ Power creep (Legendary on shrine floors); Horde deaths feeling like a trap; the 
 readability of cards, rings and coins; a thin Legendary pool early; Luau locals in contract / validate; mid-floor draft
 side effects.
 
-## As built
+## As built (2026-11-04)
 
-(Filled in as tasks land.)
+Branch `fortune` from `main` @ `82c2af6`, built by sub-branches `fortune-pacts` (PS1-PS5), `fortune-golden`
+(GE1-GE4), `fortune-view-pacts` (FO7, FO9 pacts half) and `fortune-view-golden` (FO8, FO9 Goldling half), with FO0
+and FO6 on the branch, then three review fixes: the Goldling's sim stream got its own salt, `pactsSpent` counts a
+Horde with no room left as spent, and the mid-floor freeze holds the absolute-tick timers. Both features are endless
+only: M1, every golden fixture and the tutorial (the classic shrine) replay exactly as before.
+
+- **Hash and score.** Hash groups end `... pellets, pacts, golden` (each appended only when its state exists). Score
+  sources `HORDE` 12 (pacts runs only, `addPactScoreSources`) and `GOLDEN` 13 (Goldling runs only,
+  `addGoldenScoreSources`; a Goldling run without pacts pads HORDE at 0, the pellets / JACKPOT pattern). An endless
+  run's points / counts hold 12 entries without either, 13 with pacts, 14 with the Goldling (or both).
+  `DAILY.ruleset` 5 -> 6 (one bump for both); the all-time boards stay `_v1` (FD15).
+
+### Open owner calls
+
+1. **Greed's deal is short.** The deal fills with ordinary upgrades (owned level-I boons) only, so from floor 4 it is
+   usually 2 cards (census below). Fill with new boons too?
+2. **The Goldling's depth scaling.** Its hp scales with the floor like any enemy, but the window is a fixed 10 s: the
+   focused solo sword catches 6 / 6 on floors 2 and 6 but 3 / 6 on floor 12, and fighting the room 5 / 6, 1 / 6, 0 / 6.
+   Scale the window, cap the hp, or accept it?
+3. **The bow.** The solo bow caught 6 / 6 on floor 2, then 0 / 6 on floors 6 and 12. A bow-specific lever, or accept?
+4. **"Slips past" did not hold.** The flee field's re-relax does make a cornered Goldling run past the player on the
+   field (fleeField spec), but at factor 1.2, 2 or 3 a 6 u/s chaser corners a 5.1 u/s runner in any 17 x 17 room
+   (GE4). Kept 1.2 (`GoldenConfig.fleeFactor`); a faster runner or a bigger jink is the lever.
+5. **`pact.greed` vs `enemy.golden`.** `#ffc800` and `#f5c400` are 3.5 CIE76 apart: Greed's altar flame and card read
+   in the Goldling's gold. Nothing validates that pair; on purpose (treasure gold) or move one?
+6. **The Horde crimson.** `pact.horde` / `roomEdge.horde` `#ff0040` is 8.3 CIE76 from `combo.carnage` (`#ff2050`)
+   and 15.5 from the enemy outline red (`#ff3b30`): all hot and hostile on purpose, but a Horde pop next to a CARNAGE
+   meter is close. Keep?
+7. **Horde death risk** is not measured (the census tops hearts up; it counts hits: 15 with the Horde against 9 for the
+   twins over 8 rooms).
+
+### Pacts
+
+**Floor side (PS1).** `shared/dungeon` `pactsData.ts` (`PACTS`, `PactKind`) and `pacts.ts`: `placePactAltars` puts
+Greed screen-left and the Horde screen-right of the crystal (the shrine room's centre floor cell) on the
+screen-horizontal line, a mirrored pair at the first of `offsetSteps` [3, 4, 2, 5, 6, 7] where both fit; a cell fits
+when every cell within `clearCells` (1) is FLOOR of the shrine room, holds no breakable or pellet, and is reachable from
+the entrance. When nothing fits on the crystal's line (a small room whose statue stands on it), the whole pair shifts
+1-3 steps screen-up / down (`PACTS.shiftSteps` 0, 1, -1, 2, -2, 3, -3), then each side alone. No draw; run last in
+`buildEndlessFloor`, so nothing else on the floor moves. `pactCurseIndex(floorSeed, player, unusedCount)` is the
+curse Greed shows, one draw of its own stream (floor seed ^ salt `0x5c3a91e7` ^ `imul(player + 1, playerMul)`), so
+each player sees their own and the view recomputes it. Layout / world field: `pactAltars` (`FloorPacts { room, seed,
+altars }`). Census (runs 1-20 x floors 1-20): 391 of 400 floors have a shrine, every one got both altars (fallback 0),
+11 of them shifted.
+
+**Sim (PS2-PS5).** `sim/pacts/`: `pactsData.ts` (`PACT_LEGENDARY_CARDS` 3, `HORDE_MAX_WAVE` 10,
+`HORDE_WAVE_TELEGRAPH_TICKS` 60, `HORDE_PERCENT` 200, `PactDim`), `pacts.ts` (`PactsConfig`, `ENDLESS_PACTS_CONFIG`,
+state, `pactsOnFloor`, clone, hash), `pactRooms.ts` (the leaf endless.ts and score.ts call), `stepPacts.ts`,
+`holdTimers.ts`.
+
+- Tick: step.ts calls `stepPacts` right after `stepRun` (not inside it: stepPacts requires progression, a require
+  cycle) and `stepPactsWave` between `stepPellets` and `stepScore`, in `step` and `stepParty`. `stepPacts` skips a
+  floor-change tick. On a floor whose altars stand the classic shrine zone and the sim's `atShrine` are off; a floor
+  without altars keeps the classic shrine.
+- **Greed:** a SHRINE_BUTTON press edge in an altar's zone with the pact available: `acceptCurse` on the shown curse
+  (+0.25), then `drawLegendaryOffers` (main rng) opened through `openDealtDraft` (one deal: `draftsLeft` 1, no
+  re-deal; the next floor's draft unchanged), `draftKind` GREED (hashed, the HUD title). The legendary pool
+  (`legendaryPool`): unowned legendary boons, available duos, level-II boons' evolutions; one `rngInt` per card, then
+  filled with level-I upgrades. Without builds: the unowned legendary classic boons.
+- **Dim reasons** (`PactDim`): TAKEN, NO_CURSE, NO_LEGENDARY, NO_ROOM and an extra UNABLE (no altars here, or a dead /
+  departed player).
+- **Horde:** the take arms it; `pactsOnRoomSpawned` (endless.ts `enterRoom`) makes the next room with planned spawns
+  anyone enters the horde room. It needs scoring (the record carries the wave and the x2): without `state.score` the
+  altar dims NO_ROOM. A first wave that got no slots still makes the horde room (its wave 2 then triggers at once).
+  Wave 2 (planned kinds in order, at most 10, through `safeRoomSpawns`, no affixes) is telegraphed once the living
+  first-wave members are at most floor(n / 2), spawns 60 ticks later, and joins the record through
+  `appendScoreRoomMembers`, whose par grows by the wave's encounter cost x `ROOM_PAR_TICKS_PER_COST` plus the
+  telegraph. The record may not clear before the wave spawned (`pactHoldsRoom`). The x2 (`awardX`: each source books
+  its x1 award, HORDE the rest) covers the record's kills (adopted children and wave 2 included), ROOMS / PERFECT /
+  FAST, pellets and Sweep; power pellet conversions and the Jackpot are not doubled. Lapses on the floor change.
+- **Mid-floor freeze** (review fix): every open draft freezes the world while `state.tick` counts, and Greed opens one
+  mid-floor. `holdAbsoluteTimers` (`sim/pacts/holdTimers.ts`), only with `state.pacts`, runs on every frozen draft
+  tick and shifts one tick forward: the `engageTick` of engaged, uncleared score records; the Horde's pending
+  `waveDueTick`; the waiting Goldling's `appearTick` / `engageTick` and a running one's `fieldTick`; an armed Vengeful
+  corpse's `vengeArmTick`. So a teammate's Greed draft never eats FAST par, the telegraph or the Goldling's delay. All
+  are hashed already; a no-op on floor-change drafts.
+- View queries (pure reads of hashed state): `pactAltarAt`, `pactAvailability`, `greedCurseFor`, `hordePhase`,
+  `pactAltarOffered`, `pactDraftKind`, `greedTakes`, `pactsSpent` (takes the SimConfig: the Horde counts as spent when
+  taken or NO_ROOM, so the crystal dims).
+- FO0 readers fixed: a Greed deal on the floor after a boss floor no longer reads as the double draft's re-deal; the
+  snapshot's `atShrine` is also true on an offered altar (the hint and the touch shrine button show).
+- Worlds (PS5): `ENDLESS_PACTS_CONFIG` in both branches of `buildEndlessRunConfig` (daily and dev follow); the endless
+  test bot takes Greed and the Horde on an altar floor (`run/testing/pactsBot.ts`).
+
+**Census (`run/pactsCensus.spec.ts`).** Greed's deal over 400 simulated builds (greedy picks):
+
+| Floor | Greed available | Legendary cards | All 3 legendary | Under 3 cards | Cards |
+|---|---|---|---|---|---|
+| 2 | 100 % | 1.94 | 0.0 % | 6.5 % | 2.87 |
+| 4 | 99.5 % | 2.00 | 0.8 % | 99.2 % | 2.01 |
+| 6 | 98.0 % | 2.06 | 9.4 % | 90.3 % | 2.10 |
+| 11 | 95.5 % | 2.13 | 29.3 % | 64.9 % | 2.32 |
+| 16 | 93.5 % | 2.05 | 34.5 % | 48.7 % | 2.34 |
+
+The Horde (sword bot, solo, 8 seeds, the first altar floor's nearest enemy room against a twin without it): 7 of 8
+horde rooms cleared (the twins 7 too; seed 23's room never triggered wave 2 in 90 s), room points 46 947 vs 12 577
+(x3.73), HORDE 49.5 % of the horde rooms' points. Death risk not measured (hearts topped up).
+
+### Goldling
+
+**Floor side (GE1).** `shared/dungeon` `goldenData.ts` (`GOLDEN_PLACE`, `GOLDEN_FLEE`) and `golden.ts`:
+`placeGolden` (salt `0x3d2f8b4d`, run last in `buildEndlessFloor`): from floor 2 one chance draw at 30 / 35 / 40 % by
+band (floors 2-4 / 5-9 / 10+), then one weighted room draw over combat / elite rooms (weights 1 / 1: the plan named
+none) with planned spawns and at least `minRoomTiles` 100 FLOOR cells, never the boss room. `FloorGolden` carries the
+room, its floor rectangle and walk mask. `fleeField(open, w, h, sources, sourceCount, out, scratch, factor)`: a
+multi-source BFS, then the `-factor x D` re-relax as an exact unit-step Dijkstra; allocation-free (`newFleeScratch`);
+`fleeStep` walks it downhill (8 neighbours).
+
+**Sim (GE2, GE3).** Archetype `golden` (`combat/actors/archetypes/golden.ts`), band `PORT_BAND_FORTUNE` 5, index 18:
+`GOLDEN_HP` 24 (raised from the plan's 10 by GE4), radius 0.3, 5.1 u/s, harmless, not a room enemy (never a record
+member, never aggroed, alerting or in a Warbanner aura), in `DROP_INELIGIBLE_ARCHETYPES`. `sim/golden/`:
+`goldenData.ts`, `golden.ts` (`GoldenConfig`, `ENDLESS_GOLDEN_CONFIG`, state, `goldenOnFloor`, clone, hash),
+`goldenField.ts`, `goldenHooks.ts`, `stepGolden.ts`.
+
+- Its own sim stream: `seedToState(seed) ^ 0x7a3c5e91` (`GOLDEN_SIM_SALT`; not the floor roll's salt), drawn only for a
+  jink's side and the catch's boost kinds.
+- Status NONE / WAITING / RUNNING / CAUGHT / ESCAPED / SKIPPED (SKIPPED: due with the actor pool full). `stepGolden`
+  (after `stepScore`) spawns it `appearTicks` (180) after its room's record engages, on the room's spawn tile farthest
+  from every living player, and frees it `escapeTicks` (600) later (no onDeath, score or drops; coins kept).
+- Moves on the flee field (flee factor 1.2, `GoldenConfig.fleeFactor`), sources = living players inside its room's
+  rectangle re-read every 6 ticks; with no player inside its room it stands still. Jink: a player within 2.5, cooldown
+  1.5 s, 0.25 s at 9 u/s. Every step is kept inside the walk mask.
+- Payouts (`ScoreSource.GOLDEN`): each damaging hit `scoreGoldenHit`, 50 x the kills' floor scale, no combo feed; the
+  catch pays 1500 x the floor scale into GOLDEN instead of KILLS (the kill's Bounty / affix / Gold Rush factors), feeds
+  the combo once, and lands party size + 1 boosts (one golden-stream `weightedBoostKind` draw each, the fixed
+  `GOLDEN_BOOST_RING`, lowest free slots; a full ground loses the rest with the same draws).
+- Hashed (group `golden`, last): `rngState`, status, room, record, engage / appear ticks, actor slot / id, coins, hits,
+  seen / caught / escaped, `fieldTick`, the source cells. The walk mask enters through `room`; the field cache is a
+  pure function of hashed state (unhashed).
+- Worlds: `ENDLESS_GOLDEN_CONFIG` in `buildEndlessRunConfig` (solo, co-op; daily and dev follow).
+
+**Census (GE4, `run/goldenCensus.spec.ts`; 6 Goldling floors per row, a chase bot):**
+
+| Bot | Floor 2 | Floor 6 | Floor 12 |
+|---|---|---|---|
+| Sword, solo, focused (upper bound) | 6 / 6, 7 hits, 3.6 s | 6 / 6, 13 hits, 6.1 s | 3 / 6, 23.3 hits, 8.9 s |
+| Sword, solo, fighting the room (lower bound) | 5 / 6 | 1 / 6 | 0 / 6 |
+| Bow, solo | 6 / 6, 26 hits, 7.0 s | 0 / 6 | 0 / 6 |
+| Sword, party of 2 | 6 / 6 | 6 / 6 | 6 / 6 |
+
+Solo sword: focused 15 of 18, fighting the room 6 of 18, bracketing the plan's 50-65 % target. hp 10 had caught 18 of
+18 in 3 hits on floor 2.
+
+### Theme (FO6)
+
+- Asset `pact.altar` (a new required `pact.` world-art slot, inline in contract.ts `SLOTS`; placeholder stone plinth);
+  `enemy.golden` in `ENEMY_ARCHETYPES` (name "Goldling", placeholder gold block); optional `fx.golden.coin`.
+- Colour roles `roomEdge.horde` / `pact.horde` `#ff0040`, `pact.greed` `#ffc800`, `golden.coin` `#ffdc5a`;
+  `enemy.golden` `#f5c400` (was `#c08000`: 25.5 CIE76 from the telegraph, now 44.5). `fortuneReport`
+  (`fortuneColors.ts`), folded into `variantColorProblems`: >= 3:1 on every biome floor and >= 40 from the enemy
+  bullets and telegraph, coins >= 30 from `pellet.normal`, the Goldling >= 40 from the bullets, telegraph and enemy
+  outline.
+- Strings (each with an l10n context entry): `pact.*` (cards, accept, five dim lines), `hud.draft.title.greed`,
+  `hud.chip.horde`, `fx.horde.shout` / `.wave`, `room.clear.line.horde`, `hud.score.pop.horde`, `score.source.horde`
+  / `.golden`, `fx.golden.shout` / `.escaped`, `bestiary.golden`.
+- Eight port audio IDs (`sfx.pact.take`, `sfx.horde.horn` / `.wave` / `.double`, `sfx.golden.appear` / `.hit` /
+  `.jackpot` / `.escape`), SILENT in the placeholder, each with an `SFX_FALLBACK` entry (shrine use, combo tier,
+  summon, score land, power pellet, score tick, room perfect, combo break). No `amb.golden.loop`: the contract has no
+  optional positional ambience.
+- `contract.luau` / `validate.luau` still 186 / 196 top-level locals.
+
+### View (FO7-FO9)
+
+**Pacts.** `shared/view/pacts` (frame events collected per tick on `RunView.pacts`, altar look, the floor card, hint
+text, `GreedDealGap`, Horde helpers, `pactDebugText`); `PactRenderController` (folder / render step `KV_Pacts`: per
+altar `pact.altar` or the plinth with a Neon flame, the floor card on the combo shout's construction, the take's disc
+pulse, `HORDE x2` / `WAVE 2` shouts, wave 2's spawn rings); `HordeChip` (status corner's boost row, touch strip);
+the shrine hint on an altar is the pact's title + accept line; the draft title from `draftKind` (`PACT OF GREED`);
+Greed's reveal waits 0.5 s after the draft opens (`GreedDealGap`, confirm held); room edges `roomEdge.horde`; kill pops
+in the horde room `ScorePopTone.HORDE` (`+N x2`); the room clear's last `horde` segment slams in (0.4 s longer) with
+`sfx.horde.double`; the shrine run marker reads used on altar floors. Debug `KV_PactLabel`.
+
+**Goldling.** `shared/view/golden` (frame events on `RunView.golden`, ring, flicker, hit ladder, freeze, hop match,
+blip, strings, `goldenDebugText`); `GoldenRenderController` (folder / render step `KV_Golden`): a timer ring of 24
+fixed floor pieces in `golden.coin`, pulsing in the last 3 s (reduced motion: colour only); the appear flash and
+`GOLDLING!`; hit coins; the catch's coin fountain and 40 ms solo freeze (Freeze frame setting) plus `stamp` nudge; the
+escape's puff and `It got away!  +N banked`. The hit sound climbs one major-scale step per hit (`goldenHitSpeed`,
+`pelletEatSpeed`'s scale); the jackpot's own pop replaces its kill pop; the catch's boosts hop in, matched by drop slot
+and landing tick; a minimap gold diamond while in sight; the body flickers in the last 3 s; touch auto-target ranks it
+after any other actor within `goldenYieldTiles` 3 (FD16); first sighting `bestiary.golden`. Debug `KV_GoldenLabel`.
+
+**Audio (FO9).** `AudioCueMapper.frame` takes the pact and Goldling events: `SFX_PRIORITY` horn 77, wave 87, double
+61, pact take 70, appear 68, hit 53, jackpot 73 (a ducking jingle), escape 70. World sounds, not positional.
+
+**Floor shout priorities** (`FLOOR_SHOUT_PRIORITY`): goldenAppear 4 > newBest 3 > horde 2 > rankThreshold =
+goldenEscaped 1 > comboTier 0. A jackpot pop is never Horde-tinted.
+
+### Tests
+
+Specs: `dungeon/pacts.spec`, `dungeon/golden.spec`, `sim/pacts/{pacts,greed,horde,freeze}.spec`,
+`sim/golden/{golden,payouts}.spec`, `run/pactsCensus.spec`, `run/goldenCensus.spec`, `theme/fortune.spec`,
+`view/pacts/pacts.spec`, `view/golden/golden.spec`, `view/audio/{pactCues,goldenCues,fortuneCues}.spec`; the hash-group
+order / count pins in the endless, affixes, dev, party progression, breakables, builds, pellets and progression specs
+moved for `pacts` / `golden`. Known failures, both not Fortune's: `dungeon/forge/forge.spec.ts › EncounterRng is the
+sim's new Rng(seed)` (a NaN's sign bit under Lune on Linux: `7ff8...` expected, `fff8...` received; the branch does not
+touch the Forge or the rng) and `sim/bench.spec.ts` (a wall-clock budget, flaky under load).
+Re-run for FO12 (headless, after a fresh build): the Fortune specs pass (dungeon pacts 7, golden 13; sim pacts 29,
+golden 20; theme 11; view pacts 22, golden 13; view/audio 162), both censuses print the numbers above, and
+forge.spec fails as described; the whole suite was not re-run (its dungeon censuses run for many minutes each).
+
+## Studio check
+
+Not run yet. In Studio (dev mode is allowed there), open the dev panel (**F2**), pick **seed 2, floor 2**: the floor
+has altars (shrine room 10) and a Goldling in room 3. Seeds 6 / 9 / 10 at floor 2 and 4 / 5 at floor 3 have one too.
+Turn on the Workspace booleans `KV_PactLabel` (each altar's availability, Greed's curse, the Horde's phase) and
+`KV_GoldenLabel` (status, ticks left, hp). Dev runs are solo: the co-op checks need a lobby run.
+
+- **Altar cards.** Two altars either side of the crystal on the screen-horizontal line, Greed gold, the Horde an
+  ember; each card readable from the doorway, under every bullet, ducking near enemy bullets; Greed shows *your* curse;
+  standing on an altar shows its hint (touch: the shrine button, Accept tinted); a dimmed altar shows its one line.
+- **Greed.** The take's pulse and toast, the multiplier +0.25, then 0.5 s later the `PACT OF GREED` draft (up to 3
+  cards); pick, the world resumes; Greed then dims for you; the crystal dims once nothing is left.
+- **Horde.** The chip `HORDE · next room x2`; the next enemy room's edges in the Horde crimson, `HORDE x2` shout, x2
+  pops; at half down the wave-2 rings fill for 1 s and `WAVE 2` shows; no clear before wave 2; the tally's last
+  `Horde x2` segment slams in with `sfx.horde.double`. Leaving the floor armed: the chip goes, nothing else.
+- **Goldling.** 3 s into room 3's fight: the flash on the far spawn tile, `GOLDLING!`, the first-sighting toast, the
+  minimap diamond; the ring shrinks a piece at a time, pulses and the body flickers in the last 3 s; each hit a coin
+  burst, a pop and a climbing note; a catch: fountain, 40 ms freeze, the big pop, boosts hopping in; an escape: the
+  puff and `It got away!  +N banked`. It never hurts you; with nobody in its room it stands still.
+- **Settings.** Reduced motion (no ring pulse or flicker, the take pulse fades in place), Particles Off (no bursts or
+  pulse), Freeze frame off (no catch freeze), Screen shake off (no nudge), Room clear Off (`sfx.horde.double` at the
+  clear, no tally), touch: auto-target prefers a threat within 3 tiles over the Goldling.
+- **Co-op.** A teammate's Greed freezes everyone (`hud.draft.waiting` for the others) and an engaged room's FAST par,
+  the wave-2 telegraph and the Goldling's delay resume where they stood; each player sees their own Greed curse; the
+  Horde once per party; every client sees the same Goldling; the catch freeze is solo only.

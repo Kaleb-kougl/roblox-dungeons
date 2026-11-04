@@ -58,7 +58,7 @@ Record every ported module in `PROVENANCE.md` (ported module, source path, sourc
 | `docs/PORTRAIT.md` | Portrait play (phones turn either way, `Sensor`; upright the view keeps the short side at `VIEW_TILES_HIGH` with the player lifted above the thumbs, touch controls in a bottom band, pause map on top, the draft in a column, the HUD scale capped to the width): plan, tasks PT1-PT9, decisions PD1-PD7 |
 | `docs/NEW_ENEMIES.md` | New enemies (five endless room archetypes from floor 2: Bomber rusher that blows up, Charger lane charge stunned by walls, Stormcaller lightning strike rows, Warbanner aura support, Reaper bullet spiral; band 4, `BulletKind.STRIKE`, the Warbanner aura in `actorMods`; gameplay): plan, NE0 findings, tasks NE0-NE14, decisions NED1-NED14 |
 | `docs/PELLETS.md` | Pellets (Pac-Man lines of small cubes laid on a fight's floor, collected while enemies live, a Sweep bonus for every one, a rare power pellet that turns every enemy bullet on the floor into points; tutorial room G with a sweep lock; gameplay): plan, as built, open owner calls, tasks PL0-PL15, decisions PD1-PD16 |
-| `docs/FORTUNE.md` | Fortune (risk shrines: two pact altars in the shrine room, Greed = a shown curse + a Legendary deal now, Horde = the next room fights a second wave for x2 score; the Goldling: a rare harmless gold enemy that flees within its room, coins per hit, a jackpot if caught within 10 s; gameplay, opt-in `SimConfig.pacts` / `SimConfig.golden` on endless only): plan, tasks FO0-FO13 / PS1-PS5 / GE1-GE4, decisions FD1-FD16 |
+| `docs/FORTUNE.md` | Fortune (risk shrines: two pact altars in the shrine room, Greed = a shown curse + a Legendary deal now, Horde = the next room fights a second wave for x2 score; the Goldling: a rare harmless gold enemy that flees within its room, coins per hit, a jackpot if caught within 10 s; gameplay, opt-in `SimConfig.pacts` / `SimConfig.golden` on endless only): plan, as built, open owner calls, Studio check, tasks FO0-FO13 / PS1-PS5 / GE1-GE4, decisions FD1-FD16 |
 
 Decision log (deviations from `PLAN.md`):
 - **Art (docs/ART.md).** The theme contract gained a `"sprites"` kind (large pre-rendered cells, 1/4/8/16 screen-space
@@ -588,6 +588,41 @@ Decision log (deviations from `PLAN.md`):
   (boards stay `_v1`, `DAILY.ruleset` 3 -> 5 with main merged). The chomp `sfx.pellet.eat` climbs the major scale over
   a room's pellets (`pelletEatSpeed`). Studio check, the vale art upload, sounds, playtests (PL9 / PL15) and
   four owner calls pending.
+- **Fortune (docs/FORTUNE.md).** Gameplay. Two opt-in configs, endless only: `SimConfig.pacts` (`ENDLESS_PACTS_CONFIG`)
+  and `SimConfig.golden` (`ENDLESS_GOLDEN_CONFIG`), each with its own hash group appended LAST (`pellets`, `pacts`,
+  `golden`) and a gated score source (`HORDE` 12, pacts only; `GOLDEN` 13, golden only, padding HORDE: an endless run's
+  points / counts hold 12 / 13 / 14 entries). Floor-built: shared/dungeon `placePactAltars` (the shrine room's two
+  altars, Greed screen-left / the Horde screen-right of the crystal, mirrored, shifted 1-3 steps screen-up / down when
+  blocked; no draw) and `pactCurseIndex` (Greed's shown curse per player, salt 0x5c3a91e7), then `placeGolden` (salt
+  0x3d2f8b4d: 30 / 35 / 40 % of floors by band from floor 2, one combat / elite room of >= 100 FLOOR cells, with its
+  rectangle and walk mask), both run last in `buildEndlessFloor`: nothing else on the floor moves. Pacts: where altars
+  stand the classic shrine (and the sim's `atShrine`) is off; step.ts calls `stepPacts` right after `stepRun` (not
+  inside it: a require cycle) and `stepPactsWave` before `stepScore`. Greed = `acceptCurse` (+0.25) then a mid-floor
+  one-deal draft (`drawLegendaryOffers`: unowned legendaries, available duos, level-II evolutions, filled with level-I
+  upgrades; `openDealtDraft`, `draftKind` GREED for the title). Horde = the next room with planned spawns anyone enters
+  fights a second wave (planned kinds, no affixes, <= 10, telegraphed 60 ticks at half down, appended to the
+  record with its cost + the telegraph on the par; no clear before it) and pays x2 through `bonusPercent` (kills,
+  ROOMS / PERFECT / FAST, pellets, Sweep; not power pellets or the Jackpot; the extra half to HORDE); needs scoring
+  (else `NO_ROOM`); dim reasons `PactDim` with an extra `UNABLE`. `holdAbsoluteTimers` (`sim/pacts/holdTimers.ts`,
+  pacts runs only) moves the live absolute-tick timers 1 tick per frozen draft tick (engaged records' `engageTick`,
+  `waveDueTick`, the Goldling's appear / engage / field ticks, a Vengeful `vengeArmTick`), so a teammate's Greed draft
+  eats no FAST par, telegraph or Goldling delay. The Goldling: archetype `golden` (band `PORT_BAND_FORTUNE` 5, index 18;
+  `GOLDEN_HP` 24, 5.1 u/s, harmless, not a room member, drop-ineligible), own sim stream (`seedToState(seed) ^
+  0x7a3c5e91`, a jink's side and the catch's boost kinds only); `stepGolden` after `stepScore`: appears 3 s after its
+  room engages on the spawn tile farthest from the players, escapes 10 s later (status SKIPPED on a full pool); flees on
+  the allocation-free `fleeField` (factor 1.2), standing still with no player in its room; coins 50 x floor scale per
+  hit (no combo), the catch 1500 x floor scale into GOLDEN plus party size + 1 boosts. M1, every fixture and the
+  tutorial replay exactly as before; endless replays and scores changed (boards stay `_v1`, `DAILY.ruleset` 5 -> 6).
+  Theme: `pact.altar` (a new required `pact.` world-art slot, inline in `SLOTS`), optional `fx.golden.coin`, roles
+  `roomEdge.horde` / `pact.horde` / `pact.greed` / `golden.coin` (`fortuneReport`, folded into `variantColorProblems`),
+  `enemy.golden` `#c08000` -> `#f5c400`, strings `pact.*` and the Horde / Goldling lines, 8 port audio IDs (SILENT in
+  the placeholder, `SFX_FALLBACK` entries; no `amb.golden.loop`); `contract.luau` / `validate.luau` still 186 / 196.
+  View: `shared/view/pacts` / `shared/view/golden`, `PactRenderController` (cards, flames, Horde rings and shouts),
+  `HordeChip`, the 0.5 s Greed deal gap, the tally's `horde` segment, `ScorePopTone.HORDE`, `GoldenRenderController`
+  (a 24-piece timer ring, coins, catch freeze), a minimap diamond, touch auto-target after any actor within 3 tiles;
+  floor shouts goldenAppear 4 > newBest 3 > horde 2 > rank / goldenEscaped 1 > combo 0. Debug `KV_PactLabel` /
+  `KV_GoldenLabel`. Art and audio (FO10), telemetry (FO11), playtest (FO13), the Studio check and seven owner calls
+  pending.
 
 ## Commands
 

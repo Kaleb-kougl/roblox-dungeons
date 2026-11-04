@@ -160,6 +160,7 @@ mover rounds pillars and would hide the block.
 
 - Registry: `PORT_BAND_ENEMIES_2` = 4; `bomber` 13, `charger` 14, `reaper` 15, `stormcaller` 16, `warbanner` 17; every
   older index unchanged (`sim/newEnemies.spec.ts` and the id-list specs).
+  Later: band 5 (`PORT_BAND_FORTUNE`) is the Goldling, `golden` 18 (docs/FORTUNE.md FD9).
 - `archetypes/{bomber,charger,reaper,stormcaller,warbanner}.ts`: full `data` blocks (Design tables as named fields and
   constants, `fx` hints wired to the v slots above) and stub steps: calm / leash / engage, then the bomber chases and
   the others keep their band straight along the bearing (no strafe, no attack, no draw).
