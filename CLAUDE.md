@@ -59,7 +59,7 @@ Record every ported module in `PROVENANCE.md` (ported module, source path, sourc
 | `docs/NEW_ENEMIES.md` | New enemies (five endless room archetypes from floor 2: Bomber rusher that blows up, Charger lane charge stunned by walls, Stormcaller lightning strike rows, Warbanner aura support, Reaper bullet spiral; band 4, `BulletKind.STRIKE`, the Warbanner aura in `actorMods`; gameplay): plan, NE0 findings, tasks NE0-NE14, decisions NED1-NED14 |
 | `docs/PELLETS.md` | Pellets (Pac-Man lines of small cubes laid on a fight's floor, collected while enemies live, a Sweep bonus for every one, a rare power pellet that turns every enemy bullet on the floor into points; tutorial room G with a sweep lock; gameplay): plan, as built, open owner calls, tasks PL0-PL15, decisions PD1-PD16 |
 | `docs/RUN_RECAP.md` | Run-over recap and co-op moments (one honest near-miss line, up to four counting highlights, Again in one press armed at 0.6 s and a faster retry; co-op TEAM PERFECT stamp / chip / streak / pulse rings and SYNC! parries; revives reserved; presentation only): plan, tasks RR0-RR11 / CM1-CM7, decisions RRD1-RRD11 / CMD1-CMD7 |
-| `docs/BOOKSHELVES.md` | Bookshelves (Dungeon Essential Kit bookcases, solid 1 x 1 cases flush in runs on rooms' far walls; a new `library` room theme plus a run in some `hall` rooms; endless layouts change): plan, tasks BK0-BK10, decisions BKD1-BKD10 |
+| `docs/BOOKSHELVES.md` | Bookshelves (Dungeon Essential Kit bookcases, solid 1 x 1 cases flush in runs on rooms' far walls; a new `library` room theme plus a run in some `hall` rooms; endless layouts change): plan, tasks BK0-BK10 / RA1-RA6, decisions BKD1-BKD14; the library's reading area, a table and two chairs |
 
 Decision log (deviations from `PLAN.md`):
 - **Art (docs/ART.md).** The theme contract gained a `"sprites"` kind (large pre-rendered cells, 1/4/8/16 screen-space
@@ -625,7 +625,13 @@ Decision log (deviations from `PLAN.md`):
   cell. Endless layouts, spawns, replays and scores changed (boards stay `_v1`); `DAILY.ruleset` 5 -> 6. M1, every
   fixture and the tutorial replay exactly as before. Art rendered (BK5: render_kit.py `sunSide`, the +X case lit
   from the mirrored side; vale `kit-bookcase-x` / `-z`, `DECOR_BOX.bookcase` 23 / 24 / 4), uploaded 2026-11-03 (BK6);
-  Studio check pending.
+  Studio check pending. **Reading area** (docs/BOOKSHELVES.md "Reading area", BKD11-BKD14): every library also gets
+  a solid line of chair, table (2 x 1), chair on open floor within `SOLID_DECOR.reading.maxDist` (8) of its shelves
+  (`readingArea`, no rng draw); the solid pillars under it and its 2-tile ring are cleared (FLOOR again, listed in the
+  new `Dungeon.clearedPillars`; `Dungeon.props` unchanged, the decor plan draws nothing for them). Decor kinds `table`
+  / `chair` appended after `bookcase`. Art from the Dungeon Assets Pack by zver.3d (free, credit requested;
+  `scripts/art/kit/zver_to_glb.py`). `DAILY.ruleset` stays 6. Upload of the six `kit-table-*` / `kit-chair-*` PNGs
+  pending.
 
 ## Commands
 

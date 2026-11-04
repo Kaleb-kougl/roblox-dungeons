@@ -201,3 +201,23 @@ docs/BOOKSHELVES.md). **Changes made:** rendered to 2D sprites
   **Attribution is required where players can see it**: the main menu's Credits screen (shared/view/menu `CREDITS`)
   shows the title, "by C. Anastasiadis (Sketchfab)", "CC BY 4.0 - creativecommons.org/licenses/by/4.0" and the change
   note.
+
+## Dungeon Assets Pack (3D models) by zver.3d
+
+- Author: zver.3d (ArtStation https://www.artstation.com/zver; Telegram https://t.me/zver3d; Instagram @zver.3d).
+  Source: "Dungeon Assets Pack by zver.3d" v1.0.0 (FBX models and 4k TGA textures, downloaded as
+  `Models+++Textures+(FBX+++TGA+4k)`; the pack names ArtStation and Telegram as the author's channels, the exact
+  download page was not recorded).
+- Used for: the reading area of library rooms: the table (`kit-table-x` / `-z`, along X / Z, on a 2 x 1 footprint)
+  and the chair (`kit-chair-px` / `-pz` / `-nx` / `-nz`, facing +X / +Z / -X / -Z), the table dressed with the
+  pack's fabric stack (as a pile of pages) and round candlestick. **Changes made:** converted to one .glb by
+  `scripts/art/kit/zver_to_glb.py` (Blender: materials built from the pack's textures, reduced to 1024 px, the fabric
+  stack decimated and halved in size), then rendered to 2D sprites from the game camera by
+  `scripts/art/kit/render_kit.py` (`scripts/art/kit/zver-dungeon-assets.json`: props moved onto the table, scaled
+  down, colour graded); packed by `scripts/art/build-atlases.js` and uploaded to Roblox.
+- Raw files: `art/vendor/zver-dungeon-assets/` (gitignored; the .glb, its renders and `SOURCE.txt`; the FBX / TGA pack
+  itself is not kept in the repo).
+- Terms (the pack's "TERMS OF USE", as written): "This package can be used in video games and other projects. A big
+  request to indicate the authorship of the assets "zver.3d". You also don't have to do this, but please let me know
+  if you are using my kit in a commercial project." Credited on the main menu's Credits screen (shared/view/menu
+  `CREDITS`: "Dungeon Assets Pack", "by zver.3d", the terms line and the change note).

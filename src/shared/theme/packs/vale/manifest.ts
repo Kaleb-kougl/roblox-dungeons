@@ -247,6 +247,13 @@ export const VALE_DECOR_PIECES: ReadonlyArray<ValeDecorPiece> = [
 	// bookshelves (docs/BOOKSHELVES.md): the bookcase facing +X / +Z
 	{ kind: "bookcase", variant: 1, art: "kit-bookcase-x", layer: "low" },
 	{ kind: "bookcase", variant: 2, art: "kit-bookcase-z", layer: "low" },
+	// a library's reading area (docs/BOOKSHELVES.md): the table along X / along Z, the chair facing +X / +Z / -X / -Z
+	{ kind: "table", variant: 1, art: "kit-table-x", layer: "low" },
+	{ kind: "table", variant: 2, art: "kit-table-z", layer: "low" },
+	{ kind: "chair", variant: 1, art: "kit-chair-px", layer: "low" },
+	{ kind: "chair", variant: 2, art: "kit-chair-pz", layer: "low" },
+	{ kind: "chair", variant: 3, art: "kit-chair-nx", layer: "low" },
+	{ kind: "chair", variant: 4, art: "kit-chair-nz", layer: "low" },
 	{ kind: "debris", variant: 1, art: "bricks-e", layer: "flat" },
 	{ kind: "debris", variant: 2, art: "rocks-e", layer: "flat" },
 	{ kind: "debris", variant: 3, art: "bricks-sw", layer: "flat" },

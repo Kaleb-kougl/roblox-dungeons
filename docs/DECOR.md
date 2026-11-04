@@ -186,6 +186,15 @@ THIRD_PARTY_NOTICES.md), in `art/vendor/dungeon-essential-kit/` (put `dungeon_es
 | `kit-bookcase-x` / `-z` (the bookcase at world scale, 125 kit units a tile, facing +X / +Z; the +X one lit by a mirrored sun, render_kit.py `sunSide`) | `decor.delve.b<n>.bookcase.1` / `.2`, solid decor kind `bookcase` | flush against rooms' far walls in library and hall rooms (docs/BOOKSHELVES.md); uploaded 2026-11-03 |
 | `kit-chandelier-1` (the candle chandelier, its chain cut off by `keepHeight`: lying fallen) | `decor.delve.b<n>.chandelier`, new decor kind `chandelier` (flat, scattered) | on open floor in rooms: planDecor's `scatter` step (DECOR_SCATTER: about a third of the rooms with 40+ floor tiles, never the boss room, one per room, at most 4 per floor; census 3.4 per floor), only when the pack has its art |
 
+Third pack: the **Dungeon Assets Pack** by zver.3d (v1.0.0, FBX + 4k TGA, free for games, credit requested; on the
+Credits screen), in `art/vendor/zver-dungeon-assets/`: `scripts/art/kit/zver_to_glb.py` turns its FBX files and TGA
+base colours into one glb that render_kit.py renders with `scripts/art/kit/zver-dungeon-assets.json`:
+
+| Art | Draws | Where |
+|---|---|---|
+| `kit-table-x` / `-z` (the table with papers and a candle dish, along X / Z) | `decor.delve.b<n>.table.1` / `.2`, solid decor kind `table` | libraries' reading areas (docs/BOOKSHELVES.md "Reading area") |
+| `kit-chair-px` / `-pz` / `-nx` / `-nz` (the chair facing +X / +Z / -X / -Z) | `decor.delve.b<n>.chair.1` .. `.4`, solid decor kind `chair` | a chair at each end of the reading area's table, facing it |
+
 Second kit: the **Dungeon Modular Set V2** (C. Anastasiadis, Sketchfab, **CC-BY 4.0**, on the Credits screen), in
 `art/vendor/dungeon-modular-set-v2/` (the .glb is there), `scripts/art/kit/dungeon-modular-set-v2.json`. It fills three
 kinds the plan already places but no pack had art for:
@@ -262,7 +271,7 @@ every room a theme (`Dungeon.roomThemes`, by room id) and places its set pieces.
 | | `hall` (20 / 20 %) | candle stands flush against the walls every 5+ tiles (at most 16); half of them a run of 2-3 bookcases on a far wall (docs/BOOKSHELVES.md); big rooms maybe a statue on a far wall |
 | | `store` (15 / 20 %) | nothing solid: the breakables (breakables.ts) get x2 + 3 pieces, clusters of 3-5, seeded in the corners first |
 | | `plain` (13 / 20 %) | maybe one tomb along a wall (55 %), big rooms maybe a free-standing one (30 %) |
-| | `library` (12 / 20 %; docs/BOOKSHELVES.md) | 2-3 runs of 2-5 bookcases (1 x 1 each) end to end against the far walls only, candle stands at their ends; big rooms maybe a statue; a room where no run fits is dressed as plain |
+| | `library` (12 / 20 %; docs/BOOKSHELVES.md) | 2-3 runs of 2-5 bookcases (1 x 1 each) end to end against the far walls only, candle stands at their ends; a reading area (a 2 x 1 table with a chair at each end facing it) on open floor within 8 tiles of the shelves, clearing the solid pillars under it and its 2-tile ring; big rooms maybe a statue; a room where no run fits is dressed as plain |
 | treasure, frozen lake | `none` | nothing |
 
 - **Rules** (`SOLID_DECOR`): a wall piece sits flush (every cell behind its back row is non-floor) and keeps every cell

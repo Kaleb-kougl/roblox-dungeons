@@ -9665,6 +9665,36 @@
 			"path": "toffeecraft-horror-ui/UiHorror.png",
 			"sha256": "bc8fcc677c7f553233fe59d40a4710986de68d68aafddcd07ee5e17eb956220e",
 			"bytes": 146876
+		},
+		{
+			"path": "zver-dungeon-assets/chair/chair_nx.png",
+			"sha256": "4e17602aef0e1f13667065e381f329f0ef9f450eb4f88a887379e1b3ee018f1a",
+			"bytes": 6673
+		},
+		{
+			"path": "zver-dungeon-assets/chair/chair_nz.png",
+			"sha256": "a14431adf9229600c0628324d492af0bdcbf1329676648c0319afa5ab50b770a",
+			"bytes": 6673
+		},
+		{
+			"path": "zver-dungeon-assets/chair/chair_px.png",
+			"sha256": "2bbd95b6c5d55563666d8783d8e855afbb0c85144fbdc7f55153f875d44b3e11",
+			"bytes": 6947
+		},
+		{
+			"path": "zver-dungeon-assets/chair/chair_pz.png",
+			"sha256": "757446ca404e0d3b7e62e858536eb3eb266a9063e7cf767128f10d1922ba294f",
+			"bytes": 6922
+		},
+		{
+			"path": "zver-dungeon-assets/table/table_x.png",
+			"sha256": "d78a31b443ae31327782826d016bebd3ae2c2430d9fedd4cdcfc4dcc6622fe62",
+			"bytes": 11260
+		},
+		{
+			"path": "zver-dungeon-assets/table/table_z.png",
+			"sha256": "095cee4cd6d56bd425d2a7c8f207759d9007db4f665003eb122f730b78f5fafc",
+			"bytes": 11252
 		}
 	]
 }

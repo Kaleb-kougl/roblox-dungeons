@@ -537,7 +537,8 @@ function honestRun(seed: number) {
 
 describe("an endless run that takes a power pellet replays and validates segmented", () => {
 	// The first candidate whose bot erases bullets with it: a layout can lay the power pellet where the walk in takes
-	// it before the room fires (seed 2 since docs/BOOKSHELVES.md moved its floor 2's pieces).
+	// it before the room fires (seed 2 since docs/BOOKSHELVES.md moved its floor 2's pieces). Since the libraries'
+	// reading area (docs/BOOKSHELVES.md), seed 2 erases bullets again: the first candidate is taken (before: seed 14).
 	let seed = 0;
 	let honest: ReturnType<typeof honestRun> | undefined;
 	for (const candidate of powerSeeds(POWER_SEED_TRIES)) {
