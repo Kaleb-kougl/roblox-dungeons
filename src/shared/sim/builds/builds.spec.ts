@@ -12,6 +12,7 @@ import {
 	BOON_MAX_LEVEL,
 	BUILDS_CONFIG,
 	BUILDS_SUBSYSTEM,
+	GOLDEN_SUBSYSTEM,
 	PELLETS_SUBSYSTEM,
 	PACTS_SUBSYSTEM,
 	BUILD_RULES,
@@ -258,7 +259,7 @@ describe("opt-in state and the builds hash group (BU1)", () => {
 		expect(createSimState(1, f1.spawnX, f1.spawnZ, t.config).builds).toBe(undefined);
 	});
 
-	it("an endless run hashes a builds group after affixes (pellets and pacts after it), a name per value, = writeHashFields", () => {
+	it("an endless run hashes a builds group after affixes (pellets, pacts, then golden after it), a name per value, = writeHashFields", () => {
 		for (const n of [1, 3]) {
 			const setup = buildEndlessRunConfig(1337, n);
 			const f1 = setup.endlessFloor(1);
@@ -266,12 +267,13 @@ describe("opt-in state and the builds hash group (BU1)", () => {
 			const layout = hashLayout(s, true);
 			const names = layout.groups.map((g) => g.name);
 			expect([
+				names[names.size() - 5],
 				names[names.size() - 4],
 				names[names.size() - 3],
 				names[names.size() - 2],
 				names[names.size() - 1],
-			]).toEqual([AFFIXES_SUBSYSTEM, BUILDS_SUBSYSTEM, PELLETS_SUBSYSTEM, PACTS_SUBSYSTEM]);
-			const g = layout.groups[layout.groups.size() - 3];
+			]).toEqual([AFFIXES_SUBSYSTEM, BUILDS_SUBSYSTEM, PELLETS_SUBSYSTEM, PACTS_SUBSYSTEM, GOLDEN_SUBSYSTEM]);
+			const g = layout.groups[layout.groups.size() - 4];
 			expect([layout.names[g.start], layout.values[g.start]]).toEqual(["builds.players.length", n]);
 			expect(layout.names[g.start + 1]).toBe("builds.players[0].levels.length");
 			expect(layout.values[g.start + 1]).toBe(BOON_COUNT);
@@ -287,10 +289,16 @@ describe("opt-in state and the builds hash group (BU1)", () => {
 	it("without SimConfig.builds nothing is created or hashed; with it only the appended last group and the score's build-only source differ", () => {
 		const setup = buildEndlessRunConfig(SEED);
 		const spawn = setup.spawn!;
-		// Pellets (docs/PELLETS.md PL5) and pacts (docs/FORTUNE.md PS5) left out of both: they would pad the Jackpot
-		// source without builds too.
-		const withConfig: SimConfig = { ...setup.config, pellets: undefined, pacts: undefined };
-		const without: SimConfig = { ...setup.config, builds: undefined, pellets: undefined, pacts: undefined };
+		// Pellets (docs/PELLETS.md PL5), pacts (docs/FORTUNE.md PS5) and the Goldling (docs/FORTUNE.md GE3) left out of
+		// both: they would pad the Jackpot source without builds too.
+		const withConfig: SimConfig = { ...setup.config, pellets: undefined, pacts: undefined, golden: undefined };
+		const without: SimConfig = {
+			...setup.config,
+			builds: undefined,
+			pellets: undefined,
+			pacts: undefined,
+			golden: undefined,
+		};
 		const a = createSimState(SEED, spawn.x, spawn.z, without);
 		const b = createSimState(SEED, spawn.x, spawn.z, withConfig);
 		expect(a.builds).toBe(undefined);

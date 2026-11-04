@@ -985,6 +985,9 @@
 	"enemy.dummy.name": {
 		"note": "Enemy type name: the stationary practice target of the tutorial (a straw training dummy). Shown in the stage card's roster line (the enemy kinds of a floor, joined with \" · \") and the main menu's Daily card. Singular noun, title case, used as a proper name; keep it short. Glossary term."
 	},
+	"enemy.golden.name": {
+		"note": "Creature name: the Goldling, a rare small gold creature that never attacks; it pops out during a fight and runs away, every hit on it gives coins (points) and catching it within 10 seconds gives a big bonus. Shown as its name in the shout and toast when it appears. Singular noun, title case, used as a proper name; a playful word for a little gold creature; keep it short. Glossary term."
+	},
 	"enemy.imp.name": {
 		"note": "Enemy type name: a small, quick demon that blinks (teleports) next to the player, landing inside a warning ring. Shown in the stage card's roster line (the enemy kinds of a floor, joined with \" · \") and the main menu's Daily card. Singular noun, title case, used as a proper name; keep it short. Glossary term."
 	},

@@ -12,6 +12,7 @@ import {
 	AFFIX_PAR_COST,
 	Button,
 	DROPS_SUBSYSTEM,
+	GOLDEN_SUBSYSTEM,
 	PELLETS_SUBSYSTEM,
 	PACTS_SUBSYSTEM,
 	NO_KIND,
@@ -42,7 +43,7 @@ import {
 import { Driver, distanceField, frame, walkDir, type Field } from "shared/run/testing";
 
 describe("endless worlds carry affixes", () => {
-	it("solo and co-op configs set AFFIXES_CONFIG; floors carry roomAffixes; the group is hashed before builds and pellets", () => {
+	it("solo and co-op configs set AFFIXES_CONFIG; floors carry roomAffixes; the group is hashed before builds, pellets, pacts, golden", () => {
 		for (const n of [1, 3]) {
 			const setup = buildEndlessRunConfig(1337, n);
 			expect(setup.config.affixes).toBe(AFFIXES_CONFIG);
@@ -51,12 +52,13 @@ describe("endless worlds carry affixes", () => {
 			const s = createSimState(1337, f1.spawnX, f1.spawnZ, setup.config);
 			const names = hashLayout(s).groups.map((g) => g.name);
 			// docs/BUILDS.md BU1: builds is appended after it; docs/PELLETS.md PL5: pellets after builds; docs/FORTUNE.md
-			// PS5: pacts after pellets (last).
-			expect(names[names.size() - 1]).toBe(PACTS_SUBSYSTEM);
-			expect(names[names.size() - 2]).toBe(PELLETS_SUBSYSTEM);
-			expect(names[names.size() - 3]).toBe(BUILDS_SUBSYSTEM);
-			expect(names[names.size() - 4]).toBe(AFFIXES_SUBSYSTEM);
-			expect(names[names.size() - 5]).toBe(DROPS_SUBSYSTEM);
+			// PS5 / GE3: pacts after pellets, then golden (last).
+			expect(names[names.size() - 1]).toBe(GOLDEN_SUBSYSTEM);
+			expect(names[names.size() - 2]).toBe(PACTS_SUBSYSTEM);
+			expect(names[names.size() - 3]).toBe(PELLETS_SUBSYSTEM);
+			expect(names[names.size() - 4]).toBe(BUILDS_SUBSYSTEM);
+			expect(names[names.size() - 5]).toBe(AFFIXES_SUBSYSTEM);
+			expect(names[names.size() - 6]).toBe(DROPS_SUBSYSTEM);
 		}
 	});
 

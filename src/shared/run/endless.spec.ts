@@ -19,11 +19,15 @@ import {
 	PELLETS_SUBSYSTEM,
 	ENDLESS_PACTS_CONFIG,
 	PACTS_SUBSYSTEM,
+	ENDLESS_GOLDEN_CONFIG,
+	GOLDEN_SUBSYSTEM,
 	ENDLESS_DROPS_CONFIG,
 	ENDLESS_HASH_SUBSYSTEM,
 	RUN_SUBSYSTEM,
 	SCORE_SUBSYSTEM,
 	STAIRWELL_RADIUS,
+	ScoreSource,
+	type SimConfig,
 	SimCtx,
 	archetypeAt,
 	archetypeIndex,
@@ -85,7 +89,7 @@ describe("buildEndlessRunConfig", () => {
 		const f1 = setup.endlessFloor(1);
 		const s = createSimState(1337, f1.spawnX, f1.spawnZ, setup.config);
 		const layout = hashLayout(s, true);
-		expect(layout.groups.size()).toBe(15);
+		expect(layout.groups.size()).toBe(16);
 		expect(layout.groups[9].name).toBe(BREAKABLES_SUBSYSTEM);
 		expect(layout.names[layout.groups[9].start]).toBe("breakables.length");
 		expect(layout.values[layout.groups[9].start]).toBe(f1.breakables!.size());
@@ -117,10 +121,14 @@ describe("buildEndlessRunConfig", () => {
 		expect(setup.config.pellets).toBe(PELLETS_CONFIG);
 		expect(layout.groups[13].name).toBe(PELLETS_SUBSYSTEM);
 		expect(layout.names[layout.groups[13].start]).toBe("pellets.length");
-		// docs/FORTUNE.md PS5: endless runs have pacts (ENDLESS_PACTS_CONFIG), hashed after pellets (last).
+		// docs/FORTUNE.md PS5: endless runs have pacts (ENDLESS_PACTS_CONFIG), hashed after pellets.
 		expect(setup.config.pacts).toBe(ENDLESS_PACTS_CONFIG);
 		expect(layout.groups[14].name).toBe(PACTS_SUBSYSTEM);
 		expect(layout.names[layout.groups[14].start]).toBe("pacts.room");
+		// docs/FORTUNE.md GE3: endless runs have the Goldling (ENDLESS_GOLDEN_CONFIG), hashed after pacts (last).
+		expect(setup.config.golden).toBe(ENDLESS_GOLDEN_CONFIG);
+		expect(layout.groups[15].name).toBe(GOLDEN_SUBSYSTEM);
+		expect(layout.names[layout.groups[15].start]).toBe("golden.rngState");
 		const g = layout.groups[6];
 		expect(g.name).toBe(ENDLESS_HASH_SUBSYSTEM);
 		expect(layout.groups[7].name).toBe(SCORE_SUBSYSTEM);
@@ -148,6 +156,47 @@ describe("buildEndlessRunConfig", () => {
 		expect(setup.endlessFloor(2)).toBe(setup.endlessFloor(2));
 		for (let f = 1; f <= ENDLESS_DUNGEON_CACHE_SIZE + 2; f++) setup.endlessFloor(f);
 		expect(cachedEndlessDungeonKeys().size()).toBe(ENDLESS_DUNGEON_CACHE_SIZE);
+	});
+});
+
+describe("fortune: pacts and the Goldling together (docs/FORTUNE.md)", () => {
+	it("solo and co-op configs carry both; the hash ends pellets, pacts, golden; score sources HORDE 12, GOLDEN 13", () => {
+		for (const n of [1, 3]) {
+			const run = buildEndlessRunConfig(1337, n);
+			expect(run.config.pacts).toBe(ENDLESS_PACTS_CONFIG);
+			expect(run.config.golden).toBe(ENDLESS_GOLDEN_CONFIG);
+			const f1 = run.endlessFloor(1);
+			const s = createSimState(1337, f1.spawnX, f1.spawnZ, run.config);
+			const layout = hashLayout(s, true);
+			const names = layout.groups.map((g) => g.name);
+			expect([names[names.size() - 3], names[names.size() - 2], names[names.size() - 1]]).toEqual([
+				PELLETS_SUBSYSTEM,
+				PACTS_SUBSYSTEM,
+				GOLDEN_SUBSYSTEM,
+			]);
+			expect(layout.values).toEqual(writeHashFields(s, []));
+			expect([ScoreSource.HORDE, ScoreSource.GOLDEN]).toEqual([12, 13]);
+			expect(s.score!.points.size()).toBe(ScoreSource.GOLDEN + 1);
+			expect(s.score!.counts.size()).toBe(ScoreSource.GOLDEN + 1);
+			expect(layout.names.includes("score.points.horde")).toBe(true);
+			expect(layout.names.includes("score.points.golden")).toBe(true);
+		}
+	});
+
+	it("either alone: pacts pads to HORDE (13 sources), the Goldling pads HORDE too (14), neither keeps 12", () => {
+		const run = buildEndlessRunConfig(1337);
+		const f1 = run.endlessFloor(1);
+		const sources = (config: SimConfig) => {
+			const s = createSimState(1337, f1.spawnX, f1.spawnZ, config);
+			const names = hashLayout(s, true).groups.map((g) => g.name);
+			return [s.score!.points.size(), s.score!.counts.size(), names[names.size() - 1]];
+		};
+		expect(sources({ ...run.config, golden: undefined })).toEqual([13, 13, PACTS_SUBSYSTEM]);
+		expect(sources({ ...run.config, pacts: undefined })).toEqual([14, 14, GOLDEN_SUBSYSTEM]);
+		expect(sources({ ...run.config, pacts: undefined, golden: undefined })).toEqual([12, 12, PELLETS_SUBSYSTEM]);
+		const goldenOnly = createSimState(1337, f1.spawnX, f1.spawnZ, { ...run.config, pacts: undefined });
+		expect(goldenOnly.score!.points[ScoreSource.HORDE]).toBe(0);
+		expect(hashLayout(goldenOnly, true).names.includes("score.points.horde")).toBe(true);
 	});
 });
 

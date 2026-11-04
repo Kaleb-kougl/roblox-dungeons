@@ -178,14 +178,16 @@ describe("tutorial world: the lock", () => {
 		// (docs/ENEMY_VARIANTS.md: never in the tutorial) and builds (docs/BUILDS.md BUD8: the tutorial keeps today's
 		// draft). Drops are set, but not the endless defaults: only combat B's guaranteed Fury (docs/BOOSTS.md B9).
 		// Pellets are the endless rules (docs/PELLETS.md PL11), but only combat G's floor-1 pellets lie anywhere. Pacts
-		// (docs/FORTUNE.md): never in the tutorial, which keeps the classic shrine (no altars on its floors either).
+		// (docs/FORTUNE.md): never in the tutorial, which keeps the classic shrine (no altars on its floors either). No
+		// Goldling (docs/FORTUNE.md: endless only, the tutorial never sets SimConfig.golden).
 		const keys = configKeys(buildEndlessRunConfig(1).config).filter(
-			(k) => k !== "breakables" && k !== "affixes" && k !== "builds" && k !== "pacts",
+			(k) => k !== "breakables" && k !== "affixes" && k !== "builds" && k !== "pacts" && k !== "golden",
 		);
 		keys.push("tutorial");
 		keys.sort();
 		expect(configKeys(setup.config)).toEqual(keys);
 		expect(setup.config.breakables).toBe(undefined);
+		expect(setup.config.golden).toBe(undefined);
 		expect(setup.config.drops).toBe(TUTORIAL_DROPS_CONFIG);
 		expect(setup.config.drops).never.toBe(DROPS_CONFIG);
 		for (const f of [1, 2, 3]) expect(setup.endlessFloor(f).breakables).toBe(undefined);

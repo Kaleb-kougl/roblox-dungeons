@@ -40,3 +40,6 @@ export * from "./charger";
 export * from "./reaper";
 export * from "./stormcaller";
 export * from "./warbanner";
+
+// --- Roblox port: the Goldling (band PORT_BAND_FORTUNE: numbered after band 4; docs/FORTUNE.md)
+export * from "./golden";

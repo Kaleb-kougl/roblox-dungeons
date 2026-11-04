@@ -25,6 +25,10 @@
  *            config.powerMaxBullets); neither feeds the combo nor refills its timer (PD1)
  *   sweep    (pellet runs only) scoreSweep: config.sweepPoints when a room clears with every regular pellet taken; no
  *            combo either
+ *   golden   (Goldling runs only, docs/FORTUNE.md GE3) scoreGoldenHit: GoldenConfig.hitPoints x the kills' floor scaling
+ *            per damaging hit on the Goldling (no combo feed, no room record); its kill (scoreKill) pays
+ *            GoldenConfig.killPoints x the kills' floor scaling here instead of KILLS, with the kill's usual Bounty /
+ *            affix / Gold Rush factors, and feeds the combo once like any kill
  *   floors   awardFloorClear(state, floor, ...), called by the floor transition (endless mode): 1000 x floor x (rooms
  *            cleared / rooms with enemies on that floor; a boss floor's boss is one more room), rounded down before
  *            the multipliers (floorClearBase); a floor without enemy rooms pays the full 1000 x floor.
@@ -91,6 +95,7 @@ import {
 } from "../builds/hooks";
 import { pelletRoomClear, pelletRoomLive } from "../pellets/pelletRooms";
 import { pactHoldsRoom, pactKillPercent, pactRoomCleared, pactRoomPercent } from "../pacts/pactRooms";
+import { GOLDEN_KIND } from "../golden/goldenData";
 import { SOLO_PLAYER, runMods, teamComboCutDivisorMultiplier, teamComboWindowTicks } from "../progression/runMods";
 import {
 	BOSS_FINAL_PHASE,
@@ -125,6 +130,7 @@ import {
 	ROOM_PERFECT_POINTS,
 	BUILD_SCORE_SOURCE_NAMES,
 	PACT_SCORE_SOURCE_NAMES,
+	GOLDEN_SCORE_SOURCE_NAMES,
 	PELLET_SCORE_SOURCE_NAMES,
 	SCORE_SOURCE_COUNT,
 	SCORE_SOURCE_NAMES,
@@ -713,7 +719,20 @@ export function scoreKill(state: SimState, a: Readonly<ActorState>, killer = 0):
 	// Pacts' Horde (PS4, opt-in): a member of the horde record pays x2 (never a boss: the boss room is never roused).
 	const horde = state.pacts !== undefined ? pactKillPercent(state, a) : FLOOR_SCALE_DENOMINATOR;
 	let pts: number;
-	if (def.data.boss === true) {
+	const golden = state.golden;
+	if (def.id === GOLDEN_KIND && golden !== undefined && s.points.size() > ScoreSource.GOLDEN) {
+		// The Goldling's jackpot (docs/FORTUNE.md GE3): its own source and base, a kill otherwise (combo fed below).
+		pts = award(
+			state,
+			s,
+			ScoreSource.GOLDEN,
+			golden.config.killPoints,
+			floorScalePercent(scoreFloor(state)),
+			bonus,
+			gold,
+		);
+		golden.events.jackpot = pts;
+	} else if (def.data.boss === true) {
 		pts = award(state, s, ScoreSource.BOSS, base, undefined, bonus, gold);
 		const finalPhase = BOSS_FINAL_PHASE.get(def.id);
 		if (finalPhase !== undefined && a.phase >= finalPhase) {
@@ -835,6 +854,30 @@ export function scorePowerBullets(state: SimState, n: number): number {
 	let pts = 0;
 	for (let k = 0; k < paid; k++) pts += award(state, s, ScoreSource.PELLETS, p.config.powerBulletPoints);
 	return pts;
+}
+
+/**
+ * Goldling runs (docs/FORTUNE.md GE3, state.ts createSimState): pads points / counts to every source up to
+ * GOLDEN_SCORE_SOURCE_NAMES (JACKPOT, PELLETS, SWEEP and Pacts' HORDE included when the run lacks them: they stay 0),
+ * so the Goldling's source hashes only in Goldling runs. Idempotent.
+ */
+export function addGoldenScoreSources(s: ScoreState): void {
+	const total = ScoreSource.GOLDEN + GOLDEN_SCORE_SOURCE_NAMES.size();
+	while (s.points.size() < total) s.points.push(0);
+	while (s.counts.size() < total) s.counts.push(0);
+}
+
+/**
+ * Goldling hook (docs/FORTUNE.md GE3, sim/golden goldenHooks.ts): one damaging hit on the Goldling. GoldenConfig.hitPoints
+ * at the kills' floor scaling (floorScalePercent) into ScoreSource.GOLDEN, through the usual multipliers; it NEVER feeds
+ * the combo or refills its timer (FD12) and touches no room record. Returns the points (0 without scoring, the
+ * Goldling's state or its source). Reads state.golden through the state types only.
+ */
+export function scoreGoldenHit(state: SimState): number {
+	const s = state.score;
+	const g = state.golden;
+	if (s === undefined || g === undefined || s.points.size() <= ScoreSource.GOLDEN) return 0;
+	return award(state, s, ScoreSource.GOLDEN, g.config.hitPoints, floorScalePercent(scoreFloor(state)));
 }
 
 /** Sword guard hook: `n` enemy bullets erased by this tick's guard sweep. One award per bullet. */
@@ -1122,14 +1165,18 @@ export function writeScoreHash(s: Readonly<ScoreState>, out: number[]): void {
 	}
 }
 
-/** The dump name of source index `k` (SCORE_SOURCE_NAMES, then BUILD_, PELLET_, then PACT_SCORE_SOURCE_NAMES). */
+/**
+ * The dump name of source index `k` (SCORE_SOURCE_NAMES, then BUILD_, PELLET_, PACT_, then GOLDEN_SCORE_SOURCE_NAMES).
+ */
 function sourceName(k: number): string {
 	if (k < SCORE_SOURCE_COUNT) return SCORE_SOURCE_NAMES[k];
 	const build = k - SCORE_SOURCE_COUNT;
 	if (build < BUILD_SCORE_SOURCE_NAMES.size()) return BUILD_SCORE_SOURCE_NAMES[build];
 	const pellet = build - BUILD_SCORE_SOURCE_NAMES.size();
 	if (pellet < PELLET_SCORE_SOURCE_NAMES.size()) return PELLET_SCORE_SOURCE_NAMES[pellet];
-	return PACT_SCORE_SOURCE_NAMES[pellet - PELLET_SCORE_SOURCE_NAMES.size()];
+	const pact = pellet - PELLET_SCORE_SOURCE_NAMES.size();
+	if (pact < PACT_SCORE_SOURCE_NAMES.size()) return PACT_SCORE_SOURCE_NAMES[pact];
+	return GOLDEN_SCORE_SOURCE_NAMES[pact - PACT_SCORE_SOURCE_NAMES.size()];
 }
 
 /** Dump names for writeScoreHash, same order (`score.total`, `score.points.kills`, `score.rooms[0].cleared`, ...). */

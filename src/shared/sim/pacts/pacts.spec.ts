@@ -54,9 +54,19 @@ function fresh(on: boolean, seed = SEED) {
 	return { setup, s };
 }
 
+/**
+ * fresh() without the Goldling (docs/FORTUNE.md GE3: every endless world sets it too; its group follows pacts' and its
+ * GOLDEN source pads HORDE in), so pacts are the last group and HORDE the last source here: what pacts add, alone.
+ */
+function alone(on: boolean, seed = SEED) {
+	const base = pactsSetup(seed, 1, on);
+	const config: SimConfig = { ...base.config, golden: undefined };
+	return { setup: { ...base, config }, s: createSimState(seed, base.spawn!.x, base.spawn!.z, config) };
+}
+
 describe("pacts state (PS2)", () => {
 	it("absent config: no state, no group, no HORDE source", () => {
-		const { s } = fresh(false);
+		const { s } = alone(false);
 		expect(s.pacts).toBe(undefined);
 		const names = hashLayout(s).groups.map((g) => g.name);
 		expect(names.includes(PACTS_SUBSYSTEM)).toBe(false);
@@ -65,9 +75,9 @@ describe("pacts state (PS2)", () => {
 	});
 
 	it("present: the LAST group (after pellets), names match values, writeHashFields agrees, clone hashes the same", () => {
-		const { s } = fresh(true);
+		const { s } = alone(true);
 		expect(s.pacts).never.toBe(undefined);
-		const off = fresh(false).s;
+		const off = alone(false).s;
 		const a = hashLayout(off, true);
 		const b = hashLayout(s, true);
 		expect(b.groups.size()).toBe(a.groups.size() + 1);

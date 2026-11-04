@@ -23,7 +23,8 @@
  *      boss floors), scoring's room records rebuilt for the new floor
  *      (rebuildScoreRooms, deferred), then the floor's pellets on those records (pellets/pellets.ts pelletsOnFloor,
  *      with SimConfig.pellets), the floor's pact altars (pacts/pacts.ts pactsOnFloor, with SimConfig.pacts: an armed
- *      Horde lapses), events.floorChanged = the new floor. Stop.
+ *      Horde lapses) and its Goldling room (golden/golden.ts goldenOnFloor, with SimConfig.golden: a Goldling still
+ *      out was freed with every other actor), events.floorChanged = the new floor. Stop.
  *   4. the player stands on a room's floor for the first time this floor: events.roomEntered = id + 1, and that room's
  *      deferred enemies spawn (EndlessFloorWorld.roomSpawns, in order, each at least SPAWN_SAFE_RADIUS from every
  *      living player: see safeRoomSpawns; a full pool drops the rest, counted in
@@ -43,7 +44,7 @@
  * Scaling (endlessData.ts) is applied where things are made: actor hp in spawnActor, enemy bullet speed in
  * SimCtx.fireEnemy. Both read state.endless, so they follow the floor and Depth at that moment.
  */
-import type { BreakableLoot, BreakablePlacement, FloorPacts, FloorPellets } from "shared/dungeon";
+import type { BreakableLoot, BreakablePlacement, FloorGolden, FloorPacts, FloorPellets } from "shared/dungeon";
 import type { InputFrame } from "./input";
 import type { SimState } from "./state";
 import type { SimConfig } from "./step";
@@ -67,6 +68,7 @@ import { clearBuildProcs } from "./builds/builds";
 import { pelletsOnFloor } from "./pellets/pellets";
 import { pactsOnFloor } from "./pacts/pacts";
 import { pactsOnRoomSpawned } from "./pacts/pactRooms";
+import { goldenOnFloor } from "./golden/golden";
 
 /** A candidate spawn position (structurally shared/dungeon's TileXZ). */
 export interface SpawnTile {
@@ -125,6 +127,12 @@ export interface EndlessFloorWorld {
 	 * hand-built test worlds).
 	 */
 	readonly pactAltars?: FloorPacts;
+	/**
+	 * The floor's Goldling room (shared/dungeon placeGolden, docs/FORTUNE.md GE1): room id, floor rectangle and walk
+	 * mask. Read only when the run's SimConfig.golden is set (golden/golden.ts goldenOnFloor). Absent: no Goldling on
+	 * this floor (the tutorial, hand-built test worlds, a floor that did not roll one).
+	 */
+	readonly golden?: FloorGolden;
 }
 
 /** SimConfig.endless. */
@@ -283,6 +291,8 @@ function nextFloor(state: SimState, input: Readonly<InputFrame>, endless: Endles
 	pelletsOnFloor(state, world.pellets);
 	// Pacts (docs/FORTUNE.md): the new floor's altars; a Horde taken on the old floor lapses (no-op without pacts).
 	pactsOnFloor(state, world.pactAltars);
+	// The Goldling (docs/FORTUNE.md GE2): the new floor's room, after the records (no-op without it). No rng.
+	goldenOnFloor(state, world.golden);
 	state.events.floorChanged = e.floor;
 }
 

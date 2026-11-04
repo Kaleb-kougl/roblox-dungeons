@@ -35,7 +35,8 @@ export const DAILY: DailyConfig = table.freeze({
 	// "Solid decor", "Room themes") change endless layouts and breakables, and five new room enemies with a reshuffled
 	// seeded roster (docs/NEW_ENEMIES.md NE7, NED12) change endless rooms (one bump: none of them has shipped).
 	// 4 (branch pellets only, never on main): pellets. 5: pellets merged onto main's 3 (docs/PELLETS.md PL5, PD10).
-	ruleset: 5,
+	// 6: pacts and the Goldling (docs/FORTUNE.md, FD15) change endless shrines, rooms and scores (one bump for both).
+	ruleset: 6,
 	labelOffset: 1,
 	yesterdayCacheSeconds: 600,
 	minEntrantsForPercentile: 20,

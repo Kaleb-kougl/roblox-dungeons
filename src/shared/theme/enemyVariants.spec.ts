@@ -154,6 +154,8 @@ describe("enemy variants: contract", () => {
 			"stormcaller",
 			"warbanner",
 			"reaper",
+			// docs/FORTUNE.md FD9: the Goldling
+			"golden",
 		]);
 		for (const a of NEW_ARCHETYPES) {
 			expect([a, has(REQUIRED_ASSET_IDS, `enemy.${a}`), slotFor(`enemy.${a}`)?.slot]).toEqual([a, true, "enemy"]);

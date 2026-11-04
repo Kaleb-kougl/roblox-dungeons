@@ -30,6 +30,8 @@ import { clearPelletsEvents, type PelletsConfig } from "./pellets/pellets";
 import { stepPellets } from "./pellets/stepPellets";
 import { clearPactsEvents, type PactsConfig } from "./pacts/pacts";
 import { stepPacts, stepPactsWave } from "./pacts/stepPacts";
+import { clearGoldenEvents, type GoldenConfig } from "./golden/golden";
+import { stepGolden } from "./golden/stepGolden";
 import type { SolidCells } from "shared/dungeon";
 
 export { PLAYER_RADIUS, PLAYER_SPEED } from "./playerData";
@@ -188,11 +190,19 @@ export interface SimConfig {
 	 * Pacts (docs/FORTUNE.md PS2, pacts/pacts.ts): the rules (ENDLESS_PACTS_CONFIG is the game's); where the altars stand
 	 * comes from each endless floor's world (EndlessFloorWorld.pactAltars), or from `pacts.floor` without endless mode.
 	 * Absent: no pacts state, the classic shrine everywhere, nothing extra hashed, no pact score source (every fixture,
-	 * M1, the tutorial). Present: state.pacts is created and hashed as the "pacts" subsystem, appended after every other
-	 * group (after "pellets"); on a floor whose altars stand the classic shrine zone is off and the altars take its place
+	 * M1, the tutorial). Present: state.pacts is created and hashed as the "pacts" subsystem, after "pellets" (only
+	 * "golden" after it); on a floor whose altars stand the classic shrine zone is off and the altars take its place
 	 * (stepPacts, right after stepRun), and the Horde's second wave runs in stepPactsWave (before stepScore).
 	 */
 	pacts?: PactsConfig;
+	/**
+	 * The Goldling (docs/FORTUNE.md GE2, golden/golden.ts): the rules (ENDLESS_GOLDEN_CONFIG is the game's); which room of
+	 * a floor holds one comes from each endless floor's world (EndlessFloorWorld.golden). Absent: no golden state,
+	 * nothing extra hashed, no Goldling ever spawns (every fixture, M1, the tutorial). Present: state.golden is created,
+	 * stepped (stepGolden, after stepScore) and hashed as the "golden" subsystem, appended after every other group
+	 * (after "pacts").
+	 */
+	golden?: GoldenConfig;
 }
 
 /** Matches the 16x16 greybox room: inner wall faces at +/-7.75, minus the 0.4 player half-width (rounded). */
@@ -234,7 +244,9 @@ const partyPrev: number[] = [];
  *                    record it holds never clears between the waves)
  *   8. stepScore    (only with config.scoring: hit cuts, combo timer, rooms; kills / grazes / guard score inside 3;
  *                    pellet runs: an engaged room's pellets go live, a clear takes them and pays the Sweep first)
- *   9. tick += 1
+ *   9. stepGolden   (only with config.golden: the Goldling appears appearTicks after its room engaged, or escapes when
+ *                    its time is up; its hits and catch score inside 3)
+ *  10. tick += 1
  * While a boon draft is open (endless mode, progression/progression.ts) the world is frozen: after the event clears
  * only stepDraft runs (the stick selects, a FIRE press confirms), then tick += 1 (a forfeit on such a tick closes the
  * draft without a pick and the tick stays frozen, like a co-op leaver's).
@@ -260,6 +272,7 @@ export function step(
 	if (state.builds !== undefined) clearBuildEvents(state.builds);
 	if (state.pellets !== undefined) clearPelletsEvents(state.pellets);
 	if (state.pacts !== undefined) clearPactsEvents(state.pacts);
+	if (state.golden !== undefined) clearGoldenEvents(state.golden);
 	const run = state.run;
 	// Read before the forfeit, which closes an open draft: that tick stays a frozen draft tick.
 	const frozen = run !== undefined && isDraftOpen(state);
@@ -282,6 +295,7 @@ export function step(
 	if (state.pellets !== undefined) stepPellets(state);
 	if (state.pacts !== undefined) stepPactsWave(state, soloInputs, config);
 	if (score !== undefined) stepScore(state);
+	if (state.golden !== undefined) stepGolden(state, config);
 	state.tick += 1;
 }
 
@@ -321,7 +335,8 @@ export function forfeitSoloRun(state: SimState): boolean {
  *   8. stepPellets (pellets: per player in index order, the live pellets in reach)
  *   8b. stepPactsWave (pacts: the horde room's second wave)
  *   9. stepScore
- *  10. tick += 1
+ *  10. stepGolden
+ *  11. tick += 1
  * A solo state (no party) is stepped exactly as step(state, inputs[0], config) would.
  */
 export function stepParty(
@@ -347,6 +362,7 @@ export function stepParty(
 	if (state.builds !== undefined) clearBuildEvents(state.builds);
 	if (state.pellets !== undefined) clearPelletsEvents(state.pellets);
 	if (state.pacts !== undefined) clearPactsEvents(state.pacts);
+	if (state.golden !== undefined) clearGoldenEvents(state.golden);
 	for (let i = 0; i < n; i++) if (hasLeftBit(inputs[i].buttons)) markPlayerLeft(state, i);
 	if (state.dev !== undefined) stepDevToggle(state, inputs, partyPrev);
 	const run = state.run;
@@ -367,5 +383,6 @@ export function stepParty(
 	if (state.pellets !== undefined) stepPellets(state);
 	if (state.pacts !== undefined) stepPactsWave(state, inputs, config);
 	if (score !== undefined) stepScore(state);
+	if (state.golden !== undefined) stepGolden(state, config);
 	state.tick += 1;
 }

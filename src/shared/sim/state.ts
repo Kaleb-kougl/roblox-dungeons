@@ -16,6 +16,7 @@ import { cloneEndlessState, createEndlessState, endlessStartFloor, type EndlessS
 import {
 	addBuildScoreSources,
 	addPactScoreSources,
+	addGoldenScoreSources,
 	addPelletScoreSources,
 	cloneScoreState,
 	createScoreState,
@@ -38,6 +39,7 @@ import { cloneDevState, createDevState, type DevState } from "./dev/dev";
 import { cloneBuildsState, createBuildsState, type BuildsState } from "./builds/builds";
 import { clonePelletsState, createPelletsState, pelletsOnFloor, type PelletsState } from "./pellets/pellets";
 import { clonePactsState, createPactsState, pactsOnFloor, type PactsState } from "./pacts/pacts";
+import { cloneGoldenState, createGoldenState, goldenOnFloor, type GoldenState } from "./golden/golden";
 
 export interface PlayerState {
 	x: number;
@@ -318,9 +320,16 @@ export interface SimState {
 	/**
 	 * Pacts (docs/FORTUNE.md PS2), only when SimConfig.pacts is set: the current floor's altars, every player's takes and
 	 * draft kind, the Horde (armed, its room and record, the second wave), the run counters. Hashed as the "pacts"
-	 * subsystem, appended after every other group (after "pellets"). See pacts/pacts.ts.
+	 * subsystem, after "pellets" (only "golden" after it). See pacts/pacts.ts.
 	 */
 	pacts?: PactsState;
+	/**
+	 * The Goldling (docs/FORTUNE.md GE2), only when SimConfig.golden is set: its own rng stream, this floor's status
+	 * (none / waiting / running / caught / escaped / skipped), room and record, engage / appear ticks, actor slot and id,
+	 * coins, hits, the run counters and the flee field's sources. Hashed as the "golden" subsystem, appended after every
+	 * other group (after "pacts"). See golden/golden.ts.
+	 */
+	golden?: GoldenState;
 }
 
 /**
@@ -344,6 +353,9 @@ export interface SimState {
  * `config.pellets.floor`), and a scored run's points / counts gain the pellet sources (addPelletScoreSources).
  * With `config.pacts`, `pacts` state is created after the pellet state: the first floor's altars (endless: its world's;
  * else `config.pacts.floor`), and a scored run's points / counts gain the pact source (addPactScoreSources).
+ * With `config.golden`, `golden` state is created after the score state (its own stream from `seed`; the first floor's
+ * Goldling room in endless mode, none otherwise), and a scored run's points / counts gain the GOLDEN source
+ * (addGoldenScoreSources).
  */
 export function createSimState(
 	seed: number,
@@ -428,6 +440,15 @@ export function createSimState(
 		// The pact-only score source (HORDE; the gated ones before it padded), so it hashes only here.
 		if (state.score !== undefined) addPactScoreSources(state.score);
 	}
+	// The Goldling (docs/FORTUNE.md GE2): its own stream (seed ^ GOLDEN_SIM_SALT), after the score state (its record).
+	// No sim rng.
+	const golden = config.golden;
+	if (golden !== undefined) {
+		state.golden = createGoldenState(golden, seed);
+		goldenOnFloor(state, firstFloor?.golden);
+		// The Goldling's score source (GOLDEN; the earlier gated ones padded), so it hashes only here.
+		if (state.score !== undefined) addGoldenScoreSources(state.score);
+	}
 	return state;
 }
 
@@ -459,6 +480,7 @@ export function cloneSimState(s: Readonly<SimState>): SimState {
 		builds: s.builds !== undefined ? cloneBuildsState(s.builds) : undefined,
 		pellets: s.pellets !== undefined ? clonePelletsState(s.pellets) : undefined,
 		pacts: s.pacts !== undefined ? clonePactsState(s.pacts) : undefined,
+		golden: s.golden !== undefined ? cloneGoldenState(s.golden) : undefined,
 	};
 	if (s.party !== undefined) clone.party = cloneParty(s.party, clone);
 	return clone;

@@ -5,12 +5,13 @@
  *
  *   config   { endless: { runSeed, worldForFloor }, scoring: ENDLESS_SCORING, breakables: BREAKABLES_CONFIG,
  *              drops: ENDLESS_DROPS_CONFIG, affixes: AFFIXES_CONFIG, builds: BUILDS_CONFIG, pellets: PELLETS_CONFIG,
- *              pacts: ENDLESS_PACTS_CONFIG }
+ *              pacts: ENDLESS_PACTS_CONFIG, golden: ENDLESS_GOLDEN_CONFIG }
  *            (shared/sim endless.ts: every tick runs with the current floor; endless runs are ALWAYS scored, on client
  *            and server alike, and always have breakable barrels and crates (docs/DECOR.md D4), boost drops, from kills
  *            and from loaded barrels and crates (docs/BOOSTS.md B4, docs/BREAKABLE_DROPS.md BL4), elite affixes (docs/ENEMY_VARIANTS.md EV7), builds (docs/BUILDS.md BU1) and pellets (docs/PELLETS.md PL5:
- *            each floor's pellets come from its world, EndlessFloorWorld.pellets) and pacts (docs/FORTUNE.md PS5: each
- *            floor's altars come from its world, EndlessFloorWorld.pactAltars; the tutorial keeps the classic shrine))
+ *            each floor's pellets come from its world, EndlessFloorWorld.pellets), pacts (docs/FORTUNE.md PS5: each
+ *            floor's altars come from its world, EndlessFloorWorld.pactAltars; the tutorial keeps the classic shrine)
+ *            and the Goldling (docs/FORTUNE.md GE3: each floor's room, if any, from EndlessFloorWorld.golden))
  *   floor f  buildEndlessFloor(runSeed, f) (shared/dungeon endless.ts: solid pillars, breakables) + circleMover / bulletBlocker /
  *            actorMover / actorSteerMover (enemies walk around pillars) on its dungeon; built on first use, kept in a
  *            per-config LRU (ENDLESS_FLOOR_CACHE_SIZE), the dungeons in a server-wide LRU (ENDLESS_DUNGEON_CACHE_SIZE)
@@ -43,6 +44,7 @@ import {
 	ENDLESS_PACTS_CONFIG,
 	AFFIXES_CONFIG,
 	BUILDS_CONFIG,
+	ENDLESS_GOLDEN_CONFIG,
 	MAX_PARTY_SIZE,
 	PELLETS_CONFIG,
 	PLAYER_RADIUS,
@@ -144,6 +146,7 @@ export function endlessFloorWorld(layout: EndlessFloorLayout): EndlessRunFloor {
 		breakableLoot: layout.breakableLoot,
 		pellets: layout.pellets,
 		pactAltars: layout.pactAltars,
+		golden: layout.golden,
 		layout,
 		dungeon: d,
 	};
@@ -210,6 +213,7 @@ export function buildEndlessRunConfig(runSeed: number, partySize: number = DEFAU
 					builds: BUILDS_CONFIG,
 					pellets: PELLETS_CONFIG,
 					pacts: ENDLESS_PACTS_CONFIG,
+					golden: ENDLESS_GOLDEN_CONFIG,
 			  }
 			: {
 					endless: { runSeed, worldForFloor },
@@ -221,6 +225,7 @@ export function buildEndlessRunConfig(runSeed: number, partySize: number = DEFAU
 					builds: BUILDS_CONFIG,
 					pellets: PELLETS_CONFIG,
 					pacts: ENDLESS_PACTS_CONFIG,
+					golden: ENDLESS_GOLDEN_CONFIG,
 			  };
 	return {
 		config,

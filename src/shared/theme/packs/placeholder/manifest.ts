@@ -75,6 +75,10 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		"enemy.stormcaller": "#b0c0f0",
 		"enemy.warbanner": "#f0e0a0",
 		"enemy.reaper": "#507060",
+		// Roblox port (docs/FORTUNE.md FD9): the Goldling, a deep old gold. Gold sits near the boss accent (29.8 CIE76),
+		// boost.fury (27.7) and the telegraph orange (25.5) by nature; >= 37 from every other enemy colour and far from
+		// the pink enemy bullet. Provisional: the view phase's fortune report (FO6) settles it.
+		"enemy.golden": "#c08000",
 		boss: "#d9c24a",
 		telegraph: "#ff8a3d",
 		// Roblox port (enemy outline plan E1): hostile red, >= 3.4:1 on every biome floor and wall, CIE76 63 from
@@ -274,6 +278,8 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		"enemy.stormcaller": PLACEHOLDER,
 		"enemy.warbanner": PLACEHOLDER,
 		"enemy.reaper": PLACEHOLDER,
+		// Roblox port (docs/FORTUNE.md FD9): the Goldling (a small gold block).
+		"enemy.golden": PLACEHOLDER,
 		"boss.1": PLACEHOLDER,
 		"boss.2": PLACEHOLDER,
 		"boss.3": PLACEHOLDER,
@@ -477,6 +483,7 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		"enemy.stormcaller.name": "Stormcaller",
 		"enemy.warbanner.name": "Warbanner",
 		"enemy.reaper.name": "Reaper",
+		"enemy.golden.name": "Goldling",
 		"breakable.barrel.name": "Barrel",
 		"breakable.crate.name": "Crate",
 		"boss.1.name": "Act I Boss",

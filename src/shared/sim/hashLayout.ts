@@ -28,6 +28,7 @@ import { devHashNames, writeDevHash } from "./dev/dev";
 import { buildsHashNames, writeBuildsHash } from "./builds/builds";
 import { pelletsHashNames, writePelletsHash } from "./pellets/pellets";
 import { pactsHashNames, writePactsHash } from "./pacts/pacts";
+import { goldenHashNames, writeGoldenHash } from "./golden/golden";
 
 /** The fixtures' subsystem groups, in hash order. */
 export const HASH_SUBSYSTEMS = ["core", "combatHeader", "actors", "weapons", "enemyBullets", "playerBullets"] as const;
@@ -53,7 +54,10 @@ export type HashSubsystem = (typeof HASH_SUBSYSTEMS)[number];
  *   pellets  pellets (docs/PELLETS.md PL2: the pellet count, taken per pellet, the power pellet, per score record left /
  *            phase / swept), when state.pellets exists
  *   pacts    pacts (docs/FORTUNE.md PS2: the floor's altars, per player takes and draft kind, the Horde and its second
- *            wave, the run counters), when state.pacts exists; the LAST group
+ *            wave, the run counters), when state.pacts exists
+ *   golden   the Goldling (docs/FORTUNE.md GE2: its stream, status, room / record, engage / appear ticks, actor slot / id,
+ *            coins, hits, the run counters, the flee field's source tick and cells), when state.golden exists; the LAST
+ *            group (after pacts)
  */
 export const ENDLESS_HASH_SUBSYSTEM = "endless";
 export const SCORE_SUBSYSTEM = "score";
@@ -67,6 +71,7 @@ export const DEV_SUBSYSTEM = "dev";
 export const BUILDS_SUBSYSTEM = "builds";
 export const PELLETS_SUBSYSTEM = "pellets";
 export const PACTS_SUBSYSTEM = "pacts";
+export const GOLDEN_SUBSYSTEM = "golden";
 /** Every group name a layout can have. */
 export type HashGroupName =
 	| HashSubsystem
@@ -81,7 +86,8 @@ export type HashGroupName =
 	| typeof DEV_SUBSYSTEM
 	| typeof BUILDS_SUBSYSTEM
 	| typeof PELLETS_SUBSYSTEM
-	| typeof PACTS_SUBSYSTEM;
+	| typeof PACTS_SUBSYSTEM
+	| typeof GOLDEN_SUBSYSTEM;
 
 export interface HashGroup {
 	readonly name: HashGroupName;
@@ -227,6 +233,13 @@ export function hashLayout(state: Readonly<SimState>, withNames = false): HashLa
 		writePactsHash(pacts, values);
 		if (withNames) pactsHashNames(pacts, names);
 		close(PACTS_SUBSYSTEM);
+	}
+
+	const golden = state.golden;
+	if (golden !== undefined) {
+		writeGoldenHash(golden, values);
+		if (withNames) goldenHashNames(golden, names);
+		close(GOLDEN_SUBSYSTEM);
 	}
 
 	return { values, names, groups };

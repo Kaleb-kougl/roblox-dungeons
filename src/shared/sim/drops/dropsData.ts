@@ -1,12 +1,13 @@
 /**
  * Boost drop tunables (docs/BOOSTS.md; a Roblox-port feature, no web source). Data only: drops.ts and boostMods.ts
- * read it, nothing is inline in the logic. A LEAF: it imports only units.ts and playerData.ts, so input.ts can read
- * DEBUG_DROP_BUTTON from here without a require cycle.
+ * read it, nothing is inline in the logic. A LEAF: it imports only units.ts, playerData.ts and the leaf
+ * golden/goldenData.ts, so input.ts can read DEBUG_DROP_BUTTON from here without a require cycle.
  *
  * Index tables are APPEND ONLY: a Boost index is stored in DropsState (ground slots, per-player timers) and hashed.
  */
 import { TILE_SIZE } from "../units";
 import { secondsToTicks } from "../playerData";
+import { GOLDEN_KIND } from "../golden/goldenData";
 
 /** Boost kind indices (BOOSTS order). Hashed. */
 export const Boost = { FURY: 0, QUICKSTEP: 1, FRENZY: 2, AEGIS: 3 } as const;
@@ -85,8 +86,11 @@ export const DROPS = {
 /** A drop's ground life in ticks (DROPS.groundSeconds). */
 export const DROP_GROUND_TICKS = secondsToTicks(DROPS.groundSeconds);
 
-/** Archetype ids whose kills never roll and never count toward pity (outside a guarantee): the training dummy. */
-export const DROP_INELIGIBLE_ARCHETYPES: ReadonlyArray<string> = ["dummy"];
+/**
+ * Archetype ids whose kills never roll and never count toward pity (outside a guarantee): the training dummy, and the
+ * Goldling (docs/FORTUNE.md: it lands its own jackpot boosts, kinds from its own stream).
+ */
+export const DROP_INELIGIBLE_ARCHETYPES: ReadonlyArray<string> = ["dummy", GOLDEN_KIND];
 
 /** The encounter room type whose kills never roll on a floor whose encounter spawns a boss (the boss, its summons, the arena). */
 export const DROP_EXCLUDED_ROOM_TYPE = "boss";

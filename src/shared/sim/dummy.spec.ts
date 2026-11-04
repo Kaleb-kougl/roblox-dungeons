@@ -71,6 +71,7 @@ describe("dummy: registry", () => {
 			"reaper",
 			"stormcaller",
 			"warbanner",
+			"golden", // band PORT_BAND_FORTUNE (docs/FORTUNE.md): index 18
 		]); // band-3 room enemies (docs/ENEMY_VARIANTS.md), then band 4
 		for (let i = 0; i < WEB_TABLE.size(); i++)
 			expect([WEB_TABLE[i], archetypeIndex(WEB_TABLE[i])]).toEqual([WEB_TABLE[i], i]);
