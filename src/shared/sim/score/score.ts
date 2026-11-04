@@ -27,6 +27,10 @@
  *            combo either
  *   treasure (treasure runs only, docs/TREASURE.md) scoreTreasure: the open's tier points x Depth x curses, once per
  *            open, combo-neutral (the combo is neither applied, x1.0, nor fed)
+ *   golden   (Goldling runs only, docs/FORTUNE.md GE3) scoreGoldenHit: GoldenConfig.hitPoints x the kills' floor scaling
+ *            per damaging hit on the Goldling (no combo feed, no room record); its kill (scoreKill) pays
+ *            GoldenConfig.killPoints x the kills' floor scaling here instead of KILLS, with the kill's usual Bounty /
+ *            affix / Gold Rush factors, and feeds the combo once like any kill
  *   floors   awardFloorClear(state, floor, ...), called by the floor transition (endless mode): 1000 x floor x (rooms
  *            cleared / rooms with enemies on that floor; a boss floor's boss is one more room), rounded down before
  *            the multipliers (floorClearBase); a floor without enemy rooms pays the full 1000 x floor.
@@ -59,6 +63,12 @@
  * took it); kill points x 110 % (Bounty: kills and boss kills, not the no-hit bonus) follow the KILLER's boons; the
  * graze margin (Daredevil 0.75 tiles) the grazing player's (combat.ts passes the radius).
  *
+ * Pacts' Horde (docs/FORTUNE.md PS4, only with state.pacts; sim/pacts pactRooms.ts): the horde room's record pays
+ * x hordePercent / 100 (x2) on its ROOMS / PERFECT / FAST / Sweep, its pellets and the kills of its members, through
+ * awardPoints' bonusPercent (an exact integer factor, after Bounty and affixes); the award without the x2 is booked to
+ * its own source exactly as without pacts, the rest to ScoreSource.HORDE (awardX). The record may not clear while its
+ * second wave has not spawned (pactHoldsRoom); appendScoreRoomMembers adds the wave to it.
+ *
  * Builds duos (docs/BUILDS.md BU6, only with state.builds; sim/builds hooks.ts): Gold Rush (the killer's duo) scores a
  * kill at combo >= GOLD_RUSH_MIN_COMBO x GOLD_RUSH_PERCENT / 100 after Bounty (awardPoints' extraPercent; kills and
  * boss kills, not the no-hit bonus); Unshaken's hits taken on armor (BuildEvents.unshakenKept) are left out of
@@ -86,6 +96,8 @@ import {
 	buildsUnshakenKept,
 } from "../builds/hooks";
 import { pelletRoomClear, pelletRoomLive } from "../pellets/pelletRooms";
+import { pactHoldsRoom, pactKillPercent, pactRoomCleared, pactRoomPercent } from "../pacts/pactRooms";
+import { GOLDEN_KIND } from "../golden/goldenData";
 import { SOLO_PLAYER, runMods, teamComboCutDivisorMultiplier, teamComboWindowTicks } from "../progression/runMods";
 import {
 	BOSS_FINAL_PHASE,
@@ -119,6 +131,8 @@ import {
 	ROOM_PAR_TICKS_PER_COST,
 	ROOM_PERFECT_POINTS,
 	BUILD_SCORE_SOURCE_NAMES,
+	PACT_SCORE_SOURCE_NAMES,
+	GOLDEN_SCORE_SOURCE_NAMES,
 	PELLET_SCORE_SOURCE_NAMES,
 	TREASURE_SCORE_SOURCE_NAMES,
 	SCORE_SOURCE_COUNT,
@@ -144,7 +158,7 @@ export interface RoomScore {
 	maxZ: number;
 	/** Par time, ticks. */
 	parTicks: number;
-	/** Tick the room engaged (see the file comment), -1 not yet. */
+	/** Tick the room engaged (see the file comment), -1 not yet. Pacts: +1 per frozen tick (pacts/holdTimers.ts). */
 	engageTick: number;
 	/** ScoreState.hitsTaken before the engagement tick's hits. */
 	hitsAtEngage: number;
@@ -425,6 +439,36 @@ export function adoptScoreRoomMember(state: SimState, parent: Readonly<ActorStat
 	}
 }
 
+/**
+ * Pacts' Horde (docs/FORTUNE.md PS4): the second wave `spawned` (in spawn order) joins record `k` as more members, so
+ * the room stays open until it is down too, and `extraPar` ticks join its par (the wave's encounter cost and its
+ * telegraph; stepPacts computes it). A record that never engaged (its first wave found no slot) engages now. No-op
+ * without scoring, for a missing or cleared record.
+ */
+export function appendScoreRoomMembers(
+	state: SimState,
+	k: number,
+	spawned: ReadonlyArray<ActorState>,
+	extraPar: number,
+): void {
+	const s = state.score;
+	if (s === undefined) return;
+	const r = s.rooms[k];
+	if (r === undefined || r.cleared !== 0) return;
+	const actors = state.combat.actors;
+	for (const a of spawned) {
+		const slot = actors.indexOf(a);
+		if (slot < 0) continue;
+		r.memberSlots.push(slot);
+		r.memberIds.push(a.id);
+	}
+	r.parTicks += extraPar;
+	if (r.engageTick < 0 && r.memberSlots.size() > 0) {
+		r.engageTick = state.tick;
+		r.hitsAtEngage = s.hitsTaken;
+	}
+}
+
 /** Validated party size: an integer >= 1. */
 function partySizeOf(config: ScoringConfig): number {
 	const n = config.partySize ?? DEFAULT_PARTY_SIZE;
@@ -601,6 +645,35 @@ function credit(s: ScoreState, source: ScoreSourceId, pts: number): number {
 }
 
 /**
+ * An award at `percent` (pacts' Horde x2, docs/FORTUNE.md PS4; PACT_PERCENT = 100: exactly award()). The award without
+ * it goes to `source` exactly as award() would book it (so its points and counts never depend on pacts); the doubled
+ * award is computed with bonusPercent x percent / 100 (an exact integer: percent is a multiple of 100) and the
+ * difference goes to ScoreSource.HORDE (one count per award). Returns the doubled award (what the player gains). A
+ * score state without the pact sources (no pacts) always takes award()'s path.
+ */
+function awardX(
+	state: Readonly<SimState>,
+	s: ScoreState,
+	source: ScoreSourceId,
+	base: number,
+	percent: number,
+	scalePercent?: number,
+	bonusPercent?: number,
+	extraPercent?: number,
+): number {
+	const normal = award(state, s, source, base, scalePercent, bonusPercent, extraPercent);
+	if (percent === FLOOR_SCALE_DENOMINATOR || s.points.size() <= ScoreSource.HORDE) return normal;
+	const bonus = (bonusPercent ?? FLOOR_SCALE_DENOMINATOR) * (percent / FLOOR_SCALE_DENOMINATOR);
+	const doubled = awardPoints(state, s, base, scalePercent, bonus, extraPercent);
+	const extra = doubled - normal;
+	s.total += extra;
+	s.points[ScoreSource.HORDE] += extra;
+	s.counts[ScoreSource.HORDE] += 1;
+	s.events.points += extra;
+	return doubled;
+}
+
+/**
  * The combo window in ticks: COMBO_WINDOW_TICKS, or what the M2 boons / curses make of it (endless runs; team-wide in
  * co-op, runMods.ts teamComboWindowTicks).
  */
@@ -650,8 +723,23 @@ export function scoreKill(state: SimState, a: Readonly<ActorState>, killer = 0):
 		state.builds !== undefined && s.combo >= GOLD_RUSH_MIN_COMBO && buildsGoldRush(state, killer)
 			? GOLD_RUSH_PERCENT
 			: undefined;
+	// Pacts' Horde (PS4, opt-in): a member of the horde record pays x2 (never a boss: the boss room is never roused).
+	const horde = state.pacts !== undefined ? pactKillPercent(state, a) : FLOOR_SCALE_DENOMINATOR;
 	let pts: number;
-	if (def.data.boss === true) {
+	const golden = state.golden;
+	if (def.id === GOLDEN_KIND && golden !== undefined && s.points.size() > ScoreSource.GOLDEN) {
+		// The Goldling's jackpot (docs/FORTUNE.md GE3): its own source and base, a kill otherwise (combo fed below).
+		pts = award(
+			state,
+			s,
+			ScoreSource.GOLDEN,
+			golden.config.killPoints,
+			floorScalePercent(scoreFloor(state)),
+			bonus,
+			gold,
+		);
+		golden.events.jackpot = pts;
+	} else if (def.data.boss === true) {
 		pts = award(state, s, ScoreSource.BOSS, base, undefined, bonus, gold);
 		const finalPhase = BOSS_FINAL_PHASE.get(def.id);
 		if (finalPhase !== undefined && a.phase >= finalPhase) {
@@ -662,7 +750,7 @@ export function scoreKill(state: SimState, a: Readonly<ActorState>, killer = 0):
 		}
 		s.bossFinalHits = -1;
 	} else {
-		pts = award(state, s, ScoreSource.KILLS, base, floorScalePercent(scoreFloor(state)), bonus, gold);
+		pts = awardX(state, s, ScoreSource.KILLS, base, horde, floorScalePercent(scoreFloor(state)), bonus, gold);
 	}
 	if (gold !== undefined) buildsGoldRushPop(state, killer, a.x, a.z, pts);
 	const e = s.events;
@@ -754,27 +842,46 @@ export function addPelletScoreSources(s: ScoreState): void {
 }
 
 /**
+ * Pacts runs (docs/FORTUNE.md PS2, state.ts createSimState): pads points / counts to every source up to
+ * PACT_SCORE_SOURCE_NAMES (HORDE; JACKPOT / PELLETS / SWEEP / TREASURE padded when the run lacks builds / pellets /
+ * treasure: they stay 0), so it hashes only in pacts runs. Idempotent.
+ */
+export function addPactScoreSources(s: ScoreState): void {
+	const total =
+		SCORE_SOURCE_COUNT +
+		BUILD_SCORE_SOURCE_NAMES.size() +
+		PELLET_SCORE_SOURCE_NAMES.size() +
+		TREASURE_SCORE_SOURCE_NAMES.size() +
+		PACT_SCORE_SOURCE_NAMES.size();
+	while (s.points.size() < total) s.points.push(0);
+	while (s.counts.size() < total) s.counts.push(0);
+}
+
+/**
  * Pellet hook (docs/PELLETS.md PL3, sim/pellets): one pellet taken. The run's PelletsConfig.pelletPoints at the kills'
  * floor scaling (floorScalePercent) into ScoreSource.PELLETS, through the usual multipliers; it NEVER feeds the combo or
  * refills its timer (PD1) and touches no room record. Returns the points (0 without scoring, pellets or their sources).
- * Reads state.pellets through the state types only (this module never requires sim/pellets).
+ * Reads state.pellets through the state types only (this module never requires sim/pellets). `rec`: the pellet's score
+ * record (pacts' Horde: a pellet of the horde record pays x2, docs/FORTUNE.md PS4); absent or -1: none.
  */
-export function scorePellet(state: SimState): number {
+export function scorePellet(state: SimState, rec = -1): number {
 	const s = state.score;
 	const p = state.pellets;
 	if (s === undefined || p === undefined || s.points.size() <= ScoreSource.PELLETS) return 0;
-	return award(state, s, ScoreSource.PELLETS, p.config.pelletPoints, floorScalePercent(scoreFloor(state)));
+	const scale = floorScalePercent(scoreFloor(state));
+	return awardX(state, s, ScoreSource.PELLETS, p.config.pelletPoints, pactRoomPercent(state, rec), scale);
 }
 
 /**
  * Sweep hook (PL3, from a room's clear): PelletsConfig.sweepPoints, flat, into ScoreSource.SWEEP, through the usual
  * multipliers; never feeds the combo (PD1). Returns the points (0 without scoring, pellets or their sources).
+ * `percent`: the record's pay (pacts' Horde x2, pactRoomPercent; default 100).
  */
-export function scoreSweep(state: SimState): number {
+export function scoreSweep(state: SimState, percent: number = FLOOR_SCALE_DENOMINATOR): number {
 	const s = state.score;
 	const p = state.pellets;
 	if (s === undefined || p === undefined || s.points.size() <= ScoreSource.SWEEP) return 0;
-	return award(state, s, ScoreSource.SWEEP, p.config.sweepPoints);
+	return awardX(state, s, ScoreSource.SWEEP, p.config.sweepPoints, percent);
 }
 
 /**
@@ -790,6 +897,31 @@ export function scorePowerBullets(state: SimState, n: number): number {
 	let pts = 0;
 	for (let k = 0; k < paid; k++) pts += award(state, s, ScoreSource.PELLETS, p.config.powerBulletPoints);
 	return pts;
+}
+
+/**
+ * Goldling runs (docs/FORTUNE.md GE3, state.ts createSimState): pads points / counts to every source up to
+ * GOLDEN_SCORE_SOURCE_NAMES (JACKPOT, PELLETS, SWEEP, TREASURE and Pacts' HORDE included when the run lacks them: they
+ * stay 0),
+ * so the Goldling's source hashes only in Goldling runs. Idempotent.
+ */
+export function addGoldenScoreSources(s: ScoreState): void {
+	const total = ScoreSource.GOLDEN + GOLDEN_SCORE_SOURCE_NAMES.size();
+	while (s.points.size() < total) s.points.push(0);
+	while (s.counts.size() < total) s.counts.push(0);
+}
+
+/**
+ * Goldling hook (docs/FORTUNE.md GE3, sim/golden goldenHooks.ts): one damaging hit on the Goldling. GoldenConfig.hitPoints
+ * at the kills' floor scaling (floorScalePercent) into ScoreSource.GOLDEN, through the usual multipliers; it NEVER feeds
+ * the combo or refills its timer (FD12) and touches no room record. Returns the points (0 without scoring, the
+ * Goldling's state or its source). Reads state.golden through the state types only.
+ */
+export function scoreGoldenHit(state: SimState): number {
+	const s = state.score;
+	const g = state.golden;
+	if (s === undefined || g === undefined || s.points.size() <= ScoreSource.GOLDEN) return 0;
+	return award(state, s, ScoreSource.GOLDEN, g.config.hitPoints, floorScalePercent(scoreFloor(state)));
 }
 
 /** Sword guard hook: `n` enemy bullets erased by this tick's guard sweep. One award per bullet. */
@@ -951,17 +1083,20 @@ export function scoreRoomDown(state: Readonly<SimState>, r: Readonly<RoomScore>)
 function clearRoom(state: SimState, s: ScoreState, r: RoomScore, k: number): void {
 	r.cleared = 1;
 	s.events.roomsCleared += 1;
+	// Pacts' Horde (docs/FORTUNE.md PS4, opt-in): the horde record pays x2 (100 for every other record).
+	const pay = state.pacts !== undefined ? pactRoomPercent(state, k) : FLOOR_SCALE_DENOMINATOR;
 	// Pellets (docs/PELLETS.md PL3, opt-in): before the other awards, the room's pellets go and its Sweep pays when every
 	// regular pellet was taken (this tick's pickups included: stepPellets runs before stepScore).
-	if (state.pellets !== undefined && pelletRoomClear(state, k)) scoreSweep(state);
-	award(state, s, ScoreSource.ROOMS, ROOM_CLEAR_POINTS);
+	if (state.pellets !== undefined && pelletRoomClear(state, k)) scoreSweep(state, pay);
+	awardX(state, s, ScoreSource.ROOMS, ROOM_CLEAR_POINTS, pay);
 	if (s.hitsTaken === r.hitsAtEngage) {
-		award(state, s, ScoreSource.PERFECT, ROOM_PERFECT_POINTS);
+		awardX(state, s, ScoreSource.PERFECT, ROOM_PERFECT_POINTS, pay);
 		// Builds (docs/BUILDS.md BU5, opt-in): Lionheart heals on a PERFECT clear.
 		if (state.builds !== undefined) buildsOnPerfectRoom(state);
 	}
 	const under = r.parTicks - (state.tick - r.engageTick);
-	if (under > 0) award(state, s, ScoreSource.FAST, under * FAST_POINTS_PER_TICK);
+	if (under > 0) awardX(state, s, ScoreSource.FAST, under * FAST_POINTS_PER_TICK, pay);
+	if (state.pacts !== undefined) pactRoomCleared(state, k);
 }
 
 /** A live boss reached its final phase this tick: open the no-hit window (this tick's hits count against it). */
@@ -1013,6 +1148,7 @@ export function stepScore(state: SimState): void {
 	}
 
 	const pellets = state.pellets !== undefined;
+	const pacts = state.pacts !== undefined;
 	for (let k = 0; k < s.rooms.size(); k++) {
 		const r = s.rooms[k];
 		// Cleared, or a deferred room whose enemies have not spawned yet (attachScoreRoomMembers).
@@ -1025,7 +1161,8 @@ export function stepScore(state: SimState): void {
 		// Pellets (docs/PELLETS.md PL3, opt-in): an engaged record's pellets go live (once; endless records engage in
 		// attachScoreRoomMembers, so this is their first pass here).
 		if (pellets) pelletRoomLive(state, k);
-		if (scoreRoomDown(state, r)) clearRoom(state, s, r, k);
+		// Pacts' Horde (docs/FORTUNE.md PS4, opt-in): the horde record waits for its second wave.
+		if (scoreRoomDown(state, r) && !(pacts && pactHoldsRoom(state, k))) clearRoom(state, s, r, k);
 	}
 
 	e.comboChanged = s.combo !== e.comboStart ? 1 : 0;
@@ -1073,8 +1210,8 @@ export function writeScoreHash(s: Readonly<ScoreState>, out: number[]): void {
 }
 
 /**
- * The dump name of source index `k` (SCORE_SOURCE_NAMES, then BUILD_SCORE_SOURCE_NAMES, then PELLET_..., then
- * TREASURE_...).
+ * The dump name of source index `k` (SCORE_SOURCE_NAMES, then BUILD_, PELLET_, TREASURE_, PACT_, then
+ * GOLDEN_SCORE_SOURCE_NAMES).
  */
 function sourceName(k: number): string {
 	if (k < SCORE_SOURCE_COUNT) return SCORE_SOURCE_NAMES[k];
@@ -1082,7 +1219,11 @@ function sourceName(k: number): string {
 	if (build < BUILD_SCORE_SOURCE_NAMES.size()) return BUILD_SCORE_SOURCE_NAMES[build];
 	const pellet = build - BUILD_SCORE_SOURCE_NAMES.size();
 	if (pellet < PELLET_SCORE_SOURCE_NAMES.size()) return PELLET_SCORE_SOURCE_NAMES[pellet];
-	return TREASURE_SCORE_SOURCE_NAMES[pellet - PELLET_SCORE_SOURCE_NAMES.size()];
+	const treasure = pellet - PELLET_SCORE_SOURCE_NAMES.size();
+	if (treasure < TREASURE_SCORE_SOURCE_NAMES.size()) return TREASURE_SCORE_SOURCE_NAMES[treasure];
+	const pact = treasure - TREASURE_SCORE_SOURCE_NAMES.size();
+	if (pact < PACT_SCORE_SOURCE_NAMES.size()) return PACT_SCORE_SOURCE_NAMES[pact];
+	return GOLDEN_SCORE_SOURCE_NAMES[pact - PACT_SCORE_SOURCE_NAMES.size()];
 }
 
 /** Dump names for writeScoreHash, same order (`score.total`, `score.points.kills`, `score.rooms[0].cleared`, ...). */

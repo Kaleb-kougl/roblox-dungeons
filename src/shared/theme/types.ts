@@ -74,6 +74,8 @@ export const COLOR_ROLES = [
 	"enemy.stormcaller",
 	"enemy.warbanner",
 	"enemy.reaper",
+	// Roblox port (docs/FORTUNE.md FD9): the Goldling (contract.ts ENEMY_ARCHETYPES)
+	"enemy.golden",
 	// Bosses share one accent
 	"boss",
 	// Enemy attack warnings (telegraph lines, slam shockwaves): hot like enemy bullets, but not a bullet
@@ -210,6 +212,14 @@ export const COLOR_ROLES = [
 	"treasure.common",
 	"treasure.rare",
 	"treasure.legendary",
+	// Roblox port (docs/FORTUNE.md FO6): Fortune's colours (fortune.ts FORTUNE_ROLES): a Horde room's flashing edge, the
+	// two pact altars' cards and flames (Greed, the Horde), the Goldling's coins. Held to FORTUNE_COLOR_RULES by
+	// fortuneReport (fortuneColors.ts): >= 3:1 on every biome floor and (CIE76) away from the enemy-bullet roles and
+	// telegraph; the coins also away from pellet.normal.
+	"roomEdge.horde",
+	"pact.greed",
+	"pact.horde",
+	"golden.coin",
 ] as const;
 
 export type ColorRole = (typeof COLOR_ROLES)[number];

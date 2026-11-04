@@ -40,7 +40,7 @@ import from inside would create require cycles).
 | `replay.ts` | `src/sim/replay.ts` | `Recorder`, `runReplay`, `writeHashFields`, `hashNumbers` (FNV-1a over `buffer.writef64` bytes), `hashState`, `serializeRecording` / `deserializeRecording` (same messages), `float64Hex` / `float64FromHex` |
 | `recordingCodec.ts` | (Roblox only) | `encodeRecording` / `decodeRecording`: the compact binary recording (`buffer`) the `submitRun` remote carries; hostile-input-safe decode (docs/SERVER.md "The wire format") |
 | `observer.ts` | `src/sim/observer.ts` | `SimObserver` / `SimControls` types |
-| `hashLayout.ts` | (port helper) | the hash split into the fixtures' six subsystems, with dump names (plus `endless`, then `score`, then `run`, then `party`, then `tutorial`, then `breakables`, then `drops`, then `affixes`, `dev`, `builds`, `pellets` and `treasure` (last), each appended only when present) |
+| `hashLayout.ts` | (port helper) | the hash split into the fixtures' six subsystems, with dump names (plus `endless`, then `score`, then `run`, then `party`, then `tutorial`, then `breakables`, then `drops`, then `affixes`, `dev`, `builds`, `pellets`, `treasure`, `pacts` and `golden` (last), each appended only when present) |
 | `endless.ts` | (Roblox only) | endless mode: `SimConfig.endless` (`worldForFloor`), `SimState.endless` (floor, Depth, stairwell, rooms entered), `stepEndless` (Depth on a boss kill, floor clear points + stairwell / `DEBUG_FLOOR_BUTTON` -> next floor, deferred room spawns attached to score rooms), `writeEndlessHash` |
 | `endlessData.ts` | (Roblox only) | endless tunables: hp scaling by floor / Depth, enemy bullet speed scaling (speed only, never the burst shape), stairwell radius, the debug floor-skip bit |
 | `parity.ts` | (port helper) | `firstFieldMismatch`, `subsystemHashes`, `checkRunFixture` (whole-run parity), `replaySummary` (totals / firstTick / hitsBySource), `fixtureNumber` |
@@ -54,6 +54,8 @@ import from inside would create require cycles).
 | `drops/` | (Roblox only) | boost drops (docs/BOOSTS.md B1-B3): `dropsData.ts` tunables (a leaf: `Boost` / `BOOSTS` Fury / Quickstep / Frenzy / Aegis, the percents, `DROPS` chance / pity / ground life / pickup radius / slots, `DEBUG_DROP_BUTTON`), `drops.ts` `SimConfig.drops` (`DropsConfig`, the game's `DROPS_CONFIG`, the tutorial's `guaranteedDropsConfig`), `SimState.drops` (`DropsState`: its own rng word, pity, ground slots, guards, per-player timers and Aegis pips; presentation `events`), `dropsOnKill` (killActor), `dropsOnRoomSpawned` (enterRoom), `stepDrops`, `ENDLESS_DROPS_CONFIG` (+ `breakableLoot`), the client's read helpers, `writeDropsHash` (the "drops" group, last); `boostMods.ts` the effect reads (a leaf: Fury / Frenzy percents for runMods, Quickstep's walk percent, `absorbWithAegis`, `boostsOnPlayerDied`); `breakLoot.ts` boosts from breakables (a leaf, docs/BREAKABLE_DROPS.md: `dropsOnFloorPieces` from createSimState / nextFloor fills `pieceLoot` from the floor's `breakableLoot`, `dropsOnBreak` from `damageBreakable`'s break line lands it; `landDrop` / `lowestFreeDropSlot`, which drops.ts uses); see "Boost drops" below |
 | `pellets/` | (Roblox only) | pellets (docs/PELLETS.md): `pelletsData.ts` tunables (a leaf: points, pickup radius, `PelletPhase`), `pellets.ts` `SimConfig.pellets` (`PelletsConfig`, the game's `PELLETS_CONFIG`), `SimState.pellets` (per pellet x / z / record / taken, the power pellet, one `PelletRoom` per score record; the cell lookup and per-tick `events`, never hashed), `pelletsOnFloor`, `writePelletsHash` (the "pellets" group, last); `stepPellets.ts` pickups and `pelletsPower`; `pelletRooms.ts` the leaf stepScore calls (live / gone / Sweep); see "Pellets" below |
 | `treasure/` | (Roblox only) | treasure rooms (docs/TREASURE.md): `treasureData.ts` tunables (a leaf: `TreasureConfig`, the game's `ENDLESS_TREASURE_CONFIG`, `TREASURE` salt `0x4b565452` and `boostOffsets`, `VaultStatus`, `TREASURE_UNSET`, `CHEST_HP`), `treasure.ts` `SimConfig.treasure`, `SimState.treasure` (`TreasureState`: its own rng word, the floor's vault: status, room / record / slot, centre, facing, lock, tiers, the lock's counters, bonus deals per player, the run counters; per-tick `events` armed / cracked / unlocked / opened, never hashed), `treasureOnFloor`, `treasureRunSummary`, `writeTreasureHash` (the "treasure" group, last); `stepTreasure.ts` the lock (arm, crack, unlock) and the open with its grants; `respite.ts` the Respite level (0 until docs/DIFFICULTY.md exists); `bonus.ts` the leaf stepRun calls for a Legendary's bonus deals; see "Treasure rooms" below |
+| `pacts/` | (Roblox only) | pact altars (docs/FORTUNE.md "Pacts"): `pactsData.ts` tunables (a leaf: legendary cards, Horde wave cap / telegraph / percent, `PactDim`; `PactKind` re-exported from shared/dungeon), `pacts.ts` `SimConfig.pacts` (`PactsConfig`, the game's `ENDLESS_PACTS_CONFIG`), `SimState.pacts` (the floor's altars, per player `greedTaken` / `hordeTaken` / `draftKind`, the Horde and its second wave, run counters; per-tick `events`, never hashed), `pactsOnFloor`, `writePactsHash` (the "pacts" group); `pactRooms.ts` the leaf endless.ts and score.ts call (horde room roused, its record held, its x2); `stepPacts.ts` the altars, `stepPactsWave` and the view's queries; `holdTimers.ts` `holdAbsoluteTimers` (frozen draft ticks); see "Pacts" below |
+| `golden/` | (Roblox only) | the Goldling (docs/FORTUNE.md "The Goldling"; archetype `combat/actors/archetypes/golden.ts`): `goldenData.ts` tunables (a leaf: `GoldenStatus`, timers, jink, points, the boost ring, `GOLDEN_SIM_SALT`), `golden.ts` `SimConfig.golden` (`GoldenConfig`, the game's `ENDLESS_GOLDEN_CONFIG`), `SimState.golden` (its own rng word, status, room / record, ticks, actor, coins, run counters, the field's sources; the field cache and per-tick `events`, never hashed), `goldenOnFloor`, `writeGoldenHash` (the "golden" group, last); `goldenField.ts` the flee field; `goldenHooks.ts` hit / catch; `stepGolden.ts` appearance and escape; see "The Goldling" below |
 | `testing/` | `src/sim/actors/__test__/testArchetypes.ts` | test-only archetypes for specs (never imported by the game) |
 
 `SimConfig.moveResolver` has the source's signature and call contract (sub-steps of at most `MAX_MOVE_STEP`, one call
@@ -197,18 +199,22 @@ the party's leave bits handled right after the event clears):
 | 3 | `stepPlayer` (current floor's config in endless) | |
 | 4 | `stepCombat` (kills score here: `scoreKill` in killActor, grazes, guard cancels; breakables: movers get `solidCells`, the sword's melee pass, the slam, bullets vs pieces after the wall test; drops: `dropsOnKill` in killActor, before onDeath; `dropsOnBreak` when a loaded piece breaks) | |
 | 5 | `stepEndless`: boss kill -> Depth + 1; dead -> stop; stairwell / debug skip -> `awardFloorClear(floor, bossFloor, bossDead)` (floor(1000 x floor x rooms cleared / enemy rooms), the boss one more room on a boss floor, the full 1000 x floor without enemy rooms; then the multipliers), next floor, `resetBreakables` (the new floor's pieces), `rebuildScoreRooms`; first room entry -> deferred spawns -> `attachScoreRoomMembers` | `state.endless` |
-| 6 | `stepRun` (M2): a floor change -> the new floor's pedestals / shrine, Second Wind re-armed, a boon draft opens for every present player (offers from the sim rng, player index order); nobody alive -> stop; a room's spawns -> Warding refills each living owner's armor; pedestals (first living player on one, relic from the sim rng); the shrine (first living player in the zone with a SKILL1 edge -> their curse from the sim rng + `addCurse`) | `state.run` |
+| 6 | `stepRun` (M2): a floor change -> the new floor's pedestals / shrine, Second Wind re-armed, a boon draft opens for every present player (offers from the sim rng, player index order); nobody alive -> stop; a room's spawns -> Warding refills each living owner's armor; pedestals (first living player on one, relic from the sim rng); the shrine (first living player in the zone with a SKILL1 edge -> their curse from the sim rng + `addCurse`; off on a floor whose pact altars stand) | `state.run` |
+| 6b | `stepPacts` (called by step.ts right after stepRun, not from it: a require cycle): not on a floor-change tick; per player in index order a SKILL1 edge on an altar whose pact they can take -> Greed (the shown curse, `acceptCurse`, then the Legendary deal on the sim rng through `openDealtDraft`) or the Horde (armed) | `state.pacts` |
 | 7 | `stepDrops`: a floor change frees every ground slot and guard; DEBUG_DROP_BUTTON drops; boost timers (player, kind order); ground life (slot order); pickups (per slot the first living player in reach) | `state.drops` |
 | 8 | `stepPellets`: per living player (index order) the live rooms' pellets in reach (3 x 3 cells, ascending index) are taken; the power pellet erases every enemy bullet but goo and strikes (`pelletsPower`) | `state.pellets` |
-| 9 | `stepScore`: final-phase window, hit cuts, combo timer, room engagement / clears (pellet runs: an engaged room's pellets go live, a clear pays the Sweep first, then they go) | `state.score` |
-| 9b | `stepTreasure`: the floor's vault arms on its room record's engagement, cracks (one tier down, once) on a party hit past the allowance or the SWIFT countdown's end, unlocks on the record's clear, opens for the first living player (index order) within reach (grants from its own rng word, `TREASURE` points) | `state.treasure` |
+| 8b | `stepPactsWave`: the horde room's second wave: the trigger (living first-wave members <= floor(n / 2): kinds and tiles stored, the telegraph's due tick), then the spawn, appended to the record (a SWIFT vault on it gains the wave's par: `vaultParGrown`); before 9 so the record never clears between the waves | `state.pacts` |
+| 9 | `stepScore`: final-phase window, hit cuts, combo timer, room engagement / clears (pellet runs: an engaged room's pellets go live, a clear pays the Sweep first, then they go; pacts runs: the horde record is held until wave 2 spawned and pays x2) | `state.score` |
+| 9b | `stepTreasure`: the floor's vault arms on its room record's engagement, cracks (one tier down, once) on a party hit past the allowance or the SWIFT countdown's end (held while a horde record's wave 2 is pending), unlocks on the record's clear, opens for the first living player (index order) within reach (grants from its own rng word, `TREASURE` points) | `state.treasure` |
+| 9c | `stepGolden`: the Goldling appears `appearTicks` after its room's record engaged (or SKIPPED on a full pool), or escapes when its time is up; its hits and catch score inside 4 (archetype hooks) | `state.golden` |
 | 10 | `tick += 1` | |
 
 While a boon draft is open (`isDraftOpen`: ANY player's) a tick is only: `clearEvents`, `clearScoreEvents`,
 `clearRunEvents` (co-op: then the leave bits), `stepDraft` (per player with an open draft: the stick's
 screen-horizontal component selects a card, a FIRE press edge after `DRAFT_MIN_OPEN_TICKS` takes it; every player's and
-their weapons' `prevButtons` follow their input), `tick += 1`. Nothing else moves: no actor, bullet, timer or score
-phase runs and nobody can be hurt.
+their weapons' `prevButtons` follow their input), then (pacts runs only) `holdAbsoluteTimers`, `tick += 1`. Nothing
+else moves: no actor, bullet, timer or score phase runs and nobody can be hurt. Greed's deal opens mid-floor, so
+`holdAbsoluteTimers` moves every live absolute-tick timer one tick later per frozen tick (see "Pacts" below).
 
 Every personal M2 boon / relic / curse modifier is read through `runMods(state, playerIndex)` or a helper taking a
 player index (progression/runMods.ts), team-wide ones through the `team*` accessors (see "Co-op" above for which player
@@ -370,12 +376,63 @@ stay across floors.
 | The record's clear (adopted children included) unlocks: `spare` / `missBy` | step 3 (after step 2: a cracking hit on the clear tick cracks) |
 | The first living present player within `reachTiles` opens it: per living present player (index order) a relic (Rare; none left: 2 boosts), a bonus deal (Legendary with builds; else a relic) + 1 boost, or 2 boosts (Common); boosts land at `TREASURE.boostOffsets` in the lowest free ground slots, else go straight to the player (C1); `scoreTreasure(points[tier])` once, combo-neutral | step 4 (draws from `state.treasure` only, never the sim or drop stream) |
 | The next floor's draft deals `deals + takeTreasureBonusDeals(state, i)` | progression.ts stepRun step 1 (`bonus.ts`) |
+| A horde vault room (docs/FORTUNE.md PS4): SWIFT does not crack while the horde record's wave 2 is pending (`pactHoldsRoom`), and its `ticksLeft` gains the scaled par the wave adds, so SWIFT at 100 % stays exactly FAST over both waves; a mid-floor (Greed) freeze moves a live lock's `armTick` / `crackTick` with the record's `engageTick` | step 2, `vaultParGrown` (stepPacts), `holdAbsoluteTimers` |
 
-Hashed (group `treasure`, last, after `pellets`): `rngState`, `status`, `room`, `record`, `slot`, `x`, `z`, `fx`, `fz`,
+Hashed (group `treasure`, after `pellets`; `pacts` and `golden` follow it): `rngState`, `status`, `room`, `record`, `slot`, `x`, `z`, `fx`, `fz`,
 `lock`, `startTier`, `tier`, `armTick`, `ticksLeft`, `allowance`, `crackTick`, `missBy`, `spare`, `opened`, `kept`,
 `legendary` (`TREASURE_HASH_FIELDS`), then `bonusDeals.length` and values; dump names `treasure.<field>`,
 `treasure.bonusDeals[i]`. Score source `ScoreSource.TREASURE` (12, `TREASURE_SCORE_SOURCE_NAMES`) exists only with the
-flag (`addTreasureScoreSources` pads JACKPOT / PELLETS / SWEEP). Client reads (shared/sim barrel): `state.treasure`,
+flag (`addTreasureScoreSources` pads JACKPOT / PELLETS / SWEEP; pacts' `HORDE` 13 and the Goldling's `GOLDEN` 14 follow
+it). Client reads (shared/sim barrel): `state.treasure`,
 `treasureRunSummary(state)` (`{ opened, kept, legendary }`, the run recap's), the per-tick `events`. Specs:
 `treasure/treasure.spec.ts`, `treasure/stepTreasure.spec.ts` (+ `.bot`), `treasure/open.spec.ts`, placement
 `../dungeon/vault.spec.ts` (+ `.census`), the census `../run/treasureCensus.spec.ts`.
+
+## Pacts (Roblox port, docs/FORTUNE.md)
+
+Opt-in through `SimConfig.pacts` (`PactsConfig`; `ENDLESS_PACTS_CONFIG` is the game's: every endless world; never the
+tutorial, which keeps the classic shrine). Without it there is no `state.pacts`, `stepPacts` / `stepPactsWave` never
+run, the score has no `HORDE` source and no `pacts` group is hashed, so M1, every fixture and every replay without it
+is unchanged. Where the altars stand and which curse Greed shows are floor data (shared/dungeon `placePactAltars`,
+`pactCurseIndex` on its own stream): the sim draws no rng for them. `pactsOnFloor` fills the state at createSimState
+(after the treasure state) and at the floor change (an armed Horde lapses); the main rng is drawn only for Greed's deal
+and wave 2's init hooks, consequences of a pact taken.
+
+| Rule | Where |
+| --- | --- |
+| Where altars stand the classic shrine zone (stepRun step 5) and `atShrine` are off; a floor without altars keeps the classic shrine | progression.ts (reads `state.pacts.room` as a plain field: it never requires sim/pacts) |
+| Greed, once per player per shrine: the curse `greedCurseFor` shows (no draw), `acceptCurse` (+0.25), then `drawLegendaryOffers` (unowned legendaries, available duos, level-II evolutions, filled with level-I upgrades) opened by `openDealtDraft` (one deal), `draftKind` GREED | `stepPacts` |
+| Horde, once per party per shrine: armed; the next room with planned spawns anyone enters is roused (needs scoring, else the altar dims `NO_ROOM`) | `stepPacts`, `pactsOnRoomSpawned` (endless.ts enterRoom) |
+| Wave 2: the planned kinds again (at most `hordeMaxWave`, no affixes, `safeRoomSpawns`), telegraphed `waveTelegraphTicks` at half down, appended to the record (`appendScoreRoomMembers`: par + its cost + the telegraph); the record cannot clear before it spawned | `stepPactsWave`, `pactHoldsRoom` |
+| x2 (`hordePercent` 200 through `bonusPercent`; the x1 to its own source, the rest to `HORDE`): the record's kills, ROOMS / PERFECT / FAST, pellets, Sweep; not power pellets or the Jackpot | score.ts `awardX`, `pactKillPercent` / `pactRoomPercent` |
+| Frozen draft ticks: the live absolute-tick timers move 1 tick later (engaged uncleared records' `engageTick`, a pending `waveDueTick`, the Goldling's `engageTick` / `appearTick` while waiting or `fieldTick` while running, a live vault lock's `armTick` / `crackTick`, an armed Vengeful corpse's `vengeArmTick`); a no-op on floor-change drafts | `holdAbsoluteTimers` (step / stepParty) |
+
+Hashed (group `pacts`, after `treasure`): `room`, `seed`, the altar count and (x, z) per altar; the player count and
+`greedTaken` / `hordeTaken` / `draftKind` per player; the Horde's `armed` / `room` / `record` / `firstWave` /
+`waveDueTick` / `spawned`, the wave count and (kind, x, z) per entry; `taken` per PactKind. View queries (pure):
+`pactAltarAt`, `pactAvailability` (`PactDim`: TAKEN / NO_CURSE / NO_LEGENDARY / NO_ROOM / UNABLE), `greedCurseFor`,
+`hordePhase`, `pactAltarOffered`, `pactDraftKind`, `greedTakes`, `pactsSpent`. Specs: `pacts/pacts.spec.ts`,
+`pacts/greed.spec.ts`, `pacts/horde.spec.ts`, `pacts/freeze.spec.ts`, `pacts/pactsTreasure.spec.ts` (with treasure rooms), placement `../dungeon/pacts.spec.ts`, the census
+`../run/pactsCensus.spec.ts`.
+
+## The Goldling (Roblox port, docs/FORTUNE.md)
+
+Opt-in through `SimConfig.golden` (`GoldenConfig`; `ENDLESS_GOLDEN_CONFIG` is the game's: every endless world). Without
+it there is no `state.golden`, `stepGolden` never runs, the score has no `GOLDEN` source and no `golden` group is
+hashed. Which room holds one is floor data (shared/dungeon `placeGolden`, `FloorGolden`: the room, its rectangle and
+walk mask). `goldenOnFloor` fills the state at createSimState (after the score state) and at the floor change. It
+never draws the main rng or the drops' stream: its own word is `seedToState(seed) ^ GOLDEN_SIM_SALT` (0x7a3c5e91),
+drawn only for a jink's side and the catch's boost kinds.
+
+| Rule | Where |
+| --- | --- |
+| WAITING -> RUNNING `appearTicks` after its room's record engaged, on the room's spawn tile farthest from every living player; a full pool: SKIPPED. Never a record member | `stepGolden` (after stepScore) |
+| Flees on the flee field (`fleeField`, factor `fleeFactor` 1.2) from the living players inside its room, re-read every `fieldTicks`; nobody inside: it stands; jink within `jinkRange`; every step kept in the walk mask | archetype `golden` (band 5, index 18), `goldenField.ts` |
+| Each damaging hit: `hitPoints` x the kills' floor scale into `GOLDEN`, no combo feed | `goldenHooks.ts` `goldenOnHit`, score.ts `scoreGoldenHit` |
+| The catch: `killPoints` x the floor scale into `GOLDEN` instead of KILLS (the combo fed once), then party size + `extraBoosts` boosts on the fixed ring, lowest free slots (a full ground loses the rest, same draws) | score.ts `scoreKill`, `goldenOnCaught` |
+| Escape at `escapeTicks` after appearing: `freeActor` (no onDeath, score or drops), ESCAPED, coins kept | `stepGolden` |
+
+Hashed (group `golden`, last): `rngState`, `status`, `room`, `record`, `engageTick`, `appearTick`, `actorSlot`,
+`actorId`, `coins`, `hits`, `seen`, `caught`, `escaped`, `fieldTick`, the source count and cells. The walk mask enters
+through `room`; the field cache is a pure function of hashed state. Specs: `golden/golden.spec.ts`,
+`golden/payouts.spec.ts`, `golden/goldenVault.spec.ts` (the chest blocks), the roll and field `../dungeon/golden.spec.ts`, the census `../run/goldenCensus.spec.ts`.

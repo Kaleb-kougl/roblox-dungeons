@@ -223,10 +223,11 @@ describe("FxCueMapper over the recorded endless run", () => {
 		);
 		// one kill: three staggered explosions
 		expect(count("fx.boss.death")).toBe(FX_SPRITE_VIEW.bossDeathBursts.size());
-		// the relic and the curse of the relic floor
+		// the relic and the curse of the relic floor: on its pact altars (docs/FORTUNE.md FO7) the bot takes Greed (the
+		// curse) and then the Horde, one take effect at each altar
 		expect(run().relicFloor).never.toBe(0);
 		expect(count("fx.relic.take")).toBe(1);
-		expect(count("fx.shrine.use")).toBe(1);
+		expect(count("fx.shrine.use")).toBe(2);
 		// rolls, sword swings, hits and kills on the way
 		expect(count("fx.roll.dust")).toBeGreaterThan(0);
 		expect(count("fx.swing.1")).toBeGreaterThan(0);

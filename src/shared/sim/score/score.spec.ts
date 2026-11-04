@@ -574,13 +574,18 @@ describe("hash", () => {
 describe("treasure score source (docs/TREASURE.md TR2, TRD11 / correction 5)", () => {
 	const SEED = 4242;
 	const setup = buildEndlessRunConfig(SEED);
-	/** The endless config with each of builds / pellets / treasure on or off. */
+	/**
+	 * The endless config with each of builds / pellets / treasure on or off, and without pacts and the Goldling
+	 * (docs/FORTUNE.md: their HORDE 13 / GOLDEN 14 follow TREASURE and pad it; run/endless.spec.ts pins those subsets).
+	 */
 	function subset(builds: boolean, pellets: boolean, treasure: boolean): SimConfig {
 		return {
 			...setup.config,
 			builds: builds ? setup.config.builds : undefined,
 			pellets: pellets ? setup.config.pellets : undefined,
 			treasure: treasure ? ENDLESS_TREASURE_CONFIG : undefined,
+			pacts: undefined,
+			golden: undefined,
 		};
 	}
 	const make = (config: SimConfig) => createSimState(SEED, setup.spawn!.x, setup.spawn!.z, config);

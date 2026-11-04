@@ -5,14 +5,18 @@
  *
  *   config   { endless: { runSeed, worldForFloor }, scoring: ENDLESS_SCORING, breakables: BREAKABLES_CONFIG,
  *              drops: ENDLESS_DROPS_CONFIG, affixes: AFFIXES_CONFIG, builds: BUILDS_CONFIG, pellets: PELLETS_CONFIG,
- *              treasure: ENDLESS_TREASURE_CONFIG }
+ *              treasure: ENDLESS_TREASURE_CONFIG, pacts: ENDLESS_PACTS_CONFIG, golden: ENDLESS_GOLDEN_CONFIG }
  *            (shared/sim endless.ts: every tick runs with the current floor; endless runs are ALWAYS scored, on client
  *            and server alike, and always have breakable barrels and crates (docs/DECOR.md D4), boost drops, from kills
  *            and from loaded barrels and crates (docs/BOOSTS.md B4, docs/BREAKABLE_DROPS.md BL4), elite affixes (docs/ENEMY_VARIANTS.md EV7), builds (docs/BUILDS.md BU1) and pellets (docs/PELLETS.md PL5:
- *            each floor's pellets come from its world, EndlessFloorWorld.pellets) and treasure rooms (docs/TREASURE.md TR5:
- *            each floor's vault, if any, from its world, EndlessFloorWorld.vault, its chest a breakables piece))
+ *            each floor's pellets come from its world, EndlessFloorWorld.pellets), treasure rooms (docs/TREASURE.md TR5:
+ *            each floor's vault, if any, from its world, EndlessFloorWorld.vault, its chest a breakables piece), pacts
+ *            (docs/FORTUNE.md PS5: each floor's altars come from its world, EndlessFloorWorld.pactAltars; the tutorial
+ *            keeps the classic shrine) and the Goldling (docs/FORTUNE.md GE3: each floor's room, if any, from
+ *            EndlessFloorWorld.golden))
  *   floor f  buildEndlessFloor(runSeed, f, ..., { vaults: true }) (shared/dungeon endless.ts: solid pillars, breakables,
- *            the vault; the dev world's KV_TreasureDebug adds a VaultOverride, run/dev.ts) + circleMover / bulletBlocker /
+ *            the vault, the pact altars, the Goldling's room; the dev world's KV_TreasureDebug adds a VaultOverride,
+ *            run/dev.ts) + circleMover / bulletBlocker /
  *            actorMover / actorSteerMover (enemies walk around pillars) on its dungeon; built on first use, kept in a
  *            per-config LRU (ENDLESS_FLOOR_CACHE_SIZE), the dungeons in a server-wide LRU (ENDLESS_DUNGEON_CACHE_SIZE)
  *            keyed by seed and room count
@@ -42,8 +46,10 @@ import {
 	BREAKABLES_CONFIG,
 	DEFAULT_PARTY_SIZE,
 	ENDLESS_DROPS_CONFIG,
+	ENDLESS_PACTS_CONFIG,
 	AFFIXES_CONFIG,
 	BUILDS_CONFIG,
+	ENDLESS_GOLDEN_CONFIG,
 	MAX_PARTY_SIZE,
 	PELLETS_CONFIG,
 	ENDLESS_TREASURE_CONFIG,
@@ -150,6 +156,8 @@ export function endlessFloorWorld(layout: EndlessFloorLayout): EndlessRunFloor {
 		breakableLoot: layout.breakableLoot,
 		pellets: layout.pellets,
 		vault: layout.vault,
+		pactAltars: layout.pactAltars,
+		golden: layout.golden,
 		layout,
 		dungeon: d,
 	};
@@ -233,6 +241,8 @@ export function buildEndlessRunConfig(
 					builds: BUILDS_CONFIG,
 					pellets: PELLETS_CONFIG,
 					treasure: ENDLESS_TREASURE_CONFIG,
+					pacts: ENDLESS_PACTS_CONFIG,
+					golden: ENDLESS_GOLDEN_CONFIG,
 			  }
 			: {
 					endless: { runSeed, worldForFloor },
@@ -244,6 +254,8 @@ export function buildEndlessRunConfig(
 					builds: BUILDS_CONFIG,
 					pellets: PELLETS_CONFIG,
 					treasure: ENDLESS_TREASURE_CONFIG,
+					pacts: ENDLESS_PACTS_CONFIG,
+					golden: ENDLESS_GOLDEN_CONFIG,
 			  };
 	return {
 		config,

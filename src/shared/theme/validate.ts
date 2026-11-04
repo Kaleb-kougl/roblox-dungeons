@@ -1137,7 +1137,7 @@ type UnknownKeys = (obj: Obj, path: ReadonlyArray<string>, allowed: ReadonlyArra
 
 const TOP_LEVEL_KEYS = ["format", "id", "name", "version", "colors", "biomes", "assets", "strings", "locales"];
 const SLOT_PREFIXES =
-	"class., enemy., boss., bullet., tile., item., ui., sfx., music., decor., breakable., amb., fx., boost., pellet., treasure.";
+	"class., enemy., boss., bullet., tile., item., ui., sfx., music., decor., breakable., amb., fx., boost., pellet., treasure., pact.";
 const AMBIENCE_ID_LIST = AMBIENCE_IDS.join(", ");
 const FX_ID_LIST = FX_IDS.join(", ");
 
@@ -1308,6 +1308,11 @@ export function validateManifest(manifest: unknown, opts: ValidateOptions = {}):
 			assetId !== "treasure.cage"
 		) {
 			err(path, "unknown treasure ID (known: treasure.chest, treasure.chestopen, treasure.cage)");
+			continue;
+		}
+		// docs/FORTUNE.md FO6: the one pact ID (fortune.ts PACT_ALTAR_ID), written out likewise
+		if (slot.slot === "pact" && assetId !== "pact.altar") {
+			err(path, "unknown pact ID (known: pact.altar)");
 			continue;
 		}
 		validateAsset(def, path, slot, err, unknownKeys);
@@ -1860,7 +1865,7 @@ function validateAsset(def: unknown, path: Array<string>, slot: SlotContract, er
 				if (slot !== UI) {
 					err(
 						pp,
-						`only ui.*, decor.*, breakable.*, boost.*, pellet.* and treasure.* images have a pivot; slot "${slot.slot}" has none`,
+						`only ui.*, decor.*, breakable.*, boost.*, pellet.*, treasure.* and pact.* images have a pivot; slot "${slot.slot}" has none`,
 					);
 				} else if (!isObj(imagePivot) || !isFiniteNumber(imagePivot.x) || !isFiniteNumber(imagePivot.y)) {
 					err(pp, `must be { "x": number, "y": number } in pixels from the ${pivotWhat} top-left`);

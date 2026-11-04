@@ -19,11 +19,17 @@ import {
 	ENDLESS_TREASURE_CONFIG,
 	TREASURE_SUBSYSTEM,
 	PELLETS_SUBSYSTEM,
+	ENDLESS_PACTS_CONFIG,
+	PACTS_SUBSYSTEM,
+	ENDLESS_GOLDEN_CONFIG,
+	GOLDEN_SUBSYSTEM,
 	ENDLESS_DROPS_CONFIG,
 	ENDLESS_HASH_SUBSYSTEM,
 	RUN_SUBSYSTEM,
 	SCORE_SUBSYSTEM,
 	STAIRWELL_RADIUS,
+	ScoreSource,
+	type SimConfig,
 	SimCtx,
 	archetypeAt,
 	archetypeIndex,
@@ -85,7 +91,7 @@ describe("buildEndlessRunConfig", () => {
 		const f1 = setup.endlessFloor(1);
 		const s = createSimState(1337, f1.spawnX, f1.spawnZ, setup.config);
 		const layout = hashLayout(s, true);
-		expect(layout.groups.size()).toBe(15);
+		expect(layout.groups.size()).toBe(17);
 		expect(layout.groups[9].name).toBe(BREAKABLES_SUBSYSTEM);
 		expect(layout.names[layout.groups[9].start]).toBe("breakables.length");
 		expect(layout.values[layout.groups[9].start]).toBe(f1.breakables!.size());
@@ -113,14 +119,22 @@ describe("buildEndlessRunConfig", () => {
 		expect(setup.config.builds).toBe(BUILDS_CONFIG);
 		expect(layout.groups[12].name).toBe(BUILDS_SUBSYSTEM);
 		expect(layout.names[layout.groups[12].start]).toBe("builds.players.length");
-		// docs/PELLETS.md PL5: endless runs have pellets (PELLETS_CONFIG), hashed after builds (last).
+		// docs/PELLETS.md PL5: endless runs have pellets (PELLETS_CONFIG), hashed after builds.
 		expect(setup.config.pellets).toBe(PELLETS_CONFIG);
 		expect(layout.groups[13].name).toBe(PELLETS_SUBSYSTEM);
 		expect(layout.names[layout.groups[13].start]).toBe("pellets.length");
-		// docs/TREASURE.md TR5: endless runs have treasure rooms (ENDLESS_TREASURE_CONFIG), hashed after pellets (last).
+		// docs/TREASURE.md TR5: endless runs have treasure rooms (ENDLESS_TREASURE_CONFIG), hashed after pellets.
 		expect(setup.config.treasure).toBe(ENDLESS_TREASURE_CONFIG);
 		expect(layout.groups[14].name).toBe(TREASURE_SUBSYSTEM);
 		expect(layout.names[layout.groups[14].start]).toBe("treasure.rngState");
+		// docs/FORTUNE.md PS5: endless runs have pacts (ENDLESS_PACTS_CONFIG), hashed after treasure.
+		expect(setup.config.pacts).toBe(ENDLESS_PACTS_CONFIG);
+		expect(layout.groups[15].name).toBe(PACTS_SUBSYSTEM);
+		expect(layout.names[layout.groups[15].start]).toBe("pacts.room");
+		// docs/FORTUNE.md GE3: endless runs have the Goldling (ENDLESS_GOLDEN_CONFIG), hashed after pacts (last).
+		expect(setup.config.golden).toBe(ENDLESS_GOLDEN_CONFIG);
+		expect(layout.groups[16].name).toBe(GOLDEN_SUBSYSTEM);
+		expect(layout.names[layout.groups[16].start]).toBe("golden.rngState");
 		const g = layout.groups[6];
 		expect(g.name).toBe(ENDLESS_HASH_SUBSYSTEM);
 		expect(layout.groups[7].name).toBe(SCORE_SUBSYSTEM);
@@ -148,6 +162,67 @@ describe("buildEndlessRunConfig", () => {
 		expect(setup.endlessFloor(2)).toBe(setup.endlessFloor(2));
 		for (let f = 1; f <= ENDLESS_DUNGEON_CACHE_SIZE + 2; f++) setup.endlessFloor(f);
 		expect(cachedEndlessDungeonKeys().size()).toBe(ENDLESS_DUNGEON_CACHE_SIZE);
+	});
+});
+
+describe("fortune: pacts and the Goldling together (docs/FORTUNE.md)", () => {
+	it("solo and co-op configs carry both; the hash ends pellets, treasure, pacts, golden; score sources TREASURE 12, HORDE 13, GOLDEN 14", () => {
+		for (const n of [1, 3]) {
+			const run = buildEndlessRunConfig(1337, n);
+			expect(run.config.pacts).toBe(ENDLESS_PACTS_CONFIG);
+			expect(run.config.golden).toBe(ENDLESS_GOLDEN_CONFIG);
+			const f1 = run.endlessFloor(1);
+			const s = createSimState(1337, f1.spawnX, f1.spawnZ, run.config);
+			const layout = hashLayout(s, true);
+			const names = layout.groups.map((g) => g.name);
+			expect([
+				names[names.size() - 4],
+				names[names.size() - 3],
+				names[names.size() - 2],
+				names[names.size() - 1],
+			]).toEqual([PELLETS_SUBSYSTEM, TREASURE_SUBSYSTEM, PACTS_SUBSYSTEM, GOLDEN_SUBSYSTEM]);
+			expect(layout.values).toEqual(writeHashFields(s, []));
+			expect([ScoreSource.TREASURE, ScoreSource.HORDE, ScoreSource.GOLDEN]).toEqual([12, 13, 14]);
+			expect(s.score!.points.size()).toBe(ScoreSource.GOLDEN + 1);
+			expect(s.score!.counts.size()).toBe(ScoreSource.GOLDEN + 1);
+			expect(layout.names.includes("score.points.treasure")).toBe(true);
+			expect(layout.names.includes("score.points.horde")).toBe(true);
+			expect(layout.names.includes("score.points.golden")).toBe(true);
+		}
+	});
+
+	it("any subset of treasure / pacts / golden pads up to its last gated source (12 entries with none)", () => {
+		const run = buildEndlessRunConfig(1337);
+		const f1 = run.endlessFloor(1);
+		const sources = (config: SimConfig) => {
+			const s = createSimState(1337, f1.spawnX, f1.spawnZ, config);
+			const names = hashLayout(s, true).groups.map((g) => g.name);
+			return [s.score!.points.size(), s.score!.counts.size(), names[names.size() - 1]];
+		};
+		const c = run.config;
+		expect(sources(c)).toEqual([15, 15, GOLDEN_SUBSYSTEM]);
+		expect(sources({ ...c, golden: undefined })).toEqual([14, 14, PACTS_SUBSYSTEM]);
+		expect(sources({ ...c, pacts: undefined })).toEqual([15, 15, GOLDEN_SUBSYSTEM]);
+		expect(sources({ ...c, pacts: undefined, golden: undefined })).toEqual([13, 13, TREASURE_SUBSYSTEM]);
+		expect(sources({ ...c, treasure: undefined })).toEqual([15, 15, GOLDEN_SUBSYSTEM]);
+		expect(sources({ ...c, treasure: undefined, golden: undefined })).toEqual([14, 14, PACTS_SUBSYSTEM]);
+		expect(sources({ ...c, treasure: undefined, pacts: undefined })).toEqual([15, 15, GOLDEN_SUBSYSTEM]);
+		expect(sources({ ...c, treasure: undefined, pacts: undefined, golden: undefined })).toEqual([
+			12,
+			12,
+			PELLETS_SUBSYSTEM,
+		]);
+		// The padded sources stay 0 and still hash (under their own names).
+		const goldenOnly = createSimState(1337, f1.spawnX, f1.spawnZ, { ...c, treasure: undefined, pacts: undefined });
+		expect([goldenOnly.score!.points[ScoreSource.TREASURE], goldenOnly.score!.points[ScoreSource.HORDE]]).toEqual([
+			0, 0,
+		]);
+		const goldenNames = hashLayout(goldenOnly, true).names;
+		expect(goldenNames.includes("score.points.treasure")).toBe(true);
+		expect(goldenNames.includes("score.points.horde")).toBe(true);
+		const pactsOnly = createSimState(1337, f1.spawnX, f1.spawnZ, { ...c, treasure: undefined, golden: undefined });
+		expect(pactsOnly.score!.points[ScoreSource.TREASURE]).toBe(0);
+		expect(hashLayout(pactsOnly, true).names.includes("score.points.treasure")).toBe(true);
 	});
 });
 

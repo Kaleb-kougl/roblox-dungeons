@@ -19,8 +19,10 @@ import {
 	BREAKABLES_CONFIG,
 	AFFIXES_SUBSYSTEM,
 	BUILDS_SUBSYSTEM,
+	GOLDEN_SUBSYSTEM,
 	PELLETS_SUBSYSTEM,
 	TREASURE_SUBSYSTEM,
+	PACTS_SUBSYSTEM,
 	BREAKABLES_SUBSYSTEM,
 	DROPS_SUBSYSTEM,
 	BREAKABLE_ENEMY_BULLET_DAMAGE,
@@ -587,14 +589,17 @@ describe("breakables: endless runs, co-op, replays", () => {
 		expect(s.breakables!.pieces.every((p) => p.brokenTick === NOT_BROKEN)).toBe(true);
 		expect(s.breakables!.intact).toBe(f2.size());
 		// Breakables come last but for drops (docs/BOOSTS.md B4: endless runs drop boosts too), elite affixes
-		// (docs/ENEMY_VARIANTS.md EV7), builds (docs/BUILDS.md BU1) and pellets (docs/PELLETS.md PL5).
+		// (docs/ENEMY_VARIANTS.md EV7), builds (docs/BUILDS.md BU1), pellets (docs/PELLETS.md PL5), pacts
+		// (docs/FORTUNE.md PS5) and the Goldling (docs/FORTUNE.md GE3).
 		const groups = hashLayout(s).groups.map((g) => g.name);
-		expect(groups[groups.size() - 6]).toBe(BREAKABLES_SUBSYSTEM);
-		expect(groups[groups.size() - 5]).toBe(DROPS_SUBSYSTEM);
-		expect(groups[groups.size() - 4]).toBe(AFFIXES_SUBSYSTEM);
-		expect(groups[groups.size() - 3]).toBe(BUILDS_SUBSYSTEM);
-		expect(groups[groups.size() - 2]).toBe(PELLETS_SUBSYSTEM);
-		expect(groups[groups.size() - 1]).toBe(TREASURE_SUBSYSTEM);
+		expect(groups[groups.size() - 8]).toBe(BREAKABLES_SUBSYSTEM);
+		expect(groups[groups.size() - 7]).toBe(DROPS_SUBSYSTEM);
+		expect(groups[groups.size() - 6]).toBe(AFFIXES_SUBSYSTEM);
+		expect(groups[groups.size() - 5]).toBe(BUILDS_SUBSYSTEM);
+		expect(groups[groups.size() - 4]).toBe(PELLETS_SUBSYSTEM);
+		expect(groups[groups.size() - 3]).toBe(TREASURE_SUBSYSTEM);
+		expect(groups[groups.size() - 2]).toBe(PACTS_SUBSYSTEM);
+		expect(groups[groups.size() - 1]).toBe(GOLDEN_SUBSYSTEM);
 	});
 
 	it("co-op: every player's bullets and swings break them, deterministically (stepParty twice, same hashes)", () => {

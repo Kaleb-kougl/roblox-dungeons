@@ -65,12 +65,16 @@ function packsToCheck(): Array<[string, Obj]> {
 /** The last `n` entries of `list` before its last `skip` (later features' entries), in order. */
 function tail(list: ReadonlyArray<string>, n: number, skip = 0): string[] {
 	const out = new Array<string>();
-	for (let i = list.size() - skip - n; i < list.size() - skip; i++) out.push(list[i]);
+	const last = list.size() - skip;
+	for (let i = last - n; i < last; i++) out.push(list[i]);
 	return out;
 }
 
-/** Entries docs/TREASURE.md TR6 appended after the pellets': 3 asset IDs, 5 colour roles, 4 sounds. */
-const TREASURE_AFTER = { assets: 3, roles: 5, audio: 4 };
+/**
+ * Entries appended after the pellets': docs/TREASURE.md TR6's 3 asset IDs and 5 colour roles, then docs/FORTUNE.md
+ * FO6's 1 asset ID, 4 colour roles and 1 tally segment (treasure.spec.ts / fortune.spec.ts check them).
+ */
+const AFTER = { assets: 3 + 1, roles: 5 + 4, roomClear: 1 } as const;
 
 describe("pellets: contract", () => {
 	it("two kinds, normal and power; their asset and colour role IDs are `pellet.<kind>`", () => {
@@ -94,20 +98,22 @@ describe("pellets: contract", () => {
 		expect(SLOTS.includes(PELLET)).toBe(true);
 		expect(WORLD_ART_SLOTS.includes(PELLET)).toBe(true);
 		expect(requiredBaseAnimations(PELLET)).toEqual(["idle"]);
-		expect(tail(REQUIRED_ASSET_IDS, PELLET_IDS.size(), TREASURE_AFTER.assets)).toEqual([...PELLET_IDS]);
+		expect(tail(REQUIRED_ASSET_IDS, PELLET_IDS.size(), AFTER.assets)).toEqual([...PELLET_IDS]);
 		for (const id of PELLET_IDS) expect([id, slotFor(id)]).toEqual([id, PELLET]);
 		// the pellet sounds stay in the sfx slot
 		for (const id of PELLET_AUDIO_IDS) expect([id, slotFor(id)?.slot]).toEqual([id, "sfx"]);
 	});
 
-	it("the colour roles are COLOR_ROLES' last two (before the treasure rooms')", () => {
-		const roles = COLOR_ROLES as unknown as ReadonlyArray<string>;
-		expect(tail(roles, PELLET_ROLES.size(), TREASURE_AFTER.roles)).toEqual([...PELLET_ROLES]);
+	it("the colour roles are COLOR_ROLES' last two before the treasure rooms' and Fortune's", () => {
+		expect(tail(COLOR_ROLES as unknown as ReadonlyArray<string>, PELLET_ROLES.size(), AFTER.roles)).toEqual([
+			...PELLET_ROLES,
+		]);
 	});
 
 	it("appends the three sounds to PORT_AUDIO_EVENTS: required, sfx; SILENT in the placeholder, on in vale", () => {
 		expect([...PELLET_AUDIO_IDS]).toEqual(["sfx.pellet.eat", "sfx.pellet.sweep", "sfx.pellet.power"]);
-		// the pellets' block ends at sfx.pellet.power (docs/RUN_RECAP.md CM4's two come after it)
+		// the pellets' block ends at sfx.pellet.power (docs/RUN_RECAP.md CM4's two, docs/TREASURE.md TR6's four and
+		// docs/FORTUNE.md FO6's eight come after it)
 		const blockEnd = (PORT_AUDIO_EVENTS as ReadonlyArray<string>).indexOf("sfx.pellet.power") + 1;
 		const block = new Array<string>();
 		for (let i = blockEnd - PELLET_AUDIO_IDS.size(); i < blockEnd; i++) block.push(PORT_AUDIO_EVENTS[i]);
@@ -125,7 +131,9 @@ describe("pellets: contract", () => {
 
 	it("the strings: tally segments (required), results rows, the power pellet's sighting line, the lesson prompts", () => {
 		expect([...PELLET_ROOM_CLEAR_KEYS]).toEqual(["room.clear.line.pellets", "room.clear.line.sweep"]);
-		expect(tail(ROOM_CLEAR_STRING_KEYS, PELLET_ROOM_CLEAR_KEYS.size())).toEqual([...PELLET_ROOM_CLEAR_KEYS]);
+		expect(tail(ROOM_CLEAR_STRING_KEYS, PELLET_ROOM_CLEAR_KEYS.size(), AFTER.roomClear)).toEqual([
+			...PELLET_ROOM_CLEAR_KEYS,
+		]);
 		expect([...PELLET_SCORE_SOURCE_KEYS]).toEqual(["score.source.pellets", "score.source.sweep"]);
 		expect(PELLET_BESTIARY_KEY).toBe("bestiary.pellet.power");
 		expect(tail(BESTIARY_STRING_KEYS, 1)).toEqual([PELLET_BESTIARY_KEY]);

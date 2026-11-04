@@ -55,11 +55,9 @@ import { bossEngaged } from "../combat/actors/archetypes/boss/shared";
 import type { EncounterConfig } from "../combat/actors/encounter";
 import { partySize, playerAt } from "../party";
 import { affixDropBonus } from "../affixes/affixes";
-import { applyBoost, landDrop, lowestFreeDropSlot } from "./breakLoot";
+import { applyBoost, landDrop, lowestFreeDropSlot, weightedBoostKind } from "./breakLoot";
 import {
-	BOOSTS,
 	BOOST_COUNT,
-	BOOST_TOTAL_WEIGHT,
 	Boost,
 	DEBUG_DROP_AHEAD,
 	DEBUG_DROP_BUTTON,
@@ -356,17 +354,11 @@ export function clearDropsEvents(d: DropsState): void {
 // docs/BREAKABLE_DROPS.md).
 
 /**
- * The weighted kind pick: ONE rngInt(0, BOOST_TOTAL_WEIGHT - 1) from `rng`: the drop stream (DropsState) for kills,
- * the treasure stream (TreasureState) for a chest's boosts (docs/TREASURE.md TR4).
+ * The weighted kind pick: ONE rngInt(0, BOOST_TOTAL_WEIGHT - 1) from `rng` (breakLoot.ts weightedBoostKind): the drop
+ * stream (DropsState) for kills, the treasure stream (TreasureState) for a chest's boosts (docs/TREASURE.md TR4).
  */
 export function pickBoostKind(rng: RngHolder): number {
-	let roll = rngInt(rng, 0, BOOST_TOTAL_WEIGHT - 1);
-	for (let k = 0; k < BOOST_COUNT; k++) {
-		const w = BOOSTS[k].weight;
-		if (roll < w) return k;
-		roll -= w;
-	}
-	return BOOST_COUNT - 1; // unreachable: the roll is below the total weight
+	return weightedBoostKind(rng);
 }
 
 /** The drop percent of archetype `id` under `config`. */

@@ -94,7 +94,14 @@ function replay(
 			ran++;
 		}
 		const scene = sceneOf(state);
-		const view = director.update({ state, events, scene, dt: ran * SIM_DT, motion: opts.motion });
+		const view = director.update({
+			state,
+			config: setup.config,
+			events,
+			scene,
+			dt: ran * SIM_DT,
+			motion: opts.motion,
+		});
 		observe({ tick: state.tick, state, view, scene, frameNo });
 		frameNo++;
 	}
@@ -453,54 +460,57 @@ describe("DecorDirector: resets, mismatches, Ember, run over", () => {
 		const { setup, state, sceneOf } = setupAt();
 		const director = new DecorDirector();
 		const scene = sceneOf(state);
-		let v = director.update({ state, events: noEvents, scene, dt: SIM_DT });
+		let v = director.update({ state, config: setup.config, events: noEvents, scene, dt: SIM_DT });
 		expect(v.ready).toBe(true);
 		const rev = v.revision;
 		expect(v.roomEntered.size()).toBe(scene.roomCount);
-		v = director.update({ state, events: noEvents, scene: undefined, dt: SIM_DT });
+		v = director.update({ state, config: setup.config, events: noEvents, scene: undefined, dt: SIM_DT });
 		expect(v.ready).toBe(false);
 		const other = setup.endlessFloor(2).layout;
 		const input = decorInputOfLayout(other, 1);
 		const scene2 = decorScene(input, planDecor(input), other.bossFloor);
-		v = director.update({ state, events: noEvents, scene: scene2, dt: SIM_DT });
+		v = director.update({ state, config: setup.config, events: noEvents, scene: scene2, dt: SIM_DT });
 		expect(v.ready).toBe(false);
 		expect(v.revision).toBe(rev); // nothing reset by a mismatch
 		const fresh = cloneSimState(state);
-		v = director.update({ state: fresh, events: noEvents, scene, dt: SIM_DT });
+		v = director.update({ state: fresh, config: setup.config, events: noEvents, scene, dt: SIM_DT });
 		expect(v.ready).toBe(true);
 		expect(v.revision).toBe(rev + 1);
 	});
 
 	it("gutters every flame for emberGutterSeconds on an Ember (scaled by motion), from the event or a drop in Embers", () => {
-		const { state, sceneOf } = setupAt();
+		const { setup, state, sceneOf } = setupAt();
 		const scene = sceneOf(state);
 		const director = new DecorDirector();
-		director.update({ state, events: noEvents, scene, dt: SIM_DT });
-		let v = director.update({ state, events: { emberUsed: 1 }, scene, dt: SIM_DT });
+		director.update({ state, config: setup.config, events: noEvents, scene, dt: SIM_DT });
+		let v = director.update({ state, config: setup.config, events: { emberUsed: 1 }, scene, dt: SIM_DT });
 		expect(v.gutter).toBe(1);
 		const steps = math.ceil(DECOR_REACT.emberGutterSeconds / SIM_DT) + 1;
-		for (let i = 0; i < steps; i++) v = director.update({ state, events: noEvents, scene, dt: SIM_DT });
+		for (let i = 0; i < steps; i++)
+			v = director.update({ state, config: setup.config, events: noEvents, scene, dt: SIM_DT });
 		expect(v.gutter).toBe(0);
 		state.player.embers -= 1; // a used Ember the events missed (a lossy frame)
-		v = director.update({ state, events: noEvents, scene, dt: SIM_DT });
+		v = director.update({ state, config: setup.config, events: noEvents, scene, dt: SIM_DT });
 		expect(v.gutter).toBe(1);
-		v = director.update({ state, events: { emberUsed: 1 }, scene, dt: SIM_DT, motion: 0 });
+		v = director.update({ state, config: setup.config, events: { emberUsed: 1 }, scene, dt: SIM_DT, motion: 0 });
 		expect(v.gutter).toBe(0);
 	});
 
 	it("fades to the cold palette once the run is over, solo", () => {
-		const { state, sceneOf } = setupAt();
+		const { setup, state, sceneOf } = setupAt();
 		const scene = sceneOf(state);
 		const director = new DecorDirector();
-		let v = director.update({ state, events: noEvents, scene, dt: SIM_DT });
+		let v = director.update({ state, config: setup.config, events: noEvents, scene, dt: SIM_DT });
 		expect(v.cold).toBe(0);
 		killPlayerState(state.player);
-		v = director.update({ state, events: noEvents, scene, dt: SIM_DT });
+		v = director.update({ state, config: setup.config, events: noEvents, scene, dt: SIM_DT });
 		expect(v.cold).toBe(0); // starts now
 		const steps = math.ceil(DECOR_REACT.coldFadeSeconds / SIM_DT);
-		for (let i = 0; i < steps / 2; i++) v = director.update({ state, events: noEvents, scene, dt: SIM_DT });
+		for (let i = 0; i < steps / 2; i++)
+			v = director.update({ state, config: setup.config, events: noEvents, scene, dt: SIM_DT });
 		expect(v.cold > 0.3 && v.cold < 0.7).toBe(true);
-		for (let i = 0; i < steps; i++) v = director.update({ state, events: noEvents, scene, dt: SIM_DT });
+		for (let i = 0; i < steps; i++)
+			v = director.update({ state, config: setup.config, events: noEvents, scene, dt: SIM_DT });
 		expect(v.cold).toBe(1);
 	});
 
@@ -511,15 +521,17 @@ describe("DecorDirector: resets, mismatches, Ember, run over", () => {
 		const steps = math.ceil(DECOR_REACT.coldFadeSeconds / SIM_DT) + 1;
 		stepParty(state, [EMPTY_INPUT, EMPTY_INPUT], setup.config); // both stand in the entrance: it is entered
 		killPlayerState(playerAt(state, 0));
-		let v = director.update({ state, events: noEvents, scene, dt: SIM_DT });
-		for (let i = 0; i < steps; i++) v = director.update({ state, events: noEvents, scene, dt: SIM_DT });
+		let v = director.update({ state, config: setup.config, events: noEvents, scene, dt: SIM_DT });
+		for (let i = 0; i < steps; i++)
+			v = director.update({ state, config: setup.config, events: noEvents, scene, dt: SIM_DT });
 		expect(v.cold).toBe(0);
 		// the entrance (where both stand) is entered and lit for every client alike
 		const entrance = state.endless!.roomsEntered.indexOf(1);
 		expect(entrance >= 0).toBe(true);
 		expect(v.roomEntered[entrance]).toBe(true);
 		killPlayerState(playerAt(state, 1));
-		for (let i = 0; i < steps + 2; i++) v = director.update({ state, events: noEvents, scene, dt: SIM_DT });
+		for (let i = 0; i < steps + 2; i++)
+			v = director.update({ state, config: setup.config, events: noEvents, scene, dt: SIM_DT });
 		expect(v.cold).toBe(1);
 	});
 

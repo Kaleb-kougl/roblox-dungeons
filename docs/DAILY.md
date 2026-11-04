@@ -124,7 +124,7 @@ a dearer kind joins. The census reports it; tuning is an owner call.
   RFC 4231 vectors); `dailySeedFrom(day, key)` refuses keys under 16 bytes. (First build used an invertible 32-bit
   mixer; the review caught it.) Valid by
   `isValidRunSeed`. The seed of today is sent to clients (`dailyStatus`), so the menu can preview the roster and boss.
-- **Ruleset (DSD11).** `DAILY.ruleset` (an integer, `shared/daily/config.ts`; now **7**) joins the board scope. Bump
+- **Ruleset (DSD11).** `DAILY.ruleset` (an integer, `shared/daily/config.ts`; now **8**) joins the board scope. Bump
   it with any change that alters endless play; after an update, servers still on the old build keep posting to the old
   ruleset's board and new servers to the new one, so no daily board mixes two rulesets.
   History: 1 at launch of the feature; 2 with boosts from breakables (docs/BREAKABLE_DROPS.md, 2026-11-01); 3 with
@@ -133,7 +133,9 @@ a dearer kind joins. The census reports it; tuning is an owner call.
   theme on main, then its reading area on the same number (docs/BOOKSHELVES.md BKD8, "Reading area"; treasure rooms also took 6 on their own branch, never on main); 7 treasure
   rooms merged onto main's 6 (docs/TREASURE.md TR5 and "As built (merge with main)", 2026-11-04: vaults, their chest
   piece and rewards change endless floors and play; the all-time boards stay `_v1`, TRD13), kept at 7 on the second
-  merge (main's reading area, still at main's 6). The history is also the comment on `DAILY.ruleset` (`shared/daily/config.ts`).
+  merge (main's reading area, still at main's 6); 8 pacts and the Goldling merged onto main's 7 (docs/FORTUNE.md FD15,
+  one bump for both, 2026-11-04: endless shrines, rooms and scores change; the fortune branch's own 6 never shipped).
+  The history is also the comment on `DAILY.ruleset` (`shared/daily/config.ts`).
 
 ### 3. World, sessions, remotes
 
@@ -303,7 +305,7 @@ Paths under `src/`. Pure logic lives in shared modules with specs; services and 
   best's other lines), strings `roster.line` / `roster.new`; the run start shows floor 1's roster and holds the cover at
   least `STAGE_LOADER.rosterStartSec` (1 s; 0 removes the hold).
 - **Day, seed, world, sessions (DS3, DS4).** `shared/daily`: `dailyDay`, `dailyDayStart`, `dailyResetsAt`, `dailyLabel`
-  (= day + 1), `dailyScope` (`d<day>_r<ruleset>`), `DAILY.ruleset` 1 (7 since treasure rooms merged with bookshelves and the reading area: "Ruleset" above); the
+  (= day + 1), `dailyScope` (`d<day>_r<ruleset>`), `DAILY.ruleset` 1 (8 since pacts and the Goldling merged onto treasure rooms, bookshelves and the reading area: "Ruleset" above); the
   epoch is `shared/config` `KV_EPOCH_UNIX_SECONDS` (shared with the leaderboard's ordered value). The `daily` world is `buildEndlessRunConfig`;
   `isEndlessWorld` (endless, daily) replaced the descent checks in SimController; `RANKED_WORLD_KIND` stays endless.
   `RunSessionRegistry` seeds a daily start from `dailySeed(dailyDay(ctx.unixNow))` (`StartContext.unixNow` =

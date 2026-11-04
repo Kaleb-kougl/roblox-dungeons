@@ -17,7 +17,8 @@
  * Breakables (`breakable.*`) do: they are gameplay objects, drawn as low boxes until art exists. So do boost drops
  * (`boost.*`, docs/BOOSTS.md B5): a small gem (a Diamond) per kind in its identity colour. So do pellets (`pellet.*`,
  * docs/PELLETS.md PL6): a small Block cube per kind in its colour role. So does a vault's chest (`treasure.*`,
- * docs/TREASURE.md TR6): a low box, an open chest's lid wedge, and a row of thin bars for the cage.
+ * docs/TREASURE.md TR6): a low box, an open chest's lid wedge, and a row of thin bars for the cage. So does the pact
+ * altar (`pact.altar`, docs/FORTUNE.md FO6): a stone plinth.
  */
 
 import { PIXELS_PER_TILE, STUDS_PER_TILE } from "shared/config";
@@ -47,6 +48,7 @@ import { startsWith } from "./util";
 import { GOO_BULLET_ID, STRIKE_BULLET_ID } from "./variants";
 import { pelletId } from "./pellets";
 import { TREASURE_CAGE_ID, TREASURE_CHEST_ID, TREASURE_CHEST_OPEN_ID } from "./treasure";
+import { PACT_ALTAR_ID } from "./fortune";
 
 /**
  * Part shapes. Ball/Block/Cylinder/Wedge are Enum.PartType names; Capsule = a Cylinder capped by two Balls;
@@ -135,6 +137,8 @@ export const PLACEHOLDER_PROPORTIONS = {
 	warbanner: [0.25, 1, 0.25],
 	/** Reaper (NE1): a wide flat disc, a spinning blade (3.5 x 1 x 3.5 studs). */
 	reaper: [0.875, 0.25, 0.875],
+	/** Goldling (docs/FORTUNE.md FD9): a small gold block, smaller than the bomber (1.5 x 1.5 x 1.5 studs). */
+	golden: [0.375, 0.375, 0.375],
 	/** Bosses: a large block, the full 48 x 48 cell wide, 3/4 tall (Mother Bramble, boss.act1, and boss.1..5). */
 	boss: [1, 0.75, 1],
 	/**
@@ -191,6 +195,11 @@ export const PLACEHOLDER_PROPORTIONS = {
 	 * CAGE_BAR_GAP_PX apart along the cage's sides (`dash`, like a telegraph's dashes) by the treasure renderer.
 	 */
 	cageBar: [1 / 16, 0.75, 1 / 16],
+	/**
+	 * The pact altar (docs/FORTUNE.md FO6): a square stone plinth, 3/4 tile a side and 3/8 tall (3 x 1.5 x 3 studs),
+	 * standing on the floor: lower than a barrel, so it never hides a bullet, wide enough to stand by.
+	 */
+	pactAltar: [0.75, 0.375, 0.75],
 	/** UI: flat, as big as its pixel size. */
 	ui: [1, 1, 0],
 	/** Missing IDs: a block filling the cell. */
@@ -246,6 +255,13 @@ const PELLET_CELL = TILE_CELL;
 const TREASURE_CELL = TILE_CELL;
 /** The cage placeholder's gap between two bars, render pixels (1 px bars, so a bar every 4 px along its sides). */
 export const CAGE_BAR_GAP_PX = 3;
+/** The pact altar is free-size art; its placeholder plinth is sized from one tile. */
+const PACT_CELL = TILE_CELL;
+/**
+ * The plinth's stone: a neutral warm grey (>= 5.0:1 on every biome floor), the same for both altars. The pact an altar
+ * offers is told by its card and flame in `pact.greed` / `pact.horde` (the pacts' view), never by the stone.
+ */
+const PACT_ALTAR_ROLE: ColorRole = "uiTextDim";
 /** Free-size UI cells: the web placeholder pack's sizes, in pixels. */
 const UI_CELLS = {
 	cursor: { w: 9, h: 9 },
@@ -278,6 +294,7 @@ const ENEMY_SHAPES: Record<EnemyArchetype, { shape: PlaceholderShape; proportion
 	stormcaller: { shape: "Cylinder", proportions: PLACEHOLDER_PROPORTIONS.stormcaller },
 	warbanner: { shape: "Cylinder", proportions: PLACEHOLDER_PROPORTIONS.warbanner },
 	reaper: { shape: "Cylinder", proportions: PLACEHOLDER_PROPORTIONS.reaper },
+	golden: { shape: "Block", proportions: PLACEHOLDER_PROPORTIONS.golden },
 };
 
 const enemyVisual = (archetype: EnemyArchetype): PlaceholderVisual =>
@@ -500,6 +517,13 @@ function buildTable(): Record<string, PlaceholderVisual> {
 		}),
 		dash: { length: pxToStuds(TREASURE_CELL.w * bar[0]), gap: pxToStuds(CAGE_BAR_GAP_PX) },
 	};
+	// The pact altar (Roblox port, docs/FORTUNE.md FO6): a low stone plinth, standing on its cell.
+	t[PACT_ALTAR_ID] = visual({
+		shape: "Block",
+		cell: PACT_CELL,
+		proportions: PLACEHOLDER_PROPORTIONS.pactAltar,
+		color: role(PACT_ALTAR_ROLE),
+	});
 	return t;
 }
 

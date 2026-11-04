@@ -26,6 +26,8 @@ import { writeDevHash } from "./dev/dev";
 import { writeBuildsHash } from "./builds/builds";
 import { writePelletsHash } from "./pellets/pellets";
 import { writeTreasureHash } from "./treasure/treasure";
+import { writePactsHash } from "./pacts/pacts";
+import { writeGoldenHash } from "./golden/golden";
 import { isFiniteNumber, isIntegerNumber, numberToJsString } from "./jsnum";
 import { isJsonArray, isJsonObject, jsonToJsString, parseJson, type JsonValue } from "./json";
 import { jsMin } from "shared/jsmath";
@@ -194,8 +196,12 @@ export function writeHashFields(state: Readonly<SimState>, out: number[]): numbe
 	if (state.builds !== undefined) writeBuildsHash(state.builds, out);
 	// Pellets (docs/PELLETS.md PL2), only when the run has them, appended after builds.
 	if (state.pellets !== undefined) writePelletsHash(state.pellets, out);
-	// Treasure rooms (docs/TREASURE.md TR2), only when the run has them, appended last (after pellets).
+	// Treasure rooms (docs/TREASURE.md TR2), only when the run has them, after pellets.
 	if (state.treasure !== undefined) writeTreasureHash(state.treasure, out);
+	// Pacts (docs/FORTUNE.md PS2), only when the run has them, after treasure.
+	if (state.pacts !== undefined) writePactsHash(state.pacts, out);
+	// The Goldling (docs/FORTUNE.md GE2), only when the run has it, appended last (after pacts).
+	if (state.golden !== undefined) writeGoldenHash(state.golden, out);
 	return out;
 }
 

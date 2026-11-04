@@ -19,6 +19,8 @@ function clear(perfect: boolean, tick: number, room = 0): RoomClear {
 		fastPoints: 0,
 		pelletPoints: 0,
 		sweepPoints: 0,
+		hordePoints: 0,
+		hordeBonusPoints: 0,
 		x: 3,
 		z: 4,
 		slot: -1,

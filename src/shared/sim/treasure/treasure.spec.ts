@@ -124,26 +124,35 @@ describe("treasure: data shared with the dungeon", () => {
 	});
 });
 
+/**
+ * `config` without pacts and the Goldling (docs/FORTUNE.md: every endless world sets them too; their groups follow
+ * treasure's and their HORDE / GOLDEN sources pad TREASURE), so treasure stays the last group here: what it adds, alone.
+ */
+function noFortune(config: SimConfig): SimConfig {
+	return { ...config, pacts: undefined, golden: undefined };
+}
+
 describe("treasure: opt-in", () => {
 	it("absent without SimConfig.treasure: no state, no group; the run hashes exactly as before", () => {
 		const endless = buildEndlessRunConfig(SEED);
-		const setup = { ...endless, config: { ...endless.config, treasure: undefined } };
+		const setup = { ...endless, config: noFortune({ ...endless.config, treasure: undefined }) };
 		const s = fresh(setup);
 		expect(s.treasure).toBe(undefined);
 		expect(hashLayout(s).groups[hashLayout(s).groups.size() - 1].name).toBe(PELLETS_SUBSYSTEM);
 		expect(treasureRunSummary(s)).toEqual({ opened: 0, kept: 0, legendary: 0 });
 		// Vault floors without the config: the chest is a piece (blocks), nothing else knows.
 		const vaults = buildVaultRunConfig(SEED, 1, { override: EVERY, treasure: false });
-		const v = fresh(vaults);
+		const v = fresh(vaults, noFortune(vaults.config));
 		expect(v.treasure).toBe(undefined);
 		expect(v.score!.points.size()).toBe(s.score!.points.size());
 	});
 
 	it("present: the group is appended last; every other group equals the run without it but score's padding", () => {
 		const setup = buildVaultRunConfig(SEED, 1, { override: EVERY, startFloor: 2 });
-		const off: SimConfig = { ...setup.config, treasure: undefined };
+		const on = noFortune(setup.config);
+		const off: SimConfig = { ...on, treasure: undefined };
 		const a = fresh(setup, off);
-		const b = fresh(setup);
+		const b = fresh(setup, on);
 		for (let t = 0; t < 120; t++) {
 			const la = hashLayout(a, true);
 			const lb = hashLayout(b, true);
@@ -163,7 +172,7 @@ describe("treasure: opt-in", () => {
 			}
 			expect(lb.values).toEqual(writeHashFields(b, []));
 			step(a, EMPTY_INPUT, off);
-			step(b, EMPTY_INPUT, setup.config);
+			step(b, EMPTY_INPUT, on);
 		}
 	});
 
@@ -171,7 +180,7 @@ describe("treasure: opt-in", () => {
 		const setup = buildVaultRunConfig(SEED, 3, { override: EVERY, startFloor: 2 });
 		const s = fresh(setup);
 		const l = hashLayout(s, true);
-		const g = l.groups[l.groups.size() - 1];
+		const g = l.groups.find((x) => x.name === TREASURE_SUBSYSTEM)!;
 		const t = s.treasure!;
 		const want: number[] = [];
 		const names: string[] = [];

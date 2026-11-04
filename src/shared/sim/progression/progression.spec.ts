@@ -39,8 +39,10 @@ import {
 	PLAYER_RADIUS,
 	RELICS,
 	AFFIXES_SUBSYSTEM,
+	GOLDEN_SUBSYSTEM,
 	PELLETS_SUBSYSTEM,
 	TREASURE_SUBSYSTEM,
+	PACTS_SUBSYSTEM,
 	BREAKABLES_SUBSYSTEM,
 	DROPS_SUBSYSTEM,
 	RUN_SUBSYSTEM,
@@ -825,16 +827,18 @@ describe("the run hash group", () => {
 		skipFloor(r);
 		const layout = hashLayout(r.s, true);
 		// Endless runs end with the breakables group (docs/DECOR.md D4), then drops (docs/BOOSTS.md B4), then affixes;
-		// "run" comes right before breakables, after "score"; pellets (docs/PELLETS.md PL5; no builds here), then
-		// treasure last (docs/TREASURE.md TR5).
-		expect(layout.groups[layout.groups.size() - 1].name).toBe(TREASURE_SUBSYSTEM);
-		expect(layout.groups[layout.groups.size() - 2].name).toBe(PELLETS_SUBSYSTEM);
-		expect(layout.groups[layout.groups.size() - 3].name).toBe(AFFIXES_SUBSYSTEM); // docs/ENEMY_VARIANTS.md EV7
-		expect(layout.groups[layout.groups.size() - 4].name).toBe(DROPS_SUBSYSTEM);
-		expect(layout.groups[layout.groups.size() - 5].name).toBe(BREAKABLES_SUBSYSTEM);
-		const g = layout.groups[layout.groups.size() - 6];
+		// "run" comes right before breakables, after "score"; pellets (docs/PELLETS.md PL5; no builds here), treasure
+		// (docs/TREASURE.md TR5), pacts, then golden last (docs/FORTUNE.md PS5 / GE3).
+		expect(layout.groups[layout.groups.size() - 1].name).toBe(GOLDEN_SUBSYSTEM);
+		expect(layout.groups[layout.groups.size() - 2].name).toBe(PACTS_SUBSYSTEM);
+		expect(layout.groups[layout.groups.size() - 3].name).toBe(TREASURE_SUBSYSTEM);
+		expect(layout.groups[layout.groups.size() - 4].name).toBe(PELLETS_SUBSYSTEM);
+		expect(layout.groups[layout.groups.size() - 5].name).toBe(AFFIXES_SUBSYSTEM); // docs/ENEMY_VARIANTS.md EV7
+		expect(layout.groups[layout.groups.size() - 6].name).toBe(DROPS_SUBSYSTEM);
+		expect(layout.groups[layout.groups.size() - 7].name).toBe(BREAKABLES_SUBSYSTEM);
+		const g = layout.groups[layout.groups.size() - 8];
 		expect(g.name).toBe(RUN_SUBSYSTEM);
-		expect(layout.groups[layout.groups.size() - 7].name).toBe("score");
+		expect(layout.groups[layout.groups.size() - 9].name).toBe("score");
 		expect(layout.names.size()).toBe(layout.values.size());
 		expect(layout.values).toEqual(writeHashFields(r.s, []));
 		const values = groupValues(layout, g);

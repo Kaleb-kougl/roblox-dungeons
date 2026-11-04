@@ -24,10 +24,10 @@ export interface RoomClearTeam {
  * scored, shown as they are; `clear` / `perfect` / `fast` / `sweep` (the Sweep bonus) are the bonus that flies to the
  * score panel.
  */
-export type TallyKind = "kills" | "pellets" | "clear" | "perfect" | "fast" | "sweep";
+export type TallyKind = "kills" | "pellets" | "clear" | "perfect" | "fast" | "sweep" | "horde";
 
-/** Tally segments at most (kills, pellets, clear, perfect, fast, sweep). */
-export const ROOM_CLEAR_SEGMENTS = 6;
+/** Tally segments at most (kills, pellets, clear, perfect, fast, sweep, horde: docs/FORTUNE.md FO7). */
+export const ROOM_CLEAR_SEGMENTS = 7;
 
 function clamp01(u: number): number {
 	return u <= 0 ? 0 : u >= 1 ? 1 : u;
@@ -41,9 +41,12 @@ export function easeOutBack(u: number): number {
 	return 1 + c3 * v * v * v + c1 * v * v;
 }
 
-/** The clear's bonus points (what flies to the score panel): ROOMS / PERFECT / FAST and the Sweep. */
+/**
+ * The clear's bonus points (what flies to the score panel): ROOMS / PERFECT / FAST and the Sweep, and a Horde room's
+ * doubled half of them (docs/FORTUNE.md FO7: hordeBonusPoints, awarded on the clear tick with them).
+ */
 export function roomClearBonus(c: RoomClear): number {
-	return c.clearPoints + c.perfectPoints + c.fastPoints + c.sweepPoints;
+	return c.clearPoints + c.perfectPoints + c.fastPoints + c.sweepPoints + c.hordeBonusPoints;
 }
 
 /** One tally segment as the clear's numbers give it (kind and final value), before any counting. */
@@ -53,9 +56,10 @@ export interface TallyEntry {
 }
 
 /**
- * The tally's segments for a clear, in order: kills, pellets, clear, perfect, fast, sweep; every one but `clear` only
- * when it is not 0. `foldPellets` (the row would not fit, docs/PELLETS.md PL7: shared/view/hud roomClearFoldPellets)
- * adds the pellet points to the kills segment instead of a segment of their own.
+ * The tally's segments for a clear, in order: kills, pellets, clear, perfect, fast, sweep, horde (docs/FORTUNE.md FO7:
+ * a Horde room's doubled half, always last); every one but `clear` only when it is not 0. `foldPellets` (the row would
+ * not fit, docs/PELLETS.md PL7: shared/view/hud roomClearFoldPellets) adds the pellet points to the kills segment
+ * instead of a segment of their own.
  */
 export function roomClearSegments(c: RoomClear, foldPellets = false): TallyEntry[] {
 	const out: TallyEntry[] = [];
@@ -66,6 +70,7 @@ export function roomClearSegments(c: RoomClear, foldPellets = false): TallyEntry
 	if (c.perfectPoints > 0) out.push({ kind: "perfect", value: c.perfectPoints });
 	if (c.fastPoints > 0) out.push({ kind: "fast", value: c.fastPoints });
 	if (c.sweepPoints > 0) out.push({ kind: "sweep", value: c.sweepPoints });
+	if (c.hordePoints > 0) out.push({ kind: "horde", value: c.hordePoints });
 	return out;
 }
 
@@ -120,6 +125,12 @@ export interface RoomClearLook {
 	readonly chips: RoomClearChipLook[];
 	/** Bonus points not yet released (the score panel hides them). */
 	held: number;
+	/**
+	 * docs/FORTUNE.md FO7: the tally row's scale (the Horde segment's slam: 1 but while it lands; always 1 under reduced
+	 * motion), and whether the Horde segment shows (the controller draws it in `pact.horde`).
+	 */
+	tallyScale: number;
+	hordeShown: boolean;
 	// --- one-shot cues of this frame (cleared by beginFrame) ---
 	/** The stamp landed (jingle, camera kick). */
 	landed: boolean;
@@ -131,6 +142,8 @@ export interface RoomClearLook {
 	teamChipsStarted: number;
 	/** Bonus points released this frame (the land sound, the slower roll). */
 	bonusLanded: number;
+	/** The Horde segment slammed in this frame (sfx.horde.double; never on a collapse). */
+	hordeSlammed: boolean;
 }
 
 class Chip {
@@ -153,6 +166,9 @@ export class RoomClearSequence {
 	private landedDone = false;
 	private released = true;
 	private bonus = 0;
+	/** docs/FORTUNE.md FO7: this sequence's extra length (a Horde segment), and that segment's index (-1: none). */
+	private extend = 0;
+	private hordeAt = -1;
 	private readonly chipState: Chip[] = [];
 
 	constructor() {
@@ -189,11 +205,14 @@ export class RoomClearSequence {
 			flyPoints: 0,
 			chips,
 			held: 0,
+			tallyScale: 1,
+			hordeShown: false,
 			landed: false,
 			ticks: 0,
 			chipsStarted: 0,
 			teamChipsStarted: 0,
 			bonusLanded: 0,
+			hordeSlammed: false,
 		};
 	}
 
@@ -218,6 +237,7 @@ export class RoomClearSequence {
 		L.chipsStarted = 0;
 		L.teamChipsStarted = 0;
 		L.bonusLanded = 0;
+		L.hordeSlammed = false;
 	}
 
 	/**
@@ -260,6 +280,18 @@ export class RoomClearSequence {
 			s.started = false;
 		}
 		L.segmentCount = entries.size();
+		this.hordeAt = -1;
+		for (let n = 0; n < entries.size(); n++) if (entries[n].kind === "horde") this.hordeAt = n;
+		this.extend = this.hordeAt >= 0 ? ROOM_CLEAR.horde.extraSec : 0;
+		L.tallyScale = 1;
+		L.hordeShown = false;
+	}
+
+	/** When tally segment `i` starts: its slot in the row, or the Horde segment's slam after the one before it. */
+	private segmentAt(i: number): number {
+		const T = ROOM_CLEAR.tally;
+		if (i !== this.hordeAt || i === 0) return T.startSec + i * T.gapSec;
+		return T.startSec + (i - 1) * T.gapSec + T.countSec + ROOM_CLEAR.horde.leadSec;
 	}
 
 	/**
@@ -304,36 +336,52 @@ export class RoomClearSequence {
 		const base = L.perfect ? S.perfectScale : 1;
 		L.stampScale = this.motion > 0 ? base * (S.slamFromScale + (1 - S.slamFromScale) * easeOutBack(u)) : base;
 		const fadeIn = t < S.delaySec ? 0 : clamp01(u / S.fadeInFraction);
-		let out = clamp01((t - ROOM_CLEAR.fadeStartSec) / (ROOM_CLEAR.totalSec - ROOM_CLEAR.fadeStartSec));
+		const ext = this.extend;
+		let out = clamp01((t - ROOM_CLEAR.fadeStartSec - ext) / (ROOM_CLEAR.totalSec - ROOM_CLEAR.fadeStartSec));
 		if (collapsing) out = math.max(out, clamp01((t - this.collapseAt) / ROOM_CLEAR.collapseSec));
 		L.stampTransparency = 1 - fadeIn * (1 - out);
 		L.shineOffset = L.perfect ? -1 + 2 * clamp01((t - S.delaySec - S.slamSec) / S.shineSec) : -1;
 
 		const T = ROOM_CLEAR.tally;
+		const H = ROOM_CLEAR.horde;
 		let total = 0;
 		for (let i = 0; i < L.segmentCount; i++) {
 			const s = L.segments[i];
-			const at = T.startSec + i * T.gapSec;
+			const at = this.segmentAt(i);
+			const horde = i === this.hordeAt;
 			if (!s.started && (collapsing || t >= at)) {
 				s.started = true;
-				if (!collapsing) L.ticks += 1;
+				if (!collapsing) {
+					if (horde) L.hordeSlammed = true;
+					else L.ticks += 1;
+				}
 			}
-			if (s.started) s.shown = collapsing ? s.value : math.floor(s.value * clamp01((t - at) / T.countSec));
+			// The Horde segment slams in at its full value (it doubles the total at once); the others count up.
+			if (s.started)
+				s.shown = collapsing || horde ? s.value : math.floor(s.value * clamp01((t - at) / T.countSec));
 			total += s.shown;
 		}
 		L.total = total;
 		L.tallyTransparency = out;
+		const hordeSeg = this.hordeAt >= 0 ? L.segments[this.hordeAt] : undefined;
+		L.hordeShown = hordeSeg !== undefined && hordeSeg.started;
+		if (L.hordeShown && this.motion > 0 && !collapsing) {
+			const v = clamp01((t - this.segmentAt(this.hordeAt)) / H.slamSec);
+			L.tallyScale = H.slamFromScale + (1 - H.slamFromScale) * easeOutBack(v);
+		} else L.tallyScale = 1;
 
 		const F = ROOM_CLEAR.fly;
-		if (t >= F.startSec + F.sec) this.release();
-		L.flyProgress = this.released || this.motion <= 0 || t < F.startSec ? -1 : clamp01((t - F.startSec) / F.sec);
+		const flyAt = F.startSec + ext;
+		if (t >= flyAt + F.sec) this.release();
+		L.flyProgress = this.released || this.motion <= 0 || t < flyAt ? -1 : clamp01((t - flyAt) / F.sec);
 
-		const endAt = collapsing ? this.collapseAt + ROOM_CLEAR.collapseSec : ROOM_CLEAR.totalSec;
+		const endAt = collapsing ? this.collapseAt + ROOM_CLEAR.collapseSec : ROOM_CLEAR.totalSec + ext;
 		if (t >= endAt) {
 			this.release();
 			this.active = false;
 			L.stampTransparency = 1;
 			L.tallyTransparency = 1;
+			L.tallyScale = 1;
 			L.flyProgress = -1;
 		}
 	}

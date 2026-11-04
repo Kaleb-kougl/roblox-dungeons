@@ -25,10 +25,14 @@
  *   fx.swing.<n>     a player's WeaponsState.swingTick moved: n = the sword slot's v[SWORD_V_LAST] (1, 2, 3 = finisher),
  *                    swingAheadFraction of the swing radius ahead of its origin, turned to the swing direction
  *   fx.relic.take    RunState.pedestalTaken[k] 0 -> 1, at that pedestal (spots.pedestals by room)
- *   fx.shrine.use    RunState.shrineUsed 0 -> 1, at the shrine (spots.shrine)
+ *   fx.shrine.use    RunState.shrineUsed 0 -> 1, at the shrine (spots.shrine); pacts (docs/FORTUNE.md FO7): a pact
+ *                    taken on the spots' shrine room (Greed: greedTakes rose; the Horde: hordeTakes rose), at that
+ *                    pact's altar (the pact renderer adds its dark pulse there)
  *   fx.death.puff    FxEvent killed (not a boss: bossDefeated owns it)
  *   fx.breakable.splinter  `breakableSplinter(x, z)` (called by the breakable renderer when a piece breaks)
  *   fx.boost.collect `boostCollect(x, z)` (called by the boost drop renderer on a pickup, docs/BOOSTS.md B6)
+ *   fx.golden.coin   `goldenCoin(x, z, scale)` (called by the Goldling's renderer on each hit and, bigger, on its catch,
+ *                    docs/FORTUNE.md FO8)
  *   fx.hit.light / fx.hit.heavy  FxEvent hit (heavy: the tracker's `heavy`), at most every hitMarkMinSec per actor
  *   fx.stairwell     loop (`loop`): while state.endless.stairsOpen and the spots' floor is the state's floor
  * Sources are taken in that order (most important first) against the budget: at most FX_SPRITE_VIEW.maxSprites live
@@ -61,7 +65,9 @@ import {
 	V_AUX_X,
 	V_AUX_Z,
 	V_MARK,
+	PactKind,
 	archetypeIndex,
+	greedTakes,
 	hasLeft,
 	partySize,
 	playerAt,
@@ -192,6 +198,14 @@ export interface BossImpactRule {
 	readonly targetZSlot: number;
 }
 
+/** How many players took the Horde at this floor's altars (0 or 1: once per party; 0 without pacts). */
+function hordeTakes(state: Readonly<SimState>): number {
+	let n = 0;
+	const p = state.pacts;
+	if (p !== undefined) for (const q of p.players) if (q.hordeTaken !== 0) n++;
+	return n;
+}
+
 /** The charge impacts that cue fx.boss.slam: Mother Bramble's slam and the Demon Lord's brimstone charge. */
 export const BOSS_IMPACTS: ReadonlyArray<BossImpactRule> = [
 	{
@@ -283,6 +297,8 @@ export class FxCueMapper {
 	private readonly aHitAt: number[] = [];
 	// run
 	private shrineUsed = 0;
+	private greedTakes = 0;
+	private hordeTakes = 0;
 	private readonly pedestals: number[] = [];
 	// pending boss-death bursts: time, x, z, scale, burst index (parallel; fixed capacity)
 	private readonly pendAt: number[] = [];
@@ -295,6 +311,10 @@ export class FxCueMapper {
 	// boost pickups queued by the boost drop renderer
 	private readonly boostX: number[] = [];
 	private readonly boostZ: number[] = [];
+	// the Goldling's coin bursts queued by its renderer: x, z, scale
+	private readonly coinX: number[] = [];
+	private readonly coinZ: number[] = [];
+	private readonly coinScale: number[] = [];
 	// this frame's telegraph spots: x, z, radius
 	private readonly tgX: number[] = [];
 	private readonly tgZ: number[] = [];
@@ -330,6 +350,17 @@ export class FxCueMapper {
 		this.boostZ.push(z);
 	}
 
+	/**
+	 * The Goldling was hit (or, at `scale` > 1, caught) at sim (x, z): its coin burst on the next frame (dropped past
+	 * goldenCoinQueue).
+	 */
+	goldenCoin(x: number, z: number, scale = 1): void {
+		if (this.coinX.size() >= FX_SPRITE_VIEW.goldenCoinQueue) return;
+		this.coinX.push(x);
+		this.coinZ.push(z);
+		this.coinScale.push(scale);
+	}
+
 	/** Forget everything (live effects, pending bursts, snapshots): the next frame adopts the state silently. */
 	reset(): void {
 		this.liveEnds.clear();
@@ -341,6 +372,7 @@ export class FxCueMapper {
 		this.splZ.clear();
 		this.boostX.clear();
 		this.boostZ.clear();
+		this.clearCoins();
 		this.lastState = undefined;
 		this.lastTick = -1;
 		this.lastFloor = -1;
@@ -388,18 +420,27 @@ export class FxCueMapper {
 				this.emit("fx.breakable.splinter", this.splX[i], this.splZ[i], 0, 1);
 			for (let i = 0; i < this.boostX.size(); i++)
 				this.emit("fx.boost.collect", this.boostX[i], this.boostZ[i], 0, 1);
+			for (let i = 0; i < this.coinX.size(); i++)
+				this.emit("fx.golden.coin", this.coinX[i], this.coinZ[i], 0, this.coinScale[i]);
 			this.hitCues(f);
 		}
 		this.splX.clear();
 		this.splZ.clear();
 		this.boostX.clear();
 		this.boostZ.clear();
+		this.clearCoins();
 		this.snapshot(f);
 		this.updateLoop(f);
 		return out.count();
 	}
 
 	// --- budget and placement --------------------------------------------------------------------
+
+	private clearCoins(): void {
+		this.coinX.clear();
+		this.coinZ.clear();
+		this.coinScale.clear();
+	}
 
 	private forgetLive(): void {
 		this.liveEnds.clear();
@@ -411,6 +452,7 @@ export class FxCueMapper {
 		this.splZ.clear();
 		this.boostX.clear();
 		this.boostZ.clear();
+		this.clearCoins();
 	}
 
 	private expire(): void {
@@ -646,6 +688,13 @@ export class FxCueMapper {
 		) {
 			this.emit("fx.shrine.use", shrine.x, shrine.z, 0, 1);
 		}
+		const pacts = f.state.pacts;
+		if (pacts !== undefined && pacts.room >= 0 && pacts.room === spots.shrineRoom) {
+			if (greedTakes(f.state) > this.greedTakes)
+				this.emit("fx.shrine.use", pacts.altarX[PactKind.GREED], pacts.altarZ[PactKind.GREED], 0, 1);
+			if (hordeTakes(f.state) > this.hordeTakes)
+				this.emit("fx.shrine.use", pacts.altarX[PactKind.HORDE], pacts.altarZ[PactKind.HORDE], 0, 1);
+		}
 	}
 
 	private hitCues(f: FxCueFrame): void {
@@ -696,6 +745,8 @@ export class FxCueMapper {
 		}
 		const run = state.run;
 		this.shrineUsed = run !== undefined ? run.shrineUsed : 0;
+		this.greedTakes = greedTakes(state);
+		this.hordeTakes = hordeTakes(state);
 		const taken = run !== undefined ? run.pedestalTaken : undefined;
 		const count = taken !== undefined ? taken.size() : 0;
 		for (let k = 0; k < count; k++) this.pedestals[k] = (taken as ReadonlyArray<number>)[k];

@@ -114,7 +114,9 @@ describe("registry: PORT_BAND_ENEMIES_2 (NED1)", () => {
 			"slime.small",
 			"summoner",
 		]);
-		expect(ids.size()).toBe(18);
+		// + docs/FORTUNE.md FD9's Goldling (band 5, index 18) after band 4.
+		expect(ids.size()).toBe(19);
+		expect(ids[18]).toBe("golden");
 	});
 });
 

@@ -31,6 +31,11 @@ import { stepPellets } from "./pellets/stepPellets";
 import { clearTreasureEvents } from "./treasure/treasure";
 import type { TreasureConfig } from "./treasure/treasureData";
 import { stepTreasure } from "./treasure/stepTreasure";
+import { clearPactsEvents, type PactsConfig } from "./pacts/pacts";
+import { stepPacts, stepPactsWave } from "./pacts/stepPacts";
+import { holdAbsoluteTimers } from "./pacts/holdTimers";
+import { clearGoldenEvents, type GoldenConfig } from "./golden/golden";
+import { stepGolden } from "./golden/stepGolden";
 import type { SolidCells } from "shared/dungeon";
 
 export { PLAYER_RADIUS, PLAYER_SPEED } from "./playerData";
@@ -191,9 +196,26 @@ export interface SimConfig {
 	 * come from each endless floor's world (EndlessFloorWorld.vault, its chest a breakables piece). Absent: no treasure
 	 * state, nothing extra hashed, no treasure score source (every fixture, M1, the tutorial, every world until TR5).
 	 * Present: state.treasure is created, stepped (stepTreasure, after stepScore) and hashed as the "treasure"
-	 * subsystem, appended after every other group (after "pellets"), and a scored run's points / counts gain TREASURE.
+	 * subsystem, after "pellets" ("pacts" and "golden" after it), and a scored run's points / counts gain TREASURE.
 	 */
 	treasure?: TreasureConfig;
+	/**
+	 * Pacts (docs/FORTUNE.md PS2, pacts/pacts.ts): the rules (ENDLESS_PACTS_CONFIG is the game's); where the altars stand
+	 * comes from each endless floor's world (EndlessFloorWorld.pactAltars), or from `pacts.floor` without endless mode.
+	 * Absent: no pacts state, the classic shrine everywhere, nothing extra hashed, no pact score source (every fixture,
+	 * M1, the tutorial). Present: state.pacts is created and hashed as the "pacts" subsystem, after "treasure" (only
+	 * "golden" after it); on a floor whose altars stand the classic shrine zone is off and the altars take its place
+	 * (stepPacts, right after stepRun), and the Horde's second wave runs in stepPactsWave (before stepScore).
+	 */
+	pacts?: PactsConfig;
+	/**
+	 * The Goldling (docs/FORTUNE.md GE2, golden/golden.ts): the rules (ENDLESS_GOLDEN_CONFIG is the game's); which room of
+	 * a floor holds one comes from each endless floor's world (EndlessFloorWorld.golden). Absent: no golden state,
+	 * nothing extra hashed, no Goldling ever spawns (every fixture, M1, the tutorial). Present: state.golden is created,
+	 * stepped (stepGolden, after stepScore) and hashed as the "golden" subsystem, appended after every other group
+	 * (after "pacts").
+	 */
+	golden?: GoldenConfig;
 }
 
 /** Matches the 16x16 greybox room: inner wall faces at +/-7.75, minus the 0.4 player half-width (rounded). */
@@ -219,26 +241,35 @@ const partyPrev: number[] = [];
  *
  * Tick order (fixed; part of the determinism contract):
  *   1. clear per-tick events (and the score's, the breakables', the drops', the affixes', the builds', the pellets',
- *      the treasure's); then FORFEIT_BUTTON ("Leave run") -> forfeitSoloRun:
+ *      the treasure's, the pacts', the Goldling's); then FORFEIT_BUTTON ("Leave run") -> forfeitSoloRun:
  *      the player dies at this tick; then (dev runs only) a DEV_GOD_BUTTON edge toggles god mode (stepDevToggle)
  *   2. stepPlayer  (movement, facing, roll, hearts, flask, Ember)
  *   3. stepCombat   (Ember clear, actors act, the player's weapons, bullets step, hits, contact damage)
  *   4. stepEndless  (endless mode only: Depth, floor clear points + stairwell / next floor, deferred room spawns)
  *   5. stepRun      (endless mode only: a new floor opens the boon draft; Warding, relic pedestals, the curse shrine)
+ *   5b. stepPacts   (only with config.pacts: the altars, stepRun's slot 5 where they stand: Greed's curse and Legendary
+ *                    deal, Horde's take)
  *   6. stepDrops    (only with config.drops: floor clear, debug drops, boost timers, ground life, pickups; kills
  *                    drop inside 3)
  *   7. stepPellets  (only with config.pellets: living players in index order take the live rooms' pellets in reach;
  *                    the power pellet erases enemy bullets; before 8 so a pickup on a room's clear tick counts for its
  *                    Sweep)
+ *   7b. stepPactsWave (only with config.pacts: the horde room's second wave, its trigger and spawn; before 8 so the
+ *                    record it holds never clears between the waves)
  *   8. stepScore    (only with config.scoring: hit cuts, combo timer, rooms; kills / grazes / guard score inside 3;
  *                    pellet runs: an engaged room's pellets go live, a clear takes them and pays the Sweep first)
  *   8b. stepTreasure (only with config.treasure: the vault arms on its room's engagement, cracks on a hit past the
  *                    allowance or the SWIFT countdown's end, unlocks on the clear; after 8, so this tick's engagement,
  *                    hits and clear are known)
- *   9. tick += 1
+ *   9. stepGolden   (only with config.golden: the Goldling appears appearTicks after its room engaged, or escapes when
+ *                    its time is up; its hits and catch score inside 3)
+ *  10. tick += 1
  * While a boon draft is open (endless mode, progression/progression.ts) the world is frozen: after the event clears
- * only stepDraft runs (the stick selects, a FIRE press confirms), then tick += 1 (a forfeit on such a tick closes the
- * draft without a pick and the tick stays frozen, like a co-op leaver's).
+ * only stepDraft runs (the stick selects, a FIRE press confirms), then (only with config.pacts: Greed's deal opens
+ * mid-floor) holdAbsoluteTimers (pacts/holdTimers.ts) moves the live absolute-tick timers 1 tick later (engaged room
+ * records' engageTick for FAST, the Horde's waveDueTick, the waiting Goldling's appearTick, a running one's
+ * fieldTick, a Vengeful corpse's vengeArmTick), then tick += 1 (a forfeit on such a tick closes the draft without a
+ * pick and the tick stays frozen, like a co-op leaver's).
  * In endless mode steps 2-3 run with the current floor's SimConfig (simWorldConfig). Scoring is read from the top-level
  * config (createSimState). Kills score inside 3, so a boss kill's points use the Depth from BEFORE stepEndless raises it.
  */
@@ -261,6 +292,8 @@ export function step(
 	if (state.builds !== undefined) clearBuildEvents(state.builds);
 	if (state.pellets !== undefined) clearPelletsEvents(state.pellets);
 	if (state.treasure !== undefined) clearTreasureEvents(state.treasure);
+	if (state.pacts !== undefined) clearPactsEvents(state.pacts);
+	if (state.golden !== undefined) clearGoldenEvents(state.golden);
 	const run = state.run;
 	// Read before the forfeit, which closes an open draft: that tick stays a frozen draft tick.
 	const frozen = run !== undefined && isDraftOpen(state);
@@ -270,6 +303,7 @@ export function step(
 		clearRunEvents(run);
 		if (frozen) {
 			stepDraft(state, soloInputs);
+			if (state.pacts !== undefined) holdAbsoluteTimers(state);
 			state.tick += 1;
 			return;
 		}
@@ -278,10 +312,13 @@ export function step(
 	stepCombat(state, input, world);
 	if (state.endless !== undefined) stepEndless(state, soloInputs, config, soloPrev);
 	if (run !== undefined) stepRun(state, soloInputs, config, soloPrev);
+	if (state.pacts !== undefined) stepPacts(state, soloInputs, config, soloPrev);
 	if (drops !== undefined) stepDrops(state, soloInputs, soloPrev);
 	if (state.pellets !== undefined) stepPellets(state);
+	if (state.pacts !== undefined) stepPactsWave(state, soloInputs, config);
 	if (score !== undefined) stepScore(state);
 	if (state.treasure !== undefined) stepTreasure(state);
+	if (state.golden !== undefined) stepGolden(state, config);
 	state.tick += 1;
 }
 
@@ -311,16 +348,20 @@ export function forfeitSoloRun(state: SimState): boolean {
  *   1. clear events (and score events, run events)
  *   2. per player: PARTY_LEFT_BUTTON -> marked left (dead, never revived)
  *   -  a boon draft is open for ANY player (endless): only stepDraft (each player picks with their own input; a player
- *      who left has theirs closed), then tick += 1: the world stays frozen until every player has confirmed
+ *      who left has theirs closed), then (pacts only) holdAbsoluteTimers as in step(), then tick += 1: the world stays
+ *      frozen until every player has confirmed
  *   3. per player: stepPlayer with its own state, weapons and player index
  *   4. stepCombat (actors target the nearest living player; each player's weapons; hits on any player)
  *   5. stepEndless (every living player in the stairwell; any player's debug skip; revive the dead on a new floor)
  *   6. stepRun (endless: a new floor opens every present player's draft; Warding, pedestals, the shrine per player)
  *   7. stepDrops (drops: per slot the first living player in reach takes it; timers per player)
+ *   6b. stepPacts (pacts: the altars, per player in index order)
  *   8. stepPellets (pellets: per player in index order, the live pellets in reach)
+ *   8b. stepPactsWave (pacts: the horde room's second wave)
  *   9. stepScore
  *   9b. stepTreasure (treasure: the vault's lock, after 9)
- *  10. tick += 1
+ *  10. stepGolden
+ *  11. tick += 1
  * A solo state (no party) is stepped exactly as step(state, inputs[0], config) would.
  */
 export function stepParty(
@@ -346,6 +387,8 @@ export function stepParty(
 	if (state.builds !== undefined) clearBuildEvents(state.builds);
 	if (state.pellets !== undefined) clearPelletsEvents(state.pellets);
 	if (state.treasure !== undefined) clearTreasureEvents(state.treasure);
+	if (state.pacts !== undefined) clearPactsEvents(state.pacts);
+	if (state.golden !== undefined) clearGoldenEvents(state.golden);
 	for (let i = 0; i < n; i++) if (hasLeftBit(inputs[i].buttons)) markPlayerLeft(state, i);
 	if (state.dev !== undefined) stepDevToggle(state, inputs, partyPrev);
 	const run = state.run;
@@ -353,6 +396,7 @@ export function stepParty(
 		clearRunEvents(run);
 		if (isDraftOpen(state)) {
 			stepDraft(state, inputs);
+			if (state.pacts !== undefined) holdAbsoluteTimers(state);
 			state.tick += 1;
 			return;
 		}
@@ -361,9 +405,12 @@ export function stepParty(
 	stepCombat(state, inputs[0], world, inputs);
 	if (state.endless !== undefined) stepEndless(state, inputs, config, partyPrev);
 	if (run !== undefined) stepRun(state, inputs, config, partyPrev);
+	if (state.pacts !== undefined) stepPacts(state, inputs, config, partyPrev);
 	if (drops !== undefined) stepDrops(state, inputs, partyPrev);
 	if (state.pellets !== undefined) stepPellets(state);
+	if (state.pacts !== undefined) stepPactsWave(state, inputs, config);
 	if (score !== undefined) stepScore(state);
 	if (state.treasure !== undefined) stepTreasure(state);
+	if (state.golden !== undefined) stepGolden(state, config);
 	state.tick += 1;
 }

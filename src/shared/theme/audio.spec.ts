@@ -146,6 +146,16 @@ describe("audio contract: port IDs and ambience", () => {
 			"sfx.treasure.unlock",
 			"sfx.treasure.open",
 			"sfx.jingle.treasure",
+			// docs/FORTUNE.md FO6: a pact taken; the Horde's horn, second wave and x2; the Goldling's appearance, hit,
+			// jackpot and escape
+			"sfx.pact.take",
+			"sfx.horde.horn",
+			"sfx.horde.wave",
+			"sfx.horde.double",
+			"sfx.golden.appear",
+			"sfx.golden.hit",
+			"sfx.golden.jackpot",
+			"sfx.golden.escape",
 		]);
 		const web = new Set<string>([...AUDIO_EVENTS, ...BREAKABLE_AUDIO_EVENTS]);
 		for (const id of PORT_AUDIO_EVENTS) {

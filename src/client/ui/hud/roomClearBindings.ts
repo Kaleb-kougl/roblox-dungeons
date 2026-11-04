@@ -40,6 +40,8 @@ export const ROOM_CLEAR_UI = {
 	shineOffset: new RoomClearValue(-1),
 	tallyText: new RoomClearValue(""),
 	tallyTransparency: new RoomClearValue(1),
+	/** docs/FORTUNE.md FO7: the tally row's scale (the Horde segment's slam). */
+	tallyScale: new RoomClearValue(1),
 	flyText: new RoomClearValue(""),
 	flyProgress: new RoomClearValue(-1),
 	chipText: perChip(""),

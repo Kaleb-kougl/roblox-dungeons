@@ -165,6 +165,15 @@ export const ScoreSource = {
 	 * "score" hash group is unchanged.
 	 */
 	TREASURE: 12,
+	/** Pacts' Horde (docs/FORTUNE.md): pacts runs only, after TREASURE (padding it in a pacts run without treasure). */
+	HORDE: 13,
+	/**
+	 * The Goldling (docs/FORTUNE.md GE3): its coins per damaging hit and the jackpot of its catch. Appended after HORDE,
+	 * and ONLY in runs with SimConfig.golden (GOLDEN_SCORE_SOURCE_NAMES; createSimState pads points / counts to it,
+	 * every earlier gated source included, addGoldenScoreSources: JACKPOT, PELLETS, SWEEP, TREASURE and HORDE stay 0 in a
+	 * run without builds / pellets / treasure / pacts). Every other scored run's "score" hash group is unchanged.
+	 */
+	GOLDEN: 14,
 } as const;
 export type ScoreSourceId = (typeof ScoreSource)[keyof typeof ScoreSource];
 /** Source names in index order (dump names, results screen string keys `score.source.<name>`). */
@@ -198,3 +207,15 @@ export const PELLET_SCORE_SOURCE_NAMES = ["pellets", "sweep"] as const;
  * counts hold every source up to these (without builds or pellets the padded JACKPOT / PELLETS / SWEEP stay 0).
  */
 export const TREASURE_SCORE_SOURCE_NAMES = ["treasure"] as const;
+/**
+ * Sources only a pacts run has (docs/FORTUNE.md PS4: the Horde's extra half, every x2 award's second half), appended
+ * after TREASURE_SCORE_SOURCE_NAMES (ScoreSource.HORDE 13). A pacts run's points / counts hold every source up to these
+ * (a pacts run without builds, pellets or treasure pads JACKPOT / PELLETS / SWEEP / TREASURE, always 0 there).
+ */
+export const PACT_SCORE_SOURCE_NAMES = ["horde"] as const;
+/**
+ * Sources only a Goldling run has (docs/FORTUNE.md GE3), at ScoreSource.GOLDEN (14): after the pellets', treasure's
+ * (12) and Pacts' Horde (13). A Goldling run's points / counts hold every source up to it (padding the earlier gated
+ * ones).
+ */
+export const GOLDEN_SCORE_SOURCE_NAMES = ["golden"] as const;

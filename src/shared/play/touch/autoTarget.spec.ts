@@ -3,13 +3,27 @@
 import { describe, expect, it } from "@rbxts/jest-globals";
 import { TOUCH } from "shared/config";
 import { TILE_SIZE } from "shared/dungeon";
-import { EMPTY_INPUT, SimCtx, createSimState, hashState, playerAt, type ActorState, type SimState } from "shared/sim";
+import {
+	EMPTY_INPUT,
+	GOLDEN_KIND,
+	SimCtx,
+	createSimState,
+	hashState,
+	playerAt,
+	type ActorState,
+	type SimState,
+} from "shared/sim";
 import { TEST_DUMMY } from "shared/sim/testing";
 import { pickAutoTarget, type AutoTargetQuery } from "./autoTarget";
 
 const RANGE = TOUCH.autoTarget.rangeTiles * TILE_SIZE;
 
-function arena(spots: ReadonlyArray<readonly [number, number]>): {
+const YIELD = TOUCH.autoTarget.goldenYieldTiles * TILE_SIZE;
+
+/** A spot, optionally the Goldling's (a stray spawn without state.golden: it stands and counts down). */
+type Spot = readonly [number, number, string?];
+
+function arena(spots: ReadonlyArray<Spot>): {
 	state: SimState;
 	ctx: SimCtx;
 	actors: ActorState[];
@@ -20,7 +34,7 @@ function arena(spots: ReadonlyArray<readonly [number, number]>): {
 	p.faceZ = 1;
 	const ctx = new SimCtx().bind(state, {}, EMPTY_INPUT);
 	const actors = new Array<ActorState>();
-	for (const spot of spots) actors.push(ctx.spawnActor(TEST_DUMMY.id, spot[0], spot[1])!);
+	for (const spot of spots) actors.push(ctx.spawnActor(spot[2] ?? TEST_DUMMY.id, spot[0], spot[1])!);
 	return { state, ctx, actors };
 }
 
@@ -101,5 +115,63 @@ describe("pickAutoTarget", () => {
 		const before = hashState(state);
 		pickAutoTarget(query(state, { blocked: (x: number) => x === 2, previousId: 1 }));
 		expect(hashState(state)).toBe(before);
+	});
+
+	describe("the Goldling (docs/FORTUNE.md FD16)", () => {
+		it("is a target: alone, or nearer than every other actor and none within the yield range", () => {
+			const alone = arena([[0, 2, GOLDEN_KIND]]);
+			expect(pickAutoTarget(query(alone.state))?.id).toBe(alone.actors[0].id);
+			const { state, actors } = arena([
+				[0, YIELD + 1],
+				[0, 2, GOLDEN_KIND],
+			]);
+			expect(pickAutoTarget(query(state))?.id).toBe(actors[1].id);
+		});
+
+		it("ranks after any other actor within the yield range, even a farther one", () => {
+			const { state, actors } = arena([
+				[0, 1, GOLDEN_KIND],
+				[0, YIELD - 0.5],
+			]);
+			expect(pickAutoTarget(query(state))?.id).toBe(actors[1].id);
+		});
+
+		it("an actor exactly at the yield range still outranks it", () => {
+			const { state, actors } = arena([
+				[0, 1, GOLDEN_KIND],
+				[0, YIELD],
+			]);
+			expect(pickAutoTarget(query(state))?.id).toBe(actors[1].id);
+		});
+
+		it("a blocked actor within the yield range is no threat: the Goldling stays the pick", () => {
+			const { state, actors } = arena([
+				[0, 1, GOLDEN_KIND],
+				[2, 2],
+			]);
+			const wall = (x: number) => x === 2;
+			expect(pickAutoTarget(query(state, { blocked: wall }))?.id).toBe(actors[0].id);
+			expect(pickAutoTarget(query(state))?.id).toBe(actors[1].id);
+		});
+
+		it("its hysteresis gives way: a threat stepping within the yield range takes the aim", () => {
+			const { state, actors } = arena([
+				[0, 1, GOLDEN_KIND],
+				[0, YIELD + 2],
+			]);
+			const first = pickAutoTarget(query(state));
+			expect(first?.id).toBe(actors[0].id);
+			actors[1].z = YIELD - 1;
+			expect(pickAutoTarget(query(state, { previousId: actors[0].id }))?.id).toBe(actors[1].id);
+		});
+
+		it("between other actors nothing changes (the usual cost picks)", () => {
+			const { state, actors } = arena([
+				[0, 2, GOLDEN_KIND],
+				[0, 1.5],
+				[0, 1],
+			]);
+			expect(pickAutoTarget(query(state))?.id).toBe(actors[2].id);
+		});
 	});
 });

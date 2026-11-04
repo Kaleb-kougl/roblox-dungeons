@@ -45,6 +45,7 @@ import {
 	type MinimapTiles,
 } from "shared/view/minimap";
 import { vaultMarkStyle } from "shared/view/treasure";
+import { GOLDEN_VIEW, goldenBlipSlot, isGoldenKind } from "shared/view/golden";
 import { InputController } from "../game/InputController";
 import { SimController, type RunContext } from "../game/SimController";
 import { ThemeController } from "../game/ThemeController";
@@ -56,7 +57,7 @@ const HIDDEN = 1;
 /** A square turned this far is a diamond (corner up). */
 const DIAMOND_DEG = 45;
 /** Draw order inside a map layer (ZIndex, Sibling behaviour): the image under every marker, the watched player on top. */
-const LAYER_Z = { image: 1, room: 2, vault: 3, stairs: 4, drop: 5, enemy: 6, teammate: 7, self: 8 } as const;
+const LAYER_Z = { image: 1, room: 2, vault: 3, stairs: 4, drop: 5, enemy: 6, golden: 7, teammate: 8, self: 9 } as const;
 
 type MarkerShape = "dot" | "diamond" | "square";
 
@@ -208,6 +209,10 @@ interface FrameMarks {
 	drops: number;
 	readonly dropX: number[];
 	readonly dropZ: number[];
+	/** The running Goldling on a cell in sight (docs/FORTUNE.md FO8), and where. */
+	golden: boolean;
+	goldenX: number;
+	goldenZ: number;
 	stairShown: boolean;
 	stairOpen: boolean;
 	/** The vault's chest mark (vaultMarkStyle): shown, where, its colour role and style. */
@@ -235,6 +240,8 @@ class MapLayer {
 	private readonly rooms: Marker[] = [];
 	private readonly stairs: Marker;
 	private readonly vault: Marker;
+	/** The Goldling's gold blip (docs/FORTUNE.md FO8), over the enemy dots. */
+	private readonly golden: Marker;
 	private readonly layout: GridImageLayout = {
 		centreU: 0,
 		centreV: 0,
@@ -271,6 +278,7 @@ class MapLayer {
 		for (let i = 0; i < floor.marks.size(); i++) this.rooms.push(makeMarker(root, LAYER_Z.room, "square"));
 		this.vault = makeMarker(root, LAYER_Z.vault, "square");
 		this.stairs = makeMarker(root, LAYER_Z.stairs, "diamond");
+		this.golden = makeMarker(root, LAYER_Z.golden, "diamond");
 		for (let i = 0; i < MINIMAP_VIEW.markerPool; i++) this.enemies.push(makeMarker(root, LAYER_Z.enemy, "dot"));
 		this.selfBody = makeMarker(root, LAYER_Z.self, "square");
 		this.selfNose = makeMarker(root, LAYER_Z.self, "square");
@@ -366,6 +374,21 @@ class MapLayer {
 			const size = boss ? m.boss : m.enemy;
 			showMarker(marker, pt.u, pt.v, invW, invH, size, boss ? colors.boss : colors.enemy, "outlined", edge);
 		}
+		// The Goldling in sight (docs/FORTUNE.md FO8): a gold diamond with the marks' dark edge, the boost glint's look.
+		if (marks.golden) {
+			worldToMap(basis, marks.goldenX, marks.goldenZ, cx, cz, ppt, pt);
+			showMarker(
+				this.golden,
+				pt.u,
+				pt.v,
+				invW,
+				invH,
+				GOLDEN_VIEW.minimap.sizePx,
+				colors.golden,
+				"outlined",
+				edge,
+			);
+		} else hideMarker(this.golden);
 		// Teammates: a dot in their colour, a hollow ring where a dead one fell.
 		while (this.mates.size() < marks.mates) this.mates.push(makeMarker(this.root, LAYER_Z.teammate, "dot"));
 		for (let i = 0; i < this.mates.size(); i++) {
@@ -403,6 +426,8 @@ class MinimapColors {
 	boss = new Color3();
 	stairs = new Color3();
 	boost = new Color3();
+	/** The Goldling's blip (GOLDEN_VIEW.minimap.role). */
+	golden = new Color3();
 	/** The marks' dark edge (MINIMAP_VIEW.outlineRole). */
 	outline = new Color3();
 	private mates: Color3[] = [];
@@ -417,6 +442,7 @@ class MinimapColors {
 		this.boss = pack.color("minimap.boss");
 		this.stairs = pack.color("minimap.stairs");
 		this.boost = pack.color("minimap.boost");
+		this.golden = pack.color(GOLDEN_VIEW.minimap.role);
 		this.outline = pack.color(MINIMAP_VIEW.outlineRole);
 		this.mates = MINIMAP_VIEW.teammateRoles.map((r) => pack.color(r));
 	}
@@ -458,9 +484,10 @@ class MinimapColors {
  * `getViewPlayerIndex()` at MINIMAP_VIEW.pxPerTile; the full map centres on the floor, fitted so the turned floor fits
  * its host. Markers (plain Frames, MD8): the watched player's arrow, teammates (MINIMAP_VIEW.teammateRoles by index;
  * dead: hollow), enemies and bosses on IN_SIGHT cells only (nearest first, MINIMAP_VIEW.markerPool), boost drops in
- * sight, the stairwell once its cell is not UNKNOWN (hollow while closed), treasure / shrine marks once revealed, the
- * vault's chest once revealed (docs/TREASURE.md TR8: shared/view/treasure vaultMarkStyle, the tier's floor colour,
- * recoloured by a crack, hollow once opened).
+ * sight, the running Goldling's gold blip in sight (docs/FORTUNE.md FO8; never an enemy dot), the stairwell once its cell
+ * is not UNKNOWN (hollow while closed), treasure / shrine marks once revealed, the vault's chest once revealed
+ * (docs/TREASURE.md TR8: shared/view/treasure vaultMarkStyle, the tier's floor colour, recoloured by a crack, hollow
+ * once opened).
  *
  * The full map: `InputController.onMapAction` toggles Reflex `game.map.open` (opening needs a playing run with no menu
  * open, client/store selectMenuOpen, and an unfrozen sim; closing always works); it closes on a floor change, run over
@@ -495,6 +522,9 @@ export class MinimapController implements OnStart {
 		drops: 0,
 		dropX: [],
 		dropZ: [],
+		golden: false,
+		goldenX: 0,
+		goldenZ: 0,
 		stairShown: false,
 		stairOpen: false,
 		vaultShown: false,
@@ -822,6 +852,8 @@ export class MinimapController implements OnStart {
 		for (let i = 0; i < actors.size(); i++) {
 			const a = actors[i];
 			if (a.kind === NO_KIND || a.alive === 0) continue;
+			// The Goldling has its own blip (below), never an enemy dot.
+			if (isGoldenKind(a.kind)) continue;
 			if (!this.inSight(fog, tiles, a.x, a.z)) continue;
 			const dx = a.x - marks.selfX;
 			const dz = a.z - marks.selfZ;
@@ -849,6 +881,15 @@ export class MinimapController implements OnStart {
 			}
 		}
 		marks.drops = drops;
+
+		// The running Goldling on a cell in sight (docs/FORTUNE.md FO8: the boost glint's rule, MD14).
+		const gs = goldenBlipSlot(state);
+		const ga = gs >= 0 ? actors[gs] : undefined;
+		marks.golden = ga !== undefined && this.inSight(fog, tiles, ga.x, ga.z);
+		if (ga !== undefined && marks.golden) {
+			marks.goldenX = lerp(ga.prevX, ga.x, alpha);
+			marks.goldenZ = lerp(ga.prevZ, ga.z, alpha);
+		}
 
 		marks.stairShown = tiles.stairCell !== MAP_NO_CELL && fog.state(tiles.stairCell) !== FogState.UNKNOWN;
 		marks.stairOpen = state.endless !== undefined && state.endless.stairsOpen !== 0;

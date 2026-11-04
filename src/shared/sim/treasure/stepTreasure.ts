@@ -11,7 +11,9 @@
  *      PERFECT count, armor and Aegis hits included, hits on the engagement tick included) pass the allowance. SWIFT
  *      counts ticksLeft down by one on every tick after the arm tick, BEFORE step 3, and cracks at 0: armed on tick E
  *      with S, a clear on tick T keeps the lock iff T - E < S, which at 100 % (S = parTicks) is exactly when clearRoom
- *      pays FAST (under = parTicks - (T - E) > 0; TR0 correction 4). A crack: tier one lower (never below COMMON),
+ *      pays FAST (under = parTicks - (T - E) > 0; TR0 correction 4). A horde vault room (docs/FORTUNE.md PS4) holds
+ *      the crack while its second wave is pending (pactHoldsRoom) and adds the wave's par when it spawns
+ *      (vaultParGrown), so this still holds over both waves. A crack: tier one lower (never below COMMON),
  *      CRACKED, crackTick, events.cracked. Once: a cracked lock never counts again.
  *   3. The record cleared (this tick, or on the arm tick itself), from ARMED or CRACKED -> UNLOCKED: kept, `spare` =
  *      SWIFT ticksLeft (= FAST's `under` at 100 %) / UNTOUCHED allowance - hits; cracked, `missBy` = SWIFT clear tick -
@@ -46,6 +48,7 @@ import { scoreTreasure, type RoomScore, type ScoreState } from "../score/score";
 import { pickBoostKind } from "../drops/drops";
 import { giveBoost, landDrop, lowestFreeDropSlot } from "../drops/breakLoot";
 import { GIVEN_DROP_SLOT } from "../drops/dropsData";
+import { pactHoldsRoom } from "../pacts/pactRooms";
 import { treasureRespiteLevel } from "./respite";
 import type { TreasureGrant, TreasureState } from "./treasure";
 import {
@@ -72,6 +75,23 @@ export function vaultAllowance(present: number, level: number, config: Readonly<
 /** SWIFT's countdown: `par` x (swiftParPercent + Respite's percent) / 100, round half up (runMods scaleTicks). Pure. */
 export function swiftTicks(par: number, level: number, config: Readonly<TreasureConfig>): number {
 	return scaleTicks(par, config.swiftParPercent + byLevel(config.respiteSwiftPercent, level));
+}
+
+/**
+ * Pacts' Horde (docs/FORTUNE.md PS4, stepPacts spawnWave): record `record`'s par grew from `oldPar` (its second wave
+ * joined it, appendScoreRoomMembers). An ARMED SWIFT lock on that record gains the difference of the scaled pars, so
+ * its countdown ends exactly when the grown par would (TR0 correction 4: SWIFT at 100 % is FAST). No-op otherwise (no
+ * treasure, another record, UNTOUCHED, a lock not armed or already cracked). No rng.
+ */
+export function vaultParGrown(state: SimState, record: number, oldPar: number): void {
+	const t = state.treasure;
+	const s = state.score;
+	if (t === undefined || s === undefined || t.record !== record) return;
+	if (t.lock !== VaultLock.SWIFT || t.status !== VaultStatus.ARMED) return;
+	const r = s.rooms[record];
+	if (r === undefined) return;
+	const level = treasureRespiteLevel(state);
+	t.ticksLeft += swiftTicks(r.parTicks, level, t.config) - swiftTicks(oldPar, level, t.config);
 }
 
 function crack(state: Readonly<SimState>, t: TreasureState): void {
@@ -104,7 +124,10 @@ function stepLock(state: SimState, t: TreasureState, s: ScoreState, r: RoomScore
 			if (hits > t.allowance) crack(state, t);
 		} else if (!armedNow) {
 			t.ticksLeft -= 1;
-			if (t.ticksLeft <= 0) crack(state, t);
+			// Pacts' Horde (docs/FORTUNE.md PS4): a horde vault room's par grows when its second wave spawns
+			// (vaultParGrown); until then the countdown may run past 0 without cracking, so SWIFT stays exactly FAST over
+			// both waves.
+			if (t.ticksLeft <= 0 && !pactHoldsRoom(state, t.record)) crack(state, t);
 		}
 	}
 

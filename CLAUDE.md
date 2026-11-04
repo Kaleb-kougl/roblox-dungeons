@@ -61,6 +61,7 @@ Record every ported module in `PROVENANCE.md` (ported module, source path, sourc
 | `docs/RUN_RECAP.md` | Run-over recap and co-op moments (one honest near-miss line, up to four counting highlights, Again in one press armed at 0.6 s and a faster retry; co-op TEAM PERFECT stamp / chip / streak / pulse rings and SYNC! parries; revives reserved; presentation only): plan, tasks RR0-RR11 / CM1-CM7, decisions RRD1-RRD11 / CMD1-CMD7 |
 | `docs/BOOKSHELVES.md` | Bookshelves (Dungeon Essential Kit bookcases, solid 1 x 1 cases flush in runs on rooms' far walls; a new `library` room theme plus a run in some `hall` rooms; endless layouts change): plan, tasks BK0-BK10 / RA1-RA6, decisions BKD1-BKD14; the library's reading area, a table and two chairs |
 | `docs/TREASURE.md` | Treasure rooms (vaults: about one endless floor in two from floor 2 has a caged chest in a combat / elite room, seen through the doorway; clearing the room unlocks it, its lock (UNTOUCHED / SWIFT) kept or cracked one tier down; walk up to open it: a relic, boosts or a bonus draft; gameplay, opt-in `SimConfig.treasure`): plan, TR0 findings, as built TR1-TR8, tasks TR0-TR11, decisions TRD1-TRD14 |
+| `docs/FORTUNE.md` | Fortune (risk shrines: two pact altars in the shrine room, Greed = a shown curse + a Legendary deal now, Horde = the next room fights a second wave for x2 score; the Goldling: a rare harmless gold enemy that flees within its room, coins per hit, a jackpot if caught within 10 s; gameplay, opt-in `SimConfig.pacts` / `SimConfig.golden` on endless only): plan, as built, open owner calls, Studio check, tasks FO0-FO13 / PS1-PS5 / GE1-GE4, decisions FD1-FD16 |
 
 Decision log (deviations from `PLAN.md`):
 - **Art (docs/ART.md).** The theme contract gained a `"sprites"` kind (large pre-rendered cells, 1/4/8/16 screen-space
@@ -673,6 +674,49 @@ Decision log (deviations from `PLAN.md`):
   solid-decor rules). Vale chest art rendered from the owner's "Old Chest" model (SebastianSosnowski, CC-BY 4.0, Credits screen;
   `kit-chest` / `kit-chest-open`, four facings, render_kit.py `importScale` / `lid`, per-facing sprite pivots), upload
   pending; cage art, sounds (TR9), Studio check and playtest (TR11) pending.
+
+- **Fortune (docs/FORTUNE.md).** Gameplay. Two opt-in configs, endless only: `SimConfig.pacts` (`ENDLESS_PACTS_CONFIG`)
+  and `SimConfig.golden` (`ENDLESS_GOLDEN_CONFIG`), each with its own hash group appended LAST (`pellets`, `treasure`,
+  `pacts`, `golden`: main's treasure rooms landed first) and a gated score source (`HORDE` 13, pacts only; `GOLDEN` 14,
+  golden only, padding TREASURE / HORDE: an endless run's points / counts hold 15 entries, 13 with treasure alone, 14
+  with pacts but no Goldling). Floor-built: shared/dungeon `placePactAltars` (the shrine room's two
+  altars, Greed screen-left / the Horde screen-right of the crystal, mirrored, shifted 1-3 steps screen-up / down when
+  blocked; no draw) and `pactCurseIndex` (Greed's shown curse per player, salt 0x5c3a91e7), then `placeGolden` (salt
+  0x3d2f8b4d: 30 / 35 / 40 % of floors by band from floor 2, one combat / elite room of >= 100 FLOOR cells, with its
+  rectangle and walk mask), both run last in `buildEndlessFloor` (after the vault; the altars read its chest as a
+  piece): nothing else on the floor moves. Pacts: where altars
+  stand the classic shrine (and the sim's `atShrine`) is off; step.ts calls `stepPacts` right after `stepRun` (not
+  inside it: a require cycle) and `stepPactsWave` before `stepScore`. Greed = `acceptCurse` (+0.25) then a mid-floor
+  one-deal draft (`drawLegendaryOffers`: unowned legendaries, available duos, level-II evolutions, filled with level-I
+  upgrades; `openDealtDraft`, `draftKind` GREED for the title). Horde = the next room with planned spawns anyone enters
+  fights a second wave (planned kinds, no affixes, <= 10, telegraphed 60 ticks at half down, appended to the
+  record with its cost + the telegraph on the par; no clear before it) and pays x2 through `bonusPercent` (kills,
+  ROOMS / PERFECT / FAST, pellets, Sweep; not power pellets or the Jackpot; the extra half to HORDE); needs scoring
+  (else `NO_ROOM`); dim reasons `PactDim` with an extra `UNABLE`. `holdAbsoluteTimers` (`sim/pacts/holdTimers.ts`,
+  pacts runs only) moves the live absolute-tick timers 1 tick per frozen draft tick (engaged records' `engageTick`,
+  `waveDueTick`, the Goldling's appear / engage / field ticks, a live vault lock's `armTick` / `crackTick`, a Vengeful
+  `vengeArmTick`), so a teammate's Greed draft
+  eats no FAST par, telegraph or Goldling delay. The Goldling: archetype `golden` (band `PORT_BAND_FORTUNE` 5, index 18;
+  `GOLDEN_HP` 24, 5.1 u/s, harmless, not a room member, drop-ineligible), own sim stream (`seedToState(seed) ^
+  0x7a3c5e91`, a jink's side and the catch's boost kinds only); `stepGolden` after `stepScore`: appears 3 s after its
+  room engages on the spawn tile farthest from the players, escapes 10 s later (status SKIPPED on a full pool); flees on
+  the allocation-free `fleeField` (factor 1.2), standing still with no player in its room; coins 50 x floor scale per
+  hit (no combo), the catch 1500 x floor scale into GOLDEN plus party size + 1 boosts. M1, every fixture and the
+  tutorial replay exactly as before; endless replays and scores changed (boards stay `_v1`; `DAILY.ruleset` 7 -> 8 on the merge with main's treasure
+  rooms, the branch's own 5 -> 6 never shipped). With treasure rooms (merge, 2026-11-04): a horde vault room holds
+  SWIFT's crack while wave 2 is pending and adds the wave's par (`vaultParGrown`), so SWIFT stays exactly FAST; the
+  chest is an intact piece for the Goldling's flee field and mask; Greed's deal never takes a chest's bonus deal.
+  Theme: `pact.altar` (a new required `pact.` world-art slot, inline in `SLOTS`), optional `fx.golden.coin`, roles
+  `roomEdge.horde` / `pact.horde` / `pact.greed` / `golden.coin` (`fortuneReport`, folded into `variantColorProblems`),
+  `enemy.golden` `#c08000` -> `#f5c400`, strings `pact.*` and the Horde / Goldling lines, 8 port audio IDs (SILENT in
+  the placeholder, `SFX_FALLBACK` entries; no `amb.golden.loop`); `contract.luau` / `validate.luau` 185 / 196 with treasure rooms merged
+  (counted on out/).
+  View: `shared/view/pacts` / `shared/view/golden`, `PactRenderController` (cards, flames, Horde rings and shouts),
+  `HordeChip`, the 0.5 s Greed deal gap, the tally's `horde` segment, `ScorePopTone.HORDE`, `GoldenRenderController`
+  (a 24-piece timer ring, coins, catch freeze), a minimap diamond, touch auto-target after any actor within 3 tiles;
+  floor shouts goldenAppear 4 > newBest 3 > horde 2 > rank / goldenEscaped 1 > combo 0. Debug `KV_PactLabel` /
+  `KV_GoldenLabel`. Art and audio (FO10), telemetry (FO11), playtest (FO13), the Studio check and seven owner calls
+  pending.
 
 ## Commands
 

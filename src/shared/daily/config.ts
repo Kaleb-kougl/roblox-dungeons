@@ -39,7 +39,9 @@ export const DAILY: DailyConfig = table.freeze({
 	// main; treasure rooms' own 6, branch treasure-rooms only, never on main). 7: treasure rooms merged onto main's 6
 	// (docs/TREASURE.md TR5: vaults, their chest piece and rewards change endless floors and play; kept at 7 on the
 	// second merge, which brought the reading area: main stayed at 6).
-	ruleset: 7,
+	// 8: pacts and the Goldling merged onto main's 7 (docs/FORTUNE.md, FD15: endless shrines, rooms and scores change;
+	// one bump for both; branch fortune's own 6 never shipped).
+	ruleset: 8,
 	labelOffset: 1,
 	yesterdayCacheSeconds: 600,
 	minEntrantsForPercentile: 20,

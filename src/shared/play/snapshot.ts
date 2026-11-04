@@ -17,6 +17,12 @@ import {
 	archetypeAt,
 	atShrine,
 	countActors,
+	HordePhase,
+	NO_PACT,
+	hordePhase,
+	pactAltarAt,
+	pactAltarOffered,
+	pactDraftKind,
 	playerAt,
 	teamComboWindowTicks,
 	teammatesDrafting,
@@ -101,8 +107,22 @@ export interface GameSnapshot {
 	 */
 	readonly boonLevels: ReadonlyArray<number>;
 	readonly duos: ReadonlyArray<number>;
-	/** The player stands in an unused curse shrine's zone (the HUD shows the accept hint). */
+	/**
+	 * The player stands in an unused curse shrine's zone, or (pacts, docs/FORTUNE.md: the classic zone is off where the
+	 * altars stand) on an altar whose pact is theirs to take (shared/sim pactAltarOffered): the HUD shows the accept
+	 * hint and touch the shrine button (SKILL1).
+	 */
 	readonly atShrine: boolean;
+	/**
+	 * docs/FORTUNE.md FO7: the altar (shared/sim PactKind) the local player stands on whose pact is theirs to take (the
+	 * hint shows that pact's title and accept line instead of the classic curse line), or -1 (none, or the classic
+	 * shrine).
+	 */
+	readonly shrinePact: number;
+	/** The local player's open draft is Greed's Legendary deal (shared/sim pactDraftKind; NO_PACT otherwise): its title. */
+	readonly draftPact: number;
+	/** The Pact of the Horde is armed (taken, no room roused yet): the status corner's chip. Party state. */
+	readonly hordeArmed: boolean;
 	/** Co-op spectating (docs/SPECTATE.md): the local player is dead and watches a teammate (the spectate bar shows). */
 	readonly spectating: boolean;
 	/** The watched teammate's display name; "" when not spectating. */
@@ -166,6 +186,9 @@ export const EMPTY_SNAPSHOT: GameSnapshot = table.freeze({
 	boonLevels: table.freeze([]) as ReadonlyArray<number>,
 	duos: table.freeze([]) as ReadonlyArray<number>,
 	atShrine: false,
+	shrinePact: -1,
+	draftPact: NO_PACT,
+	hordeArmed: false,
 	spectating: false,
 	spectateName: "",
 	spectatePosition: 0,
@@ -289,7 +312,13 @@ export function takeSnapshot(state: Readonly<SimState>, extras: SnapshotExtras):
 		curses: mine !== undefined ? [...mine.curses] : NONE,
 		boonLevels: mine !== undefined && build !== undefined ? mine.boons.map((b) => build.levels[b] ?? 0) : NONE,
 		duos: build !== undefined ? [...build.duos] : NONE,
-		atShrine: extras.config !== undefined && atShrine(state, extras.config, me),
+		atShrine:
+			extras.config !== undefined &&
+			(atShrine(state, extras.config, me) || pactAltarOffered(state, extras.config, me)),
+		shrinePact:
+			extras.config !== undefined && pactAltarOffered(state, extras.config, me) ? pactAltarAt(state, me) : -1,
+		draftPact: pactDraftKind(state, me),
+		hordeArmed: hordePhase(state) === HordePhase.ARMED,
 		spectating: spectate !== undefined,
 		spectateName: spectate !== undefined ? spectate.name : "",
 		spectatePosition: spectate !== undefined ? spectate.position : 0,
@@ -356,6 +385,9 @@ export function snapshotsEqual(a: GameSnapshot, b: GameSnapshot): boolean {
 		a.draftReady === b.draftReady &&
 		a.draftWaiting === b.draftWaiting &&
 		a.atShrine === b.atShrine &&
+		a.shrinePact === b.shrinePact &&
+		a.draftPact === b.draftPact &&
+		a.hordeArmed === b.hordeArmed &&
 		a.spectating === b.spectating &&
 		a.spectateName === b.spectateName &&
 		a.spectatePosition === b.spectatePosition &&

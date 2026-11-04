@@ -64,3 +64,5 @@ export * from "./dev";
 export * from "./builds";
 export * from "./pellets";
 export * from "./treasure";
+export * from "./pacts";
+export * from "./golden";

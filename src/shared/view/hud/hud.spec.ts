@@ -13,7 +13,7 @@ import {
 	mapHint,
 } from "shared/play";
 import { HEALTH_BARS_MODES, HUD_SCALE_PERCENTS, PARTICLES_LEVELS } from "shared/settings";
-import { COMBO_DENOMINATOR } from "shared/sim";
+import { COMBO_DENOMINATOR, ScoreSource } from "shared/sim";
 import { BOON_RARITY_ROLES, PLACEHOLDER_MANIFEST, ThemePack } from "shared/theme";
 import { tutorialStringKeys } from "shared/tutorial";
 import {
@@ -135,8 +135,9 @@ describe("HUD helpers", () => {
 		);
 		// ... breakables (docs/DECOR.md D4), then the build-only jackpot (docs/BUILDS.md BU5, builds runs only), then the
 		// pellet-only pellets / sweep (docs/PELLETS.md PL7, pellet runs only), then the vault-only treasure
-		// (docs/TREASURE.md TR6, ScoreSource.TREASURE 12, vault runs only).
-		expect(SCORE_SOURCE_KEYS.size()).toBe(13);
+		// (docs/TREASURE.md TR6, ScoreSource.TREASURE 12, vault runs only), then Fortune's horde / golden
+		// (docs/FORTUNE.md FO6, 13 / 14).
+		expect(SCORE_SOURCE_KEYS.size()).toBe(15);
 		expect([
 			SCORE_SOURCE_KEYS[8],
 			SCORE_SOURCE_KEYS[9],
@@ -149,6 +150,15 @@ describe("HUD helpers", () => {
 			"score.source.pellets",
 			"score.source.sweep",
 			"score.source.treasure",
+		]);
+		// docs/FORTUNE.md FO6: ScoreSource.HORDE 13 and GOLDEN 14 (after treasure's 12)
+		expect([SCORE_SOURCE_KEYS[ScoreSource.HORDE], SCORE_SOURCE_KEYS[ScoreSource.GOLDEN]]).toEqual([
+			"score.source.horde",
+			"score.source.golden",
+		]);
+		expect([pack.str(SCORE_SOURCE_KEYS[13], {}), pack.str(SCORE_SOURCE_KEYS[14], {})]).toEqual([
+			"Horde",
+			"Goldling",
 		]);
 		expect(pack.str(SCORE_SOURCE_KEYS[9], {})).toBe("Jackpot");
 		expect(pack.str(SCORE_SOURCE_KEYS[12], {})).toBe("Vaults");
@@ -181,8 +191,23 @@ describe("HUD helpers", () => {
 			"score.source.treasure",
 			1500,
 		]);
+		// A pacts run (docs/FORTUNE.md FO6): Horde 13; a Goldling run: Goldling 14 (a Goldling run without treasure or
+		// pacts pads Vaults / Horde with 0, which show no row).
+		const fortune = [...pellets, 1500, 400, 1550];
+		expect(
+			scoreBreakdownRows(fortune)
+				.map((r) => [r.index, r.key, r.points])
+				.filter((r) => (r[0] as number) >= 12),
+		).toEqual([
+			[12, "score.source.treasure", 1500],
+			[13, "score.source.horde", 400],
+			[14, "score.source.golden", 1550],
+		]);
+		expect(scoreBreakdownRows([...pellets, 0, 0, 1550]).map((r) => r.index)).toEqual([
+			0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 14,
+		]);
 		// An index past every key (a future source without a label) is skipped, never a blank row.
-		expect(scoreBreakdownRows([...pellets, 5, 7]).size()).toBe(13);
+		expect(scoreBreakdownRows([...fortune, 5]).size()).toBe(15);
 		// The port-only rows show only when they scored: a pellet run without builds (Jackpot padded 0), no Sweep.
 		expect(scoreBreakdownRows([...plain, 0, 120, 0]).map((r) => r.index)).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 8, 10]);
 		// The nine classic sources always show, 0 or not.

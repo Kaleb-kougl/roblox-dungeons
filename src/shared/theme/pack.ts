@@ -28,6 +28,7 @@ import {
 	type BoostTheme,
 	type PelletTheme,
 	type TreasurePieceTheme,
+	type PactAltarTheme,
 	type BreakableTheme,
 	type DecorArt,
 	type FxArt,
@@ -243,6 +244,14 @@ export interface TreasurePiece {
 	readonly core: TreasurePieceTheme;
 }
 
+/** The pact altar (ThemeCore.pactAltar) with Roblox types (docs/FORTUNE.md FO7). */
+export interface PactAltar {
+	readonly id: string;
+	readonly art: WorldVisual | undefined;
+	readonly placeholder: PlaceholderVisual;
+	readonly core: PactAltarTheme;
+}
+
 /**
  * A sprite effect (ThemeCore.fx) with Roblox types: a one-facing SpriteSet, its flipbook and how to draw it. Drawn
  * widthTiles x heightTiles; `ImageColor3 = color`; `additive`: LightInfluence 0.
@@ -309,6 +318,7 @@ export class ThemePack {
 	private readonly boosts = new Map<BoostKind, Boost>();
 	private readonly pellets = new Map<PelletKind, Pellet>();
 	private readonly treasurePieces = new Map<string, TreasurePiece>();
+	private pactAltarCache: PactAltar | undefined;
 	private readonly fxSprites = new Map<string, FxSprite | false>();
 
 	/** Defensive: a manifest that failed validation still loads; bad entries fall back individually. */
@@ -542,6 +552,21 @@ export class ThemePack {
 		};
 		this.treasurePieces.set(id, p);
 		return p;
+	}
+
+	/** The pact altar (required in every pack, docs/FORTUNE.md FO7): its art, or no art and the placeholder plinth. Cached. */
+	pactAltar(): PactAltar {
+		const cached = this.pactAltarCache;
+		if (cached !== undefined) return cached;
+		const core = this.core.pactAltar();
+		const a: PactAltar = {
+			id: core.id,
+			art: core.art !== undefined ? this.worldVisual(core.art) : undefined,
+			placeholder: core.placeholder,
+			core,
+		};
+		this.pactAltarCache = a;
+		return a;
 	}
 
 	/** What to build while an ID has no art. Missing ID: warn once, a magenta block. */

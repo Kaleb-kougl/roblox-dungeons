@@ -34,9 +34,14 @@ import {
 	type WeaponSlotState,
 } from "shared/sim";
 import { AMBIENCE_IDS, AUDIO_EVENTS, PLACEHOLDER_MANIFEST, ThemePack, slotFor } from "shared/theme";
-import { BoostFrameEvents } from "../boosts";
+import { BoostFrameEvents, NO_BOOST_EVENTS } from "../boosts";
+import { PactFrameEvents } from "../pacts";
+import { NO_TREASURE_CUES } from "../treasure";
+import { NO_PELLET_EVENTS } from "../pellets";
 import {
+	NO_BUILD_FX_EVENTS,
 	NO_COMBO_EVENTS,
+	NO_VARIANT_CUES,
 	audibleCombo,
 	comboQuiet,
 	type ComboCut,
@@ -44,7 +49,15 @@ import {
 	type ComboReset,
 } from "../fx";
 import { FxEventBuffer, type FxEventType } from "../fx/events";
-import { COMBO_VIEW, KILL_PITCH, killPitchSpeed, semitonesToSpeed, tierStingSpeed } from "../hud";
+import {
+	COMBO_VIEW,
+	KILL_PITCH,
+	NO_DAILY_RANK_CUES,
+	NO_NEW_BEST_CUES,
+	killPitchSpeed,
+	semitonesToSpeed,
+	tierStingSpeed,
+} from "../hud";
 import {
 	ALL_SFX,
 	AUDIO_VIEW,
@@ -56,6 +69,7 @@ import {
 	JINGLE_SFX,
 	MUSIC,
 	MusicDuck,
+	NO_SYNC_CUES,
 	PitchJitter,
 	PORT_SFX,
 	SFX,
@@ -558,7 +572,9 @@ describe("audio: per-frame cap and priorities", () => {
 		// the frame the floor changes is not seen, which a player walking to the stairwell never hits.)
 		const r = replayRecorded(1);
 		if (r.relicFloor > 0) {
-			expect([r.count(SFX.relicTake), r.count(SFX.shrineUse)]).toEqual([1, 1]);
+			// the relic floor's shrine has pact altars (docs/FORTUNE.md FO9): the bot takes Greed (the curse), then the
+			// Horde: sfx.pact.take for each, never the classic shrine's sound
+			expect([r.count(SFX.relicTake), r.count(SFX.shrineUse), r.count(SFX.pactTake)]).toEqual([1, 0, 2]);
 		}
 	});
 });
@@ -588,6 +604,7 @@ function replayRecorded(ticks: number): ReplayCounts {
 	const m = new AudioCueMapper();
 	const events: FrameEvents = newFrameEvents();
 	const out = new AudioCueList();
+	const pacts = new PactFrameEvents();
 	const counts = new Map<string, number>();
 	const total = r.recording.frames.size();
 	let floors = 0;
@@ -600,9 +617,11 @@ function replayRecorded(ticks: number): ReplayCounts {
 	let frame = 0;
 	while (t < total) {
 		resetFrameEvents(events);
+		pacts.reset();
 		for (let k = 0; k < ticks && t < total; k++) {
 			stepRecorded(state, r.recording, t, setup.config);
 			accumulateEvents(events, state.events);
+			pacts.collect(state);
 			if (state.events.floorChanged > 0) floors++;
 			if (state.events.stairwellOpened > 0) stairs++;
 			if (state.events.depthChanged > 0) depth++;
@@ -610,7 +629,25 @@ function replayRecorded(ticks: number): ReplayCounts {
 		}
 		out.clear();
 		// frames 1 s apart: no cooldown hides a once-per-floor cue
-		m.frame(frame, events, NO_FX, state, 0, out);
+		m.frame(
+			frame,
+			events,
+			NO_FX,
+			state,
+			0,
+			out,
+			NO_BOOST_EVENTS,
+			NO_COMBO_EVENTS,
+			undefined,
+			NO_VARIANT_CUES,
+			NO_NEW_BEST_CUES,
+			NO_BUILD_FX_EVENTS,
+			NO_DAILY_RANK_CUES,
+			NO_PELLET_EVENTS,
+			NO_SYNC_CUES,
+			NO_TREASURE_CUES,
+			pacts,
+		);
 		if (out.size() > AUDIO_VIEW.maxStartsPerFrame) overCap++;
 		let jingles = 0;
 		for (let i = 0; i < out.size(); i++) if ((JINGLE_SFX as ReadonlyArray<string>).includes(out.id(i))) jingles++;
@@ -834,7 +871,8 @@ describe("audio: one jingle per frame", () => {
 		// docs/ROOM_CLEAR.md RC4: PERFECT's jingle ranks with the CLEAR one (72)
 		// docs/DRAFT_REVEAL.md DR4: the draft's legendary flare is a jingle too (played by the reveal controller)
 		// docs/NEW_BEST.md NB5: the record fanfare in the game-over jingle's slot, the new-best fanfare over the room's
-		// docs/TREASURE.md TR6: a Legendary chest's jingle between the new-best fanfare and the room's
+		// docs/TREASURE.md TR6: a Legendary chest's jingle between the new-best fanfare and the room's; docs/FORTUNE.md
+		// FO9: the Goldling's jackpot likewise (after it)
 		const order = [
 			SFX.gameOver,
 			SFX.jingleRecord,
@@ -842,6 +880,7 @@ describe("audio: one jingle per frame", () => {
 			SFX.victory,
 			SFX.bestNew,
 			SFX.jingleTreasure,
+			SFX.goldenJackpot,
 			SFX.roomClear,
 			SFX.roomPerfect,
 			// docs/RUN_RECAP.md CM4: TEAM PERFECT, PERFECT's jingle in a party run

@@ -15,8 +15,8 @@
  * (the second endless boss, docs/BOSS_DEMONLORD.md) is band PORT_BAND_BOSSES = 2, index 8; the endless room enemies
  * of docs/ENEMY_VARIANTS.md are band PORT_BAND_ENEMIES = 3 (indices 9..12); the five of docs/NEW_ENEMIES.md are band
  * PORT_BAND_ENEMIES_2 = 4 (indices 13..17: `bomber, charger, reaper, stormcaller, warbanner`; in band 3 they would
- * have sorted between `imp` and the rest). A later addition takes the next band, so no index that a recording or
- * fixture already holds ever moves. Specs may add test archetypes
+ * have sorted between `imp` and the rest); the Goldling of docs/FORTUNE.md is band PORT_BAND_FORTUNE = 5 (index 18:
+ * `golden`). A later addition takes the next band, so no index that a recording or fixture already holds ever moves. Specs may add test archetypes
  * (shared/sim/testing, band 0) in their own module world.
  */
 
@@ -42,6 +42,11 @@ export const PORT_BAND_ENEMIES = 3;
  * `bomber`, `charger`, `reaper`, `stormcaller`, `warbanner` take indices 13..17 and no recorded index moves.
  */
 export const PORT_BAND_ENEMIES_2 = 4;
+/**
+ * ArchetypeDef.band of the Goldling (docs/FORTUNE.md FD9, Design §3): numbered after band 4, so `golden` takes index 18
+ * and no recorded index moves.
+ */
+export const PORT_BAND_FORTUNE = 5;
 
 const byId = new Map<string, ArchetypeDef>();
 let sorted: ArchetypeDef[] | undefined;

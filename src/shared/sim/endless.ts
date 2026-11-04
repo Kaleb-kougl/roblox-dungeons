@@ -22,14 +22,17 @@
  *      dropsOnFloorPieces, with DropsConfig.breakableLoot), the floor's initial spawns (the boss on
  *      boss floors), scoring's room records rebuilt for the new floor
  *      (rebuildScoreRooms, deferred), then the floor's pellets on those records (pellets/pellets.ts pelletsOnFloor,
- *      with SimConfig.pellets), then its vault (treasure/treasure.ts treasureOnFloor, with SimConfig.treasure),
- *      events.floorChanged = the new floor. Stop.
+ *      with SimConfig.pellets), then its vault (treasure/treasure.ts treasureOnFloor, with SimConfig.treasure), the
+ *      floor's pact altars (pacts/pacts.ts pactsOnFloor, with SimConfig.pacts: an armed Horde lapses) and its Goldling
+ *      room (golden/golden.ts goldenOnFloor, with SimConfig.golden: a Goldling still out was freed with every other
+ *      actor), events.floorChanged = the new floor. Stop.
  *   4. the player stands on a room's floor for the first time this floor: events.roomEntered = id + 1, and that room's
  *      deferred enemies spawn (EndlessFloorWorld.roomSpawns, in order, each at least SPAWN_SAFE_RADIUS from every
  *      living player: see safeRoomSpawns; a full pool drops the rest, counted in
  *      combat.actorsDropped); with elite affixes (state.affixes) each planned spawn carries its
  *      EndlessFloorWorld.roomAffixes entry (same index), stamped by spawnActor before the archetype's init; scoring
- *      attaches them to the room's record and engages it (attachScoreRoomMembers)
+ *      attaches them to the room's record and engages it (attachScoreRoomMembers); with SimConfig.pacts an armed Horde
+ *      makes a room with planned spawns its horde room (pacts/pactRooms.ts pactsOnRoomSpawned)
  *
  * Co-op (M4, party.ts), every per-player rule in player index order:
  *   2. EVERY player is dead: nothing else (the run is over); a dead player otherwise just waits (no mid-floor revive)
@@ -42,7 +45,14 @@
  * Scaling (endlessData.ts) is applied where things are made: actor hp in spawnActor, enemy bullet speed in
  * SimCtx.fireEnemy. Both read state.endless, so they follow the floor and Depth at that moment.
  */
-import type { BreakableLoot, BreakablePlacement, FloorPellets, VaultPlan } from "shared/dungeon";
+import type {
+	BreakableLoot,
+	BreakablePlacement,
+	FloorGolden,
+	FloorPacts,
+	FloorPellets,
+	VaultPlan,
+} from "shared/dungeon";
 import type { InputFrame } from "./input";
 import type { SimState } from "./state";
 import type { SimConfig } from "./step";
@@ -65,6 +75,9 @@ import { tutorialOnRoomSpawned } from "./tutorial/tutorial";
 import { clearBuildProcs } from "./builds/builds";
 import { pelletsOnFloor } from "./pellets/pellets";
 import { treasureOnFloor } from "./treasure/treasure";
+import { pactsOnFloor } from "./pacts/pacts";
+import { pactsOnRoomSpawned } from "./pacts/pactRooms";
+import { goldenOnFloor } from "./golden/golden";
 
 /** A candidate spawn position (structurally shared/dungeon's TileXZ). */
 export interface SpawnTile {
@@ -123,6 +136,18 @@ export interface EndlessFloorWorld {
 	 * Absent: none (no vault rolled, the tutorial, hand-built test worlds).
 	 */
 	readonly vault?: VaultPlan;
+	/**
+	 * The shrine room's pact altars (shared/dungeon placePactAltars, docs/FORTUNE.md PS1). Read only when the run's
+	 * SimConfig.pacts is set (pacts/pacts.ts pactsOnFloor). Absent: none (the classic shrine runs; the tutorial,
+	 * hand-built test worlds).
+	 */
+	readonly pactAltars?: FloorPacts;
+	/**
+	 * The floor's Goldling room (shared/dungeon placeGolden, docs/FORTUNE.md GE1): room id, floor rectangle and walk
+	 * mask. Read only when the run's SimConfig.golden is set (golden/golden.ts goldenOnFloor). Absent: no Goldling on
+	 * this floor (the tutorial, hand-built test worlds, a floor that did not roll one).
+	 */
+	readonly golden?: FloorGolden;
 }
 
 /** SimConfig.endless. */
@@ -282,6 +307,10 @@ function nextFloor(state: SimState, input: Readonly<InputFrame>, endless: Endles
 	// Treasure rooms (docs/TREASURE.md): the new floor's vault on those records and pieces; an unopened one is lost
 	// (no-op without them). No rng.
 	treasureOnFloor(state, world.vault);
+	// Pacts (docs/FORTUNE.md): the new floor's altars; a Horde taken on the old floor lapses (no-op without pacts).
+	pactsOnFloor(state, world.pactAltars);
+	// The Goldling (docs/FORTUNE.md GE2): the new floor's room, after the records (no-op without it). No rng.
+	goldenOnFloor(state, world.golden);
 	state.events.floorChanged = e.floor;
 }
 
@@ -403,6 +432,7 @@ function enterRoom(state: SimState, world: Readonly<EndlessFloorWorld>, e: Endle
 		const affixes = state.affixes !== undefined ? world.roomAffixes?.[id] : undefined;
 		const spawned = spawnAll(tiles !== undefined ? safeRoomSpawns(state, planned, tiles) : planned, affixes);
 		attachScoreRoomMembers(state, id, spawned); // scoring: the room engages now
+		pactsOnRoomSpawned(state, id, planned.size()); // pacts: an armed Horde rouses the room
 		dropsOnRoomSpawned(state, id, spawned); // boost drops: a guaranteed room's members (the tutorial)
 		tutorialOnRoomSpawned(state, e.floor, id, spawned); // the tutorial's block lesson: hold its room's enemies
 	}

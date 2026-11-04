@@ -33,10 +33,15 @@
  *                 stream hash(floor seed, PELLETS.salt), reading the layout, spawns and placed pieces; nothing above
  *                 reads it
  *   vault         opt-in (EndlessFloorOptions.vaults; off: no draw, nothing below happens): the floor's vault, if any
- *                 (./vault.ts, docs/TREASURE.md TR1), LAST, from its own stream hash(floor seed, VAULT.salt), reading
+ *                 (./vault.ts, docs/TREASURE.md TR1), from its own stream hash(floor seed, VAULT.salt), reading
  *                 the layout, spawns, pieces and pellets; its chest is appended to `breakables` after every piece
  *                 (slot = the pieces before it) and its cell leaves roomSpawnTiles; nothing above reads it, so every
  *                 room, prop, spawn, piece, loot slot, affix, pellet and the boss pick are the option-off floor's
+ *   pacts         the shrine room's two pact altars (./pacts.ts, docs/FORTUNE.md PS1): no draw, reading the layout,
+ *                 the placed pieces (the chest included) and the pellets; nothing above reads it
+ *   golden        the Goldling's room, if any (./golden.ts, docs/FORTUNE.md GE1), LAST, from its own stream
+ *                 hash(floor seed, GOLDEN_PLACE.salt), reading the encounter rooms and the room spawns; nothing above
+ *                 reads it
  *
  * Generating the dungeon is left to the caller (`dungeonFor`), so shared/run can cache it (LRU).
  */
@@ -60,6 +65,8 @@ import { assignAffixes } from "./affixes";
 import { placeBreakableLoot, type BreakableLoot } from "./breakableLoot";
 import { placePellets, type FloorPellets } from "./pellets";
 import { placeVault, vaultChest, type VaultOverride, type VaultPlan } from "./vault";
+import { placePactAltars, type FloorPacts } from "./pacts";
+import { placeGolden, type FloorGolden } from "./golden";
 import type { ActorSpawn, EncounterConfig, EncounterRoom, EncounterRoomType } from "./encounterTypes";
 import {
 	BOSS_FLOOR_EVERY,
@@ -468,6 +475,16 @@ export interface EndlessFloorLayout {
 	 * piece). Absent: no vault (option off, below VAULT.fromFloor, a miss, no eligible room, the tutorial's floors).
 	 */
 	readonly vault?: VaultPlan;
+	/**
+	 * The shrine room's pact altars (./pacts.ts placePactAltars, docs/FORTUNE.md PS1). Absent: no shrine room, no fit
+	 * (the classic shrine stays), or the tutorial's hand-built floors.
+	 */
+	readonly pactAltars?: FloorPacts;
+	/**
+	 * The floor's Goldling room, if it rolled one (./golden.ts placeGolden, docs/FORTUNE.md GE1): the room id, its floor
+	 * rectangle and walk mask. Absent: no Goldling on this floor (and always on the tutorial's hand-built floors).
+	 */
+	readonly golden?: FloorGolden;
 }
 
 /** Opt-in parts of an endless floor (buildEndlessFloor). Absent or empty: the floor exactly as before them. */
@@ -515,11 +532,17 @@ export function buildEndlessFloor(
 	// above moves.
 	const input = { seed: params.seed, dungeon: d, encounter, roomSpawns, spawn, stairwell };
 	const pellets = placePellets(input, floor, breakables);
-	// The vault runs last, on its own rng stream (./vault.ts), reading everything above: nothing above moves. Its chest
+	// The vault runs next, on its own rng stream (./vault.ts), reading everything above: nothing above moves. Its chest
 	// is appended after every piece, so loot slots and pellet cells never include it.
 	const vault =
 		options?.vaults === true ? placeVault(input, floor, breakables, pellets, options.vaultOverride) : undefined;
 	const pieces = vault !== undefined ? [...breakables, vaultChest(vault)] : breakables;
+	// Pact altars, drawing nothing, reading the layout, the pieces (the chest included) and the pellets: nothing above
+	// moves.
+	const pactAltars = placePactAltars(input, pieces, pellets);
+	// The Goldling runs last, on its own rng stream (./golden.ts), reading the encounter rooms and the room spawns:
+	// nothing above moves.
+	const golden = placeGolden({ seed: params.seed, dungeon: d, encounter, roomSpawns }, floor);
 	return {
 		floor,
 		seed: params.seed,
@@ -538,5 +561,7 @@ export function buildEndlessFloor(
 		breakableLoot,
 		pellets,
 		vault,
+		pactAltars,
+		golden,
 	};
 }

@@ -75,6 +75,12 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		"enemy.stormcaller": "#b0c0f0",
 		"enemy.warbanner": "#f0e0a0",
 		"enemy.reaper": "#507060",
+		// Roblox port (docs/FORTUNE.md FD9, FO6): the Goldling, a bright pure gold. FD9's deep old gold #c08000 was 25.5
+		// CIE76 from the telegraph orange; this one keeps the bar every enemy colour keeps, >= 40 from the pink enemy
+		// bullet, its outline, the telegraph and the outline red (nearest: telegraph 44.5; fortuneReport's
+		// GOLDEN_ENEMY_COLOR_RULES), and is >= 43 from every other enemy colour but the boss accent (23.6: gold by nature,
+		// like the swarmer's 22.6).
+		"enemy.golden": "#f5c400",
 		boss: "#d9c24a",
 		telegraph: "#ff8a3d",
 		// Roblox port (enemy outline plan E1): hostile red, >= 3.4:1 on every biome floor and wall, CIE76 63 from
@@ -214,6 +220,16 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		"treasure.common": "#d7d0c0",
 		"treasure.rare": "#ea5c66",
 		"treasure.legendary": "#ebc444",
+		// Roblox port (docs/FORTUNE.md FO6): Fortune. The Horde is a hot crimson (its room's edges flash it, its chip,
+		// shouts and x2 pops): the one red >= 40 CIE76 from both the telegraph orange (48.4) and the pink enemy bullet
+		// (51.7), 3.7:1 on the darkest biome floor; it sits beside combo.carnage (8.3) and the enemy outline red (15.5),
+		// all three hostile-and-hot on purpose. Greed is the Goldling's treasure gold (44.4 from the telegraph, its
+		// nearest danger; 9.4:1). The coins a lighter gold, 35.5 from the pellet yellow (the bar is 30) and 45.9 from the
+		// telegraph, >= 10.9:1. Every check: fortuneReport, printed by theme/fortune.spec.ts.
+		"roomEdge.horde": "#ff0040",
+		"pact.greed": "#ffc800",
+		"pact.horde": "#ff0040",
+		"golden.coin": "#ffdc5a",
 	},
 	// Roblox port (docs/VOID_DECOR.md VD1): `shoulder` is the wall darkened in linear light (ancient x0.95, molten x0.75,
 	// frost x0.9, grim x0.8, verdant x0.9: as far as the "nearer the wall than the floor" rule lets each go; the ancient
@@ -286,6 +302,8 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		"enemy.stormcaller": PLACEHOLDER,
 		"enemy.warbanner": PLACEHOLDER,
 		"enemy.reaper": PLACEHOLDER,
+		// Roblox port (docs/FORTUNE.md FD9): the Goldling (a small gold block).
+		"enemy.golden": PLACEHOLDER,
 		"boss.1": PLACEHOLDER,
 		"boss.2": PLACEHOLDER,
 		"boss.3": PLACEHOLDER,
@@ -355,6 +373,8 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		"treasure.chest": PLACEHOLDER,
 		"treasure.chestopen": PLACEHOLDER,
 		"treasure.cage": PLACEHOLDER,
+		// Roblox port (docs/FORTUNE.md FO6): the pact altar, a stone plinth until art exists.
+		"pact.altar": PLACEHOLDER,
 		"sfx.player.shoot": SILENT,
 		"sfx.player.roll": SILENT,
 		"sfx.player.hurt": SILENT,
@@ -465,6 +485,17 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		"sfx.treasure.unlock": SILENT,
 		"sfx.treasure.open": SILENT,
 		"sfx.jingle.treasure": SILENT,
+		// Roblox port (docs/FORTUNE.md FO6): a pact taken; the Horde's horn, second wave and x2; the Goldling's appearance,
+		// hit, jackpot and escape. Silent until clips are picked (FO10); each falls back to an existing clip meanwhile
+		// (shared/view/audio SFX_FALLBACK).
+		"sfx.pact.take": SILENT,
+		"sfx.horde.horn": SILENT,
+		"sfx.horde.wave": SILENT,
+		"sfx.horde.double": SILENT,
+		"sfx.golden.appear": SILENT,
+		"sfx.golden.hit": SILENT,
+		"sfx.golden.jackpot": SILENT,
+		"sfx.golden.escape": SILENT,
 		"music.menu": SILENT,
 		"music.biome.1": SILENT,
 		"music.biome.2": SILENT,
@@ -504,6 +535,7 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		"enemy.stormcaller.name": "Stormcaller",
 		"enemy.warbanner.name": "Warbanner",
 		"enemy.reaper.name": "Reaper",
+		"enemy.golden.name": "Goldling",
 		"breakable.barrel.name": "Barrel",
 		"breakable.crate.name": "Crate",
 		"boss.1.name": "Act I Boss",
@@ -718,6 +750,9 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		"score.source.sweep": "Sweeps",
 		// Roblox port (docs/TREASURE.md TR6): the vault chests opened.
 		"score.source.treasure": "Vaults",
+		// Roblox port (docs/FORTUNE.md FO6): Fortune's sources (the Horde's doubled half; the Goldling's coins and jackpot).
+		"score.source.horde": "Horde",
+		"score.source.golden": "Goldling",
 		// M5: leaderboards.
 		"hud.pause.leaderboard": "Leaderboards",
 		"hud.leaderboard.title": "Leaderboards",
@@ -1192,6 +1227,8 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		// docs/RUN_RECAP.md CM3: a party run's stamp in place of PERFECT, and with a team perfect streak from 2
 		"room.clear.teamPerfect": "TEAM PERFECT",
 		"room.clear.teamStreak": "TEAM PERFECT x{n}",
+		// docs/FORTUNE.md FO6: a Horde room's last segment, the doubled half (like the other bonuses, with a `+`)
+		"room.clear.line.horde": "Horde x2 +{points}",
 		// --- hud.combo.* (docs/COMBO.md CB3: the combo's tier names, the break and the lapse's best) -------------
 		"hud.combo.rampage": "RAMPAGE",
 		"hud.combo.carnage": "CARNAGE",
@@ -1226,6 +1263,31 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		"bestiary.affix.vengeful": "Vengeful: bursts into a ring when it dies",
 		// docs/PELLETS.md PL14 (PD16): the power pellet's first sighting in a real run
 		"bestiary.pellet.power": "Power pellet: grab it to turn every enemy bullet into points",
+		// docs/FORTUNE.md FO6: the Goldling's first sighting
+		"bestiary.golden": "A Goldling! Catch it before it escapes!",
+		// --- pact.* / Fortune (docs/FORTUNE.md FO6: the shrine room's two altars, their cards (`{curse}` the curse's name,
+		// `{key}` the shrine key) and the dimmed altar's lines; the Greed deal's draft title; the Horde's chip and floor
+		// shouts; the Goldling's shout and escape line, `{points}` formatted by the view) --------------------------------
+		"pact.greed.title": "PACT OF GREED",
+		"pact.greed.take": "Take: {curse}",
+		"pact.greed.gain": "Gain: choose a LEGENDARY now",
+		"pact.horde.title": "PACT OF THE HORDE",
+		"pact.horde.take": "Next room: twice the enemies",
+		"pact.horde.gain": "Pays: twice the score",
+		"pact.accept": "{key} Accept",
+		"pact.dim.taken": "Already taken",
+		"pact.dim.noCurse": "No curses left",
+		"pact.dim.noLegendary": "No legendary to draw",
+		"pact.dim.noRoom": "No room left to rouse",
+		"pact.dim.unable": "Not available",
+		"hud.draft.title.greed": "PACT OF GREED",
+		"hud.chip.horde": "HORDE · next room x2",
+		"fx.horde.shout": "HORDE x2",
+		"fx.horde.wave": "WAVE 2",
+		"fx.golden.shout": "GOLDLING!",
+		"fx.golden.escaped": "It got away!  +{points} banked",
+		// docs/FORTUNE.md FO7: a Horde room kill's score pop, the kill pop's `+{points}` with the x2 mark
+		"hud.score.pop.horde": "+{points} x2",
 		// --- daily.* (docs/DAILY.md DS9 / DS11 / DS12: the main menu's Daily card and podium, the leaderboard tabs, the
 		// run-over daily block, the lobby world toggle; numbers arrive formatted by the view) ---------------------------
 		"daily.card.title": "DAILY #{label} · {date}",

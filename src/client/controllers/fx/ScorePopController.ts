@@ -17,10 +17,13 @@ import {
 	scorePopAlpha,
 	scorePopRise,
 	scorePopTones,
-	type ScorePopTone,
+	ScorePopTone,
 } from "shared/view/fx";
 import { HUD_STRINGS } from "shared/view/hud";
+import { PACTS_VIEW, PACT_STRINGS, inHordeRoom } from "shared/view/pacts";
 import { PELLETS_VIEW, mergePelletPops, pelletPopAlpha, pelletPopRise, type PelletPop } from "shared/view/pellets";
+import { GOLDEN_VIEW, jackpotPopMask } from "shared/view/golden";
+import { GOLDEN_COIN_ROLE } from "shared/theme";
 import { SimController } from "../game/SimController";
 import { ThemeController } from "../game/ThemeController";
 import { FxTrackerController } from "./FxTrackerController";
@@ -103,8 +106,17 @@ const KILL_POP_ALPHA = (age: number): number => scorePopAlpha(age);
  * pop.scale of a kill pop's glyphs, a shorter life and rise; reduced motion: a fade in place), uiAccent like a kill,
  * with the same damageNumbers gate.
  *
+ * The Goldling (docs/FORTUNE.md FO8): every RunView.golden.hits entry pops its coins ("+points") in a fourth pool
+ * (GOLDEN_VIEW.pop: glyph scale, lift, maxAlive; the pellets' shorter rise; golden.coin), and the catch's jackpot pops in
+ * a fifth, big one (GOLDEN_VIEW.jackpotPop, golden.coin) INSTEAD of its kill pop (jackpotPopMask: the kill pop with the
+ * catch's exact x, z and points stays out of the kill pool). Same life, fade and damageNumbers gate.
+ *
  * Gold Rush (docs/BUILDS.md BU6): a kill pop that matches a RunView.builds.goldRush record (scorePopTones) is that
  * kill's own pop, in the kill pool, coloured BUILD_FX_VIEW.goldRush.role instead of uiAccent (never a second pop).
+ *
+ * Pacts' Horde (docs/FORTUNE.md FO7): a kill pop inside the roused horde room (shared/view/pacts inHordeRoom) is drawn
+ * in PACTS_VIEW.horde.popRole with the x2 mark (`hud.score.pop.horde`; its points are already the doubled award), over
+ * a Gold Rush tone (the room-wide x2 is the story there).
  */
 @Controller({})
 export class ScorePopController implements OnStart {
@@ -137,6 +149,26 @@ export class ScorePopController implements OnStart {
 		alpha: pelletPopAlpha,
 		rise: pelletPopRise,
 	};
+	private readonly goldenHits: PopLayer = {
+		pool: new ScorePopPool(GOLDEN_VIEW.pop.maxAlive),
+		views: [],
+		colors: [],
+		scale: GOLDEN_VIEW.pop.scale,
+		liftPx: GOLDEN_VIEW.pop.liftPx,
+		alpha: KILL_POP_ALPHA,
+		rise: pelletPopRise,
+	};
+	private readonly goldenJackpots: PopLayer = {
+		pool: new ScorePopPool(GOLDEN_VIEW.jackpotPop.maxAlive),
+		views: [],
+		colors: [],
+		scale: GOLDEN_VIEW.jackpotPop.scale,
+		liftPx: GOLDEN_VIEW.jackpotPop.liftPx,
+		alpha: KILL_POP_ALPHA,
+		rise: scorePopRise,
+	};
+	/** Per kill pop of the frame: it is a Goldling catch's jackpot (jackpotPopMask, reused). */
+	private readonly jackpotMask: boolean[] = [];
 	/** The frame's merged pellet pops (mergePelletPops, reused). */
 	private readonly pelletPops: PelletPop[] = [];
 	/** The kill pops' tones this frame (scorePopTones, reused). */
@@ -154,7 +186,11 @@ export class ScorePopController implements OnStart {
 		const holder = attachmentHolder(folder, "Anchors");
 		const stroke = pack.color("background");
 		const kills = this.kills;
-		kills.colors.push(pack.color("uiAccent"), pack.color(BUILD_FX_VIEW.goldRush.role));
+		kills.colors.push(
+			pack.color("uiAccent"),
+			pack.color(BUILD_FX_VIEW.goldRush.role),
+			pack.color(PACTS_VIEW.horde.popRole),
+		);
 		for (let i = 0; i < kills.pool.capacity; i++)
 			kills.views.push(new PopView(holder, folder, `Pop${i}`, kills.colors[0], stroke));
 		const jackpots = this.jackpots;
@@ -166,11 +202,20 @@ export class ScorePopController implements OnStart {
 		pellets.colors.push(kills.colors[0]);
 		for (let i = 0; i < pellets.pool.capacity; i++)
 			pellets.views.push(new PopView(holder, folder, `Pellet${i}`, pellets.colors[0], stroke));
+		const coin = pack.color(GOLDEN_COIN_ROLE);
+		const goldenLayers = [this.goldenHits, this.goldenJackpots];
+		for (let k = 0; k < goldenLayers.size(); k++) {
+			const layer = goldenLayers[k];
+			layer.colors.push(coin);
+			for (let i = 0; i < layer.pool.capacity; i++)
+				layer.views.push(new PopView(holder, folder, `Golden${k}_${i}`, coin, stroke));
+		}
 		// A locale switch (docs/LOCALIZATION.md L6): every label's font (the text is read on each show).
 		this.janitor.Add(
 			onLocaleChanged(() => {
 				const font = currentHudFont();
-				for (const view of [...kills.views, ...jackpots.views, ...pellets.views]) view.label.Font = font;
+				for (const layer of [kills, jackpots, pellets, ...goldenLayers])
+					for (const view of layer.views) view.label.Font = font;
 			}),
 		);
 
@@ -178,6 +223,7 @@ export class ScorePopController implements OnStart {
 			kills.pool.clear();
 			jackpots.pool.clear();
 			pellets.pool.clear();
+			for (const layer of goldenLayers) layer.pool.clear();
 			this.clock.reset();
 		});
 		RunService.BindToRenderStep(RENDER_STEP, Enum.RenderPriority.Camera.Value + RENDER_ORDER.viewsAfterCamera, () =>
@@ -195,14 +241,28 @@ export class ScorePopController implements OnStart {
 		const kills = this.kills;
 		const jackpots = this.jackpots;
 		const pellets = this.pellets;
+		const goldenHits = this.goldenHits;
+		const goldenJackpots = this.goldenJackpots;
 		if (!settings.damageNumbers) {
 			kills.pool.clear();
 			jackpots.pool.clear();
 			pellets.pool.clear();
+			goldenHits.pool.clear();
+			goldenJackpots.pool.clear();
 		} else {
 			const pops = run.scorePops;
 			const tones = scorePopTones(pops, run.builds.goldRush, this.tones);
-			for (let i = 0; i < pops.size(); i++) kills.pool.add(pops[i].x, pops[i].z, pops[i].points, now, tones[i]);
+			const state = run.state;
+			const jackpot = jackpotPopMask(pops, run.golden.caught, this.jackpotMask);
+			for (let i = 0; i < pops.size(); i++) {
+				const p = pops[i];
+				if (jackpot[i]) goldenJackpots.pool.add(p.x, p.z, p.points, now);
+				else {
+					const tone = inHordeRoom(state, p.x, p.z) ? ScorePopTone.HORDE : tones[i];
+					kills.pool.add(p.x, p.z, p.points, now, tone);
+				}
+			}
+			for (const h of run.golden.hits) goldenHits.pool.add(h.x, h.z, h.points, now);
 			for (const j of run.builds.jackpots) jackpots.pool.add(j.x, j.z, j.amount, now);
 			for (const p of mergePelletPops(run.pellets.eaten, this.pelletPops, run.pellets.power))
 				pellets.pool.add(p.x, p.z, p.points, now);
@@ -211,6 +271,8 @@ export class ScorePopController implements OnStart {
 		this.drawLayer(kills, now, motion);
 		this.drawLayer(jackpots, now, motion);
 		this.drawLayer(pellets, now, motion);
+		this.drawLayer(goldenHits, now, motion);
+		this.drawLayer(goldenJackpots, now, motion);
 	}
 
 	private drawLayer(layer: PopLayer, now: number, motion: number): void {
@@ -225,7 +287,8 @@ export class ScorePopController implements OnStart {
 				view.hide();
 				continue;
 			}
-			const text = this.theme.getPack().str(HUD_STRINGS.scorePop, { points: pool.points[i] });
+			const key = pool.tone[i] === ScorePopTone.HORDE ? PACT_STRINGS.popHorde : HUD_STRINGS.scorePop;
+			const text = this.theme.getPack().str(key, { points: pool.points[i] });
 			if (text !== view.text) {
 				view.text = text;
 				view.label.Text = text;

@@ -13,7 +13,10 @@
  *   - likewise (docs/PELLETS.md PL6), pelletColors.ts `pelletReport`: the pellets read on every floor and never as a
  *     bullet, a telegraph, a boost, a build effect or the player's outline;
  *   - likewise (docs/TREASURE.md TR6), treasureColors.ts `treasureReport`: a vault's tier colours read on every floor
- *     and the minimap and never as a bullet or a telegraph, its cage reads on every floor, a bullet reads on its chest.
+ *     and the minimap and never as a bullet or a telegraph, its cage reads on every floor, a bullet reads on its chest;
+ *   - likewise (docs/FORTUNE.md FO6), fortuneColors.ts `fortuneReport`: the Horde edge, the pacts and the Goldling's
+ *     coins read on every floor and never as a bullet or a telegraph (the coins never as a pellet), and the Goldling
+ *     never as a threat cue.
  */
 
 import { colorDifference, contrastRatio, isHexColor } from "./color";
@@ -24,6 +27,7 @@ import { AFFIX_ROLES, ENEMY_AURA_ROLE, ENEMY_GOO_ROLE, ENEMY_SHIELD_ROLE } from 
 import { buildReport } from "./buildColors";
 import { pelletReport } from "./pelletColors";
 import { treasureReport } from "./treasureColors";
+import { fortuneReport } from "./fortuneColors";
 
 /** What a variant colour report checks against what, and the bars (AFFIX_COLOR_RULES, GOO_COLOR_RULES). */
 export interface VariantColorRules {
@@ -212,6 +216,12 @@ const WHY = {
 		difference: "a vault's tier colour on the floor must never read as an enemy bullet or a telegraph",
 		bullet: "an enemy bullet must read on the vault's chest",
 	},
+	fortune: {
+		floor: "a Horde edge, a pact card or a Goldling coin must read on the floor",
+		difference:
+			"a Fortune colour must never read as an enemy bullet or a telegraph, a coin never as a pellet, the Goldling never as a threat cue",
+		apart: "",
+	},
 } as const;
 
 /** A report entry variantColorProblems words: the floor / difference checks, plus treasureReport's map / bullet. */
@@ -227,9 +237,9 @@ interface ProblemEntry {
 }
 
 /**
- * Every failed affix, goo, aura, build effect, pellet and treasure check as a validator message (validateManifest adds
- * them to its errors, path `colors.<role>`). `suffix(biome)` is the validator's forge-theme suffix for a biome ID
- * (" (crypt)").
+ * Every failed affix, goo, aura, build effect, pellet, treasure and Fortune check as a validator message
+ * (validateManifest adds them to its errors, path `colors.<role>`). `suffix(biome)` is the validator's forge-theme
+ * suffix for a biome ID (" (crypt)").
  */
 export function variantColorProblems(manifest: unknown, suffix: (biome: string) => string): Array<VariantColorProblem> {
 	const out = new Array<VariantColorProblem>();
@@ -240,6 +250,7 @@ export function variantColorProblems(manifest: unknown, suffix: (biome: string) 
 		{ entries: buildReport(manifest), why: WHY.build },
 		{ entries: pelletReport(manifest), why: WHY.pellet },
 		{ entries: treasureReport(manifest), why: WHY.treasure },
+		{ entries: fortuneReport(manifest), why: WHY.fortune },
 	];
 	for (const report of reports) {
 		for (const c of report.entries) {

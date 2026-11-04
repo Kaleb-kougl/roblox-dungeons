@@ -541,6 +541,16 @@ export interface TreasurePieceTheme {
 	readonly placeholder: PlaceholderVisual;
 }
 
+/** The pact altar (docs/FORTUNE.md FO6 / FO7): its asset ID, art and placeholder plinth (both altars draw it). */
+export interface PactAltarTheme {
+	/** Asset ID: `pact.altar`. */
+	readonly id: string;
+	/** Uploaded art, or undefined: draw `placeholder`. */
+	readonly art: WorldArt | undefined;
+	/** The placeholder primitive (a stone plinth; magenta when the pack lacks the ID). */
+	readonly placeholder: PlaceholderVisual;
+}
+
 export interface BiomeTheme {
 	readonly id: string;
 	readonly forgeTheme: ForgeTheme | undefined;
@@ -1211,6 +1221,18 @@ export class ThemeCore {
 		const art = def !== undefined ? this.worldArt(id, def, false) : undefined;
 		const role = (id === TREASURE_CHEST_OPEN_ID ? TREASURE_CHEST_ID : id) as ColorRole;
 		return { id, role, art, placeholder: this.placeholder(id) };
+	}
+
+	/**
+	 * The pact altar (docs/FORTUNE.md FO7, the view's accessor): its uploaded art (an image with pixelsPerTile, or a
+	 * sprite set with `idle`), else its placeholder plinth. Missing ID (required in every pack): warn once, the magenta
+	 * block. The ID is written out (fortune.ts PACT_ALTAR_ID's), not imported, like pellet().
+	 */
+	pactAltar(): PactAltarTheme {
+		const id = "pact.altar";
+		const def = this.asset(id);
+		const art = def !== undefined ? this.worldArt(id, def, false) : undefined;
+		return { id, art, placeholder: this.placeholder(id) };
 	}
 
 	/**

@@ -24,4 +24,8 @@ export * from "./pelletsData";
 export * from "./pellets";
 export * from "./vaultData";
 export * from "./vault";
+export * from "./pactsData";
+export * from "./pacts";
+export * from "./goldenData";
+export * from "./golden";
 export * from "./pathField";

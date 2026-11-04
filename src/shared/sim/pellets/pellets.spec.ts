@@ -46,12 +46,14 @@ import { buildDevRunConfig, buildEndlessRunConfig, type EndlessRunSetup } from "
 const SEED = 4242;
 const SETUP: EndlessRunSetup = buildEndlessRunConfig(SEED);
 /**
- * The endless config with pellets, without treasure rooms (docs/TREASURE.md TR5 appends their group and their score
- * source after the pellets'; this spec pins pellets as the last of each, as before treasure).
+ * The endless config without treasure rooms, pacts and the Goldling (docs/TREASURE.md TR5, docs/FORTUNE.md PS5 / GE3:
+ * every endless world sets them too; their groups follow pellets and their TREASURE / HORDE / GOLDEN sources pad the
+ * score past these), so pellets stay the last group and their sources the last ones here: what pellets add, alone.
  */
-const WITH: SimConfig = { ...SETUP.config, pellets: PELLETS_CONFIG, treasure: undefined };
-/** The endless config without pellets (every endless world sets them since PL5), nor treasure. */
-const WITHOUT: SimConfig = { ...SETUP.config, pellets: undefined, treasure: undefined };
+const BASE: SimConfig = { ...SETUP.config, treasure: undefined, pacts: undefined, golden: undefined };
+const WITH: SimConfig = { ...BASE, pellets: PELLETS_CONFIG };
+/** The endless config without pellets (every endless world sets them since PL5), nor treasure, pacts or the Goldling. */
+const WITHOUT: SimConfig = { ...BASE, pellets: undefined };
 
 function fresh(config: SimConfig = WITH, setup: { spawn?: { x: number; z: number } } = SETUP): SimState {
 	return createSimState(SEED, setup.spawn!.x, setup.spawn!.z, config);

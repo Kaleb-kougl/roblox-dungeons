@@ -28,7 +28,8 @@ import {
 	type SimState,
 } from "shared/sim";
 import { PLACEHOLDER_MANIFEST, ThemePack } from "shared/theme";
-import { frame, skipToFloor } from "shared/run/testing";
+import { PactKind, pactDraftKind } from "shared/sim";
+import { altarFloor, frame, pactsSetup, pressPact, skipToFloor } from "shared/run/testing";
 import {
 	BUILD_DUO_ROLE,
 	BUILD_EVOLVED_ROLE,
@@ -289,5 +290,24 @@ describe("the boss double draft and the card kinds on a live draft (BU9)", () =>
 		step(plain, frame(0, 0, DEBUG_FLOOR_BUTTON), PLAIN);
 		expect([plain.run!.players[0].draftOpen, draftRedealt(plain, 0)]).toEqual([1, false]);
 		expect(draftCardKinds(plain, 0, plain.run!.players[0].draftOffers).every((k) => k === CardKind.NEW)).toBe(true);
+	});
+});
+
+describe("a pact's mid-floor draft (docs/FORTUNE.md FO0)", () => {
+	it("Greed's one-deal Legendary deal on the floor after a boss floor is never a re-deal (no Pick again)", () => {
+		let checked = 0;
+		for (let seed = 1; seed <= 40 && checked === 0; seed++) {
+			const setup = pactsSetup(seed);
+			if (altarFloor(setup, 6, 6) !== 6) continue;
+			const s = createSimState(seed, setup.spawn!.x, setup.spawn!.z, setup.config);
+			skipToFloor(s, setup.config, 6);
+			pressPact(setup, s, PactKind.GREED);
+			expect(s.run!.players[0].draftOpen).toBe(1);
+			expect(s.builds!.players[0].draftsLeft).toBe(1); // 1 < bossFloorDrafts: read alone it would say "re-deal"
+			expect(pactDraftKind(s, 0)).toBe(PactKind.GREED);
+			expect(draftRedealt(s, 0)).toBe(false);
+			checked++;
+		}
+		expect(checked).toBe(1);
 	});
 });

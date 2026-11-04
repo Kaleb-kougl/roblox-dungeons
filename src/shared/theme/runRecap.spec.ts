@@ -9,6 +9,7 @@ import { PLACEHOLDER_MANIFEST } from "./packs/placeholder";
 import { RECAP_STRING_KEYS, TEAM_MOMENT_AUDIO_IDS, TEAM_MOMENT_STRING_KEYS } from "./runRecap";
 import { placeholders, templateProblem } from "./strings";
 import { TREASURE_AUDIO_IDS, TREASURE_STRING_KEYS } from "./treasure";
+import { FORTUNE_AUDIO_IDS, FORTUNE_STRING_KEYS } from "./fortune";
 import { deepClone, sortedKeys, type Obj } from "./util";
 import { validateManifest } from "./validate";
 
@@ -70,15 +71,16 @@ describe("run recap and co-op moments: contract", () => {
 		expect(all).toEqual(ENGLISH.map(([k]) => k));
 		expect(RECAP_STRING_KEYS.size()).toBe(29);
 		expect(TEAM_MOMENT_STRING_KEYS.size()).toBe(4);
-		// docs/TREASURE.md TR6's strings come after them
-		expect(tail(REQUIRED_STRING_KEYS, all.size(), TREASURE_STRING_KEYS.size())).toEqual(all);
+		// docs/TREASURE.md TR6's strings come after them, then docs/FORTUNE.md FO6's
+		const after = TREASURE_STRING_KEYS.size() + FORTUNE_STRING_KEYS.size();
+		expect(tail(REQUIRED_STRING_KEYS, all.size(), after)).toEqual(all);
 		expect(new Set(REQUIRED_STRING_KEYS).size()).toBe(REQUIRED_STRING_KEYS.size());
 	});
 
 	it("appends the two sounds to PORT_AUDIO_EVENTS: required, sfx; SILENT in the placeholder, a clip in vale (CM7)", () => {
 		expect([...TEAM_MOMENT_AUDIO_IDS]).toEqual(["sfx.room.teamperfect", "sfx.player.syncparry"]);
-		// docs/TREASURE.md TR6's four sounds come after them
-		const skip = TREASURE_AUDIO_IDS.size();
+		// docs/TREASURE.md TR6's four sounds come after them, then docs/FORTUNE.md FO6's eight
+		const skip = TREASURE_AUDIO_IDS.size() + FORTUNE_AUDIO_IDS.size();
 		expect(tail(PORT_AUDIO_EVENTS, TEAM_MOMENT_AUDIO_IDS.size(), skip)).toEqual([...TEAM_MOMENT_AUDIO_IDS]);
 		for (const id of TEAM_MOMENT_AUDIO_IDS) {
 			expect([id, has(REQUIRED_ASSET_IDS, id), slotFor(id)?.soundGroup]).toEqual([id, true, "sfx"]);

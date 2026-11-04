@@ -102,6 +102,7 @@ describe("archetype registry", () => {
 			"reaper",
 			"stormcaller",
 			"warbanner",
+			"golden", // band PORT_BAND_FORTUNE (docs/FORTUNE.md): index 18
 		]);
 		expect(band(DUMMY_KIND)).toBe(PORT_BAND_TUTORIAL);
 		expect(band(BOSS_DEMONLORD_ID)).toBe(PORT_BAND_BOSSES);

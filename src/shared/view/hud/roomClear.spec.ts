@@ -37,6 +37,7 @@ describe("the room clear celebration's strings", () => {
 			ROOM_CLEAR_STRINGS.fly,
 			ROOM_CLEAR_STRINGS.pellets,
 			ROOM_CLEAR_STRINGS.sweep,
+			ROOM_CLEAR_STRINGS.horde,
 		];
 		expect(keys).toEqual([...ROOM_CLEAR_STRING_KEYS]);
 		for (const key of keys) expect([key, REQUIRED_STRING_KEYS.includes(key)]).toEqual([key, true]);
@@ -123,6 +124,8 @@ function clearOf(over: Partial<RoomClear>): RoomClear {
 		fastPoints: 0,
 		pelletPoints: 0,
 		sweepPoints: 0,
+		hordePoints: 0,
+		hordeBonusPoints: 0,
 		x: 0,
 		z: 0,
 		slot: -1,

@@ -489,6 +489,7 @@ describe("boss.demonlord registry and data", () => {
 			"reaper",
 			"stormcaller",
 			"warbanner",
+			"golden", // band PORT_BAND_FORTUNE (docs/FORTUNE.md): index 18
 		]); // band-3 room enemies (docs/ENEMY_VARIANTS.md), then band 4
 		expect(archetypeAt(8)).toBe(BOSS_DEMONLORD);
 	});

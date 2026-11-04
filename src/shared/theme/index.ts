@@ -136,6 +136,17 @@ export {
 	type TreasureColorEntry,
 	type TreasureColorRules,
 } from "./treasureColors";
+// Roblox port (docs/FORTUNE.md FO6): Fortune's altar, roles, sounds, strings and coin effect, and their colour rules.
+export * from "./fortune";
+export {
+	FORTUNE_COIN_PELLET_RULES,
+	FORTUNE_COLOR_RULES,
+	GOLDEN_ENEMY_COLOR_RULES,
+	MIN_GOLDEN_COIN_PELLET_DIFFERENCE,
+	fortuneReport,
+	type FortuneColorEntry,
+	type FortuneColorRules,
+} from "./fortuneColors";
 export * from "./placeholders";
 export {
 	DEFAULT_PACK_ID,
@@ -153,6 +164,7 @@ export {
 	type BreakableTheme,
 	type PelletTheme,
 	type TreasurePieceTheme,
+	type PactAltarTheme,
 	type DecorArt,
 	type FrameUV,
 	type FxArt,
@@ -182,6 +194,7 @@ export {
 	type Breakable,
 	type Pellet,
 	type TreasurePiece,
+	type PactAltar,
 	type DecorPiece,
 	type FrameRect,
 	type FxSprite,

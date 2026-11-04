@@ -25,7 +25,9 @@
  *      with nobody able to take it the pedestal stays (inert)
  *   5. the shrine: unused, the first living player (index order) whose centre is within SHRINE_RADIUS of it with a
  *      SHRINE_BUTTON (SKILL1) press edge and a curse left: a curse drawn from THEIR unused set (one rngInt draw),
- *      applied to them, plus addCurse (the team score x +0.25); the shrine is then used for everyone
+ *      applied to them, plus addCurse (the team score x +0.25); the shrine is then used for everyone. Pacts
+ *      (docs/FORTUNE.md, SimConfig.pacts): OFF on a floor whose pact altars stand (state.pacts.room >= 0); the altars
+ *      (pacts/stepPacts.ts, called by step.ts right after stepRun) take its place. A floor without them keeps it.
  *
  * The draft (stepDraft, every frozen tick; per player, index order, each with their own input): draftTicks += 1; the
  * stick picks the card (draftColumn: the move vector's screen-horizontal component, left / centre / right beyond a
@@ -236,6 +238,21 @@ export function openDraft(state: SimState, playerIndex: number, floorCleared: nu
 			: drawBoonOffers(state, p.boons, floorCleared);
 	if (bp !== undefined) bp.draftsLeft = offers.size() > 0 ? deals : 0;
 	if (offers.size() === 0) return false;
+	dealOffers(state, p, offers);
+	return true;
+}
+
+/**
+ * Opens player `playerIndex`'s draft on `offers` already drawn (pacts' Greed deal, docs/FORTUNE.md PS3, opened mid-floor
+ * through the same machinery as every draft: the world freezes until it closes). One deal: with builds draftsLeft = 1,
+ * so the confirm closes it (no re-deal) and the next floor's draft opens as always. False (nothing opens) when `offers`
+ * is empty or the player is not there.
+ */
+export function openDealtDraft(state: SimState, playerIndex: number, offers: number[]): boolean {
+	const p = runPlayer(state, playerIndex);
+	if (p === undefined || offers.size() === 0) return false;
+	const bp = buildPlayer(state, playerIndex);
+	if (bp !== undefined) bp.draftsLeft = 1;
 	dealOffers(state, p, offers);
 	return true;
 }
@@ -499,8 +516,9 @@ export function stepRun(
 		}
 	}
 
-	// 5. The shrine: the first living player in its zone (index order) pressing SHRINE_BUTTON with a curse left.
-	if (r.shrineRoom >= 0 && r.shrineUsed === 0) {
+	// 5. The shrine: the first living player in its zone (index order) pressing SHRINE_BUTTON with a curse left. Off
+	// where pact altars stand (docs/FORTUNE.md: read as a plain field, so this module never requires sim/pacts).
+	if (r.shrineRoom >= 0 && r.shrineUsed === 0 && !((state.pacts?.room ?? -1) >= 0)) {
 		const room = encounter.rooms[r.shrineRoom];
 		for (let i = 0; i < n && room !== undefined; i++) {
 			const pl = playerAt(state, i);
@@ -521,11 +539,15 @@ export function stepRun(
 	}
 }
 
-/** True when the player stands in the current floor's unused shrine zone with a curse left to take (HUD hint). */
+/**
+ * True when the player stands in the current floor's unused shrine zone with a curse left to take (HUD hint). False on
+ * a floor whose pact altars stand (the classic zone is off there; pacts/stepPacts.ts pactAltarAt is their hint).
+ */
 export function atShrine(state: Readonly<SimState>, config: Readonly<SimConfig>, playerIndex: number): boolean {
 	const r = state.run;
 	const p = runPlayer(state, playerIndex);
 	if (r === undefined || p === undefined || r.shrineRoom < 0 || r.shrineUsed !== 0) return false;
+	if ((state.pacts?.room ?? -1) >= 0) return false;
 	if (p.curses.size() >= CURSE_COUNT) return false;
 	const room = endlessFloorWorld(state, config)?.config.encounter?.rooms[r.shrineRoom];
 	const pl = playerAt(state, playerIndex);

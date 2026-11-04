@@ -1,6 +1,7 @@
 // The vertical slice end to end (M1 endless + M2 scoring and in-run progression + M3 segmented validation + M5 board
 // eligibility): the recorded seed-1337 endless run (shared/run/testing recordEndlessRun: debug skips, a relic and a
-// curse on floor 2, a boon draft after every floor, a boss kill at Depth 1, two stairwells walked) is scored, replays
+// curse on floor 2 (the Pact of Greed: floor 2 has pact altars, docs/FORTUNE.md; and the Horde, which lapses), a boon
+// draft after every floor, a boss kill at Depth 1, two stairwells walked) is scored, replays
 // to the same hash and score, and, played through a ranked LiveRun that cuts a segment on every floor change,
 // validates through the server's SegmentedValidator with the same final hash and score.
 import { describe, expect, it } from "@rbxts/jest-globals";
@@ -31,6 +32,7 @@ import {
 	runMods,
 	type Recording,
 	type SimState,
+	PactKind,
 } from "shared/sim";
 import { LiveRun, RANKED_WORLD_KIND } from "shared/play";
 import { LEADERBOARD_ELIGIBLE_WORLDS } from "shared/leaderboard";
@@ -181,7 +183,10 @@ describe("an endless run is scored", () => {
 		expect(relicFloor).toBe(2);
 		// Builds (docs/BUILDS.md BU2): seven floor drafts, the one after the floor 5 boss dealt twice (BUD4); a card may
 		// level an owned boon, so the owned boons are the distinct ones in the order first taken, at their pick counts.
-		expect(drv.drafted.size()).toBe(7 + 1);
+		// Pacts (docs/FORTUNE.md PS5): floor 2's shrine has altars, so the curse is the Pact of Greed's, and its
+		// Legendary deal is one more pick.
+		expect(drv.state.pacts!.taken[PactKind.GREED]).toBe(1);
+		expect(drv.drafted.size()).toBe(7 + 1 + 1);
 		const distinct: number[] = [];
 		for (const card of drv.drafted) {
 			const b = cardBoon(card);

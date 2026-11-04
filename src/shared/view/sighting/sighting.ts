@@ -41,6 +41,8 @@ export const ARCHETYPE_SIGHTINGS: ReadonlyMap<string, string> = new Map([
 	["stormcaller", "stormcaller"],
 	["warbanner", "warbanner"],
 	["reaper", "reaper"],
+	// docs/FORTUNE.md FO6: the Goldling
+	["golden", "golden"],
 ]);
 
 /** Archetype index -> sighting id, built once (an unregistered id is left out). */

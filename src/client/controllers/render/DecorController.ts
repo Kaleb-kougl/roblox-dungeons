@@ -458,10 +458,11 @@ export class DecorController implements OnStart {
 		if (!paused) {
 			let f = this.directorFrame;
 			if (f === undefined) {
-				f = { state, events: ctx.run.frameEvents, scene, dt, motion };
+				f = { state, config: ctx.config, events: ctx.run.frameEvents, scene, dt, motion };
 				this.directorFrame = f;
 			} else {
 				f.state = state;
+				f.config = ctx.config;
 				f.events = ctx.run.frameEvents;
 				f.scene = scene;
 				f.dt = dt;

@@ -425,10 +425,13 @@ describe("pellets: the clear, the Sweep", () => {
 
 describe("pellets: determinism", () => {
 	it("pickups move only the score and pellets groups: the rng and every other group match a run without pellets", () => {
-		const a = devRun();
+		// Both without pacts (docs/FORTUNE.md PS5: their group follows this one; nobody takes a pact here anyway).
+		const dev = devRun();
+		const withPellets: SimConfig = { ...dev.config, pacts: undefined };
+		const a: Run = { config: withPellets, s: createSimState(SEED, dev.s.player.x, dev.s.player.z, withPellets) };
 		const b: Run = {
-			config: { ...a.config, pellets: undefined },
-			s: createSimState(SEED, a.s.player.x, a.s.player.z, { ...a.config, pellets: undefined }),
+			config: { ...withPellets, pellets: undefined },
+			s: createSimState(SEED, a.s.player.x, a.s.player.z, { ...withPellets, pellets: undefined }),
 		};
 		const k = recordWith(a.s, 8);
 		const list = regular(a.s, k);
@@ -443,10 +446,12 @@ describe("pellets: determinism", () => {
 		expect(a.s.rngState).toBe(b.s.rngState);
 		const la = hashLayout(a.s);
 		const lb = hashLayout(b.s);
-		// Matched by name: the pellets group sits before treasure (docs/TREASURE.md TR5, last).
+		// Matched by name: the pellets group sits before treasure (docs/TREASURE.md TR5) and the Goldling's.
 		for (let g = 0; g < lb.groups.size(); g++) {
 			const gb = lb.groups[g];
 			if (gb.name === SCORE_SUBSYSTEM) continue;
+			// By name: treasure's (docs/TREASURE.md TR5) and the Goldling's group (docs/FORTUNE.md GE3) follow pellets
+			// in `a` and move up one index in `b`.
 			const ga = la.groups.find((x) => x.name === gb.name)!;
 			const va: number[] = [];
 			const vb: number[] = [];
@@ -454,9 +459,10 @@ describe("pellets: determinism", () => {
 			for (let i = gb.start; i < gb.finish; i++) vb.push(lb.values[i]);
 			expect([ga.name, ...va]).toEqual([gb.name, ...vb]);
 		}
-		expect(la.groups[la.groups.size() - 2].name).toBe(PELLETS_SUBSYSTEM);
-		expect(la.groups[la.groups.size() - 1].name).toBe(TREASURE_SUBSYSTEM);
 		expect(la.groups.size()).toBe(lb.groups.size() + 1);
+		const namesA = la.groups.map((x) => x.name);
+		expect(namesA.includes(PELLETS_SUBSYSTEM)).toBe(true);
+		expect(namesA.indexOf(TREASURE_SUBSYSTEM)).toBe(namesA.indexOf(PELLETS_SUBSYSTEM) + 1);
 		const sa = a.s.score!;
 		const sb = b.s.score!;
 		expect([sa.combo, sa.comboTimer]).toEqual([sb.combo, sb.comboTimer]);

@@ -28,16 +28,18 @@ export interface ValeFxLook {
 const DUST: ColorRole = "uiTextDim";
 
 /**
- * The fx IDs vale draws: every FX_IDS entry but the boost drops' effects (no art yet: docs/BOOSTS.md B8) and a vault
- * chest's light column (no art yet: docs/TREASURE.md TR9).
+ * The fx IDs vale draws: every FX_IDS entry but the boost drops' effects (no art yet: docs/BOOSTS.md B8), the
+ * Goldling's coin burst (no art yet: docs/FORTUNE.md FO10) and a vault chest's light column (no art yet:
+ * docs/TREASURE.md TR9).
  */
-export type ValeFxId = Exclude<FxId, BoostFxId | "fx.treasure.column">;
+export type ValeFxId = Exclude<FxId, BoostFxId | "fx.golden.coin" | "fx.treasure.column">;
 
 /**
  * FX_IDS that vale has no art for yet (absent from the pack: not drawn). docs/BOOSTS.md B8 vendors and maps the boost
- * effects; docs/TREASURE.md TR9 the treasure column (until then the open's column is the particle burst alone).
+ * drops' effects; docs/FORTUNE.md FO10 the Goldling's coin burst; docs/TREASURE.md TR9 the treasure column (until then
+ * the open's column is the particle burst alone).
  */
-export const VALE_FX_PENDING: ReadonlyArray<FxId> = [...BOOST_FX_IDS, "fx.treasure.column"];
+export const VALE_FX_PENDING: ReadonlyArray<FxId> = ["fx.golden.coin", ...BOOST_FX_IDS, "fx.treasure.column"];
 
 /** VALE_FX's IDs in FX_IDS order (FX_IDS without VALE_FX_PENDING). */
 export const VALE_FX_IDS: ReadonlyArray<ValeFxId> = FX_IDS.filter(

@@ -241,6 +241,8 @@ export class AudioController implements OnStart {
 				// docs/RUN_RECAP.md CM4: this near-miss frame's SYNC! (steps the co-op moments' parry half on first call).
 				this.team.syncs(),
 				treasure,
+				ctx.run.pacts,
+				ctx.run.golden,
 			);
 			for (let i = 0; i < this.cues.size(); i++) {
 				this.play(this.cues.id(i), this.cues.volume(i), this.cues.speed(i));

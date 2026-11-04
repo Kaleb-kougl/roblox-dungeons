@@ -184,8 +184,10 @@ describe("required IDs and strings", () => {
 		// + docs/PELLETS.md PL6: 3 port audio events (sfx.pellet.*), 2 pellets (pellet.normal / .power).
 		// + docs/RUN_RECAP.md CM4: 2 port audio events (sfx.room.teamperfect, sfx.player.syncparry).
 		// + docs/TREASURE.md TR6: 4 port audio events (sfx.treasure.*, sfx.jingle.treasure), 3 treasure looks.
+		// + docs/FORTUNE.md FD9: 1 enemy archetype (enemy.golden). + FO6: 8 port audio events (sfx.pact.take,
+		// sfx.horde.*, sfx.golden.*), the pact altar.
 		expect(REQUIRED_ASSET_IDS.size()).toBe(
-			60 + 1 + 2 + 2 + 37 + 5 + 4 + 2 + 1 + 5 + 2 + 4 + 9 + 2 + 1 + 5 + 1 + 6 + 3 + 2 + 2 + 4 + 3,
+			60 + 1 + 2 + 2 + 37 + 5 + 4 + 2 + 1 + 5 + 2 + 4 + 9 + 2 + 1 + 5 + 1 + 6 + 3 + 2 + 2 + 4 + 3 + 1 + 8 + 1,
 		);
 		expect(AUDIO_EVENTS.size()).toBe(20);
 		expect(new Set(REQUIRED_ASSET_IDS).size()).toBe(REQUIRED_ASSET_IDS.size());
@@ -207,9 +209,11 @@ describe("required IDs and strings", () => {
 		// + docs/PELLETS.md PL6: 2 room clear tally segments (ROOM_CLEAR_STRING_KEYS), bestiary.pellet.power
 		// + docs/RUN_RECAP.md RR3 / CM3: RECAP_STRING_KEYS (28, + the Chests highlight from docs/TREASURE.md),
 		// TEAM_MOMENT_STRING_KEYS (4) + docs/TREASURE.md TR6: TREASURE_STRING_KEYS (16)
+		// + docs/FORTUNE.md FD9: enemy.golden.name. + FO6: FORTUNE_STRING_KEYS (18), the Horde's tally segment
+		// (ROOM_CLEAR_STRING_KEYS), bestiary.golden (BESTIARY_STRING_KEYS); FO7: hud.score.pop.horde (in FORTUNE_STRING_KEYS)
 		const before =
 			41 + 1 + 2 + 4 * 3 + 1 + 3 + 5 + 13 + 10 + 8 + 2 + 2 + 4 + 7 + 17 + 7 + 3 + 64 + 22 + 52 + 5 + 5 + 2 + 1;
-		expect(REQUIRED_STRING_KEYS.size()).toBe(before + 28 + 1 + 4 + 16);
+		expect(REQUIRED_STRING_KEYS.size()).toBe(before + 28 + 1 + 4 + 16 + 1 + 19 + 1 + 1);
 		expect(new Set(REQUIRED_STRING_KEYS).size()).toBe(REQUIRED_STRING_KEYS.size());
 		expect(BIOMES.map((b) => b.forgeTheme)).toEqual(["ancient", "molten", "frost", "grim", "verdant"]);
 	});

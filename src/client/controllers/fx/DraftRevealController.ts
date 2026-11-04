@@ -5,7 +5,8 @@ import { clientStore, selectTutorialEnded } from "client/store";
 import { DRAFT_SLOT_Z_RAISED, DRAFT_SLOT_Z_REST, DRAFT_UI, resetDraftUi } from "client/ui";
 import { draftConfirmHeld, draftNeverRevealed } from "shared/play";
 import { isPortrait } from "shared/view";
-import { DRAFT_MIN_OPEN_TICKS, DRAFT_OFFER_COUNT } from "shared/sim";
+import { DRAFT_MIN_OPEN_TICKS, DRAFT_OFFER_COUNT, PactKind, pactDraftKind } from "shared/sim";
+import { GreedDealGap, draftTitleKey } from "shared/view/pacts";
 import type { JuiceSettings } from "shared/settings";
 import {
 	DRAFT_REVEAL_VIEW,
@@ -74,6 +75,10 @@ function localDraft(ctx: RunContext): LocalDraft | undefined {
  *     change; the selection only once settled (the card under the stick, or the one taken while leaving); the hint's
  *     keys once settled and the sim's draftReady; each slot's ray position (draftSlotOffsetX) and its z (raised while
  *     its card is drawn larger than the slot).
+ * Pacts (docs/FORTUNE.md FO7): Greed's Legendary deal opens mid-floor; its begin waits PACTS_VIEW.greed.dealDelaySec of
+ * unpaused real time after the draft opened (shared/view/pacts GreedDealGap: the take's pulse and toast first, the
+ * confirm held meanwhile like any open draft whose reveal has not begun), and the title reads `hud.draft.title.greed`
+ * (DRAFT_UI.titleKey from shared/sim pactDraftKind, written at the begin).
  * Cleared on run start / exit (and a new run counter), a floor change without a local draft, and the tutorial's end.
  * Registers with SimController (setDraftRevealDriver) and InputController (setDraftTapFilter), so neither injects
  * this (no Flamework cycle). Presentation and client input only: nothing here writes the sim.
@@ -83,6 +88,8 @@ export class DraftRevealController implements OnStart, DraftRevealDriver {
 	private readonly janitor = new Janitor();
 	private readonly reveal = new DraftReveal();
 	private readonly look = newDraftCardLook();
+	/** Greed's 0.5 s before its deal (docs/FORTUNE.md FO7). */
+	private readonly greedGap = new GreedDealGap();
 	/** The local draft's offers at begin (the overlay's content through the pick's exit fade). */
 	private offers: number[] = [];
 	/** Cards shown (the offers, or KV_DraftRevealDebug's count). */
@@ -188,12 +195,14 @@ export class DraftRevealController implements OnStart, DraftRevealDriver {
 			}
 		}
 		if (!open || (this.begun && ctx.floor !== this.floor)) this.begun = false;
-		if (open && me !== undefined && !this.begun && !never && this.stage.coverLifting()) {
+		const paused = ctx.live?.isPaused() === true || this.sim.isFrozen();
+		const greed = pactDraftKind(ctx.run.state, ctx.localIndex) === PactKind.GREED;
+		const gapDone = this.greedGap.step(open, greed, paused ? 0 : dt);
+		if (open && me !== undefined && !this.begun && !never && gapDone && this.stage.coverLifting()) {
 			this.begin(ctx, me, settings.reducedMotion);
 		}
 		this.wasOpen = open;
 
-		const paused = ctx.live?.isPaused() === true || this.sim.isFrozen();
 		if (!paused) {
 			const out = this.reveal.step(dt);
 			for (const c of out.cues) this.audio.playCue(c.id, c.volume, c.speed);
@@ -233,6 +242,7 @@ export class DraftRevealController implements OnStart, DraftRevealDriver {
 		this.chosen = NONE;
 		this.reveal.begin(beats, reducedMotion);
 		DRAFT_UI.again.write(draftRedealt(ctx.run.state, ctx.localIndex));
+		DRAFT_UI.titleKey.write(draftTitleKey(pactDraftKind(ctx.run.state, ctx.localIndex)));
 		for (let i = 0; i < DRAFT_OFFER_COUNT; i++) {
 			const ui = DRAFT_UI.cards[i];
 			if (i >= this.count) ui.model.write(undefined);
@@ -331,6 +341,7 @@ export class DraftRevealController implements OnStart, DraftRevealDriver {
 	/** No reveal: nothing drawn, nothing held (run start / exit, a floor change without a draft, the tutorial's end). */
 	private off(): void {
 		this.reveal.clear();
+		this.greedGap.reset();
 		this.begun = false;
 		this.floor = NONE;
 		this.wasOpen = false;

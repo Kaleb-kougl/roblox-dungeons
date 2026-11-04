@@ -49,6 +49,7 @@ import {
 	treasureUiRole,
 } from "./treasure";
 import { TREASURE_COLOR_RULES, treasureReport } from "./treasureColors";
+import { FORTUNE_AUDIO_IDS, FORTUNE_ROLES, FORTUNE_STRING_KEYS } from "./fortune";
 import { COLOR_ROLES } from "./types";
 import { deepClone, sortedKeys, type Obj } from "./util";
 import { validateManifest } from "./validate";
@@ -67,12 +68,16 @@ function packsToCheck(): Array<[string, Obj]> {
 	return out;
 }
 
-/** The last `n` entries of `list`, in order. */
-function tail(list: ReadonlyArray<string>, n: number): string[] {
+/** The last `n` entries of `list` before its last `skip` (docs/FORTUNE.md FO6's entries come after), in order. */
+function tail(list: ReadonlyArray<string>, n: number, skip = 0): string[] {
 	const out = new Array<string>();
-	for (let i = list.size() - n; i < list.size(); i++) out.push(list[i]);
+	const last = list.size() - skip;
+	for (let i = last - n; i < last; i++) out.push(list[i]);
 	return out;
 }
+
+/** Entries docs/FORTUNE.md FO6 appended after the treasure rooms' (fortune.spec.ts checks them). */
+const FORTUNE_AFTER = { assets: 1, roles: FORTUNE_ROLES.size(), audio: FORTUNE_AUDIO_IDS.size() } as const;
 
 function printEntry(tag: string, id: string, e: ReturnType<typeof treasureReport>[number]): void {
 	const value = e.check === "difference" ? fixed1(e.value) : `${fixed2(e.value)}:1`;
@@ -111,7 +116,7 @@ describe("treasure: contract", () => {
 		expect(requiredBaseAnimations(TREASURE)).toEqual(["idle"]);
 		expect([...TREASURE_IDS]).toEqual(["treasure.chest", "treasure.chestopen", "treasure.cage"]);
 		expect([TREASURE_CHEST_ID, TREASURE_CHEST_OPEN_ID, TREASURE_CAGE_ID]).toEqual([...TREASURE_IDS]);
-		expect(tail(REQUIRED_ASSET_IDS, TREASURE_IDS.size())).toEqual([...TREASURE_IDS]);
+		expect(tail(REQUIRED_ASSET_IDS, TREASURE_IDS.size(), FORTUNE_AFTER.assets)).toEqual([...TREASURE_IDS]);
 		for (const id of TREASURE_IDS) expect([id, slotFor(id)]).toEqual([id, TREASURE]);
 		// the sounds stay in the sfx slot, the column in fx (optional: not required)
 		for (const id of TREASURE_AUDIO_IDS) expect([id, slotFor(id)?.slot]).toEqual([id, "sfx"]);
@@ -128,7 +133,7 @@ describe("treasure: contract", () => {
 		}
 	});
 
-	it("the colour roles are COLOR_ROLES' last five; the UI tiers are the draft's boon.* roles", () => {
+	it("the colour roles are COLOR_ROLES' last five before Fortune's; the UI tiers are the draft's boon.* roles", () => {
 		const roles = [...TREASURE_PIECE_ROLES, ...TREASURE_FLOOR_ROLES];
 		expect(roles).toEqual([
 			"treasure.chest",
@@ -137,7 +142,7 @@ describe("treasure: contract", () => {
 			"treasure.rare",
 			"treasure.legendary",
 		]);
-		expect(tail(COLOR_ROLES as unknown as ReadonlyArray<string>, roles.size())).toEqual(roles);
+		expect(tail(COLOR_ROLES as unknown as ReadonlyArray<string>, roles.size(), FORTUNE_AFTER.roles)).toEqual(roles);
 		expect([...TREASURE_UI_ROLES]).toEqual([...BOON_RARITY_ROLES]);
 	});
 
@@ -148,7 +153,9 @@ describe("treasure: contract", () => {
 			"sfx.treasure.open",
 			"sfx.jingle.treasure",
 		]);
-		expect(tail(PORT_AUDIO_EVENTS, TREASURE_AUDIO_IDS.size())).toEqual([...TREASURE_AUDIO_IDS]);
+		expect(tail(PORT_AUDIO_EVENTS, TREASURE_AUDIO_IDS.size(), FORTUNE_AFTER.audio)).toEqual([
+			...TREASURE_AUDIO_IDS,
+		]);
 		for (const id of TREASURE_AUDIO_IDS) {
 			expect([id, has(REQUIRED_ASSET_IDS, id), slotFor(id)?.soundGroup]).toEqual([id, true, "sfx"]);
 			for (const p of sortedKeys(THEME_PACKS)) {
@@ -157,8 +164,9 @@ describe("treasure: contract", () => {
 		}
 	});
 
-	it("the strings: REQUIRED_STRING_KEYS' last sixteen, filled by every pack with the placeholders the view fills", () => {
-		expect(tail(REQUIRED_STRING_KEYS, TREASURE_STRING_KEYS.size())).toEqual([...TREASURE_STRING_KEYS]);
+	it("the strings: REQUIRED_STRING_KEYS' last sixteen before Fortune's, filled by every pack with the placeholders the view fills", () => {
+		const skip = FORTUNE_STRING_KEYS.size();
+		expect(tail(REQUIRED_STRING_KEYS, TREASURE_STRING_KEYS.size(), skip)).toEqual([...TREASURE_STRING_KEYS]);
 		expect(TREASURE_STRING_KEYS.size()).toBe(16);
 		expect(new Set(TREASURE_STRING_KEYS).size()).toBe(TREASURE_STRING_KEYS.size());
 		// like score.source.pellets, the source row is checked by the view (SCORE_SOURCE_KEYS), not required here
