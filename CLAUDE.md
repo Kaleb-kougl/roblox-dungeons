@@ -59,6 +59,7 @@ Record every ported module in `PROVENANCE.md` (ported module, source path, sourc
 | `docs/NEW_ENEMIES.md` | New enemies (five endless room archetypes from floor 2: Bomber rusher that blows up, Charger lane charge stunned by walls, Stormcaller lightning strike rows, Warbanner aura support, Reaper bullet spiral; band 4, `BulletKind.STRIKE`, the Warbanner aura in `actorMods`; gameplay): plan, NE0 findings, tasks NE0-NE14, decisions NED1-NED14 |
 | `docs/PELLETS.md` | Pellets (Pac-Man lines of small cubes laid on a fight's floor, collected while enemies live, a Sweep bonus for every one, a rare power pellet that turns every enemy bullet on the floor into points; tutorial room G with a sweep lock; gameplay): plan, as built, open owner calls, tasks PL0-PL15, decisions PD1-PD16 |
 | `docs/RUN_RECAP.md` | Run-over recap and co-op moments (one honest near-miss line, up to four counting highlights, Again in one press armed at 0.6 s and a faster retry; co-op TEAM PERFECT stamp / chip / streak / pulse rings and SYNC! parries; revives reserved; presentation only): plan, tasks RR0-RR11 / CM1-CM7, decisions RRD1-RRD11 / CMD1-CMD7 |
+| `docs/BOOKSHELVES.md` | Bookshelves (Dungeon Essential Kit bookcases, solid 1 x 1 cases flush in runs on rooms' far walls; a new `library` room theme plus a run in some `hall` rooms; endless layouts change): plan, tasks BK0-BK10, decisions BKD1-BKD10 |
 
 Decision log (deviations from `PLAN.md`):
 - **Art (docs/ART.md).** The theme contract gained a `"sprites"` kind (large pre-rendered cells, 1/4/8/16 screen-space
@@ -586,8 +587,8 @@ Decision log (deviations from `PLAN.md`):
   the power fly-in, tally segments `pellets` / `sweep` (a fold on the smallest phone), `KV_PelletDebug`. M1, every
   fixture and every replay without the flag replay exactly as before; endless and tutorial replays and scores changed
   (boards stay `_v1`, `DAILY.ruleset` 3 -> 5 with main merged). The chomp `sfx.pellet.eat` climbs the major scale over
-  a room's pellets (`pelletEatSpeed`). Studio check, the vale art upload, sounds, playtests (PL9 / PL15) and
-  four owner calls pending.
+  a room's pellets (`pelletEatSpeed`). Studio check, playtests (PL9 / PL15) and
+  four owner calls pending (vale pellet art uploaded 2026-11-03).
 - **Run-over recap and co-op moments (docs/RUN_RECAP.md).** Presentation plus telemetry only (no sim, dungeon, lockstep,
   hash, replay, fixture or score change; boards and records untouched). `RunView.recapTally` (shared/view/fx
   `RecapTally`, on LiveRun and LockstepClient, collected every tick: parries per player by the director's grouping,
@@ -613,6 +614,18 @@ Decision log (deviations from `PLAN.md`):
   re-read by shared/run `readRunRecapReport`, rate limited (`RUN_RECAP_RATE`) and taken once per run session the server
   issued (`RunRecapGate`) by TelemetryService; analytics only. Debug `KV_TeamMomentsDebug`, `KV_RetryTiming` (RR8's
   press -> control print). Studio check (RR10), the retry measurement (RR8) and the vale sounds (CM7) pending.
+
+- **Bookshelves (docs/BOOKSHELVES.md).** Gameplay (dungeon), same Forge option as solid decor (endless only). A new
+  solid kind `bookcase` (1 x 1, the Dungeon Essential Kit's case at 125 kit units a tile) stands flush in runs of
+  2-5 against far walls only (+X / +Z facings), with 2 non-walkable cells behind (`SOLID_DECOR.bookcase.backTiles`)
+  and never in front of a Forge torch or banner (`placeSolidDecor`'s trailing `hangs`). A new combat / elite theme
+  `library` (weights grim 0.12 / other 0.20; 2-3 runs, candle stands at their ends, maybe a statue; a room where no
+  run fits is dressed as plain) and a run of 2-3 in half the `hall` rooms; census 6.0 cases a floor. Decor plan: kind
+  `bookcase` (appended last to DECOR_KINDS, low, variant 1 / 2 by facing), drop reason `behindShelf` on a case's back
+  cell. Endless layouts, spawns, replays and scores changed (boards stay `_v1`); `DAILY.ruleset` 5 -> 6. M1, every
+  fixture and the tutorial replay exactly as before. Art rendered (BK5: render_kit.py `sunSide`, the +X case lit
+  from the mirrored side; vale `kit-bookcase-x` / `-z`, `DECOR_BOX.bookcase` 23 / 24 / 4), uploaded 2026-11-03 (BK6);
+  Studio check pending.
 
 ## Commands
 

@@ -12,7 +12,7 @@ dungeon and replays, validates and steps in lockstep like everything else.
 Status (2026-11-02): **built headlessly** on branch `pellets` (from `main` @ `4f041f1`): PL0-PL7 and PL10-PL14 are
 code-complete (PL8 short of its `art:build` confirmation and upload) and verified headlessly (full `npm run verify`: typecheck, lint, asset / autolocalize checks, art, l10n,
 build; Lune 316 / 317 suites, 4408 / 4409 tests, the one failure the known base `forge.spec` seedToState NaN, which
-also fails on `4f041f1`); see "As built". **Pending:** every Studio check (PL7, PL14), the vale art upload (PL8), the
+also fails on `4f041f1`); see "As built". **Pending:** every Studio check (PL7, PL14), the vale art (uploaded 2026-11-03; PL8's byte-for-byte build check), the
 vale sounds (`audio:build`, upload), the playtests PL9 / PL15, and four **owner calls** ("As built", "Open owner
 calls").
 
@@ -229,8 +229,9 @@ The tutorial is local-only (`SERVER_REFUSED_WORLDS`), so the lock and the new ro
   parts and the tally (six segments, zeros hidden, the sweep in the flying bonus exactly once, footprint on the
   smallest phone); Studio: pellets read as squares on every
   biome, never over a bullet, pop in on engagement, shrink at the clear, the power fly-in, two players see the same.
-- [ ] **PL8. Vale art.** (generator, test, `own` sheets and layout built; the first real `art:build` / `art:lock`
-  confirming them byte for byte, and the upload, pending) `gen-pellet.js`, its test, `art/atlases.json` `own` sheet,
+- [ ] **PL8. Vale art.** (generator, test, `own` sheets and layout built; `pellet.png` / `pellet-power.png` as
+  built by `art:build` on 2026-11-03 uploaded the same day, 6:20 PM, ids in `packs/vale/assetIds.ts`; the
+  byte-for-byte `art:build` / `art:lock` confirmation still pending) `gen-pellet.js`, its test, `art/atlases.json` `own` sheet,
   upload, id. -> Verify: `test:art`, `art:build` byte-identical, the vale validator.
 - [ ] **PL9. Playtest and tune.** Solo and co-op, PC and phone: do players chase pellets mid-fight, is a sweep
   reachable without throwing the speed bonus away every time, is the power pellet noticed, do pellets ever get mistaken

@@ -175,9 +175,14 @@ describe("pellets: placeholder", () => {
 		}
 		expect(normal.size[0]).toBe(pxToStuds(16 * PLACEHOLDER_PROPORTIONS.pellet[0]));
 		expect(power.size[0] > normal.size[0]).toBe(true);
+		// every bundled pack draws the placeholder cube, but vale, whose pellet PNGs are uploaded (2026-11-03, PL8)
 		for (const id of sortedKeys(THEME_PACKS)) {
 			for (const pid of PELLET_IDS)
-				expect([id, pid, THEME_PACKS[id].assets[pid]]).toEqual([id, pid, { kind: "placeholder" }]);
+				expect([id, pid, THEME_PACKS[id].assets[pid].kind]).toEqual([
+					id,
+					pid,
+					id === "vale" ? "image" : "placeholder",
+				]);
 		}
 	});
 });

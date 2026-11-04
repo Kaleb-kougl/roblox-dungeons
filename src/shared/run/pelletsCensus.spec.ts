@@ -469,16 +469,21 @@ const POWER_WAIT_TICKS = 8 * SIM_HZ;
 /** ... and takes it once this many erasable enemy bullets are on screen. */
 const POWER_WAIT_BULLETS = 3;
 
-/** The first run seed whose floor 2 holds a power pellet in a room with a shooter. */
-function powerSeed(): number {
-	for (let seed = 1; seed <= 200; seed++) {
+/** The honest run tries at most this many candidate seeds (powerSeeds) for one that erases bullets. */
+const POWER_SEED_TRIES = 6;
+
+/** The first `count` run seeds whose floor 2 holds a power pellet in a room with a shooter. */
+function powerSeeds(count: number): number[] {
+	const out: number[] = [];
+	for (let seed = 1; seed <= 200 && out.size() < count; seed++) {
 		const w = buildEndlessRunConfig(seed).endlessFloor(2);
 		const pellets = w.pellets!;
 		if (pellets.power === NO_POWER_PELLET) continue;
 		const spawns = w.roomSpawns[pellets.room[pellets.power]];
-		if (spawns.some((sp) => SHOOTERS.includes(sp.kind))) return seed;
+		if (spawns.some((sp) => SHOOTERS.includes(sp.kind))) out.push(seed);
 	}
-	error("no run seed in 1-200 has a power pellet on floor 2 in a room with a shooter", 0);
+	if (out.size() === 0) error("no run seed in 1-200 has a power pellet on floor 2 in a room with a shooter", 0);
+	return out;
 }
 
 /** Erasable enemy bullets on screen (not goo, not strikes). */
@@ -502,8 +507,8 @@ function drain(v: SegmentedValidator): { verdicts: SegmentVerdict[]; result?: Se
 	return { verdicts, result: result ?? v.getResult() };
 }
 
-describe("an endless run that takes a power pellet replays and validates segmented", () => {
-	const seed = powerSeed();
+/** One honest run of `seed`: floor 1 to the stairwell, then floor 2's power pellet room. */
+function honestRun(seed: number) {
 	const setup = buildEndlessRunConfig(seed);
 	const bot = new PelletBot(setup, seed, "pellets", true);
 	// Floor 1: walk to the stairwell (rooms on the way engage and their pellets go live; the walk takes what it
@@ -527,6 +532,20 @@ describe("an endless run that takes a power pellet replays and validates segment
 		erased = bot.powerBullets;
 		if (!bot.out()) bot.fight(roomId, 2);
 	}
+	return { bot, onFloor2, pl, at, erased };
+}
+
+describe("an endless run that takes a power pellet replays and validates segmented", () => {
+	// The first candidate whose bot erases bullets with it: a layout can lay the power pellet where the walk in takes
+	// it before the room fires (seed 2 since docs/BOOKSHELVES.md moved its floor 2's pieces).
+	let seed = 0;
+	let honest: ReturnType<typeof honestRun> | undefined;
+	for (const candidate of powerSeeds(POWER_SEED_TRIES)) {
+		seed = candidate;
+		honest = honestRun(candidate);
+		if (honest.erased > 0) break;
+	}
+	const { bot, onFloor2, pl, at, erased } = honest!;
 	const recording = bot.recorder.getRecording();
 	const finalHash = hashState(bot.state);
 	const sc = bot.state.score!;

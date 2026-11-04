@@ -674,6 +674,30 @@ describe('solid decor (docs/DECOR.md "Solid decor", "Room themes": set pieces on
 		expect(n).toBeGreaterThan(0);
 	});
 
+	it("takes a bookcase's facing as its variant and hangs nothing on the wall behind it (docs/BOOKSHELVES.md)", () => {
+		let n = 0;
+		for (const f of CENSUS.filter((_, i) => i % 3 === 0)) {
+			const d = f.layout.dungeon;
+			const plan = planDecor({
+				...decorInputOfLayout(f.layout),
+				variants: (k) => (k === "bookcase" || k === "banner" ? 2 : 0),
+			});
+			const behind = new Set<string>();
+			for (const p of d.solidDecor) if (p.kind === "bookcase") behind.add(`${p.x - p.fx},${p.y - p.fz}`);
+			for (const e of plan.entries) {
+				if (e.source === "solid" && e.kind === "bookcase") {
+					expect([e.layer, e.cells, e.runX, e.runZ]).toEqual(["low", 1, 0, 0]);
+					expect(e.faceX === 1 || e.faceZ === 1).toBe(true);
+					expect(e.variant).toBe(e.faceX !== 0 ? 0 : 1);
+					expect(e.fade >= 0).toBe(true);
+					n++;
+				} else if (e.source !== "void" && e.layer !== "flat")
+					expect([e.kind, behind.has(`${e.cellX},${e.cellY}`)]).toEqual([e.kind, false]);
+			}
+		}
+		expect(n).toBeGreaterThan(0);
+	});
+
 	it("lays the throne's carpet in 2 x 2 segments from the dais, its end last, only with the pack's art", () => {
 		let runs = 0;
 		for (const f of CENSUS.filter((_, i) => i % 5 === 0)) {

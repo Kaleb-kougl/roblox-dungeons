@@ -183,6 +183,7 @@ THIRD_PARTY_NOTICES.md), in `art/vendor/dungeon-essential-kit/` (put `dungeon_es
 | `kit-cage-1` / `-2` (the floor cage with its door open, two turns) | `decor.void.b<n>.cage.1` / `.2`, new void kind `cage` (low) | standing on the void's shoulder behind rooms' far walls, half the void's standing spots (`VOID_PIECES.biomeShare`) |
 | `kit-chains-1` / `-2` (the kit's draped chain, flattened, two turns) | `decor.void.b<n>.chains.1` / `.2`, new void kind `chains` (flat) | lying on the shoulder among the void's flat pieces |
 | `kit-chains-1` | `decor.delve.b<n>.bones.4` (was Lords of Pain `bones1-sw`, now retired art) | in rooms wherever the Forge drops bones |
+| `kit-bookcase-x` / `-z` (the bookcase at world scale, 125 kit units a tile, facing +X / +Z; the +X one lit by a mirrored sun, render_kit.py `sunSide`) | `decor.delve.b<n>.bookcase.1` / `.2`, solid decor kind `bookcase` | flush against rooms' far walls in library and hall rooms (docs/BOOKSHELVES.md); uploaded 2026-11-03 |
 | `kit-chandelier-1` (the candle chandelier, its chain cut off by `keepHeight`: lying fallen) | `decor.delve.b<n>.chandelier`, new decor kind `chandelier` (flat, scattered) | on open floor in rooms: planDecor's `scatter` step (DECOR_SCATTER: about a third of the rooms with 40+ floor tiles, never the boss room, one per room, at most 4 per floor; census 3.4 per floor), only when the pack has its art |
 
 Second kit: the **Dungeon Modular Set V2** (C. Anastasiadis, Sketchfab, **CC-BY 4.0**, on the Credits screen), in
@@ -257,10 +258,11 @@ every room a theme (`Dungeon.roomThemes`, by room id) and places its set pieces.
 | boss | `throne` | the throne on its dais (4 x 2, `throne`) against a far wall, the most centred spot at least `centreDoorTiles` (6) from every doorway; a candle stand each side; the red carpet (flat, walkable, `Dungeon.carpets`: 2 wide, up to 16 tiles toward the arena); candle pairs along it outside the arena's middle (`arenaClear` 7); a brazier each side of every doorway, inside |
 | entrance | `entrance` | a brazier each side of every doorway, inside |
 | shrine | `shrine` | the statue on its round base (3 x 3, `statue`; candles and lectern in the art) against a far wall, 3+ tiles clear of the shrine; a candle each side (fits in 56 of 72 census shrine rooms; small ones stay bare) |
-| combat / elite | `crypt` (grim 45 %, else 20 %; graveyard rooms always) | 3-4 tombs (5-6 in big rooms) lying along any wall, a candle stand at one or both ends; big rooms maybe one free-standing tomb, candles past both ends |
-| | `hall` (20 / 25 %) | candle stands flush against the walls every 5+ tiles (at most 16); big rooms maybe a statue on a far wall |
-| | `store` (15 / 25 %) | nothing solid: the breakables (breakables.ts) get x2 + 3 pieces, clusters of 3-5, seeded in the corners first |
-| | `plain` (20 / 30 %) | maybe one tomb along a wall (55 %), big rooms maybe a free-standing one (30 %) |
+| combat / elite | `crypt` (grim 40 %, else 20 %; graveyard rooms always) | 3-4 tombs (5-6 in big rooms) lying along any wall, a candle stand at one or both ends; big rooms maybe one free-standing tomb, candles past both ends |
+| | `hall` (20 / 20 %) | candle stands flush against the walls every 5+ tiles (at most 16); half of them a run of 2-3 bookcases on a far wall (docs/BOOKSHELVES.md); big rooms maybe a statue on a far wall |
+| | `store` (15 / 20 %) | nothing solid: the breakables (breakables.ts) get x2 + 3 pieces, clusters of 3-5, seeded in the corners first |
+| | `plain` (13 / 20 %) | maybe one tomb along a wall (55 %), big rooms maybe a free-standing one (30 %) |
+| | `library` (12 / 20 %; docs/BOOKSHELVES.md) | 2-3 runs of 2-5 bookcases (1 x 1 each) end to end against the far walls only, candle stands at their ends; big rooms maybe a statue; a room where no run fits is dressed as plain |
 | treasure, frozen lake | `none` | nothing |
 
 - **Rules** (`SOLID_DECOR`): a wall piece sits flush (every cell behind its back row is non-floor) and keeps every cell

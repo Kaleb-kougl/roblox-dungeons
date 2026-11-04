@@ -176,7 +176,8 @@ SOFTWARE.
   glTF from Sketchfab; author, licence and source as recorded in the file's `asset.extras`).
 - Used for: the trial 3D kit decor (docs/DECOR.md "3D kits"): the floor cage (`decor.void.b<n>.cage.1` / `.2`) and the
   chains (`decor.void.b<n>.chains.1` / `.2`, and `decor.delve.b<n>.bones.4`), the candle chandelier lying fallen in
-  rooms (`decor.delve.b<n>.chandelier`, its chain removed). **Changes made:** rendered to 2D sprites
+  rooms (`decor.delve.b<n>.chandelier`, its chain removed), and the bookcase (`decor.delve.b<n>.bookcase.1` / `.2`,
+docs/BOOKSHELVES.md). **Changes made:** rendered to 2D sprites
   from the game camera by `scripts/art/kit/render_kit.py` (Blender), scaled down, colour graded, the chains flattened
   to lie on the floor; the renders are packed by `scripts/art/build-atlases.js` and uploaded to Roblox.
 - Raw files: `art/vendor/dungeon-essential-kit/` (gitignored; the .glb and its renders).

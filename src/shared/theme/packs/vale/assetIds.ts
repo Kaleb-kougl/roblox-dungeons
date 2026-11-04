@@ -89,8 +89,9 @@ import type { RobloxAssetId } from "../../types";
  * 27" by Stereogenic Studio, Pixabay 357164; docs/PELLETS.md PL7) uploaded 2026-11-03 by k9kbdev as the downloaded MP3s
  * (untrimmed, not normalised), transcribed from an Asset Manager screenshot; sfx-pellet-power ("Power up 01a" by EdR,
  * Pixabay 484722) the same day, the same way. The built OGGs (art/upload) can replace all three.
- * Not uploaded yet: pellet.png and pellet-power.png (the pellet cubes, docs/PELLETS.md PL8; original art,
- * scripts/art/gen-pellet.js, built by `npm run art:build` into art/upload/). Until then both pellets stay placeholders.
+ * pellet.png and pellet-power.png (the pellet cubes, docs/PELLETS.md PL8; original art, scripts/art/gen-pellet.js,
+ * built by `npm run art:build` into art/upload/) and kit-bookcase-x / -z (docs/BOOKSHELVES.md BK6) uploaded 2026-11-03
+ * 6:20 PM, transcribed from an Asset Manager screenshot.
  */
 export const VALE_ASSET_IDS: Readonly<Record<string, RobloxAssetId>> = {
 	"amb-b1.ogg": "rbxassetid://91158343621799",
@@ -146,6 +147,8 @@ export const VALE_ASSET_IDS: Readonly<Record<string, RobloxAssetId>> = {
 	"imp-death-outline.png": "rbxassetid://134104614361499",
 	"imp-death.png": "rbxassetid://84336726009588",
 	"kit-banner.png": "rbxassetid://116783891005736",
+	"kit-bookcase-x.png": "rbxassetid://84780192220821",
+	"kit-bookcase-z.png": "rbxassetid://106394405354637",
 	"kit-cage-1.png": "rbxassetid://120653442756216",
 	"kit-cage-2.png": "rbxassetid://131457766065364",
 	"kit-candle-stand.png": "rbxassetid://82067548860168",
@@ -172,6 +175,8 @@ export const VALE_ASSET_IDS: Readonly<Record<string, RobloxAssetId>> = {
 	"music-boss.ogg": "rbxassetid://82229819920090",
 	"music-menu.ogg": "rbxassetid://75564975309420",
 	"music-tutorial.ogg": "rbxassetid://87339075756554",
+	"pellet-power.png": "rbxassetid://135982735087293",
+	"pellet.png": "rbxassetid://104506728931703",
 	"reaper-attack-outline.png": "rbxassetid://95992799302634",
 	"reaper-attack.png": "rbxassetid://81078161742843",
 	"reaper-body-outline.png": "rbxassetid://130853749528261",
