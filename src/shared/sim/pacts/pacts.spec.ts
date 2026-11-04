@@ -16,6 +16,7 @@ import {
 	PACTS_SUBSYSTEM,
 	PACT_KIND_COUNT,
 	PELLETS_SUBSYSTEM,
+	PactDim,
 	PactKind,
 	SCORE_SUBSYSTEM,
 	SHRINE_BUTTON,
@@ -27,6 +28,8 @@ import {
 	hashLayout,
 	hashState,
 	pactAltarsPlaced,
+	pactAvailability,
+	pactsSpent,
 	step,
 	writeHashFields,
 	type SimConfig,
@@ -42,6 +45,7 @@ import {
 	pactsSetup,
 	pressPact,
 	skipToFloor,
+	skipToFloorAny,
 	teleport,
 	walkToAltar,
 } from "shared/run/testing";
@@ -263,5 +267,74 @@ describe("no presses at an altar: the main rng draws exactly as without pacts (P
 		expect(comparable(b)).toEqual(comparable(a));
 		expect(hashState(a)).toBe(hashState(drv.state));
 		dismissDraft(b);
+	});
+});
+
+describe("pactsSpent (the shrine crystal's dim)", () => {
+	/** Run SEED for a party of `party` on its first altar floor. */
+	function onAltars(party = 1) {
+		const setup = pactsSetup(SEED, party);
+		const s = createSimState(SEED, setup.spawn!.x, setup.spawn!.z, setup.config);
+		skipToFloorAny(s, setup.config, altarFloor(setup));
+		return { setup, s };
+	}
+	function noRoomLeft(s: SimState): void {
+		const e = s.endless!;
+		for (let id = 0; id < e.roomsEntered.size(); id++) e.roomsEntered[id] = 1; // surgery: every room entered
+	}
+
+	it("spent once Greed is out of everyone's reach and the Horde is taken or has no room left (NO_ROOM)", () => {
+		// fresh: nothing taken
+		{
+			const { setup, s } = onAltars();
+			expect(pactsSpent(s, setup.config)).toBe(false);
+			// the Horde taken, Greed still there
+			pressPact(setup, s, PactKind.HORDE);
+			expect(pactsSpent(s, setup.config)).toBe(false);
+			// Greed taken too: spent
+			pressPact(setup, s, PactKind.GREED);
+			dismissDraft(s);
+			expect(pactAvailability(s, setup.config, 0, PactKind.GREED)).toBe(PactDim.TAKEN);
+			expect(pactsSpent(s, setup.config)).toBe(true);
+		}
+		// Greed taken, the Horde never taken: spent only once no room is left for it
+		{
+			const { setup, s } = onAltars();
+			pressPact(setup, s, PactKind.GREED);
+			dismissDraft(s);
+			expect(pactAvailability(s, setup.config, 0, PactKind.HORDE)).toBe(PactDim.NONE);
+			expect(pactsSpent(s, setup.config)).toBe(false);
+			noRoomLeft(s);
+			expect(pactAvailability(s, setup.config, 0, PactKind.HORDE)).toBe(PactDim.NO_ROOM);
+			expect(pactsSpent(s, setup.config)).toBe(true);
+		}
+		// no room left but Greed still open: not spent
+		{
+			const { setup, s } = onAltars();
+			noRoomLeft(s);
+			expect(pactsSpent(s, setup.config)).toBe(false);
+		}
+		// co-op: one player took Greed, the other still can; then both did (the Horde with no room left)
+		{
+			const { setup, s } = onAltars(2);
+			noRoomLeft(s);
+			pressPact(setup, s, PactKind.GREED, 0);
+			dismissDraft(s);
+			expect(pactsSpent(s, setup.config)).toBe(false);
+			pressPact(setup, s, PactKind.GREED, 1);
+			dismissDraft(s);
+			expect(pactsSpent(s, setup.config)).toBe(true);
+		}
+		// no altars on the floor: never spent
+		{
+			const setup = pactsSetup(SEED);
+			let bare = 1;
+			while (setup.endlessFloor(bare).pactAltars !== undefined) bare++;
+			const s = createSimState(SEED, setup.spawn!.x, setup.spawn!.z, setup.config);
+			skipToFloor(s, setup.config, bare);
+			expect(s.pacts!.room).toBe(-1);
+			noRoomLeft(s);
+			expect(pactsSpent(s, setup.config)).toBe(false);
+		}
 	});
 });

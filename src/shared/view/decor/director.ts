@@ -25,7 +25,8 @@
  *                          1 / bossPhases on each phase; everything lit and steady after the kill (its braziers flare)
  *   stairwell open         stairGlow -> 1 (a boss floor: after the kill; other floors: from the start)
  *   shrine used            shrineDim -> 1 (its crystal dims; the shrine's fixed lights dim); pacts (docs/FORTUNE.md):
- *                          once nothing is left at the floor's altars (shared/sim pactsSpent)
+ *                          once nothing is left at the floor's altars (shared/sim pactsSpent: the Horde taken or out of
+ *                          rooms, Greed taken or out of reach for everyone)
  *   pedestal taken         that pedestal's glint -> 0
  *   Ember                  gutter: 1 -> 0 over emberGutterSeconds (x motionScale), every flame on screen
  *   run over (all down)    cold: 0 -> 1 over coldFadeSeconds (lights fade to the cold palette)
@@ -47,6 +48,7 @@ import {
 	partySize,
 	playerAt,
 	type ActorState,
+	type SimConfig,
 	type SimEvents,
 	type SimState,
 } from "shared/sim";
@@ -58,6 +60,8 @@ import type { DecorScene } from "./scene";
 export interface DecorFrame {
 	/** The live sim state after this frame's ticks. Read only. */
 	readonly state: Readonly<SimState>;
+	/** The run's SimConfig (the floor worlds: pactsSpent judges whether the Horde has a room left). */
+	readonly config: Readonly<SimConfig>;
 	/** The frame's accumulated sim events (LiveRun.frameEvents / RunView.frameEvents). */
 	readonly events: Readonly<Pick<SimEvents, "emberUsed">>;
 	/** The current floor's scene (DecorController builds it per floor); undefined: nothing to direct. */
@@ -340,7 +344,9 @@ export class DecorDirector {
 		v.stairGlow = snap ? (v.stairOpen ? 1 : 0) : approach(v.stairGlow, v.stairOpen ? 1 : 0, dt, R.stairGlowSeconds);
 		const run = state.run;
 		const shrineUsed =
-			run !== undefined && run.shrineRoom === scene.shrineRoom && (run.shrineUsed === 1 || pactsSpent(state));
+			run !== undefined &&
+			run.shrineRoom === scene.shrineRoom &&
+			(run.shrineUsed === 1 || pactsSpent(state, frame.config));
 		v.shrineDim = snap ? (shrineUsed ? 1 : 0) : approach(v.shrineDim, shrineUsed ? 1 : 0, dt, R.shrineDimSeconds);
 		for (let i = 0; i < entries.size(); i++) v.dim[i] = entries[i].kind === "shrineCrystal" ? v.shrineDim : 0;
 		for (let j = 0; j < scene.pedestals.size(); j++) {

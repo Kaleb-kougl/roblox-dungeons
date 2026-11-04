@@ -148,15 +148,16 @@ export function greedTakes(state: Readonly<SimState>): number {
 }
 
 /**
- * True when this floor's altars stand and nothing is left at them: the Horde taken, and no player can take Greed any
- * more (taken, nothing to give, dead or gone). Pure; the view dims the shrine's crystal then.
+ * True when this floor's altars stand and nothing is left at them: the Horde taken or out of rooms (pactAvailability's
+ * NO_ROOM: no enemy room left that nobody entered), and no player can take Greed any more (taken, nothing to give, dead
+ * or gone). Pure; the view dims the shrine's crystal then.
  */
-export function pactsSpent(state: Readonly<SimState>): boolean {
+export function pactsSpent(state: Readonly<SimState>, config: Readonly<SimConfig>): boolean {
 	const p = state.pacts;
 	if (p === undefined || p.room < 0) return false;
 	let horde = false;
 	for (const q of p.players) if (q.hordeTaken !== 0) horde = true;
-	if (!horde) return false;
+	if (!horde && hordeRoomLeft(state, config)) return false;
 	for (let i = 0; i < p.players.size(); i++) if (greedAvailability(state, i) === PactDim.NONE) return false;
 	return true;
 }
