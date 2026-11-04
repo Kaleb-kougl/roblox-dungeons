@@ -1,6 +1,6 @@
 // Fortune's sounds (docs/FORTUNE.md FO6): the eight IDs are the theme's port audio events, listed and ranked here, and
-// each falls back to an existing clip while silent (SFX_FALLBACK, one step). The cues that play them are FO9's: none
-// is mapped yet, and none ducks the music or is a jingle until then.
+// each falls back to an existing clip while silent (SFX_FALLBACK, one step). The cues that play them are FO9's (the
+// pacts' four: pactCues.spec.ts); none ducks the music or is a jingle so far.
 import { describe, expect, it } from "@rbxts/jest-globals";
 import { FORTUNE_AUDIO_IDS, PORT_AUDIO_EVENTS, REQUIRED_ASSET_IDS } from "shared/theme";
 import {

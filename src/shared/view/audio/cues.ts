@@ -139,9 +139,23 @@
  * Every cue carries a playback speed (AudioCueList.speed): 0 = the pack's jitter (every cue but these), > 0 = that
  * exact PlaybackSpeed (the kill ladder, the tier sting, the graze and the parry).
  *
+ * Pacts (docs/FORTUNE.md FO9) come from the frame's collected pact events (shared/view/pacts PactFrameSource, the run
+ * view's `pacts`): a pact taken plays sfx.pact.take (Greed split like a pickup, the Horde a party sound), the horde
+ * room roused sfx.horde.horn, its second wave telegraphed sfx.horde.wave, its clear sfx.horde.double while the room
+ * clear celebration is off (else the celebration plays it with the tally's Horde segment). The classic shrine's
+ * sfx.shrine.use (StateWatch.shrineUsed) no longer counts pacts: a silent pact take falls back to it (SFX_FALLBACK).
+ *
  * Presentation only: reads sim state, never writes it.
  */
-import { BOSS_DEMONLORD_ID, COMBO_MIN, archetypeIndex, partySize, type SimEvents, type SimState } from "shared/sim";
+import {
+	BOSS_DEMONLORD_ID,
+	COMBO_MIN,
+	PactKind,
+	archetypeIndex,
+	partySize,
+	type SimEvents,
+	type SimState,
+} from "shared/sim";
 import { AMBIENCE_IDS } from "shared/theme";
 import { NO_BOOST_EVENTS, type BoostEventSource } from "../boosts";
 import {
@@ -179,6 +193,7 @@ import {
 	pelletRoomProgress,
 	type PelletFrameSource,
 } from "../pellets";
+import { NO_PACT_EVENTS, type PactFrameSource } from "../pacts/events";
 
 /** Every sound effect the game plays, by logical ID (theme manifest). */
 export const SFX = {
@@ -324,8 +339,8 @@ export const SFX = {
 	/**
 	 * Fortune (docs/FORTUNE.md FO6; the theme's PORT_AUDIO_EVENTS, FORTUNE_AUDIO_IDS): a pact taken at an altar; the
 	 * Horde room's horn on entry, its second wave, the x2 landing in the tally; the Goldling appearing, each hit on it,
-	 * the jackpot of a catch, its escape. Each plays its SFX_FALLBACK while silent. Not mapped to any event yet: the
-	 * cue mapper's Fortune cues are docs/FORTUNE.md FO9.
+	 * the jackpot of a catch, its escape. Each plays its SFX_FALLBACK while silent. The pacts' four are mapped from the
+	 * run view's pact events (pactCues, docs/FORTUNE.md FO9); the Goldling's are FO9's too.
 	 */
 	pactTake: "sfx.pact.take",
 	hordeHorn: "sfx.horde.horn",
@@ -702,15 +717,17 @@ export const SFX_PRIORITY: Readonly<Record<SfxId, number>> = {
 	[SFX.pelletSweep]: 65,
 	[SFX.pelletEat]: 53,
 	/**
-	 * Fortune (docs/FORTUNE.md FO6): provisional ranks, each its fallback clip's (the sound it stands in for while
-	 * silent), but the Goldling's hit, ranked with the graze and the chomp (a small reward, never over the hurt, the
-	 * telegraph or the kill ladder), and the second wave, ranked with the danger cues of the enemy variants (new bodies
-	 * arriving, over a summon). The cue mapper (FO9) settles them.
+	 * Fortune (docs/FORTUNE.md FO6, the pacts' settled by FO9): a pact taken ranks with the shrine it replaced (a chosen
+	 * reward in a quiet room). The Horde's horn is the room's fight starting: over the room clear's jingles and the
+	 * stairwell, under the boss roar. Its second wave is danger information (new bodies at the rings): just under the
+	 * telegraph and the Ember, over the jingles. The x2 landing in the tally just over the bonus landing it falls back
+	 * to (the RoomClearController plays it, or the mapper while Room clear is Off). The Goldling's (FO8): provisional,
+	 * each its fallback clip's but the hit, ranked with the graze and the chomp.
 	 */
 	[SFX.pactTake]: 70,
-	[SFX.hordeHorn]: 65,
-	[SFX.hordeWave]: 46,
-	[SFX.hordeDouble]: 60,
+	[SFX.hordeHorn]: 77,
+	[SFX.hordeWave]: 87,
+	[SFX.hordeDouble]: 61,
 	[SFX.goldenAppear]: 64,
 	[SFX.goldenHit]: 53,
 	[SFX.goldenJackpot]: 72,
@@ -1172,6 +1189,24 @@ export class AudioCueMapper {
 	}
 
 	/**
+	 * The frame's pact cues (docs/FORTUNE.md FO9): sfx.pact.take for each pact taken (Greed is a player's own: a
+	 * teammate's quieter, lower-ranked; the Horde arms the whole party's next room: full volume for everyone);
+	 * sfx.horde.horn when the horde room is roused; sfx.horde.wave when its second wave is telegraphed (the rings' start,
+	 * the warning before the bodies); sfx.horde.double when the horde room clears while the room clear celebration is off
+	 * (with it on, RoomClearController plays it as the tally's Horde segment slams in). All world / party sounds but
+	 * Greed's take; none ducks the music (the pact take's fallback, the shrine's jingle, ducks as the shrine did).
+	 */
+	private pactCues(pacts: PactFrameSource, localIndex: number): void {
+		for (const t of pacts.taken) {
+			if (t.kind === PactKind.GREED) this.playerCue(SFX.pactTake, t.player, localIndex);
+			else this.cue(SFX.pactTake, 1);
+		}
+		if (pacts.roused.size() > 0) this.cue(SFX.hordeHorn, 1);
+		if (pacts.telegraphed.size() > 0) this.cue(SFX.hordeWave, 1);
+		if (pacts.hordeCleared > 0 && !this.celebratesRoomClears) this.cue(SFX.hordeDouble, 1);
+	}
+
+	/**
 	 * The frame's pellet cues (docs/PELLETS.md PL7): one chomp for every pellet eaten this frame (full volume when the
 	 * local player took one, else a teammate's quieter, lower-ranked cue), pitched up the room's ladder
 	 * (pelletEatSpeed: the frame's last pellet, the local player's when they took one, against its room's progress
@@ -1283,8 +1318,9 @@ export class AudioCueMapper {
 	 * NewBestTracker frame of THIS frame, docs/NEW_BEST.md NB5; none by default), `builds` the frame's build effects (the
 	 * run view's `builds` through audibleBuilds, docs/BUILDS.md BU8; none by default), `rank` the frame's daily rank cues
 	 * (the client's DailyRankController of THIS frame, docs/DAILY.md DS10; none by default), `pellets` the frame's pellet
-	 * events (the run view's `pellets`, docs/PELLETS.md PL7; none by default). Appends the cues to start to `out` (in
-	 * table order) and returns it.
+	 * events (the run view's `pellets`, docs/PELLETS.md PL7; none by default), `pacts` the frame's pact events (the run
+	 * view's `pacts`, docs/FORTUNE.md FO9; none by default). Appends the cues to start to `out` (in table order) and
+	 * returns it.
 	 */
 	frame(
 		now: number,
@@ -1301,6 +1337,7 @@ export class AudioCueMapper {
 		builds: BuildFxFrameSource = NO_BUILD_FX_EVENTS,
 		rank: DailyRankCueSource = NO_DAILY_RANK_CUES,
 		pellets: PelletFrameSource = NO_PELLET_EVENTS,
+		pacts: PactFrameSource = NO_PACT_EVENTS,
 	): AudioCueList {
 		this.now = now;
 		this.pending = 0;
@@ -1435,6 +1472,8 @@ export class AudioCueMapper {
 		this.buildCues(builds, localIndex);
 		// Pellets (docs/PELLETS.md PL7): the chomp, the sweep sting, the power pellet.
 		this.pelletCues(pellets, localIndex, state);
+		// Pacts (docs/FORTUNE.md FO9): a pact taken, the Horde's horn and second wave (and its x2 while Room clear is Off).
+		this.pactCues(pacts, localIndex);
 
 		this.keepOneJingle();
 		this.applyCap();
