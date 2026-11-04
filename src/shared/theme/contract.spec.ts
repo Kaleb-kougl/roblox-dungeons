@@ -206,7 +206,7 @@ describe("required IDs and strings", () => {
 		// + docs/NEW_ENEMIES.md NE1: 5 enemy.<id>.name, 5 bestiary.<id> (BESTIARY_STRING_KEYS)
 		// + docs/PELLETS.md PL6: 2 room clear tally segments (ROOM_CLEAR_STRING_KEYS), bestiary.pellet.power
 		// + docs/FORTUNE.md FD9: enemy.golden.name. + FO6: FORTUNE_STRING_KEYS (18), the Horde's tally segment
-		// (ROOM_CLEAR_STRING_KEYS), bestiary.golden (BESTIARY_STRING_KEYS)
+		// (ROOM_CLEAR_STRING_KEYS), bestiary.golden (BESTIARY_STRING_KEYS); FO7: hud.score.pop.horde (in FORTUNE_STRING_KEYS)
 		expect(REQUIRED_STRING_KEYS.size()).toBe(
 			41 +
 				1 +
@@ -233,7 +233,7 @@ describe("required IDs and strings", () => {
 				2 +
 				1 +
 				1 +
-				18 +
+				19 +
 				1 +
 				1,
 		);

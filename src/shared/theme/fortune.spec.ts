@@ -215,6 +215,7 @@ describe("fortune: contract", () => {
 			"WAVE 2",
 			"GOLDLING!",
 			"It got away!  +{points} banked",
+			"+{points} x2",
 		]);
 		expect(english([HORDE_ROOM_CLEAR_KEY, ...FORTUNE_SCORE_SOURCE_KEYS, GOLDEN_BESTIARY_KEY])).toEqual([
 			"Horde x2 +{points}",

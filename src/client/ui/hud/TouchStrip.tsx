@@ -18,6 +18,8 @@ import {
 } from "shared/view/hud";
 import { BestCompactLine, ScoreNumber } from "./BestTargetRow";
 import { BoostRow, boostCellWidth, type BoostLook } from "./BoostRow";
+import { HordeChip } from "./HordeChip";
+import { HORDE_CHIP } from "shared/view/pacts";
 import { ComboMeter } from "./ComboMeter";
 import { ComboMultiplier } from "./ComboRow";
 import { cornerFadeBinding, cornerRef } from "./cornerFade";
@@ -145,7 +147,8 @@ export interface TouchStripProps {
  * Aegis pips and the tutorial's ghost heart), the flask icon and count, the Ember candle and count, the score (coin,
  * the rolling ROOM_CLEAR_UI number, the COMBO_UI multiplier) over a thin combo line (ComboMeter, tier colours and
  * bindings unchanged) and, on a run with a new-best target, the compact target line hung under the combo line
- * (BestCompactLine, docs/NEW_BEST.md NB6; no size changes); under it one line of chips (BoostRow, then RunItems capped
+ * (BestCompactLine, docs/NEW_BEST.md NB6; no size changes); under it one line of chips (the Horde chip while armed,
+ * docs/FORTUNE.md FO7, then BoostRow, then RunItems capped
  * with "+N"). No panel box: icons and stroked text, the art's icons when the pack has them (fitted to whole screen px under the strip's own UIScale,
  * ArtScaleContext), the flat pips and hearts otherwise. The row and the chips are one CanvasGroup registered as the
  * top-left corner panel, so HudOcclusionController fades it when the action passes under it. The tutorial's rings sit
@@ -186,7 +189,9 @@ export function TouchStrip(props: TouchStripProps) {
 		s.boosts.size() > 0
 			? wrapGrid(s.boosts.size(), boostCellWidth(CHIP_BOOST), CHIPS.cell, CHIPS.cellGap, L.maxWidth).width
 			: 0;
-	const itemsW = math.max(0, L.maxWidth - boostsW - (boostsW > 0 ? CHIPS.cellGap : 0));
+	// docs/FORTUNE.md FO7: the Horde chip (while armed) leads the chip line; the items take what is left.
+	const hordeW = s.hordeArmed ? HORDE_CHIP.touchWidth + CHIPS.cellGap : 0;
+	const itemsW = math.max(0, L.maxWidth - hordeW - boostsW - (boostsW > 0 ? CHIPS.cellGap : 0));
 
 	return (
 		<ArtScaleContext.Provider value={k}>
@@ -324,6 +329,14 @@ export function TouchStrip(props: TouchStripProps) {
 							SortOrder={Enum.SortOrder.LayoutOrder}
 							Padding={new UDim(0, CHIPS.cellGap)}
 						/>
+						{s.hordeArmed ? (
+							<HordeChip
+								order={0}
+								width={HORDE_CHIP.touchWidth}
+								height={CHIPS.cell}
+								textSize={HORDE_CHIP.touchTextSize}
+							/>
+						) : undefined}
 						<BoostRow
 							order={1}
 							boosts={s.boosts}

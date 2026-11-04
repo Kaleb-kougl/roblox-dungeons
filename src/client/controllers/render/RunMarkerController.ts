@@ -3,7 +3,7 @@ import { Janitor } from "@rbxts/janitor";
 import { RunService, Workspace } from "@rbxts/services";
 import { createKvBillboardGui } from "client/ui";
 import { STUDS_PER_TILE } from "shared/config";
-import type { RunState } from "shared/sim";
+import { pactAltarsPlaced, type RunState, type SimState } from "shared/sim";
 import type { ImageRef } from "shared/theme";
 import { RENDER_ORDER, SPRITE_VIEW, floorStudsY, studsX, studsZ, uprightImageBillboard } from "shared/view";
 import { MARKER_USED_COLOR_ROLE, PEDESTAL_COLOR_ROLE, PROGRESSION_VIEW, SHRINE_COLOR_ROLE } from "shared/view/hud";
@@ -75,7 +75,7 @@ export class RunMarkerController implements OnStart {
 			this.add(folder, shrine.cx, shrine.cz, v.shrineRadiusTiles, v.shrineHeightTiles, -1, undefined);
 		}
 		folder.Parent = Workspace;
-		this.refresh(run, true);
+		this.refresh(ctx.run.state, run, true);
 	}
 
 	private add(
@@ -103,15 +103,21 @@ export class RunMarkerController implements OnStart {
 	}
 
 	private frame(): void {
-		const run = this.sim.getContext()?.run.state.run;
-		if (run !== undefined) this.refresh(run, false);
+		const state = this.sim.getContext()?.run.state;
+		const run = state?.run;
+		if (state !== undefined && run !== undefined) this.refresh(state, run, false);
 	}
 
-	/** Colours each marker for its state (only when it changed, unless `force`). */
-	private refresh(run: Readonly<RunState>, force: boolean): void {
+	/**
+	 * Colours each marker for its state (only when it changed, unless `force`). The shrine's reads as used on a floor
+	 * whose pact altars stand (docs/FORTUNE.md FO7: the classic zone at the crystal is off there; the altars' flames and
+	 * cards carry the offer).
+	 */
+	private refresh(state: Readonly<SimState>, run: Readonly<RunState>, force: boolean): void {
 		const pack = this.theme.getPack();
+		const altars = pactAltarsPlaced(state);
 		for (const m of this.markers) {
-			const used = m.pedestal >= 0 ? run.pedestalTaken[m.pedestal] === 1 : run.shrineUsed === 1;
+			const used = m.pedestal >= 0 ? run.pedestalTaken[m.pedestal] === 1 : run.shrineUsed === 1 || altars;
 			if (used === m.used && !force) continue;
 			m.used = used;
 			const live = m.pedestal >= 0 ? PEDESTAL_COLOR_ROLE : SHRINE_COLOR_ROLE;

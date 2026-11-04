@@ -3,7 +3,8 @@ import { Janitor } from "@rbxts/janitor";
 import { RunService, Workspace } from "@rbxts/services";
 import { clientStore, selectDisplay } from "client/store";
 import { buildScoreRooms } from "shared/sim";
-import { ROOM_EDGE_ROLES } from "shared/theme";
+import { ROOM_EDGE_HORDE_ROLE, ROOM_EDGE_ROLES } from "shared/theme";
+import { hordeLiveRoom } from "shared/view/pacts";
 import {
 	RENDER_ORDER,
 	ROOM_EDGE_VIEW,
@@ -22,6 +23,8 @@ import { ThemeController } from "../game/ThemeController";
 import { DashLayer } from "./DashLayer";
 
 const RENDER_STEP = "KV_RoomEdges";
+/** this.colors' last entry: `roomEdge.horde`, the live horde room's colour (docs/FORTUNE.md FO7). */
+const HORDE_COLOR = ROOM_EDGE_ROLES.size();
 
 /** One room's dashed edge and its fade (docs/ROOM_EDGES.md §4). */
 interface RoomLayer {
@@ -30,6 +33,9 @@ interface RoomLayer {
 	/** The state faded from and the state shown / faded to. */
 	from: RoomEdgeState;
 	to: RoomEdgeState;
+	/** The colour faded from / to (this.colors index: a state, or HORDE_COLOR for the live horde room). */
+	fromColor: number;
+	toColor: number;
 	/** os.clock() of the last state change. */
 	since: number;
 }
@@ -40,7 +46,9 @@ interface RoomLayer {
  * shared/view `roomEdges` gives the runs, one static DashLayer per room (ROOM_EDGE_VIEW.dash, SmoothPlastic,
  * `liftStuds` under the tutorial arrow and the markings) is filled once; shared/view `RoomEdgeStates` gives each room's
  * SAFE / WAITING / LIVE from scoring's room records (unscored M1: `buildScoreRooms` at run start), and `roomEdgeLook`
- * the fade and the live pulse (juice `motionScale`). Colours: theme ROOM_EDGE_ROLES. Options > Display > Room edges
+ * the fade and the live pulse (juice `motionScale`). Colours: theme ROOM_EDGE_ROLES; the horde room while its fight
+ * is on (docs/FORTUNE.md FO7, shared/view/pacts hordeLiveRoom) `roomEdge.horde` instead of the live colour (the same
+ * fade in and out, the live pulse and transparency). Options > Display > Room edges
  * (`DisplaySettings.roomEdges`) takes the folder out of Workspace and skips the frame. Read-only on the sim.
  */
 @Controller({})
@@ -88,7 +96,7 @@ export class RoomEdgeController implements OnStart {
 		if (d === undefined) return; // greybox: no rooms
 		const v = ROOM_EDGE_VIEW;
 		const pack = this.theme.getPack();
-		this.colors = ROOM_EDGE_ROLES.map((role) => pack.color(role));
+		this.colors = [...ROOM_EDGE_ROLES.map((role) => pack.color(role)), pack.color(ROOM_EDGE_HORDE_ROLE)];
 		const folder = this.floorJanitor.Add(new Instance("Folder"));
 		folder.Name = v.folderName;
 		const edges = roomEdges(d);
@@ -115,7 +123,15 @@ export class RoomEdgeController implements OnStart {
 			}
 			layer.finish();
 			dashes += layer.poolSize();
-			this.rooms.push({ room, layer, from: RoomEdgeState.SAFE, to: RoomEdgeState.SAFE, since: -math.huge });
+			this.rooms.push({
+				room,
+				layer,
+				from: RoomEdgeState.SAFE,
+				to: RoomEdgeState.SAFE,
+				fromColor: RoomEdgeState.SAFE,
+				toColor: RoomEdgeState.SAFE,
+				since: -math.huge,
+			});
 		}
 		const state = this.sim.getState();
 		let fallback;
@@ -139,16 +155,21 @@ export class RoomEdgeController implements OnStart {
 		const shown = states.update(state, ctx.config.encounter);
 		const motion = motionScale(this.fx.settings());
 		const fadeSec = ROOM_EDGE_VIEW.stateFadeSeconds;
+		const horde = hordeLiveRoom(state);
 		for (const r of this.rooms) {
 			const s = shown[r.room] ?? RoomEdgeState.SAFE;
-			if (s !== r.to) {
+			const c = r.room === horde && s === RoomEdgeState.LIVE ? HORDE_COLOR : s;
+			if (s !== r.to || c !== r.toColor) {
 				r.from = r.to;
+				r.fromColor = r.toColor;
 				r.to = s;
+				r.toColor = c;
 				r.since = now;
 			}
 			const fade = fadeSec > 0 ? (now - r.since) / fadeSec : 1;
 			const look = roomEdgeLook(r.from, r.to, fade, now, motion, this.look);
-			const color = look.mix >= 1 ? this.colors[r.to] : this.colors[r.from].Lerp(this.colors[r.to], look.mix);
+			const to = this.colors[r.toColor];
+			const color = look.mix >= 1 ? to : this.colors[r.fromColor].Lerp(to, look.mix);
 			r.layer.setColor(color);
 			r.layer.setTransparency(look.transparency);
 		}

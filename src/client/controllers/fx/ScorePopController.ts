@@ -17,9 +17,10 @@ import {
 	scorePopAlpha,
 	scorePopRise,
 	scorePopTones,
-	type ScorePopTone,
+	ScorePopTone,
 } from "shared/view/fx";
 import { HUD_STRINGS } from "shared/view/hud";
+import { PACTS_VIEW, PACT_STRINGS, inHordeRoom } from "shared/view/pacts";
 import { PELLETS_VIEW, mergePelletPops, pelletPopAlpha, pelletPopRise, type PelletPop } from "shared/view/pellets";
 import { SimController } from "../game/SimController";
 import { ThemeController } from "../game/ThemeController";
@@ -105,6 +106,10 @@ const KILL_POP_ALPHA = (age: number): number => scorePopAlpha(age);
  *
  * Gold Rush (docs/BUILDS.md BU6): a kill pop that matches a RunView.builds.goldRush record (scorePopTones) is that
  * kill's own pop, in the kill pool, coloured BUILD_FX_VIEW.goldRush.role instead of uiAccent (never a second pop).
+ *
+ * Pacts' Horde (docs/FORTUNE.md FO7): a kill pop inside the roused horde room (shared/view/pacts inHordeRoom) is drawn
+ * in PACTS_VIEW.horde.popRole with the x2 mark (`hud.score.pop.horde`; its points are already the doubled award), over
+ * a Gold Rush tone (the room-wide x2 is the story there).
  */
 @Controller({})
 export class ScorePopController implements OnStart {
@@ -154,7 +159,11 @@ export class ScorePopController implements OnStart {
 		const holder = attachmentHolder(folder, "Anchors");
 		const stroke = pack.color("background");
 		const kills = this.kills;
-		kills.colors.push(pack.color("uiAccent"), pack.color(BUILD_FX_VIEW.goldRush.role));
+		kills.colors.push(
+			pack.color("uiAccent"),
+			pack.color(BUILD_FX_VIEW.goldRush.role),
+			pack.color(PACTS_VIEW.horde.popRole),
+		);
 		for (let i = 0; i < kills.pool.capacity; i++)
 			kills.views.push(new PopView(holder, folder, `Pop${i}`, kills.colors[0], stroke));
 		const jackpots = this.jackpots;
@@ -202,7 +211,12 @@ export class ScorePopController implements OnStart {
 		} else {
 			const pops = run.scorePops;
 			const tones = scorePopTones(pops, run.builds.goldRush, this.tones);
-			for (let i = 0; i < pops.size(); i++) kills.pool.add(pops[i].x, pops[i].z, pops[i].points, now, tones[i]);
+			const state = run.state;
+			for (let i = 0; i < pops.size(); i++) {
+				const p = pops[i];
+				const tone = inHordeRoom(state, p.x, p.z) ? ScorePopTone.HORDE : tones[i];
+				kills.pool.add(p.x, p.z, p.points, now, tone);
+			}
 			for (const j of run.builds.jackpots) jackpots.pool.add(j.x, j.z, j.amount, now);
 			for (const p of mergePelletPops(run.pellets.eaten, this.pelletPops, run.pellets.power))
 				pellets.pool.add(p.x, p.z, p.points, now);
@@ -225,7 +239,8 @@ export class ScorePopController implements OnStart {
 				view.hide();
 				continue;
 			}
-			const text = this.theme.getPack().str(HUD_STRINGS.scorePop, { points: pool.points[i] });
+			const key = pool.tone[i] === ScorePopTone.HORDE ? PACT_STRINGS.popHorde : HUD_STRINGS.scorePop;
+			const text = this.theme.getPack().str(key, { points: pool.points[i] });
 			if (text !== view.text) {
 				view.text = text;
 				view.label.Text = text;

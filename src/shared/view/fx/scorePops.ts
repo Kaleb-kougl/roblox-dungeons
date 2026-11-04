@@ -34,8 +34,11 @@ export function scorePopRise(age: number, motion: number): number {
 	return math.round(SCORE_POP_RISE_PX * motion * (1 - (1 - t) * (1 - t)));
 }
 
-/** A pop's colour (ScorePopPool.tone): a kill pop, or a kill Gold Rush raised (docs/BUILDS.md BU6, its own colour). */
-export const ScorePopTone = { KILL: 0, GOLD_RUSH: 1 } as const;
+/**
+ * A pop's colour (ScorePopPool.tone): a kill pop, or a kill Gold Rush raised (docs/BUILDS.md BU6, its own colour), or a
+ * kill in a Pact of the Horde room (docs/FORTUNE.md FO7: `pact.horde`, its text with the x2 mark).
+ */
+export const ScorePopTone = { KILL: 0, GOLD_RUSH: 1, HORDE: 2 } as const;
 export type ScorePopTone = (typeof ScorePopTone)[keyof typeof ScorePopTone];
 
 /** A kill's score pop (the run views' scorePops). */

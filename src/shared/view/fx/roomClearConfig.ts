@@ -28,6 +28,13 @@ export const ROOM_CLEAR = {
 	},
 	/** The tally row: segment i starts at startSec + i x gapSec and counts up over countSec. */
 	tally: { startSec: 0.3, gapSec: 0.12, countSec: 0.2 },
+	/**
+	 * docs/FORTUNE.md FO7: a Horde room's last segment, `HORDE x2 +N` (the doubled half). It slams in (no count-up: its
+	 * full value at once, doubling the row's total) once the segment before it has counted up, plus leadSec; the tally
+	 * row's scale eases from slamFromScale to 1 over slamSec (ease out back; none under reduced motion: colour and text
+	 * only). The whole sequence (the fly, the fade, the end) runs extraSec longer for it (FORTUNE.md: 0.4 s).
+	 */
+	horde: { leadSec: 0.05, slamSec: 0.15, slamFromScale: 1.3, extraSec: 0.4 },
 	/** The bonus chip flies to the score panel; it lands (the bonus is released) at startSec + sec. */
 	fly: { startSec: 0.95, sec: 0.2 },
 	/** Stamp, tally and chips fade out from here to totalSec. */

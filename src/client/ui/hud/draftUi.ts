@@ -127,6 +127,11 @@ export const DRAFT_UI = {
 	hintReady: new ComboUiValue(false),
 	/** The deal on screen is the boss double draft's re-deal: the "Pick again" line (docs/BUILDS.md BU9). */
 	again: new ComboUiValue(false),
+	/**
+	 * The title's theme string key (docs/FORTUNE.md FO7: `hud.draft.title.greed` for Greed's Legendary deal, read at the
+	 * deal like the cards, so the exit fade keeps it after the snapshot's draft closed).
+	 */
+	titleKey: new ComboUiValue("hud.draft.title"),
 	cards: perCard(),
 } as const;
 
@@ -139,5 +144,6 @@ export function resetDraftUi(): void {
 	U.hintT.reset();
 	U.hintReady.reset();
 	U.again.reset();
+	U.titleKey.reset();
 	for (const c of U.cards) for (const [, v] of pairs(c)) (v as ComboUiValue<unknown>).reset();
 }

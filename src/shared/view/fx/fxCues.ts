@@ -25,8 +25,9 @@
  *   fx.swing.<n>     a player's WeaponsState.swingTick moved: n = the sword slot's v[SWORD_V_LAST] (1, 2, 3 = finisher),
  *                    swingAheadFraction of the swing radius ahead of its origin, turned to the swing direction
  *   fx.relic.take    RunState.pedestalTaken[k] 0 -> 1, at that pedestal (spots.pedestals by room)
- *   fx.shrine.use    RunState.shrineUsed 0 -> 1, at the shrine (spots.shrine); pacts (docs/FORTUNE.md): one more Pact
- *                    of Greed taken on the spots' shrine room (greedTakes rose), at the Greed altar (until FO8's own)
+ *   fx.shrine.use    RunState.shrineUsed 0 -> 1, at the shrine (spots.shrine); pacts (docs/FORTUNE.md FO7): a pact
+ *                    taken on the spots' shrine room (Greed: greedTakes rose; the Horde: hordeTakes rose), at that
+ *                    pact's altar (the pact renderer adds its dark pulse there)
  *   fx.death.puff    FxEvent killed (not a boss: bossDefeated owns it)
  *   fx.breakable.splinter  `breakableSplinter(x, z)` (called by the breakable renderer when a piece breaks)
  *   fx.boost.collect `boostCollect(x, z)` (called by the boost drop renderer on a pickup, docs/BOOSTS.md B6)
@@ -195,6 +196,14 @@ export interface BossImpactRule {
 	readonly targetZSlot: number;
 }
 
+/** How many players took the Horde at this floor's altars (0 or 1: once per party; 0 without pacts). */
+function hordeTakes(state: Readonly<SimState>): number {
+	let n = 0;
+	const p = state.pacts;
+	if (p !== undefined) for (const q of p.players) if (q.hordeTaken !== 0) n++;
+	return n;
+}
+
 /** The charge impacts that cue fx.boss.slam: Mother Bramble's slam and the Demon Lord's brimstone charge. */
 export const BOSS_IMPACTS: ReadonlyArray<BossImpactRule> = [
 	{
@@ -287,6 +296,7 @@ export class FxCueMapper {
 	// run
 	private shrineUsed = 0;
 	private greedTakes = 0;
+	private hordeTakes = 0;
 	private readonly pedestals: number[] = [];
 	// pending boss-death bursts: time, x, z, scale, burst index (parallel; fixed capacity)
 	private readonly pendAt: number[] = [];
@@ -651,13 +661,12 @@ export class FxCueMapper {
 			this.emit("fx.shrine.use", shrine.x, shrine.z, 0, 1);
 		}
 		const pacts = f.state.pacts;
-		if (
-			pacts !== undefined &&
-			pacts.room >= 0 &&
-			pacts.room === spots.shrineRoom &&
-			greedTakes(f.state) > this.greedTakes
-		)
-			this.emit("fx.shrine.use", pacts.altarX[PactKind.GREED], pacts.altarZ[PactKind.GREED], 0, 1);
+		if (pacts !== undefined && pacts.room >= 0 && pacts.room === spots.shrineRoom) {
+			if (greedTakes(f.state) > this.greedTakes)
+				this.emit("fx.shrine.use", pacts.altarX[PactKind.GREED], pacts.altarZ[PactKind.GREED], 0, 1);
+			if (hordeTakes(f.state) > this.hordeTakes)
+				this.emit("fx.shrine.use", pacts.altarX[PactKind.HORDE], pacts.altarZ[PactKind.HORDE], 0, 1);
+		}
 	}
 
 	private hitCues(f: FxCueFrame): void {
@@ -709,6 +718,7 @@ export class FxCueMapper {
 		const run = state.run;
 		this.shrineUsed = run !== undefined ? run.shrineUsed : 0;
 		this.greedTakes = greedTakes(state);
+		this.hordeTakes = hordeTakes(state);
 		const taken = run !== undefined ? run.pedestalTaken : undefined;
 		const count = taken !== undefined ? taken.size() : 0;
 		for (let k = 0; k < count; k++) this.pedestals[k] = (taken as ReadonlyArray<number>)[k];

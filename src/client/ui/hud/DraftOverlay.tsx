@@ -685,7 +685,8 @@ const AGAIN_SLACK = 4;
  * shows only once the reveal settled; the hint reads "wait" until settled and the sim's draftReady (DRAFT_UI.hintReady),
  * then the device-aware key hint. Builds (docs/BUILDS.md BU9): each card shows its kind (BannerRow: rarity, level and
  * pips, EVOLVE, the duo's joined chip; an Upgrade's "was" line; the evolved / duo colours) and the boss double draft's
- * re-deal shows "Pick again" under the title (DRAFT_UI.again). Co-op: a "waiting for N teammates" line under the cards while others still choose,
+ * re-deal shows "Pick again" under the title (DRAFT_UI.again). The title is DRAFT_UI.titleKey's (docs/FORTUNE.md FO7:
+ * Greed's Legendary deal reads PACT OF GREED). Co-op: a "waiting for N teammates" line under the cards while others still choose,
  * alone once the local reveal is done. Hidden once the tutorial ended (its floor 3 draft is never played). Renders on
  * a device, bindings, tutorial or waiting-count change only, never per frame.
  */
@@ -735,7 +736,7 @@ export function DraftOverlay() {
 					order={1}
 					size={HUD_VIEW.bigText}
 					align={Enum.TextXAlignment.Center}
-					text={str(PROGRESSION_STRINGS.draftTitle)}
+					text={DRAFT_UI.titleKey.binding.map((key) => str(key))}
 					transparency={DRAFT_UI.titleT.binding}
 				/>
 				<textlabel

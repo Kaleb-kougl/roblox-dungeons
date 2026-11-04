@@ -1005,7 +1005,7 @@ export const REQUIRED_STRING_KEYS: ReadonlyArray<string> = ((): string[] => [
 	...INPUT_KEY_STRING_KEYS,
 	// docs/FORTUNE.md FO6: fortune.ts FORTUNE_STRING_KEYS, written out (an import would be one more top-level local):
 	// the two altar cards and their accept line, the dimmed altar's lines (fortune.ts PACT_DIM_STRING_KEYS), the Greed
-	// deal's draft title, the Horde chip and shouts, the Goldling's shout and escape line
+	// deal's draft title, the Horde chip and shouts, the Goldling's shout and escape line, the Horde room's score pop
 	"pact.greed.title",
 	"pact.greed.take",
 	"pact.greed.gain",
@@ -1024,6 +1024,8 @@ export const REQUIRED_STRING_KEYS: ReadonlyArray<string> = ((): string[] => [
 	"fx.horde.wave",
 	"fx.golden.shout",
 	"fx.golden.escaped",
+	// docs/FORTUNE.md FO7: a Horde room kill's score pop (`+{points}` and the x2 mark)
+	"hud.score.pop.horde",
 ])();
 
 /**

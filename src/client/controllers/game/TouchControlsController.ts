@@ -17,6 +17,7 @@ import type { DisplaySettings } from "shared/settings";
 import type { ImageRef } from "shared/theme";
 import { stickVector, touchMode, type GameSnapshot, type TouchControls, type TouchMode } from "shared/play";
 import { PORTRAIT, RENDER_ORDER, floorStudsY, studsX, studsZ } from "shared/view";
+import { pactRole } from "shared/view/pacts";
 import {
 	HUD_SKIN,
 	TOUCH_LAYOUT,
@@ -647,6 +648,11 @@ export class TouchControlsController implements OnStart {
 
 			const visible = c.placed && (c.id !== "shrine" || snapshot.atShrine);
 			if (c.button.Visible !== visible) c.button.Visible = visible;
+			// On a pact altar the Accept button's word takes the pact's colour (docs/FORTUNE.md FO7).
+			if (c.id === "shrine" && visible) {
+				const tint = role(snapshot.shrinePact >= 0 ? pactRole(snapshot.shrinePact) : "uiText");
+				if (c.text.TextColor3 !== tint) c.text.TextColor3 = tint;
+			}
 
 			const count = c.id === "ember" ? `${snapshot.embers}` : c.id === "flask" ? `${snapshot.flask}` : "";
 			const label = c.face === "iconCount" ? count : c.face === "wordCount" ? `${c.name} ${count}` : c.name;
