@@ -87,6 +87,7 @@ import {
 	type FxEventBuffer,
 } from "shared/view/fx";
 import type { JuiceSettings } from "shared/settings";
+import { goldenFlickerTransparency, goldenTicksLeft, isGoldenKind } from "shared/view/golden";
 import { FxTrackerController } from "../fx/FxTrackerController";
 import { SimController } from "../game/SimController";
 import { ThemeController } from "../game/ThemeController";
@@ -220,6 +221,10 @@ interface ActorView {
  * tinted `enemyAura` (over the affix colour), a placeholder's body is lerped AURA_VIEW.placeholderTint toward it
  * while no other look shows (the "aura" look). Never a Highlight (EVD12). The aura ring and the stun stars are
  * NewEnemyMarksController's.
+ *
+ * The Goldling (docs/FORTUNE.md FO8): through the same two paths (its placeholder gold block; ACTOR_SPRITE_INPUTS'
+ * `golden` once the pack has an `enemy.golden` set: idle / move / hit / death), flickering in its last seconds
+ * (goldenFlicker; never under reduced motion). Its timer ring is GoldenRenderController's.
  */
 @Controller({})
 export class ActorRenderController implements OnStart {
@@ -567,7 +572,7 @@ export class ActorRenderController implements OnStart {
 				view.look = look;
 				sprite.setTint(this.lookColor(pack, look) ?? SPRITE_TINT_NONE);
 			}
-			sprite.setTransparency(transparency);
+			sprite.setTransparency(math.max(transparency, this.goldenFlicker(a, slot, state, alpha)));
 			if (view.hasOutline) {
 				// The aura's tint wins on the rim (the affix keeps its floor ring and name chip).
 				const k = affixThemeIndex(affix);
@@ -579,10 +584,12 @@ export class ActorRenderController implements OnStart {
 			return;
 		}
 
-		const transparency =
+		const transparency = math.max(
 			corpse !== undefined
 				? corpseTransparency(a.alive, a.deadTicks, corpse.corpseTicks, corpse.fadeFrom)
-				: corpseTransparency(a.alive, a.deadTicks, view.corpseTicks);
+				: corpseTransparency(a.alive, a.deadTicks, view.corpseTicks),
+			this.goldenFlicker(a, slot, state, alpha),
+		);
 		const model = view.model!;
 		// A corpse drops the outline the first frame it is dead (once: only a change of group reparents).
 		const outlined = actorGroup(view.hasOutline, a.alive !== 0) === "enemies";
@@ -608,6 +615,17 @@ export class ActorRenderController implements OnStart {
 			view.transparency = transparency;
 			setModelTransparency(model, transparency);
 		}
+	}
+
+	/**
+	 * The Goldling's flicker in its last seconds (docs/FORTUNE.md FO8, shared/view/golden goldenFlickerTransparency, on
+	 * sim time; none under reduced motion, where its timer ring's colour carries the warning): the body's extra
+	 * transparency, 0 for every other actor.
+	 */
+	private goldenFlicker(a: Readonly<ActorState>, slot: number, state: SimState, alpha: number): number {
+		if (a.alive === 0 || !isGoldenKind(a.kind)) return 0;
+		const simSec = (state.tick + alpha) / SIM_HZ;
+		return goldenFlickerTransparency(goldenTicksLeft(state, slot), simSec, this.fx.settings().reducedMotion);
 	}
 
 	private buildPlayerView(pack: ThemePack, folder: Instance): PlayerView {

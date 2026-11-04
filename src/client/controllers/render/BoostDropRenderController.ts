@@ -60,6 +60,7 @@ import {
 	dropSecondsLeft,
 	pieceLandingAt,
 } from "shared/view/boosts";
+import { goldenBoostHopped } from "shared/view/golden";
 import { burstSeed, motionScale } from "shared/view/fx";
 import { SimController } from "../game/SimController";
 import { ThemeController } from "../game/ThemeController";
@@ -201,7 +202,9 @@ interface Flash {
  * landings (pieceLandingAt: slot and landing tick) hops in instead of popping: from the piece's top
  * (BREAKABLE_LOOT_VIEW.hopFromTiles) to the floor in an arc hopTiles high over hopSeconds (lootHopStuds, sim time; none
  * under reduced motion), its bob and halo pulse counted from the touch-down (lootSettledAgeSec). A loaded piece lost on
- * a full floor (`lostLoot`) leaves a small grey fizzle at the piece (ParticleController.lootFizzle). Sounds are not played
+ * a full floor (`lostLoot`) leaves a small grey fizzle at the piece (ParticleController.lootFizzle). The Goldling's catch
+ * (docs/FORTUNE.md FO8): the boosts it lands (RunView.golden.caught's slots, tick-matched: goldenBoostHopped) hop in the
+ * same way (the sim's drops carry no source; the catch event names the slots). Sounds are not played
  * here: AudioController maps the same events (shared/view/audio cues.ts). All moves in one workspace:BulkMoveTo per
  * frame (one CFrame per part, the last written). Read-only on the sim.
  */
@@ -290,7 +293,12 @@ export class BoostDropRenderController implements OnStart {
 		for (const slot of t.cleared) this.release(slot);
 		for (const slot of t.landed) {
 			const g = ground[slot];
-			this.attach(slot, g, g !== undefined && pieceLandingAt(ev, slot, g.spawnTick) !== undefined);
+			// A broken piece's loot, or a Goldling catch's boosts (docs/FORTUNE.md FO8): the hop instead of the pop.
+			const hopped =
+				g !== undefined &&
+				(pieceLandingAt(ev, slot, g.spawnTick) !== undefined ||
+					goldenBoostHopped(ctx.run.golden, slot, g.spawnTick));
+			this.attach(slot, g, hopped);
 		}
 
 		for (const c of ev.collected) {

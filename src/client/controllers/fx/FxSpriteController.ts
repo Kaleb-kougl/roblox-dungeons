@@ -124,6 +124,14 @@ export class FxSpriteController implements OnStart {
 		this.mapper?.boostCollect(x, z);
 	}
 
+	/**
+	 * The Goldling was hit (or, at `scale` > 1, caught) at sim (x, z) (GoldenRenderController, docs/FORTUNE.md FO8):
+	 * fx.golden.coin, on the next frame. Nothing without the pack's coin art (or any fx art).
+	 */
+	goldenCoin(x: number, z: number, scale = 1): void {
+		this.mapper?.goldenCoin(x, z, scale);
+	}
+
 	private frame(rawDt: number): void {
 		const mapper = this.mapper;
 		const ctx = this.sim.getContext();

@@ -30,6 +30,8 @@
  *   fx.death.puff    FxEvent killed (not a boss: bossDefeated owns it)
  *   fx.breakable.splinter  `breakableSplinter(x, z)` (called by the breakable renderer when a piece breaks)
  *   fx.boost.collect `boostCollect(x, z)` (called by the boost drop renderer on a pickup, docs/BOOSTS.md B6)
+ *   fx.golden.coin   `goldenCoin(x, z, scale)` (called by the Goldling's renderer on each hit and, bigger, on its catch,
+ *                    docs/FORTUNE.md FO8)
  *   fx.hit.light / fx.hit.heavy  FxEvent hit (heavy: the tracker's `heavy`), at most every hitMarkMinSec per actor
  *   fx.stairwell     loop (`loop`): while state.endless.stairsOpen and the spots' floor is the state's floor
  * Sources are taken in that order (most important first) against the budget: at most FX_SPRITE_VIEW.maxSprites live
@@ -299,6 +301,10 @@ export class FxCueMapper {
 	// boost pickups queued by the boost drop renderer
 	private readonly boostX: number[] = [];
 	private readonly boostZ: number[] = [];
+	// the Goldling's coin bursts queued by its renderer: x, z, scale
+	private readonly coinX: number[] = [];
+	private readonly coinZ: number[] = [];
+	private readonly coinScale: number[] = [];
 	// this frame's telegraph spots: x, z, radius
 	private readonly tgX: number[] = [];
 	private readonly tgZ: number[] = [];
@@ -334,6 +340,17 @@ export class FxCueMapper {
 		this.boostZ.push(z);
 	}
 
+	/**
+	 * The Goldling was hit (or, at `scale` > 1, caught) at sim (x, z): its coin burst on the next frame (dropped past
+	 * goldenCoinQueue).
+	 */
+	goldenCoin(x: number, z: number, scale = 1): void {
+		if (this.coinX.size() >= FX_SPRITE_VIEW.goldenCoinQueue) return;
+		this.coinX.push(x);
+		this.coinZ.push(z);
+		this.coinScale.push(scale);
+	}
+
 	/** Forget everything (live effects, pending bursts, snapshots): the next frame adopts the state silently. */
 	reset(): void {
 		this.liveEnds.clear();
@@ -345,6 +362,7 @@ export class FxCueMapper {
 		this.splZ.clear();
 		this.boostX.clear();
 		this.boostZ.clear();
+		this.clearCoins();
 		this.lastState = undefined;
 		this.lastTick = -1;
 		this.lastFloor = -1;
@@ -392,18 +410,27 @@ export class FxCueMapper {
 				this.emit("fx.breakable.splinter", this.splX[i], this.splZ[i], 0, 1);
 			for (let i = 0; i < this.boostX.size(); i++)
 				this.emit("fx.boost.collect", this.boostX[i], this.boostZ[i], 0, 1);
+			for (let i = 0; i < this.coinX.size(); i++)
+				this.emit("fx.golden.coin", this.coinX[i], this.coinZ[i], 0, this.coinScale[i]);
 			this.hitCues(f);
 		}
 		this.splX.clear();
 		this.splZ.clear();
 		this.boostX.clear();
 		this.boostZ.clear();
+		this.clearCoins();
 		this.snapshot(f);
 		this.updateLoop(f);
 		return out.count();
 	}
 
 	// --- budget and placement --------------------------------------------------------------------
+
+	private clearCoins(): void {
+		this.coinX.clear();
+		this.coinZ.clear();
+		this.coinScale.clear();
+	}
 
 	private forgetLive(): void {
 		this.liveEnds.clear();
@@ -415,6 +442,7 @@ export class FxCueMapper {
 		this.splZ.clear();
 		this.boostX.clear();
 		this.boostZ.clear();
+		this.clearCoins();
 	}
 
 	private expire(): void {

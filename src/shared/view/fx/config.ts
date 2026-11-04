@@ -70,6 +70,11 @@ export const FX_SPRITE_VIEW = {
 	/** Boost pickup bursts (fx.boost.collect) queued by the boost drop renderer between two frames (docs/BOOSTS.md B6). */
 	boostCollectQueue: 4,
 	/**
+	 * The Goldling's coin bursts (fx.golden.coin, docs/FORTUNE.md FO8) queued by GoldenRenderController between two
+	 * frames: its hits and its catch's fountain.
+	 */
+	goldenCoinQueue: 6,
+	/**
 	 * Where effects are drawn. "floor": flat on the floor (a SurfaceGui on a thin Part at liftStuds, under every floor
 	 * marking at MARKING_VIEW.liftTiles and every bullet at BULLET_Y), so an effect loses every overlap with a bullet,
 	 * a telegraph or the aim line; bodies stand over it. "billboard": a camera-facing BillboardGui with SpriteView's
