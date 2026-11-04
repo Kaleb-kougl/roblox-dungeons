@@ -45,7 +45,7 @@ option, and a miss always leaves you something.**
 | `awardPoints(..., scalePercent, bonusPercent, extraPercent)`: exact integer factors; `scoreKill` passes bonus = affix x Bounty, extra = Gold Rush | `score.ts` | Horde x2 multiplies into `bonusPercent` |
 | Gated score sources: `JACKPOT` 9 (builds), `PELLETS` 10 / `SWEEP` 11 (pellets) | `scoreData.ts` | Append `HORDE` 12 (pacts only) and `GOLDEN` 13 (golden only; pads HORDE when pacts is absent, the pellets/JACKPOT pattern) |
 | Hash groups: the last is `pellets` | `sim/hashLayout.ts` | Append `pacts`, then `golden` |
-| Salts in use: `0x165667b1`, `0x27220a95`, `0x27d4eb2f`, `0x4b564452`, `0x5bd1e995`, `0x7f4a7c15`, `0xcc9e2d51`, `0xe6546b64` | `src/shared` | Pacts salt `0x5c3a91e7`, golden salt `0x3d2f8b4d` (unused at 82c2af6) |
+| Salts in use: `0x165667b1`, `0x27220a95`, `0x27d4eb2f`, `0x4b564452`, `0x5bd1e995`, `0x7f4a7c15`, `0xcc9e2d51`, `0xe6546b64` | `src/shared` | Pacts salt `0x5c3a91e7`, golden salt `0x3d2f8b4d` (the floor roll), Goldling sim stream salt `0x7a3c5e91` (unused at 82c2af6) |
 | `DAILY.ruleset` = 5 | `shared/daily/config.ts` | 6 |
 | Archetype bands 0-4 hold indices 0-17 | `combat/actors/registry.ts` | The Goldling is band 5 (`PORT_BAND_FORTUNE`), index 18 |
 | `PLAYER_SPEED` 6, `ROLL_SPEED` 11 | `sim/playerData.ts` | The Goldling runs at 5.1 |

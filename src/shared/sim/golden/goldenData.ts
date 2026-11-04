@@ -66,9 +66,9 @@ export const GOLDEN_BOOST_RING: ReadonlyArray<readonly [number, number]> = [
 	[0, 0],
 ];
 /**
- * The Goldling's own sim rng stream: seedToState(run seed) XOR this, the dungeon roll's salt (shared/dungeon
- * GOLDEN_PLACE.salt 0x3d2f8b4d), like the drops' stream (seedToState(seed) ^ DROPS.salt). The floor roll mixes it into
- * the FLOOR seed instead (runSeed ^ imul(floor, FLOOR_SEED_MUL), never the bare run seed for a floor >= 1), so the two
- * never start from the same word. Drawn only for a jink's side and the catch's boost kinds.
+ * The Goldling's own sim rng stream: seedToState(run seed) XOR this, like the drops' stream (seedToState(seed) ^
+ * DROPS.salt). A salt of its own, unused anywhere else in src/shared: not the dungeon roll's (shared/dungeon
+ * GOLDEN_PLACE.salt 0x3d2f8b4d, mixed into the floor seed), so the floor roll and the sim stream share no word. Drawn
+ * only for a jink's side and the catch's boost kinds.
  */
-export const GOLDEN_SIM_SALT = 0x3d2f8b4d;
+export const GOLDEN_SIM_SALT = 0x7a3c5e91;

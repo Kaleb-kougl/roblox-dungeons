@@ -5,7 +5,7 @@
 // hashed state), and nothing at all without the config. Test-only surgery: teleports, kills through SimCtx.
 import { describe, expect, it } from "@rbxts/jest-globals";
 import "shared/sim/testing";
-import { gridToWorld, worldToGrid } from "shared/dungeon";
+import { GOLDEN_PLACE, gridToWorld, worldToGrid } from "shared/dungeon";
 import {
 	DEBUG_FLOOR_BUTTON,
 	EMPTY_INPUT,
@@ -17,6 +17,7 @@ import {
 	GOLDEN_JINK,
 	GOLDEN_KIND,
 	GOLDEN_RUN,
+	GOLDEN_SIM_SALT,
 	GOLDEN_SUBSYSTEM,
 	GOLDEN_TICKS_LEFT,
 	GoldenStatus,
@@ -29,10 +30,12 @@ import {
 	archetypeIndex,
 	createSimState,
 	goldenInRoom,
+	goldenSeedState,
 	goldenSpawnTile,
 	hashLayout,
 	hashState,
 	isWarbannerAuraTarget,
+	seedToState,
 	simWorldConfig,
 	step,
 	webArchetypeIds,
@@ -185,6 +188,15 @@ describe("golden: archetype and opt-in state (GE2)", () => {
 		expect(layout.names[last.start]).toBe("golden.rngState");
 		expect(layout.names[last.finish - 1]).toBe("golden.src.length");
 		expect(layout.values).toEqual(writeHashFields(r.s, []));
+	});
+
+	it("its stream has a salt of its own (not the floor roll's GOLDEN_PLACE.salt): seedToState(seed) ^ 0x7a3c5e91", () => {
+		expect(GOLDEN_SIM_SALT).toBe(0x7a3c5e91);
+		expect(GOLDEN_SIM_SALT).never.toBe(GOLDEN_PLACE.salt);
+		for (const seed of [0, 1, SEED, 1337, 0x7fffffff]) {
+			expect(goldenSeedState(seed)).toBe(bit32.bxor(seedToState(seed), GOLDEN_SIM_SALT));
+			expect(createSimState(seed, 0, 0, devRun().config).golden!.rngState).toBe(goldenSeedState(seed));
+		}
 	});
 });
 
