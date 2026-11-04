@@ -90,7 +90,8 @@ export function pactDimStringKey(name: string): string {
  * Every Fortune string a pack must define (in REQUIRED_STRING_KEYS, written out there): the Greed and Horde altar cards
  * (title, Take: `{curse}`, Gain), the accept line (`{key}`), the dim lines (PACT_DIM_STRING_KEYS), the Greed deal's
  * draft title, the status corner's Horde chip, the Horde's floor shouts (x2, the second wave), the Goldling's floor
- * shout and its escape line (`{points}` banked).
+ * shout and its escape line (`{points}` banked); then (docs/FORTUNE.md FO7) a Horde room kill's score pop (`{points}`
+ * with the x2 mark).
  */
 export const FORTUNE_STRING_KEYS: ReadonlyArray<string> = [
 	"pact.greed.title",
@@ -111,6 +112,7 @@ export const FORTUNE_STRING_KEYS: ReadonlyArray<string> = [
 	"fx.horde.wave",
 	"fx.golden.shout",
 	"fx.golden.escaped",
+	"hud.score.pop.horde",
 ];
 
 /** The room clear tally's last segment in a Horde room (`{points}`: the doubled half), in ROOM_CLEAR_STRING_KEYS. */

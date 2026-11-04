@@ -6,6 +6,7 @@
  */
 import type { StringVars } from "shared/theme";
 import { roomClearSegments, type RoomClear, type RoomClearLook, type TallyEntry, type TallyKind } from "shared/view/fx";
+import { richTextEscape } from "./comboDraw";
 import { HUD_VIEW } from "./layout";
 import { TUTORIAL_VIEW } from "./tutorial";
 
@@ -67,6 +68,7 @@ const SEGMENT_KEYS: Readonly<Record<TallyKind, string>> = {
 	perfect: ROOM_CLEAR_STRINGS.perfectLine,
 	fast: ROOM_CLEAR_STRINGS.fast,
 	sweep: ROOM_CLEAR_STRINGS.sweep,
+	horde: ROOM_CLEAR_STRINGS.horde,
 };
 
 /** CLEAR / PERFECT, or "PERFECT x2" for several rooms on one tick. */
@@ -75,19 +77,28 @@ export function roomClearStampText(perfect: boolean, rooms: number, s: RoomClear
 	return rooms > 1 ? s(ROOM_CLEAR_STRINGS.multi, { stamp, rooms }) : stamp;
 }
 
-/** The tally row: every started segment with its counted value, then "= total" ("" before the first segment). */
+/**
+ * The tally row: every started segment with its counted value, then "= total" ("" before the first segment).
+ * `hordeHex` (docs/FORTUNE.md FO7; `#rrggbb`, the `pact.horde` colour): the row as RichText, every part escaped and the
+ * Horde segment in that colour (the Tally label has RichText on); absent: plain text.
+ */
 export function roomClearTallyText(
 	look: Pick<RoomClearLook, "segments" | "segmentCount" | "total">,
 	s: RoomClearStr,
+	hordeHex?: string,
 ): string {
 	const parts: string[] = [];
 	for (let i = 0; i < look.segmentCount; i++) {
 		const seg = look.segments[i];
 		if (!seg.started) break;
-		parts.push(s(SEGMENT_KEYS[seg.kind], { points: seg.shown }));
+		const text = s(SEGMENT_KEYS[seg.kind], { points: seg.shown });
+		if (hordeHex === undefined) parts.push(text);
+		else if (seg.kind === "horde") parts.push(`<font color="${hordeHex}">${richTextEscape(text)}</font>`);
+		else parts.push(richTextEscape(text));
 	}
 	if (parts.size() === 0) return "";
-	parts.push(s(ROOM_CLEAR_STRINGS.total, { points: look.total }));
+	const total = s(ROOM_CLEAR_STRINGS.total, { points: look.total });
+	parts.push(hordeHex === undefined ? total : richTextEscape(total));
 	return parts.join(ROOM_CLEAR_VIEW.separator);
 }
 

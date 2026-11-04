@@ -26,6 +26,8 @@ function makeClear(over: Partial<RoomClear> = {}): RoomClear {
 		fastPoints: 0,
 		pelletPoints: 0,
 		sweepPoints: 0,
+		hordePoints: 0,
+		hordeBonusPoints: 0,
 		x: 7,
 		z: 5,
 		slot: 1,
@@ -144,7 +146,8 @@ describe("RoomClearSequence timeline", () => {
 	});
 
 	it("pellets (docs/PELLETS.md PL7): six segments in order, ticked in order, the Sweep flies once with the bonus", () => {
-		expect(ROOM_CLEAR_SEGMENTS).toBe(6);
+		// seven at most since the Horde's segment (docs/FORTUNE.md FO7; pacts.spec.ts plays it)
+		expect(ROOM_CLEAR_SEGMENTS).toBe(7);
 		const d = new Driver();
 		const c = makeClear({ perfect: true, perfectPoints: 500, fastPoints: 90, pelletPoints: 120, sweepPoints: 250 });
 		expect(roomClearBonus(c)).toBe(250 + 500 + 90 + 250);

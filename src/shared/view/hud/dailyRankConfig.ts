@@ -10,12 +10,15 @@ export const DAILY_RANK_ROLE = "newBest";
 
 /**
  * Priorities in the floor shout slot (ComboController.requestShout): a higher one replaces a lower one showing or
- * asked for on the same frame, a lower one is dropped while a higher shows. A combo tier shout is below both (0).
+ * asked for on the same frame, a lower one is dropped while a higher shows. A combo tier shout is below all (0). The
+ * Horde's shouts (docs/FORTUNE.md FO7: HORDE x2 on rousing, WAVE 2 at the telegraph) rank over the rank threshold
+ * (they tell of new enemies) and under new best.
  */
 export const FLOOR_SHOUT_PRIORITY = {
 	comboTier: 0,
 	rankThreshold: 1,
-	newBest: 2,
+	horde: 2,
+	newBest: 3,
 } as const;
 
 export const DAILY_RANK = {

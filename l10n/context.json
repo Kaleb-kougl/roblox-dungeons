@@ -1586,6 +1586,13 @@
 			"points": 120
 		}
 	},
+	"hud.score.pop.horde": {
+		"note": "Points popping up over an enemy killed in a Pact of the Horde room (the pact doubles the room's score): the usual plus sign and number, then the x2 mark (\"times two\"). Keep it as short as the plain pop.",
+		"max": 13,
+		"example": {
+			"points": 240
+		}
+	},
 	"hud.seed": {
 		"note": "Part of the run info line (pause menu and run-over panel): the dungeon's random seed. {seed} is a number. Lowercase in English because it sits mid-line.",
 		"example": {

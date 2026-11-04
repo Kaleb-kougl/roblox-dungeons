@@ -1251,6 +1251,8 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		"fx.horde.wave": "WAVE 2",
 		"fx.golden.shout": "GOLDLING!",
 		"fx.golden.escaped": "It got away!  +{points} banked",
+		// docs/FORTUNE.md FO7: a Horde room kill's score pop, the kill pop's `+{points}` with the x2 mark
+		"hud.score.pop.horde": "+{points} x2",
 		// --- daily.* (docs/DAILY.md DS9 / DS11 / DS12: the main menu's Daily card and podium, the leaderboard tabs, the
 		// run-over daily block, the lobby world toggle; numbers arrive formatted by the view) ---------------------------
 		"daily.card.title": "DAILY #{label} · {date}",

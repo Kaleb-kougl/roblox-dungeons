@@ -105,6 +105,8 @@ function clearOf(over: Partial<RoomClear>): RoomClear {
 		fastPoints: 0,
 		pelletPoints: 0,
 		sweepPoints: 0,
+		hordePoints: 0,
+		hordeBonusPoints: 0,
 		x: 0,
 		z: 0,
 		slot: -1,
