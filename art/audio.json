@@ -409,6 +409,24 @@
 			],
 			"confirmed": false
 		},
+		"sfx.room.teamperfect": {
+			"category": "jingle",
+			"clips": [
+				{
+					"src": "ninja-adventure/Audio/Jingles/Success2.wav",
+					"mix": [
+						"ninja-adventure/Audio/Sounds/Bonus/Gold1.wav"
+					]
+				}
+			],
+			"volume": 0.7,
+			"alternates": [
+				"ninja-adventure/Audio/Jingles/Success4.wav",
+				"ninja-adventure/Audio/Jingles/Secret4.wav"
+			],
+			"notes": "docs/RUN_RECAP.md CM2 / CM7: a co-op room cleared with no hit on anyone (TEAM PERFECT), on every client (a far client at the chip's volume). PERFECT's own Success2 with Bonus/Gold1 layered on top (mix), so it reads as PERFECT, bigger; tune the layer's gainDb / trim at the audition. Alternates: Success2 + Success4 as the layer, or Secret4 alone. Ducks the music. While silent sfx.room.perfect plays.",
+			"confirmed": false
+		},
 		"sfx.score.tick": {
 			"category": "sfx",
 			"clips": [
@@ -591,6 +609,21 @@
 				"ninja-adventure/Audio/Sounds/Alert/Alert4.wav"
 			],
 			"notes": "A parry's bright ring-out, once per guard that erased bullets (docs/GRAZE_PARRY.md GPD10): audition candidates (GP0), not picked yet. Replaces that frame's sfx.player.deflect (the fallback while this is silent); +3 semitones from 3 erases, so no pitch jitter here. The minimum interval lives in code.",
+			"confirmed": false
+		},
+		"sfx.player.syncparry": {
+			"category": "sfx",
+			"clips": [
+				"ninja-adventure/Audio/Sounds/Bonus/Bonus3.wav"
+			],
+			"volume": 0.7,
+			"alternates": [
+				"ninja-adventure/Audio/Sounds/Bonus/Coin.wav",
+				"ninja-adventure/Audio/Sounds/Bonus/Gold1.wav",
+				"ninja-adventure/Audio/Sounds/Magic & Skill/Magic1.wav",
+				"ninja-adventure/Audio/Sounds/Magic & Skill/Magic2.wav"
+			],
+			"notes": "docs/RUN_RECAP.md CM4 / CM7: SYNC!, two or more teammates' parries starting within 0.2 s; once per sync (full volume when the view player is in it, else teammate volume). The parry's Bonus family, so it reads as a bigger parry. While silent the parry plays 5 semitones up.",
 			"confirmed": false
 		},
 		"sfx.draft.flip": {

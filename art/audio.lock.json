@@ -127,6 +127,11 @@
 			"bytes": 73452
 		},
 		{
+			"path": "ninja-adventure/Audio/Sounds/Bonus/Bonus3.wav",
+			"sha256": "26224e126ff0fa9b0ab2217d3e232214fd318f589509c2ba39f7a906df073cba",
+			"bytes": 68084
+		},
+		{
 			"path": "ninja-adventure/Audio/Sounds/Bonus/Coin2.wav",
 			"sha256": "8fe129feb63baafc2a65ad7f19dc184d6ec9e7d9d3df4a8a143740ffe009dfa6",
 			"bytes": 59188
@@ -135,6 +140,11 @@
 			"path": "ninja-adventure/Audio/Sounds/Bonus/Coin3.wav",
 			"sha256": "de0da28b73a35c1d0511f09f46f94d76a858ddb6c1dbe501c3ba78a8da05d8d7",
 			"bytes": 46932
+		},
+		{
+			"path": "ninja-adventure/Audio/Sounds/Bonus/Gold1.wav",
+			"sha256": "0ee3a1527110bb274b17e7620837444352681ef7ce7d2cf427dd99af988dcde2",
+			"bytes": 75730
 		},
 		{
 			"path": "ninja-adventure/Audio/Sounds/Bonus/Gold2.wav",
