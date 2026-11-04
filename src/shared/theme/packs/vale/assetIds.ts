@@ -96,6 +96,8 @@ import type { RobloxAssetId } from "../../types";
  * audio:build with ffmpeg 6.1.1) uploaded 2026-11-03 6:33 PM by k9kbdev, transcribed from an Asset Manager screenshot.
  * kit-table-x / -z and kit-chair-px / -pz / -nx / -nz (the library's reading area, docs/BOOKSHELVES.md RA5; Dungeon
  * Assets Pack by zver.3d) uploaded 2026-11-04 6:04 AM by k9kbdev, transcribed from an Asset Manager screenshot.
+ * kit-chest / kit-chest-open (the vault chest, docs/TREASURE.md TR9; "Old Chest" by SebastianSosnowski, CC-BY 4.0)
+ * uploaded 2026-11-04 7:43 AM, transcribed from an Asset Manager screenshot.
  */
 export const VALE_ASSET_IDS: Readonly<Record<string, RobloxAssetId>> = {
 	"amb-b1.ogg": "rbxassetid://91158343621799",
@@ -167,6 +169,8 @@ export const VALE_ASSET_IDS: Readonly<Record<string, RobloxAssetId>> = {
 	"kit-chains-1.png": "rbxassetid://78196216486149",
 	"kit-chains-2.png": "rbxassetid://132113945005181",
 	"kit-chandelier-1.png": "rbxassetid://135009681923399",
+	"kit-chest-open.png": "rbxassetid://106906788119340",
+	"kit-chest.png": "rbxassetid://76282590856030",
 	"kit-sarcophagus.png": "rbxassetid://71399333921022",
 	"kit-statue-x.png": "rbxassetid://78332468478600",
 	"kit-statue-z.png": "rbxassetid://98306419255246",
