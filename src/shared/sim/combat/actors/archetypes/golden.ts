@@ -61,8 +61,11 @@ export const GOLDEN_JINK_Z = 4;
 export const GOLDEN_RADIUS = 0.3;
 /** Run speed (world units / s): under the player's walk (6), well under the roll (11). */
 export const GOLDEN_SPEED = 5.1;
-/** Base hp (x endless floor / Depth scaling, x party scaling; GE4 tunes it). */
-export const GOLDEN_HP = 10;
+/**
+ * Base hp (x endless floor / Depth scaling, x party scaling). GE4 (run/goldenCensus.spec.ts): the plan's start 10 took
+ * 3 port-sword hits on floor 2 (the plan wanted about 6-8), so 24: 7 hits on floor 2 (25.9 hp), 13 on floor 6.
+ */
+export const GOLDEN_HP = 24;
 
 /** A jink step that moved less than this fraction of its length ran into a wall or the room's edge: it ends. */
 const JINK_BLOCKED = 0.3;

@@ -22,7 +22,7 @@
  * This module holds the config, the state, its floor fill, clone and hash. A LEAF (shared/dungeon, types and
  * goldenData.ts only): the archetype and stepGolden import it without a require cycle.
  */
-import type { FloorGolden, FleeScratch } from "shared/dungeon";
+import { GOLDEN_FLEE, type FloorGolden, type FleeScratch } from "shared/dungeon";
 import { seedToState } from "../rng";
 import type { SimState } from "../state";
 import {
@@ -48,6 +48,8 @@ export interface GoldenConfig {
 	readonly escapeTicks: number;
 	/** The flee field's sources are re-read every this many ticks. */
 	readonly fieldTicks: number;
+	/** The flee field's re-relax factor (shared/dungeon fleeField: seeds -fleeFactor x the distance to a player). */
+	readonly fleeFactor: number;
 	/** Jink: a living player within jinkRange (world units) with the cooldown ready starts a jinkTicks sidestep. */
 	readonly jinkRange: number;
 	readonly jinkCooldownTicks: number;
@@ -66,6 +68,7 @@ export const ENDLESS_GOLDEN_CONFIG: GoldenConfig = table.freeze({
 	appearTicks: GOLDEN_APPEAR_TICKS,
 	escapeTicks: GOLDEN_ESCAPE_TICKS,
 	fieldTicks: GOLDEN_FIELD_TICKS,
+	fleeFactor: GOLDEN_FLEE.factor,
 	jinkRange: GOLDEN_JINK_RANGE,
 	jinkCooldownTicks: GOLDEN_JINK_COOLDOWN_TICKS,
 	jinkTicks: GOLDEN_JINK_TICKS,

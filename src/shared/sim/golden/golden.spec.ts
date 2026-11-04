@@ -13,6 +13,7 @@ import {
 	GOLDEN,
 	GOLDEN_APPEAR_TICKS,
 	GOLDEN_ESCAPE_TICKS,
+	GOLDEN_HP,
 	GOLDEN_JINK,
 	GOLDEN_KIND,
 	GOLDEN_RUN,
@@ -140,12 +141,19 @@ describe("golden: archetype and opt-in state (GE2)", () => {
 		expect(archetypeIds()[index]).toBe(GOLDEN_KIND);
 		expect(archetypeIndex(GOLDEN_KIND)).toBe(archetypeIndex("warbanner") + 1);
 		expect(archetypeIds().size()).toBe(index + 1);
+		// GE4 tuned the plan's 10 to 24 (docs/FORTUNE.md GE4, run/goldenCensus.spec.ts).
+		expect(GOLDEN_HP).toBe(24);
 		expect([GOLDEN.data.hp, GOLDEN.data.radius, GOLDEN.data.speed, GOLDEN.data.contactDamage]).toEqual([
-			10, 0.3, 5.1, 0,
+			GOLDEN_HP,
+			0.3,
+			5.1,
+			0,
 		]);
 		expect((GOLDEN.data as { roomEnemy?: boolean }).roomEnemy).toBe(undefined);
 		expect(isWarbannerAuraTarget(archetypeIndex(GOLDEN_KIND))).toBe(false);
 		expect([ENDLESS_GOLDEN_CONFIG.appearTicks, ENDLESS_GOLDEN_CONFIG.escapeTicks]).toEqual([180, 600]);
+		// The plan's re-relax factor (GE4 measured 1.2 / 2 / 3: the catch rate barely moves, so the plan's stays).
+		expect(ENDLESS_GOLDEN_CONFIG.fleeFactor).toBe(1.2);
 		expect([GOLDEN_APPEAR_TICKS, GOLDEN_ESCAPE_TICKS]).toEqual([180, 600]);
 	});
 

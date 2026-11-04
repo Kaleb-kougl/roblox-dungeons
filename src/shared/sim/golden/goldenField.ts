@@ -67,7 +67,7 @@ export function goldenField(state: Readonly<SimState>, g: GoldenState): GoldenFi
 			const blocked = solid !== undefined && solid.has(cellKey(f.x0 + lx, f.y0 + ly));
 			c.open[i] = f.walk[i] === 1 && !blocked ? 1 : 0;
 		}
-	fleeField(c.open, f.w, f.h, g.src, g.src.size(), c.field, c.scratch);
+	fleeField(c.open, f.w, f.h, g.src, g.src.size(), c.field, c.scratch, g.config.fleeFactor);
 	c.floor = f;
 	c.fieldTick = g.fieldTick;
 	c.intact = intact;
