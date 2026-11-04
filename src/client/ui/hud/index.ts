@@ -8,7 +8,8 @@
  * DraftRevealController (docs/DRAFT_REVEAL.md DR5 / DR6); the new-best bindings (newBestUi NEW_BEST_UI) for
  * NewBestController (docs/NEW_BEST.md NB6 / NB7); the Daily's clock hook (dailyHooks)  for the menu's
  * Daily card and podium (docs/DAILY.md DS9), the run-over daily block (DailyResultBlock, DS11) and the headshot
- * cache (headshots) for DailyRankController (DS10).
+ * cache (headshots) for DailyRankController (DS10); the run-over recap's bindings (recapBindings RECAP_BINDINGS) for
+ * RecapController (docs/RUN_RECAP.md RR5 / RR6).
  */
 export * from "./actions";
 export * from "./cornerFade";
@@ -24,6 +25,7 @@ export * from "./MinimapPanel";
 export * from "./GameHud";
 export * from "./MenuFit";
 export * from "./primitives";
+export * from "./recapBindings";
 export * from "./roomClearBindings";
 export * from "./ScreenDim";
 export * from "./useHudScale";

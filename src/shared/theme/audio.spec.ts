@@ -138,6 +138,9 @@ describe("audio contract: port IDs and ambience", () => {
 			"sfx.pellet.eat",
 			"sfx.pellet.sweep",
 			"sfx.pellet.power",
+			// docs/RUN_RECAP.md CM4: a party run's TEAM PERFECT, a SYNC! parry
+			"sfx.room.teamperfect",
+			"sfx.player.syncparry",
 			// docs/TREASURE.md TR6: a vault's lock cracks, its cage unlocks, its chest opens, a Legendary's jingle
 			"sfx.treasure.crack",
 			"sfx.treasure.unlock",

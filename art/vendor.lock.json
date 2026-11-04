@@ -572,6 +572,16 @@
 			"bytes": 55506
 		},
 		{
+			"path": "dungeon-essential-kit/bookcase/bookcase_x.png",
+			"sha256": "05a43b5ac315be75b95fdf1309341e267165ee53355ca777f2282a1f5352c6c9",
+			"bytes": 9247
+		},
+		{
+			"path": "dungeon-essential-kit/bookcase/bookcase_z.png",
+			"sha256": "f66ec6cc655994ad1fea42edbb987a960316ad8ddd7bf66577c251c2a1871e12",
+			"bytes": 9235
+		},
+		{
 			"path": "dungeon-essential-kit/cage/cage_1.png",
 			"sha256": "fb00508ec9b0c1b0d2b8ea18dc0559b977fbf304a2e4298c524c58e0332d4569",
 			"bytes": 3371

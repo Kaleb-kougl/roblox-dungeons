@@ -718,9 +718,10 @@ export const BOOST_BEAM_IMAGE_ID = "ui.marker.boost";
  * drops' one (docs/BREAKABLE_DROPS.md BL5): a boost hops out of a broken barrel / crate (sfx.boost.drop plays while it
  * is silent). Then the new enemies' six (docs/NEW_ENEMIES.md NE1): a Bomber's fuse and blast, a Charger's charge and
  * stun, a Stormcaller's strike, a Reaper's spin. Then the pellets' three (docs/PELLETS.md PL6, pellets.ts
- * PELLET_AUDIO_IDS): a pellet eaten, a room swept, the power pellet taken. Then the treasure rooms' four
- * (docs/TREASURE.md TR6, treasure.ts TREASURE_AUDIO_IDS): a vault's lock cracks, its cage unlocks, its chest opens, a
- * Legendary chest's jingle.
+ * PELLET_AUDIO_IDS): a pellet eaten, a room swept, the power pellet taken. Then the co-op moments' two
+ * (docs/RUN_RECAP.md CM4, runRecap.ts TEAM_MOMENT_AUDIO_IDS): TEAM PERFECT and a SYNC! parry. Then the treasure rooms'
+ * four (docs/TREASURE.md TR6, treasure.ts TREASURE_AUDIO_IDS): a vault's lock cracks, its cage unlocks, its chest
+ * opens, a Legendary chest's jingle.
  */
 export const PORT_AUDIO_EVENTS = [
 	"sfx.player.swing",
@@ -812,6 +813,10 @@ export const PORT_AUDIO_EVENTS = [
 	"sfx.pellet.eat",
 	"sfx.pellet.sweep",
 	"sfx.pellet.power",
+	// docs/RUN_RECAP.md CM4 (runRecap.ts TEAM_MOMENT_AUDIO_IDS, the same list): a party run's TEAM PERFECT jingle (the
+	// PERFECT jingle while silent) and a SYNC! parry (the parry while silent)
+	"sfx.room.teamperfect",
+	"sfx.player.syncparry",
 	// docs/TREASURE.md TR6 (treasure.ts TREASURE_AUDIO_IDS, the same list): a vault's lock cracks (a metal snap), its
 	// cage unlocks (a rattle), its chest opens (the sting, pitched per tier by the cue mapper), a Legendary chest opens
 	// (a jingle: it ducks the music)
@@ -998,6 +1003,42 @@ export const REQUIRED_STRING_KEYS: ReadonlyArray<string> = ((): string[] => [
 	...DAILY_RANK_STRING_KEYS,
 	// docs/LOCALIZATION.md L1: named keys' labels (`input.key.<name>`) and the key list joiner
 	...INPUT_KEY_STRING_KEYS,
+	// docs/RUN_RECAP.md RR3: runRecap.ts RECAP_STRING_KEYS, written out (an import would be one more top-level local):
+	// the near-miss line, the highlight labels, the co-op tags and the Details toggle
+	"run.recap.near.boss",
+	"run.recap.near.score",
+	"run.recap.near.recordFloor",
+	"run.recap.near.stairs",
+	"run.recap.near.fullClear",
+	"run.recap.near.fullClearOne",
+	"run.recap.near.nextBoss",
+	"run.recap.hl.bossNoHit",
+	"run.recap.hl.bosses",
+	"run.recap.hl.combo",
+	"run.recap.hl.perfect",
+	"run.recap.hl.teamPerfect",
+	"run.recap.hl.ofTotal",
+	"run.recap.hl.teamStreak",
+	"run.recap.hl.duos",
+	"run.recap.hl.evolved",
+	"run.recap.hl.parries",
+	"run.recap.hl.syncParries",
+	"run.recap.hl.sweeps",
+	"run.recap.hl.grazes",
+	"run.recap.hl.jackpots",
+	"run.recap.hl.speed",
+	"run.recap.hl.kills",
+	"run.recap.hl.rooms",
+	"run.recap.team",
+	"run.recap.you",
+	"run.recap.details",
+	"run.recap.detailsHide",
+	// docs/RUN_RECAP.md CM3: runRecap.ts TEAM_MOMENT_STRING_KEYS, written out: the TEAM PERFECT stamp and its streak,
+	// SYNC! and its three-player count
+	"room.clear.teamPerfect",
+	"room.clear.teamStreak",
+	"fx.parry.sync",
+	"fx.parry.syncCount",
 	// docs/TREASURE.md TR6: treasure.ts TREASURE_STRING_KEYS, written out (an import would be one more top-level local):
 	// the floor-reveal and arm toasts, the lock names, the unlock / open / near-miss lines, the reward cards
 	"hud.toast.vault",
@@ -1132,6 +1173,9 @@ export const DECOR_KIND_LAYERS = {
 	throne: ["low"] as const,
 	statue: ["low"] as const,
 	carpet: FLAT_SPOT,
+	// bookcases (docs/BOOKSHELVES.md): solid, 1 x 1, against far walls (library and hall rooms), low; variant 1 faces
+	// +X, 2 faces +Z
+	bookcase: ["low"] as const,
 } as const satisfies Record<string, ReadonlyArray<DecorLayer>>;
 export type DecorKind = keyof typeof DECOR_KIND_LAYERS;
 
@@ -1167,6 +1211,7 @@ export const DECOR_KINDS: ReadonlyArray<DecorKind> = [
 	"throne",
 	"statue",
 	"carpet",
+	"bookcase",
 ];
 
 /**

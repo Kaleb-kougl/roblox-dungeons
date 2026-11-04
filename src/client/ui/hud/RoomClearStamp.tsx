@@ -68,13 +68,15 @@ export function RoomClearStamp() {
 					Size={new UDim2(1, 0, 0, stampH)}
 					BackgroundTransparency={HIDDEN}
 					Font={hudFont}
-					TextSize={ROOM_CLEAR_VIEW.stampText}
+					TextScaled={true}
 					TextColor3={WHITE}
 					TextStrokeColor3={role("background")}
 					TextTransparency={UI.stampTransparency.binding}
 					TextStrokeTransparency={UI.stampTransparency.binding}
 					Text={UI.stampText.binding}
 				>
+					{/* docs/RUN_RECAP.md CM2: "TEAM PERFECT x3" (or a long translation) shrinks to the row, never past it. */}
+					<uitextsizeconstraint MaxTextSize={ROOM_CLEAR_VIEW.stampText} />
 					<uiscale Scale={UI.stampScale.binding} />
 					<uigradient
 						Color={UI.perfect.binding.map((p) => (p ? look.perfect : look.clear))}

@@ -105,13 +105,20 @@ describe("pellets: contract", () => {
 		expect(tail(roles, PELLET_ROLES.size(), TREASURE_AFTER.roles)).toEqual([...PELLET_ROLES]);
 	});
 
-	it("appends the three sounds to PORT_AUDIO_EVENTS: required, sfx, SILENT in every bundled pack", () => {
+	it("appends the three sounds to PORT_AUDIO_EVENTS: required, sfx; SILENT in the placeholder, on in vale", () => {
 		expect([...PELLET_AUDIO_IDS]).toEqual(["sfx.pellet.eat", "sfx.pellet.sweep", "sfx.pellet.power"]);
-		expect(tail(PORT_AUDIO_EVENTS, PELLET_AUDIO_IDS.size(), TREASURE_AFTER.audio)).toEqual([...PELLET_AUDIO_IDS]);
+		// the pellets' block ends at sfx.pellet.power (docs/RUN_RECAP.md CM4's two come after it)
+		const blockEnd = (PORT_AUDIO_EVENTS as ReadonlyArray<string>).indexOf("sfx.pellet.power") + 1;
+		const block = new Array<string>();
+		for (let i = blockEnd - PELLET_AUDIO_IDS.size(); i < blockEnd; i++) block.push(PORT_AUDIO_EVENTS[i]);
+		expect(block).toEqual([...PELLET_AUDIO_IDS]);
+		// vale (owner, 2026-11-03): the Pixabay chomp, swoosh and power-up are uploaded
+		const valeOn = new Set<string>(["sfx.pellet.eat", "sfx.pellet.sweep", "sfx.pellet.power"]);
 		for (const id of PELLET_AUDIO_IDS) {
 			expect([id, has(REQUIRED_ASSET_IDS, id), slotFor(id)?.soundGroup]).toEqual([id, true, "sfx"]);
 			for (const p of sortedKeys(THEME_PACKS)) {
-				expect([p, id, THEME_PACKS[p].assets[id].kind]).toEqual([p, id, "silent"]);
+				const kind = p === "vale" && valeOn.has(id) ? "sound" : "silent";
+				expect([p, id, THEME_PACKS[p].assets[id].kind]).toEqual([p, id, kind]);
 			}
 		}
 	});
@@ -172,9 +179,14 @@ describe("pellets: placeholder", () => {
 		}
 		expect(normal.size[0]).toBe(pxToStuds(16 * PLACEHOLDER_PROPORTIONS.pellet[0]));
 		expect(power.size[0] > normal.size[0]).toBe(true);
+		// every bundled pack draws the placeholder cube, but vale, whose pellet PNGs are uploaded (2026-11-03, PL8)
 		for (const id of sortedKeys(THEME_PACKS)) {
 			for (const pid of PELLET_IDS)
-				expect([id, pid, THEME_PACKS[id].assets[pid]]).toEqual([id, pid, { kind: "placeholder" }]);
+				expect([id, pid, THEME_PACKS[id].assets[pid].kind]).toEqual([
+					id,
+					pid,
+					id === "vale" ? "image" : "placeholder",
+				]);
 		}
 	});
 });

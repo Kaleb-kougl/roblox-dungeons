@@ -18,7 +18,8 @@ done (the lock: arm, crack, unlock; "As built (TR3)"). TR4 done (the open and it
 (every endless world has vaults and `SimConfig.treasure`, the dev override, the census; "As built (TR5)"). TR6 done
 (theme; "As built (TR6)"). TR7 done (the world view: chest, cage, sparkle, plate, crack / unlock / open timelines,
 cards, freeze and shake; presentation only; "As built (TR7)"). TR8 done (the toasts, the minimap mark, the sounds;
-presentation only; "As built (TR8)"). TR10 done (this file as built; CLAUDE.md, src/shared/sim/README.md,
+presentation only; "As built (TR8)"). Merged with `main` @ `5ae04db` (run recap, bookshelves; "As built (merge with
+main)"). TR10 done (this file as built; CLAUDE.md, src/shared/sim/README.md,
 docs/CLIENT.md, docs/DECOR.md, docs/DAILY.md).** The owner (Kaleb) confirmed every decision (TRD1-TRD14) on 2026-11-03.
 This file is the project doc `claude/treasure-rooms-plan.md` with every "(assumed; TR0 verifies)" item checked against
 branch `treasure-rooms` @ `82f0ff9` (a snapshot of `main` @ `288a33b`, which already has Pellets, solid decor, room
@@ -37,7 +38,8 @@ codex category later).
 
 Without `SimConfig.treasure` nothing changes: M1, every golden fixture and the tutorial replay exactly as before.
 Endless replays and scores change (every vault floor gains a breakables slot and the run gains a hash group), so the
-leaderboard rule applies (TRD13) and `DAILY.ruleset` goes 5 -> 6.
+leaderboard rule applies (TRD13) and `DAILY.ruleset` goes 5 -> 6 (7 with main's bookcases merged, "As built (merge
+with main)").
 
 ## TR0 findings (2026-11-03)
 
@@ -977,6 +979,65 @@ Deviations (none touches an owner decision):
 
 Verify (2026-11-04, this host): `npm run typecheck`, `npm run lint`, `npm run check:autolocalize`, `npm run build`,
 `npm run build:place` clean; `npm run test:only -- view/ theme/ play/`: **167 suites, 2426 passed, 0 failed** (532 s).
+
+## As built (merge with main, 2026-11-04)
+
+`main` @ `5ae04db` (Run recap, docs/RUN_RECAP.md; Bookshelves, docs/BOOKSHELVES.md) merged into `treasure-rooms`.
+Both features kept whole. Resolutions:
+
+- **Lists, in order: main's entries first, treasure's appended last** (so every "treasure is the tail" spec holds):
+  `PORT_AUDIO_EVENTS` / `SFX` / `ALL_SFX` / the cue table / `SFX_FALLBACK` (pellets, then `sfx.room.teamperfect` /
+  `sfx.player.syncparry`, then the four `sfx.treasure.*` / `sfx.jingle.treasure`), the placeholder manifest's sounds,
+  `REQUIRED_STRING_KEYS` (RECAP / TEAM_MOMENT strings, then TREASURE_STRING_KEYS), `shared/theme` exports
+  (`./runRecap`, then `./treasure` and its colour rules). `AudioCueMapper.frame` takes `syncs` then `treasure` (both
+  trailing, defaulted); AudioController and treasureCues.spec pass `NO_SYNC_CUES` / `this.team.syncs()` before the
+  vault edges. `LiveRun` / `LockstepClient` carry both `recapTally` and `treasure`, both collected every tick
+  (`recapTally` never reset, `treasure` per frame). ParticleController's palette: the team pulse colour, then the
+  treasure tier roles.
+- **Specs:** contract.spec counts both (assets + 2 + 4 + 3; strings + 28 + 4 + 16); boosts.spec skips 6 + 3 + 2 + 4;
+  pellets.spec finds the pellets' block by its last ID (main's form); runRecap.spec's tails skip the treasure entries
+  after them.
+- **`DAILY.ruleset` 7** (main's bookcases took 6, this branch's 6 never shipped); `daily.spec`, docs/DAILY.md, CLAUDE.md.
+- **Luau locals (out/):** `contract.luau` **185**, `validate.luau` **196** (unchanged from TR6; main kept 186 / 196).
+
+**Re-pins** (main's pins assumed no vaults, this branch's no bookcases; both re-derived on the merged tree; counts are
+main's, only the hashes moved, and only where a vault stands):
+
+- `charger.spec.ts` `PIN_HASH` -> **e54ef63f** (main acd2ce64, branch c5df44a4): run 4's floor 3 holds a vault on the
+  bookcase layout (room 1, a crypt, Legendary SWIFT; the chest one more breakables slot); `PIN_COUNTS` [4, 2, 2, 4, 3]
+  are main's, unchanged.
+- `stormcaller.spec.ts` run 4 -> **2/1/f21b6834** (main 2/1/d5a796ef, branch 3/0/e303e3be): the same vault; strikes /
+  skips main's. Run 23 (co-op) has no vault on floor 3: **6/0/ae2b2503**, main's exactly.
+- Nothing else moved: roomPool.lock, the pellets census's honest power-pellet run (seed 14), every recorded endless /
+  party / daily / dev replay and the honest vault run validate as they are.
+
+**Vaults vs bookcases.** A bookcase is a 1 x 1 `Dungeon.solidDecor` piece whose cell is WALL; `placeVault` runs after
+the Forge, so its cell filter already sees them: no back-row cell may be solid decor and no solid decor may stand within
+`decorClearTiles` (1) of the chest, so a chest is never on, against or beside a case, and stands against a real wall.
+New case in `dungeon/vault.spec.ts` (every vault floor of its sample, natural and forced): every case > 1 tile
+(Chebyshev) from the chest, the back row WALL and no piece; `[vault x bookcases] 52 vaults: 7 in a room with bookcases
+(5 library), 5 of them on a far wall; nearest case 3 tiles`. In the census below, 18 of 62 vaults stand in a room with
+cases (11 library, 7 hall), and the libraries still get far-wall chests between the runs.
+
+**Census** (`run/treasureCensus.spec.ts`, the same 132 floors, merged tree):
+
+| Floors | Vaults seen | Opened | UNTOUCHED kept | SWIFT kept | Mean tier opened (started) | Legendary opened | SWIFT clear / par |
+|---|---|---|---|---|---|---|---|
+| 2-4 | 13 / 36 = 36.1 % | 13 (100 %) | 0 / 3 | 10 / 10 | 1.08 (1.31) | 3 | 0.37 |
+| 5-9 | 29 / 60 = 48.3 % | 27 (93.1 %) | 1 / 13 (7.7 %) | 14 / 14 | 0.85 (1.30) | 5 | 0.30 |
+| 10-12 | 20 / 36 = 55.6 % | 19 (95.0 %) | 1 / 12 (8.3 %) | 7 / 7 | 0.68 (1.26) | 2 | 0.26 |
+| **2-12** | **62 / 132 = 47.0 %** | **59 (95.2 %)** | **2 / 28 (7.1 %)** | **31 / 31 (100 %)** | **0.85 (1.29)** | **10** | **0.32** |
+
+Vault chance by floor is unchanged (its own stream). **UNTOUCHED kept fell from 8 / 25 (32 %) to 2 / 28 (7.1 %)** for
+the sword bot. Not a vault bug: the drop is spread over every room kind, not the shelved ones (unshelved rooms 2 / 20
+kept, shelved 0 / 8; both kept chests are in crypts), because `library` joining the theme weights re-themes and re-lays
+every combat room (BOOKSHELVES.md BK2), so these are 28 different fights; the honest run (seed 5) now keeps its
+UNTOUCHED Rare (800 points). For TR11 it sharpens the open item: UNTOUCHED is now under its 30-50 % target for this
+bot, SWIFT still far too easy.
+
+Verify (merged tree, this host): typecheck, lint, check:assets, check:autolocalize, test:art, test:checks, test:l10n,
+build and `build:place` clean; headless tests **347 suites, 4756 passed, 1 failed** (2523 s): the known host-only
+`dungeon/forge/forge.spec.ts` seedToState vectors (NaN sign bit, `fff8...` for `7ff8...`).
 
 ## Implementation map (TR1-TR8)
 

@@ -1,7 +1,8 @@
 /**
  * Run telemetry -> Roblox AnalyticsService events (replaces the web build's F9 playtest export). Pure: it returns
  * event specs and TelemetryService logs them, so the mapping is tested headlessly. Inputs come only from the server's
- * own replay (validate.ts), never from the client.
+ * own replay (validate.ts), never from the client (except the run-over recap's `RunRecap`, a client fact:
+ * recapAnalytics.ts, re-read and gated on the server, analytics only).
  *
  * Roblox limits this is designed around: 10 funnels, 100 custom event names, 8,000 combinations of the three custom
  * field values per experience. Every field value here comes from a small fixed set (end reasons, phase numbers,
@@ -93,6 +94,11 @@ export const ANALYTICS_EVENT = {
 	dailyFinish: "daily_finish",
 	/** A daily start that is not the player's first daily start of that day, per member. */
 	dailyRetry: "daily_retry",
+	/**
+	 * The run-over recap (docs/RUN_RECAP.md RR9; recapAnalytics.ts): how long the panel was open and how it was left,
+	 * the near-miss shown, record / skipped; a party run's team moments. A client fact (`runRecap` remote).
+	 */
+	runRecap: "RunRecap",
 } as const;
 
 /** Decimal places kept on second values. */

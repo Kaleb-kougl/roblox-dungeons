@@ -85,8 +85,15 @@ import type { RobloxAssetId } from "../../types";
  * their names short, so which id is the outline is not known yet: their sets stay placeholders until added.
  * sfx-enemy-strike (the Stormcaller's strike: "Lightning strike" by DRAGON-STUDIO, Pixabay 386161) uploaded 2026-11-03
  * 11:28 AM by k9kbdev as the downloaded MP3, transcribed from an Asset Manager screenshot.
- * Not uploaded yet: pellet.png and pellet-power.png (the pellet cubes, docs/PELLETS.md PL8; original art,
- * scripts/art/gen-pellet.js, built by `npm run art:build` into art/upload/). Until then both pellets stay placeholders.
+ * sfx-pellet-eat ("Chomp" by Barnaby / cryptologymedia, Pixabay 155392) and sfx-pellet-sweep ("Swish swoosh woosh SFX
+ * 27" by Stereogenic Studio, Pixabay 357164; docs/PELLETS.md PL7) uploaded 2026-11-03 by k9kbdev as the downloaded MP3s
+ * (untrimmed, not normalised), transcribed from an Asset Manager screenshot; sfx-pellet-power ("Power up 01a" by EdR,
+ * Pixabay 484722) the same day, the same way. The built OGGs (art/upload) can replace all three.
+ * pellet.png and pellet-power.png (the pellet cubes, docs/PELLETS.md PL8; original art, scripts/art/gen-pellet.js,
+ * built by `npm run art:build` into art/upload/) and kit-bookcase-x / -z (docs/BOOKSHELVES.md BK6) uploaded 2026-11-03
+ * 6:20 PM, transcribed from an Asset Manager screenshot.
+ * sfx-room-teamperfect (Success2 + Bonus/Gold1) and sfx-player-syncparry (Bonus/Bonus3; docs/RUN_RECAP.md CM7, built by
+ * audio:build with ffmpeg 6.1.1) uploaded 2026-11-03 6:33 PM by k9kbdev, transcribed from an Asset Manager screenshot.
  */
 export const VALE_ASSET_IDS: Readonly<Record<string, RobloxAssetId>> = {
 	"amb-b1.ogg": "rbxassetid://91158343621799",
@@ -142,6 +149,8 @@ export const VALE_ASSET_IDS: Readonly<Record<string, RobloxAssetId>> = {
 	"imp-death-outline.png": "rbxassetid://134104614361499",
 	"imp-death.png": "rbxassetid://84336726009588",
 	"kit-banner.png": "rbxassetid://116783891005736",
+	"kit-bookcase-x.png": "rbxassetid://84780192220821",
+	"kit-bookcase-z.png": "rbxassetid://106394405354637",
 	"kit-cage-1.png": "rbxassetid://120653442756216",
 	"kit-cage-2.png": "rbxassetid://131457766065364",
 	"kit-candle-stand.png": "rbxassetid://82067548860168",
@@ -168,6 +177,8 @@ export const VALE_ASSET_IDS: Readonly<Record<string, RobloxAssetId>> = {
 	"music-boss.ogg": "rbxassetid://82229819920090",
 	"music-menu.ogg": "rbxassetid://75564975309420",
 	"music-tutorial.ogg": "rbxassetid://87339075756554",
+	"pellet-power.png": "rbxassetid://135982735087293",
+	"pellet.png": "rbxassetid://104506728931703",
 	"reaper-attack-outline.png": "rbxassetid://95992799302634",
 	"reaper-attack.png": "rbxassetid://81078161742843",
 	"reaper-body-outline.png": "rbxassetid://130853749528261",
@@ -215,6 +226,9 @@ export const VALE_ASSET_IDS: Readonly<Record<string, RobloxAssetId>> = {
 	"sfx-friend-passed.ogg": "rbxassetid://118874523894435",
 	"sfx-jingle-gameover.ogg": "rbxassetid://100204013637893",
 	"sfx-jingle-record.ogg": "rbxassetid://136565259970905",
+	"sfx-pellet-eat.ogg": "rbxassetid://140235243025020",
+	"sfx-pellet-power.ogg": "rbxassetid://119476079306502",
+	"sfx-pellet-sweep.ogg": "rbxassetid://91831138556237",
 	"sfx-player-charged.ogg": "rbxassetid://134000846415949",
 	"sfx-player-death.ogg": "rbxassetid://116272723028955",
 	"sfx-player-deflect.ogg": "rbxassetid://111196234749460",
@@ -231,10 +245,12 @@ export const VALE_ASSET_IDS: Readonly<Record<string, RobloxAssetId>> = {
 	"sfx-player-swing-3.ogg": "rbxassetid://77155197597647",
 	"sfx-player-swing-4.ogg": "rbxassetid://123568922754251",
 	"sfx-player-swing-5.ogg": "rbxassetid://119336453391941",
+	"sfx-player-syncparry.ogg": "rbxassetid://84948565537343",
 	"sfx-rank-up.ogg": "rbxassetid://72950951266263",
 	"sfx-relic-take.ogg": "rbxassetid://117702527882611",
 	"sfx-room-clear.ogg": "rbxassetid://91705259787657",
 	"sfx-room-perfect.ogg": "rbxassetid://126017159048037",
+	"sfx-room-teamperfect.ogg": "rbxassetid://82497842436869",
 	"sfx-score-land.ogg": "rbxassetid://77069986772456",
 	"sfx-score-tick.ogg": "rbxassetid://117631758592807",
 	"sfx-shrine-use.ogg": "rbxassetid://116463287240842",

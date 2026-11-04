@@ -424,6 +424,48 @@ describe("vault: rooms and cells (every vault floor)", () => {
 		}
 	});
 
+	it("bookcases (docs/BOOKSHELVES.md, merge with main): never on, behind or beside a chest; library vaults still get one", () => {
+		let vaults = 0;
+		let shelved = 0;
+		let library = 0;
+		let shelvedFar = 0;
+		let nearest = 1e9;
+		for (const { on } of VAULTED) {
+			const d = on.dungeon;
+			const v = vaultOf(on);
+			vaults++;
+			const cases = d.solidDecor.filter((p) => p.kind === "bookcase");
+			const inRoom = cases.filter((p) => p.room === v.room);
+			for (const p of cases) {
+				// a case is 1 x 1: the chest's cell, its back row and its 8 neighbours never hold one
+				expect([p.w, p.h]).toEqual([1, 1]);
+				const cheb = math.max(math.abs(p.x - v.x), math.abs(p.y - v.y));
+				expect(cheb > VAULT.decorClearTiles).toBe(true);
+				if (p.room === v.room) nearest = math.min(nearest, cheb);
+			}
+			// the back row is the room's real wall (WALL tiles that are no solid piece)
+			const decor = decorCells(d);
+			const px = math.abs(v.fz);
+			const pz = math.abs(v.fx);
+			for (let k = -1; k <= 1; k++) {
+				const bx = v.x - v.fx + k * px;
+				const by = v.y - v.fz + k * pz;
+				expect([tileAt(d, bx, by), decor.has(cellKey(bx, by))]).toEqual([TileType.WALL, false]);
+			}
+			if (inRoom.size() > 0) {
+				shelved++;
+				if (isFarWallFacing(v.fx, v.fz)) shelvedFar++;
+			}
+			if ((d.roomThemes ?? [])[v.room] === "library") library++;
+		}
+		// the sample holds shelved vault rooms, so the rule above is exercised, and most of them still use a far wall
+		expect(shelved > 0).toBe(true);
+		print(
+			`[vault x bookcases] ${vaults} vaults: ${shelved} in a room with bookcases (${library} library), ` +
+				`${shelvedFar} of them on a far wall; nearest case ${shelved > 0 ? nearest : "-"} tiles (Chebyshev)`,
+		);
+	});
+
 	it("far wall first: a near-wall chest only in a room with no far-wall cell; the first cell of the room", () => {
 		let far = 0;
 		for (const { off, on } of VAULTED) {

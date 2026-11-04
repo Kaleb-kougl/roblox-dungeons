@@ -14,7 +14,11 @@
  *   combat /   one of (themeWeights; graveyard rooms are always crypts, frozen-lake rooms are left bare):
  *   elite        crypt   3-4 tombs (2 x 1; 5-6 in big rooms) lying along the walls, each with a candle stand at one or both ends, and
  *                        in big rooms maybe one free-standing tomb in the middle, candles past both ends;
- *                hall    candle stands lining the walls every few tiles, and in big rooms maybe a statue on a far wall;
+ *                hall    candle stands lining the walls every few tiles, maybe a run of bookcases on a far wall, and in
+ *                        big rooms maybe a statue on a far wall;
+ *                library runs of bookcases (1 x 1 each) end to end against the far walls, candle stands at their ends,
+ *                        and in big rooms maybe a statue on a far wall (docs/BOOKSHELVES.md); a room where no run
+ *                        fits is dressed as plain instead;
  *                store   nothing solid: the breakables cluster in its corners (breakables.ts);
  *                plain   maybe one tomb along a wall, and in big rooms maybe a free-standing one.
  *
@@ -22,7 +26,10 @@
  * within clearTiles of its open sides floor of its room (past its ends the back line may be wall too, where the wall
  * curves or steps: the piece then touches it), so it only ever widens the wall: paths beside and in front stay at
  * least two tiles wide. Free-standing pieces keep the ring on every side. Nothing stands within doorTiles of a
- * doorway except the door braziers, which flank the opening in the wall's own row. The caller re-floods and takes every
+ * doorway except the door braziers, which flank the opening in the wall's own row. A bookcase stands only on a far wall
+ * (its front to the camera), with `bookcase.backTiles` of non-walkable cells behind it (its top rises over the wall on
+ * screen and must never stand over another floor) and never in front of a wall cell holding a torch or a banner (the
+ * `hangs` the Forge placed before). The caller re-floods and takes every
  * piece back if the floor ever split (the spec checks it never does on the census floors).
  *
  * Its own stream (makeRng(seed ^ SOLID_DECOR.salt)), so the main stream, and with it every room, corridor, prop,
@@ -31,10 +38,10 @@
 import { makeRng, type Rng } from "./rng";
 import { RoomType, TileType, type Room } from "./types";
 
-export type SolidDecorKind = "tomb" | "candelabrum" | "throne" | "statue" | "brazier";
+export type SolidDecorKind = "tomb" | "candelabrum" | "throne" | "statue" | "brazier" | "bookcase";
 
 /** A room's dressing theme (Dungeon.roomThemes, by room id). "none": treasure rooms, lakes, option off. */
-export type RoomTheme = "none" | "entrance" | "throne" | "shrine" | "crypt" | "hall" | "store" | "plain";
+export type RoomTheme = "none" | "entrance" | "throne" | "shrine" | "crypt" | "hall" | "store" | "plain" | "library";
 
 /** One solid decor piece: its kind and its cells (x .. x + w - 1, y .. y + h - 1), all WALL on the floor. */
 export interface SolidDecorPiece {
@@ -86,12 +93,30 @@ export const SOLID_DECOR = {
 	candleClearTiles: 2,
 	/** Combat / elite room themes by biome (grim favours crypts). */
 	themeWeights: {
-		grim: { crypt: 0.45, hall: 0.2, store: 0.15, plain: 0.2 },
-		other: { crypt: 0.2, hall: 0.25, store: 0.25, plain: 0.3 },
+		grim: { crypt: 0.4, hall: 0.2, store: 0.15, plain: 0.13, library: 0.12 },
+		other: { crypt: 0.2, hall: 0.2, store: 0.2, plain: 0.2, library: 0.2 },
 	},
 	crypt: { tombsMin: 3, tombsMax: 4, bigExtra: 2, bothCandles: 0.5, centreShare: 0.5 },
 	plain: { wallShare: 0.55, centreShare: 0.3 },
-	hall: { candleSpacing: 5, maxCandles: 16, statueShare: 0.5 },
+	hall: { candleSpacing: 5, maxCandles: 16, statueShare: 0.5, shelfShare: 0.5, shelfMin: 2, shelfMax: 3 },
+	/** A bookcase (1 x 1, far walls only): this many non-walkable cells behind its back (docs/BOOKSHELVES.md BKD5). */
+	bookcase: { backTiles: 2 },
+	/**
+	 * Library rooms: runsMin..runsMax runs (+bigExtra in big rooms) of runMin..runMax cases end to end, at most maxCases
+	 * a room, runs at least runGap floor cells apart; a candle stand at one or both ends (bothCandles), and in big rooms
+	 * maybe a statue (statueShare).
+	 */
+	library: {
+		runsMin: 2,
+		runsMax: 3,
+		bigExtra: 1,
+		runMin: 2,
+		runMax: 5,
+		maxCases: 16,
+		runGap: 3,
+		bothCandles: 0.5,
+		statueShare: 0.3,
+	},
 	throne: { length: 4, depth: 2, carpetWidth: 2, carpetMaxSegments: 8, candleRowStep: 5, arenaClear: 7 },
 	statue: { size: 3, shrineClear: 3 },
 } as const;
@@ -134,8 +159,12 @@ export function placeSolidDecor(
 	rooms: ReadonlyArray<Room>,
 	grim: boolean,
 	boss: number,
+	hangs: ReadonlyArray<{ readonly x: number; readonly y: number }> = [],
 ): SolidDecorLayout {
 	const rng = makeRng((seed ^ SOLID_DECOR.salt) >>> 0);
+	/** Wall cells holding a torch or a banner: no bookcase stands in front of them. */
+	const hung = new Set<number>();
+	for (const h of hangs) hung.add(h.y * W + h.x);
 	const pieces: SolidDecorPiece[] = [];
 	const carpets: DecorCarpet[] = [];
 	const themes = new Array<RoomTheme>(rooms.size(), "none");
@@ -441,6 +470,77 @@ export function placeSolidDecor(
 		}
 	};
 
+	/**
+	 * A far-wall run spot (depth 1) a bookcase run may take: `backTiles` non-walkable cells behind every cell, no torch or
+	 * banner on the wall cell right behind, and at least `runGap` floor cells from every earlier run of the room.
+	 */
+	const shelfOk = (s: Spot, runs: ReadonlyArray<Spot>): boolean => {
+		const n = s.fx !== 0 ? s.h : s.w;
+		for (let k = 0; k < n; k++) {
+			const [cx, cy] = alongCell(s, k);
+			for (let d = 1; d <= SOLID_DECOR.bookcase.backTiles; d++) {
+				const bx = cx - s.fx * d;
+				const by = cy - s.fz * d;
+				if (inB(bx, by) && (grid[by * W + bx] === FLOOR || grid[by * W + bx] === TileType.POOL)) return false;
+				if (d === 1 && inB(bx, by) && hung.has(by * W + bx)) return false;
+			}
+		}
+		const gap = SOLID_DECOR.library.runGap;
+		for (const o of runs) {
+			const between = math.max(
+				o.x - (s.x + s.w - 1),
+				s.x - (o.x + o.w - 1),
+				o.y - (s.y + s.h - 1),
+				s.y - (o.y + o.h - 1),
+			);
+			if (between - 1 < gap) return false;
+		}
+		return true;
+	};
+	/**
+	 * A run of bookcases end to end against a far wall: the longest of want..min cases that fits (one flushOk spot of the
+	 * whole run, so no new pinch), picked at random, with candle stands at one or both ends (bothShare). Returns the
+	 * cases placed.
+	 */
+	const bookcaseRun = (r: Room, min: number, want: number, bothShare: number, runs: Spot[]): number => {
+		for (let n = want; n >= min; n--) {
+			const spots: Spot[] = [];
+			for (const s of spotsOf(r, n, 1, FACES_FAR, SOLID_DECOR.clearTiles)) if (shelfOk(s, runs)) spots.push(s);
+			if (spots.size() === 0) continue;
+			const s = rng.pick(spots);
+			const both = rng.chance(bothShare);
+			const first = rng.chance(0.5);
+			const alongs: number[] = [];
+			if (both || first) alongs.push(-1);
+			if (both || !first) alongs.push(n);
+			const flanks = flankSpots(s, alongs, r.id);
+			for (let k = 0; k < n; k++) {
+				const [cx, cy] = alongCell(s, k);
+				wall("bookcase", spotAt(cx, cy, 1, 1, s.fx, s.fz), r.id);
+			}
+			placeFlanks(flanks, r.id);
+			runs.push(s);
+			return n;
+		}
+		return 0;
+	};
+	/** A library: runs of bookcases on the far walls, then maybe a statue in a big room. Returns the cases placed. */
+	const library = (r: Room, big: boolean): number => {
+		const L = SOLID_DECOR.library;
+		const runs: Spot[] = [];
+		const count = rng.i(L.runsMin, L.runsMax) + (big ? L.bigExtra : 0);
+		let cases = 0;
+		for (let k = 0; k < count; k++) {
+			const room = L.maxCases - cases;
+			if (room < L.runMin) break;
+			const placed = bookcaseRun(r, L.runMin, math.min(rng.i(L.runMin, L.runMax), room), L.bothCandles, runs);
+			if (placed === 0) break;
+			cases += placed;
+		}
+		if (cases > 0 && big && rng.chance(L.statueShare)) statue(r, 0);
+		return cases;
+	};
+
 	const area = new Array<number>(rooms.size(), 0);
 	for (let c = 0; c < W * H; c++) {
 		const rid = roomId[c];
@@ -475,9 +575,14 @@ export function placeSolidDecor(
 			for (let k = 0; k < n; k++) if (!wallTomb(r, C.bothCandles)) break;
 			if (big && rng.chance(C.centreShare)) centreTomb(r);
 		} else if (theme === "hall") {
-			if (big && rng.chance(SOLID_DECOR.hall.statueShare)) statue(r, 0);
+			const H2 = SOLID_DECOR.hall;
+			if (big && rng.chance(H2.statueShare)) statue(r, 0);
+			if (rng.chance(H2.shelfShare)) bookcaseRun(r, H2.shelfMin, rng.i(H2.shelfMin, H2.shelfMax), 0, []);
 			hallCandles(r);
-		} else if (theme === "plain") {
+		}
+		// a room whose far walls hold no run (round or stepped walls, doors) is no library: it is dressed as plain
+		if (theme === "library" && library(r, big) === 0) themes[r.id] = "plain";
+		if (themes[r.id] === "plain") {
 			const P = SOLID_DECOR.plain;
 			if (rng.chance(P.wallShare)) wallTomb(r, 0);
 			if (big && rng.chance(P.centreShare)) centreTomb(r);
@@ -488,11 +593,18 @@ export function placeSolidDecor(
 
 function pickTheme(
 	rng: Rng,
-	w: { readonly crypt: number; readonly hall: number; readonly store: number; readonly plain: number },
+	w: {
+		readonly crypt: number;
+		readonly hall: number;
+		readonly store: number;
+		readonly plain: number;
+		readonly library: number;
+	},
 ): RoomTheme {
-	const t = rng.f(0, w.crypt + w.hall + w.store + w.plain);
+	const t = rng.f(0, w.crypt + w.hall + w.store + w.plain + w.library);
 	if (t < w.crypt) return "crypt";
 	if (t < w.crypt + w.hall) return "hall";
 	if (t < w.crypt + w.hall + w.store) return "store";
-	return "plain";
+	if (t < w.crypt + w.hall + w.store + w.plain) return "plain";
+	return "library";
 }

@@ -23,6 +23,7 @@ import type {
 } from "shared/lobby";
 import type {
 	RunFinal,
+	RunRecapReport,
 	RunRejectCode,
 	RunScore,
 	RunSegment,
@@ -48,7 +49,7 @@ import type { SettingsOverrides } from "shared/settings";
  * (limits in shared/run `RUN_SUBMIT_RATE`, shared/settings `SETTINGS_REQUEST_RATE` and shared/onboarding
  * `ONBOARDING_REQUEST_RATE` / `TUTORIAL_START_RATE` / `TUTORIAL_FINISH_RATE` / `TUTORIAL_STEP_RATE` /
  * `TUTORIAL_REPORT_RATE`, shared/records `RECORDS_REQUEST_RATE`,
- * shared/daily `DAILY_REQUEST_RATE`).
+ * shared/daily `DAILY_REQUEST_RATE`, shared/run `RUN_RECAP_RATE`).
  *
  * Bind side-specific handlers with `GlobalEvents.createServer` (src/server/network.ts) and `GlobalEvents.createClient`
  * (the client's network module, task 8), never here.
@@ -385,6 +386,14 @@ export interface ClientToServerEvents {
 	bestiarySeen(id: string): void;
 	/** Personal records (docs/NEW_BEST.md): asks for this player's records; answered with `records`. */
 	requestRecords(): void;
+	/**
+	 * Run-over recap telemetry (docs/RUN_RECAP.md RR9): how this player left the run-over panel of run session
+	 * `report.runId` (retry / exit / lobby), the seconds it was open, the near-miss kind shown, record / skipped, and a
+	 * party run's team moments. Re-read with shared/run readRunRecapReport, rate limited (RUN_RECAP_RATE), at most one
+	 * per run session the server issued to this player (RunRecapGate); logged as `RunRecap` by TelemetryService and
+	 * used for nothing else. No reply.
+	 */
+	runRecap(report: RunRecapReport): void;
 	/** The Daily (docs/DAILY.md): asks for today's status; answered with `dailyStatus`. Rate limited. */
 	requestDaily(): void;
 }

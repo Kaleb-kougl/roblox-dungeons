@@ -409,6 +409,24 @@
 			],
 			"confirmed": false
 		},
+		"sfx.room.teamperfect": {
+			"category": "jingle",
+			"clips": [
+				{
+					"src": "ninja-adventure/Audio/Jingles/Success2.wav",
+					"mix": [
+						"ninja-adventure/Audio/Sounds/Bonus/Gold1.wav"
+					]
+				}
+			],
+			"volume": 0.7,
+			"alternates": [
+				"ninja-adventure/Audio/Jingles/Success4.wav",
+				"ninja-adventure/Audio/Jingles/Secret4.wav"
+			],
+			"notes": "docs/RUN_RECAP.md CM2 / CM7: a co-op room cleared with no hit on anyone (TEAM PERFECT), on every client (a far client at the chip's volume). PERFECT's own Success2 with Bonus/Gold1 layered on top (mix), so it reads as PERFECT, bigger; tune the layer's gainDb / trim at the audition. Alternates: Success2 + Success4 as the layer, or Secret4 alone. Ducks the music. While silent sfx.room.perfect plays.",
+			"confirmed": false
+		},
 		"sfx.score.tick": {
 			"category": "sfx",
 			"clips": [
@@ -419,6 +437,48 @@
 			"alternates": [
 				"ninja-adventure/Audio/Sounds/Menu/Move5.wav"
 			],
+			"confirmed": false
+		},
+		"sfx.pellet.eat": {
+			"category": "sfx",
+			"clips": [
+				{
+					"src": "pixabay/cryptologymedia-chomp-155392.mp3",
+					"trim": [
+						0.12,
+						0.38
+					]
+				}
+			],
+			"volume": 0.45,
+			"minInterval": 0.06,
+			"notes": "docs/PELLETS.md PL7: a pellet eaten. \"Chomp\" by Barnaby (cryptologymedia, Pixabay, id 155392), the owner's pick: 0.99 s, 44.1 kHz mono MP3: quiet to 0.12 s, a soft lead-in, two bites (peaks about 0.24 s and 0.40 s, the dip between them at 0.38 s), silent from 0.60 s. The [0.12, 0.38] trim keeps the first bite only, so a line of pellets reads one bite each. One clip, pitched by the cue mapper's room ladder (pelletEatSpeed: the major scale, root to octave), so no pitch jitter here; the 0.06 s minimum interval matches PELLETS_VIEW.audio.",
+			"confirmed": false
+		},
+		"sfx.pellet.sweep": {
+			"category": "sfx",
+			"clips": [
+				{
+					"src": "pixabay/stereogenicstudio-swish-swoosh-woosh-sfx-27-357164.mp3",
+					"trim": [
+						0,
+						1.2
+					]
+				}
+			],
+			"volume": 0.6,
+			"minInterval": 0.3,
+			"notes": "docs/PELLETS.md PL7: a room swept (every regular pellet taken before the clear; plays with the room clear). \"Swish swoosh woosh SFX 27\" by Stereogenic Studio (Pixabay, id 357164), the owner's pick: 5.33 s, 48 kHz stereo MP3: the swoosh 0.15 - 0.9 s (peak about 0.52 s), a reverb tail fading under -40 dB from 1.0 s; the [0, 1.2] trim keeps the swoosh and the start of its tail (the silence trim takes the lead). No pitch jitter.",
+			"confirmed": false
+		},
+		"sfx.pellet.power": {
+			"category": "sfx",
+			"clips": [
+				"pixabay/edr-power-up-01a-484722.mp3"
+			],
+			"volume": 0.7,
+			"minInterval": 0.3,
+			"notes": "docs/PELLETS.md PL7: the power pellet taken (a player sound of its picker; every enemy bullet on the floor turns into points). \"Power up 01a\" by EdR (Pixabay, id 484722), the owner's pick: 1.04 s, 44.1 kHz mono MP3: a rising power-up 0 - 0.4 s, silence after (the silence trim takes it); used whole. No pitch jitter.",
 			"confirmed": false
 		},
 		"sfx.score.land": {
@@ -549,6 +609,21 @@
 				"ninja-adventure/Audio/Sounds/Alert/Alert4.wav"
 			],
 			"notes": "A parry's bright ring-out, once per guard that erased bullets (docs/GRAZE_PARRY.md GPD10): audition candidates (GP0), not picked yet. Replaces that frame's sfx.player.deflect (the fallback while this is silent); +3 semitones from 3 erases, so no pitch jitter here. The minimum interval lives in code.",
+			"confirmed": false
+		},
+		"sfx.player.syncparry": {
+			"category": "sfx",
+			"clips": [
+				"ninja-adventure/Audio/Sounds/Bonus/Bonus3.wav"
+			],
+			"volume": 0.7,
+			"alternates": [
+				"ninja-adventure/Audio/Sounds/Bonus/Coin.wav",
+				"ninja-adventure/Audio/Sounds/Bonus/Gold1.wav",
+				"ninja-adventure/Audio/Sounds/Magic & Skill/Magic1.wav",
+				"ninja-adventure/Audio/Sounds/Magic & Skill/Magic2.wav"
+			],
+			"notes": "docs/RUN_RECAP.md CM4 / CM7: SYNC!, two or more teammates' parries starting within 0.2 s; once per sync (full volume when the view player is in it, else teammate volume). The parry's Bonus family, so it reads as a bigger parry. While silent the parry plays 5 semitones up.",
 			"confirmed": false
 		},
 		"sfx.draft.flip": {

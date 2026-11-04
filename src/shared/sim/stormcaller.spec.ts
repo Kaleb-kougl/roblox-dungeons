@@ -668,8 +668,11 @@ describe("stormcaller: strikes on real endless floors", () => {
 		// Re-recorded for the merge of room themes (docs/DECOR.md "Room themes"): floor 3 lays out differently; run 4 now
 		// casts 3 strikes, and run 23's co-op scene no longer casts within 600 ticks (strikes in co-op stay covered by
 		// the "co-op (2)" case above). Before: 2/1/08f85cd2, 6/0/5cfa0ffb.
-		// Re-recorded for docs/TREASURE.md TR5: endless floors are built with vaults; run 4's floor 3 holds one (its chest
-		// a breakables piece), run 23's does not (unchanged); strike and skip counts are unchanged. Before: 3/0/49e332ac.
-		expect(pins).toEqual(["3/0/e303e3be", "0/0/7c9c4b5e"]); // check-asset-ids: allow (state hashes)
+		// Re-recorded for bookcases and the library theme (docs/BOOKSHELVES.md): floor 3 lays out differently again;
+		// run 4 casts 2 strikes (1 skipped) and run 23's co-op scene casts 6 again. Before: 3/0/49e332ac, 0/0/7c9c4b5e.
+		// Re-recorded for the merge of main (bookcases) into docs/TREASURE.md: run 4's floor 3 holds a vault on the
+		// bookcase layout (its chest a breakables piece), run 23's does not (unchanged); strike and skip counts (main's)
+		// are unchanged. Before: 2/1/d5a796ef (main, no vaults), 3/0/e303e3be (treasure rooms, no bookcases).
+		expect(pins).toEqual(["2/1/f21b6834", "6/0/ae2b2503"]); // check-asset-ids: allow (state hashes)
 	});
 });

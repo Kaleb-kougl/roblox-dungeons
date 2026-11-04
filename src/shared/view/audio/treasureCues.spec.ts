@@ -38,6 +38,7 @@ import {
 	AudioCueList,
 	AudioCueMapper,
 	DUCKING_SFX,
+	NO_SYNC_CUES,
 	JINGLE_SFX,
 	PORT_SFX,
 	SFX,
@@ -96,6 +97,7 @@ function frame(
 		NO_BUILD_FX_EVENTS,
 		NO_DAILY_RANK_CUES,
 		NO_PELLET_EVENTS,
+		NO_SYNC_CUES,
 		treasure,
 	);
 	const list: Array<[string, number, number]> = [];

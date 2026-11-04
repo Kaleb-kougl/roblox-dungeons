@@ -92,8 +92,8 @@ describe("solidDecor (Forge option)", () => {
 			[RoomType.BOSS]: ["throne", "candelabrum", "brazier"],
 			[RoomType.ENTRANCE]: ["brazier"],
 			[RoomType.SHRINE]: ["statue", "candelabrum"],
-			[RoomType.COMBAT]: ["tomb", "candelabrum", "statue"],
-			[RoomType.ELITE]: ["tomb", "candelabrum", "statue"],
+			[RoomType.COMBAT]: ["tomb", "candelabrum", "statue", "bookcase"],
+			[RoomType.ELITE]: ["tomb", "candelabrum", "statue", "bookcase"],
 		};
 		const counts = new Map<string, number>();
 		for (const { off, on } of onOff) {
@@ -139,7 +139,7 @@ describe("solidDecor (Forge option)", () => {
 		const line: string[] = [];
 		counts.forEach((v, k) => line.push(`${k} ${string.format("%.1f", v / onOff.size())}`));
 		print(`[solid decor] ${onOff.size()} floors, per floor: ${line.join(", ")}`);
-		for (const k of ["tomb", "candelabrum", "throne", "statue", "brazier"])
+		for (const k of ["tomb", "candelabrum", "throne", "statue", "brazier", "bookcase"])
 			expect(counts.get(k) ?? 0).toBeGreaterThan(0);
 	});
 
@@ -201,7 +201,7 @@ describe("solidDecor (Forge option)", () => {
 							? ["none"]
 							: r.grave === true
 							? ["crypt"]
-							: ["crypt", "hall", "store", "plain"]
+							: ["crypt", "hall", "store", "plain", "library"]
 						: ["none"];
 				if (!want.includes(t)) problems.push(`room ${r.id} ${r.type} theme ${t}`);
 			}
@@ -224,6 +224,68 @@ describe("solidDecor (Forge option)", () => {
 		// every boss room of the census fits its throne
 		expect(thrones).toBe(onOff.size());
 		expect(carpets).toBe(thrones);
+	});
+
+	it("stands bookcases 1 x 1 on far walls only, in library and hall rooms, nothing walkable behind, no torch or banner behind", () => {
+		const problems: string[] = [];
+		let libraries = 0;
+		let libraryCases = 0;
+		let hallCases = 0;
+		let runs = 0;
+		for (const { on } of onOff) {
+			const themes = on.roomThemes ?? [];
+			const hung = new Set<number>();
+			for (const t of on.torches) hung.add(t.y * on.W + t.x);
+			for (const p of on.props) if (p.kind === "banner") hung.add(p.y * on.W + p.x);
+			const caseAt = new Set<number>();
+			for (const p of on.solidDecor) {
+				if (p.kind !== "bookcase") continue;
+				caseAt.add(p.y * on.W + p.x);
+				const theme = themes[p.room];
+				if (theme === "library") libraryCases++;
+				else if (theme === "hall") hallCases++;
+				else problems.push(`bookcase in a ${theme} room`);
+				if (p.w !== 1 || p.h !== 1) problems.push(`bookcase ${p.w} x ${p.h}`);
+				if (!((p.fx === 1 && p.fz === 0) || (p.fx === 0 && p.fz === 1)))
+					problems.push(`bookcase ${p.x},${p.y} faces ${p.fx},${p.fz}`);
+				for (let d = 1; d <= SOLID_DECOR.bookcase.backTiles; d++) {
+					const t = tileAt(on, p.x - p.fx * d, p.y - p.fz * d);
+					if (t === TileType.FLOOR || t === TileType.POOL)
+						problems.push(`bookcase ${p.x},${p.y} floor behind`);
+				}
+				if (hung.has((p.y - p.fz) * on.W + p.x - p.fx))
+					problems.push(`bookcase ${p.x},${p.y} hides a wall piece`);
+			}
+			// a run: a case with no case right before it along its wall
+			for (const p of on.solidDecor) {
+				if (p.kind !== "bookcase") continue;
+				const px = p.fx !== 0 ? p.x : p.x - 1;
+				const py = p.fx !== 0 ? p.y - 1 : p.y;
+				if (!caseAt.has(py * on.W + px)) runs++;
+			}
+			for (const r of on.rooms)
+				if (themes[r.id] === "library") {
+					libraries++;
+					// a room where no run fits is dressed as plain instead: every library has its shelves
+					if (!on.solidDecor.some((p) => p.kind === "bookcase" && p.room === r.id))
+						problems.push(`library ${r.id} without a bookcase`);
+				}
+		}
+		const n = onOff.size();
+		print(
+			`[bookcases] ${n} floors, per floor: ${string.format("%.2f", libraries / n)} libraries, ` +
+				`${string.format("%.1f", libraryCases / n)} library cases, ${string.format(
+					"%.1f",
+					hallCases / n,
+				)} hall ` +
+				`cases, ${string.format("%.1f", runs / n)} runs (${string.format(
+					"%.1f",
+					(libraryCases + hallCases) / math.max(runs, 1),
+				)} cases a run)`,
+		);
+		expect(problems.filter((_, i) => i < 10)).toEqual([]);
+		expect(libraryCases).toBeGreaterThan(0);
+		expect(hallCases).toBeGreaterThan(0);
 	});
 
 	it("reaches the endless layout: no room spawn, breakable or party spawn stands on a solid cell", () => {

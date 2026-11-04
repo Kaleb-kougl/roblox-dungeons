@@ -58,6 +58,8 @@ Record every ported module in `PROVENANCE.md` (ported module, source path, sourc
 | `docs/PORTRAIT.md` | Portrait play (phones turn either way, `Sensor`; upright the view keeps the short side at `VIEW_TILES_HIGH` with the player lifted above the thumbs, touch controls in a bottom band, pause map on top, the draft in a column, the HUD scale capped to the width): plan, tasks PT1-PT9, decisions PD1-PD7 |
 | `docs/NEW_ENEMIES.md` | New enemies (five endless room archetypes from floor 2: Bomber rusher that blows up, Charger lane charge stunned by walls, Stormcaller lightning strike rows, Warbanner aura support, Reaper bullet spiral; band 4, `BulletKind.STRIKE`, the Warbanner aura in `actorMods`; gameplay): plan, NE0 findings, tasks NE0-NE14, decisions NED1-NED14 |
 | `docs/PELLETS.md` | Pellets (Pac-Man lines of small cubes laid on a fight's floor, collected while enemies live, a Sweep bonus for every one, a rare power pellet that turns every enemy bullet on the floor into points; tutorial room G with a sweep lock; gameplay): plan, as built, open owner calls, tasks PL0-PL15, decisions PD1-PD16 |
+| `docs/RUN_RECAP.md` | Run-over recap and co-op moments (one honest near-miss line, up to four counting highlights, Again in one press armed at 0.6 s and a faster retry; co-op TEAM PERFECT stamp / chip / streak / pulse rings and SYNC! parries; revives reserved; presentation only): plan, tasks RR0-RR11 / CM1-CM7, decisions RRD1-RRD11 / CMD1-CMD7 |
+| `docs/BOOKSHELVES.md` | Bookshelves (Dungeon Essential Kit bookcases, solid 1 x 1 cases flush in runs on rooms' far walls; a new `library` room theme plus a run in some `hall` rooms; endless layouts change): plan, tasks BK0-BK10, decisions BKD1-BKD10 |
 | `docs/TREASURE.md` | Treasure rooms (vaults: about one endless floor in two from floor 2 has a caged chest in a combat / elite room, seen through the doorway; clearing the room unlocks it, its lock (UNTOUCHED / SWIFT) kept or cracked one tier down; walk up to open it: a relic, boosts or a bonus draft; gameplay, opt-in `SimConfig.treasure`): plan, TR0 findings, as built TR1-TR8, tasks TR0-TR11, decisions TRD1-TRD14 |
 
 Decision log (deviations from `PLAN.md`):
@@ -581,12 +583,52 @@ Decision log (deviations from `PLAN.md`):
   (`t1r3`, caps 88 / 264). Theme: `pellet.normal` / `pellet.power` (assets and colour roles, placeholder `Block`,
   `pelletReport`: yellow `#ffff00`, >= 40 CIE76 from danger / build / player-outline roles, >= 30 from boosts), strings `score.source.pellets` / `.sweep`, `room.clear.line.pellets` / `.sweep`,
   `bestiary.pellet.power`, `tutorial.prompt.pellets*`, port audio IDs `sfx.pellet.eat` / `.sweep` / `.power` (SILENT in
-  both packs; until uploaded they fall back to `sfx.score.tick` / `sfx.combo.tier` / `sfx.player.parry`, SFX_FALLBACK); `contract.luau` / `validate.luau` at 186 / 196 top-level locals. View: `PelletRenderController`, pops,
+  the placeholder; vale: the owner's Pixabay clips (Barnaby 155392, Stereogenic Studio 357164, EdR 484722) in
+  gitignored `art/vendor/pixabay/`, uploaded 2026-11-03; SFX_FALLBACK keeps a silent pack on the tick / tier / parry); `contract.luau` / `validate.luau` at 186 / 196 top-level locals. View: `PelletRenderController`, pops,
   the power fly-in, tally segments `pellets` / `sweep` (a fold on the smallest phone), `KV_PelletDebug`. M1, every
   fixture and every replay without the flag replay exactly as before; endless and tutorial replays and scores changed
   (boards stay `_v1`, `DAILY.ruleset` 3 -> 5 with main merged). The chomp `sfx.pellet.eat` climbs the major scale over
-  a room's pellets (`pelletEatSpeed`). Studio check, the vale art upload, sounds, playtests (PL9 / PL15) and
-  four owner calls pending.
+  a room's pellets (`pelletEatSpeed`). Studio check, playtests (PL9 / PL15) and
+  four owner calls pending (vale pellet art uploaded 2026-11-03).
+- **Run-over recap and co-op moments (docs/RUN_RECAP.md).** Presentation plus telemetry only (no sim, dungeon, lockstep,
+  hash, replay, fixture or score change; boards and records untouched). `RunView.recapTally` (shared/view/fx
+  `RecapTally`, on LiveRun and LockstepClient, collected every tick: parries per player by the director's grouping,
+  grazes per player). Recap core in shared/view/hud `recap.ts` / `recapConfig.ts` (`RECAP` / `RECAP_HIGHLIGHTS` /
+  `RECAP_STRINGS`, `nearMissFor`: one line, boss > score > record floor > stairs by walking path (`stairsPathTiles`,
+  rooms never gate the stairs, RRD10) > full clear > next boss; `pickHighlights`: max 4, filled to 2, Team / You;
+  `RecapTimeline`; `bossNoHitAwards` = `counts[BOSS] - (depth - startDepth)`) and `recapUi.ts` (`RECAP_UI`), shared/view
+  audio `recapCue` (one `sfx.score.tick` / `.land` a frame), shared/play `RunOverRetryGate`. `RecapController`
+  (`FX_FRAME_PHASE.normal`, after new best's `scoreRoll` step) builds the input once at run over, steps the timeline on
+  real time, writes the store's `recap` slice and `RECAP_BINDINGS`, re-derives silently on a verdict. Again is focused
+  and armed at 0.6 s through `RunOverRetryGate` (Again / Enter / Space / FIRE skip before, retry after; the `restart`
+  key at once; party runs only skip, Back to lobby unchanged); Details hides the breakdown + Build list behind the
+  highlights (RRD5). Strings `RECAP_STRING_KEYS` / `TEAM_MOMENT_STRING_KEYS` (shared/theme runRecap.ts, inside
+  `REQUIRED_STRING_KEYS`); port audio IDs `sfx.room.teamperfect` / `sfx.player.syncparry` (`PORT_AUDIO_EVENTS`, SILENT
+  in the placeholder; fallbacks `sfx.room.perfect` / `sfx.player.parry` at +5 semitones). Part B: the sim's PERFECT in a
+  party run is TEAM PERFECT (CMD1; stamp / chip text and streak, gold pulse rings on every living member, RCD12's chip
+  kept) and two players' parry groups starting within 12 ticks are SYNC! (`NearMissDirector` frame output
+  `out.parryGroups`; `TeamMomentsController` steps the ONE `TeamMoments`, clears in the new `FX_FRAME_PHASE.teamMoments`
+  (-2), parries on the first `syncs()` of a near-miss frame; `SyncCalloutController` floor text + tether). Revives
+  reserved only. contract.luau / validate.luau stay at 186 / 196 top-level locals (counted on out/). Telemetry: one new
+  custom event `RunRecap` (37 of 100 names; seconds the panel was open by close `retry` / `exit` / `lobby`, near-miss
+  kind, record x skipped; a party run's team totals as rows on the same event) from the client remote `runRecap`,
+  re-read by shared/run `readRunRecapReport`, rate limited (`RUN_RECAP_RATE`) and taken once per run session the server
+  issued (`RunRecapGate`) by TelemetryService; analytics only. Debug `KV_TeamMomentsDebug`, `KV_RetryTiming` (RR8's
+  press -> control print). Vale clips uploaded 2026-11-03 (CM7: Success2 + Gold1, Bonus3); Studio check (RR10) and the retry measurement (RR8)
+  pending.
+
+- **Bookshelves (docs/BOOKSHELVES.md).** Gameplay (dungeon), same Forge option as solid decor (endless only). A new
+  solid kind `bookcase` (1 x 1, the Dungeon Essential Kit's case at 125 kit units a tile) stands flush in runs of
+  2-5 against far walls only (+X / +Z facings), with 2 non-walkable cells behind (`SOLID_DECOR.bookcase.backTiles`)
+  and never in front of a Forge torch or banner (`placeSolidDecor`'s trailing `hangs`). A new combat / elite theme
+  `library` (weights grim 0.12 / other 0.20; 2-3 runs, candle stands at their ends, maybe a statue; a room where no
+  run fits is dressed as plain) and a run of 2-3 in half the `hall` rooms; census 6.0 cases a floor. Decor plan: kind
+  `bookcase` (appended last to DECOR_KINDS, low, variant 1 / 2 by facing), drop reason `behindShelf` on a case's back
+  cell. Endless layouts, spawns, replays and scores changed (boards stay `_v1`); `DAILY.ruleset` 5 -> 6. M1, every
+  fixture and the tutorial replay exactly as before. Art rendered (BK5: render_kit.py `sunSide`, the +X case lit
+  from the mirrored side; vale `kit-bookcase-x` / `-z`, `DECOR_BOX.bookcase` 23 / 24 / 4), uploaded 2026-11-03 (BK6);
+  Studio check pending.
+
 - **Treasure rooms (docs/TREASURE.md).** Gameplay. Floor-built: shared/dungeon `placeVault` (after pellets, its own
   stream `floorSeed ^ VAULT.salt` 0xb5297a4d, 0 / 1 / 4 draws: 40 / 50 / 55 % of floors by band from floor 2, elite
   rooms x2, Legendary 25 % + 1 per floor up to 40 % else Rare, UNTOUCHED / SWIFT 50 / 50) picks a combat / elite room
@@ -606,7 +648,8 @@ Decision log (deviations from `PLAN.md`):
   goes straight to its player (owner answer C1). `ScoreSource.TREASURE` (12, only with the flag, combo-neutral: depth x
   curse). Respite's levers are dormant until Respite exists (TRD10). M1, every fixture and the tutorial (its own layouts,
   no config) replay exactly as before; endless replays and scores changed (the charger / stormcaller run-4 determinism
-  pins re-recorded), the all-time boards stay `_v1` (TRD13), `DAILY.ruleset` 5 -> 6. Theme: slot `TREASURE`
+  pins re-recorded, again on the merge with bookcases), the all-time boards stay `_v1` (TRD13), `DAILY.ruleset` 6 -> 7
+  (main's bookcases took 6; this branch's 5 -> 6 never shipped). Theme: slot `TREASURE`
   (`treasure.chest` / `.chestopen` / `.cage`, required; optional `fx.treasure.column`), floor-only colour roles
   `treasure.common` / `.rare` / `.legendary` (owner answer C2: the draft's `boon.rare` / `.legendary` measured 36.8 /
   34.2 CIE76 from `telegraph`; UI keeps `boon.*`) and `treasure.chest` / `.cage` (`treasureReport`), 16 strings
@@ -619,8 +662,9 @@ Decision log (deviations from `PLAN.md`):
   (tier floor colour, hollow once opened), the cue mapper on the look's edges (sting +0 / +3 / +7 semitones by tier, the
   Legendary jingle ranked 73: under `sfx.best.new`, over the room clear's). Debug `KV_TreasureDebug` (dev world vault
   override: `every`, tier, lock) and `KV_TreasureLabel`. Open for TR11: SWIFT at 100 % par was kept 30 / 30 in the TR5
-  census (the bot clears vault rooms at ~28 % of par; target 40-60 %). Vale art and audio (TR9), Studio check and
-  playtest (TR11) pending.
+  census (the bot clears vault rooms at ~28 % of par; target 40-60 %), and since the merge with bookcases (new room
+  layouts) UNTOUCHED only 2 / 28 (was 8 / 25). A chest never stands on, against or beside a bookcase (the cell filter's
+  solid-decor rules). Vale art and audio (TR9), Studio check and playtest (TR11) pending.
 
 ## Commands
 

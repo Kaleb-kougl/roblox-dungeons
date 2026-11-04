@@ -664,7 +664,7 @@ describe("charger: determinism", () => {
 	});
 });
 
-const PIN_COUNTS = [3, 0, 2, 3, 0];
+const PIN_COUNTS = [4, 2, 2, 4, 3];
 // Re-recorded for docs/NEW_ENEMIES.md NE7: the reshuffled roster moves floor 3's room spawns and so its breakables
 // (they keep clear of planned spawns); the counts did not move. Before: f77607dc.
 // Re-recorded for the merge of solid decor and docs/NEW_ENEMIES.md: floor 3's tombs / candle stands (WALL cells) move
@@ -673,8 +673,11 @@ const PIN_COUNTS = [3, 0, 2, 3, 0];
 // Re-recorded for the merge of room themes (docs/DECOR.md "Room themes"): floor 3 lays out differently, so the pinned
 // charger meets other walls: lanes and draws are unchanged, one stun became a clean recover. Before: 30bf1d50, counts
 // [3, 1, 1, 3, 0].
-// Re-recorded for docs/TREASURE.md TR5: endless floors are built with vaults, and run 4's floor 3 holds one (its chest
-// is a breakables piece: one more slot in the breakables group); the counts did not move. Before: 4860eb56.
-const PIN_HASH = "c5df44a4"; // check-asset-ids: allow (state hash)
+// Re-recorded for bookcases and the library theme (docs/BOOKSHELVES.md): floor 3 lays out differently again, and the
+// pinned charger now takes 4 lanes with 2 stuns and breaks 3 pieces. Before: 4860eb56, counts [3, 0, 2, 3, 0].
+// Re-recorded for the merge of main (bookcases) into docs/TREASURE.md: run 4's floor 3 holds a vault (room 1, a crypt,
+// Legendary SWIFT; its chest one more breakables slot) on the bookcase layout; the counts (main's) did not move.
+// Before: acd2ce64 (main, no vaults), c5df44a4 (treasure rooms, no bookcases).
+const PIN_HASH = "e54ef63f"; // check-asset-ids: allow (state hash)
 const PIN_ARENA = [12, STATE_RETURN, 11.062568325627446, 8, 3663131635];
 const PIN_ARENA_HASH = "80069968"; // check-asset-ids: allow (state hash)

@@ -119,6 +119,8 @@ describe("vale world art (docs/DECOR.md R5)", () => {
 			"decor-atlas.png",
 			"decor-mote.png",
 			"kit-banner.png",
+			"kit-bookcase-x.png",
+			"kit-bookcase-z.png",
 			"kit-cage-1.png",
 			"kit-cage-2.png",
 			"kit-candle-stand.png",

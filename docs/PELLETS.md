@@ -12,7 +12,7 @@ dungeon and replays, validates and steps in lockstep like everything else.
 Status (2026-11-02): **built headlessly** on branch `pellets` (from `main` @ `4f041f1`): PL0-PL7 and PL10-PL14 are
 code-complete (PL8 short of its `art:build` confirmation and upload) and verified headlessly (full `npm run verify`: typecheck, lint, asset / autolocalize checks, art, l10n,
 build; Lune 316 / 317 suites, 4408 / 4409 tests, the one failure the known base `forge.spec` seedToState NaN, which
-also fails on `4f041f1`); see "As built". **Pending:** every Studio check (PL7, PL14), the vale art upload (PL8), the
+also fails on `4f041f1`); see "As built". **Pending:** every Studio check (PL7, PL14), the vale art (uploaded 2026-11-03; PL8's byte-for-byte build check), the
 vale sounds (`audio:build`, upload), the playtests PL9 / PL15, and four **owner calls** ("As built", "Open owner
 calls").
 
@@ -229,8 +229,9 @@ The tutorial is local-only (`SERVER_REFUSED_WORLDS`), so the lock and the new ro
   parts and the tally (six segments, zeros hidden, the sweep in the flying bonus exactly once, footprint on the
   smallest phone); Studio: pellets read as squares on every
   biome, never over a bullet, pop in on engagement, shrink at the clear, the power fly-in, two players see the same.
-- [ ] **PL8. Vale art.** (generator, test, `own` sheets and layout built; the first real `art:build` / `art:lock`
-  confirming them byte for byte, and the upload, pending) `gen-pellet.js`, its test, `art/atlases.json` `own` sheet,
+- [ ] **PL8. Vale art.** (generator, test, `own` sheets and layout built; `pellet.png` / `pellet-power.png` as
+  built by `art:build` on 2026-11-03 uploaded the same day, 6:20 PM, ids in `packs/vale/assetIds.ts`; the
+  byte-for-byte `art:build` / `art:lock` confirmation still pending) `gen-pellet.js`, its test, `art/atlases.json` `own` sheet,
   upload, id. -> Verify: `test:art`, `art:build` byte-identical, the vale validator.
 - [ ] **PL9. Playtest and tune.** Solo and co-op, PC and phone: do players chase pellets mid-fight, is a sweep
   reachable without throwing the speed bonus away every time, is the power pellet noticed, do pellets ever get mistaken
@@ -386,6 +387,13 @@ pellets only keep off WALL (pillars included), pieces and spawn cells.
   `minInterval` 0.06 s, quieter for teammates. (Before: two alternating speeds 1 / 1.122.) Until the vale clips are
   uploaded the three pellet sounds fall back (`SFX_FALLBACK`): the chomp to the room tally's `sfx.score.tick` (the
   ladder's speed carries over), the Sweep to `sfx.combo.tier`, the power pellet to `sfx.player.parry`.
+- Vale clips (owner, 2026-11-03): `sfx.pellet.eat` = "Chomp" by Barnaby (cryptologymedia, Pixabay 155392), trimmed
+  [0.12, 0.38] to its first bite (0.25 s built); `sfx.pellet.sweep` = "Swish swoosh woosh SFX 27" by Stereogenic Studio
+  (Pixabay 357164), trimmed [0, 1.2] (1.147 s built); raw files in gitignored `art/vendor/pixabay/`, credited in
+  THIRD_PARTY_NOTICES.md and on the Credits screen. The owner uploaded the raw MP3s (untrimmed, not normalised: the
+  chomp's raw peak is -17 dBFS, so it plays quieter and 0.12 s late, both bites); uploading the built OGGs from
+  `art/upload/` and pasting their IDs fixes that. `sfx.pellet.power` = "Power up 01a" by EdR (Pixabay 484722), used whole (0.413 s built; raw peak -15.6 dBFS), uploaded
+  the same way.
 - The power pellet's erases are no deflect: they are taken out of `bulletsDeleted` for the deflect cue, the guard
   effect (`FxCueFrame.pellets`) and WeaponViewController's guard fan flash (`deflectedBullets` /
   `tickDeflectedBullets` in `view/pellets/events.ts`, imported by file against a require cycle).

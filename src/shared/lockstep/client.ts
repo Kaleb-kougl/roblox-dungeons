@@ -45,7 +45,14 @@ import {
 import { BoostFrameEvents } from "shared/view/boosts";
 import { PelletFrameEvents } from "shared/view/pellets";
 import { TreasureFrameEvents } from "shared/view/treasure";
-import { BuildFxEvents, ComboEvents, NearMissEvents, RoomClearEvents, VariantCueEvents } from "shared/view/fx";
+import {
+	BuildFxEvents,
+	ComboEvents,
+	NearMissEvents,
+	RecapTally,
+	RoomClearEvents,
+	VariantCueEvents,
+} from "shared/view/fx";
 import { DEFAULT_LOCKSTEP, type LockstepTunables } from "./config";
 import { MergedDecoder, encodeInputBatch } from "./wire";
 
@@ -104,6 +111,8 @@ export class LockstepClient implements RunView {
 	readonly builds = new BuildFxEvents();
 	/** The pellet events of the ticks run by the last frame (docs/PELLETS.md PL7; reset every frame). */
 	readonly pellets = new PelletFrameEvents();
+	/** Parries and grazes per player over the whole run (docs/RUN_RECAP.md RR1; collected every tick, never reset). */
+	readonly recapTally = new RecapTally();
 	/** The vault events of the ticks run by the last frame (docs/TREASURE.md TR7; reset every frame). */
 	readonly treasure = new TreasureFrameEvents();
 	/** Run totals for the HUD (kills, landed hits on the party). */
@@ -298,6 +307,7 @@ export class LockstepClient implements RunView {
 			this.variantCues.collect(state);
 			this.builds.collect(state);
 			this.pellets.collect(state);
+			this.recapTally.collect(state);
 			this.treasure.collect(state);
 			stepped++;
 			if (state.tick % this.tunables.hashEvery === 0 && !this.stopped) {

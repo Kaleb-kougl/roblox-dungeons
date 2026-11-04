@@ -6,6 +6,10 @@ audio done 2026-10-30:** the first candidates kept (graze `Magic & Skill/Magic5.
 1.461 s), locked, built and uploaded, ids in `packs/vale/assetIds.ts`, so the vale pack plays both. **GP8 (optional)
 not done; the Studio check pending (owner).**
 
+Co-op SYNC! (docs/RUN_RECAP.md CM1 / CM5): the `NearMissDirector`'s frame output now carries `parryGroups` (each
+group's start: player, tick, point), from which TeamMoments forms SYNC! when two players' groups start within 0.2 s
+(floor text and tether by SyncCalloutController, `sfx.player.syncparry` or the parry cue at +5 semitones).
+
 Goal: make the two skill moves the game already scores feel good the moment they happen. A **graze** (an enemy bullet
 skims past inside the graze ring and leaves without touching you) gets a small white spark where it skimmed and a
 quick shimmer tick that **climbs in pitch** while you keep grazing. A **guard cancel** (the sword's guard erases a

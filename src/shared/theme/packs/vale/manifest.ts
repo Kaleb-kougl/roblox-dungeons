@@ -244,6 +244,9 @@ export const VALE_DECOR_PIECES: ReadonlyArray<ValeDecorPiece> = [
 	{ kind: "carpet", variant: 2, art: "kit-carpet-z", layer: "flat" },
 	{ kind: "carpet", variant: 3, art: "kit-carpet-end-x", layer: "flat" },
 	{ kind: "carpet", variant: 4, art: "kit-carpet-end-z", layer: "flat" },
+	// bookshelves (docs/BOOKSHELVES.md): the bookcase facing +X / +Z
+	{ kind: "bookcase", variant: 1, art: "kit-bookcase-x", layer: "low" },
+	{ kind: "bookcase", variant: 2, art: "kit-bookcase-z", layer: "low" },
 	{ kind: "debris", variant: 1, art: "bricks-e", layer: "flat" },
 	{ kind: "debris", variant: 2, art: "rocks-e", layer: "flat" },
 	{ kind: "debris", variant: 3, art: "bricks-sw", layer: "flat" },
