@@ -2,8 +2,8 @@
 
 Status (2026-11-03): **built** (branch `run-recap`: RR0-RR7, RR9, RR11 and CM1-CM6; headless checks only, nothing has
 run in Studio). Pending: **RR8** (measure press -> control in a published place, then the levers it points to; "How to
-measure" under RR8), **RR10** (the owner's Studio check and tuning) and **CM7** (the vale sounds for the two port audio
-IDs, silent until then with their fallbacks). Supersedes the first draft in the project (`claude/run-recap-plan.md`,
+measure" under RR8) and **RR10** (the owner's Studio check and tuning). CM7's vale sounds were uploaded 2026-11-03 (not yet
+confirmed by ear). Supersedes the first draft in the project (`claude/run-recap-plan.md`,
 written without the repo): this version was checked against the code at `82c2af6`, and three of that draft's
 assumptions were wrong (see "What the code says"). Owner answers (2026-11-03): RRD6 (0.6 s arm) and RRD8 (thresholds)
 confirmed; everything else is proposed.
@@ -382,7 +382,10 @@ Each step is a commit; `npm run verify` before each.
   Debug `KV_TeamMomentsDebug = "sync"` / `"sync:far"` / `"sync:3"` (a fake SYNC! at the view player, with its sound).
 - [x] **CM6. Recap rows** (team highlights 4 and 7). As built: `pickHighlights` reads `RunRecapInput.team`;
   RecapController's provider is `TeamMomentsController.totals()` (set in its onStart).
-- [ ] **CM7. [owner] Vale sounds** for the two IDs (audition, lock, upload).
+- [x] **CM7. [owner] Vale sounds** for the two IDs (audition, lock, upload). As built: `sfx.room.teamperfect` =
+  Success2 with Bonus/Gold1 layered (`mix`), `sfx.player.syncparry` = Bonus/Bonus3 (art/audio.json, not confirmed by
+  ear; alternates listed for the audition), built with ffmpeg 6.1.1 and uploaded 2026-11-03 6:33 PM
+  (packs/vale/assetIds.ts).
 
 ### Both
 

@@ -92,6 +92,8 @@ import type { RobloxAssetId } from "../../types";
  * pellet.png and pellet-power.png (the pellet cubes, docs/PELLETS.md PL8; original art, scripts/art/gen-pellet.js,
  * built by `npm run art:build` into art/upload/) and kit-bookcase-x / -z (docs/BOOKSHELVES.md BK6) uploaded 2026-11-03
  * 6:20 PM, transcribed from an Asset Manager screenshot.
+ * sfx-room-teamperfect (Success2 + Bonus/Gold1) and sfx-player-syncparry (Bonus/Bonus3; docs/RUN_RECAP.md CM7, built by
+ * audio:build with ffmpeg 6.1.1) uploaded 2026-11-03 6:33 PM by k9kbdev, transcribed from an Asset Manager screenshot.
  */
 export const VALE_ASSET_IDS: Readonly<Record<string, RobloxAssetId>> = {
 	"amb-b1.ogg": "rbxassetid://91158343621799",
@@ -243,10 +245,12 @@ export const VALE_ASSET_IDS: Readonly<Record<string, RobloxAssetId>> = {
 	"sfx-player-swing-3.ogg": "rbxassetid://77155197597647",
 	"sfx-player-swing-4.ogg": "rbxassetid://123568922754251",
 	"sfx-player-swing-5.ogg": "rbxassetid://119336453391941",
+	"sfx-player-syncparry.ogg": "rbxassetid://84948565537343",
 	"sfx-rank-up.ogg": "rbxassetid://72950951266263",
 	"sfx-relic-take.ogg": "rbxassetid://117702527882611",
 	"sfx-room-clear.ogg": "rbxassetid://91705259787657",
 	"sfx-room-perfect.ogg": "rbxassetid://126017159048037",
+	"sfx-room-teamperfect.ogg": "rbxassetid://82497842436869",
 	"sfx-score-land.ogg": "rbxassetid://77069986772456",
 	"sfx-score-tick.ogg": "rbxassetid://117631758592807",
 	"sfx-shrine-use.ogg": "rbxassetid://116463287240842",

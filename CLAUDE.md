@@ -613,7 +613,8 @@ Decision log (deviations from `PLAN.md`):
   kind, record x skipped; a party run's team totals as rows on the same event) from the client remote `runRecap`,
   re-read by shared/run `readRunRecapReport`, rate limited (`RUN_RECAP_RATE`) and taken once per run session the server
   issued (`RunRecapGate`) by TelemetryService; analytics only. Debug `KV_TeamMomentsDebug`, `KV_RetryTiming` (RR8's
-  press -> control print). Studio check (RR10), the retry measurement (RR8) and the vale sounds (CM7) pending.
+  press -> control print). Vale clips uploaded 2026-11-03 (CM7: Success2 + Gold1, Bonus3); Studio check (RR10) and the retry measurement (RR8)
+  pending.
 
 - **Bookshelves (docs/BOOKSHELVES.md).** Gameplay (dungeon), same Forge option as solid decor (endless only). A new
   solid kind `bookcase` (1 x 1, the Dungeon Essential Kit's case at 125 kit units a tile) stands flush in runs of

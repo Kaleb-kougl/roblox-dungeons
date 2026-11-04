@@ -71,13 +71,15 @@ describe("run recap and co-op moments: contract", () => {
 		expect(new Set(REQUIRED_STRING_KEYS).size()).toBe(REQUIRED_STRING_KEYS.size());
 	});
 
-	it("appends the two sounds to PORT_AUDIO_EVENTS: required, sfx; SILENT in every bundled pack (no clip yet)", () => {
+	it("appends the two sounds to PORT_AUDIO_EVENTS: required, sfx; SILENT in the placeholder, a clip in vale (CM7)", () => {
 		expect([...TEAM_MOMENT_AUDIO_IDS]).toEqual(["sfx.room.teamperfect", "sfx.player.syncparry"]);
 		expect(tail(PORT_AUDIO_EVENTS, TEAM_MOMENT_AUDIO_IDS.size())).toEqual([...TEAM_MOMENT_AUDIO_IDS]);
 		for (const id of TEAM_MOMENT_AUDIO_IDS) {
 			expect([id, has(REQUIRED_ASSET_IDS, id), slotFor(id)?.soundGroup]).toEqual([id, true, "sfx"]);
 			for (const p of sortedKeys(THEME_PACKS)) {
-				expect([p, id, THEME_PACKS[p].assets[id].kind]).toEqual([p, id, "silent"]);
+				// The vale clips were uploaded 2026-11-03 (packs/vale/assetIds.ts); every other pack stays silent.
+				const expected = p === "vale" ? "sound" : "silent";
+				expect([p, id, THEME_PACKS[p].assets[id].kind]).toEqual([p, id, expected]);
 			}
 		}
 	});
