@@ -145,7 +145,8 @@ export interface GoldenState {
 	record: number;
 	/** The tick its room engaged (-1: not yet). */
 	engageTick: number;
-	/** The tick it appears / appeared (engageTick + appearTicks; -1: not known yet). */
+	/** The tick it appears / appeared (engageTick + appearTicks; -1: not known yet; pacts/holdTimers.ts moves it 1
+	 * later per frozen tick while WAITING, with engageTick). */
 	appearTick: number;
 	/** Its actor's pool slot and ActorState.id while RUNNING (and after: the corpse / last position), -1 / 0 before. */
 	actorSlot: number;

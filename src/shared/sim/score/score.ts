@@ -155,7 +155,7 @@ export interface RoomScore {
 	maxZ: number;
 	/** Par time, ticks. */
 	parTicks: number;
-	/** Tick the room engaged (see the file comment), -1 not yet. */
+	/** Tick the room engaged (see the file comment), -1 not yet. Pacts: +1 per frozen tick (pacts/holdTimers.ts). */
 	engageTick: number;
 	/** ScoreState.hitsTaken before the engagement tick's hits. */
 	hitsAtEngage: number;

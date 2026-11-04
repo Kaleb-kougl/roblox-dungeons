@@ -30,6 +30,7 @@ import { clearPelletsEvents, type PelletsConfig } from "./pellets/pellets";
 import { stepPellets } from "./pellets/stepPellets";
 import { clearPactsEvents, type PactsConfig } from "./pacts/pacts";
 import { stepPacts, stepPactsWave } from "./pacts/stepPacts";
+import { holdAbsoluteTimers } from "./pacts/holdTimers";
 import { clearGoldenEvents, type GoldenConfig } from "./golden/golden";
 import { stepGolden } from "./golden/stepGolden";
 import type { SolidCells } from "shared/dungeon";
@@ -248,8 +249,11 @@ const partyPrev: number[] = [];
  *                    its time is up; its hits and catch score inside 3)
  *  10. tick += 1
  * While a boon draft is open (endless mode, progression/progression.ts) the world is frozen: after the event clears
- * only stepDraft runs (the stick selects, a FIRE press confirms), then tick += 1 (a forfeit on such a tick closes the
- * draft without a pick and the tick stays frozen, like a co-op leaver's).
+ * only stepDraft runs (the stick selects, a FIRE press confirms), then (only with config.pacts: Greed's deal opens
+ * mid-floor) holdAbsoluteTimers (pacts/holdTimers.ts) moves the live absolute-tick timers 1 tick later (engaged room
+ * records' engageTick for FAST, the Horde's waveDueTick, the waiting Goldling's appearTick, a running one's
+ * fieldTick, a Vengeful corpse's vengeArmTick), then tick += 1 (a forfeit on such a tick closes the draft without a
+ * pick and the tick stays frozen, like a co-op leaver's).
  * In endless mode steps 2-3 run with the current floor's SimConfig (simWorldConfig). Scoring is read from the top-level
  * config (createSimState). Kills score inside 3, so a boss kill's points use the Depth from BEFORE stepEndless raises it.
  */
@@ -282,6 +286,7 @@ export function step(
 		clearRunEvents(run);
 		if (frozen) {
 			stepDraft(state, soloInputs);
+			if (state.pacts !== undefined) holdAbsoluteTimers(state);
 			state.tick += 1;
 			return;
 		}
@@ -325,7 +330,8 @@ export function forfeitSoloRun(state: SimState): boolean {
  *   1. clear events (and score events, run events)
  *   2. per player: PARTY_LEFT_BUTTON -> marked left (dead, never revived)
  *   -  a boon draft is open for ANY player (endless): only stepDraft (each player picks with their own input; a player
- *      who left has theirs closed), then tick += 1: the world stays frozen until every player has confirmed
+ *      who left has theirs closed), then (pacts only) holdAbsoluteTimers as in step(), then tick += 1: the world stays
+ *      frozen until every player has confirmed
  *   3. per player: stepPlayer with its own state, weapons and player index
  *   4. stepCombat (actors target the nearest living player; each player's weapons; hits on any player)
  *   5. stepEndless (every living player in the stairwell; any player's debug skip; revive the dead on a new floor)
@@ -370,6 +376,7 @@ export function stepParty(
 		clearRunEvents(run);
 		if (isDraftOpen(state)) {
 			stepDraft(state, inputs);
+			if (state.pacts !== undefined) holdAbsoluteTimers(state);
 			state.tick += 1;
 			return;
 		}

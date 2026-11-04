@@ -13,7 +13,8 @@
  *          x +0.25, the mods; run events curseAccepted as the classic shrine's), greedTaken = 1, draftKind = GREED,
  *          taken[GREED] += 1, then the Legendary deal (drawLegendaryOffers on the main rng, config.legendaryCards cards;
  *          without builds: one rngInt pick per card among the unowned legendary classic boons) opens as the player's
- *          draft (progression openDealtDraft: one deal). The world freezes from the next tick like every draft.
+ *          draft (progression openDealtDraft: one deal). The world freezes from the next tick like every draft
+ *          (holdTimers.ts holds the absolute-tick timers through it: FAST, waveDueTick, the Goldling's appearance).
  *   Horde  hordeTaken = 1, horde.armed = 1, taken[HORDE] += 1. No draw. The next room with planned spawns any living
  *          player enters becomes the horde room (pactRooms.ts pactsOnRoomSpawned, from endless.ts enterRoom).
  *

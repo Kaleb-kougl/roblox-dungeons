@@ -57,7 +57,7 @@ export interface AffixSlot {
 	shieldIdleTicks: number;
 	/** Vengeful: ticks until the ring fires (0 = not armed or fired). */
 	vengeTicks: number;
-	/** Vengeful: the tick it was armed (the kill tick), -1 = never. */
+	/** Vengeful: the tick it was armed (the kill tick), -1 = never. Pacts runs: 1 later per frozen tick while armed. */
 	vengeArmTick: number;
 }
 
