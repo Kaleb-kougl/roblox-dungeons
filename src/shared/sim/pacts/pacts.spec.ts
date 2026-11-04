@@ -1,8 +1,8 @@
 // Pacts state and hash (docs/FORTUNE.md PS2): opt-in like pellets. Without SimConfig.pacts nothing exists, nothing is
 // hashed and the classic shrine runs (the fixtures, M1 and the tutorial are pinned by their own specs); with it the
-// state is created on floor 1's altars (or the sandbox's `floor`), hashed as the LAST group (`pacts`, after `pellets`;
+// state is created on floor 1's altars (or the sandbox's `floor`), hashed as the LAST group (`pacts`, after `treasure`;
 // names match values; writeHashFields and hashLayout agree), cloned, refreshed per floor (an armed Horde lapses), the
-// score gains the HORDE source (index 12, padded); the classic shrine zone is off where the altars stand and on where
+// score gains the HORDE source (index 13, padded); the classic shrine zone is off where the altars stand and on where
 // they do not. A pacts run where nobody presses at an altar draws exactly as a no-pacts run from the main rng: the same
 // recorded descent (rooms fought on the way, the bot standing on both altars and the crystal, a SKILL1 press outside
 // every zone, floors skipped with drafts picked) replays tick for tick with the same rngState and every non-pacts hash

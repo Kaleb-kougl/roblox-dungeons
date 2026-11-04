@@ -2,7 +2,7 @@
  * Pacts in the sim (docs/FORTUNE.md "Pacts", PS2; a Roblox-port feature, no web source): the risk shrines. OPT-IN: only a
  * SimConfig with `pacts` (endless worlds, shared/run buildEndlessRunConfig; never the tutorial, which keeps the classic
  * shrine) creates `SimState.pacts`, and only then does anything here run or the hash grow the appended `pacts` group
- * (after `pellets`). Without it nothing changes (M1, every golden fixture, the tutorial, every replay without it).
+ * (after `treasure`). Without it nothing changes (M1, every golden fixture, the tutorial, every replay without it).
  *
  * Where the altars stand is decided when the floor is built (shared/dungeon placePactAltars): pactsOnFloor copies it in
  * at floor start (createSimState after the score and pellet state, stepEndless's floor change after them). On a floor
@@ -255,7 +255,7 @@ export function pactsEvents(state: Readonly<SimState>): Readonly<PactsEvents> | 
 }
 
 // ---------------------------------------------------------------------------------------------
-// Hash: the `pacts` group, appended after `pellets` only when state.pacts exists.
+// Hash: the `pacts` group, appended after `treasure` (and `pellets`) only when state.pacts exists.
 //   room, seed, altars.length, (x, z) per altar; players.length, PACT_PLAYER_FIELDS per player; HORDE_SCALARS,
 //   wave.length, (kind, x, z) per wave entry; taken.length, taken per PactKind
 

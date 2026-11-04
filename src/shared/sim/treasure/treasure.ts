@@ -1,8 +1,8 @@
 /**
  * Treasure rooms in the sim (docs/TREASURE.md TR2; a Roblox-port feature, no web source). OPT-IN: only a SimConfig
  * with `treasure` creates `SimState.treasure`, and only then does anything here run or the hash grow the appended
- * `treasure` group (after `pellets`, the LAST group). Without it nothing changes (M1, every golden fixture, the tutorial,
- * every replay that does not set it).
+ * `treasure` group (after `pellets`; `pacts` and `golden` follow it). Without it nothing changes (M1, every golden
+ * fixture, the tutorial, every replay that does not set it).
  *
  * Where the vault is, its lock and its starting tier are decided when the floor is built (shared/dungeon placeVault):
  * the sim copies the plan in at floor start (treasureOnFloor, from createSimState after the pellets and from

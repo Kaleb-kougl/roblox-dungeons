@@ -119,8 +119,8 @@ export const FORTUNE_STRING_KEYS: ReadonlyArray<string> = [
 export const HORDE_ROOM_CLEAR_KEY = "room.clear.line.horde";
 
 /**
- * The run-over breakdown's two source rows (`score.source.<name>`, shared/sim PACT_SCORE_SOURCE_NAMES `horde` (12) /
- * GOLDEN_SCORE_SOURCE_NAMES `golden` (13)). Like the pellets' rows, not in REQUIRED_STRING_KEYS: shared/view/hud
+ * The run-over breakdown's two source rows (`score.source.<name>`, shared/sim PACT_SCORE_SOURCE_NAMES `horde` (13) /
+ * GOLDEN_SCORE_SOURCE_NAMES `golden` (14), after treasure's `treasure` (12)). Like the pellets' rows, not in REQUIRED_STRING_KEYS: shared/view/hud
  * SCORE_SOURCE_KEYS lists them and hud.spec.ts checks they exist.
  */
 export const FORTUNE_SCORE_SOURCE_KEYS: ReadonlyArray<string> = ["score.source.horde", "score.source.golden"];

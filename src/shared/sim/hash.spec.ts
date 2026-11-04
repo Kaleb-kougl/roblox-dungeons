@@ -8,8 +8,10 @@ import {
 	BUILDS_SUBSYSTEM,
 	DEV_SUBSYSTEM,
 	DROPS_SUBSYSTEM,
+	GOLDEN_SUBSYSTEM,
 	ENDLESS_HASH_SUBSYSTEM,
 	HASH_SUBSYSTEMS,
+	PACTS_SUBSYSTEM,
 	PARTY_SUBSYSTEM,
 	PELLETS_SUBSYSTEM,
 	RUN_SUBSYSTEM,
@@ -122,8 +124,8 @@ describe("elite affixes are opt-in (docs/ENEMY_VARIANTS.md EV7)", () => {
 	});
 });
 
-describe("hash group order with every port group (docs/TREASURE.md TR2)", () => {
-	it("the six fixture groups, then endless .. pellets, treasure LAST; the values are writeHashFields'", () => {
+describe("hash group order with every port group (docs/TREASURE.md TR2, docs/FORTUNE.md PS2 / GE2)", () => {
+	it("the six fixture groups, then endless .. pellets, treasure, pacts, golden LAST; the values are writeHashFields'", () => {
 		const setup = buildVaultRunConfig(4242, 2, { override: { every: true }, startFloor: 2 });
 		const config: SimConfig = { ...setup.config, tutorial: { harmless: false }, dev: { invulnerable: false } };
 		const s = createSimState(4242, setup.spawn!.x, setup.spawn!.z, config);
@@ -141,6 +143,8 @@ describe("hash group order with every port group (docs/TREASURE.md TR2)", () => 
 			BUILDS_SUBSYSTEM,
 			PELLETS_SUBSYSTEM,
 			TREASURE_SUBSYSTEM,
+			PACTS_SUBSYSTEM,
+			GOLDEN_SUBSYSTEM,
 		];
 		const frames: InputFrame[] = [EMPTY_INPUT, EMPTY_INPUT];
 		for (let t = 0; t < 30; t++) {

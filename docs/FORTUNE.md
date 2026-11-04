@@ -48,10 +48,10 @@ option, and a miss always leaves you something.**
 | `attachScoreRoomMembers(state, roomId, spawned)`, `adoptScoreRoomMember(state, parent, child)` | `score.ts` | Wave 2 needs a sibling `appendScoreRoomMembers(state, k, spawned)` |
 | **Room spawns:** `enterRoom` spawns `world.roomSpawns[id]` through `safeRoomSpawns(state, planned, roomSpawnTiles[id])`, affixes for planned spawns only; a full pool (`MAX_ACTORS` 64) drops the rest | `sim/endless.ts` | Wave 2 = the planned kinds again through `safeRoomSpawns`, no affixes. The Goldling spawns on the room's spawn tile farthest from the players |
 | `awardPoints(..., scalePercent, bonusPercent, extraPercent)`: exact integer factors; `scoreKill` passes bonus = affix x Bounty, extra = Gold Rush | `score.ts` | Horde x2 multiplies into `bonusPercent` |
-| Gated score sources: `JACKPOT` 9 (builds), `PELLETS` 10 / `SWEEP` 11 (pellets) | `scoreData.ts` | Append `HORDE` 12 (pacts only) and `GOLDEN` 13 (golden only; pads HORDE when pacts is absent, the pellets/JACKPOT pattern) |
-| Hash groups: the last is `pellets` | `sim/hashLayout.ts` | Append `pacts`, then `golden` |
+| Gated score sources: `JACKPOT` 9 (builds), `PELLETS` 10 / `SWEEP` 11 (pellets) | `scoreData.ts` | Append `HORDE` 12 (pacts only) and `GOLDEN` 13 (golden only; pads HORDE when pacts is absent, the pellets/JACKPOT pattern; on main: `TREASURE` 12, `HORDE` 13, `GOLDEN` 14) |
+| Hash groups: the last is `pellets` | `sim/hashLayout.ts` | Append `pacts`, then `golden` (on main: after `treasure`) |
 | Salts in use: `0x165667b1`, `0x27220a95`, `0x27d4eb2f`, `0x4b564452`, `0x5bd1e995`, `0x7f4a7c15`, `0xcc9e2d51`, `0xe6546b64` | `src/shared` | Pacts salt `0x5c3a91e7`, golden salt `0x3d2f8b4d` (the floor roll), Goldling sim stream salt `0x7a3c5e91` (unused at 82c2af6) |
-| `DAILY.ruleset` = 5 | `shared/daily/config.ts` | 6 |
+| `DAILY.ruleset` = 5 | `shared/daily/config.ts` | 6 (on main: 7 -> 8) |
 | Archetype bands 0-4 hold indices 0-17 | `combat/actors/registry.ts` | The Goldling is band 5 (`PORT_BAND_FORTUNE`), index 18 |
 | `PLAYER_SPEED` 6, `ROLL_SPEED` 11 | `sim/playerData.ts` | The Goldling runs at 5.1 |
 | Drops: 4 ground slots, `lowestFreeDropSlot` / `landDrop`; `dropsOnKill` skips `DROP_INELIGIBLE_ARCHETYPES` | `sim/drops/` | The Goldling is ineligible and lands its jackpot boosts itself, kinds from its own stream |
@@ -294,6 +294,10 @@ area and art ids). Main's treasure landed first, so Fortune moved after it; both
   `JINGLE_SFX` lists the chest's before the jackpot. Minimap layers: vault 3, ..., enemy 6, Goldling 7. Particle
   palette: team pulse, treasure tiers, then `golden.coin`. Boost drops hop out of a chest (after the lid's pop) or a
   Goldling catch. Floor shouts unchanged (treasure has none: its lines are toasts).
+- **Verify (merged tree, this host):** typecheck, lint, check:assets, check:autolocalize, test:art, test:checks,
+  test:l10n, build and `build:place` clean; headless tests 365 suites, 4906 passed, 2 failed: the known host-only
+  `dungeon/forge/forge.spec.ts` seedToState vectors (NaN sign bit) and `sim/hash.spec.ts`'s group-order pin (main's,
+  written before Fortune: fixed in the follow-up commit, passing).
 
 ### Open owner calls
 
