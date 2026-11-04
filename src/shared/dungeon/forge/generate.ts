@@ -1267,7 +1267,10 @@ export function tryGenerate(seed: number, params: ForgeParams): Dungeon | undefi
 	let roomThemes: RoomTheme[] = [];
 	if (p.solidDecor === true) {
 		const before = [...grid];
-		const laid = placeSolidDecor(seed, W, H, grid, roomId, doorway, rooms, p.themeKey === "grim", boss);
+		// torches and banners hang on wall cells: no bookcase stands in front of one (docs/BOOKSHELVES.md BKD6)
+		const hangs: Array<{ x: number; y: number }> = [...torches];
+		for (const pr of props) if (pr.kind === "banner") hangs.push({ x: pr.x, y: pr.y });
+		const laid = placeSolidDecor(seed, W, H, grid, roomId, doorway, rooms, p.themeKey === "grim", boss, hangs);
 		solidDecor = laid.pieces;
 		carpets = laid.carpets;
 		roomThemes = laid.themes;

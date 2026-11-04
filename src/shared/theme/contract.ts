@@ -1078,6 +1078,9 @@ export const DECOR_KIND_LAYERS = {
 	throne: ["low"] as const,
 	statue: ["low"] as const,
 	carpet: FLAT_SPOT,
+	// bookcases (docs/BOOKSHELVES.md): solid, 1 x 1, against far walls (library and hall rooms), low; variant 1 faces
+	// +X, 2 faces +Z
+	bookcase: ["low"] as const,
 } as const satisfies Record<string, ReadonlyArray<DecorLayer>>;
 export type DecorKind = keyof typeof DECOR_KIND_LAYERS;
 
@@ -1113,6 +1116,7 @@ export const DECOR_KINDS: ReadonlyArray<DecorKind> = [
 	"throne",
 	"statue",
 	"carpet",
+	"bookcase",
 ];
 
 /**

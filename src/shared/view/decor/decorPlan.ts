@@ -189,6 +189,10 @@ export const DECOR_BOX: Readonly<Record<StandingKind, DecorBoxPx>> = {
 	// 4 x 2 dais, the statue's 3 x 3 base; art measured on the world-scale renders)
 	throne: { w: 12, h: 26, below: 7 },
 	statue: { w: 6, h: 10, below: 4 },
+	// bookcases (docs/BOOKSHELVES.md): one cell each, the case against the cell's back edge; from the BK0 test render (art
+	// body 27 x 48 px at 125 kit units a tile, pivot the cell centre, 6.5 art px off the body's centre either way by
+	// facing: w covers both facings, x 0)
+	bookcase: { w: 22, h: 24, below: 3 },
 };
 
 /** Tall Forge pieces in placement priority (highest first). */
@@ -236,7 +240,8 @@ export type StandingKind =
 	| "tomb"
 	| "candelabrum"
 	| "throne"
-	| "statue";
+	| "statue"
+	| "bookcase";
 
 /**
  * Where an entry comes from: a Forge prop, a Forge torch, R6 far-wall dressing, a solid pillar's stump, or a void set
@@ -269,7 +274,9 @@ export type DecorDropReason =
 	/** a wall piece with no wall face the camera sees */
 	| "hiddenFace"
 	/** a wall piece on a cell carrying a tall piece */
-	| "underTall";
+	| "underTall"
+	/** on the wall cell right behind a bookcase (docs/BOOKSHELVES.md: the case's top rises over it) */
+	| "behindShelf";
 
 /** Every DecorDropReason, in report order. */
 export const DECOR_DROP_REASONS: ReadonlyArray<DecorDropReason> = [
@@ -285,6 +292,7 @@ export const DECOR_DROP_REASONS: ReadonlyArray<DecorDropReason> = [
 	"notFloor",
 	"hiddenFace",
 	"underTall",
+	"behindShelf",
 ];
 
 /** One drawn piece. World positions in sim units (tiles; x = grid x, z = grid y, y = height above the floor). */
@@ -693,6 +701,9 @@ export function planDecor(input: DecorPlanInput): DecorPlan {
 	zone(input.spawn ?? entranceSpawn(d), DECOR_CLEAR.entranceTiles, true);
 	const breakable = new Set<number>();
 	for (const b of input.breakables ?? []) breakable.add(cellKey(b.x, b.y));
+	/** The wall cell right behind every bookcase (docs/BOOKSHELVES.md): nothing stands or hangs there. */
+	const shelfBack = new Set<number>();
+	for (const p of d.solidDecor ?? []) if (p.kind === "bookcase") shelfBack.add(cellKey(p.x - p.fx, p.y - p.fz));
 
 	/** Why (gx, gy) is kept clear, or undefined. */
 	const keptOut = (
@@ -703,6 +714,7 @@ export function planDecor(input: DecorPlanInput): DecorPlan {
 	): DecorDropReason | undefined => {
 		if (!ignoreDoor && nearDoor[gy * W + gx]) return "doorway";
 		if (breakable.has(cellKey(gx, gy))) return "breakable";
+		if (shelfBack.has(cellKey(gx, gy))) return "behindShelf";
 		const x = gridToWorld(gx);
 		const z = gridToWorld(gy);
 		for (const zn of zones) {
@@ -1242,10 +1254,12 @@ export function planDecor(input: DecorPlanInput): DecorPlan {
 		});
 		const hash = decorHash(seed, cellKey(piece.x, piece.y), DECOR_SALT.variant);
 		const count = input.variants !== undefined ? input.variants(kind) : 0;
-		// a tomb's variants: 1 along X, 2 along Z; a throne's / statue's: 1 facing +X, 2 facing +Z (when the pack has both)
+		// a tomb's variants: 1 along X, 2 along Z; a throne's / statue's / bookcase's: 1 facing +X, 2 facing +Z (when the
+		// pack has both)
 		let axisVariant = -1;
 		if (kind === "tomb") axisVariant = piece.w > 1 ? 0 : 1;
 		else if (rect && (kind === "throne" || kind === "statue")) axisVariant = piece.fx !== 0 ? 0 : 1;
+		else if (kind === "bookcase") axisVariant = piece.fx !== 0 ? 0 : 1;
 		const light = LIGHTS.has(kind);
 		entries.push({
 			kind,
