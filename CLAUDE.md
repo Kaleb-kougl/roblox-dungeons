@@ -716,7 +716,10 @@ Decision log (deviations from `PLAN.md`):
   (a 24-piece timer ring, coins, catch freeze), a minimap diamond, touch auto-target after any actor within 3 tiles;
   floor shouts goldenAppear 4 > newBest 3 > horde 2 > rank / goldenEscaped 1 > combo 0. Debug `KV_PactLabel` /
   `KV_GoldenLabel`. Art and audio (FO10), telemetry (FO11), playtest (FO13), the Studio check and seven owner calls
-  pending.
+  pending. FO10's Goldling art is built (2026-11-04, presentation only): the atlas pipeline's per-set `recolor` (a
+  gradient map by luminance, alpha kept, before crop / pivot / rim; docs/ART.md "Recolour") makes `enemy.golden` the
+  swarmer's skeleton in gold (bodyTiles 0.95), `golden-move` / `golden-death` + rims; every older output byte-identical;
+  placeholder until uploaded.
 
 ## Commands
 

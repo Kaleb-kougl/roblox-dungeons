@@ -81,8 +81,10 @@ import type { RobloxAssetId } from "../../types";
  * / -z and kit-throne-x / -z 2026-11-02 9:00 PM by k9kbdev, transcribed from an Asset Manager screenshot.
  * The new enemies (docs/NEW_ENEMIES.md NE9 / NE10: bomber-* / charger-* / reaper-* attack, body and death sheets with
  * their outlines; sfx-enemy-fuse / -charge / -blast / -stun / -spin) uploaded 2026-11-03 9:01 AM by k9kbdev,
- * transcribed from an Asset Manager screenshot. stormcaller-* / warbanner-* are uploaded too, but the screenshot cut
- * their names short, so which id is the outline is not known yet: their sets stay placeholders until added.
+ * transcribed from an Asset Manager screenshot. warbanner-* (the same upload) added 2026-11-04 from a wider screenshot.
+ * stormcaller-* are uploaded too, but which of the two stormcaller-body ids is the outline is not known yet (attack
+ * 98689179931162 / outline 113129536919777, death 117013780053629 / outline 123020171014128 are), so its set stays a
+ * placeholder until that pair is read.
  * sfx-enemy-strike (the Stormcaller's strike: "Lightning strike" by DRAGON-STUDIO, Pixabay 386161) uploaded 2026-11-03
  * 11:28 AM by k9kbdev as the downloaded MP3, transcribed from an Asset Manager screenshot.
  * sfx-pellet-eat ("Chomp" by Barnaby / cryptologymedia, Pixabay 155392) and sfx-pellet-sweep ("Swish swoosh woosh SFX
@@ -348,4 +350,10 @@ export const VALE_ASSET_IDS: Readonly<Record<string, RobloxAssetId>> = {
 	"fx-ambient-b3.png": "rbxassetid://81069724717150",
 	"fx-ambient-b5.png": "rbxassetid://93348383001922",
 	"fx-effects.png": "rbxassetid://92741658775036",
+	"warbanner-attack-outline.png": "rbxassetid://140066719502270",
+	"warbanner-attack.png": "rbxassetid://107477792134015",
+	"warbanner-body-outline.png": "rbxassetid://99626414064159",
+	"warbanner-body.png": "rbxassetid://125690549403530",
+	"warbanner-death-outline.png": "rbxassetid://87407464541596",
+	"warbanner-death.png": "rbxassetid://83864438929127",
 };

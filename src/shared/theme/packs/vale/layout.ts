@@ -357,6 +357,25 @@ export const VALE_SPRITE_LAYOUTS: Record<string, ValeSpriteLayout> = {
 			move: { sheet: 1, start: 32, frames: 8, fps: 10, loop: true },
 		},
 	},
+	"enemy.golden": {
+		frameW: 98,
+		frameH: 74,
+		pivot: { x: 42, y: 51 },
+		pixelsPerTile: 38.9,
+		resample: "Default",
+		facings: { count: 16, zeroDeg: 0, ccw: true },
+		sheets: [
+			{ file: "golden-move.png", w: 980, h: 962, outlineFile: "golden-move-outline.png" },
+			{ file: "golden-death.png", w: 980, h: 962, outlineFile: "golden-death-outline.png" },
+		],
+		animations: {
+			attack: { sheet: 0, start: 0, frames: 8, fps: 14, loop: true },
+			death: { sheet: 1, start: 0, frames: 8, fps: 10, loop: false },
+			hit: { sheet: 0, start: 0, frames: 1, fps: 1, loop: false, stride: 8 },
+			idle: { sheet: 0, start: 0, frames: 1, fps: 1, loop: true, stride: 8 },
+			move: { sheet: 0, start: 0, frames: 8, fps: 10, loop: true },
+		},
+	},
 	"enemy.imp": {
 		frameW: 78,
 		frameH: 81,

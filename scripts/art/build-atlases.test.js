@@ -1428,3 +1428,85 @@ describe("world sprite sets with `own` (docs/BREAKABLE_DROPS.md, the loot glint)
 		assert.deepEqual(l.animations.idle, { sheet: 0, start: 0, frames: 12, fps: 12, loop: true });
 	});
 });
+
+describe("recolor (a gradient map by luminance; docs/FORTUNE.md FO10, the Goldling)", () => {
+	const RAMP = [
+		[0, "#000000"],
+		[100, "#804000"],
+		[255, "#ffff00"],
+	];
+	const lutAt = (lut, l) => [lut[l * 3], lut[l * 3 + 1], lut[l * 3 + 2]];
+
+	it("recolorLut: absent is null; every stop is its colour exactly; between stops linear, rounded half up", () => {
+		assert.equal(A.recolorLut("t", undefined), null);
+		const lut = A.recolorLut("t", { ramp: RAMP });
+		assert.equal(lut.length, 768);
+		assert.deepEqual(lutAt(lut, 0), [0, 0, 0]);
+		assert.deepEqual(lutAt(lut, 100), [0x80, 0x40, 0]);
+		assert.deepEqual(lutAt(lut, 255), [255, 255, 0]);
+		// 50 of 0..100: half of 128 / 64; 1: 1.28 -> 1, 0.64 -> 1 (round half up); 184 of 100..255: 128 + 127 * 84 / 155
+		assert.deepEqual(lutAt(lut, 50), [64, 32, 0]);
+		assert.deepEqual(lutAt(lut, 1), [1, 1, 0]);
+		assert.deepEqual(lutAt(lut, 184), [197, 168, 0]);
+		// a falling channel rounds the same way: 255 -> 0 over 0..255 is 255 - l
+		const down = A.recolorLut("t", { ramp: [[0, "#ffffff"], [255, "#000000"]], $note: "comments are allowed" });
+		for (let l = 0; l < 256; l++) assert.deepEqual(lutAt(down, l), [255 - l, 255 - l, 255 - l]);
+	});
+
+	it("recolorLut refuses a malformed recolor", () => {
+		const bad = (recolor, re) => assert.throws(() => A.recolorLut("enemy.t", recolor), re);
+		bad(null, /enemy\.t: recolor must be an object/);
+		bad([RAMP], /must be an object/);
+		bad({ ramp: RAMP, stretch: true }, /\.stretch: unknown key/);
+		bad({}, /at least two stops/);
+		bad({ ramp: [[0, "#000000"]] }, /at least two stops/);
+		bad({ ramp: [[0, "#000000"], [255, "#fff"]] }, /ramp\[1\] must be/);
+		bad({ ramp: [[0, "#000000"], [256, "#ffffff"]] }, /ramp\[1\] must be/);
+		bad({ ramp: [[0, "#000000"], [10.5, "#808080"], [255, "#ffffff"]] }, /ramp\[1\] must be/);
+		bad({ ramp: [[0, "#000000"], [80, "#808080"], [80, "#909090"], [255, "#ffffff"]] }, /strictly increase/);
+		bad({ ramp: [[5, "#000000"], [255, "#ffffff"]] }, /from luminance 0 to 255/);
+		bad({ ramp: [[0, "#000000"], [200, "#ffffff"]] }, /from luminance 0 to 255/);
+	});
+
+	it("recolorRegion: RGB from the lookup at the rounded Rec. 601 luminance, alpha kept, the source untouched", () => {
+		const lut = A.recolorLut("t", { ramp: RAMP });
+		const src = A.raster(4, 2);
+		put(src, 1, 0, LIT); // luminance (299 * 200 + 587 * 180 + 114 * 160) / 1000 = 184.2 -> 184
+		put(src, 2, 0, SHADOW); // black stays black, alpha 120 kept
+		put(src, 3, 1, [10, 250, 30, 7]); // 2.99 + 146.75 + 3.42 = 153.16 -> 153, even at alpha 7
+		const before = [...src.data];
+		const r = A.recolorRegion({ img: src, x: 1, y: 0, w: 4, h: 2 }, lut);
+		assert.deepEqual([r.x, r.y, r.w, r.h, r.img.w, r.img.h], [0, 0, 4, 2, 4, 2]);
+		assert.deepEqual(rgbaAt(r.img, 0, 0), [...lutAt(lut, 184), 255]);
+		assert.deepEqual(rgbaAt(r.img, 1, 0), [0, 0, 0, 120]);
+		assert.deepEqual(rgbaAt(r.img, 2, 1), [...lutAt(lut, 153), 7]);
+		assert.deepEqual(rgbaAt(r.img, 3, 0), [0, 0, 0, 0]); // outside the source: clear
+		assert.deepEqual([...src.data], before);
+	});
+
+	it("buildSpriteSet: same cells, pivot, density and alpha as the uncoloured set; body RGB mapped; the rim traced the same way", () => {
+		const plain = A.buildSpriteSet("enemy.plain", syntheticSet("recolor", { outline: { widthPx: 2 } }));
+		const gold = A.buildSpriteSet("enemy.gold", syntheticSet("recolor", { outline: { widthPx: 2 }, recolor: { ramp: RAMP } }));
+		assert.deepEqual(gold.layout, plain.layout);
+		assert.deepEqual(gold.box, plain.box);
+		assert.deepEqual([gold.recolorStops, plain.recolorStops], [3, 0]);
+		const [g] = gold.sheets;
+		const [p] = plain.sheets;
+		const lut = A.recolorLut("t", { ramp: RAMP });
+		for (let i = 0; i < g.img.w * g.img.h; i++) {
+			const a = p.img.data[i * 4 + 3];
+			assert.equal(g.img.data[i * 4 + 3], a);
+			if (a === 0) continue; // bled, not drawn
+			const rgb = [...p.img.data.subarray(i * 4, i * 4 + 3)];
+			const l = Math.floor((299 * rgb[0] + 587 * rgb[1] + 114 * rgb[2] + 500) / 1000);
+			assert.deepEqual([...g.img.data.subarray(i * 4, i * 4 + 3)], lutAt(lut, l));
+		}
+		// the ramp keeps the black shadow black, so the body mask and the rim are the plain set's
+		assert.deepEqual(g.outlineImg.data, p.outlineImg.data);
+		assert.deepEqual(g.outlineImg.data, A.outlineSheet(g.img, gold.layout.frameW, gold.layout.frameH, 2, 64, 8).data);
+	});
+
+	it("buildSpriteSet refuses a malformed recolor before reading a file", () => {
+		assert.throws(() => A.buildSpriteSet("enemy.bad", syntheticSet("recolorbad", { recolor: { ramp: [[0, "#000000"]] } })), /enemy\.bad: recolor ramp/);
+	});
+});

@@ -38,6 +38,11 @@
 		"set's (measured once), translated into each sheet's crop, so the feet stay put when the animation changes. The",
 		"set-level frameW / frameH / pivot stay the union cell, pixelsPerTile stays per set. Absent: one cell for the set.",
 		"Per-sheet cells are drawn on actor sets only (class.*, enemy.*, boss.*; the theme validator refuses them elsewhere).",
+		"recolor (optional; docs/FORTUNE.md FO10): { ramp: [[luminance, \"#rrggbb\"], ...] }, a gradient map by luminance applied to every",
+		"source region the set reads, before the crop, pivot, packing and outline: each pixel's integer Rec. 601 luminance (299 / 587 / 114,",
+		"rounded) picks its RGB from the ramp, linear between the two stops around it (integer maths, rounded half up), alpha kept, so",
+		"every alpha cut and crop box is the uncoloured set's. Stops: integer luminances strictly increasing from 0 to 255, in the",
+		"SOURCE's luminance (tuned per set; the rim and the pivot keep their own logic on the recoloured pixels). Absent: no recolour.",
 		"uiIcons (docs/UI_ART.md UA3): small UI sheet pieces packed into one icon atlas with its own generated layout,",
 		"src/shared/theme/packs/vale/uiIconLayout.ts (see the section's own comment)."
 	],
@@ -132,6 +137,53 @@
 			"sheets": [
 				{ "name": "swarmer-move", "animations": ["move"] },
 				{ "name": "swarmer-death", "animations": ["death"] }
+			]
+		},
+		"enemy.golden": {
+			"$comment": [
+				"The Goldling (docs/FORTUNE.md FO10, FD14: a gold recolour of an existing small set for v1): the Lords of Pain",
+				"skeleton of enemy.swarmer, read from the same files with the same facings, frames, crop, pivot cut and 2 px rim,",
+				"then recoloured gold (`recolor`, see the config comment). Alpha is untouched, so the union box (92x68 + 3 px",
+				"pad = 98x74), the cells and the two 980x962 atlases match the swarmer's; idle / hit / attack are the swarmer's",
+				"stand-ins (walk frame 0 held, the walk's cells; the Goldling never attacks, the slot needs the name). Only the",
+				"density differs: bodyTiles 0.95 (the swarmer 1.25), so the same 37 px body is drawn 0.95 tiles tall, 76 % of",
+				"a skeleton: a small gold creature next to the swarmer pack, about the bomber's 0.9, still big enough for the",
+				"bones to read (its hitbox, radius 0.3, is the swarmer's)."
+			],
+			"source": { "type": "frames", "dir": "lords-of-pain-demo/enemy/skeleton", "frameW": 256, "frameH": 256 },
+			"facingCount": 16,
+			"facingDirs": ["E", "NEE", "NE", "NNE", "N", "NNW", "NW", "NWW", "W", "SWW", "SW", "SSW", "S", "SSE", "SE", "SEE"],
+			"noiseAlpha": 2,
+			"pad": 3,
+			"pivot": { "measure": { "animation": "idle", "facing": 12, "frame": 0 }, "bodyAlpha": 64, "bodyMinRgb": 8, "footBand": 3 },
+			"pivotNote": "The swarmer's body cut, read on the recoloured pixels. The ramp keeps the black baked shadow black (#080500 at luminance 6, so max RGB stays <= 8 there), so the pivot (42, 51) and the body height (37 px) come out as the swarmer's, and the rim differs from the swarmer's in 42 of 57930 (move) and 97 of 81545 (death) rim pixels: the dark anti-aliased fringe whose max RGB crosses 8 one way or the other.",
+			"recolor": {
+				"ramp": [
+					[0, "#000000"],
+					[6, "#080500"],
+					[20, "#6e4004"],
+					[36, "#d29c00"],
+					[52, "#f8c600"],
+					[80, "#ffe050"],
+					[112, "#fff4c0"],
+					[255, "#fffbe6"]
+				]
+			},
+			"recolorNote": "Measured on the skeleton: its lit body is dark (alpha-weighted luminance 30-89, mean #3b3132), so the stops sit low: black under the shadow, dark bronze #6e4004 at 20 (the deepest gaps), bronze #d29c00 at 36, gold #f8c600 at 52 (the body's middle), pale gold #ffe050 at 80 and a pale highlight #fff4c0 at 112 (the brightest bone edges reach it; above that no source pixel exists). The alpha-weighted body mean (alpha > 64, max RGB > 8) comes out #eebe0e on golden-move (3.9 CIE76 from the enemy.golden role #f5c400) and #e7ba13 on golden-death (6.8).",
+			"outline": { "widthPx": 2 },
+			"outlineNote": "The swarmer's enemy contrast rim (enemy outline plan O3): 2 px, pad 3 = widthPx + 1, traced on the recoloured pixels by the same body mask.",
+			"bodyTiles": 0.95,
+			"resample": "Default",
+			"animations": {
+				"move": { "folder": "skeleton_default_walk", "frames": [0, 1, 2, 3, 4, 5, 6, 7], "fps": 10, "loop": true },
+				"death": { "folder": "skeleton_special_death", "frames": [0, 1, 2, 3, 4, 5, 6, 7], "fps": 10, "loop": false },
+				"idle": { "cellsOf": "move", "frames": 1, "fps": 1, "loop": true },
+				"attack": { "cellsOf": "move", "fps": 14, "loop": true },
+				"hit": { "cellsOf": "move", "frames": 1, "fps": 1, "loop": false }
+			},
+			"sheets": [
+				{ "name": "golden-move", "animations": ["move"] },
+				{ "name": "golden-death", "animations": ["death"] }
 			]
 		},
 		"enemy.sniper": {

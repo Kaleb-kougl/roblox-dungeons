@@ -207,7 +207,9 @@ It never attacks and does no contact damage.
 - [x] **GE4. Goldling tuning census** (sword / bow, solo / party, floors 2 / 6 / 12; target catch 50-65 % solo).
 - [x] **FO6. Theme.** **FO7. Pacts view.** **FO8. Goldling view.** **FO9. Audio cue mapper.**
 - [ ] **FO10. [owner] Art and audio** (gold recolour via a pipeline `recolor` option, altar art, nine sounds; eight as
-  built, no `amb.golden.loop`). Pending.
+  built, no `amb.golden.loop`). The recolour is built (2026-11-04, docs/ART.md "Recolour"): `enemy.golden` = the
+  swarmer's skeleton on a gold luminance ramp, bodyTiles 0.95, `golden-move.png` / `golden-death.png` + their two
+  outline sheets, awaiting upload (ids in `assetIds.ts`); altar art and the sounds pending.
 - [ ] **FO11. Telemetry (optional).** Pending.
 - [x] **FO12. Docs** (this doc as built, CLAUDE.md log, sim README, CLIENT.md, DAILY.md).
 - [ ] **FO13. [owner] Playtest.** Pending.

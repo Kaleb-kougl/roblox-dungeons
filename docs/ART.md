@@ -17,6 +17,7 @@ six bullet IDs, the biome tiles, `ui.cursor` (the facing pip) and the pedestal /
 | `tile.biome.1.floor` | **`ground_stone1`**, tiled | Lords of Pain demo |
 | co-op player marker / under-player ring | **`highlight_yellow`**, tinted per player | Lords of Pain demo |
 | relic pedestal marker (`RunMarkerController`) | **`loot_indicator_yellow`** beam (+ `glint`, stretch) | Lords of Pain demo |
+| `enemy.golden` (the Goldling, docs/FORTUNE.md FO10 / FD14) | **Skeleton recoloured gold** (`recolor`, below; bodyTiles 0.95): `golden-move.png`, `golden-death.png` + rims, built 2026-11-04, not uploaded | Lords of Pain demo |
 | `enemy.sniper` (+ the tutorial's `turret.sniper`) | **Subservient** (worship; every other animation a stand-in, docs/SNIPER_ART.md) | Lords of Pain (full pack) |
 | `enemy.bruiser` | **Demon Beast 3** (idle, walk, Attack 4 leap and slam, TakeDamage 1, Die 1; docs/DEMON_ART.md): 3 sheets + rims, uploaded 2026-10-26 | 2D Demons - TopDown asset pack v1.1 |
 | `boss.act1` (Mother Bramble) | **Demon Elite 3** (idle, walk, taunt, Attack 1-4, Die 1; docs/BRAMBLE_ART.md): 7 sheets + rims, uploaded 2026-10-26 | 2D Demons - TopDown asset pack v1.1 |
@@ -103,6 +104,21 @@ same point of the art in every sheet. No set uses either yet; every existing out
 `enemy.bruiser`, `boss.act1` and the turrets.) Per-layer noise cut (docs/DEMON_ART.md DA9 / DD7, 2026-10-30): with
 `layers`, `"layerNoiseAlpha": { <layer>: n }` clears that layer's pixels with alpha <= n before compositing; the
 turrets (Demon Spawn 8 / 11) use `{ "": 254 }` to drop the staff glow baked into their body sheets.
+
+Recolour (docs/FORTUNE.md FO10 / FD14, 2026-11-04): a sprite set may carry `"recolor": { "ramp": [[luminance,
+"#rrggbb"], ...] }`, a gradient map by luminance applied to every source region the set reads, before the crop box,
+the pivot, the packing and the outline rim (which keep their own logic on the recoloured pixels). Each pixel's
+luminance is the integer Rec. 601 one (299 / 587 / 114, rounded, the `rgb: "grey"` weights); its RGB becomes the ramp's
+colour there, linear between the two stops around it (integer maths, rounded half up: `recolorLut`), alpha kept, so
+every alpha cut and crop box is exactly the uncoloured set's. Stops are integer luminances strictly increasing from 0 to
+255, positioned in the SOURCE's luminance. One set uses it: `enemy.golden`, the swarmer's skeleton (same files, facings,
+frames, cells 98x74, pivot (42, 51), 2 px rim) on the ramp black 0 / `#080500` 6 / dark bronze `#6e4004` 20 / bronze
+`#d29c00` 36 / gold `#f8c600` 52 / pale gold `#ffe050` 80 / `#fff4c0` 112 / `#fffbe6` 255. The skeleton's lit body only
+spans luminance ~30-89 (mean `#3b3132`), hence the low stops; black at the bottom keeps the baked shadow black and out of
+the body mask. Body mean (alpha > 64, max RGB > 8): `#eebe0e` on golden-move, 3.9 CIE76 from the `enemy.golden` role
+`#f5c400` (`#e7ba13` on golden-death, 6.8). bodyTiles 0.95 (the swarmer 1.25): the same 37 px body drawn 0.95 tiles
+tall, 76 % of a skeleton, near the bomber's 0.9. Every other output of the build is byte-identical; the four `golden-*`
+files await upload (the vale pack draws the placeholder gold block until all its sheets have ids in `assetIds.ts`).
 
 ## Tasks
 

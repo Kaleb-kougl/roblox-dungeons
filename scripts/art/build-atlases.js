@@ -63,6 +63,15 @@
  * 128 px cells, pad 0, 64 to a 1024 atlas): the rim stops at the cell edge where the body comes within widthPx of it,
  * and the build prints how many cells and body pixels that clips (rimClip) so the cost stays visible.
  *
+ * Recolour (set `recolor: { ramp }`, docs/FORTUNE.md FO10 / FD14: the Goldling is the skeleton in gold): a gradient map
+ * by luminance, applied to every source region the set reads (so before the crop box, the pivot, the packing and the
+ * outline rim, which keep their own logic on the recoloured pixels). Each pixel's luminance is the integer Rec. 601
+ * one (LUMA, rounded: the `rgb: "grey"` / fx `grey` weights); its RGB becomes the ramp's colour there, linearly
+ * interpolated between the two stops around it (integer maths, rounded half up: recolorLut); alpha is kept, so the crop
+ * box and every alpha cut are exactly the uncoloured set's. `ramp`: [[luminance, "#rrggbb"], ...], at least two stops,
+ * luminances integers strictly increasing from 0 to 255 (positions in the SOURCE's luminance, tuned per set). Absent:
+ * the source pixels as they are.
+ *
  * Downscale (set `downscale: k`, an integer; docs/BOSS_DEMONLORD.md D1): every kept frame is noise-cut at full
  * resolution, then box-filtered by k (the world-art `downscale`, premultiplied alpha). The union box is measured at
  * full resolution and grown to whole k-blocks, then / k; `pad`, the cell, the outline (and its pad rule) are in
@@ -601,6 +610,64 @@ function scaledRegion(set, r, k) {
 	return { img, x: 0, y: 0, w: img.w, h: img.h };
 }
 
+/**
+ * A sprite set's `recolor` (see the header) as a 256-entry lookup: luminance l -> RGB at lut[3 l .. 3 l + 2], each channel
+ * the ramp's colour at l linearly interpolated between the stops around it (c0 + round(dc * (l - l0) / span), half up,
+ * integer maths), exactly the stop's colour at a stop. Null when `recolor` is absent; throws on a malformed one.
+ */
+function recolorLut(id, recolor) {
+	if (recolor === undefined) return null;
+	const bad = (why) => new Error(`${id}: recolor ${why}`);
+	if (recolor === null || typeof recolor !== "object" || Array.isArray(recolor)) throw bad("must be an object { ramp }");
+	for (const k of Object.keys(recolor)) if (k !== "ramp" && !k.startsWith("$")) throw bad(`.${k}: unknown key (allowed: ramp)`);
+	const ramp = recolor.ramp;
+	if (!Array.isArray(ramp) || ramp.length < 2) throw bad('ramp must list at least two stops [luminance, "#rrggbb"]');
+	ramp.forEach((stop, i) => {
+		if (!Array.isArray(stop) || stop.length !== 2 || !isByte(stop[0]) || typeof stop[1] !== "string" || !HEX_RGB.test(stop[1])) {
+			throw bad(`ramp[${i}] must be [an integer 0-255, "#rrggbb"], got ${JSON.stringify(stop)}`);
+		}
+		if (i > 0 && stop[0] <= ramp[i - 1][0]) throw bad(`ramp luminances must strictly increase (ramp[${i}] ${stop[0]} after ${ramp[i - 1][0]})`);
+	});
+	if (ramp[0][0] !== 0 || ramp[ramp.length - 1][0] !== 255) throw bad("ramp must run from luminance 0 to 255");
+	const rgb = ramp.map(([, hex]) => {
+		const v = parseInt(hex.slice(1), 16);
+		return [(v >> 16) & 255, (v >> 8) & 255, v & 255];
+	});
+	const lut = new Uint8Array(256 * 3);
+	let s = 0;
+	for (let l = 0; l < 256; l++) {
+		while (ramp[s + 1][0] < l) s++;
+		const l0 = ramp[s][0];
+		const span = ramp[s + 1][0] - l0;
+		for (let c = 0; c < 3; c++) {
+			const dc = rgb[s + 1][c] - rgb[s][c];
+			lut[l * 3 + c] = rgb[s][c] + Math.floor((2 * dc * (l - l0) + span) / (2 * span));
+		}
+	}
+	return lut;
+}
+
+/** Region r as its own raster with every pixel's RGB replaced by lut[its luminance] (LUMA, rounded); alpha kept. */
+function recolorRegion(r, lut) {
+	const img = raster(r.w, r.h);
+	const src = r.img.data;
+	for (let y = 0; y < r.h; y++) {
+		for (let x = 0; x < r.w; x++) {
+			const px = r.x + x;
+			const py = r.y + y;
+			if (px < 0 || py < 0 || px >= r.img.w || py >= r.img.h) continue;
+			const si = (py * r.img.w + px) * 4;
+			const di = (y * r.w + x) * 4;
+			const l = Math.floor((LUMA[0] * src[si] + LUMA[1] * src[si + 1] + LUMA[2] * src[si + 2] + MILLE / 2) / MILLE);
+			img.data[di] = lut[l * 3];
+			img.data[di + 1] = lut[l * 3 + 1];
+			img.data[di + 2] = lut[l * 3 + 2];
+			img.data[di + 3] = src[si + 3];
+		}
+	}
+	return { img, x: 0, y: 0, w: r.w, h: r.h };
+}
+
 /** Resolves a stand-in to the animation whose cells it reuses. */
 function realAnimation(set, name) {
 	const anim = set.animations[name];
@@ -672,6 +739,9 @@ function buildSpriteSet(id, set, built) {
 	const perSheet = cellsMode(id, set) === "perSheet";
 	gridLayers(id, set.source); // a malformed `layers` fails here, before any file is read
 	gridLayerNoise(id, set.source); // and a malformed `layerNoiseAlpha`
+	const lut = recolorLut(id, set.recolor); // and a malformed `recolor`; null when absent
+	/** A kept frame's source region, recoloured when the set has `recolor` (before anything reads it). */
+	const region = (anim, d, f) => (lut ? recolorRegion(sourceRegion(set, anim, d, f), lut) : sourceRegion(set, anim, d, f));
 
 	// 1. union crop box (source-frame coordinates) over every kept frame of every real animation and facing; with
 	// per-sheet cells, each animation's own box is kept for its sheet's crop
@@ -682,7 +752,7 @@ function buildSpriteSet(id, set, built) {
 		let animBox = null;
 		for (let d = 0; d < count; d++) {
 			for (const f of anim.frames) {
-				const r = sourceRegion(set, anim, d, f);
+				const r = region(anim, d, f);
 				animBox = unionBox(animBox, alphaBounds(r.img, r.x, r.y, r.w, r.h, set.noiseAlpha));
 			}
 		}
@@ -701,14 +771,14 @@ function buildSpriteSet(id, set, built) {
 	const frameH = cropBox[3] - cropBox[1] + 1 + 2 * pad;
 	/** A kept frame's pixels in the set's (downscaled) pixel space, and the noise cut still to apply when blitting. */
 	const cellSource = (anim, d, f) => {
-		const r = sourceRegion(set, anim, d, f);
+		const r = region(anim, d, f);
 		return k === 1 ? { r, noise: set.noiseAlpha } : { r: scaledRegion(set, r, k), noise: 0 };
 	};
 
 	// 2. pivot (feet) and texel density, measured on one frame; the other facings are printed as a sanity check
 	const measureBody = (animName, d, kept) => {
 		const { anim } = realAnimation(set, animName);
-		const r = sourceRegion(set, anim, d, anim.frames[kept]);
+		const r = region(anim, d, anim.frames[kept]);
 		const { bodyAlpha, bodyMinRgb } = set.pivot;
 		const isBody = (x, y) => {
 			return isBodyAt(r.img.data, ((r.y + y) * r.img.w + r.x + x) * 4, bodyAlpha, bodyMinRgb);
@@ -822,7 +892,8 @@ function buildSpriteSet(id, set, built) {
 		animations: sortedObject(animations),
 	};
 	selfCheck(id, layout);
-	return { id, layout, sheets, sanity, bodyHeight: body.height / k, box, downscale: k, outline, pixelsPerTileFrom: set.pixelsPerTileFrom, perSheet };
+	const recolorStops = lut ? set.recolor.ramp.length : 0;
+	return { id, layout, sheets, sanity, bodyHeight: body.height / k, box, downscale: k, outline, pixelsPerTileFrom: set.pixelsPerTileFrom, perSheet, recolorStops };
 }
 
 /** The cell of layout sheet `s`: its own frameW / frameH / pivot (per-sheet cells) or the set's. */
@@ -2844,7 +2915,7 @@ function main() {
 
 	for (const s of sets) {
 		const l = s.layout;
-		console.log(`${s.id}: cell ${l.frameW}x${l.frameH} (source box ${s.box.join(",")}${s.downscale > 1 ? `, downscale ${s.downscale}` : ""}), pivot (${l.pivot.x}, ${l.pivot.y}), body ${s.bodyHeight} px -> ${l.pixelsPerTile} px/tile${s.pixelsPerTileFrom ? ` (from ${s.pixelsPerTileFrom})` : ""}`);
+		console.log(`${s.id}: cell ${l.frameW}x${l.frameH} (source box ${s.box.join(",")}${s.downscale > 1 ? `, downscale ${s.downscale}` : ""}), pivot (${l.pivot.x}, ${l.pivot.y}), body ${s.bodyHeight} px -> ${l.pixelsPerTile} px/tile${s.pixelsPerTileFrom ? ` (from ${s.pixelsPerTileFrom})` : ""}${s.recolorStops ? `, recoloured (${s.recolorStops}-stop ramp)` : ""}`);
 		console.log(`  pivot per facing (cell coords) on the measured frame: ${s.sanity.join(" ")}`);
 		for (const sh of s.sheets) {
 			const own = sh.cell ? `, cell ${sh.cell.frameW}x${sh.cell.frameH} pivot (${sh.cell.pivot.x}, ${sh.cell.pivot.y})` : "";
@@ -2927,6 +2998,8 @@ module.exports = {
 	packWorldAtlases,
 	rimClip,
 	raster,
+	recolorLut,
+	recolorRegion,
 	cellsMode,
 	compositeOver,
 	gridFiles,

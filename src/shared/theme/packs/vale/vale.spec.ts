@@ -1915,8 +1915,8 @@ describe("vale new enemies (NE9: Imp 5 / Beast 1 / Spawn 7 / Imp 3 / Spawn 5, pe
 		});
 	});
 
-	it("as bundled: the uploaded sets (bomber, charger, reaper; 2026-11-03) draw sprites, the rest their placeholder", () => {
-		const uploaded = ["enemy.bomber", "enemy.charger", "enemy.reaper"];
+	it("as bundled: the uploaded sets (bomber, charger, reaper, warbanner) draw sprites, the stormcaller its placeholder", () => {
+		const uploaded = ["enemy.bomber", "enemy.charger", "enemy.reaper", "enemy.warbanner"];
 		for (const [id, prefix] of SETS) {
 			const on = uploaded.includes(id);
 			for (const file of sheetsOf(prefix)) {
@@ -1946,5 +1946,54 @@ describe("vale new enemies (NE9: Imp 5 / Beast 1 / Spawn 7 / Imp 3 / Spawn 5, pe
 			const outlinesOnly = buildValeManifest(fakeIds(...sheetsOf(prefix)));
 			expect([id, outlinesOnly.assets[id]]).toEqual([id, { kind: "placeholder" }]);
 		}
+	});
+});
+
+/**
+ * The Goldling (docs/FORTUNE.md FO10 / FD14, docs/ART.md "Recolour"): enemy.golden is the swarmer's Lords of Pain
+ * skeleton recoloured gold by the pipeline's `recolor`, so its cells, pivot, sheets' sizes and animations are the
+ * swarmer's; only its density differs (bodyTiles 0.95 against 1.25: drawn smaller). Not uploaded yet: the bundled pack
+ * draws its placeholder gold block until both sheets have IDs.
+ */
+describe("vale Goldling (FO10: the skeleton recoloured gold)", () => {
+	const SHEETS = ["golden-move.png", "golden-death.png"];
+	const RIMS = ["golden-move-outline.png", "golden-death-outline.png"];
+
+	it("the layout: the swarmer's cells, pivot, sheet sizes and animations, its own files, a higher density", () => {
+		const l = VALE_SPRITE_LAYOUTS["enemy.golden"];
+		const s = VALE_SPRITE_LAYOUTS["enemy.swarmer"];
+		expect([l.frameW, l.frameH, l.pivot, l.facings, l.resample]).toEqual([
+			s.frameW,
+			s.frameH,
+			s.pivot,
+			s.facings,
+			s.resample,
+		]);
+		expect(l.animations).toEqual(s.animations);
+		expect(l.sheets.map((sheet) => [sheet.file, sheet.w, sheet.h, sheet.outlineFile])).toEqual([
+			["golden-move.png", s.sheets[0].w, s.sheets[0].h, "golden-move-outline.png"],
+			["golden-death.png", s.sheets[1].w, s.sheets[1].h, "golden-death-outline.png"],
+		]);
+		// 37 px body / 0.95 tiles (the swarmer: / 1.25 = 29.6), so it draws at 29.6 / 38.9 = 76 % of a skeleton
+		expect([l.pixelsPerTile, s.pixelsPerTile]).toEqual([38.9, 29.6]);
+	});
+
+	it("as bundled: no IDs yet, so the Goldling is its placeholder", () => {
+		for (const file of [...SHEETS, ...RIMS]) expect([file, VALE_ASSET_IDS[file]]).toEqual([file, undefined]);
+		expect(VALE_MANIFEST.assets["enemy.golden"]).toEqual({ kind: "placeholder" });
+	});
+
+	it("switches to sprites with both sheets; either missing keeps the placeholder; the rims alone never do", () => {
+		const m = buildValeManifest(fakeIds());
+		expect(validateManifest(m, { packId: "vale" })).toEqual([]);
+		expect(m.assets["enemy.golden"].kind).toBe("sprites");
+		const theme = new ThemeCore(m, { warn: quiet });
+		expect(theme.sprites("enemy.golden")!.animationNames).toEqual(["attack", "death", "hit", "idle", "move"]);
+		for (const file of SHEETS) {
+			const without = buildValeManifest(fakeIds(file));
+			expect(validateManifest(without, { packId: "vale" })).toEqual([]);
+			expect([file, without.assets["enemy.golden"]]).toEqual([file, { kind: "placeholder" }]);
+		}
+		expect(buildValeManifest(fakeIds(...SHEETS)).assets["enemy.golden"]).toEqual({ kind: "placeholder" });
 	});
 });
