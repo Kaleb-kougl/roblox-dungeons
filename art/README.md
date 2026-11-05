@@ -14,6 +14,7 @@ licences forbid redistributing the raw files. See `THIRD_PARTY_NOTICES.md` and `
 | `art/vendor/ninja-adventure/` | Ninja Adventure Asset Pack (CC0): only its `FX/` and `Audio/` folders, with their original layout and casing (`FX/Attack/...`, `Audio/Sounds/...`, `Audio/Musics/...`, `Audio/Jingles/...`) | https://pixel-boy.itch.io/ninja-adventure-asset-pack |
 | `art/vendor/toffeecraft-horror-ui/` | UI User Interface Pack - Horror (ToffeeCraft, the paid download `UiHorror.png.zip`): the one sheet `UiHorror.png` (1024x607) directly in the folder. Read for the boon draft cards (docs/DRAFT_REVEAL.md DR3) | https://toffeecraft.itch.io/ui-user-interface-pack-horror |
 | `art/vendor/pixabay/` | Single sound effects from Pixabay (Pixabay Content License: no attribution, the raw file is not redistributed). Keep the downloaded file names. Today one: `dragon-studio-glass-breaking-504033.mp3` ("Glass breaking" by DRAGON-STUDIO, id 504033; `sfx.combo.break`, docs/COMBO.md CD12) | https://pixabay.com/sound-effects/ (search "glass breaking dragon-studio") |
+| `art/vendor/player-bullets/` | 16Bit Bullets, missiles, Explosions & Misc Asset Pack by J i m (itch.io `jinvorionstg`): the free `Player Bullets.rar` (6 kB, name your own price). Unpack its 10 PNGs from `Player Bullets/` directly into the folder, names unchanged (`P1 Bullet_Yellow.png`, `p1_Bullet_Alt.png`, ...). Read for every flying projectile (docs/PROJECTILE_ART.md) | https://jinvorionstg.itch.io/bullet-asset-pack-top-down-or-shmup-classic-bullet-hell-style |
 | `art/vendor/kaleb-vale/` | Original art drawn by code, not downloaded: `loot-glint/loot_glint_0..7.png`, the anime twinkle on loaded barrels and crates (docs/BREAKABLE_DROPS.md), from `scripts/art/gen-loot-glint.js`. `npm run art:build` / `art:lock` regenerate it first (byte-identical), so nothing to fetch | (generated) |
 
 `art/vendor.lock.json` lists every source file the atlas pipeline reads, with its sha256; the pipeline refuses to
@@ -50,6 +51,13 @@ every `fx.*` effect lives in the one atlas `fx-effects.png` and switches on once
 `fx-ambient-b<n>.png` is its own ParticleEmitter texture (a square flipbook grid) and switches on with its own ID. Their
 layout is the generated `packs/vale/fxLayout.ts`; contact sheets are `contact/fx.*.png` and
 `contact/decor.fx.ambient.*.png` (frames numbered).
+
+Bullets (docs/PROJECTILE_ART.md PA2; `bullets` in `art/atlases.json`): every `bullet.*` sprite lives in the one atlas
+`bullets.png` (layout: the generated `packs/vale/bulletLayout.ts`; contact sheet `contact/bullets.png`, rows numbered in
+id order, the build log maps the numbers). The build prints each set's mean colour against the bullet colour gates and
+fails if one misses. `node scripts/art/build-atlases.js --only bullets` builds just this atlas (it needs only
+`art/vendor/player-bullets/`, writes only its own files, removes nothing); `--lock --only bullets` re-hashes just its
+files into `art/vendor.lock.json`. A full `npm run art:build` builds it too, with everything else.
 
 ## Audio
 

@@ -1836,5 +1836,175 @@
 			"fps": 12,
 			"mode": "Loop"
 		}
+	},
+	"bullets": {
+		"$comment": [
+			"docs/PROJECTILE_ART.md PA2: every flying projectile's sprite, one-facing flipbooks (animation `fly`) packed into ONE",
+			"atlas art/build/<atlas>.png with src/shared/theme/packs/vale/bulletLayout.ts (VALE_BULLET_LAYOUTS: cell, pivot, start,",
+			"frames, fps, meanColor, pixelsPerTile per id); contact sheet art/build/contact/<atlas>.png. Source: the Player Bullets",
+			"pack (J i m, itch.io jinvorionstg; THIRD_PARTY_NOTICES.md), horizontal strips of `frames` cells `frameW` wide, every",
+			"pixel opaque or clear, art pointing screen-up (the direction of travel). The `fx` group's strip rules: the build fails",
+			"unless the strip is exactly frames x frameW wide; `keep` picks strip frames (a strip half, one teardrop of two). Each",
+			"set is cropped to the union alpha box of its kept frames (+ pad), so a frame's content box needs no extra rect; the",
+			"pivot is the cell centre; `meanColor` is the alpha-weighted mean of the cells after `recolor`. `recolor`: the sprite",
+			"sets' gradient map by luminance (docs/ART.md \"Recolour\"), here the danger ramp of PAD1 (outline #1a0610, wine",
+			"#5a0a33, deep pink #c0206f, the enemyBullet role #ff3fa4, light pink #ff8ac6, pale #ffe0f0), its stops tuned per",
+			"set to that set's own luminance levels (recolorNote). Packing: the effects atlas's (bands by frame height, cells",
+			"`start + f` of the SpriteSetAsset formula, alpha-bled). `pixelsPerTile`: the world art's shared density, the",
+			"swarmer's 29.6 (PAD5); `pixelsPerTileFrom` makes a full build fail unless enemy.swarmer still builds at exactly",
+			"that (`--only bullets` cannot build the swarmer and prints it unchecked). `gates`: the build fails unless every",
+			"bullet.enemy.* mean is <= enemy.maxDifference CIE76 from enemy.role and >= enemy.minContrast WCAG on every",
+			"enemy.surfaces colour (the 12 biome floor and wall colours of packs/placeholder/manifest.ts), and every",
+			"bullet.player.* mean is >= player.minDifference CIE76 from each player.from role (placeholder manifest:",
+			"enemyBullet, enemyBulletOutline, telegraph; contract MIN_FX_BULLET_DIFFERENCE 40). The pipeline's own numbers",
+			"print with every build; PA3's bulletArtReport checks the same rules in the theme. `lockAlso`: locked and checked,",
+			"read by no set (kept for later tasks). Build just this group: node scripts/art/build-atlases.js --only bullets."
+		],
+		"atlas": "bullets",
+		"pad": 1,
+		"fps": 10,
+		"pixelsPerTile": 29.6,
+		"pixelsPerTileFrom": "enemy.swarmer",
+		"gates": {
+			"enemy": {
+				"role": "#ff3fa4",
+				"maxDifference": 12,
+				"minContrast": 3.0,
+				"surfaces": ["#24242c", "#3a3a46", "#2b2722", "#36302a", "#2a1a16", "#4a2a20", "#1e2a33", "#2a3842", "#1c1a20", "#34303a", "#1d2a1d", "#283626"]
+			},
+			"player": {
+				"minDifference": 40,
+				"from": { "enemyBullet": "#ff3fa4", "enemyBulletOutline": "#1a0610", "telegraph": "#ff8a3d" }
+			}
+		},
+		"lockAlso": ["player-bullets/P1_Bullet_Hit.png", "player-bullets/P1_Bullet_Pink.png"],
+		"sets": {
+			"$comment": "PAD4's shape split: bolts and the flame are the player's (yellow / green; the flame and the plain yellow bolt lifted towards gold to clear the telegraph orange); chevron, needle and teardrops the enemy's, always in the danger ramp. Not used: P1_Bullet_Pink.png (one grey needle, the spare) and P1_Bullet_Hit.png (5 x 14x14 impact burst: fx.bullet.hit is PA7's call; both are in lockAlso).",
+			"bullet.player.basic": {
+				"$comment": "The bow stream's arrow (PlayerBulletLook.BASIC), the shot seen most: the thin yellow bolt, 3-frame flicker.",
+				"file": "player-bullets/P1 Bullet_Yellow_Thinier.png",
+				"frameW": 6,
+				"frames": 3
+			},
+			"bullet.player.heavy": {
+				"$comment": "The charged piercing arrow: the Hyper flame, 2 frames of 32x32 whose opaque content is x 8..23, full height; the union crop cuts that 16x32 content box. Lifted towards gold (recolor), see recolorNote.",
+				"file": "player-bullets/P1_Hyper_Bullet.png",
+				"frameW": 32,
+				"frames": 2,
+				"recolor": {
+					"ramp": [
+						[0, "#402000"],
+						[135, "#d88a40"],
+						[166, "#f0b848"],
+						[204, "#ffd870"],
+						[216, "#ffe468"],
+						[239, "#fffaa8"],
+						[255, "#fffde0"]
+					]
+				},
+				"recolorNote": "As the pack draws it (mean #f7cc6c) the flame is 38.3 CIE76 from the telegraph orange #ff8a3d, under the player gate's 40. Each of its five colours keeps its place and gets a little yellower and lighter: #ce6d54 (luminance 135) -> #d88a40, #e29a48 (166) -> #f0b848, #ffc569 (204) -> #ffd870, #ffdc60 (216) -> #ffe468, #fff899 (239) -> #fffaa8; mean #fada73, 44.6 from the telegraph."
+			},
+			"bullet.player.bolt": {
+				"$comment": "Flurry / Thrill Seeker's spark bolts (SPARK_BOLT): the thin green bolt (green marks build fire), 3 frames.",
+				"file": "player-bullets/P1 Bullet _Thinier_BermudaGreen.png",
+				"frameW": 6,
+				"frames": 3
+			},
+			"bullet.player.burst": {
+				"$comment": "Volatile's ring (BURST): the wide green bolt, 3 frames.",
+				"file": "player-bullets/P1 Bullet_BermudaGreen.png",
+				"frameW": 6,
+				"frames": 3
+			},
+			"bullet.player.shard": {
+				"$comment": "Soul Shards (SHARD): the plain yellow bolt, 3 frames (PAD4), lifted towards gold (recolor), see recolorNote.",
+				"file": "player-bullets/P1 Bullet_Yellow.png",
+				"frameW": 6,
+				"frames": 3,
+				"recolor": {
+					"ramp": [
+						[0, "#402000"],
+						[111, "#c88a10"],
+						[157, "#ebb820"],
+						[193, "#f8d22c"],
+						[216, "#ffe24e"],
+						[233, "#ffef9c"],
+						[255, "#fffbe0"]
+					]
+				},
+				"recolorNote": "As the pack draws it (mean #efbd36) the bolt is 36.6 CIE76 from the telegraph orange #ff8a3d, under the player gate's 40: its amber edge pixels sit near the orange. Each of its five colours keeps its place and gets a little yellower: #bc5c0b (luminance 111) -> #c88a10, #e09514 (157) -> #ebb820, #f4c529 (193) -> #f8d22c, #ffe04c (216) -> #ffe24e, #ffee99 (233) -> #ffef9c; mean #f4ce3b, 44.8 from the telegraph. The thin yellow bolt (basic) passes as drawn (40.6)."
+			},
+			"bullet.enemy.small": {
+				"$comment": "SPRAYER / ENEMY / STRESS: the chevron's cyan colourway (Alt2's left 13 px half, keep [0]; content rows 4..18), recoloured. The pink half is not used (as it is: 25 CIE76 from the role, 2.6:1).",
+				"file": "player-bullets/P1_Bullet_Alt2.png",
+				"frameW": 13,
+				"frames": 2,
+				"keep": [0],
+				"recolor": {
+					"ramp": [
+						[0, "#1a0610"],
+						[51, "#5a0a33"],
+						[65, "#c0206f"],
+						[148, "#ff3fa4"],
+						[221, "#ff8ac6"],
+						[255, "#ffe0f0"]
+					]
+				},
+				"recolorNote": "Source levels (luminance x pixels): 62 x4 (the tips), 94 x21 (the outer edge), 119 x23, 143 x25, 172 x35, 209 x28 (the lit inner band), mean 150. Tips -> #aa1b62, outer edge -> deep pink, 143-172 on the role, 209 -> #ff7ec0."
+			},
+			"bullet.enemy.medium": {
+				"$comment": "CASTER: Stream frame 1, the small teardrop (with its two trail dots), recoloured.",
+				"file": "player-bullets/P1 Bullet Stream.png",
+				"frameW": 8,
+				"frames": 2,
+				"keep": [1],
+				"recolor": {
+					"ramp": [
+						[0, "#1a0610"],
+						[16, "#5a0a33"],
+						[32, "#c0206f"],
+						[172, "#ff3fa4"],
+						[206, "#ff8ac6"],
+						[255, "#ffe0f0"]
+					]
+				},
+				"recolorNote": "Two source levels: 131 x36 (the body) and 202 x14 (the core). The body takes a shade just under the role (#ed3694), the core #ff81c2; with 72 % of its pixels in the body there is no room for a dark rim inside the 12 CIE76 gate (PAD6: a baked rim only if PA9 finds the edge soft)."
+			},
+			"bullet.enemy.large": {
+				"$comment": "BOSS (Mother Bramble, the Demon Lord): Stream frame 0, the large round-bottomed teardrop, recoloured.",
+				"file": "player-bullets/P1 Bullet Stream.png",
+				"frameW": 8,
+				"frames": 2,
+				"keep": [0],
+				"recolor": {
+					"ramp": [
+						[0, "#1a0610"],
+						[91, "#5a0a33"],
+						[170, "#c0206f"],
+						[202, "#ff3fa4"],
+						[242, "#ff8ac6"],
+						[255, "#ffe0f0"]
+					]
+				},
+				"recolorNote": "Three source levels: 131 x10 (the rim), 202 x54 (the body), 239 x20 (the core), mean 202: the rim -> #8e1551, the body on the role, the core #ff84c3."
+			},
+			"bullet.enemy.needle": {
+				"$comment": "SNIPER: p1_Bullet_Alt's grey needle, 2 frames (a lit and a dark one: it flickers), recoloured.",
+				"file": "player-bullets/p1_Bullet_Alt.png",
+				"frameW": 6,
+				"frames": 2,
+				"recolor": {
+					"ramp": [
+						[0, "#1a0610"],
+						[20, "#5a0a33"],
+						[41, "#c0206f"],
+						[78, "#ff3fa4"],
+						[199, "#ff8ac6"],
+						[255, "#ffe0f0"]
+					]
+				},
+				"recolorNote": "Source levels 48 x27, 79 x20, 114 x27, 147 x24, 181 x6 (mean 102; frame 1 is the dark one): 48 (the needle's edge) -> #cc2679, 79 on the role, 114-181 rising to #ff7fc1."
+			}
+		}
 	}
 }

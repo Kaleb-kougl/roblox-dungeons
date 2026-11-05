@@ -9662,6 +9662,56 @@
 			"bytes": 3213
 		},
 		{
+			"path": "player-bullets/P1 Bullet Stream.png",
+			"sha256": "2d26c279eee8e83376236ef7a1f3bca50a5e717f4d594126ce20e426b8facf7d",
+			"bytes": 445
+		},
+		{
+			"path": "player-bullets/P1 Bullet _Thinier_BermudaGreen.png",
+			"sha256": "15426144b11b538abf1a055739f4ea49240e37226c00011fa2d72494c749f2b0",
+			"bytes": 492
+		},
+		{
+			"path": "player-bullets/P1 Bullet_BermudaGreen.png",
+			"sha256": "d33a2afe7edda6c25a7fb3039d01dbd72179abb568305d0d7db557b0cf952c67",
+			"bytes": 662
+		},
+		{
+			"path": "player-bullets/P1 Bullet_Yellow.png",
+			"sha256": "f2d4d1a5303b6fedef7bc253119bb05214cba112d29749a47799941a46e73bc9",
+			"bytes": 501
+		},
+		{
+			"path": "player-bullets/P1 Bullet_Yellow_Thinier.png",
+			"sha256": "d5e5245286d593e399065ea0d0e8c57fab311ca923832ffa0f2670b1f9cfa65f",
+			"bytes": 467
+		},
+		{
+			"path": "player-bullets/P1_Bullet_Alt2.png",
+			"sha256": "5179ca320e043cb89c3d2bdbf7aa48db90a504526c1fb28faa7edbd178722603",
+			"bytes": 692
+		},
+		{
+			"path": "player-bullets/P1_Bullet_Hit.png",
+			"sha256": "961640e428bc817878359e50932ca200290ae9dbf80639e5df9affd0c60de010",
+			"bytes": 655
+		},
+		{
+			"path": "player-bullets/P1_Bullet_Pink.png",
+			"sha256": "1b49fac446754d6850629cd82f4b4b33f22a2ddff47efdf2e3e5f4463a8ba140",
+			"bytes": 432
+		},
+		{
+			"path": "player-bullets/P1_Hyper_Bullet.png",
+			"sha256": "157aca63a8d1afdc836a11a06dd30c3be748a3bb6b9ea94e1850cec5f458398d",
+			"bytes": 844
+		},
+		{
+			"path": "player-bullets/p1_Bullet_Alt.png",
+			"sha256": "e8fe17cf5a6ef26b0329ef4ffb27dd09db29c2b11a0880e7153822b47bd57711",
+			"bytes": 405
+		},
+		{
 			"path": "smallscale-knight/Spritesheets/With shadows/Die.png",
 			"sha256": "21d6c27199e3573abafa15acc83b165abef057cf36807f50cd726b0f67902751",
 			"bytes": 492341

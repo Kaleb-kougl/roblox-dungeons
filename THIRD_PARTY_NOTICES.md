@@ -169,6 +169,24 @@ SOFTWARE.
   License** "For commercial or personal use." with the same other terms. No attribution required. A published Roblox
   experience is not personal use, so the build uses the paid file under the Paid License.
 
+## 16Bit Bullets, missiles, Explosions & Misc Asset Pack ("Player Bullets")
+
+- "16Bit Bullets, missiles, Explosions & Misc Asset Pack - Shooter/RPG/Any 2D Genre - Pixel Art" by **J i m** (itch.io
+  `jinvorionstg`). Source: https://jinvorionstg.itch.io/bullet-asset-pack-top-down-or-shmup-classic-bullet-hell-style
+  (published 2025-08-28). The page offers two downloads; the file used is `Player Bullets.rar` (6 kB, the free
+  name-your-own-price download: 10 PNGs in `Player Bullets/`). The paid `BulletPack.rar` is not held.
+- Used for: every flying projectile (`bullet.player.*`, `bullet.enemy.*`; docs/PROJECTILE_ART.md): the yellow / green
+  bolts and the Hyper flame for the player's shots, the chevron, needle and teardrops for enemy bullets. Cut, cropped
+  and packed into one atlas (`bullets.png`) by `scripts/art/build-atlases.js` and uploaded to Roblox. **Modified:** the
+  enemy bullets are recoloured (a gradient map into the danger pink), and the Hyper flame and the plain yellow bolt
+  are shifted slightly towards gold.
+- Raw files: `art/vendor/player-bullets/` (gitignored, not redistributed: redistribution is not addressed).
+- Terms: the page has no licence field. The author's only statement is a reply in the page's comments, posted about
+  9 months before 2026-11-05 (read that day), to "what are the terms of your assets? for commercial use?": "You can
+  use them however you want, even for commercial use." The page does not require credit; the pack is credited anyway
+  (the main menu's Credits screen, shared/view/menu `CREDITS`). A screenshot of the comment kept beside the vendor
+  files, or a written licence from the author (the contact address on the page), would be stronger evidence.
+
 ## Dungeon Essential Kit (3D models, CC-BY 4.0) - ATTRIBUTION REQUIRED
 
 - Author: Rakshaan (https://sketchfab.com/rakshaan). Source:
