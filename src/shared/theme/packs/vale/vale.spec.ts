@@ -1915,8 +1915,8 @@ describe("vale new enemies (NE9: Imp 5 / Beast 1 / Spawn 7 / Imp 3 / Spawn 5, pe
 		});
 	});
 
-	it("as bundled: the uploaded sets (bomber, charger, reaper, warbanner) draw sprites, the stormcaller its placeholder", () => {
-		const uploaded = ["enemy.bomber", "enemy.charger", "enemy.reaper", "enemy.warbanner"];
+	it("as bundled: all five uploaded sets draw sprites", () => {
+		const uploaded = ["enemy.bomber", "enemy.charger", "enemy.reaper", "enemy.stormcaller", "enemy.warbanner"];
 		for (const [id, prefix] of SETS) {
 			const on = uploaded.includes(id);
 			for (const file of sheetsOf(prefix)) {
@@ -1978,9 +1978,10 @@ describe("vale Goldling (FO10: the skeleton recoloured gold)", () => {
 		expect([l.pixelsPerTile, s.pixelsPerTile]).toEqual([38.9, 29.6]);
 	});
 
-	it("as bundled: no IDs yet, so the Goldling is its placeholder", () => {
-		for (const file of [...SHEETS, ...RIMS]) expect([file, VALE_ASSET_IDS[file]]).toEqual([file, undefined]);
-		expect(VALE_MANIFEST.assets["enemy.golden"]).toEqual({ kind: "placeholder" });
+	it("as bundled (uploaded 2026-11-04): the Goldling draws its sprites", () => {
+		for (const file of [...SHEETS, ...RIMS])
+			expect([file, VALE_ASSET_IDS[file] !== undefined]).toEqual([file, true]);
+		expect(VALE_MANIFEST.assets["enemy.golden"].kind).toBe("sprites");
 	});
 
 	it("switches to sprites with both sheets; either missing keeps the placeholder; the rims alone never do", () => {

@@ -209,7 +209,8 @@ It never attacks and does no contact damage.
 - [ ] **FO10. [owner] Art and audio** (gold recolour via a pipeline `recolor` option, altar art, nine sounds; eight as
   built, no `amb.golden.loop`). The recolour is built (2026-11-04, docs/ART.md "Recolour"): `enemy.golden` = the
   swarmer's skeleton on a gold luminance ramp, bodyTiles 0.95, `golden-move.png` / `golden-death.png` + their two
-  outline sheets, awaiting upload (ids in `assetIds.ts`); altar art and the sounds pending.
+  outline sheets, uploaded 2026-11-04 5:03 PM (ids in `assetIds.ts`, so the bundled vale pack draws it); altar art
+  and the sounds pending.
 - [ ] **FO11. Telemetry (optional).** Pending.
 - [x] **FO12. Docs** (this doc as built, CLAUDE.md log, sim README, CLIENT.md, DAILY.md).
 - [ ] **FO13. [owner] Playtest.** Pending.

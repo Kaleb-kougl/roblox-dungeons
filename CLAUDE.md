@@ -563,9 +563,9 @@ Decision log (deviations from `PLAN.md`):
   fixture and the tutorial replay exactly as before. Theme: five `ENEMY_ARCHETYPES`, colour role `enemyAura`, bullet
   visual `bullet.enemy.strike`, port audio IDs `sfx.enemy.fuse` / `.blast` / `.charge` / `.stun` / `.strike` /
   `.spin` (SILENT in the placeholder), optional enemy animations `death.2` / `move.back`, `bestiary.<id>` toasts. Vale:
-  Imp 5, Demon Beast 1, Demon Spawn 7, Imp 3, Demon Spawn 5 sets built (`art:build`); the bomber / charger / reaper
-  sets and all six sounds uploaded 2026-11-03 (the strike is the owner's Pixabay clip, DRAGON-STUDIO 386161), the
-  stormcaller / warbanner ids pending; Studio check and tuning (NE12-NE13) pending.
+  Imp 5, Demon Beast 1, Demon Spawn 7, Imp 3, Demon Spawn 5 sets built (`art:build`); all five sets
+  and all six sounds uploaded and in `assetIds.ts` (the strike is the owner's Pixabay clip, DRAGON-STUDIO 386161);
+  Studio check and tuning (NE12-NE13) pending.
 - **Pellets (docs/PELLETS.md).** Gameplay. Floor-built: shared/dungeon `placePellets` lays each enemy room's pattern
   (ring / cross / lanes / zigzag, `PELLETS.patterns`) on reachable FLOOR cells off pieces and planned spawns, and a
   power pellet on about a third of the floors from floor 2, from its own stream (`floorSeed ^ PELLETS.salt`
@@ -719,7 +719,7 @@ Decision log (deviations from `PLAN.md`):
   pending. FO10's Goldling art is built (2026-11-04, presentation only): the atlas pipeline's per-set `recolor` (a
   gradient map by luminance, alpha kept, before crop / pivot / rim; docs/ART.md "Recolour") makes `enemy.golden` the
   swarmer's skeleton in gold (bodyTiles 0.95), `golden-move` / `golden-death` + rims; every older output byte-identical;
-  placeholder until uploaded.
+  uploaded 2026-11-04 (ids in `assetIds.ts`).
 
 ## Commands
 

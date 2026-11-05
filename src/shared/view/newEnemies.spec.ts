@@ -453,8 +453,8 @@ describe("stun and dizzy marker", () => {
 });
 
 describe("sprite inputs per state", () => {
-	it("registers the five; vale draws the uploaded sets (all but the stormcaller), the rest are placeholders", () => {
-		const uploaded = [BOMBER.id, CHARGER.id, REAPER.id, WARBANNER.id];
+	it("registers the five; vale draws all five sets, every other pack its placeholders", () => {
+		const uploaded = [BOMBER.id, CHARGER.id, REAPER.id, STORMCALLER.id, WARBANNER.id];
 		for (const packId of listThemePacks()) {
 			const pack = loadThemePack(packId, { warn: () => undefined });
 			for (const def of [BOMBER, CHARGER, STORMCALLER, WARBANNER, REAPER]) {

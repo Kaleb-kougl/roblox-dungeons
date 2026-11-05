@@ -35,11 +35,10 @@ Mac). M1, every golden fixture and the tutorial replay exactly as before; endles
 
 Open:
 
-- **Upload (NE13, owner):** uploaded 2026-11-03 9:01 AM. The bomber, charger and reaper sets (attack / body / death
-  + rims) and the five clips (`sfx-enemy-fuse` / `-charge` / `-blast` / `-stun` / `-spin`) have ids in
-  `packs/vale/assetIds.ts`, so the bundled vale pack draws those three and plays the five sounds. The stormcaller and
-  warbanner sheets are uploaded too, but the Asset Manager screenshot cut their names short (`stormcaller-at...` twice
-  and so on), so which id is the outline is not known: their sets stay placeholders until the full names are read.
+- **Upload (NE13, owner):** done. All five sets (attack / body / death + rims) uploaded 2026-11-03 9:01 AM; the
+  bomber / charger / reaper ids and the five clips (`sfx-enemy-fuse` / `-charge` / `-blast` / `-stun` / `-spin`) went
+  into `packs/vale/assetIds.ts` that day, the warbanner and stormcaller ids on 2026-11-04 (the first screenshot cut
+  their names short). The bundled vale pack draws all five and plays every sound.
 - **`sfx.enemy.strike`:** "Lightning strike" by DRAGON-STUDIO (Pixabay 386161), the owner's pick, mapped in
   `art/audio.json` (used whole, volume 0.7) and credited (THIRD_PARTY_NOTICES.md, the Credits screen); uploaded
   2026-11-03 11:28 AM as the downloaded MP3 (id in `assetIds.ts`), so the bundled vale pack plays it.

@@ -41,8 +41,8 @@ const AUDIO = [
 	"sfx.enemy.strike",
 	"sfx.enemy.spin",
 ];
-// Uploaded 2026-11-03 (packs/vale/assetIds.ts; warbanner ids 2026-11-04). The Stormcaller waits for its body ids.
-const VALE_UPLOADED_SETS: ReadonlyArray<string> = ["bomber", "charger", "reaper", "warbanner"];
+// Uploaded 2026-11-03 (packs/vale/assetIds.ts; the warbanner and stormcaller ids added 2026-11-04).
+const VALE_UPLOADED_SETS: ReadonlyArray<string> = ["bomber", "charger", "reaper", "stormcaller", "warbanner"];
 const VALE_UPLOADED_AUDIO: ReadonlyArray<string> = [
 	"sfx.enemy.fuse",
 	"sfx.enemy.blast",

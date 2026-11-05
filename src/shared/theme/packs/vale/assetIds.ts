@@ -82,9 +82,9 @@ import type { RobloxAssetId } from "../../types";
  * The new enemies (docs/NEW_ENEMIES.md NE9 / NE10: bomber-* / charger-* / reaper-* attack, body and death sheets with
  * their outlines; sfx-enemy-fuse / -charge / -blast / -stun / -spin) uploaded 2026-11-03 9:01 AM by k9kbdev,
  * transcribed from an Asset Manager screenshot. warbanner-* (the same upload) added 2026-11-04 from a wider screenshot.
- * stormcaller-* are uploaded too, but which of the two stormcaller-body ids is the outline is not known yet (attack
- * 98689179931162 / outline 113129536919777, death 117013780053629 / outline 123020171014128 are), so its set stays a
- * placeholder until that pair is read.
+ * stormcaller-* (the same upload) added 2026-11-04 once a screenshot showed the stormcaller-body pair.
+ * The Goldling (docs/FORTUNE.md FO10: golden-move / golden-death and their outlines, the gold-recoloured skeleton)
+ * uploaded 2026-11-04 5:03 PM by k9kbdev, transcribed from an Asset Manager screenshot.
  * sfx-enemy-strike (the Stormcaller's strike: "Lightning strike" by DRAGON-STUDIO, Pixabay 386161) uploaded 2026-11-03
  * 11:28 AM by k9kbdev as the downloaded MP3, transcribed from an Asset Manager screenshot.
  * sfx-pellet-eat ("Chomp" by Barnaby / cryptologymedia, Pixabay 155392) and sfx-pellet-sweep ("Swish swoosh woosh SFX
@@ -148,6 +148,10 @@ export const VALE_ASSET_IDS: Readonly<Record<string, RobloxAssetId>> = {
 	"charger-death.png": "rbxassetid://83176562450531",
 	"decor-atlas.png": "rbxassetid://115064942223814",
 	"decor-mote.png": "rbxassetid://108281638823690",
+	"golden-death-outline.png": "rbxassetid://129944301136987",
+	"golden-death.png": "rbxassetid://92086087611208",
+	"golden-move-outline.png": "rbxassetid://85083036932400",
+	"golden-move.png": "rbxassetid://88829506171960",
 	"imp-attack-outline.png": "rbxassetid://87826495349638",
 	"imp-attack.png": "rbxassetid://106802821695726",
 	"imp-body-outline.png": "rbxassetid://80038327609999",
@@ -282,6 +286,12 @@ export const VALE_ASSET_IDS: Readonly<Record<string, RobloxAssetId>> = {
 	"sprayer-body.png": "rbxassetid://91705891235798",
 	"sprayer-death-outline.png": "rbxassetid://84907988039450",
 	"sprayer-death.png": "rbxassetid://103488605375534",
+	"stormcaller-attack-outline.png": "rbxassetid://113129536919777",
+	"stormcaller-attack.png": "rbxassetid://98689179931162",
+	"stormcaller-body-outline.png": "rbxassetid://72828372329846",
+	"stormcaller-body.png": "rbxassetid://79804185202292",
+	"stormcaller-death-outline.png": "rbxassetid://123020171014128",
+	"stormcaller-death.png": "rbxassetid://117013780053629",
 	"summoner-attack-outline.png": "rbxassetid://71799709544334",
 	"summoner-attack.png": "rbxassetid://78838021771893",
 	"summoner-body-outline.png": "rbxassetid://118322277029322",
