@@ -71,8 +71,14 @@ export const BULLET_SPIKE = {
 	speedStuds: 12,
 	/** Rings are recycled at this radius, studs (the web view is ~30 x 17 tiles). */
 	maxRadiusStuds: 60,
-	/** Height of the bullet plane above the floor, studs. */
-	heightStuds: 1.5,
+	/**
+	 * Height of the bullet plane above the floor, studs: above the character's feet, or (no character: the game
+	 * spawns none) above whatever a ray straight down from the camera's focus hits (a dungeon floor, the Baseplate).
+	 * 2 = the sim's BULLET_Y (0.5 tiles), so the draw order against walls and floor markings is the game's.
+	 */
+	heightStuds: 2,
+	/** That ray starts this far above the camera's focus and reaches twice as far down, studs (a miss: y = 0). */
+	floorProbeStuds: 100,
 	/** Spin of the spiral pattern, radians per second. */
 	spiralSpinRadPerSec: 1.2,
 	/** Angle added per ring in the spiral pattern, radians. */
@@ -90,6 +96,70 @@ export const BULLET_SPIKE = {
 	folderName: "KV_SpikeBullets",
 	/** MicroProfiler label for the per-frame update. */
 	profileLabel: "KV BulletSpike",
+	/**
+	 * Render modes (docs/PROJECTILE_ART.md PA0; keys 5-8 or the HUD buttons). `id` picks the pool, `short` is the
+	 * button, `move` names what the HUD's move time measures in that mode.
+	 *   neon:    today's neon spheres, one BulkMoveTo (the baseline);
+	 *   decal:   (A) a Part per bullet with a Top-face Decal, BulkMoveTo turned along the velocity, frames = textures;
+	 *   surface: (B) a Part per bullet with a Top-face SurfaceGui + ImageLabel (FxSpriteController's construction),
+	 *            BulkMoveTo turned along the velocity, frames = ImageRectOffset;
+	 *   canvas:  (C) ONE Top-face SurfaceGui per pool on a flat Part over the area, an ImageLabel per bullet moved by
+	 *            Position / Rotation writes (no Part moves), frames = ImageRectOffset.
+	 */
+	modes: [
+		{ id: "neon", short: "N neon", move: "BulkMoveTo" },
+		{ id: "decal", short: "A decal", move: "BulkMoveTo" },
+		{ id: "surface", short: "B surf", move: "BulkMoveTo" },
+		{ id: "canvas", short: "C canv", move: "writes" },
+	],
+	/** Index into `modes` used on start: the neon baseline. */
+	defaultModeIndex: 0,
+	/**
+	 * The optional "player" bullets (key 0 or the HUD button): a second pool of the same mode (production keeps the
+	 * player and enemy pools apart; mode C gets a second canvas), faster rings at half a step's offset.
+	 */
+	players: {
+		/** Bullets in the player pool (PA0's 1,000 enemy + 200 player). */
+		count: 200,
+		perRing: 20,
+		speedStuds: 30,
+		/** Ring angle offset against the enemy rings, radians (half of the player ring's step). */
+		offsetRad: math.pi / 20,
+		color: [255, 235, 140],
+	},
+	/** The sprite modes (A / B / C): a 6x19 px bolt at 29.6 px/tile (PAD5), 4 studs/tile -> 0.81 x 2.57 studs. */
+	sprite: {
+		/** Across the travel direction, studs. */
+		widthStuds: 0.81,
+		/** Along the travel direction, studs. */
+		lengthStuds: 2.57,
+		/** The anchor / Decal part's thickness, studs (its Top face sits at the bullet height). */
+		thicknessStuds: 0.05,
+		/** Flipbook frames and rate (PAD8: 10 fps, phase = slot index mod frames). */
+		frames: 3,
+		fps: 10,
+		/** The pack sprite tried first (ThemePack.bullet); its first `frames` frames are the flipbook (B / C). */
+		lookId: "bullet.player.basic",
+		/**
+		 * Without pack art, B / C read SPIKE_ENGINE_TEXTURES.strip as `frames` equal cells across this many pixels
+		 * (an assumption: if the sprites look empty or cut off, set the texture's real size here).
+		 */
+		fallbackStripPx: [128, 128],
+		/** Option (B)'s SurfaceGui CanvasSize, pixels (2x the 6x19 art). */
+		surfaceCanvasPx: [12, 38],
+		/** Turn added to every sprite's heading, degrees: 90 / 180 / 270 if the art does not point along its travel. */
+		artYawOffsetDeg: 0,
+	},
+	/** Option (C): the canvas Part per pool. */
+	canvas: {
+		/** Extra half-width beyond `maxRadiusStuds`, studs (a bullet's length fits inside). */
+		marginStuds: 4,
+		/** Canvas pixels per stud (2 x (60 + 4) studs x 8 = a 1024 px canvas; the sprite is 6.5 x 20.6 px). */
+		pxPerStud: 8,
+		thicknessStuds: 0.05,
+		/** Lift of the player canvas over the enemy canvas, studs (two coplanar surfaces would z-fight). */
+		playerLiftStuds: 0.02,
+	},
 } as const;
 
 /** Spike B: iso camera rig (low FOV from far away, damped follow, optional grid snap). */

@@ -211,3 +211,5 @@ export {
 export { THEME_PACKS } from "./packs";
 export { PLACEHOLDER_MANIFEST } from "./packs/placeholder";
 export * from "./inputKeys";
+// Roblox port (docs/PROJECTILE_ART.md PA0): engine textures for the sprite-bullet spike while the pack has no art.
+export { SPIKE_ENGINE_TEXTURES } from "./spikeTextures";

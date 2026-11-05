@@ -68,24 +68,24 @@ function BulletPanel() {
 	const spike = useSelector(selectBulletSpike);
 	const s = spike.stats;
 	const count = BULLET_SPIKE.counts[spike.countIndex];
+	const mode = BULLET_SPIKE.modes[spike.modeIndex];
+	const ms = (value: number) => string.format(DECIMALS_MS, value);
+	const art = mode.id === "neon" ? "-" : mode.id === "decal" ? "engine" : s.art;
 	return (
 		<>
-			<Label order={1} text={`SPIKE A  bullets ${s.live}/${count}  pattern ${spike.pattern}  (keys 1-4, P)`} />
-			<Label
-				order={2}
-				text={`fps ${string.format(DECIMALS_FPS, s.fps)}   update ${string.format(
-					DECIMALS_MS,
-					s.computeMs + s.moveMs,
-				)} ms`}
-			/>
+			<Label order={1} text={`SPIKE A  bullets ${s.live}/${count} +${s.players}  ${spike.pattern}`} />
+			<Label order={2} text={`  mode ${mode.short}  art ${art}  (1-4, P, 5-8, 0)`} />
 			<Label
 				order={3}
-				text={`  compute ${string.format(DECIMALS_MS, s.computeMs)}  BulkMoveTo ${string.format(
-					DECIMALS_MS,
-					s.moveMs,
-				)}  worst ${string.format(DECIMALS_MS, s.worstMs)} ms`}
+				text={`fps ${string.format(DECIMALS_FPS, s.fps)}   update ${ms(
+					s.computeMs + s.moveMs + s.frameMs,
+				)} ms  worst ${ms(s.worstMs)}`}
 			/>
-			<Row order={4}>
+			<Label
+				order={4}
+				text={`  compute ${ms(s.computeMs)}  ${mode.move} ${ms(s.moveMs)}  flip ${ms(s.frameMs)}`}
+			/>
+			<Row order={5}>
 				{BULLET_SPIKE.counts.map((n, i) => (
 					<Button
 						key={`count${n}`}
@@ -99,6 +99,23 @@ function BulletPanel() {
 					order={BULLET_SPIKE.counts.size()}
 					text={spike.pattern}
 					onClick={() => clientStore.toggleBulletPattern()}
+				/>
+			</Row>
+			<Row order={6}>
+				{BULLET_SPIKE.modes.map((m, i) => (
+					<Button
+						key={`mode${m.id}`}
+						order={i}
+						text={m.short}
+						active={i === spike.modeIndex}
+						onClick={() => clientStore.setBulletModeIndex(i)}
+					/>
+				))}
+				<Button
+					order={BULLET_SPIKE.modes.size()}
+					text={`+${BULLET_SPIKE.players.count}`}
+					active={spike.playerBullets}
+					onClick={() => clientStore.toggleBulletPlayers()}
 				/>
 			</Row>
 		</>

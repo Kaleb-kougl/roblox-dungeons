@@ -12,6 +12,7 @@ turned off.
 | P0: preload | Does `PreloadAsync` fetch images and sounds from content id strings, or only through instances? Does a sheet's first draw hitch? (docs/PRELOAD.md D4 / D5) | `src/client/controllers/spikes/PreloadSpikeController.ts` |
 | I0: invites | What do `PromptGameInvite`, LaunchData, `GameInvitePromptClosed`, `CanSendGameInviteAsync` and the Party API really do in a published place? (docs/INVITES.md "What the Roblox API gives us") | `src/server/services/spikes/InviteSpikeService.ts`, `src/client/controllers/spikes/InviteSpikeController.ts` |
 | UA1: UI art | Do snapped 9-slice borders land on whole screen px, does the icon atlas bleed, does a CanvasGroup keep pixels crisp, does a stretched panel centre need `flat`? (docs/UI_ART.md UA1) | `src/client/controllers/spikes/UiArtSpikeController.tsx`, `src/client/ui/spikes/UiArtSpike.tsx` |
+| PA0: sprite bullets | Can the bullets be drawn as pixel-art sprites (Decal, per-bullet SurfaceGui, or one canvas SurfaceGui) at bullet-hell counts, within 1.5x the neon parts' update? (docs/PROJECTILE_ART.md PA0) | `src/client/controllers/spikes/BulletSpikeController.ts` (spike A's controller, render modes) |
 | L0: localization | Which fonts draw each script we may ship (tofu, fallback or correct), do Arabic shaping / right-to-left and CJK / Thai wrapping work, which locale id is the player's language, does `AutoLocalize = false` stop translated content, and what does the cloud table's CSV look like? (docs/LOCALIZATION.md L0) | `src/client/controllers/spikes/L10nSpikeController.ts`, `src/shared/spikes/l10nSpike.ts` |
 
 Tunables for all of them: `src/shared/config/spikes.ts`. HUD: `src/client/ui/spikes/SpikeHud.tsx` (top left, with buttons
@@ -63,6 +64,98 @@ Steps:
 
 Go if: **1,000 bullets hold 60 fps on PC** with `update` well under the frame budget (target < 2 ms). If not, the
 plan's fallback is to cap enemy bullets per device class while the sim keeps the same number.
+
+Spike A is mode **N** of spike PA0 (below): the same controller, the neon spheres are its default mode, and its
+numbers come from the PA0 session (fill both tables from mode N's rows).
+
+## Spike PA0: sprite bullets (docs/PROJECTILE_ART.md)
+
+Not a task 1 gate: it decides docs/PROJECTILE_ART.md PAD9 (which technique draws the bullet sprites, or the
+fallback) before any production renderer is written. It extends spike A's controller (same flag, same rings and
+spiral, same HUD panel) with a **render mode** switch. Client code only. It is **off by default**; every mode's pools
+live in a child Janitor of spike A's, so a mode change tears the old mode's Parts / GUIs down before the next is
+built, and turning the flag off removes everything (`Workspace.KV_SpikeBullets` folder and all).
+
+### What it does
+
+The emitter is where your character stood, or (the game spawns no character) the floor under the camera's focus
+(a ray straight down from it; on a miss, y = 0), so starting the spike during a run puts the bullets around the
+player in a real room. Bullets fly 2 studs above that floor (`BULLET_SPIKE.heightStuds`, the sim's `BULLET_Y`).
+
+| Mode | Key | How each bullet is drawn | Moved by | Flipbook (3 frames, 10 fps, phase = slot mod 3) |
+|---|---|---|---|---|
+| **N** neon | 5 | spike A's neon sphere (the baseline, unchanged) | one `BulkMoveTo` per pool | none |
+| **A** decal | 6 | a flat invisible Part (0.81 x 2.57 studs, a 6x19 px bolt at 29.6 px/tile) with a Top-face `Decal` | `BulkMoveTo`, the CFrame turned along the velocity | `Decal.Texture` swapped between 3 textures |
+| **B** surface | 7 | the same flat Part as an anchor carrying a Top-face `SurfaceGui` (FixedSize 12x38, `LightInfluence` 0) + `ImageLabel` (`Pixelated`): FxSpriteController's construction | `BulkMoveTo`, turned along the velocity | `ImageRectOffset` |
+| **C** canvas | 8 | ONE flat Part per pool over the whole area (128 x 128 studs, a 1024 px Top-face `SurfaceGui`), one `ImageLabel` per bullet | `Position` + `Rotation` writes (no Part moves) | `ImageRectOffset` |
+
+A frame is written only when a slot's frame changes. With PAD8's phase (slot index mod 3) every bullet changes on
+the same frames (every 0.1 s), so the flipbook cost comes in bursts: watch `worst`, not only the average.
+
+**Key 0** (or the `+200` button) adds a second pool of 200 "player" bullets (yellow, faster rings) in the same mode:
+production keeps the player and enemy pools apart, so modes N / A / B make a second `BulkMoveTo` and mode C a second
+canvas. PA0's go rule is measured with it on.
+
+**Art.** `ThemePack.bullet("bullet.player.basic")` when the active pack has it (after PA2 / PA8; HUD `art pack`):
+its first 3 frames. Until then (HUD `art engine`) the engine's own particle textures, which ship in every Roblox
+install (`shared/theme` `SPIKE_ENGINE_TEXTURES`): option A swaps `rbxasset://textures/particles/sparkles_main.dds`,
+`fire_main.dds` and `smoke_main.dds`; options B and C read `sparkles_main.dds` as a 3-cell strip whose pixel size is
+*assumed* (`BULLET_SPIKE.sprite.fallbackStripPx`, 128 x 128, so cells of 42 x 128): the rect logic runs exactly as with
+an atlas, but the drawn cells are slices of a sparkle, not bolts. If B / C draw nothing or a cut-off sliver, set
+`fallbackStripPx` to the texture's real size. Option A never uses the pack (a Decal cannot crop an atlas rect; PA2's
+`upscale` would make one PNG per frame). The sprites are tinted (enemy rings in the four spike colours, player
+yellow), as the theme would tint them.
+
+HUD readout (averaged over 0.5 s; the window restarts on any change of count, mode or the +200):
+
+- line 1: `bullets <moved>/<count> +<player bullets>` and the pattern; line 2: the mode and the art source;
+- `fps`, `update` (= compute + move + flip) and `worst` (slowest single update in the window);
+- `compute`: the ring layout plus building the CFrames (N / A / B) or the UDim2 positions and rotations (C);
+  `BulkMoveTo` (N / A / B) or `writes` (C: the Position / Rotation property writes); `flip`: the flipbook writes;
+- MicroProfiler label `KV BulletSpike` as before. Render cost (draw calls, SurfaceGui layout) is **not** in `update`:
+  read it in the MicroProfiler's render section and in the frame rate.
+
+All tunables: `BULLET_SPIKE` in `src/shared/config/spikes.ts` (`modes`, `players`, `sprite`, `canvas`); the texture
+paths (asset URLs may only live in shared/theme): `src/shared/theme/spikeTextures.ts`. If a sprite mode's bullets do
+not point along their travel (the Top face's up direction is assumed to be the Part's -Z), set
+`BULLET_SPIKE.sprite.artYawOffsetDeg` to 90 / 180 / 270 and note it.
+
+### Turning it on
+
+Same flag as spike A: `workspace:SetAttribute("KV_SpikeBullets", true)` from the command bar while playing (false
+removes everything), the Workspace attribute before Play, or `SPIKE_DEFAULTS.bullets` (not for a published build).
+It starts in mode N with 1,000 bullets, rings, no player bullets.
+
+### Test script
+
+Lighting as in Setup. Note the Studio frame-rate cap, CPU / GPU and `Lighting.Technology`.
+
+1. **PC, quality 10** (File -> Studio Settings -> Rendering -> Editor Quality Level; or the Player's menu). Start a
+   solo endless run (developer mode's god mode, docs/DEV_MODE.md, keeps you alive; stand in a cleared room so the
+   game's own bullets do not count), then turn the spike on. For **each mode N, A, B, C** (keys 5-8 or buttons):
+   1. counts 100 / 500 / 1,000 / 2,000 (keys 1-4), rings; then 1,000 spiral (P); wait ~5 s each and record fps,
+      update, compute, move (BulkMoveTo / writes), flip, worst;
+   2. 1,000 rings **+200** (key 0) and 1,000 spiral +200: the go rule's rows;
+   3. open the MicroProfiler (Ctrl+F6) at 1,000 + 200 and note what the render section shows next to N (more draw
+      calls? SurfaceGui / GUI layout time?).
+2. **PC, quality 1**: repeat 1,000 rings and 1,000 + 200 rings for every mode.
+3. **Phone emulator** (Test -> Device, e.g. iPhone 14 or a mid Android): the same as step 2 with the HUD buttons.
+   The emulator changes only screen size and input, not CPU / GPU: write that caveat next to the numbers (real phones
+   are docs/MOBILE.md's device pass).
+4. **Look** at each sprite mode next to N (screenshots at 200 %), at quality 10 and 1:
+   - **blur**: are the sprite pixels crisp (B / C are `Pixelated`; A's Decal filters bilinearly, so expect soft
+     edges: that is the case for PA2's `upscale`)? Any shimmer while they turn?
+   - **lighting**: is a sprite as bright on a dark biome as on a light one, and in shadow (B / C are `LightInfluence`
+     0; a Decal has no unlit switch, so A may darken: PAD10)? Compare with N's neon glow;
+   - **draw order**: walk to a room edge so rings cross walls and void: are sprites hidden **under walls** and pillars
+     (depth tested, like the neon), drawn **over the floor**, floor decals and markings (telegraph rings, the aim
+     line, room edges), never z-fighting with the floor? Do A / B sprites flicker against each other where they
+     overlap? Does C's canvas hide anything (it is one big surface: check the floor and pellets under it, and the
+     player / enemy sprites standing on it);
+   - **turning**: do the bolts point along their travel in rings and in the spiral (else `artYawOffsetDeg`)?
+   - **flicker**: does the 3-frame flicker read, and is it in step across a ring (PAD8's phase)?
+5. Turn the spike off: the `KV_SpikeBullets` folder is gone from Workspace and the HUD panel disappears. Switch modes
+   back and forth a few times first: the folder holds only the current mode's folder each time.
 
 ## Spike B: iso camera rig
 
@@ -485,6 +578,87 @@ Fill these in; they decide the go/no-go gate in PLAN.md task 1.
 | | | 2000 | rings | | | | | |
 
 Notes (frame cap, hardware, emulator caveat):
+
+### Spike PA0
+
+Go rule (docs/PROJECTILE_ART.md PA0): **go if the best sprite mode holds 60 fps on PC with 1,000 enemy + 200 player
+bullets and its update is <= 1.5x mode N's update at the same count, pattern and quality.** That mode is PAD9's pick.
+No go: PAD9's fallback (sprites for player bullets only; if even that fails, the plan stops at PA4). Record the
+device / context (PC model or emulated phone), the quality level and the art source (`pack` / `engine`) per session.
+
+One table per mode. "+200" = the player pool on. Move = BulkMoveTo (N / A / B) or the property writes (C).
+
+#### Mode N: neon parts (the baseline; spike A's table above takes the same numbers)
+
+| Device / context | Quality | Count | Pattern | +200 | fps | update ms | compute ms | move ms | flip ms | worst ms |
+|---|---|---|---|---|---|---|---|---|---|---|
+| | 10 | 100 | rings | | | | | | - | |
+| | 10 | 500 | rings | | | | | | - | |
+| | 10 | 1000 | rings | | | | | | - | |
+| | 10 | 1000 | spiral | | | | | | - | |
+| | 10 | 2000 | rings | | | | | | - | |
+| | 10 | 1000 | rings | yes | | | | | - | |
+| | 10 | 1000 | spiral | yes | | | | | - | |
+| | 1 | 1000 | rings | | | | | | - | |
+| | 1 | 1000 | rings | yes | | | | | - | |
+| emulator | 1 | 1000 | rings | yes | | | | | - | |
+
+#### Mode A: Decal per bullet
+
+| Device / context | Quality | Count | Pattern | +200 | fps | update ms | compute ms | move ms | flip ms | worst ms |
+|---|---|---|---|---|---|---|---|---|---|---|
+| | 10 | 100 | rings | | | | | | | |
+| | 10 | 500 | rings | | | | | | | |
+| | 10 | 1000 | rings | | | | | | | |
+| | 10 | 1000 | spiral | | | | | | | |
+| | 10 | 2000 | rings | | | | | | | |
+| | 10 | 1000 | rings | yes | | | | | | |
+| | 10 | 1000 | spiral | yes | | | | | | |
+| | 1 | 1000 | rings | | | | | | | |
+| | 1 | 1000 | rings | yes | | | | | | |
+| emulator | 1 | 1000 | rings | yes | | | | | | |
+
+#### Mode B: SurfaceGui + ImageLabel per bullet
+
+| Device / context | Quality | Count | Pattern | +200 | fps | update ms | compute ms | move ms | flip ms | worst ms |
+|---|---|---|---|---|---|---|---|---|---|---|
+| | 10 | 100 | rings | | | | | | | |
+| | 10 | 500 | rings | | | | | | | |
+| | 10 | 1000 | rings | | | | | | | |
+| | 10 | 1000 | spiral | | | | | | | |
+| | 10 | 2000 | rings | | | | | | | |
+| | 10 | 1000 | rings | yes | | | | | | |
+| | 10 | 1000 | spiral | yes | | | | | | |
+| | 1 | 1000 | rings | | | | | | | |
+| | 1 | 1000 | rings | yes | | | | | | |
+| emulator | 1 | 1000 | rings | yes | | | | | | |
+
+#### Mode C: one canvas SurfaceGui per pool
+
+| Device / context | Quality | Count | Pattern | +200 | fps | update ms | compute ms | move ms | flip ms | worst ms |
+|---|---|---|---|---|---|---|---|---|---|---|
+| | 10 | 100 | rings | | | | | | | |
+| | 10 | 500 | rings | | | | | | | |
+| | 10 | 1000 | rings | | | | | | | |
+| | 10 | 1000 | spiral | | | | | | | |
+| | 10 | 2000 | rings | | | | | | | |
+| | 10 | 1000 | rings | yes | | | | | | |
+| | 10 | 1000 | spiral | yes | | | | | | |
+| | 1 | 1000 | rings | | | | | | | |
+| | 1 | 1000 | rings | yes | | | | | | |
+| emulator | 1 | 1000 | rings | yes | | | | | | |
+
+#### Looks (step 4)
+
+| Mode | Blur (quality 10 / 1) | Lighting (dark biome, shadow) | Under walls / pillars | Over floor, decals, markings | Turning | Flicker |
+|---|---|---|---|---|---|---|
+| A decal | | | | | | |
+| B surface | | | | | | |
+| C canvas | | | | | | |
+
+MicroProfiler render section at 1,000 + 200 (per mode, against N):
+
+Verdict: best mode, its update at 1,000 + 200 on PC / N's (ratio), 60 fps held (yes / no), go / no go, PAD9's pick:
 
 ### Spike B
 

@@ -2,7 +2,10 @@ import { Controller, OnStart } from "@flamework/core";
 import { Janitor } from "@rbxts/janitor";
 import { Players, RunService, UserInputService, Workspace } from "@rbxts/services";
 import { BulletPattern, clientStore, selectBulletSpike } from "client/store";
+import { createKvSurfaceGui } from "client/ui";
 import { BULLET_SPIKE } from "shared/config";
+import { SPIKE_ENGINE_TEXTURES, type ThemePack } from "shared/theme";
+import { ThemeController } from "../game/ThemeController";
 import { watchSpikeFlag } from "./spikeFlags";
 
 const COUNT_KEYS: ReadonlyArray<Enum.KeyCode> = [
@@ -11,25 +14,492 @@ const COUNT_KEYS: ReadonlyArray<Enum.KeyCode> = [
 	Enum.KeyCode.Three,
 	Enum.KeyCode.Four,
 ];
+/** PA0's render modes, in BULLET_SPIKE.modes order (N / A / B / C). */
+const MODE_KEYS: ReadonlyArray<Enum.KeyCode> = [
+	Enum.KeyCode.Five,
+	Enum.KeyCode.Six,
+	Enum.KeyCode.Seven,
+	Enum.KeyCode.Eight,
+];
 const PATTERN_KEY = Enum.KeyCode.P;
+const PLAYERS_KEY = Enum.KeyCode.Zero;
 const TAU = 2 * math.pi;
 const MS_PER_SEC = 1000;
+const DEG_PER_RAD = 180 / math.pi;
+const HIDDEN = 1;
+const SELF_LIT = 0;
+const CENTRE = new Vector2(0.5, 0.5);
+const S = BULLET_SPIKE.sprite;
+const ART_YAW_RAD = S.artYawOffsetDeg / DEG_PER_RAD;
+
+type ModeId = (typeof BULLET_SPIKE.modes)[number]["id"];
+
+/** The flipbook the sprite modes draw (S.frames frames). */
+interface SpikeArt {
+	/** "pack": ThemePack.bullet(S.lookId); "engine": SPIKE_ENGINE_TEXTURES (B / C read its strip as cells). */
+	readonly source: string;
+	/** Option (A): one texture per frame (a Decal cannot crop an atlas rect, so always the engine textures). */
+	readonly decalTextures: ReadonlyArray<string>;
+	/** Options (B) / (C): per frame, the image and its rect. */
+	readonly images: ReadonlyArray<string>;
+	readonly offsets: ReadonlyArray<Vector2>;
+	readonly sizes: ReadonlyArray<Vector2>;
+	/** Every frame is in the same image (an atlas or the strip): a frame change writes only ImageRectOffset / Size. */
+	readonly oneImage: boolean;
+}
+
+function spikeArt(pack: ThemePack): SpikeArt {
+	const decalTextures = SPIKE_ENGINE_TEXTURES.decalFrames;
+	const sprite = pack.bullet(S.lookId);
+	const images = new Array<string>();
+	const offsets = new Array<Vector2>();
+	const sizes = new Array<Vector2>();
+	if (sprite !== undefined) {
+		for (let f = 0; f < S.frames; f++) {
+			const r = sprite.frame(f);
+			images.push(r.image);
+			offsets.push(r.offset);
+			sizes.push(r.size);
+		}
+	} else {
+		const cellW = math.floor(S.fallbackStripPx[0] / S.frames);
+		for (let f = 0; f < S.frames; f++) {
+			images.push(SPIKE_ENGINE_TEXTURES.strip);
+			offsets.push(new Vector2(f * cellW, 0));
+			sizes.push(new Vector2(cellW, S.fallbackStripPx[1]));
+		}
+	}
+	let oneImage = true;
+	for (const image of images) if (image !== images[0]) oneImage = false;
+	return { source: sprite !== undefined ? "pack" : "engine", decalTextures, images, offsets, sizes, oneImage };
+}
+
+function colorOf(rgb: ReadonlyArray<number>): Color3 {
+	return Color3.fromRGB(rgb[0], rgb[1], rgb[2]);
+}
+
+/** An invisible-to-physics render Part (anchored; no collision, queries, touch or shadows), as spike A's spheres. */
+function spikePart(name: string): Part {
+	const part = new Instance("Part");
+	part.Name = name;
+	part.Anchored = true;
+	part.CanCollide = false;
+	part.CanQuery = false;
+	part.CanTouch = false;
+	part.CastShadow = false;
+	part.Locked = true;
+	return part;
+}
+
+/** A Top-face SurfaceGui drawn unlit (FxSpriteController's floor construction), FixedSize at `canvas` pixels. */
+function floorSurface(canvas: Vector2): SurfaceGui {
+	const surface = createKvSurfaceGui("Surface");
+	surface.Face = Enum.NormalId.Top;
+	surface.SizingMode = Enum.SurfaceGuiSizingMode.FixedSize;
+	surface.CanvasSize = canvas;
+	surface.AlwaysOnTop = false;
+	surface.ResetOnSpawn = false;
+	surface.LightInfluence = SELF_LIT;
+	return surface;
+}
+
+/** A Pixelated ImageLabel showing frame 0 of `art`, tinted `tint`. */
+function spriteLabel(art: SpikeArt, tint: Color3): ImageLabel {
+	const label = new Instance("ImageLabel");
+	label.Name = "Frame";
+	label.BackgroundTransparency = HIDDEN;
+	label.BorderSizePixel = 0;
+	label.ResampleMode = Enum.ResamplerMode.Pixelated;
+	label.Image = art.images[0];
+	label.ImageRectOffset = art.offsets[0];
+	label.ImageRectSize = art.sizes[0];
+	label.ImageColor3 = tint;
+	return label;
+}
 
 /**
- * Spike A (docs/SPIKES.md): can Roblox draw the web build's 1,000 enemy bullets at 60 fps?
+ * One pool of spike bullets in one render mode. Every frame: RingLayout.fill writes positions (studs) and, for the
+ * sprite modes, unit headings (the velocity's direction, plus S.artYawOffsetDeg) into xs / zs / hxs / hzs; `build`
+ * turns them into CFrames or GUI values (timed as compute with the layout), `move` hands them to the engine
+ * (BulkMoveTo, or property writes for the canvas), `flip` writes the flipbook frame where it changed.
+ */
+abstract class SpikePool {
+	count = 0;
+	readonly xs = new Array<number>();
+	readonly zs = new Array<number>();
+	readonly hxs = new Array<number>();
+	readonly hzs = new Array<number>();
+	/** Last frame written per slot (-1: none). */
+	protected readonly shown = new Array<number>();
+
+	constructor(
+		/** The sprite modes turn their bullets along the velocity; the neon spheres need no heading. */
+		readonly headings: boolean,
+		protected readonly tintOf: (index: number) => Color3,
+	) {}
+
+	abstract resize(count: number): void;
+	abstract build(y: number): void;
+	abstract move(): void;
+	/** Frame of slot i = (frameBase + i) mod S.frames (PAD8: the phase from the slot index); written only on change. */
+	abstract flip(frameBase: number): void;
+	abstract destroy(): void;
+}
+
+/** Modes N / A / B: a Part per slot, created on first use, parked (Parent = nil) past the count, one BulkMoveTo. */
+abstract class PartPool extends SpikePool {
+	private readonly pool = new Array<BasePart>();
+	private parts = new Array<BasePart>();
+	private cframes = new Array<CFrame>();
+
+	constructor(headings: boolean, tintOf: (index: number) => Color3, private readonly folder: Folder) {
+		super(headings, tintOf);
+	}
+
+	protected abstract create(index: number): BasePart;
+
+	resize(count: number): void {
+		while (this.pool.size() < count) {
+			this.pool.push(this.create(this.pool.size()));
+			this.shown.push(-1);
+		}
+		const parts = table.create<BasePart>(count);
+		this.pool.forEach((part, i) => {
+			part.Parent = i < count ? this.folder : undefined;
+			if (i < count) {
+				parts.push(part);
+			}
+		});
+		this.parts = parts;
+		this.cframes = table.create(count, CFrame.identity);
+		this.count = count;
+	}
+
+	build(y: number): void {
+		const cframes = this.cframes;
+		const xs = this.xs;
+		const zs = this.zs;
+		if (!this.headings) {
+			for (let i = 0; i < this.count; i++) {
+				cframes[i] = new CFrame(xs[i], y, zs[i]);
+			}
+			return;
+		}
+		// Flat on the floor, top face at y, LookVector (-Z) along the heading: the Top face's canvas up is -Z.
+		const hxs = this.hxs;
+		const hzs = this.hzs;
+		const cy = y - S.thicknessStuds / 2;
+		for (let i = 0; i < this.count; i++) {
+			const hx = hxs[i];
+			const hz = hzs[i];
+			cframes[i] = new CFrame(xs[i], cy, zs[i], -hz, 0, -hx, 0, 1, 0, hx, 0, -hz);
+		}
+	}
+
+	move(): void {
+		if (this.count > 0) {
+			Workspace.BulkMoveTo(this.parts, this.cframes, Enum.BulkMoveMode.FireCFrameChanged);
+		}
+	}
+
+	flip(_frameBase: number): void {}
+
+	destroy(): void {
+		this.pool.forEach((part) => part.Destroy());
+		this.pool.clear();
+		this.parts.clear();
+		this.count = 0;
+	}
+}
+
+/** (N) Today's neon spheres: the baseline, exactly spike A's parts. */
+class NeonPool extends PartPool {
+	constructor(tintOf: (index: number) => Color3, folder: Folder) {
+		super(false, tintOf, folder);
+	}
+
+	protected create(index: number): BasePart {
+		const part = spikePart("Bullet");
+		part.Shape = Enum.PartType.Ball;
+		part.Size = Vector3.one.mul(BULLET_SPIKE.diameterStuds);
+		part.Material = Enum.Material.Neon;
+		part.Color = this.tintOf(index);
+		return part;
+	}
+}
+
+/** (A) A flat Part per slot with a Top-face Decal; the flicker swaps Decal.Texture between the frame textures. */
+class DecalPool extends PartPool {
+	private readonly decals = new Array<Decal>();
+
+	constructor(tintOf: (index: number) => Color3, folder: Folder, private readonly art: SpikeArt) {
+		super(true, tintOf, folder);
+	}
+
+	protected create(index: number): BasePart {
+		const part = spikePart("Bullet");
+		part.Size = new Vector3(S.widthStuds, S.thicknessStuds, S.lengthStuds);
+		part.Transparency = HIDDEN;
+		const decal = new Instance("Decal");
+		decal.Face = Enum.NormalId.Top;
+		decal.Texture = this.art.decalTextures[0];
+		decal.Color3 = this.tintOf(index);
+		decal.Parent = part;
+		this.decals.push(decal);
+		return part;
+	}
+
+	flip(frameBase: number): void {
+		const shown = this.shown;
+		const textures = this.art.decalTextures;
+		const frames = textures.size();
+		for (let i = 0; i < this.count; i++) {
+			const f = (frameBase + i) % frames;
+			if (shown[i] !== f) {
+				shown[i] = f;
+				this.decals[i].Texture = textures[f];
+			}
+		}
+	}
+}
+
+/** Writes slot i's frame into its ImageLabel where it changed (options B and C). */
+function flipLabels(
+	labels: ReadonlyArray<ImageLabel>,
+	shown: Array<number>,
+	count: number,
+	art: SpikeArt,
+	base: number,
+) {
+	const offsets = art.offsets;
+	const frames = offsets.size();
+	for (let i = 0; i < count; i++) {
+		const f = (base + i) % frames;
+		if (shown[i] !== f) {
+			shown[i] = f;
+			const label = labels[i];
+			if (!art.oneImage) {
+				label.Image = art.images[f];
+				label.ImageRectSize = art.sizes[f];
+			}
+			label.ImageRectOffset = offsets[f];
+		}
+	}
+}
+
+/** (B) A flat anchor Part per slot carrying a Top-face SurfaceGui + Pixelated ImageLabel (FxSpriteController's). */
+class SurfacePool extends PartPool {
+	private readonly labels = new Array<ImageLabel>();
+
+	constructor(tintOf: (index: number) => Color3, folder: Folder, private readonly art: SpikeArt) {
+		super(true, tintOf, folder);
+	}
+
+	protected create(index: number): BasePart {
+		const part = spikePart("Bullet");
+		part.Size = new Vector3(S.widthStuds, S.thicknessStuds, S.lengthStuds);
+		part.Transparency = HIDDEN;
+		const surface = floorSurface(new Vector2(S.surfaceCanvasPx[0], S.surfaceCanvasPx[1]));
+		const label = spriteLabel(this.art, this.tintOf(index));
+		label.Size = UDim2.fromScale(1, 1);
+		label.Parent = surface;
+		surface.Parent = part;
+		this.labels.push(label);
+		return part;
+	}
+
+	flip(frameBase: number): void {
+		flipLabels(this.labels, this.shown, this.count, this.art, frameBase);
+	}
+}
+
+/**
+ * (C) ONE flat Part over the spike area with a Top-face SurfaceGui; an ImageLabel per slot, moved by Position and
+ * Rotation writes (no Part moves). Canvas x = world +X, canvas y (down) = world +Z (the Top face's up is -Z).
+ */
+class CanvasPool extends SpikePool {
+	private readonly part: Part;
+	private readonly surface: SurfaceGui;
+	private readonly labels = new Array<ImageLabel>();
+	private readonly positions = new Array<UDim2>();
+	private readonly rotations = new Array<number>();
+	private readonly x0: number;
+	private readonly z0: number;
+
+	constructor(
+		tintOf: (index: number) => Color3,
+		folder: Folder,
+		private readonly art: SpikeArt,
+		cx: number,
+		y: number,
+		cz: number,
+		lift: number,
+	) {
+		super(true, tintOf);
+		const C = BULLET_SPIKE.canvas;
+		const half = BULLET_SPIKE.maxRadiusStuds + C.marginStuds;
+		this.x0 = cx - half;
+		this.z0 = cz - half;
+		const part = spikePart("Canvas");
+		part.Size = new Vector3(2 * half, C.thicknessStuds, 2 * half);
+		part.Transparency = HIDDEN;
+		part.CFrame = new CFrame(cx, y + lift - C.thicknessStuds / 2, cz);
+		const px = 2 * half * C.pxPerStud;
+		this.surface = floorSurface(new Vector2(px, px));
+		this.surface.Parent = part;
+		part.Parent = folder;
+		this.part = part;
+	}
+
+	resize(count: number): void {
+		const C = BULLET_SPIKE.canvas;
+		while (this.labels.size() < count) {
+			const label = spriteLabel(this.art, this.tintOf(this.labels.size()));
+			label.AnchorPoint = CENTRE;
+			label.Size = UDim2.fromOffset(S.widthStuds * C.pxPerStud, S.lengthStuds * C.pxPerStud);
+			label.Parent = this.surface;
+			this.labels.push(label);
+			this.shown.push(-1);
+		}
+		this.labels.forEach((label, i) => {
+			label.Visible = i < count;
+		});
+		this.count = count;
+	}
+
+	build(_y: number): void {
+		const pps = BULLET_SPIKE.canvas.pxPerStud;
+		const xs = this.xs;
+		const zs = this.zs;
+		const hxs = this.hxs;
+		const hzs = this.hzs;
+		const positions = this.positions;
+		const rotations = this.rotations;
+		for (let i = 0; i < this.count; i++) {
+			positions[i] = UDim2.fromOffset((xs[i] - this.x0) * pps, (zs[i] - this.z0) * pps);
+			// Rotation is clockwise on the canvas (y down): up (0, -1) turns onto the heading (hx, hz).
+			rotations[i] = math.atan2(hxs[i], -hzs[i]) * DEG_PER_RAD;
+		}
+	}
+
+	move(): void {
+		const labels = this.labels;
+		const positions = this.positions;
+		const rotations = this.rotations;
+		for (let i = 0; i < this.count; i++) {
+			const label = labels[i];
+			label.Position = positions[i];
+			label.Rotation = rotations[i];
+		}
+	}
+
+	flip(frameBase: number): void {
+		flipLabels(this.labels, this.shown, this.count, this.art, frameBase);
+	}
+
+	destroy(): void {
+		this.part.Destroy();
+		this.labels.clear();
+		this.count = 0;
+	}
+}
+
+/**
+ * Rings (or a spiral) of bullets flying out from the emitter, as spike A always drew them: ring r's radius grows at
+ * `speed` and wraps at maxRadiusStuds; the spiral also spins the rings, so its headings lean by atan2(r * spin, speed).
+ */
+class RingLayout {
+	private readonly cos = new Array<number>();
+	private readonly sin = new Array<number>();
+
+	constructor(private readonly perRing: number, private readonly speed: number, private readonly offsetRad: number) {
+		// Unit circle for one ring, rotated per ring with the angle-addition identity.
+		for (let k = 0; k < perRing; k++) {
+			this.cos.push(math.cos((k * TAU) / perRing));
+			this.sin.push(math.sin((k * TAU) / perRing));
+		}
+	}
+
+	fill(pool: SpikePool, pattern: BulletPattern, elapsed: number, cx: number, cz: number): void {
+		const count = pool.count;
+		const perRing = this.perRing;
+		const ringCos = this.cos;
+		const ringSin = this.sin;
+		const xs = pool.xs;
+		const zs = pool.zs;
+		const hxs = pool.hxs;
+		const hzs = pool.hzs;
+		const headings = pool.headings;
+		const spiral = pattern === "spiral";
+		const rings = math.ceil(count / perRing);
+		const spacing = BULLET_SPIKE.maxRadiusStuds / math.max(rings, 1);
+		const travel = elapsed * this.speed;
+		for (let ring = 0; ring < rings; ring++) {
+			const radius = (travel + ring * spacing) % BULLET_SPIKE.maxRadiusStuds;
+			const offset =
+				this.offsetRad +
+				(spiral
+					? ring * BULLET_SPIKE.spiralStepRad + elapsed * BULLET_SPIKE.spiralSpinRadPerSec
+					: (ring % 2) * (math.pi / perRing));
+			const co = math.cos(offset);
+			const so = math.sin(offset);
+			const base = ring * perRing;
+			const last = math.min(perRing, count - base);
+			if (!headings) {
+				for (let k = 0; k < last; k++) {
+					const c = ringCos[k] * co - ringSin[k] * so;
+					const s = ringSin[k] * co + ringCos[k] * so;
+					xs[base + k] = cx + c * radius;
+					zs[base + k] = cz + s * radius;
+				}
+				continue;
+			}
+			const lean = (spiral ? math.atan2(radius * BULLET_SPIKE.spiralSpinRadPerSec, this.speed) : 0) + ART_YAW_RAD;
+			const cd = math.cos(lean);
+			const sd = math.sin(lean);
+			for (let k = 0; k < last; k++) {
+				const c = ringCos[k] * co - ringSin[k] * so;
+				const s = ringSin[k] * co + ringCos[k] * so;
+				const i = base + k;
+				xs[i] = cx + c * radius;
+				zs[i] = cz + s * radius;
+				hxs[i] = c * cd - s * sd;
+				hzs[i] = s * cd + c * sd;
+			}
+		}
+	}
+}
+
+interface Pools {
+	readonly mode: ModeId;
+	readonly enemy: SpikePool;
+	readonly player: SpikePool;
+}
+
+/**
+ * Spike A (docs/SPIKES.md): can Roblox draw the web build's 1,000 enemy bullets at 60 fps? Extended by spike PA0
+ * (docs/PROJECTILE_ART.md PA0, docs/SPIKES.md "Spike PA0"): the same bullets drawn as sprites.
  *
- * A pool of small neon spheres (Anchored; no collision, queries, touch or shadows) moved every
- * frame with exactly one `workspace:BulkMoveTo(parts, cframes, FireCFrameChanged)`. Positions
- * are analytic rings or a spiral around a fixed emitter, standing in for the sim's bullets.
- * Reports fps and the per-frame cost of the update (position math + CFrame construction, and
- * the BulkMoveTo call itself) to the spike HUD; the update is also a MicroProfiler label.
+ * Positions are analytic rings or a spiral around a fixed emitter, standing in for the sim's bullets. Render modes
+ * (BULLET_SPIKE.modes, keys 5-8): (N) today's neon spheres (Anchored; no collision, queries, touch or shadows) moved
+ * with exactly one `workspace:BulkMoveTo(parts, cframes, FireCFrameChanged)` a pool, the baseline; (A) a flat Part per
+ * bullet with a Top-face Decal; (B) a flat anchor Part per bullet with a Top-face SurfaceGui + ImageLabel (A and B
+ * turned along the velocity by the BulkMoveTo CFrames); (C) one canvas SurfaceGui per pool with an ImageLabel per
+ * bullet moved by Position / Rotation writes. The sprite modes flicker through a 3-frame flipbook, written only when a
+ * slot's frame changes. Key 0 adds a second, "player" pool of BULLET_SPIKE.players.count bullets in the same mode.
+ * Art: ThemePack.bullet(S.lookId) when the pack has it, else shared/theme SPIKE_ENGINE_TEXTURES.
  *
- * Off unless `KV_SpikeBullets` (or SPIKE_DEFAULTS.bullets) is true; everything it creates is
- * owned by one Janitor and removed when the flag goes false.
+ * Reports fps and the per-frame cost of the update (layout + CFrame / GUI value construction, the BulkMoveTo or the
+ * property writes, the flipbook writes) to the spike HUD; the update is also a MicroProfiler label.
+ *
+ * Off unless `KV_SpikeBullets` (or SPIKE_DEFAULTS.bullets) is true; everything it creates is owned by one Janitor
+ * (a mode's pools by a child Janitor, rebuilt on a mode change) and removed when the flag goes false.
  */
 @Controller({})
 export class BulletSpikeController implements OnStart {
 	private session?: Janitor;
+
+	constructor(private readonly theme: ThemeController) {}
 
 	onStart(): void {
 		watchSpikeFlag("bullets", (enabled) => (enabled ? this.start() : this.stop()));
@@ -55,67 +525,106 @@ export class BulletSpikeController implements OnStart {
 		folder.Parent = Workspace;
 		janitor.Add(folder);
 
-		// Pool: parts are created on first use and parked (Parent = nil) when the count drops.
-		const pool = new Array<BasePart>();
-		janitor.Add(() => pool.forEach((part) => part.Destroy()), true);
-		const makePart = (index: number): BasePart => {
-			const ring = math.floor(index / BULLET_SPIKE.perRing);
-			const [r, g, b] = BULLET_SPIKE.colors[ring % BULLET_SPIKE.colors.size()];
-			const part = new Instance("Part");
-			part.Name = "Bullet";
-			part.Shape = Enum.PartType.Ball;
-			part.Size = Vector3.one.mul(BULLET_SPIKE.diameterStuds);
-			part.Material = Enum.Material.Neon;
-			part.Color = Color3.fromRGB(r, g, b);
-			part.Anchored = true;
-			part.CanCollide = false;
-			part.CanQuery = false;
-			part.CanTouch = false;
-			part.CastShadow = false;
-			part.Locked = true;
-			return part;
-		};
-
-		let parts = new Array<BasePart>();
-		let cframes = new Array<CFrame>();
-		const resize = (count: number) => {
-			while (pool.size() < count) {
-				pool.push(makePart(pool.size()));
-			}
-			parts = table.create(count);
-			pool.forEach((part, i) => {
-				part.Parent = i < count ? folder : undefined;
-				if (i < count) {
-					parts.push(part);
-				}
-			});
-			cframes = table.create(count, CFrame.identity);
-		};
-
-		// Emitter: where the local character stood when the spike started (else the origin).
+		// Emitter: where the local character stood when the spike started; with no character (the game spawns
+		// none), the floor under the camera's focus (else the origin).
 		const root = Players.LocalPlayer.Character?.FindFirstChild("HumanoidRootPart") as BasePart | undefined;
-		const center = root ? root.Position : Vector3.zero;
-		const cx = center.X;
-		const cz = center.Z;
-		const y = (root ? center.Y - root.Size.Y : 0) + BULLET_SPIKE.heightStuds;
-
-		// Unit circle for one ring, rotated per ring with the angle-addition identity.
-		const perRing = BULLET_SPIKE.perRing;
-		const ringCos = new Array<number>();
-		const ringSin = new Array<number>();
-		for (let k = 0; k < perRing; k++) {
-			ringCos.push(math.cos((k * TAU) / perRing));
-			ringSin.push(math.sin((k * TAU) / perRing));
+		let cx = 0;
+		let cz = 0;
+		let y = BULLET_SPIKE.heightStuds;
+		if (root) {
+			cx = root.Position.X;
+			cz = root.Position.Z;
+			y = root.Position.Y - root.Size.Y + BULLET_SPIKE.heightStuds;
+		} else {
+			const camera = Workspace.CurrentCamera;
+			if (camera) {
+				const focus = camera.Focus.Position;
+				const probe = BULLET_SPIKE.floorProbeStuds;
+				const hit = Workspace.Raycast(focus.add(new Vector3(0, probe, 0)), new Vector3(0, -2 * probe, 0));
+				cx = focus.X;
+				cz = focus.Z;
+				y = (hit ? hit.Position.Y : 0) + BULLET_SPIKE.heightStuds;
+			}
 		}
 
+		const art = spikeArt(this.theme.getPack());
+		const P = BULLET_SPIKE.players;
+		const enemyLayout = new RingLayout(BULLET_SPIKE.perRing, BULLET_SPIKE.speedStuds, 0);
+		const playerLayout = new RingLayout(P.perRing, P.speedStuds, P.offsetRad);
+		const ringColors = BULLET_SPIKE.colors.map(colorOf);
+		const enemyTint = (i: number) => ringColors[math.floor(i / BULLET_SPIKE.perRing) % ringColors.size()];
+		const playerColor = colorOf(P.color);
+		const playerTint = () => playerColor;
+
+		// A mode's pools live in their own folder and Janitor: a mode change tears them down and builds the next.
+		const modeJanitor = janitor.Add(new Janitor());
+		const makePool = (mode: ModeId, modeFolder: Folder, tintOf: (i: number) => Color3, lift: number) => {
+			switch (mode) {
+				case "decal":
+					return new DecalPool(tintOf, modeFolder, art);
+				case "surface":
+					return new SurfacePool(tintOf, modeFolder, art);
+				case "canvas":
+					return new CanvasPool(tintOf, modeFolder, art, cx, y, cz, lift);
+				default:
+					return new NeonPool(tintOf, modeFolder);
+			}
+		};
+		const buildPools = (modeIndex: number): Pools => {
+			modeJanitor.Cleanup();
+			const mode = BULLET_SPIKE.modes[modeIndex].id;
+			const modeFolder = new Instance("Folder");
+			modeFolder.Name = mode;
+			modeFolder.Parent = folder;
+			const enemy = makePool(mode, modeFolder, enemyTint, 0);
+			const player = makePool(mode, modeFolder, playerTint, BULLET_SPIKE.canvas.playerLiftStuds);
+			modeJanitor.Add(() => {
+				enemy.destroy();
+				player.destroy();
+			}, true);
+			modeJanitor.Add(modeFolder);
+			return { mode, enemy, player };
+		};
+
 		let settings = selectBulletSpike(clientStore.getState());
-		resize(BULLET_SPIKE.counts[settings.countIndex]);
+		let pools = buildPools(settings.modeIndex);
+		const resizeAll = () => {
+			pools.enemy.resize(BULLET_SPIKE.counts[settings.countIndex]);
+			pools.player.resize(settings.playerBullets ? P.count : 0);
+		};
+		resizeAll();
+
+		const startedAt = os.clock();
+		let windowStart = startedAt;
+		let frames = 0;
+		let computeSec = 0;
+		let moveSec = 0;
+		let frameSec = 0;
+		let worstSec = 0;
+		const resetWindow = () => {
+			windowStart = os.clock();
+			frames = 0;
+			computeSec = 0;
+			moveSec = 0;
+			frameSec = 0;
+			worstSec = 0;
+		};
+
 		janitor.Add(
 			clientStore.subscribe(selectBulletSpike, (latest) => {
-				if (latest.countIndex !== settings.countIndex) {
-					resize(BULLET_SPIKE.counts[latest.countIndex]);
-				}
+				const previous = settings;
 				settings = latest;
+				if (latest.modeIndex !== previous.modeIndex) {
+					pools = buildPools(latest.modeIndex);
+					resizeAll();
+					resetWindow();
+				} else if (
+					latest.countIndex !== previous.countIndex ||
+					latest.playerBullets !== previous.playerBullets
+				) {
+					resizeAll();
+					resetWindow();
+				}
 			}),
 			true,
 		);
@@ -126,71 +635,59 @@ export class BulletSpikeController implements OnStart {
 					return;
 				}
 				const countIndex = COUNT_KEYS.indexOf(input.KeyCode);
+				const modeIndex = MODE_KEYS.indexOf(input.KeyCode);
 				if (countIndex >= 0) {
 					clientStore.setBulletCountIndex(countIndex);
+				} else if (modeIndex >= 0) {
+					clientStore.setBulletModeIndex(modeIndex);
 				} else if (input.KeyCode === PATTERN_KEY) {
 					clientStore.toggleBulletPattern();
+				} else if (input.KeyCode === PLAYERS_KEY) {
+					clientStore.toggleBulletPlayers();
 				}
 			}),
 		);
 
-		const startedAt = os.clock();
-		let windowStart = startedAt;
-		let frames = 0;
-		let computeSec = 0;
-		let moveSec = 0;
-		let worstSec = 0;
-
 		janitor.Add(
 			RunService.RenderStepped.Connect(() => {
-				const count = parts.size();
+				const { enemy, player } = pools;
 				const pattern: BulletPattern = settings.pattern;
 				const elapsed = os.clock() - startedAt;
-				const rings = math.ceil(count / perRing);
-				const spacing = BULLET_SPIKE.maxRadiusStuds / math.max(rings, 1);
-				const travel = elapsed * BULLET_SPIKE.speedStuds;
 
 				debug.profilebegin(BULLET_SPIKE.profileLabel);
 				const t0 = os.clock();
-				for (let ring = 0; ring < rings; ring++) {
-					const radius = (travel + ring * spacing) % BULLET_SPIKE.maxRadiusStuds;
-					const offset =
-						pattern === "spiral"
-							? ring * BULLET_SPIKE.spiralStepRad + elapsed * BULLET_SPIKE.spiralSpinRadPerSec
-							: (ring % 2) * (math.pi / perRing);
-					const co = math.cos(offset);
-					const so = math.sin(offset);
-					const base = ring * perRing;
-					const last = math.min(perRing, count - base);
-					for (let k = 0; k < last; k++) {
-						const c = ringCos[k] * co - ringSin[k] * so;
-						const s = ringSin[k] * co + ringCos[k] * so;
-						cframes[base + k] = new CFrame(cx + c * radius, y, cz + s * radius);
-					}
-				}
+				enemyLayout.fill(enemy, pattern, elapsed, cx, cz);
+				playerLayout.fill(player, pattern, elapsed, cx, cz);
+				enemy.build(y);
+				player.build(y);
 				const t1 = os.clock();
-				Workspace.BulkMoveTo(parts, cframes, Enum.BulkMoveMode.FireCFrameChanged);
+				enemy.move();
+				player.move();
 				const t2 = os.clock();
+				const frameBase = math.floor(elapsed * S.fps);
+				enemy.flip(frameBase);
+				player.flip(frameBase);
+				const t3 = os.clock();
 				debug.profileend();
 
 				frames += 1;
 				computeSec += t1 - t0;
 				moveSec += t2 - t1;
-				worstSec = math.max(worstSec, t2 - t0);
-				const windowSec = t2 - windowStart;
+				frameSec += t3 - t2;
+				worstSec = math.max(worstSec, t3 - t0);
+				const windowSec = t3 - windowStart;
 				if (windowSec >= BULLET_SPIKE.statsIntervalSec) {
 					clientStore.reportBulletStats({
 						fps: frames / windowSec,
 						computeMs: (computeSec / frames) * MS_PER_SEC,
 						moveMs: (moveSec / frames) * MS_PER_SEC,
+						frameMs: (frameSec / frames) * MS_PER_SEC,
 						worstMs: worstSec * MS_PER_SEC,
-						live: count,
+						live: enemy.count,
+						players: player.count,
+						art: art.source,
 					});
-					windowStart = t2;
-					frames = 0;
-					computeSec = 0;
-					moveSec = 0;
-					worstSec = 0;
+					resetWindow();
 				}
 			}),
 		);

@@ -14,12 +14,21 @@ export interface BulletSpikeStats {
 	readonly fps: number;
 	/** Average ms per frame computing positions + CFrames. */
 	readonly computeMs: number;
-	/** Average ms per frame inside workspace:BulkMoveTo. */
+	/**
+	 * Average ms per frame moving the bullets: inside workspace:BulkMoveTo (modes N / A / B), or the ImageLabels'
+	 * Position + Rotation writes (mode C, the canvas).
+	 */
 	readonly moveMs: number;
-	/** Worst single-frame update (compute + move) in the window, ms. */
+	/** Average ms per frame of flipbook writes (Decal.Texture or ImageRectOffset, only on a frame change; 0 for N). */
+	readonly frameMs: number;
+	/** Worst single-frame update (compute + move + frame writes) in the window, ms. */
 	readonly worstMs: number;
-	/** Bullets actually moved last frame. */
+	/** Enemy bullets actually moved last frame. */
 	readonly live: number;
+	/** Extra "player" bullets moved last frame (0 unless the +200 option is on). */
+	readonly players: number;
+	/** Where the sprite modes' art came from: "pack" (ThemePack.bullet) or "engine" (shared/theme SPIKE_ENGINE_TEXTURES). */
+	readonly art: string;
 }
 
 /** A HUD button press of the invites spike; `seq` grows by one per press so the controller sees repeats. */
@@ -33,6 +42,10 @@ export interface SpikeState {
 		readonly active: boolean;
 		readonly countIndex: number;
 		readonly pattern: BulletPattern;
+		/** Index into BULLET_SPIKE.modes (PA0: N neon, A decal, B surface, C canvas). */
+		readonly modeIndex: number;
+		/** The extra BULLET_SPIKE.players.count "player" bullets (their own pool) are on. */
+		readonly playerBullets: boolean;
 		readonly stats: BulletSpikeStats;
 	};
 	readonly camera: {
@@ -52,13 +65,24 @@ export interface SpikeState {
 	};
 }
 
-const EMPTY_STATS: BulletSpikeStats = { fps: 0, computeMs: 0, moveMs: 0, worstMs: 0, live: 0 };
+const EMPTY_STATS: BulletSpikeStats = {
+	fps: 0,
+	computeMs: 0,
+	moveMs: 0,
+	frameMs: 0,
+	worstMs: 0,
+	live: 0,
+	players: 0,
+	art: "",
+};
 
 const initialState: SpikeState = {
 	bullets: {
 		active: false,
 		countIndex: BULLET_SPIKE.defaultCountIndex,
 		pattern: "rings",
+		modeIndex: BULLET_SPIKE.defaultModeIndex,
+		playerBullets: false,
 		stats: EMPTY_STATS,
 	},
 	camera: {
@@ -83,6 +107,14 @@ export const spikesSlice = createProducer(initialState, {
 	toggleBulletPattern: (state) => ({
 		...state,
 		bullets: { ...state.bullets, pattern: state.bullets.pattern === "rings" ? "spiral" : "rings" },
+	}),
+	setBulletModeIndex: (state, modeIndex: number) => ({
+		...state,
+		bullets: { ...state.bullets, modeIndex: math.clamp(modeIndex, 0, BULLET_SPIKE.modes.size() - 1) },
+	}),
+	toggleBulletPlayers: (state) => ({
+		...state,
+		bullets: { ...state.bullets, playerBullets: !state.bullets.playerBullets },
 	}),
 	reportBulletStats: (state, stats: BulletSpikeStats) => ({
 		...state,
