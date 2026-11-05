@@ -6,6 +6,7 @@ export * from "./assetIds";
 export * from "./audioLayout";
 export * from "./layout";
 export * from "./fxLayout";
+export * from "./bulletLayout";
 export * from "./uiIconLayout";
 export * from "./fx";
 export * from "./manifest";

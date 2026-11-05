@@ -256,6 +256,25 @@ export interface PactAltar {
  * A sprite effect (ThemeCore.fx) with Roblox types: a one-facing SpriteSet, its flipbook and how to draw it. Drawn
  * widthTiles x heightTiles; `ImageColor3 = color`; `additive`: LightInfluence 0.
  */
+/**
+ * A projectile's sprite (docs/PROJECTILE_ART.md PA3): a one-facing flipbook whose art points screen-up (the direction
+ * of travel); the renderer turns it along the velocity. Undefined from ThemePack.bullet: draw the placeholder part.
+ */
+export interface BulletSprite {
+	readonly id: string;
+	readonly set: SpriteSet;
+	/** Frames of the `fly` loop (>= 1). */
+	readonly frames: number;
+	readonly fps: number;
+	/** Drawn size at draw scale 1, tiles: across the travel direction (w) and along it (h). */
+	readonly widthTiles: number;
+	readonly heightTiles: number;
+	/** The art's mean colour (opaque pixels, after recolour), for checks and fallbacks; never a tint. */
+	readonly meanColor: Color3;
+	/** Frame `index` of the loop (wraps). */
+	readonly frame: (index: number) => SpriteFrame;
+}
+
 export interface FxSprite {
 	readonly id: FxId;
 	readonly set: SpriteSet;
@@ -580,6 +599,16 @@ export class ThemePack {
 	 */
 	sound(id: string): SoundRef {
 		return this.core.sound(id);
+	}
+
+	// --- projectile sprites (docs/PROJECTILE_ART.md PA3) -------------------------------------------
+
+	/**
+	 * A bullet's sprite (a `bullet.*` id), cached. Undefined, without a warning, when the pack has no art for it: draw
+	 * the placeholder (ThemePack.placeholder). PA3 implements it; until then every bullet is its placeholder.
+	 */
+	bullet(_id: string): BulletSprite | undefined {
+		return undefined;
 	}
 
 	// --- sprite effects (docs/FX_AUDIO.md F1) -----------------------------------------------------

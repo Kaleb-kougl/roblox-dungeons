@@ -192,6 +192,7 @@ export {
 	type BiomeColors,
 	type Boost,
 	type Breakable,
+	type BulletSprite,
 	type Pellet,
 	type TreasurePiece,
 	type PactAltar,
