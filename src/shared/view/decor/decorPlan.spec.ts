@@ -27,6 +27,7 @@ import {
 	DECOR_BANNERS,
 	DECOR_BOOKCASES,
 	DECOR_DROP_REASONS,
+	DECOR_PATCHES,
 	DECOR_SCATTER,
 	MAX_DECOR_SHARE,
 	MAX_TALL_PER_ROOM,
@@ -800,6 +801,71 @@ describe('solid decor (docs/DECOR.md "Solid decor", "Room themes": set pieces on
 		}
 		expect(wides).toBeGreaterThan(0);
 		expect(singles).toBeGreaterThan(0);
+	});
+
+	it("lays floor patches on 2 x 2 blocks of open floor, after every other entry, only with patch art (docs/KENNEY_DECOR.md KN4)", () => {
+		let patches = 0;
+		let bossPatches = 0;
+		for (let i = 0; i < CENSUS.size(); i += 3) {
+			const f = CENSUS[i];
+			const d = f.layout.dungeon;
+			const W = d.W;
+			const input = decorInputOfLayout(f.layout);
+			const without = planDecor({ ...input, variants: () => 0 });
+			const plan = planDecor({ ...input, variants: (k) => (k === "patch" ? 5 : 0) });
+			for (const e of without.entries) expect(e.kind).never.toBe("patch");
+			// every other entry exactly as without patch art, the patches appended
+			const k = without.entries.size();
+			for (let j = 0; j < k; j++) {
+				const a = without.entries[j];
+				const b = plan.entries[j];
+				expect([b.kind, b.x, b.z, b.variant, b.fade]).toEqual([a.kind, a.x, a.z, a.variant, a.fade]);
+			}
+			expect(plan.fadeBoxes.size()).toBe(without.fadeBoxes.size());
+			// the cells every other flat piece and carpet lies on
+			const flat = new Set<number>();
+			for (let j = 0; j < k; j++) {
+				const e = without.entries[j];
+				if (e.layer === "flat" && e.source !== "void") flat.add(e.cellY * W + e.cellX);
+			}
+			for (const cp of d.carpets ?? [])
+				for (let y = cp.y; y < cp.y + cp.h; y++) for (let x = cp.x; x < cp.x + cp.w; x++) flat.add(y * W + x);
+			const perRoom = new Map<number, Array<[number, number]>>();
+			for (let j = k; j < plan.entries.size(); j++) {
+				const e = plan.entries[j];
+				expect(e.kind).toBe("patch");
+				expect([e.layer, e.source, e.fade]).toEqual(["flat", "scatter", -1]);
+				expect([e.x, e.z]).toEqual([e.cellX + 0.5, e.cellY + 0.5]);
+				expect(e.variant >= 0 && e.variant < 5).toBe(true);
+				// the block and its ring: FLOOR of the room, no other flat piece
+				const rt = DECOR_PATCHES.ringTiles;
+				for (let oy = -rt; oy <= 1 + rt; oy++)
+					for (let ox = -rt; ox <= 1 + rt; ox++) {
+						const c = (e.cellY + oy) * W + e.cellX + ox;
+						expect([e.cellX + ox, e.cellY + oy, d.grid[c], d.roomId[c]]).toEqual([
+							e.cellX + ox,
+							e.cellY + oy,
+							TileType.FLOOR,
+							e.roomId,
+						]);
+						expect(flat.has(c)).toBe(false);
+					}
+				const list = perRoom.get(e.roomId) ?? [];
+				for (const [x, y] of list)
+					expect(
+						math.abs(x - e.cellX) >= DECOR_PATCHES.spacingTiles ||
+							math.abs(y - e.cellY) >= DECOR_PATCHES.spacingTiles,
+					).toBe(true);
+				list.push([e.cellX, e.cellY]);
+				perRoom.set(e.roomId, list);
+				patches++;
+				if (e.roomId === d.boss) bossPatches++;
+			}
+			for (const [r, list] of perRoom)
+				expect(list.size() <= (r === d.boss ? DECOR_PATCHES.bossMax : DECOR_PATCHES.maxPerRoom)).toBe(true);
+		}
+		expect(patches).toBeGreaterThan(20);
+		expect(bossPatches).toBeGreaterThan(0);
 	});
 
 	it("takes a reading area's table axis and chair facing as their variants, low, with a fade box, and draws no pillar it cleared (docs/BOOKSHELVES.md)", () => {

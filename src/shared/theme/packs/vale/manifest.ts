@@ -219,10 +219,36 @@ export interface ValeDecorPiece {
 	readonly layer: DecorLayer;
 	/** A light source (torch, brazier): flames at its glowAt, the glow under them, the light pool. */
 	readonly glow?: boolean;
+	/** Mapped in this biome only (art baked per biome: the floor patches); absent: every biome alike. */
+	readonly biome?: BiomeId;
 }
 
 /**
- * The decor pieces (decor.delve.b<n>.<kind>[.<v>], every biome alike). Kinds without art (grave, icicle, shardIce,
+ * The floor patches' looks (docs/KENNEY_DECOR.md KN4): Kenney's planks (two turns), broken planks (two turns) and dirt,
+ * each baked once per biome (`kenney-patch-<look>-b<n>`, graded toward that biome's floor), variants 1-5 in this order.
+ */
+export const VALE_PATCH_LOOKS = ["dirt", "planks-a", "planks-b", "planksbroken-a", "planksbroken-b"] as const;
+
+/** The floor patch pieces: decor.delve.b<n>.patch.<v> -> that biome's bake of look v (VALE_PATCH_LOOKS). */
+function valePatchPieces(): ValeDecorPiece[] {
+	const out: ValeDecorPiece[] = [];
+	BIOMES.forEach((b, i) => {
+		VALE_PATCH_LOOKS.forEach((look, v) => {
+			out.push({
+				kind: "patch",
+				variant: v + 1,
+				art: `kenney-patch-${look}-b${i + 1}`,
+				layer: "flat",
+				biome: b.id,
+			});
+		});
+	});
+	return out;
+}
+
+/**
+ * The decor pieces (decor.delve.b<n>.<kind>[.<v>], every biome alike but a piece with a `biome`: the floor patches,
+ * baked per biome). Kinds without art (grave, icicle, shardIce,
  * crack, ring, bossCrystal, shrineCrystal) stay undrawn; the scattered `chandelier` is the first trial 3D kit's candle
  * chandelier lying fallen, and `sarco` / `candle` / `banner` the second kit's sarcophagus, candle stand and wall banner
  * (docs/DECOR.md "3D kits"). Round flat pieces take a few
@@ -314,6 +340,8 @@ export const VALE_DECOR_PIECES: ReadonlyArray<ValeDecorPiece> = [
 	{ kind: "chandelier", art: "kit-chandelier-1", layer: "flat" }, // trial 3D kit: fallen, scattered over rooms
 	{ kind: "brokenBarrel", art: "barrel-broken", layer: "flat" },
 	{ kind: "brokenCrate", art: "crate-broken", layer: "flat" },
+	// floor patches (docs/KENNEY_DECOR.md KN4): Kenney planks and dirt, baked per biome
+	...valePatchPieces(),
 ];
 
 /**
@@ -467,6 +495,7 @@ function worldLayout(art: string): ValeWorldLayout {
 function addWorldArt(manifest: ThemeManifest, ids: AssetIds): void {
 	for (const b of BIOMES) {
 		for (const piece of VALE_DECOR_PIECES) {
+			if (piece.biome !== undefined && piece.biome !== b.id) continue;
 			const asset = worldAsset(worldLayout(piece.art), ids, {
 				layer: piece.layer,
 				glow: piece.glow,

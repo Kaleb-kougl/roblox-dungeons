@@ -398,18 +398,20 @@ describe("void decor (docs/VOID_DECOR.md VD7)", () => {
 describe("void dressing decor kinds (docs/VOID_DECOR.md VD7)", () => {
 	it("flagstones (flat) is a standard decor kind, appended after the Forge's; curb is not one (VDD10: no wall props)", () => {
 		const n = DECOR_KINDS.size();
-		expect(DECOR_KINDS[n - 11]).toBe("flagstones");
-		expect(DECOR_KINDS[n - 10]).toBe("chandelier"); // scattered (docs/DECOR.md "3D kits")
-		expect([DECOR_KINDS[n - 9], DECOR_KINDS[n - 8]]).toEqual(["tomb", "candelabrum"]); // solid decor
+		expect(DECOR_KINDS[n - 12]).toBe("flagstones");
+		expect(DECOR_KINDS[n - 11]).toBe("chandelier"); // scattered (docs/DECOR.md "3D kits")
+		expect([DECOR_KINDS[n - 10], DECOR_KINDS[n - 9]]).toEqual(["tomb", "candelabrum"]); // solid decor
 		// room themes (docs/DECOR.md "Room themes")
-		expect([DECOR_KINDS[n - 7], DECOR_KINDS[n - 6], DECOR_KINDS[n - 5]]).toEqual(["throne", "statue", "carpet"]);
-		// docs/BOOKSHELVES.md: the bookcase, then the reading area's table and chair; docs/KENNEY_DECOR.md: the wide case, last
-		expect([DECOR_KINDS[n - 4], DECOR_KINDS[n - 3], DECOR_KINDS[n - 2], DECOR_KINDS[n - 1]]).toEqual([
-			"bookcase",
-			"table",
-			"chair",
-			"bookcaseWide",
-		]);
+		expect([DECOR_KINDS[n - 8], DECOR_KINDS[n - 7], DECOR_KINDS[n - 6]]).toEqual(["throne", "statue", "carpet"]);
+		// docs/BOOKSHELVES.md: the bookcase, then the reading area's table and chair; docs/KENNEY_DECOR.md: the wide case
+		// and the floor patch, last
+		expect([
+			DECOR_KINDS[n - 5],
+			DECOR_KINDS[n - 4],
+			DECOR_KINDS[n - 3],
+			DECOR_KINDS[n - 2],
+			DECOR_KINDS[n - 1],
+		]).toEqual(["bookcase", "table", "chair", "bookcaseWide", "patch"]);
 		expect(DECOR_KINDS.includes("curb" as never)).toBe(false);
 		expect(decorId("biome.1", "flagstones")).toBe("decor.delve.b1.flagstones");
 	});

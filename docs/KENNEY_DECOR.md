@@ -2,8 +2,8 @@
 
 Status (2026-11-06): **every piece redrawn** (KN1, KN2's renders) and **Kenney's bookcases wired as alternative art
 for the existing bookcase** (presentation only, "As built" below), uploaded 2026-11-06 11:46 AM; **wide pairs wired**
-(KN3, "Wide cases" below), their 12 PNGs not uploaded yet; Studio check open. Floor patches (KN4) wait on an owner
-call (mock `Claude outputs/kenney-floor-patches-mock.png`). The Forge half (KN5-KN8) is not started. Owner answers (2026-11-06): **gameplay too, at once** (new solid set
+(KN3, "Wide cases" below) and **floor patches wired** (KN4, "Floor patches" below: planks and dirt, baked per biome);
+their 12 + 25 PNGs not uploaded yet; Studio check open. The Forge half (KN5-KN8) is not started. Owner answers (2026-11-06): **gameplay too, at once** (new solid set
 pieces with the art, KND1); **kit art vs Kenney art is decided after a spike** (KND2); **props + floor patches**, walls
 and biome floors unchanged (KND3); **both** a new `mess` (mess hall) theme and richer storerooms (KND4). Everything else
 is proposed.
@@ -133,8 +133,8 @@ under that roof would be hidden. The scaffold appears only as `stockpile`, where
 
 ### Every room (presentation only)
 
-- **Floor patches** (`flat`): `dirt`, `dirtTiles`, `planks`, `planksBroken`, `stoneUneven`, `stoneMissingTiles`, top
-  faces only, 2 x 2 tiles each. They are a new decor kind `patch` (appended last to DECOR_KINDS), laid by planDecor's
+- **Floor patches** (`flat`; as built: `dirt`, `planks`, `planksBroken` only, baked per biome, see KN4 below): `dirt`,
+  `dirtTiles`, `planks`, `planksBroken`, `stoneUneven`, `stoneMissingTiles`, top faces only, 2 x 2 tiles each. They are a new decor kind `patch` (appended last to DECOR_KINDS), laid by planDecor's
   dressing step on 2 x 2 blocks of plain floor with no Forge flat: about 2 a room, 0-1 in the boss arena's middle,
   never on a carpet. Kenney's sandstone is much warmer and brighter than the biome floors, so each patch is graded
   toward its biome floor's mean colour (`art:build` already measures it) with a feathered edge. KN0 decides how far,
@@ -218,15 +218,40 @@ Presentation only (no Forge, dungeon, sim, hash, replay or fixture change): the 
 - **Upload pending**: the 12 `kenney-bookcase-{wide,wideladder,wideempty,halfwide,halfwideempty,wideemptyladder}-{x,z}.png`
   (`art/upload/`), then their IDs in `packs/vale/assetIds.ts`.
 
-### Floor patches: owner call (KN4)
+### Floor patches (KN4, 2026-11-06)
 
-Mock `Claude outputs/kenney-floor-patches-mock.png`: the eight patches on each biome floor, raw (top row of each band) and
-graded (mixed 35 % toward the floor colour, detail x0.55, a feathered edge). Raw they are far brighter than every
-biome floor and would compete with bullets; graded they read as worn floor. The stone patches and `dirtTiles` carry
-raised blocks (and `stoneMissingTiles` a hole) that read as obstacles on walkable floor. Open: which patches (planks and
-dirt only?), and the grading route: baked per biome (5 x the patches as PNGs; the manifest gains per-biome decor art)
-or one greyscale detail PNG per patch tinted at runtime by the biome floor colour (a new DecorArt tint field and an
-ImageColor3 multiply in DecorController).
+Owner (2026-11-06): **planks and dirt only, baked for each biome.** Presentation only (no Forge, dungeon, sim, hash,
+replay or fixture change; walkable, flat).
+
+- **Why.** Mock `Claude outputs/kenney-floor-patches-mock.png`: raw, the patches are far brighter than every biome floor
+  and would compete with bullets; graded toward the floor they read as worn floor. The stone patches and `dirtTiles`
+  carry raised blocks (and `stoneMissingTiles` a hole) that read as obstacles on walkable floor, so they are dropped.
+- **Art.** reproject.py's patch piece keeps five looks (dirt, planks two turns, broken planks two turns) and writes each
+  once per biome (`biomes` + `biomeGrade`, `biome_grade`): the reduced image's mean colour moved 35 % of the way from the
+  biome floor colour, its detail (offset from the mean) x0.55, its edge feathered (alpha eroded 1 px, blurred 1.2 px).
+  Floor colours: biome.1 the stone texture's mean `VALE_FLOOR_HEX` #1a1619, the others the placeholder pack's floor hex
+  (#2a1a16, #1e2a33, #1c1a20, #1d2a1d; kenney.json). 25 own PNGs `kenney-patch-<look>-b<n>` (looks `dirt`, `planks-a`,
+  `planks-b`, `planksbroken-a`, `planksbroken-b`), 2 x 2 tiles at 29.6 px a tile, pivot the block's centre. The baked
+  set on its floors: `Claude outputs/kenney-floor-patches-biomes.png`.
+- **Theme.** Decor kind `patch` (flat), appended last to `DECOR_KINDS` (after `bookcaseWide`). Vale: `ValeDecorPiece`
+  gained an optional `biome` (mapped in that biome only); `VALE_PATCH_LOOKS` give `decor.delve.b<n>.patch.1..5`, each
+  biome its own bake.
+- **Plan.** A new last step in planDecor (after the scattered pieces, so no earlier entry or fade box moves; only when
+  the pack has `patch` art, so the plan is byte-identical without it). Per room in index order: `DECOR_PATCHES` gives
+  one patch per 100 floor tiles, at least 1 and at most 3 (rooms of 24+ tiles), the boss arena at most 1 in half the
+  boss rooms (by room hash; the plan's "in the arena's middle" is not kept: the boss centre is kept out anyway). A patch
+  is a 2 x 2 block whose cells and a 1-tile ring are FLOOR of the room with no other flat piece and no carpet (whether
+  drawn or not), the block not kept out (doorways, interactables, breakables); lowest block hash (salt `patchBlock`)
+  first, 4 tiles (Chebyshev) between patches; its four cells join the plan's taken flat cells. Entry: source
+  `"scatter"`, layer flat, anchor the block's centre, `cellX` / `cellY` its first cell, variant by cell hash.
+- **Checked**: typecheck, lint, check:assets, test:art 165 / 165, build; Lune: decorPlan.spec's new case "lays floor
+  patches on 2 x 2 blocks of open floor, after every other entry, only with patch art" (every earlier entry unchanged,
+  block and ring FLOOR of the room, no other flat or carpet under them, spacing, caps, some in boss rooms), valeWorld
+  (five looks per biome, each its own bake), and all of view/decor, shared/theme (50 files), fxCues, run/tutorial:
+  0 failures.
+- **Upload pending**: the 25 `kenney-patch-*-b<n>.png` (`art/upload/`), then their IDs in `packs/vale/assetIds.ts`.
+- Open (Studio): whether 35 % / x0.55 reads as worn floor under the game's lighting and the depth-band dimming; tune
+  `biomeGrade` in kenney.json and rerun `reproject.py --only patch`, `art:lock`, `art:build`.
 
 ## Pipeline
 
@@ -262,7 +287,8 @@ ImageColor3 multiply in DecorController).
   pairs wired, upload pending; the run-end / ladder rules and other kit -> Kenney swaps open). Bookcase variants, wide-pair drawing (KND11) and any kit -> Kenney swaps from
   KN0 in the decor plan and vale manifest. Specs: a pair never spans two runs or a run's corner; variant picks are
   stable per cell.
-- [ ] **KN4. Floor patches (presentation).** Kind `patch`, the dressing rule, the biome grade, census in decorPlan.spec.
+- [x] **KN4. Floor patches (presentation)** (2026-11-06; upload and Studio look pending). Kind `patch`, the dressing
+  rule, the biome grade, census in decorPlan.spec.
 - [ ] **KN5. Forge pieces.** `SolidDecorKind` gains `studyTable`, `display`, `lectern`, `fallenShelf`, `diningTable`,
   `barrelStack`, `crateStack`, `lumber`, `barrelHeap` and `stockpile`, with footprints and flush or free-standing spots.
   solidDecor.spec: the floor stays one piece and **no new one-tile pinch**; the re-flood never fires.

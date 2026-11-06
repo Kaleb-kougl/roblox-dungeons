@@ -714,7 +714,7 @@
 			]
 		},
 		"patch": {
-			"$comment": "2 x 2 floor patches: the tile's top face only (flat).",
+			"$comment": "2 x 2 floor patches (decor kind patch, docs/KENNEY_DECOR.md KN4): the tile's top face only (flat). Planks and dirt only (owner, 2026-11-06: the stone patches and dirtTiles carry raised blocks or a hole that read as obstacles). Baked once per biome (`biomes`: the vale floor colours, biome.1 the stone texture's mean VALE_FLOOR_HEX, the others the placeholder pack's floor hex): <file>_b<n>.png, graded toward that floor by `biomeGrade`.",
 			"mode": "flat",
 			"topOnly": true,
 			"src": "kenney-dungeon/Isometric/{f}",
@@ -722,10 +722,6 @@
 				{
 					"facing": "dirt_N.png",
 					"file": "dirt.png"
-				},
-				{
-					"facing": "dirtTiles_N.png",
-					"file": "dirttiles.png"
 				},
 				{
 					"facing": "planks_N.png",
@@ -742,16 +738,20 @@
 				{
 					"facing": "planksBroken_E.png",
 					"file": "planksbroken_b.png"
-				},
-				{
-					"facing": "stoneUneven_N.png",
-					"file": "stoneuneven.png"
-				},
-				{
-					"facing": "stoneMissingTiles_N.png",
-					"file": "stonemissing.png"
 				}
-			]
+			],
+			"biomes": {
+				"b1": "#1a1619",
+				"b2": "#2a1a16",
+				"b3": "#1e2a33",
+				"b4": "#1c1a20",
+				"b5": "#1d2a1d"
+			},
+			"biomeGrade": {
+				"mix": 0.35,
+				"detail": 0.55,
+				"feather": 1.2
+			}
 		}
 	}
 }

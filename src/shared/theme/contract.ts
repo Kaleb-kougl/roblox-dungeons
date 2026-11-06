@@ -1301,6 +1301,9 @@ export const DECOR_KIND_LAYERS = {
 	// (presentation only; the Forge's pieces stay 1 x 1), low; variants in facing pairs like the bookcase's (odd +X,
 	// even +Z), 1 / 2 the full case, 3 / 4 .. the other looks (decorPlan's bookcasePairs / wideBookcaseVariant)
 	bookcaseWide: ["low"] as const,
+	// a floor patch (docs/KENNEY_DECOR.md KN4): planks or dirt worn into 2 x 2 tiles of open floor, flat, walkable;
+	// laid by the decor plan itself (no Forge piece), its variants any look (picked per block by hash)
+	patch: FLAT_SPOT,
 } as const satisfies Record<string, ReadonlyArray<DecorLayer>>;
 export type DecorKind = keyof typeof DECOR_KIND_LAYERS;
 
@@ -1340,6 +1343,7 @@ export const DECOR_KINDS: ReadonlyArray<DecorKind> = [
 	"table",
 	"chair",
 	"bookcaseWide",
+	"patch",
 ];
 
 /**

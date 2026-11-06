@@ -24,7 +24,8 @@ shows a wall piece's front on +X, S on +Z. Baked shadows (black, translucent) ar
 on the floor, half a game tile in front of the back for wall pieces. `compose` pastes more cells over the first
 before anything else; `layers` draws more sources over the result, each reprojected in its own mode with the same
 pivot (the stockpile: barrels under a scaffold). `stretch` (box mode, wall pieces) draws the box longer along its wall,
-about the pivot (the wide bookcases over two cells). Scale: `scale` game tiles to a Kenney tile (matched on
+about the pivot (the wide bookcases over two cells). `biomes` + `biomeGrade` (flat patches) write one PNG per biome,
+graded toward its floor colour (biome_grade). Scale: `scale` game tiles to a Kenney tile (matched on
 the barrel, KND5; a piece may set its own: the bookcases fit the kit bookcase's cell and DECOR_BOX), then the TILE_PX
 decor scale; graded like the kits (`grade`, a piece's own fields override).
 """
@@ -226,6 +227,22 @@ def reduce_and_grade(canvas, scale, grade, pad=2):
     return out, pivot
 
 
+def biome_grade(im, hex_color, g):
+    """A floor patch graded toward a biome floor (docs/KENNEY_DECOR.md KN4): its mean colour moved `mix` of the way from
+    the floor colour, its detail (each pixel's offset from the mean) scaled by `detail`, its edge feathered (alpha eroded
+    1 px, then blurred by `feather` px). Same size and pivot; deterministic."""
+    a = np.array(im).astype(np.float64)
+    rgb, al = a[..., :3], a[..., 3]
+    mean = rgb[al > 127].mean(axis=0)
+    floor = np.array([int(hex_color[i : i + 2], 16) for i in (1, 3, 5)], dtype=np.float64)
+    out = floor * (1 - g["mix"]) + mean * g["mix"] + (rgb - mean) * g["detail"]
+    edge = Image.fromarray(al.round().astype(np.uint8)).filter(ImageFilter.MinFilter(3)).filter(ImageFilter.GaussianBlur(g["feather"]))
+    na = np.minimum(al, np.array(edge).astype(np.float64))
+    na[na < 16] = 0
+    res = np.dstack([np.clip(out, 0, 255).round(), na.round()]).astype(np.uint8)
+    return Image.fromarray(res, "RGBA")
+
+
 def source_image(spec, v):
     layers = v.get("compose", spec.get("compose"))
     first = load(fmt(spec["src"], v), spec.get("dropShadow", True))
@@ -305,13 +322,19 @@ def render(name, spec, cfg, boxes):
         out, pv = reduce_and_grade(canvas, scale, grade)
         d = os.path.join(VENDOR, cfg["out"], name)
         os.makedirs(d, exist_ok=True)
-        path = os.path.join(d, v["file"])
-        out.save(path)
-        with open(path + ".pivot.json", "w") as f:
-            json.dump(pv, f)
         foot = None if box is None else [round(float((box[1] - box[0]) * tiles * mp.stretch[0]), 2), round(float((box[3] - box[2]) * tiles * mp.stretch[1]), 2), round(float(box[4] * tiles), 2)]
-        results.append((name, v["file"], out.size, pv, foot))
-        print(f"{name}/{v['file']}: {out.size[0]}x{out.size[1]} pivot {pv}" + (f" box {foot} game tiles (x, z, h)" if foot else ""), flush=True)
+        biomes = spec.get("biomes")
+        # `biomes` (flat floor patches): one PNG per biome, <file>_<biome key>.png, graded toward that floor colour
+        outs = [(v["file"], out)] if not biomes else [
+            (v["file"].replace(".png", f"_{key}.png"), biome_grade(out, biomes[key], spec["biomeGrade"])) for key in sorted(biomes)
+        ]
+        for file, im in outs:
+            path = os.path.join(d, file)
+            im.save(path)
+            with open(path + ".pivot.json", "w") as f:
+                json.dump(pv, f)
+            results.append((name, file, im.size, pv, foot))
+            print(f"{name}/{file}: {im.size[0]}x{im.size[1]} pivot {pv}" + (f" box {foot} game tiles (x, z, h)" if foot else ""), flush=True)
     return results
 
 

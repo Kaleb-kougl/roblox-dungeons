@@ -124,6 +124,8 @@ export const DECOR_SALT = {
 	bookcaseCell: 0x4cf5ad43,
 	bookcaseWide: 0x7b2c3e91,
 	bookcaseWideLook: 0x1f5e9a3d,
+	patchRoom: 0x3b9aca07,
+	patchBlock: 0x2a6bd1c7,
 } as const;
 
 /**
@@ -153,6 +155,28 @@ export const DECOR_BOOKCASES = {
 export const DECOR_BANNERS = {
 	perRoom: 2,
 	spacingTiles: 3,
+} as const;
+
+/**
+ * Floor patches (docs/KENNEY_DECOR.md KN4): planks and dirt worn into the floor, decor kind `patch`, laid by the decor
+ * plan itself on 2 x 2 blocks of open floor, only when the pack has patch art. Presentation only (walkable, flat).
+ */
+export const DECOR_PATCHES = {
+	/** A room's patches: one per this many floor tiles, rounded down, at least 1 and at most maxPerRoom. */
+	tilesPerPatch: 100,
+	maxPerRoom: 3,
+	/** A room needs at least this many floor tiles. */
+	minRoomTiles: 24,
+	/** The boss arena: at most this many, in bossShare of the boss rooms (by room hash). */
+	bossMax: 1,
+	bossShare: 0.5,
+	/**
+	 * Every cell of the block and of a ring this wide around it is FLOOR of the room and carries no other flat piece
+	 * (no two flats overlap: they lie at one height), and the block is not kept out (doorways, interactables,
+	 * breakables). Patches keep spacingTiles (Chebyshev, between block corners) from one another.
+	 */
+	ringTiles: 1,
+	spacingTiles: 4,
 } as const;
 
 /**

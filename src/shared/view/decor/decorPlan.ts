@@ -74,6 +74,11 @@
  *              order, never the boss room, at least minRoomTiles of floor, roomShare of them by room hash, one flat
  *              piece on the room's FLOOR cell with the lowest cell hash that is not kept out, carries no flat piece
  *              and has only FLOOR within clearTiles; at most maxPerFloor per floor. Source "scatter".
+ *   patches    docs/KENNEY_DECOR.md KN4, appended after the scattered pieces, only when the pack has `patch` art: per
+ *              room in index order, DECOR_PATCHES' count (by floor tiles; the boss arena at most bossMax, in bossShare
+ *              of them), each a flat 2 x 2 block (cellX .. cellX + 1, cellY .. cellY + 1; anchor its centre) of the
+ *              room's FLOOR whose ring is FLOOR too, with no flat piece on any of them and the block not kept out,
+ *              lowest block hash first, spacingTiles apart. Source "scatter".
  *
  * Coordinates: grid cell (gx, gy) is world (x, z) = (gx, gy) (TILE_SIZE 1, shared/dungeon collision.ts); heights in
  * tiles above the floor. Entries carry world positions in sim units; the renderer converts with studsX / studsY /
@@ -118,6 +123,7 @@ import {
 	DECOR_CLEAR,
 	DECOR_DRESSING,
 	DECOR_PLACE,
+	DECOR_PATCHES,
 	DECOR_SALT,
 	DECOR_SCATTER,
 } from "./config";
@@ -1456,6 +1462,106 @@ export function planDecor(input: DecorPlanInput): DecorPlan {
 				rot: 0,
 				scale: 1,
 			});
+		}
+	}
+
+	// --- floor patches (docs/KENNEY_DECOR.md KN4), appended last ----------------------------------
+	if (input.variants !== undefined && input.variants("patch") > 0) {
+		const P = DECOR_PATCHES;
+		const floorTiles = new Array<number>(roomCount, 0);
+		for (let c = 0; c < n; c++) {
+			const rid = d.roomId[c];
+			if (rid >= 0 && rid < roomCount && d.grid[c] === TileType.FLOOR) floorTiles[rid]++;
+		}
+		const rt = P.ringTiles;
+		// carpets (whether the pack draws them or not)
+		const carpet = new Set<number>();
+		for (const cp of d.carpets ?? [])
+			for (let yy = cp.y; yy < cp.y + cp.h; yy++)
+				for (let xx = cp.x; xx < cp.x + cp.w; xx++) carpet.add(yy * W + xx);
+		// a block (gx .. gx + 1, gy .. gy + 1) of room r: it and its ring FLOOR of r with no flat piece or carpet, it not
+		// kept out
+		const legal = (gx: number, gy: number, r: number): boolean => {
+			for (let oy = -rt; oy <= 1 + rt; oy++)
+				for (let ox = -rt; ox <= 1 + rt; ox++) {
+					const x = gx + ox;
+					const y = gy + oy;
+					if (tileAt(d, x, y) !== TileType.FLOOR) return false;
+					const c = y * W + x;
+					if (d.roomId[c] !== r || flatTaken.has(c) || carpet.has(c)) return false;
+					if (ox >= 0 && ox <= 1 && oy >= 0 && oy <= 1 && keptOut(x, y, false, false) !== undefined)
+						return false;
+				}
+			return true;
+		};
+		const blocks: number[][] = [];
+		for (let r = 0; r < roomCount; r++) blocks.push([]);
+		for (let gy = 0; gy < H - 1; gy++)
+			for (let gx = 0; gx < W - 1; gx++) {
+				const r = d.roomId[gy * W + gx];
+				if (r >= 0 && r < roomCount && legal(gx, gy, r)) blocks[r].push(gy * W + gx);
+			}
+		for (let r = 0; r < roomCount; r++) {
+			let want = 0;
+			if (r === d.boss) want = decorHash01(seed, r, DECOR_SALT.patchRoom) < P.bossShare ? P.bossMax : 0;
+			else if (floorTiles[r] >= P.minRoomTiles)
+				want = math.min(P.maxPerRoom, math.max(1, math.floor(floorTiles[r] / P.tilesPerPatch)));
+			const laid: number[] = [];
+			while (laid.size() < want) {
+				// the lowest block hash not within spacingTiles of a patch already laid here
+				let best = -1;
+				let bestHash = 0;
+				for (const c of blocks[r]) {
+					const gx = c % W;
+					const gy = (c - gx) / W;
+					let near = false;
+					for (const o of laid) {
+						const ox = o % W;
+						const oy = (o - ox) / W;
+						if (math.abs(ox - gx) < P.spacingTiles && math.abs(oy - gy) < P.spacingTiles) {
+							near = true;
+							break;
+						}
+					}
+					if (near) continue;
+					const h = decorHash(seed, cellKey(gx, gy), DECOR_SALT.patchBlock);
+					if (best < 0 || h < bestHash) {
+						best = c;
+						bestHash = h;
+					}
+				}
+				if (best < 0) break;
+				laid.push(best);
+				const gx = best % W;
+				const gy = (best - gx) / W;
+				for (let oy = 0; oy <= 1; oy++) for (let ox = 0; ox <= 1; ox++) flatTaken.add((gy + oy) * W + gx + ox);
+				const hash = decorHash(seed, cellKey(gx, gy), DECOR_SALT.variant);
+				entries.push({
+					kind: "patch",
+					id: decorId(biome, "patch"),
+					layer: "flat",
+					x: gridToWorld(gx) + HALF,
+					y: 0,
+					z: gridToWorld(gy) + HALF,
+					cellX: gx,
+					cellY: gy,
+					cells: 1,
+					runX: 0,
+					runZ: 0,
+					faceX: 0,
+					faceZ: 0,
+					roomId: r,
+					hash,
+					variant: variantOf(input, "patch", hash),
+					fade: -1,
+					light: false,
+					lit: false,
+					source: "scatter",
+					forgeIndex: -1,
+					rot: 0,
+					scale: 1,
+				});
+			}
 		}
 	}
 

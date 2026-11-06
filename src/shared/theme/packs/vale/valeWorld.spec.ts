@@ -31,6 +31,7 @@ import {
 	VALE_BREAKABLE_ART,
 	VALE_DECOR_FX,
 	VALE_DECOR_PIECES,
+	VALE_PATCH_LOOKS,
 	VALE_PELLET_ART,
 	VALE_RETIRED_WORLD_ART,
 	VALE_TREASURE_ART,
@@ -68,7 +69,8 @@ function worldIds(...skip: Array<string>): Record<string, string> {
 function decorIds(): Array<string> {
 	const out = new Array<string>();
 	for (const b of BIOMES) {
-		for (const p of VALE_DECOR_PIECES) out.push(decorId(b.id, p.kind, p.variant));
+		for (const p of VALE_DECOR_PIECES)
+			if (p.biome === undefined || p.biome === b.id) out.push(decorId(b.id, p.kind, p.variant));
 		out.push(decorAmbientId(b.id));
 	}
 	for (const name of DECOR_FX_NAMES) out.push(decorFxId(name));
@@ -97,7 +99,7 @@ describe("vale world art (docs/DECOR.md R5)", () => {
 		// decor pieces: a kind's layer is one it allows, its variant in range, no ID twice
 		const seen = new Set<string>();
 		for (const p of [...VALE_DECOR_PIECES, ...VALE_VOID_DECOR_PIECES]) {
-			const id = decorId("biome.1", p.kind, p.variant);
+			const id = decorId(p.biome ?? "biome.1", p.kind, p.variant);
 			expect([id, seen.has(id)]).toEqual([id, false]);
 			seen.add(id);
 			expect([id, (DECOR_KIND_LAYERS[p.kind] as ReadonlyArray<string>).includes(p.layer)]).toEqual([id, true]);
@@ -118,7 +120,8 @@ describe("vale world art (docs/DECOR.md R5)", () => {
 		// one shared atlas, the particle texture, the loot twinkle's own sheet (docs/BREAKABLE_DROPS.md) and the trial
 		// 3D kit's own PNGs (docs/DECOR.md "3D kits") and the
 		// two pellet cubes (docs/PELLETS.md PL8) and the vault chest's two sheets (docs/TREASURE.md TR9) and Kenney's
-		// bookcases, the bookcase's alternative set (docs/KENNEY_DECOR.md)
+		// bookcases, the bookcase's alternative set and its wide cases, and the floor patches baked per biome
+		// (docs/KENNEY_DECOR.md)
 		expect(worldFiles()).toEqual([
 			"decor-atlas.png",
 			"decor-mote.png",
@@ -148,6 +151,31 @@ describe("vale world art (docs/DECOR.md R5)", () => {
 			"kenney-bookcase-wideemptyladder-z.png",
 			"kenney-bookcase-wideladder-x.png",
 			"kenney-bookcase-wideladder-z.png",
+			"kenney-patch-dirt-b1.png",
+			"kenney-patch-dirt-b2.png",
+			"kenney-patch-dirt-b3.png",
+			"kenney-patch-dirt-b4.png",
+			"kenney-patch-dirt-b5.png",
+			"kenney-patch-planks-a-b1.png",
+			"kenney-patch-planks-a-b2.png",
+			"kenney-patch-planks-a-b3.png",
+			"kenney-patch-planks-a-b4.png",
+			"kenney-patch-planks-a-b5.png",
+			"kenney-patch-planks-b-b1.png",
+			"kenney-patch-planks-b-b2.png",
+			"kenney-patch-planks-b-b3.png",
+			"kenney-patch-planks-b-b4.png",
+			"kenney-patch-planks-b-b5.png",
+			"kenney-patch-planksbroken-a-b1.png",
+			"kenney-patch-planksbroken-a-b2.png",
+			"kenney-patch-planksbroken-a-b3.png",
+			"kenney-patch-planksbroken-a-b4.png",
+			"kenney-patch-planksbroken-a-b5.png",
+			"kenney-patch-planksbroken-b-b1.png",
+			"kenney-patch-planksbroken-b-b2.png",
+			"kenney-patch-planksbroken-b-b3.png",
+			"kenney-patch-planksbroken-b-b4.png",
+			"kenney-patch-planksbroken-b-b5.png",
 			"kit-banner.png",
 			"kit-bookcase-x.png",
 			"kit-bookcase-z.png",
@@ -241,10 +269,11 @@ describe("vale world art (docs/DECOR.md R5)", () => {
 		expect(moteOnly.assets[decorAmbientId("biome.2")]).toBeDefined();
 	});
 
-	it("draws the same art in every biome, with its layer, glow and outline", () => {
+	it("draws the same art in every biome (a biome piece: its own biome's), with its layer, glow and outline", () => {
 		const m = buildValeManifest(worldIds());
 		const core = new ThemeCore(m, { warn: quiet });
 		for (const p of VALE_DECOR_PIECES) {
+			if (p.biome !== undefined) continue; // the floor patches: below
 			const first = m.assets[decorId("biome.1", p.kind, p.variant)];
 			for (const b of BIOMES) {
 				const id = decorId(b.id, p.kind, p.variant);
@@ -266,6 +295,21 @@ describe("vale world art (docs/DECOR.md R5)", () => {
 			expect([kind, core.decorVariants("biome.3", kind).size()]).toEqual([kind, 4]);
 		}
 		expect(core.decorVariants("biome.4", "grave").size()).toBe(0); // no Lords of Pain art: not drawn
+		// the floor patches (docs/KENNEY_DECOR.md KN4): five looks in every biome, each biome its own bake, flat
+		const ids = worldIds();
+		BIOMES.forEach((b, i) => {
+			expect([b.id, core.decorVariants(b.id, "patch").size()]).toEqual([b.id, VALE_PATCH_LOOKS.size()]);
+			VALE_PATCH_LOOKS.forEach((look, v) => {
+				const id = decorId(b.id, "patch", v + 1);
+				const a = m.assets[id] as ImageAsset;
+				expect([id, a.kind, a.layer, a.assetId]).toEqual([
+					id,
+					"image",
+					"flat",
+					ids[`kenney-patch-${look}-b${i + 1}.png`],
+				]);
+			});
+		});
 	});
 
 	it("void pieces (docs/VOID_DECOR.md VD6): flagstones map once the atlas has their art, every biome alike", () => {

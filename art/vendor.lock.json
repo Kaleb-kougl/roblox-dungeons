@@ -1537,6 +1537,131 @@
 			"bytes": 6745
 		},
 		{
+			"path": "kenney/patch/dirt_b1.png",
+			"sha256": "752d3f93cd9eb4be3dfd7c60537c9d13a99b4e693868132666a6945ec4e17af9",
+			"bytes": 7770
+		},
+		{
+			"path": "kenney/patch/dirt_b2.png",
+			"sha256": "0fb78a721e9089a9e4923a301204e67795acaffc8d229c21389c9f65599432c3",
+			"bytes": 7807
+		},
+		{
+			"path": "kenney/patch/dirt_b3.png",
+			"sha256": "106722e2aaab9aacbe684d3fd2051ec1f7a6eaac559e9d2aa3d9548586f16bc3",
+			"bytes": 7860
+		},
+		{
+			"path": "kenney/patch/dirt_b4.png",
+			"sha256": "0023fe75a03a0f06c6dc2891195715a1ec9602174d8a114e76934a0906c26be1",
+			"bytes": 7819
+		},
+		{
+			"path": "kenney/patch/dirt_b5.png",
+			"sha256": "43cc2ab4106d6c93dff09eacd0d2f91e63b943f83e386ca3c601394b20eb2002",
+			"bytes": 7821
+		},
+		{
+			"path": "kenney/patch/planks_a_b1.png",
+			"sha256": "f740f4a7a2b2711662aca3dd6a2246205ebf7ade03f0f7f3428b823482336ace",
+			"bytes": 8580
+		},
+		{
+			"path": "kenney/patch/planks_a_b2.png",
+			"sha256": "286c422e9e28413b32f65320102e65ca3c56aa750795538ab49470b623162945",
+			"bytes": 8614
+		},
+		{
+			"path": "kenney/patch/planks_a_b3.png",
+			"sha256": "95590b73ffb77d53eb89759dd016dd433b9e751d59c146c7cb559c28edebe15c",
+			"bytes": 8602
+		},
+		{
+			"path": "kenney/patch/planks_a_b4.png",
+			"sha256": "60aa65bbc6018a80f7a4d9a41e134b381fe1d0deb74d280f11690d387de2312a",
+			"bytes": 8600
+		},
+		{
+			"path": "kenney/patch/planks_a_b5.png",
+			"sha256": "2894af3a3de16433cdcf62ce104d7880b38a07b26732214d34438ac5a62e21a5",
+			"bytes": 8594
+		},
+		{
+			"path": "kenney/patch/planks_b_b1.png",
+			"sha256": "5ee5295a6c4ef3ce0d7a477994d9f032339f706588230ffe4c524493144b5582",
+			"bytes": 8601
+		},
+		{
+			"path": "kenney/patch/planks_b_b2.png",
+			"sha256": "33bde002affa121da85c231336b0cf73d3976ea6bfa1adb70839fb5d121b919f",
+			"bytes": 8618
+		},
+		{
+			"path": "kenney/patch/planks_b_b3.png",
+			"sha256": "c93d2518e6c238422dc99c435f89edefcd04244d003f10ce92f4446fcf53e1b6",
+			"bytes": 8635
+		},
+		{
+			"path": "kenney/patch/planks_b_b4.png",
+			"sha256": "bded05a93cbccec350ab243953eab50695711f7431c218bee2f13298b5c64b6e",
+			"bytes": 8614
+		},
+		{
+			"path": "kenney/patch/planks_b_b5.png",
+			"sha256": "73b17860b3490f46c870f6a8364be2840fccc27054b9548c290dcc26fb09b836",
+			"bytes": 8612
+		},
+		{
+			"path": "kenney/patch/planksbroken_a_b1.png",
+			"sha256": "3ff30c5e1dbaee476d4904ff661fbbec88a3a8324ed04a9be22d179c5fa5bbc9",
+			"bytes": 7887
+		},
+		{
+			"path": "kenney/patch/planksbroken_a_b2.png",
+			"sha256": "72442ccfa0793a411a14f0ed73d0b1e47bca9c0fb89226cf6762234477342972",
+			"bytes": 7916
+		},
+		{
+			"path": "kenney/patch/planksbroken_a_b3.png",
+			"sha256": "963f79ed1c7c21a80b1b3785b86ce903c05d063b939336b672e1b0bf6b127187",
+			"bytes": 7913
+		},
+		{
+			"path": "kenney/patch/planksbroken_a_b4.png",
+			"sha256": "8b184ac85732f8ea9fdf2b85ec78879a9d3219ff858250931cf8c03245f0ba65",
+			"bytes": 7907
+		},
+		{
+			"path": "kenney/patch/planksbroken_a_b5.png",
+			"sha256": "e65cac6ed63ae42024e202e461c5d7d774e9e3554972aabcd43e03d7067752f5",
+			"bytes": 7898
+		},
+		{
+			"path": "kenney/patch/planksbroken_b_b1.png",
+			"sha256": "0e12de750d4f5b4e43d33015b210c0e6f5f4b883f749236ab919cccedb63c556",
+			"bytes": 7852
+		},
+		{
+			"path": "kenney/patch/planksbroken_b_b2.png",
+			"sha256": "4fc3c603063fd379643f1ebc5f47091e4efb4a3db46fa3accfc9a654080c4b44",
+			"bytes": 7890
+		},
+		{
+			"path": "kenney/patch/planksbroken_b_b3.png",
+			"sha256": "b07f3f319e3b75b4caf13ac990b49e1d915863bd7e95f91e175cb13eae245000",
+			"bytes": 7939
+		},
+		{
+			"path": "kenney/patch/planksbroken_b_b4.png",
+			"sha256": "5b836ec456d515af6cd7b755f5be1245fdcf68dd840f5c2f2fa78de5ff04f1f2",
+			"bytes": 7885
+		},
+		{
+			"path": "kenney/patch/planksbroken_b_b5.png",
+			"sha256": "0b036e6b184a8ca1215bb42b79b71654ec27e38dad6577ace08d2ea7b436000c",
+			"bytes": 7882
+		},
+		{
 			"path": "lords-of-pain-demo/enemy/skeleton/skeleton_default_walk/E/skeleton_default_walk_E_0.0_0.png",
 			"sha256": "eaaf1ea383e0d5b159d1cc787610413cbb00258d64a2fd5a1fd91364e6d578f6",
 			"bytes": 17145

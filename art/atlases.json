@@ -1611,6 +1611,132 @@
 				"outline": true,
 				"own": "kenney-bookcase-wideemptyladder-z"
 			},
+			"$comment-kenney-patch": "Kenney floor patches (Isometric Dungeon, Kenney, CC0; docs/KENNEY_DECOR.md KN4): 2 x 2 tiles of planks or dirt lying flat (decor kind patch), the top face reprojected by scripts/art/kenney/reproject.py and baked once per biome (_b<n>), graded toward that biome's floor colour with a feathered edge. Pivot = the 2 x 2 block's centre. Own PNGs.",
+			"kenney-patch-dirt-b1": {
+				"file": "kenney/patch/dirt_b1.png",
+				"pivot": [40.84, 31.06],
+				"own": "kenney-patch-dirt-b1"
+			},
+			"kenney-patch-dirt-b2": {
+				"file": "kenney/patch/dirt_b2.png",
+				"pivot": [40.84, 31.06],
+				"own": "kenney-patch-dirt-b2"
+			},
+			"kenney-patch-dirt-b3": {
+				"file": "kenney/patch/dirt_b3.png",
+				"pivot": [40.84, 31.06],
+				"own": "kenney-patch-dirt-b3"
+			},
+			"kenney-patch-dirt-b4": {
+				"file": "kenney/patch/dirt_b4.png",
+				"pivot": [40.84, 31.06],
+				"own": "kenney-patch-dirt-b4"
+			},
+			"kenney-patch-dirt-b5": {
+				"file": "kenney/patch/dirt_b5.png",
+				"pivot": [40.84, 31.06],
+				"own": "kenney-patch-dirt-b5"
+			},
+			"kenney-patch-planks-a-b1": {
+				"file": "kenney/patch/planks_a_b1.png",
+				"pivot": [39.5, 29.27],
+				"own": "kenney-patch-planks-a-b1"
+			},
+			"kenney-patch-planks-a-b2": {
+				"file": "kenney/patch/planks_a_b2.png",
+				"pivot": [39.5, 29.27],
+				"own": "kenney-patch-planks-a-b2"
+			},
+			"kenney-patch-planks-a-b3": {
+				"file": "kenney/patch/planks_a_b3.png",
+				"pivot": [39.5, 29.27],
+				"own": "kenney-patch-planks-a-b3"
+			},
+			"kenney-patch-planks-a-b4": {
+				"file": "kenney/patch/planks_a_b4.png",
+				"pivot": [39.5, 29.27],
+				"own": "kenney-patch-planks-a-b4"
+			},
+			"kenney-patch-planks-a-b5": {
+				"file": "kenney/patch/planks_a_b5.png",
+				"pivot": [39.5, 29.27],
+				"own": "kenney-patch-planks-a-b5"
+			},
+			"kenney-patch-planks-b-b1": {
+				"file": "kenney/patch/planks_b_b1.png",
+				"pivot": [39.5, 29.27],
+				"own": "kenney-patch-planks-b-b1"
+			},
+			"kenney-patch-planks-b-b2": {
+				"file": "kenney/patch/planks_b_b2.png",
+				"pivot": [39.5, 29.27],
+				"own": "kenney-patch-planks-b-b2"
+			},
+			"kenney-patch-planks-b-b3": {
+				"file": "kenney/patch/planks_b_b3.png",
+				"pivot": [39.5, 29.27],
+				"own": "kenney-patch-planks-b-b3"
+			},
+			"kenney-patch-planks-b-b4": {
+				"file": "kenney/patch/planks_b_b4.png",
+				"pivot": [39.5, 29.27],
+				"own": "kenney-patch-planks-b-b4"
+			},
+			"kenney-patch-planks-b-b5": {
+				"file": "kenney/patch/planks_b_b5.png",
+				"pivot": [39.5, 29.27],
+				"own": "kenney-patch-planks-b-b5"
+			},
+			"kenney-patch-planksbroken-a-b1": {
+				"file": "kenney/patch/planksbroken_a_b1.png",
+				"pivot": [39.67, 29.27],
+				"own": "kenney-patch-planksbroken-a-b1"
+			},
+			"kenney-patch-planksbroken-a-b2": {
+				"file": "kenney/patch/planksbroken_a_b2.png",
+				"pivot": [39.67, 29.27],
+				"own": "kenney-patch-planksbroken-a-b2"
+			},
+			"kenney-patch-planksbroken-a-b3": {
+				"file": "kenney/patch/planksbroken_a_b3.png",
+				"pivot": [39.67, 29.27],
+				"own": "kenney-patch-planksbroken-a-b3"
+			},
+			"kenney-patch-planksbroken-a-b4": {
+				"file": "kenney/patch/planksbroken_a_b4.png",
+				"pivot": [39.67, 29.27],
+				"own": "kenney-patch-planksbroken-a-b4"
+			},
+			"kenney-patch-planksbroken-a-b5": {
+				"file": "kenney/patch/planksbroken_a_b5.png",
+				"pivot": [39.67, 29.27],
+				"own": "kenney-patch-planksbroken-a-b5"
+			},
+			"kenney-patch-planksbroken-b-b1": {
+				"file": "kenney/patch/planksbroken_b_b1.png",
+				"pivot": [39.34, 29.27],
+				"own": "kenney-patch-planksbroken-b-b1"
+			},
+			"kenney-patch-planksbroken-b-b2": {
+				"file": "kenney/patch/planksbroken_b_b2.png",
+				"pivot": [39.34, 29.27],
+				"own": "kenney-patch-planksbroken-b-b2"
+			},
+			"kenney-patch-planksbroken-b-b3": {
+				"file": "kenney/patch/planksbroken_b_b3.png",
+				"pivot": [39.34, 29.27],
+				"own": "kenney-patch-planksbroken-b-b3"
+			},
+			"kenney-patch-planksbroken-b-b4": {
+				"file": "kenney/patch/planksbroken_b_b4.png",
+				"pivot": [39.34, 29.27],
+				"own": "kenney-patch-planksbroken-b-b4"
+			},
+			"kenney-patch-planksbroken-b-b5": {
+				"file": "kenney/patch/planksbroken_b_b5.png",
+				"pivot": [39.34, 29.27],
+				"own": "kenney-patch-planksbroken-b-b5"
+			},
 			"$comment-reading": "Reading area (library rooms): the Dungeon Assets Pack by zver.3d (credit \"zver.3d\"; scripts/art/kit/zver-dungeon-assets.json) at world scale, 2.2 FBX units a tile. The table with its pages and candlestick on a 2 x 1 footprint, along X (_x) and Z (_z), pivot = the footprint's centre on the floor; the chair on one cell facing +X / +Z / -X / -Z (_px / _pz / _nx / _nz: the way a seated person looks), pivot = the cell's centre under the seat (render_kit.py pivotOut).",
 			"kit-table-x": {
 				"file": "zver-dungeon-assets/table/table_x.png",
