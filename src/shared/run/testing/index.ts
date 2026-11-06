@@ -4,7 +4,8 @@
  * TTK harness (variantTtk.ts) and actor-pool high-water estimate (poolHighWater.ts), and docs/BUILDS.md BU13's build
  * tuning harnesses (buildTune.ts: build TTK, kill probe, player bullet high-water; buildOffers.ts: offer statistics),
  * docs/TREASURE.md's vault runs (vaultRun.ts: the endless world with a forced VaultOverride, a start floor and an
- * optional treasure config) and docs/FORTUNE.md's pact helpers (pactsBot.ts).
+ * optional treasure config), docs/FORTUNE.md's pact helpers (pactsBot.ts) and docs/LEGENDARIES.md LG7's legendary
+ * tuning (legendaryTune.ts: Overkill TTK and chains, Bastion's defence rooms; the offer tallies in buildOffers.ts).
  */
 export * from "./endlessBot";
 export * from "./partyBot";
@@ -15,3 +16,4 @@ export * from "./buildTune";
 export * from "./buildOffers";
 export * from "./vaultRun";
 export * from "./pactsBot";
+export * from "./legendaryTune";

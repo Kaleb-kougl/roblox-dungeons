@@ -47,6 +47,7 @@ import {
 	Duo,
 	EMPTY_INPUT,
 	ENEMY_BULLET_CAPACITY,
+	KillCause,
 	NO_KIND,
 	PLAYER_BULLET_CAPACITY,
 	PROC_INELIGIBLE_ARCHETYPES,
@@ -189,6 +190,8 @@ export interface KillCounts {
 	procs: number;
 	/** The highest kill generation seen (0: weapon kills only). */
 	maxGen: number;
+	/** Of the kills, those made by an Overkill streak's strike (ctx.procCause KillCause.OVERKILL; docs/LEGENDARIES.md LG7). */
+	streakKills: number;
 }
 
 let counts: KillCounts | undefined;
@@ -200,16 +203,29 @@ function probeKill(ctx: SimCtx, a: Readonly<ActorState>, def: Readonly<Archetype
 	c.kills += 1;
 	if (gen > 0) c.effectKills += 1;
 	if (gen > c.maxGen) c.maxGen = gen;
+	if (ctx.procCause === KillCause.OVERKILL) c.streakKills += 1;
 	const s = ctx.state.builds;
 	if (s === undefined || def.stepDead !== undefined || PROC_INELIGIBLE_ARCHETYPES.includes(def.id)) return;
 	const p = s.players[ctx.playerIndex];
 	if (p !== undefined && gen < s.config.genMax && hasOnKillEffect(p)) c.procs += 1;
 }
 
+/** Called on every probed hit before the archetype's own onHit (setProbeHitObserver); undefined: none. */
+let hitObserver: ((ctx: SimCtx, a: Readonly<ActorState>) => void) | undefined;
+
+/**
+ * docs/LEGENDARIES.md LG7: `fn` sees every hit made while the kill probe is installed (withKillProbe), before the
+ * archetype's own onHit and the kill line (the hp already taken, every actor where the hit found it). undefined clears.
+ */
+export function setProbeHitObserver(fn: ((ctx: SimCtx, a: Readonly<ActorState>) => void) | undefined): void {
+	hitObserver = fn;
+}
+
 function probed(def: ArchetypeDef): ArchetypeDef {
 	return {
 		...def,
 		onHit(ctx: SimCtx, a: ActorState, dmg: number) {
+			if (hitObserver !== undefined) hitObserver(ctx, a);
 			if (def.onHit !== undefined) def.onHit(ctx, a, dmg);
 			if (a.alive !== 0 && a.hp <= 0) probeKill(ctx, a, def);
 		},
@@ -221,7 +237,7 @@ export function withKillProbe<T>(fn: () => T): [T, KillCounts] {
 	const originals: ArchetypeDef[] = [];
 	for (const id of archetypeIds()) originals.push(archetypeAt(archetypeIndex(id)));
 	for (const def of originals) registerArchetype(probed(def));
-	const mine: KillCounts = { kills: 0, effectKills: 0, procs: 0, maxGen: 0 };
+	const mine: KillCounts = { kills: 0, effectKills: 0, procs: 0, maxGen: 0, streakKills: 0 };
 	counts = mine;
 	const result = fn();
 	counts = undefined;
@@ -378,7 +394,8 @@ export const TUNE_BOSS: TuneFight = {
 	maxSeconds: 900,
 };
 
-function arenaConfig(seed: number, weapon: TuneWeapon, fight: TuneFight): SimConfig {
+/** The arena's SimConfig for `fight` (file comment, item 1): one weapon, builds and affixes on, no drops. */
+export function arenaConfig(seed: number, weapon: TuneWeapon, fight: TuneFight): SimConfig {
 	const h = fight.half;
 	const bounds = { minX: -h, maxX: h, minZ: -h, maxZ: h };
 	const cache = new Map<number, EndlessFloorWorld>();
@@ -445,18 +462,23 @@ export interface FightResult {
 	readonly maxQueue: number;
 }
 
-function anyLiving(s: SimState): boolean {
+/** True while any actor of `s` is alive. */
+export function anyLiving(s: SimState): boolean {
 	for (const a of s.combat.actors) if (a.kind !== NO_KIND && a.alive !== 0) return true;
 	return false;
 }
 
-/** One arena fight (file comment). `seed`: the run seed (the actors' rng). */
+/**
+ * One arena fight (file comment). `seed`: the run seed (the actors' rng). `observe` (docs/LEGENDARIES.md LG7) sees the
+ * state after every step, before the hearts are refilled.
+ */
 export function buildFight(
 	fight: TuneFight,
 	build: BuildCase,
 	weapon: TuneWeapon,
 	f: TuneFloor,
 	seed: number,
+	observe?: (s: SimState) => void,
 ): FightResult {
 	const [r, killCounts] = withKillProbe(() => {
 		const config = arenaConfig(seed, weapon, fight);
@@ -480,6 +502,7 @@ export function buildFight(
 		for (let k = 0; k < maxTicks; k++) {
 			const droppedBefore = s.combat.dropped;
 			step(s, tuneBotFrame(s.player, nearestLiving(s, s.player), weapon, s.tick, fight.half), config);
+			if (observe !== undefined) observe(s);
 			s.player.hearts = s.player.heartsMax;
 			hits += s.events.playerHits;
 			const eff = s.builds!.events.effectDropped;
