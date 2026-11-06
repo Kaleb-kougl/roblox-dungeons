@@ -6,6 +6,7 @@ import type { ThemePack } from "shared/theme";
 import { ACTOR_VIEW, degToRad, floorStudsY, studsX, studsZ } from "shared/view";
 import { ActorSizeCache, FX_SPRITE_VIEW, FX_VIEW, placeholderScreenSize, type DrawnSize } from "shared/view/fx";
 import { COMBO_SHOUT, COMBO_SHOUT_DRAW, shoutCanvasSize } from "shared/view/hud";
+import { floorCanvasPartSize } from "../render/floorCanvas";
 import { renderPart } from "../render/placeholders";
 
 const PITCH = degToRad(CAMERA_PITCH_DEG);
@@ -70,16 +71,16 @@ export interface FloorText {
 
 /**
  * A floor text on the combo shout's construction (docs/COMBO.md CD9, shared by the PARRY! flash and the SYNC! callout):
- * ONE SurfaceGui on the Top face of a thin invisible floor Part of COMBO_SHOUT's box, shoutCanvasSize's canvas, a
+ * ONE SurfaceGui on the Top face of a thin invisible floor Part of COMBO_SHOUT's box (sized for FLOOR_CANVAS_YAW), shoutCanvasSize's canvas, a
  * TextScaled HUD-font label centred on it in `color` with the background-coloured stroke, lit like the HUD. Built
  * hidden (the surface disabled, the label transparent) and `parked`, under `folder`. The caller places the Part (the
- * shout's layer under the sprite effects) and writes the label's text, size and transparency.
+ * shout's layer under the sprite effects, turned by FLOOR_CANVAS_YAW) and writes the label's text, size and transparency.
  */
 export function floorText(name: string, folder: Instance, color: Color3, stroke: Color3, parked: CFrame): FloorText {
 	const part = renderPart("Part", false);
 	part.Name = name;
 	part.Transparency = HIDDEN;
-	part.Size = new Vector3(
+	part.Size = floorCanvasPartSize(
 		COMBO_SHOUT.widthTiles * STUDS_PER_TILE,
 		FX_SPRITE_VIEW.thicknessStuds,
 		COMBO_SHOUT.depthTiles * STUDS_PER_TILE,

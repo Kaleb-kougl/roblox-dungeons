@@ -2,11 +2,10 @@ import { Controller, OnStart } from "@flamework/core";
 import { Janitor } from "@rbxts/janitor";
 import { Workspace } from "@rbxts/services";
 import { currentHudFont, onLocaleChanged } from "client/ui";
-import { CAMERA_YAW_DEG } from "shared/config";
 import { MAX_PARTY_SIZE, partySize, playerAt, type SimState } from "shared/sim";
 import type { JuiceSettings } from "shared/settings";
 import type { ThemePack } from "shared/theme";
-import { degToRad, lerp, studsX, studsZ } from "shared/view";
+import { lerp, studsX, studsZ } from "shared/view";
 import {
 	FX_SPRITE_VIEW,
 	FX_VIEW,
@@ -36,11 +35,11 @@ import { SimController } from "../game/SimController";
 import { ThemeController } from "../game/ThemeController";
 import { FxTrackerController } from "./FxTrackerController";
 import { NearMissController } from "./NearMissController";
+import { FLOOR_CANVAS_YAW } from "../render/floorCanvas";
 import { floorText, floorTextTopStuds, fxFolder } from "./fxHelpers";
 
 const HIDDEN = 1;
 const PARKED = new CFrame(FX_VIEW.parkedStuds[0], FX_VIEW.parkedStuds[1], FX_VIEW.parkedStuds[2]);
-const CAMERA_YAW = CFrame.Angles(0, degToRad(CAMERA_YAW_DEG), 0);
 const AXES = floorAxes();
 
 type Mutable<T> = { -readonly [K in keyof T]: T[K] };
@@ -196,7 +195,7 @@ export class ParryFlashController implements OnStart {
 			label.TextStrokeTransparency = HIDDEN - opacity * (HIDDEN - COMBO_SHOUT_DRAW.strokeTransparency);
 		}
 		const y = floorTextTopStuds() - FX_SPRITE_VIEW.thicknessStuds / 2;
-		slot.part.CFrame = new CFrame(studsX(c.x), y, studsZ(c.z)).mul(CAMERA_YAW);
+		slot.part.CFrame = new CFrame(studsX(c.x), y, studsZ(c.z)).mul(FLOOR_CANVAS_YAW);
 		if (!slot.visible) {
 			slot.visible = true;
 			slot.surface.Enabled = true;

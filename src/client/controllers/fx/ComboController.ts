@@ -2,11 +2,11 @@ import { Controller, OnStart } from "@flamework/core";
 import { Janitor } from "@rbxts/janitor";
 import { Workspace } from "@rbxts/services";
 import { COMBO_UI, currentHudFont, onLocaleChanged, resetComboUi, createKvSurfaceGui } from "client/ui";
-import { CAMERA_YAW_DEG, STUDS_PER_TILE } from "shared/config";
+import { STUDS_PER_TILE } from "shared/config";
 import { COMBO_MIN, TILE_SIZE, partySize, playerAt, teamComboWindowTicks, type SimState } from "shared/sim";
 import type { JuiceSettings } from "shared/settings";
 import type { ColorRole, ThemePack } from "shared/theme";
-import { degToRad, floorStudsY, lerp, studsX, studsZ } from "shared/view";
+import { floorStudsY, lerp, studsX, studsZ } from "shared/view";
 import { FX_SPRITE_VIEW, FX_VIEW, screenShakeOn, type ComboFrameSource } from "shared/view/fx";
 import {
 	COMBO_BROKEN_ROLE,
@@ -40,6 +40,7 @@ import {
 } from "shared/view/hud";
 import { SimController } from "../game/SimController";
 import { ThemeController } from "../game/ThemeController";
+import { FLOOR_CANVAS_YAW, floorCanvasPartSize } from "../render/floorCanvas";
 import { renderPart } from "../render/placeholders";
 import { FreezeFrameController } from "./FreezeFrameController";
 import { FxTrackerController } from "./FxTrackerController";
@@ -47,7 +48,6 @@ import { fxFolder } from "./fxHelpers";
 
 const HIDDEN = 1;
 const PARKED = new CFrame(FX_VIEW.parkedStuds[0], FX_VIEW.parkedStuds[1], FX_VIEW.parkedStuds[2]);
-const CAMERA_YAW = CFrame.Angles(0, degToRad(CAMERA_YAW_DEG), 0);
 const AXES = floorAxes();
 const NO_CUTS: ReadonlyArray<ComboDisplayCut> = [];
 
@@ -373,7 +373,7 @@ export class ComboController implements OnStart {
 		const part = renderPart("Part", false);
 		part.Name = "Shout";
 		part.Transparency = HIDDEN;
-		part.Size = new Vector3(
+		part.Size = floorCanvasPartSize(
 			COMBO_SHOUT.widthTiles * STUDS_PER_TILE,
 			FX_SPRITE_VIEW.thicknessStuds,
 			COMBO_SHOUT.depthTiles * STUDS_PER_TILE,
@@ -458,7 +458,7 @@ export class ComboController implements OnStart {
 			studsX(feetX + AXES.upX * up),
 			top - V.thicknessStuds / 2,
 			studsZ(feetZ + AXES.upZ * up),
-		).mul(CAMERA_YAW);
+		).mul(FLOOR_CANVAS_YAW);
 		if (!this.shoutVisible) {
 			this.shoutVisible = true;
 			surface.Enabled = true;

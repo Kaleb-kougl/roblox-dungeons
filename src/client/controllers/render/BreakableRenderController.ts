@@ -62,6 +62,7 @@ import { ThemeController } from "../game/ThemeController";
 import { FxTrackerController } from "../fx/FxTrackerController";
 import { FxSpriteController } from "../fx/FxSpriteController";
 import { ParticleController } from "../fx/ParticleController";
+import { FLOOR_CANVAS_TURN, floorCanvasPartSize } from "./floorCanvas";
 import {
 	buildPlaceholder,
 	destroyModel,
@@ -837,10 +838,11 @@ function buildDebris(piece: DecorPiece, at: Vector3, parent: Instance): BasePart
 	const part = renderPart("Part", false);
 	part.Name = piece.id;
 	part.Transparency = HIDDEN;
-	part.Size = new Vector3(w, v.debrisThicknessStuds, d);
+	part.Size = floorCanvasPartSize(w, v.debrisThicknessStuds, d);
 	part.CFrame = new CFrame(at.X, at.Y + v.debrisLiftStuds - v.debrisThicknessStuds / 2, at.Z)
 		.mul(CAMERA_YAW)
-		.mul(new CFrame(ox, 0, oz));
+		.mul(new CFrame(ox, 0, oz))
+		.mul(FLOOR_CANVAS_TURN);
 	const gui = createKvSurfaceGui("Debris");
 	gui.Face = Enum.NormalId.Top;
 	gui.SizingMode = Enum.SurfaceGuiSizingMode.FixedSize;

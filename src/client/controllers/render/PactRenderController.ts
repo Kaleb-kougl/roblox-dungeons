@@ -3,12 +3,12 @@ import { Janitor } from "@rbxts/janitor";
 import { RunService, Workspace } from "@rbxts/services";
 import { clientStore, selectBindings, selectInputDevice } from "client/store";
 import { DEV_MONO_FONT, createKvBillboardGui, createKvSurfaceGui, currentHudFont, onLocaleChanged } from "client/ui";
-import { CAMERA_PITCH_DEG, CAMERA_YAW_DEG, STUDS_PER_TILE } from "shared/config";
+import { CAMERA_PITCH_DEG, STUDS_PER_TILE } from "shared/config";
 import { keyDevice, RUN_ATTRIBUTES, shrineHint } from "shared/play";
 import { PACT_KIND_COUNT, PactKind, SIM_HZ, TILE_SIZE, type SimConfig, type SimState } from "shared/sim";
 import type { JuiceSettings } from "shared/settings";
 import type { ColorRole, PactAltar, StringVars, ThemePack, WorldImage } from "shared/theme";
-import { BULLET_VIEW, SPRITE_VIEW, degToRad, floorStudsY, spriteBillboard, studsX, studsZ } from "shared/view";
+import { BULLET_VIEW, SPRITE_VIEW, floorStudsY, spriteBillboard, studsX, studsZ } from "shared/view";
 import { FX_SPRITE_VIEW, effectiveParticles, motionScale } from "shared/view/fx";
 import {
 	COMBO_SHOUT_DRAW,
@@ -47,11 +47,11 @@ import { FxTrackerController } from "../fx/FxTrackerController";
 import { SimController } from "../game/SimController";
 import { ThemeController } from "../game/ThemeController";
 import { heightLayout, visualLayout } from "./decorParts";
+import { FLOOR_CANVAS_YAW, floorCanvasPartSize } from "./floorCanvas";
 import { buildPlaceholder, destroyModel, renderPart, setModelColor, type PlaceholderModel } from "./placeholders";
 
 const HIDDEN = 1;
 const PARKED = new CFrame(BULLET_VIEW.parkedStuds[0], BULLET_VIEW.parkedStuds[1], BULLET_VIEW.parkedStuds[2]);
-const CAMERA_YAW = CFrame.Angles(0, degToRad(CAMERA_YAW_DEG), 0);
 const AXES = floorAxes();
 /** A Cylinder Part's axis is X: this lays it flat (a disc on the floor). */
 const DISC = CFrame.Angles(0, 0, math.pi / 2);
@@ -312,7 +312,7 @@ export class PactRenderController implements OnStart {
 			studsX(c.x),
 			layerTop(CARD_LAYER) - FX_SPRITE_VIEW.thicknessStuds / 2,
 			studsZ(c.z),
-		).mul(CAMERA_YAW);
+		).mul(FLOOR_CANVAS_YAW);
 		this.floorJanitor.Add(() => {
 			if (view.body !== undefined) destroyModel(view.body);
 			view.debug?.anchor.Destroy();
@@ -399,7 +399,7 @@ export class PactRenderController implements OnStart {
 		const part = renderPart("Part", false);
 		part.Name = `Card${kind}`;
 		part.Transparency = HIDDEN;
-		part.Size = new Vector3(
+		part.Size = floorCanvasPartSize(
 			C.widthTiles * STUDS_PER_TILE,
 			FX_SPRITE_VIEW.thicknessStuds,
 			C.depthTiles * STUDS_PER_TILE,

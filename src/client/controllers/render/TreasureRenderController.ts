@@ -86,6 +86,7 @@ import { SimController } from "../game/SimController";
 import { ThemeController } from "../game/ThemeController";
 import { FreezeFrameController } from "../fx/FreezeFrameController";
 import { FxTrackerController } from "../fx/FxTrackerController";
+import { FLOOR_CANVAS_YAW, floorCanvasPartSize } from "./floorCanvas";
 import { ParticleController } from "../fx/ParticleController";
 import { attachmentHolder, floorPoint } from "../fx/fxHelpers";
 import {
@@ -103,7 +104,6 @@ import { buildGlint, setGlintBoard, setGlintFrame, setGlintTransparency, type Gl
 const V = TREASURE_VIEW;
 const HIDDEN = 1;
 const PARKED = new CFrame(BULLET_VIEW.parkedStuds[0], BULLET_VIEW.parkedStuds[1], BULLET_VIEW.parkedStuds[2]);
-const CAMERA_YAW = CFrame.Angles(0, degToRad(CAMERA_YAW_DEG), 0);
 const AXES = floorAxes();
 const CENTRE = new Vector2(0.5, 0.5);
 const WHITE = new Color3(1, 1, 1);
@@ -571,7 +571,7 @@ export class TreasureRenderController implements OnStart {
 	private placeFloorText(f: FloorText, x: number, z: number): void {
 		const F = FX_SPRITE_VIEW;
 		const top = floorStudsY() + F.liftStuds - COMBO_SHOUT_DRAW.layerStepsBelowEffects * F.layerStepStuds;
-		f.part.CFrame = new CFrame(studsX(x), top - F.thicknessStuds / 2, studsZ(z)).mul(CAMERA_YAW);
+		f.part.CFrame = new CFrame(studsX(x), top - F.thicknessStuds / 2, studsZ(z)).mul(FLOOR_CANVAS_YAW);
 	}
 
 	private showFloorText(f: FloorText): void {
@@ -959,7 +959,7 @@ export class TreasureRenderController implements OnStart {
 		const part = renderPart("Part", false);
 		part.Name = name;
 		part.Transparency = HIDDEN;
-		part.Size = new Vector3(
+		part.Size = floorCanvasPartSize(
 			widthTiles * STUDS_PER_TILE,
 			FX_SPRITE_VIEW.thicknessStuds,
 			depthTiles * STUDS_PER_TILE,

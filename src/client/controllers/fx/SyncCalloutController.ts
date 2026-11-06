@@ -1,10 +1,10 @@
 import { Controller, OnStart } from "@flamework/core";
 import { Janitor } from "@rbxts/janitor";
-import { CAMERA_YAW_DEG, STUDS_PER_TILE } from "shared/config";
+import { STUDS_PER_TILE } from "shared/config";
 import { MAX_PARTY_SIZE, type SimState } from "shared/sim";
 import type { JuiceSettings } from "shared/settings";
 import type { ThemePack } from "shared/theme";
-import { degToRad, studsX, studsZ } from "shared/view";
+import { studsX, studsZ } from "shared/view";
 import {
 	FX_SPRITE_VIEW,
 	FX_VIEW,
@@ -28,6 +28,7 @@ import {
 import { currentHudFont, onLocaleChanged } from "client/ui";
 import { SimController } from "../game/SimController";
 import { ThemeController } from "../game/ThemeController";
+import { FLOOR_CANVAS_YAW } from "../render/floorCanvas";
 import { renderPart } from "../render/placeholders";
 import { FxTrackerController } from "./FxTrackerController";
 import { NearMissController } from "./NearMissController";
@@ -36,7 +37,6 @@ import { floorText, floorTextTopStuds, fxFolder, type FloorText } from "./fxHelp
 
 const HIDDEN = 1;
 const PARKED = new CFrame(FX_VIEW.parkedStuds[0], FX_VIEW.parkedStuds[1], FX_VIEW.parkedStuds[2]);
-const CAMERA_YAW = CFrame.Angles(0, degToRad(CAMERA_YAW_DEG), 0);
 const AXES = floorAxes();
 
 /** One floor text (built once on first use, reused) and what it last showed. */
@@ -168,7 +168,7 @@ export class SyncCalloutController implements OnStart {
 			l.TextStrokeTransparency = HIDDEN - opacity * (HIDDEN - COMBO_SHOUT_DRAW.strokeTransparency);
 		}
 		const y = floorTextTopStuds() - FX_SPRITE_VIEW.thicknessStuds / 2;
-		slot.text.part.CFrame = new CFrame(studsX(x), y, studsZ(z)).mul(CAMERA_YAW);
+		slot.text.part.CFrame = new CFrame(studsX(x), y, studsZ(z)).mul(FLOOR_CANVAS_YAW);
 		if (!slot.visible) {
 			slot.visible = true;
 			slot.text.surface.Enabled = true;
