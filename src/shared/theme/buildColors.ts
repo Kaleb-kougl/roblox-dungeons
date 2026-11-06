@@ -3,7 +3,7 @@
  * validate.ts sits at Luau's 200-locals-per-function limit, so it imports nothing from here; variantColors.ts'
  * `variantColorProblems` (already called by validateManifest) folds this report's failures into its own.
  *
- * Every effect role (builds.ts BUILD_EFFECT_ROLES: spark, burst, shard, ember) is >= 3:1 (WCAG's graphics bar) on every
+ * Every effect role (builds.ts BUILD_EFFECT_ROLES: spark, burst, shard, ember, overkill) is >= 3:1 (WCAG's graphics bar) on every
  * biome floor and >= MIN_DECOR_FX_BULLET_DIFFERENCE (40, CIE76) from every enemy-bullet role, `telegraph`, `enemyGoo`,
  * `enemyOutline` and every boost role: a player effect must never read as danger, and danger never as decoration.
  */

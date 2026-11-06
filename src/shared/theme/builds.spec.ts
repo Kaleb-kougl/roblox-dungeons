@@ -56,6 +56,9 @@ describe("builds: contract", () => {
 			"hud.toast.evolved",
 			"hud.toast.duo",
 			"hud.build.title",
+			"hud.toast.brace",
+			"hud.toast.braceHeal",
+			"fx.brace.text",
 		]);
 		for (const k of BUILD_STRING_KEYS) expect([k, has(REQUIRED_STRING_KEYS, k)]).toEqual([k, true]);
 		expect(new Set(REQUIRED_STRING_KEYS).size()).toBe(REQUIRED_STRING_KEYS.size());
@@ -84,7 +87,7 @@ describe("builds: contract", () => {
 		expect(PLACEHOLDER_VISUALS["bullet.player.burst"].shape).toBe("Block");
 	});
 
-	it("appends the nine build sounds to PORT_AUDIO_EVENTS: required, sfx, SILENT in the placeholder", () => {
+	it("appends the eleven build sounds to PORT_AUDIO_EVENTS: required, sfx, SILENT in the placeholder", () => {
 		// right after new best's block (docs/DAILY.md DS10's rank layer two come after them)
 		const first = (PORT_AUDIO_EVENTS as ReadonlyArray<string>).indexOf("sfx.jingle.record") + 1;
 		const block = new Array<string>();

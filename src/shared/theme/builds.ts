@@ -16,6 +16,8 @@ import type { ColorRole } from "./types";
 /**
  * The builds HUD strings: an upgrade card's level line (`{level}`), the evolution and duo card banners, the boss double
  * draft's "Pick again" line, the evolve / duo toasts (`{boon}` / `{name}`, `{evo}`), the pause menu's Build list title.
+ * Then Bastion's brace (docs/LEGENDARIES.md LG5): the toast for a pip restored, Stone Heart's heal toast and the floor
+ * text (written in capitals in the string itself, like fx.parry.text; never upper-cased in code).
  */
 export const BUILD_STRING_KEYS: ReadonlyArray<string> = [
 	"hud.draft.level",
@@ -25,13 +27,17 @@ export const BUILD_STRING_KEYS: ReadonlyArray<string> = [
 	"hud.toast.evolved",
 	"hud.toast.duo",
 	"hud.build.title",
+	"hud.toast.brace",
+	"hud.toast.braceHeal",
+	"fx.brace.text",
 ];
 
 /** The evolution and duo cards' frames (held with the rarity ladder by boonRarityReport). */
 export const BOON_BUILD_ROLES: ReadonlyArray<ColorRole> = ["boon.evolved", "boon.duo"];
 
 /**
- * One colour per effect (docs/BUILDS.md BUD12): spark beams, Volatile's bolts, Soul Shards, embers. Held to
+ * One colour per effect (docs/BUILDS.md BUD12): spark beams, Volatile's bolts, Soul Shards, embers, then Overkill's
+ * streak (docs/LEGENDARIES.md LG5; a colour role only, like the spark beam: no bullet visual). Held to
  * BUILD_COLOR_RULES by `buildReport` (buildColors.ts): a player effect must never read as danger.
  */
 export const BUILD_EFFECT_ROLES: ReadonlyArray<ColorRole> = [
@@ -39,6 +45,7 @@ export const BUILD_EFFECT_ROLES: ReadonlyArray<ColorRole> = [
 	"build.burst",
 	"build.shard",
 	"build.ember",
+	"build.overkill",
 ];
 
 /** The effect bullets' visuals (sim BulletKind BURST / SHARD / EMBER / SPARK_BOLT), in BULLET_IDS. */
@@ -57,7 +64,11 @@ export const BUILD_BULLET_ROLES: ReadonlyArray<ColorRole> = [
 	"build.spark",
 ];
 
-/** The build sounds (port audio IDs, SILENT in the placeholder), in PORT_AUDIO_EVENTS. */
+/**
+ * The build sounds (port audio IDs, SILENT in the placeholder), in PORT_AUDIO_EVENTS. The last two are the
+ * legendaries' (docs/LEGENDARIES.md LG5): an Overkill streak and a Bastion brace; while silent they fall back to the
+ * spark and the Aegis pip's break (shared/view/audio SFX_FALLBACK).
+ */
 export const BUILD_AUDIO_IDS: ReadonlyArray<string> = [
 	"sfx.build.spark",
 	"sfx.build.burst",
@@ -68,4 +79,6 @@ export const BUILD_AUDIO_IDS: ReadonlyArray<string> = [
 	"sfx.build.evolve",
 	"sfx.build.duo",
 	"sfx.build.jackpot",
+	"sfx.build.overkill",
+	"sfx.build.brace",
 ];
