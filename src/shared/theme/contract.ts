@@ -1297,6 +1297,10 @@ export const DECOR_KIND_LAYERS = {
 	// along X, 2 along Z) with a chair (1 x 1) at each end, variant 1 facing +X, 2 +Z, 3 -X, 4 -Z (toward the table)
 	table: ["low"] as const,
 	chair: ["low"] as const,
+	// a wide bookcase (docs/KENNEY_DECOR.md KN3): two neighbouring bookcase cells of a run drawn as one case
+	// (presentation only; the Forge's pieces stay 1 x 1), low; variants in facing pairs like the bookcase's (odd +X,
+	// even +Z), 1 / 2 the full case, 3 / 4 .. the other looks (decorPlan's bookcasePairs / wideBookcaseVariant)
+	bookcaseWide: ["low"] as const,
 } as const satisfies Record<string, ReadonlyArray<DecorLayer>>;
 export type DecorKind = keyof typeof DECOR_KIND_LAYERS;
 
@@ -1335,6 +1339,7 @@ export const DECOR_KINDS: ReadonlyArray<DecorKind> = [
 	"bookcase",
 	"table",
 	"chair",
+	"bookcaseWide",
 ];
 
 /**

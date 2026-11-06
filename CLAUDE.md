@@ -65,7 +65,7 @@ Record every ported module in `PROVENANCE.md` (ported module, source path, sourc
 | `docs/PROJECTILE_ART.md` | Projectile art (every flying bullet drawn with the Player Bullets pack: yellow / green bolts and the Hyper flame for the player, chevron / needle / teardrop recoloured into the danger pink for enemies, optional `fx.bullet.hit`; goo / strike / ember unchanged; presentation only): plan, measured pack, mapping, tasks PA0-PA10, decisions PAD1-PAD11 |
 | `docs/DUMMY_ART.md` | Training dummy art (`enemy.dummy` drawn with the Training Dummy 2D Pixel Art pack: one facing, idle / 7-frame hit wobble / 9-frame break, the wobble on a view-side 0.7 s hit clip; presentation only): plan, tasks DA1-DA7, decisions DD1-DD5 |
 | `docs/GOO_ART.md` | Goo art (the Ooze's goo puddles drawn with the heimlich3 Slime pack's last two frames: land then splat, recoloured into `enemyGoo`, flat on the floor sized to cover the hit; presentation only): plan, tasks GA0-GA7, decisions GAD1-GAD5 |
-| `docs/KENNEY_DECOR.md` | Kenney decor (Kenney's CC0 Isometric Dungeon / Library reprojected from their 30 degree camera to the game's 55 by `scripts/art/kenney/reproject.py`: flat / box / uniform warps; library v2, a `mess` theme, richer storerooms, floor patches planned; the bookcase's alternative art set wired): plan, as built, tasks KN0-KN13, decisions KND1-KND12 |
+| `docs/KENNEY_DECOR.md` | Kenney decor (Kenney's CC0 Isometric Dungeon / Library reprojected from their 30 degree camera to the game's 55 by `scripts/art/kenney/reproject.py`: flat / box / uniform warps; library v2, a `mess` theme, richer storerooms, floor patches planned; the bookcase's alternative art set and its wide pairs wired): plan, as built, tasks KN0-KN13, decisions KND1-KND12 |
 | `docs/LEGENDARIES.md` | Legendaries (two legendary boons, Overkill: a kill's leftover damage streaks to the nearest enemy and chains; Bastion: a full-ring 27-tick guard, +1 pip and a brace that restores a pip when a guard or roll stops 3 bullets; four duos Supernova / Skewer / Citadel / Stone Heart; gameplay, opt-in `SimConfig.builds`): plan, LG0 findings, as built LG1-LG6, LG7 tuning, owner tuning, tasks LG0-LG9, decisions LGD1-LGD14 |
 
 Decision log (deviations from `PLAN.md`):
@@ -792,8 +792,14 @@ Decision log (deviations from `PLAN.md`):
   bookcases are wired as the bookcase's alternative art: 14 own PNGs `kenney-bookcase-<look>-x / -z`, vale variants
   3-16 after the kit pair, `DECOR_MAX_VARIANTS` 4 -> 16, and decorPlan's `bookcaseVariant` (one set per room,
   `DECOR_BOOKCASES`, salts `bookcaseSet` / `bookcaseCell`; with only the kit pair the plan is unchanged). Credits:
-  Isometric Library, Kenney, CC0. The 14 PNGs uploaded 2026-11-06 (IDs in `packs/vale/assetIds.ts`); the Lune specs
-  and a Studio check pending.
+  Isometric Library, Kenney, CC0. The 14 PNGs uploaded 2026-11-06 (IDs in `packs/vale/assetIds.ts`). **Wide cases
+  (KN3):** in a room of the alternative set, two neighbouring cases of a run draw as ONE Kenney wide case, a new decor
+  kind `bookcaseWide` (appended last to DECOR_KINDS, low, `DECOR_BOX.bookcaseWide` 13 / 21 / 3 at both pair ends,
+  hulled): decorPlan's `bookcasePairs` walks each run (one room, one facing, consecutive along its wall) from its low
+  end and pairs a case with the next at `DECOR_BOOKCASES.wideShare` 0.5 by cell hash (salt `bookcaseWide`; look
+  `wideBookcaseVariant`, salt `bookcaseWideLook`); the Forge's pieces stay 1 x 1 (no dungeon change). 12 own PNGs
+  `kenney-bookcase-<wide look>-x / -z` (reproject.py `stretch` 1.18 along the wall: 1.9 tiles, two narrow cases'
+  outer span); without their ids nothing pairs, so the plan is unchanged until the upload. Studio check pending.
 
 - **Training dummy art (docs/DUMMY_ART.md).** Presentation only (no sim, dungeon, lockstep, hash, replay, fixture or
   score change; the dummy keeps its 8 hp, body and corpse time). `enemy.dummy` gets a one-facing pixel-art sprite set

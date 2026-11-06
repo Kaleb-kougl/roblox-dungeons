@@ -1,8 +1,9 @@
 # Kenney decor: dungeon rooms and libraries (plan)
 
 Status (2026-11-06): **every piece redrawn** (KN1, KN2's renders) and **Kenney's bookcases wired as alternative art
-for the existing bookcase** (presentation only, "As built" below), uploaded 2026-11-06 11:46 AM; Studio check open. The Forge half (KN5-KN8) is not
-started. Owner answers (2026-11-06): **gameplay too, at once** (new solid set
+for the existing bookcase** (presentation only, "As built" below), uploaded 2026-11-06 11:46 AM; **wide pairs wired**
+(KN3, "Wide cases" below), their 12 PNGs not uploaded yet; Studio check open. Floor patches (KN4) wait on an owner
+call (mock `Claude outputs/kenney-floor-patches-mock.png`). The Forge half (KN5-KN8) is not started. Owner answers (2026-11-06): **gameplay too, at once** (new solid set
 pieces with the art, KND1); **kit art vs Kenney art is decided after a spike** (KND2); **props + floor patches**, walls
 and biome floors unchanged (KND3); **both** a new `mess` (mess hall) theme and richer storerooms (KND4). Everything else
 is proposed.
@@ -175,14 +176,57 @@ Owner (2026-11-06): "Proceed with redrawing all of them. Bookcases as alternativ
   variant's parity. With only the kit pair (before the upload) the plan is byte-identical to before. Credits: "Isometric
   Library", Kenney (kenney.nl), CC0; THIRD_PARTY_NOTICES.md.
 - **Checked** (the Mac's aarch64 VM): typecheck, lint (all of src), check:assets, test:art (165 / 165), rbxtsc build (in
-  a copy under /tmp: this VM may not delete, and rbxtsc replaces out/ files by unlinking them). **Not run: the Lune
-  specs** (no Lune in this VM): new decorPlan.spec case "draws a room's bookcases from one art set, in facing pairs",
-  and the updated decor.spec, void.spec, valeWorld.spec. Run `npm run verify` on the Mac.
-- **Not done here: a full `art:build` / `art:lock`.** This checkout's ten `player-bullets/*.png` differ from the lock
-  (about 6 KB on disk vs 0.4-0.8 KB locked), so a full build would rebuild `bullets.png` from them. The Kenney entries
-  were locked and built on their own; resolve the bullets mismatch before the next full art:build.
+  a copy under /tmp: this VM may not delete, and rbxtsc replaces out/ files by unlinking them). The Lune specs ran in
+  the next session (`worktrees/.kvtools/lune`): decorPlan, decor, void, valeWorld, valeArt pass.
+- **The bullets lock mismatch (fixed 2026-11-06).** The ten `player-bullets/*.png` on disk carried a 5758-byte `caBX`
+  chunk (C2PA content credentials, added by a re-download) that the locked files lack; with the chunk stripped every
+  one is byte-identical to its lock entry (sha256), so the gitignored copies were replaced by the stripped ones. A full
+  `art:build` and `art:lock` work again (all 2120 sources match; the full build changed no tracked file).
 - **Uploaded** (2026-11-06 11:46 AM, k9kbdev): the 14 `kenney-bookcase-*.png`, IDs in `packs/vale/assetIds.ts`. Open:
   a Studio look at a library of each set (the per-room split, the X / Z lighting, the ~3 % box shrink).
+
+### Wide cases (KN3, 2026-11-06)
+
+Presentation only (no Forge, dungeon, sim, hash, replay or fixture change): the Forge's bookcases stay 1 x 1 cells.
+
+- **Art.** reproject.py gained `stretch` (box mode, wall pieces): the game box drawn that much longer along its wall,
+  about the pivot. The six wide looks (`bookcaseWide`, `-WideLadder`, `-WideEmpty`, `-HalfWide`, `-HalfWideEmpty`,
+  `-WideEmptyLadder`) render at the narrow cases' scale 1.6 (1.61 tiles long) with `stretch` 1.18: 1.9 tiles, the outer
+  span of two narrow cases in neighbouring cells (1 + 0.91), same height (1.41; half 0.8), so a run of narrow and wide
+  cases reads as one shelf line (mock `Claude outputs/kenney-wide-bookcases-mock.png`). 12 own PNGs
+  `kenney-bookcase-<look>-x / -z` (looks `wide`, `wideladder`, `wideempty`, `halfwide`, `halfwideempty`,
+  `wideemptyladder`), pivot the pair's centre on the floor, half a tile in front of the wall.
+- **Theme.** A new decor kind `bookcaseWide` (low), appended last to `DECOR_KINDS` (no new Luau top-level local); vale
+  variants 1-12 in facing pairs (odd +X, even +Z), 1 / 2 the full case, then the ladder, empty, half, half empty and
+  empty-with-ladder cases.
+- **Plan.** `bookcasePairs` (decorPlan.ts): only with two `bookcaseWide` variants or more AND an alternative bookcase set,
+  and only in rooms that draw the alternative set (the kit case has no wide art). A run is a room's bookcases with one
+  facing, consecutive along their wall (so never across a corner, a gap or two rooms); it is walked from its low end and
+  a case with a neighbour after it pairs with it when its cell hash (salt `bookcaseWide`) falls under
+  `DECOR_BOOKCASES.wideShare` 0.5, then the walk skips the neighbour. The pair's lower piece index plans ONE entry over
+  both cells (`cells` 2, `runX` / `runZ` along the wall, anchor the pair's centre); its look is `wideBookcaseVariant`
+  (the full case at `altCommonShare` 0.45, else one of the five others evenly; salt `bookcaseWideLook`).
+  `DECOR_BOX.bookcaseWide` 13 / 21 / 3 at both pair ends, hulled (the smallest box holding all twelve outlines whole is
+  11 / 19 / 2). Without the wide ids (today) nothing pairs and the plan is byte-identical to before.
+- **Not done**: the plan's "at most one ladder per run" and "a half-height case at a run end" rules (looks are picked
+  per case or pair by hash, as for the narrow set).
+- **Checked**: typecheck, lint, check:assets, test:art (165 / 165), build; Lune: decorPlan.spec's new case "draws two
+  cells of a run as one wide case only in a room of the alternative set" (every Forge case drawn exactly once, pairs
+  within one run, facing parity, never without wide art or an alternative set), valeArt.spec (now also: wide and narrow
+  cases are planned on its six real floors and drawn whole inside their boxes), valeWorld, decor, void, decorFx,
+  requested-ids and the rest of view/decor and theme/packs/vale (19 files, 0 failures).
+- **Upload pending**: the 12 `kenney-bookcase-{wide,wideladder,wideempty,halfwide,halfwideempty,wideemptyladder}-{x,z}.png`
+  (`art/upload/`), then their IDs in `packs/vale/assetIds.ts`.
+
+### Floor patches: owner call (KN4)
+
+Mock `Claude outputs/kenney-floor-patches-mock.png`: the eight patches on each biome floor, raw (top row of each band) and
+graded (mixed 35 % toward the floor colour, detail x0.55, a feathered edge). Raw they are far brighter than every
+biome floor and would compete with bullets; graded they read as worn floor. The stone patches and `dirtTiles` carry
+raised blocks (and `stoneMissingTiles` a hole) that read as obstacles on walkable floor. Open: which patches (planks and
+dirt only?), and the grading route: baked per biome (5 x the patches as PNGs; the manifest gains per-biome decor art)
+or one greyscale detail PNG per patch tinted at runtime by the biome floor colour (a new DecorArt tint field and an
+ImageColor3 multiply in DecorController).
 
 ## Pipeline
 
@@ -214,8 +258,8 @@ Owner (2026-11-06): "Proceed with redrawing all of them. Bookcases as alternativ
   corners matches the game projection within 0.5 px, and a flat diamond becomes the 55 deg diamond.
 - [~] **KN2. Art set** (2026-11-06: every piece rendered; atlases / credits for the bookcases only). Render every piece in the tables above (both facings for wall and 2 x 1 pieces), the `kenney`
   atlas group, `art:build` / `art:lock`, valeWorld.spec's file list, THIRD_PARTY_NOTICES.md and `CREDITS`.
-- [~] **KN3. Variants (presentation)** (2026-11-06: narrow bookcase variants wired as a per-room alternative set; the
-  wide pairs and other swaps open). Bookcase variants, wide-pair drawing (KND11) and any kit -> Kenney swaps from
+- [~] **KN3. Variants (presentation)** (2026-11-06: narrow bookcase variants wired as a per-room alternative set; wide
+  pairs wired, upload pending; the run-end / ladder rules and other kit -> Kenney swaps open). Bookcase variants, wide-pair drawing (KND11) and any kit -> Kenney swaps from
   KN0 in the decor plan and vale manifest. Specs: a pair never spans two runs or a run's corner; variant picks are
   stable per cell.
 - [ ] **KN4. Floor patches (presentation).** Kind `patch`, the dressing rule, the biome grade, census in decorPlan.spec.

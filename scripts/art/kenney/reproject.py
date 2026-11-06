@@ -23,7 +23,8 @@ shows a wall piece's front on +X, S on +Z. Baked shadows (black, translucent) ar
 `wall` pieces (normal "x" / "z") stand with their back on the cell's back edge; the pivot is the footprint's centre
 on the floor, half a game tile in front of the back for wall pieces. `compose` pastes more cells over the first
 before anything else; `layers` draws more sources over the result, each reprojected in its own mode with the same
-pivot (the stockpile: barrels under a scaffold). Scale: `scale` game tiles to a Kenney tile (matched on
+pivot (the stockpile: barrels under a scaffold). `stretch` (box mode, wall pieces) draws the box longer along its wall,
+about the pivot (the wide bookcases over two cells). Scale: `scale` game tiles to a Kenney tile (matched on
 the barrel, KND5; a piece may set its own: the bookcases fit the kit bookcase's cell and DECOR_BOX), then the TILE_PX
 decor scale; graded like the kits (`grade`, a piece's own fields override).
 """
@@ -103,15 +104,16 @@ def warp(im, src3, dst3):
 class Mapper:
     """World points (Kenney tiles) to source pixels (Kenney camera) and canvas pixels (game camera, pivot at ORIGIN)."""
 
-    def __init__(self, anchor, pivot):
+    def __init__(self, anchor, pivot, stretch=(1.0, 1.0, 1.0)):
         self.anchor = np.array(anchor)
         self.pivot = np.array(pivot, dtype=float)
+        self.stretch = np.array(stretch, dtype=float)
 
     def src(self, p):
         return self.anchor + proj(EI, p)
 
     def dst(self, p):
-        return ORIGIN + proj(EG, np.array(p, dtype=float) - self.pivot)
+        return ORIGIN + proj(EG, (np.array(p, dtype=float) - self.pivot) * self.stretch)
 
 
 def poly_mask(points, grow=0):
@@ -281,7 +283,11 @@ def render(name, spec, cfg, boxes):
                 pivot = (cx, z0 + gt / 2, 0)
             else:
                 pivot = (cx, cz, 0)
-            mp = Mapper(GROUND, pivot)
+            # `stretch` (box mode): the game box drawn that much longer along a wall piece's run (its wall's axis), about
+            # the pivot: the wide bookcases fill the two cells they are drawn over (docs/KENNEY_DECOR.md KN3)
+            st = float(v.get("stretch", spec.get("stretch", 1.0)))
+            stretch = (1.0, st, 1.0) if wall == "x" else (st, 1.0, 1.0) if wall == "z" else (1.0, 1.0, 1.0)
+            mp = Mapper(GROUND, pivot, stretch)
             at = (x0, cz, 0) if wall == "x" else (cx, z0, 0) if wall == "z" else (cx, cz, 0)
             if mode == "box":
                 canvas = do_box(im, mp, box)
@@ -303,7 +309,7 @@ def render(name, spec, cfg, boxes):
         out.save(path)
         with open(path + ".pivot.json", "w") as f:
             json.dump(pv, f)
-        foot = None if box is None else [round((box[1] - box[0]) * tiles, 2), round((box[3] - box[2]) * tiles, 2), round(box[4] * tiles, 2)]
+        foot = None if box is None else [round(float((box[1] - box[0]) * tiles * mp.stretch[0]), 2), round(float((box[3] - box[2]) * tiles * mp.stretch[1]), 2), round(float(box[4] * tiles), 2)]
         results.append((name, v["file"], out.size, pv, foot))
         print(f"{name}/{v['file']}: {out.size[0]}x{out.size[1]} pivot {pv}" + (f" box {foot} game tiles (x, z, h)" if foot else ""), flush=True)
     return results

@@ -92,6 +92,7 @@ import {
 	type Dungeon,
 	type EndlessFloorLayout,
 	type PropKind,
+	type SolidDecorPiece,
 	type WorldXZ,
 } from "shared/dungeon";
 import { stableSort } from "shared/jsmath";
@@ -210,6 +211,10 @@ export const DECOR_BOX: Readonly<Record<StandingKind, DecorBoxPx>> = {
 	// chair's at its cell
 	table: { w: 14, h: 10, below: 2 },
 	chair: { w: 11, h: 11, below: 4 },
+	// a wide bookcase (docs/KENNEY_DECOR.md KN3): two cells of a run drawn as one Kenney case, its box at both ends of the
+	// pair (the run's outer edges), hulled (as the tomb's); the smallest box (w x h + below) holding the outlines of all
+	// six looks in both facings at full size is 11 / 19 / 2, kept with a pixel to spare
+	bookcaseWide: { w: 13, h: 21, below: 3 },
 };
 
 /** Tall Forge pieces in placement priority (highest first). */
@@ -260,7 +265,8 @@ export type StandingKind =
 	| "statue"
 	| "bookcase"
 	| "table"
-	| "chair";
+	| "chair"
+	| "bookcaseWide";
 
 /**
  * Where an entry comes from: a Forge prop, a Forge torch, R6 far-wall dressing, a solid pillar's stump, or a void set
@@ -1257,16 +1263,24 @@ export function planDecor(input: DecorPlanInput): DecorPlan {
 	// Dungeon.solidDecor's set pieces stand on their own WALL cells (real obstacles: the footprint rule does not apply,
 	// nothing can stand behind them inside their cells), at floor level, faded like any standing piece. A 2 x 1 tomb's
 	// box stands at both ends of its run, a rectangle's (throne, statue) at its four corners. Then the carpets, flat.
-	for (const piece of d.solidDecor ?? []) {
-		const kind: StandingKind = piece.kind;
+	// Two bookcases of a run may draw as one wide case (bookcasePairs, docs/KENNEY_DECOR.md KN3): the lower piece index
+	// of the pair plans one bookcaseWide entry over both cells, the other none.
+	const solidPieces = d.solidDecor ?? [];
+	const widePairs = bookcasePairs(solidPieces, input.variants, seed);
+	solidPieces.forEach((piece, index) => {
+		const partner = widePairs.get(index);
+		if (partner !== undefined && partner < index) return;
+		const wide = partner !== undefined;
+		const other = wide ? solidPieces[partner] : piece;
+		const kind: StandingKind = wide ? "bookcaseWide" : piece.kind;
 		const rect = piece.w > 1 && piece.h > 1;
 		const f: DecorFootprint = {
-			x0: piece.x,
-			y0: piece.y,
-			x1: piece.x + piece.w - 1,
-			y1: piece.y + piece.h - 1,
-			runX: piece.w > 1 ? 1 : 0,
-			runZ: piece.h > 1 ? 1 : 0,
+			x0: math.min(piece.x, other.x),
+			y0: math.min(piece.y, other.y),
+			x1: math.max(piece.x + piece.w, other.x + other.w) - 1,
+			y1: math.max(piece.y + piece.h, other.y + other.h) - 1,
+			runX: piece.w > 1 || other.x !== piece.x ? 1 : 0,
+			runZ: piece.h > 1 || other.y !== piece.y ? 1 : 0,
 		};
 		const box = DECOR_BOX[kind];
 		const x = (f.x0 + f.x1) / 2;
@@ -1276,7 +1290,7 @@ export function planDecor(input: DecorPlanInput): DecorPlan {
 			polygon: boxPolygon(cam, f, box, 0, 0),
 			depth: planeDepth(cam, f, box, 0),
 		});
-		const hash = decorHash(seed, cellKey(piece.x, piece.y), DECOR_SALT.variant);
+		const hash = decorHash(seed, cellKey(f.x0, f.y0), DECOR_SALT.variant);
 		const count = input.variants !== undefined ? input.variants(kind) : 0;
 		// a tomb's / table's variants: 1 along X, 2 along Z; a throne's / statue's / bookcase's: 1 facing +X, 2 facing +Z;
 		// a chair's: 1 facing +X, 2 +Z, 3 -X, 4 -Z (each only when the pack has them all)
@@ -1284,7 +1298,7 @@ export function planDecor(input: DecorPlanInput): DecorPlan {
 		let axisVariants = 2;
 		if (kind === "tomb" || kind === "table") axisVariant = piece.w > 1 ? 0 : 1;
 		else if (rect && (kind === "throne" || kind === "statue")) axisVariant = piece.fx !== 0 ? 0 : 1;
-		else if (kind === "bookcase") axisVariant = piece.fx !== 0 ? 0 : 1;
+		else if (kind === "bookcase" || kind === "bookcaseWide") axisVariant = piece.fx !== 0 ? 0 : 1;
 		else if (kind === "chair") {
 			axisVariants = 4;
 			axisVariant = piece.fx > 0 ? 0 : piece.fz > 0 ? 1 : piece.fx < 0 ? 2 : 3;
@@ -1299,6 +1313,14 @@ export function planDecor(input: DecorPlanInput): DecorPlan {
 				decorHash01(seed, cellKey(piece.x, piece.y), DECOR_SALT.bookcaseCell),
 			);
 			if (v >= 0) variant = v;
+		} else if (wide) {
+			// facing pairs, the full case most often (DECOR_BOOKCASES)
+			const v = wideBookcaseVariant(
+				count,
+				axisVariant,
+				decorHash01(seed, cellKey(f.x0, f.y0), DECOR_SALT.bookcaseWideLook),
+			);
+			if (v >= 0) variant = v;
 		}
 		const light = LIGHTS.has(kind);
 		entries.push({
@@ -1308,9 +1330,9 @@ export function planDecor(input: DecorPlanInput): DecorPlan {
 			x,
 			y: 0,
 			z,
-			cellX: piece.x,
-			cellY: piece.y,
-			cells: math.max(piece.w, piece.h),
+			cellX: f.x0,
+			cellY: f.y0,
+			cells: math.max(f.x1 - f.x0, f.y1 - f.y0) + 1,
 			runX: f.runX,
 			runZ: f.runZ,
 			faceX: piece.fx,
@@ -1326,7 +1348,7 @@ export function planDecor(input: DecorPlanInput): DecorPlan {
 			rot: 0,
 			scale: 1,
 		});
-	}
+	});
 	if (input.variants !== undefined && input.variants("carpet") > 0)
 		for (const cp of d.carpets ?? []) {
 			// 2 x 2 segments from the throne outward; variants: 1 along X, 2 along Z, 3 / 4 the end along X / Z
@@ -1485,6 +1507,84 @@ export function bookcaseVariant(count: number, axis: number, room01: number, cel
 	if (others > 0 && cell01 >= common)
 		pair = 2 + math.min(others - 1, math.floor(((cell01 - common) / (1 - common)) * others));
 	return pair * 2 + axis;
+}
+
+/**
+ * A wide bookcase's variant (0-based) among the pack's `count` bookcaseWide variants (docs/KENNEY_DECOR.md KN3): facing
+ * pairs, `axis` 0 facing +X, 1 facing +Z; pair 0 (the full case) when the pair's hash `look01` (0..1) falls under
+ * DECOR_BOOKCASES.altCommonShare, else one of the other pairs, evenly. No pair or no axis: -1 (the caller's hash pick).
+ */
+export function wideBookcaseVariant(count: number, axis: number, look01: number): number {
+	const pairCount = math.floor(count / 2);
+	if (pairCount < 1 || axis < 0) return -1;
+	const others = pairCount - 1;
+	const common = DECOR_BOOKCASES.altCommonShare;
+	let pair = 0;
+	if (others > 0 && look01 >= common)
+		pair = 1 + math.min(others - 1, math.floor(((look01 - common) / (1 - common)) * others));
+	return pair * 2 + axis;
+}
+
+/**
+ * Which solid bookcases draw as wide pairs (docs/KENNEY_DECOR.md KN3, KND11; presentation only): piece index -> its
+ * partner's index, both ways. Only when the pack has wide art (two bookcaseWide variants or more) and an alternative
+ * bookcase set (bookcaseVariant), and only in rooms that draw the alternative set (the primary art has no wide case). A
+ * run is the room's bookcases with one facing, consecutive along their wall; each is walked from its low end, and a
+ * case with a neighbour after it pairs with it when its cell hash falls under DECOR_BOOKCASES.wideShare (then the walk
+ * skips the neighbour). So a pair never spans two runs, a corner or a gap, and every pick is stable per cell.
+ */
+export function bookcasePairs(
+	pieces: ReadonlyArray<SolidDecorPiece>,
+	variants: ((kind: DecorKind) => number) | undefined,
+	seed: number,
+): Map<number, number> {
+	const partners = new Map<number, number>();
+	if (variants === undefined || math.floor(variants("bookcaseWide") / 2) < 1) return partners;
+	const narrow = variants("bookcase");
+	if (bookcaseVariant(narrow, 0, 0, 0) < 2) return partners;
+	const at = new Map<number, number>();
+	pieces.forEach((p, i) => {
+		if (p.kind === "bookcase" && p.w === 1 && p.h === 1) at.set(cellKey(p.x, p.y), i);
+	});
+	const seen = new Set<number>();
+	pieces.forEach((p, i) => {
+		if (p.kind !== "bookcase" || seen.has(i) || !at.has(cellKey(p.x, p.y))) return;
+		// the run: along Z for a case facing +-X, along X for one facing +-Z
+		const sx = p.fx !== 0 ? 0 : 1;
+		const sy = p.fx !== 0 ? 1 : 0;
+		const sameRun = (j: number | undefined): j is number => {
+			if (j === undefined) return false;
+			const q = pieces[j];
+			return q.room === p.room && q.fx === p.fx && q.fz === p.fz;
+		};
+		let x0 = p.x;
+		let y0 = p.y;
+		while (sameRun(at.get(cellKey(x0 - sx, y0 - sy)))) {
+			x0 -= sx;
+			y0 -= sy;
+		}
+		const run: number[] = [];
+		let j = at.get(cellKey(x0, y0));
+		let k = 0;
+		while (sameRun(j)) {
+			run.push(j);
+			seen.add(j);
+			k++;
+			j = at.get(cellKey(x0 + k * sx, y0 + k * sy));
+		}
+		if (bookcaseVariant(narrow, 0, decorHash01(seed, p.room, DECOR_SALT.bookcaseSet), 0) < 2) return;
+		let n = 0;
+		while (n + 1 < run.size()) {
+			const a = run[n];
+			const q = pieces[a];
+			if (decorHash01(seed, cellKey(q.x, q.y), DECOR_SALT.bookcaseWide) < DECOR_BOOKCASES.wideShare) {
+				partners.set(a, run[n + 1]);
+				partners.set(run[n + 1], a);
+				n += 2;
+			} else n++;
+		}
+	});
+	return partners;
 }
 
 function variantOf(input: DecorPlanInput, kind: DecorKind, hash: number): number {

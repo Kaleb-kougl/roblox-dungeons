@@ -122,6 +122,8 @@ export const DECOR_SALT = {
 	banner: 0x1b56c4e9,
 	bookcaseSet: 0x7f4a7c15,
 	bookcaseCell: 0x4cf5ad43,
+	bookcaseWide: 0x7b2c3e91,
+	bookcaseWideLook: 0x1f5e9a3d,
 } as const;
 
 /**
@@ -133,6 +135,13 @@ export const DECOR_SALT = {
 export const DECOR_BOOKCASES = {
 	altRoomShare: 0.5,
 	altCommonShare: 0.45,
+	/**
+	 * Wide cases (docs/KENNEY_DECOR.md KN3, KND11): in a room drawing the alternative set, when the pack has wide art
+	 * (decor kind bookcaseWide), each run is walked from its low end and a case with a neighbour after it in the run
+	 * starts a pair at this share (cell hash): the two cells draw as one wide case. Its look: the full case at
+	 * `altCommonShare`, else one of the others, evenly.
+	 */
+	wideShare: 0.5,
 } as const;
 
 /**

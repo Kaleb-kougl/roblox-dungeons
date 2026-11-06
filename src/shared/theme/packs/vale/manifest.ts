@@ -274,6 +274,20 @@ export const VALE_DECOR_PIECES: ReadonlyArray<ValeDecorPiece> = [
 	{ kind: "bookcase", variant: 14, art: "kenney-bookcase-empty-z", layer: "low" },
 	{ kind: "bookcase", variant: 15, art: "kenney-bookcase-halfempty-x", layer: "low" },
 	{ kind: "bookcase", variant: 16, art: "kenney-bookcase-halfempty-z", layer: "low" },
+	// the wide case (docs/KENNEY_DECOR.md KN3): two cells of a run in a room drawing the alternative set, facing +X / +Z;
+	// 1 / 2 the full case, then the ladder, empty, half-height, half-height empty and empty-with-ladder cases
+	{ kind: "bookcaseWide", variant: 1, art: "kenney-bookcase-wide-x", layer: "low" },
+	{ kind: "bookcaseWide", variant: 2, art: "kenney-bookcase-wide-z", layer: "low" },
+	{ kind: "bookcaseWide", variant: 3, art: "kenney-bookcase-wideladder-x", layer: "low" },
+	{ kind: "bookcaseWide", variant: 4, art: "kenney-bookcase-wideladder-z", layer: "low" },
+	{ kind: "bookcaseWide", variant: 5, art: "kenney-bookcase-wideempty-x", layer: "low" },
+	{ kind: "bookcaseWide", variant: 6, art: "kenney-bookcase-wideempty-z", layer: "low" },
+	{ kind: "bookcaseWide", variant: 7, art: "kenney-bookcase-halfwide-x", layer: "low" },
+	{ kind: "bookcaseWide", variant: 8, art: "kenney-bookcase-halfwide-z", layer: "low" },
+	{ kind: "bookcaseWide", variant: 9, art: "kenney-bookcase-halfwideempty-x", layer: "low" },
+	{ kind: "bookcaseWide", variant: 10, art: "kenney-bookcase-halfwideempty-z", layer: "low" },
+	{ kind: "bookcaseWide", variant: 11, art: "kenney-bookcase-wideemptyladder-x", layer: "low" },
+	{ kind: "bookcaseWide", variant: 12, art: "kenney-bookcase-wideemptyladder-z", layer: "low" },
 	// a library's reading area (docs/BOOKSHELVES.md): the table along X / along Z, the chair facing +X / +Z / -X / -Z
 	{ kind: "table", variant: 1, art: "kit-table-x", layer: "low" },
 	{ kind: "table", variant: 2, art: "kit-table-z", layer: "low" },

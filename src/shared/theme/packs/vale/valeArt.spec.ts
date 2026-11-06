@@ -110,6 +110,9 @@ describe("vale decor art held to DECOR_BOX (docs/DECOR.md R5)", () => {
 		}
 		for (const kind of ["column", "columnBroken"]) expect([kind, (drawn.get(kind) ?? 0) > 0]).toEqual([kind, true]);
 		for (const kind of ["wall", "wallBroken"]) expect([kind, drawn.get(kind) ?? 0]).toEqual([kind, 0]);
+		// docs/KENNEY_DECOR.md KN3: the wide cases (pairs of a run) and the narrow ones beside them, whole
+		for (const kind of ["bookcase", "bookcaseWide"])
+			expect([kind, (drawn.get(kind) ?? 0) > 0]).toEqual([kind, true]);
 	});
 
 	it("wall pieces take the render along their wall: segments run across their normal, torches point along it", () => {

@@ -189,7 +189,7 @@
 			}
 		},
 		"bookcaseWide": {
-			"$comment": "Not wired yet: two neighbouring cells of a run drawn as one case (presentation only); pivot = the pair's centre. At the bookcases' scale it is 1.6 tiles wide, short of 2 cells.",
+			"$comment": "Two neighbouring cells of a run drawn as one case (presentation only, decor kind bookcaseWide, KN3); pivot = the pair's centre. At the bookcases' scale it is 1.61 tiles wide; stretch 1.18 along the wall makes it 1.9, the outer span of two narrow cases in neighbouring cells (1 + 0.91).",
 			"src": "kenney-library/Isometric/bookcaseWideBooks_{f}.png",
 			"wall": true,
 			"boxFrom": "kenney-library/Isometric/bookcaseWideBooks_{f}.png",
@@ -206,6 +206,7 @@
 				}
 			],
 			"scale": 1.6,
+			"stretch": 1.18,
 			"grade": {
 				"brightness": 0.72
 			}
@@ -227,6 +228,7 @@
 				}
 			],
 			"scale": 1.6,
+			"stretch": 1.18,
 			"grade": {
 				"brightness": 0.72
 			}
@@ -248,6 +250,7 @@
 				}
 			],
 			"scale": 1.6,
+			"stretch": 1.18,
 			"grade": {
 				"brightness": 0.72
 			}
@@ -269,6 +272,7 @@
 				}
 			],
 			"scale": 1.6,
+			"stretch": 1.18,
 			"grade": {
 				"brightness": 0.72
 			}
@@ -290,6 +294,7 @@
 				}
 			],
 			"scale": 1.6,
+			"stretch": 1.18,
 			"grade": {
 				"brightness": 0.72
 			}
@@ -311,6 +316,7 @@
 				}
 			],
 			"scale": 1.6,
+			"stretch": 1.18,
 			"grade": {
 				"brightness": 0.72
 			}

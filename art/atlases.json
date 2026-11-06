@@ -1538,6 +1538,79 @@
 				"outline": true,
 				"own": "kenney-bookcase-halfempty-z"
 			},
+			"$comment-kenney-bookcase-wide": "Kenney wide bookcases (Isometric Library, Kenney, CC0; docs/KENNEY_DECOR.md KN3): two neighbouring cells of a run drawn as one case (decor kind bookcaseWide), reprojected by scripts/art/kenney/reproject.py and stretched 1.18 along the wall to the outer span of two narrow cases (1.9 tiles). Pivot = the pair's centre on the floor, half a tile in front of the wall; facing +X (_x) and +Z (_z). Own PNGs.",
+			"kenney-bookcase-wide-x": {
+				"file": "kenney/bookcaseWide/wide_x.png",
+				"pivot": [33.05, 50.49],
+				"outline": true,
+				"own": "kenney-bookcase-wide-x"
+			},
+			"kenney-bookcase-wide-z": {
+				"file": "kenney/bookcaseWide/wide_z.png",
+				"pivot": [22.68, 49.61],
+				"outline": true,
+				"own": "kenney-bookcase-wide-z"
+			},
+			"kenney-bookcase-wideladder-x": {
+				"file": "kenney/bookcaseWideLadder/wideladder_x.png",
+				"pivot": [33.05, 50.49],
+				"outline": true,
+				"own": "kenney-bookcase-wideladder-x"
+			},
+			"kenney-bookcase-wideladder-z": {
+				"file": "kenney/bookcaseWideLadder/wideladder_z.png",
+				"pivot": [22.68, 49.61],
+				"outline": true,
+				"own": "kenney-bookcase-wideladder-z"
+			},
+			"kenney-bookcase-wideempty-x": {
+				"file": "kenney/bookcaseWideEmpty/wideempty_x.png",
+				"pivot": [32.88, 50.49],
+				"outline": true,
+				"own": "kenney-bookcase-wideempty-x"
+			},
+			"kenney-bookcase-wideempty-z": {
+				"file": "kenney/bookcaseWideEmpty/wideempty_z.png",
+				"pivot": [21.76, 49.61],
+				"outline": true,
+				"own": "kenney-bookcase-wideempty-z"
+			},
+			"kenney-bookcase-halfwide-x": {
+				"file": "kenney/bookcaseHalfWide/halfwide_x.png",
+				"pivot": [32.76, 40.42],
+				"outline": true,
+				"own": "kenney-bookcase-halfwide-x"
+			},
+			"kenney-bookcase-halfwide-z": {
+				"file": "kenney/bookcaseHalfWide/halfwide_z.png",
+				"pivot": [21.91, 39.57],
+				"outline": true,
+				"own": "kenney-bookcase-halfwide-z"
+			},
+			"kenney-bookcase-halfwideempty-x": {
+				"file": "kenney/bookcaseHalfWideEmpty/halfwideempty_x.png",
+				"pivot": [32.76, 40.42],
+				"outline": true,
+				"own": "kenney-bookcase-halfwideempty-x"
+			},
+			"kenney-bookcase-halfwideempty-z": {
+				"file": "kenney/bookcaseHalfWideEmpty/halfwideempty_z.png",
+				"pivot": [21.95, 39.57],
+				"outline": true,
+				"own": "kenney-bookcase-halfwideempty-z"
+			},
+			"kenney-bookcase-wideemptyladder-x": {
+				"file": "kenney/bookcaseWideEmptyLadder/wideemptyladder_x.png",
+				"pivot": [32.88, 50.49],
+				"outline": true,
+				"own": "kenney-bookcase-wideemptyladder-x"
+			},
+			"kenney-bookcase-wideemptyladder-z": {
+				"file": "kenney/bookcaseWideEmptyLadder/wideemptyladder_z.png",
+				"pivot": [22.55, 49.61],
+				"outline": true,
+				"own": "kenney-bookcase-wideemptyladder-z"
+			},
 			"$comment-reading": "Reading area (library rooms): the Dungeon Assets Pack by zver.3d (credit \"zver.3d\"; scripts/art/kit/zver-dungeon-assets.json) at world scale, 2.2 FBX units a tile. The table with its pages and candlestick on a 2 x 1 footprint, along X (_x) and Z (_z), pivot = the footprint's centre on the floor; the chair on one cell facing +X / +Z / -X / -Z (_px / _pz / _nx / _nz: the way a seated person looks), pivot = the cell's centre under the seat (render_kit.py pivotOut).",
 			"kit-table-x": {
 				"file": "zver-dungeon-assets/table/table_x.png",

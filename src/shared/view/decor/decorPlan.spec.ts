@@ -32,6 +32,7 @@ import {
 	MAX_TALL_PER_ROOM,
 	TALL_MIN_SPACING,
 	bookcaseVariant,
+	wideBookcaseVariant,
 	decorInputOfLayout,
 	footprintClear,
 	footprintStencil,
@@ -738,6 +739,67 @@ describe('solid decor (docs/DECOR.md "Solid decor", "Room themes": set pieces on
 		}
 		expect(n).toBeGreaterThan(0);
 		expect(sets.get(0) === true && sets.get(1) === true).toBe(true);
+	});
+
+	it("draws two cells of a run as one wide case only in a room of the alternative set (docs/KENNEY_DECOR.md KN3)", () => {
+		// the pure pick: facing pairs, the full case at the common share, else the others evenly
+		expect(wideBookcaseVariant(0, 0, 0.5)).toBe(-1);
+		expect(wideBookcaseVariant(12, -1, 0.5)).toBe(-1);
+		expect(wideBookcaseVariant(2, 1, 0.99)).toBe(1);
+		expect(wideBookcaseVariant(12, 0, DECOR_BOOKCASES.altCommonShare - 1e-9)).toBe(0);
+		expect(wideBookcaseVariant(12, 1, DECOR_BOOKCASES.altCommonShare)).toBe(3);
+		expect(wideBookcaseVariant(12, 0, 1 - 1e-12)).toBe(10);
+		for (let i = 0; i < 200; i++) {
+			const v = wideBookcaseVariant(12, i % 2, i / 200);
+			expect(v >= 0 && v < 12 && v % 2 === i % 2).toBe(true);
+		}
+		const counts = (wide: number, narrow: number) => (k: string) =>
+			k === "bookcase" ? narrow : k === "bookcaseWide" ? wide : 0;
+		let wides = 0;
+		let singles = 0;
+		for (const f of CENSUS) {
+			const d = f.layout.dungeon;
+			const shelves = new Map<number, (typeof d.solidDecor)[number]>();
+			for (const p of d.solidDecor) if (p.kind === "bookcase") shelves.set(p.y * 65536 + p.x, p);
+			const input = decorInputOfLayout(f.layout);
+			const plan = planDecor({ ...input, variants: counts(12, 16) });
+			// without wide art, or without an alternative set, nothing pairs
+			for (const v of [counts(0, 16), counts(12, 2)])
+				for (const e of planDecor({ ...input, variants: v }).entries) expect(e.kind).never.toBe("bookcaseWide");
+			// every Forge bookcase is drawn exactly once: as its own case or as one cell of a wide one
+			const drawn = new Map<number, number>();
+			const altRoom = new Map<number, boolean>();
+			for (const e of plan.entries) {
+				if (e.source !== "solid" || (e.kind !== "bookcase" && e.kind !== "bookcaseWide")) continue;
+				expect(e.layer).toBe("low");
+				expect(e.fade >= 0).toBe(true);
+				const cells = e.kind === "bookcaseWide" ? 2 : 1;
+				expect(e.cells).toBe(cells);
+				const first = shelves.get(e.cellY * 65536 + e.cellX)!;
+				expect(first).toBeDefined();
+				for (let i = 0; i < cells; i++) {
+					const key = (e.cellY + i * e.runZ) * 65536 + e.cellX + i * e.runX;
+					const p = shelves.get(key)!;
+					// the pair: one room, one facing, along its wall (across the facing)
+					expect([p.room, p.fx, p.fz]).toEqual([e.roomId, e.faceX, e.faceZ]);
+					drawn.set(key, (drawn.get(key) ?? 0) + 1);
+				}
+				if (e.kind === "bookcaseWide") {
+					expect([e.runX, e.runZ]).toEqual(e.faceX !== 0 ? [0, 1] : [1, 0]);
+					expect([e.x, e.z]).toEqual([e.cellX + e.runX / 2, e.cellY + e.runZ / 2]);
+					expect(e.variant % 2).toBe(e.faceX !== 0 ? 0 : 1);
+					expect(e.variant >= 0 && e.variant < 12).toBe(true);
+					wides++;
+				} else singles++;
+				const alt = e.kind === "bookcaseWide" || e.variant >= 2;
+				const seen = altRoom.get(e.roomId);
+				if (seen !== undefined) expect([e.roomId, seen]).toEqual([e.roomId, alt]);
+				altRoom.set(e.roomId, alt);
+			}
+			for (const [key] of shelves) expect([key, drawn.get(key)]).toEqual([key, 1]);
+		}
+		expect(wides).toBeGreaterThan(0);
+		expect(singles).toBeGreaterThan(0);
 	});
 
 	it("takes a reading area's table axis and chair facing as their variants, low, with a fade box, and draws no pillar it cleared (docs/BOOKSHELVES.md)", () => {
