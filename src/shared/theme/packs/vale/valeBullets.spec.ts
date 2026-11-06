@@ -13,6 +13,7 @@ import { VALE_ASSET_IDS } from "./assetIds";
 import { VALE_BULLET_SOURCE, valeBulletAssets, type ValeBulletSource } from "./bullets";
 import { VALE_BULLET_FX_LAYOUTS, VALE_BULLET_LAYOUTS, VALE_BULLET_SHEET, type ValeBulletLayout } from "./bulletLayout";
 import { VALE_FX } from "./fx";
+import { VALE_GOO_SHEET } from "./gooLayout";
 import { VALE_MANIFEST, buildValeManifest } from "./manifest";
 
 const quiet = () => undefined;
@@ -192,7 +193,10 @@ describe("vale bullets (docs/PROJECTILE_ART.md PA6)", () => {
 			expect([id, pack.bullet(id) !== undefined]).toEqual([id, true]);
 		for (const id of sortedKeys(m.assets)) {
 			if (!isBullet(id)) continue;
-			const drawn = VALE_BULLET_LAYOUTS[id] !== undefined;
+			// the goo puddle draws its own sheet (docs/GOO_ART.md) once goo.png has an ID
+			const floorSprite =
+				BULLET_ART.floorSpriteIds.includes(id) && VALE_ASSET_IDS[VALE_GOO_SHEET.file] !== undefined;
+			const drawn = VALE_BULLET_LAYOUTS[id] !== undefined || floorSprite;
 			expect([id, m.assets[id].kind === "sprites"]).toEqual([id, drawn]);
 		}
 	});

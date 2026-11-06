@@ -296,7 +296,9 @@ describe("enemy variants: bundled packs", () => {
 				const kind = id === "vale" ? "sprites" : "placeholder";
 				expect([id, a, pack.assets[`enemy.${a}`].kind]).toEqual([id, a, kind]);
 			}
-			expect([id, pack.assets[GOO_BULLET_ID]]).toEqual([id, { kind: "placeholder" }]);
+			// vale draws the goo with its own art since goo.png was uploaded (docs/GOO_ART.md GA6)
+			const goo = pack.assets[GOO_BULLET_ID];
+			expect([id, goo.kind]).toEqual([id, id === "vale" ? "sprites" : "placeholder"]);
 			// Vale's five clips were uploaded 2026-10-31; the placeholder keeps them SILENT.
 			for (const sfx of VARIANT_AUDIO)
 				expect([id, sfx, pack.assets[sfx].kind]).toEqual([id, sfx, id === "vale" ? "sound" : "silent"]);

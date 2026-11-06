@@ -9,8 +9,9 @@ draws one. Supersedes docs/PROJECTILE_ART.md PAD3 for goo only (strike and ember
 
 ## Status (2026-11-06)
 
-GA0-GA5 built on branch `goo-art` (2026-11-06); see "As built". **Open:** GA6 (upload `art/build/goo.png`, its id in
-`assetIds.ts`: until then vale draws today's disc) and GA7 (Studio check, after PA0).
+GA0-GA5 built on branch `goo-art` (2026-11-06); see "As built". GA6 done: `goo.png` uploaded 2026-11-06
+(`rbxassetid://82002931490706`, `assetIds.ts`), so the bundled vale pack draws the puddles. **Open:** GA7 (Studio
+check, after PA0).
 
 ## The art (measured 2026-11-06)
 

@@ -102,6 +102,9 @@ import type { RobloxAssetId } from "../../types";
  * uploaded 2026-11-04 7:43 AM, transcribed from an Asset Manager screenshot.
  * bullets.png (every flying projectile and the impact burst fx.bullet.hit, docs/PROJECTILE_ART.md PA8; the 16Bit Bullets
  * Asset Pack by J i m, built by `node scripts/art/build-atlases.js --only bullets`) uploaded 2026-11-05.
+ * goo.png (the Ooze's goo puddles, docs/GOO_ART.md GA6; the Free Slimes Asset Pack by heimlich3, built by
+ * `node scripts/art/build-atlases.js --only goo`) uploaded 2026-11-06 9:10 AM by k9kbdev, transcribed from an Asset
+ * Manager screenshot.
  */
 export const VALE_ASSET_IDS: Readonly<Record<string, RobloxAssetId>> = {
 	"amb-b1.ogg": "rbxassetid://91158343621799",
@@ -155,6 +158,7 @@ export const VALE_ASSET_IDS: Readonly<Record<string, RobloxAssetId>> = {
 	"golden-death.png": "rbxassetid://92086087611208",
 	"golden-move-outline.png": "rbxassetid://85083036932400",
 	"golden-move.png": "rbxassetid://88829506171960",
+	"goo.png": "rbxassetid://82002931490706",
 	"imp-attack-outline.png": "rbxassetid://87826495349638",
 	"imp-attack.png": "rbxassetid://106802821695726",
 	"imp-body-outline.png": "rbxassetid://80038327609999",

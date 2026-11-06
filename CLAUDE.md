@@ -752,8 +752,8 @@ Decision log (deviations from `PLAN.md`):
   (strike / ember keep `decalIds`, no art), per-id animations `land` / `hold` (`SlotContract.idBaseAnimations`), a
   `lit` box on the set, `gooArtReport` (own module; contract.luau / validate.luau stay 186 / 196). Flat on the floor,
   depth stretched by 1 / sin(pitch), sized so it covers the hit on screen (`gooSpriteSize`: 1.05 x 0.70 tiles);
-  `FloorSpritePool` behind the goo `DecalPool`. Without a `goo.png` id the disc is drawn as before. Upload (GA6) and
-  Studio check (GA7, after PA0) pending.
+  `FloorSpritePool` behind the goo `DecalPool`. Without a `goo.png` id the disc is drawn as before; uploaded 2026-11-06
+  (`assetIds.ts`), so the bundled vale pack draws them. Studio check (GA7, after PA0) pending.
 
 ## Commands
 
