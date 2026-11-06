@@ -23,6 +23,8 @@
  *                 sprites.ts, the strike row in markings.ts)
  *   buildBullets.ts  build effect bullets (docs/BUILDS.md BU8): player bullet look by payload kind (burst / shard /
  *                 bolt), trails, the ember decal pool split and look (tunables: BUILD_BULLET_VIEW in buildBulletsConfig.ts)
+ *   bullets/      sprite bullets (docs/PROJECTILE_ART.md PA4): enemy looks by kind, flicker frame, yaw along the
+ *                 velocity, screen heading, player bullet impacts (tunables: BULLET_ART_VIEW / BULLET_IMPACT_VIEW)
  *   spriteCell.ts per-sheet cells (docs/DEMON_ART.md DD4): the billboard layout of one sheet's own cell and pivot
  *   breakables.ts breakable barrels / crates on screen: the frame diff, hit blink / shake, placement, debris, aim clip
  *                 (tunables: BREAKABLE_VIEW in breakablesConfig.ts)
@@ -71,6 +73,7 @@ export * from "./sprites";
 export * from "./variantsConfig";
 export * from "./buildBulletsConfig";
 export * from "./buildBullets";
+export * from "./bullets";
 export * from "./variants";
 export * from "./newEnemiesConfig";
 export * from "./newEnemies";

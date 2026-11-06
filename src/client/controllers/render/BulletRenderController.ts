@@ -14,13 +14,16 @@ import {
 } from "shared/sim";
 import { GOO_BULLET_ID, STRIKE_BULLET_ID, type PlaceholderVisual, type ThemePack } from "shared/theme";
 import {
+	BULLET_ART_VIEW,
 	BUILD_BULLET_VIEW,
 	BULLET_VIEW,
+	ENEMY_BULLET_LOOK_IDS,
 	GOO_VIEW,
 	PLAYER_BULLET_LOOK_IDS,
 	STRIKE_VIEW,
 	PlayerBulletLook,
 	emberDecalLook,
+	enemyBulletLookOf,
 	lookHasTrail,
 	playerBulletLookOf,
 	type EmberLook,
@@ -41,7 +44,9 @@ import {
 import { buildTrailsOn, isEmberPayload } from "shared/view/fx";
 import { SimController } from "../game/SimController";
 import { ThemeController } from "../game/ThemeController";
+import { BulletTrails, type TrailLook } from "./bulletTrails";
 import { renderPart } from "./placeholders";
+import { SpriteBulletPool, spriteBulletLook, type SpriteBulletLook } from "./SpriteBulletPool";
 
 const RENDER_STEP = "KV_Bullets";
 const PARKED = new CFrame(BULLET_VIEW.parkedStuds[0], BULLET_VIEW.parkedStuds[1], BULLET_VIEW.parkedStuds[2]);
@@ -56,25 +61,19 @@ interface BulletLook {
 	readonly baseScale: number;
 }
 
-/** A look's trail (docs/BUILDS.md BU8): its length and cross-section, studs. */
-interface TrailLook {
-	readonly color: Color3;
-	readonly size: Vector3;
-	/** Offset behind the bolt's centre along its axis (+Z local: CFrame.lookAlong points -Z down the velocity). */
-	readonly offset: CFrame;
-}
-
 /**
  * One bullet simulation drawn as pooled Parts, part i = bullet SLOT i (so a part keeps its bullet for the bullet's
  * whole life and sizes rarely change). Each frame every visible bullet is moved to its interpolated position
  * (previousPositionAt -> positionAt by the sim's alpha) and every part that just lost its bullet is parked, all in ONE
- * workspace:BulkMoveTo (spike A). The pool grows lazily to the simulation's high-water mark.
+ * workspace:BulkMoveTo (spike A). The pool grows lazily to the highest slot it draws.
  *
  * Looks (docs/BUILDS.md BU8): `looks` is indexed by `lookOf(payload, scale)` (the player pool: shared/view
- * playerBulletLookOf, basic / heavy / burst / shard / bolt; the enemy pool: always look 0). A part switches Color /
- * Material / Size only when its look or quantized size changes (one pool, no extra parts per kind). Looks with a
+ * playerBulletLookOf, basic / heavy / burst / shard / bolt; the enemy pool: enemyBulletLookOf, small / medium / large /
+ * needle, all four today's small ball). A part switches Color / Material / Size only when its look (the look object:
+ * looks sharing one object never rewrite) or quantized size changes (one pool, no extra parts per kind). Looks with a
  * `trails` entry also move a faint trail part per slot behind the bolt while `trailsOn` (buildFx Full, not reduced
- * motion); trail parts grow lazily too and park with their bullet.
+ * motion); trail parts grow lazily too and park with their bullet. Bullets a SpriteBulletPool draws (their look has
+ * art, docs/PROJECTILE_ART.md PA5) come in through `skip`.
  */
 class BulletPool {
 	private readonly parts = new Array<BasePart>();
@@ -82,10 +81,7 @@ class BulletPool {
 	/** Quantized drawn size per part (BULLET_VIEW.sizeQuantum steps); -1 = never set. */
 	private readonly sizeKey = new Array<number>();
 	private readonly lookKey = new Array<number>();
-	/** Trail parts by slot (created on first use; a Map: Luau arrays cannot hold holes), and the shown ones. */
-	private readonly trailParts = new Map<number, BasePart>();
-	private readonly trailShown = new Set<number>();
-	private trailFolder: Folder | undefined;
+	private readonly trailParts: BulletTrails;
 	/** Last transparency written per part (co-op: teammates' bullets in large parties). */
 	private readonly alphaKey = new Array<number>();
 	private readonly moveParts = new Array<BasePart>();
@@ -100,13 +96,18 @@ class BulletPool {
 		private readonly looks: ReadonlyArray<BulletLook>,
 		/** Turn the part along the velocity (player bolts); enemy balls are round. */
 		private readonly orient: boolean,
-		/** Bullets this pool leaves to another one, by payload (the enemy pool skips goo while the goo pool draws it). */
-		private readonly skip?: (payload: number) => boolean,
+		/**
+		 * Bullets this pool leaves to another one, by payload and draw scale (the enemy pool skips goo while the goo pool
+		 * draws it; both pools skip what their sprite pool draws).
+		 */
+		private readonly skip?: (payload: number, scale: number) => boolean,
 		/** The look of a bullet by payload and draw scale (absent: look 0). */
 		private readonly lookOf?: (payload: number, scale: number) => number,
 		/** Trails by look index (absent / undefined entry: no trail). */
 		private readonly trails?: ReadonlyArray<TrailLook | undefined>,
-	) {}
+	) {
+		this.trailParts = new BulletTrails(folder, name, PARKED);
+	}
 
 	/** Trails drawn this frame (BulletRenderController sets it from the settings every frame). */
 	trailsOn = false;
@@ -121,20 +122,21 @@ class BulletPool {
 			this.parkAll();
 		}
 		const n = sim.highWater();
-		while (this.parts.size() < n) this.grow();
 		this.moveParts.clear();
 		this.moveCFrames.clear();
 		const prev = this.prev;
-		for (let i = 0; i < this.parts.size(); i++) {
-			const part = this.parts[i];
+		const slots = math.max(this.parts.size(), n);
+		for (let i = 0; i < slots; i++) {
 			const payload = i < n && sim.isVisible(i) ? sim.payloadAt(i) : -1;
-			if (payload >= 0 && (this.skip === undefined || !this.skip(payload))) {
+			const scale = payload >= 0 ? sim.scaleAt(i) : 1;
+			if (payload >= 0 && (this.skip === undefined || !this.skip(payload, scale))) {
+				while (this.parts.size() <= i) this.grow();
+				const part = this.parts[i];
 				const cur = sim.positionAt(i);
 				sim.previousPositionAt(i, prev);
 				const x = studsX(lerp(prev.x, cur.x, alpha));
 				const y = studsY(lerp(prev.y, cur.y, alpha));
 				const z = studsZ(lerp(prev.z, cur.z, alpha));
-				const scale = sim.scaleAt(i);
 				const look = this.lookOf !== undefined ? this.lookOf(payload, scale) : 0;
 				this.resize(i, scale, sim.fadeAt(i), look);
 				const t = fade !== undefined ? fade(sim.emitterIdAt(i)) : 0;
@@ -157,15 +159,18 @@ class BulletPool {
 				this.moveCFrames.push(cf);
 				this.shown[i] = true;
 				const trail = this.trailsOn ? this.trails?.[look] : undefined;
-				if (trail !== undefined) this.placeTrail(i, trail, cf.mul(trail.offset));
-				else this.parkTrail(i);
-			} else {
+				if (trail !== undefined) {
+					this.trailParts.place(i, trail, cf.mul(trail.offset), this.moveParts, this.moveCFrames);
+				} else {
+					this.trailParts.park(i, this.moveParts, this.moveCFrames);
+				}
+			} else if (i < this.parts.size()) {
 				if (this.shown[i]) {
-					this.moveParts.push(part);
+					this.moveParts.push(this.parts[i]);
 					this.moveCFrames.push(PARKED);
 					this.shown[i] = false;
 				}
-				this.parkTrail(i);
+				this.trailParts.park(i, this.moveParts, this.moveCFrames);
 			}
 		}
 		if (this.moveParts.size() > 0) {
@@ -182,44 +187,11 @@ class BulletPool {
 		return this.trailParts.size();
 	}
 
-	private placeTrail(i: number, trail: TrailLook, cf: CFrame): void {
-		let t = this.trailParts.get(i);
-		if (t === undefined) {
-			t = renderPart("Part", false);
-			t.Name = `${this.name}Trail`;
-			t.Material = Enum.Material.Neon;
-			t.Transparency = BUILD_BULLET_VIEW.trail.transparency;
-			t.CFrame = PARKED;
-			if (this.trailFolder === undefined) {
-				const f = new Instance("Folder");
-				f.Name = BUILD_BULLET_VIEW.trail.folderName;
-				f.Parent = this.folder;
-				this.trailFolder = f;
-			}
-			t.Parent = this.trailFolder;
-			this.trailParts.set(i, t);
-		}
-		if (t.Color !== trail.color) t.Color = trail.color;
-		if (t.Size !== trail.size) t.Size = trail.size;
-		this.moveParts.push(t);
-		this.moveCFrames.push(cf);
-		this.trailShown.add(i);
-	}
-
-	private parkTrail(i: number): void {
-		if (!this.trailShown.has(i)) return;
-		const t = this.trailParts.get(i);
-		this.trailShown.delete(i);
-		if (t === undefined) return;
-		this.moveParts.push(t);
-		this.moveCFrames.push(PARKED);
-	}
-
 	private parkAll(): void {
 		this.moveParts.clear();
 		this.moveCFrames.clear();
 		for (let i = 0; i < this.parts.size(); i++) {
-			this.parkTrail(i);
+			this.trailParts.park(i, this.moveParts, this.moveCFrames);
 			if (!this.shown[i]) continue;
 			this.moveParts.push(this.parts[i]);
 			this.moveCFrames.push(PARKED);
@@ -250,13 +222,14 @@ class BulletPool {
 	/** Writes Size only when the quantized drawn size (scale x end-of-life fade) or the look changes. */
 	private resize(i: number, scale: number, fade: number, lookIndex: number): void {
 		const look = this.looks[lookIndex] ?? this.looks[0];
+		const was = this.looks[this.lookKey[i]] ?? this.looks[0];
 		const q = BULLET_VIEW.sizeQuantum;
 		const key = math.max(q, math.round((scale * fade) / q) * q);
-		if (key === this.sizeKey[i] && lookIndex === this.lookKey[i]) return;
+		this.lookKey[i] = lookIndex;
+		if (key === this.sizeKey[i] && look === was) return;
 		this.sizeKey[i] = key;
 		const part = this.parts[i];
-		if (lookIndex !== this.lookKey[i]) {
-			this.lookKey[i] = lookIndex;
+		if (look !== was) {
 			part.Color = look.color;
 			part.Material = look.material;
 			(part as Part).Shape = look.visual.shape === "Ball" ? Enum.PartType.Ball : Enum.PartType.Block;
@@ -462,11 +435,20 @@ function trailLook(look: BulletLook): TrailLook {
  * `bullet.player.burst` / `.shard` / `.bolt` in the build.* roles), burst and shard bolts trail a faint part while
  * buildFx is Full and reduced motion is off (buildTrailsOn, read every frame); embers go to a decal pool on the player
  * simulation (BUILD_BULLET_VIEW.ember, under the goo) while its decal look is on.
+ * Sprite bullets (docs/PROJECTILE_ART.md PA5): enemy bullets take their look by kind too (shared/view
+ * enemyBulletLookOf: `bullet.enemy.small` / `.medium` / `.large` / `.needle`, every placeholder today's small ball).
+ * A look whose `pack.bullet(id)` has art draws in a SpriteBulletPool on the same simulation (floor-flat sprites turned
+ * along the velocity, flicker, unlit), and the neon pool skips those bullets; a look without art stays a neon part.
+ * No look with art (the placeholder pack, vale before its bullet atlas has an id): no sprite pool is built and every
+ * pool runs exactly as before. Trails stay neon parts; goo / strike / ember decals are unchanged (PAD3).
  */
 @Controller({})
 export class BulletRenderController implements OnStart {
 	private enemy: BulletPool | undefined;
 	private player: BulletPool | undefined;
+	/** Sprite pools (docs/PROJECTILE_ART.md PA5): built only when a look of theirs has art (pack.bullet). */
+	private enemySprites: SpriteBulletPool | undefined;
+	private playerSprites: SpriteBulletPool | undefined;
 	private goo: DecalPool | undefined;
 	private strike: DecalPool | undefined;
 	private ember: DecalPool | undefined;
@@ -487,12 +469,31 @@ export class BulletRenderController implements OnStart {
 			decal || strikeDecal
 				? (payload: number) => (decal && isGooPayload(payload)) || (strikeDecal && isStrikePayload(payload))
 				: undefined;
+		// Every enemy look's placeholder is today's small ball (the needle's sliver would change snipers' bullets):
+		// one shared look object, so a part never rewrites its props when its bullet's look index changes.
+		const small = bulletLook(pack, BULLET_VIEW.enemyVisualId, enemyDiameter, 0);
+		const enemyArt = artLooks(pack, ENEMY_BULLET_LOOK_IDS);
+		const enemySprites =
+			enemyArt.size() > 0
+				? new SpriteBulletPool(
+						subFolder(folder, BULLET_ART_VIEW.folderNames.enemy),
+						"EnemyBulletSprite",
+						PARKED,
+						enemyArt,
+						enemyBulletLookOf,
+						skip,
+						undefined,
+						BULLET_ART_VIEW.liftStuds.enemy,
+				  )
+				: undefined;
+		this.enemySprites = enemySprites;
 		const enemy = new BulletPool(
 			folder,
 			"EnemyBullet",
-			[bulletLook(pack, BULLET_VIEW.enemyVisualId, enemyDiameter, 0)],
+			ENEMY_BULLET_LOOK_IDS.map(() => small),
 			false,
-			skip,
+			withSprites(skip, enemySprites),
+			enemyBulletLookOf,
 		);
 		let strike: DecalPool | undefined;
 		if (strikeDecal) {
@@ -536,12 +537,33 @@ export class BulletRenderController implements OnStart {
 		this.ember = ember;
 		const looks = PLAYER_BULLET_LOOK_IDS.map((id) => bulletLook(pack, id, playerLength, 2));
 		const trails = looks.map((look, i) => (lookHasTrail(i as PlayerBulletLookId) ? trailLook(look) : undefined));
+		const playerSkip = emberDecal ? isEmberPayload : undefined;
+		const playerArt = artLooks(pack, PLAYER_BULLET_LOOK_IDS);
+		let playerSprites: SpriteBulletPool | undefined;
+		if (playerArt.size() > 0) {
+			const spriteTrails = new Map<number, TrailLook>();
+			for (let i = 0; i < looks.size(); i++) {
+				const trail = trails[i];
+				if (trail !== undefined) spriteTrails.set(i, trail);
+			}
+			playerSprites = new SpriteBulletPool(
+				subFolder(folder, BULLET_ART_VIEW.folderNames.player),
+				"PlayerBulletSprite",
+				PARKED,
+				playerArt,
+				playerBulletLookOf,
+				playerSkip,
+				spriteTrails,
+				BULLET_ART_VIEW.liftStuds.player,
+			);
+		}
+		this.playerSprites = playerSprites;
 		const player = new BulletPool(
 			folder,
 			"PlayerBullet",
 			looks,
 			true,
-			emberDecal ? isEmberPayload : undefined,
+			withSprites(playerSkip, playerSprites),
 			playerBulletLookOf,
 			trails,
 		);
@@ -556,19 +578,27 @@ export class BulletRenderController implements OnStart {
 				if (state === undefined) return;
 				debug.profilebegin(BULLET_VIEW.profileLabel);
 				const alpha = this.sim.getAlpha();
+				const store = clientStore.getState();
+				const reducedMotion = selectJuice(store).reducedMotion;
 				enemy.frame(state.combat.enemyBullets, alpha);
+				if (enemySprites !== undefined) {
+					enemySprites.reducedMotion = reducedMotion;
+					enemySprites.frame(state.combat.enemyBullets, alpha);
+				}
 				goo?.frame(state.combat.enemyBullets);
 				strike?.frame(state.combat.enemyBullets);
 				ember?.frame(state.combat.playerBullets);
 				const n = partySize(state);
 				const me = this.sim.getViewPlayerIndex(); // spectating: the watched teammate's bullets stay opaque
-				const store = clientStore.getState();
-				player.trailsOn = buildTrailsOn(selectDisplay(store).buildFx, selectJuice(store).reducedMotion);
-				player.frame(
-					state.combat.playerBullets,
-					alpha,
-					n > 1 ? (emitter) => playerBulletTransparency(n, emitter, me) : undefined,
-				);
+				const trailsOn = buildTrailsOn(selectDisplay(store).buildFx, reducedMotion);
+				const fade = n > 1 ? (emitter: number) => playerBulletTransparency(n, emitter, me) : undefined;
+				player.trailsOn = trailsOn;
+				player.frame(state.combat.playerBullets, alpha, fade);
+				if (playerSprites !== undefined) {
+					playerSprites.trailsOn = trailsOn;
+					playerSprites.reducedMotion = reducedMotion;
+					playerSprites.frame(state.combat.playerBullets, alpha, fade);
+				}
 				debug.profileend();
 			},
 		);
@@ -577,6 +607,11 @@ export class BulletRenderController implements OnStart {
 	/** Pooled bullet parts (enemy, player). */
 	getPoolSizes(): [number, number] {
 		return [this.enemy?.poolSize() ?? 0, this.player?.poolSize() ?? 0];
+	}
+
+	/** Pooled sprite bullet anchors (enemy, player; 0 while no look of theirs has art, docs/PROJECTILE_ART.md PA5). */
+	getSpritePoolSizes(): [number, number] {
+		return [this.enemySprites?.poolSize() ?? 0, this.playerSprites?.poolSize() ?? 0];
 	}
 
 	/** Pooled goo decal parts (0 with the decal look off). */
@@ -591,8 +626,33 @@ export class BulletRenderController implements OnStart {
 
 	/** Pooled ember decal parts and burst / shard trail parts (docs/BUILDS.md BU8). */
 	getBuildPoolSizes(): [number, number] {
-		return [this.ember?.poolSize() ?? 0, this.player?.trailPoolSize() ?? 0];
+		return [
+			this.ember?.poolSize() ?? 0,
+			(this.player?.trailPoolSize() ?? 0) + (this.playerSprites?.trailPoolSize() ?? 0),
+		];
 	}
+}
+
+/** The sprite art of each look that has any (pack.bullet), by look index; empty: every look is its placeholder. */
+function artLooks(pack: ThemePack, ids: ReadonlyArray<string>): ReadonlyMap<number, SpriteBulletLook> {
+	const out = new Map<number, SpriteBulletLook>();
+	for (let i = 0; i < ids.size(); i++) {
+		const sprite = pack.bullet(ids[i]);
+		if (sprite !== undefined) out.set(i, spriteBulletLook(sprite, STUDS_PER_TILE));
+	}
+	return out;
+}
+
+/**
+ * A neon pool's skip: its own (`skip`, the decal pools' kinds) plus whatever `sprites` draws. No sprite pool: `skip`
+ * itself, so a pack without bullet art runs exactly today's code.
+ */
+function withSprites(
+	skip: ((payload: number) => boolean) | undefined,
+	sprites: SpriteBulletPool | undefined,
+): ((payload: number, scale: number) => boolean) | undefined {
+	if (sprites === undefined) return skip;
+	return (payload, scale) => (skip !== undefined && skip(payload)) || sprites.draws(payload, scale);
 }
 
 function subFolder(parent: Folder, name: string): Folder {
