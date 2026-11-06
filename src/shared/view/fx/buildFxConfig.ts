@@ -13,10 +13,10 @@ export interface NovaLook {
 }
 
 /**
- * The floor rings' drawing blocks (BUILD_FX_VIEW keys): novas, evolve / duo flares, Lionheart pulses, origin flares and
- * Unshaken's shield glints.
+ * The floor rings' drawing blocks (BUILD_FX_VIEW keys): novas, evolve / duo flares, Lionheart pulses, origin flares,
+ * Unshaken's shield glints and Bastion's brace ring (docs/LEGENDARIES.md LG6).
  */
-export type BuildRingLook = "nova" | "flare" | "heal" | "pop" | "glint";
+export type BuildRingLook = "nova" | "flare" | "heal" | "pop" | "glint" | "brace";
 
 export const BUILD_FX_VIEW = {
 	/** Chain Spark's jagged beam per hop (pooled Neon segments in build.spark). */
@@ -190,6 +190,70 @@ export const BUILD_FX_VIEW = {
 	 */
 	goldRush: {
 		role: "boon.duo" as ColorRole,
+	},
+	/**
+	 * Overkill's streak (docs/LEGENDARIES.md LG6): one straight streak per strike, corpse -> target, the spark beam's
+	 * construction (pooled Neon segments) but one segment, no jag, thicker, in build.overkill with a white core (the
+	 * role is only 10.4 CIE76 from build.burst's Volatile bolts: the streak reads by its shape, a straight thick line).
+	 * An impact flash (a flat disc, popping out) at the target. Reduced: a thin streak (reducedThicknessStuds), no core,
+	 * no flash. Reduced motion: no pop.
+	 */
+	overkill: {
+		/** The streak's whole life, real seconds: opaque for `hold` of it, then fading. */
+		sec: 0.16,
+		hold: 0.45,
+		/** Thickness, studs, for a carry of 1; + carryStuds per point of carry above 1, at most maxCarrySteps of them. */
+		thicknessStuds: 0.22,
+		carryStuds: 0.03,
+		maxCarrySteps: 4,
+		/** Reduced: every streak this thin (studs), no core. */
+		reducedThicknessStuds: 0.1,
+		/** Skewer's streak (the duo fired on its line) is thicker by this share (Full and Reduced). */
+		skewerThicknessShare: 1.3,
+		/** Height above the floor (just over the spark beams, under the bullets). */
+		liftStuds: 0.37,
+		/** The white core: this share of the streak's thickness, the role mixed this far toward white, a hair above it. */
+		coreShare: 0.4,
+		coreWhiteMix: 0.75,
+		coreLiftStuds: 0.01,
+		/** At most this many alive; a new one past the cap replaces the oldest. */
+		maxAlive: 24,
+		role: "build.overkill" as ColorRole,
+		/** The impact flash at the target (Full only). */
+		impact: {
+			sec: 0.18,
+			/** Disc diameter, tiles: popScale x at the start -> 1 x over popSec (no pop under reduced motion). */
+			diameterTiles: 0.8,
+			popScale: 0.5,
+			popSec: 0.06,
+			liftStuds: 0.15,
+			thicknessStuds: 0.04,
+			maxAlive: 8,
+		},
+	},
+	/**
+	 * Bastion's brace (docs/LEGENDARIES.md LG6): a short stone ring cracks on the knight (following them): the ring
+	 * widens r0 -> r1 while its segments shrink after crackAt of its life (gaps open: the crack), in the armor pips'
+	 * uiMana. PIP and HEAL draw it at full strength; SPENT (nothing to restore) a faint one (spentStrength). HEAL adds
+	 * Lionheart's heal pulse (the `heal` block). The floor shout, the armor row's pulse and the toast are the client's
+	 * BraceFxController's (braceFx.ts BRACE_VIEW).
+	 */
+	brace: {
+		sec: 0.3,
+		r0Tiles: 0.75,
+		r1Tiles: 1,
+		/** Ring segments (Full); Reduced halves them. */
+		segments: 10,
+		thicknessStuds: 0.06,
+		widthStuds: 0.24,
+		liftStuds: 0.14,
+		fadeShare: 0.5,
+		/** Segments keep their full chord until this share of the life, then shrink to minChordShare at the end. */
+		crackAt: 0.3,
+		minChordShare: 0.45,
+		/** A SPENT brace's ring: opacity times this. */
+		spentStrength: 0.35,
+		role: "uiMana" as ColorRole,
 	},
 	/** Reduced (BUD13): spark / nova particle counts and ring segments times this (rounded, at least 1 where > 0). */
 	reducedShare: 0.5,

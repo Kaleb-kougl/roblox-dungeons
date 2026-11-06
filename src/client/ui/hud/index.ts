@@ -9,9 +9,11 @@
  * NewBestController (docs/NEW_BEST.md NB6 / NB7); the Daily's clock hook (dailyHooks)  for the menu's
  * Daily card and podium (docs/DAILY.md DS9), the run-over daily block (DailyResultBlock, DS11) and the headshot
  * cache (headshots) for DailyRankController (DS10); the run-over recap's bindings (recapBindings RECAP_BINDINGS) for
- * RecapController (docs/RUN_RECAP.md RR5 / RR6).
+ * RecapController (docs/RUN_RECAP.md RR5 / RR6); the armor row pulse (braceUi BRACE_UI) for BraceFxController
+ * (docs/LEGENDARIES.md LG6).
  */
 export * from "./actions";
+export * from "./braceUi";
 export * from "./cornerFade";
 export * from "./dailyHooks";
 export * from "./DailyResultBlock";

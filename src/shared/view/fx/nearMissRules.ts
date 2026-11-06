@@ -12,7 +12,7 @@
  *     longer gap resets it. Several grazes on one frame make one cue at the chain's final step; minIntervalSec apart
  *     at least (a skipped frame still climbs).
  *   - Parry groups (GPD5): one group per player per guard = erases within the sword's guard window
- *     (SWORD_DATA.guardTicks) of the group's first erase tick. On the frame a group starts: one parry cue (the view
+ *     (swordGuardTicks) of the group's first erase tick. On the frame a group starts: one parry cue (the view
  *     player's: local; else a teammate's), bigSemitones up when that first frame already erased bigFrom or more; and
  *     the PARRY! flash, which lives flash.sec from the group's start (its count follows later erases of the same guard).
  *   - Parry bursts: per erased bullet, its position and the unit direction away from the guarding player; at most
@@ -31,7 +31,15 @@
  * No allocation in steady state: the output and its records are reused frame to frame (per-player state grows once
  * per new player index). Presentation only.
  */
-import { SOLO_PARTY_SIZE, SWORD_DATA, partySize, playerAt, type PlayerState, type SimState } from "shared/sim";
+import {
+	SOLO_PARTY_SIZE,
+	SWORD_DATA,
+	partySize,
+	playerAt,
+	swordGuardTicks,
+	type PlayerState,
+	type SimState,
+} from "shared/sim";
 import type { JuiceSettings } from "shared/settings";
 // Not the shared/view/hud barrel: hud imports this barrel (shared/view/fx), so the barrel would be a require cycle.
 // comboConfig only imports shared/sim.
@@ -323,10 +331,17 @@ export function parryFlashFade(ageSec: number): number {
 /**
  * The parry grouping rule (GPD5), shared with the run-over tally (recapTally.ts, docs/RUN_RECAP.md RR1): a guard erase
  * at `tick` starts a NEW group for its player unless that player has a group (`hasGroup`) whose first erase tick
- * `groupFirstTick` is at most SWORD_DATA.guardTicks - 1 ticks before it (an earlier tick, a new run's, starts one too).
+ * `groupFirstTick` is at most guardTicks - 1 ticks before it (an earlier tick, a new run's, starts one too).
+ * `guardTicks`: the player's guard length (swordGuardTicks: Bastion's 27, docs/LEGENDARIES.md LG6; default
+ * SWORD_DATA.guardTicks), so one longer guard is still one parry.
  */
-export function parryStartsGroup(hasGroup: boolean, groupFirstTick: number, tick: number): boolean {
-	return !hasGroup || tick < groupFirstTick || tick - groupFirstTick >= SWORD_DATA.guardTicks;
+export function parryStartsGroup(
+	hasGroup: boolean,
+	groupFirstTick: number,
+	tick: number,
+	guardTicks: number = SWORD_DATA.guardTicks,
+): boolean {
+	return !hasGroup || tick < groupFirstTick || tick - groupFirstTick >= guardTicks;
 }
 
 /** The grazes and parries' per-frame director (see the file comment). One per run view consumer. */
@@ -472,7 +487,7 @@ export class NearMissDirector {
 			if (e.player < 0 || e.player >= n) continue;
 			const t = this.track(e.player);
 			const tick = e.tick;
-			if (parryStartsGroup(t.hasGroup, t.groupFirstTick, tick)) {
+			if (parryStartsGroup(t.hasGroup, t.groupFirstTick, tick, swordGuardTicks(state, e.player))) {
 				t.hasGroup = true;
 				t.groupFirstTick = tick;
 				t.groupStartSec = clockSec;

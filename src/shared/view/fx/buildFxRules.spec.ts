@@ -2,10 +2,13 @@
 // Phantom Step erase sparks (cap, view player first, particles off, Reduced's halved shape), nova rings per kind,
 // origin flares (Momentum / Thrill Seeker / Flurry / Ricochet), the evolve / duo flare and the Lionheart pulse on the
 // knight, execute flashes, the trails rule, reduced motion, the generation pitch, quiet and new-run resets; BU6: duo
-// proc origin flares in boon.duo (their sparks only as the ordinary beams) and Unshaken's shield glint.
+// proc origin flares in boon.duo (their sparks only as the ordinary beams) and Unshaken's shield glint;
+// docs/LEGENDARIES.md LG6: Overkill streaks (timeline, thickness by carry, core, Skewer, Reduced, impact flashes, cap)
+// and Bastion's brace ring (crack, faint SPENT, Stone Heart's heal pulse, the frame's braces list).
 import { describe, expect, it } from "@rbxts/jest-globals";
 import {
 	BUILDS_CONFIG,
+	BraceKind,
 	Duo,
 	FlurryKind,
 	NovaKind,
@@ -25,6 +28,8 @@ import {
 	BEAM_SEC,
 	BuildFxDirector,
 	beamFade,
+	braceChordShare,
+	braceRingStrength,
 	beamJag,
 	beamJagEpoch,
 	buildFxCount,
@@ -32,6 +37,7 @@ import {
 	buildGenSpeed,
 	buildTrailsOn,
 	executePop,
+	impactPop,
 	buildRingBlock,
 	lifeFade,
 	momentumPopTiles,
@@ -39,6 +45,8 @@ import {
 	phantomBurstShape,
 	ringRadius,
 	sparkBurstShape,
+	streakFade,
+	streakThickness,
 	type BeamPoint,
 } from "./buildFxRules";
 
@@ -623,5 +631,219 @@ describe("buildFx rules: gates and the generation pitch", () => {
 		expect(buildGenSemitones(10)).toBe(a.maxSemitones);
 		expect(buildGenSpeed(0)).toBe(1);
 		expect(buildGenSpeed(1)).toBe(semitonesToSpeed(a.semitoneStep));
+	});
+});
+
+/** One Overkill streak pushed into the sim's feed: corpse (x1, z1) -> target (x2, z2). */
+function streak(
+	e: BuildEvents,
+	owner: number,
+	x1: number,
+	z1: number,
+	x2: number,
+	z2: number,
+	carry = 1,
+	gen = 0,
+): void {
+	e.overkillX1.push(x1);
+	e.overkillZ1.push(z1);
+	e.overkillX2.push(x2);
+	e.overkillZ2.push(z2);
+	e.overkillOwner.push(owner);
+	e.overkillGen.push(gen);
+	e.overkillCarry.push(carry);
+}
+
+function brace(e: BuildEvents, player: number, kind: number): void {
+	e.bracePlayer.push(player);
+	e.braceKind.push(kind);
+}
+
+describe("buildFx rules: Overkill streaks (LG6)", () => {
+	it("a streak lives overkill.sec, opaque for its hold, then fades to 0", () => {
+		const o = BUILD_FX_VIEW.overkill;
+		const hold = o.sec * o.hold;
+		expect([streakFade(0), streakFade(hold), streakFade(o.sec)]).toEqual([1, 1, 0]);
+		expect(streakFade((hold + o.sec) / 2)).toBeCloseTo(0.5, 9);
+		// Longer than the spark beam: the streak is the bigger hit.
+		expect(o.sec > BEAM_SEC).toBe(true);
+	});
+
+	it("thickness: Full grows by carryStuds per carry above 1 (capped), Reduced is thin, Skewer thicker; always over the spark beam", () => {
+		const o = BUILD_FX_VIEW.overkill;
+		expect(streakThickness(1, "full", false)).toBe(o.thicknessStuds);
+		expect(streakThickness(0.5, "full", false)).toBe(o.thicknessStuds);
+		expect(streakThickness(3, "full", false)).toBeCloseTo(o.thicknessStuds + 2 * o.carryStuds, 9);
+		expect(streakThickness(99, "full", false)).toBeCloseTo(o.thicknessStuds + o.maxCarrySteps * o.carryStuds, 9);
+		expect(streakThickness(5, "reduced", false)).toBe(o.reducedThicknessStuds);
+		expect(streakThickness(1, "full", true)).toBeCloseTo(o.thicknessStuds * o.skewerThicknessShare, 9);
+		expect(streakThickness(1, "reduced", true)).toBeCloseTo(o.reducedThicknessStuds * o.skewerThicknessShare, 9);
+		expect(o.thicknessStuds > BUILD_FX_VIEW.beam.thicknessStuds).toBe(true);
+		expect(o.reducedThicknessStuds < o.thicknessStuds).toBe(true);
+		expect(o.role).toBe("build.overkill");
+	});
+
+	it("the director draws one straight streak per strike with its core and an impact flash at the target (Full)", () => {
+		const s = state(2);
+		const o = BUILD_FX_VIEW.overkill;
+		const ev = bu5(s, (e) => {
+			streak(e, 0, 1, 2, 3, 4, 5, 0);
+			streak(e, 1, 3, 4, 6, 4, 4, 1);
+			streak(e, 7, 0, 0, 1, 1); // outside the party: ignored
+		});
+		const d = new BuildFxDirector();
+		d.frame(ev, s, 0, false, settings(), 1);
+		expect(d.out.streaks.map((t) => [t.x1, t.z1, t.x2, t.z2, t.owner, t.gen, t.core, t.fade])).toEqual([
+			[1, 2, 3, 4, 0, 0, true, 1],
+			[3, 4, 6, 4, 1, 1, true, 1],
+		]);
+		expect(d.out.streaks[0].thicknessStuds).toBe(streakThickness(5, "full", false));
+		expect(d.out.impacts.map((f) => [f.x, f.z, f.scale, f.fade])).toEqual([
+			[3, 4, o.impact.popScale, 1],
+			[6, 4, o.impact.popScale, 1],
+		]);
+		// No beam, ring or chip burst of its own: the streak is not a spark.
+		expect([d.out.beams.size(), d.out.sparkBursts.size(), d.out.rings.size()]).toEqual([0, 0, 0]);
+		// The impact pops out, then each fades and goes after its own life.
+		d.frame(EMPTY, s, 0, false, settings(), 1 + o.impact.popSec);
+		expect(d.out.impacts[0].scale).toBe(1);
+		d.frame(EMPTY, s, 0, false, settings(), 1 + o.sec + 0.001);
+		expect(d.out.streaks.size()).toBe(0);
+		d.frame(EMPTY, s, 0, false, settings(), 1 + o.impact.sec + 0.001);
+		expect(d.out.impacts.size()).toBe(0);
+	});
+
+	it("Reduced: a thin streak, no core, no impact flash; reduced motion: no pop", () => {
+		const s = state();
+		const ev = bu5(s, (e) => streak(e, 0, 0, 0, 2, 0, 3));
+		const r = new BuildFxDirector();
+		r.frame(ev, s, 0, false, settings("reduced"), 1);
+		expect(r.out.streaks.map((t) => [t.thicknessStuds, t.core])).toEqual([
+			[BUILD_FX_VIEW.overkill.reducedThicknessStuds, false],
+		]);
+		expect(r.out.impacts.size()).toBe(0);
+		const m = new BuildFxDirector();
+		m.frame(ev, s, 0, false, settings("full", { reducedMotion: true }), 1);
+		expect(m.out.impacts.map((f) => f.scale)).toEqual([1]);
+		expect([
+			impactPop(0, false),
+			impactPop(0, true),
+			impactPop(BUILD_FX_VIEW.overkill.impact.popSec, false),
+		]).toEqual([BUILD_FX_VIEW.overkill.impact.popScale, 1, 1]);
+	});
+
+	it("a Skewer line (a SKEWER duoProc at the streak's corpse, same tick and owner) draws thicker, plus its duo flare", () => {
+		const s = state(2);
+		const ev = bu5(s, (e) => {
+			streak(e, 0, 1, 1, 3, 1, 2);
+			streak(e, 1, 5, 5, 6, 5, 2);
+			duoProc(e, Duo.SKEWER, 0, 1, 1, 3);
+		});
+		const d = new BuildFxDirector();
+		d.frame(ev, s, 0, false, settings(), 1);
+		expect(d.out.streaks.map((t) => t.thicknessStuds)).toEqual([
+			streakThickness(2, "full", true),
+			streakThickness(2, "full", false),
+		]);
+		expect(d.out.rings.map((r) => [r.look, r.role, r.x, r.z])).toEqual([["pop", BUILD_FX_VIEW.pop.duoRole, 1, 1]]);
+	});
+
+	it("caps the live streaks and impacts (oldest replaced); quiet and a new run forget them", () => {
+		const s = state();
+		const o = BUILD_FX_VIEW.overkill;
+		const ev = bu5(s, (e) => {
+			for (let i = 0; i < o.maxAlive + 3; i++) streak(e, 0, i, 0, i + 1, 0);
+		});
+		const d = new BuildFxDirector();
+		d.frame(ev, s, 0, false, settings(), 1);
+		expect([d.out.streaks.size(), d.out.impacts.size()]).toEqual([o.maxAlive, o.impact.maxAlive]);
+		expect(d.out.streaks[0].x1).toBe(3);
+		d.frame(EMPTY, s, 0, true, settings(), 1.01);
+		expect([d.out.streaks.size(), d.out.impacts.size()]).toEqual([0, 0]);
+		d.frame(ev, s, 0, false, settings(), 2);
+		d.frame(EMPTY, state(), 0, false, settings(), 2.01);
+		expect([d.out.streaks.size(), d.out.impacts.size()]).toEqual([0, 0]);
+	});
+});
+
+describe("buildFx rules: Bastion's brace (LG6)", () => {
+	it("the crack: chords stay whole until crackAt of the ring's life, then shrink to minChordShare", () => {
+		const b = BUILD_FX_VIEW.brace;
+		expect([braceChordShare(0), braceChordShare(b.sec * b.crackAt), braceChordShare(b.sec)]).toEqual([
+			1,
+			1,
+			b.minChordShare,
+		]);
+		const mid = b.sec * (b.crackAt + (1 - b.crackAt) / 2);
+		expect(braceChordShare(mid)).toBeCloseTo((1 + b.minChordShare) / 2, 9);
+		expect(b.sec).toBeCloseTo(0.3, 9);
+		expect([
+			braceRingStrength(BraceKind.PIP),
+			braceRingStrength(BraceKind.HEAL),
+			braceRingStrength(BraceKind.SPENT),
+		]).toEqual([1, 1, b.spentStrength]);
+	});
+
+	it("a pip brace cracks a ring on the knight (following them, in brace.role); SPENT a faint one; HEAL adds the heal pulse", () => {
+		const s = state(3);
+		const b = BUILD_FX_VIEW.brace;
+		const ev = bu5(s, (e) => {
+			brace(e, 0, BraceKind.PIP);
+			brace(e, 1, BraceKind.SPENT);
+			brace(e, 2, BraceKind.HEAL);
+			brace(e, 9, BraceKind.PIP); // outside the party
+		});
+		const d = new BuildFxDirector();
+		d.frame(ev, s, 0, false, settings(), 1);
+		expect(d.out.rings.map((r) => [r.look, r.role, r.radius, r.segments, r.fade, r.chordShare])).toEqual([
+			["brace", b.role, b.r0Tiles, b.segments, 1, 1],
+			["brace", b.role, b.r0Tiles, b.segments, b.spentStrength, 1],
+			["brace", b.role, b.r0Tiles, b.segments, 1, 1],
+			["heal", BUILD_FX_VIEW.heal.role, BUILD_FX_VIEW.heal.r0Tiles, BUILD_FX_VIEW.heal.segments, 1, 1],
+		]);
+		expect(d.out.braces.map((x) => [x.player, x.kind])).toEqual([
+			[0, BraceKind.PIP],
+			[1, BraceKind.SPENT],
+			[2, BraceKind.HEAL],
+		]);
+		// The next frame lists no brace; the ring follows the knight and cracks, then goes after brace.sec.
+		const p0 = s.party!.players[0];
+		p0.x = 4;
+		p0.z = 5;
+		d.frame(EMPTY, s, 0, false, settings(), 1 + b.sec * 0.9);
+		expect(d.out.braces.size()).toBe(0);
+		const ring = d.out.rings.find((r) => r.look === "brace")!;
+		expect([ring.x, ring.z]).toEqual([4, 5]);
+		expect(ring.chordShare).toBeCloseTo(braceChordShare(b.sec * 0.9), 9);
+		expect(ring.chordShare < 1).toBe(true);
+		d.frame(EMPTY, s, 0, false, settings(), 1 + b.sec + 0.001);
+		expect(d.out.rings.filter((r) => r.look === "brace").size()).toBe(0);
+	});
+
+	it("Reduced halves the ring's segments; reduced motion holds it at r1; a newer brace replaces the player's", () => {
+		const s = state();
+		const b = BUILD_FX_VIEW.brace;
+		const d = new BuildFxDirector();
+		d.frame(
+			bu5(s, (e) => brace(e, 0, BraceKind.PIP)),
+			s,
+			0,
+			false,
+			settings("reduced", { reducedMotion: true }),
+			1,
+		);
+		expect(d.out.rings.map((r) => [r.radius, r.segments])).toEqual([
+			[b.r1Tiles, buildFxCount(b.segments, "reduced")],
+		]);
+		d.frame(
+			bu5(s, (e) => brace(e, 0, BraceKind.SPENT), 2),
+			s,
+			0,
+			false,
+			settings(),
+			1.1,
+		);
+		expect(d.out.rings.map((r) => [r.look, r.fade])).toEqual([["brace", b.spentStrength]]);
+		expect(buildRingBlock("brace")).toBe(b);
 	});
 });

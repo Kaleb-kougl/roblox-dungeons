@@ -25,8 +25,8 @@ see it happen, it is not in this plan.**
 
 ## Status (2026-11-06)
 
-**LG0-LG4 built** (the audit, the data and scaffolding, Overkill's and Bastion's rules, the four duos: "LG0 findings",
-"LG1 (as built)" .. "LG4 (as built)"); LG5-LG9 open. Follows docs/BUILDS.md (BU0-BU10 built; BU11-BU14 open). Overkill was proposed in docs/BUILDS_V2.md as
+**LG0-LG6 built** (the audit, the data and scaffolding, Overkill's and Bastion's rules, the four duos, the theme, the
+view: "LG0 findings", "LG1 (as built)" .. "LG6 (as built)"); LG7-LG9 open (LG6's Studio check is in LG9's checklist). Follows docs/BUILDS.md (BU0-BU10 built; BU11-BU14 open). Overkill was proposed in docs/BUILDS_V2.md as
 a common boon with levels and an evolution (Annihilator); the owner moved it here as a legendary
 (2026-11-06), so V2's Overkill row is withdrawn and its Supernova duo is redefined below. Decisions LGD1-LGD12 are
 proposed defaults until the owner settles them; LGD2, LGD3, LGD5-LGD7 and LGD12 are settled (owner, 2026-11-06).
@@ -266,6 +266,83 @@ The four duos' rules. Paths under `src/shared/sim/builds/`. Only players owning 
   a row of swarmers spaced 1 apart is struck one per tick, like plain Overkill. Fixing it needs a design change (e.g.
   extend the line past the target to `OVERKILL_RANGE`, or aim at the farthest enemy in range); not done.
 
+## LG6 (as built)
+
+The view and client presentation. Presentation only: no sim, dungeon, hash, replay, fixture or lockstep change (sim
+exports read only). Paths under `src/` unless noted. Nothing here could run in Studio (client code needs the engine):
+the Studio checklist below holds what to look at.
+
+- **Feed** (`shared/view/fx/buildFxEvents.ts`). `overkills` (`StreakRecord`: corpse `x1` / `z1`, target `x2` / `z2`,
+  owner, gen, carry, tick; from `overkillX1` .. `overkillCarry`) and `braces` (an `EffectRecord`: owner = the bracing
+  player, x / z where they stood at collect, kind = `BraceKind`, amount 1, gen 0). Supernova's and Skewer's `duoProc`
+  entries fall into `duoProcs` like BU6's (no code change), so each pops BU6's origin flare in `boon.duo` at the corpse.
+- **Overkill streak** (`buildFxRules.ts` director, drawn by `client/controllers/fx/BuildFxController`). One straight
+  Neon segment corpse -> target per strike (the spark beam pool's construction, one segment, no jag) in `build.overkill`,
+  a thinner core segment a hair above it in the role mixed 75 % toward white, alive 0.16 s (opaque 45 %, then fading),
+  at most 24. Thickness 0.22 studs for a carry of 1, +0.03 per carry above 1 up to 4 steps (`streakThickness`; the
+  spark beam is 0.12), so a heavy arrow's carry 3 reads thicker than a stream's 1. An impact flash at the target: a flat
+  disc 0.8 tiles in `build.overkill`, popping 0.5 -> 1 over 0.06 s and fading over 0.18 s, at most 8. Reduced
+  `buildFx`: every streak 0.1 studs, no core, no impact flash; reduced motion: no pop. Skewer: a streak whose corpse,
+  tick and owner match a `SKEWER` duoProc is 1.3x thicker (Full and Reduced) and has the duo's flare at the corpse.
+  Tunables `BUILD_FX_VIEW.overkill` (`shared/view/fx/buildFxConfig.ts`). New parts pools `OverkillStreak` /
+  `OverkillImpact` (`getPoolSizes` now returns five sizes).
+- **Supernova.** Nothing new: the larger ring is the bolts themselves (real effect bullets, `BulletRenderController`'s
+  burst look and trails), and the burst cue reads the burst records as before; plus the duo flare above.
+- **Overkill audio** (`shared/view/audio/cues.ts`). `sfx.build.overkill` once per frame for the frame's streaks at
+  `buildGenSpeed(highest overkillGen)` (BU8's +2 semitones per generation, capped at +6: a chain climbs per link),
+  volume `BUILD_FX_VIEW.audio.volume`, a teammate-only streak quieter and lower; under the voice cap and FIRST in
+  `BUILD_VOICE_SFX` (a busy frame drops the spark before the legendary's streak). Interval 0.06 s (LG5).
+- **Bastion's guard.** `WeaponViewController` draws the view player's guard with `swordGuard(slot,
+  swordGuardTicks(state, viewIndex))` and `swordGuardHalfAngleCos(state, viewIndex)`: with Bastion the full ring
+  (`sector` with -1 draws the whole circle and no edge rays) and the right progress over 27 ticks; without, exactly the
+  old arc. `fxCues` `guardOf` and `watch.ts` `guardUp` pass `swordGuardTicks` per player (read only while the guard's
+  timer runs, so a hand-made state without `run.players` never reaches `runMods`). Also `nearMissRules`
+  `parryStartsGroup(..., guardTicks)` (default `SWORD_DATA.guardTicks`), passed `swordGuardTicks` by the near-miss
+  director and the recap tally: a 27-tick Bastion guard is ONE parry (one PARRY! flash, one recap parry), not two.
+- **Brace ring** (director, `brace` ring look). A ring on the bracing player (following them): 0.3 s, 0.75 -> 1 tile,
+  10 segments (Reduced 5) in `uiMana` (the armor pips' colour; no new role), its chords shrinking from 30 % of its life
+  to 45 % of their length at the end (`braceChordShare`: the crack). PIP and HEAL full strength; SPENT a faint one
+  (opacity x 0.35, `braceRingStrength`; no text, toast, pulse or sound, so the once-per-room limit reads). HEAL also
+  starts BU8 follow-up's Lionheart heal pulse (`fx.heal`, following). A newer brace replaces the player's ring. Tunables
+  `BUILD_FX_VIEW.brace`.
+- **Brace feedback** (`shared/view/fx/braceFx.ts` / `braceFxConfig.ts` `BRACE_VIEW`; client
+  `client/controllers/fx/BraceFxController`, a BuildFxController subscriber reading `BuildFxFrame.braces`).
+  `braceFeedbackOf(kind)`: PIP = shout + armor pulse + sound + `hud.toast.brace`; HEAL = shout + sound +
+  `hud.toast.braceHeal`; SPENT = nothing. The view player's shout: `fx.brace.text` (BRACED) through
+  `ComboController.requestShout` (the combo shout's slot and construction: its placement keeps it off the bullets, CD9)
+  in `uiMana` for 0.9 s at the new `FLOOR_SHOUT_PRIORITY.brace` 0 (shared/view/hud `dailyRankConfig.ts`): the lowest
+  request, equal to a tier shout (it replaces a showing tier shout like every priority request; any other shout
+  replaces it; a tier-up while it shows stays in the panel). The view player's armor pulse: a `uistroke` round the
+  armor pips in `StatusPanel` (`BRACE_UI` bindings, `client/ui/hud/braceUi.ts`; thickness 4 -> 1 px eased out while
+  fading over 0.45 s, `bracePulseLook`; 1 px and fading only under reduced motion; cleared on a run exit). The plan's
+  "pip flies into the armor row" is this pulse, not a flight. The local player's toast: `ToastPanel`, 2.5 s, ids from
+  `BRACE_VIEW.toast.idBase` -(2^23). Sound: `sfx.build.brace` through `playerCue` (yours full volume, a teammate's at
+  teammate volume) for PIP / HEAL, outside the voice cap (it answers the player's own guard), interval 0.3 s (LG5).
+- **Toasts, Build list, items panel.** Data-driven already (`BOONS` / `DUOS` loops, `itemIconKey`): Overkill and
+  Bastion show as legendary cells (no pips) with `OVK` / `BST`, the four duos as joined chips (`SNV` .. `STH` come from
+  the duo strings; the chip shows the two boons' labels), Build list rows with their lines, the boon / duo toasts. No
+  code change; pinned by a spec.
+- **Not done.** Recap lines ("Longest overkill chain", "Braces"): skipped (two new strings, a tally, two highlight ids
+  and the recap / telemetry specs: not a trivial add). No debug attribute (BuildFx has none). The touch strip's armor
+  pips get no pulse (the status panel's only). The guard's `fx.guard.shield` sprite stays the half-moon art ahead of
+  the knight with Bastion (the full ring is the marking).
+- **Specs.** `view/fx/buildFxEvents.spec.ts` (the two lists, per tick, reset; legendary duos into duoProcs),
+  `view/fx/buildFxRules.spec.ts` (streak timeline, thickness by carry / Reduced / Skewer, core, impacts and pop,
+  outsiders ignored, cap, quiet / new run; the crack, strength, PIP / SPENT / HEAL rings and the heal pulse, following,
+  the braces list, Reduced, reduced motion, replacement), `view/fx/braceFx.spec.ts` (feedback per kind, strings in the
+  pack, the shout's priority, the pulse timeline), `view/audio/buildCues.spec.ts` (the streak cue's gen pitch,
+  teammates, first under the cap; the brace cue per kind, teammates, outside the cap, its interval),
+  `view/fx/nearMissRules.spec.ts` (`parryStartsGroup` with a Bastion guard's length), `view/hud/buildHud.spec.ts` (the
+  two boons and four duos in the items row, Build list and toasts).
+- **Verify.** typecheck, lint, check:assets, build, check:autolocalize and test:l10n green. Headless (Lune): every spec
+  under `view`, `theme`, `shared/play` and `sim/builds` passes.
+
+Studio checklist additions (LG9): 11. the armor row's pips pulse once on a pip restored (status panel; no pulse on the
+touch strip); 12. Stone Heart: "Braced: healed" toast with the green pulse, no armor pulse; 13. a SPENT brace (second
+guard in a room, full armor) draws only a faint ring, no text or sound; 14. a 27-tick Bastion guard flashes PARRY! once
+and counts one parry in the recap; 15. the Overkill streak reads apart from Volatile's apricot bolts on every biome
+(shape: a straight thick line with a white core) and its impact flash never reads as an enemy bullet.
+
 ## Player experience
 
 1. **Floor 4 draft.** A card trembles, the others dim, it flips gold: **Overkill.** "The damage left over from a kill
@@ -441,7 +518,7 @@ Studio checklist (LG6 / LG9): 1. a finisher chain draws one streak per carry, ri
 1 visibly; 3. Supernova's bigger ring shows on a 3+ carry only; 4. Skewer's streak visibly passes through the line;
 5. the guard ring is full with Bastion and the old arc without; 5b. a roll through a fan braces (bow in hand); 6. BRACED floor text never covers a bullet; 7. the pip
 flies into the armor row; 8. Stone Heart's heal pulse; 9. Reduced build effects thin the streak and drop the flash;
-10. co-op: a teammate's streaks and braces read as theirs (owner tint rules as for sparks).
+10. co-op: a teammate's streaks and braces read as theirs (owner tint rules as for sparks). Items 11-15: "LG6 (as built)".
 
 ## Edge cases
 

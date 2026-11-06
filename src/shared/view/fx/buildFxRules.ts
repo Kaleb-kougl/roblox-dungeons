@@ -25,6 +25,13 @@
  *   - Executes (BU5): a flat flash popping out (no pop under reduced motion) and fading over execute.sec.
  *   - Trails: `trails` is true only with buildFx Full and not reduced motion (BulletRenderController's burst / shard
  *     trails).
+ *   - Overkill streaks (docs/LEGENDARIES.md LG6): one straight streak per strike (no jag), alive overkill.sec, opaque
+ *     for its hold, then fading; thickness by the carry (streakThickness), a white core (Full only), thicker for a
+ *     Skewer line (a SKEWER duoProc of the same tick, owner and corpse); at most overkill.maxAlive. An impact flash at
+ *     each target (Full only; no pop under reduced motion), at most overkill.impact.maxAlive.
+ *   - Bastion braces (LG6): a `brace` ring following the bracing player (PIP / HEAL full, SPENT faint), its segments
+ *     shrinking after brace.crackAt (braceChordShare: the crack); HEAL also starts the `heal` pulse. `braces` lists the
+ *     frame's braces (player, kind) for the client's BraceFxController (floor shout, armor row pulse, toast).
  *   - The Jackpot pop and Gold Rush's tinted kill pop are the score pops' (the client's ScorePopController reads
  *     RunView.builds.jackpots / goldRush; scorePops.ts scorePopTones); nothing here.
  *
@@ -34,13 +41,22 @@
  *
  * No allocation in steady state: the output and its records are reused frame to frame. Presentation only.
  */
-import { MOMENTUM_TIER_FIRST, SIM_DT, SPARK_BEAM_TICKS, partySize, playerAt, type SimState } from "shared/sim";
+import {
+	BraceKind,
+	Duo,
+	MOMENTUM_TIER_FIRST,
+	SIM_DT,
+	SPARK_BEAM_TICKS,
+	partySize,
+	playerAt,
+	type SimState,
+} from "shared/sim";
 import type { BuildFxLevel, JuiceSettings } from "shared/settings";
 import type { ColorRole } from "shared/theme";
 // Not the shared/view/hud barrel (hud imports this barrel): comboConfig only imports shared/sim.
 import { semitonesToSpeed } from "../hud/comboConfig";
 import { BUILD_FX_VIEW, type BuildRingLook } from "./buildFxConfig";
-import type { BuildFxFrameSource, EffectRecord, SparkRecord } from "./buildFxEvents";
+import type { BuildFxFrameSource, EffectRecord, SparkRecord, StreakRecord } from "./buildFxEvents";
 import { effectiveParticles } from "./juiceRules";
 import type { ChipBurst } from "./particles";
 import { RenderRng, burstSeed } from "./rng";
@@ -86,6 +102,30 @@ export interface RingView {
 	readonly segments: number;
 	/** Its BUILD_FX_VIEW drawing block (thickness, width, lift). */
 	readonly look: BuildRingLook;
+	/** Each segment's share of its chord (1: a closed ring; a cracking brace ring's gaps open below 1). */
+	readonly chordShare: number;
+}
+
+/** One live Overkill streak (LG6): a straight line from the corpse to the target (sim units). */
+export interface StreakView {
+	readonly x1: number;
+	readonly z1: number;
+	readonly x2: number;
+	readonly z2: number;
+	readonly owner: number;
+	readonly gen: number;
+	/** Thickness, studs (streakThickness). */
+	readonly thicknessStuds: number;
+	/** Draw the white core (Full only). */
+	readonly core: boolean;
+	/** Opacity factor (1, then -> 0). */
+	readonly fade: number;
+}
+
+/** One brace this frame (LG6): the bracing player and what it did (BraceKind). */
+export interface BraceView {
+	readonly player: number;
+	readonly kind: number;
 }
 
 /** One live execute flash. */
@@ -108,6 +148,11 @@ export interface BuildFxFrame {
 	readonly phantomShape: Readonly<ChipBurst>;
 	readonly rings: ReadonlyArray<RingView>;
 	readonly flashes: ReadonlyArray<FlashView>;
+	/** LG6: live Overkill streaks and their impact flashes (in build.overkill). */
+	readonly streaks: ReadonlyArray<StreakView>;
+	readonly impacts: ReadonlyArray<FlashView>;
+	/** LG6: this frame's braces in the party. */
+	readonly braces: ReadonlyArray<BraceView>;
 	/** Draw the burst / shard bullet trails (Full and not reduced motion). */
 	readonly trails: boolean;
 }
@@ -211,6 +256,52 @@ export function executePop(ageSec: number, reducedMotion: boolean): number {
 	return f.popScale + (1 - f.popScale) * eased;
 }
 
+/** An Overkill streak's opacity at `ageSec`: 1 for overkill.hold of overkill.sec, then linearly to 0. */
+export function streakFade(ageSec: number): number {
+	const o = BUILD_FX_VIEW.overkill;
+	const holdSec = o.sec * o.hold;
+	if (ageSec <= holdSec) return 1;
+	if (ageSec >= o.sec) return 0;
+	return 1 - (ageSec - holdSec) / (o.sec - holdSec);
+}
+
+/**
+ * An Overkill streak's thickness, studs: Full thicknessStuds + carryStuds per point of carry above 1 (at most
+ * maxCarrySteps); Reduced reducedThicknessStuds; a Skewer line times skewerThicknessShare.
+ */
+export function streakThickness(carry: number, level: BuildFxLevel, skewer: boolean): number {
+	const o = BUILD_FX_VIEW.overkill;
+	const steps = math.clamp(math.floor(carry) - 1, 0, o.maxCarrySteps);
+	const base = level === "full" ? o.thicknessStuds + o.carryStuds * steps : o.reducedThicknessStuds;
+	return skewer ? base * o.skewerThicknessShare : base;
+}
+
+/** The impact flash's diameter factor at `ageSec`: popScale -> 1 over popSec (eased out); 1 under reduced motion. */
+export function impactPop(ageSec: number, reducedMotion: boolean): number {
+	const f = BUILD_FX_VIEW.overkill.impact;
+	if (reducedMotion || ageSec >= f.popSec) return 1;
+	const u = ageSec <= 0 ? 0 : ageSec / f.popSec;
+	const eased = 1 - (1 - u) * (1 - u);
+	return f.popScale + (1 - f.popScale) * eased;
+}
+
+/**
+ * The brace ring's segment share of its chord at `ageSec` (the crack): 1 until brace.crackAt of its life, then
+ * linearly down to brace.minChordShare at its end.
+ */
+export function braceChordShare(ageSec: number): number {
+	const b = BUILD_FX_VIEW.brace;
+	const crackSec = b.sec * b.crackAt;
+	if (ageSec <= crackSec) return 1;
+	if (ageSec >= b.sec) return b.minChordShare;
+	return 1 - ((1 - b.minChordShare) * (ageSec - crackSec)) / (b.sec - crackSec);
+}
+
+/** A brace's ring strength (opacity factor): SPENT faint (brace.spentStrength), PIP / HEAL full. */
+export function braceRingStrength(kind: number): number {
+	return kind === BraceKind.SPENT ? BUILD_FX_VIEW.brace.spentStrength : 1;
+}
+
 /** A build cue's shift for proc generation `gen` (0 = the player's own kill), semitones, capped. */
 export function buildGenSemitones(gen: number): number {
 	const a = BUILD_FX_VIEW.audio;
@@ -288,6 +379,9 @@ interface RingSlot {
 	role: ColorRole;
 	segments: number;
 	look: BuildRingLook;
+	chordShare: number;
+	/** Opacity factor over the life fade (a SPENT brace's faint ring). */
+	strength: number;
 	/** Flares and heal pulses follow this player (-1: it stays where it began). */
 	player: number;
 	startSec: number;
@@ -303,6 +397,24 @@ interface FlashSlot {
 	startSec: number;
 }
 
+interface StreakSlot {
+	x1: number;
+	z1: number;
+	x2: number;
+	z2: number;
+	owner: number;
+	gen: number;
+	thicknessStuds: number;
+	core: boolean;
+	fade: number;
+	startSec: number;
+}
+
+interface BraceSlot {
+	player: number;
+	kind: number;
+}
+
 interface FrameSlot {
 	readonly beams: BeamSlot[];
 	readonly sparkBursts: BurstSlot[];
@@ -311,6 +423,9 @@ interface FrameSlot {
 	phantomShape: ChipBurst;
 	readonly rings: RingSlot[];
 	readonly flashes: FlashSlot[];
+	readonly streaks: StreakSlot[];
+	readonly impacts: FlashSlot[];
+	readonly braces: BraceSlot[];
 	trails: boolean;
 }
 
@@ -352,14 +467,24 @@ const POP_SOURCES: ReadonlyArray<[PopSource, ColorRole]> = [
 ];
 
 /** The ring looks that follow a player (at most one each per player). */
-type FollowLook = "flare" | "heal" | "glint";
-const FOLLOW_LOOKS: ReadonlyArray<FollowLook> = ["flare", "heal", "glint"];
+type FollowLook = "flare" | "heal" | "glint" | "brace";
+const FOLLOW_LOOKS: ReadonlyArray<FollowLook> = ["flare", "heal", "glint", "brace"];
 
 /** A following look's block (its radii as well as its drawing sizes). */
 function followBlock(look: FollowLook) {
 	if (look === "flare") return BUILD_FX_VIEW.flare;
 	if (look === "heal") return BUILD_FX_VIEW.heal;
+	if (look === "brace") return BUILD_FX_VIEW.brace;
 	return BUILD_FX_VIEW.glint;
+}
+
+/** True when a SKEWER duoProc of the same tick and owner fired at the streak's corpse (Skewer's line). */
+function isSkewer(r: StreakRecord, duoProcs: ReadonlyArray<EffectRecord>): boolean {
+	for (const d of duoProcs) {
+		if (d.kind === Duo.SKEWER && d.tick === r.tick && d.owner === r.owner && d.x === r.x1 && d.z === r.z1)
+			return true;
+	}
+	return false;
 }
 
 /** The build effects' per-frame director (see the file comment). One per client (BuildFxController). */
@@ -374,6 +499,9 @@ export class BuildFxDirector {
 		phantomShape: FULL_PHANTOM,
 		rings: [],
 		flashes: [],
+		streaks: [],
+		impacts: [],
+		braces: [],
 		trails: true,
 	};
 	private readonly freeBeams: BeamSlot[] = [];
@@ -386,6 +514,8 @@ export class BuildFxDirector {
 	private readonly ringLists: ReadonlyArray<RingSlot[]> = [this.novaRings, this.popRings, this.followRings];
 	private readonly freeRings: RingSlot[] = [];
 	private readonly freeFlashes: FlashSlot[] = [];
+	private readonly freeStreaks: StreakSlot[] = [];
+	private readonly bracePool: BraceSlot[] = [];
 	private readonly rng = new RenderRng();
 	private lastState: Readonly<SimState> | undefined;
 	private lastTick = 0;
@@ -406,6 +536,11 @@ export class BuildFxDirector {
 		s.rings.clear();
 		for (const f of s.flashes) this.freeFlashes.push(f);
 		s.flashes.clear();
+		for (const t of s.streaks) this.freeStreaks.push(t);
+		s.streaks.clear();
+		for (const f of s.impacts) this.freeFlashes.push(f);
+		s.impacts.clear();
+		s.braces.clear();
 		s.sparkBursts.clear();
 		s.phantomBursts.clear();
 	}
@@ -425,6 +560,7 @@ export class BuildFxDirector {
 		const out = this.slot;
 		out.sparkBursts.clear();
 		out.phantomBursts.clear();
+		out.braces.clear();
 		if (state !== this.lastState || state.tick < this.lastTick) this.resetAll();
 		this.lastState = state;
 		this.lastTick = state.tick;
@@ -469,10 +605,86 @@ export class BuildFxDirector {
 		this.addPops(source, n, level, clockSec);
 		this.addFlashes(source.executes, n, clockSec);
 		this.addFollowers(source, n, level, clockSec);
+		this.addStreaks(source, n, level, clockSec);
+		this.addBraces(source.braces, n);
 		this.ageBeams(clockSec, reduced);
 		this.ageRings(state, n, clockSec, reduced);
 		this.ageFlashes(clockSec, reduced);
+		this.ageStreaks(clockSec, reduced);
 		return this.out;
+	}
+
+	/** LG6: a streak per Overkill strike, and (Full only) an impact flash at its target. */
+	private addStreaks(source: BuildFxFrameSource, n: number, level: BuildFxLevel, clockSec: number): void {
+		const o = BUILD_FX_VIEW.overkill;
+		const s = this.slot;
+		const full = level === "full";
+		for (const r of source.overkills) {
+			if (r.owner < 0 || r.owner >= n) continue;
+			const t = claim(s.streaks, this.freeStreaks, o.maxAlive, () => ({
+				x1: 0,
+				z1: 0,
+				x2: 0,
+				z2: 0,
+				owner: 0,
+				gen: 0,
+				thicknessStuds: 0,
+				core: false,
+				fade: 1,
+				startSec: 0,
+			}));
+			t.x1 = r.x1;
+			t.z1 = r.z1;
+			t.x2 = r.x2;
+			t.z2 = r.z2;
+			t.owner = r.owner;
+			t.gen = r.gen;
+			t.thicknessStuds = streakThickness(r.carry, level, isSkewer(r, source.duoProcs));
+			t.core = full;
+			t.fade = 1;
+			t.startSec = clockSec;
+			if (!full) continue;
+			const f = claim(s.impacts, this.freeFlashes, o.impact.maxAlive, () => ({
+				x: 0,
+				z: 0,
+				scale: 1,
+				fade: 1,
+				startSec: 0,
+			}));
+			f.x = r.x2;
+			f.z = r.z2;
+			f.startSec = clockSec;
+		}
+	}
+
+	/** LG6: the frame's braces of party members (the client's floor shout, armor row pulse and toast read them). */
+	private addBraces(braces: ReadonlyArray<EffectRecord>, n: number): void {
+		const out = this.slot.braces;
+		for (const r of braces) {
+			if (r.owner < 0 || r.owner >= n) continue;
+			const k = out.size();
+			let b = this.bracePool[k];
+			if (b === undefined) {
+				b = { player: 0, kind: 0 };
+				this.bracePool.push(b);
+			}
+			b.player = r.owner;
+			b.kind = r.kind;
+			out.push(b);
+		}
+	}
+
+	private ageStreaks(clockSec: number, reducedMotion: boolean): void {
+		const s = this.slot;
+		const o = BUILD_FX_VIEW.overkill;
+		sweep(s.streaks, this.freeStreaks, (t) => clockSec - t.startSec < o.sec);
+		for (const t of s.streaks) t.fade = streakFade(math.max(clockSec - t.startSec, 0));
+		sweep(s.impacts, this.freeFlashes, (f) => clockSec - f.startSec < o.impact.sec);
+		for (const f of s.impacts) {
+			const age = math.max(clockSec - f.startSec, 0);
+			f.scale = impactPop(age, reducedMotion);
+			f.fade = lifeFade(age, o.impact.sec, 1);
+		}
 	}
 
 	private addBeams(sparks: ReadonlyArray<SparkRecord>, n: number, clockSec: number): void {
@@ -548,6 +760,8 @@ export class BuildFxDirector {
 			role: BUILD_FX_VIEW.nova.fallback.role,
 			segments: 0,
 			look: "nova",
+			chordShare: 1,
+			strength: 1,
 			player: -1,
 			startSec: 0,
 			sec: 0,
@@ -622,6 +836,14 @@ export class BuildFxDirector {
 		for (const r of source.heals) this.follow(r.owner, "heal", h.role, healSegments, n, clockSec);
 		const glintSegments = buildFxCount(gl.segments, level);
 		for (const r of source.unshaken) this.follow(r.owner, "glint", gl.role, glintSegments, n, clockSec);
+		// LG6: a brace cracks its stone ring (SPENT: faint); Stone Heart's heal also pulses like Lionheart's.
+		const br = BUILD_FX_VIEW.brace;
+		const braceSegments = buildFxCount(br.segments, level);
+		for (const r of source.braces) {
+			const g = this.follow(r.owner, "brace", br.role, braceSegments, n, clockSec);
+			if (g !== undefined) g.strength = braceRingStrength(r.kind);
+			if (r.kind === BraceKind.HEAL) this.follow(r.owner, "heal", h.role, healSegments, n, clockSec);
+		}
 	}
 
 	private follow(
@@ -631,14 +853,15 @@ export class BuildFxDirector {
 		segments: number,
 		n: number,
 		clockSec: number,
-	): void {
-		if (player < 0 || player >= n) return;
+	): RingSlot | undefined {
+		if (player < 0 || player >= n) return undefined;
 		const block = followBlock(look);
 		const rings = this.followRings;
 		let g: RingSlot | undefined;
 		for (const r of rings) if (r.look === look && r.player === player) g = r;
 		if (g === undefined) g = claim(rings, this.freeRings, FOLLOW_LOOKS.size() * n, () => this.newRing());
 		setRing(g, look, role, block.r0Tiles, block.r1Tiles, segments, player, clockSec);
+		return g;
 	}
 
 	private addFlashes(executes: ReadonlyArray<EffectRecord>, n: number, clockSec: number): void {
@@ -686,7 +909,8 @@ export class BuildFxDirector {
 					g.z = p.z;
 				}
 				g.radius = ringRadius(age, g.sec, g.r0, g.r1, reducedMotion);
-				g.fade = lifeFade(age, g.sec, g.fadeShare);
+				g.fade = lifeFade(age, g.sec, g.fadeShare) * g.strength;
+				g.chordShare = g.look === "brace" ? braceChordShare(age) : 1;
 				out.push(g);
 			}
 		}
@@ -725,6 +949,7 @@ export function buildRingBlock(look: BuildRingLook): BuildRingBlock {
 	if (look === "pop") return BUILD_FX_VIEW.pop;
 	if (look === "heal") return BUILD_FX_VIEW.heal;
 	if (look === "glint") return BUILD_FX_VIEW.glint;
+	if (look === "brace") return BUILD_FX_VIEW.brace;
 	return BUILD_FX_VIEW.flare;
 }
 
@@ -741,6 +966,8 @@ function setRing(
 	const b = buildRingBlock(look);
 	g.look = look;
 	g.role = role;
+	g.chordShare = 1;
+	g.strength = 1;
 	g.r0 = r0;
 	g.r1 = r1;
 	g.segments = segments;

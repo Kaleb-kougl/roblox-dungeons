@@ -15,6 +15,8 @@ import {
 	bowCharge,
 	playerAt,
 	swordGuard,
+	swordGuardHalfAngleCos,
+	swordGuardTicks,
 	weaponIndex,
 	weaponsAt,
 	type SimState,
@@ -173,7 +175,9 @@ export class WeaponViewController implements OnStart {
 				[],
 			);
 		}
-		const g = swordInHand ? swordGuard(active) : 0;
+		// The guard's length and arc are the player's (docs/LEGENDARIES.md LG6): Bastion's lasts swordGuardTicks (27) and
+		// is the full ring (swordGuardHalfAngleCos -1: sector draws the whole circle, no edge rays).
+		const g = swordInHand ? swordGuard(active, swordGuardTicks(s, me)) : 0;
 		if (g > 0) {
 			const flash = g > WEAPON_VIEW.guardFlashFrom || tickDeflectedBullets(s) > 0;
 			sector(
@@ -183,7 +187,7 @@ export class WeaponViewController implements OnStart {
 				p.faceX,
 				p.faceZ,
 				SWORD_DATA.guardReach,
-				SWORD_DATA.guardHalfAngleCos,
+				swordGuardHalfAngleCos(s, me),
 				WEAPON_VIEW.fanFill,
 			);
 		}

@@ -9,7 +9,7 @@
 import { describe, expect, it } from "@rbxts/jest-globals";
 import { buildRunConfig } from "shared/run";
 import { defaultJuiceSettings, type JuiceSettings } from "shared/settings";
-import { SWORD_DATA, createSimState, playerAt, type SimState } from "shared/sim";
+import { BASTION_GUARD_TICKS, SWORD_DATA, createSimState, playerAt, type SimState } from "shared/sim";
 import { semitonesToSpeed } from "../hud/comboConfig";
 import { NEAR_MISS_VIEW } from "./nearMissConfig";
 import type { GrazeRecord, GuardEraseRecord, NearMissFrameSource } from "./nearMissEvents";
@@ -305,6 +305,14 @@ describe("NearMissDirector: parries", () => {
 			parryStartsGroup(true, 100, 100 + w),
 			parryStartsGroup(true, 100, 99),
 		]).toEqual([true, false, false, true, true]);
+		// docs/LEGENDARIES.md LG6: a Bastion guard (its own swordGuardTicks, 27) stays one group past the 18.
+		const bastion = BASTION_GUARD_TICKS;
+		expect(bastion > w).toBe(true);
+		expect([
+			parryStartsGroup(true, 100, 100 + w, bastion),
+			parryStartsGroup(true, 100, 99 + bastion, bastion),
+			parryStartsGroup(true, 100, 100 + bastion, bastion),
+		]).toEqual([false, false, true]);
 	});
 
 	it("+3 semitones only when the guard's first frame erased bigFrom or more", () => {

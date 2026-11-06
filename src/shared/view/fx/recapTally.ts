@@ -7,8 +7,8 @@
  * lives as long as its run view (a new run is a new view), and `reset()` starts it over by hand.
  *
  *   - Parries: one per GROUP, grouped exactly as the NearMissDirector groups them (nearMissRules.ts
- *     `parryStartsGroup`: a player's erases within SWORD_DATA.guardTicks of the group's first erase tick are one
- *     guard). Unlike the director it has no `quiet` gate: the tally counts what the sim did, the stage cover or run over
+ *     `parryStartsGroup`: a player's erases within their guard's length, swordGuardTicks, of the group's first erase
+ *     tick are one guard). Unlike the director it has no `quiet` gate: the tally counts what the sim did, the stage cover or run over
  *     never splits a guard. A guard erasing 5 bullets is 1 parry.
  *   - Grazes: one per graze, per grazing player (solo: counts[GRAZES] exactly).
  *   - Records of a player outside the party (index < 0 or >= partySize) are ignored, like the director's.
@@ -17,7 +17,7 @@
  * Read-only on the sim. No allocation per tick: the per-player counters grow once per new player index. Presentation
  * only: nothing here is hashed or written back.
  */
-import { partySize, type SimState } from "shared/sim";
+import { partySize, swordGuardTicks, type SimState } from "shared/sim";
 import { parryStartsGroup } from "./nearMissRules";
 
 /** What the recap reads (RecapTally satisfies it). Index = player index; a player never seen reads 0. */
@@ -63,7 +63,7 @@ export class RecapTally implements RecapTallySource {
 			const p = e.guardPlayer[i];
 			if (p < 0 || p >= n) continue;
 			this.grow(p);
-			if (parryStartsGroup(this.hasGroup[p], this.groupFirstTick[p], tick)) {
+			if (parryStartsGroup(this.hasGroup[p], this.groupFirstTick[p], tick, swordGuardTicks(state, p))) {
 				this.hasGroup[p] = true;
 				this.groupFirstTick[p] = tick;
 				this.parries[p] += 1;

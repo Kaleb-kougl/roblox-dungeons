@@ -45,6 +45,7 @@ import {
 	aegisPips,
 	isPartyWiped,
 	swordGuard,
+	swordGuardTicks,
 	partySize,
 	playerAt,
 	weaponAt,
@@ -110,10 +111,14 @@ function weaponId(index: number): string {
 	return index === NO_WEAPON ? "" : weaponAt(index).id;
 }
 
-/** The sword guard of the active weapon set is up. */
-function guardUp(w: Readonly<WeaponsState>): boolean {
+/**
+ * Player `i`'s sword guard of the active weapon set is up, over its own length (swordGuardTicks: Bastion's 27,
+ * docs/LEGENDARIES.md LG6). The length is read only while the guard's timer runs (it never changes whether it is up).
+ */
+function guardUp(state: Readonly<SimState>, i: number, w: Readonly<WeaponsState>): boolean {
 	const active = w.sets[w.activeSet];
-	return active !== undefined && weaponId(active.weapon) === SWORD.id && swordGuard(active) > 0;
+	if (active === undefined || weaponId(active.weapon) !== SWORD.id || swordGuard(active) <= 0) return false;
+	return swordGuard(active, swordGuardTicks(state, i)) > 0;
 }
 
 export class StateWatch {
@@ -198,7 +203,7 @@ export class StateWatch {
 			this.swapEdge[i] = known && !left && w.activeSet !== this.activeSet[i];
 			const swung = known && !left && w.swingTick !== NO_SWING && w.swingTick !== this.swingTick[i];
 			this.swingEdge[i] = !swung ? SwingEdge.none : this.isFinisher(w) ? SwingEdge.finisher : SwingEdge.swing;
-			const guard = guardUp(w);
+			const guard = guardUp(state, i, w);
 			this.mayDeflect[i] = known && !left && (guard || this.guard[i] || swung);
 			this.guard[i] = guard;
 			this.hurt[i] = p.hurtTicks;

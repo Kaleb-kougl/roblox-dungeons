@@ -7,8 +7,9 @@
  * docs/GRAZE_PARRY.md GP7), the boon draft reveal (DraftRevealController, docs/DRAFT_REVEAL.md DR6), the new-best
  * celebration (NewBestController, docs/NEW_BEST.md NB7) and the Daily's in-run rank layer it drives (DailyRankController,
  * docs/DAILY.md DS10), the run-over recap (RecapController, docs/RUN_RECAP.md RR6), the build effects (BuildFxController,
- * docs/BUILDS.md BU8) and the co-op moments (TeamMomentsController: TEAM PERFECT / SYNC!; SyncCalloutController: the
- * SYNC! floor text and tether; docs/RUN_RECAP.md Part B). The pure logic
+ * docs/BUILDS.md BU8; BraceFxController: Bastion's BRACED shout, armor pulse and toast, docs/LEGENDARIES.md LG6) and
+ * the co-op moments (TeamMomentsController: TEAM PERFECT / SYNC!; SyncCalloutController: the SYNC! floor text and
+ * tether; docs/RUN_RECAP.md Part B). The pure logic
  * is shared/view/fx (and shared/view/hud for the combo, the PARRY! text and the draft reveal); these only draw it.
  * docs/CLIENT.md "Juice".
  */
@@ -30,4 +31,5 @@ export * from "./DraftRevealController";
 export * from "./NewBestController";
 export * from "./RecapController";
 export * from "./BuildFxController";
+export * from "./BraceFxController";
 export * from "./DailyRankController";

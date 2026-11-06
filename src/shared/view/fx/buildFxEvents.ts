@@ -21,6 +21,11 @@
  *     into `unshaken` (the shield glint on the player), every other duo (Storm Blade, Conductor, Chain Reaction, Close
  *     Call) into `duoProcs` (an origin flare). Their sparks and bullets are already ordinary spark segments / bursts /
  *     shards / effect bullets, drawn as such.
+ *   - docs/LEGENDARIES.md LG6: one StreakRecord per Overkill streak that struck (`overkills`: the corpse, the target,
+ *     owner, the proc generation, the carry dealt), and one EffectRecord per Bastion brace (`braces`: owner = the
+ *     bracing player, x / z where they stood at collect, kind = BraceKind PIP / HEAL / SPENT, amount 1, gen 0).
+ *     Supernova's and Skewer's duoProc entries go to `duoProcs` like BU6's (an origin flare; amount: Supernova's bolts,
+ *     Skewer's enemies struck including the target).
  *   - Runs without builds (`state.builds === undefined`: M1, the tutorial, fixtures) collect nothing: no tick, no record.
  *
  * Read-only on the sim. No allocation in steady state (records come from pools that only grow). Presentation only.
@@ -36,6 +41,20 @@ export interface SparkRecord {
 	readonly owner: number;
 	readonly gen: number;
 	readonly fork: boolean;
+	readonly tick: number;
+}
+
+/** One Overkill streak (docs/LEGENDARIES.md LG2 / LG6): from the corpse (x1, z1) to the target at (x2, z2). */
+export interface StreakRecord {
+	readonly x1: number;
+	readonly z1: number;
+	readonly x2: number;
+	readonly z2: number;
+	readonly owner: number;
+	/** The proc generation: 0 for the player's own kill, +1 per link of a chain. */
+	readonly gen: number;
+	/** The damage the streak dealt. */
+	readonly carry: number;
 	readonly tick: number;
 }
 
@@ -87,6 +106,10 @@ export interface BuildFxFrameSource {
 	readonly unshaken: ReadonlyArray<EffectRecord>;
 	readonly evolved: ReadonlyArray<TakeRecord>;
 	readonly duos: ReadonlyArray<TakeRecord>;
+	/** LG6: Overkill streaks that struck. */
+	readonly overkills: ReadonlyArray<StreakRecord>;
+	/** LG6: Bastion braces (owner: the bracing player; kind: BraceKind). */
+	readonly braces: ReadonlyArray<EffectRecord>;
 }
 
 interface SparkSlot {
@@ -97,6 +120,17 @@ interface SparkSlot {
 	owner: number;
 	gen: number;
 	fork: boolean;
+	tick: number;
+}
+
+interface StreakSlot {
+	x1: number;
+	z1: number;
+	x2: number;
+	z2: number;
+	owner: number;
+	gen: number;
+	carry: number;
 	tick: number;
 }
 
@@ -181,6 +215,17 @@ export class BuildFxEvents implements BuildFxFrameSource {
 	private readonly unshakenList = new Pooled<EffectSlot>(newEffect);
 	private readonly evolvedList = new Pooled<TakeSlot>(newTake);
 	private readonly duoList = new Pooled<TakeSlot>(newTake);
+	private readonly streakList = new Pooled<StreakSlot>(() => ({
+		x1: 0,
+		z1: 0,
+		x2: 0,
+		z2: 0,
+		owner: 0,
+		gen: 0,
+		carry: 0,
+		tick: 0,
+	}));
+	private readonly braceList = new Pooled<EffectSlot>(newEffect);
 	/** Every effect list, for reset and count. */
 	private readonly effectLists: ReadonlyArray<Pooled<EffectSlot>> = [
 		this.burstList,
@@ -198,6 +243,7 @@ export class BuildFxEvents implements BuildFxFrameSource {
 		this.duoProcList,
 		this.goldRushList,
 		this.unshakenList,
+		this.braceList,
 	];
 
 	readonly sparks: ReadonlyArray<SparkRecord> = this.sparkList.items;
@@ -218,6 +264,8 @@ export class BuildFxEvents implements BuildFxFrameSource {
 	readonly unshaken: ReadonlyArray<EffectRecord> = this.unshakenList.items;
 	readonly evolved: ReadonlyArray<TakeRecord> = this.evolvedList.items;
 	readonly duos: ReadonlyArray<TakeRecord> = this.duoList.items;
+	readonly overkills: ReadonlyArray<StreakRecord> = this.streakList.items;
+	readonly braces: ReadonlyArray<EffectRecord> = this.braceList.items;
 
 	/** A new frame: forget the last one's records. */
 	reset(): void {
@@ -226,11 +274,12 @@ export class BuildFxEvents implements BuildFxFrameSource {
 		for (const l of this.effectLists) l.clear();
 		this.evolvedList.clear();
 		this.duoList.clear();
+		this.streakList.clear();
 	}
 
 	/** Every record of this frame (0: nothing happened). */
 	count(): number {
-		let n = this.sparks.size() + this.evolved.size() + this.duos.size();
+		let n = this.sparks.size() + this.evolved.size() + this.duos.size() + this.overkills.size();
 		for (const l of this.effectLists) n += l.items.size();
 		return n;
 	}
@@ -280,6 +329,31 @@ export class BuildFxEvents implements BuildFxFrameSource {
 		for (let i = 0; i < e.duoPlayer.size(); i++) take(this.duoList.push(), e.duoPlayer[i], e.duoTaken[i], tick);
 		this.collectEvolutions(state, tick);
 		this.collectDuos(state, tick);
+		this.collectLegendaries(state, tick);
+	}
+
+	/** LG6: Overkill's streaks and Bastion's braces (see the file comment). */
+	private collectLegendaries(state: Readonly<SimState>, tick: number): void {
+		const e = state.builds!.events;
+		for (let i = 0; i < e.overkillX1.size(); i++) {
+			const r = this.streakList.push();
+			r.x1 = e.overkillX1[i];
+			r.z1 = e.overkillZ1[i];
+			r.x2 = e.overkillX2[i];
+			r.z2 = e.overkillZ2[i];
+			r.owner = e.overkillOwner[i];
+			r.gen = e.overkillGen[i];
+			r.carry = e.overkillCarry[i];
+			r.tick = tick;
+		}
+		const n = partySize(state);
+		for (let i = 0; i < e.bracePlayer.size(); i++) {
+			const who = e.bracePlayer[i];
+			const p = who >= 0 && who < n ? playerAt(state, who) : undefined;
+			const r = this.braceList.push();
+			effect(r, p?.x ?? 0, p?.z ?? 0, who, 0, 1, tick);
+			r.kind = e.braceKind[i];
+		}
 	}
 
 	/** BU5's evolution records (see the file comment for each list's amount / kind). */
@@ -373,6 +447,7 @@ const EMPTY_SPARKS = table.freeze([] as SparkRecord[]);
 const EMPTY_EFFECTS = table.freeze([] as EffectRecord[]);
 const EMPTY_NOVAS = table.freeze([] as NovaRecord[]);
 const EMPTY_TAKES = table.freeze([] as TakeRecord[]);
+const EMPTY_STREAKS = table.freeze([] as StreakRecord[]);
 
 /** No build effects (no run, no builds, or audibleBuilds while quiet). Frozen. */
 export const NO_BUILD_FX_EVENTS: BuildFxFrameSource = table.freeze({
@@ -395,6 +470,8 @@ export const NO_BUILD_FX_EVENTS: BuildFxFrameSource = table.freeze({
 	unshaken: EMPTY_EFFECTS,
 	evolved: EMPTY_TAKES,
 	duos: EMPTY_TAKES,
+	overkills: EMPTY_STREAKS,
+	braces: EMPTY_EFFECTS,
 });
 
 /**

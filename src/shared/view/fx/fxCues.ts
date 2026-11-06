@@ -76,6 +76,7 @@ import {
 	partySize,
 	playerAt,
 	swordGuard,
+	swordGuardTicks,
 	weaponIndex,
 	weaponsAt,
 	type SimEvents,
@@ -622,10 +623,15 @@ export class FxCueMapper {
 		return 1;
 	}
 
-	private guardOf(w: Readonly<WeaponsState>): number {
+	/**
+	 * Player `i`'s guard progress (1 -> 0) over its length (swordGuardTicks: Bastion's is longer, LG6); the length is
+	 * read only while the guard's timer runs.
+	 */
+	private guardOf(state: Readonly<SimState>, i: number, w: Readonly<WeaponsState>): number {
 		const active = w.sets[w.activeSet];
 		if (active === undefined || active.weapon === NO_WEAPON || active.weapon !== this.swordIndex) return 0;
-		return swordGuard(active);
+		if (swordGuard(active) <= 0) return 0;
+		return swordGuard(active, swordGuardTicks(state, i));
 	}
 
 	/**
@@ -638,7 +644,7 @@ export class FxCueMapper {
 			if (hasLeft(state, i) || i >= this.pEmbers.size()) continue;
 			const w = weaponsAt(state, i);
 			const swung = w.swingTick >= 0 && w.swingTick !== this.pSwingTick[i];
-			if (this.guardOf(w) <= 0 && this.pGuard[i] <= 0 && !swung) continue;
+			if (this.guardOf(state, i, w) <= 0 && this.pGuard[i] <= 0 && !swung) continue;
 			if (sole >= 0) return -1;
 			sole = i;
 		}
@@ -660,7 +666,7 @@ export class FxCueMapper {
 			const pz = p.prevZ + (p.z - p.prevZ) * f.alpha;
 			if (p.embers < this.pEmbers[i]) this.emit("fx.ember.ring", px, pz, 0, 1);
 			if (p.flask < this.pFlask[i]) this.emit("fx.flask", px, pz, 0, 1);
-			const g = this.guardOf(w);
+			const g = this.guardOf(state, i, w);
 			if (g > 0 && p.dead === 0) {
 				const fresh = this.pGuard[i] <= 0;
 				const deflect = deflector === i && this.now - this.pGuardAt[i] >= V.guardMinSec;
@@ -768,7 +774,7 @@ export class FxCueMapper {
 			const p = playerAt(state, i);
 			const w = weaponsAt(state, i);
 			this.pSwingTick[i] = w.swingTick;
-			this.pGuard[i] = this.guardOf(w);
+			this.pGuard[i] = this.guardOf(state, i, w);
 			this.pRoll[i] = p.rollTicks;
 			this.pFlask[i] = p.flask;
 			this.pEmbers[i] = p.embers;

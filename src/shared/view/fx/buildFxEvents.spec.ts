@@ -6,6 +6,8 @@
 //     Gold Rush and Unshaken hooks
 //   - every BU5 field (sparkFork, novas, executes, Phantom Step, Jackpot, Lionheart, Momentum, Thrill Seeker, Flurry,
 //     Ricochet) becomes a record of its list with the right amount / kind, per tick, reset per frame
+//   - docs/LEGENDARIES.md LG6: Overkill streaks (corpse, target, owner, gen, carry) into `overkills`, Bastion braces
+//     (player, where they stood, BraceKind) into `braces`, Supernova / Skewer duo procs into duoProcs
 //   - audibleBuilds' quiet gate
 //   - the run views' wiring: LiveRun collects a real Chain Spark + Volatile proc tick by tick; LockstepClient per pump
 import "shared/sim/testing";
@@ -16,6 +18,7 @@ import { buildEndlessRunConfig } from "shared/run";
 import {
 	BUILDS_CONFIG,
 	Boon,
+	BraceKind,
 	BuildEffect,
 	Duo,
 	EMBER_BURST,
@@ -30,6 +33,7 @@ import {
 	clearBuildEvents,
 	createSimState,
 	fireEffect,
+	playerAt,
 	type InputFrame,
 	type SimConfig,
 	type SimState,
@@ -349,6 +353,61 @@ describe("BuildFxEvents", () => {
 		expect(ev.jackpots.size()).toBe(1);
 		expect([ev.jackpots[0].owner, ev.jackpots[0].amount > 0]).toEqual([0, true]);
 		expect(ev.jackpots[0].amount).toBe(state.builds!.events.jackpotPoints[0]);
+	});
+
+	it("LG6: Overkill streaks into overkills, braces into braces (where the player stood), legendary duos into duoProcs", () => {
+		const state = buildsState(2);
+		const b = state.builds!;
+		const e = b.events;
+		const ev = new BuildFxEvents();
+		clearBuildEvents(b);
+		const streak = (x1: number, x2: number, owner: number, gen: number, carry: number) => {
+			e.overkillX1.push(x1);
+			e.overkillZ1.push(-x1);
+			e.overkillX2.push(x2);
+			e.overkillZ2.push(-x2);
+			e.overkillOwner.push(owner);
+			e.overkillGen.push(gen);
+			e.overkillCarry.push(carry);
+		};
+		streak(1, 2, 0, 0, 5);
+		streak(2, 3, 1, 1, 4);
+		const p1 = state.party!.players[1];
+		p1.x = 7;
+		p1.z = 8;
+		e.bracePlayer.push(1);
+		e.braceKind.push(BraceKind.HEAL);
+		e.bracePlayer.push(0);
+		e.braceKind.push(BraceKind.SPENT);
+		e.duoProcDuo.push(Duo.SUPERNOVA, Duo.SKEWER);
+		e.duoProcOwner.push(0, 1);
+		e.duoProcX.push(1, 2);
+		e.duoProcZ.push(-1, -2);
+		e.duoProcValue.push(16, 3);
+		state.tick += 1;
+		ev.collect(state);
+		clearBuildEvents(b);
+		streak(3, 4, 1, 2, 3);
+		state.tick += 1;
+		ev.collect(state);
+		expect(ev.overkills.map((r) => [r.x1, r.z1, r.x2, r.z2, r.owner, r.gen, r.carry, r.tick])).toEqual([
+			[1, -1, 2, -2, 0, 0, 5, 1],
+			[2, -2, 3, -3, 1, 1, 4, 1],
+			[3, -3, 4, -4, 1, 2, 3, 2],
+		]);
+		const p0 = playerAt(state, 0);
+		expect(ev.braces.map((r) => [r.x, r.z, r.owner, r.gen, r.amount, r.kind])).toEqual([
+			[7, 8, 1, 0, 1, BraceKind.HEAL],
+			[p0.x, p0.z, 0, 0, 1, BraceKind.SPENT],
+		]);
+		expect(ev.duoProcs.map((r) => [r.x, r.owner, r.amount, r.kind])).toEqual([
+			[1, 0, 16, Duo.SUPERNOVA],
+			[2, 1, 3, Duo.SKEWER],
+		]);
+		expect([ev.ticks, ev.count()]).toEqual([2, 7]);
+		ev.reset();
+		expect([ev.overkills.size(), ev.braces.size(), ev.count()]).toEqual([0, 0, 0]);
+		expect([NO_BUILD_FX_EVENTS.overkills.size(), NO_BUILD_FX_EVENTS.braces.size()]).toEqual([0, 0]);
 	});
 
 	it("audibleBuilds passes the source through, or nothing while quiet (stage cover, run over)", () => {

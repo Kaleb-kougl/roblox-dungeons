@@ -127,12 +127,18 @@
  *     BUILD_FX_VIEW.audio.volume; an effect only a teammate set off plays at teammateVolume more and
  *     TEAMMATE_PRIORITY_DROP lower. Voice cap: at most BUILD_FX_VIEW.audio.maxVoices of these start within any
  *     voiceWindowSec (counted from the cues that actually started); the rest of the frame's build cues are dropped in
- *     the order above (spark first). A cascade is a climbing handful of sounds, never a machine gun.
+ *     BUILD_VOICE_SFX order (the Overkill streak first, then the spark). A cascade is a climbing handful of sounds,
+ *     never a machine gun.
  *   - sfx.build.evolve / .duo on an evolution / duo taken (BuildEvents' takes): the local (view) player's at full
  *     volume, a teammate's at teammateVolume; outside the voice cap, the pack's jitter.
  *   None is a jingle, ducks the music or has a fallback: a silent ID plays nothing and takes no cap slot.
- *   - sfx.build.overkill / .brace (docs/LEGENDARIES.md LG5): registered (ranked, timed, with a fallback to the spark /
- *     the Aegis break while silent), not mapped yet (LG6).
+ *   - sfx.build.overkill (docs/LEGENDARIES.md LG6): an Overkill streak struck, under the voice cap like the spark
+ *     (first in BUILD_VOICE_SFX: the legendary's signature is the last build sound a busy frame drops), at
+ *     buildGenSpeed(the frame's highest overkillGen): a chain climbs +2 semitones per link. Falls back to the spark
+ *     while silent (LG5).
+ *   - sfx.build.brace (LG6): a Bastion brace that restored a pip or healed (braceFeedbackOf: SPENT plays nothing),
+ *     the local (view) player's at full volume, a teammate's at teammateVolume; outside the voice cap like the stings
+ *     (it answers the player's own guard). Falls back to the Aegis break while silent (LG5).
  *
  * The Daily's rank layer (docs/DAILY.md DS10) comes from the frame's DailyRankCueSource (the client's
  * DailyRankController, stepped BEFORE the mapper in the same frame; NO_DAILY_RANK_CUES by default, so every other cue is
@@ -185,6 +191,7 @@ import {
 	NEAR_MISS_VIEW,
 	NO_BUILD_FX_EVENTS,
 	NO_COMBO_EVENTS,
+	braceFeedbackOf,
 	buildGenSpeed,
 	type BuildFxFrameSource,
 	type EffectRecord,
@@ -930,6 +937,7 @@ const NO_EFFECTS: ReadonlyArray<EffectRecord> = table.freeze([] as EffectRecord[
 
 /** The build cues under the voice cap (BUILD_FX_VIEW.audio.maxVoices), in the order a busy frame keeps them. */
 export const BUILD_VOICE_SFX: ReadonlyArray<SfxId> = [
+	SFX.buildOverkill,
 	SFX.buildSpark,
 	SFX.buildBurst,
 	SFX.buildShard,
@@ -1465,6 +1473,16 @@ export class AudioCueMapper {
 
 	/** The frame's build cues (BU8; see the file comment). */
 	private buildCues(builds: BuildFxFrameSource, localIndex: number): void {
+		const streaks = builds.overkills;
+		if (streaks.size() > 0) {
+			let gen = 0;
+			let mine = false;
+			for (const r of streaks) {
+				if (r.gen > gen) gen = r.gen;
+				if (r.owner === localIndex) mine = true;
+			}
+			this.buildVoiceCue(SFX.buildOverkill, gen, mine);
+		}
 		const sparks = builds.sparks;
 		if (sparks.size() > 0) {
 			let gen = 0;
@@ -1483,6 +1501,8 @@ export class AudioCueMapper {
 		this.buildCue(SFX.buildEmber, localIndex, builds.embers);
 		for (const t of builds.evolved) this.playerCue(SFX.buildEvolve, t.player, localIndex);
 		for (const t of builds.duos) this.playerCue(SFX.buildDuo, t.player, localIndex);
+		for (const r of builds.braces)
+			if (braceFeedbackOf(r.kind).sound) this.playerCue(SFX.buildBrace, r.owner, localIndex);
 	}
 
 	/**

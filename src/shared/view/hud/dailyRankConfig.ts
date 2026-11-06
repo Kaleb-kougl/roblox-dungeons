@@ -14,10 +14,13 @@ export const DAILY_RANK_ROLE = "newBest";
  * Horde's shouts (docs/FORTUNE.md FO7: HORDE x2 on rousing, WAVE 2 at the telegraph) rank over the rank threshold
  * (they tell of new enemies) and under new best. The Goldling (FO8): its appearance's GOLDLING! is a call to act
  * within its 10 s, so it outranks every celebration (the new best keeps its fanfare and score-panel stamp); its escape
- * line is news like a rank threshold (the later of the two on one frame wins).
+ * line is news like a rank threshold (the later of the two on one frame wins). Bastion's BRACED (docs/LEGENDARIES.md
+ * LG6) is the lowest request: feedback on the player's own guard, so any news replaces it; it ranks with a tier shout
+ * (the request path replaces a showing tier shout, and a later tier-up while it shows stays in the panel).
  */
 export const FLOOR_SHOUT_PRIORITY = {
 	comboTier: 0,
+	brace: 0,
 	rankThreshold: 1,
 	horde: 2,
 	newBest: 3,

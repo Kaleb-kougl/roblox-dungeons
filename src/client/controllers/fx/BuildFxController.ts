@@ -32,6 +32,8 @@ const FULL_TURN = 2 * math.pi;
 /** Transparency writes are quantized to this step (a write only on a change). */
 const ALPHA_QUANTUM = 0.05;
 const FOLDER_NAME = "KV_BuildFx";
+/** The Overkill streak's core is its role mixed toward white (BUILD_FX_VIEW.overkill.coreWhiteMix). */
+const WHITE = new Color3(1, 1, 1);
 
 /** One pooled Neon part and the properties last written to it. */
 interface FxPart {
@@ -123,7 +125,12 @@ class FxPartPool {
  *     Chain Reaction / Close Call in boon.duo), the evolve / duo flare, the Lionheart pulse and Unshaken's shield glint
  *     on the knight, as pooled flat segments around the circle in the ring's role, sized by its look's block
  *     (buildRingBlock);
- *   - execute flashes: a flat Neon disc in BUILD_FX_VIEW.execute.role, popping out and fading.
+ *   - execute flashes: a flat Neon disc in BUILD_FX_VIEW.execute.role, popping out and fading;
+ *   - Overkill streaks (docs/LEGENDARIES.md LG6): ONE straight Neon segment corpse -> target per strike (the beams'
+ *     construction, no jag) in BUILD_FX_VIEW.overkill.role at the streak's thickness, with a thinner white-mixed core
+ *     segment a hair above it (Full only), fading out; impact flashes: flat discs at the targets (Full only);
+ *   - Bastion's brace ring: a `brace` ring (above), its chords shortened by RingView.chordShare (the crack).
+ * The floor shout, armor row pulse and toast of a brace are BraceFxController's (a subscriber: BuildFxFrame.braces).
  * The Jackpot pop and Gold Rush's kill pop are the score pops' (ScorePopController reads RunView.builds.jackpots /
  * goldRush). Duo sparks and embers need nothing here: they come through as ordinary spark segments and ember bullets.
  *
@@ -143,6 +150,10 @@ export class BuildFxController implements OnStart {
 	private beams: FxPartPool | undefined;
 	private rings: FxPartPool | undefined;
 	private flashes: FxPartPool | undefined;
+	private streaks: FxPartPool | undefined;
+	private impacts: FxPartPool | undefined;
+	/** The Overkill streak's core colour (streakCore). */
+	private coreColor: Color3 | undefined;
 	private hadRun = false;
 
 	constructor(
@@ -157,6 +168,8 @@ export class BuildFxController implements OnStart {
 		this.beams = new FxPartPool(folder, "SparkBeam", Enum.PartType.Block);
 		this.rings = new FxPartPool(folder, "Ring", Enum.PartType.Block);
 		this.flashes = new FxPartPool(folder, "Execute", Enum.PartType.Cylinder);
+		this.streaks = new FxPartPool(folder, "OverkillStreak", Enum.PartType.Block);
+		this.impacts = new FxPartPool(folder, "OverkillImpact", Enum.PartType.Cylinder);
 		this.fx.onFrame((_, juice) => this.frame(juice));
 	}
 
@@ -165,9 +178,15 @@ export class BuildFxController implements OnStart {
 		this.handlers.push(handler);
 	}
 
-	/** Pooled parts (beam segments, ring segments, execute discs). */
-	getPoolSizes(): [number, number, number] {
-		return [this.beams?.size() ?? 0, this.rings?.size() ?? 0, this.flashes?.size() ?? 0];
+	/** Pooled parts (beam segments, ring segments, execute discs, streak segments, impact discs). */
+	getPoolSizes(): [number, number, number, number, number] {
+		return [
+			this.beams?.size() ?? 0,
+			this.rings?.size() ?? 0,
+			this.flashes?.size() ?? 0,
+			this.streaks?.size() ?? 0,
+			this.impacts?.size() ?? 0,
+		];
 	}
 
 	private color(role: ColorRole): Color3 {
@@ -175,6 +194,17 @@ export class BuildFxController implements OnStart {
 		if (c === undefined) {
 			c = this.theme.getPack().color(role);
 			this.colors.set(role, c);
+		}
+		return c;
+	}
+
+	/** The Overkill streak's core colour: its role mixed toward white (cached once). */
+	private streakCore(): Color3 {
+		let c = this.coreColor;
+		if (c === undefined) {
+			const o = BUILD_FX_VIEW.overkill;
+			c = this.color(o.role).Lerp(WHITE, o.coreWhiteMix);
+			this.coreColor = c;
 		}
 		return c;
 	}
@@ -217,7 +247,16 @@ export class BuildFxController implements OnStart {
 		const beams = this.beams;
 		const rings = this.rings;
 		const flashes = this.flashes;
-		if (beams === undefined || rings === undefined || flashes === undefined) return;
+		const streaks = this.streaks;
+		const impacts = this.impacts;
+		if (
+			beams === undefined ||
+			rings === undefined ||
+			flashes === undefined ||
+			streaks === undefined ||
+			impacts === undefined
+		)
+			return;
 		const mp = this.moveParts;
 		const mc = this.moveCFrames;
 		mp.clear();
@@ -225,14 +264,20 @@ export class BuildFxController implements OnStart {
 		beams.begin();
 		rings.begin();
 		flashes.begin();
+		streaks.begin();
+		impacts.begin();
 		if (out !== undefined) {
 			this.drawBeams(out, beams);
 			for (const r of out.rings) this.drawRing(r, rings);
 			this.drawFlashes(out, flashes);
+			this.drawStreaks(out, streaks);
+			this.drawImpacts(out, impacts);
 		}
 		beams.end(mp, mc);
 		rings.end(mp, mc);
 		flashes.end(mp, mc);
+		streaks.end(mp, mc);
+		impacts.end(mp, mc);
 		if (mp.size() > 0) Workspace.BulkMoveTo(mp, mc, Enum.BulkMoveMode.FireCFrameChanged);
 	}
 
@@ -264,7 +309,8 @@ export class BuildFxController implements OnStart {
 		const y = floorStudsY() + look.liftStuds;
 		const cx = studsX(r.x);
 		const cz = studsZ(r.z);
-		const chord = 2 * radius * math.sin(math.pi / n);
+		const chord = 2 * radius * math.sin(math.pi / n) * r.chordShare;
+		if (chord <= 0) return;
 		const size = new Vector3(look.widthStuds, look.thicknessStuds, chord);
 		const color = this.color(r.role);
 		const alpha = 1 - r.fade;
@@ -275,6 +321,47 @@ export class BuildFxController implements OnStart {
 			// The chord runs along the tangent: look along (-sin, cos).
 			const cf = CFrame.lookAlong(new Vector3(px, y, pz), new Vector3(-math.sin(angle), 0, math.cos(angle)));
 			pool.place(cf, size, color, alpha, this.moveParts, this.moveCFrames);
+		}
+	}
+
+	/** LG6: each streak as one straight segment (no jag), and its white-mixed core above it when `core`. */
+	private drawStreaks(out: Readonly<BuildFxFrame>, pool: FxPartPool): void {
+		const o = BUILD_FX_VIEW.overkill;
+		const y = floorStudsY() + o.liftStuds;
+		const color = this.color(o.role);
+		for (const t of out.streaks) {
+			const a = new Vector3(studsX(t.x1), y, studsZ(t.z1));
+			const c = new Vector3(studsX(t.x2), y, studsZ(t.z2));
+			const len = a.sub(c).Magnitude;
+			if (len <= 0) continue;
+			const alpha = 1 - t.fade;
+			const mid = a.add(c).mul(0.5);
+			const w = t.thicknessStuds;
+			pool.place(CFrame.lookAt(mid, c), new Vector3(w, w, len), color, alpha, this.moveParts, this.moveCFrames);
+			if (!t.core) continue;
+			const lift = new Vector3(0, o.coreLiftStuds, 0);
+			const core = w * o.coreShare;
+			pool.place(
+				CFrame.lookAt(mid.add(lift), c.add(lift)),
+				new Vector3(core, core, len),
+				this.streakCore(),
+				alpha,
+				this.moveParts,
+				this.moveCFrames,
+			);
+		}
+	}
+
+	/** LG6: a flat disc at each streak's target, popping out and fading. */
+	private drawImpacts(out: Readonly<BuildFxFrame>, pool: FxPartPool): void {
+		const o = BUILD_FX_VIEW.overkill;
+		const e = o.impact;
+		const y = floorStudsY() + e.liftStuds + e.thicknessStuds / 2;
+		const color = this.color(o.role);
+		for (const f of out.impacts) {
+			const d = e.diameterTiles * STUDS_PER_TILE * f.scale;
+			const cf = new CFrame(studsX(f.x), y, studsZ(f.z)).mul(FLAT);
+			pool.place(cf, new Vector3(e.thicknessStuds, d, d), color, 1 - f.fade, this.moveParts, this.moveCFrames);
 		}
 	}
 

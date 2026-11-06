@@ -5,6 +5,7 @@ import { role, str, themePack } from "client/ui/theme";
 import type { ThemePack } from "shared/theme";
 import { HORDE_CHIP, hordeChipWidth } from "shared/view/pacts";
 import { BOOST_VIEW, type BoostHudEntry } from "shared/view/boosts";
+import { BRACE_VIEW } from "shared/view/fx";
 import {
 	HUD_STRINGS,
 	HUD_VIEW,
@@ -19,6 +20,7 @@ import {
 	type SkinHas,
 } from "shared/view/hud";
 import { BoostRow, boostCellWidth } from "./BoostRow";
+import { BRACE_UI } from "./braceUi";
 import { HordeChip } from "./HordeChip";
 import { ArtImage, Panel, Pip, Row, Text, type PipArtProps } from "./primitives";
 import { RunItems } from "./RunItems";
@@ -135,6 +137,22 @@ export function aegisPips(count: number, after: number, skin: StatusSkin | undef
 }
 
 /**
+ * Bastion's brace pulse round the armor pips (docs/LEGENDARIES.md LG6): a stroke in the pip colour whose thickness and
+ * transparency BraceFxController drives through BRACE_UI (bindings: no re-render). Invisible at rest.
+ */
+function BracePulse() {
+	return (
+		<uistroke
+			key="BracePulse"
+			ApplyStrokeMode={Enum.ApplyStrokeMode.Border}
+			Color={role(BRACE_VIEW.pulse.role)}
+			Thickness={BRACE_UI.pulseThickness.binding}
+			Transparency={BRACE_UI.pulseTransparency.binding}
+		/>
+	);
+}
+
+/**
  * The boost row while the Pact of the Horde is armed (docs/FORTUNE.md FO7): the Horde chip, then the running boosts in
  * what is left of the row (shared/view/pacts hordeChipWidth: one boost cell beside the chip; more boosts wrap under
  * it), so the chip shares the boost row's line instead of adding a panel or a row of its own.
@@ -195,6 +213,7 @@ export function StatusPanel(props: StatusPanelProps) {
 					<Row order={hearts.size() + 2}>
 						{pips(s.armor, armorMax, "uiMana", true, "armor", skin)}
 						{aegisPips(s.aegisPips, armorMax, skin)}
+						<BracePulse />
 					</Row>
 				) : undefined}
 				{props.highlight === "hearts" ? <HighlightRing /> : undefined}

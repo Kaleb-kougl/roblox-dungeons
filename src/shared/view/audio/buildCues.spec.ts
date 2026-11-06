@@ -2,11 +2,14 @@
 // execute / jackpot from the frame's BuildFxFrameSource, pitched by the frame's highest proc generation, one each per
 // frame and interval, under a voice cap; BU5's releases on the burst (Thrill Seeker, Flurry) and shard (Momentum,
 // Ricochet) cues; Phantom Step and Lionheart silent; evolve / duo stings from the takes; teammates quieter; silent IDs
-// nothing; the quiet gate; the theme's IDs.
+// nothing; the quiet gate; the theme's IDs. docs/LEGENDARIES.md LG6: the Overkill streak's cue (one per frame,
+// climbing per overkillGen, first under the voice cap) and the brace's (PIP / HEAL, the local player's loud, outside
+// the cap; SPENT silent).
 import { describe, expect, it } from "@rbxts/jest-globals";
 import {
 	ALL_EVENT_FIELDS,
 	BUILDS_CONFIG,
+	BraceKind,
 	createSimState,
 	eventDefault,
 	type SimEvents,
@@ -77,6 +80,9 @@ interface Fx {
 	thrills?: ReadonlyArray<number>;
 	flurries?: ReadonlyArray<number>;
 	ricochets?: ReadonlyArray<number>;
+	// LG6: Overkill streaks [owner, gen] and braces [player, BraceKind].
+	overkills?: ReadonlyArray<[number, number]>;
+	braces?: ReadonlyArray<[number, number]>;
 }
 
 /** A frame source with these records (one tick). */
@@ -166,6 +172,19 @@ function source(fx: Fx, players = 2): BuildFxEvents {
 		e.ricochetZ.push(0);
 		e.ricochetOwner.push(o);
 		e.ricochetFired.push(2);
+	}
+	for (const [o, g] of fx.overkills ?? []) {
+		e.overkillX1.push(0);
+		e.overkillZ1.push(0);
+		e.overkillX2.push(1);
+		e.overkillZ2.push(1);
+		e.overkillOwner.push(o);
+		e.overkillGen.push(g);
+		e.overkillCarry.push(1);
+	}
+	for (const [p, k] of fx.braces ?? []) {
+		e.bracePlayer.push(p);
+		e.braceKind.push(k);
 	}
 	s.tick = 1;
 	const ev = new BuildFxEvents();
@@ -421,5 +440,82 @@ describe("build cues: the evolutions (BU8 follow-up)", () => {
 				(_, i) => i < A.maxVoices,
 			),
 		);
+	});
+});
+
+describe("build cues: the legendaries (LG6)", () => {
+	it("an Overkill streak plays sfx.build.overkill once per frame at buildGenSpeed(the highest overkillGen)", () => {
+		const out = frame(
+			new AudioCueMapper(),
+			0,
+			source({
+				overkills: [
+					[0, 0],
+					[0, 2],
+					[1, 1],
+				],
+			}),
+		);
+		expect(ids(out)).toEqual([SFX.buildOverkill]);
+		expect([out.volume(0), out.speed(0)]).toEqual([A.volume, buildGenSpeed(2)]);
+		// A chain climbs: gen 0, 1, 2 on consecutive intervals step up.
+		const m = new AudioCueMapper();
+		const gap = SFX_MIN_INTERVAL[SFX.buildOverkill]!;
+		const speeds: number[] = [];
+		for (let g = 0; g < 3; g++) speeds.push(frame(m, g * gap, source({ overkills: [[0, g]] })).speed(0));
+		expect(speeds).toEqual([buildGenSpeed(0), buildGenSpeed(1), buildGenSpeed(2)]);
+		expect(speeds[0] < speeds[1] && speeds[1] < speeds[2]).toBe(true);
+		// A teammate's streak alone: quieter.
+		const theirs = frame(new AudioCueMapper(), 0, source({ overkills: [[1, 0]] }), 0);
+		expect(theirs.volume(0)).toBe(A.volume * AUDIO_VIEW.teammateVolume);
+	});
+
+	it("the streak is first under the voice cap: a busy frame keeps it over the spark", () => {
+		expect(BUILD_VOICE_SFX[0]).toBe(SFX.buildOverkill);
+		const out = frame(
+			new AudioCueMapper(),
+			0,
+			source({ overkills: [[0, 0]], sparks: [[0, 0]], bursts: [[0, 0]], shards: [[0, 0]], novas: [0] }),
+		);
+		expect(ids(out)).toEqual(
+			[SFX.buildOverkill, SFX.buildSpark, SFX.buildBurst, SFX.buildShard, SFX.buildNova].filter(
+				(_, i) => i < A.maxVoices,
+			),
+		);
+	});
+
+	it("a brace that restored a pip or healed plays sfx.build.brace (yours loud, a teammate's quieter); SPENT is silent", () => {
+		const out = frame(
+			new AudioCueMapper(),
+			0,
+			source({
+				braces: [
+					[0, BraceKind.PIP],
+					[1, BraceKind.SPENT],
+				],
+			}),
+		);
+		expect(ids(out)).toEqual([SFX.buildBrace]);
+		expect(out.volume(0)).toBe(1);
+		const heal = frame(new AudioCueMapper(), 0, source({ braces: [[1, BraceKind.HEAL]] }), 0);
+		expect([ids(heal), heal.volume(0)]).toEqual([[SFX.buildBrace], AUDIO_VIEW.teammateVolume]);
+		expect(ids(frame(new AudioCueMapper(), 0, source({ braces: [[0, BraceKind.SPENT]] })))).toEqual([]);
+		// Outside the voice cap: a full cascade first still lets the brace through.
+		const m = new AudioCueMapper();
+		for (const id of BUILD_VOICE_SFX) m.setMinInterval(id, 0.001);
+		const cascade = source({ overkills: [[0, 0]], sparks: [[0, 0]], bursts: [[0, 0]], shards: [[0, 0]] });
+		for (let k = 0; k < 4; k++) frame(m, k * 0.01, cascade);
+		expect(ids(frame(m, 0.05, source({ sparks: [[0, 0]], braces: [[0, BraceKind.PIP]] })))).toEqual([
+			SFX.buildBrace,
+		]);
+		// Its interval: a second brace inside it is dropped.
+		const gap = SFX_MIN_INTERVAL[SFX.buildBrace]!;
+		const b = new AudioCueMapper();
+		const pip = source({ braces: [[0, BraceKind.PIP]] });
+		expect([ids(frame(b, 1, pip)), ids(frame(b, 1 + gap / 2, pip)), ids(frame(b, 1 + gap, pip))]).toEqual([
+			[SFX.buildBrace],
+			[],
+			[SFX.buildBrace],
+		]);
 	});
 });

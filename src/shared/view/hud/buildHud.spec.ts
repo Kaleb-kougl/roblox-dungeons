@@ -176,6 +176,50 @@ describe("Build list (BU10)", () => {
 	});
 });
 
+describe("the legendaries in the HUD (docs/LEGENDARIES.md LG6)", () => {
+	const LEGENDARY_DUOS = [Duo.SUPERNOVA, Duo.SKEWER, Duo.CITADEL, Duo.STONE_HEART];
+
+	it("Overkill and Bastion are legendary cells (no pips) with their icon labels; the four duos joined chips", () => {
+		const cells = runItemCells([Boon.OVERKILL, Boon.BASTION], [1, 1], LEGENDARY_DUOS, [], []);
+		expect(cells.map((c) => [c.key, c.icons, c.level, c.maxLevel, c.span])).toEqual([
+			[`b${Boon.OVERKILL}`, ["boon.overkill.icon"], 0, 0, 1],
+			[`b${Boon.BASTION}`, ["boon.bastion.icon"], 0, 0, 1],
+			[`d${Duo.SUPERNOVA}`, ["boon.overkill.icon", "boon.volatile.icon"], 0, 0, DUO_CHIP_SPAN],
+			[`d${Duo.SKEWER}`, ["boon.overkill.icon", "boon.piercingArrows.icon"], 0, 0, DUO_CHIP_SPAN],
+			[`d${Duo.CITADEL}`, ["boon.bastion.icon", "boon.warding.icon"], 0, 0, DUO_CHIP_SPAN],
+			[`d${Duo.STONE_HEART}`, ["boon.bastion.icon", "boon.hearty.icon"], 0, 0, DUO_CHIP_SPAN],
+		]);
+		expect(cells[0].fills).toEqual([rarityColorRole(Rarity.LEGENDARY)]);
+		const p = pack();
+		for (const c of cells) for (const k of c.icons) expect([k, p.hasString(k)]).toEqual([k, true]);
+	});
+
+	it("the Build list names them with their lines; the toasts name the boon / the duo", () => {
+		const rows = buildListRows([Boon.OVERKILL, Boon.BASTION], [1, 1], LEGENDARY_DUOS);
+		expect(rows.map((r) => [r.name.key, r.level, r.desc.key, r.color])).toEqual([
+			["boon.overkill.name", "", "boon.overkill.desc", rarityColorRole(Rarity.LEGENDARY)],
+			["boon.bastion.name", "", "boon.bastion.desc", rarityColorRole(Rarity.LEGENDARY)],
+			["duo.supernova.name", "", "duo.supernova.desc", BUILD_DUO_ROLE],
+			["duo.skewer.name", "", "duo.skewer.desc", BUILD_DUO_ROLE],
+			["duo.citadel.name", "", "duo.citadel.desc", BUILD_DUO_ROLE],
+			["duo.stoneHeart.name", "", "duo.stoneHeart.desc", BUILD_DUO_ROLE],
+		]);
+		const p = pack();
+		for (const r of rows) for (const k of [r.name.key, r.desc.key]) expect([k, p.hasString(k)]).toEqual([k, true]);
+		expect(toastFor("boon", Boon.BASTION)).toEqual({
+			key: PROGRESSION_STRINGS.toastBoon,
+			nameKey: "boon.bastion.name",
+		});
+		for (const d of LEGENDARY_DUOS) {
+			const t = toastFor("boon", duoCard(d), "duo");
+			expect([t.key, t.nameKey !== undefined && p.hasString(t.nameKey)]).toEqual([
+				PROGRESSION_STRINGS.toastDuo,
+				true,
+			]);
+		}
+	});
+});
+
 describe("evolve / duo toasts and the snapshot (BU10)", () => {
 	it("toastFor: an evolution names the boon and its evolution, a duo its name, anything else the boon toast", () => {
 		expect(toastFor("boon", Boon.VOLATILE, "evolved")).toEqual({

@@ -2,7 +2,7 @@
  * Grazes and parries tunables (docs/GRAZE_PARRY.md GP4, decisions GPD3-GPD7). Real (unpaused) seconds unless the name
  * says otherwise; sizes in render pixels (px) or tiles. Data only: NearMissDirector (nearMissRules.ts) applies the
  * chain, grouping, cap and gate rules; the particle, audio and flash code read the drawing / mixing numbers. The guard
- * window the parry grouping uses is the sim's SWORD_DATA.guardTicks (never copied here).
+ * window the parry grouping uses is the sim's swordGuardTicks (never copied here).
  */
 export const NEAR_MISS_VIEW = {
 	/** A graze (GPD3 / GPD4): small, frequent. */
