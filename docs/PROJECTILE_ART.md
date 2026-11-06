@@ -76,8 +76,11 @@ The defaults PAD4-PAD11 were followed. See "As built" for what differs from the 
   ImageLabel, LightInfluence 0) is option B of PA0, provisional until PA0's numbers are in.
   - It does one BulkMoveTo a frame, with the yaw in the CFrame. Writes happen only on change.
   - The flicker runs on the sim clock, so it freezes with hitstop.
-  - The neon pool skips the payloads whose look has art (`skip(payload, scale)`). It is built only when some look has
-    art. Trails moved unchanged to `bulletTrails.ts`.
+  - The sprite pools run first each frame, and the neon pool skips the slots they drew (`drew(slot)`). The sprite pool
+    is built only when some look has art. Trails moved unchanged to `bulletTrails.ts`.
+  - Sprite looks put their trail behind half the sprite's drawn length. `ImageRectSize` is written only on a look
+    change. The spike's mode B builds its anchors with this pool's exported helpers (`createSpriteAnchor`,
+    `spriteAnchorSize`, `spriteAnchorCFrame`), so PA0 measures the production construction.
   - **Deviation:** every enemy look keeps the small ball as its neon placeholder, so a sniper's bullet does not
     become an unturned `needle` sliver while art is missing.
 - **Impact effect (PA7).**
@@ -165,7 +168,7 @@ in the danger ramp. A player never sees their own shape in pink, or an enemy sha
 | Logical ID | Who fires it | Art | Frames | Notes |
 |---|---|---|---|---|
 | `bullet.player.basic` | bow stream arrow (`PlayerBulletLook.BASIC`) | Yellow_Thinier | 3 | the shot you see most: thin, warm |
-| `bullet.player.heavy` | charged piercing arrow (scale > `heavyScaleThreshold`) | Hyper_Bullet (content box 16x32) | 2 | drawn at the arrow's scale; its own size key |
+| `bullet.player.heavy` | charged piercing arrow (scale > `heavyScaleThreshold`) | Hyper_Bullet (content box 16x32) | 2 | drawn at the art's own size (`bulletArtReferenceScale`: the sim scale over `BOW_DATA.heavyScale`), not scaled twice |
 | `bullet.player.bolt` | Flurry / Thrill Seeker (`SPARK_BOLT`) | Thinier_BermudaGreen | 3 | green marks build fire |
 | `bullet.player.burst` | Volatile's ring (`BURST`) | BermudaGreen (wide) | 3 | keeps its trail part |
 | `bullet.player.shard` | Soul Shards (`SHARD`) | Yellow | 3 | keeps its trail part. PAD4 alternative: Stream teardrop, if the enemy side does not take it |
@@ -223,7 +226,9 @@ the dark rim that makes today's bullets read, and its lit core lands on the role
 - `bulletFrame(tick, slot, frames, reduced)`. `screenHeading(vx, vz)` gives the velocity's angle on screen through
   the iso basis, for billboards. Flat-on-floor sprites use the world yaw instead.
 - `bulletImpacts`: a view-side diff, presentation only. A player slot that lost its bullet while `lifeAt` > 1 tick
-  was an impact at its last position. Capped per frame. Feeds PA7.
+  was an impact. As built: identity ignores the in-flight fields (pierce, lastHit), so a pierce is not an impact; a
+  reused slot is a new bullet once its life exceeds the projected life; the impact lands at the projected position
+  (last position + velocity x steps, clamped to its life). Capped per frame. Feeds PA7.
 
 ### 4. Client (`BulletRenderController`)
 
