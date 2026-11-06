@@ -97,6 +97,8 @@
  *        node scripts/art/build-atlases.js --lock --only bullets   re-hash just its files into the existing lock
  *        node scripts/art/build-atlases.js --only goo              the same for the goo sheet (docs/GOO_ART.md GA1;
  *        node scripts/art/build-atlases.js --lock --only goo       needs only the Slime pack)
+ *        node scripts/art/build-atlases.js --only treasure         the same for the vault cage and light column sheets
+ *        node scripts/art/build-atlases.js --lock --only treasure  (docs/TREASURE.md TR9; needs only the generated frames)
  * Plain Node plus pngjs. The pure helpers are exported for scripts/art/build-atlases.test.js (npm run test:art).
  */
 "use strict";
@@ -120,6 +122,7 @@ const FX_LAYOUT_FILE = path.join(LAYOUT_DIR, "fxLayout.ts");
 const UI_ICON_LAYOUT_FILE = path.join(LAYOUT_DIR, "uiIconLayout.ts");
 const BULLET_LAYOUT_FILE = path.join(LAYOUT_DIR, "bulletLayout.ts");
 const GOO_LAYOUT_FILE = path.join(LAYOUT_DIR, "gooLayout.ts");
+const TREASURE_LAYOUT_FILE = path.join(LAYOUT_DIR, "treasureLayout.ts");
 
 /** Roblox stores images at most this many pixels on a side. */
 const MAX_ATLAS = 1024;
@@ -534,6 +537,7 @@ function sourceFiles(config) {
 	if (config.uiIcons) for (const id of uiIconIds(config.uiIcons)) files.add(uiIconFile(config.uiIcons, id));
 	for (const f of bulletSourceFiles(config.bullets)) files.add(f);
 	for (const f of gooSourceFiles(config.goo)) files.add(f);
+	for (const f of treasureSourceFiles(config.treasure)) files.add(f);
 	return [...files].sort();
 }
 
@@ -3459,6 +3463,145 @@ function printGoo(g, group) {
 }
 
 // ---------------------------------------------------------------------------------------------
+// Treasure sheets (docs/TREASURE.md TR9; config key `treasure`)
+//
+// The vault's cage and light column: original pixel art drawn by scripts/art/gen-treasure-art.js (art:build and
+// art:lock run it first) into art/vendor/kaleb-vale/, each in a sheet of its own, so adding them never repacks the
+// decor or effects atlas. `treasure`: { pixelsPerTile (a positive number), pixelsPerTileFrom (optional: a sprite set id
+// whose pixelsPerTile must equal it, checked by a full build as for `goo`), cage, column }.
+//   cage    a world sprite set (the worldArt piece keys: facings, animations, pivot, own; cleaned and cut by
+//           buildWorldSprites with worldArt's noiseAlpha / pad): its cells in one row of <own>.png; `resample`
+//           (optional, default worldArt's "Default") is written into its layout.
+//   column  an effect strip (the fx set keys: file, frameW, frames, fps, loop, grey; buildFxSet with `pad`) alone in
+//           <atlas>.png (packFx).
+// Outputs: art/build/<own>.png and <atlas>.png (also copied to art/upload/), contact sheets art/build/contact/
+// treasure.cage.png / fx.treasure.column.png, and src/shared/theme/packs/vale/treasureLayout.ts
+// (VALE_TREASURE_CAGE_LAYOUT, VALE_TREASURE_FX_SHEET, VALE_TREASURE_FX_LAYOUTS). Build just this group:
+// node scripts/art/build-atlases.js --only treasure (and --lock --only treasure).
+
+const TREASURE_CAGE_ID = "treasure.cage";
+const TREASURE_COLUMN_ID = "fx.treasure.column";
+const TREASURE_GROUP_KEYS = new Set(["$comment", "pixelsPerTile", "pixelsPerTileFrom", "cage", "column"]);
+const TREASURE_CAGE_KEYS = new Set(["$comment", "facings", "animations", "pivot", "own", "resample"]);
+const TREASURE_COLUMN_KEYS = new Set(["$comment", "atlas", "pad", "file", "frameW", "frames", "fps", "loop", "grey"]);
+const RESAMPLE_MODES = ["Default", "Pixelated"];
+
+/** Every vendor file the treasure group reads, sorted ([] without a group). */
+function treasureSourceFiles(group) {
+	if (!group) return [];
+	const files = new Set();
+	const cage = group.cage;
+	if (!cage || !cage.animations) throw new Error("treasure.cage needs animations");
+	for (const fc of pieceFacings(TREASURE_CAGE_ID, cage)) {
+		for (const a of Object.values(cage.animations)) for (const f of a.frames) files.add(expandFile(a.file, fc.dir, fc.angle, f));
+	}
+	if (!group.column || typeof group.column.file !== "string" || group.column.file === "") throw new Error("treasure.column needs a file");
+	files.add(group.column.file);
+	return [...files].sort();
+}
+
+/**
+ * Builds the treasure sheets: { cage: { piece, layout, file, img }, column: { set, packed, sheet, layout },
+ * pixelsPerTileFrom }. `world` is the worldArt group (cleaning and pad); `spriteSets` as for buildGoo.
+ */
+function buildTreasure(group, world, spriteSets) {
+	if (group === null || typeof group !== "object" || Array.isArray(group)) throw new Error("treasure must be an object");
+	for (const k of Object.keys(group)) if (!TREASURE_GROUP_KEYS.has(k)) throw new Error(`treasure: unknown key ${k}`);
+	if (!world) throw new Error("treasure needs the worldArt group (its cleaning and pad)");
+	const ppt = group.pixelsPerTile;
+	if (typeof ppt !== "number" || !(ppt > 0)) throw new Error("treasure.pixelsPerTile must be a positive number");
+	const pixelsPerTileFrom = groupPixelsPerTileFrom("treasure", group, ppt, spriteSets);
+	// the cage: a world sprite set alone in its own sheet, one row of cells
+	const cdef = group.cage;
+	for (const k of Object.keys(cdef)) if (!TREASURE_CAGE_KEYS.has(k)) throw new Error(`${TREASURE_CAGE_ID}: unknown key ${k}`);
+	if (typeof cdef.own !== "string" || !/^[a-z0-9-]+$/.test(cdef.own)) throw new Error(`${TREASURE_CAGE_ID}: own must be a file name without .png`);
+	const resample = cdef.resample === undefined ? "Default" : cdef.resample;
+	if (!RESAMPLE_MODES.includes(resample)) throw new Error(`${TREASURE_CAGE_ID}: resample must be one of ${RESAMPLE_MODES.join(", ")}`);
+	const piece = buildWorldSprites(world, TREASURE_CAGE_ID, cdef, ppt, world.pad);
+	if (piece.cells.length * piece.frameW > MAX_ATLAS) throw new Error(`${TREASURE_CAGE_ID}: ${piece.cells.length} cells of ${piece.frameW} px do not fit one row`);
+	const cageImg = raster(piece.cells.length * piece.frameW, piece.frameH);
+	piece.cells.forEach((c, k) => blit(c.img, 0, 0, piece.frameW, piece.frameH, cageImg, k * piece.frameW, 0, 0));
+	alphaBleed(cageImg);
+	const cageFile = `${cdef.own}.png`;
+	piece.atlas = { file: cageFile, img: cageImg };
+	piece.startCell = 0;
+	piece.perRow = piece.cells.length;
+	const cageLayout = { ...worldLayout(piece), resample };
+	// the column: an effect strip alone in its own sheet
+	const fdef = group.column;
+	for (const k of Object.keys(fdef)) if (!TREASURE_COLUMN_KEYS.has(k)) throw new Error(`${TREASURE_COLUMN_ID}: unknown key ${k}`);
+	if (typeof fdef.atlas !== "string" || !/^[a-z0-9-]+$/.test(fdef.atlas)) throw new Error(`${TREASURE_COLUMN_ID}: atlas must be a file name without .png`);
+	if (`${fdef.atlas}.png` === cageFile) throw new Error(`treasure: the cage and the column cannot share ${cageFile}`);
+	const pad = fdef.pad === undefined ? 0 : fdef.pad;
+	if (!Number.isInteger(pad) || pad < 0) throw new Error(`${TREASURE_COLUMN_ID}: pad must be a non-negative integer`);
+	if (typeof fdef.fps !== "number" || !(fdef.fps > 0)) throw new Error(`${TREASURE_COLUMN_ID}: fps must be a positive number`);
+	const set = buildFxSet(TREASURE_COLUMN_ID, fdef, pad);
+	const packed = packFx([set], "treasure");
+	const columnLayout = fxLayoutOf(packed.placed[0]);
+	const sheet = { file: `${fdef.atlas}.png`, w: packed.w, h: packed.h };
+	return { cage: { piece, layout: cageLayout, file: cageFile, img: cageImg }, column: { set, packed, sheet, layout: columnLayout }, pixelsPerTileFrom };
+}
+
+/** packs/vale/treasureLayout.ts: VALE_TREASURE_CAGE_LAYOUT, VALE_TREASURE_FX_SHEET, VALE_TREASURE_FX_LAYOUTS. */
+function treasureLayoutModule(t) {
+	const text = [
+		"// GENERATED by `npm run art:build` (scripts/art/build-atlases.js) from art/atlases.json. Do not edit.",
+		"",
+		"/**",
+		comment([
+			"Layout of the `vale` pack's vault art (docs/TREASURE.md TR9): original pixel art by scripts/art/gen-treasure-art.js,",
+			"each in a sheet of its own. VALE_TREASURE_CAGE_LAYOUT is `treasure.cage`, a world sprite set (four facings like the",
+			"chest, `idle`); VALE_TREASURE_FX_SHEET / VALE_TREASURE_FX_LAYOUTS hold `fx.treasure.column`, a greyscale effect",
+			"flipbook (cells `start + f` of the SpriteSetAsset formula, perRow = floor(sheet w / frameW)) tinted at draw time.",
+			"No asset IDs: `file` names the PNG in art/build/ to upload.",
+		]),
+		" */",
+		"",
+		'import type { ValeFxLayout } from "./fxLayout";',
+		'import type { ValeSheetFile, ValeWorldSpriteLayout } from "./layout";',
+		"",
+		`export const VALE_TREASURE_CAGE_LAYOUT: ValeWorldSpriteLayout = ${tsValue(t.cage.layout, 0, PRINT_WIDTH)};`,
+		"",
+		`export const VALE_TREASURE_FX_SHEET: ValeSheetFile = ${tsValue(t.column.sheet, 0, PRINT_WIDTH)};`,
+		"",
+		`export const VALE_TREASURE_FX_LAYOUTS: Record<string, ValeFxLayout> = ${tsValue({ [TREASURE_COLUMN_ID]: t.column.layout }, 0, PRINT_WIDTH)};`,
+		"",
+	].join("\n");
+	for (const line of text.split("\n")) {
+		if (line.replace(/\t/g, "    ").length > PRINT_WIDTH) throw new Error(`treasureLayout.ts line over ${PRINT_WIDTH} columns: ${line}`);
+	}
+	return text;
+}
+
+/** The column's contact sheet: every frame read back through its layout. */
+function treasureColumnContact(t) {
+	const l = t.column.layout;
+	const cells = [];
+	for (let f = 0; f < l.frames; f++) cells.push([t.column.packed.img, ...fxCellAt(t.column.packed.w, l, f)]);
+	return scaledContact(cells, l.frameW, l.frameH, l.pivot);
+}
+
+/** Every output of the treasure group: [dir, name, img]. */
+function treasureOutputs(t) {
+	return [
+		["build", t.cage.file, t.cage.img],
+		["build", t.column.sheet.file, t.column.packed.img],
+		["contact", `${TREASURE_CAGE_ID}.png`, worldContact(t.cage.piece)],
+		["contact", `${TREASURE_COLUMN_ID}.png`, treasureColumnContact(t)],
+	];
+}
+
+/** Log lines for the built treasure sheets. */
+function printTreasure(t) {
+	const c = t.cage.layout;
+	const l = t.column.layout;
+	const from = t.pixelsPerTileFrom ? ` (pixelsPerTileFrom ${t.pixelsPerTileFrom.id}: ${t.pixelsPerTileFrom.checked ? "equal" : "unchecked, its set is not built by --only"})` : "";
+	console.log(`treasure: ${c.pixelsPerTile} px/tile${from}`);
+	console.log(`  ${TREASURE_CAGE_ID}: ${t.cage.file} ${t.cage.img.w}x${t.cage.img.h}, cells ${c.frameW}x${c.frameH} x ${t.cage.piece.cells.length} (${t.cage.piece.dirs.join(" ")}), pivot (${c.pivot.x}, ${c.pivot.y}), ${c.resample}`);
+	console.log(`  ${TREASURE_COLUMN_ID}: ${t.column.sheet.file} ${t.column.sheet.w}x${t.column.sheet.h}, cell ${l.frameW}x${l.frameH}, ${l.frames} frames @ ${l.fps} fps${l.loop ? " loop" : ""}, ${l.grey ? "grey" : `mean ${l.meanColor}`}`);
+}
+
+// ---------------------------------------------------------------------------------------------
 // Main
 
 function writeIfChanged(file, content) {
@@ -3510,7 +3653,7 @@ function onlyGroup(argv) {
 }
 
 /** Groups `--only` can build on their own (their sources need no other pack). */
-const ONLY_GROUPS = ["bullets", "goo"];
+const ONLY_GROUPS = ["bullets", "goo", "treasure"];
 
 /** The vendor files `--lock --only <group>` re-hashes. */
 function onlyGroupSourceFiles(config, group) {
@@ -3518,6 +3661,10 @@ function onlyGroupSourceFiles(config, group) {
 	if (group === "goo") {
 		if (!config.goo) fail("art/atlases.json has no `goo` group");
 		return gooSourceFiles(config.goo);
+	}
+	if (group === "treasure") {
+		if (!config.treasure) fail("art/atlases.json has no `treasure` group");
+		return treasureSourceFiles(config.treasure);
 	}
 	throw new Error(`no --only group ${group}`);
 }
@@ -3560,6 +3707,26 @@ function mainOnlyGoo(config) {
 	console.log(`art:build --only goo: ${changed} file(s) updated`);
 }
 
+/**
+ * `--only treasure` (docs/TREASURE.md TR9): checks the treasure group's files against the lock, then writes ONLY its two
+ * sheets (and their art/upload copies), their contact sheets and packs/vale/treasureLayout.ts, byte for byte what a
+ * full build writes for them (pixelsPerTileFrom unchecked). Nothing else is read, written or removed.
+ */
+function mainOnlyTreasure(config) {
+	if (!config.treasure) fail("art/atlases.json has no `treasure` group");
+	checkLock(config, treasureSourceFiles(config.treasure));
+	const t = buildTreasure(config.treasure, config.worldArt, undefined);
+	let changed = 0;
+	for (const [dir, name, img] of treasureOutputs(t)) {
+		const png = encodePng(img);
+		if (writeIfChanged(path.join(dir === "build" ? BUILD : CONTACT, name), png)) changed++;
+		if (dir === "build" && writeIfChanged(path.join(UPLOAD, name), png)) changed++;
+	}
+	if (writeIfChanged(TREASURE_LAYOUT_FILE, treasureLayoutModule(t))) changed++;
+	printTreasure(t);
+	console.log(`art:build --only treasure: ${changed} file(s) updated`);
+}
+
 function main() {
 	const config = JSON.parse(fs.readFileSync(CONFIG_FILE, "utf8"));
 	const only = onlyGroup(process.argv);
@@ -3573,6 +3740,10 @@ function main() {
 	}
 	if (only === "goo") {
 		mainOnlyGoo(config);
+		return;
+	}
+	if (only === "treasure") {
+		mainOnlyTreasure(config);
 		return;
 	}
 	checkLock(config);
@@ -3622,6 +3793,11 @@ function main() {
 		emit(BUILD, goo.file, goo.img, builtFiles);
 		emit(CONTACT, goo.file, gooContact(goo), contactFiles);
 	}
+	let treasure;
+	if (config.treasure) {
+		treasure = buildTreasure(config.treasure, config.worldArt, sets);
+		for (const [dir, name, img] of treasureOutputs(treasure)) emit(dir === "build" ? BUILD : CONTACT, name, img, dir === "build" ? builtFiles : contactFiles);
+	}
 	removeStale(BUILD, builtFiles);
 	removeStale(CONTACT, contactFiles);
 
@@ -3636,6 +3812,7 @@ function main() {
 	if (icons && writeIfChanged(UI_ICON_LAYOUT_FILE, uiIconLayoutModule(icons))) changed++;
 	if (bullets && writeIfChanged(BULLET_LAYOUT_FILE, bulletLayoutModule(bullets.sheet, bullets.layouts, bullets.fxLayouts))) changed++;
 	if (goo && writeIfChanged(GOO_LAYOUT_FILE, gooLayoutModule(goo.sheet, goo.layout))) changed++;
+	if (treasure && writeIfChanged(TREASURE_LAYOUT_FILE, treasureLayoutModule(treasure))) changed++;
 
 	for (const s of sets) {
 		const l = s.layout;
@@ -3665,6 +3842,7 @@ function main() {
 	printEffects(fx);
 	if (bullets) printBullets(bullets, config.bullets);
 	if (goo) printGoo(goo, config.goo);
+	if (treasure) printTreasure(treasure);
 	if (icons) {
 		console.log(`ui icons: ${icons.file} ${icons.w}x${icons.h}, ${icons.pieces.length} icons, ${icons.gutter} px extruded gutter (contact numbers in id order)`);
 		Object.keys(icons.layouts)
@@ -3707,10 +3885,13 @@ module.exports = {
 	buildBulletFxSet,
 	buildBulletSet,
 	buildGoo,
+	buildTreasure,
 	bulletContact,
 	bulletGates,
 	bulletLayoutModule,
 	bulletSourceFiles,
+	treasureLayoutModule,
+	treasureSourceFiles,
 	cie76,
 	buildUiIcons,
 	buildWorldPieces,

@@ -2073,5 +2073,44 @@
 				"recolorNote": "Source levels (luminance x pixels, land + hold): 0 x120 (the black outline: stays black, left out of the mean), 82 x9 (#376633, the darkest shade) -> #700070, 110 x56 (#418e3b) -> #b000b0, 150 x213 (#56c44d, the body) -> enemyGoo #f000f0, 197 x107 (#a1e09c, the lit top) -> #ff80ff; no source pixel lies between the stops, so each colour maps to exactly its stop and the shading keeps its order. Lit mean #e824e8, 7.1 CIE76 from #f000f0 (hold alone #e725e7, 7.7; land #ea20ea, 5.6), worst contrast 3.12:1 on #3a3a46."
 			}
 		}
+	},
+	"treasure": {
+		"$comment": [
+			"The vault's cage and light column (docs/TREASURE.md TR9): original pixel art drawn by scripts/art/gen-treasure-art.js",
+			"(art:build and art:lock run it first) into art/vendor/kaleb-vale/, each in a sheet of its own (vault-cage.png,",
+			"treasure-column.png; generated src/shared/theme/packs/vale/treasureLayout.ts), so neither repacks the decor or",
+			"effects atlas. cage: a domed iron birdcage in the game camera's projection round the chest's box, four facings like",
+			"the chest (output d = NE, NW, SW, SE: the chest's front toward -Z, -X, +Z, +X; the bars the chest hides are cut per",
+			"facing), each facing's pivot the footprint centre on the floor (the generator's CAGE_PIVOT), so it stands on the",
+			"chest's; Pixelated (1 px bars). column: a looping greyscale strip, tinted by the opened tier's floor role and",
+			"stretched upright to TREASURE_VIEW.open.column's size at draw time. Build just this group: node",
+			"scripts/art/build-atlases.js --only treasure (and --lock --only treasure)."
+		],
+		"pixelsPerTile": 29.6,
+		"pixelsPerTileFrom": "enemy.swarmer",
+		"cage": {
+			"facings": { "count": 4, "zeroDeg": 45 },
+			"animations": {
+				"idle": {
+					"file": "kaleb-vale/vault-cage/{dir}/cage_{dir}_{angle}_{f}.png",
+					"frames": [0],
+					"fps": 1,
+					"loop": true
+				}
+			},
+			"pivot": [[22, 31], [22, 31], [22, 31], [22, 31]],
+			"own": "vault-cage",
+			"resample": "Pixelated"
+		},
+		"column": {
+			"atlas": "treasure-column",
+			"pad": 1,
+			"file": "kaleb-vale/treasure-column/column.png",
+			"frameW": 27,
+			"frames": 8,
+			"fps": 12,
+			"loop": true,
+			"grey": true
+		}
 	}
 }
