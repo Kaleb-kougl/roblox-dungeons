@@ -204,6 +204,20 @@ SOFTWARE.
   training set. Credit is not required; the pack is credited anyway (the main menu's Credits screen, shared/view/menu
   `CREDITS`).
 
+## Training Dummy 2D Pixel Art
+
+- "Training Dummy 2D Pixel Art" (the download's folder name). **Author and store page: not in the download; to be
+  confirmed by the owner** (an itch.io search on 2026-11-06 did not find this pack).
+- Used for: the tutorial's training dummy (`enemy.dummy`, docs/DUMMY_ART.md): the idle frame, the 7-frame hit wobble
+  and the 9-frame break, packed into `dummy.png` (+ its outline rim) by `scripts/art/build-atlases.js` and uploaded to
+  Roblox. **Modified:** cropped, repacked into one column, and a generated 2 px outline rim added.
+- Raw files: `art/vendor/training-dummy/` (gitignored, never committed or shared: redistribution as a game asset is
+  prohibited).
+- Terms (`License.txt`, as written): "You can use this asset in any game project, personal or commercial. / DO NOT
+  resell or redistribute AS A GAME ASSET, it has to be part of a project. / Credit is not required but it is
+  appreciated. / Modify to suit your needs. / You are NOT allowed to turn any of my assets to an NFT."
+- Credit is not required; add it to the Credits screen (shared/view/menu `CREDITS`) once the author is known.
+
 ## Dungeon Essential Kit (3D models, CC-BY 4.0) - ATTRIBUTION REQUIRED
 
 - Author: Rakshaan (https://sketchfab.com/rakshaan). Source:
