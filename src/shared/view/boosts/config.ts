@@ -130,6 +130,16 @@ export const BOOST_VIEW = {
 	auraPulseHz: 1.2,
 	/** Enum.Material name of the discs (a soft glow on every floor). */
 	auraMaterial: "Neon",
+	/**
+	 * Aura art (docs/BOOST_ART.md BAD3; a kind whose `fx.boost.aura.<kind>` has art for the rank drawn, else its disc):
+	 * the ring sprite lies flat where the disc would, its top face at the disc's top (same lifts, same cap), each rank's
+	 * drawn ring exactly the disc's radius (auraArtStudsPerPixel), tinted by the kind's role. Its loop plays on sim time
+	 * (floor(simSec x fps), the pulse's clock, so co-op clients show the same frame); under reduced motion it holds
+	 * auraArtStillFrame. The art has its own alpha (a thin ring, not a filled disc), so it starts more opaque than the
+	 * disc: auraArtTransparency, plus the disc's pulse (auraPulseAmplitude x motionScale at auraPulseHz).
+	 */
+	auraArtTransparency: 0.2,
+	auraArtStillFrame: 0,
 	auraFolderName: "KV_BoostAuras",
 	auraRenderStep: "KV_BoostAuras",
 

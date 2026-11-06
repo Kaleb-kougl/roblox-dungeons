@@ -8,7 +8,8 @@
  *   DropSlotTracker  diffs the sim's ground slots against the last frame: which slots got a new drop, which lost one
  *   drop look    age / seconds left from state, the bob (its phase, x motionScale), the landing pop, the fade blink
  *                (the art layers on top of it: art.ts)
- *   aura         the concentric discs' radii and lifts, capped under BOOST_VIEW.auraMaxHeightTiles, and their pulse
+ *   aura         the concentric discs' radii and lifts, capped under BOOST_VIEW.auraMaxHeightTiles, and their pulse;
+ *                the aura art's frame, size (each rank's ring on its disc's radius) and transparency (BAD3)
  *   HUD          the snapshot's boost entries (secondsLeft in tenths, fraction), their equality, the row's blink, the
  *                tutorial's highlight id
  */
@@ -185,11 +186,73 @@ export function auraTopStuds(count: number): number {
 	return top;
 }
 
+/** The pulse shared by the discs and the art: auraPulseAmplitude x motion x sin(TAU x auraPulseHz x simSec). */
+function auraPulse(simSec: number, motion: number): number {
+	const v = BOOST_VIEW;
+	return v.auraPulseAmplitude * motion * math.sin(TAU * v.auraPulseHz * simSec);
+}
+
 /** The discs' transparency at sim second `simSec`: auraTransparency, pulsing by auraPulseAmplitude x motionScale. */
 export function auraTransparency(simSec: number, motion: number): number {
 	const v = BOOST_VIEW;
 	if (!(motion > 0)) return v.auraTransparency;
-	return v.auraTransparency + v.auraPulseAmplitude * motion * math.sin(TAU * v.auraPulseHz * simSec);
+	return v.auraTransparency + auraPulse(simSec, motion);
+}
+
+/**
+ * Aura art's transparency at sim second `simSec` (docs/BOOST_ART.md BAD3): auraArtTransparency plus the discs' pulse
+ * (none under reduced motion), held to [0, 1].
+ */
+export function auraArtTransparency(simSec: number, motion: number): number {
+	const base = BOOST_VIEW.auraArtTransparency;
+	if (!(motion > 0)) return base;
+	return math.clamp(base + auraPulse(simSec, motion), 0, 1);
+}
+
+/**
+ * The frame of an aura rank's loop (`frames` at `fps`) at sim second `simSec`: floor(simSec x fps) mod frames, on the
+ * pulse's clock (every co-op client draws the same frame); auraArtStillFrame (wrapped) under reduced motion (motion 0).
+ */
+export function auraArtFrame(simSec: number, fps: number, frames: number, motion: number): number {
+	const n = math.max(1, frames);
+	if (!(motion > 0)) return BOOST_VIEW.auraArtStillFrame % n;
+	return math.floor(math.max(0, simSec) * fps) % n;
+}
+
+/**
+ * Studs per art pixel of an aura rank whose ring is `ringPx` art px: its ring drawn exactly on the disc's radius
+ * (`radiusTiles`, auraDisc), so every rank of the stack keeps the discs' spacing and no art is scaled to fit it.
+ */
+export function auraArtStudsPerPixel(radiusTiles: number, ringPx: number): number {
+	return (radiusTiles * STUDS_PER_TILE) / ringPx;
+}
+
+/** An aura rank's flat sprite: the cell's size on the floor and its centre's offset from the ring's centre (studs). */
+export interface AuraArtPlacement {
+	readonly widthStuds: number;
+	readonly depthStuds: number;
+	/** The cell's centre from the pivot (the ring's centre), screen right and screen down, studs on the floor. */
+	readonly rightStuds: number;
+	readonly downStuds: number;
+}
+
+/**
+ * The flat sprite of a `frameW` x `frameH` cell whose ring centre is (`pivotX`, `pivotY`), at `studsPerPixel`. The art
+ * is a circle seen from straight above, so it lies flat unstretched (the camera foreshortens it like the disc).
+ */
+export function auraArtPlacement(
+	frameW: number,
+	frameH: number,
+	pivotX: number,
+	pivotY: number,
+	studsPerPixel: number,
+): AuraArtPlacement {
+	return {
+		widthStuds: frameW * studsPerPixel,
+		depthStuds: frameH * studsPerPixel,
+		rightStuds: (frameW * HALF - pivotX) * studsPerPixel,
+		downStuds: (frameH * HALF - pivotY) * studsPerPixel,
+	};
 }
 
 // ---------------------------------------------------------------------------------------------

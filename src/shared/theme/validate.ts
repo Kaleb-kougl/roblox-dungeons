@@ -166,6 +166,7 @@ import {
 	type Obj,
 } from "./util";
 import { newBestColorProblems } from "./newBestColors";
+import { boostAuraArtProblems } from "./boostAuraArt";
 import { variantColorProblems } from "./variantColors";
 import { voidColorProblems } from "./voidColors";
 
@@ -1659,6 +1660,11 @@ export function validateManifest(manifest: unknown, opts: ValidateOptions = {}):
 		err(message.path, message.msg);
 	}
 
+	// --- a boost aura's per-rank rings (docs/BOOST_ART.md BAD3; boostAuraArt.ts) -----------------
+	for (const problem of boostAuraArtProblems(manifest)) {
+		err(problem.path, problem.msg);
+	}
+
 	// --- contrast: juice (health bars on their back plate, damage numbers on every biome floor) ---
 	for (const c of juiceContrastReport(manifest)) {
 		if (c.ok) {
@@ -2369,8 +2375,11 @@ function validateSheetCell(
 	}
 	return cell;
 }
-/** Keys an fx.* sprite set adds (types.ts SpriteSetAsset, fx fields). */
-const FX_ART_KEYS = ["sizeTiles", "tint", "additive", "meanColor"];
+/**
+ * Keys an fx.* sprite set adds (types.ts SpriteSetAsset, fx fields); `ringPx` is the boost auras' per-rank rings
+ * (docs/BOOST_ART.md BAD3), which boostAuraArt.ts refuses on every other fx ID.
+ */
+const FX_ART_KEYS = ["sizeTiles", "tint", "additive", "meanColor", "ringPx"];
 const FACING_COUNT_LIST = (SPRITE_FACING_COUNTS as ReadonlyArray<number>).map((n) => tostring(n)).join(" | ");
 const RESAMPLE_LIST = SPRITE_RESAMPLE_MODES.map((m) => q(m)).join(" | ");
 

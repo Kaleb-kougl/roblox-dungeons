@@ -28,7 +28,7 @@ Record every ported module in `PROVENANCE.md` (ported module, source path, sourc
 | `docs/FX_AUDIO.md` | Sprite effects and audio (Ninja Adventure FX / Audio): slots, pipelines, cue mappers, tasks X0 / F0-F6 / A0-A5 |
 | `docs/SPECTATE.md` | Co-op spectating (watch and switch between living teammates after a death): plan, tasks S0-S6, decisions |
 | `docs/BOOSTS.md` | Temporary boosts dropped by killed enemies (Fury / Quickstep / Frenzy / Aegis): plan, tasks B0-B11, decisions |
-| `docs/BOOST_ART.md` | Boost drop art (Lords of Pain gold coins and gemstones, tinted halo and beam, gems out of decor): plan, tasks BA0-BA7, decisions |
+| `docs/BOOST_ART.md` | Boost drop art (Lords of Pain gold coins and gemstones, tinted halo and beam, gems out of decor) and the boost auras (original pixel-art rings per kind and stack rank, BAD3): plan, tasks BA0-BA7, decisions |
 | `docs/BREAKABLE_DROPS.md` | Boosts from breakables (some barrels / crates hold a boost, picked per floor from the floor seed, released on any break, a soft glint on loaded pieces): plan, tasks BL0-BL9, decisions BLD1-BLD9 |
 | `docs/SNIPER_ART.md` | Sniper art (`enemy.sniper` as the Lords of Pain subservient): mapping, budget, tasks SN1-SN8, decisions D1-D6 |
 | `docs/BOSS_DEMONLORD.md` | Demon Lord boss variant (`boss.demonlord`, seeded pick per endless boss floor, Lords of Pain Demonlord art): plan, tasks D0-D8, decisions |
@@ -754,6 +754,22 @@ Decision log (deviations from `PLAN.md`):
   depth stretched by 1 / sin(pitch), sized so it covers the hit on screen (`gooSpriteSize`: 1.05 x 0.70 tiles);
   `FloorSpritePool` behind the goo `DecalPool`. Without a `goo.png` id the disc is drawn as before; uploaded 2026-11-06
   (`assetIds.ts`), so the bundled vale pack draws them. Studio check (GA7, after PA0) pending.
+
+- **Boost auras (docs/BOOST_ART.md BAD3).** Presentation only (no sim, dungeon, lockstep, hash, replay, fixture or
+  score change). The Neon discs under a boosted player can draw ORIGINAL pixel art (supersedes BA-P5's tinted Lords of
+  Pain ring): `scripts/art/gen-boost-auras.js` (run by `art:build` / `art:lock` before packing, into
+  `art/vendor/kaleb-vale/boost-auras/`, like the loot glint) draws Fury a flame ring with embers, Quickstep three
+  comets, Frenzy six whirling blades, Aegis six shield plates with a sweeping glint: greyscale (tinted by
+  `boost.<kind>`), 8-frame seamless loops, every stack rank drawn natively (ring round((0.55 + 0.14 rank) x 29.6) =
+  16 / 20 / 25 / 29 px; never scaled for the stack). Its own sheet `boost-auras.png` (group `boostAuras`,
+  `--only boostAuras`, generated `packs/vale/boostAuraLayout.ts`; every other output byte-identical). Theme:
+  `boostAuraArt.ts` (own module; contract.luau / validate.luau 186 / 197): on `fx.boost.aura.<kind>` only, `ringPx`
+  (per rank, art px) with rank 0 in `play` and rank r in `rank.<r>`, looping, tinted by its own role; `ThemePack.fx(...)
+  .ranks`. View: `auraArtFrame` on the pulse's `simSec` (reduced motion holds frame 0), `auraArtStudsPerPixel` (the
+  rank's ring exactly on `auraDisc`'s radius, same lifts and cap), `auraArtTransparency` 0.2 + the discs' pulse.
+  `BoostAuraController` draws a flat sprite anchor (`createSpriteAnchor`, `FLOOR_CANVAS_YAW`) per kind / rank with art,
+  the disc otherwise. Original art: no notices or Credits entry. Without a `boost-auras.png` id (none yet) vale keeps
+  the discs; upload and Studio check pending.
 
 ## Commands
 

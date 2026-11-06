@@ -11,7 +11,7 @@
  * brighter self-lit blend. Two sheets keep their own colours (Mother Bramble's rock spikes and the explosion): they
  * carry the pipeline's meanColor, which the validator holds to the enemy-bullet rule like every tint.
  */
-import { BOOST_FX_IDS, FX_IDS, type BoostFxId, type FxId } from "../../contract";
+import { BOOST_COLLECT_FX_ID, BOOST_FX_IDS, FX_IDS, type BoostFxId, type FxId } from "../../contract";
 import type { ColorRole, ImageAsset, SpriteSetAsset } from "../../types";
 import { sortedKeys } from "../../util";
 import { VALE_BULLET_SOURCE, type ValeBulletSource } from "./bullets";
@@ -31,18 +31,19 @@ export interface ValeFxLook {
 const DUST: ColorRole = "uiTextDim";
 
 /**
- * The fx IDs vale draws: every FX_IDS entry but the boost drops' effects (no art yet: docs/BOOSTS.md B8), the
- * Goldling's coin burst (no art yet: docs/FORTUNE.md FO10) and a vault chest's light column (no art yet:
- * docs/TREASURE.md TR9).
+ * The fx IDs vale draws from the effect sheets here: every FX_IDS entry but the boost drops' effects (the pickup burst:
+ * no art yet, docs/BOOSTS.md B8; the auras: their own sheet, boostAuras.ts, docs/BOOST_ART.md BAD3), the Goldling's
+ * coin burst (no art yet: docs/FORTUNE.md FO10) and a vault chest's light column (no art yet: docs/TREASURE.md TR9).
  */
 export type ValeFxId = Exclude<FxId, BoostFxId | "fx.golden.coin" | "fx.treasure.column">;
 
 /**
  * FX_IDS that vale has no art for yet (absent from the pack: not drawn). docs/BOOSTS.md B8 vendors and maps the boost
- * drops' effects; docs/FORTUNE.md FO10 the Goldling's coin burst; docs/TREASURE.md TR9 the treasure column (until then
- * the open's column is the particle burst alone).
+ * pickup burst; docs/FORTUNE.md FO10 the Goldling's coin burst; docs/TREASURE.md TR9 the treasure column (until then
+ * the open's column is the particle burst alone). The boost auras are neither here nor in VALE_FX_IDS: boostAuras.ts
+ * draws them (VALE_BOOST_AURA_IDS) once boost-auras.png has an ID.
  */
-export const VALE_FX_PENDING: ReadonlyArray<FxId> = ["fx.golden.coin", ...BOOST_FX_IDS, "fx.treasure.column"];
+export const VALE_FX_PENDING: ReadonlyArray<FxId> = ["fx.golden.coin", BOOST_COLLECT_FX_ID, "fx.treasure.column"];
 
 /** One sheet of effects: the PNG and the effects packed into it (cells `start + f`, floor(sheet w / frameW) per row). */
 export interface ValeFxSource {
@@ -74,9 +75,9 @@ export function valeFxSourceOf(
 	return undefined;
 }
 
-/** VALE_FX's IDs in FX_IDS order (FX_IDS without VALE_FX_PENDING). */
+/** VALE_FX's IDs in FX_IDS order (FX_IDS without VALE_FX_PENDING and the boost auras, BOOST_FX_IDS' others). */
 export const VALE_FX_IDS: ReadonlyArray<ValeFxId> = FX_IDS.filter(
-	(id) => !VALE_FX_PENDING.includes(id),
+	(id) => !VALE_FX_PENDING.includes(id) && !(BOOST_FX_IDS as ReadonlyArray<FxId>).includes(id),
 ) as Array<ValeFxId>;
 
 /** Every fx ID vale draws (VALE_FX_IDS), and how. */

@@ -88,6 +88,7 @@ import { PLACEHOLDER_MANIFEST } from "../placeholder";
 import { VALE_ASSET_IDS } from "./assetIds";
 import { VALE_SOUND_LAYOUTS, type ValeSoundLayout } from "./audioLayout";
 import { valeBulletAssets, type ValeBulletSource } from "./bullets";
+import { valeBoostAuraAssets, type ValeBoostAuraSource } from "./boostAuras";
 import { valeGooAsset, type ValeGooSource } from "./goo";
 import { valeAmbientAssets, valeFxAssets, valeFxSources } from "./fx";
 import {
@@ -591,6 +592,8 @@ export interface ValeLayoutSources {
 	readonly bullets?: ValeBulletSource;
 	/** VALE_GOO_SOURCE (goo.ts: the goo sheet and gooLayout.ts). */
 	readonly goo?: ValeGooSource;
+	/** VALE_BOOST_AURA_SOURCE (boostAuras.ts: the aura sheet and boostAuraLayout.ts). */
+	readonly boostAuras?: ValeBoostAuraSource;
 }
 
 /**
@@ -692,6 +695,12 @@ export function buildValeManifest(ids: AssetIds = VALE_ASSET_IDS, sources: ValeL
 	const goo = valeGooAsset(ids, sources.goo);
 	for (const id of sortedKeys(goo)) {
 		manifest.assets[id] = goo[id];
+	}
+	// The boost auras (docs/BOOST_ART.md BAD3; boostAuras.ts): fx entries once boost-auras.png has an ID; until then
+	// none, and the aura is the Neon disc.
+	const auras = valeBoostAuraAssets(ids, sources.boostAuras);
+	for (const id of sortedKeys(auras)) {
+		manifest.assets[id] = auras[id];
 	}
 	// An ambient ID the R5 world art already filled (addWorldArt: the Lords of Pain mote, once decor-mote.png has an
 	// ID) keeps it; the Ninja Adventure flipbook (F6) is the fallback for a biome the mote does not cover yet.

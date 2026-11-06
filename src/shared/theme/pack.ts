@@ -317,6 +317,18 @@ export interface FxSprite {
 	/** Frame `index` of the flipbook (wraps when looping, holds the last frame otherwise). */
 	readonly frame: (index: number) => SpriteFrame;
 	readonly core: FxArt;
+	/** A boost aura's loop per stack rank (FxArt.ranks; docs/BOOST_ART.md BAD3), or undefined: draw the disc. */
+	readonly ranks?: ReadonlyArray<FxSpriteRank>;
+}
+
+/** One stack rank of a boost aura (FxSprite.ranks). */
+export interface FxSpriteRank {
+	readonly frames: number;
+	readonly fps: number;
+	/** The ring's radius, art px from the set's pivot. */
+	readonly ringPx: number;
+	/** Frame `index` of this rank's loop (wraps). */
+	readonly frame: (index: number) => SpriteFrame;
 }
 
 const UNTINTED = new Color3(1, 1, 1);
@@ -719,6 +731,12 @@ export class ThemePack {
 				additive: core.additive,
 				frame: (index) => set.frame(FX_ANIMATION, 0, index),
 				core,
+				ranks: core.ranks?.map((r) => ({
+					frames: r.frames,
+					fps: r.fps,
+					ringPx: r.ringPx,
+					frame: (index: number) => set.frame(r.animation, 0, index),
+				})),
 			};
 		}
 		this.fxSprites.set(id, out ?? false);

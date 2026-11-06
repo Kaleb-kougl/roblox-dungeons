@@ -102,6 +102,7 @@ import {
 	type SpriteSheetImage,
 } from "./types";
 import { describeValue, isArrayLike, isInteger, isObj, sortedEntries, sortedKeys, startsWith, type Obj } from "./util";
+import { boostAuraRanksOf } from "./boostAuraArt";
 import { voidLedgeColor } from "./voidColors";
 import type { PelletKind } from "./pellets";
 import { TREASURE_CHEST_ID, TREASURE_CHEST_OPEN_ID } from "./treasure";
@@ -615,6 +616,19 @@ export interface FxArt {
 	readonly tint: ColorRole | undefined;
 	/** A brighter, self-lit blend (LightInfluence 0). */
 	readonly additive: boolean;
+	/**
+	 * A boost aura's art per stack rank (docs/BOOST_ART.md BAD3, boostAuraArt.ts), rank order: undefined for every
+	 * other effect, and for an aura whose per-rank fields are malformed (warned once; the renderer draws its disc).
+	 */
+	readonly ranks?: ReadonlyArray<FxRankArt>;
+}
+
+/** One stack rank of a boost aura (FxArt.ranks): its loop in the set and its ring's radius, art px from the pivot. */
+export interface FxRankArt {
+	readonly animation: string;
+	readonly frames: number;
+	readonly fps: number;
+	readonly ringPx: number;
 }
 
 /**
@@ -1435,6 +1449,17 @@ export class ThemeCore {
 				this.warnOnce(`fx:${id}:tint`, `effect "${id}" has tint ${describeValue(d.tint)}, drawing it untinted`);
 			}
 		}
+		// docs/BOOST_ART.md BAD3: a boost aura's rings per stack rank (boostAuraArt.ts)
+		const auraRanks = boostAuraRanksOf(id, d);
+		let ranks: Array<FxRankArt> | undefined;
+		if (typeIs(auraRanks, "string")) {
+			this.warnOnce(`fx:${id}:ranks`, `boost aura "${id}": ${auraRanks}; drawing its disc`);
+		} else if (auraRanks !== undefined) {
+			ranks = auraRanks.map((r) => {
+				const a = set.animation(r.animation) as SpriteAnimationDef; // present: boostAuraRanksOf checked it
+				return { animation: r.animation, frames: a.frames, fps: a.fps, ringPx: r.ringPx };
+			});
+		}
 		return {
 			id,
 			set,
@@ -1446,6 +1471,7 @@ export class ThemeCore {
 			heightTiles: (sizeTiles * set.frameH) / longSide,
 			tint,
 			additive: d.additive === true,
+			ranks,
 		};
 	}
 
