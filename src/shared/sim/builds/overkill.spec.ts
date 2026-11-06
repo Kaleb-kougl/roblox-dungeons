@@ -1,5 +1,5 @@
 // docs/LEGENDARIES.md LG2 (Overkill): the carry (damageActor's ctx.killCarry -> BuildProc.excess: the hit after the cap
-// minus the hp left, the one-shot floor for the player's own hit on a full-hp enemy, an execute's full hit, the minimum
+// minus the hp left, the floor for every kill by the player's own hit (LGD2 revised), an execute's full hit, the minimum
 // carry), the streak (nearest living enemy within OVERKILL_RANGE, the carry as is, no playerHitDamage, one generation
 // on, GEN_MAX), what never carries (turrets, bosses), a boss strike under its cap, the BuildEvents feed, and
 // determinism with Overkill + Chain Spark + Volatile on a real swarmer pack.
@@ -20,7 +20,7 @@ import {
 	EXECUTIONER_HP_PERCENT,
 	KillCause,
 	OVERKILL_MIN_CARRY,
-	OVERKILL_ONE_SHOT_MIN,
+	OVERKILL_OWN_HIT_MIN,
 	OVERKILL_RANGE,
 	SWARMER,
 	SWORD_DATA,
@@ -133,8 +133,8 @@ describe("Overkill's carry (LG2)", () => {
 		expect([e.overkillX1.size(), e.overkillCarry.size(), ctx.killCarry]).toEqual([0, 0, 0]);
 	});
 
-	it("a bow stream one-shot (1 on a full 1-hp enemy) carries OVERKILL_ONE_SHOT_MIN (1)", () => {
-		expect(OVERKILL_ONE_SHOT_MIN).toBe(1);
+	it("a bow stream one-shot (1 on a full 1-hp enemy) carries OVERKILL_OWN_HIT_MIN (1)", () => {
+		expect(OVERKILL_OWN_HIT_MIN).toBe(1);
 		const s = overkillOwner();
 		const ctx = ctxOf(s);
 		const victim = dummy(ctx, 2, 0, 1);
@@ -145,20 +145,37 @@ describe("Overkill's carry (LG2)", () => {
 		expect(target.hp).toBe(9);
 	});
 
-	it("the floor needs the player's own hit on a full-hp enemy: a wounded one or a gen-1 kill gets none", () => {
+	it("every kill by the player's own hit gets the floor, a wounded enemy too (LGD2 revised); a gen-1 kill none", () => {
 		const s = overkillOwner();
 		const ctx = ctxOf(s);
-		const wounded = dummy(ctx, 2, 0, 2);
-		wounded.hp = 1;
-		hitWith(ctx, wounded, 1);
+		// A floor-6 swarmer (2.1 hp) worn to 0.1 hp by earlier arrows, killed by a 1-damage stream arrow: 0.9 over.
+		const wounded = dummy(ctx, 2, 0, 2.1);
+		wounded.hp = 0.1;
+		hitWith(ctx, wounded, BOW_DATA.damage);
+		// A wounded 2-hp enemy at 1 hp killed by exactly its hp: 0 over, still the floor.
+		const exact = dummy(ctx, 2, 2, 2);
+		exact.hp = 1;
+		hitWith(ctx, exact, 1);
 		const byEffect = dummy(ctx, -2, 0, 1);
 		ctx.procGen = 1;
 		hitWith(ctx, byEffect, 1);
 		ctx.procGen = 0;
 		expect(s.builds!.procs.map((q) => [q.gen, q.excess])).toEqual([
-			[0, 0],
+			[0, OVERKILL_OWN_HIT_MIN],
+			[0, OVERKILL_OWN_HIT_MIN],
 			[1, 0],
 		]);
+	});
+
+	it("a non-full-hp kill by the player's own hit carries 1 to the nearest enemy", () => {
+		const s = overkillOwner();
+		const ctx = ctxOf(s);
+		const victim = dummy(ctx, 2, 0, 4);
+		victim.hp = 0.5;
+		const target = dummy(ctx, 4, 0);
+		hitWith(ctx, victim, 1);
+		step(s, IDLE, ARENA);
+		expect([target.hp, s.builds!.events.overkillCarry]).toEqual([9, [1]]);
 	});
 
 	it("an Executioner execute carries the hit's full damage (LGD3)", () => {
@@ -177,14 +194,16 @@ describe("Overkill's carry (LG2)", () => {
 		expect(target.hp).toBe(12);
 	});
 
-	it("a 0.5 carry does nothing (below OVERKILL_MIN_CARRY): no streak, no event", () => {
+	it("a 0.5 carry of an effect / streak kill (gen 1, no floor) does nothing (below OVERKILL_MIN_CARRY)", () => {
 		expect(OVERKILL_MIN_CARRY).toBe(1);
 		const s = overkillOwner();
 		const ctx = ctxOf(s);
 		const victim = dummy(ctx, 2, 0, 10);
 		victim.hp = 1;
 		const target = dummy(ctx, 4, 0);
+		ctx.procGen = 1;
 		hitWith(ctx, victim, 1.5);
+		ctx.procGen = 0;
 		expect(s.builds!.procs.map((q) => q.excess)).toEqual([0]);
 		step(s, IDLE, ARENA);
 		expect(target.hp).toBe(10);

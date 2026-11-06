@@ -19,7 +19,9 @@
  *   braceCount       (docs/LEGENDARIES.md LG1, appended) Bastion: enemy bullets stopped by the current guard or roll
  *                    (LG3's rule: ./hooks.ts; reset when a guard or roll starts)
  *   braceReady       (LG1, appended) Bastion: 1 while this room's brace is still to come, else 0 (LG3: set by the
- *                    pick, a floor's start and a room's spawn; cleared by a brace)
+ *                    pick, a floor's start and a room's spawn; cleared by a brace that restored something)
+ *   braceCooldown    (owner's tuning, appended) Citadel: ticks before its next brace (CITADEL_BRACE_COOLDOWN_TICKS
+ *                    after one; counted down by stepBuilds)
  *   draftsLeft       deals left in the open draft, the one on screen included: 1 after a floor, 2 after a boss floor
  *                    (BUD4); a confirm with draftsLeft > 1 re-deals (./cards.ts) instead of closing. 0 while closed
  * and for the world: `procs`, the kill queue (BU3, ./procs.ts: { x, z, owner, gen, slot, id, excess } per kill, oldest
@@ -65,6 +67,8 @@ export interface BuildPlayerState {
 	braceCount: number;
 	/** Bastion (LG1; LG3): 1 while this room's brace is still to come (re-armed when a room's enemies spawn), else 0. */
 	braceReady: number;
+	/** Citadel (owner's tuning, LGD14; appended): ticks before its next brace may fire (0: ready; ./hooks.ts). */
+	braceCooldown: number;
 }
 
 /** One queued kill (BU3). Every field hashed. */
@@ -203,7 +207,10 @@ export interface BuildEvents {
 	overkillGen: number[];
 	overkillCarry: number[];
 	// --- LG3 (Bastion). Parallel lists, one entry per brace, in the order they happened. ---
-	/** Braces: the player (party index) and what it did (BraceKind: PIP a pip restored, HEAL Stone Heart, SPENT). */
+	/**
+	 * Braces: the player (party index) and what it did (BraceKind: PIP a pip restored, HEAL Stone Heart; SPENT is
+	 * never pushed since the owner's tuning: a brace with nothing to restore is not spent).
+	 */
 	bracePlayer: number[];
 	braceKind: number[];
 	/**
@@ -319,6 +326,7 @@ function newPlayer(): BuildPlayerState {
 		closeGrazes: 0,
 		braceCount: 0,
 		braceReady: 0,
+		braceCooldown: 0,
 	};
 }
 
@@ -485,6 +493,7 @@ export const BUILD_PLAYER_SCALARS = [
 	"closeGrazes",
 	"braceCount",
 	"braceReady",
+	"braceCooldown",
 ] as const;
 
 /** Per proc, in hash order. Append only. */

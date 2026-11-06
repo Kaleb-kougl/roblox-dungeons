@@ -41,7 +41,7 @@ import { beginEffectBudget, endEffectBudget, resetEffectScratch } from "./effect
 import { JACKPOT_KILLS, KillCause } from "./effectsData";
 import { resetEvolutionScratch, stepEvolutions, stepMomentum } from "./evolutions";
 import { chainReactionKill, resetDuoScratch, stepDuosAfterDrain, stepDuosBeforeDrain } from "./duos";
-import { isEvolved } from "./hooks";
+import { isEvolved, stepBraceCooldowns } from "./hooks";
 import { chainSpark, overkill, soulShards, volatileBurst } from "./onKill";
 import { scoreJackpot } from "../score/score";
 
@@ -130,6 +130,8 @@ export function stepBuilds(ctx: SimCtx): void {
 	if (s === undefined) return;
 	const procs = s.procs;
 	if (state.party !== undefined && procs.size() > 0) dropLeavers(state, procs);
+	// Citadel's brace cooldowns (docs/LEGENDARIES.md LGD14): one tick of combat time.
+	stepBraceCooldowns(s);
 	beginEffectBudget(state);
 	// 1. The evolutions before the drain (./evolutions.ts: Ricochet splits, Soul Swarm steering, novas, Thrill Seeker),
 	// then the duos' (./duos.ts: Close Call shards, Fire Arrows / Blazing Trail embers).

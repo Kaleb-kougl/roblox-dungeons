@@ -32,9 +32,11 @@
  * armorMax. `braceCount` counts the current guard's or roll's bullets (reset when either starts, and by a swap that is
  * not mid-roll: a swap ends a guard); the brace fires once, on the bullet that reaches the threshold, and only while
  * `braceReady` is 1 (re-armed when a room's enemies spawn and at a floor's start, set by the pick; cleared by a
- * brace). A brace with no pip missing is spent anyway (BraceKind.SPENT). BuildEvents bracePlayer / braceKind.
- * Duos (LG4): Citadel (Bastion + Warding) lifts the once per room; Stone Heart (Bastion + Hearty) heals half a heart
- * when no pip is missing (BraceKind.HEAL).
+ * brace). A brace with nothing to restore is NOT spent (owner's tuning, LGD6 revised): braceReady stays set and
+ * nothing is pushed, so a later guard or roll restores the pip a hit took; BraceKind.SPENT is never pushed.
+ * BuildEvents bracePlayer / braceKind. Duos (LG4): Citadel (Bastion + Warding) lifts the once per room but waits
+ * CITADEL_BRACE_COOLDOWN_TICKS after each brace (`braceCooldown`, LGD14); Stone Heart (Bastion + Hearty) heals half
+ * a heart when no pip is missing (BraceKind.HEAL, which spends the brace).
  *   buildsOnGuardCancels(state, i, cancels, starting)   sword.ts, every guard tick: `cancels` bullets erased this tick
  *                                      (goo outside it; strikes are never erased), `starting` on the guard's first tick.
  *   bastionRollOn(state, i)            combat.ts, once a tick per player (the bastionRolling mask): player i owns
@@ -54,6 +56,7 @@ import {
 	BraceKind,
 	FLURRY_ARROW_EVERY,
 	FlurryKind,
+	CITADEL_BRACE_COOLDOWN_TICKS,
 	LIONHEART_HEAL_HALF_HEARTS,
 	STONE_HEART_HEAL_HALF_HEARTS,
 } from "./effectsData";
@@ -186,29 +189,35 @@ function pushBrace(s: BuildsState, i: number, kind: number): void {
 
 /**
  * Player i braces (the count just reached the threshold): see the file comment. Citadel (Bastion + Warding, LG4): no
- * once-per-room limit (braceReady neither needed nor cleared). Stone Heart (Bastion + Hearty, LG4): with no pip
- * missing, STONE_HEART_HEAL_HALF_HEARTS half hearts healed instead (up to the maximum; BraceKind.HEAL), once per room
- * like any brace unless Citadel; with nothing to heal either, spent.
+ * once-per-room limit (braceReady neither needed nor cleared) but a cooldown: none while `braceCooldown` > 0, and a
+ * brace that restored something sets it to CITADEL_BRACE_COOLDOWN_TICKS. Stone Heart (Bastion + Hearty, LG4): with no
+ * pip missing, STONE_HEART_HEAL_HALF_HEARTS half hearts healed instead (up to the maximum; BraceKind.HEAL), once per
+ * room like any brace unless Citadel. Nothing to restore (no pip missing, no heal): not spent, nothing pushed.
  */
 function brace(state: SimState, s: BuildsState, p: BuildPlayerState, i: number): void {
 	const citadel = hasDuo(p, Duo.CITADEL);
-	if (p.braceReady === 0 && !citadel) return;
-	if (!citadel) p.braceReady = 0;
+	if (citadel ? p.braceCooldown > 0 : p.braceReady === 0) return;
 	const pl = buildPlayerStateAt(state, i);
+	let kind: number;
 	if (pl.armor < pl.armorMax) {
 		pl.armor += 1;
-		pushBrace(s, i, BraceKind.PIP);
-		return;
+		kind = BraceKind.PIP;
+	} else {
+		const healed = hasDuo(p, Duo.STONE_HEART)
+			? jsMin(pl.heartsMax, pl.hearts + STONE_HEART_HEAL_HALF_HEARTS) - pl.hearts
+			: 0;
+		if (healed <= 0) return;
+		pl.hearts += healed;
+		kind = BraceKind.HEAL;
 	}
-	if (hasDuo(p, Duo.STONE_HEART)) {
-		const healed = jsMin(pl.heartsMax, pl.hearts + STONE_HEART_HEAL_HALF_HEARTS) - pl.hearts;
-		if (healed > 0) {
-			pl.hearts += healed;
-			pushBrace(s, i, BraceKind.HEAL);
-			return;
-		}
-	}
-	pushBrace(s, i, BraceKind.SPENT);
+	if (citadel) p.braceCooldown = CITADEL_BRACE_COOLDOWN_TICKS;
+	else p.braceReady = 0;
+	pushBrace(s, i, kind);
+}
+
+/** stepBuilds, every unfrozen tick: Citadel's brace cooldowns count down (see the file comment). */
+export function stepBraceCooldowns(s: BuildsState): void {
+	for (const p of s.players) if (p.braceCooldown > 0) p.braceCooldown -= 1;
 }
 
 /** Adds `n` stopped bullets to player i's brace count; braces on the one that reaches BASTION_BRACE_BULLETS. */

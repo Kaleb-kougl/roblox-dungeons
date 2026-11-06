@@ -132,8 +132,11 @@ export const CLOSE_CALL_RANGE = SOUL_SHARDS_RANGE;
 export const OVERKILL_RANGE = 4 * TILE_SIZE;
 /** A carry below this does nothing (no streak, no event). */
 export const OVERKILL_MIN_CARRY = 1;
-/** A one-shot by the player's own hit (gen 0, the enemy at full hp) carries at least this (LGD2). */
-export const OVERKILL_ONE_SHOT_MIN = 1;
+/**
+ * A kill by the player's own hit (gen 0: a swing, an arrow, a ring, a reflected bullet; any hp left before it) carries
+ * at least this (LGD2, revised by the owner 2026-11-06: was full-hp one-shots only). Streak and effect kills never.
+ */
+export const OVERKILL_OWN_HIT_MIN = 1;
 
 // --- Bastion's brace (docs/LEGENDARIES.md "Bastion", LG3; its tunables are in progressionData.ts) -----------
 
@@ -143,14 +146,17 @@ export const BraceKind = {
 	PIP: 0,
 	/** Stone Heart (LG4): no pip missing, half a heart healed. */
 	HEAL: 1,
-	/** Nothing missing to restore: the brace is spent anyway (the once per room stays readable). */
+	/**
+	 * UNUSED since the owner's tuning (LGD6 revised, 2026-11-06): a brace with nothing to restore is not spent and
+	 * pushes nothing. Kept (append only) so the view's handling of it stays valid.
+	 */
 	SPENT: 2,
 } as const;
 
 // --- Legendary duos (docs/LEGENDARIES.md "Duos", LG4) --------------------------------------------------------
 
 /** Supernova (Overkill + Volatile): a kill whose carry is at least this bursts one Volatile ring larger (LGD8). */
-export const SUPERNOVA_CARRY = 3;
+export const SUPERNOVA_CARRY = 2; // owner's tuning 2026-11-06 (LGD13): was 3
 /** Supernova at Cataclysm (Volatile III): the 16-bolt ring pierces this many (Cataclysm's own pierces 1). */
 export const SUPERNOVA_CATACLYSM_PIERCE = 2;
 /**
@@ -186,6 +192,12 @@ export const SUPERNOVA_SHRAPNEL_BURSTS: ReadonlyArray<BurstSpec> = [
 ];
 /** Skewer (Overkill + Piercing Arrows): the streak strikes every enemy its line passes within this distance of. */
 export const SKEWER_RADIUS = 0.5 * TILE_SIZE;
+/**
+ * Citadel (Bastion + Warding): no once-per-room limit, but after a brace the next one waits this long (LGD14, owner
+ * 2026-11-06; `braceCooldown`, ticks left, counted down by stepBuilds).
+ */
+export const CITADEL_BRACE_COOLDOWN_SECONDS = 5;
+export const CITADEL_BRACE_COOLDOWN_TICKS = secondsToTicks(CITADEL_BRACE_COOLDOWN_SECONDS);
 /** Stone Heart (Bastion + Hearty): a brace with no pip missing heals this many half hearts (up to the maximum). */
 export const STONE_HEART_HEAL_HALF_HEARTS = 1;
 

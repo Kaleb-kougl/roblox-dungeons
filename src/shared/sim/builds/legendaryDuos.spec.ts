@@ -1,8 +1,10 @@
 // docs/LEGENDARIES.md LG4 (the legendary duos): Supernova (a carry of SUPERNOVA_CARRY or more bursts one Volatile ring
 // larger: I -> 12, II -> 16, III -> 16 that pierce 2, Shrapnel's too; only existing arc rows), Skewer (the streak strikes
-// every enemy within SKEWER_RADIUS of the corpse -> target segment for the full carry, slot order, the target last),
+// every enemy within SKEWER_RADIUS of the line from the corpse through the target to OVERKILL_RANGE for the full carry,
+// slot order, the target last),
 // Citadel (no once-per-room limit, still one brace per guard) and Stone Heart (a brace with no pip missing heals half a
-// heart, once per room unless Citadel).
+// heart, once per room unless Citadel), with the owner's tuning (Supernova at a carry of 2, Skewer's line through the
+// target to OVERKILL_RANGE, Citadel's 5 s cooldown, a brace with nothing to restore not spent).
 import "shared/sim/testing";
 import { describe, expect, it } from "@rbxts/jest-globals";
 import {
@@ -12,9 +14,12 @@ import {
 	BulletKind,
 	BulletPayload,
 	Button,
+	CITADEL_BRACE_COOLDOWN_SECONDS,
+	CITADEL_BRACE_COOLDOWN_TICKS,
 	DEFAULT_BOUNDS,
 	Duo,
 	EMPTY_INPUT,
+	OVERKILL_RANGE,
 	SHRAPNEL_DAMAGE,
 	SKEWER_RADIUS,
 	STONE_HEART_HEAL_HALF_HEARTS,
@@ -120,9 +125,9 @@ describe("Supernova (Overkill + Volatile, LG4)", () => {
 		return { fired: [...s.builds!.events.burstFired], s };
 	}
 
-	it("a carry of SUPERNOVA_CARRY (3) or more bursts one ring larger: I 12, II 16, III 16 piercing 2", () => {
-		expect(SUPERNOVA_CARRY).toBe(3);
-		expect([burst(1, 3).fired, burst(2, 3).fired, burst(3, 5).fired]).toEqual([[12], [16], [16]]);
+	it("a carry of SUPERNOVA_CARRY (2) or more bursts one ring larger: I 12, II 16, III 16 piercing 2", () => {
+		expect(SUPERNOVA_CARRY).toBe(2);
+		expect([burst(1, 2).fired, burst(2, 3).fired, burst(3, 5).fired]).toEqual([[12], [16], [16]]);
 		const two = burst(2, 3).s;
 		expect(bolts(two).every(([d, p]) => d === VOLATILE_DAMAGE && p === 0)).toBe(true);
 		const three = burst(3, 3).s;
@@ -133,8 +138,8 @@ describe("Supernova (Overkill + Volatile, LG4)", () => {
 	});
 
 	it("a smaller carry, or no duo, bursts the ordinary ring (8 / 12 / 16 piercing 1)", () => {
-		expect([burst(1, 2).fired, burst(2, 2).fired, burst(1, 5, false).fired]).toEqual([[8], [12], [8]]);
-		const three = burst(3, 2).s;
+		expect([burst(1, 1).fired, burst(2, 1).fired, burst(1, 5, false).fired]).toEqual([[8], [12], [8]]);
+		const three = burst(3, 1).s;
 		expect(bolts(three).every(([, p]) => p === 1)).toBe(true);
 		expect(three.builds!.events.duoProcDuo).toEqual([]);
 	});
@@ -149,7 +154,7 @@ describe("Supernova (Overkill + Volatile, LG4)", () => {
 });
 
 describe("Skewer (Overkill + Piercing Arrows, LG4)", () => {
-	it("the streak strikes every enemy within SKEWER_RADIUS of the corpse -> target line, slot order, the target last", () => {
+	it("the streak strikes every enemy within SKEWER_RADIUS of its line, slot order, the target last", () => {
 		const s = fresh();
 		setLevel(s, Boon.OVERKILL, 1);
 		s.builds!.players[0].duos.push(Duo.SKEWER);
@@ -172,6 +177,41 @@ describe("Skewer (Overkill + Piercing Arrows, LG4)", () => {
 		const e = s.builds!.events;
 		expect([e.overkillX2, e.overkillZ2, e.overkillCarry]).toEqual([[0], [3], [5]]);
 		expect([e.duoProcDuo, e.duoProcValue]).toEqual([[Duo.SKEWER], [3]]);
+	});
+
+	it("the line runs through the target to OVERKILL_RANGE: a row beyond the target is struck, not past the range", () => {
+		const s = fresh();
+		setLevel(s, Boon.OVERKILL, 1);
+		s.builds!.players[0].duos.push(Duo.SKEWER);
+		const ctx = ctxOf(s);
+		const victim = dummy(ctx, 0, 0, 1);
+		// A row straight ahead, 1 apart: the target (nearest) at 2, then 3 and 4 (the line's end, OVERKILL_RANGE 4)
+		// struck, 4.6 past the end cap's radius not. Spawned far to near, so slot order is not distance order.
+		const past = dummy(ctx, 0, 4.6, 1);
+		const tip = dummy(ctx, 0, OVERKILL_RANGE, 1);
+		const mid = dummy(ctx, 0, 3, 1);
+		const target = dummy(ctx, 0, 2, 1);
+		hitWith(ctx, victim, 6);
+		step(s, IDLE, ARENA);
+		expect([past.alive, tip.alive, mid.alive, target.alive]).toEqual([1, 0, 0, 0]);
+		expect(s.builds!.procs.map((q) => q.id)).toEqual([tip.id, mid.id, target.id]);
+		const e = s.builds!.events;
+		expect([e.overkillZ2, e.duoProcDuo, e.duoProcValue]).toEqual([[2], [Duo.SKEWER], [3]]);
+	});
+
+	it("a diagonal line: the direction is normalised (one sqrt), the radius test has none", () => {
+		const s = fresh();
+		setLevel(s, Boon.OVERKILL, 1);
+		s.builds!.players[0].duos.push(Duo.SKEWER);
+		const ctx = ctxOf(s);
+		const victim = dummy(ctx, 0, 0, 1);
+		const target = dummy(ctx, 1.2, 1.6, 1); // distance 2 along (0.6, 0.8)
+		const onLine = dummy(ctx, 2.1, 2.8, 1); // distance 3.5, on the line
+		const beside = dummy(ctx, 2.4 + 0.32, 3.2 - 0.24, 1); // 0.4 to the side of the line's end (2.4, 3.2)
+		const wide = dummy(ctx, 1.8 + 0.48, 2.4 - 0.36, 1); // 0.6 to the side at distance 3
+		hitWith(ctx, victim, 6);
+		step(s, IDLE, ARENA);
+		expect([target.alive, onLine.alive, beside.alive, wide.alive]).toEqual([0, 0, 0, 1]);
 	});
 
 	it("without the duo only the target is struck", () => {
@@ -223,15 +263,59 @@ describe("Citadel and Stone Heart (Bastion duos, LG4)", () => {
 		for (let t = 0; t < SWORD_DATA.guardCooldownTicks; t++) step(s, IDLE, ARENA);
 	}
 
-	it("Citadel: every guard that stops 3 restores a pip (no once per room), still one brace per guard", () => {
+	it("Citadel: no once per room, one brace per guard, and a 5 s cooldown between braces (LGD14)", () => {
+		expect([CITADEL_BRACE_COOLDOWN_SECONDS, CITADEL_BRACE_COOLDOWN_TICKS]).toEqual([5, 300]);
 		const s = bastionWith(Boon.WARDING, Duo.CITADEL);
 		const p = s.player;
+		const b = s.builds!.players[0];
 		p.armor = 0;
 		guardOnce(s, 6);
 		expect(p.armor).toBe(1); // 6 bullets, one brace
+		// 61 ticks after the brace: the cooldown blocks a second one.
 		p.armor = 0;
 		guardOnce(s);
-		expect(p.armor).toBe(1); // the same room: Citadel braces again
+		expect([p.armor, b.braceCooldown > 0]).toEqual([0, true]);
+		// Wait out the cooldown: the same room, Citadel braces again.
+		while (b.braceCooldown > 0) step(s, IDLE, ARENA);
+		volley(s);
+		step(s, GUARD, ARENA);
+		expect([p.armor, b.braceReady]).toEqual([1, 1]);
+		expect(b.braceCooldown).toBe(CITADEL_BRACE_COOLDOWN_TICKS - 1);
+	});
+
+	it("Citadel's cooldown: a brace 299 ticks after the last is blocked, 300 after is allowed", () => {
+		function at(after: number): number {
+			const s = bastionWith(Boon.WARDING, Duo.CITADEL);
+			const p = s.player;
+			p.armor = 0;
+			volley(s);
+			step(s, GUARD, ARENA); // the brace, tick T
+			p.armor = 0;
+			for (let t = 1; t < after; t++) step(s, IDLE, ARENA);
+			// A roll through 3 bullets (no guard cooldown in the way): started on T + after, counted on T + after + 1.
+			step(s, frame(0, 0, Button.ROLL, 0, 1), ARENA);
+			p.rollDirX = 0;
+			p.rollDirZ = 0;
+			const c = s.combat;
+			for (let k = 0; k < 3; k++) {
+				c.enemySpawned += fireBurstRaw(
+					c.enemyBullets,
+					1,
+					p.x,
+					p.z,
+					0,
+					1,
+					1,
+					0,
+					0,
+					3,
+					packPayload(1, BulletKind.ENEMY, 1),
+				);
+			}
+			step(s, IDLE, ARENA);
+			return p.armor;
+		}
+		expect([at(CITADEL_BRACE_COOLDOWN_TICKS - 2), at(CITADEL_BRACE_COOLDOWN_TICKS - 1)]).toEqual([0, 1]);
 	});
 
 	it("Stone Heart: a brace at full armor heals half a heart (BraceKind.HEAL), once per room", () => {
@@ -259,12 +343,12 @@ describe("Citadel and Stone Heart (Bastion duos, LG4)", () => {
 		expect(s.builds!.events.braceKind).toEqual([BraceKind.PIP]);
 	});
 
-	it("Stone Heart with full hearts and armor: the brace is spent", () => {
+	it("Stone Heart with full hearts and armor: nothing to restore, the brace is not spent", () => {
 		const s = bastionWith(Boon.HEARTY, Duo.STONE_HEART);
 		volley(s);
 		step(s, GUARD, ARENA);
-		expect(s.builds!.events.braceKind).toEqual([BraceKind.SPENT]);
-		expect(s.builds!.players[0].braceReady).toBe(0);
+		expect(s.builds!.events.bracePlayer.size()).toBe(0);
+		expect(s.builds!.players[0].braceReady).toBe(1);
 	});
 
 	it("Stone Heart + Citadel: the heal is no longer once per room", () => {
@@ -277,6 +361,10 @@ describe("Citadel and Stone Heart (Bastion duos, LG4)", () => {
 		const p = s.player;
 		p.hearts = p.heartsMax - 2;
 		guardOnce(s);
+		expect(p.hearts).toBe(p.heartsMax - 1);
+		guardOnce(s); // within Citadel's cooldown: no heal
+		expect(p.hearts).toBe(p.heartsMax - 1);
+		while (s.builds!.players[0].braceCooldown > 0) step(s, IDLE, ARENA);
 		guardOnce(s);
 		expect(p.hearts).toBe(p.heartsMax);
 	});

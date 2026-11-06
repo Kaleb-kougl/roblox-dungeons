@@ -34,9 +34,9 @@
  *                and stops at genMax. Bosses can be struck (their cap applies) and never carry; the Goldling can be
  *                struck (LGD12). No target: the carry is lost (no event). One BuildEvents overkill segment per streak.
  *                Skewer (Overkill + Piercing Arrows, LG4): the streak also strikes every other enemy within
- *                SKEWER_RADIUS of the corpse -> target segment, each for the full carry, in slot order, the target
- *                last (see overkill).
- *   Supernova    (Overkill + Volatile, LG4): a proc whose carry is at least SUPERNOVA_CARRY bursts one Volatile ring
+ *                SKEWER_RADIUS of the segment from the corpse through the target to OVERKILL_RANGE, each for the full
+ *                carry, in slot order, the target last (see overkill).
+ *   Supernova    (Overkill + Volatile, LG4): a proc whose carry is at least SUPERNOVA_CARRY (2) bursts one Volatile ring
  *                larger (SUPERNOVA_BURSTS, or SUPERNOVA_SHRAPNEL_BURSTS with Shrapnel: I -> 12, II -> 16, III -> 16
  *                that pierce 2; the existing 12 / 16 @ FULL_RING arc rows only).
  */
@@ -235,10 +235,11 @@ function streakStrike(ctx: SimCtx, q: Readonly<BuildProc>, slot: number, carry: 
 }
 
 /**
- * Overkill for proc `q` (see the file comment): the streak of its carry. Skewer (Overkill + Piercing Arrows, LG4):
- * first every other living enemy within SKEWER_RADIUS of the corpse -> target segment (nearestEnemy's skips, slot order,
+ * Overkill for proc `q` (see the file comment): the streak of its carry. Skewer (Overkill + Piercing Arrows, LG4, the
+ * owner's tuning): the target stays the nearest enemy, and first every other living enemy within SKEWER_RADIUS of the
+ * segment from the corpse through the target to OVERKILL_RANGE from the corpse (nearestEnemy's skips, slot order,
  * chosen before any strike) takes the full carry, then the target; a duoProc entry (enemies struck) when the line
- * struck anyone besides the target.
+ * struck anyone besides the target. The overkill event still ends at the target.
  */
 export function overkill(ctx: SimCtx, s: BuildsState, q: Readonly<BuildProc>): void {
 	const carry = q.excess;
@@ -257,12 +258,19 @@ export function overkill(ctx: SimCtx, s: BuildsState, q: Readonly<BuildProc>): v
 	e.overkillGen.push(q.gen);
 	e.overkillCarry.push(carry);
 	if (hasDuo(s.players[q.owner], Duo.SKEWER)) {
+		// The line: from the corpse through the target out to OVERKILL_RANGE from the corpse (owner's tuning; one
+		// sqrt to normalise the direction, as fireAimedVolley aims; a target on the corpse: the segment ends there).
+		const dx = tx - q.x;
+		const dz = tz - q.z;
+		const d = math.sqrt(dx * dx + dz * dz);
+		const ex = d > 0 ? q.x + (dx / d) * OVERKILL_RANGE : tx;
+		const ez = d > 0 ? q.z + (dz / d) * OVERKILL_RANGE : tz;
 		skewered.clear();
 		const actors = ctx.actors;
 		for (let j = 0; j < actors.size(); j++) {
 			const b = actors[j];
 			if (j === k || b.kind === NO_KIND || b.alive === 0 || b.id === q.id || b.spawnTick === ctx.tick) continue;
-			if (onSkewerLine(b.x, b.z, q.x, q.z, tx, tz)) skewered.push(j);
+			if (onSkewerLine(b.x, b.z, q.x, q.z, ex, ez)) skewered.push(j);
 		}
 		const n = skewered.size();
 		for (let j = 0; j < n; j++) streakStrike(ctx, q, skewered[j], carry);

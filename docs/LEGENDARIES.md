@@ -25,11 +25,13 @@ see it happen, it is not in this plan.**
 
 ## Status (2026-11-06)
 
-**LG0-LG6 built** (the audit, the data and scaffolding, Overkill's and Bastion's rules, the four duos, the theme, the
-view: "LG0 findings", "LG1 (as built)" .. "LG6 (as built)"); LG7-LG9 open (LG6's Studio check is in LG9's checklist). Follows docs/BUILDS.md (BU0-BU10 built; BU11-BU14 open). Overkill was proposed in docs/BUILDS_V2.md as
+**LG0-LG7 built, and the owner's tuning applied** (the audit, the data and scaffolding, Overkill's and Bastion's rules,
+the four duos, the theme, the view, the tuning measurements, the owner's rule changes: "LG0 findings", "LG1 (as built)"
+.. "LG6 (as built)", "LG7 tuning (as built, 2026-11-06)", "Owner tuning (as built, 2026-11-06)"); LG8-LG9 open (art,
+audio, the Studio check and playtest; LG6's Studio items are in LG9's checklist). Follows docs/BUILDS.md (BU0-BU10 built; BU11-BU14 open). Overkill was proposed in docs/BUILDS_V2.md as
 a common boon with levels and an evolution (Annihilator); the owner moved it here as a legendary
-(2026-11-06), so V2's Overkill row is withdrawn and its Supernova duo is redefined below. Decisions LGD1-LGD12 are
-proposed defaults until the owner settles them; LGD2, LGD3, LGD5-LGD7 and LGD12 are settled (owner, 2026-11-06).
+(2026-11-06), so V2's Overkill row is withdrawn and its Supernova duo is redefined below. Decisions LGD1-LGD14:
+LGD2 and LGD6 revised and LGD3, LGD5-LGD7 and LGD12-LGD14 settled by the owner (2026-11-06); the rest are defaults.
 
 ## What the code gives us (read on `main` @ `749f788`)
 
@@ -260,7 +262,8 @@ The four duos' rules. Paths under `src/shared/sim/builds/`. Only players owning 
   from the queued procs), skips an enemy just off the line and one behind the corpse beyond the radius, and only the
   target without the duo; Citadel braces twice in one room, one brace for a 6-bullet guard; Stone Heart heals only at
   full armor, once per room, SPENT at full hearts, unlimited with Citadel.
-- **Open (owner call).** Skewer as specified rarely strikes more than the target: the target is the NEAREST enemy, so
+- **Open (owner call), resolved 2026-11-06** by the owner's tuning (the line now runs through the target to
+  `OVERKILL_RANGE`). Skewer as first specified rarely struck more than the target: the target is the NEAREST enemy, so
   any enemy within 0.5 of the inside of the segment is (nearly always) nearer than the target and would have been the
   target itself. The line therefore catches only enemies clustered within 0.5 of the target's end (or of the corpse);
   a row of swarmers spaced 1 apart is struck one per tick, like plain Overkill. Fixing it needs a design change (e.g.
@@ -368,8 +371,9 @@ Level I only (LGD1). One rule:
 > and deals the carry to it. If the streak kills, that kill's own carry jumps on.
 
 - **Carry** = the hit's damage after `filterDamage`, the Shielded absorb and the boss cap, minus the hp the enemy had
-  left; a one-shot by the player's own hit (gen 0: a swing or arrow on an enemy at full hp) carries at least
-  `OVERKILL_ONE_SHOT_MIN` (1), so a streak's own kills never get the floor and carries do not grow (LGD2); an Executioner
+  left; any kill by the player's own hit (gen 0: a swing, an arrow, a ring, a reflected bullet, whatever hp the enemy
+  had left) carries at least `OVERKILL_OWN_HIT_MIN` (1), while a streak's or an effect's kills never get the floor, so
+  carries do not grow (LGD2, revised by the owner 2026-11-06: was full-hp one-shots only); an Executioner
   execute carries the hit's full damage (LGD3). A carry below `OVERKILL_MIN_CARRY` (1) does nothing. Damage is
   always an exact binary fraction (multiples of 1/8 through Fury and Sharpened), so the carry is exact.
 - **The streak is instant** (Chain Spark's shape): `nearestEnemy` with the spark's skips, one strike through
@@ -383,7 +387,7 @@ Level I only (LGD1). One rule:
   over). Bosses are never executed, so LGD3 never reaches them.
 - Resolution order: Overkill is index 15, so it resolves after Chain Spark, Volatile and Soul Shards for the same proc.
 
-Tunables (`builds/effectsData.ts`): `OVERKILL_RANGE` 4 tiles, `OVERKILL_MIN_CARRY` 1, `OVERKILL_ONE_SHOT_MIN` 1.
+Tunables (`builds/effectsData.ts`): `OVERKILL_RANGE` 4 tiles, `OVERKILL_MIN_CARRY` 1, `OVERKILL_OWN_HIT_MIN` 1.
 
 ### Bastion (`boon.bastion`, legendary, defense, icon `BST`)
 
@@ -392,17 +396,19 @@ Level I only. Three parts:
 1. **On pick**: +1 armor pip (`BASTION_ARMOR_PIPS`; `armorMax` and `armor`), like Warding I, so Brace always has a slot
    to fill. Not refilled per room by itself; with Warding the room refill covers it (Warding refills to `armorMax`).
 2. **A bigger guard**: `guardHalfAngleCos` -1 (the full ring, `BASTION_GUARD_HALF_ANGLE_COS`) and `BASTION_GUARD_TICKS`
-   27 (1.5x the 18; whole ticks). Reach and the 60-tick cooldown are unchanged; the numbers are settled by LG7's
-   tuning (LGD5).
+   27 (1.5x the 18; whole ticks). Reach and the 60-tick cooldown are unchanged (LGD5, settled by the owner after
+   LG7: the full ring at 27 ticks).
 3. **Brace**: one guard **or one roll** that stops at least `BASTION_BRACE_BULLETS` (3) enemy bullets restores one
    armor pip, up to `armorMax`. A guard counts the `cancels` it already counts; a roll counts each enemy bullet that
    overlaps the player while rolling with i-frames (`rollTicks > 0` and `iframeTicks > 0`, Phantom Step's test), once
    per bullet: the first time a Bastion roller counts a bullet, its payload's `lastHit` is set to 1 (unused on enemy
    bullets), and a marked bullet never counts again for anyone. Phantom Step's erased bullets count too. Goo and
    strikes never count (as for the parry feed). The count (`braceCount`) resets when a guard or a roll starts. Once
-   per room (LGD6, threshold and limit settled by LG7): `braceReady` is set when a room's enemies spawn (Warding's
-   moment) and at a floor's start, cleared by a brace. A brace with no missing pip is spent anyway (unless Stone
-   Heart), so the "once" is readable.
+   per room (LGD6, settled by the owner after LG7: 3 bullets, once per room): `braceReady` is set when a room's
+   enemies spawn (Warding's moment) and at a floor's start, cleared by a brace that restored something. A brace with
+   no missing pip is NOT spent (LGD6 revised): `braceReady` stays set and nothing shows, so a later guard or roll
+   restores the pip a hit took; with Stone Heart it heals half a heart instead and is spent. BRACED always means
+   something came back.
 
 The guard is the sword's, but the roll is every weapon's, so a bow player braces by rolling through a volley (LGD7).
 Mirror Cloak reflects every bullet a guard erases, so with Bastion a full-ring guard reflects everything around the
@@ -412,15 +418,16 @@ knight; a full pool still drops reflections, as today.
 
 | Duo | Boons | Rule | Beat |
 |---|---|---|---|
-| **Supernova** | Overkill + Volatile | a kill whose carry is `SUPERNOVA_CARRY` (3) or more bursts one Volatile ring larger: level I -> 12 bolts, II -> 16, III (Cataclysm) -> 16 that pierce 2 (LGD8) | Big hits make visibly bigger rings |
-| **Skewer** | Overkill + Piercing Arrows | the streak strikes every enemy its line passes within `SKEWER_RADIUS` (0.5 tiles) of, each for the full carry, the target last; each kill carries on | One heavy arrow skewers a line of swarmers; the bow's Overkill duo |
-| **Citadel** | Bastion + Warding | Brace is no longer once per room: every guard that erases 3+ bullets restores a pip | Warding's pips become something you earn back mid-fight |
+| **Supernova** | Overkill + Volatile | a kill whose carry is `SUPERNOVA_CARRY` (2, LGD13) or more bursts one Volatile ring larger: level I -> 12 bolts, II -> 16, III (Cataclysm) -> 16 that pierce 2 (LGD8) | Big hits make visibly bigger rings |
+| **Skewer** | Overkill + Piercing Arrows | the target stays the nearest enemy; the streak's line runs from the corpse through the target to `OVERKILL_RANGE` from the corpse, and every enemy within `SKEWER_RADIUS` (0.5 tiles) of it is struck for the full carry, others in slot order, the target last; each kill carries on | One arrow skewers a line of swarmers; the bow's Overkill duo |
+| **Citadel** | Bastion + Warding | Brace is no longer once per room: every guard or roll that stops 3+ bullets restores a pip, at most one brace per `CITADEL_BRACE_COOLDOWN_TICKS` (5 s, LGD14) | Warding's pips become something you earn back mid-fight |
 | **Stone Heart** | Bastion + Hearty | a Brace with no missing pip heals half a heart instead (a heal pulse); still once per room unless Citadel | Hearty's first duo: perfect guarding heals |
 
 Supernova keeps V2's name but not V2's rule ("+1 bolt per point of excess, cap +8" needs a ring row in
 `arcTablePort.ts` for every count from 9 to 24); the larger ring reuses the 8 / 12 / 16 @ FULL_RING rows that exist.
 Skewer's line test is a point-to-segment distance (multiplies and one comparison, no sqrt, no trig), actors in slot
-order.
+order; finding the line's far end normalises the corpse -> target direction with one sqrt (as `fireAimedVolley` aims;
+no trig).
 
 ### The legendary economy
 
@@ -535,24 +542,34 @@ flies into the armor row; 8. Stone Heart's heal pulse; 9. Reduced build effects 
 - Bastion picked mid-room: `braceReady` starts at 1 (the pick arms it once).
 - A dead or departed co-op player: no brace, no carry (procs already skip departed owners).
 
-## Decisions (proposed defaults, 2026-11-06)
+## Decisions (2026-11-06; LGD2, LGD5, LGD6 settled or revised by the owner's tuning, LGD13 / LGD14 added)
 
 - **LGD1** Overkill is a legendary at level I only; V2's level II and Annihilator are withdrawn (owner, 2026-11-06).
-- **LGD2** (settled, owner 2026-11-06) One-shots by the player's own hit carry at least 1, so the bow's stream works with Overkill. Streak
-  kills never get the floor.
+- **LGD2** (revised, owner 2026-11-06, after LG7) EVERY kill by the player's own hit (gen 0) carries at least 1
+  (`OVERKILL_OWN_HIT_MIN`, was `OVERKILL_ONE_SHOT_MIN` and full-hp one-shots only), so the bow's stream carries on
+  every floor, not only floor 1. Streak and effect kills never get the floor.
 - **LGD3** (settled, owner 2026-11-06) An Executioner execute carries the hit's full damage (the "one finisher clears every low enemy"
   moment V2 promised).
 - **LGD4** The streak deals the carry as is; `playerHitDamage` is never applied twice.
-- **LGD5** (settled after LG7, owner 2026-11-06) Bastion's guard: full ring, 27 ticks to start; reach and cooldown
-  unchanged. LG7's numbers pick the final size.
-- **LGD6** (settled after LG7, owner 2026-11-06) Brace: 3 bullets in one guard or roll, once per room to start
-  (Citadel lifts the limit). LG7's numbers pick the final threshold and limit.
+- **LGD5** (settled, owner 2026-11-06, after LG7) Bastion's guard: the full ring (`BASTION_GUARD_HALF_ANGLE_COS` -1,
+  swept at -2) for `BASTION_GUARD_TICKS` 27; reach 1.9 and the 60-tick cooldown unchanged.
+- **LGD6** (settled and revised, owner 2026-11-06, after LG7) Brace: `BASTION_BRACE_BULLETS` 3 in one guard or roll,
+  once per room (Citadel: LGD14). A brace with no missing pip is NOT spent: `braceReady` stays set and nothing is
+  pushed (`BraceKind.SPENT` is never pushed any more; the value stays, append only, and the view's handling of it is
+  harmless), unless Stone Heart heals half a heart, which spends it.
 - **LGD7** (settled, owner 2026-11-06) A roll through 3+ bullets braces too, with any weapon, each bullet counted once.
-- **LGD8** Supernova = one ring size larger on a 3+ carry (no new arc rows).
+- **LGD8** Supernova = one ring size larger on a big carry (no new arc rows); the threshold is LGD13.
 - **LGD9** Boon indices 15 / 16 and duo indices 9-12, before any V2 boon; V2's boons renumber after them.
 - **LGD10** Legendary rarity percents unchanged.
 - **LGD11** `DAILY.ruleset` 8 -> 9; all-time boards stay `_v1` (BUD9's precedent).
 - **LGD12** (settled, owner 2026-11-06) Streaks may strike the Goldling.
+- **LGD13** (owner 2026-11-06, after LG7) `SUPERNOVA_CARRY` 3 -> 2: LG7's carries averaged 1.0-2.7, so a 3+ carry was rare.
+- **LGD14** (owner 2026-11-06, after LG7) Citadel lifts the once-per-room limit but waits `CITADEL_BRACE_COOLDOWN_TICKS`
+  (`secondsToTicks(CITADEL_BRACE_COOLDOWN_SECONDS)`, 5 s = 300 ticks) after each brace that restored something
+  (per player `braceCooldown`, ticks left, hashed, appended last to `BUILD_PLAYER_SCALARS`; counted down once per
+  unfrozen tick by `stepBuilds`). Unlimited Citadel braces were 5-18 per 20 s room and zero hearts lost in LG7.
+- **Skewer's line** (LG4 revised, owner 2026-11-06, after LG7): the target stays the nearest enemy; the line runs from
+  the corpse through it to `OVERKILL_RANGE` from the corpse (LG7: the corpse -> target segment struck nobody else).
 
 ## Risks
 
@@ -575,7 +592,9 @@ flies into the armor row; 8. Stone Heart's heal pulse; 9. Reduced build effects 
 
 ## Owner calls
 
-1. After LG7: the guard's final size, the brace threshold and its once-per-room limit (LGD5 / LGD6).
+1. ~~After LG7: the guard's final size, the brace threshold and its once-per-room limit (LGD5 / LGD6).~~ Settled
+   2026-11-06 ("Owner tuning (as built, 2026-11-06)"). Open: an `OVERKILL_CARRY_PERCENT` for the sword (LG7
+   recommendation 5, not taken), and whether the view draws a Skewer streak to the line's end (it ends at the target).
 
 ## LG5 (as built)
 
@@ -914,3 +933,98 @@ deep into a run, where with two a player who owned both got only duos, evolution
 timing the guard to volleys; the bots are greedy and god mode), Stormcaller strikes (never erased or counted), and the
 alternative Overkill / Skewer / brace rules themselves (the counterfactuals are first-link geometry only; each proposal
 needs its rule change and a rerun of these specs).
+
+### After the owner's changes (2026-11-06)
+
+The same specs rerun on the rules of "Owner tuning (as built, 2026-11-06)" (every gen-0 kill carries at least 1,
+Skewer's line to `OVERKILL_RANGE`, a brace with nothing to restore not spent, Citadel's 5 s cooldown, `SUPERNOVA_CARRY`
+2). Every loose bound held: no bound was loosened or changed. The offer statistics (section 6) are unchanged (no rule
+there moved). Rows not listed are unchanged (the sword's Overkill rows, Executioner rows, the guard-shape rows).
+
+Bow, time to clear x no build, f1 / f6 / f11 (before -> after):
+
+| build | pack (8 swarmers) | mixed room | row of 6 |
+|---|---|---|---|
+| Overkill | 0.52 / 1.00 / 1.00 -> 0.52 / 0.80 / 0.69 | 0.72 / 1.00 / 1.00 -> 0.72 / 0.94 / 0.97 | -> 0.64 / 0.72 / 0.77 |
+| Overkill + Sharpened I | 0.52 / 0.67 / 0.67 -> 0.52 / 0.46 / 0.53 | 0.72 / 0.79 / 0.78 -> 0.72 / 0.74 / 0.75 | |
+| Overkill + Executioner | 0.52 / 0.10 / 0.19 (same) | 0.50 / 0.42 / 0.45 (same) | |
+| Supernova | 0.20 / 0.32 / 0.36 -> 0.20 / 0.27 / 0.34 | 0.72 / 0.93 / 0.95 -> 0.72 / 0.88 / 0.94 | |
+| Skewer | 0.36 / 0.72 / 0.58 -> 0.31 / 0.68 / 0.39 | 0.72 / 0.93 / 0.89 -> 0.73 / 0.90 / 0.82 | -> 0.33 / 0.40 / 0.42 |
+
+The bow now streaks on every floor (pack, Overkill: 0.50 / 0.62 / 0.88 streaks per kill, was 0.50 / 0.00 / 0.00), but
+a carry of 1 kills only what is nearly dead past floor 1 (kills by a streak 50 / 25 / 0 %): it chips. Sword: the
+mixed room's Overkill f6 0.92 -> 0.89; everything else as before; the sword's Skewer on the row 0.33 / 0.56 / 0.36 (Overkill
+alone 0.67 / 1.00 / 0.36).
+
+Skewer's extra strikes (the Skewer build, seeds 1-3 x 3 floors, from its `duoProc` entries; was 0 everywhere):
+
+| fight, weapon | streaks | streaks striking others | extra enemies struck (per streak) |
+|---|---|---|---|
+| pack, sword | 41 | 8 (20 %) | 8 (0.20) |
+| pack, bow | 39 | 12 (31 %) | 15 (0.38) |
+| room, sword | 18 | 1 (6 %) | 1 (0.06) |
+| room, bow | 38 | 3 (8 %) | 3 (0.08) |
+| row of 6, sword | 18 | 12 (67 %) | 36 (2.00) |
+| row of 6, bow | 24 | 18 (75 %) | 42 (1.75) |
+
+Bastion (floor 6, 20 s rooms, seeds 1-5): braces per room (pips restored) and half hearts lost per room, hold bots
+(before -> after):
+
+| room | guard-hold: Bastion braces (pips) | guard-hold: Bastion half hearts | roll-hold: Bastion braces (pips) | roll-hold: Bastion half hearts |
+|---|---|---|---|---|
+| 2 turret.caster | 1.00 (0.20) -> 1.00 (1.00) | 5.0 -> 4.2 | 1.0 (1.0) -> 1.00 (1.00) | 15.2 -> 15.2 |
+| 2 turret.sprayer | 1.00 (0.00) -> 1.00 (1.00) | 1.8 -> 0.8 | 0.2 (0.2) -> 0.20 (0.20) | 4.8 -> 4.8 |
+| 4 sniper | 1.00 (0.20) -> 1.00 (1.00) | 2.0 -> 1.4 | 1.0 (0.2) -> 1.00 (1.00) | 1.2 -> 0.6 |
+| 2 reaper | 0.60 (0.60) -> 0.60 (0.60) | 0.0 -> 0.0 | 0.6 (0.4) -> 0.40 (0.40) | 1.6 -> 1.6 |
+| mixed f6 census | 1.00 (0.00) -> 1.00 (1.00) | 2.0 -> 1.0 | 1.0 (0.2) -> 0.60 (0.60) | 1.8 -> 1.6 |
+
+Every Bastion brace now restores a pip (braces = pips); a room's brace waits for the first hit that took one.
+
+Citadel (Bastion + Warding I + Citadel), braces per room (all restore something) / half hearts lost per room:
+
+| room | guard-hold, before (unlimited) -> after (5 s) | roll-hold, before -> after | guard bot (fighting), after |
+|---|---|---|---|
+| 2 turret.caster | 18.0 / 0.0 -> 3.2 / 1.4 | 13.8 / 4.4 -> 3.0 / 12.6 | 4.0 / 7.2 |
+| 2 turret.sprayer | 9.0 / 0.2 -> 2.0 / 0.2 | 0.2 / 3.8 -> 0.2 / 3.8 | 0.4 / 0.0 |
+| 4 sniper | 10.4 / 0.0 -> 2.0 / 0.2 | 4.8 / 0.2 -> 1.6 / 0.2 | 0.2 / 0.0 |
+| 2 reaper | 1.0 / 0.0 -> 0.6 / 0.0 | 0.8 / 0.6 -> 0.6 / 0.6 | 1.0 / 0.0 |
+| mixed f6 census | 5.4 / 0.2 -> 1.6 / 0.4 | 1.8 / 0.8 -> 0.6 / 0.8 | 1.0 / 0.0 |
+
+("Before" Citadel braces are LG7's qualifying-guard counts, the ceiling unlimited braces had.) The cooldown caps
+Citadel at 4 braces per 20 s room (3.0-3.2 against casters, with a pip to fill), so the caster room costs hearts again
+(guard-hold 1.4, roll-hold 12.6 half hearts per room); the sniper, sprayer and mixed rooms stay cheap (0.2-0.4).
+
+## Owner tuning (as built, 2026-11-06)
+
+The owner's decisions on LG7's recommendations (2026-11-06), as built. Paths under `src/shared/sim/builds/` unless
+noted. Endless builds runs with these boons or duos play differently; M1, the fixtures, the tutorial and builds runs
+without them are untouched, except that every builds run's hash grows by one scalar per player (`braceCooldown`).
+
+1. **Overkill's floor (LGD2 revised).** `OVERKILL_ONE_SHOT_MIN` is renamed `OVERKILL_OWN_HIT_MIN` (1, `effectsData.ts`);
+   `execute.ts` `buildsKillCarry` applies it to every kill with `ctx.procGen === 0` (the `hpBefore === hpMax` test is
+   gone). Streak and effect kills (gen >= 1) never get it.
+2. **Skewer's line.** `onKill.ts` `overkill`: the target is still `nearestEnemy`; with Skewer the line's far end is
+   `corpse + OVERKILL_RANGE x unit(target - corpse)` (one `math.sqrt`; a target on the corpse: the segment ends at the
+   target), and `onSkewerLine` (multiplies only) tests every other enemy against that segment. Strike order, carries
+   and the `duoProc` entry as in LG4. The `overkillX2` / `overkillZ2` event still ends at the target (open for the
+   view: drawing a Skewer streak to the line's end).
+3. **The brace (LGD6 revised).** `hooks.ts` `brace`: no pip missing and no Stone Heart heal (none owned, or hearts
+   full): return, `braceReady` kept, nothing pushed. `BraceKind.SPENT` stays in the enum (append only), documented as
+   never pushed; the view's SPENT handling (faint ring, no feedback) is now dead but harmless.
+4. **Citadel's cooldown (LGD14).** `CITADEL_BRACE_COOLDOWN_SECONDS` 5 / `CITADEL_BRACE_COOLDOWN_TICKS` 300
+   (`effectsData.ts`); per player `braceCooldown` (`builds.ts`, hashed, appended last to `BUILD_PLAYER_SCALARS`, 0 at
+   start, cloned with the spread): a Citadel brace needs `braceCooldown === 0` (not `braceReady`) and one that restored
+   something sets it to 300; `hooks.ts` `stepBraceCooldowns`, called first in `procs.ts` `stepBuilds` (combat time:
+   frozen drafts never count it down), decrements it. A brace on tick T allows the next on T + 300.
+5. **The guard (LGD5).** No change: the full ring at 27 ticks, settled.
+6. **Supernova (LGD13).** `SUPERNOVA_CARRY` 3 -> 2.
+
+Specs: `overkill.spec.ts` (every gen-0 kill gets the floor, a wounded enemy too; a non-full-hp own-hit kill carries 1 to
+the nearest; the 0.5 carry case is now a gen-1 kill), `bastion.spec.ts` (a brace at full armor is not spent and a later
+one restores the pip a hit took; the re-arm case starts with a pip missing), `legendaryDuos.spec.ts` (Supernova at a
+carry of 2, the ordinary ring at 1; Skewer strikes a row beyond the target up to `OVERKILL_RANGE` and not past it, in
+slot order, and a diagonal line; Citadel's cooldown blocks a brace 299 ticks after the last and allows it at 300, and
+a second brace within 5 s in the same room; Stone Heart at full hearts and armor is not spent; Stone Heart + Citadel
+heals again only after the cooldown), `builds.spec.ts` (the builds hash group's size and names with `braceCooldown`,
+the scalar list, hashed and cloned). LG7's harness relabels its Skewer counterfactual columns (corpse -> target is the
+first LG4 rule; the extended line is the rule now). Tables: "After the owner's changes" above.

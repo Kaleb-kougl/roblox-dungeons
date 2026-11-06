@@ -11,8 +11,8 @@
  *    Skewer counterfactuals (no sim change): the probe's hit observer sees each streak's first strike with every actor
  *    where the streak found it (the corpse and the target from the streak's overkill event, pushed before the strike),
  *    and counts the OTHER living enemies (nearestEnemy's skips: free, dead, spawned this tick) within SKEWER_RADIUS of
- *    three lines: as built (corpse -> target), extended (corpse -> the point OVERKILL_RANGE from the corpse through
- *    the target), and farthest (corpse -> the farthest such enemy within OVERKILL_RANGE, that enemy not counted). Only
+ *    three lines: corpse -> target (the first LG4 rule), extended (corpse -> the point OVERKILL_RANGE from the corpse
+ *    through the target: Skewer's rule since the owner's tuning), and farthest (corpse -> the farthest such enemy within OVERKILL_RANGE, that enemy not counted). Only
  *    the line's geometry at the first strike: no chain is replayed under the alternative rule.
  * 2. Bastion (defenseFight): a room's enemies at floor 6's hp (Depth 2) in buildTune.ts's open arena, god mode (hearts
  *    refilled after every step; hits that landed and half hearts lost counted before the refill), DEFENSE_SECONDS or
@@ -398,8 +398,8 @@ export function formatStreakRow(row: OverkillRow, seeds: number): string {
 /** Markdown header of the Skewer line table (all floors together). */
 export function skewerHeader(): string {
 	return (
-		"| build | streaks | as built: streaks with another enemy on the line / others per streak | " +
-		"extended to OVERKILL_RANGE | to the farthest enemy in range |"
+		"| build | streaks | corpse -> target (first LG4 rule): streaks with another enemy on the line / others per streak | " +
+		"extended to OVERKILL_RANGE (the rule now) | to the farthest enemy in range |"
 	);
 }
 

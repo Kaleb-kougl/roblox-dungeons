@@ -326,15 +326,16 @@ describe("opt-in state and the builds hash group (BU1)", () => {
 			expect(layout.names.size()).toBe(layout.values.size());
 			expect(layout.names[g.finish - 1]).toBe("builds.procs.length");
 			expect(layout.values).toEqual(writeHashFields(s, []));
-			// 1 + per player (1 + 17 levels + 1 duos length + 9 scalars: BU5 appended bulwarkPending, BU6 closeGrazes,
-			// docs/LEGENDARIES.md LG1 braceCount and braceReady) + 1 procs length.
-			expect(g.finish - g.start).toBe(1 + n * (1 + BOON_COUNT + 1 + 9) + 1);
+			// 1 + per player (1 + 17 levels + 1 duos length + 10 scalars: BU5 appended bulwarkPending, BU6 closeGrazes,
+			// docs/LEGENDARIES.md LG1 braceCount and braceReady, the owner's tuning braceCooldown) + 1 procs length.
+			expect(g.finish - g.start).toBe(1 + n * (1 + BOON_COUNT + 1 + 10) + 1);
 			const scalars = layout.names.filter((name) => name.sub(1, 19) === "builds.players[0].b");
 			expect(scalars).toEqual([
 				"builds.players[0].bigHits",
 				"builds.players[0].bulwarkPending",
 				"builds.players[0].braceCount",
 				"builds.players[0].braceReady",
+				"builds.players[0].braceCooldown",
 			]);
 		}
 	});
@@ -556,6 +557,7 @@ describe("legendaries Overkill and Bastion (docs/LEGENDARIES.md LG1)", () => {
 			"closeGrazes",
 			"braceCount",
 			"braceReady",
+			"braceCooldown",
 		]);
 		expect(BUILD_PROC_FIELDS).toEqual(["x", "z", "owner", "gen", "slot", "id", "excess"]);
 		const s = createSimState(SEED, 0, 0, ARENA);
@@ -563,6 +565,15 @@ describe("legendaries Overkill and Bastion (docs/LEGENDARIES.md LG1)", () => {
 		const c = cloneSimState(s);
 		c.builds!.players[0].braceReady = 1;
 		expect([bp(s).braceReady, hashState(c) !== hashState(s)]).toEqual([0, true]);
+		// Citadel's cooldown (the owner's tuning, LGD14): appended last, hashed, cloned.
+		expect(bp(s).braceCooldown).toBe(0);
+		const d = cloneSimState(s);
+		d.builds!.players[0].braceCooldown = 5;
+		expect([
+			bp(s).braceCooldown,
+			hashState(d) !== hashState(s),
+			cloneSimState(d).builds!.players[0].braceCooldown,
+		]).toEqual([0, true, 5]);
 	});
 
 	it("a fresh build is dealt both as New cards; once owned (level I is their only level) neither comes back", () => {

@@ -1,5 +1,5 @@
 // docs/LEGENDARIES.md LG3 (Bastion): the pip on the pick, the guard through runMods (full ring, 27 ticks; SWORD_DATA's
-// numbers without it), the brace (3 bullets in one guard or roll restore a pip, once per room, spent at full armor),
+// numbers without it), the brace (3 bullets in one guard or roll restore a pip, once per room, not spent at full armor),
 // the count's resets (guard start, roll start, a swap mid-guard), the roll brace (any weapon, each bullet once by the
 // payload's lastHit mark, never through post-hit invulnerability, Phantom Step's erasures count, goo and strikes never),
 // the re-arm (a room's spawn, a floor's start), co-op (own armor only, a marked bullet never counts for a second
@@ -241,13 +241,25 @@ describe("Bastion's brace (LG3)", () => {
 		expect(bp(s).braceCount).toBe(1);
 	});
 
-	it("at full armor the brace is spent anyway (BraceKind.SPENT), so the once per room is readable", () => {
+	it("at full armor the brace is not spent (LGD6 revised): a later one restores the pip a hit took", () => {
 		const s = fresh();
 		const p = s.player;
 		volleyInFront(s);
 		step(s, GUARD, ARENA);
-		expect([p.armor, p.armorMax, bp(s).braceReady]).toEqual([p.armorMax, p.armorMax, 0]);
-		expect(s.builds!.events.braceKind).toEqual([BraceKind.SPENT]);
+		// Nothing to restore: braceReady stays set, nothing pushed (BraceKind.SPENT never fires).
+		expect([p.armor, p.armorMax, bp(s).braceReady, bp(s).braceCount]).toEqual([p.armorMax, p.armorMax, 1, 3]);
+		expect(s.builds!.events.bracePlayer.size()).toBe(0);
+		idle(s, SWORD_DATA.guardCooldownTicks);
+		// A hit takes a pip (an enemy bullet on the knight, no i-frames).
+		const hearts = p.hearts;
+		enemyBullet(s, p.x, p.z);
+		step(s, IDLE, ARENA);
+		expect([p.armor, p.hearts]).toEqual([p.armorMax - 1, hearts]);
+		p.iframeTicks = 0;
+		volleyInFront(s);
+		step(s, GUARD, ARENA);
+		expect([p.armor, bp(s).braceReady]).toEqual([p.armorMax, 0]);
+		expect(s.builds!.events.braceKind).toEqual([BraceKind.PIP]);
 	});
 
 	it("a swap or a roll mid-guard resets the count", () => {
@@ -269,6 +281,7 @@ describe("Bastion's brace (LG3)", () => {
 
 	it("re-arms when a room's enemies spawn and at a floor's start", () => {
 		const s = fresh();
+		s.player.armor = 0;
 		volleyInFront(s);
 		step(s, GUARD, ARENA);
 		expect(bp(s).braceReady).toBe(0);

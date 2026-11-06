@@ -13,15 +13,15 @@
  *
  * Overkill's carry (docs/LEGENDARIES.md LG2; buildsKillCarry, from damageActor's kill line, only with state.builds):
  *   the hit after filterDamage, the Shielded absorb and the boss cap (`hit`, before Executioner) minus the hp the enemy
- *   had (`hpBefore`); an execute carries the whole `hit` (LGD3); a kill by the player's own hit (ctx.procGen 0) of an
- *   enemy at full hp carries at least OVERKILL_ONE_SHOT_MIN (LGD2: streak kills, gen >= 1, never get the floor); a
+ *   had (`hpBefore`); an execute carries the whole `hit` (LGD3); any kill by the player's own hit (ctx.procGen 0)
+ *   carries at least OVERKILL_OWN_HIT_MIN (LGD2 revised: streak and effect kills, gen >= 1, never get the floor); a
  *   carry below OVERKILL_MIN_CARRY is 0; a boss's kill never carries. Damage is an exact binary fraction, so is this.
  */
 import type { SimCtx } from "../combat/ctx";
 import type { ActorState, ArchetypeDef } from "../combat/actors/types";
 import { Boon, PERCENT } from "../progression/progressionData";
 import { isEvolved } from "./hooks";
-import { EXECUTIONER_HP_PERCENT, OVERKILL_MIN_CARRY, OVERKILL_ONE_SHOT_MIN } from "./effectsData";
+import { EXECUTIONER_HP_PERCENT, OVERKILL_MIN_CARRY, OVERKILL_OWN_HIT_MIN } from "./effectsData";
 
 /** The damage the hit deals with Executioner applied (`dmg` itself when it does not execute). */
 export function buildsExecute(ctx: SimCtx, a: Readonly<ActorState>, def: Readonly<ArchetypeDef>, dmg: number): number {
@@ -48,6 +48,6 @@ export function buildsKillCarry(
 ): number {
 	if (def.data.boss === true) return 0;
 	let carry = executed ? hit : hit - hpBefore;
-	if (ctx.procGen === 0 && hpBefore === a.hpMax && carry < OVERKILL_ONE_SHOT_MIN) carry = OVERKILL_ONE_SHOT_MIN;
+	if (ctx.procGen === 0 && carry < OVERKILL_OWN_HIT_MIN) carry = OVERKILL_OWN_HIT_MIN;
 	return carry >= OVERKILL_MIN_CARRY ? carry : 0;
 }

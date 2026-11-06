@@ -63,6 +63,7 @@ Record every ported module in `PROVENANCE.md` (ported module, source path, sourc
 | `docs/TREASURE.md` | Treasure rooms (vaults: about one endless floor in two from floor 2 has a caged chest in a combat / elite room, seen through the doorway; clearing the room unlocks it, its lock (UNTOUCHED / SWIFT) kept or cracked one tier down; walk up to open it: a relic, boosts or a bonus draft; gameplay, opt-in `SimConfig.treasure`): plan, TR0 findings, as built TR1-TR8, tasks TR0-TR11, decisions TRD1-TRD14 |
 | `docs/FORTUNE.md` | Fortune (risk shrines: two pact altars in the shrine room, Greed = a shown curse + a Legendary deal now, Horde = the next room fights a second wave for x2 score; the Goldling: a rare harmless gold enemy that flees within its room, coins per hit, a jackpot if caught within 10 s; gameplay, opt-in `SimConfig.pacts` / `SimConfig.golden` on endless only): plan, as built, open owner calls, Studio check, tasks FO0-FO13 / PS1-PS5 / GE1-GE4, decisions FD1-FD16 |
 | `docs/PROJECTILE_ART.md` | Projectile art (every flying bullet drawn with the Player Bullets pack: yellow / green bolts and the Hyper flame for the player, chevron / needle / teardrop recoloured into the danger pink for enemies, optional `fx.bullet.hit`; goo / strike / ember unchanged; presentation only): plan, measured pack, mapping, tasks PA0-PA10, decisions PAD1-PAD11 |
+| `docs/LEGENDARIES.md` | Legendaries (two legendary boons, Overkill: a kill's leftover damage streaks to the nearest enemy and chains; Bastion: a full-ring 27-tick guard, +1 pip and a brace that restores a pip when a guard or roll stops 3 bullets; four duos Supernova / Skewer / Citadel / Stone Heart; gameplay, opt-in `SimConfig.builds`): plan, LG0 findings, as built LG1-LG6, LG7 tuning, owner tuning, tasks LG0-LG9, decisions LGD1-LGD14 |
 
 Decision log (deviations from `PLAN.md`):
 - **Art (docs/ART.md).** The theme contract gained a `"sprites"` kind (large pre-rendered cells, 1/4/8/16 screen-space
@@ -741,6 +742,27 @@ Decision log (deviations from `PLAN.md`):
   budget); `bullet.` in `PRELOAD.core`. Spike PA0 in spike A (`KV_SpikeBullets`, modes N / A / B / C on keys 5-8).
   `bullets.png` uploaded 2026-11-05 (PA8, `assetIds.ts`), so the bundled vale pack draws the art. Spike PA0, the
   Studio check (PA9) and a full laptop `art:build` pending.
+
+- **Legendaries (docs/LEGENDARIES.md).** Gameplay. Two legendary boons appended to `BOONS` (`Boon.OVERKILL` 15,
+  `Boon.BASTION` 16; `BOON_COUNT` 17, `CLASSIC_BOON_COUNT` stays 12, so the tutorial's draft is unchanged) and four duos
+  appended to `DUOS` (Supernova / Skewer / Citadel / Stone Heart, indices 9-12, card ids 73-76), opt-in through
+  `SimConfig.builds` (endless only). New hashed fields appended to the `builds` group: `BuildProc.excess` (the kill's
+  carry, Overkill owners only) and per player `braceCount` / `braceReady` / `braceCooldown`. Overkill: `damageActor`
+  keeps the hit after the cap and before Executioner, `buildsKillCarry` turns it into the carry (an execute's full hit;
+  every gen-0 kill at least `OVERKILL_OWN_HIT_MIN` 1; bosses never), passed through the transient, unhashed
+  `SimCtx.killCarry`; the streak (`overkill`, `KillCause.OVERKILL`) strikes the nearest enemy within 4 tiles for the
+  carry as is (no `playerHitDamage`); Chain Reaction now cross-triggers on SPARK / BURST only. Bastion: `RunMods.bastion`
+  (the sword reads its guard through `swordGuardTicks` / `swordGuardSweepCos`: SWORD_DATA's numbers exactly without it;
+  `swordGuard(slot, guardTicks)` clamps to 1); a roll brace marks an enemy bullet's unused payload `lastHit` (1), set
+  only by a Bastion roller, so runs without Bastion hash as before; a brace with nothing to restore is not spent
+  (`BraceKind.SPENT` unused); Citadel waits 5 s between braces. Feed (unhashed `BuildEvents`): `overkill*`, `bracePlayer`
+  / `braceKind`, Supernova / Skewer `duoProc` entries. Theme: role `build.overkill` `#ffe0b0` (`buildReport`), strings
+  `boon.overkill.*` / `boon.bastion.*` / the four `duo.*`, `hud.toast.brace` / `.braceHeal`, `fx.brace.text`, port audio
+  IDs `sfx.build.overkill` / `.brace` (SILENT in the placeholder, `SFX_FALLBACK` to the spark / the Aegis break); no
+  Luau-locals change. View: Overkill streaks and impact flashes, the guard drawn as a full ring, the brace ring, BRACED
+  shout (`FLOOR_SHOUT_PRIORITY.brace`), armor pulse and toasts. `DAILY.ruleset` 8 -> 9. M1, every fixture and the
+  tutorial replay exactly as before; endless replays and scores changed (boards stay `_v1`). Tuning measured (LG7) and
+  the owner's changes applied (2026-11-06); Studio check, art (LG8) and audio pending.
 
 ## Commands
 
