@@ -738,8 +738,8 @@ Decision log (deviations from `PLAN.md`):
   Top-face SurfaceGui per slot, one BulkMoveTo, provisional until spike PA0); the neon pools skip what it draws; every
   enemy look keeps the small ball as its placeholder; `FxCueMapper.bulletHit` (lowest rank, 3 a frame, half the
   budget); `bullet.` in `PRELOAD.core`. Spike PA0 in spike A (`KV_SpikeBullets`, modes N / A / B / C on keys 5-8).
-  Until `bullets.png` has an id the vale pack draws the neon placeholders exactly as before. Upload (PA8), spike PA0,
-  the Studio check (PA9) and a full laptop `art:build` pending.
+  `bullets.png` uploaded 2026-11-05 (PA8, `assetIds.ts`), so the bundled vale pack draws the art. Spike PA0, the
+  Studio check (PA9) and a full laptop `art:build` pending.
 
 ## Commands
 

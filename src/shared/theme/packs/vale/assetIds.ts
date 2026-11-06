@@ -100,6 +100,8 @@ import type { RobloxAssetId } from "../../types";
  * Assets Pack by zver.3d) uploaded 2026-11-04 6:04 AM by k9kbdev, transcribed from an Asset Manager screenshot.
  * kit-chest / kit-chest-open (the vault chest, docs/TREASURE.md TR9; "Old Chest" by SebastianSosnowski, CC-BY 4.0)
  * uploaded 2026-11-04 7:43 AM, transcribed from an Asset Manager screenshot.
+ * bullets.png (every flying projectile and the impact burst fx.bullet.hit, docs/PROJECTILE_ART.md PA8; the 16Bit Bullets
+ * Asset Pack by J i m, built by `node scripts/art/build-atlases.js --only bullets`) uploaded 2026-11-05.
  */
 export const VALE_ASSET_IDS: Readonly<Record<string, RobloxAssetId>> = {
 	"amb-b1.ogg": "rbxassetid://91158343621799",
@@ -136,6 +138,7 @@ export const VALE_ASSET_IDS: Readonly<Record<string, RobloxAssetId>> = {
 	"bruiser-body.png": "rbxassetid://139345385245627",
 	"bruiser-death-outline.png": "rbxassetid://96190576749559",
 	"bruiser-death.png": "rbxassetid://110099154312685",
+	"bullets.png": "rbxassetid://137901113047611",
 	"caster-body-outline.png": "rbxassetid://117972314048279",
 	"caster-body.png": "rbxassetid://94738405031552",
 	"caster-death-outline.png": "rbxassetid://128357725222665",

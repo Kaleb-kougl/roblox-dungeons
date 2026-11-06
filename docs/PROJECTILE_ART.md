@@ -21,8 +21,8 @@ sign-off (PA9). If PA0's performance or PA9's readability check fails, the fallb
 PA0-PA7 are built headlessly. PA0 is a Studio spike harness whose measurements are still to be made. PA10 docs are
 done. **Open:**
 
-- **PA8, upload.** Upload `bullets.png` and paste its id into `assetIds.ts`. Until then the bundled vale pack draws
-  every bullet as its neon placeholder, so the game looks exactly as before.
+- **PA8, upload: done 2026-11-05.** `bullets.png` is `rbxassetid://137901113047611` in `assetIds.ts`, so the bundled
+  vale pack now draws every flying bullet and the impact burst with the pack's art.
 - **PA0 / PA9, Studio.** Run the spike, then the Studio check.
 - **The full `art:build` on the laptop.** It must leave every other output byte-identical, and it is the only build
   that checks the `pixelsPerTileFrom` swarmer density.
@@ -305,7 +305,7 @@ the dark rim that makes today's bullets read, and its lit core lands on the role
   → Verify: an `fxCues.spec` case (a scripted bow stream into a wall gives capped cues; a stream that expires gives
   none); `fx.spec` colour rule passes.
 
-- [ ] **PA8. Upload.** Upload `bullets.png` (and the fx atlas if PA2 repacked it) and paste the IDs into
+- [x] **PA8. Upload.** (2026-11-05: `bullets.png` = 137901113047611.) Upload `bullets.png` (and the fx atlas if PA2 repacked it) and paste the IDs into
   `assetIds.ts` with the upload note. → Verify: `npm run verify`; `check-asset-ids` clean.
 
 - [ ] **PA9. Studio check.** Endless floors on every biome (solo and a 2-player party), the tutorial, the
