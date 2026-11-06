@@ -255,9 +255,25 @@ export const VALE_DECOR_PIECES: ReadonlyArray<ValeDecorPiece> = [
 	{ kind: "carpet", variant: 2, art: "kit-carpet-z", layer: "flat" },
 	{ kind: "carpet", variant: 3, art: "kit-carpet-end-x", layer: "flat" },
 	{ kind: "carpet", variant: 4, art: "kit-carpet-end-z", layer: "flat" },
-	// bookshelves (docs/BOOKSHELVES.md): the bookcase facing +X / +Z
+	// bookshelves (docs/BOOKSHELVES.md): the bookcase facing +X / +Z; then the alternative set (docs/KENNEY_DECOR.md:
+	// Kenney's Isometric Library, CC0, reprojected to the game camera), in the same facing pairs: the full case first
+	// (the set's common one), then the ladder, glass, half-height, destroyed, empty and half empty cases
 	{ kind: "bookcase", variant: 1, art: "kit-bookcase-x", layer: "low" },
 	{ kind: "bookcase", variant: 2, art: "kit-bookcase-z", layer: "low" },
+	{ kind: "bookcase", variant: 3, art: "kenney-bookcase-books-x", layer: "low" },
+	{ kind: "bookcase", variant: 4, art: "kenney-bookcase-books-z", layer: "low" },
+	{ kind: "bookcase", variant: 5, art: "kenney-bookcase-ladder-x", layer: "low" },
+	{ kind: "bookcase", variant: 6, art: "kenney-bookcase-ladder-z", layer: "low" },
+	{ kind: "bookcase", variant: 7, art: "kenney-bookcase-glass-x", layer: "low" },
+	{ kind: "bookcase", variant: 8, art: "kenney-bookcase-glass-z", layer: "low" },
+	{ kind: "bookcase", variant: 9, art: "kenney-bookcase-half-x", layer: "low" },
+	{ kind: "bookcase", variant: 10, art: "kenney-bookcase-half-z", layer: "low" },
+	{ kind: "bookcase", variant: 11, art: "kenney-bookcase-destroyed-x", layer: "low" },
+	{ kind: "bookcase", variant: 12, art: "kenney-bookcase-destroyed-z", layer: "low" },
+	{ kind: "bookcase", variant: 13, art: "kenney-bookcase-empty-x", layer: "low" },
+	{ kind: "bookcase", variant: 14, art: "kenney-bookcase-empty-z", layer: "low" },
+	{ kind: "bookcase", variant: 15, art: "kenney-bookcase-halfempty-x", layer: "low" },
+	{ kind: "bookcase", variant: 16, art: "kenney-bookcase-halfempty-z", layer: "low" },
 	// a library's reading area (docs/BOOKSHELVES.md): the table along X / along Z, the chair facing +X / +Z / -X / -Z
 	{ kind: "table", variant: 1, art: "kit-table-x", layer: "low" },
 	{ kind: "table", variant: 2, art: "kit-table-z", layer: "low" },

@@ -1282,8 +1282,9 @@ export const DECOR_KIND_LAYERS = {
 	throne: ["low"] as const,
 	statue: ["low"] as const,
 	carpet: FLAT_SPOT,
-	// bookcases (docs/BOOKSHELVES.md): solid, 1 x 1, against far walls (library and hall rooms), low; variant 1 faces
-	// +X, 2 faces +Z
+	// bookcases (docs/BOOKSHELVES.md): solid, 1 x 1, against far walls (library and hall rooms), low; variants in facing
+	// pairs, the odd one facing +X, the even one +Z: 1 / 2 the primary art, 3 / 4 .. an alternative set picked per room
+	// (docs/KENNEY_DECOR.md, decorPlan's bookcaseVariant)
 	bookcase: ["low"] as const,
 	// a library's reading area (docs/BOOKSHELVES.md): solid, free-standing on open floor, low; a table (2 x 1, variant 1
 	// along X, 2 along Z) with a chair (1 x 1) at each end, variant 1 facing +X, 2 +Z, 3 -X, 4 -Z (toward the table)
@@ -1362,8 +1363,11 @@ export const VOID_DECOR = {
 };
 export type VoidDecorKind = (typeof VOID_DECOR.kinds)[number];
 
-/** A piece may have numbered variants `decor.delve.b<n>.<kind>.<v>`, v in 1..DECOR_MAX_VARIANTS (bones1..3, ...). */
-export const DECOR_MAX_VARIANTS = 4;
+/**
+ * A piece may have numbered variants `decor.delve.b<n>.<kind>.<v>`, v in 1..DECOR_MAX_VARIANTS (bones1..3, ...). 16 since
+ * docs/KENNEY_DECOR.md: the bookcase's eight facing pairs (the kit case and seven Kenney cases).
+ */
+export const DECOR_MAX_VARIANTS = 16;
 
 /** A piece's outline (ImageAsset.outline, SpriteSetAsset.outlines) is a polygon: at least this many points. */
 export const DECOR_MIN_OUTLINE_POINTS = 3;

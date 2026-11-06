@@ -320,7 +320,7 @@ describe("void decor (docs/VOID_DECOR.md VD7)", () => {
 			"decor.void.b1.Spire",
 			"decor.void.b1.tree",
 			"decor.void.b1.spire.0",
-			"decor.void.b1.spire.5",
+			"decor.void.b1.spire.17",
 			"decor.void.b1.spire.x",
 			"decor.void.b1.spire.1.2",
 			"decor.void.b1",

@@ -111,7 +111,15 @@ import type { IsoBasis } from "../iso";
 import { VOID_PIECES } from "../voidDecor/config";
 import { VoidLayer } from "../voidDecor/layer";
 import type { VoidPlan } from "../voidDecor/plan";
-import { DECOR_BANNERS, DECOR_CLEAR, DECOR_DRESSING, DECOR_PLACE, DECOR_SALT, DECOR_SCATTER } from "./config";
+import {
+	DECOR_BANNERS,
+	DECOR_BOOKCASES,
+	DECOR_CLEAR,
+	DECOR_DRESSING,
+	DECOR_PLACE,
+	DECOR_SALT,
+	DECOR_SCATTER,
+} from "./config";
 import { decorHash, decorHash01 } from "./hash";
 import { decorProfile, flatKindWeight, type DecorProfile } from "./profile";
 import {
@@ -1280,6 +1288,17 @@ export function planDecor(input: DecorPlanInput): DecorPlan {
 			axisVariants = 4;
 			axisVariant = piece.fx > 0 ? 0 : piece.fz > 0 ? 1 : piece.fx < 0 ? 2 : 3;
 		}
+		let variant = axisVariant >= 0 && count >= axisVariants ? axisVariant : variantOf(input, kind, hash);
+		if (kind === "bookcase") {
+			// facing pairs, one art set per room (docs/KENNEY_DECOR.md)
+			const v = bookcaseVariant(
+				count,
+				axisVariant,
+				decorHash01(seed, piece.room, DECOR_SALT.bookcaseSet),
+				decorHash01(seed, cellKey(piece.x, piece.y), DECOR_SALT.bookcaseCell),
+			);
+			if (v >= 0) variant = v;
+		}
 		const light = LIGHTS.has(kind);
 		entries.push({
 			kind,
@@ -1297,7 +1316,7 @@ export function planDecor(input: DecorPlanInput): DecorPlan {
 			faceZ: piece.fz,
 			roomId: piece.room,
 			hash,
-			variant: axisVariant >= 0 && count >= axisVariants ? axisVariant : variantOf(input, kind, hash),
+			variant,
 			fade: fadeBoxes.size() - 1,
 			light,
 			lit: light,
@@ -1447,6 +1466,25 @@ export function planDecor(input: DecorPlanInput): DecorPlan {
 
 // ---------------------------------------------------------------------------------------------
 // Helpers
+
+/**
+ * A bookcase's variant (0-based) among the pack's `count` (docs/KENNEY_DECOR.md, DECOR_BOOKCASES): facing pairs, `axis`
+ * 0 facing +X, 1 facing +Z. With two pairs or more, a room whose hash `room01` (0..1) falls under `altRoomShare` draws
+ * from the alternative set (pairs 1..): pair 1 when the cell's hash `cell01` falls under `altCommonShare`, else one of the
+ * others, evenly; every other room the primary pair 0. One pair: the facing alone, as before the alternative set; no
+ * pair: -1 (the caller's hash pick).
+ */
+export function bookcaseVariant(count: number, axis: number, room01: number, cell01: number): number {
+	const pairCount = math.floor(count / 2);
+	if (pairCount < 1 || axis < 0) return -1;
+	if (pairCount < 2 || room01 >= DECOR_BOOKCASES.altRoomShare) return axis;
+	const others = pairCount - 2;
+	const common = DECOR_BOOKCASES.altCommonShare;
+	let pair = 1;
+	if (others > 0 && cell01 >= common)
+		pair = 2 + math.min(others - 1, math.floor(((cell01 - common) / (1 - common)) * others));
+	return pair * 2 + axis;
+}
 
 function variantOf(input: DecorPlanInput, kind: DecorKind, hash: number): number {
 	const count = input.variants !== undefined ? input.variants(kind) : 0;

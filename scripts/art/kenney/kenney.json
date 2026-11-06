@@ -1,0 +1,751 @@
+{
+	"$comment": [
+		"Kenney Isometric Dungeon / Library (CC0) reprojected to the game camera by reproject.py (docs/KENNEY_DECOR.md).",
+		"src: art/vendor-relative, {f} = the Kenney facing (N / E / S / W). E shows a wall piece's front on +X, S on +Z.",
+		"Footprints (game tiles, at scale 2): bookcase 1 x 1 (wide: 2 x 1), studyTable 2 x 2, display 2 x 1, lectern 1 x 1,",
+		"fallenShelf 2 x 1, candle 1 x 1, diningTable 1 x 1, barrelStack 2 x 1, crateStack / lumber / barrelHeap 1 x 1,",
+		"stockpile 2 x 2, carpet segment 2 x 1 (end 1 x 1), patch 2 x 2. _x / _z: the piece faces (wall) or runs (free) along X / Z."
+	],
+	"out": "kenney",
+	"scale": 2.0,
+	"grade": {
+		"saturation": 0.75,
+		"brightness": 0.8,
+		"contrast": 1.15,
+		"tint": [
+			1.06,
+			0.97,
+			0.92
+		]
+	},
+	"pieces": {
+		"bookcase": {
+			"$comment": "Alternative art for the existing 1 x 1 bookcase (DECOR_BOX.bookcase): back on the cell's back edge, facing +X (E) / +Z (S); scale 1.6 = the kit case's 0.9 tile width.",
+			"src": "kenney-library/Isometric/bookcaseBooks_{f}.png",
+			"wall": true,
+			"boxFrom": "kenney-library/Isometric/bookcaseBooks_{f}.png",
+			"variants": [
+				{
+					"facing": "E",
+					"normal": "x",
+					"file": "books_x.png"
+				},
+				{
+					"facing": "S",
+					"normal": "z",
+					"file": "books_z.png"
+				}
+			],
+			"scale": 1.6,
+			"grade": {
+				"brightness": 0.72
+			}
+		},
+		"bookcaseLadder": {
+			"src": "kenney-library/Isometric/bookcaseBooksLadder_{f}.png",
+			"wall": true,
+			"boxFrom": "kenney-library/Isometric/bookcaseBooks_{f}.png",
+			"variants": [
+				{
+					"facing": "E",
+					"normal": "x",
+					"file": "ladder_x.png"
+				},
+				{
+					"facing": "S",
+					"normal": "z",
+					"file": "ladder_z.png"
+				}
+			],
+			"scale": 1.6,
+			"grade": {
+				"brightness": 0.72
+			}
+		},
+		"bookcaseGlass": {
+			"src": "kenney-library/Isometric/bookcaseGlass_{f}.png",
+			"wall": true,
+			"boxFrom": "kenney-library/Isometric/bookcaseBooks_{f}.png",
+			"variants": [
+				{
+					"facing": "E",
+					"normal": "x",
+					"file": "glass_x.png"
+				},
+				{
+					"facing": "S",
+					"normal": "z",
+					"file": "glass_z.png"
+				}
+			],
+			"scale": 1.6,
+			"grade": {
+				"brightness": 0.72
+			}
+		},
+		"bookcaseEmpty": {
+			"src": "kenney-library/Isometric/bookcaseEmpty_{f}.png",
+			"wall": true,
+			"boxFrom": "kenney-library/Isometric/bookcaseBooks_{f}.png",
+			"variants": [
+				{
+					"facing": "E",
+					"normal": "x",
+					"file": "empty_x.png"
+				},
+				{
+					"facing": "S",
+					"normal": "z",
+					"file": "empty_z.png"
+				}
+			],
+			"scale": 1.6,
+			"grade": {
+				"brightness": 0.72
+			}
+		},
+		"bookcaseEmptyLadder": {
+			"src": "kenney-library/Isometric/bookcaseEmptyLadder_{f}.png",
+			"wall": true,
+			"boxFrom": "kenney-library/Isometric/bookcaseBooks_{f}.png",
+			"variants": [
+				{
+					"facing": "E",
+					"normal": "x",
+					"file": "emptyladder_x.png"
+				},
+				{
+					"facing": "S",
+					"normal": "z",
+					"file": "emptyladder_z.png"
+				}
+			],
+			"scale": 1.6,
+			"grade": {
+				"brightness": 0.72
+			}
+		},
+		"bookcaseDestroyed": {
+			"src": "kenney-library/Isometric/bookcaseDestroyed_{f}.png",
+			"wall": true,
+			"boxFrom": "kenney-library/Isometric/bookcaseBooks_{f}.png",
+			"variants": [
+				{
+					"facing": "E",
+					"normal": "x",
+					"file": "destroyed_x.png"
+				},
+				{
+					"facing": "S",
+					"normal": "z",
+					"file": "destroyed_z.png"
+				}
+			],
+			"scale": 1.6,
+			"grade": {
+				"brightness": 0.72
+			}
+		},
+		"bookcaseHalf": {
+			"src": "kenney-library/Isometric/bookcaseHalfBooks_{f}.png",
+			"wall": true,
+			"boxFrom": "kenney-library/Isometric/bookcaseHalfBooks_{f}.png",
+			"variants": [
+				{
+					"facing": "E",
+					"normal": "x",
+					"file": "half_x.png"
+				},
+				{
+					"facing": "S",
+					"normal": "z",
+					"file": "half_z.png"
+				}
+			],
+			"scale": 1.6,
+			"grade": {
+				"brightness": 0.72
+			}
+		},
+		"bookcaseHalfEmpty": {
+			"src": "kenney-library/Isometric/bookcaseHalfEmpty_{f}.png",
+			"wall": true,
+			"boxFrom": "kenney-library/Isometric/bookcaseHalfBooks_{f}.png",
+			"variants": [
+				{
+					"facing": "E",
+					"normal": "x",
+					"file": "halfempty_x.png"
+				},
+				{
+					"facing": "S",
+					"normal": "z",
+					"file": "halfempty_z.png"
+				}
+			],
+			"scale": 1.6,
+			"grade": {
+				"brightness": 0.72
+			}
+		},
+		"bookcaseWide": {
+			"$comment": "Not wired yet: two neighbouring cells of a run drawn as one case (presentation only); pivot = the pair's centre. At the bookcases' scale it is 1.6 tiles wide, short of 2 cells.",
+			"src": "kenney-library/Isometric/bookcaseWideBooks_{f}.png",
+			"wall": true,
+			"boxFrom": "kenney-library/Isometric/bookcaseWideBooks_{f}.png",
+			"variants": [
+				{
+					"facing": "E",
+					"normal": "x",
+					"file": "wide_x.png"
+				},
+				{
+					"facing": "S",
+					"normal": "z",
+					"file": "wide_z.png"
+				}
+			],
+			"scale": 1.6,
+			"grade": {
+				"brightness": 0.72
+			}
+		},
+		"bookcaseWideLadder": {
+			"src": "kenney-library/Isometric/bookcaseWideBooksLadder_{f}.png",
+			"wall": true,
+			"boxFrom": "kenney-library/Isometric/bookcaseWideBooks_{f}.png",
+			"variants": [
+				{
+					"facing": "E",
+					"normal": "x",
+					"file": "wideladder_x.png"
+				},
+				{
+					"facing": "S",
+					"normal": "z",
+					"file": "wideladder_z.png"
+				}
+			],
+			"scale": 1.6,
+			"grade": {
+				"brightness": 0.72
+			}
+		},
+		"bookcaseWideEmpty": {
+			"src": "kenney-library/Isometric/bookcaseWideEmpty_{f}.png",
+			"wall": true,
+			"boxFrom": "kenney-library/Isometric/bookcaseWideBooks_{f}.png",
+			"variants": [
+				{
+					"facing": "E",
+					"normal": "x",
+					"file": "wideempty_x.png"
+				},
+				{
+					"facing": "S",
+					"normal": "z",
+					"file": "wideempty_z.png"
+				}
+			],
+			"scale": 1.6,
+			"grade": {
+				"brightness": 0.72
+			}
+		},
+		"bookcaseWideEmptyLadder": {
+			"src": "kenney-library/Isometric/bookcaseWideEmptyLadder_{f}.png",
+			"wall": true,
+			"boxFrom": "kenney-library/Isometric/bookcaseWideBooks_{f}.png",
+			"variants": [
+				{
+					"facing": "E",
+					"normal": "x",
+					"file": "wideemptyladder_x.png"
+				},
+				{
+					"facing": "S",
+					"normal": "z",
+					"file": "wideemptyladder_z.png"
+				}
+			],
+			"scale": 1.6,
+			"grade": {
+				"brightness": 0.72
+			}
+		},
+		"bookcaseHalfWide": {
+			"src": "kenney-library/Isometric/bookcaseHalfWideBooks_{f}.png",
+			"wall": true,
+			"boxFrom": "kenney-library/Isometric/bookcaseHalfWideBooks_{f}.png",
+			"variants": [
+				{
+					"facing": "E",
+					"normal": "x",
+					"file": "halfwide_x.png"
+				},
+				{
+					"facing": "S",
+					"normal": "z",
+					"file": "halfwide_z.png"
+				}
+			],
+			"scale": 1.6,
+			"grade": {
+				"brightness": 0.72
+			}
+		},
+		"bookcaseHalfWideEmpty": {
+			"src": "kenney-library/Isometric/bookcaseHalfWideEmpty_{f}.png",
+			"wall": true,
+			"boxFrom": "kenney-library/Isometric/bookcaseHalfWideBooks_{f}.png",
+			"variants": [
+				{
+					"facing": "E",
+					"normal": "x",
+					"file": "halfwideempty_x.png"
+				},
+				{
+					"facing": "S",
+					"normal": "z",
+					"file": "halfwideempty_z.png"
+				}
+			],
+			"scale": 1.6,
+			"grade": {
+				"brightness": 0.72
+			}
+		},
+		"studyTable": {
+			"$comment": "2 x 2: the long table with its chairs; uniform (open shape).",
+			"src": "kenney-library/Isometric/longTableDecoratedChairsBooks_{f}.png",
+			"mode": "uniform",
+			"k": 1.3,
+			"variants": [
+				{
+					"facing": "N",
+					"file": "books_a.png"
+				},
+				{
+					"facing": "E",
+					"file": "books_b.png"
+				}
+			]
+		},
+		"studyTablePlain": {
+			"src": "kenney-library/Isometric/longTableChairs_{f}.png",
+			"mode": "uniform",
+			"k": 1.3,
+			"variants": [
+				{
+					"facing": "N",
+					"file": "plain_a.png"
+				},
+				{
+					"facing": "E",
+					"file": "plain_b.png"
+				}
+			]
+		},
+		"studyTableCloth": {
+			"src": "kenney-library/Isometric/longTableDecoratedChairs_{f}.png",
+			"mode": "uniform",
+			"k": 1.3,
+			"variants": [
+				{
+					"facing": "N",
+					"file": "cloth_a.png"
+				},
+				{
+					"facing": "E",
+					"file": "cloth_b.png"
+				}
+			]
+		},
+		"display": {
+			"$comment": "2 x 1 free-standing display cases (box).",
+			"src": "kenney-library/Isometric/displayCase_{f}.png",
+			"variants": [
+				{
+					"facing": "N",
+					"file": "case_a.png"
+				},
+				{
+					"facing": "E",
+					"file": "case_b.png"
+				}
+			]
+		},
+		"displayBooks": {
+			"src": "kenney-library/Isometric/displayCaseBooks_{f}.png",
+			"boxFrom": "kenney-library/Isometric/displayCase_{f}.png",
+			"variants": [
+				{
+					"facing": "N",
+					"file": "books_a.png"
+				},
+				{
+					"facing": "E",
+					"file": "books_b.png"
+				}
+			]
+		},
+		"displayOpen": {
+			"src": "kenney-library/Isometric/displayCaseOpen_{f}.png",
+			"boxFrom": "kenney-library/Isometric/displayCase_{f}.png",
+			"variants": [
+				{
+					"facing": "N",
+					"file": "open_a.png"
+				},
+				{
+					"facing": "E",
+					"file": "open_b.png"
+				}
+			]
+		},
+		"displaySword": {
+			"src": "kenney-library/Isometric/displayCaseSword_{f}.png",
+			"boxFrom": "kenney-library/Isometric/displayCase_{f}.png",
+			"variants": [
+				{
+					"facing": "N",
+					"file": "sword_a.png"
+				},
+				{
+					"facing": "E",
+					"file": "sword_b.png"
+				}
+			]
+		},
+		"lectern": {
+			"$comment": "1 x 1, four facings (the way the open book faces).",
+			"src": "kenney-library/Isometric/bookStand_{f}.png",
+			"mode": "uniform",
+			"k": 1.05,
+			"variants": [
+				{
+					"facing": "N",
+					"file": "open_n.png"
+				},
+				{
+					"facing": "E",
+					"file": "open_e.png"
+				},
+				{
+					"facing": "S",
+					"file": "open_s.png"
+				},
+				{
+					"facing": "W",
+					"file": "open_w.png"
+				}
+			]
+		},
+		"lecternEmpty": {
+			"src": "kenney-library/Isometric/bookStandEmpty_{f}.png",
+			"mode": "uniform",
+			"k": 1.05,
+			"variants": [
+				{
+					"facing": "N",
+					"file": "empty_n.png"
+				},
+				{
+					"facing": "E",
+					"file": "empty_e.png"
+				},
+				{
+					"facing": "S",
+					"file": "empty_s.png"
+				},
+				{
+					"facing": "W",
+					"file": "empty_w.png"
+				}
+			]
+		},
+		"fallenShelf": {
+			"$comment": "2 x 1, low: a toppled case lying along X or Z.",
+			"src": "kenney-library/Isometric/bookcaseFallen_{f}.png",
+			"mode": "uniform",
+			"k": 1.4,
+			"variants": [
+				{
+					"facing": "N",
+					"file": "fallen_a.png"
+				},
+				{
+					"facing": "E",
+					"file": "fallen_b.png"
+				}
+			]
+		},
+		"candle": {
+			"$comment": "Alternative art for the 1 x 1 candle stand.",
+			"src": "kenney-library/Isometric/candleStand_{f}.png",
+			"mode": "uniform",
+			"k": 1.0,
+			"variants": [
+				{
+					"facing": "N",
+					"file": "single.png"
+				}
+			]
+		},
+		"candleDouble": {
+			"src": "kenney-library/Isometric/candleStandDouble_{f}.png",
+			"mode": "uniform",
+			"k": 1.0,
+			"variants": [
+				{
+					"facing": "N",
+					"file": "double_a.png"
+				},
+				{
+					"facing": "E",
+					"file": "double_b.png"
+				}
+			]
+		},
+		"carpet": {
+			"$comment": "Library runner: one segment is 2 game tiles long, 1 wide (flat); the end is 1 x 1.",
+			"src": "kenney-library/Isometric/floorCarpet_{f}.png",
+			"mode": "flat",
+			"pivot": "bbox",
+			"variants": [
+				{
+					"facing": "N",
+					"file": "segment_a.png"
+				},
+				{
+					"facing": "E",
+					"file": "segment_b.png"
+				}
+			]
+		},
+		"carpetEnd": {
+			"src": "kenney-library/Isometric/floorCarpetEnd_{f}.png",
+			"mode": "flat",
+			"pivot": "bbox",
+			"variants": [
+				{
+					"facing": "N",
+					"file": "end_n.png"
+				},
+				{
+					"facing": "E",
+					"file": "end_e.png"
+				},
+				{
+					"facing": "S",
+					"file": "end_s.png"
+				},
+				{
+					"facing": "W",
+					"file": "end_w.png"
+				}
+			]
+		},
+		"diningTable": {
+			"$comment": "Mess hall, 1 x 1 (the chairs overhang a little).",
+			"src": "kenney-dungeon/Isometric/tableRoundChairs_{f}.png",
+			"mode": "uniform",
+			"k": 1.3,
+			"variants": [
+				{
+					"facing": "N",
+					"file": "round_a.png"
+				},
+				{
+					"facing": "E",
+					"file": "round_b.png"
+				}
+			]
+		},
+		"diningTableItems": {
+			"src": "kenney-dungeon/Isometric/tableRoundItemsChairs_{f}.png",
+			"mode": "uniform",
+			"k": 1.3,
+			"variants": [
+				{
+					"facing": "N",
+					"file": "items_a.png"
+				},
+				{
+					"facing": "E",
+					"file": "items_b.png"
+				}
+			]
+		},
+		"diningTableShort": {
+			"src": "kenney-dungeon/Isometric/tableShortChairs_{f}.png",
+			"mode": "uniform",
+			"k": 1.3,
+			"variants": [
+				{
+					"facing": "N",
+					"file": "short_a.png"
+				},
+				{
+					"facing": "E",
+					"file": "short_b.png"
+				}
+			]
+		},
+		"diningTableBroken": {
+			"src": "kenney-dungeon/Isometric/tableChairsBroken_{f}.png",
+			"mode": "uniform",
+			"k": 1.3,
+			"variants": [
+				{
+					"facing": "N",
+					"file": "broken_a.png"
+				},
+				{
+					"facing": "E",
+					"file": "broken_b.png"
+				}
+			]
+		},
+		"barrelStack": {
+			"$comment": "2 x 1 against a wall (uniform: round barrels).",
+			"src": "kenney-dungeon/Isometric/barrelsStacked_{f}.png",
+			"mode": "uniform",
+			"k": 1.05,
+			"wall": true,
+			"variants": [
+				{
+					"facing": "N",
+					"normal": "x",
+					"file": "stack_x.png"
+				},
+				{
+					"facing": "E",
+					"normal": "z",
+					"file": "stack_z.png"
+				}
+			]
+		},
+		"crateStack": {
+			"src": "kenney-dungeon/Isometric/woodenCrates_{f}.png",
+			"variants": [
+				{
+					"facing": "N",
+					"file": "crates_a.png"
+				},
+				{
+					"facing": "E",
+					"file": "crates_b.png"
+				}
+			],
+			"mode": "uniform",
+			"k": 1.1
+		},
+		"lumber": {
+			"src": "kenney-dungeon/Isometric/woodenPile_{f}.png",
+			"mode": "uniform",
+			"k": 1.3,
+			"variants": [
+				{
+					"facing": "N",
+					"file": "pile_a.png"
+				},
+				{
+					"facing": "E",
+					"file": "pile_b.png"
+				}
+			]
+		},
+		"barrelHeap": {
+			"src": "kenney-dungeon/Isometric/barrels_{f}.png",
+			"mode": "uniform",
+			"k": 1.1,
+			"variants": [
+				{
+					"facing": "N",
+					"file": "heap_a.png"
+				},
+				{
+					"facing": "E",
+					"file": "heap_b.png"
+				}
+			]
+		},
+		"stockpile": {
+			"$comment": "2 x 2: barrels stacked (uniform) under the scaffold (box); `box` is the scaffold's, for the pivot.",
+			"src": "kenney-dungeon/Isometric/barrelsStacked_{f}.png",
+			"variants": [
+				{
+					"facing": "N",
+					"file": "stockpile_a.png"
+				},
+				{
+					"facing": "E",
+					"file": "stockpile_b.png"
+				}
+			],
+			"mode": "uniform",
+			"k": 1.05,
+			"box": [
+				-0.5,
+				0.5,
+				-0.5,
+				0.5,
+				0.97
+			],
+			"layers": [
+				{
+					"src": "kenney-dungeon/Isometric/woodenSupportsBlock_{f}.png",
+					"mode": "box",
+					"box": [
+						-0.5,
+						0.5,
+						-0.5,
+						0.5,
+						0.97
+					]
+				}
+			]
+		},
+		"patch": {
+			"$comment": "2 x 2 floor patches: the tile's top face only (flat).",
+			"mode": "flat",
+			"topOnly": true,
+			"src": "kenney-dungeon/Isometric/{f}",
+			"variants": [
+				{
+					"facing": "dirt_N.png",
+					"file": "dirt.png"
+				},
+				{
+					"facing": "dirtTiles_N.png",
+					"file": "dirttiles.png"
+				},
+				{
+					"facing": "planks_N.png",
+					"file": "planks_a.png"
+				},
+				{
+					"facing": "planks_E.png",
+					"file": "planks_b.png"
+				},
+				{
+					"facing": "planksBroken_N.png",
+					"file": "planksbroken_a.png"
+				},
+				{
+					"facing": "planksBroken_E.png",
+					"file": "planksbroken_b.png"
+				},
+				{
+					"facing": "stoneUneven_N.png",
+					"file": "stoneuneven.png"
+				},
+				{
+					"facing": "stoneMissingTiles_N.png",
+					"file": "stonemissing.png"
+				}
+			]
+		}
+	}
+}
